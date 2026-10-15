@@ -349,6 +349,14 @@ export function PreviewStep({
                       <span className="block truncate" title={details || undefined}>
                         {details || '—'}
                       </span>
+                      {row.sourceCategory && (
+                        <small
+                          className="block truncate text-micro font-500 text-ink-4"
+                          title={row.sourceCategory}
+                        >
+                          {row.sourceCategory}
+                        </small>
+                      )}
                     </TableCell>
                     <TableCell>{categoryCell(row)}</TableCell>
                     <TableCell>{statusCell(row)}</TableCell>

@@ -13,6 +13,8 @@ import type {
   CsvPreset,
   CsvPreviewResult,
   CsvRowStatus,
+  DateOrder,
+  StatementInspection,
   StatementSummary,
 } from '@shared/schema';
 
@@ -472,6 +474,23 @@ export function statementImportBlocked(
   const contradicts =
     summary.accountMatch === 'none' || (summary.accountMatch === 'other' && targetIsSelected);
   return contradicts ? !confirmed : false;
+}
+
+/**
+ * The date order of a statement's preview and import (spec §6.4). Only a file whose dates read
+ * both ways (QIF) gets one: the user's pick, else the detected default (the European order).
+ * Its import waits until the user picked or confirmed an order, as the CSV mapping waits for an
+ * ambiguous date format; every other file sends none.
+ */
+export function statementDateOrder(
+  inspection: Pick<StatementInspection, 'dateOrderAmbiguous' | 'detectedDateOrder'>,
+  picked: DateOrder | null
+): { dateOrder: DateOrder | null; confirmed: boolean } {
+  if (!inspection.dateOrderAmbiguous) return { dateOrder: null, confirmed: true };
+  return {
+    dateOrder: picked ?? inspection.detectedDateOrder ?? 'dmy',
+    confirmed: picked != null,
+  };
 }
 
 /** Last path segment, for both `/` and `\` separators. */

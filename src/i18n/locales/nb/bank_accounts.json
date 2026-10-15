@@ -412,7 +412,21 @@
     "correctionSkipped": "En korrigering av en tidligere betaling; brukes ikke",
     "investmentIgnored": "Filen inneholder også investeringstransaksjoner. De importeres ikke; bruk meglerimporten for dem.",
     "back": "Velg en annen fil",
-    "openAccount": "Åpne {{account}}"
+    "openAccount": "Åpne {{account}}",
+    "dateOrder": {
+      "label": "Datoene i denne filen er skrevet som",
+      "dmy": "dag.måned.år",
+      "mdy": "måned/dag/år",
+      "ymd": "år-måned-dag",
+      "hint": "Hver dato i filen kan leses på begge måter. Sjekk det med en betaling du kjenner."
+    },
+    "categories": {
+      "title": "Kategorier fra filen",
+      "hint": "Koblet etter navn. Du kan endre hvilken som helst; betalinger uten kategori går gjennom reglene dine.",
+      "rules": "Overlat til reglene",
+      "count_one": "{{count}} betaling",
+      "count_other": "{{count}} betalinger"
+    }
   },
   "importHistory": {
     "title": "Importhistorikk",

@@ -35,6 +35,7 @@ import {
   regionName,
   rowStatusPresentation,
   sortPresets,
+  statementDateOrder,
   statementImportBlocked,
   suggestionConfidence,
   uniqueHeaders,
@@ -503,6 +504,19 @@ describe('statement import helpers', () => {
     // 'other' and the user switched to the matching account: fine
     expect(statementImportBlocked({ ...base, accountMatch: 'other' }, false, false)).toBe(false);
     expect(statementImportBlocked(undefined, false, true)).toBe(true);
+  });
+
+  it('sends a date order only for dates that read both ways, and waits for the pick', () => {
+    const decided = { dateOrderAmbiguous: false, detectedDateOrder: 'mdy' } as const;
+    expect(statementDateOrder(decided, null)).toEqual({ dateOrder: null, confirmed: true });
+    const ambiguous = { dateOrderAmbiguous: true, detectedDateOrder: 'dmy' } as const;
+    // The detected (European) order is previewed, but the import waits for the user.
+    expect(statementDateOrder(ambiguous, null)).toEqual({ dateOrder: 'dmy', confirmed: false });
+    expect(statementDateOrder(ambiguous, 'mdy')).toEqual({ dateOrder: 'mdy', confirmed: true });
+    expect(statementDateOrder(ambiguous, 'dmy')).toEqual({ dateOrder: 'dmy', confirmed: true });
+    expect(statementDateOrder({ dateOrderAmbiguous: true, detectedDateOrder: null }, null)).toEqual(
+      { dateOrder: 'dmy', confirmed: false }
+    );
   });
 });
 

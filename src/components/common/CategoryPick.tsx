@@ -19,6 +19,8 @@ interface CategoryPickProps {
   selectedId: string | null;
   /** Offer "no category" as the first entry (drops an override). */
   allowClear?: boolean;
+  /** The label of that entry when "no category" means something else here. */
+  clearLabel?: string;
   onPick: (categoryId: string | null) => void;
   /** The trigger: a chip or a dashed "pick" button. */
   children: ReactNode;
@@ -33,6 +35,7 @@ export function CategoryPick({
   categories,
   selectedId,
   allowClear = false,
+  clearLabel,
   onPick,
   children,
   align = 'start',
@@ -61,7 +64,7 @@ export function CategoryPick({
                   }}
                   className="text-ink-3"
                 >
-                  {t('csvImport.preview.noCategory')}
+                  {clearLabel ?? t('csvImport.preview.noCategory')}
                 </CommandItem>
               )}
               {categories.map((category) => (

@@ -431,7 +431,23 @@
     "correctionSkipped": "Oprava dřívějšího pohybu; neprovádí se",
     "investmentIgnored": "Soubor obsahuje i investiční transakce. Ty se neimportují; použijte pro ně import od brokera.",
     "back": "Vybrat jiný soubor",
-    "openAccount": "Otevřít účet {{account}}"
+    "openAccount": "Otevřít účet {{account}}",
+    "dateOrder": {
+      "label": "Data jsou v souboru zapsaná jako",
+      "dmy": "den.měsíc.rok",
+      "mdy": "měsíc/den/rok",
+      "ymd": "rok-měsíc-den",
+      "hint": "Každé datum v souboru jde přečíst oběma způsoby. Ověřte to na platbě, kterou znáte."
+    },
+    "categories": {
+      "title": "Kategorie ze souboru",
+      "hint": "Spárováno podle názvu. Kteroukoli můžete změnit; pohyby bez kategorie projdou vašimi pravidly.",
+      "rules": "Nechat na pravidlech",
+      "count_one": "{{count}} pohyb",
+      "count_few": "{{count}} pohyby",
+      "count_many": "{{count}} pohybů",
+      "count_other": "{{count}} pohybů"
+    }
   },
   "importHistory": {
     "title": "Historie importů",

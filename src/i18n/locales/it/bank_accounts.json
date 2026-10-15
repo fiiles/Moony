@@ -425,7 +425,22 @@
     "correctionSkipped": "Correzione di un pagamento precedente; non applicata",
     "investmentIgnored": "Il file contiene anche operazioni di investimento. Non vengono importate; usa per queste l'importazione del broker.",
     "back": "Scegli un altro file",
-    "openAccount": "Apri {{account}}"
+    "openAccount": "Apri {{account}}",
+    "dateOrder": {
+      "label": "Le date in questo file sono scritte come",
+      "dmy": "giorno.mese.anno",
+      "mdy": "mese/giorno/anno",
+      "ymd": "anno-mese-giorno",
+      "hint": "Ogni data nel file si può leggere in entrambi i modi. Verificalo su un pagamento che conosci."
+    },
+    "categories": {
+      "title": "Categorie dal file",
+      "hint": "Abbinate per nome. Puoi cambiarne qualsiasi; i pagamenti senza categoria passano per le tue regole.",
+      "rules": "Lascia alle regole",
+      "count_one": "{{count}} pagamento",
+      "count_many": "{{count}} pagamenti",
+      "count_other": "{{count}} pagamenti"
+    }
   },
   "importHistory": {
     "title": "Storico degli import",

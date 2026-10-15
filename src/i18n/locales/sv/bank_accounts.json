@@ -412,7 +412,21 @@
     "correctionSkipped": "En rättelse av en tidigare betalning; tillämpas inte",
     "investmentIgnored": "Filen innehåller även investeringstransaktioner. De importeras inte; använd mäklarimporten för dem.",
     "back": "Välj en annan fil",
-    "openAccount": "Öppna {{account}}"
+    "openAccount": "Öppna {{account}}",
+    "dateOrder": {
+      "label": "Datumen i filen är skrivna som",
+      "dmy": "dag.månad.år",
+      "mdy": "månad/dag/år",
+      "ymd": "år-månad-dag",
+      "hint": "Varje datum i filen kan läsas på båda sätten. Kontrollera med en betalning du känner till."
+    },
+    "categories": {
+      "title": "Kategorier från filen",
+      "hint": "Matchade efter namn. Du kan ändra vilken som helst; betalningar utan kategori går igenom dina regler.",
+      "rules": "Låt reglerna avgöra",
+      "count_one": "{{count}} betalning",
+      "count_other": "{{count}} betalningar"
+    }
   },
   "importHistory": {
     "title": "Importhistorik",

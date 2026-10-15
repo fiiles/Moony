@@ -393,7 +393,7 @@ Column names the generic detector does not know yet (a new language) are added t
 
 ### Adding a statement fixture
 
-Statement files (CAMT.053, MT940 and OFX/QFX today) are read by one parser per format, a module
+Statement files (CAMT.053, MT940, OFX/QFX and QIF) are read by one parser per format, a module
 under [`src-tauri/src/services/statement_import/`](./src-tauri/src/services/statement_import/). A
 bank whose export a parser reads wrongly, or a variant nobody has tried yet, is covered by a fixture
 and a test, never by a special case keyed on the bank's name. Everything after the parser

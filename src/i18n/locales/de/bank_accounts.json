@@ -412,7 +412,21 @@
     "correctionSkipped": "Korrektur einer früheren Zahlung; wird nicht angewendet",
     "investmentIgnored": "Die Datei enthält auch Wertpapiertransaktionen. Diese werden nicht importiert; nutzen Sie dafür den Broker-Import.",
     "back": "Andere Datei wählen",
-    "openAccount": "{{account}} öffnen"
+    "openAccount": "{{account}} öffnen",
+    "dateOrder": {
+      "label": "Datumsangaben in dieser Datei sind geschrieben als",
+      "dmy": "Tag.Monat.Jahr",
+      "mdy": "Monat/Tag/Jahr",
+      "ymd": "Jahr-Monat-Tag",
+      "hint": "Jedes Datum in der Datei lässt sich auf beide Arten lesen. Prüfen Sie es an einer Zahlung, die Sie kennen."
+    },
+    "categories": {
+      "title": "Kategorien aus der Datei",
+      "hint": "Nach Namen zugeordnet. Sie können jede ändern; Zahlungen ohne Kategorie durchlaufen Ihre Regeln.",
+      "rules": "Den Regeln überlassen",
+      "count_one": "{{count}} Zahlung",
+      "count_other": "{{count}} Zahlungen"
+    }
   },
   "importHistory": {
     "title": "Importverlauf",

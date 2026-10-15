@@ -19,17 +19,12 @@ import { useCategories } from '@/hooks/use-categories';
 import { useLanguage } from '@/i18n/I18nProvider';
 import { bankAccountsApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
-import type {
-  CsvCategoryOverride,
-  CsvImportResult,
-  CsvPreviewResult,
-  StatementImportOptionsInput,
-  StatementInspection,
-} from '@shared/schema';
+import type { CsvCategoryOverride, CsvImportResult, CsvPreviewResult } from '@shared/schema';
 import { FileSelectStep } from './csv-import/FileSelectStep';
 import { ImportResultStep } from './csv-import/ImportResultStep';
 import { MappingStep } from './csv-import/MappingStep';
 import { PreviewStep } from './csv-import/PreviewStep';
+import { SourceCategoryPanel } from './csv-import/SourceCategoryPanel';
 import { StatementSummaryCard } from './csv-import/StatementSummaryCard';
 import {
   AUTO_PRESET,
@@ -44,9 +39,7 @@ import {
   isSupportedImportPath,
   mappingFromInspection,
   presetIdForInstitution,
-  statementImportBlocked,
   summarizePreview,
-  type ImportKind,
   type ImportStep,
   type MappingState,
 } from './csv-import/import-config';
@@ -57,6 +50,7 @@ import {
 import { useCsvPreview } from './csv-import/use-csv-preview';
 import { useFileDrop } from './csv-import/use-file-drop';
 import { useStatementPreview } from './csv-import/use-statement-preview';
+import { useStatementSession } from './csv-import/use-statement-session';
 
 interface StatementImportDialogProps {
   open: boolean;
@@ -103,22 +97,9 @@ export function StatementImportDialog({
   const { user } = useAuth();
   // Inspect, preview and import decode a legacy-encoded file the same way.
   const country = user?.country ?? undefined;
-  // The account the import writes to: the page's, until the user switches to the
-  // account the statement belongs to (D9). Derived, so a new page account applies at once.
-  const [switchedAccountId, setTargetAccountId] = useState<string | null>(null);
-  const targetAccountId = switchedAccountId ?? accountId;
-  const { account } = useBankAccount(targetAccountId || undefined);
   const { categories } = useCategories();
 
   const [step, setStep] = useState<ImportStep>('file');
-  // What the open file is; null until one was read.
-  const [kind, setKind] = useState<ImportKind | null>(null);
-  const [statementInspection, setStatementInspection] = useState<StatementInspection | null>(null);
-  // The account `statementInspection` was read for: its account check is relative to it.
-  const [inspectedAccountId, setInspectedAccountId] = useState<string | null>(null);
-  const [statementIndex, setStatementIndex] = useState(0);
-  // "Import into this account anyway" for a statement of another account (D9).
-  const [accountConfirmed, setAccountConfirmed] = useState(false);
   const [filePath, setFilePath] = useState('');
   const [inspection, setInspection] = useState<CsvPreviewResult | null>(null);
   const [mapping, setMapping] = useState<MappingState>(EMPTY_MAPPING);
@@ -146,9 +127,6 @@ export function StatementImportDialog({
   // Bumped per file read; a response that is no longer the latest is dropped.
   const inspectRequest = useRef(0);
 
-  const importMutation = useCsvImportMutation(targetAccountId);
-  const statementMutation = useStatementImportMutation();
-
   const { data: presets = [] } = useQuery({
     queryKey: ['csv-presets'],
     queryFn: () => bankAccountsApi.getCsvPresets(),
@@ -167,6 +145,36 @@ export function StatementImportDialog({
    */
   const explicitPresetId =
     presetDetected || presetChoice === AUTO_PRESET ? undefined : presetChoice;
+
+  const session = useStatementSession({
+    accountId,
+    country,
+    filePath,
+    importAnywayLines,
+    overrides,
+    categories,
+    inspectRequest,
+    setIsInspecting,
+    clearPicks: (scope) => {
+      setImportAnywayLines([]);
+      if (scope === 'all') {
+        setOverrides([]);
+        setPreviewPage(0);
+      }
+    },
+    onStatementOpened: (path) => {
+      setFilePath(path);
+      // A CSV read before must not preview this file with its columns.
+      setInspection(null);
+      setStep('preview');
+    },
+    onCsvFile: (path) => void inspectFile(path, { presetId: explicitPresetId }),
+  });
+  const { kind, targetAccountId } = session;
+  const { account } = useBankAccount(targetAccountId || undefined);
+
+  const importMutation = useCsvImportMutation(targetAccountId);
+  const statementMutation = useStatementImportMutation();
 
   /**
    * Reads the file and (re)starts step 2 from what was found: columns, formats,
@@ -223,95 +231,10 @@ export function StatementImportDialog({
     }
   };
 
-  /**
-   * Reads the file as a statement first. Not a statement (null): the CSV path,
-   * unchanged. A statement goes straight to its preview.
-   */
-  const openFile = async (path: string) => {
-    const requestId = ++inspectRequest.current;
-    setIsInspecting(true);
-    try {
-      const statement = await bankAccountsApi.inspectStatementFile(targetAccountId, path, country);
-      if (requestId !== inspectRequest.current) return;
-      if (statement == null) {
-        setKind('csv');
-        setStatementInspection(null);
-        void inspectFile(path, { presetId: explicitPresetId });
-        return;
-      }
-      setKind('statement');
-      setFilePath(path);
-      // A CSV read before must not preview this file with its columns.
-      setInspection(null);
-      setStatementInspection(statement);
-      setInspectedAccountId(targetAccountId);
-      setStatementIndex(statement.defaultStatementIndex);
-      setImportAnywayLines([]);
-      setOverrides([]);
-      setAccountConfirmed(false);
-      setPreviewPage(0);
-      setStep('preview');
-    } catch (e: unknown) {
-      if (requestId !== inspectRequest.current) return;
-      toast.error(tc('status.error'), { description: translateApiError(e as Error, tc) });
-    } finally {
-      if (requestId === inspectRequest.current) setIsInspecting(false);
-    }
-  };
-
   const handleFilePicked = (path: string) => {
     // The last choice was made for another file.
     setEncodingChoice(AUTO_VALUE);
-    void openFile(path);
-  };
-
-  /**
-   * "Import into {account}" (D9): the statement's own account becomes the target
-   * and the file is read again for it, so the account check reads `selected`.
-   */
-  const handleSwitchAccount = async (matchedAccountId: string) => {
-    const previousTarget = switchedAccountId;
-    setTargetAccountId(matchedAccountId === accountId ? null : matchedAccountId);
-    setAccountConfirmed(false);
-    // Duplicates are another account's now; the categories picked still apply.
-    setImportAnywayLines([]);
-    const requestId = ++inspectRequest.current;
-    setIsInspecting(true);
-    try {
-      const statement = await bankAccountsApi.inspectStatementFile(
-        matchedAccountId,
-        filePath,
-        country
-      );
-      if (requestId !== inspectRequest.current) return;
-      if (statement == null) {
-        // The file no longer reads as a statement: nothing was checked for the new target.
-        setTargetAccountId(previousTarget);
-        toast.error(tc('status.error'), { description: tc('validation.statementNotRecognized') });
-        return;
-      }
-      setStatementInspection(statement);
-      setInspectedAccountId(matchedAccountId);
-      if (!statement.statements.some((s) => s.index === statementIndex)) {
-        setStatementIndex(statement.defaultStatementIndex);
-      }
-    } catch (e: unknown) {
-      if (requestId !== inspectRequest.current) return;
-      // The summary on screen still speaks of the previous target.
-      setTargetAccountId(previousTarget);
-      toast.error(tc('status.error'), { description: translateApiError(e as Error, tc) });
-    } finally {
-      if (requestId === inspectRequest.current) setIsInspecting(false);
-    }
-  };
-
-  const handleStatementChange = (index: number) => {
-    setStatementIndex(index);
-    // Entry ordinals belong to the statement they were picked in.
-    setImportAnywayLines([]);
-    setOverrides([]);
-    setAccountConfirmed(false);
-    setPreviewPage(0);
+    void session.open(path);
   };
 
   const handleChooseFile = async () => {
@@ -407,18 +330,7 @@ export function StatementImportDialog({
     enabled: open && kind === 'csv' && (step === 'mapping' || step === 'preview'),
   });
 
-  // What a statement import would do; null while no statement is open.
-  const statementOptions = useMemo<StatementImportOptionsInput | null>(
-    () =>
-      kind === 'statement' && statementInspection
-        ? {
-            statementIndex,
-            importAnywayLines: [...importAnywayLines].sort((a, b) => a - b),
-            categoryOverrides: [...overrides].sort((a, b) => a.line - b.line),
-          }
-        : null,
-    [kind, statementInspection, statementIndex, importAnywayLines, overrides]
-  );
+  const statementOptions = session.options;
   const statementPreviewOptions = useMemo(
     () =>
       statementOptions
@@ -433,9 +345,6 @@ export function StatementImportDialog({
     country,
     enabled: open && kind === 'statement' && step === 'preview',
   });
-  const statementSummary = statementInspection?.statements.find(
-    (statement) => statement.index === statementIndex
-  );
 
   const {
     preview,
@@ -448,12 +357,7 @@ export function StatementImportDialog({
   const reset = () => {
     inspectRequest.current++;
     setStep('file');
-    setKind(null);
-    setStatementInspection(null);
-    setInspectedAccountId(null);
-    setStatementIndex(0);
-    setAccountConfirmed(false);
-    setTargetAccountId(null);
+    session.reset();
     setFilePath('');
     setInspection(null);
     setMapping(EMPTY_MAPPING);
@@ -476,11 +380,7 @@ export function StatementImportDialog({
     if (step === 'preview' && kind === 'statement') {
       inspectRequest.current++; // a switch's read still in flight no longer applies
       setIsInspecting(false);
-      setKind(null);
-      setStatementInspection(null);
-      setInspectedAccountId(null);
-      setAccountConfirmed(false);
-      setTargetAccountId(null);
+      session.reset();
       setStep('file');
       return;
     }
@@ -547,15 +447,8 @@ export function StatementImportDialog({
   };
 
   const canPreview = config != null && !isInspecting;
-  // The account check (D9) is relative to the account the file was read for: after a
-  // switch it holds for the new target once the file was read again for it (until then
-  // `isInspecting` holds the import back).
-  const targetWasInspected = inspectedAccountId === targetAccountId;
-  const statementBlocked =
-    kind === 'statement' &&
-    statementImportBlocked(statementSummary, accountConfirmed, targetWasInspected);
   const canImport =
-    (kind === 'statement' ? statementOptions != null && !statementBlocked : config != null) &&
+    (kind === 'statement' ? statementOptions != null && !session.blocked : config != null) &&
     !isInspecting &&
     !isUpdating &&
     !previewError &&
@@ -624,28 +517,34 @@ export function StatementImportDialog({
             />
           )}
 
-          {step === 'preview' &&
-            kind === 'statement' &&
-            statementInspection &&
-            statementSummary && (
+          {step === 'preview' && kind === 'statement' && session.inspection && session.summary && (
+            <>
               <StatementSummaryCard
-                inspection={statementInspection}
-                summary={statementSummary}
-                onStatementChange={handleStatementChange}
+                inspection={session.inspection}
+                summary={session.summary}
+                onStatementChange={session.changeStatement}
                 fileName={fileNameFromPath(filePath)}
                 accountCurrency={account?.currency}
-                confirmRequired={statementImportBlocked(
-                  statementSummary,
-                  false,
-                  targetWasInspected
-                )}
-                accountConfirmed={accountConfirmed}
-                onAccountConfirmedChange={setAccountConfirmed}
-                onSwitchAccount={(id) => void handleSwitchAccount(id)}
+                confirmRequired={session.confirmRequired}
+                accountConfirmed={session.accountConfirmed}
+                onAccountConfirmedChange={session.setAccountConfirmed}
+                onSwitchAccount={(id) => void session.switchAccount(id)}
+                dateOrder={session.dateOrder}
+                dateOrderConfirmed={session.dateOrderConfirmed}
+                onDateOrderChange={session.pickDateOrder}
                 busy={isInspecting || isImporting}
                 locale={getLocale()}
               />
-            )}
+              {session.summary.sourceCategories.length > 0 && (
+                <SourceCategoryPanel
+                  sources={session.summary.sourceCategories}
+                  chosen={session.sourceCategories}
+                  onPick={session.pickSourceCategory}
+                  categories={categories}
+                />
+              )}
+            </>
+          )}
 
           {step === 'preview' && (
             <PreviewStep

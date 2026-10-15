@@ -412,7 +412,21 @@
     "correctionSkipped": "A correction of an earlier payment; not applied",
     "investmentIgnored": "The file also contains investment transactions. They are not imported; use the broker import for those.",
     "back": "Choose another file",
-    "openAccount": "Open {{account}}"
+    "openAccount": "Open {{account}}",
+    "dateOrder": {
+      "label": "Dates in this file are written as",
+      "dmy": "day.month.year",
+      "mdy": "month/day/year",
+      "ymd": "year-month-day",
+      "hint": "Every date in the file could be read both ways. Check one payment you know."
+    },
+    "categories": {
+      "title": "Categories from the file",
+      "hint": "Matched by name. Change any of them; payments without a category go through your rules.",
+      "rules": "Leave to the rules",
+      "count_one": "{{count}} payment",
+      "count_other": "{{count}} payments"
+    }
   },
   "importHistory": {
     "title": "Import history",

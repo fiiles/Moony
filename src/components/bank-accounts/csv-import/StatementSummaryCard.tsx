@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check, FileText, Info, TriangleAlert } from 'lucide-react';
-import type { StatementInspection, StatementSummary } from '@shared/schema';
+import type { DateOrder, StatementInspection, StatementSummary } from '@shared/schema';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
@@ -10,7 +10,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { formatBalance } from './import-config';
+
+/** The orders a QIF date can be written in (spec §6.4), as the select offers them. */
+const DATE_ORDERS: readonly DateOrder[] = ['dmy', 'mdy', 'ymd'];
 
 interface StatementSummaryCardProps {
   inspection: StatementInspection;
@@ -26,6 +36,11 @@ interface StatementSummaryCardProps {
   onAccountConfirmedChange: (confirmed: boolean) => void;
   /** Make the account the statement belongs to the import's target. */
   onSwitchAccount: (accountId: string) => void;
+  /** The order the dates are read in when they read both ways (QIF); null = no choice to make. */
+  dateOrder: DateOrder | null;
+  /** The user picked or confirmed `dateOrder`; until then the import waits. */
+  dateOrderConfirmed: boolean;
+  onDateOrderChange: (order: DateOrder) => void;
   /** The file is being read again (after a switch) or imported; the controls wait for it. */
   busy: boolean;
   /** Locale for amount formatting, e.g. `cs-CZ`. */
@@ -62,8 +77,9 @@ function Warning({ children, actions }: { children: ReactNode; actions?: ReactNo
 
 /**
  * What the statement file says before its payments are previewed (spec §7, §8): the statement
- * picker when the file holds several, the format, account, period, balances and counts, whether
- * the balances add up (D11), whose account it is (D9) and whether its currency differs (D10).
+ * picker when the file holds several, the format, account, period, balances and counts, the
+ * order of a QIF file's dates when they read both ways (§6.4), whether the balances add up
+ * (D11), whose account it is (D9) and whether its currency differs (D10).
  */
 export function StatementSummaryCard({
   inspection,
@@ -75,6 +91,9 @@ export function StatementSummaryCard({
   accountConfirmed,
   onAccountConfirmedChange,
   onSwitchAccount,
+  dateOrder,
+  dateOrderConfirmed,
+  onDateOrderChange,
   busy,
   locale,
 }: StatementSummaryCardProps) {
@@ -147,6 +166,55 @@ export function StatementSummaryCard({
 
   const currencyDiffers =
     summary.currency != null && accountCurrency != null && summary.currency !== accountCurrency;
+  // The period was read in the detected order; under another order the preview shows the range.
+  const periodHolds = dateOrder == null || dateOrder === inspection.detectedDateOrder;
+
+  const dateOrderBlock = dateOrder != null && (
+    <div className="rounded-r3 border border-line px-3.5 py-3">
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+        <label htmlFor="statement-date-order" className="text-caption font-600 text-ink-2">
+          {t('statementImport.dateOrder.label')}
+        </label>
+        <Select
+          value={dateOrder}
+          onValueChange={(value) => onDateOrderChange(value as DateOrder)}
+          disabled={busy}
+        >
+          <SelectTrigger id="statement-date-order" className="w-auto min-w-[190px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {DATE_ORDERS.map((order) => (
+              <SelectItem key={order} value={order}>
+                {t(`statementImport.dateOrder.${order}`)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {!dateOrderConfirmed && (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={busy}
+            onClick={() => onDateOrderChange(dateOrder)}
+          >
+            {t('readiness.confirmDateFormat')}
+          </Button>
+        )}
+      </div>
+      {dateOrderConfirmed ? (
+        <div className="mt-2">
+          <Note tone="muted">{t('statementImport.dateOrder.hint')}</Note>
+        </div>
+      ) : (
+        <p className="mb-0 mt-2 flex items-start gap-2 text-caption font-600 text-loss">
+          <TriangleAlert className="mt-px size-3.5 shrink-0" aria-hidden />
+          <span className="min-w-0">{t('statementImport.dateOrder.hint')}</span>
+        </p>
+      )}
+    </div>
+  );
 
   return (
     <div className="mb-3.5 grid gap-2.5">
@@ -189,7 +257,7 @@ export function StatementSummaryCard({
             )}
           </span>
           <Badge className="shrink-0">{t(`statementImport.format.${inspection.format}`)}</Badge>
-          {summary.period && (
+          {summary.period && periodHolds && (
             <span className="ml-auto shrink-0 text-micro font-500 text-ink-4 num">
               {t('statementImport.period', {
                 from: fmt.day(summary.period.from),
@@ -217,6 +285,8 @@ export function StatementSummaryCard({
           )}
         </div>
       </div>
+
+      {dateOrderBlock}
 
       {summary.balanceCheck === 'ok' && <Note tone="ok">{t('statementImport.check.ok')}</Note>}
       {summary.balanceCheck === 'mismatch' && (

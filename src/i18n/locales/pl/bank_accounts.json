@@ -438,7 +438,23 @@
     "correctionSkipped": "Korekta wcześniejszej płatności; nie jest stosowana",
     "investmentIgnored": "Plik zawiera także transakcje inwestycyjne. Nie są one importowane; użyj do nich importu od brokera.",
     "back": "Wybierz inny plik",
-    "openAccount": "Otwórz konto {{account}}"
+    "openAccount": "Otwórz konto {{account}}",
+    "dateOrder": {
+      "label": "Daty w tym pliku są zapisane jako",
+      "dmy": "dzień.miesiąc.rok",
+      "mdy": "miesiąc/dzień/rok",
+      "ymd": "rok-miesiąc-dzień",
+      "hint": "Każdą datę w pliku można odczytać na oba sposoby. Sprawdź to na płatności, którą znasz."
+    },
+    "categories": {
+      "title": "Kategorie z pliku",
+      "hint": "Dopasowane po nazwie. Możesz zmienić dowolną; płatności bez kategorii przejdą przez twoje reguły.",
+      "rules": "Zostaw regułom",
+      "count_one": "{{count}} płatność",
+      "count_few": "{{count}} płatności",
+      "count_many": "{{count}} płatności",
+      "count_other": "{{count}} płatności"
+    }
   },
   "importHistory": {
     "title": "Historia importów",

@@ -399,7 +399,20 @@
     "correctionSkipped": "对之前一笔付款的更正；不予应用",
     "investmentIgnored": "该文件还包含投资交易。这些交易不会被导入；请使用券商导入功能来导入它们。",
     "back": "选择其他文件",
-    "openAccount": "打开 {{account}}"
+    "openAccount": "打开 {{account}}",
+    "dateOrder": {
+      "label": "此文件中的日期写法为",
+      "dmy": "日.月.年",
+      "mdy": "月/日/年",
+      "ymd": "年-月-日",
+      "hint": "文件中的每个日期都可以按两种方式解读。请用一笔您熟悉的付款核对。"
+    },
+    "categories": {
+      "title": "文件中的类别",
+      "hint": "已按名称匹配。您可以更改任意一项；没有类别的付款将按您的规则分类。",
+      "rules": "交给规则",
+      "count_other": "{{count}} 笔付款"
+    }
   },
   "importHistory": {
     "title": "导入历史",

@@ -183,6 +183,7 @@
     "paymentNonNegative": "Die Zahlung darf nicht negativ sein",
     "endDateAfterStart": "Das Enddatum muss nach dem Startdatum liegen",
     "attachmentTooLarge": "Die Datei ist größer als 100 MB.",
+    "exportIntoDataFolder": "Eine Kopie kann nicht im Datenordner von Moony gespeichert werden. Wählen Sie einen anderen Ort.",
     "documentNameRequired": "Dokumentname ist erforderlich",
     "nameTooLong": "Der Name ist zu lang",
     "accountNameTooLong": "Der Kontoname ist zu lang",

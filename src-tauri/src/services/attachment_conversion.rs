@@ -12,15 +12,20 @@
 //!
 //! An original outside the current data folder (a stale path into an old identifier's folder) is
 //! converted but never deleted; it is recorded in `attachment_leftovers` and shown in Settings.
+//!
+//! After the items, [`sweep_unreferenced_legacy_files`] moves every other plain file in the legacy
+//! folders into the quarantine too: files whose rows were deleted by earlier versions (which left
+//! them on disk), and originals whose move failed or was cut short after their row was converted.
 
 use crate::constants::FORMER_IDENTIFIERS;
 use crate::db::files_schema;
 use crate::error::{AppError, Result};
 use crate::models::{AttachmentKind, AttachmentStatus};
 use crate::services::attachments::{self, INSURANCE_DOCUMENTS_DIR, REAL_ESTATE_DOCUMENTS_DIR};
-use crate::services::{attachment_store, document_files, real_estate_photos};
+use crate::services::{attachment_store, document_files};
 use rusqlite::Connection;
 use sha2::{Digest, Sha256};
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU32, Ordering};
@@ -29,12 +34,7 @@ use uuid::Uuid;
 /// Converted originals wait here, inside the data folder, until the next unlock.
 pub const QUARANTINE_DIR: &str = "attachments-converted";
 
-/// The folders earlier versions kept attachments in.
-pub const LEGACY_DIRS: [&str; 3] = [
-    real_estate_photos::PHOTOS_DIR,
-    REAL_ESTATE_DOCUMENTS_DIR,
-    INSURANCE_DOCUMENTS_DIR,
-];
+pub use crate::services::attachments::LEGACY_DIRS;
 
 /// One row that still points at plain files.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -71,6 +71,9 @@ pub enum Outcome {
 #[derive(Debug, Default)]
 pub struct ConversionProgress {
     pub running: AtomicBool,
+    /// A run was requested while one was still going (an unlock while the last session's run was
+    /// stopping): the running thread starts another one when it ends.
+    pub rerun: AtomicBool,
     pub total: AtomicU32,
     pub done: AtomicU32,
     pub failed: AtomicU32,
@@ -250,10 +253,14 @@ pub fn convert(
     Ok(Outcome::Converted)
 }
 
-/// Move a converted original into the quarantine, keeping its path relative to the data folder.
-fn quarantine(data_dir: &Path, path: &Path) {
+/// Move a plain original into the quarantine, keeping its path relative to the data folder.
+/// Returns whether it moved; one that did not is picked up by the next sweep.
+fn quarantine(data_dir: &Path, path: &Path) -> bool {
+    if !attachments::is_legacy_attachment_path(data_dir, path) {
+        return false;
+    }
     let Ok(rel) = path.strip_prefix(data_dir) else {
-        return;
+        return false;
     };
     let target = data_dir.join(QUARANTINE_DIR).join(rel);
     let moved = target
@@ -261,13 +268,17 @@ fn quarantine(data_dir: &Path, path: &Path) {
         .map(fs::create_dir_all)
         .unwrap_or(Ok(()))
         .and_then(|_| fs::rename(path, &target));
-    if let Err(e) = moved {
-        log::warn!("[ATTACHMENTS] A converted original could not be moved aside: {e}");
+    match moved {
+        Ok(()) => true,
+        Err(e) => {
+            log::warn!("[ATTACHMENTS] A plain original could not be moved aside: {e}");
+            false
+        }
     }
 }
 
-/// Delete the quarantine once the store is healthy and every converted row has its content.
-/// Returns whether it was deleted.
+/// Delete the quarantine once the store is healthy and every converted row has its content at its
+/// recorded size. Returns whether it was deleted.
 pub fn finish_quarantine(conn: &Connection, data_dir: &Path) -> Result<bool> {
     let dir = data_dir.join(QUARANTINE_DIR);
     if !dir.exists() {
@@ -275,21 +286,7 @@ pub fn finish_quarantine(conn: &Connection, data_dir: &Path) -> Result<bool> {
     }
     attachment_store::ensure_available(conn)?;
     let check: String = conn.query_row("PRAGMA files.quick_check", [], |r| r.get(0))?;
-    let missing: i64 = conn.query_row(
-        "SELECT
-           (SELECT count(*) FROM main.insurance_documents d
-              WHERE d.blob_id IS NOT NULL
-                AND NOT EXISTS (SELECT 1 FROM files.blobs b WHERE b.id = d.blob_id))
-         + (SELECT count(*) FROM main.real_estate_documents d
-              WHERE d.blob_id IS NOT NULL
-                AND NOT EXISTS (SELECT 1 FROM files.blobs b WHERE b.id = d.blob_id))
-         + (SELECT count(*) FROM main.real_estate_photos p
-              WHERE p.blob_id IS NOT NULL
-                AND (NOT EXISTS (SELECT 1 FROM files.blobs b WHERE b.id = p.blob_id)
-                  OR NOT EXISTS (SELECT 1 FROM files.blobs b WHERE b.id = p.thumb_blob_id)))",
-        [],
-        |r| r.get(0),
-    )?;
+    let missing = attachment_store::rows_without_content(conn)?;
     if check != "ok" || missing > 0 {
         log::warn!(
             "[ATTACHMENTS] Keeping the converted originals: store check = {check}, rows without content = {missing}"
@@ -299,6 +296,55 @@ pub fn finish_quarantine(conn: &Connection, data_dir: &Path) -> Result<bool> {
     fs::remove_dir_all(&dir)
         .map_err(|e| AppError::Internal(format!("Cannot delete the converted originals: {e}")))?;
     Ok(true)
+}
+
+/// The plain files rows still point at (pending items whose file exists), inside the data folder.
+pub fn referenced_legacy_files(conn: &Connection, data_dir: &Path) -> Result<HashSet<PathBuf>> {
+    let mut referenced = HashSet::new();
+    for item in pending(conn)? {
+        if let Some(paths) = source_paths(data_dir, &item)? {
+            referenced.extend(paths);
+        }
+    }
+    Ok(referenced)
+}
+
+/// Every file in the legacy folders that no row points at any more.
+pub fn unreferenced_legacy_files(conn: &Connection, data_dir: &Path) -> Result<Vec<PathBuf>> {
+    fn walk(dir: &Path, out: &mut Vec<PathBuf>) {
+        if let Ok(entries) = fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    walk(&path, out);
+                } else {
+                    out.push(path);
+                }
+            }
+        }
+    }
+    let referenced = referenced_legacy_files(conn, data_dir)?;
+    let mut files = Vec::new();
+    for name in LEGACY_DIRS {
+        walk(&data_dir.join(name), &mut files);
+    }
+    files
+        .retain(|f| !referenced.contains(f) && attachments::is_legacy_attachment_path(data_dir, f));
+    files.sort();
+    Ok(files)
+}
+
+/// Move the plain files no row points at into the quarantine (deleted at the next unlock, like
+/// converted originals). Returns how many were moved.
+pub fn sweep_unreferenced_legacy_files(conn: &Connection, data_dir: &Path) -> Result<usize> {
+    let files = unreferenced_legacy_files(conn, data_dir)?;
+    let mut moved = 0;
+    for file in &files {
+        if quarantine(data_dir, file) {
+            moved += 1;
+        }
+    }
+    Ok(moved)
 }
 
 /// Remove the legacy attachment folders' empty sub-folders, and the folders themselves when empty.
@@ -338,6 +384,21 @@ pub fn refresh_leftovers(conn: &Connection, data_dir: &Path) -> Result<Vec<Strin
             conn.execute("DELETE FROM attachment_leftovers WHERE id = ?1", [&id])?;
         }
     }
+    // Plain files the sweep could not move aside stay visible.
+    let mut stuck: Vec<String> = Vec::new();
+    for file in unreferenced_legacy_files(conn, data_dir)? {
+        if let Some(first) = file
+            .strip_prefix(data_dir)
+            .ok()
+            .and_then(|rel| rel.components().next())
+        {
+            let folder = data_dir.join(first).to_string_lossy().into_owned();
+            if !stuck.contains(&folder) {
+                stuck.push(folder);
+            }
+        }
+    }
+    leftovers.extend(stuck);
     if let Some(parent) = data_dir.parent() {
         for identifier in FORMER_IDENTIFIERS {
             let folder = parent.join(identifier);
@@ -370,10 +431,19 @@ pub fn status(
             missing += 1;
         }
     }
+    let legacy_missing = missing;
+    // Rows whose encrypted content is gone (an `attachments.db` left behind when the profile was
+    // copied, say) are missing, not stored.
+    let content_missing = if store_available {
+        attachment_store::rows_without_content(conn)?
+    } else {
+        0
+    };
+    missing += content_missing;
     Ok(AttachmentStatus {
         store_available,
-        stored: stored as u32,
-        legacy_pending: items.len() as u32 - missing,
+        stored: (stored as u32).saturating_sub(content_missing),
+        legacy_pending: items.len() as u32 - legacy_missing,
         missing,
         failed: progress.failed.load(Ordering::SeqCst),
         converting: progress.running.load(Ordering::SeqCst),
@@ -661,5 +731,162 @@ mod tests {
             refresh_leftovers(&conn, &data).expect("leftovers"),
             vec![old.to_string_lossy().into_owned()]
         );
+    }
+
+    #[test]
+    fn orphaned_and_stuck_plain_files_are_swept_into_the_quarantine() {
+        let conn = setup_test_db();
+        let data = tempfile::tempdir().expect("data");
+        let dir = data.path();
+        // A file of a property an earlier version deleted (no row), and a converted row whose
+        // original never moved aside (the app stopped between commit and move).
+        let orphan = dir.join("real_estate_photos/deleted-prop/b/x.jpg");
+        let stuck = dir.join("insurance_documents/pol/converted.pdf");
+        let pending_file = dir.join("insurance_documents/pol/pending.pdf");
+        write(&orphan, b"orphan");
+        write(&stuck, b"stuck");
+        write(&pending_file, b"%PDF pending");
+        let blob = attachment_store::put_bytes(&conn, b"stuck")
+            .expect("blob")
+            .id;
+        conn.execute(
+            "INSERT INTO insurance_documents (id, name, blob_id) VALUES ('done', 'a', ?1)",
+            [&blob],
+        )
+        .expect("converted row");
+        conn.execute(
+            "INSERT INTO insurance_documents (id, name, file_path) VALUES ('todo', 'b', ?1)",
+            [pending_file.to_str().expect("utf8")],
+        )
+        .expect("pending row");
+
+        let leftovers = refresh_leftovers(&conn, dir).expect("leftovers");
+        assert!(leftovers.contains(
+            &dir.join("real_estate_photos")
+                .to_string_lossy()
+                .into_owned()
+        ));
+        assert!(leftovers.contains(
+            &dir.join("insurance_documents")
+                .to_string_lossy()
+                .into_owned()
+        ));
+
+        assert_eq!(
+            sweep_unreferenced_legacy_files(&conn, dir).expect("sweep"),
+            2
+        );
+        assert!(!orphan.exists() && !stuck.exists());
+        assert!(
+            pending_file.exists(),
+            "a file a row still points at stays for its conversion"
+        );
+        let q = dir.join(QUARANTINE_DIR);
+        assert!(q.join("real_estate_photos/deleted-prop/b/x.jpg").exists());
+        assert!(q.join("insurance_documents/pol/converted.pdf").exists());
+        assert!(refresh_leftovers(&conn, dir).expect("leftovers").is_empty());
+    }
+
+    #[test]
+    fn rows_without_content_count_as_missing_not_stored() {
+        let conn = setup_test_db();
+        let data = tempfile::tempdir().expect("data");
+        let blob = attachment_store::put_bytes(&conn, b"here")
+            .expect("blob")
+            .id;
+        conn.execute_batch(&format!(
+            "INSERT INTO real_estate_documents (id, name, blob_id) VALUES ('a', 'x', '{blob}'), ('b', 'y', 'lost');"
+        ))
+        .expect("rows");
+        let s = status(&conn, data.path(), &ConversionProgress::default()).expect("status");
+        assert_eq!((s.stored, s.missing, s.legacy_pending), (1, 1, 0));
+    }
+
+    #[test]
+    fn the_quarantine_stays_while_a_blob_is_truncated() {
+        let conn = setup_test_db();
+        let data = tempfile::tempdir().expect("data");
+        fs::create_dir_all(data.path().join(QUARANTINE_DIR)).expect("quarantine");
+        let blob = attachment_store::put_bytes(&conn, b"full content")
+            .expect("blob")
+            .id;
+        conn.execute("UPDATE files.blobs SET data = x'00' WHERE id = ?1", [&blob])
+            .expect("truncate");
+        conn.execute(
+            "INSERT INTO real_estate_documents (id, name, blob_id) VALUES ('d', 'x', ?1)",
+            [&blob],
+        )
+        .expect("row");
+        assert!(!finish_quarantine(&conn, data.path()).expect("finish"));
+        assert!(data.path().join(QUARANTINE_DIR).exists());
+    }
+
+    #[test]
+    fn a_format_1_backup_restores_and_then_converts() {
+        let src = tempfile::tempdir().expect("src");
+        // A 0.12-style profile: a database with a legacy document row and its plain file.
+        let db_path = src.path().join("moony.db");
+        {
+            let c = Connection::open(&db_path).expect("db");
+            c.execute_batch(
+                r#"
+                CREATE TABLE _migrations (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, applied_at INTEGER NOT NULL DEFAULT (unixepoch()));
+                INSERT INTO _migrations (name) VALUES ('001_initial_schema');
+                CREATE TABLE insurance_documents (id TEXT PRIMARY KEY, insurance_id TEXT, name TEXT,
+                    file_path TEXT, blob_id TEXT, mime_type TEXT, original_name TEXT);
+                CREATE TABLE real_estate_documents (id TEXT PRIMARY KEY, real_estate_id TEXT, name TEXT,
+                    file_path TEXT, blob_id TEXT, mime_type TEXT, original_name TEXT);
+                CREATE TABLE real_estate_photos (id TEXT PRIMARY KEY, batch_id TEXT, file_path TEXT,
+                    thumbnail_path TEXT, blob_id TEXT, thumb_blob_id TEXT);
+                CREATE TABLE attachment_leftovers (id TEXT PRIMARY KEY, path TEXT NOT NULL UNIQUE,
+                    found_at INTEGER NOT NULL DEFAULT (unixepoch()));
+                "#,
+            )
+            .expect("schema");
+            c.execute(
+                "INSERT INTO insurance_documents (id, name, file_path) VALUES ('d', 'Smlouva', ?1)",
+                [format!(
+                    "/old/com.filipkral.moony/insurance_documents/pol/{UUID}_Smlouva.pdf"
+                )],
+            )
+            .expect("row");
+        }
+        let archive = src.path().join("v1.zip");
+        {
+            use std::io::Write;
+            let mut zip = zip::ZipWriter::new(fs::File::create(&archive).expect("zip"));
+            let opts = zip::write::SimpleFileOptions::default();
+            let manifest = serde_json::json!({
+                "format": 1, "appVersion": "0.12.2", "createdAt": 0,
+                "migrations": ["001_initial_schema"], "files": []
+            });
+            zip.start_file("manifest.json", opts).expect("entry");
+            zip.write_all(manifest.to_string().as_bytes())
+                .expect("manifest");
+            zip.start_file("moony.db", opts).expect("entry");
+            zip.write_all(&fs::read(&db_path).expect("db bytes"))
+                .expect("db");
+            zip.start_file(format!("insurance_documents/pol/{UUID}_Smlouva.pdf"), opts)
+                .expect("entry");
+            zip.write_all(b"%PDF from 0.12").expect("doc");
+            zip.finish().expect("finish");
+        }
+
+        let dst = tempfile::tempdir().expect("dst");
+        crate::services::backup::restore_backup(dst.path(), &archive, &["001_initial_schema"])
+            .expect("restore");
+        let conn = Connection::open(dst.path().join("moony.db")).expect("restored");
+        files_schema::attach(&conn, &dst.path().join(files_schema::FILE_NAME)).expect("attach");
+
+        assert_eq!(run_all(&conn, dst.path()), vec![Some(Outcome::Converted)]);
+        let blob = blob_of(&conn, "insurance_documents", "d").expect("converted");
+        assert_eq!(
+            attachment_store::read_all(&conn, &blob).expect("read"),
+            b"%PDF from 0.12".to_vec()
+        );
+        assert!(!dst
+            .path()
+            .join(format!("insurance_documents/pol/{UUID}_Smlouva.pdf"))
+            .exists());
     }
 }

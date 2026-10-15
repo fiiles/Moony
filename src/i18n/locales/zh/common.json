@@ -183,6 +183,7 @@
     "paymentNonNegative": "付款额不能为负数",
     "endDateAfterStart": "结束日期必须晚于开始日期",
     "attachmentTooLarge": "文件超过 100 MB。",
+    "exportIntoDataFolder": "无法将副本保存到 Moony 的数据文件夹。请选择其他位置。",
     "documentNameRequired": "请输入文档名称",
     "nameTooLong": "名称过长",
     "accountNameTooLong": "账户名称过长",

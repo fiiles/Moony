@@ -20,8 +20,9 @@ pub const MAX_DOCUMENT_BYTES: u64 = 100 * 1024 * 1024;
 /// Chunk size for streaming into and out of a blob.
 const CHUNK: usize = 64 * 1024;
 
-/// Every main-schema column that references a blob. A blob no column references is garbage.
-const REFERENCES: [(&str, &str); 4] = [
+/// Every main-schema column that references a blob. A blob no column references is garbage, so a
+/// new blob column must be added here (a test in `migrations.rs` checks the schema against it).
+pub(crate) const REFERENCES: [(&str, &str); 4] = [
     ("insurance_documents", "blob_id"),
     ("real_estate_documents", "blob_id"),
     ("real_estate_photos", "blob_id"),
@@ -190,12 +191,47 @@ pub fn delete_unreferenced(conn: &Connection) -> Result<usize> {
     )?)
 }
 
+/// Pages one [`incremental_vacuum`] call gives back at most, so it never holds the connection for
+/// long; the rest goes at the next unlock.
+const VACUUM_PAGES_PER_RUN: u32 = 4096;
+
 /// Give the pages of deleted blobs back to the file system (the store uses incremental
-/// auto-vacuum).
+/// auto-vacuum), a bounded number per call.
 pub fn incremental_vacuum(conn: &Connection) -> Result<()> {
     ensure_available(conn)?;
-    conn.execute_batch("PRAGMA files.incremental_vacuum;")?;
+    conn.execute_batch(&format!(
+        "PRAGMA files.incremental_vacuum({VACUUM_PAGES_PER_RUN});"
+    ))?;
     Ok(())
+}
+
+/// Attachment rows whose content is missing from the store or does not have its recorded size (a
+/// photo counts once even when both its blobs are affected). SQLite answers `length()` of a blob
+/// from the record header, without reading the content.
+pub fn rows_without_content(conn: &Connection) -> Result<u32> {
+    ensure_available(conn)?;
+    let intact = |column: &str| {
+        format!(
+            "EXISTS (SELECT 1 FROM files.blobs b WHERE b.id = {column} AND length(b.data) = b.size)"
+        )
+    };
+    let n: i64 = conn.query_row(
+        &format!(
+            "SELECT
+               (SELECT count(*) FROM main.insurance_documents d
+                  WHERE d.blob_id IS NOT NULL AND NOT {doc})
+             + (SELECT count(*) FROM main.real_estate_documents d
+                  WHERE d.blob_id IS NOT NULL AND NOT {doc})
+             + (SELECT count(*) FROM main.real_estate_photos p
+                  WHERE p.blob_id IS NOT NULL AND NOT ({full} AND {thumb}))",
+            doc = intact("d.blob_id"),
+            full = intact("p.blob_id"),
+            thumb = intact("p.thumb_blob_id"),
+        ),
+        [],
+        |r| r.get(0),
+    )?;
+    Ok(n as u32)
 }
 
 /// The MIME type of an attachment, from its first bytes and then its file name. Magic bytes win,
@@ -428,5 +464,27 @@ mod tests {
         );
         assert_eq!(sniff_mime(Some("noext"), b"??"), "application/octet-stream");
         assert_eq!(sniff_mime(None, b""), "application/octet-stream");
+    }
+
+    #[test]
+    fn rows_whose_content_is_missing_or_truncated_are_counted() {
+        let conn = setup_test_db();
+        let ok = put_bytes(&conn, b"intact").expect("put");
+        let truncated = put_bytes(&conn, b"will be cut").expect("put");
+        conn.execute(
+            "UPDATE files.blobs SET data = x'00' WHERE id = ?1",
+            [&truncated.id],
+        )
+        .expect("truncate");
+        conn.execute_batch(&format!(
+            "INSERT INTO insurance_documents (id, blob_id) VALUES ('a', '{ok}'), ('b', 'gone');
+             INSERT INTO real_estate_documents (id, blob_id) VALUES ('c', '{cut}');
+             INSERT INTO real_estate_photos (id, blob_id, thumb_blob_id) VALUES ('p', '{ok}', 'gone-too');
+             INSERT INTO real_estate_photos (id, blob_id, thumb_blob_id) VALUES ('legacy', NULL, NULL);",
+            ok = ok.id,
+            cut = truncated.id
+        ))
+        .expect("rows");
+        assert_eq!(rows_without_content(&conn).expect("count"), 3);
     }
 }

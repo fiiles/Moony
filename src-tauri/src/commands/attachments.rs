@@ -83,37 +83,73 @@ pub fn wipe_open_copies(app: &AppHandle) {
     }
 }
 
-/// Start converting the plain attachment files of earlier versions in the background (D4), unless
-/// a run is already going. Pinned to the current session: a lock or a restore stops it.
+/// Resets `running` if a conversion thread panics; disarmed when a run ends normally.
+struct RunningGuard {
+    progress: Arc<ConversionProgress>,
+    armed: bool,
+}
+
+impl Drop for RunningGuard {
+    fn drop(&mut self) {
+        if self.armed {
+            self.progress.running.store(false, Ordering::SeqCst);
+        }
+    }
+}
+
+/// Start converting the plain attachment files of earlier versions in the background (D4). When a
+/// run is still going (the previous session's, stopping after a lock), it runs again for the
+/// current session once it ends. Each run is pinned to the session it starts in.
 pub fn spawn_conversion(app: &AppHandle) {
     let progress = app.state::<AttachmentConversion>().0.clone();
     if progress.running.swap(true, Ordering::SeqCst) {
+        progress.rerun.store(true, Ordering::SeqCst);
         return;
     }
-    let (db, data) = match (app.state::<Database>().current_session(), data_dir(app)) {
-        (Ok(db), Ok(data)) => (db, data),
-        _ => {
-            progress.running.store(false, Ordering::SeqCst);
-            return;
-        }
-    };
     let app = app.clone();
     tauri::async_runtime::spawn_blocking(move || {
-        if let Err(e) = run_conversion(&db, &data, &progress) {
-            log::warn!("[ATTACHMENTS] Conversion stopped: {e}");
+        let mut guard = RunningGuard {
+            progress: progress.clone(),
+            armed: true,
+        };
+        loop {
+            progress.rerun.store(false, Ordering::SeqCst);
+            match (app.state::<Database>().current_session(), data_dir(&app)) {
+                (Ok(db), Ok(data)) => {
+                    if let Err(e) = run_conversion(&db, &data, &progress) {
+                        log::warn!("[ATTACHMENTS] Conversion stopped: {e}");
+                    }
+                }
+                _ => log::warn!("[ATTACHMENTS] Conversion skipped: no unlocked session"),
+            }
+            let _ = app.emit(CONVERSION_FINISHED_EVENT, ());
+            progress.running.store(false, Ordering::SeqCst);
+            // A request that arrived during this run gets its own run, unless a new spawn has
+            // already taken over.
+            if progress.rerun.swap(false, Ordering::SeqCst)
+                && !progress.running.swap(true, Ordering::SeqCst)
+            {
+                continue;
+            }
+            break;
         }
-        progress.running.store(false, Ordering::SeqCst);
-        let _ = app.emit(CONVERSION_FINISHED_EVENT, ());
+        guard.armed = false;
     });
 }
 
 /// One conversion run: finish the last run's quarantine, convert item by item (each file is read
-/// without the connection lock), then sweep unreferenced blobs and prune empty legacy folders.
+/// without the connection lock), move plain files no row points at into the quarantine, then sweep
+/// unreferenced blobs, give some free pages back and prune empty legacy folders.
 fn run_conversion(db: &Database, data: &Path, progress: &ConversionProgress) -> Result<()> {
     if !db.with_conn(files_schema::is_attached)? {
         return Ok(()); // D11: nothing is converted while the store is unavailable
     }
-    db.with_conn(|conn| attachment_conversion::finish_quarantine(conn, data))?;
+    // A quarantine that cannot be deleted yet (a file still held open, say) must not stop the run.
+    match db.with_conn(|conn| attachment_conversion::finish_quarantine(conn, data)) {
+        Ok(_) => {}
+        Err(AppError::Auth(reason)) => return Err(AppError::Auth(reason)),
+        Err(e) => log::warn!("[ATTACHMENTS] The converted originals stay for now: {e}"),
+    }
     let items = db.with_conn(attachment_conversion::pending)?;
     progress.total.store(items.len() as u32, Ordering::SeqCst);
     progress.done.store(0, Ordering::SeqCst);
@@ -146,6 +182,10 @@ fn run_conversion(db: &Database, data: &Path, progress: &ConversionProgress) -> 
         }
     }
     db.with_conn(|conn| {
+        let moved = attachment_conversion::sweep_unreferenced_legacy_files(conn, data)?;
+        if moved > 0 {
+            log::info!("[ATTACHMENTS] Moved {moved} plain file(s) no attachment uses aside");
+        }
         let swept = attachment_store::delete_unreferenced(conn)?;
         if swept > 0 {
             log::info!("[ATTACHMENTS] Deleted {swept} unreferenced blob(s)");

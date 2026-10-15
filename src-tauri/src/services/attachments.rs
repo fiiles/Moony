@@ -23,6 +23,46 @@ pub const INSURANCE_DOCUMENTS_DIR: &str = "insurance_documents";
 /// Folder of legacy real estate documents under the app data dir.
 pub const REAL_ESTATE_DOCUMENTS_DIR: &str = "real_estate_documents";
 
+/// The folders earlier versions kept attachments in, as plain files.
+pub const LEGACY_DIRS: [&str; 3] = [
+    real_estate_photos::PHOTOS_DIR,
+    REAL_ESTATE_DOCUMENTS_DIR,
+    INSURANCE_DOCUMENTS_DIR,
+];
+
+/// True when `path` lies inside one of the legacy attachment folders of `data_dir`, judged by its
+/// components (no `..`, no root), not just its text: only such a file may ever be deleted or moved.
+pub fn is_legacy_attachment_path(data_dir: &Path, path: &Path) -> bool {
+    let Ok(rel) = path.strip_prefix(data_dir) else {
+        return false;
+    };
+    let mut components = rel.components();
+    let in_legacy_dir = matches!(
+        components.next(),
+        Some(Component::Normal(first)) if LEGACY_DIRS.iter().any(|d| first == *d)
+    );
+    in_legacy_dir
+        && components.clone().next().is_some()
+        && components.all(|c| matches!(c, Component::Normal(_)))
+}
+
+/// Refuse a destination inside the data folder: a copy must never overwrite the databases, the
+/// key files or the store.
+fn ensure_outside_data_dir(data_dir: &Path, dest: &Path) -> Result<()> {
+    let canonical = |p: &Path| p.canonicalize().unwrap_or_else(|_| p.to_path_buf());
+    let data = canonical(data_dir);
+    let target = match (dest.parent(), dest.file_name()) {
+        (Some(parent), Some(name)) => canonical(parent).join(name),
+        _ => canonical(dest),
+    };
+    if target.starts_with(&data) {
+        return Err(AppError::Validation(
+            "validation.exportIntoDataFolder".into(),
+        ));
+    }
+    Ok(())
+}
+
 /// Which rendition of an attachment: photos also have a thumbnail.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Variant {
@@ -248,6 +288,7 @@ pub fn export(
     id: &str,
     dest: &Path,
 ) -> Result<()> {
+    ensure_outside_data_dir(data_dir, dest)?;
     let resolved = resolve(conn, data_dir, kind, id, Variant::Full)?
         .ok_or_else(|| AppError::NotFound("Attachment not found".into()))?;
     write_to(conn, &resolved, dest)
@@ -261,6 +302,7 @@ pub fn export_photo_batch(
     batch_id: &str,
     dest_dir: &Path,
 ) -> Result<u32> {
+    ensure_outside_data_dir(data_dir, &dest_dir.join("batch"))?;
     let photo_date: i64 = conn
         .query_row(
             "SELECT photo_date FROM real_estate_photo_batches WHERE id = ?1",
@@ -314,6 +356,12 @@ pub fn sanitize_file_name(name: &str) -> String {
         .map(|c| match c {
             '/' | '\\' | ':' | '*' | '?' | '"' | '<' | '>' | '|' => '_',
             c if c.is_control() => '_',
+            // Bidirectional and invisible format characters can disguise an extension
+            // ("cv\u{202E}fdp.exe" displays as "cvexe.pdf").
+            '\u{200B}'..='\u{200F}'
+            | '\u{202A}'..='\u{202E}'
+            | '\u{2060}'..='\u{2069}'
+            | '\u{FEFF}' => '_',
             c => c,
         })
         .collect();
@@ -416,10 +464,17 @@ pub fn open_elsewhere(
     fs::create_dir_all(&dir)
         .map_err(|e| AppError::Internal(format!("Failed to create a folder for the copy: {e}")))?;
     restrict_permissions(&dir, 0o700);
-    let path = dir.join(copy_file_name(conn, kind, id, &resolved)?);
-    write_to(conn, &resolved, &path)?;
-    restrict_permissions(&path, 0o600);
-    Ok(path)
+    let written = copy_file_name(conn, kind, id, &resolved).and_then(|name| {
+        let path = dir.join(name);
+        write_to(conn, &resolved, &path)?;
+        restrict_permissions(&path, 0o600);
+        Ok(path)
+    });
+    if written.is_err() {
+        // No partial decrypted copy is left behind.
+        let _ = fs::remove_dir_all(&dir);
+    }
+    written
 }
 
 #[cfg(unix)]
@@ -613,6 +668,16 @@ pub struct Released {
 impl Released {
     /// Delete the blobs; call inside the transaction that deletes the rows.
     pub fn delete_blobs(&self, conn: &Connection) -> Result<()> {
+        if !crate::db::files_schema::is_attached(conn)? {
+            // D11: with the store unavailable the rows still go; the blobs are swept once the
+            // store opens again (`attachment_store::delete_unreferenced`).
+            if !self.blobs.is_empty() {
+                log::warn!(
+                    "[ATTACHMENTS] Store unavailable: blobs of deleted rows left for the sweep"
+                );
+            }
+            return Ok(());
+        }
         for id in &self.blobs {
             attachment_store::delete(conn, id)?;
         }
@@ -624,7 +689,7 @@ impl Released {
     /// conversion run to report, never an error for the user.
     pub fn remove_files(&self, data_dir: &Path) {
         for file in &self.files {
-            if !file.starts_with(data_dir) {
+            if !is_legacy_attachment_path(data_dir, file) {
                 continue;
             }
             let _ = fs::remove_file(file);
@@ -1006,8 +1071,8 @@ mod tests {
         )
         .expect("old");
 
-        let out = dir.path().join("out");
-        fs::create_dir_all(&out).expect("out");
+        let out_dir = tempfile::tempdir().expect("out");
+        let out = out_dir.path().to_path_buf();
         export(
             &conn,
             dir.path(),
@@ -1389,5 +1454,83 @@ mod tests {
             "the wipe never touches the data folder"
         );
         wipe_open_copies(cache_dir.path());
+    }
+
+    #[test]
+    fn only_paths_inside_a_legacy_folder_count_as_legacy_attachments() {
+        let data = Path::new("/data/moony");
+        assert!(is_legacy_attachment_path(
+            data,
+            Path::new("/data/moony/insurance_documents/p/a.pdf")
+        ));
+        assert!(is_legacy_attachment_path(
+            data,
+            Path::new("/data/moony/real_estate_photos/r/b/x.jpg")
+        ));
+        for path in [
+            "/data/moony/real_estate_documents/../key.enc",
+            "/data/moony/real_estate_documents",
+            "/data/moony/moony.db",
+            "/data/moony/Backup/insurance_documents/a.pdf",
+            "/elsewhere/insurance_documents/p/a.pdf",
+        ] {
+            assert!(!is_legacy_attachment_path(data, Path::new(path)), "{path}");
+        }
+    }
+
+    #[test]
+    fn deleting_with_the_store_unavailable_removes_the_row_and_leaves_the_blob_for_the_sweep() {
+        let conn = setup_test_db();
+        let data_dir = tempfile::tempdir().expect("data dir");
+        let picked = tempfile::tempdir().expect("picked");
+        let source = picked.path().join("a.pdf");
+        fs::write(&source, b"%PDF").expect("source");
+        let doc = add_insurance_document(&conn, "pol", &source, &DOC, 0).expect("add");
+        conn.execute_batch("DETACH DATABASE files;")
+            .expect("detach");
+
+        delete_document(
+            &conn,
+            data_dir.path(),
+            AttachmentKind::InsuranceDocument,
+            &doc.id,
+        )
+        .expect("delete without the store");
+        let rows: i64 = conn
+            .query_row("SELECT count(*) FROM insurance_documents", [], |r| r.get(0))
+            .expect("count");
+        assert_eq!(rows, 0);
+    }
+
+    #[test]
+    fn a_copy_is_never_saved_into_the_data_folder() {
+        let conn = setup_test_db();
+        let data_dir = tempfile::tempdir().expect("data dir");
+        let blob = attachment_store::put_bytes(&conn, b"x").expect("put");
+        conn.execute(
+            "INSERT INTO insurance_documents (id, name, blob_id, mime_type) VALUES ('d', 'a', ?1, 'application/pdf')",
+            [&blob.id],
+        )
+        .expect("row");
+        let err = export(
+            &conn,
+            data_dir.path(),
+            AttachmentKind::InsuranceDocument,
+            "d",
+            &data_dir.path().join("moony.db"),
+        )
+        .expect_err("refused");
+        assert_eq!(
+            err.keyed().map(|(k, _)| k).as_deref(),
+            Some("validation.exportIntoDataFolder")
+        );
+        assert!(!data_dir.path().join("moony.db").exists());
+        assert!(export_photo_batch(&conn, data_dir.path(), "any", data_dir.path()).is_err());
+    }
+
+    #[test]
+    fn bidi_controls_cannot_disguise_an_extension() {
+        assert_eq!(sanitize_file_name("cv\u{202E}fdp.exe"), "cv_fdp.exe");
+        assert_eq!(sanitize_file_name("a\u{200B}b.pdf"), "a_b.pdf");
     }
 }

@@ -63,15 +63,34 @@ fn percent_decode(input: &str) -> Option<String> {
     String::from_utf8(out).ok()
 }
 
-/// The `Content-Type` an attachment is served with: images (except scriptable SVG) and PDFs keep
-/// their type, everything else is an opaque download.
-pub fn served_content_type(mime: &str) -> &str {
-    let safe = (mime.starts_with("image/") && mime != "image/svg+xml") || mime == "application/pdf";
-    if safe {
-        mime
-    } else {
-        "application/octet-stream"
-    }
+/// Types served as themselves: raster images the viewer shows, and PDF. Everything else (SVG and
+/// HTML included, which can carry scripts) is an opaque download.
+const SERVED_AS_IS: [&str; 6] = [
+    "image/jpeg",
+    "image/png",
+    "image/gif",
+    "image/webp",
+    "image/bmp",
+    "application/pdf",
+];
+
+/// The `Content-Type` an attachment is served with: an exact allow-list, never a prefix match.
+pub fn served_content_type(mime: &str) -> &'static str {
+    SERVED_AS_IS
+        .iter()
+        .find(|allowed| **allowed == mime)
+        .copied()
+        .unwrap_or("application/octet-stream")
+}
+
+/// A response that could not be built (it never happens with the fixed header values used here)
+/// is a 500, not an empty 200.
+fn built(result: tauri::http::Result<Response<Vec<u8>>>) -> Response<Vec<u8>> {
+    result.unwrap_or_else(|_| {
+        let mut fallback = Response::new(Vec::new());
+        *fallback.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+        fallback
+    })
 }
 
 /// The origin a CORS response may name: the app's own page, in every platform's form. Debug
@@ -99,7 +118,7 @@ pub fn response_for(
         if let Some(o) = allowed_origin(origin) {
             builder = builder.header("Access-Control-Allow-Origin", o);
         }
-        builder.body(Vec::new()).unwrap_or_default()
+        built(builder.body(Vec::new()))
     };
     match loaded {
         Ok(Some((body, mime))) => {
@@ -114,7 +133,7 @@ pub fn response_for(
                     .header("Access-Control-Allow-Origin", o)
                     .header("Vary", "Origin");
             }
-            builder.body(body).unwrap_or_default()
+            built(builder.body(body))
         }
         Ok(None) | Err(AppError::NotFound(_)) => status_only(StatusCode::NOT_FOUND),
         Err(AppError::Auth(_)) => status_only(StatusCode::FORBIDDEN),
@@ -157,7 +176,7 @@ pub fn respond(
         if let Some(o) = allowed_origin(origin) {
             builder = builder.header("Access-Control-Allow-Origin", o);
         }
-        return builder.body(Vec::new()).unwrap_or_default();
+        return built(builder.body(Vec::new()));
     }
     let Some(route) = parse_route(path) else {
         return response_for(Ok(None), origin);
@@ -225,6 +244,18 @@ mod tests {
             "application/octet-stream"
         );
         assert_eq!(served_content_type("text/html"), "application/octet-stream");
+        for variant in [
+            "Image/SVG+xml",
+            "image/heic",
+            "image/jpeg; charset=x",
+            "IMAGE/JPEG",
+        ] {
+            assert_eq!(
+                served_content_type(variant),
+                "application/octet-stream",
+                "{variant}"
+            );
+        }
         assert_eq!(
             served_content_type(
                 "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
@@ -326,5 +357,21 @@ mod tests {
         );
         let missing = parse_route("/insurance-document/d-2").expect("route");
         assert_eq!(load(&conn, dir.path(), &missing).expect("load"), None);
+    }
+
+    #[test]
+    fn respond_refuses_other_methods_unknown_routes_and_a_locked_app() {
+        let db = Database::new(); // never opened: the app is locked
+        let dir = tempfile::tempdir().expect("tempdir");
+        let id = "0b9e6a52-3a4c-4e0f-9d7a-1c2b3d4e5f60";
+        let origin = Some("tauri://localhost");
+        let post = respond(&db, dir.path(), "POST", &format!("/photo/{id}"), origin);
+        assert_eq!(post.status(), StatusCode::METHOD_NOT_ALLOWED);
+        let bad = respond(&db, dir.path(), "GET", "/photo/../moony.db", origin);
+        assert_eq!(bad.status(), StatusCode::NOT_FOUND);
+        let locked = respond(&db, dir.path(), "GET", &format!("/photo/{id}"), origin);
+        assert_eq!(locked.status(), StatusCode::FORBIDDEN);
+        assert!(locked.body().is_empty());
+        assert_eq!(header(&locked, "Cache-Control"), Some("no-store"));
     }
 }

@@ -183,6 +183,7 @@
     "paymentNonNegative": "Betalingen kan ikke være negativ",
     "endDateAfterStart": "Sluttdatoen må være etter startdatoen",
     "attachmentTooLarge": "Filen er større enn 100 MB.",
+    "exportIntoDataFolder": "En kopi kan ikke lagres i datamappen til Moony. Velg et annet sted.",
     "documentNameRequired": "Dokumentnavn er påkrevd",
     "nameTooLong": "Navnet er for langt",
     "accountNameTooLong": "Kontonavnet er for langt",

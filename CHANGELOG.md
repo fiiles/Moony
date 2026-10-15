@@ -15,7 +15,8 @@ All notable changes to Moony are documented in this file. The format follows
   warning. "Save a copy…" writes a readable file where you choose.
 - On the first unlock after the update, attachments from earlier versions move into the
   encrypted store in the background. The originals are deleted at the next unlock, once the
-  encrypted copies check out. Originals outside the data folder (from before an identifier
+  encrypted copies check out, together with plain files earlier versions left behind when a
+  property or a policy was deleted. Originals outside the data folder (from before an identifier
   change) are never deleted: Settings → Data and backups lists them so you can remove them
   yourself, and shows how many attachments are stored encrypted.
 

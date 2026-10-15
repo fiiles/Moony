@@ -183,6 +183,7 @@
     "paymentNonNegative": "支払額は負の値にできません",
     "endDateAfterStart": "終了日は開始日より後にしてください",
     "attachmentTooLarge": "ファイルが100 MBを超えています。",
+    "exportIntoDataFolder": "Moony のデータフォルダーにはコピーを保存できません。別の場所を選んでください。",
     "documentNameRequired": "書類名を入力してください",
     "nameTooLong": "名前が長すぎます",
     "accountNameTooLong": "口座名が長すぎます",

@@ -3783,6 +3783,42 @@ mod migration_021 {
     }
 
     #[test]
+    fn the_blob_sweep_knows_every_blob_column_of_the_schema() {
+        // `attachment_store::delete_unreferenced` deletes every blob no listed column references:
+        // a blob column missing from its list would have its content swept away.
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_migrations(&conn).expect("migrate");
+        let tables: Vec<String> = {
+            let mut stmt = conn
+                .prepare("SELECT name FROM sqlite_master WHERE type = 'table'")
+                .expect("tables");
+            let rows = stmt.query_map([], |r| r.get(0)).expect("query");
+            rows.map(|r| r.expect("row")).collect()
+        };
+        let mut found: Vec<(String, String)> = Vec::new();
+        for table in tables {
+            let mut stmt = conn
+                .prepare(&format!("SELECT name FROM pragma_table_info('{table}')"))
+                .expect("columns");
+            let columns: Vec<String> = stmt
+                .query_map([], |r| r.get(0))
+                .expect("query")
+                .map(|r| r.expect("row"))
+                .collect();
+            for column in columns.into_iter().filter(|c| c.ends_with("blob_id")) {
+                found.push((table.clone(), column));
+            }
+        }
+        found.sort();
+        let mut listed: Vec<(String, String)> = crate::services::attachment_store::REFERENCES
+            .iter()
+            .map(|(t, c)| (t.to_string(), c.to_string()))
+            .collect();
+        listed.sort();
+        assert_eq!(found, listed);
+    }
+
+    #[test]
     fn leftover_paths_are_unique() {
         let conn = database_before_021();
         run_migrations(&conn).expect("migrate");

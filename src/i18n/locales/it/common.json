@@ -183,6 +183,7 @@
     "paymentNonNegative": "Il pagamento non può essere negativo",
     "endDateAfterStart": "La data di fine deve essere successiva alla data di inizio",
     "attachmentTooLarge": "Il file supera i 100 MB.",
+    "exportIntoDataFolder": "Non è possibile salvare una copia nella cartella dei dati di Moony. Scegli un'altra posizione.",
     "documentNameRequired": "Il nome del documento è obbligatorio",
     "nameTooLong": "Il nome è troppo lungo",
     "accountNameTooLong": "Il nome del conto è troppo lungo",

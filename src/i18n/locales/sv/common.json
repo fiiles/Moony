@@ -183,6 +183,7 @@
     "paymentNonNegative": "Betalningen får inte vara negativ",
     "endDateAfterStart": "Slutdatumet måste vara efter startdatumet",
     "attachmentTooLarge": "Filen är större än 100 MB.",
+    "exportIntoDataFolder": "En kopia kan inte sparas i Moonys datamapp. Välj en annan plats.",
     "documentNameRequired": "Dokumentnamn krävs",
     "nameTooLong": "Namnet är för långt",
     "accountNameTooLong": "Kontonamnet är för långt",

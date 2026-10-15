@@ -32,11 +32,7 @@ pub const STORE_FILE_NAME: &str = crate::db::files_schema::FILE_NAME;
 /// Files at the root of the data directory that make up an account.
 pub const KEY_FILES: [&str; 4] = [DB_FILE_NAME, "salt", "key.enc", "recovery.enc"];
 /// Directories with the plain-file attachments of earlier versions.
-pub const ATTACHMENT_DIRS: [&str; 3] = [
-    "real_estate_photos",
-    "real_estate_documents",
-    "insurance_documents",
-];
+pub const ATTACHMENT_DIRS: [&str; 3] = crate::services::attachments::LEGACY_DIRS;
 
 /// Tables that are never part of the JSON export: migration bookkeeping,
 /// app-local configuration (API keys) and SQLite's own sequence table.
@@ -142,10 +138,20 @@ fn write_archive(
     let mut files: Vec<BackupFileEntry> = Vec::new();
 
     // Database snapshot (named like the live file so restore is a plain extract).
-    files.push(add_file(&mut writer, options, snapshot, DB_FILE_NAME)?);
+    files.push(add_file(
+        &mut writer,
+        database_options(snapshot),
+        snapshot,
+        DB_FILE_NAME,
+    )?);
 
     if let Some(store) = store {
-        files.push(add_file(&mut writer, options, store, STORE_FILE_NAME)?);
+        files.push(add_file(
+            &mut writer,
+            database_options(store),
+            store,
+            STORE_FILE_NAME,
+        )?);
     }
 
     // Key files
@@ -156,7 +162,10 @@ fn write_archive(
         }
     }
 
-    // Plain attachment files of earlier versions that are not converted yet (recursive)
+    // Plain attachment files of earlier versions that are not converted yet (recursive). Without
+    // the attachment tables (a database older than migration 021) every file is kept.
+    let referenced =
+        crate::services::attachment_conversion::referenced_legacy_files(conn, data_dir).ok();
     for dir_name in ATTACHMENT_DIRS {
         let dir = data_dir.join(dir_name);
         if dir.is_dir() {
@@ -164,6 +173,11 @@ fn write_archive(
             collect_files(&dir, &mut entries)?;
             entries.sort();
             for entry in entries {
+                // Only files a row still points at: a plain file nothing references (left by an
+                // earlier version's delete) is not data any more and never goes into a backup.
+                if referenced.as_ref().is_some_and(|r| !r.contains(&entry)) {
+                    continue;
+                }
                 let relative = entry
                     .strip_prefix(data_dir)
                     .map_err(|e| io_err("Attachment outside data dir", e))?;
@@ -198,6 +212,14 @@ fn write_archive(
         .map_err(|e| zip_err("Failed to finish backup archive", e))?;
 
     Ok(manifest)
+}
+
+/// Encrypted database files do not compress, so they are stored; one over 4 GiB needs ZIP64.
+fn database_options(source: &Path) -> SimpleFileOptions {
+    let size = fs::metadata(source).map(|m| m.len()).unwrap_or(0);
+    SimpleFileOptions::default()
+        .compression_method(CompressionMethod::Stored)
+        .large_file(size > u64::from(u32::MAX))
 }
 
 fn add_file(
@@ -565,6 +587,14 @@ pub fn verify_database(conn: &Connection) -> Result<IntegrityReport> {
                 for row in rows.filter_map(|r| r.ok()) {
                     messages.push(format!("attachments: {row}"));
                 }
+            }
+        }
+        // A structurally sound store can still lack content its rows point at.
+        if let Ok(n) = crate::services::attachment_store::rows_without_content(conn) {
+            if n > 0 {
+                messages.push(format!(
+                    "attachments: {n} attachment(s) have no content in the store"
+                ));
             }
         }
     }
@@ -1078,5 +1108,45 @@ mod tests {
         let (conn, _) = seed_account_with_store(dir.path());
         let report = verify_database(&conn).expect("verify");
         assert!(report.ok, "{:?}", report.messages);
+    }
+
+    #[test]
+    fn a_plain_file_no_row_points_at_is_not_backed_up() {
+        let src = tempfile::tempdir().expect("src");
+        let (conn, _) = seed_account_with_store(src.path());
+        fs::create_dir_all(src.path().join("insurance_documents/deleted")).expect("dir");
+        fs::write(
+            src.path().join("insurance_documents/deleted/orphan.pdf"),
+            b"orphan",
+        )
+        .expect("orphan");
+        let archive = src.path().join("out.zip");
+        create_backup(&conn, src.path(), &archive, "1.0.0").expect("backup");
+        let names = archive_names(&archive);
+        assert!(names.contains(&"real_estate_photos/batch1/a.jpg".to_string()));
+        assert!(!names.iter().any(|n| n.contains("orphan")));
+        // The databases are stored, not deflated.
+        let mut zip = ZipArchive::new(File::open(&archive).expect("open")).expect("zip");
+        assert_eq!(
+            zip.by_name(STORE_FILE_NAME).expect("store").compression(),
+            CompressionMethod::Stored
+        );
+    }
+
+    #[test]
+    fn verify_database_reports_attachments_without_content() {
+        let dir = tempfile::tempdir().expect("dir");
+        let (conn, _) = seed_account_with_store(dir.path());
+        conn.execute(
+            "INSERT INTO real_estate_documents (id, blob_id) VALUES ('lost', 'no-such-blob')",
+            [],
+        )
+        .expect("row");
+        let report = verify_database(&conn).expect("verify");
+        assert!(!report.ok);
+        assert_eq!(
+            report.messages,
+            vec!["attachments: 1 attachment(s) have no content in the store".to_string()]
+        );
     }
 }

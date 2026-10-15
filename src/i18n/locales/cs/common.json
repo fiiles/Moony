@@ -183,6 +183,7 @@
     "paymentNonNegative": "Platba nemůže být záporná",
     "endDateAfterStart": "Datum ukončení musí být po datu začátku",
     "attachmentTooLarge": "Soubor je větší než 100 MB.",
+    "exportIntoDataFolder": "Kopii nejde uložit do složky s daty Moony. Vyberte jiné místo.",
     "documentNameRequired": "Název dokumentu je povinný",
     "nameTooLong": "Název je příliš dlouhý",
     "accountNameTooLong": "Název účtu je příliš dlouhý",

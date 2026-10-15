@@ -58,6 +58,7 @@ pub mod stock_import;
 pub mod stock_monitor;
 pub mod stock_performance;
 pub mod stock_tags;
+pub mod temp_cleanup;
 pub mod ticker_history;
 pub mod valuations;
 

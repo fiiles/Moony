@@ -17,6 +17,30 @@ use db::Database;
 use services::categorization::CategorizationEngine;
 use services::local_api::LocalApiServer;
 use services::logging;
+use tauri::Manager;
+
+/// Marker in the app data dir: the one-time temp cleanup already ran.
+const TEMP_CLEANUP_MARKER: &str = "legacy-temp-cleanup.done";
+
+/// Remove the plaintext photo copies that Moony up to 0.12.2 left in the OS temp dir, once, off
+/// the main thread. Best effort: any problem is logged and never blocks startup.
+fn spawn_legacy_temp_cleanup(app: tauri::AppHandle) {
+    let (temp_dir, data_dir) = match (app.path().temp_dir(), app.path().app_data_dir()) {
+        (Ok(temp_dir), Ok(data_dir)) => (temp_dir, data_dir),
+        (temp_dir, data_dir) => {
+            log::warn!(
+                "[TEMP] Leftover photo cleanup skipped: temp dir ok = {}, app data dir ok = {}",
+                temp_dir.is_ok(),
+                data_dir.is_ok()
+            );
+            return;
+        }
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        services::temp_cleanup::run_once_and_log(&temp_dir, &data_dir.join(TEMP_CLEANUP_MARKER));
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 #[tokio::main]
 pub async fn run() {
@@ -29,8 +53,9 @@ pub async fn run() {
     // The log plugin goes first so every other plugin's `log` output is captured.
     tauri::Builder::default()
         .plugin(logging::plugin())
-        .setup(|_app| {
+        .setup(|app| {
             logging::log_startup_banner();
+            spawn_legacy_temp_cleanup(app.handle().clone());
             Ok(())
         })
         .plugin(tauri_plugin_opener::init())

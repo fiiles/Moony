@@ -378,10 +378,10 @@
     "downloadPhoto": "Stáhnout fotografii",
     "invalidFiles": "Byly zjištěny neplatné soubory",
     "selectSaveFolder": "Vyberte složku pro uložení fotografií",
-    "supportedFormats": "Podporované formáty: JPG, PNG, GIF, WebP. Soubory HEIC se automaticky převedou na JPG.",
+    "supportedFormats": "Podporované formáty: JPG, PNG, GIF, WebP. Fotky HEIC z iPhonu podporované nejsou, uložte je nejdřív jako JPG.",
     "errors": {
-      "convertFailed": "Soubor „{{name}}“ se nepodařilo převést. Převeďte ho ručně na JPG.",
-      "unsupportedFormat": "Soubor „{{name}}“ má nepodporovaný formát. Použijte JPG, PNG, GIF, WebP nebo HEIC.",
+      "heicUnsupported": "„{{name}}“ je fotka ve formátu HEIC, který Moony nepodporuje. Uložte ji jako JPG (na iPhonu: Nastavení → Fotoaparát → Formáty → Nejkompatibilnější).",
+      "unsupportedFormat": "Soubor „{{name}}“ má nepodporovaný formát. Použijte JPG, PNG, GIF nebo WebP.",
       "noValidFiles": "Není co nahrát: žádný soubor není platný."
     },
     "photosSaved_one": "{{count}} fotografie uložena",

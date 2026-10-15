@@ -373,10 +373,10 @@
     "downloadPhoto": "Last ned bilde",
     "invalidFiles": "Ugyldige filer oppdaget",
     "selectSaveFolder": "Velg mappe for lagring av bilder",
-    "supportedFormats": "Støttede formater: JPG, PNG, GIF, WebP. HEIC-filer konverteres automatisk til JPG.",
+    "supportedFormats": "Støttede formater: JPG, PNG, GIF, WebP. HEIC-bilder (fra iPhone) støttes ikke; lagre dem som JPG først.",
     "errors": {
-      "convertFailed": "Kunne ikke konvertere «{{name}}». Konverter den til JPG manuelt.",
-      "unsupportedFormat": "«{{name}}» har et format som ikke støttes. Bruk JPG, PNG, GIF, WebP eller HEIC.",
+      "heicUnsupported": "«{{name}}» er et HEIC-bilde, som Moony ikke støtter. Lagre det som JPG (på iPhone: Innstillinger → Kamera → Formater → Mest kompatibel).",
+      "unsupportedFormat": "«{{name}}» har et format som ikke støttes. Bruk JPG, PNG, GIF eller WebP.",
       "noValidFiles": "Ingen gyldige filer å laste opp."
     },
     "photosSaved_one": "{{count}} bilde lagret",

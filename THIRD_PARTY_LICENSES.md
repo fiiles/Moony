@@ -19,18 +19,18 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 
 | Ecosystem | Packages |
 | --- | ---: |
-| npm | 225 |
-| Rust | 671 |
+| npm | 227 |
+| Rust | 670 |
 
 ### npm — packages per licence
 
 | Licence | Packages |
 | --- | ---: |
-| MIT | 200 |
+| MIT | 201 |
 | ISC | 13 |
 | MIT OR Apache-2.0 | 5 |
+| Apache-2.0 | 2 |
 | 0BSD | 1 |
-| Apache-2.0 | 1 |
 | Apache-2.0 OR MIT | 1 |
 | BSD-3-Clause | 1 |
 | MIT AND ISC | 1 |
@@ -42,7 +42,7 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 | Licence | Packages |
 | --- | ---: |
 | MIT OR Apache-2.0 | 334 |
-| MIT | 159 |
+| MIT | 158 |
 | Apache-2.0 OR MIT | 64 |
 | Unicode-3.0 | 18 |
 | Zlib OR Apache-2.0 OR MIT | 18 |
@@ -103,6 +103,8 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | @floating-ui/utils | 0.2.12 | MIT |
 | @fontsource-variable/inter | 5.3.0 | OFL-1.1 |
 | @hookform/resolvers | 5.9.1 | MIT |
+| @napi-rs/canvas | 1.0.11 | MIT |
+| @napi-rs/canvas-darwin-arm64 | 1.0.11 | MIT |
 | @radix-ui/number | 1.1.3 | MIT |
 | @radix-ui/primitive | 1.2.0 | MIT |
 | @radix-ui/react-alert-dialog | 1.2.0 | MIT |
@@ -214,7 +216,6 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | get-nonce | 1.0.1 | MIT |
 | hast-util-to-jsx-runtime | 2.3.6 | MIT |
 | hast-util-whitespace | 3.0.0 | MIT |
-| heic2any | 0.0.4 | MIT |
 | html-parse-stringify | 4.0.1 | MIT |
 | html-url-attributes | 3.0.1 | MIT |
 | i18next | 26.4.4 | MIT |
@@ -276,6 +277,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | micromark-util-types | 2.0.3 | MIT |
 | ms | 2.1.3 | MIT |
 | parse-entities | 4.0.2 | MIT |
+| pdfjs-dist | 6.4.299 | Apache-2.0 |
 | property-information | 7.2.0 | MIT |
 | react | 19.3.0 | MIT |
 | react-dom | 19.3.0 | MIT |
@@ -539,7 +541,6 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | http | 1.5.0 | MIT OR Apache-2.0 |
 | http-body | 1.1.0 | MIT |
 | http-body-util | 0.1.5 | MIT |
-| http-range | 0.1.5 | MIT |
 | httparse | 1.10.1 | MIT OR Apache-2.0 |
 | httpdate | 1.0.3 | MIT OR Apache-2.0 |
 | hybrid-array | 0.4.15 | MIT OR Apache-2.0 |

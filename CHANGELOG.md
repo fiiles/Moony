@@ -30,6 +30,9 @@ All notable changes to Moony are documented in this file. The format follows
 - After the update an earlier version cannot open the profile any more (as after every update that
   changes the database). To go back, restore a backup made with the earlier version.
 - Delete Account also removes the pre-migration copies of the databases.
+- **HEIC photos are no longer accepted.** Their conversion never finished in the installed app (the
+  upload stayed on "Converting HEIC files…"). The gallery now names such files and suggests saving
+  them as JPG; on an iPhone, Settings → Camera → Formats → Most Compatible.
 - **A shorter update dialog.** It names the new and the current version, says what the update
   does (download, restart, unlock again) and links "What's new" to the release page, which now
   starts with that version's changelog. The raw release text with download instructions is gone.

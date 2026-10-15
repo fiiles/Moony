@@ -368,10 +368,10 @@
     "downloadPhoto": "写真をダウンロード",
     "invalidFiles": "無効なファイルが検出されました",
     "selectSaveFolder": "写真の保存先フォルダを選択",
-    "supportedFormats": "対応形式：JPG、PNG、GIF、WebP。HEIC ファイルは自動的に JPG に変換されます。",
+    "supportedFormats": "対応形式：JPG、PNG、GIF、WebP。HEIC 写真（iPhone）には対応していません。先に JPG で保存してください。",
     "errors": {
-      "convertFailed": "「{{name}}」を変換できませんでした。手動でJPGに変換してください。",
-      "unsupportedFormat": "「{{name}}」は未対応の形式です。JPG、PNG、GIF、WebP、HEICのいずれかを使ってください。",
+      "heicUnsupported": "「{{name}}」は HEIC 形式の写真で、Moony では対応していません。JPG で保存してください（iPhone：設定 → カメラ → フォーマット → 互換性優先）。",
+      "unsupportedFormat": "「{{name}}」は未対応の形式です。JPG、PNG、GIF、WebPのいずれかを使ってください。",
       "noValidFiles": "アップロードできる有効なファイルがありません。"
     },
     "photosSaved_other": "{{count}}枚の写真を保存しました"

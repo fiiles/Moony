@@ -368,10 +368,10 @@
     "downloadPhoto": "下载照片",
     "invalidFiles": "检测到无效文件",
     "selectSaveFolder": "选择保存照片的文件夹",
-    "supportedFormats": "支持的格式：JPG、PNG、GIF、WebP。HEIC 文件会自动转换为 JPG。",
+    "supportedFormats": "支持的格式：JPG、PNG、GIF、WebP。不支持 HEIC 照片（来自 iPhone），请先另存为 JPG。",
     "errors": {
-      "convertFailed": "无法转换“{{name}}”。请手动转换为 JPG。",
-      "unsupportedFormat": "“{{name}}”的格式不受支持。请使用 JPG、PNG、GIF、WebP 或 HEIC。",
+      "heicUnsupported": "“{{name}}”是 HEIC 照片，Moony 不支持该格式。请另存为 JPG（iPhone：设置 → 相机 → 格式 → 兼容性最佳）。",
+      "unsupportedFormat": "“{{name}}”的格式不受支持。请使用 JPG、PNG、GIF 或 WebP。",
       "noValidFiles": "没有可上传的有效文件。"
     },
     "photosSaved_other": "已保存 {{count}} 张照片"

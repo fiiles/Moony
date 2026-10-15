@@ -31,22 +31,12 @@ import { useTranslation } from 'react-i18next';
 import { useFormat } from '@/lib/use-format';
 import type { RealEstatePhotoBatch, RealEstatePhoto } from '@shared/schema';
 import { attachmentUrl } from '@/utils/attachment-url';
+import { PHOTO_ACCEPT, splitPhotoFiles } from '@/utils/photo-files';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 
 interface PhotoTimelineGalleryProps {
   realEstateId: string;
 }
-
-// Supported MIME types for direct processing
-const SUPPORTED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'image/bmp'];
-
-// Check if file is HEIC (by extension or MIME type)
-const isHeicFile = (file: File) => {
-  const ext = file.name.toLowerCase().split('.').pop();
-  return (
-    ext === 'heic' || ext === 'heif' || file.type === 'image/heic' || file.type === 'image/heif'
-  );
-};
 
 export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps) {
   const { t } = useTranslation('realEstate');
@@ -62,7 +52,6 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
   const [lightboxIndex, setLightboxIndex] = useState(0);
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [deletingBatchId, setDeletingBatchId] = useState<string | null>(null);
-  const [isConverting, setIsConverting] = useState(false);
 
   // Upload form state
   const [uploadDate, setUploadDate] = useState(new Date().toISOString().split('T')[0]);
@@ -74,44 +63,14 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
     queryFn: () => realEstateApi.getPhotoBatches(realEstateId),
   });
 
-  // Process files - convert HEIC to JPEG, pass through supported formats
-  const processFiles = async (files: File[]): Promise<{ processed: File[]; errors: string[] }> => {
-    const processed: File[] = [];
-    const errors: string[] = [];
-
-    for (const file of files) {
-      // Check if HEIC - convert to JPEG
-      if (isHeicFile(file)) {
-        try {
-          // Dynamic import heic2any
-          const heic2any = (await import('heic2any')).default;
-          const convertedBlob = await heic2any({
-            blob: file,
-            toType: 'image/jpeg',
-            quality: 0.9,
-          });
-
-          // heic2any can return array or single blob
-          const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
-          const newName = file.name.replace(/\.(heic|heif)$/i, '.jpg');
-          const convertedFile = new File([blob], newName, { type: 'image/jpeg' });
-          processed.push(convertedFile);
-        } catch (e) {
-          console.error('HEIC conversion failed:', e);
-          errors.push(t('gallery.errors.convertFailed', { name: file.name }));
-        }
-        continue;
-      }
-
-      // Check for supported types
-      if (SUPPORTED_MIME_TYPES.includes(file.type) || file.type.startsWith('image/')) {
-        processed.push(file);
-      } else {
-        errors.push(t('gallery.errors.unsupportedFormat', { name: file.name }));
-      }
-    }
-
-    return { processed, errors };
+  // Keep the formats the backend decodes; HEIC (not supported) and anything else get a message.
+  const processFiles = (files: File[]): { processed: File[]; errors: string[] } => {
+    const { photos, heic, unsupported } = splitPhotoFiles(files);
+    const errors = [
+      ...heic.map((file) => t('gallery.errors.heicUnsupported', { name: file.name })),
+      ...unsupported.map((file) => t('gallery.errors.unsupportedFormat', { name: file.name })),
+    ];
+    return { processed: photos, errors };
   };
 
   // Send each photo's bytes straight to the backend, so no copy of it lands in the temp dir.
@@ -142,8 +101,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
       description?: string;
       files: File[];
     }) => {
-      // Process files - converts HEIC to JPEG
-      const { processed, errors } = await processFiles(files);
+      const { processed, errors } = processFiles(files);
 
       if (errors.length > 0) {
         throw new Error(errors.join('\n'));
@@ -177,7 +135,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
 
   const addPhotosMutation = useMutation({
     mutationFn: async ({ batchId, files }: { batchId: string; files: File[] }) => {
-      const { processed, errors } = await processFiles(files);
+      const { processed, errors } = processFiles(files);
 
       if (errors.length > 0) {
         throw new Error(errors.join('\n'));
@@ -237,26 +195,14 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
     setSelectedFiles([]);
   };
 
-  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      setIsConverting(true);
-      const fileList = Array.from(files);
-
-      try {
-        // Process and convert files
-        const { processed, errors } = await processFiles(fileList);
-
-        if (errors.length > 0) {
-          toast.error(t('gallery.invalidFiles'), { description: errors.join('\n') });
-        }
-
-        setSelectedFiles(processed);
-      } catch (error) {
-        console.error('Error processing files:', error);
-      } finally {
-        setIsConverting(false);
+      const { processed, errors } = processFiles(Array.from(files));
+      if (errors.length > 0) {
+        toast.error(t('gallery.invalidFiles'), { description: errors.join('\n') });
       }
+      setSelectedFiles(processed);
     }
   };
 
@@ -359,17 +305,15 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                   <input
                     type="file"
                     multiple
-                    accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/heic,image/heif,.heic,.heif"
+                    accept={PHOTO_ACCEPT}
                     onChange={handleFileSelect}
                     className="hidden"
                   />
                   <ImagePlus className="mx-auto h-8 w-8 text-ink-3 mb-2" />
                   <p className="text-sm text-ink-3">
-                    {isConverting
-                      ? 'Converting HEIC files...'
-                      : selectedFiles.length > 0
-                        ? t('gallery.filesSelected', { count: selectedFiles.length })
-                        : t('gallery.dropzone')}
+                    {selectedFiles.length > 0
+                      ? t('gallery.filesSelected', { count: selectedFiles.length })
+                      : t('gallery.dropzone')}
                   </p>
                 </label>
                 {selectedFiles.length > 0 && (
@@ -443,7 +387,7 @@ export function PhotoTimelineGallery({ realEstateId }: PhotoTimelineGalleryProps
                       <input
                         type="file"
                         multiple
-                        accept="image/jpeg,image/png,image/gif,image/webp,image/bmp,image/heic,image/heif,.heic,.heif"
+                        accept={PHOTO_ACCEPT}
                         className="hidden"
                         onChange={(e) => {
                           const files = e.target.files;

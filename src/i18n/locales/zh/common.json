@@ -182,6 +182,7 @@
     "paymentFrequencyInvalid": "付款频率无效",
     "paymentNonNegative": "付款额不能为负数",
     "endDateAfterStart": "结束日期必须晚于开始日期",
+    "attachmentTooLarge": "文件超过 100 MB。",
     "documentNameRequired": "请输入文档名称",
     "nameTooLong": "名称过长",
     "accountNameTooLong": "账户名称过长",

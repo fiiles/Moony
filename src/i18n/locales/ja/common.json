@@ -182,6 +182,7 @@
     "paymentFrequencyInvalid": "支払い頻度が正しくありません",
     "paymentNonNegative": "支払額は負の値にできません",
     "endDateAfterStart": "終了日は開始日より後にしてください",
+    "attachmentTooLarge": "ファイルが100 MBを超えています。",
     "documentNameRequired": "書類名を入力してください",
     "nameTooLong": "名前が長すぎます",
     "accountNameTooLong": "口座名が長すぎます",

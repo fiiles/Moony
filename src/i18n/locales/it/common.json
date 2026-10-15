@@ -182,6 +182,7 @@
     "paymentFrequencyInvalid": "Frequenza di pagamento non valida",
     "paymentNonNegative": "Il pagamento non può essere negativo",
     "endDateAfterStart": "La data di fine deve essere successiva alla data di inizio",
+    "attachmentTooLarge": "Il file supera i 100 MB.",
     "documentNameRequired": "Il nome del documento è obbligatorio",
     "nameTooLong": "Il nome è troppo lungo",
     "accountNameTooLong": "Il nome del conto è troppo lungo",

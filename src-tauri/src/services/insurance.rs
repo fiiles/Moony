@@ -9,7 +9,32 @@
 
 use crate::error::{AppError, Result};
 use crate::models::{InsertInsurancePolicy, InsurancePolicy};
+use crate::services::attachments;
+use rusqlite::Connection;
+use std::path::Path;
 use uuid::Uuid;
+
+/// Delete a policy with its documents (rows and encrypted content in one transaction, plain files
+/// from earlier versions after the commit) and its property links.
+pub fn delete_policy(conn: &Connection, data_dir: &Path, id: &str) -> Result<()> {
+    let released = attachments::release_insurance(conn, data_dir, id)?;
+    let tx = conn.unchecked_transaction()?;
+    tx.execute(
+        "DELETE FROM insurance_documents WHERE insurance_id = ?1",
+        [id],
+    )?;
+    tx.execute(
+        "DELETE FROM real_estate_insurances WHERE insurance_id = ?1",
+        [id],
+    )?;
+    if tx.execute("DELETE FROM insurance_policies WHERE id = ?1", [id])? == 0 {
+        return Err(AppError::NotFound("Insurance policy not found".into()));
+    }
+    released.delete_blobs(&tx)?;
+    tx.commit()?;
+    released.remove_files(data_dir);
+    Ok(())
+}
 
 /// Create a new insurance policy. SINGLE SOURCE OF TRUTH for insurance
 /// policy creation.
@@ -390,5 +415,63 @@ mod tests {
         assert_eq!(updated.regular_payment, "0");
         data.regular_payment = Some("  ".into());
         assert!(update_policy(&conn, &policy.id, &data).is_err());
+    }
+}
+
+#[cfg(test)]
+mod delete_tests {
+    use super::*;
+    use crate::db::files_schema;
+    use crate::services::attachment_store;
+
+    #[test]
+    fn deleting_a_policy_deletes_its_documents_and_links_only() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute("ATTACH DATABASE ':memory:' AS files", [])
+            .expect("attach");
+        files_schema::migrate(&conn).expect("files schema");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE insurance_policies (id TEXT PRIMARY KEY);
+            CREATE TABLE insurance_documents (
+                id TEXT PRIMARY KEY, insurance_id TEXT NOT NULL, name TEXT, file_path TEXT, blob_id TEXT
+            );
+            CREATE TABLE real_estate_insurances (real_estate_id TEXT, insurance_id TEXT);
+            INSERT INTO insurance_policies (id) VALUES ('p1'), ('p2');
+            INSERT INTO real_estate_insurances VALUES ('re', 'p1'), ('re', 'p2');
+            "#,
+        )
+        .expect("schema");
+        let data_dir = tempfile::tempdir().expect("data dir");
+        let mine = attachment_store::put_bytes(&conn, b"mine").expect("put").id;
+        let theirs = attachment_store::put_bytes(&conn, b"theirs")
+            .expect("put")
+            .id;
+        conn.execute(
+            "INSERT INTO insurance_documents (id, insurance_id, name, blob_id) VALUES ('a', 'p1', 'a', ?1), ('b', 'p2', 'b', ?2)",
+            [&mine, &theirs],
+        )
+        .expect("docs");
+
+        delete_policy(&conn, data_dir.path(), "p1").expect("delete");
+
+        assert_eq!(attachment_store::size_of(&conn, &mine).expect("size"), None);
+        assert!(attachment_store::size_of(&conn, &theirs)
+            .expect("size")
+            .is_some());
+        let counts: (i64, i64, i64) = conn
+            .query_row(
+                "SELECT (SELECT count(*) FROM insurance_policies),
+                        (SELECT count(*) FROM insurance_documents),
+                        (SELECT count(*) FROM real_estate_insurances)",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("counts");
+        assert_eq!(counts, (1, 1, 1));
+        assert!(matches!(
+            delete_policy(&conn, data_dir.path(), "p1"),
+            Err(AppError::NotFound(_))
+        ));
     }
 }

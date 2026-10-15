@@ -5,9 +5,11 @@ use crate::error::{AppError, Result};
 use crate::models::{
     InsertRealEstate, InsertRealEstateOneTimeCost, RealEstate, RealEstateOneTimeCost,
 };
+use crate::services::attachments;
 use crate::services::loan_amortization::day_floor;
 use crate::services::valuations::{self, ValuationKind};
 use rusqlite::{Connection, OptionalExtension, Row};
+use std::path::Path;
 use uuid::Uuid;
 
 /// Columns of a property, in the order `property_from_row` reads them.
@@ -38,6 +40,33 @@ fn property_from_row(row: &Row) -> rusqlite::Result<RealEstate> {
         created_at: row.get(14)?,
         updated_at: row.get(15)?,
     })
+}
+
+/// Delete a property with everything attached to it: its documents and photo batches (rows and
+/// encrypted content in one transaction, plain files from earlier versions after the commit).
+pub fn delete_property(conn: &Connection, data_dir: &Path, id: &str) -> Result<()> {
+    let released = attachments::release_real_estate(conn, data_dir, id)?;
+    let tx = conn.unchecked_transaction()?;
+    tx.execute(
+        "DELETE FROM real_estate_documents WHERE real_estate_id = ?1",
+        [id],
+    )?;
+    tx.execute(
+        "DELETE FROM real_estate_photos WHERE batch_id IN
+             (SELECT id FROM real_estate_photo_batches WHERE real_estate_id = ?1)",
+        [id],
+    )?;
+    tx.execute(
+        "DELETE FROM real_estate_photo_batches WHERE real_estate_id = ?1",
+        [id],
+    )?;
+    if tx.execute("DELETE FROM real_estate WHERE id = ?1", [id])? == 0 {
+        return Err(AppError::NotFound("Real estate not found".into()));
+    }
+    released.delete_blobs(&tx)?;
+    tx.commit()?;
+    released.remove_files(data_dir);
+    Ok(())
 }
 
 /// Every property, ordered by name.
@@ -918,5 +947,128 @@ mod tests {
             get_property(&conn, &id).unwrap().unwrap().property_type,
             "investment"
         );
+    }
+}
+
+#[cfg(test)]
+mod delete_tests {
+    use super::*;
+    use crate::db::files_schema;
+    use crate::services::attachment_store;
+
+    fn setup_test_db() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch("PRAGMA foreign_keys = ON;")
+            .expect("foreign keys");
+        conn.execute("ATTACH DATABASE ':memory:' AS files", [])
+            .expect("attach");
+        files_schema::migrate(&conn).expect("files schema");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE real_estate (id TEXT PRIMARY KEY, name TEXT NOT NULL);
+            CREATE TABLE real_estate_documents (
+                id TEXT PRIMARY KEY,
+                real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+                name TEXT NOT NULL, file_path TEXT, blob_id TEXT
+            );
+            CREATE TABLE real_estate_photo_batches (
+                id TEXT PRIMARY KEY,
+                real_estate_id TEXT NOT NULL REFERENCES real_estate(id) ON DELETE CASCADE,
+                photo_date INTEGER NOT NULL
+            );
+            CREATE TABLE real_estate_photos (
+                id TEXT PRIMARY KEY,
+                batch_id TEXT NOT NULL REFERENCES real_estate_photo_batches(id) ON DELETE CASCADE,
+                file_path TEXT, thumbnail_path TEXT, blob_id TEXT, thumb_blob_id TEXT
+            );
+            INSERT INTO real_estate (id, name) VALUES ('re1', 'Byt'), ('re2', 'Chata');
+            INSERT INTO real_estate_photo_batches (id, real_estate_id, photo_date)
+                VALUES ('b1', 're1', 0), ('b2', 're2', 0);
+            "#,
+        )
+        .expect("schema");
+        conn
+    }
+
+    fn blob_ids(conn: &Connection) -> Vec<String> {
+        let mut stmt = conn
+            .prepare("SELECT id FROM files.blobs ORDER BY id")
+            .expect("stmt");
+        let rows = stmt.query_map([], |r| r.get(0)).expect("query");
+        rows.map(|r| r.expect("row")).collect()
+    }
+
+    #[test]
+    fn deleting_a_property_deletes_everything_attached_to_it_and_nothing_else() {
+        let conn = setup_test_db();
+        let data_dir = tempfile::tempdir().expect("data dir");
+        let put = |bytes: &[u8]| attachment_store::put_bytes(&conn, bytes).expect("put").id;
+        let (doc1, photo1, thumb1) = (put(b"doc1"), put(b"photo1"), put(b"thumb1"));
+        let (doc2, photo2, thumb2) = (put(b"doc2"), put(b"photo2"), put(b"thumb2"));
+        conn.execute(
+            "INSERT INTO real_estate_documents (id, real_estate_id, name, blob_id) VALUES ('d1', 're1', 'a', ?1), ('d2', 're2', 'b', ?2)",
+            [&doc1, &doc2],
+        )
+        .expect("docs");
+        conn.execute(
+            "INSERT INTO real_estate_photos (id, batch_id, blob_id, thumb_blob_id) VALUES ('p1', 'b1', ?1, ?2), ('p2', 'b2', ?3, ?4)",
+            [&photo1, &thumb1, &photo2, &thumb2],
+        )
+        .expect("photos");
+        // A legacy document and photo of re1, plain files inside the data folder.
+        let doc_dir = data_dir.path().join("real_estate_documents/re1");
+        let photo_dir = data_dir.path().join("real_estate_photos/re1/b1");
+        std::fs::create_dir_all(&doc_dir).expect("mkdir");
+        std::fs::create_dir_all(&photo_dir).expect("mkdir");
+        std::fs::write(doc_dir.join("old.pdf"), b"old").expect("old doc");
+        std::fs::write(photo_dir.join("old.jpg"), b"j").expect("old photo");
+        std::fs::write(photo_dir.join("old_thumb.jpg"), b"t").expect("old thumb");
+        conn.execute(
+            "INSERT INTO real_estate_documents (id, real_estate_id, name, file_path) VALUES ('d3', 're1', 'c', ?1)",
+            [doc_dir.join("old.pdf").to_str().expect("utf8")],
+        )
+        .expect("legacy doc");
+        conn.execute(
+            "INSERT INTO real_estate_photos (id, batch_id, file_path, thumbnail_path)
+             VALUES ('p3', 'b1', 'real_estate_photos/re1/b1/old.jpg', 'real_estate_photos/re1/b1/old_thumb.jpg')",
+            [],
+        )
+        .expect("legacy photo");
+
+        delete_property(&conn, data_dir.path(), "re1").expect("delete");
+
+        let mut kept = vec![doc2, photo2, thumb2];
+        kept.sort();
+        assert_eq!(blob_ids(&conn), kept);
+        assert!(!doc_dir.exists());
+        assert!(!photo_dir.exists());
+        for (table, n) in [
+            ("real_estate", 1),
+            ("real_estate_documents", 1),
+            ("real_estate_photos", 1),
+            ("real_estate_photo_batches", 1),
+        ] {
+            let count: i64 = conn
+                .query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0))
+                .expect("count");
+            assert_eq!(count, n, "{table}");
+        }
+    }
+
+    #[test]
+    fn deleting_an_unknown_property_changes_nothing() {
+        let conn = setup_test_db();
+        let data_dir = tempfile::tempdir().expect("data dir");
+        let blob = attachment_store::put_bytes(&conn, b"doc").expect("put").id;
+        conn.execute(
+            "INSERT INTO real_estate_documents (id, real_estate_id, name, blob_id) VALUES ('d', 're2', 'a', ?1)",
+            [&blob],
+        )
+        .expect("doc");
+        assert!(matches!(
+            delete_property(&conn, data_dir.path(), "nope"),
+            Err(AppError::NotFound(_))
+        ));
+        assert_eq!(blob_ids(&conn), vec![blob]);
     }
 }

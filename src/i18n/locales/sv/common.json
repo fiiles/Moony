@@ -182,6 +182,7 @@
     "paymentFrequencyInvalid": "Ogiltig betalningsfrekvens",
     "paymentNonNegative": "Betalningen får inte vara negativ",
     "endDateAfterStart": "Slutdatumet måste vara efter startdatumet",
+    "attachmentTooLarge": "Filen är större än 100 MB.",
     "documentNameRequired": "Dokumentnamn krävs",
     "nameTooLong": "Namnet är för långt",
     "accountNameTooLong": "Kontonamnet är för långt",

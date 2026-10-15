@@ -4,13 +4,19 @@
 //! plain files from earlier versions has reached it, a legacy file on disk (`file_path`). Every
 //! reader of attachment content goes through [`resolve`], so the `moony-file` scheme, exports and
 //! opening in another app treat both the same way.
+//!
+//! New documents go straight into the store ([`add_insurance_document`],
+//! [`add_real_estate_document`]). Deleting a row deletes its blob in the same transaction and its
+//! legacy file after the commit; a legacy file outside the current data folder is never deleted.
 
 use crate::error::{AppError, Result};
-use crate::models::AttachmentKind;
+use crate::models::{AttachmentKind, InsuranceDocument, RealEstateDocument};
 use crate::services::{attachment_store, document_files, real_estate_photos};
 use rusqlite::{Connection, OptionalExtension};
 use std::fs::{self, File};
+use std::io::{Read, Seek, SeekFrom};
 use std::path::{Component, Path, PathBuf};
+use uuid::Uuid;
 
 /// Folder of legacy insurance documents under the app data dir.
 pub const INSURANCE_DOCUMENTS_DIR: &str = "insurance_documents";
@@ -288,6 +294,363 @@ pub fn export_photo_batch(
     Ok(saved)
 }
 
+// ============================================================================
+// Adding documents
+// ============================================================================
+
+/// What the user entered for a new document.
+pub struct NewDocument<'a> {
+    pub name: &'a str,
+    pub description: Option<&'a str>,
+    pub file_type: &'a str,
+}
+
+struct StoredDocument {
+    id: String,
+    mime_type: String,
+    extension: Option<String>,
+    file_size: i64,
+}
+
+/// Stream the file the user picked into the store and insert its row, in one transaction.
+fn store_document(
+    conn: &Connection,
+    table: &str,
+    owner_column: &str,
+    owner_id: &str,
+    source: &Path,
+    doc: &NewDocument,
+    now: i64,
+) -> Result<StoredDocument> {
+    let original_name = source
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("document")
+        .to_string();
+    let len = fs::metadata(source)
+        .map_err(|e| AppError::Internal(format!("Cannot read the file: {e}")))?
+        .len();
+    if len > attachment_store::MAX_DOCUMENT_BYTES {
+        return Err(AppError::Validation("validation.attachmentTooLarge".into()));
+    }
+    let mut file =
+        File::open(source).map_err(|e| AppError::Internal(format!("Cannot open the file: {e}")))?;
+    let head = read_head(&mut file)?;
+    let mime_type = attachment_store::sniff_mime(Some(&original_name), &head).to_string();
+
+    let id = Uuid::new_v4().to_string();
+    let tx = conn.unchecked_transaction()?;
+    let blob = attachment_store::put_reader(&tx, &mut file, len)?;
+    tx.execute(
+        &format!(
+            "INSERT INTO {table} (id, {owner_column}, name, description, blob_id, mime_type,
+                                  original_name, file_type, file_size, uploaded_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)"
+        ),
+        rusqlite::params![
+            id,
+            owner_id,
+            doc.name,
+            doc.description,
+            blob.id,
+            mime_type,
+            original_name,
+            doc.file_type,
+            len as i64,
+            now
+        ],
+    )?;
+    tx.commit()?;
+    Ok(StoredDocument {
+        id,
+        mime_type,
+        extension: extension_of(&original_name),
+        file_size: len as i64,
+    })
+}
+
+/// The first bytes of a file (for MIME sniffing), with the file rewound to its start.
+fn read_head(file: &mut File) -> Result<Vec<u8>> {
+    let mut head = vec![0u8; 16];
+    let mut filled = 0;
+    while filled < head.len() {
+        let n = file
+            .read(&mut head[filled..])
+            .map_err(|e| AppError::Internal(format!("Cannot read the file: {e}")))?;
+        if n == 0 {
+            break;
+        }
+        filled += n;
+    }
+    head.truncate(filled);
+    file.seek(SeekFrom::Start(0))
+        .map_err(|e| AppError::Internal(format!("Cannot read the file: {e}")))?;
+    Ok(head)
+}
+
+/// Attach a document to an insurance policy.
+pub fn add_insurance_document(
+    conn: &Connection,
+    insurance_id: &str,
+    source: &Path,
+    doc: &NewDocument,
+    now: i64,
+) -> Result<InsuranceDocument> {
+    let stored = store_document(
+        conn,
+        "insurance_documents",
+        "insurance_id",
+        insurance_id,
+        source,
+        doc,
+        now,
+    )?;
+    Ok(InsuranceDocument {
+        id: stored.id,
+        insurance_id: insurance_id.to_string(),
+        name: doc.name.to_string(),
+        description: doc.description.map(str::to_string),
+        mime_type: stored.mime_type,
+        extension: stored.extension,
+        file_type: doc.file_type.to_string(),
+        file_size: Some(stored.file_size),
+        uploaded_at: now,
+    })
+}
+
+/// Attach a document to a property.
+pub fn add_real_estate_document(
+    conn: &Connection,
+    real_estate_id: &str,
+    source: &Path,
+    doc: &NewDocument,
+    now: i64,
+) -> Result<RealEstateDocument> {
+    let stored = store_document(
+        conn,
+        "real_estate_documents",
+        "real_estate_id",
+        real_estate_id,
+        source,
+        doc,
+        now,
+    )?;
+    Ok(RealEstateDocument {
+        id: stored.id,
+        real_estate_id: real_estate_id.to_string(),
+        name: doc.name.to_string(),
+        description: doc.description.map(str::to_string),
+        mime_type: stored.mime_type,
+        extension: stored.extension,
+        file_type: doc.file_type.to_string(),
+        file_size: Some(stored.file_size),
+        uploaded_at: now,
+    })
+}
+
+// ============================================================================
+// Deleting
+// ============================================================================
+
+/// The content of attachment rows that are being deleted: their blobs, deleted inside the
+/// caller's transaction, and their legacy files, removed after the commit.
+#[derive(Debug, Default)]
+pub struct Released {
+    blobs: Vec<String>,
+    files: Vec<PathBuf>,
+}
+
+impl Released {
+    /// Delete the blobs; call inside the transaction that deletes the rows.
+    pub fn delete_blobs(&self, conn: &Connection) -> Result<()> {
+        for id in &self.blobs {
+            attachment_store::delete(conn, id)?;
+        }
+        Ok(())
+    }
+
+    /// Remove the legacy files after the commit, then any folder that became empty. Only files
+    /// inside the current data folder are removed (D5); a failure leaves a file for the next
+    /// conversion run to report, never an error for the user.
+    pub fn remove_files(&self, data_dir: &Path) {
+        for file in &self.files {
+            if !file.starts_with(data_dir) {
+                continue;
+            }
+            let _ = fs::remove_file(file);
+            let mut dir = file.parent();
+            while let Some(d) = dir {
+                if d == data_dir || !d.starts_with(data_dir) || fs::remove_dir(d).is_err() {
+                    break;
+                }
+                dir = d.parent();
+            }
+        }
+    }
+
+    fn extend(&mut self, other: Released) {
+        self.blobs.extend(other.blobs);
+        self.files.extend(other.files);
+    }
+}
+
+/// Blobs and legacy files of the document rows `where_sql` selects.
+fn released_documents(
+    conn: &Connection,
+    data_dir: &Path,
+    kind: AttachmentKind,
+    where_sql: &str,
+    param: &str,
+) -> Result<Released> {
+    let (table, subdir) =
+        document_table(kind).ok_or_else(|| AppError::Internal("Not a document kind".into()))?;
+    let mut stmt = conn.prepare(&format!(
+        "SELECT blob_id, file_path FROM {table} WHERE {where_sql}"
+    ))?;
+    let rows = stmt.query_map([param], |r| {
+        Ok((
+            r.get::<_, Option<String>>(0)?,
+            r.get::<_, Option<String>>(1)?,
+        ))
+    })?;
+    let mut released = Released::default();
+    for row in rows {
+        let (blob, file_path) = row?;
+        released.blobs.extend(blob);
+        if let Some(stored) = file_path {
+            if let Ok(path) = document_files::resolve_document_path(data_dir, subdir, &stored) {
+                released.files.push(path);
+            }
+        }
+    }
+    Ok(released)
+}
+
+/// Blobs and legacy files of the photo rows `where_sql` selects.
+fn released_photos(
+    conn: &Connection,
+    data_dir: &Path,
+    where_sql: &str,
+    param: &str,
+) -> Result<Released> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT blob_id, thumb_blob_id, file_path, thumbnail_path FROM real_estate_photos
+         WHERE {where_sql}"
+    ))?;
+    let rows = stmt.query_map([param], |r| {
+        Ok((
+            r.get::<_, Option<String>>(0)?,
+            r.get::<_, Option<String>>(1)?,
+            r.get::<_, Option<String>>(2)?,
+            r.get::<_, Option<String>>(3)?,
+        ))
+    })?;
+    let mut released = Released::default();
+    for row in rows {
+        let (blob, thumb_blob, file, thumb_file) = row?;
+        released.blobs.extend(blob);
+        released.blobs.extend(thumb_blob);
+        for rel in [file, thumb_file].into_iter().flatten() {
+            if let Ok(path) = legacy_photo_path(data_dir, &rel) {
+                released.files.push(path);
+            }
+        }
+    }
+    Ok(released)
+}
+
+/// Delete one document row with its content.
+pub fn delete_document(
+    conn: &Connection,
+    data_dir: &Path,
+    kind: AttachmentKind,
+    id: &str,
+) -> Result<()> {
+    let (table, _) =
+        document_table(kind).ok_or_else(|| AppError::Internal("Not a document kind".into()))?;
+    let released = released_documents(conn, data_dir, kind, "id = ?1", id)?;
+    let tx = conn.unchecked_transaction()?;
+    if tx.execute(&format!("DELETE FROM {table} WHERE id = ?1"), [id])? == 0 {
+        return Err(AppError::NotFound("Document not found".into()));
+    }
+    released.delete_blobs(&tx)?;
+    tx.commit()?;
+    released.remove_files(data_dir);
+    Ok(())
+}
+
+/// Delete one photo with its content.
+pub fn delete_photo(conn: &Connection, data_dir: &Path, id: &str) -> Result<()> {
+    let released = released_photos(conn, data_dir, "id = ?1", id)?;
+    let tx = conn.unchecked_transaction()?;
+    if tx.execute("DELETE FROM real_estate_photos WHERE id = ?1", [id])? == 0 {
+        return Err(AppError::NotFound("Photo not found".into()));
+    }
+    released.delete_blobs(&tx)?;
+    tx.commit()?;
+    released.remove_files(data_dir);
+    Ok(())
+}
+
+/// Delete a photo batch with every photo in it.
+pub fn delete_photo_batch(conn: &Connection, data_dir: &Path, batch_id: &str) -> Result<()> {
+    let released = released_photos(conn, data_dir, "batch_id = ?1", batch_id)?;
+    let tx = conn.unchecked_transaction()?;
+    tx.execute(
+        "DELETE FROM real_estate_photos WHERE batch_id = ?1",
+        [batch_id],
+    )?;
+    if tx.execute(
+        "DELETE FROM real_estate_photo_batches WHERE id = ?1",
+        [batch_id],
+    )? == 0
+    {
+        return Err(AppError::NotFound("Batch not found".into()));
+    }
+    released.delete_blobs(&tx)?;
+    tx.commit()?;
+    released.remove_files(data_dir);
+    Ok(())
+}
+
+/// Everything attached to a property (its documents and the photos of all its batches), for a
+/// caller that deletes the property.
+pub fn release_real_estate(
+    conn: &Connection,
+    data_dir: &Path,
+    real_estate_id: &str,
+) -> Result<Released> {
+    let mut released = released_documents(
+        conn,
+        data_dir,
+        AttachmentKind::RealEstateDocument,
+        "real_estate_id = ?1",
+        real_estate_id,
+    )?;
+    released.extend(released_photos(
+        conn,
+        data_dir,
+        "batch_id IN (SELECT id FROM real_estate_photo_batches WHERE real_estate_id = ?1)",
+        real_estate_id,
+    )?);
+    Ok(released)
+}
+
+/// Everything attached to an insurance policy, for a caller that deletes the policy.
+pub fn release_insurance(
+    conn: &Connection,
+    data_dir: &Path,
+    insurance_id: &str,
+) -> Result<Released> {
+    released_documents(
+        conn,
+        data_dir,
+        AttachmentKind::InsuranceDocument,
+        "insurance_id = ?1",
+        insurance_id,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -301,12 +664,14 @@ mod tests {
         conn.execute_batch(
             r#"
             CREATE TABLE insurance_documents (
-                id TEXT PRIMARY KEY, insurance_id TEXT, name TEXT, file_path TEXT, blob_id TEXT,
-                mime_type TEXT, original_name TEXT
+                id TEXT PRIMARY KEY, insurance_id TEXT, name TEXT, description TEXT, file_path TEXT,
+                blob_id TEXT, mime_type TEXT, original_name TEXT, file_type TEXT, file_size INTEGER,
+                uploaded_at INTEGER
             );
             CREATE TABLE real_estate_documents (
-                id TEXT PRIMARY KEY, real_estate_id TEXT, name TEXT, file_path TEXT, blob_id TEXT,
-                mime_type TEXT, original_name TEXT
+                id TEXT PRIMARY KEY, real_estate_id TEXT, name TEXT, description TEXT, file_path TEXT,
+                blob_id TEXT, mime_type TEXT, original_name TEXT, file_type TEXT, file_size INTEGER,
+                uploaded_at INTEGER
             );
             CREATE TABLE real_estate_photo_batches (
                 id TEXT PRIMARY KEY, real_estate_id TEXT, photo_date INTEGER NOT NULL
@@ -602,5 +967,193 @@ mod tests {
             document_meta(Some("/d/file"), None, None),
             ("application/octet-stream".to_string(), None)
         );
+    }
+
+    fn blob_count(conn: &Connection) -> i64 {
+        conn.query_row("SELECT count(*) FROM files.blobs", [], |r| r.get(0))
+            .expect("count")
+    }
+
+    const DOC: NewDocument = NewDocument {
+        name: "Smlouva",
+        description: Some("2024"),
+        file_type: "contract",
+    };
+
+    #[test]
+    fn an_added_document_goes_into_the_store_with_its_type_and_name() {
+        let conn = setup_test_db();
+        let data_dir = tempfile::tempdir().expect("data dir");
+        let picked = tempfile::tempdir().expect("picked");
+        let source = picked.path().join("Pojistná smlouva.PDF");
+        fs::write(&source, b"%PDF-1.7 policy").expect("source");
+
+        let doc = add_insurance_document(&conn, "pol", &source, &DOC, 1_700_000_000).expect("add");
+        assert_eq!(doc.mime_type, "application/pdf");
+        assert_eq!(doc.extension.as_deref(), Some("pdf"));
+        assert_eq!(doc.file_size, Some(15));
+        assert_eq!(doc.file_type, "contract");
+
+        let row: (Option<String>, Option<String>, Option<String>) = conn
+            .query_row(
+                "SELECT file_path, original_name, blob_id FROM insurance_documents WHERE id = ?1",
+                [&doc.id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("row");
+        assert_eq!(row.0, None);
+        assert_eq!(row.1.as_deref(), Some("Pojistná smlouva.PDF"));
+        let resolved = resolve(
+            &conn,
+            data_dir.path(),
+            AttachmentKind::InsuranceDocument,
+            &doc.id,
+            Variant::Full,
+        )
+        .expect("resolve")
+        .expect("row");
+        assert_eq!(
+            read_bytes(&conn, &resolved).expect("bytes"),
+            b"%PDF-1.7 policy".to_vec()
+        );
+        assert!(fs::read_dir(data_dir.path()).expect("dir").next().is_none());
+
+        let re = add_real_estate_document(&conn, "re", &source, &DOC, 0).expect("add");
+        assert_eq!(re.real_estate_id, "re");
+        assert_eq!(blob_count(&conn), 2);
+    }
+
+    #[test]
+    fn a_document_over_the_cap_is_refused_before_anything_is_written() {
+        let conn = setup_test_db();
+        let picked = tempfile::tempdir().expect("picked");
+        let source = picked.path().join("huge.pdf");
+        File::create(&source)
+            .and_then(|f| f.set_len(attachment_store::MAX_DOCUMENT_BYTES + 1))
+            .expect("sparse file");
+        let err = add_insurance_document(&conn, "pol", &source, &DOC, 0).expect_err("too large");
+        assert_eq!(
+            err.keyed().map(|(k, _)| k).as_deref(),
+            Some("validation.attachmentTooLarge")
+        );
+        assert_eq!(blob_count(&conn), 0);
+    }
+
+    #[test]
+    fn deleting_a_document_deletes_its_blob_or_its_file_inside_the_data_dir_only() {
+        let conn = setup_test_db();
+        let data_dir = tempfile::tempdir().expect("data dir");
+        let picked = tempfile::tempdir().expect("picked");
+        let source = picked.path().join("a.pdf");
+        fs::write(&source, b"%PDF-1.7").expect("source");
+        let enc = add_insurance_document(&conn, "pol", &source, &DOC, 0).expect("add");
+
+        let inside_dir = data_dir.path().join(INSURANCE_DOCUMENTS_DIR).join("pol");
+        fs::create_dir_all(&inside_dir).expect("mkdir");
+        fs::write(inside_dir.join("in.pdf"), b"inside").expect("inside");
+        let outside_dir = tempfile::tempdir().expect("old folder");
+        let outside_file = outside_dir.path().join("x").join("out.pdf");
+        fs::create_dir_all(outside_file.parent().expect("parent")).expect("mkdir");
+        fs::write(&outside_file, b"outside").expect("outside");
+        conn.execute_batch(&format!(
+            "INSERT INTO insurance_documents (id, insurance_id, name, file_path) VALUES
+               ('in', 'pol', 'in', '{}'), ('out', 'pol', 'out', '{}');",
+            inside_dir.join("in.pdf").display(),
+            outside_file.display()
+        ))
+        .expect("legacy rows");
+
+        delete_document(
+            &conn,
+            data_dir.path(),
+            AttachmentKind::InsuranceDocument,
+            &enc.id,
+        )
+        .expect("delete enc");
+        assert_eq!(blob_count(&conn), 0);
+        delete_document(
+            &conn,
+            data_dir.path(),
+            AttachmentKind::InsuranceDocument,
+            "in",
+        )
+        .expect("delete in");
+        assert!(!inside_dir.join("in.pdf").exists());
+        assert!(!inside_dir.exists(), "the emptied owner folder goes too");
+        delete_document(
+            &conn,
+            data_dir.path(),
+            AttachmentKind::InsuranceDocument,
+            "out",
+        )
+        .expect("delete out");
+        assert!(
+            outside_file.exists(),
+            "a file outside the data folder is never deleted"
+        );
+
+        let rows: i64 = conn
+            .query_row("SELECT count(*) FROM insurance_documents", [], |r| r.get(0))
+            .expect("count");
+        assert_eq!(rows, 0);
+        assert!(matches!(
+            delete_document(
+                &conn,
+                data_dir.path(),
+                AttachmentKind::InsuranceDocument,
+                "in"
+            ),
+            Err(AppError::NotFound(_))
+        ));
+    }
+
+    #[test]
+    fn deleting_photos_and_batches_releases_blobs_and_legacy_files() {
+        let conn = setup_test_db();
+        let data_dir = tempfile::tempdir().expect("data dir");
+        conn.execute_batch(
+            "INSERT INTO real_estate_photo_batches (id, real_estate_id, photo_date) VALUES ('b1', 're', 0), ('b2', 're', 0);",
+        )
+        .expect("batches");
+        let blob = |bytes: &[u8]| attachment_store::put_bytes(&conn, bytes).expect("put").id;
+        let (f1, t1, f2, t2) = (blob(b"f1"), blob(b"t1"), blob(b"f2"), blob(b"t2"));
+        conn.execute(
+            "INSERT INTO real_estate_photos (id, batch_id, blob_id, thumb_blob_id) VALUES ('p1', 'b1', ?1, ?2)",
+            [&f1, &t1],
+        )
+        .expect("p1");
+        conn.execute(
+            "INSERT INTO real_estate_photos (id, batch_id, blob_id, thumb_blob_id) VALUES ('p2', 'b2', ?1, ?2)",
+            [&f2, &t2],
+        )
+        .expect("p2");
+        let legacy = data_dir.path().join("real_estate_photos/re/b2");
+        fs::create_dir_all(&legacy).expect("mkdir");
+        fs::write(legacy.join("p.jpg"), b"j").expect("photo");
+        fs::write(legacy.join("p_thumb.jpg"), b"t").expect("thumb");
+        conn.execute(
+            "INSERT INTO real_estate_photos (id, batch_id, file_path, thumbnail_path)
+             VALUES ('p3', 'b2', 'real_estate_photos/re/b2/p.jpg', 'real_estate_photos/re/b2/p_thumb.jpg')",
+            [],
+        )
+        .expect("p3");
+
+        delete_photo(&conn, data_dir.path(), "p1").expect("delete photo");
+        assert_eq!(blob_count(&conn), 2);
+        delete_photo_batch(&conn, data_dir.path(), "b2").expect("delete batch");
+        assert_eq!(blob_count(&conn), 0);
+        assert!(!legacy.exists());
+        let photos: i64 = conn
+            .query_row("SELECT count(*) FROM real_estate_photos", [], |r| r.get(0))
+            .expect("count");
+        assert_eq!(photos, 0);
+        assert!(matches!(
+            delete_photo_batch(&conn, data_dir.path(), "b2"),
+            Err(AppError::NotFound(_))
+        ));
+        assert!(matches!(
+            delete_photo(&conn, data_dir.path(), "p1"),
+            Err(AppError::NotFound(_))
+        ));
     }
 }

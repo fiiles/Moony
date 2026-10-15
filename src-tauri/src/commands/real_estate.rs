@@ -4,19 +4,25 @@ use crate::commands::portfolio::schedule_history_rebuild;
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{
-    InsertPhotoBatch, InsertRealEstate, InsertRealEstateDocument, InsertRealEstateOneTimeCost,
-    InsurancePolicy, Loan, RealEstate, RealEstateDocument, RealEstateOneTimeCost, RealEstatePhoto,
-    RealEstatePhotoBatch, UpdatePhotoBatch,
+    AttachmentKind, InsertPhotoBatch, InsertRealEstate, InsertRealEstateDocument,
+    InsertRealEstateOneTimeCost, InsurancePolicy, Loan, RealEstate, RealEstateDocument,
+    RealEstateOneTimeCost, RealEstatePhoto, RealEstatePhotoBatch, UpdatePhotoBatch,
 };
+use crate::services::attachments;
 use crate::services::history_plan::{self, PropertyFacts};
 use crate::services::history_recalc::HistoryRecalc;
 use crate::services::real_estate as real_estate_service;
 use crate::services::real_estate_photos as photos_service;
 use crate::services::valuations::ValuationKind;
-use std::fs;
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
+
+fn data_dir(app: &AppHandle) -> Result<PathBuf> {
+    app.path()
+        .app_data_dir()
+        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))
+}
 
 /// Get all real estate
 #[tauri::command]
@@ -84,7 +90,7 @@ pub async fn update_real_estate(
     Ok(updated)
 }
 
-/// Delete real estate
+/// Delete real estate with everything attached to it
 #[tauri::command]
 pub async fn delete_real_estate(
     app: AppHandle,
@@ -92,18 +98,8 @@ pub async fn delete_real_estate(
     recalc: State<'_, HistoryRecalc>,
     id: String,
 ) -> Result<()> {
-    db.with_conn(|conn| {
-        // Delete documents first
-        conn.execute(
-            "DELETE FROM real_estate_documents WHERE real_estate_id = ?1",
-            [&id],
-        )?;
-        let changes = conn.execute("DELETE FROM real_estate WHERE id = ?1", [&id])?;
-        if changes == 0 {
-            return Err(AppError::NotFound("Real estate not found".into()));
-        }
-        Ok(())
-    })?;
+    let dir = data_dir(&app)?;
+    db.with_conn(|conn| real_estate_service::delete_property(conn, &dir, &id))?;
     schedule_history_rebuild(&app, &db, &recalc, vec![history_plan::all_days()]);
     Ok(())
 }
@@ -407,10 +403,10 @@ pub async fn create_photo_batch(
 }
 
 /// Add one photo to a batch. The webview sends the image bytes as the raw IPC body, so no copy of
-/// the photo is written to the temp dir, and the batch id in the `batch-id` header.
+/// the photo is written to the temp dir, and the batch id in the `batch-id` header. The photo goes
+/// into the encrypted attachments store.
 #[tauri::command]
 pub async fn add_photo_to_batch(
-    app_handle: tauri::AppHandle,
     db: State<'_, Database>,
     request: tauri::ipc::Request<'_>,
 ) -> Result<RealEstatePhoto> {
@@ -424,14 +420,10 @@ pub async fn add_photo_to_batch(
         .get("batch-id")
         .and_then(|v| v.to_str().ok())
         .ok_or_else(|| AppError::Internal("add_photo_to_batch expects a batch-id header".into()))?;
-    let app_data_dir = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
 
-    let real_estate_id = db.with_conn(|conn| photos_service::batch_property(conn, batch_id))?;
-    let stored = photos_service::store_photo(&app_data_dir, &real_estate_id, batch_id, bytes)?;
-    db.with_conn(|conn| photos_service::record_photo(conn, stored))
+    let prepared = photos_service::prepare_photo(bytes)?;
+    let now = chrono::Utc::now().timestamp();
+    db.with_conn(|conn| photos_service::record_photo(conn, batch_id, &prepared, now))
 }
 
 /// Update photo batch metadata
@@ -517,39 +509,8 @@ pub async fn delete_photo_batch(
     db: State<'_, Database>,
     batch_id: String,
 ) -> Result<()> {
-    // Get real_estate_id for directory cleanup
-    let real_estate_id: String = db.with_conn(|conn| {
-        conn.query_row(
-            "SELECT real_estate_id FROM real_estate_photo_batches WHERE id = ?1",
-            [&batch_id],
-            |row| row.get(0),
-        )
-        .map_err(|_| AppError::NotFound("Batch not found".into()))
-    })?;
-
-    // Delete from database (CASCADE will delete photos)
-    db.with_conn(|conn| {
-        conn.execute(
-            "DELETE FROM real_estate_photo_batches WHERE id = ?1",
-            [&batch_id],
-        )?;
-        Ok(())
-    })?;
-
-    // Delete directory
-    let app_data = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
-    let batch_dir = app_data
-        .join("real_estate_photos")
-        .join(&real_estate_id)
-        .join(&batch_id);
-    if batch_dir.exists() {
-        let _ = fs::remove_dir_all(batch_dir);
-    }
-
-    Ok(())
+    let dir = data_dir(&app_handle)?;
+    db.with_conn(|conn| attachments::delete_photo_batch(conn, &dir, &batch_id))
 }
 
 /// Delete a single photo from a batch
@@ -559,31 +520,8 @@ pub async fn delete_real_estate_photo(
     db: State<'_, Database>,
     photo_id: String,
 ) -> Result<()> {
-    // Get paths before deletion
-    let (file_path, thumb_path): (String, String) = db.with_conn(|conn| {
-        conn.query_row(
-            "SELECT file_path, thumbnail_path FROM real_estate_photos WHERE id = ?1",
-            [&photo_id],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .map_err(|_| AppError::NotFound("Photo not found".into()))
-    })?;
-
-    // Delete from database
-    db.with_conn(|conn| {
-        conn.execute("DELETE FROM real_estate_photos WHERE id = ?1", [&photo_id])?;
-        Ok(())
-    })?;
-
-    // Delete files
-    let app_data = app_handle
-        .path()
-        .app_data_dir()
-        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
-    let _ = fs::remove_file(app_data.join(&file_path));
-    let _ = fs::remove_file(app_data.join(&thumb_path));
-
-    Ok(())
+    let dir = data_dir(&app_handle)?;
+    db.with_conn(|conn| attachments::delete_photo(conn, &dir, &photo_id))
 }
 
 // ============================================================================
@@ -629,67 +567,31 @@ pub async fn get_real_estate_documents(
     })
 }
 
-/// Add a document to a real estate property
+/// Add a document to a real estate property. The file the user picked is stored in the encrypted
+/// attachments store.
 #[tauri::command]
 pub async fn add_real_estate_document(
-    app: tauri::AppHandle,
     db: State<'_, Database>,
     real_estate_id: String,
     file_path: String,
     data: InsertRealEstateDocument,
 ) -> Result<RealEstateDocument> {
-    use std::path::Path;
-
-    let id = Uuid::new_v4().to_string();
+    data.validate()?;
+    let file_type = data.file_type.as_deref().unwrap_or("other");
+    let doc = attachments::NewDocument {
+        name: &data.name,
+        description: data.description.as_deref(),
+        file_type,
+    };
     let now = chrono::Utc::now().timestamp();
-
-    // Get app data directory for storing documents
-    let app_data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
-    let documents_dir = app_data_dir
-        .join("real_estate_documents")
-        .join(&real_estate_id);
-
-    // Create documents directory if it doesn't exist
-    fs::create_dir_all(&documents_dir)
-        .map_err(|e| AppError::Internal(format!("Failed to create documents dir: {}", e)))?;
-
-    let source_path = Path::new(&file_path);
-    let file_size = fs::metadata(source_path).map(|m| m.len() as i64).ok();
-
-    // Copy file to app data directory, named by the id so the original name stays off the disk
-    let dest_path = documents_dir.join(crate::services::document_files::stored_file_name(
-        &id,
-        source_path,
-    ));
-    fs::copy(source_path, &dest_path)
-        .map_err(|e| AppError::Internal(format!("Failed to copy file: {}", e)))?;
-
-    let dest_path_str = dest_path.to_string_lossy().to_string();
-    let file_type = data.file_type.unwrap_or_else(|| "other".to_string());
-
     db.with_conn(|conn| {
-        conn.execute(
-            "INSERT INTO real_estate_documents (id, real_estate_id, name, description, file_path, file_type, file_size, uploaded_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            rusqlite::params![id, real_estate_id, data.name, data.description, dest_path_str, file_type, file_size, now],
-        )?;
-
-        let (mime_type, extension) =
-            crate::services::attachments::document_meta(Some(&dest_path_str), None, None);
-        Ok(RealEstateDocument {
-            id,
-            real_estate_id,
-            name: data.name,
-            description: data.description,
-            mime_type,
-            extension,
-            file_type,
-            file_size,
-            uploaded_at: now,
-        })
+        attachments::add_real_estate_document(
+            conn,
+            &real_estate_id,
+            std::path::Path::new(&file_path),
+            &doc,
+            now,
+        )
     })
 }
 
@@ -700,46 +602,10 @@ pub async fn delete_real_estate_document(
     db: State<'_, Database>,
     document_id: String,
 ) -> Result<()> {
-    // Get file path before deleting
-    let file_path: String = db.with_conn(|conn| {
-        conn.query_row(
-            "SELECT file_path FROM real_estate_documents WHERE id = ?1",
-            [&document_id],
-            |row| row.get(0),
-        )
-        .map_err(|_| AppError::NotFound("Document not found".into()))
-    })?;
-
-    // Delete from database
+    let dir = data_dir(&app)?;
     db.with_conn(|conn| {
-        let changes = conn.execute(
-            "DELETE FROM real_estate_documents WHERE id = ?1",
-            [&document_id],
-        )?;
-        if changes == 0 {
-            return Err(AppError::NotFound("Document not found".into()));
-        }
-        Ok(())
-    })?;
-
-    // The stored path can be stale (the data folder got a new name after an identifier change),
-    // so resolve it the way `open_real_estate_document` does. A missing file is not an error.
-    let target = app
-        .path()
-        .app_data_dir()
-        .ok()
-        .and_then(|dir| {
-            crate::services::document_files::resolve_document_path(
-                &dir,
-                "real_estate_documents",
-                &file_path,
-            )
-            .ok()
-        })
-        .unwrap_or_else(|| PathBuf::from(&file_path));
-    let _ = fs::remove_file(target);
-
-    Ok(())
+        attachments::delete_document(conn, &dir, AttachmentKind::RealEstateDocument, &document_id)
+    })
 }
 
 /// Open a real estate document with the system default application

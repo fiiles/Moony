@@ -182,6 +182,7 @@
     "paymentFrequencyInvalid": "Nieprawidłowa częstotliwość płatności",
     "paymentNonNegative": "Płatność nie może być ujemna",
     "endDateAfterStart": "Data zakończenia musi być po dacie początku",
+    "attachmentTooLarge": "Plik jest większy niż 100 MB.",
     "documentNameRequired": "Nazwa dokumentu jest wymagana",
     "nameTooLong": "Nazwa jest za długa",
     "accountNameTooLong": "Nazwa konta jest za długa",

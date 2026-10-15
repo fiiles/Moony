@@ -182,6 +182,7 @@
     "paymentFrequencyInvalid": "Ungültiges Zahlungsintervall",
     "paymentNonNegative": "Die Zahlung darf nicht negativ sein",
     "endDateAfterStart": "Das Enddatum muss nach dem Startdatum liegen",
+    "attachmentTooLarge": "Die Datei ist größer als 100 MB.",
     "documentNameRequired": "Dokumentname ist erforderlich",
     "nameTooLong": "Der Name ist zu lang",
     "accountNameTooLong": "Der Kontoname ist zu lang",

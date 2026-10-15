@@ -6,7 +6,6 @@ use crate::models::{
     InsertInsuranceDocument, InsertInsurancePolicy, InsuranceDocument, InsurancePolicy, RealEstate,
 };
 use tauri::{Manager, State};
-use uuid::Uuid;
 
 /// Get all insurance policies
 #[tauri::command]
@@ -70,25 +69,18 @@ pub async fn update_insurance(
     db.with_conn(|conn| crate::services::insurance::update_policy(conn, &id, &data))
 }
 
-/// Delete insurance policy
+/// Delete insurance policy with its documents
 #[tauri::command]
-pub async fn delete_insurance(db: State<'_, Database>, id: String) -> Result<()> {
-    db.with_conn(|conn| {
-        // Delete documents first
-        conn.execute(
-            "DELETE FROM insurance_documents WHERE insurance_id = ?1",
-            [&id],
-        )?;
-        conn.execute(
-            "DELETE FROM real_estate_insurances WHERE insurance_id = ?1",
-            [&id],
-        )?;
-        let changes = conn.execute("DELETE FROM insurance_policies WHERE id = ?1", [&id])?;
-        if changes == 0 {
-            return Err(AppError::NotFound("Insurance policy not found".into()));
-        }
-        Ok(())
-    })
+pub async fn delete_insurance(
+    app: tauri::AppHandle,
+    db: State<'_, Database>,
+    id: String,
+) -> Result<()> {
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
+    db.with_conn(|conn| crate::services::insurance::delete_policy(conn, &dir, &id))
 }
 
 /// Get single insurance policy by ID
@@ -168,69 +160,32 @@ pub async fn get_insurance_documents(
     })
 }
 
-/// Add a document to an insurance policy
+/// Add a document to an insurance policy. The file the user picked is stored in the encrypted
+/// attachments store.
 #[tauri::command]
 pub async fn add_insurance_document(
-    app: tauri::AppHandle,
     db: State<'_, Database>,
     insurance_id: String,
     file_path: String,
     data: InsertInsuranceDocument,
 ) -> Result<InsuranceDocument> {
-    use std::fs;
-    use std::path::Path;
-
     // Validate inputs at the trust boundary (before any field access)
     data.validate()?;
-
-    let id = Uuid::new_v4().to_string();
+    let file_type = data.file_type.as_deref().unwrap_or("other");
+    let doc = crate::services::attachments::NewDocument {
+        name: &data.name,
+        description: data.description.as_deref(),
+        file_type,
+    };
     let now = chrono::Utc::now().timestamp();
-
-    // Get app data directory for storing documents
-    let app_data_dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
-    let documents_dir = app_data_dir.join("insurance_documents").join(&insurance_id);
-
-    // Create documents directory if it doesn't exist
-    fs::create_dir_all(&documents_dir)
-        .map_err(|e| AppError::Internal(format!("Failed to create documents dir: {}", e)))?;
-
-    let source_path = Path::new(&file_path);
-    let file_size = fs::metadata(source_path).map(|m| m.len() as i64).ok();
-
-    // Copy file to app data directory, named by the id so the original name stays off the disk
-    let dest_path = documents_dir.join(crate::services::document_files::stored_file_name(
-        &id,
-        source_path,
-    ));
-    fs::copy(source_path, &dest_path)
-        .map_err(|e| AppError::Internal(format!("Failed to copy file: {}", e)))?;
-
-    let dest_path_str = dest_path.to_string_lossy().to_string();
-    let file_type = data.file_type.unwrap_or_else(|| "other".to_string());
-
     db.with_conn(|conn| {
-        conn.execute(
-            "INSERT INTO insurance_documents (id, insurance_id, name, description, file_path, file_type, file_size, uploaded_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            rusqlite::params![id, insurance_id, data.name, data.description, dest_path_str, file_type, file_size, now],
-        )?;
-
-        let (mime_type, extension) =
-            crate::services::attachments::document_meta(Some(&dest_path_str), None, None);
-        Ok(InsuranceDocument {
-            id,
-            insurance_id,
-            name: data.name,
-            description: data.description,
-            mime_type,
-            extension,
-            file_type,
-            file_size,
-            uploaded_at: now,
-        })
+        crate::services::attachments::add_insurance_document(
+            conn,
+            &insurance_id,
+            std::path::Path::new(&file_path),
+            &doc,
+            now,
+        )
     })
 }
 
@@ -241,48 +196,18 @@ pub async fn delete_insurance_document(
     db: State<'_, Database>,
     document_id: String,
 ) -> Result<()> {
-    use std::fs;
-
-    // Get file path before deleting
-    let file_path: String = db.with_conn(|conn| {
-        conn.query_row(
-            "SELECT file_path FROM insurance_documents WHERE id = ?1",
-            [&document_id],
-            |row| row.get(0),
-        )
-        .map_err(|_| AppError::NotFound("Document not found".into()))
-    })?;
-
-    // Delete from database
-    db.with_conn(|conn| {
-        let changes = conn.execute(
-            "DELETE FROM insurance_documents WHERE id = ?1",
-            [&document_id],
-        )?;
-        if changes == 0 {
-            return Err(AppError::NotFound("Document not found".into()));
-        }
-        Ok(())
-    })?;
-
-    // The stored path can be stale (the data folder got a new name after an identifier change),
-    // so resolve it the way `open_insurance_document` does. A missing file is not an error.
-    let target = app
+    let dir = app
         .path()
         .app_data_dir()
-        .ok()
-        .and_then(|dir| {
-            crate::services::document_files::resolve_document_path(
-                &dir,
-                "insurance_documents",
-                &file_path,
-            )
-            .ok()
-        })
-        .unwrap_or_else(|| std::path::PathBuf::from(&file_path));
-    let _ = fs::remove_file(target);
-
-    Ok(())
+        .map_err(|e| AppError::Internal(format!("Failed to get app data dir: {}", e)))?;
+    db.with_conn(|conn| {
+        crate::services::attachments::delete_document(
+            conn,
+            &dir,
+            crate::models::AttachmentKind::InsuranceDocument,
+            &document_id,
+        )
+    })
 }
 
 /// Open an insurance document with the system default application

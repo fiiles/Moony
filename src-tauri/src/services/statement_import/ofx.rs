@@ -4,7 +4,8 @@
 //! scanner of its own reads both versions into the same [`Node`] tree the CAMT parser walks,
 //! so the lookups (`at`, `text_at`) are the same. Header lines, the XML prolog and the
 //! Intuit extensions (QFX) are of no interest: the text before `<OFX` is dropped and unknown
-//! elements are never looked at. One `STMTRS` or `CCSTMTRS` is one [`Statement`].
+//! elements are never looked at. Leaves close implicitly, aggregates must be closed: a file that
+//! ends inside one is refused as truncated. One `STMTRS` or `CCSTMTRS` is one [`Statement`].
 
 use std::borrow::Cow;
 
@@ -28,6 +29,47 @@ const INVESTMENT_IGNORED: &str = "statementImport.investmentIgnored";
 
 /// Longest entity body (`nbsp`, `#x10FFFF`) looked for between `&` and `;`.
 const MAX_ENTITY_BYTES: usize = 12;
+
+/// Longest element name in the detail of "the file ends inside ...".
+const MAX_NAME_IN_DETAIL: usize = 40;
+
+/// The OFX elements that hold a value and never contain other elements. SGML needs no closing
+/// tag for them, so one without a value (`<BRANCHID>` and a line break) would otherwise stay
+/// open and swallow the elements after it. Any other element is read as an aggregate.
+const LEAVES: &[&str] = &[
+    "BANKID",
+    "BRANCHID",
+    "ACCTID",
+    "ACCTTYPE",
+    "ACCTKEY",
+    "TRNTYPE",
+    "DTPOSTED",
+    "DTUSER",
+    "DTAVAIL",
+    "TRNAMT",
+    "FITID",
+    "CORRECTFITID",
+    "CORRECTACTION",
+    "SRVRTID",
+    "CHECKNUM",
+    "REFNUM",
+    "SIC",
+    "PAYEEID",
+    "NAME",
+    "MEMO",
+    "CURSYM",
+    "CURRATE",
+    "CURDEF",
+    "BALAMT",
+    "DTASOF",
+    "DTSTART",
+    "DTEND",
+    "CODE",
+    "SEVERITY",
+    "DTSERVER",
+    "LANGUAGE",
+    "TRNUID",
+];
 
 /// The statements of one OFX/QFX file and what was left out of them.
 #[derive(Debug)]
@@ -194,7 +236,8 @@ fn day(text: &str) -> Option<i64> {
 
 /// Reads a whole document into its `OFX` element. Text before `<OFX` (the header lines or the
 /// XML prolog) is dropped. A document nested deeper than [`MAX_DEPTH`] or with more than
-/// [`MAX_NODES`] elements, or one that ends inside a tag, is `validation.statementMalformed`.
+/// [`MAX_NODES`] elements, one that ends inside a tag and one that ends inside an aggregate
+/// (a truncated file) is `validation.statementMalformed`.
 fn parse_tree(text: &str) -> Result<Node> {
     parse_tree_with_limits(text, MAX_DEPTH, MAX_NODES)
 }
@@ -204,16 +247,33 @@ fn parse_tree_with_limits(text: &str, max_depth: usize, max_nodes: usize) -> Res
     let mut rest = &text[start..];
     let mut tree = Tree::new(max_depth, max_nodes);
     while !rest.is_empty() {
-        rest = match rest.strip_prefix('<') {
-            Some(after_bracket) => tree.tag(after_bracket)?,
-            None => {
-                let end = rest.find('<').unwrap_or(rest.len());
-                tree.text(&decode_entities(&rest[..end]));
-                &rest[end..]
-            }
+        rest = if tag_starts_at(rest.as_bytes(), 0) {
+            tree.tag(&rest[1..])?
+        } else {
+            let end = text_end(rest);
+            tree.text(&decode_entities(&rest[..end]));
+            &rest[end..]
         };
     }
     tree.finish()
+}
+
+/// A `<` starts a tag only before a letter, `/`, `!` or `?`. Any other (`A < B`, `1<2`) is a
+/// character of the text.
+fn tag_starts_at(bytes: &[u8], at: usize) -> bool {
+    bytes.get(at) == Some(&b'<')
+        && bytes
+            .get(at + 1)
+            .is_some_and(|next| next.is_ascii_alphabetic() || matches!(next, b'/' | b'!' | b'?'))
+}
+
+/// Where the text at the start of `text` ends: at the next tag, else at the end.
+fn text_end(text: &str) -> usize {
+    let bytes = text.as_bytes();
+    text.match_indices('<')
+        .map(|(at, _)| at)
+        .find(|at| tag_starts_at(bytes, *at))
+        .unwrap_or(text.len())
 }
 
 /// Byte offset of the first `<OFX` that is the element (followed by `>`, `/` or white space),
@@ -337,9 +397,13 @@ impl Tree {
         }
     }
 
-    /// Ends the element on top when it holds a value (a leaf needs no closing tag).
+    /// Ends the element on top when it is a leaf, which needs no closing tag: one that holds a
+    /// value, or an empty one of the OFX elements that never contain others ([`LEAVES`]).
     fn close_leaf(&mut self) {
-        if self.stack.len() > 1 && self.stack.last().is_some_and(|top| !top.text.is_empty()) {
+        let leaf = |top: &Node| {
+            !top.text.is_empty() || (top.children.is_empty() && LEAVES.contains(&top.name.as_str()))
+        };
+        if self.stack.len() > 1 && self.stack.last().is_some_and(leaf) {
             self.pop();
         }
     }
@@ -355,10 +419,13 @@ impl Tree {
         }
     }
 
-    /// Closes whatever is still open and returns the `OFX` element.
+    /// Returns the `OFX` element. Leaves need no closing tag, aggregates do: a text that ends
+    /// inside one is a truncated file, which must not import what happens to precede the cut.
     fn finish(mut self) -> Result<Node> {
-        while self.stack.len() > 1 {
-            self.pop();
+        self.close_leaf();
+        if let Some(open) = self.stack.last().filter(|_| self.stack.len() > 1) {
+            let name: String = open.name.chars().take(MAX_NAME_IN_DETAIL).collect();
+            return Err(malformed(&format!("OFX ends inside <{name}>")));
         }
         let root = self.stack.pop().unwrap_or_default();
         root.children
@@ -472,6 +539,15 @@ mod tests {
     }
     fn entry(body: &str) -> Entry {
         entries(body).remove(0)
+    }
+    /// A bank statement with the given content and nothing else around it.
+    fn bare_statement(inner: &str) -> Statement {
+        parse(&format!(
+            "<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS>{inner}</STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>"
+        ))
+        .unwrap()
+        .statements
+        .remove(0)
     }
     fn amount_of(text: &str) -> (String, bool) {
         let e = entry(&format!("<DTPOSTED>20260105<TRNAMT>{text}"));
@@ -627,9 +703,115 @@ mod tests {
         assert!(root.at(&["A", "B"]).is_some());
         assert_eq!(root.text_at(&["C"]), Some("1"));
 
-        // an unclosed document is closed at the end of the text
-        let root = parse_tree("<OFX><A><B>1").unwrap();
-        assert_eq!(root.text_at(&["A", "B"]), Some("1"));
+        // a leaf at the end of the text needs no closing tag
+        let root = parse_tree("<OFX><A>1</A></OFX><B>2").unwrap();
+        assert_eq!(root.text_at(&["A"]), Some("1"));
+    }
+
+    #[test]
+    fn a_file_that_ends_inside_an_aggregate_is_refused() {
+        let ends_inside = |text: &str| detail(&parse_tree(text).unwrap_err());
+        assert_eq!(ends_inside("<OFX><A><B>1"), "OFX ends inside <A>");
+        assert_eq!(ends_inside("<OFX><A>"), "OFX ends inside <A>");
+        assert_eq!(ends_inside("<OFX><A><B>1</A>"), "OFX ends inside <OFX>");
+        // a leaf holding a value is not what the text ends inside
+        assert_eq!(ends_inside("<OFX><A><B>1</B><C>2"), "OFX ends inside <A>");
+        // the name comes from the file and is cut
+        let long = ends_inside(&format!("<OFX><{}>", "n".repeat(10_000)));
+        assert!(long.starts_with("OFX ends inside <NNN"), "{long}");
+        assert!(long.chars().count() <= 64, "{long}");
+
+        // the SGML statement cut in the middle of a transaction, and without its last tag
+        let text = fixture("checking-sgml.ofx");
+        assert!(parse(&text).is_ok());
+        let cut = text.find("<FITID>F2").unwrap();
+        assert_eq!(
+            detail(&parse(&text[..cut]).unwrap_err()),
+            "OFX ends inside <STMTTRN>"
+        );
+        let after_list = text.find("</BANKTRANLIST>").unwrap();
+        assert_eq!(
+            detail(&parse(&text[..after_list]).unwrap_err()),
+            "OFX ends inside <BANKTRANLIST>"
+        );
+        let without_end = text.replace("</OFX>", "");
+        assert_eq!(
+            detail(&parse(&without_end).unwrap_err()),
+            "OFX ends inside <OFX>"
+        );
+    }
+
+    #[test]
+    fn empty_and_blank_leaves_do_not_swallow_their_siblings() {
+        // an empty `<BRANCHID>` between the bank code and the account number
+        let account = bare_statement(
+            "<BANKACCTFROM><BANKID>0000<BRANCHID><ACCTID>123456789<ACCTTYPE>CHECKING</BANKACCTFROM>",
+        )
+        .account;
+        assert_eq!(
+            (account.identifier.as_deref(), account.bank_code.as_deref()),
+            (Some("123456789"), Some("0000"))
+        );
+        // a blank one, with a line break before the next tag
+        let account = bare_statement(
+            "<BANKACCTFROM><BANKID>0000<BRANCHID>   \r\n<ACCTID>123456789</BANKACCTFROM>",
+        )
+        .account;
+        assert_eq!(account.identifier.as_deref(), Some("123456789"));
+        // the same through the tree
+        let root = parse_tree("<OFX><A><BRANCHID><ACCTID>1</A></OFX>").unwrap();
+        assert!(root.at(&["A", "BRANCHID"]).is_some());
+        assert_eq!(root.text_at(&["A", "ACCTID"]), Some("1"));
+        assert!(root.at(&["A", "BRANCHID", "ACCTID"]).is_none());
+
+        // an empty check number before the payee, a memo after an empty or blank name
+        let e = entry("<DTPOSTED>20260105<TRNAMT>1<CHECKNUM><NAME>Shop<MEMO>Note");
+        assert_eq!(
+            (e.counterparty_name.as_deref(), e.description.as_deref()),
+            (Some("Shop"), Some("Note"))
+        );
+        let e = entry("<DTPOSTED>20260105<TRNAMT>1<NAME><MEMO>Note");
+        assert_eq!(
+            (e.counterparty_name.as_deref(), e.description.as_deref()),
+            (None, Some("Note"))
+        );
+        let e = entry("<DTPOSTED>20260105<TRNAMT>1<NAME>   \r\n<MEMO>Note<FITID>X");
+        assert_eq!(
+            (
+                e.counterparty_name.as_deref(),
+                e.description.as_deref(),
+                e.bank_id.as_deref()
+            ),
+            (None, Some("Note"), Some("X"))
+        );
+        // an empty value in the middle of the fields does not hide the amount that follows
+        let e = entry("<DTPOSTED>20260105<FITID><TRNAMT>-7<MEMO>");
+        assert_eq!(
+            (e.amount.as_str(), e.is_credit, e.bank_id),
+            ("7", false, None)
+        );
+        // explicit closing tags of empty leaves are as good
+        let e = entry("<DTPOSTED>20260105<TRNAMT>1<NAME></NAME><MEMO>Note</MEMO>");
+        assert_eq!(e.description.as_deref(), Some("Note"));
+    }
+
+    #[test]
+    fn a_less_than_sign_that_starts_no_tag_is_text() {
+        let e = entry("<DTPOSTED>20260105<TRNAMT>1<NAME>A < B<MEMO>x");
+        assert_eq!(
+            (e.counterparty_name.as_deref(), e.description.as_deref()),
+            (Some("A < B"), Some("x"))
+        );
+        let e = entry("<DTPOSTED>20260105<TRNAMT>1<NAME>1<2 and 3<=4 <é<MEMO>x");
+        assert_eq!(e.counterparty_name.as_deref(), Some("1<2 and 3<=4 <é"));
+        let e = entry("<DTPOSTED>20260105<TRNAMT>1<NAME>x<<MEMO>y");
+        assert_eq!(
+            (e.counterparty_name.as_deref(), e.description.as_deref()),
+            (Some("x<"), Some("y"))
+        );
+        // at the very end of the text
+        let root = parse_tree("<OFX><A>1 <</A></OFX>").unwrap();
+        assert_eq!(root.text_at(&["A"]), Some("1 <"));
     }
 
     #[test]
@@ -661,20 +843,17 @@ mod tests {
         assert!(root.at(&["C"]).is_some());
         assert_eq!(root.text_at(&["D"]), Some("2"));
         // unterminated constructs are damage, not data
-        for broken in [
-            "<OFX><A>1<",
-            "<OFX><A",
-            "<OFX><!-- x",
-            "<OFX><![CDATA[x",
-            "<OFX><A>1</",
-        ] {
+        for broken in ["<OFX><A", "<OFX><!-- x", "<OFX><![CDATA[x", "<OFX><A>1</"] {
             assert_eq!(detail(&parse_tree(broken).unwrap_err()), "tag", "{broken}");
         }
     }
 
     #[test]
     fn absurd_nesting_and_size_are_refused() {
-        let deep = format!("<OFX>{}", "<a>".repeat(10_000));
+        // the deep text must be over the cap, whatever the XML tree's caps become
+        const LEVELS: usize = 10_000;
+        const _: () = assert!(MAX_DEPTH < LEVELS);
+        let deep = format!("<OFX>{}", "<a>".repeat(LEVELS));
         assert_eq!(detail(&parse_tree(&deep).unwrap_err()), "A");
         let tree = "<OFX><a><b><c>y</c></b></a><d/></OFX>"; // OFX a b c d: 5 elements, 4 deep
         assert!(parse_tree_with_limits(tree, 4, 5).is_ok());
@@ -691,8 +870,6 @@ mod tests {
         let flat = format!("<OFX>{}</OFX>", "<e/>".repeat(100));
         assert!(parse_tree_with_limits(&flat, 128, 101).is_ok());
         assert!(parse_tree_with_limits(&flat, 128, 100).is_err());
-        assert_eq!(MAX_NODES, 2_000_000);
-        assert_eq!(MAX_DEPTH, 128);
     }
 
     #[test]
@@ -780,14 +957,7 @@ mod tests {
 
     #[test]
     fn statement_level_fields_are_optional() {
-        let bare = |inner: &str| {
-            parse(&format!(
-                "<OFX><BANKMSGSRSV1><STMTTRNRS><STMTRS>{inner}</STMTRS></STMTTRNRS></BANKMSGSRSV1></OFX>"
-            ))
-            .unwrap()
-            .statements
-            .remove(0)
-        };
+        let bare = bare_statement;
         let empty = bare("");
         assert_eq!(empty.account.identifier, None);
         assert_eq!(

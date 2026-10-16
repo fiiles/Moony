@@ -75,6 +75,8 @@ interface OnboardingWizardProps {
   onFinished: () => void;
   /** The live miniature beside (desktop) or below the steps; the phone leaves it out (spec §8.2). */
   preview?: boolean;
+  /** Phone: the recovery-key actions are 48 pt buttons (`RecoveryKeyBox touch`); the rest stays as is. */
+  touch?: boolean;
 }
 
 /**
@@ -103,7 +105,12 @@ function StepHead({ title, lead }: { title: string; lead: string }) {
   );
 }
 
-export function OnboardingWizard({ language, onFinished, preview = true }: OnboardingWizardProps) {
+export function OnboardingWizard({
+  language,
+  onFinished,
+  preview = true,
+  touch = false,
+}: OnboardingWizardProps) {
   const { t } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
@@ -518,7 +525,7 @@ export function OnboardingWizard({ language, onFinished, preview = true }: Onboa
                 title={t('onboarding.recovery.title')}
                 lead={t('onboarding.recovery.subtitle')}
               />
-              <RecoveryKeyBox recoveryKey={recoveryKey} />
+              <RecoveryKeyBox recoveryKey={recoveryKey} touch={touch} />
               <div className="mt-[18px] space-y-1.5">
                 <Label>
                   {t('onboarding.recovery.verifyLabel', {

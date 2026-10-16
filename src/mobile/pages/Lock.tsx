@@ -155,6 +155,7 @@ export default function Lock() {
           <OnboardingWizard
             language={selectedLanguage}
             preview={false}
+            touch
             onFinished={() => {
               setWizardDone(true);
               setLocation(routes.overview);
@@ -449,7 +450,7 @@ function NewKeyScreen({ recoveryKey, onDone }: { recoveryKey: string; onDone: ()
         {/* The whole row is the label, 44 pt tall at least, so one line of text is still easy to hit. */}
         <label className="my-3 flex min-h-11 cursor-pointer items-center gap-3 py-1 text-m-body text-ink-2">
           <Checkbox
-            className="mt-0.5 size-5"
+            className="size-5"
             checked={keySaved}
             onCheckedChange={(v) => setKeySaved(v === true)}
           />

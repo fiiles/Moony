@@ -9,7 +9,9 @@ import { utcDayFloor } from '@/utils/chart-axis';
 import { Button } from '@/components/ui/button';
 import { AmountField } from '@/mobile/components/AmountField';
 import { Sheet } from '@/mobile/components/Sheet';
+import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import { signedAmountInput } from '@/mobile/lib/amount-input';
+import { maskMoney } from '@/mobile/lib/hide-amounts';
 
 interface RecordBalancesSheetProps {
   open: boolean;
@@ -27,6 +29,8 @@ export function RecordBalancesSheet({ open, onOpenChange, accountIds }: RecordBa
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
+  const { hidden } = useHideAmounts();
+  const hint = (formatted: string) => (hidden ? maskMoney(formatted) : formatted);
   const { accounts: all } = useBankAccounts();
   const record = useRecordBalances();
   const [values, setValues] = useState<Record<string, string>>({});
@@ -126,10 +130,13 @@ export function RecordBalancesSheet({ open, onOpenChange, accountIds }: RecordBa
               label={p.account.name}
               unit={currency}
               value={p.text}
-              placeholder={fmt.number(Number(p.account.balance), {
-                minimumFractionDigits: decimals,
-                maximumFractionDigits: decimals,
-              })}
+              // The last balance is a hint, not an input: masked with the other amounts
+              placeholder={hint(
+                fmt.number(Number(p.account.balance), {
+                  minimumFractionDigits: decimals,
+                  maximumFractionDigits: decimals,
+                })
+              )}
               error={invalid(p) ? tc('validation.invalidAmount') : undefined}
               negative={p.negative}
               negativeLabel={t('recordBalances.negative')}

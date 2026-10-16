@@ -23,6 +23,7 @@ import type {
   ExportSummary,
   IntegrityReport,
   BiometricStatus,
+  BiometryType,
   UserProfile,
   SavingsAccountZone,
   StockInvestment,
@@ -243,6 +244,26 @@ export const biometricApi = {
   disable: () => tauriInvoke<void>('disable_biometric_unlock'),
 
   unlock: (reason: string) => tauriInvoke<UserProfile>('unlock_with_biometrics', { reason }),
+};
+
+/** `plugin:moony-keychain|status`: whether a biometry-protected secret can be stored right now. */
+export interface KeychainStatus {
+  available: boolean;
+  biometryType: BiometryType;
+}
+
+/**
+ * The two commands of the in-repo keychain plugin (`src-tauri/plugins/moony-keychain`) the webview
+ * may call; its `guest-js/index.ts` documents them but sits outside the app's build. `store`,
+ * `retrieve` and `remove` carry the database key and stay on the Rust side. Phones only: on the
+ * desktop shell the commands do not exist and the calls reject.
+ */
+export const keychainApi = {
+  status: () => tauriInvoke<KeychainStatus>('plugin:moony-keychain|status'),
+
+  /** Blur the app in the app switcher (on by default in the plugin). */
+  setPrivacyScreen: (enabled: boolean) =>
+    tauriInvoke<void>('plugin:moony-keychain|set_privacy_screen', { enabled }),
 };
 
 // ============================================================================

@@ -9,6 +9,8 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { I18nProvider } from '@/i18n/I18nProvider';
 import { SyncProvider } from '@/hooks/SyncProvider';
 import { MobileShell } from '@/mobile/shell/MobileShell';
+import { HideAmountsProvider } from '@/mobile/hooks/use-hide-amounts';
+import { useBackgroundLock } from '@/mobile/hooks/use-background-lock';
 import { useVisibleHeight } from '@/mobile/lib/use-visible-height';
 
 /**
@@ -22,9 +24,16 @@ const TOAST_OFFSET = {
   right: 16,
 };
 
+/** The lock when the app returns from the background, and the privacy screen; renders nothing. */
+function BackgroundLock() {
+  useBackgroundLock();
+  return null;
+}
+
 /**
  * Root of the phone shell: the provider stack of `App.tsx` without the desktop-only updater,
- * around `MobileShell` (tab bar, nav bar, the four tab roots).
+ * around `MobileShell` (tab bar, nav bar, the four tab roots). The hide-amounts state sits above
+ * the shell, so every screen and sheet shares it.
  */
 export default function MobileApp() {
   useVisibleHeight();
@@ -45,9 +54,12 @@ export default function MobileApp() {
           <CurrencyProvider>
             <SyncProvider>
               <TooltipProvider delayDuration={200}>
-                <ErrorBoundary>
-                  <MobileShell />
-                </ErrorBoundary>
+                <HideAmountsProvider>
+                  <BackgroundLock />
+                  <ErrorBoundary>
+                    <MobileShell />
+                  </ErrorBoundary>
+                </HideAmountsProvider>
                 <Toaster
                   position="bottom-center"
                   offset={TOAST_OFFSET}

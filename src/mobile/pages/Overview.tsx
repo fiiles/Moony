@@ -4,6 +4,7 @@ import { Link, useLocation } from 'wouter';
 import {
   Bitcoin,
   Eye,
+  EyeOff,
   Landmark,
   TrendingDown,
   TrendingUp,
@@ -18,6 +19,7 @@ import { useMilestones } from '@/hooks/use-milestones';
 import { ASSET_CLASSES, useNetWorthOverview } from '@/hooks/use-net-worth-overview';
 import { useNetWorthJumpTip } from '@/hooks/use-net-worth-jump-tip';
 import { useRecentMoves, type MoveKind, type RecentMove } from '@/hooks/use-recent-moves';
+import type { MoneyOptions } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { splitMilestones } from '@/utils/milestones';
@@ -30,9 +32,12 @@ import { AgendaRow } from '@/mobile/components/AgendaRow';
 import { AllocationRing } from '@/mobile/components/AllocationRing';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
 import { Hero } from '@/mobile/components/Hero';
+import { Money } from '@/mobile/components/Money';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { UpkeepCard } from '@/mobile/components/UpkeepCard';
+import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
+import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { initials } from '@/mobile/lib/initials';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
@@ -44,6 +49,9 @@ const AGENDA_ROWS = 3;
 const MOVES = 5;
 /** From a million on, a stat shows the compact amount ("6,78 mil. Kč") so a third holds it. */
 const COMPACT_FROM = 1_000_000;
+/** Whole amounts, and whole amounts with their sign ("+ 86 420 Kč"). */
+const WHOLE: MoneyOptions = { decimals: 0 };
+const SIGNED_WHOLE: MoneyOptions = { signed: true, decimals: 0 };
 
 /**
  * Přehled tab root (spec §8.3, prototype frame 02): the greeting, Údržba (only while something is
@@ -56,6 +64,9 @@ export default function Overview() {
   const { t: tc } = useTranslation('common');
   const { user } = useAuth();
   const fmt = useFormat();
+  const { hidden, toggle: toggleHidden } = useHideAmounts();
+  // Money as text (the hero and the stats size themselves to it); `<Money>` where an element will do
+  const moneyText = useMoneyText();
   const [period, setPeriod] = useState<ChartPeriod>('30D');
 
   const greeting = useGreeting();
@@ -64,15 +75,16 @@ export default function Overview() {
   });
   const overview = useNetWorthOverview(period);
   const { reportCurrency, display, unknown, hasHistory, shortHistoryBase } = overview;
-  const jumpTip = useNetWorthJumpTip(reportCurrency);
+  const jumpTip = useNetWorthJumpTip(reportCurrency, moneyText);
 
-  const money = (value: number) => fmt.money(value, reportCurrency, { decimals: 0 });
-  const signedMoney = (value: number) =>
-    fmt.money(value, reportCurrency, { signed: true, decimals: 0 });
+  const money = (value: number) => moneyText(value, reportCurrency, WHOLE);
+  const signedMoney = (value: number) => (
+    <Money value={value} currency={reportCurrency} options={SIGNED_WHOLE} />
+  );
   const statMoney = (value: number, isUnknown: boolean) => {
     if (isUnknown) return '—';
     return Math.abs(value) >= COMPACT_FROM
-      ? fmt.money(value, reportCurrency, { compact: true, decimals: 2 })
+      ? moneyText(value, reportCurrency, { compact: true, decimals: 2 })
       : money(value);
   };
 
@@ -128,7 +140,7 @@ export default function Overview() {
       overview.liabilitiesDelta,
       t,
       td,
-      fmt,
+      moneyText,
     ]
   );
 
@@ -140,9 +152,16 @@ export default function Overview() {
       large
       subtitle={asOf}
       leading={
-        // Task 1.9 wires the hide-amounts eye; the slot holds its place until then.
-        <NavIconButton aria-label={t('overview.hideAmounts')}>
-          <Eye strokeWidth={1.75} aria-hidden />
+        // The one eye of the app (spec D6): the icon is the state, the name is what a tap does
+        <NavIconButton
+          aria-label={hidden ? t('overview.showAmounts') : t('overview.hideAmounts')}
+          onClick={toggleHidden}
+        >
+          {hidden ? (
+            <EyeOff strokeWidth={1.75} aria-hidden />
+          ) : (
+            <Eye strokeWidth={1.75} aria-hidden />
+          )}
         </NavIconButton>
       }
       trailing={
@@ -184,7 +203,11 @@ export default function Overview() {
               hasHistory && !unknown.netWorth
                 ? {
                     ratio: overview.netWorthPct,
-                    text: `${signedMoney(overview.netWorthDelta)} ${changeLabel}`,
+                    text: (
+                      <>
+                        {signedMoney(overview.netWorthDelta)} {changeLabel}
+                      </>
+                    ),
                   }
                 : undefined
             }
@@ -310,6 +333,7 @@ function RecentMovesSection() {
 function MoveRows({ moves }: { moves: RecentMove[] }) {
   const { t } = useTranslation('dashboard');
   const fmt = useFormat();
+  const moneyText = useMoneyText();
   const { categories } = useCategories();
   const categoryName = useCategoryName();
   const today = utcDayFloor(Date.now() / 1000);
@@ -356,6 +380,7 @@ function MoveRows({ moves }: { moves: RecentMove[] }) {
                 amount={move.amount}
                 currency={move.currency}
                 pending={!ready}
+                format={moneyText}
               />
             }
             valueTone={move.kind === 'bankIn' ? 'gain' : undefined}

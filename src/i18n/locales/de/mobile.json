@@ -19,6 +19,7 @@
   },
   "overview": {
     "hideAmounts": "Beträge ausblenden",
+    "showAmounts": "Beträge einblenden",
     "showAll": "Alle anzeigen",
     "change": {
       "30D": "in 30 Tagen",

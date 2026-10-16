@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { Milestone } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
+import type { Formatters } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import { useCurrency } from '@/lib/currency';
 import { utcDayFloor } from '@/utils/chart-axis';
@@ -8,9 +9,11 @@ import { formatNativePrice } from '@/utils/stock-monitor';
 
 /**
  * The sub-line of a milestone row: what happens; the date chip already says when. Shared by the
- * desktop agenda and upkeep rows and the phone's agenda row.
+ * desktop agenda and upkeep rows and the phone's agenda row. `formatMoney` replaces `fmt.money`
+ * for the amounts of a payment, a coupon or a maturity (the phone passes its masking formatter
+ * while amounts are hidden).
  */
-export function useMilestoneSubLine() {
+export function useMilestoneSubLine(formatMoney?: Formatters['money']) {
   const { t } = useTranslation('milestones');
   const fmt = useFormat();
   const { currencyCode } = useCurrency();
@@ -23,8 +26,9 @@ export function useMilestoneSubLine() {
       ? fmt.day(d, { day: 'numeric', month: 'numeric' })
       : fmt.day(d);
   };
+  const formatAmount = formatMoney ?? fmt.money;
   const money = (m: Milestone) =>
-    m.amount === null ? '' : fmt.money(Number(m.amount), recordCurrency(m.currency));
+    m.amount === null ? '' : formatAmount(Number(m.amount), recordCurrency(m.currency));
   const price = (m: Milestone, value: string | null) =>
     value === null ? '' : formatNativePrice(Number(value), m.currency, fmt.locale, currencyCode);
 

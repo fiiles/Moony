@@ -36,6 +36,15 @@ export function EnableBiometricsSheet() {
   const { appStatus, unlockMutation, lockMutation } = useAuth();
   const [asked, setAsked] = useState(() => wasEnrolmentAsked(storage()));
 
+  // The flag is read when a password unlock is submitted, not only at mount: a clear since then
+  // (biometrics invalidated, or a new account on this phone) offers the sheet again at once.
+  const unlockEvent = unlockMutation.submittedAt;
+  const [readAt, setReadAt] = useState(unlockEvent);
+  if (readAt !== unlockEvent) {
+    setReadAt(unlockEvent);
+    setAsked(wasEnrolmentAsked(storage()));
+  }
+
   // Unlocked with the password since the last lock: a newer unlock submission than the last lock.
   const passwordUnlocked =
     appStatus === 'unlocked' &&

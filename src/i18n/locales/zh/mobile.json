@@ -19,6 +19,7 @@
   },
   "overview": {
     "hideAmounts": "隐藏金额",
+    "showAmounts": "显示金额",
     "showAll": "显示全部",
     "change": {
       "30D": "30 天内",

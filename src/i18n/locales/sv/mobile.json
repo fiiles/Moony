@@ -19,6 +19,7 @@
   },
   "overview": {
     "hideAmounts": "Dölj belopp",
+    "showAmounts": "Visa belopp",
     "showAll": "Visa alla",
     "change": {
       "30D": "på 30 dagar",

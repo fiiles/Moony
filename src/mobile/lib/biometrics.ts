@@ -118,3 +118,27 @@ export function biometricFailure(errorKey: string | undefined): BiometricFailure
       return 'other';
   }
 }
+
+/**
+ * Where the message under the primary comes from after a failed attempt: the backend's own words
+ * for `invalidated` / `failed`, the generic `auth.biometricFailed` for an auth error that carries
+ * no key (`Auth("No user profile found")`: the screen must never fall back to the password form
+ * in silence), and none for a dismissed prompt or an error the provider toasts.
+ */
+export type BiometricNotice = 'backend' | 'generic' | null;
+
+export function biometricNotice(failure: BiometricFailure, authError: boolean): BiometricNotice {
+  if (failure === 'invalidated' || failure === 'failed') return 'backend';
+  if (failure === 'other' && authError) return 'generic';
+  return null;
+}
+
+/**
+ * The lock screen opens the system prompt by itself once per lock event, not once per mount: the
+ * lock page can mount again during the same lock (Android back from `/auth` pops into a protected
+ * route, which redirects back), and a cancelled prompt must not come back with it. A lock event is
+ * the lock mutation's `submittedAt` (0 for the first lock of a cold start, which no lock caused).
+ */
+export function shouldAutoPrompt(lockEvent: number, lastPrompted: number | null): boolean {
+  return lastPrompted !== lockEvent;
+}

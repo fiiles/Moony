@@ -19,6 +19,7 @@
   },
   "overview": {
     "hideAmounts": "Skrýt částky",
+    "showAmounts": "Zobrazit částky",
     "showAll": "Zobrazit vše",
     "change": {
       "30D": "za 30 dní",

@@ -19,6 +19,7 @@
   },
   "overview": {
     "hideAmounts": "Hide amounts",
+    "showAmounts": "Show amounts",
     "showAll": "Show all",
     "change": {
       "30D": "over 30 days",

@@ -21,6 +21,7 @@ import {
   isUrgent,
   relativeLabel,
 } from '@/utils/milestones';
+import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { EntityRow } from './EntityRow';
 
 /** Width of the date chip (prototype `.dchip`). */
@@ -36,7 +37,8 @@ const DATE_CHIP = 54;
 export function AgendaRow({ m }: { m: Milestone }) {
   const { t } = useTranslation('milestones');
   const fmt = useFormat();
-  const subLine = useMilestoneSubLine();
+  // The sub-line names a payment, a coupon or a maturity amount: masked with the rest
+  const subLine = useMilestoneSubLine(useMoneyText());
   // One instance for the swipes and the menu items (it keeps the muted kinds observed).
   const actions = useMilestoneActions();
   const { hide, remindLater } = actions;

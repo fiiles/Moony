@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
-import type { MoneyOptions } from '@/lib/format';
+import type { Formatters, MoneyOptions } from '@/lib/format';
 import { cn } from '@/lib/utils';
 
 interface ConvertedMoneyProps {
@@ -19,6 +19,8 @@ interface ConvertedMoneyProps {
   pending?: boolean;
   /** Text before the amount (a sign), styled with it. */
   prefix?: string;
+  /** Replaces `fmt.money` (the phone passes its masking formatter while amounts are hidden). */
+  format?: Formatters['money'];
   className?: string;
 }
 
@@ -34,20 +36,22 @@ export function ConvertedMoney({
   options = { decimals: 0 },
   pending = false,
   prefix = '',
+  format,
   className,
 }: ConvertedMoneyProps) {
   const { t } = useTranslation('common');
   const { currencyCode, fxReady } = useCurrency();
   const fmt = useFormat();
+  const money = format ?? fmt.money;
   if (value !== null) {
     return (
       <span className={className}>
         {prefix}
-        {fmt.money(value, currencyCode, options)}
+        {money(value, currencyCode, options)}
       </span>
     );
   }
-  const native = `${prefix}${fmt.money(amount, currency, options)}`;
+  const native = `${prefix}${money(amount, currency, options)}`;
   // A null while the quotes load is pending, not missing
   if (pending || !fxReady) return <span className={className}>{native}</span>;
   return (

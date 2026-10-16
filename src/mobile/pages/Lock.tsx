@@ -7,17 +7,12 @@
  * Credential failures show inline under the field; the provider toasts everything else.
  *
  * With biometric unlock switched on, "Odemknout obličejem" comes first and the system prompt opens
- * by itself once; "Použít heslo" shows the password form. A key the keychain can no longer read
- * falls back to the password with the reason under the button, never a loop.
+ * by itself once per lock (once the app is visible, so a lock at the moment the app returns from
+ * the background still gets a prompt that is not cancelled by the transition); "Použít heslo"
+ * shows the password form. A key the keychain can no longer read falls back to the password with
+ * the reason under the button, never a loop.
  */
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type MutableRefObject,
-  type ReactNode,
-} from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { useLocation } from 'wouter';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
@@ -33,6 +28,7 @@ import { isAuthApiError } from '@/lib/api-error';
 import { queryClient } from '@/lib/queryClient';
 import { biometricApi } from '@/lib/tauri-api';
 import { cn } from '@/lib/utils';
+import { deviceStorage } from '@/utils/device-storage';
 import { isSupportedLanguage, type SupportedLanguage } from '@/i18n/index';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -57,13 +53,23 @@ import {
   BIOMETRIC_STATUS_KEY,
   biometricCopy,
   biometricFailure,
+  biometricNotice,
   canUnlockWithBiometrics,
+  clearEnrolmentAsked,
+  shouldAutoPrompt,
 } from '@/mobile/lib/biometrics';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 
 type Panel = 'unlock' | 'recover';
+
+/**
+ * The lock event (`lockMutation.submittedAt`) the system prompt was last opened for. Module-level,
+ * so a lock page that mounts again during the same lock (Android back from `/auth` pops into a
+ * protected route, which redirects back) does not prompt again, even after a cancel.
+ */
+let promptedLockEvent: number | null = null;
 
 function readStorage(key: string): string | null {
   try {
@@ -104,9 +110,6 @@ export default function Lock() {
   const { i18n } = useTranslation('auth');
   const { updateProfile } = useSettingsMutations();
   const [panel, setPanel] = useState<Panel>('unlock');
-  // The biometric prompt opens by itself once per lock screen, not again after the recovery
-  // panel or a cancel.
-  const autoPrompted = useRef(false);
 
   // First-run wizard: once `needs_setup` has been seen it stays mounted until it reports
   // completion (its last steps run after the account exists).
@@ -177,7 +180,6 @@ export default function Lock() {
       language={selectedLanguage}
       onLanguageChange={handleLanguageChange}
       onForgot={() => setPanel('recover')}
-      autoPrompted={autoPrompted}
     />
   );
 }
@@ -186,15 +188,14 @@ function UnlockScreen({
   language,
   onLanguageChange,
   onForgot,
-  autoPrompted,
 }: {
   language: SupportedLanguage;
   onLanguageChange: (language: SupportedLanguage) => void;
   onForgot: () => void;
-  autoPrompted: MutableRefObject<boolean>;
 }) {
-  const { unlockMutation, unlockWithBiometricsMutation } = useAuth();
+  const { unlockMutation, unlockWithBiometricsMutation, lockMutation } = useAuth();
   const { t } = useTranslation('auth');
+  const { t: tc } = useTranslation('common');
   const { t: tm } = useTranslation('mobile');
   const fmt = useFormat();
 
@@ -225,15 +226,21 @@ function UnlockScreen({
         const failure = biometricFailure(isAuthApiError(error) ? error.key : undefined);
         // A dismissed prompt changes nothing, and nothing prompts again by itself.
         if (failure === 'cancelled') return;
-        if (failure !== 'other') setBiometricMessage(error.message);
+        // The reason under the button: the backend's words, or a generic one for an auth error
+        // without a key (the password form never appears in silence)
+        const notice = biometricNotice(failure, isAuthApiError(error));
+        if (notice === 'backend') setBiometricMessage(error.message);
+        if (notice === 'generic') setBiometricMessage(tc('auth.biometricFailed'));
         setPasswordChosen(true);
-        // Invalidated: the backend switched biometrics off; the screen follows.
+        // Invalidated: the backend switched biometrics off; the screen follows, and the next
+        // password unlock offers to turn them on again ("zapněte ji znovu").
         if (failure === 'invalidated') {
+          clearEnrolmentAsked(deviceStorage() ?? null);
           void queryClient.invalidateQueries({ queryKey: BIOMETRIC_STATUS_KEY });
         }
       },
     });
-  }, [unlockWithBiometrics, tm]);
+  }, [unlockWithBiometrics, tm, tc]);
   /** A tap on "Odemknout obličejem": the last message goes, the prompt opens. */
   const tapBiometrics = () => {
     if (biometricPending) return;
@@ -242,12 +249,28 @@ function UnlockScreen({
     promptBiometrics();
   };
 
-  // The prompt opens by itself once, as soon as biometrics turn out to be on.
+  // The prompt opens by itself once per lock event, as soon as biometrics turn out to be on and
+  // the app is visible: a prompt opened while the app is still coming back from the background
+  // would be dismissed by the transition, and by the rule above nothing would prompt again.
+  const lockEvent = lockMutation.submittedAt;
   useEffect(() => {
-    if (!biometricReady || autoPrompted.current) return;
-    autoPrompted.current = true;
-    promptBiometrics();
-  }, [biometricReady, autoPrompted, promptBiometrics]);
+    if (!biometricReady || !shouldAutoPrompt(lockEvent, promptedLockEvent)) return;
+    const prompt = () => {
+      promptedLockEvent = lockEvent;
+      promptBiometrics();
+    };
+    if (document.visibilityState === 'visible') {
+      prompt();
+      return;
+    }
+    const onVisible = () => {
+      if (document.visibilityState !== 'visible') return;
+      document.removeEventListener('visibilitychange', onVisible);
+      prompt();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => document.removeEventListener('visibilitychange', onVisible);
+  }, [biometricReady, lockEvent, promptBiometrics]);
 
   const submit = (data: z.infer<typeof unlockSchema>) => {
     if (pending || biometricPending) return;

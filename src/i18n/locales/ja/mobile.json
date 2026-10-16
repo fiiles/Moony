@@ -19,6 +19,7 @@
   },
   "overview": {
     "hideAmounts": "金額を隠す",
+    "showAmounts": "金額を表示",
     "showAll": "すべて表示",
     "change": {
       "30D": "30日間",

@@ -20,7 +20,8 @@ interface HeroProps<E extends ChartEvent> {
   label: string;
   /** Today's value; `null` when it could not be valued (shown as "—"). */
   value: number | null;
-  formatValue: (value: number) => ReactNode;
+  /** The shown text of a value (masked while amounts are hidden); a string, so the fit can follow it. */
+  formatValue: (value: number) => string;
   /** The change line; without it `note` stands there ("zatím bez historie"). */
   change?: HeroChange;
   note?: ReactNode;
@@ -62,9 +63,10 @@ export function Hero<E extends ChartEvent>({
   const shownValue = scrub ? formatValue(scrub.value) : value === null ? '—' : formatValue(value);
   const up = change !== undefined && change.ratio > 0;
   const down = change !== undefined && change.ratio < 0;
-  // A long net worth shrinks to fit (floor `m-fs-title`) instead of ending in an ellipsis.
+  // A long net worth shrinks to fit (floor `m-fs-title`) instead of ending in an ellipsis. The
+  // fit follows the shown text, not the number: hiding the amounts changes the text alone.
   const heroRef = useRef<HTMLElement>(null);
-  const fit = useFitText(heroRef, scrub ? scrub.value : value);
+  const fit = useFitText(heroRef, shownValue);
 
   return (
     <section

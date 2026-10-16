@@ -4,7 +4,8 @@ import { useFitText } from '@/mobile/hooks/use-fit-text';
 
 export interface StatItem {
   label: string;
-  value: ReactNode;
+  /** The shown text (masked while amounts are hidden); a string, so the fit can follow it. */
+  value: string;
   /** 10 / 500 line under the value (a change, "na účtech"). */
   note?: ReactNode;
 }
@@ -20,7 +21,8 @@ const CONTAINER_SIZE = 'clamp(var(--m-fs-sub), 19.7cqi, var(--m-fs-stat))';
  */
 export function StatRow({ stats }: { stats: StatItem[] }) {
   const rowRef = useRef<HTMLDivElement>(null);
-  const fit = useFitText(rowRef, stats);
+  // The fit follows the shown values: hiding the amounts changes the text, not the numbers.
+  const fit = useFitText(rowRef, stats.map((stat) => stat.value).join('\n'));
 
   return (
     <div

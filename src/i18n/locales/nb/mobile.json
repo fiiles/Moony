@@ -19,6 +19,7 @@
   },
   "overview": {
     "hideAmounts": "Skjul beløp",
+    "showAmounts": "Vis beløp",
     "showAll": "Vis alle",
     "change": {
       "30D": "på 30 dager",

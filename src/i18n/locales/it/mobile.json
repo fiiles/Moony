@@ -19,6 +19,7 @@
   },
   "overview": {
     "hideAmounts": "Nascondi importi",
+    "showAmounts": "Mostra importi",
     "showAll": "Mostra tutto",
     "change": {
       "30D": "in 30 giorni",

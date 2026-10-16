@@ -4,10 +4,12 @@ import {
   BIOMETRICS_ASKED_KEY,
   biometricCopy,
   biometricFailure,
+  biometricNotice,
   biometryKind,
   canUnlockWithBiometrics,
   clearEnrolmentAsked,
   markEnrolmentAsked,
+  shouldAutoPrompt,
   shouldOfferEnrolment,
   wasEnrolmentAsked,
 } from './biometrics';
@@ -114,5 +116,36 @@ describe('biometricFailure', () => {
     expect(biometricFailure('auth.biometricFailed')).toBe('failed');
     expect(biometricFailure('auth.keyFilesCorrupted')).toBe('other');
     expect(biometricFailure(undefined)).toBe('other');
+  });
+});
+
+describe('biometricNotice', () => {
+  it('says why under the button, in the backend words for the two keyed failures', () => {
+    expect(biometricNotice('invalidated', true)).toBe('backend');
+    expect(biometricNotice('failed', true)).toBe('backend');
+  });
+
+  it('names an auth error without a key generically, never in silence (R21c)', () => {
+    // "No user profile found" arrives as kind `auth` with no key
+    expect(biometricNotice('other', true)).toBe('generic');
+  });
+
+  it('leaves a dismissed prompt and a toasted error without a message', () => {
+    expect(biometricNotice('cancelled', true)).toBeNull();
+    // the provider toasts everything that is not an auth error
+    expect(biometricNotice('other', false)).toBeNull();
+  });
+});
+
+describe('shouldAutoPrompt', () => {
+  it('prompts once per lock event, however often the lock screen mounts (R21a)', () => {
+    expect(shouldAutoPrompt(0, null)).toBe(true);
+    expect(shouldAutoPrompt(1_000, null)).toBe(true);
+    // a remount during the same lock (Android back from /auth)
+    expect(shouldAutoPrompt(1_000, 1_000)).toBe(false);
+    // the next lock
+    expect(shouldAutoPrompt(2_000, 1_000)).toBe(true);
+    // the first lock of a cold start has no lock submission behind it: key 0
+    expect(shouldAutoPrompt(0, 0)).toBe(false);
   });
 });

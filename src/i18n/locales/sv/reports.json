@@ -263,7 +263,8 @@
       "periodReturn": "Avkastning under perioden",
       "gainToday": "Orealiserad vinst i dag",
       "noGroup": "ingen grupp",
-      "valueAt": "Per {{date}}"
+      "valueAt": "Per {{date}}",
+      "total": "Totalt"
     },
     "holdings": {
       "title": "Innehav och deras etiketter",
@@ -463,6 +464,10 @@
       "captionMore": "Diagrammet ritar högst fyra linjer; de andra finns bara i tabellen.",
       "captionSelection": "Bidragen avser hela portföljens avkastning.",
       "captionNone": "Inte uppdelat: urvalet är en rad; bidraget avser hela portföljens avkastning."
+    },
+    "filterBadge": {
+      "label": "Filter: {{tags}}",
+      "title": "Här räknas bara innehav märkta med {{tags}}."
     }
   },
   "planning": {

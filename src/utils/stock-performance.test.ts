@@ -29,6 +29,7 @@ import {
   sameIndexLine,
   seriesSpecs,
   seriesValueAt,
+  tagGroupSeriesKey,
   splitControl,
   splitDividers,
   splitParts,
@@ -864,18 +865,35 @@ describe('seriesSpecs', () => {
 
   it('gives one series per tag carried by a selected position', () => {
     const specs = seriesSpecs(selected, allTags, null, 'CZK');
-    expect(specs).toEqual([
+    expect(specs.filter((s) => s.key.startsWith('tag:'))).toEqual([
       { key: 'tag:t-usa', investmentIds: ['a', 'b'] },
       { key: 'tag:t-growth', investmentIds: ['a'] },
       { key: 'tag:t-div', investmentIds: ['b'] },
     ]);
   });
 
+  it('gives one series per tag group, of the positions carrying any of its tags', () => {
+    const withEu = [...selected, pos('d', { tags: [eu, loose] })];
+    const specs = seriesSpecs(withEu, allTags, null, 'CZK');
+    expect(specs.filter((s) => !s.key.startsWith('tag:'))).toEqual([
+      { key: 'tag-group:g-region', investmentIds: ['a', 'b', 'd'] },
+      { key: 'tag-group:g-strategy', investmentIds: ['a', 'b'] },
+    ]);
+    expect(tagGroupSeriesKey('g-region')).toBe('tag-group:g-region');
+  });
+
   it('does not repeat a tag series for tag parts of the chosen group', () => {
     const specs = seriesSpecs(selected, allTags, byKey('group:g-strategy'), 'CZK');
     const keys = specs.map((s) => s.key);
     expect(new Set(keys).size).toBe(keys.length);
-    expect(keys).toEqual(['tag:t-usa', 'tag:t-growth', 'tag:t-div', 'none:g-strategy']);
+    expect(keys).toEqual([
+      'tag:t-usa',
+      'tag:t-growth',
+      'tag:t-div',
+      'none:g-strategy',
+      'tag-group:g-region',
+      'tag-group:g-strategy',
+    ]);
     expect(specs[3].investmentIds).toEqual(['c']);
   });
 
@@ -888,6 +906,8 @@ describe('seriesSpecs', () => {
       'sector:Finance',
       'sector:Technologie',
       'sector:',
+      'tag-group:g-region',
+      'tag-group:g-strategy',
     ]);
   });
 
@@ -928,6 +948,8 @@ describe('seriesSpecs', () => {
       { key: 'tag:t-growth', investmentIds: ['a'] },
       { key: 'tag:t-div', investmentIds: ['b'] },
       { key: 'selection', investmentIds: ['a', 'b', 'c'] },
+      { key: 'tag-group:g-region', investmentIds: ['a', 'b'] },
+      { key: 'tag-group:g-strategy', investmentIds: ['a', 'b'] },
     ]);
   });
 
@@ -965,10 +987,18 @@ describe('seriesSpecs limit', () => {
     expect(MAX_SERIES).toBe(256);
   });
 
-  it('keeps every tag series while they fit', () => {
+  it('keeps every tag series while they fit, and the two group series', () => {
     const { groups, tags, positions } = crowd(100);
     const g = compareGroups(groups, tags, positions)[0];
-    expect(seriesSpecs(positions, tags, g, 'CZK')).toHaveLength(200);
+    expect(seriesSpecs(positions, tags, g, 'CZK')).toHaveLength(202);
+  });
+
+  it('leaves the group series out when they would not fit', () => {
+    const { groups, tags, positions } = crowd(128);
+    const g = compareGroups(groups, tags, positions)[0];
+    const specs = seriesSpecs(positions, tags, g, 'CZK');
+    expect(specs).toHaveLength(MAX_SERIES);
+    expect(specs.some((s) => s.key.startsWith('tag-group:'))).toBe(false);
   });
 
   it('drops the tag series outside the chosen group first when there are too many', () => {

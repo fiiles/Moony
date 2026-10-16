@@ -253,7 +253,8 @@
       "periodReturn": "期間収益率",
       "gainToday": "現在の含み損益",
       "noGroup": "グループなし",
-      "valueAt": "{{date}}時点"
+      "valueAt": "{{date}}時点",
+      "total": "合計"
     },
     "holdings": {
       "title": "ポジションとタグ",
@@ -447,6 +448,10 @@
       "captionMore": "グラフに描かれる線は最大4本です。残りは表にのみ表示されます。",
       "captionSelection": "寄与はポートフォリオ全体の収益率に対するものです。",
       "captionNone": "分割なし：選択分は1行で、その寄与はポートフォリオ全体の収益率に対するものです。"
+    },
+    "filterBadge": {
+      "label": "フィルター: {{tags}}",
+      "title": "ここでは{{tags}}のタグが付いたポジションだけを集計しています。"
     }
   },
   "planning": {

@@ -27,7 +27,8 @@ kotlin {
 }
 
 dependencies {
-    // Same versions as tauri-plugin-biometric, so the app resolves one copy of each.
+    // The versions tauri-plugin-biometric 2 used when this was written (the app no longer
+    // bundles that plugin; the in-repo keychain replaced it).
     implementation("androidx.biometric:biometric:1.1.0")
     implementation("androidx.core:core-ktx:1.9.0")
     implementation("androidx.appcompat:appcompat:1.6.0")

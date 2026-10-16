@@ -73,8 +73,7 @@ async fn run_app() {
         })
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_os::init());
+        .plugin(tauri_plugin_fs::init());
 
     // Updates and the relaunch after one exist on the desktop only.
     #[cfg(desktop)]
@@ -84,13 +83,13 @@ async fn run_app() {
             .plugin(tauri_plugin_process::init());
     }
 
-    // Phone-only hardware: biometric unlock, haptic feedback, local notifications, and the
-    // keychain (DB key behind biometry; privacy screen on from launch).
+    // Phone-only hardware: haptic feedback, local notifications, and the keychain (biometric
+    // unlock: the DB key behind biometry; privacy screen on from launch).
     #[cfg(mobile)]
     {
         builder = builder
-            .plugin(tauri_plugin_biometric::init())
             .plugin(tauri_plugin_haptics::init())
+            // Unused so far: kept for the Phase 4 agenda reminders.
             .plugin(tauri_plugin_notification::init())
             .plugin(moony_keychain::init());
     }

@@ -33,8 +33,6 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2.5"
 tauri-plugin-fs = "2"
-# Platform info for the frontend shell (desktop and mobile)
-tauri-plugin-os = "2"
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
@@ -113,10 +111,9 @@ rmcp = { version = "3.5.0", features = ["server", "macros", "transport-streamabl
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 
-# Mobile only: biometric unlock, haptic feedback, local notifications, and the in-repo keychain
-# (DB key behind biometry, privacy screen)
+# Mobile only: haptic feedback, local notifications (Phase 4 agenda reminders), and the in-repo
+# keychain (biometric unlock: the DB key behind biometry; the privacy screen)
 [target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
-tauri-plugin-biometric = "2"
 tauri-plugin-haptics = "2"
 tauri-plugin-notification = "2"
 moony-keychain = { path = "plugins/moony-keychain" }

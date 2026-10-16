@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseAmountInput } from './amount-input';
+import { parseAmountInput, signedAmountInput } from './amount-input';
 
 describe('parseAmountInput', () => {
   it('reads plain numbers', () => {
@@ -42,5 +42,38 @@ describe('parseAmountInput', () => {
     expect(parseAmountInput('1.2.3')).toBeNull();
     expect(parseAmountInput('-')).toBeNull();
     expect(parseAmountInput('+5')).toBeNull();
+  });
+});
+
+describe('signedAmountInput', () => {
+  it('is positive without the toggle', () => {
+    expect(signedAmountInput('12 000', false)).toBe('12000');
+    expect(signedAmountInput('1 240,50', false)).toBe('1240.50');
+  });
+
+  it('takes the sign from the toggle (the decimal pad has no minus key)', () => {
+    expect(signedAmountInput('12 000', true)).toBe('-12000');
+    expect(signedAmountInput('1 240,50', true)).toBe('-1240.50');
+  });
+
+  it('still accepts a typed or pasted minus', () => {
+    expect(signedAmountInput('-12 000', false)).toBe('-12000');
+    expect(signedAmountInput('\u221212 000', false)).toBe('-12000');
+  });
+
+  it('never flips a typed minus back with the toggle', () => {
+    expect(signedAmountInput('-12 000', true)).toBe('-12000');
+  });
+
+  it('writes zero without a sign', () => {
+    expect(signedAmountInput('0', true)).toBe('0');
+    expect(signedAmountInput('0,00', true)).toBe('0.00');
+    expect(signedAmountInput('-0', false)).toBe('0');
+  });
+
+  it('is null when the text is not a number, whatever the toggle says', () => {
+    expect(signedAmountInput('', true)).toBeNull();
+    expect(signedAmountInput('abc', true)).toBeNull();
+    expect(signedAmountInput('12ab', false)).toBeNull();
   });
 });

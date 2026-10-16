@@ -70,6 +70,7 @@
     "title": "Zapisz salda",
     "lead": "Wpisz aktualne saldo każdego konta. Data to dzisiaj.",
     "save": "Zapisz",
-    "saved": "Salda zapisane"
+    "saved": "Salda zapisane",
+    "negative": "Wartość ujemna"
   }
 }

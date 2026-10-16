@@ -59,6 +59,7 @@
   /* ---- Focus ---- */
   --focus-border: #57544d;
   --focus-ring: 0 0 0 3px rgba(39, 38, 32, 0.10);
+  --loss-ring: 0 0 0 3px rgba(191, 66, 36, 0.14); /* focus ring of an invalid field */
 
   /* ---- Radius ---- */
   --r-1: 6px;   /* inputs, segmented buttons, small chips */

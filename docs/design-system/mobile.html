@@ -42,8 +42,6 @@
   .phone .m-screen__body::-webkit-scrollbar { display: none; }
   .demo-chart path:first-child { fill: var(--chart-area); }
   .demo-chart path:last-child { fill: none; stroke: var(--chart-line); stroke-width: 2.25; vector-effect: non-scaling-stroke; }
-  .demo-field { display: flex; align-items: center; justify-content: space-between; gap: 12px; height: 48px; margin-bottom: 10px; padding: 0 14px; border: 1px solid var(--line-strong); border-radius: 10px; background: var(--paper); color: var(--ink-5); font-size: var(--m-fs-row); }
-  .demo-field b { color: var(--ink-3); font-weight: 600; }
   .demo-stack { display: grid; gap: 10px; margin-bottom: 14px; }
   .demo-inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
 
@@ -192,7 +190,7 @@
 
   <section class="part">
     <h2>Sheet a pole pro částku</h2>
-    <p>Sheet nad obrazovkou: tab bar pod scrimem, držadlo, titulek, jedna věta, pole <code>.m-field</code> (štítek, 48 pt pole, měna uvnitř vpravo, placeholder je poslední zůstatek; druhé pole je vyplněné, třetí s chybou) a patička na <code>well</code> s tlačítkem Zrušit vlevo a hlavní akcí vpravo. V aplikaci sheet zavírá klepnutí na scrim, Zrušit a Android zpět.</p>
+    <p>Sheet nad obrazovkou: tab bar pod scrimem, držadlo, titulek, jedna věta, pole <code>.m-field</code> (štítek, 48 pt pole, měna uvnitř vpravo, placeholder je poslední zůstatek; druhé pole je vyplněné, třetí s chybou, čtvrté se zapnutým přepínačem ±) a patička na <code>well</code> s tlačítkem Zrušit vlevo a hlavní akcí vpravo. V aplikaci sheet zavírá klepnutí na scrim, Zrušit a Android zpět.</p>
     <div class="phones" id="sheets"></div>
   </section>
 </div>
@@ -288,9 +286,10 @@
       <div class="m-sheet__handle"></div>
       <div class="m-sheet__head"><div class="m-sheet__t">Salden erfassen</div><div class="m-sheet__s">Geben Sie den aktuellen Saldo jedes Kontos ein. Das Datum ist heute.</div></div>
       <div class="m-sheet__body">
-        <div class="m-field"><label class="m-field__l">Sparkonto</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" placeholder="95 300"><span class="m-field__u">Kč</span></div></div>
-        <div class="m-field"><label class="m-field__l">EUR-Konto</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" placeholder="1 240,00" value="1 190,50"><span class="m-field__u">EUR</span></div></div>
-        <div class="m-field"><label class="m-field__l">UniCredit Girokonto</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" placeholder="2 000" value="2 0x0" aria-invalid="true"><span class="m-field__u">Kč</span></div><p class="m-field__e" role="alert">Ungültiger Betrag</p></div>
+        <div class="m-field m-field--signed"><label class="m-field__l">Sparkonto</label><div class="m-field__w"><button class="m-field__s" type="button" aria-label="Negativer Wert" aria-pressed="false"><span>±</span></button><input class="m-field__i" inputmode="decimal" placeholder="95 300"><span class="m-field__u">Kč</span></div></div>
+        <div class="m-field m-field--signed"><label class="m-field__l">EUR-Konto</label><div class="m-field__w"><button class="m-field__s" type="button" aria-label="Negativer Wert" aria-pressed="false"><span>±</span></button><input class="m-field__i" inputmode="decimal" placeholder="1 240,00" value="1 190,50"><span class="m-field__u">EUR</span></div></div>
+        <div class="m-field m-field--signed"><label class="m-field__l">UniCredit Girokonto</label><div class="m-field__w"><button class="m-field__s" type="button" aria-label="Negativer Wert" aria-pressed="false"><span>±</span></button><input class="m-field__i" inputmode="decimal" placeholder="2 000" value="2 0x0" aria-invalid="true"><span class="m-field__u">Kč</span></div><p class="m-field__e" role="alert">Ungültiger Betrag</p></div>
+        <div class="m-field m-field--signed"><label class="m-field__l">Kreditkarte</label><div class="m-field__w"><button class="m-field__s" type="button" aria-label="Negativer Wert" aria-pressed="true"><span>−</span></button><input class="m-field__i" inputmode="decimal" placeholder="−4 200" value="4 200"><span class="m-field__u">Kč</span></div></div>
       </div>
       <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary" type="button"><span>Erfassen</span></button></div>
     </div>

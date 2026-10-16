@@ -338,7 +338,7 @@
 /* ===== Amount field of a form or sheet =====
    Label 12 / 600 `ink-2` above, the field 48 px (radius 10, paper, `line-strong`; focus `focus-border`
    and the focus ring, invalid `loss`), text 15 tabular, the currency inside on the right (12 / 600
-   `ink-4`), the decimal keypad. The placeholder (`ink-5`) is the last known value. An error is 12 / 600
+   `ink-4`), the decimal keypad, optionally the ± toggle on the left (below). The placeholder (`ink-5`) is the last known value. An error is 12 / 600
    `loss` under the field. */
 .m-field { margin-bottom: 12px; }
 .m-field:last-child { margin-bottom: 0; }
@@ -352,11 +352,28 @@
 .m-field__i::placeholder { color: var(--ink-5); }
 .m-field__i:focus { outline: 0; border-color: var(--focus-border); box-shadow: var(--focus-ring); }
 .m-field__i[aria-invalid="true"] { border-color: var(--loss); }
+.m-field__i[aria-invalid="true"]:focus { box-shadow: var(--loss-ring); }
 .m-field__u {
   position: absolute; top: 50%; right: 14px; transform: translateY(-50%); color: var(--ink-4); pointer-events: none;
   font-size: var(--m-fs-sub); font-weight: 600;
 }
 .m-field__e { margin: 6px 2px 0; color: var(--loss); font-size: var(--m-fs-sub); font-weight: 600; }
+/* The ± toggle (a field that takes negative amounts: the iOS decimal pad has no minus key): a 32 px chip,
+   ± on `well-2`, a dark "−" while pressed, inside the field on the left in a 48 px hit area that keeps
+   the keypad open (`mousedown` is not allowed to take the focus). */
+.m-field--signed .m-field__i { padding-left: 52px; }
+.m-field__s {
+  position: absolute; top: 50%; left: 0; z-index: 1; display: flex; align-items: center; justify-content: center;
+  width: 48px; height: 48px; padding: 0; border: 0; background: none; transform: translateY(-50%); -webkit-touch-callout: none;
+}
+.m-field__s > span {
+  display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 8px;
+  background: var(--well-2); color: var(--ink-3); font-size: var(--m-fs-row); font-weight: 600; line-height: 1;
+  transition: background var(--t-fast), color var(--t-fast);
+}
+.m-field__s[aria-pressed="true"] > span { background: var(--dark-grad); box-shadow: var(--sh-dark); color: var(--ink-inverse); }
+.m-field__s:focus-visible { outline: 0; }
+.m-field__s:focus-visible > span { box-shadow: var(--focus-ring); }
 
 /* ===== Buttons at phone size =====
    48 px, radius 10, label 15 / 600. Primary dark material (one per screen), secondary paper with

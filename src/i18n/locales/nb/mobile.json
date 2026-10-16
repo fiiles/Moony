@@ -60,6 +60,7 @@
     "title": "Registrer saldoer",
     "lead": "Skriv inn gjeldende saldo for hver konto. Datoen er i dag.",
     "save": "Registrer",
-    "saved": "Saldoer registrert"
+    "saved": "Saldoer registrert",
+    "negative": "Negativ verdi"
   }
 }

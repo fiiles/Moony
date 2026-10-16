@@ -60,6 +60,7 @@
     "title": "Salden erfassen",
     "lead": "Geben Sie den aktuellen Saldo jedes Kontos ein. Das Datum ist heute.",
     "save": "Erfassen",
-    "saved": "Salden erfasst"
+    "saved": "Salden erfasst",
+    "negative": "Negativer Wert"
   }
 }

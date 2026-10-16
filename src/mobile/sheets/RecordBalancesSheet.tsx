@@ -9,7 +9,7 @@ import { utcDayFloor } from '@/utils/chart-axis';
 import { Button } from '@/components/ui/button';
 import { AmountField } from '@/mobile/components/AmountField';
 import { Sheet } from '@/mobile/components/Sheet';
-import { parseAmountInput } from '@/mobile/lib/amount-input';
+import { signedAmountInput } from '@/mobile/lib/amount-input';
 
 interface RecordBalancesSheetProps {
   open: boolean;
@@ -30,6 +30,8 @@ export function RecordBalancesSheet({ open, onOpenChange, accountIds }: RecordBa
   const { accounts: all } = useBankAccounts();
   const record = useRecordBalances();
   const [values, setValues] = useState<Record<string, string>>({});
+  // The ± toggles: the iOS decimal pad has no minus key
+  const [negatives, setNegatives] = useState<Record<string, boolean>>({});
 
   // Every opening starts with empty fields and without the last attempt's error
   const { reset: resetRecord } = record;
@@ -39,13 +41,17 @@ export function RecordBalancesSheet({ open, onOpenChange, accountIds }: RecordBa
   const [openedFor, setOpenedFor] = useState(false);
   if (open !== openedFor) {
     setOpenedFor(open);
-    if (open) setValues({});
+    if (open) {
+      setValues({});
+      setNegatives({});
+    }
   }
 
   const accounts = accountIds.flatMap((id) => all.find((a) => a.id === id) ?? []);
   const parsed = accounts.map((account) => {
     const text = values[account.id] ?? '';
-    return { account, text, amount: parseAmountInput(text) };
+    const negative = negatives[account.id] ?? false;
+    return { account, text, negative, amount: signedAmountInput(text, negative) };
   });
   // A filled field that is not a number blocks saving; an empty one is skipped
   const invalid = (p: (typeof parsed)[number]) => p.text.trim() !== '' && p.amount === null;
@@ -125,6 +131,11 @@ export function RecordBalancesSheet({ open, onOpenChange, accountIds }: RecordBa
                 maximumFractionDigits: decimals,
               })}
               error={invalid(p) ? tc('validation.invalidAmount') : undefined}
+              negative={p.negative}
+              negativeLabel={t('recordBalances.negative')}
+              onNegativeChange={(negative) =>
+                setNegatives((current) => ({ ...current, [p.account.id]: negative }))
+              }
               onChange={(event) =>
                 setValues((current) => ({ ...current, [p.account.id]: event.target.value }))
               }

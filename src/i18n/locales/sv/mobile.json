@@ -60,6 +60,7 @@
     "title": "Registrera saldon",
     "lead": "Ange aktuellt saldo för varje konto. Datumet är i dag.",
     "save": "Registrera",
-    "saved": "Saldon registrerade"
+    "saved": "Saldon registrerade",
+    "negative": "Negativt värde"
   }
 }

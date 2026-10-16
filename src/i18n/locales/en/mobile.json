@@ -60,6 +60,7 @@
     "title": "Record balances",
     "lead": "Enter the current balance of each account. The date is today.",
     "save": "Record",
-    "saved": "Balances recorded"
+    "saved": "Balances recorded",
+    "negative": "Negative value"
   }
 }

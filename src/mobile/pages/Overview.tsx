@@ -160,8 +160,10 @@ export default function Overview() {
         </Link>
       }
     >
-      {/* First on the page and only while something is due (it also asks for a first backup) */}
-      {!overview.isCheckingPortfolio && <UpkeepCard />}
+      {/* First on the page and only while something is due (it also asks for a first backup). Always
+          mounted: it withholds its rows until its data has loaded, and an open sheet must not
+          unmount when saving makes the portfolio metrics refetch. */}
+      <UpkeepCard />
       {overview.isCheckingPortfolio ? (
         <OverviewSkeleton />
       ) : overview.isEmptyPortfolio ? (

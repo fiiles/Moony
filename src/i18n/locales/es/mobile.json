@@ -65,6 +65,7 @@
     "title": "Registrar saldos",
     "lead": "Introduce el saldo actual de cada cuenta. La fecha es la de hoy.",
     "save": "Registrar",
-    "saved": "Saldos registrados"
+    "saved": "Saldos registrados",
+    "negative": "Valor negativo"
   }
 }

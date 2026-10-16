@@ -65,6 +65,7 @@
     "title": "Zaznamenat zůstatky",
     "lead": "Zadejte aktuální zůstatek každého účtu. Datum je dnešní.",
     "save": "Zaznamenat",
-    "saved": "Zůstatky zaznamenány"
+    "saved": "Zůstatky zaznamenány",
+    "negative": "Záporná hodnota"
   }
 }

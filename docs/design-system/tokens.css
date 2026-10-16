@@ -1,6 +1,7 @@
 /* Moony design tokens — single source of truth.
-   Light theme only (dark theme dropped for v1, see README.md §11).
-   Every value here has a name; components never use raw hex. */
+   Two themes: the `:root` block is light, `:root[data-theme="dark"]` is dark (same names,
+   README.md §2 and §11). `src/index.css` carries the same declarations; `src/index.test.ts`
+   guards it. Every value here has a name; components never use raw hex. */
 :root {
   /* ---- Surfaces (from outer canvas to the elevated workspace) ---- */
   --canvas: #eeece7;        /* outer canvas, one tone darker than content */
@@ -12,12 +13,14 @@
   --well: #f7f6f2;          /* inset areas: table header, modal footer, hover rows */
   --well-2: #e9e7e1;        /* segmented-control track, chips, avatar */
   --well-3: #e3e0d9;        /* stronger inset: progress track, skeleton */
+  --hero-orb: #f0eee8;      /* decorative circle in the hero card */
 
   /* ---- Lines ---- */
   --line: #e2dfd7;          /* card and table borders */
   --line-soft: #efede8;     /* row dividers, chart grid */
   --line-strong: #d9d5cd;   /* secondary button border, input border */
   --line-sidebar: #e1ded6;
+  --line-hover: #c9c5bc;    /* input hover border */
 
   /* ---- Ink (text), from primary to faintest ---- */
   --ink: #292822;           /* headings, primary values, names */
@@ -27,6 +30,7 @@
   --ink-5: #aaa7a0;         /* axis ticks, placeholders */
   --ink-inverse: #ffffff;
   --ink-inverse-2: #d6d3cc; /* secondary text on dark material */
+  --ink-hover: rgba(41, 40, 34, 0.05); /* 5 % ink: nav and ghost hover */
 
   /* ---- Dark material (active nav, primary button) ---- */
   --dark: #2c2a25;
@@ -42,6 +46,9 @@
   --gain-soft: #e6f5ee;     /* tint for gain badges */
   --loss: #bf4224;          /* negative change, destructive, validation errors */
   --loss-soft: #fcece6;
+  --loss-line: #f1cfc3;     /* error alert border, danger-zone card */
+  --loss-hover: #a8391d;    /* destructive button hover */
+  --loss-ring: 0 0 0 3px rgba(191, 66, 36, 0.14); /* invalid field focus ring */
 
   /* ---- Data series (one muted indigo family, max 4 + other; validated ΔE ≥ 15 between neighbours) ---- */
   --s1: #212339;
@@ -75,6 +82,9 @@
   --sh-modal: 0 26px 80px rgba(18, 17, 13, 0.44);
   --sh-dark: inset 0 1px rgba(255, 255, 255, 0.13), 0 3px 7px rgba(39, 35, 28, 0.15); /* dark material */
   --sh-btn: 0 1px 2px rgba(52, 46, 34, 0.06);                                       /* secondary button */
+  --sh-btn-hover: 0 1px 3px rgba(52, 46, 34, 0.1);                                  /* secondary button hover */
+  --sh-seg: 0 1px 3px rgba(34, 34, 34, 0.13);                                       /* active segmented pill */
+  --sh-destructive: inset 0 1px rgba(255, 255, 255, 0.12), 0 3px 7px rgba(191, 66, 36, 0.2); /* destructive button */
   --scrim: rgba(30, 29, 25, 0.63);
 
   /* ---- Typography ---- */
@@ -112,4 +122,88 @@
   --t-fast: 120ms;
   --t-base: 180ms;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* ===== Dark theme: the shared token set (same names as tokens.css, no new names). =====
+   Warm near-black, never #000. Depth comes from surface steps (canvas < sidebar < paper);
+   wells go deeper = darker in both themes. The contrast material (`dark`) inverts: it is the
+   light material in the dark theme, so active nav, primary button, tooltip, checked controls
+   keep `background: var(--dark); color: var(--ink-inverse)` unchanged. */
+:root[data-theme="dark"] {
+  color-scheme: dark;
+
+  /* ---- Surfaces ---- */
+  --canvas: #1a1917;
+  --canvas-glow: #22211e;
+  --sidebar: #1f1e1b;
+  --sidebar-2: #1c1b19;
+  --paper: #292826;
+  --paper-2: #2b2a27;
+  --well: #232220;
+  --well-2: #1e1d1b;
+  --well-3: #181715;
+  --hero-orb: #302f2b;
+
+  /* ---- Lines ---- */
+  --line: #363531;
+  --line-soft: #302f2c;
+  --line-strong: #45443f;
+  --line-sidebar: #2b2a27;
+  --line-hover: #56544e;
+
+  /* ---- Ink ---- */
+  --ink: #eceae4;
+  --ink-2: #cdcbc4;
+  --ink-3: #a3a098;
+  --ink-4: #868379;
+  --ink-5: #6b6962;
+  --ink-inverse: #1d1c19;
+  --ink-inverse-2: #5f5c54;
+  --ink-hover: rgba(0, 0, 0, 0.18);
+
+  /* ---- Contrast material (light on dark) ---- */
+  --dark: #e9e7e1;
+  --dark-hi: #f3f1ec;
+  --dark-lo: #e2e0d9;
+  --dark-hover-hi: #faf9f5;
+  --dark-hover-lo: #ebe9e3;
+
+  /* ---- Semantic ---- */
+  --gain: #45c6a6;
+  --gain-soft: #203c30;
+  --loss: #ef7f5e;
+  --loss-soft: #4a2d25;
+  --loss-line: #6e3e32;
+  --loss-hover: #ff9e84;
+  --loss-ring: 0 0 0 3px rgba(239, 127, 94, 0.22);
+
+  /* ---- Data series (same indigo family, re-stepped for dark paper) ---- */
+  --s1: #d8dbf0;
+  --s2: #a2a7ec;
+  --s3: #7b7ea5;
+  --s4: #4f508e;
+  --s-other: #3a3935;
+  --chart-line: #b5b9eb;
+  --chart-area: #393b52;
+  --chart-grid: #302f2c;
+  --chart-cost: #78756d;
+  --chart-axis: #6b6962;
+
+  /* ---- Focus ---- */
+  --focus-border: #a09d94;
+  --focus-ring: 0 0 0 3px rgba(255, 255, 255, 0.12);
+
+  /* ---- Elevation (black-based, stronger; the 1 px line and the surface step carry the card) ---- */
+  --sh-sidebar: 7px 0 22px rgba(0, 0, 0, 0.22);
+  --sh-1: 0 2px 5px rgba(0, 0, 0, 0.24), 0 9px 22px rgba(0, 0, 0, 0.14);
+  --sh-2: 0 4px 10px rgba(0, 0, 0, 0.26), 0 16px 35px rgba(0, 0, 0, 0.18);
+  --sh-3: 0 4px 11px rgba(0, 0, 0, 0.28), 0 20px 38px rgba(0, 0, 0, 0.2);
+  --sh-pop: 0 8px 24px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --sh-modal: 0 26px 80px rgba(0, 0, 0, 0.7);
+  --sh-dark: inset 0 1px rgba(255, 255, 255, 0.55), 0 3px 7px rgba(0, 0, 0, 0.35);
+  --sh-btn: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --sh-btn-hover: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --sh-seg: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --sh-destructive: inset 0 1px rgba(255, 255, 255, 0.12), 0 3px 7px rgba(0, 0, 0, 0.35);
+  --scrim: rgba(12, 11, 9, 0.7);
 }

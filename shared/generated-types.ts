@@ -1364,7 +1364,13 @@ twr: number[];
  * Percentage points of the whole-portfolio return the series brought, cumulative per date;
  * `null` for a series computed in another currency.
  */
-contribution: number[] | null }
+contribution: number[] | null; 
+/**
+ * Money the series' positions gained over the whole period in the report currency (the
+ * value change without buys and sells), decimal TEXT; `null` for a series computed in
+ * another currency.
+ */
+gain: string | null }
 
 /**
  * One line of the performance chart: a set of held positions.
@@ -1461,7 +1467,12 @@ startValue: string | null;
 /**
  * Value on the last date, decimal TEXT; `null` when it cannot be converted.
  */
-endValue: string | null }
+endValue: string | null; 
+/**
+ * Money the position gained over the period (the value change without buys and sells),
+ * decimal TEXT.
+ */
+gain: string }
 
 /**
  * Sums in the report currency over every known amount: `value`, `costBasis` and

@@ -49,6 +49,7 @@ describe('tagRows', () => {
     endValueOf: (id: string) => ends[id] ?? null,
     endTotal: 1000,
     periodReturnOf: (id: string) => ({ growth: 8, value: -2, core: 5 })[id] ?? null,
+    periodGainOf: (id: string) => ({ growth: 40, value: -2, core: 5 })[id] ?? null,
     filterActive: false,
   };
 
@@ -65,6 +66,12 @@ describe('tagRows', () => {
     expect(valueRow).toMatchObject({ count: 1, value: null, share: null, periodReturn: -2 });
   });
 
+  it('carries the return over the period as a percent and an amount', () => {
+    const [growthRow, valueRow] = tagRows(input);
+    expect(growthRow).toMatchObject({ periodReturn: 8, periodGain: 40 });
+    expect(valueRow).toMatchObject({ periodReturn: -2, periodGain: -2 });
+  });
+
   it('keeps the unrealized gain and the dividend as of today', () => {
     const [growthRow, valueRow] = tagRows(input);
     // 40 gained on a cost of 360
@@ -78,7 +85,13 @@ describe('tagRows', () => {
 
   it('lists a tag without positions with nothing to show', () => {
     const unusedRow = tagRows(input)[2];
-    expect(unusedRow).toMatchObject({ count: 0, value: null, share: null, periodReturn: null });
+    expect(unusedRow).toMatchObject({
+      count: 0,
+      value: null,
+      share: null,
+      periodReturn: null,
+      periodGain: null,
+    });
   });
 
   it('counts only the selected positions and hides tags without one under a filter', () => {

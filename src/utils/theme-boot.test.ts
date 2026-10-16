@@ -9,7 +9,7 @@ const vmSpecifier = 'node:vm';
 const { readFileSync } = (await import(/* @vite-ignore */ fsSpecifier)) as Fs;
 const { runInNewContext } = (await import(/* @vite-ignore */ vmSpecifier)) as Vm;
 
-const SRC = readFileSync(new URL('./theme-boot.js', import.meta.url), 'utf8');
+const SRC = readFileSync(new URL('../../public/theme-boot.js', import.meta.url), 'utf8');
 
 /** Runs the boot script in an isolated context that only offers what a page would. */
 function boot(stored: string | null | (() => never), systemDark: boolean) {

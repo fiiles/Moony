@@ -33,6 +33,7 @@ export default tseslint.config(
       'node_modules',
       'src-tauri/target',
       'scripts',
+      'public',
       'src/components/ui',
       '.claude',
       'docs',

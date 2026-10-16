@@ -5,7 +5,8 @@
  * using headless Chrome.
  *
  *   node scripts/screenshots.mjs [--base http://localhost:1420] [--out docs/screenshots]
- *                                [--lang en|cs] [--suffix <s>] [--set readme|site|all]
+ *                                [--lang en|cs] [--theme system|light|dark]
+ *                                [--suffix <s>] [--set readme|site|all]
  *                                [--account <bankAccountId>] [--fixture <csv path>]
  *                                [--width 1440] [--height 900] [--port 9333]
  *
@@ -13,6 +14,14 @@
  *              takes its language from the profile, not from the browser: the script reads
  *              it through the bridge, switches it with `update_user_profile` when it differs
  *              and puts the original back when it finishes (also on Ctrl-C or an error).
+ *   --theme    `system` (default), `light` or `dark`. The script pins the browser's
+ *              `prefers-color-scheme` itself (`Emulation.setEmulatedMedia`): light for `system`
+ *              and `light`, dark for `dark`, whatever the host's appearance is. Like the
+ *              language, an unlocked app takes its theme from the profile: the script
+ *              switches it with `update_user_profile` when it differs and puts the original
+ *              back when it finishes. It also sets the device mirror `moony-theme` that the
+ *              lock screen and the first paint read. The dark set, for example:
+ *              `--theme dark --out docs/screenshots/dark`.
  *   --suffix   Appended to every file name; default empty for `en` and `-<lang>` otherwise
  *              (`dashboard.png`, `dashboard-cs.png`).
  *   --set      `readme` (default): dashboard, cashflow, account-detail, stocks-analysis, settings
@@ -36,6 +45,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
 const LANGUAGES = ['en', 'cs', 'de', 'es', 'it', 'nb', 'pl', 'sv', 'ja', 'zh'];
+const THEMES = ['system', 'light', 'dark'];
 const SETS = ['readme', 'site', 'all'];
 /** The demo and the anonymized profile are both "Alex Novák"; the owner's real one is not. */
 const EXPECTED_NAME = 'Alex';
@@ -51,6 +61,7 @@ const opt = {
   height: 900,
   port: 9333,
   lang: 'en',
+  theme: 'system',
   suffix: null,
   set: 'readme',
 };
@@ -68,6 +79,10 @@ for (let i = 0; i < args.length; i++) {
 }
 if (!LANGUAGES.includes(opt.lang)) {
   console.error(`--lang must be one of ${LANGUAGES.join(', ')} (got "${opt.lang}")`);
+  process.exit(2);
+}
+if (!THEMES.includes(opt.theme)) {
+  console.error(`--theme must be one of ${THEMES.join(', ')} (got "${opt.theme}")`);
   process.exit(2);
 }
 if (!SETS.includes(opt.set)) {
@@ -266,11 +281,28 @@ async function restoreLanguage() {
   }
 }
 
+// The theme the profile had before this run; `cleanup` puts it back.
+let originalTheme = null;
+async function restoreTheme() {
+  if (originalTheme === null) return;
+  const theme = originalTheme;
+  originalTheme = null;
+  try {
+    const p = await invokeInPage('update_user_profile', { updates: { theme } });
+    console.log(`profile theme restored to "${p.theme}"`);
+  } catch (e) {
+    console.error(
+      `Could not restore the profile theme to "${theme}" (${e.message}); set it back in Settings → General.`
+    );
+  }
+}
+
 let cleanedUp = false;
 async function cleanup() {
   if (cleanedUp) return;
   cleanedUp = true;
   await restoreLanguage();
+  await restoreTheme();
   try {
     ws?.close();
   } catch {
@@ -316,10 +348,16 @@ try {
     deviceScaleFactor: 2,
     mobile: false,
   });
+  // Pin the color scheme the page sees, so `system` and `light` render light and `dark` renders
+  // dark whatever the appearance of the machine running the script.
+  await send('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-color-scheme', value: opt.theme === 'dark' ? 'dark' : 'light' }],
+  });
   await waitUntil('document.readyState === "complete"', 10000);
-  // Only the lock screen reads this key; once unlocked, the profile's language wins (step 2).
+  // Only the lock screen reads these keys; once unlocked, the profile's language and theme win
+  // (step 2).
   await evaluate(
-    `(() => { localStorage.setItem('moony-language', ${JSON.stringify(opt.lang)}); return true; })()`
+    `(() => { localStorage.setItem('moony-language', ${JSON.stringify(opt.lang)}); localStorage.setItem('moony-theme', ${JSON.stringify(opt.theme)}); return true; })()`
   );
 
   // 1. Whose data is this? Nothing is written or captured before the check passes.
@@ -342,18 +380,38 @@ try {
         : `The page does not show "${EXPECTED_NAME}": is ${opt.base} the demo profile? Aborting.`
     );
   }
-  console.log(`profile ok ("${EXPECTED_NAME}"), language ${opt.lang}`);
+  console.log(`profile ok ("${EXPECTED_NAME}"), language ${opt.lang}, theme ${opt.theme}`);
 
-  // 2. The language of an unlocked app is the profile's: switch it, restore it at the end.
+  // 2. The language and the theme of an unlocked app are the profile's: switch them, restore
+  // them at the end.
   const current = await invokeInPage('get_user_profile');
+  let switched = false;
   if (current?.language !== opt.lang) {
     originalLanguage = current.language;
     await invokeInPage('update_user_profile', { updates: { language: opt.lang } });
     console.log(`profile language "${originalLanguage}" -> "${opt.lang}" (restored at the end)`);
-    await goto('/');
+    switched = true;
   }
+  if (current?.theme !== opt.theme) {
+    originalTheme = current.theme;
+    await invokeInPage('update_user_profile', { updates: { theme: opt.theme } });
+    console.log(`profile theme "${originalTheme}" -> "${opt.theme}" (restored at the end)`);
+    switched = true;
+  }
+  if (switched) await goto('/');
   if (!(await waitUntil(`document.documentElement.lang === ${JSON.stringify(opt.lang)}`, 15000))) {
     throw new Error(`The UI did not switch to "${opt.lang}".`);
+  }
+  // `system` follows the pinned (light) scheme, so there is nothing to wait for; light and dark
+  // are stamped.
+  if (
+    opt.theme !== 'system' &&
+    !(await waitUntil(
+      `document.documentElement.dataset.theme === ${JSON.stringify(opt.theme)}`,
+      15000
+    ))
+  ) {
+    throw new Error(`The UI did not switch to the ${opt.theme} theme.`);
   }
 
   // 3. Capture.

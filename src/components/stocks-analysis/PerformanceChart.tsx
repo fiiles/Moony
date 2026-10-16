@@ -10,7 +10,8 @@ import {
 } from 'recharts';
 import { ChartTip, FloatingTip } from '@/components/charts/ChartTip';
 import { DateAxis } from '@/components/charts/DateAxis';
-import { chartTokens, token, type ChartTokens } from '@/lib/tokens';
+import { token, type ChartTokens } from '@/lib/tokens';
+import { useChartTokens } from '@/theme/ThemeProvider';
 import { cn } from '@/lib/utils';
 import { niceStep, nearestIndex } from '@/utils/chart-scale';
 import { DAY } from '@/utils/stock-performance';
@@ -350,7 +351,7 @@ export function PerformanceChart({
   labels,
   className,
 }: PerformanceChartProps) {
-  const tk = useMemo(chartTokens, []);
+  const tk = useChartTokens();
   const n = dates.length;
   const t0 = dates[0] ?? 0;
   const t1 = dates[n - 1] ?? 0;
@@ -364,7 +365,12 @@ export function PerformanceChart({
   const [drag, setDrag] = useState<Drag | null>(null);
 
   const points = useMemo(() => dates.map((t) => ({ t })), [dates]);
-  const colors = useMemo(() => lines.map((l) => resolveColor(l.color)), [lines]);
+  // `tk` is not read in here, but it changes on a theme switch and resolveColor reads the stylesheet
+  const colors = useMemo(
+    () => lines.map((l) => resolveColor(l.color)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- tk is the theme invalidation key
+    [lines, tk]
+  );
   // A highlight that no longer matches a line (a filter changed) dims nothing
   const active = lines.some((l) => l.id === highlighted) ? highlighted : null;
   const reference = lines.findIndex(isPortfolio);

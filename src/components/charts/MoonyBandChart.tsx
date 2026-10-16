@@ -12,7 +12,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useFormat } from '@/lib/use-format';
-import { chartTokens } from '@/lib/tokens';
+import { useChartTokens } from '@/theme/ThemeProvider';
 import { niceTicks, valueDomain } from '@/utils/chart-scale';
 import { ChartTip, FloatingTip } from '@/components/charts/ChartTip';
 import { AXIS_WIDTH } from '@/components/charts/ChartAxis';
@@ -67,7 +67,7 @@ export function MoonyBandChart({
   className,
 }: MoonyBandChartProps) {
   const fmt = useFormat();
-  const tk = useMemo(chartTokens, []);
+  const tk = useChartTokens();
   const [hoverMilestone, setHoverMilestone] = useState<{
     m: BandMilestone;
     x: number;

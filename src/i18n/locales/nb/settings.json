@@ -75,6 +75,14 @@
     "description": "Tall og datoer følger grensesnittspråket.",
     "interface": "Grensesnittspråk"
   },
+  "appearance": {
+    "title": "Utseende",
+    "description": "System følger innstillingen i macOS, Windows eller Linux.",
+    "mode": "Lys eller mørk modus",
+    "system": "System",
+    "light": "Lys",
+    "dark": "Mørk"
+  },
   "menuVisibility": {
     "title": "Synlighet i menyen",
     "description": "Skjul eiendelstypene du ikke bruker."

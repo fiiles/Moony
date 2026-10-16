@@ -277,6 +277,7 @@
     "stockImportRowFailed": "无法保存该行。",
     "onboardingFlagUnknown": "未知的初始设置步骤。",
     "insuranceNoticeInvalid": "请输入 0 到 365 之间的整数天数。",
+    "themeInvalid": "请选择「跟随系统」「浅色」或「深色」。",
     "budgetIntervalsRequired": "请至少选择一个预算期间。",
     "effectiveUntilBeforeStart": "结束月份不能早于开始月份。",
     "statementTooLarge": "此账单文件超过 {{limitMb}} MB。",

@@ -75,6 +75,14 @@
     "description": "Numbers and dates follow the interface language.",
     "interface": "Interface language"
   },
+  "appearance": {
+    "title": "Appearance",
+    "description": "System follows the macOS, Windows or Linux setting.",
+    "mode": "Light or dark mode",
+    "system": "System",
+    "light": "Light",
+    "dark": "Dark"
+  },
   "menuVisibility": {
     "title": "Menu visibility",
     "description": "Hide the asset types you do not use."

@@ -9,6 +9,9 @@ import { z } from 'zod';
 import { PAYMENT_FREQUENCIES } from './calculations/payment-frequency';
 
 // User Profile
+/** The colour theme choice: `system` follows the OS appearance. */
+export type ThemePreference = 'system' | 'light' | 'dark';
+
 export interface UserProfile {
   id: number;
   name: string;
@@ -24,6 +27,7 @@ export interface UserProfile {
   country: string | null;
   /** Days of cancellation notice the insurance reminders use (the stored value, else 50); null = no anniversary reminder. */
   insuranceNoticeDays: number | null;
+  theme: ThemePreference;
   createdAt: number;
 }
 

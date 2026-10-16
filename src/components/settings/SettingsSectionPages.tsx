@@ -2,6 +2,7 @@ import { DataSection } from '@/components/settings/DataSection';
 import { CategoriesCard } from '@/components/settings/CategoriesCard';
 import { ProfileCard } from '@/components/settings/ProfileCard';
 import { LanguageCard } from '@/components/settings/LanguageCard';
+import { AppearanceCard } from '@/components/settings/AppearanceCard';
 import { DashboardPreferencesCard } from '@/components/settings/DashboardPreferencesCard';
 import { MilestoneSettingsCard } from '@/components/settings/MilestoneSettingsCard';
 import { MenuVisibilityCard } from '@/components/settings/MenuVisibilityCard';
@@ -20,6 +21,7 @@ export function GeneralSection() {
     <>
       <ProfileCard />
       <LanguageCard />
+      <AppearanceCard />
       <DashboardPreferencesCard />
       <MilestoneSettingsCard />
       <MenuVisibilityCard />

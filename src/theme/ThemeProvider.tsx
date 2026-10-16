@@ -146,6 +146,16 @@ export function useTheme(): ThemeContextValue {
 }
 
 /**
+ * The theme on screen, or `light` where no provider is mounted: the phone shell (`src/mobile/`) is
+ * light only until Phase 6 and has no `ThemeProvider`, but shares the toaster with the desktop.
+ * Desktop components that need the preference or the chart palette keep using `useTheme()`.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function useResolvedTheme(): ResolvedTheme {
+  return useContext(ThemeContext)?.resolved ?? 'light';
+}
+
+/**
  * The chart palette as strings for Recharts and canvas code. Re-reads the stylesheet when the
  * theme switches, so a chart that takes its colors from here repaints in the new palette.
  */

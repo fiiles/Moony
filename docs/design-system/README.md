@@ -398,7 +398,11 @@ bar, sheets and segment, Inter bundled). The reference width is 390 pt; every la
   tokens (safe areas, bar heights, type scale); `src/index.css` carries the same block (keep the two
   identical). Its other sources are the tokens of `tokens.css` only, including `hero-orb`, `sh-seg`,
   `sh-destructive` and `loss-ring`, which exist in both themes (table in §2). `src/mobile/` matches
-  `mobile.css` visually and never imports it.
+  `mobile.css` visually and never imports it. The phone is light only until Phase 6: `src/main.tsx`
+  overwrites the `data-theme` that `theme-boot.js` stamped with `light` before the first render, the
+  shell has no `ThemeProvider` (the shared toaster falls back to light through `useResolvedTheme()`),
+  and `MobileApp` shows the hidden window itself after its first render (`showWindow()`, capability
+  `core:window:allow-show`) instead of waiting for the provider that does it on the desktop.
 - **`mobile.html`** shows the components at 360, 390 and 430 with German copy (German runs longest): the tab root with Údržba, hero, stats, agenda rows (a dark date chip, a swiped row), the allocation ring and legend and the entity rows, and the sheet with its amount fields.
   Under each frame a check reports anything that extends past the screen or scrolls it sideways, and
   lists the texts that end with an ellipsis. Open it after changing a phone component: nothing may

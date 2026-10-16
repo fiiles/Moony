@@ -1,4 +1,4 @@
-import { useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { Toaster } from '@/components/ui/toaster';
@@ -12,6 +12,7 @@ import { MobileShell } from '@/mobile/shell/MobileShell';
 import { HideAmountsProvider } from '@/mobile/hooks/use-hide-amounts';
 import { useBackgroundLock } from '@/mobile/hooks/use-background-lock';
 import { useVisibleHeight } from '@/mobile/lib/use-visible-height';
+import { showWindow } from '@/theme/window-theme';
 
 /**
  * Toasts sit above the tab bar (spec §10.3), centred between the 16 pt gutters: 12 pt over the
@@ -50,6 +51,14 @@ export default function MobileApp() {
     return () => {
       delete root.dataset.shell;
     };
+  }, []);
+
+  // The window starts hidden (`tauri.conf.json`, so the desktop never flashes the wrong theme) and
+  // `lib.rs` shows it after 3 s if the frontend never does. The desktop `ThemeProvider` shows it once
+  // the theme is stamped; the phone has no provider (light only, `main.tsx`), so it shows it itself
+  // after the first render instead of leaving the phone black for the fallback's 3 s.
+  useEffect(() => {
+    void showWindow();
   }, []);
 
   return (

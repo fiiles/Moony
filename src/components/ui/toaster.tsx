@@ -1,6 +1,6 @@
 import { Toaster as Sonner } from 'sonner';
 import { Check, CircleAlert, Info, Loader2 } from 'lucide-react';
-import { useTheme } from '@/theme/ThemeProvider';
+import { useResolvedTheme } from '@/theme/ThemeProvider';
 
 type ToasterProps = React.ComponentProps<typeof Sonner>;
 
@@ -9,7 +9,7 @@ type ToasterProps = React.ComponentProps<typeof Sonner>;
  * ("Účet přidán"). E4 surface (paper, sh-pop), 12/600, icon in gain for success.
  */
 const Toaster = ({ ...props }: ToasterProps) => {
-  const { resolved } = useTheme();
+  const resolved = useResolvedTheme();
   return (
     <Sonner
       theme={resolved}

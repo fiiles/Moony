@@ -6,6 +6,7 @@
   "platforms": ["iOS", "android"],
   "permissions": [
     "core:default",
+    "core:window:allow-show",
     "opener:default",
     "log:default",
     "dialog:default",

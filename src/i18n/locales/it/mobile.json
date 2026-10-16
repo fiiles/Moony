@@ -9,7 +9,7 @@
     "placeholder": "Questa schermata è ancora in preparazione."
   },
   "lock": {
-    "caption": "AES-256 · i tuoi dati restano su questo telefono",
+    "caption": "AES-256 · cifrato su questo telefono",
     "keySaved": "Ho conservato la chiave in un luogo sicuro, fuori da questo telefono",
     "unlockWithFace": "Sblocca con il volto",
     "unlockWithTouch": "Sblocca con l'impronta",

@@ -9,7 +9,7 @@
     "placeholder": "Denne skjermen er fortsatt under arbeid."
   },
   "lock": {
-    "caption": "AES-256 · dataene dine blir på denne telefonen",
+    "caption": "AES-256 · kryptert på denne telefonen",
     "keySaved": "Jeg har lagret nøkkelen trygt utenfor denne telefonen",
     "unlockWithFace": "Lås opp med ansiktet",
     "unlockWithTouch": "Lås opp med fingeravtrykk",

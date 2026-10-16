@@ -9,7 +9,7 @@
     "placeholder": "この画面は準備中です。"
   },
   "lock": {
-    "caption": "AES-256 · データはこのスマートフォンから出ません",
+    "caption": "AES-256 · このスマートフォンで暗号化",
     "keySaved": "キーをこのスマートフォンの外に安全に保管しました",
     "unlockWithFace": "顔認証でロック解除",
     "unlockWithTouch": "指紋認証でロック解除",

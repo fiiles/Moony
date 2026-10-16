@@ -9,7 +9,7 @@
     "placeholder": "此页面仍在建设中。"
   },
   "lock": {
-    "caption": "AES-256 · 您的数据仅保存在这部手机上",
+    "caption": "AES-256 · 在这部手机上加密",
     "keySaved": "我已将密钥安全保存在这部手机之外",
     "unlockWithFace": "使用面容解锁",
     "unlockWithTouch": "使用指纹解锁",

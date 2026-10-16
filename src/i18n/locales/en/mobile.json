@@ -9,7 +9,7 @@
     "placeholder": "This screen is still being built."
   },
   "lock": {
-    "caption": "AES-256 · your data stays on this phone",
+    "caption": "AES-256 · encrypted on this phone",
     "keySaved": "I have stored the key safely outside this phone",
     "unlockWithFace": "Unlock with your face",
     "unlockWithTouch": "Unlock with your fingerprint",

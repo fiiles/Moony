@@ -45,6 +45,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
+import { FilterBadge } from './FilterBadge';
 import { PerformanceBoard, type BoardKind } from './PerformanceBoard';
 import { PerformanceChart } from './PerformanceChart';
 import { Rich } from './Rich';
@@ -96,6 +97,8 @@ export interface PerformanceCardProps {
   /** Held positions: the hero figures count the whole portfolio. */
   positionCount: number;
   filterActive: boolean;
+  /** The tags the filter chose, for the badge in the toolbar (the hero stays whole-portfolio). */
+  filterTags: readonly StockTag[];
   /** Value as of the end of the period: the whole portfolio and the selection. */
   totalValue: number | null;
   selectedValue: number | null;
@@ -192,6 +195,7 @@ export function PerformanceCard({
   parts,
   positionCount,
   filterActive,
+  filterTags,
   totalValue,
   selectedValue,
   index,
@@ -291,8 +295,8 @@ export function PerformanceCard({
   // from it (rows, wording, the group) is then held back too: the new parts have no series in the
   // old response and would blank rows and flash "nothing in the selection".
   const live = useMemo(
-    () => ({ rows, group, groupLabel, filterActive, endsToday, positionCount }),
-    [rows, group, groupLabel, filterActive, endsToday, positionCount]
+    () => ({ rows, group, groupLabel, filterActive, filterTags, endsToday, positionCount }),
+    [rows, group, groupLabel, filterActive, filterTags, endsToday, positionCount]
   );
   const [shown, setShown] = useState(live);
   if (!stale && shown !== live) setShown(live);
@@ -577,6 +581,7 @@ export function PerformanceCard({
                   )}
                 </>
               )}
+              <FilterBadge tags={view.filterTags} partial />
             </div>
             <div className="ml-auto flex items-center gap-[10px]">
               <DropdownMenu>

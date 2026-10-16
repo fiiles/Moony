@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { StockPerformance } from '@shared/schema';
+import type { StockPerformance, StockTag } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import type { CompareGroup } from '@/utils/stock-performance';
@@ -11,6 +11,7 @@ import { Segmented } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
 import { barLayout, contributionRows, partItems, positionItems } from './contribution-model';
 import { ContributionOtherDialog } from './ContributionOtherDialog';
+import { FilterBadge } from './FilterBadge';
 import { CARD_GRID, ContributionRow, ContributionTotalRow } from './ContributionRow';
 import { groupName, partName, sectorLabel, type RankedPart } from './performance-model';
 import { useHeldWhile } from './use-held-while';
@@ -29,6 +30,8 @@ interface ContributionCardProps {
   /** The chosen way to split (`null`: nothing to split by; "don't split" counts as none). */
   group: CompareGroup | null;
   filterActive: boolean;
+  /** The tags the filter chose, for the badge in the head. */
+  filterTags: readonly StockTag[];
 }
 
 /** Skeleton in the shape of the card: the head and five rows. */
@@ -63,6 +66,7 @@ export function ContributionCard({
   parts,
   group,
   filterActive,
+  filterTags,
 }: ContributionCardProps) {
   const { t } = useTranslation('reports');
   const fmt = useFormat();
@@ -71,8 +75,8 @@ export function ContributionCard({
   const [otherOpen, setOtherOpen] = useState(false);
 
   const live = useMemo(
-    () => ({ selected, parts, group, filterActive }),
-    [selected, parts, group, filterActive]
+    () => ({ selected, parts, group, filterActive, filterTags }),
+    [selected, parts, group, filterActive, filterTags]
   );
   const view = useHeldWhile(live, stale);
   // "Don't split" is no group: there are only the positions, and no switch
@@ -172,7 +176,10 @@ export function ContributionCard({
       <Card className={cn('flex flex-col transition-opacity duration-base', stale && 'opacity-50')}>
         <CardHeader className="flex-wrap items-start">
           <div className="min-w-0 flex-1 basis-[190px]">
-            <CardTitle className="text-[16px]">{t('stocksAnalysis.contribution.title')}</CardTitle>
+            <CardTitle className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[16px]">
+              {t('stocksAnalysis.contribution.title')}
+              <FilterBadge tags={view.filterTags} />
+            </CardTitle>
             <CardDescription>{subtitle()}</CardDescription>
           </div>
           {grouped && (

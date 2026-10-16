@@ -273,7 +273,8 @@
       "periodReturn": "Výnos za období",
       "gainToday": "Nerealiz. zisk dnes",
       "noGroup": "bez skupiny",
-      "valueAt": "K {{date}}"
+      "valueAt": "K {{date}}",
+      "total": "Celkem"
     },
     "holdings": {
       "title": "Pozice a jejich štítky",
@@ -479,6 +480,10 @@
       "captionMore": "Graf kreslí nejvýš čtyři čáry, další jsou jen v tabulce.",
       "captionSelection": "Příspěvek je k výnosu celého portfolia.",
       "captionNone": "Bez rozdělení: výběr je jeden řádek, jeho příspěvek je k výnosu celého portfolia."
+    },
+    "filterBadge": {
+      "label": "Filtr: {{tags}}",
+      "title": "Počítají se tu jen pozice se štítky {{tags}}."
     }
   },
   "planning": {

@@ -506,17 +506,23 @@ export interface SeriesSpecLite {
 /** Most series one performance request may ask for (the backend's `validation.tooManySeries`). */
 export const MAX_SERIES = 256;
 
+/** Key of the series of every position carrying a tag of the tag group `groupId`. */
+export function tagGroupSeriesKey(groupId: string): string {
+  return `tag-group:${groupId}`;
+}
+
 /**
  * Series to request from the backend: one per tag carried by a selected position (`tag:<id>`),
  * plus the parts of `g` that are not tag parts (`none:…`, `sector:…`, `currency:…`, or the
  * `selection` of "don't split" while `filterActive`), and for a currency part whose code differs
- * from `reportCurrency` also `<key>:native` computed in that currency. Keys are unique, the order
- * is stable.
+ * from `reportCurrency` also `<key>:native` computed in that currency. Last, one per tag group
+ * (`tag-group:<id>`) of the selected positions carrying any of its tags, for the group's subtotal
+ * in the tags table. Keys are unique, the order is stable.
  *
- * The request never holds more than `MAX_SERIES`. Past it the tag series of tags outside the
- * chosen group (all of them without a tag group) are dropped first: only the chosen split is
- * charted, the others only feed the tags table's period return. Should the chosen group alone
- * be too big, the first `MAX_SERIES` stay.
+ * The request never holds more than `MAX_SERIES`. The group series come only when everything
+ * fits. Past the limit the tag series of tags outside the chosen group (all of them without a
+ * tag group) are dropped first: only the chosen split is charted, the others only feed the tags
+ * table's period return. Should the chosen group alone be too big, the first `MAX_SERIES` stay.
  */
 export function seriesSpecs(
   selected: readonly PositionLite[],
@@ -555,7 +561,16 @@ export function seriesSpecs(
     }
   }
 
+  const groupIds = [...new Set(tags.flatMap((tag) => (tag.groupId ? [tag.groupId] : [])))];
+  const groupSpecs = groupIds.flatMap((groupId) => {
+    const investmentIds = selected
+      .filter((p) => p.tags.some((t) => t.groupId === groupId))
+      .map((p) => p.id);
+    return investmentIds.length > 0 ? [{ key: tagGroupSeriesKey(groupId), investmentIds }] : [];
+  });
+
   const all = [...specs.values()];
+  if (all.length + groupSpecs.length <= MAX_SERIES) return [...all, ...groupSpecs];
   if (all.length <= MAX_SERIES) return all;
   return all.filter((spec) => !outside.has(spec.key)).slice(0, MAX_SERIES);
 }

@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
+import { Fragment, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tag } from 'lucide-react';
-import type { PerformanceSeries } from '@shared/schema';
+import type { PerformanceSeries, StockTag } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import type { AnalysisPosition } from '@/utils/stock-analysis';
@@ -17,9 +17,10 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { FilterBadge } from './FilterBadge';
 import { GainChange } from './GainChange';
 import { amountOf } from './performance-model';
-import { tagRows, type TagGroupRows } from './tables-model';
+import { tagGroupTotals, tagRows, type TagFigures, type TagGroupRows } from './tables-model';
 
 const HEAD_WRAP = '[&_th]:whitespace-normal [&_th]:leading-[1.2]';
 
@@ -32,9 +33,14 @@ interface TagsTableProps {
   /** Value of a position as of the end of the period; of the whole portfolio. */
   endValueOf: (positionId: string) => number | null;
   endTotal: number | null;
-  /** The series of the performance response on screen (`tag:<id>` carries a tag's return). */
+  /**
+   * The series of the performance response on screen: `tag:<id>` carries a tag's return,
+   * `tag-group:<id>` the return of a tag group's subtotal.
+   */
   series: readonly PerformanceSeries[] | undefined;
   filterActive: boolean;
+  /** The tags the filter chose, for the badge in the head. */
+  filterTags: readonly StockTag[];
   /** The period ends today: "Hodnota", else "K {date}" and the unrealized gain says "dnes". */
   endsToday: boolean;
   endDate: number;
@@ -49,7 +55,9 @@ interface TagsTableProps {
  * The tags table: for every tag the positions that carry it, their value at the end of the period
  * and its share of the whole portfolio, their return over the period, the unrealized gain and the
  * estimated dividend a year (both as of today). Shares within a tag group add up to 100 %; tags
- * without a group can overlap. With a filter only tags that have a selected position are listed.
+ * without a group can overlap. A group with at least two tags holding a position ends with its
+ * subtotal row, so its rows visibly add up. With a filter only tags that have a selected position
+ * are listed.
  */
 export function TagsTable({
   groups,
@@ -59,6 +67,7 @@ export function TagsTable({
   endTotal,
   series,
   filterActive,
+  filterTags,
   endsToday,
   endDate,
   currency,
@@ -68,23 +77,64 @@ export function TagsTable({
   const { t } = useTranslation('reports');
   const fmt = useFormat();
 
-  const rows = useMemo(() => {
+  const { rows, totals } = useMemo(() => {
     const byKey = new Map((series ?? []).map((s) => [s.key, s]));
-    return tagRows({
+    const input = {
       groups,
       selected,
       endValueOf,
       endTotal,
-      periodReturnOf: (tagId) => byKey.get(`tag:${tagId}`)?.twr.at(-1) ?? null,
-      periodGainOf: (tagId) => amountOf(byKey.get(`tag:${tagId}`)?.gain),
+      periodOf: (key: string) => {
+        const found = byKey.get(key);
+        return found
+          ? { periodReturn: found.twr.at(-1) ?? null, periodGain: amountOf(found.gain) }
+          : null;
+      },
       filterActive,
-    });
+    };
+    return {
+      rows: tagRows(input),
+      totals: new Map(tagGroupTotals(input).map((total) => [total.groupKey, total])),
+    };
   }, [groups, selected, endValueOf, endTotal, series, filterActive]);
 
   const money = (value: number | null) =>
     value === null ? '—' : fmt.money(value, currency, { decimals: 0 });
   const dash = <span className="text-ink-5">—</span>;
   const hasTags = groups.some((group) => group.tags.length > 0);
+
+  /** The figures of a tag row or a subtotal, from "Pozice" to "Dividenda ročně". */
+  const figureCells = (row: TagFigures) => {
+    const has = row.count > 0;
+    return (
+      <>
+        <TableCell className="text-right num">{fmt.number(row.count)}</TableCell>
+        <TableCell className="text-right font-650 text-ink num">
+          {has ? money(row.value) : dash}
+        </TableCell>
+        <TableCell className="text-right num">
+          {has && row.share !== null ? fmt.percent(row.share, 0) : '—'}
+        </TableCell>
+        <TableCell className="text-right num">
+          {has ? (
+            <GainChange amount={row.periodGain} percent={row.periodReturn} currency={currency} />
+          ) : (
+            dash
+          )}
+        </TableCell>
+        <TableCell className="text-right num">
+          {has ? (
+            <GainChange amount={row.gain} percent={row.gainPercent} currency={currency} />
+          ) : (
+            '—'
+          )}
+        </TableCell>
+        <TableCell className="text-right num">
+          {row.dividend > 0 ? money(row.dividend) : dash}
+        </TableCell>
+      </>
+    );
+  };
 
   const subtitle = filterActive
     ? `${t('stocksAnalysis.selection', { shown: selected.length, total })} · ${t('stocksAnalysis.tagsTable.selectedNote')}`
@@ -97,7 +147,10 @@ export function TagsTable({
     >
       <CardHeader>
         <div>
-          <CardTitle>{t('stocksAnalysis.tagsTable.title')}</CardTitle>
+          <CardTitle className="flex items-center gap-2.5">
+            {t('stocksAnalysis.tagsTable.title')}
+            <FilterBadge tags={filterTags} />
+          </CardTitle>
           <CardDescription>{subtitle}</CardDescription>
         </div>
       </CardHeader>
@@ -148,47 +201,35 @@ export function TagsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.map((row) => {
-              const has = row.count > 0;
+            {rows.map((row, i) => {
+              // A group's subtotal follows its last row
+              const total =
+                rows[i + 1]?.groupKey !== row.groupKey ? totals.get(row.groupKey) : undefined;
               return (
-                <TableRow key={row.tag.id} className="h-12">
-                  <TableCell>
-                    <span className="inline-flex items-center gap-1.5">
-                      <ChipLabel>{row.tag.name}</ChipLabel>
-                      <span className="whitespace-nowrap text-[10px] font-500 text-ink-4">
-                        {row.groupName ?? t('stocksAnalysis.tagsTable.noGroup')}
+                <Fragment key={row.tag.id}>
+                  <TableRow className="h-12">
+                    <TableCell>
+                      <span className="inline-flex items-center gap-1.5">
+                        <ChipLabel>{row.tag.name}</ChipLabel>
+                        <span className="whitespace-nowrap text-[10px] font-500 text-ink-4">
+                          {row.groupName ?? t('stocksAnalysis.tagsTable.noGroup')}
+                        </span>
                       </span>
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right num">{fmt.number(row.count)}</TableCell>
-                  <TableCell className="text-right font-650 text-ink num">
-                    {has ? money(row.value) : dash}
-                  </TableCell>
-                  <TableCell className="text-right num">
-                    {has && row.share !== null ? fmt.percent(row.share, 0) : '—'}
-                  </TableCell>
-                  <TableCell className="text-right num">
-                    {has ? (
-                      <GainChange
-                        amount={row.periodGain}
-                        percent={row.periodReturn}
-                        currency={currency}
-                      />
-                    ) : (
-                      dash
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right num">
-                    {has ? (
-                      <GainChange amount={row.gain} percent={row.gainPercent} currency={currency} />
-                    ) : (
-                      '—'
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right num">
-                    {row.dividend > 0 ? money(row.dividend) : dash}
-                  </TableCell>
-                </TableRow>
+                    </TableCell>
+                    {figureCells(row)}
+                  </TableRow>
+                  {total && (
+                    <TableRow className="h-12 border-line bg-well hover:bg-well">
+                      <TableCell>
+                        <span className="inline-flex items-baseline gap-1.5 whitespace-nowrap">
+                          <b className="font-700 text-ink">{t('stocksAnalysis.tagsTable.total')}</b>
+                          <span className="text-[10px] font-500 text-ink-4">{total.label}</span>
+                        </span>
+                      </TableCell>
+                      {figureCells(total)}
+                    </TableRow>
+                  )}
+                </Fragment>
               );
             })}
           </TableBody>

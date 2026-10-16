@@ -58,8 +58,9 @@ struct RetrieveResponse {
 
 impl<R: Runtime> Keychain<R> {
     /// Stores `value_hex` under `key` behind the current biometric enrolment, replacing any
-    /// earlier value. iOS stores without a prompt; Android prompts with `reason` as the title
-    /// (its key is auth-bound for encryption too).
+    /// earlier value. Both platforms prompt with `reason` first: iOS evaluates Face ID / Touch ID
+    /// (so the system's permission alert comes in context) and stores with that context; Android
+    /// uses it as the title (its key is auth-bound for encryption too).
     pub fn store(&self, key: &str, value_hex: &str, reason: &str) -> Result<()> {
         self.0
             .run_mobile_plugin(

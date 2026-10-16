@@ -4,9 +4,11 @@
 // that existed when it was stored (`.biometryCurrentSet`), on this device only, and only while
 // a passcode is set. Next to each secret sits a second, unprotected item with the biometric
 // domain state of that enrolment, so `retrieve` can report "the enrolment changed" without
-// prompting and without guessing from an OSStatus. `retrieve` prompts through LAContext and
-// reads the item with that authenticated context (one prompt on a device, and a prompt at all
-// on the simulator, whose keychain ignores biometric access control).
+// prompting and without guessing from an OSStatus. `store` and `retrieve` both prompt through
+// LAContext and use that authenticated context for the keychain call: `store` so the person
+// confirms the switch with their face or finger (and the system's Face ID permission alert comes
+// in that context, not at the next lock), `retrieve` for one prompt on a device, and a prompt at
+// all on the simulator, whose keychain ignores biometric access control.
 //
 // Every @objc command lives in this file: the package links as a static library, and an
 // extension in another file would be an Objective-C category the linker drops.
@@ -35,8 +37,8 @@ enum KeychainCode: String {
 struct StoreArgs: Decodable {
   let key: String
   let value: String
-  /// The prompt title where the platform asks on store (Android). iOS adds the item without a
-  /// prompt, so it is not used here.
+  /// The text of the Face ID / Touch ID prompt shown before the item is added ("Zapnout
+  /// odemykání biometrií"); the app's name when missing or empty.
   let reason: String?
 }
 
@@ -151,13 +153,11 @@ class MoonyKeychainPlugin: Plugin {
   private func performStore(_ invoke: Invoke, _ args: StoreArgs) {
     let context = LAContext()
     var policyError: NSError?
-    guard
-      context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &policyError),
-      let domainState = context.evaluatedPolicyDomainState
+    guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &policyError)
     else {
       reject(
         invoke, .unavailable,
-        "Biometry is unavailable: \(policyError?.localizedDescription ?? "no enrolment state")")
+        "Biometry is unavailable: \(policyError?.localizedDescription ?? "unknown")")
       return
     }
 
@@ -172,13 +172,43 @@ class MoonyKeychainPlugin: Plugin {
       return
     }
 
-    // Replace rather than update: the new item binds to today's enrolment.
+    // Replace rather than update: the new item binds to today's enrolment. Removed before the
+    // prompt, so a refused prompt leaves nothing behind either (the app then records "off").
     deleteItem(account: args.key)
     deleteItem(account: args.key + domainStateSuffix)
 
+    // Ask first, the same way `retrieve` does: the person confirms the switch, and a first
+    // Face ID use brings the system's permission alert here, in context, not at the next lock.
+    let reason = promptReason(args.reason)
+    context.localizedReason = reason  // the non-deprecated kSecUseOperationPrompt
+    context.localizedFallbackTitle = ""  // biometry only: no "Enter Password" button
+    context.evaluatePolicy(
+      .deviceOwnerAuthenticationWithBiometrics, localizedReason: reason
+    ) { success, error in
+      self.workQueue.async {
+        guard success else {
+          self.rejectStoreEvaluation(invoke, error)
+          return
+        }
+        // The enrolment that has just answered.
+        guard let domainState = context.evaluatedPolicyDomainState else {
+          self.reject(invoke, .unavailable, "Biometry is unavailable: no enrolment state")
+          return
+        }
+        self.addSecret(invoke, args, access: access, context: context, domainState: domainState)
+      }
+    }
+  }
+
+  /// Adds the secret with the context the person has just authenticated, then its domain state.
+  private func addSecret(
+    _ invoke: Invoke, _ args: StoreArgs, access: SecAccessControl, context: LAContext,
+    domainState: Data
+  ) {
     var secretItem = itemQuery(account: args.key)
     secretItem[kSecValueData as String] = Data(args.value.utf8)
     secretItem[kSecAttrAccessControl as String] = access
+    secretItem[kSecUseAuthenticationContext as String] = context
     let secretStatus = SecItemAdd(secretItem as CFDictionary, nil)
     guard secretStatus == errSecSuccess else {
       reject(invoke, .failed, "Could not store the secret: \(describe(secretStatus))")
@@ -221,7 +251,7 @@ class MoonyKeychainPlugin: Plugin {
     guard context.canEvaluatePolicy(.deviceOwnerAuthenticationWithBiometrics, error: &policyError)
     else {
       if enrolmentLost(policyError) {
-        reject(invoke, .invalidated, "The biometric enrolment or the passcode was removed")
+        reject(invoke, .invalidated, "The enrolment, the passcode or the permission is gone")
       } else {
         reject(
           invoke, .unavailable,
@@ -264,11 +294,15 @@ class MoonyKeychainPlugin: Plugin {
       return
     }
     switch laError.code {
-    case .userCancel, .systemCancel, .appCancel, .userFallback:
+    case .userCancel, .systemCancel, .appCancel, .userFallback, .notInteractive:
+      // `.notInteractive`: the prompt came before the app was active; the person taps the button.
       reject(invoke, .cancelled, "Biometric authentication was cancelled")
-    case .biometryNotEnrolled, .passcodeNotSet:
-      reject(invoke, .invalidated, "The biometric enrolment or the passcode was removed")
-    case .biometryLockout, .biometryNotAvailable, .notInteractive:
+    case .biometryNotEnrolled, .passcodeNotSet, .biometryNotAvailable:
+      // `.biometryNotAvailable`: the Face ID permission was taken back (or there is no sensor),
+      // so the secret is out of reach for good; the app switches biometric unlock off instead
+      // of failing at every lock.
+      reject(invoke, .invalidated, "The enrolment, the passcode or the permission is gone")
+    case .biometryLockout:
       reject(invoke, .unavailable, "Biometry is unavailable: \(laError.localizedDescription)")
     default:
       if enrolmentChanged(since: storedState) {
@@ -314,11 +348,40 @@ class MoonyKeychainPlugin: Plugin {
     }
   }
 
-  /// Every enrolment or the passcode is gone: `.biometryCurrentSet` items never come back.
+  /// A refused prompt while switching on: nothing was stored (the app records "off").
+  private func rejectStoreEvaluation(_ invoke: Invoke, _ error: Error?) {
+    guard let laError = error as? LAError else {
+      reject(invoke, .failed, "Biometric authentication failed: \(String(describing: error))")
+      return
+    }
+    switch laError.code {
+    case .userCancel, .systemCancel, .appCancel, .userFallback, .notInteractive:
+      reject(invoke, .cancelled, "Biometric authentication was cancelled")
+    case .biometryNotAvailable, .biometryNotEnrolled, .passcodeNotSet:
+      // `.biometryNotAvailable` includes "Don't Allow" on the system's Face ID permission alert.
+      reject(invoke, .unavailable, "Biometry is unavailable: \(laError.localizedDescription)")
+    default:
+      // `.biometryLockout`, `.authenticationFailed` and anything newer.
+      reject(invoke, .failed, "Biometric authentication failed: \(laError.localizedDescription)")
+    }
+  }
+
+  /// Every enrolment, the passcode or the app's permission to use biometry is gone (no sensor
+  /// counts too): `.biometryCurrentSet` items are out of reach for good. Used on `retrieve` only.
   private func enrolmentLost(_ error: NSError?) -> Bool {
     guard let error = error, error.domain == LAErrorDomain else { return false }
     return error.code == LAError.Code.biometryNotEnrolled.rawValue
       || error.code == LAError.Code.passcodeNotSet.rawValue
+      || error.code == LAError.Code.biometryNotAvailable.rawValue
+  }
+
+  /// The prompt text, else the app's name (LAContext refuses an empty reason).
+  private func promptReason(_ reason: String?) -> String {
+    if let reason = reason, !reason.isEmpty {
+      return reason
+    }
+    let info = Bundle.main.infoDictionary
+    return info?["CFBundleDisplayName"] as? String ?? info?["CFBundleName"] as? String ?? "Moony"
   }
 
   private func enrolmentChanged(since storedState: Data) -> Bool {

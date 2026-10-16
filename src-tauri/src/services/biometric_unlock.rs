@@ -122,7 +122,7 @@ pub fn biometric_status(keychain: &impl KeychainLike, data_dir: &Path) -> Biomet
 }
 
 /// Store the session's master key behind biometry and switch biometric unlock on. `reason` is the
-/// prompt text where the platform asks on store (Android).
+/// text of the biometric prompt both platforms show before they store.
 pub fn enable(
     keychain: &impl KeychainLike,
     session: &SessionKey,
@@ -134,15 +134,21 @@ pub fn enable(
     })?;
 
     if let Err(failure) = keychain.store(MASTER_KEY_ITEM, &key_hex, reason) {
-        // A failed store leaves nothing usable behind (Android removes the old entry before its
-        // prompt): biometric unlock is off now, whatever it was before.
+        // A failed store leaves nothing usable behind (both platforms remove the old entry before
+        // their prompt): biometric unlock is off now, whatever it was before.
         mark_off(data_dir);
         return Err(match failure {
             KeychainFailure::Cancelled => AppError::Auth(AUTH_BIOMETRIC_CANCELLED.into()),
             KeychainFailure::Invalidated => AppError::Auth(AUTH_BIOMETRIC_INVALIDATED.into()),
-            other => AppError::Internal(format!(
-                "Could not store the key for biometric unlock: {other:?}"
-            )),
+            // Not recognised, locked out, the permission refused, nothing enrolled: the sheet
+            // says biometric unlock was not switched on.
+            failure @ (KeychainFailure::Unavailable | KeychainFailure::Failed(_)) => {
+                log::warn!("[BIOMETRIC] Could not switch biometric unlock on: {failure:?}");
+                AppError::Auth(AUTH_BIOMETRIC_FAILED.into())
+            }
+            KeychainFailure::Unsupported => {
+                AppError::Internal("Biometric unlock is not supported on this platform".into())
+            }
         });
     }
 
@@ -506,13 +512,50 @@ mod tests {
         assert_eq!(read_marker(dir.path()), Marker::Disabled);
     }
 
+    /// Final review I1: no usable biometry at the moment of "Zapnout" (permission denied, nothing
+    /// enrolled) is an answer the sheet shows as "not switched on", not an internal error.
     #[test]
-    fn a_failed_store_is_an_internal_error_and_leaves_biometric_unlock_off() {
-        let dir = tempdir().expect("tempdir");
+    fn an_unavailable_store_is_the_failed_auth_error_and_leaves_biometric_unlock_off() {
+        let dir = enabled_dir();
         let session = SessionKey::default();
         session.set(&KEY);
         let keychain = StubKeychain {
             store: Err(KeychainFailure::Unavailable),
+            ..StubKeychain::default()
+        };
+        let err = enable(&keychain, &session, dir.path(), "r").unwrap_err();
+        assert_auth(err, AUTH_BIOMETRIC_FAILED);
+        assert_eq!(
+            fs::read_to_string(dir.path().join(MARKER_FILE)).expect("marker"),
+            "0"
+        );
+    }
+
+    /// Final review I1: a face that was not recognised (or a lockout) while switching on.
+    #[test]
+    fn a_failed_store_is_the_failed_auth_error_and_leaves_biometric_unlock_off() {
+        let dir = enabled_dir();
+        let session = SessionKey::default();
+        session.set(&KEY);
+        let keychain = StubKeychain {
+            store: Err(KeychainFailure::Failed("authentication failed".into())),
+            ..StubKeychain::default()
+        };
+        let err = enable(&keychain, &session, dir.path(), "r").unwrap_err();
+        assert_auth(err, AUTH_BIOMETRIC_FAILED);
+        assert_eq!(
+            fs::read_to_string(dir.path().join(MARKER_FILE)).expect("marker"),
+            "0"
+        );
+    }
+
+    #[test]
+    fn an_unsupported_store_is_an_internal_error_and_leaves_biometric_unlock_off() {
+        let dir = tempdir().expect("tempdir");
+        let session = SessionKey::default();
+        session.set(&KEY);
+        let keychain = StubKeychain {
+            store: Err(KeychainFailure::Unsupported),
             ..StubKeychain::default()
         };
         let err = enable(&keychain, &session, dir.path(), "r").unwrap_err();

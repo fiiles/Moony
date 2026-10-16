@@ -100,8 +100,8 @@ pub async fn biometric_unlock_status(app: AppHandle) -> Result<BiometricStatus> 
     .await
 }
 
-/// Store the session's master key behind biometry. `reason` is the localized prompt title where
-/// the platform asks on store (Android).
+/// Store the session's master key behind biometry. `reason` is the localized text of the
+/// biometric prompt both platforms show before they store.
 #[tauri::command]
 pub async fn enable_biometric_unlock(app: AppHandle, reason: String) -> Result<()> {
     with_keychain(&app, move |app, keychain, data_dir, _| {

@@ -12,6 +12,7 @@ import { Sheet } from '@/mobile/components/Sheet';
 import {
   BIOMETRIC_STATUS_KEY,
   biometricCopy,
+  biometricFailure,
   markEnrolmentAsked,
   shouldOfferEnrolment,
   wasEnrolmentAsked,
@@ -28,8 +29,9 @@ function storage(): Storage | null {
 /**
  * "Odemykat Moony obličejem?" (spec §8.2 Biometrie, explained before the system asks): once,
  * after the first password unlock on a phone whose biometrics can be used and are not on yet.
- * "Zapnout" stores the session's master key behind biometry (in Rust; the key never reaches the
- * webview), "Teď ne" leaves it. Either answer, or closing the sheet, sets `moony-biometrics-asked`.
+ * "Zapnout" asks for Face ID / Touch ID ("Zapnout odemykání biometrií") and stores the session's
+ * master key behind biometry (in Rust; the key never reaches the webview), "Teď ne" leaves it.
+ * Either answer, or closing the sheet, sets `moony-biometrics-asked`.
  */
 export function EnableBiometricsSheet() {
   const { t } = useTranslation('mobile');
@@ -66,11 +68,16 @@ export function EnableBiometricsSheet() {
     mutationFn: () => biometricApi.enable(t('biometrics.enableReason')),
     onSuccess: () => toast(t('biometrics.enabled')),
     onError: (error) => {
-      // A dismissed system prompt is an answer; anything else says what went wrong.
-      if (isAuthApiError(error) && error.key === 'auth.biometricCancelled') {
+      // A dismissed system prompt is an answer. A refused one (not recognised, locked out, the
+      // permission denied) is said without the backend's words, which are about unlocking.
+      // Anything else says what went wrong.
+      const failure = biometricFailure(isAuthApiError(error) ? error.key : undefined);
+      if (failure === 'cancelled') {
         toast(t('biometrics.notEnabled'));
-      } else {
+      } else if (failure === 'other') {
         toast.error(t('biometrics.notEnabled'), { description: error.message });
+      } else {
+        toast.error(t('biometrics.notEnabled'));
       }
     },
     onSettled: () => {

@@ -7,15 +7,7 @@
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="mobile.css">
 <style>
-  /* Tokens that src/index.css already carries and tokens.css does not yet (values copied from
-     src/index.css, here until tokens.css carries them). mobile.css only names them. */
-  :root {
-    --hero-orb: #f0eee8;
-    --sh-seg: 0 1px 3px rgba(34, 34, 34, 0.13);
-    --sh-destructive: inset 0 1px rgba(255, 255, 255, 0.12), 0 3px 7px rgba(191, 66, 36, 0.2);
-  }
-
-  /* ===== Page chrome (not part of the contract) ===== */
+  /* ===== Page chrome (not part of the contract; tokens only, like the contract) ===== */
   *, *::before, *::after { box-sizing: border-box; }
   html { -webkit-text-size-adjust: 100%; }
   body { margin: 0; background: var(--canvas); color: var(--ink); font: var(--fw-body) var(--fs-body)/1.5 var(--font); -webkit-font-smoothing: antialiased; }
@@ -42,7 +34,7 @@
   .frame__check { display: block; width: 100%; color: var(--ink-4); font-size: 11px; font-weight: 500; }
   .frame__check.is-ok { color: var(--gain); }
   .frame__check.is-bad { color: var(--loss); }
-  .phone { position: relative; height: 780px; overflow: hidden; border-radius: 38px; transform: translateZ(0); box-shadow: 0 0 0 1px var(--line-strong), 0 24px 60px rgba(31, 28, 20, .18); }
+  .phone { position: relative; height: 780px; overflow: hidden; border-radius: 38px; transform: translateZ(0); box-shadow: 0 0 0 1px var(--line-strong), var(--sh-3); }
   .phone--android { --safe-top: 24px; --safe-bottom: 16px; border-radius: 22px; }
   .phone--iphone { --safe-top: 47px; --safe-bottom: 34px; }
   .phone--max { --safe-top: 59px; --safe-bottom: 34px; }
@@ -291,9 +283,10 @@
     var v = value ? '<span class="m-row__v' + (opts.gain ? " m-row__v--gain" : "") + '">' + value + '</span>' : "";
     var vs = valueSub ? '<span class="m-row__vs">' + valueSub + '</span>' : "";
     var chev = value ? "" : '<span class="m-row__chev" data-icon="chevron-right" data-size="16"></span>';
-    return '<a class="m-row' + (value ? "" : " m-row--chev") + '" href="#">' + chipHtml +
+    var subLine = sub || vs ? '<div class="m-row__line"><span class="m-row__s">' + sub + '</span>' + vs + '</div>' : "";
+    return '<a class="m-row' + (value ? "" : " m-row--chev") + (subLine ? "" : " m-row--single") + '" href="#">' + chipHtml +
       '<div class="m-row__main"><div class="m-row__line"><span class="m-row__t">' + title + '</span>' + v + '</div>' +
-      '<div class="m-row__line"><span class="m-row__s">' + sub + '</span>' + vs + '</div></div>' + chev + '</a>';
+      subLine + '</div>' + chev + '</a>';
   }
   var ROWS = {
     accounts: [
@@ -319,7 +312,8 @@
     settings: [
       row("", "Sicherheit", "Face ID · Sperre nach 1 Minute", "", "", { icon: "lock" }),
       row("", "Sicherung und Übertragung", "iCloud Drive · heute 7:30", "", "", { icon: "download" }),
-      row("", "Kategorisierungsregeln", "12 Regeln · 3 heute angewendet", "", "", { icon: "settings" })
+      row("", "Kategorisierungsregeln", "12 Regeln · 3 heute angewendet", "", "", { icon: "settings" }),
+      row("", "Hilfe und Kontakt", "", "", "", { icon: "info" })
     ]
   };
 
@@ -394,10 +388,20 @@
       });
       var body = screen.querySelector(".m-screen__body");
       if (body.scrollWidth > body.clientWidth + 0.5) over.push("m-screen__body scrolls sideways");
+      /* Row heights: two-line rows at least 60 px, single-line rows exactly 52 px. */
+      var rows = [].slice.call(screen.querySelectorAll(".m-row")), badRows = [], singles = [];
+      rows.forEach(function (row) {
+        var h = Math.round(row.getBoundingClientRect().height * 10) / 10;
+        var single = row.classList.contains("m-row--single");
+        if (single) singles.push(h);
+        if (single ? Math.abs(h - 52) > 0.5 : h < 59.5) badRows.push(row.querySelector(".m-row__t").textContent + " " + h + " px");
+      });
       var width = Math.round(edge.width);
-      out.className = "frame__check " + (over.length ? "is-bad" : "is-ok");
+      out.className = "frame__check " + (over.length || badRows.length ? "is-bad" : "is-ok");
       out.textContent = width + " px: " + (over.length ? "přetéká " + over.length + " (" + over.slice(0, 4).join(", ") + ")" : "bez vodorovného přetečení") +
         (scrolls ? " · segment se posouvá: " + scrolls : "") +
+        (rows.length ? " · řádky " + rows.length + (badRows.length ? ", špatná výška: " + badRows.join(" | ") : ", výšky v pořádku") +
+          (singles.length ? " (jednořádkové " + singles.join(", ") + " px)" : "") : "") +
         " · zkráceno výpustkou: " + (cut.length ? cut.join(" | ") : "nic");
     });
   }

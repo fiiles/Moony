@@ -17,7 +17,8 @@ interface TabBarProps {
 
 /**
  * Tab bar (spec §6 and §10.3, design system README §13, `.m-tabbar`): paper with a hairline on
- * top, 56 pt above the bottom safe area, Lucide 24 and a 10 / 600 label; active ink, the rest ink-4.
+ * top, 56 pt above the bottom safe area, Lucide 24 (stroke 1.75) and a 10 / 600 label; colour alone
+ * marks the active tab (ink, the rest ink-4).
  * Switching tabs goes through the history, so Android back walks back through it.
  */
 export function TabBar({ active }: TabBarProps) {
@@ -47,7 +48,7 @@ export function TabBar({ active }: TabBarProps) {
               isActive ? 'text-ink' : 'text-ink-4'
             )}
           >
-            <Icon aria-hidden className="size-6 flex-none" strokeWidth={isActive ? 2.1 : 1.75} />
+            <Icon aria-hidden className="size-6 flex-none" strokeWidth={1.75} />
             <span className="max-w-full truncate">{t(`tabs.${tab}`)}</span>
           </Link>
         );

@@ -295,8 +295,9 @@ bar, sheets and segment, Inter bundled). The reference width is 390 pt; every la
 - **`mobile.css`** is the phone component contract, as `moony.css` is the desktop's: plain CSS on the
   tokens, every class prefixed `m-` so the two layers never collide. Its own `:root` defines the phone
   tokens (safe areas, bar heights, type scale); `src/index.css` carries the same block (keep the two
-  identical). It names three tokens that `src/index.css` already has and `tokens.css` does not carry
-  yet (`hero-orb`, `sh-seg`, `sh-destructive`); `mobile.html` defines them until `tokens.css` does.
+  identical). Its other sources are the tokens of `tokens.css` only, including `hero-orb`, `sh-seg` and
+  `sh-destructive`, added there for the phone layer with the values `src/index.css` already had (the
+  dark-mode branch adds the same three with identical light values; the Phase 6 merge reconciles them).
   `src/mobile/` matches it visually and never imports it.
 - **`mobile.html`** shows the components at 360, 390 and 430 with German copy (German runs longest).
   Under each frame a check reports anything that extends past the screen or scrolls it sideways, and
@@ -332,7 +333,7 @@ drops the desktop's 1080 px minimum body width and the tap highlight. Touch targ
 |---|---|---|---|
 | Screen | `.m-screen`, `__body` | `mobile/shell/Screen.tsx` | Fills the viewport (`100dvh`). A tab root is `large`: its 30 pt title sits in the content, wraps and hyphenates. |
 | Nav bar | `.m-nav`, `--large`, `.is-collapsed`, `__side`, `__title`, `__btn`, `__back`; `.m-avatar` | `mobile/shell/NavBar.tsx` | At most one leading and two trailing 44 pt buttons (24 pt icons); the 20 pt title is centred between them and ends with an ellipsis. On a tab root the bar title and a hairline `line` appear once the large title has scrolled away; elsewhere the title always shows and the hairline appears on scroll. A back label ends with an ellipsis at 120 px. No blur. |
-| Tab bar | `.m-tabbar`, `.m-tab`, `.is-active`, `__label` | `mobile/shell/TabBar.tsx` | Paper, hairline `line` on top, four equal tabs, Lucide 24 (stroke 1.75, active 2.1), label 10 / 600; active `ink`, the rest `ink-4`; no dark material (D5). Stays on tab roots and details, hides on the lock screen and under sheets. A tab switch is a history entry (Android back walks back); tapping the tab you are on at its root adds none. |
+| Tab bar | `.m-tabbar`, `.m-tab`, `.is-active`, `__label` | `mobile/shell/TabBar.tsx` | Paper, hairline `line` on top, four equal tabs, Lucide 24 at stroke 1.75 in both states, label 10 / 600; colour alone marks the active tab (`ink`, the rest `ink-4`); no dark material (D5). Stays on tab roots and details, hides on the lock screen and under sheets. A tab switch is a history entry (Android back walks back); tapping the tab you are on at its root adds none. |
 | Card | `.m-card`, `--well`, `--hero` | — | Paper, radius 15, `sh-1`; fewer cards than the desktop, a section is often a head and rows on the canvas. |
 | Section head | `.m-sec`, `__t`, `__a` | — | 16 / 620 title, 12 / 600 `ink-3` action or the section's one number. |
 | Hero | `.m-card--hero`, `.m-hero__label`, `__value`, `__delta`, `__seg`, `__chart` | Task 1.5 | Label, display number, change line (badge + context), period segment, chart 160 pt; the desktop circle at 60 %. |
@@ -346,7 +347,7 @@ drops the desktop's 1080 px minimum body width and the tap highlight. Touch targ
 **The row rule.** One row pattern replaces tables on the phone: accounts, positions, bonds, properties,
 loans, policies, transactions, categories, watchlist and agenda rows. A 36 pt chip (logo, initials or an
 icon in a tinted circle), then two lines: the title 15 with the trailing value, the sub 12 with the
-trailing sub 11 (a change badge or a caption). 60 pt high, 52 single-line; dividers `line-soft`, inset to
+trailing sub 11 (a change badge or a caption). 60 pt high, 52 single-line (8 pt vertical padding around the chip); dividers `line-soft`, inset to
 the title's left edge; the whole row is the tap target. Each line shares out its own width: the value and
 the trailing sub keep theirs, the title and the sub take the rest and end with an ellipsis, so a long
 trailing sub never cuts the name (the prototype's two columns did, in German at 360). **A chevron appears

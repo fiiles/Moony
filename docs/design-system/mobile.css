@@ -105,7 +105,8 @@
 
 /* ===== Tab bar =====
    Paper with a hairline on top, 56 px plus the bottom safe area, four equal tabs: Lucide 24
-   (stroke 1.75, active 2.1), label 10 / 600; active ink, inactive ink-4. No dark material (D5). */
+   stroke 1.75 in both states, label 10 / 600; the active tab is ink, the rest ink-4 (colour alone
+   marks it). No dark material (D5). */
 .m-tabbar {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
   display: grid; grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -120,7 +121,6 @@
 }
 .m-tab svg { flex: none; width: 24px; height: 24px; stroke-width: 1.75; }
 .m-tab.is-active { color: var(--ink); }
-.m-tab.is-active svg { stroke-width: 2.1; }
 .m-tab__label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* ===== Cards and sections =====
@@ -206,7 +206,7 @@
   color: inherit; font: inherit; text-align: left; text-decoration: none; -webkit-touch-callout: none;
 }
 .m-row:is(a, button):active { background: var(--well); }
-.m-row--single { min-height: 52px; }
+.m-row--single { min-height: 52px; padding-block: 8px; } /* 36 px chip + 2 × 8 */
 .m-row--noicon { grid-template-columns: minmax(0, 1fr); }
 .m-row--chev { grid-template-columns: 36px minmax(0, 1fr) 16px; }
 .m-row--chev:has(.m-row__v) { grid-template-columns: 36px minmax(0, 1fr); }

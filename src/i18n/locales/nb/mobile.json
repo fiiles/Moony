@@ -30,5 +30,36 @@
       "unchanged": "uendret",
       "noHistory": "ingen historikk"
     }
+  },
+  "upkeep": {
+    "title": "Datavedlikehold",
+    "count_one": "{{count}} oppgave",
+    "count_other": "{{count}} oppgaver",
+    "balancesStale_one": "{{count}} saldo eldre enn en måned",
+    "balancesStale_other": "{{count}} saldoer eldre enn en måned",
+    "uncategorized_one": "{{count}} betaling uten kategori",
+    "uncategorized_other": "{{count}} betalinger uten kategori",
+    "uncategorizedFrom": "{{account}} · fra kontoutskriften {{date}}",
+    "accounts_one": "{{count}} konto",
+    "accounts_other": "{{count}} kontoer",
+    "statementDue": "På tide med kontoutskrift fra {{bank}}",
+    "lastImport": "Siste import {{date}}",
+    "backupStale_one": "Siste sikkerhetskopi for {{count}} dag siden",
+    "backupStale_other": "Siste sikkerhetskopi for {{count}} dager siden",
+    "backupNever": "Ingen sikkerhetskopi ennå",
+    "valuationStale": "Verdivurderingen av {{name}} er et år gammel",
+    "actions": {
+      "record": "Registrer",
+      "categorize": "Kategoriser",
+      "import": "Importer",
+      "backup": "Ta kopi",
+      "revalue": "Vurder på nytt"
+    }
+  },
+  "recordBalances": {
+    "title": "Registrer saldoer",
+    "lead": "Skriv inn gjeldende saldo for hver konto. Datoen er i dag.",
+    "save": "Registrer",
+    "saved": "Saldoer registrert"
   }
 }

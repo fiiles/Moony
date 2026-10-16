@@ -30,5 +30,41 @@
       "unchanged": "invariato",
       "noHistory": "nessuno storico"
     }
+  },
+  "upkeep": {
+    "title": "Aggiornamento dati",
+    "count_one": "{{count}} voce",
+    "count_many": "{{count}} voci",
+    "count_other": "{{count}} voci",
+    "balancesStale_one": "{{count}} saldo più vecchio di un mese",
+    "balancesStale_many": "{{count}} saldi più vecchi di un mese",
+    "balancesStale_other": "{{count}} saldi più vecchi di un mese",
+    "uncategorized_one": "{{count}} pagamento senza categoria",
+    "uncategorized_many": "{{count}} pagamenti senza categoria",
+    "uncategorized_other": "{{count}} pagamenti senza categoria",
+    "uncategorizedFrom": "{{account}} · dall'estratto del {{date}}",
+    "accounts_one": "{{count}} conto",
+    "accounts_many": "{{count}} conti",
+    "accounts_other": "{{count}} conti",
+    "statementDue": "È ora dell'estratto di {{bank}}",
+    "lastImport": "Ultima importazione {{date}}",
+    "backupStale_one": "Ultimo backup {{count}} giorno fa",
+    "backupStale_many": "Ultimo backup {{count}} giorni fa",
+    "backupStale_other": "Ultimo backup {{count}} giorni fa",
+    "backupNever": "Ancora nessun backup",
+    "valuationStale": "La valutazione di {{name}} ha un anno",
+    "actions": {
+      "record": "Registra",
+      "categorize": "Classifica",
+      "import": "Importa",
+      "backup": "Fai backup",
+      "revalue": "Rivaluta"
+    }
+  },
+  "recordBalances": {
+    "title": "Registra saldi",
+    "lead": "Inserisci il saldo attuale di ogni conto. La data è oggi.",
+    "save": "Registra",
+    "saved": "Saldi registrati"
   }
 }

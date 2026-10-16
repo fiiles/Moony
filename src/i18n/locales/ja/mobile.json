@@ -30,5 +30,31 @@
       "unchanged": "変化なし",
       "noHistory": "履歴なし"
     }
+  },
+  "upkeep": {
+    "title": "データの更新",
+    "count_other": "{{count}}件",
+    "balancesStale_other": "{{count}}件の残高が1か月以上前のものです",
+    "uncategorized_other": "カテゴリのない支払い{{count}}件",
+    "uncategorizedFrom": "{{account}} · {{date}}の明細から",
+    "accounts_other": "{{count}}口座",
+    "statementDue": "{{bank}}の明細を取り込む時期です",
+    "lastImport": "前回の取り込み {{date}}",
+    "backupStale_other": "最後のバックアップは{{count}}日前",
+    "backupNever": "まだバックアップがありません",
+    "valuationStale": "{{name}}の評価額は1年前のものです",
+    "actions": {
+      "record": "記録",
+      "categorize": "分類",
+      "import": "取り込む",
+      "backup": "バックアップ",
+      "revalue": "再評価"
+    }
+  },
+  "recordBalances": {
+    "title": "残高を記録",
+    "lead": "各口座の現在の残高を入力してください。日付は今日です。",
+    "save": "記録",
+    "saved": "残高を記録しました"
   }
 }

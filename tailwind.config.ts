@@ -182,6 +182,14 @@ export default {
           from: { opacity: "0", transform: "translateY(8px)" },
           to: { opacity: "1", transform: "none" },
         },
+        "sheet-in": {
+          from: { transform: "translateY(100%)" },
+          to: { transform: "translateY(0)" },
+        },
+        "sheet-out": {
+          from: { transform: "translateY(0)" },
+          to: { transform: "translateY(100%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -189,6 +197,8 @@ export default {
         "modal-in": "modal-in 180ms cubic-bezier(0.2, 0.7, 0.2, 1)",
         "modal-out": "modal-out 180ms cubic-bezier(0.2, 0.7, 0.2, 1)",
         "toast-in": "toast-in 180ms cubic-bezier(0.2, 0.7, 0.2, 1)",
+        "sheet-in": "sheet-in 260ms cubic-bezier(0.2, 0.7, 0.2, 1)",
+        "sheet-out": "sheet-out 200ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards",
       },
     },
   },

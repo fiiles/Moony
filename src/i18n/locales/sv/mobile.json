@@ -30,5 +30,36 @@
       "unchanged": "oförändrat",
       "noHistory": "ingen historik"
     }
+  },
+  "upkeep": {
+    "title": "Dataunderhåll",
+    "count_one": "{{count}} sak",
+    "count_other": "{{count}} saker",
+    "balancesStale_one": "{{count}} saldo äldre än en månad",
+    "balancesStale_other": "{{count}} saldon äldre än en månad",
+    "uncategorized_one": "{{count}} betalning utan kategori",
+    "uncategorized_other": "{{count}} betalningar utan kategori",
+    "uncategorizedFrom": "{{account}} · från kontoutdraget {{date}}",
+    "accounts_one": "{{count}} konto",
+    "accounts_other": "{{count}} konton",
+    "statementDue": "Dags för kontoutdraget från {{bank}}",
+    "lastImport": "Senaste import {{date}}",
+    "backupStale_one": "Senaste säkerhetskopia för {{count}} dag sedan",
+    "backupStale_other": "Senaste säkerhetskopia för {{count}} dagar sedan",
+    "backupNever": "Ingen säkerhetskopia ännu",
+    "valuationStale": "Värderingen av {{name}} är ett år gammal",
+    "actions": {
+      "record": "Registrera",
+      "categorize": "Kategorisera",
+      "import": "Importera",
+      "backup": "Säkerhetskopiera",
+      "revalue": "Värdera om"
+    }
+  },
+  "recordBalances": {
+    "title": "Registrera saldon",
+    "lead": "Ange aktuellt saldo för varje konto. Datumet är i dag.",
+    "save": "Registrera",
+    "saved": "Saldon registrerade"
   }
 }

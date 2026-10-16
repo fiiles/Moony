@@ -30,5 +30,41 @@
       "unchanged": "sin cambios",
       "noHistory": "sin historial"
     }
+  },
+  "upkeep": {
+    "title": "Mantenimiento de datos",
+    "count_one": "{{count}} tarea",
+    "count_many": "{{count}} tareas",
+    "count_other": "{{count}} tareas",
+    "balancesStale_one": "{{count}} saldo con más de un mes",
+    "balancesStale_many": "{{count}} saldos con más de un mes",
+    "balancesStale_other": "{{count}} saldos con más de un mes",
+    "uncategorized_one": "{{count}} pago sin categoría",
+    "uncategorized_many": "{{count}} pagos sin categoría",
+    "uncategorized_other": "{{count}} pagos sin categoría",
+    "uncategorizedFrom": "{{account}} · del extracto del {{date}}",
+    "accounts_one": "{{count}} cuenta",
+    "accounts_many": "{{count}} cuentas",
+    "accounts_other": "{{count}} cuentas",
+    "statementDue": "Toca importar el extracto de {{bank}}",
+    "lastImport": "Última importación {{date}}",
+    "backupStale_one": "Última copia de seguridad hace {{count}} día",
+    "backupStale_many": "Última copia de seguridad hace {{count}} días",
+    "backupStale_other": "Última copia de seguridad hace {{count}} días",
+    "backupNever": "Aún no hay copia de seguridad",
+    "valuationStale": "La valoración de {{name}} tiene un año",
+    "actions": {
+      "record": "Registrar",
+      "categorize": "Clasificar",
+      "import": "Importar",
+      "backup": "Hacer copia",
+      "revalue": "Revalorar"
+    }
+  },
+  "recordBalances": {
+    "title": "Registrar saldos",
+    "lead": "Introduce el saldo actual de cada cuenta. La fecha es la de hoy.",
+    "save": "Registrar",
+    "saved": "Saldos registrados"
   }
 }

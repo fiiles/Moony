@@ -30,5 +30,36 @@
       "unchanged": "unverändert",
       "noHistory": "kein Verlauf"
     }
+  },
+  "upkeep": {
+    "title": "Datenpflege",
+    "count_one": "{{count}} Aufgabe",
+    "count_other": "{{count}} Aufgaben",
+    "balancesStale_one": "{{count}} Saldo älter als ein Monat",
+    "balancesStale_other": "{{count}} Salden älter als ein Monat",
+    "uncategorized_one": "{{count}} Zahlung ohne Kategorie",
+    "uncategorized_other": "{{count}} Zahlungen ohne Kategorie",
+    "uncategorizedFrom": "{{account}} · aus dem Auszug vom {{date}}",
+    "accounts_one": "{{count}} Konto",
+    "accounts_other": "{{count}} Konten",
+    "statementDue": "Zeit für den Auszug von {{bank}}",
+    "lastImport": "Letzter Import {{date}}",
+    "backupStale_one": "Letzte Sicherung vor {{count}} Tag",
+    "backupStale_other": "Letzte Sicherung vor {{count}} Tagen",
+    "backupNever": "Noch keine Sicherung",
+    "valuationStale": "Die Bewertung von {{name}} ist ein Jahr alt",
+    "actions": {
+      "record": "Erfassen",
+      "categorize": "Zuordnen",
+      "import": "Importieren",
+      "backup": "Sichern",
+      "revalue": "Neu bewerten"
+    }
+  },
+  "recordBalances": {
+    "title": "Salden erfassen",
+    "lead": "Geben Sie den aktuellen Saldo jedes Kontos ein. Das Datum ist heute.",
+    "save": "Erfassen",
+    "saved": "Salden erfasst"
   }
 }

@@ -139,6 +139,7 @@
 }
 .m-sec__a { position: relative; flex: none; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: 600; white-space: nowrap; }
 .m-sec__a::after { content: ""; position: absolute; inset: -14px -8px; } /* a 44 px hit area around the 12 px text */
+.m-sec__n { flex: none; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: 600; white-space: nowrap; } /* the section's one number, nothing to tap */
 
 /* ===== Hero: label, display number, change line, period segment, chart =====
    The desktop's decorative circle at 60 % size. */
@@ -239,6 +240,38 @@
 .m-row__v--gain { color: var(--gain); }
 .m-row__vs { flex: none; max-width: 60%; margin-left: auto; color: var(--ink-4); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.3; }
 .m-row__chev { flex: none; width: 16px; height: 16px; color: var(--ink-5); }
+/* Date chip (agenda rows, prototype note 5): 54 × 42 on `well`, the day above its distance; dark
+   material for a deadline at most 7 days away. The row's first column is 54 px, so the divider
+   insets to 80. */
+.m-row--date { grid-template-columns: 54px minmax(0, 1fr); }
+.m-row + .m-row--date::before { left: 80px; }
+.m-dchip {
+  display: flex; flex: none; flex-direction: column; align-items: center; justify-content: center; width: 54px; height: 42px;
+  border-radius: 9px; background: var(--well); line-height: 1.25;
+}
+.m-dchip b { color: var(--ink); font-size: var(--m-fs-sub); font-weight: 650; letter-spacing: -.01em; white-space: nowrap; }
+.m-dchip small { margin-top: 1px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; white-space: nowrap; }
+.m-dchip--soon { background: var(--dark-grad); box-shadow: var(--sh-dark); }
+.m-dchip--soon b { color: var(--ink-inverse); }
+.m-dchip--soon small { color: var(--ink-inverse-2); }
+
+/* Swipe actions (prototype note 5): the row slides over a 98 px panel of dark material that waits
+   under it, an 18 px icon over an 11 / 650 label. The row follows the finger up to the panel's
+   width; released past 60 px it fires the action and snaps back (180 ms); a vertical drag scrolls
+   the page. A swipe row is the `li` that clips the panel and carries the divider (`--m-row-inset`:
+   62 px, or 80 with a date chip) that the sibling rule above draws for plain rows. */
+.m-swipe { position: relative; overflow: hidden; }
+.m-swipe::before { content: ""; position: absolute; top: 0; right: 0; left: var(--m-row-inset, 62px); z-index: 2; border-top: 1px solid var(--line-soft); pointer-events: none; }
+.m-swipe:first-child::before { display: none; }
+.m-swipe > .m-row { z-index: 1; transition: transform var(--t-base) var(--ease); }
+.m-swipe__panel {
+  position: absolute; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+  width: 98px; padding: 0 8px; background: var(--dark-grad); color: var(--ink-inverse);
+  font-size: var(--m-fs-caption); font-weight: 650; line-height: 1.25; text-align: center; hyphens: auto; overflow-wrap: break-word;
+}
+.m-swipe__panel--start { left: 0; }
+.m-swipe__panel--end { right: 0; }
+.m-swipe__panel svg { width: 18px; height: 18px; stroke-width: 1.75; }
 
 /* ===== Badge (desktop rules at the phone's sub size) ===== */
 .m-badge {
@@ -261,6 +294,69 @@
   transition: background var(--t-fast), color var(--t-fast);
 }
 .m-seg__btn.is-active { background: var(--paper); box-shadow: var(--sh-seg); color: var(--ink); }
+
+/* ===== Údržba card (prototype frame 02, note 2) =====
+   An action card on `well` (`.m-card--well`), first on Přehled, present only while something is due
+   and gone when the last row is done. Head: the section title and the count ("3 věci"). One row per
+   item: a 34 px icon square on `well` (Lucide 17), the title 14 / 600 (wraps), a 12 `ink-4` sub-line
+   that ends with an ellipsis, and the verb at the end as a small button, primary on the first row
+   and secondary on the rest (11 px padding here, 12 elsewhere). Rows are `line-soft` apart. */
+.m-card--well > .m-sec:first-child { margin: 0 0 4px; }
+.m-todo { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; }
+.m-todo + .m-todo { border-top: 1px solid var(--line-soft); }
+.m-todo__ic {
+  display: flex; align-items: center; justify-content: center; width: 34px; height: 34px;
+  border-radius: 10px; background: var(--well); color: var(--ink-2);
+}
+.m-todo__ic svg { width: 17px; height: 17px; stroke-width: 1.75; }
+.m-todo__main { min-width: 0; }
+.m-todo__t { color: var(--ink); font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.m-todo__s {
+  margin-top: 1px; overflow: hidden; color: var(--ink-4); text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3;
+}
+.m-todo .m-btn--sm { padding: 0 11px; }
+
+/* ===== Rozložení majetku: ring and legend (prototype frame 02) =====
+   In a `.m-card`: the 110 px ring on the left, 22 px thick, in `s1`–`s4` with the folded bucket in
+   `s-other` (at most four classes and "Ostatní", as the desktop ring); its label in the middle
+   (11 / 600 `ink-3`). The legend on the right: swatch 10, name 12 / 600, share in tabular figures —
+   the share is always written, never colour alone. */
+.m-alloc { display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 16px; align-items: center; }
+.m-ring { position: relative; width: 110px; height: 110px; }
+.m-ring svg { display: block; transform: rotate(-90deg); }
+.m-ring__c {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--ink-3);
+  font-size: var(--m-fs-caption); font-weight: 600;
+}
+.m-leg { min-width: 0; margin: 0; padding: 0; list-style: none; font-size: var(--m-fs-sub); font-variant-numeric: tabular-nums; }
+.m-leg li { display: grid; grid-template-columns: 10px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 4px 0; color: var(--ink-2); }
+.m-leg i { display: block; width: 10px; height: 10px; border-radius: 3px; }
+.m-leg i.is-other { box-shadow: inset 0 0 0 1px var(--line); }
+.m-leg b { min-width: 0; overflow: hidden; color: var(--ink); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ===== Amount field of a form or sheet =====
+   Label 12 / 600 `ink-2` above, the field 48 px (radius 10, paper, `line-strong`; focus `focus-border`
+   and the focus ring, invalid `loss`), text 15 tabular, the currency inside on the right (12 / 600
+   `ink-4`), the decimal keypad. The placeholder (`ink-5`) is the last known value. An error is 12 / 600
+   `loss` under the field. */
+.m-field { margin-bottom: 12px; }
+.m-field:last-child { margin-bottom: 0; }
+.m-field__l { display: block; margin: 0 2px 6px; color: var(--ink-2); font-size: var(--m-fs-sub); font-weight: 600; }
+.m-field__w { position: relative; }
+.m-field__i {
+  display: block; width: 100%; height: 48px; padding: 0 64px 0 14px; border: 1px solid var(--line-strong); border-radius: 10px;
+  background: var(--paper); color: var(--ink); font: inherit; font-size: var(--m-fs-body); font-variant-numeric: tabular-nums;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.m-field__i::placeholder { color: var(--ink-5); }
+.m-field__i:focus { outline: 0; border-color: var(--focus-border); box-shadow: var(--focus-ring); }
+.m-field__i[aria-invalid="true"] { border-color: var(--loss); }
+.m-field__u {
+  position: absolute; top: 50%; right: 14px; transform: translateY(-50%); color: var(--ink-4); pointer-events: none;
+  font-size: var(--m-fs-sub); font-weight: 600;
+}
+.m-field__e { margin: 6px 2px 0; color: var(--loss); font-size: var(--m-fs-sub); font-weight: 600; }
 
 /* ===== Buttons at phone size =====
    48 px, radius 10, label 15 / 600. Primary dark material (one per screen), secondary paper with
@@ -294,7 +390,11 @@
 
 /* ===== Sheet: forms and pickers rise from the bottom =====
    Paper, top radius 17, drag handle, title 20, one sentence, body, footer on well with the ghost
-   Zrušit left and the primary right; covers the tab bar; Android back closes it. */
+   Zrušit left and the primary right; covers the tab bar. It closes on a tap on the scrim, on Zrušit
+   and on Android back (the sheet pushes one history entry while it is open). It rises in 260 ms and
+   leaves in 200. Here the scrim and the sheet are `fixed` (inside the demo frame); the app puts them
+   `absolute` in `#root`, the fixed box that `--m-vh` shortens while the keyboard is up, so the
+   footer stays above the keyboard and the body scrolls. The first field is not focused on opening. */
 .m-scrim { position: fixed; inset: 0; z-index: 40; background: var(--scrim); }
 .m-sheet {
   position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; display: flex; flex-direction: column; max-height: 93%;
@@ -315,6 +415,12 @@
 }
 .m-sheet__foot .m-btn--primary { flex: 1; }
 
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes m-sheet-in { from { transform: translateY(100%); } }
+  @keyframes m-scrim-in { from { opacity: 0; } }
+  .m-sheet { animation: m-sheet-in 260ms var(--ease); }
+  .m-scrim { animation: m-scrim-in var(--t-base) var(--ease); }
+}
 @media (prefers-reduced-motion: reduce) {
-  .m-nav, .m-nav__title, .m-seg__btn { transition: none; }
+  .m-nav, .m-nav__title, .m-seg__btn, .m-swipe > .m-row { transition: none; }
 }

@@ -30,5 +30,46 @@
       "unchanged": "bez zmian",
       "noHistory": "brak historii"
     }
+  },
+  "upkeep": {
+    "title": "Aktualizacja danych",
+    "count_one": "{{count}} pozycja",
+    "count_few": "{{count}} pozycje",
+    "count_many": "{{count}} pozycji",
+    "count_other": "{{count}} pozycji",
+    "balancesStale_one": "{{count}} saldo starsze niż miesiąc",
+    "balancesStale_few": "{{count}} salda starsze niż miesiąc",
+    "balancesStale_many": "{{count}} sald starszych niż miesiąc",
+    "balancesStale_other": "{{count}} salda starszego niż miesiąc",
+    "uncategorized_one": "{{count}} płatność bez kategorii",
+    "uncategorized_few": "{{count}} płatności bez kategorii",
+    "uncategorized_many": "{{count}} płatności bez kategorii",
+    "uncategorized_other": "{{count}} płatności bez kategorii",
+    "uncategorizedFrom": "{{account}} · z wyciągu z {{date}}",
+    "accounts_one": "{{count}} konto",
+    "accounts_few": "{{count}} konta",
+    "accounts_many": "{{count}} kont",
+    "accounts_other": "{{count}} konta",
+    "statementDue": "Czas na wyciąg z {{bank}}",
+    "lastImport": "Ostatni import {{date}}",
+    "backupStale_one": "Ostatnia kopia zapasowa sprzed {{count}} dnia",
+    "backupStale_few": "Ostatnia kopia zapasowa sprzed {{count}} dni",
+    "backupStale_many": "Ostatnia kopia zapasowa sprzed {{count}} dni",
+    "backupStale_other": "Ostatnia kopia zapasowa sprzed {{count}} dnia",
+    "backupNever": "Brak kopii zapasowej",
+    "valuationStale": "Wycena {{name}} ma rok",
+    "actions": {
+      "record": "Zapisz",
+      "categorize": "Przypisz",
+      "import": "Importuj",
+      "backup": "Zrób kopię",
+      "revalue": "Przeszacuj"
+    }
+  },
+  "recordBalances": {
+    "title": "Zapisz salda",
+    "lead": "Wpisz aktualne saldo każdego konta. Data to dzisiaj.",
+    "save": "Zapisz",
+    "saved": "Salda zapisane"
   }
 }

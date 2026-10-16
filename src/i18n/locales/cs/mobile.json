@@ -30,5 +30,41 @@
       "unchanged": "beze změny",
       "noHistory": "bez historie"
     }
+  },
+  "upkeep": {
+    "title": "Údržba",
+    "count_one": "{{count}} věc",
+    "count_few": "{{count}} věci",
+    "count_other": "{{count}} věcí",
+    "balancesStale_one": "{{count}} zůstatek starší než měsíc",
+    "balancesStale_few": "{{count}} zůstatky starší než měsíc",
+    "balancesStale_other": "{{count}} zůstatků starších než měsíc",
+    "uncategorized_one": "{{count}} platba bez kategorie",
+    "uncategorized_few": "{{count}} platby bez kategorie",
+    "uncategorized_other": "{{count}} plateb bez kategorie",
+    "uncategorizedFrom": "{{account}} · z výpisu {{date}}",
+    "accounts_one": "{{count}} účet",
+    "accounts_few": "{{count}} účty",
+    "accounts_other": "{{count}} účtů",
+    "statementDue": "Je čas na výpis z {{bank}}",
+    "lastImport": "Poslední import {{date}}",
+    "backupStale_one": "Záloha před {{count}} dnem",
+    "backupStale_few": "Záloha před {{count}} dny",
+    "backupStale_other": "Záloha před {{count}} dny",
+    "backupNever": "Zatím žádná záloha",
+    "valuationStale": "Ocenění {{name}} je rok staré",
+    "actions": {
+      "record": "Zaznamenat",
+      "categorize": "Zařadit",
+      "import": "Importovat",
+      "backup": "Zálohovat",
+      "revalue": "Přecenit"
+    }
+  },
+  "recordBalances": {
+    "title": "Zaznamenat zůstatky",
+    "lead": "Zadejte aktuální zůstatek každého účtu. Datum je dnešní.",
+    "save": "Zaznamenat",
+    "saved": "Zůstatky zaznamenány"
   }
 }

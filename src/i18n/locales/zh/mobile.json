@@ -30,5 +30,31 @@
       "unchanged": "无变化",
       "noHistory": "暂无历史"
     }
+  },
+  "upkeep": {
+    "title": "数据维护",
+    "count_other": "{{count}} 项",
+    "balancesStale_other": "{{count}} 个余额已超过一个月未更新",
+    "uncategorized_other": "{{count}} 笔付款未分类",
+    "uncategorizedFrom": "{{account}} · 来自 {{date}} 的对账单",
+    "accounts_other": "{{count}} 个账户",
+    "statementDue": "该导入 {{bank}} 的对账单了",
+    "lastImport": "上次导入 {{date}}",
+    "backupStale_other": "{{count}} 天前备份",
+    "backupNever": "尚无备份",
+    "valuationStale": "{{name}} 的估值已满一年",
+    "actions": {
+      "record": "记录",
+      "categorize": "分类",
+      "import": "导入",
+      "backup": "备份",
+      "revalue": "重新估值"
+    }
+  },
+  "recordBalances": {
+    "title": "记录余额",
+    "lead": "请输入每个账户的当前余额。日期为今天。",
+    "save": "记录",
+    "saved": "余额已记录"
   }
 }

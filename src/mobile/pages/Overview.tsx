@@ -5,7 +5,6 @@ import {
   Bitcoin,
   Eye,
   Landmark,
-  Lock,
   TrendingDown,
   TrendingUp,
   Wallet,
@@ -33,6 +32,7 @@ import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
 import { Hero } from '@/mobile/components/Hero';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
+import { UpkeepCard } from '@/mobile/components/UpkeepCard';
 import { initials } from '@/mobile/lib/initials';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
@@ -46,15 +46,15 @@ const MOVES = 5;
 const COMPACT_FROM = 1_000_000;
 
 /**
- * Přehled tab root (spec §8.3 items 2–6, prototype frame 02): the greeting, the hero with the
- * scrubbable net-worth line, three stats, "Co vás čeká", Rozložení majetku and Poslední pohyby.
- * Údržba (item 1) arrives with Task 1.6. Numbers come from the hooks the desktop dashboard uses.
+ * Přehled tab root (spec §8.3, prototype frame 02): the greeting, Údržba (only while something is
+ * due), the hero with the scrubbable net-worth line, three stats, "Co vás čeká", Rozložení majetku
+ * and Poslední pohyby. Numbers come from the hooks the desktop dashboard uses.
  */
 export default function Overview() {
   const { t } = useTranslation('mobile');
   const { t: td } = useTranslation('dashboard');
   const { t: tc } = useTranslation('common');
-  const { user, lockMutation } = useAuth();
+  const { user } = useAuth();
   const fmt = useFormat();
   const [period, setPeriod] = useState<ChartPeriod>('30D');
 
@@ -160,6 +160,8 @@ export default function Overview() {
         </Link>
       }
     >
+      {/* First on the page and only while something is due (it also asks for a first backup) */}
+      {!overview.isCheckingPortfolio && <UpkeepCard />}
       {overview.isCheckingPortfolio ? (
         <OverviewSkeleton />
       ) : overview.isEmptyPortfolio ? (
@@ -207,16 +209,6 @@ export default function Overview() {
           <RecentMovesSection />
         </>
       )}
-      {/* TEMPORARY (Task 1.4, removed in Task 1.6 with the real Settings → Zabezpečení): locks the app. */}
-      <Button
-        variant="outline"
-        className="mt-4 h-12 w-full rounded-[10px] text-m-row"
-        onClick={() => lockMutation.mutate()}
-        disabled={lockMutation.isPending}
-      >
-        <Lock aria-hidden />
-        {tc('nav.lockApp')}
-      </Button>
     </Screen>
   );
 }

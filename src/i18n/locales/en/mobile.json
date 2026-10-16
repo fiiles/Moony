@@ -30,5 +30,36 @@
       "unchanged": "unchanged",
       "noHistory": "no history yet"
     }
+  },
+  "upkeep": {
+    "title": "Data upkeep",
+    "count_one": "{{count}} item",
+    "count_other": "{{count}} items",
+    "balancesStale_one": "{{count}} balance older than a month",
+    "balancesStale_other": "{{count}} balances older than a month",
+    "uncategorized_one": "{{count}} payment without a category",
+    "uncategorized_other": "{{count}} payments without a category",
+    "uncategorizedFrom": "{{account}} · from the statement of {{date}}",
+    "accounts_one": "{{count}} account",
+    "accounts_other": "{{count}} accounts",
+    "statementDue": "Time for the {{bank}} statement",
+    "lastImport": "Last import {{date}}",
+    "backupStale_one": "Last backup {{count}} day ago",
+    "backupStale_other": "Last backup {{count}} days ago",
+    "backupNever": "No backup yet",
+    "valuationStale": "The valuation of {{name}} is a year old",
+    "actions": {
+      "record": "Record",
+      "categorize": "Categorize",
+      "import": "Import",
+      "backup": "Back up",
+      "revalue": "Revalue"
+    }
+  },
+  "recordBalances": {
+    "title": "Record balances",
+    "lead": "Enter the current balance of each account. The date is today.",
+    "save": "Record",
+    "saved": "Balances recorded"
   }
 }

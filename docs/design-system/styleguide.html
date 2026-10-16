@@ -10,10 +10,12 @@
   .doc { display: grid; grid-template-columns: 220px 1fr; gap: 48px; max-width: 1380px; margin: 0 auto; padding: 40px 48px 120px; }
   .toc { position: sticky; top: 40px; align-self: start; display: grid; gap: 2px; }
   .toc a { padding: 6px 10px; border-radius: var(--r-1); color: var(--ink-3); font-size: var(--fs-table); font-weight: 600; }
-  .toc a:hover { background: rgba(41,40,34,.05); color: var(--ink); }
+  .toc a:hover { background: var(--ink-hover); color: var(--ink); }
   .toc .toc__title { margin: 0 10px 12px; }
   .toc .toc__title b { display: block; font-size: 18px; letter-spacing: -.07em; }
   .toc .toc__title small { color: var(--ink-4); font-size: var(--fs-micro); }
+  .toc .toc__title .seg { display: flex; margin-top: 12px; }
+  .toc .toc__title .seg__btn { flex: 1; }
   .doc-head { margin-bottom: 44px; }
   .doc-head p { max-width: 640px; color: var(--ink-3); font-size: 14px; line-height: 1.55; }
   section.part { margin-bottom: 64px; scroll-margin-top: 32px; }
@@ -28,10 +30,13 @@
   .spec__title { margin: 0 0 14px; color: var(--ink-4); font-size: var(--fs-eyebrow); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
   .swatches { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
   .swatch { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--paper); }
-  .swatch i { display: block; height: 54px; }
+  .swatch__chips { display: grid; grid-template-columns: 1fr 1fr; }
+  .swatch__chips i { display: block; height: 54px; }
+  .swatch--edge .swatch__chips i { border-bottom: 1px solid var(--line); }
   .swatch div { padding: 8px 10px; }
   .swatch b { display: block; font-size: var(--fs-caption); font-weight: 650; }
-  .swatch code { display: block; margin-top: 2px; color: var(--ink-4); font-size: var(--fs-micro); font-family: ui-monospace, SF Mono, Menlo, monospace; }
+  .swatch__codes { display: flex; gap: 8px; margin-top: 2px; }
+  .swatch code { display: block; flex: 1; color: var(--ink-4); font-size: var(--fs-micro); font-family: ui-monospace, SF Mono, Menlo, monospace; }
   .swatch small { display: block; margin-top: 4px; color: var(--ink-3); font-size: var(--fs-micro); line-height: 1.4; }
   .type-row { display: grid; grid-template-columns: 220px 1fr; gap: 24px; align-items: baseline; padding: 14px 0; border-bottom: 1px solid var(--line-soft); }
   .type-row:last-child { border: 0; }
@@ -51,14 +56,14 @@
   .radii i { display: grid; place-items: center; width: 64px; height: 44px; border: 1px solid var(--line-strong); background: var(--paper); color: var(--ink-4); font-size: var(--fs-micro); font-weight: 600; }
   .demo-table .table__head, .demo-table .table__row { grid-template-columns: 2fr 1fr 1fr 1fr 40px; }
   .btn.demo-focus { border-color: var(--focus-border); box-shadow: var(--focus-ring); }
-  .btn.demo-hover { background: var(--paper); box-shadow: 0 1px 3px rgba(52,46,34,.1); color: var(--ink); }
+  .btn.demo-hover { background: var(--paper); box-shadow: var(--sh-btn-hover); color: var(--ink); }
   .input.demo-focus { border-color: var(--focus-border); box-shadow: var(--focus-ring); }
   .modal-static { position: static; transform: none; margin: 0 auto; }
   .chart-demo { height: 150px; }
   .kbd { display: inline-block; padding: 1px 6px; border: 1px solid var(--line-strong); border-radius: 5px; background: var(--paper); font-size: var(--fs-micro); font-weight: 600; }
   .fmt { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 24px; font-size: var(--fs-body); }
   .fmt div { padding: 8px 0; border-bottom: 1px solid var(--line-soft); }
-  .fmt .bad { color: var(--loss); text-decoration: line-through; text-decoration-color: rgba(148,92,77,.5); }
+  .fmt .bad { color: var(--loss); text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--loss) 50%, transparent); }
   .fmt .ok { font-weight: 650; }
   .num-demo { font-size: 28px; font-weight: 580; letter-spacing: -.06em; }
 </style>
@@ -66,7 +71,7 @@
 <body>
 <div class="doc">
   <nav class="toc">
-    <div class="toc__title"><b>moony</b><small>Design systém · v1 · návrh k revizi</small></div>
+    <div class="toc__title"><b>moony</b><small>Design systém · v1 · návrh k revizi</small><div class="seg" id="theme-seg"><button type="button" class="seg__btn is-active" data-value="light">Světlý</button><button type="button" class="seg__btn" data-value="dark">Tmavý</button></div></div>
     <a href="#principy">Principy</a><a href="#barvy">Barvy</a><a href="#typografie">Typografie</a><a href="#vrstveni">Vrstvení</a><a href="#rozestupy">Rozestupy a rádiusy</a><a href="#navigace">Navigace</a><a href="#tlacitka">Tlačítka</a><a href="#formulare">Formuláře</a><a href="#stitky">Přepínače a štítky</a><a href="#karty">Karty a statistiky</a><a href="#tabulky">Tabulky</a><a href="#modaly">Modály</a><a href="#grafy">Grafy a časová stopa</a><a href="#stavy">Stavy</a><a href="#text">Čísla a text</a><a href="#otevrene">Otevřené otázky</a>
   </nav>
   <main>
@@ -89,7 +94,7 @@
 
     <section class="part" id="barvy">
       <h2>Barvy</h2>
-      <p class="lead">Všechny hodnoty jsou v <code>tokens.css</code>. Komponenty nikdy nepoužívají surový hex. Světlé téma je jediné definované; tmavé je otevřená otázka.</p>
+      <p class="lead">Všechny hodnoty jsou v <code>tokens.css</code>. Komponenty nikdy nepoužívají surový hex. Světlé i tmavé téma jsou definované stejnou sadou názvů; přepínač je vlevo nahoře. Každý vzorek ukazuje světlou (vlevo) a tmavou (vpravo) hodnotu.</p>
       <div class="spec spec--paper"><p class="spec__title">Povrchy</p><div class="swatches" id="sw-surfaces"></div></div>
       <div class="spec spec--paper"><p class="spec__title">Linky a inkoust</p><div class="swatches" id="sw-ink"></div></div>
       <div class="spec spec--paper"><p class="spec__title">Tmavý materiál a sémantika</p><div class="swatches" id="sw-sem"></div></div>
@@ -136,7 +141,7 @@
       <div class="elev" style="margin-top:14px;grid-template-columns:repeat(5,1fr)">
         <div class="menu" style="position:static;height:92px">E4 menu, tooltip<small>sh-pop</small></div>
         <div style="background:var(--paper);box-shadow:var(--sh-modal);border:1px solid var(--line-strong)">E5 modál<small>sh-modal nad rozostřeným scrimem</small></div>
-        <div style="background:var(--dark-grad);box-shadow:var(--sh-dark);color:#fff">Tmavý materiál<small style="color:var(--ink-inverse-2)">aktivní navigace, primární akce</small></div>
+        <div style="background:var(--dark-grad);box-shadow:var(--sh-dark);color:var(--ink-inverse)">Kontrastní materiál<small style="color:var(--ink-inverse-2)">aktivní navigace, primární akce</small></div>
       </div></div>
     </section>
 
@@ -276,7 +281,7 @@
         <li><b>Časová stopa</b> (schváleno): na grafech <i>jedné entity</i> (pozice, účet, úvěr, nemovitost) se do linky kreslí události – nákup ▲ (plný), prodej ▽ (obrys), dividenda / příjem ○ (zelený prstenec), větší výdaj ○ (tmavý prstenec). Najetí ukáže detail události, najetí na řádek historie zvýrazní odpovídající značku. Na agregovaných grafech (čisté jmění, celé portfolio) se události nekreslí – bylo by to šum. Na účtech se značí jen pohyby nad prahem (absolutní práh zhruba 400 EUR, nebo 10 % zůstatku).</li>
       </ul>
       <div class="spec"><div class="grid-2">
-        <div class="card" style="padding:18px"><h3>Pozice s časovou stopou</h3><div class="chart chart-demo" id="chart-trace" style="margin-top:12px"></div><div class="chart__axis" id="axis-trace"></div><div class="legend"><span class="legend__item"><i class="legend__swatch"></i>Hodnota</span><span class="legend__item"><i class="legend__swatch legend__swatch--dash"></i>Vloženo</span><span class="legend__item"><svg width="10" height="10"><polygon points="5,0 10,10 0,10" fill="var(--chart-line)"/></svg>Nákup</span><span class="legend__item"><svg width="10" height="10"><polygon points="0,0 10,0 5,10" fill="#fff" stroke="var(--chart-line)" stroke-width="1.5"/></svg>Prodej</span><span class="legend__item"><i class="legend__swatch legend__swatch--dot" style="border:1.5px solid var(--gain);background:#fff"></i>Dividenda</span></div></div>
+        <div class="card" style="padding:18px"><h3>Pozice s časovou stopou</h3><div class="chart chart-demo" id="chart-trace" style="margin-top:12px"></div><div class="chart__axis" id="axis-trace"></div><div class="legend"><span class="legend__item"><i class="legend__swatch"></i>Hodnota</span><span class="legend__item"><i class="legend__swatch legend__swatch--dash"></i>Vloženo</span><span class="legend__item"><svg width="10" height="10"><polygon points="5,0 10,10 0,10" fill="var(--chart-line)"/></svg>Nákup</span><span class="legend__item"><svg width="10" height="10"><polygon points="0,0 10,0 5,10" fill="var(--paper)" stroke="var(--chart-line)" stroke-width="1.5"/></svg>Prodej</span><span class="legend__item"><i class="legend__swatch legend__swatch--dot" style="border:1.5px solid var(--gain);background:var(--paper)"></i>Dividenda</span></div></div>
         <div class="card" style="padding:18px"><h3>Příjmy a výdaje</h3><div class="chart chart-demo" id="chart-bars" style="margin-top:12px"></div><div class="chart__axis" id="axis-bars" style="justify-content:space-around"></div><div class="legend"><span class="legend__item"><i class="legend__swatch legend__swatch--block" style="background:var(--s1)"></i>Příjmy</span><span class="legend__item"><i class="legend__swatch legend__swatch--block" style="background:var(--s3)"></i>Výdaje</span></div></div>
       </div></div>
     </section>
@@ -316,7 +321,6 @@
     <section class="part" id="otevrene">
       <h2>Rozhodnutí a otevřené otázky</h2>
       <ol class="rules">
-        <li><b>Tmavé téma</b> – rozhodnuto 2. 10. 2026: pro v1 vypuštěno, aplikace je jen světlá.</li>
         <li><b>Časová stopa</b> – schválena v podobě popsané výše, na všech detailech jedné entity.</li>
         <li><b>Font</b> – Inter Variable se přibalí do aplikace.</li>
         <li><b>Prahy pro události na účtech</b> a kdy události slučovat do skupin („3 nákupy“), až bude vidět reálná hustota dat.</li>
@@ -328,11 +332,20 @@
 <script src="shell.js"></script>
 <script src="charts.js"></script>
 <script>
-function swatches(el, list) { document.getElementById(el).innerHTML = list.map(function (s) { return '<div class="swatch"><i style="background:' + s[1] + (s[3] ? ";" + s[3] : "") + '"></i><div><b>' + s[0] + "</b><code>" + s[1] + "</code><small>" + s[2] + "</small></div></div>"; }).join(""); }
-swatches("sw-surfaces", [["canvas", "#eeece7", "vnější plátno"], ["canvas-glow", "#fbfaf7", "radiální světlo vpravo nahoře"], ["sidebar", "#f8f7f3", "vrstva sidebaru"], ["paper", "#ffffff", "karty, tabulky, modály"], ["well", "#f7f6f2", "hlavička tabulky, patička modálu, hover řádku"], ["well-2", "#e9e7e1", "stopa přepínače, štítek, avatar"]]);
-swatches("sw-ink", [["line", "#e2dfd7", "rámečky karet a tabulek"], ["line-soft", "#efede8", "dělení řádků, mřížka grafu"], ["ink", "#292822", "nadpisy, hodnoty, názvy"], ["ink-2", "#504d46", "tělo, hodnoty tabulky, menu"], ["ink-3", "#817e75", "sekundární text"], ["ink-4", "#98948b", "popisky, eyebrow, mikro"]]);
-swatches("sw-sem", [["dark", "#2c2a25", "aktivní navigace, primární tlačítko (gradient 3b3932 → 27251f)"], ["gain", "#107a60", "pouze kladná změna"], ["gain-soft", "#e6f5ee", "podklad kladného štítku"], ["loss", "#bf4224", "záporná změna, destrukce, chyba"], ["loss-soft", "#fcece6", "podklad záporného štítku, chybový pruh"], ["focus", "#57544d", "linka fokusu + prstenec 10 % inkoustu"]]);
-swatches("sw-series", [["s1", "#212339", "1. série, linka hodnoty"], ["s2", "#454a73", "2. série"], ["s3", "#7176a0", "3. série, výdaje"], ["s4", "#a6a9c8", "4. série"], ["s-other", "#ebe9e3", "Ostatní (vždy s popiskem)", "border-bottom:1px solid #e2dfd7"], ["chart-cost", "#a8a49b", "čárkovaná linka Vloženo"]]);
+var DARK = { "canvas": "#1a1917", "canvas-glow": "#22211e", "sidebar": "#1f1e1b", "paper": "#292826", "well": "#232220", "well-2": "#1e1d1b", "line": "#363531", "line-soft": "#302f2c", "ink": "#eceae4", "ink-2": "#cdcbc4", "ink-3": "#a3a098", "ink-4": "#868379", "dark": "#e9e7e1", "gain": "#45c6a6", "gain-soft": "#203c30", "loss": "#ef7f5e", "loss-soft": "#4a2d25", "focus-border": "#a09d94", "s1": "#d8dbf0", "s2": "#a2a7ec", "s3": "#7b7ea5", "s4": "#4f508e", "s-other": "#3a3935", "chart-cost": "#78756d" };
+// Each entry: [name, use, opts]. opts.token = CSS name when it differs from the label, opts.edge = hairline under the chips, opts.dark = note for the dark value.
+// The light value is read from the computed style at load, before the URL theme is applied; the dark one comes from DARK (the dark block of tokens.css is not loadable over file://).
+function swatches(el, list) {
+  var css = getComputedStyle(document.documentElement);
+  document.getElementById(el).innerHTML = list.map(function (s) {
+    var o = s[2] || {}, tok = o.token || s[0], light = css.getPropertyValue("--" + tok).trim(), dark = DARK[tok];
+    return '<div class="swatch' + (o.edge ? " swatch--edge" : "") + '"><span class="swatch__chips"><i title="Světlé téma" style="background:' + light + '"></i><i title="Tmavé téma" style="background:' + dark + '"></i></span><div><b>' + s[0] + '</b><span class="swatch__codes"><code>' + light + "</code><code>" + dark + "</code></span><small>" + s[1] + "</small>" + (o.dark ? "<small>Tmavé: " + o.dark + "</small>" : "") + "</div></div>";
+  }).join("");
+}
+swatches("sw-surfaces", [["canvas", "vnější plátno"], ["canvas-glow", "radiální světlo vpravo nahoře"], ["sidebar", "vrstva sidebaru"], ["paper", "karty, tabulky, modály"], ["well", "hlavička tabulky, patička modálu, hover řádku"], ["well-2", "stopa přepínače, štítek, avatar"]]);
+swatches("sw-ink", [["line", "rámečky karet a tabulek"], ["line-soft", "dělení řádků, mřížka grafu"], ["ink", "nadpisy, hodnoty, názvy"], ["ink-2", "tělo, hodnoty tabulky, menu"], ["ink-3", "sekundární text"], ["ink-4", "popisky, eyebrow, mikro"]]);
+swatches("sw-sem", [["dark", "kontrastní materiál: aktivní navigace, primární tlačítko (gradient 3b3932 → 27251f, tmavé f3f1ec → e2e0d9)"], ["gain", "pouze kladná změna"], ["gain-soft", "podklad kladného štítku"], ["loss", "záporná změna, destrukce, chyba"], ["loss-soft", "podklad záporného štítku, chybový pruh"], ["focus", "linka fokusu + prstenec 10 % inkoustu", { token: "focus-border" }]]);
+swatches("sw-series", [["s1", "1. série, linka hodnoty"], ["s2", "2. série"], ["s3", "3. série, výdaje"], ["s4", "4. série", { dark: "2,0:1 — legenda povinná" }], ["s-other", "Ostatní (vždy s popiskem)", { edge: true }], ["chart-cost", "čárkovaná linka Vloženo"]]);
 document.getElementById("btns").innerHTML = '<button class="btn btn--primary">' + icon("plus", 14) + 'Přidat účet</button><button class="btn">' + icon("refresh-cw", 14) + 'Obnovit ceny</button><button class="btn demo-hover">Hover</button><button class="btn demo-focus">Fokus</button><button class="btn btn--ghost">Zrušit</button><button class="btn btn--danger">' + icon("trash-2", 14) + 'Smazat</button><button class="btn btn--destructive">Smazat pozici</button><button class="btn btn--icon" aria-label="Více">' + icon("ellipsis", 16) + '</button><button class="btn btn--sm">Malé</button><button class="btn btn--primary btn--sm">Malé primární</button><button class="btn btn--primary is-loading">' + icon("refresh-cw", 14) + 'Ukládám…</button><button class="btn" disabled>Zakázané</button>';
 document.getElementById("err-demo").innerHTML = icon("circle-alert", 12) + "Můžete prodat nejvýše 36 akcií.";
 document.getElementById("back-demo").innerHTML = icon("arrow-left", 14) + "Zpět na akcie";
@@ -355,6 +368,20 @@ var tp = [], tv = 120000; for (var j = 90; j >= 0; j--) { var dd = new Date(END)
 var e1 = new Date(END); e1.setDate(e1.getDate() - 60); var e2 = new Date(END); e2.setDate(e2.getDate() - 30); var e3 = new Date(END); e3.setDate(e3.getDate() - 12);
 drawLine(document.getElementById("chart-trace"), tp, { axisEl: document.getElementById("axis-trace"), events: [{ date: e1, type: "buy", html: "<b>Nákup 10 ks za 4 190 Kč</b><small>" + fmtDay(e1) + "</small>" }, { date: e2, type: "sell", html: "<b>Prodej 6 ks za 4 560 Kč</b><small>" + fmtDay(e2) + "</small>" }, { date: e3, type: "div", html: "<b>Dividenda 224 Kč</b><small>" + fmtDay(e3) + "</small>" }] });
 drawBars(document.getElementById("chart-bars"), [["kvě", 58900, 45800], ["čvn", 61400, 49100], ["čvc", 58900, 58200], ["srp", 58900, 44700], ["zář", 62300, 50900], ["říj", 62300, 31650]].map(function (b) { return { label: b[0], a: b[1], b: b[2] }; }), { axisEl: document.getElementById("axis-bars"), names: ["Příjmy", "Výdaje"] });
+// theme switch: Světlý / Tmavý in the toc, ?theme=dark in the URL, key D
+function setTheme(t) {
+  document.documentElement.setAttribute("data-theme", t);
+  document.querySelectorAll("#theme-seg .seg__btn").forEach(function (b) { b.classList.toggle("is-active", b.getAttribute("data-value") === t); });
+}
+function applyTheme(t) {
+  setTheme(t);
+  try { history.replaceState(null, "", "?theme=" + t + location.hash); } catch (err) {}
+}
+document.getElementById("theme-seg").addEventListener("segchange", function (e) { applyTheme(e.detail); });
+document.addEventListener("keydown", function (e) {
+  if ((e.key === "d" || e.key === "D") && !e.metaKey && !e.ctrlKey && !e.altKey && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
+});
+setTheme(new URLSearchParams(location.search).get("theme") === "dark" ? "dark" : "light");
 </script>
 </body>
 </html>

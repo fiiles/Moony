@@ -14,9 +14,10 @@
  *              takes its language from the profile, not from the browser: the script reads
  *              it through the bridge, switches it with `update_user_profile` when it differs
  *              and puts the original back when it finishes (also on Ctrl-C or an error).
- *   --theme    `system` (default), `light` or `dark`. `system` follows the browser, which
- *              headless Chrome reports as light, so the default shots are the light ones. Like
- *              the language, an unlocked app takes its theme from the profile: the script
+ *   --theme    `system` (default), `light` or `dark`. The script pins the browser's
+ *              `prefers-color-scheme` itself (`Emulation.setEmulatedMedia`): light for `system`
+ *              and `light`, dark for `dark`, whatever the host's appearance is. Like the
+ *              language, an unlocked app takes its theme from the profile: the script
  *              switches it with `update_user_profile` when it differs and puts the original
  *              back when it finishes. It also sets the device mirror `moony-theme` that the
  *              lock screen and the first paint read. The dark set, for example:
@@ -347,6 +348,11 @@ try {
     deviceScaleFactor: 2,
     mobile: false,
   });
+  // Pin the color scheme the page sees, so `system` and `light` render light and `dark` renders
+  // dark whatever the appearance of the machine running the script.
+  await send('Emulation.setEmulatedMedia', {
+    features: [{ name: 'prefers-color-scheme', value: opt.theme === 'dark' ? 'dark' : 'light' }],
+  });
   await waitUntil('document.readyState === "complete"', 10000);
   // Only the lock screen reads these keys; once unlocked, the profile's language and theme win
   // (step 2).
@@ -396,7 +402,8 @@ try {
   if (!(await waitUntil(`document.documentElement.lang === ${JSON.stringify(opt.lang)}`, 15000))) {
     throw new Error(`The UI did not switch to "${opt.lang}".`);
   }
-  // `system` follows the browser, so there is nothing to wait for; light and dark are stamped.
+  // `system` follows the pinned (light) scheme, so there is nothing to wait for; light and dark
+  // are stamped.
   if (
     opt.theme !== 'system' &&
     !(await waitUntil(

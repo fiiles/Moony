@@ -176,7 +176,7 @@ stats and heroes.
 
 ## 4. Elevation and layout
 
-Six levels, differentiated mainly by surface and faint warm shadow (brown-grey, never black):
+Six levels, differentiated mainly by surface and faint warm shadow (brown-grey in the light theme, black-based in the dark one):
 
 | Level | Surface | Shadow | Used for |
 |---|---|---|---|
@@ -286,7 +286,7 @@ Charts use Recharts with these rules (`charts.js` draws the same shapes by hand 
 - One y-axis, never two. Grid in `chart-grid`, value ticks right-aligned in `chart-axis` 10 px, time axis
   below with five labels, the last being "Dnes". Ticks are nice numbers (20 / 25 / 50 steps).
 - Time axes of value charts put their labels at real calendar dates, not at evenly spread points: month starts, the 1st and 15th for short spans, quarters and years for long ones, with the year written on January.
-- Value line 2.25 px `chart-line`, area gradient `chart-area` → transparent, last point a white ring.
+- Value line 2.25 px `chart-line`, area gradient `chart-area` → transparent, last point a ring in `paper`.
   "Vloženo" (cost basis) is a dashed step line in `chart-cost`; the gap between lines is the return.
 - Bars: income `s1`, expense `s3`, 3 px rounded ends, 2 px gap, no borders, zero baseline.
 - Allocation ring: `s1`–`s4` + `s-other`, legend with amounts and percentages, never color alone.
@@ -303,7 +303,7 @@ discrete events are drawn on the value line:
 
 | Event | Mark | Color |
 |---|---|---|
-| Buy | ▲ filled, 12 px, 2 px white ring | `chart-line` |
+| Buy | ▲ filled, 12 px, 2 px `paper` ring | `chart-line` |
 | Sell | ▽ outlined | `chart-line` |
 | Dividend, income | ○ ring 9 px | `gain` |
 | Large expense, payment | ○ ring 9 px | `chart-line` |

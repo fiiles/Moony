@@ -11,5 +11,24 @@
   "lock": {
     "caption": "AES-256 · tus datos se quedan en este teléfono",
     "keySaved": "Tengo la clave guardada en un lugar seguro fuera de este teléfono"
+  },
+  "overview": {
+    "hideAmounts": "Ocultar importes",
+    "showAll": "Ver todo",
+    "change": {
+      "30D": "en 30 días",
+      "90D": "en 3 meses",
+      "YTD": "este año",
+      "1Y": "en un año",
+      "5Y": "en 5 años",
+      "All": "desde el primer registro"
+    },
+    "stats": {
+      "assets": "Activos",
+      "freeCash": "Efectivo libre",
+      "freeCashNote": "en cuentas",
+      "unchanged": "sin cambios",
+      "noHistory": "sin historial"
+    }
   }
 }

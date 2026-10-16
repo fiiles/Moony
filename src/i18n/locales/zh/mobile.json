@@ -11,5 +11,24 @@
   "lock": {
     "caption": "AES-256 · 您的数据仅保存在这部手机上",
     "keySaved": "我已将密钥安全保存在这部手机之外"
+  },
+  "overview": {
+    "hideAmounts": "隐藏金额",
+    "showAll": "显示全部",
+    "change": {
+      "30D": "30 天内",
+      "90D": "3 个月内",
+      "YTD": "今年",
+      "1Y": "一年内",
+      "5Y": "5 年内",
+      "All": "自首条记录起"
+    },
+    "stats": {
+      "assets": "资产",
+      "freeCash": "可用现金",
+      "freeCashNote": "账户中",
+      "unchanged": "无变化",
+      "noHistory": "暂无历史"
+    }
   }
 }

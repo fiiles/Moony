@@ -1,12 +1,6 @@
 import { useMemo, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { allocationPercents } from '@/utils/allocation-percent';
-
-export interface AllocationSegment {
-  key: string;
-  label: string;
-  value: number;
-}
+import { allocationSlices, type AllocationSegment } from '@/utils/allocation-percent';
 
 interface AllocationRingProps {
   segments: AllocationSegment[];
@@ -76,28 +70,15 @@ export function AllocationRing({
 }: AllocationRingProps) {
   const sz = SIZES[size];
   const { slices, total } = useMemo(() => {
-    const positive = segments.filter((s) => s.value > 0).sort((a, b) => b.value - a.value);
-    const extra = otherSegment && otherSegment.value > 0 ? otherSegment : null;
-    const total = positive.reduce((sum, s) => sum + s.value, 0) + (extra?.value ?? 0);
-    const head = positive.slice(0, 4).map((s, i) => ({ ...s, color: SERIES[i], other: false }));
-    const rest = positive.slice(4);
-    const otherValue = rest.reduce((sum, s) => sum + s.value, 0) + (extra?.value ?? 0);
-    const slices =
-      otherValue > 0
-        ? [
-            ...head,
-            {
-              key: 'other',
-              label: rest.length > 0 || !extra ? otherLabel : extra.label,
-              value: otherValue,
-              color: OTHER,
-              other: true,
-            },
-          ]
-        : head;
-    // Largest-remainder rounding so the legend adds up to exactly 100 %
-    const percents = allocationPercents(slices.map((s) => s.value));
-    return { slices: slices.map((s, i) => ({ ...s, percent: percents[i] })), total };
+    const { slices, total } = allocationSlices(segments, { otherLabel, otherSegment });
+    return {
+      slices: slices.map((s) => ({
+        ...s,
+        color: s.series === 'other' ? OTHER : SERIES[s.series],
+        other: s.series === 'other',
+      })),
+      total,
+    };
   }, [segments, otherLabel, otherSegment]);
 
   const gradient = useMemo(() => {

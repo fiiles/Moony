@@ -1,10 +1,12 @@
 import { Redirect, Route, Switch, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/lib/protected-route';
+import Agenda from '@/mobile/pages/Agenda';
 import Cashflow from '@/mobile/pages/Cashflow';
 import Finance from '@/mobile/pages/Finance';
 import Lock from '@/mobile/pages/Lock';
 import Overview from '@/mobile/pages/Overview';
+import Settings from '@/mobile/pages/Settings';
 import Wealth from '@/mobile/pages/Wealth';
 import { routes, tabForPath } from './routes';
 import { TabBar } from './TabBar';
@@ -25,9 +27,12 @@ export function MobileShell() {
         {/* Lock screen and first run: outside `ProtectedRoute`, which redirects here while locked. */}
         <Route path={routes.auth} component={Lock} />
         <ProtectedRoute path={routes.overview} component={Overview} />
+        <ProtectedRoute path={routes.agenda} component={Agenda} />
         <ProtectedRoute path={routes.finance} component={Finance} />
         <ProtectedRoute path={routes.cashflow} component={Cashflow} />
         <ProtectedRoute path={routes.wealth} component={Wealth} />
+        {/* Placeholder page until the Settings sheet of Phase 5 (spec §8.9). */}
+        <ProtectedRoute path={routes.settings} component={Settings} />
         <Route>
           <Redirect to={routes.overview} />
         </Route>

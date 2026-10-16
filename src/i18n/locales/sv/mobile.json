@@ -11,5 +11,24 @@
   "lock": {
     "caption": "AES-256 · dina data stannar på den här telefonen",
     "keySaved": "Jag har nyckeln sparad på ett säkert ställe utanför den här telefonen"
+  },
+  "overview": {
+    "hideAmounts": "Dölj belopp",
+    "showAll": "Visa alla",
+    "change": {
+      "30D": "på 30 dagar",
+      "90D": "på 3 månader",
+      "YTD": "i år",
+      "1Y": "på ett år",
+      "5Y": "på 5 år",
+      "All": "sedan den första posten"
+    },
+    "stats": {
+      "assets": "Tillgångar",
+      "freeCash": "Fria medel",
+      "freeCashNote": "på konton",
+      "unchanged": "oförändrat",
+      "noHistory": "ingen historik"
+    }
   }
 }

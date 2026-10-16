@@ -17,6 +17,8 @@ export interface RecentMove {
   amount: number;
   currency: string;
   href: string;
+  /** Category of a bank move; null when uncategorized, absent for investments. */
+  categoryId?: string | null;
 }
 
 /**
@@ -72,6 +74,7 @@ export function useRecentMoves(limit = 5) {
           amount: Math.abs(Number(tx.amount) || 0),
           currency: tx.currency || account.currency,
           href: `/bank-accounts/${account.id}`,
+          categoryId: tx.categoryId,
         });
       }
     });

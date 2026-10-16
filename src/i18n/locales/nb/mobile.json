@@ -11,5 +11,24 @@
   "lock": {
     "caption": "AES-256 · dataene dine blir på denne telefonen",
     "keySaved": "Jeg har lagret nøkkelen trygt utenfor denne telefonen"
+  },
+  "overview": {
+    "hideAmounts": "Skjul beløp",
+    "showAll": "Vis alle",
+    "change": {
+      "30D": "på 30 dager",
+      "90D": "på 3 måneder",
+      "YTD": "i år",
+      "1Y": "på ett år",
+      "5Y": "på 5 år",
+      "All": "siden første registrering"
+    },
+    "stats": {
+      "assets": "Eiendeler",
+      "freeCash": "Ledige kontanter",
+      "freeCashNote": "på kontoer",
+      "unchanged": "uendret",
+      "noHistory": "ingen historikk"
+    }
   }
 }

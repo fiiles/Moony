@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react';
+import type { ComponentPropsWithoutRef, ReactNode } from 'react';
+import { ChevronLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavBarProps {
@@ -39,5 +40,56 @@ export function NavBar({ title, large = false, collapsed, leading, trailing }: N
       </Title>
       <div className="flex items-center justify-end gap-0.5">{trailing}</div>
     </header>
+  );
+}
+
+/**
+ * A text button of the nav bar (`.m-nav__back`): 44 pt tall, the label ends with an ellipsis at
+ * 120 px. With `chevron` it is the back button (chevron and the parent's name).
+ */
+export function NavTextButton({
+  label,
+  onClick,
+  disabled,
+  chevron = false,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  chevron?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      className={cn(
+        'inline-flex h-11 min-w-0 max-w-[120px] items-center gap-0.5 rounded-[12px] text-m-row text-ink [-webkit-touch-callout:none] active:bg-well-2 disabled:pointer-events-none disabled:opacity-45',
+        chevron ? 'pl-1 pr-2' : 'px-3'
+      )}
+    >
+      {chevron && <ChevronLeft className="size-6 shrink-0" strokeWidth={1.75} aria-hidden />}
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
+/** A 44 pt icon button of the nav bar (`.m-nav__btn`); the caller names it with `aria-label`. */
+export function NavIconButton({
+  className,
+  children,
+  ...props
+}: ComponentPropsWithoutRef<'button'> & { 'aria-label': string }) {
+  return (
+    <button
+      type="button"
+      className={cn(
+        'inline-flex size-11 flex-none items-center justify-center rounded-[12px] text-ink [-webkit-touch-callout:none] active:bg-well-2 [&_svg]:size-6',
+        className
+      )}
+      {...props}
+    >
+      {children}
+    </button>
   );
 }

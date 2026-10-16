@@ -11,5 +11,24 @@
   "lock": {
     "caption": "AES-256 · データはこのスマートフォンから出ません",
     "keySaved": "キーをこのスマートフォンの外に安全に保管しました"
+  },
+  "overview": {
+    "hideAmounts": "金額を隠す",
+    "showAll": "すべて表示",
+    "change": {
+      "30D": "30日間",
+      "90D": "3か月間",
+      "YTD": "今年",
+      "1Y": "1年間",
+      "5Y": "5年間",
+      "All": "最初の記録以降"
+    },
+    "stats": {
+      "assets": "資産",
+      "freeCash": "自由に使える現金",
+      "freeCashNote": "口座内",
+      "unchanged": "変化なし",
+      "noHistory": "履歴なし"
+    }
   }
 }

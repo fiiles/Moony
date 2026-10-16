@@ -15,6 +15,11 @@ describe('tabForPath', () => {
     expect(tabForPath('/cashflow/')).toBe('cashflow');
   });
 
+  it('keeps a screen pushed on Přehled in Přehled', () => {
+    expect(tabForPath(routes.agenda)).toBe('overview');
+    expect(tabForPath('/agendas')).toBeNull();
+  });
+
   it('matches whole path segments only', () => {
     expect(tabForPath('/financial')).toBeNull();
     expect(tabForPath('/wealthy/x')).toBeNull();

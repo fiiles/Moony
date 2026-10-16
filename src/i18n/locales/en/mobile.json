@@ -11,5 +11,24 @@
   "lock": {
     "caption": "AES-256 · your data stays on this phone",
     "keySaved": "I have stored the key safely outside this phone"
+  },
+  "overview": {
+    "hideAmounts": "Hide amounts",
+    "showAll": "Show all",
+    "change": {
+      "30D": "over 30 days",
+      "90D": "over 3 months",
+      "YTD": "this year",
+      "1Y": "over the year",
+      "5Y": "over 5 years",
+      "All": "since the first record"
+    },
+    "stats": {
+      "assets": "Assets",
+      "freeCash": "Free cash",
+      "freeCashNote": "on accounts",
+      "unchanged": "unchanged",
+      "noHistory": "no history yet"
+    }
   }
 }

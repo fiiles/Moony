@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { allocationPercents } from './allocation-percent';
+import { allocationPercents, allocationSlices } from './allocation-percent';
 
 const sum = (xs: number[]) => xs.reduce((a, b) => a + b, 0);
 
@@ -52,5 +52,51 @@ describe('allocationPercents', () => {
 
   it('gives equal classes the same share when they divide evenly', () => {
     expect(allocationPercents([1, 1, 1, 1])).toEqual([25, 25, 25, 25]);
+  });
+});
+
+describe('allocationSlices', () => {
+  const seg = (key: string, value: number) => ({ key, label: key.toUpperCase(), value });
+
+  it('sorts by size and keeps the four largest as series', () => {
+    const { slices, total } = allocationSlices([seg('a', 10), seg('b', 40), seg('c', 30)], {
+      otherLabel: 'Other',
+    });
+    expect(slices.map((s) => s.key)).toEqual(['b', 'c', 'a']);
+    expect(slices.map((s) => s.series)).toEqual([0, 1, 2]);
+    expect(slices.map((s) => s.percent)).toEqual([50, 38, 12]);
+    expect(total).toBe(80);
+  });
+
+  it('folds the fifth and later classes into the other bucket', () => {
+    const { slices } = allocationSlices(
+      [seg('a', 50), seg('b', 20), seg('c', 10), seg('d', 10), seg('e', 6), seg('f', 4)],
+      { otherLabel: 'Other' }
+    );
+    expect(slices.map((s) => s.key)).toEqual(['a', 'b', 'c', 'd', 'other']);
+    expect(slices[4]).toMatchObject({ label: 'Other', value: 10, series: 'other', percent: 10 });
+    expect(sum(slices.map((s) => s.percent))).toBe(100);
+  });
+
+  it('leaves out empty and negative classes', () => {
+    const { slices } = allocationSlices([seg('a', 0), seg('b', -5), seg('c', 7)], {
+      otherLabel: 'Other',
+    });
+    expect(slices.map((s) => s.key)).toEqual(['c']);
+  });
+
+  it('draws an extra bucket in the other shade under its own label', () => {
+    const { slices } = allocationSlices([seg('a', 30)], {
+      otherLabel: 'Other',
+      otherSegment: { key: 'untagged', label: 'Untagged', value: 10 },
+    });
+    expect(slices.map((s) => [s.label, s.series])).toEqual([
+      ['A', 0],
+      ['Untagged', 'other'],
+    ]);
+  });
+
+  it('is empty with nothing to allocate', () => {
+    expect(allocationSlices([], { otherLabel: 'Other' })).toEqual({ slices: [], total: 0 });
   });
 });

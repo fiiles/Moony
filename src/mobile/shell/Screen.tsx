@@ -6,6 +6,8 @@ interface ScreenProps {
   title: string;
   /** Tab root: a 30 pt large title in the content that collapses into the nav bar on scroll. */
   large?: boolean;
+  /** The one sentence under the large title (`.m-title-sub`, 13 / 450 `ink-3`). */
+  subtitle?: ReactNode;
   leading?: ReactNode;
   trailing?: ReactNode;
   /** False on screens outside the tabs (the lock's recovery): no room is kept for the tab bar. */
@@ -20,6 +22,7 @@ interface ScreenProps {
 export function Screen({
   title,
   large = false,
+  subtitle,
   leading,
   trailing,
   tabBar = true,
@@ -57,6 +60,11 @@ export function Screen({
           </h1>
         ) : (
           <div ref={setMarker} aria-hidden className="h-px" />
+        )}
+        {large && subtitle && (
+          <p className="mx-0.5 mb-3.5 mt-0 text-[13px] font-450 leading-[1.4] text-ink-3">
+            {subtitle}
+          </p>
         )}
         {children}
       </main>

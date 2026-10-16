@@ -137,7 +137,8 @@
   min-width: 0; overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap;
   font-size: var(--m-fs-section); font-weight: var(--m-fw-section); letter-spacing: var(--m-ls-section); line-height: 1.25;
 }
-.m-sec__a { flex: none; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: 600; white-space: nowrap; }
+.m-sec__a { position: relative; flex: none; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: 600; white-space: nowrap; }
+.m-sec__a::after { content: ""; position: absolute; inset: -14px -8px; } /* a 44 px hit area around the 12 px text */
 
 /* ===== Hero: label, display number, change line, period segment, chart =====
    The desktop's decorative circle at 60 % size. */
@@ -232,11 +233,11 @@
 .m-row__s { flex: 1 1 auto; color: var(--ink-4); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; }
 .m-row__s .m-badge { height: 18px; padding: 0 6px; vertical-align: 1px; }
 .m-row__v {
-  flex: none; max-width: 100%; margin-left: auto; color: var(--ink);
+  flex: none; max-width: 60%; margin-left: auto; color: var(--ink); /* an absurd value never squeezes the title away */
   font-size: var(--m-fs-row); font-weight: var(--m-fw-row); letter-spacing: var(--m-ls-row); line-height: 1.3;
 }
 .m-row__v--gain { color: var(--gain); }
-.m-row__vs { flex: none; max-width: 100%; margin-left: auto; color: var(--ink-4); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.3; }
+.m-row__vs { flex: none; max-width: 60%; margin-left: auto; color: var(--ink-4); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.3; }
 .m-row__chev { flex: none; width: 16px; height: 16px; color: var(--ink-5); }
 
 /* ===== Badge (desktop rules at the phone's sub size) ===== */

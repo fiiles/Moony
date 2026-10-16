@@ -11,7 +11,7 @@ import { useLocation } from 'wouter';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { ChevronLeft, Lock as LockIcon, RefreshCw } from 'lucide-react';
+import { Lock as LockIcon, RefreshCw } from 'lucide-react';
 import { z } from 'zod';
 import { recoverSchema, unlockSchema } from '@shared/schema';
 import { GREETING_NAME_KEY, LOCKED_AT_KEY, useAuth } from '@/hooks/use-auth';
@@ -37,7 +37,7 @@ import { OnboardingWizard } from '@/components/auth/OnboardingWizard';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
 import { RecoverySteps } from '@/components/auth/RecoverySteps';
-import { cn } from '@/lib/utils';
+import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 
@@ -60,34 +60,6 @@ function Frame({ children }: { children: ReactNode }) {
     <div className="relative flex h-full flex-col overflow-y-auto overscroll-contain bg-canvas bg-[radial-gradient(520px_320px_at_100%_0%,var(--canvas-glow),transparent_70%)] pb-[var(--safe-bottom)] pt-[var(--safe-top)] text-m-body text-ink-2">
       {children}
     </div>
-  );
-}
-
-/** Text button for the leading slot of a pushed screen: a back chevron, or a plain word. */
-function NavTextButton({
-  label,
-  onClick,
-  disabled,
-  chevron = false,
-}: {
-  label: string;
-  onClick: () => void;
-  disabled?: boolean;
-  chevron?: boolean;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      className={cn(
-        'inline-flex h-11 min-w-0 max-w-[120px] items-center gap-0.5 rounded-[12px] text-m-row text-ink [-webkit-touch-callout:none] active:bg-well-2 disabled:pointer-events-none disabled:opacity-45',
-        chevron ? 'pl-1 pr-2' : 'px-3'
-      )}
-    >
-      {chevron && <ChevronLeft className="size-6 shrink-0" strokeWidth={1.75} aria-hidden />}
-      <span className="truncate">{label}</span>
-    </button>
   );
 }
 

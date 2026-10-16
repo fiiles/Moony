@@ -11,5 +11,24 @@
   "lock": {
     "caption": "AES-256 · data zůstávají v telefonu",
     "keySaved": "Klíč mám bezpečně uložený mimo tento telefon"
+  },
+  "overview": {
+    "hideAmounts": "Skrýt částky",
+    "showAll": "Zobrazit vše",
+    "change": {
+      "30D": "za 30 dní",
+      "90D": "za 3 měsíce",
+      "YTD": "letos",
+      "1Y": "za rok",
+      "5Y": "za 5 let",
+      "All": "od prvního záznamu"
+    },
+    "stats": {
+      "assets": "Aktiva",
+      "freeCash": "Volné peníze",
+      "freeCashNote": "na účtech",
+      "unchanged": "beze změny",
+      "noHistory": "bez historie"
+    }
   }
 }

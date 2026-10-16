@@ -13,7 +13,6 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import type { Milestone, MilestoneKind } from '@shared/schema';
-import { recordCurrency } from '@shared/currencies';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -23,11 +22,10 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useMilestoneActions } from '@/hooks/use-milestone-mutations';
+import { useMilestoneSubLine } from '@/hooks/use-milestone-sub-line';
 import { useFormat } from '@/lib/use-format';
-import { useCurrency } from '@/lib/currency';
 import { cn } from '@/lib/utils';
 import { utcDayFloor } from '@/utils/chart-axis';
-import { formatNativePrice } from '@/utils/stock-monitor';
 import {
   agendaDay,
   canRemindLater,
@@ -47,63 +45,40 @@ const UPKEEP_ICONS: Partial<Record<MilestoneKind, LucideIcon>> = {
   loan_fixation_expired: Percent,
 };
 
-/** The sub-line of a row: what happens; the date chip already says when. */
-function useSubLine() {
+/**
+ * The items of a milestone's menu: hide, remind later (a week, a month for upkeep; only when
+ * the snooze ends before the date), mute the group. Shared by the desktop "···" and the phone's
+ * long press; `itemClassName` lets the phone raise the items to its touch size.
+ */
+export function MilestoneMenuItems({ m, itemClassName }: { m: Milestone; itemClassName?: string }) {
   const { t } = useTranslation('milestones');
-  const fmt = useFormat();
-  const { currencyCode } = useCurrency();
-  const thisYear = new Date(utcDayFloor(Date.now() / 1000) * 1000).getUTCFullYear();
-  // Day and month inside the current year, the full date otherwise: "17. 4." for a valuation
-  // from this spring, "17. 4. 2024" for one from two years ago.
-  const day = (d: number | null) => {
-    if (d === null) return '';
-    return new Date(d * 1000).getUTCFullYear() === thisYear
-      ? fmt.day(d, { day: 'numeric', month: 'numeric' })
-      : fmt.day(d);
-  };
-  const money = (m: Milestone) =>
-    m.amount === null ? '' : fmt.money(Number(m.amount), recordCurrency(m.currency));
-  const price = (m: Milestone, value: string | null) =>
-    value === null ? '' : formatNativePrice(Number(value), m.currency, fmt.locale, currencyCode);
-
-  return (m: Milestone): string => {
-    switch (m.kind) {
-      case 'insurance_anniversary':
-        return m.tone === 'info'
-          ? t('sub.insurance_anniversary_passed')
-          : t('sub.insurance_anniversary', { date: day(m.dueDay) });
-      case 'insurance_payment':
-      case 'bond_coupon':
-      case 'bond_maturity':
-        return t(`sub.${m.kind}`, { amount: money(m) });
-      case 'watch_target':
-        return t(m.direction === 'below' ? 'sub.watch_target_below' : 'sub.watch_target_above', {
-          price: price(m, m.referenceAmount),
-          target: price(m, m.amount),
-        });
-      case 'backup_stale':
-        return m.sinceDay === null
-          ? t('sub.backup_never')
-          : t('sub.backup_stale', { date: day(m.sinceDay) });
-      case 'balances_stale':
-        return t('sub.balances_stale', { count: m.count ?? 0 });
-      case 'valuation_stale':
-      case 'loan_balance_check':
-        return t(`sub.${m.kind}`, { date: day(m.sinceDay) });
-      case 'loan_fixation_expired':
-        return t('sub.loan_fixation_expired', { date: day(m.dueDay) });
-      default:
-        return t(`sub.${m.kind}`);
-    }
-  };
+  const { hide, remindLater, muteGroup } = useMilestoneActions();
+  const group = groupOf(m.kind);
+  const today = utcDayFloor(Date.now() / 1000);
+  return (
+    <>
+      <DropdownMenuItem className={itemClassName} onSelect={() => hide(m)}>
+        <EyeOff />
+        {t('actions.hide')}
+      </DropdownMenuItem>
+      {canRemindLater(m, today) && (
+        <DropdownMenuItem className={itemClassName} onSelect={() => remindLater(m)}>
+          <Clock />
+          {t(isUpkeep(m) ? 'actions.remindMonth' : 'actions.remindWeek')}
+        </DropdownMenuItem>
+      )}
+      <DropdownMenuSeparator />
+      <DropdownMenuItem className={itemClassName} onSelect={() => muteGroup(group)}>
+        <BellOff />
+        {t(`groups.${group}.mute`)}
+      </DropdownMenuItem>
+    </>
+  );
 }
 
 /** "···": hide, remind later, mute the group. */
 export function MilestoneMenu({ m, title }: { m: Milestone; title: string }) {
   const { t } = useTranslation('milestones');
-  const { hide, remindLater, muteGroup } = useMilestoneActions();
-  const group = groupOf(m.kind);
-  const today = utcDayFloor(Date.now() / 1000);
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -117,21 +92,7 @@ export function MilestoneMenu({ m, title }: { m: Milestone; title: string }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onSelect={() => hide(m)}>
-          <EyeOff />
-          {t('actions.hide')}
-        </DropdownMenuItem>
-        {canRemindLater(m, today) && (
-          <DropdownMenuItem onSelect={() => remindLater(m)}>
-            <Clock />
-            {t(isUpkeep(m) ? 'actions.remindMonth' : 'actions.remindWeek')}
-          </DropdownMenuItem>
-        )}
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => muteGroup(group)}>
-          <BellOff />
-          {t(`groups.${group}.mute`)}
-        </DropdownMenuItem>
+        <MilestoneMenuItems m={m} />
       </DropdownMenuContent>
     </DropdownMenu>
   );
@@ -145,7 +106,7 @@ export function MilestoneMenu({ m, title }: { m: Milestone; title: string }) {
 export function AgendaRow({ m, onNavigate }: { m: Milestone; onNavigate?: () => void }) {
   const { t } = useTranslation('milestones');
   const fmt = useFormat();
-  const subLine = useSubLine();
+  const subLine = useMilestoneSubLine();
   const today = utcDayFloor(Date.now() / 1000);
   const day = agendaDay(m, today);
   const rel = relativeLabel(daysBetween(today, day));
@@ -193,7 +154,7 @@ export function AgendaRow({ m, onNavigate }: { m: Milestone; onNavigate?: () => 
 /** Upkeep row: an icon in a `well` square instead of a date chip. */
 export function UpkeepRow({ m }: { m: Milestone }) {
   const { t } = useTranslation('milestones');
-  const subLine = useSubLine();
+  const subLine = useMilestoneSubLine();
   const Icon = UPKEEP_ICONS[m.kind] ?? Landmark;
   const title = m.title || t(`titles.${m.kind}`);
   const sub = subLine(m);

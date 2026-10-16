@@ -120,5 +120,60 @@
     "edit": "Das Bearbeiten kommt in Phase 2b.",
     "delete": "Das Löschen kommt in Phase 2b.",
     "export": "Der Export kommt später."
+  },
+  "account": {
+    "record": "Kontostand erfassen",
+    "import": "Kontoauszug importieren",
+    "menu": {
+      "edit": "Konto bearbeiten",
+      "balanceHistory": "Saldoverlauf",
+      "importHistory": "Importverlauf",
+      "delete": "Konto löschen"
+    },
+    "stats": {
+      "changeThisYear": "Änderung in diesem Jahr",
+      "avgPerMonth": "Durchschnitt pro Monat",
+      "yearlyInterest": "Jahreszinsen"
+    },
+    "flows": {
+      "title": "Geldflüsse"
+    },
+    "ledger": {
+      "title": "Umsätze",
+      "search": "Nach Gegenpartei oder Beschreibung suchen",
+      "clearSearch": "Suche löschen",
+      "all": "Alle",
+      "in": "Eingänge",
+      "out": "Ausgänge",
+      "filter": "Filter",
+      "noCategory": "Ohne Kategorie",
+      "categorize": "Kategorie",
+      "details": "Details",
+      "count_one": "{{count}} Umsatz",
+      "count_other": "{{count}} Umsätze",
+      "empty": "Keine passenden Umsätze",
+      "emptyHint": "Ändern Sie den Zeitraum oder den Filter.",
+      "showAll": "Alle anzeigen",
+      "loadError": "Die Umsätze konnten nicht geladen werden.",
+      "retry": "Erneut versuchen"
+    },
+    "filter": {
+      "title": "Filter",
+      "category": "Kategorie",
+      "all": "Alle",
+      "period": "Zeitraum",
+      "from": "Von",
+      "to": "Bis",
+      "apply": "Anwenden",
+      "reset": "Zurücksetzen"
+    },
+    "rowMenu": {
+      "details": "Details",
+      "category": "Kategorie",
+      "delete": "Löschen"
+    }
+  },
+  "transaction": {
+    "flowSaved": "Bedeutung gespeichert"
   }
 }

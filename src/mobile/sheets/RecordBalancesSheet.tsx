@@ -16,6 +16,10 @@ interface RecordBalancesSheetProps {
   onOpenChange: (open: boolean) => void;
   /** The accounts to list, in order; the card freezes them when it opens the sheet. */
   accountIds: readonly string[];
+  /** The account detail names the sheet by its button ("Zaznamenat zůstatek"); default `recordBalances.title`. */
+  title?: string;
+  /** Default `recordBalances.lead`. */
+  description?: string;
 }
 
 /**
@@ -23,7 +27,13 @@ interface RecordBalancesSheetProps {
  * balance as its placeholder, dated today. Saving records every filled field (the empty ones are
  * skipped) through the desktop's balance write, one after the other, then says it once.
  */
-export function RecordBalancesSheet({ open, onOpenChange, accountIds }: RecordBalancesSheetProps) {
+export function RecordBalancesSheet({
+  open,
+  onOpenChange,
+  accountIds,
+  title,
+  description,
+}: RecordBalancesSheetProps) {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
@@ -86,8 +96,8 @@ export function RecordBalancesSheet({ open, onOpenChange, accountIds }: RecordBa
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
-      title={t('recordBalances.title')}
-      description={t('recordBalances.lead')}
+      title={title ?? t('recordBalances.title')}
+      description={description ?? t('recordBalances.lead')}
       footer={
         <>
           <Button

@@ -140,5 +140,62 @@
     "edit": "Edycja pojawi się w fazie 2b.",
     "delete": "Usuwanie pojawi się w fazie 2b.",
     "export": "Eksport pojawi się później."
+  },
+  "account": {
+    "record": "Zapisz saldo",
+    "import": "Importuj wyciąg",
+    "menu": {
+      "edit": "Edytuj konto",
+      "balanceHistory": "Historia salda",
+      "importHistory": "Historia importów",
+      "delete": "Usuń konto"
+    },
+    "stats": {
+      "changeThisYear": "Zmiana w tym roku",
+      "avgPerMonth": "Średnio miesięcznie",
+      "yearlyInterest": "Roczne odsetki"
+    },
+    "flows": {
+      "title": "Przepływy"
+    },
+    "ledger": {
+      "title": "Ruchy",
+      "search": "Szukaj po kontrahencie lub opisie",
+      "clearSearch": "Wyczyść wyszukiwanie",
+      "all": "Wszystkie",
+      "in": "Przychodzące",
+      "out": "Wychodzące",
+      "filter": "Filtr",
+      "noCategory": "Bez kategorii",
+      "categorize": "Kategoria",
+      "details": "Szczegóły",
+      "count_one": "{{count}} ruch",
+      "count_few": "{{count}} ruchy",
+      "count_many": "{{count}} ruchów",
+      "count_other": "{{count}} ruchu",
+      "empty": "Brak pasujących ruchów",
+      "emptyHint": "Zmień okres lub filtr.",
+      "showAll": "Pokaż wszystkie",
+      "loadError": "Nie udało się wczytać ruchów.",
+      "retry": "Spróbuj ponownie"
+    },
+    "filter": {
+      "title": "Filtr",
+      "category": "Kategoria",
+      "all": "Wszystkie",
+      "period": "Okres",
+      "from": "Od",
+      "to": "Do",
+      "apply": "Zastosuj",
+      "reset": "Resetuj"
+    },
+    "rowMenu": {
+      "details": "Szczegóły",
+      "category": "Kategoria",
+      "delete": "Usuń"
+    }
+  },
+  "transaction": {
+    "flowSaved": "Znaczenie zapisane"
   }
 }

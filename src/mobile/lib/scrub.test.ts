@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nearestPoint, toPlotX, toPlotY } from './scrub';
+import { nearestPoint, stepValueAt, toPlotX, toPlotY } from './scrub';
 
 describe('nearestPoint', () => {
   const points = [{ x: 0 }, { x: 10 }, { x: 20 }];
@@ -53,5 +53,22 @@ describe('toPlotY', () => {
 
   it('centres a flat domain', () => {
     expect(toPlotY(5, [5, 5], 14, 140)).toBe(84);
+  });
+});
+
+describe('stepValueAt', () => {
+  const points = [
+    { t: 0, value: 1 },
+    { t: 10, value: 5 },
+  ];
+
+  it('holds the latest point at or before the time', () => {
+    expect(stepValueAt(points, 7)).toBe(1);
+    expect(stepValueAt(points, 10)).toBe(5);
+    expect(stepValueAt(points, 30)).toBe(5);
+  });
+
+  it('gives the first value before the first point', () => {
+    expect(stepValueAt(points, -4)).toBe(1);
   });
 });

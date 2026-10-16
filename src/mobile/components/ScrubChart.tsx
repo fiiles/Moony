@@ -25,7 +25,7 @@ import { AXIS_WIDTH, TimeAxis } from '@/components/charts/ChartAxis';
 import { EventMark } from '@/components/charts/EventMarkers';
 import type { LinePoint, LineTip } from '@/components/charts/MoonyLineChart';
 import { selectionTick } from '@/mobile/lib/haptics';
-import { nearestPoint, toPlotX, toPlotY } from '@/mobile/lib/scrub';
+import { nearestPoint, stepValueAt, toPlotX, toPlotY } from '@/mobile/lib/scrub';
 
 /** Plot margins, shared by the Recharts layer and the scrub overlay that must sit on its line. */
 const MARGIN = { top: 14, right: 0, bottom: 6, left: 0 };
@@ -39,6 +39,8 @@ interface ScrubChartProps<E extends ChartEvent> {
   points: LinePoint[];
   /** Zero baseline for "Vše"; otherwise truncated with 15 % headroom below (README §8). */
   zeroBaseline?: boolean;
+  /** A step line (a balance that changes only at a record): each value holds until the next point. */
+  step?: boolean;
   /** 160 pt in the hero (spec §10.4). */
   height?: number;
   /** Value ticks ("4,2 mil."); default the locale's compact number. */
@@ -76,6 +78,7 @@ interface Gesture {
 export function ScrubChart<E extends ChartEvent>({
   points,
   zeroBaseline = false,
+  step = false,
   height = 160,
   formatTick,
   events,
@@ -129,9 +132,15 @@ export function ScrubChart<E extends ChartEvent>({
     return clusters.map((cluster) => ({
       cluster,
       x: toPlotX(cluster.t, t0, t1, plotWidth),
-      y: toPlotY(valueAt(points, cluster.t), domain, MARGIN.top, plotHeight),
+      // A mark sits on the line: a step line holds its value, a plain one interpolates.
+      y: toPlotY(
+        step ? stepValueAt(points, cluster.t) : valueAt(points, cluster.t),
+        domain,
+        MARGIN.top,
+        plotHeight
+      ),
     }));
-  }, [events, t0, t1, plotWidth, points, domain, plotHeight]);
+  }, [events, t0, t1, plotWidth, points, step, domain, plotHeight]);
 
   const tickFormatter = useCallback(
     (v: number) =>
@@ -237,7 +246,7 @@ export function ScrubChart<E extends ChartEvent>({
           allowDataOverflow
         />
         <Area
-          type="linear"
+          type={step ? 'stepAfter' : 'linear'}
           dataKey="value"
           stroke="none"
           fill={`url(#${gradientId})`}
@@ -246,7 +255,7 @@ export function ScrubChart<E extends ChartEvent>({
           baseValue={domain[0]}
         />
         <Line
-          type="linear"
+          type={step ? 'stepAfter' : 'linear'}
           dataKey="value"
           stroke={tk.line}
           strokeWidth={2.25}
@@ -267,7 +276,7 @@ export function ScrubChart<E extends ChartEvent>({
         />
       </ComposedChart>
     );
-  }, [width, height, points, gradientId, tk, t0, t1, domain, ticks, tickFormatter]);
+  }, [width, height, points, step, gradientId, tk, t0, t1, domain, ticks, tickFormatter]);
 
   const shown = callout === null ? null : (marks[callout] ?? null);
 

@@ -94,6 +94,12 @@
   </section>
 
   <section class="part">
+    <h2>Detail účtu na třech šířkách</h2>
+    <p>Detail bankovního účtu (spec §8.4, prototyp 04): zpět, titulek a pod lištou řádek banka · měna · číslo (<code>.m-nav__sub</code>), dvojice tlačítek, hero se schodovou čarou záznamů zůstatku, dvě statistiky, pás toků za 12 měsíců (<code>.m-flows</code>, posouvá se do stran a otevírá se na konci; stránka se do stran neposouvá), hledání (<code>.m-search</code>), lišta se segmentem a tlačítkem filtru s tečkou (<code>.m-toolbar</code>, <code>.m-iconbtn</code>), dvě skupiny pohybů pod lepícími hlavičkami dne (<code>.m-dayhead</code>) se štítky v podřádku a jeden řádek přejetý doleva na „Kategorie“. Pod rámečky je řádek výběrového sheetu filtru (<code>.m-pick</code>).</p>
+    <div class="phones" id="details"></div>
+  </section>
+
+  <section class="part">
     <h2>Stavy navigační lišty, detail a tlačítka</h2>
     <p>Složený titulek s vlasovou linkou po posunutí, detail s tlačítkem zpět a dvěma tlačítky vpravo a sada tlačítek a segmentů — vše na 360.</p>
     <div class="phones">
@@ -198,6 +204,43 @@
     <h2>Sheet a pole pro částku</h2>
     <p>Sheet nad obrazovkou: tab bar pod scrimem, držadlo, titulek, jedna věta, pole <code>.m-field</code> (štítek, 48 pt pole, měna uvnitř vpravo, placeholder je poslední zůstatek; druhé pole je vyplněné, třetí s chybou, čtvrté se zapnutým přepínačem ±) a patička na <code>well</code> s tlačítkem Zrušit vlevo a hlavní akcí vpravo. V aplikaci sheet zavírá klepnutí na scrim, Zrušit a Android zpět.</p>
     <div class="phones" id="sheets"></div>
+  </section>
+
+  <section class="part">
+    <h2>Řádky výběru ve filtru</h2>
+    <p>Sheet filtru pohybů (<code>.m-pick</code>): 44 pt, 28 pt čip, popisek s výpustkou, zatržítko u zvoleného; řádky odděluje <code>line-soft</code>. Obdobně „Období“ bez čipů a pod „Vlastní“ dvě 48 pt pole s datem (<code>.m-field__i</code>).</p>
+    <div class="phones">
+      <div class="frame" style="--w: 360px">
+        <div class="frame__cap"><b>360 · filtr</b><span>kategorie a období</span><output class="frame__check"></output></div>
+        <div class="phone phone--android" style="height: 600px"><div class="m-screen" lang="de">
+          <header class="m-nav">
+            <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+            <h1 class="m-nav__title">Girokonto</h1>
+            <div class="m-nav__side m-nav__side--end"></div>
+          </header>
+          <main class="m-screen__body"></main>
+          <div class="m-scrim"></div>
+          <div class="m-sheet" role="dialog" aria-modal="true" aria-label="Filter">
+            <div class="m-sheet__handle"></div>
+            <div class="m-sheet__head"><div class="m-sheet__t">Filter</div></div>
+            <div class="m-sheet__body">
+              <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Kategorie</div>
+              <div role="radiogroup" aria-label="Kategorie">
+                <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" data-icon="layers" data-size="15"></span><span class="m-pick__l">Alle</span></button>
+                <button class="m-pick" type="button" role="radio" aria-checked="true"><span class="m-pick__chip" data-icon="tag" data-size="15"></span><span class="m-pick__l">Nicht kategorisiert</span><span class="m-pick__check" data-icon="check" data-size="18"></span></button>
+                <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" data-icon="receipt" data-size="15"></span><span class="m-pick__l">Lebensmittel und Haushaltswaren</span></button>
+              </div>
+              <div class="m-t-sub" style="margin: 16px 4px 2px; color: var(--ink-3); font-weight: 600">Zeitraum</div>
+              <div role="radiogroup" aria-label="Zeitraum">
+                <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__l">Dieser Monat</span></button>
+                <button class="m-pick" type="button" role="radio" aria-checked="true"><span class="m-pick__l">Benutzerdefiniert</span><span class="m-pick__check" data-icon="check" data-size="18"></span></button>
+              </div>
+            </div>
+            <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Zurücksetzen</span></button><button class="m-btn m-btn--primary" type="button"><span>Anwenden</span></button></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
   </section>
 </div>
 
@@ -308,6 +351,55 @@
   </div>
 </template>
 
+<!-- The account detail, rendered at the three widths by the script below. -->
+<template id="detail-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Girokonto</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Fio · CZK · 2100123456/2010</p>
+      <div class="m-btn-pair">
+        <button class="m-btn m-btn--primary" type="button" data-icon="pencil" data-size="16"><span>Kontostand erfassen</span></button>
+        <button class="m-btn m-btn--secondary" type="button" data-icon="upload" data-size="16"><span>Kontoauszug importieren</span></button>
+      </div>
+      <div class="m-card m-card--hero">
+        <div class="m-hero__label">Saldo zum 10.10.2026</div>
+        <div class="m-hero__value">86&nbsp;420 Kč</div>
+        <div class="m-hero__delta"><span class="m-badge m-badge--gain">▲ 12,9 %</span><span>+ 9&nbsp;870 Kč in 30 Tagen</span></div>
+        <div class="m-hero__seg"><div class="m-seg"><button class="m-seg__btn" type="button">30 Tage</button><button class="m-seg__btn" type="button">3 Monate</button><button class="m-seg__btn" type="button">Dieses Jahr</button><button class="m-seg__btn is-active" type="button">1 Jahr</button><button class="m-seg__btn" type="button">Alle</button></div></div>
+        <svg class="m-hero__chart demo-chart" data-chart="step"></svg>
+      </div>
+      <div class="m-stats m-stats--2">
+        <div class="m-stat"><div class="m-stat__l">Änderung in diesem Jahr</div><div class="m-stat__v">+ 21&nbsp;300 Kč</div><div class="m-stat__n">gegenüber dem Eintrag vom 31.12.2025</div></div>
+        <div class="m-stat"><div class="m-stat__l">Durchschnitt pro Monat</div><div class="m-stat__v">+ 1&nbsp;775 Kč</div><div class="m-stat__n">in den letzten 12 Monaten</div></div>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Geldflüsse</span><span class="m-sec__n">Oktober 2026</span></div>
+      <div class="m-card">
+        <div class="m-flows" role="group" aria-label="Geldflüsse" data-flows="58,52|61,49|57,63|60,44|59,55|72,51|58,47|60,66|58,49|61,58|59,53|58,32"></div>
+        <p class="m-t-caption" style="margin: 8px 0 0">+ 61&nbsp;200 Kč Eingang · − 31&nbsp;980 Kč Ausgang · 41 Bewegungen</p>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Umsätze</span><span class="m-sec__n">41 Umsätze</span></div>
+      <div class="m-search"><span class="m-search__ic" data-icon="search" data-size="16"></span><input class="m-search__i" type="search" placeholder="Nach Gegenpartei oder Beschreibung suchen" aria-label="Nach Gegenpartei oder Beschreibung suchen"></div>
+      <div class="m-toolbar">
+        <div class="m-seg"><button class="m-seg__btn is-active" type="button">Alle</button><button class="m-seg__btn" type="button">Eingänge</button><button class="m-seg__btn" type="button">Ausgänge</button></div>
+        <button class="m-iconbtn" type="button" aria-label="Filter (1)" data-icon="list-filter" data-size="20"><span class="m-iconbtn__dot"></span></button>
+      </div>
+      <div>
+        <div class="m-dayhead">Heute</div>
+        <div data-rows="ledgerToday"></div>
+      </div>
+      <div>
+        <div class="m-dayhead">Gestern</div>
+        <div data-rows="ledgerYesterday"></div>
+      </div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+  </div>
+</template>
+
 <!-- The sheet frame, rendered at the three widths. -->
 <template id="sheet-frame">
   <div class="m-screen" lang="de">
@@ -346,7 +438,9 @@
     "eye": '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
     "chevron-left": '<path d="m15 18-6-6 6-6"/>',
     "clock": '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
-    "banknote": '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>'
+    "banknote": '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+    "arrow-right-left": '<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>',
+    "layers": '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>'
   });
 
   var TABS = [
@@ -367,6 +461,14 @@
     return '<a class="m-row' + (value ? "" : " m-row--chev") + (subLine ? "" : " m-row--single") + '" href="#">' + chipHtml +
       '<div class="m-row__main"><div class="m-row__line"><span class="m-row__t">' + title + '</span>' + v + '</div>' +
       subLine + '</div>' + chev + '</a>';
+  }
+  function badge(text) { return '<span class="m-row__badge">' + text + '</span>'; }
+  /* A ledger row in its swipe box (`.m-swipe` clips the panel and draws the divider); with an icon
+     and a label it is slid 98 px to the left over the panel on its right (swipe left = Kategorie). */
+  function swipe(html, iconName, label) {
+    if (!iconName) return '<div class="m-swipe">' + html + '</div>';
+    return '<div class="m-swipe"><span class="m-swipe__panel m-swipe__panel--end" aria-hidden="true"><span data-icon="' + iconName + '" data-size="18"></span>' + label + '</span>' +
+      html.replace('<a class="m-row', '<a style="transform: translateX(-98px)" class="m-row') + '</div>';
   }
   var ROWS = {
     accounts: [
@@ -406,6 +508,19 @@
       row("", "Umbrella a.s.", "Gehalt · 09/2026", "+ 61&nbsp;200 Kč", "", { icon: "banknote", chip: "m-row__chip--gain", gain: true }),
       row("", "XTB · eigenes Konto", "Investitionen, Sparen und Umbuchungen", "− 33&nbsp;120 Kč", "", { icon: "arrow-left" })
     ],
+    /* The account detail's ledger: initials (a credit tinted gain, a transfer's arrows), the sub
+       "Kategorie · Detail" with the badges the app shows (Ohne Kategorie, Vorgemerkt, Erstattung),
+       the signed amount; the second row is swiped left onto "Kategorie". */
+    ledgerToday: [
+      swipe(row("LP", "Lidl Praha 4", "Lebensmittel · Kartenzahlung", "− 1&nbsp;249 Kč")),
+      swipe(row("AC", "Alza.cz a.s.", badge("Ohne Kategorie") + " · Bestellung 2201983", "− 4&nbsp;590 Kč"), "tag", "Kategorie"),
+      swipe(row("RO", "Rohlik.cz", "Lebensmittel · " + badge("Vorgemerkt") + " · Kartenzahlung", "− 2&nbsp;311 Kč"))
+    ],
+    ledgerYesterday: [
+      swipe(row("UA", "Umbrella a.s.", "Gehalt · 09/2026", "+ 61&nbsp;200 Kč", "", { chip: "m-row__chip--gain", gain: true })),
+      swipe(row("ZS", "Zalando SE", "Kleidung · " + badge("Erstattung") + " · Rücksendung 88123", "+ 1&nbsp;290 Kč", "", { chip: "m-row__chip--gain", gain: true })),
+      swipe(row("", "XTB · eigenes Konto", "Investitionen, Sparen und Umbuchungen", "− 33&nbsp;120 Kč", "", { icon: "arrow-right-left" }))
+    ],
     settings: [
       row("", "Sicherheit", "Face ID · Sperre nach 1 Minute", "", "", { icon: "lock" }),
       row("", "Sicherung und Übertragung", "iCloud Drive · heute 7:30", "", "", { icon: "download" }),
@@ -428,7 +543,23 @@
   }
   renderFrames("roots", document.getElementById("root-frame"), "");
   renderFrames("finance", document.querySelector('template[data-variant="finance"]'), " · Finance");
+  renderFrames("details", document.getElementById("detail-frame"), " · detail účtu");
   renderFrames("sheets", document.getElementById("sheet-frame"), " · sheet");
+
+  /* Flows strips: 12 months (Nov 2025 – Oct 2026) of incoming/outgoing values as "in,out|…", the
+     bars scaled to the largest month, the newest selected, the strip scrolled to its end. */
+  var MONTHS = ["Nov.", "Dez.", "Jan. 26", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt."];
+  document.querySelectorAll("[data-flows]").forEach(function (strip) {
+    var months = strip.dataset.flows.split("|").map(function (m) { return m.split(",").map(Number); });
+    var max = Math.max.apply(null, months.map(function (m) { return Math.max(m[0], m[1]); }));
+    strip.innerHTML = months.map(function (m, i) {
+      var last = i === months.length - 1;
+      return '<button class="m-flows__col' + (last ? "" : " is-muted") + '" type="button" aria-pressed="' + last + '">' +
+        '<span class="m-flows__bars" aria-hidden="true"><span class="m-flows__bar m-flows__bar--in" style="height:' + Math.round(m[0] / max * 110) + 'px"></span>' +
+        '<span class="m-flows__bar m-flows__bar--out" style="height:' + Math.round(m[1] / max * 110) + 'px"></span></span>' +
+        '<span class="m-flows__l" aria-hidden="true">' + MONTHS[i] + '</span></button>';
+    }).join("");
+  });
 
   /* Allocation rings: stroked circles on a 110 px box, 22 px thick, as AllocationRing.tsx draws them. */
   document.querySelectorAll("[data-ring]").forEach(function (box) {
@@ -460,9 +591,15 @@
 
   /* A calm net-worth line for the hero charts (not the chart rules of README §8). */
   document.querySelectorAll("[data-chart]").forEach(function (svg) {
-    var pts = [], n = 30;
+    var pts = [], n = 30, line;
     for (var i = 0; i <= n; i++) pts.push([i * 10, 112 - i * 2.1 - Math.sin(i / 2.3) * 9 - (i >= 19 ? 22 : 0)]);
-    var line = pts.map(function (p, i) { return (i ? "L" : "M") + p[0] + " " + p[1].toFixed(1); }).join("");
+    if (svg.dataset.chart === "step") {
+      /* The account's balance records: the value holds until the next record (a step line). */
+      var steps = [[0, 118], [46, 104], [98, 109], [150, 86], [204, 92], [256, 64], [300, 64]];
+      line = steps.map(function (p, i) { return i ? "H" + p[0] + "V" + p[1] : "M" + p[0] + " " + p[1]; }).join("");
+    } else {
+      line = pts.map(function (p, i) { return (i ? "L" : "M") + p[0] + " " + p[1].toFixed(1); }).join("");
+    }
     svg.setAttribute("viewBox", "0 0 300 160"); svg.setAttribute("preserveAspectRatio", "none");
     svg.innerHTML = '<path d="' + line + 'L300 160L0 160Z"/><path d="' + line + '"/>';
   });
@@ -493,16 +630,17 @@
   function check() {
     document.querySelectorAll(".frame").forEach(function (frame) {
       var screen = frame.querySelector(".m-screen"), out = frame.querySelector(".frame__check");
-      var edge = screen.getBoundingClientRect(), over = [], cut = [], scrolls = 0;
+      var edge = screen.getBoundingClientRect(), over = [], cut = [], scrolls = 0, strips = 0;
       screen.querySelectorAll("*").forEach(function (el) {
         if (el.closest("svg") && el.tagName.toLowerCase() !== "svg") return;
-        if (el.parentElement.closest(".m-seg")) return;
+        if (el.parentElement.closest(".m-seg, .m-flows")) return;
         var r = el.getBoundingClientRect();
         if (!r.width && !r.height) return;
         /* A swiped row is clipped by its `.m-swipe`, so what lies beyond the edge is not seen. */
         var clipped = el.closest(".m-swipe") && !el.classList.contains("m-swipe");
         if (!clipped && (r.right > edge.right + 0.5 || r.left < edge.left - 0.5)) over.push(el.className || el.tagName);
         if (el.classList.contains("m-seg") && el.scrollWidth > el.clientWidth + 0.5) scrolls++;
+        if (el.classList.contains("m-flows") && el.scrollWidth > el.clientWidth + 0.5) strips++;
         if (getComputedStyle(el).textOverflow === "ellipsis" && textWidth(el) > el.getBoundingClientRect().width - padX(el) + 0.05) cut.push(el.textContent.trim());
       });
       var body = screen.querySelector(".m-screen__body");
@@ -519,11 +657,13 @@
       out.className = "frame__check " + (over.length || badRows.length ? "is-bad" : "is-ok");
       out.textContent = width + " px: " + (over.length ? "přetéká " + over.length + " (" + over.slice(0, 4).join(", ") + ")" : "bez vodorovného přetečení") +
         (scrolls ? " · segment se posouvá: " + scrolls : "") +
+        (strips ? " · pás toků se posouvá: " + strips : "") +
         (rows.length ? " · řádky " + rows.length + (badRows.length ? ", špatná výška: " + badRows.join(" | ") : ", výšky v pořádku") +
           (singles.length ? " (jednořádkové " + singles.join(", ") + " px)" : "") : "") +
         " · zkráceno výpustkou: " + (cut.length ? cut.join(" | ") : "nic");
     });
   }
+  document.querySelectorAll(".m-flows").forEach(function (strip) { strip.scrollLeft = strip.scrollWidth; });
   check();
   window.addEventListener("resize", check);
   if (document.fonts) document.fonts.ready.then(check);

@@ -120,5 +120,60 @@
     "edit": "Redigering kommer i fase 2b.",
     "delete": "Sletting kommer i fase 2b.",
     "export": "Eksport kommer senere."
+  },
+  "account": {
+    "record": "Registrer saldo",
+    "import": "Importer kontoutskrift",
+    "menu": {
+      "edit": "Rediger konto",
+      "balanceHistory": "Saldohistorikk",
+      "importHistory": "Importhistorikk",
+      "delete": "Slett konto"
+    },
+    "stats": {
+      "changeThisYear": "Endring i år",
+      "avgPerMonth": "Gjennomsnitt per måned",
+      "yearlyInterest": "Årlig rente"
+    },
+    "flows": {
+      "title": "Pengestrømmer"
+    },
+    "ledger": {
+      "title": "Bevegelser",
+      "search": "Søk etter motpart eller beskrivelse",
+      "clearSearch": "Tøm søk",
+      "all": "Alle",
+      "in": "Innkommende",
+      "out": "Utgående",
+      "filter": "Filter",
+      "noCategory": "Uten kategori",
+      "categorize": "Kategori",
+      "details": "Detaljer",
+      "count_one": "{{count}} bevegelse",
+      "count_other": "{{count}} bevegelser",
+      "empty": "Ingen bevegelser samsvarer",
+      "emptyHint": "Endre perioden eller filteret.",
+      "showAll": "Vis alle",
+      "loadError": "Kunne ikke laste bevegelsene.",
+      "retry": "Prøv igjen"
+    },
+    "filter": {
+      "title": "Filter",
+      "category": "Kategori",
+      "all": "Alle",
+      "period": "Periode",
+      "from": "Fra",
+      "to": "Til",
+      "apply": "Bruk",
+      "reset": "Tilbakestill"
+    },
+    "rowMenu": {
+      "details": "Detaljer",
+      "category": "Kategori",
+      "delete": "Slett"
+    }
+  },
+  "transaction": {
+    "flowSaved": "Betydning lagret"
   }
 }

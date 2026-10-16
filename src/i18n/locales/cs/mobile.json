@@ -130,5 +130,61 @@
     "edit": "Úpravy přijdou ve fázi 2b.",
     "delete": "Mazání přijde ve fázi 2b.",
     "export": "Export přijde později."
+  },
+  "account": {
+    "record": "Zaznamenat zůstatek",
+    "import": "Importovat výpis",
+    "menu": {
+      "edit": "Upravit účet",
+      "balanceHistory": "Historie zůstatku",
+      "importHistory": "Historie importů",
+      "delete": "Smazat účet"
+    },
+    "stats": {
+      "changeThisYear": "Změna letos",
+      "avgPerMonth": "Průměrně za měsíc",
+      "yearlyInterest": "Roční úrok"
+    },
+    "flows": {
+      "title": "Toky"
+    },
+    "ledger": {
+      "title": "Pohyby",
+      "search": "Hledat podle protistrany nebo popisu",
+      "clearSearch": "Vymazat hledání",
+      "all": "Vše",
+      "in": "Příchozí",
+      "out": "Odchozí",
+      "filter": "Filtr",
+      "noCategory": "Bez kategorie",
+      "categorize": "Kategorie",
+      "details": "Podrobnosti",
+      "count_one": "{{count}} pohyb",
+      "count_few": "{{count}} pohyby",
+      "count_other": "{{count}} pohybů",
+      "empty": "Žádné pohyby neodpovídají",
+      "emptyHint": "Změňte období nebo filtr.",
+      "showAll": "Zobrazit vše",
+      "loadError": "Pohyby se nepodařilo načíst.",
+      "retry": "Zkusit znovu"
+    },
+    "filter": {
+      "title": "Filtr",
+      "category": "Kategorie",
+      "all": "Vše",
+      "period": "Období",
+      "from": "Od",
+      "to": "Do",
+      "apply": "Použít",
+      "reset": "Zrušit filtry"
+    },
+    "rowMenu": {
+      "details": "Podrobnosti",
+      "category": "Kategorie",
+      "delete": "Smazat"
+    }
+  },
+  "transaction": {
+    "flowSaved": "Význam uložen"
   }
 }

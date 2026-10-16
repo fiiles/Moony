@@ -13,7 +13,7 @@ export interface StatItem {
 const CONTAINER_SIZE = 'clamp(var(--m-fs-sub), 19.7cqi, var(--m-fs-stat))';
 
 /**
- * Stat row (spec §10.3, README §13, `.m-stats`): three (or two) stats, label 11 (may wrap,
+ * Stat row (spec §10.3, README §13, `.m-stats`): three (or two, or one) stats, label 11 (may wrap,
  * hyphenated), value 17, note 10; the values sit on one line across the row. A value never wraps:
  * the contract's container rule shrinks it with a narrow card, and a value longer than its card
  * shrinks the whole row to fit (every stat in a row shares one size, floor `m-fs-sub`).
@@ -25,7 +25,10 @@ export function StatRow({ stats }: { stats: StatItem[] }) {
   return (
     <div
       ref={rowRef}
-      className={cn('mb-3.5 grid gap-2.5', stats.length === 2 ? 'grid-cols-2' : 'grid-cols-3')}
+      className={cn(
+        'mb-3.5 grid gap-2.5',
+        stats.length === 1 ? 'grid-cols-1' : stats.length === 2 ? 'grid-cols-2' : 'grid-cols-3'
+      )}
     >
       {stats.map((stat) => (
         <div

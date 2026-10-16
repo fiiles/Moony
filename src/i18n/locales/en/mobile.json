@@ -120,5 +120,60 @@
     "edit": "Editing comes in phase 2b.",
     "delete": "Deleting comes in phase 2b.",
     "export": "Export comes later."
+  },
+  "account": {
+    "record": "Record balance",
+    "import": "Import statement",
+    "menu": {
+      "edit": "Edit account",
+      "balanceHistory": "Balance history",
+      "importHistory": "Import history",
+      "delete": "Delete account"
+    },
+    "stats": {
+      "changeThisYear": "Change this year",
+      "avgPerMonth": "Average per month",
+      "yearlyInterest": "Yearly interest"
+    },
+    "flows": {
+      "title": "Flows"
+    },
+    "ledger": {
+      "title": "Movements",
+      "search": "Search by counterparty or description",
+      "clearSearch": "Clear search",
+      "all": "All",
+      "in": "Incoming",
+      "out": "Outgoing",
+      "filter": "Filter",
+      "noCategory": "No category",
+      "categorize": "Category",
+      "details": "Details",
+      "count_one": "{{count}} movement",
+      "count_other": "{{count}} movements",
+      "empty": "No movements match",
+      "emptyHint": "Change the period or the filter.",
+      "showAll": "Show all",
+      "loadError": "The movements could not be loaded.",
+      "retry": "Try again"
+    },
+    "filter": {
+      "title": "Filter",
+      "category": "Category",
+      "all": "All",
+      "period": "Period",
+      "from": "From",
+      "to": "To",
+      "apply": "Apply",
+      "reset": "Reset"
+    },
+    "rowMenu": {
+      "details": "Details",
+      "category": "Category",
+      "delete": "Delete"
+    }
+  },
+  "transaction": {
+    "flowSaved": "Meaning saved"
   }
 }

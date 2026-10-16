@@ -120,5 +120,60 @@
     "edit": "Redigering kommer i fas 2b.",
     "delete": "Radering kommer i fas 2b.",
     "export": "Export kommer senare."
+  },
+  "account": {
+    "record": "Registrera saldo",
+    "import": "Importera kontoutdrag",
+    "menu": {
+      "edit": "Redigera konto",
+      "balanceHistory": "Saldohistorik",
+      "importHistory": "Importhistorik",
+      "delete": "Ta bort konto"
+    },
+    "stats": {
+      "changeThisYear": "Förändring i år",
+      "avgPerMonth": "Genomsnitt per månad",
+      "yearlyInterest": "Årlig ränta"
+    },
+    "flows": {
+      "title": "Flöden"
+    },
+    "ledger": {
+      "title": "Rörelser",
+      "search": "Sök på motpart eller beskrivning",
+      "clearSearch": "Rensa sökning",
+      "all": "Alla",
+      "in": "Inkommande",
+      "out": "Utgående",
+      "filter": "Filter",
+      "noCategory": "Utan kategori",
+      "categorize": "Kategori",
+      "details": "Detaljer",
+      "count_one": "{{count}} rörelse",
+      "count_other": "{{count}} rörelser",
+      "empty": "Inga rörelser matchar",
+      "emptyHint": "Ändra perioden eller filtret.",
+      "showAll": "Visa alla",
+      "loadError": "Rörelserna kunde inte läsas in.",
+      "retry": "Försök igen"
+    },
+    "filter": {
+      "title": "Filter",
+      "category": "Kategori",
+      "all": "Alla",
+      "period": "Period",
+      "from": "Från",
+      "to": "Till",
+      "apply": "Använd",
+      "reset": "Återställ"
+    },
+    "rowMenu": {
+      "details": "Detaljer",
+      "category": "Kategori",
+      "delete": "Ta bort"
+    }
+  },
+  "transaction": {
+    "flowSaved": "Betydelse sparad"
   }
 }

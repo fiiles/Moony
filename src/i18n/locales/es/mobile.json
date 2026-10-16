@@ -130,5 +130,61 @@
     "edit": "La edición llega en la fase 2b.",
     "delete": "El borrado llega en la fase 2b.",
     "export": "La exportación llega más adelante."
+  },
+  "account": {
+    "record": "Registrar saldo",
+    "import": "Importar extracto",
+    "menu": {
+      "edit": "Editar cuenta",
+      "balanceHistory": "Historial de saldo",
+      "importHistory": "Historial de importaciones",
+      "delete": "Eliminar cuenta"
+    },
+    "stats": {
+      "changeThisYear": "Variación este año",
+      "avgPerMonth": "Media mensual",
+      "yearlyInterest": "Intereses anuales"
+    },
+    "flows": {
+      "title": "Flujos"
+    },
+    "ledger": {
+      "title": "Movimientos",
+      "search": "Buscar por contraparte o descripción",
+      "clearSearch": "Borrar búsqueda",
+      "all": "Todos",
+      "in": "Entrantes",
+      "out": "Salientes",
+      "filter": "Filtro",
+      "noCategory": "Sin categoría",
+      "categorize": "Categoría",
+      "details": "Detalles",
+      "count_one": "{{count}} movimiento",
+      "count_many": "{{count}} movimientos",
+      "count_other": "{{count}} movimientos",
+      "empty": "Ningún movimiento coincide",
+      "emptyHint": "Cambia el periodo o el filtro.",
+      "showAll": "Mostrar todos",
+      "loadError": "No se han podido cargar los movimientos.",
+      "retry": "Reintentar"
+    },
+    "filter": {
+      "title": "Filtro",
+      "category": "Categoría",
+      "all": "Todas",
+      "period": "Periodo",
+      "from": "Desde",
+      "to": "Hasta",
+      "apply": "Aplicar",
+      "reset": "Restablecer"
+    },
+    "rowMenu": {
+      "details": "Detalles",
+      "category": "Categoría",
+      "delete": "Eliminar"
+    }
+  },
+  "transaction": {
+    "flowSaved": "Significado guardado"
   }
 }

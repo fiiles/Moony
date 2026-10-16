@@ -33,6 +33,8 @@ interface HeroProps<E extends ChartEvent> {
   onPeriodChange?: (period: ChartPeriod) => void;
   points?: LinePoint[];
   zeroBaseline?: boolean;
+  /** A step line (the account's balance records): each value holds until the next point. */
+  step?: boolean;
   events?: E[];
   renderEventTip?: (cluster: EventCluster<E>) => LineTip;
   chartLabel?: string;
@@ -56,6 +58,7 @@ export function Hero<E extends ChartEvent>({
   onPeriodChange,
   points,
   zeroBaseline,
+  step,
   events,
   renderEventTip,
   chartLabel,
@@ -141,6 +144,7 @@ export function Hero<E extends ChartEvent>({
           key={period}
           points={points}
           zeroBaseline={zeroBaseline}
+          step={step}
           events={events}
           renderEventTip={renderEventTip}
           onScrub={setScrub}

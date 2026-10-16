@@ -23,7 +23,7 @@ export function FilterBadge({
   return (
     <Badge
       variant="dark"
-      className="max-w-[260px]"
+      className="max-w-[260px] shrink-0"
       title={
         partial
           ? t('stocksAnalysis.scope.hintActive', { tags: joined })

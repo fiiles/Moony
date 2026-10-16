@@ -530,6 +530,8 @@ export function PerformanceCard({
   return (
     <HeroCard
       className="mb-[18px] pb-0 pt-[22px]"
+      // The filter top right: the toolbar's two groups have no room to spare for it
+      aside={<FilterBadge tags={view.filterTags} partial />}
       chart={
         <>
           {/* Toolbar */}
@@ -581,7 +583,6 @@ export function PerformanceCard({
                   )}
                 </>
               )}
-              <FilterBadge tags={view.filterTags} partial />
             </div>
             <div className="ml-auto flex items-center gap-[10px]">
               <DropdownMenu>

@@ -141,7 +141,6 @@
     "ledger": {
       "title": "Rörelser",
       "search": "Sök på motpart eller beskrivning",
-      "clearSearch": "Rensa sökning",
       "all": "Alla",
       "in": "Inkommande",
       "out": "Utgående",

@@ -163,7 +163,7 @@
 .m-hero__seg { margin: 12px 0 8px; }
 .m-hero__chart { display: block; width: 100%; height: 160px; }
 
-/* ===== Stat row: three (or two) stats; value 17, label 11, note 10 =====
+/* ===== Stat row: three (or two, or one) stats; value 17, label 11, note 10 =====
    A label may wrap (hyphenated, German runs long); the value and the note sit at the bottom so
    the values stay on one line across the row. The value keeps 17 px down to the content box of a
    third at the 390 pt reference (86 px) and then shrinks with the card (19.7 cqi, floor 12 px), as the
@@ -171,6 +171,7 @@
    17 px ("6,78 mil.", "214 380"); a longer amount goes in a row of two. */
 .m-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
 .m-stats--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.m-stats--1 { grid-template-columns: minmax(0, 1fr); } /* the one stat that has data (the account detail) */
 .m-stat {
   container-type: inline-size; display: flex; flex-direction: column; min-width: 0; padding: 10px 12px;
   border: 1px solid var(--line); border-radius: var(--r-3);
@@ -237,11 +238,13 @@
 .m-row__s { flex: 1 1 auto; color: var(--ink-4); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; }
 .m-row__s .m-badge { height: 18px; padding: 0 6px; vertical-align: 1px; }
 /* A badge inside a row's title ("Vyloučeno" after an account's name): 18 px, 11 / 600 `ink-3` on
-   `well-2`, set 6 px after the name; the title still ends with an ellipsis. */
+   `well-2`, set 6 px after the name; the title still ends with an ellipsis. Its text line is the
+   badge's full 18 px, so a caron above a capital ("Čekající") stays whole where the row's line clips
+   at the badge's edges; never `overflow: hidden` on the text. */
 .m-row__badge {
   display: inline-flex; align-items: center; height: 18px; margin-left: 6px; padding: 0 6px;
   border-radius: var(--r-1); background: var(--well-2); color: var(--ink-3);
-  font-size: var(--m-fs-caption); font-weight: 600; vertical-align: 2px;
+  font-size: var(--m-fs-caption); font-weight: 600; line-height: 18px; vertical-align: 2px;
 }
 .m-row__v {
   flex: none; max-width: 60%; margin-left: auto; color: var(--ink); /* an absurd value never squeezes the title away */
@@ -461,9 +464,11 @@
 
 /* Flows strip ("Toky"): 12 months in a card, one 44 px wide button per month, newest at the right.
    Each column is the 110 px bar area (incoming `s1` and outgoing `s3` side by side, 10 px wide,
-   2 px apart, radius 2, scaled to the strip's largest month) over the month's short name 10 / 500
-   `ink-4` (January carries the year). The strip scrolls sideways and opens at its end; the page
-   never does. The months other than the selected one fade to 45 % (`.is-muted`). */
+   2 px apart, radius 2, scaled to the strip's largest month) over the month's bare short name 10 / 500
+   `ink-4` ("Úno", never "únor 2026": with a year Czech writes the long month); January carries its
+   two-digit year as a second line ("26"). A label ends with an ellipsis rather than outgrow its
+   column. The strip scrolls sideways and opens at its end; the page never does. The months other
+   than the selected one fade to 45 % (`.is-muted`). */
 .m-flows { display: flex; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
 .m-flows::-webkit-scrollbar { display: none; }
 .m-flows__col {
@@ -476,7 +481,11 @@
 .m-flows__bar { width: 10px; border-radius: 2px; }
 .m-flows__bar--in { background: var(--s1); }
 .m-flows__bar--out { background: var(--s3); }
-.m-flows__l { margin-top: 4px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; line-height: 1.4; white-space: nowrap; }
+.m-flows__l {
+  max-width: 100%; margin-top: 4px; overflow: hidden; color: var(--ink-4); text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-micro); font-weight: 500; line-height: 1.4;
+}
+.m-flows__l + .m-flows__l { margin-top: 0; } /* January's year under its name */
 
 /* Search field: 44 px on `well-2`, radius 12, the 16 px magnifier `ink-4` on the left, a 44 px clear
    button on the right while there is text. */

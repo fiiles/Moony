@@ -141,7 +141,6 @@
     "ledger": {
       "title": "Umsätze",
       "search": "Nach Gegenpartei oder Beschreibung suchen",
-      "clearSearch": "Suche löschen",
       "all": "Alle",
       "in": "Eingänge",
       "out": "Ausgänge",

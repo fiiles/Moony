@@ -22,9 +22,9 @@ interface FlowStripProps {
 /**
  * The flows strip of the account detail (spec §8.4 "Toky", README §13 `.m-flows`): one 44 pt wide
  * button per month with its incoming (`s1`) and outgoing (`s3`) bars side by side over the month's
- * short name, scaled to the strip's largest month; January carries the year. The strip scrolls
- * sideways (the page never does) and opens scrolled to its end, the newest month at the right. A
- * tap selects the month; the others fade to 45 %.
+ * short name, scaled to the strip's largest month; January carries the two-digit year on a second
+ * line. The strip scrolls sideways (the page never does) and opens scrolled to its end, the newest
+ * month at the right. A tap selects the month; the others fade to 45 %.
  */
 export function FlowStrip({
   flows,
@@ -78,9 +78,20 @@ export function FlowStrip({
                 style={{ height: height(flow.expense) }}
               />
             </span>
-            <span aria-hidden className="mt-1 whitespace-nowrap text-micro font-medium text-ink-4">
-              {fmt.month(date, january ? { month: 'short', year: '2-digit' } : { month: 'short' })}
+            {/* `fmt.month` adds the year unless told not to, and with a year Czech writes the long
+                month ("únor 2026"): the label is the bare short month ("Úno"), January's year a
+                second line ("26"). Neither may outgrow the 44 pt column. */}
+            <span
+              aria-hidden
+              className="mt-1 max-w-full truncate text-micro font-medium text-ink-4"
+            >
+              {fmt.month(date, { month: 'short', year: undefined })}
             </span>
+            {january && (
+              <span aria-hidden className="max-w-full truncate text-micro font-medium text-ink-4">
+                {fmt.month(date, { month: undefined, year: '2-digit' })}
+              </span>
+            )}
           </button>
         );
       })}

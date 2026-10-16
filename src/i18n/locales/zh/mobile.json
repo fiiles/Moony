@@ -131,7 +131,6 @@
     "ledger": {
       "title": "流水",
       "search": "按交易对方或说明搜索",
-      "clearSearch": "清除搜索",
       "all": "全部",
       "in": "入账",
       "out": "出账",

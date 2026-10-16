@@ -670,7 +670,7 @@ function LedgerSection({
         value={state.search}
         onChange={(value) => onStateChange((s) => ({ ...s, search: value }))}
         placeholder={t('account.ledger.search')}
-        clearLabel={t('account.ledger.clearSearch')}
+        clearLabel={tc('a11y.clearSearch')}
       />
       <div className="mb-3 flex items-center gap-2.5">
         <Segment

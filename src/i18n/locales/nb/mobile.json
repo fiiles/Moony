@@ -141,7 +141,6 @@
     "ledger": {
       "title": "Bevegelser",
       "search": "Søk etter motpart eller beskrivelse",
-      "clearSearch": "Tøm søk",
       "all": "Alle",
       "in": "Innkommende",
       "out": "Utgående",

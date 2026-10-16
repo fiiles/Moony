@@ -548,7 +548,9 @@
 
   /* Flows strips: 12 months (Nov 2025 – Oct 2026) of incoming/outgoing values as "in,out|…", the
      bars scaled to the largest month, the newest selected, the strip scrolled to its end. */
-  var MONTHS = ["Nov.", "Dez.", "Jan. 26", "Feb.", "März", "Apr.", "Mai", "Juni", "Juli", "Aug.", "Sept.", "Okt."];
+  /* The labels the app writes in German (`fmt.month(date, { month: 'short', year: undefined })`);
+     January's two-digit year goes on a second line. */
+  var MONTHS = ["Nov", "Dez", "Jan|26", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt"];
   document.querySelectorAll("[data-flows]").forEach(function (strip) {
     var months = strip.dataset.flows.split("|").map(function (m) { return m.split(",").map(Number); });
     var max = Math.max.apply(null, months.map(function (m) { return Math.max(m[0], m[1]); }));
@@ -557,7 +559,7 @@
       return '<button class="m-flows__col' + (last ? "" : " is-muted") + '" type="button" aria-pressed="' + last + '">' +
         '<span class="m-flows__bars" aria-hidden="true"><span class="m-flows__bar m-flows__bar--in" style="height:' + Math.round(m[0] / max * 110) + 'px"></span>' +
         '<span class="m-flows__bar m-flows__bar--out" style="height:' + Math.round(m[1] / max * 110) + 'px"></span></span>' +
-        '<span class="m-flows__l" aria-hidden="true">' + MONTHS[i] + '</span></button>';
+        MONTHS[i].split("|").map(function (l) { return '<span class="m-flows__l" aria-hidden="true">' + l + '</span>'; }).join("") + '</button>';
     }).join("");
   });
 

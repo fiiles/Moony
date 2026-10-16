@@ -141,7 +141,6 @@
     "ledger": {
       "title": "Movements",
       "search": "Search by counterparty or description",
-      "clearSearch": "Clear search",
       "all": "All",
       "in": "Incoming",
       "out": "Outgoing",

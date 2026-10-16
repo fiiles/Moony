@@ -36,10 +36,14 @@ interface LedgerRowProps {
 /** The menu items: 44 pt tall, body type (as `AgendaRow`'s menu). */
 const MENU_ITEM = 'min-h-11 text-m-body [&_svg]:size-[18px]';
 
-/** A badge in the sub-line ("Bez kategorie", "Čekající", "Vratka"; `.m-row__badge`). */
+/**
+ * A badge in the sub-line ("Bez kategorie", "Čekající", "Vratka"; `.m-row__badge`). Its text line is
+ * the badge's full 18 pt (not `leading-none`), so a caron or an accent above a capital ("Č") stays
+ * inside the sub-line, whose `truncate` box clips at the badge's edges.
+ */
 function RowBadge({ children }: { children: ReactNode }) {
   return (
-    <span className="inline-flex h-[18px] items-center rounded-r1 bg-well-2 px-1.5 align-[1px] text-m-caption font-semibold leading-none text-ink-3">
+    <span className="inline-flex h-[18px] items-center rounded-r1 bg-well-2 px-1.5 align-[1px] text-m-caption font-semibold leading-[18px] text-ink-3">
       {children}
     </span>
   );

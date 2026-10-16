@@ -151,7 +151,6 @@
     "ledger": {
       "title": "Movimenti",
       "search": "Cerca per controparte o descrizione",
-      "clearSearch": "Cancella ricerca",
       "all": "Tutti",
       "in": "In entrata",
       "out": "In uscita",

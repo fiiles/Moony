@@ -97,7 +97,7 @@
       <p class="lead">Všechny hodnoty jsou v <code>tokens.css</code>. Komponenty nikdy nepoužívají surový hex. Světlé i tmavé téma jsou definované stejnou sadou názvů; přepínač je vlevo nahoře. Každý vzorek ukazuje světlou (vlevo) a tmavou (vpravo) hodnotu.</p>
       <div class="spec spec--paper"><p class="spec__title">Povrchy</p><div class="swatches" id="sw-surfaces"></div></div>
       <div class="spec spec--paper"><p class="spec__title">Linky a inkoust</p><div class="swatches" id="sw-ink"></div></div>
-      <div class="spec spec--paper"><p class="spec__title">Tmavý materiál a sémantika</p><div class="swatches" id="sw-sem"></div></div>
+      <div class="spec spec--paper"><p class="spec__title">Kontrastní materiál a sémantika</p><div class="swatches" id="sw-sem"></div></div>
       <div class="spec spec--paper"><p class="spec__title">Datové série (max. 4 + Ostatní)</p><div class="swatches" id="sw-series"></div>
         <ul class="rules" style="margin:16px 0 0">
           <li>Série se přiřazují v pevném pořadí s1 → s4 podle velikosti podílu; pátá a další kategorie se slučují do <b>Ostatní</b>.</li>
@@ -160,7 +160,7 @@
       <h2>Navigace</h2>
       <p class="lead">Souvislý sidebar bez bloků. Sekce odlišuje jen mezera a malý verzálkový popisek. Strom přebírá reálnou IA aplikace (<code>nav-config.ts</code>): Přehled · Peníze · Investice · Závazky a pojištění · Nástroje · Nastavení.</p>
       <ul class="rules">
-        <li>Řádek položky 36 px, 14 px / 600, ikona Lucide 16 px (stroke 1,75) v ink-3. Aktivní řádek je tmavý materiál s bílým textem a bílou ikonou.</li>
+        <li>Řádek položky 36 px, 14 px / 600, ikona Lucide 16 px (stroke 1,75) v ink-3. Aktivní řádek je kontrastní materiál s bílým textem a bílou ikonou.</li>
         <li>Hover je 5% inkoustu na pozadí, bez rámečku. Počet (např. 3 účty) stojí vpravo v mikro velikosti.</li>
         <li>Skupiny jsou sbalitelné (šipka se objeví při najetí na popisek), stav se pamatuje; <b>Nástroje</b> jsou sbalené ve výchozím stavu, aby se 17 položek vešlo na 900 px výšky. Prostřední část sidebaru roluje, Nastavení a účet jsou přišpendlené dole nad vlasovou linkou.</li>
         <li>Horní lišta stránky má drobečky vlevo a stav dat vpravo (zelený bod = čerstvé, červenohnědý = zastaralé ceny).</li>
@@ -179,7 +179,7 @@
       <h2>Tlačítka</h2>
       <ul class="rules">
         <li>Výška 36 px (malé 32 px), rádius 8, text 11 px / 650. Popisek je sloveso: „Přidat účet“, „Uložit cenu“, „Obnovit ceny“. Nikdy „OK“ nebo „Odeslat“.</li>
-        <li><b>Primární</b> je tmavý materiál; na stránce je nejvýš jedno. <b>Sekundární</b> je papír s linkou a 1px stínem. <b>Textové</b> pro zrušení a odkazové akce. <b>Destruktivní</b> je textové červenohnědé; plné jen v potvrzovacím dialogu.</li>
+        <li><b>Primární</b> je kontrastní materiál; na stránce je nejvýš jedno. <b>Sekundární</b> je papír s linkou a 1px stínem. <b>Textové</b> pro zrušení a odkazové akce. <b>Destruktivní</b> je textové červenohnědé; plné jen v potvrzovacím dialogu.</li>
         <li>Fokus z klávesnice: tmavší linka + 3px prstenec. Načítání točí ikonu, text zůstává. Zakázané má 45 % krytí a nereaguje.</li>
       </ul>
       <div class="spec spec--paper"><div class="row-wrap" id="btns"></div></div>
@@ -275,9 +275,9 @@
       <h2>Grafy a časová stopa</h2>
       <ul class="rules">
         <li><b>Jedna osa.</b> Nikdy dvě svislé škály. Mřížka je světlá (<code>chart-grid</code>), popisky hodnot vpravo 10 px v <code>chart-axis</code>, časová osa pod grafem s pěti popisky, poslední je „Dnes“.</li>
-        <li><b>Linka hodnoty</b> 2,25 px v <code>chart-line</code>, pod ní plocha s přechodem do průhledna, poslední bod je bílý kroužek. <b>Vloženo</b> je čárkovaná schodová linka v <code>chart-cost</code>; mezera mezi linkami je výnos.</li>
+        <li><b>Linka hodnoty</b> 2,25 px v <code>chart-line</code>, pod ní plocha s přechodem do průhledna, poslední bod je kroužek v barvě papíru. <b>Vloženo</b> je čárkovaná schodová linka v <code>chart-cost</code>; mezera mezi linkami je výnos.</li>
         <li><b>Sloupce</b> (cashflow): příjmy s1, výdaje s3, zaoblené konce 3 px, mezera 2 px, bez okrajů. <b>Rozložení</b> je prstenec ze sérií s1–s4 + Ostatní, vždy s legendou s hodnotami.</li>
-        <li><b>Hover</b> je samozřejmost: nitkový kříž + tooltip (tmavý materiál, 10 px) na linkách, tooltip na sloupci.</li>
+        <li><b>Hover</b> je samozřejmost: nitkový kříž + tooltip (kontrastní materiál, 10 px) na linkách, tooltip na sloupci.</li>
         <li><b>Časová stopa</b> (schváleno): na grafech <i>jedné entity</i> (pozice, účet, úvěr, nemovitost) se do linky kreslí události – nákup ▲ (plný), prodej ▽ (obrys), dividenda / příjem ○ (zelený prstenec), větší výdaj ○ (tmavý prstenec). Najetí ukáže detail události, najetí na řádek historie zvýrazní odpovídající značku. Na agregovaných grafech (čisté jmění, celé portfolio) se události nekreslí – bylo by to šum. Na účtech se značí jen pohyby nad prahem (absolutní práh zhruba 400 EUR, nebo 10 % zůstatku).</li>
       </ul>
       <div class="spec"><div class="grid-2">

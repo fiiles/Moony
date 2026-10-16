@@ -72,5 +72,73 @@
     "save": "Zapisz",
     "saved": "Salda zapisane",
     "negative": "Wartość ujemna"
+  },
+  "finance": {
+    "accounts_one": "{{count}} konto",
+    "accounts_few": "{{count}} konta",
+    "accounts_many": "{{count}} kont",
+    "accounts_other": "{{count}} konta",
+    "loans_one": "{{count}} kredyt",
+    "loans_few": "{{count}} kredyty",
+    "loans_many": "{{count}} kredytów",
+    "loans_other": "{{count}} kredytu",
+    "policies_one": "{{count}} polisa",
+    "policies_few": "{{count}} polisy",
+    "policies_many": "{{count}} polis",
+    "policies_other": "{{count}} polisy",
+    "total": "Łącznie na kontach",
+    "change30": "{{amount}} w 30 dni",
+    "noMovements": "brak ruchów w 30 dni",
+    "uncategorized": "Płatności bez kategorii",
+    "sections": {
+      "accounts": "Konta",
+      "loans": "Kredyty",
+      "insurance": "Ubezpieczenia",
+      "cashTrend": "Gotówka w czasie"
+    },
+    "manual": "ręcznie",
+    "statementOn": "wyciąg z {{date}}",
+    "balanceOn": "saldo z {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 dni",
+      "staleStatement_one": "wyciąg sprzed {{count}} dnia",
+      "staleStatement_few": "wyciąg sprzed {{count}} dni",
+      "staleStatement_many": "wyciąg sprzed {{count}} dni",
+      "staleStatement_other": "wyciąg sprzed {{count}} dnia",
+      "staleBalance_one": "saldo sprzed {{count}} dnia",
+      "staleBalance_few": "saldo sprzed {{count}} dni",
+      "staleBalance_many": "saldo sprzed {{count}} dni",
+      "staleBalance_other": "saldo sprzed {{count}} dnia",
+      "approx": "≈ {{amount}}",
+      "noRate": "brak kursu dla {{currency}}"
+    },
+    "perMonth": "{{amount}} / mies.",
+    "nextPayment": "następna płatność {{date}}",
+    "menu": {
+      "sort": "Sortuj",
+      "sortBalance": "Według salda",
+      "sortName": "Według nazwy",
+      "sortChange": "Według zmiany w 30 dni",
+      "sortLast": "Według ostatniego ruchu",
+      "showMatured": "Pokaż spłacone kredyty",
+      "showEnded": "Pokaż zakończone polisy",
+      "export": "Eksport"
+    },
+    "add": {
+      "title": "Dodaj",
+      "account": "Konto",
+      "loan": "Kredyt",
+      "policy": "Polisa"
+    },
+    "cashTrendLabel": "Wykres gotówki"
+  },
+  "placeholder": {
+    "detail": "Szczegóły pojawią się w fazie 4.",
+    "queue": "Kolejka przypisywania pojawi się w fazie 2b.",
+    "import": "Import wyciągów pojawi się w fazie 2b.",
+    "form": "Formularz dodawania pojawi się w fazie 2b.",
+    "edit": "Edycja pojawi się w fazie 2b.",
+    "delete": "Usuwanie pojawi się w fazie 2b.",
+    "export": "Eksport pojawi się później."
   }
 }

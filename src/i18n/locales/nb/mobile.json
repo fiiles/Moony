@@ -62,5 +62,63 @@
     "save": "Registrer",
     "saved": "Saldoer registrert",
     "negative": "Negativ verdi"
+  },
+  "finance": {
+    "accounts_one": "{{count}} konto",
+    "accounts_other": "{{count}} kontoer",
+    "loans_one": "{{count}} lån",
+    "loans_other": "{{count}} lån",
+    "policies_one": "{{count}} forsikring",
+    "policies_other": "{{count}} forsikringer",
+    "total": "Totalt på kontoer",
+    "change30": "{{amount}} på 30 dager",
+    "noMovements": "ingen bevegelser på 30 dager",
+    "uncategorized": "Betalinger uten kategori",
+    "sections": {
+      "accounts": "Kontoer",
+      "loans": "Lån",
+      "insurance": "Forsikringer",
+      "cashTrend": "Kontanter over tid"
+    },
+    "manual": "manuelt",
+    "statementOn": "kontoutskrift {{date}}",
+    "balanceOn": "saldo {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 dager",
+      "staleStatement_one": "kontoutskrift {{count}} dag gammel",
+      "staleStatement_other": "kontoutskrift {{count}} dager gammel",
+      "staleBalance_one": "saldo {{count}} dag gammel",
+      "staleBalance_other": "saldo {{count}} dager gammel",
+      "approx": "≈ {{amount}}",
+      "noRate": "ingen kurs for {{currency}}"
+    },
+    "perMonth": "{{amount}} / mnd",
+    "nextPayment": "neste betaling {{date}}",
+    "menu": {
+      "sort": "Sorter",
+      "sortBalance": "Etter saldo",
+      "sortName": "Etter navn",
+      "sortChange": "Etter endring på 30 dager",
+      "sortLast": "Etter siste bevegelse",
+      "showMatured": "Vis nedbetalte lån",
+      "showEnded": "Vis avsluttede forsikringer",
+      "export": "Eksporter"
+    },
+    "add": {
+      "title": "Legg til",
+      "account": "Konto",
+      "loan": "Lån",
+      "policy": "Forsikring"
+    },
+    "cashTrendLabel": "Diagram over kontanter"
+  },
+  "placeholder": {
+    "detail": "Detaljvisningen kommer i fase 4.",
+    "queue": "Kategoriseringskøen kommer i fase 2b.",
+    "import": "Import av kontoutskrifter kommer i fase 2b.",
+    "form": "Skjemaet for å legge til kommer i fase 2b.",
+    "edit": "Redigering kommer i fase 2b.",
+    "delete": "Sletting kommer i fase 2b.",
+    "export": "Eksport kommer senere."
   }
 }

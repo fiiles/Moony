@@ -57,5 +57,58 @@
     "save": "記録",
     "saved": "残高を記録しました",
     "negative": "マイナスの値"
+  },
+  "finance": {
+    "accounts_other": "{{count}}口座",
+    "loans_other": "{{count}}件のローン",
+    "policies_other": "{{count}}件の保険",
+    "total": "口座内の合計",
+    "change30": "30日間で{{amount}}",
+    "noMovements": "30日間の入出金なし",
+    "uncategorized": "未分類の支払い",
+    "sections": {
+      "accounts": "口座",
+      "loans": "ローン",
+      "insurance": "保険",
+      "cashTrend": "現金の推移"
+    },
+    "manual": "手入力",
+    "statementOn": "{{date}}の明細",
+    "balanceOn": "{{date}}の残高",
+    "trail": {
+      "change": "{{amount}} · 30日間",
+      "staleStatement_other": "明細は{{count}}日前",
+      "staleBalance_other": "残高は{{count}}日前",
+      "approx": "≈ {{amount}}",
+      "noRate": "{{currency}}のレートなし"
+    },
+    "perMonth": "月 {{amount}}",
+    "nextPayment": "次回の支払い {{date}}",
+    "menu": {
+      "sort": "並べ替え",
+      "sortBalance": "残高順",
+      "sortName": "名前順",
+      "sortChange": "30日間の変動順",
+      "sortLast": "最終入出金順",
+      "showMatured": "完済したローンを表示",
+      "showEnded": "終了した保険を表示",
+      "export": "エクスポート"
+    },
+    "add": {
+      "title": "追加",
+      "account": "口座",
+      "loan": "ローン",
+      "policy": "保険"
+    },
+    "cashTrendLabel": "現金の推移グラフ"
+  },
+  "placeholder": {
+    "detail": "詳細画面はフェーズ4で提供します。",
+    "queue": "分類キューはフェーズ2bで提供します。",
+    "import": "明細の取り込みはフェーズ2bで提供します。",
+    "form": "追加フォームはフェーズ2bで提供します。",
+    "edit": "編集はフェーズ2bで提供します。",
+    "delete": "削除はフェーズ2bで提供します。",
+    "export": "エクスポートは後日提供します。"
   }
 }

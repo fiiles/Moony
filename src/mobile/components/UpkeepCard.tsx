@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { useUpkeep } from '@/mobile/hooks/use-upkeep';
+import { shortDayOptions } from '@/mobile/lib/format-day';
 import type { UpkeepKind, UpkeepRow } from '@/mobile/lib/upkeep';
 import { routes } from '@/mobile/shell/routes';
 import { RecordBalancesSheet } from '@/mobile/sheets/RecordBalancesSheet';
@@ -105,16 +106,7 @@ function UpkeepItem({ row, primary, accounts, lastImportByAccount, onRecord }: U
   const Icon = ICONS[row.kind];
   const byId = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
 
-  // "10. 10.", with the year when it is not this one
-  const shortDay = (unixSeconds: number) =>
-    fmt.day(unixSeconds, {
-      day: 'numeric',
-      month: 'numeric',
-      year:
-        new Date(unixSeconds * 1000).getUTCFullYear() !== new Date().getUTCFullYear()
-          ? 'numeric'
-          : undefined,
-    });
+  const shortDay = (unixSeconds: number) => fmt.day(unixSeconds, shortDayOptions(unixSeconds));
 
   const names = (row.accountIds ?? []).flatMap((id) => byId.get(id)?.name ?? []);
   let sub: string | null = null;

@@ -67,5 +67,68 @@
     "save": "Zaznamenat",
     "saved": "Zůstatky zaznamenány",
     "negative": "Záporná hodnota"
+  },
+  "finance": {
+    "accounts_one": "{{count}} účet",
+    "accounts_few": "{{count}} účty",
+    "accounts_other": "{{count}} účtů",
+    "loans_one": "{{count}} úvěr",
+    "loans_few": "{{count}} úvěry",
+    "loans_other": "{{count}} úvěrů",
+    "policies_one": "{{count}} pojistka",
+    "policies_few": "{{count}} pojistky",
+    "policies_other": "{{count}} pojistek",
+    "total": "Celkem na účtech",
+    "change30": "{{amount}} za 30 dní",
+    "noMovements": "bez pohybů za 30 dní",
+    "uncategorized": "Nezařazené platby",
+    "sections": {
+      "accounts": "Účty",
+      "loans": "Úvěry",
+      "insurance": "Pojištění",
+      "cashTrend": "Vývoj hotovosti"
+    },
+    "manual": "ručně",
+    "statementOn": "výpis {{date}}",
+    "balanceOn": "zůstatek {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 dní",
+      "staleStatement_one": "výpis {{count}} den starý",
+      "staleStatement_few": "výpis {{count}} dny starý",
+      "staleStatement_other": "výpis {{count}} dní starý",
+      "staleBalance_one": "zůstatek {{count}} den starý",
+      "staleBalance_few": "zůstatek {{count}} dny starý",
+      "staleBalance_other": "zůstatek {{count}} dní starý",
+      "approx": "≈ {{amount}}",
+      "noRate": "bez kurzu pro {{currency}}"
+    },
+    "perMonth": "{{amount}} / měs",
+    "nextPayment": "příští platba {{date}}",
+    "menu": {
+      "sort": "Řazení",
+      "sortBalance": "Podle zůstatku",
+      "sortName": "Podle názvu",
+      "sortChange": "Podle změny za 30 dní",
+      "sortLast": "Podle posledního pohybu",
+      "showMatured": "Zobrazit splacené úvěry",
+      "showEnded": "Zobrazit ukončené pojistky",
+      "export": "Export"
+    },
+    "add": {
+      "title": "Přidat",
+      "account": "Účet",
+      "loan": "Úvěr",
+      "policy": "Pojistka"
+    },
+    "cashTrendLabel": "Graf vývoje hotovosti"
+  },
+  "placeholder": {
+    "detail": "Detail přijde ve fázi 4.",
+    "queue": "Zařazování plateb přijde ve fázi 2b.",
+    "import": "Import výpisu přijde ve fázi 2b.",
+    "form": "Formulář pro přidání přijde ve fázi 2b.",
+    "edit": "Úpravy přijdou ve fázi 2b.",
+    "delete": "Mazání přijde ve fázi 2b.",
+    "export": "Export přijde později."
   }
 }

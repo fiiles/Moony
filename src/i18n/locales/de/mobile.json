@@ -62,5 +62,63 @@
     "save": "Erfassen",
     "saved": "Salden erfasst",
     "negative": "Negativer Wert"
+  },
+  "finance": {
+    "accounts_one": "{{count}} Konto",
+    "accounts_other": "{{count}} Konten",
+    "loans_one": "{{count}} Kredit",
+    "loans_other": "{{count}} Kredite",
+    "policies_one": "{{count}} Police",
+    "policies_other": "{{count}} Policen",
+    "total": "Gesamt auf Konten",
+    "change30": "{{amount}} in 30 Tagen",
+    "noMovements": "keine Bewegungen in 30 Tagen",
+    "uncategorized": "Nicht kategorisierte Zahlungen",
+    "sections": {
+      "accounts": "Konten",
+      "loans": "Kredite",
+      "insurance": "Versicherungen",
+      "cashTrend": "Bargeld im Zeitverlauf"
+    },
+    "manual": "manuell",
+    "statementOn": "Auszug {{date}}",
+    "balanceOn": "Saldo {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 Tage",
+      "staleStatement_one": "Auszug {{count}} Tag alt",
+      "staleStatement_other": "Auszug {{count}} Tage alt",
+      "staleBalance_one": "Saldo {{count}} Tag alt",
+      "staleBalance_other": "Saldo {{count}} Tage alt",
+      "approx": "≈ {{amount}}",
+      "noRate": "kein Kurs für {{currency}}"
+    },
+    "perMonth": "{{amount}} / Monat",
+    "nextPayment": "nächste Zahlung {{date}}",
+    "menu": {
+      "sort": "Sortierung",
+      "sortBalance": "Nach Saldo",
+      "sortName": "Nach Name",
+      "sortChange": "Nach Änderung in 30 Tagen",
+      "sortLast": "Nach letzter Bewegung",
+      "showMatured": "Getilgte Kredite anzeigen",
+      "showEnded": "Beendete Policen anzeigen",
+      "export": "Exportieren"
+    },
+    "add": {
+      "title": "Hinzufügen",
+      "account": "Konto",
+      "loan": "Kredit",
+      "policy": "Police"
+    },
+    "cashTrendLabel": "Diagramm zum Bargeldverlauf"
+  },
+  "placeholder": {
+    "detail": "Die Detailansicht kommt in Phase 4.",
+    "queue": "Die Zuordnungsliste kommt in Phase 2b.",
+    "import": "Der Auszugsimport kommt in Phase 2b.",
+    "form": "Das Formular zum Hinzufügen kommt in Phase 2b.",
+    "edit": "Das Bearbeiten kommt in Phase 2b.",
+    "delete": "Das Löschen kommt in Phase 2b.",
+    "export": "Der Export kommt später."
   }
 }

@@ -62,5 +62,63 @@
     "save": "Record",
     "saved": "Balances recorded",
     "negative": "Negative value"
+  },
+  "finance": {
+    "accounts_one": "{{count}} account",
+    "accounts_other": "{{count}} accounts",
+    "loans_one": "{{count}} loan",
+    "loans_other": "{{count}} loans",
+    "policies_one": "{{count}} policy",
+    "policies_other": "{{count}} policies",
+    "total": "Total on accounts",
+    "change30": "{{amount}} over 30 days",
+    "noMovements": "no movements in 30 days",
+    "uncategorized": "Uncategorized payments",
+    "sections": {
+      "accounts": "Accounts",
+      "loans": "Loans",
+      "insurance": "Insurance",
+      "cashTrend": "Cash trend"
+    },
+    "manual": "by hand",
+    "statementOn": "statement {{date}}",
+    "balanceOn": "balance {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 days",
+      "staleStatement_one": "statement {{count}} day old",
+      "staleStatement_other": "statement {{count}} days old",
+      "staleBalance_one": "balance {{count}} day old",
+      "staleBalance_other": "balance {{count}} days old",
+      "approx": "≈ {{amount}}",
+      "noRate": "no rate for {{currency}}"
+    },
+    "perMonth": "{{amount}} / mo",
+    "nextPayment": "next payment {{date}}",
+    "menu": {
+      "sort": "Sort",
+      "sortBalance": "By balance",
+      "sortName": "By name",
+      "sortChange": "By 30-day change",
+      "sortLast": "By last movement",
+      "showMatured": "Show paid-off loans",
+      "showEnded": "Show ended policies",
+      "export": "Export"
+    },
+    "add": {
+      "title": "Add",
+      "account": "Account",
+      "loan": "Loan",
+      "policy": "Policy"
+    },
+    "cashTrendLabel": "Cash trend chart"
+  },
+  "placeholder": {
+    "detail": "The detail comes in phase 4.",
+    "queue": "The categorize queue comes in phase 2b.",
+    "import": "Statement import comes in phase 2b.",
+    "form": "The add form comes in phase 2b.",
+    "edit": "Editing comes in phase 2b.",
+    "delete": "Deleting comes in phase 2b.",
+    "export": "Export comes later."
   }
 }

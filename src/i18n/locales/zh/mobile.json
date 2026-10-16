@@ -57,5 +57,58 @@
     "save": "记录",
     "saved": "余额已记录",
     "negative": "负值"
+  },
+  "finance": {
+    "accounts_other": "{{count}} 个账户",
+    "loans_other": "{{count}} 笔贷款",
+    "policies_other": "{{count}} 份保单",
+    "total": "账户总额",
+    "change30": "30 天内 {{amount}}",
+    "noMovements": "30 天内没有流水",
+    "uncategorized": "未分类付款",
+    "sections": {
+      "accounts": "账户",
+      "loans": "贷款",
+      "insurance": "保险",
+      "cashTrend": "现金走势"
+    },
+    "manual": "手动",
+    "statementOn": "{{date}} 对账单",
+    "balanceOn": "{{date}} 余额",
+    "trail": {
+      "change": "{{amount}} · 30 天",
+      "staleStatement_other": "对账单 {{count}} 天前",
+      "staleBalance_other": "余额 {{count}} 天前",
+      "approx": "≈ {{amount}}",
+      "noRate": "无 {{currency}} 汇率"
+    },
+    "perMonth": "{{amount}} / 月",
+    "nextPayment": "下次付款 {{date}}",
+    "menu": {
+      "sort": "排序",
+      "sortBalance": "按余额",
+      "sortName": "按名称",
+      "sortChange": "按 30 天变动",
+      "sortLast": "按最近流水",
+      "showMatured": "显示已还清的贷款",
+      "showEnded": "显示已终止的保单",
+      "export": "导出"
+    },
+    "add": {
+      "title": "添加",
+      "account": "账户",
+      "loan": "贷款",
+      "policy": "保单"
+    },
+    "cashTrendLabel": "现金走势图"
+  },
+  "placeholder": {
+    "detail": "详情页将在第 4 阶段推出。",
+    "queue": "分类队列将在第 2b 阶段推出。",
+    "import": "对账单导入将在第 2b 阶段推出。",
+    "form": "添加表单将在第 2b 阶段推出。",
+    "edit": "编辑功能将在第 2b 阶段推出。",
+    "delete": "删除功能将在第 2b 阶段推出。",
+    "export": "导出功能稍后推出。"
   }
 }

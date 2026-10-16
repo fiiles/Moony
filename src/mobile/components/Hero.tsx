@@ -1,6 +1,5 @@
 import { useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import * as ToggleGroupPrimitive from '@radix-ui/react-toggle-group';
 import type { LinePoint, LineTip } from '@/components/charts/MoonyLineChart';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
@@ -8,6 +7,7 @@ import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
 import type { ChartPeriod } from '@/utils/period';
 import { useFitText } from '@/mobile/hooks/use-fit-text';
 import { ScrubChart } from './ScrubChart';
+import { Segment } from './Segment';
 
 interface HeroChange {
   /** Change over the period as a ratio (0.021 = 2,1 %); the badge carries ▲ / ▼, the number unsigned. */
@@ -24,21 +24,26 @@ interface HeroProps<E extends ChartEvent> {
   /** The change line; without it `note` stands there ("zatím bez historie"). */
   change?: HeroChange;
   note?: ReactNode;
-  period: ChartPeriod;
-  periods: readonly ChartPeriod[];
-  onPeriodChange: (period: ChartPeriod) => void;
-  points: LinePoint[];
+  /**
+   * The chart and its period segment: `points` and the other four come together. Without `points`
+   * the hero is the compact one (Finance's "Celkem na účtech"): no segment, no chart.
+   */
+  period?: ChartPeriod;
+  periods?: readonly ChartPeriod[];
+  onPeriodChange?: (period: ChartPeriod) => void;
+  points?: LinePoint[];
   zeroBaseline?: boolean;
   events?: E[];
   renderEventTip?: (cluster: EventCluster<E>) => LineTip;
-  chartLabel: string;
+  chartLabel?: string;
 }
 
 /**
  * Hero card (spec §8.3 item 2 and §10.4, README §13, `.m-card--hero`): label, the display number,
  * the change line, the period segment between the number and the chart, the 160 pt chart. While a
  * finger scrubs the chart, the number and the date rewrite to that day; release snaps back to
- * today. The desktop's decorative circle at 60 %.
+ * today. The desktop's decorative circle at 60 %. Without `points` it is the compact hero
+ * (`.m-card--compact`, spec §8.4): the number and its change line only.
  */
 export function Hero<E extends ChartEvent>({
   label,
@@ -57,6 +62,11 @@ export function Hero<E extends ChartEvent>({
 }: HeroProps<E>) {
   const { t } = useTranslation('common');
   const fmt = useFormat();
+  const charted =
+    points !== undefined &&
+    period !== undefined &&
+    periods !== undefined &&
+    onPeriodChange !== undefined;
   const [scrub, setScrub] = useState<LinePoint | null>(null);
 
   const shownValue = scrub ? formatValue(scrub.value) : value === null ? '—' : formatValue(value);
@@ -70,7 +80,10 @@ export function Hero<E extends ChartEvent>({
     <section
       ref={heroRef}
       aria-label={label}
-      className="relative mb-3.5 overflow-hidden rounded-r4 border border-line bg-[linear-gradient(180deg,var(--paper),var(--paper-2))] px-4 pb-3 pt-4 shadow-e1 after:pointer-events-none after:absolute after:-right-[76px] after:-top-[92px] after:size-[220px] after:rounded-full after:bg-hero-orb after:content-[''] [&>*]:relative [&>*]:z-[1]"
+      className={cn(
+        "relative mb-3.5 overflow-hidden rounded-r4 border border-line bg-[linear-gradient(180deg,var(--paper),var(--paper-2))] px-4 pb-3 pt-4 shadow-e1 after:pointer-events-none after:absolute after:-right-[76px] after:-top-[92px] after:size-[220px] after:rounded-full after:bg-hero-orb after:content-[''] [&>*]:relative [&>*]:z-[1]",
+        !charted && 'pb-3.5'
+      )}
     >
       <div className="text-m-sub text-ink-3">{label}</div>
       <div
@@ -110,28 +123,19 @@ export function Hero<E extends ChartEvent>({
           note && <span className="min-w-0 truncate">{note}</span>
         )}
       </div>
-      <ToggleGroupPrimitive.Root
-        type="single"
-        value={period}
-        onValueChange={(next) => {
-          if (!next) return;
-          setScrub(null);
-          onPeriodChange(next as ChartPeriod);
-        }}
-        aria-label={t('periods.label')}
-        className="mb-2 mt-3 flex h-9 max-w-full gap-px overflow-x-auto rounded-r2 bg-well-2 p-[3px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {periods.map((p) => (
-          <ToggleGroupPrimitive.Item
-            key={p}
-            value={p}
-            className="h-[30px] flex-[1_0_auto] whitespace-nowrap rounded-r1 px-1.5 text-m-caption font-semibold leading-none text-ink-3 transition-colors duration-fast data-[state=on]:bg-paper data-[state=on]:text-ink data-[state=on]:shadow-seg focus-visible:outline-none focus-visible:shadow-focus"
-          >
-            {t(`periodsLong.${p}`)}
-          </ToggleGroupPrimitive.Item>
-        ))}
-      </ToggleGroupPrimitive.Root>
-      {points.length > 1 && (
+      {charted && (
+        <Segment
+          value={period}
+          options={periods.map((p) => ({ value: p, label: t(`periodsLong.${p}`) }))}
+          onChange={(next) => {
+            setScrub(null);
+            onPeriodChange(next);
+          }}
+          label={t('periods.label')}
+          className="mb-2 mt-3"
+        />
+      )}
+      {charted && points.length > 1 && (
         <ScrubChart<E>
           // A new period starts a new chart: no scrub or callout carries over.
           key={period}
@@ -140,7 +144,7 @@ export function Hero<E extends ChartEvent>({
           events={events}
           renderEventTip={renderEventTip}
           onScrub={setScrub}
-          label={chartLabel}
+          label={chartLabel ?? label}
         />
       )}
     </section>

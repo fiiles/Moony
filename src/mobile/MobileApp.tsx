@@ -24,10 +24,15 @@ const TOAST_OFFSET = {
   right: 16,
 };
 
-/** The lock when the app returns from the background, and the privacy screen; renders nothing. */
+/**
+ * The lock when the app returns from the background or its webview was restored, and the privacy
+ * screen. Renders the cover while a lock decision is open: opaque, the canvas colour and nothing
+ * else, above everything (sheets sit at z 40–41, the toasts at 999999999), so no unlocked screen
+ * shows between the background and the lock page. It also takes the taps meant for what it hides.
+ */
 function BackgroundLock() {
-  useBackgroundLock();
-  return null;
+  const { covered } = useBackgroundLock();
+  return covered ? <div aria-hidden className="fixed inset-0 z-[2147483647] bg-canvas" /> : null;
 }
 
 /**

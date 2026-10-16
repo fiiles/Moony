@@ -1,8 +1,9 @@
 /**
  * Background lock on the phone (spec §8.1): when the app comes back from the background after
- * the chosen time, it is locked again. The pure rule and the two small stores behind it; the
- * listener is `useBackgroundLock` (`src/mobile/hooks/use-background-lock.ts`). Times are epoch
- * milliseconds passed in by the caller.
+ * the chosen time, it is locked again, and a restored webview locks at start. The pure rules and
+ * the two small stores behind them; the listener is `useBackgroundLock`
+ * (`src/mobile/hooks/use-background-lock.ts`). Times are epoch milliseconds passed in by the
+ * caller.
  *
  * This is separate from the desktop's inactivity lock (`src/utils/auto-lock.ts`): a phone is
  * locked by leaving the app, not by not touching it.
@@ -36,6 +37,44 @@ export function shouldLockOnResume(
   if (hiddenAt === null) return false;
   if (afterMinutes === 0) return true;
   return now - hiddenAt >= afterMinutes * MS_PER_MINUTE;
+}
+
+/** `useAuth().appStatus`. */
+export type AuthStatus = 'needs_setup' | 'locked' | 'unlocked';
+
+/**
+ * The lock at start (ruling R26): a page that finds the backend already unlocked on its very first
+ * status answer did not unlock it itself. Outside a dev reload that is iOS reclaiming the web
+ * content process and Tauri reloading the webview, so the app locks at once.
+ * - `checking`: the provider is still asking (its `locked` default while `isLoading`);
+ * - `due`: the first answer was `unlocked`; the lock is owed until the app is locked;
+ * - `done`: nothing owed, for the rest of this page session (a later unlock is the person's own).
+ */
+export type BootLock = 'checking' | 'due' | 'done';
+
+export function nextBootLock(current: BootLock, status: AuthStatus, isLoading: boolean): BootLock {
+  switch (current) {
+    case 'checking':
+      if (status === 'locked' && isLoading) return 'checking';
+      return status === 'unlocked' ? 'due' : 'done';
+    case 'due':
+      return status === 'unlocked' ? 'due' : 'done';
+    case 'done':
+      return 'done';
+  }
+}
+
+/**
+ * The opaque cover over the shell: from going to the background until the lock decision on the
+ * way back (`hidden`), and while the boot lock is owed. Only over unlocked content: once the app
+ * is locked the lock page replaces it.
+ */
+export function showsLockCover(state: {
+  unlocked: boolean;
+  hidden: boolean;
+  bootLock: BootLock;
+}): boolean {
+  return state.unlocked && (state.hidden || state.bootLock === 'due');
 }
 
 /** The stored setting; anything missing, unreadable or outside the four choices is one minute. */

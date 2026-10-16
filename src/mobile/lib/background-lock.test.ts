@@ -4,10 +4,14 @@ import {
   DEFAULT_BACKGROUND_LOCK_MINUTES,
   HIDDEN_AT_KEY,
   clearHiddenAt,
+  nextBootLock,
   readBackgroundLockMinutes,
   readHiddenAt,
   rememberHiddenAt,
   shouldLockOnResume,
+  showsLockCover,
+  type AuthStatus,
+  type BootLock,
 } from './background-lock';
 
 /** A Map behind the Storage methods the helpers use. */
@@ -64,6 +68,84 @@ describe('shouldLockOnResume', () => {
   it('does not lock when the clock went backwards, except for "Ihned"', () => {
     expect(shouldLockOnResume(2_000_000, 1_000_000, 1)).toBe(false);
     expect(shouldLockOnResume(2_000_000, 1_000_000, 0)).toBe(true);
+  });
+});
+
+describe('nextBootLock', () => {
+  /** Feeds the provider's states in order, as renders do, and returns where the lock ends up. */
+  function run(states: ReadonlyArray<[AuthStatus, boolean]>): BootLock {
+    return states.reduce<BootLock>(
+      (current, [status, isLoading]) => nextBootLock(current, status, isLoading),
+      'checking'
+    );
+  }
+
+  it('waits while the provider asks the backend (its "locked" default while loading)', () => {
+    expect(nextBootLock('checking', 'locked', true)).toBe('checking');
+  });
+
+  it('is due when the first answer is "unlocked": the webview was restored', () => {
+    // The profile may still be loading (isLoading) or already there.
+    expect(nextBootLock('checking', 'unlocked', true)).toBe('due');
+    expect(nextBootLock('checking', 'unlocked', false)).toBe('due');
+  });
+
+  it('is done when the first answer is "locked" or "needs_setup"', () => {
+    expect(nextBootLock('checking', 'locked', false)).toBe('done');
+    expect(nextBootLock('checking', 'needs_setup', false)).toBe('done');
+    expect(nextBootLock('checking', 'needs_setup', true)).toBe('done');
+  });
+
+  it('stays due until the lock lands, then is done', () => {
+    expect(nextBootLock('due', 'unlocked', false)).toBe('due');
+    expect(nextBootLock('due', 'locked', false)).toBe('done');
+    expect(
+      run([
+        ['locked', true],
+        ['unlocked', true],
+        ['unlocked', false],
+        ['locked', false],
+      ])
+    ).toBe('done');
+  });
+
+  it('never locks an unlock that happened in this page session', () => {
+    // A cold start: locked, then the person unlocks (with the profile loading, then loaded).
+    expect(
+      run([
+        ['locked', true],
+        ['locked', false],
+        ['unlocked', true],
+        ['unlocked', false],
+      ])
+    ).toBe('done');
+    // First run: setup, then the new account is unlocked.
+    expect(
+      run([
+        ['locked', true],
+        ['needs_setup', false],
+        ['unlocked', false],
+      ])
+    ).toBe('done');
+    for (const status of ['locked', 'unlocked', 'needs_setup'] as const) {
+      expect(nextBootLock('done', status, true)).toBe('done');
+      expect(nextBootLock('done', status, false)).toBe('done');
+    }
+  });
+});
+
+describe('showsLockCover', () => {
+  it('covers an unlocked app that went to the background or still owes the boot lock', () => {
+    expect(showsLockCover({ unlocked: true, hidden: true, bootLock: 'done' })).toBe(true);
+    expect(showsLockCover({ unlocked: true, hidden: false, bootLock: 'due' })).toBe(true);
+    expect(showsLockCover({ unlocked: true, hidden: false, bootLock: 'done' })).toBe(false);
+    expect(showsLockCover({ unlocked: true, hidden: false, bootLock: 'checking' })).toBe(false);
+  });
+
+  it('never covers the lock page: once locked the lock page itself is the cover', () => {
+    for (const bootLock of ['checking', 'due', 'done'] as const) {
+      expect(showsLockCover({ unlocked: false, hidden: true, bootLock })).toBe(false);
+    }
   });
 });
 

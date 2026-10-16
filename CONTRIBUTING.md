@@ -282,6 +282,7 @@ node scripts/screenshots.mjs --lang cs --out /tmp/shots --set all               
 | `--base` | `http://localhost:1420` | Vite dev URL of the running app |
 | `--out` | `docs/screenshots` | Output folder |
 | `--lang` | `en` | UI language of the shots (`en`, `cs`, or any shipped code) |
+| `--theme` | `system` | Theme of the shots: `system` (follows the browser, which headless Chrome reports as light), `light` or `dark`. Like the language it is the profile's once unlocked, so under a Tauri backend the script temporarily switches the profile's theme and restores it when it finishes. The dark set: `--theme dark --out docs/screenshots/dark` |
 | `--suffix` | empty for `en`, `-<lang>` otherwise | Appended to the file names: `dashboard.png`, `dashboard-cs.png` |
 | `--set` | `readme` | `readme`: `dashboard`, `cashflow`, `account-detail`, `stocks-analysis`, `settings` and, with `--fixture`, `import`. `site` (website, LinkedIn): `dashboard`, `account-detail`, `cashflow`, `planning`, `stocks`, `stocks-analysis`, `crypto`, `real-estate`, `settings`. `all`: both |
 | `--account` | first account with a balance history, else the first account | Bank account for `account-detail` and `import` |

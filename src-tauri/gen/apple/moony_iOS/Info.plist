@@ -42,5 +42,7 @@
 	</array>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Moony unlocks your data with Face ID.</string>
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
 </dict>
 </plist>

@@ -29,7 +29,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { CategoryIcon } from '@/components/common/CategoryIcon';
+import { CategoryIcon, CategoryIconChip } from '@/components/common/CategoryIcon';
 import { ICON_MAP } from '@/components/common/category-icons-map';
 import { useCategoryName } from '@/hooks/use-categories';
 import { useCategoryMutations } from '@/hooks/use-category-mutations';
@@ -224,12 +224,7 @@ export function CategoryFormDialog({
           </div>
 
           <div className="flex items-center gap-2 rounded-r1 border bg-well px-3 py-2">
-            <span
-              className="flex h-7 w-7 items-center justify-center rounded-full"
-              style={{ backgroundColor: `${color}26`, color }}
-            >
-              <CategoryIcon iconName={icon} className="h-4 w-4" />
-            </span>
+            <CategoryIconChip category={{ icon, color }} />
             <span className="truncate text-sm font-medium">
               {trimmedName || t('categoryManagement.namePlaceholder')}
             </span>

@@ -111,9 +111,7 @@ export function OtherAssetTransactionsModal({ asset, open, onOpenChange }: Props
                         <TableCell>{fmt.day(tx.transactionDate)}</TableCell>
                         <TableCell
                           className={
-                            tx.type === 'buy'
-                              ? 'text-green-600 font-medium'
-                              : 'text-red-600 font-medium'
+                            tx.type === 'buy' ? 'font-medium text-gain' : 'font-medium text-loss'
                           }
                         >
                           {tx.type.toUpperCase()}

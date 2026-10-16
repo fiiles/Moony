@@ -360,6 +360,22 @@
   .row-interactive:hover {
     background-color: var(--well);
   }
+
+  /* Category icon chip: the user's hue at 15 % over paper; in the dark theme the glyph is lifted
+     30 % towards ink in OKLab so every preset clears 4.9:1 (spec D7). */
+  .cat-chip {
+    color: var(--cat);
+    background: color-mix(in srgb, var(--cat) 15%, transparent);
+  }
+
+  :root[data-theme='dark'] .cat-chip {
+    color: color-mix(in oklab, var(--cat) 70%, var(--ink));
+  }
+
+  /* The one theme-specific component rule: the off thumb must stay light on the dark track (D13b). */
+  :root[data-theme='dark'] .switch__thumb[data-state='unchecked'] {
+    background: var(--ink-2);
+  }
 }
 
 /* Date inputs: grey text, no blue, calendar icon dims until hover. */

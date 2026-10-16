@@ -6,6 +6,8 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-10-16
+
 ### Added
 
 - **Encrypted attachments.** Photos and documents you attach are stored in a second encrypted
@@ -28,6 +30,9 @@ All notable changes to Moony are documented in this file. The format follows
 - **OFX and QFX statements** (bank and credit card), from banks and from other finance apps.
 - **QIF files** from Quicken, GnuCash and other apps: categories are matched to yours by name in
   the preview, and the opening balance record is recognized.
+- **Import history for stocks.** Once a stock import is recorded, an "Import history" button on
+  the Stocks page lists every import, from CSV files and through MCP, with its file, source and
+  the trades still there. Deleting an import deletes the trades it brought in.
 
 ### Changed
 
@@ -49,6 +54,9 @@ All notable changes to Moony are documented in this file. The format follows
 ### Fixed
 
 - Deleting a property or an insurance policy left its photos and documents on disk.
+- The import history dialog of a bank account is wide enough for its undo button.
+- The evaluation order in the categorization settings matches what Moony does: transfers between
+  your own accounts come first, and every enabled rule pack is listed.
 
 ### Security
 
@@ -58,6 +66,11 @@ All notable changes to Moony are documented in this file. The format follows
   current cost (N = 2¹⁷) under the same password, so it takes a moment longer once. Backups made
   afterwards carry the stronger key file. The key files are now replaced atomically: a crash or
   a power cut while one is being rewritten leaves the old or the new file, never a damaged one.
+- **No readable photo copies in the temp folder.** Uploading a property photo no longer leaves a
+  copy of it in the system temp folder, and the copies earlier versions left there are deleted
+  once at startup (macOS clears that folder after a few days, Windows never does).
+- The master key generated during first-run setup stays in the app's backend; only the recovery
+  key is passed to the window that shows it.
 
 ## [0.12.2] - 2026-10-14
 
@@ -613,7 +626,8 @@ local tool). Everything below is new to the public.
 - The updater only offers versions higher than the installed one, so a machine running an
   older 1.x build from the previous private repository must install 0.9.0 by hand.
 
-[Unreleased]: https://github.com/fiiles/Moony/compare/v0.12.2...HEAD
+[Unreleased]: https://github.com/fiiles/Moony/compare/v0.13.0...HEAD
+[0.13.0]: https://github.com/fiiles/Moony/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/fiiles/Moony/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/fiiles/Moony/compare/v0.12.0...v0.12.1
 [0.12.0]: https://github.com/fiiles/Moony/compare/v0.11.0...v0.12.0

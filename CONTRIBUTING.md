@@ -329,7 +329,9 @@ npm run ios:dev          # Vite on port 1430, Xcode build, install and launch on
 `src-tauri/tauri.mobile-dev.conf.json` gives the loop its own Vite port (1430), so it runs beside
 `npm run tauri dev` (1420). The first run compiles every dependency for the simulator and is slow;
 later runs are incremental. Frontend edits reach the simulator through Vite's hot reload; a Rust,
-Swift or capability change needs the loop restarted. Stop it with Ctrl-C (or
+Swift or capability change needs the loop restarted. A full reload of the webview (an edit Vite
+cannot hot-swap) locks the app: the shell takes an already unlocked backend at start for a webview
+iOS restored, and locks it. Stop it with Ctrl-C (or
 `pkill -f "tauri ios dev"` and `pkill -f "vite --port 1430"` if it runs in the background). Another
 device: `npm run tauri -- ios dev "<device name>" --config src-tauri/tauri.mobile-dev.conf.json`.
 
@@ -365,7 +367,8 @@ on a device.
 **Compile check.** After touching `cfg(mobile)` code, the plugin or the dependencies, run
 `cd src-tauri && cargo check --target aarch64-apple-ios-sim --lib` next to the usual gates. `Cargo.lock`
 pins `libc` to 0.2.189 because 0.2.190 breaks this build (see "Mobile shell" in
-`docs/architecture/overview.md`); a dependency bump must keep the check green.
+`docs/architecture/overview.md`); a dependency bump must keep the check green. CI runs the same
+check on macOS (`rust-ios-check`).
 
 **Layout work without a simulator.** `VITE_MOONY_SHELL=mobile npm run tauri dev` renders the phone
 shell in the desktop window and, through the [browser dev bridge](#browser-dev-bridge-optional), in a

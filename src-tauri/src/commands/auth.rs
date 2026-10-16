@@ -164,11 +164,15 @@ pub async fn unlock(
     let db_path = get_db_path(&app)?;
     let profile = auth::unlock(&db, db_path, &password)?;
 
+    // The MCP server is a desktop feature; a phone never opens a local port.
+    #[cfg(desktop)]
     if profile.mcp_server_enabled && !local_api.is_running() {
         if let Err(e) = local_api.start((*db).clone(), app.clone()).await {
             log::error!("[local-api] MCP server failed to start on unlock: {}", e);
         }
     }
+    #[cfg(mobile)]
+    let _ = &local_api;
     // Plain attachment files from earlier versions move into the encrypted store (D4).
     crate::commands::attachments::spawn_conversion(&app);
     crate::commands::mcp_refresh::resume(app, (*db).clone());

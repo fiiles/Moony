@@ -59,7 +59,7 @@ async fn run_app() {
     let categorization_engine = Arc::new(CategorizationEngine::new_empty());
 
     // The log plugin goes first so every other plugin's `log` output is captured.
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(logging::plugin())
         .setup(|app| {
             logging::log_startup_banner();
@@ -74,8 +74,26 @@ async fn run_app() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_os::init());
+
+    // Updates and the relaunch after one exist on the desktop only.
+    #[cfg(desktop)]
+    {
+        builder = builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_process::init());
+    }
+
+    // Phone-only hardware: biometric unlock, haptic feedback, local notifications.
+    #[cfg(mobile)]
+    {
+        builder = builder
+            .plugin(tauri_plugin_biometric::init())
+            .plugin(tauri_plugin_haptics::init())
+            .plugin(tauri_plugin_notification::init());
+    }
+
+    builder
         .manage(Database::new())
         .manage(services::auth::PendingSetup::default())
         .manage(services::history_recalc::HistoryRecalc::new())

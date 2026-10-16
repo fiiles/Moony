@@ -27,6 +27,8 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 tauri-plugin-dialog = "2.5"
 tauri-plugin-fs = "2"
+# Platform info for the frontend shell (desktop and mobile)
+tauri-plugin-os = "2"
 
 # Serialization
 serde = { version = "1", features = ["derive"] }
@@ -80,9 +82,7 @@ quick-xml = "0.42"
 # Image processing for photo gallery
 image = "0.25"
 
-# Auto-updater support
-tauri-plugin-updater = "2"
-tauri-plugin-process = "2"
+# Version floor for the transitive `time` crate
 time = "0.3.44"
 
 # Type generation for TypeScript
@@ -100,6 +100,17 @@ zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
 
 # Embedded MCP server (Streamable HTTP, mounted on the axum router)
 rmcp = { version = "3.5.0", features = ["server", "macros", "transport-streamable-http-server"] }
+
+# Desktop only: auto-updater and relaunch after an update
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+
+# Mobile only: biometric unlock, haptic feedback, local notifications
+[target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
+tauri-plugin-biometric = "2"
+tauri-plugin-haptics = "2"
+tauri-plugin-notification = "2"
 
 [dev-dependencies]
 tempfile = "3"

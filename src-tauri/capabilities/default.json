@@ -3,6 +3,7 @@
   "identifier": "default",
   "description": "Capability for the main window. The webview gets no file access to the app data dir: attachments reach it only through the moony-file scheme, and the database, the attachments store, the key files and restore copies are denied for every fs command. It may write text to paths the user picks in a native dialog (the dialog plugin adds those to the scope at runtime). Nothing is written to $TEMP: photos reach the backend as raw IPC bytes.",
   "windows": ["main"],
+  "platforms": ["macOS", "windows", "linux"],
   "permissions": [
     "core:default",
     "opener:default",

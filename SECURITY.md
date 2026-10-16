@@ -88,10 +88,11 @@ reasonable time to fix a problem before you go public.
 
 ## How we keep dependencies and releases in check
 
-- `cargo audit --deny warnings` runs in CI and blocks the build on any advisory (including
-  unmaintained or yanked crates) except the few that are listed with a reason in
-  [`.cargo/audit.toml`](./.cargo/audit.toml); see
-  [`.github/workflows/ci.yml`](./.github/workflows/ci.yml).
+- `cargo audit --deny warnings` runs in CI ([`scripts/cargo-audit.sh`](./scripts/cargo-audit.sh))
+  and blocks the build on any advisory (including unmaintained or yanked crates) except the few
+  that are listed with a reason in [`.cargo/audit.toml`](./.cargo/audit.toml) or, for yanked
+  crates that cannot be updated yet, in [`.cargo/audit-yanked.txt`](./.cargo/audit-yanked.txt);
+  see [`.github/workflows/ci.yml`](./.github/workflows/ci.yml).
 - Dependabot opens security-update pull requests for npm, Cargo and GitHub Actions
   ([`.github/dependabot.yml`](./.github/dependabot.yml)).
 - Releases are built by GitHub Actions from version tags; the in-app updater only installs

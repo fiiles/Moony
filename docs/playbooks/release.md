@@ -48,8 +48,9 @@ cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings && cargo test
 cargo test generate_bindings -- --ignored && git diff --exit-code ../shared/generated-types.ts
 cd ..
 
-# dependency advisories (CI blocks on these too; exceptions are in .cargo/audit.toml)
-cargo audit --file src-tauri/Cargo.lock --deny warnings
+# dependency advisories (CI blocks on these too; exceptions are in .cargo/audit.toml and
+# .cargo/audit-yanked.txt)
+scripts/cargo-audit.sh
 npm audit --omit=dev --audit-level=high
 
 # regenerate the licence inventory and commit it if it changed

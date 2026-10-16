@@ -81,9 +81,10 @@ jobs:
 
       # Blocking: vulnerabilities, unsound and yanked crates fail the build. The few known,
       # non-actionable "unmaintained" advisories from Tauri's Linux stack are listed with
-      # reasons in .cargo/audit.toml (read from the directory cargo audit runs in).
+      # reasons in .cargo/audit.toml (read from the directory cargo audit runs in), the yanked
+      # crates that cannot be updated yet in .cargo/audit-yanked.txt.
       - name: Security audit
-        run: cargo audit --file src-tauri/Cargo.lock --deny warnings
+        run: scripts/cargo-audit.sh
 
       - name: Rust tests
         working-directory: src-tauri

@@ -22,8 +22,9 @@ The authoritative process lives in
     `npm run typecheck`, `cargo fmt --check`
   - **pre-push** (heavy): `npm test`, `cargo clippy -- -D warnings`, `cargo test`
   - **CI** (authoritative): everything above plus generated-types drift check
-    and a blocking `cargo audit --deny warnings` (the few known, non-actionable
-    advisories are listed with reasons in `.cargo/audit.toml`)
+    and a blocking `cargo audit --deny warnings` through `scripts/cargo-audit.sh` (the few
+    known, non-actionable advisories are listed with reasons in `.cargo/audit.toml`, yanked
+    crates that cannot be updated yet in `.cargo/audit-yanked.txt`)
 - **Coding standards** live in [`docs/standards/`](./docs/standards/)
   (Rust backend, TypeScript frontend, type contract, testing, i18n).
 - **Architecture decisions** are recorded as ADRs in
@@ -172,7 +173,7 @@ cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings && cargo test
 
 # After changing dependencies
 npm run licenses                                      # regenerate THIRD_PARTY_LICENSES.md
-cargo audit --file src-tauri/Cargo.lock --deny warnings   # from the repo root, as CI does it
+scripts/cargo-audit.sh                                # from the repo root, as CI does it
 ```
 
 **Why `--no-sign`.** `src-tauri/tauri.conf.json` turns on `createUpdaterArtifacts`, so a plain

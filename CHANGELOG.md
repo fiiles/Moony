@@ -6,6 +6,14 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **Stock analysis tables show amounts.** In the Tags and the Positions tables, the return over the
+  period shows how much money it was next to its percent, and the Positions table shows the
+  unrealized gain as an amount too, the way the Tags table already did. In a narrow window the
+  percent moves under the amount, and long company names are shortened instead of widening the
+  table.
+
 ## [0.13.0] - 2026-10-16
 
 ### Added

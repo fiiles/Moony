@@ -5,8 +5,6 @@ import type { PerformanceSeries } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import type { AnalysisPosition } from '@/utils/stock-analysis';
-import { toneOf } from '@/utils/performance-format';
-import { ChangeBadge } from '@/components/common/ChangeBadge';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -19,6 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
+import { GainChange } from './GainChange';
+import { amountOf } from './performance-model';
 import { tagRows, type TagGroupRows } from './tables-model';
 
 const HEAD_WRAP = '[&_th]:whitespace-normal [&_th]:leading-[1.2]';
@@ -76,6 +76,7 @@ export function TagsTable({
       endValueOf,
       endTotal,
       periodReturnOf: (tagId) => byKey.get(`tag:${tagId}`)?.twr.at(-1) ?? null,
+      periodGainOf: (tagId) => amountOf(byKey.get(`tag:${tagId}`)?.gain),
       filterActive,
     });
   }, [groups, selected, endValueOf, endTotal, series, filterActive]);
@@ -149,7 +150,6 @@ export function TagsTable({
           <TableBody>
             {rows.map((row) => {
               const has = row.count > 0;
-              const tone = toneOf(row.periodReturn);
               return (
                 <TableRow key={row.tag.id} className="h-12">
                   <TableCell>
@@ -167,31 +167,20 @@ export function TagsTable({
                   <TableCell className="text-right num">
                     {has && row.share !== null ? fmt.percent(row.share, 0) : '—'}
                   </TableCell>
-                  <TableCell
-                    className={cn(
-                      'text-right font-650 num',
-                      tone === 'gain' && 'text-gain',
-                      tone === 'loss' && 'text-loss'
+                  <TableCell className="text-right num">
+                    {has ? (
+                      <GainChange
+                        amount={row.periodGain}
+                        percent={row.periodReturn}
+                        currency={currency}
+                      />
+                    ) : (
+                      dash
                     )}
-                  >
-                    {has && row.periodReturn !== null
-                      ? fmt.percent(row.periodReturn / 100, 1, { signed: true })
-                      : dash}
                   </TableCell>
                   <TableCell className="text-right num">
                     {has ? (
-                      <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">
-                        <span
-                          className={cn(
-                            'font-650',
-                            toneOf(row.gain) === 'gain' && 'text-gain',
-                            toneOf(row.gain) === 'loss' && 'text-loss'
-                          )}
-                        >
-                          {fmt.money(row.gain, currency, { decimals: 0, signed: true })}
-                        </span>
-                        <ChangeBadge ratio={row.gainPercent / 100} />
-                      </span>
+                      <GainChange amount={row.gain} percent={row.gainPercent} currency={currency} />
                     ) : (
                       '—'
                     )}

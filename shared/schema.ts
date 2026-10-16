@@ -1799,6 +1799,11 @@ export interface PerformanceSeries {
    * null for a series computed in another currency.
    */
   contribution: number[] | null;
+  /**
+   * Money the series' positions gained over the whole period in the report currency (the value
+   * change without buys and sells), decimal TEXT; null for a series computed in another currency.
+   */
+  gain: string | null;
 }
 
 /** One held position over the whole period. */
@@ -1812,6 +1817,8 @@ export interface PositionPerformance {
   startValue: string | null;
   /** Value on the last date, decimal TEXT; null when it cannot be converted. */
   endValue: string | null;
+  /** Money the position gained over the period (the value change without buys and sells), decimal TEXT. */
+  gain: string;
 }
 
 /**

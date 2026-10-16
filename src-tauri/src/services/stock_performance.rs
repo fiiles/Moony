@@ -455,6 +455,14 @@ fn contribution(daily: &Daily, weights: &Weights, members: &[usize]) -> Vec<f64>
     out
 }
 
+/// The money `members` gained over the days: the sum of their daily gains (value change without
+/// the flows). A holding that drops out of a day gains nothing that day, as in its return.
+fn period_gain(daily: &Daily, members: &[usize]) -> f64 {
+    (1..daily.days.len())
+        .flat_map(|k| members.iter().filter_map(move |&p| daily.gain[k][p]))
+        .sum()
+}
+
 /// Money-weighted return from the first day to each day (modified Dietz, cumulative, percent):
 /// `(V_k - V_0 - F_k) / (V_0 + sum_j F_j * (k - j + 1) / k)` where `F_k` is the flow cumulated
 /// to `k` and the flow of day `j` counts for the `k - j + 1` days it was invested. Running sums
@@ -610,7 +618,7 @@ pub fn stock_performance(
             Some(code) => Some(normalize_currency(code)?),
             None => None,
         };
-        let (twr, contribution) = match native {
+        let (twr, contribution, gain) = match native {
             // The native return of a currency group: its own positions in their currency
             Some(code) if code != currency => {
                 let member_tickers: Vec<&str> =
@@ -628,18 +636,20 @@ pub fn stock_performance(
                     &mut quality,
                 );
                 let local: Vec<usize> = (0..member_tickers.len()).collect();
-                (chain(&native_daily, &local), None)
+                (chain(&native_daily, &local), None, None)
             }
-            Some(_) => (chain(&daily, &members), None),
+            Some(_) => (chain(&daily, &members), None, None),
             None => (
                 chain(&daily, &members),
                 Some(sample(&contribution(&daily, &weights, &members), &indices)),
+                Some(money_in_currency(period_gain(&daily, &members), &currency)),
             ),
         };
         series.push(PerformanceSeries {
             key: spec.key.clone(),
             twr: sample(&twr, &indices),
             contribution,
+            gain,
         });
     }
 
@@ -656,6 +666,7 @@ pub fn stock_performance(
                 .unwrap_or(0.0),
             start_value: daily.value[0][p].map(|v| money_in_currency(v, &currency)),
             end_value: daily.value[last][p].map(|v| money_in_currency(v, &currency)),
+            gain: money_in_currency(period_gain(&daily, &[p]), &currency),
         })
         .collect();
 
@@ -1100,6 +1111,44 @@ mod tests {
     }
 
     #[test]
+    fn period_gain_is_the_value_change_without_the_deposits() {
+        let conn = setup_db();
+        // p1: 10 shares 100 -> 120 (+200); p2: 10 shares at 200, 5 more bought at 195 on day
+        // 2, 15 at 205 at the end (3075 - 2000 - 975 = +100); p3: 20 shares 50 -> 45 (-100)
+        seed_czk(&conn, "p1", "AAA", 10.0, &[100.0, 105.0, 120.0]);
+        seed(
+            &conn,
+            "p2",
+            "BBB",
+            "15",
+            "CZK",
+            &[(10.0, 200.0), (15.0, 195.0), (15.0, 205.0)],
+        );
+        seed_czk(&conn, "p3", "CCC", 20.0, &[50.0, 52.0, 45.0]);
+
+        let report = perf(
+            &conn,
+            day(0),
+            day(2),
+            vec![series("a", &["p1"]), series("b", &["p2", "p3"])],
+        );
+
+        let gain_of = |id: &str| {
+            let position = report.positions.iter().find(|p| p.investment_id == id);
+            position.expect("position").gain.clone()
+        };
+        assert_eq!(gain_of("p1"), "200.00");
+        assert_eq!(gain_of("p2"), "100.00");
+        assert_eq!(gain_of("p3"), "-100.00");
+        assert_eq!(report.series[0].gain.as_deref(), Some("200.00"));
+        assert_eq!(report.series[1].gain.as_deref(), Some("0.00"));
+        // together they are the portfolio's value change without the deposits
+        let total: f64 = report.positions.iter().map(|p| number(&p.gain)).sum();
+        let change = value_of(last(&report.values)) - value_of(&report.values[0]);
+        close(total, change - number(last(&report.net_flows)), 1e-9);
+    }
+
+    #[test]
     fn series_twr_is_its_own_chain() {
         let conn = setup_db();
         seed_czk(&conn, "p1", "AAA", 10.0, &[100.0, 102.0, 105.0]);
@@ -1178,10 +1227,12 @@ mod tests {
         close(*last(&report.portfolio), 5.0, 1e-9);
         close(*last(&report.series[0].twr), 5.0, 1e-9);
         assert!(report.series[0].contribution.is_some());
-        // ... and 0 in the position's own currency, which has no contribution
+        assert_eq!(report.series[0].gain.as_deref(), Some("1000.00"));
+        // ... and 0 in the position's own currency, which has no contribution nor gain
         assert_eq!(report.series[1].key, "native");
         assert_eq!(report.series[1].twr, [0.0, 0.0]);
         assert_eq!(report.series[1].contribution, None);
+        assert_eq!(report.series[1].gain, None);
         assert!(report.fx_quality.missing_currencies.is_empty());
     }
 

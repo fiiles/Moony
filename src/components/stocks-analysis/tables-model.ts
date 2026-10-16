@@ -26,6 +26,8 @@ export interface TagRow {
   share: number | null;
   /** Return of the tag's positions over the period, percent; `null` without a series. */
   periodReturn: number | null;
+  /** Money they gained over the period, in the report currency; `null` without a series. */
+  periodGain: number | null;
   /** Unrealized gain as of today, in the report currency. */
   gain: number;
   /** Unrealized gain as of today, percent of cost. */
@@ -44,6 +46,8 @@ export interface TagRowsInput {
   endTotal: number | null;
   /** Return of a tag's series over the period, percent. */
   periodReturnOf: (tagId: string) => number | null;
+  /** Money a tag's series gained over the period. */
+  periodGainOf: (tagId: string) => number | null;
   /** With a filter only tags that have a selected position are listed. */
   filterActive: boolean;
 }
@@ -71,6 +75,7 @@ export function tagRows(input: TagRowsInput): TagRow[] {
             ? value / input.endTotal
             : null,
         periodReturn: members.length > 0 ? input.periodReturnOf(tag.id) : null,
+        periodGain: members.length > 0 ? input.periodGainOf(tag.id) : null,
         gain: totals.gainLoss,
         gainPercent: totals.gainLossPercent,
         dividend: totals.dividend,

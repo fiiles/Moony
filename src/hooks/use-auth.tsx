@@ -191,6 +191,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (profile) => {
       queryClient.setQueryData(['user-profile'], profile);
       setAppStatus('unlocked');
+      // The first lock after setup greets by name too, not only locks after an unlock.
+      rememberGreetingName(profile.name);
       setPendingSetup(null);
       // Load learned payees from database
       categorizationApi.loadFromDb().catch(console.error);
@@ -308,6 +310,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (profile) => {
       queryClient.setQueryData(['user-profile'], profile);
       setAppStatus('unlocked');
+      rememberGreetingName(profile.name);
       setPendingRecover(null);
       // Load learned payees from database
       categorizationApi.loadFromDb().catch(console.error);

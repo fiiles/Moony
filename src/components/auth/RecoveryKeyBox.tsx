@@ -56,7 +56,7 @@ export function RecoveryKeyBox({ recoveryKey, onSavedToFile }: RecoveryKeyBoxPro
   return (
     <div>
       <div
-        className="select-all rounded-r3 bg-dark px-4 py-[14px] text-center text-[17px] font-650 tracking-[0.06em] text-ink-inverse num"
+        className="select-all text-balance rounded-r3 bg-dark px-4 py-[14px] text-center text-[17px] font-650 tracking-[0.06em] text-ink-inverse num"
         data-testid="recovery-key"
       >
         {recoveryKey}

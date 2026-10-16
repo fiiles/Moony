@@ -328,10 +328,25 @@ gutter and room at the bottom for the tab bar (56 pt above the bottom safe area)
 Safe areas come from `env(safe-area-inset-*)` as `--safe-top` / `--safe-bottom` (`index.html` asks for
 `viewport-fit=cover`). The phone shell sets `data-shell="mobile"` on `<html>`; under it `src/index.css`
 drops the desktop's 1080 px minimum body width and the tap highlight. Touch targets are at least 44 pt.
+The document itself never scrolls: `#root` is one fixed box and every screen (`Screen`, the lock, the
+first-run wizard) scrolls inside it. WKWebView gives a `viewport-fit=cover` page a native scroll range of
+the safe-area insets, and a focused field used to slide the whole page up under the status bar. While the
+on-screen keyboard is up, `src/mobile/lib/use-visible-height.ts` publishes the free height as `--m-vh` on
+`<html>` and the box shrinks to it, so a field scrolls above the keyboard inside its own screen. Screens
+outside the tabs (`<Screen tabBar={false}>`) keep no room for the tab bar.
+
+**Lock and first run** (`mobile/pages/Lock.tsx`, spec §8.1–8.2). One page for `/auth`: the first-run
+wizard (the desktop `OnboardingWizard` without its live preview, safe areas through `--safe-top` /
+`--safe-bottom`), the lock, and the three-step recovery as pushed screens with a back button. The lock is
+centred: brand, a 76 pt rounded paper square with the lock glyph (it becomes the biometric button in
+Task 1.8), a 22 / 650 greeting, a 12 pt caption (`ink-3`), a 48 pt password field, the 48 pt primary
+button, the "forgot" link (44 pt tall), and at the bottom the language menu (`LanguageSelect`, never a
+segment of flags) and the 11 pt caption. Credential failures show under the field, everything else as a
+toast.
 
 | Component | Class | React | Rules |
 |---|---|---|---|
-| Screen | `.m-screen`, `__body` | `mobile/shell/Screen.tsx` | Fills the viewport (`100dvh`). A tab root is `large`: its 30 pt title sits in the content, wraps and hyphenates. |
+| Screen | `.m-screen`, `__body` | `mobile/shell/Screen.tsx` | Fills the viewport (the fixed `#root` box, `h-full`). A tab root is `large`: its 30 pt title sits in the content, wraps and hyphenates. |
 | Nav bar | `.m-nav`, `--large`, `.is-collapsed`, `__side`, `__title`, `__btn`, `__back`; `.m-avatar` | `mobile/shell/NavBar.tsx` | At most one leading and two trailing 44 pt buttons (24 pt icons); the 20 pt title is centred between them and ends with an ellipsis. On a tab root the bar title and a hairline `line` appear once the large title has scrolled away; elsewhere the title always shows and the hairline appears on scroll. A back label ends with an ellipsis at 120 px. No blur. |
 | Tab bar | `.m-tabbar`, `.m-tab`, `.is-active`, `__label` | `mobile/shell/TabBar.tsx` | Paper, hairline `line` on top, four equal tabs, Lucide 24 at stroke 1.75 in both states, label 10 / 600; colour alone marks the active tab (`ink`, the rest `ink-4`); no dark material (D5). Stays on tab roots and details, hides on the lock screen and under sheets. A tab switch is a history entry (Android back walks back); tapping the tab you are on at its root adds none. |
 | Card | `.m-card`, `--well`, `--hero` | — | Paper, radius 15, `sh-1`; fewer cards than the desktop, a section is often a head and rows on the canvas. |

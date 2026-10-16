@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import { cn } from '@/lib/utils';
 import { NavBar } from './NavBar';
 
 interface ScreenProps {
@@ -7,6 +8,8 @@ interface ScreenProps {
   large?: boolean;
   leading?: ReactNode;
   trailing?: ReactNode;
+  /** False on screens outside the tabs (the lock's recovery): no room is kept for the tab bar. */
+  tabBar?: boolean;
   children?: ReactNode;
 }
 
@@ -14,14 +17,21 @@ interface ScreenProps {
  * One phone screen (design system README §13, `.m-screen`): the nav bar over one scroll area
  * with the 16 pt gutter and room at the bottom for the fixed tab bar.
  */
-export function Screen({ title, large = false, leading, trailing, children }: ScreenProps) {
+export function Screen({
+  title,
+  large = false,
+  leading,
+  trailing,
+  tabBar = true,
+  children,
+}: ScreenProps) {
   const scrollRef = useRef<HTMLElement>(null);
   // The large title, or a 1 px marker at the top of a screen without one.
   const [marker, setMarker] = useState<HTMLElement | null>(null);
   const collapsed = useScrolledAway(scrollRef, marker);
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-canvas bg-[radial-gradient(520px_320px_at_100%_0%,var(--canvas-glow),transparent_70%)] text-m-body text-ink-2">
+    <div className="flex h-full flex-col overflow-hidden bg-canvas bg-[radial-gradient(520px_320px_at_100%_0%,var(--canvas-glow),transparent_70%)] text-m-body text-ink-2">
       <NavBar
         title={title}
         large={large}
@@ -31,7 +41,12 @@ export function Screen({ title, large = false, leading, trailing, children }: Sc
       />
       <main
         ref={scrollRef}
-        className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[calc(var(--m-tabbar-h)+var(--safe-bottom)+24px)]"
+        className={cn(
+          'min-h-0 flex-1 overflow-y-auto overscroll-contain px-4',
+          tabBar
+            ? 'pb-[calc(var(--m-tabbar-h)+var(--safe-bottom)+24px)]'
+            : 'pb-[calc(var(--safe-bottom)+24px)]'
+        )}
       >
         {large ? (
           <h1

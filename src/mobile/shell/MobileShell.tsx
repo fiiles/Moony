@@ -1,9 +1,9 @@
 import { Redirect, Route, Switch, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/lib/protected-route';
-import AuthPage from '@/pages/auth-page';
 import Cashflow from '@/mobile/pages/Cashflow';
 import Finance from '@/mobile/pages/Finance';
+import Lock from '@/mobile/pages/Lock';
 import Overview from '@/mobile/pages/Overview';
 import Wealth from '@/mobile/pages/Wealth';
 import { routes, tabForPath } from './routes';
@@ -22,8 +22,8 @@ export function MobileShell() {
   return (
     <>
       <Switch>
-        {/* The desktop lock screen and first run until Task 1.4 brings the phone one. */}
-        <Route path={routes.auth} component={AuthPage} />
+        {/* Lock screen and first run: outside `ProtectedRoute`, which redirects here while locked. */}
+        <Route path={routes.auth} component={Lock} />
         <ProtectedRoute path={routes.overview} component={Overview} />
         <ProtectedRoute path={routes.finance} component={Finance} />
         <ProtectedRoute path={routes.cashflow} component={Cashflow} />

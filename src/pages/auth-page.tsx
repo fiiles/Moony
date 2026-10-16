@@ -37,7 +37,7 @@ import { OnboardingWelcome } from '@/components/auth/OnboardingWelcome';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { LanguageSelect } from '@/components/common/LanguageSelect';
 import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
-import { cn } from '@/lib/utils';
+import { RecoverySteps } from '@/components/auth/RecoverySteps';
 
 type Panel = 'unlock' | 'recover' | 'newKey';
 
@@ -47,25 +47,6 @@ function readStorage(key: string): string | null {
   } catch {
     return null;
   }
-}
-
-/** Three dots: which part of the recovery flow the user is in. */
-function RecoverySteps({ current }: { current: 1 | 2 | 3 }) {
-  const { t } = useTranslation('auth');
-  const labels = [t('recover.steps.key'), t('recover.steps.password'), t('recover.steps.newKey')];
-  return (
-    <ol className="mb-[18px] flex gap-1.5 text-micro font-600 text-ink-4">
-      {labels.map((label, i) => {
-        const on = i + 1 <= current;
-        return (
-          <li key={label} className={cn('flex items-center gap-1.5', on && 'text-ink')}>
-            <i className={cn('block size-1.5 rounded-full bg-well-3', on && 'bg-dark')} />
-            {label}
-          </li>
-        );
-      })}
-    </ol>
-  );
 }
 
 export default function AuthPage() {

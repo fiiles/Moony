@@ -7,5 +7,9 @@
   },
   "shell": {
     "placeholder": "Denne skjermen er fortsatt under arbeid."
+  },
+  "lock": {
+    "caption": "AES-256 · dataene dine blir på denne telefonen",
+    "keySaved": "Jeg har lagret nøkkelen trygt utenfor denne telefonen"
   }
 }

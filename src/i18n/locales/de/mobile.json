@@ -7,5 +7,9 @@
   },
   "shell": {
     "placeholder": "Dieser Bildschirm ist noch in Arbeit."
+  },
+  "lock": {
+    "caption": "AES-256 · Ihre Daten bleiben auf diesem Telefon",
+    "keySaved": "Ich habe den Schlüssel sicher außerhalb dieses Telefons aufbewahrt"
   }
 }

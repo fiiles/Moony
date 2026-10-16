@@ -7,5 +7,9 @@
   },
   "shell": {
     "placeholder": "Den här skärmen är fortfarande under arbete."
+  },
+  "lock": {
+    "caption": "AES-256 · dina data stannar på den här telefonen",
+    "keySaved": "Jag har nyckeln sparad på ett säkert ställe utanför den här telefonen"
   }
 }

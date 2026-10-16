@@ -7,5 +7,9 @@
   },
   "shell": {
     "placeholder": "Tato obrazovka se ještě připravuje."
+  },
+  "lock": {
+    "caption": "AES-256 · data zůstávají v telefonu",
+    "keySaved": "Klíč mám bezpečně uložený mimo tento telefon"
   }
 }

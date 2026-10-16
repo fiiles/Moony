@@ -29,7 +29,7 @@ export function OnboardingWelcome({ onContinue }: { onContinue: () => void }) {
 
   return (
     <section
-      className="onboarding-intro relative flex min-h-svh flex-col items-center justify-center overflow-hidden px-6 pb-24 pt-16 text-center"
+      className="onboarding-intro relative flex min-h-svh flex-col items-center justify-center overflow-hidden px-6 pb-[calc(6rem+var(--safe-bottom))] pt-[calc(4rem+var(--safe-top))] text-center"
       data-testid="onboarding-intro"
     >
       <div className="onboarding-intro-content relative flex flex-col items-center">
@@ -53,7 +53,7 @@ export function OnboardingWelcome({ onContinue }: { onContinue: () => void }) {
       <Button
         variant="ghost"
         onClick={onContinue}
-        className="absolute bottom-10"
+        className="absolute bottom-[calc(2.5rem+var(--safe-bottom))]"
         data-testid="onboarding-intro-skip"
       >
         {t('onboarding.intro.skip')}

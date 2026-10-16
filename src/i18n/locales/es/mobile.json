@@ -7,5 +7,9 @@
   },
   "shell": {
     "placeholder": "Esta pantalla todavía está en preparación."
+  },
+  "lock": {
+    "caption": "AES-256 · tus datos se quedan en este teléfono",
+    "keySaved": "Tengo la clave guardada en un lugar seguro fuera de este teléfono"
   }
 }

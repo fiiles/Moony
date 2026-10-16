@@ -73,6 +73,8 @@ const NONE = '__none__';
 interface OnboardingWizardProps {
   language: string;
   onFinished: () => void;
+  /** The live miniature beside (desktop) or below the steps; the phone leaves it out (spec §8.2). */
+  preview?: boolean;
 }
 
 /**
@@ -101,7 +103,7 @@ function StepHead({ title, lead }: { title: string; lead: string }) {
   );
 }
 
-export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps) {
+export function OnboardingWizard({ language, onFinished, preview = true }: OnboardingWizardProps) {
   const { t } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
@@ -309,7 +311,8 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
       ref={wizardRef}
       className="onboarding-wizard grid min-h-svh grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
     >
-      <section className="flex flex-col justify-center px-6 pb-8 pt-20 lg:px-10 lg:py-12 xl:px-14">
+      {/* --safe-top / --safe-bottom are 0 on the desktop; on the phone they clear the status bar and the home indicator. */}
+      <section className="flex flex-col justify-center px-6 pb-[calc(2rem+var(--safe-bottom))] pt-[calc(5rem+var(--safe-top))] lg:px-10 lg:py-12 xl:px-14">
         <div className="mx-auto w-full max-w-[480px]">
           <div className="mb-9 flex items-center gap-[11px]">
             <MoonMark />
@@ -752,16 +755,18 @@ export function OnboardingWizard({ language, onFinished }: OnboardingWizardProps
         </div>
       </section>
 
-      <OnboardingPreview
-        areas={areas}
-        name={firstName || undefined}
-        netWorth={previewNetWorth}
-        caption={
-          step === 'firstAccount'
-            ? t('onboarding.preview.captionAccount')
-            : t('onboarding.preview.caption')
-        }
-      />
+      {preview && (
+        <OnboardingPreview
+          areas={areas}
+          name={firstName || undefined}
+          netWorth={previewNetWorth}
+          caption={
+            step === 'firstAccount'
+              ? t('onboarding.preview.captionAccount')
+              : t('onboarding.preview.caption')
+          }
+        />
+      )}
     </div>
   );
 }

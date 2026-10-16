@@ -9,12 +9,15 @@ import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { I18nProvider } from '@/i18n/I18nProvider';
 import { SyncProvider } from '@/hooks/SyncProvider';
 import { MobileShell } from '@/mobile/shell/MobileShell';
+import { useVisibleHeight } from '@/mobile/lib/use-visible-height';
 
 /**
  * Root of the phone shell: the provider stack of `App.tsx` without the desktop-only updater,
  * around `MobileShell` (tab bar, nav bar, the four tab roots).
  */
 export default function MobileApp() {
+  useVisibleHeight();
+
   // `index.css` drops the desktop's 1080 px minimum width under this attribute, before the first paint.
   useLayoutEffect(() => {
     const root = document.documentElement;

@@ -277,6 +277,7 @@
     "stockImportRowFailed": "この行を保存できませんでした。",
     "onboardingFlagUnknown": "不明な初期設定のステップです。",
     "insuranceNoticeInvalid": "0〜365の整数で日数を入力してください。",
+    "themeInvalid": "システム、ライト、ダークのいずれかを選んでください。",
     "budgetIntervalsRequired": "予算の期間を少なくとも1つ選択してください。",
     "effectiveUntilBeforeStart": "終了月は開始月より前にできません。",
     "statementTooLarge": "この明細ファイルは{{limitMb}} MBを超えています。",

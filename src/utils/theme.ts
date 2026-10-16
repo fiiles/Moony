@@ -1,3 +1,4 @@
+import type { ThemePreference } from '@shared/schema';
 import {
   readSetting,
   writeSetting,
@@ -11,7 +12,7 @@ import {
  * `public/theme-boot.js` repeats the read and the resolution in plain ES5 and must stay in step
  * with this module (its test covers the shared cases).
  */
-export type ThemePreference = 'system' | 'light' | 'dark';
+export type { ThemePreference };
 export type ResolvedTheme = 'light' | 'dark';
 
 export const THEME_KEY = 'moony-theme';

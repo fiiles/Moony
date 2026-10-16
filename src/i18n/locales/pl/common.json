@@ -277,6 +277,7 @@
     "stockImportRowFailed": "nie udało się zapisać wiersza.",
     "onboardingFlagUnknown": "Nieznany krok konfiguracji początkowej.",
     "insuranceNoticeInvalid": "Wpisz liczbę całkowitą dni od 0 do 365.",
+    "themeInvalid": "Wybierz System, Jasny lub Ciemny.",
     "budgetIntervalsRequired": "Wybierz co najmniej jeden okres budżetu.",
     "effectiveUntilBeforeStart": "Miesiąc końcowy nie może być wcześniejszy niż miesiąc początkowy.",
     "statementTooLarge": "Ten plik wyciągu jest większy niż {{limitMb}} MB.",

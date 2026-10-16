@@ -277,6 +277,7 @@
     "stockImportRowFailed": "řádek se nepodařilo uložit.",
     "onboardingFlagUnknown": "Neznámý krok úvodního nastavení.",
     "insuranceNoticeInvalid": "Zadejte celé číslo dnů od 0 do 365.",
+    "themeInvalid": "Zvolte Systém, Světlý nebo Tmavý.",
     "budgetIntervalsRequired": "Vyberte alespoň jeden interval rozpočtu.",
     "effectiveUntilBeforeStart": "Měsíc „do“ nemůže být před měsícem „od“.",
     "statementTooLarge": "Soubor výpisu je větší než {{limitMb}} MB.",

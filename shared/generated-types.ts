@@ -2420,7 +2420,11 @@ country: string | null;
 /**
  * `0` turns the anniversary reminder off; 1..=365 sets the notice period.
  */
-insuranceNoticeDays: number | null }
+insuranceNoticeDays: number | null; 
+/**
+ * `system`, `light` or `dark`; anything else is refused.
+ */
+theme: string | null }
 
 /**
  * User profile stored in database
@@ -2434,7 +2438,11 @@ country: string | null;
  * The cancellation notice of insurance policies in days that the milestones use: the stored
  * value, else 50; None when it is 0 (no anniversary reminder).
  */
-insuranceNoticeDays: number | null; createdAt: number }
+insuranceNoticeDays: number | null; 
+/**
+ * Colour theme: `system` (follow the OS), `light` or `dark`.
+ */
+theme: string; createdAt: number }
 
 /**
  * A followed stock (row in watched_stocks)

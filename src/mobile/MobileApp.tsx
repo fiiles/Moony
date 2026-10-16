@@ -53,10 +53,12 @@ export default function MobileApp() {
     };
   }, []);
 
-  // The window starts hidden (`tauri.conf.json`, so the desktop never flashes the wrong theme) and
-  // `lib.rs` shows it after 3 s if the frontend never does. The desktop `ThemeProvider` shows it once
-  // the theme is stamped; the phone has no provider (light only, `main.tsx`), so it shows it itself
-  // after the first render instead of leaving the phone black for the fallback's 3 s.
+  // The window is configured hidden (`tauri.conf.json`, so the desktop never flashes the wrong theme)
+  // and `lib.rs` shows it after 3 s if the frontend never does. The desktop `ThemeProvider` shows it
+  // once the theme is stamped; the phone has no provider (light only, `main.tsx`), so it shows the
+  // window itself after the first render. tao 0.37 ignores `visible: false` on iOS and Android (the
+  // window is up from launch), so this is a no-op there today; the call keeps the phone from relying
+  // on that.
   useEffect(() => {
     void showWindow();
   }, []);

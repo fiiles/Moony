@@ -175,7 +175,7 @@ async fn run_app() {
             commands::auth::get_mcp_server_token,
             commands::auth::set_mcp_server_port,
             commands::auth::regenerate_mcp_token,
-            // Biometric unlock on the phone (services::session_key)
+            // Biometric unlock on the phone (services::biometric_unlock)
             #[cfg(mobile)]
             commands::biometric::biometric_unlock_status,
             #[cfg(mobile)]

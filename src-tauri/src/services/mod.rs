@@ -10,6 +10,7 @@ pub mod auth;
 pub mod backfill;
 pub mod backup;
 pub mod bank_accounts;
+pub mod biometric_unlock;
 pub mod bonds;
 pub mod budgeting;
 pub mod cashflow_actuals;

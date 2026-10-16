@@ -87,6 +87,18 @@ export function markEnrolmentAsked(storage: Pick<Storage, 'setItem'> | null): vo
 }
 
 /**
+ * Forget that the sheet was shown: a new account on the same phone (first run after the account
+ * was deleted) is offered biometric unlock again.
+ */
+export function clearEnrolmentAsked(storage: Pick<Storage, 'removeItem'> | null): void {
+  try {
+    storage?.removeItem(BIOMETRICS_ASKED_KEY);
+  } catch {
+    // Storage that cannot be written cannot have kept the flag either.
+  }
+}
+
+/**
  * What the lock screen does after a biometric unlock failed, by the backend's error key:
  * - `cancelled`: nothing; the button stays and nothing prompts again by itself;
  * - `invalidated` / `failed`: the message under the button and the password form;

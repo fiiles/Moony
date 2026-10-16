@@ -1,6 +1,8 @@
+import { useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/lib/protected-route';
+import { clearEnrolmentAsked } from '@/mobile/lib/biometrics';
 import Agenda from '@/mobile/pages/Agenda';
 import Cashflow from '@/mobile/pages/Cashflow';
 import Finance from '@/mobile/pages/Finance';
@@ -21,6 +23,17 @@ export function MobileShell() {
   const [location] = useLocation();
   const { user, appStatus } = useAuth();
   const tab = appStatus === 'unlocked' && user ? tabForPath(location) : null;
+
+  // No account on this phone (first launch, or after the account was deleted): the next one is
+  // offered biometric unlock again, so the "asked" flag of the old account goes.
+  useEffect(() => {
+    if (appStatus !== 'needs_setup') return;
+    try {
+      clearEnrolmentAsked(localStorage);
+    } catch {
+      // Storage that cannot be reached cannot have kept the flag either.
+    }
+  }, [appStatus]);
 
   return (
     <>

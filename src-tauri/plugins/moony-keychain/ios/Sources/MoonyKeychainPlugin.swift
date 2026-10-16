@@ -404,7 +404,9 @@ class MoonyKeychainPlugin: Plugin {
     do {
       return try invoke.parseArgs(type)
     } catch {
-      reject(invoke, .failed, "Invalid arguments: \(error)")
+      // The decoding error can quote the argument values (a key or a reason): log its type only.
+      // `Swift.type(of:)`: the `type` parameter shadows the global function here.
+      reject(invoke, .failed, "Invalid arguments: \(String(describing: Swift.type(of: error)))")
       return nil
     }
   }

@@ -1,4 +1,4 @@
-//! Biometric unlock on the phone (spec §8.1): thin commands over `services::session_key`, with
+//! Biometric unlock on the phone (spec §8.1): thin commands over `services::biometric_unlock`, with
 //! the `moony-keychain` plugin behind the service's `KeychainLike` trait. Phones only (the module
 //! and its handlers are `#[cfg(mobile)]`).
 //!
@@ -14,9 +14,8 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::{BiometricStatus, BiometryType, UserProfile};
 use crate::services::auth;
-use crate::services::session_key::{
-    self, KeychainFailure, KeychainLike, KeychainStatus, SessionKey,
-};
+use crate::services::biometric_unlock::{self, KeychainFailure, KeychainLike, KeychainStatus};
+use crate::services::session_key::SessionKey;
 
 /// The plugin as the service sees it.
 struct PluginKeychain<'a>(&'a moony_keychain::Keychain<tauri::Wry>);
@@ -96,7 +95,7 @@ async fn with_keychain<T: Send + 'static>(
 #[tauri::command]
 pub async fn biometric_unlock_status(app: AppHandle) -> Result<BiometricStatus> {
     with_keychain(&app, |_, keychain, data_dir, _| {
-        Ok(session_key::biometric_status(keychain, data_dir))
+        Ok(biometric_unlock::biometric_status(keychain, data_dir))
     })
     .await
 }
@@ -106,7 +105,7 @@ pub async fn biometric_unlock_status(app: AppHandle) -> Result<BiometricStatus> 
 #[tauri::command]
 pub async fn enable_biometric_unlock(app: AppHandle, reason: String) -> Result<()> {
     with_keychain(&app, move |app, keychain, data_dir, _| {
-        session_key::enable(keychain, &app.state::<SessionKey>(), data_dir, &reason)
+        biometric_unlock::enable(keychain, &app.state::<SessionKey>(), data_dir, &reason)
     })
     .await
 }
@@ -115,7 +114,7 @@ pub async fn enable_biometric_unlock(app: AppHandle, reason: String) -> Result<(
 #[tauri::command]
 pub async fn disable_biometric_unlock(app: AppHandle) -> Result<()> {
     with_keychain(&app, |_, keychain, data_dir, _| {
-        session_key::disable(keychain, data_dir)
+        biometric_unlock::disable(keychain, data_dir)
     })
     .await
 }
@@ -125,7 +124,7 @@ pub async fn disable_biometric_unlock(app: AppHandle) -> Result<()> {
 #[tauri::command]
 pub async fn unlock_with_biometrics(app: AppHandle, reason: String) -> Result<UserProfile> {
     let profile = with_keychain(&app, move |app, keychain, data_dir, db_path| {
-        session_key::unlock_with_biometrics(keychain, data_dir, &reason, |master_key| {
+        biometric_unlock::unlock_with_biometrics(keychain, data_dir, &reason, |master_key| {
             auth::unlock_with_master_key(
                 &app.state::<Database>(),
                 &app.state::<SessionKey>(),
@@ -147,7 +146,7 @@ pub async fn unlock_with_biometrics(app: AppHandle, reason: String) -> Result<Us
 /// vouch for (a reinstalled app never offers a stale key). Best effort.
 pub(crate) async fn remove_leftover_key(app: &AppHandle) {
     let result = with_keychain(app, |_, keychain, data_dir, _| {
-        session_key::remove_leftover_key(keychain, data_dir);
+        biometric_unlock::remove_leftover_key(keychain, data_dir);
         Ok(())
     })
     .await;

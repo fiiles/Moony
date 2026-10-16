@@ -7,8 +7,9 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::user::{normalize_country, validate_main_currency, DEFAULT_MAIN_CURRENCY};
 use crate::models::{InsertUserProfile, MenuPreferences, UpdateUserProfile, UserProfile};
+use crate::services::biometric_unlock;
 use crate::services::crypto;
-use crate::services::session_key::{self, SessionKey};
+use crate::services::session_key::SessionKey;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -164,8 +165,8 @@ pub fn unlock(
 }
 
 /// The part of every unlock after the master key is known (password and biometrics alike): open
-/// the database with it, read the profile, keep the key for the session (biometric unlock is
-/// switched on with it) and mark the session authenticated.
+/// the database with it, read the profile, keep the key for the session on the phone (biometric
+/// unlock is switched on with it) and mark the session authenticated.
 pub fn unlock_with_master_key(
     db: &Database,
     session: &SessionKey,
@@ -176,9 +177,18 @@ pub fn unlock_with_master_key(
     db.open_with_key(db_path, &master_key_hex)?;
     let profile =
         get_user_profile(db)?.ok_or_else(|| AppError::Auth("No user profile found".into()))?;
-    session.set(master_key);
+    keep_session_key(session, master_key);
     set_authenticated(true);
     Ok(profile)
+}
+
+/// Keep the master key in the session after an unlock or the first-run setup.
+fn keep_session_key(session: &SessionKey, master_key: &[u8; 32]) {
+    // R22: only the phone needs the key after unlock (biometric enrolment).
+    #[cfg(mobile)]
+    session.set(master_key);
+    #[cfg(not(mobile))]
+    let _ = (session, master_key);
 }
 
 /// The key-file side of [`unlock`]: unwrap the master key with the password, hand it to `open`
@@ -362,7 +372,7 @@ pub fn confirm_setup(
         Ok(())
     })?;
 
-    session.set(&master_key);
+    keep_session_key(session, &master_key);
     set_authenticated(true);
 
     // Return the created profile
@@ -678,7 +688,7 @@ pub fn remove_account_files(data_dir: &Path) -> Vec<String> {
     for path in [salt_path, key_path, recovery_path]
         .into_iter()
         .chain(staging)
-        .chain([data_dir.join(session_key::MARKER_FILE)])
+        .chain([data_dir.join(biometric_unlock::MARKER_FILE)])
     {
         remove(path);
     }
@@ -1185,6 +1195,15 @@ mod tests {
         let err = unlock(&Database::new(), &session, db_path, "not-the-password").unwrap_err();
         assert_auth_key(err, "auth.wrongPassword");
         assert!(session.hex().is_none(), "a failed unlock keeps no key");
+    }
+
+    /// R22: the phone keeps the key after an unlock (biometric enrolment needs it), the desktop
+    /// keeps none.
+    #[test]
+    fn the_session_key_is_kept_on_the_phone_only() {
+        let session = SessionKey::default();
+        keep_session_key(&session, &[9u8; 32]);
+        assert_eq!(session.hex().is_some(), cfg!(mobile));
     }
 
     /// The session key goes with the session (biometric unlock can only be switched on while

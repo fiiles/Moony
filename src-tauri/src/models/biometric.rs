@@ -1,12 +1,12 @@
 //! Biometric unlock on the phone (spec §8.1): what the lock screen needs to know before the
 //! database is open.
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use specta::Type;
 
 /// Which biometry the phone offers, for the unlock button's icon and wording. Mirrors the
 /// keychain plugin's `BiometryType` (the app depends on the plugin on phones only).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Type)]
 pub enum BiometryType {
     #[serde(rename = "faceId")]
     FaceId,
@@ -21,7 +21,7 @@ pub enum BiometryType {
 }
 
 /// The `biometric_unlock_status` answer, readable while the database is still locked.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Type)]
 pub struct BiometricStatus {
     /// Biometry-protected storage can be used right now (biometry enrolled, passcode set).
     #[serde(rename = "available")]

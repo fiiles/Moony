@@ -6,6 +6,7 @@ import {
   biometricFailure,
   biometryKind,
   canUnlockWithBiometrics,
+  clearEnrolmentAsked,
   markEnrolmentAsked,
   shouldOfferEnrolment,
   wasEnrolmentAsked,
@@ -21,6 +22,7 @@ function memoryStorage(initial: Record<string, string> = {}) {
   return {
     getItem: (key: string) => values.get(key) ?? null,
     setItem: (key: string, value: string) => void values.set(key, value),
+    removeItem: (key: string) => void values.delete(key),
   };
 }
 
@@ -29,6 +31,9 @@ const throwing = {
     throw new Error('blocked');
   },
   setItem: (): void => {
+    throw new Error('blocked');
+  },
+  removeItem: (): void => {
     throw new Error('blocked');
   },
 };
@@ -86,6 +91,19 @@ describe('the asked flag', () => {
     expect(wasEnrolmentAsked(null)).toBe(true);
     expect(() => markEnrolmentAsked(throwing)).not.toThrow();
     expect(() => markEnrolmentAsked(null)).not.toThrow();
+  });
+
+  it('is forgotten by clearing, so a new account on the same phone is asked again', () => {
+    const storage = memoryStorage();
+    markEnrolmentAsked(storage);
+    expect(wasEnrolmentAsked(storage)).toBe(true);
+    clearEnrolmentAsked(storage);
+    expect(wasEnrolmentAsked(storage)).toBe(false);
+    expect(storage.getItem(BIOMETRICS_ASKED_KEY)).toBeNull();
+    // Nothing to clear is fine, and so is storage that cannot be reached.
+    expect(() => clearEnrolmentAsked(storage)).not.toThrow();
+    expect(() => clearEnrolmentAsked(throwing)).not.toThrow();
+    expect(() => clearEnrolmentAsked(null)).not.toThrow();
   });
 });
 

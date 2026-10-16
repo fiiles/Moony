@@ -4,14 +4,19 @@
  * Plain ES5 in one IIFE: it is loaded as a classic blocking script and cannot be bundled.
  */
 (function () {
-  var theme = 'light';
+  var pref = null;
   try {
-    var pref = localStorage.getItem('moony-theme');
-    var dark =
-      pref === 'dark' || (pref !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
-    theme = dark ? 'dark' : 'light';
+    pref = localStorage.getItem('moony-theme');
   } catch (e) {
-    // Blocked storage or no matchMedia: fall back to the light theme.
+    // Blocked storage: the preference is unknown, which follows the OS like System does.
   }
-  document.documentElement.setAttribute('data-theme', theme);
+  var dark = pref === 'dark';
+  if (!dark && pref !== 'light') {
+    try {
+      dark = matchMedia('(prefers-color-scheme: dark)').matches;
+    } catch (e) {
+      // No matchMedia: fall back to the light theme.
+    }
+  }
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
 })();

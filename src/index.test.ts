@@ -45,8 +45,17 @@ describe('theme token blocks', () => {
       }
     }
   });
+  it('tokens.css declares no name that index.css lacks (the spacing scale stays doc-only)', () => {
+    for (const sel of [':root', ':root[data-theme="dark"]']) {
+      const app = [...block(INDEX, sel).keys()].sort();
+      const doc = [...block(TOKENS, sel).keys()].filter((n) => !/^--sp-/.test(n)).sort();
+      expect(doc, sel).toEqual(app);
+    }
+  });
   it('the dark root switches native controls', () => {
     expect(block(INDEX, ':root[data-theme="dark"]').size).toBeGreaterThan(50);
-    expect(INDEX).toMatch(/:root\[data-theme="dark"\] \{\s*color-scheme: dark;/);
+    for (const css of [INDEX, TOKENS]) {
+      expect(css).toMatch(/:root\[data-theme="dark"\] \{\s*color-scheme: dark;/);
+    }
   });
 });

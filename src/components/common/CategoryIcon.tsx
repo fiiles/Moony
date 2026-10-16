@@ -26,7 +26,7 @@ export function CategoryIconChip({
         'cat-chip grid size-7 shrink-0 place-items-center rounded-full [&_svg]:size-[15px]',
         className
       )}
-      style={{ '--cat': color } as CSSProperties}
+      style={{ '--cat': color, backgroundColor: `${color}26` } as CSSProperties}
     >
       <CategoryIcon iconName={category?.icon || 'tag'} />
     </span>

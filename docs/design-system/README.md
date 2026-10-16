@@ -35,15 +35,15 @@ Principles:
 
 Source of truth: `tokens.css`. Summary of the families (names map 1:1 to the file):
 
-- **Surfaces** `canvas`, `canvas-glow`, `sidebar`, `paper`, `paper-2`, `well`, `well-2`, `well-3`
-- **Lines** `line`, `line-soft`, `line-strong`, `line-sidebar`
-- **Ink** `ink` … `ink-5`, `ink-inverse`, `ink-inverse-2`
-- **Contrast material** `dark`, `dark-hi`, `dark-lo` and the two gradients
-- **Semantic** `gain`, `gain-soft`, `loss`, `loss-soft`
+- **Surfaces** `canvas`, `canvas-glow`, `sidebar`, `sidebar-2`, `paper`, `paper-2`, `well`, `well-2`, `well-3`, `hero-orb`
+- **Lines** `line`, `line-soft`, `line-strong`, `line-sidebar`, `line-hover`
+- **Ink** `ink` … `ink-5`, `ink-inverse`, `ink-inverse-2`, `ink-hover`
+- **Contrast material** `dark`, `dark-hi`, `dark-lo`, `dark-hover-hi`, `dark-hover-lo` and the two gradients
+- **Semantic** `gain`, `gain-soft`, `loss`, `loss-soft`, `loss-line`, `loss-hover`, `loss-ring`
 - **Series** `s1` … `s4`, `s-other`, `chart-line`, `chart-area`, `chart-grid`, `chart-cost`, `chart-axis`
 - **Focus** `focus-border`, `focus-ring`
 - **Radius** `r-1` 6 · `r-2` 8 · `r-3` 13 · `r-4` 15 · `r-5` 17
-- **Elevation** `sh-sidebar`, `sh-1` (stat), `sh-2` (card), `sh-3` (table), `sh-pop`, `sh-modal`, `sh-dark`, `sh-btn`, `scrim`
+- **Elevation** `sh-sidebar`, `sh-1` (stat), `sh-2` (card), `sh-3` (table), `sh-pop`, `sh-modal`, `sh-dark`, `sh-btn`, `sh-btn-hover`, `sh-seg`, `sh-destructive`, `scrim`
 - **Type** size, weight and tracking per role (`fs-*`, `fw-*`, `ls-*`)
 - **Spacing** 4-px scale `sp-1` … `sp-9`, layout widths, control heights
 - **Motion** `t-fast` 120 ms, `t-base` 180 ms, one ease curve
@@ -204,8 +204,8 @@ The sidebar is continuous, no boxed groups. The tree is the real IA from
 with Nastavení pinned above the account row. **Peníze** ends with Cashflow and **"Plánování cashflow"**
 (icon `Repeat`), see §7 and §11.
 
-- Row 36 px, 14/600, Lucide icon 16 px stroke 1.75 in `ink-3`; the active row is dark material with white
-  text and icon. Hover is 5 % ink. Counts sit right in micro type.
+- Row 36 px, 14/600, Lucide icon 16 px stroke 1.75 in `ink-3`; the active row is the contrast material with
+  text and icon in `ink-inverse`. Hover is 5 % ink. Counts sit right in micro type.
 - Group titles are 10 px uppercase eyebrows; a chevron appears on hover and groups collapse. State persists
   per group (existing `moony-sidebar-groups` behavior). **Nástroje is collapsed by default** so the 17 items
   fit a 900 px window; the middle region scrolls, Nastavení and the account stay pinned.
@@ -369,7 +369,9 @@ than ~24 events fall in view, cluster neighbors into one mark with a count ("3 n
   blocks; `src/index.test.ts` guards it) and are exposed as Tailwind names (`canvas`, `paper`, `well`,
   `ink-*`, `gain`, `loss`, `s1`–`s4`, radius and shadow scales) in `tailwind.config.ts`. Components
   never use raw color values. `ThemeProvider` (`src/theme/`) stamps `data-theme`, resets the chart token
-  cache and exposes `useTheme()` / `useChartTokens()`.
+  cache and exposes `useTheme()` / `useChartTokens()`. On Linux the native window theme is left to GTK
+  (tao's cleared override would force light); the content follows `data-theme` and `color-scheme` on every
+  platform.
 - **Behavior layer.** shadcn/ui with Radix primitives stays in `src/components/ui/`. Keyboard handling,
   focus management and accessibility come from Radix; the look comes from `cva` variants and classes that
   use the tokens. react-hook-form + zod, sonner (restyled), Recharts (wrapped) and lucide-react stay.

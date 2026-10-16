@@ -47,4 +47,10 @@ describe('theme boot script', () => {
         throw new Error('blocked');
       }, false)
     ).toBe('light'));
+  it('still follows a dark OS when the storage throws', () =>
+    expect(
+      boot(() => {
+        throw new Error('blocked');
+      }, true)
+    ).toBe('dark'));
 });

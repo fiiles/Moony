@@ -12,6 +12,12 @@ import type { ResolvedTheme, ThemePreference } from '@/utils/theme';
 
 const DARK_QUERY = '(prefers-color-scheme: dark)';
 
+/** Linux webview (WebKitGTK); Android reports Linux in its user agent too, hence the exclusion. */
+const isLinux =
+  typeof navigator !== 'undefined' &&
+  /\bLinux\b/.test(navigator.userAgent) &&
+  !/Android/.test(navigator.userAgent);
+
 function inTauri(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
 }
@@ -37,10 +43,16 @@ export function systemPrefersDark(): boolean {
 
 /**
  * Sets the native window theme (title bar, native dialogs). `system` passes `null`, which hands
- * the appearance back to the OS; the override is app-wide on macOS and Linux, so an explicit
- * choice must be cleared this way.
+ * the appearance back to the OS; the override is app-wide on macOS, so an explicit choice must be
+ * cleared this way.
+ *
+ * Not on Linux: tao's `set_theme(None)` sets `gtk-application-prefer-dark-theme` to false, so a
+ * cleared override is not "follow the OS" there. The webview's `prefers-color-scheme` would flip
+ * to light on a dark desktop and the app would stamp light. GTK keeps `prefer-dark` in step with
+ * the desktop portal on its own, and the content follows `data-theme` and `color-scheme`.
  */
 export async function applyWindowTheme(pref: ThemePreference): Promise<void> {
+  if (isLinux) return;
   await guarded(() => getCurrentWindow().setTheme(pref === 'system' ? null : pref));
 }
 

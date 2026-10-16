@@ -361,11 +361,12 @@
     background-color: var(--well);
   }
 
-  /* Category icon chip: the user's hue at 15 % over paper; in the dark theme the glyph is lifted
-     30 % towards ink in OKLab so every preset clears 4.9:1 (spec D7). */
+  /* Category icon chip: the user's hue at 15 % over paper (the tint is the inline background, hex
+     alpha 26, so it does not depend on color-mix); in the dark theme the glyph is lifted 30 %
+     towards ink in OKLab so every preset clears 4.9:1 (spec D7). Without color-mix the glyph keeps
+     the raw hue. */
   .cat-chip {
     color: var(--cat);
-    background: color-mix(in srgb, var(--cat) 15%, transparent);
   }
 
   :root[data-theme='dark'] .cat-chip {

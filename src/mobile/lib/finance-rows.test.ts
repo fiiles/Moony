@@ -4,16 +4,13 @@ const DAY = 86_400;
 const TODAY = Date.UTC(2026, 9, 16) / 1000;
 
 describe('accountSub', () => {
+  const fio = { institution: { name: 'Fio' }, currency: 'CZK' };
   it('names the bank, the currency and the newest statement', () => {
-    expect(
-      accountSub(
-        { institution: { name: 'Fio' }, currency: 'CZK', balanceAsOf: TODAY - 20 * DAY },
-        TODAY - 6 * DAY
-      )
-    ).toEqual({
+    expect(accountSub({ ...fio, balanceAsOf: TODAY - 20 * DAY }, TODAY - 6 * DAY)).toEqual({
       institution: 'Fio',
       currency: 'CZK',
       stamp: { kind: 'statement', day: TODAY - 6 * DAY },
+      manual: false,
     });
   });
   it('falls back to the balance date and to no institution', () => {
@@ -23,10 +20,48 @@ describe('accountSub', () => {
       institution: null,
       currency: 'CZK',
       stamp: { kind: 'balance', day: TODAY - 44 * DAY },
+      manual: true,
     });
     expect(
       accountSub({ institution: null, currency: '', balanceAsOf: null }, null).stamp
     ).toBeNull();
+  });
+  it('stands on the balance date when that is newer than the newest import', () => {
+    expect(accountSub({ ...fio, balanceAsOf: TODAY - DAY }, TODAY - 40 * DAY).stamp).toEqual({
+      kind: 'balance',
+      day: TODAY - DAY,
+    });
+  });
+  it('stands on the statement when the import is newer, and on a tie', () => {
+    expect(accountSub({ ...fio, balanceAsOf: TODAY - 40 * DAY }, TODAY - DAY).stamp).toEqual({
+      kind: 'statement',
+      day: TODAY - DAY,
+    });
+    // The same UTC day, an instant apart: still a tie
+    expect(
+      accountSub({ ...fio, balanceAsOf: TODAY - 3 * DAY }, TODAY - 3 * DAY + 3600).stamp
+    ).toEqual({
+      kind: 'statement',
+      day: TODAY - 3 * DAY + 3600,
+    });
+    expect(accountSub({ ...fio, balanceAsOf: TODAY - 3 * DAY }, TODAY - 3 * DAY).stamp).toEqual({
+      kind: 'statement',
+      day: TODAY - 3 * DAY,
+    });
+  });
+  it('stands on the statement when the account has no balance date', () => {
+    expect(accountSub({ ...fio, balanceAsOf: null }, TODAY - 2 * DAY).stamp).toEqual({
+      kind: 'statement',
+      day: TODAY - 2 * DAY,
+    });
+  });
+  it('is manual only without an institution and without an import', () => {
+    const none = { institution: null, currency: 'CZK', balanceAsOf: TODAY - DAY };
+    expect(accountSub(none, null).manual).toBe(true);
+    // Imported statements make it a bank account in all but name
+    expect(accountSub(none, TODAY - 9 * DAY).manual).toBe(false);
+    expect(accountSub({ ...fio, balanceAsOf: TODAY - DAY }, null).manual).toBe(false);
+    expect(accountSub({ ...fio, balanceAsOf: TODAY - DAY }, TODAY - 9 * DAY).manual).toBe(false);
   });
 });
 
@@ -79,6 +114,12 @@ describe('cashChange', () => {
   it('is null when there is no base', () => {
     expect(cashChange(0, 0)).toBeNull();
     expect(cashChange(500, 500)).toBeNull();
+  });
+  it('is null when nothing moved', () => {
+    expect(cashChange(500, 0)).toBeNull();
+  });
+  it('relates a drop to the balance before it', () => {
+    expect(cashChange(100, -50)).toEqual({ delta: -50, ratio: -50 / 150 });
   });
 });
 

@@ -14,11 +14,13 @@ export interface Ledger {
   /** Rows matching the filter, loaded or not. */
   total: number;
   hasMore: boolean;
-  /** Loads the next page; a no-op while one is loading or when there is none. */
+  /** Loads the next page; a no-op while any fetch (a page or a refresh) runs or when there is none. */
   loadMore: () => void;
   /** The first page of this filter is loading. */
   isLoading: boolean;
   isFetchingMore: boolean;
+  /** Any fetch of this ledger runs: a page, or the refresh after a write. */
+  isFetching: boolean;
   isError: boolean;
   retry: () => void;
   /** The effective meaning of each loaded row (refund, transfer…), by transaction id. */
@@ -54,7 +56,7 @@ export function useLedger(accountId: string | undefined, state: LedgerState): Le
           ),
     enabled: !!accountId,
   });
-  const { data, hasNextPage, isFetchingNextPage, fetchNextPage, refetch } = query;
+  const { data, hasNextPage, isFetching, isFetchingNextPage, fetchNextPage, refetch } = query;
 
   const rows = useMemo(() => data?.pages.flatMap((page) => page.transactions) ?? [], [data]);
   const total = data?.pages[data.pages.length - 1]?.total ?? 0;
@@ -69,10 +71,14 @@ export function useLedger(accountId: string | undefined, state: LedgerState): Le
   });
   const flowById = useMemo(() => new Map((flows ?? []).map((flow) => [flow.id, flow])), [flows]);
 
-  // Stable, so the page's scroll observer is not rebuilt on every render
+  // Stable, so the page's scroll observer is not rebuilt on every render. Never while a refetch
+  // runs: the default `cancelRefetch` would cancel the refresh a write triggered, keep the old
+  // pages and append the next one to them, leaving stale rows (a deleted payment, a category
+  // already set) until the next write, since the app's `staleTime` is `Infinity`. The page's
+  // observer re-arms when `isFetching` falls, so a sentinel still in view loads after the refresh.
   const loadMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+    if (hasNextPage && !isFetching) void fetchNextPage({ cancelRefetch: false });
+  }, [hasNextPage, isFetching, fetchNextPage]);
   const retry = useCallback(() => void refetch(), [refetch]);
 
   return {
@@ -82,6 +88,7 @@ export function useLedger(accountId: string | undefined, state: LedgerState): Le
     loadMore,
     isLoading: query.isLoading,
     isFetchingMore: isFetchingNextPage,
+    isFetching,
     isError: query.isError,
     retry,
     flowById,

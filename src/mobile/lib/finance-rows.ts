@@ -10,8 +10,13 @@ export const STALE_DAYS = STALE_BALANCE_DAYS;
 export interface AccountSub {
   institution: string | null;
   currency: string;
-  /** The newest imported statement, else the date of the balance; `null` for a new, empty account. */
+  /**
+   * The newer of the newest imported statement and the date of the balance, with which of the two it
+   * is (a tie is the statement); `null` for a new, empty account.
+   */
   stamp: { kind: 'statement' | 'balance'; day: number } | null;
+  /** Entered by hand: no institution and no imported statement (the row says "ručně"). */
+  manual: boolean;
 }
 
 /** The parts of an account row's sub-line ("Fio · CZK · výpis 10. 10."); the component words them. */
@@ -23,16 +28,22 @@ export function accountSub(
   },
   lastImport: number | null
 ): AccountSub {
+  // The date the account stands on is the newer one: a balance recorded on the phone after the last
+  // statement makes the row fresh again, as Údržba (which goes by the balance date) already says.
+  // Days compare, not instants: an import at noon and a balance of that day are a tie.
   const stamp: AccountSub['stamp'] =
-    lastImport != null
+    lastImport != null &&
+    (account.balanceAsOf == null || daysBetween(account.balanceAsOf, lastImport) >= 0)
       ? { kind: 'statement', day: lastImport }
       : account.balanceAsOf != null
         ? { kind: 'balance', day: account.balanceAsOf }
         : null;
+  const institution = account.institution?.name || null;
   return {
-    institution: account.institution?.name || null,
+    institution,
     currency: recordCurrency(account.currency),
     stamp,
+    manual: institution === null && lastImport == null,
   };
 }
 

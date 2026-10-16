@@ -442,7 +442,7 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
           </>
         }
         sub={[
-          sub.institution ?? t('finance.manual'),
+          sub.institution ?? (sub.manual ? t('finance.manual') : null),
           sub.currency,
           sub.stamp &&
             t(sub.stamp.kind === 'statement' ? 'finance.statementOn' : 'finance.balanceOn', {

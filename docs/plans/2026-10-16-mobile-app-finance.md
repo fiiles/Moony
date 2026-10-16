@@ -642,3 +642,38 @@ Replace the two placeholders: `openTx` → `<TransactionSheet tx={openTx} open={
 - [ ] **Step 1:** `cd src-tauri && cargo check` (expected: unchanged, compiles). `git log --oneline 150765c2..HEAD` lists the three feature commits plus any review fixes.
 - [ ] **Step 2:** Whole-branch review by a fresh reviewer (opus) against this plan and spec §8.4; fix findings as `fix(mobile): …` commits.
 - [ ] **Step 3:** Report to the parent session: branch, commits, what the simulator shows (screenshot list), what is unverified (Android, dark mode, 360 dp only through `mobile.html`), the rulings: loan rows drop "banka" (no bank on a loan); the `+` items open the desktop dialogs or a placeholder per kind as verified; Smazat účet is a confirm sheet ending in a placeholder toast; balance and import history sheets are read-only; the uncategorized row leads to the single account prefiltered or to the queue placeholder; the account detail's hero change line is the 30-day flow net (prototype), not the record delta; chevron exception on picker-style key-value rows. Leave the note in `/Users/filipkral/Library/Application Support/Claude/side-session-notes/local_5f063dc4-d8a4-4b43-816b-1067b3357f71/mobile-finance-2a.md`.
+
+## As built / rulings (2026-10-17)
+
+Rulings the controller took while executing this plan (spec §8.4 is the authority; each line says what was decided and what it costs if wrong):
+
+1. The detail's "banka · měna · číslo" sub-line is the first body line under the nav bar — `Screen` has no subtitle slot for pushed screens; it scrolls away.
+2. The `+` menu opens the desktop dialogs (`BankAccountFormDialog`, `LoanFormDialog`, `InsuranceFormDialog`) as they are — verified to fit and scroll at 390 × 844; cramped until Phase 2b's phone forms.
+3. Loan rows drop the spec's "banka" — a loan has no bank in the data model.
+4. "Smazat účet" is a confirm sheet ending in the placeholder toast — deletion is not wired in 2a.
+5. The balance-history and import-history sheets are read-only — delete and undo stay on the desktop.
+6. The "Nezařazené platby" row opens the single account prefiltered (`?category=uncategorized`), or the queue placeholder when several accounts hold payments.
+7. The detail hero's change line is the 30-day flow net (prototype frame 04), not the balance-record delta.
+8. A picker-style key-value row (Kategorie in the transaction sheet) carries a chevron although it shows a value — the contract's settings-row exception, written into README §13.
+9. "Nová kategorie…" opens the desktop `CategoryFormDialog` as it is — verified to fit over the two stacked sheets.
+10. The shared `useSheetHistory` became a stack so Android back closes the topmost sheet only — every `Sheet` uses it; traced in review without defect.
+11. The detail's `···` keeps the four items the parent task listed (Upravit, Historie zůstatku, Historie importů, Smazat); the spec's Přidat transakci, Úročení and Automatická kategorizace arrive with their features (add forms and the categorize queue in Phase 2b, interest in Phase 4).
+12. The ledger search is an always-visible field, not the spec's pull-down reveal — Phase 1 has no pull-to-reveal gesture; it costs one 44 pt row.
+13. The button pair sits under the nav bar as prototype note 8 says, not under the hero as the spec sentence reads.
+14. The transaction sheet's "Podrobnosti" shows the import file and line; the file name stands for the spec's "batch".
+15. Finance's statement-staleness threshold is 30 days (`STALE_BALANCE_DAYS`) while Údržba's `statement_due` uses 35 — left as is; days 31–35 disagree.
+
+Deviations from the plan text, as built:
+
+- Task 3, `useCategorize().pick` resolves `Promise<boolean>`, not `Promise<void>`: `true` = saved (or already that category), `false` = the write failed (its toast has been shown). The sheet closes only on `true`; the learning branch runs detached after it resolves and never throws, it toasts.
+- Task 3, `TransactionSheet` has no `account` prop — nothing used it (the amount is in the row's own currency, the counterparty comes from the row).
+- Task 3, both sheets take an optional `onChange(patch)` (`{ categoryId }`, `{ suggestedCategoryId: null }`, `{ flowKind }`) and the page's `patchTx` applies it to its `openTx` and `pickFor` snapshots, since the ledger no longer lists a row that has a category under the uncategorized filter and cannot say what it became.
+- Task 2, the ledger's IntersectionObserver root is the sentinel's nearest scrolling ancestor (the screen's `main`), not `null` — with an implicit root `rootMargin` cannot reach past the `main` scroll box, so the 200 px look-ahead would not work.
+- Task 2, `useAccountDetail` also returns `historyLoaded`, to tell "no transaction" from "history not loaded yet" (the ledger shows its skeleton until then).
+- Task 2, `DayHead` is `z-[3]`, not `z-[2]`: the rows' hairline dividers (`li::before`, `z-[2]`) would paint over a `z-[2]` head.
+- Task 2, tapping the selected flows month again clears the period (back to "allTime", no range) instead of leaving the `custom` range of that month filtering the ledger while the strip moved its highlight.
+- Task 3, the shared `useSheetHistory` became a stack in `src/mobile/lib/sheet-history.ts` (`createSheetHistory(port)`, unit-tested with a fake history): the plan's one-entry-per-sheet hook closed every open sheet on any back press.
+- Task 2, `getNextPageParam` returns `undefined` after an empty page, so a backend that reports more rows than it returns cannot loop on one offset while the sentinel is in view.
+- Final review, `useLedger.loadMore` does nothing while any fetch runs (`isFetching`, exposed by the hook and a dependency of the page's observer effect) and fetches with `cancelRefetch: false`: the default would cancel the refresh a write triggered, keep the old pages and append the next one to them, leaving stale rows until the next write (`staleTime` is `Infinity`).
+- Final review, the picker's "Naposledy použité" is `recentCategoryIds(detail.history, 5)`, the account's whole history, not the plan's filtered ledger rows — under `?category=uncategorized` every loaded row is uncategorized and the list was always empty.
+- Final review, `accountSub`'s stamp is the newer of the newest import and `balanceAsOf` (a tie is the statement) and carries `manual`, true only without an institution and without an import; the Finance row says "ručně" only then.

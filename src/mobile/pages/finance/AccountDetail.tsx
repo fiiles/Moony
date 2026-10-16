@@ -144,7 +144,9 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
     setOpenTx(apply);
     setPickFor(apply);
   };
-  const recentIds = useMemo(() => recentCategoryIds(ledger.rows, 5), [ledger.rows]);
+  // "Naposledy použité" follows the account's whole history, not the filtered ledger: under
+  // "Nezařazené platby" every loaded row is uncategorized and a search or segment narrows the rows
+  const recentIds = useMemo(() => recentCategoryIds(history, 5), [history]);
   // The row to delete stays while its sheet slides away, so the sentence does not blank out
   const [pendingDelete, setPendingDelete] = useState<BankTransaction | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -637,11 +639,12 @@ function LedgerSection({
   const groups = useMemo(() => groupByDay(ledger.rows), [ledger.rows]);
 
   // The next page loads when the end of the list comes within 200 px of the screen's bottom.
-  // A new observer after every page reports at once if the end is still in view.
+  // A new observer after every fetch (a page, or the refresh after a write) reports at once if the
+  // end is still in view; `loadMore` itself waits out any fetch in flight.
   const [sentinel, setSentinel] = useState<HTMLDivElement | null>(null);
-  const { hasMore, isFetchingMore, loadMore } = ledger;
+  const { hasMore, isFetching, isFetchingMore, loadMore } = ledger;
   useEffect(() => {
-    if (!sentinel || !hasMore || isFetchingMore) return;
+    if (!sentinel || !hasMore || isFetching) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) loadMore();
@@ -650,7 +653,7 @@ function LedgerSection({
     );
     observer.observe(sentinel);
     return () => observer.disconnect();
-  }, [sentinel, hasMore, isFetchingMore, loadMore]);
+  }, [sentinel, hasMore, isFetching, loadMore]);
 
   const dayText = (day: number) => {
     const label = dayLabel(day, today);

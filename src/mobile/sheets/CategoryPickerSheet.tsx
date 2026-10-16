@@ -24,7 +24,7 @@ interface CategoryPickerSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   categories: readonly TransactionCategory[];
-  /** The categories of the newest rows, newest first (`recentCategoryIds`). */
+  /** The categories of the account's newest categorized rows, newest first (`recentCategoryIds` of its whole history). */
   recentIds: readonly string[];
   /** Says what the sheet has changed on the row, so that the copy the caller holds follows. */
   onChange?: (patch: Partial<BankTransaction>) => void;

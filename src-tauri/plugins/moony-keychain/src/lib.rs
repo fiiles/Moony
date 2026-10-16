@@ -6,6 +6,13 @@
 //! [`Keychain::remove`]: the default permission set grants the webview `status` and
 //! `set_privacy_screen` only, so a stored secret never crosses into JavaScript.
 //!
+//! Accepted residual: on its way to and from the native side the secret (the app's master key as
+//! hex) is plain text that `zeroize::Zeroizing` cannot reach: the JSON the plugin bridge carries
+//! (the serialized `StorePayload`, the reply `RetrieveResponse` is parsed from) and the Swift
+//! `String` (Kotlin `String` on Android) on the native side. The app wipes its own copies (the
+//! parsed value moves into a `Zeroizing` in `services/biometric_unlock.rs`); the bridge buffers
+//! live only for the call and are freed, not wiped.
+//!
 //! On the desktop the crate compiles and every call returns [`KeychainError::Unsupported`]; the
 //! app registers the plugin under `#[cfg(mobile)]` only.
 

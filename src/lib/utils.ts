@@ -25,6 +25,16 @@ const twMerge = extendTailwindMerge({
         'micro',
         'eyebrow',
         'thead',
+        // Phone type roles (mobile shell).
+        'm-display',
+        'm-title-lg',
+        'm-title',
+        'm-section',
+        'm-stat',
+        'm-row',
+        'm-body',
+        'm-sub',
+        'm-caption',
       ],
       'font-weight': ['450', '480', '500', '550', '570', '580', '600', '620', '650', '700', '750'],
       shadow: [

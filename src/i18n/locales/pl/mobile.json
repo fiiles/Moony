@@ -1,0 +1,11 @@
+{
+  "tabs": {
+    "overview": "Przegląd",
+    "finance": "Finanse",
+    "cashflow": "Przepływy",
+    "wealth": "Majątek"
+  },
+  "shell": {
+    "placeholder": "Ten ekran jest jeszcze w przygotowaniu."
+  }
+}

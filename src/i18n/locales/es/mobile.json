@@ -1,0 +1,11 @@
+{
+  "tabs": {
+    "overview": "Resumen",
+    "finance": "Finanzas",
+    "cashflow": "Flujo de caja",
+    "wealth": "Patrimonio"
+  },
+  "shell": {
+    "placeholder": "Esta pantalla todavía está en preparación."
+  }
+}

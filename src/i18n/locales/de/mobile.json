@@ -1,0 +1,11 @@
+{
+  "tabs": {
+    "overview": "Übersicht",
+    "finance": "Finanzen",
+    "cashflow": "Cashflow",
+    "wealth": "Vermögen"
+  },
+  "shell": {
+    "placeholder": "Dieser Bildschirm ist noch in Arbeit."
+  }
+}

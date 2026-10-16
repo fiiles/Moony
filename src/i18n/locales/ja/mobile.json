@@ -1,0 +1,11 @@
+{
+  "tabs": {
+    "overview": "概要",
+    "finance": "財務",
+    "cashflow": "キャッシュフロー",
+    "wealth": "資産"
+  },
+  "shell": {
+    "placeholder": "この画面は準備中です。"
+  }
+}

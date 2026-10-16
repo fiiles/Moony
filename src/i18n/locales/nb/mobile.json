@@ -1,0 +1,11 @@
+{
+  "tabs": {
+    "overview": "Oversikt",
+    "finance": "Økonomi",
+    "cashflow": "Kontantstrøm",
+    "wealth": "Formue"
+  },
+  "shell": {
+    "placeholder": "Denne skjermen er fortsatt under arbeid."
+  }
+}

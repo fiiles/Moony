@@ -1,0 +1,11 @@
+{
+  "tabs": {
+    "overview": "Přehled",
+    "finance": "Finance",
+    "cashflow": "Cashflow",
+    "wealth": "Majetek"
+  },
+  "shell": {
+    "placeholder": "Tato obrazovka se ještě připravuje."
+  }
+}

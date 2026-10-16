@@ -1,0 +1,11 @@
+{
+  "tabs": {
+    "overview": "概览",
+    "finance": "财务",
+    "cashflow": "现金流",
+    "wealth": "资产"
+  },
+  "shell": {
+    "placeholder": "此页面仍在建设中。"
+  }
+}

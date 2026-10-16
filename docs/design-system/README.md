@@ -7,7 +7,9 @@ the page archetypes the React frontend is built from.
 |---|---|
 | `tokens.css` | All design tokens as CSS custom properties. The only place with raw color values. |
 | `moony.css` | Component contract in plain CSS (class per component, states included). The React implementation matches it visually, it does not reuse it. |
+| `mobile.css` | The phone layer of the same contract (§13): phone type scale, screen, nav bar, tab bar, hero, stat row, entity row, segment, buttons, sheet. Matched by `src/mobile/`, never reused. |
 | `styleguide.html` | Visual reference: every token, type step, elevation, component and state on one page. Open it in a browser. |
+| `mobile.html` | The phone components at 360, 390 and 430 pt with German copy, each frame with a horizontal-overflow check (§13). |
 | `shell.js`, `charts.js`, `icons.js` | Style-guide helpers (sidebar from the real IA, SVG charts, Lucide icons). Not production code. |
 
 Open `styleguide.html` directly from the file system; no build step is needed.
@@ -281,3 +283,77 @@ than ~24 events fall in view, cluster neighbors into one mark with a count ("3 n
 - **Font.** `@fontsource-variable/inter`, imported once in `src/main.tsx`.
 - **Two-column pages.** The shorter column receives the content that would otherwise sit below both
   columns (see the two calculators), never an empty stretch.
+
+## 13. Mobile
+
+The phone app (spec `docs/specs/2026-10-16-mobile-app-design.md` §5, §6 and §10, approved prototype
+`docs/specs/2026-10-16-mobile-app-prototype.html`) is this design system with a second component layer:
+the same tokens, no platform-specific token name, and the same look on iOS and Android (Moony's own tab
+bar, sheets and segment, Inter bundled). The reference width is 390 pt; every layout is checked at 360
+(the narrowest common Android) and 430.
+
+- **`mobile.css`** is the phone component contract, as `moony.css` is the desktop's: plain CSS on the
+  tokens, every class prefixed `m-` so the two layers never collide. Its own `:root` defines the phone
+  tokens (safe areas, bar heights, type scale); `src/index.css` carries the same block (keep the two
+  identical). It names three tokens that `src/index.css` already has and `tokens.css` does not carry
+  yet (`hero-orb`, `sh-seg`, `sh-destructive`); `mobile.html` defines them until `tokens.css` does.
+  `src/mobile/` matches it visually and never imports it.
+- **`mobile.html`** shows the components at 360, 390 and 430 with German copy (German runs longest).
+  Under each frame a check reports anything that extends past the screen or scrolls it sideways, and
+  lists the texts that end with an ellipsis. Open it after changing a phone component: nothing may
+  overflow at 360.
+
+Phone type scale (Inter Variable, tabular numerals on every number; Tailwind `text-m-*`, which `cn()`
+knows as type roles):
+
+| Role | Size / weight / tracking | Token | Tailwind |
+|---|---|---|---|
+| Display (hero number) | 36 / 580 / −0.06em | `m-fs-display` | `text-m-display` |
+| Large title | 30 / 600 / −0.05em | `m-fs-title-lg` | `text-m-title-lg` |
+| Title (collapsed nav bar, sheet) | 20 / 650 / −0.04em | `m-fs-title` | `text-m-title` |
+| Section | 16 / 620 / −0.03em | `m-fs-section` | `text-m-section` |
+| Stat value | 17 / 600 / −0.03em | `m-fs-stat` | `text-m-stat` |
+| Row title and value | 15 / 600 / −0.01em | `m-fs-row` | `text-m-row` |
+| Body | 15 / 450, line 1.45 | `m-fs-body` | `text-m-body` |
+| Row sub, badge | 12 / 500 | `m-fs-sub` | `text-m-sub` |
+| Caption | 11 / 500, ink-3 | `m-fs-caption` | `text-m-caption` |
+| Eyebrow | 10 / 700 / +0.12em, uppercase | `fs-eyebrow` | `text-eyebrow` |
+
+The sentence under a large title or a sheet title is 13 / 450 `ink-3` (prototype). With the system text
+size the text roles will scale up to 130 % and display and stat values up to 110 % (spec §10.2).
+
+**Screen.** A screen is the nav bar (44 pt under the top safe area) over one scroll area with a 16 pt
+gutter and room at the bottom for the tab bar (56 pt above the bottom safe area), which is fixed over it.
+Safe areas come from `env(safe-area-inset-*)` as `--safe-top` / `--safe-bottom` (`index.html` asks for
+`viewport-fit=cover`). The phone shell sets `data-shell="mobile"` on `<html>`; under it `src/index.css`
+drops the desktop's 1080 px minimum body width and the tap highlight. Touch targets are at least 44 pt.
+
+| Component | Class | React | Rules |
+|---|---|---|---|
+| Screen | `.m-screen`, `__body` | `mobile/shell/Screen.tsx` | Fills the viewport (`100dvh`). A tab root is `large`: its 30 pt title sits in the content, wraps and hyphenates. |
+| Nav bar | `.m-nav`, `--large`, `.is-collapsed`, `__side`, `__title`, `__btn`, `__back`; `.m-avatar` | `mobile/shell/NavBar.tsx` | At most one leading and two trailing 44 pt buttons (24 pt icons); the 20 pt title is centred between them and ends with an ellipsis. On a tab root the bar title and a hairline `line` appear once the large title has scrolled away; elsewhere the title always shows and the hairline appears on scroll. A back label ends with an ellipsis at 120 px. No blur. |
+| Tab bar | `.m-tabbar`, `.m-tab`, `.is-active`, `__label` | `mobile/shell/TabBar.tsx` | Paper, hairline `line` on top, four equal tabs, Lucide 24 (stroke 1.75, active 2.1), label 10 / 600; active `ink`, the rest `ink-4`; no dark material (D5). Stays on tab roots and details, hides on the lock screen and under sheets. A tab switch is a history entry (Android back walks back); tapping the tab you are on at its root adds none. |
+| Card | `.m-card`, `--well`, `--hero` | — | Paper, radius 15, `sh-1`; fewer cards than the desktop, a section is often a head and rows on the canvas. |
+| Section head | `.m-sec`, `__t`, `__a` | — | 16 / 620 title, 12 / 600 `ink-3` action or the section's one number. |
+| Hero | `.m-card--hero`, `.m-hero__label`, `__value`, `__delta`, `__seg`, `__chart` | Task 1.5 | Label, display number, change line (badge + context), period segment, chart 160 pt; the desktop circle at 60 %. |
+| Stat row | `.m-stats`, `--2`, `.m-stat`, `--flat`, `__l`, `__v`, `__n` | Task 1.5 | Three (or two) stats: label 11 (may wrap, hyphenated), value 17, note 10; values sit on one line across the row. The value keeps 17 px down to the 86 px box of a third at 390 pt, then shrinks with the card (19.7 cqi); a third holds about nine characters ("6,78 mil.", "214 380"), a longer amount goes in a row of two. |
+| Entity row | `.m-rows`, `.m-row`, `--single`, `--noicon`, `--chev`, `__chip` (`--sq`, `--dark`, `--gain`), `__main`, `__line`, `__t`, `__s`, `__v`, `__vs`, `__chev` | Task 1.5 | See the row rule below. |
+| Badge | `.m-badge`, `--gain`, `--loss` | — | 20 px, 12 / 500; the desktop meaning (green and red only for a signed change, always with ▲ / ▼). |
+| Segment | `.m-seg`, `__btn.is-active` | — | 36 pt as on the desktop; scrolls sideways when it does not fit. |
+| Buttons | `.m-btn`, `--primary`, `--secondary`, `--ghost`, `--danger`, `--destructive`, `--block`, `--sm`; `.m-btn-pair` | — | 48 pt, radius 10, label 15 / 600. One primary (dark material) per screen; secondary paper with `line-strong`; danger text-only; destructive solid only in confirm sheets. Full width in sheets and under heroes; a pair shares the row and its labels wrap to a second line (13 px) instead of overflowing. Small (34 pt, inline in a card row) keeps a 44 pt hit area. |
+| Sheet | `.m-scrim`, `.m-sheet`, `--full`, `__handle`, `__head`, `__t`, `__s`, `__body`, `__foot` | Task 1.6 | Paper, top radius 17, drag handle, title 20, one sentence, body, footer on `well` with the ghost Zrušit left and the primary right; covers the tab bar; Android back closes it. |
+
+**The row rule.** One row pattern replaces tables on the phone: accounts, positions, bonds, properties,
+loans, policies, transactions, categories, watchlist and agenda rows. A 36 pt chip (logo, initials or an
+icon in a tinted circle), then two lines: the title 15 with the trailing value, the sub 12 with the
+trailing sub 11 (a change badge or a caption). 60 pt high, 52 single-line; dividers `line-soft`, inset to
+the title's left edge; the whole row is the tap target. Each line shares out its own width: the value and
+the trailing sub keep theirs, the title and the sub take the rest and end with an ellipsis, so a long
+trailing sub never cuts the name (the prototype's two columns did, in German at 360). **A chevron appears
+only on rows without a trailing value** (settings, documents); a value row is tappable as a whole and
+keeps that room for its name (`.m-row--chev` with a value drops the chevron).
+
+Where the contract differs from the prototype it follows the spec: badges 12 / 500 (§10.2; the prototype
+drew 9–10 px), the hero chart 160 pt (§10.4; 150), the collapsed nav title 20 pt (§10.3; the prototype's
+detail title was 17 with a sub-line), and the entity row's two lines above. Components use tokens only and
+no `.dark` classes, so the dark token block switches them for free (§10.6).

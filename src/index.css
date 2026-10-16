@@ -151,6 +151,42 @@
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
+/*
+ * Phone layer (docs/design-system/mobile.css is the source of truth; keep the two identical):
+ * safe areas, bar heights and the phone type scale, used by the mobile shell (src/mobile/) through
+ * the Tailwind names in tailwind.config.ts (`text-m-*`). README §13.
+ */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --m-nav-h: 44px;
+  --m-tabbar-h: 56px;
+  --m-fs-display: 36px;
+  --m-fw-display: 580;
+  --m-ls-display: -0.06em;
+  --m-fs-title-lg: 30px;
+  --m-fw-title-lg: 600;
+  --m-ls-title-lg: -0.05em;
+  --m-fs-title: 20px;
+  --m-fw-title: 650;
+  --m-ls-title: -0.04em;
+  --m-fs-section: 16px;
+  --m-fw-section: 620;
+  --m-ls-section: -0.03em;
+  --m-fs-stat: 17px;
+  --m-fw-stat: 600;
+  --m-ls-stat: -0.03em;
+  --m-fs-row: 15px;
+  --m-fw-row: 600;
+  --m-ls-row: -0.01em;
+  --m-fs-body: 15px;
+  --m-fw-body: 450;
+  --m-fs-sub: 12px;
+  --m-fw-sub: 500;
+  --m-fs-caption: 11px;
+  --m-fw-caption: 500;
+}
+
 @layer base {
   * {
     @apply border-line;
@@ -172,6 +208,17 @@
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
     font-feature-settings: 'cv11', 'ss01';
+  }
+
+  /* The phone shell (src/mobile/MobileApp.tsx sets data-shell="mobile" on <html>) fills the
+     device width; the desktop minimum above would make a phone page 1080 px wide. */
+  html[data-shell='mobile'] body {
+    min-width: 0;
+  }
+
+  /* Touch: no grey flash over a tapped link or button; the components draw their own pressed state. */
+  html[data-shell='mobile'] {
+    -webkit-tap-highlight-color: transparent;
   }
 
   /* Japanese and Chinese: Inter has no CJK glyphs, so name the system faces for them

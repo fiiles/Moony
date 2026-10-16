@@ -1,0 +1,11 @@
+{
+  "tabs": {
+    "overview": "Overview",
+    "finance": "Finance",
+    "cashflow": "Cashflow",
+    "wealth": "Wealth"
+  },
+  "shell": {
+    "placeholder": "This screen is still being built."
+  }
+}

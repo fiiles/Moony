@@ -1,0 +1,11 @@
+{
+  "tabs": {
+    "overview": "Panoramica",
+    "finance": "Finanze",
+    "cashflow": "Flusso di cassa",
+    "wealth": "Patrimonio"
+  },
+  "shell": {
+    "placeholder": "Questa schermata è ancora in preparazione."
+  }
+}

@@ -37,7 +37,9 @@ export function AgendaRow({ m }: { m: Milestone }) {
   const { t } = useTranslation('milestones');
   const fmt = useFormat();
   const subLine = useMilestoneSubLine();
-  const { hide, remindLater } = useMilestoneActions();
+  // One instance for the swipes and the menu items (it keeps the muted kinds observed).
+  const actions = useMilestoneActions();
+  const { hide, remindLater } = actions;
   const [menuOpen, setMenuOpen] = useState(false);
 
   const today = utcDayFloor(Date.now() / 1000);
@@ -47,9 +49,9 @@ export function AgendaRow({ m }: { m: Milestone }) {
   const target = m.kind === 'watch_target';
   const remindKey = isUpkeep(m) ? 'actions.remindMonth' : 'actions.remindWeek';
 
+  // Not hidden from screen readers: the sub-line leaves the date out, the chip is where it is said.
   const chip = (
     <span
-      aria-hidden
       className={cn(
         'flex h-[42px] flex-none flex-col items-center justify-center rounded-[9px] leading-tight',
         urgent ? 'bg-dark-grad shadow-dark' : 'bg-well'
@@ -101,7 +103,11 @@ export function AgendaRow({ m }: { m: Milestone }) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-[220px]">
-            <MilestoneMenuItems m={m} itemClassName="min-h-11 text-m-body [&_svg]:size-[18px]" />
+            <MilestoneMenuItems
+              m={m}
+              actions={actions}
+              itemClassName="min-h-11 text-m-body [&_svg]:size-[18px]"
+            />
           </DropdownMenuContent>
         </DropdownMenu>
       }

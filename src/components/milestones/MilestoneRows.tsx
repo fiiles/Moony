@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { useMilestoneActions } from '@/hooks/use-milestone-mutations';
+import { useMilestoneActions, type MilestoneActions } from '@/hooks/use-milestone-mutations';
 import { useMilestoneSubLine } from '@/hooks/use-milestone-sub-line';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
@@ -49,10 +49,22 @@ const UPKEEP_ICONS: Partial<Record<MilestoneKind, LucideIcon>> = {
  * The items of a milestone's menu: hide, remind later (a week, a month for upkeep; only when
  * the snooze ends before the date), mute the group. Shared by the desktop "···" and the phone's
  * long press; `itemClassName` lets the phone raise the items to its touch size.
+ *
+ * The actions come from the row, never from a hook in here: the items mount only while the menu
+ * is open, and the row's `useMilestoneActions()` is what keeps `['milestone-muted-kinds']`
+ * observed — without it the cached list is collected after the menu closes, and the next
+ * "Nepřipomínat …" would build on an empty list and unmute every other group.
  */
-export function MilestoneMenuItems({ m, itemClassName }: { m: Milestone; itemClassName?: string }) {
+export function MilestoneMenuItems({
+  m,
+  actions: { hide, remindLater, muteGroup },
+  itemClassName,
+}: {
+  m: Milestone;
+  actions: Pick<MilestoneActions, 'hide' | 'remindLater' | 'muteGroup'>;
+  itemClassName?: string;
+}) {
   const { t } = useTranslation('milestones');
-  const { hide, remindLater, muteGroup } = useMilestoneActions();
   const group = groupOf(m.kind);
   const today = utcDayFloor(Date.now() / 1000);
   return (
@@ -79,6 +91,7 @@ export function MilestoneMenuItems({ m, itemClassName }: { m: Milestone; itemCla
 /** "···": hide, remind later, mute the group. */
 export function MilestoneMenu({ m, title }: { m: Milestone; title: string }) {
   const { t } = useTranslation('milestones');
+  const actions = useMilestoneActions();
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -92,7 +105,7 @@ export function MilestoneMenu({ m, title }: { m: Milestone; title: string }) {
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <MilestoneMenuItems m={m} />
+        <MilestoneMenuItems m={m} actions={actions} />
       </DropdownMenuContent>
     </DropdownMenu>
   );

@@ -284,8 +284,10 @@ export function ScrubChart<E extends ChartEvent>({
         onPointerUp={onPointerUp}
         onPointerCancel={endScrub}
         onLostPointerCapture={(event) => {
-          // Only the chart's own capture: a drag that starts on a mark takes the capture over from
-          // the mark mid-gesture, and the mark's `lostpointercapture` bubbles up to here.
+          // Only the chart's own capture. A touch is captured implicitly by the element under the
+          // finger (the line, the area, a mark); every touch scrub hands that capture over to this
+          // wrapper, wherever it starts, and the inner element's `lostpointercapture` bubbles up to
+          // here. Without this guard every touch scrub would end the moment it begins.
           if (event.target !== event.currentTarget) return;
           if (gesture.current?.id === event.pointerId && gesture.current.scrubbing) endScrub();
         }}

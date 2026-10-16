@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import * as ToggleGroupPrimitive from '@radix-ui/react-toggle-group';
 import type { LinePoint, LineTip } from '@/components/charts/MoonyLineChart';
@@ -6,6 +6,7 @@ import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
 import type { ChartPeriod } from '@/utils/period';
+import { useFitText } from '@/mobile/hooks/use-fit-text';
 import { ScrubChart } from './ScrubChart';
 
 interface HeroChange {
@@ -61,14 +62,28 @@ export function Hero<E extends ChartEvent>({
   const shownValue = scrub ? formatValue(scrub.value) : value === null ? '—' : formatValue(value);
   const up = change !== undefined && change.ratio > 0;
   const down = change !== undefined && change.ratio < 0;
+  // A long net worth shrinks to fit (floor `m-fs-title`) instead of ending in an ellipsis.
+  const heroRef = useRef<HTMLElement>(null);
+  const fit = useFitText(heroRef, scrub ? scrub.value : value);
 
   return (
     <section
+      ref={heroRef}
       aria-label={label}
       className="relative mb-3.5 overflow-hidden rounded-r4 border border-line bg-[linear-gradient(180deg,var(--paper),var(--paper-2))] px-4 pb-3 pt-4 shadow-e1 after:pointer-events-none after:absolute after:-right-[76px] after:-top-[92px] after:size-[220px] after:rounded-full after:bg-hero-orb after:content-[''] [&>*]:relative [&>*]:z-[1]"
     >
       <div className="text-m-sub text-ink-3">{label}</div>
-      <div className="mb-1.5 mt-[3px] truncate text-m-display text-ink num">{shownValue}</div>
+      <div
+        data-fit-text
+        className="mb-1.5 mt-[3px] overflow-hidden text-ellipsis whitespace-nowrap text-m-display text-ink num"
+        style={
+          fit === null
+            ? undefined
+            : { fontSize: `clamp(var(--m-fs-title), ${fit}px, var(--m-fs-display))` }
+        }
+      >
+        <span>{shownValue}</span>
+      </div>
       <div className="flex h-5 min-w-0 items-center gap-1.5 whitespace-nowrap text-m-sub text-ink-3">
         {scrub ? (
           <span className="min-w-0 truncate num">

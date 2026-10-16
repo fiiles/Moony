@@ -87,3 +87,5 @@ export function useMilestoneActions() {
     setGroupMuted,
   };
 }
+
+export type MilestoneActions = ReturnType<typeof useMilestoneActions>;

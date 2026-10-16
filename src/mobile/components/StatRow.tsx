@@ -1,5 +1,6 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
+import { useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
+import { useFitText } from '@/mobile/hooks/use-fit-text';
 
 export interface StatItem {
   label: string;
@@ -8,9 +9,6 @@ export interface StatItem {
   note?: ReactNode;
 }
 
-/** The value's size limits: `m-fs-stat` and `m-fs-sub` (README §13). */
-const MAX_PX = 17;
-const MIN_PX = 12;
 /** The contract's rule (`.m-stat__v`): 17 px down to the 86 px box of a third, then with the card. */
 const CONTAINER_SIZE = 'clamp(var(--m-fs-sub), 19.7cqi, var(--m-fs-stat))';
 
@@ -18,36 +16,11 @@ const CONTAINER_SIZE = 'clamp(var(--m-fs-sub), 19.7cqi, var(--m-fs-stat))';
  * Stat row (spec §10.3, README §13, `.m-stats`): three (or two) stats, label 11 (may wrap,
  * hyphenated), value 17, note 10; the values sit on one line across the row. A value never wraps:
  * the contract's container rule shrinks it with a narrow card, and a value longer than its card
- * shrinks the whole row to fit (every stat in a row shares one size, floor 12 px).
+ * shrinks the whole row to fit (every stat in a row shares one size, floor `m-fs-sub`).
  */
 export function StatRow({ stats }: { stats: StatItem[] }) {
   const rowRef = useRef<HTMLDivElement>(null);
-  const [fit, setFit] = useState<number | null>(null);
-
-  useLayoutEffect(() => {
-    const row = rowRef.current;
-    if (!row) return;
-    const measure = () => {
-      let size = MAX_PX;
-      for (const box of row.querySelectorAll<HTMLElement>('[data-stat-value]')) {
-        const text = box.firstElementChild;
-        if (!(text instanceof HTMLElement)) continue;
-        const current = parseFloat(getComputedStyle(box).fontSize) || MAX_PX;
-        const natural = text.getBoundingClientRect().width;
-        // Text width scales with the font size: the size at which this value just fits.
-        if (natural > 0 && box.clientWidth > 0) {
-          size = Math.min(size, (box.clientWidth * current) / natural);
-        }
-      }
-      // Half-pixel steps, so a sub-pixel resize does not re-render the row.
-      setFit(Math.max(MIN_PX, Math.min(MAX_PX, Math.floor(size * 2) / 2)));
-    };
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(row);
-    void document.fonts?.ready.then(measure);
-    return () => observer.disconnect();
-  }, [stats]);
+  const fit = useFitText(rowRef, stats);
 
   return (
     <div
@@ -63,9 +36,14 @@ export function StatRow({ stats }: { stats: StatItem[] }) {
             {stat.label}
           </span>
           <span
-            data-stat-value
+            data-fit-text
             className="mt-auto block overflow-hidden text-ellipsis whitespace-nowrap text-m-stat text-ink num"
-            style={{ fontSize: fit === null ? CONTAINER_SIZE : `min(${fit}px, ${CONTAINER_SIZE})` }}
+            style={{
+              fontSize:
+                fit === null
+                  ? CONTAINER_SIZE
+                  : `clamp(var(--m-fs-sub), min(${fit}px, 19.7cqi), var(--m-fs-stat))`,
+            }}
           >
             <span>{stat.value}</span>
           </span>

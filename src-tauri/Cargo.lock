@@ -3001,6 +3001,7 @@ dependencies = [
  "image",
  "lazy_static",
  "log",
+ "moony-keychain",
  "quick-xml",
  "rand 0.10.3",
  "regex",
@@ -3035,6 +3036,17 @@ dependencies = [
  "uuid",
  "yahoo_finance_api",
  "zip 9.0.3",
+]
+
+[[package]]
+name = "moony-keychain"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "tauri",
+ "tauri-plugin",
+ "thiserror 2.0.21",
 ]
 
 [[package]]

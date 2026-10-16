@@ -1,0 +1,3 @@
+// Standalone builds of this library (the app's Gradle project includes it on its own).
+include ':tauri-android'
+project(':tauri-android').projectDir = new File('./.tauri/tauri-api')

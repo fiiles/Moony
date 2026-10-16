@@ -7,6 +7,12 @@ license = "AGPL-3.0-only"
 edition = "2021"
 default-run = "moony"
 
+# The in-repo mobile plugins build, lint and test with the app: `cargo test`, `cargo clippy` and
+# `cargo check` in this directory cover them too (default-members), on the desktop as well.
+[workspace]
+members = [".", "plugins/moony-keychain"]
+default-members = [".", "plugins/moony-keychain"]
+
 [lib]
 name = "moony_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
@@ -106,11 +112,13 @@ rmcp = { version = "3.5.0", features = ["server", "macros", "transport-streamabl
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
 
-# Mobile only: biometric unlock, haptic feedback, local notifications
+# Mobile only: biometric unlock, haptic feedback, local notifications, and the in-repo keychain
+# (DB key behind biometry, privacy screen)
 [target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
 tauri-plugin-biometric = "2"
 tauri-plugin-haptics = "2"
 tauri-plugin-notification = "2"
+moony-keychain = { path = "plugins/moony-keychain" }
 
 [dev-dependencies]
 tempfile = "3"

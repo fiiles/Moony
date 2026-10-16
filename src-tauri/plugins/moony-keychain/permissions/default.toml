@@ -1,0 +1,12 @@
+"$schema" = "schemas/schema.json"
+
+[default]
+description = """
+What the webview may call by default: `status` and `set_privacy_screen`.
+
+`store`, `retrieve` and `remove` are left out on purpose. They carry the database key, which
+only the Rust side handles (through `KeychainExt`, which needs no permission), so the secret
+never reaches JavaScript. Grant `moony-keychain:allow-store`, `allow-retrieve` or
+`allow-remove` explicitly only for a value the webview is meant to see.
+"""
+permissions = ["allow-status", "allow-set-privacy-screen"]

@@ -1,0 +1,7 @@
+# Copied in by tauri-plugin's build script (the Tauri iOS / Android API the native code links)
+/.tauri
+/android/.tauri
+# Swift Package Manager and Gradle outputs
+/ios/.build
+/ios/Package.resolved
+/android/build

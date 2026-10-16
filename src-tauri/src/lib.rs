@@ -41,9 +41,17 @@ fn spawn_legacy_temp_cleanup(app: tauri::AppHandle) {
     });
 }
 
+/// Desktop `main` and the generated iOS / Android entry points all start here. The body runs
+/// inside Tauri's own tokio runtime (`async_runtime::block_on`), the same multi-thread runtime
+/// the commands and `tokio::spawn` calls use, so nothing changes for the desktop; a
+/// `#[tokio::main]` wrapper would hide the future from `mobile_entry_point`, which expects
+/// either a plain or an `async` function.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-#[tokio::main]
-pub async fn run() {
+pub fn run() {
+    tauri::async_runtime::block_on(run_app());
+}
+
+async fn run_app() {
     // Panics go to the log file too (there is no console in a release build)
     logging::install_panic_hook();
 

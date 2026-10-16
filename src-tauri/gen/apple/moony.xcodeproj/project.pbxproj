@@ -1,0 +1,992 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		0847E64C3D44333E163113B8 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CE760182E453C0899FD877DF /* Metal.framework */; };
+		0D841B775FAAF9BFEBD9EA19 /* libapp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 975538CAC9DCE6321E12D8B5 /* libapp.a */; };
+		15B85D4D5659EF95BEDFD9E7 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 619A7D4796499AB41E1DF62C /* Security.framework */; };
+		20C7662002C557BB567CDBFF /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 7DFD70C164F44E72436CD7DB /* CoreGraphics.framework */; };
+		265A91081F9B7FC22753A513 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 81F3F7568570A3D16EA3F657 /* QuartzCore.framework */; };
+		6B4ACFDD04B87CE2EE60FCD0 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0EA130A3EA907B37E33C8D81 /* main.mm */; };
+		84F3A15CCC582A1F454CFD71 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 62A772E1C312416B18E258CB /* Assets.xcassets */; };
+		9E9C9E0C9BE67B975363945B /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 448C68AF2B372974484BF1EB /* UIKit.framework */; };
+		B8A1863422E8A5935ECB993E /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = B50D1909F5893A0373FD9EDA /* MetalKit.framework */; };
+		BC8513C11A212BEA3DC78237 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D03518D6A52A96BD3661C639 /* WebKit.framework */; };
+		EC2928B35877F0319CD233BF /* assets in Resources */ = {isa = PBXBuildFile; fileRef = C17B3A54BE288ACF8BE5B9D2 /* assets */; };
+		FC2F33081B9EA761D3573B7D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 2397AC30BD18F6F642CB0086 /* LaunchScreen.storyboard */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		001750ACF963B5509CBCD4EF /* stock_tags.rs */ = {isa = PBXFileReference; path = stock_tags.rs; sourceTree = "<group>"; };
+		021E835E1CB48AF790849E70 /* apply.rs */ = {isa = PBXFileReference; path = apply.rs; sourceTree = "<group>"; };
+		022C7EC22D04B685BA229E03 /* parse.rs */ = {isa = PBXFileReference; path = parse.rs; sourceTree = "<group>"; };
+		029C6E0A28AFCE0D43668359 /* fx.rs */ = {isa = PBXFileReference; path = fx.rs; sourceTree = "<group>"; };
+		038E8D8930AC2FA91DC953F0 /* preview.rs */ = {isa = PBXFileReference; path = preview.rs; sourceTree = "<group>"; };
+		0858334D726502B755D09ED1 /* bank_accounts.rs */ = {isa = PBXFileReference; path = bank_accounts.rs; sourceTree = "<group>"; };
+		09372C3E9D223439990BFE07 /* export.rs */ = {isa = PBXFileReference; path = export.rs; sourceTree = "<group>"; };
+		095B5492D8A494AE4B3593F0 /* moony.rs */ = {isa = PBXFileReference; path = moony.rs; sourceTree = "<group>"; };
+		0A987CEF989CDC9B649B76CC /* real_estate.rs */ = {isa = PBXFileReference; path = real_estate.rs; sourceTree = "<group>"; };
+		0C5ACE1B93FACC6DC7C2C166 /* attachments.rs */ = {isa = PBXFileReference; path = attachments.rs; sourceTree = "<group>"; };
+		0EA130A3EA907B37E33C8D81 /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
+		10FC59FBD0201A338FD54960 /* bonds.rs */ = {isa = PBXFileReference; path = bonds.rs; sourceTree = "<group>"; };
+		1317A37F3774688794A5733A /* categories.rs */ = {isa = PBXFileReference; path = categories.rs; sourceTree = "<group>"; };
+		16DE179177F769F4B39FC3E3 /* categories.rs */ = {isa = PBXFileReference; path = categories.rs; sourceTree = "<group>"; };
+		173B897423696AEFB9A49EBF /* document_files.rs */ = {isa = PBXFileReference; path = document_files.rs; sourceTree = "<group>"; };
+		17AA2AB6980B5D6DB4B89046 /* quote_unit.rs */ = {isa = PBXFileReference; path = quote_unit.rs; sourceTree = "<group>"; };
+		182D522F2E1DF71E8DC446F2 /* stock_monitor.rs */ = {isa = PBXFileReference; path = stock_monitor.rs; sourceTree = "<group>"; };
+		19BEEAB5E88E4A9C969BCFE3 /* decimal.rs */ = {isa = PBXFileReference; path = decimal.rs; sourceTree = "<group>"; };
+		1B39B0E599CFF11E728A8391 /* price_api.rs */ = {isa = PBXFileReference; path = price_api.rs; sourceTree = "<group>"; };
+		1B6860CC88525F6A0E4210EB /* company_info.rs */ = {isa = PBXFileReference; path = company_info.rs; sourceTree = "<group>"; };
+		1C5317DAF955BE470726607B /* logging.rs */ = {isa = PBXFileReference; path = logging.rs; sourceTree = "<group>"; };
+		1D37AD4001B0E263CF89DC95 /* real_estate_photos.rs */ = {isa = PBXFileReference; path = real_estate_photos.rs; sourceTree = "<group>"; };
+		20C39BB0E6B10FBE89337E38 /* test_support.rs */ = {isa = PBXFileReference; path = test_support.rs; sourceTree = "<group>"; };
+		20D4C777BB7A05FEBB0D1FA8 /* rows.rs */ = {isa = PBXFileReference; path = rows.rs; sourceTree = "<group>"; };
+		21A9059FAA06F9B46CEAC464 /* inspect.rs */ = {isa = PBXFileReference; path = inspect.rs; sourceTree = "<group>"; };
+		2397AC30BD18F6F642CB0086 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		23B628F65CB5DB530C2A29CB /* instruments.rs */ = {isa = PBXFileReference; path = instruments.rs; sourceTree = "<group>"; };
+		25A8D9FC01382746E81BF1C1 /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
+		2A797BC903549DB498CC0EFE /* interest_tiers.rs */ = {isa = PBXFileReference; path = interest_tiers.rs; sourceTree = "<group>"; };
+		2CC0BC09E55C2052EB81EB0B /* bonds.rs */ = {isa = PBXFileReference; path = bonds.rs; sourceTree = "<group>"; };
+		2D38385875EC7E6A315CEEE5 /* categorization.rs */ = {isa = PBXFileReference; path = categorization.rs; sourceTree = "<group>"; };
+		2D3ADD09244C6B6401DB41F1 /* learn.rs */ = {isa = PBXFileReference; path = learn.rs; sourceTree = "<group>"; };
+		2E0CBB9BABA82ED17902E885 /* positions.rs */ = {isa = PBXFileReference; path = positions.rs; sourceTree = "<group>"; };
+		2F2B43B8B752D934D2965F4A /* real_estate.rs */ = {isa = PBXFileReference; path = real_estate.rs; sourceTree = "<group>"; };
+		2F3A7ED7D7E70A28677081C8 /* fx_backfill.rs */ = {isa = PBXFileReference; path = fx_backfill.rs; sourceTree = "<group>"; };
+		2FFC1F856AA895756F222E14 /* valuations.rs */ = {isa = PBXFileReference; path = valuations.rs; sourceTree = "<group>"; };
+		31D86484853C33867B09B021 /* auth.rs */ = {isa = PBXFileReference; path = auth.rs; sourceTree = "<group>"; };
+		35DC786ABEB05F5AF7D55283 /* money.rs */ = {isa = PBXFileReference; path = money.rs; sourceTree = "<group>"; };
+		36C715770BC0B05EAF702CFE /* loans.rs */ = {isa = PBXFileReference; path = loans.rs; sourceTree = "<group>"; };
+		38244DBDB2C9B965F68A6046 /* bonds.rs */ = {isa = PBXFileReference; path = bonds.rs; sourceTree = "<group>"; };
+		382AC420FA934B0E4DEDE2C4 /* parsing.rs */ = {isa = PBXFileReference; path = parsing.rs; sourceTree = "<group>"; };
+		387E7BC4941C448FF09B3FCC /* types.rs */ = {isa = PBXFileReference; path = types.rs; sourceTree = "<group>"; };
+		3891DFDB2E0138CD9288A594 /* amounts.rs */ = {isa = PBXFileReference; path = amounts.rs; sourceTree = "<group>"; };
+		397D80DBD5B64EC45B1F08B8 /* formats.rs */ = {isa = PBXFileReference; path = formats.rs; sourceTree = "<group>"; };
+		39D4525E289CF0248D23A2BB /* budgeting.rs */ = {isa = PBXFileReference; path = budgeting.rs; sourceTree = "<group>"; };
+		39D76D56A32A4568973667C1 /* investments.rs */ = {isa = PBXFileReference; path = investments.rs; sourceTree = "<group>"; };
+		3B0D78DFEC5D4C7317953760 /* attachment_conversion.rs */ = {isa = PBXFileReference; path = attachment_conversion.rs; sourceTree = "<group>"; };
+		3B5244143F671514549A2B25 /* budgeting.rs */ = {isa = PBXFileReference; path = budgeting.rs; sourceTree = "<group>"; };
+		3D7441A32B2CE2371D1BFD0F /* other_assets.rs */ = {isa = PBXFileReference; path = other_assets.rs; sourceTree = "<group>"; };
+		3D7552CEBDCF3B09ECAD55E8 /* csv_presets.rs */ = {isa = PBXFileReference; path = csv_presets.rs; sourceTree = "<group>"; };
+		3EAC8DFC54D892CEE858A96F /* projection.rs */ = {isa = PBXFileReference; path = projection.rs; sourceTree = "<group>"; };
+		421643A13FA2B2EC3062C0B3 /* statement_import.rs */ = {isa = PBXFileReference; path = statement_import.rs; sourceTree = "<group>"; };
+		44098D7360E2CAD5E6A983B0 /* trading212.rs */ = {isa = PBXFileReference; path = trading212.rs; sourceTree = "<group>"; };
+		4489B12D4433D0C4BED01B23 /* core_tests.rs */ = {isa = PBXFileReference; path = core_tests.rs; sourceTree = "<group>"; };
+		448C68AF2B372974484BF1EB /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		46479E0F4CD944C36858D8F3 /* cashflow.rs */ = {isa = PBXFileReference; path = cashflow.rs; sourceTree = "<group>"; };
+		46CCE71715517DACE5F2B9EB /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		46FA8DF4B953CE51CA98610A /* degiro.rs */ = {isa = PBXFileReference; path = degiro.rs; sourceTree = "<group>"; };
+		472D4B9557D131EF5189B25A /* xtb.rs */ = {isa = PBXFileReference; path = xtb.rs; sourceTree = "<group>"; };
+		4B58D5455D605E50B3D3C73C /* accounts.rs */ = {isa = PBXFileReference; path = accounts.rs; sourceTree = "<group>"; };
+		4BD99E47C243CB5CF2AE5C6B /* real_estate.rs */ = {isa = PBXFileReference; path = real_estate.rs; sourceTree = "<group>"; };
+		4CF464DC39CF114B871515C0 /* temp_cleanup.rs */ = {isa = PBXFileReference; path = temp_cleanup.rs; sourceTree = "<group>"; };
+		4D89B4863F5A2C3EC6E9DC9B /* qif.rs */ = {isa = PBXFileReference; path = qif.rs; sourceTree = "<group>"; };
+		4F8F67C3F8E212B5DD9E8DC4 /* moony_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = moony_iOS.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		50A389545127D59584C550DF /* insurance.rs */ = {isa = PBXFileReference; path = insurance.rs; sourceTree = "<group>"; };
+		5201C4E1D04ACB0E2844FABD /* net_worth.rs */ = {isa = PBXFileReference; path = net_worth.rs; sourceTree = "<group>"; };
+		53EFF64AE54F97F8034CB67E /* attachment_store.rs */ = {isa = PBXFileReference; path = attachment_store.rs; sourceTree = "<group>"; };
+		565328CDB04C45B369922528 /* insurance.rs */ = {isa = PBXFileReference; path = insurance.rs; sourceTree = "<group>"; };
+		566BDBF9D3445A9C79E85984 /* engine.rs */ = {isa = PBXFileReference; path = engine.rs; sourceTree = "<group>"; };
+		5680EA3ED9C313DAFE44519A /* portfolio.rs */ = {isa = PBXFileReference; path = portfolio.rs; sourceTree = "<group>"; };
+		5782D35A089C6176E7969A9C /* local_api.rs */ = {isa = PBXFileReference; path = local_api.rs; sourceTree = "<group>"; };
+		584851E621E8A6F3609A7F22 /* bank_history.rs */ = {isa = PBXFileReference; path = bank_history.rs; sourceTree = "<group>"; };
+		588941A1168A8648959CF6CF /* error_text.rs */ = {isa = PBXFileReference; path = error_text.rs; sourceTree = "<group>"; };
+		58899B66ED988F986E2BEA1A /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		58954A0E8E6DC27D3D784AB0 /* packs.rs */ = {isa = PBXFileReference; path = packs.rs; sourceTree = "<group>"; };
+		58DE0855E89D254479C8A7E9 /* bank_transactions.rs */ = {isa = PBXFileReference; path = bank_transactions.rs; sourceTree = "<group>"; };
+		5950E1D192FADDF1698C413D /* loan_events.rs */ = {isa = PBXFileReference; path = loan_events.rs; sourceTree = "<group>"; };
+		596276F33A63861A1A3A178F /* currency.rs */ = {isa = PBXFileReference; path = currency.rs; sourceTree = "<group>"; };
+		5BBC519309BF9A07C5D57CE3 /* test_support.rs */ = {isa = PBXFileReference; path = test_support.rs; sourceTree = "<group>"; };
+		5CBAABC02C9E142C95A06EBF /* history_days.rs */ = {isa = PBXFileReference; path = history_days.rs; sourceTree = "<group>"; };
+		5DB4A8D3670155561C47AE22 /* dated_facts.rs */ = {isa = PBXFileReference; path = dated_facts.rs; sourceTree = "<group>"; };
+		5DE5F521E0C4C97D1A01303D /* loans.rs */ = {isa = PBXFileReference; path = loans.rs; sourceTree = "<group>"; };
+		5FB905F689F87F009AD7F194 /* insurance.rs */ = {isa = PBXFileReference; path = insurance.rs; sourceTree = "<group>"; };
+		619A7D4796499AB41E1DF62C /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		61A08157F82E0D0545F99124 /* cost_basis.rs */ = {isa = PBXFileReference; path = cost_basis.rs; sourceTree = "<group>"; };
+		6280488F1E59E705C80FA994 /* tokenizer.rs */ = {isa = PBXFileReference; path = tokenizer.rs; sourceTree = "<group>"; };
+		62A349E7FBFAA3EE332D2B64 /* onboarding.rs */ = {isa = PBXFileReference; path = onboarding.rs; sourceTree = "<group>"; };
+		62A772E1C312416B18E258CB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		62B4C12DD07A795057B469A7 /* fx.rs */ = {isa = PBXFileReference; path = fx.rs; sourceTree = "<group>"; };
+		6488A7D2661DB2342AA6C7C3 /* model.rs */ = {isa = PBXFileReference; path = model.rs; sourceTree = "<group>"; };
+		686E30E520B3A3D1599E6056 /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		6A1B8BD55306B2A5C6D61911 /* system.rs */ = {isa = PBXFileReference; path = system.rs; sourceTree = "<group>"; };
+		6AED9416A1537707882CCD12 /* other_assets.rs */ = {isa = PBXFileReference; path = other_assets.rs; sourceTree = "<group>"; };
+		6DD44A3D44CAFD5D1C039F07 /* milestones.rs */ = {isa = PBXFileReference; path = milestones.rs; sourceTree = "<group>"; };
+		6F1C27BDE3B93A7E6474A851 /* validation.rs */ = {isa = PBXFileReference; path = validation.rs; sourceTree = "<group>"; };
+		6F278149A924B967FACFDD54 /* investments.rs */ = {isa = PBXFileReference; path = investments.rs; sourceTree = "<group>"; };
+		703DDF0312234EA034773EB8 /* config.rs */ = {isa = PBXFileReference; path = config.rs; sourceTree = "<group>"; };
+		70FFD731CFBF3D5B307C028C /* own_accounts.rs */ = {isa = PBXFileReference; path = own_accounts.rs; sourceTree = "<group>"; };
+		71F1F070B45B19261D33124C /* pricing.rs */ = {isa = PBXFileReference; path = pricing.rs; sourceTree = "<group>"; };
+		72415C50DA8C9290C746B922 /* savings.rs */ = {isa = PBXFileReference; path = savings.rs; sourceTree = "<group>"; };
+		74374CD564275AF3BD149FD6 /* detect.rs */ = {isa = PBXFileReference; path = detect.rs; sourceTree = "<group>"; };
+		747C72AC3F4C82E18DF9EA2D /* loans.rs */ = {isa = PBXFileReference; path = loans.rs; sourceTree = "<group>"; };
+		747ED8E0E358233AA3E8822F /* attachments.rs */ = {isa = PBXFileReference; path = attachments.rs; sourceTree = "<group>"; };
+		760280593A75246A68E0E331 /* main.rs */ = {isa = PBXFileReference; path = main.rs; sourceTree = "<group>"; };
+		782CA452B4796EE719B1F407 /* stock_performance.rs */ = {isa = PBXFileReference; path = stock_performance.rs; sourceTree = "<group>"; };
+		78DC549C65C85B09DA172102 /* other_assets.rs */ = {isa = PBXFileReference; path = other_assets.rs; sourceTree = "<group>"; };
+		7B6D14FEB0F35B246DD71AB0 /* mt940.rs */ = {isa = PBXFileReference; path = mt940.rs; sourceTree = "<group>"; };
+		7D07AC3A51681013D32BF8A9 /* hits.rs */ = {isa = PBXFileReference; path = hits.rs; sourceTree = "<group>"; };
+		7DD33AC7FA4BF056035D0AE8 /* insurance.rs */ = {isa = PBXFileReference; path = insurance.rs; sourceTree = "<group>"; };
+		7DEA81AB73DDE5C5FE70B5BC /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		7DFD70C164F44E72436CD7DB /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		7F86972AAC91C7CA7E85609E /* lib.rs */ = {isa = PBXFileReference; path = lib.rs; sourceTree = "<group>"; };
+		8050AF052C7E188371E9E44B /* company_info.rs */ = {isa = PBXFileReference; path = company_info.rs; sourceTree = "<group>"; };
+		81F3F7568570A3D16EA3F657 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		8304B9AADC041029B7E018CF /* detect.rs */ = {isa = PBXFileReference; path = detect.rs; sourceTree = "<group>"; };
+		84534E70CE4C070859ECA8E4 /* crypto.rs */ = {isa = PBXFileReference; path = crypto.rs; sourceTree = "<group>"; };
+		84D4C4EC7971AABD37470D8B /* portfolio.rs */ = {isa = PBXFileReference; path = portfolio.rs; sourceTree = "<group>"; };
+		85FFEEF539D210E4B5E01CDD /* cashflow_actuals.rs */ = {isa = PBXFileReference; path = cashflow_actuals.rs; sourceTree = "<group>"; };
+		8661893D05A692779D167CA4 /* moony_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = moony_iOS.entitlements; sourceTree = "<group>"; };
+		8684A63DFDE50094ED47CFE7 /* currency.rs */ = {isa = PBXFileReference; path = currency.rs; sourceTree = "<group>"; };
+		8859B6A0C246B8455D5F626D /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		8916498ECDCC57F7FD4A77FF /* inspect.rs */ = {isa = PBXFileReference; path = inspect.rs; sourceTree = "<group>"; };
+		895A5A0B9D45A042992689AA /* backfill.rs */ = {isa = PBXFileReference; path = backfill.rs; sourceTree = "<group>"; };
+		89B08EFACC54B096D9B91697 /* bank_accounts.rs */ = {isa = PBXFileReference; path = bank_accounts.rs; sourceTree = "<group>"; };
+		8A79AE65B1BB30A73F55E708 /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		8D17019124BFC175DACE8F6B /* xml_tree.rs */ = {isa = PBXFileReference; path = xml_tree.rs; sourceTree = "<group>"; };
+		8D177191C8CA26B1F2C1D758 /* loan_amortization.rs */ = {isa = PBXFileReference; path = loan_amortization.rs; sourceTree = "<group>"; };
+		8D57B3760AC186AC3FC5BB2A /* investments.rs */ = {isa = PBXFileReference; path = investments.rs; sourceTree = "<group>"; };
+		8DFB7EBC9739FE44A4155714 /* decode.rs */ = {isa = PBXFileReference; path = decode.rs; sourceTree = "<group>"; };
+		8EA60BF02A0E4364AA49B307 /* budgeting.rs */ = {isa = PBXFileReference; path = budgeting.rs; sourceTree = "<group>"; };
+		96929703DACFD9902B6106EE /* import.rs */ = {isa = PBXFileReference; path = import.rs; sourceTree = "<group>"; };
+		96AF5A419D6FBF0D271301E4 /* stock_import.rs */ = {isa = PBXFileReference; path = stock_import.rs; sourceTree = "<group>"; };
+		975538CAC9DCE6321E12D8B5 /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
+		98B87008E7FBC05A656C8AD8 /* stock_tags.rs */ = {isa = PBXFileReference; path = stock_tags.rs; sourceTree = "<group>"; };
+		9C04F9B0D7A14D131EB287FE /* mcp_refresh.rs */ = {isa = PBXFileReference; path = mcp_refresh.rs; sourceTree = "<group>"; };
+		9C3C11427466487DCD99D94D /* reporting.rs */ = {isa = PBXFileReference; path = reporting.rs; sourceTree = "<group>"; };
+		9CD4D4AD7E9320F718416FE6 /* cashflow_actuals.rs */ = {isa = PBXFileReference; path = cashflow_actuals.rs; sourceTree = "<group>"; };
+		9D909B795F00EE01208046B6 /* analytics.rs */ = {isa = PBXFileReference; path = analytics.rs; sourceTree = "<group>"; };
+		9DB7B0DA0B86274A2E04E81A /* dedup.rs */ = {isa = PBXFileReference; path = dedup.rs; sourceTree = "<group>"; };
+		9EA9AB8578224210F222E758 /* projection.rs */ = {isa = PBXFileReference; path = projection.rs; sourceTree = "<group>"; };
+		9F2EED355958496CEC95D1DD /* mcp_refresh.rs */ = {isa = PBXFileReference; path = mcp_refresh.rs; sourceTree = "<group>"; };
+		9FC2E3989C30A75DBF9114E7 /* types.rs */ = {isa = PBXFileReference; path = types.rs; sourceTree = "<group>"; };
+		A1FA1D36E837C8DCC213E28B /* bindings.rs */ = {isa = PBXFileReference; path = bindings.rs; sourceTree = "<group>"; };
+		A352A0E1375F3ECA6BB45CFE /* types.rs */ = {isa = PBXFileReference; path = types.rs; sourceTree = "<group>"; };
+		A38849373B65C80DA3041A13 /* date_parser.rs */ = {isa = PBXFileReference; path = date_parser.rs; sourceTree = "<group>"; };
+		A4AF57A6874A0631CA53B39F /* crypto.rs */ = {isa = PBXFileReference; path = crypto.rs; sourceTree = "<group>"; };
+		A5158897E24E1151508615F5 /* price_api.rs */ = {isa = PBXFileReference; path = price_api.rs; sourceTree = "<group>"; };
+		A7560C9C92DED4FA771359F0 /* reporting.rs */ = {isa = PBXFileReference; path = reporting.rs; sourceTree = "<group>"; };
+		A7D9A027484096EDCC9B3F47 /* bank_accounts.rs */ = {isa = PBXFileReference; path = bank_accounts.rs; sourceTree = "<group>"; };
+		A9C7BF764561E3FBBD753B5D /* onboarding.rs */ = {isa = PBXFileReference; path = onboarding.rs; sourceTree = "<group>"; };
+		AA9793A64EFBF550EF1FB65E /* financial_semantics.rs */ = {isa = PBXFileReference; path = financial_semantics.rs; sourceTree = "<group>"; };
+		AABC4902B5B917403CB05816 /* columns.rs */ = {isa = PBXFileReference; path = columns.rs; sourceTree = "<group>"; };
+		ACCA7F08AB9F9AD844841B66 /* service_tests.rs */ = {isa = PBXFileReference; path = service_tests.rs; sourceTree = "<group>"; };
+		AD6D9A0FC3FDFA6445E66F66 /* loans.rs */ = {isa = PBXFileReference; path = loans.rs; sourceTree = "<group>"; };
+		AE75C660F63A6B72C669F2ED /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		AFC4D142861C58B4A205A3EF /* types.rs */ = {isa = PBXFileReference; path = types.rs; sourceTree = "<group>"; };
+		B01D761BE1B5DAE091870EDD /* test_support.rs */ = {isa = PBXFileReference; path = test_support.rs; sourceTree = "<group>"; };
+		B07EC40C771C79155638A032 /* account_match.rs */ = {isa = PBXFileReference; path = account_match.rs; sourceTree = "<group>"; };
+		B183390A20BB97A2116A2DF9 /* batches.rs */ = {isa = PBXFileReference; path = batches.rs; sourceTree = "<group>"; };
+		B3C8129C6E8FF08856C8C77F /* history_recalc.rs */ = {isa = PBXFileReference; path = history_recalc.rs; sourceTree = "<group>"; };
+		B42EB0F511FA33E5986CD0A3 /* bonds.rs */ = {isa = PBXFileReference; path = bonds.rs; sourceTree = "<group>"; };
+		B50D1909F5893A0373FD9EDA /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+		B6875385CF25797A8414006D /* seed_demo.rs */ = {isa = PBXFileReference; path = seed_demo.rs; sourceTree = "<group>"; };
+		B6F8D8B3342A12D6DF51551E /* projection.rs */ = {isa = PBXFileReference; path = projection.rs; sourceTree = "<group>"; };
+		B79DD27265BDB9DEC08102C6 /* auth.rs */ = {isa = PBXFileReference; path = auth.rs; sourceTree = "<group>"; };
+		B7FFD693D5AB631A613C74DC /* exact_match.rs */ = {isa = PBXFileReference; path = exact_match.rs; sourceTree = "<group>"; };
+		B8064EA863F75A3E9857B0C8 /* stock_monitor.rs */ = {isa = PBXFileReference; path = stock_monitor.rs; sourceTree = "<group>"; };
+		B928B0014A402DE61F71B634 /* categorization.rs */ = {isa = PBXFileReference; path = categorization.rs; sourceTree = "<group>"; };
+		B952BEEB6DC123ED22827CF4 /* backup.rs */ = {isa = PBXFileReference; path = backup.rs; sourceTree = "<group>"; };
+		BC7124DB82AF052198B3608A /* crypto_investments.rs */ = {isa = PBXFileReference; path = crypto_investments.rs; sourceTree = "<group>"; };
+		BD3E8AF20437ADB7086D227A /* backup.rs */ = {isa = PBXFileReference; path = backup.rs; sourceTree = "<group>"; };
+		BD3EBEF95B8F9B3EC903DE05 /* attachments.rs */ = {isa = PBXFileReference; path = attachments.rs; sourceTree = "<group>"; };
+		BDD223566BB4FD6467433F40 /* decode.rs */ = {isa = PBXFileReference; path = decode.rs; sourceTree = "<group>"; };
+		BE1D581AC3E8B909771EA2C8 /* migrations.rs */ = {isa = PBXFileReference; path = migrations.rs; sourceTree = "<group>"; };
+		BEFB218F79A20E3DECF6D17C /* to_rows.rs */ = {isa = PBXFileReference; path = to_rows.rs; sourceTree = "<group>"; };
+		C093D9168AD29056166CF9D3 /* company_info.rs */ = {isa = PBXFileReference; path = company_info.rs; sourceTree = "<group>"; };
+		C17B3A54BE288ACF8BE5B9D2 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = assets; sourceTree = SOURCE_ROOT; };
+		C1869504278BD55EE311ED21 /* valuations.rs */ = {isa = PBXFileReference; path = valuations.rs; sourceTree = "<group>"; };
+		C1D0081200C9B15B0369296D /* tests.rs */ = {isa = PBXFileReference; path = tests.rs; sourceTree = "<group>"; };
+		C576429A0C0DE236C28AE3E7 /* position_reports.rs */ = {isa = PBXFileReference; path = position_reports.rs; sourceTree = "<group>"; };
+		C8305BFB18E0F9D065C9A013 /* merge.rs */ = {isa = PBXFileReference; path = merge.rs; sourceTree = "<group>"; };
+		C9859B5B53656C98DA56718A /* watchlist.rs */ = {isa = PBXFileReference; path = watchlist.rs; sourceTree = "<group>"; };
+		CA6C32931EFE237C9DE55451 /* exchange_rates.rs */ = {isa = PBXFileReference; path = exchange_rates.rs; sourceTree = "<group>"; };
+		CB3EFFC3B8EBFB80CE9C70F2 /* cashflow.rs */ = {isa = PBXFileReference; path = cashflow.rs; sourceTree = "<group>"; };
+		CB6A56A606101778076B7FF0 /* schema.snapshot */ = {isa = PBXFileReference; path = schema.snapshot; sourceTree = "<group>"; };
+		CD35776456D6E7737E0B1091 /* upkeep.rs */ = {isa = PBXFileReference; path = upkeep.rs; sourceTree = "<group>"; };
+		CD49769CB60F3F4F32BF870B /* insurance.rs */ = {isa = PBXFileReference; path = insurance.rs; sourceTree = "<group>"; };
+		CE760182E453C0899FD877DF /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		CFE4BF09D980CBD69571E46B /* error.rs */ = {isa = PBXFileReference; path = error.rs; sourceTree = "<group>"; };
+		CFF7F2E2DEF34C2E23410983 /* user.rs */ = {isa = PBXFileReference; path = user.rs; sourceTree = "<group>"; };
+		D03518D6A52A96BD3661C639 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+		D19491F5A65F541367433B25 /* cashflow_planning.rs */ = {isa = PBXFileReference; path = cashflow_planning.rs; sourceTree = "<group>"; };
+		D2FBB55C5EA4F4E4353BD456 /* ofx.rs */ = {isa = PBXFileReference; path = ofx.rs; sourceTree = "<group>"; };
+		D348D1C8DB286828B16D83F0 /* backup.rs */ = {isa = PBXFileReference; path = backup.rs; sourceTree = "<group>"; };
+		D3E3DE17F0970BD7DEDB58F7 /* portfolio.rs */ = {isa = PBXFileReference; path = portfolio.rs; sourceTree = "<group>"; };
+		D474F221AFEAA31BAA4243B0 /* ticker_history.rs */ = {isa = PBXFileReference; path = ticker_history.rs; sourceTree = "<group>"; };
+		D621F569BE8B6EAE440DCE21 /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		D6B3388B51F091ABA299EA03 /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		D8503E9388747DFDAC6C84C9 /* bonds.rs */ = {isa = PBXFileReference; path = bonds.rs; sourceTree = "<group>"; };
+		D9D977EF12B05778D13E6931 /* loan_events.rs */ = {isa = PBXFileReference; path = loan_events.rs; sourceTree = "<group>"; };
+		DA5AEA1819B19C7FD43217A9 /* dry_run.rs */ = {isa = PBXFileReference; path = dry_run.rs; sourceTree = "<group>"; };
+		DA7EAADA8836DA2DFBDB0319 /* onboarding.rs */ = {isa = PBXFileReference; path = onboarding.rs; sourceTree = "<group>"; };
+		DB5E593CD0D82EA747B28222 /* camt.rs */ = {isa = PBXFileReference; path = camt.rs; sourceTree = "<group>"; };
+		DD70ECC340AF78700A5CB172 /* rules.rs */ = {isa = PBXFileReference; path = rules.rs; sourceTree = "<group>"; };
+		DDC5DECFF457C6CCFDC451BE /* attachment_protocol.rs */ = {isa = PBXFileReference; path = attachment_protocol.rs; sourceTree = "<group>"; };
+		DE4C26C7E55BD2C71FCE82D1 /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		DF12D42BD6DE4F66E0943B3B /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		E0E0880AC7C19F6E53C94752 /* stock_monitor.rs */ = {isa = PBXFileReference; path = stock_monitor.rs; sourceTree = "<group>"; };
+		E0FB76BCC37B0396BE784222 /* investments.rs */ = {isa = PBXFileReference; path = investments.rs; sourceTree = "<group>"; };
+		E27DB232033A0FFDB01E01C3 /* other_assets.rs */ = {isa = PBXFileReference; path = other_assets.rs; sourceTree = "<group>"; };
+		E3B80BB3919871620A03D958 /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		E4690761A4F5770C812C8548 /* ibkr.rs */ = {isa = PBXFileReference; path = ibkr.rs; sourceTree = "<group>"; };
+		E5237A49AA00AD6773A25295 /* real_estate.rs */ = {isa = PBXFileReference; path = real_estate.rs; sourceTree = "<group>"; };
+		E72E840592254B0494A3A8FD /* milestones.rs */ = {isa = PBXFileReference; path = milestones.rs; sourceTree = "<group>"; };
+		E8FC699EC752AD10C6002B9A /* stock_monitor.rs */ = {isa = PBXFileReference; path = stock_monitor.rs; sourceTree = "<group>"; };
+		E9869CEDF3FC439250BDE5D5 /* recategorize.rs */ = {isa = PBXFileReference; path = recategorize.rs; sourceTree = "<group>"; };
+		EA34A58E6351A7F6CA41E5E1 /* loans.rs */ = {isa = PBXFileReference; path = loans.rs; sourceTree = "<group>"; };
+		EB92013B28924E65D0ED6F7E /* bank_accounts.rs */ = {isa = PBXFileReference; path = bank_accounts.rs; sourceTree = "<group>"; };
+		ECEFED92DEA3BA5970F51091 /* stock_tags.rs */ = {isa = PBXFileReference; path = stock_tags.rs; sourceTree = "<group>"; };
+		ED4E4187871F603748FF1690 /* constants.rs */ = {isa = PBXFileReference; path = constants.rs; sourceTree = "<group>"; };
+		EF917BDDD8ADEF6F2D6BB327 /* history_plan.rs */ = {isa = PBXFileReference; path = history_plan.rs; sourceTree = "<group>"; };
+		F0D5634CE1A68352A0D0CDF9 /* portfolio_history.rs */ = {isa = PBXFileReference; path = portfolio_history.rs; sourceTree = "<group>"; };
+		F158546B957CCE31C68EEDB9 /* simulate.rs */ = {isa = PBXFileReference; path = simulate.rs; sourceTree = "<group>"; };
+		F170B4391B4BA2CBD5476EB8 /* test_support.rs */ = {isa = PBXFileReference; path = test_support.rs; sourceTree = "<group>"; };
+		F188C09AB6D3F3C3D2013524 /* columns.rs */ = {isa = PBXFileReference; path = columns.rs; sourceTree = "<group>"; };
+		F26F24F7922DC3146AB820AE /* projection_math.rs */ = {isa = PBXFileReference; path = projection_math.rs; sourceTree = "<group>"; };
+		F5DB15C64F58897446BCFE14 /* frequency.rs */ = {isa = PBXFileReference; path = frequency.rs; sourceTree = "<group>"; };
+		F7989442832931A612A46AD6 /* http.rs */ = {isa = PBXFileReference; path = http.rs; sourceTree = "<group>"; };
+		F978F3ED96CD1D6AD1F6F636 /* stock_performance.rs */ = {isa = PBXFileReference; path = stock_performance.rs; sourceTree = "<group>"; };
+		FB639105DC94381A369B68B5 /* crypto.rs */ = {isa = PBXFileReference; path = crypto.rs; sourceTree = "<group>"; };
+		FD9BE0E030EAFABE532674AF /* crypto.rs */ = {isa = PBXFileReference; path = crypto.rs; sourceTree = "<group>"; };
+		FE099C822A128AD62E13C7FA /* files_schema.rs */ = {isa = PBXFileReference; path = files_schema.rs; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		C914C783504F94CEDA0A791D /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				0D841B775FAAF9BFEBD9EA19 /* libapp.a in Frameworks */,
+				20C7662002C557BB567CDBFF /* CoreGraphics.framework in Frameworks */,
+				0847E64C3D44333E163113B8 /* Metal.framework in Frameworks */,
+				B8A1863422E8A5935ECB993E /* MetalKit.framework in Frameworks */,
+				265A91081F9B7FC22753A513 /* QuartzCore.framework in Frameworks */,
+				15B85D4D5659EF95BEDFD9E7 /* Security.framework in Frameworks */,
+				9E9C9E0C9BE67B975363945B /* UIKit.framework in Frameworks */,
+				BC8513C11A212BEA3DC78237 /* WebKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		161DC756FC09281AE1BAE926 = {
+			isa = PBXGroup;
+			children = (
+				C17B3A54BE288ACF8BE5B9D2 /* assets */,
+				62A772E1C312416B18E258CB /* Assets.xcassets */,
+				2397AC30BD18F6F642CB0086 /* LaunchScreen.storyboard */,
+				1B694AF1237AC0193C774DF7 /* Externals */,
+				CA1D9AE8BDD86CBE11C79069 /* moony_iOS */,
+				73AE8DF25F1ADE7CD0EAE53A /* Sources */,
+				ADF6E5F6BCE59CE309E6BC97 /* src */,
+				38D1742325FD8885BEF9C8D2 /* Frameworks */,
+				6196ADCF9C0A336266942042 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		1B694AF1237AC0193C774DF7 /* Externals */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Externals;
+			sourceTree = "<group>";
+		};
+		367B7386A461EA8F8E2FE8E1 /* models */ = {
+			isa = PBXGroup;
+			children = (
+				0C5ACE1B93FACC6DC7C2C166 /* attachments.rs */,
+				B952BEEB6DC123ED22827CF4 /* backup.rs */,
+				A7D9A027484096EDCC9B3F47 /* bank_accounts.rs */,
+				58DE0855E89D254479C8A7E9 /* bank_transactions.rs */,
+				D8503E9388747DFDAC6C84C9 /* bonds.rs */,
+				3B5244143F671514549A2B25 /* budgeting.rs */,
+				9CD4D4AD7E9320F718416FE6 /* cashflow_actuals.rs */,
+				CB3EFFC3B8EBFB80CE9C70F2 /* cashflow.rs */,
+				B928B0014A402DE61F71B634 /* categorization.rs */,
+				C093D9168AD29056166CF9D3 /* company_info.rs */,
+				FB639105DC94381A369B68B5 /* crypto.rs */,
+				8684A63DFDE50094ED47CFE7 /* currency.rs */,
+				F5DB15C64F58897446BCFE14 /* frequency.rs */,
+				029C6E0A28AFCE0D43668359 /* fx.rs */,
+				50A389545127D59584C550DF /* insurance.rs */,
+				39D76D56A32A4568973667C1 /* investments.rs */,
+				D9D977EF12B05778D13E6931 /* loan_events.rs */,
+				EA34A58E6351A7F6CA41E5E1 /* loans.rs */,
+				E72E840592254B0494A3A8FD /* milestones.rs */,
+				AE75C660F63A6B72C669F2ED /* mod.rs */,
+				A9C7BF764561E3FBBD753B5D /* onboarding.rs */,
+				E27DB232033A0FFDB01E01C3 /* other_assets.rs */,
+				5680EA3ED9C313DAFE44519A /* portfolio.rs */,
+				3EAC8DFC54D892CEE858A96F /* projection.rs */,
+				2F2B43B8B752D934D2965F4A /* real_estate.rs */,
+				A7560C9C92DED4FA771359F0 /* reporting.rs */,
+				E0E0880AC7C19F6E53C94752 /* stock_monitor.rs */,
+				F978F3ED96CD1D6AD1F6F636 /* stock_performance.rs */,
+				001750ACF963B5509CBCD4EF /* stock_tags.rs */,
+				CFF7F2E2DEF34C2E23410983 /* user.rs */,
+				6F1C27BDE3B93A7E6474A851 /* validation.rs */,
+				2FFC1F856AA895756F222E14 /* valuations.rs */,
+			);
+			path = models;
+			sourceTree = "<group>";
+		};
+		38D1742325FD8885BEF9C8D2 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				7DFD70C164F44E72436CD7DB /* CoreGraphics.framework */,
+				975538CAC9DCE6321E12D8B5 /* libapp.a */,
+				CE760182E453C0899FD877DF /* Metal.framework */,
+				B50D1909F5893A0373FD9EDA /* MetalKit.framework */,
+				81F3F7568570A3D16EA3F657 /* QuartzCore.framework */,
+				619A7D4796499AB41E1DF62C /* Security.framework */,
+				448C68AF2B372974484BF1EB /* UIKit.framework */,
+				D03518D6A52A96BD3661C639 /* WebKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		3DE8C312A3E31C952E413B85 /* milestones */ = {
+			isa = PBXGroup;
+			children = (
+				4B58D5455D605E50B3D3C73C /* accounts.rs */,
+				2CC0BC09E55C2052EB81EB0B /* bonds.rs */,
+				565328CDB04C45B369922528 /* insurance.rs */,
+				AD6D9A0FC3FDFA6445E66F66 /* loans.rs */,
+				58899B66ED988F986E2BEA1A /* mod.rs */,
+				F170B4391B4BA2CBD5476EB8 /* test_support.rs */,
+				CD35776456D6E7737E0B1091 /* upkeep.rs */,
+				C9859B5B53656C98DA56718A /* watchlist.rs */,
+			);
+			path = milestones;
+			sourceTree = "<group>";
+		};
+		47EE2DF6B0E2E6DA51372543 /* db */ = {
+			isa = PBXGroup;
+			children = (
+				FE099C822A128AD62E13C7FA /* files_schema.rs */,
+				BE1D581AC3E8B909771EA2C8 /* migrations.rs */,
+				DE4C26C7E55BD2C71FCE82D1 /* mod.rs */,
+				CB6A56A606101778076B7FF0 /* schema.snapshot */,
+				EB862AF47CC433C7E987F665 /* migrations */,
+			);
+			path = db;
+			sourceTree = "<group>";
+		};
+		53956ABAC24FF72298DD2134 /* commands */ = {
+			isa = PBXGroup;
+			children = (
+				747ED8E0E358233AA3E8822F /* attachments.rs */,
+				31D86484853C33867B09B021 /* auth.rs */,
+				D348D1C8DB286828B16D83F0 /* backup.rs */,
+				89B08EFACC54B096D9B91697 /* bank_accounts.rs */,
+				10FC59FBD0201A338FD54960 /* bonds.rs */,
+				39D4525E289CF0248D23A2BB /* budgeting.rs */,
+				46479E0F4CD944C36858D8F3 /* cashflow.rs */,
+				16DE179177F769F4B39FC3E3 /* categories.rs */,
+				2D38385875EC7E6A315CEEE5 /* categorization.rs */,
+				8050AF052C7E188371E9E44B /* company_info.rs */,
+				FD9BE0E030EAFABE532674AF /* crypto.rs */,
+				09372C3E9D223439990BFE07 /* export.rs */,
+				5FB905F689F87F009AD7F194 /* insurance.rs */,
+				6F278149A924B967FACFDD54 /* investments.rs */,
+				747C72AC3F4C82E18DF9EA2D /* loans.rs */,
+				9F2EED355958496CEC95D1DD /* mcp_refresh.rs */,
+				6DD44A3D44CAFD5D1C039F07 /* milestones.rs */,
+				D6B3388B51F091ABA299EA03 /* mod.rs */,
+				DA7EAADA8836DA2DFBDB0319 /* onboarding.rs */,
+				3D7441A32B2CE2371D1BFD0F /* other_assets.rs */,
+				D3E3DE17F0970BD7DEDB58F7 /* portfolio.rs */,
+				1B39B0E599CFF11E728A8391 /* price_api.rs */,
+				B6F8D8B3342A12D6DF51551E /* projection.rs */,
+				E5237A49AA00AD6773A25295 /* real_estate.rs */,
+				421643A13FA2B2EC3062C0B3 /* statement_import.rs */,
+				96AF5A419D6FBF0D271301E4 /* stock_import.rs */,
+				B8064EA863F75A3E9857B0C8 /* stock_monitor.rs */,
+				ECEFED92DEA3BA5970F51091 /* stock_tags.rs */,
+				6A1B8BD55306B2A5C6D61911 /* system.rs */,
+			);
+			path = commands;
+			sourceTree = "<group>";
+		};
+		5EDE98DBB12B13B1284F79F9 /* services */ = {
+			isa = PBXGroup;
+			children = (
+				3B0D78DFEC5D4C7317953760 /* attachment_conversion.rs */,
+				DDC5DECFF457C6CCFDC451BE /* attachment_protocol.rs */,
+				53EFF64AE54F97F8034CB67E /* attachment_store.rs */,
+				BD3EBEF95B8F9B3EC903DE05 /* attachments.rs */,
+				B79DD27265BDB9DEC08102C6 /* auth.rs */,
+				895A5A0B9D45A042992689AA /* backfill.rs */,
+				BD3E8AF20437ADB7086D227A /* backup.rs */,
+				EB92013B28924E65D0ED6F7E /* bank_accounts.rs */,
+				584851E621E8A6F3609A7F22 /* bank_history.rs */,
+				B42EB0F511FA33E5986CD0A3 /* bonds.rs */,
+				8EA60BF02A0E4364AA49B307 /* budgeting.rs */,
+				85FFEEF539D210E4B5E01CDD /* cashflow_actuals.rs */,
+				D19491F5A65F541367433B25 /* cashflow_planning.rs */,
+				1317A37F3774688794A5733A /* categories.rs */,
+				1B6860CC88525F6A0E4210EB /* company_info.rs */,
+				61A08157F82E0D0545F99124 /* cost_basis.rs */,
+				BC7124DB82AF052198B3608A /* crypto_investments.rs */,
+				84534E70CE4C070859ECA8E4 /* crypto.rs */,
+				3D7552CEBDCF3B09ECAD55E8 /* csv_presets.rs */,
+				596276F33A63861A1A3A178F /* currency.rs */,
+				A38849373B65C80DA3041A13 /* date_parser.rs */,
+				5DB4A8D3670155561C47AE22 /* dated_facts.rs */,
+				9DB7B0DA0B86274A2E04E81A /* dedup.rs */,
+				173B897423696AEFB9A49EBF /* document_files.rs */,
+				AA9793A64EFBF550EF1FB65E /* financial_semantics.rs */,
+				2F3A7ED7D7E70A28677081C8 /* fx_backfill.rs */,
+				62B4C12DD07A795057B469A7 /* fx.rs */,
+				5CBAABC02C9E142C95A06EBF /* history_days.rs */,
+				EF917BDDD8ADEF6F2D6BB327 /* history_plan.rs */,
+				B3C8129C6E8FF08856C8C77F /* history_recalc.rs */,
+				F7989442832931A612A46AD6 /* http.rs */,
+				7DD33AC7FA4BF056035D0AE8 /* insurance.rs */,
+				2A797BC903549DB498CC0EFE /* interest_tiers.rs */,
+				E0FB76BCC37B0396BE784222 /* investments.rs */,
+				8D177191C8CA26B1F2C1D758 /* loan_amortization.rs */,
+				5950E1D192FADDF1698C413D /* loan_events.rs */,
+				36C715770BC0B05EAF702CFE /* loans.rs */,
+				5782D35A089C6176E7969A9C /* local_api.rs */,
+				1C5317DAF955BE470726607B /* logging.rs */,
+				9C04F9B0D7A14D131EB287FE /* mcp_refresh.rs */,
+				E3B80BB3919871620A03D958 /* mod.rs */,
+				5201C4E1D04ACB0E2844FABD /* net_worth.rs */,
+				62A349E7FBFAA3EE332D2B64 /* onboarding.rs */,
+				6AED9416A1537707882CCD12 /* other_assets.rs */,
+				382AC420FA934B0E4DEDE2C4 /* parsing.rs */,
+				F0D5634CE1A68352A0D0CDF9 /* portfolio_history.rs */,
+				C576429A0C0DE236C28AE3E7 /* position_reports.rs */,
+				2E0CBB9BABA82ED17902E885 /* positions.rs */,
+				A5158897E24E1151508615F5 /* price_api.rs */,
+				71F1F070B45B19261D33124C /* pricing.rs */,
+				F26F24F7922DC3146AB820AE /* projection_math.rs */,
+				9EA9AB8578224210F222E758 /* projection.rs */,
+				17AA2AB6980B5D6DB4B89046 /* quote_unit.rs */,
+				1D37AD4001B0E263CF89DC95 /* real_estate_photos.rs */,
+				4BD99E47C243CB5CF2AE5C6B /* real_estate.rs */,
+				9C3C11427466487DCD99D94D /* reporting.rs */,
+				E8FC699EC752AD10C6002B9A /* stock_monitor.rs */,
+				782CA452B4796EE719B1F407 /* stock_performance.rs */,
+				98B87008E7FBC05A656C8AD8 /* stock_tags.rs */,
+				4CF464DC39CF114B871515C0 /* temp_cleanup.rs */,
+				D474F221AFEAA31BAA4243B0 /* ticker_history.rs */,
+				C1869504278BD55EE311ED21 /* valuations.rs */,
+				8E621C92EA0D7DA907AB30EE /* categorization */,
+				C74C3896187B63024F370BB3 /* csv_import */,
+				C89F18EC3DBB43AD78699B06 /* mcp */,
+				3DE8C312A3E31C952E413B85 /* milestones */,
+				D975CC7F4E340F27BE4180FF /* statement_import */,
+				AB7F7F5C2DA1EF8190C301C6 /* stock_import */,
+			);
+			path = services;
+			sourceTree = "<group>";
+		};
+		60B46868675860B20E8E5F28 /* bindings */ = {
+			isa = PBXGroup;
+			children = (
+				25A8D9FC01382746E81BF1C1 /* bindings.h */,
+			);
+			path = bindings;
+			sourceTree = "<group>";
+		};
+		6196ADCF9C0A336266942042 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4F8F67C3F8E212B5DD9E8DC4 /* moony_iOS.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		73AE8DF25F1ADE7CD0EAE53A /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				A09A3E73F89EF2F30EF0EF8A /* moony */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		8E621C92EA0D7DA907AB30EE /* categorization */ = {
+			isa = PBXGroup;
+			children = (
+				021E835E1CB48AF790849E70 /* apply.rs */,
+				566BDBF9D3445A9C79E85984 /* engine.rs */,
+				B7FFD693D5AB631A613C74DC /* exact_match.rs */,
+				7D07AC3A51681013D32BF8A9 /* hits.rs */,
+				2D3ADD09244C6B6401DB41F1 /* learn.rs */,
+				DF12D42BD6DE4F66E0943B3B /* mod.rs */,
+				70FFD731CFBF3D5B307C028C /* own_accounts.rs */,
+				58954A0E8E6DC27D3D784AB0 /* packs.rs */,
+				E9869CEDF3FC439250BDE5D5 /* recategorize.rs */,
+				DD70ECC340AF78700A5CB172 /* rules.rs */,
+				6280488F1E59E705C80FA994 /* tokenizer.rs */,
+				A352A0E1375F3ECA6BB45CFE /* types.rs */,
+			);
+			path = categorization;
+			sourceTree = "<group>";
+		};
+		975936D7AAFB68D8D68CA418 /* bin */ = {
+			isa = PBXGroup;
+			children = (
+				B6875385CF25797A8414006D /* seed_demo.rs */,
+			);
+			path = bin;
+			sourceTree = "<group>";
+		};
+		A09A3E73F89EF2F30EF0EF8A /* moony */ = {
+			isa = PBXGroup;
+			children = (
+				0EA130A3EA907B37E33C8D81 /* main.mm */,
+				60B46868675860B20E8E5F28 /* bindings */,
+			);
+			path = moony;
+			sourceTree = "<group>";
+		};
+		AB7F7F5C2DA1EF8190C301C6 /* stock_import */ = {
+			isa = PBXGroup;
+			children = (
+				B183390A20BB97A2116A2DF9 /* batches.rs */,
+				AABC4902B5B917403CB05816 /* columns.rs */,
+				8304B9AADC041029B7E018CF /* detect.rs */,
+				397D80DBD5B64EC45B1F08B8 /* formats.rs */,
+				96929703DACFD9902B6106EE /* import.rs */,
+				8916498ECDCC57F7FD4A77FF /* inspect.rs */,
+				23B628F65CB5DB530C2A29CB /* instruments.rs */,
+				8859B6A0C246B8455D5F626D /* mod.rs */,
+				022C7EC22D04B685BA229E03 /* parse.rs */,
+				038E8D8930AC2FA91DC953F0 /* preview.rs */,
+				F158546B957CCE31C68EEDB9 /* simulate.rs */,
+				AFC4D142861C58B4A205A3EF /* types.rs */,
+				BBDF5B7A846A89E80F2EAF5A /* adapters */,
+			);
+			path = stock_import;
+			sourceTree = "<group>";
+		};
+		ADF6E5F6BCE59CE309E6BC97 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				A1FA1D36E837C8DCC213E28B /* bindings.rs */,
+				ED4E4187871F603748FF1690 /* constants.rs */,
+				CFE4BF09D980CBD69571E46B /* error.rs */,
+				7F86972AAC91C7CA7E85609E /* lib.rs */,
+				760280593A75246A68E0E331 /* main.rs */,
+				975936D7AAFB68D8D68CA418 /* bin */,
+				53956ABAC24FF72298DD2134 /* commands */,
+				47EE2DF6B0E2E6DA51372543 /* db */,
+				367B7386A461EA8F8E2FE8E1 /* models */,
+				5EDE98DBB12B13B1284F79F9 /* services */,
+			);
+			name = src;
+			path = ../../src;
+			sourceTree = "<group>";
+		};
+		BBDF5B7A846A89E80F2EAF5A /* adapters */ = {
+			isa = PBXGroup;
+			children = (
+				46FA8DF4B953CE51CA98610A /* degiro.rs */,
+				E4690761A4F5770C812C8548 /* ibkr.rs */,
+				D621F569BE8B6EAE440DCE21 /* mod.rs */,
+				095B5492D8A494AE4B3593F0 /* moony.rs */,
+				5BBC519309BF9A07C5D57CE3 /* test_support.rs */,
+				44098D7360E2CAD5E6A983B0 /* trading212.rs */,
+				472D4B9557D131EF5189B25A /* xtb.rs */,
+			);
+			path = adapters;
+			sourceTree = "<group>";
+		};
+		C74C3896187B63024F370BB3 /* csv_import */ = {
+			isa = PBXGroup;
+			children = (
+				3891DFDB2E0138CD9288A594 /* amounts.rs */,
+				F188C09AB6D3F3C3D2013524 /* columns.rs */,
+				4489B12D4433D0C4BED01B23 /* core_tests.rs */,
+				BDD223566BB4FD6467433F40 /* decode.rs */,
+				21A9059FAA06F9B46CEAC464 /* inspect.rs */,
+				8A79AE65B1BB30A73F55E708 /* mod.rs */,
+				20D4C777BB7A05FEBB0D1FA8 /* rows.rs */,
+				20C39BB0E6B10FBE89337E38 /* test_support.rs */,
+				C1D0081200C9B15B0369296D /* tests.rs */,
+				9FC2E3989C30A75DBF9114E7 /* types.rs */,
+			);
+			path = csv_import;
+			sourceTree = "<group>";
+		};
+		C89F18EC3DBB43AD78699B06 /* mcp */ = {
+			isa = PBXGroup;
+			children = (
+				9D909B795F00EE01208046B6 /* analytics.rs */,
+				0858334D726502B755D09ED1 /* bank_accounts.rs */,
+				38244DBDB2C9B965F68A6046 /* bonds.rs */,
+				703DDF0312234EA034773EB8 /* config.rs */,
+				A4AF57A6874A0631CA53B39F /* crypto.rs */,
+				588941A1168A8648959CF6CF /* error_text.rs */,
+				CA6C32931EFE237C9DE55451 /* exchange_rates.rs */,
+				CD49769CB60F3F4F32BF870B /* insurance.rs */,
+				8D57B3760AC186AC3FC5BB2A /* investments.rs */,
+				5DE5F521E0C4C97D1A01303D /* loans.rs */,
+				7DEA81AB73DDE5C5FE70B5BC /* mod.rs */,
+				35DC786ABEB05F5AF7D55283 /* money.rs */,
+				78DC549C65C85B09DA172102 /* other_assets.rs */,
+				84D4C4EC7971AABD37470D8B /* portfolio.rs */,
+				0A987CEF989CDC9B649B76CC /* real_estate.rs */,
+				72415C50DA8C9290C746B922 /* savings.rs */,
+				182D522F2E1DF71E8DC446F2 /* stock_monitor.rs */,
+			);
+			path = mcp;
+			sourceTree = "<group>";
+		};
+		CA1D9AE8BDD86CBE11C79069 /* moony_iOS */ = {
+			isa = PBXGroup;
+			children = (
+				46CCE71715517DACE5F2B9EB /* Info.plist */,
+				8661893D05A692779D167CA4 /* moony_iOS.entitlements */,
+			);
+			path = moony_iOS;
+			sourceTree = "<group>";
+		};
+		D975CC7F4E340F27BE4180FF /* statement_import */ = {
+			isa = PBXGroup;
+			children = (
+				B07EC40C771C79155638A032 /* account_match.rs */,
+				DB5E593CD0D82EA747B28222 /* camt.rs */,
+				19BEEAB5E88E4A9C969BCFE3 /* decimal.rs */,
+				8DFB7EBC9739FE44A4155714 /* decode.rs */,
+				74374CD564275AF3BD149FD6 /* detect.rs */,
+				C8305BFB18E0F9D065C9A013 /* merge.rs */,
+				686E30E520B3A3D1599E6056 /* mod.rs */,
+				6488A7D2661DB2342AA6C7C3 /* model.rs */,
+				7B6D14FEB0F35B246DD71AB0 /* mt940.rs */,
+				D2FBB55C5EA4F4E4353BD456 /* ofx.rs */,
+				4D89B4863F5A2C3EC6E9DC9B /* qif.rs */,
+				ACCA7F08AB9F9AD844841B66 /* service_tests.rs */,
+				B01D761BE1B5DAE091870EDD /* test_support.rs */,
+				BEFB218F79A20E3DECF6D17C /* to_rows.rs */,
+				387E7BC4941C448FF09B3FCC /* types.rs */,
+				8D17019124BFC175DACE8F6B /* xml_tree.rs */,
+			);
+			path = statement_import;
+			sourceTree = "<group>";
+		};
+		EB862AF47CC433C7E987F665 /* migrations */ = {
+			isa = PBXGroup;
+			children = (
+				DA5AEA1819B19C7FD43217A9 /* dry_run.rs */,
+			);
+			path = migrations;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		F4834E5A7D6C3AAE1FAFF057 /* moony_iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = FF22C8910F2A10EA49478243 /* Build configuration list for PBXNativeTarget "moony_iOS" */;
+			buildPhases = (
+				46DF506C44EC32A8D6A89A59 /* Build Rust Code */,
+				A274BFED75375A6DC8444D61 /* Sources */,
+				A3510A8E6261B20F79DBCCEE /* Resources */,
+				C914C783504F94CEDA0A791D /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = moony_iOS;
+			packageProductDependencies = (
+			);
+			productName = moony_iOS;
+			productReference = 4F8F67C3F8E212B5DD9E8DC4 /* moony_iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		88BA68C2D3B9D94DA5EB574D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 67BD688AB4E59831D1AA5E48 /* Build configuration list for PBXProject "moony" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 161DC756FC09281AE1BAE926;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 6196ADCF9C0A336266942042 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				F4834E5A7D6C3AAE1FAFF057 /* moony_iOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A3510A8E6261B20F79DBCCEE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				84F3A15CCC582A1F454CFD71 /* Assets.xcassets in Resources */,
+				FC2F33081B9EA761D3573B7D /* LaunchScreen.storyboard in Resources */,
+				EC2928B35877F0319CD233BF /* assets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		46DF506C44EC32A8D6A89A59 /* Build Rust Code */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build Rust Code";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Externals/x86_64/${CONFIGURATION}/libapp.a",
+				"$(SRCROOT)/Externals/arm64/${CONFIGURATION}/libapp.a",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "npm run -- tauri ios xcode-script -v --platform \"${PLATFORM_DISPLAY_NAME:?}\" --sdk-root \"${SDKROOT:?}\" --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration \"${CONFIGURATION:?}\" ${FORCE_COLOR} ${ARCHS:?}\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A274BFED75375A6DC8444D61 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6B4ACFDD04B87CE2EE60FCD0 /* main.mm in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		0C270174793922617DD6D898 /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ARCHS = (
+					arm64,
+				);
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = moony_iOS/moony_iOS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_BITCODE = NO;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
+				INFOPLIST_FILE = moony_iOS/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.moonyfinance.desktop;
+				PRODUCT_NAME = "Moony";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = debug;
+		};
+		3DA6FB727693503FFB2941D9 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = release;
+		};
+		80F8C7525ED9DB6DC9AE4448 /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = debug;
+		};
+		E83F2CF8603CE95215134CBE /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ARCHS = (
+					arm64,
+				);
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = moony_iOS/moony_iOS.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				ENABLE_BITCODE = NO;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
+				INFOPLIST_FILE = moony_iOS/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.moonyfinance.desktop;
+				PRODUCT_NAME = "Moony";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		67BD688AB4E59831D1AA5E48 /* Build configuration list for PBXProject "moony" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				80F8C7525ED9DB6DC9AE4448 /* debug */,
+				3DA6FB727693503FFB2941D9 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		FF22C8910F2A10EA49478243 /* Build configuration list for PBXNativeTarget "moony_iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0C270174793922617DD6D898 /* debug */,
+				E83F2CF8603CE95215134CBE /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 88BA68C2D3B9D94DA5EB574D /* Project object */;
+}

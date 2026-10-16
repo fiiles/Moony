@@ -173,6 +173,34 @@
     }
   },
   "transaction": {
-    "flowSaved": "Meaning saved"
+    "flowSaved": "Meaning saved",
+    "done": "Done",
+    "counterparty": "Counterparty",
+    "date": "Date",
+    "category": "Category",
+    "flow": "Meaning",
+    "note": "Note",
+    "details": "Details",
+    "bankId": "Bank ID",
+    "valueDate": "Value date",
+    "file": "File",
+    "line": "Line",
+    "sourceLabel": "Source",
+    "source": {
+      "manual": "Entered by hand",
+      "csv_import": "Imported",
+      "api_sync": "Synced"
+    },
+    "status": "Status",
+    "booked": "Booked",
+    "currency": "Currency"
+  },
+  "picker": {
+    "title": "Category",
+    "recent": "Recently used",
+    "all": "All categories",
+    "suggested": "Suggested",
+    "decline": "Decline suggestion",
+    "empty": "No category matches"
   }
 }

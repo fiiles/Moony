@@ -195,6 +195,34 @@
     }
   },
   "transaction": {
-    "flowSaved": "Znaczenie zapisane"
+    "flowSaved": "Znaczenie zapisane",
+    "done": "Gotowe",
+    "counterparty": "Kontrahent",
+    "date": "Data",
+    "category": "Kategoria",
+    "flow": "Znaczenie",
+    "note": "Notatka",
+    "details": "Szczegóły",
+    "bankId": "ID banku",
+    "valueDate": "Data waluty",
+    "file": "Plik",
+    "line": "Wiersz",
+    "sourceLabel": "Źródło",
+    "source": {
+      "manual": "Wpisano ręcznie",
+      "csv_import": "Zaimportowano",
+      "api_sync": "Zsynchronizowano"
+    },
+    "status": "Status",
+    "booked": "Zaksięgowana",
+    "currency": "Waluta"
+  },
+  "picker": {
+    "title": "Kategoria",
+    "recent": "Ostatnio używane",
+    "all": "Wszystkie kategorie",
+    "suggested": "Propozycja",
+    "decline": "Odrzuć propozycję",
+    "empty": "Żadna kategoria nie pasuje"
   }
 }

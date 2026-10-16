@@ -173,6 +173,34 @@
     }
   },
   "transaction": {
-    "flowSaved": "Betydning lagret"
+    "flowSaved": "Betydning lagret",
+    "done": "Ferdig",
+    "counterparty": "Motpart",
+    "date": "Dato",
+    "category": "Kategori",
+    "flow": "Betydning",
+    "note": "Notat",
+    "details": "Detaljer",
+    "bankId": "Bank-ID",
+    "valueDate": "Valørdato",
+    "file": "Fil",
+    "line": "Linje",
+    "sourceLabel": "Kilde",
+    "source": {
+      "manual": "Lagt inn for hånd",
+      "csv_import": "Importert",
+      "api_sync": "Synkronisert"
+    },
+    "status": "Status",
+    "booked": "Bokført",
+    "currency": "Valuta"
+  },
+  "picker": {
+    "title": "Kategori",
+    "recent": "Nylig brukt",
+    "all": "Alle kategorier",
+    "suggested": "Forslag",
+    "decline": "Avslå forslaget",
+    "empty": "Ingen kategori passer"
   }
 }

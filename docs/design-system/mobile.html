@@ -207,6 +207,14 @@
   </section>
 
   <section class="part">
+    <h2>Transakce a výběr kategorie</h2>
+    <p>Sheet transakce (spec §8.4): celá výška, protistrana jako titulek a pod ní datum, částka v display písmu na jednom řádku (<code>.m-sheet__amount</code>), řádky štítek–hodnota (<code>.m-kv</code>; Kategorie je tlačítko s šipkou <code>.m-kv--tap</code>, výjimka pro řádky nastavení), segment Významu pohybu s tím, co z „Automatisch“ vychází, poznámka (<code>.m-kv--stack</code>) a rozbalené „Details“ (<code>.m-disclose</code>) s dlouhým názvem souboru zkráceným výpustkou. V patičce text Smazat vlevo a hlavní Hotovo vpravo. Segment má v němčině čtyři dlouhé popisky, takže se posouvá do stran.</p>
+    <div class="phones" id="txsheets"></div>
+    <p style="margin-top: 26px">Výběr kategorie: půlsheet s hledáním, návrhovou pilulkou (<code>.m-pill</code>), naposledy použitými a všemi kategoriemi (<code>.m-pick</code>, aktuální zatržená), akčním řádkem „Neue Kategorie“ a dvěma přepínači učení (<code>.m-switchrow</code>) přišpendlenými ke dnu těla (<code>.m-learn</code>), takže jsou vidět u každého seznamu.</p>
+    <div class="phones" id="pickers"></div>
+  </section>
+
+  <section class="part">
     <h2>Řádky výběru ve filtru</h2>
     <p>Sheet filtru pohybů (<code>.m-pick</code>): 44 pt, 28 pt čip, popisek s výpustkou, zatržítko u zvoleného; řádky odděluje <code>line-soft</code>. Obdobně „Období“ bez čipů a pod „Vlastní“ dvě 48 pt pole s datem (<code>.m-field__i</code>).</p>
     <div class="phones">
@@ -429,6 +437,105 @@
   </div>
 </template>
 
+<!-- The transaction sheet over the ledger, at the three widths. -->
+<template id="tx-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Girokonto</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Fio · CZK · 2100123456/2010</p>
+      <div data-rows="ledgerToday"></div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Alza.cz a.s.">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Alza.cz a.s.</div><div class="m-sheet__s">14. Oktober 2026</div></div>
+      <div class="m-sheet__body">
+        <div class="m-sheet__amount">− 4&nbsp;590 Kč</div>
+        <div>
+          <div class="m-kv"><span class="m-kv__l">Gegenpartei</span><div class="m-kv__r"><div class="m-kv__v">Alza.cz a.s.</div><div class="m-kv__s">2400312567/2010</div></div></div>
+          <div class="m-kv"><span class="m-kv__l">Datum</span><div class="m-kv__r"><div class="m-kv__v">14. 10. 2026</div></div></div>
+          <button class="m-kv m-kv--tap" type="button"><span class="m-kv__l">Kategorie</span><div class="m-kv__r"><div class="m-kv__v">Ohne Kategorie</div></div><span class="m-kv__chev" data-icon="chevron-right" data-size="16"></span></button>
+          <div class="m-kv m-kv--stack"><div class="m-kv__r">
+            <span class="m-kv__l">Bedeutung</span>
+            <div class="m-kv__v"><div class="m-seg" role="group" aria-label="Bedeutung"><button class="m-seg__btn is-active" type="button">Automatischer Fluss</button><button class="m-seg__btn" type="button">Einnahme</button><button class="m-seg__btn" type="button">Ausgabe</button><button class="m-seg__btn" type="button">Geldumbuchung</button></div></div>
+            <div class="m-kv__s">Ausgabe · Richtung der Bewegung</div>
+          </div></div>
+          <div class="m-kv m-kv--stack"><div class="m-kv__r"><span class="m-kv__l">Notiz</span><div class="m-kv__v">Bestellung 2201983&#10;Webshop Alza.cz, Lieferung Praha 4</div></div></div>
+        </div>
+        <button class="m-disclose" type="button" aria-expanded="true"><span>Details</span><span data-icon="chevron-up" data-size="16"></span></button>
+        <div>
+          <div class="m-kv"><span class="m-kv__l">Bank-ID</span><div class="m-kv__r"><div class="m-kv__v">TX-20261014-00481</div></div></div>
+          <div class="m-kv"><span class="m-kv__l">Wertstellung</span><div class="m-kv__r"><div class="m-kv__v">15. 10. 2026</div></div></div>
+          <div class="m-kv"><span class="m-kv__l">Datei</span><div class="m-kv__r"><div class="m-kv__v">fio-kontoauszug-oktober-2026-vollstaendig.csv</div></div></div>
+          <div class="m-kv"><span class="m-kv__l">Zeile</span><div class="m-kv__r"><div class="m-kv__v">118</div></div></div>
+          <div class="m-kv"><span class="m-kv__l">Quelle</span><div class="m-kv__r"><div class="m-kv__v">Importiert</div></div></div>
+          <div class="m-kv"><span class="m-kv__l">Status</span><div class="m-kv__r"><div class="m-kv__v">Gebucht</div></div></div>
+          <div class="m-kv"><span class="m-kv__l">Währung</span><div class="m-kv__r"><div class="m-kv__v">CZK</div></div></div>
+        </div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--danger" type="button"><span>Transaktion löschen</span></button><button class="m-btn m-btn--primary" type="button"><span>Fertig</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The category picker over the ledger, at the three widths. -->
+<template id="picker-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Girokonto</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Fio · CZK · 2100123456/2010</p>
+      <div data-rows="ledgerToday"></div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet" role="dialog" aria-modal="true" aria-label="Kategorie">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Kategorie</div></div>
+      <div class="m-sheet__body">
+        <div class="m-search"><span class="m-search__ic" data-icon="search" data-size="16"></span><input class="m-search__i" type="search" placeholder="Suchen..." aria-label="Suchen..."></div>
+        <section>
+          <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Vorschlag</div>
+          <div class="m-pill-row" role="group">
+            <button class="m-pill" type="button" aria-label="Vorschlag annehmen: Lebensmittel"><span data-icon="sparkles" data-size="14"></span><span class="m-pill__chip" style="background: color-mix(in srgb, var(--s2) 15%, transparent); color: var(--s2)" data-icon="receipt" data-size="14"></span><span>Lebensmittel</span></button>
+            <button class="m-pill__x" type="button" aria-label="Vorschlag ablehnen" data-icon="x" data-size="16"></button>
+          </div>
+        </section>
+        <section>
+          <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Zuletzt verwendet</div>
+          <div role="radiogroup" aria-label="Zuletzt verwendet">
+            <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" style="background: color-mix(in srgb, var(--s1) 15%, transparent); color: var(--s1)" data-icon="credit-card" data-size="15"></span><span class="m-pick__l">Einkäufe</span></button>
+            <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" style="background: color-mix(in srgb, var(--s3) 15%, transparent); color: var(--s3)" data-icon="house" data-size="15"></span><span class="m-pick__l">Wohnen und Nebenkosten für die ganze Familie</span></button>
+          </div>
+        </section>
+        <section>
+          <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Alle Kategorien</div>
+          <div role="radiogroup" aria-label="Alle Kategorien">
+            <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" style="background: color-mix(in srgb, var(--s2) 15%, transparent); color: var(--s2)" data-icon="receipt" data-size="15"></span><span class="m-pick__l">Lebensmittel</span></button>
+            <button class="m-pick" type="button" role="radio" aria-checked="true"><span class="m-pick__chip" style="background: color-mix(in srgb, var(--s1) 15%, transparent); color: var(--s1)" data-icon="credit-card" data-size="15"></span><span class="m-pick__l">Einkäufe</span><span class="m-pick__check" data-icon="check" data-size="18"></span></button>
+            <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" style="background: color-mix(in srgb, var(--s4) 15%, transparent); color: var(--s4)" data-icon="wallet" data-size="15"></span><span class="m-pick__l">Verkehr</span></button>
+            <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" style="background: color-mix(in srgb, var(--s3) 15%, transparent); color: var(--s3)" data-icon="house" data-size="15"></span><span class="m-pick__l">Wohnen und Nebenkosten für die ganze Familie</span></button>
+          </div>
+        </section>
+        <button class="m-pick" type="button"><span class="m-pick__chip" data-icon="plus" data-size="15"></span><span class="m-pick__l">Neue Kategorie</span></button>
+        <div class="m-learn">
+          <label class="m-switchrow"><span class="m-switchrow__main"><span class="m-switchrow__t">Für dieses Konto und diese Richtung merken</span><span class="m-switchrow__s">Dieses Konto · Ausgehend · 2400312567/2010. Verlässliche Konten greifen über Empfängernamen hinweg; sonst nur dieser Empfänger.</span></span><span class="m-switchrow__sw" role="switch" aria-checked="true"></span></label>
+          <label class="m-switchrow"><span class="m-switchrow__main"><span class="m-switchrow__t">Auch 3 weitere Zahlungen kategorisieren</span><span class="m-switchrow__s">3× keine Kategorie</span></span><span class="m-switchrow__sw" role="switch" aria-checked="true"></span></label>
+        </div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost m-btn--block" type="button"><span>Abbrechen</span></button></div>
+    </div>
+  </div>
+</template>
+
 <script src="icons.js"></script>
 <script>
 (function () {
@@ -440,6 +547,7 @@
     "clock": '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
     "banknote": '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
     "arrow-right-left": '<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>',
+    "sparkles": '<path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/>',
     "layers": '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>'
   });
 
@@ -545,6 +653,8 @@
   renderFrames("finance", document.querySelector('template[data-variant="finance"]'), " · Finance");
   renderFrames("details", document.getElementById("detail-frame"), " · detail účtu");
   renderFrames("sheets", document.getElementById("sheet-frame"), " · sheet");
+  renderFrames("txsheets", document.getElementById("tx-frame"), " · transakce");
+  renderFrames("pickers", document.getElementById("picker-frame"), " · výběr kategorie");
 
   /* Flows strips: 12 months (Nov 2025 – Oct 2026) of incoming/outgoing values as "in,out|…", the
      bars scaled to the largest month, the newest selected, the strip scrolled to its end. */

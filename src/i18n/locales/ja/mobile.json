@@ -162,6 +162,34 @@
     }
   },
   "transaction": {
-    "flowSaved": "意味を保存しました"
+    "flowSaved": "意味を保存しました",
+    "done": "完了",
+    "counterparty": "取引相手",
+    "date": "日付",
+    "category": "カテゴリ",
+    "flow": "意味",
+    "note": "メモ",
+    "details": "詳細",
+    "bankId": "銀行ID",
+    "valueDate": "起算日",
+    "file": "ファイル",
+    "line": "行",
+    "sourceLabel": "入力元",
+    "source": {
+      "manual": "手入力",
+      "csv_import": "インポート済み",
+      "api_sync": "同期済み"
+    },
+    "status": "状態",
+    "booked": "確定",
+    "currency": "通貨"
+  },
+  "picker": {
+    "title": "カテゴリ",
+    "recent": "最近使ったもの",
+    "all": "すべてのカテゴリ",
+    "suggested": "提案",
+    "decline": "提案を却下",
+    "empty": "一致するカテゴリがありません"
   }
 }

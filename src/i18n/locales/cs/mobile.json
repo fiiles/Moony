@@ -184,6 +184,34 @@
     }
   },
   "transaction": {
-    "flowSaved": "Význam uložen"
+    "flowSaved": "Význam uložen",
+    "done": "Hotovo",
+    "counterparty": "Protistrana",
+    "date": "Datum",
+    "category": "Kategorie",
+    "flow": "Význam pohybu",
+    "note": "Poznámka",
+    "details": "Podrobnosti",
+    "bankId": "ID banky",
+    "valueDate": "Valuta",
+    "file": "Soubor",
+    "line": "Řádek",
+    "sourceLabel": "Zdroj",
+    "source": {
+      "manual": "Zadáno ručně",
+      "csv_import": "Importováno",
+      "api_sync": "Synchronizováno"
+    },
+    "status": "Stav",
+    "booked": "Zaúčtováno",
+    "currency": "Měna"
+  },
+  "picker": {
+    "title": "Kategorie",
+    "recent": "Naposledy použité",
+    "all": "Všechny kategorie",
+    "suggested": "Návrh",
+    "decline": "Odmítnout návrh",
+    "empty": "Žádná kategorie neodpovídá"
   }
 }

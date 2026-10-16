@@ -173,6 +173,34 @@
     }
   },
   "transaction": {
-    "flowSaved": "Betydelse sparad"
+    "flowSaved": "Betydelse sparad",
+    "done": "Klart",
+    "counterparty": "Motpart",
+    "date": "Datum",
+    "category": "Kategori",
+    "flow": "Betydelse",
+    "note": "Anteckning",
+    "details": "Detaljer",
+    "bankId": "Bank-ID",
+    "valueDate": "Valutadatum",
+    "file": "Fil",
+    "line": "Rad",
+    "sourceLabel": "Källa",
+    "source": {
+      "manual": "Inlagd för hand",
+      "csv_import": "Importerad",
+      "api_sync": "Synkroniserad"
+    },
+    "status": "Status",
+    "booked": "Bokförd",
+    "currency": "Valuta"
+  },
+  "picker": {
+    "title": "Kategori",
+    "recent": "Nyligen använda",
+    "all": "Alla kategorier",
+    "suggested": "Förslag",
+    "decline": "Avvisa förslaget",
+    "empty": "Ingen kategori matchar"
   }
 }

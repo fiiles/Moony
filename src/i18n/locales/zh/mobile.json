@@ -162,6 +162,34 @@
     }
   },
   "transaction": {
-    "flowSaved": "含义已保存"
+    "flowSaved": "含义已保存",
+    "done": "完成",
+    "counterparty": "交易对方",
+    "date": "日期",
+    "category": "类别",
+    "flow": "含义",
+    "note": "备注",
+    "details": "详情",
+    "bankId": "银行 ID",
+    "valueDate": "起息日",
+    "file": "文件",
+    "line": "行",
+    "sourceLabel": "来源",
+    "source": {
+      "manual": "手动输入",
+      "csv_import": "已导入",
+      "api_sync": "已同步"
+    },
+    "status": "状态",
+    "booked": "已入账",
+    "currency": "货币"
+  },
+  "picker": {
+    "title": "类别",
+    "recent": "最近使用",
+    "all": "所有类别",
+    "suggested": "建议",
+    "decline": "拒绝建议",
+    "empty": "没有匹配的类别"
   }
 }

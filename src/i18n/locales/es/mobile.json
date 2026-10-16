@@ -184,6 +184,34 @@
     }
   },
   "transaction": {
-    "flowSaved": "Significado guardado"
+    "flowSaved": "Significado guardado",
+    "done": "Listo",
+    "counterparty": "Contraparte",
+    "date": "Fecha",
+    "category": "Categoría",
+    "flow": "Significado",
+    "note": "Nota",
+    "details": "Detalles",
+    "bankId": "ID del banco",
+    "valueDate": "Fecha valor",
+    "file": "Archivo",
+    "line": "Línea",
+    "sourceLabel": "Origen",
+    "source": {
+      "manual": "Introducido a mano",
+      "csv_import": "Importado",
+      "api_sync": "Sincronizado"
+    },
+    "status": "Estado",
+    "booked": "Contabilizado",
+    "currency": "Moneda"
+  },
+  "picker": {
+    "title": "Categoría",
+    "recent": "Usadas recientemente",
+    "all": "Todas las categorías",
+    "suggested": "Sugerencia",
+    "decline": "Rechazar sugerencia",
+    "empty": "Ninguna categoría coincide"
   }
 }

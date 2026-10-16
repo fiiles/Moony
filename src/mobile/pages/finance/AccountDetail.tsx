@@ -48,9 +48,11 @@ import { Segment } from '@/mobile/components/Segment';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { useAccountDetail } from '@/mobile/hooks/use-account-detail';
 import { useBack } from '@/mobile/hooks/use-back';
+import { useDeleteDescription } from '@/mobile/hooks/use-delete-description';
 import { useLedger, type Ledger } from '@/mobile/hooks/use-ledger';
 import { useLedgerMutations } from '@/mobile/hooks/use-ledger-mutations';
 import { balanceLine } from '@/mobile/lib/balance-line';
+import { recentCategoryIds } from '@/mobile/lib/category-pick';
 import { cashChange } from '@/mobile/lib/finance-rows';
 import {
   activeFilterCount,
@@ -65,11 +67,13 @@ import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 import { BalanceHistorySheet } from '@/mobile/sheets/BalanceHistorySheet';
+import { CategoryPickerSheet } from '@/mobile/sheets/CategoryPickerSheet';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { FilterSheet } from '@/mobile/sheets/FilterSheet';
 import { ImportHistorySheet } from '@/mobile/sheets/ImportHistorySheet';
 import { PlaceholderSheet } from '@/mobile/sheets/PlaceholderSheet';
 import { RecordBalancesSheet } from '@/mobile/sheets/RecordBalancesSheet';
+import { TransactionSheet } from '@/mobile/sheets/TransactionSheet';
 
 type SheetKind =
   'record' | 'import' | 'balanceHistory' | 'importHistory' | 'deleteAccount' | 'filter';
@@ -98,9 +102,9 @@ export default function AccountDetail() {
  * statement), the hero with the balance-record step line and the stats that have data, the flows
  * strip of 12 months (a tapped month filters the ledger), and the ledger: search, the segment, the
  * filter sheet, rows grouped by day under sticky heads, loaded page by page as it scrolls. A row
- * opens its details on a tap or a swipe right and the category picker on a swipe left (both
- * placeholders until Task 3); a long press is its menu. `?category=uncategorized` (the Finance
- * row) opens the ledger on the payments without a category.
+ * opens the transaction sheet on a tap or a swipe right and the category picker on a swipe left (the
+ * sheet's Kategorie row opens the picker over it); a long press is its menu.
+ * `?category=uncategorized` (the Finance row) opens the ledger on the payments without a category.
  */
 function AccountDetailPage({ id }: { id: string | undefined }) {
   const { t } = useTranslation('mobile');
@@ -125,12 +129,22 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   );
   const ledger = useLedger(id, ledgerState);
   const { deleteTransaction } = useLedgerMutations();
+  const describeDelete = useDeleteDescription();
 
   const [period, setPeriod] = useState<ChartPeriod>(DEFAULT_PERIOD);
   const [sheet, setSheet] = useState<SheetKind | null>(null);
-  // The transaction sheet and the category picker (Task 3); placeholders until then
+  // The row of the transaction sheet and the row of the category picker (the same one while the
+  // picker is open over the sheet). They hold the row as the sheets saw it last: a write the
+  // sheets make is reported through `patchTx`, since the ledger may no longer list the row once
+  // it has a category (the uncategorized filter) and then cannot say what it became.
   const [openTx, setOpenTx] = useState<BankTransaction | null>(null);
   const [pickFor, setPickFor] = useState<BankTransaction | null>(null);
+  const patchTx = (txId: string, patch: Partial<BankTransaction>) => {
+    const apply = (tx: BankTransaction | null) => (tx?.id === txId ? { ...tx, ...patch } : tx);
+    setOpenTx(apply);
+    setPickFor(apply);
+  };
+  const recentIds = useMemo(() => recentCategoryIds(ledger.rows, 5), [ledger.rows]);
   // The row to delete stays while its sheet slides away, so the sentence does not blank out
   const [pendingDelete, setPendingDelete] = useState<BankTransaction | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -147,18 +161,6 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
         ? { ...s, month: null, preset: 'allTime', from: null, to: null }
         : { ...s, month, preset: 'custom', ...periodForMonth(month) }
     );
-
-  const deleteDescription = (() => {
-    if (!pendingDelete) return '';
-    const value = Math.abs(Number(pendingDelete.amount) || 0);
-    const signedValue = pendingDelete.type === 'credit' ? value : -value;
-    const amount = fmt.money(signedValue, pendingDelete.currency, { signed: true });
-    const name = pendingDelete.counterpartyName || pendingDelete.description;
-    const date = fmt.day(pendingDelete.bookingDate);
-    return name
-      ? tb('confirmDeleteTransaction.description', { name, date, amount })
-      : tb('confirmDeleteTransaction.descriptionNoName', { date, amount });
-  })();
 
   const balance = account ? parseFloat(account.balance || '0') || 0 : 0;
   const showHero = balance !== 0 || records.length > 0;
@@ -332,23 +334,28 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
             categories={categories}
             onApply={setState}
           />
-          <PlaceholderSheet
+          <TransactionSheet
+            tx={openTx}
             open={openTx !== null}
             onOpenChange={(open) => !open && setOpenTx(null)}
-            title={t('account.ledger.details')}
-            text={t('shell.placeholder')}
+            category={categories.find((c) => c.id === openTx?.categoryId)}
+            flow={openTx ? ledger.flowById.get(openTx.id) : undefined}
+            onPickCategory={() => setPickFor(openTx)}
+            onChange={(patch) => openTx && patchTx(openTx.id, patch)}
           />
-          <PlaceholderSheet
+          <CategoryPickerSheet
+            tx={pickFor}
             open={pickFor !== null}
             onOpenChange={(open) => !open && setPickFor(null)}
-            title={t('account.ledger.categorize')}
-            text={t('shell.placeholder')}
+            categories={categories}
+            recentIds={recentIds}
+            onChange={(patch) => pickFor && patchTx(pickFor.id, patch)}
           />
           <ConfirmSheet
             open={deleteOpen}
             onOpenChange={setDeleteOpen}
             title={tb('confirmDeleteTransaction.title')}
-            description={deleteDescription}
+            description={pendingDelete ? describeDelete(pendingDelete) : ''}
             confirmLabel={tb('transaction.delete')}
             onConfirm={() => {
               if (!pendingDelete) return;

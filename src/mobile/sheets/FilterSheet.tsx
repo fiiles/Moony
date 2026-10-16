@@ -1,10 +1,11 @@
-import { useId, useState, type ReactNode } from 'react';
+import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Check, Layers, Tag } from 'lucide-react';
+import { Layers, Tag } from 'lucide-react';
 import type { TransactionCategory } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
 import { CategoryIconChip } from '@/components/common/CategoryIcon';
 import { Button } from '@/components/ui/button';
+import { NeutralChip, PickGroup, PickRow } from '@/mobile/components/PickRow';
 import { Sheet } from '@/mobile/components/Sheet';
 import { DEFAULT_LEDGER, type LedgerState, type PeriodPreset } from '@/mobile/lib/ledger';
 
@@ -123,60 +124,6 @@ export function FilterSheet({ open, onOpenChange, state, categories, onApply }: 
         </div>
       )}
     </Sheet>
-  );
-}
-
-/** A titled radio list of the sheet. */
-function PickGroup({ title, children }: { title: string; children: ReactNode }) {
-  const id = useId();
-  return (
-    <section className="mb-2">
-      <h3 id={id} className="mx-1 mb-0.5 mt-2 text-m-sub font-semibold text-ink-3">
-        {title}
-      </h3>
-      <div role="radiogroup" aria-labelledby={id} className="divide-y divide-line-soft">
-        {children}
-      </div>
-    </section>
-  );
-}
-
-/** A 44 pt radio row (`.m-pick`): an optional chip, the label, a check on the chosen one. */
-function PickRow({
-  icon,
-  label,
-  checked,
-  onSelect,
-}: {
-  icon?: ReactNode;
-  label: string;
-  checked: boolean;
-  onSelect: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      role="radio"
-      aria-checked={checked}
-      onClick={onSelect}
-      className="flex min-h-11 w-full items-center gap-3 px-1 py-1.5 text-left text-m-body text-ink [-webkit-touch-callout:none] active:bg-well focus-visible:outline-none focus-visible:shadow-focus"
-    >
-      {icon}
-      <span className="min-w-0 flex-1 truncate">{label}</span>
-      {checked && <Check aria-hidden className="size-[18px] flex-none text-ink" strokeWidth={2} />}
-    </button>
-  );
-}
-
-/** The 28 pt chip of the rows that are not a category (all, uncategorized). */
-function NeutralChip({ icon }: { icon: ReactNode }) {
-  return (
-    <span
-      aria-hidden
-      className="grid size-7 shrink-0 place-items-center rounded-full bg-well-2 text-ink-3 [&_svg]:size-[15px]"
-    >
-      {icon}
-    </span>
   );
 }
 

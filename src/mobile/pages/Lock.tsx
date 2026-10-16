@@ -97,7 +97,8 @@ const primaryButton = 'h-12 w-full rounded-[10px] text-m-row';
 /**
  * Fields on the lock and recovery screens: 48 pt, 15 pt text. iOS would zoom into a field under
  * 16 px on focus; `maximum-scale=1` in `index.html` is what stops that, at the accessibility cost
- * of no pinch zoom (spec §10.2 scales text with the system text size instead).
+ * of no pinch zoom. Scaling the `text-m-*` roles with the system text size (Dynamic Type, spec
+ * §10.2) is scheduled for Phase 6; until then the viewport lock is a deliberate trade-off.
  */
 const field48 = 'h-12 rounded-[10px] text-m-body';
 const fieldMessage = 'text-left text-m-sub';

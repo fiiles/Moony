@@ -13,7 +13,10 @@ interface RecoveryKeyBoxProps {
   recoveryKey: string;
   /** Called once the key was saved to a file (the wizard remembers it). */
   onSavedToFile?: () => void;
-  /** Phone screens: the two actions stack as full-width 48 pt buttons and the note is 12 pt. */
+  /**
+   * Phone screens: "Zkopírovat" only, as a full-width 48 pt button, and the note is 12 pt.
+   * "Uložit do souboru…" is left out: the phone capability grants no file writes.
+   */
   touch?: boolean;
 }
 
@@ -76,15 +79,13 @@ export function RecoveryKeyBox({ recoveryKey, onSavedToFile, touch = false }: Re
           {copied ? <Check /> : <Copy />}
           {copied ? t('recoveryKey.copied') : t('recoveryKey.copy')}
         </Button>
-        <Button
-          type="button"
-          variant="outline"
-          className={touch ? touchButton : undefined}
-          onClick={saveKeyToFile}
-        >
-          {saved ? <Check /> : <Download />}
-          {t('recoveryKey.saveToFile')}
-        </Button>
+        {/* Not on the phone (no file writes there; its key step comes in Phase 5). */}
+        {!touch && (
+          <Button type="button" variant="outline" onClick={saveKeyToFile}>
+            {saved ? <Check /> : <Download />}
+            {t('recoveryKey.saveToFile')}
+          </Button>
+        )}
       </div>
       {/* D10 of the encrypted-attachments spec: attachments are encrypted with the same key. */}
       <p

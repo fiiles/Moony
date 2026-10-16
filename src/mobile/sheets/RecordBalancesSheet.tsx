@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { currencyDecimals, recordCurrency } from '@shared/currencies';
+import type { BankAccount } from '@shared/schema';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useRecordBalances, type AccountBalanceRecord } from '@/hooks/use-balance-records';
 import { useFormat } from '@/lib/use-format';
@@ -22,15 +23,30 @@ interface RecordBalancesSheetProps {
 
 /**
  * "Zaznamenat zůstatky" (spec §8.3 item 1, §10.3): one amount field per stale account, the last
- * balance as its placeholder, dated today. Saving records every filled field (the empty ones are
- * skipped) through the desktop's balance write, one after the other, then says it once.
+ * balance and its date as its placeholder; the new one is dated today. Saving records every filled
+ * field (the empty ones are skipped) through the desktop's balance write, one after the other,
+ * then says it once.
  */
 export function RecordBalancesSheet({ open, onOpenChange, accountIds }: RecordBalancesSheetProps) {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
+  const { t: tb } = useTranslation('bank_accounts');
   const fmt = useFormat();
   const { hidden } = useHideAmounts();
-  const hint = (formatted: string) => (hidden ? maskMoney(formatted) : formatted);
+  // The last balance and its date are a hint, not an input: the amount is masked with the other
+  // amounts, the date stays. The desktop's wording ("Zůstatek … k 2. 9. 2026", or "datum
+  // neznámé" for a balance without a date).
+  const lastBalance = (account: Pick<BankAccount, 'balance' | 'balanceAsOf' | 'currency'>) => {
+    const decimals = currencyDecimals(recordCurrency(account.currency));
+    const formatted = fmt.number(Number(account.balance), {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+    const amount = hidden ? maskMoney(formatted) : formatted;
+    return account.balanceAsOf === null
+      ? tb('form.currentBalanceUnknownDate', { amount })
+      : tb('form.currentBalance', { amount, date: fmt.day(account.balanceAsOf) });
+  };
   const { accounts: all } = useBankAccounts();
   const record = useRecordBalances();
   const [values, setValues] = useState<Record<string, string>>({});
@@ -123,20 +139,13 @@ export function RecordBalancesSheet({ open, onOpenChange, accountIds }: RecordBa
       >
         {parsed.map((p) => {
           const currency = recordCurrency(p.account.currency);
-          const decimals = currencyDecimals(currency);
           return (
             <AmountField
               key={p.account.id}
               label={p.account.name}
               unit={currency}
               value={p.text}
-              // The last balance is a hint, not an input: masked with the other amounts
-              placeholder={hint(
-                fmt.number(Number(p.account.balance), {
-                  minimumFractionDigits: decimals,
-                  maximumFractionDigits: decimals,
-                })
-              )}
+              placeholder={lastBalance(p.account)}
               error={invalid(p) ? tc('validation.invalidAmount') : undefined}
               negative={p.negative}
               negativeLabel={t('recordBalances.negative')}

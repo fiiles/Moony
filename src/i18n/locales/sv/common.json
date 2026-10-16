@@ -277,6 +277,7 @@
     "stockImportRowFailed": "raden kunde inte sparas.",
     "onboardingFlagUnknown": "Okänt steg i den inledande konfigurationen.",
     "insuranceNoticeInvalid": "Ange ett helt antal dagar från 0 till 365.",
+    "themeInvalid": "Välj System, Ljust eller Mörkt.",
     "budgetIntervalsRequired": "Välj minst ett budgetintervall.",
     "effectiveUntilBeforeStart": "Slutmånaden kan inte vara före startmånaden.",
     "statementTooLarge": "Den här kontoutdragsfilen är större än {{limitMb}} MB.",

@@ -8,7 +8,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { chartTokens } from '@/lib/tokens';
+import { useChartTokens } from '@/theme/ThemeProvider';
 import { niceTicks, valueDomain } from '@/utils/chart-scale';
 import { ChartTip } from '@/components/charts/ChartTip';
 import { ChartLegend, type LegendItem } from '@/components/charts/ChartLegend';
@@ -80,7 +80,7 @@ export function MoonyLinesChart({
   legendRows = 2,
   className,
 }: MoonyLinesChartProps) {
-  const tk = useMemo(chartTokens, []);
+  const tk = useChartTokens();
   const [hovered, setHovered] = useState<string | null>(null);
   const n = series[0]?.values.length ?? 0;
   // A series that vanished under the pointer (a filter changed) leaves no mouseleave behind

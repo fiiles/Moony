@@ -277,6 +277,7 @@
     "stockImportRowFailed": "no se pudo guardar la fila.",
     "onboardingFlagUnknown": "Paso de configuración inicial desconocido.",
     "insuranceNoticeInvalid": "Introduce un número entero de días entre 0 y 365.",
+    "themeInvalid": "Elige Sistema, Claro u Oscuro.",
     "budgetIntervalsRequired": "Selecciona al menos un intervalo de presupuesto.",
     "effectiveUntilBeforeStart": "El mes final no puede ser anterior al mes inicial.",
     "statementTooLarge": "Este archivo de extracto supera los {{limitMb}} MB.",

@@ -273,7 +273,8 @@
       "periodReturn": "Rendimento del periodo",
       "gainToday": "Guadagno non real. oggi",
       "noGroup": "senza gruppo",
-      "valueAt": "Al {{date}}"
+      "valueAt": "Al {{date}}",
+      "total": "Totale"
     },
     "holdings": {
       "title": "Posizioni e relativi tag",
@@ -479,6 +480,10 @@
       "captionMore": "Il grafico disegna al massimo quattro linee; le altre sono solo nella tabella.",
       "captionSelection": "I contributi si riferiscono al rendimento dell'intero portafoglio.",
       "captionNone": "Non suddiviso: la selezione è una sola riga; il suo contributo si riferisce al rendimento dell'intero portafoglio."
+    },
+    "filterBadge": {
+      "label": "Filtro: {{tags}}",
+      "title": "Qui contano solo le posizioni taggate con {{tags}}."
     }
   },
   "planning": {

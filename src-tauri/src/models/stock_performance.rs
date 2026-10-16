@@ -72,6 +72,11 @@ pub struct PerformanceSeries {
     /// `null` for a series computed in another currency.
     #[serde(rename = "contribution")]
     pub contribution: Option<Vec<f64>>,
+    /// Money the series' positions gained over the whole period in the report currency (the
+    /// value change without buys and sells), decimal TEXT; `null` for a series computed in
+    /// another currency.
+    #[serde(rename = "gain")]
+    pub gain: Option<String>,
 }
 
 /// One held position over the whole period.
@@ -91,6 +96,10 @@ pub struct PositionPerformance {
     /// Value on the last date, decimal TEXT; `null` when it cannot be converted.
     #[serde(rename = "endValue")]
     pub end_value: Option<String>,
+    /// Money the position gained over the period (the value change without buys and sells),
+    /// decimal TEXT.
+    #[serde(rename = "gain")]
+    pub gain: String,
 }
 
 /// Performance of the held positions in `currency`: the whole portfolio, the requested series

@@ -283,7 +283,8 @@
       "periodReturn": "Zwrot za okres",
       "gainToday": "Niezreal. zysk dziś",
       "noGroup": "bez grupy",
-      "valueAt": "Na {{date}}"
+      "valueAt": "Na {{date}}",
+      "total": "Łącznie"
     },
     "holdings": {
       "title": "Pozycje i ich tagi",
@@ -495,6 +496,10 @@
       "captionMore": "Wykres rysuje najwyżej cztery linie; pozostałe są tylko w tabeli.",
       "captionSelection": "Wkłady dotyczą zwrotu całego portfela.",
       "captionNone": "Bez podziału: wybór to jeden wiersz; jego wkład dotyczy zwrotu całego portfela."
+    },
+    "filterBadge": {
+      "label": "Filtr: {{tags}}",
+      "title": "Liczą się tu tylko pozycje z tagami {{tags}}."
     }
   },
   "planning": {

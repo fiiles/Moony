@@ -4,9 +4,10 @@
 
 /*
  * Moony design tokens (docs/design-system/tokens.css is the source of truth;
- * keep the two files identical). Light theme only — the dark theme was dropped
- * for v1 (README §11). Components never use raw hex: everything goes through a
- * token here and a Tailwind name in tailwind.config.ts.
+ * keep the two files identical, src/index.test.ts guards it). Two themes: the
+ * :root block is light, the :root[data-theme='dark'] block below it is dark, on
+ * the same names (README §2 and §11). Components never use raw hex: everything
+ * goes through a token here and a Tailwind name in tailwind.config.ts.
  */
 :root {
   /* ---- Surfaces (from outer canvas to the elevated workspace) ---- */
@@ -149,6 +150,90 @@
   --t-fast: 120ms;
   --t-base: 180ms;
   --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* ===== Dark theme: the shared token set (same names as tokens.css, no new names). =====
+   Warm near-black, never #000. Depth comes from surface steps (canvas < sidebar < paper);
+   wells go deeper = darker in both themes. The contrast material (`dark`) inverts: it is the
+   light material in the dark theme, so active nav, primary button, tooltip, checked controls
+   keep `background: var(--dark); color: var(--ink-inverse)` unchanged. */
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  /* ---- Surfaces ---- */
+  --canvas: #1a1917;
+  --canvas-glow: #22211e;
+  --sidebar: #1f1e1b;
+  --sidebar-2: #1c1b19;
+  --paper: #292826;
+  --paper-2: #2b2a27;
+  --well: #232220;
+  --well-2: #1e1d1b;
+  --well-3: #181715;
+  --hero-orb: #302f2b;
+
+  /* ---- Lines ---- */
+  --line: #363531;
+  --line-soft: #302f2c;
+  --line-strong: #45443f;
+  --line-sidebar: #2b2a27;
+  --line-hover: #56544e;
+
+  /* ---- Ink ---- */
+  --ink: #eceae4;
+  --ink-2: #cdcbc4;
+  --ink-3: #a3a098;
+  --ink-4: #868379;
+  --ink-5: #6b6962;
+  --ink-inverse: #1d1c19;
+  --ink-inverse-2: #5f5c54;
+  --ink-hover: rgba(0, 0, 0, 0.18);
+
+  /* ---- Contrast material (light on dark) ---- */
+  --dark: #e9e7e1;
+  --dark-hi: #f3f1ec;
+  --dark-lo: #e2e0d9;
+  --dark-hover-hi: #faf9f5;
+  --dark-hover-lo: #ebe9e3;
+
+  /* ---- Semantic ---- */
+  --gain: #45c6a6;
+  --gain-soft: #203c30;
+  --loss: #ef7f5e;
+  --loss-soft: #4a2d25;
+  --loss-line: #6e3e32;
+  --loss-hover: #ff9e84;
+  --loss-ring: 0 0 0 3px rgba(239, 127, 94, 0.22);
+
+  /* ---- Data series (same indigo family, re-stepped for dark paper) ---- */
+  --s1: #d8dbf0;
+  --s2: #a2a7ec;
+  --s3: #7b7ea5;
+  --s4: #4f508e;
+  --s-other: #3a3935;
+  --chart-line: #b5b9eb;
+  --chart-area: #393b52;
+  --chart-grid: #302f2c;
+  --chart-cost: #78756d;
+  --chart-axis: #6b6962;
+
+  /* ---- Focus ---- */
+  --focus-border: #a09d94;
+  --focus-ring: 0 0 0 3px rgba(255, 255, 255, 0.12);
+
+  /* ---- Elevation (black-based, stronger; the 1 px line and the surface step carry the card) ---- */
+  --sh-sidebar: 7px 0 22px rgba(0, 0, 0, 0.22);
+  --sh-1: 0 2px 5px rgba(0, 0, 0, 0.24), 0 9px 22px rgba(0, 0, 0, 0.14);
+  --sh-2: 0 4px 10px rgba(0, 0, 0, 0.26), 0 16px 35px rgba(0, 0, 0, 0.18);
+  --sh-3: 0 4px 11px rgba(0, 0, 0, 0.28), 0 20px 38px rgba(0, 0, 0, 0.2);
+  --sh-pop: 0 8px 24px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+  --sh-modal: 0 26px 80px rgba(0, 0, 0, 0.7);
+  --sh-dark: inset 0 1px rgba(255, 255, 255, 0.55), 0 3px 7px rgba(0, 0, 0, 0.35);
+  --sh-btn: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --sh-btn-hover: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --sh-seg: 0 1px 3px rgba(0, 0, 0, 0.45);
+  --sh-destructive: inset 0 1px rgba(255, 255, 255, 0.12), 0 3px 7px rgba(0, 0, 0, 0.35);
+  --scrim: rgba(12, 11, 9, 0.7);
 }
 
 /*
@@ -352,6 +437,23 @@
 
   .row-interactive:hover {
     background-color: var(--well);
+  }
+
+  /* Category icon chip: the user's hue at 15 % over paper (the tint is the inline background, hex
+     alpha 26, so it does not depend on color-mix); in the dark theme the glyph is lifted 30 %
+     towards ink in OKLab so every preset clears 4.9:1 (spec D7). Without color-mix the glyph keeps
+     the raw hue. */
+  .cat-chip {
+    color: var(--cat);
+  }
+
+  :root[data-theme='dark'] .cat-chip {
+    color: color-mix(in oklab, var(--cat) 70%, var(--ink));
+  }
+
+  /* The one theme-specific component rule: the off thumb must stay light on the dark track (D13b). */
+  :root[data-theme='dark'] .switch__thumb[data-state='unchecked'] {
+    background: var(--ink-2);
   }
 }
 

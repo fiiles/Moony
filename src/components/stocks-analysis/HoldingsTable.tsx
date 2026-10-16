@@ -1,14 +1,12 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Search, Tag } from 'lucide-react';
-import type { PositionPerformance } from '@shared/schema';
+import type { PositionPerformance, StockTag } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { positionCurrency } from '@/utils/stock-performance';
 import type { AnalysisPosition } from '@/utils/stock-analysis';
-import { toneOf } from '@/utils/performance-format';
 import { AssetLogo } from '@/components/common/AssetLogo';
-import { ChangeBadge } from '@/components/common/ChangeBadge';
 import { EmptyState } from '@/components/common/EmptyState';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,7 +20,9 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { sectorLabel, sumKnown } from './performance-model';
+import { FilterBadge } from './FilterBadge';
+import { GainChange } from './GainChange';
+import { amountOf, sectorLabel, sumKnown } from './performance-model';
 import { holdingRows, portfolioConcentration } from './tables-model';
 
 const HEAD_WRAP = '[&_th]:whitespace-normal [&_th]:leading-[1.2]';
@@ -36,6 +36,8 @@ interface HoldingsTableProps {
   endTotal: number | null;
   /** Return of each position over the period (from the performance response on screen). */
   performance: ReadonlyMap<string, PositionPerformance>;
+  /** The tags the filter chose, for the badge in the head. */
+  filterTags: readonly StockTag[];
   /** The period ends today: "Hodnota", else "K {date}" and the unrealized gain says "dnes". */
   endsToday: boolean;
   endDate: number;
@@ -58,6 +60,7 @@ export function HoldingsTable({
   endValueOf,
   endTotal,
   performance,
+  filterTags,
   endsToday,
   endDate,
   currency,
@@ -89,7 +92,10 @@ export function HoldingsTable({
     <Card variant="table" className={cn('transition-opacity duration-base', stale && 'opacity-50')}>
       <CardHeader>
         <div>
-          <CardTitle>{t('stocksAnalysis.holdings.title')}</CardTitle>
+          <CardTitle className="flex items-center gap-2.5">
+            {t('stocksAnalysis.holdings.title')}
+            <FilterBadge tags={filterTags} />
+          </CardTitle>
           <CardDescription>
             {t('stocksAnalysis.holdings.sub', {
               shown: rows.length,
@@ -147,7 +153,7 @@ export function HoldingsTable({
               <TableHead className="text-right">
                 {t('stocksAnalysis.holdings.periodReturn')}
               </TableHead>
-              <TableHead className="w-[14%] text-right">
+              <TableHead className="text-right">
                 {endsToday
                   ? t('stocksAnalysis.holdings.gain')
                   : t('stocksAnalysis.tagsTable.gainToday')}
@@ -157,11 +163,11 @@ export function HoldingsTable({
           </TableHeader>
           <TableBody>
             {rows.map((s) => {
-              const periodReturn = performance.get(s.id)?.twr ?? null;
-              const tone = toneOf(periodReturn);
+              const period = performance.get(s.id);
               return (
                 <TableRow key={s.id} className="h-[58px]">
-                  <TableCell>
+                  {/* max-w-0: a long company name truncates within the 30 % instead of widening it */}
+                  <TableCell className="max-w-0">
                     <div className="flex min-w-0 items-center gap-[10px] text-ink">
                       <AssetLogo ticker={s.ticker} type="stock" />
                       <div className="min-w-0">
@@ -197,25 +203,19 @@ export function HoldingsTable({
                   <TableCell className="text-right font-650 text-ink num">
                     {money(endValueOf(s.id))}
                   </TableCell>
-                  <TableCell
-                    className={cn(
-                      'text-right font-650 num',
-                      tone === 'gain' && 'text-gain',
-                      tone === 'loss' && 'text-loss'
-                    )}
-                  >
-                    {periodReturn === null ? (
-                      <span className="text-ink-5">—</span>
-                    ) : (
-                      fmt.percent(periodReturn / 100, 1, { signed: true })
-                    )}
+                  <TableCell className="text-right num">
+                    <GainChange
+                      amount={amountOf(period?.gain)}
+                      percent={period?.twr ?? null}
+                      currency={currency}
+                    />
                   </TableCell>
                   <TableCell className="text-right num">
-                    {s.gainLossPercent === null ? (
-                      '—'
-                    ) : (
-                      <ChangeBadge ratio={s.gainLossPercent / 100} />
-                    )}
+                    <GainChange
+                      amount={s.gainLoss}
+                      percent={s.gainLossPercent}
+                      currency={currency}
+                    />
                   </TableCell>
                   <TableCell className="pr-3 text-right">
                     <div data-row-actions>

@@ -511,7 +511,7 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
         let mut stmt = conn.prepare(
             "SELECT id, name, surname, email, menu_preferences, currency,
                     language, exclude_personal_real_estate, coingecko_modal_dismissed,
-                    mcp_server_enabled, created_at, country, insurance_notice_days
+                    mcp_server_enabled, created_at, country, insurance_notice_days, theme
              FROM user_profile LIMIT 1",
         )?;
 
@@ -521,6 +521,7 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
                 serde_json::from_str(&menu_prefs_json).unwrap_or_default();
             let country: Option<String> = row.get(11)?;
             let stored_notice: Option<i64> = row.get(12)?;
+            let theme: String = row.get(13)?;
 
             Ok(UserProfile {
                 id: row.get(0)?,
@@ -538,6 +539,7 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
                     stored_notice,
                 ),
                 country,
+                theme,
             })
         });
 
@@ -590,6 +592,11 @@ fn apply_profile_update(conn: &rusqlite::Connection, updates: &UpdateUserProfile
     if let Some(ref language) = updates.language {
         set_clauses.push("language = ?".to_string());
         params.push(Box::new(language.clone()));
+    }
+
+    if let Some(ref theme) = updates.theme {
+        set_clauses.push("theme = ?".to_string());
+        params.push(Box::new(theme.clone()));
     }
 
     if let Some(exclude) = updates.exclude_personal_real_estate {
@@ -1275,7 +1282,8 @@ mod tests {
                 coingecko_modal_dismissed INTEGER NOT NULL DEFAULT 0,
                 mcp_server_enabled INTEGER NOT NULL DEFAULT 0,
                 country TEXT,
-                insurance_notice_days INTEGER
+                insurance_notice_days INTEGER,
+                theme TEXT NOT NULL DEFAULT 'system'
             );
             INSERT INTO user_profile (id, currency) VALUES (1, 'CZK');
             "#,
@@ -1298,6 +1306,7 @@ mod tests {
             mcp_server_enabled: None,
             country: None,
             insurance_notice_days: None,
+            theme: None,
         }
     }
 
@@ -1477,6 +1486,71 @@ mod tests {
         };
         assert_eq!(update(renamed).insurance_notice_days, None);
         assert_eq!(notice(), None);
+    }
+
+    #[test]
+    fn theme_is_written_and_read_back() {
+        let conn = profile_conn();
+        let stored = |conn: &rusqlite::Connection| -> String {
+            conn.query_row("SELECT theme FROM user_profile WHERE id = 1", [], |r| {
+                r.get(0)
+            })
+            .expect("theme")
+        };
+        let set = |theme: &str| UpdateUserProfile {
+            theme: Some(theme.to_string()),
+            ..empty_update()
+        };
+
+        apply_profile_update(&conn, &set("dark")).unwrap();
+        assert_eq!(stored(&conn), "dark");
+        // An update that does not mention the theme keeps it.
+        apply_profile_update(
+            &conn,
+            &UpdateUserProfile {
+                name: Some("C".into()),
+                ..empty_update()
+            },
+        )
+        .unwrap();
+        assert_eq!(stored(&conn), "dark");
+        // A value outside the three is refused and the stored one stays.
+        match apply_profile_update(&conn, &set("blue")).unwrap_err() {
+            AppError::Validation(key) => assert_eq!(key, "validation.themeInvalid"),
+            other => panic!("expected validation error, got {other:?}"),
+        }
+        assert_eq!(stored(&conn), "dark");
+    }
+
+    /// A profile that never chose a theme follows the system, and the chosen one comes back through
+    /// the profile read (a real, fully migrated database).
+    #[test]
+    fn a_profile_without_a_theme_reads_system() {
+        let dir = tempdir().expect("tempdir");
+        let db = Database::new();
+        let key = crypto::master_key_to_hex(&[7u8; 32]);
+        db.create_with_key(dir.path().join("moony.db"), &key)
+            .expect("create db");
+        db.with_conn(|conn| {
+            conn.execute(
+                "INSERT INTO user_profile (name, surname, email) VALUES ('A', 'B', 'a@b.c')",
+                [],
+            )?;
+            Ok(())
+        })
+        .expect("profile row");
+
+        assert_eq!(get_user_profile(&db).unwrap().unwrap().theme, "system");
+        let chosen = update_user_profile(
+            &db,
+            UpdateUserProfile {
+                theme: Some("light".into()),
+                ..empty_update()
+            },
+        )
+        .expect("update");
+        assert_eq!(chosen.theme, "light");
+        assert_eq!(get_user_profile(&db).unwrap().unwrap().theme, "light");
     }
 
     #[test]

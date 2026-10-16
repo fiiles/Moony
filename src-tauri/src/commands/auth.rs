@@ -339,6 +339,7 @@ pub async fn set_mcp_server_enabled(
         mcp_server_enabled: Some(enabled),
         country: None,
         insurance_notice_days: None,
+        theme: None,
     };
     auth::update_user_profile(&db, updates)
 }

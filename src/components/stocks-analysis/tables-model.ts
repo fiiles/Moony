@@ -1,6 +1,6 @@
 import type { StockTag } from '@shared/schema';
 import { matchesSearch } from '@/utils/holdings-search';
-import { concentration } from '@/utils/stock-performance';
+import { concentration, tagGroupSeriesKey } from '@/utils/stock-performance';
 import { positionTotals, type AnalysisPosition } from '@/utils/stock-analysis';
 import { sumKnown } from './performance-model';
 
@@ -13,25 +13,45 @@ export interface TagGroupRows {
   free?: boolean;
 }
 
-/** A row of the tags table. */
-export interface TagRow {
-  tag: StockTag;
-  /** Name of its group; `null` for a tag without one. */
-  groupName: string | null;
-  /** Selected positions carrying the tag. */
+/** What a row of the tags table sums over its positions. */
+export interface TagFigures {
+  /** Selected positions it counts. */
   count: number;
   /** Their value as of the end of the period; `null` when none is known. */
   value: number | null;
   /** Value as a share of the whole portfolio at the end, ratio. */
   share: number | null;
-  /** Return of the tag's positions over the period, percent; `null` without a series. */
+  /** Return of the positions over the period, percent; `null` without a series. */
   periodReturn: number | null;
+  /** Money they gained over the period, in the report currency; `null` without a series. */
+  periodGain: number | null;
   /** Unrealized gain as of today, in the report currency. */
   gain: number;
   /** Unrealized gain as of today, percent of cost. */
   gainPercent: number;
   /** Estimated dividend a year, as of today. */
   dividend: number;
+}
+
+/** A row of the tags table: the selected positions carrying the tag. */
+export interface TagRow extends TagFigures {
+  tag: StockTag;
+  /** Key of its row of chips (`TagGroupRows.key`). */
+  groupKey: string;
+  /** Name of its group; `null` for a tag without one. */
+  groupName: string | null;
+}
+
+/** The subtotal of a tag group: the selected positions carrying any of its tags. */
+export interface TagGroupTotal extends TagFigures {
+  groupKey: string;
+  label: string;
+}
+
+/** The figures of a performance series over the whole period. */
+export interface PeriodFigures {
+  periodReturn: number | null;
+  periodGain: number | null;
 }
 
 export interface TagRowsInput {
@@ -42,10 +62,33 @@ export interface TagRowsInput {
   endValueOf: (positionId: string) => number | null;
   /** Value of the whole portfolio as of the end of the period. */
   endTotal: number | null;
-  /** Return of a tag's series over the period, percent. */
-  periodReturnOf: (tagId: string) => number | null;
+  /** A series of the performance response by key (`tag:<id>`, `tag-group:<id>`). */
+  periodOf: (seriesKey: string) => PeriodFigures | null;
   /** With a filter only tags that have a selected position are listed. */
   filterActive: boolean;
+}
+
+function figuresOf(
+  members: readonly AnalysisPosition[],
+  seriesKey: string,
+  input: TagRowsInput
+): TagFigures {
+  const totals = positionTotals(members);
+  const value = sumKnown(members.map((p) => input.endValueOf(p.id)));
+  const period = members.length > 0 ? input.periodOf(seriesKey) : null;
+  return {
+    count: members.length,
+    value,
+    share:
+      value !== null && input.endTotal !== null && input.endTotal > 0
+        ? value / input.endTotal
+        : null,
+    periodReturn: period?.periodReturn ?? null,
+    periodGain: period?.periodGain ?? null,
+    gain: totals.gainLoss,
+    gainPercent: totals.gainLossPercent,
+    dividend: totals.dividend,
+  };
 }
 
 /**
@@ -59,25 +102,40 @@ export function tagRows(input: TagRowsInput): TagRow[] {
     for (const tag of group.tags) {
       const members = input.selected.filter((p) => p.tags.some((x) => x.id === tag.id));
       if (input.filterActive && members.length === 0) continue;
-      const totals = positionTotals(members);
-      const value = sumKnown(members.map((p) => input.endValueOf(p.id)));
       rows.push({
         tag,
+        groupKey: group.key,
         groupName: group.free ? null : group.label,
-        count: members.length,
-        value,
-        share:
-          value !== null && input.endTotal !== null && input.endTotal > 0
-            ? value / input.endTotal
-            : null,
-        periodReturn: members.length > 0 ? input.periodReturnOf(tag.id) : null,
-        gain: totals.gainLoss,
-        gainPercent: totals.gainLossPercent,
-        dividend: totals.dividend,
+        ...figuresOf(members, `tag:${tag.id}`, input),
       });
     }
   }
   return rows;
+}
+
+/**
+ * Subtotals of the tag groups, figured like a tag row over the selected positions carrying any
+ * tag of the group (its period return is of the group's own series), so the rows of one group add
+ * up to it. Only a group with at least two tags holding a selected position has one: with one it
+ * would repeat that row. The tags without a group overlap and have none.
+ */
+export function tagGroupTotals(input: TagRowsInput): TagGroupTotal[] {
+  return input.groups.flatMap((group) => {
+    if (group.free) return [];
+    const ids = new Set(group.tags.map((tag) => tag.id));
+    const holding = group.tags.filter((tag) =>
+      input.selected.some((p) => p.tags.some((x) => x.id === tag.id))
+    );
+    if (holding.length < 2) return [];
+    const members = input.selected.filter((p) => p.tags.some((x) => ids.has(x.id)));
+    return [
+      {
+        groupKey: group.key,
+        label: group.label,
+        ...figuresOf(members, tagGroupSeriesKey(group.key), input),
+      },
+    ];
+  });
 }
 
 /**

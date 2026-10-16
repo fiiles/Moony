@@ -1396,7 +1396,13 @@ twr: number[];
  * Percentage points of the whole-portfolio return the series brought, cumulative per date;
  * `null` for a series computed in another currency.
  */
-contribution: number[] | null }
+contribution: number[] | null; 
+/**
+ * Money the series' positions gained over the whole period in the report currency (the
+ * value change without buys and sells), decimal TEXT; `null` for a series computed in
+ * another currency.
+ */
+gain: string | null }
 
 /**
  * One line of the performance chart: a set of held positions.
@@ -1493,7 +1499,12 @@ startValue: string | null;
 /**
  * Value on the last date, decimal TEXT; `null` when it cannot be converted.
  */
-endValue: string | null }
+endValue: string | null; 
+/**
+ * Money the position gained over the period (the value change without buys and sells),
+ * decimal TEXT.
+ */
+gain: string }
 
 /**
  * Sums in the report currency over every known amount: `value`, `costBasis` and
@@ -2452,7 +2463,11 @@ country: string | null;
 /**
  * `0` turns the anniversary reminder off; 1..=365 sets the notice period.
  */
-insuranceNoticeDays: number | null }
+insuranceNoticeDays: number | null; 
+/**
+ * `system`, `light` or `dark`; anything else is refused.
+ */
+theme: string | null }
 
 /**
  * User profile stored in database
@@ -2466,7 +2481,11 @@ country: string | null;
  * The cancellation notice of insurance policies in days that the milestones use: the stored
  * value, else 50; None when it is 0 (no anniversary reminder).
  */
-insuranceNoticeDays: number | null; createdAt: number }
+insuranceNoticeDays: number | null; 
+/**
+ * Colour theme: `system` (follow the OS), `light` or `dark`.
+ */
+theme: string; createdAt: number }
 
 /**
  * A followed stock (row in watched_stocks)

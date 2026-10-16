@@ -263,7 +263,8 @@
       "periodReturn": "Avkastning i perioden",
       "gainToday": "Urealisert gevinst i dag",
       "noGroup": "ingen gruppe",
-      "valueAt": "Per {{date}}"
+      "valueAt": "Per {{date}}",
+      "total": "Totalt"
     },
     "holdings": {
       "title": "Beholdninger og etikettene deres",
@@ -463,6 +464,10 @@
       "captionMore": "Diagrammet tegner høyst fire linjer; de andre står bare i tabellen.",
       "captionSelection": "Bidragene gjelder avkastningen i hele porteføljen.",
       "captionNone": "Ikke delt opp: Utvalget er én rad; bidraget gjelder avkastningen i hele porteføljen."
+    },
+    "filterBadge": {
+      "label": "Filter: {{tags}}",
+      "title": "Her telles bare beholdninger merket med {{tags}}."
     }
   },
   "planning": {

@@ -8,7 +8,7 @@ the page archetypes the React frontend is built from.
 | `tokens.css` | All design tokens as CSS custom properties. The only place with raw color values. |
 | `moony.css` | Component contract in plain CSS (class per component, states included). The React implementation matches it visually, it does not reuse it. |
 | `mobile.css` | The phone layer of the same contract (§13): phone type scale, screen, nav bar, tab bar, hero, stat row, entity row, segment, buttons, sheet. Matched by `src/mobile/`, never reused. |
-| `styleguide.html` | Visual reference: every token, type step, elevation, component and state on one page. Open it in a browser. |
+| `styleguide.html` | Visual reference: every token, type step, elevation, component and state on one page, with a Světlý/Tmavý switch. Open it in a browser. |
 | `mobile.html` | The phone components at 360, 390 and 430 pt with German copy, each frame with a horizontal-overflow check (§13). |
 | `shell.js`, `charts.js`, `icons.js` | Style-guide helpers (sidebar from the real IA, SVG charts, Lucide icons). Not production code. |
 
@@ -37,15 +37,15 @@ Principles:
 
 Source of truth: `tokens.css`. Summary of the families (names map 1:1 to the file):
 
-- **Surfaces** `canvas`, `canvas-glow`, `sidebar`, `paper`, `paper-2`, `well`, `well-2`, `well-3`
-- **Lines** `line`, `line-soft`, `line-strong`, `line-sidebar`
-- **Ink** `ink` … `ink-5`, `ink-inverse`, `ink-inverse-2`
-- **Dark material** `dark`, `dark-hi`, `dark-lo` and the two gradients
-- **Semantic** `gain`, `gain-soft`, `loss`, `loss-soft`
+- **Surfaces** `canvas`, `canvas-glow`, `sidebar`, `sidebar-2`, `paper`, `paper-2`, `well`, `well-2`, `well-3`, `hero-orb`
+- **Lines** `line`, `line-soft`, `line-strong`, `line-sidebar`, `line-hover`
+- **Ink** `ink` … `ink-5`, `ink-inverse`, `ink-inverse-2`, `ink-hover`
+- **Contrast material** `dark`, `dark-hi`, `dark-lo`, `dark-hover-hi`, `dark-hover-lo` and the two gradients
+- **Semantic** `gain`, `gain-soft`, `loss`, `loss-soft`, `loss-line`, `loss-hover`, `loss-ring`
 - **Series** `s1` … `s4`, `s-other`, `chart-line`, `chart-area`, `chart-grid`, `chart-cost`, `chart-axis`
 - **Focus** `focus-border`, `focus-ring`
 - **Radius** `r-1` 6 · `r-2` 8 · `r-3` 13 · `r-4` 15 · `r-5` 17
-- **Elevation** `sh-sidebar`, `sh-1` (stat), `sh-2` (card), `sh-3` (table), `sh-pop`, `sh-modal`, `sh-dark`, `sh-btn`, `scrim`
+- **Elevation** `sh-sidebar`, `sh-1` (stat), `sh-2` (card), `sh-3` (table), `sh-pop`, `sh-modal`, `sh-dark`, `sh-btn`, `sh-btn-hover`, `sh-seg`, `sh-destructive`, `scrim`
 - **Type** size, weight and tracking per role (`fs-*`, `fw-*`, `ls-*`)
 - **Spacing** 4-px scale `sp-1` … `sp-9`, layout widths, control heights
 - **Motion** `t-fast` 120 ms, `t-base` 180 ms, one ease curve
@@ -64,7 +64,93 @@ Validation that was run (dataviz palette validator, OKLab):
 | `gain` vs `loss` CVD ΔE | 9.5 (protan, worst case) | Distinguishable, but a sign glyph or arrow is still mandatory next to every signed value. Color never carries direction alone. |
 | `gain` / `loss` text contrast | 5.3:1 / 5.2:1 on paper, 4.7:1 / 4.6:1 on their soft tints | Both work as 10 px badge text. |
 
-Dark theme: not in v1. The app ships light only.
+Two themes, one set of names. The light values are the `:root` block, the dark values the
+`:root[data-theme="dark"]` block of `tokens.css`; `data-theme` is stamped on `<html>` before the first
+paint (`public/theme-boot.js`) and switched by `ThemeProvider`. The contrast material `dark` is dark on
+light and light on dark (`#e9e7e1`, text `ink-inverse`); depth stays surface-based (canvas < sidebar <
+paper, wells deeper = darker in both themes).
+
+Only the color, elevation and focus tokens differ between the themes; radius, type, spacing, layout and
+motion are shared and stay out of the dark block. The `dark-grad` gradients are declared once in `:root`
+and follow the dark block, which also sets `color-scheme: dark`. Both value sets:
+
+| Token | Light | Dark | Use |
+|---|---|---|---|
+| `--canvas` | `#eeece7` | `#1a1917` | page background |
+| `--canvas-glow` | `#fbfaf7` | `#22211e` | radial highlight top-right |
+| `--sidebar` | `#f8f7f3` | `#1f1e1b` | sidebar |
+| `--sidebar-2` | `#f5f4f0` | `#1c1b19` | sidebar gradient end |
+| `--paper` | `#ffffff` | `#292826` | cards, tables, modals, inputs |
+| `--paper-2` | `#fdfcf9` | `#2b2a27` | card gradient end |
+| `--well` | `#f7f6f2` | `#232220` | table head, hover row, modal footer, disabled input |
+| `--well-2` | `#e9e7e1` | `#1e1d1b` | segmented track, neutral badge, skeleton |
+| `--well-3` | `#e3e0d9` | `#181715` | progress track, avatar, switch off |
+| `--hero-orb` | `#f0eee8` | `#302f2b` | decorative hero circle (lighter than paper in dark: moonlight, not a dip) |
+| `--line` | `#e2dfd7` | `#363531` | card and table borders |
+| `--line-soft` | `#efede8` | `#302f2c` | row dividers, chart grid |
+| `--line-strong` | `#d9d5cd` | `#45443f` | input and secondary button border |
+| `--line-sidebar` | `#e1ded6` | `#2b2a27` | sidebar edge |
+| `--line-hover` | `#c9c5bc` | `#56544e` | input hover border |
+| `--ink` | `#292822` | `#eceae4` | headings, values |
+| `--ink-2` | `#504d46` | `#cdcbc4` | body, table values |
+| `--ink-3` | `#817e75` | `#a3a098` | secondary text |
+| `--ink-4` | `#98948b` | `#868379` | labels, captions |
+| `--ink-5` | `#aaa7a0` | `#6b6962` | axis ticks, placeholders |
+| `--ink-inverse` | `#ffffff` | `#1d1c19` | text on the contrast material |
+| `--ink-inverse-2` | `#d6d3cc` | `#5f5c54` | secondary text on the contrast material |
+| `--ink-hover` | `rgba(41,40,34,.05)` | `rgba(0,0,0,.18)` | nav and ghost hover |
+| `--dark` | `#2c2a25` | `#e9e7e1` | contrast material: active nav, primary button, tooltip, checked controls |
+| `--dark-hi` | `#3b3932` | `#f3f1ec` | gradient start |
+| `--dark-lo` | `#27251f` | `#e2e0d9` | gradient end |
+| `--dark-hover-hi` | `#46433b` | `#faf9f5` | hover gradient start |
+| `--dark-hover-lo` | `#2f2d27` | `#ebe9e3` | hover gradient end |
+| `--gain` | `#107a60` | `#45c6a6` | positive change only |
+| `--gain-soft` | `#e6f5ee` | `#203c30` | gain badge tint |
+| `--loss` | `#bf4224` | `#ef7f5e` | negative change, destructive, errors |
+| `--loss-soft` | `#fcece6` | `#4a2d25` | loss badge tint |
+| `--loss-line` | `#f1cfc3` | `#6e3e32` | error alert border, danger-zone card |
+| `--loss-hover` | `#a8391d` | `#ff9e84` | destructive button hover |
+| `--loss-ring` | `0 0 0 3px rgba(191,66,36,.14)` | `0 0 0 3px rgba(239,127,94,.22)` | invalid field focus ring |
+| `--s1` | `#212339` | `#d8dbf0` | series 1 (income bars, first ring slice, progress bar) |
+| `--s2` | `#454a73` | `#a2a7ec` | series 2 |
+| `--s3` | `#7176a0` | `#7b7ea5` | series 3 (expense bars) |
+| `--s4` | `#a6a9c8` | `#4f508e` | series 4 (2.0:1 — legend mandatory) |
+| `--s-other` | `#ebe9e3` | `#3a3935` | "Ostatní" bucket, always labeled |
+| `--chart-line` | `#3c3f67` | `#b5b9eb` | value line |
+| `--chart-area` | `#e1e1ee` | `#393b52` | area fill start (fades to `paper-2` at 0) |
+| `--chart-grid` | `#efeeea` | `#302f2c` | grid |
+| `--chart-cost` | `#a8a49b` | `#78756d` | dashed "Vloženo" |
+| `--chart-axis` | `#aaa7a0` | `#6b6962` | axis ticks |
+| `--focus-border` | `#57544d` | `#a09d94` | keyboard focus border |
+| `--focus-ring` | `0 0 0 3px rgba(39,38,32,.10)` | `0 0 0 3px rgba(255,255,255,.12)` | keyboard focus ring |
+| `--sh-sidebar` | `7px 0 22px rgba(58,53,36,.03)` | `7px 0 22px rgba(0,0,0,.22)` | sidebar |
+| `--sh-1` | `0 2px 5px rgba(64,58,43,.05), 0 9px 22px rgba(64,58,43,.02)` | `0 2px 5px rgba(0,0,0,.24), 0 9px 22px rgba(0,0,0,.14)` | stat card |
+| `--sh-2` | `0 4px 10px rgba(68,60,43,.05), 0 16px 35px rgba(68,60,43,.03)` | `0 4px 10px rgba(0,0,0,.26), 0 16px 35px rgba(0,0,0,.18)` | card |
+| `--sh-3` | `0 4px 11px rgba(68,60,43,.055), 0 20px 38px rgba(68,60,43,.035)` | `0 4px 11px rgba(0,0,0,.28), 0 20px 38px rgba(0,0,0,.2)` | table |
+| `--sh-pop` | `0 8px 24px rgba(18,17,13,.12), 0 1px 2px rgba(18,17,13,.06)` | `0 8px 24px rgba(0,0,0,.5), 0 1px 2px rgba(0,0,0,.4)` | menu, tooltip, toast |
+| `--sh-modal` | `0 26px 80px rgba(18,17,13,.44)` | `0 26px 80px rgba(0,0,0,.7)` | modal |
+| `--sh-dark` | `inset 0 1px rgba(255,255,255,.13), 0 3px 7px rgba(39,35,28,.15)` | `inset 0 1px rgba(255,255,255,.55), 0 3px 7px rgba(0,0,0,.35)` | contrast material |
+| `--sh-btn` | `0 1px 2px rgba(52,46,34,.06)` | `0 1px 2px rgba(0,0,0,.3)` | secondary button |
+| `--sh-btn-hover` | `0 1px 3px rgba(52,46,34,.1)` | `0 1px 3px rgba(0,0,0,.4)` | secondary button hover |
+| `--sh-seg` | `0 1px 3px rgba(34,34,34,.13)` | `0 1px 3px rgba(0,0,0,.45)` | active segmented pill |
+| `--sh-destructive` | `inset 0 1px rgba(255,255,255,.12), 0 3px 7px rgba(191,66,36,.2)` | `inset 0 1px rgba(255,255,255,.12), 0 3px 7px rgba(0,0,0,.35)` | destructive button |
+| `--scrim` | `rgba(30,29,25,.63)` | `rgba(12,11,9,.7)` | under modals (blur 4 px stays) |
+
+Validation that was run (dark theme, surface `#292826`):
+
+| Check | Result | Consequence |
+|---|---|---|
+| Series s1–s4 adjacent ΔE (normal vision) | 16.1 · 15.1 · 15.0 (floor 15) | Max 4 series, 5th+ folds into "Ostatní" (unchanged). |
+| Series adjacent ΔE (protan/deutan, Machado 1.0) | ≥ 14.7 (target 8) | Passes without secondary encoding; legend stays. |
+| Series vs paper contrast | s1 10.7, s2 6.5, s3 3.8, s4 2.0:1 | s4 below 3:1 (light: 2.3:1): every series always has a legend with values or a direct label. |
+| Ordinal-ramp check (one hue, monotone L, ΔL ≥ 0.06, light end ≥ 2:1) | pass | The family reads as one ramp. |
+| `gain` / `loss` text contrast | 6.9:1 / 5.5:1 on paper; 5.7:1 / 4.7:1 on their soft tints | Both work as 10 px badge text. |
+| `gain` vs `loss` CVD ΔE | 9.4 (deutan, worst case; light 9.5) | ▲ / ▼ glyph mandatory as today. |
+| Ink on paper | ink 12.2, ink-2 9.1, ink-3 5.6, ink-4 3.9, ink-5 2.7:1 | ink-4 is the smallest text allowed for labels (light: 3.0:1). |
+| Contrast material | `ink-inverse` on `dark` 13.8:1, `ink-inverse-2` 5.4:1 | Tooltip second line and nav counts stay readable. |
+| Logos (`ink-inverse` on s1–s3, `ink` on s4) | 12.4 / 7.5 / 4.4 / 6.1:1 | `.logo--4` keeps `ink` text as in light. |
+| Category presets, glyph lifted 30 % to ink | all 14 ≥ 4.9:1 (raw min 3.1:1) | D7. |
+| `focus-border` on paper | 5.4:1 | — |
 
 ## 3. Typography
 
@@ -92,7 +178,7 @@ stats and heroes.
 
 ## 4. Elevation and layout
 
-Six levels, differentiated mainly by surface and faint warm shadow (brown-grey, never black):
+Six levels, differentiated mainly by surface and faint warm shadow (brown-grey in the light theme, black-based in the dark one):
 
 | Level | Surface | Shadow | Used for |
 |---|---|---|---|
@@ -103,7 +189,10 @@ Six levels, differentiated mainly by surface and faint warm shadow (brown-grey, 
 | E3 | `paper` | `sh-3` + 1px `line` | tables (main workspace) |
 | E4 | `paper` | `sh-pop` | menus, tooltips, toasts |
 | E5 | `paper` | `sh-modal` over `scrim` with 4px blur | modals |
-| dark | `dark-grad` | `sh-dark` (inner 1px light + 3/7 shadow) | active nav, primary button |
+| contrast material (`dark`) | `dark-grad` | `sh-dark` (inner 1px light + 3/7 shadow) | active nav, primary button |
+
+In the dark theme the shadows are black-based (table in §2) and the card is carried by its 1 px `line`
+and the paper/canvas step; the shadow only settles the bottom edge.
 
 Layout: sidebar 264 px, page max 1480 px, padding 32 px top and 48 px sides, 56 px bottom. Top bar with
 breadcrumb left and data status right (40 px below). Page head: eyebrow, H1, one sentence, actions right
@@ -117,8 +206,8 @@ The sidebar is continuous, no boxed groups. The tree is the real IA from
 with Nastavení pinned above the account row. **Peníze** ends with Cashflow and **"Plánování cashflow"**
 (icon `Repeat`), see §7 and §11.
 
-- Row 36 px, 14/600, Lucide icon 16 px stroke 1.75 in `ink-3`; the active row is dark material with white
-  text and icon. Hover is 5 % ink. Counts sit right in micro type.
+- Row 36 px, 14/600, Lucide icon 16 px stroke 1.75 in `ink-3`; the active row is the contrast material with
+  text and icon in `ink-inverse`. Hover is 5 % ink. Counts sit right in micro type.
 - Group titles are 10 px uppercase eyebrows; a chevron appears on hover and groups collapse. State persists
   per group (existing `moony-sidebar-groups` behavior). **Nástroje is collapsed by default** so the 17 items
   fit a 900 px window; the middle region scrolls, Nastavení and the account stay pinned.
@@ -137,12 +226,12 @@ Each entry names the CSS class in `moony.css` and the React component that imple
 | Segmented control | `.seg`, `.seg__btn.is-active`, `--lg` | `ui/segmented.tsx` for period and 2–4-value filters; `ui/tabs.tsx` for page tabs | Paper pill with shadow on a `well-2` track. An option may carry a divider (`divider`: a 1 px `line-strong` rule, 14 px tall, before it) that separates kinds of choices, as in Rozdělit podle on Stocks analysis: Nerozdělovat, the tag groups the user made, then the automatic ones. |
 | Field | `.field`, `.field__label`, `.field__hint`, `.field__error` | `ui/form.tsx` + `label.tsx` | Label above, 11/700; optional marker inline; hint only when useful; error replaces hint, red with icon, says what to do. |
 | Input, select, textarea | `.input`, `.select` in `.select-wrap`, `.textarea`, `.input-wrap` with `.unit` | `ui/input.tsx`, `select.tsx`, `textarea.tsx` | 39 px, radius 8, unit inside right. Focus: `focus-border` + `focus-ring`. Invalid: `loss` border. |
-| Checkbox, switch | `.check`, `.switch` | `ui/checkbox.tsx`, `switch.tsx` | Dark material when on. |
+| Checkbox, switch | `.check`, `.switch` | `ui/checkbox.tsx`, `switch.tsx` | Contrast material when on. The off thumb is `paper` in light and `ink-2` in dark (the one theme-specific component rule). |
 | Search | `.search.input-wrap` | `ui/input.tsx` with a leading icon | 240 × 35 px with leading icon. |
 | Card | `.card`, `--flat`, `--table`, `.card__head/body/title/sub` | `ui/card.tsx` | E2 default, E1 flat, E3 table. Title 18/650, sub 10/500. |
 | Hero | `.hero`, `.hero__label/value/delta/aside` | `common/HeroCard.tsx` | One number, change with sign + context, period segment top right, chart below. Decorative circle is part of the material. |
 | Stat | `.stat`, `.stats`, `.stats--3`, `.stats--2x2` | `common/Stat.tsx` | Label 11, value 22, note 10. Three or four per row; four stats in a narrow column (calculator results beside the input form) sit 2 × 2 (`columns={2}`). The card is a size container: the value keeps 22 px down to a 163 px content box, then shrinks with the card (13.5 cqi, floor 16 px) so a long amount ("+ 16 682 338 Kč") never leaves the card at the 1080 px minimum width; every card in a row shares one size. |
-| Table | `.table`, `.table__head/row/group/foot`, `.cell--num`, `.cell--name`, `.entity`, `.logo`, `.row-actions` | `ui/table.tsx` + `InvestmentsTable` etc. | Head 40 px on `well`; rows 56 px (46–52 dense); hover `well`; whole row clickable; "···" on hover only; numbers right and tabular; no zebra, no vertical lines. |
+| Table | `.table`, `.table__head/row/group/foot`, `.cell--num`, `.cell--name`, `.entity`, `.logo`, `.row-actions` | `ui/table.tsx` + `InvestmentsTable` etc. | Head 40 px on `well`; rows 56 px (46–52 dense); hover `well`; whole row clickable; "···" on hover only; numbers right and tabular; no zebra, no vertical lines. Category icon chips (`.cat-chip`) keep the user's hue; the dark theme lifts the glyph 30 % towards ink. |
 | Badge, chip | `.badge`, `--gain/--loss/--dark/--outline`, `.chip.is-active` | `ui/badge.tsx`, `ui/chip.tsx` | 20 px, no border. Green/red only for positive/negative state. |
 | Change badge | `.badge--gain` / `.badge--loss` with a ▲ / ▼ glyph | `common/ChangeBadge.tsx` (`ChangeBadge`, `ChangeNote`) | Every signed percentage change: "▲ 0,42 %" green, "▼ 1,3 %" red, no glyph and neutral when it rounds to zero. The glyph carries the direction, the number is unsigned (assistive tech hears the sign). In a gain column the badge sits on the first line and the signed amount under it in `ink-4`; in a stat note `ChangeNote` puts the badge into the translated sentence and the note stays neutral (the stat value keeps its green/red). Signed amounts stay text. |
 | Progress | `.progress`, `--over`, `.progress__mark` | `ui/progress.tsx` | 6 px (10 px overview). Over limit uses `loss`. |
@@ -175,7 +264,7 @@ implementations.
 | Planning | Budgets | Month navigation, account scope and one primary "Spravovat rozpočty" in the head (no view switch); stats, category table with progress bars and state badges, spending without a limit; every category name has its icon chip (`CategoryIconChip`, the icon in a 28 px circle tinted with the category color, as in Settings). The manage modal (720 px) lists one row per category: the limit in effect or the first scheduled one ("Naplánováno" badge), its validity and upcoming changes in the sub-line; earlier limits fold out under a chevron (edit / delete one interval); gaps without a limit are never rows; a budget whose limit has run out is an ordinary row with its date range, listed last (no separate "ended" state). Row menu: Upravit limit, then Smazat interval (only when the budget has more than one interval) and Smazat celý rozpočet (deletes every limit of the category, past months included, after a confirmation that says so). Footer: Zavřít left, Přidat rozpočet right. The limit form has Od / Do months side by side; the newest save wins: it replaces every limit it overlaps and shortens one it overlaps only in part. Do is optional ("Bez konce" clears it): without it the limit runs for good, with it the end month is included and afterwards the limit that applied before returns. Before replacing other limits the form lists them in a loss-tinted note and the primary turns into "Přepsat a uložit"; the second click saves. Equal neighbouring limits merge into one interval. |
 | Settings | Settings | Left sub-navigation (existing routes), stacked flat cards, danger zone last. |
 | Outlook | Projection | Horizon segment, hero with expected line, ± 2 p.p. scenario band, dashed "today + contributions" reference and future milestones (mortgage payoff, round net-worth marks), asset-class table, three scenarios, parameters modal. |
-| Analysis | Stocks analysis | Performance first; no stats row and no allocation ring. A flat scope card "Které pozice analyzovat" holds the chip rows (one row per tag group, one tag or "Vše" per group, AND across groups; tags without a group in a "Štítky" row; from the fourth row on the rest hides behind "Další filtry" and an active hidden filter shows as a removable chip), a live summary with "Zrušit výběr" and a rule sentence. The full-width performance card in hero material carries three figures (time-weighted return of the whole portfolio in display size, money-weighted return with its gap to the TWR in p. b., change of value split into net deposits and portfolio gain; they and the dashed portfolio line stay whole-portfolio whatever the scope), the toolbar ("Rozdělit podle": starts with "Nerozdělovat", which draws the whole portfolio as the one solid `chart-line` (nothing to compare it with) or, with a filter on, the selection as one solid `s1` line against the dashed portfolio; then a divider, the tag groups, a divider, the automatic Sektor and Měna, which are offered only when they split the portfolio; with more than four of those the control is a select; an optional index, S&P 500 or MSCI World, as a dotted `ink-4` line; periods 3 měsíce · Letos · Rok · 3 roky · Vše · Vlastní, where Vlastní shows Od/Do date inputs and a range can also be dragged in the chart), a caption saying what each line adds up, the TWR chart (280 px, up to four parts in `s1`–`s4`, the portfolio dark dashed next to its parts and solid when it is the only line) and a drawdown panel on one date axis with labels at real dates. Hover draws the crosshair and rewrites the figures and the board to that day. The board under the chart doubles as its legend: return for the period, difference to the portfolio, contribution in p. b., maximum drawdown, share and value per part, undrawn parts with a hatched swatch. Below it the contribution card (its folded "Ostatní" row is a button that opens a 560 px modal listing every folded position or part with the same rows, bars scaled to them, and their sum) and the deposits-and-portfolio-gain card side by side at equal height, the tags table (period return, unrealized gain as of today), the holdings table (period return, concentration in the subtitle), manage and assign modals (one choice per tag group). |
+| Analysis | Stocks analysis | Performance first; no stats row and no allocation ring. A flat scope card "Které pozice analyzovat" holds the chip rows (one row per tag group, one tag or "Vše" per group, AND across groups; tags without a group in a "Štítky" row; from the fourth row on the rest hides behind "Další filtry" and an active hidden filter shows as a removable chip), a live summary with "Zrušit výběr" and a rule sentence. The full-width performance card in hero material carries three figures (time-weighted return of the whole portfolio in display size, money-weighted return with its gap to the TWR in p. b., change of value split into net deposits and portfolio gain; they and the dashed portfolio line stay whole-portfolio whatever the scope), the toolbar ("Rozdělit podle": starts with "Nerozdělovat", which draws the whole portfolio as the one solid `chart-line` (nothing to compare it with) or, with a filter on, the selection as one solid `s1` line against the dashed portfolio; then a divider, the tag groups, a divider, the automatic Sektor and Měna, which are offered only when they split the portfolio; with more than four of those the control is a select; an optional index, S&P 500 or MSCI World, as a dotted `ink-4` line; periods 3 měsíce · Letos · Rok · 3 roky · Vše · Vlastní, where Vlastní shows Od/Do date inputs and a range can also be dragged in the chart), a caption saying what each line adds up, the TWR chart (280 px, up to four parts in `s1`–`s4`, the portfolio dark dashed next to its parts and solid when it is the only line) and a drawdown panel on one date axis with labels at real dates. Hover draws the crosshair and rewrites the figures and the board to that day. The board under the chart doubles as its legend: return for the period, difference to the portfolio, contribution in p. b., maximum drawdown, share and value per part, undrawn parts with a hatched swatch. Below it the contribution card (its folded "Ostatní" row is a button that opens a 560 px modal listing every folded position or part with the same rows, bars scaled to them, and their sum) and the deposits-and-portfolio-gain card side by side at equal height, the tags table (period return and unrealized gain as of today, each a signed amount with its percent as a change badge that wraps under the amount in a narrow window; a group with at least two tags holding a position ends with a `well` "Celkem" row that sums its positions once, its period return from the group's own series), the holdings table (the same two columns, concentration in the subtitle), manage and assign modals (one choice per tag group). Every widget the chips narrow carries a dark "Filtr: Růst · USA" badge (the active chip's material) in its head: the performance card top right, in the hero's aside (not in the toolbar, which has no room to spare; its hover says the hero and the dashed line stay whole-portfolio), the contribution card and both tables; the deposits card does not follow the chips and has none. |
 | Watchlist | Stock monitor and its detail | Native-currency prices, day change vs previous close, inline 52-week range bar with current price and target tick, target state badge; detail with target line on the chart, watch-start marker, markdown notes, key data. |
 | Calculator | Annuity calculator, real estate investment calculator | Inputs in flat cards left, live hero result right (stats full width under both columns, or 2 × 2 under the hero when they stay in the results column), chart with milestones (principal overtakes interest, half repaid; positive cashflow, half of loan, sale), yearly tables. Annuity adds an optional extra yearly payment with the saving it brings. |
 | Crypto | Crypto, crypto detail | List archetype of Stocks with a share column and buy/sell markers on the aggregate trend (stocks show the same trade days); the detail mirrors Stock detail: cost-basis step line, buy/sell events, realized gain, holding period, "since first buy" card. |
@@ -191,12 +280,15 @@ implementations.
 
 ## 8. Charts
 
+Both themes use the same token names; the dark values are re-stepped (s1 lightest) and validated in §2.
+The end-point ring and event marks are `paper` (never `#fff`), the area fade ends in `paper-2`.
+
 Charts use Recharts with these rules (`charts.js` draws the same shapes by hand for the style guide):
 
 - One y-axis, never two. Grid in `chart-grid`, value ticks right-aligned in `chart-axis` 10 px, time axis
   below with five labels, the last being "Dnes". Ticks are nice numbers (20 / 25 / 50 steps).
 - Time axes of value charts put their labels at real calendar dates, not at evenly spread points: month starts, the 1st and 15th for short spans, quarters and years for long ones, with the year written on January.
-- Value line 2.25 px `chart-line`, area gradient `chart-area` → transparent, last point a white ring.
+- Value line 2.25 px `chart-line`, area gradient `chart-area` → transparent, last point a ring in `paper`.
   "Vloženo" (cost basis) is a dashed step line in `chart-cost`; the gap between lines is the return.
 - Bars: income `s1`, expense `s3`, 3 px rounded ends, 2 px gap, no borders, zero baseline.
 - Allocation ring: `s1`–`s4` + `s-other`, legend with amounts and percentages, never color alone.
@@ -213,7 +305,7 @@ discrete events are drawn on the value line:
 
 | Event | Mark | Color |
 |---|---|---|
-| Buy | ▲ filled, 12 px, 2 px white ring | `chart-line` |
+| Buy | ▲ filled, 12 px, 2 px `paper` ring | `chart-line` |
 | Sell | ▽ outlined | `chart-line` |
 | Dividend, income | ○ ring 9 px | `gain` |
 | Large expense, payment | ○ ring 9 px | `chart-line` |
@@ -239,8 +331,10 @@ than ~24 events fall in view, cluster neighbors into one mark with a count ("3 n
 
 ## 11. Decisions
 
-1. **Dark theme is not part of v1.** The app ships light only; there is no theme switch and no `.dark`
-   token block. It can be revisited after launch.
+1. **Dark theme was not part of v1** (2026-10-03). **Amended 2026-10-16:** the dark theme is in, as a
+   second value block on the same token names, with the preference in Settings → General (System /
+   Light / Dark, stored in the profile and mirrored on the device); spec
+   `docs/specs/2026-10-16-dark-mode-design.md`.
 2. **Time trace on every single-entity detail page**, as specified in §9. Aggregate charts stay free of
    events, except the ones §9 lists (the net-worth line marks only its big steps).
 3. **Inter Variable is bundled** via `@fontsource-variable/inter`. No network fonts and no system-font
@@ -267,12 +361,19 @@ than ~24 events fall in view, cluster neighbors into one mark with a count ("3 n
    in totals, stats or the flow bar (persisted in `cashflow_plan_exclusions`, honoured by the MCP
    `cashflow_report` tool too). A 100 % flow bar (expense groups `s1`–`s4` + Ostatní, hatched remainder)
    replaces the Sankey diagram. The two pages link to each other in the page subtitle.
+5. **Dark theme principles (2026-10-16).** Warm near-black, never `#000`; depth from surfaces with wells
+   deeper = darker in both themes; the contrast material inverts; series re-stepped and validated (s4
+   2.0:1, legend mandatory); category glyphs lifted towards ink.
 
 ## 12. How the React app maps to this
 
-- **Tokens.** The values of `tokens.css` live in `src/index.css` (keep the two files identical) and are
-  exposed as Tailwind names (`canvas`, `paper`, `well`, `ink-*`, `gain`, `loss`, `s1`–`s4`, radius and
-  shadow scales) in `tailwind.config.ts`. Components never use raw color values.
+- **Tokens.** The values of `tokens.css` live in `src/index.css` (the same declarations in both theme
+  blocks; `src/index.test.ts` guards it) and are exposed as Tailwind names (`canvas`, `paper`, `well`,
+  `ink-*`, `gain`, `loss`, `s1`–`s4`, radius and shadow scales) in `tailwind.config.ts`. Components
+  never use raw color values. `ThemeProvider` (`src/theme/`) stamps `data-theme`, resets the chart token
+  cache and exposes `useTheme()` / `useChartTokens()`. On Linux the native window theme is left to GTK
+  (tao's cleared override would force light); the content follows `data-theme` and `color-scheme` on every
+  platform.
 - **Behavior layer.** shadcn/ui with Radix primitives stays in `src/components/ui/`. Keyboard handling,
   focus management and accessibility come from Radix; the look comes from `cva` variants and classes that
   use the tokens. react-hook-form + zod, sonner (restyled), Recharts (wrapped) and lucide-react stay.
@@ -296,9 +397,8 @@ bar, sheets and segment, Inter bundled). The reference width is 390 pt; every la
   tokens, every class prefixed `m-` so the two layers never collide. Its own `:root` defines the phone
   tokens (safe areas, bar heights, type scale); `src/index.css` carries the same block (keep the two
   identical). Its other sources are the tokens of `tokens.css` only, including `hero-orb`, `sh-seg`,
-  `sh-destructive` and `loss-ring`, added there for the phone layer with the values `src/index.css` already had (the
-  dark-mode branch adds the first three with identical light values; the Phase 6 merge reconciles them).
-  `src/mobile/` matches it visually and never imports it.
+  `sh-destructive` and `loss-ring`, which exist in both themes (table in §2). `src/mobile/` matches
+  `mobile.css` visually and never imports it.
 - **`mobile.html`** shows the components at 360, 390 and 430 with German copy (German runs longest): the tab root with Údržba, hero, stats, agenda rows (a dark date chip, a swiped row), the allocation ring and legend and the entity rows, and the sheet with its amount fields.
   Under each frame a check reports anything that extends past the screen or scrolls it sideways, and
   lists the texts that end with an ellipsis. Open it after changing a phone component: nothing may

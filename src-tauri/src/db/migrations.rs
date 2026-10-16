@@ -86,6 +86,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("019_loan_manual_records", MIGRATION_019),
         ("020_bond_purchase_date", MIGRATION_020),
         ("021_encrypted_attachments", MIGRATION_021),
+        ("022_profile_theme", MIGRATION_022),
     ]
 }
 
@@ -2813,6 +2814,12 @@ CREATE TABLE attachment_leftovers (
 );
 "#;
 
+/// 022: the colour theme of the app is a profile setting: `system` (follow the OS, the default for
+/// every existing profile), `light` or `dark`. The values are checked by `UpdateUserProfile`.
+pub(crate) const MIGRATION_022: &str = r#"
+ALTER TABLE user_profile ADD COLUMN theme TEXT NOT NULL DEFAULT 'system';
+"#;
+
 #[cfg(test)]
 mod migration_012 {
     use super::*;
@@ -3833,5 +3840,55 @@ mod migration_021 {
                 [],
             )
             .is_err());
+    }
+}
+
+#[cfg(test)]
+mod migration_022 {
+    use super::*;
+
+    fn database_before_022() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "022_profile_theme")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn.execute_batch(
+            "INSERT INTO user_profile (id, name, surname, email) VALUES (1, 'Alex', 'Novak', 'a@b.cz');",
+        )
+        .expect("legacy profile");
+        conn
+    }
+
+    #[test]
+    fn migration_022_adds_the_theme_column() {
+        let conn = database_before_022();
+        run_migrations(&conn).expect("migrate");
+
+        let (declared, not_null, default): (String, i64, Option<String>) = conn
+            .query_row(
+                "SELECT type, \"notnull\", dflt_value FROM pragma_table_info('user_profile')
+                 WHERE name = 'theme'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("theme column");
+        assert_eq!(declared, "TEXT");
+        assert_eq!(not_null, 1);
+        assert_eq!(default.as_deref(), Some("'system'"));
+    }
+
+    #[test]
+    fn an_existing_profile_follows_the_system_after_the_migration() {
+        let conn = database_before_022();
+        run_migrations(&conn).expect("migrate");
+
+        let theme: String = conn
+            .query_row("SELECT theme FROM user_profile WHERE id = 1", [], |r| {
+                r.get(0)
+            })
+            .expect("theme");
+        assert_eq!(theme, "system");
     }
 }

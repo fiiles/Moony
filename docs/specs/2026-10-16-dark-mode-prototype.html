@@ -1,0 +1,626 @@
+<!doctype html>
+<html lang="cs" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moony — tmavý režim (návrh)</title>
+<link rel="stylesheet" href="../design-system/moony.css">
+<style id="light-extras">
+  /* Tokens that src/index.css already has and tokens.css does not yet (the implementation
+     moves them into tokens.css so the two files are identical again). Light values. */
+  :root {
+    --hero-orb: #f0eee8;
+    --line-hover: #c9c5bc;
+    --ink-hover: rgba(41, 40, 34, 0.05);
+    --loss-line: #f1cfc3;
+    --loss-hover: #a8391d;
+    --loss-ring: 0 0 0 3px rgba(191, 66, 36, 0.14);
+    --sh-btn-hover: 0 1px 3px rgba(52, 46, 34, 0.1);
+    --sh-seg: 0 1px 3px rgba(34, 34, 34, 0.13);
+    --sh-destructive: inset 0 1px rgba(255, 255, 255, 0.12), 0 3px 7px rgba(191, 66, 36, 0.2);
+  }
+</style>
+<style id="dark-tokens">
+  /* ===== Dark theme: the shared token set (same names as tokens.css, no new names). =====
+     Warm near-black, never #000. Depth comes from surface steps (canvas < sidebar < paper);
+     wells go deeper = darker in both themes. The contrast material (`dark`) inverts: it is the
+     light material in the dark theme, so active nav, primary button, tooltip, checked controls
+     keep `background: var(--dark); color: var(--ink-inverse)` unchanged. */
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+
+    /* ---- Surfaces ---- */
+    --canvas: #1a1917;
+    --canvas-glow: #22211e;
+    --sidebar: #1f1e1b;
+    --sidebar-2: #1c1b19;
+    --paper: #292826;
+    --paper-2: #2b2a27;
+    --well: #232220;
+    --well-2: #1e1d1b;
+    --well-3: #181715;
+    --hero-orb: #302f2b;
+
+    /* ---- Lines ---- */
+    --line: #363531;
+    --line-soft: #302f2c;
+    --line-strong: #45443f;
+    --line-sidebar: #2b2a27;
+    --line-hover: #56544e;
+
+    /* ---- Ink ---- */
+    --ink: #eceae4;
+    --ink-2: #cdcbc4;
+    --ink-3: #a3a098;
+    --ink-4: #868379;
+    --ink-5: #6b6962;
+    --ink-inverse: #1d1c19;
+    --ink-inverse-2: #5f5c54;
+    --ink-hover: rgba(0, 0, 0, 0.18);
+
+    /* ---- Contrast material (light on dark) ---- */
+    --dark: #e9e7e1;
+    --dark-hi: #f3f1ec;
+    --dark-lo: #e2e0d9;
+    --dark-hover-hi: #faf9f5;
+    --dark-hover-lo: #ebe9e3;
+
+    /* ---- Semantic ---- */
+    --gain: #45c6a6;
+    --gain-soft: #203c30;
+    --loss: #ef7f5e;
+    --loss-soft: #4a2d25;
+    --loss-line: #6e3e32;
+    --loss-hover: #ff9e84;
+    --loss-ring: 0 0 0 3px rgba(239, 127, 94, 0.22);
+
+    /* ---- Data series (same indigo family, re-stepped for dark paper) ---- */
+    --s1: #d8dbf0;
+    --s2: #a2a7ec;
+    --s3: #7b7ea5;
+    --s4: #4f508e;
+    --s-other: #3a3935;
+    --chart-line: #b5b9eb;
+    --chart-area: #393b52;
+    --chart-grid: #302f2c;
+    --chart-cost: #78756d;
+    --chart-axis: #6b6962;
+
+    /* ---- Focus ---- */
+    --focus-border: #a09d94;
+    --focus-ring: 0 0 0 3px rgba(255, 255, 255, 0.12);
+
+    /* ---- Elevation (black-based, stronger; the 1 px line and the surface step carry the card) ---- */
+    --sh-sidebar: 7px 0 22px rgba(0, 0, 0, 0.22);
+    --sh-1: 0 2px 5px rgba(0, 0, 0, 0.24), 0 9px 22px rgba(0, 0, 0, 0.14);
+    --sh-2: 0 4px 10px rgba(0, 0, 0, 0.26), 0 16px 35px rgba(0, 0, 0, 0.18);
+    --sh-3: 0 4px 11px rgba(0, 0, 0, 0.28), 0 20px 38px rgba(0, 0, 0, 0.2);
+    --sh-pop: 0 8px 24px rgba(0, 0, 0, 0.5), 0 1px 2px rgba(0, 0, 0, 0.4);
+    --sh-modal: 0 26px 80px rgba(0, 0, 0, 0.7);
+    --sh-dark: inset 0 1px rgba(255, 255, 255, 0.55), 0 3px 7px rgba(0, 0, 0, 0.35);
+    --sh-btn: 0 1px 2px rgba(0, 0, 0, 0.3);
+    --sh-btn-hover: 0 1px 3px rgba(0, 0, 0, 0.4);
+    --sh-seg: 0 1px 3px rgba(0, 0, 0, 0.45);
+    --sh-destructive: inset 0 1px rgba(255, 255, 255, 0.12), 0 3px 7px rgba(0, 0, 0, 0.35);
+    --scrim: rgba(12, 11, 9, 0.7);
+  }
+</style>
+<style id="component-fixes">
+  /* ===== moony.css changes the implementation makes: raw literals become tokens. ===== */
+  .hero::after { background: var(--hero-orb); }
+  .nav__item:hover, .account:hover, .btn--ghost:hover { background: var(--ink-hover); }
+  .input:hover, .select:hover, .textarea:hover { border-color: var(--line-hover); }
+  .input.is-invalid:focus { box-shadow: var(--loss-ring); }
+  .btn:hover { box-shadow: var(--sh-btn-hover); }
+  .seg__btn.is-active { box-shadow: var(--sh-seg); }
+  .check input:checked::after { border-color: var(--ink-inverse); }
+  .switch input::after { background: var(--paper); }
+  .switch input:checked::after { background: var(--ink-inverse); }
+  .avatar { box-shadow: inset 0 1px rgba(255, 255, 255, 0.13); }
+  .logo { color: var(--ink-inverse); }
+  .logo--4 { color: var(--ink); }
+  .badge--dark, .chip.is-active { color: var(--ink-inverse); }
+  .tip, .tip b { color: var(--ink-inverse); }
+  .btn--destructive { color: var(--ink-inverse); box-shadow: var(--sh-destructive); }
+  .btn--destructive:hover { background: var(--loss-hover); color: var(--ink-inverse); }
+  .alert--error { border-color: var(--loss-line); }
+  /* charts.js: the white end ring, event marks and area fade end become paper tokens */
+  .chart svg [fill="#fff"] { fill: var(--paper); }
+  .chart svg [stroke="#fff"] { stroke: var(--paper); }
+  .chart svg stop[stop-color="#fbfaf8"] { stop-color: var(--paper-2); }
+  /* The one component rule that is theme-specific: the off-state switch thumb must stay light
+     on the dark track (paper would sink into it). Everything else is tokens only. */
+  :root[data-theme="dark"] .switch input:not(:checked)::after { background: var(--ink-2); }
+
+  /* Category icon chip (CategoryIconChip): the user's hue, 15 % tint over paper; in the dark
+     theme the glyph is lifted 30 % towards ink in OKLab so every preset clears 4.9:1. */
+  .cat { display: grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 50%; color: var(--cat); background: color-mix(in srgb, var(--cat) 15%, transparent); }
+  .cat .ic { width: 15px; height: 15px; }
+  :root[data-theme="dark"] .cat { color: color-mix(in oklab, var(--cat) 70%, var(--ink)); }
+</style>
+<style id="prototype-only">
+  /* Prototype-only styles. Everything else comes from the design system. */
+  html { overflow-y: scroll; }
+  .sidebar { top: 42px; height: calc(100vh - 42px); }
+
+  /* Prototype bar: fixed colors on purpose (prototype chrome, not part of either theme) */
+  .proto-bar { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; gap: 14px; height: 42px; padding: 0 20px; background: linear-gradient(145deg, #3b3932, #27251f); box-shadow: inset 0 1px rgba(255,255,255,.13), 0 3px 7px rgba(0,0,0,.25); color: #d6d3cc; font-size: 11px; font-weight: 600; }
+  .proto-bar__tag { padding: 3px 7px; border-radius: 5px; background: rgba(255,255,255,.14); color: #fff; font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+  .proto-bar__title { color: #fff; font-weight: 650; letter-spacing: -.01em; }
+  .proto-bar__spacer { flex: 1; }
+  .proto-bar .seg { background: rgba(255,255,255,.11); }
+  .proto-bar .seg__btn { color: #d6d3cc; transition: none; box-shadow: none; }
+  .proto-bar .seg__btn:hover { color: #fff; }
+  .proto-bar .seg__btn.is-active { background: #f4f2ec; color: #292822; box-shadow: none; }
+  .proto-bar__toggle { display: inline-flex; align-items: center; gap: 10px; color: #fff; cursor: pointer; }
+  .proto-bar .switch input { background: rgba(255,255,255,.22); }
+  .proto-bar .switch input::after { background: #fff; }
+  .proto-bar .switch input:checked { background: #f4f2ec; }
+  .proto-bar .switch input:checked::after { background: #2c2a25; }
+  .proto-bar__kbd { padding: 1px 5px; border: 1px solid rgba(255,255,255,.25); border-radius: 4px; color: #fff; font-size: 9px; font-weight: 700; }
+
+  /* Design-note callouts (fixed colors: prototype chrome) */
+  .has-np { position: relative; }
+  .np { position: absolute; z-index: 4; display: none; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: #2c2a25; box-shadow: 0 0 0 2px var(--canvas); color: #fff; font-size: 10px; font-weight: 700; font-style: normal; line-height: 20px; text-align: center; pointer-events: none; }
+  .notes-on .np { display: block; }
+  .np--tl { left: -10px; top: -10px; }
+  .np--tr { right: -10px; top: -10px; }
+  .np--inline { position: static; margin-left: auto; }
+  .notes-on .np--inline { display: inline-block; }
+  .notes-card { display: none; }
+  .notes-on .notes-card { display: block; }
+  .notes { display: grid; grid-template-columns: 1fr 1fr; column-gap: 44px; margin: 0; padding: 0 21px 10px; list-style: none; }
+  .notes li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start; padding: 13px 0; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: var(--fs-table); line-height: 1.55; }
+  .notes li:nth-child(-n+2) { border-top: 0; }
+  .notes .np { position: static; display: inline-block; margin-top: 1px; box-shadow: none; }
+  .notes b { display: block; color: var(--ink); font-weight: 650; }
+  .notes .badge { margin-top: 6px; }
+  .notes code { padding: 1px 4px; border-radius: 4px; background: var(--well-2); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--ink); }
+  .card--flat .card__head { padding-bottom: 16px; }
+
+  /* Page layout */
+  .stack { display: flex; flex-direction: column; gap: 17px; }
+  .stack .stats { margin-bottom: 0; }
+  .two-col--dash { grid-template-columns: 1.15fr .85fr; }
+  .hero--compact::after { display: none; }
+  .hero--compact { padding-top: 20px; }
+  .hero--compact .hero__value { margin: 6px 0; font-size: 22px; letter-spacing: -0.05em; }
+  .hero__aside .hero__label { max-width: 220px; text-align: right; }
+  .axis--slots span { flex: 1; text-align: center; }
+  .chart svg path { pointer-events: none; }
+  .chart .bar { cursor: pointer; transition: opacity var(--t-base); }
+  .chart .bar.is-muted { opacity: .35; }
+  .pnav { display: inline-flex; align-items: center; gap: 4px; }
+  .flip { transform: scaleX(-1); }
+  .card__head .legend { margin: 0; }
+
+  /* Agenda ("Co vás čeká") */
+  .agenda__grid { display: grid; grid-template-columns: 1fr 1fr; padding: 8px 6px; }
+  .ag { display: flex; align-items: center; gap: 14px; padding: 9px 15px; border-radius: var(--r-2); }
+  .ag:hover { background: var(--well); }
+  .ag > div { min-width: 0; flex: 1; }
+  .ag b { display: block; font-size: var(--fs-table); font-weight: 650; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .ag small { display: block; margin-top: 3px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .dchip { display: grid; place-content: center; flex: none; width: 60px; height: 42px; border-radius: 8px; background: var(--well); text-align: center; }
+  .dchip b { display: block; font-size: var(--fs-table); font-weight: 650; color: var(--ink); line-height: 1.2; }
+  .dchip small { display: block; margin-top: 1px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; }
+  .dchip--soon { background: var(--dark-grad); box-shadow: var(--sh-dark); }
+  .dchip--soon b { color: var(--ink-inverse); }
+  .dchip--soon small { color: var(--ink-inverse-2); }
+  .agenda__upkeep { display: flex; align-items: center; gap: 10px; padding: 11px 21px; border-top: 1px solid var(--line-soft); color: var(--ink-3); font-size: var(--fs-table); }
+  .agenda__upkeep b { color: var(--ink); font-weight: 650; }
+  .agenda__upkeep .link { margin-left: auto; }
+
+  /* Allocation card */
+  .alloc { display: grid; grid-template-columns: 184px 1fr; gap: 36px; align-items: center; }
+  .alloc .ring { width: 184px; height: 184px; }
+  .alloc .ring::after { inset: 28px; }
+  .alloc ul { margin: 0; padding: 0; list-style: none; }
+  .alloc li { display: grid; grid-template-columns: 14px 1fr auto auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--line-soft); font-size: var(--fs-table); color: var(--ink); font-weight: 600; }
+  .alloc li:last-child { border-bottom: 0; }
+  .alloc li .amt { color: var(--ink-3); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .alloc li .pct { min-width: 38px; text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* Tables */
+  .mov-grid { grid-template-columns: minmax(0,1fr) 110px 120px; column-gap: 16px; }
+  .led-grid { grid-template-columns: 62px minmax(0,1fr) 210px 150px; column-gap: 16px; }
+  .cat-grid { grid-template-columns: minmax(0,1fr) 120px 56px 120px; column-gap: 16px; }
+  .cat-name { display: flex; align-items: center; gap: 10px; color: var(--ink); font-weight: var(--fw-table-name); }
+  .cat-name small { color: var(--ink-4); font-weight: 500; }
+  .share { width: 100px; }
+  .ledger-head { flex-wrap: wrap; }
+  .ledger-head .toolbar { flex-wrap: wrap; justify-content: flex-end; margin-left: auto; }
+  .ledger-sub { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 12px; padding: 0 21px 15px; }
+  .select-wrap--sm { width: 176px; }
+  .select-wrap--sm .select { height: 35px; font-size: var(--fs-table); }
+  .select-wrap--period { width: 190px; }
+  .entity > div { min-width: 0; }
+  .entity b, .entity small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip .cat { width: 18px; height: 18px; margin-left: -4px; }
+  .chip .cat .ic { width: 11px; height: 11px; }
+  .pager { display: inline-flex; gap: 4px; }
+  .period-nav { display: inline-flex; align-items: center; gap: 2px; }
+  .period-nav b { min-width: 64px; text-align: center; font-size: var(--fs-h3); font-weight: var(--fw-h3); letter-spacing: var(--ls-h3); }
+
+  /* Components screen */
+  .panels { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; align-items: start; }
+  .panels .card--wide { grid-column: 1 / -1; }
+  .panel__body { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; padding: 0 21px 20px; }
+  .panel__body--col { flex-direction: column; align-items: stretch; gap: 14px; }
+  .panel__body .menu, .panel__body .tip, .panel__body .toast { position: static; transform: none; opacity: 1; }
+  .panel__body .menu { width: 210px; }
+  .panel__body .tip { display: inline-block; }
+  .demo-focus { border-color: var(--focus-border) !important; box-shadow: var(--focus-ring) !important; }
+  .sk { display: grid; gap: 10px; width: 100%; }
+  .sk .skeleton { height: 12px; }
+  .srow { display: flex; align-items: center; gap: 12px; width: 100%; }
+  .srow .skeleton--disc { width: 30px; height: 30px; border-radius: 50%; }
+  .ring--sm { width: 130px; height: 130px; }
+  .settings-row { display: flex; justify-content: space-between; align-items: center; gap: 24px; width: 100%; padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+  .settings-row:last-child { border-bottom: 0; }
+  .settings-row b { display: block; font-size: var(--fs-body); font-weight: 600; color: var(--ink); }
+  .settings-row small { display: block; margin-top: 2px; color: var(--ink-4); font-size: var(--fs-caption); }
+  .settings-row .seg { flex: none; }
+  .tok { width: 100%; border-top: 1px solid var(--line); }
+  .tok__head, .tok__row { display: grid; grid-template-columns: 190px 1fr 1fr 1.2fr; gap: 14px; align-items: center; padding: 0 21px; }
+  .tok__head { height: 36px; background: var(--well); border-bottom: 1px solid var(--line); color: var(--ink-3); font-size: var(--fs-thead); font-weight: var(--fw-thead); letter-spacing: var(--ls-thead); text-transform: uppercase; }
+  .tok__row { min-height: 34px; border-bottom: 1px solid var(--line-soft); font-size: var(--fs-caption); color: var(--ink-2); }
+  .tok__row code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; color: var(--ink); }
+  .tok__group { padding: 10px 21px 4px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 700; letter-spacing: .06em; text-transform: uppercase; border-bottom: 1px solid var(--line-soft); }
+  .sw { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
+  .sw i { display: inline-block; flex: none; width: 18px; height: 18px; border-radius: 5px; border: 1px solid var(--line); }
+  .sw i.sw--light { background: var(--paper); }
+  .sw span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .tok__note { color: var(--ink-3); }
+  .mini-scrim { position: relative; width: 100%; height: 150px; overflow: hidden; border-radius: 10px; background: var(--canvas); }
+  .mini-scrim::before { content: ""; position: absolute; inset: 0; background: var(--scrim); }
+  .mini-scrim .modal { position: absolute; left: 50%; top: 24px; width: 300px; transform: translateX(-50%); }
+  .mini-scrim .modal__head { padding: 14px 16px 10px; }
+  .mini-scrim .modal__head h2 { font-size: 14px; }
+  .mini-scrim .modal__foot { padding: 10px 16px; }
+</style>
+</head>
+<body>
+
+<div class="proto-bar">
+  <span class="proto-bar__tag">Návrh</span>
+  <span class="proto-bar__title">Tmavý režim</span>
+  <div class="seg" id="theme-seg">
+    <button type="button" class="seg__btn" data-value="light">Světlý</button>
+    <button type="button" class="seg__btn" data-value="dark">Tmavý</button>
+  </div>
+  <div class="seg" id="screen-seg">
+    <button type="button" class="seg__btn" data-value="overview">Přehled</button>
+    <button type="button" class="seg__btn" data-value="account">Detail účtu</button>
+    <button type="button" class="seg__btn" data-value="cashflow">Cashflow</button>
+    <button type="button" class="seg__btn" data-value="components">Komponenty</button>
+  </div>
+  <span><span class="proto-bar__kbd">D</span> přepne téma</span>
+  <span class="proto-bar__spacer"></span>
+  <label class="proto-bar__toggle"><span>Poznámky k návrhu</span><span class="switch"><input type="checkbox" id="notes-toggle"></span></label>
+</div>
+
+<div class="app">
+  <aside class="sidebar"></aside>
+  <main class="page" id="page"></main>
+</div>
+
+<div class="modal-scrim" id="m-demo">
+  <form class="modal" onsubmit="return false" aria-labelledby="demo-title">
+    <div class="modal__head">
+      <div><h2 id="demo-title">Přidat bankovní účet</h2><p>Zůstatek se uloží jako první záznam v historii účtu.</p></div>
+      <button type="button" class="modal__close" aria-label="Zavřít" data-close="m-demo"></button>
+    </div>
+    <div class="modal__body">
+      <div class="field"><label class="field__label" for="d-name">Název účtu</label><input class="input" id="d-name" value="Spořicí účet" autocomplete="off"></div>
+      <div class="row-2">
+        <div class="field"><label class="field__label" for="d-inst">Instituce <span class="opt">nepovinné</span></label><div class="select-wrap"><select class="select" id="d-inst"><option>Česká spořitelna</option><option>Fio banka</option><option>Air Bank</option></select><i class="sel-ic"></i></div></div>
+        <div class="field"><label class="field__label" for="d-cur">Měna</label><div class="select-wrap"><select class="select" id="d-cur"><option>CZK</option><option>EUR</option></select><i class="sel-ic"></i></div></div>
+      </div>
+      <div class="row-2 row-2--narrow">
+        <div class="field"><label class="field__label" for="d-bal">Aktuální zůstatek</label><div class="input-wrap"><input class="input" id="d-bal" value="184 600" style="padding-left:11px"><span class="unit">Kč</span></div><div class="field__hint">Zůstatek z výpisu nebo z bankovnictví.</div></div>
+        <div class="field"><label class="field__label" for="d-date">K datu</label><input class="input" type="date" id="d-date" value="2026-10-16"></div>
+      </div>
+    </div>
+    <div class="modal__foot">
+      <button type="button" class="btn btn--ghost" data-close="m-demo">Zrušit</button>
+      <div class="actions"><button type="button" class="btn btn--danger">Smazat návrh</button><button type="button" class="btn btn--primary" data-close="m-demo" data-toast="Účet přidán">Přidat účet</button></div>
+    </div>
+  </form>
+</div>
+
+<script src="../design-system/icons.js"></script>
+<script src="../design-system/shell.js"></script>
+<script src="../design-system/charts.js"></script>
+<script>
+(function () {
+'use strict';
+
+/* ===== Helpers ===== */
+var TODAY = new Date(2026, 9, 16);
+function $(s, r) { return (r || document).querySelector(s); }
+function $$(s, r) { return Array.prototype.slice.call((r || document).querySelectorAll(s)); }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function D(y, m, d) { return new Date(y, m - 1, d); }
+function pill(n, cls) { return '<i class="np ' + (cls || 'np--tl') + '">' + n + '</i>'; }
+function signCls(v) { return v > 0 ? 'gain' : (v < 0 ? 'loss' : ''); }
+function stat(label, value, note, cls, dot) {
+  return '<div class="stat"><div class="stat__label"><span>' + label + '</span>' + (dot ? '<i class="dot" style="background:var(--' + dot + ')"></i>' : '') + '</div><span class="stat__value num ' + (cls || '') + '">' + value + '</span><span class="stat__note">' + note + '</span></div>';
+}
+function legendItem(sw, label) { return '<span class="legend__item">' + sw + label + '</span>'; }
+function block(c) { return '<i class="legend__swatch legend__swatch--block" style="background:var(--' + c + ')"></i>'; }
+var SW_LINE = '<i class="legend__swatch"></i>', SW_DASH = '<i class="legend__swatch legend__swatch--dash"></i>';
+function segHTML(id, opts, cur, lg) { return '<div class="seg' + (lg ? ' seg--lg' : '') + '" id="' + id + '">' + opts.map(function (o) { return '<button type="button" class="seg__btn' + (o[0] === cur ? ' is-active' : '') + '" data-value="' + o[0] + '">' + o[1] + '</button>'; }).join('') + '</div>'; }
+function axisLabels(t0, t1) { var out = []; for (var i = 0; i < 5; i++) { var d = new Date(t0.getTime() + (t1 - t0) * i / 4); out.push(i === 4 ? 'Dnes' : ((t1 - t0) / 864e5 < 100 ? d.getDate() + '. ' + (d.getMonth() + 1) + '.' : CZ_MONTHS[d.getMonth()] + ' ' + String(d.getFullYear()).slice(2))); } return out; }
+var CATS = { 'Potraviny': ['#22C55E', 'receipt'], 'Bydlení': ['#3B82F6', 'house'], 'Doprava': ['#F59E0B', 'credit-card'], 'Převody': ['#64748B', 'repeat'], 'Výplata': ['#14B8A6', 'wallet'], 'Zábava': ['#D946EF', 'gem'], 'Splátky úvěrů': ['#EF4444', 'landmark'], 'Daně': ['#8B5CF6', 'file-text'], 'Investice': ['#6366F1', 'trending-up'], 'Pojištění': ['#06B6D4', 'shield'], 'Nájem': ['#F97316', 'building'], 'Ostatní': ['#9E9E9E', 'tag'] };
+function catChip(name) { var c = CATS[name] || CATS['Ostatní']; return '<i class="cat" style="--cat:' + c[0] + '">' + icon(c[1], 15) + '</i>'; }
+
+/* ===== State ===== */
+var S = { theme: 'light', screen: 'overview', notes: false, fm: 10 };
+var SCREEN_NAV = { overview: 'overview', account: 'bankAccounts', cashflow: 'cashflow', components: 'settings' };
+var SCREEN_NAME = { overview: 'Přehled', account: 'Detail účtu', cashflow: 'Cashflow', components: 'Komponenty' };
+
+/* ===== Notes ===== */
+var NOTES = [
+  { n: 1, t: 'Hloubka z povrchů, ne ze stínů', s: 'Tmavé téma drží princip světlého: canvas je nejhlubší a nejtmavší (<code>#1a1917</code>), sidebar o stupeň světlejší, karty (<code>paper #292826</code>) nejsvětlejší. Žádná studená čerň, žádné <code>#000</code> — všechny povrchy mají stejný teplý odstín jako světlé téma. Stíny jsou černé s vyšší alfou, ale kartu nese 1px linka a rozdíl povrchů; OLED je bonus, ne cíl.', on: ['overview', 'account', 'cashflow', 'components'] },
+  { n: 2, t: 'Kontrastní materiál se obrací', s: 'Aktivní řádek navigace a primární tlačítko dnes nesou tmavý materiál. Na tmavém se nahrazuje světlým materiálem se stejnou rolí: <code>--dark</code> = <code>#e9e7e1</code>, text <code>--ink-inverse</code> = tmavý. Názvy tokenů zůstávají (sdílená sada), mění se jen hodnoty, takže komponenty se nemění: tooltip, zaškrtnutí, chip, odznak „dark“ a měsíc v logu se obrátí s ním.', on: ['overview', 'account', 'cashflow', 'components'] },
+  { n: 3, t: 'Série s1–s4 přepočítané pro tmavý papír', s: 'Stejná indigo rodina (OKLCH odstín 281°), kroky obrácené: s1 nejsvětlejší. Validátor dataviz (OKLab): sousedé ΔE 16,1 · 15,1 · 15,0 (práh ≥ 15), CVD ΔE 14,7 (práh ≥ 8). Kontrast vůči papíru s1 10,7 · s2 6,5 · s3 3,8 · s4 2,0:1 — s4 je pod 3:1 stejně jako dnes ve světlém (2,3:1), proto platí dál: každá série má legendu s hodnotami. Čára hodnoty <code>chart-line #b5b9eb</code>, plocha <code>#393b52</code> do průhledna, mřížka = <code>line-soft</code>.', on: ['overview', 'account', 'cashflow', 'components'] },
+  { n: 4, t: 'Zisk a ztráta', s: '<code>gain #45c6a6</code> a <code>loss #ef7f5e</code>: text 6,9:1 a 5,5:1 na papíru; na soft tintech (<code>#203c30</code>, <code>#4a2d25</code>) 5,7:1 a 4,7:1 — oba fungují jako 10px text odznaku. CVD ΔE 9,4 (světlé má 9,5); šipka ▲/▼ u každé změny zůstává povinná. Zelená a červená dál znamenají jen změnu, destrukci a chybu.', on: ['overview', 'account', 'cashflow', 'components'] },
+  { n: 5, t: 'Inkoust inverzně, ne čistě bílý', s: '<code>ink #eceae4</code> (12,2:1 na papíru), <code>ink-2 #cdcbc4</code> 9,1, <code>ink-3 #a3a098</code> 5,6, <code>ink-4 #868379</code> 3,9, <code>ink-5 #6b6962</code> 2,7 (osy, placeholdery; světlé má 2,4). Teplý odstín jako světlý inkoust, nikdy #fff — bílý text na tmavém září a unavuje.', on: ['overview', 'account', 'cashflow', 'components'] },
+  { n: 6, t: 'Tooltip, menu, toast, scrim', s: '<code>.tip</code> je tmavý materiál → na tmavém se obrací ve světlý (jako nativní tooltipy v tmavém macOS), text <code>ink-inverse</code>, druhý řádek <code>ink-inverse-2 #5f5c54</code> (5,4:1). Menu a toast zůstávají papír + linka; stín <code>sh-pop</code> černý 50 % je oddělí od karty stejné světlosti. Scrim <code>rgba(12,11,9,.7)</code> s blur 4px, modal papír s <code>line-strong</code> rámem a <code>sh-modal</code> 70 %.', on: ['components'] },
+  { n: 7, t: 'Wells: hlubší = tmavší v obou tématech', s: '<code>well</code> (hlavička tabulky, hover řádku, patička modalu) je o stupeň tmavší než papír, <code>well-2</code> (track segmentu, odznaky) hlubší, <code>well-3</code> (track progresu, avatar) nejhlubší. Stejná metafora jako ve světlém, kde jsou wells tmavší než papír. Pilulka segmentu je papír → světlejší než track, jako v nativních tmavých ovládacích prvcích.', on: ['account', 'cashflow', 'components'] },
+  { n: 8, t: 'Inputy a focus', s: 'Input = papír s <code>line-strong #45443f</code>, hover <code>line-hover</code>, focus <code>focus-border #a09d94</code> + bílý prstenec 12 %. Chyba: <code>loss</code> rám, prstenec <code>loss-ring</code> 22 %. Zakázané pole na <code>well</code> s <code>ink-4</code> (3,9:1).', on: ['account', 'components'] },
+  { n: 9, t: 'Skeleton, progress, segmented', s: 'Skeleton shimmer <code>well-2 ↔ well</code>, oba tmavší než karta, takže zůstane čitelný. Progress: track <code>well-3</code>, pruh <code>s1</code> (nejsvětlejší série), přetažení <code>loss</code>. Segmented: track <code>well-2</code>, aktivní pilulka papír se stínem <code>sh-seg</code>.', on: ['cashflow', 'components'] },
+  { n: 10, t: 'Loga a ikony kategorií', s: 'Loga institucí a instrumentů jsou kolečka v s1–s4 s textem <code>ink-inverse</code>; protože se inkoust i série obracejí spolu, kontrast vyjde sám (s1 12,4:1, s3 4,4:1; s4 nese <code>ink</code> 6,1:1). Ikona kategorie: odstín uživatele zůstává, tint 15 % nad papírem zůstává, glyf se na tmavém zvedne o 30 % k inkoustu (OKLab <code>color-mix</code>) — všech 14 předvoleb ≥ 4,9:1 (bez zvednutí by indigo a šedomodrá měly 3,1–3,3:1).', on: ['overview', 'account', 'cashflow'] },
+  { n: 11, t: 'Nastavení → Obecné → Vzhled', s: 'Systém / Světlý / Tmavý, výchozí Systém. Uloženo v <code>user_profile.theme</code> (migrace, jako jazyk) a zrcadleno do <code>localStorage</code>, aby ho znala i zamykací obrazovka před odemčením. <code>prefers-color-scheme</code> se čte jen při Systém a reaguje živě na změnu v OS. Ne <code>app_config</code>: to je technický sklad mimo zálohu.', on: ['components'] },
+  { n: 12, t: 'Start bez bliknutí', s: 'Inline skript v <code>&lt;head&gt;</code> nastaví <code>data-theme</code> na <code>&lt;html&gt;</code> z localStorage (nebo z OS) před prvním vykreslením — CSS má jen jeden tmavý blok, bez <code>@media</code> duplikátu. Okno Tauri startuje skryté a ukáže se, až je téma nastaveno; nativní titulek a tmavé nativní prvky (<code>color-scheme: dark</code>, <code>setTheme</code>) sledují volbu, ne OS.', on: ['components'] },
+  { n: 13, t: 'Karty: linka + povrch, stín jen dokresluje', s: 'Karta (<code>sh-2</code>) a tabulka (<code>sh-3</code>) mají na tmavém stín černý 26–28 % a 18–20 %; viditelný je hlavně u spodní hrany. Oddělení nese 1px <code>line #363531</code> a krok papír–canvas. Hero orb <code>hero-orb #302f2b</code> je o stupeň světlejší než papír — měsíční svit místo prohlubně.', on: ['overview', 'account', 'cashflow'] },
+  { n: 14, t: 'Nativní prvky', s: '<code>color-scheme: dark</code> na <code>:root[data-theme=dark]</code> přepne datové pickery, rozbalovací seznamy, posuvníky a checkboxy prohlížeče do tmava; bez toho by WKWebView vykresloval bílý kalendář nad tmavým formulářem.', on: ['components'] }
+];
+function notesInner(screen) {
+  return '<section class="card card--flat notes-card"><div class="card__head"><div><h2 class="card__title">Poznámky k návrhu</h2><p class="card__sub">Čísla odpovídají značkám na stránce · obrazovka ' + SCREEN_NAME[screen] + ' · přepněte Světlý/Tmavý nahoře</p></div></div><ol class="notes">' + NOTES.map(function (n) {
+    var here = n.on.indexOf(screen) >= 0;
+    return '<li><i class="np">' + n.n + '</i><div><b>' + n.t + '</b>' + n.s + (here ? '' : '<br><span class="badge badge--outline">vidět na: ' + n.on.map(function (k) { return SCREEN_NAME[k]; }).join(', ') + '</span>') + '</div></li>';
+  }).join('') + '</ol></section>';
+}
+
+/* ===== Demo data ===== */
+var NW_ANCHORS = [[D(2026, 9, 16), 4174760], [D(2026, 9, 21), 4188000], [D(2026, 9, 24), 4262000], [D(2026, 9, 26), 4238000], [D(2026, 9, 30), 4312000], [D(2026, 10, 4), 4310000], [D(2026, 10, 7), 4288000], [D(2026, 10, 9), 4479000], [D(2026, 10, 10), 4396000], [D(2026, 10, 13), 4468000], [TODAY, 4523860]];
+function nwPoints() { var pts = []; for (var i = 0; i <= 30; i++) { var d = new Date(2026, 8, 16 + i); pts.push({ date: d, value: Math.round(pathAt(NW_ANCHORS, d)) }); } return pts; }
+var RECS = [[2025, 10, 20, 212400, 'výpis'], [2025, 12, 15, 238900, 'ručně'], [2026, 2, 10, 251300, 'výpis'], [2026, 4, 5, 247800, 'výpis'], [2026, 6, 12, 269400, 'ručně'], [2026, 8, 14, 281000, 'výpis'], [2026, 10, 10, 296350, 'výpis']].map(function (r) { return { date: D(r[0], r[1], r[2]), v: r[3], src: r[4] }; });
+var MONTHS = [[2025, 11, 61400, 70200], [2025, 12, 54000, 51300], [2026, 1, 54000, 48900], [2026, 2, 55200, 57600], [2026, 3, 54000, 50100], [2026, 4, 54000, 61900], [2026, 5, 58000, 52400], [2026, 6, 54000, 55700], [2026, 7, 54000, 53300], [2026, 8, 62300, 58180], [2026, 9, 61000, 64540], [2026, 10, 12100, 9800]].map(function (m) { return { y: m[0], m: m[1], a: m[2], b: m[3] }; });
+var CF_MONTHS = [[1, 118400, 61200], [2, 96500, 58900], [3, 96500, 52100], [4, 97800, 71900], [5, 84100, 55400], [6, 86200, 52700], [7, 95900, 46300], [8, 72300, 48180], [9, 118900, 64540], [10, 0, 0], [11, 0, 0], [12, 0, 0]].map(function (m) { return { m: m[0], a: m[1], b: m[2] }; });
+var LEDGER = [
+  ['30. září', 'Vlastní účet – převod', 'CZ65 0800 0000 1920 0014 5399', 'Převody', -45000],
+  ['30. září', 'Výplata – Umbrella', 'Mzda 9/2026', 'Výplata', 61000],
+  ['29. září', 'Albert', 'Platba kartou · Praha 6', 'Potraviny', -1842.5],
+  ['29. září', 'ČEZ Prodej', 'Záloha elektřina', 'Bydlení', -2890],
+  ['28. září', 'Lítačka', 'Kupón 30 dní', 'Doprava', -550],
+  ['27. září', 'Netflix', 'Předplatné', 'Zábava', -319],
+  ['26. září', 'Rohlík.cz', 'Objednávka 4820113', 'Potraviny', -2312.8],
+  ['25. září', 'Neznámý příjemce', 'Platba kartou · 8821', null, -420]
+];
+var EXP = [['Splátky úvěrů', 18, 27, 231480], ['Potraviny', 112, 21, 180010], ['Bydlení', 24, 17, 145780], ['Daně', 25, 11, 94310], ['Doprava', 41, 8, 68590], ['Zábava', 36, 6, 51450], ['Pojištění', 9, 5, 42870]];
+var INC = [['Výplata', 9, 93, 710120], ['Investice', 12, 5, 38190], ['Ostatní', 7, 2, 15280]];
+
+/* ===== Screens ===== */
+function topbar(crumbs, status, statusCls) {
+  return '<div class="topbar"><span class="crumb">' + crumbs.map(function (c, i) { return (i === crumbs.length - 1 ? '<b>' + c + '</b>' : '<a href="#">' + c + '</a>'); }).join('<i>›</i>') + '</span><span class="status ' + (statusCls || '') + '">' + status + '</span></div>';
+}
+
+function overviewHTML() {
+  var rows = [
+    ['20. 10.', 'za 4 dny', 'Konec fixace hypotéky', 'Česká spořitelna · sazba 5,09 % · nová nabídka do 20. 10.', true],
+    ['31. 10.', 'za 15 dní', 'Splatnost dluhopisu', 'ČEZ 2026 · 50 000 Kč jistina + poslední kupón', false],
+    ['4. 11.', 'za 19 dní', 'Životní pojištění', 'Poslední den pro výpověď · výročí 17. 12.', false],
+    ['27. 11.', 'za 42 dní', 'Pojištění domácnosti', 'Poslední den pro výpověď · výročí 9. 1. 2027', false]
+  ].map(function (r) {
+    return '<div class="ag"><div class="dchip' + (r[4] ? ' dchip--soon' : '') + '"><b>' + r[0] + '</b><small>' + r[1] + '</small></div><div><b>' + r[2] + '</b><small>' + r[3] + '</small></div><button type="button" class="btn btn--ghost btn--icon btn--sm" aria-label="Možnosti připomínky">' + icon('ellipsis', 14) + '</button></div>';
+  }).join('');
+  var alloc = [['Nemovitosti', 's1', 6820000, 56.8], ['Akcie', 's2', 2614200, 21.8], ['Bankovní účty', 's3', 1498300, 12.5], ['Krypto', 's4', 702400, 5.8], ['Ostatní', 's-other', 377500, 3.1]];
+  var moves = [
+    ['AAPL', 'logo', 'Apple Inc.', 'Nákup · 5 ks · 14. 10.', '− 24 910 Kč', ''],
+    ['BTC', 'logo logo--2', 'Bitcoin', 'Prodej · 0,02 BTC · 12. 10.', '+ 29 660 Kč', 'gain'],
+    ['', 'logo logo--soft', 'Vlastní účet – převod', 'Běžný účet · 10. 10.', '− 45 000 Kč', ''],
+    ['CEZ', 'logo logo--3', 'ČEZ', 'Dividenda · 9. 10.', '+ 4 120 Kč', 'gain'],
+    ['VWCE', 'logo logo--4', 'Vanguard FTSE All-World', 'Nákup · 10 ks · 6. 10.', '− 31 880 Kč', '']
+  ].map(function (m) {
+    return '<div class="table__row mov-grid"><div class="entity"><i class="' + m[1] + '">' + (m[0] || icon('repeat', 14)) + '</i><div><b>' + m[2] + '</b><small>' + m[3] + '</small></div></div><div></div><div class="cell--num ' + (m[5] ? 'delta ' + m[5] : 'cell--name') + '">' + m[4] + '</div></div>';
+  }).join('');
+  return topbar(['Přehled', 'celkový obraz'], 'Data aktuální', 'status--fresh') +
+    '<div class="page-head"><div><div class="eyebrow">Váš finanční obraz</div><h1 class="has-np">' + pill(5) + 'Dobré odpoledne, Alexi.</h1><p>Čisté jmění k 16. 10. 2026</p></div>' + segHTML('ov-per', [['30', '30 dní'], ['90', '3 měsíce'], ['ytd', 'Letos'], ['1y', 'Rok'], ['all', 'Vše']], '30', true) + '</div>' +
+    '<div class="stack">' +
+    '<section class="card hero has-np">' + pill(1) + '<div class="hero__head"><div><div class="hero__label">Čisté jmění</div><span class="hero__value num">4 523 860 Kč</span><div class="hero__delta gain has-np">' + pill(4) + '↗ + 8,4 %<span>+ 349 100 Kč za posledních 30 dní</span></div></div><div class="hero__aside"><div class="hero__label">Hodnota roste. Největší podíl na změně: hotovost.</div></div></div>' +
+    '<div class="chart" id="ov-chart" style="margin:16px -4px 0;height:200px"></div><div class="chart__axis" id="ov-axis"></div></section>' +
+    '<div class="stats stats--3">' + stat('Aktiva celkem', '12 012 400 Kč', '+ 330 800 Kč za posledních 30 dní', '', 's1') + stat('Závazky', '7 488 540 Kč', '− 18 300 Kč za posledních 30 dní', '', 's2') + stat('Volná hotovost', '354 900 Kč', 'na bankovních účtech', '', 's3') + '</div>' +
+    '<div><div class="section-head"><h2>Co vás čeká</h2><button type="button" class="link">Upravit připomínky →</button></div>' +
+    '<section class="card card--table has-np">' + pill(13) + '<div class="agenda__grid">' + rows + '</div><div class="agenda__upkeep">' + icon('refresh-cw', 14) + '<span><b>Údržba dat</b> · aktualizovat 4 zůstatky · zálohovat data</span><button type="button" class="link">Zobrazit 2</button></div></section></div>' +
+    '<div class="two-col two-col--dash">' +
+    '<section class="card"><div class="card__head"><div><h2 class="card__title">Rozložení aktiv</h2><p class="card__sub">Podle třídy · k dnešnímu dni</p></div></div><div class="card__body" style="padding-top:0"><div class="alloc"><div class="ring" id="ov-ring"><div class="ring__center">Aktiva<b>12,0 mil.</b></div></div><ul class="has-np">' + pill(3, 'np--tr') + alloc.map(function (a) { return '<li>' + block(a[1]) + '<span>' + a[0] + '</span><span class="amt">' + fmtKc(a[2]) + '</span><span class="pct">' + String(a[3]).replace('.', ',') + ' %</span></li>'; }).join('') + '</ul></div></div></section>' +
+    '<section class="card card--table has-np">' + pill(10) + '<div class="card__head"><div><h2 class="card__title">Poslední pohyby</h2><p class="card__sub">Nákupy, prodeje, dividendy a převody</p></div><button type="button" class="link">Vše →</button></div><div class="table">' + moves + '</div></section>' +
+    '</div>' + notesInner('overview') + '</div>';
+}
+
+function accountHTML() {
+  var c = RECS[RECS.length - 1], p = RECS[RECS.length - 2], d = c.v - p.v;
+  var m = MONTHS[S.fm], net = m.a - m.b;
+  var ledger = '', last = null;
+  LEDGER.forEach(function (r) {
+    if (r[0] !== last) { ledger += '<div class="table__group">' + r[0] + '</div>'; last = r[0]; }
+    var chip = r[3] ? '<span class="chip">' + catChip(r[3]) + r[3] + '</span>' : '<span class="badge badge--outline">' + icon('circle-alert', 11) + 'Nezařazeno</span>';
+    var amt = r[4] < 0 ? '<div class="cell--num cell--name">' + fmtSigned(r[4], r[4] % 1 ? 2 : 0) + '</div>' : '<div class="cell--num delta gain">' + fmtSigned(r[4]) + '</div>';
+    ledger += '<div class="table__row led-grid"><div class="faint">' + r[0].replace(' září', '. 9.').replace('.. ', '. ') + '</div><div class="entity"><div><b>' + esc(r[1]) + '</b><small>' + esc(r[2]) + '</small></div></div><div>' + chip + '</div>' + amt + '</div>';
+  });
+  return topbar(['Peníze', 'Bankovní účty', 'Běžný účet'], 'Poslední import 10. 10. 2026') +
+    '<a class="back" href="#">' + icon('arrow-left', 14) + 'Zpět na účty</a>' +
+    '<div class="page-head"><div><div class="eyebrow">Česká spořitelna<span class="sep">·</span>CZK<span class="sep">·</span>Běžný</div><h1 class="has-np">' + pill(5) + 'Běžný účet</h1><p>CZ65 0800 0000 1920 0014 5399</p></div>' +
+    '<div class="actions"><button type="button" class="btn btn--primary">' + icon('wallet', 14) + 'Zaznamenat zůstatek</button><button type="button" class="btn btn--primary has-np">' + pill(2) + icon('upload', 14) + 'Importovat výpis</button><button type="button" class="btn btn--icon" aria-label="Další akce">' + icon('ellipsis', 16) + '</button></div></div>' +
+    '<div class="stack">' +
+    '<section class="card hero has-np">' + pill(1) + '<div class="hero__head"><div><div class="hero__label">Zůstatek k ' + fmtDay(c.date) + '</div><span class="hero__value num">' + fmtKc(c.v) + '</span><div class="hero__delta ' + signCls(d) + ' has-np">' + pill(4) + (d > 0 ? '↗ ' : '↘ ') + fmtSigned(d) + '<span>od ' + fmtDay(p.date) + '</span></div></div></div>' +
+    '<div class="chart" id="ac-chart" style="margin:16px -4px 0;height:180px"></div><div class="chart__axis" id="ac-axis"></div>' +
+    '<div class="legend">' + legendItem(SW_LINE, 'Zůstatek') + legendItem('<i class="legend__swatch legend__swatch--dot" style="background:var(--chart-line)"></i>', 'Záznam zůstatku') + '</div></section>' +
+    '<div class="stats stats--3">' + stat('Změna letos', '+ 44 950 Kč', 'proti záznamu k 15. 12. 2025', 'gain') + stat('Průměrně za měsíc', '+ 7 000 Kč', 'za posledních 12 měsíců', 'gain') + stat('Roční úrok', '1 420 Kč', '0,48 % efektivně · pásmové úročení', '') + '</div>' +
+    '<section class="card hero hero--compact has-np">' + pill(13) + '<div class="hero__head"><div><div class="hero__label">Bilance · září 2026</div><span class="hero__value num ' + signCls(net) + '">' + fmtSigned(net) + '</span><div class="hero__delta"><span style="margin-left:0">' + fmtSigned(m.a) + ' příchozí · ' + fmtSigned(-m.b) + ' odchozí · 47 pohybů</span></div></div>' +
+    '<div class="hero__aside"><div class="pnav"><button type="button" class="btn btn--sm btn--icon" aria-label="Předchozí měsíc">' + icon('chevron-right', 14, 'flip') + '</button><button type="button" class="btn btn--sm btn--icon" aria-label="Další měsíc">' + icon('chevron-right', 14) + '</button></div></div></div>' +
+    '<div class="chart" id="ac-flows" style="margin:16px -4px 0;height:180px"></div><div class="chart__axis axis--slots" id="ac-flows-axis"></div>' +
+    '<div class="legend has-np">' + pill(3, 'np--inline') + legendItem(block('s1'), 'Příchozí') + legendItem(block('s3'), 'Odchozí') + '</div></section>' +
+    '<section class="card card--table"><div class="card__head ledger-head"><div><h2 class="card__title">Transakce</h2><p class="card__sub">Seskupené podle dne · nejnovější nahoře</p></div>' +
+    '<div class="toolbar"><button type="button" class="btn btn--sm">' + icon('plus', 13) + 'Přidat transakci</button>' + segHTML('ac-dir', [['all', 'Vše'], ['in', 'Příchozí'], ['out', 'Odchozí']], 'all') +
+    '<div class="select-wrap select-wrap--sm"><select class="select" aria-label="Kategorie"><option>Všechny kategorie</option><option>Potraviny</option><option>Bydlení</option></select>' + icon('chevron-down', 14) + '</div>' +
+    '<div class="search input-wrap has-np">' + pill(8) + icon('search', 14) + '<input class="input" placeholder="Hledat v popisu" aria-label="Hledat v popisu"></div></div></div>' +
+    '<div class="ledger-sub"><div class="select-wrap select-wrap--period"><select class="select" aria-label="Období výpisu"><option>Minulý měsíc</option><option>Tento měsíc</option><option>Letos</option><option>Vlastní</option></select>' + icon('chevron-down', 14) + '</div><button type="button" class="btn btn--sm">' + icon('tag', 13) + 'Zařadit automaticky <span class="badge badge--dark">1</span></button></div>' +
+    '<div class="table"><div class="table__head led-grid has-np">' + pill(7) + '<div>Datum</div><div>Protistrana</div><div class="has-np">' + pill(10) + 'Kategorie</div><div class="cell--num">Částka</div></div>' + ledger + '</div>' +
+    '<div class="table__foot"><span>47 transakcí · Strana 1</span><span class="pager"><button type="button" class="btn btn--ghost btn--icon btn--sm" disabled aria-label="Předchozí strana">' + icon('chevron-right', 14, 'flip') + '</button><button type="button" class="btn btn--ghost btn--icon btn--sm" aria-label="Další strana">' + icon('chevron-right', 14) + '</button></span></div></section>' +
+    notesInner('account') + '</div>';
+}
+
+function catTable(title, sub, rows, pillN) {
+  return '<section class="card card--table"><div class="card__head"><div><h2 class="card__title">' + title + '</h2><p class="card__sub">' + sub + '</p></div></div>' +
+    '<div class="table"><div class="table__head cat-grid' + (pillN ? ' has-np' : '') + '">' + (pillN ? pill(pillN) : '') + '<div>Kategorie</div><div>Podíl</div><div></div><div class="cell--num">Částka</div></div>' +
+    rows.map(function (r, i) {
+      return '<div class="table__row cat-grid is-clickable"><div class="cat-name">' + catChip(r[0]) + '<span>' + r[0] + ' <small>· ' + r[1] + '</small></span></div><div class="progress share' + (i === 0 && pillN === 9 ? ' has-np' : '') + '">' + (i === 0 && pillN === 9 ? pill(9) : '') + '<div class="progress__bar" style="width:' + r[2] + '%"></div></div><div class="cell--num faint">' + r[2] + ' %</div><div class="cell--num cell--name">' + fmtKc(r[3]) + '</div></div>';
+    }).join('') + '</div></section>';
+}
+function cashflowHTML() {
+  return topbar(['Peníze', 'Cashflow'], '4 účty · 1 580 transakcí · 2026') +
+    '<div class="page-head"><div><div class="eyebrow">Report</div><h1 class="has-np">' + pill(5) + 'Cashflow</h1><p>Skutečné příjmy a výdaje ze všech účtů za zvolené období. Opakované položky, se kterými počítáte, jsou v Plánování cashflow →</p></div>' +
+    '<div class="actions">' + segHTML('cf-per', [['m', 'Měsíc'], ['q', 'Čtvrtletí'], ['y', 'Rok']], 'y') + '<span class="period-nav"><button type="button" class="btn btn--ghost btn--icon btn--sm" aria-label="Předchozí">' + icon('chevron-right', 14, 'flip') + '</button><b>2026</b><button type="button" class="btn btn--ghost btn--icon btn--sm" aria-label="Další">' + icon('chevron-right', 14) + '</button></span><button type="button" class="btn">Účty (8)</button><button type="button" class="btn">' + icon('download', 14) + 'Exportovat</button></div></div>' +
+    '<div class="stack">' +
+    '<div class="stats stats--3">' + stat('Příjmy', '763 590 Kč', '⌀ 84 843 Kč / měsíc', '') + stat('Výdaje', '511 220 Kč', '⌀ 56 802 Kč / měsíc', '') + '<div class="has-np">' + pill(4) + stat('Úspory', '+ 252 370 Kč', 'míra úspor 33 %', 'gain') + '</div></div>' +
+    '<section class="card hero has-np">' + pill(13) + '<div class="hero__head"><div><h2 class="card__title">Příjmy a výdaje po měsících</h2><p class="card__sub">Zvolené období je zvýrazněno. Najeďte na sloupec pro bilanci měsíce.</p></div><div class="legend has-np">' + pill(3, 'np--tr') + legendItem(block('s1'), 'Příjmy') + legendItem(block('s3'), 'Výdaje') + '</div></div>' +
+    '<div class="chart" id="cf-chart" style="margin:16px -4px 0;height:200px"></div><div class="chart__axis axis--slots" id="cf-axis"></div></section>' +
+    '<div class="two-col two-col--even">' + catTable('Výdaje podle kategorie', 'Součet za zvolené období', EXP, 9) + '<div class="stack">' + catTable('Příjmy podle kategorie', 'Součet za zvolené období', INC, 7) +
+    '<section class="card card--table"><div class="card__head"><div><h2 class="card__title">Investice, spoření a převody</h2><p class="card__sub">Pohyby peněz mezi vašimi účty</p></div></div><div class="table"><div class="table__row cat-grid"><div class="cat-name has-np">' + pill(10) + catChip('Převody') + '<span>Převody <small>· 24</small></span></div><div class="progress share"><div class="progress__bar" style="width:100%"></div></div><div class="cell--num faint">100 %</div><div class="cell--num cell--name">540 000 Kč</div></div></div></section></div></div>' +
+    notesInner('cashflow') + '</div>';
+}
+
+function panel(title, sub, bodyHTML, pillN, wide, col) {
+  return '<section class="card card--flat' + (wide ? ' card--wide' : '') + '"><div class="card__head' + (pillN ? ' has-np' : '') + '">' + (pillN ? pill(pillN) : '') + '<div><h2 class="card__title">' + title + '</h2>' + (sub ? '<p class="card__sub">' + sub + '</p>' : '') + '</div></div><div class="panel__body' + (col ? ' panel__body--col' : '') + '">' + bodyHTML + '</div></section>';
+}
+function componentsHTML() {
+  var buttons = '<button type="button" class="btn btn--primary">' + icon('plus', 14) + 'Přidat účet</button><button type="button" class="btn">' + icon('download', 14) + 'Exportovat</button><button type="button" class="btn btn--ghost">Zrušit</button><button type="button" class="btn btn--danger">' + icon('trash-2', 14) + 'Smazat</button><button type="button" class="btn btn--destructive">Smazat účet</button><button type="button" class="btn" disabled>Nedostupné</button><button type="button" class="btn btn--icon" aria-label="Další">' + icon('ellipsis', 16) + '</button><button type="button" class="btn btn--sm">' + icon('tag', 13) + 'Malé</button><button type="button" class="btn btn--primary btn--sm">Malé primární</button>';
+  var seg = segHTML('c-seg1', [['a', '30 dní'], ['b', '3 měsíce'], ['c', 'Letos'], ['d', 'Rok'], ['e', 'Vše']], 'a', true) + segHTML('c-seg2', [['a', 'Vše'], ['b', 'Příchozí'], ['c', 'Odchozí']], 'b');
+  var fields = '<div class="row-2" style="width:100%"><div class="field"><label class="field__label" for="c-f1">Název účtu</label><input class="input" id="c-f1" value="Spořicí účet"><div class="field__hint">Například „Běžný účet“ nebo „Rezerva“.</div></div>' +
+    '<div class="field"><label class="field__label" for="c-f2">Zůstatek <span class="opt">focus</span></label><div class="input-wrap"><input class="input demo-focus" id="c-f2" value="184 600" style="padding-left:11px"><span class="unit">Kč</span></div></div></div>' +
+    '<div class="row-2" style="width:100%"><div class="field"><label class="field__label" for="c-f3">Množství</label><div class="input-wrap"><input class="input is-invalid" id="c-f3" value="40" style="padding-left:11px"><span class="unit">ks</span></div><div class="field__error">' + icon('circle-alert', 12) + 'Zadejte nejvýše 36 ks — tolik jich držíte.</div></div>' +
+    '<div class="field"><label class="field__label" for="c-f4">Měna</label><div class="select-wrap"><select class="select" id="c-f4"><option>CZK</option><option>EUR</option></select>' + icon('chevron-down', 14) + '</div></div></div>' +
+    '<div class="row-2" style="width:100%"><div class="field"><label class="field__label" for="c-f5">Zakázané pole</label><input class="input" id="c-f5" value="Nelze upravit" disabled></div><div class="field"><label class="field__label" for="c-f6">Datum <span class="opt">nativní picker</span></label><input class="input" type="date" id="c-f6" value="2026-10-16"></div></div>' +
+    '<div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap"><label class="check"><input type="checkbox" checked> Opakovat každý měsíc</label><label class="check"><input type="checkbox"> Zobrazit nulové pozice</label><label class="switch"><input type="checkbox" checked></label><label class="switch"><input type="checkbox"></label><div class="search input-wrap">' + icon('search', 14) + '<input class="input" placeholder="Hledat podle názvu"></div></div>';
+  var badges = '<span class="badge">Neutrální</span><span class="badge badge--gain">▲ 0,42 %</span><span class="badge badge--loss">▼ 1,3 %</span><span class="badge badge--gain">V pořádku</span><span class="badge badge--loss">Překročeno o 820 Kč</span><span class="badge badge--dark">Nákup</span><span class="badge badge--outline">Prodej</span><span class="badge badge--outline">' + icon('circle-alert', 11) + 'Nezařazeno</span><span class="chip">' + catChip('Potraviny') + 'Potraviny</span><span class="chip is-active">Vše</span><span class="chip">Sektor</span><span class="gain delta">+ 60 110 Kč</span><span class="loss delta">− 15 200 Kč</span>';
+  var popups = '<div class="menu"><button type="button" class="menu__item">' + icon('pencil', 14) + 'Upravit</button><button type="button" class="menu__item">' + icon('wallet', 14) + 'Historie zůstatků</button><button type="button" class="menu__item">' + icon('download', 14) + 'Exportovat</button><div class="menu__sep"></div><button type="button" class="menu__item menu__item--danger">' + icon('trash-2', 14) + 'Smazat účet</button></div>' +
+    '<div style="display:grid;gap:14px;flex:1;min-width:220px"><div class="tip"><b>Nákup 20 ks za 4 190 Kč</b><small>20. 1. 2025 · celkem 83 800 Kč</small></div><div class="tip"><b>296 350 Kč</b><small>10. 10. 2026 · výpis</small></div><div class="toast is-on">' + icon('check', 14) + '<span>Účet přidán</span></div><div class="alert alert--error">' + icon('circle-alert', 15) + '<div><b>Import se nezdařil</b>Soubor není výpis z banky. Zkuste CSV, CAMT.053 nebo MT940.</div></div></div>';
+  var modal = '<div class="mini-scrim"><div class="modal modal--sm"><div class="modal__head"><div><h2>Smazat účet?</h2><p>Zmizí i 47 transakcí a 7 záznamů zůstatku.</p></div></div><div class="modal__foot"><button type="button" class="btn btn--ghost btn--sm">Zrušit</button><div class="actions"><button type="button" class="btn btn--destructive btn--sm">Smazat účet</button></div></div></div></div><button type="button" class="btn" id="open-demo">' + icon('plus', 14) + 'Otevřít skutečný modal nad stránkou</button>';
+  var skel = '<div class="sk"><div class="srow"><div class="skeleton skeleton--disc"></div><div class="sk" style="flex:1"><div class="skeleton" style="width:46%"></div><div class="skeleton" style="width:28%;height:9px"></div></div><div class="skeleton" style="width:90px"></div></div><div class="srow"><div class="skeleton skeleton--disc"></div><div class="sk" style="flex:1"><div class="skeleton" style="width:38%"></div><div class="skeleton" style="width:22%;height:9px"></div></div><div class="skeleton" style="width:70px"></div></div></div>' +
+    '<div style="width:100%;display:grid;gap:12px;margin-top:6px"><div><div class="stat__label"><span>Potraviny</span><span class="num faint">12 400 / 15 000 Kč</span></div><div class="progress" style="margin-top:8px"><div class="progress__bar" style="width:83%"></div><i class="progress__mark" style="left:66%"></i></div></div><div><div class="stat__label"><span>Zábava</span><span class="num loss">5 820 / 5 000 Kč</span></div><div class="progress progress--over" style="margin-top:8px"><div class="progress__bar" style="width:100%"></div></div></div></div>';
+  var ring = '<div class="alloc" style="grid-template-columns:130px 1fr;gap:24px;width:100%"><div class="ring ring--sm" id="c-ring"><div class="ring__center">Aktiva<b>12,0 mil.</b></div></div><div class="legend" style="margin:0;flex-direction:column;gap:9px;align-items:flex-start">' + legendItem(block('s1'), 's1 · Nemovitosti 56,8 %') + legendItem(block('s2'), 's2 · Akcie 21,8 %') + legendItem(block('s3'), 's3 · Bankovní účty 12,5 %') + legendItem(block('s4'), 's4 · Krypto 5,8 %') + legendItem(block('s-other'), 'Ostatní 3,1 %') + legendItem(SW_LINE, 'Hodnota') + legendItem(SW_DASH, 'Vloženo') + legendItem('<i class="legend__swatch" style="background:repeating-linear-gradient(90deg,var(--ink-4) 0 2px,transparent 2px 4px)"></i>', 'Index (S&amp;P 500)') + '</div></div><div class="chart" id="c-chart" style="width:100%;height:150px;margin-top:8px"></div><div class="chart__axis" id="c-axis" style="width:100%"></div>';
+  var settings = '<div class="settings-row"><div><b>Vzhled</b><small>Systém sleduje nastavení macOS nebo Windows; volba platí pro tento profil.</small></div>' + segHTML('c-theme', [['system', 'Systém'], ['light', 'Světlý'], ['dark', 'Tmavý']], S.theme === 'dark' ? 'dark' : 'light') + '</div><div class="settings-row"><div><b>Jazyk rozhraní</b><small>Čísla a data se řídí jazykem rozhraní.</small></div><div class="select-wrap" style="width:200px"><select class="select"><option>Čeština · 1 234,56 Kč</option><option>English · €1,234.56</option></select>' + icon('chevron-down', 14) + '</div></div>';
+  return topbar(['Nastavení', 'Komponenty v tmavém'], 'Prototyp · 16. 10. 2026') +
+    '<div class="page-head"><div><div class="eyebrow">Design systém</div><h1 class="has-np">' + pill(5) + 'Komponenty</h1><p>Každý prvek jen z tokenů. Přepněte Světlý/Tmavý nahoře; nic jiného se nemění.</p></div></div>' +
+    '<div class="panels">' +
+    panel('Tlačítka', 'Jedno primární na stránku. Danger je jen text, destruktivní jen v potvrzovacím dialogu.', buttons, 2) +
+    panel('Segmented', 'Track well-2, aktivní pilulka papír se stínem.', seg, 7) +
+    panel('Formulář', 'Input, focus, chyba, select, zakázané, datum, checkbox, přepínač, hledání.', fields, 8, false, true) +
+    panel('Odznaky a chipy', 'Zelená a červená jen pro kladnou a zápornou změnu, vždy se šipkou.', badges, 4) +
+    panel('Menu, tooltip, toast, alert', 'Tooltip se obrací s materiálem; menu a toast zůstávají papír.', popups, 6) +
+    panel('Modal nad scrimem', 'Scrim 70 % s rozostřením, modal papír s rámem line-strong.', modal, 6, false, true) +
+    panel('Skeleton a progress', 'Shimmer well-2 ↔ well; track well-3; pruh s1; přetažení loss.', skel, 9, false, true) +
+    panel('Allocation ring a legenda sérií', 'Čtyři série + Ostatní; hodnota, vloženo, index.', ring, 3, false, true) +
+    panel('Nastavení → Obecné → Vzhled', 'Systém / Světlý / Tmavý. Přepnutí zde přepne i prototyp.', settings, 11, true, true) +
+    panel('Tabulka tokenů', 'Stejné názvy jako tokens.css; tmavý sloupec je sdílená sada pro mobil. Hodnoty čte stránka z bloku :root[data-theme="dark"].', '<div class="tok" id="tok-table"></div>', 12, true, true) +
+    '</div>' + notesInner('components');
+}
+
+/* ===== Token table ===== */
+var LIGHT = {};
+var GROUPS = [['canvas', 'Povrchy'], ['line', 'Linky'], ['ink', 'Inkoust'], ['dark', 'Kontrastní materiál'], ['gain', 'Sémantika'], ['s1', 'Datové série'], ['focus-border', 'Focus'], ['sh-sidebar', 'Elevace']];
+var TOK_NOTES = { 'paper': 'karty, tabulky, modaly', 'well': 'hlavička tabulky, hover řádku, patička modalu', 'well-2': 'track segmentu, odznaky', 'well-3': 'track progresu, avatar, skeleton', 'hero-orb': 'ozdobný kruh v hero', 'ink-inverse': 'text na kontrastním materiálu', 'ink-hover': 'hover navigace a ghost tlačítka', 'dark': 'aktivní nav, primární tlačítko, tooltip', 'gain-soft': 'podklad odznaku zisku', 'loss-soft': 'podklad odznaku ztráty', 'loss-ring': 'prstenec chybného pole', 's4': '2,0:1 — legenda povinná', 's-other': 'koš „Ostatní“, vždy popsaný', 'chart-area': 'plocha pod čárou, do průhledna', 'chart-cost': 'čárkovaná „Vloženo“', 'sh-dark': 'stín kontrastního materiálu', 'scrim': 'pod modalem, blur 4px' };
+function captureLight() { var cs = getComputedStyle(document.documentElement); $('#dark-tokens').textContent.replace(/--([a-z0-9-]+):\s*([^;]+);/g, function (_, name) { LIGHT[name] = cs.getPropertyValue('--' + name).trim(); }); }
+function isColor(v) { return /^(#[0-9a-f]{6}|rgba?\([^)]*\))$/i.test(v); }
+function sw(v, light) { return '<span class="sw"><i' + (isColor(v) ? ' style="background:' + v + '"' : ' class="' + (light ? 'sw--light' : '') + '" style="box-shadow:' + v + '"') + '></i><span>' + esc(v) + '</span></span>'; }
+function tokenTable() {
+  var rows = '<div class="tok__head"><div>Token</div><div>Světlý</div><div>Tmavý</div><div>Použití</div></div>', seen = {};
+  $('#dark-tokens').textContent.replace(/--([a-z0-9-]+):\s*([^;]+);/g, function (_, name, dark) {
+    GROUPS.forEach(function (g) { if (g[0] === name && !seen[g[1]]) { seen[g[1]] = 1; rows += '<div class="tok__group">' + g[1] + '</div>'; } });
+    rows += '<div class="tok__row"><code>--' + name + '</code>' + sw(LIGHT[name] || '—', true) + sw(dark.trim()) + '<span class="tok__note">' + (TOK_NOTES[name] || '') + '</span></div>';
+  });
+  var el = $('#tok-table'); if (el) el.innerHTML = rows;
+}
+
+/* ===== Charts ===== */
+function drawCharts() {
+  var el;
+  if ((el = $('#ov-chart'))) { var pts = nwPoints(); drawLine(el, pts, { axisEl: $('#ov-axis'), height: 200, labels: axisLabels(pts[0].date, TODAY), tipHtml: function (p) { return '<b>' + fmtKc(p.value) + '</b><small>' + fmtDay(p.date) + '</small>'; } }); }
+  if ((el = $('#ov-ring'))) drawRing(el, [{ pct: 56.8, color: 'var(--s1)' }, { pct: 21.8, color: 'var(--s2)' }, { pct: 12.5, color: 'var(--s3)' }, { pct: 5.8, color: 'var(--s4)' }, { pct: 3.1, color: 'var(--s-other)' }]);
+  if ((el = $('#c-ring'))) drawRing(el, [{ pct: 56.8, color: 'var(--s1)' }, { pct: 21.8, color: 'var(--s2)' }, { pct: 12.5, color: 'var(--s3)' }, { pct: 5.8, color: 'var(--s4)' }, { pct: 3.1, color: 'var(--s-other)' }]);
+  if ((el = $('#ac-chart'))) {
+    var start = D(2025, 10, 16), pts2 = [], events = [];
+    RECS.forEach(function (r) { if (r.date >= start) pts2.push({ date: r.date, value: r.v, rec: r }); });
+    var last = RECS[RECS.length - 1]; pts2.push({ date: TODAY, value: last.v, future: true });
+    pts2.forEach(function (p) { if (p.rec && p.rec !== last) events.push({ date: p.date, type: 'out', html: '<b>' + fmtKc(p.rec.v) + '</b><small>' + fmtDay(p.date) + ' · ' + p.rec.src + '</small>' }); });
+    drawLine(el, pts2, { axisEl: $('#ac-axis'), height: 180, events: events, splitAt: last.date, labels: axisLabels(pts2[0].date, TODAY), tipHtml: function (p) { return p.future ? '<b>Dnes</b><small>poslední záznam ' + fmtDay(last.date) + '</small>' : '<b>' + fmtKc(Math.round(p.value)) + '</b><small>' + fmtDay(p.date) + (p.rec ? ' · ' + p.rec.src : '') + '</small>'; } });
+    $$('path[stroke-dasharray="4 4"]', el).forEach(function (n) { n.remove(); });
+    $$('.ev', el).forEach(function (m) { m.setAttribute('fill', 'var(--chart-line)'); m.setAttribute('stroke', 'var(--paper)'); m.setAttribute('r', '4'); });
+  }
+  if ((el = $('#ac-flows'))) {
+    drawBars(el, MONTHS.map(function (m) { return { label: CZ_MONTHS[m.m - 1] + ' ' + String(m.y).slice(2), a: m.a, b: m.b }; }), { axisEl: $('#ac-flows-axis'), height: 180, names: ['Příchozí', 'Odchozí'] });
+    $$('.bar', el).forEach(function (r) { if (+r.getAttribute('data-i') !== S.fm) r.classList.add('is-muted'); });
+  }
+  if ((el = $('#cf-chart'))) drawBars(el, CF_MONTHS.map(function (m) { return { label: CZ_MONTHS[m.m - 1] + ' 26', a: m.a, b: m.b }; }), { axisEl: $('#cf-axis'), height: 200, names: ['Příjmy', 'Výdaje'] });
+  if ((el = $('#c-chart'))) {
+    var cpts = [], cost = []; for (var i = 0; i <= 24; i++) { var d = new Date(2024, 9 + i, 1); cpts.push({ date: d, value: 180000 + i * 9000 + Math.round(Math.sin(i / 2.2) * 22000) }); if (i % 6 === 0) cost.push({ date: d, value: 160000 + i * 7000 }); }
+    drawLine(el, cpts, { axisEl: $('#c-axis'), height: 150, cost: cost, events: [{ date: new Date(2025, 3, 1), type: 'buy', html: '<b>Nákup 20 ks</b><small>1. 4. 2025</small>' }, { date: new Date(2026, 1, 1), type: 'sell', html: '<b>Prodej 5 ks</b><small>1. 2. 2026</small>' }, { date: new Date(2025, 8, 1), type: 'div', html: '<b>Dividenda 4 120 Kč</b><small>1. 9. 2025</small>' }], labels: ['říj 24', 'dub 25', 'říj 25', 'dub 26', 'Dnes'] });
+  }
+}
+
+/* ===== Render ===== */
+function render() {
+  var html = S.screen === 'overview' ? overviewHTML() : S.screen === 'account' ? accountHTML() : S.screen === 'cashflow' ? cashflowHTML() : componentsHTML();
+  $('#page').innerHTML = html;
+  renderShell({ active: SCREEN_NAV[S.screen] });
+  var act = $('.nav__item.is-active'); if (act) { act.classList.add('has-np'); act.insertAdjacentHTML('afterbegin', pill(2)); }
+  $$('#screen-seg .seg__btn').forEach(function (b) { b.classList.toggle('is-active', b.getAttribute('data-value') === S.screen); });
+  $$('.select-wrap .sel-ic').forEach(function (i) { i.outerHTML = icon('chevron-down', 14); });
+  tokenTable();
+  drawCharts();
+  window.scrollTo(0, 0);
+}
+function applyTheme(t) {
+  S.theme = t; document.documentElement.setAttribute('data-theme', t);
+  $$('#theme-seg .seg__btn').forEach(function (b) { b.classList.toggle('is-active', b.getAttribute('data-value') === t); });
+  $$('#c-theme .seg__btn').forEach(function (b) { b.classList.toggle('is-active', b.getAttribute('data-value') === t); });
+  syncUrl();
+}
+function syncUrl() {
+  var q = new URLSearchParams(); q.set('theme', S.theme); q.set('screen', S.screen); if (S.notes) q.set('notes', '1');
+  history.replaceState(null, '', '?' + q.toString());
+}
+
+/* ===== Events ===== */
+$('#theme-seg').addEventListener('segchange', function (e) { applyTheme(e.detail); });
+$('#screen-seg').addEventListener('segchange', function (e) { S.screen = e.detail; syncUrl(); render(); });
+document.addEventListener('segchange', function (e) {
+  if (e.target.id === 'c-theme') { var v = e.detail; applyTheme(v === 'system' ? (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light') : v); $$('#c-theme .seg__btn').forEach(function (b) { b.classList.toggle('is-active', b.getAttribute('data-value') === v); }); }
+});
+document.addEventListener('keydown', function (e) { if ((e.key === 'd' || e.key === 'D') && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) applyTheme(S.theme === 'dark' ? 'light' : 'dark'); });
+document.addEventListener('click', function (e) {
+  var c = e.target.closest('[data-close]'); if (c) { closeModal(c.getAttribute('data-close')); if (c.getAttribute('data-toast')) toast(c.getAttribute('data-toast')); return; }
+  if (e.target.closest('#open-demo')) { openModal('m-demo'); return; }
+  var r = e.target.closest('.table__row.is-clickable'); if (r) toast('Otevře transakce kategorie');
+});
+$('#notes-toggle').addEventListener('change', function (e) { S.notes = e.target.checked; document.body.classList.toggle('notes-on', S.notes); syncUrl(); });
+var rz; window.addEventListener('resize', function () { clearTimeout(rz); rz = setTimeout(drawCharts, 120); });
+
+/* ===== Init ===== */
+(function init() {
+  captureLight();
+  var q = new URLSearchParams(location.search);
+  S.screen = SCREEN_NAV[q.get('screen')] ? q.get('screen') : 'overview';
+  if (q.get('notes') === '1') { S.notes = true; $('#notes-toggle').checked = true; document.body.classList.add('notes-on'); }
+  $$('.modal__close').forEach(function (b) { b.innerHTML = icon('x', 15); });
+  applyTheme(q.get('theme') === 'dark' ? 'dark' : 'light');
+  render();
+})();
+})();
+</script>
+</body>
+</html>

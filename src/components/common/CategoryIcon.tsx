@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { Tag } from 'lucide-react';
 import type { TransactionCategory } from '@shared/schema';
 import { cn } from '@/lib/utils';
@@ -22,10 +23,10 @@ export function CategoryIconChip({
     <span
       aria-hidden="true"
       className={cn(
-        'grid size-7 shrink-0 place-items-center rounded-full [&_svg]:size-[15px]',
+        'cat-chip grid size-7 shrink-0 place-items-center rounded-full [&_svg]:size-[15px]',
         className
       )}
-      style={{ backgroundColor: `${color}26`, color }}
+      style={{ '--cat': color, backgroundColor: `${color}26` } as CSSProperties}
     >
       <CategoryIcon iconName={category?.icon || 'tag'} />
     </span>

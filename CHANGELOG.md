@@ -6,6 +6,20 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+### Changed
+
+- **Stock analysis tables show amounts.** In the Tags and the Positions tables, the return over the
+  period shows how much money it was next to its percent, and the Positions table shows the
+  unrealized gain as an amount too, the way the Tags table already did. In a narrow window the
+  percent moves under the amount, and long company names are shortened instead of widening the
+  table.
+- **Subtotals in the Tags table.** Each tag group ends with a "Total" row for its tags together,
+  so you can see that the rows of one group add up to the portfolio (rows of different groups
+  count the same positions again and must not be added up).
+- **Filter badge.** While the tag filter is on, the widgets it narrows (the split under the
+  performance chart, contribution, tags and positions) show a "Filter: …" badge with the chosen
+  tags.
+
 ## [0.13.0] - 2026-10-16
 
 ### Added

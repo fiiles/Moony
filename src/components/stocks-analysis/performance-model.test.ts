@@ -112,7 +112,7 @@ function series(
   twr: number[],
   contribution: number[] | null = null
 ): PerformanceSeries {
-  return { key, twr, contribution };
+  return { key, twr, contribution, gain: null };
 }
 
 function ranked(p: Part, value: number | null, drawn: boolean, color: string | null): RankedPart {

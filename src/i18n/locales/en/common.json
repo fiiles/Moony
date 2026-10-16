@@ -277,6 +277,7 @@
     "stockImportRowFailed": "the row could not be saved.",
     "onboardingFlagUnknown": "Unknown onboarding step.",
     "insuranceNoticeInvalid": "Enter a whole number of days from 0 to 365.",
+    "themeInvalid": "Choose System, Light or Dark.",
     "budgetIntervalsRequired": "Select at least one budget interval.",
     "effectiveUntilBeforeStart": "The end month can't be before the start month.",
     "statementTooLarge": "This statement file is larger than {{limitMb}} MB.",

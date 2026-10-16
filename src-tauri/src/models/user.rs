@@ -61,6 +61,8 @@ pub struct UserProfile {
     /// value, else 50; None when it is 0 (no anniversary reminder).
     #[serde(rename = "insuranceNoticeDays")]
     pub insurance_notice_days: Option<i64>,
+    /// Colour theme: `system` (follow the OS), `light` or `dark`.
+    pub theme: String,
     #[serde(rename = "createdAt")]
     pub created_at: i64,
 }
@@ -78,6 +80,9 @@ pub struct InsertUserProfile {
     #[serde(rename = "excludePersonalRealEstate")]
     pub exclude_personal_real_estate: Option<bool>,
 }
+
+/// The values a profile's colour theme can take.
+pub const THEME_VALUES: [&str; 3] = ["system", "light", "dark"];
 
 /// Default main currency when a new profile does not specify one.
 pub const DEFAULT_MAIN_CURRENCY: &str = "CZK";
@@ -133,6 +138,11 @@ impl UpdateUserProfile {
                 ));
             }
         }
+        if let Some(theme) = &self.theme {
+            if !THEME_VALUES.contains(&theme.as_str()) {
+                return Err(AppError::Validation("validation.themeInvalid".into()));
+            }
+        }
         Ok(())
     }
 }
@@ -158,6 +168,8 @@ pub struct UpdateUserProfile {
     /// `0` turns the anniversary reminder off; 1..=365 sets the notice period.
     #[serde(rename = "insuranceNoticeDays")]
     pub insurance_notice_days: Option<i64>,
+    /// `system`, `light` or `dark`; anything else is refused.
+    pub theme: Option<String>,
 }
 
 #[cfg(test)]
@@ -216,6 +228,22 @@ mod tests {
                 ),
                 "{bad}"
             );
+        }
+    }
+
+    #[test]
+    fn theme_update_accepts_the_three_values_and_rejects_others() {
+        let update = |theme: &str| -> UpdateUserProfile {
+            serde_json::from_value(serde_json::json!({ "theme": theme })).expect("update")
+        };
+        for ok in ["system", "light", "dark"] {
+            assert!(update(ok).validate().is_ok(), "{ok}");
+        }
+        for bad in ["blue", "", "Dark", " dark"] {
+            match update(bad).validate() {
+                Err(AppError::Validation(key)) => assert_eq!(key, "validation.themeInvalid"),
+                other => panic!("{bad:?}: {other:?}"),
+            }
         }
     }
 }

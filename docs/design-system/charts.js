@@ -49,22 +49,22 @@
     var valueAt = function (d) { var best = points[0], bd = Infinity; points.forEach(function (p) { var dd = Math.abs(p.date - d); if (dd < bd) { bd = dd; best = p; } }); return best.value; };
     var marks = (opts.events || []).map(function (e, i) {
       var ex = x(e.date), ey = y(valueAt(e.date));
-      if (e.type === "div" || e.type === "in") return '<circle class="ev ev--div" data-i="' + i + '" cx="' + ex + '" cy="' + ey + '" r="4.5" fill="#fff" stroke="var(--gain)" stroke-width="2"/>';
-      if (e.type === "out") return '<circle class="ev ev--out" data-i="' + i + '" cx="' + ex + '" cy="' + ey + '" r="4.5" fill="#fff" stroke="var(--chart-line)" stroke-width="2"/>';
+      if (e.type === "div" || e.type === "in") return '<circle class="ev ev--div" data-i="' + i + '" cx="' + ex + '" cy="' + ey + '" r="4.5" fill="var(--paper)" stroke="var(--gain)" stroke-width="2"/>';
+      if (e.type === "out") return '<circle class="ev ev--out" data-i="' + i + '" cx="' + ex + '" cy="' + ey + '" r="4.5" fill="var(--paper)" stroke="var(--chart-line)" stroke-width="2"/>';
       var s = 6, up = e.type === "buy";
       var pts = up ? (ex + "," + (ey - s) + " " + (ex + s) + "," + (ey + s - 1) + " " + (ex - s) + "," + (ey + s - 1)) : (ex + "," + (ey + s) + " " + (ex + s) + "," + (ey - s + 1) + " " + (ex - s) + "," + (ey - s + 1));
-      return '<polygon class="ev" data-i="' + i + '" points="' + pts + '" fill="' + (up ? "var(--chart-line)" : "#fff") + '" stroke="' + (up ? "#fff" : "var(--chart-line)") + '" stroke-width="2"/>';
+      return '<polygon class="ev" data-i="' + i + '" points="' + pts + '" fill="' + (up ? "var(--chart-line)" : "var(--paper)") + '" stroke="' + (up ? "var(--paper)" : "var(--chart-line)") + '" stroke-width="2"/>';
     }).join("");
     var last = opts.splitAt && lastSolid ? lastSolid : points[points.length - 1], id = "g" + Math.random().toString(36).slice(2, 7);
     el.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + " " + H + '" style="overflow:visible">' +
-      '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--chart-area)" stop-opacity=".8"/><stop offset="1" stop-color="#fbfaf8" stop-opacity="0"/></linearGradient></defs>' +
+      '<defs><linearGradient id="' + id + '" x1="0" y1="0" x2="0" y2="1"><stop stop-color="var(--chart-area)" stop-opacity=".8"/><stop offset="1" stop-color="var(--paper-2)" stop-opacity="0"/></linearGradient></defs>' +
       '<path d="' + grid + '" stroke="var(--chart-grid)" fill="none"/>' + labs +
       '<path d="' + area + '" fill="url(#' + id + ')"/>' +
       '<path d="' + line + '" fill="none" stroke="var(--chart-line)" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>' +
       (dash ? '<path d="' + dash + '" fill="none" stroke="var(--chart-line)" stroke-width="2" stroke-dasharray="4 4" stroke-linecap="round" stroke-linejoin="round"/>' : "") +
       (cost ? '<path d="' + cost + '" fill="none" stroke="var(--chart-cost)" stroke-width="1.5" stroke-dasharray="3 4" stroke-linejoin="round"/>' : "") +
       (opts.hline ? '<path d="M0 ' + y(opts.hline.value).toFixed(1) + "H" + (W - padR) + '" stroke="var(--gain)" stroke-width="1.5" stroke-dasharray="4 4"/><text x="' + (W - padR - 4) + '" y="' + (y(opts.hline.value) - 5).toFixed(1) + '" text-anchor="end" fill="var(--gain)" font-size="10" font-weight="650">' + opts.hline.label + "</text>" : "") +
-      '<circle cx="' + x(last.date) + '" cy="' + y(last.value) + '" r="4.5" fill="#fff" stroke="var(--chart-line)" stroke-width="2"/>' +
+      '<circle cx="' + x(last.date) + '" cy="' + y(last.value) + '" r="4.5" fill="var(--paper)" stroke="var(--chart-line)" stroke-width="2"/>' +
       '<g class="hover"></g>' + marks +
       '<rect class="hit" x="0" y="0" width="' + (W - padR) + '" height="' + H + '" fill="transparent"/></svg>';
     if (opts.axisEl) {
@@ -81,7 +81,7 @@
       var r = el.getBoundingClientRect(), mx = ev.clientX - r.left, best = points[0], bd = Infinity;
       points.forEach(function (p) { var dx = Math.abs(x(p.date) - mx); if (dx < bd) { bd = dx; best = p; } });
       var px = x(best.date), py = y(best.value);
-      hover.innerHTML = '<path d="M' + px + " " + padT + "V" + (H - padB) + '" stroke="var(--ink-4)" stroke-dasharray="2 3"/><circle cx="' + px + '" cy="' + py + '" r="4" fill="#fff" stroke="var(--chart-line)" stroke-width="2"/>';
+      hover.innerHTML = '<path d="M' + px + " " + padT + "V" + (H - padB) + '" stroke="var(--ink-4)" stroke-dasharray="2 3"/><circle cx="' + px + '" cy="' + py + '" r="4" fill="var(--paper)" stroke="var(--chart-line)" stroke-width="2"/>';
       showTip(ev.clientX, r.top + py, opts.tipHtml ? opts.tipHtml(best) : "<b>" + fmtKc(best.value) + "</b><small>" + fmtDay(best.date) + "</small>");
     });
     hit.addEventListener("mouseleave", function () { hover.innerHTML = ""; hideTip(); });
@@ -142,16 +142,16 @@
     var mid = "", band = "", back = "", base = "";
     points.forEach(function (p, i) { mid += (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.value).toFixed(1); band += (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.hi).toFixed(1); base += (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.base).toFixed(1); });
     for (var i = n - 1; i >= 0; i--) back += "L" + x(i).toFixed(1) + " " + y(points[i].lo).toFixed(1);
-    var marks = (opts.events || []).map(function (e, k) { var ex = x(e.index), ey = y(points[e.index].value); return '<g class="ev" data-i="' + k + '"><path d="M' + ex + " " + (ey + 8) + "V" + (H - padB) + '" stroke="var(--ink-4)" stroke-dasharray="2 3"/><circle cx="' + ex + '" cy="' + ey + '" r="4.5" fill="#fff" stroke="var(--chart-line)" stroke-width="2"/></g>'; }).join("");
+    var marks = (opts.events || []).map(function (e, k) { var ex = x(e.index), ey = y(points[e.index].value); return '<g class="ev" data-i="' + k + '"><path d="M' + ex + " " + (ey + 8) + "V" + (H - padB) + '" stroke="var(--ink-4)" stroke-dasharray="2 3"/><circle cx="' + ex + '" cy="' + ey + '" r="4.5" fill="var(--paper)" stroke="var(--chart-line)" stroke-width="2"/></g>'; }).join("");
     el.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + " " + H + '" style="overflow:visible">' + yTicks(W, padR, lo, hi, y) +
       '<path d="' + band + back + 'Z" fill="var(--s4)" fill-opacity=".38"/>' +
       '<path d="' + base + '" fill="none" stroke="var(--chart-cost)" stroke-width="1.5" stroke-dasharray="3 4"/>' +
       '<path d="' + mid + '" fill="none" stroke="var(--chart-line)" stroke-width="2.25" stroke-linecap="round" stroke-linejoin="round"/>' +
-      '<circle cx="' + x(n - 1) + '" cy="' + y(points[n - 1].value) + '" r="4.5" fill="#fff" stroke="var(--chart-line)" stroke-width="2"/><g class="hover"></g>' + marks +
+      '<circle cx="' + x(n - 1) + '" cy="' + y(points[n - 1].value) + '" r="4.5" fill="var(--paper)" stroke="var(--chart-line)" stroke-width="2"/><g class="hover"></g>' + marks +
       '<rect class="hit" x="0" y="0" width="' + (W - padR) + '" height="' + H + '" fill="transparent"/></svg>';
     axis(opts.axisEl, opts.labels || [], padR);
     var hit = el.querySelector(".hit"), hover = el.querySelector(".hover");
-    hit.addEventListener("mousemove", function (ev) { var r = el.getBoundingClientRect(), mx = ev.clientX - r.left, i = Math.max(0, Math.min(n - 1, Math.round(mx / (W - padR) * (n - 1)))), p = points[i], px = x(i), py = y(p.value); hover.innerHTML = '<path d="M' + px + " " + padT + "V" + (H - padB) + '" stroke="var(--ink-4)" stroke-dasharray="2 3"/><circle cx="' + px + '" cy="' + py + '" r="4" fill="#fff" stroke="var(--chart-line)" stroke-width="2"/>'; showTip(ev.clientX, r.top + py, opts.tipHtml ? opts.tipHtml(p, i) : "<b>" + fmtKc(p.value) + "</b>"); });
+    hit.addEventListener("mousemove", function (ev) { var r = el.getBoundingClientRect(), mx = ev.clientX - r.left, i = Math.max(0, Math.min(n - 1, Math.round(mx / (W - padR) * (n - 1)))), p = points[i], px = x(i), py = y(p.value); hover.innerHTML = '<path d="M' + px + " " + padT + "V" + (H - padB) + '" stroke="var(--ink-4)" stroke-dasharray="2 3"/><circle cx="' + px + '" cy="' + py + '" r="4" fill="var(--paper)" stroke="var(--chart-line)" stroke-width="2"/>'; showTip(ev.clientX, r.top + py, opts.tipHtml ? opts.tipHtml(p, i) : "<b>" + fmtKc(p.value) + "</b>"); });
     hit.addEventListener("mouseleave", function () { hover.innerHTML = ""; hideTip(); });
     el.querySelectorAll(".ev").forEach(function (m) { m.addEventListener("mouseenter", function () { var e = opts.events[+m.dataset.i], r = m.querySelector("circle").getBoundingClientRect(); showTip(r.left + r.width / 2, r.top, e.html); }); m.addEventListener("mouseleave", hideTip); });
   };
@@ -170,11 +170,11 @@
     var labelY = series.map(function (s) { return y(s.points[n - 1].value); });
     var order = series.map(function (_, k) { return k; }).sort(function (a, b) { return labelY[a] - labelY[b]; });
     for (var o = 1; o < order.length; o++) { var prev = order[o - 1], cur = order[o]; if (labelY[cur] - labelY[prev] < 13) labelY[cur] = labelY[prev] + 13; }
-    var paths = series.map(function (s, k) { var d = ""; s.points.forEach(function (p, i) { d += (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.value).toFixed(1); }); var last = s.points[n - 1], col = colorOf[k]; return '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="' + (s.dashed ? 1.5 : k === 0 ? 2.25 : 2) + '"' + (s.dashed ? ' stroke-dasharray="3 4"' : "") + ' stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + x(n - 1) + '" cy="' + y(last.value) + '" r="3.5" fill="#fff" stroke="' + col + '" stroke-width="2"/><text x="' + (x(n - 1) + 9) + '" y="' + (labelY[k] + 3.5) + '" fill="var(--ink-2)" font-size="10" font-weight="650">' + s.name + " " + fmt(last.value) + "</text>"; }).join("");
+    var paths = series.map(function (s, k) { var d = ""; s.points.forEach(function (p, i) { d += (i ? "L" : "M") + x(i).toFixed(1) + " " + y(p.value).toFixed(1); }); var last = s.points[n - 1], col = colorOf[k]; return '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="' + (s.dashed ? 1.5 : k === 0 ? 2.25 : 2) + '"' + (s.dashed ? ' stroke-dasharray="3 4"' : "") + ' stroke-linecap="round" stroke-linejoin="round"/><circle cx="' + x(n - 1) + '" cy="' + y(last.value) + '" r="3.5" fill="var(--paper)" stroke="' + col + '" stroke-width="2"/><text x="' + (x(n - 1) + 9) + '" y="' + (labelY[k] + 3.5) + '" fill="var(--ink-2)" font-size="10" font-weight="650">' + s.name + " " + fmt(last.value) + "</text>"; }).join("");
     el.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + " " + H + '" style="overflow:visible"><path d="' + grid + '" stroke="var(--chart-grid)" fill="none"/>' + paths + '<g class="hover"></g><rect class="hit" x="0" y="0" width="' + (W - padR) + '" height="' + H + '" fill="transparent"/></svg>';
     axis(opts.axisEl, opts.labels || [], padR);
     var hit = el.querySelector(".hit"), hover = el.querySelector(".hover");
-    hit.addEventListener("mousemove", function (ev) { var r = el.getBoundingClientRect(), mx = ev.clientX - r.left, i = Math.max(0, Math.min(n - 1, Math.round(mx / (W - padR) * (n - 1)))), px = x(i); hover.innerHTML = '<path d="M' + px + " " + padT + "V" + (H - padB) + '" stroke="var(--ink-4)" stroke-dasharray="2 3"/>' + series.map(function (s, k) { return '<circle cx="' + px + '" cy="' + y(s.points[i].value) + '" r="3.5" fill="#fff" stroke="' + colorOf[k] + '" stroke-width="2"/>'; }).join(""); showTip(ev.clientX, r.top + padT, "<b>" + (opts.labels && opts.tipLabel ? opts.tipLabel(i) : "") + "</b>" + series.map(function (s) { return "<small>" + s.name + " " + fmt(s.points[i].value) + "</small>"; }).join("")); });
+    hit.addEventListener("mousemove", function (ev) { var r = el.getBoundingClientRect(), mx = ev.clientX - r.left, i = Math.max(0, Math.min(n - 1, Math.round(mx / (W - padR) * (n - 1)))), px = x(i); hover.innerHTML = '<path d="M' + px + " " + padT + "V" + (H - padB) + '" stroke="var(--ink-4)" stroke-dasharray="2 3"/>' + series.map(function (s, k) { return '<circle cx="' + px + '" cy="' + y(s.points[i].value) + '" r="3.5" fill="var(--paper)" stroke="' + colorOf[k] + '" stroke-width="2"/>'; }).join(""); showTip(ev.clientX, r.top + padT, "<b>" + (opts.labels && opts.tipLabel ? opts.tipLabel(i) : "") + "</b>" + series.map(function (s) { return "<small>" + s.name + " " + fmt(s.points[i].value) + "</small>"; }).join("")); });
     hit.addEventListener("mouseleave", function () { hover.innerHTML = ""; hideTip(); });
   };
 
@@ -185,7 +185,7 @@
     var hi = 0; bars.forEach(function (b) { hi = Math.max(hi, b.a + b.b); }); hi *= 1.08;
     var y = function (v) { return padT + (1 - v / hi) * (H - padT - padB); }, slot = (W - padR) / bars.length, bw = Math.min(26, slot * 0.62);
     var rects = bars.map(function (b, i) { var cx = slot * i + slot / 2 - bw / 2, ya = y(b.a), yb = y(b.a + b.b); return '<rect class="bar" data-i="' + i + '" x="' + cx.toFixed(1) + '" y="' + ya.toFixed(1) + '" width="' + bw + '" height="' + Math.max(0, y(0) - ya).toFixed(1) + '" rx="2" fill="var(--s1)"/><rect class="bar" data-i="' + i + '" x="' + cx.toFixed(1) + '" y="' + yb.toFixed(1) + '" width="' + bw + '" height="' + Math.max(0, ya - yb - 2).toFixed(1) + '" rx="2" fill="var(--s3)"/>'; }).join("");
-    var marks = (opts.marks || []).map(function (m, k) { var cx = slot * m.i + slot / 2, top = y(bars[m.i].a + bars[m.i].b); return '<g class="ev" data-i="' + k + '"><circle cx="' + cx + '" cy="' + (top - 10) + '" r="4.5" fill="#fff" stroke="var(--chart-line)" stroke-width="2"/></g>'; }).join("");
+    var marks = (opts.marks || []).map(function (m, k) { var cx = slot * m.i + slot / 2, top = y(bars[m.i].a + bars[m.i].b); return '<g class="ev" data-i="' + k + '"><circle cx="' + cx + '" cy="' + (top - 10) + '" r="4.5" fill="var(--paper)" stroke="var(--chart-line)" stroke-width="2"/></g>'; }).join("");
     el.innerHTML = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + " " + H + '" style="overflow:visible">' + yTicks(W, padR, 0, hi, y) + '<path d="M0 ' + y(0) + "H" + (W - padR + 6) + '" stroke="var(--line)"/>' + rects + marks + "</svg>";
     axis(opts.axisEl, bars.map(function (b) { return b.label; }), padR);
     el.querySelectorAll(".bar").forEach(function (r) { r.addEventListener("mouseenter", function () { var b = bars[+r.dataset.i], rr = r.getBoundingClientRect(); showTip(rr.left + rr.width / 2, rr.top, "<b>" + b.label + "</b><small>" + opts.names[0] + " " + fmtKc(b.a) + "</small><small>" + opts.names[1] + " " + fmtKc(b.b) + "</small>"); }); r.addEventListener("mouseleave", hideTip); });

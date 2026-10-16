@@ -75,6 +75,14 @@
     "description": "数字和日期遵循界面语言。",
     "interface": "界面语言"
   },
+  "appearance": {
+    "title": "外观",
+    "description": "「跟随系统」会沿用 macOS、Windows 或 Linux 的设置。",
+    "mode": "浅色或深色模式",
+    "system": "跟随系统",
+    "light": "浅色",
+    "dark": "深色"
+  },
   "menuVisibility": {
     "title": "菜单显示",
     "description": "隐藏您不使用的资产类型。"

@@ -12,7 +12,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useFormat } from '@/lib/use-format';
-import { chartTokens } from '@/lib/tokens';
+import { useChartTokens } from '@/theme/ThemeProvider';
 import { labelStep, niceTicks, valueDomain } from '@/utils/chart-scale';
 import { ChartTip, FloatingTip } from '@/components/charts/ChartTip';
 import { AXIS_WIDTH, CategoryAxis } from '@/components/charts/ChartAxis';
@@ -89,7 +89,7 @@ export function MoonyBarChart({
   className,
 }: MoonyBarChartProps) {
   const fmt = useFormat();
-  const tk = useMemo(chartTokens, []);
+  const tk = useChartTokens();
   const [hoverMark, setHoverMark] = useState<{ m: BarMark; x: number; y: number } | null>(null);
   const [width, setWidth] = useState(0);
   const topOf = (i: number) => (stacked ? bars[i].a + bars[i].b : Math.max(bars[i].a, bars[i].b));

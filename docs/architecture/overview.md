@@ -180,7 +180,7 @@ fixture" in `CONTRIBUTING.md`). The dialog is `StatementImportDialog.tsx` in
 Provider nesting from `src/App.tsx` (outermost first):
 
 ```
-QueryClientProvider → AuthProvider → I18nProvider → CurrencyProvider → SyncProvider
+QueryClientProvider → AuthProvider → ThemeProvider → I18nProvider → CurrencyProvider → SyncProvider
   → TooltipProvider → ErrorBoundary → UpdaterProvider → AppLayout (AppShell → Router)
 ```
 

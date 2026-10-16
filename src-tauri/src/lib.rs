@@ -64,6 +64,17 @@ async fn run_app() {
         .setup(|app| {
             logging::log_startup_banner();
             spawn_legacy_temp_cleanup(app.handle().clone());
+            // The window starts hidden and the frontend shows it once the theme is stamped (spec D10);
+            // if the frontend never does, show it anyway so a broken bundle is not an invisible app.
+            let handle = app.handle().clone();
+            std::thread::spawn(move || {
+                std::thread::sleep(std::time::Duration::from_secs(3));
+                if let Some(window) = handle.get_webview_window("main") {
+                    if !window.is_visible().unwrap_or(true) {
+                        let _ = window.show();
+                    }
+                }
+            });
             // Decrypted copies opened in other apps never outlive a run (D3).
             let handle = app.handle().clone();
             tauri::async_runtime::spawn_blocking(move || {

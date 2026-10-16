@@ -75,6 +75,14 @@
     "description": "Tal och datum följer gränssnittets språk.",
     "interface": "Gränssnittsspråk"
   },
+  "appearance": {
+    "title": "Utseende",
+    "description": "System följer inställningen i macOS, Windows eller Linux.",
+    "mode": "Ljust eller mörkt läge",
+    "system": "System",
+    "light": "Ljust",
+    "dark": "Mörkt"
+  },
   "menuVisibility": {
     "title": "Synlighet i menyn",
     "description": "Dölj de tillgångstyper du inte använder."

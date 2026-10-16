@@ -263,7 +263,8 @@
       "periodReturn": "Period return",
       "gainToday": "Unrealized gain today",
       "noGroup": "no group",
-      "valueAt": "On {{date}}"
+      "valueAt": "On {{date}}",
+      "total": "Total"
     },
     "holdings": {
       "title": "Positions and their tags",
@@ -463,6 +464,10 @@
       "captionMore": "The chart draws at most four lines; the others are only in the table.",
       "captionSelection": "Contributions are to the whole portfolio's return.",
       "captionNone": "Not split: the selection is one row; its contribution is to the whole portfolio's return."
+    },
+    "filterBadge": {
+      "label": "Filter: {{tags}}",
+      "title": "Only positions tagged {{tags}} are counted here."
     }
   },
   "planning": {

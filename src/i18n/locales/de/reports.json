@@ -263,7 +263,8 @@
       "periodReturn": "Rendite im Zeitraum",
       "gainToday": "Nicht real. Gewinn heute",
       "noGroup": "keine Gruppe",
-      "valueAt": "Per {{date}}"
+      "valueAt": "Per {{date}}",
+      "total": "Gesamt"
     },
     "holdings": {
       "title": "Positionen und ihre Tags",
@@ -463,6 +464,10 @@
       "captionMore": "Das Diagramm zeigt höchstens vier Linien; die übrigen stehen nur in der Tabelle.",
       "captionSelection": "Die Beiträge beziehen sich auf die Rendite des gesamten Portfolios.",
       "captionNone": "Nicht aufgeteilt: Die Auswahl ist eine Zeile; ihr Beitrag bezieht sich auf die Rendite des gesamten Portfolios."
+    },
+    "filterBadge": {
+      "label": "Filter: {{tags}}",
+      "title": "Hier zählen nur Positionen, die mit {{tags}} getaggt sind."
     }
   },
   "planning": {

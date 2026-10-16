@@ -6,6 +6,10 @@
   "platforms": ["macOS", "windows", "linux"],
   "permissions": [
     "core:default",
+    "core:window:allow-show",
+    "core:window:allow-set-theme",
+    "core:window:allow-set-background-color",
+    "core:webview:allow-set-webview-background-color",
     "opener:default",
     "log:default",
     "dialog:default",

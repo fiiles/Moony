@@ -283,6 +283,7 @@ node scripts/screenshots.mjs --lang cs --out /tmp/shots --set all               
 | `--base` | `http://localhost:1420` | Vite dev URL of the running app |
 | `--out` | `docs/screenshots` | Output folder |
 | `--lang` | `en` | UI language of the shots (`en`, `cs`, or any shipped code) |
+| `--theme` | `system` | Theme of the shots: `system`, `light` or `dark`. The script pins the browser's `prefers-color-scheme` itself (light for `system` and `light`, dark for `dark`), so the host's appearance does not matter. Like the language it is the profile's once unlocked, so under a Tauri backend the script temporarily switches the profile's theme and restores it when it finishes. The dark set: `--theme dark --out docs/screenshots/dark` |
 | `--suffix` | empty for `en`, `-<lang>` otherwise | Appended to the file names: `dashboard.png`, `dashboard-cs.png` |
 | `--set` | `readme` | `readme`: `dashboard`, `cashflow`, `account-detail`, `stocks-analysis`, `settings` and, with `--fixture`, `import`. `site` (website, LinkedIn): `dashboard`, `account-detail`, `cashflow`, `planning`, `stocks`, `stocks-analysis`, `crypto`, `real-estate`, `settings`. `all`: both |
 | `--account` | first account with a balance history, else the first account | Bank account for `account-detail` and `import` |
@@ -579,7 +580,7 @@ Follow the standards in [`docs/standards/`](./docs/standards/). Highlights:
   strings translated in all ten languages (`docs/standards/i18n.md`)
 - **Rust** — commands in `commands/`, business logic in `services/`, proper
   `Result` error handling, tests per `docs/standards/testing.md`
-- **CSS** — Tailwind utilities on the design-system tokens (`docs/design-system/`); light theme only
+- **CSS** — Tailwind utilities on the design-system tokens (`docs/design-system/`); a light and a dark theme on one token set (`docs/design-system/README.md` §2)
 
 ## Commit message guidelines
 

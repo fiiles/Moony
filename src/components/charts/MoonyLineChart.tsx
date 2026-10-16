@@ -12,7 +12,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useFormat } from '@/lib/use-format';
-import { chartTokens } from '@/lib/tokens';
+import { useChartTokens } from '@/theme/ThemeProvider';
 import {
   clusterEvents,
   niceTicks,
@@ -146,7 +146,7 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
   className,
 }: MoonyLineChartProps<E>) {
   const fmt = useFormat();
-  const tk = useMemo(chartTokens, []);
+  const tk = useChartTokens();
   const gradientId = useId().replace(/:/g, '');
   const [hover, setHover] = useState<{ cluster: EventCluster<E>; x: number; y: number } | null>(
     null

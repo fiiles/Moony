@@ -75,6 +75,14 @@
     "description": "Zahlen und Datumsangaben folgen der Sprache der Oberfläche.",
     "interface": "Sprache der Oberfläche"
   },
+  "appearance": {
+    "title": "Darstellung",
+    "description": "System folgt der Einstellung von macOS, Windows oder Linux.",
+    "mode": "Heller oder dunkler Modus",
+    "system": "System",
+    "light": "Hell",
+    "dark": "Dunkel"
+  },
   "menuVisibility": {
     "title": "Sichtbarkeit im Menü",
     "description": "Blenden Sie die Vermögensarten aus, die Sie nicht nutzen."

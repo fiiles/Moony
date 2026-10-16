@@ -273,7 +273,8 @@
       "periodReturn": "Rentabilidad del periodo",
       "gainToday": "Ganancia latente hoy",
       "noGroup": "sin grupo",
-      "valueAt": "Al {{date}}"
+      "valueAt": "Al {{date}}",
+      "total": "Total"
     },
     "holdings": {
       "title": "Posiciones y sus etiquetas",
@@ -479,6 +480,10 @@
       "captionMore": "El gráfico dibuja como máximo cuatro líneas; las demás solo están en la tabla.",
       "captionSelection": "Las contribuciones son a la rentabilidad de toda la cartera.",
       "captionNone": "Sin dividir: la selección es una sola fila; su contribución es a la rentabilidad de toda la cartera."
+    },
+    "filterBadge": {
+      "label": "Filtro: {{tags}}",
+      "title": "Aquí solo cuentan las posiciones etiquetadas con {{tags}}."
     }
   },
   "planning": {

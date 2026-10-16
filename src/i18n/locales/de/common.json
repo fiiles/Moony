@@ -277,6 +277,7 @@
     "stockImportRowFailed": "die Zeile konnte nicht gespeichert werden.",
     "onboardingFlagUnknown": "Unbekannter Einrichtungsschritt.",
     "insuranceNoticeInvalid": "Geben Sie eine ganze Zahl von 0 bis 365 Tagen ein.",
+    "themeInvalid": "Wählen Sie System, Hell oder Dunkel.",
     "budgetIntervalsRequired": "Wählen Sie mindestens ein Budgetintervall aus.",
     "effectiveUntilBeforeStart": "Der Endmonat darf nicht vor dem Startmonat liegen.",
     "statementTooLarge": "Diese Kontoauszugsdatei ist größer als {{limitMb}} MB.",

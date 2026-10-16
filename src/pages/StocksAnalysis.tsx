@@ -138,6 +138,11 @@ export default function StocksAnalysis() {
   // table and the holdings. The hero figures and the portfolio line stay whole-portfolio.
   const chosenIds = useMemo(() => chosenTagIds(filterGroups, filters), [filterGroups, filters]);
   const filterActive = chosenIds.length > 0;
+  // The chosen tags by name, for the badge of every widget the filter narrows
+  const filterTags = useMemo(
+    () => chosenIds.flatMap((id) => tags.filter((tag) => tag.id === id)),
+    [chosenIds, tags]
+  );
   const selected = useMemo(() => selectPositions(stocks, chosenIds), [stocks, chosenIds]);
   const selectedValue = selected.reduce((sum, x) => sum + (x.currentValue ?? 0), 0);
 
@@ -264,6 +269,7 @@ export default function StocksAnalysis() {
       series: performance.data?.series,
       performanceById,
       filterActive,
+      filterTags,
       endsToday,
       endDate,
     }),
@@ -275,6 +281,7 @@ export default function StocksAnalysis() {
       performance.data,
       performanceById,
       filterActive,
+      filterTags,
       endsToday,
       endDate,
     ]
@@ -388,6 +395,7 @@ export default function StocksAnalysis() {
         parts={parts}
         positionCount={stocks.length}
         filterActive={filterActive}
+        filterTags={filterTags}
         totalValue={endTotal}
         selectedValue={endSelected}
         index={index}
@@ -405,6 +413,7 @@ export default function StocksAnalysis() {
             parts={parts}
             group={group}
             filterActive={filterActive}
+            filterTags={filterTags}
           />
           <FlowsCard
             data={performance.data}
@@ -423,6 +432,7 @@ export default function StocksAnalysis() {
         endTotal={tables.endTotal}
         series={tables.series}
         filterActive={tables.filterActive}
+        filterTags={tables.filterTags}
         endsToday={tables.endsToday}
         endDate={tables.endDate}
         currency={reportCurrency}
@@ -436,6 +446,7 @@ export default function StocksAnalysis() {
         endValueOf={tables.endValueOf}
         endTotal={tables.endTotal}
         performance={tables.performanceById}
+        filterTags={tables.filterTags}
         endsToday={tables.endsToday}
         endDate={tables.endDate}
         currency={reportCurrency}

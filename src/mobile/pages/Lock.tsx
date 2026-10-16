@@ -93,7 +93,11 @@ function NavTextButton({
 
 /** The phone's primary button (README §13): 48 pt, radius 10, 15 / 600. */
 const primaryButton = 'h-12 w-full rounded-[10px] text-m-row';
-/** Fields on the lock and recovery screens: 48 pt, 15 pt text (iOS zooms into anything smaller). */
+/**
+ * Fields on the lock and recovery screens: 48 pt, 15 pt text. iOS would zoom into a field under
+ * 16 px on focus; `maximum-scale=1` in `index.html` is what stops that, at the accessibility cost
+ * of no pinch zoom (spec §10.2 scales text with the system text size instead).
+ */
 const field48 = 'h-12 rounded-[10px] text-m-body';
 const fieldMessage = 'text-left text-m-sub';
 
@@ -441,8 +445,9 @@ function NewKeyScreen({ recoveryKey, onDone }: { recoveryKey: string; onDone: ()
       <div className="mx-0.5 mt-2">
         <RecoverySteps current={3} />
         <p className="mb-5 mt-0 text-m-body text-ink-3">{t('recover.newKeyLead')}</p>
-        <RecoveryKeyBox recoveryKey={recoveryKey} />
-        <label className="my-5 flex cursor-pointer items-start gap-3 text-m-body text-ink-2">
+        <RecoveryKeyBox recoveryKey={recoveryKey} touch />
+        {/* The whole row is the label, 44 pt tall at least, so one line of text is still easy to hit. */}
+        <label className="my-3 flex min-h-11 cursor-pointer items-center gap-3 py-1 text-m-body text-ink-2">
           <Checkbox
             className="mt-0.5 size-5"
             checked={keySaved}

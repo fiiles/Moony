@@ -6,10 +6,15 @@ import { recoveryKeyFileContents } from '@/utils/recovery-key-check';
 import { translateApiError } from '@/lib/translate-api-error';
 import { Button } from '@/components/ui/button';
 
+/** The phone's button (README §13): 48 pt, radius 10, 15 / 600, 18 pt icon. */
+const touchButton = 'h-12 rounded-[10px] text-m-row [&_svg]:size-[18px]';
+
 interface RecoveryKeyBoxProps {
   recoveryKey: string;
   /** Called once the key was saved to a file (the wizard remembers it). */
   onSavedToFile?: () => void;
+  /** Phone screens: the two actions stack as full-width 48 pt buttons and the note is 12 pt. */
+  touch?: boolean;
 }
 
 /**
@@ -17,7 +22,7 @@ interface RecoveryKeyBoxProps {
  * souboru…" (prototypes onboarding.html and lock.html), and the note that
  * attachments need the password or this key too.
  */
-export function RecoveryKeyBox({ recoveryKey, onSavedToFile }: RecoveryKeyBoxProps) {
+export function RecoveryKeyBox({ recoveryKey, onSavedToFile, touch = false }: RecoveryKeyBoxProps) {
   const { t } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
   const [copied, setCopied] = useState(false);
@@ -61,19 +66,31 @@ export function RecoveryKeyBox({ recoveryKey, onSavedToFile }: RecoveryKeyBoxPro
       >
         {recoveryKey}
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <Button type="button" variant="outline" onClick={copyKey}>
+      <div className={touch ? 'mt-3 grid grid-cols-1 gap-2.5' : 'mt-3 grid grid-cols-2 gap-3'}>
+        <Button
+          type="button"
+          variant="outline"
+          className={touch ? touchButton : undefined}
+          onClick={copyKey}
+        >
           {copied ? <Check /> : <Copy />}
           {copied ? t('recoveryKey.copied') : t('recoveryKey.copy')}
         </Button>
-        <Button type="button" variant="outline" onClick={saveKeyToFile}>
+        <Button
+          type="button"
+          variant="outline"
+          className={touch ? touchButton : undefined}
+          onClick={saveKeyToFile}
+        >
           {saved ? <Check /> : <Download />}
           {t('recoveryKey.saveToFile')}
         </Button>
       </div>
       {/* D10 of the encrypted-attachments spec: attachments are encrypted with the same key. */}
       <p
-        className="mt-3 text-micro font-500 text-ink-3"
+        className={
+          touch ? 'mt-3 text-m-sub font-500 text-ink-3' : 'mt-3 text-micro font-500 text-ink-3'
+        }
         data-testid="recovery-key-attachments-note"
       >
         {t('recoveryKey.attachmentsNote')}

@@ -306,9 +306,9 @@
     "lead": "Un extracto de tu banca online. Se reconocen los duplicados y las reglas asignan categorías; tú lo revisas todo antes de que se escriba nada.",
     "file": {
       "bank": "Banco",
-      "bankHint": "Rellena de antemano la asignación de columnas y el formato de fecha.",
-      "supported": "Se admiten CSV y TXT de estos bancos: {{banks}}. Si no se reconoce el encabezado, asignas las columnas a mano en el siguiente paso.",
-      "supportedNone": "Si no se reconoce el encabezado, asignas las columnas a mano en el siguiente paso.",
+      "bankHint": "Para archivos CSV: rellena de antemano la asignación de columnas y el formato de fecha.",
+      "supported": "Los extractos en CAMT.053, MT940, OFX/QFX y QIF se leen de cualquier banco, sin asignar columnas. Se reconocen los CSV y TXT de estos bancos: {{banks}}. Para cualquier otro CSV, asignas las columnas a mano en el siguiente paso.",
+      "supportedNone": "Los extractos en CAMT.053, MT940, OFX/QFX y QIF se leen de cualquier banco, sin asignar columnas. Si no se reconoce el encabezado de un CSV, asignas las columnas a mano en el siguiente paso.",
       "sample": "Descargar un archivo de ejemplo",
       "dropTitle": "Suelta aquí el extracto",
       "dropActive": "Suelta el archivo para abrirlo",

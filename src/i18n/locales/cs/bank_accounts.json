@@ -310,9 +310,9 @@
     "lead": "Výpis z internetového bankovnictví. Duplicity poznáme, kategorie přiřadíme podle pravidel – zkontrolujete je před zápisem.",
     "file": {
       "bank": "Banka",
-      "bankHint": "Předvyplní mapování sloupců a formát dat.",
-      "supported": "Podporujeme CSV a TXT z těchto bank: {{banks}}. Když záhlaví nerozpoznáme, sloupce přiřadíte ručně v dalším kroku.",
-      "supportedNone": "Když záhlaví nerozpoznáme, sloupce přiřadíte ručně v dalším kroku.",
+      "bankHint": "Pro soubory CSV: předvyplní mapování sloupců a formát dat.",
+      "supported": "Výpisy ve formátu CAMT.053, MT940, OFX/QFX a QIF načteme z jakékoli banky, bez přiřazování sloupců. Exporty CSV a TXT rozpoznáme u těchto bank: {{banks}}. U jiného CSV přiřadíte sloupce ručně v dalším kroku.",
+      "supportedNone": "Výpisy ve formátu CAMT.053, MT940, OFX/QFX a QIF načteme z jakékoli banky, bez přiřazování sloupců. Když záhlaví CSV nerozpoznáme, sloupce přiřadíte ručně v dalším kroku.",
       "sample": "Stáhnout vzorový soubor",
       "dropTitle": "Přetáhněte sem výpis",
       "dropActive": "Pusťte soubor a otevře se",

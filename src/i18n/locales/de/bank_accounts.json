@@ -300,9 +300,9 @@
     "lead": "Ein Kontoauszug aus Ihrem Online-Banking. Duplikate werden erkannt und Kategorien nach den Regeln zugewiesen – Sie prüfen alles, bevor etwas geschrieben wird.",
     "file": {
       "bank": "Bank",
-      "bankHint": "Füllt die Spaltenzuordnung und das Datumsformat vor.",
-      "supported": "CSV und TXT dieser Banken werden unterstützt: {{banks}}. Wird die Kopfzeile nicht erkannt, ordnen Sie die Spalten im nächsten Schritt von Hand zu.",
-      "supportedNone": "Wird die Kopfzeile nicht erkannt, ordnen Sie die Spalten im nächsten Schritt von Hand zu.",
+      "bankHint": "Für CSV-Dateien: füllt die Spaltenzuordnung und das Datumsformat vor.",
+      "supported": "Kontoauszüge in CAMT.053, MT940, OFX/QFX und QIF werden von jeder Bank gelesen, ohne Spaltenzuordnung. CSV- und TXT-Exporte dieser Banken werden erkannt: {{banks}}. Bei jeder anderen CSV-Datei ordnen Sie die Spalten im nächsten Schritt von Hand zu.",
+      "supportedNone": "Kontoauszüge in CAMT.053, MT940, OFX/QFX und QIF werden von jeder Bank gelesen, ohne Spaltenzuordnung. Wird die Kopfzeile einer CSV-Datei nicht erkannt, ordnen Sie die Spalten im nächsten Schritt von Hand zu.",
       "sample": "Beispieldatei herunterladen",
       "dropTitle": "Kontoauszug hier ablegen",
       "dropActive": "Datei loslassen, um sie zu öffnen",

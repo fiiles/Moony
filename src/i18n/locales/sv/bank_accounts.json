@@ -300,9 +300,9 @@
     "lead": "Ett kontoutdrag från din internetbank. Dubbletter identifieras och kategorier tilldelas av reglerna – du granskar dem innan något skrivs.",
     "file": {
       "bank": "Bank",
-      "bankHint": "Förifyller kolumnkopplingen och datumformatet.",
-      "supported": "CSV och TXT från de här bankerna stöds: {{banks}}. Om rubriken inte känns igen kopplar du kolumnerna manuellt i nästa steg.",
-      "supportedNone": "Om rubriken inte känns igen kopplar du kolumnerna manuellt i nästa steg.",
+      "bankHint": "För CSV-filer: förifyller kolumnkopplingen och datumformatet.",
+      "supported": "Kontoutdrag i CAMT.053, MT940, OFX/QFX och QIF läses från alla banker, utan kolumnkoppling. CSV och TXT från de här bankerna känns igen: {{banks}}. För andra CSV-filer kopplar du kolumnerna manuellt i nästa steg.",
+      "supportedNone": "Kontoutdrag i CAMT.053, MT940, OFX/QFX och QIF läses från alla banker, utan kolumnkoppling. Om rubriken i en CSV-fil inte känns igen kopplar du kolumnerna manuellt i nästa steg.",
       "sample": "Ladda ner en exempelfil",
       "dropTitle": "Släpp kontoutdraget här",
       "dropActive": "Släpp filen för att öppna den",

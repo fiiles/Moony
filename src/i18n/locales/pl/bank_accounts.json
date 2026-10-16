@@ -312,9 +312,9 @@
     "lead": "Wyciąg z bankowości internetowej. Duplikaty są rozpoznawane, a kategorie przypisywane według reguł – wszystko sprawdzasz, zanim cokolwiek zostanie zapisane.",
     "file": {
       "bank": "Bank",
-      "bankHint": "Wstępnie wypełnia przypisanie kolumn i format daty.",
-      "supported": "Obsługiwane są pliki CSV i TXT z tych banków: {{banks}}. Gdy nagłówek nie zostanie rozpoznany, kolumny przypiszesz ręcznie w następnym kroku.",
-      "supportedNone": "Gdy nagłówek nie zostanie rozpoznany, kolumny przypiszesz ręcznie w następnym kroku.",
+      "bankHint": "Dla plików CSV: wstępnie wypełnia przypisanie kolumn i format daty.",
+      "supported": "Wyciągi w formatach CAMT.053, MT940, OFX/QFX i QIF odczytamy z każdego banku, bez przypisywania kolumn. Rozpoznajemy pliki CSV i TXT z tych banków: {{banks}}. W przypadku innego pliku CSV kolumny przypiszesz ręcznie w następnym kroku.",
+      "supportedNone": "Wyciągi w formatach CAMT.053, MT940, OFX/QFX i QIF odczytamy z każdego banku, bez przypisywania kolumn. Gdy nagłówek pliku CSV nie zostanie rozpoznany, kolumny przypiszesz ręcznie w następnym kroku.",
       "sample": "Pobierz przykładowy plik",
       "dropTitle": "Upuść tutaj wyciąg",
       "dropActive": "Zwolnij plik, aby go otworzyć",

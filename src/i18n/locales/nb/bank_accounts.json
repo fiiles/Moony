@@ -300,9 +300,9 @@
     "lead": "En kontoutskrift fra nettbanken din. Duplikater gjenkjennes og kategorier tildeles av reglene – du kontrollerer dem før noe skrives.",
     "file": {
       "bank": "Bank",
-      "bankHint": "Forhåndsutfyller kolonnetilordningen og datoformatet.",
-      "supported": "CSV og TXT fra disse bankene støttes: {{banks}}. Hvis overskriften ikke gjenkjennes, tilordner du kolonnene manuelt i neste trinn.",
-      "supportedNone": "Hvis overskriften ikke gjenkjennes, tilordner du kolonnene manuelt i neste trinn.",
+      "bankHint": "For CSV-filer: forhåndsutfyller kolonnetilordningen og datoformatet.",
+      "supported": "Kontoutskrifter i CAMT.053, MT940, OFX/QFX og QIF leses fra alle banker, uten kolonnetilordning. CSV og TXT fra disse bankene gjenkjennes: {{banks}}. For andre CSV-filer tilordner du kolonnene manuelt i neste trinn.",
+      "supportedNone": "Kontoutskrifter i CAMT.053, MT940, OFX/QFX og QIF leses fra alle banker, uten kolonnetilordning. Hvis overskriften i en CSV-fil ikke gjenkjennes, tilordner du kolonnene manuelt i neste trinn.",
       "sample": "Last ned en eksempelfil",
       "dropTitle": "Slipp kontoutskriften her",
       "dropActive": "Slipp filen for å åpne den",

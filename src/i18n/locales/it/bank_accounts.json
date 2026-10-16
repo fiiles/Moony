@@ -306,9 +306,9 @@
     "lead": "Un estratto conto dal tuo home banking. I duplicati vengono riconosciuti e le categorie assegnate dalle regole – le controlli tu prima che venga scritto qualcosa.",
     "file": {
       "bank": "Banca",
-      "bankHint": "Precompila l'associazione delle colonne e il formato della data.",
-      "supported": "Sono supportati CSV e TXT di queste banche: {{banks}}. Se l'intestazione non viene riconosciuta, associ le colonne a mano nel passaggio successivo.",
-      "supportedNone": "Se l'intestazione non viene riconosciuta, associ le colonne a mano nel passaggio successivo.",
+      "bankHint": "Per i file CSV: precompila l'associazione delle colonne e il formato della data.",
+      "supported": "Gli estratti conto in CAMT.053, MT940, OFX/QFX e QIF vengono letti da qualsiasi banca, senza associare le colonne. Vengono riconosciuti i CSV e TXT di queste banche: {{banks}}. Per qualsiasi altro CSV associ le colonne a mano nel passaggio successivo.",
+      "supportedNone": "Gli estratti conto in CAMT.053, MT940, OFX/QFX e QIF vengono letti da qualsiasi banca, senza associare le colonne. Se l'intestazione di un CSV non viene riconosciuta, associ le colonne a mano nel passaggio successivo.",
       "sample": "Scarica un file di esempio",
       "dropTitle": "Trascina qui l'estratto conto",
       "dropActive": "Rilascia il file per aprirlo",

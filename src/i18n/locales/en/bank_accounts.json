@@ -300,9 +300,9 @@
     "lead": "A statement from your online banking. Duplicates are recognized and categories assigned by the rules – you check them before anything is written.",
     "file": {
       "bank": "Bank",
-      "bankHint": "Pre-fills the column mapping and the date format.",
-      "supported": "CSV and TXT from these banks are supported: {{banks}}. When the header is not recognized, you map the columns by hand in the next step.",
-      "supportedNone": "When the header is not recognized, you map the columns by hand in the next step.",
+      "bankHint": "For CSV files: pre-fills the column mapping and the date format.",
+      "supported": "Statements in CAMT.053, MT940, OFX/QFX and QIF are read from any bank, with no column mapping. CSV and TXT exports are recognized from these banks: {{banks}}. For any other CSV you map the columns by hand in the next step.",
+      "supportedNone": "Statements in CAMT.053, MT940, OFX/QFX and QIF are read from any bank, with no column mapping. When the header of a CSV is not recognized, you map the columns by hand in the next step.",
       "sample": "Download a sample file",
       "dropTitle": "Drop the statement here",
       "dropActive": "Release the file to open it",

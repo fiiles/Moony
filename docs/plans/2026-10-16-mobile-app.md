@@ -135,7 +135,17 @@ Findings that bind the later tasks:
   simulator — the log shows `Moony 0.13.0 starting on ios aarch64`, the webview loads the dev
   server, the only error is the expected `get_price_status` call before unlock ("Database is
   locked"), and the desktop UI renders at phone width until Task 1.1 switches the shell. The
-  linker warns that `__eh_frame` exceeds 16 MB (debug build; harmless).
+  linker warns that `__eh_frame` exceeds 16 MB (debug build; harmless). **Phase 1 gate result
+  (2026-10-16):** the command above is now `npm run ios:dev` (port 1430, `tauri.mobile-dev.conf.json`).
+  On the iPhone 17 Pro (iOS 26.3) a cold start shows the phone lock page and opens the Face ID
+  prompt by itself; a match unlocks into Přehled (Údržba card, hero with scrub chart, stats,
+  agenda, allocation, recent moves); the four tabs switch (Finance, Cashflow and Majetek are
+  placeholders); Nastavení → Zamknout aplikaci locks, the prompt opens again and a match unlocks.
+  The app log shows only the expected rejections (the "Database is locked" calls before unlock and
+  one deliberate Face ID cancel).
+  Screenshots: `docs/screenshots/mobile/lock.png`, `overview.png`, `upkeep.png`. The simulator
+  answers the prompt flow, not the Secure Enclave invalidation, lockout or retry limits, which
+  stay device checks; Android has not been built (no SDK on this Mac).
 - **Plugins (official, Tauri 2, mobile):** `tauri-plugin-biometric` (authenticate only, no secret
   storage; `NSFaceIDUsageDescription` required), `tauri-plugin-notification` (local scheduling:
   `Schedule.at(date, repeating)`, `Schedule.interval`, `Schedule.every`; `pending()`, `cancel()`;

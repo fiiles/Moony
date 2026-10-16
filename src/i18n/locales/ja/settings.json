@@ -75,6 +75,14 @@
     "description": "数値と日付は表示言語に従います。",
     "interface": "表示言語"
   },
+  "appearance": {
+    "title": "外観",
+    "description": "「システム」は macOS、Windows、Linux の設定に従います。",
+    "mode": "ライトモードまたはダークモード",
+    "system": "システム",
+    "light": "ライト",
+    "dark": "ダーク"
+  },
   "menuVisibility": {
     "title": "メニューの表示",
     "description": "使わない資産の種類を非表示にします。"

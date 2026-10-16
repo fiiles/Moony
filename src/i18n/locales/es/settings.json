@@ -75,6 +75,14 @@
     "description": "Los números y las fechas siguen el idioma de la interfaz.",
     "interface": "Idioma de la interfaz"
   },
+  "appearance": {
+    "title": "Apariencia",
+    "description": "Sistema sigue el ajuste de macOS, Windows o Linux.",
+    "mode": "Modo claro u oscuro",
+    "system": "Sistema",
+    "light": "Claro",
+    "dark": "Oscuro"
+  },
   "menuVisibility": {
     "title": "Visibilidad del menú",
     "description": "Oculta los tipos de activo que no uses."

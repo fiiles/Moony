@@ -75,6 +75,14 @@
     "description": "Čísla a data se formátují podle jazyka rozhraní.",
     "interface": "Jazyk aplikace"
   },
+  "appearance": {
+    "title": "Vzhled",
+    "description": "Systém sleduje nastavení macOS, Windows nebo Linuxu.",
+    "mode": "Světlý nebo tmavý režim",
+    "system": "Systém",
+    "light": "Světlý",
+    "dark": "Tmavý"
+  },
   "menuVisibility": {
     "title": "Viditelnost v menu",
     "description": "Skryjte typy majetku, které nepoužíváte."

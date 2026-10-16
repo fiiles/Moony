@@ -14,6 +14,7 @@ export type ProfileUpdate = Partial<
     | 'email'
     | 'currency'
     | 'language'
+    | 'theme'
     | 'excludePersonalRealEstate'
     | 'country'
     | 'insuranceNoticeDays'

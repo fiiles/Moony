@@ -75,6 +75,14 @@
     "description": "Numeri e date seguono la lingua dell'interfaccia.",
     "interface": "Lingua dell'interfaccia"
   },
+  "appearance": {
+    "title": "Aspetto",
+    "description": "Sistema segue l'impostazione di macOS, Windows o Linux.",
+    "mode": "Modalità chiara o scura",
+    "system": "Sistema",
+    "light": "Chiaro",
+    "dark": "Scuro"
+  },
   "menuVisibility": {
     "title": "Visibilità del menu",
     "description": "Nascondi i tipi di bene che non usi."

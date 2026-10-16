@@ -8,8 +8,8 @@
  *   their colors through `useChartTokens()` re-render in the new palette
  * - Drives the native window theme and background, and shows the window after the first stamp
  *
- * The preference is a device setting (localStorage, read before the profile is unlocked); its
- * profile sync comes in a later task and gets its own effect below.
+ * The preference is a device setting (localStorage, read before the profile is unlocked); once the
+ * profile is unlocked, the profile's value wins and is written back to the device mirror.
  */
 import React, {
   createContext,
@@ -20,8 +20,10 @@ import React, {
   useRef,
   useState,
 } from 'react';
+import { useAuth } from '@/hooks/use-auth';
 import { chartTokens, resetTokenCache, type ChartTokens } from '@/lib/tokens';
 import {
+  isThemePreference,
   readStoredPreference,
   resolveTheme,
   writeStoredPreference,
@@ -54,10 +56,12 @@ interface ThemeProviderProps {
 }
 
 export function ThemeProvider({ children }: ThemeProviderProps) {
+  const { user } = useAuth();
   const [preference, setPreferenceState] = useState<ThemePreference>(() => readStoredPreference());
   const [systemDark, setSystemDark] = useState(systemPrefersDark);
   const [themeVersion, setThemeVersion] = useState(0);
   const windowShown = useRef(false);
+  const preferenceRef = useRef(preference);
 
   const resolved = resolveTheme(preference, systemDark);
 
@@ -97,6 +101,23 @@ export function ThemeProvider({ children }: ThemeProviderProps) {
     windowShown.current = true;
     void showWindow();
   }, []);
+
+  // Keeps the ref equal to the state; declared before the sync effect so it is current there.
+  useEffect(() => {
+    preferenceRef.current = preference;
+  }, [preference]);
+
+  // After unlock the profile wins over the device mirror. Depends on the profile value only
+  // (the state is read through the ref): depending on `preference` too would revert an optimistic
+  // click before its save lands. Same reasoning as the language effect in I18nProvider. The type
+  // guard matters: the backend stores a plain string, so a hand-edited value must not reach
+  // `data-theme`.
+  useEffect(() => {
+    if (isThemePreference(user?.theme) && user.theme !== preferenceRef.current) {
+      setPreferenceState(user.theme);
+      writeStoredPreference(user.theme);
+    }
+  }, [user?.theme]);
 
   const setPreference = useCallback((pref: ThemePreference) => {
     setPreferenceState(pref);

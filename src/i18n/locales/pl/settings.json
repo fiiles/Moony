@@ -75,6 +75,14 @@
     "description": "Liczby i daty podążają za językiem interfejsu.",
     "interface": "Język interfejsu"
   },
+  "appearance": {
+    "title": "Wygląd",
+    "description": "System podąża za ustawieniem macOS, Windows lub Linuksa.",
+    "mode": "Tryb jasny lub ciemny",
+    "system": "System",
+    "light": "Jasny",
+    "dark": "Ciemny"
+  },
   "menuVisibility": {
     "title": "Widoczność menu",
     "description": "Ukryj typy aktywów, których nie używasz."

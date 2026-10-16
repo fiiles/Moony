@@ -9,6 +9,8 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "tauri": "dotenv -- tauri",
+    "ios:dev": "dotenv -- tauri ios dev \"iPhone 17 Pro\" --config src-tauri/tauri.mobile-dev.conf.json",
+    "android:dev": "dotenv -- tauri android dev --config src-tauri/tauri.mobile-dev.conf.json",
     "lint": "eslint . --max-warnings 0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx,css}\"",

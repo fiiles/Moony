@@ -1,0 +1,6 @@
+{
+  "build": {
+    "devUrl": "http://localhost:1430",
+    "beforeDevCommand": "npm run dev -- --port 1430 --strictPort"
+  }
+}

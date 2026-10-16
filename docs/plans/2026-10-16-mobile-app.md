@@ -153,7 +153,19 @@ Findings that bind the later tasks:
 - **Identifier:** the phone app is `com.moonyfinance.mobile` (set in `tauri.ios.conf.json` and
   `tauri.android.conf.json`; the desktop keeps `com.moonyfinance.desktop`).
 - **Bank export inventory (T1):** `docs/plans/2026-10-16-mobile-app-bank-exports.md` (written
-  by the research agent; facts marked verified / secondary / unverified).
+  by the research agent from public documentation; facts marked verified / secondary /
+  unverified; nothing was tested on a device). Headline: structured data straight from the
+  phone app is documented only for mBank CZ (CSV, ABO), Wise (CSV/XLSX) and Revolut (Excel),
+  probably Partners Banka; the large Czech and German banks (ČS George, Fio, KB+, Air Bank,
+  Raiffeisenbank, MONETA, ČSOB, DKB, ING, Sparkasse) and N26/Chase give **PDF statements** in
+  the app and keep CSV / ABO / MT940 / CAMT on their web banking. Consequences for Phase 2
+  (binding when it is expanded): (a) the per-bank export guide must cover the web-banking route
+  on the phone ("open internet banking in Safari/Chrome → export CSV → save to Files → share to
+  Moony") as a first-class path, not a fallback; (b) a PDF-statement reader moves from "v2
+  research" to a Phase 2 spike on the three most common Czech PDF layouts (ČS, Fio, KB), with a
+  go/no-go for the owner; (c) George, KB+ and ČSOB Smart need a real-device check before their
+  guides are written (owner's phone or TestFlight), and nothing is hard-coded as "the app cannot
+  export" without one.
 
 ## Phase plan
 

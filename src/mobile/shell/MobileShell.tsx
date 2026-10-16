@@ -8,6 +8,7 @@ import Lock from '@/mobile/pages/Lock';
 import Overview from '@/mobile/pages/Overview';
 import Settings from '@/mobile/pages/Settings';
 import Wealth from '@/mobile/pages/Wealth';
+import { EnableBiometricsSheet } from '@/mobile/sheets/EnableBiometricsSheet';
 import { routes, tabForPath } from './routes';
 import { TabBar } from './TabBar';
 
@@ -38,6 +39,8 @@ export function MobileShell() {
         </Route>
       </Switch>
       {tab && <TabBar active={tab} />}
+      {/* Once, after the first password unlock: "Odemykat Moony obličejem?" (spec §8.2). */}
+      <EnableBiometricsSheet />
     </>
   );
 }

@@ -10,7 +10,12 @@
   },
   "lock": {
     "caption": "AES-256 · tus datos se quedan en este teléfono",
-    "keySaved": "Tengo la clave guardada en un lugar seguro fuera de este teléfono"
+    "keySaved": "Tengo la clave guardada en un lugar seguro fuera de este teléfono",
+    "unlockWithFace": "Desbloquear con la cara",
+    "unlockWithTouch": "Desbloquear con la huella",
+    "unlockWithBiometrics": "Desbloquear con biometría",
+    "usePassword": "Usar contraseña",
+    "reason": "Desbloquear Moony"
   },
   "overview": {
     "hideAmounts": "Ocultar importes",
@@ -67,5 +72,19 @@
     "save": "Registrar",
     "saved": "Saldos registrados",
     "negative": "Valor negativo"
+  },
+  "biometrics": {
+    "titleFace": "¿Desbloquear Moony con la cara?",
+    "titleTouch": "¿Desbloquear Moony con la huella?",
+    "titleGeneric": "¿Desbloquear Moony con biometría?",
+    "leadFace": "Tu contraseña sigue siendo la clave maestra. Tu cara solo abre la app en este teléfono.",
+    "leadTouch": "Tu contraseña sigue siendo la clave maestra. Tu huella solo abre la app en este teléfono.",
+    "leadGeneric": "Tu contraseña sigue siendo la clave maestra. La biometría solo abre la app en este teléfono.",
+    "notNow": "Ahora no",
+    "enable": "Activar",
+    "enableReason": "Activar el desbloqueo biométrico",
+    "enabled": "Desbloqueo biométrico activado",
+    "notEnabled": "No se ha activado el desbloqueo biométrico",
+    "unavailable": "La biometría no está disponible ahora. Desbloquea con tu contraseña."
   }
 }

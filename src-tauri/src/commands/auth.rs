@@ -5,6 +5,7 @@ use crate::error::{AppError, Result};
 use crate::models::{InsertUserProfile, UpdateUserProfile, UserProfile};
 use crate::services::auth::{self, PendingSetup};
 use crate::services::local_api::LocalApiServer;
+use crate::services::session_key::SessionKey;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tauri::{AppHandle, Manager, State};
@@ -107,7 +108,7 @@ fn db_path_from_app_dir<E: std::fmt::Display>(
 }
 
 /// Get the database path for the app
-fn get_db_path(app: &AppHandle) -> Result<PathBuf> {
+pub(crate) fn get_db_path(app: &AppHandle) -> Result<PathBuf> {
     db_path_from_app_dir(app.path().app_data_dir())
 }
 
@@ -133,6 +134,7 @@ pub async fn prepare_setup(pending: State<'_, PendingSetup>) -> Result<PrepareSe
 pub async fn confirm_setup(
     app: AppHandle,
     db: State<'_, Database>,
+    session: State<'_, SessionKey>,
     pending: State<'_, PendingSetup>,
     data: ConfirmSetupData,
 ) -> Result<UserProfile> {
@@ -149,7 +151,14 @@ pub async fn confirm_setup(
     };
 
     pending.confirm(|prepared| {
-        auth::confirm_setup(&db, db_path, profile_data, &data.password, prepared)
+        auth::confirm_setup(
+            &db,
+            &session,
+            db_path,
+            profile_data,
+            &data.password,
+            prepared,
+        )
     })
 }
 
@@ -158,11 +167,15 @@ pub async fn confirm_setup(
 pub async fn unlock(
     app: AppHandle,
     db: State<'_, Database>,
+    session: State<'_, SessionKey>,
     local_api: State<'_, LocalApiServer>,
     password: String,
 ) -> Result<UserProfile> {
     let db_path = get_db_path(&app)?;
-    let profile = auth::unlock(&db, db_path, &password)?;
+    let profile = auth::unlock(&db, &session, db_path, &password)?;
+    // A key left in the phone keychain without the "on" marker (a reinstall) goes now.
+    #[cfg(mobile)]
+    crate::commands::biometric::remove_leftover_key(&app).await;
 
     // The MCP server is a desktop feature; a phone never opens a local port.
     #[cfg(desktop)]
@@ -197,11 +210,13 @@ pub async fn prepare_recover(
 pub async fn confirm_recover(
     app: AppHandle,
     db: State<'_, Database>,
+    session: State<'_, SessionKey>,
     data: ConfirmRecoverData,
 ) -> Result<UserProfile> {
     let db_path = get_db_path(&app)?;
     let profile = auth::confirm_recover(
         &db,
+        &session,
         db_path,
         &data.old_recovery_key,
         &data.new_password,
@@ -218,10 +233,11 @@ pub async fn confirm_recover(
 pub async fn logout(
     app: tauri::AppHandle,
     db: State<'_, Database>,
+    session: State<'_, SessionKey>,
     local_api: State<'_, LocalApiServer>,
 ) -> Result<()> {
     local_api.stop().await;
-    auth::logout(&db);
+    auth::logout(&db, &session);
     // Decrypted copies opened in other apps go with the session (D3).
     crate::commands::attachments::wipe_open_copies(&app);
     Ok(())
@@ -280,10 +296,18 @@ pub async fn confirm_change_password(
 
 /// Delete account
 #[tauri::command]
-pub async fn delete_account(app: AppHandle, db: State<'_, Database>) -> Result<()> {
+pub async fn delete_account(
+    app: AppHandle,
+    db: State<'_, Database>,
+    session: State<'_, SessionKey>,
+) -> Result<()> {
     let db_path = get_db_path(&app)?;
     crate::commands::attachments::wipe_open_copies(&app);
-    auth::delete_account(&db, &db_path)
+    let deleted = auth::delete_account(&db, &session, &db_path);
+    // The marker went with the account files, so the key stored for biometric unlock goes too.
+    #[cfg(mobile)]
+    crate::commands::biometric::remove_leftover_key(&app).await;
+    deleted
 }
 
 // ============================================================================

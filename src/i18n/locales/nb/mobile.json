@@ -10,7 +10,12 @@
   },
   "lock": {
     "caption": "AES-256 · dataene dine blir på denne telefonen",
-    "keySaved": "Jeg har lagret nøkkelen trygt utenfor denne telefonen"
+    "keySaved": "Jeg har lagret nøkkelen trygt utenfor denne telefonen",
+    "unlockWithFace": "Lås opp med ansiktet",
+    "unlockWithTouch": "Lås opp med fingeravtrykk",
+    "unlockWithBiometrics": "Lås opp med biometri",
+    "usePassword": "Bruk passord",
+    "reason": "Lås opp Moony"
   },
   "overview": {
     "hideAmounts": "Skjul beløp",
@@ -62,5 +67,19 @@
     "save": "Registrer",
     "saved": "Saldoer registrert",
     "negative": "Negativ verdi"
+  },
+  "biometrics": {
+    "titleFace": "Låse opp Moony med ansiktet?",
+    "titleTouch": "Låse opp Moony med fingeravtrykk?",
+    "titleGeneric": "Låse opp Moony med biometri?",
+    "leadFace": "Passordet forblir hovednøkkelen. Ansiktet åpner bare appen på denne telefonen.",
+    "leadTouch": "Passordet forblir hovednøkkelen. Fingeravtrykket åpner bare appen på denne telefonen.",
+    "leadGeneric": "Passordet forblir hovednøkkelen. Biometrien åpner bare appen på denne telefonen.",
+    "notNow": "Ikke nå",
+    "enable": "Slå på",
+    "enableReason": "Slå på biometrisk opplåsing",
+    "enabled": "Biometrisk opplåsing slått på",
+    "notEnabled": "Biometrisk opplåsing ble ikke slått på",
+    "unavailable": "Biometri er ikke tilgjengelig nå. Lås opp med passordet."
   }
 }

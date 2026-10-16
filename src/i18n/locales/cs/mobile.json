@@ -10,7 +10,12 @@
   },
   "lock": {
     "caption": "AES-256 · data zůstávají v telefonu",
-    "keySaved": "Klíč mám bezpečně uložený mimo tento telefon"
+    "keySaved": "Klíč mám bezpečně uložený mimo tento telefon",
+    "unlockWithFace": "Odemknout obličejem",
+    "unlockWithTouch": "Odemknout otiskem",
+    "unlockWithBiometrics": "Odemknout biometrií",
+    "usePassword": "Použít heslo",
+    "reason": "Odemknout Moony"
   },
   "overview": {
     "hideAmounts": "Skrýt částky",
@@ -67,5 +72,19 @@
     "save": "Zaznamenat",
     "saved": "Zůstatky zaznamenány",
     "negative": "Záporná hodnota"
+  },
+  "biometrics": {
+    "titleFace": "Odemykat Moony obličejem?",
+    "titleTouch": "Odemykat Moony otiskem?",
+    "titleGeneric": "Odemykat Moony biometrií?",
+    "leadFace": "Heslo zůstává hlavním klíčem. Obličej jen otevírá aplikaci na tomto telefonu.",
+    "leadTouch": "Heslo zůstává hlavním klíčem. Otisk jen otevírá aplikaci na tomto telefonu.",
+    "leadGeneric": "Heslo zůstává hlavním klíčem. Biometrie jen otevírá aplikaci na tomto telefonu.",
+    "notNow": "Teď ne",
+    "enable": "Zapnout",
+    "enableReason": "Zapnout odemykání biometrií",
+    "enabled": "Odemykání biometrií zapnuto",
+    "notEnabled": "Odemykání biometrií nebylo zapnuto",
+    "unavailable": "Biometrie teď není k dispozici, odemkněte heslem."
   }
 }

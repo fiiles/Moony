@@ -10,7 +10,12 @@
   },
   "lock": {
     "caption": "AES-256 · your data stays on this phone",
-    "keySaved": "I have stored the key safely outside this phone"
+    "keySaved": "I have stored the key safely outside this phone",
+    "unlockWithFace": "Unlock with your face",
+    "unlockWithTouch": "Unlock with your fingerprint",
+    "unlockWithBiometrics": "Unlock with biometrics",
+    "usePassword": "Use password",
+    "reason": "Unlock Moony"
   },
   "overview": {
     "hideAmounts": "Hide amounts",
@@ -62,5 +67,19 @@
     "save": "Record",
     "saved": "Balances recorded",
     "negative": "Negative value"
+  },
+  "biometrics": {
+    "titleFace": "Unlock Moony with your face?",
+    "titleTouch": "Unlock Moony with your fingerprint?",
+    "titleGeneric": "Unlock Moony with biometrics?",
+    "leadFace": "Your password stays the master key. Your face only opens the app on this phone.",
+    "leadTouch": "Your password stays the master key. Your fingerprint only opens the app on this phone.",
+    "leadGeneric": "Your password stays the master key. Biometrics only open the app on this phone.",
+    "notNow": "Not now",
+    "enable": "Turn on",
+    "enableReason": "Turn on biometric unlock",
+    "enabled": "Biometric unlock turned on",
+    "notEnabled": "Biometric unlock was not turned on",
+    "unavailable": "Biometrics are not available right now. Unlock with your password."
   }
 }

@@ -5,10 +5,22 @@
  * on phone surfaces: the lock is centred under the status bar and above the home indicator, the
  * recovery is a pushed full-height screen with a back button, the wizard drops its live preview.
  * Credential failures show inline under the field; the provider toasts everything else.
+ *
+ * With biometric unlock switched on, "Odemknout obličejem" comes first and the system prompt opens
+ * by itself once; "Použít heslo" shows the password form. A key the keychain can no longer read
+ * falls back to the password with the reason under the button, never a loop.
  */
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type ReactNode,
+} from 'react';
 import { useLocation } from 'wouter';
 import { zodResolver } from '@hookform/resolvers/zod';
+import { useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Lock as LockIcon, RefreshCw } from 'lucide-react';
@@ -18,6 +30,9 @@ import { GREETING_NAME_KEY, LOCKED_AT_KEY, useAuth } from '@/hooks/use-auth';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
 import { useFormat } from '@/lib/use-format';
 import { isAuthApiError } from '@/lib/api-error';
+import { queryClient } from '@/lib/queryClient';
+import { biometricApi } from '@/lib/tauri-api';
+import { cn } from '@/lib/utils';
 import { isSupportedLanguage, type SupportedLanguage } from '@/i18n/index';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -37,6 +52,13 @@ import { OnboardingWizard } from '@/components/auth/OnboardingWizard';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
 import { RecoverySteps } from '@/components/auth/RecoverySteps';
+import { BiometryIcon } from '@/mobile/components/BiometryIcon';
+import {
+  BIOMETRIC_STATUS_KEY,
+  biometricCopy,
+  biometricFailure,
+  canUnlockWithBiometrics,
+} from '@/mobile/lib/biometrics';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -72,6 +94,9 @@ const primaryButton = 'h-12 w-full rounded-[10px] text-m-row';
  */
 const field48 = 'h-12 rounded-[10px] text-m-body';
 const fieldMessage = 'text-left text-m-sub';
+/** The text links under the form ("Použít heslo", "Zapomenuté heslo?"): 44 pt tall. */
+const textLink =
+  'mt-2.5 h-11 px-3 text-[13px] font-650 text-ink-2 underline underline-offset-[3px] [-webkit-touch-callout:none] active:text-ink disabled:pointer-events-none disabled:opacity-45';
 
 export default function Lock() {
   const { user, appStatus, recoveryKey } = useAuth();
@@ -79,6 +104,9 @@ export default function Lock() {
   const { i18n } = useTranslation('auth');
   const { updateProfile } = useSettingsMutations();
   const [panel, setPanel] = useState<Panel>('unlock');
+  // The biometric prompt opens by itself once per lock screen, not again after the recovery
+  // panel or a cancel.
+  const autoPrompted = useRef(false);
 
   // First-run wizard: once `needs_setup` has been seen it stays mounted until it reports
   // completion (its last steps run after the account exists).
@@ -149,6 +177,7 @@ export default function Lock() {
       language={selectedLanguage}
       onLanguageChange={handleLanguageChange}
       onForgot={() => setPanel('recover')}
+      autoPrompted={autoPrompted}
     />
   );
 }
@@ -157,12 +186,14 @@ function UnlockScreen({
   language,
   onLanguageChange,
   onForgot,
+  autoPrompted,
 }: {
   language: SupportedLanguage;
   onLanguageChange: (language: SupportedLanguage) => void;
   onForgot: () => void;
+  autoPrompted: MutableRefObject<boolean>;
 }) {
-  const { unlockMutation } = useAuth();
+  const { unlockMutation, unlockWithBiometricsMutation } = useAuth();
   const { t } = useTranslation('auth');
   const { t: tm } = useTranslation('mobile');
   const fmt = useFormat();
@@ -175,9 +206,51 @@ function UnlockScreen({
   // The mutation lives in AuthProvider, so `isPending` survives re-renders of this page. While
   // it runs (the KDF takes seconds), the form stays put.
   const pending = unlockMutation.isPending;
+  const biometricPending = unlockWithBiometricsMutation.isPending;
+
+  // Biometrics switched on: "Odemknout obličejem" first, the password behind a link. Until the
+  // status is known neither path shows, so the password form never flashes first.
+  const biometrics = useQuery({ queryKey: BIOMETRIC_STATUS_KEY, queryFn: biometricApi.status });
+  const status = biometrics.data;
+  const biometricReady = canUnlockWithBiometrics(status);
+  const [passwordChosen, setPasswordChosen] = useState(false);
+  const [biometricMessage, setBiometricMessage] = useState<string | null>(null);
+  const showBiometric = biometricReady && !passwordChosen;
+  const copy = biometricCopy(status?.biometryType ?? 'none');
+
+  const { mutate: unlockWithBiometrics } = unlockWithBiometricsMutation;
+  const promptBiometrics = useCallback(() => {
+    unlockWithBiometrics(tm('lock.reason'), {
+      onError: (error) => {
+        const failure = biometricFailure(isAuthApiError(error) ? error.key : undefined);
+        // A dismissed prompt changes nothing, and nothing prompts again by itself.
+        if (failure === 'cancelled') return;
+        if (failure !== 'other') setBiometricMessage(error.message);
+        setPasswordChosen(true);
+        // Invalidated: the backend switched biometrics off; the screen follows.
+        if (failure === 'invalidated') {
+          void queryClient.invalidateQueries({ queryKey: BIOMETRIC_STATUS_KEY });
+        }
+      },
+    });
+  }, [unlockWithBiometrics, tm]);
+  /** A tap on "Odemknout obličejem": the last message goes, the prompt opens. */
+  const tapBiometrics = () => {
+    if (biometricPending) return;
+    setBiometricMessage(null);
+    setPasswordChosen(false);
+    promptBiometrics();
+  };
+
+  // The prompt opens by itself once, as soon as biometrics turn out to be on.
+  useEffect(() => {
+    if (!biometricReady || autoPrompted.current) return;
+    autoPrompted.current = true;
+    promptBiometrics();
+  }, [biometricReady, autoPrompted, promptBiometrics]);
 
   const submit = (data: z.infer<typeof unlockSchema>) => {
-    if (pending) return;
+    if (pending || biometricPending) return;
     unlockMutation.mutate(data, {
       onError: (error) => {
         if (!isAuthApiError(error)) return;
@@ -203,9 +276,12 @@ function UnlockScreen({
             <b className="text-m-title text-ink">moony</b>
           </div>
 
-          {/* Task 1.8: this tile becomes the biometric unlock button (Face ID / fingerprint). */}
           <div className="mb-[18px] grid size-[76px] place-items-center rounded-[22px] border border-line bg-paper text-ink shadow-e2">
-            <LockIcon className="size-9" strokeWidth={1.5} aria-hidden />
+            {showBiometric && status ? (
+              <BiometryIcon type={status.biometryType} className="size-9" />
+            ) : (
+              <LockIcon className="size-9" strokeWidth={1.5} aria-hidden />
+            )}
           </div>
 
           <h1 className="m-0 text-[22px] font-650 tracking-[-0.04em] text-ink">
@@ -219,55 +295,98 @@ function UnlockScreen({
               : t('lock.encrypted')}
           </p>
 
-          <Form {...form}>
-            <form
-              onSubmit={form.handleSubmit(submit)}
-              aria-busy={pending}
-              className="w-full max-w-[360px] space-y-3"
-            >
-              <FormField
-                control={form.control}
-                name="password"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="sr-only">{t('login.password')}</FormLabel>
-                    <FormControl>
-                      <PasswordInput
-                        touch
-                        autoComplete="current-password"
-                        enterKeyHint="go"
-                        placeholder={t('login.password')}
-                        readOnly={pending}
-                        className={field48}
-                        {...field}
-                      />
-                    </FormControl>
-                    {!pending && <FormMessage className={fieldMessage} />}
-                  </FormItem>
-                )}
-              />
-              <Button type="submit" className={primaryButton} disabled={pending} loading={pending}>
-                {pending ? t('login.unlocking') : t('login.unlock')}
+          {biometrics.isPending ? null : showBiometric && status ? (
+            <div className="w-full max-w-[360px] space-y-3">
+              <Button
+                className={`${primaryButton} [&_svg]:size-[18px]`}
+                aria-busy={biometricPending || undefined}
+                onClick={tapBiometrics}
+              >
+                <BiometryIcon type={status.biometryType} />
+                {tm(copy.unlock)}
               </Button>
-              <div aria-live="polite" className="empty:hidden">
-                {pending && (
-                  <p className="m-0 flex items-start justify-center gap-2 text-m-sub text-ink-3">
-                    <RefreshCw className="mt-px size-3.5 shrink-0 animate-spin" aria-hidden />
-                    <span>{t('login.decrypting')}</span>
-                  </p>
-                )}
-              </div>
-            </form>
-          </Form>
+              <BiometricMessage message={biometricMessage} />
+              <button
+                type="button"
+                onClick={() => {
+                  setBiometricMessage(null);
+                  setPasswordChosen(true);
+                }}
+                disabled={biometricPending}
+                className={textLink}
+              >
+                {tm('lock.usePassword')}
+              </button>
+            </div>
+          ) : (
+            <>
+              <Form {...form}>
+                <form
+                  onSubmit={form.handleSubmit(submit)}
+                  aria-busy={pending}
+                  className="w-full max-w-[360px] space-y-3"
+                >
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="sr-only">{t('login.password')}</FormLabel>
+                        <FormControl>
+                          <PasswordInput
+                            touch
+                            autoComplete="current-password"
+                            enterKeyHint="go"
+                            placeholder={t('login.password')}
+                            readOnly={pending}
+                            className={field48}
+                            {...field}
+                          />
+                        </FormControl>
+                        {!pending && <FormMessage className={fieldMessage} />}
+                      </FormItem>
+                    )}
+                  />
+                  <Button
+                    type="submit"
+                    className={primaryButton}
+                    disabled={pending || biometricPending}
+                    loading={pending}
+                  >
+                    {pending ? t('login.unlocking') : t('login.unlock')}
+                  </Button>
+                  <div aria-live="polite" className="empty:hidden">
+                    {pending && (
+                      <p className="m-0 flex items-start justify-center gap-2 text-m-sub text-ink-3">
+                        <RefreshCw className="mt-px size-3.5 shrink-0 animate-spin" aria-hidden />
+                        <span>{t('login.decrypting')}</span>
+                      </p>
+                    )}
+                  </div>
+                  {!pending && <BiometricMessage message={biometricMessage} />}
+                </form>
+              </Form>
 
-          <button
-            type="button"
-            onClick={onForgot}
-            disabled={pending}
-            className="mt-2.5 h-11 px-3 text-[13px] font-650 text-ink-2 underline underline-offset-[3px] [-webkit-touch-callout:none] active:text-ink disabled:pointer-events-none disabled:opacity-45"
-          >
-            {t('login.forgotPassword')}
-          </button>
+              {biometricReady && (
+                <button
+                  type="button"
+                  onClick={tapBiometrics}
+                  disabled={pending || biometricPending}
+                  className={textLink}
+                >
+                  {tm(copy.unlock)}
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onForgot}
+                disabled={pending || biometricPending}
+                className={cn(textLink, biometricReady && 'mt-0')}
+              >
+                {t('login.forgotPassword')}
+              </button>
+            </>
+          )}
         </div>
       </main>
 
@@ -279,6 +398,18 @@ function UnlockScreen({
         </span>
       </footer>
     </Frame>
+  );
+}
+
+/**
+ * Why the biometric path is not there right now ("Biometrie se změnila, odemkněte heslem a
+ * zapněte ji znovu."): under the primary, announced politely.
+ */
+function BiometricMessage({ message }: { message: string | null }) {
+  return (
+    <p role="status" className="m-0 text-balance text-m-sub text-ink-2 empty:hidden">
+      {message}
+    </p>
   );
 }
 

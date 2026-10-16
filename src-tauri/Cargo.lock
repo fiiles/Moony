@@ -3035,6 +3035,7 @@ dependencies = [
  "urlencoding",
  "uuid",
  "yahoo_finance_api",
+ "zeroize",
  "zip 9.0.3",
 ]
 

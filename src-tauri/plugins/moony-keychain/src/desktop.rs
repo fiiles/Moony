@@ -17,7 +17,7 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
 pub struct Keychain<R: Runtime>(PhantomData<fn() -> R>);
 
 impl<R: Runtime> Keychain<R> {
-    pub fn store(&self, _key: &str, _value_hex: &str) -> Result<()> {
+    pub fn store(&self, _key: &str, _value_hex: &str, _reason: &str) -> Result<()> {
         Err(KeychainError::Unsupported)
     }
 
@@ -45,7 +45,10 @@ mod tests {
     #[test]
     fn every_desktop_call_is_unsupported() {
         let keychain = Keychain::<tauri::Wry>(PhantomData);
-        assert_eq!(keychain.store("k", "00"), Err(KeychainError::Unsupported));
+        assert_eq!(
+            keychain.store("k", "00", "reason"),
+            Err(KeychainError::Unsupported)
+        );
         assert_eq!(
             keychain.retrieve("k", "reason"),
             Err(KeychainError::Unsupported)

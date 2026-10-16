@@ -10,7 +10,12 @@
   },
   "lock": {
     "caption": "AES-256 · i tuoi dati restano su questo telefono",
-    "keySaved": "Ho conservato la chiave in un luogo sicuro, fuori da questo telefono"
+    "keySaved": "Ho conservato la chiave in un luogo sicuro, fuori da questo telefono",
+    "unlockWithFace": "Sblocca con il volto",
+    "unlockWithTouch": "Sblocca con l'impronta",
+    "unlockWithBiometrics": "Sblocca con i dati biometrici",
+    "usePassword": "Usa la password",
+    "reason": "Sblocca Moony"
   },
   "overview": {
     "hideAmounts": "Nascondi importi",
@@ -67,5 +72,19 @@
     "save": "Registra",
     "saved": "Saldi registrati",
     "negative": "Valore negativo"
+  },
+  "biometrics": {
+    "titleFace": "Sbloccare Moony con il volto?",
+    "titleTouch": "Sbloccare Moony con l'impronta?",
+    "titleGeneric": "Sbloccare Moony con i dati biometrici?",
+    "leadFace": "La password resta la chiave principale. Il volto apre solo l'app su questo telefono.",
+    "leadTouch": "La password resta la chiave principale. L'impronta apre solo l'app su questo telefono.",
+    "leadGeneric": "La password resta la chiave principale. I dati biometrici aprono solo l'app su questo telefono.",
+    "notNow": "Non ora",
+    "enable": "Attiva",
+    "enableReason": "Attiva lo sblocco biometrico",
+    "enabled": "Sblocco biometrico attivato",
+    "notEnabled": "Lo sblocco biometrico non è stato attivato",
+    "unavailable": "I dati biometrici non sono disponibili al momento. Sblocca con la password."
   }
 }

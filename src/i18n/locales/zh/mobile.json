@@ -10,7 +10,12 @@
   },
   "lock": {
     "caption": "AES-256 · 您的数据仅保存在这部手机上",
-    "keySaved": "我已将密钥安全保存在这部手机之外"
+    "keySaved": "我已将密钥安全保存在这部手机之外",
+    "unlockWithFace": "使用面容解锁",
+    "unlockWithTouch": "使用指纹解锁",
+    "unlockWithBiometrics": "使用生物识别解锁",
+    "usePassword": "使用密码",
+    "reason": "解锁 Moony"
   },
   "overview": {
     "hideAmounts": "隐藏金额",
@@ -57,5 +62,19 @@
     "save": "记录",
     "saved": "余额已记录",
     "negative": "负值"
+  },
+  "biometrics": {
+    "titleFace": "使用面容解锁 Moony？",
+    "titleTouch": "使用指纹解锁 Moony？",
+    "titleGeneric": "使用生物识别解锁 Moony？",
+    "leadFace": "密码仍是主密钥。面容仅用于在这部手机上打开应用。",
+    "leadTouch": "密码仍是主密钥。指纹仅用于在这部手机上打开应用。",
+    "leadGeneric": "密码仍是主密钥。生物识别仅用于在这部手机上打开应用。",
+    "notNow": "以后再说",
+    "enable": "开启",
+    "enableReason": "开启生物识别解锁",
+    "enabled": "已开启生物识别解锁",
+    "notEnabled": "未开启生物识别解锁",
+    "unavailable": "生物识别暂时不可用，请使用密码解锁。"
   }
 }

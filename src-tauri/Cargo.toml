@@ -62,6 +62,7 @@ scrypt = "0.12"      # For scrypt key derivation (matches Node.js)
 aes-gcm = "0.11"     # For AES-256-GCM encryption (matches Node.js)
 subtle = "2"         # Constant-time comparison of the MCP bearer token
 sha2 = { version = "0.11", default-features = false }  # Content hashes of stored attachments
+zeroize = "1"        # Wipes the session's master key from memory (services/session_key.rs)
 
 # Error handling
 thiserror = "2"

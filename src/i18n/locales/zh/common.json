@@ -293,7 +293,10 @@
     "wrongPassword": "您输入的密码不正确，请重试。",
     "invalidRecoveryKey": "恢复密钥无效。请检查是否输入了全部 24 个字符——大小写、空格和短横线均无影响。",
     "keyFilesCorrupted": "Moony 的密钥文件或数据库已损坏，或彼此不匹配。请从备份中恢复数据文件夹。",
-    "setupNotPrepared": "账户创建已中断。请返回并重新创建账户。"
+    "setupNotPrepared": "账户创建已中断。请返回并重新创建账户。",
+    "biometricInvalidated": "生物识别信息已更改。请使用密码解锁，然后重新开启。",
+    "biometricCancelled": "生物识别解锁已取消。",
+    "biometricFailed": "验证失败，请使用密码解锁。"
   },
   "time": {
     "today": "今天",

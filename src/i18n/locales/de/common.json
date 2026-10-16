@@ -293,7 +293,10 @@
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",
     "invalidRecoveryKey": "Ungültiger Wiederherstellungsschlüssel. Prüfen Sie, ob Sie alle 24 Zeichen eingegeben haben – Groß-/Kleinschreibung, Leerzeichen und Bindestriche spielen keine Rolle.",
     "keyFilesCorrupted": "Die Schlüsseldateien oder die Datenbank von Moony sind beschädigt oder gehören nicht zusammen. Stellen Sie den Datenordner aus einer Sicherung wieder her.",
-    "setupNotPrepared": "Die Kontoeinrichtung wurde unterbrochen. Gehen Sie zurück und legen Sie Ihr Konto erneut an."
+    "setupNotPrepared": "Die Kontoeinrichtung wurde unterbrochen. Gehen Sie zurück und legen Sie Ihr Konto erneut an.",
+    "biometricInvalidated": "Die Biometrie hat sich geändert. Entsperren Sie mit Ihrem Passwort und schalten Sie sie erneut ein.",
+    "biometricCancelled": "Die biometrische Entsperrung wurde abgebrochen.",
+    "biometricFailed": "Die Überprüfung ist fehlgeschlagen. Entsperren Sie mit Ihrem Passwort."
   },
   "time": {
     "today": "Heute",

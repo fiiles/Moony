@@ -293,7 +293,10 @@
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",
     "invalidRecoveryKey": "Ogiltig återställningsnyckel. Kontrollera att du angav alla 24 tecken – versaler, mellanslag och bindestreck spelar ingen roll.",
     "keyFilesCorrupted": "Moonys nyckelfiler eller databas är skadade eller hör inte ihop. Återställ datamappen från en säkerhetskopia.",
-    "setupNotPrepared": "Kontoskapandet avbröts. Gå tillbaka och skapa kontot igen."
+    "setupNotPrepared": "Kontoskapandet avbröts. Gå tillbaka och skapa kontot igen.",
+    "biometricInvalidated": "Biometrin har ändrats. Lås upp med lösenordet och slå på den igen.",
+    "biometricCancelled": "Biometrisk upplåsning avbröts.",
+    "biometricFailed": "Verifieringen misslyckades. Lås upp med lösenordet."
   },
   "time": {
     "today": "I dag",

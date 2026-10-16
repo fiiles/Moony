@@ -10,7 +10,12 @@
   },
   "lock": {
     "caption": "AES-256 · twoje dane zostają na tym telefonie",
-    "keySaved": "Mam klucz bezpiecznie zapisany poza tym telefonem"
+    "keySaved": "Mam klucz bezpiecznie zapisany poza tym telefonem",
+    "unlockWithFace": "Odblokuj twarzą",
+    "unlockWithTouch": "Odblokuj odciskiem palca",
+    "unlockWithBiometrics": "Odblokuj biometrią",
+    "usePassword": "Użyj hasła",
+    "reason": "Odblokuj Moony"
   },
   "overview": {
     "hideAmounts": "Ukryj kwoty",
@@ -72,5 +77,19 @@
     "save": "Zapisz",
     "saved": "Salda zapisane",
     "negative": "Wartość ujemna"
+  },
+  "biometrics": {
+    "titleFace": "Odblokowywać Moony twarzą?",
+    "titleTouch": "Odblokowywać Moony odciskiem palca?",
+    "titleGeneric": "Odblokowywać Moony biometrią?",
+    "leadFace": "Hasło pozostaje głównym kluczem. Twarz tylko otwiera aplikację na tym telefonie.",
+    "leadTouch": "Hasło pozostaje głównym kluczem. Odcisk palca tylko otwiera aplikację na tym telefonie.",
+    "leadGeneric": "Hasło pozostaje głównym kluczem. Biometria tylko otwiera aplikację na tym telefonie.",
+    "notNow": "Nie teraz",
+    "enable": "Włącz",
+    "enableReason": "Włącz odblokowywanie biometrią",
+    "enabled": "Odblokowywanie biometrią włączone",
+    "notEnabled": "Odblokowywanie biometrią nie zostało włączone",
+    "unavailable": "Biometria jest teraz niedostępna. Odblokuj hasłem."
   }
 }

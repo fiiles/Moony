@@ -35,6 +35,9 @@ enum KeychainCode: String {
 struct StoreArgs: Decodable {
   let key: String
   let value: String
+  /// The prompt title where the platform asks on store (Android). iOS adds the item without a
+  /// prompt, so it is not used here.
+  let reason: String?
 }
 
 struct RetrieveArgs: Decodable {

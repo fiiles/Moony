@@ -64,6 +64,8 @@ private const val CODE_FAILED = "failed"
 class StoreArgs {
     lateinit var key: String
     lateinit var value: String
+    // The prompt title ("Turn on biometric unlock"); the app label when missing.
+    var reason: String? = null
 }
 
 @InvokeArg
@@ -115,6 +117,7 @@ class KeychainPlugin(private val activity: Activity) : Plugin(activity) {
             val args = invoke.parseArgs(StoreArgs::class.java)
             val key = args.key
             val plaintext = args.value.toByteArray(Charsets.UTF_8)
+            val title = args.reason?.takeIf { it.isNotBlank() } ?: appLabel()
 
             if (BiometricManager.from(activity).canAuthenticate(BIOMETRIC_STRONG) !=
                 BiometricManager.BIOMETRIC_SUCCESS
@@ -129,7 +132,7 @@ class KeychainPlugin(private val activity: Activity) : Plugin(activity) {
             val cipher = Cipher.getInstance(TRANSFORMATION)
             cipher.init(Cipher.ENCRYPT_MODE, createKey(keyAlias(key)))
 
-            prompt(invoke, appLabel(), cipher) { authenticated ->
+            prompt(invoke, title, cipher) { authenticated ->
                 val iv = authenticated.iv
                 if (iv.size != GCM_IV_BYTES) {
                     throw IOException("Unexpected GCM IV length ${iv.size}")
@@ -413,11 +416,13 @@ class KeychainPlugin(private val activity: Activity) : Plugin(activity) {
 
     // ---- Helpers ----
 
+    // The exception class only, never its message: a failed parse of the store arguments could
+    // echo the request (the secret) into logcat and the rejection.
     private inline fun guarded(invoke: Invoke, body: () -> Unit) {
         try {
             body()
         } catch (e: Exception) {
-            reject(invoke, CODE_FAILED, "Keychain operation failed: ${e.javaClass.simpleName}: ${e.message}")
+            reject(invoke, CODE_FAILED, "Keychain operation failed: ${e.javaClass.simpleName}")
         }
     }
 

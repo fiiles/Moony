@@ -32,6 +32,7 @@ pub struct Keychain<R: Runtime>(PluginHandle<R>);
 struct StorePayload<'a> {
     key: &'a str,
     value: &'a str,
+    reason: &'a str,
 }
 
 #[derive(Serialize)]
@@ -57,15 +58,16 @@ struct RetrieveResponse {
 
 impl<R: Runtime> Keychain<R> {
     /// Stores `value_hex` under `key` behind the current biometric enrolment, replacing any
-    /// earlier value. iOS stores without a prompt; Android prompts (its key is auth-bound for
-    /// encryption too).
-    pub fn store(&self, key: &str, value_hex: &str) -> Result<()> {
+    /// earlier value. iOS stores without a prompt; Android prompts with `reason` as the title
+    /// (its key is auth-bound for encryption too).
+    pub fn store(&self, key: &str, value_hex: &str, reason: &str) -> Result<()> {
         self.0
             .run_mobile_plugin(
                 "store",
                 StorePayload {
                     key,
                     value: value_hex,
+                    reason,
                 },
             )
             .map_err(Into::into)

@@ -22,6 +22,7 @@ import type {
   DataLocation,
   ExportSummary,
   IntegrityReport,
+  BiometricStatus,
   UserProfile,
   SavingsAccountZone,
   StockInvestment,
@@ -224,6 +225,24 @@ export const authApi = {
   setMcpServerPort: (port: number) => tauriInvoke<void>('set_mcp_server_port', { port }),
 
   regenerateMcpToken: () => tauriInvoke<string>('regenerate_mcp_token'),
+};
+
+// ============================================================================
+// Biometric unlock API (phones only; the commands are registered under `#[cfg(mobile)]`)
+// ============================================================================
+
+/**
+ * The master key stays in Rust: these app commands call the keychain plugin from the backend.
+ * `reason` is the localized text the system prompt shows.
+ */
+export const biometricApi = {
+  status: () => tauriInvoke<BiometricStatus>('biometric_unlock_status'),
+
+  enable: (reason: string) => tauriInvoke<void>('enable_biometric_unlock', { reason }),
+
+  disable: () => tauriInvoke<void>('disable_biometric_unlock'),
+
+  unlock: (reason: string) => tauriInvoke<UserProfile>('unlock_with_biometrics', { reason }),
 };
 
 // ============================================================================

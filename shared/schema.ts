@@ -27,6 +27,21 @@ export interface UserProfile {
   createdAt: number;
 }
 
+// Biometric unlock on the phone (Rust `models::biometric`)
+/** Which biometry the phone offers, for the unlock button's icon and wording. */
+export type BiometryType = 'faceId' | 'touchId' | 'biometric' | 'none';
+
+/** `biometric_unlock_status`: readable while the database is still locked. */
+export interface BiometricStatus {
+  /** Biometry-protected storage can be used right now (biometry enrolled, passcode set). */
+  available: boolean;
+  /** The person switched biometric unlock on for this profile on this phone. */
+  enrolled: boolean;
+  biometryType: BiometryType;
+  /** Why biometrics are not available, as an i18n key (`mobile:biometrics.unavailable`). */
+  reason: string | null;
+}
+
 export interface MenuPreferences {
   loans: boolean;
   insurance: boolean;

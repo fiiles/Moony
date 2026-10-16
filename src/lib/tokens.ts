@@ -1,10 +1,17 @@
 /**
  * Design tokens for code that needs a concrete color string — Recharts
- * attributes, canvas, inline SVG gradients. Values are read once from the
- * `:root` custom properties in src/index.css, so the single source of truth
- * stays the stylesheet. Light theme only; nothing here changes at runtime.
+ * attributes, canvas, inline SVG gradients. Values are read from the `:root`
+ * custom properties in src/index.css, so the single source of truth stays the
+ * stylesheet. Values are read once per theme; `ThemeProvider` calls
+ * `resetTokenCache()` on every switch and charts re-read them through
+ * `useChartTokens()`.
  */
 const cache = new Map<string, string>();
+
+/** Forget every cached value; the next `token()` call reads the stylesheet again. */
+export function resetTokenCache(): void {
+  cache.clear();
+}
 
 /** `token('chart-line')` → "#3c3f67". Falls back to `var(--name)` outside a DOM. */
 export function token(name: string): string {

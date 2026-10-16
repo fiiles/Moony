@@ -37,6 +37,7 @@ import { ProtectedRoute } from '@/lib/protected-route';
 import { CurrencyProvider } from '@/lib/currency-provider';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { I18nProvider } from '@/i18n/I18nProvider';
+import { ThemeProvider } from '@/theme/ThemeProvider';
 import { UpdateNotification } from '@/components/update-notification';
 import { UpdaterProvider } from '@/hooks/use-updater';
 import { useAutoLock } from '@/hooks/use-auto-lock';
@@ -102,20 +103,22 @@ export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <I18nProvider>
-          <CurrencyProvider>
-            <SyncProvider>
-              <TooltipProvider delayDuration={200}>
-                <ErrorBoundary>
-                  <UpdaterProvider>
-                    <AppLayout />
-                  </UpdaterProvider>
-                </ErrorBoundary>
-                <Toaster />
-              </TooltipProvider>
-            </SyncProvider>
-          </CurrencyProvider>
-        </I18nProvider>
+        <ThemeProvider>
+          <I18nProvider>
+            <CurrencyProvider>
+              <SyncProvider>
+                <TooltipProvider delayDuration={200}>
+                  <ErrorBoundary>
+                    <UpdaterProvider>
+                      <AppLayout />
+                    </UpdaterProvider>
+                  </ErrorBoundary>
+                  <Toaster />
+                </TooltipProvider>
+              </SyncProvider>
+            </CurrencyProvider>
+          </I18nProvider>
+        </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

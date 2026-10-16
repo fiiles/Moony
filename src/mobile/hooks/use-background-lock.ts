@@ -74,6 +74,13 @@ export function useBackgroundLock(): void {
     };
 
     document.addEventListener('visibilitychange', onVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      // Locked by something else (Settings, an invalidated biometry) or gone: a stamp left from a
+      // stay in the background must not lock once more after the next unlock. The locked default
+      // at start has no cleanup, so a stamp that outlived a restored webview still locks above.
+      hiddenAt.current = null;
+      clearHiddenAt(session);
+    };
   }, [unlocked, lock]);
 }

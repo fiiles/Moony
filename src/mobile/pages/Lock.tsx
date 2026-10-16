@@ -58,6 +58,7 @@ import {
   clearEnrolmentAsked,
   shouldAutoPrompt,
 } from '@/mobile/lib/biometrics';
+import { whenVisible } from '@/mobile/lib/when-visible';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -255,21 +256,10 @@ function UnlockScreen({
   const lockEvent = lockMutation.submittedAt;
   useEffect(() => {
     if (!biometricReady || !shouldAutoPrompt(lockEvent, promptedLockEvent)) return;
-    const prompt = () => {
+    return whenVisible(() => {
       promptedLockEvent = lockEvent;
       promptBiometrics();
-    };
-    if (document.visibilityState === 'visible') {
-      prompt();
-      return;
-    }
-    const onVisible = () => {
-      if (document.visibilityState !== 'visible') return;
-      document.removeEventListener('visibilitychange', onVisible);
-      prompt();
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => document.removeEventListener('visibilitychange', onVisible);
+    });
   }, [biometricReady, lockEvent, promptBiometrics]);
 
   const submit = (data: z.infer<typeof unlockSchema>) => {

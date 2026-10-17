@@ -205,7 +205,9 @@ simulator through the dev browser bridge:
    replace `<container>/Library/Application Support/com.moonyfinance.mobile` with a copy of
    `/private/tmp/claude-501/-Users-filipkral-Programov-n--FinanceApp-Moony-tauri/9ca3991e-1cce-4f7a-ac67-202f50de16cc/scratchpad/demo-profile`
    (Alex Novák, password `demo1234`; biometrics off → decline the enrolment sheet with "Teď ne").
-2. `npm run dev -- --port 1430 --strictPort` in the background from this worktree; launch the app
+2. `env VITE_MOONY_SHELL=mobile npm run dev -- --port 1430 --strictPort` in the background from this
+   worktree (the dev bridge needs the shell variable, `src/lib/platform.ts:16`: a plain `npm run dev`
+   serves the desktop shell to both the pane and the simulator); launch the app
    (`xcrun simctl launch E3EF021E-F419-4E45-96E4-E305A5B1B326 com.moonyfinance.mobile`); open
    `http://localhost:1430` in the browser pane (`preview_start` with `url:`, never `name:`),
    `resize_window` 390×844. Never `xcrun simctl … booted` (another session drives the iPhone 17).
@@ -218,3 +220,61 @@ simulator through the dev browser bridge:
    masked device screenshots committed as `docs/screenshots/mobile/finance-21-hidden-*.png`
    (`docs(mobile): hide-amounts verification screenshots`).
 5. Stop Vite afterwards (`pkill -f "vite --port 1430"`).
+
+## As built / rulings (2026-10-17)
+
+Rulings the controller took while executing this plan (spec §8.4 and §4 principle 7 are the authority;
+each line says what was decided, why, and what it costs if wrong):
+
+1. Phase 1's string-typed `Hero.formatValue` and `StatItem.value` win in the merge and the Finance call
+   sites conform — the mask and the text fit depend on strings. Costs a few call-site edits if wrong.
+2. The Finance side's stack `useSheetHistory` stays as it is — it was the only change since the base,
+   reviewed on its own branch, and is the newer behaviour. Costs nothing if wrong.
+3. The delete confirmation's amount masks too — the eye covers every amount in the app, and the date and
+   counterparty still identify the row. Costs one call site (`use-delete-description.ts`) if the owner
+   prefers it visible.
+4. Finance's view state (sort, show paid-off, show ended, trend period) is remembered in memory for the
+   app session, not persisted — the hand-over names the route remount as the defect, and a relaunch
+   starting fresh is the conservative reading. Costs a storage swap in `view-memory.ts` if the owner
+   wants it across launches.
+5. Task 4 (gates and simulator) is run by the controller, not an implementer — it needs the session's
+   browser pane and simulator tools and produces screenshots only; the final review covers the code.
+   Costs nothing in review coverage.
+6. The SDD workspace is not deleted at the end — the parent session's brief reads the hand-over note at
+   `.superpowers/sdd/<plan>/handover.md`, and that overrides the skill's clean-up step. Costs nothing.
+7. A key added by both sides of `mobile.json` with different values keeps the feat/mobile value —
+   feat/mobile is the integration target and the reviewed shell. Costs one string if wrong; no key was
+   actually changed by both sides, so the rule was never applied.
+8. The acceptance "each key in exactly one hook file" was too strict and is relaxed: `use-account-detail.ts:64`
+   queries one account's `['import-batches', id]` with different options (`enabled`, no `staleTime: 0`),
+   and the hand-over named only the `use-upkeep` / `use-finance` duplication, so it stays as it is. Costs
+   one more query site to touch if the owner wants a single hook for all three.
+9. The view memory surviving a background lock and unlock is intended — it is module state and the same
+   app session. Costs nothing.
+10. The four Minor findings of the whole-branch review are fixed in one wave (this section, the README §13
+    hide-amounts rule, the NaN case of `signed-amount.test.ts`, two misleading comments) and the As built
+    section is the in-repo record of the rulings above. Costs one more small commit.
+
+Deviations from the plan text, as built:
+
+- Task 1, no separate `fix(merge)` commit: the merge `d387a8c4` needed no semantic fix (typecheck was
+  clean).
+- Task 1, `useBackgroundLock` lives in `src/mobile/MobileApp.tsx`, not in `MobileShell.tsx` as the task
+  text assumed.
+- Task 1, README §13 on feat/mobile had no hide-amounts, background-lock or biometrics rows to keep, so
+  nothing was lost in the merge, and no locale key was changed by both sides.
+- Task 2, the "+ / −" composition became `src/mobile/lib/signed-amount.ts` (`signedAmountText`), shared by
+  `LedgerRow` and `TransactionSheet`; `FlowStrip`, `TrendCard`, `Hero` and `StatRow` are unchanged — their
+  callers pass masked text.
+- Task 3, `use-account-detail.ts:64` keeps its own single-account `['import-batches', id]` query (ruling 8).
+- Task 3, the view memory is module state and survives a background lock and unlock (ruling 9).
+- Task 4, the dev bridge needs `VITE_MOONY_SHELL=mobile` (`src/lib/platform.ts:16`): a plain `npm run dev`
+  serves the desktop shell to both the pane and the simulator, so step 2 now reads
+  `env VITE_MOONY_SHELL=mobile npm run dev -- --port 1430 --strictPort`.
+- Task 4, the iOS Simulator tool (`control`) drove the iPhone 17 Pro directly without a permission gate,
+  so device screenshots exist beside the pane ones.
+- Task 4, the demo profile's UI language is English; a balance of 350 000 was recorded on Spořicí účet in
+  the simulator's copy of the demo profile to exercise the balance-history sheet.
+- Task 4, the simulator's replaced profile was moved to the session scratchpad, not deleted.
+- Task 4, not verified: Android, 360 dp, ja and zh strings, swipe gestures, the Czech UI, the import-history
+  sheet (empty on the demo profile).

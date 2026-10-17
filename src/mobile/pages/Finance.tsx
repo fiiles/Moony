@@ -104,8 +104,8 @@ export default function Finance() {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
-  // Money as text (the hero and the trend callout size themselves to it, the change line is
-  // interpolated); masked while amounts are hidden
+  // Money as text (the hero sizes itself to the shown text; the trend callout, the change line and
+  // the rows only render it); masked while amounts are hidden
   const moneyText = useMoneyText();
   const finance = useFinance();
   const { accounts, totals, loans, insurance, mainCurrency, fxReady, isLoading } = finance;

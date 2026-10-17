@@ -28,9 +28,15 @@ describe('signedAmountText', () => {
     );
   });
 
-  it('formats an amount that cannot be read as zero', () => {
-    expect(signedAmountText(money, { type: 'credit', amount: '', currency: 'CZK' })).toBe(
+  it('formats an amount that is not a number as zero, not "NaN"', () => {
+    expect(signedAmountText(money, { type: 'credit', amount: 'abc', currency: 'CZK' })).toBe(
       '+ 0 CZK'
+    );
+  });
+
+  it('keeps the sign on a zero amount', () => {
+    expect(signedAmountText(money, { type: 'debit', amount: '0', currency: 'CZK' })).toBe(
+      '− 0 CZK'
     );
   });
 });

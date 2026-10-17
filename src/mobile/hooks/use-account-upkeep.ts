@@ -4,12 +4,10 @@ import { bankAccountsApi, cashflowApi } from '@/lib/tauri-api';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { newestImportPerAccount } from '@/mobile/lib/last-import';
 
-/**
- * The two queries the phone reads about the state of the accounts, for Údržba (`useUpkeep`) and
- * Finance (`useFinance`) alike. Their keys are the desktop's (Bankovní účty, the account detail),
- * so each is one cache entry shared by all of them and every money write refreshes it
- * (`refreshMoneyFlows`). Change a key here and the desktop must change with it.
- */
+// The two queries the phone reads about the state of the accounts, for Údržba (`useUpkeep`) and
+// Finance (`useFinance`) alike. Their keys are the desktop's (Bankovní účty, the account detail),
+// so each is one cache entry shared by all of them and every money write refreshes it
+// (`refreshMoneyFlows`). Change a key here and the desktop must change with it.
 
 /**
  * Each account's newest import, in unix seconds (`null`: never imported, or not answered yet).

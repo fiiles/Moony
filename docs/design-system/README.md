@@ -490,6 +490,20 @@ toast.
 | Placeholder sheet | `.m-sheet` | `mobile/sheets/PlaceholderSheet.tsx` | A sheet that is not built yet: its title, one sentence saying when it comes, Zavřít as the footer's one button. |
 | Toast | (sonner, `components/ui/toaster.tsx`) | `mobile/MobileApp.tsx` | At the bottom, centred between the 16 pt gutters and 12 pt above the tab bar and the bottom safe area (`--m-tabbar-h` + `--safe-bottom`), 2.6 s, so "Vrátit" is never under the bar. Past-tense verb, as on the desktop. |
 
+**Hide amounts** (spec §4 principle 7, D6). The eye on Přehled covers every amount in the app, so
+phone code never calls `fmt.money` itself; `src/mobile/components/Money.tsx` documents the four routes
+to the one switch, by what the place needs: `<Money>` where an element will do, `useMoneyText()` where a
+plain string is needed (and as the formatter handed to shared hooks), `ConvertedMoney` with its `format`
+prop (it keeps the missing-rate marker), and `maskMoney` / `MASK` for text that `fmt.money` did not build
+(the chart's value axis, the record-balances hint). `Hero.formatValue` and `StatItem.value` are strings
+for that reason: they size themselves to the shown text, so while amounts are hidden the fit follows the
+mask. **The sign stays and the number is never compact:** "+ •••• Kč", "− •••• Kč" (the ledger row and
+the transaction sheet compose them with `signedAmountText`), and `useMoneyText` drops `compact` while
+hidden, so "6,78 mil. Kč" masks to "•••• Kč" and never leaks "mil.". Inputs are never masked; counts,
+percents and dates stay visible. `src/mobile/pages/Overview.tsx` is the reference, and the check for a
+new screen is that `grep -rn "fmt.money(" src/mobile --include='*.ts' --include='*.tsx'` lists only
+`src/mobile/hooks/use-money-text.ts`.
+
 **The row rule.** One row pattern replaces tables on the phone: accounts, positions, bonds, properties,
 loans, policies, transactions, categories, watchlist and agenda rows. A 36 pt chip (logo, initials or an
 icon in a tinted circle), then two lines: the title 15 with the trailing value, the sub 12 with the

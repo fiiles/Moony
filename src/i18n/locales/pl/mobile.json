@@ -113,7 +113,7 @@
       "count_few": "{{count}} emisje",
       "count_many": "{{count}} emisji",
       "count_other": "{{count}} emisji",
-      "nearest": "najbliższy wykup {{month}}",
+      "nearest": "najbliższy wykup {{month, lower}}",
       "coupon": "kupon {{amount}} / rok"
     },
     "otherAssets": {
@@ -142,14 +142,14 @@
       "property": "Nieruchomość",
       "asset": "Aktywo"
     },
-    "noRate": "brak kursu dla {{currency}}",
+    "noRate": "brak kursu wymiany dla {{currency}}",
     "stocks": {
       "back": "Akcje",
       "pricesAt": "ceny {{time}}",
       "pricesOn": "ceny {{date}}",
       "invested": "zainwestowano {{amount}}",
       "dividendsYear": "Dywidendy / rok",
-      "yieldNote": "stopa {{percent}}",
+      "yieldNote": "stopa dywidendy {{percent}}",
       "twrYtd": "Zwrot w tym roku",
       "twrNote": "TWR · MWR {{mwr}}",
       "twrNoHistory": "jeszcze brak historii",

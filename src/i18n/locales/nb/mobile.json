@@ -101,7 +101,7 @@
     "bonds": {
       "count_one": "{{count}} emisjon",
       "count_other": "{{count}} emisjoner",
-      "nearest": "nærmeste forfall {{month}}",
+      "nearest": "nærmeste forfall {{month, lower}}",
       "coupon": "kupong {{amount}} / år"
     },
     "otherAssets": {
@@ -128,7 +128,7 @@
       "property": "Eiendom",
       "asset": "Eiendel"
     },
-    "noRate": "ingen kurs for {{currency}}",
+    "noRate": "ingen valutakurs for {{currency}}",
     "stocks": {
       "back": "Aksjer",
       "pricesAt": "kurser {{time}}",
@@ -177,7 +177,7 @@
         "menu": "Transaksjonsmeny"
       },
       "follow": "Følg",
-      "following": "Følges",
+      "following": "Følger",
       "followed": "Lagt til i følgelisten",
       "range52": "52-ukers spenn",
       "renamed": "Navn lagret"

@@ -107,7 +107,7 @@
       "count_one": "{{count}} emissione",
       "count_many": "{{count}} emissioni",
       "count_other": "{{count}} emissioni",
-      "nearest": "prossima scadenza {{month}}",
+      "nearest": "prossima scadenza {{month, lower}}",
       "coupon": "cedola {{amount}} / anno"
     },
     "otherAssets": {
@@ -117,8 +117,8 @@
       "valuedOn": "valutato il {{date}}"
     },
     "realEstate": {
-      "personal": "personale",
-      "investment": "d'investimento",
+      "personal": "uso personale",
+      "investment": "investimento",
       "rent": "affitto {{amount}} / mese",
       "revaluedOn": "{{date}}"
     },
@@ -135,7 +135,7 @@
       "property": "Immobile",
       "asset": "Bene"
     },
-    "noRate": "nessun tasso per {{currency}}",
+    "noRate": "nessun tasso di cambio per {{currency}}",
     "stocks": {
       "back": "Azioni",
       "pricesAt": "prezzi {{time}}",
@@ -183,7 +183,7 @@
         "showAll_one": "Mostra tutte ({{count}})",
         "showAll_many": "Mostra tutte ({{count}})",
         "showAll_other": "Mostra tutte ({{count}})",
-        "menu": "Menu dell'operazione"
+        "menu": "Menu del movimento"
       },
       "follow": "Segui",
       "following": "Seguita",

@@ -107,7 +107,7 @@
       "count_one": "{{count}} emisión",
       "count_many": "{{count}} emisiones",
       "count_other": "{{count}} emisiones",
-      "nearest": "próximo vencimiento {{month}}",
+      "nearest": "próximo vencimiento {{month, lower}}",
       "coupon": "cupón {{amount}} / año"
     },
     "otherAssets": {

@@ -121,7 +121,7 @@
       "property": "物件",
       "asset": "資産"
     },
-    "noRate": "{{currency}}のレートなし",
+    "noRate": "{{currency}}の為替レートなし",
     "stocks": {
       "back": "株式",
       "pricesAt": "価格 {{time}}",

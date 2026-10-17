@@ -101,7 +101,7 @@
     "bonds": {
       "count_one": "{{count}} emission",
       "count_other": "{{count}} emissioner",
-      "nearest": "närmaste förfall {{month}}",
+      "nearest": "närmaste förfall {{month, lower}}",
       "coupon": "kupong {{amount}} / år"
     },
     "otherAssets": {
@@ -128,7 +128,7 @@
       "property": "Fastighet",
       "asset": "Tillgång"
     },
-    "noRate": "ingen kurs för {{currency}}",
+    "noRate": "ingen växelkurs för {{currency}}",
     "stocks": {
       "back": "Aktier",
       "pricesAt": "kurser {{time}}",

@@ -128,7 +128,7 @@
       "property": "Immobilie",
       "asset": "Vermögenswert"
     },
-    "noRate": "kein Kurs für {{currency}}",
+    "noRate": "kein Wechselkurs für {{currency}}",
     "stocks": {
       "back": "Aktien",
       "pricesAt": "Kurse {{time}}",

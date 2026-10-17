@@ -5,7 +5,14 @@ import type {
   CashflowMonth,
   CategorySpendingSummary,
 } from '@shared/schema';
-import { barsFor, budgetCounts, categoryRows, savingsRate } from './cashflow-rows';
+import {
+  barsFor,
+  budgetCounts,
+  categoryRows,
+  categoryTitle,
+  savingsRate,
+  UNCATEGORIZED,
+} from './cashflow-rows';
 
 function group(patch: Partial<CashflowGroup> & Pick<CashflowGroup, 'key'>): CashflowGroup {
   return { name: '', flowKind: 'expense', amount: '0', count: 0, ...patch };
@@ -231,5 +238,36 @@ describe('savingsRate', () => {
   it('is null without income', () => {
     expect(savingsRate(0, -5)).toBeNull();
     expect(savingsRate(-10, 5)).toBeNull();
+  });
+});
+
+describe('categoryTitle', () => {
+  const labels = {
+    categoryName: (category: { id: string; name: string; isSystem?: boolean }) =>
+      `${category.isSystem ? 'system' : 'custom'}:${category.name}`,
+    uncategorized: 'Bez kategorie',
+    uncategorizedTransfers: 'Převody bez kategorie',
+  };
+
+  it('titles the uncategorized group by its flow', () => {
+    expect(categoryTitle(UNCATEGORIZED, 'expense', null, '', labels)).toBe('Bez kategorie');
+    expect(categoryTitle(UNCATEGORIZED, 'income', null, '', labels)).toBe('Bez kategorie');
+    expect(categoryTitle(UNCATEGORIZED, 'transfer', null, '', labels)).toBe(
+      'Převody bez kategorie'
+    );
+  });
+
+  it('names a known category as the category itself', () => {
+    const category = { id: 'cat_groceries', name: 'Groceries', isSystem: false };
+    expect(categoryTitle('cat_groceries', 'expense', category, 'Stored', labels)).toBe(
+      'custom:Groceries'
+    );
+  });
+
+  it('names an unknown category by the stored name, a system one by its cat_ id', () => {
+    expect(categoryTitle('cat_travel', 'expense', undefined, 'Travel', labels)).toBe(
+      'system:Travel'
+    );
+    expect(categoryTitle('1b2c', 'expense', null, 'Hobby', labels)).toBe('custom:Hobby');
   });
 });

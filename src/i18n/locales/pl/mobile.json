@@ -61,7 +61,12 @@
     "accounts": {
       "title": "Konta w raporcie",
       "done": "Gotowe"
-    }
+    },
+    "picker": {
+      "title": "Kategoria",
+      "change": "Zmień kategorię"
+    },
+    "showMore": "Pokaż kolejne {{count}}"
   },
   "upkeep": {
     "title": "Aktualizacja danych",

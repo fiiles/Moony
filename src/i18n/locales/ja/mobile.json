@@ -55,7 +55,12 @@
     "accounts": {
       "title": "レポートの口座",
       "done": "完了"
-    }
+    },
+    "picker": {
+      "title": "カテゴリ",
+      "change": "カテゴリを変更"
+    },
+    "showMore": "さらに{{count}}件を表示"
   },
   "upkeep": {
     "title": "データの更新",

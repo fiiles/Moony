@@ -59,7 +59,12 @@
     "accounts": {
       "title": "Cuentas en el informe",
       "done": "Listo"
-    }
+    },
+    "picker": {
+      "title": "Categoría",
+      "change": "Cambiar categoría"
+    },
+    "showMore": "Mostrar {{count}} más"
   },
   "upkeep": {
     "title": "Mantenimiento de datos",

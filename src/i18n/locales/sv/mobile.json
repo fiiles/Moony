@@ -57,7 +57,12 @@
     "accounts": {
       "title": "Konton i rapporten",
       "done": "Klar"
-    }
+    },
+    "picker": {
+      "title": "Kategori",
+      "change": "Ändra kategori"
+    },
+    "showMore": "Visa {{count}} till"
   },
   "upkeep": {
     "title": "Dataunderhåll",

@@ -59,7 +59,12 @@
     "accounts": {
       "title": "Conti nel rapporto",
       "done": "Fatto"
-    }
+    },
+    "picker": {
+      "title": "Categoria",
+      "change": "Cambia categoria"
+    },
+    "showMore": "Mostra altri {{count}}"
   },
   "upkeep": {
     "title": "Aggiornamento dati",

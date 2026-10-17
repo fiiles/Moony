@@ -57,7 +57,12 @@
     "accounts": {
       "title": "Konten im Bericht",
       "done": "Fertig"
-    }
+    },
+    "picker": {
+      "title": "Kategorie",
+      "change": "Kategorie ändern"
+    },
+    "showMore": "{{count}} weitere anzeigen"
   },
   "upkeep": {
     "title": "Datenpflege",

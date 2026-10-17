@@ -59,7 +59,12 @@
     "accounts": {
       "title": "Účty v přehledu",
       "done": "Hotovo"
-    }
+    },
+    "picker": {
+      "title": "Kategorie",
+      "change": "Změnit kategorii"
+    },
+    "showMore": "Zobrazit dalších {{count}}"
   },
   "upkeep": {
     "title": "Údržba",

@@ -41,6 +41,7 @@ import {
   barsFor,
   budgetCounts,
   categoryRows,
+  categoryTitle,
   savingsRate,
   type CategoryRowModel,
 } from '@/mobile/lib/cashflow-rows';
@@ -203,6 +204,12 @@ function ReportBody({ actuals, report, state, onSelectMonth, search }: ReportBod
   const incomeRows = useMemo(() => categoryRows(actuals.incomeCategories), [actuals]);
   const transferRows = useMemo(() => categoryRows(actuals.transfers), [actuals]);
 
+  const titleLabels = {
+    categoryName,
+    uncategorized: tr('actuals.uncategorized'),
+    uncategorizedTransfers: tr('actuals.uncategorizedTransfers'),
+  };
+
   const totalIncome = amount(actuals.totalIncome);
   const totalExpenses = amount(actuals.totalExpenses);
   const net = amount(actuals.netBalance);
@@ -249,19 +256,7 @@ function ReportBody({ actuals, report, state, onSelectMonth, search }: ReportBod
     ) : (
       list.map((row) => {
         const category = categoryById.get(row.key) ?? null;
-        const named = category ?? {
-          id: row.key,
-          name: row.name,
-          isSystem: row.key.startsWith('cat_'),
-        };
-        const title =
-          row.key === 'uncategorized'
-            ? tr(
-                row.flowKind === 'transfer'
-                  ? 'actuals.uncategorizedTransfers'
-                  : 'actuals.uncategorized'
-              )
-            : categoryName(named);
+        const title = categoryTitle(row.key, row.flowKind, category, row.name, titleLabels);
         return (
           <CategoryRow
             key={row.key}

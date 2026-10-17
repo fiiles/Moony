@@ -4,6 +4,7 @@ import type {
   CategorySpendingSummary,
   FlowKind,
 } from '@shared/schema';
+import type { NamedCategory } from '@/utils/category-name';
 import { absoluteMovementShares } from '@/utils/money-flows';
 import { summarizeBudgetStatus } from '@/utils/report-currencies';
 
@@ -37,6 +38,35 @@ export interface CategoryRowModel {
 }
 
 const NO_TARGET = '';
+
+/** The `key` of the group of payments that have no category. */
+export const UNCATEGORIZED = 'uncategorized';
+
+/** The words a category line is titled with (`useCategoryName()` and the two translated labels). */
+export interface CategoryTitleLabels {
+  categoryName: (category: NamedCategory) => string;
+  uncategorized: string;
+  uncategorizedTransfers: string;
+}
+
+/**
+ * The title of a report line, for its row and for the drilldown behind it: `uncategorized` is
+ * "Bez kategorie" (the transfers' own wording for transfers), any other key a category, named as
+ * the app names categories (`category`, when it is known; else the stored `name` of the report's
+ * group, a system category recognised by its `cat_` id).
+ */
+export function categoryTitle(
+  key: string,
+  flowKind: FlowKind,
+  category: NamedCategory | null | undefined,
+  name: string,
+  labels: CategoryTitleLabels
+): string {
+  if (key === UNCATEGORIZED) {
+    return flowKind === 'transfer' ? labels.uncategorizedTransfers : labels.uncategorized;
+  }
+  return labels.categoryName(category ?? { id: key, name, isSystem: key.startsWith('cat_') });
+}
 
 function rowLimit(summary: CategorySpendingSummary | undefined): RowLimit | null {
   if (

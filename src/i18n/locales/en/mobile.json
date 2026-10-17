@@ -57,7 +57,12 @@
     "accounts": {
       "title": "Accounts in the report",
       "done": "Done"
-    }
+    },
+    "picker": {
+      "title": "Category",
+      "change": "Change category"
+    },
+    "showMore": "Show {{count}} more"
   },
   "upkeep": {
     "title": "Data upkeep",

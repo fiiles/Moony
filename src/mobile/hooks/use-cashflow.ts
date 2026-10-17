@@ -29,6 +29,27 @@ export function useCashflowState(): [CashflowState, (next: CashflowState) => voi
   return [state, setState];
 }
 
+/**
+ * The range of the selected period and its label ("Říjen 2026", "Q4 2026" or "2026"): all a screen
+ * that only names the period needs, without fetching the report (the category drilldown).
+ */
+export function usePeriodLabel(state: Pick<CashflowState, 'timeframe' | 'offset'>): {
+  range: UtcPeriodRange;
+  periodLabel: string;
+} {
+  const fmt = useFormat();
+  const { timeframe, offset } = state;
+  const range = useMemo(() => getUtcPeriodRange(timeframe, offset), [timeframe, offset]);
+  const periodLabel = useMemo(() => {
+    if (timeframe === 'monthly') return fmt.month(range.startDate);
+    if (timeframe === 'quarterly') {
+      return `Q${Math.floor(range.startDate.getUTCMonth() / 3) + 1} ${range.startDate.getUTCFullYear()}`;
+    }
+    return String(range.startDate.getUTCFullYear());
+  }, [timeframe, range, fmt]);
+  return { range, periodLabel };
+}
+
 export interface CashflowReport {
   range: UtcPeriodRange;
   /** "Říjen 2026", "Q4 2026" or "2026". */
@@ -59,9 +80,8 @@ const NO_BUDGETS: ReadonlyMap<string, CategorySpendingSummary> = new Map();
  */
 export function useCashflowReport(state: CashflowState): CashflowReport {
   const { currencyCode, fxRevision } = useCurrency();
-  const fmt = useFormat();
-  const { timeframe, offset, accountIds } = state;
-  const range = useMemo(() => getUtcPeriodRange(timeframe, offset), [timeframe, offset]);
+  const { timeframe, accountIds } = state;
+  const { range, periodLabel } = usePeriodLabel(state);
 
   const actualsQuery = useQuery<CashflowActuals>({
     queryKey: [
@@ -103,14 +123,6 @@ export function useCashflowReport(state: CashflowState): CashflowReport {
         : NO_BUDGETS,
     [budgeting]
   );
-
-  const periodLabel = useMemo(() => {
-    if (timeframe === 'monthly') return fmt.month(range.startDate);
-    if (timeframe === 'quarterly') {
-      return `Q${Math.floor(range.startDate.getUTCMonth() / 3) + 1} ${range.startDate.getUTCFullYear()}`;
-    }
-    return String(range.startDate.getUTCFullYear());
-  }, [timeframe, range, fmt]);
 
   const { refetch: refetchActuals } = actualsQuery;
   const { refetch: refetchBudgeting } = budgetingQuery;

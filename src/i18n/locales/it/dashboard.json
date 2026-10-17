@@ -80,7 +80,7 @@
   },
   "gettingStarted": {
     "title": "Primi passi",
-    "subtitle": "Quattro passaggi che rendono Moony davvero utile. Questa scheda scompare quando hai finito.",
+    "subtitle": "Pochi passaggi dopo i quali Moony inizia ad avere senso. Quelli facoltativi si possono saltare; la scheda sparisce quando hai finito.",
     "importStatement": "Importa un estratto conto",
     "importStatementHint": "Aggiungi un conto e importa un estratto conto della tua banca.",
     "addInvestment": "Aggiungi un investimento",
@@ -90,7 +90,8 @@
     "makeBackup": "Fai un backup",
     "makeBackupHint": "Un unico file con tutto, in Impostazioni → Dati e backup.",
     "dismiss": "Chiudi",
-    "done": "Fatto"
+    "done": "Fatto",
+    "optional": "Facoltativo"
   },
   "welcome": "Bentornato, {{name}}",
   "overview": "Ecco la tua panoramica finanziaria di oggi.",

@@ -283,7 +283,7 @@
     "documents": "Documentos"
   },
   "documents": {
-    "subtitle": "Guardados en la carpeta cifrada de la app",
+    "subtitle": "Guardados cifrados en Moony",
     "columns": {
       "document": "Documento",
       "type": "Tipo",
@@ -317,9 +317,5 @@
       "title": "Eliminar documento",
       "description": "¿Eliminar «{{name}}»? El archivo se eliminará de forma permanente."
     }
-  },
-  "mcp": {
-    "tipSummary": "¿No te apetece escribirlo todo? El asistente de IA puede añadir pólizas a partir de un contrato.",
-    "bannerBody": "Inicia el servidor MCP, sube a Claude el contrato, la oferta o el resumen de la póliza y pídele que añada la póliza por ti."
   }
 }

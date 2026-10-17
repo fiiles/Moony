@@ -500,7 +500,8 @@
     "realEstate": "¿No te apetece teclearlo todo? El asistente de IA puede añadir un inmueble a partir de sus documentos.",
     "otherAssets": "¿No te apetece teclearlo todo? El asistente de IA puede añadir activos a partir de una factura o una lista.",
     "watchlist": "El asistente de IA puede seguir acciones por ti: solo dile cuáles.",
-    "body": "Inicia el servidor MCP, dale a Claude el documento o describe lo que tienes y pídele que lo añada por ti. Te muestra lo que ha leído y no guarda nada hasta que lo confirmes.",
+    "insurance": "¿No te apetece escribirlo todo? El asistente de IA puede añadir pólizas a partir de un contrato.",
+    "body": "Inicie el servidor MCP, conéctelo a una herramienta de IA compatible con MCP, dele el documento o describa lo que tiene y pídale que lo añada por usted. Revise lo que ha leído antes de dejar que guarde nada.",
     "setupLink": "Configurar servidor MCP"
   },
   "a11y": {
@@ -555,7 +556,8 @@
       "failed": "No se pudo mostrar la vista previa. Puede guardar el documento o abrirlo en otra aplicación.",
       "saveCopy": "Guardar una copia…",
       "openElsewhere": "Abrir en otra aplicación",
-      "saved": "Copia guardada"
+      "saved": "Copia guardada",
+      "savedDescription": "La copia guardada no está cifrada."
     },
     "openElsewhere": {
       "title": "¿Abrir fuera de Moony?",

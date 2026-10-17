@@ -6,7 +6,6 @@ import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useInsurance, useInsuranceMutations } from '@/hooks/use-insurance';
 import type { InsuranceRow } from '@/utils/insurance';
-import { MCP_INSURANCE_TIP_LEGACY_KEY } from '@/utils/tips';
 import { useShellPage } from '@/components/shell/shell-context';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
@@ -104,12 +103,7 @@ export default function Insurance() {
                 {t('addPolicy')}
               </Button>
               {/* the AI route is a quiet secondary line here, not a banner above the list */}
-              <McpTip
-                domain="insurance"
-                legacyStorageKey={MCP_INSURANCE_TIP_LEGACY_KEY}
-                summary={t('mcp.tipSummary')}
-                body={t('mcp.bannerBody')}
-              />
+              <McpTip domain="insurance" />
             </div>
           }
         />

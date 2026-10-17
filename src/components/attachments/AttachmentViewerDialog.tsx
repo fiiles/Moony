@@ -61,7 +61,9 @@ export function AttachmentViewerDialog({
       const dest = await save({ defaultPath: defaultFileName(document.name, document.extension) });
       if (!dest) return;
       await attachmentsApi.export(kind, document.id, dest);
-      toast(t('attachments.viewer.saved'));
+      toast(t('attachments.viewer.saved'), {
+        description: t('attachments.viewer.savedDescription'),
+      });
     } catch (error) {
       toast.error(t('status.error'), {
         description: translateApiError(error instanceof Error ? error : String(error), t),

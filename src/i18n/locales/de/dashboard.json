@@ -80,7 +80,7 @@
   },
   "gettingStarted": {
     "title": "Erste Schritte",
-    "subtitle": "Vier Schritte, mit denen Moony nützlich wird. Diese Karte verschwindet, sobald Sie fertig sind.",
+    "subtitle": "Ein paar Schritte, nach denen Moony richtig nützlich wird. Optionale können Sie überspringen; die Karte verschwindet, sobald Sie fertig sind.",
     "importStatement": "Kontoauszug importieren",
     "importStatementHint": "Konto hinzufügen und einen Kontoauszug Ihrer Bank importieren.",
     "addInvestment": "Geldanlage hinzufügen",
@@ -90,7 +90,8 @@
     "makeBackup": "Sicherung erstellen",
     "makeBackupHint": "Eine Datei mit allem, unter Einstellungen → Daten und Sicherungen.",
     "dismiss": "Ausblenden",
-    "done": "Erledigt"
+    "done": "Erledigt",
+    "optional": "Optional"
   },
   "welcome": "Willkommen zurück, {{name}}",
   "overview": "Hier ist Ihre finanzielle Übersicht für heute.",

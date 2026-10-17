@@ -38,6 +38,7 @@ import { PasswordInput } from '@/components/auth/PasswordInput';
 import { LanguageSelect } from '@/components/common/LanguageSelect';
 import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
 import { RecoverySteps } from '@/components/auth/RecoverySteps';
+import { RestoreBackup } from '@/components/common/RestoreBackup';
 
 type Panel = 'unlock' | 'recover' | 'newKey';
 
@@ -260,6 +261,22 @@ export default function AuthPage() {
                 {t('login.forgotPassword')}
               </button>
             </div>
+            <RestoreBackup>
+              {(pick, busy) => (
+                <p className="m-0 mt-3 text-micro font-500 text-ink-4">
+                  {t('login.restoreLead')}{' '}
+                  <button
+                    type="button"
+                    onClick={pick}
+                    disabled={unlockPending || busy}
+                    className="font-600 text-ink-3 underline-offset-[3px] hover:text-ink hover:underline disabled:pointer-events-none disabled:opacity-50"
+                    data-testid="lock-restore-backup"
+                  >
+                    {t('login.restoreBackup')}
+                  </button>
+                </p>
+              )}
+            </RestoreBackup>
           </>
         )}
 

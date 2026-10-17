@@ -80,7 +80,7 @@
   },
   "gettingStarted": {
     "title": "はじめに",
-    "subtitle": "Moony を活用するための4つのステップです。完了するとこのカードは消えます。",
+    "subtitle": "Moony を活用するためのいくつかのステップです。任意の項目は省略できます。完了するとカードは消えます。",
     "importStatement": "銀行明細をインポート",
     "importStatementHint": "口座を追加して、銀行の明細をインポートします。",
     "addInvestment": "投資を追加",
@@ -90,7 +90,8 @@
     "makeBackup": "バックアップを作成",
     "makeBackupHint": "すべてを1つのファイルに。設定 → データとバックアップから。",
     "dismiss": "閉じる",
-    "done": "完了"
+    "done": "完了",
+    "optional": "任意"
   },
   "welcome": "おかえりなさい、{{name}}さん",
   "overview": "本日の資産概要です。",

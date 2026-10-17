@@ -500,7 +500,8 @@
     "realEstate": "Nechce se vám vše přepisovat? AI asistent umí přidat nemovitost z jejích dokumentů.",
     "otherAssets": "Nechce se vám vše přepisovat? AI asistent umí přidat majetek z faktury nebo seznamu.",
     "watchlist": "AI asistent umí akcie sledovat za vás — stačí mu říct které.",
-    "body": "Spusťte MCP server, dejte Claudovi dokument nebo popište, co máte, a požádejte ho, ať to přidá za vás. Ukáže vám, co přečetl, a nic nezapíše, dokud to nepotvrdíte.",
+    "insurance": "Nechce se vám vše přepisovat? AI asistent umí pojistky přidat ze smlouvy.",
+    "body": "Spusťte MCP server, připojte ho ke svému AI nástroji s podporou MCP, předejte mu dokument nebo popište, co máte, a požádejte ho, ať to přidá za vás. Než ho necháte cokoli zapsat, zkontrolujte, co přečetl.",
     "setupLink": "Nastavit MCP server"
   },
   "a11y": {
@@ -555,7 +556,8 @@
       "failed": "Náhled se nepodařilo zobrazit. Dokument můžete uložit, nebo otevřít v jiné aplikaci.",
       "saveCopy": "Uložit kopii…",
       "openElsewhere": "Otevřít v jiné aplikaci",
-      "saved": "Kopie uložena"
+      "saved": "Kopie uložena",
+      "savedDescription": "Uložená kopie není šifrovaná."
     },
     "openElsewhere": {
       "title": "Otevřít mimo Moony?",

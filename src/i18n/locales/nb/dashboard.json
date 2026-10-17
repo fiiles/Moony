@@ -80,7 +80,7 @@
   },
   "gettingStarted": {
     "title": "Kom i gang",
-    "subtitle": "Fire trinn som gjør Moony nyttig. Dette kortet forsvinner når du er ferdig.",
+    "subtitle": "Noen få steg, så begynner Moony å gi mening. Valgfrie steg kan hoppes over; kortet forsvinner når du er ferdig.",
     "importStatement": "Importer en kontoutskrift",
     "importStatementHint": "Legg til en konto og importer en kontoutskrift fra banken din.",
     "addInvestment": "Legg til en investering",
@@ -90,7 +90,8 @@
     "makeBackup": "Ta en sikkerhetskopi",
     "makeBackupHint": "Én fil med alt, under Innstillinger → Data og sikkerhetskopier.",
     "dismiss": "Lukk",
-    "done": "Ferdig"
+    "done": "Ferdig",
+    "optional": "Valgfritt"
   },
   "welcome": "Velkommen tilbake, {{name}}",
   "overview": "Her er din økonomiske oversikt for i dag.",

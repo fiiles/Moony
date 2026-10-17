@@ -276,7 +276,7 @@
     "documents": "Dokumente"
   },
   "documents": {
-    "subtitle": "Gespeichert im verschlüsselten Ordner der App",
+    "subtitle": "Verschlüsselt in Moony gespeichert",
     "columns": {
       "document": "Dokument",
       "type": "Art",
@@ -310,9 +310,5 @@
       "title": "Dokument löschen",
       "description": "„{{name}}“ löschen? Die Datei wird dauerhaft entfernt."
     }
-  },
-  "mcp": {
-    "tipSummary": "Keine Lust, alles einzutippen? Der KI-Assistent kann Policen aus einem Vertrag hinzufügen.",
-    "bannerBody": "Starten Sie den MCP-Server, laden Sie den Vertrag, das Angebot oder die Policenübersicht zu Claude hoch und bitten Sie ihn, die Police für Sie anzulegen."
   }
 }

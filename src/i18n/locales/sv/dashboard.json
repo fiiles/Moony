@@ -80,7 +80,7 @@
   },
   "gettingStarted": {
     "title": "Kom igång",
-    "subtitle": "Fyra steg som gör Moony användbart. Det här kortet försvinner när du är klar.",
+    "subtitle": "Några få steg, sedan börjar Moony göra nytta. Valfria steg kan hoppas över; kortet försvinner när du är klar.",
     "importStatement": "Importera ett kontoutdrag",
     "importStatementHint": "Lägg till ett konto och importera ett kontoutdrag från din bank.",
     "addInvestment": "Lägg till en investering",
@@ -90,7 +90,8 @@
     "makeBackup": "Gör en säkerhetskopia",
     "makeBackupHint": "En fil med allt, i Inställningar → Data och säkerhetskopior.",
     "dismiss": "Avfärda",
-    "done": "Klart"
+    "done": "Klart",
+    "optional": "Valfritt"
   },
   "welcome": "Välkommen tillbaka, {{name}}!",
   "overview": "Här är din ekonomiska översikt för idag.",

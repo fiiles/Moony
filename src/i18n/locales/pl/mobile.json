@@ -70,6 +70,10 @@
     "limitSheet": {
       "pick": "Wybierz kategorię, której wydatki chcesz pilnować."
     },
+    "budgets": {
+      "ended": "zakończony",
+      "averageNote": "⌀ z ostatnich 6 miesięcy"
+    },
     "showMore": "Pokaż kolejne {{count}}",
     "rowMenu": "Więcej akcji: {{title}}"
   },

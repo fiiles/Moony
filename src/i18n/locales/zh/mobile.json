@@ -64,6 +64,10 @@
     "limitSheet": {
       "pick": "请选择要控制支出的类别。"
     },
+    "budgets": {
+      "ended": "已结束",
+      "averageNote": "⌀ 近 6 个月"
+    },
     "showMore": "再显示 {{count}} 条",
     "rowMenu": "更多操作：{{title}}"
   },

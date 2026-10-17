@@ -212,6 +212,18 @@
     <p>Sheet nad obrazovkou: tab bar pod scrimem, držadlo, titulek, jedna věta, pole <code>.m-field</code> (štítek, 48 pt pole, měna uvnitř vpravo, placeholder je poslední zůstatek; druhé pole je vyplněné, třetí s chybou, čtvrté se zapnutým přepínačem ±) a patička na <code>well</code> s tlačítkem Zrušit vlevo a hlavní akcí vpravo. V aplikaci sheet zavírá klepnutí na scrim, Zrušit a Android zpět.</p>
     <div class="phones" id="sheets"></div>
   </section>
+
+  <section class="part">
+    <h2>Spravovat rozpočty</h2>
+    <p>Pushnutá stránka záložky Cashflow (navigační lišta se zpět a <code>+</code>, jedna věta, sekce Budgets): řádek rozpočtu má v hodnotě limit, v podřádku platnost a změny, které přijdou (<code>Ab Januar 2026 · Ab Dezember 2026: 9 500 Kč</code>; co se nevejde, skončí výpustkou), a pod hodnotou „Geplant“ u naplánovaného nebo „beendet“ u skončeného; skončený řádek je na 50 % (<code>.m-row--muted</code>). Pod tím „Ausgaben ohne Limit“ s průměrem za šest dokončených měsíců: řádek sám se neklepe, jeho jedinou akcí je malé tlačítko s 44 pt zásahovou plochou (<code>.m-row--act</code>). Dlouhý stisk řádku rozpočtu otevírá menu, přejetí doprava upravuje limit a doleva maže celý rozpočet (řádky se přejetím chovají jako na Přehledu).</p>
+    <div class="phones" id="budgets"></div>
+  </section>
+
+  <section class="part">
+    <h2>Limit-Sheet</h2>
+    <p>Formulář limitu (krok po výběru kategorie): řádek kategorie, pole <code>.m-field</code> s měsíčním limitem a nápovědou s průměrem, dvě měsíční pole vedle sebe (<code>.m-field-grid</code>; Do má textovou akci „Ohne Ende“), věta o tom, co konec znamená, box naplánovaných změn na <code>well</code> a po prvním klepnutí na uložení červený box s limity, které uložení nahradí; hlavní tlačítko pak říká „Ersetzen und speichern“. Sheet je <code>--full</code> (95 %).</p>
+    <div class="phones" id="limit"></div>
+  </section>
 </div>
 
 <!-- The tab-root frame, rendered at the three widths by the script below. -->
@@ -326,6 +338,59 @@
       <div class="m-rows" data-cat="transfers"></div>
     </main>
     <nav class="m-tabbar" data-active="cashflow"></nav>
+  </div>
+</template>
+
+<!-- Spravovat rozpočty (pushed on Cashflow), rendered at the three widths. -->
+<template id="budgets-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Cashflow</span></button></div>
+      <h1 class="m-nav__title">Budgets verwalten</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Budget hinzufügen" data-icon="plus"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-title-sub" style="margin-top: 10px">Monatliche Limits gelten für Ausgaben aller Konten und hängen nicht vom gewählten Zeitraum ab.</p>
+      <div class="m-sec"><h2 class="m-sec__t">Budgets</h2><span class="m-sec__n">4 Kategorien mit Limit</span></div>
+      <div class="m-rows" data-budgets="limits"></div>
+      <div class="m-sec"><h2 class="m-sec__t">Ausgaben ohne Limit</h2><span class="m-sec__n">⌀ der letzten 6 Monate</span></div>
+      <div class="m-rows" data-budgets="free"></div>
+    </main>
+    <nav class="m-tabbar" data-active="cashflow"></nav>
+  </div>
+</template>
+
+<!-- The limit sheet over the budgets page: the form step with the overwrite box shown. -->
+<template id="limit-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Cashflow</span></button></div>
+      <h1 class="m-nav__title">Budgets verwalten</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Budget hinzufügen" data-icon="plus"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-title-sub" style="margin-top: 10px">Monatliche Limits gelten für Ausgaben aller Konten und hängen nicht vom gewählten Zeitraum ab.</p>
+      <div class="m-sec"><h2 class="m-sec__t">Budgets</h2><span class="m-sec__n">4 Kategorien mit Limit</span></div>
+      <div class="m-rows" data-budgets="limits"></div>
+    </main>
+    <nav class="m-tabbar" data-active="cashflow"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Limit bearbeiten">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Limit bearbeiten</div><div class="m-sheet__s">Limit für Lebensmittel.</div></div>
+      <div class="m-sheet__body">
+        <div class="m-rows" style="margin-bottom: 12px"><div class="m-row m-row--single"><div class="m-row__chip m-row__chip--cat" style="--cat: var(--s2); background: color-mix(in srgb, var(--s2) 15%, transparent)" data-icon="shopping-cart" data-size="16"></div><div class="m-row__main"><div class="m-row__line"><span class="m-row__t">Lebensmittel</span></div></div></div></div>
+        <div class="m-field"><label class="m-field__l">Monatslimit</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" placeholder="0" value="9 800"><span class="m-field__u">Kč</span></div><p class="m-field__h">Beobachteter Monatsdurchschnitt: 10&nbsp;420 Kč aus 6 abgeschlossenen Monaten. Die Vollständigkeit der Kontoauszüge ist nicht nachgewiesen.</p></div>
+        <div class="m-field-grid">
+          <div class="m-field"><div class="m-field__lr"><label class="m-field__l">Gültig ab Monat</label></div><input class="m-field__i m-field__i--month" type="month" value="2026-10" aria-label="Gültig ab Monat"></div>
+          <div class="m-field"><div class="m-field__lr"><label class="m-field__l">Gültig bis Monat</label><button class="m-field__a" type="button">Ohne Ende</button></div><input class="m-field__i m-field__i--month" type="month" value="2026-12" aria-label="Gültig bis Monat"></div>
+        </div>
+        <p class="m-field__h">Der Endmonat zählt mit. Danach gilt wieder das Limit, das vorher galt.</p>
+        <div class="m-box"><p class="m-box__t">Geplante Änderungen</p><ul><li>Ab März 2027: 10&nbsp;000 Kč</li></ul></div>
+        <div class="m-box m-box--loss" role="alert"><p class="m-box__t">Das Speichern ersetzt diese Limits:</p><ul><li>Januar 2026 – November 2026: 9&nbsp;000,00 Kč</li><li>Dezember 2026 – Februar 2027: 9&nbsp;500,00 Kč</li></ul></div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary" type="button"><span>Ersetzen und speichern</span></button></div>
+    </div>
   </div>
 </template>
 
@@ -447,6 +512,52 @@
     frame.innerHTML = '<div class="frame__cap"><b>' + f[0] + ' · Cashflow</b><span>' + f[2] + '</span><output class="frame__check"></output></div><div class="phone ' + f[1] + '"></div>';
     frame.querySelector(".phone").appendChild(document.getElementById("cashflow-frame").content.cloneNode(true));
     cashflow.appendChild(frame);
+  });
+
+  /* Spravovat rozpočty and the limit sheet at the three widths. */
+  function frames(target, template, label) {
+    var box = document.getElementById(target);
+    [[360, "phone--android", "Android, nejužší běžný"], [390, "phone--iphone", "reference"], [430, "phone--max", "velký iPhone"]].forEach(function (f) {
+      var frame = document.createElement("div");
+      frame.className = "frame"; frame.style.setProperty("--w", f[0] + "px");
+      frame.innerHTML = '<div class="frame__cap"><b>' + f[0] + ' · ' + label + '</b><span>' + f[2] + '</span><output class="frame__check"></output></div><div class="phone ' + f[1] + '"></div>';
+      frame.querySelector(".phone").appendChild(document.getElementById(template).content.cloneNode(true));
+      box.appendChild(frame);
+    });
+  }
+  frames("budgets", "budgets-frame", "Rozpočty");
+  frames("limit", "limit-frame", "Limit-Sheet");
+
+  /* Budget rows: category chip as on the Cashflow rows, the limit as the value, validity and the changes to
+     come in the sub-line, "Geplant" / "beendet" under the value (an ended row at half strength); the rows of
+     spending without a limit carry the small button instead of a value and are no tap target themselves. */
+  function chipOf(o) { return '<div class="m-row__chip m-row__chip--cat" style="--cat: ' + o.color + '; background: color-mix(in srgb, ' + o.color + ' 15%, transparent)" data-icon="' + o.icon + '" data-size="16"></div>'; }
+  function budgetRow(o) {
+    return '<a class="m-row' + (o.muted ? " m-row--muted" : "") + '" href="#">' + chipOf(o) +
+      '<div class="m-row__main"><div class="m-row__line"><span class="m-row__t">' + o.title + '</span><span class="m-row__v">' + o.value + '</span></div>' +
+      '<div class="m-row__line"><span class="m-row__s">' + o.sub + '</span>' + (o.vs ? '<span class="m-row__vs">' + o.vs + '</span>' : "") + '</div></div></a>';
+  }
+  function freeRow(o) {
+    return '<div class="m-row m-row--act">' + chipOf(o) +
+      '<div class="m-row__main"><div class="m-row__line"><span class="m-row__t">' + o.title + '</span></div>' +
+      '<div class="m-row__line"><span class="m-row__s">' + o.sub + '</span></div></div>' +
+      '<button class="m-btn m-btn--secondary m-btn--sm" type="button"><span>Limit festlegen</span></button></div>';
+  }
+  var BUDGETS = {
+    limits: [
+      budgetRow({ icon: "shopping-cart", color: "var(--s2)", title: "Lebensmittel", sub: "Ab Januar 2026 · Ab Dezember 2026: 9&nbsp;500 Kč · Ab März 2027: 10&nbsp;000 Kč", value: "9&nbsp;000 Kč" }),
+      budgetRow({ icon: "utensils", color: "var(--s4)", title: "Restaurants &amp; Gastronomie", sub: "Ab März 2026", value: "4&nbsp;000 Kč" }),
+      budgetRow({ icon: "house", color: "var(--s1)", title: "Haushalt", sub: "Ab November 2026", value: "2&nbsp;500 Kč", vs: "Geplant" }),
+      budgetRow({ icon: "repeat", color: "var(--s3)", title: "Abonnements", sub: "Januar 2026 – Juni 2026", value: "800 Kč", vs: "beendet", muted: true })
+    ],
+    free: [
+      freeRow({ icon: "house", color: "var(--s1)", title: "Wohnen", sub: "⌀ 18&nbsp;400 Kč / Monat · 31 Transaktionen" }),
+      freeRow({ icon: "shield", color: "var(--s3)", title: "Versicherungen", sub: "⌀ 2&nbsp;150 Kč / Monat · 9 Transaktionen" }),
+      freeRow({ icon: "tag", color: "var(--s4)", title: "Sonstige Ausgaben", sub: "⌀ 640 Kč / Monat · 14 Transaktionen" })
+    ]
+  };
+  document.querySelectorAll("[data-budgets]").forEach(function (el) {
+    el.innerHTML = BUDGETS[el.dataset.budgets].join("");
   });
 
   /* The static bars: twelve months (Nov to Oct), the last one is the selected period, the rest are muted. */

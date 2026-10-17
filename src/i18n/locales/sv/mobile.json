@@ -66,6 +66,10 @@
     "limitSheet": {
       "pick": "Välj den kategori vars utgifter du vill hålla koll på."
     },
+    "budgets": {
+      "ended": "avslutad",
+      "averageNote": "⌀ senaste 6 månaderna"
+    },
     "showMore": "Visa {{count}} till",
     "rowMenu": "Fler åtgärder: {{title}}"
   },

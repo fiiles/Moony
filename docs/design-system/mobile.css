@@ -240,6 +240,13 @@
 .m-row__v--gain { color: var(--gain); }
 .m-row__vs { flex: none; max-width: 60%; margin-left: auto; color: var(--ink-4); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.3; }
 .m-row__chev { flex: none; width: 16px; height: 16px; color: var(--ink-5); }
+/* A row whose one action is a small button at the end (Spravovat rozpočty, "Výdaje bez limitu"): the
+   row itself is no tap target, so the button keeps its 44 px hit area (`.m-btn--sm::after`), and the
+   sub-line and the title end with an ellipsis before it. `--muted`: a row that has run out (an ended
+   budget), the whole row and its divider at half strength. */
+.m-row--act { grid-template-columns: 36px minmax(0, 1fr) auto; }
+.m-row--act .m-btn--sm { padding: 0 11px; }
+.m-row--muted { opacity: .5; }
 /* Date chip (agenda rows, prototype note 5): 54 × 42 on `well`, the day above its distance; dark
    material for a deadline at most 7 days away. The row's first column is 54 px, so the divider
    insets to 80. */
@@ -395,6 +402,18 @@
 .m-note:is(a):active { background: var(--well-2); }
 .m-note svg { flex: none; width: 15px; height: 15px; color: var(--ink-3); stroke-width: 1.75; }
 
+/* Box inside a sheet's form (the limit sheet): the scheduled changes on `well`, the limits a save
+   replaces in `loss` (the desktop's alert). A bold 12 line, then one line per item. */
+.m-box {
+  margin-bottom: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-2);
+  background: var(--well); color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.4;
+}
+.m-box--loss { border-color: var(--loss-line); background: var(--loss-soft); color: var(--loss); }
+.m-box__t { margin: 0 0 4px; color: var(--ink-2); font-weight: 600; }
+.m-box--loss .m-box__t { color: inherit; }
+.m-box ul { margin: 0; padding: 0; list-style: none; }
+.m-box li + li { margin-top: 2px; }
+
 /* ===== Amount field of a form or sheet =====
    Label 12 / 600 `ink-2` above, the field 48 px (radius 10, paper, `line-strong`; focus `focus-border`
    and the focus ring, invalid `loss`), text 15 tabular, the currency inside on the right (12 / 600
@@ -436,6 +455,24 @@
 .m-field__s[aria-pressed="true"] > span { background: var(--dark-grad); box-shadow: var(--sh-dark); color: var(--ink-inverse); }
 .m-field__s:focus-visible { outline: 0; }
 .m-field__s:focus-visible > span { box-shadow: var(--focus-ring); }
+/* Hint under a field (11 `ink-3`: the budget limit's six-month average). A month field has no unit
+   inside; two sit side by side in `.m-field-grid` (12 px gap), their label rows two lines high (32 px
+   minimum) so the inputs stay level with or without the text action ("Bez konce": 44 px hit area, 12 px
+   above its row, never over the input). */
+.m-field__h { margin: 6px 2px 0; color: var(--ink-3); font-size: var(--m-fs-caption); line-height: 1.4; }
+.m-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 8px; }
+.m-field-grid > .m-field { min-width: 0; margin-bottom: 0; }
+.m-field-grid + .m-field__h { margin: 0 2px 12px; }
+.m-field__lr { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; margin: 0 2px; }
+.m-field__lr .m-field__l { min-width: 0; margin: 0; }
+.m-field__a {
+  position: relative; display: flex; flex: none; align-items: center; align-self: stretch; padding: 0; border: 0; background: none;
+  color: var(--ink-3); font: inherit; font-size: var(--m-fs-caption); font-weight: 600; text-decoration: underline;
+  text-underline-offset: 3px; white-space: nowrap; -webkit-touch-callout: none;
+}
+.m-field__a::after { content: ""; position: absolute; inset: -12px -6px 0; }
+.m-field__a:active { color: var(--ink); }
+.m-field__i--month { padding: 0 14px; text-align: left; -webkit-appearance: none; appearance: none; }
 
 /* ===== Buttons at phone size =====
    48 px, radius 10, label 15 / 600. Primary dark material (one per screen), secondary paper with

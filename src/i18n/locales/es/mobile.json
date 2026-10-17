@@ -68,6 +68,10 @@
     "limitSheet": {
       "pick": "Elige la categoría cuyos gastos quieres controlar."
     },
+    "budgets": {
+      "ended": "finalizado",
+      "averageNote": "⌀ de los últimos 6 meses"
+    },
     "showMore": "Mostrar {{count}} más",
     "rowMenu": "Más acciones: {{title}}"
   },

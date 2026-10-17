@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 import { Ellipsis, Landmark } from 'lucide-react';
-import type { CashflowActuals } from '@shared/schema';
+import type { BudgetGoal, CashflowActuals } from '@shared/schema';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import type { MoneyOptions } from '@/lib/format';
@@ -21,10 +21,12 @@ import { BudgetSummaryNote } from '@/mobile/components/cashflow/BudgetSummaryNot
 import { CashflowBars } from '@/mobile/components/cashflow/CashflowBars';
 import { CashflowHero } from '@/mobile/components/cashflow/CashflowHero';
 import { CategoryRow } from '@/mobile/components/cashflow/CategoryRow';
+import { ExpenseCategoryRow } from '@/mobile/components/cashflow/ExpenseCategoryRow';
 import { PeriodBar } from '@/mobile/components/cashflow/PeriodBar';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { StatRow } from '@/mobile/components/StatRow';
+import { useBudgetLimitSheet } from '@/mobile/hooks/use-budget-limit-sheet';
 import {
   useCashflowReport,
   useCashflowState,
@@ -43,12 +45,15 @@ import {
   categoryRows,
   categoryTitle,
   savingsRate,
+  UNCATEGORIZED,
   type CategoryRowModel,
 } from '@/mobile/lib/cashflow-rows';
+import { reportRowLimit } from '@/mobile/lib/budget-rows';
 import { afterHistorySettles } from '@/mobile/lib/history-settle';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 import { budgetsPath, cashflowCategoryPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { BudgetLimitSheet, type LimitMode } from '@/mobile/sheets/BudgetLimitSheet';
 import { CashflowAccountsSheet } from '@/mobile/sheets/CashflowAccountsSheet';
 
 /** Whole amounts, and whole amounts with their sign ("+ 3 120 Kč"). */
@@ -81,6 +86,8 @@ export default function Cashflow() {
   const [accountsOpen, setAccountsOpen] = useState(false);
   // The accounts chosen in the sheet, waiting for the sheet's history entry to go
   const [pendingScope, setPendingScope] = useState<string[] | null>(null);
+  // The six-month report behind the sheet's hint is only fetched once the sheet opens
+  const limits = useBudgetLimitSheet(false);
   const { actuals } = report;
   const search = cashflowSearch(state);
   const accountCount = accounts.length;
@@ -155,6 +162,8 @@ export default function Cashflow() {
             state={state}
             onSelectMonth={(month) => setState({ ...state, ...selectMonth(month) })}
             search={search}
+            goals={limits.history}
+            onLimit={limits.openLimit}
           />
         </div>
       )}
@@ -168,6 +177,7 @@ export default function Cashflow() {
           setAccountsOpen(false);
         }}
       />
+      <BudgetLimitSheet {...limits.sheetProps} />
     </Screen>
   );
 }
@@ -178,10 +188,22 @@ interface ReportBodyProps {
   state: CashflowState;
   onSelectMonth: (month: number) => void;
   search: string;
+  /** Every stored budget with its versions (the edit sheet starts from one). */
+  goals: readonly BudgetGoal[];
+  /** Open the limit sheet (an expense row's menu). */
+  onLimit: (mode: LimitMode) => void;
 }
 
 /** The report of a period that has transactions (or, with none, its bars and an empty line). */
-function ReportBody({ actuals, report, state, onSelectMonth, search }: ReportBodyProps) {
+function ReportBody({
+  actuals,
+  report,
+  state,
+  onSelectMonth,
+  search,
+  goals,
+  onLimit,
+}: ReportBodyProps) {
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('reports');
   const fmt = useFormat();
@@ -248,7 +270,8 @@ function ReportBody({ actuals, report, state, onSelectMonth, search }: ReportBod
     );
   }
 
-  const rows = (list: CategoryRowModel[], withBar: boolean) =>
+  // The expense rows carry the long press's menu (the limit sheet, the drilldown)
+  const rows = (list: CategoryRowModel[], withBar: boolean, withMenu = false) =>
     list.length === 0 ? (
       <li className="list-none px-3.5 py-4 text-m-sub text-ink-4">
         {tr('actuals.breakdown.empty')}
@@ -257,15 +280,37 @@ function ReportBody({ actuals, report, state, onSelectMonth, search }: ReportBod
       list.map((row) => {
         const category = categoryById.get(row.key) ?? null;
         const title = categoryTitle(row.key, row.flowKind, category, row.name, titleLabels);
+        const href = cashflowCategoryPath(row.flowKind, row.key, search);
+        if (!withMenu || row.key === UNCATEGORIZED) {
+          return (
+            <CategoryRow
+              key={row.key}
+              row={row}
+              title={title}
+              category={category}
+              reportCurrency={reportCurrency}
+              href={href}
+              withBar={withBar}
+            />
+          );
+        }
+        const { hasLimit, mode } = reportRowLimit(
+          row.key,
+          budgetByCategory.get(row.key)?.budgetGoal,
+          goals,
+          range.start
+        );
         return (
-          <CategoryRow
+          <ExpenseCategoryRow
             key={row.key}
             row={row}
             title={title}
             category={category}
             reportCurrency={reportCurrency}
-            href={cashflowCategoryPath(row.flowKind, row.key, search)}
+            href={href}
             withBar={withBar}
+            hasLimit={hasLimit}
+            onLimit={mode && (() => onLimit(mode))}
           />
         );
       })
@@ -306,7 +351,7 @@ function ReportBody({ actuals, report, state, onSelectMonth, search }: ReportBod
       )}
       <section>
         <SectionHead title={tr('actuals.expenses.title')} note={money(totalExpenses)} />
-        <EntityRows>{rows(expenseRows, true)}</EntityRows>
+        <EntityRows>{rows(expenseRows, true, true)}</EntityRows>
       </section>
       <section>
         <SectionHead title={tr('actuals.income.title')} note={money(totalIncome)} />

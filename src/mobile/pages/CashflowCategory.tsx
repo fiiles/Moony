@@ -48,7 +48,7 @@ export default function CashflowCategory() {
   const search = useSearch();
   const flowKind = FLOWS.find((candidate) => candidate === flow);
   if (!flowKind || !key) {
-    return <Redirect to={routes.cashflow + cashflowSearch(parseCashflowSearch(search))} />;
+    return <Redirect replace to={routes.cashflow + cashflowSearch(parseCashflowSearch(search))} />;
   }
   // A new category or period is a new list: its snapshot and changes start over
   return (
@@ -196,7 +196,7 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
               className="h-12 w-full rounded-[10px] text-m-row"
               onClick={() => setLimit(limit + DRILLDOWN_PAGE)}
             >
-              {t('cashflow.showMore', { count: DRILLDOWN_PAGE })}
+              {t('cashflow.showMore', { count: Math.min(DRILLDOWN_PAGE, rows.length - limit) })}
             </Button>
           )}
         </>
@@ -228,10 +228,11 @@ interface TransactionRowProps {
 function TransactionRow({ row, onChange }: TransactionRowProps) {
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('reports');
-  const { t: tc } = useTranslation('common');
   const [menuOpen, setMenuOpen] = useState(false);
   const { tx, credit } = row;
-  const sub = (row.moved ? [...row.sub, tr('readiness.moved')] : row.sub).join(' · ');
+  // The marker leads: the sub-line ends in an ellipsis when it is too long, and "přesunuto" is
+  // the one sign of a moved row that is not its dimming
+  const sub = (row.moved ? [tr('readiness.moved'), ...row.sub] : row.sub).join(' · ');
   const valueSub =
     tx.signedAmount === null ? (
       tr('readiness.fxUnavailable')
@@ -267,7 +268,7 @@ function TransactionRow({ row, onChange }: TransactionRowProps) {
         <RowMenu
           open={menuOpen}
           onOpenChange={setMenuOpen}
-          label={`${tc('labels.moreActions')}: ${row.title}`}
+          label={t('cashflow.rowMenu', { title: row.title })}
         >
           <RowMenuItem onSelect={() => onChange(row)}>
             <Tag aria-hidden strokeWidth={1.75} />

@@ -60,9 +60,11 @@
     },
     "picker": {
       "title": "Kategorie",
-      "change": "Kategorie ändern"
+      "change": "Kategorie ändern",
+      "current": "Aktuelle Kategorie"
     },
-    "showMore": "{{count}} weitere anzeigen"
+    "showMore": "{{count}} weitere anzeigen",
+    "rowMenu": "Weitere Aktionen: {{title}}"
   },
   "upkeep": {
     "title": "Datenpflege",

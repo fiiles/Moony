@@ -58,9 +58,11 @@
     },
     "picker": {
       "title": "カテゴリ",
-      "change": "カテゴリを変更"
+      "change": "カテゴリを変更",
+      "current": "現在のカテゴリ"
     },
-    "showMore": "さらに{{count}}件を表示"
+    "showMore": "さらに{{count}}件を表示",
+    "rowMenu": "その他の操作: {{title}}"
   },
   "upkeep": {
     "title": "データの更新",

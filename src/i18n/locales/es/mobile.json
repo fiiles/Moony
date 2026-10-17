@@ -62,9 +62,11 @@
     },
     "picker": {
       "title": "Categoría",
-      "change": "Cambiar categoría"
+      "change": "Cambiar categoría",
+      "current": "Categoría actual"
     },
-    "showMore": "Mostrar {{count}} más"
+    "showMore": "Mostrar {{count}} más",
+    "rowMenu": "Más acciones: {{title}}"
   },
   "upkeep": {
     "title": "Mantenimiento de datos",

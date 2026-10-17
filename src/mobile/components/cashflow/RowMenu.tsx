@@ -11,7 +11,7 @@ import {
 interface RowMenuProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  /** The accessible name of the trigger: what the row is ("Albert", "Potraviny"). */
+  /** The full accessible name of the trigger, already worded and translated ("Další akce: Albert"). */
   label: string;
   /** `RowMenuItem`s. */
   children: ReactNode;

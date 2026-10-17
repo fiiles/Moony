@@ -58,9 +58,11 @@
     },
     "picker": {
       "title": "类别",
-      "change": "更改类别"
+      "change": "更改类别",
+      "current": "当前类别"
     },
-    "showMore": "再显示 {{count}} 条"
+    "showMore": "再显示 {{count}} 条",
+    "rowMenu": "更多操作：{{title}}"
   },
   "upkeep": {
     "title": "数据维护",

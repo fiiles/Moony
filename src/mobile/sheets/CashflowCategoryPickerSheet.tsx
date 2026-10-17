@@ -25,10 +25,11 @@ interface CashflowCategoryPickerSheetProps {
 /**
  * "Kategorie" (spec §8.7): the thin picker of the category drilldown — every category as a 52 pt
  * row (chip and name), grouped by výdaj, příjem and převod, the payment's current one ticked. No
- * search, no recents, no learning: a tap gives the payment that category. The tapped row shows a
- * spinner while `onPicked` runs, the list answers no other tap, and the sheet closes when the
- * pick has taken; when it has not, it stays open for another try. It keeps the last payment while
- * it slides away.
+ * search, no recents, no learning: a tap gives the payment that category (a tap on its current
+ * one just closes the sheet). The tapped row shows a spinner while `onPicked` runs, the list
+ * answers no other tap, and the sheet closes when the pick has taken; when it has not, it stays
+ * open for another try. The tick is named ("Aktuální kategorie") for a screen reader. It keeps the
+ * last payment while it slides away.
  */
 export function CashflowCategoryPickerSheet({
   tx,
@@ -44,8 +45,9 @@ export function CashflowCategoryPickerSheet({
   // `tx` goes null as the sheet closes; the sheet slides away over the payment it showed
   const [shown, setShown] = useState(tx);
   if (tx !== null && tx !== shown) setShown(tx);
-  // The category being applied
-  const [pending, setPending] = useState<string | null>(null);
+  // The category being applied, and to which payment: a sheet reopened for another one shows none
+  const [pending, setPending] = useState<{ txId: string; categoryId: string } | null>(null);
+  const applying = pending !== null && pending.txId === shown?.id ? pending : null;
   // Which opening a pick belongs to: one that outlives its opening must not close the next
   const opening = useRef(0);
   useEffect(() => {
@@ -53,16 +55,23 @@ export function CashflowCategoryPickerSheet({
   }, [open]);
 
   const pick = async (categoryId: string) => {
-    if (shown === null || pending !== null) return;
+    if (shown === null || applying !== null) return;
+    // Already the payment's category: nothing to write
+    if (categoryId === shown.categoryId) {
+      onOpenChange(false);
+      return;
+    }
     const mine = opening.current;
-    setPending(categoryId);
+    const attempt = { txId: shown.id, categoryId };
+    setPending(attempt);
     try {
       await onPicked(shown.id, categoryId);
       if (opening.current === mine) onOpenChange(false);
     } catch {
       // The caller has told the user what went wrong; the sheet stays for another try.
     } finally {
-      setPending(null);
+      // Only this attempt's own spinner: a later pick for another payment keeps its own
+      setPending((current) => (current === attempt ? null : current));
     }
   };
 
@@ -87,7 +96,7 @@ export function CashflowCategoryPickerSheet({
         </Button>
       }
     >
-      <div aria-busy={pending !== null}>
+      <div aria-busy={applying !== null}>
         {groups.map(({ kind, list }) => (
           <section key={kind}>
             <SectionHead title={tb(`readiness.flow.${kind}`)} />
@@ -98,7 +107,7 @@ export function CashflowCategoryPickerSheet({
                   chip={<CategoryChip category={category} />}
                   title={categoryName(category)}
                   value={
-                    pending === category.id ? (
+                    applying?.categoryId === category.id ? (
                       <Loader2
                         aria-hidden
                         strokeWidth={1.75}
@@ -106,7 +115,8 @@ export function CashflowCategoryPickerSheet({
                       />
                     ) : category.id === shown?.categoryId ? (
                       <Check
-                        aria-hidden
+                        role="img"
+                        aria-label={t('cashflow.picker.current')}
                         strokeWidth={1.75}
                         className="inline size-4 align-[-3px]"
                       />

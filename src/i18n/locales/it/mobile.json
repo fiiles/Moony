@@ -62,9 +62,11 @@
     },
     "picker": {
       "title": "Categoria",
-      "change": "Cambia categoria"
+      "change": "Cambia categoria",
+      "current": "Categoria attuale"
     },
-    "showMore": "Mostra altri {{count}}"
+    "showMore": "Mostra altri {{count}}",
+    "rowMenu": "Altre azioni: {{title}}"
   },
   "upkeep": {
     "title": "Aggiornamento dati",

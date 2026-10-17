@@ -60,9 +60,11 @@
     },
     "picker": {
       "title": "Category",
-      "change": "Change category"
+      "change": "Change category",
+      "current": "Current category"
     },
-    "showMore": "Show {{count}} more"
+    "showMore": "Show {{count}} more",
+    "rowMenu": "More actions: {{title}}"
   },
   "upkeep": {
     "title": "Data upkeep",

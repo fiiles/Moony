@@ -62,9 +62,11 @@
     },
     "picker": {
       "title": "Kategorie",
-      "change": "Změnit kategorii"
+      "change": "Změnit kategorii",
+      "current": "Aktuální kategorie"
     },
-    "showMore": "Zobrazit dalších {{count}}"
+    "showMore": "Zobrazit dalších {{count}}",
+    "rowMenu": "Další akce: {{title}}"
   },
   "upkeep": {
     "title": "Údržba",

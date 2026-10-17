@@ -60,9 +60,11 @@
     },
     "picker": {
       "title": "Kategori",
-      "change": "Endre kategori"
+      "change": "Endre kategori",
+      "current": "Gjeldende kategori"
     },
-    "showMore": "Vis {{count}} til"
+    "showMore": "Vis {{count}} til",
+    "rowMenu": "Flere handlinger: {{title}}"
   },
   "upkeep": {
     "title": "Datavedlikehold",

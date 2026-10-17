@@ -211,5 +211,65 @@
     "suggested": "提案",
     "decline": "提案を却下",
     "empty": "一致するカテゴリがありません"
+  },
+  "settings": {
+    "rows": {
+      "profile": "プロフィール",
+      "profileNoEmail": "名前とメールアドレス",
+      "language": "言語",
+      "security": "セキュリティ",
+      "backup": "バックアップと移行",
+      "notifications": "通知",
+      "reminders": "リマインダー",
+      "remindersSub": "{{total}}グループ中{{on}}グループ",
+      "import": "インポート",
+      "deleteSub": "確認の単語を入力して実行"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "テレメトリなし",
+    "security": {
+      "lead": "このスマートフォンでのロック解除、バックグラウンドでのロック、金額の非表示を設定します。",
+      "biometrics": "{{method}}でロック解除",
+      "methodFace": "顔認証",
+      "methodTouch": "指紋認証",
+      "methodGeneric": "生体認証",
+      "biometricsOn": "{{method}}でロック解除",
+      "biometricsOff": "パスワードのみ",
+      "biometricsDisabled": "生体認証によるロック解除をオフにしました",
+      "lockAfterLabel": "アプリを離れてからロックするまでの時間",
+      "lockAfterHint": "この時間が過ぎると、アプリに戻ったときに再びロックされます。",
+      "optionNow": "すぐ",
+      "optionMinutes": "{{count}}分",
+      "lockNow": "すぐにロック",
+      "lockAfter_other": "{{count}}分後にロック",
+      "hideOnLaunch": "起動時に金額を非表示",
+      "hideOnLaunchHint": "起動するたびに金額が非表示の状態で始まります。概要の目のアイコンで再び表示できます。",
+      "hideOnLaunchShort": "起動時に金額を非表示"
+    },
+    "profile": {
+      "lead": "名前は概要のあいさつに表示されます。",
+      "currencyReadOnly": "基準通貨はパソコンのMoonyで変更できます。"
+    },
+    "language": {
+      "title": "アプリの言語",
+      "lead": "数値と日付は言語に合わせて表示されます。"
+    },
+    "delete": {
+      "title": "すべてのデータを削除しますか？",
+      "lead": "このスマートフォンからデータベース、キー、添付ファイルを完全に削除します。スマートフォンの外にあるバックアップのコピーは残ります。先にバックアップを作成してください。元に戻す唯一の方法です。",
+      "confirmLabel": "確認のため {{word}} と入力してください",
+      "confirm": "データを削除",
+      "failed": "削除に失敗しました"
+    }
+  },
+  "backup": {
+    "lastOn": "最後のバックアップ {{date}}",
+    "never": "まだバックアップがありません"
+  },
+  "notifications": {
+    "permission": {
+      "granted": "許可済み",
+      "notGranted": "許可されていません"
+    }
   }
 }

@@ -222,5 +222,66 @@
     "suggested": "Forslag",
     "decline": "Avslå forslaget",
     "empty": "Ingen kategori passer"
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profil",
+      "profileNoEmail": "Navn og e-post",
+      "language": "Språk",
+      "security": "Sikkerhet",
+      "backup": "Sikkerhetskopi og overføring",
+      "notifications": "Varsler",
+      "reminders": "Påminnelser",
+      "remindersSub": "{{on}} av {{total}} grupper",
+      "import": "Import",
+      "deleteSub": "etter at du har skrevet et bekreftelsesord"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "ingen telemetri",
+    "security": {
+      "lead": "Opplåsing, lås i bakgrunnen og skjulte beløp på denne telefonen.",
+      "biometrics": "Lås opp med {{method}}",
+      "methodFace": "ansiktet",
+      "methodTouch": "fingeravtrykk",
+      "methodGeneric": "biometri",
+      "biometricsOn": "Opplåsing med {{method}}",
+      "biometricsOff": "Bare passord",
+      "biometricsDisabled": "Biometrisk opplåsing slått av",
+      "lockAfterLabel": "Lås etter at du forlater appen",
+      "lockAfterHint": "Etter denne tiden låses appen igjen når du kommer tilbake.",
+      "optionNow": "Straks",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "lås straks",
+      "lockAfter_one": "lås etter {{count}} minutt",
+      "lockAfter_other": "lås etter {{count}} minutter",
+      "hideOnLaunch": "Skjul beløp ved oppstart",
+      "hideOnLaunchHint": "Hver oppstart begynner med skjulte beløp; øyet i Oversikt viser dem igjen.",
+      "hideOnLaunchShort": "beløp skjult ved oppstart"
+    },
+    "profile": {
+      "lead": "Navnet ditt vises i hilsenen i Oversikt.",
+      "currencyReadOnly": "Hovedvaluta endrer du i Moony på datamaskinen."
+    },
+    "language": {
+      "title": "Appspråk",
+      "lead": "Tall og datoer følger språket."
+    },
+    "delete": {
+      "title": "Slette alle data?",
+      "lead": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt. Sikkerhetskopier utenfor telefonen blir liggende. Ta en sikkerhetskopi først — det er den eneste veien tilbake.",
+      "confirmLabel": "Skriv {{word}} for å bekrefte",
+      "confirm": "Slett data",
+      "failed": "Slettingen mislyktes"
+    }
+  },
+  "backup": {
+    "lastOn": "Siste sikkerhetskopi {{date}}",
+    "never": "Ingen sikkerhetskopi ennå"
+  },
+  "notifications": {
+    "permission": {
+      "granted": "Tillatt",
+      "notGranted": "Ikke tillatt"
+    }
   }
 }

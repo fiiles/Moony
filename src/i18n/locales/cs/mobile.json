@@ -233,5 +233,67 @@
     "suggested": "Návrh",
     "decline": "Odmítnout návrh",
     "empty": "Žádná kategorie neodpovídá"
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profil",
+      "profileNoEmail": "Jméno a e-mail",
+      "language": "Jazyk",
+      "security": "Zabezpečení",
+      "backup": "Záloha a přenos",
+      "notifications": "Oznámení",
+      "reminders": "Připomínky",
+      "remindersSub": "{{on}} z {{total}} skupin",
+      "import": "Import",
+      "deleteSub": "po potvrzení napsáním slova"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "žádná telemetrie",
+    "security": {
+      "lead": "Odemykání, zámek na pozadí a skrývání částek na tomto telefonu.",
+      "biometrics": "Odemykat {{method}}",
+      "methodFace": "obličejem",
+      "methodTouch": "otiskem",
+      "methodGeneric": "biometrií",
+      "biometricsOn": "Odemykání {{method}}",
+      "biometricsOff": "Jen heslo",
+      "biometricsDisabled": "Odemykání biometrií vypnuto",
+      "lockAfterLabel": "Zamknout po přechodu na pozadí",
+      "lockAfterHint": "Po návratu do aplikace se po této době znovu odemyká.",
+      "optionNow": "Ihned",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "zámek ihned",
+      "lockAfter_one": "zámek po {{count}} minutě",
+      "lockAfter_few": "zámek po {{count}} minutách",
+      "lockAfter_other": "zámek po {{count}} minutách",
+      "hideOnLaunch": "Skrývat částky po spuštění",
+      "hideOnLaunchHint": "Každé spuštění začne se skrytými částkami; oko na Přehledu je zase ukáže.",
+      "hideOnLaunchShort": "částky skryté po spuštění"
+    },
+    "profile": {
+      "lead": "Jméno se zobrazuje v pozdravu na Přehledu.",
+      "currencyReadOnly": "Hlavní měnu změníte v Moony na počítači."
+    },
+    "language": {
+      "title": "Jazyk aplikace",
+      "lead": "Čísla a data se formátují podle jazyka."
+    },
+    "delete": {
+      "title": "Smazat všechna data?",
+      "lead": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu. Kopie zálohy mimo telefon zůstanou. Nejdřív si udělejte zálohu — je to jediná cesta zpět.",
+      "confirmLabel": "Pro potvrzení napište {{word}}",
+      "confirm": "Smazat data",
+      "failed": "Smazání selhalo"
+    }
+  },
+  "backup": {
+    "lastOn": "Poslední záloha {{date}}",
+    "never": "Zatím žádná záloha"
+  },
+  "notifications": {
+    "permission": {
+      "granted": "Povoleno",
+      "notGranted": "Nepovoleno"
+    }
   }
 }

@@ -222,5 +222,66 @@
     "suggested": "Vorschlag",
     "decline": "Vorschlag ablehnen",
     "empty": "Keine Kategorie passt"
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profil",
+      "profileNoEmail": "Name und E-Mail",
+      "language": "Sprache",
+      "security": "Sicherheit",
+      "backup": "Sicherung und Übertragung",
+      "notifications": "Benachrichtigungen",
+      "reminders": "Erinnerungen",
+      "remindersSub": "{{on}} von {{total}} Gruppen",
+      "import": "Import",
+      "deleteSub": "nach Eingabe eines Bestätigungsworts"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "keine Telemetrie",
+    "security": {
+      "lead": "Entsperren, Sperre im Hintergrund und Ausblenden von Beträgen auf diesem Telefon.",
+      "biometrics": "Mit {{method}} entsperren",
+      "methodFace": "dem Gesicht",
+      "methodTouch": "dem Fingerabdruck",
+      "methodGeneric": "Biometrie",
+      "biometricsOn": "Entsperren mit {{method}}",
+      "biometricsOff": "Nur Passwort",
+      "biometricsDisabled": "Biometrische Entsperrung ausgeschaltet",
+      "lockAfterLabel": "Nach Verlassen der App sperren",
+      "lockAfterHint": "Nach dieser Zeit wird die App beim Zurückkehren wieder gesperrt.",
+      "optionNow": "Sofort",
+      "optionMinutes": "{{count}} Min.",
+      "lockNow": "sofort sperren",
+      "lockAfter_one": "Sperre nach {{count}} Minute",
+      "lockAfter_other": "Sperre nach {{count}} Minuten",
+      "hideOnLaunch": "Beträge beim Start ausblenden",
+      "hideOnLaunchHint": "Jeder Start beginnt mit ausgeblendeten Beträgen; das Auge in der Übersicht blendet sie wieder ein.",
+      "hideOnLaunchShort": "Beträge beim Start ausgeblendet"
+    },
+    "profile": {
+      "lead": "Ihr Name erscheint in der Begrüßung in der Übersicht.",
+      "currencyReadOnly": "Die Hauptwährung ändern Sie in Moony auf dem Computer."
+    },
+    "language": {
+      "title": "App-Sprache",
+      "lead": "Zahlen und Datumsangaben richten sich nach der Sprache."
+    },
+    "delete": {
+      "title": "Alle Daten löschen?",
+      "lead": "Löscht die Datenbank, die Schlüssel und die Anhänge auf diesem Telefon dauerhaft. Sicherungskopien außerhalb des Telefons bleiben erhalten. Erstellen Sie zuerst eine Sicherung — sie ist der einzige Weg zurück.",
+      "confirmLabel": "Geben Sie zur Bestätigung {{word}} ein",
+      "confirm": "Daten löschen",
+      "failed": "Löschen fehlgeschlagen"
+    }
+  },
+  "backup": {
+    "lastOn": "Letzte Sicherung {{date}}",
+    "never": "Noch keine Sicherung"
+  },
+  "notifications": {
+    "permission": {
+      "granted": "Erlaubt",
+      "notGranted": "Nicht erlaubt"
+    }
   }
 }

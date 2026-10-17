@@ -233,5 +233,67 @@
     "suggested": "Sugerencia",
     "decline": "Rechazar sugerencia",
     "empty": "Ninguna categoría coincide"
+  },
+  "settings": {
+    "rows": {
+      "profile": "Perfil",
+      "profileNoEmail": "Nombre y correo",
+      "language": "Idioma",
+      "security": "Seguridad",
+      "backup": "Copia de seguridad y traslado",
+      "notifications": "Notificaciones",
+      "reminders": "Recordatorios",
+      "remindersSub": "{{on}} de {{total}} grupos",
+      "import": "Importar",
+      "deleteSub": "tras escribir una palabra de confirmación"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "sin telemetría",
+    "security": {
+      "lead": "Desbloqueo, bloqueo en segundo plano y ocultar importes en este teléfono.",
+      "biometrics": "Desbloquear con {{method}}",
+      "methodFace": "la cara",
+      "methodTouch": "la huella",
+      "methodGeneric": "biometría",
+      "biometricsOn": "Desbloqueo con {{method}}",
+      "biometricsOff": "Solo contraseña",
+      "biometricsDisabled": "Desbloqueo biométrico desactivado",
+      "lockAfterLabel": "Bloquear al salir de la app",
+      "lockAfterHint": "Pasado este tiempo, la app se bloquea de nuevo al volver.",
+      "optionNow": "Al instante",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "bloqueo inmediato",
+      "lockAfter_one": "bloqueo tras {{count}} minuto",
+      "lockAfter_many": "bloqueo tras {{count}} minutos",
+      "lockAfter_other": "bloqueo tras {{count}} minutos",
+      "hideOnLaunch": "Ocultar importes al abrir",
+      "hideOnLaunchHint": "Cada inicio empieza con los importes ocultos; el ojo de Resumen los vuelve a mostrar.",
+      "hideOnLaunchShort": "importes ocultos al abrir"
+    },
+    "profile": {
+      "lead": "Tu nombre aparece en el saludo del Resumen.",
+      "currencyReadOnly": "La moneda principal se cambia en Moony en el ordenador."
+    },
+    "language": {
+      "title": "Idioma de la app",
+      "lead": "Los números y las fechas siguen el idioma."
+    },
+    "delete": {
+      "title": "¿Eliminar todos los datos?",
+      "lead": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: es la única forma de recuperar los datos.",
+      "confirmLabel": "Escribe {{word}} para confirmar",
+      "confirm": "Eliminar datos",
+      "failed": "No se pudo eliminar"
+    }
+  },
+  "backup": {
+    "lastOn": "Última copia de seguridad {{date}}",
+    "never": "Aún no hay copia de seguridad"
+  },
+  "notifications": {
+    "permission": {
+      "granted": "Permitido",
+      "notGranted": "No permitido"
+    }
   }
 }

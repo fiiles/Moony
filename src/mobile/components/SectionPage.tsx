@@ -1,0 +1,34 @@
+import type { ReactNode } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useBack } from '@/mobile/hooks/use-back';
+import { NavTextButton } from '@/mobile/shell/NavBar';
+import { routes } from '@/mobile/shell/routes';
+import { Screen } from '@/mobile/shell/Screen';
+
+interface SectionPageProps {
+  title: string;
+  /** The one sentence under the nav bar, saying what the page is for. */
+  lead?: string;
+  children?: ReactNode;
+}
+
+/**
+ * A page pushed on Nastavení (`/settings/:section`): the screen without the tab bar and a back
+ * button to Nastavení, the lead as the first line of the body.
+ */
+export function SectionPage({ title, lead, children }: SectionPageProps) {
+  const { t: tc } = useTranslation('common');
+  const back = useBack(routes.settings);
+  return (
+    <Screen
+      title={title}
+      tabBar={false}
+      leading={<NavTextButton label={tc('nav.settings')} onClick={back} chevron />}
+    >
+      {lead && (
+        <p className="mx-0.5 mb-3.5 mt-1 text-[13px] font-450 leading-[1.4] text-ink-3">{lead}</p>
+      )}
+      {children}
+    </Screen>
+  );
+}

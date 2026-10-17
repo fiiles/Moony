@@ -211,5 +211,65 @@
     "suggested": "建议",
     "decline": "拒绝建议",
     "empty": "没有匹配的类别"
+  },
+  "settings": {
+    "rows": {
+      "profile": "个人资料",
+      "profileNoEmail": "姓名和电子邮件",
+      "language": "语言",
+      "security": "安全",
+      "backup": "备份与迁移",
+      "notifications": "通知",
+      "reminders": "提醒",
+      "remindersSub": "已开启 {{on}}/{{total}} 组",
+      "import": "导入",
+      "deleteSub": "输入确认词后执行"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "无遥测",
+    "security": {
+      "lead": "在这部手机上设置解锁、后台锁定和隐藏金额。",
+      "biometrics": "使用{{method}}解锁",
+      "methodFace": "面容",
+      "methodTouch": "指纹",
+      "methodGeneric": "生物识别",
+      "biometricsOn": "使用{{method}}解锁",
+      "biometricsOff": "仅密码",
+      "biometricsDisabled": "已关闭生物识别解锁",
+      "lockAfterLabel": "离开应用后锁定",
+      "lockAfterHint": "超过这段时间后，返回应用时会再次锁定。",
+      "optionNow": "立即",
+      "optionMinutes": "{{count}} 分钟",
+      "lockNow": "立即锁定",
+      "lockAfter_other": "{{count}} 分钟后锁定",
+      "hideOnLaunch": "启动时隐藏金额",
+      "hideOnLaunchHint": "每次启动时金额都处于隐藏状态；概览中的眼睛图标可再次显示。",
+      "hideOnLaunchShort": "启动时隐藏金额"
+    },
+    "profile": {
+      "lead": "您的姓名会显示在概览的问候语中。",
+      "currencyReadOnly": "主货币请在电脑上的 Moony 中更改。"
+    },
+    "language": {
+      "title": "应用语言",
+      "lead": "数字和日期按所选语言格式化。"
+    },
+    "delete": {
+      "title": "删除所有数据？",
+      "lead": "将永久删除这部手机上的数据库、密钥和附件。手机之外的备份副本会保留。请先创建备份——这是恢复数据的唯一途径。",
+      "confirmLabel": "请输入 {{word}} 以确认",
+      "confirm": "删除数据",
+      "failed": "删除失败"
+    }
+  },
+  "backup": {
+    "lastOn": "上次备份 {{date}}",
+    "never": "尚无备份"
+  },
+  "notifications": {
+    "permission": {
+      "granted": "已允许",
+      "notGranted": "未允许"
+    }
   }
 }

@@ -9,7 +9,7 @@
  * locked by leaving the app, not by not touching it.
  */
 
-/** localStorage: minutes in the background before the lock; the setting itself arrives in Phase 5. */
+/** localStorage: minutes in the background before the lock (Nastavení → Zabezpečení). */
 export const BACKGROUND_LOCK_KEY = 'moony-background-lock-minutes';
 
 /** "Ihned" (0), 1, 5 or 15 minutes. */
@@ -119,5 +119,20 @@ export function clearHiddenAt(storage: Pick<Storage, 'removeItem'> | null | unde
     storage?.removeItem(HIDDEN_AT_KEY);
   } catch {
     // Storage that cannot be written cannot have kept the stamp either.
+  }
+}
+
+/**
+ * Stores the choice. `useBackgroundLock` reads it on every return to the foreground, so nothing
+ * else needs telling. Storage that cannot be written leaves the previous choice in force.
+ */
+export function writeBackgroundLockMinutes(
+  storage: Pick<Storage, 'setItem'> | null | undefined,
+  minutes: BackgroundLockMinutes
+): void {
+  try {
+    storage?.setItem(BACKGROUND_LOCK_KEY, String(minutes));
+  } catch {
+    // Storage that cannot be written: the previous choice (or the default) stays.
   }
 }

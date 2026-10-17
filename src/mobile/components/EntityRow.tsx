@@ -22,12 +22,14 @@ export function EntityRows({ className, children }: { className?: string; childr
   );
 }
 
-type ChipTone = 'default' | 'dark' | 'gain';
+type ChipTone = 'default' | 'dark' | 'gain' | 'loss';
 
 const CHIP_TONES: Record<ChipTone, string> = {
   default: 'bg-well-2 text-ink-2',
   dark: 'bg-dark-grad text-ink-inverse shadow-dark',
   gain: 'bg-gain-soft text-gain',
+  // The row of a destructive action (Nastavení's "Smazat všechna data"), never a change
+  loss: 'bg-loss-soft text-loss',
 };
 
 /** The 36 pt chip (`.m-row__chip`): initials or a 16 pt icon in a tinted circle (or rounded square). */

@@ -1,7 +1,7 @@
 /**
- * Paths of the phone shell (spec §6): four tab roots, Settings (a sheet from the avatar on
- * Přehled) and the lock screen. Details are pushed under their tab's root (`/finance/…`);
- * Přehled's root is "/", so its details are listed in `OVERVIEW_DETAILS`.
+ * Paths of the phone shell (spec §6): four tab roots, Settings (from the avatar on Přehled, its
+ * sections pushed under it) and the lock screen. Details are pushed under their tab's root
+ * (`/finance/…`); Přehled's root is "/", so its details are listed in `OVERVIEW_DETAILS`.
  */
 export const routes = {
   overview: '/',
@@ -16,6 +16,8 @@ export const routes = {
   cashflow: '/cashflow',
   wealth: '/wealth',
   settings: '/settings',
+  /** A section page pushed on Nastavení (`:section` is one of `SETTINGS_SECTIONS`). */
+  settingsSection: '/settings/:section',
   auth: '/auth',
 } as const;
 
@@ -23,6 +25,23 @@ export const routes = {
 export const accountPath = (id: string) => `/finance/accounts/${id}`;
 export const loanPath = (id: string) => `/finance/loans/${id}`;
 export const policyPath = (id: string) => `/finance/policies/${id}`;
+
+/** The pushed pages of Nastavení, in root order. */
+export const SETTINGS_SECTIONS = [
+  'profile',
+  'security',
+  'reminders',
+  'notifications',
+  'backup',
+] as const;
+
+export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];
+
+export const settingsPath = (section: SettingsSection) => `/settings/${section}`;
+
+export function isSettingsSection(value: string): value is SettingsSection {
+  return (SETTINGS_SECTIONS as readonly string[]).includes(value);
+}
 
 /** Screens pushed on Přehled (its root "/" cannot prefix them). */
 const OVERVIEW_DETAILS: readonly string[] = [routes.agenda];

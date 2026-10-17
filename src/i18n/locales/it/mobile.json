@@ -233,5 +233,67 @@
     "suggested": "Suggerimento",
     "decline": "Rifiuta il suggerimento",
     "empty": "Nessuna categoria corrisponde"
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profilo",
+      "profileNoEmail": "Nome ed e-mail",
+      "language": "Lingua",
+      "security": "Sicurezza",
+      "backup": "Backup e trasferimento",
+      "notifications": "Notifiche",
+      "reminders": "Promemoria",
+      "remindersSub": "{{on}} di {{total}} gruppi",
+      "import": "Importa",
+      "deleteSub": "dopo aver scritto una parola di conferma"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "nessuna telemetria",
+    "security": {
+      "lead": "Sblocco, blocco in background e importi nascosti su questo telefono.",
+      "biometrics": "Sblocca con {{method}}",
+      "methodFace": "il volto",
+      "methodTouch": "l'impronta",
+      "methodGeneric": "i dati biometrici",
+      "biometricsOn": "Sblocco con {{method}}",
+      "biometricsOff": "Solo password",
+      "biometricsDisabled": "Sblocco biometrico disattivato",
+      "lockAfterLabel": "Blocca dopo l'uscita dall'app",
+      "lockAfterHint": "Dopo questo tempo, al ritorno nell'app viene richiesto di nuovo lo sblocco.",
+      "optionNow": "Subito",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "blocco immediato",
+      "lockAfter_one": "blocco dopo {{count}} minuto",
+      "lockAfter_many": "blocco dopo {{count}} minuti",
+      "lockAfter_other": "blocco dopo {{count}} minuti",
+      "hideOnLaunch": "Nascondi gli importi all'avvio",
+      "hideOnLaunchHint": "Ogni avvio parte con gli importi nascosti; l'occhio in Panoramica li mostra di nuovo.",
+      "hideOnLaunchShort": "importi nascosti all'avvio"
+    },
+    "profile": {
+      "lead": "Il tuo nome compare nel saluto di Panoramica.",
+      "currencyReadOnly": "La valuta principale si cambia in Moony sul computer."
+    },
+    "language": {
+      "title": "Lingua dell'app",
+      "lead": "Numeri e date seguono la lingua."
+    },
+    "delete": {
+      "title": "Eliminare tutti i dati?",
+      "lead": "Elimina in modo permanente il database, le chiavi e gli allegati da questo telefono. Le copie di backup fuori dal telefono restano. Fai prima un backup: è l'unica via per tornare indietro.",
+      "confirmLabel": "Scrivi {{word}} per confermare",
+      "confirm": "Elimina i dati",
+      "failed": "Eliminazione non riuscita"
+    }
+  },
+  "backup": {
+    "lastOn": "Ultimo backup {{date}}",
+    "never": "Ancora nessun backup"
+  },
+  "notifications": {
+    "permission": {
+      "granted": "Consentite",
+      "notGranted": "Non consentite"
+    }
   }
 }

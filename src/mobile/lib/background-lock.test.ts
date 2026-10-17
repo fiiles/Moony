@@ -10,6 +10,7 @@ import {
   rememberHiddenAt,
   shouldLockOnResume,
   showsLockCover,
+  writeBackgroundLockMinutes,
   type AuthStatus,
   type BootLock,
 } from './background-lock';
@@ -172,6 +173,23 @@ describe('readBackgroundLockMinutes', () => {
     expect(readBackgroundLockMinutes(null)).toBe(1);
     expect(readBackgroundLockMinutes(undefined)).toBe(1);
     expect(readBackgroundLockMinutes(throwing)).toBe(1);
+  });
+});
+
+describe('writeBackgroundLockMinutes', () => {
+  it('stores a choice that readBackgroundLockMinutes reads back', () => {
+    const storage = memoryStorage();
+    for (const minutes of [0, 1, 5, 15] as const) {
+      writeBackgroundLockMinutes(storage, minutes);
+      expect(storage.getItem(BACKGROUND_LOCK_KEY)).toBe(String(minutes));
+      expect(readBackgroundLockMinutes(storage)).toBe(minutes);
+    }
+  });
+
+  it('copes with storage that is missing or blocked', () => {
+    expect(() => writeBackgroundLockMinutes(null, 5)).not.toThrow();
+    expect(() => writeBackgroundLockMinutes(undefined, 5)).not.toThrow();
+    expect(() => writeBackgroundLockMinutes(throwing, 5)).not.toThrow();
   });
 });
 

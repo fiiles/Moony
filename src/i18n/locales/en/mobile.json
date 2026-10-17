@@ -222,5 +222,66 @@
     "suggested": "Suggested",
     "decline": "Decline suggestion",
     "empty": "No category matches"
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profile",
+      "profileNoEmail": "Name and email",
+      "language": "Language",
+      "security": "Security",
+      "backup": "Backup and transfer",
+      "notifications": "Notifications",
+      "reminders": "Reminders",
+      "remindersSub": "{{on}} of {{total}} groups",
+      "import": "Import",
+      "deleteSub": "after typing a confirmation word"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "no telemetry",
+    "security": {
+      "lead": "Unlocking, the lock in the background and hiding amounts on this phone.",
+      "biometrics": "Unlock with {{method}}",
+      "methodFace": "your face",
+      "methodTouch": "your fingerprint",
+      "methodGeneric": "biometrics",
+      "biometricsOn": "Unlocks with {{method}}",
+      "biometricsOff": "Password only",
+      "biometricsDisabled": "Biometric unlock turned off",
+      "lockAfterLabel": "Lock after leaving the app",
+      "lockAfterHint": "After this long away from the app, it locks again when you return.",
+      "optionNow": "Immediately",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "lock immediately",
+      "lockAfter_one": "lock after {{count}} minute",
+      "lockAfter_other": "lock after {{count}} minutes",
+      "hideOnLaunch": "Hide amounts on launch",
+      "hideOnLaunchHint": "Every launch starts with amounts hidden; the eye on Overview shows them again.",
+      "hideOnLaunchShort": "amounts hidden on launch"
+    },
+    "profile": {
+      "lead": "Your name appears in the greeting on Overview.",
+      "currencyReadOnly": "Change the main currency in Moony on your computer."
+    },
+    "language": {
+      "title": "App language",
+      "lead": "Numbers and dates follow the language."
+    },
+    "delete": {
+      "title": "Delete all data?",
+      "lead": "Permanently deletes the database, the keys and the attachments from this phone. Backup copies outside the phone stay. Make a backup first — it is the only way back.",
+      "confirmLabel": "Type {{word}} to confirm",
+      "confirm": "Delete data",
+      "failed": "Deletion failed"
+    }
+  },
+  "backup": {
+    "lastOn": "Last backup {{date}}",
+    "never": "No backup yet"
+  },
+  "notifications": {
+    "permission": {
+      "granted": "Allowed",
+      "notGranted": "Not allowed"
+    }
   }
 }

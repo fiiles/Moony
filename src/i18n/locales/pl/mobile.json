@@ -244,5 +244,68 @@
     "suggested": "Propozycja",
     "decline": "Odrzuć propozycję",
     "empty": "Żadna kategoria nie pasuje"
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profil",
+      "profileNoEmail": "Imię i e-mail",
+      "language": "Język",
+      "security": "Bezpieczeństwo",
+      "backup": "Kopia zapasowa i przenoszenie",
+      "notifications": "Powiadomienia",
+      "reminders": "Przypomnienia",
+      "remindersSub": "{{on}} z {{total}} grup",
+      "import": "Import",
+      "deleteSub": "po wpisaniu słowa potwierdzenia"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "bez telemetrii",
+    "security": {
+      "lead": "Odblokowywanie, blokada w tle i ukrywanie kwot na tym telefonie.",
+      "biometrics": "Odblokowuj {{method}}",
+      "methodFace": "twarzą",
+      "methodTouch": "odciskiem palca",
+      "methodGeneric": "biometrią",
+      "biometricsOn": "Odblokowanie {{method}}",
+      "biometricsOff": "Tylko hasło",
+      "biometricsDisabled": "Odblokowywanie biometrią wyłączone",
+      "lockAfterLabel": "Blokuj po wyjściu z aplikacji",
+      "lockAfterHint": "Po tym czasie aplikacja blokuje się ponownie po powrocie.",
+      "optionNow": "Od razu",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "blokada od razu",
+      "lockAfter_one": "blokada po {{count}} minucie",
+      "lockAfter_few": "blokada po {{count}} minutach",
+      "lockAfter_many": "blokada po {{count}} minutach",
+      "lockAfter_other": "blokada po {{count}} minuty",
+      "hideOnLaunch": "Ukrywaj kwoty po uruchomieniu",
+      "hideOnLaunchHint": "Każde uruchomienie zaczyna się z ukrytymi kwotami; oko w Przeglądzie pokazuje je ponownie.",
+      "hideOnLaunchShort": "kwoty ukryte po uruchomieniu"
+    },
+    "profile": {
+      "lead": "Twoje imię pojawia się w powitaniu w Przeglądzie.",
+      "currencyReadOnly": "Walutę główną zmienisz w Moony na komputerze."
+    },
+    "language": {
+      "title": "Język aplikacji",
+      "lead": "Liczby i daty są formatowane według języka."
+    },
+    "delete": {
+      "title": "Usunąć wszystkie dane?",
+      "lead": "Trwale usuwa bazę danych, klucze i załączniki z tego telefonu. Kopie zapasowe poza telefonem zostają. Najpierw zrób kopię zapasową — to jedyna droga powrotu.",
+      "confirmLabel": "Aby potwierdzić, wpisz {{word}}",
+      "confirm": "Usuń dane",
+      "failed": "Nie udało się usunąć"
+    }
+  },
+  "backup": {
+    "lastOn": "Ostatnia kopia zapasowa {{date}}",
+    "never": "Brak kopii zapasowej"
+  },
+  "notifications": {
+    "permission": {
+      "granted": "Dozwolone",
+      "notGranted": "Niedozwolone"
+    }
   }
 }

@@ -15,6 +15,7 @@ import {
 import Lock from '@/mobile/pages/Lock';
 import Overview from '@/mobile/pages/Overview';
 import Settings from '@/mobile/pages/Settings';
+import SettingsSection from '@/mobile/pages/settings/SettingsSection';
 import Wealth from '@/mobile/pages/Wealth';
 import { EnableBiometricsSheet } from '@/mobile/sheets/EnableBiometricsSheet';
 import { routes, tabForPath } from './routes';
@@ -56,8 +57,9 @@ export function MobileShell() {
         <ProtectedRoute path={routes.uncategorized} component={QueuePlaceholder} />
         <ProtectedRoute path={routes.cashflow} component={Cashflow} />
         <ProtectedRoute path={routes.wealth} component={Wealth} />
-        {/* Placeholder page until the Settings sheet of Phase 5 (spec §8.9). */}
+        {/* Nastavení and the pages pushed on it (spec §8.9) */}
         <ProtectedRoute path={routes.settings} component={Settings} />
+        <ProtectedRoute path={routes.settingsSection} component={SettingsSection} />
         <Route>
           <Redirect to={routes.overview} />
         </Route>

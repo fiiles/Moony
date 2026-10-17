@@ -6,7 +6,9 @@ import {
   hiddenMoneyOptions,
   maskMoney,
   readHideAmounts,
+  readHideAmountsOnLaunch,
   writeHideAmounts,
+  writeHideAmountsOnLaunch,
 } from './hide-amounts';
 
 /** A Map behind the Storage methods the helpers use. */
@@ -62,6 +64,37 @@ describe('hide-amounts state', () => {
     expect(readHideAmounts(throwing)).toBe(false);
     expect(() => writeHideAmounts(null, true)).not.toThrow();
     expect(() => writeHideAmounts(throwing, true)).not.toThrow();
+  });
+});
+
+describe('hide amounts on launch', () => {
+  it('is off until it is switched on', () => {
+    expect(readHideAmountsOnLaunch(memoryStorage())).toBe(false);
+  });
+
+  it('persists the switch in both directions', () => {
+    const storage = memoryStorage();
+    writeHideAmountsOnLaunch(storage, true);
+    expect(storage.getItem(HIDE_AMOUNTS_ON_LAUNCH_KEY)).toBe('1');
+    expect(readHideAmountsOnLaunch(storage)).toBe(true);
+    writeHideAmountsOnLaunch(storage, false);
+    expect(storage.getItem(HIDE_AMOUNTS_ON_LAUNCH_KEY)).toBe('0');
+    expect(readHideAmountsOnLaunch(storage)).toBe(false);
+  });
+
+  it('starts every launch hidden, whatever the eye was left at', () => {
+    const storage = memoryStorage({ [HIDE_AMOUNTS_KEY]: '0' });
+    writeHideAmountsOnLaunch(storage, true);
+    expect(readHideAmounts(storage)).toBe(true);
+    writeHideAmountsOnLaunch(storage, false);
+    expect(readHideAmounts(storage)).toBe(false);
+  });
+
+  it('copes with storage that is missing or blocked', () => {
+    expect(readHideAmountsOnLaunch(null)).toBe(false);
+    expect(readHideAmountsOnLaunch(throwing)).toBe(false);
+    expect(() => writeHideAmountsOnLaunch(null, true)).not.toThrow();
+    expect(() => writeHideAmountsOnLaunch(throwing, true)).not.toThrow();
   });
 });
 

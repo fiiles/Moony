@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { accountPath, loanPath, policyPath, routes, tabForPath } from './routes';
+import {
+  SETTINGS_SECTIONS,
+  accountPath,
+  isSettingsSection,
+  loanPath,
+  policyPath,
+  routes,
+  settingsPath,
+  tabForPath,
+} from './routes';
 
 describe('tabForPath', () => {
   it('maps each tab root to its tab', () => {
@@ -34,5 +43,26 @@ describe('tabForPath', () => {
     expect(tabForPath(routes.settings)).toBeNull();
     expect(tabForPath('/unknown')).toBeNull();
     expect(tabForPath('')).toBeNull();
+  });
+});
+
+describe('settings sections', () => {
+  it('keeps a section page outside the tabs', () => {
+    expect(tabForPath('/settings/security')).toBeNull();
+    expect(tabForPath(settingsPath('backup'))).toBeNull();
+  });
+
+  it('builds the path of each section from the route', () => {
+    expect(settingsPath('backup')).toBe('/settings/backup');
+    for (const section of SETTINGS_SECTIONS) {
+      expect(settingsPath(section)).toBe(routes.settingsSection.replace(':section', section));
+    }
+  });
+
+  it('knows its sections and nothing else', () => {
+    for (const section of SETTINGS_SECTIONS) expect(isSettingsSection(section)).toBe(true);
+    expect(isSettingsSection('appearance')).toBe(false);
+    expect(isSettingsSection('')).toBe(false);
+    expect(isSettingsSection('Security')).toBe(false);
   });
 });

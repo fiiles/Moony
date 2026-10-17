@@ -222,5 +222,66 @@
     "suggested": "Förslag",
     "decline": "Avvisa förslaget",
     "empty": "Ingen kategori matchar"
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profil",
+      "profileNoEmail": "Namn och e-post",
+      "language": "Språk",
+      "security": "Säkerhet",
+      "backup": "Säkerhetskopia och överföring",
+      "notifications": "Aviseringar",
+      "reminders": "Påminnelser",
+      "remindersSub": "{{on}} av {{total}} grupper",
+      "import": "Import",
+      "deleteSub": "efter att du skrivit ett bekräftelseord"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "ingen telemetri",
+    "security": {
+      "lead": "Upplåsning, lås i bakgrunden och dolda belopp på den här telefonen.",
+      "biometrics": "Lås upp med {{method}}",
+      "methodFace": "ansiktet",
+      "methodTouch": "fingeravtryck",
+      "methodGeneric": "biometri",
+      "biometricsOn": "Upplåsning med {{method}}",
+      "biometricsOff": "Bara lösenord",
+      "biometricsDisabled": "Biometrisk upplåsning avstängd",
+      "lockAfterLabel": "Lås efter att du lämnat appen",
+      "lockAfterHint": "Efter den här tiden låses appen igen när du kommer tillbaka.",
+      "optionNow": "Direkt",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "lås direkt",
+      "lockAfter_one": "lås efter {{count}} minut",
+      "lockAfter_other": "lås efter {{count}} minuter",
+      "hideOnLaunch": "Dölj belopp vid start",
+      "hideOnLaunchHint": "Varje start börjar med dolda belopp; ögat i Översikt visar dem igen.",
+      "hideOnLaunchShort": "belopp dolda vid start"
+    },
+    "profile": {
+      "lead": "Ditt namn visas i hälsningen i Översikt.",
+      "currencyReadOnly": "Huvudvalutan ändrar du i Moony på datorn."
+    },
+    "language": {
+      "title": "Appens språk",
+      "lead": "Siffror och datum följer språket."
+    },
+    "delete": {
+      "title": "Radera alla data?",
+      "lead": "Raderar databasen, nycklarna och bilagorna på den här telefonen för gott. Säkerhetskopior utanför telefonen finns kvar. Gör en säkerhetskopia först — det är den enda vägen tillbaka.",
+      "confirmLabel": "Skriv {{word}} för att bekräfta",
+      "confirm": "Radera data",
+      "failed": "Raderingen misslyckades"
+    }
+  },
+  "backup": {
+    "lastOn": "Senaste säkerhetskopia {{date}}",
+    "never": "Ingen säkerhetskopia ännu"
+  },
+  "notifications": {
+    "permission": {
+      "granted": "Tillåtet",
+      "notGranted": "Inte tillåtet"
+    }
   }
 }

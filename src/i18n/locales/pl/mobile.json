@@ -176,6 +176,29 @@
       "target": "cel {{price}}",
       "targetReached": "cel osiągnięty",
       "dayChange": "dziś"
+    },
+    "position": {
+      "heroLabel": "Wartość pozycji · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} za sztukę",
+      "stats": {
+        "value": "Wartość",
+        "inCurrency": "w {{currency}}",
+        "price": "Cena"
+      },
+      "tx": {
+        "buy": "Zakup · {{quantity}} {{unit}}",
+        "sell": "Sprzedaż · {{quantity}} {{unit}}",
+        "showAll_one": "Pokaż {{count}}",
+        "showAll_few": "Pokaż wszystkie {{count}}",
+        "showAll_many": "Pokaż wszystkie {{count}}",
+        "showAll_other": "Pokaż wszystkie {{count}}",
+        "menu": "Menu transakcji"
+      },
+      "follow": "Obserwuj",
+      "following": "Obserwowana",
+      "followed": "Dodano do obserwowanych",
+      "range52": "Zakres 52 tyg.",
+      "renamed": "Nazwa zapisana"
     }
   }
 }

@@ -168,6 +168,28 @@
       "target": "cíl {{price}}",
       "targetReached": "cíl dosažen",
       "dayChange": "dnes"
+    },
+    "position": {
+      "heroLabel": "Hodnota pozice · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} za kus",
+      "stats": {
+        "value": "Hodnota",
+        "inCurrency": "v {{currency}}",
+        "price": "Cena"
+      },
+      "tx": {
+        "buy": "Nákup · {{quantity}} {{unit}}",
+        "sell": "Prodej · {{quantity}} {{unit}}",
+        "showAll_one": "Zobrazit {{count}}",
+        "showAll_few": "Zobrazit všechny {{count}}",
+        "showAll_other": "Zobrazit všech {{count}}",
+        "menu": "Nabídka transakce"
+      },
+      "follow": "Sledovat",
+      "following": "Sledováno",
+      "followed": "Přidáno do sledovaných",
+      "range52": "52T rozpětí",
+      "renamed": "Název uložen"
     }
   }
 }

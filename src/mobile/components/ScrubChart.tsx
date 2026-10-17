@@ -27,6 +27,7 @@ import type { LinePoint, LineTip } from '@/components/charts/MoonyLineChart';
 import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import { MASK } from '@/mobile/lib/hide-amounts';
 import { selectionTick } from '@/mobile/lib/haptics';
+import type { CostPoint } from '@/mobile/lib/position-series';
 import { nearestPoint, toPlotX, toPlotY } from '@/mobile/lib/scrub';
 
 /** Plot margins, shared by the Recharts layer and the scrub overlay that must sit on its line. */
@@ -37,10 +38,12 @@ const TAP_SLOP_PX = 6;
 const MARK_HIT_RADIUS = 14;
 
 interface ScrubChartProps<E extends ChartEvent> {
-  /** Sorted by `t`; at least two to draw a line. */
-  points: LinePoint[];
+  /** Sorted by `t`; at least two to draw a line. A point may carry the cost basis of its day. */
+  points: CostPoint[];
   /** Zero baseline for "Vše"; otherwise truncated with 15 % headroom below (README §8). */
   zeroBaseline?: boolean;
+  /** The dashed step line of the cost basis ("Vloženo", a position); the value domain holds it. */
+  cost?: boolean;
   /** 160 pt in the hero (spec §10.4). */
   height?: number;
   /** Value ticks ("4,2 mil."); default the locale's compact number. */
@@ -48,6 +51,8 @@ interface ScrubChartProps<E extends ChartEvent> {
   /** Big-step marks (README §9): tappable, each opens a callout with `renderEventTip`. */
   events?: E[];
   renderEventTip?: (cluster: EventCluster<E>) => LineTip;
+  /** A tap opened a mark's callout: the events it stands for (the page flashes their rows). */
+  onMarkTap?: (cluster: EventCluster<E>) => void;
   /** The day under the finger while scrubbing, `null` on release. */
   onScrub: (point: LinePoint | null) => void;
   /** Accessible name of the chart. */
@@ -78,10 +83,12 @@ interface Gesture {
 export function ScrubChart<E extends ChartEvent>({
   points,
   zeroBaseline = false,
+  cost = false,
   height = 160,
   formatTick,
   events,
   renderEventTip,
+  onMarkTap,
   onScrub,
   label,
   className,
@@ -114,10 +121,10 @@ export function ScrubChart<E extends ChartEvent>({
   const domain = useMemo(
     () =>
       valueDomain(
-        points.map((p) => p.value),
+        [...points.map((p) => p.value), ...(cost ? points.flatMap((p) => p.cost ?? []) : [])],
         { zeroBaseline }
       ),
-    [points, zeroBaseline]
+    [points, cost, zeroBaseline]
   );
   // A refetch can shorten the series under a finger; a new period remounts the chart (`key`).
   const point = active === null ? null : (points[active] ?? null);
@@ -214,7 +221,9 @@ export function ScrubChart<E extends ChartEvent>({
     if (!g || g.id !== event.pointerId) return;
     if (!g.scrubbing && g.mark !== null) {
       const mark = g.mark;
-      setCallout((open) => (open === mark ? null : mark));
+      const opens = callout !== mark;
+      setCallout(opens ? mark : null);
+      if (opens && marks[mark]) onMarkTap?.(marks[mark].cluster);
     }
     endScrub();
   };
@@ -254,6 +263,19 @@ export function ScrubChart<E extends ChartEvent>({
           activeDot={false}
           baseValue={domain[0]}
         />
+        {cost && (
+          <Line
+            type="stepAfter"
+            dataKey="cost"
+            stroke={tk.cost}
+            strokeWidth={1.5}
+            strokeDasharray="4 4"
+            dot={false}
+            activeDot={false}
+            isAnimationActive={false}
+            connectNulls
+          />
+        )}
         <Line
           type="linear"
           dataKey="value"
@@ -276,7 +298,7 @@ export function ScrubChart<E extends ChartEvent>({
         />
       </ComposedChart>
     );
-  }, [width, height, points, gradientId, tk, t0, t1, domain, ticks, tickFormatter]);
+  }, [width, height, points, cost, gradientId, tk, t0, t1, domain, ticks, tickFormatter]);
 
   const shown = callout === null ? null : (marks[callout] ?? null);
 

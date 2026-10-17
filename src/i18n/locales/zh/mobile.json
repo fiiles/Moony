@@ -152,6 +152,26 @@
       "target": "目标价 {{price}}",
       "targetReached": "已达目标价",
       "dayChange": "今日"
+    },
+    "position": {
+      "heroLabel": "持仓价值 · {{quantity}} {{unit}}",
+      "perUnit": "每股 {{price}}",
+      "stats": {
+        "value": "价值",
+        "inCurrency": "以 {{currency}} 计",
+        "price": "价格"
+      },
+      "tx": {
+        "buy": "买入 · {{quantity}} {{unit}}",
+        "sell": "卖出 · {{quantity}} {{unit}}",
+        "showAll_other": "显示全部 {{count}} 条",
+        "menu": "交易菜单"
+      },
+      "follow": "关注",
+      "following": "已关注",
+      "followed": "已添加到自选列表",
+      "range52": "52 周区间",
+      "renamed": "名称已保存"
     }
   }
 }

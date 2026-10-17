@@ -42,10 +42,12 @@
   .phone .m-screen__body::-webkit-scrollbar { display: none; }
   .demo-chart path:first-child { fill: var(--chart-area); }
   .demo-chart path:last-child { fill: none; stroke: var(--chart-line); stroke-width: 2.25; vector-effect: non-scaling-stroke; }
+  .demo-chart .demo-chart__cost { fill: none; stroke: var(--chart-cost); stroke-width: 1.5; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
   /* The chart legend under a hero's line (the app's `ChartLegend`, a desktop component): 10 / 600 `ink-3`, swatches of the line and the two marks. */
   .demo-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; color: var(--ink-3); font-size: var(--fs-micro); font-weight: 600; }
   .demo-legend span { display: inline-flex; align-items: center; gap: 6px; }
   .demo-legend__line { display: block; width: 14px; height: 2px; border-radius: 1px; background: var(--chart-line); }
+  .demo-legend__dash { display: block; width: 14px; height: 2px; background: repeating-linear-gradient(90deg, var(--chart-cost) 0 3px, transparent 3px 5px); }
   .demo-stack { display: grid; gap: 10px; margin-bottom: 14px; }
   .demo-inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
 
@@ -208,6 +210,12 @@
     <h2>Akcie: stránka třídy s podřádkem, heroem a pozicemi</h2>
     <p>Třída otevřená z Majetku na 360, 390 a 430: zpět s názvem rodiče, jeden titulek a dvě tlačítka vpravo (<code>···</code> a <code>+</code>); podřádek <code>.m-nav__sub</code> (počet pozic a stáří cen) je první řádek těla; hero s grafem a legendou značek nákupu a prodeje, tři statistiky (nerealizovaný výnos, dividendy za rok a „Rendite dieses Jahr“ s TWR a MWR), segment Pozice · Sledované a <code>.m-toolbar</code> s tlačítkem řazení <code>.m-sortpill</code> a s 44 pt přepínačem hledání <code>.m-iconbtn</code>. Pozice jsou řádky s hodnotou, odznakem změny a částkou, jeden má štítek „manuell“ za tickerem; poslední řádek <code>.m-rows__more</code> rozbalí zbytek seznamu.</p>
     <div class="phones" id="stocks"></div>
+  </section>
+
+  <section class="part">
+    <h2>Detail pozice: hodnota, vloženo a obchody</h2>
+    <p>Pozice otevřená z Akcií na 360, 390 a 430: zpět s názvem rodiče, ticker jako jediný titulek a podřádek <code>.m-nav__sub</code> (název a měna); hero s grafem, jehož přerušovaná čára „Vloženo“ (<code>cost</code>, 1,5 pt, <code>chart-cost</code>) a značky nákupu a prodeje mají legendu; dvojice tlačítek Koupit · Prodat (<code>.m-btn-pair</code>); dvě řady po třech statistikách (hodnota v měně akcie, cena, vloženo; nerealizovaný a realizovaný výsledek, dividendy), jeden výsledek v <code>--gain</code>. Transakce jsou segment Vše · Nákupy · Prodeje a řádky obchodů: nákup s „−“, prodej v <code>gain</code> s „+“ a součtem v původní měně pod částkou; druhý řádek ukazuje záblesk <code>.m-row--flash.is-hot</code>, který po klepnutí na značku v grafu naskočí a za 1,2 s odezní. Poslední řádek <code>.m-rows__more</code> rozbalí zbytek, na konci je karta <code>.m-kvcard</code> z řádků <code>.m-kv</code> („Über den Fonds“).</p>
+    <div class="phones" id="position"></div>
   </section>
 </div>
 
@@ -387,6 +395,59 @@
   </div>
 </template>
 
+<!-- The position detail frame (a position pushed on Akcie), rendered at the three widths. -->
+<template id="position-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Aktien</span></button></div>
+      <h1 class="m-nav__title">VWCE</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Vanguard FTSE All-World UCITS ETF (USD) Accumulating · EUR</p>
+      <div class="m-card m-card--hero">
+        <div class="m-hero__label">Positionswert · 426 Stk.</div>
+        <div class="m-hero__value">1&nbsp;182&nbsp;600 Kč</div>
+        <div class="m-hero__delta"><span class="m-badge m-badge--gain">▲ 2,8 %</span><span>+ 32&nbsp;100 Kč in 30 Tagen · 112,30 € pro Stück</span></div>
+        <div class="m-hero__seg"><div class="m-seg"><button class="m-seg__btn is-active" type="button">30 Tage</button><button class="m-seg__btn" type="button">3 Monate</button><button class="m-seg__btn" type="button">Dieses Jahr</button><button class="m-seg__btn" type="button">1 Jahr</button><button class="m-seg__btn" type="button">Alle</button></div></div>
+        <svg class="m-hero__chart demo-chart" data-chart data-cost></svg>
+        <div class="demo-legend">
+          <span><i class="demo-legend__line"></i>Positionswert</span>
+          <span><i class="demo-legend__dash"></i>Investiert (Kaufpreis)</span>
+          <span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><polygon points="5,0 10,10 0,10" fill="var(--chart-line)"/></svg>Kauf</span>
+          <span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><polygon points="0.75,0.75 9.25,0.75 5,9.25" fill="var(--paper)" stroke="var(--chart-line)" stroke-width="1.5"/></svg>Verkauf</span>
+        </div>
+      </div>
+      <div class="m-btn-pair">
+        <button class="m-btn m-btn--primary" type="button" data-icon="plus" data-size="16"><span>Kaufen</span></button>
+        <button class="m-btn m-btn--secondary" type="button" data-icon="minus" data-size="16"><span>Verkaufen</span></button>
+      </div>
+      <div class="m-stats">
+        <div class="m-stat"><div class="m-stat__l">Wert</div><div class="m-stat__v">47&nbsp;840 €</div><div class="m-stat__n">in EUR</div></div>
+        <div class="m-stat"><div class="m-stat__l">Kurs</div><div class="m-stat__v">2&nbsp;774 Kč</div><div class="m-stat__n">9:40</div></div>
+        <div class="m-stat"><div class="m-stat__l">Investiert</div><div class="m-stat__v">1,05 Mio.</div><div class="m-stat__n">Ø 2&nbsp;475 Kč</div></div>
+      </div>
+      <div class="m-stats">
+        <div class="m-stat"><div class="m-stat__l">Nicht realisierte Rendite</div><div class="m-stat__v m-stat__v--gain">+ 128&nbsp;300</div><div class="m-stat__n">+ 12,2 % ggü. Investition</div></div>
+        <div class="m-stat"><div class="m-stat__l">Realisierte Rendite</div><div class="m-stat__v m-stat__v--gain">+ 4&nbsp;210</div><div class="m-stat__n">1 Verkauf</div></div>
+        <div class="m-stat"><div class="m-stat__l">Dividenden</div><div class="m-stat__v">—</div><div class="m-stat__n">keine Dividendendaten</div></div>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Transaktionen</span><span class="m-sec__n">28</span></div>
+      <div class="m-seg" style="margin-bottom: 8px"><button class="m-seg__btn is-active" type="button">Alle</button><button class="m-seg__btn" type="button">Käufe</button><button class="m-seg__btn" type="button">Verkäufe</button></div>
+      <div data-rows="positionTrades"></div>
+      <div class="m-sec"><span class="m-sec__t">Über den Fonds</span><span class="m-sec__n">Yahoo Finance</span></div>
+      <div class="m-card m-kvcard">
+        <div class="m-kv m-kv--stack"><div class="m-kv__main"><span class="m-kv__l">Name</span><div class="m-kv__v">Vanguard FTSE All-World UCITS ETF (USD) Accumulating</div></div></div>
+        <div class="m-kv"><span class="m-kv__l">Währung</span><div class="m-kv__main"><div class="m-kv__v">EUR</div></div></div>
+        <div class="m-kv"><span class="m-kv__l">Marktkapitalisierung</span><div class="m-kv__main"><div class="m-kv__v">21,05 Mrd. €</div></div></div>
+        <div class="m-kv m-kv--stack"><div class="m-kv__main"><span class="m-kv__l">52-Wochen-Spanne</span><div class="m-kv__v">92,10 EUR – 113,60 EUR</div></div></div>
+        <div class="m-kv"><span class="m-kv__l">Dividendenrendite</span><div class="m-kv__main"><div class="m-kv__v">1,25 %</div></div></div>
+      </div>
+    </main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+  </div>
+</template>
+
 <script src="icons.js"></script>
 <script>
 (function () {
@@ -396,7 +457,8 @@
     "eye": '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
     "chevron-left": '<path d="m15 18-6-6 6-6"/>',
     "clock": '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
-    "banknote": '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>'
+    "banknote": '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+    "trending-down": '<path d="M16 17h6v-6"/><path d="m22 17-8.5-8.5-5 5L2 7"/>'
   });
 
   var TABS = [
@@ -414,7 +476,7 @@
     var vs = valueSub ? '<span class="m-row__vs">' + valueSub + '</span>' : "";
     var chev = value ? "" : '<span class="m-row__chev" data-icon="chevron-right" data-size="16"></span>';
     var subLine = sub || vs ? '<div class="m-row__line"><span class="m-row__s">' + sub + '</span>' + vs + '</div>' : "";
-    return '<a class="m-row' + (value ? "" : " m-row--chev") + (subLine ? "" : " m-row--single") + '" href="#">' + chipHtml +
+    return '<a class="m-row' + (value ? "" : " m-row--chev") + (subLine ? "" : " m-row--single") + (opts.cls ? " " + opts.cls : "") + '" href="#">' + chipHtml +
       '<div class="m-row__main"><div class="m-row__line"><span class="m-row__t">' + title + '</span>' + v + '</div>' +
       subLine + '</div>' + chev + '</a>';
   }
@@ -465,6 +527,14 @@
       row("NV", "NVDA", "NVIDIA", "158&nbsp;600 Kč", up("64,0", "+ 61&nbsp;900 Kč")),
       '<button class="m-rows__more" type="button">Alle 12 Positionen anzeigen</button>'
     ],
+    /* A buy is "− " on the paper chip, a sell "+ " on the green one; the second row is mid-flash. */
+    positionTrades: [
+      row("", "Kauf · 12 Stk.", "14. 10. 2026 · 110,40 €", "− 32&nbsp;750 Kč", "1&nbsp;324,80 €", { icon: "trending-up", cls: "m-row--flash" }),
+      row("", "Kauf · 10 Stk.", "18. 9. 2026 · 108,90 €", "− 26&nbsp;790 Kč", "1&nbsp;089,00 €", { icon: "trending-up", cls: "m-row--flash is-hot" }),
+      row("", "Verkauf · 5 Stk.", "2. 6. 2026 · 104,10 €", "+ 12&nbsp;880 Kč", "520,50 €", { icon: "trending-down", chip: "m-row__chip--gain", gain: true, cls: "m-row--flash" }),
+      row("", "Kauf · 15 Stk.", "15. 5. 2026 · 101,80 €", "− 38&nbsp;020 Kč", "1&nbsp;527,00 €", { icon: "trending-up", cls: "m-row--flash" }),
+      '<button class="m-rows__more" type="button">Alle 28 anzeigen</button>'
+    ],
     settings: [
       row("", "Sicherheit", "Face ID · Sperre nach 1 Minute", "", "", { icon: "lock" }),
       row("", "Sicherung und Übertragung", "iCloud Drive · heute 7:30", "", "", { icon: "download" }),
@@ -510,6 +580,15 @@
     stocks.appendChild(frame);
   });
 
+  var position = document.getElementById("position");
+  [[360, "phone--android", "Android, nejužší běžný"], [390, "phone--iphone", "reference"], [430, "phone--max", "velký iPhone"]].forEach(function (f) {
+    var frame = document.createElement("div");
+    frame.className = "frame"; frame.style.setProperty("--w", f[0] + "px");
+    frame.innerHTML = '<div class="frame__cap"><b>' + f[0] + ' · Pozice</b><span>' + f[2] + '</span><output class="frame__check"></output></div><div class="phone ' + f[1] + '"></div>';
+    frame.querySelector(".phone").appendChild(document.getElementById("position-frame").content.cloneNode(true));
+    position.appendChild(frame);
+  });
+
   /* Allocation rings: stroked circles on a 110 px box, 22 px thick, as AllocationRing.tsx draws them. */
   document.querySelectorAll("[data-ring]").forEach(function (box) {
     var SIZE = 110, STROKE = 22, R = (SIZE - STROKE) / 2, C = 2 * Math.PI * R;
@@ -544,7 +623,9 @@
     for (var i = 0; i <= n; i++) pts.push([i * 10, 112 - i * 2.1 - Math.sin(i / 2.3) * 9 - (i >= 19 ? 22 : 0)]);
     var line = pts.map(function (p, i) { return (i ? "L" : "M") + p[0] + " " + p[1].toFixed(1); }).join("");
     svg.setAttribute("viewBox", "0 0 300 160"); svg.setAttribute("preserveAspectRatio", "none");
-    svg.innerHTML = '<path d="' + line + 'L300 160L0 160Z"/><path d="' + line + '"/>';
+    /* A position's dashed "Vloženo": a step line under the value that climbs with every buy. */
+    var cost = svg.hasAttribute("data-cost") ? '<path class="demo-chart__cost" d="M0 126H90V120H190V104H300"/>' : "";
+    svg.innerHTML = '<path d="' + line + 'L300 160L0 160Z"/>' + cost + '<path d="' + line + '"/>';
   });
 
   /* Collapsing titles, as the React Screen does: a large title that has scrolled away shows the

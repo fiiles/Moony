@@ -160,6 +160,27 @@
       "target": "mål {{price}}",
       "targetReached": "målet nådd",
       "dayChange": "i dag"
+    },
+    "position": {
+      "heroLabel": "Verdi av beholdningen · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} per stk.",
+      "stats": {
+        "value": "Verdi",
+        "inCurrency": "i {{currency}}",
+        "price": "Kurs"
+      },
+      "tx": {
+        "buy": "Kjøp · {{quantity}} {{unit}}",
+        "sell": "Salg · {{quantity}} {{unit}}",
+        "showAll_one": "Vis {{count}}",
+        "showAll_other": "Vis alle {{count}}",
+        "menu": "Transaksjonsmeny"
+      },
+      "follow": "Følg",
+      "following": "Følges",
+      "followed": "Lagt til i følgelisten",
+      "range52": "52-ukers spenn",
+      "renamed": "Navn lagret"
     }
   }
 }

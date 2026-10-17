@@ -8,9 +8,8 @@ import { useCurrency } from '@/lib/currency';
 import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { investmentsApi, priceApi } from '@/lib/tauri-api';
 import { useStockPerformance } from '@/hooks/use-stock-performance';
-import { utcDayFloor } from '@/utils/chart-axis';
-import { chartPeriodStart } from '@/utils/period';
 import { toStockRow } from '@/utils/positions';
+import { ytdRange } from '@/mobile/lib/position-series';
 
 /**
  * The positions as the backend values them in the report currency (ADR 0011): the query of the
@@ -97,8 +96,7 @@ export function useTwrThisYear(enabled: boolean): {
   const performance = useStockPerformance(
     enabled
       ? {
-          fromTs: chartPeriodStart('YTD', nowSec)!,
-          toTs: utcDayFloor(nowSec),
+          ...ytdRange(nowSec),
           reportCurrency: currencyCode,
           series: [],
         }

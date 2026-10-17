@@ -43,6 +43,7 @@ import { Money } from '@/mobile/components/Money';
 import { SearchField } from '@/mobile/components/SearchField';
 import { Segment } from '@/mobile/components/Segment';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
+import { MoreRow } from '@/mobile/components/wealth/MoreRow';
 import { PositionRow } from '@/mobile/components/wealth/PositionRow';
 import { SortPill } from '@/mobile/components/wealth/SortPill';
 import { WatchedRow } from '@/mobile/components/wealth/WatchedRow';
@@ -58,14 +59,13 @@ import { changeSinceDayOptions } from '@/mobile/lib/change';
 import { classTrendPoints, pointsChange, trendChangeBase } from '@/mobile/lib/class-trend';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import { foldRows, positionRows, priceStamp, type PositionSort } from '@/mobile/lib/position-rows';
+import { statMoneyOptions } from '@/mobile/lib/stat-money';
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 
 /** Whole amounts: the class page shows no decimals. */
 const WHOLE = { decimals: 0 } as const;
-/** From a million on, a stat shows the compact amount ("6,78 mil. Kč") so a third holds it. */
-const COMPACT_FROM = 1_000_000;
 /** The classes of a menu item on the phone: 44 pt tall, body type, 18 pt icons. */
 const MENU_ITEM = 'min-h-11 text-m-body [&_svg]:size-[18px]';
 
@@ -392,13 +392,7 @@ function PortfolioStats({
   const dividends = totalOf(totals?.yearlyDividend);
 
   const statMoney = (amount: number, signed = false) =>
-    moneyText(
-      amount,
-      currency,
-      Math.abs(amount) >= COMPACT_FROM
-        ? { compact: true, decimals: 2, signed }
-        : { decimals: 0, signed }
-    );
+    moneyText(amount, currency, { ...statMoneyOptions(amount), signed });
 
   const stats: StatItem[] = [
     {
@@ -525,15 +519,10 @@ function PositionsTab({
             <PositionRow key={row.id} row={row} currency={currency} />
           ))}
           {hidden > 0 && (
-            <li className="relative before:pointer-events-none before:absolute before:inset-x-0 before:left-3.5 before:top-0 before:border-t before:border-line-soft before:content-['']">
-              <button
-                type="button"
-                className="flex min-h-[52px] w-full items-center justify-center text-m-row text-ink-2 [-webkit-touch-callout:none] active:bg-well"
-                onClick={() => setExpanded(true)}
-              >
-                {t('wealth.stocks.showAll', { count: shownRows.length })}
-              </button>
-            </li>
+            <MoreRow
+              label={t('wealth.stocks.showAll', { count: shownRows.length })}
+              onClick={() => setExpanded(true)}
+            />
           )}
         </EntityRows>
       )}

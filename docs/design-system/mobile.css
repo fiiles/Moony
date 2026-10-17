@@ -53,7 +53,7 @@
   flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
   padding: 0 16px calc(var(--m-tabbar-h) + var(--safe-bottom) + 24px); /* 16 px side gutter */
 }
-.m-num, .m-hero__value, .m-stat__v, .m-row__v, .m-row__vs, .m-badge, .m-change, .m-legend { font-variant-numeric: tabular-nums; }
+.m-num, .m-hero__value, .m-stat__v, .m-row__v, .m-row__vs, .m-badge, .m-change, .m-legend, .m-kv__v, .m-kv__s { font-variant-numeric: tabular-nums; }
 
 /* ===== Nav bar =====
    Slots: at most one leading and two trailing 44 px buttons, the title centred between them.
@@ -520,6 +520,40 @@
 .m-rows__more:active { background: var(--well); }
 .m-row + .m-rows__more::before { content: ""; position: absolute; top: 0; left: 14px; right: 0; border-top: 1px solid var(--line-soft); }
 
+/* ===== Position detail (spec §8.8, prototype frame 12) =====
+   The page is the pushed screen of Akcie (nav sub-line, hero, `.m-btn-pair`, stats, rows) plus three
+   pieces of its own: the trade row's flash, the key-value row and its card. The hero's dashed
+   "Vloženo" and the marks are the chart's, not CSS. The six stats are two `.m-stats` rows. */
+
+/* The trade row is the entity row (`.m-row__chip--gain` and `.m-row__v--gain` for a sell). A tap on
+   a mark on the chart flashes the rows it stands for: a row takes `well` at once (`.is-hot`) and,
+   when the class goes (the app lets it go after 150 ms), fades back to paper over 1.2 s. Only rows
+   that can flash carry `--flash`, so the press feedback of the others stays instant. */
+.m-row--flash { transition: background-color 1200ms ease-out; }
+.m-row--flash.is-hot { background: var(--well); transition-duration: 0s; }
+
+/* Key-value row (`.m-kv`): the label 12 / 500 `ink-3` on the left (at most 40 %, wraps, hyphenated),
+   the value 15 / 450 `ink` at the right on one line that ends with an ellipsis, an optional 11
+   `ink-4` line under it; 44 px at least. `--stack` puts the label above a value that takes the row's
+   width and wraps (a sector and industry, a long name). A row that opens something is a button and
+   shows the chevron. */
+.m-kv { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 8px 4px; }
+.m-kv--stack { align-items: flex-start; }
+.m-kv__l { flex: none; max-width: 40%; color: var(--ink-3); overflow-wrap: break-word; hyphens: auto; font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); }
+.m-kv--stack .m-kv__l { display: block; max-width: none; }
+.m-kv__main { flex: 1 1 auto; min-width: 0; text-align: right; }
+.m-kv--stack .m-kv__main { text-align: left; }
+.m-kv__v { overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; font-size: var(--m-fs-body); font-weight: var(--m-fw-body); }
+.m-kv--stack .m-kv__v { margin-top: 4px; overflow: visible; overflow-wrap: break-word; hyphens: auto; white-space: normal; }
+.m-kv__s { overflow: hidden; color: var(--ink-4); text-overflow: ellipsis; white-space: nowrap; font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); }
+.m-kv--stack .m-kv__s { margin-top: 4px; }
+.m-kv:is(button) { border: 0; background: none; color: inherit; font: inherit; text-align: left; -webkit-touch-callout: none; }
+.m-kv:is(button):active { background: var(--well); }
+/* The card of key-value rows ("O společnosti"): a `.m-card` with 4 px of padding above and under the
+   rows and 16 px at the sides, the rows `line-soft` apart. */
+.m-kvcard { padding: 4px 16px; }
+.m-kvcard > .m-kv + .m-kv { border-top: 1px solid var(--line-soft); }
+
 @media (prefers-reduced-motion: no-preference) {
   @keyframes m-sheet-in { from { transform: translateY(100%); } }
   @keyframes m-scrim-in { from { opacity: 0; } }
@@ -527,5 +561,5 @@
   .m-scrim { animation: m-scrim-in var(--t-base) var(--ease); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .m-nav, .m-nav__title, .m-seg__btn, .m-swipe > .m-row { transition: none; }
+  .m-nav, .m-nav__title, .m-seg__btn, .m-swipe > .m-row, .m-row--flash { transition: none; }
 }

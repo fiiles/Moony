@@ -168,6 +168,28 @@
       "target": "objetivo {{price}}",
       "targetReached": "objetivo alcanzado",
       "dayChange": "hoy"
+    },
+    "position": {
+      "heroLabel": "Valor de la posición · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} por unidad",
+      "stats": {
+        "value": "Valor",
+        "inCurrency": "en {{currency}}",
+        "price": "Precio"
+      },
+      "tx": {
+        "buy": "Compra · {{quantity}} {{unit}}",
+        "sell": "Venta · {{quantity}} {{unit}}",
+        "showAll_one": "Mostrar todas ({{count}})",
+        "showAll_many": "Mostrar todas ({{count}})",
+        "showAll_other": "Mostrar todas ({{count}})",
+        "menu": "Menú del movimiento"
+      },
+      "follow": "Seguir",
+      "following": "Siguiendo",
+      "followed": "Añadida a la lista de seguimiento",
+      "range52": "Rango de 52 semanas",
+      "renamed": "Nombre guardado"
     }
   }
 }

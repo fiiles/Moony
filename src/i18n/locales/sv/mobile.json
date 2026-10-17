@@ -160,6 +160,27 @@
       "target": "mål {{price}}",
       "targetReached": "målet nått",
       "dayChange": "i dag"
+    },
+    "position": {
+      "heroLabel": "Innehavets värde · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} per st",
+      "stats": {
+        "value": "Värde",
+        "inCurrency": "i {{currency}}",
+        "price": "Kurs"
+      },
+      "tx": {
+        "buy": "Köp · {{quantity}} {{unit}}",
+        "sell": "Försäljning · {{quantity}} {{unit}}",
+        "showAll_one": "Visa {{count}}",
+        "showAll_other": "Visa alla {{count}}",
+        "menu": "Transaktionsmeny"
+      },
+      "follow": "Bevaka",
+      "following": "Bevakas",
+      "followed": "Tillagd i bevakningslistan",
+      "range52": "52-veckorsintervall",
+      "renamed": "Namn sparat"
     }
   }
 }

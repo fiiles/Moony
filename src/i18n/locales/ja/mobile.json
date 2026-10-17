@@ -152,6 +152,26 @@
       "target": "目標 {{price}}",
       "targetReached": "目標に到達",
       "dayChange": "本日"
+    },
+    "position": {
+      "heroLabel": "ポジションの評価額 · {{quantity}} {{unit}}",
+      "perUnit": "1株あたり {{price}}",
+      "stats": {
+        "value": "評価額",
+        "inCurrency": "{{currency}}建て",
+        "price": "価格"
+      },
+      "tx": {
+        "buy": "買付 · {{quantity}} {{unit}}",
+        "sell": "売却 · {{quantity}} {{unit}}",
+        "showAll_other": "{{count}} 件をすべて表示",
+        "menu": "取引メニュー"
+      },
+      "follow": "フォロー",
+      "following": "フォロー中",
+      "followed": "ウォッチリストに追加しました",
+      "range52": "52週レンジ",
+      "renamed": "名称を保存しました"
     }
   }
 }

@@ -160,6 +160,27 @@
       "target": "target {{price}}",
       "targetReached": "target reached",
       "dayChange": "today"
+    },
+    "position": {
+      "heroLabel": "Position value · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} per unit",
+      "stats": {
+        "value": "Value",
+        "inCurrency": "in {{currency}}",
+        "price": "Price"
+      },
+      "tx": {
+        "buy": "Buy · {{quantity}} {{unit}}",
+        "sell": "Sell · {{quantity}} {{unit}}",
+        "showAll_one": "Show all {{count}}",
+        "showAll_other": "Show all {{count}}",
+        "menu": "Transaction menu"
+      },
+      "follow": "Watch",
+      "following": "Watching",
+      "followed": "Added to the watchlist",
+      "range52": "52-week range",
+      "renamed": "Name saved"
     }
   }
 }

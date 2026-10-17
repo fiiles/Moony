@@ -322,7 +322,7 @@
       <a class="m-note" href="#" data-icon="info" data-size="15"><span>Budgets: 5 im Rahmen · 1 über dem Limit · 2 nahe am Limit</span></a>
       <div class="m-sec"><h2 class="m-sec__t">Ausgaben nach Kategorie</h2><span class="m-sec__n">44&nbsp;380 Kč</span></div>
       <div class="m-rows" data-cat="expenses"></div>
-      <div class="m-sec"><h2 class="m-sec__t">Geldanlagen, Sparen und Umbuchungen</h2><span class="m-sec__n">außerhalb von Einnahmen und Ausgaben</span></div>
+      <div class="m-sec"><h2 class="m-sec__t">Geldanlagen, Sparen und Umbuchungen</h2></div>
       <div class="m-rows" data-cat="transfers"></div>
     </main>
     <nav class="m-tabbar" data-active="cashflow"></nav>
@@ -459,7 +459,8 @@
   });
 
   /* Category rows: the chip in the category's hue (the tokens stand in for the user's colours), the
-     third line with the progress bar (limit state: nothing, "near", "over"), a row without a bar for the transfer. */
+     sub-line with what matters first and the count last (an ellipsis drops the count), the third line
+     with the progress bar (limit state: nothing, "near", "over"), a row without a bar for the transfer. */
   function catRow(o) {
     var chip = '<div class="m-row__chip m-row__chip--cat" style="--cat: ' + o.color + '; background: color-mix(in srgb, ' + o.color + ' 15%, transparent)" data-icon="' + o.icon + '" data-size="16"></div>';
     var bar = o.bar ? '<span class="m-row__bar"><span class="m-pbar' + (o.bar[0] ? " m-pbar--" + o.bar[0] : "") + '"><i style="width:' + o.bar[1] + '%"></i></span></span>' : "";
@@ -469,9 +470,9 @@
   }
   var CATS = {
     expenses: [
-      catRow({ icon: "house", color: "var(--s1)", title: "Wohnen", sub: "4 Transaktionen · 41 % der Ausgaben", value: "18&nbsp;400 Kč", bar: ["share", 41] }),
-      catRow({ icon: "shopping-cart", color: "var(--s2)", title: "Lebensmittel", sub: "23 Transaktionen · Limit 9&nbsp;000 Kč · überschritten um 1&nbsp;420 Kč", value: "10&nbsp;420 Kč", loss: true, bar: ["over", 100] }),
-      catRow({ icon: "utensils", color: "var(--s4)", title: "Restaurants &amp; Gastronomie", sub: "11 Transaktionen · Limit 4&nbsp;000 Kč · nahe am Limit", value: "3&nbsp;560 Kč", bar: ["", 89] })
+      catRow({ icon: "house", color: "var(--s1)", title: "Wohnen", sub: "41 % der Ausgaben · 4 Transaktionen", value: "18&nbsp;400 Kč", bar: ["share", 41] }),
+      catRow({ icon: "shopping-cart", color: "var(--s2)", title: "Lebensmittel", sub: '<span class="is-loss">10&nbsp;420 / 9&nbsp;000 Kč</span> · über dem Limit · 23 Transaktionen', value: "10&nbsp;420 Kč", loss: true, bar: ["over", 100] }),
+      catRow({ icon: "utensils", color: "var(--s4)", title: "Restaurants &amp; Gastronomie", sub: "3&nbsp;560 / 4&nbsp;000 Kč · nahe am Limit · 11 Transaktionen", value: "3&nbsp;560 Kč", bar: ["", 89] })
     ],
     transfers: [
       catRow({ icon: "trending-up", color: "var(--s3)", title: "Geldanlagen", sub: "3 Transaktionen", value: "33&nbsp;120 Kč" })

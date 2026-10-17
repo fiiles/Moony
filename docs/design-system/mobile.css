@@ -364,13 +364,16 @@
 }
 
 /* A row with a bar: the category rows of the report carry a third line, 6 px under the sub-line, in
-   the main column, so the row is never `--single` and measures about 69 px. The amount of a limit
-   that is exceeded turns `loss`. The category chip keeps the user's hue: the tint is the chip's
+   the main column, so the row is never `--single` and measures about 69 px. The sub-line puts what
+   matters first and the count last, so an ellipsis drops the count: the share ("41 % der Ausgaben")
+   or a limit's progress ("10 420 / 9 000 Kč", `.is-loss` when exceeded), the state word ("nahe am
+   Limit", "über dem Limit"), then "23 Transaktionen". The amount of a limit that is exceeded turns
+   `loss` too. The category chip keeps the user's hue: the tint is the chip's
    inline background (the colour at 15 % over paper, hex alpha 26), its glyph is `--cat`, and the
    dark theme lifts the glyph 30 % towards ink. */
 .m-row--bar { min-height: 68px; }
 .m-row__bar { display: block; margin-top: 6px; }
-.m-row__v--loss { color: var(--loss); }
+.m-row__v--loss, .m-row__s .is-loss { color: var(--loss); }
 .m-row__chip--cat { color: var(--cat); }
 :root[data-theme="dark"] .m-row__chip--cat { color: color-mix(in oklab, var(--cat) 70%, var(--ink)); }
 

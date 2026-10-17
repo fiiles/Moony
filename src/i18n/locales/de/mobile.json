@@ -44,10 +44,9 @@
     "moves_other": "{{count}} Transaktionen",
     "shareOfExpenses": "{{share}} der Ausgaben",
     "shareOfIncome": "{{share}} der Einnahmen",
-    "limit": "Limit {{amount}}",
+    "limitProgress": "{{spent}} / {{limit}}",
     "near": "nahe am Limit",
-    "over": "überschritten um {{amount}}",
-    "transfersNote": "außerhalb von Einnahmen und Ausgaben",
+    "overLimit": "über dem Limit",
     "budgetSummary": "Budgets: {{ok}} im Rahmen · {{over}} über dem Limit · {{near}} nahe am Limit",
     "partial": "Der Zeitraum ist noch nicht zu Ende, die Zahlen vervollständigen sich mit dem nächsten Auszug.",
     "empty": {

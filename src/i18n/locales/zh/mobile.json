@@ -42,10 +42,9 @@
     "moves_other": "{{count}} 笔交易",
     "shareOfExpenses": "占支出的 {{share}}",
     "shareOfIncome": "占收入的 {{share}}",
-    "limit": "限额 {{amount}}",
+    "limitProgress": "{{spent}} / {{limit}}",
     "near": "接近限额",
-    "over": "超出 {{amount}}",
-    "transfersNote": "不计入收入和支出",
+    "overLimit": "超出限额",
     "budgetSummary": "预算：{{ok}} 个在限额内 · {{over}} 个超限额 · {{near}} 个接近限额",
     "partial": "本期尚未结束，数据将随下一份对账单补全。",
     "empty": {

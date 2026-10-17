@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 import { Ellipsis, Landmark } from 'lucide-react';
@@ -44,6 +44,7 @@ import {
   savingsRate,
   type CategoryRowModel,
 } from '@/mobile/lib/cashflow-rows';
+import { afterHistorySettles } from '@/mobile/lib/history-settle';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 import { budgetsPath, cashflowCategoryPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -77,8 +78,25 @@ export default function Cashflow() {
   const report = useCashflowReport(state);
   const { accounts } = useBankAccounts();
   const [accountsOpen, setAccountsOpen] = useState(false);
+  // The accounts chosen in the sheet, waiting for the sheet's history entry to go
+  const [pendingScope, setPendingScope] = useState<string[] | null>(null);
   const { actuals } = report;
   const search = cashflowSearch(state);
+  const accountCount = accounts.length;
+
+  // The sheet's `history.back()` raises its `popstate` a tick after it closed; the scope is
+  // written to the URL (a replace) only after that, else it lands on the sheet's entry and is
+  // popped away with it. Closed by Android back, the `popstate` is already behind: the timer.
+  useEffect(() => {
+    if (accountsOpen || pendingScope === null) return;
+    return afterHistorySettles(window, () => {
+      setState({
+        ...state,
+        accountIds: pendingScope.length === accountCount ? undefined : pendingScope,
+      });
+      setPendingScope(null);
+    });
+  }, [accountsOpen, pendingScope, accountCount, state, setState]);
 
   return (
     <Screen
@@ -97,7 +115,7 @@ export default function Cashflow() {
               className="min-h-11 text-m-body"
               onSelect={() => setAccountsOpen(true)}
             >
-              {tr('readiness.accounts', { count: state.accountIds?.length ?? accounts.length })}
+              {tr('readiness.accounts', { count: state.accountIds?.length ?? accountCount })}
             </DropdownMenuItem>
             <DropdownMenuItem
               className="min-h-11 text-m-body"
@@ -144,7 +162,10 @@ export default function Cashflow() {
         onOpenChange={setAccountsOpen}
         accounts={accounts}
         value={state.accountIds}
-        onChange={(accountIds) => setState({ ...state, accountIds })}
+        onDone={(ids) => {
+          setPendingScope(ids);
+          setAccountsOpen(false);
+        }}
       />
     </Screen>
   );
@@ -298,7 +319,7 @@ function ReportBody({ actuals, report, state, onSelectMonth, search }: ReportBod
       </section>
       {transferRows.length > 0 && (
         <section>
-          <SectionHead title={tr('actuals.transfers.title')} note={t('cashflow.transfersNote')} />
+          <SectionHead title={tr('actuals.transfers.title')} />
           <EntityRows>{rows(transferRows, false)}</EntityRows>
         </section>
       )}

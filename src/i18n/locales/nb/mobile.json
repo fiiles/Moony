@@ -44,10 +44,9 @@
     "moves_other": "{{count}} transaksjoner",
     "shareOfExpenses": "{{share}} av utgiftene",
     "shareOfIncome": "{{share}} av inntektene",
-    "limit": "grense {{amount}}",
+    "limitProgress": "{{spent}} / {{limit}}",
     "near": "nær grensen",
-    "over": "over med {{amount}}",
-    "transfersNote": "utenfor inntekter og utgifter",
+    "overLimit": "over grensen",
     "budgetSummary": "Budsjetter: {{ok}} innenfor grensen · {{over}} over grensen · {{near}} nær grensen",
     "partial": "Perioden er ikke over ennå; tallene fylles ut med neste kontoutskrift.",
     "empty": {

@@ -1,11 +1,13 @@
+import { Fragment, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { ReactNode } from 'react';
 import type { TransactionCategory } from '@shared/schema';
 import type { MoneyOptions } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import { EntityRow } from '@/mobile/components/EntityRow';
+import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import type { CategoryRowModel } from '@/mobile/lib/cashflow-rows';
+import { maskMoney } from '@/mobile/lib/hide-amounts';
 import { CategoryChip } from './CategoryChip';
 import { ProgressBar } from './ProgressBar';
 
@@ -31,11 +33,12 @@ interface CategoryRowProps {
 
 /**
  * A category of the Cashflow report as an entity row (spec §8.7 items 4–5, README §13): the
- * category chip, the name, the amount, and the sub-line "3 pohyby · 24 % výdajů". A category with
- * a budget limit shows the limit instead of the share ("3 pohyby · limit 3 000 Kč", then "blíží
- * se" or "překročeno o 250 Kč"; the amount turns `loss` when over) and its bar is the limit's
- * progress; without one the bar is the category's share of the movement. The limit's amounts are
- * in the budget's own currency, never compared with the report amount. A tap opens the
+ * category chip, the name, the amount, and a sub-line that puts what matters first and the count
+ * last, so an ellipsis drops the count: "47 % výdajů · 3 pohyby", or for a category with a budget
+ * limit its progress, "3 206 / 3 000 Kč" (red when over), then "blíží se limitu" or "nad
+ * limitem", then the count. The amount turns `loss` when over and the bar is the limit's
+ * progress; without a limit the bar is the category's share of the movement. The limit's amounts
+ * are in the budget's own currency, never compared with the report amount. A tap opens the
  * transactions.
  */
 export function CategoryRow({
@@ -50,28 +53,38 @@ export function CategoryRow({
 }: CategoryRowProps) {
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
+  const { hidden } = useHideAmounts();
   const moneyText = useMoneyText();
   const { limit } = row;
+  const over = limit?.state === 'over';
 
-  const sub: string[] = [t('cashflow.moves', { count: row.count })];
+  const parts: ReactNode[] = [];
   if (limit) {
-    sub.push(t('cashflow.limit', { amount: moneyText(limit.limit, limit.currency, WHOLE) }));
-    if (limit.state === 'near') sub.push(t('cashflow.near'));
-    if (limit.state === 'over') {
-      sub.push(
-        t('cashflow.over', { amount: moneyText(limit.spent - limit.limit, limit.currency, WHOLE) })
-      );
-    }
+    // The spent number is bare (the limit carries the currency): masked here, not by `fmt.money`
+    const spent = fmt.number(limit.spent, { maximumFractionDigits: 0 });
+    const progress = t('cashflow.limitProgress', {
+      spent: hidden ? maskMoney(spent) : spent,
+      limit: moneyText(limit.limit, limit.currency, WHOLE),
+    });
+    parts.push(over ? <span className="text-loss">{progress}</span> : progress);
+    if (limit.state === 'near') parts.push(t('cashflow.near'));
+    if (over) parts.push(t('cashflow.overLimit'));
   } else if (row.flowKind !== 'transfer') {
     const share = fmt.percent(row.share, 0);
-    sub.push(
+    parts.push(
       row.flowKind === 'income'
         ? t('cashflow.shareOfIncome', { share })
         : t('cashflow.shareOfExpenses', { share })
     );
   }
+  parts.push(t('cashflow.moves', { count: row.count }));
+  const sub = parts.map((part, index) => (
+    <Fragment key={index}>
+      {index > 0 && ' · '}
+      {part}
+    </Fragment>
+  ));
 
-  const over = limit?.state === 'over';
   const bar = !withBar ? undefined : limit ? (
     <ProgressBar value={limit.percentage / 100} tone={over ? 'over' : 'limit'} />
   ) : (
@@ -82,7 +95,7 @@ export function CategoryRow({
     <EntityRow
       chip={<CategoryChip category={category} />}
       title={title}
-      sub={sub.join(' · ')}
+      sub={sub}
       value={moneyText(row.amount, reportCurrency, WHOLE)}
       valueTone={over ? 'loss' : undefined}
       bar={bar}

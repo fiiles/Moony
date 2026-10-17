@@ -42,10 +42,9 @@
     "moves_other": "{{count}}件の取引",
     "shareOfExpenses": "支出の{{share}}",
     "shareOfIncome": "収入の{{share}}",
-    "limit": "上限 {{amount}}",
+    "limitProgress": "{{spent}} / {{limit}}",
     "near": "上限に近い",
-    "over": "{{amount}}超過",
-    "transfersNote": "収入・支出の対象外",
+    "overLimit": "上限超過",
     "budgetSummary": "予算: 上限内 {{ok}} · 超過 {{over}} · 上限に近い {{near}}",
     "partial": "この期間はまだ終わっていません。次の明細で数値が補完されます。",
     "empty": {

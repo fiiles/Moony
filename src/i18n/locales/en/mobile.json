@@ -44,10 +44,9 @@
     "moves_other": "{{count}} transactions",
     "shareOfExpenses": "{{share}} of expenses",
     "shareOfIncome": "{{share}} of income",
-    "limit": "limit {{amount}}",
+    "limitProgress": "{{spent}} / {{limit}}",
     "near": "near the limit",
-    "over": "over by {{amount}}",
-    "transfersNote": "outside income and expenses",
+    "overLimit": "over the limit",
     "budgetSummary": "Budgets: {{ok}} within limit · {{over}} over limit · {{near}} near the limit",
     "partial": "This period has not ended yet; the numbers will fill in with the next statement.",
     "empty": {

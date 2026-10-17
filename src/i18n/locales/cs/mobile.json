@@ -46,10 +46,9 @@
     "moves_other": "{{count}} pohybů",
     "shareOfExpenses": "{{share}} výdajů",
     "shareOfIncome": "{{share}} příjmů",
-    "limit": "limit {{amount}}",
-    "near": "blíží se",
-    "over": "překročeno o {{amount}}",
-    "transfersNote": "mimo příjmy a výdaje",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "blíží se limitu",
+    "overLimit": "nad limitem",
     "budgetSummary": "Rozpočty: {{ok}} v mezích · {{over}} nad limitem · {{near}} blíží se limitu",
     "partial": "Období ještě neskončilo, čísla se doplní s dalším výpisem.",
     "empty": {

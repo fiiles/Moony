@@ -75,3 +75,23 @@ export function priceStamp(
   if (fetchedAt === null) return { kind: 'never' };
   return { kind: utcDayFloor(fetchedAt) === utcDayFloor(nowSec) ? 'today' : 'day', at: fetchedAt };
 }
+
+export type StocksTab = 'positions' | 'watched';
+
+/**
+ * What the Akcie page makes of the two lists it can show. `empty`: nothing owned, nothing
+ * watched and nothing failed — the page's one empty state. `error`: the positions failed to load
+ * and there is nothing watched to show instead. `list`: the segment Pozice · Sledované, opened on
+ * `defaultTab` until the user picks one — Sledované when there are no positions but watched ones,
+ * so a user who only watches lands on something. Positions that are there win over a failed
+ * refetch (the query keeps the last data).
+ */
+export function stocksView(
+  rows: readonly unknown[],
+  watched: readonly unknown[],
+  positionsFailed: boolean
+): { kind: 'empty' | 'error' | 'list'; defaultTab: StocksTab } {
+  if (rows.length > 0) return { kind: 'list', defaultTab: 'positions' };
+  if (watched.length > 0) return { kind: 'list', defaultTab: 'watched' };
+  return { kind: positionsFailed ? 'error' : 'empty', defaultTab: 'positions' };
+}

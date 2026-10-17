@@ -49,6 +49,7 @@ import { SortPill } from '@/mobile/components/wealth/SortPill';
 import { WatchedRow } from '@/mobile/components/wealth/WatchedRow';
 import { useBack } from '@/mobile/hooks/use-back';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { useRemembered } from '@/mobile/hooks/use-remembered';
 import {
   useRefreshStockPrices,
   useStockPositions,
@@ -58,7 +59,14 @@ import {
 import { changeSinceDayOptions } from '@/mobile/lib/change';
 import { classTrendPoints, pointsChange, trendChangeBase } from '@/mobile/lib/class-trend';
 import { shortDayOptions } from '@/mobile/lib/format-day';
-import { foldRows, positionRows, priceStamp, type PositionSort } from '@/mobile/lib/position-rows';
+import {
+  foldRows,
+  positionRows,
+  priceStamp,
+  stocksView,
+  type PositionSort,
+  type StocksTab,
+} from '@/mobile/lib/position-rows';
 import { statMoneyOptions } from '@/mobile/lib/stat-money';
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
@@ -69,8 +77,6 @@ const WHOLE = { decimals: 0 } as const;
 /** The classes of a menu item on the phone: 44 pt tall, body type, 18 pt icons. */
 const MENU_ITEM = 'min-h-11 text-m-body [&_svg]:size-[18px]';
 
-type Tab = 'positions' | 'watched';
-
 /** The tone of a signed result: green above zero, red under it, none at zero or unknown. */
 const toneOf = (value: number | null): StatItem['tone'] =>
   value === null || value === 0 ? undefined : value > 0 ? 'gain' : 'loss';
@@ -80,8 +86,11 @@ const toneOf = (value: number | null): StatItem['tone'] =>
  * line and the buy and sell days, three stats (the unrealized return, the dividends of a year, the
  * return of this year), then the segment Pozice · Sledované. Positions are rows with sort, search
  * and the first eight until "Zobrazit všech N"; the watched ones are rows with their own price.
- * The numbers are the desktop's (the same queries), in the report currency; every amount goes
- * through the eye of Přehled.
+ * Someone who only watches has no positions to show a value for: the segment comes first, opened
+ * on Sledované, with the empty state inside Pozice. The numbers are the desktop's (the same
+ * queries), in the report currency; every amount goes through the eye of Přehled. The sort, the
+ * closed toggle, the period and the segment are remembered for the session, so a visit to a
+ * position does not reset them.
  */
 export default function Stocks() {
   const { t } = useTranslation('mobile');
@@ -89,12 +98,17 @@ export default function Stocks() {
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const back = useBack(routes.wealth);
-  const { positions, rows, reportCurrency, isLoading } = useStockPositions();
+  const { positions, rows, reportCurrency, isLoading, isError } = useStockPositions();
   const refresh = useRefreshStockPrices();
-  const { data: watched = [] } = useWatchedStocks();
-  const [tab, setTab] = useState<Tab>('positions');
-  const [showClosed, setShowClosed] = useState(false);
+  const { data: watched = [], isLoading: watchedLoading } = useWatchedStocks();
+  // How the page was left is kept for the session (a position remounts it); the add dialog is
+  // not, so it does not reopen on return. `null`: no segment chosen yet, so the view's own opens.
+  const [chosenTab, setTab] = useRemembered<StocksTab | null>('stocks.tab', null);
+  const [showClosed, setShowClosed] = useRemembered('stocks.showClosed', false);
   const [addOpen, setAddOpen] = useState(false);
+  const view = stocksView(rows, watched, isError);
+  const tab = chosenTab ?? view.defaultTab;
+  const hasPositions = rows.length > 0;
 
   const open = rows.filter((row) => row.quantity > 0);
   const later = () => toast(t('wealth.placeholder.later'));
@@ -166,42 +180,34 @@ export default function Stocks() {
         </>
       }
     >
-      {isLoading ? (
+      {isLoading || (!hasPositions && watchedLoading) ? (
         <StocksSkeleton />
-      ) : rows.length === 0 ? (
-        <EmptyState
-          icon={<TrendingUp />}
-          title={ts('empty.title')}
-          description={ts('empty.description')}
-          className="px-5 py-10"
-          action={
-            <Button
-              className="h-auto min-h-12 w-full whitespace-normal rounded-[10px] py-3 text-m-row"
-              onClick={() => setAddOpen(true)}
-            >
-              <Plus aria-hidden />
-              {ts('addInvestment')}
-            </Button>
-          }
-        />
+      ) : view.kind === 'empty' ? (
+        <NoPositions onAdd={() => setAddOpen(true)} />
+      ) : view.kind === 'error' ? (
+        <LoadFailed />
       ) : (
         <>
-          {/* The nav bar keeps its one title, so the count and the age of the prices are the first line */}
-          <p className="mx-0.5 -mt-0.5 mb-2.5 truncate text-center text-m-caption text-ink-3">
-            {subLine}
-          </p>
-          {/* Amounts the backend could not convert into the report currency (left out) */}
-          <ConversionQualityNote
-            quality={positions?.fxQuality}
-            currency={reportCurrency}
-            className="mx-0.5 mb-3.5"
-          />
-          <PortfolioHero
-            totalValue={totalOf(positions?.totals.value)}
-            invested={totalOf(positions?.totals.costBasis)}
-            currency={reportCurrency}
-          />
-          <PortfolioStats positions={positions} currency={reportCurrency} />
+          {hasPositions && (
+            <>
+              {/* The nav bar keeps its one title, so the count and the age of the prices are the first line */}
+              <p className="mx-0.5 -mt-0.5 mb-2.5 truncate text-center text-m-caption text-ink-3">
+                {subLine}
+              </p>
+              {/* Amounts the backend could not convert into the report currency (left out) */}
+              <ConversionQualityNote
+                quality={positions?.fxQuality}
+                currency={reportCurrency}
+                className="mx-0.5 mb-3.5"
+              />
+              <PortfolioHero
+                totalValue={totalOf(positions?.totals.value)}
+                invested={totalOf(positions?.totals.costBasis)}
+                currency={reportCurrency}
+              />
+              <PortfolioStats positions={positions} currency={reportCurrency} />
+            </>
+          )}
           <Segment
             value={tab}
             options={[
@@ -217,12 +223,18 @@ export default function Stocks() {
           />
           {/* Kept mounted while the other segment shows, so its sort, search and fold stay */}
           <div hidden={tab !== 'positions'}>
-            <PositionsTab
-              rows={rows}
-              currency={reportCurrency}
-              showClosed={showClosed}
-              dimmed={refresh.isPending}
-            />
+            {hasPositions ? (
+              <PositionsTab
+                rows={rows}
+                currency={reportCurrency}
+                showClosed={showClosed}
+                dimmed={refresh.isPending}
+              />
+            ) : isError ? (
+              <LoadFailed />
+            ) : (
+              <NoPositions onAdd={() => setAddOpen(true)} />
+            )}
           </div>
           {tab === 'watched' &&
             (watched.length === 0 ? (
@@ -263,7 +275,7 @@ function PortfolioHero({
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const { transactions, convertAt } = useStockTrades();
-  const [period, setPeriod] = useState<ChartPeriod>('30D');
+  const [period, setPeriod] = useRemembered<ChartPeriod>('stocks.period', '30D');
 
   // No horizon starts before the first trade; the start is a whole UTC day, so the query holds still
   const earliest = useMemo(() => firstTradeDay(transactions), [transactions]);
@@ -457,7 +469,7 @@ function PositionsTab({
 }) {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
-  const [sort, setSort] = useState<PositionSort>('value');
+  const [sort, setSort] = useRemembered<PositionSort>('stocks.sort', 'value');
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -527,6 +539,38 @@ function PositionsTab({
         </EntityRows>
       )}
     </>
+  );
+}
+
+/** Nothing owned: the empty state of the class, with the button that adds the first position. */
+function NoPositions({ onAdd }: { onAdd: () => void }) {
+  const { t: ts } = useTranslation('stocks');
+  return (
+    <EmptyState
+      icon={<TrendingUp />}
+      title={ts('empty.title')}
+      description={ts('empty.description')}
+      className="px-5 py-10"
+      action={
+        <Button
+          className="h-auto min-h-12 w-full whitespace-normal rounded-[10px] py-3 text-m-row"
+          onClick={onAdd}
+        >
+          <Plus aria-hidden />
+          {ts('addInvestment')}
+        </Button>
+      }
+    />
+  );
+}
+
+/** The positions could not be loaded: said as such, not shown as "no positions yet". */
+function LoadFailed() {
+  const { t } = useTranslation('mobile');
+  return (
+    <p role="alert" className="mx-0.5 py-6 text-center text-m-body text-ink-3">
+      {t('wealth.stocks.loadFailed')}
+    </p>
   );
 }
 

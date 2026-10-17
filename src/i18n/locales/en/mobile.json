@@ -157,6 +157,7 @@
       },
       "closedBadge": "closed",
       "watchedEmpty": "You are not watching any stocks yet.",
+      "loadFailed": "Positions could not be loaded.",
       "target": "target {{price}}",
       "targetReached": "target reached",
       "dayChange": "today"

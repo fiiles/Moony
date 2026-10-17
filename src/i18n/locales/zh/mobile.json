@@ -149,6 +149,7 @@
       },
       "closedBadge": "已平仓",
       "watchedEmpty": "您还没有关注任何股票。",
+      "loadFailed": "无法加载持仓。",
       "target": "目标价 {{price}}",
       "targetReached": "已达目标价",
       "dayChange": "今日"

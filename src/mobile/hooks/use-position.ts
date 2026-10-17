@@ -150,8 +150,8 @@ export function usePosition(id: string | undefined, period: ChartPeriod): Positi
 
 /**
  * The position's writes: delete (the mutation contract — the domain keys, the metrics and the
- * cashflow, then a fresh snapshot and the history), rename and follow. The caller leaves the
- * screen when a delete has succeeded.
+ * cashflow, then a fresh snapshot and the history; the position's own queries are dropped), rename
+ * and follow. The caller leaves the screen when a delete has succeeded.
  */
 export function usePositionMutations(id: string | undefined, ticker: string | undefined) {
   const queryClient = useQueryClient();
@@ -167,6 +167,10 @@ export function usePositionMutations(id: string | undefined, ticker: string | un
   const remove = useMutation({
     mutationFn: () => investmentsApi.delete(id!),
     onSuccess: async () => {
+      // The position is gone: nothing of it may render again as a live screen (a refetch that
+      // fails would keep the last data), so its own queries go instead of going stale.
+      queryClient.removeQueries({ queryKey: ['investment', id] });
+      queryClient.removeQueries({ queryKey: ['investment-transactions', id] });
       for (const queryKey of DELETE_KEYS) queryClient.invalidateQueries({ queryKey });
       queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
       queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });

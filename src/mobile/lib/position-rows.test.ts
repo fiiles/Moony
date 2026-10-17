@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { foldRows, positionRows, priceStamp, searchMatches, ROWS_FOLD } from './position-rows';
+import {
+  foldRows,
+  positionRows,
+  priceStamp,
+  searchMatches,
+  stocksView,
+  ROWS_FOLD,
+} from './position-rows';
 
 const T = Date.UTC(2026, 9, 16, 9, 40) / 1000;
 const row = (
@@ -68,5 +75,30 @@ describe('priceStamp', () => {
     expect(priceStamp(T - 60, T)).toEqual({ kind: 'today', at: T - 60 });
     expect(priceStamp(T - 3 * 86_400, T)).toEqual({ kind: 'day', at: T - 3 * 86_400 });
     expect(priceStamp(null, T)).toEqual({ kind: 'never' });
+  });
+});
+
+describe('stocksView', () => {
+  it('shows the one empty state only when nothing is owned, watched or failed', () => {
+    expect(stocksView([], [], false)).toEqual({ kind: 'empty', defaultTab: 'positions' });
+  });
+
+  it('says so when the positions failed to load and there is nothing else to show', () => {
+    expect(stocksView([], [], true)).toEqual({ kind: 'error', defaultTab: 'positions' });
+  });
+
+  it('keeps a watch-only user on the segment, opened on Sledované', () => {
+    expect(stocksView([], [{}], false)).toEqual({ kind: 'list', defaultTab: 'watched' });
+    // The watched segment stays usable when the positions failed
+    expect(stocksView([], [{}], true)).toEqual({ kind: 'list', defaultTab: 'watched' });
+  });
+
+  it('opens on Pozice whenever there are positions, whatever else is true', () => {
+    expect(stocksView([cez], [], false)).toEqual({ kind: 'list', defaultTab: 'positions' });
+    expect(stocksView([cez], [{}], false)).toEqual({ kind: 'list', defaultTab: 'positions' });
+    // A refetch that failed keeps the last data
+    expect(stocksView([cez], [], true)).toEqual({ kind: 'list', defaultTab: 'positions' });
+    // Only closed positions are still positions
+    expect(stocksView([old], [], false)).toEqual({ kind: 'list', defaultTab: 'positions' });
   });
 });

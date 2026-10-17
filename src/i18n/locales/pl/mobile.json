@@ -173,6 +173,7 @@
       },
       "closedBadge": "zamknięta",
       "watchedEmpty": "Nie obserwujesz jeszcze żadnych akcji.",
+      "loadFailed": "Nie udało się wczytać pozycji.",
       "target": "cel {{price}}",
       "targetReached": "cel osiągnięty",
       "dayChange": "dziś"

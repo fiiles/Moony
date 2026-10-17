@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'wouter';
 import { Ellipsis, Eye, Pencil, Receipt, Tag, Trash2 } from 'lucide-react';
 import { useWatchedStocks } from '@/hooks/use-stock-monitor';
 import type { StockRow } from '@/utils/positions';
@@ -13,11 +12,11 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ManualDividendModal } from '@/components/stocks/ManualDividendModal';
 import { ManualPriceModal } from '@/components/stocks/ManualPriceModal';
+import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
 import { usePositionMutations } from '@/mobile/hooks/use-position';
 import { PositionRenameSheet } from '@/mobile/sheets/PositionRenameSheet';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { NavIconButton } from '@/mobile/shell/NavBar';
-import { routes } from '@/mobile/shell/routes';
 
 /** The classes of a menu item on the phone: 44 pt tall, body type, 18 pt icons. */
 const MENU_ITEM = 'min-h-11 text-m-body [&_svg]:size-[18px]';
@@ -25,15 +24,21 @@ const MENU_ITEM = 'min-h-11 text-m-body [&_svg]:size-[18px]';
 /**
  * The `···` of a position (spec §8.8): Upravit cenu and Odhad dividendy open the desktop's dialogs,
  * Upravit název a sheet, Sledovat adds the ticker to the watched ones (it says "Sledováno" and
- * waits when it already is), Smazat pozici asks in a confirm sheet and, once the position is gone,
- * replaces the screen with the Akcie list. Each of them is wired here with its dialog, so the page
- * only places the button.
+ * waits when it already is), Smazat pozici asks in a confirm sheet and, once the position is gone
+ * and the sheet's history entry with it, tells the page to leave (`onDeleted`). Each of them is
+ * wired here with its dialog, so the page only places the button.
  */
-export function PositionMenu({ holding }: { holding: StockRow }) {
+export function PositionMenu({
+  holding,
+  onDeleted,
+}: {
+  holding: StockRow;
+  /** The position is deleted and its confirm sheet has closed: leave the screen. */
+  onDeleted: () => void;
+}) {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
   const { t: tc } = useTranslation('common');
-  const [, setLocation] = useLocation();
   const { remove, rename, follow } = usePositionMutations(holding.id, holding.ticker);
   const { data: watched = [] } = useWatchedStocks();
   const [priceOpen, setPriceOpen] = useState(false);
@@ -111,10 +116,8 @@ export function PositionMenu({ holding }: { holding: StockRow }) {
         isPending={remove.isPending}
         onConfirm={() =>
           remove.mutate(undefined, {
-            onSuccess: () => {
-              setDeleteOpen(false);
-              setLocation(routes.stocks, { replace: true });
-            },
+            // The sheet takes its own history entry off first, then the page goes back
+            onSuccess: () => leaveAfterSheet(() => setDeleteOpen(false), onDeleted),
           })
         }
       />

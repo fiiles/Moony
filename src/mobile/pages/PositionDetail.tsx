@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useRoute } from 'wouter';
+import { useLocation, useRoute } from 'wouter';
 import { Minus, Plus } from 'lucide-react';
 import type { ChartPeriod } from '@/utils/period';
 import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
@@ -17,8 +17,11 @@ import { useBack } from '@/mobile/hooks/use-back';
 import { usePosition } from '@/mobile/hooks/use-position';
 import { usePositionLedger } from '@/mobile/hooks/use-position-ledger';
 import { NavTextButton } from '@/mobile/shell/NavBar';
-import { routes } from '@/mobile/shell/routes';
+import { positionPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+
+/** How long after leaving a deleted position the screen may still be it (a restored deep link). */
+const DELETED_GUARD_MS = 250;
 
 /**
  * A position of the Akcie list (spec §8.8, prototype frame 12): the ticker in the nav bar with the
@@ -31,6 +34,7 @@ export default function PositionDetail() {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
   const [, params] = useRoute(routes.positionDetail);
+  const [, setLocation] = useLocation();
   const back = useBack(routes.stocks);
   const [period, setPeriod] = useState<ChartPeriod>('30D');
   const [trade, setTrade] = useState<'buy' | 'sell' | null>(null);
@@ -38,11 +42,25 @@ export default function PositionDetail() {
   const ledger = usePositionLedger(data.transactions);
   const { holding, reportCurrency } = data;
 
+  // The position is gone: back to Akcie as Back does, so the history keeps no ghost of it. On a
+  // restored deep link the detail is the first entry and back has nowhere to go; the screen is
+  // then replaced.
+  const leaveDeleted = (id: string) => {
+    back();
+    window.setTimeout(() => {
+      if (window.location.pathname === positionPath(id)) {
+        setLocation(routes.stocks, { replace: true });
+      }
+    }, DELETED_GUARD_MS);
+  };
+
   return (
     <Screen
       title={holding?.ticker ?? ''}
       leading={<NavTextButton label={t('wealth.stocks.back')} onClick={back} chevron />}
-      trailing={holding && <PositionMenu holding={holding} />}
+      trailing={
+        holding && <PositionMenu holding={holding} onDeleted={() => leaveDeleted(holding.id)} />
+      }
     >
       {data.isLoading ? (
         <PositionSkeleton />

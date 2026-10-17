@@ -157,6 +157,7 @@
       },
       "closedBadge": "geschlossen",
       "watchedEmpty": "Sie beobachten noch keine Aktien.",
+      "loadFailed": "Die Positionen konnten nicht geladen werden.",
       "target": "Ziel {{price}}",
       "targetReached": "Ziel erreicht",
       "dayChange": "heute"

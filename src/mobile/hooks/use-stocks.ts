@@ -19,14 +19,25 @@ import { ytdRange } from '@/mobile/lib/position-series';
  */
 export function useStockPositions() {
   const { currencyCode, fxRevision } = useCurrency();
-  const { data: positions, isLoading } = useQuery<StockPositions>({
+  const {
+    data: positions,
+    isLoading,
+    isError,
+  } = useQuery<StockPositions>({
     queryKey: ['investments', currencyCode, fxRevision],
     queryFn: () => investmentsApi.getAll(currencyCode),
     refetchOnMount: true,
     staleTime: 60 * 1000,
   });
   const rows = useMemo(() => (positions?.items ?? []).map(toStockRow), [positions]);
-  return { positions, rows, reportCurrency: positions?.currency ?? currencyCode, isLoading };
+  return {
+    positions,
+    rows,
+    reportCurrency: positions?.currency ?? currencyCode,
+    isLoading,
+    /** The query failed (a refetch that fails after data came in keeps the data in `rows`). */
+    isError,
+  };
 }
 
 /**

@@ -157,6 +157,7 @@
       },
       "closedBadge": "avsluttet",
       "watchedEmpty": "Du følger ingen aksjer ennå.",
+      "loadFailed": "Beholdningene kunne ikke lastes.",
       "target": "mål {{price}}",
       "targetReached": "målet nådd",
       "dayChange": "i dag"

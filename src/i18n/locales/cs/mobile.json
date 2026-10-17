@@ -165,6 +165,7 @@
       },
       "closedBadge": "uzavřená",
       "watchedEmpty": "Zatím nesledujete žádnou akcii.",
+      "loadFailed": "Pozice se nepodařilo načíst.",
       "target": "cíl {{price}}",
       "targetReached": "cíl dosažen",
       "dayChange": "dnes"

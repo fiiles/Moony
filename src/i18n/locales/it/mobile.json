@@ -165,6 +165,7 @@
       },
       "closedBadge": "chiusa",
       "watchedEmpty": "Non stai ancora osservando nessuna azione.",
+      "loadFailed": "Impossibile caricare le posizioni.",
       "target": "obiettivo {{price}}",
       "targetReached": "obiettivo raggiunto",
       "dayChange": "oggi"

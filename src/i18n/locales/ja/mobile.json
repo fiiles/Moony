@@ -149,6 +149,7 @@
       },
       "closedBadge": "決済済み",
       "watchedEmpty": "ウォッチ中の銘柄はまだありません。",
+      "loadFailed": "ポジションを読み込めませんでした。",
       "target": "目標 {{price}}",
       "targetReached": "目標に到達",
       "dayChange": "本日"

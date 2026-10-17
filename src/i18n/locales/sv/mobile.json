@@ -157,6 +157,7 @@
       },
       "closedBadge": "stängt",
       "watchedEmpty": "Du bevakar inga aktier ännu.",
+      "loadFailed": "Innehaven kunde inte läsas in.",
       "target": "mål {{price}}",
       "targetReached": "målet nått",
       "dayChange": "i dag"

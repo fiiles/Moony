@@ -63,6 +63,11 @@
       "change": "Change category",
       "current": "Current category"
     },
+    "limitSheet": {
+      "pick": "Choose the category whose spending you want to keep in check.",
+      "amountPositive": "The limit must be greater than zero.",
+      "untilBeforeStart": "The end month must not be before the start month."
+    },
     "showMore": "Show {{count}} more",
     "rowMenu": "More actions: {{title}}"
   },

@@ -67,6 +67,11 @@
       "change": "Zmień kategorię",
       "current": "Bieżąca kategoria"
     },
+    "limitSheet": {
+      "pick": "Wybierz kategorię, której wydatki chcesz pilnować.",
+      "amountPositive": "Limit musi być większy od zera.",
+      "untilBeforeStart": "Miesiąc końcowy nie może być wcześniejszy niż początkowy."
+    },
     "showMore": "Pokaż kolejne {{count}}",
     "rowMenu": "Więcej akcji: {{title}}"
   },

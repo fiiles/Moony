@@ -63,6 +63,11 @@
       "change": "Ändra kategori",
       "current": "Nuvarande kategori"
     },
+    "limitSheet": {
+      "pick": "Välj den kategori vars utgifter du vill hålla koll på.",
+      "amountPositive": "Gränsen måste vara större än noll.",
+      "untilBeforeStart": "Slutmånaden får inte ligga före startmånaden."
+    },
     "showMore": "Visa {{count}} till",
     "rowMenu": "Fler åtgärder: {{title}}"
   },

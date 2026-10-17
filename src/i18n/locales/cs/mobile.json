@@ -65,6 +65,11 @@
       "change": "Změnit kategorii",
       "current": "Aktuální kategorie"
     },
+    "limitSheet": {
+      "pick": "Vyberte kategorii, pro kterou chcete hlídat výdaje.",
+      "amountPositive": "Limit musí být větší než nula.",
+      "untilBeforeStart": "Měsíc „do“ nesmí být před měsícem „od“."
+    },
     "showMore": "Zobrazit dalších {{count}}",
     "rowMenu": "Další akce: {{title}}"
   },

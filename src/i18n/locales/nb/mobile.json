@@ -63,6 +63,11 @@
       "change": "Endre kategori",
       "current": "Gjeldende kategori"
     },
+    "limitSheet": {
+      "pick": "Velg kategorien du vil følge opp utgiftene i.",
+      "amountPositive": "Grensen må være større enn null.",
+      "untilBeforeStart": "Sluttmåneden kan ikke være før startmåneden."
+    },
     "showMore": "Vis {{count}} til",
     "rowMenu": "Flere handlinger: {{title}}"
   },

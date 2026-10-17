@@ -61,6 +61,11 @@
       "change": "カテゴリを変更",
       "current": "現在のカテゴリ"
     },
+    "limitSheet": {
+      "pick": "支出を管理したいカテゴリを選んでください。",
+      "amountPositive": "上限は0より大きい金額にしてください。",
+      "untilBeforeStart": "終了月は開始月より前にできません。"
+    },
     "showMore": "さらに{{count}}件を表示",
     "rowMenu": "その他の操作: {{title}}"
   },

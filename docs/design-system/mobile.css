@@ -399,7 +399,9 @@
    Label 12 / 600 `ink-2` above, the field 48 px (radius 10, paper, `line-strong`; focus `focus-border`
    and the focus ring, invalid `loss`), text 15 tabular, the currency inside on the right (12 / 600
    `ink-4`), the decimal keypad, optionally the ± toggle on the left (below). The placeholder (`ink-5`) is the last known value. An error is 12 / 600
-   `loss` under the field. */
+   `loss` under the field; without an error a hint may stand there instead (11 `ink-3`). A month field is the same field with the
+   platform's month picker (`input type="month"`, no unit inside, `min` and `max` unset), two side by side in a 12 px grid, with an
+   optional text action beside the label ("Bez konce"). */
 .m-field { margin-bottom: 12px; }
 .m-field:last-child { margin-bottom: 0; }
 .m-field__l { display: block; margin: 0 2px 6px; color: var(--ink-2); font-size: var(--m-fs-sub); font-weight: 600; }

@@ -51,6 +51,7 @@ import { useBack } from '@/mobile/hooks/use-back';
 import { useDeleteDescription } from '@/mobile/hooks/use-delete-description';
 import { useLedger, type Ledger } from '@/mobile/hooks/use-ledger';
 import { useLedgerMutations } from '@/mobile/hooks/use-ledger-mutations';
+import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { balanceLine } from '@/mobile/lib/balance-line';
 import { recentCategoryIds } from '@/mobile/lib/category-pick';
 import { cashChange } from '@/mobile/lib/finance-rows';
@@ -110,7 +111,9 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
-  const fmt = useFormat();
+  // Money as text for the flows strip's accessible names and the flows line; masked while amounts
+  // are hidden
+  const moneyText = useMoneyText();
   const back = useBack(routes.finance);
   const search = useSearch();
   const detail = useAccountDetail(id);
@@ -153,8 +156,8 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   const closeSheet = (open: boolean) => !open && setSheet(null);
 
   const today = utcDayFloor(Date.now() / 1000);
-  const money0 = (value: number) => fmt.money(value, currency, { decimals: 0 });
-  const signed0 = (value: number) => fmt.money(value, currency, { signed: true, decimals: 0 });
+  const money0 = (value: number) => moneyText(value, currency, { decimals: 0 });
+  const signed0 = (value: number) => moneyText(value, currency, { signed: true, decimals: 0 });
 
   // Rows of the ledger from a flows month: tapping the selected month again lets it go
   const selectMonth = (month: number) =>
@@ -397,7 +400,8 @@ function BalanceHero({
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
   const fmt = useFormat();
-  const money0 = (value: number) => fmt.money(value, currency, { decimals: 0 });
+  const moneyText = useMoneyText();
+  const money0 = (value: number) => moneyText(value, currency, { decimals: 0 });
 
   const newest = newestRecord(records);
   const asOf = newest?.asOf ?? account.balanceAsOf;
@@ -457,7 +461,7 @@ function BalanceHero({
           ? {
               ratio: change.ratio,
               text: t('finance.change30', {
-                amount: fmt.money(change.delta, currency, { signed: true, decimals: 0 }),
+                amount: moneyText(change.delta, currency, { signed: true, decimals: 0 }),
               }),
             }
           : undefined
@@ -496,7 +500,8 @@ function BalanceStats({
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
   const fmt = useFormat();
-  const signed0 = (value: number) => fmt.money(value, currency, { signed: true, decimals: 0 });
+  const moneyText = useMoneyText();
+  const signed0 = (value: number) => moneyText(value, currency, { signed: true, decimals: 0 });
 
   const thisYear = changeThisYear(records, today);
   const avg = averageMonthlyChange(records);
@@ -526,7 +531,7 @@ function BalanceStats({
   if (zoned || simpleRate > 0) {
     stats.push({
       label: t('account.stats.yearlyInterest'),
-      value: fmt.money(yearlyInterest, currency, { decimals: 0 }),
+      value: moneyText(yearlyInterest, currency, { decimals: 0 }),
       note: zoned
         ? tb('balanceStats.effectiveZoned', {
             rate: fmt.percent(balance > 0 ? yearlyInterest / balance : 0, 2),

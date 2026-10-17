@@ -18,7 +18,9 @@ import { Sheet } from '@/mobile/components/Sheet';
 import { useDeleteDescription } from '@/mobile/hooks/use-delete-description';
 import { useFitText } from '@/mobile/hooks/use-fit-text';
 import { useLedgerMutations } from '@/mobile/hooks/use-ledger-mutations';
+import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRetained } from '@/mobile/hooks/use-retained';
+import { signedAmountText } from '@/mobile/lib/signed-amount';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 
 interface TransactionSheetProps {
@@ -210,10 +212,10 @@ export function TransactionSheet({
  * type (`.m-sheet__amount`): a long figure shrinks to fit rather than end in an ellipsis.
  */
 function Amount({ tx }: { tx: BankTransaction }) {
-  const fmt = useFormat();
+  const moneyText = useMoneyText();
   const ref = useRef<HTMLDivElement>(null);
   const credit = tx.type === 'credit';
-  const text = `${credit ? '+ ' : '− '}${fmt.money(Math.abs(Number(tx.amount) || 0), tx.currency)}`;
+  const text = signedAmountText(moneyText, tx);
   const fit = useFitText(ref, text);
 
   return (

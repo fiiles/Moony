@@ -7,7 +7,6 @@ import type {
   TransactionCategory,
 } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
-import { useFormat } from '@/lib/use-format';
 import { rowFlowLabel } from '@/utils/money-flows';
 import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
 import {
@@ -17,7 +16,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { initials } from '@/mobile/lib/initials';
+import { signedAmountText } from '@/mobile/lib/signed-amount';
 import { EntityRow, RowChip } from './EntityRow';
 
 interface LedgerRowProps {
@@ -58,7 +59,7 @@ function RowBadge({ children }: { children: ReactNode }) {
 export function LedgerRow({ tx, category, flow, onOpen, onCategorize, onDelete }: LedgerRowProps) {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
-  const fmt = useFormat();
+  const moneyText = useMoneyText();
   const categoryName = useCategoryName();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -97,7 +98,7 @@ export function LedgerRow({ tx, category, flow, onOpen, onCategorize, onDelete }
       chip={chip}
       title={title}
       sub={sub}
-      value={`${credit ? '+ ' : '− '}${fmt.money(Math.abs(Number(tx.amount) || 0), tx.currency)}`}
+      value={signedAmountText(moneyText, tx)}
       valueTone={credit ? 'gain' : undefined}
       onClick={onOpen}
       onSwipeLeft={onCategorize}

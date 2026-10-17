@@ -4,6 +4,7 @@ import { useFormat } from '@/lib/use-format';
 import { Button } from '@/components/ui/button';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { Sheet } from '@/mobile/components/Sheet';
+import { useMoneyText } from '@/mobile/hooks/use-money-text';
 
 interface BalanceHistorySheetProps {
   open: boolean;
@@ -27,6 +28,7 @@ export function BalanceHistorySheet({
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
+  const moneyText = useMoneyText();
   const newestFirst = [...records].sort((a, b) => b.asOf - a.asOf);
   const newest = newestFirst[0];
 
@@ -63,10 +65,10 @@ export function BalanceHistorySheet({
                     ? 'balanceHistory.sourceStatement'
                     : 'balanceHistory.sourceManual'
                 )}
-                value={fmt.money(amount, currency, { decimals: 0 })}
+                value={moneyText(amount, currency, { decimals: 0 })}
                 valueSub={
                   previous
-                    ? fmt.money(amount - (Number(previous.amount) || 0), currency, {
+                    ? moneyText(amount - (Number(previous.amount) || 0), currency, {
                         signed: true,
                         decimals: 0,
                       })

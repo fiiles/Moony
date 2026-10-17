@@ -48,6 +48,7 @@ import { SectionHead } from '@/mobile/components/SectionHead';
 import { TrendCard } from '@/mobile/components/TrendCard';
 import { useCashTrend } from '@/mobile/hooks/use-cash-trend';
 import { useFinance, type Finance as FinanceData } from '@/mobile/hooks/use-finance';
+import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import {
   accountSub,
   accountTrail,
@@ -102,7 +103,9 @@ export default function Finance() {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
-  const fmt = useFormat();
+  // Money as text (the hero and the trend callout size themselves to it, the change line is
+  // interpolated); masked while amounts are hidden
+  const moneyText = useMoneyText();
   const finance = useFinance();
   const { accounts, totals, loans, insurance, mainCurrency, fxReady, isLoading } = finance;
 
@@ -114,7 +117,7 @@ export default function Finance() {
   const { createAccount } = useBankAccountMutations();
   const { createMutation: createLoan } = useLoanMutations();
 
-  const money0 = (value: number) => fmt.money(value, mainCurrency, { decimals: 0 });
+  const money0 = (value: number) => moneyText(value, mainCurrency, { decimals: 0 });
 
   // Every account that counts toward the total is in a currency without a rate: nothing to sum
   const countedAccounts = accounts.filter((a) => !a.excludeFromBalance);
@@ -268,7 +271,7 @@ export default function Finance() {
                     ? {
                         ratio: change.ratio,
                         text: t('finance.change30', {
-                          amount: fmt.money(change.delta, mainCurrency, {
+                          amount: moneyText(change.delta, mainCurrency, {
                             signed: true,
                             decimals: 0,
                           }),
@@ -370,6 +373,7 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
   const fmt = useFormat();
+  const moneyText = useMoneyText();
   const { accounts, activity, lastImportByAccount, mainCurrency, convert } = finance;
   const todayDay = utcDayFloor(Date.now() / 1000);
 
@@ -401,7 +405,7 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
     switch (trail.kind) {
       case 'change':
         valueSub = t('finance.trail.change', {
-          amount: fmt.money(trail.net, sub.currency, { signed: true, decimals: 0 }),
+          amount: moneyText(trail.net, sub.currency, { signed: true, decimals: 0 }),
         });
         break;
       case 'converted':
@@ -409,7 +413,7 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
           trail.value === null
             ? t('finance.trail.noRate', { currency: sub.currency })
             : t('finance.trail.approx', {
-                amount: fmt.money(trail.value, mainCurrency, { decimals: 0 }),
+                amount: moneyText(trail.value, mainCurrency, { decimals: 0 }),
               });
         break;
       case 'stale':
@@ -451,7 +455,7 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
         ]
           .filter(Boolean)
           .join(' · ')}
-        value={fmt.money(balance, sub.currency, { decimals: 0 })}
+        value={moneyText(balance, sub.currency, { decimals: 0 })}
         valueSub={valueSub}
         href={accountPath(account.id)}
       />
@@ -476,6 +480,7 @@ function LoansSection({
 }) {
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
+  const moneyText = useMoneyText();
   const { monthYear } = useLoanText();
   if (rows.length === 0) return null;
   const { loans, mainCurrency } = finance;
@@ -485,7 +490,7 @@ function LoansSection({
       <SectionHead
         title={t('finance.sections.loans')}
         note={t('loans:table.footer.outstanding', {
-          amount: fmt.money(loans.metrics.totalOutstanding, mainCurrency, { decimals: 0 }),
+          amount: moneyText(loans.metrics.totalOutstanding, mainCurrency, { decimals: 0 }),
         })}
       />
       <EntityRows>
@@ -504,12 +509,12 @@ function LoansSection({
                 ? t('loans:table.fixedUntil', { month: monthYear(row.fixationEnd) })
                 : t('loans:table.fixedRate'),
             ].join(' · ')}
-            value={fmt.money(row.outstanding, row.currency, { decimals: 0 })}
+            value={moneyText(row.outstanding, row.currency, { decimals: 0 })}
             valueSub={
               row.matured
                 ? t('loans:table.matured')
                 : t('finance.perMonth', {
-                    amount: fmt.money(row.payment, row.currency, { decimals: 0 }),
+                    amount: moneyText(row.payment, row.currency, { decimals: 0 }),
                   })
             }
             href={loanPath(row.loan.id)}
@@ -530,6 +535,7 @@ function PoliciesSection({
 }) {
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
+  const moneyText = useMoneyText();
   if (rows.length === 0) return null;
   const { insurance, mainCurrency } = finance;
 
@@ -538,7 +544,7 @@ function PoliciesSection({
       <SectionHead
         title={t('finance.sections.insurance')}
         note={t('insurance:table.footer.yearly', {
-          amount: fmt.money(insurance.metrics.yearlyTotal, mainCurrency, { decimals: 0 }),
+          amount: moneyText(insurance.metrics.yearlyTotal, mainCurrency, { decimals: 0 }),
         })}
       />
       <EntityRows>
@@ -560,7 +566,7 @@ function PoliciesSection({
               ]
                 .filter(Boolean)
                 .join(' · ')}
-              value={fmt.money(row.premiumNative.amount, row.premiumNative.currency, {
+              value={moneyText(row.premiumNative.amount, row.premiumNative.currency, {
                 decimals: 0,
               })}
               valueSub={

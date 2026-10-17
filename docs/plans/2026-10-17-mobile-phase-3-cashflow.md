@@ -268,3 +268,24 @@ Rulings taken while writing and executing this plan (spec §8.7 is the authority
 14. **An empty period keeps the period bar and the bars** so the previous month is one tap away; only a profile without any transaction gets the full empty state with "Otevřít Finance".
 15. **Report-row menus on the Cashflow page** (long press: Zobrazit transakce, Upravit/Nastavit limit) mirror the desktop Budgets table's menu; swipes on report rows do nothing (no natural action).
 16. **Unbudgeted rows on the budgets page are not tappable as a whole**: the small "Nastavit limit" button is the action (a button inside a button row is invalid HTML), the rest of the row is text.
+
+Rulings taken during execution (2026-10-17, from the task reviews and the pane checks):
+
+17. **The transfers section head carries no note** — "mimo příjmy a výdaje" truncated the title "Investice, spoření a převody" at every width; §8.7 item 5 names no note (it was the prototype's). Cost: the reader learns from the section's position that transfers are outside income and expenses.
+18. **A limited row's sub-line is the spec's literal limit progress first** — "3 206 / 3 000 Kč" (loss-tinted when over), then the state word ("nad limitem" / "blíží se limitu"), then the count last, so an ellipsis drops the count and never the limit; share rows put the share first and the count last too. Cost: the prototype's "limit 8 000 Kč" wording goes.
+19. **The accounts sheet edits a draft and applies it once on Hotovo**, after its history entry has settled (`afterHistorySettles`: one popstate or a 350 ms fallback); scrim, Escape and Android back discard the draft; Hotovo is disabled while nothing is selected. A live-applying sheet replaced its own history entry through wouter's `replaceState` and broke Android back. Cost: no live preview of the scope while the sheet is open.
+20. **The pane at 390 × 844 is the verification evidence**, not the simulator's own screen: its webview instance stays on the lock page (the simulator-panel grant is missing), as in Finance 2a.
+21. **A moved drilldown row's sub-line leads with "přesunuto"** so the end-truncating sub-line never hides the one non-colour signal. Cost: the day shifts right by one word on moved rows.
+22. **Two accessibility strings beyond the brief**: `cashflow.picker.current` names the current category's check mark (`role="img"`), `cashflow.rowMenu` ("Další akce: {{title}}") replaces a hard-coded ": " in the row-menu trigger name.
+23. **A field the person edits shows its value while amounts are hidden** (the limit field pre-filled on edit) — an input cannot be masked and typed at once; the hint and the boxes around it mask.
+24. **The limit hint is `budgeting:readiness.observedAverage`** with the observed completed months, not `dialog.averageHint`'s fixed "last 6 months" (the average divides by the observed months). The two new validation keys were dropped for `common:validation.amountPositive` / `effectiveUntilBeforeStart`.
+25. **Unbudgeted rows on the budgets page are Údržba-style action rows** (chip, title, sub, a 44 pt small button; contract `.m-row--act`), not `EntityRow`s — the row's truncating value slot would clip the button's hit area to 34 pt.
+26. **Editing a budget from the budgets page opens on the current month** (`effectiveMonth` undefined → `defaultEditMonth`: the current month for active and ended budgets, the scheduled start for a scheduled one), as the desktop's manage dialog does, so a save never rewrites past months by default; the report's row menu keeps the shown period's start.
+
+Verification rulings: **X1** — the demo profile could not be opened by the Phase 1 app on the simulator ("created by a pre-release build"), so the pane runs on the Finance session's Tereza profile with budgets seeded through the bridge console. **P1** — Task 2 linked to routes mounted by Tasks 3 and 5. **P2** — `parseAmountInput` strips whitespace, so the "3 000" test case stands.
+
+Plan errors found by the final whole-branch review (fixed in the final fix wave, not the implementers' fault):
+
+- Task 2's Interfaces block chose the full empty state by `actuals.accountCount === 0`, but the backend counts only the period's accounts, so every empty period showed "add an account" — the decision now comes from the accounts query (`bodyKind` in `cashflow-rows.ts`, tested).
+- Task 3's Interfaces block showed `signedAmount` as the converted amount; it is the row's contribution to its report line, positive for an expense debit — the converted amount now carries the row's own sign (`reportAmount` in `cashflow-drilldown.ts`, tested).
+- Task 1 left the budgeting query without `placeholderData`; limits and the summary line flickered on every period step — both reports now keep the previous period's data while the next loads.

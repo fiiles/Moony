@@ -82,5 +82,145 @@
     "enabled": "Biometrisk opplåsing slått på",
     "notEnabled": "Biometrisk opplåsing ble ikke slått på",
     "unavailable": "Biometri er ikke tilgjengelig nå. Lås opp med passordet."
+  },
+  "finance": {
+    "accounts_one": "{{count}} konto",
+    "accounts_other": "{{count}} kontoer",
+    "loans_one": "{{count}} lån",
+    "loans_other": "{{count}} lån",
+    "policies_one": "{{count}} forsikring",
+    "policies_other": "{{count}} forsikringer",
+    "total": "Totalt på kontoer",
+    "change30": "{{amount}} på 30 dager",
+    "noMovements": "ingen bevegelser på 30 dager",
+    "uncategorized": "Betalinger uten kategori",
+    "sections": {
+      "accounts": "Kontoer",
+      "loans": "Lån",
+      "insurance": "Forsikringer",
+      "cashTrend": "Kontanter over tid"
+    },
+    "manual": "manuelt",
+    "statementOn": "kontoutskrift {{date}}",
+    "balanceOn": "saldo {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 dager",
+      "staleStatement_one": "kontoutskrift {{count}} dag gammel",
+      "staleStatement_other": "kontoutskrift {{count}} dager gammel",
+      "staleBalance_one": "saldo {{count}} dag gammel",
+      "staleBalance_other": "saldo {{count}} dager gammel",
+      "approx": "≈ {{amount}}",
+      "noRate": "ingen kurs for {{currency}}"
+    },
+    "perMonth": "{{amount}} / mnd",
+    "nextPayment": "neste betaling {{date}}",
+    "menu": {
+      "sort": "Sorter",
+      "sortBalance": "Etter saldo",
+      "sortName": "Etter navn",
+      "sortChange": "Etter endring på 30 dager",
+      "sortLast": "Etter siste bevegelse",
+      "showMatured": "Vis nedbetalte lån",
+      "showEnded": "Vis avsluttede forsikringer",
+      "export": "Eksporter"
+    },
+    "add": {
+      "title": "Legg til",
+      "account": "Konto",
+      "loan": "Lån",
+      "policy": "Forsikring"
+    },
+    "cashTrendLabel": "Diagram over kontanter"
+  },
+  "placeholder": {
+    "detail": "Detaljvisningen kommer i fase 4.",
+    "queue": "Kategoriseringskøen kommer i fase 2b.",
+    "import": "Import av kontoutskrifter kommer i fase 2b.",
+    "form": "Skjemaet for å legge til kommer i fase 2b.",
+    "edit": "Redigering kommer i fase 2b.",
+    "delete": "Sletting kommer i fase 2b.",
+    "export": "Eksport kommer senere."
+  },
+  "account": {
+    "record": "Registrer saldo",
+    "import": "Importer kontoutskrift",
+    "menu": {
+      "edit": "Rediger konto",
+      "balanceHistory": "Saldohistorikk",
+      "importHistory": "Importhistorikk",
+      "delete": "Slett konto"
+    },
+    "stats": {
+      "changeThisYear": "Endring i år",
+      "avgPerMonth": "Gjennomsnitt per måned",
+      "yearlyInterest": "Årlig rente"
+    },
+    "flows": {
+      "title": "Pengestrømmer"
+    },
+    "ledger": {
+      "title": "Bevegelser",
+      "search": "Søk etter motpart eller beskrivelse",
+      "all": "Alle",
+      "in": "Innkommende",
+      "out": "Utgående",
+      "filter": "Filter",
+      "noCategory": "Uten kategori",
+      "categorize": "Kategori",
+      "details": "Detaljer",
+      "count_one": "{{count}} bevegelse",
+      "count_other": "{{count}} bevegelser",
+      "empty": "Ingen bevegelser samsvarer",
+      "emptyHint": "Endre perioden eller filteret.",
+      "showAll": "Vis alle",
+      "loadError": "Kunne ikke laste bevegelsene.",
+      "retry": "Prøv igjen"
+    },
+    "filter": {
+      "title": "Filter",
+      "category": "Kategori",
+      "all": "Alle",
+      "period": "Periode",
+      "from": "Fra",
+      "to": "Til",
+      "apply": "Bruk",
+      "reset": "Tilbakestill"
+    },
+    "rowMenu": {
+      "details": "Detaljer",
+      "category": "Kategori",
+      "delete": "Slett"
+    }
+  },
+  "transaction": {
+    "flowSaved": "Betydning lagret",
+    "done": "Ferdig",
+    "counterparty": "Motpart",
+    "date": "Dato",
+    "category": "Kategori",
+    "flow": "Betydning",
+    "note": "Notat",
+    "details": "Detaljer",
+    "bankId": "Bank-ID",
+    "valueDate": "Valørdato",
+    "file": "Fil",
+    "line": "Linje",
+    "sourceLabel": "Kilde",
+    "source": {
+      "manual": "Lagt inn for hånd",
+      "csv_import": "Importert",
+      "api_sync": "Synkronisert"
+    },
+    "status": "Status",
+    "booked": "Bokført",
+    "currency": "Valuta"
+  },
+  "picker": {
+    "title": "Kategori",
+    "recent": "Nylig brukt",
+    "all": "Alle kategorier",
+    "suggested": "Forslag",
+    "decline": "Avslå forslaget",
+    "empty": "Ingen kategori passer"
   }
 }

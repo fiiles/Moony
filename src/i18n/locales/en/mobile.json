@@ -82,5 +82,145 @@
     "enabled": "Biometric unlock turned on",
     "notEnabled": "Biometric unlock was not turned on",
     "unavailable": "Biometrics are not available right now. Unlock with your password."
+  },
+  "finance": {
+    "accounts_one": "{{count}} account",
+    "accounts_other": "{{count}} accounts",
+    "loans_one": "{{count}} loan",
+    "loans_other": "{{count}} loans",
+    "policies_one": "{{count}} policy",
+    "policies_other": "{{count}} policies",
+    "total": "Total on accounts",
+    "change30": "{{amount}} over 30 days",
+    "noMovements": "no movements in 30 days",
+    "uncategorized": "Uncategorized payments",
+    "sections": {
+      "accounts": "Accounts",
+      "loans": "Loans",
+      "insurance": "Insurance",
+      "cashTrend": "Cash trend"
+    },
+    "manual": "by hand",
+    "statementOn": "statement {{date}}",
+    "balanceOn": "balance {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 days",
+      "staleStatement_one": "statement {{count}} day old",
+      "staleStatement_other": "statement {{count}} days old",
+      "staleBalance_one": "balance {{count}} day old",
+      "staleBalance_other": "balance {{count}} days old",
+      "approx": "≈ {{amount}}",
+      "noRate": "no rate for {{currency}}"
+    },
+    "perMonth": "{{amount}} / mo",
+    "nextPayment": "next payment {{date}}",
+    "menu": {
+      "sort": "Sort",
+      "sortBalance": "By balance",
+      "sortName": "By name",
+      "sortChange": "By 30-day change",
+      "sortLast": "By last movement",
+      "showMatured": "Show paid-off loans",
+      "showEnded": "Show ended policies",
+      "export": "Export"
+    },
+    "add": {
+      "title": "Add",
+      "account": "Account",
+      "loan": "Loan",
+      "policy": "Policy"
+    },
+    "cashTrendLabel": "Cash trend chart"
+  },
+  "placeholder": {
+    "detail": "The detail comes in phase 4.",
+    "queue": "The categorize queue comes in phase 2b.",
+    "import": "Statement import comes in phase 2b.",
+    "form": "The add form comes in phase 2b.",
+    "edit": "Editing comes in phase 2b.",
+    "delete": "Deleting comes in phase 2b.",
+    "export": "Export comes later."
+  },
+  "account": {
+    "record": "Record balance",
+    "import": "Import statement",
+    "menu": {
+      "edit": "Edit account",
+      "balanceHistory": "Balance history",
+      "importHistory": "Import history",
+      "delete": "Delete account"
+    },
+    "stats": {
+      "changeThisYear": "Change this year",
+      "avgPerMonth": "Average per month",
+      "yearlyInterest": "Yearly interest"
+    },
+    "flows": {
+      "title": "Flows"
+    },
+    "ledger": {
+      "title": "Movements",
+      "search": "Search by counterparty or description",
+      "all": "All",
+      "in": "Incoming",
+      "out": "Outgoing",
+      "filter": "Filter",
+      "noCategory": "No category",
+      "categorize": "Category",
+      "details": "Details",
+      "count_one": "{{count}} movement",
+      "count_other": "{{count}} movements",
+      "empty": "No movements match",
+      "emptyHint": "Change the period or the filter.",
+      "showAll": "Show all",
+      "loadError": "The movements could not be loaded.",
+      "retry": "Try again"
+    },
+    "filter": {
+      "title": "Filter",
+      "category": "Category",
+      "all": "All",
+      "period": "Period",
+      "from": "From",
+      "to": "To",
+      "apply": "Apply",
+      "reset": "Reset"
+    },
+    "rowMenu": {
+      "details": "Details",
+      "category": "Category",
+      "delete": "Delete"
+    }
+  },
+  "transaction": {
+    "flowSaved": "Meaning saved",
+    "done": "Done",
+    "counterparty": "Counterparty",
+    "date": "Date",
+    "category": "Category",
+    "flow": "Meaning",
+    "note": "Note",
+    "details": "Details",
+    "bankId": "Bank ID",
+    "valueDate": "Value date",
+    "file": "File",
+    "line": "Line",
+    "sourceLabel": "Source",
+    "source": {
+      "manual": "Entered by hand",
+      "csv_import": "Imported",
+      "api_sync": "Synced"
+    },
+    "status": "Status",
+    "booked": "Booked",
+    "currency": "Currency"
+  },
+  "picker": {
+    "title": "Category",
+    "recent": "Recently used",
+    "all": "All categories",
+    "suggested": "Suggested",
+    "decline": "Decline suggestion",
+    "empty": "No category matches"
   }
 }

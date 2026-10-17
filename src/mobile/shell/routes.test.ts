@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { routes, tabForPath } from './routes';
+import { accountPath, loanPath, policyPath, routes, tabForPath } from './routes';
 
 describe('tabForPath', () => {
   it('maps each tab root to its tab', () => {
@@ -13,6 +13,10 @@ describe('tabForPath', () => {
     expect(tabForPath('/finance/accounts/7f3a')).toBe('finance');
     expect(tabForPath('/wealth/stocks')).toBe('wealth');
     expect(tabForPath('/cashflow/')).toBe('cashflow');
+    expect(tabForPath(accountPath('7f3a'))).toBe('finance');
+    expect(tabForPath(loanPath('7f3a'))).toBe('finance');
+    expect(tabForPath(policyPath('7f3a'))).toBe('finance');
+    expect(tabForPath(routes.uncategorized)).toBe('finance');
   });
 
   it('keeps a screen pushed on Přehled in Přehled', () => {

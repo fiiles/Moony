@@ -8,11 +8,21 @@ export const routes = {
   /** "Co vás čeká" in full, pushed on Přehled. */
   agenda: '/agenda',
   finance: '/finance',
+  /** Pushed on Finance: an account, a loan and a policy (the `:id` is the record's id), and the categorize queue. */
+  accountDetail: '/finance/accounts/:id',
+  loanDetail: '/finance/loans/:id',
+  policyDetail: '/finance/policies/:id',
+  uncategorized: '/finance/uncategorized',
   cashflow: '/cashflow',
   wealth: '/wealth',
   settings: '/settings',
   auth: '/auth',
 } as const;
+
+/** Paths of the details pushed on Finance, for a `Link` or `setLocation`. */
+export const accountPath = (id: string) => `/finance/accounts/${id}`;
+export const loanPath = (id: string) => `/finance/loans/${id}`;
+export const policyPath = (id: string) => `/finance/policies/${id}`;
 
 /** Screens pushed on Přehled (its root "/" cannot prefix them). */
 const OVERVIEW_DETAILS: readonly string[] = [routes.agenda];

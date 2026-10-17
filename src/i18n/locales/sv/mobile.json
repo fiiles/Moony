@@ -82,5 +82,145 @@
     "enabled": "Biometrisk upplåsning påslagen",
     "notEnabled": "Biometrisk upplåsning slogs inte på",
     "unavailable": "Biometri är inte tillgänglig just nu. Lås upp med lösenordet."
+  },
+  "finance": {
+    "accounts_one": "{{count}} konto",
+    "accounts_other": "{{count}} konton",
+    "loans_one": "{{count}} lån",
+    "loans_other": "{{count}} lån",
+    "policies_one": "{{count}} försäkring",
+    "policies_other": "{{count}} försäkringar",
+    "total": "Totalt på konton",
+    "change30": "{{amount}} på 30 dagar",
+    "noMovements": "inga rörelser på 30 dagar",
+    "uncategorized": "Betalningar utan kategori",
+    "sections": {
+      "accounts": "Konton",
+      "loans": "Lån",
+      "insurance": "Försäkringar",
+      "cashTrend": "Kontanter över tid"
+    },
+    "manual": "manuellt",
+    "statementOn": "kontoutdrag {{date}}",
+    "balanceOn": "saldo {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 dagar",
+      "staleStatement_one": "kontoutdrag {{count}} dag gammalt",
+      "staleStatement_other": "kontoutdrag {{count}} dagar gammalt",
+      "staleBalance_one": "saldo {{count}} dag gammalt",
+      "staleBalance_other": "saldo {{count}} dagar gammalt",
+      "approx": "≈ {{amount}}",
+      "noRate": "ingen kurs för {{currency}}"
+    },
+    "perMonth": "{{amount}} / mån",
+    "nextPayment": "nästa betalning {{date}}",
+    "menu": {
+      "sort": "Sortera",
+      "sortBalance": "Efter saldo",
+      "sortName": "Efter namn",
+      "sortChange": "Efter förändring på 30 dagar",
+      "sortLast": "Efter senaste rörelse",
+      "showMatured": "Visa betalda lån",
+      "showEnded": "Visa avslutade försäkringar",
+      "export": "Exportera"
+    },
+    "add": {
+      "title": "Lägg till",
+      "account": "Konto",
+      "loan": "Lån",
+      "policy": "Försäkring"
+    },
+    "cashTrendLabel": "Diagram över kontanter"
+  },
+  "placeholder": {
+    "detail": "Detaljvyn kommer i fas 4.",
+    "queue": "Kategoriseringskön kommer i fas 2b.",
+    "import": "Import av kontoutdrag kommer i fas 2b.",
+    "form": "Formuläret för att lägga till kommer i fas 2b.",
+    "edit": "Redigering kommer i fas 2b.",
+    "delete": "Radering kommer i fas 2b.",
+    "export": "Export kommer senare."
+  },
+  "account": {
+    "record": "Registrera saldo",
+    "import": "Importera kontoutdrag",
+    "menu": {
+      "edit": "Redigera konto",
+      "balanceHistory": "Saldohistorik",
+      "importHistory": "Importhistorik",
+      "delete": "Ta bort konto"
+    },
+    "stats": {
+      "changeThisYear": "Förändring i år",
+      "avgPerMonth": "Genomsnitt per månad",
+      "yearlyInterest": "Årlig ränta"
+    },
+    "flows": {
+      "title": "Flöden"
+    },
+    "ledger": {
+      "title": "Rörelser",
+      "search": "Sök på motpart eller beskrivning",
+      "all": "Alla",
+      "in": "Inkommande",
+      "out": "Utgående",
+      "filter": "Filter",
+      "noCategory": "Utan kategori",
+      "categorize": "Kategori",
+      "details": "Detaljer",
+      "count_one": "{{count}} rörelse",
+      "count_other": "{{count}} rörelser",
+      "empty": "Inga rörelser matchar",
+      "emptyHint": "Ändra perioden eller filtret.",
+      "showAll": "Visa alla",
+      "loadError": "Rörelserna kunde inte läsas in.",
+      "retry": "Försök igen"
+    },
+    "filter": {
+      "title": "Filter",
+      "category": "Kategori",
+      "all": "Alla",
+      "period": "Period",
+      "from": "Från",
+      "to": "Till",
+      "apply": "Använd",
+      "reset": "Återställ"
+    },
+    "rowMenu": {
+      "details": "Detaljer",
+      "category": "Kategori",
+      "delete": "Ta bort"
+    }
+  },
+  "transaction": {
+    "flowSaved": "Betydelse sparad",
+    "done": "Klart",
+    "counterparty": "Motpart",
+    "date": "Datum",
+    "category": "Kategori",
+    "flow": "Betydelse",
+    "note": "Anteckning",
+    "details": "Detaljer",
+    "bankId": "Bank-ID",
+    "valueDate": "Valutadatum",
+    "file": "Fil",
+    "line": "Rad",
+    "sourceLabel": "Källa",
+    "source": {
+      "manual": "Inlagd för hand",
+      "csv_import": "Importerad",
+      "api_sync": "Synkroniserad"
+    },
+    "status": "Status",
+    "booked": "Bokförd",
+    "currency": "Valuta"
+  },
+  "picker": {
+    "title": "Kategori",
+    "recent": "Nyligen använda",
+    "all": "Alla kategorier",
+    "suggested": "Förslag",
+    "decline": "Avvisa förslaget",
+    "empty": "Ingen kategori matchar"
   }
 }

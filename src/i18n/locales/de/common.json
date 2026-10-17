@@ -209,6 +209,7 @@
     "backupInvalidArchive": "Diese Datei ist keine Moony-Sicherung (oder sie ist beschädigt).",
     "backupNewerThanApp": "Diese Sicherung wurde mit einer neueren Moony-Version erstellt. Aktualisieren Sie zuerst Moony.",
     "backupDestinationMissing": "Der Zielordner existiert nicht.",
+    "backupExportInvalid": "Dieser Name der Sicherungsdatei ist nicht zulässig.",
     "sellExceedsHoldings": "Sie können an diesem Datum nicht mehr verkaufen, als Sie halten.",
     "csvEmptyFile": "Die Datei ist leer oder hat keine Kopfzeile.",
     "csvColumnsNotFound": "Die ausgewählten Spalten wurden in der Datei nicht gefunden. Prüfen Sie die Kopfzeile und die Spaltenzuordnung.",

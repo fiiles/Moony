@@ -209,6 +209,7 @@
     "backupInvalidArchive": "Ten plik nie jest kopią zapasową Moony (lub jest uszkodzony).",
     "backupNewerThanApp": "Ta kopia zapasowa została utworzona w nowszej wersji Moony. Najpierw zaktualizuj Moony.",
     "backupDestinationMissing": "Folder docelowy nie istnieje.",
+    "backupExportInvalid": "Ta nazwa pliku kopii zapasowej jest niedozwolona.",
     "sellExceedsHoldings": "Nie możesz sprzedać więcej, niż posiadasz w tym dniu.",
     "csvEmptyFile": "Plik jest pusty lub nie ma wiersza nagłówka.",
     "csvColumnsNotFound": "Nie znaleziono wybranych kolumn w pliku. Sprawdź wiersz nagłówka i przypisanie kolumn.",

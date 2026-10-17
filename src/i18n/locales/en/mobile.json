@@ -275,8 +275,15 @@
     }
   },
   "backup": {
+    "lead": "A backup is one encrypted file: the database, the keys and the attachments. Only your password opens it.",
+    "last": "Last backup",
     "lastOn": "Last backup {{date}}",
-    "never": "No backup yet"
+    "never": "No backup yet",
+    "what": "Save it to iCloud Drive or another folder in Files. Moony has no access to it.",
+    "notSaved": "Backup not saved",
+    "restoreTitle": "Restore and transfer",
+    "restoreLead": "Restore a backup from this phone, or transfer a profile from Moony on the computer: choose the backup file and, after the restore, unlock with the password that was in use when it was created.",
+    "osBackupNote": "The encrypted profile is also in the phone's own backup (iCloud or a computer); no one can open it without the password."
   },
   "notifications": {
     "lead": "Moony reminds you from this phone only, with no server. It plans the notifications each time you unlock.",

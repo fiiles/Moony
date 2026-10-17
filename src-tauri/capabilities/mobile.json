@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/mobile-schema.json",
   "identifier": "mobile",
-  "description": "Capability for the main window on iOS and Android. Same file-access stance as the desktop capability (the webview gets no filesystem access to the app data dir; attachments arrive through the moony-file scheme), plus the phone hardware plugins: haptics, local notifications, and the in-repo keychain behind biometric unlock (its default set grants status and the privacy screen only; the stored DB key stays on the Rust side). No updater and no process plugin: the app stores ship updates.",
+  "description": "Capability for the main window on iOS and Android. Same file-access stance as the desktop capability (the webview gets no filesystem access to the app data dir; attachments arrive through the moony-file scheme), plus the phone hardware plugins: haptics, local notifications, and the in-repo keychain behind biometric unlock (its default set grants status and the privacy screen only; the stored DB key stays on the Rust side). The one exception to the file stance is a single staged text file: the recovery key is written to $DOCUMENT/moony-recovery-key.txt and removed again, because the iOS export picker can only export a file that already sits in Documents (backup archives are staged by Rust commands, so no zip scope is needed). No updater and no process plugin: the app stores ship updates.",
   "windows": ["main"],
   "platforms": ["iOS", "android"],
   "permissions": [
@@ -11,6 +11,22 @@
     "log:default",
     "dialog:default",
     "fs:deny-default",
+    {
+      "identifier": "fs:allow-write-text-file",
+      "allow": [
+        {
+          "path": "$DOCUMENT/moony-recovery-key.txt"
+        }
+      ]
+    },
+    {
+      "identifier": "fs:allow-remove",
+      "allow": [
+        {
+          "path": "$DOCUMENT/moony-recovery-key.txt"
+        }
+      ]
+    },
     "haptics:default",
     "notification:default",
     "moony-keychain:default"

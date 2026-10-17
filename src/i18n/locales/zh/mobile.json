@@ -263,8 +263,15 @@
     }
   },
   "backup": {
+    "lead": "备份是一个加密文件：包含数据库、密钥和附件。只有您的密码才能打开。",
+    "last": "上次备份",
     "lastOn": "上次备份 {{date}}",
-    "never": "尚无备份"
+    "never": "尚无备份",
+    "what": "请保存到 iCloud Drive 或“文件”App 中的其他文件夹。Moony 无法访问该文件。",
+    "notSaved": "备份未保存",
+    "restoreTitle": "恢复与迁移",
+    "restoreLead": "恢复这部手机上的备份，或从电脑上的 Moony 迁移个人资料：选择备份文件，恢复后请使用创建备份时的密码解锁。",
+    "osBackupNote": "加密的个人资料也包含在手机自身的备份中（iCloud 或电脑）；没有密码，任何人都无法打开。"
   },
   "notifications": {
     "lead": "Moony 只在这部手机上提醒，不经过服务器。每次解锁时都会重新安排通知。",

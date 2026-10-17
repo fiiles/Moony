@@ -46,6 +46,71 @@ pub async fn create_backup(
     })
 }
 
+/// Phones only: the app's Documents folder, where the system's Files export looks for the file.
+#[cfg(mobile)]
+fn documents_dir(app: &AppHandle) -> Result<PathBuf> {
+    app.path()
+        .document_dir()
+        .map_err(|e| AppError::Internal(format!("Failed to get documents dir: {e}")))
+}
+
+/// Phones only. Write a backup archive to `Documents/<file_name>` for the Files export to pick up:
+/// the dialog plugin's save picker on iOS exports the file that already sits under that name.
+/// Nothing is recorded here; `finish_backup_export` does that once the person has chosen a place.
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn stage_backup_export(
+    app: AppHandle,
+    db: State<'_, Database>,
+    file_name: String,
+) -> Result<String> {
+    if !backup::is_export_file_name(&file_name) {
+        return Err(AppError::Validation(
+            "validation.backupExportInvalid".into(),
+        ));
+    }
+    let dir = data_dir(&app)?;
+    let dest = documents_dir(&app)?.join(&file_name);
+    db.with_conn(|conn| backup::create_backup(conn, &dir, &dest, APP_VERSION))?;
+    dest.to_str()
+        .map(str::to_owned)
+        .ok_or_else(|| AppError::Internal("Documents path is not valid UTF-8".into()))
+}
+
+/// Phones only. Remove the staged archive (a missing one is fine) and, when the export reached a
+/// place the person chose, record the backup for the "backup is due" reminder and the Settings
+/// row. A cancelled export records nothing. The removal is tried either way, and the first
+/// failure is the one reported.
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn finish_backup_export(
+    app: AppHandle,
+    db: State<'_, Database>,
+    path: String,
+    exported: bool,
+) -> Result<()> {
+    let path = PathBuf::from(path);
+    if !backup::is_staged_export_path(&documents_dir(&app)?, &path) {
+        return Err(AppError::Validation(
+            "validation.backupExportInvalid".into(),
+        ));
+    }
+    let removed = match std::fs::remove_file(&path) {
+        Err(e) if e.kind() != std::io::ErrorKind::NotFound => Err(AppError::Internal(format!(
+            "Failed to remove the staged backup: {e}"
+        ))),
+        _ => Ok(()),
+    };
+    let recorded = if exported {
+        db.with_conn(|conn| {
+            crate::services::onboarding::record_backup_created(conn, backup::unix_now())
+        })
+    } else {
+        Ok(())
+    };
+    removed.and(recorded)
+}
+
 /// Validate an archive and return its manifest for the confirmation dialog.
 #[tauri::command]
 pub async fn inspect_backup(path: String) -> Result<BackupInspection> {

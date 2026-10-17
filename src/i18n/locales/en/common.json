@@ -209,6 +209,7 @@
     "backupInvalidArchive": "This file is not a Moony backup (or it is damaged).",
     "backupNewerThanApp": "This backup was created by a newer Moony version. Update Moony first.",
     "backupDestinationMissing": "The destination folder does not exist.",
+    "backupExportInvalid": "This backup file name is not allowed.",
     "sellExceedsHoldings": "You cannot sell more than you hold on that date.",
     "csvEmptyFile": "The file is empty or has no header row.",
     "csvColumnsNotFound": "The selected columns were not found in the file. Check the header row and the column mapping.",

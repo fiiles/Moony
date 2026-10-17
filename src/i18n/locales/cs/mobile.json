@@ -287,8 +287,15 @@
     }
   },
   "backup": {
+    "lead": "Záloha je šifrovaný soubor: databáze, klíče a přílohy. Otevře ji jen vaše heslo.",
+    "last": "Poslední záloha",
     "lastOn": "Poslední záloha {{date}}",
-    "never": "Zatím žádná záloha"
+    "never": "Zatím žádná záloha",
+    "what": "Uložte ji do iCloud Drive nebo jiné složky v Souborech. Moony k ní nemá přístup.",
+    "notSaved": "Záloha nebyla uložena",
+    "restoreTitle": "Obnovení a přenos",
+    "restoreLead": "Obnovte zálohu z tohoto telefonu, nebo přeneste profil z Moony na počítači: vyberte soubor zálohy a po obnovení odemkněte heslem, které platilo při jejím vytvoření.",
+    "osBackupNote": "Šifrovaný profil je i v záloze telefonu (iCloud nebo počítač); bez hesla ho nikdo neotevře."
   },
   "notifications": {
     "lead": "Moony připomíná jen z tohoto telefonu, bez serveru. Plánují se při každém odemknutí.",

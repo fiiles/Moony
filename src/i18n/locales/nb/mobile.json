@@ -275,8 +275,15 @@
     }
   },
   "backup": {
+    "lead": "En sikkerhetskopi er én kryptert fil: databasen, nøklene og vedleggene. Bare passordet ditt åpner den.",
+    "last": "Siste sikkerhetskopi",
     "lastOn": "Siste sikkerhetskopi {{date}}",
-    "never": "Ingen sikkerhetskopi ennå"
+    "never": "Ingen sikkerhetskopi ennå",
+    "what": "Lagre den i iCloud Drive eller en annen mappe i Filer. Moony har ikke tilgang til den.",
+    "notSaved": "Sikkerhetskopien ble ikke lagret",
+    "restoreTitle": "Gjenoppretting og overføring",
+    "restoreLead": "Gjenopprett en sikkerhetskopi fra denne telefonen, eller overfør en profil fra Moony på datamaskinen: velg filen med sikkerhetskopien, og lås opp etter gjenopprettingen med passordet som gjaldt da den ble laget.",
+    "osBackupNote": "Den krypterte profilen finnes også i telefonens egen sikkerhetskopi (iCloud eller datamaskin); uten passordet kan ingen åpne den."
   },
   "notifications": {
     "lead": "Moony varsler bare fra denne telefonen, uten server. Varslene planlegges hver gang du låser opp.",

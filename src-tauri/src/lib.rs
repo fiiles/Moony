@@ -164,6 +164,11 @@ async fn run_app() {
             commands::backup::verify_database,
             commands::backup::get_data_location,
             commands::backup::open_data_folder,
+            // Backup export through the phone's Files picker (staged in Documents)
+            #[cfg(mobile)]
+            commands::backup::stage_backup_export,
+            #[cfg(mobile)]
+            commands::backup::finish_backup_export,
             // System (services::logging)
             commands::system::open_logs_folder,
             // Auth commands

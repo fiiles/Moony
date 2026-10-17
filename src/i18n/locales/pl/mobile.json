@@ -299,8 +299,15 @@
     }
   },
   "backup": {
+    "lead": "Kopia zapasowa to jeden zaszyfrowany plik: baza danych, klucze i załączniki. Otworzy go tylko twoje hasło.",
+    "last": "Ostatnia kopia zapasowa",
     "lastOn": "Ostatnia kopia zapasowa {{date}}",
-    "never": "Brak kopii zapasowej"
+    "never": "Brak kopii zapasowej",
+    "what": "Zapisz ją w iCloud Drive lub w innym folderze w aplikacji Pliki. Moony nie ma do niej dostępu.",
+    "notSaved": "Kopia zapasowa nie została zapisana",
+    "restoreTitle": "Przywracanie i przenoszenie",
+    "restoreLead": "Przywróć kopię zapasową z tego telefonu albo przenieś profil z Moony na komputerze: wybierz plik kopii i po przywróceniu odblokuj hasłem, które obowiązywało w chwili jej utworzenia.",
+    "osBackupNote": "Zaszyfrowany profil jest też w kopii zapasowej samego telefonu (iCloud lub komputer); bez hasła nikt go nie otworzy."
   },
   "notifications": {
     "lead": "Moony przypomina tylko z tego telefonu, bez serwera. Powiadomienia są planowane przy każdym odblokowaniu.",

@@ -275,8 +275,15 @@
     }
   },
   "backup": {
+    "lead": "Eine Sicherung ist eine verschlüsselte Datei: Datenbank, Schlüssel und Anhänge. Nur Ihr Passwort öffnet sie.",
+    "last": "Letzte Sicherung",
     "lastOn": "Letzte Sicherung {{date}}",
-    "never": "Noch keine Sicherung"
+    "never": "Noch keine Sicherung",
+    "what": "Speichern Sie sie in iCloud Drive oder einem anderen Ordner in der App „Dateien“. Moony hat darauf keinen Zugriff.",
+    "notSaved": "Sicherung nicht gespeichert",
+    "restoreTitle": "Wiederherstellung und Übertragung",
+    "restoreLead": "Stellen Sie eine Sicherung von diesem Telefon wieder her oder übertragen Sie ein Profil aus Moony auf dem Computer: Wählen Sie die Sicherungsdatei aus und entsperren Sie nach der Wiederherstellung mit dem Passwort, das bei ihrer Erstellung galt.",
+    "osBackupNote": "Das verschlüsselte Profil ist auch in der Sicherung des Telefons (iCloud oder Computer) enthalten; ohne das Passwort kann es niemand öffnen."
   },
   "notifications": {
     "lead": "Moony erinnert nur von diesem Telefon aus, ohne Server. Die Benachrichtigungen werden bei jedem Entsperren geplant.",

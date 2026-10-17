@@ -48,6 +48,39 @@ fn zip_err(context: &str, e: impl std::fmt::Display) -> AppError {
     AppError::Database(format!("{context}: {e}"))
 }
 
+/// Seconds since the Unix epoch, the stamp of a manifest and of the last-backup flag.
+pub fn unix_now() -> i64 {
+    chrono::Utc::now().timestamp()
+}
+
+// ========================== Phone export ==========================
+
+/// Whether `name` is exactly `moony-backup-YYYY-MM-DD.zip` (digits only, nothing before or after):
+/// the one name the phone stages a backup under in Documents before the Files picker exports it.
+pub fn is_export_file_name(name: &str) -> bool {
+    let Some(date) = name
+        .strip_prefix("moony-backup-")
+        .and_then(|rest| rest.strip_suffix(".zip"))
+    else {
+        return false;
+    };
+    date.len() == 10
+        && date.bytes().enumerate().all(|(i, b)| match i {
+            4 | 7 => b == b'-',
+            _ => b.is_ascii_digit(),
+        })
+}
+
+/// Whether `path` is a staged export: directly inside `document_dir` (compared as paths, nothing
+/// normalised, so a `..` or a subfolder never matches) and named like one.
+pub fn is_staged_export_path(document_dir: &Path, path: &Path) -> bool {
+    path.parent() == Some(document_dir)
+        && path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(is_export_file_name)
+}
+
 // ========================== Create ==========================
 
 /// Snapshot the open database with `VACUUM INTO`, then zip it together with
@@ -194,7 +227,7 @@ fn write_archive(
     let manifest = BackupManifest {
         format: BACKUP_FORMAT,
         app_version: app_version.to_string(),
-        created_at: chrono::Utc::now().timestamp(),
+        created_at: unix_now(),
         migrations: crate::db::applied_migration_names(conn)?,
         files,
         attachment_count: attachment_row_count(conn),
@@ -1148,5 +1181,40 @@ mod tests {
             report.messages,
             vec!["attachments: 1 attachment(s) have no content in the store".to_string()]
         );
+    }
+
+    #[test]
+    fn export_file_name_accepts_only_the_dated_pattern() {
+        assert!(is_export_file_name("moony-backup-2026-10-17.zip"));
+        for bad in [
+            "moony-backup-2026-10-17.zip.txt",
+            "../moony-backup-2026-10-17.zip",
+            "moony-backup-20261017.zip",
+            "other.zip",
+            "",
+        ] {
+            assert!(!is_export_file_name(bad), "{bad}");
+        }
+    }
+
+    #[test]
+    fn staged_export_path_must_sit_directly_in_documents() {
+        let dir = Path::new("/c/Documents");
+        assert!(is_staged_export_path(
+            dir,
+            Path::new("/c/Documents/moony-backup-2026-10-17.zip")
+        ));
+        assert!(!is_staged_export_path(
+            dir,
+            Path::new("/c/Documents/sub/moony-backup-2026-10-17.zip")
+        ));
+        assert!(!is_staged_export_path(
+            dir,
+            Path::new("/c/Documents/moony.db")
+        ));
+        assert!(!is_staged_export_path(
+            dir,
+            Path::new("/c/moony-backup-2026-10-17.zip")
+        ));
     }
 }

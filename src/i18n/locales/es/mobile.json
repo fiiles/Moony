@@ -287,8 +287,15 @@
     }
   },
   "backup": {
+    "lead": "Una copia de seguridad es un archivo cifrado: la base de datos, las claves y los adjuntos. Solo la abre tu contraseña.",
+    "last": "Última copia de seguridad",
     "lastOn": "Última copia de seguridad {{date}}",
-    "never": "Aún no hay copia de seguridad"
+    "never": "Aún no hay copia de seguridad",
+    "what": "Guárdala en iCloud Drive o en otra carpeta de la app Archivos. Moony no tiene acceso a ella.",
+    "notSaved": "Copia de seguridad no guardada",
+    "restoreTitle": "Restauración y traslado",
+    "restoreLead": "Restaura una copia de seguridad de este teléfono o traslada un perfil desde Moony en el ordenador: elige el archivo de la copia y, tras restaurarla, desbloquea con la contraseña que estaba en uso cuando se creó.",
+    "osBackupNote": "El perfil cifrado también está en la copia de seguridad del propio teléfono (iCloud u ordenador); sin la contraseña nadie puede abrirlo."
   },
   "notifications": {
     "lead": "Moony te avisa solo desde este teléfono, sin servidor. Las notificaciones se planifican cada vez que desbloqueas.",

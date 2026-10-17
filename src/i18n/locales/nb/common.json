@@ -209,6 +209,7 @@
     "backupInvalidArchive": "Denne filen er ikke en Moony-sikkerhetskopi (eller den er skadet).",
     "backupNewerThanApp": "Denne sikkerhetskopien er laget av en nyere Moony-versjon. Oppdater Moony først.",
     "backupDestinationMissing": "Målmappen finnes ikke.",
+    "backupExportInvalid": "Dette navnet på sikkerhetskopifilen er ikke tillatt.",
     "sellExceedsHoldings": "Du kan ikke selge mer enn du har på den datoen.",
     "csvEmptyFile": "Filen er tom eller har ingen overskriftsrad.",
     "csvColumnsNotFound": "De valgte kolonnene ble ikke funnet i filen. Sjekk overskriftsraden og kolonnetilordningen.",

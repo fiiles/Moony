@@ -134,7 +134,9 @@ export default function ProfileSection() {
       </Form>
 
       <div className="mt-5 rounded-r4 border border-line bg-paper px-3 shadow-e1">
+        {/* `stack`: the sub-line says why the row cannot be edited, so it wraps instead of ending in an ellipsis */}
         <KeyValueRow
+          stack
           label={ts('currency.main')}
           value={`${currencyCode} · ${currencyName(currencyCode, fmt.locale)}`}
           sub={t('settings.profile.currencyReadOnly')}

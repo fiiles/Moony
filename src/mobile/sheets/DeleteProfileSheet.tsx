@@ -34,8 +34,13 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
   const remove = useMutation({
     mutationFn: () => authApi.deleteAccount(),
     onSuccess: () => {
-      // UI preferences belong to the deleted account
-      localStorage.clear();
+      // UI preferences belong to the deleted account. The database is already gone: storage that
+      // cannot be cleared must not turn this into a failure or skip the reload.
+      try {
+        localStorage.clear();
+      } catch {
+        // Blocked storage
+      }
       window.location.reload();
     },
     onError: (error: Error) => {

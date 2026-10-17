@@ -211,7 +211,9 @@ export default function Settings() {
       </EntityRows>
 
       <p className="mb-0 mt-6 text-center text-m-caption text-ink-4">
-        {t('settings.version', { version, privacy: t('settings.noTelemetry') })}
+        {version
+          ? t('settings.version', { version, privacy: t('settings.noTelemetry') })
+          : t('settings.noTelemetry')}
       </p>
 
       <LanguagePickerSheet open={sheet === 'language'} onOpenChange={closeSheet} />

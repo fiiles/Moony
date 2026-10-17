@@ -11,6 +11,12 @@ describe('cn (tailwind-merge with the design tokens)', () => {
     expect(cn('text-caption', 'text-micro')).toBe('text-micro');
   });
 
+  it('knows the phone type roles', () => {
+    expect(cn('text-m-title', 'text-ink')).toBe('text-m-title text-ink');
+    expect(cn('text-m-title-lg', 'text-ink-3')).toBe('text-m-title-lg text-ink-3');
+    expect(cn('text-m-body', 'text-m-sub')).toBe('text-m-sub');
+  });
+
   it('treats the numeric weights as weights, not families', () => {
     expect(cn('font-600', 'font-650')).toBe('font-650');
     expect(cn('font-650', 'font-mono')).toBe('font-650 font-mono');

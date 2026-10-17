@@ -1,0 +1,86 @@
+{
+  "tabs": {
+    "overview": "Oversikt",
+    "finance": "Økonomi",
+    "cashflow": "Kontantstrøm",
+    "wealth": "Formue"
+  },
+  "shell": {
+    "placeholder": "Denne skjermen er fortsatt under arbeid."
+  },
+  "lock": {
+    "caption": "AES-256 · kryptert på denne telefonen",
+    "keySaved": "Jeg har lagret nøkkelen trygt utenfor denne telefonen",
+    "unlockWithFace": "Lås opp med ansiktet",
+    "unlockWithTouch": "Lås opp med fingeravtrykk",
+    "unlockWithBiometrics": "Lås opp med biometri",
+    "usePassword": "Bruk passord",
+    "reason": "Lås opp Moony"
+  },
+  "overview": {
+    "hideAmounts": "Skjul beløp",
+    "showAmounts": "Vis beløp",
+    "showAll": "Vis alle",
+    "change": {
+      "30D": "på 30 dager",
+      "90D": "på 3 måneder",
+      "YTD": "i år",
+      "1Y": "på ett år",
+      "5Y": "på 5 år",
+      "All": "siden første registrering"
+    },
+    "stats": {
+      "assets": "Eiendeler",
+      "freeCash": "Ledige kontanter",
+      "freeCashNote": "på kontoer",
+      "unchanged": "uendret",
+      "noHistory": "ingen historikk"
+    }
+  },
+  "upkeep": {
+    "title": "Datavedlikehold",
+    "count_one": "{{count}} oppgave",
+    "count_other": "{{count}} oppgaver",
+    "balancesStale_one": "{{count}} saldo eldre enn en måned",
+    "balancesStale_other": "{{count}} saldoer eldre enn en måned",
+    "uncategorized_one": "{{count}} betaling uten kategori",
+    "uncategorized_other": "{{count}} betalinger uten kategori",
+    "uncategorizedFrom": "{{account}} · fra kontoutskriften {{date}}",
+    "accounts_one": "{{count}} konto",
+    "accounts_other": "{{count}} kontoer",
+    "statementDue": "På tide med kontoutskrift fra {{bank}}",
+    "lastImport": "Siste import {{date}}",
+    "backupStale_one": "Siste sikkerhetskopi for {{count}} dag siden",
+    "backupStale_other": "Siste sikkerhetskopi for {{count}} dager siden",
+    "backupNever": "Ingen sikkerhetskopi ennå",
+    "valuationStale": "Verdivurderingen av {{name}} er et år gammel",
+    "actions": {
+      "record": "Registrer",
+      "categorize": "Kategoriser",
+      "import": "Importer",
+      "backup": "Ta kopi",
+      "revalue": "Vurder på nytt"
+    }
+  },
+  "recordBalances": {
+    "title": "Registrer saldoer",
+    "lead": "Skriv inn gjeldende saldo for hver konto. Datoen er i dag.",
+    "save": "Registrer",
+    "saved": "Saldoer registrert",
+    "negative": "Negativ verdi"
+  },
+  "biometrics": {
+    "titleFace": "Låse opp Moony med ansiktet?",
+    "titleTouch": "Låse opp Moony med fingeravtrykk?",
+    "titleGeneric": "Låse opp Moony med biometri?",
+    "leadFace": "Passordet forblir hovednøkkelen. Ansiktet åpner bare appen på denne telefonen.",
+    "leadTouch": "Passordet forblir hovednøkkelen. Fingeravtrykket åpner bare appen på denne telefonen.",
+    "leadGeneric": "Passordet forblir hovednøkkelen. Biometrien åpner bare appen på denne telefonen.",
+    "notNow": "Ikke nå",
+    "enable": "Slå på",
+    "enableReason": "Slå på biometrisk opplåsing",
+    "enabled": "Biometrisk opplåsing slått på",
+    "notEnabled": "Biometrisk opplåsing ble ikke slått på",
+    "unavailable": "Biometri er ikke tilgjengelig nå. Lås opp med passordet."
+  }
+}

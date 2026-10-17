@@ -1,0 +1,86 @@
+{
+  "tabs": {
+    "overview": "Übersicht",
+    "finance": "Finanzen",
+    "cashflow": "Cashflow",
+    "wealth": "Vermögen"
+  },
+  "shell": {
+    "placeholder": "Dieser Bildschirm ist noch in Arbeit."
+  },
+  "lock": {
+    "caption": "AES-256 · verschlüsselt auf diesem Telefon",
+    "keySaved": "Ich habe den Schlüssel sicher außerhalb dieses Telefons aufbewahrt",
+    "unlockWithFace": "Mit Gesicht entsperren",
+    "unlockWithTouch": "Mit Fingerabdruck entsperren",
+    "unlockWithBiometrics": "Biometrisch entsperren",
+    "usePassword": "Passwort verwenden",
+    "reason": "Moony entsperren"
+  },
+  "overview": {
+    "hideAmounts": "Beträge ausblenden",
+    "showAmounts": "Beträge einblenden",
+    "showAll": "Alle anzeigen",
+    "change": {
+      "30D": "in 30 Tagen",
+      "90D": "in 3 Monaten",
+      "YTD": "dieses Jahr",
+      "1Y": "in einem Jahr",
+      "5Y": "in 5 Jahren",
+      "All": "seit dem ersten Eintrag"
+    },
+    "stats": {
+      "assets": "Vermögen",
+      "freeCash": "Freies Geld",
+      "freeCashNote": "auf Konten",
+      "unchanged": "unverändert",
+      "noHistory": "kein Verlauf"
+    }
+  },
+  "upkeep": {
+    "title": "Datenpflege",
+    "count_one": "{{count}} Aufgabe",
+    "count_other": "{{count}} Aufgaben",
+    "balancesStale_one": "{{count}} Saldo älter als ein Monat",
+    "balancesStale_other": "{{count}} Salden älter als ein Monat",
+    "uncategorized_one": "{{count}} Zahlung ohne Kategorie",
+    "uncategorized_other": "{{count}} Zahlungen ohne Kategorie",
+    "uncategorizedFrom": "{{account}} · aus dem Auszug vom {{date}}",
+    "accounts_one": "{{count}} Konto",
+    "accounts_other": "{{count}} Konten",
+    "statementDue": "Zeit für den Auszug von {{bank}}",
+    "lastImport": "Letzter Import {{date}}",
+    "backupStale_one": "Letzte Sicherung vor {{count}} Tag",
+    "backupStale_other": "Letzte Sicherung vor {{count}} Tagen",
+    "backupNever": "Noch keine Sicherung",
+    "valuationStale": "Die Bewertung von {{name}} ist ein Jahr alt",
+    "actions": {
+      "record": "Erfassen",
+      "categorize": "Zuordnen",
+      "import": "Importieren",
+      "backup": "Sichern",
+      "revalue": "Neu bewerten"
+    }
+  },
+  "recordBalances": {
+    "title": "Salden erfassen",
+    "lead": "Geben Sie den aktuellen Saldo jedes Kontos ein. Das Datum ist heute.",
+    "save": "Erfassen",
+    "saved": "Salden erfasst",
+    "negative": "Negativer Wert"
+  },
+  "biometrics": {
+    "titleFace": "Moony mit dem Gesicht entsperren?",
+    "titleTouch": "Moony mit dem Fingerabdruck entsperren?",
+    "titleGeneric": "Moony biometrisch entsperren?",
+    "leadFace": "Ihr Passwort bleibt der Hauptschlüssel. Ihr Gesicht öffnet nur die App auf diesem Telefon.",
+    "leadTouch": "Ihr Passwort bleibt der Hauptschlüssel. Ihr Fingerabdruck öffnet nur die App auf diesem Telefon.",
+    "leadGeneric": "Ihr Passwort bleibt der Hauptschlüssel. Die Biometrie öffnet nur die App auf diesem Telefon.",
+    "notNow": "Jetzt nicht",
+    "enable": "Einschalten",
+    "enableReason": "Biometrische Entsperrung einschalten",
+    "enabled": "Biometrische Entsperrung eingeschaltet",
+    "notEnabled": "Biometrische Entsperrung wurde nicht eingeschaltet",
+    "unavailable": "Die Biometrie ist gerade nicht verfügbar. Entsperren Sie mit Ihrem Passwort."
+  }
+}

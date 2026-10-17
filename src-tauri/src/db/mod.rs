@@ -12,6 +12,7 @@ use rusqlite::Connection;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
+use zeroize::Zeroizing;
 
 /// Database state managed by Tauri
 ///
@@ -62,8 +63,9 @@ impl Database {
 
         // Set SQLCipher encryption key using hex format
         // SQLCipher expects: PRAGMA key = "x'hexstring'"
-        let pragma_key = format!("x{}", hex_key);
-        conn.pragma_update(None, "key", &pragma_key)?;
+        // A plaintext copy of the key: wiped when it goes out of scope.
+        let pragma_key = Zeroizing::new(format!("x{}", hex_key));
+        conn.pragma_update(None, "key", pragma_key.as_str())?;
 
         // Enable foreign key constraints
         conn.execute("PRAGMA foreign_keys = ON", [])?;
@@ -143,9 +145,9 @@ impl Database {
 
         let conn = Connection::open(&path)?;
 
-        // Set SQLCipher encryption key using hex format
-        let pragma_key = format!("x{}", hex_key);
-        conn.pragma_update(None, "key", &pragma_key)?;
+        // Set SQLCipher encryption key using hex format (a plaintext copy: wiped on drop)
+        let pragma_key = Zeroizing::new(format!("x{}", hex_key));
+        conn.pragma_update(None, "key", pragma_key.as_str())?;
 
         // Enable foreign key constraints
         conn.execute("PRAGMA foreign_keys = ON", [])?;

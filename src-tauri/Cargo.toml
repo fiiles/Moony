@@ -7,6 +7,12 @@ license = "AGPL-3.0-only"
 edition = "2021"
 default-run = "moony"
 
+# The in-repo mobile plugins build, lint and test with the app: `cargo test`, `cargo clippy` and
+# `cargo check` in this directory cover them too (default-members), on the desktop as well.
+[workspace]
+members = [".", "plugins/moony-keychain"]
+default-members = [".", "plugins/moony-keychain"]
+
 [lib]
 name = "moony_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
@@ -54,6 +60,7 @@ scrypt = "0.12"      # For scrypt key derivation (matches Node.js)
 aes-gcm = "0.11"     # For AES-256-GCM encryption (matches Node.js)
 subtle = "2"         # Constant-time comparison of the MCP bearer token
 sha2 = { version = "0.11", default-features = false }  # Content hashes of stored attachments
+zeroize = "1"        # Wipes the session's master key from memory (services/session_key.rs)
 
 # Error handling
 thiserror = "2"
@@ -80,9 +87,7 @@ quick-xml = "0.42"
 # Image processing for photo gallery
 image = "0.25"
 
-# Auto-updater support
-tauri-plugin-updater = "2"
-tauri-plugin-process = "2"
+# Version floor for the transitive `time` crate
 time = "0.3.44"
 
 # Type generation for TypeScript
@@ -100,6 +105,18 @@ zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
 
 # Embedded MCP server (Streamable HTTP, mounted on the axum router)
 rmcp = { version = "3.5.0", features = ["server", "macros", "transport-streamable-http-server"] }
+
+# Desktop only: auto-updater and relaunch after an update
+[target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+
+# Mobile only: haptic feedback, local notifications (Phase 4 agenda reminders), and the in-repo
+# keychain (biometric unlock: the DB key behind biometry; the privacy screen)
+[target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]
+tauri-plugin-haptics = "2"
+tauri-plugin-notification = "2"
+moony-keychain = { path = "plugins/moony-keychain" }
 
 [dev-dependencies]
 tempfile = "3"

@@ -294,7 +294,10 @@
     "wrongPassword": "La password inserita non è corretta. Riprova.",
     "invalidRecoveryKey": "Chiave di recupero non valida. Controlla di aver inserito tutti i 24 caratteri – maiuscole, spazi e trattini non contano.",
     "keyFilesCorrupted": "I file della chiave o il database di Moony sono danneggiati o non corrispondono. Ripristina la cartella dati da un backup.",
-    "setupNotPrepared": "La creazione dell'account è stata interrotta. Torna indietro e crea di nuovo il tuo account."
+    "setupNotPrepared": "La creazione dell'account è stata interrotta. Torna indietro e crea di nuovo il tuo account.",
+    "biometricInvalidated": "I dati biometrici sono cambiati. Sblocca con la password e riattiva lo sblocco biometrico.",
+    "biometricCancelled": "Lo sblocco biometrico è stato annullato.",
+    "biometricFailed": "Verifica non riuscita. Sblocca con la password."
   },
   "time": {
     "today": "Oggi",

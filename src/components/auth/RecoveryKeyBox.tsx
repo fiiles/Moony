@@ -6,10 +6,18 @@ import { recoveryKeyFileContents } from '@/utils/recovery-key-check';
 import { translateApiError } from '@/lib/translate-api-error';
 import { Button } from '@/components/ui/button';
 
+/** The phone's button (README §13): 48 pt, radius 10, 15 / 600, 18 pt icon. */
+const touchButton = 'h-12 rounded-[10px] text-m-row [&_svg]:size-[18px]';
+
 interface RecoveryKeyBoxProps {
   recoveryKey: string;
   /** Called once the key was saved to a file (the wizard remembers it). */
   onSavedToFile?: () => void;
+  /**
+   * Phone screens: "Zkopírovat" only, as a full-width 48 pt button, and the note is 12 pt.
+   * "Uložit do souboru…" is left out: the phone capability grants no file writes.
+   */
+  touch?: boolean;
 }
 
 /**
@@ -17,7 +25,7 @@ interface RecoveryKeyBoxProps {
  * souboru…" (prototypes onboarding.html and lock.html), and the note that
  * attachments need the password or this key too.
  */
-export function RecoveryKeyBox({ recoveryKey, onSavedToFile }: RecoveryKeyBoxProps) {
+export function RecoveryKeyBox({ recoveryKey, onSavedToFile, touch = false }: RecoveryKeyBoxProps) {
   const { t } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
   const [copied, setCopied] = useState(false);
@@ -56,24 +64,34 @@ export function RecoveryKeyBox({ recoveryKey, onSavedToFile }: RecoveryKeyBoxPro
   return (
     <div>
       <div
-        className="select-all rounded-r3 bg-dark px-4 py-[14px] text-center text-[17px] font-650 tracking-[0.06em] text-ink-inverse num"
+        className="select-all text-balance rounded-r3 bg-dark px-4 py-[14px] text-center text-[17px] font-650 tracking-[0.06em] text-ink-inverse num"
         data-testid="recovery-key"
       >
         {recoveryKey}
       </div>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <Button type="button" variant="outline" onClick={copyKey}>
+      <div className={touch ? 'mt-3 grid grid-cols-1 gap-2.5' : 'mt-3 grid grid-cols-2 gap-3'}>
+        <Button
+          type="button"
+          variant="outline"
+          className={touch ? touchButton : undefined}
+          onClick={copyKey}
+        >
           {copied ? <Check /> : <Copy />}
           {copied ? t('recoveryKey.copied') : t('recoveryKey.copy')}
         </Button>
-        <Button type="button" variant="outline" onClick={saveKeyToFile}>
-          {saved ? <Check /> : <Download />}
-          {t('recoveryKey.saveToFile')}
-        </Button>
+        {/* Not on the phone (no file writes there; its key step comes in Phase 5). */}
+        {!touch && (
+          <Button type="button" variant="outline" onClick={saveKeyToFile}>
+            {saved ? <Check /> : <Download />}
+            {t('recoveryKey.saveToFile')}
+          </Button>
+        )}
       </div>
       {/* D10 of the encrypted-attachments spec: attachments are encrypted with the same key. */}
       <p
-        className="mt-3 text-micro font-500 text-ink-3"
+        className={
+          touch ? 'mt-3 text-m-sub font-500 text-ink-3' : 'mt-3 text-micro font-500 text-ink-3'
+        }
         data-testid="recovery-key-attachments-note"
       >
         {t('recoveryKey.attachmentsNote')}

@@ -1,0 +1,25 @@
+[package]
+name = "moony-keychain"
+version = "0.1.0"
+description = "Biometry-protected secret storage (iOS Keychain, Android Keystore) and the app-switcher privacy screen for Moony on phones"
+authors = ["Filip Král"]
+license = "AGPL-3.0-only"
+edition = "2021"
+publish = false
+# Tauri plugin convention: `links` names the plugin so the app's build finds its permissions.
+links = "moony-keychain"
+
+[lib]
+name = "moony_keychain"
+
+[dependencies]
+# Same feature set as the app, so the workspace builds one `tauri`.
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+
+[dev-dependencies]
+serde_json = "1"
+
+[build-dependencies]
+tauri-plugin = { version = "2", features = ["build"] }

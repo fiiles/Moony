@@ -9,7 +9,7 @@
 import { createContext, ReactNode, useContext, useState, useEffect } from 'react';
 import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { authApi, priceApi, categorizationApi } from '../lib/tauri-api';
+import { authApi, biometricApi, priceApi, categorizationApi } from '../lib/tauri-api';
 import { queryClient } from '../lib/queryClient';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
@@ -55,6 +55,8 @@ type AuthContextType = {
     }
   >;
   unlockMutation: UseMutationResult<UserProfile, Error, { password: string }>;
+  /** Phone only: unlock with the key stored behind biometry; the variable is the prompt text. */
+  unlockWithBiometricsMutation: UseMutationResult<UserProfile, Error, string>;
   lockMutation: UseMutationResult<void, Error, void>;
   recoverMutation: UseMutationResult<
     { recoveryKey: string; newPassword: string; newRecoveryKey: string },
@@ -191,6 +193,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (profile) => {
       queryClient.setQueryData(['user-profile'], profile);
       setAppStatus('unlocked');
+      // The first lock after setup greets by name too, not only locks after an unlock.
+      rememberGreetingName(profile.name);
       setPendingSetup(null);
       // Load learned payees from database
       categorizationApi.loadFromDb().catch(console.error);
@@ -208,51 +212,64 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
   });
 
+  // After an unlock (password or biometrics): the profile, then prices and the categorization
+  // engine in the background
+  const finishUnlock = (profile: UserProfile) => {
+    queryClient.setQueryData(['user-profile'], profile);
+    setAppStatus('unlocked');
+    rememberGreetingName(profile.name);
+
+    // Refresh all prices in background after unlock
+    // Stock prices and dividends (Yahoo Finance)
+    priceApi
+      .refreshStockPrices()
+      .then(() => invalidateAfterPriceRefresh(queryClient))
+      .catch(console.error);
+    priceApi
+      .refreshDividends()
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ['investments'] });
+        queryClient.invalidateQueries({ queryKey: ['dividend-summary'] });
+      })
+      .catch(console.error);
+    // Crypto prices (CoinGecko)
+    priceApi
+      .refreshCryptoPrices()
+      .then(() => invalidateAfterPriceRefresh(queryClient))
+      .catch(console.error);
+
+    // Load learned payees from database for categorization
+    categorizationApi.loadFromDb().catch(console.error);
+    // Load user's own IBANs for internal transfer detection
+    categorizationApi.loadOwnIbans().catch(console.error);
+    // Load custom categorization rules from database
+    categorizationApi.loadCustomRulesFromDb().catch(console.error);
+    // Load locale rule packs into the engine (default rules layer)
+    categorizationApi.loadRulePacksConfig().catch(console.error);
+  };
+
+  // Credential failures (auth.wrongPassword, auth.keyFilesCorrupted, auth.biometric*, ...) are
+  // shown inline by the lock screen; only other failures toast.
+  const toastUnlockFailure = (error: Error) => {
+    if (isAuthApiError(error)) return;
+    toast.error(t('toast.unlockFailed'), { description: translateApiError(error, tc) });
+  };
+
   // Unlock mutation (login with password)
   const unlockMutation = useMutation({
     mutationFn: async (data: { password: string }) => {
       const profile = await authApi.unlock(data.password);
       return profile;
     },
-    onSuccess: (profile) => {
-      queryClient.setQueryData(['user-profile'], profile);
-      setAppStatus('unlocked');
-      rememberGreetingName(profile.name);
+    onSuccess: finishUnlock,
+    onError: toastUnlockFailure,
+  });
 
-      // Refresh all prices in background after unlock
-      // Stock prices and dividends (Yahoo Finance)
-      priceApi
-        .refreshStockPrices()
-        .then(() => invalidateAfterPriceRefresh(queryClient))
-        .catch(console.error);
-      priceApi
-        .refreshDividends()
-        .then(() => {
-          queryClient.invalidateQueries({ queryKey: ['investments'] });
-          queryClient.invalidateQueries({ queryKey: ['dividend-summary'] });
-        })
-        .catch(console.error);
-      // Crypto prices (CoinGecko)
-      priceApi
-        .refreshCryptoPrices()
-        .then(() => invalidateAfterPriceRefresh(queryClient))
-        .catch(console.error);
-
-      // Load learned payees from database for categorization
-      categorizationApi.loadFromDb().catch(console.error);
-      // Load user's own IBANs for internal transfer detection
-      categorizationApi.loadOwnIbans().catch(console.error);
-      // Load custom categorization rules from database
-      categorizationApi.loadCustomRulesFromDb().catch(console.error);
-      // Load locale rule packs into the engine (default rules layer)
-      categorizationApi.loadRulePacksConfig().catch(console.error);
-    },
-    onError: (error: Error) => {
-      // Credential failures (auth.wrongPassword, auth.keyFilesCorrupted, ...) are shown inline
-      // under the password field by the auth page; only other failures toast.
-      if (isAuthApiError(error)) return;
-      toast.error(t('toast.unlockFailed'), { description: translateApiError(error, tc) });
-    },
+  // Phone: unlock with the master key stored behind biometry (it never reaches the webview)
+  const unlockWithBiometricsMutation = useMutation({
+    mutationFn: (reason: string) => biometricApi.unlock(reason),
+    onSuccess: finishUnlock,
+    onError: toastUnlockFailure,
   });
 
   // Lock mutation (logout)
@@ -308,6 +325,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onSuccess: (profile) => {
       queryClient.setQueryData(['user-profile'], profile);
       setAppStatus('unlocked');
+      rememberGreetingName(profile.name);
       setPendingRecover(null);
       // Load learned payees from database
       categorizationApi.loadFromDb().catch(console.error);
@@ -346,6 +364,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         error,
         setupMutation,
         unlockMutation,
+        unlockWithBiometricsMutation,
         lockMutation,
         recoverMutation,
         confirmSetupMutation,

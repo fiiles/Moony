@@ -306,6 +306,79 @@ Things to know:
 - The demo profile has no dated balance records, so `account-detail` shows the balance hero without
   a history line there; an anonymized real profile does.
 
+### Mobile (iOS simulator)
+
+The phone app is the same crate and bundle as the desktop app with its own frontend shell
+(`src/mobile/`, see "Mobile shell" in `docs/architecture/overview.md`). Only iOS is set up; run it
+in the simulator on a Mac.
+
+**Prerequisites** (on top of the macOS ones above):
+
+- Full [Xcode](https://developer.apple.com/xcode/) (not only the Command Line Tools), opened once so
+  it installs its components, with an iOS simulator runtime and the **iPhone 17 Pro** simulator
+  (`npm run ios:dev` names it; `xcrun simctl list devices available` shows what you have)
+- The Rust iOS targets: `rustup target add aarch64-apple-ios aarch64-apple-ios-sim x86_64-apple-ios`
+- CocoaPods and XcodeGen from Homebrew: `brew install cocoapods xcodegen`
+
+**Run it:**
+
+```bash
+npm install
+npm run ios:dev          # Vite on port 1430, Xcode build, install and launch on the iPhone 17 Pro
+```
+
+`src-tauri/tauri.mobile-dev.conf.json` gives the loop its own Vite port (1430), so it runs beside
+`npm run tauri dev` (1420). The first run compiles every dependency for the simulator and is slow;
+later runs are incremental. Frontend edits reach the simulator through Vite's hot reload; a Rust,
+Swift or capability change needs the loop restarted. A full reload of the webview (an edit Vite
+cannot hot-swap) locks the app: the shell takes an already unlocked backend at start for a webview
+iOS restored, and locks it. Stop it with Ctrl-C (or
+`pkill -f "tauri ios dev"` and `pkill -f "vite --port 1430"` if it runs in the background). Another
+device: `npm run tauri -- ios dev "<device name>" --config src-tauri/tauri.mobile-dev.conf.json`.
+
+A fresh simulator has no profile, so the first launch shows the first-run wizard (still the desktop
+wizard in Phase 1). The phone app's data lives in its app container, apart from the desktop's:
+`xcrun simctl uninstall <UDID> com.moonyfinance.mobile` removes the app and its data and starts the
+next run from the wizard again. The app installs with the identifier `com.moonyfinance.mobile`.
+
+**Several simulators.** With more than one simulator booted, never use `booted` in `simctl`: it
+picks one for you. Take the UDID from `xcrun simctl list devices booted` and pass it, e.g.
+`xcrun simctl io <UDID> screenshot shot.png`.
+
+**Face ID.** Biometric unlock is offered once, after the first password unlock ("Odemykat Moony
+obličejem?"). Enrol Face ID in the simulator, then answer its prompts with these commands (or
+Features → Face ID in the Simulator menu):
+
+```bash
+# enrol (needed once per simulator)
+xcrun simctl spawn <UDID> notifyutil -s com.apple.BiometricKit.enrollmentChanged 1
+xcrun simctl spawn <UDID> notifyutil -p com.apple.BiometricKit.enrollmentChanged
+# answer an open prompt: recognised / not recognised
+xcrun simctl spawn <UDID> notifyutil -p com.apple.BiometricKit_Sim.pearl.match
+xcrun simctl spawn <UDID> notifyutil -p com.apple.BiometricKit_Sim.pearl.nomatch
+# remove the enrolment (the next Face ID attempt reports a changed enrolment)
+xcrun simctl spawn <UDID> notifyutil -s com.apple.BiometricKit.enrollmentChanged 0
+xcrun simctl spawn <UDID> notifyutil -p com.apple.BiometricKit.enrollmentChanged
+```
+
+The simulator lets a prompt be retried without limit and its keychain ignores the biometric access
+control, so lockout and the OS-level invalidation after a real enrolment change can only be checked
+on a device.
+
+**Compile check.** After touching `cfg(mobile)` code, the plugin or the dependencies, run
+`cd src-tauri && cargo check --target aarch64-apple-ios-sim --lib` next to the usual gates. `Cargo.lock`
+pins `libc` to 0.2.189 because 0.2.190 breaks this build (see "Mobile shell" in
+`docs/architecture/overview.md`); a dependency bump must keep the check green. CI runs the same
+check on macOS (`rust-ios-check`).
+
+**Layout work without a simulator.** `VITE_MOONY_SHELL=mobile npm run tauri dev` renders the phone
+shell in the desktop window and, through the [browser dev bridge](#browser-dev-bridge-optional), in a
+browser tab at phone width. The phone-only commands (biometrics, the keychain, the privacy screen)
+do not exist there, so the lock flow cannot be tried that way.
+
+**Android: not yet set up (Phase 7).** The Kotlin half of the keychain plugin is written but has
+never been built or run; `npm run android:dev` exists and has not been tried.
+
 ### Project structure
 
 ```
@@ -315,6 +388,7 @@ Moony/
 │   ├── hooks/              # Custom React hooks
 │   ├── i18n/               # Internationalization
 │   ├── lib/                # Utilities and API client
+│   ├── mobile/             # Phone shell (iOS; see "Mobile (iOS simulator)")
 │   ├── pages/              # Page components
 │   └── utils/              # Helper functions
 ├── src-tauri/              # Rust backend
@@ -323,6 +397,7 @@ Moony/
 │   │   ├── db/             # Database migrations
 │   │   ├── models/         # Data models
 │   │   └── services/       # Business logic
+│   ├── plugins/            # In-repo Tauri plugins (moony-keychain: phone keychain, privacy screen)
 │   ├── resources/          # Bank CSV presets and categorization rule packs
 │   ├── tests/fixtures/     # Sample bank statements used by the preset tests
 │   └── tauri.conf.json     # Tauri configuration

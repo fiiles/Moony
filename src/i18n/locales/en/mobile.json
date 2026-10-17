@@ -1,0 +1,86 @@
+{
+  "tabs": {
+    "overview": "Overview",
+    "finance": "Finance",
+    "cashflow": "Cashflow",
+    "wealth": "Wealth"
+  },
+  "shell": {
+    "placeholder": "This screen is still being built."
+  },
+  "lock": {
+    "caption": "AES-256 · encrypted on this phone",
+    "keySaved": "I have stored the key safely outside this phone",
+    "unlockWithFace": "Unlock with your face",
+    "unlockWithTouch": "Unlock with your fingerprint",
+    "unlockWithBiometrics": "Unlock with biometrics",
+    "usePassword": "Use password",
+    "reason": "Unlock Moony"
+  },
+  "overview": {
+    "hideAmounts": "Hide amounts",
+    "showAmounts": "Show amounts",
+    "showAll": "Show all",
+    "change": {
+      "30D": "over 30 days",
+      "90D": "over 3 months",
+      "YTD": "this year",
+      "1Y": "over the year",
+      "5Y": "over 5 years",
+      "All": "since the first record"
+    },
+    "stats": {
+      "assets": "Assets",
+      "freeCash": "Free cash",
+      "freeCashNote": "on accounts",
+      "unchanged": "unchanged",
+      "noHistory": "no history yet"
+    }
+  },
+  "upkeep": {
+    "title": "Data upkeep",
+    "count_one": "{{count}} item",
+    "count_other": "{{count}} items",
+    "balancesStale_one": "{{count}} balance older than a month",
+    "balancesStale_other": "{{count}} balances older than a month",
+    "uncategorized_one": "{{count}} payment without a category",
+    "uncategorized_other": "{{count}} payments without a category",
+    "uncategorizedFrom": "{{account}} · from the statement of {{date}}",
+    "accounts_one": "{{count}} account",
+    "accounts_other": "{{count}} accounts",
+    "statementDue": "Time for the {{bank}} statement",
+    "lastImport": "Last import {{date}}",
+    "backupStale_one": "Last backup {{count}} day ago",
+    "backupStale_other": "Last backup {{count}} days ago",
+    "backupNever": "No backup yet",
+    "valuationStale": "The valuation of {{name}} is a year old",
+    "actions": {
+      "record": "Record",
+      "categorize": "Categorize",
+      "import": "Import",
+      "backup": "Back up",
+      "revalue": "Revalue"
+    }
+  },
+  "recordBalances": {
+    "title": "Record balances",
+    "lead": "Enter the current balance of each account. The date is today.",
+    "save": "Record",
+    "saved": "Balances recorded",
+    "negative": "Negative value"
+  },
+  "biometrics": {
+    "titleFace": "Unlock Moony with your face?",
+    "titleTouch": "Unlock Moony with your fingerprint?",
+    "titleGeneric": "Unlock Moony with biometrics?",
+    "leadFace": "Your password stays the master key. Your face only opens the app on this phone.",
+    "leadTouch": "Your password stays the master key. Your fingerprint only opens the app on this phone.",
+    "leadGeneric": "Your password stays the master key. Biometrics only open the app on this phone.",
+    "notNow": "Not now",
+    "enable": "Turn on",
+    "enableReason": "Turn on biometric unlock",
+    "enabled": "Biometric unlock turned on",
+    "notEnabled": "Biometric unlock was not turned on",
+    "unavailable": "Biometrics are not available right now. Unlock with your password."
+  }
+}

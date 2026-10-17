@@ -1,0 +1,1285 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Moony pro telefon — statický prototyp (1. a 2. průchod)</title>
+<link rel="stylesheet" href="../design-system/moony.css">
+<style>
+  /* ===== Prototype chrome (bar + notes), same as the earlier prototypes ===== */
+  html { overflow-y: scroll; }
+  body { background: var(--canvas); }
+  .proto-bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; gap: 18px; height: 42px; padding: 0 20px; background: var(--dark-grad); box-shadow: var(--sh-dark); color: var(--ink-inverse-2); font-size: 11px; font-weight: 600; }
+  .proto-bar__tag { padding: 3px 7px; border-radius: 5px; background: rgba(255,255,255,.14); color: #fff; font-size: 9px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; }
+  .proto-bar__title { color: #fff; font-weight: 650; letter-spacing: -.01em; }
+  .proto-bar__mode { font-weight: 500; }
+  .proto-bar__mode b { color: #fff; font-weight: 650; }
+  .proto-bar__spacer { flex: 1; }
+  .proto-bar__btn { height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: rgba(255,255,255,.14); color: #fff; font: inherit; font-weight: 650; cursor: pointer; }
+  .proto-bar__btn.is-on { background: var(--paper); color: var(--ink); }
+  .np { position: absolute; z-index: 12; display: none; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--dark-grad); box-shadow: var(--sh-dark), 0 0 0 2px var(--canvas); color: var(--ink-inverse); font-size: 10px; font-weight: 700; font-style: normal; line-height: 20px; text-align: center; pointer-events: none; }
+  .notes-on .np { display: block; }
+  .np--tl { left: -8px; top: -8px; } .np--tr { right: -8px; top: -8px; } .np--bl { left: -8px; bottom: -8px; }
+  .notes-card { display: none; margin: 10px 28px 40px; }
+  .notes-on .notes-card { display: block; }
+  .notes { display: grid; grid-template-columns: 1fr 1fr; column-gap: 44px; margin: 0; padding: 0 21px 10px; list-style: none; }
+  .notes li { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start; padding: 13px 0; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: var(--fs-table); line-height: 1.55; }
+  .notes li:nth-child(-n+2) { border-top: 0; }
+  .notes .np { position: static; display: inline-block; margin-top: 1px; box-shadow: var(--sh-dark); }
+  .notes b { display: block; color: var(--ink); font-weight: 650; }
+  .intro { margin: 26px 28px 0; max-width: 980px; color: var(--ink-2); font-size: 13px; line-height: 1.55; }
+  .intro h1 { margin: 0 0 6px; font-size: 22px; font-weight: 600; letter-spacing: -.04em; color: var(--ink); }
+  .intro p { margin: 0 0 6px; }
+
+  /* ===== Phone frames ===== */
+  .phones { display: flex; flex-wrap: wrap; gap: 38px 28px; padding: 26px 28px 20px; align-items: flex-start; }
+  .frame { width: 390px; position: relative; }
+  .frame__cap { display: flex; align-items: baseline; gap: 8px; margin: 0 8px 10px; }
+  .frame__n { font-size: 10px; font-weight: 750; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-4); }
+  .frame__t { font-size: 13px; font-weight: 650; letter-spacing: -.01em; color: var(--ink); }
+  .frame__s { font-size: 11px; font-weight: 500; color: var(--ink-3); }
+  .ph { position: relative; width: 390px; height: 844px; padding: 10px; border-radius: 48px; background: #1b1a17; box-shadow: 0 34px 70px rgba(31, 28, 20, .28), 0 2px 5px rgba(0,0,0,.25), inset 0 0 0 2px #3a3833; }
+  .ph__screen { position: relative; height: 100%; border-radius: 39px; overflow: hidden; background: var(--canvas); background-image: radial-gradient(520px 320px at 100% 0%, var(--canvas-glow), transparent 70%); color: var(--ink-2); font-size: 15px; line-height: 1.35; }
+  .ph__screen * { -webkit-font-smoothing: antialiased; }
+  .ph__status { position: absolute; top: 0; left: 0; right: 0; height: 50px; display: flex; justify-content: space-between; align-items: flex-end; padding: 0 30px 12px 34px; font-size: 15px; font-weight: 650; letter-spacing: -.01em; color: var(--ink); z-index: 9; pointer-events: none; }
+  .ph__status svg { display: block; }
+  .ph__island { position: absolute; top: 12px; left: 50%; width: 120px; height: 34px; margin-left: -60px; border-radius: 20px; background: #1b1a17; z-index: 10; }
+  .ph__scroll { position: absolute; inset: 0; overflow-y: auto; padding: 58px 16px 112px; scrollbar-width: none; }
+  .ph__scroll::-webkit-scrollbar { display: none; }
+  .ph__scroll--sheet { overflow: hidden; }
+  .ph__home { position: absolute; bottom: 9px; left: 50%; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: var(--ink); z-index: 11; }
+  .num, .row__v, .row__vs, .mstat__v, .hero-v, .kv b, .cell { font-variant-numeric: tabular-nums; }
+
+  /* Tab bar */
+  .tabbar { position: absolute; left: 0; right: 0; bottom: 0; height: 86px; padding: 7px 10px 0; background: var(--paper); border-top: 1px solid var(--line); display: grid; grid-template-columns: repeat(4, 1fr); z-index: 8; }
+  .tab { display: flex; flex-direction: column; align-items: center; gap: 3px; height: 50px; color: var(--ink-4); font-size: 10px; font-weight: 600; letter-spacing: -.005em; text-decoration: none; }
+  .tab.is-active { color: var(--ink); }
+  .tab svg { stroke-width: 1.75; }
+  .tab.is-active svg { stroke-width: 2.1; }
+
+  /* Nav bar + titles */
+  .nav { display: flex; align-items: center; justify-content: space-between; height: 44px; margin: 0 -6px 2px; }
+  .nav__side { display: flex; align-items: center; gap: 2px; min-width: 44px; }
+  .nav__btn { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; color: var(--ink); border-radius: 12px; }
+  .nav__back { display: inline-flex; align-items: center; gap: 2px; height: 44px; padding: 0 8px 0 4px; color: var(--ink); font-size: 15px; font-weight: 600; }
+  .nav__title { font-size: 17px; font-weight: 650; letter-spacing: -.03em; color: var(--ink); text-align: center; line-height: 1.15; }
+  .nav__title small { display: block; font-size: 11px; font-weight: 500; letter-spacing: 0; color: var(--ink-4); margin-top: 1px; }
+  .avatar-m { width: 32px; height: 32px; border-radius: 50%; background: var(--well-2); display: inline-flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--ink-2); box-shadow: inset 0 0 0 1px var(--line); }
+  .title-lg { font-size: 30px; font-weight: 600; letter-spacing: -.05em; color: var(--ink); line-height: 1.1; margin: 6px 2px 3px; }
+  .title-sub { font-size: 13px; font-weight: 450; color: var(--ink-3); margin: 0 2px 14px; }
+
+  /* Cards, sections */
+  .mc { position: relative; background: linear-gradient(180deg, var(--paper), var(--paper-2)); border: 1px solid var(--line); border-radius: 15px; box-shadow: var(--sh-1); padding: 14px 16px; margin-bottom: 14px; }
+  .mc--hero { overflow: hidden; padding: 16px 16px 12px; }
+  .mc--hero::after { content: ""; position: absolute; right: -76px; top: -92px; width: 220px; height: 220px; border-radius: 50%; background: var(--hero-orb); pointer-events: none; }
+  .mc--hero > * { position: relative; z-index: 1; }
+  .mc--hero > .np { position: absolute; z-index: 12; }
+  .mc--well { background: var(--well); box-shadow: none; }
+  .sec { display: flex; align-items: baseline; justify-content: space-between; margin: 16px 2px 8px; }
+  .sec__t { font-size: 16px; font-weight: 620; letter-spacing: -.03em; color: var(--ink); }
+  .sec__a { font-size: 12px; font-weight: 600; color: var(--ink-3); }
+  .cap { font-size: 11px; font-weight: 500; color: var(--ink-4); }
+
+  /* Hero */
+  .hero-l { font-size: 12px; font-weight: 500; color: var(--ink-3); }
+  .hero-v { font-size: 36px; font-weight: 580; letter-spacing: -.06em; color: var(--ink); line-height: 1.05; margin: 3px 0 6px; white-space: nowrap; }
+  .hero-v--gain { color: var(--gain); }
+  .hero-d { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-3); white-space: nowrap; }
+  .hero-d .badge { height: 19px; font-size: 10px; }
+  .mseg { margin: 12px 0 8px; }
+  .mseg .seg { display: flex; width: 100%; }
+  .mseg .seg__btn { flex: 1; height: 30px; font-size: 11px; padding: 0 4px; }
+  .mchart { height: 150px; }
+  .mchart--sm { height: 108px; }
+  .mchart--bars { height: 118px; }
+  .ph .chart__axis { font-size: 10px; margin-top: 4px; }
+
+  /* Stats */
+  .stats3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+  .stats2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 14px; }
+  .mstat { background: linear-gradient(180deg, var(--paper), var(--paper-2)); border: 1px solid var(--line); border-radius: 13px; box-shadow: var(--sh-1); padding: 10px 12px; min-width: 0; }
+  .mstat--flat { background: var(--well); border-color: transparent; box-shadow: none; }
+  .mstat__l { font-size: 11px; font-weight: 500; color: var(--ink-3); white-space: nowrap; }
+  .mstat__v { font-size: 17px; font-weight: 600; letter-spacing: -.03em; color: var(--ink); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .mstat__v--gain { color: var(--gain); }
+  .mstat__n { font-size: 10px; font-weight: 500; color: var(--ink-4); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Entity rows */
+  .rows { background: var(--paper); border: 1px solid var(--line); border-radius: 15px; box-shadow: var(--sh-1); overflow: hidden; margin-bottom: 14px; }
+  .row { position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: 12px; align-items: center; min-height: 60px; padding: 10px 14px; background: var(--paper); transition: transform var(--t-base) var(--ease); }
+  .row--noicon { grid-template-columns: minmax(0, 1fr) auto; }
+  .row--chev { grid-template-columns: 36px minmax(0, 1fr) auto 14px; }
+  /* Rule: a chevron only on rows without a trailing value (settings, documents). A value row is
+     tappable as a whole and keeps the room for its name. */
+  .row--chev:has(.row__v) { grid-template-columns: 36px minmax(0, 1fr) auto; }
+  .row--chev:has(.row__v) > .row__chev { display: none; }
+  .row + .row::before, .dayhead + .row::before, .row + .dayhead { border-top: 1px solid var(--line-soft); }
+  .row + .row::before, .dayhead + .row::before { content: ""; position: absolute; left: 62px; right: 0; top: 0; }
+  .row--noicon + .row--noicon::before { left: 14px; }
+  .row__chip { width: 36px; height: 36px; border-radius: 50%; background: var(--well-2); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; letter-spacing: -.01em; color: var(--ink-2); flex: none; }
+  .row__chip--sq { border-radius: 10px; }
+  .row__chip--tint { background: #e8ebf5; color: var(--s2); }
+  .row__chip--tint2 { background: #ece9e0; color: #6b6355; }
+  .row__chip--tint3 { background: var(--gain-soft); color: var(--gain); }
+  .row__chip--tint4 { background: #efe6ee; color: #7a4c70; }
+  .row__chip--dark { background: var(--dark-grad); color: var(--ink-inverse); box-shadow: var(--sh-dark); }
+  .row__t { font-size: 15px; font-weight: 600; letter-spacing: -.01em; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row__s { font-size: 12px; font-weight: 500; color: var(--ink-4); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row__s .badge { height: 16px; font-size: 9px; padding: 0 6px; vertical-align: 1px; }
+  .row__v { font-size: 15px; font-weight: 600; letter-spacing: -.01em; color: var(--ink); text-align: right; white-space: nowrap; }
+  .row__v--gain { color: var(--gain); }
+  .row__vs { font-size: 11px; font-weight: 500; color: var(--ink-4); text-align: right; margin-top: 3px; white-space: nowrap; }
+  .row__vs .badge { height: 16px; font-size: 9px; padding: 0 6px; }
+  .row__chev { color: var(--ink-5); }
+  .dayhead { padding: 11px 14px 5px; background: var(--well); font-size: 10px; font-weight: 750; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-4); }
+  .row--swiped { transform: translateX(-98px); }
+  .row__action { position: absolute; top: 0; bottom: 0; right: -98px; width: 98px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: var(--dark-grad); color: var(--ink-inverse); font-size: 11px; font-weight: 650; }
+  .pbar { height: 6px; border-radius: 3px; background: var(--well-3); overflow: hidden; margin-top: 7px; }
+  .pbar > i { display: block; height: 100%; border-radius: 3px; background: var(--s2); }
+  .pbar--share > i { background: var(--s3); }
+  .pbar--over > i { background: var(--loss); }
+  .pbar--near > i { background: var(--s1); }
+  .row--bar { grid-template-rows: auto auto; }
+  .row--bar .row__bar { grid-column: 2 / 4; }
+
+  /* Buttons on a phone */
+  .ph .btn { height: 48px; padding: 0 18px; border-radius: 11px; font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+  .ph .btn--sm { height: 34px; padding: 0 13px; border-radius: 9px; font-size: 12px; }
+  .ph .btn--block { width: 100%; }
+  .btn-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .btn-pair .btn { padding: 0 10px; font-size: 13px; white-space: nowrap; }
+  .todo .btn--sm { padding: 0 11px; }
+  .ph .btn--secondary { background: var(--paper); border: 1px solid var(--line-strong); color: var(--ink); box-shadow: var(--sh-btn); }
+
+  /* Pills, chips, segments */
+  .pill { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px; border-radius: 17px; background: var(--well-2); color: var(--ink); font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .pill small { font-size: 10px; font-weight: 500; color: var(--ink-4); }
+  .pill--dark { background: var(--dark-grad); color: var(--ink-inverse); box-shadow: var(--sh-dark); }
+  .pill--dark small { color: var(--ink-inverse-2); }
+  .pill--ghost { background: transparent; box-shadow: inset 0 0 0 1px var(--line-strong); }
+  .pill--done { background: var(--gain-soft); color: var(--gain); }
+  .pillrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+  .msearch { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 12px; border-radius: 11px; background: var(--well-2); color: var(--ink-4); font-size: 14px; }
+  .toolrow { display: flex; gap: 8px; align-items: center; margin: 10px 0; }
+  .toolrow .seg { flex: 1; display: flex; }
+  .toolrow .seg__btn { flex: 1; height: 32px; font-size: 11px; }
+  .iconbtn { width: 40px; height: 40px; border-radius: 11px; background: var(--paper); border: 1px solid var(--line-strong); display: inline-flex; align-items: center; justify-content: center; color: var(--ink); box-shadow: var(--sh-btn); flex: none; }
+  .iconbtn--sm { width: 32px; height: 32px; border-radius: 9px; }
+  .stepper { display: flex; align-items: center; justify-content: space-between; margin: 6px 0 12px; }
+  .stepper b { font-size: 15px; font-weight: 650; letter-spacing: -.02em; color: var(--ink); }
+
+  /* Údržba card */
+  .todo { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 0; }
+  .todo + .todo { border-top: 1px solid var(--line-soft); }
+  .todo__ic { width: 34px; height: 34px; border-radius: 10px; background: var(--well); display: flex; align-items: center; justify-content: center; color: var(--ink-2); }
+  .todo__t { font-size: 14px; font-weight: 600; letter-spacing: -.01em; color: var(--ink); }
+  .todo__s { font-size: 12px; color: var(--ink-4); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* Agenda rows */
+  .dchip { width: 54px; height: 42px; border-radius: 9px; background: var(--well); display: flex; flex-direction: column; align-items: center; justify-content: center; flex: none; }
+  .dchip b { font-size: 12px; font-weight: 650; color: var(--ink); letter-spacing: -.01em; }
+  .dchip small { font-size: 10px; font-weight: 500; color: var(--ink-4); margin-top: 1px; }
+  .dchip--soon { background: var(--dark-grad); box-shadow: var(--sh-dark); }
+  .dchip--soon b { color: var(--ink-inverse); } .dchip--soon small { color: var(--ink-inverse-2); }
+  .row--agenda { grid-template-columns: 54px minmax(0, 1fr) 24px; }
+
+  /* Allocation */
+  .alloc { display: grid; grid-template-columns: 110px 1fr; gap: 16px; align-items: center; }
+  .ring-m { position: relative; width: 110px; height: 110px; border-radius: 50%; }
+  .ring-m::after { content: "Aktiva"; position: absolute; inset: 22px; border-radius: 50%; background: var(--paper); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600; color: var(--ink-3); }
+  .leg { list-style: none; margin: 0; padding: 0; font-size: 12px; }
+  .leg li { display: grid; grid-template-columns: 10px 1fr auto; gap: 8px; align-items: center; padding: 4px 0; color: var(--ink-2); }
+  .leg i { width: 10px; height: 10px; border-radius: 3px; display: block; }
+  .leg b { font-weight: 600; color: var(--ink); }
+  .leg span { color: var(--ink-4); }
+
+  /* Key-value, alerts */
+  .kv { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; font-size: 13px; color: var(--ink-3); }
+  .kv b { font-weight: 600; color: var(--ink); text-align: right; }
+  .malert { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border-radius: 11px; background: var(--gain-soft); color: var(--gain); font-size: 12px; font-weight: 500; line-height: 1.4; margin: 10px 0; }
+  .malert--muted { background: var(--well); color: var(--ink-2); }
+  .malert svg { flex: none; margin-top: 1px; }
+
+  /* Sheet */
+  .scrim-m { position: absolute; inset: 0; background: var(--scrim); z-index: 12; }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 93%; display: flex; flex-direction: column; background: var(--paper); border-radius: 17px 17px 0 0; box-shadow: var(--sh-modal); z-index: 13; }
+  .sheet__handle { width: 36px; height: 5px; border-radius: 3px; background: var(--well-3); margin: 8px auto 0; flex: none; }
+  .sheet__head { padding: 12px 20px 4px; flex: none; }
+  .sheet__t { font-size: 20px; font-weight: 650; letter-spacing: -.04em; color: var(--ink); }
+  .sheet__s { font-size: 13px; color: var(--ink-3); margin-top: 3px; line-height: 1.4; }
+  .sheet__body { padding: 8px 16px 14px; overflow: auto; scrollbar-width: none; }
+  .sheet__body::-webkit-scrollbar { display: none; }
+  .sheet__foot { display: flex; gap: 10px; align-items: center; padding: 12px 16px 30px; background: var(--well); border-top: 1px solid var(--line); flex: none; }
+  .sheet__foot .btn--primary { flex: 1; }
+  .filebar { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 11px; background: var(--well); margin: 6px 0 12px; }
+  .filebar__ic { width: 34px; height: 34px; border-radius: 9px; background: var(--paper); display: flex; align-items: center; justify-content: center; color: var(--ink-2); box-shadow: var(--sh-btn); flex: none; }
+  .filebar__t { font-size: 13px; font-weight: 600; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .filebar__s { font-size: 11px; color: var(--ink-4); margin-top: 1px; }
+  .recog { list-style: none; margin: 8px 0 0; padding: 0; }
+  .recog li { display: grid; grid-template-columns: 20px 92px 1fr; gap: 8px; align-items: center; padding: 7px 0; font-size: 13px; color: var(--ink-2); border-top: 1px solid var(--line-soft); }
+  .recog li:first-child { border-top: 0; }
+  .recog li b { font-weight: 600; color: var(--ink); }
+  .recog li span { color: var(--ink-4); font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .recog .ok { color: var(--gain); }
+  .recog .no { color: var(--ink-5); }
+  .colopt { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: center; padding: 11px 12px; border-radius: 12px; border: 1px solid var(--line); background: var(--paper); margin-bottom: 8px; }
+  .colopt.is-sel { border-color: var(--focus-border); box-shadow: var(--focus-ring); }
+  .colopt__t { font-size: 14px; font-weight: 600; color: var(--ink); }
+  .colopt__s { font-size: 12px; color: var(--ink-4); margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .radio { width: 20px; height: 20px; border-radius: 50%; border: 1.5px solid var(--line-strong); display: inline-flex; align-items: center; justify-content: center; }
+  .is-sel .radio { border-color: var(--ink); background: var(--ink); color: #fff; }
+  .switch-m { position: relative; width: 44px; height: 26px; border-radius: 13px; background: var(--well-3); flex: none; }
+  .switch-m::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: var(--paper); box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+  .switch-m.is-on { background: var(--dark-grad); }
+  .switch-m.is-on::after { left: 21px; }
+  .done-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin: 8px 0 4px; }
+  .queue-prog { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-3); margin: 0 2px 12px; }
+  .queue-prog .pbar { flex: 1; margin: 0; }
+  .lockwrap { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 28px 40px; text-align: center; }
+  .lock-brand { display: flex; align-items: center; gap: 10px; margin-bottom: 44px; }
+  .lock-brand .moon { width: 34px; height: 34px; }
+  .lock-brand b { font-size: 20px; font-weight: 650; letter-spacing: -.04em; color: var(--ink); }
+  .faceid { width: 76px; height: 76px; border-radius: 22px; background: var(--paper); border: 1px solid var(--line); box-shadow: var(--sh-2); display: flex; align-items: center; justify-content: center; color: var(--ink); margin-bottom: 18px; }
+  .lock-foot { position: absolute; left: 0; right: 0; bottom: 48px; display: flex; flex-direction: column; align-items: center; gap: 12px; }
+  .lock-foot .seg__btn { height: 28px; font-size: 11px; }
+  .ph .link { font-size: 13px; }
+  .muted-screen { filter: saturate(.9); }
+
+  /* ===== Pass 2 ===== */
+  .abar { display: flex; gap: 2px; height: 10px; border-radius: 5px; overflow: hidden; margin: 12px 0 8px; }
+  .abar i { display: block; height: 100%; }
+  .ph .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; font-size: 11px; }
+  .sortrow { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 0; }
+  .kvl > div { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 9px 0; border-top: 1px solid var(--line-soft); font-size: 13px; }
+  .kvl > div:first-child { border-top: 0; padding-top: 2px; }
+  .kvl > div:last-child { padding-bottom: 2px; }
+  .kvl span { color: var(--ink-3); flex: none; }
+  .kvl b { color: var(--ink); font-weight: 600; text-align: right; display: inline-flex; align-items: center; gap: 6px; min-width: 0; font-variant-numeric: tabular-nums; }
+  .copybtn { width: 24px; height: 24px; border-radius: 7px; background: var(--well-2); display: inline-flex; align-items: center; justify-content: center; color: var(--ink-2); flex: none; }
+  .docgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0 0 14px; }
+  .sheet--full { max-height: 95%; }
+  .danger-t { color: var(--loss); }
+  .row--center { justify-content: center; min-height: 48px; }
+  .row--center .row__t { text-align: center; color: var(--ink-3); font-size: 13px; }
+  .chip-sell { background: var(--paper); box-shadow: inset 0 0 0 1.5px var(--chart-line); color: var(--chart-line); font-size: 14px; }
+
+  /* ===== Dark theme =====
+     Prototype copy of the shared dark token block from docs/specs/2026-10-16-dark-mode-design.md §4.1
+     (commit 9a7c8d0a on the dark-mode branch, approved by the owner on 2026-10-16). The real block lands
+     in tokens.css as :root[data-theme="dark"] with these same names; the mobile app only switches the
+     attribute. --hero-orb is new there too (light #f0eee8), defined here until tokens.css carries it. */
+  :root { --hero-orb: #f0eee8; }
+  .ph__screen[data-theme="dark"] {
+    --canvas: #1a1917; --canvas-glow: #22211e; --sidebar: #1f1e1b; --sidebar-2: #1c1b19;
+    --paper: #292826; --paper-2: #2b2a27; --well: #232220; --well-2: #1e1d1b; --well-3: #181715; --hero-orb: #302f2b;
+    --line: #363531; --line-soft: #302f2c; --line-strong: #45443f; --line-sidebar: #2b2a27;
+    --ink: #eceae4; --ink-2: #cdcbc4; --ink-3: #a3a098; --ink-4: #868379; --ink-5: #6b6962;
+    --ink-inverse: #1d1c19; --ink-inverse-2: #5f5c54;
+    --dark: #e9e7e1; --dark-hi: #f3f1ec; --dark-lo: #e2e0d9; --dark-hover-hi: #faf9f5; --dark-hover-lo: #ebe9e3;
+    --dark-grad: linear-gradient(145deg, var(--dark-hi), var(--dark-lo));
+    --dark-grad-hover: linear-gradient(145deg, var(--dark-hover-hi), var(--dark-hover-lo));
+    --gain: #45c6a6; --gain-soft: #203c30; --loss: #ef7f5e; --loss-soft: #4a2d25;
+    --s1: #d8dbf0; --s2: #a2a7ec; --s3: #7b7ea5; --s4: #4f508e; --s-other: #3a3935;
+    --chart-line: #b5b9eb; --chart-area: #393b52; --chart-grid: #302f2c; --chart-cost: #78756d; --chart-axis: #6b6962;
+    --focus-border: #a09d94; --focus-ring: 0 0 0 3px rgba(255,255,255,.12);
+    --sh-1: 0 2px 5px rgba(0,0,0,.24), 0 9px 22px rgba(0,0,0,.14);
+    --sh-2: 0 4px 10px rgba(0,0,0,.26), 0 16px 35px rgba(0,0,0,.18);
+    --sh-3: 0 4px 11px rgba(0,0,0,.28), 0 20px 38px rgba(0,0,0,.2);
+    --sh-pop: 0 8px 24px rgba(0,0,0,.5), 0 1px 2px rgba(0,0,0,.4);
+    --sh-modal: 0 26px 80px rgba(0,0,0,.7);
+    --sh-dark: inset 0 1px rgba(255,255,255,.55), 0 3px 7px rgba(0,0,0,.35);
+    --sh-btn: 0 1px 2px rgba(0,0,0,.3);
+    --scrim: rgba(12,11,9,.7);
+  }
+  /* Category and institution tints are a prototype shorthand; the dark-mode spec §4.3 rules the real tinting. */
+  .ph__screen[data-theme="dark"] .row__chip--tint { background: #2f3350; color: #b5b9eb; }
+  .ph__screen[data-theme="dark"] .row__chip--tint2 { background: #35322b; color: #c9c2b3; }
+  .ph__screen[data-theme="dark"] .row__chip--tint4 { background: #3d2f3a; color: #d8a6cd; }
+</style>
+</head>
+<body class="notes-on">
+
+<div class="proto-bar">
+  <span class="proto-bar__tag">Návrh</span>
+  <span class="proto-bar__title">Moony pro telefon — statický prototyp, 1. a 2. průchod</span>
+  <span class="proto-bar__mode">Rámečky <b>390 × 844</b> · obsah uvnitř rámečku se posouvá · spec <b>2026-10-16-mobile-app-design.md</b></span>
+  <span class="proto-bar__spacer"></span>
+  <button class="proto-bar__btn is-on" id="notesBtn" type="button">Poznámky: zapnuto</button>
+</div>
+
+<div class="intro">
+  <h1>Pět častých úkolů na telefonu</h1>
+  <p>První průchod ukazuje jádro: odemknout a mrknout (1–2), finance — účty, úvěry, pojistky a pohyby na účtu (3–4), měsíční rituál — výpis přes share sheet, rozpoznání bez mapování, zařazení plateb (5–8) a kontrolu měsíce s rozpočty (9). Druhý průchod přidává majetek a jeho třídy (10–11), detail pozice (12), úvěr (13), pojistku (14), nastavení (15) a tmavou variantu Přehledu (16) na sdíleném bloku tmavých tokenů ze specu tmavého režimu. Stejné tokeny jako desktop (<code>tokens.css</code>), typografie zvětšená pro dotyk; iOS i Android vypadají takto.</p>
+</div>
+
+<div class="phones">
+
+<!-- ===== 1 · Zámek ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">01</span><span class="frame__t">Zámek</span><span class="frame__s">biometrie, heslo zůstává</span></div>
+  <div class="ph"><div class="ph__screen">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="lockwrap">
+      <div class="lock-brand"><span class="moon"></span><b>moony</b></div>
+      <div class="faceid has-np" style="position:relative"><i class="np np--tr">1</i><i class="ico" data-i="scan-face" data-s="40"></i></div>
+      <div style="font-size:22px;font-weight:650;letter-spacing:-.04em;color:var(--ink)">Vítejte zpět, Alexi</div>
+      <div class="cap" style="margin:6px 0 26px;font-size:12px">Zamčeno dnes v 8:12</div>
+      <button class="btn btn--primary btn--block" type="button"><i class="ico" data-i="scan-face" data-s="18"></i> Odemknout obličejem</button>
+      <a class="link" style="margin-top:14px">Použít heslo</a>
+    </div>
+    <div class="lock-foot">
+      <div class="seg"><button class="seg__btn is-active" type="button">Čeština</button><button class="seg__btn" type="button">English</button></div>
+      <span class="cap"><i class="ico" data-i="lock" data-s="11"></i> AES-256 · data zůstávají v telefonu</span>
+    </div>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+<!-- ===== 2 · Přehled ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">02</span><span class="frame__t">Přehled</span><span class="frame__s">mrknout a vědět, co udělat</span></div>
+  <div class="ph"><div class="ph__screen">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="ph__scroll">
+      <div class="nav">
+        <div class="nav__side"><span class="nav__btn has-np" style="position:relative"><i class="np np--bl">4</i><i class="ico" data-i="eye" data-s="22"></i></span></div>
+        <div class="nav__side" style="justify-content:flex-end"><span class="avatar-m">AM</span></div>
+      </div>
+      <div class="title-lg">Dobrý den, Alexi.</div>
+      <div class="title-sub">Stav majetku k 16. 10. 2026</div>
+
+      <div class="mc mc--well has-np"><i class="np np--tl">2</i>
+        <div class="sec" style="margin:0 0 4px"><span class="sec__t">Údržba</span><span class="sec__a">3 věci</span></div>
+        <div class="todo"><div class="todo__ic"><i class="ico" data-i="landmark" data-s="17"></i></div><div><div class="todo__t">3 zůstatky starší než měsíc</div><div class="todo__s">Spořicí účet ČS · Revolut · UniCredit</div></div><button class="btn btn--primary btn--sm" type="button">Zaznamenat</button></div>
+        <div class="todo"><div class="todo__ic"><i class="ico" data-i="tag" data-s="17"></i></div><div><div class="todo__t">12 plateb bez kategorie</div><div class="todo__s">Fio Běžný · z výpisu 10. 10.</div></div><button class="btn btn--secondary btn--sm" type="button">Zařadit</button></div>
+        <div class="todo"><div class="todo__ic"><i class="ico" data-i="upload" data-s="17"></i></div><div><div class="todo__t">Je čas na výpis z UniCredit</div><div class="todo__s">Poslední import 8. 9. · návod k exportu</div></div><button class="btn btn--secondary btn--sm" type="button">Importovat</button></div>
+      </div>
+
+      <div class="mc mc--hero has-np"><i class="np np--tr">3</i>
+        <div class="hero-l">Čisté jmění</div>
+        <div class="hero-v">4&nbsp;356&nbsp;920 Kč</div>
+        <div class="hero-d"><span class="badge badge--gain">▲ 2,1 %</span><span>+ 86&nbsp;420 Kč za 30 dní</span></div>
+        <div class="mseg"><div class="seg"><button class="seg__btn is-active" type="button">30 dní</button><button class="seg__btn" type="button">3 měsíce</button><button class="seg__btn" type="button">Letos</button><button class="seg__btn" type="button">Rok</button><button class="seg__btn" type="button">Vše</button></div></div>
+        <div class="chart mchart" id="c-networth"></div><div class="chart__axis" id="a-networth"></div>
+      </div>
+
+      <div class="stats3">
+        <div class="mstat"><div class="mstat__l">Aktiva</div><div class="mstat__v">6,78 mil.</div><div class="mstat__n">+ 92&nbsp;100 Kč</div></div>
+        <div class="mstat"><div class="mstat__l">Závazky</div><div class="mstat__v">2,59 mil.</div><div class="mstat__n">− 5&nbsp;680 Kč</div></div>
+        <div class="mstat"><div class="mstat__l">Volné peníze</div><div class="mstat__v">214&nbsp;380</div><div class="mstat__n">na účtech</div></div>
+      </div>
+
+      <div class="sec has-np" style="position:relative"><i class="np np--tl">5</i><span class="sec__t">Co vás čeká</span><span class="sec__a">Zobrazit vše (7)</span></div>
+      <div class="rows">
+        <div class="row row--agenda"><div class="dchip dchip--soon"><b>20. 10.</b><small>za 4 dny</small></div><div><div class="row__t">Konec fixace hypotéky</div><div class="row__s">Hypotéka Lipová · nová sazba od 21. 10.</div></div><i class="ico row__chev" data-i="ellipsis" data-s="18"></i></div>
+        <div class="row row--agenda"><div class="dchip"><b>4. 11.</b><small>za 19 dní</small></div><div><div class="row__t">Životní pojištění</div><div class="row__s">Poslední den výpovědi · výročí 17. 12.</div></div><i class="ico row__chev" data-i="ellipsis" data-s="18"></i></div>
+        <div class="row row--agenda"><div class="dchip"><b>1. 12.</b><small>za 46 dní</small></div><div><div class="row__t">Spořicí účet ČS</div><div class="row__s">Konec zvýhodněné sazby 5,1 %</div></div><i class="ico row__chev" data-i="ellipsis" data-s="18"></i></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">Rozložení majetku</span><span class="sec__a">Majetek →</span></div>
+      <div class="mc"><div class="alloc"><div class="ring-m" id="ring"></div>
+        <ul class="leg">
+          <li><i style="background:var(--s1)"></i><b>Nemovitosti</b><span>42 %</span></li>
+          <li><i style="background:var(--s2)"></i><b>Akcie</b><span>39 %</span></li>
+          <li><i style="background:var(--s3)"></i><b>Dluhopisy</b><span>7 %</span></li>
+          <li><i style="background:var(--s4)"></i><b>Ostatní aktiva</b><span>5 %</span></li>
+          <li><i style="background:var(--s-other);box-shadow:inset 0 0 0 1px var(--line)"></i><b>Krypto a hotovost</b><span>6 %</span></li>
+        </ul></div></div>
+
+      <div class="sec"><span class="sec__t">Poslední pohyby</span><span class="sec__a">Zobrazit vše</span></div>
+      <div class="rows">
+        <div class="row"><div class="row__chip">LI</div><div><div class="row__t">Lidl Praha 4</div><div class="row__s">Dnes · Fio Běžný · Potraviny</div></div><div><div class="row__v">− 1&nbsp;249 Kč</div></div></div>
+        <div class="row"><div class="row__chip row__chip--tint3"><i class="ico" data-i="banknote" data-s="16"></i></div><div><div class="row__t">Umbrella a.s.</div><div class="row__s">Včera · Fio Běžný · Mzda</div></div><div><div class="row__v row__v--gain">+ 61&nbsp;200 Kč</div></div></div>
+        <div class="row"><div class="row__chip row__chip--tint"><i class="ico" data-i="trending-up" data-s="16"></i></div><div><div class="row__t">Nákup VWCE · 12 ks</div><div class="row__s">14. 10. · XTB · 110,40 €</div></div><div><div class="row__v">− 32&nbsp;750 Kč</div></div></div>
+      </div>
+    </div>
+    <nav class="tabbar has-np" style="position:absolute"><i class="np np--tr">6</i>
+      <a class="tab is-active"><i class="ico" data-i="layout-dashboard" data-s="24"></i>Přehled</a>
+      <a class="tab"><i class="ico" data-i="landmark" data-s="24"></i>Finance</a>
+      <a class="tab"><i class="ico" data-i="chart-column" data-s="24"></i>Cashflow</a>
+      <a class="tab"><i class="ico" data-i="briefcase" data-s="24"></i>Majetek</a>
+    </nav>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+<!-- ===== 3 · Účty ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">03</span><span class="frame__t">Finance</span><span class="frame__s">účty, úvěry a pojistky — smlouvy s institucemi</span></div>
+  <div class="ph"><div class="ph__screen">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="ph__scroll">
+      <div class="nav"><div class="nav__side"></div><div class="nav__side"><span class="nav__btn"><i class="ico" data-i="plus" data-s="24"></i></span></div></div>
+      <div class="title-lg">Finance</div>
+      <div class="title-sub">4 účty · 1 úvěr · 3 pojistky</div>
+
+      <div class="mc mc--hero">
+        <div class="hero-l">Celkem na účtech</div>
+        <div class="hero-v" style="font-size:30px">214&nbsp;380 Kč</div>
+        <div class="hero-d"><span class="badge badge--gain">▲ 6,1 %</span><span>+ 12&nbsp;400 Kč za 30 dní · kurz EUR 24,72 (ECB)</span></div>
+      </div>
+
+      <div class="rows has-np"><i class="np np--tl">7</i>
+        <div class="row row--chev"><div class="row__chip row__chip--dark"><i class="ico" data-i="tag" data-s="16"></i></div><div><div class="row__t">Nezařazené platby</div><div class="row__s">Fio Běžný · z výpisu 10. 10.</div></div><div class="row__v">12</div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+      </div>
+
+      <div class="rows">
+        <div class="row row--chev"><div class="row__chip">FIO</div><div><div class="row__t">Běžný účet</div><div class="row__s">Fio · CZK · výpis 10. 10.</div></div><div><div class="row__v">86&nbsp;420 Kč</div><div class="row__vs">+ 9&nbsp;870 Kč · 30 dní</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        <div class="row row--chev"><div class="row__chip">ČS</div><div><div class="row__t">Spořicí účet</div><div class="row__s">Česká spořitelna · CZK · zůstatek 2. 9.</div></div><div><div class="row__v">95&nbsp;300 Kč</div><div class="row__vs">zůstatek 44 dní starý</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        <div class="row row--chev"><div class="row__chip">R</div><div><div class="row__t">EUR účet</div><div class="row__s">Revolut · EUR · zůstatek 12. 9.</div></div><div><div class="row__v">1&nbsp;240 €</div><div class="row__vs">≈ 30&nbsp;660 Kč</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        <div class="row row--chev"><div class="row__chip">UC</div><div><div class="row__t">Běžný účet</div><div class="row__s">UniCredit · CZK · výpis 8. 9.</div></div><div><div class="row__v">2&nbsp;000 Kč</div><div class="row__vs">výpis 38 dní starý</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">Úvěry</span><span class="sec__a">nesplaceno 2&nbsp;418&nbsp;760 Kč</span></div>
+      <div class="rows">
+        <div class="row row--chev"><div class="row__chip row__chip--tint2"><i class="ico" data-i="credit-card" data-s="16"></i></div><div><div class="row__t">Hypotéka Lipová</div><div class="row__s">Česká spořitelna · 3,1 % · fixace do 20. 10.</div></div><div><div class="row__v">2&nbsp;418&nbsp;760 Kč</div><div class="row__vs">12&nbsp;340 Kč / měs</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">Pojištění</span><span class="sec__a">31&nbsp;400 Kč / rok</span></div>
+      <div class="rows">
+        <div class="row row--chev"><div class="row__chip row__chip--tint2"><i class="ico" data-i="shield" data-s="16"></i></div><div><div class="row__t">Životní pojištění</div><div class="row__s">Kooperativa · měsíčně</div></div><div><div class="row__v">1&nbsp;200 Kč</div><div class="row__vs">příští platba 1. 11.</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        <div class="row row--chev"><div class="row__chip row__chip--tint2"><i class="ico" data-i="house" data-s="16"></i></div><div><div class="row__t">Pojištění domácnosti</div><div class="row__s">Kooperativa · čtvrtletně · Byt Lipová</div></div><div><div class="row__v">2&nbsp;150 Kč</div><div class="row__vs">příští platba 4. 11.</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        <div class="row row--chev"><div class="row__chip row__chip--tint2"><i class="ico" data-i="car" data-s="16"></i></div><div><div class="row__t">Pojištění auta</div><div class="row__s">ČPP · ročně · povinné ručení + havarijní</div></div><div><div class="row__v">8&nbsp;400 Kč</div><div class="row__vs">příští platba 15. 3. 2027</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">Vývoj hotovosti</span><span class="sec__a">30 dní</span></div>
+      <div class="mc"><div class="chart mchart mchart--sm" id="c-cash"></div><div class="chart__axis" id="a-cash"></div></div>
+    </div>
+    <nav class="tabbar">
+      <a class="tab"><i class="ico" data-i="layout-dashboard" data-s="24"></i>Přehled</a>
+      <a class="tab is-active"><i class="ico" data-i="landmark" data-s="24"></i>Finance</a>
+      <a class="tab"><i class="ico" data-i="chart-column" data-s="24"></i>Cashflow</a>
+      <a class="tab"><i class="ico" data-i="briefcase" data-s="24"></i>Majetek</a>
+    </nav>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+<!-- ===== 4 · Detail účtu ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">04</span><span class="frame__t">Detail účtu</span><span class="frame__s">zůstatek, toky, pohyby</span></div>
+  <div class="ph"><div class="ph__screen">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="ph__scroll">
+      <div class="nav">
+        <div class="nav__side"><span class="nav__back"><i class="ico" data-i="chevron-left" data-s="22"></i>Finance</span></div>
+        <div class="nav__title">Běžný účet<small>Fio · CZK · 2100123456/2010</small></div>
+        <div class="nav__side" style="justify-content:flex-end"><span class="nav__btn"><i class="ico" data-i="ellipsis" data-s="22"></i></span></div>
+      </div>
+
+      <div class="btn-pair has-np" style="position:relative;margin-top:10px"><i class="np np--tl">8</i>
+        <button class="btn btn--primary" type="button"><i class="ico" data-i="pencil" data-s="16"></i> Zaznamenat zůstatek</button>
+        <button class="btn btn--secondary" type="button"><i class="ico" data-i="upload" data-s="16"></i> Importovat výpis</button>
+      </div>
+
+      <div class="mc mc--hero">
+        <div class="hero-l">Zůstatek k 10. 10. 2026</div>
+        <div class="hero-v">86&nbsp;420 Kč</div>
+        <div class="hero-d"><span class="badge badge--gain">▲ 12,9 %</span><span>+ 9&nbsp;870 Kč za 30 dní</span></div>
+        <div class="chart mchart mchart--sm" style="margin-top:12px" id="c-balance"></div><div class="chart__axis" id="a-balance"></div>
+      </div>
+      <div class="stats2">
+        <div class="mstat"><div class="mstat__l">Změna letos</div><div class="mstat__v mstat__v--gain">+ 21&nbsp;300 Kč</div><div class="mstat__n">od 1. 1. 2026</div></div>
+        <div class="mstat"><div class="mstat__l">Průměrně za měsíc</div><div class="mstat__v">+ 1&nbsp;775 Kč</div><div class="mstat__n">posledních 12 měsíců</div></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">Toky</span><span class="sec__a">Říjen 2026</span></div>
+      <div class="mc"><div class="chart mchart mchart--bars" id="c-flows"></div><div class="chart__axis" id="a-flows"></div>
+        <div class="cap" style="margin-top:8px;display:flex;gap:12px"><span><b style="color:var(--ink)">+ 61&nbsp;200 Kč</b> příchozí</span><span><b style="color:var(--ink)">− 31&nbsp;980 Kč</b> odchozí</span><span>41 pohybů</span></div></div>
+
+      <div class="sec"><span class="sec__t">Pohyby</span><span class="sec__a">Říjen · 41</span></div>
+      <div class="msearch"><i class="ico" data-i="search" data-s="16"></i>Hledat podle protistrany nebo popisu</div>
+      <div class="toolrow"><div class="seg"><button class="seg__btn is-active" type="button">Vše</button><button class="seg__btn" type="button">Příchozí</button><button class="seg__btn" type="button">Odchozí</button></div><span class="iconbtn"><i class="ico" data-i="list-filter" data-s="18"></i></span></div>
+
+      <div class="rows">
+        <div class="dayhead">Dnes</div>
+        <div class="row"><div class="row__chip">LI</div><div><div class="row__t">Lidl Praha 4</div><div class="row__s">Potraviny · platba kartou</div></div><div class="row__v">− 1&nbsp;249 Kč</div></div>
+        <div class="row row--swiped"><div class="row__chip">AL</div><div><div class="row__t">Alza.cz a.s.</div><div class="row__s"><span class="badge badge--outline">Bez kategorie</span> objednávka 2201983</div></div><div class="row__v">− 4&nbsp;590 Kč</div><div class="row__action"><i class="ico" data-i="tag" data-s="18"></i>Kategorie</div></div>
+        <div class="dayhead">Včera</div>
+        <div class="row"><div class="row__chip row__chip--tint3"><i class="ico" data-i="banknote" data-s="16"></i></div><div><div class="row__t">Umbrella a.s.</div><div class="row__s">Mzda · 09/2026</div></div><div class="row__v row__v--gain">+ 61&nbsp;200 Kč</div></div>
+        <div class="row"><div class="row__chip">BO</div><div><div class="row__t">Bolt Operations</div><div class="row__s">Doprava · platba kartou</div></div><div class="row__v">− 189 Kč</div></div>
+        <div class="dayhead">14. 10.</div>
+        <div class="row"><div class="row__chip row__chip--tint"><i class="ico" data-i="arrow-right-left" data-s="16"></i></div><div><div class="row__t">XTB · vlastní účet</div><div class="row__s">Investice, spoření a převody</div></div><div class="row__v">− 33&nbsp;120 Kč</div></div>
+        <div class="row"><div class="row__chip">RO</div><div><div class="row__t">Rohlik.cz</div><div class="row__s">Potraviny · platba kartou</div></div><div class="row__v">− 2&nbsp;311 Kč</div></div>
+      </div>
+    </div>
+    <nav class="tabbar">
+      <a class="tab"><i class="ico" data-i="layout-dashboard" data-s="24"></i>Přehled</a>
+      <a class="tab is-active"><i class="ico" data-i="landmark" data-s="24"></i>Finance</a>
+      <a class="tab"><i class="ico" data-i="chart-column" data-s="24"></i>Cashflow</a>
+      <a class="tab"><i class="ico" data-i="briefcase" data-s="24"></i>Majetek</a>
+    </nav>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+<!-- ===== 5 · Zařazení plateb ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">05</span><span class="frame__t">Zařazení plateb</span><span class="frame__s">fronta s návrhem a jedním klepnutím</span></div>
+  <div class="ph"><div class="ph__screen">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="ph__scroll">
+      <div class="nav">
+        <div class="nav__side"><span class="nav__back"><i class="ico" data-i="chevron-left" data-s="22"></i>Účet</span></div>
+        <div class="nav__side"></div>
+      </div>
+      <div class="title-lg">9 plateb bez kategorie</div>
+      <div class="title-sub">Fio Běžný · z výpisu 10. 10. · 3 už zařazeny</div>
+      <div class="queue-prog"><div class="pbar"><i style="width:25%"></i></div><span>3 z 12</span></div>
+
+      <div class="rows has-np"><i class="np np--tl">9</i>
+        <div class="row row--noicon" style="display:block;padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;gap:10px"><div><div class="row__t">Alza.cz a.s.</div><div class="row__s">Dnes · objednávka 2201983</div></div><div class="row__v">− 4&nbsp;590 Kč</div></div>
+          <div class="pillrow"><span class="pill pill--dark"><i class="ico" data-i="check" data-s="14"></i>Elektronika <small>· podle pravidla</small></span><span class="pill pill--ghost">Jiná…</span></div>
+        </div>
+        <div class="row row--noicon" style="display:block;padding:12px 14px;background:var(--well)">
+          <div style="display:flex;justify-content:space-between;gap:10px"><div><div class="row__t">Lidl Praha 4</div><div class="row__s">15. 10. · platba kartou</div></div><div class="row__v">− 1&nbsp;249 Kč</div></div>
+          <div class="pillrow"><span class="pill pill--done"><i class="ico" data-i="check" data-s="14"></i>Potraviny</span></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line-soft)"><div><div style="font-size:13px;font-weight:600;color:var(--ink)">Zařadit i další 3 platby od Lidl</div><div class="cap">Stejná protistrana, stejný směr · 2. 10., 28. 9., 21. 9.</div></div><span class="switch-m is-on"></span></div>
+        </div>
+        <div class="row row--noicon" style="display:block;padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;gap:10px"><div><div class="row__t">Zubní ordinace</div><div class="row__s">13. 10. · převod · 2300…/2010</div></div><div class="row__v">− 800 Kč</div></div>
+          <div class="pillrow"><span class="pill"><i class="ico" data-i="tag" data-s="14"></i>Vybrat kategorii…</span><span class="pill pill--ghost">Nechat</span></div>
+        </div>
+        <div class="row row--noicon" style="display:block;padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;gap:10px"><div><div class="row__t">Netflix</div><div class="row__s">12. 10. · platba kartou</div></div><div class="row__v">− 319 Kč</div></div>
+          <div class="pillrow"><span class="pill pill--dark"><i class="ico" data-i="check" data-s="14"></i>Předplatné <small>· naučené</small></span><span class="pill pill--ghost">Jiná…</span></div>
+        </div>
+        <div class="row row--noicon" style="display:block;padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;gap:10px"><div><div class="row__t">Dopravní podnik hl. m. Prahy</div><div class="row__s">11. 10. · platba kartou</div></div><div class="row__v">− 550 Kč</div></div>
+          <div class="pillrow"><span class="pill pill--dark"><i class="ico" data-i="check" data-s="14"></i>Doprava <small>· balíček CZ</small></span><span class="pill pill--ghost">Jiná…</span></div>
+        </div>
+        <div class="row row--noicon" style="display:block;padding:12px 14px">
+          <div style="display:flex;justify-content:space-between;gap:10px"><div><div class="row__t">Jan Novák</div><div class="row__s">10. 10. · převod · „za oběd“</div></div><div class="row__v row__v--gain">+ 250 Kč</div></div>
+          <div class="pillrow"><span class="pill"><i class="ico" data-i="tag" data-s="14"></i>Vybrat kategorii…</span><span class="pill pill--ghost">Nechat</span></div>
+        </div>
+      </div>
+      <div class="cap" style="margin:0 4px">Klepnutí na návrh ho přijme. „Nechat“ odloží platbu na 30 dní. Co zařadíte, se stane naučeným pravidlem pro tento účet.</div>
+    </div>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+<!-- ===== 6 · Import: Takhle tomu rozumím ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">06</span><span class="frame__t">Import · rozpoznání</span><span class="frame__s">neznámý CSV bez mřížky</span></div>
+  <div class="ph"><div class="ph__screen">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="ph__scroll ph__scroll--sheet muted-screen">
+      <div class="nav"><div class="nav__side"></div><div class="nav__side"><span class="nav__btn"><i class="ico" data-i="plus" data-s="24"></i></span></div></div>
+      <div class="title-lg">Finance</div><div class="title-sub">4 účty · 1 úvěr · 3 pojistky</div>
+      <div class="mc mc--hero"><div class="hero-l">Celkem na účtech</div><div class="hero-v" style="font-size:30px">214&nbsp;380 Kč</div></div>
+      <div class="rows"><div class="row"><div class="row__chip">FIO</div><div><div class="row__t">Běžný účet</div><div class="row__s">Fio · CZK</div></div><div class="row__v">86&nbsp;420 Kč</div></div><div class="row"><div class="row__chip">UC</div><div><div class="row__t">Běžný účet</div><div class="row__s">UniCredit · CZK</div></div><div class="row__v">2&nbsp;000 Kč</div></div></div>
+    </div>
+    <div class="scrim-m"></div>
+    <div class="sheet has-np"><i class="np np--tl" style="left:14px;top:-10px">10</i>
+      <div class="sheet__handle"></div>
+      <div class="sheet__head"><div class="sheet__t">Import výpisu</div><div class="sheet__s">Do účtu Běžný účet · UniCredit. Ze sdílení z aplikace banky.</div></div>
+      <div class="sheet__body">
+        <div class="filebar"><div class="filebar__ic"><i class="ico" data-i="file-text" data-s="18"></i></div><div style="min-width:0"><div class="filebar__t">vypis_2026-09.csv</div><div class="filebar__s">48 řádků · oddělovač ; · UTF-8 · <b style="color:var(--ink-2)">formát zatím neznám</b></div></div></div>
+        <div class="sec" style="margin:4px 0 2px"><span class="sec__t">Takhle tomu rozumím</span></div>
+        <div class="cap" style="margin-bottom:8px">Tři pohyby ze souboru tak, jak je načtu:</div>
+        <div class="rows" style="margin-bottom:12px">
+          <div class="row"><div class="row__chip">LI</div><div><div class="row__t">Lidl Praha 4</div><div class="row__s">10. 10. 2026 · Platba kartou</div></div><div class="row__v">− 1&nbsp;249 Kč</div></div>
+          <div class="row"><div class="row__chip row__chip--tint3"><i class="ico" data-i="banknote" data-s="16"></i></div><div><div class="row__t">Umbrella a.s.</div><div class="row__s">9. 10. 2026 · Mzda 09/2026</div></div><div class="row__v row__v--gain">+ 61&nbsp;200 Kč</div></div>
+          <div class="row"><div class="row__chip">BO</div><div><div class="row__t">Bolt Operations</div><div class="row__s">8. 10. 2026 · Platba kartou</div></div><div class="row__v">− 189 Kč</div></div>
+        </div>
+        <ul class="recog">
+          <li><i class="ico ok" data-i="check" data-s="16"></i><b>Datum</b><span>Datum zaúčtování</span></li>
+          <li><i class="ico ok" data-i="check" data-s="16"></i><b>Částka</b><span>Částka · znaménko ověřeno podle zůstatku</span></li>
+          <li><i class="ico ok" data-i="check" data-s="16"></i><b>Popis</b><span>Poznámka + Zpráva pro příjemce</span></li>
+          <li><i class="ico ok" data-i="check" data-s="16"></i><b>Protistrana</b><span>Název protiúčtu · číslo protiúčtu</span></li>
+          <li><i class="ico ok" data-i="check" data-s="16"></i><b>Měna</b><span>Měna</span></li>
+          <li><i class="ico no" data-i="minus" data-s="16"></i><b style="color:var(--ink-4)">ID pohybu</b><span>nenalezeno · duplicity poznám podle data a částky</span></li>
+        </ul>
+      </div>
+      <div class="sheet__foot"><button class="btn btn--ghost" type="button">Opravit…</button><button class="btn btn--primary" type="button">Vypadá to správně</button></div>
+    </div>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+<!-- ===== 7 · Import: Oprava jednoho pole ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">07</span><span class="frame__t">Import · oprava pole</span><span class="frame__s">sloupce se vzorky, ne tabulka</span></div>
+  <div class="ph"><div class="ph__screen">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="ph__scroll ph__scroll--sheet muted-screen">
+      <div class="nav"><div class="nav__side"></div><div class="nav__side"><span class="nav__btn"><i class="ico" data-i="plus" data-s="24"></i></span></div></div>
+      <div class="title-lg">Finance</div><div class="title-sub">4 účty · 1 úvěr · 3 pojistky</div>
+      <div class="mc mc--hero"><div class="hero-l">Celkem na účtech</div><div class="hero-v" style="font-size:30px">214&nbsp;380 Kč</div></div>
+    </div>
+    <div class="scrim-m"></div>
+    <div class="sheet has-np"><i class="np np--tl" style="left:14px;top:-10px">11</i>
+      <div class="sheet__handle"></div>
+      <div class="sheet__head"><div class="sheet__t">Co je částka?</div><div class="sheet__s">Vyberte sloupec, který nese částku pohybu. Výdaje mají být záporné.</div></div>
+      <div class="sheet__body">
+        <div class="colopt is-sel"><span class="radio"><i class="ico" data-i="check" data-s="12"></i></span><div><div class="colopt__t">Částka</div><div class="colopt__s">−1 249,00 · 61 200,00 · −189,00</div></div></div>
+        <div class="colopt"><span class="radio"></span><div><div class="colopt__t">Zůstatek po pohybu</div><div class="colopt__s">86 420,00 · 87 669,00 · 29 269,00</div></div></div>
+        <div class="colopt"><span class="radio"></span><div><div class="colopt__t">Odchozí + Příchozí <span class="cap">(dvojice sloupců)</span></div><div class="colopt__s">1 249,00 / — · — / 61 200,00 · 189,00 / —</div></div></div>
+        <div class="colopt"><span class="radio"></span><div><div class="colopt__t">Poplatek</div><div class="colopt__s">0,00 · 0,00 · 0,00</div></div></div>
+        <div class="cap" style="margin:6px 2px 10px">Ukázka po výběru:</div>
+        <div class="rows" style="margin-bottom:4px"><div class="row"><div class="row__chip">LI</div><div><div class="row__t">Lidl Praha 4</div><div class="row__s">10. 10. 2026 · Platba kartou</div></div><div class="row__v">− 1&nbsp;249 Kč</div></div></div>
+      </div>
+      <div class="sheet__foot"><button class="btn btn--ghost" type="button">Zpět</button><button class="btn btn--primary" type="button">Použít</button></div>
+    </div>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+<!-- ===== 8 · Import: Hotovo ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">08</span><span class="frame__t">Import · hotovo</span><span class="frame__s">jedno primární tlačítko</span></div>
+  <div class="ph"><div class="ph__screen">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="ph__scroll ph__scroll--sheet muted-screen">
+      <div class="nav"><div class="nav__side"></div><div class="nav__side"><span class="nav__btn"><i class="ico" data-i="plus" data-s="24"></i></span></div></div>
+      <div class="title-lg">Finance</div><div class="title-sub">4 účty · 1 úvěr · 3 pojistky</div>
+      <div class="mc mc--hero"><div class="hero-l">Celkem na účtech</div><div class="hero-v" style="font-size:30px">214&nbsp;380 Kč</div></div>
+    </div>
+    <div class="scrim-m"></div>
+    <div class="sheet has-np"><i class="np np--tl" style="left:14px;top:-10px">12</i>
+      <div class="sheet__handle"></div>
+      <div class="sheet__head"><div class="sheet__t">Výpis naimportován</div><div class="sheet__s">48 transakcí od 11. 9. do 10. 10. 2026 do účtu Běžný účet · UniCredit.</div></div>
+      <div class="sheet__body">
+        <div class="done-stats">
+          <div class="mstat mstat--flat"><div class="mstat__l">Importováno</div><div class="mstat__v">48</div></div>
+          <div class="mstat mstat--flat"><div class="mstat__l">Duplicity</div><div class="mstat__v">3</div><div class="mstat__n">přeskočeny</div></div>
+          <div class="mstat mstat--flat"><div class="mstat__l">Chyby</div><div class="mstat__v">0</div></div>
+        </div>
+        <div class="malert"><i class="ico" data-i="check" data-s="15"></i>Výpis sedí: počáteční zůstatek plus pohyby dává konečný zůstatek 2&nbsp;000 Kč.</div>
+        <div class="cap" style="margin:0 2px 10px">36 pohybů zařadila pravidla, 12 zůstává bez kategorie.</div>
+        <button class="btn btn--primary btn--block" type="button">Zařadit 12 plateb</button>
+        <div class="sec" style="margin:16px 2px 8px"><span class="sec__t">Co dál</span></div>
+        <div class="rows">
+          <div class="row row--noicon"><div><div class="row__t">Nastavit zůstatek účtu na 2&nbsp;000 Kč</div><div class="row__s">Podle posledního řádku výpisu · dnes 2&nbsp;000 Kč</div></div><button class="btn btn--secondary btn--sm" type="button">Nastavit</button></div>
+          <div class="row row--noicon"><div><div class="row__t">Uložit jako formát „UniCredit“</div><div class="row__s">Příští výpis projde bez otázek</div></div><span class="switch-m is-on"></span></div>
+          <div class="row row--noicon"><div><div class="row__t">Poslat formát autorům Moony</div><div class="row__s">Jen záhlaví a přiřazení sloupců, žádné platby</div></div><button class="btn btn--secondary btn--sm" type="button">Poslat</button></div>
+          <div class="row row--noicon"><div><div class="row__t">Zobrazit importované transakce</div><div class="row__s">48 řádků označených dávkou „vypis_2026-09.csv“</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        </div>
+      </div>
+      <div class="sheet__foot"><button class="btn btn--ghost" type="button" style="flex:1">Hotovo</button></div>
+    </div>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+<!-- ===== 9 · Cashflow ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">09</span><span class="frame__t">Cashflow</span><span class="frame__s">kam peníze jdou, s limity v řádcích</span></div>
+  <div class="ph"><div class="ph__screen">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="ph__scroll">
+      <div class="nav"><div class="nav__side"></div><div class="nav__side"><span class="nav__btn"><i class="ico" data-i="ellipsis" data-s="22"></i></span></div></div>
+      <div class="title-lg">Cashflow</div>
+      <div class="title-sub">Skutečné příjmy a výdaje z 4 účtů</div>
+      <div class="mseg" style="margin-top:0"><div class="seg"><button class="seg__btn is-active" type="button">Měsíc</button><button class="seg__btn" type="button">Čtvrtletí</button><button class="seg__btn" type="button">Rok</button></div></div>
+      <div class="stepper"><span class="iconbtn iconbtn--sm"><i class="ico" data-i="chevron-left" data-s="16"></i></span><b>Září 2026</b><span class="iconbtn iconbtn--sm"><i class="ico" data-i="chevron-right" data-s="16"></i></span></div>
+
+      <div class="mc mc--hero has-np"><i class="np np--tr">13</i>
+        <div class="hero-l">Úspora</div>
+        <div class="hero-v hero-v--gain">+ 9&nbsp;870 Kč</div>
+        <div class="hero-d"><span>míra úspor 24 %</span></div>
+      </div>
+      <div class="stats2">
+        <div class="mstat"><div class="mstat__l">Příjmy</div><div class="mstat__v">41&nbsp;200 Kč</div><div class="mstat__n">⌀ 39&nbsp;800 Kč / měsíc</div></div>
+        <div class="mstat"><div class="mstat__l">Výdaje</div><div class="mstat__v">31&nbsp;330 Kč</div><div class="mstat__n">⌀ 30&nbsp;100 Kč / měsíc</div></div>
+      </div>
+
+      <div class="mc"><div class="chart mchart mchart--bars" id="c-cf"></div><div class="chart__axis" id="a-cf"></div>
+        <div class="legend" style="margin-top:8px"><span class="legend__item"><i class="legend__swatch" style="background:var(--s1)"></i>Příjmy</span><span class="legend__item"><i class="legend__swatch" style="background:var(--s3)"></i>Výdaje</span></div></div>
+
+      <div class="malert malert--muted"><i class="ico" data-i="info" data-s="15"></i>Rozpočty: 5 v mezích · 1 nad limitem · 1 se blíží limitu</div>
+
+      <div class="sec"><span class="sec__t">Výdaje podle kategorií</span><span class="sec__a">31&nbsp;330 Kč</span></div>
+      <div class="rows">
+        <div class="row row--bar"><div class="row__chip row__chip--tint2"><i class="ico" data-i="house" data-s="16"></i></div><div><div class="row__t">Bydlení</div><div class="row__s">3 pohyby · 40 % výdajů</div></div><div class="row__v">12&nbsp;500 Kč</div><div class="row__bar"><div class="pbar pbar--share"><i style="width:40%"></i></div></div></div>
+        <div class="row row--bar"><div class="row__chip row__chip--tint3"><i class="ico" data-i="shopping-cart" data-s="16"></i></div><div><div class="row__t">Potraviny</div><div class="row__s">21 pohybů · limit 8&nbsp;000 Kč · blíží se</div></div><div class="row__v">7&nbsp;820 Kč</div><div class="row__bar"><div class="pbar pbar--near"><i style="width:98%"></i></div></div></div>
+        <div class="row row--bar"><div class="row__chip row__chip--tint4"><i class="ico" data-i="utensils" data-s="16"></i></div><div><div class="row__t">Restaurace</div><div class="row__s">14 pohybů · limit 3&nbsp;000 Kč · <b style="color:var(--loss)">překročeno o 460 Kč</b></div></div><div class="row__v" style="color:var(--loss)">3&nbsp;460 Kč</div><div class="row__bar"><div class="pbar pbar--over"><i style="width:100%"></i></div></div></div>
+        <div class="row row--bar"><div class="row__chip row__chip--tint"><i class="ico" data-i="car" data-s="16"></i></div><div><div class="row__t">Doprava</div><div class="row__s">9 pohybů · limit 3&nbsp;000 Kč</div></div><div class="row__v">2&nbsp;150 Kč</div><div class="row__bar"><div class="pbar"><i style="width:72%"></i></div></div></div>
+        <div class="row row--bar"><div class="row__chip"><i class="ico" data-i="zap" data-s="16"></i></div><div><div class="row__t">Energie</div><div class="row__s">2 pohyby · 6 % výdajů</div></div><div class="row__v">1&nbsp;900 Kč</div><div class="row__bar"><div class="pbar pbar--share"><i style="width:6%"></i></div></div></div>
+        <div class="row row--bar"><div class="row__chip"><i class="ico" data-i="receipt" data-s="16"></i></div><div><div class="row__t">Ostatní</div><div class="row__s">11 pohybů · 11 % výdajů</div></div><div class="row__v">3&nbsp;500 Kč</div><div class="row__bar"><div class="pbar pbar--share"><i style="width:11%"></i></div></div></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">Příjmy podle kategorií</span><span class="sec__a">41&nbsp;200 Kč</span></div>
+      <div class="rows">
+        <div class="row row--bar"><div class="row__chip row__chip--tint3"><i class="ico" data-i="banknote" data-s="16"></i></div><div><div class="row__t">Mzda</div><div class="row__s">1 pohyb · 100 % příjmů</div></div><div class="row__v">41&nbsp;200 Kč</div><div class="row__bar"><div class="pbar pbar--share"><i style="width:100%"></i></div></div></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">Investice, spoření a převody</span><span class="sec__a">mimo příjmy a výdaje</span></div>
+      <div class="rows">
+        <div class="row"><div class="row__chip row__chip--tint"><i class="ico" data-i="arrow-right-left" data-s="16"></i></div><div><div class="row__t">Investice</div><div class="row__s">1 pohyb · XTB</div></div><div class="row__v">33&nbsp;120 Kč</div></div>
+        <div class="row"><div class="row__chip row__chip--tint"><i class="ico" data-i="piggy-bank" data-s="16"></i></div><div><div class="row__t">Spoření</div><div class="row__s">1 pohyb · Spořicí účet ČS</div></div><div class="row__v">10&nbsp;000 Kč</div></div>
+      </div>
+    </div>
+    <nav class="tabbar">
+      <a class="tab"><i class="ico" data-i="layout-dashboard" data-s="24"></i>Přehled</a>
+      <a class="tab"><i class="ico" data-i="landmark" data-s="24"></i>Finance</a>
+      <a class="tab is-active"><i class="ico" data-i="chart-column" data-s="24"></i>Cashflow</a>
+      <a class="tab"><i class="ico" data-i="briefcase" data-s="24"></i>Majetek</a>
+    </nav>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+<!-- ===== 10 · Majetek ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">10</span><span class="frame__t">Majetek</span><span class="frame__s">co vlastním</span></div>
+  <div class="ph"><div class="ph__screen">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="ph__scroll">
+      <div class="nav"><div class="nav__side"></div><div class="nav__side"><span class="nav__btn"><i class="ico" data-i="plus" data-s="24"></i></span></div></div>
+      <div class="title-lg">Majetek</div>
+      <div class="title-sub">Investice, nemovitosti a hotovost</div>
+
+      <div class="mc mc--hero has-np"><i class="np np--tr">15</i>
+        <div class="hero-l">Aktiva</div>
+        <div class="hero-v">6&nbsp;775&nbsp;680 Kč</div>
+        <div class="hero-d"><span class="badge badge--gain">▲ 1,4 %</span><span>+ 92&nbsp;100 Kč za 30 dní</span></div>
+        <div class="abar"><i style="width:42.2%;background:var(--s1)"></i><i style="width:39.1%;background:var(--s2)"></i><i style="width:7.2%;background:var(--s3)"></i><i style="width:5.1%;background:var(--s4)"></i><i style="width:6.4%;background:var(--s-other)"></i></div>
+        <div class="legend"><span class="legend__item"><i class="legend__swatch" style="background:var(--s1)"></i>Nemovitosti 42 %</span><span class="legend__item"><i class="legend__swatch" style="background:var(--s2)"></i>Akcie 39 %</span><span class="legend__item"><i class="legend__swatch" style="background:var(--s3)"></i>Dluhopisy 7 %</span><span class="legend__item"><i class="legend__swatch" style="background:var(--s4)"></i>Ostatní aktiva 5 %</span><span class="legend__item"><i class="legend__swatch" style="background:var(--s-other);box-shadow:inset 0 0 0 1px var(--line)"></i>Krypto a hotovost 6 %</span></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">Investice</span><span class="sec__a">3&nbsp;701&nbsp;300 Kč</span></div>
+      <div class="rows">
+        <div class="row row--chev"><div class="row__chip row__chip--tint"><i class="ico" data-i="trending-up" data-s="16"></i></div><div><div class="row__t">Akcie a ETF</div><div class="row__s">12 pozic · XTB, Degiro</div></div><div><div class="row__v">2&nbsp;650&nbsp;000 Kč</div><div class="row__vs"><span class="badge badge--gain">▲ 3,2 %</span> + 82&nbsp;300 Kč</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        <div class="row row--chev"><div class="row__chip row__chip--tint"><i class="ico" data-i="bitcoin" data-s="16"></i></div><div><div class="row__t">Krypto</div><div class="row__s">3 pozice · BTC, ETH, SOL</div></div><div><div class="row__v">214&nbsp;500 Kč</div><div class="row__vs"><span class="badge badge--loss">▼ 4,1 %</span> − 9&nbsp;170 Kč</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        <div class="row row--chev"><div class="row__chip row__chip--tint"><i class="ico" data-i="file-text" data-s="16"></i></div><div><div class="row__t">Dluhopisy</div><div class="row__s">4 emise · nejbližší splatnost 6/2027</div></div><div><div class="row__v">488&nbsp;000 Kč</div><div class="row__vs">kupón 24&nbsp;400 Kč / rok</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        <div class="row row--chev"><div class="row__chip row__chip--tint"><i class="ico" data-i="gem" data-s="16"></i></div><div><div class="row__t">Ostatní aktiva</div><div class="row__s">2 položky · zlato, auto</div></div><div><div class="row__v">348&nbsp;800 Kč</div><div class="row__vs">oceněno 3. 5. 2026</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">Nemovitosti</span><span class="sec__a">2&nbsp;860&nbsp;000 Kč</span></div>
+      <div class="rows">
+        <div class="row row--chev"><div class="row__chip row__chip--tint2"><i class="ico" data-i="house" data-s="16"></i></div><div><div class="row__t">Byt Lipová</div><div class="row__s">investiční · nájem 14&nbsp;500 Kč / měsíc · LTV 91 %</div></div><div><div class="row__v">2&nbsp;860&nbsp;000 Kč</div><div class="row__vs"><span class="badge badge--gain">▲ 1,3 %</span> 5. 10.</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">Hotovost</span><span class="sec__a">214&nbsp;380 Kč</span></div>
+      <div class="rows">
+        <div class="row row--chev"><div class="row__chip row__chip--tint2"><i class="ico" data-i="landmark" data-s="16"></i></div><div><div class="row__t">Na účtech</div><div class="row__s">4 účty · otevře záložku Finance</div></div><div><div class="row__v">214&nbsp;380 Kč</div><div class="row__vs">+ 12&nbsp;400 Kč za 30 dní</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+      </div>
+    </div>
+    <nav class="tabbar">
+      <a class="tab"><i class="ico" data-i="layout-dashboard" data-s="24"></i>Přehled</a>
+      <a class="tab"><i class="ico" data-i="landmark" data-s="24"></i>Finance</a>
+      <a class="tab"><i class="ico" data-i="chart-column" data-s="24"></i>Cashflow</a>
+      <a class="tab is-active"><i class="ico" data-i="briefcase" data-s="24"></i>Majetek</a>
+    </nav>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+<!-- ===== 11 · Akcie ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">11</span><span class="frame__t">Akcie</span><span class="frame__s">stránka třídy; Krypto je totéž</span></div>
+  <div class="ph"><div class="ph__screen">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="ph__scroll">
+      <div class="nav">
+        <div class="nav__side"><span class="nav__back"><i class="ico" data-i="chevron-left" data-s="22"></i>Majetek</span></div>
+        <div class="nav__title">Akcie a ETF<small>12 pozic · ceny 9:40</small></div>
+        <div class="nav__side" style="justify-content:flex-end"><span class="nav__btn"><i class="ico" data-i="ellipsis" data-s="22"></i></span><span class="nav__btn"><i class="ico" data-i="plus" data-s="24"></i></span></div>
+      </div>
+
+      <div class="mc mc--hero has-np" style="margin-top:10px"><i class="np np--tr">16</i>
+        <div class="hero-l">Hodnota portfolia</div>
+        <div class="hero-v">2&nbsp;650&nbsp;000 Kč</div>
+        <div class="hero-d"><span class="badge badge--gain">▲ 3,2 %</span><span>+ 82&nbsp;300 Kč za 30 dní · vloženo 2&nbsp;237&nbsp;400 Kč</span></div>
+        <div class="mseg"><div class="seg"><button class="seg__btn is-active" type="button">30 dní</button><button class="seg__btn" type="button">3 měsíce</button><button class="seg__btn" type="button">Letos</button><button class="seg__btn" type="button">Rok</button><button class="seg__btn" type="button">Vše</button></div></div>
+        <div class="chart mchart" id="c-stocks"></div><div class="chart__axis" id="a-stocks"></div>
+        <div class="legend" style="margin-top:6px"><span class="legend__item">▲ nákup</span><span class="legend__item">▽ prodej</span><span class="legend__item">bez značek: pohyb trhu</span></div>
+      </div>
+
+      <div class="stats3">
+        <div class="mstat"><div class="mstat__l">Nerealizovaný</div><div class="mstat__v mstat__v--gain">+ 412&nbsp;600</div><div class="mstat__n">▲ 18,4 % · realizovaný + 21&nbsp;300</div></div>
+        <div class="mstat"><div class="mstat__l">Dividendy 12 m</div><div class="mstat__v">38&nbsp;900 Kč</div><div class="mstat__n">výnos 1,5 %</div></div>
+        <div class="mstat"><div class="mstat__l">Zhodnocení letos</div><div class="mstat__v">7,8 %</div><div class="mstat__n">TWR · MWR 7,1 %</div></div>
+      </div>
+
+      <div class="mseg" style="margin:0 0 8px"><div class="seg"><button class="seg__btn is-active" type="button">Pozice · 12</button><button class="seg__btn" type="button">Sledované · 6</button></div></div>
+      <div class="sortrow"><span class="pill">Podle hodnoty <i class="ico" data-i="chevron-down" data-s="14"></i></span><span class="iconbtn"><i class="ico" data-i="search" data-s="18"></i></span></div>
+      <div class="rows">
+        <div class="row row--chev"><div class="row__chip">VW</div><div><div class="row__t">VWCE</div><div class="row__s">Vanguard FTSE All-World</div></div><div><div class="row__v">1&nbsp;182&nbsp;600 Kč</div><div class="row__vs"><span class="badge badge--gain">▲ 12,2 %</span> + 128&nbsp;300 Kč</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        <div class="row row--chev"><div class="row__chip">CS</div><div><div class="row__t">CSPX</div><div class="row__s">iShares Core S&amp;P 500</div></div><div><div class="row__v">612&nbsp;300 Kč</div><div class="row__vs"><span class="badge badge--gain">▲ 15,1 %</span> + 80&nbsp;300 Kč</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        <div class="row row--chev"><div class="row__chip">AA</div><div><div class="row__t">AAPL</div><div class="row__s">Apple</div></div><div><div class="row__v">286&nbsp;900 Kč</div><div class="row__vs"><span class="badge badge--gain">▲ 31,4 %</span> + 68&nbsp;600 Kč</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        <div class="row row--chev"><div class="row__chip">MS</div><div><div class="row__t">MSFT</div><div class="row__s">Microsoft</div></div><div><div class="row__v">241&nbsp;200 Kč</div><div class="row__vs"><span class="badge badge--gain">▲ 22,0 %</span> + 43&nbsp;500 Kč</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        <div class="row row--chev"><div class="row__chip">ČZ</div><div><div class="row__t">CEZ <span class="badge badge--outline" style="height:16px;font-size:9px;padding:0 6px;vertical-align:2px">ručně</span></div><div class="row__s">ČEZ · Praha</div></div><div><div class="row__v">168&nbsp;400 Kč</div><div class="row__vs"><span class="badge badge--loss">▼ 2,3 %</span> − 3&nbsp;960 Kč</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        <div class="row row--chev"><div class="row__chip">NV</div><div><div class="row__t">NVDA</div><div class="row__s">NVIDIA</div></div><div><div class="row__v">158&nbsp;600 Kč</div><div class="row__vs"><span class="badge badge--gain">▲ 64,0 %</span> + 61&nbsp;900 Kč</div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        <div class="row row--noicon row--center"><div class="row__t">Zobrazit všech 12 pozic</div></div>
+      </div>
+    </div>
+    <nav class="tabbar">
+      <a class="tab"><i class="ico" data-i="layout-dashboard" data-s="24"></i>Přehled</a>
+      <a class="tab"><i class="ico" data-i="landmark" data-s="24"></i>Finance</a>
+      <a class="tab"><i class="ico" data-i="chart-column" data-s="24"></i>Cashflow</a>
+      <a class="tab is-active"><i class="ico" data-i="briefcase" data-s="24"></i>Majetek</a>
+    </nav>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+<!-- ===== 12 · Detail pozice ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">12</span><span class="frame__t">Detail pozice</span><span class="frame__s">hodnota, vloženo, obchody</span></div>
+  <div class="ph"><div class="ph__screen">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="ph__scroll">
+      <div class="nav">
+        <div class="nav__side"><span class="nav__back"><i class="ico" data-i="chevron-left" data-s="22"></i>Akcie</span></div>
+        <div class="nav__title">VWCE<small>Vanguard FTSE All-World · XETRA · EUR</small></div>
+        <div class="nav__side" style="justify-content:flex-end"><span class="nav__btn"><i class="ico" data-i="ellipsis" data-s="22"></i></span></div>
+      </div>
+
+      <div class="mc mc--hero has-np" style="margin-top:10px"><i class="np np--tr">17</i>
+        <div class="hero-l">Hodnota pozice · 426 ks</div>
+        <div class="hero-v">1&nbsp;182&nbsp;600 Kč</div>
+        <div class="hero-d"><span class="badge badge--gain">▲ 2,8 %</span><span>+ 32&nbsp;100 Kč za 30 dní · 112,30 € za kus</span></div>
+        <div class="mseg"><div class="seg"><button class="seg__btn is-active" type="button">30 dní</button><button class="seg__btn" type="button">3 měsíce</button><button class="seg__btn" type="button">Letos</button><button class="seg__btn" type="button">Rok</button><button class="seg__btn" type="button">Vše</button></div></div>
+        <div class="chart mchart" id="c-pos"></div><div class="chart__axis" id="a-pos"></div>
+        <div class="legend" style="margin-top:6px"><span class="legend__item"><i class="legend__swatch" style="background:var(--chart-line)"></i>Hodnota</span><span class="legend__item"><i class="legend__swatch legend__swatch--dash"></i>Vloženo</span><span class="legend__item">▲ nákup</span></div>
+      </div>
+
+      <div class="btn-pair"><button class="btn btn--primary" type="button">Koupit</button><button class="btn btn--secondary" type="button">Prodat</button></div>
+
+      <div class="stats3">
+        <div class="mstat"><div class="mstat__l">Cena</div><div class="mstat__v">112,30 €</div><div class="mstat__n">9:40 · XETRA</div></div>
+        <div class="mstat"><div class="mstat__l">Vloženo</div><div class="mstat__v">1,05 mil.</div><div class="mstat__n">⌀ 100,12 € / ks</div></div>
+        <div class="mstat"><div class="mstat__l">Nerealizovaný</div><div class="mstat__v mstat__v--gain">+ 128&nbsp;300</div><div class="mstat__n">▲ 12,2 %</div></div>
+        <div class="mstat"><div class="mstat__l">Realizovaný</div><div class="mstat__v mstat__v--gain">+ 4&nbsp;210 Kč</div><div class="mstat__n">prodej 6/2026</div></div>
+        <div class="mstat"><div class="mstat__l">Dividendy</div><div class="mstat__v">0 Kč</div><div class="mstat__n">akumulační fond</div></div>
+        <div class="mstat"><div class="mstat__l">Držíte</div><div class="mstat__v">2,4 roku</div><div class="mstat__n">od 5/2024 · 45 % portfolia</div></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">Transakce</span><span class="sec__a">28</span></div>
+      <div class="mseg" style="margin:0 0 8px"><div class="seg"><button class="seg__btn is-active" type="button">Vše</button><button class="seg__btn" type="button">Nákupy</button><button class="seg__btn" type="button">Prodeje</button></div></div>
+      <div class="rows">
+        <div class="row"><div class="row__chip row__chip--tint"><i class="ico" data-i="trending-up" data-s="16"></i></div><div><div class="row__t">Nákup · 12 ks</div><div class="row__s">14. 10. 2026 · 110,40 € · 24,72 Kč/€</div></div><div><div class="row__v">− 32&nbsp;750 Kč</div><div class="row__vs">1&nbsp;324,80 €</div></div></div>
+        <div class="row"><div class="row__chip row__chip--tint"><i class="ico" data-i="trending-up" data-s="16"></i></div><div><div class="row__t">Nákup · 10 ks</div><div class="row__s">18. 9. 2026 · 108,90 € · 24,60 Kč/€</div></div><div><div class="row__v">− 26&nbsp;790 Kč</div><div class="row__vs">1&nbsp;089,00 €</div></div></div>
+        <div class="row"><div class="row__chip chip-sell">▽</div><div><div class="row__t">Prodej · 5 ks</div><div class="row__s">2. 6. 2026 · 104,10 € · realizováno + 4&nbsp;210 Kč</div></div><div><div class="row__v row__v--gain">+ 12&nbsp;880 Kč</div><div class="row__vs">520,50 €</div></div></div>
+        <div class="row"><div class="row__chip row__chip--tint"><i class="ico" data-i="trending-up" data-s="16"></i></div><div><div class="row__t">Nákup · 15 ks</div><div class="row__s">15. 5. 2026 · 101,80 € · 24,90 Kč/€</div></div><div><div class="row__v">− 38&nbsp;020 Kč</div><div class="row__vs">1&nbsp;527,00 €</div></div></div>
+        <div class="row row--noicon row--center"><div class="row__t">Zobrazit všech 28</div></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">O fondu</span><span class="sec__a">Sledovat →</span></div>
+      <div class="mc"><div class="kvl">
+        <div><span>Název</span><b>Vanguard FTSE All-World (Acc)</b></div>
+        <div><span>Burza · měna</span><b>XETRA · EUR</b></div>
+        <div><span>52T rozpětí</span><b>92,10 – 113,60 €</b></div>
+        <div><span>TER</span><b>0,22 %</b></div>
+        <div><span>Sektor</span><b>Diverzifikovaný</b></div>
+      </div></div>
+    </div>
+    <nav class="tabbar">
+      <a class="tab"><i class="ico" data-i="layout-dashboard" data-s="24"></i>Přehled</a>
+      <a class="tab"><i class="ico" data-i="landmark" data-s="24"></i>Finance</a>
+      <a class="tab"><i class="ico" data-i="chart-column" data-s="24"></i>Cashflow</a>
+      <a class="tab is-active"><i class="ico" data-i="briefcase" data-s="24"></i>Majetek</a>
+    </nav>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+<!-- ===== 13 · Úvěr ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">13</span><span class="frame__t">Úvěr</span><span class="frame__s">skutečnost, plán, splátky</span></div>
+  <div class="ph"><div class="ph__screen">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="ph__scroll">
+      <div class="nav">
+        <div class="nav__side"><span class="nav__back"><i class="ico" data-i="chevron-left" data-s="22"></i>Finance</span></div>
+        <div class="nav__title">Hypotéka Lipová<small>Česká spořitelna · 3,1 % · fixace do 20. 10. 2026</small></div>
+        <div class="nav__side" style="justify-content:flex-end"><span class="nav__btn"><i class="ico" data-i="ellipsis" data-s="22"></i></span></div>
+      </div>
+
+      <div class="malert malert--muted has-np" style="margin-top:10px;position:relative"><i class="np np--tl">18</i><i class="ico" data-i="calendar" data-s="15"></i><span>Fixace končí za 4 dny. Až banka potvrdí novou sazbu, zapište ji — splátka a plán se přepočítají. <b style="color:var(--ink)">Zapsat změnu sazby →</b></span></div>
+
+      <div class="mc mc--hero">
+        <div class="hero-l">Nesplaceno</div>
+        <div class="hero-v">2&nbsp;418&nbsp;760 Kč</div>
+        <div class="hero-d"><span>− 5&nbsp;680 Kč za 30 dní · splaceno 21 % z 3,28 mil. Kč</span></div>
+        <div class="mseg"><div class="seg"><button class="seg__btn" type="button">Dosud</button><button class="seg__btn is-active" type="button">5 let</button><button class="seg__btn" type="button">Do splacení</button></div></div>
+        <div class="chart mchart" id="c-loan"></div><div class="chart__axis" id="a-loan"></div>
+        <div class="legend" style="margin-top:6px"><span class="legend__item"><i class="legend__swatch" style="background:var(--chart-line)"></i>Skutečnost</span><span class="legend__item"><i class="legend__swatch legend__swatch--dash" style="border-color:var(--chart-line)"></i>Plán splácení</span><span class="legend__item">○ mimořádná splátka</span></div>
+      </div>
+
+      <div class="stats2">
+        <div class="mstat"><div class="mstat__l">Zaplacené úroky</div><div class="mstat__v">412&nbsp;300 Kč</div><div class="mstat__n">od 5/2019</div></div>
+        <div class="mstat"><div class="mstat__l">Splaceno z jistiny</div><div class="mstat__v">686&nbsp;880 Kč</div><div class="mstat__n">21 % · mimořádně 50&nbsp;000 Kč</div></div>
+        <div class="mstat"><div class="mstat__l">Zbývá splátek</div><div class="mstat__v">287</div><div class="mstat__n">do března 2050</div></div>
+        <div class="mstat"><div class="mstat__l">Příští splátka</div><div class="mstat__v">12&nbsp;340 Kč</div><div class="mstat__n">20. 10. · úrok 6&nbsp;270 Kč</div></div>
+      </div>
+
+      <button class="btn btn--primary btn--block" type="button">Mimořádná splátka</button>
+
+      <div class="sec"><span class="sec__t">Splátky</span></div>
+      <div class="mseg" style="margin:0 0 8px"><div class="seg"><button class="seg__btn is-active" type="button">Příštích 12</button><button class="seg__btn" type="button">Po letech</button><button class="seg__btn" type="button">Vše</button></div></div>
+      <div class="rows">
+        <div class="row row--noicon"><div><div class="row__t">20. 10. 2026</div><div class="row__s">úrok 6&nbsp;270 Kč · jistina 5&nbsp;600 Kč</div></div><div><div class="row__v">12&nbsp;340 Kč</div><div class="row__vs">zbývá 2&nbsp;413&nbsp;160 Kč</div></div></div>
+        <div class="row row--noicon"><div><div class="row__t">20. 11. 2026</div><div class="row__s">úrok 6&nbsp;256 Kč · jistina 5&nbsp;614 Kč</div></div><div><div class="row__v">12&nbsp;340 Kč</div><div class="row__vs">zbývá 2&nbsp;407&nbsp;546 Kč</div></div></div>
+        <div class="row row--noicon"><div><div class="row__t">20. 12. 2026</div><div class="row__s">úrok 6&nbsp;243 Kč · jistina 5&nbsp;627 Kč</div></div><div><div class="row__v">12&nbsp;340 Kč</div><div class="row__vs">zbývá 2&nbsp;401&nbsp;919 Kč</div></div></div>
+        <div class="row row--noicon"><div><div class="row__t">20. 1. 2027</div><div class="row__s">úrok 6&nbsp;229 Kč · jistina 5&nbsp;641 Kč</div></div><div><div class="row__v">12&nbsp;340 Kč</div><div class="row__vs">zbývá 2&nbsp;396&nbsp;278 Kč</div></div></div>
+        <div class="row row--noicon row--center"><div class="row__t">Zobrazit všech 12</div></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">Události</span><span class="sec__a">3</span></div>
+      <div class="rows">
+        <div class="row row--agenda"><div class="dchip dchip--soon"><b>20. 10.</b><small>za 4 dny</small></div><div><div class="row__t">Konec fixace</div><div class="row__s">Sazba 3,1 % · nová sazba zatím nezapsána</div></div><i class="ico row__chev" data-i="ellipsis" data-s="18"></i></div>
+        <div class="row row--agenda"><div class="dchip"><b>3. 3.</b><small>2026</small></div><div><div class="row__t">Mimořádná splátka 50&nbsp;000 Kč</div><div class="row__s">Zkrácení doby o 9 měsíců</div></div><i class="ico row__chev" data-i="ellipsis" data-s="18"></i></div>
+        <div class="row row--agenda"><div class="dchip"><b>15. 5.</b><small>2019</small></div><div><div class="row__t">Čerpání 3&nbsp;100&nbsp;000 Kč</div><div class="row__s">30 let · 1,9 % · fixace 2 roky</div></div><i class="ico row__chev" data-i="ellipsis" data-s="18"></i></div>
+      </div>
+    </div>
+    <nav class="tabbar">
+      <a class="tab"><i class="ico" data-i="layout-dashboard" data-s="24"></i>Přehled</a>
+      <a class="tab is-active"><i class="ico" data-i="landmark" data-s="24"></i>Finance</a>
+      <a class="tab"><i class="ico" data-i="chart-column" data-s="24"></i>Cashflow</a>
+      <a class="tab"><i class="ico" data-i="briefcase" data-s="24"></i>Majetek</a>
+    </nav>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+<!-- ===== 14 · Pojistka ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">14</span><span class="frame__t">Pojistka</span><span class="frame__s">fakta nahoře, graf dole</span></div>
+  <div class="ph"><div class="ph__screen">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="ph__scroll">
+      <div class="nav">
+        <div class="nav__side"><span class="nav__back"><i class="ico" data-i="chevron-left" data-s="22"></i>Finance</span></div>
+        <div class="nav__title">Pojištění domácnosti<small>Kooperativa · majetkové · aktivní</small></div>
+        <div class="nav__side" style="justify-content:flex-end"><span class="nav__btn"><i class="ico" data-i="ellipsis" data-s="22"></i></span></div>
+      </div>
+
+      <div class="mc mc--well has-np" style="margin-top:10px;padding:10px 14px"><i class="np np--tl">19</i>
+        <div class="row row--agenda" style="padding:2px 0;min-height:0;background:transparent"><div class="dchip" style="background:var(--paper)"><b>4. 11.</b><small>za 19 dní</small></div><div><div class="row__t">Příští platba 2&nbsp;150 Kč</div><div class="row__s">čtvrtletně · 8&nbsp;600 Kč / rok · výpověď nejpozději 27. 11.</div></div><i class="ico row__chev" data-i="bell" data-s="18"></i></div>
+      </div>
+
+      <div class="mc"><div class="kvl">
+        <div><span>Číslo smlouvy</span><b>8 540 221 937 <span class="copybtn"><i class="ico" data-i="copy" data-s="13"></i></span></b></div>
+        <div><span>Pojistitel</span><b>Kooperativa</b></div>
+        <div><span>Typ</span><b>Majetkové · domácnost</b></div>
+        <div><span>Platnost</span><b>od 9. 1. 2024 · neurčitá</b></div>
+        <div><span>Výročí</span><b>9. 1. 2027</b></div>
+        <div><span>Pojištěná nemovitost</span><b>Byt Lipová <i class="ico" data-i="chevron-right" data-s="14"></i></b></div>
+      </div></div>
+
+      <div class="sec"><span class="sec__t">Limity krytí</span><span class="sec__a">celkem 6,65 mil. Kč</span></div>
+      <div class="rows">
+        <div class="row row--noicon"><div><div class="row__t">Domácnost</div><div class="row__s">vybavení · spoluúčast 1&nbsp;000 Kč</div></div><div class="row__v">1&nbsp;500&nbsp;000 Kč</div></div>
+        <div class="row row--noicon"><div><div class="row__t">Odpovědnost</div><div class="row__s">újma na zdraví a majetku třetích osob</div></div><div class="row__v">5&nbsp;000&nbsp;000 Kč</div></div>
+        <div class="row row--noicon"><div><div class="row__t">Elektronika</div><div class="row__s">i mimo domácnost</div></div><div class="row__v">150&nbsp;000 Kč</div></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">Dokumenty</span><span class="sec__a">2 · šifrované</span></div>
+      <div class="rows">
+        <div class="row row--chev"><div class="row__chip row__chip--sq"><i class="ico" data-i="file-text" data-s="16"></i></div><div><div class="row__t">Pojistná smlouva.pdf</div><div class="row__s">smlouva · 2,1 MB · 9. 1. 2024</div></div><div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        <div class="row row--chev"><div class="row__chip row__chip--sq"><i class="ico" data-i="image" data-s="16"></i></div><div><div class="row__t">Dodatek 2025</div><div class="row__s">vyfoceno 12. 1. 2025</div></div><div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+      </div>
+      <div class="docgrid"><button class="btn btn--secondary" type="button"><i class="ico" data-i="camera" data-s="16"></i> Vyfotit</button><button class="btn btn--secondary" type="button"><i class="ico" data-i="upload" data-s="16"></i> Vybrat soubor</button></div>
+
+      <div class="sec"><span class="sec__t">Zaplaceno na pojistném</span><span class="sec__a">od začátku</span></div>
+      <div class="mc"><div class="hero-l">Celkem · 11 plateb</div><div class="hero-v" style="font-size:24px;margin-bottom:8px">23&nbsp;650 Kč</div><div class="chart mchart mchart--sm" id="c-prem"></div><div class="chart__axis" id="a-prem"></div></div>
+
+      <div class="sec"><span class="sec__t">Poznámky</span></div>
+      <div class="mc" style="font-size:13px;line-height:1.5;color:var(--ink-2)">Sleva 10 % za bezeškodní průběh od ledna 2025. Hlášení škod: 957 105 105.</div>
+    </div>
+    <nav class="tabbar">
+      <a class="tab"><i class="ico" data-i="layout-dashboard" data-s="24"></i>Přehled</a>
+      <a class="tab is-active"><i class="ico" data-i="landmark" data-s="24"></i>Finance</a>
+      <a class="tab"><i class="ico" data-i="chart-column" data-s="24"></i>Cashflow</a>
+      <a class="tab"><i class="ico" data-i="briefcase" data-s="24"></i>Majetek</a>
+    </nav>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+<!-- ===== 15 · Nastavení ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">15</span><span class="frame__t">Nastavení</span><span class="frame__s">sheet z avataru</span></div>
+  <div class="ph"><div class="ph__screen">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="ph__scroll ph__scroll--sheet muted-screen">
+      <div class="nav"><div class="nav__side"><span class="nav__btn"><i class="ico" data-i="eye" data-s="22"></i></span></div><div class="nav__side" style="justify-content:flex-end"><span class="avatar-m">AM</span></div></div>
+      <div class="title-lg">Dobrý den, Alexi.</div><div class="title-sub">Stav majetku k 16. 10. 2026</div>
+      <div class="mc mc--hero"><div class="hero-l">Čisté jmění</div><div class="hero-v">4&nbsp;356&nbsp;920 Kč</div></div>
+    </div>
+    <div class="scrim-m"></div>
+    <div class="sheet sheet--full has-np"><i class="np np--tl" style="left:14px;top:-10px">20</i>
+      <div class="sheet__handle"></div>
+      <div class="sheet__head" style="display:flex;align-items:center;gap:12px;padding-bottom:10px"><span class="avatar-m" style="width:42px;height:42px;font-size:13px">AM</span><div><div class="sheet__t">Alex Meyer</div><div class="sheet__s" style="margin-top:1px">alex.meyer@example.com</div></div></div>
+      <div class="sheet__body">
+        <div class="rows">
+          <div class="row row--chev"><div class="row__chip row__chip--sq"><i class="ico" data-i="user" data-s="16"></i></div><div><div class="row__t">Profil</div><div class="row__s">jméno, e-mail, země</div></div><div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+          <div class="row row--chev"><div class="row__chip row__chip--sq"><i class="ico" data-i="globe" data-s="16"></i></div><div><div class="row__t">Jazyk a měna</div><div class="row__s">Čeština · CZK</div></div><div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+          <div class="row row--chev"><div class="row__chip row__chip--sq"><i class="ico" data-i="sun" data-s="16"></i></div><div><div class="row__t">Vzhled</div><div class="row__s">Systém · teď světlý</div></div><div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        </div>
+        <div class="rows">
+          <div class="row row--chev"><div class="row__chip row__chip--sq"><i class="ico" data-i="lock" data-s="16"></i></div><div><div class="row__t">Zabezpečení</div><div class="row__s">Face ID · zámek po 1 minutě · heslo</div></div><div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+          <div class="row row--chev"><div class="row__chip row__chip--sq"><i class="ico" data-i="upload" data-s="16"></i></div><div><div class="row__t">Záloha a přenos</div><div class="row__s">iCloud Drive · dnes 7:30 · šifrováno</div></div><div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+          <div class="row row--chev"><div class="row__chip row__chip--sq"><i class="ico" data-i="bell" data-s="16"></i></div><div><div class="row__t">Oznámení</div><div class="row__s">9 skupin · údržba 1. den v měsíci</div></div><div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        </div>
+        <div class="rows">
+          <div class="row row--chev"><div class="row__chip row__chip--sq"><i class="ico" data-i="tag" data-s="16"></i></div><div><div class="row__t">Kategorie</div><div class="row__s">31 kategorií</div></div><div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+          <div class="row row--chev"><div class="row__chip row__chip--sq"><i class="ico" data-i="list-filter" data-s="16"></i></div><div><div class="row__t">Kategorizace</div><div class="row__s">balíček CZ · 14 pravidel · 52 naučených</div></div><div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+          <div class="row row--chev"><div class="row__chip row__chip--sq"><i class="ico" data-i="file-text" data-s="16"></i></div><div><div class="row__t">Import</div><div class="row__s">2 naučené formáty · katalog z 12. 10.</div></div><div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+          <div class="row row--chev"><div class="row__chip row__chip--sq"><i class="ico" data-i="calendar" data-s="16"></i></div><div><div class="row__t">Připomínky</div><div class="row__s">výpověď pojistek 43 dní · osobní bydlení mimo přehled</div></div><div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+          <div class="row row--chev"><div class="row__chip row__chip--sq"><i class="ico" data-i="eye" data-s="16"></i></div><div><div class="row__t">Viditelnost tříd</div><div class="row__s">vše zobrazeno</div></div><div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        </div>
+        <div class="rows">
+          <div class="row row--chev"><div class="row__chip row__chip--sq"><i class="ico" data-i="info" data-s="16"></i></div><div><div class="row__t">O aplikaci</div><div class="row__s">Moony 1.0 · žádná telemetrie</div></div><div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+          <div class="row row--chev"><div class="row__chip row__chip--sq" style="background:var(--loss-soft);color:var(--loss)"><i class="ico" data-i="trash-2" data-s="16"></i></div><div><div class="row__t danger-t">Smazat všechna data</div><div class="row__s">po potvrzení napsáním slova</div></div><div></div><i class="ico row__chev" data-i="chevron-right" data-s="16"></i></div>
+        </div>
+      </div>
+    </div>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+<!-- ===== 16 · Přehled, tmavý ===== -->
+<div class="frame">
+  <div class="frame__cap"><span class="frame__n">16</span><span class="frame__t">Přehled · tmavý</span><span class="frame__s">stejný markup, sdílené tmavé tokeny</span></div>
+  <div class="ph"><div class="ph__screen" data-theme="dark" id="dark-frame">
+    <div class="ph__island"></div>
+    <div class="ph__status"><span>9:41</span><span class="status-ic"></span></div>
+    <div class="ph__scroll">
+      <div class="nav">
+        <div class="nav__side"><span class="nav__btn"><i class="ico" data-i="eye" data-s="22"></i></span></div>
+        <div class="nav__side" style="justify-content:flex-end"><span class="avatar-m">AM</span></div>
+      </div>
+      <div class="title-lg">Dobrý večer, Alexi.</div>
+      <div class="title-sub">Stav majetku k 16. 10. 2026</div>
+
+      <div class="mc mc--well">
+        <div class="sec" style="margin:0 0 4px"><span class="sec__t">Údržba</span><span class="sec__a">3 věci</span></div>
+        <div class="todo"><div class="todo__ic"><i class="ico" data-i="landmark" data-s="17"></i></div><div><div class="todo__t">3 zůstatky starší než měsíc</div><div class="todo__s">Spořicí účet ČS · Revolut · UniCredit</div></div><button class="btn btn--primary btn--sm" type="button">Zaznamenat</button></div>
+        <div class="todo"><div class="todo__ic"><i class="ico" data-i="tag" data-s="17"></i></div><div><div class="todo__t">12 plateb bez kategorie</div><div class="todo__s">Fio Běžný · z výpisu 10. 10.</div></div><button class="btn btn--secondary btn--sm" type="button">Zařadit</button></div>
+        <div class="todo"><div class="todo__ic"><i class="ico" data-i="upload" data-s="17"></i></div><div><div class="todo__t">Je čas na výpis z UniCredit</div><div class="todo__s">Poslední import 8. 9. · návod k exportu</div></div><button class="btn btn--secondary btn--sm" type="button">Importovat</button></div>
+      </div>
+
+      <div class="mc mc--hero has-np"><i class="np np--tr">21</i>
+        <div class="hero-l">Čisté jmění</div>
+        <div class="hero-v">4&nbsp;356&nbsp;920 Kč</div>
+        <div class="hero-d"><span class="badge badge--gain">▲ 2,1 %</span><span>+ 86&nbsp;420 Kč za 30 dní</span></div>
+        <div class="mseg"><div class="seg"><button class="seg__btn is-active" type="button">30 dní</button><button class="seg__btn" type="button">3 měsíce</button><button class="seg__btn" type="button">Letos</button><button class="seg__btn" type="button">Rok</button><button class="seg__btn" type="button">Vše</button></div></div>
+        <div class="chart mchart" id="c-networth-d"></div><div class="chart__axis" id="a-networth-d"></div>
+      </div>
+
+      <div class="stats3">
+        <div class="mstat"><div class="mstat__l">Aktiva</div><div class="mstat__v">6,78 mil.</div><div class="mstat__n">+ 92&nbsp;100 Kč</div></div>
+        <div class="mstat"><div class="mstat__l">Závazky</div><div class="mstat__v">2,59 mil.</div><div class="mstat__n">− 5&nbsp;680 Kč</div></div>
+        <div class="mstat"><div class="mstat__l">Volné peníze</div><div class="mstat__v">214&nbsp;380</div><div class="mstat__n">na účtech</div></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">Co vás čeká</span><span class="sec__a">Zobrazit vše (7)</span></div>
+      <div class="rows">
+        <div class="row row--agenda"><div class="dchip dchip--soon"><b>20. 10.</b><small>za 4 dny</small></div><div><div class="row__t">Konec fixace hypotéky</div><div class="row__s">Hypotéka Lipová · nová sazba od 21. 10.</div></div><i class="ico row__chev" data-i="ellipsis" data-s="18"></i></div>
+        <div class="row row--agenda"><div class="dchip"><b>4. 11.</b><small>za 19 dní</small></div><div><div class="row__t">Životní pojištění</div><div class="row__s">Poslední den výpovědi · výročí 17. 12.</div></div><i class="ico row__chev" data-i="ellipsis" data-s="18"></i></div>
+        <div class="row row--agenda"><div class="dchip"><b>1. 12.</b><small>za 46 dní</small></div><div><div class="row__t">Spořicí účet ČS</div><div class="row__s">Konec zvýhodněné sazby 5,1 %</div></div><i class="ico row__chev" data-i="ellipsis" data-s="18"></i></div>
+      </div>
+
+      <div class="sec"><span class="sec__t">Rozložení majetku</span><span class="sec__a">Majetek →</span></div>
+      <div class="mc"><div class="alloc"><div class="ring-m" id="ring-d"></div>
+        <ul class="leg">
+          <li><i style="background:var(--s1)"></i><b>Nemovitosti</b><span>42 %</span></li>
+          <li><i style="background:var(--s2)"></i><b>Akcie</b><span>39 %</span></li>
+          <li><i style="background:var(--s3)"></i><b>Dluhopisy</b><span>7 %</span></li>
+          <li><i style="background:var(--s4)"></i><b>Ostatní aktiva</b><span>5 %</span></li>
+          <li><i style="background:var(--s-other);box-shadow:inset 0 0 0 1px var(--line)"></i><b>Krypto a hotovost</b><span>6 %</span></li>
+        </ul></div></div>
+
+      <div class="sec"><span class="sec__t">Poslední pohyby</span><span class="sec__a">Zobrazit vše</span></div>
+      <div class="rows">
+        <div class="row"><div class="row__chip">LI</div><div><div class="row__t">Lidl Praha 4</div><div class="row__s">Dnes · Fio Běžný · Potraviny</div></div><div><div class="row__v">− 1&nbsp;249 Kč</div></div></div>
+        <div class="row"><div class="row__chip row__chip--tint3"><i class="ico" data-i="banknote" data-s="16"></i></div><div><div class="row__t">Umbrella a.s.</div><div class="row__s">Včera · Fio Běžný · Mzda</div></div><div><div class="row__v row__v--gain">+ 61&nbsp;200 Kč</div></div></div>
+        <div class="row"><div class="row__chip row__chip--tint"><i class="ico" data-i="trending-up" data-s="16"></i></div><div><div class="row__t">Nákup VWCE · 12 ks</div><div class="row__s">14. 10. · XTB · 110,40 €</div></div><div><div class="row__v">− 32&nbsp;750 Kč</div></div></div>
+      </div>
+    </div>
+    <nav class="tabbar">
+      <a class="tab is-active"><i class="ico" data-i="layout-dashboard" data-s="24"></i>Přehled</a>
+      <a class="tab"><i class="ico" data-i="landmark" data-s="24"></i>Finance</a>
+      <a class="tab"><i class="ico" data-i="chart-column" data-s="24"></i>Cashflow</a>
+      <a class="tab"><i class="ico" data-i="briefcase" data-s="24"></i>Majetek</a>
+    </nav>
+    <div class="ph__home"></div>
+  </div></div>
+</div>
+
+</div><!-- /phones -->
+
+<div class="card card--flat notes-card">
+  <div class="card__head"><div><div class="card__title">Poznámky k návrhu</div><div class="card__sub">Čísla odpovídají štítkům v rámečcích. Podrobnosti ve specu, kapitoly 6–10.</div></div></div>
+  <ol class="notes">
+    <li><i class="np">1</i><div><b>Biometrie první, heslo zůstává.</b> Face ID / Touch ID na iPhonu, BiometricPrompt na Androidu; klíč databáze je za biometrií v Keychain / Keystore. Heslo je pořád master, obnovovací klíč zůstává. Zámek po 1 minutě na pozadí, rozmazaný náhled v přepínači aplikací.</div></li>
+    <li><i class="np">2</i><div><b>Údržba je karta s akcemi, ne seznam stavů.</b> Je tu jen když je co dělat a zmizí, jak je hotovo. Každý řádek má sloveso: Zaznamenat (jeden sheet pro všechny staré zůstatky), Zařadit (fronta 05), Importovat (sheet 06 s návodem k exportu z aplikace banky), Zálohovat, Přecenit. Nahrazuje zavrženou řadu čtyř akčních tlačítek pod hero.</div></li>
+    <li><i class="np">3</i><div><b>Hero se čte prstem.</b> Prst na grafu = kurzor; číslo a datum nahoře se přepisují na ten den, při přechodu dne jemné cvaknutí; po puštění se vrátí na dnešek. Velké skoky (○) jsou klepnutelné a otevřou popisek s fakty. Období je segment mezi číslem a grafem, graf má 160 pt.</div></li>
+    <li><i class="np">4</i><div><b>Oko skryje částky</b> v celé aplikaci jedním klepnutím (stav je globální, zůstává i po restartu); v Nastavení lze zapnout „Skrývat po spuštění“. Jediné místo s okem je Přehled — na ostatních záložkách by to byl chrom navíc.</div></li>
+    <li><i class="np">5</i><div><b>Agenda = desktopový řádek s datovým čipem,</b> tmavý materiál do 7 dnů. Místo „···“ pár swipe + dlouhý stisk: doprava Připomenout za týden, doleva Skrýt, dlouhý stisk celá nabídka, klepnutí otevře zdroj (pojistku, úvěr…).</div></li>
+    <li><i class="np">6</i><div><b>Čtyři záložky, Nastavení pod avatarem.</b> Přehled · Finance (účty, úvěry, pojistky — smlouvy s institucemi) · Cashflow (vč. rozpočtů) · Majetek (investice, nemovitosti, sledované akcie — jen co vlastníte). Žádná záložka „Více“. „Finance“ je sedm písmen, běžné slovo („moje finance“) a stejné ve všech jazycích; „Finanční služby“ bylo dlouhé, „Účty“ úzké pro pojistku. Tab bar je inkoust na papíru; tmavý materiál zůstává jen primárnímu tlačítku. Vypadá stejně na iOS i Androidu; Android „zpět“ zavírá sheet a vrací detail.</div></li>
+    <li><i class="np">7</i><div><b>Jeden řádkový vzor místo tabulek.</b> Čip 36 pt (logo / iniciály / ikona), titulek 15, podřádek 12, vpravo hodnota a pod ní změna nebo popisek; 60 pt vysoký. Účty, pozice, dluhopisy, nemovitosti, úvěry, pojistky i transakce jsou tentýž řádek. Šipka vpravo je jen u řádků bez hodnoty (nastavení, dokumenty); řádek s hodnotou je klepnutelný celý a místo šipky má prostor pro jméno. Nezařazené platby jsou tmavý řádek nad seznamem — vstup do fronty 05. Úvěry a pojistky jsou sekce téže záložky: hlavička sekce nese jediné číslo (nesplaceno, pojistné za rok), řádek příští platbu; samostatné stránky seznamu s grafem trajektorie a kalendářem plateb na telefonu nejsou — graf má každý úvěr sám v detailu.</div></li>
+    <li><i class="np">8</i><div><b>Detail účtu: dvě primární akce</b> (desktopová výjimka) jako dvojice tlačítek pod navigací. Toky jsou posuvný pás 12 měsíců, klepnutí na měsíc filtruje pohyby. V pohybech <b>swipe doleva = Kategorie</b> (otevře výběr rovnou), swipe doprava = Podrobnosti, dlouhý stisk = nabídka řádku; filtry (kategorie, období) v sheetu za ikonou.</div></li>
+    <li><i class="np">9</i><div><b>Fronta zařazení.</b> Každá platba nese návrh jako pilulku se zdrojem (pravidlo, naučené, balíček CZ, MCP). Klepnutí přijme (haptika, řádek odjede); „Jiná…“ otevře výběr s hledáním; bez návrhu „Vybrat kategorii…“. Po přijetí se jednou nabídne „Zařadit i další N plateb“ (přepínač, zapnutý pro stejnou protistranu a směr). „Nechat“ odloží na 30 dní. Zamítnutá alternativa: karty na swipe — kategorie není binární volba.</div></li>
+    <li><i class="np">10</i><div><b>Žádná mřížka mapování.</b> Rozpoznávací žebřík: strukturované formáty (CAMT, MT940, OFX, QIF) → preset podle záhlaví (katalog se obnovuje bez vydání aplikace; nese i návod k exportu z aplikace banky) → <b>řízené rozpoznání</b>: sloupce se určí z obsahu (datum ≥ 90 % řádků, částka se znaménkem nebo dvojice debet/kredit, zůstatek ověří znaménka, IBAN, měna, ID), názvy záhlaví jen jako nápověda. Uživatel vidí tři skutečné pohyby „Takhle tomu rozumím“ a potvrdí, nebo opraví.</div></li>
+    <li><i class="np">11</i><div><b>Oprava je po polích, se vzorky.</b> Klepnutí na pole (Datum, Částka, Popis, Protistrana, Měna, Zůstatek) ukáže sloupce souboru s jejich hodnotami ze tří prvních řádků; dvojice debet/kredit je jedna volba. Ukázka pod seznamem se přepíše hned. Datum a částka se nikdy nehádají potichu: když je nelze určit, sheet začne rovnou tady.</div></li>
+    <li><i class="np">12</i><div><b>Hotovo má jedno primární tlačítko: Zařadit N plateb.</b> Kontrola zůstatku a nabídka zůstatku z výpisu jako na desktopu. Potvrzené rozpoznání se uloží jako naučený formát (podle podpisu záhlaví) — příště je to preset. „Poslat formát autorům“ otevře předvyplněnou GitHub diskusi jen se záhlavím a přiřazením, uživatel text vidí před odesláním; tak roste katalog pro všechny.</div></li>
+    <li><i class="np">13</i><div><b>Cashflow s rozpočty v jednom.</b> Hero je Úspora (jedno číslo), Příjmy a Výdaje pod ním. Klepnutí na sloupec přepne období na ten měsíc. V řádku kategorie je pruh buď podíl na výdajích, nebo — má-li kategorie limit — čerpání limitu (blíží se = inkoust, překročeno = loss). Správa limitů je stránka z „···“ (Od/Do, přepsání s varováním jako na desktopu).</div></li>
+    <li><i class="np">14</i><div><b>Stejné tokeny, větší písmo.</b> Canvas/paper/well, inkoust, teplé stíny, indigo série, gain/loss beze změny; typografie pro dotyk: velký titulek 30, hero 36, stat 17, řádek 15 / 12, cíle ≥ 44 pt. Tmavý režim přijde z téhož tokens.css (blok <code>[data-theme="dark"]</code> ze specu tmavého režimu) — proto tu zatím není tmavý rámeček.</div></li>
+    <li><i class="np">15</i><div><b>Majetek je jen to, co vlastníte.</b> Aktiva jako jedno číslo, 100 % pruh rozložení (s1–s4 + Ostatní, vždy s legendou a hodnotami), pak skupiny Investice · Nemovitosti jako řádky s hodnotou a změnou a poslední řádek Hotovost, který odkazuje do Finance — řádky tak dávají dohromady hero. Úvěry a pojistky tu nejsou (jsou ve Finance). „+“ je typovaná nabídka (investici, kryptoměnu, dluhopis, nemovitost, aktivum). Skryté třídy (viditelnost v menu) tu nejsou, prázdné vedou na prázdný stav s tlačítkem.</div></li>
+    <li><i class="np">16</i><div><b>Stránka třídy = hero s obchody + staty + seznam.</b> Nákupy ▲ a prodeje ▽ na grafu jako na desktopu, klepnutelné. Tři staty včetně <b>Zhodnocení letos (TWR)</b> — jediné, co si mobil bere z Analýzy akcií. Segment Pozice · Sledované (watchlist žije tady, do jmění nepatří). Řazení pilulkou, hledání stažením dolů; „···“ nese Aktualizovat ceny (i tahem dolů), Importovat výpis brokera, Uzavřené pozice, Export. Krypto je tatáž stránka.</div></li>
+    <li><i class="np">17</i><div><b>Detail pozice:</b> Vloženo jako čárkovaná schodová čára, mezera k hodnotě je výnos; klepnutí na značku otevře popisek a řádek v transakcích zabliká (náhrada hoveru). Koupit · Prodat jako dvojice pod hero; staty 2 × 3; transakce se segmentem; O fondu jako klíč–hodnota až dole, protože na telefonu se sem chodí pro hodnotu a historii, ne pro P/E.</div></li>
+    <li><i class="np">18</i><div><b>Úvěr: skutečnost plná, plán čárkovaný,</b> mimořádná splátka ○. Blížící se konec fixace je inline upozornění pod navigací s akcí „Zapsat změnu sazby“ (desktop: ··· menu). Staty 2 × 2, Mimořádná splátka jako primární tlačítko → sheet s částkou, Zkrátit dobu / Snížit splátku, živým výsledkem a „Zapsat jako provedenou“. Splátkový kalendář je seznam (Příštích 12 · Po letech · Vše), události s datovými čipy.</div></li>
+    <li><i class="np">19</i><div><b>Pojistka: fakta nahoře.</b> Příští platba s datovým čipem a výpovědní lhůtou (dny z Nastavení), číslo smlouvy s kopírováním, limity jako řádky, dokumenty se šifrovaným prohlížečem a <b>Vyfotit</b> přímo z detailu — to je důvod, proč je telefon pro pojistky lepší než desktop. Graf zaplaceného pojistného až dole. Ukončit / Smazat v „···“.</div></li>
+    <li><i class="np">20</i><div><b>Nastavení je sheet z avataru,</b> sekce jako řádky s aktuálním stavem v podřádku (Face ID · zámek po 1 minutě; iCloud Drive · dnes 7:30), takže se nemusí otevírat, aby člověk věděl, jak je co nastavené. <b>Vzhled</b> Systém / Světlý / Tmavý je totéž nastavení jako na desktopu. <b>Záloha a přenos</b> obsahuje i „Přenést profil z Moony na počítači“ (obnova z desktopové zálohy). Nebezpečná zóna poslední, červeně, s potvrzením slovem. Android „zpět“ sheet zavře.</div></li>
+    <li><i class="np">21</i><div><b>Tmavý režim je jen přepnutí atributu.</b> Rámeček 16 je markup rámečku 02 beze změny; mění se pouze blok tokenů <code>[data-theme="dark"]</code> převzatý ze schváleného specu tmavého režimu (§4.1). Hloubka vzniká ze stupňů povrchů (canvas &lt; well &lt; paper), stíny ztmavly; „tmavý materiál“ (primární tlačítko, čip do 7 dnů, aktivní řádek) se stává světlým kontrastním materiálem s tmavým textem — proto prototyp nikde nepíše bílou natvrdo, ale <code>ink-inverse</code>. Série s1–s4, gain/loss a čára grafu jsou přepočítané a validované pro tmavý papír; bílé prstence značek v grafech zde přepisuje prototypový skript, v aplikaci je řeší projekt tmavého režimu. Volba Systém / Světlý / Tmavý je sdílená s desktopem.</div></li>
+  </ol>
+</div>
+
+<script src="../design-system/icons.js"></script>
+<script src="../design-system/shell.js"></script>
+<script src="../design-system/charts.js"></script>
+<script>
+(function () {
+  /* Icons the design-system set does not have yet (Lucide paths). */
+  Object.assign(window.ICONS, {
+    "briefcase": '<path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/>',
+    "eye": '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+    "chevron-left": '<path d="m15 18-6-6 6-6"/>',
+    "scan-face": '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M8 14s1.5 2 4 2 4-2 4-2"/><path d="M9 9h.01"/><path d="M15 9h.01"/>',
+    "shopping-cart": '<circle cx="8" cy="21" r="1"/><circle cx="19" cy="21" r="1"/><path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>',
+    "utensils": '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+    "car": '<path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2"/><circle cx="7" cy="17" r="2"/><path d="M9 17h6"/><circle cx="17" cy="17" r="2"/>',
+    "zap": '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+    "banknote": '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+    "arrow-right-left": '<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>',
+    "user": '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    "globe": '<circle cx="12" cy="12" r="10"/><path d="M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20"/><path d="M2 12h20"/>',
+    "sun": '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+    "bell": '<path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/>',
+    "copy": '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+    "camera": '<path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/>',
+    "image": '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>'
+  });
+  document.querySelectorAll("i.ico").forEach(function (el) {
+    var html = icon(el.dataset.i, +el.dataset.s || 16, el.className.replace("ico", "").trim());
+    if (html) { var span = document.createElement("span"); span.innerHTML = html; var svg = span.firstChild; svg.style.display = "inline-block"; svg.style.verticalAlign = "middle"; svg.style.flex = "none"; el.replaceWith(svg); }
+  });
+  /* Status bar glyphs: signal, wifi, battery */
+  var st = '<svg width="66" height="12" viewBox="0 0 66 12" fill="none" stroke="none"><rect x="0" y="7" width="3" height="5" rx="1" fill="currentColor"/><rect x="5" y="5" width="3" height="7" rx="1" fill="currentColor"/><rect x="10" y="3" width="3" height="9" rx="1" fill="currentColor"/><rect x="15" y="1" width="3" height="11" rx="1" fill="currentColor"/><path d="M24 4.5a9 9 0 0 1 12 0M26.5 7a5.5 5.5 0 0 1 7 0M29 9.6l1 1 1-1" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><rect x="42" y="1" width="21" height="10" rx="3" stroke="currentColor" stroke-opacity=".4" stroke-width="1"/><rect x="44" y="3" width="15" height="6" rx="1.5" fill="currentColor"/><path d="M64.5 4.5v3" stroke="currentColor" stroke-opacity=".4" stroke-width="1.5" stroke-linecap="round"/></svg>';
+  document.querySelectorAll(".status-ic").forEach(function (el) { el.innerHTML = st; });
+
+  /* Notes toggle */
+  var btn = document.getElementById("notesBtn");
+  btn.addEventListener("click", function () {
+    var on = document.body.classList.toggle("notes-on");
+    btn.classList.toggle("is-on", on); btn.textContent = "Poznámky: " + (on ? "zapnuto" : "vypnuto");
+  });
+
+  /* ---- Charts (same helpers as the style guide) ---- */
+  var today = new Date(2026, 9, 16);
+  function daysAgo(n) { return new Date(today.getTime() - n * 864e5); }
+  function series(n, start, fn) { var out = []; for (var i = n; i >= 0; i--) out.push({ date: daysAgo(i), value: fn(n - i, start) }); return out; }
+
+  /* Net worth, 30 days: a calm rise with one step (property revaluation on day 19) */
+  var nw = series(30, 4096140, function (d) {
+    var v = 4096140 + d * 1480 + Math.sin(d / 2.3) * 5200 + Math.cos(d / 1.3) * 2100;
+    if (d >= 19) v += 38000;
+    return Math.round(v);
+  });
+  nw[nw.length - 1].value = 4356920;
+  drawLine(document.getElementById("c-networth"), nw, { axisEl: document.getElementById("a-networth"), height: 150, ticks: 4,
+    events: [{ date: daysAgo(11), type: "out", html: "<b>+ 38 000 Kč</b><small>Nemovitosti · přecenění Lipová</small>" }] });
+
+  /* Cash, 30 days */
+  var cash = series(30, 201980, function (d) { var v = 201980 + Math.sin(d / 4) * 2400 + (d > 14 ? 61200 : 0) - d * 1700; return Math.round(v); });
+  cash[cash.length - 1].value = 214380;
+  drawLine(document.getElementById("c-cash"), cash, { axisEl: document.getElementById("a-cash"), height: 108, ticks: 4 });
+
+  /* Account balance: a line through dated balance records of the last year */
+  var recs = [[360, 61200], [300, 64800], [240, 59900], [180, 70300], [120, 74100], [60, 76550], [36, 73800], [6, 86420]];
+  var bal = recs.map(function (r) { return { date: daysAgo(r[0]), value: r[1] }; });
+  drawLine(document.getElementById("c-balance"), bal, { axisEl: document.getElementById("a-balance"), height: 108, ticks: 4,
+    events: bal.map(function (p) { return { date: p.date, type: "out", html: "<b>" + fmtKc(p.value) + "</b><small>zaznamenaný zůstatek</small>" }; }) });
+
+  /* Flows: 12 months, in/out */
+  var months = ["Lis 25", "Pro 25", "Led 26", "Úno 26", "Bře 26", "Dub 26", "Kvě 26", "Čvn 26", "Čvc 26", "Srp 26", "Zář 26", "Říj 26"];
+  var flows = [[39800, 36100], [41200, 44900], [39800, 31500], [39800, 33200], [41200, 30800], [39800, 35400], [39800, 29900], [61200, 41100], [39800, 30200], [39800, 33800], [41200, 31330], [61200, 31980]];
+  drawBars(document.getElementById("c-flows"), flows.map(function (f, i) { return { label: i % 3 === 0 ? months[i] : "", a: f[0], b: f[1] }; }), { axisEl: document.getElementById("a-flows"), height: 118, names: ["Příchozí", "Odchozí"] });
+  document.querySelectorAll("#c-flows .bar").forEach(function (r) { if (+r.dataset.i !== 11) r.style.opacity = ".38"; });
+
+  /* Cashflow report: Jan–Dec 2026, September selected, Oct partial, Nov/Dec empty */
+  var cf = [[39800, 31500], [39800, 33200], [41200, 30800], [39800, 35400], [39800, 29900], [61200, 41100], [39800, 30200], [39800, 33800], [41200, 31330], [61200, 18200], [0, 0], [0, 0]];
+  var cfLabels = ["Led", "", "", "Dub", "", "", "Čvc", "", "", "Říj", "", ""];
+  drawBars(document.getElementById("c-cf"), cf.map(function (f, i) { return { label: cfLabels[i], a: f[0], b: f[1] }; }), { axisEl: document.getElementById("a-cf"), height: 118, names: ["Příjmy", "Výdaje"] });
+  document.querySelectorAll("#c-cf .bar").forEach(function (r) { if (+r.dataset.i !== 8) r.style.opacity = ".38"; });
+
+  /* ---- Pass 2 charts ---- */
+  /* Stocks: 30 days of portfolio value with two buys and one sell */
+  var st = series(30, 2567700, function (d) {
+    var v = 2567700 + d * 1900 + Math.sin(d / 2.1) * 9000 + Math.cos(d / 3.7) * 6000;
+    if (d >= 2) v += 26790; if (d >= 28) v += 32750; if (d >= 19) v -= 12900;
+    return Math.round(v);
+  });
+  st[st.length - 1].value = 2650000;
+  drawLine(document.getElementById("c-stocks"), st, { axisEl: document.getElementById("a-stocks"), height: 150, ticks: 4, events: [
+    { date: daysAgo(28), type: "buy", html: "<b>Nákup VWCE · 10 ks</b><small>18. 9. 2026 · 108,90 €</small>" },
+    { date: daysAgo(11), type: "sell", html: "<b>Prodej ČEZ · 20 ks</b><small>5. 10. 2026 · 645 Kč</small>" },
+    { date: daysAgo(2), type: "buy", html: "<b>Nákup VWCE · 12 ks</b><small>14. 10. 2026 · 110,40 €</small>" }] });
+
+  /* Position: value line, dashed cost basis (steps up on each buy), buy marks */
+  var pos = series(30, 1091000, function (d) {
+    var v = 1091000 + d * 1050 + Math.sin(d / 2.4) * 7000;
+    if (d >= 2) v += 26790; if (d >= 28) v += 32750;
+    return Math.round(v);
+  });
+  pos[pos.length - 1].value = 1182600;
+  drawLine(document.getElementById("c-pos"), pos, { axisEl: document.getElementById("a-pos"), height: 150, ticks: 4,
+    cost: [{ date: daysAgo(30), value: 994600 }, { date: daysAgo(28), value: 1021500 }, { date: daysAgo(2), value: 1054300 }],
+    events: [{ date: daysAgo(28), type: "buy", html: "<b>Nákup · 10 ks</b><small>18. 9. 2026 · 108,90 €</small>" }, { date: daysAgo(2), type: "buy", html: "<b>Nákup · 12 ks</b><small>14. 10. 2026 · 110,40 €</small>" }] });
+
+  /* Loan: two years of actual balance, then three years of schedule, dashed */
+  var loanPts = [];
+  for (var m = 24; m >= 0; m--) { var dt = new Date(2026, 9 - m, 16); loanPts.push({ date: dt, value: Math.round(2790000 - (24 - m) * 5900 - (dt >= new Date(2026, 2, 3) ? 50000 : 0)) }); }
+  loanPts[loanPts.length - 1].value = 2418760;
+  for (var f = 1; f <= 36; f++) loanPts.push({ date: new Date(2026, 9 + f, 16), value: Math.round(2418760 - f * 5700) });
+  drawLine(document.getElementById("c-loan"), loanPts, { axisEl: document.getElementById("a-loan"), height: 150, splitAt: today,
+    labels: ["Říj 24", "Led 26", "Dub 27", "Čvc 28", "Říj 29"],
+    events: [{ date: new Date(2026, 2, 3), type: "out", html: "<b>Mimořádná splátka 50 000 Kč</b><small>3. 3. 2026 · zkrácení doby o 9 měsíců</small>" }] });
+
+  /* Insurance: cumulative premiums, quarterly since February 2024 */
+  var prem = [{ date: new Date(2024, 0, 9), value: 0 }];
+  for (var q = 0; q <= 10; q++) prem.push({ date: new Date(2024, 1 + q * 3, 4), value: (q + 1) * 2150 });
+  prem.push({ date: today, value: 23650 });
+  drawLine(document.getElementById("c-prem"), prem, { axisEl: document.getElementById("a-prem"), height: 108, ticks: 4, baselineZero: true });
+
+  /* Allocation ring */
+  drawRing(document.getElementById("ring"), [
+    { label: "Nemovitosti", pct: 42, color: "var(--s1)" }, { label: "Akcie", pct: 39, color: "var(--s2)" },
+    { label: "Dluhopisy", pct: 7, color: "var(--s3)" }, { label: "Ostatní aktiva", pct: 5, color: "var(--s4)" }, { label: "Krypto a hotovost", pct: 7, color: "var(--s-other)" }]);
+
+  /* Dark frame: the same data and helpers; the frame's token block does the rest. charts.js hardcodes
+     white for mark rings and the end ring, which the dark-mode project replaces with a token in the app;
+     here the prototype patches it in place. */
+  drawLine(document.getElementById("c-networth-d"), nw, { axisEl: document.getElementById("a-networth-d"), height: 150, ticks: 4,
+    events: [{ date: daysAgo(11), type: "out", html: "<b>+ 38 000 Kč</b><small>Nemovitosti · přecenění Lipová</small>" }] });
+  drawRing(document.getElementById("ring-d"), [
+    { label: "Nemovitosti", pct: 42, color: "var(--s1)" }, { label: "Akcie", pct: 39, color: "var(--s2)" },
+    { label: "Dluhopisy", pct: 7, color: "var(--s3)" }, { label: "Ostatní aktiva", pct: 5, color: "var(--s4)" }, { label: "Krypto a hotovost", pct: 7, color: "var(--s-other)" }]);
+  document.querySelectorAll('#dark-frame [fill="#fff"]').forEach(function (n) { n.setAttribute("fill", "var(--paper)"); });
+  document.querySelectorAll('#dark-frame [stroke="#fff"]').forEach(function (n) { n.setAttribute("stroke", "var(--paper)"); });
+})();
+</script>
+</body>
+</html>

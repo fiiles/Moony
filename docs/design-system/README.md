@@ -7,7 +7,9 @@ the page archetypes the React frontend is built from.
 |---|---|
 | `tokens.css` | All design tokens as CSS custom properties. The only place with raw color values. |
 | `moony.css` | Component contract in plain CSS (class per component, states included). The React implementation matches it visually, it does not reuse it. |
+| `mobile.css` | The phone layer of the same contract (§13): phone type scale, screen, nav bar, tab bar, hero, stat row, entity row, segment, buttons, sheet. Matched by `src/mobile/`, never reused. |
 | `styleguide.html` | Visual reference: every token, type step, elevation, component and state on one page, with a Světlý/Tmavý switch. Open it in a browser. |
+| `mobile.html` | The phone components at 360, 390 and 430 pt with German copy, each frame with a horizontal-overflow check (§13). |
 | `shell.js`, `charts.js`, `icons.js` | Style-guide helpers (sidebar from the real IA, SVG charts, Lucide icons). Not production code. |
 
 Open `styleguide.html` directly from the file system; no build step is needed.
@@ -382,3 +384,104 @@ than ~24 events fall in view, cluster neighbors into one mark with a count ("3 n
 - **Font.** `@fontsource-variable/inter`, imported once in `src/main.tsx`.
 - **Two-column pages.** The shorter column receives the content that would otherwise sit below both
   columns (see the two calculators), never an empty stretch.
+
+## 13. Mobile
+
+The phone app (spec `docs/specs/2026-10-16-mobile-app-design.md` §5, §6 and §10, approved prototype
+`docs/specs/2026-10-16-mobile-app-prototype.html`) is this design system with a second component layer:
+the same tokens, no platform-specific token name, and the same look on iOS and Android (Moony's own tab
+bar, sheets and segment, Inter bundled). The reference width is 390 pt; every layout is checked at 360
+(the narrowest common Android) and 430.
+
+- **`mobile.css`** is the phone component contract, as `moony.css` is the desktop's: plain CSS on the
+  tokens, every class prefixed `m-` so the two layers never collide. Its own `:root` defines the phone
+  tokens (safe areas, bar heights, type scale); `src/index.css` carries the same block (keep the two
+  identical). Its other sources are the tokens of `tokens.css` only, including `hero-orb`, `sh-seg`,
+  `sh-destructive` and `loss-ring`, which exist in both themes (table in §2). `src/mobile/` matches
+  `mobile.css` visually and never imports it. The phone is light only until Phase 6: `src/main.tsx`
+  overwrites the `data-theme` that `theme-boot.js` stamped with `light` before the first render, the
+  shell has no `ThemeProvider` (the shared toaster falls back to light through `useResolvedTheme()`),
+  and `MobileApp` shows the window itself after its first render (`showWindow()`, capability
+  `core:window:allow-show`) instead of waiting for the provider that does it on the desktop. tao
+  ignores `visible: false` on iOS and Android, so the phone window is up from launch and the call is
+  a no-op there today.
+- **`mobile.html`** shows the components at 360, 390 and 430 with German copy (German runs longest): the tab root with Údržba, hero, stats, agenda rows (a dark date chip, a swiped row), the allocation ring and legend and the entity rows, and the sheet with its amount fields.
+  Under each frame a check reports anything that extends past the screen or scrolls it sideways, and
+  lists the texts that end with an ellipsis. Open it after changing a phone component: nothing may
+  overflow at 360.
+
+Phone type scale (Inter Variable, tabular numerals on every number; Tailwind `text-m-*`, which `cn()`
+knows as type roles):
+
+| Role | Size / weight / tracking | Token | Tailwind |
+|---|---|---|---|
+| Display (hero number) | 36 / 580 / −0.06em | `m-fs-display` | `text-m-display` |
+| Large title | 30 / 600 / −0.05em | `m-fs-title-lg` | `text-m-title-lg` |
+| Title (collapsed nav bar, sheet) | 20 / 650 / −0.04em | `m-fs-title` | `text-m-title` |
+| Section | 16 / 620 / −0.03em | `m-fs-section` | `text-m-section` |
+| Stat value | 17 / 600 / −0.03em | `m-fs-stat` | `text-m-stat` |
+| Row title and value | 15 / 600 / −0.01em | `m-fs-row` | `text-m-row` |
+| Body | 15 / 450, line 1.45 | `m-fs-body` | `text-m-body` |
+| Row sub, badge | 12 / 500 | `m-fs-sub` | `text-m-sub` |
+| Caption | 11 / 500, ink-3 | `m-fs-caption` | `text-m-caption` |
+| Eyebrow | 10 / 700 / +0.12em, uppercase | `fs-eyebrow` | `text-eyebrow` |
+
+The sentence under a large title or a sheet title is 13 / 450 `ink-3` (prototype). With the system text
+size the text roles will scale up to 130 % and display and stat values up to 110 % (spec §10.2).
+
+**Screen.** A screen is the nav bar (44 pt under the top safe area) over one scroll area with a 16 pt
+gutter and room at the bottom for the tab bar (56 pt above the bottom safe area), which is fixed over it.
+Safe areas come from `env(safe-area-inset-*)` as `--safe-top` / `--safe-bottom` (`index.html` asks for
+`viewport-fit=cover`). The phone shell sets `data-shell="mobile"` on `<html>`; under it `src/index.css`
+drops the desktop's 1080 px minimum body width and the tap highlight. Touch targets are at least 44 pt.
+The document itself never scrolls: `#root` is one fixed box and every screen (`Screen`, the lock, the
+first-run wizard) scrolls inside it. WKWebView gives a `viewport-fit=cover` page a native scroll range of
+the safe-area insets, and a focused field used to slide the whole page up under the status bar. While the
+on-screen keyboard is up, `src/mobile/lib/use-visible-height.ts` publishes the free height as `--m-vh` on
+`<html>` and the box shrinks to it, so a field scrolls above the keyboard inside its own screen. Screens
+outside the tabs (`<Screen tabBar={false}>`) keep no room for the tab bar.
+
+**Lock and first run** (`mobile/pages/Lock.tsx`, spec §8.1–8.2). One page for `/auth`: the first-run
+wizard (the desktop `OnboardingWizard` without its live preview, safe areas through `--safe-top` /
+`--safe-bottom`), the lock, and the three-step recovery as pushed screens with a back button. The lock is
+centred: brand, a 76 pt rounded paper square with the lock glyph (it becomes the biometric button in
+Task 1.8), a 22 / 650 greeting, a 12 pt caption (`ink-3`), a 48 pt password field, the 48 pt primary
+button, the "forgot" link (44 pt tall), and at the bottom the language menu (`LanguageSelect`, never a
+segment of flags) and the 11 pt caption. Credential failures show under the field, everything else as a
+toast.
+
+| Component | Class | React | Rules |
+|---|---|---|---|
+| Screen | `.m-screen`, `__body` | `mobile/shell/Screen.tsx` | Fills the viewport (the fixed `#root` box, `h-full`). A tab root is `large`: its 30 pt title sits in the content, wraps and hyphenates. |
+| Nav bar | `.m-nav`, `--large`, `.is-collapsed`, `__side`, `__title`, `__btn`, `__back`; `.m-avatar` | `mobile/shell/NavBar.tsx` | At most one leading and two trailing 44 pt buttons (24 pt icons); the 20 pt title is centred between them and ends with an ellipsis. On a tab root the bar title and a hairline `line` appear once the large title has scrolled away; elsewhere the title always shows and the hairline appears on scroll. A back label ends with an ellipsis at 120 px. No blur. |
+| Tab bar | `.m-tabbar`, `.m-tab`, `.is-active`, `__label` | `mobile/shell/TabBar.tsx` | Paper, hairline `line` on top, four equal tabs, Lucide 24 at stroke 1.75 in both states, label 10 / 600; colour alone marks the active tab (`ink`, the rest `ink-4`); no dark material (D5). Stays on tab roots and details, hides on the lock screen and under sheets. A tab switch is a history entry (Android back walks back); tapping the tab you are on at its root adds none. |
+| Card | `.m-card`, `--well`, `--hero` | — | Paper, radius 15, `sh-1`; fewer cards than the desktop, a section is often a head and rows on the canvas. |
+| Section head | `.m-sec`, `__t`, `__a` | `mobile/components/SectionHead.tsx` | 16 / 620 title, 12 / 600 `ink-3` action or the section's one number; the action's hit area reaches 44 pt. |
+| Hero | `.m-card--hero`, `.m-hero__label`, `__value`, `__delta`, `__seg`, `__chart` | `mobile/components/Hero.tsx`, `ScrubChart.tsx` | Label, display number, change line (badge + context), period segment, chart 160 pt; the desktop circle at 60 %. |
+| Stat row | `.m-stats`, `--2`, `.m-stat`, `--flat`, `__l`, `__v`, `__n` | `mobile/components/StatRow.tsx` | Three (or two) stats: label 11 (may wrap, hyphenated), value 17, note 10; values sit on one line across the row. The value keeps 17 px down to the 86 px box of a third at 390 pt, then shrinks with the card (19.7 cqi); a third holds about nine characters ("6,78 mil.", "214 380"), a longer amount goes in a row of two. |
+| Entity row | `.m-rows`, `.m-row`, `--single`, `--noicon`, `--chev`, `__chip` (`--sq`, `--dark`, `--gain`), `__main`, `__line`, `__t`, `__s`, `__v`, `__vs`, `__chev` | `mobile/components/EntityRow.tsx`, `AgendaRow.tsx` | See the row rule below. |
+| Badge | `.m-badge`, `--gain`, `--loss` | — | 20 px, 12 / 500; the desktop meaning (green and red only for a signed change, always with ▲ / ▼). |
+| Segment | `.m-seg`, `__btn.is-active` | — | 36 pt as on the desktop; scrolls sideways when it does not fit. |
+| Buttons | `.m-btn`, `--primary`, `--secondary`, `--ghost`, `--danger`, `--destructive`, `--block`, `--sm`; `.m-btn-pair` | — | 48 pt, radius 10, label 15 / 600. One primary (dark material) per screen; secondary paper with `line-strong`; danger text-only; destructive solid only in confirm sheets. Full width in sheets and under heroes; a pair shares the row and its labels wrap to a second line (13 px) instead of overflowing. Small (34 pt, inline in a card row) keeps a 44 pt hit area. |
+| Date chip | `.m-row--date`, `.m-dchip`, `--soon` | `mobile/components/AgendaRow.tsx` | The agenda row's 54 × 42 chip on `well` (radius 9): the day 12 / 650, its distance under it 10 / 500 `ink-4`; dark material for a deadline at most 7 days away. The row's first column is 54 px, so its divider insets to 80. |
+| Swipe actions | `.m-swipe`, `__panel`, `--start`, `--end` | `mobile/components/EntityRow.tsx`, `mobile/hooks/use-swipe-actions.ts` | The row slides over a 98 px panel of dark material that waits under it: 18 px icon over an 11 / 650 label. It follows the finger up to the panel's width and fires the action when released past 60 px, then snaps back; a vertical drag scrolls the page. The `li` clips the panel and carries the divider (`--m-row-inset`). A long press opens the row's menu. |
+| Allocation | `.m-alloc`, `.m-ring`, `__c`, `.m-leg` | `mobile/components/AllocationRing.tsx` | In a card: the 110 px ring (22 px thick, `s1`–`s4`, the folded bucket in `s-other`, at most four classes and "Ostatní") on the left, its label in the middle, the legend (swatch 10, name 12 / 600, share) on the right. The share is always written. |
+| Údržba card | `.m-card--well`, `.m-sec__n`, `.m-todo`, `__ic`, `__main`, `__t`, `__s` | `mobile/components/UpkeepCard.tsx` | Spec §8.3 item 1. An action card on `well`, first on Přehled, present only while something is due. Head: the section title and the count ("3 věci"). One row per item: a 34 px icon square on `well` (Lucide 17), the title 14 / 600 (wraps), a 12 `ink-4` sub-line (one line, ellipsis) and the verb at the end as a small button — primary on the first row, secondary on the rest. Rows are `line-soft` apart. Zaznamenat opens the record-balances sheet; the other verbs go to their tab (`routes.*`). |
+| Field | `.m-field`, `--signed`, `__l`, `__w`, `__i`, `__u`, `__e`, `__s` | `mobile/components/AmountField.tsx` | Label 12 / 600 above, a 48 px field (radius 10, `line-strong`; focus `focus-border` and ring; invalid `loss`), text 15 tabular, the currency inside on the right, the decimal keypad, the last value as the placeholder. A plain text field: `parseAmountInput` reads the comma or point the system keypad types. A field that takes negative amounts (a balance) has the ± toggle on the left (`--signed`): a 32 px chip in a 48 px hit area that keeps the keypad open, ± on `well-2`, a dark "−" while pressed (`aria-pressed`, named "Záporná hodnota"), because the iOS decimal pad has no minus key; `signedAmountInput` adds the sign (a typed or pasted minus counts too). Invalid and focused, the ring is `loss-ring`. An error is 12 / 600 `loss` under the field. |
+| Sheet | `.m-scrim`, `.m-sheet`, `--full`, `__handle`, `__head`, `__t`, `__s`, `__body`, `__foot` | `mobile/components/Sheet.tsx`, `mobile/sheets/RecordBalancesSheet.tsx` | Paper, top radius 17, drag handle 36 × 5 `well-3`, title 20 / 650, one sentence, a body that scrolls, a footer on `well` with a hairline: the ghost Zrušit left, the primary right (it takes the rest of the row). Covers the tab bar. Closes on the scrim, Escape, its own buttons and Android back (it pushes one history entry while open, `use-sheet-history.ts`). Rises 260 ms, leaves 200 ms. Portalled into `#root` so it shares the box `--m-vh` shortens: the footer stays above the keyboard. The first field is not focused on opening. |
+| Toast | (sonner, `components/ui/toaster.tsx`) | `mobile/MobileApp.tsx` | At the bottom, centred between the 16 pt gutters and 12 pt above the tab bar and the bottom safe area (`--m-tabbar-h` + `--safe-bottom`), 2.6 s, so "Vrátit" is never under the bar. Past-tense verb, as on the desktop. |
+
+**The row rule.** One row pattern replaces tables on the phone: accounts, positions, bonds, properties,
+loans, policies, transactions, categories, watchlist and agenda rows. A 36 pt chip (logo, initials or an
+icon in a tinted circle), then two lines: the title 15 with the trailing value, the sub 12 with the
+trailing sub 11 (a change badge or a caption). 60 pt high, 52 single-line (8 pt vertical padding around the chip); dividers `line-soft`, inset to
+the title's left edge; the whole row is the tap target. Each line shares out its own width: the value and
+the trailing sub keep theirs, the title and the sub take the rest and end with an ellipsis, so a long
+trailing sub never cuts the name (the prototype's two columns did, in German at 360). **A chevron appears
+only on rows without a trailing value** (settings, documents); a value row is tappable as a whole and
+keeps that room for its name (`.m-row--chev` with a value drops the chevron).
+
+Where the contract differs from the prototype it follows the spec: badges 12 / 500 (§10.2; the prototype
+drew 9–10 px), the hero chart 160 pt (§10.4; 150), the collapsed nav title 20 pt (§10.3; the prototype's
+detail title was 17 with a sub-line), and the entity row's two lines above. Components use tokens only and
+no `.dark` classes, so the dark token block switches them for free (§10.6).

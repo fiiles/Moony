@@ -22,6 +22,8 @@ import type {
   DataLocation,
   ExportSummary,
   IntegrityReport,
+  BiometricStatus,
+  BiometryType,
   UserProfile,
   SavingsAccountZone,
   StockInvestment,
@@ -224,6 +226,44 @@ export const authApi = {
   setMcpServerPort: (port: number) => tauriInvoke<void>('set_mcp_server_port', { port }),
 
   regenerateMcpToken: () => tauriInvoke<string>('regenerate_mcp_token'),
+};
+
+// ============================================================================
+// Biometric unlock API (phones only; the commands are registered under `#[cfg(mobile)]`)
+// ============================================================================
+
+/**
+ * The master key stays in Rust: these app commands call the keychain plugin from the backend.
+ * `reason` is the localized text the system prompt shows.
+ */
+export const biometricApi = {
+  status: () => tauriInvoke<BiometricStatus>('biometric_unlock_status'),
+
+  enable: (reason: string) => tauriInvoke<void>('enable_biometric_unlock', { reason }),
+
+  disable: () => tauriInvoke<void>('disable_biometric_unlock'),
+
+  unlock: (reason: string) => tauriInvoke<UserProfile>('unlock_with_biometrics', { reason }),
+};
+
+/** `plugin:moony-keychain|status`: whether a biometry-protected secret can be stored right now. */
+export interface KeychainStatus {
+  available: boolean;
+  biometryType: BiometryType;
+}
+
+/**
+ * The two commands of the in-repo keychain plugin (`src-tauri/plugins/moony-keychain`) the webview
+ * may call; its `guest-js/index.ts` documents them but sits outside the app's build. `store`,
+ * `retrieve` and `remove` carry the database key and stay on the Rust side. Phones only: on the
+ * desktop shell the commands do not exist and the calls reject.
+ */
+export const keychainApi = {
+  status: () => tauriInvoke<KeychainStatus>('plugin:moony-keychain|status'),
+
+  /** Blur the app in the app switcher (on by default in the plugin). */
+  setPrivacyScreen: (enabled: boolean) =>
+    tauriInvoke<void>('plugin:moony-keychain|set_privacy_screen', { enabled }),
 };
 
 // ============================================================================

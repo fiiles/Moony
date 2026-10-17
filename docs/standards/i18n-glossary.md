@@ -83,3 +83,13 @@ Brokers / IBKR, Revolut, Degiro, Fio, Air Bank, …), keyboard keys.
 | Import / export | Import / Export | Importar / exportar | Importa / esporta | Import / eksport | Import / eksport | Import / export | インポート / エクスポート | 导入 / 导出 |
 | Settings | Einstellungen | Ajustes | Impostazioni | Innstillinger | Ustawienia | Inställningar | 設定 | 设置 |
 
+## Phone tab labels
+
+The phone app's tab bar (`mobile` namespace, `tabs.*`) gives each label about 85 px at 360 dp, so a tab
+may carry a shorter form of a core term. Each such form is listed here, so desktop and phone do not drift:
+
+| Term | Tab label on the phone | Everywhere else |
+|---|---|---|
+| Cashflow (pl) | Przepływy | Przepływy pieniężne |
+
+Every other tab label is the core term above or the tab name from the mobile spec §6 (Finance, Wealth).

@@ -294,7 +294,10 @@
     "wrongPassword": "The password you entered is incorrect. Please try again.",
     "invalidRecoveryKey": "Invalid recovery key. Check that you entered all 24 characters - capitalization, spaces and dashes don't matter.",
     "keyFilesCorrupted": "Moony's key files or database are damaged or don't belong together. Restore the data folder from a backup.",
-    "setupNotPrepared": "Account setup was interrupted. Go back and create your account again."
+    "setupNotPrepared": "Account setup was interrupted. Go back and create your account again.",
+    "biometricInvalidated": "Biometrics changed. Unlock with your password and turn them on again.",
+    "biometricCancelled": "Biometric unlock was cancelled.",
+    "biometricFailed": "Authentication failed, unlock with your password."
   },
   "time": {
     "today": "Today",

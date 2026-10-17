@@ -166,6 +166,38 @@ export type BankTransaction = { id: string; bankAccountId: string; transactionId
 suggestedCategoryId: string | null; flowKind: FlowKind | null; status: string; dataSource: string; createdAt: number; importBatchId: string | null; importFileName: string | null; importLine: number | null; rowBalance: string | null }
 
 /**
+ * The `biometric_unlock_status` answer, readable while the database is still locked.
+ */
+export type BiometricStatus = { 
+/**
+ * Biometry-protected storage can be used right now (biometry enrolled, passcode set).
+ */
+available: boolean; 
+/**
+ * The person switched biometric unlock on for this profile on this phone.
+ */
+enrolled: boolean; biometryType: BiometryType; 
+/**
+ * Why biometrics are not available, as an i18n key (`mobile:biometrics.unavailable`);
+ * `None` while they are.
+ */
+reason: string | null }
+
+/**
+ * Which biometry the phone offers, for the unlock button's icon and wording. Mirrors the
+ * keychain plugin's `BiometryType` (the app depends on the plugin on phones only).
+ */
+export type BiometryType = "faceId" | 
+/**
+ * Touch ID on iOS; a fingerprint-only device on Android.
+ */
+"touchId" | 
+/**
+ * Any other biometry (Optic ID, or an Android device with several sensors).
+ */
+"biometric" | "none"
+
+/**
  * Bond holding
  */
 export type Bond = { id: string; name: string; isin: string | null; couponValue: string; quantity: string; currency: string; interestRate: string; maturityDate: number | null; 

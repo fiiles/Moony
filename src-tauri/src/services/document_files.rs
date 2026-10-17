@@ -55,6 +55,19 @@ pub fn resolve_document_path(app_data_dir: &Path, subdir: &str, stored: &str) ->
 }
 
 /// Open a file with the system default application and report a failed launch.
+///
+/// A phone has no shell command to hand a file to: the mobile UI offers the share sheet
+/// instead and never calls this.
+#[cfg(any(target_os = "ios", target_os = "android"))]
+pub fn open_with_system(path: &Path) -> Result<()> {
+    Err(AppError::Internal(format!(
+        "Opening {} in another application is not available on this platform",
+        path.display()
+    )))
+}
+
+/// Open a file with the system default application and report a failed launch.
+#[cfg(not(any(target_os = "ios", target_os = "android")))]
 pub fn open_with_system(path: &Path) -> Result<()> {
     #[cfg(target_os = "macos")]
     let mut cmd = std::process::Command::new("open");

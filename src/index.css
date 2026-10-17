@@ -236,6 +236,42 @@
   --scrim: rgba(12, 11, 9, 0.7);
 }
 
+/*
+ * Phone layer (docs/design-system/mobile.css is the source of truth; keep the two identical):
+ * safe areas, bar heights and the phone type scale, used by the mobile shell (src/mobile/) through
+ * the Tailwind names in tailwind.config.ts (`text-m-*`). README §13.
+ */
+:root {
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --m-nav-h: 44px;
+  --m-tabbar-h: 56px;
+  --m-fs-display: 36px;
+  --m-fw-display: 580;
+  --m-ls-display: -0.06em;
+  --m-fs-title-lg: 30px;
+  --m-fw-title-lg: 600;
+  --m-ls-title-lg: -0.05em;
+  --m-fs-title: 20px;
+  --m-fw-title: 650;
+  --m-ls-title: -0.04em;
+  --m-fs-section: 16px;
+  --m-fw-section: 620;
+  --m-ls-section: -0.03em;
+  --m-fs-stat: 17px;
+  --m-fw-stat: 600;
+  --m-ls-stat: -0.03em;
+  --m-fs-row: 15px;
+  --m-fw-row: 600;
+  --m-ls-row: -0.01em;
+  --m-fs-body: 15px;
+  --m-fw-body: 450;
+  --m-fs-sub: 12px;
+  --m-fw-sub: 500;
+  --m-fs-caption: 11px;
+  --m-fw-caption: 500;
+}
+
 @layer base {
   * {
     @apply border-line;
@@ -259,18 +295,60 @@
     font-feature-settings: 'cv11', 'ss01';
   }
 
+  /* The phone shell (src/mobile/MobileApp.tsx sets data-shell="mobile" on <html>) fills the
+     device width; the desktop minimum above would make a phone page 1080 px wide. */
+  html[data-shell='mobile'] body {
+    min-width: 0;
+  }
+
+  /* The phone shell scrolls inner containers (Screen, the lock, the first-run wizard), never the
+     document. With viewport-fit=cover WKWebView gives the page a native scroll range of the safe-area
+     insets (clientHeight 778 against a 874 pt screen), and focusing a field slid the whole page up,
+     the nav bar under the status bar. The app is one fixed box instead, so the document has nothing
+     to scroll; `--m-vh` (src/mobile/lib/use-visible-height.ts) shortens it to what the on-screen
+     keyboard leaves free, and the screens inside it are `h-full`. */
+  html[data-shell='mobile'],
+  html[data-shell='mobile'] body {
+    overflow: hidden;
+  }
+
+  html[data-shell='mobile'] #root {
+    position: fixed;
+    inset: 0;
+    height: var(--m-vh, auto);
+  }
+
+  /* Touch: no grey flash over a tapped link or button; the components draw their own pressed state. */
+  html[data-shell='mobile'] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
   /* Japanese and Chinese: Inter has no CJK glyphs, so name the system faces for them
      (after Inter, which keeps Latin text and numbers), and drop the tight tracking —
      negative letter-spacing makes ideographs collide. Numbers (`.num`) keep theirs. */
-  :root:lang(ja) {
-    --font:
+  :root {
+    --font-ja:
       'Inter Variable', Inter, 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Yu Gothic UI', Meiryo,
       system-ui, sans-serif;
-  }
-  :root:lang(zh) {
-    --font:
+    --font-zh:
       'Inter Variable', Inter, 'PingFang SC', 'Microsoft YaHei UI', 'Noto Sans SC', system-ui,
       sans-serif;
+  }
+  :root:lang(ja) {
+    --font: var(--font-ja);
+  }
+  :root:lang(zh) {
+    --font: var(--font-zh);
+  }
+  /* The language menu names every language in its own script ("日本語") under whatever UI language
+     is active, so the root stacks above never reach those spans, and WKWebView on iOS then draws
+     empty boxes (found in the simulator). In the phone shell, elements that carry their own `lang`
+     get the stack for it. */
+  html[data-shell='mobile'] [lang='ja'] {
+    font-family: var(--font-ja);
+  }
+  html[data-shell='mobile'] [lang='zh'] {
+    font-family: var(--font-zh);
   }
   :root:lang(ja) :not(.num, .num *),
   :root:lang(zh) :not(.num, .num *) {

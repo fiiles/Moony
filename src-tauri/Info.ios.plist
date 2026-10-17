@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Moony unlocks your data with Face ID.</string>
+	<!-- The phone shell is light only until Phase 6 (dark phone tokens): pin the system chrome
+	     (status bar, alerts) to light so a dark OS appearance does not draw white status-bar text
+	     over the light shell. Remove together with the Phase 6 dark mode. -->
+	<key>UIUserInterfaceStyle</key>
+	<string>Light</string>
+</dict>
+</plist>

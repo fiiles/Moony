@@ -1,0 +1,91 @@
+{
+  "tabs": {
+    "overview": "Resumen",
+    "finance": "Finanzas",
+    "cashflow": "Flujo de caja",
+    "wealth": "Patrimonio"
+  },
+  "shell": {
+    "placeholder": "Esta pantalla todavía está en preparación."
+  },
+  "lock": {
+    "caption": "AES-256 · cifrado en este teléfono",
+    "keySaved": "Tengo la clave guardada en un lugar seguro fuera de este teléfono",
+    "unlockWithFace": "Desbloquear con la cara",
+    "unlockWithTouch": "Desbloquear con la huella",
+    "unlockWithBiometrics": "Desbloquear con biometría",
+    "usePassword": "Usar contraseña",
+    "reason": "Desbloquear Moony"
+  },
+  "overview": {
+    "hideAmounts": "Ocultar importes",
+    "showAmounts": "Mostrar importes",
+    "showAll": "Ver todo",
+    "change": {
+      "30D": "en 30 días",
+      "90D": "en 3 meses",
+      "YTD": "este año",
+      "1Y": "en un año",
+      "5Y": "en 5 años",
+      "All": "desde el primer registro"
+    },
+    "stats": {
+      "assets": "Activos",
+      "freeCash": "Efectivo libre",
+      "freeCashNote": "en cuentas",
+      "unchanged": "sin cambios",
+      "noHistory": "sin historial"
+    }
+  },
+  "upkeep": {
+    "title": "Mantenimiento de datos",
+    "count_one": "{{count}} tarea",
+    "count_many": "{{count}} tareas",
+    "count_other": "{{count}} tareas",
+    "balancesStale_one": "{{count}} saldo con más de un mes",
+    "balancesStale_many": "{{count}} saldos con más de un mes",
+    "balancesStale_other": "{{count}} saldos con más de un mes",
+    "uncategorized_one": "{{count}} pago sin categoría",
+    "uncategorized_many": "{{count}} pagos sin categoría",
+    "uncategorized_other": "{{count}} pagos sin categoría",
+    "uncategorizedFrom": "{{account}} · del extracto del {{date}}",
+    "accounts_one": "{{count}} cuenta",
+    "accounts_many": "{{count}} cuentas",
+    "accounts_other": "{{count}} cuentas",
+    "statementDue": "Toca importar el extracto de {{bank}}",
+    "lastImport": "Última importación {{date}}",
+    "backupStale_one": "Última copia de seguridad hace {{count}} día",
+    "backupStale_many": "Última copia de seguridad hace {{count}} días",
+    "backupStale_other": "Última copia de seguridad hace {{count}} días",
+    "backupNever": "Aún no hay copia de seguridad",
+    "valuationStale": "La valoración de {{name}} tiene un año",
+    "actions": {
+      "record": "Registrar",
+      "categorize": "Clasificar",
+      "import": "Importar",
+      "backup": "Hacer copia",
+      "revalue": "Revalorar"
+    }
+  },
+  "recordBalances": {
+    "title": "Registrar saldos",
+    "lead": "Introduce el saldo actual de cada cuenta. La fecha es la de hoy.",
+    "save": "Registrar",
+    "saved": "Saldos registrados",
+    "negative": "Valor negativo"
+  },
+  "biometrics": {
+    "titleFace": "¿Desbloquear Moony con la cara?",
+    "titleTouch": "¿Desbloquear Moony con la huella?",
+    "titleGeneric": "¿Desbloquear Moony con biometría?",
+    "leadFace": "Tu contraseña sigue siendo la clave maestra. Tu cara solo abre la app en este teléfono.",
+    "leadTouch": "Tu contraseña sigue siendo la clave maestra. Tu huella solo abre la app en este teléfono.",
+    "leadGeneric": "Tu contraseña sigue siendo la clave maestra. La biometría solo abre la app en este teléfono.",
+    "notNow": "Ahora no",
+    "enable": "Activar",
+    "enableReason": "Activar el desbloqueo biométrico",
+    "enabled": "Desbloqueo biométrico activado",
+    "notEnabled": "No se ha activado el desbloqueo biométrico",
+    "unavailable": "La biometría no está disponible ahora. Desbloquea con tu contraseña."
+  }
+}

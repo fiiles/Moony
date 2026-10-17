@@ -7,11 +7,14 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::user::{normalize_country, validate_main_currency, DEFAULT_MAIN_CURRENCY};
 use crate::models::{InsertUserProfile, MenuPreferences, UpdateUserProfile, UserProfile};
+use crate::services::biometric_unlock;
 use crate::services::crypto;
+use crate::services::session_key::SessionKey;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, MutexGuard};
+use zeroize::Zeroizing;
 
 /// Global session state
 static IS_AUTHENTICATED: AtomicBool = AtomicBool::new(false);
@@ -150,16 +153,42 @@ pub fn setup_account(
 }
 
 /// Unlock existing database with password
-pub fn unlock(db: &Database, db_path: PathBuf, password: &str) -> Result<UserProfile> {
-    let profile = unlock_with(&db_path, password, |master_key_hex| {
-        // Open database with master key, then get the user profile
-        db.open_with_key(db_path.clone(), master_key_hex)?;
-        get_user_profile(db)?.ok_or_else(|| AppError::Auth("No user profile found".into()))
-    })?;
+pub fn unlock(
+    db: &Database,
+    session: &SessionKey,
+    db_path: PathBuf,
+    password: &str,
+) -> Result<UserProfile> {
+    unlock_with(&db_path, password, |master_key| {
+        unlock_with_master_key(db, session, db_path.clone(), master_key)
+    })
+}
 
+/// The part of every unlock after the master key is known (password and biometrics alike): open
+/// the database with it, read the profile, keep the key for the session on the phone (biometric
+/// unlock is switched on with it) and mark the session authenticated.
+pub fn unlock_with_master_key(
+    db: &Database,
+    session: &SessionKey,
+    db_path: PathBuf,
+    master_key: &[u8; 32],
+) -> Result<UserProfile> {
+    let master_key_hex = Zeroizing::new(crypto::master_key_to_hex(master_key));
+    db.open_with_key(db_path, &master_key_hex)?;
+    let profile =
+        get_user_profile(db)?.ok_or_else(|| AppError::Auth("No user profile found".into()))?;
+    keep_session_key(session, master_key);
     set_authenticated(true);
-
     Ok(profile)
+}
+
+/// Keep the master key in the session after an unlock or the first-run setup.
+fn keep_session_key(session: &SessionKey, master_key: &[u8; 32]) {
+    // R22: only the phone needs the key after unlock (biometric enrolment).
+    #[cfg(mobile)]
+    session.set(master_key);
+    #[cfg(not(mobile))]
+    let _ = (session, master_key);
 }
 
 /// The key-file side of [`unlock`]: unwrap the master key with the password, hand it to `open`
@@ -168,7 +197,7 @@ pub fn unlock(db: &Database, db_path: PathBuf, password: &str) -> Result<UserPro
 fn unlock_with<T>(
     db_path: &Path,
     password: &str,
-    open: impl FnOnce(&str) -> Result<T>,
+    open: impl FnOnce(&[u8; 32]) -> Result<T>,
 ) -> Result<T> {
     let data_dir = db_path
         .parent()
@@ -183,9 +212,11 @@ fn unlock_with<T>(
     let salt = crypto::read_salt(&salt_path)?;
 
     // Decrypt master key using password
-    let master_key = crypto::decrypt_master_key_with_password(password, &salt, &key_path)?;
+    let master_key = Zeroizing::new(crypto::decrypt_master_key_with_password(
+        password, &salt, &key_path,
+    )?);
 
-    let opened = open(&crypto::master_key_to_hex(&master_key))?;
+    let opened = open(&master_key)?;
 
     // A key.enc from before ADR 0009 (N=2^14) moves to the current cost now, once.
     upgrade_key_file_cost(&master_key, password, &salt, &key_path);
@@ -268,6 +299,7 @@ pub fn prepare_setup() -> Result<PreparedSetup> {
 /// Only called after user confirms they saved the recovery key
 pub fn confirm_setup(
     db: &Database,
+    session: &SessionKey,
     db_path: PathBuf,
     data: InsertUserProfile,
     password: &str,
@@ -287,7 +319,7 @@ pub fn confirm_setup(
     let (salt_path, key_path, recovery_path) = get_key_paths(data_dir);
 
     // Convert hex back to master key bytes
-    let master_key = crypto::hex_to_master_key(&prepared.master_key_hex)?;
+    let master_key = Zeroizing::new(crypto::hex_to_master_key(&prepared.master_key_hex)?);
 
     // Convert salt vec to array
     if prepared.salt.len() != 32 {
@@ -340,6 +372,7 @@ pub fn confirm_setup(
         Ok(())
     })?;
 
+    keep_session_key(session, &master_key);
     set_authenticated(true);
 
     // Return the created profile
@@ -433,6 +466,7 @@ pub fn prepare_recover(db_path: &Path, recovery_key: &str, new_password: &str) -
 /// Only called after user confirms they saved the new recovery key
 pub fn confirm_recover(
     db: &Database,
+    session: &SessionKey,
     db_path: PathBuf,
     old_recovery_key: &str,
     new_password: &str,
@@ -448,8 +482,11 @@ pub fn confirm_recover(
     let salt = crypto::read_salt(&salt_path)?;
 
     // Decrypt master key using old recovery key (normalized by crypto)
-    let master_key =
-        crypto::decrypt_master_key_with_recovery(old_recovery_key, &salt, &recovery_path)?;
+    let master_key = Zeroizing::new(crypto::decrypt_master_key_with_recovery(
+        old_recovery_key,
+        &salt,
+        &recovery_path,
+    )?);
 
     // Re-encrypt master key with new password
     crypto::store_password_encrypted_key(&master_key, new_password, &salt, &key_path)?;
@@ -457,22 +494,14 @@ pub fn confirm_recover(
     // Re-encrypt master key with new recovery key
     crypto::store_recovery_encrypted_key(&master_key, new_recovery_key, &salt, &recovery_path)?;
 
-    // Open database with master key
-    let master_key_hex = crypto::master_key_to_hex(&master_key);
-    db.open_with_key(db_path, &master_key_hex)?;
-
-    // Get user profile
-    let profile =
-        get_user_profile(db)?.ok_or_else(|| AppError::Auth("No user profile found".into()))?;
-
-    set_authenticated(true);
-
-    Ok(profile)
+    // Open the database with the master key, as every unlock does
+    unlock_with_master_key(db, session, db_path, &master_key)
 }
 
-/// Lock the app (close database)
-pub fn logout(db: &Database) {
+/// Lock the app (close database) and forget the session's master key
+pub fn logout(db: &Database, session: &SessionKey) {
     db.close();
+    session.clear();
     set_authenticated(false);
 }
 
@@ -612,9 +641,10 @@ fn apply_profile_update(conn: &rusqlite::Connection, updates: &UpdateUserProfile
 
 /// Delete entire account: the database, the attachments store, the key files and every other file
 /// of the account in its data folder
-pub fn delete_account(db: &Database, db_path: &Path) -> Result<()> {
+pub fn delete_account(db: &Database, session: &SessionKey, db_path: &Path) -> Result<()> {
     set_authenticated(false);
     db.close();
+    session.clear();
 
     // Delete database file
     if db_path.exists() {
@@ -656,7 +686,8 @@ pub fn remove_account_files(data_dir: &Path) -> Vec<String> {
     };
 
     let (salt_path, key_path, recovery_path) = get_key_paths(data_dir);
-    // The key files, and the staging copies an interrupted key-file write leaves behind.
+    // The key files, the staging copies an interrupted key-file write leaves behind, and the
+    // phone's biometric unlock marker.
     let staging = [
         crypto::staging_path(&key_path),
         crypto::staging_path(&recovery_path),
@@ -664,6 +695,7 @@ pub fn remove_account_files(data_dir: &Path) -> Vec<String> {
     for path in [salt_path, key_path, recovery_path]
         .into_iter()
         .chain(staging)
+        .chain([data_dir.join(biometric_unlock::MARKER_FILE)])
     {
         remove(path);
     }
@@ -831,8 +863,15 @@ mod tests {
         let dir = tempdir().expect("tempdir");
         let db_path = dir.path().join("moony.db");
         let prepared = prepare_setup().unwrap();
-        let err =
-            confirm_setup(&Database::new(), db_path, profile_data(), "", &prepared).unwrap_err();
+        let err = confirm_setup(
+            &Database::new(),
+            &SessionKey::default(),
+            db_path,
+            profile_data(),
+            "",
+            &prepared,
+        )
+        .unwrap_err();
         assert_password_too_short(err);
         assert!(dir_is_empty(dir.path()), "no key files may be written");
     }
@@ -895,6 +934,7 @@ mod tests {
         let before = fs::read(dir.path().join("key.enc")).unwrap();
         let err = confirm_recover(
             &Database::new(),
+            &SessionKey::default(),
             db_path,
             RECOVERY_KEY,
             "",
@@ -1018,9 +1058,9 @@ mod tests {
     }
 
     /// The database step of `unlock`, minus SQLCipher: checks it got the right key.
-    fn open_with(master: [u8; 32]) -> impl FnOnce(&str) -> Result<()> {
-        move |hex| {
-            assert_eq!(hex, crypto::master_key_to_hex(&master));
+    fn open_with(master: [u8; 32]) -> impl FnOnce(&[u8; 32]) -> Result<()> {
+        move |key| {
+            assert_eq!(key, &master);
             Ok(())
         }
     }
@@ -1130,6 +1170,7 @@ mod tests {
         let db_path = write_key_files(dir.path(), "old-password");
         let err = confirm_recover(
             &Database::new(),
+            &SessionKey::default(),
             db_path,
             "AAAA-AAAA-AAAA-AAAA-AAAA-AAAA",
             "new-password",
@@ -1143,7 +1184,13 @@ mod tests {
     fn unlock_with_missing_key_files_reports_corrupted_key_files() {
         let dir = tempdir().expect("tempdir");
         let db_path = dir.path().join("moony.db");
-        let err = unlock(&Database::new(), db_path, "whatever-password").unwrap_err();
+        let err = unlock(
+            &Database::new(),
+            &SessionKey::default(),
+            db_path,
+            "whatever-password",
+        )
+        .unwrap_err();
         assert_auth_key(err, "auth.keyFilesCorrupted");
     }
 
@@ -1151,8 +1198,38 @@ mod tests {
     fn unlock_with_wrong_password_reports_wrong_password() {
         let dir = tempdir().expect("tempdir");
         let db_path = write_key_files(dir.path(), "old-password");
-        let err = unlock(&Database::new(), db_path, "not-the-password").unwrap_err();
+        let session = SessionKey::default();
+        let err = unlock(&Database::new(), &session, db_path, "not-the-password").unwrap_err();
         assert_auth_key(err, "auth.wrongPassword");
+        assert!(session.hex().is_none(), "a failed unlock keeps no key");
+    }
+
+    /// R22: the phone keeps the key after an unlock (biometric enrolment needs it), the desktop
+    /// keeps none.
+    #[test]
+    fn the_session_key_is_kept_on_the_phone_only() {
+        let session = SessionKey::default();
+        keep_session_key(&session, &[9u8; 32]);
+        assert_eq!(session.hex().is_some(), cfg!(mobile));
+    }
+
+    /// The session key goes with the session (biometric unlock can only be switched on while
+    /// unlocked).
+    #[test]
+    fn logout_forgets_the_session_key() {
+        let session = SessionKey::default();
+        session.set(&[9u8; 32]);
+        logout(&Database::new(), &session);
+        assert!(session.hex().is_none());
+    }
+
+    #[test]
+    fn deleting_the_account_forgets_the_session_key() {
+        let dir = tempdir().expect("tempdir");
+        let session = SessionKey::default();
+        session.set(&[9u8; 32]);
+        delete_account(&Database::new(), &session, &dir.path().join("moony.db")).expect("delete");
+        assert!(session.hex().is_none());
     }
 
     /// profiles created before the fix carry 0o644 key files; unlocking
@@ -1168,7 +1245,12 @@ mod tests {
             fs::set_permissions(dir.path().join(name), fs::Permissions::from_mode(0o644)).unwrap();
         }
 
-        let _ = unlock(&Database::new(), db_path, "not-the-password");
+        let _ = unlock(
+            &Database::new(),
+            &SessionKey::default(),
+            db_path,
+            "not-the-password",
+        );
 
         for name in crypto::SECRET_FILE_NAMES {
             let mode = fs::metadata(dir.path().join(name))
@@ -1500,6 +1582,8 @@ mod tests {
             // Staging files an interrupted key-file write leaves behind (ADR 0018).
             "key.enc.tmp",
             "recovery.enc.tmp",
+            // The phone's biometric unlock marker.
+            "biometric-unlock",
             "unrelated.txt",
         ] {
             fs::write(d.join(name), b"x").expect("file");

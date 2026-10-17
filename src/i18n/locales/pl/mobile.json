@@ -1,0 +1,96 @@
+{
+  "tabs": {
+    "overview": "Przegląd",
+    "finance": "Finanse",
+    "cashflow": "Przepływy",
+    "wealth": "Majątek"
+  },
+  "shell": {
+    "placeholder": "Ten ekran jest jeszcze w przygotowaniu."
+  },
+  "lock": {
+    "caption": "AES-256 · zaszyfrowane na tym telefonie",
+    "keySaved": "Mam klucz bezpiecznie zapisany poza tym telefonem",
+    "unlockWithFace": "Odblokuj twarzą",
+    "unlockWithTouch": "Odblokuj odciskiem palca",
+    "unlockWithBiometrics": "Odblokuj biometrią",
+    "usePassword": "Użyj hasła",
+    "reason": "Odblokuj Moony"
+  },
+  "overview": {
+    "hideAmounts": "Ukryj kwoty",
+    "showAmounts": "Pokaż kwoty",
+    "showAll": "Pokaż wszystkie",
+    "change": {
+      "30D": "w 30 dni",
+      "90D": "w 3 miesiące",
+      "YTD": "w tym roku",
+      "1Y": "w rok",
+      "5Y": "w 5 lat",
+      "All": "od pierwszego zapisu"
+    },
+    "stats": {
+      "assets": "Aktywa",
+      "freeCash": "Wolna gotówka",
+      "freeCashNote": "na kontach",
+      "unchanged": "bez zmian",
+      "noHistory": "brak historii"
+    }
+  },
+  "upkeep": {
+    "title": "Aktualizacja danych",
+    "count_one": "{{count}} pozycja",
+    "count_few": "{{count}} pozycje",
+    "count_many": "{{count}} pozycji",
+    "count_other": "{{count}} pozycji",
+    "balancesStale_one": "{{count}} saldo starsze niż miesiąc",
+    "balancesStale_few": "{{count}} salda starsze niż miesiąc",
+    "balancesStale_many": "{{count}} sald starszych niż miesiąc",
+    "balancesStale_other": "{{count}} salda starszego niż miesiąc",
+    "uncategorized_one": "{{count}} płatność bez kategorii",
+    "uncategorized_few": "{{count}} płatności bez kategorii",
+    "uncategorized_many": "{{count}} płatności bez kategorii",
+    "uncategorized_other": "{{count}} płatności bez kategorii",
+    "uncategorizedFrom": "{{account}} · z wyciągu z {{date}}",
+    "accounts_one": "{{count}} konto",
+    "accounts_few": "{{count}} konta",
+    "accounts_many": "{{count}} kont",
+    "accounts_other": "{{count}} konta",
+    "statementDue": "Czas na wyciąg z {{bank}}",
+    "lastImport": "Ostatni import {{date}}",
+    "backupStale_one": "Ostatnia kopia zapasowa sprzed {{count}} dnia",
+    "backupStale_few": "Ostatnia kopia zapasowa sprzed {{count}} dni",
+    "backupStale_many": "Ostatnia kopia zapasowa sprzed {{count}} dni",
+    "backupStale_other": "Ostatnia kopia zapasowa sprzed {{count}} dnia",
+    "backupNever": "Brak kopii zapasowej",
+    "valuationStale": "Wycena {{name}} ma rok",
+    "actions": {
+      "record": "Zapisz",
+      "categorize": "Przypisz",
+      "import": "Importuj",
+      "backup": "Zrób kopię",
+      "revalue": "Przeszacuj"
+    }
+  },
+  "recordBalances": {
+    "title": "Zapisz salda",
+    "lead": "Wpisz aktualne saldo każdego konta. Data to dzisiaj.",
+    "save": "Zapisz",
+    "saved": "Salda zapisane",
+    "negative": "Wartość ujemna"
+  },
+  "biometrics": {
+    "titleFace": "Odblokowywać Moony twarzą?",
+    "titleTouch": "Odblokowywać Moony odciskiem palca?",
+    "titleGeneric": "Odblokowywać Moony biometrią?",
+    "leadFace": "Hasło pozostaje głównym kluczem. Twarz tylko otwiera aplikację na tym telefonie.",
+    "leadTouch": "Hasło pozostaje głównym kluczem. Odcisk palca tylko otwiera aplikację na tym telefonie.",
+    "leadGeneric": "Hasło pozostaje głównym kluczem. Biometria tylko otwiera aplikację na tym telefonie.",
+    "notNow": "Nie teraz",
+    "enable": "Włącz",
+    "enableReason": "Włącz odblokowywanie biometrią",
+    "enabled": "Odblokowywanie biometrią włączone",
+    "notEnabled": "Odblokowywanie biometrią nie zostało włączone",
+    "unavailable": "Biometria jest teraz niedostępna. Odblokuj hasłem."
+  }
+}

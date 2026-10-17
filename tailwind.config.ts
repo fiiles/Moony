@@ -105,6 +105,34 @@ export default {
         micro: ["10px", { lineHeight: "1.4", fontWeight: "600" }],
         eyebrow: ["10px", { lineHeight: "1", letterSpacing: "0.12em", fontWeight: "700" }],
         thead: ["10px", { lineHeight: "1", letterSpacing: "0.08em", fontWeight: "750" }],
+        // Phone type roles (README §13, docs/design-system/mobile.css): the mobile shell only.
+        "m-display": [
+          "var(--m-fs-display)",
+          { lineHeight: "1.05", letterSpacing: "var(--m-ls-display)", fontWeight: "var(--m-fw-display)" },
+        ],
+        "m-title-lg": [
+          "var(--m-fs-title-lg)",
+          { lineHeight: "1.1", letterSpacing: "var(--m-ls-title-lg)", fontWeight: "var(--m-fw-title-lg)" },
+        ],
+        "m-title": [
+          "var(--m-fs-title)",
+          { lineHeight: "1.2", letterSpacing: "var(--m-ls-title)", fontWeight: "var(--m-fw-title)" },
+        ],
+        "m-section": [
+          "var(--m-fs-section)",
+          { lineHeight: "1.25", letterSpacing: "var(--m-ls-section)", fontWeight: "var(--m-fw-section)" },
+        ],
+        "m-stat": [
+          "var(--m-fs-stat)",
+          { lineHeight: "1.15", letterSpacing: "var(--m-ls-stat)", fontWeight: "var(--m-fw-stat)" },
+        ],
+        "m-row": [
+          "var(--m-fs-row)",
+          { lineHeight: "1.3", letterSpacing: "var(--m-ls-row)", fontWeight: "var(--m-fw-row)" },
+        ],
+        "m-body": ["var(--m-fs-body)", { lineHeight: "1.45", fontWeight: "var(--m-fw-body)" }],
+        "m-sub": ["var(--m-fs-sub)", { lineHeight: "1.3", fontWeight: "var(--m-fw-sub)" }],
+        "m-caption": ["var(--m-fs-caption)", { lineHeight: "1.35", fontWeight: "var(--m-fw-caption)" }],
       },
       fontWeight: {
         450: "450",
@@ -154,6 +182,14 @@ export default {
           from: { opacity: "0", transform: "translateY(8px)" },
           to: { opacity: "1", transform: "none" },
         },
+        "sheet-in": {
+          from: { transform: "translateY(100%)" },
+          to: { transform: "translateY(0)" },
+        },
+        "sheet-out": {
+          from: { transform: "translateY(0)" },
+          to: { transform: "translateY(100%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -161,6 +197,8 @@ export default {
         "modal-in": "modal-in 180ms cubic-bezier(0.2, 0.7, 0.2, 1)",
         "modal-out": "modal-out 180ms cubic-bezier(0.2, 0.7, 0.2, 1)",
         "toast-in": "toast-in 180ms cubic-bezier(0.2, 0.7, 0.2, 1)",
+        "sheet-in": "sheet-in 260ms cubic-bezier(0.2, 0.7, 0.2, 1)",
+        "sheet-out": "sheet-out 200ms cubic-bezier(0.2, 0.7, 0.2, 1) forwards",
       },
     },
   },

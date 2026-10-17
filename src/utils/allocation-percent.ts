@@ -33,3 +33,48 @@ export function allocationPercents(values: readonly number[], decimals = 0): num
 
   return floors.map((f) => f / unit);
 }
+
+export interface AllocationSegment {
+  key: string;
+  label: string;
+  value: number;
+}
+
+export interface AllocationSlice extends AllocationSegment {
+  /** Series colour `s1`…`s4` (0–3), or the "other" shade. */
+  series: 0 | 1 | 2 | 3 | 'other';
+  /** Whole-number share; the slices add up to exactly 100. */
+  percent: number;
+}
+
+/**
+ * The slices of an allocation ring (design system §8): positive segments by size, the four
+ * largest in the series colours, the fifth and later folded into one "other" bucket together with
+ * `otherSegment` (a bucket that always takes the other shade, e.g. "Bez štítku"; alone it keeps
+ * its own label). Shares by the largest remainder, so the legend adds up to 100 %.
+ */
+export function allocationSlices(
+  segments: readonly AllocationSegment[],
+  opts: { otherLabel: string; otherSegment?: AllocationSegment }
+): { slices: AllocationSlice[]; total: number } {
+  const positive = segments.filter((s) => s.value > 0).sort((a, b) => b.value - a.value);
+  const extra = opts.otherSegment && opts.otherSegment.value > 0 ? opts.otherSegment : null;
+  const total = positive.reduce((sum, s) => sum + s.value, 0) + (extra?.value ?? 0);
+  const head = positive.slice(0, 4).map((s, i) => ({ ...s, series: i as 0 | 1 | 2 | 3 }));
+  const rest = positive.slice(4);
+  const otherValue = rest.reduce((sum, s) => sum + s.value, 0) + (extra?.value ?? 0);
+  const slices: Omit<AllocationSlice, 'percent'>[] =
+    otherValue > 0
+      ? [
+          ...head,
+          {
+            key: 'other',
+            label: rest.length > 0 || !extra ? opts.otherLabel : extra.label,
+            value: otherValue,
+            series: 'other',
+          },
+        ]
+      : head;
+  const percents = allocationPercents(slices.map((s) => s.value));
+  return { slices: slices.map((s, i) => ({ ...s, percent: percents[i] })), total };
+}

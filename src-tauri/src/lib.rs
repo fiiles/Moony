@@ -41,9 +41,17 @@ fn spawn_legacy_temp_cleanup(app: tauri::AppHandle) {
     });
 }
 
+/// Desktop `main` and the generated iOS / Android entry points all start here. The body runs
+/// inside Tauri's own tokio runtime (`async_runtime::block_on`), the same multi-thread runtime
+/// the commands and `tokio::spawn` calls use, so nothing changes for the desktop; a
+/// `#[tokio::main]` wrapper would hide the future from `mobile_entry_point`, which expects
+/// either a plain or an `async` function.
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
-#[tokio::main]
-pub async fn run() {
+pub fn run() {
+    tauri::async_runtime::block_on(run_app());
+}
+
+async fn run_app() {
     // Panics go to the log file too (there is no console in a release build)
     logging::install_panic_hook();
 
@@ -51,7 +59,7 @@ pub async fn run() {
     let categorization_engine = Arc::new(CategorizationEngine::new_empty());
 
     // The log plugin goes first so every other plugin's `log` output is captured.
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(logging::plugin())
         .setup(|app| {
             logging::log_startup_banner();
@@ -76,11 +84,31 @@ pub async fn run() {
         })
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
-        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_fs::init());
+
+    // Updates and the relaunch after one exist on the desktop only.
+    #[cfg(desktop)]
+    {
+        builder = builder
+            .plugin(tauri_plugin_updater::Builder::new().build())
+            .plugin(tauri_plugin_process::init());
+    }
+
+    // Phone-only hardware: haptic feedback, local notifications, and the keychain (biometric
+    // unlock: the DB key behind biometry; privacy screen on from launch).
+    #[cfg(mobile)]
+    {
+        builder = builder
+            .plugin(tauri_plugin_haptics::init())
+            // Unused so far: kept for the Phase 4 agenda reminders.
+            .plugin(tauri_plugin_notification::init())
+            .plugin(moony_keychain::init());
+    }
+
+    builder
         .manage(Database::new())
         .manage(services::auth::PendingSetup::default())
+        .manage(services::session_key::SessionKey::default())
         .manage(services::history_recalc::HistoryRecalc::new())
         .manage(CategorizationState(categorization_engine))
         .manage(LocalApiServer::new())
@@ -157,6 +185,15 @@ pub async fn run() {
             commands::auth::get_mcp_server_token,
             commands::auth::set_mcp_server_port,
             commands::auth::regenerate_mcp_token,
+            // Biometric unlock on the phone (services::biometric_unlock)
+            #[cfg(mobile)]
+            commands::biometric::biometric_unlock_status,
+            #[cfg(mobile)]
+            commands::biometric::enable_biometric_unlock,
+            #[cfg(mobile)]
+            commands::biometric::disable_biometric_unlock,
+            #[cfg(mobile)]
+            commands::biometric::unlock_with_biometrics,
             // Investment commands
             commands::investments::get_all_investments,
             commands::investments::get_investment,

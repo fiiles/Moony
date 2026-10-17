@@ -1,0 +1,81 @@
+{
+  "tabs": {
+    "overview": "概览",
+    "finance": "财务",
+    "cashflow": "现金流",
+    "wealth": "资产"
+  },
+  "shell": {
+    "placeholder": "此页面仍在建设中。"
+  },
+  "lock": {
+    "caption": "AES-256 · 在这部手机上加密",
+    "keySaved": "我已将密钥安全保存在这部手机之外",
+    "unlockWithFace": "使用面容解锁",
+    "unlockWithTouch": "使用指纹解锁",
+    "unlockWithBiometrics": "使用生物识别解锁",
+    "usePassword": "使用密码",
+    "reason": "解锁 Moony"
+  },
+  "overview": {
+    "hideAmounts": "隐藏金额",
+    "showAmounts": "显示金额",
+    "showAll": "显示全部",
+    "change": {
+      "30D": "30 天内",
+      "90D": "3 个月内",
+      "YTD": "今年",
+      "1Y": "一年内",
+      "5Y": "5 年内",
+      "All": "自首条记录起"
+    },
+    "stats": {
+      "assets": "资产",
+      "freeCash": "可用现金",
+      "freeCashNote": "账户中",
+      "unchanged": "无变化",
+      "noHistory": "暂无历史"
+    }
+  },
+  "upkeep": {
+    "title": "数据维护",
+    "count_other": "{{count}} 项",
+    "balancesStale_other": "{{count}} 个余额已超过一个月未更新",
+    "uncategorized_other": "{{count}} 笔付款未分类",
+    "uncategorizedFrom": "{{account}} · 来自 {{date}} 的对账单",
+    "accounts_other": "{{count}} 个账户",
+    "statementDue": "该导入 {{bank}} 的对账单了",
+    "lastImport": "上次导入 {{date}}",
+    "backupStale_other": "{{count}} 天前备份",
+    "backupNever": "尚无备份",
+    "valuationStale": "{{name}} 的估值已满一年",
+    "actions": {
+      "record": "记录",
+      "categorize": "分类",
+      "import": "导入",
+      "backup": "备份",
+      "revalue": "重新估值"
+    }
+  },
+  "recordBalances": {
+    "title": "记录余额",
+    "lead": "请输入每个账户的当前余额。日期为今天。",
+    "save": "记录",
+    "saved": "余额已记录",
+    "negative": "负值"
+  },
+  "biometrics": {
+    "titleFace": "使用面容解锁 Moony？",
+    "titleTouch": "使用指纹解锁 Moony？",
+    "titleGeneric": "使用生物识别解锁 Moony？",
+    "leadFace": "密码仍是主密钥。面容仅用于在这部手机上打开应用。",
+    "leadTouch": "密码仍是主密钥。指纹仅用于在这部手机上打开应用。",
+    "leadGeneric": "密码仍是主密钥。生物识别仅用于在这部手机上打开应用。",
+    "notNow": "以后再说",
+    "enable": "开启",
+    "enableReason": "开启生物识别解锁",
+    "enabled": "已开启生物识别解锁",
+    "notEnabled": "未开启生物识别解锁",
+    "unavailable": "生物识别暂时不可用，请使用密码解锁。"
+  }
+}

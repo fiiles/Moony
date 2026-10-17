@@ -1,0 +1,81 @@
+{
+  "tabs": {
+    "overview": "概要",
+    "finance": "財務",
+    "cashflow": "キャッシュフロー",
+    "wealth": "資産"
+  },
+  "shell": {
+    "placeholder": "この画面は準備中です。"
+  },
+  "lock": {
+    "caption": "AES-256 · このスマートフォンで暗号化",
+    "keySaved": "キーをこのスマートフォンの外に安全に保管しました",
+    "unlockWithFace": "顔認証でロック解除",
+    "unlockWithTouch": "指紋認証でロック解除",
+    "unlockWithBiometrics": "生体認証でロック解除",
+    "usePassword": "パスワードを使用",
+    "reason": "Moonyのロックを解除"
+  },
+  "overview": {
+    "hideAmounts": "金額を隠す",
+    "showAmounts": "金額を表示",
+    "showAll": "すべて表示",
+    "change": {
+      "30D": "30日間",
+      "90D": "3か月間",
+      "YTD": "今年",
+      "1Y": "1年間",
+      "5Y": "5年間",
+      "All": "最初の記録以降"
+    },
+    "stats": {
+      "assets": "資産",
+      "freeCash": "自由に使える現金",
+      "freeCashNote": "口座内",
+      "unchanged": "変化なし",
+      "noHistory": "履歴なし"
+    }
+  },
+  "upkeep": {
+    "title": "データの更新",
+    "count_other": "{{count}}件",
+    "balancesStale_other": "{{count}}件の残高が1か月以上前のものです",
+    "uncategorized_other": "カテゴリのない支払い{{count}}件",
+    "uncategorizedFrom": "{{account}} · {{date}}の明細から",
+    "accounts_other": "{{count}}口座",
+    "statementDue": "{{bank}}の明細を取り込む時期です",
+    "lastImport": "前回の取り込み {{date}}",
+    "backupStale_other": "最後のバックアップは{{count}}日前",
+    "backupNever": "まだバックアップがありません",
+    "valuationStale": "{{name}}の評価額は1年前のものです",
+    "actions": {
+      "record": "記録",
+      "categorize": "分類",
+      "import": "取り込む",
+      "backup": "バックアップ",
+      "revalue": "再評価"
+    }
+  },
+  "recordBalances": {
+    "title": "残高を記録",
+    "lead": "各口座の現在の残高を入力してください。日付は今日です。",
+    "save": "記録",
+    "saved": "残高を記録しました",
+    "negative": "マイナスの値"
+  },
+  "biometrics": {
+    "titleFace": "Moonyを顔認証でロック解除しますか？",
+    "titleTouch": "Moonyを指紋認証でロック解除しますか？",
+    "titleGeneric": "Moonyを生体認証でロック解除しますか？",
+    "leadFace": "パスワードは引き続きマスターキーです。顔認証はこのスマートフォンでアプリを開くためだけに使われます。",
+    "leadTouch": "パスワードは引き続きマスターキーです。指紋認証はこのスマートフォンでアプリを開くためだけに使われます。",
+    "leadGeneric": "パスワードは引き続きマスターキーです。生体認証はこのスマートフォンでアプリを開くためだけに使われます。",
+    "notNow": "後で",
+    "enable": "オンにする",
+    "enableReason": "生体認証によるロック解除をオンにする",
+    "enabled": "生体認証によるロック解除をオンにしました",
+    "notEnabled": "生体認証によるロック解除はオンになっていません",
+    "unavailable": "現在、生体認証は使用できません。パスワードでロックを解除してください。"
+  }
+}

@@ -1,0 +1,91 @@
+{
+  "tabs": {
+    "overview": "Přehled",
+    "finance": "Finance",
+    "cashflow": "Cashflow",
+    "wealth": "Majetek"
+  },
+  "shell": {
+    "placeholder": "Tato obrazovka se ještě připravuje."
+  },
+  "lock": {
+    "caption": "AES-256 · šifrováno v tomto telefonu",
+    "keySaved": "Klíč mám bezpečně uložený mimo tento telefon",
+    "unlockWithFace": "Odemknout obličejem",
+    "unlockWithTouch": "Odemknout otiskem",
+    "unlockWithBiometrics": "Odemknout biometrií",
+    "usePassword": "Použít heslo",
+    "reason": "Odemknout Moony"
+  },
+  "overview": {
+    "hideAmounts": "Skrýt částky",
+    "showAmounts": "Zobrazit částky",
+    "showAll": "Zobrazit vše",
+    "change": {
+      "30D": "za 30 dní",
+      "90D": "za 3 měsíce",
+      "YTD": "letos",
+      "1Y": "za rok",
+      "5Y": "za 5 let",
+      "All": "od prvního záznamu"
+    },
+    "stats": {
+      "assets": "Aktiva",
+      "freeCash": "Volné peníze",
+      "freeCashNote": "na účtech",
+      "unchanged": "beze změny",
+      "noHistory": "bez historie"
+    }
+  },
+  "upkeep": {
+    "title": "Údržba",
+    "count_one": "{{count}} věc",
+    "count_few": "{{count}} věci",
+    "count_other": "{{count}} věcí",
+    "balancesStale_one": "{{count}} zůstatek starší než měsíc",
+    "balancesStale_few": "{{count}} zůstatky starší než měsíc",
+    "balancesStale_other": "{{count}} zůstatků starších než měsíc",
+    "uncategorized_one": "{{count}} platba bez kategorie",
+    "uncategorized_few": "{{count}} platby bez kategorie",
+    "uncategorized_other": "{{count}} plateb bez kategorie",
+    "uncategorizedFrom": "{{account}} · z výpisu {{date}}",
+    "accounts_one": "{{count}} účet",
+    "accounts_few": "{{count}} účty",
+    "accounts_other": "{{count}} účtů",
+    "statementDue": "Je čas na výpis z {{bank}}",
+    "lastImport": "Poslední import {{date}}",
+    "backupStale_one": "Záloha před {{count}} dnem",
+    "backupStale_few": "Záloha před {{count}} dny",
+    "backupStale_other": "Záloha před {{count}} dny",
+    "backupNever": "Zatím žádná záloha",
+    "valuationStale": "Ocenění {{name}} je rok staré",
+    "actions": {
+      "record": "Zaznamenat",
+      "categorize": "Zařadit",
+      "import": "Importovat",
+      "backup": "Zálohovat",
+      "revalue": "Přecenit"
+    }
+  },
+  "recordBalances": {
+    "title": "Zaznamenat zůstatky",
+    "lead": "Zadejte aktuální zůstatek každého účtu. Datum je dnešní.",
+    "save": "Zaznamenat",
+    "saved": "Zůstatky zaznamenány",
+    "negative": "Záporná hodnota"
+  },
+  "biometrics": {
+    "titleFace": "Odemykat Moony obličejem?",
+    "titleTouch": "Odemykat Moony otiskem?",
+    "titleGeneric": "Odemykat Moony biometrií?",
+    "leadFace": "Heslo zůstává hlavním klíčem. Obličej jen otevírá aplikaci na tomto telefonu.",
+    "leadTouch": "Heslo zůstává hlavním klíčem. Otisk jen otevírá aplikaci na tomto telefonu.",
+    "leadGeneric": "Heslo zůstává hlavním klíčem. Biometrie jen otevírá aplikaci na tomto telefonu.",
+    "notNow": "Teď ne",
+    "enable": "Zapnout",
+    "enableReason": "Zapnout odemykání biometrií",
+    "enabled": "Odemykání biometrií zapnuto",
+    "notEnabled": "Odemykání biometrií nebylo zapnuto",
+    "unavailable": "Biometrie teď není k dispozici, odemkněte heslem."
+  }
+}

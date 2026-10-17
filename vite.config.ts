@@ -178,6 +178,11 @@ export default defineConfig(async ({ mode }) => ({
     },
   },
 
+  // Expose the Tauri CLI's build variables (TAURI_ENV_PLATFORM, ...) next to VITE_*: src/main.tsx
+  // picks the desktop or the phone shell from them. Vite matches a plain prefix with startsWith,
+  // so the Tauri docs' 'TAURI_ENV_*' (a glob) would match nothing.
+  envPrefix: ['VITE_', 'TAURI_ENV_'],
+
   build: {
     // Vite 8 defaults to lightningcss, which fails on this project's CSS
     cssMinify: 'esbuild',

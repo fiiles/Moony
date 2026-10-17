@@ -12,6 +12,7 @@ use crate::models::{
 };
 use crate::services::backup;
 use crate::services::local_api::LocalApiServer;
+use crate::services::session_key::SessionKey;
 
 const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 
@@ -57,12 +58,13 @@ pub async fn inspect_backup(path: String) -> Result<BackupInspection> {
 pub async fn restore_backup(
     app: AppHandle,
     db: State<'_, Database>,
+    session: State<'_, SessionKey>,
     local_api: State<'_, LocalApiServer>,
     path: String,
 ) -> Result<()> {
     let dir = data_dir(&app)?;
     local_api.stop().await;
-    crate::services::auth::logout(&db);
+    crate::services::auth::logout(&db, &session);
     crate::commands::attachments::wipe_open_copies(&app);
     backup::restore_backup(&dir, &PathBuf::from(path), &known_migrations())?;
     Ok(())

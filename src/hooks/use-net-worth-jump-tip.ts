@@ -1,6 +1,7 @@
 import { useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { DatedFact } from '@shared/schema';
+import type { Formatters } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import type { LineTip } from '@/components/charts/MoonyLineChart';
 import type { EventCluster } from '@/utils/chart-scale';
@@ -17,11 +18,13 @@ const TRADE_NAMES_SHOWN = 3;
  * that moved ("Nemovitosti +3,12 mil. Kč · nákup Chlumec"). A class without a dated fact that day
  * gets its change alone (a market move, a payment that arrived). Amounts are compact, in the
  * report currency the line is drawn in; the native amounts of a manual loan balance keep their
- * own currency.
+ * own currency. `formatMoney` replaces `fmt.money` (the phone passes its masking formatter while
+ * amounts are hidden).
  */
-export function useNetWorthJumpTip(currency: string) {
+export function useNetWorthJumpTip(currency: string, formatMoney?: Formatters['money']) {
   const { t } = useTranslation('dashboard');
   const fmt = useFormat();
+  const money = formatMoney ?? fmt.money;
 
   return useCallback(
     (cluster: EventCluster<JumpEvent>): LineTip => {
@@ -31,12 +34,12 @@ export function useNetWorthJumpTip(currency: string) {
         Math.abs(b.jump.delta) > Math.abs(a.jump.delta) ? b : a
       );
       const signed = (value: number) =>
-        fmt.money(value, currency, { signed: true, compact: true, decimals: 2 });
+        money(value, currency, { signed: true, compact: true, decimals: 2 });
       const native = (value: string | null, code: string | null): string | null => {
         const parsed = amountOf(value);
         return parsed === null
           ? null
-          : fmt.money(parsed, code ?? currency, { compact: true, decimals: 2 });
+          : money(parsed, code ?? currency, { compact: true, decimals: 2 });
       };
 
       const factText = (fact: DatedFact): string => {
@@ -86,6 +89,6 @@ export function useNetWorthJumpTip(currency: string) {
         lines: [fmt.day(jump.t), ...jump.parts.map(partLine)],
       };
     },
-    [t, fmt, currency]
+    [t, fmt, currency, money]
   );
 }

@@ -1,0 +1,18 @@
+{
+  "$schema": "../gen/schemas/mobile-schema.json",
+  "identifier": "mobile",
+  "description": "Capability for the main window on iOS and Android. Same file-access stance as the desktop capability (the webview gets no filesystem access to the app data dir; attachments arrive through the moony-file scheme), plus the phone hardware plugins: haptics, local notifications, and the in-repo keychain behind biometric unlock (its default set grants status and the privacy screen only; the stored DB key stays on the Rust side). No updater and no process plugin: the app stores ship updates.",
+  "windows": ["main"],
+  "platforms": ["iOS", "android"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-show",
+    "opener:default",
+    "log:default",
+    "dialog:default",
+    "fs:deny-default",
+    "haptics:default",
+    "notification:default",
+    "moony-keychain:default"
+  ]
+}

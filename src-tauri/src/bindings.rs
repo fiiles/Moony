@@ -19,6 +19,10 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::UpdateUserProfile>();
     types.register::<crate::models::InsertUserProfile>();
 
+    // Biometric unlock (phone lock screen)
+    types.register::<crate::models::BiometricStatus>();
+    types.register::<crate::models::BiometryType>();
+
     // Investment models
     types.register::<crate::models::StockInvestment>();
     types.register::<crate::models::EnrichedStockInvestment>();

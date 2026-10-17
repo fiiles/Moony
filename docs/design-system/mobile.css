@@ -149,6 +149,9 @@
   border-radius: 50%; background: var(--hero-orb); pointer-events: none;
 }
 .m-card--hero > * { position: relative; z-index: 1; }
+/* The compact hero (Finance, spec §8.4): number and change line only, no segment and no chart, so
+   the card ends 14 px under the change line instead of 12 under a chart. */
+.m-card--compact { padding-bottom: 14px; }
 .m-hero__label { color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); }
 .m-hero__value {
   margin: 3px 0 6px; overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap;
@@ -160,7 +163,7 @@
 .m-hero__seg { margin: 12px 0 8px; }
 .m-hero__chart { display: block; width: 100%; height: 160px; }
 
-/* ===== Stat row: three (or two) stats; value 17, label 11, note 10 =====
+/* ===== Stat row: three (or two, or one) stats; value 17, label 11, note 10 =====
    A label may wrap (hyphenated, German runs long); the value and the note sit at the bottom so
    the values stay on one line across the row. The value keeps 17 px down to the content box of a
    third at the 390 pt reference (86 px) and then shrinks with the card (19.7 cqi, floor 12 px), as the
@@ -168,6 +171,7 @@
    17 px ("6,78 mil.", "214 380"); a longer amount goes in a row of two. */
 .m-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
 .m-stats--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.m-stats--1 { grid-template-columns: minmax(0, 1fr); } /* the one stat that has data (the account detail) */
 .m-stat {
   container-type: inline-size; display: flex; flex-direction: column; min-width: 0; padding: 10px 12px;
   border: 1px solid var(--line); border-radius: var(--r-3);
@@ -233,6 +237,15 @@
 }
 .m-row__s { flex: 1 1 auto; color: var(--ink-4); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; }
 .m-row__s .m-badge { height: 18px; padding: 0 6px; vertical-align: 1px; }
+/* A badge inside a row's title ("Vyloučeno" after an account's name): 18 px, 11 / 600 `ink-3` on
+   `well-2`, set 6 px after the name; the title still ends with an ellipsis. Its text line is the
+   badge's full 18 px, so a caron above a capital ("Čekající") stays whole where the row's line clips
+   at the badge's edges; never `overflow: hidden` on the text. */
+.m-row__badge {
+  display: inline-flex; align-items: center; height: 18px; margin-left: 6px; padding: 0 6px;
+  border-radius: var(--r-1); background: var(--well-2); color: var(--ink-3);
+  font-size: var(--m-fs-caption); font-weight: 600; line-height: 18px; vertical-align: 2px;
+}
 .m-row__v {
   flex: none; max-width: 60%; margin-left: auto; color: var(--ink); /* an absurd value never squeezes the title away */
   font-size: var(--m-fs-row); font-weight: var(--m-fw-row); letter-spacing: var(--m-ls-row); line-height: 1.3;
@@ -294,6 +307,13 @@
   transition: background var(--t-fast), color var(--t-fast);
 }
 .m-seg__btn.is-active { background: var(--paper); box-shadow: var(--sh-seg); color: var(--ink); }
+
+/* ===== Trend card ("Vývoj hotovosti", spec §8.4): a section head, then a card with the period
+   segment and a 120 px chart (the hero's is 160). While a finger scrubs, the head's number
+   (`.m-sec__n`) shows that day's value and date. ===== */
+.m-trend { padding: 12px 16px 8px; }
+.m-trend .m-seg { margin: 0 0 8px; }
+.m-trend__chart { display: block; width: 100%; height: 120px; }
 
 /* ===== Údržba card (prototype frame 02, note 2) =====
    An action card on `well` (`.m-card--well`), first on Přehled, present only while something is due
@@ -432,6 +452,177 @@
 }
 .m-sheet__foot .m-btn--primary { flex: 1; }
 
+/* ===== Account detail (spec §8.4, prototype frame 04, note 8) ===== */
+
+/* The line under a pushed screen's nav bar ("Fio · CZK · 2100123456/2010"): the bar keeps one 20 px
+   title, so the account's bank, currency and number are the first line of the body, 11 / 500
+   `ink-3`, centred, one line that ends with an ellipsis. */
+.m-nav__sub {
+  margin: -2px 2px 10px; overflow: hidden; color: var(--ink-3); text-align: center; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.35;
+}
+
+/* Flows strip ("Toky"): 12 months in a card, one 44 px wide button per month, newest at the right.
+   Each column is the 110 px bar area (incoming `s1` and outgoing `s3` side by side, 10 px wide,
+   2 px apart, radius 2, scaled to the strip's largest month) over the month's bare short name 10 / 500
+   `ink-4` ("Úno", never "únor 2026": with a year Czech writes the long month); January carries its
+   two-digit year as a second line ("26"). A label ends with an ellipsis rather than outgrow its
+   column. The strip scrolls sideways and opens at its end; the page never does. The months other
+   than the selected one fade to 45 % (`.is-muted`). */
+.m-flows { display: flex; overflow-x: auto; overscroll-behavior-x: contain; scrollbar-width: none; }
+.m-flows::-webkit-scrollbar { display: none; }
+.m-flows__col {
+  display: flex; flex: none; flex-direction: column; align-items: center; width: 44px; min-height: 44px; padding: 4px 0 0;
+  border: 0; border-radius: 10px; background: none; color: inherit; font: inherit;
+  transition: opacity var(--t-fast); -webkit-touch-callout: none;
+}
+.m-flows__col.is-muted { opacity: .45; }
+.m-flows__bars { display: flex; align-items: flex-end; gap: 2px; height: 110px; }
+.m-flows__bar { width: 10px; border-radius: 2px; }
+.m-flows__bar--in { background: var(--s1); }
+.m-flows__bar--out { background: var(--s3); }
+.m-flows__l {
+  max-width: 100%; margin-top: 4px; overflow: hidden; color: var(--ink-4); text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--fs-micro); font-weight: 500; line-height: 1.4;
+}
+.m-flows__l + .m-flows__l { margin-top: 0; } /* January's year under its name */
+
+/* Search field: 44 px on `well-2`, radius 12, the 16 px magnifier `ink-4` on the left, a 44 px clear
+   button on the right while there is text. */
+.m-search { position: relative; margin-bottom: 10px; }
+.m-search__i {
+  display: block; width: 100%; height: 44px; padding: 0 40px; border: 0; border-radius: 12px; background: var(--well-2);
+  color: var(--ink); font: inherit; font-size: var(--m-fs-body); -webkit-appearance: none; appearance: none;
+}
+.m-search__i::placeholder { color: var(--ink-4); }
+.m-search__i:focus-visible { outline: 0; box-shadow: var(--focus-ring); }
+.m-search__ic { position: absolute; top: 50%; left: 12px; width: 16px; height: 16px; color: var(--ink-4); transform: translateY(-50%); pointer-events: none; }
+.m-search__clear {
+  position: absolute; top: 0; right: 0; display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; padding: 0; border: 0; border-radius: 12px; background: none; color: var(--ink-4);
+}
+
+/* The ledger's toolbar: the segment takes the row, the filter button sits at its end. */
+.m-toolbar { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.m-toolbar .m-seg { flex: 1; min-width: 0; }
+/* A 44 px icon button on paper (the filter): `line-strong`, radius 12, a 20 px icon; a 6 px dot of
+   `dark` while a filter in the sheet is on. */
+.m-iconbtn {
+  position: relative; display: inline-flex; flex: none; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0;
+  border: 1px solid var(--line-strong); border-radius: 12px; background: var(--paper); box-shadow: var(--sh-btn); color: var(--ink);
+}
+.m-iconbtn svg { width: 20px; height: 20px; stroke-width: 1.75; }
+.m-iconbtn__dot { position: absolute; top: 8px; right: 8px; width: 6px; height: 6px; border-radius: 50%; background: var(--dark); }
+
+/* Day head of the ledger ("Heute", "Gestern", "14. Okt."): 11 / 600 uppercase `ink-3`, sticky at the top
+   of the scroll area while its day's rows pass under it; it reaches the screen edges on `canvas`,
+   which hides the rows sliding under it, and sits above the rows' dividers (z 3). */
+.m-dayhead {
+  position: sticky; top: 0; z-index: 3; margin: 0 -16px; padding: 12px 18px 6px; background: var(--canvas);
+  color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: 600; letter-spacing: .06em; line-height: 1.35; text-transform: uppercase;
+}
+/* A badge in a ledger row's sub-line ("Ohne Kategorie", "Vorgemerkt", "Erstattung"): the row badge
+   without its leading gap. */
+.m-row__s .m-row__badge { margin-left: 0; vertical-align: 1px; }
+
+/* A radio row of a picker sheet (the ledger filter: category, period): 44 px, an optional 28 px chip,
+   the label 15 / 450 (ellipsis), a check on the chosen one; rows `line-soft` apart. */
+.m-pick {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 6px 4px;
+  border: 0; background: none; color: var(--ink); font: inherit; font-size: var(--m-fs-body); text-align: left;
+}
+.m-pick + .m-pick { border-top: 1px solid var(--line-soft); }
+.m-pick:active { background: var(--well); }
+.m-pick__chip { display: grid; flex: none; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--well-2); color: var(--ink-3); }
+.m-pick__l { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-pick__check { flex: none; width: 18px; height: 18px; }
+
+/* ===== Transaction sheet and category picker (spec §8.4) ===== */
+
+/* The amount of the transaction sheet: the display number on one line (a long figure shrinks to fit in
+   the app, it never wraps), signed and in its own currency, a credit in `gain`. */
+.m-sheet__amount {
+  padding: 4px 4px 8px; overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums;
+  font-size: var(--m-fs-display); font-weight: var(--m-fw-display); letter-spacing: var(--m-ls-display); line-height: 1.05;
+}
+.m-sheet__amount--gain { color: var(--gain); }
+
+/* A label and its value (the transaction sheet): 44 px at least, rows `line-soft` apart. The label is
+   12 / 500 `ink-3` at the left (it wraps, up to 40 % of the row); the value (`__r`) 15 / 450 `ink` at the
+   right, one line that ends with an ellipsis, with a 11 `ink-4` line under it (`__s`). `--tap` makes
+   the row a button that opens a picker (Kategorie): `well` while pressed and a 16 px `ink-5` chevron
+   (`__chev`) — the one chevron on a row that has a value, as a settings row has. `--stack` puts the
+   label over a value that takes the row's width and wraps (the note, the meaning segment). */
+.m-kv {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 8px 4px;
+  border: 0; background: none; color: inherit; font: inherit; text-align: left;
+}
+.m-kv + .m-kv { border-top: 1px solid var(--line-soft); }
+.m-kv--tap:active { background: var(--well); }
+.m-kv--stack { align-items: flex-start; }
+.m-kv__l { flex: none; max-width: 40%; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; overflow-wrap: break-word; hyphens: auto; }
+.m-kv__r { flex: 1; min-width: 0; text-align: right; }
+.m-kv__v { overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; font-size: var(--m-fs-body); font-weight: var(--m-fw-body); line-height: 1.45; font-variant-numeric: tabular-nums; }
+.m-kv__s { margin-top: 0; overflow: hidden; color: var(--ink-4); text-overflow: ellipsis; white-space: nowrap; font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.35; }
+.m-kv--stack .m-kv__r { text-align: left; }
+.m-kv--stack .m-kv__l { display: block; max-width: none; }
+.m-kv--stack .m-kv__v { margin-top: 4px; overflow: visible; text-overflow: clip; white-space: pre-line; overflow-wrap: break-word; hyphens: auto; }
+.m-kv--stack .m-kv__s { margin-top: 4px; white-space: normal; }
+.m-kv__chev { flex: none; width: 16px; height: 16px; color: var(--ink-5); }
+
+/* The "Podrobnosti" fold row under the sheet's rows: 44 px, the label 15 / 600 `ink-2`, a 16 px `ink-4`
+   chevron down (folded) or up (open) at the end; `aria-expanded` says which. The rows it folds are `.m-kv`. */
+.m-disclose {
+  display: flex; align-items: center; justify-content: space-between; width: 100%; min-height: 44px; padding: 8px 4px;
+  border: 0; background: none; color: var(--ink-2); font: inherit; font-size: var(--m-fs-body); font-weight: 600; text-align: left;
+}
+.m-disclose:active { background: var(--well); }
+.m-disclose svg { width: 16px; height: 16px; color: var(--ink-4); }
+
+/* A setting with a switch (the picker's learning options): 44 px at least, the label 15 / 450 `ink` and a
+   12 `ink-4` sentence under it (it wraps) at the left, the 34 × 20 switch (`__sw`, dark material when on) at the
+   right; the whole row is the label, so a tap anywhere toggles it. A switch that cannot be on is `aria-disabled`
+   at 45 % with the reason in the sentence. */
+.m-switchrow { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 8px 4px; }
+.m-switchrow__main { flex: 1; min-width: 0; }
+.m-switchrow__t { display: block; color: var(--ink); font-size: var(--m-fs-body); font-weight: var(--m-fw-body); line-height: 1.45; }
+.m-switchrow__s { display: block; margin-top: 2px; color: var(--ink-4); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; }
+.m-switchrow__sw { position: relative; flex: none; width: 34px; height: 20px; border-radius: 10px; background: var(--well-3); transition: background var(--t-base); }
+.m-switchrow__sw::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--paper);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, .2); transition: transform var(--t-base) var(--ease);
+}
+.m-switchrow__sw[aria-checked="true"] { background: var(--dark); }
+.m-switchrow__sw[aria-checked="true"]::after { transform: translateX(14px); }
+.m-switchrow__sw[aria-disabled="true"] { opacity: .45; }
+
+/* The learning options under the picker's list: pinned to the bottom of the sheet's body, so they are
+   in view however long the list, edge to edge on paper with a hairline above. While the search has text
+   they stop being pinned and follow the (short) list: with the keyboard up the list needs the room. The
+   notes in it (the rule that decides, "Checking other payments…") are 12 `ink-3` and 11 `ink-4`. */
+.m-learn { position: sticky; bottom: 0; margin: 8px -16px -14px; padding: 4px 16px 6px; border-top: 1px solid var(--line); background: var(--paper); }
+.m-learn__n { margin: 6px 4px 0; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; }
+.m-learn__n--check { margin: 4px 4px; color: var(--ink-4); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); }
+
+/* The category the MCP client suggested, in the picker: a 36 px pill (radius 10, dashed `line-strong`
+   on paper) with the sparkles, the category's 24 px chip and its name — a tap accepts it; its hit area
+   reaches 44 px like a small button's. Beside it a 44 px × (`__x`) declines. `.m-pill-row` holds both. */
+.m-pill-row { display: flex; align-items: center; gap: 4px; padding: 4px 0; }
+.m-pill {
+  position: relative; display: inline-flex; align-items: center; gap: 8px; min-width: 0; height: 36px; padding: 0 12px 0 10px;
+  border: 1px dashed var(--line-strong); border-radius: 10px; background: var(--paper); color: var(--ink-2);
+  font: inherit; font-size: var(--m-fs-sub); font-weight: 600; white-space: nowrap;
+}
+.m-pill::after { content: ""; position: absolute; inset: -4px 0; }
+.m-pill:active { background: var(--well); }
+.m-pill > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.m-pill svg { flex: none; width: 14px; height: 14px; color: var(--ink-3); }
+.m-pill__chip { display: grid; flex: none; place-items: center; width: 24px; height: 24px; border-radius: 50%; }
+.m-pill__chip svg { width: 14px; height: 14px; color: inherit; }
+.m-pill__x { display: inline-flex; flex: none; align-items: center; justify-content: center; width: 44px; height: 44px; padding: 0; border: 0; border-radius: 12px; background: none; color: var(--ink-3); }
+.m-pill__x:active { color: var(--loss); }
+.m-pill__x svg { width: 16px; height: 16px; }
+
 @media (prefers-reduced-motion: no-preference) {
   @keyframes m-sheet-in { from { transform: translateY(100%); } }
   @keyframes m-scrim-in { from { opacity: 0; } }
@@ -439,5 +630,5 @@
   .m-scrim { animation: m-scrim-in var(--t-base) var(--ease); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .m-nav, .m-nav__title, .m-seg__btn, .m-swipe > .m-row { transition: none; }
+  .m-nav, .m-nav__title, .m-seg__btn, .m-swipe > .m-row, .m-flows__col { transition: none; }
 }

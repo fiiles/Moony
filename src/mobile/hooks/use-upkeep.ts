@@ -1,9 +1,7 @@
-import { useQueries, useQuery } from '@tanstack/react-query';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useMilestones } from '@/hooks/use-milestones';
-import { useCurrency } from '@/lib/currency';
-import { bankAccountsApi, cashflowApi } from '@/lib/tauri-api';
 import { utcDayFloor } from '@/utils/chart-axis';
+import { useLastImports, useUncategorizedAll } from '@/mobile/hooks/use-account-upkeep';
 import { buildUpkeepRows, type UpkeepRow } from '@/mobile/lib/upkeep';
 
 export interface Upkeep {
@@ -29,38 +27,12 @@ export interface Upkeep {
 export function useUpkeep(): Upkeep {
   const { data: milestones = [], isPending: milestonesPending } = useMilestones();
   const { accounts, isLoading: accountsLoading } = useBankAccounts();
-  const { currencyCode } = useCurrency();
-
-  const imports = useQueries({
-    queries: accounts.map((account) => ({
-      queryKey: ['import-batches', account.id],
-      queryFn: () => bankAccountsApi.getImportBatches(account.id),
-      staleTime: 0,
-    })),
-  });
-  const uncategorizedEnd = utcDayFloor(Date.now() / 1000) + 86400 - 1;
-  const uncategorized = useQuery({
-    queryKey: ['bank-transactions', 'uncategorized-all', currencyCode, uncategorizedEnd],
-    queryFn: () =>
-      cashflowApi.getTransactions(0, uncategorizedEnd, {
-        categoryId: 'uncategorized',
-        reportCurrency: currencyCode,
-      }),
-  });
+  const { lastImportByAccount, isPending: importsPending } = useLastImports(accounts);
+  const uncategorized = useUncategorizedAll();
 
   const ready =
-    !milestonesPending &&
-    !accountsLoading &&
-    !uncategorized.isPending &&
-    imports.every((q) => !q.isPending);
+    !milestonesPending && !accountsLoading && !uncategorized.isPending && !importsPending;
 
-  const lastImportByAccount: Record<string, number | null> = {};
-  accounts.forEach((account, i) => {
-    const batches = imports[i]?.data ?? [];
-    lastImportByAccount[account.id] = batches.length
-      ? Math.max(...batches.map((b) => b.importedAt))
-      : null;
-  });
   const payments = uncategorized.data ?? [];
   const withPayments = [...new Set(payments.map((payment) => payment.bankAccountId))];
 

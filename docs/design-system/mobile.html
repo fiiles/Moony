@@ -60,7 +60,7 @@
   <header class="doc-head">
     <div class="m-t-eyebrow">Design systém · mobilní vrstva · 16. října 2026</div>
     <h1>Moony na telefonu</h1>
-    <p>Komponenty telefonu z <code>mobile.css</code> na tokenech z <code>tokens.css</code>: obrazovka s navigační lištou a jednou posuvnou plochou, tab bar, Údržba, hero, řádek statistik, entitní řádky (i s datovým čipem a panelem přejetí), rozložení majetku, segment, pole, tlačítka a sheet. React shell v <code>src/mobile/</code> jim odpovídá vizuálně. Rámečky mají šířky 360 (nejužší běžný Android), 390 (reference) a 430 pt s bezpečnými okraji daného zařízení; texty jsou německy, protože němčina běží nejdéle.</p>
+    <p>Komponenty telefonu z <code>mobile.css</code> na tokenech z <code>tokens.css</code>: obrazovka s navigační lištou a jednou posuvnou plochou, tab bar, Údržba, hero (i kompaktní), řádek statistik, entitní řádky (i s datovým čipem, štítkem v názvu a panelem přejetí), rozložení majetku, segment, karta vývoje, pole, tlačítka a sheet. React shell v <code>src/mobile/</code> jim odpovídá vizuálně. Rámečky mají šířky 360 (nejužší běžný Android), 390 (reference) a 430 pt s bezpečnými okraji daného zařízení; texty jsou německy, protože němčina běží nejdéle.</p>
     <p>Pod každým rámečkem je výsledek kontroly vodorovného přetečení (nic nesmí přesáhnout obrazovku, posuvná plocha se nesmí posouvat do stran) a seznam textů, které se zkrátí výpustkou. Obrazovky se dají posouvat: velký titulek se po odjetí složí do navigační lišty.</p>
   </header>
 
@@ -85,6 +85,18 @@
     <h2>Kořen záložky na třech šířkách</h2>
     <p>Stejný obsah na 360, 390 a 430: velký titulek, hero, tři statistiky, řádky s hodnotou (bez šipky), řádek tmavého vstupu, řádky nastavení se šipkou, dvojice tlačítek a tab bar.</p>
     <div class="phones" id="roots"></div>
+  </section>
+
+  <section class="part">
+    <h2>Finance na třech šířkách</h2>
+    <p>Kořen záložky Finance (spec §8.4): kompaktní hero bez segmentu a grafu (<code>.m-card--compact</code>), tmavý řádek nezařazených plateb, čtyři účty se třemi druhy podřádku vpravo (změna za 30 dní, ekvivalent v hlavní měně, stáří výpisu nebo zůstatku) a štítkem „Ausgeschlossen“ v názvu (<code>.m-row__badge</code>), úvěry a pojistky s jediným číslem v hlavičce sekce (<code>.m-sec__n</code>) a karta vývoje hotovosti s grafem 120 pt (<code>.m-trend</code>).</p>
+    <div class="phones" id="finance"></div>
+  </section>
+
+  <section class="part">
+    <h2>Detail účtu na třech šířkách</h2>
+    <p>Detail bankovního účtu (spec §8.4, prototyp 04): zpět, titulek a pod lištou řádek banka · měna · číslo (<code>.m-nav__sub</code>), dvojice tlačítek, hero se schodovou čarou záznamů zůstatku, dvě statistiky, pás toků za 12 měsíců (<code>.m-flows</code>, posouvá se do stran a otevírá se na konci; stránka se do stran neposouvá), hledání (<code>.m-search</code>), lišta se segmentem a tlačítkem filtru s tečkou (<code>.m-toolbar</code>, <code>.m-iconbtn</code>), dvě skupiny pohybů pod lepícími hlavičkami dne (<code>.m-dayhead</code>) se štítky v podřádku a jeden řádek přejetý doleva na „Kategorie“. Pod rámečky je řádek výběrového sheetu filtru (<code>.m-pick</code>).</p>
+    <div class="phones" id="details"></div>
   </section>
 
   <section class="part">
@@ -193,6 +205,51 @@
     <p>Sheet nad obrazovkou: tab bar pod scrimem, držadlo, titulek, jedna věta, pole <code>.m-field</code> (štítek, 48 pt pole, měna uvnitř vpravo, placeholder je poslední zůstatek; druhé pole je vyplněné, třetí s chybou, čtvrté se zapnutým přepínačem ±) a patička na <code>well</code> s tlačítkem Zrušit vlevo a hlavní akcí vpravo. V aplikaci sheet zavírá klepnutí na scrim, Zrušit a Android zpět.</p>
     <div class="phones" id="sheets"></div>
   </section>
+
+  <section class="part">
+    <h2>Transakce a výběr kategorie</h2>
+    <p>Sheet transakce (spec §8.4): celá výška, protistrana jako titulek a pod ní datum, částka v display písmu na jednom řádku (<code>.m-sheet__amount</code>), řádky štítek–hodnota (<code>.m-kv</code>; Kategorie je tlačítko s šipkou <code>.m-kv--tap</code>, výjimka pro řádky nastavení), segment Významu pohybu s tím, co z „Automatisch“ vychází, poznámka (<code>.m-kv--stack</code>) a rozbalené „Details“ (<code>.m-disclose</code>) s dlouhým názvem souboru zkráceným výpustkou. V patičce text Smazat vlevo a hlavní Hotovo vpravo. Segment má v němčině čtyři dlouhé popisky, takže se posouvá do stran.</p>
+    <div class="phones" id="txsheets"></div>
+    <p style="margin-top: 26px">Výběr kategorie: půlsheet s hledáním, návrhovou pilulkou (<code>.m-pill</code>), naposledy použitými a všemi kategoriemi (<code>.m-pick</code>, aktuální zatržená), akčním řádkem „Neue Kategorie“ a dvěma přepínači učení (<code>.m-switchrow</code>) přišpendlenými ke dnu těla (<code>.m-learn</code>), takže jsou vidět u každého seznamu.</p>
+    <div class="phones" id="pickers"></div>
+  </section>
+
+  <section class="part">
+    <h2>Řádky výběru ve filtru</h2>
+    <p>Sheet filtru pohybů (<code>.m-pick</code>): 44 pt, 28 pt čip, popisek s výpustkou, zatržítko u zvoleného; řádky odděluje <code>line-soft</code>. Obdobně „Období“ bez čipů a pod „Vlastní“ dvě 48 pt pole s datem (<code>.m-field__i</code>).</p>
+    <div class="phones">
+      <div class="frame" style="--w: 360px">
+        <div class="frame__cap"><b>360 · filtr</b><span>kategorie a období</span><output class="frame__check"></output></div>
+        <div class="phone phone--android" style="height: 600px"><div class="m-screen" lang="de">
+          <header class="m-nav">
+            <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+            <h1 class="m-nav__title">Girokonto</h1>
+            <div class="m-nav__side m-nav__side--end"></div>
+          </header>
+          <main class="m-screen__body"></main>
+          <div class="m-scrim"></div>
+          <div class="m-sheet" role="dialog" aria-modal="true" aria-label="Filter">
+            <div class="m-sheet__handle"></div>
+            <div class="m-sheet__head"><div class="m-sheet__t">Filter</div></div>
+            <div class="m-sheet__body">
+              <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Kategorie</div>
+              <div role="radiogroup" aria-label="Kategorie">
+                <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" data-icon="layers" data-size="15"></span><span class="m-pick__l">Alle</span></button>
+                <button class="m-pick" type="button" role="radio" aria-checked="true"><span class="m-pick__chip" data-icon="tag" data-size="15"></span><span class="m-pick__l">Nicht kategorisiert</span><span class="m-pick__check" data-icon="check" data-size="18"></span></button>
+                <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" data-icon="receipt" data-size="15"></span><span class="m-pick__l">Lebensmittel und Haushaltswaren</span></button>
+              </div>
+              <div class="m-t-sub" style="margin: 16px 4px 2px; color: var(--ink-3); font-weight: 600">Zeitraum</div>
+              <div role="radiogroup" aria-label="Zeitraum">
+                <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__l">Dieser Monat</span></button>
+                <button class="m-pick" type="button" role="radio" aria-checked="true"><span class="m-pick__l">Benutzerdefiniert</span><span class="m-pick__check" data-icon="check" data-size="18"></span></button>
+              </div>
+            </div>
+            <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Zurücksetzen</span></button><button class="m-btn m-btn--primary" type="button"><span>Anwenden</span></button></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+  </section>
 </div>
 
 <!-- The tab-root frame, rendered at the three widths by the script below. -->
@@ -267,6 +324,90 @@
   </div>
 </template>
 
+<!-- The Finance tab root, rendered at the three widths by the script below. -->
+<template id="finance-frame" data-variant="finance">
+  <div class="m-screen" lang="de">
+    <header class="m-nav m-nav--large">
+      <div class="m-nav__side"></div>
+      <div class="m-nav__title" aria-hidden="true">Finanzen</div>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Hinzufügen" data-icon="plus"></button><button class="m-nav__btn" type="button" aria-label="Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <h1 class="m-title-lg">Finanzen</h1>
+      <p class="m-title-sub">4 Konten · 1 Kredit · 3 Versicherungen</p>
+      <div class="m-card m-card--hero m-card--compact">
+        <div class="m-hero__label">Gesamt auf Konten</div>
+        <div class="m-hero__value">214&nbsp;380 Kč</div>
+        <div class="m-hero__delta"><span class="m-badge m-badge--gain">▲ 6,1 %</span><span>+ 12&nbsp;400 Kč in 30 Tagen</span></div>
+      </div>
+      <div class="m-rows">
+        <a class="m-row m-row--chev" href="#"><div class="m-row__chip m-row__chip--dark" data-icon="tag" data-size="16"></div><div class="m-row__main"><div class="m-row__line"><span class="m-row__t">Nicht kategorisierte Zahlungen</span><span class="m-row__v">12</span></div><div class="m-row__line"><span class="m-row__s">Fio Girokonto · aus dem Auszug vom 10. 10.</span></div></div><span class="m-row__chev" data-icon="chevron-right" data-size="16"></span></a>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Konten</span></div>
+      <div data-rows="financeAccounts"></div>
+      <div class="m-sec"><span class="m-sec__t">Kredite</span><span class="m-sec__n">Restschuld 2&nbsp;418&nbsp;760 Kč</span></div>
+      <div data-rows="financeLoans"></div>
+      <div class="m-sec"><span class="m-sec__t">Versicherungen</span><span class="m-sec__n">31&nbsp;400 Kč pro Jahr</span></div>
+      <div data-rows="financePolicies"></div>
+      <div class="m-sec"><span class="m-sec__t">Bargeld im Zeitverlauf</span><span class="m-sec__n">in 30 Tagen</span></div>
+      <div class="m-card m-trend">
+        <div class="m-seg"><button class="m-seg__btn is-active" type="button">30 Tage</button><button class="m-seg__btn" type="button">3 Monate</button><button class="m-seg__btn" type="button">Dieses Jahr</button><button class="m-seg__btn" type="button">1 Jahr</button><button class="m-seg__btn" type="button">Alle</button></div>
+        <svg class="m-trend__chart demo-chart" data-chart></svg>
+      </div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+  </div>
+</template>
+
+<!-- The account detail, rendered at the three widths by the script below. -->
+<template id="detail-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Girokonto</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Fio · CZK · 2100123456/2010</p>
+      <div class="m-btn-pair">
+        <button class="m-btn m-btn--primary" type="button" data-icon="pencil" data-size="16"><span>Kontostand erfassen</span></button>
+        <button class="m-btn m-btn--secondary" type="button" data-icon="upload" data-size="16"><span>Kontoauszug importieren</span></button>
+      </div>
+      <div class="m-card m-card--hero">
+        <div class="m-hero__label">Saldo zum 10.10.2026</div>
+        <div class="m-hero__value">86&nbsp;420 Kč</div>
+        <div class="m-hero__delta"><span class="m-badge m-badge--gain">▲ 12,9 %</span><span>+ 9&nbsp;870 Kč in 30 Tagen</span></div>
+        <div class="m-hero__seg"><div class="m-seg"><button class="m-seg__btn" type="button">30 Tage</button><button class="m-seg__btn" type="button">3 Monate</button><button class="m-seg__btn" type="button">Dieses Jahr</button><button class="m-seg__btn is-active" type="button">1 Jahr</button><button class="m-seg__btn" type="button">Alle</button></div></div>
+        <svg class="m-hero__chart demo-chart" data-chart="step"></svg>
+      </div>
+      <div class="m-stats m-stats--2">
+        <div class="m-stat"><div class="m-stat__l">Änderung in diesem Jahr</div><div class="m-stat__v">+ 21&nbsp;300 Kč</div><div class="m-stat__n">gegenüber dem Eintrag vom 31.12.2025</div></div>
+        <div class="m-stat"><div class="m-stat__l">Durchschnitt pro Monat</div><div class="m-stat__v">+ 1&nbsp;775 Kč</div><div class="m-stat__n">in den letzten 12 Monaten</div></div>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Geldflüsse</span><span class="m-sec__n">Oktober 2026</span></div>
+      <div class="m-card">
+        <div class="m-flows" role="group" aria-label="Geldflüsse" data-flows="58,52|61,49|57,63|60,44|59,55|72,51|58,47|60,66|58,49|61,58|59,53|58,32"></div>
+        <p class="m-t-caption" style="margin: 8px 0 0">+ 61&nbsp;200 Kč Eingang · − 31&nbsp;980 Kč Ausgang · 41 Bewegungen</p>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Umsätze</span><span class="m-sec__n">41 Umsätze</span></div>
+      <div class="m-search"><span class="m-search__ic" data-icon="search" data-size="16"></span><input class="m-search__i" type="search" placeholder="Nach Gegenpartei oder Beschreibung suchen" aria-label="Nach Gegenpartei oder Beschreibung suchen"></div>
+      <div class="m-toolbar">
+        <div class="m-seg"><button class="m-seg__btn is-active" type="button">Alle</button><button class="m-seg__btn" type="button">Eingänge</button><button class="m-seg__btn" type="button">Ausgänge</button></div>
+        <button class="m-iconbtn" type="button" aria-label="Filter (1)" data-icon="list-filter" data-size="20"><span class="m-iconbtn__dot"></span></button>
+      </div>
+      <div>
+        <div class="m-dayhead">Heute</div>
+        <div data-rows="ledgerToday"></div>
+      </div>
+      <div>
+        <div class="m-dayhead">Gestern</div>
+        <div data-rows="ledgerYesterday"></div>
+      </div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+  </div>
+</template>
+
 <!-- The sheet frame, rendered at the three widths. -->
 <template id="sheet-frame">
   <div class="m-screen" lang="de">
@@ -296,6 +437,105 @@
   </div>
 </template>
 
+<!-- The transaction sheet over the ledger, at the three widths. -->
+<template id="tx-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Girokonto</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Fio · CZK · 2100123456/2010</p>
+      <div data-rows="ledgerToday"></div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Alza.cz a.s.">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Alza.cz a.s.</div><div class="m-sheet__s">14. Oktober 2026</div></div>
+      <div class="m-sheet__body">
+        <div class="m-sheet__amount">− 4&nbsp;590 Kč</div>
+        <div>
+          <div class="m-kv"><span class="m-kv__l">Gegenpartei</span><div class="m-kv__r"><div class="m-kv__v">Alza.cz a.s.</div><div class="m-kv__s">2400312567/2010</div></div></div>
+          <div class="m-kv"><span class="m-kv__l">Datum</span><div class="m-kv__r"><div class="m-kv__v">14. 10. 2026</div></div></div>
+          <button class="m-kv m-kv--tap" type="button"><span class="m-kv__l">Kategorie</span><div class="m-kv__r"><div class="m-kv__v">Ohne Kategorie</div></div><span class="m-kv__chev" data-icon="chevron-right" data-size="16"></span></button>
+          <div class="m-kv m-kv--stack"><div class="m-kv__r">
+            <span class="m-kv__l">Bedeutung</span>
+            <div class="m-kv__v"><div class="m-seg" role="group" aria-label="Bedeutung"><button class="m-seg__btn is-active" type="button">Automatischer Fluss</button><button class="m-seg__btn" type="button">Einnahme</button><button class="m-seg__btn" type="button">Ausgabe</button><button class="m-seg__btn" type="button">Geldumbuchung</button></div></div>
+            <div class="m-kv__s">Ausgabe · Richtung der Bewegung</div>
+          </div></div>
+          <div class="m-kv m-kv--stack"><div class="m-kv__r"><span class="m-kv__l">Notiz</span><div class="m-kv__v">Bestellung 2201983&#10;Webshop Alza.cz, Lieferung Praha 4</div></div></div>
+        </div>
+        <button class="m-disclose" type="button" aria-expanded="true"><span>Details</span><span data-icon="chevron-up" data-size="16"></span></button>
+        <div>
+          <div class="m-kv"><span class="m-kv__l">Bank-ID</span><div class="m-kv__r"><div class="m-kv__v">TX-20261014-00481</div></div></div>
+          <div class="m-kv"><span class="m-kv__l">Wertstellung</span><div class="m-kv__r"><div class="m-kv__v">15. 10. 2026</div></div></div>
+          <div class="m-kv"><span class="m-kv__l">Datei</span><div class="m-kv__r"><div class="m-kv__v">fio-kontoauszug-oktober-2026-vollstaendig.csv</div></div></div>
+          <div class="m-kv"><span class="m-kv__l">Zeile</span><div class="m-kv__r"><div class="m-kv__v">118</div></div></div>
+          <div class="m-kv"><span class="m-kv__l">Quelle</span><div class="m-kv__r"><div class="m-kv__v">Importiert</div></div></div>
+          <div class="m-kv"><span class="m-kv__l">Status</span><div class="m-kv__r"><div class="m-kv__v">Gebucht</div></div></div>
+          <div class="m-kv"><span class="m-kv__l">Währung</span><div class="m-kv__r"><div class="m-kv__v">CZK</div></div></div>
+        </div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--danger" type="button"><span>Transaktion löschen</span></button><button class="m-btn m-btn--primary" type="button"><span>Fertig</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The category picker over the ledger, at the three widths. -->
+<template id="picker-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Girokonto</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Fio · CZK · 2100123456/2010</p>
+      <div data-rows="ledgerToday"></div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet" role="dialog" aria-modal="true" aria-label="Kategorie">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Kategorie</div></div>
+      <div class="m-sheet__body">
+        <div class="m-search"><span class="m-search__ic" data-icon="search" data-size="16"></span><input class="m-search__i" type="search" placeholder="Suchen..." aria-label="Suchen..."></div>
+        <section>
+          <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Vorschlag</div>
+          <div class="m-pill-row" role="group">
+            <button class="m-pill" type="button" aria-label="Vorschlag annehmen: Lebensmittel"><span data-icon="sparkles" data-size="14"></span><span class="m-pill__chip" style="background: color-mix(in srgb, var(--s2) 15%, transparent); color: var(--s2)" data-icon="receipt" data-size="14"></span><span>Lebensmittel</span></button>
+            <button class="m-pill__x" type="button" aria-label="Vorschlag ablehnen" data-icon="x" data-size="16"></button>
+          </div>
+        </section>
+        <section>
+          <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Zuletzt verwendet</div>
+          <div role="radiogroup" aria-label="Zuletzt verwendet">
+            <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" style="background: color-mix(in srgb, var(--s1) 15%, transparent); color: var(--s1)" data-icon="credit-card" data-size="15"></span><span class="m-pick__l">Einkäufe</span></button>
+            <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" style="background: color-mix(in srgb, var(--s3) 15%, transparent); color: var(--s3)" data-icon="house" data-size="15"></span><span class="m-pick__l">Wohnen und Nebenkosten für die ganze Familie</span></button>
+          </div>
+        </section>
+        <section>
+          <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Alle Kategorien</div>
+          <div role="radiogroup" aria-label="Alle Kategorien">
+            <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" style="background: color-mix(in srgb, var(--s2) 15%, transparent); color: var(--s2)" data-icon="receipt" data-size="15"></span><span class="m-pick__l">Lebensmittel</span></button>
+            <button class="m-pick" type="button" role="radio" aria-checked="true"><span class="m-pick__chip" style="background: color-mix(in srgb, var(--s1) 15%, transparent); color: var(--s1)" data-icon="credit-card" data-size="15"></span><span class="m-pick__l">Einkäufe</span><span class="m-pick__check" data-icon="check" data-size="18"></span></button>
+            <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" style="background: color-mix(in srgb, var(--s4) 15%, transparent); color: var(--s4)" data-icon="wallet" data-size="15"></span><span class="m-pick__l">Verkehr</span></button>
+            <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" style="background: color-mix(in srgb, var(--s3) 15%, transparent); color: var(--s3)" data-icon="house" data-size="15"></span><span class="m-pick__l">Wohnen und Nebenkosten für die ganze Familie</span></button>
+          </div>
+        </section>
+        <button class="m-pick" type="button"><span class="m-pick__chip" data-icon="plus" data-size="15"></span><span class="m-pick__l">Neue Kategorie</span></button>
+        <div class="m-learn">
+          <label class="m-switchrow"><span class="m-switchrow__main"><span class="m-switchrow__t">Für dieses Konto und diese Richtung merken</span><span class="m-switchrow__s">Dieses Konto · Ausgehend · 2400312567/2010. Verlässliche Konten greifen über Empfängernamen hinweg; sonst nur dieser Empfänger.</span></span><span class="m-switchrow__sw" role="switch" aria-checked="true"></span></label>
+          <label class="m-switchrow"><span class="m-switchrow__main"><span class="m-switchrow__t">Auch 3 weitere Zahlungen kategorisieren</span><span class="m-switchrow__s">3× keine Kategorie</span></span><span class="m-switchrow__sw" role="switch" aria-checked="true"></span></label>
+        </div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost m-btn--block" type="button"><span>Abbrechen</span></button></div>
+    </div>
+  </div>
+</template>
+
 <script src="icons.js"></script>
 <script>
 (function () {
@@ -305,7 +545,10 @@
     "eye": '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
     "chevron-left": '<path d="m15 18-6-6 6-6"/>',
     "clock": '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
-    "banknote": '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>'
+    "banknote": '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
+    "arrow-right-left": '<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>',
+    "sparkles": '<path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/>',
+    "layers": '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>'
   });
 
   var TABS = [
@@ -327,12 +570,37 @@
       '<div class="m-row__main"><div class="m-row__line"><span class="m-row__t">' + title + '</span>' + v + '</div>' +
       subLine + '</div>' + chev + '</a>';
   }
+  function badge(text) { return '<span class="m-row__badge">' + text + '</span>'; }
+  /* A ledger row in its swipe box (`.m-swipe` clips the panel and draws the divider); with an icon
+     and a label it is slid 98 px to the left over the panel on its right (swipe left = Kategorie). */
+  function swipe(html, iconName, label) {
+    if (!iconName) return '<div class="m-swipe">' + html + '</div>';
+    return '<div class="m-swipe"><span class="m-swipe__panel m-swipe__panel--end" aria-hidden="true"><span data-icon="' + iconName + '" data-size="18"></span>' + label + '</span>' +
+      html.replace('<a class="m-row', '<a style="transform: translateX(-98px)" class="m-row') + '</div>';
+  }
   var ROWS = {
     accounts: [
       row("FIO", "Girokonto", "Fio · CZK · Auszug 10. 10.", "86&nbsp;420 Kč", "+ 9&nbsp;870 Kč · 30 Tage"),
       row("ČS", "Sparkonto", "Česká spořitelna · CZK · Saldo 2. 9.", "95&nbsp;300 Kč", "Saldo 44 Tage alt"),
       row("R", "EUR-Konto", "Revolut · EUR · Saldo 12. 9.", "1&nbsp;240 €", "≈ 30&nbsp;660 Kč"),
       row("UC", "Girokonto", "UniCredit · CZK · Auszug 8. 9.", "2&nbsp;000 Kč", "Auszug 38 Tage alt")
+    ],
+    /* The Finance tab. The accounts show every kind of trailing sub (the 30-day change, a stale
+       balance, the main-currency equivalent, a stale statement) and the excluded badge in a title;
+       a loan's sub-line has no bank (the data model has none); a policy's next payment sits under
+       its premium. */
+    financeAccounts: [
+      row("FIO", "Girokonto", "Fio · CZK · Auszug 10. 10.", "86&nbsp;420 Kč", "+ 9&nbsp;870 Kč · 30 Tage"),
+      row("ČS", "Sparkonto", "Česká spořitelna · CZK · Saldo 2. 9.", "95&nbsp;300 Kč", "Saldo 44 Tage alt"),
+      row("R", "EUR-Konto", "Revolut · EUR · Saldo 12. 9.", "1&nbsp;240 €", "≈ 30&nbsp;660 Kč"),
+      row("UC", 'Girokonto<span class="m-row__badge">Ausgeschlossen</span>', "UniCredit · CZK · Auszug 8. 9.", "2&nbsp;000 Kč", "Auszug 38 Tage alt")
+    ],
+    financeLoans: [
+      row("", "Hypothek Lipová", "3,1 % · fest bis 10/2026", "2&nbsp;418&nbsp;760 Kč", "12&nbsp;340 Kč / Monat", { icon: "credit-card" })
+    ],
+    financePolicies: [
+      row("", "Lebensversicherung", "Kooperativa · monatlich", "1&nbsp;200 Kč", "nächste Zahlung 1. 11.", { icon: "shield" }),
+      row("", "Hausratversicherung", "Kooperativa · vierteljährlich", "2&nbsp;150 Kč", "nächste Zahlung 4. 11.", { icon: "house" })
     ],
     loans: [
       row("", "Hypothek Lipová", "Česká spořitelna · 3,1 % · Zinsbindung bis 20. 10.", "2&nbsp;418&nbsp;760 Kč", "12&nbsp;340 Kč / Monat", { icon: "credit-card", chip: "m-row__chip--sq" })
@@ -348,6 +616,19 @@
       row("", "Umbrella a.s.", "Gehalt · 09/2026", "+ 61&nbsp;200 Kč", "", { icon: "banknote", chip: "m-row__chip--gain", gain: true }),
       row("", "XTB · eigenes Konto", "Investitionen, Sparen und Umbuchungen", "− 33&nbsp;120 Kč", "", { icon: "arrow-left" })
     ],
+    /* The account detail's ledger: initials (a credit tinted gain, a transfer's arrows), the sub
+       "Kategorie · Detail" with the badges the app shows (Ohne Kategorie, Vorgemerkt, Erstattung),
+       the signed amount; the second row is swiped left onto "Kategorie". */
+    ledgerToday: [
+      swipe(row("LP", "Lidl Praha 4", "Lebensmittel · Kartenzahlung", "− 1&nbsp;249 Kč")),
+      swipe(row("AC", "Alza.cz a.s.", badge("Ohne Kategorie") + " · Bestellung 2201983", "− 4&nbsp;590 Kč"), "tag", "Kategorie"),
+      swipe(row("RO", "Rohlik.cz", "Lebensmittel · " + badge("Vorgemerkt") + " · Kartenzahlung", "− 2&nbsp;311 Kč"))
+    ],
+    ledgerYesterday: [
+      swipe(row("UA", "Umbrella a.s.", "Gehalt · 09/2026", "+ 61&nbsp;200 Kč", "", { chip: "m-row__chip--gain", gain: true })),
+      swipe(row("ZS", "Zalando SE", "Kleidung · " + badge("Erstattung") + " · Rücksendung 88123", "+ 1&nbsp;290 Kč", "", { chip: "m-row__chip--gain", gain: true })),
+      swipe(row("", "XTB · eigenes Konto", "Investitionen, Sparen und Umbuchungen", "− 33&nbsp;120 Kč", "", { icon: "arrow-right-left" }))
+    ],
     settings: [
       row("", "Sicherheit", "Face ID · Sperre nach 1 Minute", "", "", { icon: "lock" }),
       row("", "Sicherung und Übertragung", "iCloud Drive · heute 7:30", "", "", { icon: "download" }),
@@ -356,23 +637,40 @@
     ]
   };
 
-  /* Tab-root frames at the three widths. */
-  var roots = document.getElementById("roots");
-  [[360, "phone--android", "Android, nejužší běžný"], [390, "phone--iphone", "reference"], [430, "phone--max", "velký iPhone"]].forEach(function (f) {
-    var frame = document.createElement("div");
-    frame.className = "frame"; frame.style.setProperty("--w", f[0] + "px");
-    frame.innerHTML = '<div class="frame__cap"><b>' + f[0] + '</b><span>' + f[2] + '</span><output class="frame__check"></output></div><div class="phone ' + f[1] + '"></div>';
-    frame.querySelector(".phone").appendChild(document.getElementById("root-frame").content.cloneNode(true));
-    roots.appendChild(frame);
-  });
+  /* A template rendered at the three widths: 360 (the narrowest common Android), 390 (reference), 430. */
+  var WIDTHS = [[360, "phone--android", "Android, nejužší běžný"], [390, "phone--iphone", "reference"], [430, "phone--max", "velký iPhone"]];
+  function renderFrames(containerId, template, suffix) {
+    var box = document.getElementById(containerId);
+    WIDTHS.forEach(function (f) {
+      var frame = document.createElement("div");
+      frame.className = "frame"; frame.style.setProperty("--w", f[0] + "px");
+      frame.innerHTML = '<div class="frame__cap"><b>' + f[0] + suffix + '</b><span>' + f[2] + '</span><output class="frame__check"></output></div><div class="phone ' + f[1] + '"></div>';
+      frame.querySelector(".phone").appendChild(template.content.cloneNode(true));
+      box.appendChild(frame);
+    });
+  }
+  renderFrames("roots", document.getElementById("root-frame"), "");
+  renderFrames("finance", document.querySelector('template[data-variant="finance"]'), " · Finance");
+  renderFrames("details", document.getElementById("detail-frame"), " · detail účtu");
+  renderFrames("sheets", document.getElementById("sheet-frame"), " · sheet");
+  renderFrames("txsheets", document.getElementById("tx-frame"), " · transakce");
+  renderFrames("pickers", document.getElementById("picker-frame"), " · výběr kategorie");
 
-  var sheets = document.getElementById("sheets");
-  [[360, "phone--android", "Android, nejužší běžný"], [390, "phone--iphone", "reference"], [430, "phone--max", "velký iPhone"]].forEach(function (f) {
-    var frame = document.createElement("div");
-    frame.className = "frame"; frame.style.setProperty("--w", f[0] + "px");
-    frame.innerHTML = '<div class="frame__cap"><b>' + f[0] + ' · sheet</b><span>' + f[2] + '</span><output class="frame__check"></output></div><div class="phone ' + f[1] + '"></div>';
-    frame.querySelector(".phone").appendChild(document.getElementById("sheet-frame").content.cloneNode(true));
-    sheets.appendChild(frame);
+  /* Flows strips: 12 months (Nov 2025 – Oct 2026) of incoming/outgoing values as "in,out|…", the
+     bars scaled to the largest month, the newest selected, the strip scrolled to its end. */
+  /* The labels the app writes in German (`fmt.month(date, { month: 'short', year: undefined })`);
+     January's two-digit year goes on a second line. */
+  var MONTHS = ["Nov", "Dez", "Jan|26", "Feb", "Mär", "Apr", "Mai", "Jun", "Jul", "Aug", "Sep", "Okt"];
+  document.querySelectorAll("[data-flows]").forEach(function (strip) {
+    var months = strip.dataset.flows.split("|").map(function (m) { return m.split(",").map(Number); });
+    var max = Math.max.apply(null, months.map(function (m) { return Math.max(m[0], m[1]); }));
+    strip.innerHTML = months.map(function (m, i) {
+      var last = i === months.length - 1;
+      return '<button class="m-flows__col' + (last ? "" : " is-muted") + '" type="button" aria-pressed="' + last + '">' +
+        '<span class="m-flows__bars" aria-hidden="true"><span class="m-flows__bar m-flows__bar--in" style="height:' + Math.round(m[0] / max * 110) + 'px"></span>' +
+        '<span class="m-flows__bar m-flows__bar--out" style="height:' + Math.round(m[1] / max * 110) + 'px"></span></span>' +
+        MONTHS[i].split("|").map(function (l) { return '<span class="m-flows__l" aria-hidden="true">' + l + '</span>'; }).join("") + '</button>';
+    }).join("");
   });
 
   /* Allocation rings: stroked circles on a 110 px box, 22 px thick, as AllocationRing.tsx draws them. */
@@ -405,9 +703,15 @@
 
   /* A calm net-worth line for the hero charts (not the chart rules of README §8). */
   document.querySelectorAll("[data-chart]").forEach(function (svg) {
-    var pts = [], n = 30;
+    var pts = [], n = 30, line;
     for (var i = 0; i <= n; i++) pts.push([i * 10, 112 - i * 2.1 - Math.sin(i / 2.3) * 9 - (i >= 19 ? 22 : 0)]);
-    var line = pts.map(function (p, i) { return (i ? "L" : "M") + p[0] + " " + p[1].toFixed(1); }).join("");
+    if (svg.dataset.chart === "step") {
+      /* The account's balance records: the value holds until the next record (a step line). */
+      var steps = [[0, 118], [46, 104], [98, 109], [150, 86], [204, 92], [256, 64], [300, 64]];
+      line = steps.map(function (p, i) { return i ? "H" + p[0] + "V" + p[1] : "M" + p[0] + " " + p[1]; }).join("");
+    } else {
+      line = pts.map(function (p, i) { return (i ? "L" : "M") + p[0] + " " + p[1].toFixed(1); }).join("");
+    }
     svg.setAttribute("viewBox", "0 0 300 160"); svg.setAttribute("preserveAspectRatio", "none");
     svg.innerHTML = '<path d="' + line + 'L300 160L0 160Z"/><path d="' + line + '"/>';
   });
@@ -438,16 +742,17 @@
   function check() {
     document.querySelectorAll(".frame").forEach(function (frame) {
       var screen = frame.querySelector(".m-screen"), out = frame.querySelector(".frame__check");
-      var edge = screen.getBoundingClientRect(), over = [], cut = [], scrolls = 0;
+      var edge = screen.getBoundingClientRect(), over = [], cut = [], scrolls = 0, strips = 0;
       screen.querySelectorAll("*").forEach(function (el) {
         if (el.closest("svg") && el.tagName.toLowerCase() !== "svg") return;
-        if (el.parentElement.closest(".m-seg")) return;
+        if (el.parentElement.closest(".m-seg, .m-flows")) return;
         var r = el.getBoundingClientRect();
         if (!r.width && !r.height) return;
         /* A swiped row is clipped by its `.m-swipe`, so what lies beyond the edge is not seen. */
         var clipped = el.closest(".m-swipe") && !el.classList.contains("m-swipe");
         if (!clipped && (r.right > edge.right + 0.5 || r.left < edge.left - 0.5)) over.push(el.className || el.tagName);
         if (el.classList.contains("m-seg") && el.scrollWidth > el.clientWidth + 0.5) scrolls++;
+        if (el.classList.contains("m-flows") && el.scrollWidth > el.clientWidth + 0.5) strips++;
         if (getComputedStyle(el).textOverflow === "ellipsis" && textWidth(el) > el.getBoundingClientRect().width - padX(el) + 0.05) cut.push(el.textContent.trim());
       });
       var body = screen.querySelector(".m-screen__body");
@@ -464,11 +769,13 @@
       out.className = "frame__check " + (over.length || badRows.length ? "is-bad" : "is-ok");
       out.textContent = width + " px: " + (over.length ? "přetéká " + over.length + " (" + over.slice(0, 4).join(", ") + ")" : "bez vodorovného přetečení") +
         (scrolls ? " · segment se posouvá: " + scrolls : "") +
+        (strips ? " · pás toků se posouvá: " + strips : "") +
         (rows.length ? " · řádky " + rows.length + (badRows.length ? ", špatná výška: " + badRows.join(" | ") : ", výšky v pořádku") +
           (singles.length ? " (jednořádkové " + singles.join(", ") + " px)" : "") : "") +
         " · zkráceno výpustkou: " + (cut.length ? cut.join(" | ") : "nic");
     });
   }
+  document.querySelectorAll(".m-flows").forEach(function (strip) { strip.scrollLeft = strip.scrollWidth; });
   check();
   window.addEventListener("resize", check);
   if (document.fonts) document.fonts.ready.then(check);

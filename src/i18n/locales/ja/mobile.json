@@ -77,5 +77,139 @@
     "enabled": "生体認証によるロック解除をオンにしました",
     "notEnabled": "生体認証によるロック解除はオンになっていません",
     "unavailable": "現在、生体認証は使用できません。パスワードでロックを解除してください。"
+  },
+  "finance": {
+    "accounts_other": "{{count}}口座",
+    "loans_other": "{{count}}件のローン",
+    "policies_other": "{{count}}件の保険",
+    "total": "口座内の合計",
+    "change30": "30日間で{{amount}}",
+    "noMovements": "30日間の入出金なし",
+    "uncategorized": "未分類の支払い",
+    "sections": {
+      "accounts": "口座",
+      "loans": "ローン",
+      "insurance": "保険",
+      "cashTrend": "現金の推移"
+    },
+    "manual": "手入力",
+    "statementOn": "{{date}}の明細",
+    "balanceOn": "{{date}}の残高",
+    "trail": {
+      "change": "{{amount}} · 30日間",
+      "staleStatement_other": "明細は{{count}}日前",
+      "staleBalance_other": "残高は{{count}}日前",
+      "approx": "≈ {{amount}}",
+      "noRate": "{{currency}}のレートなし"
+    },
+    "perMonth": "月 {{amount}}",
+    "nextPayment": "次回の支払い {{date}}",
+    "menu": {
+      "sort": "並べ替え",
+      "sortBalance": "残高順",
+      "sortName": "名前順",
+      "sortChange": "30日間の変動順",
+      "sortLast": "最終入出金順",
+      "showMatured": "完済したローンを表示",
+      "showEnded": "終了した保険を表示",
+      "export": "エクスポート"
+    },
+    "add": {
+      "title": "追加",
+      "account": "口座",
+      "loan": "ローン",
+      "policy": "保険"
+    },
+    "cashTrendLabel": "現金の推移グラフ"
+  },
+  "placeholder": {
+    "detail": "詳細画面はフェーズ4で提供します。",
+    "queue": "分類キューはフェーズ2bで提供します。",
+    "import": "明細の取り込みはフェーズ2bで提供します。",
+    "form": "追加フォームはフェーズ2bで提供します。",
+    "edit": "編集はフェーズ2bで提供します。",
+    "delete": "削除はフェーズ2bで提供します。",
+    "export": "エクスポートは後日提供します。"
+  },
+  "account": {
+    "record": "残高を記録",
+    "import": "明細をインポート",
+    "menu": {
+      "edit": "口座を編集",
+      "balanceHistory": "残高履歴",
+      "importHistory": "インポート履歴",
+      "delete": "口座を削除"
+    },
+    "stats": {
+      "changeThisYear": "今年の増減",
+      "avgPerMonth": "月平均",
+      "yearlyInterest": "年間利息"
+    },
+    "flows": {
+      "title": "入出金の推移"
+    },
+    "ledger": {
+      "title": "入出金",
+      "search": "取引相手または説明で検索",
+      "all": "すべて",
+      "in": "入金",
+      "out": "出金",
+      "filter": "フィルター",
+      "noCategory": "カテゴリなし",
+      "categorize": "カテゴリ",
+      "details": "詳細",
+      "count_other": "{{count}}件",
+      "empty": "該当する入出金はありません",
+      "emptyHint": "期間またはフィルターを変更してください。",
+      "showAll": "すべて表示",
+      "loadError": "入出金を読み込めませんでした。",
+      "retry": "再試行"
+    },
+    "filter": {
+      "title": "フィルター",
+      "category": "カテゴリ",
+      "all": "すべて",
+      "period": "期間",
+      "from": "開始",
+      "to": "終了",
+      "apply": "適用",
+      "reset": "リセット"
+    },
+    "rowMenu": {
+      "details": "詳細",
+      "category": "カテゴリ",
+      "delete": "削除"
+    }
+  },
+  "transaction": {
+    "flowSaved": "意味を保存しました",
+    "done": "完了",
+    "counterparty": "取引相手",
+    "date": "日付",
+    "category": "カテゴリ",
+    "flow": "意味",
+    "note": "メモ",
+    "details": "詳細",
+    "bankId": "銀行ID",
+    "valueDate": "起算日",
+    "file": "ファイル",
+    "line": "行",
+    "sourceLabel": "入力元",
+    "source": {
+      "manual": "手入力",
+      "csv_import": "インポート済み",
+      "api_sync": "同期済み"
+    },
+    "status": "状態",
+    "booked": "確定",
+    "currency": "通貨"
+  },
+  "picker": {
+    "title": "カテゴリ",
+    "recent": "最近使ったもの",
+    "all": "すべてのカテゴリ",
+    "suggested": "提案",
+    "decline": "提案を却下",
+    "empty": "一致するカテゴリがありません"
   }
 }

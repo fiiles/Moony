@@ -44,3 +44,17 @@ export function toPlotY(
   if (hi <= lo) return top + height / 2;
   return top + ((hi - value) / (hi - lo)) * height;
 }
+
+/**
+ * Value of a step line (a balance that changes only at a record) at time `t`: the latest point at
+ * or before `t`; before the first point the first value, without points 0. Points sorted by `t`.
+ */
+export function stepValueAt(points: readonly { t: number; value: number }[], t: number): number {
+  if (points.length === 0) return 0;
+  let value = points[0].value;
+  for (const point of points) {
+    if (point.t > t) break;
+    value = point.value;
+  }
+  return value;
+}

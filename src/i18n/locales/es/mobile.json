@@ -87,5 +87,151 @@
     "enabled": "Desbloqueo biométrico activado",
     "notEnabled": "No se ha activado el desbloqueo biométrico",
     "unavailable": "La biometría no está disponible ahora. Desbloquea con tu contraseña."
+  },
+  "finance": {
+    "accounts_one": "{{count}} cuenta",
+    "accounts_many": "{{count}} cuentas",
+    "accounts_other": "{{count}} cuentas",
+    "loans_one": "{{count}} préstamo",
+    "loans_many": "{{count}} préstamos",
+    "loans_other": "{{count}} préstamos",
+    "policies_one": "{{count}} póliza",
+    "policies_many": "{{count}} pólizas",
+    "policies_other": "{{count}} pólizas",
+    "total": "Total en cuentas",
+    "change30": "{{amount}} en 30 días",
+    "noMovements": "sin movimientos en 30 días",
+    "uncategorized": "Pagos sin categoría",
+    "sections": {
+      "accounts": "Cuentas",
+      "loans": "Préstamos",
+      "insurance": "Seguros",
+      "cashTrend": "Efectivo a lo largo del tiempo"
+    },
+    "manual": "manual",
+    "statementOn": "extracto del {{date}}",
+    "balanceOn": "saldo del {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 días",
+      "staleStatement_one": "extracto de hace {{count}} día",
+      "staleStatement_many": "extracto de hace {{count}} días",
+      "staleStatement_other": "extracto de hace {{count}} días",
+      "staleBalance_one": "saldo de hace {{count}} día",
+      "staleBalance_many": "saldo de hace {{count}} días",
+      "staleBalance_other": "saldo de hace {{count}} días",
+      "approx": "≈ {{amount}}",
+      "noRate": "sin tipo de cambio para {{currency}}"
+    },
+    "perMonth": "{{amount}} / mes",
+    "nextPayment": "próximo pago {{date}}",
+    "menu": {
+      "sort": "Ordenar",
+      "sortBalance": "Por saldo",
+      "sortName": "Por nombre",
+      "sortChange": "Por variación a 30 días",
+      "sortLast": "Por último movimiento",
+      "showMatured": "Mostrar préstamos liquidados",
+      "showEnded": "Mostrar pólizas finalizadas",
+      "export": "Exportar"
+    },
+    "add": {
+      "title": "Añadir",
+      "account": "Cuenta",
+      "loan": "Préstamo",
+      "policy": "Póliza"
+    },
+    "cashTrendLabel": "Gráfico del efectivo"
+  },
+  "placeholder": {
+    "detail": "El detalle llega en la fase 4.",
+    "queue": "La cola de clasificación llega en la fase 2b.",
+    "import": "La importación de extractos llega en la fase 2b.",
+    "form": "El formulario para añadir llega en la fase 2b.",
+    "edit": "La edición llega en la fase 2b.",
+    "delete": "El borrado llega en la fase 2b.",
+    "export": "La exportación llega más adelante."
+  },
+  "account": {
+    "record": "Registrar saldo",
+    "import": "Importar extracto",
+    "menu": {
+      "edit": "Editar cuenta",
+      "balanceHistory": "Historial de saldo",
+      "importHistory": "Historial de importaciones",
+      "delete": "Eliminar cuenta"
+    },
+    "stats": {
+      "changeThisYear": "Variación este año",
+      "avgPerMonth": "Media mensual",
+      "yearlyInterest": "Intereses anuales"
+    },
+    "flows": {
+      "title": "Flujos"
+    },
+    "ledger": {
+      "title": "Movimientos",
+      "search": "Buscar por contraparte o descripción",
+      "all": "Todos",
+      "in": "Entrantes",
+      "out": "Salientes",
+      "filter": "Filtro",
+      "noCategory": "Sin categoría",
+      "categorize": "Categoría",
+      "details": "Detalles",
+      "count_one": "{{count}} movimiento",
+      "count_many": "{{count}} movimientos",
+      "count_other": "{{count}} movimientos",
+      "empty": "Ningún movimiento coincide",
+      "emptyHint": "Cambia el periodo o el filtro.",
+      "showAll": "Mostrar todos",
+      "loadError": "No se han podido cargar los movimientos.",
+      "retry": "Reintentar"
+    },
+    "filter": {
+      "title": "Filtro",
+      "category": "Categoría",
+      "all": "Todas",
+      "period": "Periodo",
+      "from": "Desde",
+      "to": "Hasta",
+      "apply": "Aplicar",
+      "reset": "Restablecer"
+    },
+    "rowMenu": {
+      "details": "Detalles",
+      "category": "Categoría",
+      "delete": "Eliminar"
+    }
+  },
+  "transaction": {
+    "flowSaved": "Significado guardado",
+    "done": "Listo",
+    "counterparty": "Contraparte",
+    "date": "Fecha",
+    "category": "Categoría",
+    "flow": "Significado",
+    "note": "Nota",
+    "details": "Detalles",
+    "bankId": "ID del banco",
+    "valueDate": "Fecha valor",
+    "file": "Archivo",
+    "line": "Línea",
+    "sourceLabel": "Origen",
+    "source": {
+      "manual": "Introducido a mano",
+      "csv_import": "Importado",
+      "api_sync": "Sincronizado"
+    },
+    "status": "Estado",
+    "booked": "Contabilizado",
+    "currency": "Moneda"
+  },
+  "picker": {
+    "title": "Categoría",
+    "recent": "Usadas recientemente",
+    "all": "Todas las categorías",
+    "suggested": "Sugerencia",
+    "decline": "Rechazar sugerencia",
+    "empty": "Ninguna categoría coincide"
   }
 }

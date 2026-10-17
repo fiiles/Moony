@@ -77,5 +77,139 @@
     "enabled": "已开启生物识别解锁",
     "notEnabled": "未开启生物识别解锁",
     "unavailable": "生物识别暂时不可用，请使用密码解锁。"
+  },
+  "finance": {
+    "accounts_other": "{{count}} 个账户",
+    "loans_other": "{{count}} 笔贷款",
+    "policies_other": "{{count}} 份保单",
+    "total": "账户总额",
+    "change30": "30 天内 {{amount}}",
+    "noMovements": "30 天内没有流水",
+    "uncategorized": "未分类付款",
+    "sections": {
+      "accounts": "账户",
+      "loans": "贷款",
+      "insurance": "保险",
+      "cashTrend": "现金走势"
+    },
+    "manual": "手动",
+    "statementOn": "{{date}} 对账单",
+    "balanceOn": "{{date}} 余额",
+    "trail": {
+      "change": "{{amount}} · 30 天",
+      "staleStatement_other": "对账单 {{count}} 天前",
+      "staleBalance_other": "余额 {{count}} 天前",
+      "approx": "≈ {{amount}}",
+      "noRate": "无 {{currency}} 汇率"
+    },
+    "perMonth": "{{amount}} / 月",
+    "nextPayment": "下次付款 {{date}}",
+    "menu": {
+      "sort": "排序",
+      "sortBalance": "按余额",
+      "sortName": "按名称",
+      "sortChange": "按 30 天变动",
+      "sortLast": "按最近流水",
+      "showMatured": "显示已还清的贷款",
+      "showEnded": "显示已终止的保单",
+      "export": "导出"
+    },
+    "add": {
+      "title": "添加",
+      "account": "账户",
+      "loan": "贷款",
+      "policy": "保单"
+    },
+    "cashTrendLabel": "现金走势图"
+  },
+  "placeholder": {
+    "detail": "详情页将在第 4 阶段推出。",
+    "queue": "分类队列将在第 2b 阶段推出。",
+    "import": "对账单导入将在第 2b 阶段推出。",
+    "form": "添加表单将在第 2b 阶段推出。",
+    "edit": "编辑功能将在第 2b 阶段推出。",
+    "delete": "删除功能将在第 2b 阶段推出。",
+    "export": "导出功能稍后推出。"
+  },
+  "account": {
+    "record": "记录余额",
+    "import": "导入账单",
+    "menu": {
+      "edit": "编辑账户",
+      "balanceHistory": "余额历史",
+      "importHistory": "导入历史",
+      "delete": "删除账户"
+    },
+    "stats": {
+      "changeThisYear": "今年变动",
+      "avgPerMonth": "月均",
+      "yearlyInterest": "年利息"
+    },
+    "flows": {
+      "title": "收支"
+    },
+    "ledger": {
+      "title": "流水",
+      "search": "按交易对方或说明搜索",
+      "all": "全部",
+      "in": "入账",
+      "out": "出账",
+      "filter": "筛选",
+      "noCategory": "无类别",
+      "categorize": "类别",
+      "details": "详情",
+      "count_other": "{{count}} 笔流水",
+      "empty": "没有匹配的流水",
+      "emptyHint": "请更改期间或筛选条件。",
+      "showAll": "显示全部",
+      "loadError": "无法加载流水。",
+      "retry": "重试"
+    },
+    "filter": {
+      "title": "筛选",
+      "category": "类别",
+      "all": "全部",
+      "period": "期间",
+      "from": "从",
+      "to": "至",
+      "apply": "应用",
+      "reset": "重置"
+    },
+    "rowMenu": {
+      "details": "详情",
+      "category": "类别",
+      "delete": "删除"
+    }
+  },
+  "transaction": {
+    "flowSaved": "含义已保存",
+    "done": "完成",
+    "counterparty": "交易对方",
+    "date": "日期",
+    "category": "类别",
+    "flow": "含义",
+    "note": "备注",
+    "details": "详情",
+    "bankId": "银行 ID",
+    "valueDate": "起息日",
+    "file": "文件",
+    "line": "行",
+    "sourceLabel": "来源",
+    "source": {
+      "manual": "手动输入",
+      "csv_import": "已导入",
+      "api_sync": "已同步"
+    },
+    "status": "状态",
+    "booked": "已入账",
+    "currency": "货币"
+  },
+  "picker": {
+    "title": "类别",
+    "recent": "最近使用",
+    "all": "所有类别",
+    "suggested": "建议",
+    "decline": "拒绝建议",
+    "empty": "没有匹配的类别"
   }
 }

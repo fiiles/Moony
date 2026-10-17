@@ -82,5 +82,145 @@
     "enabled": "Biometrische Entsperrung eingeschaltet",
     "notEnabled": "Biometrische Entsperrung wurde nicht eingeschaltet",
     "unavailable": "Die Biometrie ist gerade nicht verfügbar. Entsperren Sie mit Ihrem Passwort."
+  },
+  "finance": {
+    "accounts_one": "{{count}} Konto",
+    "accounts_other": "{{count}} Konten",
+    "loans_one": "{{count}} Kredit",
+    "loans_other": "{{count}} Kredite",
+    "policies_one": "{{count}} Police",
+    "policies_other": "{{count}} Policen",
+    "total": "Gesamt auf Konten",
+    "change30": "{{amount}} in 30 Tagen",
+    "noMovements": "keine Bewegungen in 30 Tagen",
+    "uncategorized": "Nicht kategorisierte Zahlungen",
+    "sections": {
+      "accounts": "Konten",
+      "loans": "Kredite",
+      "insurance": "Versicherungen",
+      "cashTrend": "Bargeld im Zeitverlauf"
+    },
+    "manual": "manuell",
+    "statementOn": "Auszug {{date}}",
+    "balanceOn": "Saldo {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 Tage",
+      "staleStatement_one": "Auszug {{count}} Tag alt",
+      "staleStatement_other": "Auszug {{count}} Tage alt",
+      "staleBalance_one": "Saldo {{count}} Tag alt",
+      "staleBalance_other": "Saldo {{count}} Tage alt",
+      "approx": "≈ {{amount}}",
+      "noRate": "kein Kurs für {{currency}}"
+    },
+    "perMonth": "{{amount}} / Monat",
+    "nextPayment": "nächste Zahlung {{date}}",
+    "menu": {
+      "sort": "Sortierung",
+      "sortBalance": "Nach Saldo",
+      "sortName": "Nach Name",
+      "sortChange": "Nach Änderung in 30 Tagen",
+      "sortLast": "Nach letzter Bewegung",
+      "showMatured": "Getilgte Kredite anzeigen",
+      "showEnded": "Beendete Policen anzeigen",
+      "export": "Exportieren"
+    },
+    "add": {
+      "title": "Hinzufügen",
+      "account": "Konto",
+      "loan": "Kredit",
+      "policy": "Police"
+    },
+    "cashTrendLabel": "Diagramm zum Bargeldverlauf"
+  },
+  "placeholder": {
+    "detail": "Die Detailansicht kommt in Phase 4.",
+    "queue": "Die Zuordnungsliste kommt in Phase 2b.",
+    "import": "Der Auszugsimport kommt in Phase 2b.",
+    "form": "Das Formular zum Hinzufügen kommt in Phase 2b.",
+    "edit": "Das Bearbeiten kommt in Phase 2b.",
+    "delete": "Das Löschen kommt in Phase 2b.",
+    "export": "Der Export kommt später."
+  },
+  "account": {
+    "record": "Kontostand erfassen",
+    "import": "Kontoauszug importieren",
+    "menu": {
+      "edit": "Konto bearbeiten",
+      "balanceHistory": "Saldoverlauf",
+      "importHistory": "Importverlauf",
+      "delete": "Konto löschen"
+    },
+    "stats": {
+      "changeThisYear": "Änderung in diesem Jahr",
+      "avgPerMonth": "Durchschnitt pro Monat",
+      "yearlyInterest": "Jahreszinsen"
+    },
+    "flows": {
+      "title": "Geldflüsse"
+    },
+    "ledger": {
+      "title": "Umsätze",
+      "search": "Nach Gegenpartei oder Beschreibung suchen",
+      "all": "Alle",
+      "in": "Eingänge",
+      "out": "Ausgänge",
+      "filter": "Filter",
+      "noCategory": "Ohne Kategorie",
+      "categorize": "Kategorie",
+      "details": "Details",
+      "count_one": "{{count}} Umsatz",
+      "count_other": "{{count}} Umsätze",
+      "empty": "Keine passenden Umsätze",
+      "emptyHint": "Ändern Sie den Zeitraum oder den Filter.",
+      "showAll": "Alle anzeigen",
+      "loadError": "Die Umsätze konnten nicht geladen werden.",
+      "retry": "Erneut versuchen"
+    },
+    "filter": {
+      "title": "Filter",
+      "category": "Kategorie",
+      "all": "Alle",
+      "period": "Zeitraum",
+      "from": "Von",
+      "to": "Bis",
+      "apply": "Anwenden",
+      "reset": "Zurücksetzen"
+    },
+    "rowMenu": {
+      "details": "Details",
+      "category": "Kategorie",
+      "delete": "Löschen"
+    }
+  },
+  "transaction": {
+    "flowSaved": "Bedeutung gespeichert",
+    "done": "Fertig",
+    "counterparty": "Gegenpartei",
+    "date": "Datum",
+    "category": "Kategorie",
+    "flow": "Bedeutung",
+    "note": "Notiz",
+    "details": "Details",
+    "bankId": "Bank-ID",
+    "valueDate": "Wertstellung",
+    "file": "Datei",
+    "line": "Zeile",
+    "sourceLabel": "Quelle",
+    "source": {
+      "manual": "Von Hand erfasst",
+      "csv_import": "Importiert",
+      "api_sync": "Synchronisiert"
+    },
+    "status": "Status",
+    "booked": "Gebucht",
+    "currency": "Währung"
+  },
+  "picker": {
+    "title": "Kategorie",
+    "recent": "Zuletzt verwendet",
+    "all": "Alle Kategorien",
+    "suggested": "Vorschlag",
+    "decline": "Vorschlag ablehnen",
+    "empty": "Keine Kategorie passt"
   }
 }

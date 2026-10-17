@@ -6,6 +6,12 @@ import { clearEnrolmentAsked } from '@/mobile/lib/biometrics';
 import Agenda from '@/mobile/pages/Agenda';
 import Cashflow from '@/mobile/pages/Cashflow';
 import Finance from '@/mobile/pages/Finance';
+import AccountDetail from '@/mobile/pages/finance/AccountDetail';
+import {
+  LoanPlaceholder,
+  PolicyPlaceholder,
+  QueuePlaceholder,
+} from '@/mobile/pages/finance/FinancePlaceholder';
 import Lock from '@/mobile/pages/Lock';
 import Overview from '@/mobile/pages/Overview';
 import Settings from '@/mobile/pages/Settings';
@@ -43,6 +49,11 @@ export function MobileShell() {
         <ProtectedRoute path={routes.overview} component={Overview} />
         <ProtectedRoute path={routes.agenda} component={Agenda} />
         <ProtectedRoute path={routes.finance} component={Finance} />
+        {/* Pushed on Finance; the screens come in Phase 2a (account), 2b (queue) and 4 (loan, policy). */}
+        <ProtectedRoute path={routes.accountDetail} component={AccountDetail} />
+        <ProtectedRoute path={routes.loanDetail} component={LoanPlaceholder} />
+        <ProtectedRoute path={routes.policyDetail} component={PolicyPlaceholder} />
+        <ProtectedRoute path={routes.uncategorized} component={QueuePlaceholder} />
         <ProtectedRoute path={routes.cashflow} component={Cashflow} />
         <ProtectedRoute path={routes.wealth} component={Wealth} />
         {/* Placeholder page until the Settings sheet of Phase 5 (spec §8.9). */}

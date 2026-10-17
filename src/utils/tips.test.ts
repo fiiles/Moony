@@ -4,7 +4,6 @@ import {
   MCP_CATEGORIZE_TIP_LEGACY_KEY,
   MANUAL_CATEGORIZATION_KEY,
   MCP_INSURANCE_TIP_KEY,
-  MCP_INSURANCE_TIP_LEGACY_KEY,
   dismissTip,
   hasCategorizedManually,
   isTipDismissed,
@@ -24,7 +23,7 @@ function fakeStorage(initial: Record<string, string> = {}) {
 describe('dismissible tips', () => {
   it('uses the documented localStorage keys', () => {
     expect(MCP_CATEGORIZE_TIP_KEY).toBe('moony-tip-mcp-categorize');
-    expect(MCP_INSURANCE_TIP_KEY).toBe('moony-tip-mcp-insurance');
+    expect(MCP_INSURANCE_TIP_KEY).toBe('moony-tip-mcp-insurance-2');
   });
 
   it('is shown until dismissed, and the dismissal is remembered', () => {
@@ -38,10 +37,6 @@ describe('dismissible tips', () => {
   it('honours dismissals stored under the previous banner keys', () => {
     const categorize = fakeStorage({ [MCP_CATEGORIZE_TIP_LEGACY_KEY]: 'true' });
     expect(isTipDismissed(MCP_CATEGORIZE_TIP_KEY, MCP_CATEGORIZE_TIP_LEGACY_KEY, categorize)).toBe(
-      true
-    );
-    const insurance = fakeStorage({ [MCP_INSURANCE_TIP_LEGACY_KEY]: 'true' });
-    expect(isTipDismissed(MCP_INSURANCE_TIP_KEY, MCP_INSURANCE_TIP_LEGACY_KEY, insurance)).toBe(
       true
     );
   });
@@ -67,7 +62,7 @@ describe('dismissible tips', () => {
 });
 
 describe('mcpTipKey', () => {
-  it('keeps the original insurance key and derives one per other page', () => {
+  it('gives insurance its own key and derives one per other page', () => {
     expect(mcpTipKey('insurance')).toBe(MCP_INSURANCE_TIP_KEY);
     expect(mcpTipKey('stocks')).toBe('moony-tip-mcp-stocks');
     expect(mcpTipKey('watchlist')).toBe('moony-tip-mcp-watchlist');

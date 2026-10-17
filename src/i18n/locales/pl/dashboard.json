@@ -80,7 +80,7 @@
   },
   "gettingStarted": {
     "title": "Pierwsze kroki",
-    "subtitle": "Cztery kroki, dzięki którym Moony stanie się naprawdę przydatne. Ta karta zniknie, gdy skończysz.",
+    "subtitle": "Kilka kroków, po których Moony zaczyna mieć sens. Opcjonalne możesz pominąć; karta zniknie, gdy skończysz.",
     "importStatement": "Zaimportuj wyciąg bankowy",
     "importStatementHint": "Dodaj konto i zaimportuj wyciąg z banku.",
     "addInvestment": "Dodaj inwestycję",
@@ -90,7 +90,8 @@
     "makeBackup": "Zrób kopię zapasową",
     "makeBackupHint": "Jeden plik ze wszystkim, w Ustawienia → Dane i kopie zapasowe.",
     "dismiss": "Odrzuć",
-    "done": "Gotowe"
+    "done": "Gotowe",
+    "optional": "Opcjonalne"
   },
   "welcome": "Witaj ponownie, {{name}}",
   "overview": "Oto twój dzisiejszy przegląd finansów.",

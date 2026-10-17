@@ -176,7 +176,8 @@ of your attachments, and offers:
 - **Back up now:** one ZIP with consistent, still encrypted snapshots of both databases and the
   key files.
 - **Restore from backup:** replaces your data; the current data is moved to a `pre-restore-…`
-  folder first, never deleted. Unlock with the password that belongs to the backup.
+  folder first, never deleted. Unlock with the password that belongs to the backup. Also on the
+  lock screen and in the first-run wizard, so a new computer needs no throwaway account.
 - **Export all data (JSON):** a plain-text dump of your records, without attachment files, API
   keys and the MCP token. **Verify database:** an integrity check.
 

@@ -4,18 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { CheckCircle2, CircleAlert } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { AttachmentsStatusRow } from '@/components/settings/AttachmentsStatusRow';
+import { RestoreBackup } from '@/components/common/RestoreBackup';
 import { queryClient } from '@/lib/queryClient';
 import { dataApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
@@ -23,7 +14,7 @@ import { useFormat } from '@/lib/use-format';
 import { formatBytes } from '@/utils/format-bytes';
 import { todayIsoUtc } from '@/utils/period';
 import { cn } from '@/lib/utils';
-import type { BackupInspection, IntegrityReport } from '@shared/schema';
+import type { IntegrityReport } from '@shared/schema';
 
 type Busy = 'backup' | 'restore' | 'export' | 'verify' | null;
 
@@ -37,7 +28,6 @@ export function DataSection() {
   const fmt = useFormat();
 
   const [busy, setBusy] = useState<Busy>(null);
-  const [pendingRestore, setPendingRestore] = useState<BackupInspection | null>(null);
   const [integrity, setIntegrity] = useState<IntegrityReport | null>(null);
 
   const { data: location, refetch: refetchLocation } = useQuery({
@@ -77,40 +67,6 @@ export function DataSection() {
     } catch (error) {
       showError(error);
     } finally {
-      setBusy(null);
-    }
-  };
-
-  const handlePickRestore = async () => {
-    try {
-      const { open } = await import('@tauri-apps/plugin-dialog');
-      const selected = await open({
-        multiple: false,
-        directory: false,
-        filters: [{ name: 'Moony backup', extensions: ['zip'] }],
-      });
-      if (!selected || Array.isArray(selected)) return;
-      setBusy('restore');
-      const inspection = await dataApi.inspectBackup(selected);
-      setPendingRestore(inspection);
-    } catch (error) {
-      showError(error);
-    } finally {
-      setBusy(null);
-    }
-  };
-
-  const handleConfirmRestore = async () => {
-    if (!pendingRestore) return;
-    try {
-      setBusy('restore');
-      await dataApi.restoreBackup(pendingRestore.archivePath);
-      toast(t('data.restored'), { description: t('data.restoredDescription') });
-      setPendingRestore(null);
-      // The backend already locked the app; reload to the lock screen.
-      window.setTimeout(() => window.location.reload(), 800);
-    } catch (error) {
-      showError(error);
       setBusy(null);
     }
   };
@@ -184,15 +140,19 @@ export function DataSection() {
       <AttachmentsStatusRow />
 
       <SettingsRow label={t('data.backupRow')} hint={t('data.hint')}>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handlePickRestore}
-          loading={busy === 'restore'}
-          disabled={busy !== null}
-        >
-          {t('data.restore')}
-        </Button>
+        <RestoreBackup onBusyChange={(b) => setBusy(b ? 'restore' : null)}>
+          {(pick) => (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={pick}
+              loading={busy === 'restore'}
+              disabled={busy !== null}
+            >
+              {t('data.restore')}
+            </Button>
+          )}
+        </RestoreBackup>
         <Button
           size="sm"
           onClick={handleBackup}
@@ -254,51 +214,6 @@ export function DataSection() {
           {t('data.verify')}
         </Button>
       </SettingsRow>
-
-      {/* Restore confirmation */}
-      <AlertDialog
-        open={pendingRestore !== null}
-        onOpenChange={(open) => {
-          if (!open && busy !== 'restore') setPendingRestore(null);
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('data.restoreConfirmTitle')}</AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-2">
-                {pendingRestore && (
-                  <p>
-                    {t('data.restoreConfirmDescription', {
-                      date: fmt.dateTime(pendingRestore.manifest.createdAt),
-                      version: pendingRestore.manifest.appVersion,
-                      attachments: pendingRestore.attachmentCount,
-                      size: formatBytes(pendingRestore.archiveBytes, fmt.locale),
-                    })}
-                  </p>
-                )}
-                {pendingRestore?.newerThanApp && (
-                  <p className="font-600 text-loss">{t('data.restoreNewer')}</p>
-                )}
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={busy === 'restore'}>
-              {tc('buttons.cancel')}
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault();
-                void handleConfirmRestore();
-              }}
-              disabled={busy === 'restore' || pendingRestore?.newerThanApp}
-            >
-              {busy === 'restore' ? t('data.restoring') : t('data.restoreConfirm')}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </SettingsCard>
   );
 }

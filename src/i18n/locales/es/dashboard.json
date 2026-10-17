@@ -80,7 +80,7 @@
   },
   "gettingStarted": {
     "title": "Primeros pasos",
-    "subtitle": "Cuatro pasos para sacarle partido a Moony. Esta tarjeta desaparece cuando termines.",
+    "subtitle": "Unos pocos pasos para que Moony empiece a tener sentido. Los opcionales se pueden omitir; la tarjeta desaparece cuando termine.",
     "importStatement": "Importar un extracto bancario",
     "importStatementHint": "Añade una cuenta e importa un extracto de tu banco.",
     "addInvestment": "Añadir una inversión",
@@ -90,7 +90,8 @@
     "makeBackup": "Hacer una copia de seguridad",
     "makeBackupHint": "Un solo archivo con todo, en Ajustes → Datos y copias de seguridad.",
     "dismiss": "Descartar",
-    "done": "Hecho"
+    "done": "Hecho",
+    "optional": "Opcional"
   },
   "welcome": "Te damos la bienvenida de nuevo, {{name}}",
   "overview": "Este es tu resumen financiero de hoy.",

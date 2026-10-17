@@ -497,7 +497,8 @@
     "realEstate": "Orker du ikke å taste inn alt? KI-assistenten kan legge til en eiendom fra dokumentene.",
     "otherAssets": "Orker du ikke å taste inn alt? KI-assistenten kan legge til eiendeler fra en faktura eller en liste.",
     "watchlist": "KI-assistenten kan følge aksjer for deg — bare si hvilke.",
-    "body": "Start MCP-serveren, gi Claude dokumentet eller beskriv hva du har, og be den legge det til for deg. Den viser hva den har lest, og lagrer ingenting før du bekrefter.",
+    "insurance": "Har du ikke lyst til å skrive alt inn? AI-assistenten kan legge til forsikringer fra en avtale.",
+    "body": "Start MCP-serveren, koble den til et AI-verktøy som støtter MCP, gi det dokumentet eller beskriv hva du har, og be det legge det inn for deg. Sjekk hva det leste før du lar det lagre noe.",
     "setupLink": "Sett opp MCP-server"
   },
   "a11y": {
@@ -551,7 +552,8 @@
       "failed": "Forhåndsvisningen kunne ikke vises. Du kan lagre dokumentet eller åpne det i en annen app.",
       "saveCopy": "Lagre en kopi…",
       "openElsewhere": "Åpne i en annen app",
-      "saved": "Kopien er lagret"
+      "saved": "Kopien er lagret",
+      "savedDescription": "Den lagrede kopien er ikke kryptert."
     },
     "openElsewhere": {
       "title": "Åpne utenfor Moony?",

@@ -45,6 +45,9 @@ export default function NotificationsSection() {
   const [dayOpen, setDayOpen] = useState(false);
 
   const granted = state === 'granted';
+  // "Allow notifications first" only once the system has answered: until then a switch says what
+  // it does, so the sentence does not flash
+  const needsPermission = !granted && !isPending;
   const needed = t('notifications.permission.needed');
   const day = fmt.number(prefs.upkeepDay);
 
@@ -102,7 +105,7 @@ export default function NotificationsSection() {
         <SwitchRow
           id="notify-deadlines"
           label={t('notifications.deadlines.label')}
-          sub={granted ? t('notifications.deadlines.hint') : needed}
+          sub={needsPermission ? needed : t('notifications.deadlines.hint')}
           checked={granted && prefs.deadlines}
           disabled={!granted}
           onCheckedChange={(on) => setPrefs({ ...prefs, deadlines: on })}
@@ -110,7 +113,7 @@ export default function NotificationsSection() {
         <SwitchRow
           id="notify-upkeep"
           label={t('notifications.upkeep.label')}
-          sub={granted ? t('notifications.upkeep.hint', { day }) : needed}
+          sub={needsPermission ? needed : t('notifications.upkeep.hint', { day })}
           checked={granted && prefs.upkeep}
           disabled={!granted}
           onCheckedChange={(on) => setPrefs({ ...prefs, upkeep: on })}
@@ -125,7 +128,7 @@ export default function NotificationsSection() {
         <SwitchRow
           id="notify-backup"
           label={t('notifications.backup.label')}
-          sub={granted ? t('notifications.backup.hint') : needed}
+          sub={needsPermission ? needed : t('notifications.backup.hint')}
           checked={granted && prefs.backup}
           disabled={!granted}
           onCheckedChange={(on) => setPrefs({ ...prefs, backup: on })}

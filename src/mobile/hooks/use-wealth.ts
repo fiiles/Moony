@@ -47,10 +47,14 @@ export interface WealthData {
   reportCurrency: string;
   /** Per class: today's value (0 while unknown), whether it is unknown (held, none converted), and the 30-day change. */
   classes: Record<WealthClass, { value: number; unknown: boolean; change: PeriodChange | null }>;
-  stocks: { count: number; tickers: string; fxMissing: string[] };
-  crypto: { count: number; tickers: string };
-  bonds: { count: number; nearestMaturity: number | null; yearlyCoupon: number };
-  otherAssets: { count: number; names: string; valuedAt: number | null };
+  /**
+   * Per class: `count` is what the row names (open positions, live issues), `records` is every
+   * record of the class, closed or matured too — what decides whether the class is empty.
+   */
+  stocks: { count: number; records: number; tickers: string; fxMissing: string[] };
+  crypto: { count: number; records: number; tickers: string };
+  bonds: { count: number; records: number; nearestMaturity: number | null; yearlyCoupon: number };
+  otherAssets: { count: number; records: number; names: string; valuedAt: number | null };
   properties: { property: RealEstate; change: { ratio: number | null; day: number } | null }[];
   cash: { accounts: number };
   visible: InvestmentClass[];
@@ -82,7 +86,7 @@ export function useWealth(): WealthData {
     refetchOnMount: true,
     staleTime: 60 * 1000,
   });
-  const { metrics: bondMetrics } = useBonds();
+  const { bonds: bondRecords, metrics: bondMetrics } = useBonds();
   const { data: otherAssets = [] } = useQuery<OtherAsset[]>({
     queryKey: ['other-assets'],
     queryFn: () => otherAssetsApi.getAll(),
@@ -140,6 +144,7 @@ export function useWealth(): WealthData {
     classes,
     stocks: {
       count: openStocks.length,
+      records: stockRows.length,
       tickers: topTickers(
         stockRows.map((row) => ({
           ticker: row.ticker,
@@ -152,6 +157,7 @@ export function useWealth(): WealthData {
     },
     crypto: {
       count: openCrypto.length,
+      records: cryptoRows.length,
       tickers: topTickers(
         cryptoRows.map((row) => ({
           ticker: row.ticker,
@@ -163,11 +169,13 @@ export function useWealth(): WealthData {
     },
     bonds: {
       count: bondMetrics.liveCount,
+      records: bondRecords.length,
       nearestMaturity: bondMetrics.nearest?.maturityDate ?? null,
       yearlyCoupon: bondMetrics.projectedYearlyIncome,
     },
     otherAssets: {
       count: otherAssets.length,
+      records: otherAssets.length,
       names: tickerSummary(
         otherAssets.map((asset) => asset.name),
         NAMES_SHOWN

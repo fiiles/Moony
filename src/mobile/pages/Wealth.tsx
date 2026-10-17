@@ -27,11 +27,12 @@ import { AllocationBar } from '@/mobile/components/wealth/AllocationBar';
 import { ChangeLine } from '@/mobile/components/wealth/ChangeLine';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useWealth, type WealthData } from '@/mobile/hooks/use-wealth';
-import { periodChange } from '@/mobile/lib/change';
+import { changeSinceDayOptions, periodChange } from '@/mobile/lib/change';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import {
   ALLOCATION_ORDER,
   allocationInput,
+  classRowState,
   type InvestmentClass,
   type WealthClass,
 } from '@/mobile/lib/wealth-rows';
@@ -68,13 +69,20 @@ export default function Wealth() {
   const wealth = useWealth();
   const [addKind, setAddKind] = useState<AddKind | null>(null);
   const { overview, reportCurrency, classes, isLoading } = wealth;
-  const { display, unknown, hasHistory, oldest } = overview;
+  const { display, unknown, hasHistory, oldest, shortHistoryBase } = overview;
 
   const money = (value: number) => moneyText(value, reportCurrency, WHOLE);
 
-  // The 30-day change of the hero is fixed (no period segment on this page)
+  // The 30-day change of the hero is fixed (no period segment on this page): "za 30 dní", or
+  // "od 3. 10." when the history is shorter than that — as Přehled says it
   const assetsChange =
     hasHistory && !unknown.assets ? periodChange(display.assets, oldest?.assets) : null;
+  const changeLabel =
+    shortHistoryBase === null
+      ? t('overview.change.30D')
+      : td('changeSince', {
+          date: fmt.day(shortHistoryBase, changeSinceDayOptions(shortHistoryBase)),
+        });
 
   // The bar shows the hero's total, so every class counts, also one hidden from the rows
   const byClass = <T,>(pick: (cls: WealthClass) => T) =>
@@ -129,7 +137,7 @@ export default function Wealth() {
                           currency={reportCurrency}
                           options={{ signed: true, ...WHOLE }}
                         />{' '}
-                        {t('overview.change.30D')}
+                        {changeLabel}
                       </>
                     ),
                   }
@@ -180,7 +188,8 @@ function InvestmentSection({
   const rowFor = (cls: InvestmentClass) => {
     const { icon: Icon, href, add } = INVESTMENT_ROWS[cls];
     const { value, unknown, change } = classes[cls];
-    const count = wealth[cls === 'investments' ? 'stocks' : cls].count;
+    const { records } = wealth[cls === 'investments' ? 'stocks' : cls];
+    const state = classRowState({ records, value, unknown });
     const common = {
       chip: (
         <RowChip>
@@ -191,9 +200,9 @@ function InvestmentSection({
       chevron: true,
     };
 
-    // Nothing owned in the class: a row that leads to adding the first one (stocks keep their
-    // page, which has the empty state)
-    if (!unknown && count === 0 && value === 0) {
+    // No record of the class at all: a row that leads to adding the first one (stocks keep their
+    // page, which has the empty state). A class with only closed records keeps its list.
+    if (state === 'empty') {
       return (
         <EntityRow
           key={cls}
@@ -206,7 +215,7 @@ function InvestmentSection({
     }
 
     // Held, but nothing converted: "—", and no change that would be measured against nothing
-    const shown = unknown ? '—' : money(value);
+    const shown = state === 'unknown' ? '—' : money(value);
     const changeLine = change ? (
       <ChangeLine change={change} currency={reportCurrency} />
     ) : undefined;
@@ -254,7 +263,7 @@ function InvestmentSection({
         {...common}
         sub={sub}
         value={shown}
-        valueSub={unknown ? undefined : valueSub}
+        valueSub={state === 'unknown' ? undefined : valueSub}
         href={href}
       />
     );
@@ -279,6 +288,7 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
   const { user } = useAuth();
   const { reportCurrency, classes, properties } = wealth;
   if (!(user?.menuPreferences?.realEstate ?? true) || properties.length === 0) return null;
+  const excludePersonal = user?.excludePersonalRealEstate ?? false;
 
   return (
     <section>
@@ -292,6 +302,9 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
       />
       <EntityRows>
         {properties.map(({ property, change }) => {
+          // A personal residence the profile leaves out of net worth is not in the hero nor in the
+          // section's number: the row stays, and says so (the desktop's badge and wording)
+          const excluded = excludePersonal && property.type === 'personal';
           const price = amountOf(property.marketPrice);
           const rent = amountOf(property.monthlyRent) ?? 0;
           const sub = [
@@ -311,7 +324,18 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
                   <House strokeWidth={1.75} />
                 </RowChip>
               }
-              title={property.name}
+              title={
+                excluded ? (
+                  <span className="flex min-w-0 items-center">
+                    <span className="min-w-0 truncate">{property.name}</span>
+                    <span className="ml-1.5 inline-flex h-[18px] flex-none items-center rounded-r1 bg-well-2 px-1.5 text-m-caption font-semibold text-ink-3">
+                      {t('realEstate:table.excluded')}
+                    </span>
+                  </span>
+                ) : (
+                  property.name
+                )
+              }
               sub={sub}
               // The property's own price in its own currency; the section's number is the converted total
               value={

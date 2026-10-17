@@ -19,3 +19,16 @@ export function periodChange(
   const delta = today - base;
   return { delta, ratio: base === 0 ? null : delta / Math.abs(base) };
 }
+
+/**
+ * Options for `fmt.day` for the day a change is really measured from when the history is shorter
+ * than its period ("od 3. 10."): the same as Přehled's change label — month short, the year only
+ * when the day is not in the current one.
+ */
+export function changeSinceDayOptions(
+  unixSeconds: number,
+  now = Date.now()
+): Intl.DateTimeFormatOptions {
+  const sameYear = new Date(unixSeconds * 1000).getUTCFullYear() === new Date(now).getUTCFullYear();
+  return { month: 'short', day: 'numeric', year: sameYear ? undefined : 'numeric' };
+}

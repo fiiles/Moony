@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { periodChange } from './change';
+import { changeSinceDayOptions, periodChange } from './change';
 
 describe('periodChange', () => {
   it('relates today to the base', () => {
@@ -16,5 +16,22 @@ describe('periodChange', () => {
     expect(periodChange(500, undefined)).toBeNull();
     expect(periodChange(500, null)).toBeNull();
     expect(periodChange(null, 100)).toBeNull();
+  });
+});
+
+describe('changeSinceDayOptions', () => {
+  const base = Date.UTC(2026, 9, 3) / 1000;
+  it('writes the base day short, without the year in the current one', () => {
+    expect(changeSinceDayOptions(base, Date.UTC(2026, 9, 17))).toEqual({
+      month: 'short',
+      day: 'numeric',
+    });
+  });
+  it('adds the year when the base is not in the current one', () => {
+    expect(changeSinceDayOptions(base, Date.UTC(2027, 0, 5))).toEqual({
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
   });
 });

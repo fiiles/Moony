@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   allocationInput,
+  classRowState,
   propertyChange,
   topTickers,
   visibleClasses,
@@ -105,5 +106,19 @@ describe('allocationInput', () => {
       label: 'Nemovitosti',
       value: 2_860_000,
     });
+  });
+});
+
+describe('classRowState', () => {
+  it('is empty only without any record and without a value', () => {
+    expect(classRowState({ records: 0, value: 0, unknown: false })).toBe('empty');
+  });
+  it('keeps a class with only closed or matured records reachable: records, not open ones, decide', () => {
+    expect(classRowState({ records: 3, value: 0, unknown: false })).toBe('valued');
+    expect(classRowState({ records: 0, value: 5, unknown: false })).toBe('valued');
+  });
+  it('is unknown when held but nothing converted, however many records there are', () => {
+    expect(classRowState({ records: 2, value: 0, unknown: true })).toBe('unknown');
+    expect(classRowState({ records: 0, value: 0, unknown: true })).toBe('unknown');
   });
 });

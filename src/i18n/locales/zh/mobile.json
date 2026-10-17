@@ -77,5 +77,12 @@
     "enabled": "已开启生物识别解锁",
     "notEnabled": "未开启生物识别解锁",
     "unavailable": "生物识别暂时不可用，请使用密码解锁。"
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "此资产类别的页面将在第 4 阶段的下一部分推出。",
+      "watchDetail": "自选股票的详情将在第 4 阶段的下一部分推出。",
+      "later": "将在第 4 阶段的下一部分推出。"
+    }
   }
 }

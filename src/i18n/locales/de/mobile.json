@@ -82,5 +82,12 @@
     "enabled": "Biometrische Entsperrung eingeschaltet",
     "notEnabled": "Biometrische Entsperrung wurde nicht eingeschaltet",
     "unavailable": "Die Biometrie ist gerade nicht verfügbar. Entsperren Sie mit Ihrem Passwort."
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "Die Seite dieser Klasse kommt im nächsten Teil von Phase 4.",
+      "watchDetail": "Das Detail der beobachteten Aktie kommt im nächsten Teil von Phase 4.",
+      "later": "Kommt im nächsten Teil von Phase 4."
+    }
   }
 }

@@ -92,5 +92,12 @@
     "enabled": "Odblokowywanie biometrią włączone",
     "notEnabled": "Odblokowywanie biometrią nie zostało włączone",
     "unavailable": "Biometria jest teraz niedostępna. Odblokuj hasłem."
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "Strona tej klasy pojawi się w kolejnej części fazy 4.",
+      "watchDetail": "Szczegóły obserwowanej akcji pojawią się w kolejnej części fazy 4.",
+      "later": "Pojawi się w kolejnej części fazy 4."
+    }
   }
 }

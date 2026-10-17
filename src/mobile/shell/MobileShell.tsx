@@ -10,6 +10,13 @@ import Lock from '@/mobile/pages/Lock';
 import Overview from '@/mobile/pages/Overview';
 import Settings from '@/mobile/pages/Settings';
 import Wealth from '@/mobile/pages/Wealth';
+import {
+  BondsPlaceholder,
+  CryptoPlaceholder,
+  OtherAssetsPlaceholder,
+  PropertyPlaceholder,
+  RealEstatePlaceholder,
+} from '@/mobile/pages/WealthPlaceholder';
 import { EnableBiometricsSheet } from '@/mobile/sheets/EnableBiometricsSheet';
 import { routes, tabForPath } from './routes';
 import { TabBar } from './TabBar';
@@ -45,6 +52,14 @@ export function MobileShell() {
         <ProtectedRoute path={routes.finance} component={Finance} />
         <ProtectedRoute path={routes.cashflow} component={Cashflow} />
         <ProtectedRoute path={routes.wealth} component={Wealth} />
+        {/* Pushed on Majetek; Majetek itself stands in for the Akcie page and a position until they exist. */}
+        <ProtectedRoute path={routes.stocks} component={Wealth} />
+        <ProtectedRoute path={routes.positionDetail} component={Wealth} />
+        <ProtectedRoute path={routes.cryptoList} component={CryptoPlaceholder} />
+        <ProtectedRoute path={routes.bondsList} component={BondsPlaceholder} />
+        <ProtectedRoute path={routes.otherAssetsList} component={OtherAssetsPlaceholder} />
+        <ProtectedRoute path={routes.realEstateList} component={RealEstatePlaceholder} />
+        <ProtectedRoute path={routes.propertyDetail} component={PropertyPlaceholder} />
         {/* Placeholder page until the Settings sheet of Phase 5 (spec §8.9). */}
         <ProtectedRoute path={routes.settings} component={Settings} />
         <Route>

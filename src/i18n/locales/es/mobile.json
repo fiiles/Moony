@@ -87,5 +87,12 @@
     "enabled": "Desbloqueo biométrico activado",
     "notEnabled": "No se ha activado el desbloqueo biométrico",
     "unavailable": "La biometría no está disponible ahora. Desbloquea con tu contraseña."
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "La página de esta clase llegará en la siguiente parte de la fase 4.",
+      "watchDetail": "El detalle de la acción en seguimiento llegará en la siguiente parte de la fase 4.",
+      "later": "Llegará en la siguiente parte de la fase 4."
+    }
   }
 }

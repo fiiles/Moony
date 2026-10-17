@@ -87,5 +87,12 @@
     "enabled": "Odemykání biometrií zapnuto",
     "notEnabled": "Odemykání biometrií nebylo zapnuto",
     "unavailable": "Biometrie teď není k dispozici, odemkněte heslem."
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "Stránka této třídy přijde v další části fáze 4.",
+      "watchDetail": "Detail sledované akcie přijde v další části fáze 4.",
+      "later": "Přijde v další části fáze 4."
+    }
   }
 }

@@ -10,9 +10,24 @@ export const routes = {
   finance: '/finance',
   cashflow: '/cashflow',
   wealth: '/wealth',
+  /**
+   * Pushed on Majetek: the Akcie class page, a position (`:id` is the position's id), the class
+   * placeholders of the next Phase 4 part.
+   */
+  stocks: '/wealth/stocks',
+  positionDetail: '/wealth/stocks/:id',
+  cryptoList: '/wealth/crypto',
+  bondsList: '/wealth/bonds',
+  otherAssetsList: '/wealth/other-assets',
+  realEstateList: '/wealth/real-estate',
+  propertyDetail: '/wealth/real-estate/:id',
   settings: '/settings',
   auth: '/auth',
 } as const;
+
+/** Paths of the details pushed on Majetek, for a `Link` or `setLocation`. */
+export const positionPath = (id: string) => `/wealth/stocks/${id}`;
+export const propertyPath = (id: string) => `/wealth/real-estate/${id}`;
 
 /** Screens pushed on Přehled (its root "/" cannot prefix them). */
 const OVERVIEW_DETAILS: readonly string[] = [routes.agenda];

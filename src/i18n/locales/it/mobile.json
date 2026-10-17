@@ -87,5 +87,12 @@
     "enabled": "Sblocco biometrico attivato",
     "notEnabled": "Lo sblocco biometrico non è stato attivato",
     "unavailable": "I dati biometrici non sono disponibili al momento. Sblocca con la password."
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "La pagina di questa classe arriverà nella prossima parte della fase 4.",
+      "watchDetail": "Il dettaglio dell'azione osservata arriverà nella prossima parte della fase 4.",
+      "later": "Arriverà nella prossima parte della fase 4."
+    }
   }
 }

@@ -82,5 +82,12 @@
     "enabled": "Biometrisk upplåsning påslagen",
     "notEnabled": "Biometrisk upplåsning slogs inte på",
     "unavailable": "Biometri är inte tillgänglig just nu. Lås upp med lösenordet."
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "Sidan för den här klassen kommer i nästa del av fas 4.",
+      "watchDetail": "Detaljerna för den bevakade aktien kommer i nästa del av fas 4.",
+      "later": "Kommer i nästa del av fas 4."
+    }
   }
 }

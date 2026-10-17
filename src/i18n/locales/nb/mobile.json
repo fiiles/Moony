@@ -82,5 +82,12 @@
     "enabled": "Biometrisk opplåsing slått på",
     "notEnabled": "Biometrisk opplåsing ble ikke slått på",
     "unavailable": "Biometri er ikke tilgjengelig nå. Lås opp med passordet."
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "Siden for denne klassen kommer i neste del av fase 4.",
+      "watchDetail": "Detaljene for den fulgte aksjen kommer i neste del av fase 4.",
+      "later": "Kommer i neste del av fase 4."
+    }
   }
 }

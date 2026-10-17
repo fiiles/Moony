@@ -82,5 +82,12 @@
     "enabled": "Biometric unlock turned on",
     "notEnabled": "Biometric unlock was not turned on",
     "unavailable": "Biometrics are not available right now. Unlock with your password."
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "This class page comes in the next part of phase 4.",
+      "watchDetail": "The watch detail comes in the next part of phase 4.",
+      "later": "Comes in the next part of phase 4."
+    }
   }
 }

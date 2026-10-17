@@ -128,6 +128,38 @@
       "property": "Property",
       "asset": "Asset"
     },
-    "noRate": "no rate for {{currency}}"
+    "noRate": "no rate for {{currency}}",
+    "stocks": {
+      "back": "Stocks",
+      "pricesAt": "prices {{time}}",
+      "pricesOn": "prices {{date}}",
+      "invested": "invested {{amount}}",
+      "dividendsYear": "Dividends / year",
+      "yieldNote": "yield {{percent}}",
+      "twrYtd": "Return this year",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "no history yet",
+      "positionsTab": "Positions · {{count}}",
+      "watchedTab": "Watched · {{count}}",
+      "sort": {
+        "label": "Sort",
+        "value": "By value",
+        "gain": "By return",
+        "name": "By name"
+      },
+      "searchToggle": "Search",
+      "clearSearch": "Clear search",
+      "showAll_one": "Show all {{count}} positions",
+      "showAll_other": "Show all {{count}} positions",
+      "menu": {
+        "import": "Import broker statement",
+        "closed": "Closed positions"
+      },
+      "closedBadge": "closed",
+      "watchedEmpty": "You are not watching any stocks yet.",
+      "target": "target {{price}}",
+      "targetReached": "target reached",
+      "dayChange": "today"
+    }
   }
 }

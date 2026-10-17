@@ -142,6 +142,40 @@
       "property": "Nieruchomość",
       "asset": "Aktywo"
     },
-    "noRate": "brak kursu dla {{currency}}"
+    "noRate": "brak kursu dla {{currency}}",
+    "stocks": {
+      "back": "Akcje",
+      "pricesAt": "ceny {{time}}",
+      "pricesOn": "ceny {{date}}",
+      "invested": "zainwestowano {{amount}}",
+      "dividendsYear": "Dywidendy / rok",
+      "yieldNote": "stopa {{percent}}",
+      "twrYtd": "Zwrot w tym roku",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "jeszcze brak historii",
+      "positionsTab": "Pozycje · {{count}}",
+      "watchedTab": "Obserwowane · {{count}}",
+      "sort": {
+        "label": "Sortowanie",
+        "value": "Według wartości",
+        "gain": "Według zwrotu",
+        "name": "Według nazwy"
+      },
+      "searchToggle": "Szukaj",
+      "clearSearch": "Wyczyść wyszukiwanie",
+      "showAll_one": "Pokaż {{count}} pozycję",
+      "showAll_few": "Pokaż wszystkie {{count}} pozycje",
+      "showAll_many": "Pokaż wszystkie {{count}} pozycji",
+      "showAll_other": "Pokaż wszystkie {{count}} pozycji",
+      "menu": {
+        "import": "Importuj wyciąg z domu maklerskiego",
+        "closed": "Zamknięte pozycje"
+      },
+      "closedBadge": "zamknięta",
+      "watchedEmpty": "Nie obserwujesz jeszcze żadnych akcji.",
+      "target": "cel {{price}}",
+      "targetReached": "cel osiągnięty",
+      "dayChange": "dziś"
+    }
   }
 }

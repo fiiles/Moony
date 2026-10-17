@@ -42,6 +42,10 @@
   .phone .m-screen__body::-webkit-scrollbar { display: none; }
   .demo-chart path:first-child { fill: var(--chart-area); }
   .demo-chart path:last-child { fill: none; stroke: var(--chart-line); stroke-width: 2.25; vector-effect: non-scaling-stroke; }
+  /* The chart legend under a hero's line (the app's `ChartLegend`, a desktop component): 10 / 600 `ink-3`, swatches of the line and the two marks. */
+  .demo-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; margin-top: 12px; color: var(--ink-3); font-size: var(--fs-micro); font-weight: 600; }
+  .demo-legend span { display: inline-flex; align-items: center; gap: 6px; }
+  .demo-legend__line { display: block; width: 14px; height: 2px; border-radius: 1px; background: var(--chart-line); }
   .demo-stack { display: grid; gap: 10px; margin-bottom: 14px; }
   .demo-inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
 
@@ -199,6 +203,12 @@
     <p>Kořen záložky Majetek na 360, 390 a 430: kompaktní hero (číslo a řádek změny, bez grafu) s <code>.m-abar</code> (8 pt pruh, čtyři největší třídy v <code>s1</code>–<code>s4</code>, zbytek složený do „Sonstiges“ v <code>s-other</code>) a legendou <code>.m-legend</code> (barva, název, podíl). Pod ním sekce řádků: řádek třídy se změnou <code>.m-change</code> (odznak ▲ / ▼ a částka, u nemovitosti datum), prázdná třída s šipkou („noch nichts“) a třída bez kurzu s „—“ bez změny. Částky se v ukázce nemusí sčítat: ukazuje stavy, ne jeden portfolio.</p>
     <div class="phones" id="wealth"></div>
   </section>
+
+  <section class="part">
+    <h2>Akcie: stránka třídy s podřádkem, heroem a pozicemi</h2>
+    <p>Třída otevřená z Majetku na 360, 390 a 430: zpět s názvem rodiče, jeden titulek a dvě tlačítka vpravo (<code>···</code> a <code>+</code>); podřádek <code>.m-nav__sub</code> (počet pozic a stáří cen) je první řádek těla; hero s grafem a legendou značek nákupu a prodeje, tři statistiky (nerealizovaný výnos, dividendy za rok a „Rendite dieses Jahr“ s TWR a MWR), segment Pozice · Sledované a <code>.m-toolbar</code> s tlačítkem řazení <code>.m-sortpill</code> a s 44 pt přepínačem hledání <code>.m-iconbtn</code>. Pozice jsou řádky s hodnotou, odznakem změny a částkou, jeden má štítek „manuell“ za tickerem; poslední řádek <code>.m-rows__more</code> rozbalí zbytek seznamu.</p>
+    <div class="phones" id="stocks"></div>
+  </section>
 </div>
 
 <!-- The tab-root frame, rendered at the three widths by the script below. -->
@@ -339,6 +349,44 @@
   </div>
 </template>
 
+<!-- The Akcie frame (a class page pushed on Majetek), rendered at the three widths. -->
+<template id="stocks-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Vermögen</span></button></div>
+      <h1 class="m-nav__title">Aktien und ETFs</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button><button class="m-nav__btn" type="button" aria-label="Investition hinzufügen" data-icon="plus"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">12 Positionen · Kurse 9:40</p>
+      <div class="m-card m-card--hero">
+        <div class="m-hero__label">Portfoliowert</div>
+        <div class="m-hero__value">2&nbsp;650&nbsp;000 Kč</div>
+        <div class="m-hero__delta"><span class="m-badge m-badge--gain">▲ 3,2 %</span><span>+ 82&nbsp;300 Kč in 30 Tagen · investiert 2&nbsp;237&nbsp;400 Kč</span></div>
+        <div class="m-hero__seg"><div class="m-seg"><button class="m-seg__btn is-active" type="button">30 Tage</button><button class="m-seg__btn" type="button">3 Monate</button><button class="m-seg__btn" type="button">Dieses Jahr</button><button class="m-seg__btn" type="button">1 Jahr</button><button class="m-seg__btn" type="button">Alle</button></div></div>
+        <svg class="m-hero__chart demo-chart" data-chart></svg>
+        <div class="demo-legend">
+          <span><i class="demo-legend__line"></i>Wert</span>
+          <span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><polygon points="5,0 10,10 0,10" fill="var(--chart-line)"/></svg>Kauf</span>
+          <span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><polygon points="0.75,0.75 9.25,0.75 5,9.25" fill="var(--paper)" stroke="var(--chart-line)" stroke-width="1.5"/></svg>Verkauf</span>
+        </div>
+      </div>
+      <div class="m-stats">
+        <div class="m-stat"><div class="m-stat__l">Nicht realisierte Rendite</div><div class="m-stat__v m-stat__v--gain">+ 412&nbsp;600</div><div class="m-stat__n">▲ 18,4 % · realisiert + 21&nbsp;300</div></div>
+        <div class="m-stat"><div class="m-stat__l">Dividenden / Jahr</div><div class="m-stat__v">38&nbsp;900 Kč</div><div class="m-stat__n">Rendite 1,5 %</div></div>
+        <div class="m-stat"><div class="m-stat__l">Rendite dieses Jahr</div><div class="m-stat__v m-stat__v--gain">+ 7,8 %</div><div class="m-stat__n">TWR · MWR + 7,1 %</div></div>
+      </div>
+      <div class="m-seg" style="margin-bottom: 8px"><button class="m-seg__btn is-active" type="button">Positionen · 12</button><button class="m-seg__btn" type="button">Beobachtet · 6</button></div>
+      <div class="m-toolbar">
+        <button class="m-sortpill" type="button" aria-label="Sortierung: Nach Wert"><span>Nach Wert</span><span data-icon="chevron-down" data-size="14"></span></button>
+        <button class="m-iconbtn" type="button" aria-label="Suchen" aria-pressed="false" data-icon="search"></button>
+      </div>
+      <div data-rows="stocksPositions"></div>
+    </main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+  </div>
+</template>
+
 <script src="icons.js"></script>
 <script>
 (function () {
@@ -369,6 +417,10 @@
     return '<a class="m-row' + (value ? "" : " m-row--chev") + (subLine ? "" : " m-row--single") + '" href="#">' + chipHtml +
       '<div class="m-row__main"><div class="m-row__line"><span class="m-row__t">' + title + '</span>' + v + '</div>' +
       subLine + '</div>' + chev + '</a>';
+  }
+  /* The change line of a gaining row: the ▲ badge and the signed amount. */
+  function up(share, amount) {
+    return '<span class="m-change"><span class="m-change__badge m-change__badge--gain">▲ ' + share + ' %</span>' + amount + '</span>';
   }
   var ROWS = {
     accounts: [
@@ -402,6 +454,16 @@
     ],
     wealthCash: [
       row("", "Auf Konten", "4 Konten", "214&nbsp;380 Kč", '<span class="m-change"><span class="m-change__badge m-change__badge--gain">▲ 6,1 %</span>+ 12&nbsp;400 Kč</span>', { icon: "landmark" })
+    ],
+    stocksPositions: [
+      row("VW", "VWCE", "Vanguard FTSE All-World", "1&nbsp;182&nbsp;600 Kč", up("12,2", "+ 128&nbsp;300 Kč")),
+      row("CS", "CSPX", "iShares Core S&amp;P 500", "612&nbsp;300 Kč", up("15,1", "+ 80&nbsp;300 Kč")),
+      row("AA", "AAPL", "Apple", "286&nbsp;900 Kč", up("31,4", "+ 68&nbsp;600 Kč")),
+      row("MS", "MSFT", "Microsoft", "241&nbsp;200 Kč", up("22,0", "+ 43&nbsp;500 Kč")),
+      row("ČZ", 'CEZ <span class="m-badge" style="height: 18px; margin-left: 6px; padding: 0 6px; color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: 600; vertical-align: 2px">manuell</span>', "ČEZ · Prag", "168&nbsp;400 Kč",
+        '<span class="m-change"><span class="m-change__badge m-change__badge--loss">▼ 2,3 %</span>− 3&nbsp;960 Kč</span>'),
+      row("NV", "NVDA", "NVIDIA", "158&nbsp;600 Kč", up("64,0", "+ 61&nbsp;900 Kč")),
+      '<button class="m-rows__more" type="button">Alle 12 Positionen anzeigen</button>'
     ],
     settings: [
       row("", "Sicherheit", "Face ID · Sperre nach 1 Minute", "", "", { icon: "lock" }),
@@ -437,6 +499,15 @@
     frame.innerHTML = '<div class="frame__cap"><b>' + f[0] + ' · Majetek</b><span>' + f[2] + '</span><output class="frame__check"></output></div><div class="phone ' + f[1] + '"></div>';
     frame.querySelector(".phone").appendChild(document.getElementById("wealth-frame").content.cloneNode(true));
     wealth.appendChild(frame);
+  });
+
+  var stocks = document.getElementById("stocks");
+  [[360, "phone--android", "Android, nejužší běžný"], [390, "phone--iphone", "reference"], [430, "phone--max", "velký iPhone"]].forEach(function (f) {
+    var frame = document.createElement("div");
+    frame.className = "frame"; frame.style.setProperty("--w", f[0] + "px");
+    frame.innerHTML = '<div class="frame__cap"><b>' + f[0] + ' · Akcie</b><span>' + f[2] + '</span><output class="frame__check"></output></div><div class="phone ' + f[1] + '"></div>';
+    frame.querySelector(".phone").appendChild(document.getElementById("stocks-frame").content.cloneNode(true));
+    stocks.appendChild(frame);
   });
 
   /* Allocation rings: stroked circles on a 110 px box, 22 px thick, as AllocationRing.tsx draws them. */

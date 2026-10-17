@@ -135,6 +135,39 @@
       "property": "Nemovitost",
       "asset": "Aktivum"
     },
-    "noRate": "bez kurzu pro {{currency}}"
+    "noRate": "bez kurzu pro {{currency}}",
+    "stocks": {
+      "back": "Akcie",
+      "pricesAt": "ceny {{time}}",
+      "pricesOn": "ceny {{date}}",
+      "invested": "vloženo {{amount}}",
+      "dividendsYear": "Dividendy / rok",
+      "yieldNote": "výnos {{percent}}",
+      "twrYtd": "Zhodnocení letos",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "zatím bez historie",
+      "positionsTab": "Pozice · {{count}}",
+      "watchedTab": "Sledované · {{count}}",
+      "sort": {
+        "label": "Řazení",
+        "value": "Podle hodnoty",
+        "gain": "Podle výnosu",
+        "name": "Podle názvu"
+      },
+      "searchToggle": "Hledat",
+      "clearSearch": "Smazat hledání",
+      "showAll_one": "Zobrazit {{count}} pozici",
+      "showAll_few": "Zobrazit všechny {{count}} pozice",
+      "showAll_other": "Zobrazit všech {{count}} pozic",
+      "menu": {
+        "import": "Importovat výpis brokera",
+        "closed": "Uzavřené pozice"
+      },
+      "closedBadge": "uzavřená",
+      "watchedEmpty": "Zatím nesledujete žádnou akcii.",
+      "target": "cíl {{price}}",
+      "targetReached": "cíl dosažen",
+      "dayChange": "dnes"
+    }
   }
 }

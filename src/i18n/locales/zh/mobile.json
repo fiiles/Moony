@@ -121,6 +121,37 @@
       "property": "房产",
       "asset": "资产"
     },
-    "noRate": "无 {{currency}} 汇率"
+    "noRate": "无 {{currency}} 汇率",
+    "stocks": {
+      "back": "股票",
+      "pricesAt": "价格 {{time}}",
+      "pricesOn": "价格 {{date}}",
+      "invested": "已投入 {{amount}}",
+      "dividendsYear": "股息 / 年",
+      "yieldNote": "收益率 {{percent}}",
+      "twrYtd": "今年收益",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "暂无历史",
+      "positionsTab": "持仓 · {{count}}",
+      "watchedTab": "关注 · {{count}}",
+      "sort": {
+        "label": "排序",
+        "value": "按价值",
+        "gain": "按收益",
+        "name": "按名称"
+      },
+      "searchToggle": "搜索",
+      "clearSearch": "清除搜索",
+      "showAll_other": "显示全部 {{count}} 个持仓",
+      "menu": {
+        "import": "导入券商对账单",
+        "closed": "已平仓持仓"
+      },
+      "closedBadge": "已平仓",
+      "watchedEmpty": "您还没有关注任何股票。",
+      "target": "目标价 {{price}}",
+      "targetReached": "已达目标价",
+      "dayChange": "今日"
+    }
   }
 }

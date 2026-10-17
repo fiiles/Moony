@@ -128,6 +128,38 @@
       "property": "Fastighet",
       "asset": "Tillgång"
     },
-    "noRate": "ingen kurs för {{currency}}"
+    "noRate": "ingen kurs för {{currency}}",
+    "stocks": {
+      "back": "Aktier",
+      "pricesAt": "kurser {{time}}",
+      "pricesOn": "kurser {{date}}",
+      "invested": "investerat {{amount}}",
+      "dividendsYear": "Utdelning / år",
+      "yieldNote": "avkastning {{percent}}",
+      "twrYtd": "Avkastning i år",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "ingen historik ännu",
+      "positionsTab": "Innehav · {{count}}",
+      "watchedTab": "Bevakade · {{count}}",
+      "sort": {
+        "label": "Sortering",
+        "value": "Efter värde",
+        "gain": "Efter avkastning",
+        "name": "Efter namn"
+      },
+      "searchToggle": "Sök",
+      "clearSearch": "Rensa sökningen",
+      "showAll_one": "Visa {{count}} innehav",
+      "showAll_other": "Visa alla {{count}} innehav",
+      "menu": {
+        "import": "Importera mäklarutdrag",
+        "closed": "Stängda innehav"
+      },
+      "closedBadge": "stängt",
+      "watchedEmpty": "Du bevakar inga aktier ännu.",
+      "target": "mål {{price}}",
+      "targetReached": "målet nått",
+      "dayChange": "i dag"
+    }
   }
 }

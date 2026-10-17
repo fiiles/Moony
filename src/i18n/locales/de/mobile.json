@@ -128,6 +128,38 @@
       "property": "Immobilie",
       "asset": "Vermögenswert"
     },
-    "noRate": "kein Kurs für {{currency}}"
+    "noRate": "kein Kurs für {{currency}}",
+    "stocks": {
+      "back": "Aktien",
+      "pricesAt": "Kurse {{time}}",
+      "pricesOn": "Kurse {{date}}",
+      "invested": "investiert {{amount}}",
+      "dividendsYear": "Dividenden / Jahr",
+      "yieldNote": "Rendite {{percent}}",
+      "twrYtd": "Rendite dieses Jahr",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "noch kein Verlauf",
+      "positionsTab": "Positionen · {{count}}",
+      "watchedTab": "Beobachtet · {{count}}",
+      "sort": {
+        "label": "Sortierung",
+        "value": "Nach Wert",
+        "gain": "Nach Rendite",
+        "name": "Nach Name"
+      },
+      "searchToggle": "Suchen",
+      "clearSearch": "Suche löschen",
+      "showAll_one": "Alle {{count}} Position anzeigen",
+      "showAll_other": "Alle {{count}} Positionen anzeigen",
+      "menu": {
+        "import": "Broker-Auszug importieren",
+        "closed": "Geschlossene Positionen"
+      },
+      "closedBadge": "geschlossen",
+      "watchedEmpty": "Sie beobachten noch keine Aktien.",
+      "target": "Ziel {{price}}",
+      "targetReached": "Ziel erreicht",
+      "dayChange": "heute"
+    }
   }
 }

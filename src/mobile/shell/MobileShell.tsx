@@ -9,6 +9,7 @@ import Finance from '@/mobile/pages/Finance';
 import Lock from '@/mobile/pages/Lock';
 import Overview from '@/mobile/pages/Overview';
 import Settings from '@/mobile/pages/Settings';
+import Stocks from '@/mobile/pages/Stocks';
 import Wealth from '@/mobile/pages/Wealth';
 import {
   BondsPlaceholder,
@@ -52,8 +53,8 @@ export function MobileShell() {
         <ProtectedRoute path={routes.finance} component={Finance} />
         <ProtectedRoute path={routes.cashflow} component={Cashflow} />
         <ProtectedRoute path={routes.wealth} component={Wealth} />
-        {/* Pushed on Majetek; Majetek itself stands in for the Akcie page and a position until they exist. */}
-        <ProtectedRoute path={routes.stocks} component={Wealth} />
+        {/* Pushed on Majetek; Majetek itself stands in for a position until its detail exists. */}
+        <ProtectedRoute path={routes.stocks} component={Stocks} />
         <ProtectedRoute path={routes.positionDetail} component={Wealth} />
         <ProtectedRoute path={routes.cryptoList} component={CryptoPlaceholder} />
         <ProtectedRoute path={routes.bondsList} component={BondsPlaceholder} />

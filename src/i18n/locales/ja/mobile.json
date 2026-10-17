@@ -121,6 +121,37 @@
       "property": "物件",
       "asset": "資産"
     },
-    "noRate": "{{currency}}のレートなし"
+    "noRate": "{{currency}}のレートなし",
+    "stocks": {
+      "back": "株式",
+      "pricesAt": "価格 {{time}}",
+      "pricesOn": "価格 {{date}}",
+      "invested": "投資額 {{amount}}",
+      "dividendsYear": "配当 / 年",
+      "yieldNote": "利回り {{percent}}",
+      "twrYtd": "今年のリターン",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "履歴はまだありません",
+      "positionsTab": "ポジション · {{count}}",
+      "watchedTab": "ウォッチ中 · {{count}}",
+      "sort": {
+        "label": "並べ替え",
+        "value": "評価額順",
+        "gain": "リターン順",
+        "name": "名前順"
+      },
+      "searchToggle": "検索",
+      "clearSearch": "検索をクリア",
+      "showAll_other": "{{count}} 件のポジションをすべて表示",
+      "menu": {
+        "import": "証券会社の明細をインポート",
+        "closed": "決済済みのポジション"
+      },
+      "closedBadge": "決済済み",
+      "watchedEmpty": "ウォッチ中の銘柄はまだありません。",
+      "target": "目標 {{price}}",
+      "targetReached": "目標に到達",
+      "dayChange": "本日"
+    }
   }
 }

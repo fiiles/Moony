@@ -135,6 +135,39 @@
       "property": "Inmueble",
       "asset": "Activo"
     },
-    "noRate": "sin tipo de cambio para {{currency}}"
+    "noRate": "sin tipo de cambio para {{currency}}",
+    "stocks": {
+      "back": "Acciones",
+      "pricesAt": "precios {{time}}",
+      "pricesOn": "precios {{date}}",
+      "invested": "invertido {{amount}}",
+      "dividendsYear": "Dividendos / año",
+      "yieldNote": "rendimiento {{percent}}",
+      "twrYtd": "Rentabilidad este año",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "aún sin historial",
+      "positionsTab": "Posiciones · {{count}}",
+      "watchedTab": "Seguidas · {{count}}",
+      "sort": {
+        "label": "Orden",
+        "value": "Por valor",
+        "gain": "Por rentabilidad",
+        "name": "Por nombre"
+      },
+      "searchToggle": "Buscar",
+      "clearSearch": "Borrar búsqueda",
+      "showAll_one": "Mostrar {{count}} posición",
+      "showAll_many": "Mostrar todas las {{count}} posiciones",
+      "showAll_other": "Mostrar todas las {{count}} posiciones",
+      "menu": {
+        "import": "Importar extracto del bróker",
+        "closed": "Posiciones cerradas"
+      },
+      "closedBadge": "cerrada",
+      "watchedEmpty": "Aún no sigues ninguna acción.",
+      "target": "objetivo {{price}}",
+      "targetReached": "objetivo alcanzado",
+      "dayChange": "hoy"
+    }
   }
 }

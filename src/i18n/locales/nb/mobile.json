@@ -128,6 +128,38 @@
       "property": "Eiendom",
       "asset": "Eiendel"
     },
-    "noRate": "ingen kurs for {{currency}}"
+    "noRate": "ingen kurs for {{currency}}",
+    "stocks": {
+      "back": "Aksjer",
+      "pricesAt": "kurser {{time}}",
+      "pricesOn": "kurser {{date}}",
+      "invested": "investert {{amount}}",
+      "dividendsYear": "Utbytte / år",
+      "yieldNote": "avkastning {{percent}}",
+      "twrYtd": "Avkastning i år",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "ingen historikk ennå",
+      "positionsTab": "Beholdninger · {{count}}",
+      "watchedTab": "Fulgte · {{count}}",
+      "sort": {
+        "label": "Sortering",
+        "value": "Etter verdi",
+        "gain": "Etter avkastning",
+        "name": "Etter navn"
+      },
+      "searchToggle": "Søk",
+      "clearSearch": "Tøm søket",
+      "showAll_one": "Vis {{count}} beholdning",
+      "showAll_other": "Vis alle {{count}} beholdninger",
+      "menu": {
+        "import": "Importer meglerutskrift",
+        "closed": "Avsluttede beholdninger"
+      },
+      "closedBadge": "avsluttet",
+      "watchedEmpty": "Du følger ingen aksjer ennå.",
+      "target": "mål {{price}}",
+      "targetReached": "målet nådd",
+      "dayChange": "i dag"
+    }
   }
 }

@@ -1,0 +1,77 @@
+import { utcDayFloor } from '@/utils/chart-axis';
+import { compareKnown } from '@/utils/positions';
+
+export type PositionSort = 'value' | 'gain' | 'name';
+
+/** Rows of the positions list shown before "Zobrazit všech N". */
+export const ROWS_FOLD = 8;
+
+interface Sortable {
+  ticker: string;
+  companyName: string;
+  quantity: number;
+  marketValue: number | null;
+  gainLossPercent: number | null;
+}
+
+/** Lower case without diacritics: "Nestlé" is found by "nestle". */
+const plain = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+/** Whether a position's ticker or name contains the query; an empty query matches everything. */
+export function searchMatches(
+  row: Pick<Sortable, 'ticker' | 'companyName'>,
+  query: string
+): boolean {
+  const needle = plain(query.trim());
+  if (needle === '') return true;
+  return plain(row.ticker).includes(needle) || plain(row.companyName).includes(needle);
+}
+
+/**
+ * The positions list as the page shows it: closed positions (quantity 0) only on request, the
+ * search applied, then sorted — by value or return highest first with the unknown ones last, or by
+ * name. Equal rows keep their order.
+ */
+export function positionRows<T extends Sortable>(
+  rows: readonly T[],
+  opts: { sort: PositionSort; search: string; showClosed: boolean }
+): T[] {
+  const { sort, search, showClosed } = opts;
+  const shown = rows.filter(
+    (row) => (showClosed || row.quantity > 0) && searchMatches(row, search)
+  );
+  switch (sort) {
+    case 'value':
+      return shown.sort((a, b) => compareKnown(b.marketValue, a.marketValue));
+    case 'gain':
+      return shown.sort((a, b) => compareKnown(b.gainLossPercent, a.gainLossPercent));
+    case 'name':
+      return shown.sort((a, b) =>
+        (a.companyName || a.ticker).localeCompare(b.companyName || b.ticker, undefined, {
+          sensitivity: 'base',
+        })
+      );
+  }
+}
+
+/** The first `fold` rows and how many are left out, until the list is expanded. */
+export function foldRows<T>(
+  rows: readonly T[],
+  expanded: boolean,
+  fold = ROWS_FOLD
+): { shown: T[]; hidden: number } {
+  if (expanded || rows.length <= fold) return { shown: [...rows], hidden: 0 };
+  return { shown: rows.slice(0, fold), hidden: rows.length - fold };
+}
+
+/**
+ * When the prices of the list were fetched, as the sub-line says it: "ceny 9:40" for today,
+ * "ceny 12. 10." for an older day, "ceny nenačteny" for never (`null`).
+ */
+export function priceStamp(
+  fetchedAt: number | null,
+  nowSec: number
+): { kind: 'today'; at: number } | { kind: 'day'; at: number } | { kind: 'never' } {
+  if (fetchedAt === null) return { kind: 'never' };
+  return { kind: utcDayFloor(fetchedAt) === utcDayFloor(nowSec) ? 'today' : 'day', at: fetchedAt };
+}

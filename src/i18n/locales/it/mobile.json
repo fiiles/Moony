@@ -135,6 +135,39 @@
       "property": "Immobile",
       "asset": "Bene"
     },
-    "noRate": "nessun tasso per {{currency}}"
+    "noRate": "nessun tasso per {{currency}}",
+    "stocks": {
+      "back": "Azioni",
+      "pricesAt": "prezzi {{time}}",
+      "pricesOn": "prezzi {{date}}",
+      "invested": "investito {{amount}}",
+      "dividendsYear": "Dividendi / anno",
+      "yieldNote": "rendimento {{percent}}",
+      "twrYtd": "Rendimento quest'anno",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "ancora nessuno storico",
+      "positionsTab": "Posizioni · {{count}}",
+      "watchedTab": "Osservate · {{count}}",
+      "sort": {
+        "label": "Ordina",
+        "value": "Per valore",
+        "gain": "Per rendimento",
+        "name": "Per nome"
+      },
+      "searchToggle": "Cerca",
+      "clearSearch": "Cancella ricerca",
+      "showAll_one": "Mostra {{count}} posizione",
+      "showAll_many": "Mostra tutte le {{count}} posizioni",
+      "showAll_other": "Mostra tutte le {{count}} posizioni",
+      "menu": {
+        "import": "Importa estratto del broker",
+        "closed": "Posizioni chiuse"
+      },
+      "closedBadge": "chiusa",
+      "watchedEmpty": "Non stai ancora osservando nessuna azione.",
+      "target": "obiettivo {{price}}",
+      "targetReached": "obiettivo raggiunto",
+      "dayChange": "oggi"
+    }
   }
 }

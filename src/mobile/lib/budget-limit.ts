@@ -14,6 +14,13 @@ import {
 import { getUtcPeriodRange } from '@/utils/period';
 import { parseAmountInput } from './amount-input';
 
+/** What the limit sheet is opened for. */
+export type LimitMode =
+  /** A new limit; with a category the sheet opens on the form, without one it asks first. */
+  | { kind: 'add'; categoryId: string | null; effectiveMonth?: number }
+  /** The limit in effect in `effectiveMonth` (else the current one) of an existing budget. */
+  | { kind: 'edit'; goal: BudgetGoal; effectiveMonth?: number };
+
 /** What the sheet's three fields hold. `from` and `until` are `YYYY-MM`; `until` may be `''` (no end). */
 export interface LimitFormInput {
   amountText: string;

@@ -222,22 +222,22 @@ describe('reportRowLimit', () => {
   it('edits the stored budget from the month the report shows when the period has one', () => {
     // The report's own copy of the goal carries no versions: the stored one does
     const inPeriod = goal('cat_a', []);
-    expect(reportRowLimit('cat_a', inPeriod, [ACTIVE, stored], periodStart)).toEqual({
+    expect(reportRowLimit('cat_a', inPeriod, [ACTIVE, stored], periodStart, true)).toEqual({
       hasLimit: true,
       mode: { kind: 'edit', goal: stored, effectiveMonth: periodStart },
     });
   });
 
   it('adds a limit for the category from the month the report shows when the period has none', () => {
-    expect(reportRowLimit('cat_a', null, [stored], periodStart)).toEqual({
+    expect(reportRowLimit('cat_a', null, [stored], periodStart, true)).toEqual({
       hasLimit: false,
       mode: { kind: 'add', categoryId: 'cat_a', effectiveMonth: periodStart },
     });
-    expect(reportRowLimit('cat_a', undefined, [], periodStart).hasLimit).toBe(false);
+    expect(reportRowLimit('cat_a', undefined, [], periodStart, true).hasLimit).toBe(false);
   });
 
   it('knows there is a budget but cannot edit it while the stored goals are missing', () => {
-    expect(reportRowLimit('cat_a', goal('cat_a', []), [], periodStart)).toEqual({
+    expect(reportRowLimit('cat_a', goal('cat_a', []), [], periodStart, true)).toEqual({
       hasLimit: true,
       mode: null,
     });
@@ -246,10 +246,18 @@ describe('reportRowLimit', () => {
   it('matches the stored budget by timeframe as well as category', () => {
     const quarterly = goal('cat_a', [version(month(2026, 0), '9000')], { timeframe: 'quarterly' });
     const inPeriod = goal('cat_a', [], { timeframe: 'quarterly' });
-    expect(reportRowLimit('cat_a', inPeriod, [stored, quarterly], periodStart).mode).toEqual({
+    expect(reportRowLimit('cat_a', inPeriod, [stored, quarterly], periodStart, true).mode).toEqual({
       kind: 'edit',
       goal: quarterly,
       effectiveMonth: periodStart,
     });
+  });
+
+  it("cannot act while the period's budgets are not known (loading or failed): no limit is guessed", () => {
+    // Without the budgeting report "no budget in the period" would only mean "not known yet"
+    expect(reportRowLimit('cat_a', undefined, [stored], periodStart, false).mode).toBeNull();
+    expect(
+      reportRowLimit('cat_a', goal('cat_a', []), [stored], periodStart, false).mode
+    ).toBeNull();
   });
 });

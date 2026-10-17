@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import type { BudgetGoal, TransactionCategory } from '@shared/schema';
+import type { TransactionCategory } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { useCategoryName } from '@/hooks/use-categories';
 import { useCurrency } from '@/lib/currency';
@@ -21,6 +21,7 @@ import {
   limitSaveLabel,
   type LimitAverage,
   type LimitFormInput,
+  type LimitMode,
 } from '@/mobile/lib/budget-limit';
 import {
   budgetEditSource,
@@ -34,12 +35,7 @@ import {
 import { preserveMoneyText } from '@/utils/money-flows';
 import { formatReportMoney } from '@/utils/report-currencies';
 
-/** What the sheet is opened for. */
-export type LimitMode =
-  /** A new limit; with a category the sheet opens on the form, without one it asks first. */
-  | { kind: 'add'; categoryId: string | null; effectiveMonth?: number }
-  /** The limit in effect in `effectiveMonth` (else the current one) of an existing budget. */
-  | { kind: 'edit'; goal: BudgetGoal; effectiveMonth?: number };
+export type { LimitMode };
 
 interface BudgetLimitSheetProps {
   open: boolean;

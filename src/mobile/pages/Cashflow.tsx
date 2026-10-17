@@ -298,7 +298,8 @@ function ReportBody({
           row.key,
           budgetByCategory.get(row.key)?.budgetGoal,
           goals,
-          range.start
+          range.start,
+          report.budgeting !== undefined
         );
         return (
           <ExpenseCategoryRow

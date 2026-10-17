@@ -77,7 +77,6 @@ export default function Budgets() {
   );
 
   const addBudget = () => limits.openLimit({ kind: 'add', categoryId: null });
-  const noneFree = limits.availableCategories.length === 0;
   const loading = historyQuery.isLoading || categoriesQuery.isLoading;
   // The six-month report only feeds the unbudgeted section: its failure stays in that section
   const reportDone = !reportQuery.isLoading && !reportQuery.isError;
@@ -105,7 +104,7 @@ export default function Budgets() {
         action={
           <Button
             className="h-12 rounded-[10px] px-5 text-m-row"
-            disabled={noneFree}
+            disabled={!limits.canPick}
             onClick={addBudget}
           >
             {tb('actions.add')}
@@ -118,20 +117,21 @@ export default function Budgets() {
       <>
         {rows.length > 0 && (
           <section>
-            <SectionHead title={tb('title')} note={tb('stats.limited', { count: rows.length })} />
+            <SectionHead
+              title={tb('title')}
+              note={tb('stats.limited', {
+                count: rows.filter((row) => row.status !== 'ended').length,
+              })}
+            />
             <EntityRows>
               {rows.map((row) => (
                 <BudgetItem
                   key={row.key}
                   row={row}
                   category={categoryById.get(row.categoryId) ?? null}
-                  onEdit={() =>
-                    limits.openLimit({
-                      kind: 'edit',
-                      goal: row.goal,
-                      effectiveMonth: row.main.version.effectiveMonth,
-                    })
-                  }
+                  // No month: the sheet opens on the current one (the first scheduled limit for a
+                  // scheduled budget), so a save changes the limit from now on, never the past
+                  onEdit={() => limits.openLimit({ kind: 'edit', goal: row.goal })}
                   onDelete={setPendingDelete}
                 />
               ))}
@@ -171,7 +171,7 @@ export default function Budgets() {
       trailing={
         <NavIconButton
           aria-label={tb('actions.add')}
-          disabled={noneFree}
+          disabled={!limits.canPick}
           className="disabled:pointer-events-none disabled:opacity-45"
           onClick={addBudget}
         >
@@ -250,7 +250,8 @@ function BudgetItem({ row, category, onEdit, onDelete }: BudgetItemProps) {
         effectiveMonth: main.version.effectiveMonth,
       },
       name: row.name,
-      amount: limitText(main.version.amount, main.version.currency),
+      // The sentence names the limit exactly (the row's value is rounded to whole amounts)
+      amount: moneyText(Number(main.version.amount), main.version.currency),
       period: validity(main, false),
     });
 

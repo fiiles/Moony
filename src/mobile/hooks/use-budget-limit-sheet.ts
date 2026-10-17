@@ -5,9 +5,8 @@ import { useCategories } from '@/hooks/use-categories';
 import { useCurrency } from '@/lib/currency';
 import { budgetingApi } from '@/lib/tauri-api';
 import { currentMonthStart } from '@/utils/budget-goal-versions';
-import { averagesByCategory, averageWindow } from '@/mobile/lib/budget-limit';
+import { averagesByCategory, averageWindow, type LimitMode } from '@/mobile/lib/budget-limit';
 import { budgetedCategoryIds } from '@/mobile/lib/budget-rows';
-import type { LimitMode } from '@/mobile/sheets/BudgetLimitSheet';
 
 const NO_GOALS: readonly BudgetGoal[] = [];
 
@@ -19,8 +18,8 @@ const AVERAGE_STALE_MS = 5 * 60 * 1000;
  * open it (Spravovat rozpočty and the Cashflow report's row menus). The sheet resets its form on
  * the `open` false → true transition and does not re-read a `mode` that changes while it is open,
  * so `open` and `mode` live in one object and `openLimit` sets them together — a page cannot get
- * that wrong. An addition without a category is refused while no category is free (the sheet's
- * first step would be empty).
+ * that wrong. An addition without a category is refused while none can be picked (`canPick`: the
+ * limits have not loaded, or no category is free; the sheet's first step would be wrong or empty).
  *
  * The limits come from `['budget-goal-history']` (every version of every goal, the sheet's own
  * query), the hint's averages from one six-month report (`averageWindow`, the desktop dialog's
@@ -68,14 +67,15 @@ export function useBudgetLimitSheet(withAverages: boolean) {
     [categories, budgeted]
   );
 
+  // `availableCategories` means something only once the limits are known: while they load (or
+  // failed) every expense category looks free
+  const canPick = historyQuery.isSuccess && availableCategories.length > 0;
   const openLimit = useCallback(
     (mode: LimitMode) => {
-      if (mode.kind === 'add' && mode.categoryId === null && availableCategories.length === 0) {
-        return;
-      }
+      if (mode.kind === 'add' && mode.categoryId === null && !canPick) return;
       setSheet({ open: true, mode });
     },
-    [availableCategories.length]
+    [canPick]
   );
 
   return {
@@ -101,5 +101,7 @@ export function useBudgetLimitSheet(withAverages: boolean) {
     /** Categories whose monthly limit is in effect or scheduled. */
     budgeted,
     availableCategories,
+    /** A budget can be added by picking a category: the limits are known and a category is free. */
+    canPick,
   };
 }

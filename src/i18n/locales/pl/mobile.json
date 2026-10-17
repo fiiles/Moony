@@ -37,6 +37,33 @@
       "noHistory": "brak historii"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Rzeczywiste przychody i wydatki z {{count}} konta",
+    "subtitle_few": "Rzeczywiste przychody i wydatki z {{count}} kont",
+    "subtitle_many": "Rzeczywiste przychody i wydatki z {{count}} kont",
+    "subtitle_other": "Rzeczywiste przychody i wydatki z {{count}} konta",
+    "moves_one": "{{count}} transakcja",
+    "moves_few": "{{count}} transakcje",
+    "moves_many": "{{count}} transakcji",
+    "moves_other": "{{count}} transakcji",
+    "shareOfExpenses": "{{share}} wydatków",
+    "shareOfIncome": "{{share}} przychodów",
+    "limit": "limit {{amount}}",
+    "near": "blisko limitu",
+    "over": "przekroczono o {{amount}}",
+    "transfersNote": "poza przychodami i wydatkami",
+    "budgetSummary": "Budżety: {{ok}} w limicie · {{over}} powyżej limitu · {{near}} blisko limitu",
+    "partial": "Okres jeszcze się nie skończył; liczby uzupełnią się wraz z następnym wyciągiem.",
+    "empty": {
+      "title": "Jeszcze brak transakcji",
+      "description": "Przepływy są liczone z płatności na twoich kontach. Dodaj konto i zaimportuj wyciąg.",
+      "action": "Otwórz Finanse"
+    },
+    "accounts": {
+      "title": "Konta w raporcie",
+      "done": "Gotowe"
+    }
+  },
   "upkeep": {
     "title": "Aktualizacja danych",
     "count_one": "{{count}} pozycja",

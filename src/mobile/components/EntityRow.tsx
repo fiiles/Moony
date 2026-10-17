@@ -63,10 +63,14 @@ interface EntityRowProps {
   sub?: ReactNode;
   /** Trailing value on the title line (tabular). */
   value?: ReactNode;
-  /** `gain` for a credit; never colour alone (the sign is in the value). */
-  valueTone?: 'gain';
+  /** `gain` for a credit, `loss` for an amount over its limit; never colour alone (the text says it too). */
+  valueTone?: 'gain' | 'loss';
   /** Trailing sub on the second line: a change badge or a caption. */
   valueSub?: ReactNode;
+  /** A third line under the sub, in the main column (a progress bar); a row with one is never single. */
+  bar?: ReactNode;
+  /** The row has been dealt with (moved elsewhere): the whole row, its divider included, at half strength. */
+  muted?: boolean;
   /** The whole row is the tap target: a link … */
   href?: string;
   /** … or an action. Without either the row is not interactive. */
@@ -89,7 +93,8 @@ interface EntityRowProps {
  * title with the trailing value, the sub with the trailing sub. Each line shares out its own
  * width: the value keeps its width (up to 60 %), the title takes the rest and ends with an
  * ellipsis. 60 pt, 52 single-line. Swipe actions uncover a 98 pt panel on either side; the long
- * press is the context menu.
+ * press is the context menu. A `bar` (the Cashflow categories' progress) is a third line in the
+ * main column; `muted` dims a row that has been dealt with.
  */
 export function EntityRow({
   chip,
@@ -99,6 +104,8 @@ export function EntityRow({
   value,
   valueTone,
   valueSub,
+  bar,
+  muted = false,
   href,
   onClick,
   chevron = false,
@@ -115,7 +122,8 @@ export function EntityRow({
   const gestures = onSwipeLeft !== undefined || onSwipeRight !== undefined || !!onLongPress;
   const hasValue = value !== undefined && value !== null;
   const showChevron = chevron && !hasValue;
-  const single = !sub && !valueSub;
+  const hasSubLine = !!sub || !!valueSub;
+  const single = !hasSubLine && !bar;
   const hasChip = chip !== undefined;
   const columns = [hasChip ? `${chipWidth}px` : null, 'minmax(0, 1fr)', showChevron ? '16px' : null]
     .filter(Boolean)
@@ -133,14 +141,14 @@ export function EntityRow({
             <span
               className={cn(
                 'ml-auto max-w-[60%] flex-none truncate text-m-row num',
-                valueTone === 'gain' ? 'text-gain' : 'text-ink'
+                valueTone === 'gain' ? 'text-gain' : valueTone === 'loss' ? 'text-loss' : 'text-ink'
               )}
             >
               {value}
             </span>
           )}
         </span>
-        {!single && (
+        {hasSubLine && (
           <span className="mt-0.5 flex min-w-0 items-baseline gap-2.5">
             <span className="min-w-0 flex-auto truncate text-m-sub text-ink-4">{sub}</span>
             {valueSub !== undefined && valueSub !== null && (
@@ -150,6 +158,7 @@ export function EntityRow({
             )}
           </span>
         )}
+        {bar && <span className="mt-1.5 block">{bar}</span>}
       </span>
       {showChevron && (
         <ChevronRight aria-hidden className="size-4 flex-none text-ink-5" strokeWidth={1.75} />
@@ -173,7 +182,10 @@ export function EntityRow({
 
   return (
     <li
-      className="relative overflow-hidden before:pointer-events-none before:absolute before:right-0 before:top-0 before:z-[2] before:left-[var(--m-row-inset)] before:border-t before:border-line-soft before:content-[''] first:before:hidden"
+      className={cn(
+        "relative overflow-hidden before:pointer-events-none before:absolute before:right-0 before:top-0 before:z-[2] before:left-[var(--m-row-inset)] before:border-t before:border-line-soft before:content-[''] first:before:hidden",
+        muted && 'opacity-50'
+      )}
       style={{ '--m-row-inset': `${inset}px` } as CSSProperties}
     >
       {/* Under the row, uncovered as it slides away from them. */}

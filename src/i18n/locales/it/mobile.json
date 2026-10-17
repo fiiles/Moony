@@ -37,6 +37,31 @@
       "noHistory": "nessuno storico"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Entrate e uscite effettive da {{count}} conto",
+    "subtitle_many": "Entrate e uscite effettive da {{count}} conti",
+    "subtitle_other": "Entrate e uscite effettive da {{count}} conti",
+    "moves_one": "{{count}} movimento",
+    "moves_many": "{{count}} movimenti",
+    "moves_other": "{{count}} movimenti",
+    "shareOfExpenses": "{{share}} delle uscite",
+    "shareOfIncome": "{{share}} delle entrate",
+    "limit": "limite {{amount}}",
+    "near": "vicino al limite",
+    "over": "superato di {{amount}}",
+    "transfersNote": "fuori da entrate e uscite",
+    "budgetSummary": "Budget: {{ok}} entro il limite · {{over}} oltre il limite · {{near}} vicini al limite",
+    "partial": "Il periodo non è ancora concluso; i numeri si completeranno con il prossimo estratto conto.",
+    "empty": {
+      "title": "Ancora nessun movimento",
+      "description": "Il flusso di cassa viene calcolato dai pagamenti sui tuoi conti. Aggiungi un conto e importa un estratto conto.",
+      "action": "Apri Finanze"
+    },
+    "accounts": {
+      "title": "Conti nel rapporto",
+      "done": "Fatto"
+    }
+  },
   "upkeep": {
     "title": "Aggiornamento dati",
     "count_one": "{{count}} voce",

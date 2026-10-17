@@ -37,6 +37,29 @@
       "noHistory": "ingen historikk"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Faktiske inntekter og utgifter fra {{count}} konto",
+    "subtitle_other": "Faktiske inntekter og utgifter fra {{count}} kontoer",
+    "moves_one": "{{count}} transaksjon",
+    "moves_other": "{{count}} transaksjoner",
+    "shareOfExpenses": "{{share}} av utgiftene",
+    "shareOfIncome": "{{share}} av inntektene",
+    "limit": "grense {{amount}}",
+    "near": "nær grensen",
+    "over": "over med {{amount}}",
+    "transfersNote": "utenfor inntekter og utgifter",
+    "budgetSummary": "Budsjetter: {{ok}} innenfor grensen · {{over}} over grensen · {{near}} nær grensen",
+    "partial": "Perioden er ikke over ennå; tallene fylles ut med neste kontoutskrift.",
+    "empty": {
+      "title": "Ingen transaksjoner ennå",
+      "description": "Kontantstrømmen beregnes ut fra betalingene på kontoene dine. Legg til en konto og importer en kontoutskrift.",
+      "action": "Åpne Økonomi"
+    },
+    "accounts": {
+      "title": "Kontoer i rapporten",
+      "done": "Ferdig"
+    }
+  },
   "upkeep": {
     "title": "Datavedlikehold",
     "count_one": "{{count}} oppgave",

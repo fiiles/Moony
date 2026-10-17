@@ -37,6 +37,31 @@
       "noHistory": "sin historial"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Ingresos y gastos reales de {{count}} cuenta",
+    "subtitle_many": "Ingresos y gastos reales de {{count}} cuentas",
+    "subtitle_other": "Ingresos y gastos reales de {{count}} cuentas",
+    "moves_one": "{{count}} movimiento",
+    "moves_many": "{{count}} movimientos",
+    "moves_other": "{{count}} movimientos",
+    "shareOfExpenses": "{{share}} de los gastos",
+    "shareOfIncome": "{{share}} de los ingresos",
+    "limit": "límite {{amount}}",
+    "near": "cerca del límite",
+    "over": "excedido en {{amount}}",
+    "transfersNote": "fuera de ingresos y gastos",
+    "budgetSummary": "Presupuestos: {{ok}} dentro del límite · {{over}} por encima del límite · {{near}} cerca del límite",
+    "partial": "El periodo aún no ha terminado; las cifras se completarán con el próximo extracto.",
+    "empty": {
+      "title": "Aún no hay movimientos",
+      "description": "El flujo de caja se calcula a partir de los pagos de tus cuentas. Añade una cuenta e importa un extracto.",
+      "action": "Abrir Finanzas"
+    },
+    "accounts": {
+      "title": "Cuentas en el informe",
+      "done": "Listo"
+    }
+  },
   "upkeep": {
     "title": "Mantenimiento de datos",
     "count_one": "{{count}} tarea",

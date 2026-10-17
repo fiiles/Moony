@@ -1,12 +1,353 @@
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'wouter';
+import { Ellipsis, Landmark } from 'lucide-react';
+import type { CashflowActuals } from '@shared/schema';
+import { useBankAccounts } from '@/hooks/use-bank-accounts';
+import { useCategories, useCategoryName } from '@/hooks/use-categories';
+import type { MoneyOptions } from '@/lib/format';
+import { useFormat } from '@/lib/use-format';
+import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { EmptyState } from '@/components/common/EmptyState';
+import { ReportError, ReportQualityNote } from '@/components/reports/ReportQualityNote';
+import { BudgetSummaryNote } from '@/mobile/components/cashflow/BudgetSummaryNote';
+import { CashflowBars } from '@/mobile/components/cashflow/CashflowBars';
+import { CashflowHero } from '@/mobile/components/cashflow/CashflowHero';
+import { CategoryRow } from '@/mobile/components/cashflow/CategoryRow';
+import { PeriodBar } from '@/mobile/components/cashflow/PeriodBar';
+import { EntityRows } from '@/mobile/components/EntityRow';
+import { SectionHead } from '@/mobile/components/SectionHead';
+import { StatRow } from '@/mobile/components/StatRow';
+import {
+  useCashflowReport,
+  useCashflowState,
+  type CashflowReport,
+} from '@/mobile/hooks/use-cashflow';
+import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import {
+  cashflowSearch,
+  isPartialPeriod,
+  selectMonth,
+  type CashflowState,
+} from '@/mobile/lib/cashflow-period';
+import {
+  barsFor,
+  budgetCounts,
+  categoryRows,
+  savingsRate,
+  type CategoryRowModel,
+} from '@/mobile/lib/cashflow-rows';
+import { NavIconButton } from '@/mobile/shell/NavBar';
+import { budgetsPath, cashflowCategoryPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { CashflowAccountsSheet } from '@/mobile/sheets/CashflowAccountsSheet';
 
-/** Cashflow tab root, with budgets (spec §8.7). Placeholder until Phase 3. */
+/** Whole amounts, and whole amounts with their sign ("+ 3 120 Kč"). */
+const WHOLE: MoneyOptions = { decimals: 0 };
+const SIGNED_WHOLE: MoneyOptions = { signed: true, decimals: 0 };
+
+/** The card the bars sit in (`.m-card`). */
+const CARD =
+  'mb-3.5 rounded-r4 border border-line bg-[linear-gradient(180deg,var(--paper),var(--paper-2))] px-4 py-3.5 shadow-e1';
+
+/** `Number()` of a money string from the report; a value that cannot be read is 0. */
+const amount = (value: string | null): number => Number(value) || 0;
+
+/**
+ * Cashflow tab root (spec §8.7, prototype frame 09): the period bar, then the report of the
+ * selected month, quarter or year — the savings hero, income and expenses, the twelve-month bars
+ * (a tap on a month opens it), the budget summary line, and the expense, income and transfer
+ * categories as rows, each with its share or limit bar. The period and the account scope live in
+ * the route's query string (`useCashflowState`), so the pages pushed on this tab return to them.
+ */
 export default function Cashflow() {
   const { t } = useTranslation('mobile');
+  const { t: tr } = useTranslation('reports');
+  const { t: tb } = useTranslation('budgeting');
+  const { t: tc } = useTranslation('common');
+  const [, setLocation] = useLocation();
+  const [state, setState] = useCashflowState();
+  const report = useCashflowReport(state);
+  const { accounts } = useBankAccounts();
+  const [accountsOpen, setAccountsOpen] = useState(false);
+  const { actuals } = report;
+  const search = cashflowSearch(state);
+
   return (
-    <Screen title={t('tabs.cashflow')} large>
-      <p className="mx-0.5 mt-1 text-ink-3">{t('shell.placeholder')}</p>
+    <Screen
+      title={t('tabs.cashflow')}
+      large
+      subtitle={actuals ? t('cashflow.subtitle', { count: actuals.accountCount }) : undefined}
+      trailing={
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <NavIconButton aria-label={tc('labels.moreActions')}>
+              <Ellipsis strokeWidth={1.75} aria-hidden />
+            </NavIconButton>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[220px]">
+            <DropdownMenuItem
+              className="min-h-11 text-m-body"
+              onSelect={() => setAccountsOpen(true)}
+            >
+              {tr('readiness.accounts', { count: state.accountIds?.length ?? accounts.length })}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="min-h-11 text-m-body"
+              onSelect={() => setLocation(budgetsPath(search))}
+            >
+              {tb('manage.title')}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      }
+    >
+      <PeriodBar
+        timeframe={state.timeframe}
+        offset={state.offset}
+        label={report.periodLabel}
+        onTimeframeChange={(timeframe) => setState({ ...state, timeframe, offset: 0 })}
+        onStep={(delta) => setState({ ...state, offset: Math.min(0, state.offset + delta) })}
+      />
+      {!actuals ? (
+        report.isError ? (
+          <ReportError onRetry={report.refetch} />
+        ) : (
+          <CashflowSkeleton />
+        )
+      ) : actuals.accountCount === 0 && actuals.transactionCount === 0 ? (
+        <EmptyCashflow />
+      ) : (
+        <div
+          className={cn('transition-opacity', report.isPlaceholder && 'opacity-60')}
+          aria-busy={report.isPlaceholder}
+        >
+          {report.isError && <ReportError onRetry={report.refetch} />}
+          <ReportBody
+            actuals={actuals}
+            report={report}
+            state={state}
+            onSelectMonth={(month) => setState({ ...state, ...selectMonth(month) })}
+            search={search}
+          />
+        </div>
+      )}
+      <CashflowAccountsSheet
+        open={accountsOpen}
+        onOpenChange={setAccountsOpen}
+        accounts={accounts}
+        value={state.accountIds}
+        onChange={(accountIds) => setState({ ...state, accountIds })}
+      />
     </Screen>
+  );
+}
+
+interface ReportBodyProps {
+  actuals: CashflowActuals;
+  report: CashflowReport;
+  state: CashflowState;
+  onSelectMonth: (month: number) => void;
+  search: string;
+}
+
+/** The report of a period that has transactions (or, with none, its bars and an empty line). */
+function ReportBody({ actuals, report, state, onSelectMonth, search }: ReportBodyProps) {
+  const { t } = useTranslation('mobile');
+  const { t: tr } = useTranslation('reports');
+  const fmt = useFormat();
+  const moneyText = useMoneyText();
+  const { categories } = useCategories();
+  const categoryName = useCategoryName();
+  const { reportCurrency, range, budgeting, budgetByCategory } = report;
+
+  const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
+  const bars = useMemo(
+    () => barsFor(actuals.months, actuals.periodStart, actuals.periodEnd),
+    [actuals]
+  );
+  const counts = useMemo(() => budgetCounts(budgeting?.expenseCategories ?? []), [budgeting]);
+  // The budgets' summaries are the expense categories': income and transfers get no limits
+  const expenseRows = useMemo(
+    () => categoryRows(actuals.expenseCategories, budgetByCategory),
+    [actuals, budgetByCategory]
+  );
+  const incomeRows = useMemo(() => categoryRows(actuals.incomeCategories), [actuals]);
+  const transferRows = useMemo(() => categoryRows(actuals.transfers), [actuals]);
+
+  const totalIncome = amount(actuals.totalIncome);
+  const totalExpenses = amount(actuals.totalExpenses);
+  const net = amount(actuals.netBalance);
+  const rate = savingsRate(totalIncome, net);
+  const money = (value: number) => moneyText(value, reportCurrency, WHOLE);
+  // The average per month counts only with two or more completed months, as on the desktop
+  const perMonth = (average: string | null) =>
+    average !== null && actuals.averageCompletedMonths.length >= 2
+      ? tr('actuals.stats.perMonth', { amount: money(amount(average)) })
+      : undefined;
+
+  const barsCard = (
+    <div className={CARD}>
+      <CashflowBars
+        bars={bars}
+        names={[tr('actuals.chart.income'), tr('actuals.chart.expenses')]}
+        label={tr('actuals.chart.title')}
+        monthLabel={(month) => fmt.month(new Date(month * 1000))}
+        onSelectMonth={onSelectMonth}
+      />
+    </div>
+  );
+
+  if (actuals.transactionCount === 0) {
+    return (
+      <>
+        {bars.some((bar) => bar.income !== 0 || bar.expenses !== 0) && barsCard}
+        <EmptyState
+          bare
+          icon={<Landmark />}
+          title={tr('actuals.empty.periodTitle')}
+          description={tr('actuals.empty.periodDescription')}
+          className="px-5 py-8"
+        />
+      </>
+    );
+  }
+
+  const rows = (list: CategoryRowModel[], withBar: boolean) =>
+    list.length === 0 ? (
+      <li className="list-none px-3.5 py-4 text-m-sub text-ink-4">
+        {tr('actuals.breakdown.empty')}
+      </li>
+    ) : (
+      list.map((row) => {
+        const category = categoryById.get(row.key) ?? null;
+        const named = category ?? {
+          id: row.key,
+          name: row.name,
+          isSystem: row.key.startsWith('cat_'),
+        };
+        const title =
+          row.key === 'uncategorized'
+            ? tr(
+                row.flowKind === 'transfer'
+                  ? 'actuals.uncategorizedTransfers'
+                  : 'actuals.uncategorized'
+              )
+            : categoryName(named);
+        return (
+          <CategoryRow
+            key={row.key}
+            row={row}
+            title={title}
+            category={category}
+            reportCurrency={reportCurrency}
+            href={cashflowCategoryPath(row.flowKind, row.key, search)}
+            withBar={withBar}
+          />
+        );
+      })
+    );
+
+  return (
+    <>
+      <ReportQualityNote quality={actuals.quality} />
+      {isPartialPeriod(range.end, Date.now() / 1000) && (
+        <p className="mx-0.5 mb-3 mt-0 text-m-caption text-ink-4">{t('cashflow.partial')}</p>
+      )}
+      <CashflowHero
+        label={tr('actuals.stats.savings')}
+        value={net}
+        formatValue={(value) => moneyText(value, reportCurrency, SIGNED_WHOLE)}
+        tone={net > 0 ? 'gain' : net < 0 ? 'loss' : 'neutral'}
+        note={
+          rate !== null ? tr('actuals.stats.savingsRate', { rate: fmt.percent(rate, 0) }) : null
+        }
+      />
+      <StatRow
+        stats={[
+          {
+            label: tr('actuals.stats.income'),
+            value: money(totalIncome),
+            note: perMonth(actuals.averageIncome),
+          },
+          {
+            label: tr('actuals.stats.expenses'),
+            value: money(totalExpenses),
+            note: perMonth(actuals.averageExpenses),
+          },
+        ]}
+      />
+      {barsCard}
+      {state.timeframe === 'monthly' && counts && (
+        <BudgetSummaryNote counts={counts} href={budgetsPath(search)} />
+      )}
+      <section>
+        <SectionHead title={tr('actuals.expenses.title')} note={money(totalExpenses)} />
+        <EntityRows>{rows(expenseRows, true)}</EntityRows>
+      </section>
+      <section>
+        <SectionHead title={tr('actuals.income.title')} note={money(totalIncome)} />
+        <EntityRows>{rows(incomeRows, true)}</EntityRows>
+      </section>
+      {transferRows.length > 0 && (
+        <section>
+          <SectionHead title={tr('actuals.transfers.title')} note={t('cashflow.transfersNote')} />
+          <EntityRows>{rows(transferRows, false)}</EntityRows>
+        </section>
+      )}
+    </>
+  );
+}
+
+/** A profile with no accounts and no transactions: the invitation to add the first (spec §8.7). */
+function EmptyCashflow() {
+  const { t } = useTranslation('mobile');
+  const [, setLocation] = useLocation();
+  return (
+    <EmptyState
+      icon={<Landmark />}
+      title={t('cashflow.empty.title')}
+      description={t('cashflow.empty.description')}
+      className="px-5 py-10"
+      action={
+        <Button
+          className="h-auto min-h-12 w-full whitespace-normal rounded-[10px] py-3 text-m-row"
+          onClick={() => setLocation(routes.finance)}
+        >
+          {t('cashflow.empty.action')}
+        </Button>
+      }
+    />
+  );
+}
+
+/** While the report loads for the first time: the hero, the two stats and the bars in outline. */
+function CashflowSkeleton() {
+  return (
+    <div aria-hidden>
+      <div className="mb-3.5 rounded-r4 border border-line bg-paper px-4 pb-3 pt-4 shadow-e1">
+        <div className="skeleton h-3 w-20" />
+        <div className="skeleton mt-3 h-9 w-48" />
+        <div className="skeleton mt-3 h-3 w-32" />
+      </div>
+      <div className="mb-3.5 grid grid-cols-2 gap-2.5">
+        {[0, 1].map((i) => (
+          <div key={i} className="rounded-r3 border border-line bg-paper px-3 py-2.5 shadow-e1">
+            <div className="skeleton h-2.5 w-3/5" />
+            <div className="skeleton mt-2.5 h-4 w-4/5" />
+          </div>
+        ))}
+      </div>
+      <div className={CARD}>
+        <div className="skeleton h-[110px] w-full" />
+      </div>
+    </div>
   );
 }

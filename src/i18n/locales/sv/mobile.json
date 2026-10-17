@@ -37,6 +37,29 @@
       "noHistory": "ingen historik"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Faktiska inkomster och utgifter från {{count}} konto",
+    "subtitle_other": "Faktiska inkomster och utgifter från {{count}} konton",
+    "moves_one": "{{count}} transaktion",
+    "moves_other": "{{count}} transaktioner",
+    "shareOfExpenses": "{{share}} av utgifterna",
+    "shareOfIncome": "{{share}} av inkomsterna",
+    "limit": "gräns {{amount}}",
+    "near": "nära gränsen",
+    "over": "över med {{amount}}",
+    "transfersNote": "utanför inkomster och utgifter",
+    "budgetSummary": "Budgetar: {{ok}} inom gränsen · {{over}} över gränsen · {{near}} nära gränsen",
+    "partial": "Perioden har inte tagit slut än; siffrorna fylls i med nästa kontoutdrag.",
+    "empty": {
+      "title": "Inga transaktioner än",
+      "description": "Kassaflödet beräknas från betalningarna på dina konton. Lägg till ett konto och importera ett kontoutdrag.",
+      "action": "Öppna Ekonomi"
+    },
+    "accounts": {
+      "title": "Konton i rapporten",
+      "done": "Klar"
+    }
+  },
   "upkeep": {
     "title": "Dataunderhåll",
     "count_one": "{{count}} sak",

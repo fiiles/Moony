@@ -335,6 +335,63 @@
 .m-leg i.is-other { box-shadow: inset 0 0 0 1px var(--line); }
 .m-leg b { min-width: 0; overflow: hidden; color: var(--ink); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ===== Cashflow (spec §8.7, prototype frame 09) =====
+   Period bar: the full-width 36 px segment (`.m-seg`) and under it the stepper, two 44 px icon
+   buttons (`.m-nav__btn`, 24 px icons; "next" is disabled at the current period) around the period's
+   name, 15 / 650 `ink`, tabular. */
+.m-period { margin: 4px 0 6px; }
+.m-stepper { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; margin-top: 2px; }
+.m-stepper__l {
+  min-width: 0; overflow: hidden; color: var(--ink); text-align: center; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--m-fs-row); font-weight: 650; letter-spacing: var(--m-ls-row); line-height: 1.3; font-variant-numeric: tabular-nums;
+}
+.m-stepper__btn:disabled { opacity: .45; pointer-events: none; }
+
+/* The savings hero is the hero card without segment and chart: its number is green or red by its
+   sign, and its one note line keeps the 20 px a change badge would give it. */
+.m-hero__value--loss { color: var(--loss); }
+.m-hero__delta--note { height: 20px; }
+
+/* Twelve-month bars: a 110 px chart box (the desktop bars' rules, README §8; months outside the
+   period at 35 % opacity, no tooltip). One transparent button per month lies over the plot, the
+   full height of the chart, with the value axis' 54 px gutter left free on the right: a tap opens
+   that month. A short month name stands under every third bar and the legend under the axis. */
+.m-bars { position: relative; height: 110px; }
+.m-bars__taps { position: absolute; top: 0; bottom: 0; left: 0; right: 54px; display: flex; }
+.m-bars__tap {
+  flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; border-radius: var(--r-1); background: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* A row with a bar: the category rows of the report carry a third line, 6 px under the sub-line, in
+   the main column, so the row is never `--single` and measures about 69 px. The amount of a limit
+   that is exceeded turns `loss`. The category chip keeps the user's hue: the tint is the chip's
+   inline background (the colour at 15 % over paper, hex alpha 26), its glyph is `--cat`, and the
+   dark theme lifts the glyph 30 % towards ink. */
+.m-row--bar { min-height: 68px; }
+.m-row__bar { display: block; margin-top: 6px; }
+.m-row__v--loss { color: var(--loss); }
+.m-row__chip--cat { color: var(--cat); }
+:root[data-theme="dark"] .m-row__chip--cat { color: color-mix(in oklab, var(--cat) 70%, var(--ink)); }
+
+/* Progress bar: a 6 px `well-3` track, radius 3; the fill is `s1` (used part of a limit), `s3` (a
+   category's share of the movement) or `loss` (a limit that is exceeded, full). Decoration: the text
+   beside it says the number. */
+.m-pbar { display: block; height: 6px; overflow: hidden; border-radius: 3px; background: var(--well-3); }
+.m-pbar > i { display: block; height: 100%; border-radius: 3px; background: var(--s1); }
+.m-pbar--share > i { background: var(--s3); }
+.m-pbar--over > i { background: var(--loss); }
+
+/* Note: a quiet line on `well` (radius 11, at least 44 px) with an info glyph, 12 / 500 `ink-2`; a
+   link when it leads somewhere (the budget summary under the bars). The text wraps. */
+.m-note {
+  display: flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 14px; padding: 8px 12px;
+  border-radius: 11px; background: var(--well); color: var(--ink-2); text-decoration: none; -webkit-touch-callout: none;
+  font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3;
+}
+.m-note:is(a):active { background: var(--well-2); }
+.m-note svg { flex: none; width: 15px; height: 15px; color: var(--ink-3); stroke-width: 1.75; }
+
 /* ===== Amount field of a form or sheet =====
    Label 12 / 600 `ink-2` above, the field 48 px (radius 10, paper, `line-strong`; focus `focus-border`
    and the focus ring, invalid `loss`), text 15 tabular, the currency inside on the right (12 / 600

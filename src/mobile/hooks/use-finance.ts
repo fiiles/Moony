@@ -1,5 +1,4 @@
 import { useMemo, useState } from 'react';
-import { useQueries, useQuery } from '@tanstack/react-query';
 import type { BankAccountWithInstitution } from '@shared/schema';
 import type { ConvertFn } from '@shared/fx';
 import { useBankAccountActivity, type AccountActivity } from '@/hooks/use-bank-account-activity';
@@ -8,9 +7,8 @@ import { useMainConvert } from '@/hooks/use-fx';
 import { useInsurance } from '@/hooks/use-insurance';
 import { useLoans } from '@/hooks/use-loans';
 import { useCurrency } from '@/lib/currency';
-import { bankAccountsApi, cashflowApi } from '@/lib/tauri-api';
-import { utcDayFloor } from '@/utils/chart-axis';
 import { accountTotals } from '@/utils/bank-account-summary';
+import { useLastImports, useUncategorizedAll } from '@/mobile/hooks/use-account-upkeep';
 
 export interface Finance {
   accounts: BankAccountWithInstitution[];
@@ -51,30 +49,8 @@ export function useFinance(): Finance {
   const loans = useLoans();
   const insurance = useInsurance();
 
-  const imports = useQueries({
-    queries: accounts.map((account) => ({
-      queryKey: ['import-batches', account.id],
-      queryFn: () => bankAccountsApi.getImportBatches(account.id),
-      staleTime: 0,
-    })),
-  });
-  const uncategorizedEnd = utcDayFloor(Date.now() / 1000) + 86400 - 1;
-  const uncategorizedQuery = useQuery({
-    queryKey: ['bank-transactions', 'uncategorized-all', currencyCode, uncategorizedEnd],
-    queryFn: () =>
-      cashflowApi.getTransactions(0, uncategorizedEnd, {
-        categoryId: 'uncategorized',
-        reportCurrency: currencyCode,
-      }),
-  });
-
-  const lastImportByAccount: Record<string, number | null> = {};
-  accounts.forEach((account, i) => {
-    const batches = imports[i]?.data ?? [];
-    lastImportByAccount[account.id] = batches.length
-      ? Math.max(...batches.map((b) => b.importedAt))
-      : null;
-  });
+  const { lastImportByAccount, isPending: importsPending } = useLastImports(accounts);
+  const uncategorizedQuery = useUncategorizedAll();
 
   const totals = useMemo(() => {
     const sums = accountTotals(
@@ -103,7 +79,7 @@ export function useFinance(): Finance {
     loans.isLoading ||
     insurance.isLoading ||
     uncategorizedQuery.isPending ||
-    imports.some((q) => q.isPending) ||
+    importsPending ||
     [...activity.values()].some((a) => a.isLoading);
   // Only the first load is a skeleton: the queries of an account added later must not blank the
   // page (and lose its scroll) while they answer.

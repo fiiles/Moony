@@ -251,11 +251,11 @@
     "noTelemetry": "sin telemetría",
     "security": {
       "lead": "Desbloqueo, bloqueo en segundo plano y ocultar importes en este teléfono.",
-      "biometrics": "Desbloquear con {{method}}",
+      "biometrics": "Desbloquear con {{methodKey}}",
       "methodFace": "la cara",
       "methodTouch": "la huella",
       "methodGeneric": "biometría",
-      "biometricsOn": "Desbloqueo con {{method}}",
+      "biometricsOn": "Desbloqueo con {{methodKey}}",
       "biometricsOff": "Solo contraseña",
       "biometricsDisabled": "Desbloqueo biométrico desactivado",
       "lockAfterLabel": "Bloquear al salir de la app",
@@ -291,9 +291,56 @@
     "never": "Aún no hay copia de seguridad"
   },
   "notifications": {
+    "lead": "Moony te avisa solo desde este teléfono, sin servidor. Las notificaciones se planifican cada vez que desbloqueas.",
     "permission": {
+      "label": "Notificaciones",
       "granted": "Permitido",
-      "notGranted": "No permitido"
+      "denied": "Bloqueadas",
+      "notAsked": "Aún no permitidas",
+      "notGranted": "No permitido",
+      "allow": "Permitir notificaciones",
+      "deniedHint": "Permítelas en Ajustes del teléfono → Moony → Notificaciones.",
+      "unavailable": "No están disponibles en este dispositivo.",
+      "needed": "Primero permite las notificaciones."
+    },
+    "deadlines": {
+      "label": "Plazos",
+      "hint": "14 días y 1 día antes del plazo."
+    },
+    "upkeep": {
+      "label": "Mantenimiento mensual",
+      "hint": "Día {{day}} del mes: saldos y extractos.",
+      "day": "Día del mes",
+      "dayLabel": "Día {{day}} del mes",
+      "dayValue": "{{day}}",
+      "title": "Toca mantener los datos",
+      "body": "Registra los saldos e importa los extractos."
+    },
+    "backup": {
+      "label": "Copia de seguridad",
+      "hint": "Cuando la última copia tiene más de 30 días.",
+      "title": "Haz una copia de Moony",
+      "stale": "La última copia tiene más de un mes.",
+      "never": "Todavía no tienes ninguna copia."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} en 14 días",
+      "tomorrow": "{{whatKey}} mañana",
+      "kind": {
+        "insurance_anniversary": "Plazo para cancelar el seguro",
+        "insurance_end": "Termina el seguro",
+        "loan_fixation_end": "Termina el tipo fijo",
+        "bond_maturity": "Vencimiento del bono",
+        "account_termination": "Termina la cuenta",
+        "savings_rate_end": "Termina el tipo promocional"
+      }
+    },
+    "test": {
+      "send": "Enviar notificación de prueba",
+      "title": "Notificación de prueba",
+      "body": "Así se ve un recordatorio de Moony.",
+      "sent": "Llegará en 10 segundos"
     }
   }
 }

@@ -251,11 +251,11 @@
     "noTelemetry": "nessuna telemetria",
     "security": {
       "lead": "Sblocco, blocco in background e importi nascosti su questo telefono.",
-      "biometrics": "Sblocca con {{method}}",
+      "biometrics": "Sblocca con {{methodKey}}",
       "methodFace": "il volto",
       "methodTouch": "l'impronta",
       "methodGeneric": "i dati biometrici",
-      "biometricsOn": "Sblocco con {{method}}",
+      "biometricsOn": "Sblocco con {{methodKey}}",
       "biometricsOff": "Solo password",
       "biometricsDisabled": "Sblocco biometrico disattivato",
       "lockAfterLabel": "Blocca dopo l'uscita dall'app",
@@ -291,9 +291,56 @@
     "never": "Ancora nessun backup"
   },
   "notifications": {
+    "lead": "Moony ti avvisa solo da questo telefono, senza server. Le notifiche vengono pianificate a ogni sblocco.",
     "permission": {
+      "label": "Notifiche",
       "granted": "Consentite",
-      "notGranted": "Non consentite"
+      "denied": "Bloccate",
+      "notAsked": "Non ancora consentite",
+      "notGranted": "Non consentite",
+      "allow": "Consenti le notifiche",
+      "deniedHint": "Consentile in Impostazioni del telefono → Moony → Notifiche.",
+      "unavailable": "Non disponibili su questo dispositivo.",
+      "needed": "Consenti prima le notifiche."
+    },
+    "deadlines": {
+      "label": "Scadenze",
+      "hint": "14 giorni e 1 giorno prima della scadenza."
+    },
+    "upkeep": {
+      "label": "Manutenzione mensile",
+      "hint": "Giorno {{day}} del mese: saldi ed estratti conto.",
+      "day": "Giorno del mese",
+      "dayLabel": "Giorno {{day}} del mese",
+      "dayValue": "{{day}}",
+      "title": "È ora di curare i dati",
+      "body": "Registra i saldi e importa gli estratti conto."
+    },
+    "backup": {
+      "label": "Backup",
+      "hint": "Quando l'ultimo backup ha più di 30 giorni.",
+      "title": "Fai il backup di Moony",
+      "stale": "L'ultimo backup ha più di un mese.",
+      "never": "Non hai ancora nessun backup."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} tra 14 giorni",
+      "tomorrow": "{{whatKey}} domani",
+      "kind": {
+        "insurance_anniversary": "Termine per disdire l'assicurazione",
+        "insurance_end": "Scadenza dell'assicurazione",
+        "loan_fixation_end": "Fine del tasso fisso",
+        "bond_maturity": "Scadenza dell'obbligazione",
+        "account_termination": "Fine del conto",
+        "savings_rate_end": "Fine del tasso promozionale"
+      }
+    },
+    "test": {
+      "send": "Invia una notifica di prova",
+      "title": "Notifica di prova",
+      "body": "Ecco come appare un promemoria di Moony.",
+      "sent": "Arriva tra 10 secondi"
     }
   }
 }

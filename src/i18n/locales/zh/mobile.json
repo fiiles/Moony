@@ -229,11 +229,11 @@
     "noTelemetry": "无遥测",
     "security": {
       "lead": "在这部手机上设置解锁、后台锁定和隐藏金额。",
-      "biometrics": "使用{{method}}解锁",
+      "biometrics": "使用{{methodKey}}解锁",
       "methodFace": "面容",
       "methodTouch": "指纹",
       "methodGeneric": "生物识别",
-      "biometricsOn": "使用{{method}}解锁",
+      "biometricsOn": "使用{{methodKey}}解锁",
       "biometricsOff": "仅密码",
       "biometricsDisabled": "已关闭生物识别解锁",
       "lockAfterLabel": "离开应用后锁定",
@@ -267,9 +267,56 @@
     "never": "尚无备份"
   },
   "notifications": {
+    "lead": "Moony 只在这部手机上提醒，不经过服务器。每次解锁时都会重新安排通知。",
     "permission": {
+      "label": "通知",
       "granted": "已允许",
-      "notGranted": "未允许"
+      "denied": "已禁止",
+      "notAsked": "尚未允许",
+      "notGranted": "未允许",
+      "allow": "允许通知",
+      "deniedHint": "请在手机“设置”→ Moony →“通知”中允许。",
+      "unavailable": "此设备不支持。",
+      "needed": "请先允许通知。"
+    },
+    "deadlines": {
+      "label": "期限",
+      "hint": "期限前 14 天和前 1 天。"
+    },
+    "upkeep": {
+      "label": "每月数据维护",
+      "hint": "每月 {{day}} 日：余额与对账单。",
+      "day": "每月几号",
+      "dayLabel": "每月 {{day}} 日",
+      "dayValue": "{{day}} 日",
+      "title": "该维护数据了",
+      "body": "请记录余额并导入对账单。"
+    },
+    "backup": {
+      "label": "备份",
+      "hint": "上次备份超过 30 天时。",
+      "title": "请备份 Moony",
+      "stale": "上次备份已超过一个月。",
+      "never": "你还没有备份。"
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "距{{whatKey}}还有 14 天",
+      "tomorrow": "{{whatKey}}就在明天",
+      "kind": {
+        "insurance_anniversary": "保险解约通知截止日",
+        "insurance_end": "保险到期",
+        "loan_fixation_end": "固定利率结束",
+        "bond_maturity": "债券到期",
+        "account_termination": "账户结束",
+        "savings_rate_end": "优惠利率结束"
+      }
+    },
+    "test": {
+      "send": "发送测试通知",
+      "title": "测试通知",
+      "body": "Moony 的提醒就是这样显示的。",
+      "sent": "10 秒后送达"
     }
   }
 }

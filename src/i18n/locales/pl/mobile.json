@@ -262,11 +262,11 @@
     "noTelemetry": "bez telemetrii",
     "security": {
       "lead": "Odblokowywanie, blokada w tle i ukrywanie kwot na tym telefonie.",
-      "biometrics": "Odblokowuj {{method}}",
+      "biometrics": "Odblokowuj {{methodKey}}",
       "methodFace": "twarzą",
       "methodTouch": "odciskiem palca",
       "methodGeneric": "biometrią",
-      "biometricsOn": "Odblokowanie {{method}}",
+      "biometricsOn": "Odblokowanie {{methodKey}}",
       "biometricsOff": "Tylko hasło",
       "biometricsDisabled": "Odblokowywanie biometrią wyłączone",
       "lockAfterLabel": "Blokuj po wyjściu z aplikacji",
@@ -303,9 +303,56 @@
     "never": "Brak kopii zapasowej"
   },
   "notifications": {
+    "lead": "Moony przypomina tylko z tego telefonu, bez serwera. Powiadomienia są planowane przy każdym odblokowaniu.",
     "permission": {
+      "label": "Powiadomienia",
       "granted": "Dozwolone",
-      "notGranted": "Niedozwolone"
+      "denied": "Zablokowane",
+      "notAsked": "Jeszcze niedozwolone",
+      "notGranted": "Niedozwolone",
+      "allow": "Zezwól na powiadomienia",
+      "deniedHint": "Zezwól na nie w Ustawieniach telefonu → Moony → Powiadomienia.",
+      "unavailable": "Niedostępne na tym urządzeniu.",
+      "needed": "Najpierw zezwól na powiadomienia."
+    },
+    "deadlines": {
+      "label": "Terminy",
+      "hint": "14 dni i 1 dzień przed terminem."
+    },
+    "upkeep": {
+      "label": "Miesięczna aktualizacja danych",
+      "hint": "{{day}}. dzień miesiąca: salda i wyciągi.",
+      "day": "Dzień miesiąca",
+      "dayLabel": "{{day}}. dzień miesiąca",
+      "dayValue": "{{day}}.",
+      "title": "Czas zadbać o dane",
+      "body": "Zapisz salda i zaimportuj wyciągi."
+    },
+    "backup": {
+      "label": "Kopia zapasowa",
+      "hint": "Gdy ostatnia kopia jest starsza niż 30 dni.",
+      "title": "Zrób kopię zapasową Moony",
+      "stale": "Ostatnia kopia jest starsza niż miesiąc.",
+      "never": "Nie masz jeszcze żadnej kopii zapasowej."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} za 14 dni",
+      "tomorrow": "{{whatKey}} jutro",
+      "kind": {
+        "insurance_anniversary": "Termin wypowiedzenia ubezpieczenia",
+        "insurance_end": "Koniec ubezpieczenia",
+        "loan_fixation_end": "Koniec stałego oprocentowania",
+        "bond_maturity": "Wykup obligacji",
+        "account_termination": "Koniec konta",
+        "savings_rate_end": "Koniec promocyjnego oprocentowania"
+      }
+    },
+    "test": {
+      "send": "Wyślij powiadomienie testowe",
+      "title": "Powiadomienie testowe",
+      "body": "Tak wygląda przypomnienie z Moony.",
+      "sent": "Przyjdzie za 10 sekund"
     }
   }
 }

@@ -251,11 +251,11 @@
     "noTelemetry": "žádná telemetrie",
     "security": {
       "lead": "Odemykání, zámek na pozadí a skrývání částek na tomto telefonu.",
-      "biometrics": "Odemykat {{method}}",
+      "biometrics": "Odemykat {{methodKey}}",
       "methodFace": "obličejem",
       "methodTouch": "otiskem",
       "methodGeneric": "biometrií",
-      "biometricsOn": "Odemykání {{method}}",
+      "biometricsOn": "Odemykání {{methodKey}}",
       "biometricsOff": "Jen heslo",
       "biometricsDisabled": "Odemykání biometrií vypnuto",
       "lockAfterLabel": "Zamknout po přechodu na pozadí",
@@ -291,9 +291,56 @@
     "never": "Zatím žádná záloha"
   },
   "notifications": {
+    "lead": "Moony připomíná jen z tohoto telefonu, bez serveru. Plánují se při každém odemknutí.",
     "permission": {
+      "label": "Oznámení",
       "granted": "Povoleno",
-      "notGranted": "Nepovoleno"
+      "denied": "Zakázáno",
+      "notAsked": "Zatím nepovoleno",
+      "notGranted": "Nepovoleno",
+      "allow": "Povolit oznámení",
+      "deniedHint": "Povolte je v Nastavení telefonu → Moony → Oznámení.",
+      "unavailable": "Na tomto zařízení nejsou dostupná.",
+      "needed": "Nejdřív povolte oznámení."
+    },
+    "deadlines": {
+      "label": "Termíny",
+      "hint": "14 dní a 1 den před termínem."
+    },
+    "upkeep": {
+      "label": "Měsíční údržba",
+      "hint": "{{day}}. den v měsíci: zůstatky a výpisy.",
+      "day": "Den v měsíci",
+      "dayLabel": "{{day}}. den v měsíci",
+      "dayValue": "{{day}}.",
+      "title": "Je čas na údržbu dat",
+      "body": "Zaznamenejte zůstatky a naimportujte výpisy."
+    },
+    "backup": {
+      "label": "Záloha",
+      "hint": "Když je poslední záloha starší než 30 dní.",
+      "title": "Zálohujte Moony",
+      "stale": "Poslední záloha je starší než měsíc.",
+      "never": "Zatím nemáte žádnou zálohu."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} za 14 dní",
+      "tomorrow": "{{whatKey}} zítra",
+      "kind": {
+        "insurance_anniversary": "Termín pro výpověď pojistky",
+        "insurance_end": "Konec pojistky",
+        "loan_fixation_end": "Konec fixace",
+        "bond_maturity": "Splatnost dluhopisu",
+        "account_termination": "Konec účtu",
+        "savings_rate_end": "Konec zvýhodněné sazby"
+      }
+    },
+    "test": {
+      "send": "Poslat zkušební oznámení",
+      "title": "Zkušební oznámení",
+      "body": "Takhle vypadá připomínka z Moony.",
+      "sent": "Přijde za 10 sekund"
     }
   }
 }

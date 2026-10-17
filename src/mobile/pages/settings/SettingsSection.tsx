@@ -2,7 +2,9 @@ import { useTranslation } from 'react-i18next';
 import { Redirect, useParams } from 'wouter';
 import { SectionPage } from '@/mobile/components/SectionPage';
 import { isSettingsSection, routes, type SettingsSection as Section } from '@/mobile/shell/routes';
+import NotificationsSection from './NotificationsSection';
 import ProfileSection from './ProfileSection';
+import RemindersSection from './RemindersSection';
 import SecuritySection from './SecuritySection';
 
 /**
@@ -18,9 +20,11 @@ export default function SettingsSection() {
       return <ProfileSection />;
     case 'security':
       return <SecuritySection />;
-    // Reminders, notifications and the backup come with Tasks 2 and 3 of Phase 5
     case 'reminders':
+      return <RemindersSection />;
     case 'notifications':
+      return <NotificationsSection />;
+    // The backup comes with Task 3 of Phase 5
     case 'backup':
       return <UnbuiltSection section={section} />;
   }

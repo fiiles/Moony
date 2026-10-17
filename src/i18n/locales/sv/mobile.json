@@ -240,11 +240,11 @@
     "noTelemetry": "ingen telemetri",
     "security": {
       "lead": "Upplåsning, lås i bakgrunden och dolda belopp på den här telefonen.",
-      "biometrics": "Lås upp med {{method}}",
+      "biometrics": "Lås upp med {{methodKey}}",
       "methodFace": "ansiktet",
       "methodTouch": "fingeravtryck",
       "methodGeneric": "biometri",
-      "biometricsOn": "Upplåsning med {{method}}",
+      "biometricsOn": "Upplåsning med {{methodKey}}",
       "biometricsOff": "Bara lösenord",
       "biometricsDisabled": "Biometrisk upplåsning avstängd",
       "lockAfterLabel": "Lås efter att du lämnat appen",
@@ -279,9 +279,56 @@
     "never": "Ingen säkerhetskopia ännu"
   },
   "notifications": {
+    "lead": "Moony påminner bara från den här telefonen, utan server. Aviseringarna planeras varje gång du låser upp.",
     "permission": {
+      "label": "Aviseringar",
       "granted": "Tillåtet",
-      "notGranted": "Inte tillåtet"
+      "denied": "Blockerade",
+      "notAsked": "Inte tillåtna ännu",
+      "notGranted": "Inte tillåtet",
+      "allow": "Tillåt aviseringar",
+      "deniedHint": "Tillåt dem i telefonens Inställningar → Moony → Aviseringar.",
+      "unavailable": "Inte tillgängliga på den här enheten.",
+      "needed": "Tillåt aviseringar först."
+    },
+    "deadlines": {
+      "label": "Tidsfrister",
+      "hint": "14 dagar och 1 dag före tidsfristen."
+    },
+    "upkeep": {
+      "label": "Månatligt underhåll",
+      "hint": "Dag {{day}} i månaden: saldon och kontoutdrag.",
+      "day": "Dag i månaden",
+      "dayLabel": "Dag {{day}} i månaden",
+      "dayValue": "{{day}}",
+      "title": "Dags att underhålla datan",
+      "body": "Registrera saldona och importera kontoutdragen."
+    },
+    "backup": {
+      "label": "Säkerhetskopia",
+      "hint": "När den senaste säkerhetskopian är äldre än 30 dagar.",
+      "title": "Säkerhetskopiera Moony",
+      "stale": "Den senaste säkerhetskopian är över en månad gammal.",
+      "never": "Du har ingen säkerhetskopia än."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} om 14 dagar",
+      "tomorrow": "{{whatKey}} i morgon",
+      "kind": {
+        "insurance_anniversary": "Uppsägningsfrist för försäkringen",
+        "insurance_end": "Försäkringen upphör",
+        "loan_fixation_end": "Den bundna räntan upphör",
+        "bond_maturity": "Obligationen förfaller",
+        "account_termination": "Kontot avslutas",
+        "savings_rate_end": "Kampanjräntan upphör"
+      }
+    },
+    "test": {
+      "send": "Skicka en testavisering",
+      "title": "Testavisering",
+      "body": "Så här ser en påminnelse från Moony ut.",
+      "sent": "Kommer om 10 sekunder"
     }
   }
 }

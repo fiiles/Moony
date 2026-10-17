@@ -59,7 +59,10 @@ export default function SecuritySection() {
       <div className={CARD}>
         <SwitchRow
           id="biometrics"
-          label={t('settings.security.biometrics', { method: t(biometryMethodKey(type)) })}
+          label={renderTextRef(t, {
+            key: 'settings.security.biometrics',
+            params: { methodKey: biometryMethodKey(type) },
+          })}
           sub={sub}
           checked={enrolled}
           disabled={

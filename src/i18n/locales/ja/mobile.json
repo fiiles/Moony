@@ -229,11 +229,11 @@
     "noTelemetry": "テレメトリなし",
     "security": {
       "lead": "このスマートフォンでのロック解除、バックグラウンドでのロック、金額の非表示を設定します。",
-      "biometrics": "{{method}}でロック解除",
+      "biometrics": "{{methodKey}}でロック解除",
       "methodFace": "顔認証",
       "methodTouch": "指紋認証",
       "methodGeneric": "生体認証",
-      "biometricsOn": "{{method}}でロック解除",
+      "biometricsOn": "{{methodKey}}でロック解除",
       "biometricsOff": "パスワードのみ",
       "biometricsDisabled": "生体認証によるロック解除をオフにしました",
       "lockAfterLabel": "アプリを離れてからロックするまでの時間",
@@ -267,9 +267,56 @@
     "never": "まだバックアップがありません"
   },
   "notifications": {
+    "lead": "Moonyのリマインドはこのスマートフォンだけで行われ、サーバーは使いません。ロックを解除するたびに予定が組み直されます。",
     "permission": {
+      "label": "通知",
       "granted": "許可済み",
-      "notGranted": "許可されていません"
+      "denied": "ブロック中",
+      "notAsked": "まだ許可されていません",
+      "notGranted": "許可されていません",
+      "allow": "通知を許可",
+      "deniedHint": "スマートフォンの設定 → Moony → 通知で許可してください。",
+      "unavailable": "この端末では利用できません。",
+      "needed": "先に通知を許可してください。"
+    },
+    "deadlines": {
+      "label": "期限",
+      "hint": "期限の14日前と1日前。"
+    },
+    "upkeep": {
+      "label": "毎月のデータ整理",
+      "hint": "毎月{{day}}日：残高と明細。",
+      "day": "毎月の日付",
+      "dayLabel": "毎月{{day}}日",
+      "dayValue": "{{day}}日",
+      "title": "データを整理する時間です",
+      "body": "残高を記録して、明細を取り込みましょう。"
+    },
+    "backup": {
+      "label": "バックアップ",
+      "hint": "最後のバックアップから30日以上たったとき。",
+      "title": "Moonyをバックアップしましょう",
+      "stale": "最後のバックアップは1か月以上前です。",
+      "never": "まだバックアップがありません。"
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}}まであと14日",
+      "tomorrow": "{{whatKey}}は明日",
+      "kind": {
+        "insurance_anniversary": "保険の解約通知期限",
+        "insurance_end": "保険の満了",
+        "loan_fixation_end": "固定金利の終了",
+        "bond_maturity": "債券の償還",
+        "account_termination": "口座の終了",
+        "savings_rate_end": "優遇金利の終了"
+      }
+    },
+    "test": {
+      "send": "テスト通知を送る",
+      "title": "テスト通知",
+      "body": "Moonyのリマインドはこのように表示されます。",
+      "sent": "10秒後に届きます"
     }
   }
 }

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getVersion } from '@tauri-apps/api/app';
-import { isPermissionGranted } from '@tauri-apps/plugin-notification';
 import { useTranslation } from 'react-i18next';
 import { Bell, CalendarClock, FileText, Globe, Lock, Trash2, Upload, User } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
@@ -15,6 +14,7 @@ import { MILESTONE_GROUP_IDS, kindsOf } from '@/utils/milestones';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
 import { useBack } from '@/mobile/hooks/use-back';
+import { useNotificationPermission } from '@/mobile/hooks/use-notification-permission';
 import { readBackgroundLockMinutes } from '@/mobile/lib/background-lock';
 import { BIOMETRIC_STATUS_KEY } from '@/mobile/lib/biometrics';
 import { readHideAmountsOnLaunch } from '@/mobile/lib/hide-amounts';
@@ -69,11 +69,8 @@ export default function Settings() {
     queryKey: ['onboarding-progress'],
     queryFn: () => onboardingApi.getProgress(),
   });
-  // A rejection (a shell without the plugin) reads as "not granted"
-  const notifications = useQuery({
-    queryKey: ['notification-permission'],
-    queryFn: () => isPermissionGranted().catch(() => false),
-  });
+  // Denied, not asked and a shell without the plugin all read as "not granted"
+  const notifications = useNotificationPermission();
   const muted = useMilestoneMutedKinds();
 
   // Where the device settings stand now: this page mounts again on the way back from a section
@@ -97,14 +94,13 @@ export default function Settings() {
       : t('backup.never')
     : undefined;
 
-  const notificationsSub =
-    notifications.data === undefined
-      ? undefined
-      : t(
-          notifications.data
-            ? 'notifications.permission.granted'
-            : 'notifications.permission.notGranted'
-        );
+  const notificationsSub = notifications.isPending
+    ? undefined
+    : t(
+        notifications.state === 'granted'
+          ? 'notifications.permission.granted'
+          : 'notifications.permission.notGranted'
+      );
 
   const remindersSub = muted.data
     ? t('settings.rows.remindersSub', {

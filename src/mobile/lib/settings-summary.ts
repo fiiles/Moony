@@ -47,7 +47,7 @@ export function securitySummary(input: {
     input.enrolled
       ? {
           key: 'settings.security.biometricsOn',
-          params: { method: biometryMethodKey(input.biometryType) },
+          params: { methodKey: biometryMethodKey(input.biometryType) },
         }
       : { key: 'settings.security.biometricsOff' },
     input.lockMinutes === 0
@@ -59,13 +59,16 @@ export function securitySummary(input: {
 }
 
 /**
- * Says a `TextRef` with the `mobile` translator. A `method` value is itself a key (it names the
- * biometry and has to be in the page's language before it goes into the sentence), the other
+ * Says a `TextRef` with the `mobile` translator. One rule for the values: a param whose name ends
+ * in `Key` (`methodKey`, `whatKey`) is itself a key (it names the biometry or the kind of
+ * deadline and has to be in the page's language before it goes into the sentence), the other
  * values are numbers or words already.
  */
 export function renderTextRef(t: TFunction, ref: TextRef): string {
   if (!ref.params) return t(ref.key);
-  const params = { ...ref.params };
-  if (typeof params.method === 'string') params.method = t(params.method);
+  const params: Record<string, string | number> = {};
+  for (const [name, value] of Object.entries(ref.params)) {
+    params[name] = name.endsWith('Key') && typeof value === 'string' ? t(value) : value;
+  }
   return t(ref.key, params);
 }

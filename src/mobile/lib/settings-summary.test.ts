@@ -12,7 +12,10 @@ describe('securitySummary', () => {
         hideOnLaunch: false,
       })
     ).toEqual([
-      { key: 'settings.security.biometricsOn', params: { method: 'settings.security.methodFace' } },
+      {
+        key: 'settings.security.biometricsOn',
+        params: { methodKey: 'settings.security.methodFace' },
+      },
       { key: 'settings.security.lockAfter', params: { count: 1 } },
     ]);
   });
@@ -30,8 +33,10 @@ describe('securitySummary', () => {
   it('picks the method wording by the kind of biometry', () => {
     const method = (biometryType: 'touchId' | 'biometric') =>
       securitySummary({ enrolled: true, biometryType, lockMinutes: 5, hideOnLaunch: false })[0];
-    expect(method('touchId').params).toEqual({ method: 'settings.security.methodTouch' });
-    expect(method('biometric').params).toEqual({ method: 'settings.security.methodGeneric' });
+    expect(method('touchId').params).toEqual({ methodKey: 'settings.security.methodTouch' });
+    expect(method('biometric').params).toEqual({
+      methodKey: 'settings.security.methodGeneric',
+    });
   });
 });
 
@@ -64,12 +69,23 @@ describe('renderTextRef', () => {
     expect(renderTextRef(t, lockAfterOption(5))).toBe('«settings.security.optionMinutes|count=5»');
   });
 
-  it('translates the method param, which is itself a key', () => {
+  it('translates a param whose name ends in Key, which is itself a key', () => {
     expect(
       renderTextRef(t, {
         key: 'settings.security.biometricsOn',
-        params: { method: 'settings.security.methodFace' },
+        params: { methodKey: 'settings.security.methodFace' },
       })
-    ).toBe('«settings.security.biometricsOn|method=«settings.security.methodFace»»');
+    ).toBe('«settings.security.biometricsOn|methodKey=«settings.security.methodFace»»');
+  });
+
+  it('applies the same rule to any such param and leaves the others alone', () => {
+    expect(
+      renderTextRef(t, {
+        key: 'notifications.deadline.in14',
+        params: { whatKey: 'notifications.deadline.kind.loan_fixation_end', title: 'Key' },
+      })
+    ).toBe(
+      '«notifications.deadline.in14|whatKey=«notifications.deadline.kind.loan_fixation_end»,title=Key»'
+    );
   });
 });

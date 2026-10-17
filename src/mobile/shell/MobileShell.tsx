@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/lib/protected-route';
+import { useNotificationSchedule } from '@/mobile/hooks/use-notification-schedule';
 import { clearEnrolmentAsked } from '@/mobile/lib/biometrics';
 import Agenda from '@/mobile/pages/Agenda';
 import Cashflow from '@/mobile/pages/Cashflow';
@@ -20,6 +21,12 @@ import Wealth from '@/mobile/pages/Wealth';
 import { EnableBiometricsSheet } from '@/mobile/sheets/EnableBiometricsSheet';
 import { routes, tabForPath } from './routes';
 import { TabBar } from './TabBar';
+
+/** Plans the local notifications (spec §8.9) and draws nothing. */
+function NotificationScheduler() {
+  useNotificationSchedule();
+  return null;
+}
 
 /**
  * Phone shell (spec §6): the four tab roots behind the lock, the lock screen outside it, and the
@@ -67,6 +74,8 @@ export function MobileShell() {
       {tab && <TabBar active={tab} />}
       {/* Once, after the first password unlock: "Odemykat Moony obličejem?" (spec §8.2). */}
       <EnableBiometricsSheet />
+      {/* Only while unlocked: it reads the milestones, which the locked database cannot answer. */}
+      {appStatus === 'unlocked' && <NotificationScheduler />}
     </>
   );
 }

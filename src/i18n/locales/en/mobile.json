@@ -240,11 +240,11 @@
     "noTelemetry": "no telemetry",
     "security": {
       "lead": "Unlocking, the lock in the background and hiding amounts on this phone.",
-      "biometrics": "Unlock with {{method}}",
+      "biometrics": "Unlock with {{methodKey}}",
       "methodFace": "your face",
       "methodTouch": "your fingerprint",
       "methodGeneric": "biometrics",
-      "biometricsOn": "Unlocks with {{method}}",
+      "biometricsOn": "Unlocks with {{methodKey}}",
       "biometricsOff": "Password only",
       "biometricsDisabled": "Biometric unlock turned off",
       "lockAfterLabel": "Lock after leaving the app",
@@ -279,9 +279,56 @@
     "never": "No backup yet"
   },
   "notifications": {
+    "lead": "Moony reminds you from this phone only, with no server. It plans the notifications each time you unlock.",
     "permission": {
+      "label": "Notifications",
       "granted": "Allowed",
-      "notGranted": "Not allowed"
+      "denied": "Blocked",
+      "notAsked": "Not allowed yet",
+      "notGranted": "Not allowed",
+      "allow": "Allow notifications",
+      "deniedHint": "Allow them in your phone's Settings → Moony → Notifications.",
+      "unavailable": "Not available on this device.",
+      "needed": "Allow notifications first."
+    },
+    "deadlines": {
+      "label": "Deadlines",
+      "hint": "14 days and 1 day before the deadline."
+    },
+    "upkeep": {
+      "label": "Monthly upkeep",
+      "hint": "Day {{day}} of the month: balances and statements.",
+      "day": "Day of the month",
+      "dayLabel": "Day {{day}} of the month",
+      "dayValue": "{{day}}",
+      "title": "Time for data upkeep",
+      "body": "Record your balances and import your statements."
+    },
+    "backup": {
+      "label": "Backup",
+      "hint": "When the last backup is older than 30 days.",
+      "title": "Back up Moony",
+      "stale": "Your last backup is over a month old.",
+      "never": "You have no backup yet."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} in 14 days",
+      "tomorrow": "{{whatKey}} tomorrow",
+      "kind": {
+        "insurance_anniversary": "Insurance cancellation deadline",
+        "insurance_end": "Insurance ends",
+        "loan_fixation_end": "Fixed rate ends",
+        "bond_maturity": "Bond maturity",
+        "account_termination": "Account ends",
+        "savings_rate_end": "Promotional rate ends"
+      }
+    },
+    "test": {
+      "send": "Send a test notification",
+      "title": "Test notification",
+      "body": "This is what a Moony reminder looks like.",
+      "sent": "Arrives in 10 seconds"
     }
   }
 }

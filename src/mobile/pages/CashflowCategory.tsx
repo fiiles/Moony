@@ -233,11 +233,12 @@ function TransactionRow({ row, onChange }: TransactionRowProps) {
   // The marker leads: the sub-line ends in an ellipsis when it is too long, and "přesunuto" is
   // the one sign of a moved row that is not its dimming
   const sub = (row.moved ? [tr('readiness.moved'), ...row.sub] : row.sub).join(' · ');
+  // The converted amount carries the row's own sign (`reportAmount`), not the report line's
   const valueSub =
-    tx.signedAmount === null ? (
+    row.reportAmount === null ? (
       tr('readiness.fxUnavailable')
     ) : tx.currency !== tx.reportCurrency ? (
-      <Money value={Number(tx.signedAmount)} currency={tx.reportCurrency} options={SIGNED} />
+      <Money value={row.reportAmount} currency={tx.reportCurrency} options={SIGNED} />
     ) : undefined;
 
   return (

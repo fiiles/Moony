@@ -74,7 +74,10 @@
       "ended": "zakończony",
       "averageNote": "⌀ z ostatnich 6 miesięcy"
     },
-    "showMore": "Pokaż kolejne {{count}}",
+    "showMore_one": "Pokaż kolejną {{count}} transakcję",
+    "showMore_few": "Pokaż kolejne {{count}} transakcje",
+    "showMore_many": "Pokaż kolejnych {{count}} transakcji",
+    "showMore_other": "Pokaż kolejne {{count}} transakcji",
     "rowMenu": "Więcej akcji: {{title}}"
   },
   "upkeep": {

@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import type {
   BudgetGoal,
+  CashflowActuals,
   CashflowGroup,
   CashflowMonth,
   CategorySpendingSummary,
 } from '@shared/schema';
 import {
   barsFor,
+  bodyKind,
   budgetCounts,
   categoryRows,
   categoryTitle,
@@ -269,5 +271,91 @@ describe('categoryTitle', () => {
       'system:Travel'
     );
     expect(categoryTitle('1b2c', 'expense', null, 'Hobby', labels)).toBe('custom:Hobby');
+  });
+});
+
+describe('bodyKind', () => {
+  function actuals(patch: Partial<CashflowActuals> = {}): CashflowActuals {
+    return {
+      reportCurrency: 'CZK',
+      periodStart: 0,
+      periodEnd: 0,
+      quality: {
+        missingFxCount: 0,
+        missingFxCurrencies: [],
+        estimatedFxCount: 0,
+        observedCompletedMonths: [],
+        partialMonthCount: 0,
+        unobservedMonthCount: 0,
+        invalidAmountCount: 0,
+      },
+      months: [],
+      totalIncome: '0',
+      totalExpenses: '0',
+      netBalance: '0',
+      bankCashMovement: '0',
+      averageIncome: null,
+      averageExpenses: null,
+      averageCompletedMonths: [],
+      expenseCategories: [],
+      incomeCategories: [],
+      transfers: [],
+      accountCount: 2,
+      transactionCount: 14,
+      ...patch,
+    };
+  }
+  const loaded = { accountsLoaded: true, accountTotal: 2, isError: false };
+
+  it('is the skeleton while the actuals are not there yet', () => {
+    expect(bodyKind({ ...loaded, actuals: undefined })).toBe('skeleton');
+  });
+
+  it('is the skeleton while the accounts are not loaded, whatever the actuals say', () => {
+    expect(bodyKind({ ...loaded, accountsLoaded: false, actuals: actuals() })).toBe('skeleton');
+    expect(
+      bodyKind({
+        accountsLoaded: false,
+        accountTotal: 0,
+        isError: false,
+        actuals: actuals({ transactionCount: 0, accountCount: 0 }),
+      })
+    ).toBe('skeleton');
+  });
+
+  it('is the error when the actuals failed and there are none to show', () => {
+    expect(bodyKind({ ...loaded, isError: true, actuals: undefined })).toBe('error');
+    expect(
+      bodyKind({ accountsLoaded: false, accountTotal: 0, isError: true, actuals: undefined })
+    ).toBe('error');
+  });
+
+  it('keeps the report when a refetch failed but the actuals are still there', () => {
+    expect(bodyKind({ ...loaded, isError: true, actuals: actuals() })).toBe('report');
+  });
+
+  it('is the no-accounts invitation only for a profile without any account', () => {
+    expect(
+      bodyKind({
+        accountsLoaded: true,
+        accountTotal: 0,
+        isError: false,
+        actuals: actuals({ transactionCount: 0, accountCount: 0 }),
+      })
+    ).toBe('noAccounts');
+  });
+
+  it('is an empty period, not the invitation, when accounts exist but the period has nothing', () => {
+    // the backend counts accounts among the period's own transactions: 0 for any empty period
+    expect(
+      bodyKind({ ...loaded, actuals: actuals({ transactionCount: 0, accountCount: 0 }) })
+    ).toBe('emptyPeriod');
+    expect(
+      bodyKind({ ...loaded, accountTotal: 1, actuals: actuals({ transactionCount: 0 }) })
+    ).toBe('emptyPeriod');
+  });
+
+  it('is the report for a period with transactions', () => {
+    expect(bodyKind({ ...loaded, actuals: actuals() })).toBe('report');
   });
 });

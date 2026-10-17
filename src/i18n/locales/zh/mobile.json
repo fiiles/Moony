@@ -68,7 +68,7 @@
       "ended": "已结束",
       "averageNote": "⌀ 近 6 个月"
     },
-    "showMore": "再显示 {{count}} 条",
+    "showMore_other": "再显示 {{count}} 笔交易",
     "rowMenu": "更多操作：{{title}}"
   },
   "upkeep": {

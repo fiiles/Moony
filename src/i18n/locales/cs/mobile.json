@@ -72,7 +72,9 @@
       "ended": "ukončen",
       "averageNote": "⌀ za posledních 6 měsíců"
     },
-    "showMore": "Zobrazit dalších {{count}}",
+    "showMore_one": "Zobrazit další {{count}} transakci",
+    "showMore_few": "Zobrazit další {{count}} transakce",
+    "showMore_other": "Zobrazit dalších {{count}} transakcí",
     "rowMenu": "Další akce: {{title}}"
   },
   "upkeep": {

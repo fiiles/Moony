@@ -72,7 +72,9 @@
       "ended": "terminato",
       "averageNote": "⌀ degli ultimi 6 mesi"
     },
-    "showMore": "Mostra altri {{count}}",
+    "showMore_one": "Mostra altro {{count}} movimento",
+    "showMore_many": "Mostra altri {{count}} movimenti",
+    "showMore_other": "Mostra altri {{count}} movimenti",
     "rowMenu": "Altre azioni: {{title}}"
   },
   "upkeep": {

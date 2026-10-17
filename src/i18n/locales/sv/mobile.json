@@ -70,7 +70,8 @@
       "ended": "avslutad",
       "averageNote": "⌀ senaste 6 månaderna"
     },
-    "showMore": "Visa {{count}} till",
+    "showMore_one": "Visa {{count}} transaktion till",
+    "showMore_other": "Visa {{count}} transaktioner till",
     "rowMenu": "Fler åtgärder: {{title}}"
   },
   "upkeep": {

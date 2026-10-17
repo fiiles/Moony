@@ -36,8 +36,8 @@ interface CashflowBarsProps {
  * desktop chart's rules — `s1` income and `s3` expenses, 3 px rounded tops, 2 px gap, a zero
  * baseline, horizontal grid, one right-hand value axis — at 110 pt with months outside the period
  * muted. There is no tooltip: a tap on a month (a transparent button the height of the plot, one
- * per bar) switches the period to it. With amounts hidden the value axis shows the mask. A short
- * month name stands under every third bar, then the legend.
+ * per bar; disabled for a month still to come) switches the period to it. With amounts hidden the
+ * value axis shows the mask. A short month name stands under every third bar, then the legend.
  */
 export function CashflowBars({ bars, names, label, monthLabel, onSelectMonth }: CashflowBarsProps) {
   const fmt = useFormat();
@@ -57,6 +57,10 @@ export function CashflowBars({ bars, names, label, monthLabel, onSelectMonth }: 
   }, []);
 
   const plotWidth = Math.max(0, width - AXIS_WIDTH);
+  // A month after the current one stays on a quarter's or year's chart but cannot be opened: the
+  // period never moves forward, so its button would open the current month under another name
+  const today = new Date();
+  const currentMonth = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), 1) / 1000;
 
   const { domain, ticks } = useMemo(() => {
     const values = bars.flatMap((bar) => [bar.income, bar.expenses]);
@@ -144,16 +148,20 @@ export function CashflowBars({ bars, names, label, monthLabel, onSelectMonth }: 
         </div>
         {/* Over the plot, outside the image: one transparent button per month */}
         <div className="absolute left-0 top-0 flex" style={{ width: plotWidth, height: HEIGHT }}>
-          {bars.map((bar) => (
-            <button
-              key={bar.month}
-              type="button"
-              aria-label={monthLabel(bar.month)}
-              aria-pressed={!bar.muted}
-              onClick={() => onSelectMonth(bar.month)}
-              className="h-full min-w-0 flex-1 rounded-r1 [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:shadow-focus"
-            />
-          ))}
+          {bars.map((bar) => {
+            const future = bar.month > currentMonth;
+            return (
+              <button
+                key={bar.month}
+                type="button"
+                aria-label={monthLabel(bar.month)}
+                aria-pressed={future ? undefined : !bar.muted}
+                disabled={future}
+                onClick={() => onSelectMonth(bar.month)}
+                className="h-full min-w-0 flex-1 rounded-r1 [-webkit-tap-highlight-color:transparent] focus-visible:outline-none focus-visible:shadow-focus"
+              />
+            );
+          })}
         </div>
       </div>
       {chart && <CategoryAxis labels={axisLabels} centered />}

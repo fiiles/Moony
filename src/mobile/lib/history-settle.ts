@@ -1,7 +1,8 @@
 /**
  * Runs `run` once the history has settled after a sheet closed: on the first `popstate` (the one
  * the sheet's own `history.back()` raises, a tick after it closed) or, when none comes, after
- * `fallbackMs` (the sheet was closed by Android back, so its `popstate` is already behind us).
+ * `fallbackMs` (the sheet's cleanup found its history marker already gone, so it had nothing to
+ * pop and no `popstate` follows).
  * A URL written before that would land on the sheet's marked entry and be popped away with it.
  * Returns the function that cancels the wait (a no-op once `run` has run).
  */

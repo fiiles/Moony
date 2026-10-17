@@ -68,7 +68,7 @@
       "ended": "終了",
       "averageNote": "直近6か月の平均"
     },
-    "showMore": "さらに{{count}}件を表示",
+    "showMore_other": "さらに{{count}}件の取引を表示",
     "rowMenu": "その他の操作: {{title}}"
   },
   "upkeep": {

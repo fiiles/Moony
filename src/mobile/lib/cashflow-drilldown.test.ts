@@ -120,6 +120,59 @@ describe('drilldownRows', () => {
     expect(row.categoryId).toBe('cat_y');
   });
 
+  describe('reportAmount', () => {
+    it('is the converted amount of a foreign expense debit, negative like the row', () => {
+      // signedAmount is the row's contribution to its report line: an expense debit is positive
+      const [row] = drilldownRows(
+        [tx({ txType: 'debit', currency: 'EUR', amount: '50', signedAmount: '1250' })],
+        NO_CHANGES,
+        'cat_x',
+        day
+      );
+      expect(row.reportAmount).toBe(-1250);
+    });
+
+    it('is positive for a refund (a credit in an expense list, negative in the line)', () => {
+      const [row] = drilldownRows(
+        [tx({ txType: 'credit', currency: 'EUR', amount: '20', signedAmount: '-500' })],
+        NO_CHANGES,
+        'cat_x',
+        day
+      );
+      expect(row.reportAmount).toBe(500);
+    });
+
+    it('is positive for income credits and negative for a transfer debit', () => {
+      const rows = drilldownRows(
+        [
+          tx({
+            id: 'in',
+            txType: 'credit',
+            effectiveFlowKind: 'income',
+            currency: 'EUR',
+            signedAmount: '800',
+          }),
+          tx({
+            id: 'out',
+            txType: 'debit',
+            effectiveFlowKind: 'transfer',
+            currency: 'EUR',
+            signedAmount: '-2000',
+          }),
+        ],
+        NO_CHANGES,
+        'cat_x',
+        day
+      );
+      expect(rows.map((row) => row.reportAmount)).toEqual([800, -2000]);
+    });
+
+    it('is null when the row has no converted amount (no rate)', () => {
+      const [row] = drilldownRows([tx({ signedAmount: null })], NO_CHANGES, 'cat_x', day);
+      expect(row.reportAmount).toBeNull();
+    });
+  });
+
   it('shows the day through the label the caller gives', () => {
     const [row] = drilldownRows([tx({ bookingDate: 1234 })], NO_CHANGES, 'cat_x', day);
     expect(row.sub[0]).toBe('day 1234');

@@ -70,7 +70,8 @@
       "ended": "beendet",
       "averageNote": "⌀ der letzten 6 Monate"
     },
-    "showMore": "{{count}} weitere anzeigen",
+    "showMore_one": "{{count}} weitere Transaktion anzeigen",
+    "showMore_other": "{{count}} weitere Transaktionen anzeigen",
     "rowMenu": "Weitere Aktionen: {{title}}"
   },
   "upkeep": {

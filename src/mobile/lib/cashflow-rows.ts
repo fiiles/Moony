@@ -1,4 +1,5 @@
 import type {
+  CashflowActuals,
   CashflowGroup,
   CashflowMonth,
   CategorySpendingSummary,
@@ -164,4 +165,32 @@ export function barsFor(
 /** The part of the income that was kept (`net / totalIncome`); `null` without income. */
 export function savingsRate(totalIncome: number, net: number): number | null {
   return totalIncome > 0 ? net / totalIncome : null;
+}
+
+/** What the body of the Cashflow tab shows under the period bar. */
+export type BodyKind = 'skeleton' | 'error' | 'noAccounts' | 'emptyPeriod' | 'report';
+
+/**
+ * Which body the Cashflow tab shows. The invitation to add an account is for a profile with no
+ * account at all (`accountTotal`, from the accounts list): the report's own `accountCount` is the
+ * accounts among the period's transactions, so it is 0 for every empty period and says nothing
+ * about the profile. A period with no transactions (any month before the first import, an idle
+ * account's scope) keeps the bars and says so (`emptyPeriod`). A failed load is the error only
+ * while there is nothing to show; the skeleton waits for both the actuals and the accounts.
+ */
+export function bodyKind({
+  accountsLoaded,
+  accountTotal,
+  actuals,
+  isError,
+}: {
+  accountsLoaded: boolean;
+  accountTotal: number;
+  actuals: CashflowActuals | undefined;
+  isError: boolean;
+}): BodyKind {
+  if (!actuals && isError) return 'error';
+  if (!actuals || !accountsLoaded) return 'skeleton';
+  if (accountTotal === 0) return 'noAccounts';
+  return actuals.transactionCount === 0 ? 'emptyPeriod' : 'report';
 }

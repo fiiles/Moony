@@ -63,7 +63,7 @@ export interface CashflowReport {
   reportCurrency: string;
   /** The actuals are loading for the first time (there is nothing to show yet). */
   isLoading: boolean;
-  /** The actuals shown are those of the previous period, while the selected one loads. */
+  /** The actuals or the budgets shown are those of the previous period, while the selected one loads. */
   isPlaceholder: boolean;
   /** The actuals failed to load. */
   isError: boolean;
@@ -111,6 +111,9 @@ export function useCashflowReport(state: CashflowState): CashflowReport {
     ],
     queryFn: () =>
       budgetingApi.getReport(range.start, range.end, timeframe, accountIds, currencyCode),
+    // Like the actuals: the limits stay on the rows while the next period loads, so both dim
+    // and swap together
+    placeholderData: keepPreviousData,
   });
 
   const actuals = actualsQuery.data;
@@ -139,7 +142,7 @@ export function useCashflowReport(state: CashflowState): CashflowReport {
     budgetByCategory,
     reportCurrency: actuals?.reportCurrency ?? currencyCode,
     isLoading: actualsQuery.isLoading,
-    isPlaceholder: actualsQuery.isPlaceholderData,
+    isPlaceholder: actualsQuery.isPlaceholderData || budgetingQuery.isPlaceholderData,
     isError: actualsQuery.isError,
     refetch,
   };

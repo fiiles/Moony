@@ -41,6 +41,7 @@ import {
 } from '@/mobile/lib/cashflow-period';
 import {
   barsFor,
+  bodyKind,
   budgetCounts,
   categoryRows,
   categoryTitle,
@@ -82,7 +83,7 @@ export default function Cashflow() {
   const [, setLocation] = useLocation();
   const [state, setState] = useCashflowState();
   const report = useCashflowReport(state);
-  const { accounts } = useBankAccounts();
+  const { accounts, isLoading: accountsLoading } = useBankAccounts();
   const [accountsOpen, setAccountsOpen] = useState(false);
   // The accounts chosen in the sheet, waiting for the sheet's history entry to go
   const [pendingScope, setPendingScope] = useState<string[] | null>(null);
@@ -91,10 +92,19 @@ export default function Cashflow() {
   const { actuals } = report;
   const search = cashflowSearch(state);
   const accountCount = accounts.length;
+  // The invitation is decided by the accounts list, never by the period's own counts (an empty
+  // period reports no accounts either)
+  const body = bodyKind({
+    accountsLoaded: !accountsLoading,
+    accountTotal: accountCount,
+    actuals,
+    isError: report.isError,
+  });
 
   // The sheet's `history.back()` raises its `popstate` a tick after it closed; the scope is
   // written to the URL (a replace) only after that, else it lands on the sheet's entry and is
-  // popped away with it. Closed by Android back, the `popstate` is already behind: the timer.
+  // popped away with it. When that `popstate` never comes (the cleanup found the sheet's history
+  // marker already gone), the timer runs it.
   useEffect(() => {
     if (accountsOpen || pendingScope === null) return;
     return afterHistorySettles(window, () => {
@@ -110,7 +120,11 @@ export default function Cashflow() {
     <Screen
       title={t('tabs.cashflow')}
       large
-      subtitle={actuals ? t('cashflow.subtitle', { count: actuals.accountCount }) : undefined}
+      subtitle={
+        actuals && actuals.accountCount > 0
+          ? t('cashflow.subtitle', { count: actuals.accountCount })
+          : undefined
+      }
       trailing={
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
@@ -142,15 +156,14 @@ export default function Cashflow() {
         onTimeframeChange={(timeframe) => setState({ ...state, timeframe, offset: 0 })}
         onStep={(delta) => setState({ ...state, offset: Math.min(0, state.offset + delta) })}
       />
-      {!actuals ? (
-        report.isError ? (
-          <ReportError onRetry={report.refetch} />
-        ) : (
-          <CashflowSkeleton />
-        )
-      ) : actuals.accountCount === 0 && actuals.transactionCount === 0 ? (
+      {body === 'error' ? (
+        <ReportError onRetry={report.refetch} />
+      ) : body === 'skeleton' || !actuals ? (
+        <CashflowSkeleton />
+      ) : body === 'noAccounts' ? (
         <EmptyCashflow />
       ) : (
+        // 'emptyPeriod' and 'report': the body itself shows the bars and the empty line
         <div
           className={cn('transition-opacity', report.isPlaceholder && 'opacity-60')}
           aria-busy={report.isPlaceholder}
@@ -368,7 +381,7 @@ function ReportBody({
   );
 }
 
-/** A profile with no accounts and no transactions: the invitation to add the first (spec §8.7). */
+/** A profile with no account at all: the invitation to add the first (spec §8.7). */
 function EmptyCashflow() {
   const { t } = useTranslation('mobile');
   const [, setLocation] = useLocation();

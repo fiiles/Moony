@@ -13,6 +13,12 @@ export interface DrilldownRow {
   /** The day, the account and, under a counterparty, the first detail of the payment. */
   sub: string[];
   credit: boolean;
+  /**
+   * The payment's worth in the report currency, with the row's own sign (a debit is negative, a
+   * credit positive) — `signedAmount` is its contribution to the report line, so in an expense
+   * list a debit is positive there. `null` without a conversion (`signedAmount` is `null`).
+   */
+  reportAmount: number | null;
   /** Changed here to a category that is not the list's: the row stays, dimmed. */
   moved: boolean;
   /** The category the row has now: the change made here, else the one it was loaded with. */
@@ -36,6 +42,7 @@ export function drilldownRows(
     const counterparty = counterpartyLabel(tx).title;
     const details = transactionDetails(tx);
     const categoryId = changes.has(tx.id) ? (changes.get(tx.id) ?? null) : tx.categoryId;
+    const credit = tx.txType === 'credit';
     return {
       tx,
       title: counterparty ?? details[0] ?? tx.bankAccountName,
@@ -44,7 +51,9 @@ export function drilldownRows(
         tx.bankAccountName,
         ...(counterparty !== null ? details.slice(0, 1) : []),
       ],
-      credit: tx.txType === 'credit',
+      credit,
+      reportAmount:
+        tx.signedAmount === null ? null : Math.abs(Number(tx.signedAmount)) * (credit ? 1 : -1),
       moved: changes.has(tx.id) && isMovedOut(targetKey, categoryId),
       categoryId,
     };

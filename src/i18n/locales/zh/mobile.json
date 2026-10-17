@@ -83,6 +83,44 @@
       "classPage": "此资产类别的页面将在第 4 阶段的下一部分推出。",
       "watchDetail": "自选股票的详情将在第 4 阶段的下一部分推出。",
       "later": "将在第 4 阶段的下一部分推出。"
-    }
+    },
+    "subtitle": "投资、房产和现金",
+    "sections": {
+      "investments": "投资",
+      "realEstate": "房产",
+      "cash": "现金"
+    },
+    "cash": {
+      "title": "账户余额"
+    },
+    "bonds": {
+      "count_other": "{{count}} 只债券",
+      "nearest": "最近到期 {{month}}",
+      "coupon": "票息 {{amount}} / 年"
+    },
+    "otherAssets": {
+      "count_other": "{{count}} 项",
+      "valuedOn": "{{date}} 估值"
+    },
+    "realEstate": {
+      "personal": "自住",
+      "investment": "投资",
+      "rent": "租金 {{amount}} / 月",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "暂无资产",
+      "description": "添加您的第一笔投资、房产或其他资产。",
+      "class": "暂无"
+    },
+    "add": {
+      "label": "添加",
+      "investment": "投资",
+      "crypto": "加密货币",
+      "bond": "债券",
+      "property": "房产",
+      "asset": "资产"
+    },
+    "noRate": "无 {{currency}} 汇率"
   }
 }

@@ -37,6 +37,11 @@ interface HeroProps<E extends ChartEvent> {
   events?: E[];
   renderEventTip?: (cluster: EventCluster<E>) => LineTip;
   chartLabel?: string;
+  /**
+   * Content that belongs to the hero's number: after the chart when it is charted, right after the
+   * change line in the compact hero (Majetek's allocation bar and legend, a chart legend).
+   */
+  children?: ReactNode;
 }
 
 /**
@@ -60,6 +65,7 @@ export function Hero<E extends ChartEvent>({
   events,
   renderEventTip,
   chartLabel,
+  children,
 }: HeroProps<E>) {
   const { t } = useTranslation('common');
   const fmt = useFormat();
@@ -149,6 +155,7 @@ export function Hero<E extends ChartEvent>({
           label={chartLabel ?? label}
         />
       )}
+      {children}
     </section>
   );
 }

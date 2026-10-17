@@ -88,6 +88,46 @@
       "classPage": "This class page comes in the next part of phase 4.",
       "watchDetail": "The watch detail comes in the next part of phase 4.",
       "later": "Comes in the next part of phase 4."
-    }
+    },
+    "subtitle": "Investments, property and cash",
+    "sections": {
+      "investments": "Investments",
+      "realEstate": "Property",
+      "cash": "Cash"
+    },
+    "cash": {
+      "title": "On accounts"
+    },
+    "bonds": {
+      "count_one": "{{count}} issue",
+      "count_other": "{{count}} issues",
+      "nearest": "nearest maturity {{month}}",
+      "coupon": "coupon {{amount}} / year"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} item",
+      "count_other": "{{count}} items",
+      "valuedOn": "valued {{date}}"
+    },
+    "realEstate": {
+      "personal": "personal",
+      "investment": "investment",
+      "rent": "rent {{amount}} / month",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Nothing owned yet",
+      "description": "Add your first investment, property or other asset.",
+      "class": "nothing yet"
+    },
+    "add": {
+      "label": "Add",
+      "investment": "Investment",
+      "crypto": "Cryptocurrency",
+      "bond": "Bond",
+      "property": "Property",
+      "asset": "Asset"
+    },
+    "noRate": "no rate for {{currency}}"
   }
 }

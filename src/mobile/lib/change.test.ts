@@ -1,0 +1,20 @@
+import { describe, expect, it } from 'vitest';
+import { periodChange } from './change';
+
+describe('periodChange', () => {
+  it('relates today to the base', () => {
+    expect(periodChange(6_775_680, 6_683_580)).toEqual({
+      delta: 92_100,
+      ratio: 92_100 / 6_683_580,
+    });
+  });
+  it('has no ratio against a zero base and measures against the magnitude of a negative one', () => {
+    expect(periodChange(500, 0)).toEqual({ delta: 500, ratio: null });
+    expect(periodChange(-50, -100)).toEqual({ delta: 50, ratio: 0.5 });
+  });
+  it('is null without a base or without today', () => {
+    expect(periodChange(500, undefined)).toBeNull();
+    expect(periodChange(500, null)).toBeNull();
+    expect(periodChange(null, 100)).toBeNull();
+  });
+});

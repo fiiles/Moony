@@ -88,6 +88,46 @@
       "classPage": "Sidan för den här klassen kommer i nästa del av fas 4.",
       "watchDetail": "Detaljerna för den bevakade aktien kommer i nästa del av fas 4.",
       "later": "Kommer i nästa del av fas 4."
-    }
+    },
+    "subtitle": "Investeringar, fastigheter och kontanter",
+    "sections": {
+      "investments": "Investeringar",
+      "realEstate": "Fastigheter",
+      "cash": "Kontanter"
+    },
+    "cash": {
+      "title": "På konton"
+    },
+    "bonds": {
+      "count_one": "{{count}} emission",
+      "count_other": "{{count}} emissioner",
+      "nearest": "närmaste förfall {{month}}",
+      "coupon": "kupong {{amount}} / år"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} post",
+      "count_other": "{{count}} poster",
+      "valuedOn": "värderad {{date}}"
+    },
+    "realEstate": {
+      "personal": "egen bostad",
+      "investment": "investering",
+      "rent": "hyra {{amount}} / månad",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Inget ägt ännu",
+      "description": "Lägg till din första investering, fastighet eller annan tillgång.",
+      "class": "inget ännu"
+    },
+    "add": {
+      "label": "Lägg till",
+      "investment": "Investering",
+      "crypto": "Kryptovaluta",
+      "bond": "Obligation",
+      "property": "Fastighet",
+      "asset": "Tillgång"
+    },
+    "noRate": "ingen kurs för {{currency}}"
   }
 }

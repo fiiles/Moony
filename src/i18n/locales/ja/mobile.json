@@ -83,6 +83,44 @@
       "classPage": "この資産クラスのページはフェーズ4の次のパートで追加されます。",
       "watchDetail": "ウォッチ中の株式の詳細はフェーズ4の次のパートで追加されます。",
       "later": "フェーズ4の次のパートで追加されます。"
-    }
+    },
+    "subtitle": "投資、不動産、現金",
+    "sections": {
+      "investments": "投資",
+      "realEstate": "不動産",
+      "cash": "現金"
+    },
+    "cash": {
+      "title": "口座残高"
+    },
+    "bonds": {
+      "count_other": "{{count}}銘柄",
+      "nearest": "直近の満期 {{month}}",
+      "coupon": "クーポン {{amount}} / 年"
+    },
+    "otherAssets": {
+      "count_other": "{{count}}件",
+      "valuedOn": "{{date}}に評価"
+    },
+    "realEstate": {
+      "personal": "自己居住用",
+      "investment": "投資用",
+      "rent": "家賃 {{amount}} / 月",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "保有資産はまだありません",
+      "description": "最初の投資、不動産、またはその他の資産を追加しましょう。",
+      "class": "まだありません"
+    },
+    "add": {
+      "label": "追加",
+      "investment": "投資",
+      "crypto": "暗号資産",
+      "bond": "債券",
+      "property": "物件",
+      "asset": "資産"
+    },
+    "noRate": "{{currency}}のレートなし"
   }
 }

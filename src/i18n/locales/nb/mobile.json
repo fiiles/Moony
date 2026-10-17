@@ -88,6 +88,46 @@
       "classPage": "Siden for denne klassen kommer i neste del av fase 4.",
       "watchDetail": "Detaljene for den fulgte aksjen kommer i neste del av fase 4.",
       "later": "Kommer i neste del av fase 4."
-    }
+    },
+    "subtitle": "Investeringer, eiendom og kontanter",
+    "sections": {
+      "investments": "Investeringer",
+      "realEstate": "Eiendom",
+      "cash": "Kontanter"
+    },
+    "cash": {
+      "title": "På kontoer"
+    },
+    "bonds": {
+      "count_one": "{{count}} emisjon",
+      "count_other": "{{count}} emisjoner",
+      "nearest": "nærmeste forfall {{month}}",
+      "coupon": "kupong {{amount}} / år"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} post",
+      "count_other": "{{count}} poster",
+      "valuedOn": "verdsatt {{date}}"
+    },
+    "realEstate": {
+      "personal": "egen bolig",
+      "investment": "investering",
+      "rent": "leie {{amount}} / måned",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Ingenting eid ennå",
+      "description": "Legg til din første investering, eiendom eller annen eiendel.",
+      "class": "ingenting ennå"
+    },
+    "add": {
+      "label": "Legg til",
+      "investment": "Investering",
+      "crypto": "Kryptovaluta",
+      "bond": "Obligasjon",
+      "property": "Eiendom",
+      "asset": "Eiendel"
+    },
+    "noRate": "ingen kurs for {{currency}}"
   }
 }

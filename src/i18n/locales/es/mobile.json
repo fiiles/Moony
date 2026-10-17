@@ -93,6 +93,48 @@
       "classPage": "La página de esta clase llegará en la siguiente parte de la fase 4.",
       "watchDetail": "El detalle de la acción en seguimiento llegará en la siguiente parte de la fase 4.",
       "later": "Llegará en la siguiente parte de la fase 4."
-    }
+    },
+    "subtitle": "Inversiones, inmuebles y efectivo",
+    "sections": {
+      "investments": "Inversiones",
+      "realEstate": "Inmuebles",
+      "cash": "Efectivo"
+    },
+    "cash": {
+      "title": "En cuentas"
+    },
+    "bonds": {
+      "count_one": "{{count}} emisión",
+      "count_many": "{{count}} emisiones",
+      "count_other": "{{count}} emisiones",
+      "nearest": "próximo vencimiento {{month}}",
+      "coupon": "cupón {{amount}} / año"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} elemento",
+      "count_many": "{{count}} elementos",
+      "count_other": "{{count}} elementos",
+      "valuedOn": "valorado el {{date}}"
+    },
+    "realEstate": {
+      "personal": "vivienda habitual",
+      "investment": "inversión",
+      "rent": "alquiler {{amount}} / mes",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Aún no tienes nada",
+      "description": "Añade tu primera inversión, inmueble u otro activo.",
+      "class": "todavía nada"
+    },
+    "add": {
+      "label": "Añadir",
+      "investment": "Inversión",
+      "crypto": "Criptomoneda",
+      "bond": "Bono",
+      "property": "Inmueble",
+      "asset": "Activo"
+    },
+    "noRate": "sin tipo de cambio para {{currency}}"
   }
 }

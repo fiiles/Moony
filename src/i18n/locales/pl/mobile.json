@@ -98,6 +98,50 @@
       "classPage": "Strona tej klasy pojawi się w kolejnej części fazy 4.",
       "watchDetail": "Szczegóły obserwowanej akcji pojawią się w kolejnej części fazy 4.",
       "later": "Pojawi się w kolejnej części fazy 4."
-    }
+    },
+    "subtitle": "Inwestycje, nieruchomości i gotówka",
+    "sections": {
+      "investments": "Inwestycje",
+      "realEstate": "Nieruchomości",
+      "cash": "Gotówka"
+    },
+    "cash": {
+      "title": "Na kontach"
+    },
+    "bonds": {
+      "count_one": "{{count}} emisja",
+      "count_few": "{{count}} emisje",
+      "count_many": "{{count}} emisji",
+      "count_other": "{{count}} emisji",
+      "nearest": "najbliższy wykup {{month}}",
+      "coupon": "kupon {{amount}} / rok"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} pozycja",
+      "count_few": "{{count}} pozycje",
+      "count_many": "{{count}} pozycji",
+      "count_other": "{{count}} pozycji",
+      "valuedOn": "wycena z {{date}}"
+    },
+    "realEstate": {
+      "personal": "własna",
+      "investment": "inwestycyjna",
+      "rent": "najem {{amount}} / mies.",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Jeszcze nic nie posiadasz",
+      "description": "Dodaj pierwszą inwestycję, nieruchomość lub inne aktywo.",
+      "class": "jeszcze nic"
+    },
+    "add": {
+      "label": "Dodaj",
+      "investment": "Inwestycję",
+      "crypto": "Kryptowalutę",
+      "bond": "Obligację",
+      "property": "Nieruchomość",
+      "asset": "Aktywo"
+    },
+    "noRate": "brak kursu dla {{currency}}"
   }
 }

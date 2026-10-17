@@ -93,6 +93,48 @@
       "classPage": "Stránka této třídy přijde v další části fáze 4.",
       "watchDetail": "Detail sledované akcie přijde v další části fáze 4.",
       "later": "Přijde v další části fáze 4."
-    }
+    },
+    "subtitle": "Investice, nemovitosti a hotovost",
+    "sections": {
+      "investments": "Investice",
+      "realEstate": "Nemovitosti",
+      "cash": "Hotovost"
+    },
+    "cash": {
+      "title": "Na účtech"
+    },
+    "bonds": {
+      "count_one": "{{count}} emise",
+      "count_few": "{{count}} emise",
+      "count_other": "{{count}} emisí",
+      "nearest": "nejbližší splatnost {{month}}",
+      "coupon": "kupón {{amount}} / rok"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} položka",
+      "count_few": "{{count}} položky",
+      "count_other": "{{count}} položek",
+      "valuedOn": "oceněno {{date}}"
+    },
+    "realEstate": {
+      "personal": "osobní",
+      "investment": "investiční",
+      "rent": "nájem {{amount}} / měsíc",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Zatím žádný majetek",
+      "description": "Přidejte první investici, nemovitost nebo jiné aktivum.",
+      "class": "zatím nic"
+    },
+    "add": {
+      "label": "Přidat",
+      "investment": "Investici",
+      "crypto": "Kryptoměnu",
+      "bond": "Dluhopis",
+      "property": "Nemovitost",
+      "asset": "Aktivum"
+    },
+    "noRate": "bez kurzu pro {{currency}}"
   }
 }

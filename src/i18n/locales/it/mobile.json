@@ -93,6 +93,48 @@
       "classPage": "La pagina di questa classe arriverà nella prossima parte della fase 4.",
       "watchDetail": "Il dettaglio dell'azione osservata arriverà nella prossima parte della fase 4.",
       "later": "Arriverà nella prossima parte della fase 4."
-    }
+    },
+    "subtitle": "Investimenti, immobili e liquidità",
+    "sections": {
+      "investments": "Investimenti",
+      "realEstate": "Immobili",
+      "cash": "Liquidità"
+    },
+    "cash": {
+      "title": "Sui conti"
+    },
+    "bonds": {
+      "count_one": "{{count}} emissione",
+      "count_many": "{{count}} emissioni",
+      "count_other": "{{count}} emissioni",
+      "nearest": "prossima scadenza {{month}}",
+      "coupon": "cedola {{amount}} / anno"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} voce",
+      "count_many": "{{count}} voci",
+      "count_other": "{{count}} voci",
+      "valuedOn": "valutato il {{date}}"
+    },
+    "realEstate": {
+      "personal": "personale",
+      "investment": "d'investimento",
+      "rent": "affitto {{amount}} / mese",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Ancora nessun patrimonio",
+      "description": "Aggiungi il tuo primo investimento, immobile o altro bene.",
+      "class": "ancora niente"
+    },
+    "add": {
+      "label": "Aggiungi",
+      "investment": "Investimento",
+      "crypto": "Criptovaluta",
+      "bond": "Obbligazione",
+      "property": "Immobile",
+      "asset": "Bene"
+    },
+    "noRate": "nessun tasso per {{currency}}"
   }
 }

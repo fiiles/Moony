@@ -63,7 +63,12 @@ export function useRefreshStockPrices() {
       void invalidateAfterPriceRefresh(queryClient);
       queryClient.invalidateQueries({ queryKey: ['dividend-summary'] });
       if (result.rate_limit_hit) {
-        toast(t('toast.rateLimitReached'), { description: t('toast.rateLimitDescription') });
+        toast(t('toast.rateLimitReached'), {
+          description: t('toast.rateLimitDescription', {
+            updated: result.updated.length,
+            remaining: result.remaining_tickers.length,
+          }),
+        });
       } else {
         toast(t('toast.pricesRefreshed', { count: result.updated.length }), {
           description: t('toast.pricesRefreshedDescription'),

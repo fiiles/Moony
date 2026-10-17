@@ -1,21 +1,16 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import type {
-  AssetValuation,
-  CryptoPositions,
-  OtherAsset,
-  RealEstate,
-  StockPositions,
-} from '@shared/schema';
+import type { AssetValuation, CryptoPositions, OtherAsset, RealEstate } from '@shared/schema';
 import { useAuth } from '@/hooks/use-auth';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useBonds } from '@/hooks/use-bonds';
 import { useNetWorthOverview } from '@/hooks/use-net-worth-overview';
 import { useAllRealEstateValuations } from '@/hooks/use-real-estate';
 import { useCurrency } from '@/lib/currency';
-import { cryptoApi, investmentsApi, otherAssetsApi, realEstateApi } from '@/lib/tauri-api';
-import { toCryptoRow, toStockRow } from '@/utils/positions';
+import { cryptoApi, otherAssetsApi, realEstateApi } from '@/lib/tauri-api';
+import { toCryptoRow } from '@/utils/positions';
 import { tickerSummary } from '@/utils/trade-events';
+import { useStockPositions } from '@/mobile/hooks/use-stocks';
 import { periodChange, type PeriodChange } from '@/mobile/lib/change';
 import {
   propertyChange,
@@ -74,12 +69,8 @@ export function useWealth(): WealthData {
   const overview = useNetWorthOverview('30D');
   const { portfolioMetrics, display, hasHistory, oldest, reportCurrency } = overview;
 
-  const { data: stockPositions } = useQuery<StockPositions>({
-    queryKey: ['investments', currencyCode, fxRevision],
-    queryFn: () => investmentsApi.getAll(currencyCode),
-    refetchOnMount: true,
-    staleTime: 60 * 1000,
-  });
+  // The query of the Akcie page: one definition, one cache entry
+  const { positions: stockPositions, rows: stockRows } = useStockPositions();
   const { data: cryptoPositions } = useQuery<CryptoPositions>({
     queryKey: ['crypto', currencyCode, fxRevision],
     queryFn: () => cryptoApi.getAll(currencyCode),
@@ -113,7 +104,6 @@ export function useWealth(): WealthData {
     })
   ) as WealthData['classes'];
 
-  const stockRows = useMemo(() => (stockPositions?.items ?? []).map(toStockRow), [stockPositions]);
   const cryptoRows = useMemo(
     () => (cryptoPositions?.items ?? []).map(toCryptoRow),
     [cryptoPositions]

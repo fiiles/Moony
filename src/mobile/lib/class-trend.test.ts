@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classTrendPoints, pointsChange } from './class-trend';
+import { classTrendPoints, pointsChange, trendChangeBase } from './class-trend';
 
 const DAY = 86_400;
 const T = Date.UTC(2026, 9, 16) / 1000;
@@ -71,5 +71,48 @@ describe('pointsChange', () => {
   it('is null with fewer than two points', () => {
     expect(pointsChange([{ t: 1, value: 100 }])).toBeNull();
     expect(pointsChange([])).toBeNull();
+  });
+});
+
+describe('trendChangeBase', () => {
+  const start = T - 30 * DAY;
+
+  it('is the first plotted day when the line starts later than the period', () => {
+    expect(
+      trendChangeBase(
+        [
+          { t: T - 10 * DAY + 3_600, value: 100 },
+          { t: T, value: 120 },
+        ],
+        start
+      )
+    ).toBe(T - 10 * DAY);
+  });
+
+  it('is null when the line reaches back to the start of the period', () => {
+    expect(
+      trendChangeBase(
+        [
+          { t: start, value: 100 },
+          { t: T, value: 120 },
+        ],
+        start
+      )
+    ).toBeNull();
+    // a first day or so after an arbitrary start still counts as reaching it
+    expect(
+      trendChangeBase(
+        [
+          { t: start + DAY, value: 100 },
+          { t: T, value: 120 },
+        ],
+        start
+      )
+    ).toBeNull();
+  });
+
+  it('is null for "All" (no period start) and without points', () => {
+    expect(trendChangeBase([{ t: T - 10 * DAY, value: 100 }], undefined)).toBeNull();
+    expect(trendChangeBase([], start)).toBeNull();
   });
 });

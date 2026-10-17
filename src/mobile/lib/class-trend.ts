@@ -1,5 +1,6 @@
 import type { PortfolioHistoryPoint, PortfolioHistoryResponse } from '@shared/schema';
 import type { LinePoint } from '@/components/charts/MoonyLineChart';
+import { shortHistoryBaseDay } from '@/utils/change-base';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { amountOf } from '@/utils/positions';
 import { periodChange, type PeriodChange } from './change';
@@ -62,4 +63,18 @@ export function classTrendPoints(
 export function pointsChange(points: readonly LinePoint[]): PeriodChange | null {
   if (points.length < 2) return null;
   return periodChange(points[points.length - 1].value, points[0].value);
+}
+
+/**
+ * The day a period's change is really measured from when the line starts later than the period
+ * (a portfolio younger than "30 dní"), or `null` when it reaches back to the period's start —
+ * as Majetek and Přehled say it ("vs 3. 10." against "over 30 days"). `periodStart` is the start
+ * of the period itself, not clamped to the first trade; "Vše" has none and is labelled "since the
+ * first record" anyway.
+ */
+export function trendChangeBase(
+  points: readonly LinePoint[],
+  periodStart: number | undefined
+): number | null {
+  return shortHistoryBaseDay(periodStart, points[0]?.t);
 }

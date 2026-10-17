@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Download,
@@ -54,7 +54,8 @@ import {
   useStockTrades,
   useTwrThisYear,
 } from '@/mobile/hooks/use-stocks';
-import { classTrendPoints, pointsChange } from '@/mobile/lib/class-trend';
+import { changeSinceDayOptions } from '@/mobile/lib/change';
+import { classTrendPoints, pointsChange, trendChangeBase } from '@/mobile/lib/class-trend';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import { foldRows, positionRows, priceStamp, type PositionSort } from '@/mobile/lib/position-rows';
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
@@ -214,24 +215,27 @@ export default function Stocks() {
             label={ts('title')}
             className="mb-2"
           />
-          {tab === 'positions' ? (
+          {/* Kept mounted while the other segment shows, so its sort, search and fold stay */}
+          <div hidden={tab !== 'positions'}>
             <PositionsTab
               rows={rows}
               currency={reportCurrency}
               showClosed={showClosed}
               dimmed={refresh.isPending}
             />
-          ) : watched.length === 0 ? (
-            <p className="mx-0.5 py-6 text-center text-m-body text-ink-3">
-              {t('wealth.stocks.watchedEmpty')}
-            </p>
-          ) : (
-            <EntityRows>
-              {watched.map((row) => (
-                <WatchedRow key={row.id} row={row} />
-              ))}
-            </EntityRows>
-          )}
+          </div>
+          {tab === 'watched' &&
+            (watched.length === 0 ? (
+              <p className="mx-0.5 py-6 text-center text-m-body text-ink-3">
+                {t('wealth.stocks.watchedEmpty')}
+              </p>
+            ) : (
+              <EntityRows>
+                {watched.map((row) => (
+                  <WatchedRow key={row.id} row={row} />
+                ))}
+              </EntityRows>
+            ))}
         </>
       )}
       <AddInvestmentModal open={addOpen} onOpenChange={setAddOpen} />
@@ -255,6 +259,7 @@ function PortfolioHero({
 }) {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
+  const { t: td } = useTranslation('dashboard');
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const { transactions, convertAt } = useStockTrades();
@@ -270,6 +275,13 @@ function PortfolioHero({
     [history, currency, totalValue]
   );
   const change = pointsChange(points);
+  // "over 30 days", or "vs 3. 10." when the line starts later than the period (a young portfolio):
+  // the period's own start, not the one clamped to the first trade
+  const changeBase = trendChangeBase(points, chartPeriodStart(period, Date.now() / 1000));
+  const changeLabel =
+    changeBase === null
+      ? t(`overview.change.${period}`)
+      : td('changeSince', { date: fmt.day(changeBase, changeSinceDayOptions(changeBase)) });
 
   // Every trade at its own day's rate, like the history line it sits on; events before the horizon
   // would pile up on the left edge
@@ -318,7 +330,7 @@ function PortfolioHero({
                     currency={currency}
                     options={{ signed: true, ...WHOLE }}
                   />{' '}
-                  {t(`overview.change.${period}`)}
+                  {changeLabel}
                   {invested !== null && (
                     <>
                       {' · '}
@@ -371,7 +383,7 @@ function PortfolioStats({
   const { t: ts } = useTranslation('stocks');
   const fmt = useFormat();
   const moneyText = useMoneyText();
-  const { twr, mwr } = useTwrThisYear(positions !== undefined);
+  const { twr, mwr, isLoading: twrLoading } = useTwrThisYear(positions !== undefined);
 
   const totals = positions?.totals;
   const value = totalOf(totals?.value);
@@ -418,12 +430,16 @@ function PortfolioStats({
       label: t('wealth.stocks.twrYtd'),
       value: twr === null ? '—' : fmt.percent(twr / 100, 1, { signed: true }),
       tone: toneOf(twr),
+      // While the report loads there is nothing to say yet; "no history yet" is for a report that
+      // has fewer than two days (or failed)
       note:
-        twr === null
-          ? t('wealth.stocks.twrNoHistory')
-          : t('wealth.stocks.twrNote', {
+        twr !== null
+          ? t('wealth.stocks.twrNote', {
               mwr: fmt.percent((mwr ?? 0) / 100, 1, { signed: true }),
-            }),
+            })
+          : twrLoading
+            ? undefined
+            : t('wealth.stocks.twrNoHistory'),
     },
   ];
   return <StatRow stats={stats} />;
@@ -451,12 +467,18 @@ function PositionsTab({
   const [search, setSearch] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const searchBox = useRef<HTMLDivElement>(null);
 
   // A search that is out of sight must not keep filtering the list
   const toggleSearch = () => {
     if (searchOpen) setSearch('');
     setSearchOpen(!searchOpen);
   };
+
+  // Opening the search is for typing: the field takes the focus (and the keyboard) at once
+  useEffect(() => {
+    if (searchOpen) searchBox.current?.querySelector('input')?.focus();
+  }, [searchOpen]);
 
   const shownRows = positionRows(rows, { sort, search, showClosed });
   const { shown, hidden } = foldRows(shownRows, expanded);
@@ -484,12 +506,14 @@ function PositionsTab({
         </NavIconButton>
       </div>
       {searchOpen && (
-        <SearchField
-          value={search}
-          onChange={setSearch}
-          placeholder={ts('table.search')}
-          clearLabel={t('wealth.stocks.clearSearch')}
-        />
+        <div ref={searchBox}>
+          <SearchField
+            value={search}
+            onChange={setSearch}
+            placeholder={ts('table.search')}
+            clearLabel={t('wealth.stocks.clearSearch')}
+          />
+        </div>
       )}
       {shownRows.length === 0 ? (
         <p className="mx-0.5 py-6 text-center text-m-body text-ink-3">

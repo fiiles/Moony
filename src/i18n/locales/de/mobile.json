@@ -64,9 +64,7 @@
       "current": "Aktuelle Kategorie"
     },
     "limitSheet": {
-      "pick": "Wählen Sie die Kategorie, deren Ausgaben Sie im Blick behalten möchten.",
-      "amountPositive": "Das Limit muss größer als null sein.",
-      "untilBeforeStart": "Der Endmonat darf nicht vor dem Startmonat liegen."
+      "pick": "Wählen Sie die Kategorie, deren Ausgaben Sie im Blick behalten möchten."
     },
     "showMore": "{{count}} weitere anzeigen",
     "rowMenu": "Weitere Aktionen: {{title}}"

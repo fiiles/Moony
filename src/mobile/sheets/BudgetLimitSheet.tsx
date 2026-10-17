@@ -170,7 +170,8 @@ function LimitSheet({
     if (showCollisions) alertRef.current?.scrollIntoView?.({ block: 'nearest' });
   }, [showCollisions]);
 
-  // Moving from the list to the form starts at the top of the sheet's body (the form is shorter)
+  // Moving from the list to the form starts at the top of the sheet's body (the form is shorter).
+  // `Sheet` wraps its children in the scrolling body `div` (Sheet.tsx), so that is `bodyRef`'s parent.
   const bodyRef = useRef<HTMLDivElement>(null);
   const picking = categoryId === null;
   useEffect(() => {
@@ -180,6 +181,8 @@ function LimitSheet({
   const mutation = useSaveBudgetGoal(() => onOpenChange(false), editing);
 
   const submit = () => {
+    // A second Enter or "Done" key while the save runs must not save twice (`loading` only blocks taps)
+    if (mutation.isPending) return;
     if (!form.valid || form.amount === null || form.from === null || categoryId === null) return;
     const { amount, from, until } = form;
     // Saving the limit already in effect for that month changes nothing
@@ -220,12 +223,16 @@ function LimitSheet({
   const category = categories.find((c) => c.id === categoryId);
   const name = category ? categoryName(category) : (categoryId ?? '');
 
-  const average = categoryId === null ? 0 : (averages.get(categoryId)?.average ?? 0);
+  // The average is over the months the report observed, which may be fewer than six: say how many
+  const observed = categoryId === null ? undefined : averages.get(categoryId);
   const averageHint =
     averages.size === 0
       ? undefined
-      : average > 0
-        ? tb('dialog.averageHint', { amount: reportMoney(average, averageCurrency) })
+      : observed && observed.average > 0
+        ? tb('readiness.observedAverage', {
+            amount: reportMoney(observed.average, averageCurrency),
+            count: observed.months,
+          })
         : tb('dialog.noAverage');
 
   const amountError =
@@ -235,13 +242,13 @@ function LimitSheet({
         ? tc('validation.amountRequired')
         : form.errors.amount === 'invalid'
           ? tc('validation.invalidAmount')
-          : t('cashflow.limitSheet.amountPositive');
+          : tc('validation.amountPositive');
   const fromError = form.errors.from ? tc('validation.dateRequired') : undefined;
   const untilError =
     form.errors.until === 'invalid'
       ? tc('validation.dateRequired')
       : form.errors.until === 'beforeStart'
-        ? t('cashflow.limitSheet.untilBeforeStart')
+        ? tc('validation.effectiveUntilBeforeStart')
         : undefined;
 
   const saveLabel = {

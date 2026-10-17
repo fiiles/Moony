@@ -62,9 +62,7 @@
       "current": "当前类别"
     },
     "limitSheet": {
-      "pick": "请选择要控制支出的类别。",
-      "amountPositive": "限额必须大于零。",
-      "untilBeforeStart": "结束月份不能早于开始月份。"
+      "pick": "请选择要控制支出的类别。"
     },
     "showMore": "再显示 {{count}} 条",
     "rowMenu": "更多操作：{{title}}"

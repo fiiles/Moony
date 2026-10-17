@@ -66,9 +66,7 @@
       "current": "Categoría actual"
     },
     "limitSheet": {
-      "pick": "Elige la categoría cuyos gastos quieres controlar.",
-      "amountPositive": "El límite debe ser mayor que cero.",
-      "untilBeforeStart": "El mes final no puede ser anterior al mes inicial."
+      "pick": "Elige la categoría cuyos gastos quieres controlar."
     },
     "showMore": "Mostrar {{count}} más",
     "rowMenu": "Más acciones: {{title}}"

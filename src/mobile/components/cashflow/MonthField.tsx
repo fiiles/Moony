@@ -18,7 +18,8 @@ interface MonthFieldProps {
  * when invalid, the error 12 / 600 under it. `min` and `max` stay unset: any month may be typed
  * and the sheet's validation says what is wrong. The optional `action` is a text link beside the
  * label; the label row is two lines of label high with or without one (a long label wraps beside
- * the action), so two fields side by side keep their inputs level. The field carries no margin of
+ * the action), so two fields side by side keep their inputs level. The action fills that row (32 pt)
+ * and its hit area reaches 12 pt above it: 44 pt, never over the input. The field carries no margin of
  * its own: the screen spaces it (the limit sheet puts two in a grid).
  */
 export function MonthField({ label, value, onChange, error, action }: MonthFieldProps) {
@@ -34,7 +35,7 @@ export function MonthField({ label, value, onChange, error, action }: MonthField
           <button
             type="button"
             onClick={action.onClick}
-            className="relative flex-none whitespace-nowrap text-m-caption font-semibold text-ink-3 underline underline-offset-[3px] focus-visible:text-ink focus-visible:outline-none active:text-ink after:absolute after:-inset-x-1.5 after:-top-3 after:bottom-0 after:content-['']"
+            className="relative flex flex-none items-center self-stretch whitespace-nowrap text-m-caption font-semibold text-ink-3 underline underline-offset-[3px] focus-visible:text-ink focus-visible:outline-none active:text-ink after:absolute after:-inset-x-1.5 after:-top-3 after:bottom-0 after:content-['']"
           >
             {action.label}
           </button>

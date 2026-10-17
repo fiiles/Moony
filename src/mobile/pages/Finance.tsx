@@ -49,6 +49,7 @@ import { TrendCard } from '@/mobile/components/TrendCard';
 import { useCashTrend } from '@/mobile/hooks/use-cash-trend';
 import { useFinance, type Finance as FinanceData } from '@/mobile/hooks/use-finance';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { useRemembered } from '@/mobile/hooks/use-remembered';
 import {
   accountSub,
   accountTrail,
@@ -109,10 +110,12 @@ export default function Finance() {
   const finance = useFinance();
   const { accounts, totals, loans, insurance, mainCurrency, fxReady, isLoading } = finance;
 
-  const [sort, setSort] = useState<AccountSort>('balance');
-  const [showMatured, setShowMatured] = useState(false);
-  const [showEnded, setShowEnded] = useState(false);
-  const [period, setPeriod] = useState<ChartPeriod>(DEFAULT_PERIOD);
+  // How the tab was left is kept for the session (a visit to an account remounts it); the add
+  // dialog is not, so it does not reopen on return
+  const [sort, setSort] = useRemembered<AccountSort>('finance.sort', 'balance');
+  const [showMatured, setShowMatured] = useRemembered('finance.showMatured', false);
+  const [showEnded, setShowEnded] = useRemembered('finance.showEnded', false);
+  const [period, setPeriod] = useRemembered<ChartPeriod>('finance.period', DEFAULT_PERIOD);
   const [addKind, setAddKind] = useState<AddKind | null>(null);
   const { createAccount } = useBankAccountMutations();
   const { createMutation: createLoan } = useLoanMutations();

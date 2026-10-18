@@ -134,7 +134,7 @@ The tag name decides how the release is published:
 - `vX.Y.Z` is a full release. Once published it becomes the "latest" release that the updater
   endpoint (`…/releases/latest/download/latest.json`) serves.
 - A tag with a hyphen (`v1.0.0-rc.1`, `v1.0.0-test.1`) is created as a **pre-release**
-  (`prerelease: contains(github.ref_name, '-')` in `release.yml`). GitHub's "latest" skips
+  (the `create-release` job in `release.yml` sets it for any tag containing `-`). GitHub's "latest" skips
   pre-releases, so the updater never offers one.
 
 `.github/workflows/release.yml` runs three stages:

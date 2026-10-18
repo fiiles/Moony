@@ -153,7 +153,7 @@ public key; switch the check off in *Settings → Security → Updates*.
 
 The checkable version is **[PRIVACY.md](./PRIVACY.md)**; vulnerabilities go through **[SECURITY.md](./SECURITY.md)**.
 
-- **Local only.** AES-256 encrypted SQLite databases (SQLCipher) in your user profile: one for
+- **Local-first.** AES-256 encrypted SQLite databases (SQLCipher) in your user profile: one for
   your records, one for the photos and documents you attach. No account, no cloud, no sync, and no
   telemetry: no analytics, no usage statistics, no crash reports.
 - **What leaves your computer.** Ticker symbols, ISINs, crypto IDs, search text, currencies and
@@ -215,9 +215,9 @@ migrations, and Moony first copies it next to itself (`moony.db.bak-<time>`, the
 kept). That is a safeguard, not a guarantee: keep your own backup, because an older version
 refuses a database that a newer one has migrated. If you come from 0.10.0 or older, read
 [Where your data lives](./PRIVACY.md#where-your-data-lives) first: the data folder was renamed in
-0.11.0. The MCP tool names and result shapes have been stable since 0.10.0; if a later release
-changes them incompatibly, [CHANGELOG.md](./CHANGELOG.md) says so. Plans are in
-[ROADMAP.md](./ROADMAP.md).
+0.11.0. The MCP tool names and result shapes have changed only by additions and documented fixes
+since 0.10.0; if a later release changes them incompatibly, [CHANGELOG.md](./CHANGELOG.md) says
+so. Plans are in [ROADMAP.md](./ROADMAP.md).
 
 ## Built with AI assistance
 

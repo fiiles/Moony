@@ -91,7 +91,7 @@ trust, and regenerate the token when you stop using one.
   price library keeps in memory for its requests.
 - No remote configuration and no code that is loaded while the app runs: the only code that
   arrives from outside is a signed update that you choose to install.
-- No server operated by the project and no sync, so nothing for anyone to read remotely. The
+- No sync, so nothing for anyone to read remotely. The
   optional MCP server is off by default and listens on `127.0.0.1` only; whoever holds its token
   on your computer can read and change your data (see above).
 

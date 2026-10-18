@@ -6,8 +6,8 @@ unlocked. For what leaves your computer when you use it, see
 [PRIVACY.md](../PRIVACY.md#the-optional-mcp-server-ai-assistant).
 
 **Stability.** Tool names and result shapes changed incompatibly in 0.9.1 and 0.10.0 (see
-[CHANGELOG.md](../CHANGELOG.md)) and have been stable since. If a later release changes them
-incompatibly, the changelog says so.
+[CHANGELOG.md](../CHANGELOG.md)); since then they have changed only by additions and documented
+fixes. If a later release changes them incompatibly, the changelog says so.
 
 ## What it offers
 

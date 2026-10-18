@@ -6,6 +6,22 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-10-19
+
+The first stable release.
+
+### Added
+
+- **Dark mode.** Settings → General → Appearance offers System, Light and Dark. System follows the
+  macOS, Windows or Linux setting; the lock screen follows it too, and the window no longer
+  flashes white at start.
+- **Restore from backup before you unlock.** The lock screen and the first-run wizard have a
+  "Restore from backup" button, so a new computer or a reinstall needs no throwaway profile first.
+- **Search and sorting in the watchlist.** The Stock Monitor's "Watched" table has a search field
+  (ticker or company name) and sortable column heads: stock, day change, place in the 52-week
+  range, distance to the target and holding. The field that starts following a stock moved next to
+  "Refresh prices".
+
 ### Changed
 
 - **Stock analysis tables show amounts.** In the Tags and the Positions tables, the return over the
@@ -19,6 +35,33 @@ All notable changes to Moony are documented in this file. The format follows
 - **Filter badge.** While the tag filter is on, the widgets it narrows (the split under the
   performance chart, contribution, tags and positions) show a "Filter: …" badge with the chosen
   tags.
+- **"Getting started" follows what you track.** The overview checklist lists only the steps for the
+  areas you picked in the wizard, marks the optional ones, and also shows on an empty overview.
+- **One story on encryption.** The welcome step, the backup and export texts and the saved-copy
+  notice now all say the same: the database and the attachments are encrypted, a backup ZIP stays
+  encrypted, JSON exports and saved copies are not.
+- The allocation card on the overview no longer links to the Stocks page, because the ring covers
+  every asset class.
+- The language field in Settings uses the same select as every other setting.
+
+### Fixed
+
+- Deleting a manual dividend or a manual price showed the English word "Delete" in every language.
+- Renaming a stock showed a raw text key while saving.
+- Sorting the watchlist with the keyboard no longer loses focus after each change.
+
+### Security
+
+- Dependency updates (Tauri 2.12.4 and its plugins, React 19.3.1, tokio, zip 9.0.5 and others).
+
+### Upgrading
+
+- The update migrates your database (migration 022) after copying it next to itself
+  (`moony.db.bak-<time>`, the newest three are kept). After the update an earlier version cannot
+  open the profile.
+- Coming from 0.10.0 or older? Read
+  [Where your data lives](https://github.com/fiiles/Moony/blob/main/PRIVACY.md#where-your-data-lives)
+  before the first start: the data folder was renamed in 0.11.0.
 
 ## [0.13.0] - 2026-10-16
 
@@ -184,11 +227,10 @@ All notable changes to Moony are documented in this file. The format follows
 
 - **Banking country in the profile.** Settings → General has a "Country" select under the e-mail
   field; the first-run wizard already asked for it and now saves it with the profile. The country
-  puts your bank's statement formats first in the CSV import, chooses the text encoding of files
-  that are not UTF-8. A profile
-  that predates the field takes the country of its single enabled country rule pack, or Czechia
-  when it has the Czech interface or CZK as main currency; everyone else picks a country in
-  Settings (migration 017).
+  puts your bank's statement formats first in the import and chooses the text encoding of files
+  that are not UTF-8. A profile that predates the field takes the country of its single enabled
+  country rule pack, or Czechia when it has the Czech interface or CZK as main currency; everyone
+  else picks a country in Settings (migration 017).
 - **Own-account transfers without IBANs.** "Online Transfer to Savings", "Transfer from CHK
   ...5678", "Credit Card Payment", "Payment Thank You", "TFR-FR SAV", UK savings pots and card
   repayments (Barclaycard, MBNA, Amex) and the Japanese, Chinese and Korean wording for your own
@@ -640,7 +682,8 @@ local tool). Everything below is new to the public.
 - The updater only offers versions higher than the installed one, so a machine running an
   older 1.x build from the previous private repository must install 0.9.0 by hand.
 
-[Unreleased]: https://github.com/fiiles/Moony/compare/v0.13.0...HEAD
+[Unreleased]: https://github.com/fiiles/Moony/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/fiiles/Moony/compare/v0.13.0...v1.0.0
 [0.13.0]: https://github.com/fiiles/Moony/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/fiiles/Moony/compare/v0.12.1...v0.12.2
 [0.12.1]: https://github.com/fiiles/Moony/compare/v0.12.0...v0.12.1

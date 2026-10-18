@@ -206,7 +206,7 @@ export function ManualPriceModal({ open, onOpenChange, investment }: ManualPrice
                 >
                   {deleteMutation.isPending
                     ? tc('status.deleting', { defaultValue: 'Deleting...' })
-                    : tc('actions.delete', { defaultValue: 'Delete' })}
+                    : tc('buttons.delete')}
                 </Button>
               )}
             </div>

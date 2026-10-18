@@ -366,8 +366,8 @@ control, so lockout and the OS-level invalidation after a real enrolment change 
 on a device.
 
 **Compile check.** After touching `cfg(mobile)` code, the plugin or the dependencies, run
-`cd src-tauri && cargo check --target aarch64-apple-ios-sim --lib` next to the usual gates. `Cargo.lock`
-pins `libc` to 0.2.189 because 0.2.190 breaks this build (see "Mobile shell" in
+`cd src-tauri && cargo check --target aarch64-apple-ios-sim --lib` next to the usual gates. `libc`
+0.2.190 broke this build and 0.2.191 builds again (see "Mobile shell" in
 `docs/architecture/overview.md`); a dependency bump must keep the check green. CI runs the same
 check on macOS (`rust-ios-check`).
 

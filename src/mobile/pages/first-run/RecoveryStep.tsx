@@ -50,7 +50,7 @@ export function RecoveryStep({ flow, recoveryKey }: { flow: FirstRunFlow; recove
         RECOVERY_KEY_FILE,
         recoveryKeyFileContents(recoveryKey, {
           title: t('onboarding.recovery.fileTitle'),
-          note: t('onboarding.recovery.fileNote'),
+          note: tm('firstRun.recoveryFileNote'),
         })
       );
       if (outcome === 'saved') toast(t('onboarding.recovery.saved'));

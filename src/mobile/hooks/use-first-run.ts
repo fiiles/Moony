@@ -51,7 +51,7 @@ const STEPS_THAT_JUST_CONTINUE: readonly FirstRunStep[] = ['privacy', 'biometric
  * The state is the flow's: the steps get what they show and the actions to call. `step` moves to
  * `recovery` by itself when the recovery key arrives and to `areas` when the database exists; from
  * then on there is no way back. The Biometrie step is in the list only where the biometry status
- * (read once the app is unlocked) says biometrics can be used.
+ * (it needs no session, so it is read from the first screen) says biometrics can be used.
  */
 export function useFirstRun({
   language,
@@ -63,8 +63,7 @@ export function useFirstRun({
   const { t } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
-  const { appStatus, setupMutation, confirmSetupMutation, recoveryKey, clearRecoveryKey } =
-    useAuth();
+  const { setupMutation, confirmSetupMutation, recoveryKey, clearRecoveryKey } = useAuth();
   const { createAccount } = useBankAccountMutations();
 
   const systemRegion = useMemo(() => regionFromLocale(navigator.language), []);
@@ -96,12 +95,10 @@ export function useFirstRun({
     [country, language]
   );
 
-  // Whether biometrics can be used here; unknown (and so, no step) until the app is unlocked
-  const biometry = useQuery({
-    queryKey: BIOMETRIC_STATUS_KEY,
-    queryFn: biometricApi.status,
-    enabled: appStatus === 'unlocked',
-  });
+  // Whether biometrics can be used here. The status needs neither a session nor a profile, so it is
+  // known from the first screen and the step count never changes under the progress line. A status
+  // that cannot be read (the desktop shell, a browser tab) is no biometry: the six-step list.
+  const biometry = useQuery({ queryKey: BIOMETRIC_STATUS_KEY, queryFn: biometricApi.status });
   const biometryAvailable = biometry.data?.available ?? false;
   const steps = useMemo(() => firstRunSteps({ biometryAvailable }), [biometryAvailable]);
 
@@ -258,6 +255,7 @@ export function useFirstRun({
     areas,
     setAreas,
     accountDraft,
+    setAccountDraft,
     submitAccount,
     backToAccount,
     createDatabase,

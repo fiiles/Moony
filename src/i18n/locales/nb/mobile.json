@@ -290,6 +290,7 @@
     "privacyLead": "Moony lagrer alt i en kryptert database på denne telefonen. Ingen sky, ingen konto hos oss.",
     "recoveryLead": "Den eneste veien til dataene dine hvis du glemmer passordet. Oppbevar den utenfor denne telefonen – i en passordbehandler, i Filer eller på papir.",
     "saveToFiles": "Lagre i Filer",
+    "recoveryFileNote": "Denne nøkkelen tilbakestiller Moony-passordet ditt. Den fungerer bare sammen med en Moony-sikkerhetskopi fra denne telefonen, så lagre også den sikkerhetskopien. Ikke gi denne filen til noen.",
     "areasLead": "Velg hva du vil følge i Moony. Du kan endre dette når som helst i Innstillinger.",
     "firstAccountLead": "Et navn og en saldo er nok. Kontoutskriften kan du importere senere.",
     "stepLabel": "{{index}} / {{total}} · {{step}}",

@@ -290,6 +290,7 @@
     "privacyLead": "Moony speichert alles in einer verschlüsselten Datenbank auf diesem Telefon. Keine Cloud, kein Konto bei uns.",
     "recoveryLead": "Der einzige Weg zu Ihren Daten, falls Sie das Passwort vergessen. Bewahren Sie ihn außerhalb dieses Telefons auf – in einem Passwortmanager, in „Dateien“ oder auf Papier.",
     "saveToFiles": "In „Dateien“ speichern",
+    "recoveryFileNote": "Dieser Schlüssel setzt Ihr Moony-Passwort zurück. Er funktioniert nur zusammen mit einer Moony-Sicherung von diesem Telefon, bewahren Sie diese Sicherung daher ebenfalls auf. Geben Sie diese Datei an niemanden weiter.",
     "areasLead": "Wählen Sie, was Sie in Moony erfassen möchten. Sie können dies jederzeit in den Einstellungen ändern.",
     "firstAccountLead": "Ein Name und ein Kontostand genügen. Einen Kontoauszug importieren Sie später.",
     "stepLabel": "{{index}} / {{total}} · {{step}}",

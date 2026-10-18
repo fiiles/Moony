@@ -302,6 +302,7 @@
     "privacyLead": "Moony ukládá vše do šifrované databáze v tomto telefonu. Žádný cloud, žádný účet u nás.",
     "recoveryLead": "Jediná cesta k datům, když heslo zapomenete. Uložte ho mimo tento telefon: do správce hesel, do Souborů nebo na papír.",
     "saveToFiles": "Uložit do Souborů",
+    "recoveryFileNote": "Tento klíč resetuje vaše heslo do Moony. Funguje jen spolu se zálohou Moony z tohoto telefonu, proto si zálohu uložte také. Soubor nikomu nedávejte.",
     "areasLead": "Vyberte, co chcete v Moony sledovat. Změnit to můžete kdykoli v Nastavení.",
     "firstAccountLead": "Stačí název a zůstatek. Výpis naimportujete později.",
     "stepLabel": "{{index}} / {{total}} · {{step}}",

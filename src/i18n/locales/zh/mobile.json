@@ -278,7 +278,8 @@
     "privacyLead": "Moony 将所有内容存放在这部手机上的加密数据库中。没有云端，也无需在我们这里注册账户。",
     "recoveryLead": "忘记密码时，这是找回数据的唯一途径。请将其保存在这部手机之外——密码管理器、“文件”App，或写在纸上。",
     "saveToFiles": "存储到“文件”",
-    "areasLead": "选择你想在 Moony 中管理的内容。你可以随时在设置中更改。",
+    "recoveryFileNote": "此密钥用于重置您的 Moony 密码。它必须与这部手机上的 Moony 备份配合使用，因此请同时保存该备份。请不要把此文件交给任何人。",
+    "areasLead": "选择您想在 Moony 中管理的内容。您可以随时在设置中更改。",
     "firstAccountLead": "只需名称和余额即可。账单可以稍后再导入。",
     "stepLabel": "{{index}} / {{total}} · {{step}}",
     "steps": {

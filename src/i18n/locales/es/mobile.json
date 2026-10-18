@@ -302,6 +302,7 @@
     "privacyLead": "Moony guarda todo en una base de datos cifrada en este teléfono. Sin nube y sin cuenta con nosotros.",
     "recoveryLead": "Es la única vía para acceder a tus datos si olvidas la contraseña. Guárdala fuera de este teléfono: en un gestor de contraseñas, en Archivos o en papel.",
     "saveToFiles": "Guardar en Archivos",
+    "recoveryFileNote": "Esta clave restablece tu contraseña de Moony. Solo funciona junto con una copia de seguridad de Moony de este teléfono, así que guarda también esa copia. No entregues este archivo a nadie.",
     "areasLead": "Elige qué quieres seguir en Moony. Puedes cambiarlo cuando quieras en Ajustes.",
     "firstAccountLead": "Basta con un nombre y un saldo. El extracto lo importarás más adelante.",
     "stepLabel": "{{index}} / {{total}} · {{step}}",

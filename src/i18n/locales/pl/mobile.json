@@ -314,6 +314,7 @@
     "privacyLead": "Moony przechowuje wszystko w zaszyfrowanej bazie danych na tym telefonie. Bez chmury, bez konta u nas.",
     "recoveryLead": "Jedyna droga do twoich danych, jeśli zapomnisz hasła. Przechowuj go poza tym telefonem – w menedżerze haseł, w aplikacji Pliki lub na papierze.",
     "saveToFiles": "Zapisz w Plikach",
+    "recoveryFileNote": "Ten klucz resetuje twoje hasło do Moony. Działa tylko razem z kopią zapasową Moony z tego telefonu, więc zapisz także tę kopię. Nie przekazuj tego pliku nikomu.",
     "areasLead": "Wybierz, co chcesz śledzić w Moony. Możesz to zmienić w dowolnym momencie w Ustawieniach.",
     "firstAccountLead": "Wystarczy nazwa i saldo. Wyciąg zaimportujesz później.",
     "stepLabel": "{{index}} / {{total}} · {{step}}",

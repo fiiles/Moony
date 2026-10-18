@@ -67,6 +67,7 @@ export function LanguagePickerSheet({ open, onOpenChange }: LanguagePickerSheetP
           <PickRow
             key={info.code}
             label={info.native}
+            lang={info.code}
             checked={info.code === language}
             onSelect={() => select(info.code)}
           />

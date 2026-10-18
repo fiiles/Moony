@@ -55,6 +55,12 @@ export function AccountStep({ flow }: { flow: FirstRunFlow }) {
   const pending = flow.pending.setup;
   const strength = passwordStrength(form.watch('password'));
 
+  // Back to Soukromí: what was typed comes back when the person returns to this step
+  const goBack = () => {
+    flow.setAccountDraft(form.getValues());
+    flow.goBack();
+  };
+
   return (
     <div data-testid="first-run-account">
       <StepHead title={t('onboarding.account.title')} lead={t('onboarding.account.subtitle')} />
@@ -193,7 +199,7 @@ export function AccountStep({ flow }: { flow: FirstRunFlow }) {
           </div>
         </form>
       </Form>
-      <button type="button" className={textLink} onClick={flow.goBack} disabled={pending}>
+      <button type="button" className={textLink} onClick={goBack} disabled={pending}>
         {tc('buttons.back')}
       </button>
     </div>

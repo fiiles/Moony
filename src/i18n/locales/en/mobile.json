@@ -290,6 +290,7 @@
     "privacyLead": "Moony stores everything in an encrypted database on this phone. No cloud, no account with us.",
     "recoveryLead": "The only way to your data if you forget the password. Store it outside this phone: in a password manager, in Files, or on paper.",
     "saveToFiles": "Save to Files",
+    "recoveryFileNote": "This key resets your Moony password. It works only together with a Moony backup from this phone, so keep that backup too. Do not give this file to anyone.",
     "areasLead": "Choose what you want to track in Moony. You can change this anytime in Settings.",
     "firstAccountLead": "A name and a balance are enough. You can import a statement later.",
     "stepLabel": "{{index}} / {{total}} · {{step}}",

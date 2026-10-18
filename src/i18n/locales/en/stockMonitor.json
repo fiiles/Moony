@@ -3,7 +3,7 @@
   "subtitle": "Stocks you are considering: prices in their own currency, target prices and your notes.",
   "cancel": "Cancel",
   "search": {
-    "placeholder": "Search a stock (symbol or name) to start following",
+    "placeholder": "Find a stock to follow",
     "noResults": "No stocks found",
     "searching": "Searching…"
   },
@@ -20,10 +20,10 @@
     "fiftyTwoWeekHigh": "52-wk high",
     "title": "Watched",
     "sub": "Change against the previous close · 52-week range with the current price and the target",
-    "sort": {
-      "name": "By name",
-      "change": "By change",
-      "target": "By target"
+    "search": "Search watched stocks",
+    "noResults": {
+      "title": "Nothing found",
+      "description": "Try another name or ticker."
     },
     "changeToday": "Change today",
     "range": "52W range",

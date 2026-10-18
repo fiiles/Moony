@@ -3,7 +3,7 @@
   "subtitle": "Aktien, die Sie in Betracht ziehen: Kurse in ihrer eigenen Währung, Kursziele und Ihre Notizen.",
   "cancel": "Abbrechen",
   "search": {
-    "placeholder": "Aktie suchen (Symbol oder Name), um sie zu beobachten",
+    "placeholder": "Aktie zum Beobachten finden",
     "noResults": "Keine Aktien gefunden",
     "searching": "Suche läuft…"
   },
@@ -20,10 +20,10 @@
     "fiftyTwoWeekHigh": "52-Wochen-Hoch",
     "title": "Beobachtet",
     "sub": "Änderung gegenüber dem Vortagesschluss · 52-Wochen-Spanne mit aktuellem Kurs und Ziel",
-    "sort": {
-      "name": "Nach Name",
-      "change": "Nach Änderung",
-      "target": "Nach Ziel"
+    "search": "Beobachtete Aktien durchsuchen",
+    "noResults": {
+      "title": "Nichts gefunden",
+      "description": "Versuchen Sie einen anderen Namen oder Ticker."
     },
     "changeToday": "Änderung heute",
     "range": "52-W-Spanne",

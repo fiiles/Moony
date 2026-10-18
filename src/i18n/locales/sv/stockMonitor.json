@@ -3,7 +3,7 @@
   "subtitle": "Aktier du överväger: kurser i sin egen valuta, målkurser och dina anteckningar.",
   "cancel": "Avbryt",
   "search": {
-    "placeholder": "Sök en aktie (symbol eller namn) för att börja bevaka",
+    "placeholder": "Hitta en aktie att bevaka",
     "noResults": "Inga aktier hittades",
     "searching": "Söker…"
   },
@@ -20,10 +20,10 @@
     "fiftyTwoWeekHigh": "Högsta 52 v",
     "title": "Bevakade",
     "sub": "Förändring mot föregående stängning · 52-veckorsintervall med aktuell kurs och målet",
-    "sort": {
-      "name": "Efter namn",
-      "change": "Efter förändring",
-      "target": "Efter mål"
+    "search": "Sök bland bevakade aktier",
+    "noResults": {
+      "title": "Inget hittades",
+      "description": "Prova ett annat namn eller en annan ticker."
     },
     "changeToday": "Förändring i dag",
     "range": "52-v-intervall",

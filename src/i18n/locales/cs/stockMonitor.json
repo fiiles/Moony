@@ -3,7 +3,7 @@
   "subtitle": "Akcie, které zvažujete: ceny v původní měně, cílové ceny a vaše poznámky.",
   "cancel": "Zrušit",
   "search": {
-    "placeholder": "Hledat akcii (symbol nebo název) a začít sledovat",
+    "placeholder": "Najít akcii ke sledování",
     "noResults": "Žádné akcie nenalezeny",
     "searching": "Vyhledávání…"
   },
@@ -20,10 +20,10 @@
     "pricesNeverUpdated": "Ceny ještě nebyly načteny",
     "title": "Sledované",
     "sub": "Změna proti včerejšímu závěru · 52T rozpětí s aktuální cenou a cílem",
-    "sort": {
-      "name": "Podle názvu",
-      "change": "Podle změny",
-      "target": "Podle cíle"
+    "search": "Hledat ve sledovaných",
+    "noResults": {
+      "title": "Nic nenalezeno",
+      "description": "Zkuste jiný název nebo ticker."
     },
     "changeToday": "Změna dnes",
     "range": "52T rozpětí",

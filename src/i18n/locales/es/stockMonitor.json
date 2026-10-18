@@ -3,7 +3,7 @@
   "subtitle": "Acciones que estás valorando: precios en su propia moneda, precios objetivo y tus notas.",
   "cancel": "Cancelar",
   "search": {
-    "placeholder": "Busca una acción (símbolo o nombre) para empezar a seguirla",
+    "placeholder": "Buscar una acción para seguir",
     "noResults": "No se han encontrado acciones",
     "searching": "Buscando…"
   },
@@ -20,10 +20,10 @@
     "fiftyTwoWeekHigh": "Máx. 52 sem.",
     "title": "En seguimiento",
     "sub": "Variación respecto al cierre anterior · rango de 52 semanas con el precio actual y el objetivo",
-    "sort": {
-      "name": "Por nombre",
-      "change": "Por variación",
-      "target": "Por objetivo"
+    "search": "Buscar en las acciones seguidas",
+    "noResults": {
+      "title": "No se encontró nada",
+      "description": "Prueba con otro nombre o ticker."
     },
     "changeToday": "Variación hoy",
     "range": "Rango 52 sem.",

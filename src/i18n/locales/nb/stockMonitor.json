@@ -3,7 +3,7 @@
   "subtitle": "Aksjer du vurderer: kurser i egen valuta, målkurser og notatene dine.",
   "cancel": "Avbryt",
   "search": {
-    "placeholder": "Søk etter en aksje (symbol eller navn) for å begynne å følge den",
+    "placeholder": "Finn en aksje å følge",
     "noResults": "Ingen aksjer funnet",
     "searching": "Søker…"
   },
@@ -20,10 +20,10 @@
     "fiftyTwoWeekHigh": "52-ukers høy",
     "title": "Fulgt",
     "sub": "Endring mot forrige sluttkurs · 52-ukers spenn med gjeldende kurs og målet",
-    "sort": {
-      "name": "Etter navn",
-      "change": "Etter endring",
-      "target": "Etter mål"
+    "search": "Søk i fulgte aksjer",
+    "noResults": {
+      "title": "Ingenting funnet",
+      "description": "Prøv et annet navn eller en annen ticker."
     },
     "changeToday": "Endring i dag",
     "range": "52-ukers spenn",

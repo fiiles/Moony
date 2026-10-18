@@ -286,6 +286,23 @@
     "restoreLead": "Restore a backup from this phone, or transfer a profile from Moony on the computer: choose the backup file and, after the restore, unlock with the password that was in use when it was created.",
     "osBackupNote": "The encrypted profile is also in the phone's own backup (iCloud or a computer); no one can open it without the password."
   },
+  "firstRun": {
+    "privacyLead": "Moony stores everything in an encrypted database on this phone. No cloud, no account with us.",
+    "recoveryLead": "The only way to your data if you forget the password. Store it outside this phone: in a password manager, in Files, or on paper.",
+    "saveToFiles": "Save to Files",
+    "areasLead": "Choose what you want to track in Moony. You can change this anytime in Settings.",
+    "firstAccountLead": "A name and a balance are enough. You can import a statement later.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometrics",
+      "backup": "Backup"
+    },
+    "backupTitle": "Back up your data",
+    "backupLead": "This phone holds the only copy of your data. Save an encrypted backup to iCloud Drive or a folder you choose; Moony never sees it.",
+    "currencyPick": "Main currency",
+    "countryPick": "Banking country",
+    "searchCurrency": "Search currency"
+  },
   "notifications": {
     "lead": "Moony reminds you from this phone only, with no server. It plans the notifications each time you unlock.",
     "permission": {

@@ -286,6 +286,23 @@
     "restoreLead": "Stellen Sie eine Sicherung von diesem Telefon wieder her oder übertragen Sie ein Profil aus Moony auf dem Computer: Wählen Sie die Sicherungsdatei aus und entsperren Sie nach der Wiederherstellung mit dem Passwort, das bei ihrer Erstellung galt.",
     "osBackupNote": "Das verschlüsselte Profil ist auch in der Sicherung des Telefons (iCloud oder Computer) enthalten; ohne das Passwort kann es niemand öffnen."
   },
+  "firstRun": {
+    "privacyLead": "Moony speichert alles in einer verschlüsselten Datenbank auf diesem Telefon. Keine Cloud, kein Konto bei uns.",
+    "recoveryLead": "Der einzige Weg zu Ihren Daten, falls Sie das Passwort vergessen. Bewahren Sie ihn außerhalb dieses Telefons auf – in einem Passwortmanager, in „Dateien“ oder auf Papier.",
+    "saveToFiles": "In „Dateien“ speichern",
+    "areasLead": "Wählen Sie, was Sie in Moony erfassen möchten. Sie können dies jederzeit in den Einstellungen ändern.",
+    "firstAccountLead": "Ein Name und ein Kontostand genügen. Einen Kontoauszug importieren Sie später.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometrie",
+      "backup": "Sicherung"
+    },
+    "backupTitle": "Sichern Sie Ihre Daten",
+    "backupLead": "Dieses Telefon enthält die einzige Kopie Ihrer Daten. Speichern Sie eine verschlüsselte Sicherung in iCloud Drive oder in einem Ordner Ihrer Wahl; Moony sieht sie nie.",
+    "currencyPick": "Hauptwährung",
+    "countryPick": "Land der Bank",
+    "searchCurrency": "Währung suchen"
+  },
   "notifications": {
     "lead": "Moony erinnert nur von diesem Telefon aus, ohne Server. Die Benachrichtigungen werden bei jedem Entsperren geplant.",
     "permission": {

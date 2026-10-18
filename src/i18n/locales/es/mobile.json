@@ -298,6 +298,23 @@
     "restoreLead": "Restaura una copia de seguridad de este teléfono o traslada un perfil desde Moony en el ordenador: elige el archivo de la copia y, tras restaurarla, desbloquea con la contraseña que estaba en uso cuando se creó.",
     "osBackupNote": "El perfil cifrado también está en la copia de seguridad del propio teléfono (iCloud u ordenador); sin la contraseña nadie puede abrirlo."
   },
+  "firstRun": {
+    "privacyLead": "Moony guarda todo en una base de datos cifrada en este teléfono. Sin nube y sin cuenta con nosotros.",
+    "recoveryLead": "Es la única vía para acceder a tus datos si olvidas la contraseña. Guárdala fuera de este teléfono: en un gestor de contraseñas, en Archivos o en papel.",
+    "saveToFiles": "Guardar en Archivos",
+    "areasLead": "Elige qué quieres seguir en Moony. Puedes cambiarlo cuando quieras en Ajustes.",
+    "firstAccountLead": "Basta con un nombre y un saldo. El extracto lo importarás más adelante.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometría",
+      "backup": "Copia de seguridad"
+    },
+    "backupTitle": "Haz una copia de seguridad de tus datos",
+    "backupLead": "Este teléfono guarda la única copia de tus datos. Guarda una copia de seguridad cifrada en iCloud Drive o en una carpeta que elijas; Moony nunca la ve.",
+    "currencyPick": "Moneda principal",
+    "countryPick": "País del banco",
+    "searchCurrency": "Buscar moneda"
+  },
   "notifications": {
     "lead": "Moony te avisa solo desde este teléfono, sin servidor. Las notificaciones se planifican cada vez que desbloqueas.",
     "permission": {

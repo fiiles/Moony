@@ -274,6 +274,23 @@
     "restoreLead": "恢复这部手机上的备份，或从电脑上的 Moony 迁移个人资料：选择备份文件，恢复后请使用创建备份时的密码解锁。",
     "osBackupNote": "加密的个人资料也包含在手机自身的备份中（iCloud 或电脑）；没有密码，任何人都无法打开。"
   },
+  "firstRun": {
+    "privacyLead": "Moony 将所有内容存放在这部手机上的加密数据库中。没有云端，也无需在我们这里注册账户。",
+    "recoveryLead": "忘记密码时，这是找回数据的唯一途径。请将其保存在这部手机之外——密码管理器、“文件”App，或写在纸上。",
+    "saveToFiles": "存储到“文件”",
+    "areasLead": "选择你想在 Moony 中管理的内容。你可以随时在设置中更改。",
+    "firstAccountLead": "只需名称和余额即可。账单可以稍后再导入。",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "生物识别",
+      "backup": "备份"
+    },
+    "backupTitle": "备份您的数据",
+    "backupLead": "这部手机上保存着您数据的唯一副本。请将加密备份保存到 iCloud Drive 或您选择的文件夹；Moony 永远看不到它。",
+    "currencyPick": "主货币",
+    "countryPick": "银行所在国家",
+    "searchCurrency": "搜索货币"
+  },
   "notifications": {
     "lead": "Moony 只在这部手机上提醒，不经过服务器。每次解锁时都会重新安排通知。",
     "permission": {

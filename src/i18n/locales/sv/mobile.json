@@ -286,6 +286,23 @@
     "restoreLead": "Återställ en säkerhetskopia från den här telefonen eller överför en profil från Moony på datorn: välj säkerhetskopians fil och lås upp efter återställningen med det lösenord som gällde när den skapades.",
     "osBackupNote": "Den krypterade profilen finns också i telefonens egen säkerhetskopia (iCloud eller dator); utan lösenordet kan ingen öppna den."
   },
+  "firstRun": {
+    "privacyLead": "Moony lagrar allt i en krypterad databas på den här telefonen. Inget moln, inget konto hos oss.",
+    "recoveryLead": "Den enda vägen till dina data om du glömmer lösenordet. Förvara den utanför den här telefonen – i en lösenordshanterare, i Filer eller på papper.",
+    "saveToFiles": "Spara i Filer",
+    "areasLead": "Välj vad du vill följa i Moony. Du kan ändra detta när som helst i Inställningar.",
+    "firstAccountLead": "Ett namn och ett saldo räcker. Kontoutdraget kan du importera senare.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometri",
+      "backup": "Säkerhetskopia"
+    },
+    "backupTitle": "Säkerhetskopiera dina data",
+    "backupLead": "Den här telefonen har den enda kopian av dina data. Spara en krypterad säkerhetskopia i iCloud Drive eller i en mapp du väljer; Moony ser den aldrig.",
+    "currencyPick": "Huvudvaluta",
+    "countryPick": "Land för bank",
+    "searchCurrency": "Sök valuta"
+  },
   "notifications": {
     "lead": "Moony påminner bara från den här telefonen, utan server. Aviseringarna planeras varje gång du låser upp.",
     "permission": {

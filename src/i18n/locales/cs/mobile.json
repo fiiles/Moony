@@ -298,6 +298,23 @@
     "restoreLead": "Obnovte zálohu z tohoto telefonu, nebo přeneste profil z Moony na počítači: vyberte soubor zálohy a po obnovení odemkněte heslem, které platilo při jejím vytvoření.",
     "osBackupNote": "Šifrovaný profil je i v záloze telefonu (iCloud nebo počítač); bez hesla ho nikdo neotevře."
   },
+  "firstRun": {
+    "privacyLead": "Moony ukládá vše do šifrované databáze v tomto telefonu. Žádný cloud, žádný účet u nás.",
+    "recoveryLead": "Jediná cesta k datům, když heslo zapomenete. Uložte ho mimo tento telefon: do správce hesel, do Souborů nebo na papír.",
+    "saveToFiles": "Uložit do Souborů",
+    "areasLead": "Vyberte, co chcete v Moony sledovat. Změnit to můžete kdykoli v Nastavení.",
+    "firstAccountLead": "Stačí název a zůstatek. Výpis naimportujete později.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometrie",
+      "backup": "Záloha"
+    },
+    "backupTitle": "Zálohujte si data",
+    "backupLead": "Telefon je jediná kopie vašich dat. Uložte šifrovanou zálohu do iCloud Drive nebo vybrané složky; Moony ji nikdy nevidí.",
+    "currencyPick": "Hlavní měna",
+    "countryPick": "Země bankovnictví",
+    "searchCurrency": "Hledat měnu"
+  },
   "notifications": {
     "lead": "Moony připomíná jen z tohoto telefonu, bez serveru. Plánují se při každém odemknutí.",
     "permission": {

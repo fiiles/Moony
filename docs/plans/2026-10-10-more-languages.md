@@ -130,7 +130,7 @@ Vitest.
 
 ### Task 6: Live UX pass
 
-- [ ] Demo app on port 1421 (see memory: dev server collision), switch to German, Japanese
+- [ ] Demo app on port 1421 (a separate dev-server port, because another dev server may already run), switch to German, Japanese
   and Polish; check lock screen, first run, sidebar, overview, settings, bank accounts,
   stocks, reports, a dialog; fix overflow (truncation, `min-w-0`, wrapping) found.
 - [ ] Commit fixes `fix(ui): …`.

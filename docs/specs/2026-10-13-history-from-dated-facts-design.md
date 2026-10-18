@@ -389,8 +389,8 @@ equal `compute_breakdowns`.
   cd src-tauri && cargo fmt --check && cargo clippy --all-targets -- -D warnings && cargo test
   cd src-tauri && cargo test generate_bindings -- --ignored
   ```
-- **Live check:** run the demo app from the worktree on port 1421; see the memory notes on dev
-  ports and the demo profile.
+- **Live check:** run the demo app from the worktree on port 1421 (use a separate dev-server port when another dev server runs, and check that the
+  lock screen greets "Alex" before typing the demo password).
   - A bank balance a year back shows in the history.
   - A stock import draws history from the first trade.
   - Crypto after the key, and a historical crypto transaction after the key.

@@ -3,8 +3,8 @@ import {
   RECOVERY_KEY_FILE,
   backupFileName,
   dialogPathToFsPath,
+  exportsOnThisDevice,
   restoreBackupPlan,
-  stagedPath,
 } from './export-file';
 
 describe('backupFileName', () => {
@@ -16,13 +16,6 @@ describe('backupFileName', () => {
 describe('RECOVERY_KEY_FILE', () => {
   it('is the one file name the capability scope allows', () => {
     expect(RECOVERY_KEY_FILE).toBe('moony-recovery-key.txt');
-  });
-});
-
-describe('stagedPath', () => {
-  it('puts one slash between the folder and the file, with or without a trailing one', () => {
-    expect(stagedPath('/a/Documents/', 'x.zip')).toBe('/a/Documents/x.zip');
-    expect(stagedPath('/a/Documents', 'x.zip')).toBe('/a/Documents/x.zip');
   });
 });
 
@@ -49,5 +42,14 @@ describe('restoreBackupPlan', () => {
 
   it('skips that step when it is not on', () => {
     expect(restoreBackupPlan(false)).toEqual(['clear-asked', 'restore', 'reload']);
+  });
+});
+
+describe('exportsOnThisDevice', () => {
+  it('is true on iOS only: Android creates an empty document, it never copies the staged file', () => {
+    expect(exportsOnThisDevice('ios')).toBe(true);
+    for (const other of ['android', 'androideabi', 'darwin', 'windows', 'linux', '']) {
+      expect(exportsOnThisDevice(other), other).toBe(false);
+    }
   });
 });

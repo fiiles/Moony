@@ -293,6 +293,7 @@
     "never": "Zatím žádná záloha",
     "what": "Uložte ji do iCloud Drive nebo jiné složky v Souborech. Moony k ní nemá přístup.",
     "notSaved": "Záloha nebyla uložena",
+    "unavailableHere": "Zálohování zatím funguje jen na iPhonu.",
     "restoreTitle": "Obnovení a přenos",
     "restoreLead": "Obnovte zálohu z tohoto telefonu, nebo přeneste profil z Moony na počítači: vyberte soubor zálohy a po obnovení odemkněte heslem, které platilo při jejím vytvoření.",
     "osBackupNote": "Šifrovaný profil je i v záloze telefonu (iCloud nebo počítač); bez hesla ho nikdo neotevře."

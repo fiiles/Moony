@@ -293,6 +293,7 @@
     "never": "Ancora nessun backup",
     "what": "Salvalo su iCloud Drive o in un'altra cartella nell'app File. Moony non vi ha accesso.",
     "notSaved": "Backup non salvato",
+    "unavailableHere": "Per ora il backup funziona solo su iPhone.",
     "restoreTitle": "Ripristino e trasferimento",
     "restoreLead": "Ripristina un backup di questo telefono oppure trasferisci un profilo da Moony sul computer: scegli il file del backup e, dopo il ripristino, sblocca con la password in uso quando è stato creato.",
     "osBackupNote": "Il profilo cifrato è presente anche nel backup del telefono (iCloud o computer); senza la password nessuno può aprirlo."

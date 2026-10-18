@@ -4,24 +4,32 @@
  *
  * On iOS the dialog plugin's `save()` takes the file name from `defaultPath`, creates an empty file
  * at `Documents/<name>` only when none exists, and exports that file to the place the person picks.
- * So the file is put into Documents first (a backup by the Rust command `stage_backup_export`, the
- * recovery key's text by the fs plugin), exported, and removed again whatever the person chose.
+ * So the file is put into Documents first, exported, and removed again whatever the person chose.
+ * Rust does the staging and the removing (`stage_backup_export` / `finish_backup_export` for a
+ * backup, `stage_text_export` / `discard_text_export` for the recovery key's text): the webview has
+ * no fs commands. Only iOS exports this way (`exportsOnThisDevice`).
  */
 
-/** The one text file the webview may write (and remove) in Documents: the recovery key's text. */
+/** The one text file the phone stages in Documents (an allow-listed name in Rust): the recovery key's text. */
 export const RECOVERY_KEY_FILE = 'moony-recovery-key.txt';
 
 /** What an export came to: a file in a place the person chose, or nothing (the picker was cancelled). */
 export type ExportOutcome = 'saved' | 'cancelled';
 
+/**
+ * Whether exporting through the Files picker works on this platform (`TAURI_ENV_PLATFORM`): iOS
+ * only. On Android the picker creates an empty document and returns its URI, nothing copies the
+ * staged file into it, so an "export" would be an empty file recorded as a backup. Android needs
+ * its own way to write the file to the chosen URI; until then it does not export. Restoring reads
+ * a picked file through Rust and works everywhere.
+ */
+export function exportsOnThisDevice(platform: string): boolean {
+  return platform === 'ios';
+}
+
 /** The backup archive's file name, `moony-backup-2026-10-17.zip` (the Rust command accepts only this form). */
 export function backupFileName(isoDate: string): string {
   return `moony-backup-${isoDate}.zip`;
-}
-
-/** `dir` and `name` with one slash between them, whether or not `dir` ends in one. */
-export function stagedPath(dir: string, name: string): string {
-  return `${dir.replace(/\/+$/, '')}/${name}`;
 }
 
 /**

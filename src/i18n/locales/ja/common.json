@@ -209,7 +209,7 @@
     "backupInvalidArchive": "このファイルは Moony のバックアップではないか、破損しています。",
     "backupNewerThanApp": "このバックアップは新しいバージョンの Moony で作成されました。先に Moony を更新してください。",
     "backupDestinationMissing": "保存先のフォルダが存在しません。",
-    "backupExportInvalid": "このバックアップファイル名は使用できません。",
+    "backupExportInvalid": "このファイル名は使用できません。",
     "sellExceedsHoldings": "その日の保有数量を超えて売却することはできません。",
     "csvEmptyFile": "ファイルが空か、ヘッダー行がありません。",
     "csvColumnsNotFound": "選択した列がファイル内に見つかりませんでした。ヘッダー行と列の割り当てを確認してください。",

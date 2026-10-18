@@ -281,6 +281,7 @@
     "never": "Ingen sikkerhetskopi ennå",
     "what": "Lagre den i iCloud Drive eller en annen mappe i Filer. Moony har ikke tilgang til den.",
     "notSaved": "Sikkerhetskopien ble ikke lagret",
+    "unavailableHere": "Sikkerhetskopiering fungerer foreløpig bare på iPhone.",
     "restoreTitle": "Gjenoppretting og overføring",
     "restoreLead": "Gjenopprett en sikkerhetskopi fra denne telefonen, eller overfør en profil fra Moony på datamaskinen: velg filen med sikkerhetskopien, og lås opp etter gjenopprettingen med passordet som gjaldt da den ble laget.",
     "osBackupNote": "Den krypterte profilen finnes også i telefonens egen sikkerhetskopi (iCloud eller datamaskin); uten passordet kan ingen åpne den."

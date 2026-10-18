@@ -293,6 +293,7 @@
     "never": "Aún no hay copia de seguridad",
     "what": "Guárdala en iCloud Drive o en otra carpeta de la app Archivos. Moony no tiene acceso a ella.",
     "notSaved": "Copia de seguridad no guardada",
+    "unavailableHere": "Las copias de seguridad por ahora solo funcionan en iPhone.",
     "restoreTitle": "Restauración y traslado",
     "restoreLead": "Restaura una copia de seguridad de este teléfono o traslada un perfil desde Moony en el ordenador: elige el archivo de la copia y, tras restaurarla, desbloquea con la contraseña que estaba en uso cuando se creó.",
     "osBackupNote": "El perfil cifrado también está en la copia de seguridad del propio teléfono (iCloud u ordenador); sin la contraseña nadie puede abrirlo."

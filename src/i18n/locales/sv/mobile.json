@@ -281,6 +281,7 @@
     "never": "Ingen säkerhetskopia ännu",
     "what": "Spara den i iCloud Drive eller en annan mapp i Filer. Moony har ingen åtkomst till den.",
     "notSaved": "Säkerhetskopian sparades inte",
+    "unavailableHere": "Säkerhetskopiering fungerar tills vidare bara på iPhone.",
     "restoreTitle": "Återställning och överföring",
     "restoreLead": "Återställ en säkerhetskopia från den här telefonen eller överför en profil från Moony på datorn: välj säkerhetskopians fil och lås upp efter återställningen med det lösenord som gällde när den skapades.",
     "osBackupNote": "Den krypterade profilen finns också i telefonens egen säkerhetskopia (iCloud eller dator); utan lösenordet kan ingen öppna den."

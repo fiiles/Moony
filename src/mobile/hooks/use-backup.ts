@@ -12,6 +12,7 @@ import { BIOMETRIC_STATUS_KEY, clearEnrolmentAsked } from '@/mobile/lib/biometri
 import {
   backupFileName,
   dialogPathToFsPath,
+  exportsOnThisDevice,
   restoreBackupPlan,
   type ExportOutcome,
 } from '@/mobile/lib/export-file';
@@ -31,6 +32,8 @@ const PROGRESS_KEY = ['onboarding-progress'] as const;
  * `createBackup` stages the archive in the app's Documents folder (Rust), exports it through the
  * system's Files picker and removes the staged copy; the backup is recorded (the last-backup date,
  * the "backup is due" reminder) only when the picker saved it. Failures are said in a toast here.
+ * Only iOS exports this way (`canExport`): elsewhere nothing is staged, the person is told, and the
+ * outcome is `'cancelled'`.
  *
  * `pickRestore` opens the picker for an archive made on this phone or by Moony on the computer
  * (the same file, the same password) and reads its manifest; `restore` replaces the profile with
@@ -42,11 +45,14 @@ export function useBackup(): {
   restore: (inspection: BackupInspection) => Promise<void>;
   busy: Busy;
   lastBackupAt: number | null;
+  /** Whether this device can export a backup through the Files picker (iOS only for now). */
+  canExport: boolean;
 } {
   const { t } = useTranslation('settings');
   const { t: tm } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
   const [busy, setBusy] = useState<Busy>(null);
+  const canExport = exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? '');
 
   const progress = useQuery({ queryKey: PROGRESS_KEY, queryFn: () => onboardingApi.getProgress() });
   const status = useQuery({ queryKey: BIOMETRIC_STATUS_KEY, queryFn: biometricApi.status });
@@ -64,6 +70,10 @@ export function useBackup(): {
   );
 
   const createBackup = useCallback(async (): Promise<ExportOutcome> => {
+    if (!canExport) {
+      toast(tm('backup.unavailableHere'));
+      return 'cancelled';
+    }
     setBusy('backup');
     try {
       const name = backupFileName(todayIsoUtc());
@@ -89,7 +99,7 @@ export function useBackup(): {
     } finally {
       setBusy(null);
     }
-  }, [showError, t, tm]);
+  }, [canExport, showError, t, tm]);
 
   const pickRestore = useCallback(async (): Promise<BackupInspection | null> => {
     try {
@@ -150,5 +160,6 @@ export function useBackup(): {
     restore,
     busy,
     lastBackupAt: progress.data?.lastBackupAt ?? null,
+    canExport,
   };
 }

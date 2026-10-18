@@ -269,6 +269,7 @@
     "never": "尚无备份",
     "what": "请保存到 iCloud Drive 或“文件”App 中的其他文件夹。Moony 无法访问该文件。",
     "notSaved": "备份未保存",
+    "unavailableHere": "备份功能目前仅支持 iPhone。",
     "restoreTitle": "恢复与迁移",
     "restoreLead": "恢复这部手机上的备份，或从电脑上的 Moony 迁移个人资料：选择备份文件，恢复后请使用创建备份时的密码解锁。",
     "osBackupNote": "加密的个人资料也包含在手机自身的备份中（iCloud 或电脑）；没有密码，任何人都无法打开。"

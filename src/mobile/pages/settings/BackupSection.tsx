@@ -21,12 +21,14 @@ const BUTTON = 'h-12 w-full rounded-[10px] text-m-row';
  * folder); the same file moves a profile from Moony on the computer to the phone and back, with
  * the password that was in use when it was made. There is no automatic backup: the "backup is due"
  * reminder says when to make one. Restoring asks first, in a sheet that names what the file holds.
+ * Making a backup works on iOS only for now: elsewhere the button is off and a sentence says so,
+ * while restoring (a picked file, read by Rust) is there on every phone.
  */
 export default function BackupSection() {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('settings');
   const fmt = useFormat();
-  const { createBackup, pickRestore, restore, busy, lastBackupAt } = useBackup();
+  const { createBackup, pickRestore, restore, busy, lastBackupAt, canExport } = useBackup();
   const [inspection, setInspection] = useState<BackupInspection | null>(null);
 
   const chooseRestore = async () => {
@@ -54,12 +56,14 @@ export default function BackupSection() {
       <Button
         className={BUTTON}
         loading={busy === 'backup'}
-        disabled={busy === 'restore'}
+        disabled={busy === 'restore' || !canExport}
         onClick={() => void createBackup()}
       >
         {ts('data.backupNow')}
       </Button>
-      <p className="mx-0.5 mb-0 mt-3 text-m-sub text-ink-3">{t('backup.what')}</p>
+      <p className="mx-0.5 mb-0 mt-3 text-m-sub text-ink-3">
+        {canExport ? t('backup.what') : t('backup.unavailableHere')}
+      </p>
 
       <SectionHead title={t('backup.restoreTitle')} />
       <p className="mx-0.5 mb-3 mt-0 text-m-sub text-ink-3">{t('backup.restoreLead')}</p>

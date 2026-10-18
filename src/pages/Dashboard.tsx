@@ -277,10 +277,7 @@ export default function Dashboard() {
 
       <div className="mt-9 grid grid-cols-[1.15fr_0.85fr] gap-[18px]">
         <section className="flex flex-col">
-          <SectionHead
-            title={t('allocation.title')}
-            link={{ href: '/stocks', label: t('allocation.open') }}
-          />
+          <SectionHead title={t('allocation.title')} />
           {/* Stretches to the height of "Poslední pohyby"; the ring centers vertically */}
           <Card variant="flat" className="flex flex-1 items-center">
             <CardContent className="w-full pt-5">

@@ -1,16 +1,6 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Ellipsis,
-  Pencil,
-  Search,
-  ShoppingCart,
-  Trash2,
-  TrendingDown,
-} from 'lucide-react';
+import { Ellipsis, Pencil, Search, ShoppingCart, Trash2, TrendingDown } from 'lucide-react';
 import { priceDecimals } from '@shared/currencies';
 import { matchesSearch } from '@/utils/holdings-search';
 import { compareKnown, costPerUnit, type CryptoRow } from '@/utils/positions';
@@ -39,6 +29,7 @@ import {
 } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { AssetLogo } from '@/components/common/AssetLogo';
+import { SortableTableHead } from '@/components/common/SortableTableHead';
 import { cn } from '@/lib/utils';
 import { ChangeBadge } from '@/components/common/ChangeBadge';
 
@@ -145,36 +136,7 @@ export function CryptoTable({
     : totalValue;
   const closedCount = holdings.filter((h) => h.quantity <= 0).length;
 
-  const SortHead = ({
-    column,
-    children,
-    align = 'right',
-    className,
-  }: {
-    column: SortColumn;
-    children: ReactNode;
-    align?: 'left' | 'right';
-    className?: string;
-  }) => {
-    const active = sortColumn === column;
-    const Icon = !active ? ArrowUpDown : sortDirection === 'asc' ? ArrowUp : ArrowDown;
-    return (
-      <TableHead className={cn(align === 'right' && 'text-right', className)}>
-        <button
-          type="button"
-          onClick={() => handleSort(column)}
-          aria-sort={active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}
-          className={cn(
-            'inline-flex items-center gap-1 rounded-r1 text-thead uppercase transition-colors duration-fast hover:text-ink focus-visible:outline-none focus-visible:shadow-focus',
-            active && 'text-ink'
-          )}
-        >
-          {children}
-          <Icon className={cn('size-3', !active && 'opacity-60')} aria-hidden />
-        </button>
-      </TableHead>
-    );
-  };
+  const sortProps = { sortColumn, sortDirection, onSort: handleSort };
 
   const price = (value: number, currency: string) =>
     fmt.money(value, currency, { decimals: priceDecimals(value, currency) });
@@ -211,15 +173,25 @@ export function CryptoTable({
       <Table>
         <TableHeader>
           <TableRow>
-            <SortHead column="name" align="left" className="w-[24%]">
+            <SortableTableHead {...sortProps} column="name" align="left" className="w-[24%]">
               {t('table.asset')}
-            </SortHead>
-            <SortHead column="quantity">{t('table.quantity')}</SortHead>
-            <SortHead column="avgCost">{t('table.avgCost')}</SortHead>
-            <SortHead column="currentPrice">{t('table.rate')}</SortHead>
-            <SortHead column="marketValue">{t('table.value')}</SortHead>
+            </SortableTableHead>
+            <SortableTableHead {...sortProps} column="quantity">
+              {t('table.quantity')}
+            </SortableTableHead>
+            <SortableTableHead {...sortProps} column="avgCost">
+              {t('table.avgCost')}
+            </SortableTableHead>
+            <SortableTableHead {...sortProps} column="currentPrice">
+              {t('table.rate')}
+            </SortableTableHead>
+            <SortableTableHead {...sortProps} column="marketValue">
+              {t('table.value')}
+            </SortableTableHead>
             <TableHead className="text-right">{t('table.share')}</TableHead>
-            <SortHead column="gainLoss">{t('table.return')}</SortHead>
+            <SortableTableHead {...sortProps} column="gainLoss">
+              {t('table.return')}
+            </SortableTableHead>
             <TableHead className="w-10">
               <span className="sr-only">{t('table.actions')}</span>
             </TableHead>

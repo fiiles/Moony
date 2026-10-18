@@ -1,22 +1,12 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Ellipsis,
-  ExternalLink,
-  ListFilter,
-  Lock,
-  LockOpen,
-  Pencil,
-  Trash2,
-} from 'lucide-react';
+import { Ellipsis, ExternalLink, ListFilter, Lock, LockOpen, Pencil, Trash2 } from 'lucide-react';
 import { recordCurrency } from '@shared/currencies';
 import type { InsuranceRow } from '@/utils/insurance';
 import { compareConverted } from '@/utils/fx-totals';
 import { ConvertedMoney } from '@/components/common/ConvertedMoney';
+import { SortableTableHead } from '@/components/common/SortableTableHead';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useDurationText } from '@/hooks/use-duration-text';
@@ -164,36 +154,12 @@ export function InsuranceTable({
 
   const active = visible.filter((r) => !r.ended);
 
-  const SortHead = ({
-    column,
-    children,
-    align = 'left',
-    className,
-  }: {
-    column: SortColumn;
-    children: ReactNode;
-    align?: 'left' | 'right';
-    className?: string;
-  }) => {
-    const activeCol = sortColumn === column;
-    const Icon = !activeCol ? ArrowUpDown : sortDirection === 'asc' ? ArrowUp : ArrowDown;
-    return (
-      <TableHead className={cn(align === 'right' && 'text-right', className)}>
-        <button
-          type="button"
-          onClick={() => handleSort(column)}
-          aria-sort={activeCol ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}
-          className={cn(
-            'inline-flex max-w-full items-center gap-1 rounded-r1 text-thead uppercase transition-colors duration-fast hover:text-ink focus-visible:outline-none focus-visible:shadow-focus',
-            activeCol && 'text-ink'
-          )}
-        >
-          {/* leading-4: the ellipsis clip must not cut the accents of Czech capitals (Í, Š, Ř) */}
-          <span className="truncate leading-4">{children}</span>
-          <Icon className={cn('size-3 shrink-0', !activeCol && 'opacity-60')} aria-hidden />
-        </button>
-      </TableHead>
-    );
+  const sortProps = {
+    sortColumn,
+    sortDirection,
+    onSort: handleSort,
+    align: 'left' as const,
+    truncate: true,
   };
 
   /**
@@ -350,19 +316,41 @@ export function InsuranceTable({
       <Table className="table-fixed">
         <TableHeader>
           <TableRow>
-            <SortHead column="name">{t('table.policy')}</SortHead>
-            <SortHead column="premium" align="right" className={COLUMN.premium}>
+            <SortableTableHead {...sortProps} column="name">
+              {t('table.policy')}
+            </SortableTableHead>
+            <SortableTableHead
+              {...sortProps}
+              column="premium"
+              align="right"
+              className={COLUMN.premium}
+            >
               {t('table.premium')}
-            </SortHead>
-            <SortHead column="coverage" align="right" className={COLUMN.coverage}>
+            </SortableTableHead>
+            <SortableTableHead
+              {...sortProps}
+              column="coverage"
+              align="right"
+              className={COLUMN.coverage}
+            >
               {t('table.coverage')}
-            </SortHead>
-            <SortHead column="nextPayment" align="right" className={COLUMN.nextPayment}>
+            </SortableTableHead>
+            <SortableTableHead
+              {...sortProps}
+              column="nextPayment"
+              align="right"
+              className={COLUMN.nextPayment}
+            >
               {t('table.nextPayment')}
-            </SortHead>
-            <SortHead column="anniversary" align="right" className={COLUMN.anniversary}>
+            </SortableTableHead>
+            <SortableTableHead
+              {...sortProps}
+              column="anniversary"
+              align="right"
+              className={COLUMN.anniversary}
+            >
               {t('table.anniversary')}
-            </SortHead>
+            </SortableTableHead>
             <TableHead className={COLUMN.actions}>
               <span className="sr-only">{t('table.actions')}</span>
             </TableHead>

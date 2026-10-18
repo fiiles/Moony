@@ -1,22 +1,12 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Ellipsis,
-  Eye,
-  Plus,
-  RefreshCw,
-  Search,
-} from 'lucide-react';
+import { Ellipsis, Eye, Plus, RefreshCw, Search } from 'lucide-react';
 import type { WatchedStockRow } from '@shared/schema';
 import { currencyDecimals } from '@shared/currencies';
 import { exchangeName } from '@/utils/exchange-names';
 import { useFormat } from '@/lib/use-format';
 import { useCurrency } from '@/lib/currency';
-import { cn } from '@/lib/utils';
 import { useShellPage } from '@/components/shell/shell-context';
 import { usePortfolioFollowCandidates, useWatchedStocks } from '@/hooks/use-stock-monitor';
 import { useStockMonitorMutations } from '@/hooks/use-stock-monitor-mutations';
@@ -51,6 +41,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
+import { SortableTableHead } from '@/components/common/SortableTableHead';
 import { EmptyState } from '@/components/common/EmptyState';
 import { McpTip } from '@/components/common/McpTip';
 import { AssetLogo } from '@/components/common/AssetLogo';
@@ -133,36 +124,7 @@ export default function StockMonitor() {
     [rows, search, sortColumn, sortDirection, locale]
   );
 
-  const SortHead = ({
-    column,
-    children,
-    align = 'right',
-    className,
-  }: {
-    column: WatchSortColumn;
-    children: ReactNode;
-    align?: 'left' | 'right';
-    className?: string;
-  }) => {
-    const active = sortColumn === column;
-    const Icon = !active ? ArrowUpDown : sortDirection === 'asc' ? ArrowUp : ArrowDown;
-    return (
-      <TableHead className={cn(align === 'right' && 'text-right', className)}>
-        <button
-          type="button"
-          onClick={() => handleSort(column)}
-          aria-sort={active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}
-          className={cn(
-            'inline-flex items-center gap-1 rounded-r1 text-thead uppercase transition-colors duration-fast hover:text-ink focus-visible:outline-none focus-visible:shadow-focus',
-            active && 'text-ink'
-          )}
-        >
-          {children}
-          <Icon className={cn('size-3', !active && 'opacity-60')} aria-hidden />
-        </button>
-      </TableHead>
-    );
-  };
+  const sortProps = { sortColumn, sortDirection, onSort: handleSort };
 
   // Stats
   const heldCount = rows.filter((r) => r.isHeld).length;
@@ -392,15 +354,23 @@ export default function StockMonitor() {
         <Table>
           <TableHeader>
             <TableRow>
-              <SortHead column="name" align="left" className="w-[26%]">
+              <SortableTableHead {...sortProps} column="name" align="left" className="w-[26%]">
                 {t('table.stock')}
-              </SortHead>
+              </SortableTableHead>
               {/* Prices are in each stock's own currency, so they don't sort against each other. */}
               <TableHead className="text-right">{t('table.price')}</TableHead>
-              <SortHead column="change">{t('table.changeToday')}</SortHead>
-              <SortHead column="range">{t('table.range')}</SortHead>
-              <SortHead column="target">{t('table.target')}</SortHead>
-              <SortHead column="held">{t('table.held')}</SortHead>
+              <SortableTableHead {...sortProps} column="change">
+                {t('table.changeToday')}
+              </SortableTableHead>
+              <SortableTableHead {...sortProps} column="range">
+                {t('table.range')}
+              </SortableTableHead>
+              <SortableTableHead {...sortProps} column="target">
+                {t('table.target')}
+              </SortableTableHead>
+              <SortableTableHead {...sortProps} column="held">
+                {t('table.held')}
+              </SortableTableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>

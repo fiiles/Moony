@@ -9,6 +9,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   LANGUAGES,
   isSupportedLanguage,
   languageInfo,
@@ -22,7 +29,7 @@ interface LanguageSelectProps {
   onChange: (language: SupportedLanguage) => void;
   /**
    * `quiet`: a text button with a globe (lock screen, first run).
-   * `field`: an outlined control for a settings row.
+   * `field`: the standard select field for a settings row.
    */
   variant?: 'quiet' | 'field';
   /** Shows each language's format with this currency; without it, a plain number. */
@@ -57,41 +64,70 @@ export function LanguageSelect({
   const { t } = useTranslation('auth');
   const current = languageInfo(value);
 
+  const pick = (code: string) => {
+    if (isSupportedLanguage(code) && code !== value) onChange(code);
+  };
+
+  const sample = (locale: string) =>
+    showFormatSample && (
+      <span className="ml-auto pl-4 font-500 text-ink-4 num">{formatSample(locale, currency)}</span>
+    );
+
+  if (variant === 'field') {
+    return (
+      <Select value={value} onValueChange={pick} disabled={disabled}>
+        <SelectTrigger
+          aria-label={`${t('language.select')}: ${current.native}`}
+          className={cn('w-[200px]', className)}
+        >
+          {/* The trigger shows the name only; the format sample stays in the list. */}
+          <SelectValue>
+            <span lang={current.code}>{current.native}</span>
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent align="end" className={showFormatSample ? 'min-w-[230px]' : 'min-w-[160px]'}>
+          {LANGUAGES.map((language) => (
+            <SelectItem
+              key={language.code}
+              value={language.code}
+              textValue={language.native}
+              className="[&>span:last-child]:flex [&>span:last-child]:w-full"
+            >
+              <span lang={language.code}>{language.native}</span>
+              {sample(language.locale)}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    );
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild disabled={disabled}>
         <Button
           type="button"
-          variant={variant === 'field' ? 'outline' : 'ghost'}
-          size={variant === 'field' ? 'default' : 'sm'}
+          variant="ghost"
+          size="sm"
           aria-label={`${t('language.select')}: ${current.native}`}
-          className={cn(variant === 'field' && 'w-[200px] justify-between font-550', className)}
+          className={className}
         >
-          {variant === 'quiet' && <Globe aria-hidden />}
+          <Globe aria-hidden />
           <span lang={current.code} className="truncate">
             {current.native}
           </span>
-          <ChevronDown aria-hidden className={cn(variant === 'field' && 'ml-auto')} />
+          <ChevronDown aria-hidden />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent
         align="end"
         className={showFormatSample ? 'min-w-[230px]' : 'min-w-[160px]'}
       >
-        <DropdownMenuRadioGroup
-          value={value}
-          onValueChange={(code) => {
-            if (isSupportedLanguage(code) && code !== value) onChange(code);
-          }}
-        >
+        <DropdownMenuRadioGroup value={value} onValueChange={pick}>
           {LANGUAGES.map((language) => (
             <DropdownMenuRadioItem key={language.code} value={language.code}>
               <span lang={language.code}>{language.native}</span>
-              {showFormatSample && (
-                <span className="ml-auto pl-4 font-500 text-ink-4 num">
-                  {formatSample(language.locale, currency)}
-                </span>
-              )}
+              {sample(language.locale)}
             </DropdownMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>

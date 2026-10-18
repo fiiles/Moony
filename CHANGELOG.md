@@ -48,7 +48,8 @@ The first stable release.
 
 - Deleting a manual dividend or a manual price showed the English word "Delete" in every language.
 - Renaming a stock showed a raw text key while saving.
-- Sorting the watchlist with the keyboard no longer loses focus after each change.
+- Sorting a table by its column heads with the keyboard no longer loses focus after each change.
+- The Spanish translation addresses you the same way (tú) everywhere.
 
 ### Security
 

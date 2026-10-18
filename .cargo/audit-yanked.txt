@@ -2,11 +2,3 @@
 # ignore a single yanked crate, so this list replaces that: one `name@version` per line, each with
 # its reason. Every other yanked crate fails the audit, and so does a line here whose crate is no
 # longer in the lockfile: delete it then.
-
-# zip 4.x: every zip release before 9.0.3 is yanked, after the extraction advisories of October
-# 2026 (GHSA-4v9h-p7m9-rh26, GHSA-4684-h2q9-2vcp; Moony's own zip is 9.0.3). tauri-plugin-updater
-# 2.13.3 (and 2.14.0) still requires zip ^4. It uses zip only on Windows, to unpack a `.zip`
-# update payload after the updater signature has verified it; Moony ships the NSIS `.exe` as the
-# Windows update (`createUpdaterArtifacts: true`), never a `.zip`. Delete this line once the
-# updater moves to zip 9 (tauri-apps/plugins-workspace#3698).
-zip@4.6.1

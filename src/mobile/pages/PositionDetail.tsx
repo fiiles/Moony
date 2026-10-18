@@ -45,18 +45,18 @@ export default function PositionDetail() {
   const { holding, reportCurrency } = data;
 
   // The position is gone: back to Akcie as Back does, so the history keeps no ghost of it. Its own
-  // queries are dropped only now that the screen is leaving: removed while it is still up, a
-  // re-render would rebuild them empty, unmount the menu and lose this very callback. On a
+  // queries are dropped once the screen has left (history.back lands asynchronously): removed
+  // while it is still up, a re-render would rebuild them empty and flash the skeleton. On a
   // restored deep link the detail is the first entry and back has nowhere to go; the screen is
   // then replaced.
   const leaveDeleted = (id: string) => {
     back();
-    queryClient.removeQueries({ queryKey: ['investment', id] });
-    queryClient.removeQueries({ queryKey: ['investment-transactions', id] });
     window.setTimeout(() => {
       if (window.location.pathname === positionPath(id)) {
         setLocation(routes.stocks, { replace: true });
       }
+      queryClient.removeQueries({ queryKey: ['investment', id] });
+      queryClient.removeQueries({ queryKey: ['investment-transactions', id] });
     }, DELETED_GUARD_MS);
   };
 

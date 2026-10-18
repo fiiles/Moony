@@ -20,7 +20,7 @@ export, standard formats:
 - **OFX/QFX**: US banks and credit unions, and the export of most personal finance apps.
 - **QIF**: the legacy exchange format of Quicken, GnuCash, Money Manager Ex and others.
 
-The 2026-10-15 competitive review (`../Moony-launch/audit/competitive-landscape-2026-10-15.md`)
+A competitive review on 2026-10-15
 ranks "CAMT.053 + MT940" first and "OFX/QIF" second among missing features. Every verified
 competitor has at least two of the four.
 

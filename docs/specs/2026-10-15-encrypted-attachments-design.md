@@ -75,7 +75,7 @@ that older versions left in the temp dir.
 | D10 | Losing both the password and the recovery key now loses the attachments too. The recovery key screen, the release notes and PRIVACY.md say so. |
 | D11 | If `attachments.db` cannot be attached (damaged, or from another profile), the app still unlocks. Attachments are unavailable, the file is never overwritten, and Settings → Data shows the problem. Uploads and conversion are refused until it is resolved. |
 | D12 | Downgrading after conversion is unsupported: an older build shows converted attachments as missing. The release notes say so. |
-| D13 | The feature ships for everyone. It is not a paid add-on (a `Moony-launch/strategy.md` idea), because it closes a privacy gap in an AGPL app. |
+| D13 | The feature ships for everyone, because it closes a privacy gap in an AGPL app. |
 
 ## 4. Design
 

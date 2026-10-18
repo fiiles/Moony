@@ -5,8 +5,8 @@ decisions (D1–D13) below refer to it; ADR 0017 records the storage decision. T
 D1–D13 and accepted ADR 0017 on 2026-10-15.
 
 Work happens in a sibling worktree, for example `../Moony-tauri-attachments` on the branch
-`feat/encrypted-attachments`. Other sessions switch branches in the shared checkout
-`/Users/filipkral/Programování/FinanceApp/Moony-tauri`, so never commit there. Demo runs from
+`feat/encrypted-attachments`. Other sessions switch branches in the shared checkout,
+so never commit there. Demo runs from
 the worktree use their own port (1421 or 1422), and nobody types the real profile's password.
 
 Read `AGENTS.md` (the ten rules), `docs/standards/rust-backend.md`,

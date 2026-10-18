@@ -2,8 +2,7 @@
 
 Spec: `docs/specs/2026-10-13-history-from-dated-facts-design.md` (section ids B1–B7 and A1–A8
 below refer to it). Work happens in the worktree `../Moony-tauri-oct13` on the branch
-`fix/oct13-batch`. Never commit in the shared checkout
-`/Users/filipkral/Programování/FinanceApp/Moony-tauri`.
+`fix/oct13-batch`. Never commit in the shared checkout.
 
 Read `AGENTS.md` (the ten rules), `docs/standards/rust-backend.md`, `docs/standards/type-contract.md`,
 `docs/standards/i18n.md` and `docs/DEPRECATED.md` before coding. Use TDD: write the failing test,

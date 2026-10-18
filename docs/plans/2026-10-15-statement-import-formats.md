@@ -20,8 +20,8 @@ decisions (D1–D16) below refer to it. The owner approved the spec in chat on 2
 ## Ground rules
 
 Work happens in a sibling worktree `../Moony-tauri-statements` on the branch
-`feat/statement-import`. Other sessions switch branches in the shared checkout
-`/Users/filipkral/Programování/FinanceApp/Moony-tauri`, so never commit there. Check
+`feat/statement-import`. Other sessions switch branches in the shared checkout,
+so never commit there. Check
 `git branch --show-current` before every commit. Demo runs from the worktree use port 1421. The
 page must greet Alex before you type the demo password (`demo1234`). Never type the real
 profile's password.
@@ -1822,10 +1822,10 @@ describe('statement import helpers', () => {
 - [ ] **Step 4: Phase review and merge.** Run a code review of the phase diff
   (`git diff main...feat/statement-import`) and fix its findings with tests. `main` is
   checked out in the shared checkout, so the merge runs there, and only when
-  `git -C /Users/filipkral/Programování/FinanceApp/Moony-tauri branch --show-current` prints
-  `main` and `git -C /Users/filipkral/Programování/FinanceApp/Moony-tauri status --porcelain`
+  `git -C ../Moony-tauri branch --show-current` prints
+  `main` and `git -C ../Moony-tauri status --porcelain`
   prints nothing:
-  `git -C /Users/filipkral/Programování/FinanceApp/Moony-tauri merge --no-ff feat/statement-import`.
+  `git -C ../Moony-tauri merge --no-ff feat/statement-import`.
   Otherwise stop and tell the owner. Never push. Update the Status table.
 
 ## Phase 2 — MT940

@@ -48,4 +48,4 @@ If macOS instead says that it *cannot verify the developer*, you can also skip T
 
 ## After installing
 
-Moony asks for a password and shows a **recovery key** on the first start; save the key somewhere safe. Later versions arrive through the built-in updater after you unlock the app (you can switch the check off in Settings → Security). More in the [README](https://github.com/fiiles/Moony#install).
+Moony asks for a password and shows a **recovery key** on the first start; save the key somewhere safe. Later versions arrive through the built-in updater after you unlock the app (you can switch the check off in Settings → Security). More in the [README](https://github.com/fiiles/Moony#download-and-install).

@@ -60,6 +60,18 @@ grouping below follows the domain map in `docs/architecture/overview.md`.
 - `020_bond_purchase_date` adds `bonds.purchase_date`, the UTC day a bond was bought (nullable;
   every existing bond stays NULL). History counts a dated bond from that day on and a bond without
   a date as an undated item (carried, with the unknown-remainder rule); today's value is unchanged.
+- `021_encrypted_attachments` prepares the move of attachment content into the encrypted store
+  `attachments.db` (ADR 0017, see "The attachments store"). It rebuilds `insurance_documents`,
+  `real_estate_documents` and `real_estate_photos` so a row can reference a blob (`blob_id`, a
+  photo's `thumb_blob_id`, a document's `mime_type` and `original_name`) instead of a plain file:
+  `file_path` (and a photo's `thumbnail_path`) become nullable and stay set only on rows whose
+  content has not been converted yet, and a CHECK requires a file or a blob. Existing rows are
+  copied across unchanged; the content itself moves in the background after the first unlock, not
+  in the migration. It also creates `attachment_leftovers`, which remembers plain originals the
+  conversion found outside the data folder and does not delete.
+- `022_profile_theme` adds `user_profile.theme TEXT NOT NULL DEFAULT 'system'`, the colour theme:
+  `system` follows the operating system, `light` and `dark` are explicit. Every existing profile
+  gets `system`; the three values are checked when the profile is updated, not by the column.
 - To add one: define `const MIGRATION_0NN: &str = r#"..."#;` (next free
   number) and append a `("0NN_short_name", MIGRATION_0NN)` entry to the `Vec`
   returned by `all_migrations()`. Numbers are zero-padded, sequential, never

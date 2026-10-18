@@ -71,7 +71,7 @@ export function TradeRow({
       // The tint goes on at once and fades back over 1.2 s when the row stops being hot
       className={cn(
         'transition-colors ease-out motion-reduce:transition-none',
-        hot ? 'bg-well duration-0' : 'duration-[1200ms]'
+        hot ? 'bg-well duration-0' : '[transition-duration:1200ms]'
       )}
       chip={
         <RowChip tone={sell ? 'gain' : 'default'}>

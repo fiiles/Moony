@@ -115,6 +115,12 @@ jobs:
 
     runs-on: ${{ matrix.platform }}
 
+    env:
+      # macOS signing and notarization switch on only once the Developer ID secrets exist; without
+      # them the Macs build unsigned as before. Tauri starts signing as soon as APPLE_CERTIFICATE is
+      # set, even to an empty string, so the variables are exported by a step instead.
+      APPLE_SIGNING: ${{ secrets.APPLE_CERTIFICATE != '' }}
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v7
@@ -162,6 +168,30 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Apple signing and notarization
+        # Developer ID Application certificate (base64 .p12) and an App Store Connect API key for
+        # notarytool; Tauri imports the certificate into a temporary keychain of its own.
+        if: contains(matrix.platform, 'macos') && env.APPLE_SIGNING == 'true'
+        shell: bash
+        env:
+          CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          API_KEY: ${{ secrets.APPLE_API_KEY }}
+          API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          key_path="$RUNNER_TEMP/AuthKey_$API_KEY.p8"
+          printf '%s\n' "$API_KEY_P8" > "$key_path"
+          {
+            echo "APPLE_CERTIFICATE=$CERTIFICATE"
+            echo "APPLE_CERTIFICATE_PASSWORD=$CERTIFICATE_PASSWORD"
+            echo "APPLE_SIGNING_IDENTITY=$SIGNING_IDENTITY"
+            echo "APPLE_API_ISSUER=$API_ISSUER"
+            echo "APPLE_API_KEY=$API_KEY"
+            echo "APPLE_API_KEY_PATH=$key_path"
+          } >> "$GITHUB_ENV"
+
       - name: Build the app
         uses: tauri-apps/tauri-action@v1
         env:
@@ -176,3 +206,15 @@ jobs:
           # page body alone).
           releaseBody: ${{ steps.body.outputs.text }}
           args: ${{ matrix.args }}
+
+      - name: Verify the macOS signature and notarization
+        # Fails the leg (and so the release check) if the app came out unsigned or without a
+        # stapled notarization ticket; the assets are already in the draft, which stays unpublished.
+        if: contains(matrix.platform, 'macos') && env.APPLE_SIGNING == 'true'
+        shell: bash
+        run: |
+          app="$(ls -d src-tauri/target/*/release/bundle/macos/Moony.app | head -n1)"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          spctl --assess --type execute --verbose=4 "$app"
+          xcrun stapler validate "$app"
+          rm -f "$RUNNER_TEMP"/AuthKey_*.p8

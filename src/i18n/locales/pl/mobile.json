@@ -287,5 +287,114 @@
     "suggested": "Propozycja",
     "decline": "Odrzuć propozycję",
     "empty": "Żadna kategoria nie pasuje"
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "Strona tej klasy pojawi się w kolejnej części fazy 4.",
+      "watchDetail": "Szczegóły obserwowanej akcji pojawią się w kolejnej części fazy 4.",
+      "later": "Pojawi się w kolejnej części fazy 4."
+    },
+    "subtitle": "Inwestycje, nieruchomości i gotówka",
+    "sections": {
+      "investments": "Inwestycje",
+      "realEstate": "Nieruchomości",
+      "cash": "Gotówka"
+    },
+    "cash": {
+      "title": "Na kontach"
+    },
+    "bonds": {
+      "count_one": "{{count}} emisja",
+      "count_few": "{{count}} emisje",
+      "count_many": "{{count}} emisji",
+      "count_other": "{{count}} emisji",
+      "nearest": "najbliższy wykup {{month, lower}}",
+      "coupon": "kupon {{amount}} / rok"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} pozycja",
+      "count_few": "{{count}} pozycje",
+      "count_many": "{{count}} pozycji",
+      "count_other": "{{count}} pozycji",
+      "valuedOn": "wycena z {{date}}"
+    },
+    "realEstate": {
+      "personal": "własna",
+      "investment": "inwestycyjna",
+      "rent": "najem {{amount}} / mies.",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Jeszcze nic nie posiadasz",
+      "description": "Dodaj pierwszą inwestycję, nieruchomość lub inne aktywo.",
+      "class": "jeszcze nic"
+    },
+    "add": {
+      "label": "Dodaj",
+      "investment": "Inwestycję",
+      "crypto": "Kryptowalutę",
+      "bond": "Obligację",
+      "property": "Nieruchomość",
+      "asset": "Aktywo"
+    },
+    "noRate": "brak kursu wymiany dla {{currency}}",
+    "stocks": {
+      "back": "Akcje",
+      "pricesAt": "ceny {{time}}",
+      "pricesOn": "ceny {{date}}",
+      "invested": "zainwestowano {{amount}}",
+      "dividendsYear": "Dywidendy / rok",
+      "yieldNote": "stopa dywidendy {{percent}}",
+      "twrYtd": "Zwrot w tym roku",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "jeszcze brak historii",
+      "positionsTab": "Pozycje · {{count}}",
+      "watchedTab": "Obserwowane · {{count}}",
+      "sort": {
+        "label": "Sortowanie",
+        "value": "Według wartości",
+        "gain": "Według zwrotu",
+        "name": "Według nazwy"
+      },
+      "searchToggle": "Szukaj",
+      "clearSearch": "Wyczyść wyszukiwanie",
+      "showAll_one": "Pokaż {{count}} pozycję",
+      "showAll_few": "Pokaż wszystkie {{count}} pozycje",
+      "showAll_many": "Pokaż wszystkie {{count}} pozycji",
+      "showAll_other": "Pokaż wszystkie {{count}} pozycji",
+      "menu": {
+        "import": "Importuj wyciąg z domu maklerskiego",
+        "closed": "Zamknięte pozycje"
+      },
+      "closedBadge": "zamknięta",
+      "watchedEmpty": "Nie obserwujesz jeszcze żadnych akcji.",
+      "loadFailed": "Nie udało się wczytać pozycji.",
+      "target": "cel {{price}}",
+      "targetReached": "cel osiągnięty",
+      "dayChange": "dziś"
+    },
+    "position": {
+      "heroLabel": "Wartość pozycji · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} za sztukę",
+      "stats": {
+        "value": "Wartość",
+        "inCurrency": "w {{currency}}",
+        "price": "Cena"
+      },
+      "tx": {
+        "buy": "Zakup · {{quantity}} {{unit}}",
+        "sell": "Sprzedaż · {{quantity}} {{unit}}",
+        "showAll_one": "Pokaż {{count}}",
+        "showAll_few": "Pokaż wszystkie {{count}}",
+        "showAll_many": "Pokaż wszystkie {{count}}",
+        "showAll_other": "Pokaż wszystkie {{count}}",
+        "menu": "Menu transakcji"
+      },
+      "follow": "Obserwuj",
+      "following": "Obserwowana",
+      "followed": "Dodano do obserwowanych",
+      "range52": "Zakres 52 tyg.",
+      "renamed": "Nazwa zapisana"
+    }
   }
 }

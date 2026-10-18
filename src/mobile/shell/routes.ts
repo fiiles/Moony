@@ -21,6 +21,17 @@ export const routes = {
   /** The budgets of the period, pushed on Cashflow. */
   budgets: '/cashflow/budgets',
   wealth: '/wealth',
+  /**
+   * Pushed on Majetek: the Akcie class page, a position (`:id` is the position's id), the class
+   * placeholders of the next Phase 4 part.
+   */
+  stocks: '/wealth/stocks',
+  positionDetail: '/wealth/stocks/:id',
+  cryptoList: '/wealth/crypto',
+  bondsList: '/wealth/bonds',
+  otherAssetsList: '/wealth/other-assets',
+  realEstateList: '/wealth/real-estate',
+  propertyDetail: '/wealth/real-estate/:id',
   settings: '/settings',
   auth: '/auth',
 } as const;
@@ -29,6 +40,10 @@ export const routes = {
 export const accountPath = (id: string) => `/finance/accounts/${id}`;
 export const loanPath = (id: string) => `/finance/loans/${id}`;
 export const policyPath = (id: string) => `/finance/policies/${id}`;
+
+/** Paths of the details pushed on Majetek, for a `Link` or `setLocation`. */
+export const positionPath = (id: string) => `/wealth/stocks/${id}`;
+export const propertyPath = (id: string) => `/wealth/real-estate/${id}`;
 
 /** Screens pushed on Přehled (its root "/" cannot prefix them). */
 const OVERVIEW_DETAILS: readonly string[] = [routes.agenda];

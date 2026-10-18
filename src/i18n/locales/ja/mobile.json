@@ -245,5 +245,102 @@
     "suggested": "提案",
     "decline": "提案を却下",
     "empty": "一致するカテゴリがありません"
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "この資産クラスのページはフェーズ4の次のパートで追加されます。",
+      "watchDetail": "ウォッチ中の株式の詳細はフェーズ4の次のパートで追加されます。",
+      "later": "フェーズ4の次のパートで追加されます。"
+    },
+    "subtitle": "投資、不動産、現金",
+    "sections": {
+      "investments": "投資",
+      "realEstate": "不動産",
+      "cash": "現金"
+    },
+    "cash": {
+      "title": "口座残高"
+    },
+    "bonds": {
+      "count_other": "{{count}}銘柄",
+      "nearest": "直近の満期 {{month}}",
+      "coupon": "クーポン {{amount}} / 年"
+    },
+    "otherAssets": {
+      "count_other": "{{count}}件",
+      "valuedOn": "{{date}}に評価"
+    },
+    "realEstate": {
+      "personal": "自己居住用",
+      "investment": "投資用",
+      "rent": "家賃 {{amount}} / 月",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "保有資産はまだありません",
+      "description": "最初の投資、不動産、またはその他の資産を追加しましょう。",
+      "class": "まだありません"
+    },
+    "add": {
+      "label": "追加",
+      "investment": "投資",
+      "crypto": "暗号資産",
+      "bond": "債券",
+      "property": "物件",
+      "asset": "資産"
+    },
+    "noRate": "{{currency}}の為替レートなし",
+    "stocks": {
+      "back": "株式",
+      "pricesAt": "価格 {{time}}",
+      "pricesOn": "価格 {{date}}",
+      "invested": "投資額 {{amount}}",
+      "dividendsYear": "配当 / 年",
+      "yieldNote": "利回り {{percent}}",
+      "twrYtd": "今年のリターン",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "履歴はまだありません",
+      "positionsTab": "ポジション · {{count}}",
+      "watchedTab": "ウォッチ中 · {{count}}",
+      "sort": {
+        "label": "並べ替え",
+        "value": "評価額順",
+        "gain": "リターン順",
+        "name": "名前順"
+      },
+      "searchToggle": "検索",
+      "clearSearch": "検索をクリア",
+      "showAll_other": "{{count}} 件のポジションをすべて表示",
+      "menu": {
+        "import": "証券会社の明細をインポート",
+        "closed": "決済済みのポジション"
+      },
+      "closedBadge": "決済済み",
+      "watchedEmpty": "ウォッチ中の銘柄はまだありません。",
+      "loadFailed": "ポジションを読み込めませんでした。",
+      "target": "目標 {{price}}",
+      "targetReached": "目標に到達",
+      "dayChange": "本日"
+    },
+    "position": {
+      "heroLabel": "ポジションの評価額 · {{quantity}} {{unit}}",
+      "perUnit": "1株あたり {{price}}",
+      "stats": {
+        "value": "評価額",
+        "inCurrency": "{{currency}}建て",
+        "price": "価格"
+      },
+      "tx": {
+        "buy": "買付 · {{quantity}} {{unit}}",
+        "sell": "売却 · {{quantity}} {{unit}}",
+        "showAll_other": "{{count}} 件をすべて表示",
+        "menu": "取引メニュー"
+      },
+      "follow": "フォロー",
+      "following": "フォロー中",
+      "followed": "ウォッチリストに追加しました",
+      "range52": "52週レンジ",
+      "renamed": "名称を保存しました"
+    }
   }
 }

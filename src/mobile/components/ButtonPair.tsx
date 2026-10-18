@@ -5,6 +5,7 @@ interface PairButton {
   label: string;
   icon: LucideIcon;
   onClick: () => void;
+  disabled?: boolean;
 }
 
 /** One button of the pair: 48 pt, radius 10, the label 13 px and allowed a second line. */
@@ -20,11 +21,16 @@ const PAIR_BUTTON =
 export function ButtonPair({ primary, secondary }: { primary: PairButton; secondary: PairButton }) {
   return (
     <div className="mb-3.5 grid grid-cols-2 gap-2.5">
-      <Button className={PAIR_BUTTON} onClick={primary.onClick}>
+      <Button className={PAIR_BUTTON} onClick={primary.onClick} disabled={primary.disabled}>
         <primary.icon strokeWidth={1.75} aria-hidden />
         {primary.label}
       </Button>
-      <Button variant="secondary" className={PAIR_BUTTON} onClick={secondary.onClick}>
+      <Button
+        variant="secondary"
+        className={PAIR_BUTTON}
+        onClick={secondary.onClick}
+        disabled={secondary.disabled}
+      >
         <secondary.icon strokeWidth={1.75} aria-hidden />
         {secondary.label}
       </Button>

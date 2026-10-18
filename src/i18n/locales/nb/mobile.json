@@ -259,5 +259,106 @@
     "suggested": "Forslag",
     "decline": "Avslå forslaget",
     "empty": "Ingen kategori passer"
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "Siden for denne klassen kommer i neste del av fase 4.",
+      "watchDetail": "Detaljene for den fulgte aksjen kommer i neste del av fase 4.",
+      "later": "Kommer i neste del av fase 4."
+    },
+    "subtitle": "Investeringer, eiendom og kontanter",
+    "sections": {
+      "investments": "Investeringer",
+      "realEstate": "Eiendom",
+      "cash": "Kontanter"
+    },
+    "cash": {
+      "title": "På kontoer"
+    },
+    "bonds": {
+      "count_one": "{{count}} emisjon",
+      "count_other": "{{count}} emisjoner",
+      "nearest": "nærmeste forfall {{month, lower}}",
+      "coupon": "kupong {{amount}} / år"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} post",
+      "count_other": "{{count}} poster",
+      "valuedOn": "verdsatt {{date}}"
+    },
+    "realEstate": {
+      "personal": "egen bolig",
+      "investment": "investering",
+      "rent": "leie {{amount}} / måned",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Ingenting eid ennå",
+      "description": "Legg til din første investering, eiendom eller annen eiendel.",
+      "class": "ingenting ennå"
+    },
+    "add": {
+      "label": "Legg til",
+      "investment": "Investering",
+      "crypto": "Kryptovaluta",
+      "bond": "Obligasjon",
+      "property": "Eiendom",
+      "asset": "Eiendel"
+    },
+    "noRate": "ingen valutakurs for {{currency}}",
+    "stocks": {
+      "back": "Aksjer",
+      "pricesAt": "kurser {{time}}",
+      "pricesOn": "kurser {{date}}",
+      "invested": "investert {{amount}}",
+      "dividendsYear": "Utbytte / år",
+      "yieldNote": "avkastning {{percent}}",
+      "twrYtd": "Avkastning i år",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "ingen historikk ennå",
+      "positionsTab": "Beholdninger · {{count}}",
+      "watchedTab": "Fulgte · {{count}}",
+      "sort": {
+        "label": "Sortering",
+        "value": "Etter verdi",
+        "gain": "Etter avkastning",
+        "name": "Etter navn"
+      },
+      "searchToggle": "Søk",
+      "clearSearch": "Tøm søket",
+      "showAll_one": "Vis {{count}} beholdning",
+      "showAll_other": "Vis alle {{count}} beholdninger",
+      "menu": {
+        "import": "Importer meglerutskrift",
+        "closed": "Avsluttede beholdninger"
+      },
+      "closedBadge": "avsluttet",
+      "watchedEmpty": "Du følger ingen aksjer ennå.",
+      "loadFailed": "Beholdningene kunne ikke lastes.",
+      "target": "mål {{price}}",
+      "targetReached": "målet nådd",
+      "dayChange": "i dag"
+    },
+    "position": {
+      "heroLabel": "Verdi av beholdningen · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} per stk.",
+      "stats": {
+        "value": "Verdi",
+        "inCurrency": "i {{currency}}",
+        "price": "Kurs"
+      },
+      "tx": {
+        "buy": "Kjøp · {{quantity}} {{unit}}",
+        "sell": "Salg · {{quantity}} {{unit}}",
+        "showAll_one": "Vis {{count}}",
+        "showAll_other": "Vis alle {{count}}",
+        "menu": "Transaksjonsmeny"
+      },
+      "follow": "Følg",
+      "following": "Følger",
+      "followed": "Lagt til i følgelisten",
+      "range52": "52-ukers spenn",
+      "renamed": "Navn lagret"
+    }
   }
 }

@@ -55,6 +55,13 @@ export function RowChip({
 }
 
 interface EntityRowProps {
+  /** The `li`'s id: the anchor a chart mark scrolls to (`tx-…`). */
+  id?: string;
+  /**
+   * Merged onto the `li`, which carries the row's background (the row takes it over): a transition
+   * and a tint on it fade in and out under the row (the flash of a trade row).
+   */
+  className?: string;
   /** Leading element: a `RowChip`, or a wider element such as the agenda's date chip. */
   chip?: ReactNode;
   /** Width of `chip` when it is not the 36 pt chip (the dividers inset to the title). */
@@ -97,6 +104,8 @@ interface EntityRowProps {
  * main column; `muted` dims a row that has been dealt with.
  */
 export function EntityRow({
+  id,
+  className,
   chip,
   chipWidth = CHIP,
   title,
@@ -167,7 +176,7 @@ export function EntityRow({
   );
 
   const rowClass = cn(
-    'relative z-[1] grid w-full items-center gap-3 border-0 bg-paper px-3.5 text-left [-webkit-touch-callout:none]',
+    'relative z-[1] grid w-full items-center gap-3 border-0 bg-inherit px-3.5 text-left [-webkit-touch-callout:none]',
     single ? 'min-h-[52px] py-2' : 'min-h-[60px] py-2.5',
     (href || onClick) && 'active:bg-well',
     gestures && 'select-none',
@@ -182,9 +191,11 @@ export function EntityRow({
 
   return (
     <li
+      id={id}
       className={cn(
-        "relative overflow-hidden before:pointer-events-none before:absolute before:right-0 before:top-0 before:z-[2] before:left-[var(--m-row-inset)] before:border-t before:border-line-soft before:content-[''] first:before:hidden",
-        muted && 'opacity-50'
+        "relative overflow-hidden bg-paper before:pointer-events-none before:absolute before:right-0 before:top-0 before:z-[2] before:left-[var(--m-row-inset)] before:border-t before:border-line-soft before:content-[''] first:before:hidden",
+        muted && 'opacity-50',
+        className
       )}
       style={{ '--m-row-inset': `${inset}px` } as CSSProperties}
     >

@@ -259,5 +259,106 @@
     "suggested": "Vorschlag",
     "decline": "Vorschlag ablehnen",
     "empty": "Keine Kategorie passt"
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "Die Seite dieser Klasse kommt im nächsten Teil von Phase 4.",
+      "watchDetail": "Das Detail der beobachteten Aktie kommt im nächsten Teil von Phase 4.",
+      "later": "Kommt im nächsten Teil von Phase 4."
+    },
+    "subtitle": "Geldanlagen, Immobilien und Bargeld",
+    "sections": {
+      "investments": "Geldanlagen",
+      "realEstate": "Immobilien",
+      "cash": "Bargeld"
+    },
+    "cash": {
+      "title": "Auf Konten"
+    },
+    "bonds": {
+      "count_one": "{{count}} Emission",
+      "count_other": "{{count}} Emissionen",
+      "nearest": "nächste Fälligkeit {{month}}",
+      "coupon": "Kupon {{amount}} / Jahr"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} Posten",
+      "count_other": "{{count}} Posten",
+      "valuedOn": "bewertet am {{date}}"
+    },
+    "realEstate": {
+      "personal": "selbst genutzt",
+      "investment": "Anlageimmobilie",
+      "rent": "Miete {{amount}} / Monat",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Noch kein Vermögen",
+      "description": "Fügen Sie Ihre erste Geldanlage, Immobilie oder ein anderes Vermögensobjekt hinzu.",
+      "class": "noch nichts"
+    },
+    "add": {
+      "label": "Hinzufügen",
+      "investment": "Geldanlage",
+      "crypto": "Kryptowährung",
+      "bond": "Anleihe",
+      "property": "Immobilie",
+      "asset": "Vermögenswert"
+    },
+    "noRate": "kein Wechselkurs für {{currency}}",
+    "stocks": {
+      "back": "Aktien",
+      "pricesAt": "Kurse {{time}}",
+      "pricesOn": "Kurse {{date}}",
+      "invested": "investiert {{amount}}",
+      "dividendsYear": "Dividenden / Jahr",
+      "yieldNote": "Rendite {{percent}}",
+      "twrYtd": "Rendite dieses Jahr",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "noch kein Verlauf",
+      "positionsTab": "Positionen · {{count}}",
+      "watchedTab": "Beobachtet · {{count}}",
+      "sort": {
+        "label": "Sortierung",
+        "value": "Nach Wert",
+        "gain": "Nach Rendite",
+        "name": "Nach Name"
+      },
+      "searchToggle": "Suchen",
+      "clearSearch": "Suche löschen",
+      "showAll_one": "Alle {{count}} Position anzeigen",
+      "showAll_other": "Alle {{count}} Positionen anzeigen",
+      "menu": {
+        "import": "Broker-Auszug importieren",
+        "closed": "Geschlossene Positionen"
+      },
+      "closedBadge": "geschlossen",
+      "watchedEmpty": "Sie beobachten noch keine Aktien.",
+      "loadFailed": "Die Positionen konnten nicht geladen werden.",
+      "target": "Ziel {{price}}",
+      "targetReached": "Ziel erreicht",
+      "dayChange": "heute"
+    },
+    "position": {
+      "heroLabel": "Positionswert · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} pro Stück",
+      "stats": {
+        "value": "Wert",
+        "inCurrency": "in {{currency}}",
+        "price": "Kurs"
+      },
+      "tx": {
+        "buy": "Kauf · {{quantity}} {{unit}}",
+        "sell": "Verkauf · {{quantity}} {{unit}}",
+        "showAll_one": "Alle {{count}} anzeigen",
+        "showAll_other": "Alle {{count}} anzeigen",
+        "menu": "Transaktionsmenü"
+      },
+      "follow": "Beobachten",
+      "following": "Beobachtet",
+      "followed": "Zur Beobachtungsliste hinzugefügt",
+      "range52": "52-Wochen-Spanne",
+      "renamed": "Name gespeichert"
+    }
   }
 }

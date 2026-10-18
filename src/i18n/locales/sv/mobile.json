@@ -259,5 +259,106 @@
     "suggested": "Förslag",
     "decline": "Avvisa förslaget",
     "empty": "Ingen kategori matchar"
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "Sidan för den här klassen kommer i nästa del av fas 4.",
+      "watchDetail": "Detaljerna för den bevakade aktien kommer i nästa del av fas 4.",
+      "later": "Kommer i nästa del av fas 4."
+    },
+    "subtitle": "Investeringar, fastigheter och kontanter",
+    "sections": {
+      "investments": "Investeringar",
+      "realEstate": "Fastigheter",
+      "cash": "Kontanter"
+    },
+    "cash": {
+      "title": "På konton"
+    },
+    "bonds": {
+      "count_one": "{{count}} emission",
+      "count_other": "{{count}} emissioner",
+      "nearest": "närmaste förfall {{month, lower}}",
+      "coupon": "kupong {{amount}} / år"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} post",
+      "count_other": "{{count}} poster",
+      "valuedOn": "värderad {{date}}"
+    },
+    "realEstate": {
+      "personal": "egen bostad",
+      "investment": "investering",
+      "rent": "hyra {{amount}} / månad",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Inget ägt ännu",
+      "description": "Lägg till din första investering, fastighet eller annan tillgång.",
+      "class": "inget ännu"
+    },
+    "add": {
+      "label": "Lägg till",
+      "investment": "Investering",
+      "crypto": "Kryptovaluta",
+      "bond": "Obligation",
+      "property": "Fastighet",
+      "asset": "Tillgång"
+    },
+    "noRate": "ingen växelkurs för {{currency}}",
+    "stocks": {
+      "back": "Aktier",
+      "pricesAt": "kurser {{time}}",
+      "pricesOn": "kurser {{date}}",
+      "invested": "investerat {{amount}}",
+      "dividendsYear": "Utdelning / år",
+      "yieldNote": "avkastning {{percent}}",
+      "twrYtd": "Avkastning i år",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "ingen historik ännu",
+      "positionsTab": "Innehav · {{count}}",
+      "watchedTab": "Bevakade · {{count}}",
+      "sort": {
+        "label": "Sortering",
+        "value": "Efter värde",
+        "gain": "Efter avkastning",
+        "name": "Efter namn"
+      },
+      "searchToggle": "Sök",
+      "clearSearch": "Rensa sökningen",
+      "showAll_one": "Visa {{count}} innehav",
+      "showAll_other": "Visa alla {{count}} innehav",
+      "menu": {
+        "import": "Importera mäklarutdrag",
+        "closed": "Stängda innehav"
+      },
+      "closedBadge": "stängt",
+      "watchedEmpty": "Du bevakar inga aktier ännu.",
+      "loadFailed": "Innehaven kunde inte läsas in.",
+      "target": "mål {{price}}",
+      "targetReached": "målet nått",
+      "dayChange": "i dag"
+    },
+    "position": {
+      "heroLabel": "Innehavets värde · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} per st",
+      "stats": {
+        "value": "Värde",
+        "inCurrency": "i {{currency}}",
+        "price": "Kurs"
+      },
+      "tx": {
+        "buy": "Köp · {{quantity}} {{unit}}",
+        "sell": "Försäljning · {{quantity}} {{unit}}",
+        "showAll_one": "Visa {{count}}",
+        "showAll_other": "Visa alla {{count}}",
+        "menu": "Transaktionsmeny"
+      },
+      "follow": "Bevaka",
+      "following": "Bevakas",
+      "followed": "Tillagd i bevakningslistan",
+      "range52": "52-veckorsintervall",
+      "renamed": "Namn sparat"
+    }
   }
 }

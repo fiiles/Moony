@@ -273,5 +273,110 @@
     "suggested": "Návrh",
     "decline": "Odmítnout návrh",
     "empty": "Žádná kategorie neodpovídá"
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "Stránka této třídy přijde v další části fáze 4.",
+      "watchDetail": "Detail sledované akcie přijde v další části fáze 4.",
+      "later": "Přijde v další části fáze 4."
+    },
+    "subtitle": "Investice, nemovitosti a hotovost",
+    "sections": {
+      "investments": "Investice",
+      "realEstate": "Nemovitosti",
+      "cash": "Hotovost"
+    },
+    "cash": {
+      "title": "Na účtech"
+    },
+    "bonds": {
+      "count_one": "{{count}} emise",
+      "count_few": "{{count}} emise",
+      "count_other": "{{count}} emisí",
+      "nearest": "nejbližší splatnost {{month}}",
+      "coupon": "kupón {{amount}} / rok"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} položka",
+      "count_few": "{{count}} položky",
+      "count_other": "{{count}} položek",
+      "valuedOn": "oceněno {{date}}"
+    },
+    "realEstate": {
+      "personal": "osobní",
+      "investment": "investiční",
+      "rent": "nájem {{amount}} / měsíc",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Zatím žádný majetek",
+      "description": "Přidejte první investici, nemovitost nebo jiné aktivum.",
+      "class": "zatím nic"
+    },
+    "add": {
+      "label": "Přidat",
+      "investment": "Investici",
+      "crypto": "Kryptoměnu",
+      "bond": "Dluhopis",
+      "property": "Nemovitost",
+      "asset": "Aktivum"
+    },
+    "noRate": "bez kurzu pro {{currency}}",
+    "stocks": {
+      "back": "Akcie",
+      "pricesAt": "ceny {{time}}",
+      "pricesOn": "ceny {{date}}",
+      "invested": "vloženo {{amount}}",
+      "dividendsYear": "Dividendy / rok",
+      "yieldNote": "výnos {{percent}}",
+      "twrYtd": "Zhodnocení letos",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "zatím bez historie",
+      "positionsTab": "Pozice · {{count}}",
+      "watchedTab": "Sledované · {{count}}",
+      "sort": {
+        "label": "Řazení",
+        "value": "Podle hodnoty",
+        "gain": "Podle výnosu",
+        "name": "Podle názvu"
+      },
+      "searchToggle": "Hledat",
+      "clearSearch": "Smazat hledání",
+      "showAll_one": "Zobrazit {{count}} pozici",
+      "showAll_few": "Zobrazit všechny {{count}} pozice",
+      "showAll_other": "Zobrazit všech {{count}} pozic",
+      "menu": {
+        "import": "Importovat výpis brokera",
+        "closed": "Uzavřené pozice"
+      },
+      "closedBadge": "uzavřená",
+      "watchedEmpty": "Zatím nesledujete žádnou akcii.",
+      "loadFailed": "Pozice se nepodařilo načíst.",
+      "target": "cíl {{price}}",
+      "targetReached": "cíl dosažen",
+      "dayChange": "dnes"
+    },
+    "position": {
+      "heroLabel": "Hodnota pozice · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} za kus",
+      "stats": {
+        "value": "Hodnota",
+        "inCurrency": "v {{currency}}",
+        "price": "Cena"
+      },
+      "tx": {
+        "buy": "Nákup · {{quantity}} {{unit}}",
+        "sell": "Prodej · {{quantity}} {{unit}}",
+        "showAll_one": "Zobrazit {{count}}",
+        "showAll_few": "Zobrazit všechny {{count}}",
+        "showAll_other": "Zobrazit všech {{count}}",
+        "menu": "Nabídka transakce"
+      },
+      "follow": "Sledovat",
+      "following": "Sledováno",
+      "followed": "Přidáno do sledovaných",
+      "range52": "52T rozpětí",
+      "renamed": "Název uložen"
+    }
   }
 }

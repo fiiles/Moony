@@ -273,5 +273,110 @@
     "suggested": "Sugerencia",
     "decline": "Rechazar sugerencia",
     "empty": "Ninguna categoría coincide"
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "La página de esta clase llegará en la siguiente parte de la fase 4.",
+      "watchDetail": "El detalle de la acción en seguimiento llegará en la siguiente parte de la fase 4.",
+      "later": "Llegará en la siguiente parte de la fase 4."
+    },
+    "subtitle": "Inversiones, inmuebles y efectivo",
+    "sections": {
+      "investments": "Inversiones",
+      "realEstate": "Inmuebles",
+      "cash": "Efectivo"
+    },
+    "cash": {
+      "title": "En cuentas"
+    },
+    "bonds": {
+      "count_one": "{{count}} emisión",
+      "count_many": "{{count}} emisiones",
+      "count_other": "{{count}} emisiones",
+      "nearest": "próximo vencimiento {{month, lower}}",
+      "coupon": "cupón {{amount}} / año"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} elemento",
+      "count_many": "{{count}} elementos",
+      "count_other": "{{count}} elementos",
+      "valuedOn": "valorado el {{date}}"
+    },
+    "realEstate": {
+      "personal": "vivienda habitual",
+      "investment": "inversión",
+      "rent": "alquiler {{amount}} / mes",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Aún no tienes nada",
+      "description": "Añade tu primera inversión, inmueble u otro activo.",
+      "class": "todavía nada"
+    },
+    "add": {
+      "label": "Añadir",
+      "investment": "Inversión",
+      "crypto": "Criptomoneda",
+      "bond": "Bono",
+      "property": "Inmueble",
+      "asset": "Activo"
+    },
+    "noRate": "sin tipo de cambio para {{currency}}",
+    "stocks": {
+      "back": "Acciones",
+      "pricesAt": "precios {{time}}",
+      "pricesOn": "precios {{date}}",
+      "invested": "invertido {{amount}}",
+      "dividendsYear": "Dividendos / año",
+      "yieldNote": "rendimiento {{percent}}",
+      "twrYtd": "Rentabilidad este año",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "aún sin historial",
+      "positionsTab": "Posiciones · {{count}}",
+      "watchedTab": "Seguidas · {{count}}",
+      "sort": {
+        "label": "Orden",
+        "value": "Por valor",
+        "gain": "Por rentabilidad",
+        "name": "Por nombre"
+      },
+      "searchToggle": "Buscar",
+      "clearSearch": "Borrar búsqueda",
+      "showAll_one": "Mostrar {{count}} posición",
+      "showAll_many": "Mostrar todas las {{count}} posiciones",
+      "showAll_other": "Mostrar todas las {{count}} posiciones",
+      "menu": {
+        "import": "Importar extracto del bróker",
+        "closed": "Posiciones cerradas"
+      },
+      "closedBadge": "cerrada",
+      "watchedEmpty": "Aún no sigues ninguna acción.",
+      "loadFailed": "No se pudieron cargar las posiciones.",
+      "target": "objetivo {{price}}",
+      "targetReached": "objetivo alcanzado",
+      "dayChange": "hoy"
+    },
+    "position": {
+      "heroLabel": "Valor de la posición · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} por unidad",
+      "stats": {
+        "value": "Valor",
+        "inCurrency": "en {{currency}}",
+        "price": "Precio"
+      },
+      "tx": {
+        "buy": "Compra · {{quantity}} {{unit}}",
+        "sell": "Venta · {{quantity}} {{unit}}",
+        "showAll_one": "Mostrar todas ({{count}})",
+        "showAll_many": "Mostrar todas ({{count}})",
+        "showAll_other": "Mostrar todas ({{count}})",
+        "menu": "Menú del movimiento"
+      },
+      "follow": "Seguir",
+      "following": "Siguiendo",
+      "followed": "Añadida a la lista de seguimiento",
+      "range52": "Rango de 52 semanas",
+      "renamed": "Nombre guardado"
+    }
   }
 }

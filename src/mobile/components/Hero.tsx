@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
 import type { ChartPeriod } from '@/utils/period';
 import { useFitText } from '@/mobile/hooks/use-fit-text';
+import type { CostPoint } from '@/mobile/lib/position-series';
 import { ScrubChart } from './ScrubChart';
 import { Segment } from './Segment';
 
@@ -32,13 +33,22 @@ interface HeroProps<E extends ChartEvent> {
   period?: ChartPeriod;
   periods?: readonly ChartPeriod[];
   onPeriodChange?: (period: ChartPeriod) => void;
-  points?: LinePoint[];
+  points?: CostPoint[];
   zeroBaseline?: boolean;
   /** A step line (the account's balance records): each value holds until the next point. */
   step?: boolean;
+  /** The dashed cost line of a position ("Vloženo"); the points carry its values. */
+  cost?: boolean;
   events?: E[];
   renderEventTip?: (cluster: EventCluster<E>) => LineTip;
+  /** A tap on a mark opened its callout: the events it stands for. */
+  onMarkTap?: (cluster: EventCluster<E>) => void;
   chartLabel?: string;
+  /**
+   * Content that belongs to the hero's number: after the chart when it is charted, right after the
+   * change line in the compact hero (Majetek's allocation bar and legend, a chart legend).
+   */
+  children?: ReactNode;
 }
 
 /**
@@ -60,9 +70,12 @@ export function Hero<E extends ChartEvent>({
   points,
   zeroBaseline,
   step,
+  cost,
   events,
   renderEventTip,
+  onMarkTap,
   chartLabel,
+  children,
 }: HeroProps<E>) {
   const { t } = useTranslation('common');
   const fmt = useFormat();
@@ -147,12 +160,15 @@ export function Hero<E extends ChartEvent>({
           points={points}
           zeroBaseline={zeroBaseline}
           step={step}
+          cost={cost}
           events={events}
           renderEventTip={renderEventTip}
+          onMarkTap={onMarkTap}
           onScrub={setScrub}
           label={chartLabel ?? label}
         />
       )}
+      {children}
     </section>
   );
 }

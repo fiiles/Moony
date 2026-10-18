@@ -8,6 +8,8 @@ export interface StatItem {
   value: string;
   /** 10 / 500 line under the value (a change, "na účtech"). */
   note?: ReactNode;
+  /** Colours the value for a signed result (`.m-stat__v--gain` / `--loss`); the sign stays in the text. */
+  tone?: 'gain' | 'loss';
 }
 
 /** The contract's rule (`.m-stat__v`): 17 px down to the 86 px box of a third, then with the card. */
@@ -42,7 +44,10 @@ export function StatRow({ stats }: { stats: StatItem[] }) {
           </span>
           <span
             data-fit-text
-            className="mt-auto block overflow-hidden text-ellipsis whitespace-nowrap text-m-stat text-ink num"
+            className={cn(
+              'mt-auto block overflow-hidden text-ellipsis whitespace-nowrap text-m-stat num',
+              stat.tone === 'gain' ? 'text-gain' : stat.tone === 'loss' ? 'text-loss' : 'text-ink'
+            )}
             style={{
               fontSize:
                 fit === null

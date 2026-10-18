@@ -5,6 +5,8 @@ import {
   cashflowCategoryPath,
   loanPath,
   policyPath,
+  positionPath,
+  propertyPath,
   routes,
   tabForPath,
 } from './routes';
@@ -27,6 +29,12 @@ describe('tabForPath', () => {
     expect(tabForPath(routes.uncategorized)).toBe('finance');
     expect(tabForPath('/cashflow/budgets')).toBe('cashflow');
     expect(tabForPath('/cashflow/category/expense/cat_x')).toBe('cashflow');
+  });
+
+  it('keeps the screens pushed on Majetek in Majetek', () => {
+    expect(tabForPath(routes.stocks)).toBe('wealth');
+    expect(tabForPath(positionPath('7f3a'))).toBe('wealth');
+    expect(tabForPath(propertyPath('x'))).toBe('wealth');
   });
 
   it('keeps a screen pushed on Přehled in Přehled', () => {

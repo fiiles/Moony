@@ -296,13 +296,28 @@
     "unavailableHere": "Per ora il backup funziona solo su iPhone.",
     "restoreTitle": "Ripristino e trasferimento",
     "restoreLead": "Ripristina un backup di questo telefono oppure trasferisci un profilo da Moony sul computer: scegli il file del backup e, dopo il ripristino, sblocca con la password in uso quando è stato creato.",
+    "restoreConfirmDescription": "Il backup del {{date}} (Moony {{version}}, {{attachments}} allegati, {{size}}) sostituisce i dati su questo telefono. Se vuoi conservare i dati attuali, fai prima un backup. In seguito Moony si bloccherà; sbloccalo con la password in uso quando il backup è stato creato.",
     "osBackupNote": "Il profilo cifrato è presente anche nel backup del telefono (iCloud o computer); senza la password nessuno può aprirlo."
   },
   "firstRun": {
     "privacyLead": "Moony conserva tutto in un database cifrato su questo telefono. Nessun cloud, nessun account presso di noi.",
+    "points": {
+      "encryption": {
+        "title": "Cifratura AES-256",
+        "text": "– solo la tua password apre il database; foto e documenti sono cifrati al suo interno."
+      },
+      "localOnly": {
+        "title": "Nessun cloud",
+        "text": "– non inviamo nulla altrove; il backup lo salvi tu in File o su iCloud Drive."
+      },
+      "marketData": {
+        "title": "Dati di mercato",
+        "text": "– vengono scaricati solo i prezzi di azioni, valute e cripto che segui (Yahoo Finance, CoinGecko, BCE). L'app funziona anche offline."
+      }
+    },
     "recoveryLead": "È l'unico modo per accedere ai tuoi dati se dimentichi la password. Conservala fuori da questo telefono: in un gestore di password, in File o su carta.",
     "saveToFiles": "Salva in File",
-    "recoveryFileNote": "Questa chiave reimposta la tua password di Moony. Funziona solo insieme a un backup di Moony di questo telefono, quindi conserva anche quel backup. Non dare questo file a nessuno.",
+    "recoveryFileNote": "Questa chiave reimposta la tua password di Moony. Funziona solo insieme ai dati di Moony su questo telefono o a un loro backup, quindi conserva anche quel backup. Non dare questo file a nessuno.",
     "areasLead": "Scegli cosa vuoi seguire in Moony. Puoi modificarlo in qualsiasi momento in Impostazioni.",
     "firstAccountLead": "Bastano un nome e un saldo. L'estratto conto lo importerai più tardi.",
     "stepLabel": "{{index}} / {{total}} · {{step}}",

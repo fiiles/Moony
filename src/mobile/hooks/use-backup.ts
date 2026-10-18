@@ -8,6 +8,7 @@ import { biometricApi, dataApi, onboardingApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { deviceStorage } from '@/utils/device-storage';
 import { todayIsoUtc } from '@/utils/period';
+import { cancelAllNotifications } from '@/mobile/hooks/use-notification-schedule';
 import { BIOMETRIC_STATUS_KEY, clearEnrolmentAsked } from '@/mobile/lib/biometrics';
 import {
   backupFileName,
@@ -139,6 +140,9 @@ export function useBackup(): {
               break;
             case 'reload':
               toast(t('data.restored'), { description: t('data.restoredDescription') });
+              // The old profile's notifications must not outlive it; the restored profile is
+              // planned again at its next unlock
+              await cancelAllNotifications();
               // The backend already locked the app; the reload lands on the lock screen
               window.setTimeout(() => window.location.reload(), 800);
               break;

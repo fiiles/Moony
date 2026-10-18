@@ -308,13 +308,28 @@
     "unavailableHere": "Kopia zapasowa na razie działa tylko na iPhonie.",
     "restoreTitle": "Przywracanie i przenoszenie",
     "restoreLead": "Przywróć kopię zapasową z tego telefonu albo przenieś profil z Moony na komputerze: wybierz plik kopii i po przywróceniu odblokuj hasłem, które obowiązywało w chwili jej utworzenia.",
+    "restoreConfirmDescription": "Kopia z {{date}} (Moony {{version}}, załączników: {{attachments}}, {{size}}) zastąpi dane na tym telefonie. Jeśli chcesz zachować obecne dane, najpierw zrób ich kopię zapasową. Po zakończeniu Moony się zablokuje; odblokuj je hasłem używanym w chwili tworzenia kopii.",
     "osBackupNote": "Zaszyfrowany profil jest też w kopii zapasowej samego telefonu (iCloud lub komputer); bez hasła nikt go nie otworzy."
   },
   "firstRun": {
     "privacyLead": "Moony przechowuje wszystko w zaszyfrowanej bazie danych na tym telefonie. Bez chmury, bez konta u nas.",
+    "points": {
+      "encryption": {
+        "title": "Szyfrowanie AES-256",
+        "text": "– bazę otwiera tylko twoje hasło; zdjęcia i dokumenty są w niej zaszyfrowane."
+      },
+      "localOnly": {
+        "title": "Bez chmury",
+        "text": "– nigdzie niczego nie wysyłamy; kopię zapasową zapisujesz sam w aplikacji Pliki lub w iCloud Drive."
+      },
+      "marketData": {
+        "title": "Dane rynkowe",
+        "text": "– pobierane są tylko ceny akcji, walut i kryptowalut, które śledzisz (Yahoo Finance, CoinGecko, EBC). Aplikacja działa także offline."
+      }
+    },
     "recoveryLead": "Jedyna droga do twoich danych, jeśli zapomnisz hasła. Przechowuj go poza tym telefonem – w menedżerze haseł, w aplikacji Pliki lub na papierze.",
     "saveToFiles": "Zapisz w Plikach",
-    "recoveryFileNote": "Ten klucz resetuje twoje hasło do Moony. Działa tylko razem z kopią zapasową Moony z tego telefonu, więc zapisz także tę kopię. Nie przekazuj tego pliku nikomu.",
+    "recoveryFileNote": "Ten klucz resetuje twoje hasło do Moony. Działa tylko razem z danymi Moony na tym telefonie lub z ich kopią zapasową, więc zapisz także tę kopię. Nie przekazuj tego pliku nikomu.",
     "areasLead": "Wybierz, co chcesz śledzić w Moony. Możesz to zmienić w dowolnym momencie w Ustawieniach.",
     "firstAccountLead": "Wystarczy nazwa i saldo. Wyciąg zaimportujesz później.",
     "stepLabel": "{{index}} / {{total}} · {{step}}",

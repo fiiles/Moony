@@ -21,7 +21,8 @@ export type ExportOutcome = 'saved' | 'cancelled';
  * only. On Android the picker creates an empty document and returns its URI, nothing copies the
  * staged file into it, so an "export" would be an empty file recorded as a backup. Android needs
  * its own way to write the file to the chosen URI; until then it does not export. Restoring reads
- * a picked file through Rust and works everywhere.
+ * a picked file through Rust and is verified on iOS only: on Android `open()` returns `content://`
+ * URIs, which `inspect_backup` cannot read, so restore there is a follow-up.
  */
 export function exportsOnThisDevice(platform: string): boolean {
   return platform === 'ios';
@@ -33,9 +34,10 @@ export function backupFileName(isoDate: string): string {
 }
 
 /**
- * The path a dialog result stands for. The dialog crate hands over plain paths, but a `file://` URL
- * (percent-encoded) is turned into the path it names; anything else is returned as it came, so a
- * plain path with a `%` in it stays intact.
+ * The path a dialog result stands for. On iOS the dialog plugin hands over `file://` URLs
+ * (percent-encoded), which this turns into the path they name: Rust needs the path, so the helper is
+ * load-bearing there. Anything else is returned as it came, so a plain path with a `%` in it stays
+ * intact. That includes Android's `content://` URIs, which Rust cannot read yet (a follow-up).
  */
 export function dialogPathToFsPath(value: string): string {
   if (!value.startsWith('file://')) return value;

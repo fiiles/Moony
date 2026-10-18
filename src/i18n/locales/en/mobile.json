@@ -284,13 +284,28 @@
     "unavailableHere": "Backups work on iPhone only for now.",
     "restoreTitle": "Restore and transfer",
     "restoreLead": "Restore a backup from this phone, or transfer a profile from Moony on the computer: choose the backup file and, after the restore, unlock with the password that was in use when it was created.",
+    "restoreConfirmDescription": "The backup from {{date}} (Moony {{version}}, {{attachments}} attachments, {{size}}) replaces the data on this phone. Back up first if you want to keep the current data. Moony then locks; unlock it with the password that was in use when the backup was made.",
     "osBackupNote": "The encrypted profile is also in the phone's own backup (iCloud or a computer); no one can open it without the password."
   },
   "firstRun": {
     "privacyLead": "Moony stores everything in an encrypted database on this phone. No cloud, no account with us.",
+    "points": {
+      "encryption": {
+        "title": "AES-256 encryption",
+        "text": "– only your password opens the database; photos and documents are encrypted inside it."
+      },
+      "localOnly": {
+        "title": "No cloud",
+        "text": "– we send nothing anywhere; you save the backup to Files or iCloud Drive yourself."
+      },
+      "marketData": {
+        "title": "Market data",
+        "text": "– only the stock, currency and crypto rates you follow are downloaded (Yahoo Finance, CoinGecko, ECB). The app works offline too."
+      }
+    },
     "recoveryLead": "The only way to your data if you forget the password. Store it outside this phone: in a password manager, in Files, or on paper.",
     "saveToFiles": "Save to Files",
-    "recoveryFileNote": "This key resets your Moony password. It works only together with a Moony backup from this phone, so keep that backup too. Do not give this file to anyone.",
+    "recoveryFileNote": "This key resets your Moony password. It works only together with the Moony data on this phone or a backup of it, so keep that backup too. Do not give this file to anyone.",
     "areasLead": "Choose what you want to track in Moony. You can change this anytime in Settings.",
     "firstAccountLead": "A name and a balance are enough. You can import a statement later.",
     "stepLabel": "{{index}} / {{total}} · {{step}}",

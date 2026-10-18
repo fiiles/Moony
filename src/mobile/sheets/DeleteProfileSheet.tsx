@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { authApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { Sheet } from '@/mobile/components/Sheet';
+import { cancelAllNotifications } from '@/mobile/hooks/use-notification-schedule';
 
 /**
  * The word to type before everything is deleted: the same as the desktop's confirmation word
@@ -33,7 +34,9 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
 
   const remove = useMutation({
     mutationFn: () => authApi.deleteAccount(),
-    onSuccess: () => {
+    onSuccess: async () => {
+      // The notifications scheduled for the deleted profile must not outlive it (best effort, iOS)
+      await cancelAllNotifications();
       // UI preferences belong to the deleted account. The database is already gone: storage that
       // cannot be cleared must not turn this into a failure or skip the reload.
       try {

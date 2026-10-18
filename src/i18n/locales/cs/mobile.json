@@ -259,7 +259,7 @@
       "biometricsOff": "Jen heslo",
       "biometricsDisabled": "Odemykání biometrií vypnuto",
       "lockAfterLabel": "Zamknout po přechodu na pozadí",
-      "lockAfterHint": "Po návratu do aplikace se po této době znovu odemyká.",
+      "lockAfterHint": "Když aplikaci opustíte na déle, po návratu ji znovu odemknete.",
       "optionNow": "Ihned",
       "optionMinutes": "{{count}} min",
       "lockNow": "zámek ihned",
@@ -296,13 +296,28 @@
     "unavailableHere": "Zálohování zatím funguje jen na iPhonu.",
     "restoreTitle": "Obnovení a přenos",
     "restoreLead": "Obnovte zálohu z tohoto telefonu, nebo přeneste profil z Moony na počítači: vyberte soubor zálohy a po obnovení odemkněte heslem, které platilo při jejím vytvoření.",
+    "restoreConfirmDescription": "Záloha z {{date}} (Moony {{version}}, {{attachments}} příloh, {{size}}) nahradí data v tomto telefonu. Chcete-li současná data zachovat, nejdřív je zálohujte. Moony se poté zamkne; odemkněte ho heslem, které platilo v době vytvoření zálohy.",
     "osBackupNote": "Šifrovaný profil je i v záloze telefonu (iCloud nebo počítač); bez hesla ho nikdo neotevře."
   },
   "firstRun": {
     "privacyLead": "Moony ukládá vše do šifrované databáze v tomto telefonu. Žádný cloud, žádný účet u nás.",
+    "points": {
+      "encryption": {
+        "title": "Šifrování AES-256",
+        "text": "– databázi otevře jen vaše heslo; fotky a dokumenty jsou šifrované v ní."
+      },
+      "localOnly": {
+        "title": "Bez cloudu",
+        "text": "– data nikam neposíláme; zálohu si uložíte do Souborů nebo iCloud Drive sami."
+      },
+      "marketData": {
+        "title": "Tržní data",
+        "text": "– stahují se jen kurzy akcií, měn a kryptoměn, které sledujete (Yahoo Finance, CoinGecko, ECB). Aplikace funguje i offline."
+      }
+    },
     "recoveryLead": "Jediná cesta k datům, když heslo zapomenete. Uložte ho mimo tento telefon: do správce hesel, do Souborů nebo na papír.",
     "saveToFiles": "Uložit do Souborů",
-    "recoveryFileNote": "Tento klíč resetuje vaše heslo do Moony. Funguje jen spolu se zálohou Moony z tohoto telefonu, proto si zálohu uložte také. Soubor nikomu nedávejte.",
+    "recoveryFileNote": "Tento klíč resetuje vaše heslo do Moony. Funguje jen spolu s daty Moony v tomto telefonu nebo s jejich zálohou, proto si zálohu uložte také. Soubor nikomu nedávejte.",
     "areasLead": "Vyberte, co chcete v Moony sledovat. Změnit to můžete kdykoli v Nastavení.",
     "firstAccountLead": "Stačí název a zůstatek. Výpis naimportujete později.",
     "stepLabel": "{{index}} / {{total}} · {{step}}",

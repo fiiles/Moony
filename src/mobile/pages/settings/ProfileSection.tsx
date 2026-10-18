@@ -20,11 +20,14 @@ import { useFormat } from '@/lib/use-format';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { SectionPage } from '@/mobile/components/SectionPage';
 
-/** The desktop `ProfileCard`'s rules (it keeps its schema to itself): the same keys, the same messages. */
+/**
+ * The desktop `ProfileCard`'s keys and messages, except that the e-mail stays optional as it is in
+ * the phone's first run (`setupSchema`): an empty one passes, a filled one must be an address.
+ */
 const profileSchema = z.object({
   name: z.string().min(1, 'validation.nameRequired'),
   surname: z.string().min(1, 'validation.surnameRequired'),
-  email: z.string().email('validation.invalidEmail'),
+  email: z.string().email('validation.invalidEmail').or(z.literal('')),
 });
 
 type ProfileData = z.infer<typeof profileSchema>;

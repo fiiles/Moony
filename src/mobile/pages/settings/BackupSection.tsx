@@ -21,8 +21,9 @@ const BUTTON = 'h-12 w-full rounded-[10px] text-m-row';
  * folder); the same file moves a profile from Moony on the computer to the phone and back, with
  * the password that was in use when it was made. There is no automatic backup: the "backup is due"
  * reminder says when to make one. Restoring asks first, in a sheet that names what the file holds.
- * Making a backup works on iOS only for now: elsewhere the button is off and a sentence says so,
- * while restoring (a picked file, read by Rust) is there on every phone.
+ * Making a backup works on iOS only for now: elsewhere the button is off and a sentence says so.
+ * Restoring (a picked file, read by Rust) is verified on iOS only too: Android's picker returns
+ * `content://` URIs that Rust cannot read yet, which is a follow-up.
  */
 export default function BackupSection() {
   const { t } = useTranslation('mobile');

@@ -284,13 +284,28 @@
     "unavailableHere": "Die Sicherung funktioniert vorerst nur auf dem iPhone.",
     "restoreTitle": "Wiederherstellung und Übertragung",
     "restoreLead": "Stellen Sie eine Sicherung von diesem Telefon wieder her oder übertragen Sie ein Profil aus Moony auf dem Computer: Wählen Sie die Sicherungsdatei aus und entsperren Sie nach der Wiederherstellung mit dem Passwort, das bei ihrer Erstellung galt.",
+    "restoreConfirmDescription": "Die Sicherung vom {{date}} (Moony {{version}}, {{attachments}} Anhänge, {{size}}) ersetzt die Daten auf diesem Telefon. Sichern Sie zuerst, wenn Sie die aktuellen Daten behalten möchten. Danach sperrt sich Moony; entsperren Sie es mit dem Passwort, das beim Erstellen der Sicherung galt.",
     "osBackupNote": "Das verschlüsselte Profil ist auch in der Sicherung des Telefons (iCloud oder Computer) enthalten; ohne das Passwort kann es niemand öffnen."
   },
   "firstRun": {
     "privacyLead": "Moony speichert alles in einer verschlüsselten Datenbank auf diesem Telefon. Keine Cloud, kein Konto bei uns.",
+    "points": {
+      "encryption": {
+        "title": "AES-256-Verschlüsselung",
+        "text": "– nur Ihr Passwort öffnet die Datenbank; Fotos und Dokumente sind darin verschlüsselt."
+      },
+      "localOnly": {
+        "title": "Keine Cloud",
+        "text": "– wir senden nichts irgendwohin; die Sicherung speichern Sie selbst in „Dateien“ oder iCloud Drive."
+      },
+      "marketData": {
+        "title": "Marktdaten",
+        "text": "– heruntergeladen werden nur die Kurse der Aktien, Währungen und Kryptowerte, die Sie verfolgen (Yahoo Finance, CoinGecko, EZB). Die App funktioniert auch offline."
+      }
+    },
     "recoveryLead": "Der einzige Weg zu Ihren Daten, falls Sie das Passwort vergessen. Bewahren Sie ihn außerhalb dieses Telefons auf – in einem Passwortmanager, in „Dateien“ oder auf Papier.",
     "saveToFiles": "In „Dateien“ speichern",
-    "recoveryFileNote": "Dieser Schlüssel setzt Ihr Moony-Passwort zurück. Er funktioniert nur zusammen mit einer Moony-Sicherung von diesem Telefon, bewahren Sie diese Sicherung daher ebenfalls auf. Geben Sie diese Datei an niemanden weiter.",
+    "recoveryFileNote": "Dieser Schlüssel setzt Ihr Moony-Passwort zurück. Er funktioniert nur zusammen mit den Moony-Daten auf diesem Telefon oder einer Sicherung davon, bewahren Sie diese Sicherung daher ebenfalls auf. Geben Sie diese Datei an niemanden weiter.",
     "areasLead": "Wählen Sie, was Sie in Moony erfassen möchten. Sie können dies jederzeit in den Einstellungen ändern.",
     "firstAccountLead": "Ein Name und ein Kontostand genügen. Einen Kontoauszug importieren Sie später.",
     "stepLabel": "{{index}} / {{total}} · {{step}}",
@@ -334,7 +349,7 @@
       "label": "Sicherung",
       "hint": "Wenn die letzte Sicherung älter als 30 Tage ist.",
       "title": "Moony sichern",
-      "stale": "Die letzte Sicherung ist älter als einen Monat.",
+      "stale": "Die letzte Sicherung ist älter als ein Monat.",
       "never": "Sie haben noch keine Sicherung."
     },
     "deadline": {

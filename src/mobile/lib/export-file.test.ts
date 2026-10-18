@@ -14,7 +14,7 @@ describe('backupFileName', () => {
 });
 
 describe('RECOVERY_KEY_FILE', () => {
-  it('is the one file name the capability scope allows', () => {
+  it('is the recovery key file name the Rust allow-list accepts', () => {
     expect(RECOVERY_KEY_FILE).toBe('moony-recovery-key.txt');
   });
 });

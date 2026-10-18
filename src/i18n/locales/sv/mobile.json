@@ -284,13 +284,28 @@
     "unavailableHere": "Säkerhetskopiering fungerar tills vidare bara på iPhone.",
     "restoreTitle": "Återställning och överföring",
     "restoreLead": "Återställ en säkerhetskopia från den här telefonen eller överför en profil från Moony på datorn: välj säkerhetskopians fil och lås upp efter återställningen med det lösenord som gällde när den skapades.",
+    "restoreConfirmDescription": "Säkerhetskopian från {{date}} (Moony {{version}}, {{attachments}} bilagor, {{size}}) ersätter data på den här telefonen. Säkerhetskopiera först om du vill behålla dina nuvarande data. Moony låses därefter; lås upp med det lösenord som gällde när säkerhetskopian skapades.",
     "osBackupNote": "Den krypterade profilen finns också i telefonens egen säkerhetskopia (iCloud eller dator); utan lösenordet kan ingen öppna den."
   },
   "firstRun": {
     "privacyLead": "Moony lagrar allt i en krypterad databas på den här telefonen. Inget moln, inget konto hos oss.",
+    "points": {
+      "encryption": {
+        "title": "AES-256-kryptering",
+        "text": "– bara ditt lösenord öppnar databasen; foton och dokument är krypterade i den."
+      },
+      "localOnly": {
+        "title": "Inget moln",
+        "text": "– vi skickar ingenting någonstans; du sparar säkerhetskopian själv i Filer eller iCloud Drive."
+      },
+      "marketData": {
+        "title": "Marknadsdata",
+        "text": "– bara kurserna för de aktier, valutor och kryptotillgångar du följer hämtas (Yahoo Finance, CoinGecko, ECB). Appen fungerar även offline."
+      }
+    },
     "recoveryLead": "Den enda vägen till dina data om du glömmer lösenordet. Förvara den utanför den här telefonen – i en lösenordshanterare, i Filer eller på papper.",
     "saveToFiles": "Spara i Filer",
-    "recoveryFileNote": "Den här nyckeln återställer ditt Moony-lösenord. Den fungerar bara tillsammans med en Moony-säkerhetskopia från den här telefonen, så spara även den säkerhetskopian. Ge inte filen till någon.",
+    "recoveryFileNote": "Den här nyckeln återställer ditt Moony-lösenord. Den fungerar bara tillsammans med Moony-data på den här telefonen eller en säkerhetskopia av dem, så spara även den säkerhetskopian. Ge inte filen till någon.",
     "areasLead": "Välj vad du vill följa i Moony. Du kan ändra detta när som helst i Inställningar.",
     "firstAccountLead": "Ett namn och ett saldo räcker. Kontoutdraget kan du importera senare.",
     "stepLabel": "{{index}} / {{total}} · {{step}}",

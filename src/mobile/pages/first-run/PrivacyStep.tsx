@@ -14,9 +14,11 @@ import { caption, primaryButton } from './styles';
 const PRIVACY_POINTS = ['encryption', 'localOnly', 'marketData'] as const;
 
 /**
- * Soukromí: what the app does with the data, and the two choices that shape the rest: the main
- * currency (only one with a rate source) and the banking country (rule packs, the import's bank
- * order). Each opens a picker sheet; the hints under the rows are the desktop's.
+ * Soukromí: what the app does with the data (the phone's own three points, `firstRun.points.*`:
+ * the desktop's speak of ordinary files beside the database and of a data folder to back up), and
+ * the two choices that shape the rest: the main currency (only one with a rate source) and the
+ * banking country (rule packs, the import's bank order). Each opens a picker sheet; the hints under
+ * the rows are the desktop's.
  */
 export function PrivacyStep({ flow }: { flow: FirstRunFlow }) {
   const { t } = useTranslation('auth');
@@ -35,8 +37,8 @@ export function PrivacyStep({ flow }: { flow: FirstRunFlow }) {
           <div key={key} className="flex items-start gap-2">
             <Check className="mt-px size-3.5 shrink-0 text-gain" aria-hidden />
             <span>
-              <b className="font-650 text-ink">{t(`onboarding.welcome.points.${key}.title`)}</b>{' '}
-              {t(`onboarding.welcome.points.${key}.text`)}
+              <b className="font-650 text-ink">{tm(`firstRun.points.${key}.title`)}</b>{' '}
+              {tm(`firstRun.points.${key}.text`)}
             </span>
           </div>
         ))}

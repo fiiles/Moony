@@ -56,6 +56,21 @@ export function scheduleNotification(item: {
 }
 
 /**
+ * Cancels every notification the app has scheduled, best effort: iOS only (`schedulesOnThisDevice`)
+ * and never a failure. The pending notifications carry the milestone titles of the profile that
+ * is being deleted or replaced, so they must not outlive it; the restored profile is planned again
+ * at its next unlock. A plugin that refuses changes nothing for the caller, which reloads next.
+ */
+export async function cancelAllNotifications(): Promise<void> {
+  if (!schedulesOnThisDevice()) return;
+  try {
+    await cancelAll();
+  } catch {
+    // Nothing to cancel, or the plugin refused: deleting or restoring goes on regardless
+  }
+}
+
+/**
  * Plans the phone's local notifications (spec §8.9), mounted once in the shell while the app is
  * unlocked. Once the system allows notifications and the milestones and the muted kinds have
  * loaded, it builds the plan (`buildNotificationPlan`) and, when it differs from what is

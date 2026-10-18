@@ -296,13 +296,28 @@
     "unavailableHere": "Las copias de seguridad por ahora solo funcionan en iPhone.",
     "restoreTitle": "Restauración y traslado",
     "restoreLead": "Restaura una copia de seguridad de este teléfono o traslada un perfil desde Moony en el ordenador: elige el archivo de la copia y, tras restaurarla, desbloquea con la contraseña que estaba en uso cuando se creó.",
+    "restoreConfirmDescription": "La copia del {{date}} (Moony {{version}}, {{attachments}} adjuntos, {{size}}) sustituye los datos de este teléfono. Haz antes una copia si quieres conservar los datos actuales. Después Moony se bloqueará; desbloquéalo con la contraseña que se usaba cuando se creó la copia.",
     "osBackupNote": "El perfil cifrado también está en la copia de seguridad del propio teléfono (iCloud u ordenador); sin la contraseña nadie puede abrirlo."
   },
   "firstRun": {
     "privacyLead": "Moony guarda todo en una base de datos cifrada en este teléfono. Sin nube y sin cuenta con nosotros.",
+    "points": {
+      "encryption": {
+        "title": "Cifrado AES-256",
+        "text": "– solo tu contraseña abre la base de datos; las fotos y los documentos están cifrados dentro de ella."
+      },
+      "localOnly": {
+        "title": "Sin nube",
+        "text": "– no enviamos nada a ninguna parte; la copia de seguridad la guardas tú en Archivos o iCloud Drive."
+      },
+      "marketData": {
+        "title": "Datos de mercado",
+        "text": "– solo se descargan los precios de las acciones, divisas y criptomonedas que sigues (Yahoo Finance, CoinGecko, BCE). La app también funciona sin conexión."
+      }
+    },
     "recoveryLead": "Es la única vía para acceder a tus datos si olvidas la contraseña. Guárdala fuera de este teléfono: en un gestor de contraseñas, en Archivos o en papel.",
     "saveToFiles": "Guardar en Archivos",
-    "recoveryFileNote": "Esta clave restablece tu contraseña de Moony. Solo funciona junto con una copia de seguridad de Moony de este teléfono, así que guarda también esa copia. No entregues este archivo a nadie.",
+    "recoveryFileNote": "Esta clave restablece tu contraseña de Moony. Solo funciona junto con los datos de Moony de este teléfono o con una copia de seguridad de ellos, así que guarda también esa copia. No entregues este archivo a nadie.",
     "areasLead": "Elige qué quieres seguir en Moony. Puedes cambiarlo cuando quieras en Ajustes.",
     "firstAccountLead": "Basta con un nombre y un saldo. El extracto lo importarás más adelante.",
     "stepLabel": "{{index}} / {{total}} · {{step}}",

@@ -17,8 +17,11 @@ interface RestoreBackupSheetProps {
 /**
  * "Nahradit vaše data touto zálohou?" (spec §8.9, §10.5): the destructive confirmation of a
  * restore, with what the archive holds — its date, the Moony version that made it, the attachments
- * and the size. An archive from a newer Moony says so in `text-loss` and cannot be restored. The
- * caller closes the sheet when the restore has succeeded; while it runs nothing leaves the sheet.
+ * and the size. The sentence is the phone's own (`backup.restoreConfirmDescription`): the desktop's
+ * promises a "pre-restore" folder with the old data, which the phone gives nobody access to, so it
+ * says to back up first. An archive from a newer Moony says so in `text-loss` and cannot be
+ * restored. The caller closes the sheet when the restore has succeeded; while it runs nothing
+ * leaves the sheet.
  */
 export function RestoreBackupSheet({
   inspection,
@@ -28,6 +31,7 @@ export function RestoreBackupSheet({
 }: RestoreBackupSheetProps) {
   const { t } = useTranslation('settings');
   const { t: tc } = useTranslation('common');
+  const { t: tm } = useTranslation('mobile');
   const fmt = useFormat();
   // The sheet keeps what it showed while it slides away
   const shown = useRetained(inspection);
@@ -42,7 +46,7 @@ export function RestoreBackupSheet({
       title={t('data.restoreConfirmTitle')}
       description={
         shown
-          ? t('data.restoreConfirmDescription', {
+          ? tm('backup.restoreConfirmDescription', {
               date: fmt.dateTime(shown.manifest.createdAt),
               version: shown.manifest.appVersion,
               attachments: shown.attachmentCount,

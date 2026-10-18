@@ -284,13 +284,28 @@
     "unavailableHere": "Sikkerhetskopiering fungerer foreløpig bare på iPhone.",
     "restoreTitle": "Gjenoppretting og overføring",
     "restoreLead": "Gjenopprett en sikkerhetskopi fra denne telefonen, eller overfør en profil fra Moony på datamaskinen: velg filen med sikkerhetskopien, og lås opp etter gjenopprettingen med passordet som gjaldt da den ble laget.",
+    "restoreConfirmDescription": "Sikkerhetskopien fra {{date}} (Moony {{version}}, {{attachments}} vedlegg, {{size}}) erstatter dataene på denne telefonen. Ta en sikkerhetskopi først hvis du vil beholde dagens data. Moony låses etterpå; lås den opp med passordet som var i bruk da sikkerhetskopien ble laget.",
     "osBackupNote": "Den krypterte profilen finnes også i telefonens egen sikkerhetskopi (iCloud eller datamaskin); uten passordet kan ingen åpne den."
   },
   "firstRun": {
     "privacyLead": "Moony lagrer alt i en kryptert database på denne telefonen. Ingen sky, ingen konto hos oss.",
+    "points": {
+      "encryption": {
+        "title": "AES-256-kryptering",
+        "text": "– bare passordet ditt åpner databasen; bilder og dokumenter er kryptert inni den."
+      },
+      "localOnly": {
+        "title": "Ingen sky",
+        "text": "– vi sender ingenting noe sted; du lagrer sikkerhetskopien selv i Filer eller iCloud Drive."
+      },
+      "marketData": {
+        "title": "Markedsdata",
+        "text": "– bare kursene på aksjene, valutaene og kryptovalutaene du følger, hentes (Yahoo Finance, CoinGecko, ESB). Appen fungerer også uten nett."
+      }
+    },
     "recoveryLead": "Den eneste veien til dataene dine hvis du glemmer passordet. Oppbevar den utenfor denne telefonen – i en passordbehandler, i Filer eller på papir.",
     "saveToFiles": "Lagre i Filer",
-    "recoveryFileNote": "Denne nøkkelen tilbakestiller Moony-passordet ditt. Den fungerer bare sammen med en Moony-sikkerhetskopi fra denne telefonen, så lagre også den sikkerhetskopien. Ikke gi denne filen til noen.",
+    "recoveryFileNote": "Denne nøkkelen tilbakestiller Moony-passordet ditt. Den fungerer bare sammen med Moony-dataene på denne telefonen eller en sikkerhetskopi av dem, så lagre også den sikkerhetskopien. Ikke gi denne filen til noen.",
     "areasLead": "Velg hva du vil følge i Moony. Du kan endre dette når som helst i Innstillinger.",
     "firstAccountLead": "Et navn og en saldo er nok. Kontoutskriften kan du importere senere.",
     "stepLabel": "{{index}} / {{total}} · {{step}}",

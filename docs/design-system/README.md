@@ -441,14 +441,21 @@ on-screen keyboard is up, `src/mobile/lib/use-visible-height.ts` publishes the f
 `<html>` and the box shrinks to it, so a field scrolls above the keyboard inside its own screen. Screens
 outside the tabs (`<Screen tabBar={false}>`) keep no room for the tab bar.
 
-**Lock and first run** (`mobile/pages/Lock.tsx`, spec §8.1–8.2). One page for `/auth`: the first-run
-wizard (the desktop `OnboardingWizard` without its live preview, safe areas through `--safe-top` /
-`--safe-bottom`), the lock, and the three-step recovery as pushed screens with a back button. The lock is
-centred: brand, a 76 pt rounded paper square with the lock glyph (it becomes the biometric button in
-Task 1.8), a 22 / 650 greeting, a 12 pt caption (`ink-3`), a 48 pt password field, the 48 pt primary
-button, the "forgot" link (44 pt tall), and at the bottom the language menu (`LanguageSelect`, never a
-segment of flags) and the 11 pt caption. Credential failures show under the field, everything else as a
-toast.
+**Lock and first run** (`mobile/pages/Lock.tsx`, `mobile/pages/FirstRun.tsx`, spec §8.1–8.2). One page
+for `/auth`: the phone first run, the lock, and the three-step recovery as pushed screens with a back
+button. The first run (`FirstRun.tsx`, one file per step under `mobile/pages/first-run/`, the flow in
+`mobile/hooks/use-first-run.ts`, the step order in `mobile/lib/first-run.ts`) is the desktop's five steps
+in one column without the live preview — Soukromí (currency and country as pick-row sheets), Účet, Klíč
+(the key box with Zkopírovat and "Uložit do Souborů", two groups to verify), Co sledovat (switch rows),
+První účet (name, amount field, currency) — then Biometrie ("Odemykat Moony obličejem?", Zapnout / Teď
+ne; left out when the phone has no usable biometry) and Záloha ("Telefon je jediná kopie vašich dat…",
+the first backup now / Teď ne). Every field and primary is 48 pt, text links 44 pt, the step progress
+caption ("2 / 7 · Účet") sits over a 3 pt bar, and there is no way back once the database exists. The
+desktop `OnboardingWizard` is not used on the phone. The lock is centred: brand, a 76 pt rounded paper
+square with the lock glyph (the biometric button while biometric unlock is on), a 22 / 650 greeting, a
+12 pt caption (`ink-3`), a 48 pt password field, the 48 pt primary button, the "forgot" link (44 pt
+tall), and at the bottom the language menu (`LanguageSelect`, never a segment of flags) and the 11 pt
+caption. Credential failures show under the field, everything else as a toast.
 
 | Component | Class | React | Rules |
 |---|---|---|---|
@@ -489,6 +496,12 @@ toast.
 | Confirm sheet | `.m-sheet`, `.m-btn--destructive` | `mobile/sheets/ConfirmSheet.tsx` | A destructive action's question (spec §10.5): the title, one sentence naming what goes, Zrušit and the solid destructive button — the only place that button appears. The caller closes it once the action has succeeded. |
 | Placeholder sheet | `.m-sheet` | `mobile/sheets/PlaceholderSheet.tsx` | A sheet that is not built yet: its title, one sentence saying when it comes, Zavřít as the footer's one button. |
 | Toast | (sonner, `components/ui/toaster.tsx`) | `mobile/MobileApp.tsx` | At the bottom, centred between the 16 pt gutters and 12 pt above the tab bar and the bottom safe area (`--m-tabbar-h` + `--safe-bottom`), 2.6 s, so "Vrátit" is never under the bar. Past-tense verb, as on the desktop. |
+| Settings row | `.m-row--chev`, `__chip--sq` | `mobile/components/SettingsRow.tsx`, `mobile/pages/Settings.tsx` | A row of Nastavení (spec §8.9, prototype note 20): the entity row with a rounded-square icon chip (Lucide 16), the setting's name, its current state in the sub-line ("Odemykání obličejem · zámek po 15 minutách", one line ending in an ellipsis) and the chevron. `danger` draws the chip and the title in `loss` (Smazat všechna data). A row pushes a page (`href`, `/settings/:section`) or runs an action (`onClick`: the lock, a sheet). The root ends with the version caption. |
+| Section page | `.m-screen` | `mobile/components/SectionPage.tsx`, `mobile/pages/settings/*Section.tsx` | A page pushed on Nastavení: the nav bar with "Nastavení" as the back label, no tab bar, one lead sentence (13 / 450 `ink-3`) as the first body line, then switch rows, key-value rows, a segment or 48 pt buttons on paper cards (Profil, Zabezpečení, Připomínky, Oznámení, Záloha a přenos). |
+| Step progress | — | `mobile/components/StepProgress.tsx` | The first run's place in its steps: the caption "2 / 7 · Účet" (11 `ink-3`) over a 3 pt bar on `well-2` with the `dark` fill at index / total. The caption carries the meaning; the bar is `aria-hidden`. |
+| Picker sheets | `.m-sheet`, `.m-pick`, `.m-search` | `mobile/sheets/LanguagePickerSheet.tsx`, `DayPickerSheet.tsx`, `CurrencyPickerSheet.tsx`, `CountryPickerSheet.tsx` | One choice from a list: pick rows with a check on the current one and Zrušit as the footer's one button; a tap picks and closes. The language rows carry `lang` (a `PickRow` prop) so 日本語 and 简体中文 get the CJK font rule of `index.css`; the currency sheet has a search over codes and names; the day sheet lists 1–28. |
+| Restore sheet | `.m-sheet`, `.m-btn--destructive` | `mobile/sheets/RestoreBackupSheet.tsx` | The restore confirmation with the desktop's semantics: the question, the archive's date, version, attachment count and size, the "newer than this app" line in `loss` with the button disabled, Zrušit and the destructive Obnovit; not dismissable while restoring. |
+| Delete sheet | `.m-sheet`, `.m-btn--destructive` | `mobile/sheets/DeleteProfileSheet.tsx` | Smazat všechna data: the question, what goes and the backup reminder, a 48 pt field that must spell DELETE (the desktop's word), Zrušit and the destructive button enabled only then; on success the device storage is cleared and the app reloads into the first run. |
 
 **Hide amounts** (spec §4 principle 7, D6). The eye on Přehled covers every amount in the app, so
 phone code never calls `fmt.money` itself; `src/mobile/components/Money.tsx` documents the four routes
@@ -503,6 +516,28 @@ hidden, so "6,78 mil. Kč" masks to "•••• Kč" and never leaks "mil.". I
 percents and dates stay visible. `src/mobile/pages/Overview.tsx` is the reference, and the check for a
 new screen is that `grep -rn "fmt.money(" src/mobile --include='*.ts' --include='*.tsx'` lists only
 `src/mobile/hooks/use-money-text.ts`.
+
+**Backup export on iOS** (`mobile/hooks/use-backup.ts`, `use-export-text-file.ts`,
+`src-tauri/src/commands/backup.rs`). The dialog plugin's `save()` on iOS exports whatever file already sits
+at `Documents/<fileName>` through the Files picker, so an export is staged first: `stage_backup_export`
+writes the archive there without recording a backup, `save` opens the picker, and `finish_backup_export`
+removes the staged copy and records the backup only when the picker returned a destination. The recovery
+key text goes the same way through `stage_text_export` / `discard_text_export` under a fixed allow-list
+of names. The phone capability grants the webview no fs command, and a startup sweep removes any staged
+file an interrupted export left behind. Exports are iOS-only until an Android path writes into the
+returned content URI; restore (`inspect_backup` + `restore_backup` on a picked file, the picked copy read
+by Rust) works everywhere, switches biometric unlock off first, clears the enrolment flag and reloads
+into the lock, so the next password unlock offers biometrics again.
+
+**Notifications** (`mobile/lib/notification-plan.ts`, `mobile/hooks/use-notification-schedule.ts`).
+Planned by a pure function on every unlock from the milestones and the mute list: T−14 and T−1 for
+deadlines, the monthly upkeep on the chosen day (1–28), the backup reminder the morning after a stale
+backup is found, all at 09:00 local, at most 60 pending. The iOS plugin reads `schedule.at.date` as local
+wall-clock digits with a literal `Z`, so `scheduleDateString` emits exactly that and never a `Date`;
+items already past are dropped. Nothing is scheduled until the person allows notifications from
+Nastavení → Oznámení (the ten reminder groups of Připomínky are the desktop's mute list); the
+notification preferences live in `localStorage` (`moony-notifications`), like the background lock and
+hide-on-launch flags.
 
 **The row rule.** One row pattern replaces tables on the phone: accounts, positions, bonds, properties,
 loans, policies, transactions, categories, watchlist and agenda rows. A 36 pt chip (logo, initials or an

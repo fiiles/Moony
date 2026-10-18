@@ -414,3 +414,14 @@ Recorded as the tasks land; the first set from planning:
 12. **R25 is not decided here**: nothing excludes the app data dir from iOS device backups; the Záloha section carries one neutral sentence; both options with consequences go to the owner in the hand-over.
 13. **`mobile.html` gets no new frames**; the new screens are the existing components (entity rows with chevrons, switch rows, segment, key-value rows, sheets) — the 360 check is done in the browser pane during Task 6 and recorded in the ledger.
 14. **Shortcuts (Task 5) are the last task and are skipped with a design note when the budget runs out**; its verification needs a cold launch from the icon menu that the simulator tool may not drive.
+
+Rulings made during execution (the ledger `.superpowers/sdd/2026-10-17-mobile-phase-5-settings/progress.md` has each with its review context):
+
+15. **`TextRef` params ending in `Key` are i18n keys** translated before interpolation (`renderTextRef`); Task 1's `method` param became `methodKey` so one convention holds. Costs nothing.
+16. **The notification scheduler runs on iOS only.** The Android plugin reads `schedule.at.date` as UTC, so the local-digit string would fire hours off there; Android gets its own encoding together with an Android build. Costs one branch and a test later.
+17. **The recovery key is staged by Rust** (`stage_text_export` / `discard_text_export`, allow-listed name) and the phone capability grants the webview no fs command at all: the fs plugin also honours the dialog plugin's runtime scope, so a `write-text-file` / `remove` grant would have reached every file the person picked. Costs two thin commands.
+18. **Partial staged archives are removed on failure and a startup sweep** (`sweep_staged_exports`, `#[cfg(mobile)]`) clears leftover staged exports and key files. Costs one function and a test.
+19. **Backup and key exports are iOS-only** (`exportsOnThisDevice`): Android's `save()` creates an empty document and returns its URI, so an empty file would be recorded as a saved backup; restore stays available everywhere. Follow-up with the Android build.
+20. **The first run reads the biometric status from the first screen** (no `enabled` gate; the command needs neither session nor profile), so the step total is stable; the exported key file carries a phone note (`firstRun.recoveryFileNote`) instead of the desktop's data-folder note.
+21. **Device-found fixes ride in the nearest fix round** when they are one-liners in files no other task touches (the `lang` attribute on the language rows); everything else waits for the final-review wave.
+22. **Automatic backups and OS device backups stay undecided**: no folder bookmark exists on iOS without native code (the `backup_stale` reminder and its notification are the cadence), and R25 goes to the owner with both options in the hand-over.

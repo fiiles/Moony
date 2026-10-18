@@ -96,8 +96,8 @@ jobs:
           cargo test generate_bindings -- --ignored
           git diff --exit-code ../shared/generated-types.ts || (echo "Generated types are out of sync! Run 'cargo test generate_bindings -- --ignored' in src-tauri" && exit 1)
 
-  # The phone-only code (`cfg(mobile)`, the moony-keychain Swift package) and the `libc` pin in
-  # Cargo.lock (0.2.190 breaks the iOS build) are invisible to the Linux job above.
+  # The phone-only code (`cfg(mobile)`, the moony-keychain Swift package) and the `libc` version in
+  # Cargo.lock (0.2.190 broke the iOS build; 0.2.191 builds) are invisible to the Linux job above.
   rust-ios-check:
     name: Rust iOS Check
     runs-on: macos-14

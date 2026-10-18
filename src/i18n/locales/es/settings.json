@@ -178,7 +178,7 @@
     "restoreConfirmTitle": "¿Sustituir tus datos por esta copia de seguridad?",
     "restoreConfirmDescription": "Copia del {{date}} (Moony {{version}}, {{attachments}} adjuntos, {{size}}). Tus datos actuales se mueven a una carpeta «pre-restore» dentro de la carpeta de datos, no se eliminan. Después Moony se bloqueará; desbloquéalo con la contraseña que se usaba cuando se creó la copia.",
     "restoreFreshTitle": "¿Restaurar esta copia de seguridad?",
-    "restoreFreshDescription": "Copia del {{date}} (Moony {{version}}, {{attachments}} adjuntos, {{size}}). Después Moony muestra la pantalla de bloqueo; desbloquéelo con la contraseña vigente cuando se creó la copia.",
+    "restoreFreshDescription": "Copia del {{date}} (Moony {{version}}, {{attachments}} adjuntos, {{size}}). Después Moony muestra la pantalla de bloqueo; desbloquéalo con la contraseña vigente cuando se creó la copia.",
     "restoreNewer": "Esta copia de seguridad la creó una versión más reciente de Moony y no se puede restaurar con esta versión.",
     "restoreConfirm": "Restaurar",
     "restoring": "Restaurando…",
@@ -205,7 +205,7 @@
       "pending": "Adjuntos de una versión anterior pendientes de cifrar: {{n}}",
       "missing": "Adjuntos cuyo archivo falta en el disco: {{n}}",
       "failed": "Adjuntos que no se pudieron cifrar: {{n}}. Moony lo intentará de nuevo en el próximo desbloqueo.",
-      "unavailable": "Ahora no se pueden abrir los adjuntos: attachments.db está dañado o pertenece a otro perfil. Restaure una copia de seguridad o contacte con el soporte.",
+      "unavailable": "Ahora no se pueden abrir los adjuntos: attachments.db está dañado o pertenece a otro perfil. Restaura una copia de seguridad o contacta con el soporte.",
       "leftoversTitle": "Copias sin cifrar fuera de Moony",
       "leftoversBody": "Moony las encontró al cifrar. Nunca borra nada fuera de su propia carpeta; revísalas y bórralas tú.",
       "reveal": "Mostrar"

@@ -79,7 +79,7 @@
   },
   "gettingStarted": {
     "title": "Primeros pasos",
-    "subtitle": "Unos pocos pasos para que Moony empiece a tener sentido. Los opcionales se pueden omitir; la tarjeta desaparece cuando termine.",
+    "subtitle": "Unos pocos pasos para que Moony empiece a tener sentido. Los opcionales se pueden omitir; la tarjeta desaparece cuando termines.",
     "importStatement": "Importar un extracto bancario",
     "importStatementHint": "Añade una cuenta e importa un extracto de tu banco.",
     "addInvestment": "Añadir una inversión",

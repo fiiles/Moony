@@ -501,7 +501,7 @@
     "otherAssets": "¿No te apetece teclearlo todo? El asistente de IA puede añadir activos a partir de una factura o una lista.",
     "watchlist": "El asistente de IA puede seguir acciones por ti: solo dile cuáles.",
     "insurance": "¿No te apetece escribirlo todo? El asistente de IA puede añadir pólizas a partir de un contrato.",
-    "body": "Inicie el servidor MCP, conéctelo a una herramienta de IA compatible con MCP, dele el documento o describa lo que tiene y pídale que lo añada por usted. Revise lo que ha leído antes de dejar que guarde nada.",
+    "body": "Inicia el servidor MCP, conéctalo a una herramienta de IA compatible con MCP, dale el documento o describe lo que tienes y pídele que lo añada por ti. Revisa lo que ha leído antes de dejar que guarde nada.",
     "setupLink": "Configurar servidor MCP"
   },
   "a11y": {

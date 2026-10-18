@@ -37,6 +37,40 @@
       "noHistory": "暂无历史"
     }
   },
+  "cashflow": {
+    "subtitle_other": "来自 {{count}} 个账户的实际收入和支出",
+    "moves_other": "{{count}} 笔交易",
+    "shareOfExpenses": "占支出的 {{share}}",
+    "shareOfIncome": "占收入的 {{share}}",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "接近限额",
+    "overLimit": "超出限额",
+    "budgetSummary": "预算：{{ok}} 个在限额内 · {{over}} 个超限额 · {{near}} 个接近限额",
+    "partial": "本期尚未结束，数据将随下一份对账单补全。",
+    "empty": {
+      "title": "还没有交易",
+      "description": "现金流根据您账户中的付款计算。请添加账户并导入对账单。",
+      "action": "打开财务"
+    },
+    "accounts": {
+      "title": "报表中的账户",
+      "done": "完成"
+    },
+    "picker": {
+      "title": "类别",
+      "change": "更改类别",
+      "current": "当前类别"
+    },
+    "limitSheet": {
+      "pick": "请选择要控制支出的类别。"
+    },
+    "budgets": {
+      "ended": "已结束",
+      "averageNote": "⌀ 近 6 个月"
+    },
+    "showMore_other": "再显示 {{count}} 笔交易",
+    "rowMenu": "更多操作：{{title}}"
+  },
   "upkeep": {
     "title": "数据维护",
     "count_other": "{{count}} 项",

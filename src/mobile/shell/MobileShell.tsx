@@ -4,7 +4,9 @@ import { useAuth } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/lib/protected-route';
 import { clearEnrolmentAsked } from '@/mobile/lib/biometrics';
 import Agenda from '@/mobile/pages/Agenda';
+import Budgets from '@/mobile/pages/Budgets';
 import Cashflow from '@/mobile/pages/Cashflow';
+import CashflowCategory from '@/mobile/pages/CashflowCategory';
 import Finance from '@/mobile/pages/Finance';
 import AccountDetail from '@/mobile/pages/finance/AccountDetail';
 import {
@@ -55,6 +57,8 @@ export function MobileShell() {
         <ProtectedRoute path={routes.policyDetail} component={PolicyPlaceholder} />
         <ProtectedRoute path={routes.uncategorized} component={QueuePlaceholder} />
         <ProtectedRoute path={routes.cashflow} component={Cashflow} />
+        <ProtectedRoute path={routes.cashflowCategory} component={CashflowCategory} />
+        <ProtectedRoute path={routes.budgets} component={Budgets} />
         <ProtectedRoute path={routes.wealth} component={Wealth} />
         {/* Placeholder page until the Settings sheet of Phase 5 (spec §8.9). */}
         <ProtectedRoute path={routes.settings} component={Settings} />

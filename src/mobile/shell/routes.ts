@@ -1,3 +1,5 @@
+import type { FlowKind } from '@shared/schema';
+
 /**
  * Paths of the phone shell (spec §6): four tab roots, Settings (a sheet from the avatar on
  * Přehled) and the lock screen. Details are pushed under their tab's root (`/finance/…`);
@@ -14,6 +16,10 @@ export const routes = {
   policyDetail: '/finance/policies/:id',
   uncategorized: '/finance/uncategorized',
   cashflow: '/cashflow',
+  /** One category of the period, pushed on Cashflow: `/cashflow/category/<flow>/<key>`. */
+  cashflowCategory: '/cashflow/category/:flow/:key',
+  /** The budgets of the period, pushed on Cashflow. */
+  budgets: '/cashflow/budgets',
   wealth: '/wealth',
   settings: '/settings',
   auth: '/auth',
@@ -31,6 +37,20 @@ const OVERVIEW_DETAILS: readonly string[] = [routes.agenda];
 export const TABS = ['overview', 'finance', 'cashflow', 'wealth'] as const;
 
 export type TabId = (typeof TABS)[number];
+
+/**
+ * The path of a category's transactions in the selected period. `key` is a category id or
+ * `uncategorized` (neither needs escaping); `search` is the period search of the Cashflow tab
+ * (`cashflowSearch`), so the way back keeps the period.
+ */
+export function cashflowCategoryPath(flow: FlowKind, key: string, search = ''): string {
+  return `/cashflow/category/${flow}/${key}${search}`;
+}
+
+/** The path of the budgets screen; `search` is the period search of the Cashflow tab. */
+export function budgetsPath(search = ''): string {
+  return `${routes.budgets}${search}`;
+}
 
 /**
  * The tab a path belongs to: a tab root or any path under it (a detail pushed on that tab).

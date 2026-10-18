@@ -37,6 +37,43 @@
       "noHistory": "ingen historik"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Faktiska inkomster och utgifter från {{count}} konto",
+    "subtitle_other": "Faktiska inkomster och utgifter från {{count}} konton",
+    "moves_one": "{{count}} transaktion",
+    "moves_other": "{{count}} transaktioner",
+    "shareOfExpenses": "{{share}} av utgifterna",
+    "shareOfIncome": "{{share}} av inkomsterna",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "nära gränsen",
+    "overLimit": "över gränsen",
+    "budgetSummary": "Budgetar: {{ok}} inom gränsen · {{over}} över gränsen · {{near}} nära gränsen",
+    "partial": "Perioden har inte tagit slut än; siffrorna fylls i med nästa kontoutdrag.",
+    "empty": {
+      "title": "Inga transaktioner än",
+      "description": "Kassaflödet beräknas från betalningarna på dina konton. Lägg till ett konto och importera ett kontoutdrag.",
+      "action": "Öppna Ekonomi"
+    },
+    "accounts": {
+      "title": "Konton i rapporten",
+      "done": "Klar"
+    },
+    "picker": {
+      "title": "Kategori",
+      "change": "Ändra kategori",
+      "current": "Nuvarande kategori"
+    },
+    "limitSheet": {
+      "pick": "Välj den kategori vars utgifter du vill hålla koll på."
+    },
+    "budgets": {
+      "ended": "avslutad",
+      "averageNote": "⌀ senaste 6 månaderna"
+    },
+    "showMore_one": "Visa {{count}} transaktion till",
+    "showMore_other": "Visa {{count}} transaktioner till",
+    "rowMenu": "Fler åtgärder: {{title}}"
+  },
   "upkeep": {
     "title": "Dataunderhåll",
     "count_one": "{{count}} sak",

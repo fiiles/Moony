@@ -37,6 +37,43 @@
       "noHistory": "no history yet"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Actual income and expenses from {{count}} account",
+    "subtitle_other": "Actual income and expenses from {{count}} accounts",
+    "moves_one": "{{count}} transaction",
+    "moves_other": "{{count}} transactions",
+    "shareOfExpenses": "{{share}} of expenses",
+    "shareOfIncome": "{{share}} of income",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "near the limit",
+    "overLimit": "over the limit",
+    "budgetSummary": "Budgets: {{ok}} within limit · {{over}} over limit · {{near}} near the limit",
+    "partial": "This period has not ended yet; the numbers will fill in with the next statement.",
+    "empty": {
+      "title": "No transactions yet",
+      "description": "Cashflow is calculated from the payments on your accounts. Add an account and import a statement.",
+      "action": "Open Finance"
+    },
+    "accounts": {
+      "title": "Accounts in the report",
+      "done": "Done"
+    },
+    "picker": {
+      "title": "Category",
+      "change": "Change category",
+      "current": "Current category"
+    },
+    "limitSheet": {
+      "pick": "Choose the category whose spending you want to keep in check."
+    },
+    "budgets": {
+      "ended": "ended",
+      "averageNote": "⌀ over the last 6 months"
+    },
+    "showMore_one": "Show {{count}} more transaction",
+    "showMore_other": "Show {{count}} more transactions",
+    "rowMenu": "More actions: {{title}}"
+  },
   "upkeep": {
     "title": "Data upkeep",
     "count_one": "{{count}} item",

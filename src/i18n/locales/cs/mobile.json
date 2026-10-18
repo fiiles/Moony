@@ -37,6 +37,46 @@
       "noHistory": "bez historie"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Skutečné příjmy a výdaje z {{count}} účtu",
+    "subtitle_few": "Skutečné příjmy a výdaje ze {{count}} účtů",
+    "subtitle_other": "Skutečné příjmy a výdaje z {{count}} účtů",
+    "moves_one": "{{count}} pohyb",
+    "moves_few": "{{count}} pohyby",
+    "moves_other": "{{count}} pohybů",
+    "shareOfExpenses": "{{share}} výdajů",
+    "shareOfIncome": "{{share}} příjmů",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "blíží se limitu",
+    "overLimit": "nad limitem",
+    "budgetSummary": "Rozpočty: {{ok}} v mezích · {{over}} nad limitem · {{near}} blíží se limitu",
+    "partial": "Období ještě neskončilo, čísla se doplní s dalším výpisem.",
+    "empty": {
+      "title": "Zatím žádné transakce",
+      "description": "Cashflow se počítá z plateb na vašich účtech. Přidejte účet a naimportujte výpis.",
+      "action": "Otevřít Finance"
+    },
+    "accounts": {
+      "title": "Účty v přehledu",
+      "done": "Hotovo"
+    },
+    "picker": {
+      "title": "Kategorie",
+      "change": "Změnit kategorii",
+      "current": "Aktuální kategorie"
+    },
+    "limitSheet": {
+      "pick": "Vyberte kategorii, pro kterou chcete hlídat výdaje."
+    },
+    "budgets": {
+      "ended": "ukončen",
+      "averageNote": "⌀ za posledních 6 měsíců"
+    },
+    "showMore_one": "Zobrazit další {{count}} transakci",
+    "showMore_few": "Zobrazit další {{count}} transakce",
+    "showMore_other": "Zobrazit dalších {{count}} transakcí",
+    "rowMenu": "Další akce: {{title}}"
+  },
   "upkeep": {
     "title": "Údržba",
     "count_one": "{{count}} věc",

@@ -253,6 +253,13 @@
 .m-row__v--gain { color: var(--gain); }
 .m-row__vs { flex: none; max-width: 60%; margin-left: auto; color: var(--ink-4); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.3; }
 .m-row__chev { flex: none; width: 16px; height: 16px; color: var(--ink-5); }
+/* A row whose one action is a small button at the end (Spravovat rozpočty, "Výdaje bez limitu"): the
+   row itself is no tap target, so the button keeps its 44 px hit area (`.m-btn--sm::after`), and the
+   sub-line and the title end with an ellipsis before it. `--muted`: a row that has run out (an ended
+   budget), the whole row and its divider at half strength. */
+.m-row--act { grid-template-columns: 36px minmax(0, 1fr) auto; }
+.m-row--act .m-btn--sm { padding: 0 11px; }
+.m-row--muted { opacity: .5; }
 /* Date chip (agenda rows, prototype note 5): 54 × 42 on `well`, the day above its distance; dark
    material for a deadline at most 7 days away. The row's first column is 54 px, so the divider
    insets to 80. */
@@ -355,11 +362,85 @@
 .m-leg i.is-other { box-shadow: inset 0 0 0 1px var(--line); }
 .m-leg b { min-width: 0; overflow: hidden; color: var(--ink); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
 
+/* ===== Cashflow (spec §8.7, prototype frame 09) =====
+   Period bar: the full-width 36 px segment (`.m-seg`) and under it the stepper, two 44 px icon
+   buttons (`.m-nav__btn`, 24 px icons; "next" is disabled at the current period) around the period's
+   name, 15 / 650 `ink`, tabular. */
+.m-period { margin: 4px 0 6px; }
+.m-stepper { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; margin-top: 2px; }
+.m-stepper__l {
+  min-width: 0; overflow: hidden; color: var(--ink); text-align: center; text-overflow: ellipsis; white-space: nowrap;
+  font-size: var(--m-fs-row); font-weight: 650; letter-spacing: var(--m-ls-row); line-height: 1.3; font-variant-numeric: tabular-nums;
+}
+.m-stepper__btn:disabled { opacity: .45; pointer-events: none; }
+
+/* The savings hero is the hero card without segment and chart: its number is green or red by its
+   sign, and its one note line keeps the 20 px a change badge would give it. */
+.m-hero__value--loss { color: var(--loss); }
+.m-hero__delta--note { height: 20px; }
+
+/* Twelve-month bars: a 110 px chart box (the desktop bars' rules, README §8; months outside the
+   period at 35 % opacity, no tooltip). One transparent button per month lies over the plot, the
+   full height of the chart, with the value axis' 54 px gutter left free on the right: a tap opens
+   that month. A short month name stands under every third bar and the legend under the axis. */
+.m-bars { position: relative; height: 110px; }
+.m-bars__taps { position: absolute; top: 0; bottom: 0; left: 0; right: 54px; display: flex; }
+.m-bars__tap {
+  flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; border-radius: var(--r-1); background: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* A row with a bar: the category rows of the report carry a third line, 6 px under the sub-line, in
+   the main column, so the row is never `--single` and measures about 69 px. The sub-line puts what
+   matters first and the count last, so an ellipsis drops the count: the share ("41 % der Ausgaben")
+   or a limit's progress ("10 420 / 9 000 Kč", `.is-loss` when exceeded), the state word ("nahe am
+   Limit", "über dem Limit"), then "23 Transaktionen". The amount of a limit that is exceeded turns
+   `loss` too. The category chip keeps the user's hue: the tint is the chip's
+   inline background (the colour at 15 % over paper, hex alpha 26), its glyph is `--cat`, and the
+   dark theme lifts the glyph 30 % towards ink. */
+.m-row--bar { min-height: 68px; }
+.m-row__bar { display: block; margin-top: 6px; }
+.m-row__v--loss, .m-row__s .is-loss { color: var(--loss); }
+.m-row__chip--cat { color: var(--cat); }
+:root[data-theme="dark"] .m-row__chip--cat { color: color-mix(in oklab, var(--cat) 70%, var(--ink)); }
+
+/* Progress bar: a 6 px `well-3` track, radius 3; the fill is `s1` (used part of a limit), `s3` (a
+   category's share of the movement) or `loss` (a limit that is exceeded, full). Decoration: the text
+   beside it says the number. */
+.m-pbar { display: block; height: 6px; overflow: hidden; border-radius: 3px; background: var(--well-3); }
+.m-pbar > i { display: block; height: 100%; border-radius: 3px; background: var(--s1); }
+.m-pbar--share > i { background: var(--s3); }
+.m-pbar--over > i { background: var(--loss); }
+
+/* Note: a quiet line on `well` (radius 11, at least 44 px) with an info glyph, 12 / 500 `ink-2`; a
+   link when it leads somewhere (the budget summary under the bars). The text wraps. */
+.m-note {
+  display: flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 14px; padding: 8px 12px;
+  border-radius: 11px; background: var(--well); color: var(--ink-2); text-decoration: none; -webkit-touch-callout: none;
+  font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3;
+}
+.m-note:is(a):active { background: var(--well-2); }
+.m-note svg { flex: none; width: 15px; height: 15px; color: var(--ink-3); stroke-width: 1.75; }
+
+/* Box inside a sheet's form (the limit sheet): the scheduled changes on `well`, the limits a save
+   replaces in `loss` (the desktop's alert). A bold 12 line, then one line per item. */
+.m-box {
+  margin-bottom: 12px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r-2);
+  background: var(--well); color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.4;
+}
+.m-box--loss { border-color: var(--loss-line); background: var(--loss-soft); color: var(--loss); }
+.m-box__t { margin: 0 0 4px; color: var(--ink-2); font-weight: 600; }
+.m-box--loss .m-box__t { color: inherit; }
+.m-box ul { margin: 0; padding: 0; list-style: none; }
+.m-box li + li { margin-top: 2px; }
+
 /* ===== Amount field of a form or sheet =====
    Label 12 / 600 `ink-2` above, the field 48 px (radius 10, paper, `line-strong`; focus `focus-border`
    and the focus ring, invalid `loss`), text 15 tabular, the currency inside on the right (12 / 600
    `ink-4`), the decimal keypad, optionally the ± toggle on the left (below). The placeholder (`ink-5`) is the last known value. An error is 12 / 600
-   `loss` under the field. */
+   `loss` under the field; without an error a hint may stand there instead (11 `ink-3`). A month field is the same field with the
+   platform's month picker (`input type="month"`, no unit inside, `min` and `max` unset), two side by side in a 12 px grid, with an
+   optional text action beside the label ("Bez konce"). */
 .m-field { margin-bottom: 12px; }
 .m-field:last-child { margin-bottom: 0; }
 .m-field__l { display: block; margin: 0 2px 6px; color: var(--ink-2); font-size: var(--m-fs-sub); font-weight: 600; }
@@ -394,6 +475,24 @@
 .m-field__s[aria-pressed="true"] > span { background: var(--dark-grad); box-shadow: var(--sh-dark); color: var(--ink-inverse); }
 .m-field__s:focus-visible { outline: 0; }
 .m-field__s:focus-visible > span { box-shadow: var(--focus-ring); }
+/* Hint under a field (11 `ink-3`: the budget limit's six-month average). A month field has no unit
+   inside; two sit side by side in `.m-field-grid` (12 px gap), their label rows two lines high (32 px
+   minimum) so the inputs stay level with or without the text action ("Bez konce": 44 px hit area, 12 px
+   above its row, never over the input). */
+.m-field__h { margin: 6px 2px 0; color: var(--ink-3); font-size: var(--m-fs-caption); line-height: 1.4; }
+.m-field-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-bottom: 8px; }
+.m-field-grid > .m-field { min-width: 0; margin-bottom: 0; }
+.m-field-grid + .m-field__h { margin: 0 2px 12px; }
+.m-field__lr { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-height: 32px; margin: 0 2px; }
+.m-field__lr .m-field__l { min-width: 0; margin: 0; }
+.m-field__a {
+  position: relative; display: flex; flex: none; align-items: center; align-self: stretch; padding: 0; border: 0; background: none;
+  color: var(--ink-3); font: inherit; font-size: var(--m-fs-caption); font-weight: 600; text-decoration: underline;
+  text-underline-offset: 3px; white-space: nowrap; -webkit-touch-callout: none;
+}
+.m-field__a::after { content: ""; position: absolute; inset: -12px -6px 0; }
+.m-field__a:active { color: var(--ink); }
+.m-field__i--month { padding: 0 14px; text-align: left; -webkit-appearance: none; appearance: none; }
 
 /* ===== Buttons at phone size =====
    48 px, radius 10, label 15 / 600. Primary dark material (one per screen), secondary paper with

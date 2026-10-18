@@ -37,6 +37,43 @@
       "noHistory": "kein Verlauf"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Tatsächliche Einnahmen und Ausgaben von {{count}} Konto",
+    "subtitle_other": "Tatsächliche Einnahmen und Ausgaben von {{count}} Konten",
+    "moves_one": "{{count}} Transaktion",
+    "moves_other": "{{count}} Transaktionen",
+    "shareOfExpenses": "{{share}} der Ausgaben",
+    "shareOfIncome": "{{share}} der Einnahmen",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "nahe am Limit",
+    "overLimit": "über dem Limit",
+    "budgetSummary": "Budgets: {{ok}} im Rahmen · {{over}} über dem Limit · {{near}} nahe am Limit",
+    "partial": "Der Zeitraum ist noch nicht zu Ende, die Zahlen vervollständigen sich mit dem nächsten Auszug.",
+    "empty": {
+      "title": "Noch keine Transaktionen",
+      "description": "Der Cashflow wird aus den Zahlungen auf Ihren Konten berechnet. Fügen Sie ein Konto hinzu und importieren Sie einen Auszug.",
+      "action": "Finanzen öffnen"
+    },
+    "accounts": {
+      "title": "Konten im Bericht",
+      "done": "Fertig"
+    },
+    "picker": {
+      "title": "Kategorie",
+      "change": "Kategorie ändern",
+      "current": "Aktuelle Kategorie"
+    },
+    "limitSheet": {
+      "pick": "Wählen Sie die Kategorie, deren Ausgaben Sie im Blick behalten möchten."
+    },
+    "budgets": {
+      "ended": "beendet",
+      "averageNote": "⌀ der letzten 6 Monate"
+    },
+    "showMore_one": "{{count}} weitere Transaktion anzeigen",
+    "showMore_other": "{{count}} weitere Transaktionen anzeigen",
+    "rowMenu": "Weitere Aktionen: {{title}}"
+  },
   "upkeep": {
     "title": "Datenpflege",
     "count_one": "{{count}} Aufgabe",

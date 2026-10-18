@@ -37,6 +37,40 @@
       "noHistory": "履歴なし"
     }
   },
+  "cashflow": {
+    "subtitle_other": "{{count}}口座の実際の収入と支出",
+    "moves_other": "{{count}}件の取引",
+    "shareOfExpenses": "支出の{{share}}",
+    "shareOfIncome": "収入の{{share}}",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "上限に近い",
+    "overLimit": "上限超過",
+    "budgetSummary": "予算: 上限内 {{ok}} · 超過 {{over}} · 上限に近い {{near}}",
+    "partial": "この期間はまだ終わっていません。次の明細で数値が補完されます。",
+    "empty": {
+      "title": "取引はまだありません",
+      "description": "キャッシュフローは口座の入出金から計算されます。口座を追加して明細を取り込んでください。",
+      "action": "財務を開く"
+    },
+    "accounts": {
+      "title": "レポートの口座",
+      "done": "完了"
+    },
+    "picker": {
+      "title": "カテゴリ",
+      "change": "カテゴリを変更",
+      "current": "現在のカテゴリ"
+    },
+    "limitSheet": {
+      "pick": "支出を管理したいカテゴリを選んでください。"
+    },
+    "budgets": {
+      "ended": "終了",
+      "averageNote": "直近6か月の平均"
+    },
+    "showMore_other": "さらに{{count}}件の取引を表示",
+    "rowMenu": "その他の操作: {{title}}"
+  },
   "upkeep": {
     "title": "データの更新",
     "count_other": "{{count}}件",

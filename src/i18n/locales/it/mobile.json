@@ -37,6 +37,46 @@
       "noHistory": "nessuno storico"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Entrate e uscite effettive da {{count}} conto",
+    "subtitle_many": "Entrate e uscite effettive da {{count}} conti",
+    "subtitle_other": "Entrate e uscite effettive da {{count}} conti",
+    "moves_one": "{{count}} movimento",
+    "moves_many": "{{count}} movimenti",
+    "moves_other": "{{count}} movimenti",
+    "shareOfExpenses": "{{share}} delle uscite",
+    "shareOfIncome": "{{share}} delle entrate",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "vicino al limite",
+    "overLimit": "oltre il limite",
+    "budgetSummary": "Budget: {{ok}} entro il limite · {{over}} oltre il limite · {{near}} vicini al limite",
+    "partial": "Il periodo non è ancora concluso; i numeri si completeranno con il prossimo estratto conto.",
+    "empty": {
+      "title": "Ancora nessun movimento",
+      "description": "Il flusso di cassa viene calcolato dai pagamenti sui tuoi conti. Aggiungi un conto e importa un estratto conto.",
+      "action": "Apri Finanze"
+    },
+    "accounts": {
+      "title": "Conti nel rapporto",
+      "done": "Fatto"
+    },
+    "picker": {
+      "title": "Categoria",
+      "change": "Cambia categoria",
+      "current": "Categoria attuale"
+    },
+    "limitSheet": {
+      "pick": "Scegli la categoria di cui vuoi tenere sotto controllo le spese."
+    },
+    "budgets": {
+      "ended": "terminato",
+      "averageNote": "⌀ degli ultimi 6 mesi"
+    },
+    "showMore_one": "Mostra altro {{count}} movimento",
+    "showMore_many": "Mostra altri {{count}} movimenti",
+    "showMore_other": "Mostra altri {{count}} movimenti",
+    "rowMenu": "Altre azioni: {{title}}"
+  },
   "upkeep": {
     "title": "Aggiornamento dati",
     "count_one": "{{count}} voce",

@@ -37,6 +37,49 @@
       "noHistory": "brak historii"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Rzeczywiste przychody i wydatki z {{count}} konta",
+    "subtitle_few": "Rzeczywiste przychody i wydatki z {{count}} kont",
+    "subtitle_many": "Rzeczywiste przychody i wydatki z {{count}} kont",
+    "subtitle_other": "Rzeczywiste przychody i wydatki z {{count}} konta",
+    "moves_one": "{{count}} transakcja",
+    "moves_few": "{{count}} transakcje",
+    "moves_many": "{{count}} transakcji",
+    "moves_other": "{{count}} transakcji",
+    "shareOfExpenses": "{{share}} wydatków",
+    "shareOfIncome": "{{share}} przychodów",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "blisko limitu",
+    "overLimit": "powyżej limitu",
+    "budgetSummary": "Budżety: {{ok}} w limicie · {{over}} powyżej limitu · {{near}} blisko limitu",
+    "partial": "Okres jeszcze się nie skończył; liczby uzupełnią się wraz z następnym wyciągiem.",
+    "empty": {
+      "title": "Jeszcze brak transakcji",
+      "description": "Przepływy są liczone z płatności na twoich kontach. Dodaj konto i zaimportuj wyciąg.",
+      "action": "Otwórz Finanse"
+    },
+    "accounts": {
+      "title": "Konta w raporcie",
+      "done": "Gotowe"
+    },
+    "picker": {
+      "title": "Kategoria",
+      "change": "Zmień kategorię",
+      "current": "Bieżąca kategoria"
+    },
+    "limitSheet": {
+      "pick": "Wybierz kategorię, której wydatki chcesz pilnować."
+    },
+    "budgets": {
+      "ended": "zakończony",
+      "averageNote": "⌀ z ostatnich 6 miesięcy"
+    },
+    "showMore_one": "Pokaż kolejną {{count}} transakcję",
+    "showMore_few": "Pokaż kolejne {{count}} transakcje",
+    "showMore_many": "Pokaż kolejnych {{count}} transakcji",
+    "showMore_other": "Pokaż kolejne {{count}} transakcji",
+    "rowMenu": "Więcej akcji: {{title}}"
+  },
   "upkeep": {
     "title": "Aktualizacja danych",
     "count_one": "{{count}} pozycja",

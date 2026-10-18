@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { accountPath, loanPath, policyPath, routes, tabForPath } from './routes';
+import {
+  accountPath,
+  budgetsPath,
+  cashflowCategoryPath,
+  loanPath,
+  policyPath,
+  routes,
+  tabForPath,
+} from './routes';
 
 describe('tabForPath', () => {
   it('maps each tab root to its tab', () => {
@@ -17,6 +25,8 @@ describe('tabForPath', () => {
     expect(tabForPath(loanPath('7f3a'))).toBe('finance');
     expect(tabForPath(policyPath('7f3a'))).toBe('finance');
     expect(tabForPath(routes.uncategorized)).toBe('finance');
+    expect(tabForPath('/cashflow/budgets')).toBe('cashflow');
+    expect(tabForPath('/cashflow/category/expense/cat_x')).toBe('cashflow');
   });
 
   it('keeps a screen pushed on Přehled in Přehled', () => {
@@ -34,5 +44,26 @@ describe('tabForPath', () => {
     expect(tabForPath(routes.settings)).toBeNull();
     expect(tabForPath('/unknown')).toBeNull();
     expect(tabForPath('')).toBeNull();
+  });
+});
+
+describe('cashflow paths', () => {
+  it('builds the category detail path from the flow, the key and the period search', () => {
+    expect(cashflowCategoryPath('expense', 'cat_x', '?tf=yearly')).toBe(
+      '/cashflow/category/expense/cat_x?tf=yearly'
+    );
+    expect(cashflowCategoryPath('income', 'uncategorized')).toBe(
+      '/cashflow/category/income/uncategorized'
+    );
+  });
+
+  it('builds the budgets path with or without the period search', () => {
+    expect(budgetsPath()).toBe('/cashflow/budgets');
+    expect(budgetsPath('?o=-1')).toBe('/cashflow/budgets?o=-1');
+  });
+
+  it('keeps the route patterns in step with the helpers', () => {
+    expect(routes.cashflowCategory).toBe('/cashflow/category/:flow/:key');
+    expect(routes.budgets).toBe('/cashflow/budgets');
   });
 });

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQueryClient } from '@tanstack/react-query';
 import { useLocation, useRoute } from 'wouter';
 import { Minus, Plus } from 'lucide-react';
 import type { ChartPeriod } from '@/utils/period';
@@ -35,6 +36,7 @@ export default function PositionDetail() {
   const { t: ts } = useTranslation('stocks');
   const [, params] = useRoute(routes.positionDetail);
   const [, setLocation] = useLocation();
+  const queryClient = useQueryClient();
   const back = useBack(routes.stocks);
   const [period, setPeriod] = useState<ChartPeriod>('30D');
   const [trade, setTrade] = useState<'buy' | 'sell' | null>(null);
@@ -42,11 +44,15 @@ export default function PositionDetail() {
   const ledger = usePositionLedger(data.transactions);
   const { holding, reportCurrency } = data;
 
-  // The position is gone: back to Akcie as Back does, so the history keeps no ghost of it. On a
+  // The position is gone: back to Akcie as Back does, so the history keeps no ghost of it. Its own
+  // queries are dropped only now that the screen is leaving: removed while it is still up, a
+  // re-render would rebuild them empty, unmount the menu and lose this very callback. On a
   // restored deep link the detail is the first entry and back has nowhere to go; the screen is
   // then replaced.
   const leaveDeleted = (id: string) => {
     back();
+    queryClient.removeQueries({ queryKey: ['investment', id] });
+    queryClient.removeQueries({ queryKey: ['investment-transactions', id] });
     window.setTimeout(() => {
       if (window.location.pathname === positionPath(id)) {
         setLocation(routes.stocks, { replace: true });

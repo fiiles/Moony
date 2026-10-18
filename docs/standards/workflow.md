@@ -37,7 +37,7 @@ A task is done when all of the following hold:
 
 1. **Gates green:**
    ```bash
-   npm run lint && npm run typecheck && npm test
+   npm run lint && npm run typecheck && npm run format:check && npm test
    cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings && cargo test
    ```
 2. **Tests** written per `docs/standards/testing.md` (regression test for bug fixes,

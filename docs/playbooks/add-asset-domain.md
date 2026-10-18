@@ -78,7 +78,7 @@ canonical examples from `docs/architecture/overview.md`, and check
 Full gate suite:
 
 ```bash
-npm run lint && npm run typecheck && npm test
+npm run lint && npm run typecheck && npm run format:check && npm test
 cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings && cargo test
 cd src-tauri && cargo test generate_bindings -- --ignored
 git diff --exit-code shared/generated-types.ts

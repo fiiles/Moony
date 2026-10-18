@@ -36,11 +36,14 @@ export function PickGroup({
 export function PickRow({
   icon,
   label,
+  lang,
   checked,
   onSelect,
 }: {
   icon?: ReactNode;
   label: string;
+  /** The language of the label when it is not the UI's (a language shown in its own name), so the right font is used. */
+  lang?: string;
   /** Whether this choice is the current one; leave it out for a row that is not a choice. */
   checked?: boolean;
   onSelect: () => void;
@@ -53,7 +56,9 @@ export function PickRow({
       className="flex min-h-11 w-full items-center gap-3 px-1 py-1.5 text-left text-m-body text-ink [-webkit-touch-callout:none] active:bg-well focus-visible:outline-none focus-visible:shadow-focus"
     >
       {icon}
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+      <span lang={lang} className="min-w-0 flex-1 truncate">
+        {label}
+      </span>
       {checked && <Check aria-hidden className="size-[18px] flex-none text-ink" strokeWidth={2} />}
     </button>
   );

@@ -360,5 +360,154 @@
       "range52": "52-ukers spenn",
       "renamed": "Navn lagret"
     }
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profil",
+      "profileNoEmail": "Navn og e-post",
+      "language": "Språk",
+      "security": "Sikkerhet",
+      "backup": "Sikkerhetskopi og overføring",
+      "notifications": "Varsler",
+      "reminders": "Påminnelser",
+      "remindersSub": "{{on}} av {{total}} grupper",
+      "import": "Import",
+      "deleteSub": "etter at du har skrevet et bekreftelsesord"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "ingen telemetri",
+    "security": {
+      "lead": "Opplåsing, lås i bakgrunnen og skjulte beløp på denne telefonen.",
+      "biometrics": "Lås opp med {{methodKey}}",
+      "methodFace": "ansiktet",
+      "methodTouch": "fingeravtrykk",
+      "methodGeneric": "biometri",
+      "biometricsOn": "Opplåsing med {{methodKey}}",
+      "biometricsOff": "Bare passord",
+      "biometricsDisabled": "Biometrisk opplåsing slått av",
+      "lockAfterLabel": "Lås etter at du forlater appen",
+      "lockAfterHint": "Etter denne tiden låses appen igjen når du kommer tilbake.",
+      "optionNow": "Straks",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "lås straks",
+      "lockAfter_one": "lås etter {{count}} minutt",
+      "lockAfter_other": "lås etter {{count}} minutter",
+      "hideOnLaunch": "Skjul beløp ved oppstart",
+      "hideOnLaunchHint": "Hver oppstart begynner med skjulte beløp; øyet i Oversikt viser dem igjen.",
+      "hideOnLaunchShort": "beløp skjult ved oppstart"
+    },
+    "profile": {
+      "lead": "Navnet ditt vises i hilsenen i Oversikt.",
+      "currencyReadOnly": "Hovedvaluta endrer du i Moony på datamaskinen."
+    },
+    "language": {
+      "title": "Appspråk",
+      "lead": "Tall og datoer følger språket."
+    },
+    "delete": {
+      "title": "Slette alle data?",
+      "lead": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt. Sikkerhetskopier utenfor telefonen blir liggende. Ta en sikkerhetskopi først — det er den eneste veien tilbake.",
+      "confirmLabel": "Skriv {{word}} for å bekrefte",
+      "confirm": "Slett data",
+      "failed": "Slettingen mislyktes"
+    }
+  },
+  "backup": {
+    "lead": "En sikkerhetskopi er én kryptert fil: databasen, nøklene og vedleggene. Bare passordet ditt åpner den.",
+    "last": "Siste sikkerhetskopi",
+    "lastOn": "Siste sikkerhetskopi {{date}}",
+    "never": "Ingen sikkerhetskopi ennå",
+    "what": "Lagre den i iCloud Drive eller en annen mappe i Filer. Moony har ikke tilgang til den.",
+    "notSaved": "Sikkerhetskopien ble ikke lagret",
+    "unavailableHere": "Sikkerhetskopiering fungerer foreløpig bare på iPhone.",
+    "restoreTitle": "Gjenoppretting og overføring",
+    "restoreLead": "Gjenopprett en sikkerhetskopi fra denne telefonen, eller overfør en profil fra Moony på datamaskinen: velg filen med sikkerhetskopien, og lås opp etter gjenopprettingen med passordet som gjaldt da den ble laget.",
+    "restoreConfirmDescription": "Sikkerhetskopien fra {{date}} (Moony {{version}}, {{attachments}} vedlegg, {{size}}) erstatter dataene på denne telefonen. Ta en sikkerhetskopi først hvis du vil beholde dagens data. Moony låses etterpå; lås den opp med passordet som var i bruk da sikkerhetskopien ble laget.",
+    "osBackupNote": "Den krypterte profilen finnes også i telefonens egen sikkerhetskopi (iCloud eller datamaskin); uten passordet kan ingen åpne den."
+  },
+  "firstRun": {
+    "privacyLead": "Moony lagrer alt i en kryptert database på denne telefonen. Ingen sky, ingen konto hos oss.",
+    "points": {
+      "encryption": {
+        "title": "AES-256-kryptering",
+        "text": "– bare passordet ditt åpner databasen; bilder og dokumenter er kryptert inni den."
+      },
+      "localOnly": {
+        "title": "Ingen sky",
+        "text": "– vi sender ingenting noe sted; du lagrer sikkerhetskopien selv i Filer eller iCloud Drive."
+      },
+      "marketData": {
+        "title": "Markedsdata",
+        "text": "– bare kursene på aksjene, valutaene og kryptovalutaene du følger, hentes (Yahoo Finance, CoinGecko, ESB). Appen fungerer også uten nett."
+      }
+    },
+    "recoveryLead": "Den eneste veien til dataene dine hvis du glemmer passordet. Oppbevar den utenfor denne telefonen – i en passordbehandler, i Filer eller på papir.",
+    "saveToFiles": "Lagre i Filer",
+    "recoveryFileNote": "Denne nøkkelen tilbakestiller Moony-passordet ditt. Den fungerer bare sammen med Moony-dataene på denne telefonen eller en sikkerhetskopi av dem, så lagre også den sikkerhetskopien. Ikke gi denne filen til noen.",
+    "areasLead": "Velg hva du vil følge i Moony. Du kan endre dette når som helst i Innstillinger.",
+    "firstAccountLead": "Et navn og en saldo er nok. Kontoutskriften kan du importere senere.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometri",
+      "backup": "Sikkerhetskopi"
+    },
+    "backupTitle": "Ta sikkerhetskopi av dataene dine",
+    "backupLead": "Denne telefonen har den eneste kopien av dataene dine. Lagre en kryptert sikkerhetskopi i iCloud Drive eller en mappe du velger; Moony ser den aldri.",
+    "currencyPick": "Hovedvaluta",
+    "countryPick": "Bankland",
+    "searchCurrency": "Søk etter valuta"
+  },
+  "notifications": {
+    "lead": "Moony varsler bare fra denne telefonen, uten server. Varslene planlegges hver gang du låser opp.",
+    "permission": {
+      "label": "Varsler",
+      "granted": "Tillatt",
+      "denied": "Blokkert",
+      "notAsked": "Ikke tillatt ennå",
+      "notGranted": "Ikke tillatt",
+      "allow": "Tillat varsler",
+      "deniedHint": "Tillat dem i Innstillinger på telefonen → Moony → Varsler.",
+      "unavailable": "Ikke tilgjengelig på denne enheten.",
+      "needed": "Tillat varsler først."
+    },
+    "deadlines": {
+      "label": "Frister",
+      "hint": "14 dager og 1 dag før fristen."
+    },
+    "upkeep": {
+      "label": "Månedlig vedlikehold",
+      "hint": "Dag {{day}} i måneden: saldoer og kontoutskrifter.",
+      "day": "Dag i måneden",
+      "dayLabel": "Dag {{day}} i måneden",
+      "dayValue": "{{day}}.",
+      "title": "På tide å vedlikeholde dataene",
+      "body": "Registrer saldoene og importer kontoutskriftene."
+    },
+    "backup": {
+      "label": "Sikkerhetskopi",
+      "hint": "Når den siste sikkerhetskopien er eldre enn 30 dager.",
+      "title": "Ta sikkerhetskopi av Moony",
+      "stale": "Den siste sikkerhetskopien er over en måned gammel.",
+      "never": "Du har ingen sikkerhetskopi ennå."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} om 14 dager",
+      "tomorrow": "{{whatKey}} i morgen",
+      "kind": {
+        "insurance_anniversary": "Oppsigelsesfrist for forsikringen",
+        "insurance_end": "Forsikringen utløper",
+        "loan_fixation_end": "Fastrenten utløper",
+        "bond_maturity": "Obligasjonen forfaller",
+        "account_termination": "Kontoen avsluttes",
+        "savings_rate_end": "Kampanjerenten utløper"
+      }
+    },
+    "test": {
+      "send": "Send et testvarsel",
+      "title": "Testvarsel",
+      "body": "Slik ser en påminnelse fra Moony ut.",
+      "sent": "Kommer om 10 sekunder"
+    }
   }
 }

@@ -342,5 +342,153 @@
       "range52": "52週レンジ",
       "renamed": "名称を保存しました"
     }
+  },
+  "settings": {
+    "rows": {
+      "profile": "プロフィール",
+      "profileNoEmail": "名前とメールアドレス",
+      "language": "言語",
+      "security": "セキュリティ",
+      "backup": "バックアップと移行",
+      "notifications": "通知",
+      "reminders": "リマインダー",
+      "remindersSub": "{{total}}グループ中{{on}}グループ",
+      "import": "インポート",
+      "deleteSub": "確認の単語を入力して実行"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "テレメトリなし",
+    "security": {
+      "lead": "このスマートフォンでのロック解除、バックグラウンドでのロック、金額の非表示を設定します。",
+      "biometrics": "{{methodKey}}でロック解除",
+      "methodFace": "顔認証",
+      "methodTouch": "指紋認証",
+      "methodGeneric": "生体認証",
+      "biometricsOn": "{{methodKey}}でロック解除",
+      "biometricsOff": "パスワードのみ",
+      "biometricsDisabled": "生体認証によるロック解除をオフにしました",
+      "lockAfterLabel": "アプリを離れてからロックするまでの時間",
+      "lockAfterHint": "この時間が過ぎると、アプリに戻ったときに再びロックされます。",
+      "optionNow": "すぐ",
+      "optionMinutes": "{{count}}分",
+      "lockNow": "すぐにロック",
+      "lockAfter_other": "{{count}}分後にロック",
+      "hideOnLaunch": "起動時に金額を非表示",
+      "hideOnLaunchHint": "起動するたびに金額が非表示の状態で始まります。概要の目のアイコンで再び表示できます。",
+      "hideOnLaunchShort": "起動時に金額を非表示"
+    },
+    "profile": {
+      "lead": "名前は概要のあいさつに表示されます。",
+      "currencyReadOnly": "基準通貨はパソコンのMoonyで変更できます。"
+    },
+    "language": {
+      "title": "アプリの言語",
+      "lead": "数値と日付は言語に合わせて表示されます。"
+    },
+    "delete": {
+      "title": "すべてのデータを削除しますか？",
+      "lead": "このスマートフォンからデータベース、キー、添付ファイルを完全に削除します。スマートフォンの外にあるバックアップのコピーは残ります。先にバックアップを作成してください。元に戻す唯一の方法です。",
+      "confirmLabel": "確認のため {{word}} と入力してください",
+      "confirm": "データを削除",
+      "failed": "削除に失敗しました"
+    }
+  },
+  "backup": {
+    "lead": "バックアップは暗号化された1つのファイルで、データベース、キー、添付ファイルが入っています。開けるのはあなたのパスワードだけです。",
+    "last": "最後のバックアップ",
+    "lastOn": "最後のバックアップ {{date}}",
+    "never": "まだバックアップがありません",
+    "what": "iCloud Drive や「ファイル」内の別のフォルダに保存してください。Moony はこのファイルにアクセスできません。",
+    "notSaved": "バックアップは保存されませんでした",
+    "unavailableHere": "バックアップは今のところ iPhone でのみ利用できます。",
+    "restoreTitle": "復元と移行",
+    "restoreLead": "このスマートフォンのバックアップを復元するか、パソコンのMoonyからプロフィールを移行します。バックアップファイルを選び、復元後は作成時に使っていたパスワードでロックを解除してください。",
+    "restoreConfirmDescription": "{{date}}のバックアップ（Moony {{version}}、添付ファイル {{attachments}}件、{{size}}）で、このスマートフォンのデータが置き換えられます。現在のデータを残したい場合は、先にバックアップを作成してください。復元後、Moony はロックされます。バックアップ作成時に使っていたパスワードでロックを解除してください。",
+    "osBackupNote": "暗号化されたプロフィールは、スマートフォン自体のバックアップ（iCloud またはパソコン）にも含まれます。パスワードがなければ誰も開けません。"
+  },
+  "firstRun": {
+    "privacyLead": "Moony はすべてをこのスマートフォン上の暗号化データベースに保存します。クラウドも、当社のアカウントも不要です。",
+    "points": {
+      "encryption": {
+        "title": "AES-256 暗号化",
+        "text": "– データベースを開けるのはあなたのパスワードだけです。写真や書類もデータベース内で暗号化されています。"
+      },
+      "localOnly": {
+        "title": "クラウドなし",
+        "text": "– データはどこにも送信しません。バックアップは「ファイル」や iCloud Drive にご自身で保存します。"
+      },
+      "marketData": {
+        "title": "市場データ",
+        "text": "– 取得するのは、追跡している株式・通貨・暗号資産の価格だけです（Yahoo Finance、CoinGecko、ECB）。オフラインでも動作します。"
+      }
+    },
+    "recoveryLead": "パスワードを忘れた場合にデータへアクセスできる唯一の手段です。パスワードマネージャー、「ファイル」、紙など、このスマートフォンの外に保管してください。",
+    "saveToFiles": "「ファイル」に保存",
+    "recoveryFileNote": "このキーで Moony のパスワードをリセットできます。このスマートフォン上の Moony のデータ、またはそのバックアップと合わせてのみ使えるため、バックアップも保管してください。このファイルは誰にも渡さないでください。",
+    "areasLead": "Moonyで管理する項目を選んでください。設定からいつでも変更できます。",
+    "firstAccountLead": "名前と残高だけで十分です。明細のインポートは後から行えます。",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "生体認証",
+      "backup": "バックアップ"
+    },
+    "backupTitle": "データをバックアップ",
+    "backupLead": "このスマートフォンにあるのがデータの唯一のコピーです。暗号化したバックアップを iCloud Drive または選んだフォルダに保存してください。Moony がそれを見ることはありません。",
+    "currencyPick": "基準通貨",
+    "countryPick": "取引銀行の国",
+    "searchCurrency": "通貨を検索"
+  },
+  "notifications": {
+    "lead": "Moonyのリマインドはこのスマートフォンだけで行われ、サーバーは使いません。ロックを解除するたびに予定が組み直されます。",
+    "permission": {
+      "label": "通知",
+      "granted": "許可済み",
+      "denied": "ブロック中",
+      "notAsked": "まだ許可されていません",
+      "notGranted": "許可されていません",
+      "allow": "通知を許可",
+      "deniedHint": "スマートフォンの設定 → Moony → 通知で許可してください。",
+      "unavailable": "この端末では利用できません。",
+      "needed": "先に通知を許可してください。"
+    },
+    "deadlines": {
+      "label": "期限",
+      "hint": "期限の14日前と1日前。"
+    },
+    "upkeep": {
+      "label": "毎月のデータ整理",
+      "hint": "毎月{{day}}日：残高と明細。",
+      "day": "毎月の日付",
+      "dayLabel": "毎月{{day}}日",
+      "dayValue": "{{day}}日",
+      "title": "データを整理する時間です",
+      "body": "残高を記録して、明細を取り込みましょう。"
+    },
+    "backup": {
+      "label": "バックアップ",
+      "hint": "最後のバックアップから30日以上たったとき。",
+      "title": "Moonyをバックアップしましょう",
+      "stale": "最後のバックアップは1か月以上前です。",
+      "never": "まだバックアップがありません。"
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}}まであと14日",
+      "tomorrow": "{{whatKey}}は明日",
+      "kind": {
+        "insurance_anniversary": "保険の解約通知期限",
+        "insurance_end": "保険の満了",
+        "loan_fixation_end": "固定金利の終了",
+        "bond_maturity": "債券の償還",
+        "account_termination": "口座の終了",
+        "savings_rate_end": "優遇金利の終了"
+      }
+    },
+    "test": {
+      "send": "テスト通知を送る",
+      "title": "テスト通知",
+      "body": "Moonyのリマインドはこのように表示されます。",
+      "sent": "10秒後に届きます"
+    }
   }
 }

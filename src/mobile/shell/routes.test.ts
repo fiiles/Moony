@@ -1,13 +1,16 @@
 import { describe, expect, it } from 'vitest';
 import {
+  SETTINGS_SECTIONS,
   accountPath,
   budgetsPath,
   cashflowCategoryPath,
+  isSettingsSection,
   loanPath,
   policyPath,
   positionPath,
   propertyPath,
   routes,
+  settingsPath,
   tabForPath,
 } from './routes';
 
@@ -73,5 +76,26 @@ describe('cashflow paths', () => {
   it('keeps the route patterns in step with the helpers', () => {
     expect(routes.cashflowCategory).toBe('/cashflow/category/:flow/:key');
     expect(routes.budgets).toBe('/cashflow/budgets');
+  });
+});
+
+describe('settings sections', () => {
+  it('keeps a section page outside the tabs', () => {
+    expect(tabForPath('/settings/security')).toBeNull();
+    expect(tabForPath(settingsPath('backup'))).toBeNull();
+  });
+
+  it('builds the path of each section from the route', () => {
+    expect(settingsPath('backup')).toBe('/settings/backup');
+    for (const section of SETTINGS_SECTIONS) {
+      expect(settingsPath(section)).toBe(routes.settingsSection.replace(':section', section));
+    }
+  });
+
+  it('knows its sections and nothing else', () => {
+    for (const section of SETTINGS_SECTIONS) expect(isSettingsSection(section)).toBe(true);
+    expect(isSettingsSection('appearance')).toBe(false);
+    expect(isSettingsSection('')).toBe(false);
+    expect(isSettingsSection('Security')).toBe(false);
   });
 });

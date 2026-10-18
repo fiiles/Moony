@@ -209,6 +209,7 @@
     "backupInvalidArchive": "Tento soubor není záloha Moony (nebo je poškozený).",
     "backupNewerThanApp": "Tato záloha vznikla v novější verzi Moony. Nejdřív Moony aktualizujte.",
     "backupDestinationMissing": "Cílová složka neexistuje.",
+    "backupExportInvalid": "Tento název souboru není povolen.",
     "sellExceedsHoldings": "Nelze prodat více, než k danému datu držíte.",
     "csvEmptyFile": "Soubor je prázdný nebo neobsahuje řádek záhlaví.",
     "csvColumnsNotFound": "Vybrané sloupce nebyly v souboru nalezeny. Zkontrolujte řádek záhlaví a mapování sloupců.",

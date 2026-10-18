@@ -3,7 +3,8 @@
  *
  * The same states as the desktop `auth-page.tsx` — first-run wizard, unlock, three-step recovery —
  * on phone surfaces: the lock is centred under the status bar and above the home indicator, the
- * recovery is a pushed full-height screen with a back button, the wizard drops its live preview.
+ * recovery is a pushed full-height screen with a back button, the first run is the phone's own
+ * (`FirstRun`: seven steps in one column, no live preview).
  * Credential failures show inline under the field; the provider toasts everything else.
  *
  * With biometric unlock switched on, "Odemknout obličejem" comes first and the system prompt opens
@@ -44,7 +45,6 @@ import { Input } from '@/components/ui/input';
 import { MoonMark } from '@/components/common/MoonMark';
 import { LanguageSelect } from '@/components/common/LanguageSelect';
 import { OnboardingWelcome } from '@/components/auth/OnboardingWelcome';
-import { OnboardingWizard } from '@/components/auth/OnboardingWizard';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
 import { RecoverySteps } from '@/components/auth/RecoverySteps';
@@ -59,6 +59,7 @@ import {
   shouldAutoPrompt,
 } from '@/mobile/lib/biometrics';
 import { whenVisible } from '@/mobile/lib/when-visible';
+import { FirstRun } from '@/mobile/pages/FirstRun';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -157,10 +158,8 @@ export default function Lock() {
           />
         </header>
         {introDone ? (
-          <OnboardingWizard
+          <FirstRun
             language={selectedLanguage}
-            preview={false}
-            touch
             onFinished={() => {
               setWizardDone(true);
               setLocation(routes.overview);

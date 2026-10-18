@@ -942,6 +942,17 @@ export const dataApi = {
   getDataLocation: () => tauriInvoke<DataLocation>('get_data_location'),
   openDataFolder: () => tauriInvoke<void>('open_data_folder'),
   createBackup: (destPath: string) => tauriInvoke<BackupManifest>('create_backup', { destPath }),
+  // The four below exist on phones only (registered under `#[cfg(mobile)]`): a file is staged in
+  // the app's Documents folder by Rust, exported through the Files picker, and the staged copy
+  // removed by Rust again (the webview has no fs commands). A backup is recorded only when it was
+  // exported. The stage calls resolve with the staged path, which the matching finish / discard
+  // call takes back; the text export accepts one allow-listed file name (the recovery key's).
+  stageBackupExport: (fileName: string) => tauriInvoke<string>('stage_backup_export', { fileName }),
+  finishBackupExport: (path: string, exported: boolean) =>
+    tauriInvoke<void>('finish_backup_export', { path, exported }),
+  stageTextExport: (fileName: string, contents: string) =>
+    tauriInvoke<string>('stage_text_export', { fileName, contents }),
+  discardTextExport: (path: string) => tauriInvoke<void>('discard_text_export', { path }),
   inspectBackup: (path: string) => tauriInvoke<BackupInspection>('inspect_backup', { path }),
   restoreBackup: (path: string) => tauriInvoke<void>('restore_backup', { path }),
   exportAllData: (destPath: string) => tauriInvoke<ExportSummary>('export_all_data', { destPath }),

@@ -378,5 +378,155 @@
       "range52": "52T rozpětí",
       "renamed": "Název uložen"
     }
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profil",
+      "profileNoEmail": "Jméno a e-mail",
+      "language": "Jazyk",
+      "security": "Zabezpečení",
+      "backup": "Záloha a přenos",
+      "notifications": "Oznámení",
+      "reminders": "Připomínky",
+      "remindersSub": "{{on}} z {{total}} skupin",
+      "import": "Import",
+      "deleteSub": "po potvrzení napsáním slova"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "žádná telemetrie",
+    "security": {
+      "lead": "Odemykání, zámek na pozadí a skrývání částek na tomto telefonu.",
+      "biometrics": "Odemykat {{methodKey}}",
+      "methodFace": "obličejem",
+      "methodTouch": "otiskem",
+      "methodGeneric": "biometrií",
+      "biometricsOn": "Odemykání {{methodKey}}",
+      "biometricsOff": "Jen heslo",
+      "biometricsDisabled": "Odemykání biometrií vypnuto",
+      "lockAfterLabel": "Zamknout po přechodu na pozadí",
+      "lockAfterHint": "Když aplikaci opustíte na déle, po návratu ji znovu odemknete.",
+      "optionNow": "Ihned",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "zámek ihned",
+      "lockAfter_one": "zámek po {{count}} minutě",
+      "lockAfter_few": "zámek po {{count}} minutách",
+      "lockAfter_other": "zámek po {{count}} minutách",
+      "hideOnLaunch": "Skrývat částky po spuštění",
+      "hideOnLaunchHint": "Každé spuštění začne se skrytými částkami; oko na Přehledu je zase ukáže.",
+      "hideOnLaunchShort": "částky skryté po spuštění"
+    },
+    "profile": {
+      "lead": "Jméno se zobrazuje v pozdravu na Přehledu.",
+      "currencyReadOnly": "Hlavní měnu změníte v Moony na počítači."
+    },
+    "language": {
+      "title": "Jazyk aplikace",
+      "lead": "Čísla a data se formátují podle jazyka."
+    },
+    "delete": {
+      "title": "Smazat všechna data?",
+      "lead": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu. Kopie zálohy mimo telefon zůstanou. Nejdřív si udělejte zálohu — je to jediná cesta zpět.",
+      "confirmLabel": "Pro potvrzení napište {{word}}",
+      "confirm": "Smazat data",
+      "failed": "Smazání selhalo"
+    }
+  },
+  "backup": {
+    "lead": "Záloha je šifrovaný soubor: databáze, klíče a přílohy. Otevře ji jen vaše heslo.",
+    "last": "Poslední záloha",
+    "lastOn": "Poslední záloha {{date}}",
+    "never": "Zatím žádná záloha",
+    "what": "Uložte ji do iCloud Drive nebo jiné složky v Souborech. Moony k ní nemá přístup.",
+    "notSaved": "Záloha nebyla uložena",
+    "unavailableHere": "Zálohování zatím funguje jen na iPhonu.",
+    "restoreTitle": "Obnovení a přenos",
+    "restoreLead": "Obnovte zálohu z tohoto telefonu, nebo přeneste profil z Moony na počítači: vyberte soubor zálohy a po obnovení odemkněte heslem, které platilo při jejím vytvoření.",
+    "restoreConfirmDescription": "Záloha z {{date}} (Moony {{version}}, {{attachments}} příloh, {{size}}) nahradí data v tomto telefonu. Chcete-li současná data zachovat, nejdřív je zálohujte. Moony se poté zamkne; odemkněte ho heslem, které platilo v době vytvoření zálohy.",
+    "osBackupNote": "Šifrovaný profil je i v záloze telefonu (iCloud nebo počítač); bez hesla ho nikdo neotevře."
+  },
+  "firstRun": {
+    "privacyLead": "Moony ukládá vše do šifrované databáze v tomto telefonu. Žádný cloud, žádný účet u nás.",
+    "points": {
+      "encryption": {
+        "title": "Šifrování AES-256",
+        "text": "– databázi otevře jen vaše heslo; fotky a dokumenty jsou šifrované v ní."
+      },
+      "localOnly": {
+        "title": "Bez cloudu",
+        "text": "– data nikam neposíláme; zálohu si uložíte do Souborů nebo iCloud Drive sami."
+      },
+      "marketData": {
+        "title": "Tržní data",
+        "text": "– stahují se jen kurzy akcií, měn a kryptoměn, které sledujete (Yahoo Finance, CoinGecko, ECB). Aplikace funguje i offline."
+      }
+    },
+    "recoveryLead": "Jediná cesta k datům, když heslo zapomenete. Uložte ho mimo tento telefon: do správce hesel, do Souborů nebo na papír.",
+    "saveToFiles": "Uložit do Souborů",
+    "recoveryFileNote": "Tento klíč resetuje vaše heslo do Moony. Funguje jen spolu s daty Moony v tomto telefonu nebo s jejich zálohou, proto si zálohu uložte také. Soubor nikomu nedávejte.",
+    "areasLead": "Vyberte, co chcete v Moony sledovat. Změnit to můžete kdykoli v Nastavení.",
+    "firstAccountLead": "Stačí název a zůstatek. Výpis naimportujete později.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometrie",
+      "backup": "Záloha"
+    },
+    "backupTitle": "Zálohujte si data",
+    "backupLead": "Telefon je jediná kopie vašich dat. Uložte šifrovanou zálohu do iCloud Drive nebo vybrané složky; Moony ji nikdy nevidí.",
+    "currencyPick": "Hlavní měna",
+    "countryPick": "Země bankovnictví",
+    "searchCurrency": "Hledat měnu"
+  },
+  "notifications": {
+    "lead": "Moony připomíná jen z tohoto telefonu, bez serveru. Plánují se při každém odemknutí.",
+    "permission": {
+      "label": "Oznámení",
+      "granted": "Povoleno",
+      "denied": "Zakázáno",
+      "notAsked": "Zatím nepovoleno",
+      "notGranted": "Nepovoleno",
+      "allow": "Povolit oznámení",
+      "deniedHint": "Povolte je v Nastavení telefonu → Moony → Oznámení.",
+      "unavailable": "Na tomto zařízení nejsou dostupná.",
+      "needed": "Nejdřív povolte oznámení."
+    },
+    "deadlines": {
+      "label": "Termíny",
+      "hint": "14 dní a 1 den před termínem."
+    },
+    "upkeep": {
+      "label": "Měsíční údržba",
+      "hint": "{{day}}. den v měsíci: zůstatky a výpisy.",
+      "day": "Den v měsíci",
+      "dayLabel": "{{day}}. den v měsíci",
+      "dayValue": "{{day}}.",
+      "title": "Je čas na údržbu dat",
+      "body": "Zaznamenejte zůstatky a naimportujte výpisy."
+    },
+    "backup": {
+      "label": "Záloha",
+      "hint": "Když je poslední záloha starší než 30 dní.",
+      "title": "Zálohujte Moony",
+      "stale": "Poslední záloha je starší než měsíc.",
+      "never": "Zatím nemáte žádnou zálohu."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} za 14 dní",
+      "tomorrow": "{{whatKey}} zítra",
+      "kind": {
+        "insurance_anniversary": "Termín pro výpověď pojistky",
+        "insurance_end": "Konec pojistky",
+        "loan_fixation_end": "Konec fixace",
+        "bond_maturity": "Splatnost dluhopisu",
+        "account_termination": "Konec účtu",
+        "savings_rate_end": "Konec zvýhodněné sazby"
+      }
+    },
+    "test": {
+      "send": "Poslat zkušební oznámení",
+      "title": "Zkušební oznámení",
+      "body": "Takhle vypadá připomínka z Moony.",
+      "sent": "Přijde za 10 sekund"
+    }
   }
 }

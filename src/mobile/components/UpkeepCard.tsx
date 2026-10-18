@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import { useUpkeep } from '@/mobile/hooks/use-upkeep';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import type { UpkeepKind, UpkeepRow } from '@/mobile/lib/upkeep';
-import { routes } from '@/mobile/shell/routes';
+import { routes, settingsPath } from '@/mobile/shell/routes';
 import { RecordBalancesSheet } from '@/mobile/sheets/RecordBalancesSheet';
 
 const ICONS: Record<UpkeepKind, LucideIcon> = {
@@ -28,13 +28,13 @@ const VERBS: Record<UpkeepKind, string> = {
 };
 
 /**
- * Where a verb leads. Zařadit, Importovat and Zálohovat arrive with their flows (Phases 2, 5 and
- * 4); until then they open the tab that will hold them.
+ * Where a verb leads. Zálohovat opens Záloha a přenos; Zařadit and Importovat arrive with their
+ * flows (Phases 2 and 4) and until then open the tab that will hold them.
  */
 const TARGETS: Record<Exclude<UpkeepKind, 'balances_stale'>, string> = {
   uncategorized: routes.finance,
   statement_due: routes.finance,
-  backup_stale: routes.settings,
+  backup_stale: settingsPath('backup'),
   valuation_stale: routes.wealth,
 };
 

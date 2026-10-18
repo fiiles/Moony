@@ -360,5 +360,154 @@
       "range52": "52-week range",
       "renamed": "Name saved"
     }
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profile",
+      "profileNoEmail": "Name and email",
+      "language": "Language",
+      "security": "Security",
+      "backup": "Backup and transfer",
+      "notifications": "Notifications",
+      "reminders": "Reminders",
+      "remindersSub": "{{on}} of {{total}} groups",
+      "import": "Import",
+      "deleteSub": "after typing a confirmation word"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "no telemetry",
+    "security": {
+      "lead": "Unlocking, the lock in the background and hiding amounts on this phone.",
+      "biometrics": "Unlock with {{methodKey}}",
+      "methodFace": "your face",
+      "methodTouch": "your fingerprint",
+      "methodGeneric": "biometrics",
+      "biometricsOn": "Unlocks with {{methodKey}}",
+      "biometricsOff": "Password only",
+      "biometricsDisabled": "Biometric unlock turned off",
+      "lockAfterLabel": "Lock after leaving the app",
+      "lockAfterHint": "After this long away from the app, it locks again when you return.",
+      "optionNow": "Immediately",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "lock immediately",
+      "lockAfter_one": "lock after {{count}} minute",
+      "lockAfter_other": "lock after {{count}} minutes",
+      "hideOnLaunch": "Hide amounts on launch",
+      "hideOnLaunchHint": "Every launch starts with amounts hidden; the eye on Overview shows them again.",
+      "hideOnLaunchShort": "amounts hidden on launch"
+    },
+    "profile": {
+      "lead": "Your name appears in the greeting on Overview.",
+      "currencyReadOnly": "Change the main currency in Moony on your computer."
+    },
+    "language": {
+      "title": "App language",
+      "lead": "Numbers and dates follow the language."
+    },
+    "delete": {
+      "title": "Delete all data?",
+      "lead": "Permanently deletes the database, the keys and the attachments from this phone. Backup copies outside the phone stay. Make a backup first — it is the only way back.",
+      "confirmLabel": "Type {{word}} to confirm",
+      "confirm": "Delete data",
+      "failed": "Deletion failed"
+    }
+  },
+  "backup": {
+    "lead": "A backup is one encrypted file: the database, the keys and the attachments. Only your password opens it.",
+    "last": "Last backup",
+    "lastOn": "Last backup {{date}}",
+    "never": "No backup yet",
+    "what": "Save it to iCloud Drive or another folder in Files. Moony has no access to it.",
+    "notSaved": "Backup not saved",
+    "unavailableHere": "Backups work on iPhone only for now.",
+    "restoreTitle": "Restore and transfer",
+    "restoreLead": "Restore a backup from this phone, or transfer a profile from Moony on the computer: choose the backup file and, after the restore, unlock with the password that was in use when it was created.",
+    "restoreConfirmDescription": "The backup from {{date}} (Moony {{version}}, {{attachments}} attachments, {{size}}) replaces the data on this phone. Back up first if you want to keep the current data. Moony then locks; unlock it with the password that was in use when the backup was made.",
+    "osBackupNote": "The encrypted profile is also in the phone's own backup (iCloud or a computer); no one can open it without the password."
+  },
+  "firstRun": {
+    "privacyLead": "Moony stores everything in an encrypted database on this phone. No cloud, no account with us.",
+    "points": {
+      "encryption": {
+        "title": "AES-256 encryption",
+        "text": "– only your password opens the database; photos and documents are encrypted inside it."
+      },
+      "localOnly": {
+        "title": "No cloud",
+        "text": "– we send nothing anywhere; you save the backup to Files or iCloud Drive yourself."
+      },
+      "marketData": {
+        "title": "Market data",
+        "text": "– only the stock, currency and crypto rates you follow are downloaded (Yahoo Finance, CoinGecko, ECB). The app works offline too."
+      }
+    },
+    "recoveryLead": "The only way to your data if you forget the password. Store it outside this phone: in a password manager, in Files, or on paper.",
+    "saveToFiles": "Save to Files",
+    "recoveryFileNote": "This key resets your Moony password. It works only together with the Moony data on this phone or a backup of it, so keep that backup too. Do not give this file to anyone.",
+    "areasLead": "Choose what you want to track in Moony. You can change this anytime in Settings.",
+    "firstAccountLead": "A name and a balance are enough. You can import a statement later.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometrics",
+      "backup": "Backup"
+    },
+    "backupTitle": "Back up your data",
+    "backupLead": "This phone holds the only copy of your data. Save an encrypted backup to iCloud Drive or a folder you choose; Moony never sees it.",
+    "currencyPick": "Main currency",
+    "countryPick": "Banking country",
+    "searchCurrency": "Search currency"
+  },
+  "notifications": {
+    "lead": "Moony reminds you from this phone only, with no server. It plans the notifications each time you unlock.",
+    "permission": {
+      "label": "Notifications",
+      "granted": "Allowed",
+      "denied": "Blocked",
+      "notAsked": "Not allowed yet",
+      "notGranted": "Not allowed",
+      "allow": "Allow notifications",
+      "deniedHint": "Allow them in your phone's Settings → Moony → Notifications.",
+      "unavailable": "Not available on this device.",
+      "needed": "Allow notifications first."
+    },
+    "deadlines": {
+      "label": "Deadlines",
+      "hint": "14 days and 1 day before the deadline."
+    },
+    "upkeep": {
+      "label": "Monthly upkeep",
+      "hint": "Day {{day}} of the month: balances and statements.",
+      "day": "Day of the month",
+      "dayLabel": "Day {{day}} of the month",
+      "dayValue": "{{day}}",
+      "title": "Time for data upkeep",
+      "body": "Record your balances and import your statements."
+    },
+    "backup": {
+      "label": "Backup",
+      "hint": "When the last backup is older than 30 days.",
+      "title": "Back up Moony",
+      "stale": "Your last backup is over a month old.",
+      "never": "You have no backup yet."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} in 14 days",
+      "tomorrow": "{{whatKey}} tomorrow",
+      "kind": {
+        "insurance_anniversary": "Insurance cancellation deadline",
+        "insurance_end": "Insurance ends",
+        "loan_fixation_end": "Fixed rate ends",
+        "bond_maturity": "Bond maturity",
+        "account_termination": "Account ends",
+        "savings_rate_end": "Promotional rate ends"
+      }
+    },
+    "test": {
+      "send": "Send a test notification",
+      "title": "Test notification",
+      "body": "This is what a Moony reminder looks like.",
+      "sent": "Arrives in 10 seconds"
+    }
   }
 }

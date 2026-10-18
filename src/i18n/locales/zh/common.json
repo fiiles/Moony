@@ -209,6 +209,7 @@
     "backupInvalidArchive": "此文件不是 Moony 备份（或已损坏）。",
     "backupNewerThanApp": "此备份由更新版本的 Moony 创建。请先更新 Moony。",
     "backupDestinationMissing": "目标文件夹不存在。",
+    "backupExportInvalid": "不允许使用此文件名。",
     "sellExceedsHoldings": "卖出数量不能超过当天的持有数量。",
     "csvEmptyFile": "文件为空，或没有表头行。",
     "csvColumnsNotFound": "在文件中找不到所选的列。请检查表头行和列映射。",

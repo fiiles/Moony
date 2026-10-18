@@ -41,6 +41,26 @@ fn spawn_legacy_temp_cleanup(app: tauri::AppHandle) {
     });
 }
 
+/// Phones only: remove what an export that was interrupted (the app killed while the Files picker
+/// was open) left in Documents, a staged backup archive or the recovery key's text, once at
+/// startup and off the main thread. Best effort: a problem is logged and never blocks startup.
+#[cfg(mobile)]
+fn spawn_staged_export_sweep(app: tauri::AppHandle) {
+    let document_dir = match app.path().document_dir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            log::warn!("[BACKUP] Staged export sweep skipped: no documents dir: {e}");
+            return;
+        }
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        match services::backup::sweep_staged_exports(&document_dir) {
+            Ok(count) => log::info!("[BACKUP] Staged export sweep removed {count} file(s)"),
+            Err(e) => log::warn!("[BACKUP] Staged export sweep failed: {e}"),
+        }
+    });
+}
+
 /// Desktop `main` and the generated iOS / Android entry points all start here. The body runs
 /// inside Tauri's own tokio runtime (`async_runtime::block_on`), the same multi-thread runtime
 /// the commands and `tokio::spawn` calls use, so nothing changes for the desktop; a
@@ -64,6 +84,8 @@ async fn run_app() {
         .setup(|app| {
             logging::log_startup_banner();
             spawn_legacy_temp_cleanup(app.handle().clone());
+            #[cfg(mobile)]
+            spawn_staged_export_sweep(app.handle().clone());
             // The window starts hidden and the frontend shows it once the theme is stamped (spec D10);
             // if the frontend never does, show it anyway so a broken bundle is not an invisible app.
             let handle = app.handle().clone();
@@ -164,6 +186,15 @@ async fn run_app() {
             commands::backup::verify_database,
             commands::backup::get_data_location,
             commands::backup::open_data_folder,
+            // Exports through the phone's Files picker (staged in Documents, removed afterwards)
+            #[cfg(mobile)]
+            commands::backup::stage_backup_export,
+            #[cfg(mobile)]
+            commands::backup::finish_backup_export,
+            #[cfg(mobile)]
+            commands::backup::stage_text_export,
+            #[cfg(mobile)]
+            commands::backup::discard_text_export,
             // System (services::logging)
             commands::system::open_logs_folder,
             // Auth commands

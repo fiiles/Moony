@@ -1,18 +1,15 @@
 import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
-import { isAuthApiError } from '@/lib/api-error';
-import { queryClient } from '@/lib/queryClient';
 import { biometricApi } from '@/lib/tauri-api';
 import { Button } from '@/components/ui/button';
 import { BiometryIcon } from '@/mobile/components/BiometryIcon';
 import { Sheet } from '@/mobile/components/Sheet';
+import { useBiometricEnrolment } from '@/mobile/hooks/use-biometric-enrolment';
 import {
   BIOMETRIC_STATUS_KEY,
   biometricCopy,
-  biometricFailure,
   markEnrolmentAsked,
   shouldOfferEnrolment,
   wasEnrolmentAsked,
@@ -64,27 +61,7 @@ export function EnableBiometricsSheet() {
     setAsked(true);
   };
 
-  const enable = useMutation({
-    mutationFn: () => biometricApi.enable(t('biometrics.enableReason')),
-    onSuccess: () => toast(t('biometrics.enabled')),
-    onError: (error) => {
-      // A dismissed system prompt is an answer. A refused one (not recognised, locked out, the
-      // permission denied) is said without the backend's words, which are about unlocking.
-      // Anything else says what went wrong.
-      const failure = biometricFailure(isAuthApiError(error) ? error.key : undefined);
-      if (failure === 'cancelled') {
-        toast(t('biometrics.notEnabled'));
-      } else if (failure === 'other') {
-        toast.error(t('biometrics.notEnabled'), { description: error.message });
-      } else {
-        toast.error(t('biometrics.notEnabled'));
-      }
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: BIOMETRIC_STATUS_KEY });
-      close();
-    },
-  });
+  const { enable } = useBiometricEnrolment();
 
   const type = status.data?.biometryType ?? 'none';
   const copy = biometricCopy(type);
@@ -113,7 +90,7 @@ export function EnableBiometricsSheet() {
             className="h-12 flex-1 rounded-[10px] text-m-row"
             loading={enable.isPending}
             disabled={enable.isPending}
-            onClick={() => enable.mutate()}
+            onClick={() => enable.mutate(undefined, { onSettled: close })}
           >
             {t('biometrics.enable')}
           </Button>

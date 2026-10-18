@@ -378,5 +378,155 @@
       "range52": "Rango de 52 semanas",
       "renamed": "Nombre guardado"
     }
+  },
+  "settings": {
+    "rows": {
+      "profile": "Perfil",
+      "profileNoEmail": "Nombre y correo",
+      "language": "Idioma",
+      "security": "Seguridad",
+      "backup": "Copia de seguridad y traslado",
+      "notifications": "Notificaciones",
+      "reminders": "Recordatorios",
+      "remindersSub": "{{on}} de {{total}} grupos",
+      "import": "Importar",
+      "deleteSub": "tras escribir una palabra de confirmación"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "sin telemetría",
+    "security": {
+      "lead": "Desbloqueo, bloqueo en segundo plano y ocultar importes en este teléfono.",
+      "biometrics": "Desbloquear con {{methodKey}}",
+      "methodFace": "la cara",
+      "methodTouch": "la huella",
+      "methodGeneric": "biometría",
+      "biometricsOn": "Desbloqueo con {{methodKey}}",
+      "biometricsOff": "Solo contraseña",
+      "biometricsDisabled": "Desbloqueo biométrico desactivado",
+      "lockAfterLabel": "Bloquear al salir de la app",
+      "lockAfterHint": "Pasado este tiempo, la app se bloquea de nuevo al volver.",
+      "optionNow": "Al instante",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "bloqueo inmediato",
+      "lockAfter_one": "bloqueo tras {{count}} minuto",
+      "lockAfter_many": "bloqueo tras {{count}} minutos",
+      "lockAfter_other": "bloqueo tras {{count}} minutos",
+      "hideOnLaunch": "Ocultar importes al abrir",
+      "hideOnLaunchHint": "Cada inicio empieza con los importes ocultos; el ojo de Resumen los vuelve a mostrar.",
+      "hideOnLaunchShort": "importes ocultos al abrir"
+    },
+    "profile": {
+      "lead": "Tu nombre aparece en el saludo del Resumen.",
+      "currencyReadOnly": "La moneda principal se cambia en Moony en el ordenador."
+    },
+    "language": {
+      "title": "Idioma de la app",
+      "lead": "Los números y las fechas siguen el idioma."
+    },
+    "delete": {
+      "title": "¿Eliminar todos los datos?",
+      "lead": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: es la única forma de recuperar los datos.",
+      "confirmLabel": "Escribe {{word}} para confirmar",
+      "confirm": "Eliminar datos",
+      "failed": "No se pudo eliminar"
+    }
+  },
+  "backup": {
+    "lead": "Una copia de seguridad es un archivo cifrado: la base de datos, las claves y los adjuntos. Solo la abre tu contraseña.",
+    "last": "Última copia de seguridad",
+    "lastOn": "Última copia de seguridad {{date}}",
+    "never": "Aún no hay copia de seguridad",
+    "what": "Guárdala en iCloud Drive o en otra carpeta de la app Archivos. Moony no tiene acceso a ella.",
+    "notSaved": "Copia de seguridad no guardada",
+    "unavailableHere": "Las copias de seguridad por ahora solo funcionan en iPhone.",
+    "restoreTitle": "Restauración y traslado",
+    "restoreLead": "Restaura una copia de seguridad de este teléfono o traslada un perfil desde Moony en el ordenador: elige el archivo de la copia y, tras restaurarla, desbloquea con la contraseña que estaba en uso cuando se creó.",
+    "restoreConfirmDescription": "La copia del {{date}} (Moony {{version}}, {{attachments}} adjuntos, {{size}}) sustituye los datos de este teléfono. Haz antes una copia si quieres conservar los datos actuales. Después Moony se bloqueará; desbloquéalo con la contraseña que se usaba cuando se creó la copia.",
+    "osBackupNote": "El perfil cifrado también está en la copia de seguridad del propio teléfono (iCloud u ordenador); sin la contraseña nadie puede abrirlo."
+  },
+  "firstRun": {
+    "privacyLead": "Moony guarda todo en una base de datos cifrada en este teléfono. Sin nube y sin cuenta con nosotros.",
+    "points": {
+      "encryption": {
+        "title": "Cifrado AES-256",
+        "text": "– solo tu contraseña abre la base de datos; las fotos y los documentos están cifrados dentro de ella."
+      },
+      "localOnly": {
+        "title": "Sin nube",
+        "text": "– no enviamos nada a ninguna parte; la copia de seguridad la guardas tú en Archivos o iCloud Drive."
+      },
+      "marketData": {
+        "title": "Datos de mercado",
+        "text": "– solo se descargan los precios de las acciones, divisas y criptomonedas que sigues (Yahoo Finance, CoinGecko, BCE). La app también funciona sin conexión."
+      }
+    },
+    "recoveryLead": "Es la única vía para acceder a tus datos si olvidas la contraseña. Guárdala fuera de este teléfono: en un gestor de contraseñas, en Archivos o en papel.",
+    "saveToFiles": "Guardar en Archivos",
+    "recoveryFileNote": "Esta clave restablece tu contraseña de Moony. Solo funciona junto con los datos de Moony de este teléfono o con una copia de seguridad de ellos, así que guarda también esa copia. No entregues este archivo a nadie.",
+    "areasLead": "Elige qué quieres seguir en Moony. Puedes cambiarlo cuando quieras en Ajustes.",
+    "firstAccountLead": "Basta con un nombre y un saldo. El extracto lo importarás más adelante.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometría",
+      "backup": "Copia de seguridad"
+    },
+    "backupTitle": "Haz una copia de seguridad de tus datos",
+    "backupLead": "Este teléfono guarda la única copia de tus datos. Guarda una copia de seguridad cifrada en iCloud Drive o en una carpeta que elijas; Moony nunca la ve.",
+    "currencyPick": "Moneda principal",
+    "countryPick": "País del banco",
+    "searchCurrency": "Buscar moneda"
+  },
+  "notifications": {
+    "lead": "Moony te avisa solo desde este teléfono, sin servidor. Las notificaciones se planifican cada vez que desbloqueas.",
+    "permission": {
+      "label": "Notificaciones",
+      "granted": "Permitido",
+      "denied": "Bloqueadas",
+      "notAsked": "Aún no permitidas",
+      "notGranted": "No permitido",
+      "allow": "Permitir notificaciones",
+      "deniedHint": "Permítelas en Ajustes del teléfono → Moony → Notificaciones.",
+      "unavailable": "No están disponibles en este dispositivo.",
+      "needed": "Primero permite las notificaciones."
+    },
+    "deadlines": {
+      "label": "Plazos",
+      "hint": "14 días y 1 día antes del plazo."
+    },
+    "upkeep": {
+      "label": "Mantenimiento mensual",
+      "hint": "Día {{day}} del mes: saldos y extractos.",
+      "day": "Día del mes",
+      "dayLabel": "Día {{day}} del mes",
+      "dayValue": "{{day}}",
+      "title": "Toca mantener los datos",
+      "body": "Registra los saldos e importa los extractos."
+    },
+    "backup": {
+      "label": "Copia de seguridad",
+      "hint": "Cuando la última copia tiene más de 30 días.",
+      "title": "Haz una copia de Moony",
+      "stale": "La última copia tiene más de un mes.",
+      "never": "Todavía no tienes ninguna copia."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} en 14 días",
+      "tomorrow": "{{whatKey}} mañana",
+      "kind": {
+        "insurance_anniversary": "Plazo para cancelar el seguro",
+        "insurance_end": "Termina el seguro",
+        "loan_fixation_end": "Termina el tipo fijo",
+        "bond_maturity": "Vencimiento del bono",
+        "account_termination": "Termina la cuenta",
+        "savings_rate_end": "Termina el tipo promocional"
+      }
+    },
+    "test": {
+      "send": "Enviar notificación de prueba",
+      "title": "Notificación de prueba",
+      "body": "Así se ve un recordatorio de Moony.",
+      "sent": "Llegará en 10 segundos"
+    }
   }
 }

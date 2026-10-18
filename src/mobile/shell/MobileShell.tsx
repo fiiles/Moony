@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/lib/protected-route';
+import { useNotificationSchedule } from '@/mobile/hooks/use-notification-schedule';
 import { clearEnrolmentAsked } from '@/mobile/lib/biometrics';
 import Agenda from '@/mobile/pages/Agenda';
 import Budgets from '@/mobile/pages/Budgets';
@@ -18,6 +19,7 @@ import Lock from '@/mobile/pages/Lock';
 import Overview from '@/mobile/pages/Overview';
 import PositionDetail from '@/mobile/pages/PositionDetail';
 import Settings from '@/mobile/pages/Settings';
+import SettingsSection from '@/mobile/pages/settings/SettingsSection';
 import Stocks from '@/mobile/pages/Stocks';
 import Wealth from '@/mobile/pages/Wealth';
 import {
@@ -30,6 +32,12 @@ import {
 import { EnableBiometricsSheet } from '@/mobile/sheets/EnableBiometricsSheet';
 import { routes, tabForPath } from './routes';
 import { TabBar } from './TabBar';
+
+/** Plans the local notifications (spec §8.9) and draws nothing. */
+function NotificationScheduler() {
+  useNotificationSchedule();
+  return null;
+}
 
 /**
  * Phone shell (spec §6): the four tab roots behind the lock, the lock screen outside it, and the
@@ -77,8 +85,9 @@ export function MobileShell() {
         <ProtectedRoute path={routes.otherAssetsList} component={OtherAssetsPlaceholder} />
         <ProtectedRoute path={routes.realEstateList} component={RealEstatePlaceholder} />
         <ProtectedRoute path={routes.propertyDetail} component={PropertyPlaceholder} />
-        {/* Placeholder page until the Settings sheet of Phase 5 (spec §8.9). */}
+        {/* Nastavení and the pages pushed on it (spec §8.9) */}
         <ProtectedRoute path={routes.settings} component={Settings} />
+        <ProtectedRoute path={routes.settingsSection} component={SettingsSection} />
         <Route>
           <Redirect to={routes.overview} />
         </Route>
@@ -86,6 +95,8 @@ export function MobileShell() {
       {tab && <TabBar active={tab} />}
       {/* Once, after the first password unlock: "Odemykat Moony obličejem?" (spec §8.2). */}
       <EnableBiometricsSheet />
+      {/* Only while unlocked: it reads the milestones, which the locked database cannot answer. */}
+      {appStatus === 'unlocked' && <NotificationScheduler />}
     </>
   );
 }

@@ -342,5 +342,153 @@
       "range52": "52 周区间",
       "renamed": "名称已保存"
     }
+  },
+  "settings": {
+    "rows": {
+      "profile": "个人资料",
+      "profileNoEmail": "姓名和电子邮件",
+      "language": "语言",
+      "security": "安全",
+      "backup": "备份与迁移",
+      "notifications": "通知",
+      "reminders": "提醒",
+      "remindersSub": "已开启 {{on}}/{{total}} 组",
+      "import": "导入",
+      "deleteSub": "输入确认词后执行"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "无遥测",
+    "security": {
+      "lead": "在这部手机上设置解锁、后台锁定和隐藏金额。",
+      "biometrics": "使用{{methodKey}}解锁",
+      "methodFace": "面容",
+      "methodTouch": "指纹",
+      "methodGeneric": "生物识别",
+      "biometricsOn": "使用{{methodKey}}解锁",
+      "biometricsOff": "仅密码",
+      "biometricsDisabled": "已关闭生物识别解锁",
+      "lockAfterLabel": "离开应用后锁定",
+      "lockAfterHint": "超过这段时间后，返回应用时会再次锁定。",
+      "optionNow": "立即",
+      "optionMinutes": "{{count}} 分钟",
+      "lockNow": "立即锁定",
+      "lockAfter_other": "{{count}} 分钟后锁定",
+      "hideOnLaunch": "启动时隐藏金额",
+      "hideOnLaunchHint": "每次启动时金额都处于隐藏状态；概览中的眼睛图标可再次显示。",
+      "hideOnLaunchShort": "启动时隐藏金额"
+    },
+    "profile": {
+      "lead": "您的姓名会显示在概览的问候语中。",
+      "currencyReadOnly": "主货币请在电脑上的 Moony 中更改。"
+    },
+    "language": {
+      "title": "应用语言",
+      "lead": "数字和日期按所选语言格式化。"
+    },
+    "delete": {
+      "title": "删除所有数据？",
+      "lead": "将永久删除这部手机上的数据库、密钥和附件。手机之外的备份副本会保留。请先创建备份——这是恢复数据的唯一途径。",
+      "confirmLabel": "请输入 {{word}} 以确认",
+      "confirm": "删除数据",
+      "failed": "删除失败"
+    }
+  },
+  "backup": {
+    "lead": "备份是一个加密文件：包含数据库、密钥和附件。只有您的密码才能打开。",
+    "last": "上次备份",
+    "lastOn": "上次备份 {{date}}",
+    "never": "尚无备份",
+    "what": "请保存到 iCloud Drive 或“文件”App 中的其他文件夹。Moony 无法访问该文件。",
+    "notSaved": "备份未保存",
+    "unavailableHere": "备份功能目前仅支持 iPhone。",
+    "restoreTitle": "恢复与迁移",
+    "restoreLead": "恢复这部手机上的备份，或从电脑上的 Moony 迁移个人资料：选择备份文件，恢复后请使用创建备份时的密码解锁。",
+    "restoreConfirmDescription": "创建于 {{date}} 的备份（Moony {{version}}，{{attachments}} 个附件，{{size}}）将替换这部手机上的数据。如需保留当前数据，请先备份。之后 Moony 会锁定；请使用创建该备份时的密码解锁。",
+    "osBackupNote": "加密的个人资料也包含在手机自身的备份中（iCloud 或电脑）；没有密码，任何人都无法打开。"
+  },
+  "firstRun": {
+    "privacyLead": "Moony 将所有内容存放在这部手机上的加密数据库中。没有云端，也无需在我们这里注册账户。",
+    "points": {
+      "encryption": {
+        "title": "AES-256 加密",
+        "text": "——只有您的密码才能打开数据库；照片和文档在数据库内部已加密。"
+      },
+      "localOnly": {
+        "title": "没有云端",
+        "text": "——我们不会向任何地方发送数据；备份需要您自己保存到“文件”App 或 iCloud Drive。"
+      },
+      "marketData": {
+        "title": "市场数据",
+        "text": "——仅获取您所关注的股票、货币和加密货币的价格（Yahoo Finance、CoinGecko、欧洲央行）。应用在离线时同样可用。"
+      }
+    },
+    "recoveryLead": "忘记密码时，这是找回数据的唯一途径。请将其保存在这部手机之外——密码管理器、“文件”App，或写在纸上。",
+    "saveToFiles": "存储到“文件”",
+    "recoveryFileNote": "此密钥用于重置您的 Moony 密码。它必须与这部手机上的 Moony 数据或其备份配合使用，因此请同时保存备份。请不要把此文件交给任何人。",
+    "areasLead": "选择您想在 Moony 中管理的内容。您可以随时在设置中更改。",
+    "firstAccountLead": "只需名称和余额即可。账单可以稍后再导入。",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "生物识别",
+      "backup": "备份"
+    },
+    "backupTitle": "备份您的数据",
+    "backupLead": "这部手机上保存着您数据的唯一副本。请将加密备份保存到 iCloud Drive 或您选择的文件夹；Moony 永远看不到它。",
+    "currencyPick": "主货币",
+    "countryPick": "银行所在国家",
+    "searchCurrency": "搜索货币"
+  },
+  "notifications": {
+    "lead": "Moony 只在这部手机上提醒，不经过服务器。每次解锁时都会重新安排通知。",
+    "permission": {
+      "label": "通知",
+      "granted": "已允许",
+      "denied": "已禁止",
+      "notAsked": "尚未允许",
+      "notGranted": "未允许",
+      "allow": "允许通知",
+      "deniedHint": "请在手机“设置”→ Moony →“通知”中允许。",
+      "unavailable": "此设备不支持。",
+      "needed": "请先允许通知。"
+    },
+    "deadlines": {
+      "label": "期限",
+      "hint": "期限前 14 天和前 1 天。"
+    },
+    "upkeep": {
+      "label": "每月数据维护",
+      "hint": "每月 {{day}} 日：余额与对账单。",
+      "day": "每月几号",
+      "dayLabel": "每月 {{day}} 日",
+      "dayValue": "{{day}} 日",
+      "title": "该维护数据了",
+      "body": "请记录余额并导入对账单。"
+    },
+    "backup": {
+      "label": "备份",
+      "hint": "上次备份超过 30 天时。",
+      "title": "请备份 Moony",
+      "stale": "上次备份已超过一个月。",
+      "never": "您还没有备份。"
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "距{{whatKey}}还有 14 天",
+      "tomorrow": "{{whatKey}}就在明天",
+      "kind": {
+        "insurance_anniversary": "保险解约通知截止日",
+        "insurance_end": "保险到期",
+        "loan_fixation_end": "固定利率结束",
+        "bond_maturity": "债券到期",
+        "account_termination": "账户结束",
+        "savings_rate_end": "优惠利率结束"
+      }
+    },
+    "test": {
+      "send": "发送测试通知",
+      "title": "测试通知",
+      "body": "Moony 的提醒就是这样显示的。",
+      "sent": "10 秒后送达"
+    }
   }
 }

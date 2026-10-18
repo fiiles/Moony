@@ -441,14 +441,21 @@ on-screen keyboard is up, `src/mobile/lib/use-visible-height.ts` publishes the f
 `<html>` and the box shrinks to it, so a field scrolls above the keyboard inside its own screen. Screens
 outside the tabs (`<Screen tabBar={false}>`) keep no room for the tab bar.
 
-**Lock and first run** (`mobile/pages/Lock.tsx`, spec §8.1–8.2). One page for `/auth`: the first-run
-wizard (the desktop `OnboardingWizard` without its live preview, safe areas through `--safe-top` /
-`--safe-bottom`), the lock, and the three-step recovery as pushed screens with a back button. The lock is
-centred: brand, a 76 pt rounded paper square with the lock glyph (it becomes the biometric button in
-Task 1.8), a 22 / 650 greeting, a 12 pt caption (`ink-3`), a 48 pt password field, the 48 pt primary
-button, the "forgot" link (44 pt tall), and at the bottom the language menu (`LanguageSelect`, never a
-segment of flags) and the 11 pt caption. Credential failures show under the field, everything else as a
-toast.
+**Lock and first run** (`mobile/pages/Lock.tsx`, `mobile/pages/FirstRun.tsx`, spec §8.1–8.2). One page
+for `/auth`: the phone first run, the lock, and the three-step recovery as pushed screens with a back
+button. The first run (`FirstRun.tsx`, one file per step under `mobile/pages/first-run/`, the flow in
+`mobile/hooks/use-first-run.ts`, the step order in `mobile/lib/first-run.ts`) is the desktop's five steps
+in one column without the live preview — Soukromí (currency and country as pick-row sheets), Účet, Klíč
+(the key box with Zkopírovat and "Uložit do Souborů", two groups to verify), Co sledovat (switch rows),
+První účet (name, amount field, currency) — then Biometrie ("Odemykat Moony obličejem?", Zapnout / Teď
+ne; left out when the phone has no usable biometry) and Záloha ("Telefon je jediná kopie vašich dat…",
+the first backup now / Teď ne). Every field and primary is 48 pt, text links 44 pt, the step progress
+caption ("2 / 7 · Účet") sits over a 3 pt bar, and there is no way back once the database exists. The
+desktop `OnboardingWizard` is not used on the phone. The lock is centred: brand, a 76 pt rounded paper
+square with the lock glyph (the biometric button while biometric unlock is on), a 22 / 650 greeting, a
+12 pt caption (`ink-3`), a 48 pt password field, the 48 pt primary button, the "forgot" link (44 pt
+tall), and at the bottom the language menu (`LanguageSelect`, never a segment of flags) and the 11 pt
+caption. Credential failures show under the field, everything else as a toast.
 
 | Component | Class | React | Rules |
 |---|---|---|---|
@@ -495,13 +502,19 @@ toast.
 | Sort pill | `.m-sortpill` | `mobile/components/wealth/SortPill.tsx` | The sort of a list (Akcie: Podle hodnoty / výnosu / názvu): 34 pt on `well-2`, radius 10, the chosen option 12 / 600 `ink-2` and a 14 pt chevron; a 44 pt hit area reaches past it. It opens a radio menu (Radix `DropdownMenuRadioGroup`, items 44 pt) headed by the control's name, and the pill's accessible name is "Řazení: Podle hodnoty". In Akcie's toolbar it sits at the start and the search toggle (an `.m-iconbtn`, `aria-pressed`) at the end; the search field opens under the toolbar, and closing it clears the search. |
 | More row | `.m-rows__more` | `mobile/components/wealth/MoreRow.tsx` | The last row of a folded list ("Zobrazit všech 12 pozic" after the first eight, "Zobrazit všech 28" under a position's transactions): 52 pt, the label centred 15 / 600 `ink-2`, its divider inset 14 pt like any row without a chip; a tap unfolds the list in place. |
 | Trade row | `.m-row`, `.m-row--flash`, `.is-hot`, `__chip--gain`, `__v--gain` | `mobile/components/wealth/TradeRow.tsx` | The entity row of a buy or a sell of a position: a ▲ chip (▽ on `gain` for a sell), "Nákup · 12 ks" over the day and the price in the trade's currency, the total at the rate of the trade's day as the value ("− 32 750 Kč"; "+ 12 880 Kč" in `gain` for a sell) over the total in the trade's own currency. Without a rate for that day the native total stands in the value and the sub says "bez kurzu pro EUR". A tap or a long press opens the row's menu (Upravit, Smazat). A tap on the trade's mark on the chart flashes the row: it takes `well` at once (`.is-hot`) and fades back to paper over 1.2 s (`.m-row--flash` carries the transition, so the press feedback of other rows stays instant; reduced motion drops it). |
-| Údržba card | `.m-card--well`, `.m-sec__n`, `.m-todo`, `__ic`, `__main`, `__t`, `__s` | `mobile/components/UpkeepCard.tsx` | Spec §8.3 item 1. An action card on `well`, first on Přehled, present only while something is due. Head: the section title and the count ("3 věci"). One row per item: a 34 px icon square on `well` (Lucide 17), the title 14 / 600 (wraps), a 12 `ink-4` sub-line (one line, ellipsis) and the verb at the end as a small button — primary on the first row, secondary on the rest. Rows are `line-soft` apart. Zaznamenat opens the record-balances sheet; the other verbs go to their tab (`routes.*`). |
+| Údržba card | `.m-card--well`, `.m-sec__n`, `.m-todo`, `__ic`, `__main`, `__t`, `__s` | `mobile/components/UpkeepCard.tsx` | Spec §8.3 item 1. An action card on `well`, first on Přehled, present only while something is due. Head: the section title and the count ("3 věci"). One row per item: a 34 px icon square on `well` (Lucide 17), the title 14 / 600 (wraps), a 12 `ink-4` sub-line (one line, ellipsis) and the verb at the end as a small button — primary on the first row, secondary on the rest. Rows are `line-soft` apart. Zaznamenat opens the record-balances sheet; Zálohovat opens Nastavení → Záloha a přenos (`/settings/backup`); the other verbs go to their tab (`routes.*`). |
 | Field | `.m-field`, `--signed`, `__l`, `__w`, `__i` (`--month`), `__u`, `__e`, `__s`, `__h`, `__lr`, `__a`; `.m-field-grid` | `mobile/components/AmountField.tsx`, `mobile/components/cashflow/MonthField.tsx` | Label 12 / 600 above, a 48 px field (radius 10, `line-strong`; focus `focus-border` and ring; invalid `loss`), text 15 tabular, the currency inside on the right, the decimal keypad, the last value as the placeholder. A plain text field: `parseAmountInput` reads the comma or point the system keypad types. A field that takes negative amounts (a balance) has the ± toggle on the left (`--signed`): a 32 px chip in a 48 px hit area that keeps the keypad open, ± on `well-2`, a dark "−" while pressed (`aria-pressed`, named "Záporná hodnota"), because the iOS decimal pad has no minus key; `signedAmountInput` adds the sign (a typed or pasted minus counts too). Invalid and focused, the ring is `loss-ring`. An error is 12 / 600 `loss` under the field; without one a hint may stand there (11 `ink-3`, the budget limit's six-month average). A month field (`MonthField`) is the same field with the platform's month picker (`input type="month"`: iOS and Android show their own wheel), with an optional text action beside its label ("Bez konce" clears the end month). Two month fields sit side by side in `.m-field-grid` (12 px gap) and their label rows are two lines high (`__lr`, 32 px) with or without the action, so the inputs stay level; the action (`__a`) reaches 44 pt by extending 12 pt above its row, never over the input. |
 | Sheet | `.m-scrim`, `.m-sheet`, `--full`, `__handle`, `__head`, `__t`, `__s`, `__body`, `__foot` | `mobile/components/Sheet.tsx`, `mobile/sheets/RecordBalancesSheet.tsx`, `mobile/sheets/CashflowCategoryPickerSheet.tsx` | Paper, top radius 17, drag handle 36 × 5 `well-3`, title 20 / 650, one sentence, a body that scrolls, a footer on `well` with a hairline: the ghost Zrušit left, the primary right (it takes the rest of the row). Covers the tab bar. Closes on the scrim, Escape, its own buttons and Android back (it pushes one history entry while open, `use-sheet-history.ts`; sheets stack — the picker over the transaction sheet, a confirmation over either — and back closes the newest only). Rises 260 ms, leaves 200 ms. Portalled into `#root` so it shares the box `--m-vh` shortens: the footer stays above the keyboard. The first field is not focused on opening. The category picker of the Cashflow drilldown is a tall sheet (`--full`): the categories as entity rows grouped under section heads (Výdaj · Příjem · Převod), the payment's current one ticked (a value row, so no chevron), a spinner on the tapped row until the change has taken, and the lone ghost Zrušit in the footer (to be replaced by Finance's `CategoryPickerSheet`, Phase 3b). |
 | Confirm sheet | `.m-sheet`, `.m-btn--destructive`, `.m-btn--ghost` | `mobile/sheets/ConfirmSheet.tsx`, `mobile/sheets/BudgetDeleteSheet.tsx` | The phone's confirm dialog (spec §10.5, the desktop's `ConfirmDeleteDialog`): the question as the sheet's title ("Smazat celý rozpočet?"), one sentence under it that says what else goes ("minulé měsíce přijdou o limit"), no body, and the footer — the ghost Zrušit on the left, the solid `destructive` button taking the rest and naming the deed ("Smazat celý rozpočet", "Smazat"). The one place the solid destructive button is used; it spins while the delete runs. The caller closes it once the action has succeeded; it closes on the scrim, Escape and Android back like any sheet. |
 | Placeholder sheet | `.m-sheet` | `mobile/sheets/PlaceholderSheet.tsx` | A sheet that is not built yet: its title, one sentence saying when it comes, Zavřít as the footer's one button. |
 | Form box | `.m-box`, `--loss`, `__t` | `mobile/sheets/BudgetLimitSheet.tsx` | A box in a sheet's form: the scheduled changes on `well` (`line` border, `ink-3`, radius 8), and after the first tap on save the limits that the save replaces in `loss` (`loss-soft`, `loss-line`, `role="alert"`) — a bold 12 line, then one line per item. The primary button then reads "Přepsat a uložit"; a second tap saves. |
 | Toast | (sonner, `components/ui/toaster.tsx`) | `mobile/MobileApp.tsx` | At the bottom, centred between the 16 pt gutters and 12 pt above the tab bar and the bottom safe area (`--m-tabbar-h` + `--safe-bottom`), 2.6 s, so "Vrátit" is never under the bar. Past-tense verb, as on the desktop. |
+| Settings row | `.m-row--chev`, `__chip--sq` | `mobile/components/SettingsRow.tsx`, `mobile/pages/Settings.tsx` | A row of Nastavení (spec §8.9, prototype note 20): the entity row with a rounded-square icon chip (Lucide 16), the setting's name, its current state in the sub-line ("Odemykání obličejem · zámek po 15 minutách", one line ending in an ellipsis) and the chevron. `danger` draws the chip and the title in `loss` (Smazat všechna data). A row pushes a page (`href`, `/settings/:section`) or runs an action (`onClick`: the lock, a sheet). The root ends with the version caption. |
+| Section page | `.m-screen` | `mobile/components/SectionPage.tsx`, `mobile/pages/settings/*Section.tsx` | A page pushed on Nastavení: the nav bar with "Nastavení" as the back label, no tab bar, one lead sentence (13 / 450 `ink-3`) as the first body line, then switch rows, key-value rows, a segment or 48 pt buttons on paper cards (Profil, Zabezpečení, Připomínky, Oznámení, Záloha a přenos). |
+| Step progress | — | `mobile/components/StepProgress.tsx` | The first run's place in its steps: the caption "2 / 7 · Účet" (11 `ink-3`) over a 3 pt bar on `well-2` with the `dark` fill at index / total. The caption carries the meaning; the bar is `aria-hidden`. |
+| Picker sheets | `.m-sheet`, `.m-pick`, `.m-search` | `mobile/sheets/LanguagePickerSheet.tsx`, `DayPickerSheet.tsx`, `CurrencyPickerSheet.tsx`, `CountryPickerSheet.tsx` | One choice from a list: pick rows with a check on the current one and Zrušit as the footer's one button; a tap picks and closes. The language rows carry `lang` (a `PickRow` prop) so 日本語 and 简体中文 get the CJK font rule of `index.css`; the currency sheet has a search over codes and names; the day sheet lists 1–28. |
+| Restore sheet | `.m-sheet`, `.m-btn--destructive` | `mobile/sheets/RestoreBackupSheet.tsx` | The restore confirmation: the question, the archive's date, version, attachment count and size in the phone's own sentence (`backup.restoreConfirmDescription`: it replaces the data and says to back up first; the desktop's "pre-restore folder" promise is not made, nobody can reach that folder on a phone), the "newer than this app" line in `loss` with the button disabled, Zrušit and the destructive Obnovit; not dismissable while restoring. |
+| Delete sheet | `.m-sheet`, `.m-btn--destructive` | `mobile/sheets/DeleteProfileSheet.tsx` | Smazat všechna data: the question, what goes and the backup reminder, a 48 pt field that must spell DELETE (the desktop's word), Zrušit and the destructive button enabled only then; on success the pending notifications are cancelled (iOS, best effort), the device storage is cleared and the app reloads into the first run. |
 
 **Hide amounts** (spec §4 principle 7, D6). The eye on Přehled covers every amount in the app, so
 phone code never calls `fmt.money` itself; `src/mobile/components/Money.tsx` documents the four routes
@@ -519,6 +532,36 @@ new screen is that `grep -rn "fmt.money(" src/mobile --include='*.ts' --include=
 **The one exception** is the company card's market cap ("O společnosti", `CompanyCard.tsx`): it is public
 data about the company, not an amount of the user's, so it stays visible while amounts are hidden; the
 prices on the same card (the 52-week range) go through the eye.
+
+**Backup export on iOS** (`mobile/hooks/use-backup.ts`, `use-export-text-file.ts`,
+`src-tauri/src/commands/backup.rs`). The dialog plugin's `save()` on iOS exports whatever file already sits
+at `Documents/<fileName>` through the Files picker, so an export is staged first: `stage_backup_export`
+writes the archive there without recording a backup, `save` opens the picker, and `finish_backup_export`
+removes the staged copy and records the backup only when the picker returned a destination. The recovery
+key text goes the same way through `stage_text_export` / `discard_text_export` under a fixed allow-list
+of names. The phone capability grants the webview no fs command, and a startup sweep removes any staged
+file an interrupted export left behind. Exports are iOS-only until an Android path writes into the
+returned content URI. Restore (`inspect_backup` + `restore_backup` on a picked file, the picked copy read
+by Rust) is verified on iOS only: there the picker hands over `file://` URLs, which `dialogPathToFsPath`
+turns into paths, while Android's `open()` returns `content://` URIs that `inspect_backup` cannot read,
+so Android restore is a follow-up. Where it runs, restore switches biometric unlock off first, clears the
+enrolment flag, cancels the old profile's pending notifications and reloads into the lock, so the next
+password unlock offers biometrics again and plans the restored profile's notifications.
+
+**Notifications** (`mobile/lib/notification-plan.ts`, `mobile/hooks/use-notification-schedule.ts`).
+Scheduling runs on iOS only (ruling 16 of the Phase 5 plan; `schedulesOnThisDevice`): the Android
+plugin reads `schedule.at.date` as UTC, so the local digits written for iOS would fire hours off there.
+Android needs its own UTC encoding of the date and an Android build to verify it on, which is a
+follow-up. Planned by a pure function on every unlock from the milestones and the mute list: T−14 and
+T−1 for deadlines, the monthly upkeep on the chosen day (1–28), the backup reminder the morning after a
+stale backup is found, all at 09:00 local, at most 60 pending. The iOS plugin reads `schedule.at.date`
+as local wall-clock digits with a literal `Z`, so `scheduleDateString` emits exactly that and never a
+`Date`; items already past are dropped. Smazat všechna data and a restore call
+`cancelAllNotifications()` before the reload, so the notifications of a deleted or replaced profile do
+not outlive it. Nothing is scheduled until the person allows notifications from
+Nastavení → Oznámení (the ten reminder groups of Připomínky are the desktop's mute list); the
+notification preferences live in `localStorage` (`moony-notifications`), like the background lock and
+hide-on-launch flags.
 
 **The row rule.** One row pattern replaces tables on the phone: accounts, positions, bonds, properties,
 loans, policies, transactions, categories, watchlist and agenda rows. A 36 pt chip (logo, initials or an

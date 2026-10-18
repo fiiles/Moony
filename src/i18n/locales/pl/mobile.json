@@ -396,5 +396,156 @@
       "range52": "Zakres 52 tyg.",
       "renamed": "Nazwa zapisana"
     }
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profil",
+      "profileNoEmail": "Imię i e-mail",
+      "language": "Język",
+      "security": "Bezpieczeństwo",
+      "backup": "Kopia zapasowa i przenoszenie",
+      "notifications": "Powiadomienia",
+      "reminders": "Przypomnienia",
+      "remindersSub": "{{on}} z {{total}} grup",
+      "import": "Import",
+      "deleteSub": "po wpisaniu słowa potwierdzenia"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "bez telemetrii",
+    "security": {
+      "lead": "Odblokowywanie, blokada w tle i ukrywanie kwot na tym telefonie.",
+      "biometrics": "Odblokowuj {{methodKey}}",
+      "methodFace": "twarzą",
+      "methodTouch": "odciskiem palca",
+      "methodGeneric": "biometrią",
+      "biometricsOn": "Odblokowanie {{methodKey}}",
+      "biometricsOff": "Tylko hasło",
+      "biometricsDisabled": "Odblokowywanie biometrią wyłączone",
+      "lockAfterLabel": "Blokuj po wyjściu z aplikacji",
+      "lockAfterHint": "Po tym czasie aplikacja blokuje się ponownie po powrocie.",
+      "optionNow": "Od razu",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "blokada od razu",
+      "lockAfter_one": "blokada po {{count}} minucie",
+      "lockAfter_few": "blokada po {{count}} minutach",
+      "lockAfter_many": "blokada po {{count}} minutach",
+      "lockAfter_other": "blokada po {{count}} minuty",
+      "hideOnLaunch": "Ukrywaj kwoty po uruchomieniu",
+      "hideOnLaunchHint": "Każde uruchomienie zaczyna się z ukrytymi kwotami; oko w Przeglądzie pokazuje je ponownie.",
+      "hideOnLaunchShort": "kwoty ukryte po uruchomieniu"
+    },
+    "profile": {
+      "lead": "Twoje imię pojawia się w powitaniu w Przeglądzie.",
+      "currencyReadOnly": "Walutę główną zmienisz w Moony na komputerze."
+    },
+    "language": {
+      "title": "Język aplikacji",
+      "lead": "Liczby i daty są formatowane według języka."
+    },
+    "delete": {
+      "title": "Usunąć wszystkie dane?",
+      "lead": "Trwale usuwa bazę danych, klucze i załączniki z tego telefonu. Kopie zapasowe poza telefonem zostają. Najpierw zrób kopię zapasową — to jedyna droga powrotu.",
+      "confirmLabel": "Aby potwierdzić, wpisz {{word}}",
+      "confirm": "Usuń dane",
+      "failed": "Nie udało się usunąć"
+    }
+  },
+  "backup": {
+    "lead": "Kopia zapasowa to jeden zaszyfrowany plik: baza danych, klucze i załączniki. Otworzy go tylko twoje hasło.",
+    "last": "Ostatnia kopia zapasowa",
+    "lastOn": "Ostatnia kopia zapasowa {{date}}",
+    "never": "Brak kopii zapasowej",
+    "what": "Zapisz ją w iCloud Drive lub w innym folderze w aplikacji Pliki. Moony nie ma do niej dostępu.",
+    "notSaved": "Kopia zapasowa nie została zapisana",
+    "unavailableHere": "Kopia zapasowa na razie działa tylko na iPhonie.",
+    "restoreTitle": "Przywracanie i przenoszenie",
+    "restoreLead": "Przywróć kopię zapasową z tego telefonu albo przenieś profil z Moony na komputerze: wybierz plik kopii i po przywróceniu odblokuj hasłem, które obowiązywało w chwili jej utworzenia.",
+    "restoreConfirmDescription": "Kopia z {{date}} (Moony {{version}}, załączników: {{attachments}}, {{size}}) zastąpi dane na tym telefonie. Jeśli chcesz zachować obecne dane, najpierw zrób ich kopię zapasową. Po zakończeniu Moony się zablokuje; odblokuj je hasłem używanym w chwili tworzenia kopii.",
+    "osBackupNote": "Zaszyfrowany profil jest też w kopii zapasowej samego telefonu (iCloud lub komputer); bez hasła nikt go nie otworzy."
+  },
+  "firstRun": {
+    "privacyLead": "Moony przechowuje wszystko w zaszyfrowanej bazie danych na tym telefonie. Bez chmury, bez konta u nas.",
+    "points": {
+      "encryption": {
+        "title": "Szyfrowanie AES-256",
+        "text": "– bazę otwiera tylko twoje hasło; zdjęcia i dokumenty są w niej zaszyfrowane."
+      },
+      "localOnly": {
+        "title": "Bez chmury",
+        "text": "– nigdzie niczego nie wysyłamy; kopię zapasową zapisujesz sam w aplikacji Pliki lub w iCloud Drive."
+      },
+      "marketData": {
+        "title": "Dane rynkowe",
+        "text": "– pobierane są tylko ceny akcji, walut i kryptowalut, które śledzisz (Yahoo Finance, CoinGecko, EBC). Aplikacja działa także offline."
+      }
+    },
+    "recoveryLead": "Jedyna droga do twoich danych, jeśli zapomnisz hasła. Przechowuj go poza tym telefonem – w menedżerze haseł, w aplikacji Pliki lub na papierze.",
+    "saveToFiles": "Zapisz w Plikach",
+    "recoveryFileNote": "Ten klucz resetuje twoje hasło do Moony. Działa tylko razem z danymi Moony na tym telefonie lub z ich kopią zapasową, więc zapisz także tę kopię. Nie przekazuj tego pliku nikomu.",
+    "areasLead": "Wybierz, co chcesz śledzić w Moony. Możesz to zmienić w dowolnym momencie w Ustawieniach.",
+    "firstAccountLead": "Wystarczy nazwa i saldo. Wyciąg zaimportujesz później.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometria",
+      "backup": "Kopia zapasowa"
+    },
+    "backupTitle": "Zrób kopię zapasową danych",
+    "backupLead": "Ten telefon przechowuje jedyną kopię twoich danych. Zapisz zaszyfrowaną kopię zapasową w iCloud Drive lub w wybranym folderze; Moony nigdy jej nie widzi.",
+    "currencyPick": "Waluta główna",
+    "countryPick": "Kraj bankowości",
+    "searchCurrency": "Szukaj waluty"
+  },
+  "notifications": {
+    "lead": "Moony przypomina tylko z tego telefonu, bez serwera. Powiadomienia są planowane przy każdym odblokowaniu.",
+    "permission": {
+      "label": "Powiadomienia",
+      "granted": "Dozwolone",
+      "denied": "Zablokowane",
+      "notAsked": "Jeszcze niedozwolone",
+      "notGranted": "Niedozwolone",
+      "allow": "Zezwól na powiadomienia",
+      "deniedHint": "Zezwól na nie w Ustawieniach telefonu → Moony → Powiadomienia.",
+      "unavailable": "Niedostępne na tym urządzeniu.",
+      "needed": "Najpierw zezwól na powiadomienia."
+    },
+    "deadlines": {
+      "label": "Terminy",
+      "hint": "14 dni i 1 dzień przed terminem."
+    },
+    "upkeep": {
+      "label": "Miesięczna aktualizacja danych",
+      "hint": "{{day}}. dzień miesiąca: salda i wyciągi.",
+      "day": "Dzień miesiąca",
+      "dayLabel": "{{day}}. dzień miesiąca",
+      "dayValue": "{{day}}.",
+      "title": "Czas zadbać o dane",
+      "body": "Zapisz salda i zaimportuj wyciągi."
+    },
+    "backup": {
+      "label": "Kopia zapasowa",
+      "hint": "Gdy ostatnia kopia jest starsza niż 30 dni.",
+      "title": "Zrób kopię zapasową Moony",
+      "stale": "Ostatnia kopia jest starsza niż miesiąc.",
+      "never": "Nie masz jeszcze żadnej kopii zapasowej."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} za 14 dni",
+      "tomorrow": "{{whatKey}} jutro",
+      "kind": {
+        "insurance_anniversary": "Termin wypowiedzenia ubezpieczenia",
+        "insurance_end": "Koniec ubezpieczenia",
+        "loan_fixation_end": "Koniec stałego oprocentowania",
+        "bond_maturity": "Wykup obligacji",
+        "account_termination": "Koniec konta",
+        "savings_rate_end": "Koniec promocyjnego oprocentowania"
+      }
+    },
+    "test": {
+      "send": "Wyślij powiadomienie testowe",
+      "title": "Powiadomienie testowe",
+      "body": "Tak wygląda przypomnienie z Moony.",
+      "sent": "Przyjdzie za 10 sekund"
+    }
   }
 }

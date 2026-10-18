@@ -370,6 +370,12 @@
     box-shadow: var(--focus-ring);
   }
 
+  /* Focus targets outside the tab order (a step heading focused for screen readers) get no
+     ring: on a fresh window, where nothing was clicked yet, it would mark the heading as a box. */
+  [tabindex='-1']:focus-visible {
+    box-shadow: none;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

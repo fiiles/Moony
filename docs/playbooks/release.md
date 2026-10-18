@@ -41,7 +41,7 @@ On a clean `main`:
 
 ```bash
 # frontend and backend gates (same as CI)
-npm run lint && npm run typecheck && npm test
+npm run lint && npm run typecheck && npm run format:check && npm test
 cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings && cargo test
 
 # generated types must match the Rust types
@@ -93,29 +93,47 @@ fourth place to edit. Use [Semantic Versioning](https://semver.org/): MAJOR for 
 changes (for example an incompatible database or MCP change), MINOR for features, PATCH for
 fixes.
 
+Also in the bump commit (`check-version` does not read these, so nothing fails if you forget):
+
+- **The iOS project version fields**: `CFBundleShortVersionString` and `CFBundleVersion` in
+  `src-tauri/gen/apple/project.yml` and in `src-tauri/gen/apple/moony_iOS/Info.plist`.
+- **The status text** in the README ("Status and compatibility") and in `ROADMAP.md`, when the
+  release changes what they say.
+- **`npm run licenses`**, committed when `THIRD_PARTY_LICENSES.md` changed.
+- **The compare links at the bottom of `CHANGELOG.md`**: point `[Unreleased]` at
+  `compare/vX.Y.Z...HEAD` and add `[X.Y.Z]` with the link from the previous version's tag.
+
 ```bash
-git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json CHANGELOG.md
-git commit -m "chore(release): v0.9.1"
+git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json \
+  src-tauri/gen/apple/project.yml src-tauri/gen/apple/moony_iOS/Info.plist \
+  README.md ROADMAP.md THIRD_PARTY_LICENSES.md CHANGELOG.md
+git commit -m "chore(release): v1.0.0"
 ```
 
 > **The updater only offers a version that is higher than the installed one.** Builds from the
-> previous repository (1.x) keep checking that repository's releases, so anyone still on one of
-> them has to install 0.9.x by hand. Say so in the notes of the first release.
+> old private repository keep checking that repository, not this one; their users install the
+> current version by hand.
 
 ## Tag and build
 
 The release workflow starts on any tag that begins with `v`. It cannot be started by hand:
 
+Push `main` alone first and wait until CI (Frontend, Rust Check, Rust iOS Check) is green; only
+then tag and push the tag. Never use `git push --all` or `git push --mirror`: a local archive
+branch has unrelated history and must not reach the public repository.
+
 ```bash
-git tag v0.9.1
-git push origin main v0.9.1
+git push origin main
+# wait for CI on that commit to be green, then:
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 The tag name decides how the release is published:
 
 - `vX.Y.Z` is a full release. Once published it becomes the "latest" release that the updater
   endpoint (`…/releases/latest/download/latest.json`) serves.
-- A tag with a hyphen (`v1.0.0-rc.1`, `v0.9.0-test.1`) is created as a **pre-release**
+- A tag with a hyphen (`v1.0.0-rc.1`, `v1.0.0-test.1`) is created as a **pre-release**
   (`prerelease: contains(github.ref_name, '-')` in `release.yml`). GitHub's "latest" skips
   pre-releases, so the updater never offers one.
 
@@ -125,7 +143,7 @@ The tag name decides how the release is published:
    the first `version = "…"` line of `src-tauri/Cargo.toml` and fails unless all three equal the
    tag without its leading `v` and without a pre-release suffix (`v1.0.0-rc.1` requires
    `1.0.0` in the manifests). Nothing is built and no release is created on a mismatch. To
-   recover, delete the tag (`git push origin --delete v0.9.1 && git tag -d v0.9.1`), fix the
+   recover, delete the tag (`git push origin --delete v1.0.0 && git tag -d v1.0.0`), fix the
    version, and tag again.
 2. **`create-release`** creates the **draft** release `Moony v<version>` once, with the body
    from `.github/release-body.md` (`@VERSION@` replaced, `@CHANGES@` replaced by the version's
@@ -152,16 +170,20 @@ The tag name decides how the release is published:
 ### A test build without a public release
 
 To try the pipeline, or the installers, without publishing anything, tag the commit with a
-pre-release suffix. The manifests keep their plain version, so no bump is needed:
+pre-release suffix:
 
 ```bash
-git tag v0.9.0-test.1
-git push origin v0.9.0-test.1
+git tag v1.0.0-rc.1      # manifests must already say 1.0.0, and CHANGELOG.md needs a "## [1.0.0]" section
+git push origin v1.0.0-rc.1
 ```
+
+Any suffixed tag (`-rc.1`, `-test.1`) is checked like the full one: it still needs the matching
+`## [X.Y.Z]` section in `CHANGELOG.md` and the bumped manifests, so bump the version and write the
+changelog first.
 
 The run creates a **draft pre-release** with the full set of artifacts. When you are done,
 delete the draft under *Releases*, then the tag
-(`git push origin --delete v0.9.0-test.1 && git tag -d v0.9.0-test.1`).
+(`git push origin --delete v1.0.0-rc.1 && git tag -d v1.0.0-rc.1`).
 
 ## Review and publish the draft
 
@@ -177,9 +199,15 @@ delete the draft under *Releases*, then the tag
 4. Install the artifacts on clean machines — at least one macOS, one Windows and one Linux
    — and confirm the first-run wizard, unlock and the About version. Expect the Gatekeeper /
    SmartScreen warnings described in the README for as long as builds are unsigned.
-5. Click **Publish release**. Only a published, non-pre-release release is served by
+5. Before clicking Publish, check the draft has 15 assets, the six file names of the download
+   table in `.github/release-body.md`, and a `latest.json` with 10 platform keys:
+
+   ```bash
+   gh release download vX.Y.Z -R fiiles/Moony -p latest.json -O - | jq '.platforms | keys'
+   ```
+6. Click **Publish release**. Only a published, non-pre-release release is served by
    `…/releases/latest/download/latest.json`.
-6. Once an older version exists, install it on a machine, open Moony, let it check for updates
+7. Once an older version exists, install it on a machine, open Moony, let it check for updates
    and run the update end to end (download, signature verification, restart).
 
 ## Code signing and notarization (not set up yet)

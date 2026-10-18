@@ -14,7 +14,7 @@ docs/standards/workflow.md.
 
 ## Checklist
 
-- [ ] **Gates are green locally**: `npm run lint && npm run typecheck && npm test`, and in `src-tauri/`: `cargo fmt --check && cargo clippy -- -D warnings && cargo test`
+- [ ] **Gates are green locally**: `npm run lint && npm run typecheck && npm run format:check && npm test`, and in `src-tauri/`: `cargo fmt --check && cargo clippy -- -D warnings && cargo test`
 - [ ] **Tests** cover the change (regression test for a bug fix; pure functions in `src/utils/` and `shared/`; Rust services in `src-tauri/src/services/`) — see `docs/standards/testing.md`
 - [ ] **All ten languages**: every new or changed user-facing string is in every folder under `src/i18n/locales/` (`en`, `cs`, `de`, `es`, `it`, `nb`, `pl`, `sv`, `ja`, `zh`); `src/i18n/locales.test.ts` checks it (`docs/standards/i18n.md`)
 - [ ] **Types**: if `shared/schema.ts` or a Rust wire type changed, `shared/generated-types.ts` is regenerated (`cd src-tauri && cargo test generate_bindings -- --ignored`)

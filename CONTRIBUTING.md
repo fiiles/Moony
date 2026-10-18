@@ -168,7 +168,7 @@ npm run dev
 npm run tauri build -- --no-sign
 
 # Quality gates (run before committing)
-npm run lint && npm run typecheck && npm test
+npm run lint && npm run typecheck && npm run format:check && npm test
 cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings && cargo test
 
 # After changing dependencies
@@ -308,9 +308,9 @@ Things to know:
 
 ### Mobile (iOS simulator)
 
-The phone app is the same crate and bundle as the desktop app with its own frontend shell
-(`src/mobile/`, see "Mobile shell" in `docs/architecture/overview.md`). Only iOS is set up; run it
-in the simulator on a Mac.
+The phone shell (in development, not released; release builds are desktop only) is the same crate
+and bundle as the desktop app with its own frontend shell (`src/mobile/`, see "Mobile shell" in
+`docs/architecture/overview.md`). Only iOS is set up; run it in the simulator on a Mac.
 
 **Prerequisites** (on top of the macOS ones above):
 
@@ -345,8 +345,8 @@ next run from the wizard again. The app installs with the identifier `com.moonyf
 picks one for you. Take the UDID from `xcrun simctl list devices booted` and pass it, e.g.
 `xcrun simctl io <UDID> screenshot shot.png`.
 
-**Face ID.** Biometric unlock is offered once, after the first password unlock ("Odemykat Moony
-obličejem?"). Enrol Face ID in the simulator, then answer its prompts with these commands (or
+**Face ID.** Biometric unlock is offered once, after the first password unlock ("Unlock Moony
+with your face?"). Enrol Face ID in the simulator, then answer its prompts with these commands (or
 Features → Face ID in the Simulator menu):
 
 ```bash

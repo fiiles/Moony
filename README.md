@@ -10,7 +10,7 @@
 [![Latest release](https://img.shields.io/github/v/release/fiiles/Moony?display_name=tag)](https://github.com/fiiles/Moony/releases/latest)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](./LICENSE)
 
-Beta (0.10, on the way to 1.0) · macOS · Windows · Linux · ten languages
+macOS · Windows · Linux · ten languages
 
 </div>
 
@@ -63,6 +63,8 @@ tablet app, or a budget shared by a household (one profile on one computer, no s
   and Czech are machine-translated and [corrections are welcome](./CONTRIBUTING.md#translations).
   The main currency can be any of the 36 that have an exchange-rate source; every amount keeps its
   own currency and nothing is converted 1:1 or at an invented rate ([details](./docs/currencies.md)).
+- **Light and dark.** Settings → General → Appearance: System (follows macOS, Windows or Linux),
+  Light or Dark.
 
 **Bank presets**, recognized from the header row of an export. Fintechs: Revolut, Wise, N26.
 Germany: Sparkasse, DKB\*, ING Germany\*. United Kingdom: a generic debit/credit layout. United
@@ -190,8 +192,7 @@ only together with the key files. *Settings → Account → Delete data…* does
 Moony can serve your data to an AI assistant such as Claude over the Model Context Protocol. It
 is off by default, listens on `127.0.0.1` only, needs the app to be unlocked and a bearer token,
 and offers 44 tools that read and, in part, write your data. The assistant processes whatever it
-reads, usually in its provider's cloud, and tool names may change before 1.0
-([setup](./docs/mcp.md)).
+reads, usually in its provider's cloud ([setup](./docs/mcp.md)).
 
 ## Data sources and attribution
 
@@ -209,12 +210,14 @@ wrong or out of date; check anything that matters against your bank and broker s
 
 ## Status and compatibility
 
-Moony 0.10 is the beta for 1.0. Databases created with 0.10.x are meant to open in 1.0 without
-manual steps. That is a goal, not a guarantee, backed by append-only migrations and an automatic
-copy of the database next to itself (`moony.db.bak-<time>`, the newest three are kept) before a
-migration. Keep your own backup: an older version refuses a database that a newer one has
-migrated, and the MCP interface may still change before 1.0. See [CHANGELOG.md](./CHANGELOG.md)
-and [ROADMAP.md](./ROADMAP.md).
+Moony 1.0 is the first stable release. Your database is upgraded in place by append-only
+migrations, and Moony first copies it next to itself (`moony.db.bak-<time>`, the newest three are
+kept). That is a safeguard, not a guarantee: keep your own backup, because an older version
+refuses a database that a newer one has migrated. If you come from 0.10.0 or older, read
+[Where your data lives](./PRIVACY.md#where-your-data-lives) first: the data folder was renamed in
+0.11.0. The MCP tool names and result shapes have been stable since 0.10.0; if a later release
+changes them incompatibly, [CHANGELOG.md](./CHANGELOG.md) says so. Plans are in
+[ROADMAP.md](./ROADMAP.md).
 
 ## Built with AI assistance
 

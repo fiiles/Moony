@@ -5,8 +5,9 @@ Moony can serve your data to an AI assistant such as Claude over the Model Conte
 unlocked. For what leaves your computer when you use it, see
 [PRIVACY.md](../PRIVACY.md#the-optional-mcp-server-ai-assistant).
 
-**The MCP interface is not stable yet.** Tool names and result shapes changed incompatibly in
-0.9.1 and again in 0.10.0 (see [CHANGELOG.md](../CHANGELOG.md)) and may change again before 1.0.
+**Stability.** Tool names and result shapes changed incompatibly in 0.9.1 and 0.10.0 (see
+[CHANGELOG.md](../CHANGELOG.md)) and have been stable since. If a later release changes them
+incompatibly, the changelog says so.
 
 ## What it offers
 

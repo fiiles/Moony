@@ -8,6 +8,7 @@ import {
   fileKind,
   importFacts,
   isOpenAccount,
+  pickedFileStillWanted,
   previewAmount,
   statementNeedsStage,
 } from './import-flow';
@@ -355,5 +356,19 @@ describe('csvReadable', () => {
         })
       )
     ).toBe(false);
+  });
+});
+
+describe('pickedFileStillWanted', () => {
+  it('keeps a file the picker returned while the sheet that asked is still open', () => {
+    expect(pickedFileStillWanted({ open: true, askedAt: 4, now: 4 })).toBe(true);
+  });
+
+  it('drops it when the sheet was closed while the picker was up (a lock, Android back)', () => {
+    expect(pickedFileStillWanted({ open: false, askedAt: 4, now: 4 })).toBe(false);
+  });
+
+  it('drops it when another read or the close moved the generation on', () => {
+    expect(pickedFileStillWanted({ open: true, askedAt: 4, now: 5 })).toBe(false);
   });
 });

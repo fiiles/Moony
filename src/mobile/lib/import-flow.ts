@@ -194,5 +194,21 @@ export function csvReadable(inspection: CsvPreviewResult): boolean {
   return !inspection.dateFormatAmbiguous && isMappingComplete(mappingFromInspection(inspection));
 }
 
+/**
+ * Whether a file the Files picker handed back is still wanted: the sheet that asked is open and
+ * no read (or close) has bumped the flow's generation since the picker was opened. A file picked
+ * after the sheet went away (a lock, Android back) is a plaintext copy nobody will read, so it
+ * is discarded at once instead of adopted.
+ */
+export function pickedFileStillWanted(input: {
+  open: boolean;
+  /** The flow's read generation when the picker was opened. */
+  askedAt: number;
+  /** The generation now. */
+  now: number;
+}): boolean {
+  return input.open && input.askedAt === input.now;
+}
+
 /** Rows of the preview the phone asks the backend for (and shows). */
 export const PREVIEW_ROWS = 50;

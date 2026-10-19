@@ -38,6 +38,7 @@ import {
   csvReadable,
   fileKind,
   isOpenAccount,
+  pickedFileStillWanted,
   statementNeedsStage,
   type ImportRequest,
   type ImportStage,
@@ -54,6 +55,11 @@ const ACCOUNTS_KEY = ['bank-accounts'] as const;
 
 /** The copies iOS makes of a shared or picked file are plaintext in the app's Inbox: only there. */
 const discardsCopies = () => import.meta.env.TAURI_ENV_PLATFORM === 'ios';
+
+/** Deletes a received copy, best effort: a refusal means the path was not one (a desktop dev path). */
+function discardPath(copy: string) {
+  if (discardsCopies()) void receivedFilesApi.discard(copy).catch(() => undefined);
+}
 
 /**
  * The import sheet's state machine (spec §8.6), one `ImportStage` at a time:
@@ -126,8 +132,7 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
   const discardOwned = () => {
     const copy = owned.current;
     owned.current = null;
-    // A refusal means the path was not a received copy (a desktop dev path): nothing to do
-    if (copy && discardsCopies()) void receivedFilesApi.discard(copy).catch(() => undefined);
+    if (copy) discardPath(copy);
   };
   const adopt = (filePath: string) => {
     if (owned.current !== null && owned.current !== filePath) discardOwned();
@@ -289,6 +294,10 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
   useEffect(() => {
     readRef.current = read;
   });
+  const openRef = useRef(open);
+  useEffect(() => {
+    openRef.current = open;
+  });
   const started = useRef(false);
   useEffect(() => {
     if (started.current || !request.path) return;
@@ -308,11 +317,19 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
 
   /** The Files picker: no type filter — a bank's export may be `.STA`, `.940` or have no extension. */
   const chooseFile = async () => {
+    const askedAt = reads.current;
+    const stillWanted = () =>
+      pickedFileStillWanted({ open: openRef.current, askedAt, now: reads.current });
     try {
       const selected = await openFileDialog({ multiple: false, directory: false });
       if (!selected) return;
-      await read(dialogPathToFsPath(selected));
+      const picked = dialogPathToFsPath(selected);
+      // The sheet went away while the picker was up (a lock, Android back): iOS has copied the
+      // file into the app's Inbox, so nothing else will ever discard it
+      if (!stillWanted()) return discardPath(picked);
+      await read(picked);
     } catch (error) {
+      if (!stillWanted()) return;
       giveUp({ reason: 'error', detail: translateApiError(error as Error, tc) });
     }
   };

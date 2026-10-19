@@ -3,17 +3,19 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { CategorizationResult } from '@shared/schema';
+import { getCategoryId, toTransactionInput } from '@/hooks/useCategorization';
 import { getCompleteBankHistory } from '@/lib/bank-history';
 import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
 import { bankAccountsApi, categorizationApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 
 /**
- * Runs the rules over the account's payments without a category and saves the matches: the
- * desktop account page's "Auto-categorize" (`BankAccountDetail.handleAutoCategorize`), which its
- * import dialog calls after a rule pack was turned on. Resolves with how many payments got a
- * category; a failure is said in a toast and resolves 0. Matches are written in chunks of 50, so
- * a whole history stays bounded.
+ * Runs the rules over the account's payments without a category and saves the matches, after the
+ * import's "Zapnout balíček pravidel". Mirrors the desktop account page's "Auto-categorize"
+ * (`BankAccountDetail.handleAutoCategorize`, a closure that cannot be imported) — change them
+ * together; the payment mapping and the match lookup are the desktop's own helpers
+ * (`useCategorization`). Resolves with how many payments got a category; a failure is said in a
+ * toast and resolves 0. Matches are written in chunks of 50, so a whole history stays bounded.
  */
 export function useAutoCategorize(): (accountId: string) => Promise<number> {
   const queryClient = useQueryClient();
@@ -30,19 +32,7 @@ export function useAutoCategorize(): (accountId: string) => Promise<number> {
         });
         if (transactions.length === 0) return 0;
         uncategorizedIds = transactions.map((tx) => tx.id);
-        results = await categorizationApi.categorizeBatch(
-          transactions.map((tx) => ({
-            id: tx.id,
-            description: tx.description ?? undefined,
-            counterparty: tx.counterpartyName ?? undefined,
-            counterpartyIban: tx.counterpartyIban ?? undefined,
-            counterpartyBankCode: tx.counterpartyBankCode ?? undefined,
-            counterpartyCountry: tx.counterpartyCountry ?? undefined,
-            amount: Number(tx.amount),
-            isCredit: tx.type === 'credit',
-            bankAccountId: tx.bankAccountId,
-          }))
-        );
+        results = await categorizationApi.categorizeBatch(transactions.map(toTransactionInput));
       } catch (error) {
         toast.error(translateApiError(error as Error, tc));
         return 0;
@@ -50,9 +40,8 @@ export function useAutoCategorize(): (accountId: string) => Promise<number> {
 
       const matches: Array<{ txId: string; categoryId: string }> = [];
       uncategorizedIds.forEach((txId, i) => {
-        const result = results[i];
-        if (result && result.type === 'Match')
-          matches.push({ txId, categoryId: result.data.categoryId });
+        const categoryId = results[i] ? getCategoryId(results[i]) : null;
+        if (categoryId) matches.push({ txId, categoryId });
       });
 
       const writes: PromiseSettledResult<void>[] = [];

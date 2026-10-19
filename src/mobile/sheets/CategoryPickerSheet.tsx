@@ -1,7 +1,7 @@
 import { useId, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Plus, Sparkles, X } from 'lucide-react';
-import type { BankTransaction, TransactionCategory } from '@shared/schema';
+import type { BankTransaction, ChangedRow, TransactionCategory } from '@shared/schema';
 import { CategoryIconChip } from '@/components/common/CategoryIcon';
 import { CategoryFormDialog } from '@/components/categories/CategoryFormDialog';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,12 @@ interface CategoryPickerSheetProps {
   recentIds: readonly string[];
   /** Says what the sheet has changed on the row, so that the copy the caller holds follows. */
   onChange?: (patch: Partial<BankTransaction>) => void;
+  /**
+   * Hands the other payments a remembered pick took along to the caller (`PickOptions.onApplied`).
+   * A caller that takes them shows them itself — the categorize queue's expansion, with its own
+   * undo — so the sheet then leaves out its history toast. The ledger passes nothing.
+   */
+  onApplied?: (changed: ChangedRow[]) => void;
 }
 
 /**
@@ -45,6 +51,7 @@ export function CategoryPickerSheet({
   categories,
   recentIds,
   onChange,
+  onApplied,
 }: CategoryPickerSheetProps) {
   const { t: tc } = useTranslation('common');
   const { t } = useTranslation('mobile');
@@ -70,6 +77,7 @@ export function CategoryPickerSheet({
           recentIds={recentIds}
           onClose={close}
           onChange={onChange}
+          onApplied={onApplied}
         />
       )}
     </Sheet>
@@ -82,12 +90,14 @@ function PickerBody({
   recentIds,
   onClose,
   onChange,
+  onApplied,
 }: {
   tx: BankTransaction;
   categories: readonly TransactionCategory[];
   recentIds: readonly string[];
   onClose: () => void;
   onChange?: (patch: Partial<BankTransaction>) => void;
+  onApplied?: (changed: ChangedRow[]) => void;
 }) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
@@ -132,7 +142,12 @@ function PickerBody({
   /** Saves the category and, once it is saved, closes the sheet; a failed save leaves it open. */
   const choose = async (id: string, options: { applyHistory: boolean; categoryName?: string }) => {
     if (busy) return;
-    const saved = await pick(id, { remember: remembering, ...options });
+    const saved = await pick(id, {
+      remember: remembering,
+      ...options,
+      onApplied,
+      quiet: onApplied !== undefined,
+    });
     if (!saved) return;
     onChange?.({ categoryId: id });
     onClose();

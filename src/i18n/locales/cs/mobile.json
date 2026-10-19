@@ -182,6 +182,38 @@
     },
     "cashTrendLabel": "Graf vývoje hotovosti"
   },
+  "queue": {
+    "source": {
+      "mcp": "návrh z MCP",
+      "learned": "naučené",
+      "rule": "podle pravidla",
+      "pack": "balíček pravidel"
+    },
+    "other": "Jiná…",
+    "choose": "Vybrat kategorii…",
+    "keep": "Nechat",
+    "keepMenu": "Nechat na {{days}} dní",
+    "snoozed": "Nechána na {{days}} dní",
+    "categorized": "Zařazeno",
+    "also_one": "Zařazena i {{count}} další platba od {{name}}",
+    "also_few": "Zařazeny i {{count}} další platby od {{name}}",
+    "also_other": "Zařazeno i {{count}} dalších plateb od {{name}}",
+    "alsoSub": "Stejná protistrana a směr na tomto účtu",
+    "alsoRestored": "Vráceno, jak to bylo",
+    "handled_one": "{{count}} už vyřízena",
+    "handled_few": "{{count}} už vyřízeny",
+    "handled_other": "{{count}} už vyřízeno",
+    "progress": "{{done}} z {{total}}",
+    "caption": "Klepnutí na návrh ho přijme. „{{keep}}“ odloží platbu na {{days}} dní. Co zařadíte, se stane naučeným pravidlem pro tento účet.",
+    "showCashflow": "Zobrazit cashflow",
+    "empty": {
+      "title": "Všechno zařazeno",
+      "hint": "Nové platby se tu objeví po dalším importu.",
+      "snoozed_one": "{{count}} odložená platba se sem později vrátí.",
+      "snoozed_few": "{{count}} odložené platby se sem později vrátí.",
+      "snoozed_other": "{{count}} odložených plateb se sem později vrátí."
+    }
+  },
   "placeholder": {
     "detail": "Detail přijde ve fázi 4.",
     "queue": "Zařazování plateb přijde ve fázi 2b.",

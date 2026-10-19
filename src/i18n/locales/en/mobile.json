@@ -169,6 +169,35 @@
     },
     "cashTrendLabel": "Cash trend chart"
   },
+  "queue": {
+    "source": {
+      "mcp": "MCP suggestion",
+      "learned": "learned",
+      "rule": "by rule",
+      "pack": "rule pack"
+    },
+    "other": "Other…",
+    "choose": "Choose a category…",
+    "keep": "Skip",
+    "keepMenu": "Skip for {{days}} days",
+    "snoozed": "Skipped for {{days}} days",
+    "categorized": "Categorized",
+    "also_one": "Also categorized {{count}} other payment from {{name}}",
+    "also_other": "Also categorized {{count}} other payments from {{name}}",
+    "alsoSub": "Same counterparty and direction on this account",
+    "alsoRestored": "Restored to how they were",
+    "handled_one": "{{count}} already handled",
+    "handled_other": "{{count}} already handled",
+    "progress": "{{done}} of {{total}}",
+    "caption": "Tap a suggestion to accept it. “{{keep}}” puts a payment off for {{days}} days. What you categorize is remembered as a rule for this account.",
+    "showCashflow": "Show cashflow",
+    "empty": {
+      "title": "All categorized",
+      "hint": "New payments will appear here after the next import.",
+      "snoozed_one": "{{count}} payment you skipped will come back later.",
+      "snoozed_other": "{{count}} payments you skipped will come back later."
+    }
+  },
   "placeholder": {
     "detail": "The detail comes in phase 4.",
     "queue": "The categorize queue comes in phase 2b.",

@@ -169,6 +169,35 @@
     },
     "cashTrendLabel": "Diagramm zum Bargeldverlauf"
   },
+  "queue": {
+    "source": {
+      "mcp": "MCP-Vorschlag",
+      "learned": "gelernt",
+      "rule": "nach Regel",
+      "pack": "Regelpaket"
+    },
+    "other": "Andere…",
+    "choose": "Kategorie wählen…",
+    "keep": "Überspringen",
+    "keepMenu": "Für {{days}} Tage überspringen",
+    "snoozed": "Für {{days}} Tage übersprungen",
+    "categorized": "Kategorisiert",
+    "also_one": "Auch {{count}} weitere Zahlung von {{name}} kategorisiert",
+    "also_other": "Auch {{count}} weitere Zahlungen von {{name}} kategorisiert",
+    "alsoSub": "Gleiche Gegenpartei und Richtung auf diesem Konto",
+    "alsoRestored": "Wiederhergestellt wie zuvor",
+    "handled_one": "{{count}} bereits erledigt",
+    "handled_other": "{{count}} bereits erledigt",
+    "progress": "{{done}} von {{total}}",
+    "caption": "Tippen Sie auf einen Vorschlag, um ihn zu übernehmen. „{{keep}}“ stellt eine Zahlung für {{days}} Tage zurück. Was Sie kategorisieren, wird als Regel für dieses Konto gelernt.",
+    "showCashflow": "Cashflow anzeigen",
+    "empty": {
+      "title": "Alles kategorisiert",
+      "hint": "Neue Zahlungen erscheinen hier nach dem nächsten Import.",
+      "snoozed_one": "{{count}} übersprungene Zahlung kommt später zurück.",
+      "snoozed_other": "{{count}} übersprungene Zahlungen kommen später zurück."
+    }
+  },
   "placeholder": {
     "detail": "Die Detailansicht kommt in Phase 4.",
     "queue": "Die Zuordnungsliste kommt in Phase 2b.",

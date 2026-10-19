@@ -156,6 +156,32 @@
     },
     "cashTrendLabel": "現金の推移グラフ"
   },
+  "queue": {
+    "source": {
+      "mcp": "MCPの提案",
+      "learned": "学習済み",
+      "rule": "ルールによる",
+      "pack": "ルールパック"
+    },
+    "other": "別のカテゴリ…",
+    "choose": "カテゴリを選ぶ…",
+    "keep": "スキップ",
+    "keepMenu": "{{days}}日間スキップ",
+    "snoozed": "{{days}}日間スキップ中",
+    "categorized": "分類済み",
+    "also_other": "{{name}}の他の支払い{{count}}件も分類しました",
+    "alsoSub": "この口座で同じ取引相手・同じ方向",
+    "alsoRestored": "元の状態に戻しました",
+    "handled_other": "{{count}}件は処理済み",
+    "progress": "{{done}} / {{total}}",
+    "caption": "提案をタップすると受け入れます。「{{keep}}」を選ぶと、その支払いは{{days}}日間後回しになります。分類した内容は、この口座のルールとして学習されます。",
+    "showCashflow": "キャッシュフローを表示",
+    "empty": {
+      "title": "すべて分類済み",
+      "hint": "次回のインポート後、新しい支払いがここに表示されます。",
+      "snoozed_other": "スキップした支払い{{count}}件は、後でここに戻ります。"
+    }
+  },
   "placeholder": {
     "detail": "詳細画面はフェーズ4で提供します。",
     "queue": "分類キューはフェーズ2bで提供します。",

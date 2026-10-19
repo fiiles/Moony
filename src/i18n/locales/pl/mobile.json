@@ -195,6 +195,41 @@
     },
     "cashTrendLabel": "Wykres gotówki"
   },
+  "queue": {
+    "source": {
+      "mcp": "propozycja z MCP",
+      "learned": "wyuczone",
+      "rule": "wg reguły",
+      "pack": "pakiet reguł"
+    },
+    "other": "Inna…",
+    "choose": "Wybierz kategorię…",
+    "keep": "Pomiń",
+    "keepMenu": "Pomiń na {{days}} dni",
+    "snoozed": "Pominięta na {{days}} dni",
+    "categorized": "Zakategoryzowano",
+    "also_one": "Zakategoryzowano też {{count}} inną płatność od {{name}}",
+    "also_few": "Zakategoryzowano też {{count}} inne płatności od {{name}}",
+    "also_many": "Zakategoryzowano też {{count}} innych płatności od {{name}}",
+    "also_other": "Zakategoryzowano też {{count}} innej płatności od {{name}}",
+    "alsoSub": "Ten sam kontrahent i kierunek na tym koncie",
+    "alsoRestored": "Przywrócono jak było",
+    "handled_one": "{{count}} już obsłużona",
+    "handled_few": "{{count}} już obsłużone",
+    "handled_many": "{{count}} już obsłużonych",
+    "handled_other": "{{count}} już obsłużonych",
+    "progress": "{{done}} z {{total}}",
+    "caption": "Dotknij propozycji, aby ją zaakceptować. „{{keep}}” odkłada płatność na {{days}} dni. To, co skategoryzujesz, zostaje zapamiętane jako reguła dla tego konta.",
+    "showCashflow": "Pokaż przepływy",
+    "empty": {
+      "title": "Wszystko zakategoryzowane",
+      "hint": "Nowe płatności pojawią się tu po następnym imporcie.",
+      "snoozed_one": "{{count}} pominięta płatność wróci później.",
+      "snoozed_few": "{{count}} pominięte płatności wrócą później.",
+      "snoozed_many": "{{count}} pominiętych płatności wróci później.",
+      "snoozed_other": "{{count}} pominiętych płatności wróci później."
+    }
+  },
   "placeholder": {
     "detail": "Szczegóły pojawią się w fazie 4.",
     "queue": "Kolejka przypisywania pojawi się w fazie 2b.",

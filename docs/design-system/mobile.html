@@ -314,7 +314,32 @@
     <div class="phones" id="importAccount" style="margin-top: 26px"></div>
     <div class="phones" id="importChoice" style="margin-top: 26px"></div>
   </section>
+
+  <section class="part">
+    <h2>Zařazení plateb</h2>
+    <p>Fronta nezařazených plateb (spec §8.5, prototyp 05): titulek navigační lišty „Nicht kategorisierte Zahlungen“, pod ním řádek s účtem a výpisem (<code>.m-queue__lead</code>), počet jako nadpis 20 / 650 (<code>.m-queue__count</code>), řádek průběhu s <code>.m-pbar</code> a „3 von 12“ (<code>.m-queue__prog</code>) a řádky: entitní řádek (60 pt, chip, protistrana, podřádek „den · detail“, podepsaná částka) s druhým blokem uvnitř téhož <code>.m-swipe</code> — řádkem pilulek (<code>.m-pillrow</code>). Tmavá pilulka (<code>.m-pill--dark</code>) je návrh (zaškrtnutí, kategorie, malý zdroj „nach Regel“, „gelernt“, „Regelpaket“, „MCP-Vorschlag“) a přijímá se klepnutím, duchová (<code>--ghost</code>) je „Andere…“ / „Überspringen“, prostá „Kategorie wählen…“. Vyřízený řádek (<code>.m-queue__item.is-done</code>) je na <code>well</code> se zelenou pilulkou (<code>--done</code>) a jednou rozbalenou větou s přepínačem (<code>.m-queue__more</code>); odložený (<code>is-left</code>) má jen větu s hodinami (<code>.m-queue__note</code>). Pilulky mají plochu dotyku 44 pt a při dlouhém názvu se zalamují.</p>
+    <div class="phones" id="queue"></div>
+  </section>
 </div>
+
+<!-- The categorize queue (frame 05), rendered at the three widths. -->
+<template id="queue-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Nicht kategorisierte Zahlungen</h1>
+      <div class="m-nav__side m-nav__side--end"></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-queue__lead">Girokonto · aus dem Auszug vom 10. 10. · 3 bereits erledigt</p>
+      <h2 class="m-queue__count">9 Zahlungen ohne Kategorie</h2>
+      <div class="m-queue__prog"><span class="m-pbar"><i style="width:25%"></i></span><span>3 von 12</span></div>
+      <div data-rows="queue"></div>
+      <p class="m-queue__cap">Tippen Sie auf einen Vorschlag, um ihn zu übernehmen. „Überspringen“ stellt eine Zahlung für 30 Tage zurück. Was Sie kategorisieren, wird als Regel für dieses Konto gelernt.</p>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+  </div>
+</template>
 
 <!-- The Majetek frame, rendered at the three widths. -->
 <template id="wealth-frame">
@@ -1018,6 +1043,23 @@
     return '<div class="m-swipe"><span class="m-swipe__panel m-swipe__panel--end" aria-hidden="true"><span data-icon="' + iconName + '" data-size="18"></span>' + label + '</span>' +
       html.replace('<a class="m-row', '<a style="transform: translateX(-98px)" class="m-row') + '</div>';
   }
+  /* The categorize queue (frame 05): the entity row in its swipe box and, inside the same box, the pill row —
+     a dark pill (the suggestion and its source) with "Andere…", or "Kategorie wählen…" with "Überspringen", the
+     green pill of a row that is dealt with (on `well`, with the expansion once), the sentence of a row put off. */
+  function pill(tone, label, o) {
+    o = o || {};
+    var icon = o.icon ? '<span data-icon="' + o.icon + '" data-size="14" aria-hidden="true"></span>' : "";
+    var small = o.source ? '<small>· ' + o.source + '</small>' : "";
+    var text = o.icon ? '<span class="m-pill__t">' + label + '</span>' : label;
+    var tag = tone === "done" ? "span" : "button";
+    return '<' + tag + (tag === "button" ? ' type="button"' : "") + ' class="m-pill' + (tone ? " m-pill--" + tone : "") + '">' + icon + text + small + '</' + tag + '>';
+  }
+  function queueItem(o) {
+    var r = row(o.chip, o.title, o.sub, o.value, "", { gain: o.gain, chip: o.gain ? "m-row__chip--gain" : "" });
+    return '<div class="m-swipe m-queue__item' + (o.state ? " is-" + o.state : "") + '">' + r +
+      '<div class="m-pillrow">' + o.pills + '</div>' + (o.more || "") + '</div>';
+  }
+  var QUEUE_MORE = '<div class="m-queue__more"><label class="m-switchrow"><span class="m-switchrow__main"><span class="m-switchrow__t">Auch 3 weitere Zahlungen von Lidl Praha 4 kategorisiert</span><span class="m-switchrow__s">Gleiche Gegenpartei und Richtung auf diesem Konto</span></span><span class="m-switchrow__sw" role="switch" aria-checked="true"></span></label></div>';
   var ROWS = {
     wealthInvest: [
       row("", "Aktien und ETFs", "12 Positionen · VWCE, CSPX, AAPL +9", "2&nbsp;650&nbsp;000 Kč", '<span class="m-change"><span class="m-change__badge m-change__badge--gain">▲ 3,2 %</span>+ 82&nbsp;300 Kč</span>', { icon: "trending-up" }),
@@ -1098,6 +1140,18 @@
       swipe(row("UA", "Umbrella a.s.", "Gehalt · 09/2026", "+ 61&nbsp;200 Kč", "", { chip: "m-row__chip--gain", gain: true })),
       swipe(row("ZS", "Zalando SE", "Kleidung · " + badge("Erstattung") + " · Rücksendung 88123", "+ 1&nbsp;290 Kč", "", { chip: "m-row__chip--gain", gain: true })),
       swipe(row("", "XTB · eigenes Konto", "Investitionen, Sparen und Umbuchungen", "− 33&nbsp;120 Kč", "", { icon: "arrow-right-left" }))
+    ],
+    /* The categorize queue: an open row with a suggestion (rule, learned, rule pack — a long name at the end), one without,
+       a credit, a row that is done with the expansion, and one that was put off. */
+    queue: [
+      queueItem({ chip: "AC", title: "Alza.cz a.s.", sub: "Heute · Bestellung 2201983", value: "− 4&nbsp;590 Kč", pills: pill("dark", "Elektronik", { icon: "check", source: "nach Regel" }) + pill("ghost", "Andere…") }),
+      queueItem({ chip: "LP", title: "Lidl Praha 4", sub: "15. 10. · Kartenzahlung", value: "− 1&nbsp;249 Kč", state: "done", pills: pill("done", "Lebensmittel", { icon: "check" }), more: QUEUE_MORE }),
+      queueItem({ chip: "ZO", title: "Zubní ordinace", sub: "13. 10. · Überweisung · 2300…/2010", value: "− 800 Kč", pills: pill("", "Kategorie wählen…", { icon: "tag" }) + pill("ghost", "Überspringen") }),
+      queueItem({ chip: "NE", title: "Netflix", sub: "12. 10. · Kartenzahlung", value: "− 319 Kč", pills: pill("dark", "Abonnements", { icon: "check", source: "gelernt" }) + pill("ghost", "Andere…") }),
+      queueItem({ chip: "DP", title: "Dopravní podnik hl. m. Prahy", sub: "11. 10. · Kartenzahlung", value: "− 550 Kč", pills: pill("dark", "Verkehr", { icon: "check", source: "Regelpaket" }) + pill("ghost", "Andere…") }),
+      queueItem({ chip: "BO", title: "Bolt Operations", sub: "10. 10. · Kartenzahlung", value: "− 189 Kč", pills: pill("dark", "Restaurants &amp; Gastronomie", { icon: "check", source: "MCP-Vorschlag" }) + pill("ghost", "Andere…") }),
+      queueItem({ chip: "JN", title: "Jan Novák", sub: "10. 10. · Überweisung · „für das Mittagessen“", value: "+ 250 Kč", gain: true, pills: pill("", "Kategorie wählen…", { icon: "tag" }) + pill("ghost", "Überspringen") }),
+      queueItem({ chip: "RO", title: "Rohlik.cz", sub: "9. 10. · Kartenzahlung", value: "− 2&nbsp;311 Kč", state: "left", pills: '<span class="m-queue__note"><span data-icon="clock" data-size="14" aria-hidden="true"></span>Für 30 Tage übersprungen</span>' })
     ],
     /* The import preview: the entity row of a movement with "Datum · Kategorie" in the sub-line (a credit's chip in
        gain, "Ohne Kategorie" as the ledger's badge, a choice of the person marked "manuell"), a duplicate at half
@@ -1186,6 +1240,7 @@
   frames("importDone", "import-done-frame", "Import: Fertig");
   frames("importAccount", "import-account-frame", "Import: Konto");
   frames("importChoice", "import-choice-frame", "Import: Kategorie");
+  frames("queue", "queue-frame", "Zařazení plateb");
 
   /* Budget rows: category chip as on the Cashflow rows, the limit as the value, validity and the changes to
      come in the sub-line, "Geplant" / "beendet" under the value (an ended row at half strength); the rows of
@@ -1356,8 +1411,9 @@
         if (el.parentElement.closest(".m-seg, .m-flows")) return;
         var r = el.getBoundingClientRect();
         if (!r.width && !r.height) return;
-        /* A swiped row is clipped by its `.m-swipe`, so what lies beyond the edge is not seen. */
-        var clipped = el.closest(".m-swipe") && !el.classList.contains("m-swipe");
+        /* A swiped row is clipped by its `.m-swipe`, so what lies beyond the edge is not seen; the pill row and the
+           expansion of a queue row do not slide and are checked like the rest. */
+        var clipped = el.closest(".m-swipe") && !el.classList.contains("m-swipe") && !el.closest(".m-pillrow, .m-queue__more");
         if (!clipped && (r.right > edge.right + 0.5 || r.left < edge.left - 0.5)) over.push(el.className || el.tagName);
         if (el.classList.contains("m-seg") && el.scrollWidth > el.clientWidth + 0.5) scrolls++;
         if (el.classList.contains("m-flows") && el.scrollWidth > el.clientWidth + 0.5) strips++;

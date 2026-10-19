@@ -169,6 +169,35 @@
     },
     "cashTrendLabel": "Diagram över kontanter"
   },
+  "queue": {
+    "source": {
+      "mcp": "MCP-förslag",
+      "learned": "inlärt",
+      "rule": "enligt regel",
+      "pack": "regelpaket"
+    },
+    "other": "Annan…",
+    "choose": "Välj kategori…",
+    "keep": "Hoppa över",
+    "keepMenu": "Hoppa över i {{days}} dagar",
+    "snoozed": "Överhoppad i {{days}} dagar",
+    "categorized": "Kategoriserad",
+    "also_one": "Kategoriserade även {{count}} annan betalning från {{name}}",
+    "also_other": "Kategoriserade även {{count}} andra betalningar från {{name}}",
+    "alsoSub": "Samma motpart och riktning på det här kontot",
+    "alsoRestored": "Återställda som de var",
+    "handled_one": "{{count}} redan hanterad",
+    "handled_other": "{{count}} redan hanterade",
+    "progress": "{{done}} av {{total}}",
+    "caption": "Tryck på ett förslag för att godta det. ”{{keep}}” skjuter upp en betalning i {{days}} dagar. Det du kategoriserar lärs in som en regel för det här kontot.",
+    "showCashflow": "Visa kassaflöde",
+    "empty": {
+      "title": "Allt är kategoriserat",
+      "hint": "Nya betalningar visas här efter nästa import.",
+      "snoozed_one": "{{count}} överhoppad betalning kommer tillbaka senare.",
+      "snoozed_other": "{{count}} överhoppade betalningar kommer tillbaka senare."
+    }
+  },
   "placeholder": {
     "detail": "Detaljvyn kommer i fas 4.",
     "queue": "Kategoriseringskön kommer i fas 2b.",

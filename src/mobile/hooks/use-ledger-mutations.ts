@@ -21,15 +21,17 @@ export interface LedgerMutations {
  * The ledger's writes on one transaction (spec §8.4): category, meaning, delete and the MCP
  * suggestion. Each refreshes the money flows (frontend standard rule 3: the domain keys, the
  * snapshot and the history) and says what it did; a failure is a toast with the translated error.
+ * `quiet` leaves the "what it did" toasts out, for a screen that shows the result itself (the
+ * categorize queue turns the row over): errors are still said.
  */
-export function useLedgerMutations(): LedgerMutations {
+export function useLedgerMutations({ quiet = false }: { quiet?: boolean } = {}): LedgerMutations {
   const queryClient = useQueryClient();
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
 
   const done = async (message?: string) => {
     await refreshMoneyFlows(queryClient);
-    if (message) toast(message);
+    if (message && !quiet) toast(message);
   };
   const onError = (error: Error) => {
     toast.error(tc('status.error'), { description: translateApiError(error, tc) });

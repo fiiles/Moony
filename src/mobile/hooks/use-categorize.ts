@@ -22,6 +22,17 @@ export interface PickOptions {
   applyHistory: boolean;
   /** Display name of a category `categories` does not hold yet (one created a moment ago). */
   categoryName?: string;
+  /**
+   * Called once the learning has written, with the other payments it categorized (empty when it
+   * took none along). Not called when there was nothing to learn or the learning failed. It runs
+   * after `pick` has resolved, never before.
+   */
+  onApplied?: (changed: ChangedRow[]) => void;
+  /**
+   * The caller reports the learning itself (the queue's expansion): no toast for it, and so no
+   * undo toast either. A failure is still said.
+   */
+  quiet?: boolean;
 }
 
 export interface Categorize {
@@ -80,7 +91,13 @@ export function useCategorize(
     }
   };
 
-  const historyToast = (title: string, description: string | undefined, changed: ChangedRow[]) => {
+  const historyToast = (
+    title: string,
+    description: string | undefined,
+    changed: ChangedRow[],
+    quiet = false
+  ) => {
+    if (quiet) return;
     if (changed.length === 0) {
       toast(title, { description });
       return;
@@ -146,8 +163,10 @@ export function useCategorize(
               })
             : t('categorization.ruleRetargeted', { rule: rule.name, category: pickedName }),
           undefined,
-          changed
+          changed,
+          options.quiet
         );
+        options.onApplied?.(changed);
         await refreshAfterWrite();
         return;
       }
@@ -173,8 +192,10 @@ export function useCategorize(
           ? t('categorization.learnedApplied', { count: changed.length })
           : t('categorization.learned'),
         changed.length > 0 ? `"${learnKey}" → ${pickedName}` : `"${learnKey}"`,
-        changed
+        changed,
+        options.quiet
       );
+      options.onApplied?.(changed);
       await refreshAfterWrite();
     } catch (error) {
       // The preview could not be fetched or the write failed: nothing was remembered, the row stays saved

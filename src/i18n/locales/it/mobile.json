@@ -182,6 +182,38 @@
     },
     "cashTrendLabel": "Grafico della liquidità"
   },
+  "queue": {
+    "source": {
+      "mcp": "suggerimento MCP",
+      "learned": "appreso",
+      "rule": "da regola",
+      "pack": "pacchetto di regole"
+    },
+    "other": "Altra…",
+    "choose": "Scegli categoria…",
+    "keep": "Salta",
+    "keepMenu": "Salta per {{days}} giorni",
+    "snoozed": "Saltato per {{days}} giorni",
+    "categorized": "Categorizzato",
+    "also_one": "Categorizzato anche {{count}} altro pagamento da {{name}}",
+    "also_many": "Categorizzati anche {{count}} altri pagamenti da {{name}}",
+    "also_other": "Categorizzati anche {{count}} altri pagamenti da {{name}}",
+    "alsoSub": "Stessa controparte e stessa direzione su questo conto",
+    "alsoRestored": "Ripristinati come prima",
+    "handled_one": "{{count}} già gestito",
+    "handled_many": "{{count}} già gestiti",
+    "handled_other": "{{count}} già gestiti",
+    "progress": "{{done}} su {{total}}",
+    "caption": "Tocca un suggerimento per accettarlo. «{{keep}}» mette da parte un pagamento per {{days}} giorni. Ciò che categorizzi viene appreso come regola per questo conto.",
+    "showCashflow": "Mostra flusso di cassa",
+    "empty": {
+      "title": "Tutto categorizzato",
+      "hint": "I nuovi pagamenti compariranno qui dopo la prossima importazione.",
+      "snoozed_one": "{{count}} pagamento saltato tornerà più avanti.",
+      "snoozed_many": "{{count}} pagamenti saltati torneranno più avanti.",
+      "snoozed_other": "{{count}} pagamenti saltati torneranno più avanti."
+    }
+  },
   "placeholder": {
     "detail": "Il dettaglio arriva nella fase 4.",
     "queue": "La coda di classificazione arriva nella fase 2b.",

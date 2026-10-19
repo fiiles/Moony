@@ -8,7 +8,9 @@ import { useInsurance } from '@/hooks/use-insurance';
 import { useLoans } from '@/hooks/use-loans';
 import { useCurrency } from '@/lib/currency';
 import { accountTotals } from '@/utils/bank-account-summary';
-import { useLastImports, useUncategorizedAll } from '@/mobile/hooks/use-account-upkeep';
+import { useLastImports } from '@/mobile/hooks/use-account-upkeep';
+import { useCategorizeQueue } from '@/mobile/hooks/use-categorize-queue';
+import { queueSummary } from '@/mobile/lib/categorize-queue';
 
 export interface Finance {
   accounts: BankAccountWithInstitution[];
@@ -21,7 +23,7 @@ export interface Finance {
    * balances of the excluded accounts, and the currencies left out for want of a rate.
    */
   totals: { balance: number; net30: number; excluded: number; missing: string[] };
-  /** Every booked payment without a category on every account, and the accounts that hold them. */
+  /** Every booked payment without a category that is not put off (the queue's total), and the accounts that hold them. */
   uncategorized: { count: number; accountIds: string[] };
   loans: ReturnType<typeof useLoans>;
   insurance: ReturnType<typeof useInsurance>;
@@ -36,8 +38,8 @@ export interface Finance {
  * What the Finance tab shows (spec §8.4): the accounts with their 30-day activity and totals, the
  * payments without a category, the loans and the policies. Everything comes from the hooks and
  * query keys of the desktop's Bankovní účty, Úvěry and Pojištění pages, so a write on either side
- * (`refreshMoneyFlows`) refreshes both. The uncategorized count is the one `useUpkeep` and
- * `BankAccounts.tsx` read (same key, one cache entry). The first paint waits for all of it — rates
+ * (`refreshMoneyFlows`) refreshes both. The uncategorized count is the categorize queue's, the one
+ * `useUpkeep` reads (same key, one cache entry). The first paint waits for all of it — rates
  * included, for until they load a foreign balance would be named as missing — so the page's parts
  * do not trickle in and push it down.
  */
@@ -50,7 +52,7 @@ export function useFinance(): Finance {
   const insurance = useInsurance();
 
   const { lastImportByAccount, isPending: importsPending } = useLastImports(accounts);
-  const uncategorizedQuery = useUncategorizedAll();
+  const queueQuery = useCategorizeQueue();
 
   const totals = useMemo(() => {
     const sums = accountTotals(
@@ -65,20 +67,14 @@ export function useFinance(): Finance {
     };
   }, [accounts, activity, convert]);
 
-  const uncategorized = useMemo(() => {
-    const payments = uncategorizedQuery.data ?? [];
-    return {
-      count: payments.length,
-      accountIds: [...new Set(payments.map((payment) => payment.bankAccountId))],
-    };
-  }, [uncategorizedQuery.data]);
+  const uncategorized = useMemo(() => queueSummary(queueQuery.data), [queueQuery.data]);
 
   const pending =
     accountsLoading ||
     !fxReady ||
     loans.isLoading ||
     insurance.isLoading ||
-    uncategorizedQuery.isPending ||
+    queueQuery.isPending ||
     importsPending ||
     [...activity.values()].some((a) => a.isLoading);
   // Only the first load is a skeleton: the queries of an account added later must not blank the

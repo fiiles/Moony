@@ -156,6 +156,32 @@
     },
     "cashTrendLabel": "现金走势图"
   },
+  "queue": {
+    "source": {
+      "mcp": "MCP 建议",
+      "learned": "已学习",
+      "rule": "按规则",
+      "pack": "规则包"
+    },
+    "other": "其他…",
+    "choose": "选择类别…",
+    "keep": "跳过",
+    "keepMenu": "跳过 {{days}} 天",
+    "snoozed": "已跳过 {{days}} 天",
+    "categorized": "已分类",
+    "also_other": "同时已将 {{name}} 的另外 {{count}} 笔付款分类",
+    "alsoSub": "此账户上相同的交易对方和方向",
+    "alsoRestored": "已恢复原状",
+    "handled_other": "已处理 {{count}} 笔",
+    "progress": "{{done}} / {{total}}",
+    "caption": "点按建议即可接受。“{{keep}}”会将该笔付款搁置 {{days}} 天。您分类的结果会作为规则记住，用于此账户。",
+    "showCashflow": "查看现金流",
+    "empty": {
+      "title": "已全部分类",
+      "hint": "下次导入后，新的付款会显示在这里。",
+      "snoozed_other": "已跳过的 {{count}} 笔付款稍后会回到这里。"
+    }
+  },
   "placeholder": {
     "detail": "详情页将在第 4 阶段推出。",
     "queue": "分类队列将在第 2b 阶段推出。",

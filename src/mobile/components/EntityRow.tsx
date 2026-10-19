@@ -95,6 +95,12 @@ interface EntityRowProps {
   onLongPress?: () => void;
   /** Rendered beside the row, outside the part that slides (a menu and its trigger). */
   accessory?: ReactNode;
+  /**
+   * A second block under the row inside the same `li` (the categorize queue's pill row): the
+   * row keeps its own 60 pt, its swipe panels and its menu stay beside it, and this block does
+   * not slide.
+   */
+  below?: ReactNode;
 }
 
 /**
@@ -128,6 +134,7 @@ export function EntityRow({
   swipeRightIcon,
   onLongPress,
   accessory,
+  below,
 }: EntityRowProps) {
   const swipe = useSwipeActions({ onSwipeLeft, onSwipeRight, onLongPress });
   const gestures = onSwipeLeft !== undefined || onSwipeRight !== undefined || !!onLongPress;
@@ -191,16 +198,10 @@ export function EntityRow({
   };
   const gestureProps = gestures ? swipe.bind : {};
 
-  return (
-    <li
-      id={id}
-      className={cn(
-        "relative overflow-hidden bg-paper before:pointer-events-none before:absolute before:right-0 before:top-0 before:z-[2] before:left-[var(--m-row-inset)] before:border-t before:border-line-soft before:content-[''] first:before:hidden",
-        muted && 'opacity-50',
-        className
-      )}
-      style={{ '--m-row-inset': `${inset}px` } as CSSProperties}
-    >
+  // The panels, the row and its menu: under a `below` block they are boxed in a block of their own,
+  // so that the panels cover the row's height and the menu's anchor sits at the row's middle.
+  const swipeable = (
+    <>
       {/* Under the row, uncovered as it slides away from them. */}
       {onSwipeRight && <SwipePanel side="left" label={swipeRightLabel} icon={swipeRightIcon} />}
       {onSwipeLeft && <SwipePanel side="right" label={swipeLeftLabel} icon={swipeLeftIcon} />}
@@ -224,6 +225,21 @@ export function EntityRow({
         </div>
       )}
       {accessory}
+    </>
+  );
+
+  return (
+    <li
+      id={id}
+      className={cn(
+        "relative overflow-hidden bg-paper before:pointer-events-none before:absolute before:right-0 before:top-0 before:z-[2] before:left-[var(--m-row-inset)] before:border-t before:border-line-soft before:content-[''] first:before:hidden",
+        muted && 'opacity-50',
+        className
+      )}
+      style={{ '--m-row-inset': `${inset}px` } as CSSProperties}
+    >
+      {below ? <div className="relative overflow-hidden bg-inherit">{swipeable}</div> : swipeable}
+      {below}
     </li>
   );
 }

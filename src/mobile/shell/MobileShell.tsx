@@ -12,11 +12,8 @@ import Cashflow from '@/mobile/pages/Cashflow';
 import CashflowCategory from '@/mobile/pages/CashflowCategory';
 import Finance from '@/mobile/pages/Finance';
 import AccountDetail from '@/mobile/pages/finance/AccountDetail';
-import {
-  LoanPlaceholder,
-  PolicyPlaceholder,
-  QueuePlaceholder,
-} from '@/mobile/pages/finance/FinancePlaceholder';
+import CategorizeQueue from '@/mobile/pages/finance/CategorizeQueue';
+import { LoanPlaceholder, PolicyPlaceholder } from '@/mobile/pages/finance/FinancePlaceholder';
 import Lock from '@/mobile/pages/Lock';
 import Overview from '@/mobile/pages/Overview';
 import PositionDetail from '@/mobile/pages/PositionDetail';
@@ -76,7 +73,7 @@ export function MobileShell() {
         <ProtectedRoute path={routes.accountDetail} component={AccountDetail} />
         <ProtectedRoute path={routes.loanDetail} component={LoanPlaceholder} />
         <ProtectedRoute path={routes.policyDetail} component={PolicyPlaceholder} />
-        <ProtectedRoute path={routes.uncategorized} component={QueuePlaceholder} />
+        <ProtectedRoute path={routes.uncategorized} component={CategorizeQueue} />
         <ProtectedRoute path={routes.cashflow} component={Cashflow} />
         <ProtectedRoute path={routes.cashflowCategory} component={CashflowCategory} />
         <ProtectedRoute path={routes.budgets} component={Budgets} />

@@ -169,6 +169,35 @@
     },
     "cashTrendLabel": "Diagram over kontanter"
   },
+  "queue": {
+    "source": {
+      "mcp": "MCP-forslag",
+      "learned": "lært",
+      "rule": "etter regel",
+      "pack": "regelpakke"
+    },
+    "other": "Annen…",
+    "choose": "Velg kategori…",
+    "keep": "Hopp over",
+    "keepMenu": "Hopp over i {{days}} dager",
+    "snoozed": "Hoppet over i {{days}} dager",
+    "categorized": "Kategorisert",
+    "also_one": "Kategoriserte også {{count}} annen betaling fra {{name}}",
+    "also_other": "Kategoriserte også {{count}} andre betalinger fra {{name}}",
+    "alsoSub": "Samme motpart og retning på denne kontoen",
+    "alsoRestored": "Gjenopprettet slik de var",
+    "handled_one": "{{count}} allerede behandlet",
+    "handled_other": "{{count}} allerede behandlet",
+    "progress": "{{done}} av {{total}}",
+    "caption": "Trykk på et forslag for å godta det. «{{keep}}» setter en betaling til side i {{days}} dager. Det du kategoriserer, huskes som en regel for denne kontoen.",
+    "showCashflow": "Vis kontantstrøm",
+    "empty": {
+      "title": "Alt er kategorisert",
+      "hint": "Nye betalinger vises her etter neste import.",
+      "snoozed_one": "{{count}} betaling du hoppet over, kommer tilbake senere.",
+      "snoozed_other": "{{count}} betalinger du hoppet over, kommer tilbake senere."
+    }
+  },
   "placeholder": {
     "detail": "Detaljvisningen kommer i fase 4.",
     "queue": "Kategoriseringskøen kommer i fase 2b.",

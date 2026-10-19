@@ -858,6 +858,50 @@
 .m-imp-facts b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .m-imp-primary { margin-bottom: 14px; }
 
+/* ===== The categorize queue (spec §8.5, prototype frame 05; `CategorizeQueue.tsx`, `QueueRow.tsx`) =====
+   The page: the lead line (13 / 450 `ink-3`: the account and the statement the payments came from, "· 3 already
+   handled"), the count as a 20 / 650 heading ("9 payments without a category" — the prototype's large count, kept in the
+   body under the nav bar's title), the progress row (a `.m-pbar` and "3 of 12", 11 `ink-3`), the rows and the one
+   caption of the frame. A payment is the entity row (`.m-row`, 60 px, in its swipe box `.m-swipe`) with a second block
+   inside the same box: the pill row. The divider and the background belong to both blocks; a row that is dealt with
+   (`is-done`: the green pill; `is-left`: put off) is on `well`. */
+.m-queue__lead { margin: 2px 2px 4px; color: var(--ink-3); font-size: 13px; font-weight: 450; line-height: 1.4; }
+.m-queue__count { margin: 0 2px 10px; color: var(--ink); font-size: var(--m-fs-title); font-weight: var(--m-fw-title); letter-spacing: var(--m-ls-title); line-height: 1.2; }
+.m-queue__prog { display: flex; align-items: center; gap: 10px; margin: 0 2px 12px; color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); font-variant-numeric: tabular-nums; }
+.m-queue__prog .m-pbar { flex: 1; min-width: 0; }
+.m-queue__prog > span:last-child { flex: none; white-space: nowrap; }
+.m-queue__cap { margin: 0 4px; color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.35; }
+.m-queue__item.is-done, .m-queue__item.is-done > .m-row,
+.m-queue__item.is-left, .m-queue__item.is-left > .m-row { background: var(--well); }
+
+/* The pill row: 36 px pills (radius 18, 12 / 600) 8 px apart under the row, wrapping when the category's name is long;
+   each hit area reaches 44 px (`.m-pill::after`) and the pills of a wrapped line touch exactly. A plain pill
+   ("Vybrat kategorii…") is `well-2`; `--dark` is the suggestion (a check, the category, its source in 10 / 500
+   `ink-inverse-2`: accept); `--ghost` is "Jiná…" / "Nechat" (hairline `line-strong`); `--done` is the category the row
+   got (`gain-soft`, not a button). The name ends with an ellipsis (`.m-pill__t`), the source never shrinks. */
+.m-pillrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 14px 12px; }
+.m-pillrow .m-pill {
+  gap: 6px; max-width: 100%; height: 36px; padding: 0 14px; border: 0; border-radius: 18px;
+  background: var(--well-2); color: var(--ink); font-weight: 600; -webkit-touch-callout: none;
+}
+.m-pillrow .m-pill:active { background: var(--well-3); }
+.m-pillrow .m-pill svg { color: inherit; }
+.m-pillrow .m-pill small { flex: none; color: inherit; font-size: var(--fs-micro); font-weight: 500; }
+.m-pillrow .m-pill__t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.m-pillrow .m-pill--dark { background: var(--dark-grad); box-shadow: var(--sh-dark); color: var(--ink-inverse); }
+.m-pillrow .m-pill--dark:active { background: var(--dark-grad-hover); }
+.m-pillrow .m-pill--dark small { color: var(--ink-inverse-2); }
+.m-pillrow .m-pill--ghost { border: 1px solid var(--line-strong); background: transparent; color: var(--ink-2); }
+.m-pillrow .m-pill--ghost:active { background: var(--well); }
+.m-pillrow .m-pill--done { background: var(--gain-soft); color: var(--gain); }
+.m-pillrow .m-pill--done::after { display: none; }
+/* A payment put off with "Nechat": no pills, the 12 / 600 `ink-3` sentence with a 14 px clock. */
+.m-queue__note { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: 600; }
+.m-queue__note svg { width: 14px; height: 14px; stroke-width: 1.75; }
+/* The expansion, once, under the row whose remembered pick took other payments along: a hairline and a switch row
+   (`.m-switchrow`, on). Turned off, the payments are restored and the switch stays off and disabled. */
+.m-queue__more { margin: 0 14px 4px; padding-top: 4px; border-top: 1px solid var(--line-soft); }
+
 @media (prefers-reduced-motion: no-preference) {
   @keyframes m-imp-spin { to { transform: rotate(360deg); } }
   .m-imp-wait svg { animation: m-imp-spin 1s linear infinite; }

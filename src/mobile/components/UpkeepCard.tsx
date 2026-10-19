@@ -7,6 +7,7 @@ import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import { useUpkeep } from '@/mobile/hooks/use-upkeep';
+import { queuePath } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import type { UpkeepKind, UpkeepRow } from '@/mobile/lib/upkeep';
 import { routes, settingsPath } from '@/mobile/shell/routes';
@@ -29,12 +30,14 @@ const VERBS: Record<UpkeepKind, string> = {
 };
 
 /**
- * Where a verb that leads to a screen leads. Zálohovat opens Záloha a přenos; Zařadit arrives
- * with its flow and until then opens the tab that will hold it. Zaznamenat and Importovat open
- * sheets instead (`UpkeepItem`).
+ * Where a verb that leads to a screen leads. Zálohovat opens Záloha a přenos, Přecenit the Majetek
+ * tab; Zařadit opens the categorize queue (`queuePath`: of one account when exactly one holds the
+ * payments). Zaznamenat and Importovat open sheets instead (`UpkeepItem`).
  */
-const TARGETS: Record<Exclude<UpkeepKind, 'balances_stale' | 'statement_due'>, string> = {
-  uncategorized: routes.finance,
+const TARGETS: Record<
+  Exclude<UpkeepKind, 'balances_stale' | 'statement_due' | 'uncategorized'>,
+  string
+> = {
   backup_stale: settingsPath('backup'),
   valuation_stale: routes.wealth,
 };
@@ -170,7 +173,10 @@ function UpkeepItem({
   } else {
     action = (
       <Button asChild variant={variant} className={buttonClass}>
-        <Link href={TARGETS[row.kind]} aria-describedby={titleId}>
+        <Link
+          href={row.kind === 'uncategorized' ? queuePath(row.accountIds ?? []) : TARGETS[row.kind]}
+          aria-describedby={titleId}
+        >
           {verb}
         </Link>
       </Button>

@@ -654,6 +654,100 @@ fn a_constant_date_column_yields_to_a_varying_one() {
     assert_eq!(column(&alone.date), Some("Datum"));
 }
 
+// ---------------------------------------------------------------------------
+// Review round 2.
+// ---------------------------------------------------------------------------
+
+/// Round 2, #1: Paid out / Paid in / Balance where one row fills both sides (no pair). The
+/// debit column alone agrees with "inverted" on every row it fills, but the balance also moves
+/// on the credit row where it is empty: it does not carry every amount, so it is no amount.
+#[test]
+fn a_debit_column_is_no_amount_when_a_row_has_both_sides() {
+    let inferred = infer(&[
+        "Date;Paid out;Paid in;Balance",
+        "01/09/2026;10.00;;990.00",
+        "02/09/2026;20.00;;970.00",
+        "03/09/2026;;500.00;1470.00",
+        "04/09/2026;30.00;;1440.00",
+        "05/09/2026;40.00;;1400.00",
+        "06/09/2026;50.00;5.00;1355.00",
+        "07/09/2026;60.00;;1295.00",
+        "08/09/2026;70.00;;1225.00",
+        "09/09/2026;80.00;;1145.00",
+        "10/09/2026;90.00;;1055.00",
+        "11/09/2026;100.00;;955.00",
+        "12/09/2026;110.00;;845.00",
+        "13/09/2026;120.00;;725.00",
+        "14/09/2026;130.00;;595.00",
+        "15/09/2026;140.00;;455.00",
+    ]);
+    assert_eq!(inferred.amount, None);
+    assert_eq!(inferred.debit, None);
+    assert_eq!(inferred.credit, None);
+    assert_eq!(inferred.sign_check, SignCheck::Unchecked);
+}
+
+/// Round 2, #1: the same with a negative reversal in the credit column (two signs: no pair
+/// side). Again the debit column misses the balance moves on its empty rows.
+#[test]
+fn a_debit_column_is_no_amount_when_a_credit_is_reversed() {
+    let inferred = infer(&[
+        "Date;Paid out;Paid in;Balance",
+        "01/09/2026;10.00;;990.00",
+        "02/09/2026;20.00;;970.00",
+        "03/09/2026;;500.00;1470.00",
+        "04/09/2026;30.00;;1440.00",
+        "05/09/2026;40.00;;1400.00",
+        "06/09/2026;;-40.00;1360.00",
+        "07/09/2026;60.00;;1300.00",
+        "08/09/2026;70.00;;1230.00",
+        "09/09/2026;80.00;;1150.00",
+        "10/09/2026;90.00;;1060.00",
+        "11/09/2026;100.00;;960.00",
+        "12/09/2026;110.00;;850.00",
+        "13/09/2026;120.00;;730.00",
+        "14/09/2026;130.00;;600.00",
+        "15/09/2026;140.00;;460.00",
+    ]);
+    assert_eq!(inferred.amount, None);
+    assert_eq!(inferred.debit, None);
+    assert_eq!(inferred.credit, None);
+    assert_eq!(inferred.sign_check, SignCheck::Unchecked);
+}
+
+/// Round 2, #2: two proven readings, headers that say nothing. The original amount on the left
+/// agrees with the balance on the domestic rows only (16 of 19 pairs); the account amount on
+/// every one. The better proof wins, not the leftmost column.
+#[test]
+fn the_better_proven_amount_wins_over_the_leftmost() {
+    let inferred = infer(&[
+        "A;B;C;D;E",
+        "01.09.2026;Platba 1;-15.25;-15.25;4984.75",
+        "02.09.2026;Platba 2;-22.25;-22.25;4962.50",
+        "03.09.2026;Platba 3;-29.25;-29.25;4933.25",
+        "04.09.2026;Platba 4;-1.45;-36.25;4897.00",
+        "05.09.2026;Platba 5;-43.25;-43.25;4853.75",
+        "06.09.2026;Platba 6;-50.25;-50.25;4803.50",
+        "07.09.2026;Platba 7;-57.25;-57.25;4746.25",
+        "08.09.2026;Platba 8;-64.25;-64.25;4682.00",
+        "09.09.2026;Platba 9;-71.25;-71.25;4610.75",
+        "10.09.2026;Platba 10;-3.13;-78.25;4532.50",
+        "11.09.2026;Platba 11;-85.25;-85.25;4447.25",
+        "12.09.2026;Platba 12;-92.25;-92.25;4355.00",
+        "13.09.2026;Platba 13;-99.25;-99.25;4255.75",
+        "14.09.2026;Platba 14;-106.25;-106.25;4149.50",
+        "15.09.2026;Platba 15;-113.25;-113.25;4036.25",
+        "16.09.2026;Platba 16;-4.81;-120.25;3916.00",
+        "17.09.2026;Platba 17;-127.25;-127.25;3788.75",
+        "18.09.2026;Platba 18;-134.25;-134.25;3654.50",
+        "19.09.2026;Platba 19;-141.25;-141.25;3513.25",
+        "20.09.2026;Platba 20;-148.25;-148.25;3365.00",
+    ]);
+    assert_eq!(column(&inferred.amount), Some("D"));
+    assert_eq!(column(&inferred.balance), Some("E"));
+    assert_eq!(inferred.sign_check, SignCheck::Verified);
+}
+
 /// F: two positive columns, no header synonym, no balance: which one is the debit cannot be
 /// told, so nothing is chosen and the person is asked.
 #[test]

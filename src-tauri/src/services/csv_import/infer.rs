@@ -26,16 +26,18 @@
 //!   is *money* when it carries the decimal separator, or when no column of the file does (a
 //!   whole-number file); codes and symbols never are.
 //! - **amount**: a numeric column filled on ≥ half the rows with both signs; a one-signed money
-//!   column only when a balance proves it (without one it may be magnitudes beside a direction
-//!   word); or a *debit + credit pair*: two neighbouring one-signed money columns that are never
+//!   column only when a balance proves it on every row the balance moves on (without one it may
+//!   be magnitudes beside a direction word; empty where the balance moves, it leaves credits to
+//!   another column); or a *debit + credit pair*: two neighbouring one-signed money columns that are never
 //!   both non-zero on a row, exactly one filled on ≥ 90 % of the rows. An unproven pair whose
 //!   sides neither the signs nor the headers tell apart is not guessed.
 //! - **balance**: a money column filled on ≥ half the rows with `balance[i] − balance[i−1] =
 //!   amount[i]` on ≥ 80 % of the consecutive pairs where the balance moved or there is an amount,
 //!   read in the file's order (both orders only when the dates do not tell), and no pair saying
 //!   the opposite sign: `verified`; the mirror image: `inverted`; else no balance, `unchecked`.
-//!   A proven reading of the amounts wins, then the header synonyms, then the reading that
-//!   covers more rows; the balance decides which side of a pair is the debit.
+//!   A proven reading of the amounts wins, then the header synonyms, then the better proof,
+//!   then the reading that covers more rows; the balance decides which side of a pair is the
+//!   debit.
 //! - **transaction id**: a token (no spaces, a digit) unique and filled on every row, not money,
 //!   not a column with both signs or a balance header, not a 1…n row counter.
 //! - **counterparty**: a text column with 2 ≤ distinct values ≤ 90 % of its filled cells and a
@@ -642,17 +644,22 @@ struct AmountReading {
 /// Does `balances` move by the amounts? Counted over the consecutive rows where the balance
 /// moved or there is an amount (a move without an amount is a miss), in the file's order; both
 /// orders only when the dates do not tell it. A pair that agrees with the opposite sign spoils
-/// the proof: the column then holds magnitudes, not signed amounts.
+/// the proof: the column then holds magnitudes, not signed amounts. Without `gaps_allowed` a
+/// move on a row without an amount spoils it too: a one-signed column that is empty where the
+/// balance moves leaves those amounts to another column (credits beside a debit column).
 fn balance_check(
     amounts: &[Option<f64>],
     balances: &[Option<f64>],
     order: FileOrder,
+    gaps_allowed: bool,
 ) -> Option<(SignCheck, f64)> {
     #[derive(Default)]
     struct Tally {
         pairs: usize,
         verified: usize,
         inverted: usize,
+        /// The balance moved on a row without an amount.
+        gaps: usize,
     }
     impl Tally {
         fn count(&mut self, step: f64, amount: Option<f64>) {
@@ -662,6 +669,7 @@ fn balance_check(
             }
             self.pairs += 1;
             let Some(amount) = amount else {
+                self.gaps += 1;
                 return;
             };
             if (step - amount).abs() < CENT {
@@ -671,7 +679,10 @@ fn balance_check(
             }
         }
 
-        fn proof(&self) -> Option<(SignCheck, f64)> {
+        fn proof(&self, gaps_allowed: bool) -> Option<(SignCheck, f64)> {
+            if !gaps_allowed && self.gaps > 0 {
+                return None;
+            }
             let (verified, inverted) = (
                 share(self.verified, self.pairs),
                 share(self.inverted, self.pairs),
@@ -703,7 +714,7 @@ fn balance_check(
     readable
         .into_iter()
         .flatten()
-        .filter_map(Tally::proof)
+        .filter_map(|tally| tally.proof(gaps_allowed))
         .max_by(|a, b| {
             a.1.total_cmp(&b.1)
                 .then((a.0 == SignCheck::Verified).cmp(&(b.0 == SignCheck::Verified)))
@@ -744,11 +755,12 @@ impl AmountReader<'_, '_> {
     }
 
     /// The balance column that best agrees with `kind`: a money column filled on ≥ half the
-    /// rows; header synonym first, then the share of agreeing pairs, then the leftmost.
+    /// rows; header synonym first, then the share of agreeing pairs, then the leftmost. A
+    /// one-signed single column must carry the amount of every row the balance moves on.
     fn prove(&self, kind: AmountKind) -> Option<BalanceProof> {
-        let used = match kind {
-            AmountKind::Single(a) => [a, a],
-            AmountKind::Pair { debit, credit } => [debit, credit],
+        let (used, gaps_allowed) = match kind {
+            AmountKind::Single(a) => ([a, a], !self.numerics[a].one_signed()),
+            AmountKind::Pair { debit, credit } => ([debit, credit], true),
         };
         let amounts = self.amounts_of(kind);
         self.numerics
@@ -758,13 +770,13 @@ impl AmountReader<'_, '_> {
                 !used.contains(b) && numeric.money && numeric.filled_share >= MIN_FILLED
             })
             .filter_map(|(b, numeric)| {
-                balance_check(&amounts, &numeric.values, self.order).map(|(check, share)| {
-                    BalanceProof {
+                balance_check(&amounts, &numeric.values, self.order, gaps_allowed).map(
+                    |(check, share)| BalanceProof {
                         balance: b,
                         check,
                         share,
-                    }
-                })
+                    },
+                )
             })
             .max_by(|x, y| {
                 let named =
@@ -798,8 +810,8 @@ impl AmountReader<'_, '_> {
     /// ≥ half the rows; a one-signed money column filled on ≥ half the rows that a balance
     /// proves; neighbouring one-signed money columns never both non-zero on a row and with
     /// exactly one non-zero on ≥ 90 % of the rows (a pair). A reading a balance proves wins;
-    /// then the header synonyms; then the one covering more rows; then a single column over a
-    /// pair; then money; then the leftmost.
+    /// then the header synonyms; then the better proof (share of agreeing pairs); then the one
+    /// covering more rows; then a single column over a pair; then money; then the leftmost.
     fn choose(&self) -> Option<AmountReading> {
         let numerics = self.numerics;
         let mut readings: Vec<AmountReading> = Vec::new();
@@ -845,15 +857,21 @@ impl AmountReader<'_, '_> {
                 self.column(debit).index.min(self.column(credit).index)
             }
         };
-        readings.into_iter().max_by_key(|reading| {
+        let first = |r: &AmountReading| (r.proof.is_some(), header_named(r.kind));
+        let proof_share = |r: &AmountReading| r.proof.map_or(0.0, |p| p.share);
+        let rest = |r: &AmountReading| {
             (
-                reading.proof.is_some(),
-                header_named(reading.kind),
-                reading.coverage,
-                matches!(reading.kind, AmountKind::Single(_)),
-                money(reading.kind),
-                Reverse(leftmost(reading.kind)),
+                r.coverage,
+                matches!(r.kind, AmountKind::Single(_)),
+                money(r.kind),
+                Reverse(leftmost(r.kind)),
             )
+        };
+        readings.into_iter().max_by(|a, b| {
+            first(a)
+                .cmp(&first(b))
+                .then(proof_share(a).total_cmp(&proof_share(b)))
+                .then_with(|| rest(a).cmp(&rest(b)))
         })
     }
 

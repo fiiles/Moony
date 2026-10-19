@@ -169,28 +169,45 @@ jobs:
         run: npm ci
 
       - name: Apple signing and notarization
-        # Developer ID Application certificate (base64 .p12) and an App Store Connect API key for
-        # notarytool; Tauri imports the certificate into a temporary keychain of its own.
+        # Developer ID Application certificate (base64 .p12); Tauri imports it into a temporary
+        # keychain of its own. Notarization uses an Apple ID with an app-specific password, or an
+        # App Store Connect API key when no Apple ID secret is set.
         if: contains(matrix.platform, 'macos') && env.APPLE_SIGNING == 'true'
         shell: bash
         env:
           CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          ID: ${{ secrets.APPLE_ID }}
+          ID_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
           API_KEY: ${{ secrets.APPLE_API_KEY }}
           API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
         run: |
-          key_path="$RUNNER_TEMP/AuthKey_$API_KEY.p8"
-          printf '%s\n' "$API_KEY_P8" > "$key_path"
           {
             echo "APPLE_CERTIFICATE=$CERTIFICATE"
             echo "APPLE_CERTIFICATE_PASSWORD=$CERTIFICATE_PASSWORD"
             echo "APPLE_SIGNING_IDENTITY=$SIGNING_IDENTITY"
-            echo "APPLE_API_ISSUER=$API_ISSUER"
-            echo "APPLE_API_KEY=$API_KEY"
-            echo "APPLE_API_KEY_PATH=$key_path"
           } >> "$GITHUB_ENV"
+          if [ -n "$ID" ]; then
+            {
+              echo "APPLE_ID=$ID"
+              echo "APPLE_PASSWORD=$ID_PASSWORD"
+              echo "APPLE_TEAM_ID=$TEAM_ID"
+            } >> "$GITHUB_ENV"
+          elif [ -n "$API_KEY" ]; then
+            key_path="$RUNNER_TEMP/AuthKey_$API_KEY.p8"
+            printf '%s\n' "$API_KEY_P8" > "$key_path"
+            {
+              echo "APPLE_API_ISSUER=$API_ISSUER"
+              echo "APPLE_API_KEY=$API_KEY"
+              echo "APPLE_API_KEY_PATH=$key_path"
+            } >> "$GITHUB_ENV"
+          else
+            echo "::error::Signing is on but neither APPLE_ID nor APPLE_API_KEY is set, so the app cannot be notarized."
+            exit 1
+          fi
 
       - name: Build the app
         uses: tauri-apps/tauri-action@v1

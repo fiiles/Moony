@@ -465,15 +465,19 @@ needs no manual column mapping.
    - `institutionId` ties the preset to a row of the seeded `institutions` table;
      omit it for banks that are not seeded.
    - `mobileExport` is the guide the phone app's import sheet shows ("how to get a
-     statement file from this bank on a phone"). Every bank preset carries one; a
-     generic layout (`uk-debit-credit`) does not. `route` is `app` only when the
-     bank's own app exports the file (mBank, Wise), otherwise `web` (the bank's
+     statement file from this bank on a phone"). Every bank preset whose export
+     path is documented carries one; a generic layout (`uk-debit-credit`) does not,
+     and Moneta has none until a device check (the research found no CSV export
+     there). `route` is `app` only when the bank's own phone app exports the file
+     (mBank, Wise, Revolut), otherwise `web` (the bank's
      internet banking in the phone's browser) and then `webUrl` — the bank's public
      internet-banking address, `https://` — is required. `format` is what the person
-     picks in the bank ("CSV"). `steps` has an entry for **every** locale the app
+     picks in the bank ("CSV"; Revolut's personal statement offers "Excel (CSV)").
+     `steps` has an entry for **every** locale the app
      ships (`en`, `cs`, `de`, `es`, `it`, `nb`, `pl`, `sv`, `ja`, `zh`), two to four
      short imperative steps each; keep the bank's own menu labels in the language of
-     its screens and translate only the words around them. Write only what the
+     its screens and translate only the words around them (and inflect the bank's
+     name where the language needs it: Czech "bankovnictví České spořitelny"). Write only what the
      bank's help pages document — never that an app "cannot" export, only the path
      that works. `appUrlScheme` (a bare scheme such as `fio`, never `fio://`) is set
      only when the bank documents one; none does today.

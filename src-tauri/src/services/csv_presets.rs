@@ -49,7 +49,7 @@ pub enum ExportRoute {
 #[serde(deny_unknown_fields)]
 pub struct MobileExportGuide {
     pub route: ExportRoute,
-    /// What the person picks in the bank ("CSV").
+    /// What the person picks in the bank ("CSV"; Revolut's personal statement offers "Excel (CSV)").
     pub format: String,
     /// Locale code (`en`, `cs`, …) → the steps; every locale the app ships is present.
     pub steps: BTreeMap<String, Vec<String>>,
@@ -128,7 +128,8 @@ pub struct CsvPreset {
     #[serde(rename = "sampleFixture", default)]
     pub sample_fixture: Option<String>,
     /// How to get this bank's statement file on a phone (the phone app's import sheet shows it).
-    /// Every bank preset carries one; the generic layouts do not.
+    /// Every bank whose phone export path is documented carries one; the generic layouts do not,
+    /// nor does Moneta until a device check (no CSV export was found).
     #[serde(rename = "mobileExport", default)]
     pub mobile_export: Option<MobileExportGuide>,
 }
@@ -742,7 +743,8 @@ mod tests {
 
     /// Every bank preset (not the generic UK layout) carries a guide for each locale; the guides
     /// hold what the bank-export research found (docs/plans/2026-10-16-mobile-app-bank-exports.md),
-    /// so the app routes are the ones that research confirmed and no preset invents an app scheme.
+    /// so the app routes are exactly the banks whose own phone app that research documents
+    /// (mBank, Wise, Revolut) and no preset invents an app scheme.
     #[test]
     fn every_bank_preset_carries_a_mobile_guide() {
         for preset in all_presets() {
@@ -753,22 +755,48 @@ mod tests {
                 );
                 continue;
             }
+            if preset.id == "moneta" {
+                // no guide until a device check: T1 found no CSV export
+                assert!(
+                    preset.mobile_export.is_none(),
+                    "moneta has no guide until a device check"
+                );
+                continue;
+            }
             let guide = preset
                 .mobile_export
                 .as_ref()
                 .unwrap_or_else(|| panic!("{}: no mobileExport guide", preset.id));
-            assert_eq!(guide.format, "CSV", "{}", preset.id);
+            // Revolut's personal app offers Excel, which is a CSV for some people (T1)
+            let format = if preset.id == "revolut" {
+                "Excel (CSV)"
+            } else {
+                "CSV"
+            };
+            assert_eq!(guide.format, format, "{}", preset.id);
             assert_eq!(
                 guide.app_url_scheme, None,
                 "{}: no scheme is documented",
                 preset.id
             );
-            let expected = if matches!(preset.id.as_str(), "mbank" | "wise") {
-                ExportRoute::App
+            if matches!(preset.id.as_str(), "mbank" | "wise" | "revolut") {
+                assert_eq!(guide.route, ExportRoute::App, "{}", preset.id);
+                assert_eq!(
+                    guide.web_url, None,
+                    "{}: an app route has no web URL",
+                    preset.id
+                );
             } else {
-                ExportRoute::Web
-            };
-            assert_eq!(guide.route, expected, "{}", preset.id);
+                assert_eq!(guide.route, ExportRoute::Web, "{}", preset.id);
+                assert!(
+                    guide
+                        .web_url
+                        .as_deref()
+                        .is_some_and(|url| url.starts_with("https://")),
+                    "{}: a web route has an https URL",
+                    preset.id
+                );
+            }
         }
     }
 

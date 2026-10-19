@@ -597,7 +597,8 @@ transactionIdColumn?: string | null; rowFilter?: CsvRowFilter | null; exportHelp
 sampleFixture?: string | null; 
 /**
  * How to get this bank's statement file on a phone (the phone app's import sheet shows it).
- * Every bank preset carries one; the generic layouts do not.
+ * Every bank whose phone export path is documented carries one; the generic layouts do not,
+ * nor does Moneta until a device check (no CSV export was found).
  */
 mobileExport?: MobileExportGuide | null }
 
@@ -1395,7 +1396,7 @@ count: number | null }
  */
 export type MobileExportGuide = { route: ExportRoute; 
 /**
- * What the person picks in the bank ("CSV").
+ * What the person picks in the bank ("CSV"; Revolut's personal statement offers "Excel (CSV)").
  */
 format: string; 
 /**

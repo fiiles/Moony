@@ -1445,7 +1445,7 @@ export type ExportRoute = 'app' | 'web';
  */
 export interface MobileExportGuide {
   route: ExportRoute;
-  /** What the person picks in the bank ("CSV"). */
+  /** What the person picks in the bank ("CSV"; Revolut's personal statement offers "Excel (CSV)"). */
   format: string;
   steps: Record<string, string[]>;
   appUrlScheme: string | null;

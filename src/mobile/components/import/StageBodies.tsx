@@ -67,17 +67,20 @@ export function UnreadableBody({
 }) {
   const { t } = useTranslation('mobile');
   return (
-    <div role="alert">
-      <FileBar name={fileName} />
-      <p className="mx-1 my-0 text-m-body text-ink-2">
-        {t(`import.unreadable.${unreadable.reason}`)}
-      </p>
-      {unreadable.detail && (
-        <p className="mx-1 mb-0 mt-1.5 text-m-sub text-ink-3">{unreadable.detail}</p>
-      )}
-      <ReadsLine />
+    <>
+      {/* The alert is what went wrong; the bank list below it changes with every tap and is not announced */}
+      <div role="alert">
+        <FileBar name={fileName} />
+        <p className="mx-1 my-0 text-m-body text-ink-2">
+          {t(`import.unreadable.${unreadable.reason}`)}
+        </p>
+        {unreadable.detail && (
+          <p className="mx-1 mb-0 mt-1.5 text-m-sub text-ink-3">{unreadable.detail}</p>
+        )}
+        <ReadsLine />
+      </div>
       <BankGuides presets={guides} />
-    </div>
+    </>
   );
 }
 

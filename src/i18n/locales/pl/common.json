@@ -290,7 +290,9 @@
     "statementInvestmentOnly": "Ten plik zawiera wyłącznie transakcje inwestycyjne. Użyj do nich importu od brokera.",
     "statementMalformed": "Plik wyciągu jest uszkodzony lub niekompletny ({{detail}}).",
     "statementIndexInvalid": "Wybierz jeden z wyciągów w pliku.",
-    "statementDateOrderInvalid": "Kolejność daty można wybrać tylko dla plików QIF."
+    "statementDateOrderInvalid": "Kolejność daty można wybrać tylko dla plików QIF.",
+    "snoozeSelectionInvalid": "Wybierz od 1 do 1000 płatności.",
+    "snoozeDaysInvalid": "Wybierz liczbę dni od 1 do 365."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

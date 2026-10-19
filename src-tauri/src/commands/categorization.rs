@@ -12,12 +12,15 @@ use tauri::State;
 use uuid::Uuid;
 
 use crate::db::Database;
-use crate::models::categorization::{ChangedRow, RecategorizationPreview};
+use crate::models::categorization::{
+    CategorizeQueue, ChangedRow, RecategorizationPreview, SnoozeCategorization,
+};
 use crate::services::categorization::learn;
 use crate::services::categorization::recategorize;
 use crate::services::categorization::{
     CategorizationEngine, CategorizationResult, CategorizationRule, TransactionInput,
 };
+use crate::services::categorize_queue;
 
 /// State wrapper for thread-safe engine access
 pub struct CategorizationState(pub Arc<CategorizationEngine>);
@@ -547,6 +550,34 @@ pub async fn restore_transaction_categories(
     rows: Vec<ChangedRow>,
 ) -> crate::error::Result<usize> {
     db.with_conn(|conn| recategorize::restore(conn, &rows))
+}
+
+// ==================== The categorize queue (phone, spec 2026-10-17 §8.5) ====================
+
+/// The booked payments that still have no category, newest first, each with the category the
+/// app would suggest (an AI client's pending suggestion, else the categorization engine), for
+/// one account or all of them. A payment snoozed by `snooze_categorization` is left out until
+/// its snooze ends.
+#[tauri::command]
+pub async fn get_categorize_queue(
+    db: State<'_, Database>,
+    categorization: State<'_, CategorizationState>,
+    account_id: Option<String>,
+) -> crate::error::Result<CategorizeQueue> {
+    let now = chrono::Utc::now().timestamp();
+    db.with_conn(|conn| categorize_queue::list(conn, &categorization.0, account_id.as_deref(), now))
+}
+
+/// Hold uncategorized payments back from the queue for `days` days ("Bez kategorie, nechat").
+/// Returns how many were held back; a payment that has a category is left alone.
+#[tauri::command]
+pub async fn snooze_categorization(
+    db: State<'_, Database>,
+    input: SnoozeCategorization,
+) -> crate::error::Result<usize> {
+    input.validate()?;
+    let until = categorize_queue::snooze_until(chrono::Utc::now().timestamp(), input.days);
+    db.with_conn(|conn| categorize_queue::snooze(conn, &input.transaction_ids, until))
 }
 
 // ==================== Custom Rules Management ====================

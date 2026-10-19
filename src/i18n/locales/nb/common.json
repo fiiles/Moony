@@ -290,7 +290,9 @@
     "statementInvestmentOnly": "Denne filen inneholder bare investeringstransaksjoner. Bruk meglerimporten for dem.",
     "statementMalformed": "Kontoutskriftsfilen er skadet eller ufullstendig ({{detail}}).",
     "statementIndexInvalid": "Velg en av kontoutskriftene i filen.",
-    "statementDateOrderInvalid": "Datorekkefølgen kan bare velges for QIF-filer."
+    "statementDateOrderInvalid": "Datorekkefølgen kan bare velges for QIF-filer.",
+    "snoozeSelectionInvalid": "Velg fra 1 til 1000 betalinger.",
+    "snoozeDaysInvalid": "Velg et antall dager fra 1 til 365."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

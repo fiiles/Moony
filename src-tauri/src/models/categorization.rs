@@ -102,3 +102,176 @@ pub struct RecategorizationPreview {
     #[serde(rename = "byCategory")]
     pub by_category: Vec<CategoryCount>,
 }
+
+// ==================== The categorize queue (phone, spec 2026-10-17 §8.5) ====================
+
+/// The most payments one snooze call may name.
+const SNOOZE_MAX_TRANSACTIONS: usize = 1000;
+/// The longest a payment may be held back from the queue.
+const SNOOZE_MAX_DAYS: i64 = 365;
+
+/// Where a suggested category comes from (the pill's sub-label on the phone).
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
+pub enum SuggestionSource {
+    /// An AI client suggested it through the local API and waits for the user.
+    #[serde(rename = "mcp")]
+    Mcp,
+    /// A payee the user categorized before.
+    #[serde(rename = "learned")]
+    Learned,
+    /// A custom rule, or a transfer between the user's own accounts.
+    #[serde(rename = "rule")]
+    Rule,
+    /// A rule of an enabled locale pack.
+    #[serde(rename = "pack")]
+    Pack,
+}
+
+/// A category the app would give a payment, and where the idea comes from.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type, PartialEq, Eq)]
+pub struct CategorySuggestion {
+    #[serde(rename = "categoryId")]
+    pub category_id: String,
+    #[serde(rename = "source")]
+    pub source: SuggestionSource,
+}
+
+/// One payment of the queue and the category suggested for it, if any.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+pub struct CategorizeQueueRow {
+    #[serde(rename = "transaction")]
+    pub transaction: crate::models::bank_transactions::BankTransaction,
+    #[serde(rename = "suggestion")]
+    pub suggestion: Option<CategorySuggestion>,
+}
+
+/// Booked payments without a category, newest first.
+#[derive(Debug, Clone, Serialize, Deserialize, specta::Type)]
+pub struct CategorizeQueue {
+    /// The newest payments, capped; `total` counts all of them.
+    #[serde(rename = "rows")]
+    pub rows: Vec<CategorizeQueueRow>,
+    /// Every payment waiting in the queue (not snoozed), listed or not.
+    #[serde(rename = "total")]
+    pub total: i64,
+    /// Uncategorized payments held back from the queue by a snooze that is still running.
+    #[serde(rename = "snoozed")]
+    pub snoozed: i64,
+}
+
+/// Hold uncategorized payments back from the queue for a number of days.
+#[derive(Debug, Clone, Deserialize, specta::Type)]
+pub struct SnoozeCategorization {
+    #[serde(rename = "transactionIds")]
+    pub transaction_ids: Vec<String>,
+    #[serde(rename = "days")]
+    pub days: i64,
+}
+
+impl SnoozeCategorization {
+    pub fn validate(&self) -> Result<()> {
+        if self.transaction_ids.is_empty()
+            || self.transaction_ids.len() > SNOOZE_MAX_TRANSACTIONS
+            || self.transaction_ids.iter().any(|id| id.trim().is_empty())
+        {
+            return Err(AppError::Validation(
+                "validation.snoozeSelectionInvalid".into(),
+            ));
+        }
+        if !(1..=SNOOZE_MAX_DAYS).contains(&self.days) {
+            return Err(AppError::Validation("validation.snoozeDaysInvalid".into()));
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn snooze(ids: &[&str], days: i64) -> SnoozeCategorization {
+        SnoozeCategorization {
+            transaction_ids: ids.iter().map(|id| id.to_string()).collect(),
+            days,
+        }
+    }
+
+    fn rejected_with(input: &SnoozeCategorization) -> String {
+        match input.validate() {
+            Err(AppError::Validation(key)) => key,
+            other => panic!("expected a validation error, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn snooze_accepts_one_to_a_thousand_ids_and_one_to_365_days() {
+        assert!(snooze(&["a"], 1).validate().is_ok());
+        assert!(snooze(&["a", "b"], 30).validate().is_ok());
+        assert!(snooze(&["a"], 365).validate().is_ok());
+        let thousand: Vec<String> = (0..1000).map(|n| format!("t{n}")).collect();
+        let full = SnoozeCategorization {
+            transaction_ids: thousand,
+            days: 30,
+        };
+        assert!(full.validate().is_ok());
+    }
+
+    #[test]
+    fn snooze_rejects_no_ids_too_many_ids_and_blank_ids() {
+        assert_eq!(
+            rejected_with(&snooze(&[], 30)),
+            "validation.snoozeSelectionInvalid"
+        );
+        let too_many = SnoozeCategorization {
+            transaction_ids: (0..1001).map(|n| format!("t{n}")).collect(),
+            days: 30,
+        };
+        assert_eq!(
+            rejected_with(&too_many),
+            "validation.snoozeSelectionInvalid"
+        );
+        assert_eq!(
+            rejected_with(&snooze(&["a", ""], 30)),
+            "validation.snoozeSelectionInvalid"
+        );
+        assert_eq!(
+            rejected_with(&snooze(&["  "], 30)),
+            "validation.snoozeSelectionInvalid"
+        );
+    }
+
+    #[test]
+    fn snooze_rejects_days_outside_one_to_365() {
+        for days in [0, -1, 366, i64::MAX] {
+            assert_eq!(
+                rejected_with(&snooze(&["a"], days)),
+                "validation.snoozeDaysInvalid",
+                "{days}"
+            );
+        }
+    }
+
+    #[test]
+    fn suggestion_sources_serialize_as_lowercase_words() {
+        let json = serde_json::to_value(CategorySuggestion {
+            category_id: "cat_food".into(),
+            source: SuggestionSource::Mcp,
+        })
+        .expect("serialize");
+        assert_eq!(
+            json,
+            serde_json::json!({ "categoryId": "cat_food", "source": "mcp" })
+        );
+        for (source, word) in [
+            (SuggestionSource::Mcp, "mcp"),
+            (SuggestionSource::Learned, "learned"),
+            (SuggestionSource::Rule, "rule"),
+            (SuggestionSource::Pack, "pack"),
+        ] {
+            assert_eq!(
+                serde_json::to_value(source).expect("serialize"),
+                serde_json::json!(word)
+            );
+        }
+    }
+}

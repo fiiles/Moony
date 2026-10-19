@@ -127,6 +127,7 @@ import type {
   InsertScopedLearning,
   ChangedRow,
   RecategorizationPreview,
+  CategorizeQueue,
   CustomRule,
   CustomRuleInput,
   RuleHitCount,
@@ -1220,6 +1221,19 @@ export const categorizationApi = {
   /** Undo a bulk recategorization. Returns how many rows were restored. */
   restoreTransactionCategories: (rows: ChangedRow[]) =>
     tauriInvoke<number>('restore_transaction_categories', { rows }),
+
+  // ==================== The categorize queue (phone, spec 2026-10-17 §8.5) ====================
+
+  /**
+   * Booked payments without a category, newest first (at most 500, `total` counts all), each with
+   * the category the app would suggest; one account or all of them. Snoozed payments are left out.
+   */
+  getCategorizeQueue: (accountId?: string) =>
+    tauriInvoke<CategorizeQueue>('get_categorize_queue', { accountId: accountId ?? null }),
+
+  /** Hold uncategorized payments back from the queue for `days` days (1–365). Returns how many were held back. */
+  snoozeCategorization: (transactionIds: string[], days: number) =>
+    tauriInvoke<number>('snooze_categorization', { input: { transactionIds, days } }),
 
   // Forget a learned payee combination
   forget: (payee: string | null, counterpartyIban: string | null) =>

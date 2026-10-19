@@ -252,6 +252,11 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::categorization::ChangedRow>();
     types.register::<crate::models::categorization::GoverningRule>();
     types.register::<crate::models::categorization::RecategorizationPreview>();
+    types.register::<crate::models::categorization::SuggestionSource>();
+    types.register::<crate::models::categorization::CategorySuggestion>();
+    types.register::<crate::models::categorization::CategorizeQueueRow>();
+    types.register::<crate::models::categorization::CategorizeQueue>();
+    types.register::<crate::models::categorization::SnoozeCategorization>();
     types.register::<crate::commands::categorization::RulePackInfo>();
     types.register::<crate::commands::categorization::PackRuleInfo>();
     types.register::<crate::services::categorization::hits::RuleHitCount>();

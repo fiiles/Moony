@@ -290,7 +290,9 @@
     "statementInvestmentOnly": "Questo file contiene solo operazioni di investimento. Usa per queste l'importazione del broker.",
     "statementMalformed": "Il file dell'estratto conto è danneggiato o incompleto ({{detail}}).",
     "statementIndexInvalid": "Scegli uno degli estratti conto presenti nel file.",
-    "statementDateOrderInvalid": "L'ordine della data può essere scelto solo per i file QIF."
+    "statementDateOrderInvalid": "L'ordine della data può essere scelto solo per i file QIF.",
+    "snoozeSelectionInvalid": "Seleziona da 1 a 1000 pagamenti.",
+    "snoozeDaysInvalid": "Scegli un numero di giorni da 1 a 365."
   },
   "auth": {
     "wrongPassword": "La password inserita non è corretta. Riprova.",

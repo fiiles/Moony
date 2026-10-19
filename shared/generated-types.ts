@@ -315,6 +315,28 @@ export type CashflowSection = { income: CashflowCategory[]; expenses: CashflowCa
 export type CategorizationOverview = { total: number; categorized: number; bySource: SourceCount[] }
 
 /**
+ * Booked payments without a category, newest first.
+ */
+export type CategorizeQueue = { 
+/**
+ * The newest payments, capped; `total` counts all of them.
+ */
+rows: CategorizeQueueRow[]; 
+/**
+ * Every payment waiting in the queue (not snoozed), listed or not.
+ */
+total: number; 
+/**
+ * Uncategorized payments held back from the queue by a snooze that is still running.
+ */
+snoozed: number }
+
+/**
+ * One payment of the queue and the category suggested for it, if any.
+ */
+export type CategorizeQueueRow = { transaction: BankTransaction; suggestion: CategorySuggestion | null }
+
+/**
  * One current-category bucket of the payments a rewritten rule covers.
  */
 export type CategoryCount = { 
@@ -327,6 +349,11 @@ categoryId: string | null; count: number }
  * Category spending summary for a period
  */
 export type CategorySpendingSummary = { budgetCurrency: string | null; budgetSpent: string | null; budgetLimitNative: string | null; budgetLimitFxQuality: FxQuality | null; budgetLimit: string | null; categoryId: string; categoryName: string; categoryIcon: string | null; categoryColor: string | null; totalAmount: string; transactionCount: number; budgetGoal: BudgetGoal | null; budgetPercentage: number | null }
+
+/**
+ * A category the app would give a payment, and where the idea comes from.
+ */
+export type CategorySuggestion = { categoryId: string; source: SuggestionSource }
 
 /**
  * How many rows reference a category — what a delete would have to move.
@@ -1732,6 +1759,11 @@ export type SetCashflowPlanInclusion = {
 key: string; included: boolean }
 
 /**
+ * Hold uncategorized payments back from the queue for a number of days.
+ */
+export type SnoozeCategorization = { transactionIds: string[]; days: number }
+
+/**
  * How many entries of a statement carry one source category (QIF `L` line).
  */
 export type SourceCategoryCount = { name: string; count: number }
@@ -2388,6 +2420,27 @@ suggested: TypeValueAction }
  * Every stock position with its tags in `currency`.
  */
 export type StocksAnalysis = { currency: string; fxQuality: ConversionQuality; items: StockInvestmentWithTags[] }
+
+/**
+ * Where a suggested category comes from (the pill's sub-label on the phone).
+ */
+export type SuggestionSource = 
+/**
+ * An AI client suggested it through the local API and waits for the user.
+ */
+"mcp" | 
+/**
+ * A payee the user categorized before.
+ */
+"learned" | 
+/**
+ * A custom rule, or a transfer between the user's own accounts.
+ */
+"rule" | 
+/**
+ * A rule of an enabled locale pack.
+ */
+"pack"
 
 /**
  * One recorded day of a ticker's position. Quantity, price and currency are the native facts;

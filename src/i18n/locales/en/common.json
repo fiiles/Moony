@@ -290,7 +290,9 @@
     "statementInvestmentOnly": "This file contains only investment transactions. Use the broker import for those.",
     "statementMalformed": "The statement file is damaged or incomplete ({{detail}}).",
     "statementIndexInvalid": "Choose one of the statements in the file.",
-    "statementDateOrderInvalid": "A date order can only be chosen for QIF files."
+    "statementDateOrderInvalid": "A date order can only be chosen for QIF files.",
+    "snoozeSelectionInvalid": "Choose between 1 and 1000 payments.",
+    "snoozeDaysInvalid": "Choose a number of days from 1 to 365."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

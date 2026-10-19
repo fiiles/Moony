@@ -290,7 +290,9 @@
     "statementInvestmentOnly": "Este archivo solo contiene operaciones de inversión. Usa para ellas la importación del bróker.",
     "statementMalformed": "El archivo del extracto está dañado o incompleto ({{detail}}).",
     "statementIndexInvalid": "Elige uno de los extractos del archivo.",
-    "statementDateOrderInvalid": "El orden de la fecha solo se puede elegir en archivos QIF."
+    "statementDateOrderInvalid": "El orden de la fecha solo se puede elegir en archivos QIF.",
+    "snoozeSelectionInvalid": "Selecciona de 1 a 1000 pagos.",
+    "snoozeDaysInvalid": "Elige un número de días de 1 a 365."
   },
   "auth": {
     "wrongPassword": "La contraseña introducida es incorrecta. Inténtalo de nuevo.",

@@ -1304,6 +1304,39 @@ export interface RecategorizationPreview {
   byCategory: CategoryCount[];
 }
 
+/** Where a suggested category comes from (the pill's sub-label on the phone). */
+export type SuggestionSource = 'mcp' | 'learned' | 'rule' | 'pack';
+
+/** A category the app would give a payment, and where the idea comes from. */
+export interface CategorySuggestion {
+  categoryId: string;
+  source: SuggestionSource;
+}
+
+/** One payment of the categorize queue and the category suggested for it, if any. */
+export interface CategorizeQueueRow {
+  transaction: BankTransaction;
+  suggestion: CategorySuggestion | null;
+}
+
+/** Booked payments without a category, newest first. */
+export interface CategorizeQueue {
+  /** The newest payments, capped; `total` counts all of them. */
+  rows: CategorizeQueueRow[];
+  /** Every payment waiting in the queue (not snoozed), listed or not. */
+  total: number;
+  /** Uncategorized payments held back from the queue by a snooze that is still running. */
+  snoozed: number;
+}
+
+/** Hold uncategorized payments back from the queue for a number of days. */
+export interface SnoozeCategorization {
+  /** 1 to 1000 payment ids. */
+  transactionIds: string[];
+  /** 1 to 365. */
+  days: number;
+}
+
 /** Custom categorization rule from the database */
 export interface CustomRule {
   id: string;

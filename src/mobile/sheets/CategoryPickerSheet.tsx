@@ -31,7 +31,8 @@ interface CategoryPickerSheetProps {
   /**
    * Hands the other payments a remembered pick took along to the caller (`PickOptions.onApplied`).
    * A caller that takes them shows them itself — the categorize queue's expansion, with its own
-   * undo — so the sheet then leaves out its history toast. The ledger passes nothing.
+   * undo — so the sheet then leaves out the history toast of a pick that took other payments
+   * along (`quiet`). The ledger passes nothing.
    */
   onApplied?: (changed: ChangedRow[]) => void;
 }

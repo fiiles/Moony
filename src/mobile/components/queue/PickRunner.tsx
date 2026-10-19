@@ -20,8 +20,8 @@ interface PickRunnerProps {
 /**
  * Accepts one engine suggestion of the categorize queue through `useCategorize.pick`: the pick
  * the picker makes with its switches on — save, remember for this account and direction, also
- * categorize the other payments the rule covers — and no toast of its own, since the queue's row
- * turns over and offers the expansion. `useCategorize` is bound to one payment (it loads that
+ * categorize the other payments the rule covers — and no toast for the payments it took along,
+ * since the queue's row turns over and offers them back in its expansion (`quiet`). `useCategorize` is bound to one payment (it loads that
  * payment's preview), so the queue mounts one of these per accepted row instead of one hook per
  * row of a list of hundreds; it renders nothing and runs the pick once.
  */

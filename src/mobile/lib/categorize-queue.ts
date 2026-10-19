@@ -65,18 +65,39 @@ export function suggestionLabelKey(source: SuggestionSource): string {
 /**
  * The category each done row ended with, as far as this page knows: the pick of a row, and the
  * same category for the rows its remembered pick took along. A row's own pick wins over a batch
- * that reached it. A row that left the open set some other way is not in it.
+ * that reached it. A row that left the open set some other way is not in it, and neither are the
+ * rows of a batch that was `restored` (the switch of its expansion turned off): they hold what
+ * they held before and the queue lists them again.
  */
-export function doneCategories(local: ReadonlyMap<string, LocalOutcome>): Map<string, string> {
+export function doneCategories(
+  local: ReadonlyMap<string, LocalOutcome>,
+  restored: ReadonlySet<string> = new Set()
+): Map<string, string> {
   const categories = new Map<string, string>();
-  for (const outcome of local.values()) {
-    if (outcome.kind !== 'categorized') continue;
+  for (const [id, outcome] of local) {
+    if (outcome.kind !== 'categorized' || restored.has(id)) continue;
     for (const taken of outcome.batch) categories.set(taken.id, outcome.categoryId);
   }
   for (const [id, outcome] of local) {
     if (outcome.kind === 'categorized') categories.set(id, outcome.categoryId);
   }
   return categories;
+}
+
+/**
+ * Whether a pick that took other payments along can still be given back: some done row has its
+ * expansion and its switch (`restored`) is not turned off yet.
+ */
+export function batchOffered(
+  local: ReadonlyMap<string, LocalOutcome>,
+  restored: ReadonlySet<string>
+): boolean {
+  for (const [id, outcome] of local) {
+    if (outcome.kind === 'categorized' && outcome.batch.length > 0 && !restored.has(id)) {
+      return true;
+    }
+  }
+  return false;
 }
 
 /**
@@ -120,17 +141,19 @@ export function nextSnapshot(
 }
 
 /**
- * "N plateb bez kategorie": the snapshot rows that are open, and the payments beyond the rows
- * the backend lists (it sends the newest 500 and counts all).
+ * "N plateb bez kategorie": the payments waiting in the answer, less what this page has handled
+ * itself and the answer still lists (it is the one before the write's refresh until it settles).
+ * The answer's rows are the newest 500 of the waiting payments and move on as payments are
+ * handled, so they are not a subset of the page's snapshot: the count never goes by them, only
+ * by `total`, which counts all.
  */
 export function openCount(
-  snapshotRows: readonly CategorizeQueueRow[],
-  openIds: ReadonlySet<string>,
-  live: CategorizeQueue | undefined
+  live: CategorizeQueue | undefined,
+  local: ReadonlyMap<string, LocalOutcome>
 ): number {
-  const listed = snapshotRows.filter((row) => openIds.has(row.transaction.id)).length;
-  const beyond = live ? Math.max(0, live.total - live.rows.length) : 0;
-  return listed + beyond;
+  if (!live) return 0;
+  const handled = live.rows.filter(({ transaction }) => local.has(transaction.id)).length;
+  return Math.max(0, live.total - handled);
 }
 
 /** What Údržba and the Finance row show of the queue: the count, and the accounts that hold the listed payments. */

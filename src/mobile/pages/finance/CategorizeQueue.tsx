@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/mobile/components/cashflow/ProgressBar';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { PickRunner, type PickRun } from '@/mobile/components/queue/PickRunner';
+import { QueueSkeleton } from '@/mobile/components/queue/QueueSkeleton';
 import { QueueRow } from '@/mobile/components/QueueRow';
 import { useBack } from '@/mobile/hooks/use-back';
 import {
@@ -32,6 +33,7 @@ import { useRetained } from '@/mobile/hooks/use-retained';
 import { useLastImports } from '@/mobile/hooks/use-account-upkeep';
 import {
   SNOOZE_DAYS,
+  batchOffered,
   doneCategories,
   effectiveOpenIds,
   openCount,
@@ -81,13 +83,24 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
   const snapshot = useQueueSnapshot(queue.data, !queue.isFetching, local);
   // Payments deleted in the details sheet: not "done", simply gone
   const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
+  // What the details sheet changed on a row (the meaning of the movement): the snapshot's copy of the
+  // row follows, as the account detail's `patchTx` does, so the sheet shows it and reopens with it
+  const [patches, setPatches] = useState<ReadonlyMap<string, Partial<BankTransaction>>>(new Map());
   const rows = useMemo(
-    () => (snapshot ?? []).filter((row) => !removed.has(row.transaction.id)),
-    [snapshot, removed]
+    () =>
+      (snapshot ?? [])
+        .filter((row) => !removed.has(row.transaction.id))
+        .map((row) => {
+          const patch = patches.get(row.transaction.id);
+          return patch ? { ...row, transaction: { ...row.transaction, ...patch } } : row;
+        }),
+    [snapshot, removed, patches]
   );
 
+  // The switches of the expansions that were turned off (their payments are restored)
+  const [restored, setRestored] = useState<ReadonlySet<string>>(new Set());
   const openIds = useMemo(() => effectiveOpenIds(queue.data, local), [queue.data, local]);
-  const done = useMemo(() => doneCategories(local), [local]);
+  const done = useMemo(() => doneCategories(local, restored), [local, restored]);
   const categoryById = useMemo(
     () => new Map<string, TransactionCategory>(categories.map((c) => [c.id, c])),
     [categories]
@@ -96,10 +109,8 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
     rows.map((row) => row.transaction.id),
     openIds
   );
-  const open = openCount(rows, openIds, queue.data);
+  const open = openCount(queue.data, local);
 
-  // The switches of the expansions that were turned off (their payments are restored)
-  const [restored, setRestored] = useState<ReadonlySet<string>>(new Set());
   // Accepted engine suggestions being saved; a row is only accepted once
   const [runs, setRuns] = useState<PickRun[]>([]);
   const accepting = useRef(new Set<string>());
@@ -212,6 +223,9 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
   // The pills name categories: until they are known a suggestion would show as "Vybrat kategorii…"
   const ready = snapshot !== null && !categoriesLoading;
   const finished = ready && open === 0;
+  // The last accept may have taken other payments along: its expansion is the only way back, so the
+  // done rows stay under the empty state while any switch is still on
+  const offered = batchOffered(local, restored);
 
   return (
     <Screen
@@ -233,82 +247,91 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
         ) : (
           <QueueSkeleton />
         )
-      ) : finished ? (
-        <EmptyState
-          bare
-          icon={<CircleCheck />}
-          title={t('queue.empty.title')}
-          description={
-            queue.data && queue.data.snoozed > 0
-              ? t('queue.empty.snoozed', { count: queue.data.snoozed })
-              : t('queue.empty.hint')
-          }
-          className="px-5 py-12"
-          action={
-            <Button
-              className="h-12 w-full rounded-[10px] px-6 text-m-row"
-              onClick={() => setLocation(routes.cashflow)}
-            >
-              {t('queue.showCashflow')}
-            </Button>
-          }
-        />
       ) : (
         <>
-          {lead && (
-            <p className="mx-0.5 mb-1 mt-0.5 text-[13px] font-450 leading-[1.4] text-ink-3">
-              {lead}
+          {finished ? (
+            <EmptyState
+              bare
+              icon={<CircleCheck />}
+              title={t('queue.empty.title')}
+              description={
+                queue.data && queue.data.snoozed > 0
+                  ? t('queue.empty.snoozed', { count: queue.data.snoozed })
+                  : t('queue.empty.hint')
+              }
+              className={offered ? 'px-5 py-8' : 'px-5 py-12'}
+              action={
+                <Button
+                  className="h-12 w-full rounded-[10px] px-6 text-m-row"
+                  onClick={() => setLocation(routes.cashflow)}
+                >
+                  {t('queue.showCashflow')}
+                </Button>
+              }
+            />
+          ) : (
+            <>
+              {lead && (
+                <p className="mx-0.5 mb-1 mt-0.5 text-[13px] font-450 leading-[1.4] text-ink-3">
+                  {lead}
+                </p>
+              )}
+              <h2 className="mx-0.5 mb-2.5 mt-0 text-m-title text-ink">
+                {t('upkeep.uncategorized', { count: open })}
+              </h2>
+              <div className="mx-0.5 mb-3 flex items-center gap-2.5 text-m-caption text-ink-3">
+                <div className="min-w-0 flex-1">
+                  <ProgressBar
+                    value={progress.total > 0 ? progress.handled / progress.total : 0}
+                    tone="limit"
+                  />
+                </div>
+                <span className="flex-none whitespace-nowrap num">
+                  {t('queue.progress', { done: progress.handled, total: progress.total })}
+                </span>
+              </div>
+            </>
+          )}
+          {(!finished || offered) && (
+            <EntityRows>
+              {rows.map((row) => {
+                const id = row.transaction.id;
+                const outcome = local.get(id);
+                const batch = outcome?.kind === 'categorized' ? outcome.batch : [];
+                const { suggestion } = row;
+                return (
+                  <QueueRow
+                    key={id}
+                    row={row}
+                    state={rowState(id, openIds, local)}
+                    suggested={suggestion ? categoryById.get(suggestion.categoryId) : undefined}
+                    doneCategory={categoryById.get(done.get(id) ?? '')}
+                    expansion={
+                      batch.length > 0
+                        ? {
+                            count: batch.length,
+                            restored: restored.has(id),
+                            onRestore: () => restore(id, batch),
+                          }
+                        : undefined
+                    }
+                    onAccept={() =>
+                      suggestion &&
+                      accept(row.transaction, suggestion.categoryId, suggestion.source)
+                    }
+                    onPick={() => setPickFor(withCategory(row.transaction))}
+                    onSnooze={() => keep(row.transaction)}
+                    onDetails={() => setDetailsFor(row.transaction)}
+                  />
+                );
+              })}
+            </EntityRows>
+          )}
+          {!finished && (
+            <p className="mx-1 mb-0 mt-0 text-m-caption text-ink-3">
+              {t('queue.caption', { keep: t('queue.keep'), days: SNOOZE_DAYS })}
             </p>
           )}
-          <h2 className="mx-0.5 mb-2.5 mt-0 text-m-title text-ink">
-            {t('upkeep.uncategorized', { count: open })}
-          </h2>
-          <div className="mx-0.5 mb-3 flex items-center gap-2.5 text-m-caption text-ink-3">
-            <div className="min-w-0 flex-1">
-              <ProgressBar
-                value={progress.total > 0 ? progress.handled / progress.total : 0}
-                tone="limit"
-              />
-            </div>
-            <span className="flex-none whitespace-nowrap num">
-              {t('queue.progress', { done: progress.handled, total: progress.total })}
-            </span>
-          </div>
-          <EntityRows>
-            {rows.map((row) => {
-              const id = row.transaction.id;
-              const outcome = local.get(id);
-              const batch = outcome?.kind === 'categorized' ? outcome.batch : [];
-              const { suggestion } = row;
-              return (
-                <QueueRow
-                  key={id}
-                  row={row}
-                  state={rowState(id, openIds, local)}
-                  suggested={suggestion ? categoryById.get(suggestion.categoryId) : undefined}
-                  doneCategory={categoryById.get(done.get(id) ?? '')}
-                  expansion={
-                    batch.length > 0
-                      ? {
-                          count: batch.length,
-                          restored: restored.has(id),
-                          onRestore: () => restore(id, batch),
-                        }
-                      : undefined
-                  }
-                  onAccept={() =>
-                    suggestion && accept(row.transaction, suggestion.categoryId, suggestion.source)
-                  }
-                  onPick={() => setPickFor(withCategory(row.transaction))}
-                  onSnooze={() => keep(row.transaction)}
-                  onDetails={() => setDetailsFor(row.transaction)}
-                />
-              );
-            })}
-          </EntityRows>
-          <p className="mx-1 mb-0 mt-0 text-m-caption text-ink-3">
-            {t('queue.caption', { keep: t('queue.keep'), days: SNOOZE_DAYS })}
-          </p>
         </>
       )}
 
@@ -328,6 +351,12 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
         category={categoryById.get(done.get(detailsRow?.id ?? '') ?? detailsRow?.categoryId ?? '')}
         flow={flow.data?.[0]}
         onPickCategory={() => detailsFor && setPickFor(withCategory(detailsFor))}
+        onChange={(patch) => {
+          if (!detailsFor) return;
+          const id = detailsFor.id;
+          setDetailsFor((current) => (current?.id === id ? { ...current, ...patch } : current));
+          setPatches((current) => new Map(current).set(id, { ...current.get(id), ...patch }));
+        }}
         onDeleted={() => detailsFor && setRemoved((current) => new Set(current).add(detailsFor.id))}
       />
       <CategoryPickerSheet
@@ -344,29 +373,5 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
         onApplied={(changed) => pickFor && takeBatch(pickFor.id, changed)}
       />
     </Screen>
-  );
-}
-
-/** Three rows in outline while the first answer loads. */
-function QueueSkeleton() {
-  return (
-    <div aria-hidden>
-      <div className="skeleton mx-0.5 mb-2.5 mt-1 h-5 w-48" />
-      <div className="skeleton mx-0.5 mb-3 h-1.5 w-full" />
-      <div className="mb-3.5 overflow-hidden rounded-r4 border border-line bg-paper shadow-e1">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className="px-3.5 py-2.5">
-            <div className="flex min-h-[60px] items-center gap-3">
-              <div className="skeleton size-9 flex-none rounded-full" />
-              <div className="min-w-0 flex-1">
-                <div className="skeleton h-3.5 w-2/5" />
-                <div className="skeleton mt-2 h-3 w-3/5" />
-              </div>
-            </div>
-            <div className="skeleton h-9 w-40 rounded-full" />
-          </div>
-        ))}
-      </div>
-    </div>
   );
 }

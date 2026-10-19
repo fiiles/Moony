@@ -29,8 +29,11 @@ export interface PickOptions {
    */
   onApplied?: (changed: ChangedRow[]) => void;
   /**
-   * The caller reports the learning itself (the queue's expansion): no toast for it, and so no
-   * undo toast either. A failure is still said.
+   * The caller shows the payments a learned pick took along itself (the queue's expansion, which
+   * has the undo): no toast, and no undo toast, for a pick that categorized other payments. What has
+   * no rows to show inline is still said — a pick that took none along ("Kategorie naučena") — and
+   * so is every re-pointed custom rule (it rewrites a rule the person wrote, whatever it took
+   * along) and every failure.
    */
   quiet?: boolean;
 }
@@ -97,7 +100,8 @@ export function useCategorize(
     changed: ChangedRow[],
     quiet = false
   ) => {
-    if (quiet) return;
+    // Only a batch the caller shows inline stays unsaid; the rest has nothing else that reports it
+    if (quiet && changed.length > 0) return;
     if (changed.length === 0) {
       toast(title, { description });
       return;
@@ -163,8 +167,7 @@ export function useCategorize(
               })
             : t('categorization.ruleRetargeted', { rule: rule.name, category: pickedName }),
           undefined,
-          changed,
-          options.quiet
+          changed
         );
         options.onApplied?.(changed);
         await refreshAfterWrite();

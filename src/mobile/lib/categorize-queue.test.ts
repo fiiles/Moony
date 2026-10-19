@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { CategorizeQueue, CategorizeQueueRow, ChangedRow } from '@shared/schema';
 import {
   SNOOZE_DAYS,
+  batchOffered,
   doneCategories,
   effectiveOpenIds,
   nextSnapshot,
@@ -118,6 +119,44 @@ describe('doneCategories', () => {
     ]);
     expect(doneCategories(local).get('b')).toBe('fun');
   });
+
+  it('forgets the rows of a batch that was restored, and keeps the pick of its own row', () => {
+    // the switch of "a" was turned off: "b" and "c" hold what they held before, the queue lists them again
+    const local = new Map<string, LocalOutcome>([
+      ['a', categorized('food', [changed('b'), changed('c')])],
+      ['d', categorized('fun', [changed('e')])],
+    ]);
+    expect(Object.fromEntries(doneCategories(local, new Set(['a'])))).toEqual({
+      a: 'food',
+      d: 'fun',
+      e: 'fun',
+    });
+  });
+
+  it('still gives a restored row its own pick when it was categorized by hand afterwards', () => {
+    const local = new Map<string, LocalOutcome>([
+      ['a', categorized('food', [changed('b')])],
+      ['b', categorized('fun')],
+    ]);
+    expect(doneCategories(local, new Set(['a'])).get('b')).toBe('fun');
+  });
+});
+
+describe('batchOffered', () => {
+  it('is true while a pick that took other payments along can still be given back', () => {
+    const local = new Map<string, LocalOutcome>([['a', categorized('food', [changed('b')])]]);
+    expect(batchOffered(local, new Set())).toBe(true);
+  });
+
+  it('is false once its switch was turned off, for a pick that took nothing along and for a skipped row', () => {
+    const local = new Map<string, LocalOutcome>([
+      ['a', categorized('food', [changed('b')])],
+      ['c', categorized('fun')],
+      ['d', { kind: 'left' }],
+    ]);
+    expect(batchOffered(local, new Set(['a']))).toBe(false);
+    expect(batchOffered(new Map(), new Set())).toBe(false);
+  });
 });
 
 describe('effectiveOpenIds', () => {
@@ -178,19 +217,45 @@ describe('nextSnapshot', () => {
 });
 
 describe('openCount', () => {
-  it('counts the snapshot rows that are open', () => {
-    const rows = queue(['a', 'b', 'c']).rows;
-    expect(openCount(rows, new Set(['a', 'c']), queue(['a', 'c']))).toBe(2);
+  const none = new Map<string, LocalOutcome>();
+
+  it('is the number of payments waiting', () => {
+    expect(openCount(queue(['a', 'b', 'c']), none)).toBe(3);
   });
 
-  it('adds the payments beyond the cap of rows the answer lists', () => {
-    const rows = queue(['a', 'b']).rows;
-    // 502 waiting, 2 listed
-    expect(openCount(rows, new Set(['a', 'b']), queue(['a', 'b'], 502))).toBe(502);
+  it('counts the payments beyond the rows the answer lists', () => {
+    // 502 waiting, the newest 2 listed
+    expect(openCount(queue(['a', 'b'], 502), none)).toBe(502);
   });
 
-  it('is the rows alone before the first answer', () => {
-    expect(openCount([], new Set(), undefined)).toBe(0);
+  it('takes off what this page has handled while the answer still lists it', () => {
+    const local = new Map<string, LocalOutcome>([
+      ['a', categorized('food')],
+      ['b', { kind: 'left' }],
+    ]);
+    expect(openCount(queue(['a', 'b', 'c']), local)).toBe(1);
+  });
+
+  it('does not take them off twice once the refreshed answer no longer lists them', () => {
+    const local = new Map<string, LocalOutcome>([['a', categorized('food')]]);
+    // 520 waiting; "a" handled; the answer after the refresh: 519 waiting and "a" gone from the rows
+    expect(openCount(queue(['b', 'c'], 519), local)).toBe(519);
+  });
+
+  it('follows a window of 500 rows that moves on as payments are handled (more than 500 waiting)', () => {
+    const ids = (from: number, n: number) => Array.from({ length: n }, (_, i) => `p${from + i}`);
+    const handled = ids(0, 20);
+    const local = new Map<string, LocalOutcome>(handled.map((id) => [id, categorized('food')]));
+    // 520 waiting at the start, 20 handled: the refreshed answer says 500 and lists p20 to p519
+    expect(openCount(queue(ids(20, 500), 500), local)).toBe(500);
+    // the first accept, before its refresh: the answer is the old one
+    expect(openCount(queue(ids(0, 500), 520), new Map([['p0', categorized('food')]]))).toBe(519);
+    // after that refresh the window starts at p1 and reaches p500, a row the first answer never listed
+    expect(openCount(queue(ids(1, 500), 519), new Map([['p0', categorized('food')]]))).toBe(519);
+  });
+
+  it('is nothing before the first answer', () => {
+    expect(openCount(undefined, none)).toBe(0);
   });
 });
 

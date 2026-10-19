@@ -42,6 +42,7 @@ import {
   isOpenAccount,
   pickedFileStillWanted,
   presetReadable,
+  recognitionAnswerWanted,
   statementNeedsStage,
   type ImportRequest,
   type ImportStage,
@@ -122,6 +123,10 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
     active: open && (stage === 'recognize' || stage === 'correct'),
     goTo: setStage,
     onUnreadable: () => giveUp({ reason: 'notStatement' }),
+    // A question opened or answered meanwhile: an answer still on its way (the accounts after "Vypadá to správně") is out of date
+    onNavigate: () => {
+      reads.current++;
+    },
   });
 
   const kind = statement ? 'statement' : csv ? 'csv' : null;
@@ -332,6 +337,10 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
   useEffect(() => {
     openRef.current = open;
   });
+  const stageRef = useRef(stage);
+  useEffect(() => {
+    stageRef.current = stage;
+  });
   const started = useRef(false);
   useEffect(() => {
     if (started.current || !request.path) return;
@@ -399,9 +408,16 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
   const continueFromRecognition = async () => {
     if (!csv || recognition.mapping === null) return;
     const mine = ++reads.current;
+    const wanted = () =>
+      recognitionAnswerWanted({
+        open: openRef.current,
+        stage: stageRef.current,
+        startedAt: mine,
+        now: reads.current,
+      });
     try {
       const all = await fetchAccounts();
-      if (mine !== reads.current) return;
+      if (!wanted()) return;
       const choice = chooseAccount({
         preselected: preselectedRef.current,
         accounts: all,
@@ -414,7 +430,7 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
       setTargetId(choice.accountId);
       setStage('preview');
     } catch (error) {
-      if (mine !== reads.current) return;
+      if (!wanted()) return;
       giveUp({ reason: 'error', detail: translateApiError(error as Error, tc) });
     }
   };

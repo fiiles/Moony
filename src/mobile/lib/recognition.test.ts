@@ -3,14 +3,16 @@ import type { CsvPreviewResult, InferredColumns, InferredField } from '@shared/s
 import { EMPTY_MAPPING } from '@/components/bank-accounts/csv-import/import-config';
 import {
   afterStartApply,
+  ambiguousDateFormat,
   applyOption,
   canImport,
   columnOptions,
+  dateOrderOf,
   dayMonthOrder,
-  looksLikeAmount,
   mappingFromInferred,
   maskedSample,
   parseSampleDate,
+  readsAsAmount,
   recognitionStart,
   recognizedFields,
   selectedOption,
@@ -282,25 +284,44 @@ describe('recognitionStart', () => {
 });
 
 describe('afterStartApply', () => {
-  it('ends unreadable when the date or the amount is still missing after the correction', () => {
-    const none = inferred({ date: null, dateFormat: null, amount: null });
-    const base = mappingFromInferred(none, inspection());
-    expect(afterStartApply({ ...base, dateColumn: 'Datum zaúčtování' }, none, true)).toEqual({
-      stage: 'unreadable',
+  const noDateNoAmount = inferred({ date: null, dateFormat: null, amount: null });
+  const none = mappingFromInferred(noDateNoAmount, inspection());
+
+  it('asks the amount after the date when both were missing, then shows the rows', () => {
+    // The recognition opens on the date ...
+    expect(recognitionStart(none, noDateNoAmount)).toEqual({ stage: 'correct', field: 'date' });
+    // ... the person answers it: the file is no statement only if they leave, so the amount is next
+    const dated = { ...none, dateColumn: 'Datum zaúčtování' };
+    expect(afterStartApply(dated, noDateNoAmount, true, 'date')).toEqual({
+      stage: 'correct',
+      field: 'amount',
     });
-    expect(afterStartApply({ ...base, amountColumn: 'Částka' }, none, false)).toEqual({
-      stage: 'unreadable',
-    });
+    // ... and the amount answered, nothing is missing
+    const both = { ...dated, amountColumn: 'Částka' };
+    expect(afterStartApply(both, noDateNoAmount, true, 'amount')).toEqual({ stage: 'recognize' });
+  });
+
+  it('asks the date after the amount when that is the one answered first', () => {
+    expect(
+      afterStartApply({ ...none, amountColumn: 'Částka' }, noDateNoAmount, false, 'amount')
+    ).toEqual({ stage: 'correct', field: 'date' });
+  });
+
+  it('ends unreadable only for a required field that is still empty after its own question', () => {
+    expect(afterStartApply(none, noDateNoAmount, true, 'date')).toEqual({ stage: 'unreadable' });
+    expect(
+      afterStartApply({ ...none, dateColumn: 'Datum zaúčtování' }, noDateNoAmount, true, 'amount')
+    ).toEqual({ stage: 'unreadable' });
   });
 
   it('goes on to the recognition, or to the order of the date still to be asked', () => {
     const guess = inferred({ dateAmbiguous: true, amount: null });
     const base = mappingFromInferred(guess, inspection());
-    expect(afterStartApply({ ...base, amountColumn: 'Částka' }, guess, false)).toEqual({
+    expect(afterStartApply({ ...base, amountColumn: 'Částka' }, guess, false, 'amount')).toEqual({
       stage: 'correct',
       field: 'date',
     });
-    expect(afterStartApply({ ...base, amountColumn: 'Částka' }, guess, true)).toEqual({
+    expect(afterStartApply({ ...base, amountColumn: 'Částka' }, guess, true, 'amount')).toEqual({
       stage: 'recognize',
     });
   });
@@ -403,14 +424,17 @@ describe('columnOptions', () => {
       });
     });
 
-    it('marks the cells of every option as amounts, so they can be masked', () => {
-      expect(options('amount').every((o) => o.money)).toBe(true);
-      // "nepoužít" has no cells
-      expect(
-        options('balance')
-          .filter((o) => o.kind !== 'none')
-          .every((o) => o.money)
-      ).toBe(true);
+    it('marks every numeric column as a possible amount, and nothing that is a date or text', () => {
+      const money = (list: ReturnType<typeof columnOptions>) =>
+        list.filter((o) => o.money).map((o) => o.label);
+      // The opaque-header case: the amount hides, the date and the text stay readable
+      expect(money(options('amount'))).toEqual([
+        'Částka',
+        'Zůstatek po pohybu',
+        'Poplatek',
+        'ID operace',
+      ]);
+      expect(money(options('balance'))).toEqual(money(options('amount')));
     });
 
     it('finds a pair the inference left out: one side filled per row, left is the debit', () => {
@@ -489,7 +513,12 @@ describe('columnOptions', () => {
     it('offers all the columns, none checked, when no date was found', () => {
       const none = inferred({ date: null, dateFormat: null });
       const list = columnOptions('date', inspection(), none);
-      expect(list).toHaveLength(HEADERS.length);
+      // The fixture's dates (10.10., 9.10., 8.10.) read both ways: the column comes twice, once per order
+      expect(list.filter((o) => o.kind === 'column')).toHaveLength(HEADERS.length - 1);
+      expect(list.filter((o) => o.kind === 'order').map((o) => o.id)).toEqual([
+        'order:Datum zaúčtování:dmy',
+        'order:Datum zaúčtování:mdy',
+      ]);
       expect(selectedOption(list, mappingFromInferred(none, inspection()))).toBeNull();
     });
 
@@ -505,7 +534,11 @@ describe('columnOptions', () => {
       const list = columnOptions('date', dates, guess);
 
       it('puts the two orders of the date column in its place, one sample date for each', () => {
-        expect(list.map((o) => o.id).slice(0, 3)).toEqual(['order:dmy', 'order:mdy', 'col:Částka']);
+        expect(list.map((o) => o.id).slice(0, 3)).toEqual([
+          'order:Datum zaúčtování:dmy',
+          'order:Datum zaúčtování:mdy',
+          'col:Částka',
+        ]);
         const [dayFirst, monthFirst] = list;
         expect(dayFirst.apply).toEqual({
           dateColumn: 'Datum zaúčtování',
@@ -537,9 +570,9 @@ describe('columnOptions', () => {
 
       it('selects the guess until the person picks the other order', () => {
         const mapping = mappingFromInferred(guess, dates);
-        expect(selectedOption(list, mapping)).toBe('order:dmy');
+        expect(selectedOption(list, mapping)).toBe('order:Datum zaúčtování:dmy');
         const picked = applyOption(mapping, list[1]);
-        expect(selectedOption(list, picked)).toBe('order:mdy');
+        expect(selectedOption(list, picked)).toBe('order:Datum zaúčtování:mdy');
         expect(picked.dateFormat).toBe('%m.%d.%Y');
       });
 
@@ -553,6 +586,67 @@ describe('columnOptions', () => {
       it('has no samples when the cell cannot be read in the guessed format', () => {
         const odd = inspection({ sampleRows: [['soon', ...ROWS[0].slice(1)]] });
         expect(columnOptions('date', odd, guess)[0].dates).toEqual([]);
+      });
+    });
+
+    describe('a column the person may choose', () => {
+      const withValueDate = (cells: string[]) =>
+        inspection({
+          headers: ['Datum zaúčtování', 'Datum valuty', 'Částka'],
+          sampleRows: cells.map((cell, i) => ['25.04.2026', cell, `${i + 1},00`]),
+        });
+      const settled = inferred({ dateAmbiguous: false });
+
+      it('asks the order of another column whose dates read both ways, as for the inferred one', () => {
+        const list = columnOptions('date', withValueDate(['03.04.2026', '05.06.2026']), settled);
+        expect(list.map((o) => o.id)).toEqual([
+          'col:Datum zaúčtování',
+          'order:Datum valuty:dmy',
+          'order:Datum valuty:mdy',
+          'col:Částka',
+        ]);
+        const [, dayFirst, monthFirst] = list;
+        expect(dayFirst.apply).toEqual({ dateColumn: 'Datum valuty', dateFormat: '%d.%m.%Y' });
+        expect(monthFirst.apply).toEqual({ dateColumn: 'Datum valuty', dateFormat: '%m.%d.%Y' });
+        expect(dayFirst.dates).toEqual([Date.UTC(2026, 3, 3) / 1000]);
+        expect(monthFirst.dates).toEqual([Date.UTC(2026, 2, 4) / 1000]);
+        // Choosing one of them is the answer: nothing is left to the import's own guess
+        const mapping = mappingFromInferred(settled, withValueDate(['03.04.2026']));
+        const picked = applyOption(mapping, monthFirst);
+        expect(picked.dateFormat).toBe('%m.%d.%Y');
+        expect(selectedOption(list, picked)).toBe('order:Datum valuty:mdy');
+      });
+
+      it('leaves a column a value above 12 decides to the import', () => {
+        const list = columnOptions('date', withValueDate(['03.04.2026', '25.06.2026']), settled);
+        expect(list.find((o) => o.id === 'col:Datum valuty')?.apply).toEqual({
+          dateColumn: 'Datum valuty',
+          dateFormat: 'auto',
+        });
+        expect(list.some((o) => o.kind === 'order')).toBe(false);
+      });
+
+      it('takes the inference at its word for its own column, whatever the sample rows say', () => {
+        const rows = inspection({
+          headers: ['Datum', 'Částka'],
+          sampleRows: [['03.04.2026', '1,00']],
+        });
+        const own = inferred({ date: field('Datum'), dateAmbiguous: false });
+        expect(columnOptions('date', rows, own).some((o) => o.kind === 'order')).toBe(false);
+      });
+
+      it('shows the order the person chose next to the column', () => {
+        const mapping = {
+          ...mappingFromInferred(settled, withValueDate(['03.04.2026'])),
+          dateColumn: 'Datum valuty',
+          dateFormat: '%m.%d.%Y',
+        };
+        expect(dateOrderOf(mapping, settled)).toBe('mdy');
+        // A column left to the import, and the inferred column that was never a question, show none
+        expect(dateOrderOf({ ...mapping, dateFormat: 'auto' }, settled)).toBeNull();
+        expect(dateOrderOf(mappingFromInferred(settled, inspection()), settled)).toBeNull();
+        const guess = inferred({ dateAmbiguous: true });
+        expect(dateOrderOf(mappingFromInferred(guess, inspection()), guess)).toBe('dmy');
       });
     });
   });
@@ -662,8 +756,29 @@ describe('the day and month order', () => {
   });
 });
 
+describe('ambiguousDateFormat', () => {
+  it('names the day-first format of a column whose dates all read both ways', () => {
+    expect(ambiguousDateFormat(['03.04.2026', '05.06.2026'])).toBe('%d.%m.%Y');
+    expect(ambiguousDateFormat(['3/4/26', '', '5/6/26'])).toBe('%d/%m/%y');
+    expect(ambiguousDateFormat(['03-04-2026 12:30', '05-06-2026'])).toBe('%d-%m-%Y');
+    expect(ambiguousDateFormat(['03. 04. 2026', '05. 06. 2026'])).toBe('%d. %m. %Y');
+  });
+
+  it('has nothing to ask when a value decides, the cells disagree or it is no date', () => {
+    expect(ambiguousDateFormat(['03.04.2026', '25.06.2026'])).toBeNull();
+    expect(ambiguousDateFormat(['03.04.2026', '05.13.2026'])).toBeNull();
+    expect(ambiguousDateFormat(['03.04.2026', '05/06/2026'])).toBeNull();
+    expect(ambiguousDateFormat(['03.04.2026', '05.06.26'])).toBeNull();
+    expect(ambiguousDateFormat(['2026-04-03'])).toBeNull();
+    expect(ambiguousDateFormat(['Platba kartou'])).toBeNull();
+    expect(ambiguousDateFormat(['1,50', '2,00'])).toBeNull();
+    expect(ambiguousDateFormat(['', ' '])).toBeNull();
+    expect(ambiguousDateFormat([])).toBeNull();
+  });
+});
+
 describe('masking the sample cells', () => {
-  it('recognizes a cell that looks like an amount, and not a date or an account', () => {
+  it('says a cell is an amount when it carries a sign, a mark, a thousands space or a currency', () => {
     for (const amount of [
       '1\u00a0249,00',
       '−1\u202f249,00 Kč',
@@ -674,38 +789,89 @@ describe('masking the sample cells', () => {
       '12.50',
       '0,00',
       '(12,00)',
+      '-1249',
+      '+250',
+      '5 000',
+      '1500,-',
+      '1 500,–',
+      '−1 500 Kč',
+      '1.500',
+      '€ 12,50',
+      'CZK 5 000',
+      '1500 Kč',
     ]) {
-      expect(looksLikeAmount(amount), amount).toBe(true);
+      expect(readsAsAmount(amount), amount).toBe(true);
     }
+  });
+
+  it('does not say it of a date, an account, a text or an integer that may be an id', () => {
     for (const other of [
       '10.10.2026',
+      '10. 10. 2026',
       '10.10.26',
+      '10.10.',
       '2026-10-10',
+      '3/4/26',
+      '2026-10-10 12:30',
       'Platba kartou',
+      'Mzda 09/2026',
       '123456789/0800',
       'CZ65 0800 0000 1920 0014 5399',
+      'CZK',
+      // A plain integer says nothing: an id, a variable symbol or a whole amount in a column of its own
       '9001',
+      '26100000001',
       '',
     ]) {
-      expect(looksLikeAmount(other), other).toBe(false);
+      expect(readsAsAmount(other), other).toBe(false);
     }
   });
 
   it('masks the digits of a cell of an amount column, whatever it looks like', () => {
     expect(maskedSample('2000', { money: true })).toBe('••••');
+    expect(maskedSample('26100000001', { money: true })).toBe('••••');
     expect(maskedSample('−1 249,00 Kč', { money: true })).toBe('−•••• Kč');
     expect(maskedSample('Platba kartou', { money: true })).toBe('Platba kartou');
   });
 
-  it('masks only what looks like an amount in any other column', () => {
+  it('masks in any other column what says it is an amount, and leaves dates, text and ids', () => {
     expect(maskedSample('61 200,00', { money: false })).toBe('••••');
+    expect(maskedSample('-1249', { money: false })).toBe('-••••');
+    expect(maskedSample('5 000', { money: false })).toBe('••••');
+    expect(maskedSample('1500,-', { money: false })).toBe('••••,-');
+    expect(maskedSample('−1 500 Kč', { money: false })).toBe('−•••• Kč');
+    expect(maskedSample('1.500', { money: false })).toBe('••••');
     expect(maskedSample('10.10.2026', { money: false })).toBe('10.10.2026');
+    expect(maskedSample('2026-10-10', { money: false })).toBe('2026-10-10');
     expect(maskedSample('Lidl Praha 4', { money: false })).toBe('Lidl Praha 4');
+    expect(maskedSample('26100000001', { money: false })).toBe('26100000001');
   });
 
   it('marks the columns that hold amounts, wherever they are listed', () => {
     const list = columnOptions('counterparty', inspection(), inferred());
     const money = list.filter((o) => o.money).map((o) => o.label);
     expect(money).toEqual(['Částka', 'Zůstatek po pohybu']);
+  });
+
+  it('marks the column the person corrected the amount to, and a pair that looks like one', () => {
+    const mapping = {
+      ...mappingFromInferred(inferred(), inspection()),
+      amountColumn: 'Poplatek',
+    };
+    const corrected = columnOptions('description', inspection(), inferred(), mapping);
+    expect(corrected.filter((o) => o.money).map((o) => o.label)).toEqual([
+      'Částka',
+      'Zůstatek po pohybu',
+      'Poplatek',
+    ]);
+    const paidOut = inspection({
+      headers: ['Date', 'Details', 'Paid out', 'Paid in'],
+      sampleRows: [
+        ['01/02/2026', 'Tesco', '12', ''],
+        ['02/02/2026', 'Salary', '', '1500'],
+      ],
+    });
+    const pair = columnOptions('description', paidOut, inferred({ amount: null, balance: null }));
+    expect(pair.filter((o) => o.money).map((o) => o.label)).toEqual(['Paid out', 'Paid in']);
   });
 });

@@ -40,8 +40,13 @@ interface UseRecognitionArgs {
   active: boolean;
   /** The recognition moves the sheet between its two stages. */
   goTo: (stage: 'recognize' | 'correct') => void;
-  /** The file still has no date or amount after the first correction: it is no statement. */
+  /** The field the recognition just asked is still empty after its own question: no statement. */
   onUnreadable: () => void;
+  /**
+   * A question opened, closed or answered: whatever the sheet was waiting for since the person
+   * last tapped "Vypadá to správně" is out of date and must not move the sheet on.
+   */
+  onNavigate: () => void;
 }
 
 /**
@@ -52,7 +57,7 @@ interface UseRecognitionArgs {
  * A field's correction is a list of the file's columns; the choice is shown on one re-previewed
  * row (`previewCsvImport`, three rows) before "Použít" writes it into the mapping.
  */
-export function useRecognition({ active, goTo, onUnreadable }: UseRecognitionArgs) {
+export function useRecognition({ active, goTo, onUnreadable, onNavigate }: UseRecognitionArgs) {
   const { accounts } = useBankAccounts();
   const [session, setSession] = useState<Session | null>(null);
   /** What the sheet will import: the inference with the corrections applied. */
@@ -66,9 +71,9 @@ export function useRecognition({ active, goTo, onUnreadable }: UseRecognitionArg
   const options = useMemo(
     () =>
       view.kind === 'field' && session
-        ? columnOptions(view.field, session.csv, session.inferred)
+        ? columnOptions(view.field, session.csv, session.inferred, mapping ?? undefined)
         : [],
-    [view, session]
+    [view, session, mapping]
   );
   const chosen = options.find((option) => option.id === choice) ?? null;
   /** The mapping the open field would give: its checked option over the current one. */
@@ -114,7 +119,7 @@ export function useRecognition({ active, goTo, onUnreadable }: UseRecognitionArg
       return 'recognize';
     }
     setView({ kind: 'field', field: step.field, start });
-    setChoice(selectedOption(columnOptions(step.field, file.csv, file.inferred), current));
+    setChoice(selectedOption(columnOptions(step.field, file.csv, file.inferred, current), current));
     return 'correct';
   };
 
@@ -138,6 +143,7 @@ export function useRecognition({ active, goTo, onUnreadable }: UseRecognitionArg
 
   /** "Opravit…": the list of fields. */
   const openFields = () => {
+    onNavigate();
     setView({ kind: 'fields' });
     setChoice(null);
     goTo('correct');
@@ -145,11 +151,13 @@ export function useRecognition({ active, goTo, onUnreadable }: UseRecognitionArg
 
   const openField = (field: RecognitionField) => {
     if (!session || !mapping) return;
+    onNavigate();
     show({ stage: 'correct', field }, mapping, session, false);
   };
 
   /** "Zpět": from a field to the list, from the list to the rows. */
   const back = () => {
+    onNavigate();
     if (view.kind === 'field' && !view.start) {
       setView({ kind: 'fields' });
       setChoice(null);
@@ -163,6 +171,7 @@ export function useRecognition({ active, goTo, onUnreadable }: UseRecognitionArg
   /** "Použít": the checked option goes into the mapping. */
   const apply = () => {
     if (!session || !mapping || view.kind !== 'field' || !chosen) return;
+    onNavigate();
     const next = applyOption(mapping, chosen);
     setMapping(next);
     const confirmed = orderConfirmed || view.field === 'date';
@@ -173,8 +182,9 @@ export function useRecognition({ active, goTo, onUnreadable }: UseRecognitionArg
       goTo('recognize');
       return;
     }
-    // A question the recognition asked itself: the next one, the rows, or — no date or amount still — the end
-    const step = afterStartApply(next, session.inferred, confirmed);
+    // A question the recognition asked itself: the next one (the date, then the amount, then the order of
+    // an ambiguous date), the rows, or — the field it just asked still empty — the end
+    const step = afterStartApply(next, session.inferred, confirmed, view.field);
     if (step.stage === 'unreadable') return onUnreadable();
     goTo(show(step, next, session, true));
   };

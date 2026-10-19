@@ -176,16 +176,30 @@ export function recognitionStart(
   return { stage: 'recognize' };
 }
 
+/** Whether the mapping has what a required field needs (the others are optional and always "filled"). */
+function isFilled(field: RecognitionField, mapping: MappingState): boolean {
+  if (field === 'date') return mapping.dateColumn !== '';
+  if (field === 'amount') {
+    return (
+      mapping.amountColumn !== '' || (mapping.debitColumn !== '' && mapping.creditColumn !== '')
+    );
+  }
+  return true;
+}
+
 /**
- * What follows a correction the recognition itself opened: a file that still has no date or no
- * amount is no statement the app can read; otherwise the next question, if any, else the rows.
+ * What follows a correction the recognition itself opened (`asked`): the next question while the
+ * date or the amount is still missing (the date, then the amount), then the order of an ambiguous
+ * date, else the rows. A file is no statement only when the field that was just asked is still
+ * empty — which "Použít" cannot leave: in practice the person cancelling.
  */
 export function afterStartApply(
   mapping: MappingState,
   inferred: InferredColumns,
-  orderConfirmed: boolean
+  orderConfirmed: boolean,
+  asked: RecognitionField
 ): RecognitionStep | { stage: 'unreadable' } {
-  if (!canImport(mapping)) return { stage: 'unreadable' };
+  if (!isFilled(asked, mapping)) return { stage: 'unreadable' };
   return recognitionStart(mapping, inferred, orderConfirmed);
 }
 
@@ -206,12 +220,47 @@ export function dayMonthOrder(format: string): DayMonthOrder | null {
   return day < month ? 'dmy' : 'mdy';
 }
 
-/** The order the date column is read in, when it was a question; `null` when it never was. */
+/**
+ * The order the date column is read in, when it was a question — the inferred column's, or a
+ * column the person chose whose dates read both ways (it then carries an explicit format, any
+ * other column's is left to the import to detect); `null` when it never was.
+ */
 export function dateOrderOf(
   mapping: MappingState,
   inferred: InferredColumns
 ): DayMonthOrder | null {
-  return dateOrderOpen(mapping, inferred) ? dayMonthOrder(mapping.dateFormat) : null;
+  const asked =
+    dateOrderOpen(mapping, inferred) ||
+    (mapping.dateFormat !== AUTO_VALUE && mapping.dateColumn !== inferred.date?.column);
+  return asked ? dayMonthOrder(mapping.dateFormat) : null;
+}
+
+/** `dd.mm.yyyy`, `d/m/yy`, `dd. mm. yyyy`: three numbers, one separator, a year last (a time may follow). */
+const NUMERIC_DATE = /^\s*(\d{1,2})([./-]\s?)(\d{1,2})\2(\d{4}|\d{2})(?:[\sT].*)?$/;
+
+/**
+ * The day-first format of a column whose dates read both ways: every cell is such a date with
+ * the day and the month both at most 12. `null` for anything else — a column that is no date, one
+ * a value above 12 decides, or one whose cells do not agree. The import detects those itself.
+ * Only the sample rows are seen: a file whose later rows decide is asked once too often, never
+ * guessed.
+ */
+export function ambiguousDateFormat(cells: readonly string[]): string | null {
+  const filled = cells.map((cell) => cell.trim()).filter((cell) => cell !== '');
+  let separator = '';
+  let year = '';
+  for (const cell of filled) {
+    const match = NUMERIC_DATE.exec(cell);
+    if (!match) return null;
+    const [, first, sep, second, y] = match;
+    if (separator !== '' && (sep !== separator || y.length !== year.length)) return null;
+    separator = sep;
+    year = y;
+    if ([first, second].some((part) => Number(part) < 1 || Number(part) > 12)) return null;
+  }
+  return filled.length === 0
+    ? null
+    : `%d${separator}%m${separator}${year.length === 4 ? '%Y' : '%y'}`;
 }
 
 /** The pieces of a chrono format `parseSampleDate` understands. */
@@ -319,44 +368,99 @@ function sampleLines(
   return lines;
 }
 
-// A number as banks write it: a sign, digit groups, one decimal mark, maybe a currency after it
-const SPACES = /\s/g; // `\s` covers the no-break, thin and narrow no-break spaces banks put in thousands
 const MINUSES = /[\u2212\u2012\u2013]/g;
-const CURRENCY_TAIL = /[\p{L}\p{Sc}.]+$/u;
-const NUMBER_CELL = /^[+-]?\(?\d[\d.,']*\)?$/;
-const AMOUNT_CELL = /^[+-]?\(?(?:\d{1,3}(?:[.,']\d{3})*[.,]\d{1,2}|\d+[.,]\d{1,2})\)?$/;
-
-function plainNumber(cell: string): string {
-  return cell.replace(SPACES, '').replace(MINUSES, '-').replace(CURRENCY_TAIL, '');
-}
-
-const isNumericCell = (cell: string) => NUMBER_CELL.test(plainNumber(cell));
-const isNonZero = (cell: string) => isNumericCell(cell) && /[1-9]/.test(cell);
+/** `10.10.2026`, `2026-10-10`, `3/4/26`, `10.10.`: three numbers between one kind of separator. */
+const DATE_LIKE = /^\d{1,4}([./-])\d{1,2}\1\d{0,4}$/;
 
 /**
- * Whether a cell reads as an amount with its decimals ("−1 249,00", "61 200.50"); a date, an
- * account number and a plain integer do not.
+ * A cell read as a number the way banks write one: a sign or brackets, digit groups, a decimal
+ * mark, a currency before or after it, `1500,-`. `marked` is whether the cell says it is an
+ * amount beyond its digits (a sign, a mark, a thousands space, a currency); a plain integer
+ * ("9001", "26100000001") may be an amount, an id or a symbol and says nothing. A date is no
+ * number. `null` for anything that is not one.
  */
-export function looksLikeAmount(cell: string): boolean {
-  return AMOUNT_CELL.test(plainNumber(cell));
+function readNumber(cell: string): { body: string; marked: boolean } | null {
+  let text = cell.trim().replace(MINUSES, '-');
+  let marked = false;
+  const strip = (pattern: RegExp) => {
+    const next = text.replace(pattern, '');
+    if (next !== text) marked = true;
+    text = next;
+  };
+  strip(/^(?:\p{Sc}|[A-Za-z]{3}(?=\s))\s*/u); // "€ 12,50", "CZK 5 000"
+  strip(/\s*(?:\p{Sc}|\p{L}{1,4}\.?)$/u); // "1 500 Kč", "12,50 €"
+  strip(/[,.]-$/); // "1500,-"
+  if (/\d[\s'’]\d{3}(?!\d)/.test(text)) marked = true; // "5 000", "1'240"
+  const body = text.replace(/[\s'’]/g, '');
+  if (!/^[+-]?\(?\d[\d.,]*\)?$/.test(body) || DATE_LIKE.test(body)) return null;
+  return { body, marked: marked || /^[+(-]|[.,]/.test(body) };
+}
+
+const isNumericCell = (cell: string) => readNumber(cell) !== null;
+const isNonZero = (cell: string) => /[1-9]/.test(readNumber(cell)?.body ?? '');
+
+/**
+ * Whether a cell says it is an amount: a number with a sign, a decimal mark, a thousands space, a
+ * currency or `,-` ("−1 249,00", "5 000", "1500,-", "-1249"). A date, an account number and a
+ * plain integer — which may as well be an id — do not.
+ */
+export function readsAsAmount(cell: string): boolean {
+  return readNumber(cell)?.marked ?? false;
 }
 
 /**
  * A sample cell as the correction shows it while amounts are hidden: every digit of a cell of a
- * money column becomes the mask, and in any other column what reads as an amount does too. Text
- * stays, so the person can still tell which column is which.
+ * money column becomes the mask, and in any other column a cell that says it is an amount does
+ * too. Text, dates and plain integers stay, so the columns can still be told apart.
  */
 export function maskedSample(cell: string, options: { money: boolean }): string {
-  return options.money || looksLikeAmount(cell) ? maskMoney(cell) : cell;
+  return options.money || readsAsAmount(cell) ? maskMoney(cell) : cell;
 }
 
-/** The columns the inference took as an amount, a debit, a credit or a balance. */
-function moneyColumnsOf(inferred: InferredColumns): Set<string> {
-  return new Set(
-    [inferred.amount, inferred.debit, inferred.credit, inferred.balance]
-      .filter((found): found is InferredField => found !== null)
-      .map((found) => found.column)
-  );
+/** A column all of whose sample cells are numbers: what an amount or a balance could be. */
+function isNumericColumn(inspection: CsvPreviewResult, header: string): boolean {
+  const cells = inspection.sampleRows
+    .map((row) => cellOf(inspection, row, header))
+    .filter((cell) => cell !== '');
+  return cells.length > 0 && cells.every(isNumericCell);
+}
+
+/**
+ * The columns whose cells are masked while amounts are hidden: what the inference took as an
+ * amount, a debit, a credit or a balance, what the mapping reads as one now (the person may have
+ * corrected it), the columns of a pair that looks like a debit and a credit, and — on the
+ * question of an amount or a balance — every numeric column, since any of them may be the answer.
+ */
+function moneyColumnsOf(
+  field: RecognitionField,
+  inspection: CsvPreviewResult,
+  headers: readonly string[],
+  inferred: InferredColumns,
+  mapping: MappingState | undefined,
+  pairs: ReadonlyArray<{ debit: string; credit: string }>
+): Set<string> {
+  const money = new Set<string>();
+  for (const found of [inferred.amount, inferred.debit, inferred.credit, inferred.balance]) {
+    if (found !== null) money.add(found.column);
+  }
+  if (mapping) {
+    for (const name of [
+      mapping.amountColumn,
+      mapping.debitColumn,
+      mapping.creditColumn,
+      mapping.balanceColumn,
+    ]) {
+      if (name !== '') money.add(name);
+    }
+  }
+  for (const pair of pairs) {
+    money.add(pair.debit);
+    money.add(pair.credit);
+  }
+  if (MONEY_FIELDS.has(field)) {
+    for (const header of headers) if (isNumericColumn(inspection, header)) money.add(header);
+  }
+  return money;
 }
 
 /** Two numeric columns of which exactly one is filled on every row, as a debit and a credit. */
@@ -404,7 +508,7 @@ function columnOption(
     kind: 'column' as const,
     label: header,
     samples: sampleCells(inspection, header),
-    money: MONEY_FIELDS.has(field) || money.has(header),
+    money: money.has(header),
   };
   switch (field) {
     case 'date':
@@ -440,13 +544,14 @@ const CLEAR: Record<Exclude<RecognitionField, 'date' | 'amount'>, Partial<Mappin
   transactionId: { transactionIdColumn: '' },
 };
 
-/** The inferred date column read day-first and month-first, with one sample date for each. */
-function orderOptions(inspection: CsvPreviewResult, inferred: InferredColumns): ColumnOption[] {
-  const header = inferred.date?.column ?? '';
-  const guess = inferred.dateFormat ?? '';
+/**
+ * A date column read day-first (`guess`) and month-first, with one sample date for each. The
+ * options carry the column's name in their ids: more than one column may read both ways.
+ */
+function orderOptions(inspection: CsvPreviewResult, header: string, guess: string): ColumnOption[] {
   const other = swapDayMonth(guess);
   const guessOrder = dayMonthOrder(guess);
-  if (header === '' || guessOrder === null || other === guess) return [];
+  if (guessOrder === null || other === guess) return [];
 
   // A date whose day and month differ tells the two readings apart; one like 04.04. cannot
   const cells = inspection.sampleRows
@@ -462,7 +567,7 @@ function orderOptions(inspection: CsvPreviewResult, inferred: InferredColumns): 
     return day === null ? [] : [day];
   };
   const option = (order: DayMonthOrder, format: string): ColumnOption => ({
-    id: `order:${order}`,
+    id: `order:${header}:${order}`,
     kind: 'order',
     label: header,
     samples: [],
@@ -478,16 +583,21 @@ function orderOptions(inspection: CsvPreviewResult, inferred: InferredColumns): 
  * The answers to "which column is the …?": every column of the file with its header and two
  * sample values (file order), and next to them what the field also allows — for the amount the
  * debit and credit pair (the inferred one, else the neighbours that look like one), for a date
- * the day-first and month-first readings, for a description the columns it was inferred from
- * together, and for an optional field "nepoužít" first.
+ * the day-first and month-first readings of every column whose dates read both ways (the
+ * inferred one by the inference's own answer, any other by its sample cells: the app never
+ * settles that order silently), for a description the columns it was inferred from together, and
+ * for an optional field "nepoužít" first. `mapping` is what the import reads now: the columns it
+ * takes as amounts are masked while amounts are hidden.
  */
 export function columnOptions(
   field: RecognitionField,
   inspection: CsvPreviewResult,
-  inferred: InferredColumns
+  inferred: InferredColumns,
+  mapping?: MappingState
 ): ColumnOption[] {
   const headers = uniqueHeaders(inspection.headers);
-  const money = moneyColumnsOf(inferred);
+  const candidates = pairCandidates(inspection, headers);
+  const money = moneyColumnsOf(field, inspection, headers, inferred, mapping, candidates);
   const options: ColumnOption[] = [];
 
   if (!isRequiredField(field)) {
@@ -506,7 +616,7 @@ export function columnOptions(
     if (inferred.debit !== null && inferred.credit !== null) {
       pairs.push({ debit: inferred.debit.column, credit: inferred.credit.column });
     }
-    for (const candidate of pairCandidates(inspection, headers)) {
+    for (const candidate of candidates) {
       if (
         !pairs.some((pair) => pair.debit === candidate.debit && pair.credit === candidate.credit)
       ) {
@@ -545,14 +655,21 @@ export function columnOptions(
     }
   }
 
-  const ordered =
-    field === 'date' && inferred.dateAmbiguous ? orderOptions(inspection, inferred) : [];
   for (const header of headers) {
-    if (ordered.length > 0 && header === inferred.date?.column) {
-      options.push(...ordered);
-    } else {
-      options.push(columnOption(field, inspection, header, money, inferred));
-    }
+    // The inference knows its own column's order from up to 200 rows; any other from the sample rows
+    const guess =
+      field !== 'date'
+        ? null
+        : header === inferred.date?.column
+          ? inferred.dateAmbiguous
+            ? inferred.dateFormat
+            : null
+          : ambiguousDateFormat(
+              inspection.sampleRows.map((row) => cellOf(inspection, row, header))
+            );
+    const ordered = guess ? orderOptions(inspection, header, guess) : [];
+    if (ordered.length > 0) options.push(...ordered);
+    else options.push(columnOption(field, inspection, header, money, inferred));
   }
   return options;
 }

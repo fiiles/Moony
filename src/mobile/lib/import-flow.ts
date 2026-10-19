@@ -225,5 +225,22 @@ export function pickedFileStillWanted(input: {
   return input.open && input.askedAt === input.now;
 }
 
+/**
+ * "Vypadá to správně" went to fetch the accounts. What comes back is used only while the sheet is
+ * still on the recognition's rows and nothing superseded it: the person may have tapped "Opravit…"
+ * meanwhile, and the stage the continuation set then would bury the correction they opened.
+ */
+export function recognitionAnswerWanted(input: {
+  open: boolean;
+  /** The stage the sheet is in when the answer arrives. */
+  stage: ImportStage;
+  /** The flow's read generation when "Vypadá to správně" was tapped. */
+  startedAt: number;
+  /** The generation now (every question opened or answered bumps it). */
+  now: number;
+}): boolean {
+  return input.open && input.stage === 'recognize' && input.startedAt === input.now;
+}
+
 /** Rows of the preview the phone asks the backend for (and shows). */
 export const PREVIEW_ROWS = 50;

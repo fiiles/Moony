@@ -11,6 +11,7 @@ import {
   pickedFileStillWanted,
   presetReadable,
   previewAmount,
+  recognitionAnswerWanted,
   statementNeedsStage,
 } from './import-flow';
 import { signedAmountText } from './signed-amount';
@@ -408,5 +409,24 @@ describe('pickedFileStillWanted', () => {
 
   it('drops it when another read or the close moved the generation on', () => {
     expect(pickedFileStillWanted({ open: true, askedAt: 4, now: 5 })).toBe(false);
+  });
+});
+
+describe('recognitionAnswerWanted', () => {
+  const tapped = { open: true, stage: 'recognize' as const, startedAt: 7, now: 7 };
+
+  it('goes on when the sheet is still on the recognition rows and nothing came in between', () => {
+    expect(recognitionAnswerWanted(tapped)).toBe(true);
+  });
+
+  it('is dropped when "Opravit…" was tapped meanwhile: it would bury the correction', () => {
+    // Opening a question moves the stage on and bumps the generation: either alone is enough
+    expect(recognitionAnswerWanted({ ...tapped, stage: 'correct' })).toBe(false);
+    expect(recognitionAnswerWanted({ ...tapped, now: 8 })).toBe(false);
+  });
+
+  it('is dropped when the sheet was closed or the file replaced', () => {
+    expect(recognitionAnswerWanted({ ...tapped, open: false })).toBe(false);
+    expect(recognitionAnswerWanted({ ...tapped, stage: 'reading', now: 9 })).toBe(false);
   });
 });

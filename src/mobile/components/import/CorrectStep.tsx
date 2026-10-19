@@ -102,7 +102,8 @@ function ColumnOptionRow({
   const shown = option.samples.map((sample) =>
     hidden ? maskedSample(sample, { money: option.money }) : sample
   );
-  // A date order shows its date spelled out, so that "3. dubna" and "4. března" cannot be mistaken
+  // A date order shows its date spelled out, so that "3. dubna" and "4. března" cannot be mistaken:
+  // the date comes first and the line wraps — a long header must never hide the one thing that tells them apart
   const dates = (option.dates ?? []).map((day) =>
     fmt.day(day, { day: 'numeric', month: 'long', year: 'numeric' })
   );
@@ -110,7 +111,7 @@ function ColumnOptionRow({
     option.kind === 'none'
       ? null
       : option.kind === 'order'
-        ? [option.label, ...dates].join(' · ')
+        ? [...dates, option.label].join(' · ')
         : shown.length > 0
           ? shown.join(' · ')
           : '—';
@@ -144,7 +145,16 @@ function ColumnOptionRow({
             </span>
           )}
         </span>
-        {sub && <span className="mt-0.5 block truncate text-m-sub text-ink-4 num">{sub}</span>}
+        {sub && (
+          <span
+            className={cn(
+              'mt-0.5 block text-m-sub text-ink-4 num',
+              option.kind === 'order' ? '[overflow-wrap:anywhere]' : 'truncate'
+            )}
+          >
+            {sub}
+          </span>
+        )}
       </span>
     </button>
   );

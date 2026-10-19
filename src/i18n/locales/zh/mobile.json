@@ -246,6 +246,55 @@
     "decline": "拒绝建议",
     "empty": "没有匹配的类别"
   },
+  "import": {
+    "title": "导入账单",
+    "intoAccount": "导入到 {{account}}",
+    "fromShare": "来自分享",
+    "reads": "支持：{{formats}}。",
+    "reading": "正在读取文件…",
+    "importing": "正在写入付款…",
+    "pick": {
+      "lead": "请选择您从银行下载的文件。",
+      "choose": "选择文件",
+      "chooseOther": "选择其他文件"
+    },
+    "account": {
+      "sheetTitle": "导入到哪个账户？",
+      "lead": "请选择这些付款所属的账户。",
+      "none": "您还没有未关闭的账户。请添加此文件所属的账户。",
+      "title": "账户",
+      "new": "新建账户…"
+    },
+    "statement": {
+      "title": "哪一份账单？",
+      "dateTitle": "日期是如何书写的？",
+      "continue": "继续"
+    },
+    "unreadable": {
+      "title": "无法读取该文件",
+      "pdf": "Moony 暂时无法读取 PDF 账单——请从银行下载 CSV、CAMT、MT940、OFX 或 QIF。",
+      "image": "Moony 无法读取账单的照片或扫描件——请从银行下载 CSV、CAMT、MT940、OFX 或 QIF。",
+      "notStatement": "此文件不包含 Moony 能读取的账单。",
+      "error": "无法读取该文件。"
+    },
+    "preview": {
+      "hint": "点按一笔付款即可选择其类别。",
+      "more_other": "还有 {{count}} 笔"
+    },
+    "choice": {
+      "title": "分类",
+      "byRules": "按规则",
+      "byRulesSub": "将取消您的选择"
+    },
+    "done": {
+      "lastBalance": "最后一笔付款后的余额：<b>{{balance}}</b>。",
+      "categorized_other": "规则已将 {{count}} 笔付款分类。",
+      "open_other": "还有 {{count}} 笔未分类。",
+      "allSorted": "全部已分类。",
+      "promoted_other": "已入账 {{count}} 笔待处理付款。",
+      "queue_other": "分类 {{count}} 笔付款"
+    }
+  },
   "wealth": {
     "placeholder": {
       "classPage": "此资产类别的页面将在第 4 阶段的下一部分推出。",

@@ -260,6 +260,60 @@
     "decline": "Vorschlag ablehnen",
     "empty": "Keine Kategorie passt"
   },
+  "import": {
+    "title": "Kontoauszug importieren",
+    "intoAccount": "In {{account}}",
+    "fromShare": "Geteilt",
+    "reads": "Unterstützt: {{formats}}.",
+    "reading": "Datei wird gelesen…",
+    "importing": "Zahlungen werden geschrieben…",
+    "pick": {
+      "lead": "Wählen Sie die Datei, die Sie bei Ihrer Bank heruntergeladen haben.",
+      "choose": "Datei wählen",
+      "chooseOther": "Andere Datei wählen"
+    },
+    "account": {
+      "sheetTitle": "In welches Konto?",
+      "lead": "Wählen Sie das Konto, zu dem die Zahlungen gehören.",
+      "none": "Sie haben noch kein offenes Konto. Legen Sie das Konto an, zu dem diese Datei gehört.",
+      "title": "Konten",
+      "new": "Neues Konto…"
+    },
+    "statement": {
+      "title": "Welcher Auszug?",
+      "dateTitle": "Wie sind die Daten geschrieben?",
+      "continue": "Weiter"
+    },
+    "unreadable": {
+      "title": "Datei nicht lesbar",
+      "pdf": "PDF-Auszüge kann Moony noch nicht lesen – laden Sie bei Ihrer Bank CSV, CAMT, MT940, OFX oder QIF herunter.",
+      "image": "Fotos oder Scans von Auszügen kann Moony nicht lesen – laden Sie bei Ihrer Bank CSV, CAMT, MT940, OFX oder QIF herunter.",
+      "notStatement": "Diese Datei enthält keinen Auszug, den Moony lesen kann.",
+      "error": "Die Datei konnte nicht gelesen werden."
+    },
+    "preview": {
+      "hint": "Tippen Sie auf eine Zahlung, um ihre Kategorie zu wählen.",
+      "more_one": "und {{count}} weitere",
+      "more_other": "und {{count}} weitere"
+    },
+    "choice": {
+      "title": "Kategorisierung",
+      "byRules": "Nach den Regeln",
+      "byRulesSub": "Ihre Wahl wird verworfen"
+    },
+    "done": {
+      "lastBalance": "Saldo nach der letzten Zahlung: <b>{{balance}}</b>.",
+      "categorized_one": "{{count}} Zahlung wurde von den Regeln kategorisiert.",
+      "categorized_other": "{{count}} Zahlungen wurden von den Regeln kategorisiert.",
+      "open_one": "{{count}} hat noch keine Kategorie.",
+      "open_other": "{{count}} haben noch keine Kategorie.",
+      "allSorted": "Alles hat eine Kategorie.",
+      "promoted_one": "{{count}} vorgemerkte Zahlung wurde gebucht.",
+      "promoted_other": "{{count}} vorgemerkte Zahlungen wurden gebucht.",
+      "queue_one": "{{count}} Zahlung kategorisieren",
+      "queue_other": "{{count}} Zahlungen kategorisieren"
+    }
+  },
   "wealth": {
     "placeholder": {
       "classPage": "Die Seite dieser Klasse kommt im nächsten Teil von Phase 4.",

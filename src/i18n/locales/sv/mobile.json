@@ -260,6 +260,60 @@
     "decline": "Avvisa förslaget",
     "empty": "Ingen kategori matchar"
   },
+  "import": {
+    "title": "Importera kontoutdrag",
+    "intoAccount": "Till {{account}}",
+    "fromShare": "Delad",
+    "reads": "Stöds: {{formats}}.",
+    "reading": "Läser filen…",
+    "importing": "Skriver betalningarna…",
+    "pick": {
+      "lead": "Välj filen du laddade ner från din bank.",
+      "choose": "Välj fil",
+      "chooseOther": "Välj en annan fil"
+    },
+    "account": {
+      "sheetTitle": "Till vilket konto?",
+      "lead": "Välj kontot som betalningarna hör till.",
+      "none": "Du har inget öppet konto än. Lägg till det som filen hör till.",
+      "title": "Konton",
+      "new": "Nytt konto…"
+    },
+    "statement": {
+      "title": "Vilket kontoutdrag?",
+      "dateTitle": "Hur är datumen skrivna?",
+      "continue": "Fortsätt"
+    },
+    "unreadable": {
+      "title": "Filen kan inte läsas",
+      "pdf": "Moony kan inte läsa kontoutdrag i PDF än – ladda ner CSV, CAMT, MT940, OFX eller QIF från din bank.",
+      "image": "Moony kan inte läsa foton eller skanningar av kontoutdrag – ladda ner CSV, CAMT, MT940, OFX eller QIF från din bank.",
+      "notStatement": "Den här filen innehåller inget kontoutdrag som Moony kan läsa.",
+      "error": "Filen kunde inte läsas."
+    },
+    "preview": {
+      "hint": "Tryck på en betalning för att välja kategori.",
+      "more_one": "och {{count}} till",
+      "more_other": "och {{count}} till"
+    },
+    "choice": {
+      "title": "Kategorisering",
+      "byRules": "Enligt reglerna",
+      "byRulesSub": "Ditt val tas bort"
+    },
+    "done": {
+      "lastBalance": "Saldo efter sista betalningen: <b>{{balance}}</b>.",
+      "categorized_one": "Reglerna kategoriserade {{count}} betalning.",
+      "categorized_other": "Reglerna kategoriserade {{count}} betalningar.",
+      "open_one": "{{count}} saknar fortfarande kategori.",
+      "open_other": "{{count}} saknar fortfarande kategori.",
+      "allSorted": "Allt har en kategori.",
+      "promoted_one": "{{count}} väntande betalning bokfördes.",
+      "promoted_other": "{{count}} väntande betalningar bokfördes.",
+      "queue_one": "Kategorisera {{count}} betalning",
+      "queue_other": "Kategorisera {{count}} betalningar"
+    }
+  },
   "wealth": {
     "placeholder": {
       "classPage": "Sidan för den här klassen kommer i nästa del av fas 4.",

@@ -49,6 +49,7 @@ import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { useAccountDetail } from '@/mobile/hooks/use-account-detail';
 import { useBack } from '@/mobile/hooks/use-back';
 import { useDeleteDescription } from '@/mobile/hooks/use-delete-description';
+import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import { useLedger, type Ledger } from '@/mobile/hooks/use-ledger';
 import { useLedgerMutations } from '@/mobile/hooks/use-ledger-mutations';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -72,12 +73,10 @@ import { CategoryPickerSheet } from '@/mobile/sheets/CategoryPickerSheet';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { FilterSheet } from '@/mobile/sheets/FilterSheet';
 import { ImportHistorySheet } from '@/mobile/sheets/ImportHistorySheet';
-import { PlaceholderSheet } from '@/mobile/sheets/PlaceholderSheet';
 import { RecordBalancesSheet } from '@/mobile/sheets/RecordBalancesSheet';
 import { TransactionSheet } from '@/mobile/sheets/TransactionSheet';
 
-type SheetKind =
-  'record' | 'import' | 'balanceHistory' | 'importHistory' | 'deleteAccount' | 'filter';
+type SheetKind = 'record' | 'balanceHistory' | 'importHistory' | 'deleteAccount' | 'filter';
 
 type RecordEvent = { id: string; t: number; type: 'mark' };
 
@@ -133,6 +132,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   const ledger = useLedger(id, ledgerState);
   const { deleteTransaction } = useLedgerMutations();
   const describeDelete = useDeleteDescription();
+  const { openImport } = useImportSheet();
 
   const [period, setPeriod] = useState<ChartPeriod>(DEFAULT_PERIOD);
   const [sheet, setSheet] = useState<SheetKind | null>(null);
@@ -233,7 +233,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
             secondary={{
               label: t('account.import'),
               icon: Upload,
-              onClick: () => setSheet('import'),
+              onClick: () => openImport({ accountId: id, source: 'account' }),
             }}
           />
           {showHero && (
@@ -302,12 +302,6 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
             onOpenChange={closeSheet}
             accountIds={[account.id]}
             title={t('account.record')}
-          />
-          <PlaceholderSheet
-            open={sheet === 'import'}
-            onOpenChange={closeSheet}
-            title={t('account.import')}
-            text={t('placeholder.import')}
           />
           <BalanceHistorySheet
             open={sheet === 'balanceHistory'}

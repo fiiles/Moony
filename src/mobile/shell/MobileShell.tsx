@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/lib/protected-route';
+import { ImportSheetProvider } from '@/mobile/hooks/use-import-sheet';
 import { useNotificationSchedule } from '@/mobile/hooks/use-notification-schedule';
 import { clearEnrolmentAsked } from '@/mobile/lib/biometrics';
 import Agenda from '@/mobile/pages/Agenda';
@@ -42,7 +43,8 @@ function NotificationScheduler() {
 /**
  * Phone shell (spec §6): the four tab roots behind the lock, the lock screen outside it, and the
  * tab bar over the unlocked tab screens. Navigation is the browser history (wouter), so Android
- * back pops whatever was pushed.
+ * back pops whatever was pushed. The import sheet lives above the routes (`ImportSheetProvider`),
+ * so every entry point can open it and it outlives the screen that did.
  */
 export function MobileShell() {
   const [location] = useLocation();
@@ -61,7 +63,7 @@ export function MobileShell() {
   }, [appStatus]);
 
   return (
-    <>
+    <ImportSheetProvider>
       <Switch>
         {/* Lock screen and first run: outside `ProtectedRoute`, which redirects here while locked. */}
         <Route path={routes.auth} component={Lock} />
@@ -97,6 +99,6 @@ export function MobileShell() {
       <EnableBiometricsSheet />
       {/* Only while unlocked: it reads the milestones, which the locked database cannot answer. */}
       {appStatus === 'unlocked' && <NotificationScheduler />}
-    </>
+    </ImportSheetProvider>
   );
 }

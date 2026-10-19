@@ -246,6 +246,55 @@
     "decline": "提案を却下",
     "empty": "一致するカテゴリがありません"
   },
+  "import": {
+    "title": "明細をインポート",
+    "intoAccount": "{{account}}へ",
+    "fromShare": "共有から",
+    "reads": "対応形式：{{formats}}。",
+    "reading": "ファイルを読み込んでいます…",
+    "importing": "支払いを書き込んでいます…",
+    "pick": {
+      "lead": "銀行からダウンロードしたファイルを選んでください。",
+      "choose": "ファイルを選択",
+      "chooseOther": "別のファイルを選択"
+    },
+    "account": {
+      "sheetTitle": "どの口座ですか？",
+      "lead": "支払いが属する口座を選んでください。",
+      "none": "開いている口座がまだありません。このファイルに対応する口座を追加してください。",
+      "title": "口座",
+      "new": "新しい口座…"
+    },
+    "statement": {
+      "title": "どの明細ですか？",
+      "dateTitle": "日付の書き方",
+      "continue": "続ける"
+    },
+    "unreadable": {
+      "title": "ファイルを読み取れません",
+      "pdf": "PDFの明細はまだ読み取れません。銀行からCSV、CAMT、MT940、OFX、QIFをダウンロードしてください。",
+      "image": "写真やスキャンした明細は読み取れません。銀行からCSV、CAMT、MT940、OFX、QIFをダウンロードしてください。",
+      "notStatement": "このファイルにはMoonyが読み取れる明細が含まれていません。",
+      "error": "ファイルを読み取れませんでした。"
+    },
+    "preview": {
+      "hint": "支払いをタップするとカテゴリを選べます。",
+      "more_other": "ほか{{count}}件"
+    },
+    "choice": {
+      "title": "分類",
+      "byRules": "ルールに任せる",
+      "byRulesSub": "選択を取り消します"
+    },
+    "done": {
+      "lastBalance": "最後の支払い後の残高：<b>{{balance}}</b>。",
+      "categorized_other": "ルールで{{count}}件の支払いを分類しました。",
+      "open_other": "{{count}}件はカテゴリがありません。",
+      "allSorted": "すべてにカテゴリがあります。",
+      "promoted_other": "保留中の支払い{{count}}件を記帳しました。",
+      "queue_other": "{{count}}件の支払いを分類"
+    }
+  },
   "wealth": {
     "placeholder": {
       "classPage": "この資産クラスのページはフェーズ4の次のパートで追加されます。",

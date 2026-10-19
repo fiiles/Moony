@@ -288,6 +288,70 @@
     "decline": "Odrzuć propozycję",
     "empty": "Żadna kategoria nie pasuje"
   },
+  "import": {
+    "title": "Importuj wyciąg",
+    "intoAccount": "Do konta {{account}}",
+    "fromShare": "Z udostępnienia",
+    "reads": "Obsługiwane: {{formats}}.",
+    "reading": "Czytam plik…",
+    "importing": "Zapisuję płatności…",
+    "pick": {
+      "lead": "Wybierz plik pobrany z twojego banku.",
+      "choose": "Wybierz plik",
+      "chooseOther": "Wybierz inny plik"
+    },
+    "account": {
+      "sheetTitle": "Na które konto?",
+      "lead": "Wybierz konto, do którego należą płatności.",
+      "none": "Nie masz jeszcze otwartego konta. Dodaj to, do którego należy plik.",
+      "title": "Konta",
+      "new": "Nowe konto…"
+    },
+    "statement": {
+      "title": "Który wyciąg?",
+      "dateTitle": "Jak zapisano daty?",
+      "continue": "Dalej"
+    },
+    "unreadable": {
+      "title": "Nie można odczytać pliku",
+      "pdf": "Moony nie odczyta jeszcze wyciągu w PDF – pobierz z banku CSV, CAMT, MT940, OFX lub QIF.",
+      "image": "Moony nie odczyta zdjęcia ani skanu wyciągu – pobierz z banku CSV, CAMT, MT940, OFX lub QIF.",
+      "notStatement": "Ten plik nie zawiera wyciągu, który Moony potrafi odczytać.",
+      "error": "Nie udało się odczytać pliku."
+    },
+    "preview": {
+      "hint": "Dotknij płatności, aby wybrać jej kategorię.",
+      "more_one": "i jeszcze {{count}}",
+      "more_few": "i jeszcze {{count}}",
+      "more_many": "i jeszcze {{count}}",
+      "more_other": "i jeszcze {{count}}"
+    },
+    "choice": {
+      "title": "Kategoryzacja",
+      "byRules": "Według reguł",
+      "byRulesSub": "Twój wybór zostanie usunięty"
+    },
+    "done": {
+      "lastBalance": "Saldo po ostatniej płatności: <b>{{balance}}</b>.",
+      "categorized_one": "Reguły skategoryzowały {{count}} płatność.",
+      "categorized_few": "Reguły skategoryzowały {{count}} płatności.",
+      "categorized_many": "Reguły skategoryzowały {{count}} płatności.",
+      "categorized_other": "Reguły skategoryzowały {{count}} płatności.",
+      "open_one": "{{count}} nadal bez kategorii.",
+      "open_few": "{{count}} nadal bez kategorii.",
+      "open_many": "{{count}} nadal bez kategorii.",
+      "open_other": "{{count}} nadal bez kategorii.",
+      "allSorted": "Wszystko ma kategorię.",
+      "promoted_one": "Zaksięgowano {{count}} oczekującą płatność.",
+      "promoted_few": "Zaksięgowano {{count}} oczekujące płatności.",
+      "promoted_many": "Zaksięgowano {{count}} oczekujących płatności.",
+      "promoted_other": "Zaksięgowano {{count}} oczekujących płatności.",
+      "queue_one": "Skategoryzuj {{count}} płatność",
+      "queue_few": "Skategoryzuj {{count}} płatności",
+      "queue_many": "Skategoryzuj {{count}} płatności",
+      "queue_other": "Skategoryzuj {{count}} płatności"
+    }
+  },
   "wealth": {
     "placeholder": {
       "classPage": "Strona tej klasy pojawi się w kolejnej części fazy 4.",

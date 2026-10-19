@@ -274,6 +274,65 @@
     "decline": "Odmítnout návrh",
     "empty": "Žádná kategorie neodpovídá"
   },
+  "import": {
+    "title": "Import výpisu",
+    "intoAccount": "Do účtu {{account}}",
+    "fromShare": "Ze sdílení",
+    "reads": "Umím číst: {{formats}}.",
+    "reading": "Čtu soubor…",
+    "importing": "Zapisuji platby…",
+    "pick": {
+      "lead": "Vyberte soubor, který jste si stáhli z banky.",
+      "choose": "Vybrat soubor",
+      "chooseOther": "Vybrat jiný soubor"
+    },
+    "account": {
+      "sheetTitle": "Do kterého účtu?",
+      "lead": "Vyberte účet, do kterého platby patří.",
+      "none": "Zatím nemáte žádný otevřený účet. Přidejte ten, ke kterému soubor patří.",
+      "title": "Účty",
+      "new": "Nový účet…"
+    },
+    "statement": {
+      "title": "Který výpis?",
+      "dateTitle": "Jak jsou zapsaná data?",
+      "continue": "Pokračovat"
+    },
+    "unreadable": {
+      "title": "Soubor nejde přečíst",
+      "pdf": "Výpis v PDF zatím přečíst neumím — stáhněte si z banky CSV, CAMT, MT940, OFX nebo QIF.",
+      "image": "Fotku ani sken výpisu přečíst neumím — stáhněte si z banky CSV, CAMT, MT940, OFX nebo QIF.",
+      "notStatement": "Tento soubor neobsahuje výpis, který bych uměl přečíst.",
+      "error": "Soubor se nepodařilo přečíst."
+    },
+    "preview": {
+      "hint": "Klepnutím na platbu zvolíte její kategorii.",
+      "more_one": "a {{count}} další",
+      "more_few": "a {{count}} další",
+      "more_other": "a {{count}} dalších"
+    },
+    "choice": {
+      "title": "Zařazení",
+      "byRules": "Podle pravidel",
+      "byRulesSub": "Vaše volba se zruší"
+    },
+    "done": {
+      "lastBalance": "Zůstatek po poslední platbě: <b>{{balance}}</b>.",
+      "categorized_one": "{{count}} pohyb zařadila pravidla.",
+      "categorized_few": "{{count}} pohyby zařadila pravidla.",
+      "categorized_other": "{{count}} pohybů zařadila pravidla.",
+      "open_one": "{{count}} zůstává bez kategorie.",
+      "open_few": "{{count}} zůstávají bez kategorie.",
+      "open_other": "{{count}} zůstává bez kategorie.",
+      "allSorted": "Všechno má kategorii.",
+      "promoted_one": "{{count}} čekající platba byla zaúčtována.",
+      "promoted_few": "{{count}} čekající platby byly zaúčtovány.",
+      "promoted_other": "{{count}} čekajících plateb bylo zaúčtováno.",
+      "queue_one": "Zařadit {{count}} platbu",
+      "queue_few": "Zařadit {{count}} platby",
+      "queue_other": "Zařadit {{count}} plateb"
+    }
+  },
   "wealth": {
     "placeholder": {
       "classPage": "Stránka této třídy přijde v další části fáze 4.",

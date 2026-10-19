@@ -274,6 +274,65 @@
     "decline": "Rifiuta il suggerimento",
     "empty": "Nessuna categoria corrisponde"
   },
+  "import": {
+    "title": "Importa estratto conto",
+    "intoAccount": "Nel conto {{account}}",
+    "fromShare": "Condiviso",
+    "reads": "Supportato: {{formats}}.",
+    "reading": "Lettura del file…",
+    "importing": "Scrittura dei pagamenti…",
+    "pick": {
+      "lead": "Scegli il file che hai scaricato dalla tua banca.",
+      "choose": "Scegli file",
+      "chooseOther": "Scegli un altro file"
+    },
+    "account": {
+      "sheetTitle": "In quale conto?",
+      "lead": "Scegli il conto a cui appartengono i pagamenti.",
+      "none": "Non hai ancora nessun conto aperto. Aggiungi quello a cui appartiene questo file.",
+      "title": "Conti",
+      "new": "Nuovo conto…"
+    },
+    "statement": {
+      "title": "Quale estratto?",
+      "dateTitle": "Come sono scritte le date?",
+      "continue": "Continua"
+    },
+    "unreadable": {
+      "title": "File non leggibile",
+      "pdf": "Moony non sa ancora leggere un estratto in PDF: scarica dalla tua banca CSV, CAMT, MT940, OFX o QIF.",
+      "image": "Moony non sa leggere una foto o una scansione di un estratto: scarica dalla tua banca CSV, CAMT, MT940, OFX o QIF.",
+      "notStatement": "Questo file non contiene un estratto che Moony sappia leggere.",
+      "error": "Non è stato possibile leggere il file."
+    },
+    "preview": {
+      "hint": "Tocca un pagamento per scegliere la sua categoria.",
+      "more_one": "e {{count}} altro",
+      "more_many": "e altri {{count}}",
+      "more_other": "e altri {{count}}"
+    },
+    "choice": {
+      "title": "Categorizzazione",
+      "byRules": "Secondo le regole",
+      "byRulesSub": "La tua scelta viene annullata"
+    },
+    "done": {
+      "lastBalance": "Saldo dopo l'ultimo pagamento: <b>{{balance}}</b>.",
+      "categorized_one": "Le regole hanno categorizzato {{count}} pagamento.",
+      "categorized_many": "Le regole hanno categorizzato {{count}} pagamenti.",
+      "categorized_other": "Le regole hanno categorizzato {{count}} pagamenti.",
+      "open_one": "{{count}} è ancora senza categoria.",
+      "open_many": "{{count}} sono ancora senza categoria.",
+      "open_other": "{{count}} sono ancora senza categoria.",
+      "allSorted": "Tutto ha una categoria.",
+      "promoted_one": "{{count}} pagamento in sospeso è stato registrato.",
+      "promoted_many": "{{count}} pagamenti in sospeso sono stati registrati.",
+      "promoted_other": "{{count}} pagamenti in sospeso sono stati registrati.",
+      "queue_one": "Categorizza {{count}} pagamento",
+      "queue_many": "Categorizza {{count}} pagamenti",
+      "queue_other": "Categorizza {{count}} pagamenti"
+    }
+  },
   "wealth": {
     "placeholder": {
       "classPage": "La pagina di questa classe arriverà nella prossima parte della fase 4.",

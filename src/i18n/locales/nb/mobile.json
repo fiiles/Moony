@@ -260,6 +260,60 @@
     "decline": "Avslå forslaget",
     "empty": "Ingen kategori passer"
   },
+  "import": {
+    "title": "Importer kontoutskrift",
+    "intoAccount": "Til {{account}}",
+    "fromShare": "Delt",
+    "reads": "Støttet: {{formats}}.",
+    "reading": "Leser filen…",
+    "importing": "Skriver betalingene…",
+    "pick": {
+      "lead": "Velg filen du lastet ned fra banken din.",
+      "choose": "Velg fil",
+      "chooseOther": "Velg en annen fil"
+    },
+    "account": {
+      "sheetTitle": "Til hvilken konto?",
+      "lead": "Velg kontoen betalingene hører til.",
+      "none": "Du har ingen åpne kontoer ennå. Legg til den filen hører til.",
+      "title": "Kontoer",
+      "new": "Ny konto…"
+    },
+    "statement": {
+      "title": "Hvilken kontoutskrift?",
+      "dateTitle": "Hvordan er datoene skrevet?",
+      "continue": "Fortsett"
+    },
+    "unreadable": {
+      "title": "Kan ikke lese filen",
+      "pdf": "Moony kan ikke lese kontoutskrifter i PDF ennå – last ned CSV, CAMT, MT940, OFX eller QIF fra banken din.",
+      "image": "Moony kan ikke lese bilder eller skanninger av kontoutskrifter – last ned CSV, CAMT, MT940, OFX eller QIF fra banken din.",
+      "notStatement": "Denne filen inneholder ikke en kontoutskrift Moony kan lese.",
+      "error": "Filen kunne ikke leses."
+    },
+    "preview": {
+      "hint": "Trykk på en betaling for å velge kategori.",
+      "more_one": "og {{count}} til",
+      "more_other": "og {{count}} til"
+    },
+    "choice": {
+      "title": "Kategorisering",
+      "byRules": "Etter reglene",
+      "byRulesSub": "Valget ditt fjernes"
+    },
+    "done": {
+      "lastBalance": "Saldo etter siste betaling: <b>{{balance}}</b>.",
+      "categorized_one": "Reglene kategoriserte {{count}} betaling.",
+      "categorized_other": "Reglene kategoriserte {{count}} betalinger.",
+      "open_one": "{{count}} er fortsatt uten kategori.",
+      "open_other": "{{count}} er fortsatt uten kategori.",
+      "allSorted": "Alt har en kategori.",
+      "promoted_one": "{{count}} ventende betaling ble bokført.",
+      "promoted_other": "{{count}} ventende betalinger ble bokført.",
+      "queue_one": "Kategoriser {{count}} betaling",
+      "queue_other": "Kategoriser {{count}} betalinger"
+    }
+  },
   "wealth": {
     "placeholder": {
       "classPage": "Siden for denne klassen kommer i neste del av fase 4.",

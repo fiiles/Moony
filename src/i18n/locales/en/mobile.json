@@ -260,6 +260,60 @@
     "decline": "Decline suggestion",
     "empty": "No category matches"
   },
+  "import": {
+    "title": "Import statement",
+    "intoAccount": "Into {{account}}",
+    "fromShare": "From sharing",
+    "reads": "Supported: {{formats}}.",
+    "reading": "Reading the file…",
+    "importing": "Writing the payments…",
+    "pick": {
+      "lead": "Choose the file you downloaded from your bank.",
+      "choose": "Choose file",
+      "chooseOther": "Choose another file"
+    },
+    "account": {
+      "sheetTitle": "Which account?",
+      "lead": "Choose the account the payments belong to.",
+      "none": "You have no open account yet. Add the one this file belongs to.",
+      "title": "Accounts",
+      "new": "New account…"
+    },
+    "statement": {
+      "title": "Which statement?",
+      "dateTitle": "How are the dates written?",
+      "continue": "Continue"
+    },
+    "unreadable": {
+      "title": "Can't read this file",
+      "pdf": "Moony can't read a PDF statement yet — download CSV, CAMT, MT940, OFX or QIF from your bank.",
+      "image": "Moony can't read a photo or scan of a statement — download CSV, CAMT, MT940, OFX or QIF from your bank.",
+      "notStatement": "This file doesn't hold a statement Moony can read.",
+      "error": "The file could not be read."
+    },
+    "preview": {
+      "hint": "Tap a payment to choose its category.",
+      "more_one": "and {{count}} more",
+      "more_other": "and {{count}} more"
+    },
+    "choice": {
+      "title": "Categorization",
+      "byRules": "By the rules",
+      "byRulesSub": "Your pick is removed"
+    },
+    "done": {
+      "lastBalance": "Balance after the last payment: <b>{{balance}}</b>.",
+      "categorized_one": "{{count}} payment was categorized by the rules.",
+      "categorized_other": "{{count}} payments were categorized by the rules.",
+      "open_one": "{{count}} is still without a category.",
+      "open_other": "{{count}} are still without a category.",
+      "allSorted": "Everything has a category.",
+      "promoted_one": "{{count}} pending payment was booked.",
+      "promoted_other": "{{count}} pending payments were booked.",
+      "queue_one": "Categorize {{count}} payment",
+      "queue_other": "Categorize {{count}} payments"
+    }
+  },
   "wealth": {
     "placeholder": {
       "classPage": "This class page comes in the next part of phase 4.",

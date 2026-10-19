@@ -246,6 +246,7 @@
   border-radius: var(--r-1); background: var(--well-2); color: var(--ink-3);
   font-size: var(--m-fs-caption); font-weight: 600; line-height: 18px; vertical-align: 2px;
 }
+.m-row__badge--loss { background: var(--loss-soft); color: var(--loss); } /* "Chyba" in the import preview */
 .m-row__v {
   flex: none; max-width: 60%; margin-left: auto; color: var(--ink); /* an absurd value never squeezes the title away */
   font-size: var(--m-fs-row); font-weight: var(--m-fw-row); letter-spacing: var(--m-ls-row); line-height: 1.3;
@@ -660,6 +661,12 @@
 .m-pick__chip { display: grid; flex: none; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--well-2); color: var(--ink-3); }
 .m-pick__l { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .m-pick__check { flex: none; width: 18px; height: 18px; }
+/* A pick row with a second line (an account's "Fio · CZK", a statement's currency and payment count, the category
+   choice's "By the rules"): the label and the sub-line share one column, each ending in an ellipsis; the row stays
+   44 px at least. */
+.m-pick__main { flex: 1; min-width: 0; }
+.m-pick__main > .m-pick__l { display: block; }
+.m-pick__s { display: block; overflow: hidden; color: var(--ink-4); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); text-overflow: ellipsis; white-space: nowrap; }
 
 /* ===== Transaction sheet and category picker (spec §8.4) ===== */
 
@@ -793,12 +800,72 @@
    the transaction sheet's, so the label, the value, `--stack` and the sub-line are as described above. */
 .m-kvcard { padding: 4px 16px; }
 
+/* ===== Import sheet (spec §8.6, README §13 "Import sheet") =====
+   One tall sheet (`.m-sheet--full`) whose stages swap the title, the sentence, the body and the footer: pick a
+   file, reading, which statement and how its dates read, which account, the preview, the write, the done step,
+   or "this file cannot be read". The footer has one primary at most ("Importovat N transakcí", "Vybrat soubor",
+   "Pokračovat", "Vybrat jiný soubor"; the done step's footer is "Hotovo" alone). Every stage after the picker
+   starts with the file bar. */
+
+/* File bar: the file the sheet is working on. A 36 px paper chip with the file glyph, the name 15 / 600 (ellipsis)
+   and a 12 / 500 `ink-4` line under it ("CAMT.053 · CZ65 0800 …"), on `well`, radius 12, 52 px at least. */
+.m-filebar { display: flex; align-items: center; gap: 12px; min-height: 52px; margin-bottom: 12px; padding: 8px 12px; border-radius: 12px; background: var(--well); }
+.m-filebar__ic { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--paper); box-shadow: var(--sh-1); color: var(--ink-3); }
+.m-filebar__ic svg { width: 16px; height: 16px; stroke-width: 1.75; }
+.m-filebar__main { flex: 1; min-width: 0; }
+.m-filebar__t { display: block; overflow: hidden; color: var(--ink); font-size: var(--m-fs-row); font-weight: var(--m-fw-row); letter-spacing: var(--m-ls-row); line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.m-filebar__s { display: block; overflow: hidden; color: var(--ink-4); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+
+/* A sheet footer's primary whose label can be long ("48 Transaktionen importieren" beside "Abbrechen" at 360): it wraps to a
+   second line (as the button pair's labels do) instead of ending in an ellipsis, and grows to 48 px + one more line. */
+.m-btn--wrap { height: auto; min-height: 48px; padding-block: 8px; line-height: 1.15; text-align: center; white-space: normal; }
+.m-btn--wrap > span { overflow: visible; overflow-wrap: break-word; hyphens: auto; }
+
+/* The sentences of the picker, the reading and the unreadable stages: 15 / 450 `ink-2`, the supported formats
+   12 / 500 `ink-3` under it, the reading line with a turning arrow (it stands still under reduced motion). */
+.m-imp-lead { margin: 0 4px; color: var(--ink-2); font-size: var(--m-fs-body); font-weight: var(--m-fw-body); line-height: 1.45; }
+.m-imp-sub { margin: 8px 4px 0; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; }
+.m-imp-wait { display: flex; align-items: center; gap: 8px; margin: 0 4px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); }
+.m-imp-wait svg { width: 14px; height: 14px; }
+
+/* The notes under the file bar. An informative or reassuring sentence is the quiet `.m-note` (`--ok`: the green check
+   of "the statement adds up"); one the person has to look at before importing is the red box (`.m-box--loss`) with
+   its glyph and, when something resolves it, a text button under the sentence (44 px, `ink`). */
+.m-note--ok svg { color: var(--gain); }
+.m-imp-warn { display: flex; align-items: flex-start; gap: 8px; margin: 0; }
+.m-imp-warn svg { flex: none; width: 15px; height: 15px; margin-top: 1px; stroke-width: 1.75; }
+.m-imp-act { display: flex; align-items: center; justify-content: flex-start; width: 100%; height: 44px; margin-top: 6px; padding: 0 8px; border: 0; border-radius: 10px; background: none; color: var(--ink); font: inherit; font-size: var(--m-fs-sub); font-weight: 600; text-align: left; }
+.m-imp-act:active { background: var(--well-2); }
+.m-imp-confirm { margin: -4px 0 12px; } /* the "import anyway" switch (`.m-switchrow`) right under the red box */
+
+/* The preview's counts: "48 Transaktionen werden importiert · 3 Duplikate übersprungen" 15 / 600 `ink`, the period and the
+   category counts 12 / 500 `ink-3` (tabular) under it, errors in `loss`, then the one line that says a tap chooses a category
+   (11 `ink-4`), the rows (`.m-rows` of entity rows, below) and "und 43 weitere" (12 `ink-3`). */
+.m-imp-count { margin: 0 4px 2px; color: var(--ink); font-size: var(--m-fs-row); font-weight: var(--m-fw-row); letter-spacing: var(--m-ls-row); line-height: 1.3; }
+.m-imp-meta { margin: 0 4px 2px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; font-variant-numeric: tabular-nums; }
+.m-imp-meta__loss { color: var(--loss); }
+.m-imp-hint { margin: 8px 4px; color: var(--ink-4); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.3; }
+.m-imp-more { margin: 0 4px 14px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; }
+.m-imp-rows { transition: opacity var(--t-base); }
+.m-imp-rows[aria-busy="true"] { opacity: .6; }
+
+/* The done step: the three stats (`.m-stats`), the sentences under them — the statement's balance, what the rules did,
+   booked pending payments — 12 / 500 `ink-3` with the numbers in `ink` / 600, the one primary of the step (block, 48 px,
+   14 px under) and the next steps as entity rows with a chevron; a step that was carried out is ticked (the `gain` chip)
+   and at half strength. */
+.m-imp-facts { display: grid; gap: 6px; margin: 0 4px 14px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.35; }
+.m-imp-facts p { margin: 0; }
+.m-imp-facts b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.m-imp-primary { margin-bottom: 14px; }
+
 @media (prefers-reduced-motion: no-preference) {
+  @keyframes m-imp-spin { to { transform: rotate(360deg); } }
+  .m-imp-wait svg { animation: m-imp-spin 1s linear infinite; }
   @keyframes m-sheet-in { from { transform: translateY(100%); } }
   @keyframes m-scrim-in { from { opacity: 0; } }
   .m-sheet { animation: m-sheet-in 260ms var(--ease); }
   .m-scrim { animation: m-scrim-in var(--t-base) var(--ease); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .m-nav, .m-nav__title, .m-seg__btn, .m-swipe > .m-row, .m-flows__col, .m-row--flash { transition: none; }
+  .m-nav, .m-nav__title, .m-seg__btn, .m-swipe > .m-row, .m-flows__col, .m-row--flash, .m-imp-rows { transition: none; }
 }

@@ -449,6 +449,7 @@
       "reminders": "Připomínky",
       "remindersSub": "{{on}} z {{total}} skupin",
       "import": "Import",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
       "deleteSub": "po potvrzení napsáním slova"
     },
     "version": "Moony {{version}} · {{privacy}}",

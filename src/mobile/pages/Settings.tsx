@@ -14,6 +14,7 @@ import { MILESTONE_GROUP_IDS, kindsOf } from '@/utils/milestones';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
 import { useBack } from '@/mobile/hooks/use-back';
+import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import { useNotificationPermission } from '@/mobile/hooks/use-notification-permission';
 import { readBackgroundLockMinutes } from '@/mobile/lib/background-lock';
 import { BIOMETRIC_STATUS_KEY } from '@/mobile/lib/biometrics';
@@ -24,9 +25,8 @@ import { routes, settingsPath } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 import { DeleteProfileSheet } from '@/mobile/sheets/DeleteProfileSheet';
 import { LanguagePickerSheet } from '@/mobile/sheets/LanguagePickerSheet';
-import { PlaceholderSheet } from '@/mobile/sheets/PlaceholderSheet';
 
-type SheetKind = 'language' | 'import' | 'delete';
+type SheetKind = 'language' | 'delete';
 
 /** The app version, `''` until it is known (and where the shell cannot tell, such as a browser). */
 function useAppVersion(): string {
@@ -47,7 +47,8 @@ function useAppVersion(): string {
  * Nastavení from the avatar on Přehled (spec §8.9): the profile head, then the rows by what they
  * are — profile and language; security, backup, notifications and reminders, each with its state
  * in the sub-line and a page of its own (`/settings/:section`); import; lock and delete — and the
- * version with the promise under it. Language, import and delete open sheets.
+ * version with the promise under it. Language and delete open sheets, and so does import: the
+ * import sheet that every entry point shares (`useImportSheet`), asked here without an account.
  */
 export default function Settings() {
   const { t } = useTranslation('mobile');
@@ -57,6 +58,7 @@ export default function Settings() {
   const { language } = useLanguage();
   const fmt = useFormat();
   const back = useBack(routes.overview);
+  const { openImport } = useImportSheet();
   const version = useAppVersion();
   const [sheet, setSheet] = useState<SheetKind | null>(null);
   const closeSheet = (open: boolean) => {
@@ -184,8 +186,8 @@ export default function Settings() {
         <SettingsRow
           icon={FileText}
           title={t('settings.rows.import')}
-          sub={t('placeholder.import')}
-          onClick={() => setSheet('import')}
+          sub={t('settings.rows.importSub')}
+          onClick={() => openImport({ source: 'settings' })}
         />
       </EntityRows>
 
@@ -213,12 +215,6 @@ export default function Settings() {
       </p>
 
       <LanguagePickerSheet open={sheet === 'language'} onOpenChange={closeSheet} />
-      <PlaceholderSheet
-        open={sheet === 'import'}
-        onOpenChange={closeSheet}
-        title={t('settings.rows.import')}
-        text={t('placeholder.import')}
-      />
       <DeleteProfileSheet open={sheet === 'delete'} onOpenChange={closeSheet} />
     </Screen>
   );

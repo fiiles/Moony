@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/lib/protected-route';
+import { ReceivedFileHost } from '@/mobile/components/import/ReceivedFileHost';
 import { ImportSheetProvider } from '@/mobile/hooks/use-import-sheet';
 import { useNotificationSchedule } from '@/mobile/hooks/use-notification-schedule';
 import { clearEnrolmentAsked } from '@/mobile/lib/biometrics';
@@ -44,7 +45,8 @@ function NotificationScheduler() {
  * Phone shell (spec §6): the four tab roots behind the lock, the lock screen outside it, and the
  * tab bar over the unlocked tab screens. Navigation is the browser history (wouter), so Android
  * back pops whatever was pushed. The import sheet lives above the routes (`ImportSheetProvider`),
- * so every entry point can open it and it outlives the screen that did.
+ * so every entry point can open it and it outlives the screen that did; `ReceivedFileHost` feeds
+ * it the statements the system opened in Moony.
  */
 export function MobileShell() {
   const [location] = useLocation();
@@ -99,6 +101,10 @@ export function MobileShell() {
       <EnableBiometricsSheet />
       {/* Only while unlocked: it reads the milestones, which the locked database cannot answer. */}
       {appStatus === 'unlocked' && <NotificationScheduler />}
+      {/* A statement shared into the app opens the import sheet after the unlock, once. It stays
+          mounted through a lock (and drains only while unlocked), so a path it has taken but not
+          yet shown survives every unlock. */}
+      <ReceivedFileHost />
     </ImportSheetProvider>
   );
 }

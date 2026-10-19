@@ -449,6 +449,7 @@
       "reminders": "Recordatorios",
       "remindersSub": "{{on}} de {{total}} grupos",
       "import": "Importar",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
       "deleteSub": "tras escribir una palabra de confirmación"
     },
     "version": "Moony {{version}} · {{privacy}}",

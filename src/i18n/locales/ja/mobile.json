@@ -403,6 +403,7 @@
       "reminders": "リマインダー",
       "remindersSub": "{{total}}グループ中{{on}}グループ",
       "import": "インポート",
+      "importSub": "CSV、CAMT.053、MT940、OFX、QIF",
       "deleteSub": "確認の単語を入力して実行"
     },
     "version": "Moony {{version}} · {{privacy}}",

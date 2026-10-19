@@ -403,6 +403,7 @@
       "reminders": "提醒",
       "remindersSub": "已开启 {{on}}/{{total}} 组",
       "import": "导入",
+      "importSub": "CSV、CAMT.053、MT940、OFX、QIF",
       "deleteSub": "输入确认词后执行"
     },
     "version": "Moony {{version}} · {{privacy}}",

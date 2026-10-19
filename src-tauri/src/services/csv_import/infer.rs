@@ -30,7 +30,8 @@
 //!   be magnitudes beside a direction word; empty where the balance moves, it leaves credits to
 //!   another column); or a *debit + credit pair*: two neighbouring one-signed money columns that are never
 //!   both non-zero on a row, exactly one filled on ≥ 90 % of the rows. An unproven pair whose
-//!   sides neither the signs nor the headers tell apart is not guessed.
+//!   sides neither the signs nor the headers tell apart is not guessed. A column the header
+//!   names as the balance is never a single amount (an overdrawn balance has both signs).
 //! - **balance**: a money column filled on ≥ half the rows with `balance[i] − balance[i−1] =
 //!   amount[i]` on ≥ 80 % of the consecutive pairs where the balance moved or there is an amount,
 //!   read in the file's order (both orders only when the dates do not tell), and no pair saying
@@ -809,14 +810,16 @@ impl AmountReader<'_, '_> {
     /// Choose how the amounts are read. Candidates: a numeric column with both signs filled on
     /// ≥ half the rows; a one-signed money column filled on ≥ half the rows that a balance
     /// proves; neighbouring one-signed money columns never both non-zero on a row and with
-    /// exactly one non-zero on ≥ 90 % of the rows (a pair). A reading a balance proves wins;
-    /// then the header synonyms; then the better proof (share of agreeing pairs); then the one
-    /// covering more rows; then a single column over a pair; then money; then the leftmost.
+    /// exactly one non-zero on ≥ 90 % of the rows (a pair). A column the header names as the
+    /// balance is never a single amount (an overdrawn balance has both signs). A reading a
+    /// balance proves wins; then the header synonyms; then the better proof (share of agreeing
+    /// pairs); then the one covering more rows; then a single column over a pair; then money;
+    /// then the leftmost.
     fn choose(&self) -> Option<AmountReading> {
         let numerics = self.numerics;
         let mut readings: Vec<AmountReading> = Vec::new();
         for (a, numeric) in numerics.iter().enumerate() {
-            if numeric.filled_share < MIN_FILLED {
+            if numeric.filled_share < MIN_FILLED || self.synonyms.names("balance", self.column(a)) {
                 continue;
             }
             let kind = AmountKind::Single(a);

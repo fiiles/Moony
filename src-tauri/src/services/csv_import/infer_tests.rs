@@ -559,6 +559,31 @@ fn magnitudes_beside_a_direction_word_are_not_proven() {
     assert_eq!(inferred.sign_check, SignCheck::Unchecked);
 }
 
+/// The same file overdrawn: the balance now has both signs, which alone reads like a signed
+/// amount. A column the header names as the balance is never the amount.
+#[test]
+fn an_overdrawn_balance_is_no_amount() {
+    let inferred = infer(&[
+        "Datum;Částka;Směr;Zůstatek",
+        "01.09.2026;100,00;Výdaj;-100,00",
+        "02.09.2026;200,00;Výdaj;-300,00",
+        "03.09.2026;1 000,00;Příjem;700,00",
+        "04.09.2026;50,00;Výdaj;650,00",
+        "05.09.2026;25,00;Výdaj;625,00",
+        "06.09.2026;75,00;Výdaj;550,00",
+        "07.09.2026;10,00;Výdaj;540,00",
+        "08.09.2026;40,00;Výdaj;500,00",
+        "09.09.2026;600,00;Výdaj;-100,00",
+        "10.09.2026;30,00;Výdaj;-130,00",
+    ]);
+    assert_eq!(inferred.amount, None);
+    assert_eq!(inferred.debit, None);
+    assert_eq!(inferred.credit, None);
+    assert_eq!(inferred.balance, None);
+    assert_eq!(inferred.sign_check, SignCheck::Unchecked);
+    assert_eq!(column(&inferred.date), Some("Datum"));
+}
+
 /// B: an all-expense Fio/ČS-like export: the sparse variable symbol is a code, not the credit
 /// side of a pair (it once imported as 202609 − 15500).
 #[test]

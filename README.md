@@ -80,7 +80,7 @@ header row only. A new bank is one small JSON file, see
 
 Get the installer from the [latest release](https://github.com/fiiles/Moony/releases/latest)
 (all versions: [Releases](https://github.com/fiiles/Moony/releases)). Builds: macOS (Apple
-Silicon and Intel), Windows (x64), Linux (x86_64, built on Ubuntu 24.04).
+Silicon and Intel), Windows (x64), Linux (x86_64 and ARM64/aarch64, built on Ubuntu 24.04).
 
 > **The Windows installer is not code-signed yet.** Signing needs a Windows code-signing
 > certificate, which the project does not have; it is planned (see [ROADMAP.md](./ROADMAP.md)).
@@ -116,10 +116,14 @@ Silicon and Intel), Windows (x64), Linux (x86_64, built on Ubuntu 24.04).
 <details>
 <summary><strong>Linux</strong></summary>
 
+`uname -m` tells you which build you need: `x86_64` or `aarch64`.
+
 - **AppImage:** `chmod +x Moony_<version>_amd64.AppImage && ./Moony_<version>_amd64.AppImage`
-  (some distributions need `libfuse2` for AppImages).
+  (some distributions need `libfuse2` for AppImages). ARM: `Moony_<version>_aarch64.AppImage`.
 - **Debian / Ubuntu:** `sudo apt install ./Moony_<version>_amd64.deb`
+  (ARM: `Moony_<version>_arm64.deb`)
 - **Fedora / openSUSE:** `sudo dnf install ./Moony-<version>-1.x86_64.rpm`
+  (ARM: `Moony-<version>-1.aarch64.rpm`)
 
 </details>
 

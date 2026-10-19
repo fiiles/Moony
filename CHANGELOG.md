@@ -6,6 +6,11 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Linux on ARM.** Every release now also ships ARM64 (aarch64) builds for Linux: an AppImage,
+  a `.deb` and an `.rpm`, updated through the built-in updater like the x86_64 builds.
+
 ## [1.0.0] - 2026-10-19
 
 The first stable release.

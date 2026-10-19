@@ -110,6 +110,10 @@ jobs:
             args: --target x86_64-apple-darwin
           - platform: ubuntu-24.04
             args: ''
+          # Native ARM runner (free for public repositories): builds the aarch64 AppImage, the
+          # arm64 .deb and the aarch64 .rpm without cross-compiling.
+          - platform: ubuntu-24.04-arm
+            args: ''
           - platform: windows-latest
             args: ''
 
@@ -144,7 +148,7 @@ jobs:
           key: ${{ matrix.platform }}${{ matrix.args }}
 
       - name: Install dependencies (Ubuntu)
-        if: matrix.platform == 'ubuntu-24.04'
+        if: startsWith(matrix.platform, 'ubuntu')
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf

@@ -195,10 +195,17 @@ fn the_preset_fixtures_also_prove_balances_ids_and_accounts() {
     assert_eq!(column(&fio.currency), Some("Měna"));
     assert_eq!(fio.decimal_separator, ",");
 
-    // Česká spořitelna: Czech domestic account numbers are account identifiers.
+    // Česká spořitelna: the sample's account numbers (123456789/0800, 987654321/0100) fail the
+    // Czech mod-11 check, so they are no account identifiers.
     let cs = infer_fixture("ceska-sporitelna.csv");
-    assert_eq!(column(&cs.counterparty_iban), Some("Číslo protiúčtu"));
+    assert_eq!(cs.counterparty_iban, None);
     assert_eq!(cs.decimal_separator, ",");
+
+    // N26: "Original Currency" goes with "Original Amount", not with the account-currency
+    // "Amount (EUR)" the import reads.
+    let n26 = infer_fixture("n26.csv");
+    assert_eq!(n26.currency, None);
+    assert_eq!(column(&n26.counterparty_iban), Some("Partner Iban"));
 
     // Sparkasse: the statement's own IBAN repeats on every row; the counterparty's varies.
     let sparkasse = infer_fixture("de-sparkasse.csv");
@@ -443,7 +450,7 @@ fn infers_counterparty_accounts_iban_or_czech_domestic() {
     let inferred = infer(&[
         "Účet;Datum;Částka;Protiúčet;Jiný účet",
         "CZ6508000000192000145399;01.09.2026;-100,00;DE89370400440532013000;19-2000145399/0800",
-        "CZ6508000000192000145399;02.09.2026;200,00;GB82 WEST 1234 5698 7654 32;2101234567/2010",
+        "CZ6508000000192000145399;02.09.2026;200,00;GB82 WEST 1234 5698 7654 32;2101234569/2010",
         "CZ6508000000192000145399;03.09.2026;-50,00;;",
     ]);
     // The own account repeats on every row; of the two that vary the header decides.
@@ -451,7 +458,7 @@ fn infers_counterparty_accounts_iban_or_czech_domestic() {
 
     let czech = infer(&[
         "Datum;Částka;Sloupec 3",
-        "01.09.2026;-100,00;2101234567/2010",
+        "01.09.2026;-100,00;2101234569/2010",
         "02.09.2026;200,00;19-2000145399/0800",
         "03.09.2026;-50,00;",
     ]);
@@ -464,6 +471,268 @@ fn infers_counterparty_accounts_iban_or_czech_domestic() {
         "02.09.2026;200,00;DE89370400440532013002",
     ]);
     assert_eq!(invalid.counterparty_iban, None);
+}
+
+#[test]
+fn invoice_numbers_and_periods_are_no_czech_accounts() {
+    // `number/four digits` alone is not enough: the Czech mod-11 checksum must hold.
+    let inferred = infer(&[
+        "Datum;Částka;Faktura;Období",
+        "01.09.2026;-100,00;12345/2026;09/2026",
+        "02.09.2026;200,00;12346/2026;10/2026",
+        "03.09.2026;-50,00;12347/2026;11/2026",
+    ]);
+    assert_eq!(inferred.counterparty_iban, None);
+}
+
+// ---------------------------------------------------------------------------
+// Review round 1.
+// ---------------------------------------------------------------------------
+
+/// A: an all-expense month (no income row) in a Czech export whose headers no preset knows,
+/// newest first, decimal comma with NBSP thousands, a booking and a value date and the
+/// statement's own account on every row. The running balance proves the one-signed amounts.
+#[test]
+fn infers_a_one_signed_amount_the_balance_proves_unicredit_like() {
+    let inferred = infer_csv(
+        &fixture_bytes("unknown-unicredit-like.csv"),
+        &InferOptions::default(),
+    );
+    assert_eq!(column(&inferred.date), Some("Datum zaúčtování"));
+    assert_eq!(column(&inferred.amount), Some("Částka"));
+    assert_eq!(column(&inferred.balance), Some("Zůstatek po transakci"));
+    assert_eq!(inferred.sign_check, SignCheck::Verified);
+    assert_eq!(inferred.decimal_separator, ",");
+    assert!(inferred.debit.is_none() && inferred.credit.is_none());
+}
+
+/// A: the same month oldest first, `,` and `.`, headers that say nothing.
+#[test]
+fn infers_a_one_signed_amount_the_balance_proves_opaque_headers() {
+    let inferred = infer_csv(
+        &fixture_bytes("unknown-opaque-headers.csv"),
+        &InferOptions::default(),
+    );
+    assert_eq!(column(&inferred.date), Some("Pole A"));
+    assert_eq!(column(&inferred.amount), Some("Pole C"));
+    assert_eq!(column(&inferred.balance), Some("Pole D"));
+    assert_eq!(inferred.sign_check, SignCheck::Verified);
+    assert_eq!(inferred.decimal_separator, ".");
+    // Only the content decided.
+    assert!(inferred.amount.as_ref().is_some_and(|f| f.confidence < 1.0));
+}
+
+/// A: without a balance a one-signed column is no amount (it may be magnitudes next to a
+/// direction word): the person picks it.
+#[test]
+fn an_unproven_one_signed_column_is_no_amount() {
+    let inferred = infer(&[
+        "Datum;Částka;Popis",
+        "01.09.2026;-1 249,00;Nákup",
+        "02.09.2026;-89,00;Spotify",
+        "03.09.2026;-15 500,00;Nájem",
+    ]);
+    assert_eq!(inferred.amount, None);
+    assert_eq!(column(&inferred.date), Some("Datum"));
+}
+
+/// A: magnitudes beside a direction word. Nine expenses agree with "inverted", but the income
+/// row agrees with the other sign: the balance proves no sign convention, so the column is no
+/// amount (an "inverted" reading would turn the income negative).
+#[test]
+fn magnitudes_beside_a_direction_word_are_not_proven() {
+    let inferred = infer(&[
+        "Datum;Částka;Směr;Zůstatek",
+        "01.09.2026;100,00;Výdaj;900,00",
+        "02.09.2026;200,00;Výdaj;700,00",
+        "03.09.2026;1 000,00;Příjem;1 700,00",
+        "04.09.2026;50,00;Výdaj;1 650,00",
+        "05.09.2026;25,00;Výdaj;1 625,00",
+        "06.09.2026;75,00;Výdaj;1 550,00",
+        "07.09.2026;10,00;Výdaj;1 540,00",
+        "08.09.2026;40,00;Výdaj;1 500,00",
+        "09.09.2026;60,00;Výdaj;1 440,00",
+        "10.09.2026;30,00;Výdaj;1 410,00",
+    ]);
+    assert_eq!(inferred.amount, None);
+    assert_eq!(inferred.balance, None);
+    assert_eq!(inferred.sign_check, SignCheck::Unchecked);
+}
+
+/// B: an all-expense Fio/ČS-like export: the sparse variable symbol is a code, not the credit
+/// side of a pair (it once imported as 202609 − 15500).
+#[test]
+fn an_all_expense_file_with_a_sparse_symbol_infers_no_pair() {
+    // One symbol in ten rows: "exactly one side filled" holds on 90 % of the rows.
+    let inferred = infer(&[
+        "Datum;Objem;VS;KS;Popis",
+        "01.09.2026;-1 249,00;;;Nákup",
+        "02.09.2026;-15 500,00;202609;0308;Nájem",
+        "03.09.2026;-89,00;;;Spotify",
+        "04.09.2026;-450,00;;;Oběd",
+        "05.09.2026;-1 200,00;;;Pojistka",
+        "06.09.2026;-312,00;;;Lékárna",
+        "07.09.2026;-75,50;;;Kafe",
+        "08.09.2026;-2 400,00;;;Elektřina",
+        "09.09.2026;-640,00;;;Benzín",
+        "10.09.2026;-128,90;;;Pekárna",
+    ]);
+    assert_eq!(inferred.amount, None);
+    assert_eq!(inferred.debit, None);
+    assert_eq!(inferred.credit, None);
+}
+
+/// B: Amount | Fee | Balance with expenses only: a fee row has both sides filled, so the
+/// columns are no pair; the balance (which moves by amount + fee) still proves the amount on
+/// the rows without a fee.
+#[test]
+fn an_all_expense_amount_fee_balance_file_infers_no_pair() {
+    // One fee in ten rows: the old rule paired Amount with Fee and "verified" it.
+    let inferred = infer(&[
+        "Date;Amount;Fee;Balance",
+        "01/09/2026;-10.00;0.00;990.00",
+        "02/09/2026;-20.00;0.00;970.00",
+        "03/09/2026;-30.00;-1.50;938.50",
+        "04/09/2026;-40.00;0.00;898.50",
+        "05/09/2026;-50.00;0.00;848.50",
+        "06/09/2026;-60.00;0.00;788.50",
+        "07/09/2026;-70.00;0.00;718.50",
+        "08/09/2026;-80.00;0.00;638.50",
+        "09/09/2026;-90.00;0.00;548.50",
+        "10/09/2026;-100.00;0.00;448.50",
+    ]);
+    assert_eq!(inferred.debit, None);
+    assert_eq!(inferred.credit, None);
+    assert_eq!(column(&inferred.amount), Some("Amount"));
+    assert_eq!(column(&inferred.balance), Some("Balance"));
+    assert_eq!(inferred.sign_check, SignCheck::Verified);
+}
+
+/// C: a "balance before" column in an oldest-first file. Read newest first it would look like
+/// an inverted balance; the dates say the file is oldest first, where it agrees with nothing.
+#[test]
+fn the_dates_decide_the_order_a_balance_is_read_in() {
+    let single = infer(&[
+        "Datum;Popis;Částka;Zůstatek před",
+        "01.09.2026;Kafe;-50,00;1 000,00",
+        "02.09.2026;Mzda;1 000,00;950,00",
+        "03.09.2026;Nájem;-300,00;1 950,00",
+        "04.09.2026;Nákup;-120,00;1 650,00",
+    ]);
+    assert_eq!(column(&single.amount), Some("Částka"));
+    assert_eq!(single.balance, None);
+    assert_eq!(single.sign_check, SignCheck::Unchecked);
+
+    // For a pair the wrong order would also have swapped debit and credit.
+    let pair = infer(&[
+        "Datum;Popis;Debit;Credit;Zůstatek před",
+        "01.09.2026;Kafe;50,00;;1 000,00",
+        "02.09.2026;Mzda;;1 000,00;950,00",
+        "03.09.2026;Nájem;300,00;;1 950,00",
+        "04.09.2026;Nákup;120,00;;1 650,00",
+    ]);
+    assert_eq!(column(&pair.debit), Some("Debit"));
+    assert_eq!(column(&pair.credit), Some("Credit"));
+    assert_eq!(pair.balance, None);
+    assert_eq!(pair.sign_check, SignCheck::Unchecked);
+}
+
+/// E: a statement date repeated on every row loses to a booking date that varies, even when
+/// only the constant one carries a date synonym.
+#[test]
+fn a_constant_date_column_yields_to_a_varying_one() {
+    let inferred = infer(&[
+        "Datum;Kdy;Částka",
+        "30.09.2026;01.09.2026;-100,00",
+        "30.09.2026;05.09.2026;200,00",
+        "30.09.2026;17.09.2026;-50,00",
+    ]);
+    assert_eq!(column(&inferred.date), Some("Kdy"));
+
+    // Alone, a constant date is still the date.
+    let alone = infer(&["Datum;Částka", "30.09.2026;-100,00", "30.09.2026;200,00"]);
+    assert_eq!(column(&alone.date), Some("Datum"));
+}
+
+/// F: two positive columns, no header synonym, no balance: which one is the debit cannot be
+/// told, so nothing is chosen and the person is asked.
+#[test]
+fn an_unproven_pair_without_a_hint_is_not_guessed() {
+    let inferred = infer(&[
+        "H1;H2;H3;H4",
+        "01.09.2026;Mzda;45 000,00;",
+        "02.09.2026;Nájem;;15 500,00",
+        "03.09.2026;Nákup;;1 249,00",
+        "04.09.2026;Kafe;;89,00",
+    ]);
+    assert_eq!(inferred.amount, None);
+    assert_eq!(inferred.debit, None);
+    assert_eq!(inferred.credit, None);
+
+    // The same with Debit/Credit headers is read.
+    let named = infer(&[
+        "Datum;Popis;Credit;Debit",
+        "01.09.2026;Mzda;45 000,00;",
+        "02.09.2026;Nájem;;15 500,00",
+        "03.09.2026;Nákup;;1 249,00",
+        "04.09.2026;Kafe;;89,00",
+    ]);
+    assert_eq!(column(&named.debit), Some("Debit"));
+    assert_eq!(column(&named.credit), Some("Credit"));
+}
+
+/// G: a currency column without a currency header next to a second signed amount belongs to
+/// that amount (an original or foreign amount), not to the one imported.
+#[test]
+fn an_original_currency_is_not_the_row_currency() {
+    let inferred = infer(&[
+        "Datum;Částka;Původní částka;Původní měna",
+        "01.09.2026;-100,00;-4,00;EUR",
+        "02.09.2026;2 000,00;2 000,00;CZK",
+        "03.09.2026;-250,00;-10,00;USD",
+    ]);
+    assert_eq!(column(&inferred.amount), Some("Částka"));
+    assert_eq!(inferred.currency, None);
+
+    // A header that names the currency keeps it.
+    let named = infer(&[
+        "Datum;Částka;Původní částka;Měna",
+        "01.09.2026;-100,00;-4,00;CZK",
+        "02.09.2026;2 000,00;2 000,00;CZK",
+        "03.09.2026;-250,00;-10,00;CZK",
+    ]);
+    assert_eq!(column(&named.currency), Some("Měna"));
+
+    // Without a second amount the code column is the currency.
+    let single = infer(&[
+        "Datum;Částka;Sloupec 3",
+        "01.09.2026;-100,00;CZK",
+        "02.09.2026;2 000,00;CZK",
+    ]);
+    assert_eq!(column(&single.currency), Some("Sloupec 3"));
+}
+
+/// H: whole-number money is no transaction id, even when every value is unique.
+#[test]
+fn whole_number_money_is_no_transaction_id() {
+    // A file without decimals: the balance (here a "balance before", so unproven) is money.
+    let whole = infer(&[
+        "Datum;Částka;X",
+        "01.09.2026;-50;1000",
+        "02.09.2026;1000;950",
+        "03.09.2026;-300;1950",
+        "04.09.2026;-120;1650",
+    ]);
+    assert_eq!(whole.transaction_id, None);
+
+    // An overdrawn whole-number column with both signs in a file with decimals.
+    let signed = infer(&[
+        "Datum;Částka;X",
+        "01.09.2026;-50,50;-50",
+        "02.09.2026;100,00;20",
+        "03.09.2026;-80,25;-30",
+    ]);
+    assert_eq!(signed.transaction_id, None);
 }
 
 #[test]

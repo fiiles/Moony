@@ -1042,10 +1042,13 @@ mod tests {
     fn every_bank_fixture_belongs_to_a_preset_or_is_a_generic_case() {
         // New statement fixtures must either back a preset or be listed here
         // as deliberately preset-less.
-        const GENERIC: [&str; 3] = [
+        const GENERIC: [&str; 5] = [
             "generic-iso.csv",
             "generic-iso-overlap.csv",
             "edge-cases.csv",
+            // Files no preset reads, for the column inference (`csv_import::infer`).
+            "unknown-unicredit-like.csv",
+            "unknown-opaque-headers.csv",
         ];
         let backed: HashSet<&str> = all_presets()
             .iter()
@@ -1069,6 +1072,6 @@ mod tests {
                 "fixture {name} is neither a preset sample nor listed as generic"
             );
         }
-        assert_eq!(seen, 11, "the 11 bank statement fixtures");
+        assert_eq!(seen, 13, "the 13 bank statement fixtures");
     }
 }

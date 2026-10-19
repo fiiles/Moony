@@ -1,32 +1,43 @@
 //! Content-based inference of the columns of a CSV no preset describes (mobile spec §8.6,
 //! rung 3 "guided recognition"). Every column gets its role from what its cells hold; the
 //! header synonyms of [`suggest_column_mappings`] only break ties between columns the content
-//! already qualified, and a field only the content decided carries 0.1 less confidence.
+//! already qualified, and a field only the content decided carries 0.1 less confidence. When
+//! the content cannot decide the date or the amount, the field stays empty and the phone asks:
+//! the app never guesses either silently.
 //!
 //! The rules, in the order they claim columns (a claimed column takes no later role):
 //! - **date**: ≥ 90 % of the non-empty cells parse with the one format
 //!   [`date_parser::detect_date_format`] finds, the column filled on ≥ half the rows. Several →
-//!   the header synonym (booking date before an unnamed column before the value date), else the
-//!   leftmost. Every date column is claimed, the chosen one or not.
-//! - **counterparty account**: ≥ 90 % of the non-empty cells are a checksum-valid IBAN
-//!   ([`valid_iban`]) or a Czech domestic `[prefix-]number/bank`. A column holding one value on
-//!   every row is the statement's own account, not the other party's.
+//!   a column that varies before one holding a single date (a statement date on every row),
+//!   then the header synonym (booking date before an unnamed column before the value date),
+//!   then the leftmost. Every date column is claimed, the chosen one or not. The chosen dates
+//!   also tell the file's order (ascending = oldest first, descending = newest first).
+//! - **counterparty account**: ≥ 90 % of the non-empty cells are an account identifier: a
+//!   checksum-valid IBAN, or a Czech `[prefix-]number/bank` that passes the mod-11 checks and
+//!   becomes one ([`canonical_account_identifier`] + [`valid_iban`]). A column holding one value
+//!   on every row is the statement's own account, not the other party's.
 //! - **currency**: ≥ 90 % of the non-empty cells are an ISO 4217 code in three capitals, at most
-//!   five distinct, the column filled on ≥ half the rows.
+//!   five distinct, the column filled on ≥ half the rows. Without a currency header it is not
+//!   taken when another signed money column sits beside the amount (an original or foreign
+//!   amount, which that currency belongs to).
 //! - **decimal separator**: [`detect_decimal_separator`] over the cells of the columns that read
 //!   as numbers (≥ 90 % of the cells with either separator); then a column is *numeric* when
-//!   ≥ 90 % of its cells parse with that separator ([`clean_and_parse_amount`]).
-//! - **amount**: a numeric column filled on ≥ half the rows with both signs, or a *debit + credit
-//!   pair*: two one-signed numeric columns, neighbours among those, exactly one of them filled
-//!   (non-zero) on ≥ 90 % of the rows. A one-signed column next to a direction word is not
-//!   handled (left to the person's correction).
-//! - **balance**: a numeric column filled on ≥ half the rows with `balance[i] − balance[i−1] =
-//!   amount[i]` on ≥ 80 % of the consecutive pairs, in file order or reversed (newest-first
-//!   files): `verified`; `= −amount[i]`: `inverted`; neither: no balance, `unchecked`. A proven
-//!   reading of the amounts wins over an unproven one, and the balance decides which side of a
-//!   pair is the debit.
-//! - **transaction id**: a token (no spaces, a digit) unique and filled on every row, not a
-//!   money-like numeric column (one with a decimal separator), not a 1…n row counter.
+//!   ≥ 90 % of its cells parse with that separator ([`clean_and_parse_amount`]). A numeric column
+//!   is *money* when it carries the decimal separator, or when no column of the file does (a
+//!   whole-number file); codes and symbols never are.
+//! - **amount**: a numeric column filled on ≥ half the rows with both signs; a one-signed money
+//!   column only when a balance proves it (without one it may be magnitudes beside a direction
+//!   word); or a *debit + credit pair*: two neighbouring one-signed money columns that are never
+//!   both non-zero on a row, exactly one filled on ≥ 90 % of the rows. An unproven pair whose
+//!   sides neither the signs nor the headers tell apart is not guessed.
+//! - **balance**: a money column filled on ≥ half the rows with `balance[i] − balance[i−1] =
+//!   amount[i]` on ≥ 80 % of the consecutive pairs where the balance moved or there is an amount,
+//!   read in the file's order (both orders only when the dates do not tell), and no pair saying
+//!   the opposite sign: `verified`; the mirror image: `inverted`; else no balance, `unchecked`.
+//!   A proven reading of the amounts wins, then the header synonyms, then the reading that
+//!   covers more rows; the balance decides which side of a pair is the debit.
+//! - **transaction id**: a token (no spaces, a digit) unique and filled on every row, not money,
+//!   not a column with both signs or a balance header, not a 1…n row counter.
 //! - **counterparty**: a text column with 2 ≤ distinct values ≤ 90 % of its filled cells and a
 //!   mean length of 3–40 characters; several → the header synonym, else the most distinct.
 //! - **description**: the remaining text columns that vary, longest mean length first, at most
@@ -40,7 +51,7 @@ use std::collections::{HashMap, HashSet};
 
 use crate::models::currency::is_iso_4217;
 use crate::services::date_parser::{self, DetectedDateFormat};
-use crate::services::financial_semantics::valid_iban;
+use crate::services::financial_semantics::{canonical_account_identifier, valid_iban};
 
 use super::amounts::{clean_and_parse_amount, detect_decimal_separator};
 use super::columns::suggest_column_mappings;
@@ -140,7 +151,7 @@ pub fn infer_columns(headers: &[String], rows: &[Vec<String>]) -> InferredColumn
     // Columns a role has claimed (by position in `columns`).
     let mut claimed = vec![false; columns.len()];
 
-    // Date.
+    // Date, and the file's order from it.
     let dates: Vec<(usize, DetectedDateFormat, f64)> = columns
         .iter()
         .enumerate()
@@ -148,23 +159,28 @@ pub fn infer_columns(headers: &[String], rows: &[Vec<String>]) -> InferredColumn
             date_reading(column, row_count).map(|(format, share)| (k, format, share))
         })
         .collect();
+    let some_date_varies = dates.iter().any(|(k, ..)| !columns[*k].is_constant());
     let date_rank = |column: &Column<'_>| {
-        if synonyms.names("date", column) {
+        let synonym = if synonyms.names("date", column) {
             0
         } else if synonyms.names("valueDate", column) {
             2
         } else {
             1
-        }
+        };
+        (
+            some_date_varies && column.is_constant(),
+            synonym,
+            column.index,
+        )
     };
-    if let Some((k, format, share)) = dates
-        .iter()
-        .min_by_key(|(k, ..)| (date_rank(&columns[*k]), columns[*k].index))
-    {
+    let mut order = FileOrder::Unknown;
+    if let Some((k, format, share)) = dates.iter().min_by_key(|(k, ..)| date_rank(&columns[*k])) {
         let column = &columns[*k];
         out.date = Some(column.field(*share, synonyms.names("date", column)));
         out.date_format = Some(format.format.clone());
         out.date_ambiguous = format.ambiguous;
+        order = file_order(column, &format.format);
     }
     for (k, ..) in &dates {
         claimed[*k] = true;
@@ -191,19 +207,12 @@ pub fn infer_columns(headers: &[String], rows: &[Vec<String>]) -> InferredColumn
         claimed[*k] = true;
     }
 
-    // Currency.
+    // Currency columns (which one, if any, is the row currency is settled after the amounts).
     let currencies: Vec<(usize, f64)> = unclaimed(&columns, &claimed)
         .filter(|&k| columns[k].filled_share(row_count) >= MIN_FILLED)
         .map(|k| (k, columns[k].share_matching(is_currency_code)))
         .filter(|&(k, share)| share >= MATCH_SHARE && columns[k].distinct() <= MAX_CURRENCIES)
         .collect();
-    if let Some((k, share)) = currencies.iter().min_by_key(|(k, _)| {
-        let column = &columns[*k];
-        (!synonyms.names("currency", column), column.index)
-    }) {
-        let column = &columns[*k];
-        out.currency = Some(column.field(*share, synonyms.names("currency", column)));
-    }
     for (k, _) in &currencies {
         claimed[*k] = true;
     }
@@ -218,17 +227,26 @@ pub fn infer_columns(headers: &[String], rows: &[Vec<String>]) -> InferredColumn
         .collect();
     let separator = detect_decimal_separator(&number_cells);
     out.decimal_separator = separator.to_string();
-    let numerics: Vec<Numeric> = number_like
+    let mut numerics: Vec<Numeric> = number_like
         .into_iter()
         .filter_map(|k| Numeric::read(k, &columns[k], separator, row_count))
         .collect();
-    for numeric in &numerics {
+    let file_has_decimals = numerics.iter().any(|n| n.carries_separator);
+    for numeric in &mut numerics {
+        numeric.money = numeric.carries_separator || !file_has_decimals;
         claimed[numeric.k] = true;
     }
 
     // Amount (single or debit + credit), balance and the sign check.
     let mut taken: Vec<usize> = Vec::new();
-    if let Some(reading) = choose_amounts(&numerics, &columns, &synonyms, row_count) {
+    let reader = AmountReader {
+        numerics: &numerics,
+        columns: &columns,
+        synonyms: &synonyms,
+        rows: row_count,
+        order,
+    };
+    if let Some(reading) = reader.choose() {
         match reading.kind {
             AmountKind::Single(a) => {
                 let numeric = &numerics[a];
@@ -252,23 +270,37 @@ pub fn infer_columns(headers: &[String], rows: &[Vec<String>]) -> InferredColumn
         }
     }
 
-    // Transaction id.
-    let money_like: HashSet<usize> = numerics
+    // The row currency: a currency column the header names, or any when no other signed money
+    // column (an original amount) sits beside the amount.
+    let second_amount = numerics
         .iter()
-        .filter(|n| n.money_like)
-        .map(|n| n.k)
-        .collect();
-    let date_columns: HashSet<usize> = dates.iter().map(|(k, ..)| *k).collect();
-    let account_like: HashSet<usize> = accounts.iter().map(|(k, _)| *k).collect();
-    let currency_like: HashSet<usize> = currencies.iter().map(|(k, _)| *k).collect();
-    let id = (0..columns.len())
-        .filter(|k| {
-            !taken.contains(k)
-                && !money_like.contains(k)
-                && !date_columns.contains(k)
-                && !account_like.contains(k)
-                && !currency_like.contains(k)
+        .any(|n| n.money && n.negative && !taken.contains(&n.k));
+    let currency = currencies
+        .iter()
+        .filter(|(k, _)| synonyms.names("currency", &columns[*k]) || !second_amount)
+        .min_by_key(|(k, _)| {
+            let column = &columns[*k];
+            (!synonyms.names("currency", column), column.index)
+        });
+    if let Some((k, share)) = currency {
+        let column = &columns[*k];
+        out.currency = Some(column.field(*share, synonyms.names("currency", column)));
+    }
+
+    // Transaction id: never money, a signed column or a balance.
+    let not_an_id: HashSet<usize> = numerics
+        .iter()
+        .filter(|n| {
+            n.money || (n.negative && n.positive) || synonyms.names("balance", &columns[n.k])
         })
+        .map(|n| n.k)
+        .chain(dates.iter().map(|(k, ..)| *k))
+        .chain(accounts.iter().map(|(k, _)| *k))
+        .chain(currencies.iter().map(|(k, _)| *k))
+        .chain(taken.iter().copied())
+        .collect();
+    let id = (0..columns.len())
+        .filter(|k| !not_an_id.contains(k))
         .filter(|&k| columns[k].is_transaction_id(row_count))
         .min_by_key(|&k| {
             let column = &columns[k];
@@ -304,7 +336,7 @@ pub fn infer_columns(headers: &[String], rows: &[Vec<String>]) -> InferredColumn
         .iter()
         .filter(|(k, _)| counterparty.is_none_or(|(c, _)| c != k))
         .map(|(k, _)| &columns[*k])
-        .filter(|column| column.filled < 2 || column.distinct() > 1)
+        .filter(|column| !column.is_constant())
         .collect();
     descriptions.sort_by(|a, b| b.mean_length().total_cmp(&a.mean_length()));
     out.description = descriptions
@@ -375,9 +407,14 @@ impl<'a> Column<'a> {
         share(total, self.filled)
     }
 
-    /// One value on every row (of at least two): the statement's own account, a product name.
+    /// At least two values, all the same (a statement date, a product name).
+    fn is_constant(&self) -> bool {
+        self.filled >= 2 && self.distinct() == 1
+    }
+
+    /// One value on every row (of at least two): the statement's own account.
     fn is_constant_on_every_row(&self, rows: usize) -> bool {
-        rows >= 2 && self.filled == rows && self.distinct() == 1
+        self.filled == rows && self.is_constant()
     }
 
     /// A bank-side id: a token with a digit, filled and unique on every row (of at least two),
@@ -449,32 +486,35 @@ fn date_reading(column: &Column<'_>, rows: usize) -> Option<(DetectedDateFormat,
     (matched >= MATCH_SHARE).then_some((detected, matched))
 }
 
-/// A checksum-valid IBAN (spaces allowed) or a Czech domestic `[prefix-]number/bank`.
-fn is_account_identifier(cell: &str) -> bool {
-    let compact: String = cell
-        .chars()
-        .filter(|c| !c.is_whitespace())
-        .collect::<String>()
-        .to_ascii_uppercase();
-    valid_iban(&compact) || is_czech_domestic_account(cell)
+/// The order of the rows, as the dates show it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum FileOrder {
+    /// Dates only ever rise.
+    OldestFirst,
+    /// Dates only ever fall.
+    NewestFirst,
+    /// No date column, one date throughout, or dates that rise and fall.
+    Unknown,
 }
 
-/// `[prefix-]number/bank`: a prefix of up to six digits, a number of 2–10 digits, a four-digit
-/// bank code (`19-2000145399/0800`, `2101234567/2010`).
-fn is_czech_domestic_account(cell: &str) -> bool {
-    let digits = |part: &str, lengths: std::ops::RangeInclusive<usize>| {
-        lengths.contains(&part.len()) && part.bytes().all(|b| b.is_ascii_digit())
-    };
-    let Some((account, bank)) = cell.trim().rsplit_once('/') else {
-        return false;
-    };
-    if !digits(bank, 4..=4) {
-        return false;
+fn file_order(column: &Column<'_>, format: &str) -> FileOrder {
+    let dates: Vec<_> = column
+        .values()
+        .filter_map(|value| date_parser::parse_date_strict(value, format))
+        .collect();
+    let rises = dates.windows(2).any(|w| w[1] > w[0]);
+    let falls = dates.windows(2).any(|w| w[1] < w[0]);
+    match (rises, falls) {
+        (true, false) => FileOrder::OldestFirst,
+        (false, true) => FileOrder::NewestFirst,
+        _ => FileOrder::Unknown,
     }
-    match account.split_once('-') {
-        Some((prefix, number)) => digits(prefix, 1..=6) && digits(number, 2..=10),
-        None => digits(account, 2..=10),
-    }
+}
+
+/// A checksum-valid IBAN (spaces allowed), or a Czech `[prefix-]number/bank` whose mod-11
+/// checks pass, so that it has an IBAN.
+fn is_account_identifier(cell: &str) -> bool {
+    valid_iban(&canonical_account_identifier(cell, None))
 }
 
 /// An ISO 4217 code written as three capitals (`CZK`; `POS` is three capitals but no code).
@@ -527,8 +567,11 @@ struct Numeric {
     filled_share: f64,
     negative: bool,
     positive: bool,
-    /// Some cell carries the decimal separator: money, not a code or an id.
-    money_like: bool,
+    /// Some cell carries the decimal separator.
+    carries_separator: bool,
+    /// Money: it carries the decimal separator, or no column of the file does. A code or a
+    /// symbol (VS, KS, bank code, id) never is in a file that writes money with decimals.
+    money: bool,
 }
 
 impl Numeric {
@@ -552,7 +595,8 @@ impl Numeric {
             k,
             negative: values.iter().flatten().any(|&v| v < 0.0),
             positive: values.iter().flatten().any(|&v| v > 0.0),
-            money_like: column.values().any(|cell| cell.contains(separator)),
+            carries_separator: column.values().any(|cell| cell.contains(separator)),
+            money: false,
             filled_share: column.filled_share(rows),
             values,
             share: parsed_share,
@@ -591,30 +635,19 @@ struct AmountReading {
     /// Share of the cells (single) or rows (pair) that matched.
     share: f64,
     proof: Option<BalanceProof>,
+    /// Rows with a non-zero amount under this reading.
+    coverage: usize,
 }
 
-/// The signed amount of every row under `kind` (a pair holds magnitudes: credit − debit, as
-/// the import reads it).
-fn amounts_of(kind: AmountKind, numerics: &[Numeric]) -> Vec<Option<f64>> {
-    match kind {
-        AmountKind::Single(a) => numerics[a].values.clone(),
-        AmountKind::Pair { debit, credit } => numerics[debit]
-            .values
-            .iter()
-            .zip(&numerics[credit].values)
-            .map(|(d, c)| match (c.map(f64::abs), d.map(f64::abs)) {
-                (None, None) => None,
-                (Some(c), None) => Some(c),
-                (None, Some(d)) => Some(-d),
-                (Some(c), Some(d)) => Some(c - d),
-            })
-            .collect(),
-    }
-}
-
-/// Does `balances` move by the amounts? Counted over the consecutive rows that have both
-/// balances and a non-zero amount, in file order (oldest first) and reversed (newest first).
-fn balance_check(amounts: &[Option<f64>], balances: &[Option<f64>]) -> Option<(SignCheck, f64)> {
+/// Does `balances` move by the amounts? Counted over the consecutive rows where the balance
+/// moved or there is an amount (a move without an amount is a miss), in the file's order; both
+/// orders only when the dates do not tell it. A pair that agrees with the opposite sign spoils
+/// the proof: the column then holds magnitudes, not signed amounts.
+fn balance_check(
+    amounts: &[Option<f64>],
+    balances: &[Option<f64>],
+    order: FileOrder,
+) -> Option<(SignCheck, f64)> {
     #[derive(Default)]
     struct Tally {
         pairs: usize,
@@ -623,14 +656,32 @@ fn balance_check(amounts: &[Option<f64>], balances: &[Option<f64>]) -> Option<(S
     }
     impl Tally {
         fn count(&mut self, step: f64, amount: Option<f64>) {
-            let Some(amount) = amount.filter(|a| a.abs() >= CENT) else {
+            let amount = amount.filter(|a| a.abs() >= CENT);
+            if amount.is_none() && step.abs() < CENT {
+                return;
+            }
+            self.pairs += 1;
+            let Some(amount) = amount else {
                 return;
             };
-            self.pairs += 1;
             if (step - amount).abs() < CENT {
                 self.verified += 1;
             } else if (step + amount).abs() < CENT {
                 self.inverted += 1;
+            }
+        }
+
+        fn proof(&self) -> Option<(SignCheck, f64)> {
+            let (verified, inverted) = (
+                share(self.verified, self.pairs),
+                share(self.inverted, self.pairs),
+            );
+            if verified >= BALANCE_SHARE && self.inverted == 0 {
+                Some((SignCheck::Verified, verified))
+            } else if inverted >= BALANCE_SHARE && self.verified == 0 {
+                Some((SignCheck::Inverted, inverted))
+            } else {
+                None
             }
         }
     }
@@ -644,178 +695,233 @@ fn balance_check(amounts: &[Option<f64>], balances: &[Option<f64>]) -> Option<(S
         // Newest first: the previous row's balance is this one plus the previous row's amount.
         newest_first.count(previous - current, amounts[i - 1]);
     }
-    let best = |of: fn(&Tally) -> usize| {
-        [&oldest_first, &newest_first]
-            .iter()
-            .map(|tally| share(of(tally), tally.pairs))
-            .fold(0.0, f64::max)
+    let readable = match order {
+        FileOrder::OldestFirst => [Some(&oldest_first), None],
+        FileOrder::NewestFirst => [None, Some(&newest_first)],
+        FileOrder::Unknown => [Some(&oldest_first), Some(&newest_first)],
     };
-    let (verified, inverted) = (best(|t| t.verified), best(|t| t.inverted));
-    if verified >= BALANCE_SHARE {
-        Some((SignCheck::Verified, verified))
-    } else if inverted >= BALANCE_SHARE {
-        Some((SignCheck::Inverted, inverted))
-    } else {
-        None
-    }
-}
-
-/// The balance column that best agrees with `kind`: header synonym first, then the share of
-/// agreeing pairs, then the leftmost.
-fn prove(
-    kind: AmountKind,
-    numerics: &[Numeric],
-    columns: &[Column<'_>],
-    synonyms: &Synonyms,
-) -> Option<BalanceProof> {
-    let used = match kind {
-        AmountKind::Single(a) => [a, a],
-        AmountKind::Pair { debit, credit } => [debit, credit],
-    };
-    let amounts = amounts_of(kind, numerics);
-    numerics
-        .iter()
-        .enumerate()
-        .filter(|(b, numeric)| !used.contains(b) && numeric.filled_share >= MIN_FILLED)
-        .filter_map(|(b, numeric)| {
-            balance_check(&amounts, &numeric.values).map(|(check, share)| BalanceProof {
-                balance: b,
-                check,
-                share,
-            })
-        })
-        .max_by(|x, y| {
-            let column = |p: &BalanceProof| &columns[numerics[p.balance].k];
-            let named = |p: &BalanceProof| synonyms.names("balance", column(p));
-            named(x)
-                .cmp(&named(y))
-                .then(x.share.total_cmp(&y.share))
-                .then(column(y).index.cmp(&column(x).index))
+    readable
+        .into_iter()
+        .flatten()
+        .filter_map(Tally::proof)
+        .max_by(|a, b| {
+            a.1.total_cmp(&b.1)
+                .then((a.0 == SignCheck::Verified).cmp(&(b.0 == SignCheck::Verified)))
         })
 }
 
-/// Choose how the amounts are read. Candidates: every numeric column with both signs filled on
-/// ≥ half the rows, and every pair of neighbouring one-signed numeric columns of which exactly
-/// one is non-zero on ≥ 90 % of the rows. A reading a balance proves wins; then the header
-/// synonyms; then a single column over a pair; then money-like columns; then the leftmost.
-fn choose_amounts(
-    numerics: &[Numeric],
-    columns: &[Column<'_>],
-    synonyms: &Synonyms,
+/// Everything the amount choice looks at.
+struct AmountReader<'r, 'a> {
+    numerics: &'r [Numeric],
+    columns: &'r [Column<'a>],
+    synonyms: &'r Synonyms,
     rows: usize,
-) -> Option<AmountReading> {
-    let mut readings: Vec<AmountReading> = Vec::new();
-    for (a, numeric) in numerics.iter().enumerate() {
-        if numeric.negative && numeric.positive && numeric.filled_share >= MIN_FILLED {
-            let kind = AmountKind::Single(a);
-            readings.push(AmountReading {
-                kind,
-                share: numeric.share,
-                proof: prove(kind, numerics, columns, synonyms),
-            });
+    order: FileOrder,
+}
+
+impl AmountReader<'_, '_> {
+    fn column(&self, numeric: usize) -> &Column<'_> {
+        &self.columns[self.numerics[numeric].k]
+    }
+
+    /// The signed amount of every row under `kind` (a pair holds magnitudes: credit − debit,
+    /// as the import reads it).
+    fn amounts_of(&self, kind: AmountKind) -> Vec<Option<f64>> {
+        match kind {
+            AmountKind::Single(a) => self.numerics[a].values.clone(),
+            AmountKind::Pair { debit, credit } => self.numerics[debit]
+                .values
+                .iter()
+                .zip(&self.numerics[credit].values)
+                .map(|(d, c)| match (c.map(f64::abs), d.map(f64::abs)) {
+                    (None, None) => None,
+                    (Some(c), None) => Some(c),
+                    (None, Some(d)) => Some(-d),
+                    (Some(c), Some(d)) => Some(c - d),
+                })
+                .collect(),
         }
     }
-    let one_signed: Vec<usize> = (0..numerics.len())
-        .filter(|&i| numerics[i].one_signed())
-        .collect();
-    for pair in one_signed.windows(2) {
-        let (left, right) = (pair[0], pair[1]);
-        let exactly_one = (0..rows)
-            .filter(|&row| numerics[left].nonzero(row) != numerics[right].nonzero(row))
+
+    /// The balance column that best agrees with `kind`: a money column filled on ≥ half the
+    /// rows; header synonym first, then the share of agreeing pairs, then the leftmost.
+    fn prove(&self, kind: AmountKind) -> Option<BalanceProof> {
+        let used = match kind {
+            AmountKind::Single(a) => [a, a],
+            AmountKind::Pair { debit, credit } => [debit, credit],
+        };
+        let amounts = self.amounts_of(kind);
+        self.numerics
+            .iter()
+            .enumerate()
+            .filter(|(b, numeric)| {
+                !used.contains(b) && numeric.money && numeric.filled_share >= MIN_FILLED
+            })
+            .filter_map(|(b, numeric)| {
+                balance_check(&amounts, &numeric.values, self.order).map(|(check, share)| {
+                    BalanceProof {
+                        balance: b,
+                        check,
+                        share,
+                    }
+                })
+            })
+            .max_by(|x, y| {
+                let named =
+                    |p: &BalanceProof| self.synonyms.names("balance", self.column(p.balance));
+                named(x)
+                    .cmp(&named(y))
+                    .then(x.share.total_cmp(&y.share))
+                    .then(
+                        self.column(y.balance)
+                            .index
+                            .cmp(&self.column(x.balance).index),
+                    )
+            })
+    }
+
+    fn reading(&self, kind: AmountKind, share: f64, proof: Option<BalanceProof>) -> AmountReading {
+        let coverage = self
+            .amounts_of(kind)
+            .iter()
+            .filter(|a| a.is_some_and(|v| v.abs() > 0.0))
             .count();
-        let pair_share = share(exactly_one, rows);
-        if pair_share < MATCH_SHARE {
-            continue;
+        AmountReading {
+            kind,
+            share,
+            proof,
+            coverage,
         }
-        let kind = AmountKind::Pair {
+    }
+
+    /// Choose how the amounts are read. Candidates: a numeric column with both signs filled on
+    /// ≥ half the rows; a one-signed money column filled on ≥ half the rows that a balance
+    /// proves; neighbouring one-signed money columns never both non-zero on a row and with
+    /// exactly one non-zero on ≥ 90 % of the rows (a pair). A reading a balance proves wins;
+    /// then the header synonyms; then the one covering more rows; then a single column over a
+    /// pair; then money; then the leftmost.
+    fn choose(&self) -> Option<AmountReading> {
+        let numerics = self.numerics;
+        let mut readings: Vec<AmountReading> = Vec::new();
+        for (a, numeric) in numerics.iter().enumerate() {
+            if numeric.filled_share < MIN_FILLED {
+                continue;
+            }
+            let kind = AmountKind::Single(a);
+            let both_signs = numeric.negative && numeric.positive;
+            if !both_signs && !(numeric.one_signed() && numeric.money) {
+                continue;
+            }
+            let proof = self.prove(kind);
+            // A one-signed column without a balance may be magnitudes beside a direction word.
+            if both_signs || proof.is_some() {
+                readings.push(self.reading(kind, numeric.share, proof));
+            }
+        }
+
+        let sides: Vec<usize> = (0..numerics.len())
+            .filter(|&i| numerics[i].one_signed() && numerics[i].money)
+            .collect();
+        for pair in sides.windows(2) {
+            if let Some(reading) = self.pair_reading(pair[0], pair[1]) {
+                readings.push(reading);
+            }
+        }
+
+        let header_named = |kind: AmountKind| match kind {
+            AmountKind::Single(a) => self.synonyms.names("amount", self.column(a)),
+            AmountKind::Pair { debit, credit } => [debit, credit].iter().any(|&i| {
+                let column = self.column(i);
+                self.synonyms.names("debit", column) || self.synonyms.names("credit", column)
+            }),
+        };
+        let money = |kind: AmountKind| match kind {
+            AmountKind::Single(a) => numerics[a].money,
+            AmountKind::Pair { .. } => true,
+        };
+        let leftmost = |kind: AmountKind| match kind {
+            AmountKind::Single(a) => self.column(a).index,
+            AmountKind::Pair { debit, credit } => {
+                self.column(debit).index.min(self.column(credit).index)
+            }
+        };
+        readings.into_iter().max_by_key(|reading| {
+            (
+                reading.proof.is_some(),
+                header_named(reading.kind),
+                reading.coverage,
+                matches!(reading.kind, AmountKind::Single(_)),
+                money(reading.kind),
+                Reverse(leftmost(reading.kind)),
+            )
+        })
+    }
+
+    /// `left` and `right` read as a debit + credit pair, when they are one: never both
+    /// non-zero on a row, exactly one non-zero on ≥ 90 % of the rows, and sides that a balance,
+    /// the signs or the headers tell apart.
+    fn pair_reading(&self, left: usize, right: usize) -> Option<AmountReading> {
+        let (l, r) = (&self.numerics[left], &self.numerics[right]);
+        if (0..self.rows).any(|row| l.nonzero(row) && r.nonzero(row)) {
+            return None;
+        }
+        let exactly_one = (0..self.rows)
+            .filter(|&row| l.nonzero(row) != r.nonzero(row))
+            .count();
+        let pair_share = share(exactly_one, self.rows);
+        if pair_share < MATCH_SHARE {
+            return None;
+        }
+        let kept = AmountKind::Pair {
             debit: left,
             credit: right,
         };
-        let reading = match prove(kind, numerics, columns, synonyms) {
+        let swapped = AmountKind::Pair {
+            debit: right,
+            credit: left,
+        };
+        match self.prove(kept) {
             // The balance moves against this reading: the sides are the other way round.
-            Some(proof) if proof.check == SignCheck::Inverted => AmountReading {
-                kind: AmountKind::Pair {
-                    debit: right,
-                    credit: left,
-                },
-                share: pair_share,
-                proof: Some(BalanceProof {
+            Some(proof) if proof.check == SignCheck::Inverted => Some(self.reading(
+                swapped,
+                pair_share,
+                Some(BalanceProof {
                     check: SignCheck::Verified,
                     ..proof
                 }),
-            },
-            Some(proof) => AmountReading {
-                kind,
-                share: pair_share,
-                proof: Some(proof),
-            },
-            None => AmountReading {
-                kind: orient_unproven_pair(left, right, numerics, columns, synonyms),
-                share: pair_share,
-                proof: None,
-            },
-        };
-        readings.push(reading);
-    }
-
-    let header_named = |kind: AmountKind| match kind {
-        AmountKind::Single(a) => synonyms.names("amount", &columns[numerics[a].k]),
-        AmountKind::Pair { debit, credit } => [debit, credit].iter().any(|&i| {
-            let column = &columns[numerics[i].k];
-            synonyms.names("debit", column) || synonyms.names("credit", column)
-        }),
-    };
-    let money_like = |kind: AmountKind| match kind {
-        AmountKind::Single(a) => numerics[a].money_like,
-        AmountKind::Pair { debit, credit } => {
-            numerics[debit].money_like && numerics[credit].money_like
+            )),
+            Some(proof) => Some(self.reading(kept, pair_share, Some(proof))),
+            None => self
+                .orient_unproven_pair(left, right)
+                .map(|kind| self.reading(kind, pair_share, None)),
         }
-    };
-    let leftmost = |kind: AmountKind| match kind {
-        AmountKind::Single(a) => columns[numerics[a].k].index,
-        AmountKind::Pair { debit, credit } => columns[numerics[debit].k]
-            .index
-            .min(columns[numerics[credit].k].index),
-    };
-    readings.into_iter().max_by_key(|reading| {
-        (
-            reading.proof.is_some(),
-            header_named(reading.kind),
-            matches!(reading.kind, AmountKind::Single(_)),
-            money_like(reading.kind),
-            Reverse(leftmost(reading.kind)),
-        )
-    })
-}
+    }
 
-/// The sides of a pair no balance proves: a column of negative values is the debit; else the
-/// header synonyms; else the left column (Debit/Credit, Paid out/Paid in, Výdaj/Příjem).
-fn orient_unproven_pair(
-    left: usize,
-    right: usize,
-    numerics: &[Numeric],
-    columns: &[Column<'_>],
-    synonyms: &Synonyms,
-) -> AmountKind {
-    let swapped = AmountKind::Pair {
-        debit: right,
-        credit: left,
-    };
-    let kept = AmountKind::Pair {
-        debit: left,
-        credit: right,
-    };
-    let (l, r) = (&numerics[left], &numerics[right]);
-    if r.negative && !l.negative {
-        return swapped;
-    }
-    if l.negative && !r.negative {
-        return kept;
-    }
-    let (left_column, right_column) = (&columns[l.k], &columns[r.k]);
-    if synonyms.names("debit", right_column) || synonyms.names("credit", left_column) {
-        swapped
-    } else {
-        kept
+    /// The sides of a pair no balance proves: a column of negative values is the debit; else
+    /// the header synonyms; else they cannot be told apart and the person is asked.
+    fn orient_unproven_pair(&self, left: usize, right: usize) -> Option<AmountKind> {
+        let kept = AmountKind::Pair {
+            debit: left,
+            credit: right,
+        };
+        let swapped = AmountKind::Pair {
+            debit: right,
+            credit: left,
+        };
+        let (l, r) = (&self.numerics[left], &self.numerics[right]);
+        if r.negative && !l.negative {
+            return Some(swapped);
+        }
+        if l.negative && !r.negative {
+            return Some(kept);
+        }
+        let names = |role: &str, i: usize| self.synonyms.names(role, self.column(i));
+        if names("debit", right) || names("credit", left) {
+            Some(swapped)
+        } else if names("debit", left) || names("credit", right) {
+            Some(kept)
+        } else {
+            None
+        }
     }
 }

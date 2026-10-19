@@ -268,3 +268,28 @@ Rulings taken while planning (each says what was decided and what it costs if wr
 8. **The inference is its own command** (`infer_csv_columns`); the desktop's `CsvPreviewResult` does not change. Costs a second read of a small file.
 9. **The export guides live in the preset JSON** (spec §8.6: "the guides are data") with all ten locales enforced by the preset validation test, not in `mobile.json`. Costs a move if the owner wants them translated with the app strings.
 10. **No catalog refresh, no learned formats, no "contribute format"** (owner's scope for this phase); the hand-over carries the catalog-refresh proposal.
+
+Rulings taken while executing (in order; each with what it costs if wrong):
+
+11. **Picker learning callback**: `CategoryPickerSheet` got an optional `onApplied` so the queue's picker reports batch rows; Finance passes nothing. Costs one optional prop.
+12. **Inference fixture tests iterate the presets' `sampleFixture`s**, not the plan's hand list (`generic-iso` is no preset fixture). Costs nothing.
+13. **The SDD workspace is kept** (the hand-over lives in it). Costs one git-ignored folder.
+14. **Received-file sweep runs on the first drain of a run, not in `setup`**: a setup sweep would race a cold-start share. Costs: no sweep in a run that never unlocks.
+15. **Drains are serialized on the frontend**, the first on unlock. Costs a millisecond window (a share during the startup sweep).
+16. **Simulator profile**: the existing test profile (Tereza) was used, not the demo profile — replacing another session's data was refused. Costs: screenshots show Tereza.
+17. **`networkMode: 'always'`** for queries and mutations in `src/lib/queryClient.ts`: the default paused every local-IPC query after a webview `offline` event (seen on the simulator during a network outage); this also changes the desktop, which no longer hangs offline (network-backed price/FX calls now fail instead of waiting). Costs none known.
+18. **A file picked after the sheet closed is discarded at once** (privacy rule). Costs a few lines.
+19. **The received-file host stays mounted** and works only while unlocked; **the queue dedupes only waiting/open paths** (iOS reuses an Inbox name after the copy is deleted). Costs nothing.
+20. **A suggestion whose category no longer exists yields none** (no engine fallback for a stale MCP id). Costs a fallback branch if wanted.
+21. **The custom-rule retarget toast is never quiet.** Costs a second notice in a rare case.
+22. **Guides**: head "Jak získat výpis: {{bank}}" (a bank name from data cannot be declined); `wise.json` gained `institutionId: inst_wise`; Revolut follows T1's app path (choose Excel, Moony reads it when it is CSV); Moneta has no guide until a device check; KB links to the homepage, ČSOB without the old app label, Czech genitive after „bankovnictví“. Costs: a genitive field later; a Revolut XLSX ends on the unreadable stage; Moneta accounts see no guide.
+23. **Inference hardening promoted from reviews** (balance order from the dates, checksum-validated accounts, a constant date demoted, an unproven pair dropped, an original-currency column skipped, a balance never the id, proof share ranks first, a one-signed amount must carry every balance move, a balance-named column never the amount). Costs: more files go to a correction instead of being guessed.
+24. **Every CSV without a preset goes to "Takhle tomu rozumím"**, even with a complete header mapping (rung 2 is a preset match only). Costs one confirmation tap.
+25. **Recognition lives in its own hook** (`use-recognition.ts`). Costs nothing.
+26. **The amount question also offers neighbouring numeric pairs**, in both orientations when nothing orients them, with the sides named ("Výdaje: A · Příjmy: B"). Costs one more option.
+27. **Both date and amount missing → ask the date, then the amount**; unreadable only when the person leaves one unset. Costs nothing.
+28. **A self-picked ambiguous date column offers both orders**; the order option shows the date first. Costs nothing.
+29. **A file whose expenses are positive (balance proves it) is blocked** with "Opravit…" in the red box and a disabled "Vypadá to správně"; `CsvImportConfig` has no sign flip (owner decision). Costs: such files cannot be imported on the phone yet.
+30. **Queue outcomes follow the order of picks and batches**; an earlier batch's undo restores only rows it still owns. Costs nothing.
+31. **Hide amounts in the column lists is decided per cell**; every numeric column counts as money while no amount is mapped. Costs: a compact numeric date (20260425) is masked on the date question.
+32. **Parked after the final fix wave** (no second wave): a proven opaque pair can show next to its reversed twin; the compact-date masking above; a pill tapped before an earlier batch's write lands shows that batch's category until the refresh.

@@ -210,6 +210,7 @@
     "backupNewerThanApp": "Den här säkerhetskopian skapades av en nyare version av Moony. Uppdatera Moony först.",
     "backupDestinationMissing": "Målmappen finns inte.",
     "backupExportInvalid": "Det här filnamnet är inte tillåtet.",
+    "receivedFileOutside": "Den här filen kan inte tas bort härifrån.",
     "sellExceedsHoldings": "Du kan inte sälja mer än du äger det datumet.",
     "csvEmptyFile": "Filen är tom eller har ingen rubrikrad.",
     "csvColumnsNotFound": "De valda kolumnerna hittades inte i filen. Kontrollera rubrikraden och kolumnkopplingen.",

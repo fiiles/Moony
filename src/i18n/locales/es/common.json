@@ -210,6 +210,7 @@
     "backupNewerThanApp": "Esta copia de seguridad la creó una versión más reciente de Moony. Actualiza Moony primero.",
     "backupDestinationMissing": "La carpeta de destino no existe.",
     "backupExportInvalid": "Este nombre de archivo no está permitido.",
+    "receivedFileOutside": "Este archivo no se puede eliminar desde aquí.",
     "sellExceedsHoldings": "No puedes vender más de lo que tienes en esa fecha.",
     "csvEmptyFile": "El archivo está vacío o no tiene fila de encabezado.",
     "csvColumnsNotFound": "No se han encontrado en el archivo las columnas seleccionadas. Revisa la fila de encabezado y la asignación de columnas.",

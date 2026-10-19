@@ -960,6 +960,23 @@ export const dataApi = {
 };
 
 // ============================================================================
+// Received files API — statements shared or opened into the phone app
+// ============================================================================
+
+/** Emitted (no payload) when files were queued for `receivedFilesApi.take()`. Phones only. */
+export const RECEIVED_FILES_EVENT = 'received-files';
+
+// Both calls exist on phones only (registered under `#[cfg(mobile)]`). iOS copies a statement that
+// was shared or opened into Moony into the app's Inbox folders and the copy stays there as
+// plaintext: `take` drains the paths the system opened (oldest first, empty when there are none)
+// and `discard` deletes one copy once it is imported or abandoned. A path outside the Inbox
+// folders is refused (`validation.receivedFileOutside`); a copy that is already gone is fine.
+export const receivedFilesApi = {
+  take: () => tauriInvoke<string[]>('take_received_files'),
+  discard: (path: string) => tauriInvoke<void>('discard_received_file', { path }),
+};
+
+// ============================================================================
 // System API
 // ============================================================================
 

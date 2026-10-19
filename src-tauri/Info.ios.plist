@@ -9,5 +9,91 @@
 	     over the light shell. Remove together with the Phase 6 dark mode. -->
 	<key>UIUserInterfaceStyle</key>
 	<string>Light</string>
+	<!-- Bank statements shared or opened into the phone app (share sheet, "Open in"). The document
+	     types live here, not in tauri.conf.json, because they are iOS only: bundle.fileAssociations
+	     would register the desktop app for CSV files too. iOS hands the app a copy in
+	     Documents/Inbox instead of opening the file in place; services::received_files deletes it. -->
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Bank statement</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.comma-separated-values-text</string>
+				<string>public.plain-text</string>
+				<string>public.xml</string>
+				<string>com.moonyfinance.ofx</string>
+				<string>com.moonyfinance.qif</string>
+				<string>com.moonyfinance.mt940</string>
+			</array>
+		</dict>
+	</array>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<false/>
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.moonyfinance.ofx</string>
+			<key>UTTypeDescription</key>
+			<string>OFX bank statement</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>ofx</string>
+					<string>qfx</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.moonyfinance.qif</string>
+			<key>UTTypeDescription</key>
+			<string>QIF bank statement</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>qif</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeIdentifier</key>
+			<string>com.moonyfinance.mt940</string>
+			<key>UTTypeDescription</key>
+			<string>MT940 bank statement</string>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.data</string>
+				<string>public.text</string>
+			</array>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>sta</string>
+					<string>940</string>
+					<string>mt940</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
 </dict>
 </plist>

@@ -10,8 +10,11 @@ import {
   queuePath,
   queueProgress,
   queueSummary,
+  releaseRow,
   rowState,
   suggestionLabelKey,
+  withBatch,
+  withPick,
   type LocalOutcome,
 } from './categorize-queue';
 
@@ -112,12 +115,13 @@ describe('doneCategories', () => {
     });
   });
 
-  it("lets a row's own pick win over a batch that reached it earlier", () => {
+  it('lets a batch that took a picked row along show its own category (it came later)', () => {
+    // A batch only still holds a row picked here when the pick came first (`withPick` lets go of it)
     const local = new Map<string, LocalOutcome>([
       ['a', categorized('food', [changed('b')])],
       ['b', categorized('fun')],
     ]);
-    expect(doneCategories(local).get('b')).toBe('fun');
+    expect(doneCategories(local).get('b')).toBe('food');
   });
 
   it('forgets the rows of a batch that was restored, and keeps the pick of its own row', () => {
@@ -139,6 +143,82 @@ describe('doneCategories', () => {
       ['b', categorized('fun')],
     ]);
     expect(doneCategories(local, new Set(['a'])).get('b')).toBe('fun');
+  });
+});
+
+describe('the order of picks and batches', () => {
+  const none = new Map<string, LocalOutcome>();
+  const batchOf = (local: ReadonlyMap<string, LocalOutcome>, id: string) => {
+    const outcome = local.get(id);
+    return outcome?.kind === 'categorized' ? outcome.batch.map((row) => row.id) : [];
+  };
+
+  it('records a pick with nothing taken along yet, and a batch on the pick it came from', () => {
+    const picked = withPick(none, 'a', 'food');
+    expect(picked.get('a')).toEqual(categorized('food'));
+    const taken = withBatch(picked, 'a', [changed('b'), changed('c')]);
+    expect(batchOf(taken, 'a')).toEqual(['b', 'c']);
+    expect(Object.fromEntries(doneCategories(taken))).toEqual({ a: 'food', b: 'food', c: 'food' });
+  });
+
+  it('ignores an empty batch and a batch whose pick is gone', () => {
+    const picked = withPick(none, 'a', 'food');
+    expect(withBatch(picked, 'a', [])).toBe(picked);
+    expect(withBatch(none, 'a', [changed('b')])).toBe(none);
+    const left = new Map<string, LocalOutcome>([['a', { kind: 'left' }]]);
+    expect(withBatch(left, 'a', [changed('b')])).toBe(left);
+  });
+
+  it('lets an earlier batch go of a row picked again, so its undo cannot restore over the pick', () => {
+    // "a" accepted, its learning took "b" and "c" along; then "b" is re-picked by hand
+    let local = withBatch(withPick(none, 'a', 'food'), 'a', [changed('b'), changed('c')]);
+    local = withPick(local, 'b', 'fun');
+    expect(batchOf(local, 'a')).toEqual(['c']);
+    expect(doneCategories(local).get('b')).toBe('fun');
+    // the switch of "a" now gives back only "c"; "b" keeps the person's own pick
+    expect(Object.fromEntries(doneCategories(local, new Set(['a'])))).toEqual({
+      a: 'food',
+      b: 'fun',
+    });
+  });
+
+  it("shows a re-pick's batch on the row it took back along, and an earlier switch no longer reaches it", () => {
+    // (a) of the review: the re-pick of "b" re-learns the payee and recategorizes "a" too
+    let local = withBatch(withPick(none, 'a', 'food'), 'a', [changed('b')]);
+    local = withPick(local, 'b', 'fun');
+    local = withBatch(local, 'b', [{ id: 'a', previousCategoryId: 'food', previousSource: null }]);
+    expect(Object.fromEntries(doneCategories(local))).toEqual({ a: 'fun', b: 'fun' });
+    expect(batchOf(local, 'a')).toEqual([]);
+    expect(batchOf(local, 'b')).toEqual(['a']);
+    // nothing of "a" is offered back any more; turning off the switch of "b" gives "a" its pick back
+    expect(batchOffered(local, new Set(['b']))).toBe(false);
+    expect(doneCategories(local, new Set(['b'])).get('a')).toBe('food');
+  });
+
+  it("shows the batch's category on a row picked earlier that a later accept took along", () => {
+    // (b) of the review: "a" picked as food, then the pill of "b" (same payee) accepted as fun
+    let local: ReadonlyMap<string, LocalOutcome> = withPick(none, 'a', 'food');
+    local = withPick(local, 'b', 'fun');
+    local = withBatch(local, 'b', [{ id: 'a', previousCategoryId: 'food', previousSource: null }]);
+    expect(doneCategories(local).get('a')).toBe('fun');
+    // undone, "a" holds the pick it had before
+    expect(doneCategories(local, new Set(['b'])).get('a')).toBe('food');
+  });
+
+  it('lets every earlier batch go of the rows a later batch took', () => {
+    let local = withBatch(withPick(none, 'a', 'food'), 'a', [changed('x'), changed('y')]);
+    local = withBatch(withPick(local, 'b', 'fun'), 'b', [changed('y'), changed('z')]);
+    expect(batchOf(local, 'a')).toEqual(['x']);
+    expect(batchOf(local, 'b')).toEqual(['y', 'z']);
+    expect(doneCategories(local).get('y')).toBe('fun');
+  });
+
+  it('lets earlier batches go of a row once its own accept has landed, and leaves the rest alone', () => {
+    const local = withBatch(withPick(none, 'a', 'food'), 'a', [changed('b'), changed('c')]);
+    const landed = releaseRow(local, 'b');
+    expect(batchOf(landed, 'a')).toEqual(['c']);
+    expect(releaseRow(local, 'z')).toEqual(local);
+    expect(local.get('a')).toEqual(categorized('food', [changed('b'), changed('c')]));
   });
 });
 

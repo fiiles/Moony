@@ -38,7 +38,10 @@ import {
   effectiveOpenIds,
   openCount,
   queueProgress,
+  releaseRow,
   rowState,
+  withBatch,
+  withPick,
   type LocalOutcome,
 } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
@@ -134,39 +137,51 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
       next.delete(id);
       return next;
     });
-  const categorized = (id: string, categoryId: string) =>
-    setOutcome(id, { kind: 'categorized', categoryId, batch: [] });
-  // The learning reports after the pick has been recorded (`PickOptions.onApplied`)
-  const takeBatch = useCallback((id: string, changed: ChangedRow[]) => {
-    if (changed.length === 0) return;
-    setLocal((current) => {
-      const outcome = current.get(id);
-      if (outcome?.kind !== 'categorized') return current;
-      return new Map(current).set(id, { ...outcome, batch: changed });
+  // A write that lands on a row takes it from every earlier batch: their undo must not restore it
+  // over the newer choice (`withPick`, `releaseRow`, `withBatch`)
+  const landed = useCallback((id: string) => setLocal((current) => releaseRow(current, id)), []);
+  /** The picker saved a category: a fresh pick, whose earlier switch (if any) no longer applies. */
+  const picked = (id: string, categoryId: string) => {
+    setLocal((current) => withPick(current, id, categoryId));
+    setRestored((current) => {
+      if (!current.has(id)) return current;
+      const next = new Set(current);
+      next.delete(id);
+      return next;
     });
-  }, []);
+  };
+  // The learning reports after the pick has been recorded (`PickOptions.onApplied`)
+  const takeBatch = useCallback(
+    (id: string, changed: ChangedRow[]) => setLocal((current) => withBatch(current, id, changed)),
+    []
+  );
 
   /** The dark pill: an MCP suggestion is accepted as it is, an engine one is picked and remembered. */
   const accept = (tx: BankTransaction, categoryId: string, source: SuggestionSource) => {
     if (local.has(tx.id) || accepting.current.has(tx.id)) return;
     accepting.current.add(tx.id);
     // The row turns over at the tap; a failed write (it says so itself) gives it back
-    categorized(tx.id, categoryId);
+    setOutcome(tx.id, { kind: 'categorized', categoryId, batch: [] });
     selectionTick();
     if (source === 'mcp') {
       acceptSuggestion
         .mutateAsync(tx.id)
+        .then(() => landed(tx.id))
         .catch(() => clearOutcome(tx.id))
         .finally(() => accepting.current.delete(tx.id));
     } else {
       setRuns((current) => [...current, { tx, categoryId }]);
     }
   };
-  const finishRun = useCallback((txId: string, saved: boolean) => {
-    accepting.current.delete(txId);
-    if (!saved) clearOutcome(txId);
-    setRuns((current) => current.filter((run) => run.tx.id !== txId));
-  }, []);
+  const finishRun = useCallback(
+    (txId: string, saved: boolean) => {
+      accepting.current.delete(txId);
+      if (saved) landed(txId);
+      else clearOutcome(txId);
+      setRuns((current) => current.filter((run) => run.tx.id !== txId));
+    },
+    [landed]
+  );
 
   /** "Nechat": 30 days out of the queue. */
   const keep = (tx: BankTransaction) => {
@@ -367,7 +382,7 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
         recentIds={recentIds}
         onChange={(patch) => {
           if (pickFor && typeof patch.categoryId === 'string') {
-            categorized(pickFor.id, patch.categoryId);
+            picked(pickFor.id, patch.categoryId);
           }
         }}
         onApplied={(changed) => pickFor && takeBatch(pickFor.id, changed)}

@@ -63,11 +63,79 @@ export function suggestionLabelKey(source: SuggestionSource): string {
 }
 
 /**
+ * `local` with `ids` let go of by every batch but the one of `owner`: a newer write reached those
+ * rows, so an earlier batch's undo could no longer restore them truthfully.
+ */
+function releaseRows(
+  local: ReadonlyMap<string, LocalOutcome>,
+  ids: readonly string[],
+  owner: string
+): Map<string, LocalOutcome> {
+  const next = new Map(local);
+  const gone = new Set(ids);
+  for (const [id, outcome] of local) {
+    if (id === owner || outcome.kind !== 'categorized') continue;
+    if (!outcome.batch.some((row) => gone.has(row.id))) continue;
+    next.set(id, { ...outcome, batch: outcome.batch.filter((row) => !gone.has(row.id)) });
+  }
+  return next;
+}
+
+/**
+ * The write of row `id`'s own category has landed (an accepted suggestion): every earlier batch
+ * lets go of the row, so its undo can no longer restore it over that pick.
+ */
+export function releaseRow(
+  local: ReadonlyMap<string, LocalOutcome>,
+  id: string
+): Map<string, LocalOutcome> {
+  return releaseRows(local, [id], id);
+}
+
+/**
+ * Row `id` was picked as `categoryId` (the picker, once the category is saved): the row's outcome
+ * is that pick with nothing taken along yet, and every earlier batch lets go of the row.
+ */
+export function withPick(
+  local: ReadonlyMap<string, LocalOutcome>,
+  id: string,
+  categoryId: string
+): Map<string, LocalOutcome> {
+  const next = releaseRow(local, id);
+  next.set(id, { kind: 'categorized', categoryId, batch: [] });
+  return next;
+}
+
+/**
+ * The learning of row `id`'s pick took `changed` along: that pick's batch owns them now — every
+ * earlier batch lets go of them, and one of them that was picked here earlier shows this batch's
+ * category until the batch is restored (`doneCategories`). Nothing changes for an empty batch or
+ * a pick that is no longer the row's outcome.
+ */
+export function withBatch(
+  local: ReadonlyMap<string, LocalOutcome>,
+  id: string,
+  changed: readonly ChangedRow[]
+): ReadonlyMap<string, LocalOutcome> {
+  const outcome = local.get(id);
+  if (changed.length === 0 || outcome?.kind !== 'categorized') return local;
+  const next = releaseRows(
+    local,
+    changed.map((row) => row.id),
+    id
+  );
+  next.set(id, { ...outcome, batch: [...changed] });
+  return next;
+}
+
+/**
  * The category each done row ended with, as far as this page knows: the pick of a row, and the
- * same category for the rows its remembered pick took along. A row's own pick wins over a batch
- * that reached it. A row that left the open set some other way is not in it, and neither are the
- * rows of a batch that was `restored` (the switch of its expansion turned off): they hold what
- * they held before and the queue lists them again.
+ * same category for the rows its remembered pick took along. A batch still holds a row picked
+ * here only when it came after that pick (`withPick` and `withBatch` let go of the rows a newer
+ * write reached), so the batch's category wins. A row that left the open set some other way is
+ * not in it, and neither are the rows of a batch that was `restored` (the switch of its
+ * expansion turned off): they hold what they held before — their own pick, else nothing, and the
+ * queue lists them again.
  */
 export function doneCategories(
   local: ReadonlyMap<string, LocalOutcome>,
@@ -75,11 +143,11 @@ export function doneCategories(
 ): Map<string, string> {
   const categories = new Map<string, string>();
   for (const [id, outcome] of local) {
-    if (outcome.kind !== 'categorized' || restored.has(id)) continue;
-    for (const taken of outcome.batch) categories.set(taken.id, outcome.categoryId);
+    if (outcome.kind === 'categorized') categories.set(id, outcome.categoryId);
   }
   for (const [id, outcome] of local) {
-    if (outcome.kind === 'categorized') categories.set(id, outcome.categoryId);
+    if (outcome.kind !== 'categorized' || restored.has(id)) continue;
+    for (const taken of outcome.batch) categories.set(taken.id, outcome.categoryId);
   }
   return categories;
 }

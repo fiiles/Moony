@@ -1,6 +1,9 @@
 import { useTranslation } from 'react-i18next';
 import type { InferredColumns } from '@shared/schema';
-import type { MappingState } from '@/components/bank-accounts/csv-import/import-config';
+import {
+  usesDebitCredit,
+  type MappingState,
+} from '@/components/bank-accounts/csv-import/import-config';
 import { dateOrderOf, wasInferred, type RecognitionField } from '@/mobile/lib/recognition';
 
 /**
@@ -31,10 +34,15 @@ export function useFieldText() {
     }
   };
 
+  /** A debit and credit pair with its sides named: "Výdaje: Odchozí · Příjmy: Příchozí". */
+  const pairSides = (sides: { debit: string; credit: string }): string =>
+    t('import.recognize.pairSides', sides);
+
   /**
-   * "Datum zaúčtování · den.měsíc.rok" for a field that is read, "nenalezeno · duplicity poznám
-   * podle data a částky" for one that is not (the inference found nothing) and "nepoužito · …"
-   * for one the person left out.
+   * "Datum zaúčtování · den.měsíc.rok" for a field that is read ("Výdaje: Odchozí · Příjmy:
+   * Příchozí" for an amount read from a pair: which side is the money out), "nenalezeno · duplicity
+   * poznám podle data a částky" for one that is not (the inference found nothing) and "nepoužito ·
+   * …" for one the person left out.
    */
   const value = (
     field: RecognitionField,
@@ -45,6 +53,9 @@ export function useFieldText() {
     consequence = true
   ): string => {
     if (columns.length > 0) {
+      if (field === 'amount' && usesDebitCredit(mapping)) {
+        return pairSides({ debit: mapping.debitColumn, credit: mapping.creditColumn });
+      }
       const order = field === 'date' ? dateOrderOf(mapping, inferred) : null;
       return [...columns, order && tb(`statementImport.dateOrder.${order}`)]
         .filter(Boolean)
@@ -59,5 +70,5 @@ export function useFieldText() {
       : `${state} · ${t(`import.recognize.unusedWhy.${field}`)}`;
   };
 
-  return { name, value };
+  return { name, value, pairSides };
 }

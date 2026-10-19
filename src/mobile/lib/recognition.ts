@@ -145,6 +145,15 @@ export function signCheckFor(mapping: MappingState, inferred: InferredColumns): 
   return sameSingle || samePair ? inferred.signCheck : 'unchecked';
 }
 
+/**
+ * Moony cannot import the file as it is read now: the running balance proved the amount
+ * column's signs reversed (expenses positive, as card statements print them), and the import
+ * cannot flip them. Another amount column, or a pair, lifts it.
+ */
+export function signsBlockImport(mapping: MappingState, inferred: InferredColumns): boolean {
+  return signCheckFor(mapping, inferred) === 'inverted';
+}
+
 // ── Where the recognition starts ────────────────────────────────────────────
 
 export type RecognitionStep =
@@ -329,6 +338,8 @@ export interface ColumnOption {
   /** `order` options: the date of a sample cell as this order reads it, unix seconds of the UTC day. */
   dates?: number[];
   order?: DayMonthOrder;
+  /** `pair` options: which column is read as the money out (debit) and which as the money in. */
+  sides?: { debit: string; credit: string };
   /** Its cells are amounts: they are masked while amounts are hidden. */
   money: boolean;
   apply: Partial<MappingState>;
@@ -426,10 +437,45 @@ function isNumericColumn(inspection: CsvPreviewResult, header: string): boolean 
 }
 
 /**
+ * Whether the import reads a cell as negative (`clean_and_parse_amount`): a minus before or after
+ * the number, or brackets around it, whatever currency or letters stand outside them.
+ */
+function readsNegative(cell: string): boolean {
+  const core = cell.trim().replace(/^[\s\p{L}\p{Sc}]+|[\s\p{L}\p{Sc}]+$/gu, '');
+  return /^[(\-−‒–]|[)\-−‒–]$/u.test(core);
+}
+
+/**
+ * The single amount column the person chose holds only positive amounts in the sample rows and
+ * nothing proves its signs: every expense would be saved as income. Not for a pair (it reads its
+ * sides), nor for the inferred column — the inference read it over many more rows, and took it
+ * only with both signs or with a balance that proved them (any other column is `unchecked`).
+ */
+export function amountsAllPositive(
+  mapping: MappingState,
+  inferred: InferredColumns,
+  inspection: CsvPreviewResult
+): boolean {
+  const column = mapping.amountColumn;
+  if (column === '' || column === inferred.amount?.column) return false;
+  const cells = inspection.sampleRows
+    .map((row) => cellOf(inspection, row, column))
+    .filter((cell) => cell !== '');
+  return (
+    cells.length > 0 &&
+    cells.every(isNumericCell) &&
+    cells.some(isNonZero) &&
+    !cells.some(readsNegative)
+  );
+}
+
+/**
  * The columns whose cells are masked while amounts are hidden: what the inference took as an
  * amount, a debit, a credit or a balance, what the mapping reads as one now (the person may have
- * corrected it), the columns of a pair that looks like a debit and a credit, and — on the
- * question of an amount or a balance — every numeric column, since any of them may be the answer.
+ * corrected it), the columns of a pair that looks like a debit and a credit, and every numeric
+ * column — any of them may be the answer — on the question of an amount or a balance and while
+ * there is no amount yet (the date question of a file missing both: an unsigned whole-number
+ * amount such as "25000" says nothing of itself).
  */
 function moneyColumnsOf(
   field: RecognitionField,
@@ -439,6 +485,7 @@ function moneyColumnsOf(
   mapping: MappingState | undefined,
   pairs: ReadonlyArray<{ debit: string; credit: string }>
 ): Set<string> {
+  const amountless = mapping ? !isFilled('amount', mapping) : !wasInferred('amount', inferred);
   const money = new Set<string>();
   for (const found of [inferred.amount, inferred.debit, inferred.credit, inferred.balance]) {
     if (found !== null) money.add(found.column);
@@ -457,13 +504,17 @@ function moneyColumnsOf(
     money.add(pair.debit);
     money.add(pair.credit);
   }
-  if (MONEY_FIELDS.has(field)) {
+  if (MONEY_FIELDS.has(field) || amountless) {
     for (const header of headers) if (isNumericColumn(inspection, header)) money.add(header);
   }
   return money;
 }
 
-/** Two numeric columns of which exactly one is filled on every row, as a debit and a credit. */
+/**
+ * Two neighbouring numeric columns of which exactly one is filled on every row, as a debit and a
+ * credit: the way round a header names (one side named is enough, as in the inference), else
+ * both ways round — nothing tells which of them is the money out, so the person says it.
+ */
 function pairCandidates(
   inspection: CsvPreviewResult,
   headers: readonly string[]
@@ -475,7 +526,8 @@ function pairCandidates(
     return cells.length > 0 && cells.every(isNumericCell);
   });
   const named = inspection.suggestedMappings ?? {};
-  const found: Array<{ debit: string; credit: string }> = [];
+  const [debitHint, creditHint] = [named.debit?.[0], named.credit?.[0]];
+  const found: Array<Array<{ debit: string; credit: string }>> = [];
   for (let i = 0; i + 1 < numeric.length; i++) {
     const [left, right] = [numeric[i], numeric[i + 1]];
     let leftRows = 0;
@@ -489,11 +541,15 @@ function pairCandidates(
       if (b) rightRows++;
     }
     if (overlap || leftRows === 0 || rightRows === 0) continue;
-    // Without a hint the money out is on the left, as it is in the banks that print a pair
-    const rightIsDebit = named.debit?.[0] === right && named.credit?.[0] === left;
-    found.push(rightIsDebit ? { debit: right, credit: left } : { debit: left, credit: right });
+    const leftOut = { debit: left, credit: right };
+    const rightOut = { debit: right, credit: left };
+    const leftNamed = debitHint === left || creditHint === right;
+    const rightNamed = debitHint === right || creditHint === left;
+    // Without a hint the money out is offered on the left first, as most banks print a pair
+    if (leftNamed !== rightNamed) found.push([rightNamed ? rightOut : leftOut]);
+    else found.push([leftOut, rightOut]);
   }
-  return found.slice(0, 2);
+  return found.slice(0, 2).flat();
 }
 
 function columnOption(
@@ -582,7 +638,8 @@ function orderOptions(inspection: CsvPreviewResult, header: string, guess: strin
 /**
  * The answers to "which column is the …?": every column of the file with its header and two
  * sample values (file order), and next to them what the field also allows — for the amount the
- * debit and credit pair (the inferred one, else the neighbours that look like one), for a date
+ * debit and credit pair, its sides named (the inferred one the way the inference oriented it, else
+ * the neighbours that look like one: the way a header names, or both ways round), for a date
  * the day-first and month-first readings of every column whose dates read both ways (the
  * inferred one by the inference's own answer, any other by its sample cells: the app never
  * settles that order silently), for a description the columns it was inferred from together, and
@@ -628,6 +685,7 @@ export function columnOptions(
         id: `pair:${debit}|${credit}`,
         kind: 'pair',
         label: `${debit} + ${credit}`,
+        sides: { debit, credit },
         samples: sampleLines(
           inspection,
           [debit, credit],

@@ -204,10 +204,19 @@ export function ImportSheet({ request, open, onOpenChange }: ImportSheetProps) {
     case 'recognize':
       footer = (
         <>
-          <Button variant="ghost" className={FOOTER_GHOST} onClick={recognition.openFields}>
-            {t('import.recognize.fix')}
-          </Button>
-          {primary(t('import.recognize.looksRight'), () => void flow.continueFromRecognition())}
+          {/* Expenses the balance proves positive cannot be imported yet: "Opravit…" moves into the
+              red box that says so (the action that resolves it), the person can cancel here, and
+              the primary waits disabled — three buttons do not fit one row at 360 */}
+          {recognition.signsBlocked ? (
+            cancel(false)
+          ) : (
+            <Button variant="ghost" className={FOOTER_GHOST} onClick={recognition.openFields}>
+              {t('import.recognize.fix')}
+            </Button>
+          )}
+          {primary(t('import.recognize.looksRight'), () => void flow.continueFromRecognition(), {
+            disabled: recognition.signsBlocked,
+          })}
         </>
       );
       break;

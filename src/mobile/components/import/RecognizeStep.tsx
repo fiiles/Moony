@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { Check, Minus, TriangleAlert } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { FileBar } from '@/mobile/components/import/FileBar';
 import { useFieldText } from '@/mobile/components/import/field-text';
@@ -32,7 +33,10 @@ export function SampleSkeleton() {
  * every field that is read, a minus and what it costs for one that is not (the date and the
  * amount are always read here; a file without them opens on their correction instead). The
  * amount line says whether the balance proved its sign; an amount that looks inverted is a
- * warning to check the rows above. No mapping grid, ever: the buttons are in the sheet's footer.
+ * warning to check the rows above, and — since the import cannot flip signs — a red box under the
+ * rows says plainly that such a file cannot be imported yet, with "Opravit…" to choose another
+ * amount column (the sheet's primary waits disabled). No mapping grid, ever: the buttons are in
+ * the sheet's footer.
  */
 export function RecognizeStep({
   fileName,
@@ -79,6 +83,24 @@ export function RecognizeStep({
           updating={recognition.previewUpdating}
         />
       ) : null}
+
+      {recognition.signsBlocked && (
+        <ImportNote
+          tone="warn"
+          actions={
+            <Button
+              type="button"
+              variant="ghost"
+              className="mt-1.5 h-11 w-full justify-start rounded-[10px] px-2 text-m-sub text-ink"
+              onClick={recognition.openFields}
+            >
+              {t('import.recognize.fix')}
+            </Button>
+          }
+        >
+          {t('import.recognize.signsBlocked')}
+        </ImportNote>
+      )}
 
       <ul className="m-0 mt-3 list-none p-0">
         {recognizedFields(mapping).map(({ field, columns }) => {

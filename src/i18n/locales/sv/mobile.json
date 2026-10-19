@@ -200,8 +200,6 @@
   },
   "placeholder": {
     "detail": "Detaljvyn kommer i fas 4.",
-    "queue": "Kategoriseringskön kommer i fas 2b.",
-    "import": "Import av kontoutdrag kommer i fas 2b.",
     "form": "Formuläret för att lägga till kommer i fas 2b.",
     "edit": "Redigering kommer i fas 2b.",
     "delete": "Radering kommer i fas 2b.",
@@ -351,6 +349,9 @@
       },
       "signVerified": "tecknet kontrollerat mot saldot",
       "signInverted": "utgifterna i filen ser positiva ut – kontrollera exemplet",
+      "signsBlocked": "Moony kan ännu inte importera en fil där utgifterna är positiva. Om en annan kolumn har beloppet, välj den – annars avbryt importen.",
+      "allPositive": "Alla belopp är positiva – utgifter skulle sparas som inkomster.",
+      "pairSides": "Utgifter: {{debit}} · Inkomster: {{credit}}",
       "fixTitle": "Vad ska jag rätta?",
       "fixLead": "Tryck på fältet som jag läste fel.",
       "ask": {

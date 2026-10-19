@@ -348,7 +348,11 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
     void readRef.current(request.path);
   }, [request.path]);
 
-  // The sheet is gone (closed, replaced by another import, locked): drop the reads, discard the copy
+  // The sheet is gone (closed, replaced by another import, locked): drop the reads, discard the copy.
+  // React StrictMode would run this cleanup once right after mounting (its double effects): a shared
+  // file's first read would be dropped and its copy discarded, and the sheet would stall in `reading`
+  // (`started` keeps the read from running again). StrictMode must not be turned on for the phone
+  // shell without changing this.
   useEffect(
     () => () => {
       reads.current++;
@@ -406,7 +410,8 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
 
   /** "Vypadá to správně": the recognized columns are the import's mapping; on to the account. */
   const continueFromRecognition = async () => {
-    if (!csv || recognition.mapping === null) return;
+    // Expenses the balance proves positive cannot be imported yet (the import cannot flip signs)
+    if (!csv || recognition.mapping === null || recognition.signsBlocked) return;
     const mine = ++reads.current;
     const wanted = () =>
       recognitionAnswerWanted({
@@ -545,9 +550,11 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
   const confirmRequired =
     kind === 'statement' && statementImportBlocked(summary, false, inspectedFor === targetId);
   const blocked =
-    kind === 'statement' &&
-    (statementImportBlocked(summary, accountConfirmed, inspectedFor === targetId) ||
-      !dateOrder.confirmed);
+    (kind === 'statement' &&
+      (statementImportBlocked(summary, accountConfirmed, inspectedFor === targetId) ||
+        !dateOrder.confirmed)) ||
+    // A recognized CSV whose expenses the balance proves positive would import them as income
+    (kind === 'csv' && recognition.signsBlocked);
   const canImport =
     stage === 'preview' &&
     preview !== undefined &&

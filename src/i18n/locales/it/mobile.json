@@ -216,8 +216,6 @@
   },
   "placeholder": {
     "detail": "Il dettaglio arriva nella fase 4.",
-    "queue": "La coda di classificazione arriva nella fase 2b.",
-    "import": "L'importazione degli estratti arriva nella fase 2b.",
     "form": "Il modulo di aggiunta arriva nella fase 2b.",
     "edit": "La modifica arriva nella fase 2b.",
     "delete": "L'eliminazione arriva nella fase 2b.",
@@ -368,6 +366,9 @@
       },
       "signVerified": "segno verificato con il saldo",
       "signInverted": "le spese in questo file sembrano positive: controlla l'esempio",
+      "signsBlocked": "Moony non può ancora importare un file in cui le uscite sono positive. Se un'altra colonna contiene l'importo, sceglila; altrimenti annulla l'importazione.",
+      "allPositive": "Tutti gli importi sono positivi: le uscite verrebbero salvate come entrate.",
+      "pairSides": "Uscite: {{debit}} · Entrate: {{credit}}",
       "fixTitle": "Cosa devo correggere?",
       "fixLead": "Tocca il campo che ho letto male.",
       "ask": {

@@ -200,8 +200,6 @@
   },
   "placeholder": {
     "detail": "The detail comes in phase 4.",
-    "queue": "The categorize queue comes in phase 2b.",
-    "import": "Statement import comes in phase 2b.",
     "form": "The add form comes in phase 2b.",
     "edit": "Editing comes in phase 2b.",
     "delete": "Deleting comes in phase 2b.",
@@ -351,6 +349,9 @@
       },
       "signVerified": "sign checked against the balance",
       "signInverted": "expenses in this file look positive — check the sample",
+      "signsBlocked": "Moony can't import a file whose expenses are positive yet. If another column holds the amount, choose it; otherwise cancel the import.",
+      "allPositive": "Every amount is positive — expenses would be saved as income.",
+      "pairSides": "Expenses: {{debit}} · Income: {{credit}}",
       "fixTitle": "What should I fix?",
       "fixLead": "Tap the field I read wrongly.",
       "ask": {

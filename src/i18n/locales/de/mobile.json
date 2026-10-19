@@ -200,8 +200,6 @@
   },
   "placeholder": {
     "detail": "Die Detailansicht kommt in Phase 4.",
-    "queue": "Die Zuordnungsliste kommt in Phase 2b.",
-    "import": "Der Auszugsimport kommt in Phase 2b.",
     "form": "Das Formular zum Hinzufügen kommt in Phase 2b.",
     "edit": "Das Bearbeiten kommt in Phase 2b.",
     "delete": "Das Löschen kommt in Phase 2b.",
@@ -351,6 +349,9 @@
       },
       "signVerified": "Vorzeichen anhand des Saldos geprüft",
       "signInverted": "Ausgaben in dieser Datei wirken positiv – prüfen Sie die Beispielzeilen",
+      "signsBlocked": "Eine Datei, in der Ausgaben positiv sind, kann Moony noch nicht importieren. Steht der Betrag in einer anderen Spalte, wählen Sie diese; sonst brechen Sie den Import ab.",
+      "allPositive": "Alle Beträge sind positiv – Ausgaben würden als Einnahmen gespeichert.",
+      "pairSides": "Ausgaben: {{debit}} · Einnahmen: {{credit}}",
       "fixTitle": "Was soll ich korrigieren?",
       "fixLead": "Tippen Sie auf das Feld, das ich falsch gelesen habe.",
       "ask": {

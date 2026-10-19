@@ -216,8 +216,6 @@
   },
   "placeholder": {
     "detail": "Detail přijde ve fázi 4.",
-    "queue": "Zařazování plateb přijde ve fázi 2b.",
-    "import": "Import výpisu přijde ve fázi 2b.",
     "form": "Formulář pro přidání přijde ve fázi 2b.",
     "edit": "Úpravy přijdou ve fázi 2b.",
     "delete": "Mazání přijde ve fázi 2b.",
@@ -368,6 +366,9 @@
       },
       "signVerified": "znaménko ověřeno podle zůstatku",
       "signInverted": "výdaje v souboru vypadají kladně — zkontrolujte ukázku",
+      "signsBlocked": "Soubor, ve kterém jsou výdaje kladně, zatím Moony naimportovat neumí. Pokud částku obsahuje jiný sloupec, vyberte ho, jinak import zrušte.",
+      "allPositive": "Všechny částky jsou kladné — výdaje by se uložily jako příjmy.",
+      "pairSides": "Výdaje: {{debit}} · Příjmy: {{credit}}",
       "fixTitle": "Co opravit?",
       "fixLead": "Klepněte na pole, které jsem přečetl špatně.",
       "ask": {

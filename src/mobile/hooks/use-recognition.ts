@@ -15,6 +15,7 @@ import {
   mappingFromInferred,
   recognitionStart,
   selectedOption,
+  signsBlockImport,
   type RecognitionField,
   type RecognitionStep,
 } from '@/mobile/lib/recognition';
@@ -195,6 +196,14 @@ export function useRecognition({ active, goTo, onUnreadable, onNavigate }: UseRe
     csv: session?.csv ?? null,
     inferred: session?.inferred ?? null,
     mapping,
+    /** The mapping the open field's checked option would give (the committed one elsewhere). */
+    pending: shown,
+    /**
+     * The balance proved the amount's signs reversed and the import cannot flip them: the mapping
+     * cannot be accepted until another amount column is chosen.
+     */
+    signsBlocked:
+      session !== null && mapping !== null && signsBlockImport(mapping, session.inferred),
     view,
     options,
     choice,

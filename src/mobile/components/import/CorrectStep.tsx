@@ -7,6 +7,7 @@ import {
   Coins,
   Hash,
   Scale,
+  TriangleAlert,
   User,
   type LucideIcon,
 } from 'lucide-react';
@@ -19,6 +20,7 @@ import { PreviewRows } from '@/mobile/components/import/PreviewRows';
 import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import type { Recognition } from '@/mobile/hooks/use-recognition';
 import {
+  amountsAllPositive,
   maskedSample,
   recognizedFields,
   type ColumnOption,
@@ -91,13 +93,17 @@ function ColumnOptionRow({
   const { t: tb } = useTranslation('bank_accounts');
   const fmt = useFormat();
   const { hidden } = useHideAmounts();
+  const text = useFieldText();
 
+  // A pair names its sides: which column is read as the money out ("Výdaje: A · Příjmy: B")
   const title =
     option.kind === 'none'
       ? tb('csvImport.columnNone')
       : option.kind === 'order' && option.order
         ? tb(`statementImport.dateOrder.${option.order}`)
-        : option.label;
+        : option.kind === 'pair' && option.sides
+          ? text.pairSides(option.sides)
+          : option.label;
   // Every column shows what it holds; the cells of an amount are masked while amounts are hidden
   const shown = option.samples.map((sample) =>
     hidden ? maskedSample(sample, { money: option.money }) : sample
@@ -160,7 +166,11 @@ function ColumnOptionRow({
   );
 }
 
-/** The columns a field can be read from, and how the first row of the file would look with the one checked. */
+/**
+ * The columns a field can be read from, and how the first row of the file would look with the one
+ * checked — with a warning under it when the amount checked is a single column of only positive
+ * amounts that nothing proves (`amountsAllPositive`: every expense would be saved as income).
+ */
 function FieldChoices({
   recognition,
   field,
@@ -169,8 +179,15 @@ function FieldChoices({
   field: RecognitionField;
 }) {
   const { t } = useTranslation('mobile');
-  const { options, choice } = recognition;
+  const { options, choice, pending, inferred, csv } = recognition;
   const [row] = recognition.rows;
+  // A single column of positive amounts that nothing proves: every expense would become income
+  const allPositive =
+    field === 'amount' &&
+    pending !== null &&
+    inferred !== null &&
+    csv !== null &&
+    amountsAllPositive(pending, inferred, csv);
 
   return (
     <>
@@ -201,6 +218,12 @@ function FieldChoices({
         />
       ) : (
         <div aria-hidden className="skeleton mb-2 h-[60px] rounded-r4" />
+      )}
+      {allPositive && (
+        <p className="mx-0.5 mb-0 mt-1 flex items-start gap-1.5 text-m-sub text-loss">
+          <TriangleAlert aria-hidden className="mt-px size-3.5 flex-none" strokeWidth={1.75} />
+          <span>{t('import.recognize.allPositive')}</span>
+        </p>
       )}
     </>
   );

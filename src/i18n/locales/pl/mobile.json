@@ -232,8 +232,6 @@
   },
   "placeholder": {
     "detail": "Szczegóły pojawią się w fazie 4.",
-    "queue": "Kolejka przypisywania pojawi się w fazie 2b.",
-    "import": "Import wyciągów pojawi się w fazie 2b.",
     "form": "Formularz dodawania pojawi się w fazie 2b.",
     "edit": "Edycja pojawi się w fazie 2b.",
     "delete": "Usuwanie pojawi się w fazie 2b.",
@@ -385,6 +383,9 @@
       },
       "signVerified": "znak sprawdzony na podstawie salda",
       "signInverted": "wydatki w tym pliku wyglądają na dodatnie – sprawdź przykład",
+      "signsBlocked": "Moony nie potrafi jeszcze zaimportować pliku, w którym wydatki są dodatnie. Jeśli kwota jest w innej kolumnie, wybierz ją, w przeciwnym razie anuluj import.",
+      "allPositive": "Wszystkie kwoty są dodatnie – wydatki zapisałyby się jako przychody.",
+      "pairSides": "Wydatki: {{debit}} · Przychody: {{credit}}",
       "fixTitle": "Co poprawić?",
       "fixLead": "Dotknij pola, które zostało źle odczytane.",
       "ask": {

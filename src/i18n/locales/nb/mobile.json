@@ -200,8 +200,6 @@
   },
   "placeholder": {
     "detail": "Detaljvisningen kommer i fase 4.",
-    "queue": "Kategoriseringskøen kommer i fase 2b.",
-    "import": "Import av kontoutskrifter kommer i fase 2b.",
     "form": "Skjemaet for å legge til kommer i fase 2b.",
     "edit": "Redigering kommer i fase 2b.",
     "delete": "Sletting kommer i fase 2b.",
@@ -351,6 +349,9 @@
       },
       "signVerified": "fortegnet er kontrollert mot saldoen",
       "signInverted": "utgiftene i filen ser positive ut – sjekk eksempelet",
+      "signsBlocked": "Moony kan ennå ikke importere en fil der utgiftene er positive. Hvis en annen kolonne har beløpet, velg den – ellers avbryt importen.",
+      "allPositive": "Alle beløpene er positive – utgifter ville blitt lagret som inntekter.",
+      "pairSides": "Utgifter: {{debit}} · Inntekter: {{credit}}",
       "fixTitle": "Hva skal jeg rette opp?",
       "fixLead": "Trykk på feltet jeg leste feil.",
       "ask": {

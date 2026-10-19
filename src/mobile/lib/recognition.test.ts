@@ -4,6 +4,7 @@ import { EMPTY_MAPPING } from '@/components/bank-accounts/csv-import/import-conf
 import {
   afterStartApply,
   ambiguousDateFormat,
+  amountsAllPositive,
   applyOption,
   canImport,
   columnOptions,
@@ -17,6 +18,7 @@ import {
   recognizedFields,
   selectedOption,
   signCheckFor,
+  signsBlockImport,
   swapDayMonth,
   wasInferred,
 } from './recognition';
@@ -419,9 +421,13 @@ describe('columnOptions', () => {
         id: 'pair:Poplatek|Částka',
         kind: 'pair',
         label: 'Poplatek + Částka',
+        // The sides are named: which column is read as the money out
+        sides: { debit: 'Poplatek', credit: 'Částka' },
         apply: { amountColumn: '', debitColumn: 'Poplatek', creditColumn: 'Částka' },
         samples: ['0,00 / −1 249,00', '0,00 / 61 200,00'],
       });
+      // The inference oriented it (a balance, the signs or the headers): it is offered one way only
+      expect(list.filter((o) => o.kind === 'pair')).toHaveLength(1);
     });
 
     it('marks every numeric column as a possible amount, and nothing that is a date or text', () => {
@@ -437,7 +443,7 @@ describe('columnOptions', () => {
       expect(money(options('balance'))).toEqual(money(options('amount')));
     });
 
-    it('finds a pair the inference left out: one side filled per row, left is the debit', () => {
+    it('offers a pair the inference left out both ways round when nothing tells its sides', () => {
       const paidOut = inspection({
         headers: ['Date', 'Details', 'Paid out', 'Paid in'],
         sampleRows: [
@@ -447,16 +453,32 @@ describe('columnOptions', () => {
         ],
       });
       const list = columnOptions('amount', paidOut, inferred({ amount: null }));
-      const pair = list.find((o) => o.kind === 'pair');
-      expect(pair?.apply).toEqual({
+      const pairs = list.filter((o) => o.kind === 'pair');
+      expect(pairs.map((o) => o.id)).toEqual(['pair:Paid out|Paid in', 'pair:Paid in|Paid out']);
+      const [leftOut, rightOut] = pairs;
+      expect(leftOut.sides).toEqual({ debit: 'Paid out', credit: 'Paid in' });
+      expect(leftOut.apply).toEqual({
         amountColumn: '',
         debitColumn: 'Paid out',
         creditColumn: 'Paid in',
       });
-      expect(pair?.samples).toEqual(['12.50 / —', '— / 1500.00']);
+      expect(leftOut.samples).toEqual(['12.50 / —', '— / 1500.00']);
+      // The other way round: the money out is the right column, and the samples follow the sides
+      expect(rightOut.sides).toEqual({ debit: 'Paid in', credit: 'Paid out' });
+      expect(rightOut.apply).toEqual({
+        amountColumn: '',
+        debitColumn: 'Paid in',
+        creditColumn: 'Paid out',
+      });
+      expect(rightOut.samples).toEqual(['— / 12.50', '1500.00 / —']);
+      expect(rightOut.money).toBe(true);
+      // Each is its own answer
+      const mapping = mappingFromInferred(inferred({ amount: null }), paidOut);
+      expect(selectedOption(list, applyOption(mapping, rightOut))).toBe('pair:Paid in|Paid out');
+      expect(selectedOption(list, applyOption(mapping, leftOut))).toBe('pair:Paid out|Paid in');
     });
 
-    it('lets a header that names the sides orient a pair the other way round', () => {
+    it('lets a header that names the sides orient a pair, offered that way only', () => {
       const swapped = inspection({
         headers: ['Date', 'In', 'Out'],
         sampleRows: [
@@ -465,10 +487,22 @@ describe('columnOptions', () => {
         ],
         suggestedMappings: { debit: ['Out', 0.9], credit: ['In', 0.9] },
       });
-      const pair = columnOptions('amount', swapped, inferred({ amount: null })).find(
+      const pairs = columnOptions('amount', swapped, inferred({ amount: null })).filter(
         (o) => o.kind === 'pair'
       );
-      expect(pair?.apply).toMatchObject({ debitColumn: 'Out', creditColumn: 'In' });
+      expect(pairs).toHaveLength(1);
+      expect(pairs[0].apply).toMatchObject({ debitColumn: 'Out', creditColumn: 'In' });
+      expect(pairs[0].sides).toEqual({ debit: 'Out', credit: 'In' });
+      // One side named is enough, as in the inference
+      const creditOnly = inspection({
+        headers: ['Date', 'In', 'Out'],
+        sampleRows: swapped.sampleRows,
+        suggestedMappings: { credit: ['In', 0.9] },
+      });
+      const oriented = columnOptions('amount', creditOnly, inferred({ amount: null })).filter(
+        (o) => o.kind === 'pair'
+      );
+      expect(oriented.map((o) => o.id)).toEqual(['pair:Out|In']);
     });
 
     it('does not offer two columns that are both filled on one row, or that never are', () => {
@@ -701,6 +735,91 @@ describe('what the recognition says about the amount', () => {
     });
     expect(signCheckFor(mappingFromInferred(pair, inspection()), pair)).toBe('verified');
   });
+
+  it('blocks the import while the balance proves the expenses positive, until another column is chosen', () => {
+    // A card statement printing expenses positive: the import cannot flip the signs
+    const inverted = inferred({ signCheck: 'inverted' });
+    const mapping = mappingFromInferred(inverted, inspection());
+    expect(signsBlockImport(mapping, inverted)).toBe(true);
+    expect(signsBlockImport({ ...mapping, amountColumn: 'Poplatek' }, inverted)).toBe(false);
+    expect(
+      signsBlockImport(
+        { ...mapping, amountColumn: '', debitColumn: 'Poplatek', creditColumn: 'Částka' },
+        inverted
+      )
+    ).toBe(false);
+    for (const signCheck of ['verified', 'unchecked'] as const) {
+      const other = inferred({ signCheck });
+      expect(signsBlockImport(mappingFromInferred(other, inspection()), other)).toBe(false);
+    }
+  });
+});
+
+describe('amountsAllPositive', () => {
+  const file = (cells: string[]) =>
+    inspection({
+      headers: ['Datum', 'Popis', 'Kolik', 'Částka'],
+      sampleRows: cells.map((cell, i) => [`2${i}.09.2026`, 'Nákup', cell, `-${i + 1},00`]),
+    });
+  const read = inferred({
+    date: field('Datum'),
+    amount: field('Částka'),
+    balance: null,
+    signCheck: 'unchecked',
+  });
+  const chosen = (cells: string[], column = 'Kolik') => ({
+    ...mappingFromInferred(read, file(cells)),
+    amountColumn: column,
+  });
+
+  it('warns when the chosen single column holds only positive amounts and nothing proves it', () => {
+    for (const cells of [
+      ['1500', '25000', '189'],
+      ['1 249,00', '+61,00', '0,00'],
+      ['12,50 €', 'CZK 5 000', ''],
+    ]) {
+      expect(amountsAllPositive(chosen(cells), read, file(cells)), cells.join(' | ')).toBe(true);
+    }
+  });
+
+  it('says nothing of a column with a negative amount, however the minus is written', () => {
+    for (const cell of ['-189', '−189,00', '(12,00)', '12,00-', '-€ 12,50', 'EUR -5,00']) {
+      const cells = ['1500', cell];
+      expect(amountsAllPositive(chosen(cells), read, file(cells)), cell).toBe(false);
+    }
+  });
+
+  it('says nothing of a column that is no amount, empty or all zero', () => {
+    for (const cells of [
+      ['Platba', '1500'],
+      ['', ''],
+      ['0,00', '0'],
+    ]) {
+      expect(amountsAllPositive(chosen(cells), read, file(cells)), cells.join(' | ')).toBe(false);
+    }
+  });
+
+  it('says nothing of the inferred column, a pair or a column whose signs a balance proved', () => {
+    const cells = ['1500', '25000'];
+    // The inference read its own column over many more rows: unproven, it has both signs
+    const own = inspection({
+      headers: ['Datum', 'Částka'],
+      sampleRows: [
+        ['20.09.2026', '1500'],
+        ['21.09.2026', '25000'],
+      ],
+    });
+    expect(amountsAllPositive(mappingFromInferred(read, own), read, own)).toBe(false);
+    expect(
+      amountsAllPositive(
+        { ...chosen(cells), amountColumn: '', debitColumn: 'Kolik', creditColumn: 'Částka' },
+        read,
+        file(cells)
+      )
+    ).toBe(false);
+    const verified = inferred({ amount: field('Kolik'), signCheck: 'verified' });
+    expect(amountsAllPositive(chosen(cells), verified, file(cells))).toBe(false);
+  });
 });
 
 describe('wasInferred', () => {
@@ -873,5 +992,47 @@ describe('masking the sample cells', () => {
     });
     const pair = columnOptions('description', paidOut, inferred({ amount: null, balance: null }));
     expect(pair.filter((o) => o.money).map((o) => o.label)).toEqual(['Paid out', 'Paid in']);
+  });
+
+  it('masks every numeric column while the mapping has no amount yet, whole numbers too', () => {
+    // A file missing both: the date is asked first, and any number on that question may be the amount
+    const whole = inspection({
+      headers: ['Datum', 'Popis', 'Kolik', 'VS'],
+      sampleRows: [
+        ['25.02.2026', 'Nájem', '25000', '1234'],
+        ['26.02.2026', 'Mzda', '1500', '5678'],
+      ],
+    });
+    const neither = inferred({
+      date: null,
+      dateFormat: null,
+      amount: null,
+      balance: null,
+      currency: null,
+      counterpartyIban: null,
+      counterparty: null,
+      description: [],
+    });
+    const mapping = mappingFromInferred(neither, whole);
+    const dates = columnOptions('date', whole, neither, mapping);
+    expect(dates.filter((o) => o.money).map((o) => o.label)).toEqual(['Kolik', 'VS']);
+    const amount = dates.find((o) => o.label === 'Kolik');
+    expect(amount?.samples.map((cell) => maskedSample(cell, { money: amount.money }))).toEqual([
+      '••••',
+      '••••',
+    ]);
+    // Without a mapping the inference says the same: it found no amount
+    expect(
+      columnOptions('date', whole, neither)
+        .filter((o) => o.money)
+        .map((o) => o.label)
+    ).toEqual(['Kolik', 'VS']);
+    // Once the amount is answered, a whole-number column that is no amount reads as it is again
+    const answered = { ...mapping, dateColumn: 'Datum', amountColumn: 'Kolik' };
+    expect(
+      columnOptions('description', whole, neither, answered)
+        .filter((o) => o.money)
+        .map((o) => o.label)
+    ).toEqual(['Kolik']);
   });
 });

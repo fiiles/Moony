@@ -82,11 +82,12 @@ Get the installer from the [latest release](https://github.com/fiiles/Moony/rele
 (all versions: [Releases](https://github.com/fiiles/Moony/releases)). Builds: macOS (Apple
 Silicon and Intel), Windows (x64), Linux (x86_64, built on Ubuntu 24.04).
 
-> **Moony's installers are not code-signed yet.** Signing needs an Apple Developer Program
-> membership and a Windows code-signing certificate, which the project does not have; it is
-> planned (see [ROADMAP.md](./ROADMAP.md)). Until then macOS and Windows show a warning the first
-> time you open the app. The app is not damaged: follow the steps below once. Updates inside the
-> app are verified with the project's own signature either way.
+> **The Windows installer is not code-signed yet.** Signing needs a Windows code-signing
+> certificate, which the project does not have; it is planned (see [ROADMAP.md](./ROADMAP.md)).
+> Until then Windows shows a warning the first time you open the app. The app is not harmful:
+> follow the Windows steps below once. The Mac app is signed with an Apple Developer ID and
+> notarized by Apple. Updates inside the app are verified with the project's own signature
+> either way.
 
 <details>
 <summary><strong>macOS</strong></summary>
@@ -96,18 +97,7 @@ Silicon and Intel), Windows (x64), Linux (x86_64, built on Ubuntu 24.04).
    Not sure which Mac you have? Apple menu → **About This Mac**: the *Chip* line says
    *Apple M…* or *Intel*.
 2. Open the `.dmg` and drag **Moony** into **Applications**.
-3. Open **Terminal** (Applications → Utilities) and run this once:
-
-   ```bash
-   xattr -cr /Applications/Moony.app
-   ```
-
-   It removes the "downloaded from the internet" mark that makes macOS say *"Moony is damaged
-   and can't be opened"* (Gatekeeper). Then open Moony as usual.
-
-   If macOS instead says it *cannot verify the developer*, you can also go to **System
-   Settings → Privacy & Security**, scroll to *Security* and click **Open Anyway** next to
-   Moony.
+3. Open Moony. It is signed and notarized by Apple, so it opens like any other app.
 
 </details>
 

@@ -9,10 +9,9 @@ Moony is a desktop app for macOS, Windows and Linux. You import bank statements 
 ## Next
 
 1. **Budgets and goals, as two separate things.** A *budget* tracks your spending so that you stay within a limit (what the Budgets page does today). A *goal* tracks your progress towards an amount you want to reach, for example savings.
-2. **Signed and notarized installers.** Apple notarization and a Windows code-signing
-   certificate, so macOS and Windows stop warning you the first time you open the app. Both need
-   paid memberships or certificates that the project does not have yet. Until then the
-   [install steps](./README.md#download-and-install) apply.
+2. **A signed Windows installer.** A Windows code-signing certificate, so Windows stops warning
+   you the first time you open the app. It needs a certificate that the project does not have
+   yet. Until then the [install steps](./README.md#download-and-install) apply.
 3. **A downloadable demo profile**, so you can try Moony without building anything. Today you
    generate one with `cargo run --bin seed_demo`, see
    [CONTRIBUTING.md](./CONTRIBUTING.md#demo-data).

@@ -12,6 +12,9 @@ The first stable release.
 
 ### Added
 
+- **Signed and notarized for macOS.** The Mac app is signed with an Apple Developer ID and
+  notarized by Apple, so it opens like any other app; the `xattr` step from earlier versions is
+  no longer needed. The Windows installer is not signed yet.
 - **Dark mode.** Settings → General → Appearance offers System, Light and Dark. System follows the
   macOS, Windows or Linux setting; the lock screen follows it too, and the window no longer
   flashes white at start.

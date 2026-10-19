@@ -19,28 +19,18 @@ Not sure which Mac you have? Apple menu → **About This Mac**: the *Chip* line 
 
 The `.tar.gz`, `.sig` and `latest.json` files are for the built-in updater; you do not need to download them.
 
-## First launch: the installers are not signed yet
+## Opening Moony on a Mac
 
-Moony is not yet signed by Apple or Microsoft, so your system warns you the first time you open it. The app is not damaged. You need the step below once, for the copy you downloaded in your browser.
+Moony for macOS is signed with an Apple Developer ID and notarized by Apple, so it opens like any other app: open the `.dmg`, drag **Moony** into **Applications** and open it.
 
-### macOS
+## First launch on Windows: the installer is not signed yet
 
-1. Open the `.dmg` and drag **Moony** into **Applications**.
-2. Open **Terminal** (Applications → Utilities → Terminal), paste this line and press Return:
-   ```
-   xattr -cr /Applications/Moony.app
-   ```
-   It removes the "downloaded from the internet" mark that makes macOS say *"Moony is damaged and can't be opened"*.
-3. Open Moony as usual.
-
-If macOS instead says that it *cannot verify the developer*, you can also skip Terminal: try to open Moony once, then go to **System Settings → Privacy & Security**, scroll to *Security* and click **Open Anyway** next to Moony.
-
-### Windows
+The Windows installer is not signed yet, so Windows warns you the first time you open it. The app is not harmful. You need the steps below once, for the copy you downloaded in your browser.
 
 1. If the browser says the file is not commonly downloaded, keep it. In Edge: **⋯ → Keep → Show more → Keep anyway**.
 2. Run the installer. When SmartScreen shows *"Windows protected your PC"*, click **More info**, then **Run anyway**.
 
-### Linux
+## Linux
 
 - **AppImage:** `chmod +x Moony_@VERSION@_amd64.AppImage`, then run it. Some distributions need the `libfuse2` package first.
 - **Debian / Ubuntu:** `sudo apt install ./Moony_@VERSION@_amd64.deb`

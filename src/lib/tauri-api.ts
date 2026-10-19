@@ -87,6 +87,7 @@ import type {
   TransactionQueryResult,
   CsvPreset,
   CsvPreviewResult,
+  InferredColumns,
   CsvImportPreview,
   CsvImportResult,
   CsvImportConfigInput,
@@ -1067,6 +1068,22 @@ export const bankAccountsApi = {
       presetId,
       encoding,
       country,
+    }),
+  /**
+   * Infer the columns of a CSV no preset describes from their content (the phone's guided
+   * recognition). Pass back the `delimiter`, `headerRow` and `encoding` that `parseCsvFile`
+   * reported; `country` is the profile country. Reads the first 200 data rows, writes nothing.
+   */
+  inferCsvColumns: (
+    filePath: string,
+    options: { delimiter?: string; headerRow?: number; encoding?: string; country?: string } = {}
+  ) =>
+    tauriInvoke<InferredColumns>('infer_csv_columns', {
+      filePath,
+      delimiter: options.delimiter,
+      headerRow: options.headerRow,
+      encoding: options.encoding,
+      country: options.country,
     }),
   /** Dry run: parsed rows with ok / error / duplicate / skipped status; writes nothing. */
   previewCsvImport: (accountId: string, filePath: string, config: CsvImportConfigInput) =>

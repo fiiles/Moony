@@ -131,6 +131,9 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::bank_accounts::InsertBalanceRecord>();
     types.register::<crate::services::csv_import::CsvPreviewRow>();
     types.register::<crate::services::csv_import::CsvPreviewResult>();
+    types.register::<crate::services::csv_import::InferredColumns>();
+    types.register::<crate::services::csv_import::InferredField>();
+    types.register::<crate::services::csv_import::SignCheck>();
     types.register::<crate::services::csv_import::CsvRowMessage>();
     types.register::<crate::services::csv_import::CsvRowStatus>();
     types.register::<crate::services::csv_import::CsvDateRange>();

@@ -510,6 +510,30 @@ pub async fn parse_csv_file(
     )
 }
 
+/// Infer the columns of a CSV no preset describes from their content (the phone's guided
+/// recognition, mobile spec §8.6 rung 3). `delimiter`, `header_row` and `encoding` are the
+/// ones `parse_csv_file` reported for the file (detected again when absent); `country` picks
+/// the legacy encoding as there. The first 200 data rows are read; nothing is written.
+#[tauri::command]
+pub async fn infer_csv_columns(
+    file_path: String,
+    delimiter: Option<String>,
+    header_row: Option<usize>,
+    encoding: Option<String>,
+    country: Option<String>,
+) -> Result<csv_import::InferredColumns> {
+    let bytes = read_csv_file(&file_path)?;
+    Ok(csv_import::infer_csv(
+        &bytes,
+        &csv_import::InferOptions {
+            delimiter: delimiter.and_then(|s| s.chars().next()),
+            header_row,
+            encoding: encoding.as_deref(),
+            country: country.as_deref(),
+        },
+    ))
+}
+
 /// Dry-run an import: parsed rows with their status (ok / error / duplicate /
 /// skipped), nothing is written.
 #[tauri::command]

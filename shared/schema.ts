@@ -1575,6 +1575,52 @@ export interface CsvPreviewResult {
   suggestedRowFilter: CsvRowFilter | null;
 }
 
+/** One column the content inference assigned to a role. */
+export interface InferredField {
+  /** The file's own header of the column. */
+  column: string;
+  /**
+   * 0..1: the share of the column's cells that matched the role, 0.1 lower when no header
+   * synonym agreed and only the content decided.
+   */
+  confidence: number;
+}
+
+/**
+ * What a running balance says about the amounts' signs: `verified` = expenses are negative,
+ * `inverted` = the file prints expenses positive, `unchecked` = no balance agrees.
+ */
+export type SignCheck = 'verified' | 'inverted' | 'unchecked';
+
+/**
+ * The roles `infer_csv_columns` assigned to the columns of a CSV no preset describes, from
+ * their content (mobile spec §8.6 rung 3). Columns are named by the file's own headers;
+ * null = not recognized.
+ */
+export interface InferredColumns {
+  date: InferredField | null;
+  /** chrono format of `date`, date part only; null without a date column. */
+  dateFormat: string | null;
+  /** Day/month order cannot be told from the values; `dateFormat` is the European guess. */
+  dateAmbiguous: boolean;
+  /** A single signed amount column; null when the file has a debit/credit pair instead. */
+  amount: InferredField | null;
+  debit: InferredField | null;
+  credit: InferredField | null;
+  /** A running balance that agrees with the amounts; it is what `signCheck` rests on. */
+  balance: InferredField | null;
+  signCheck: SignCheck;
+  currency: InferredField | null;
+  /** IBANs or Czech domestic account numbers of the other party. */
+  counterpartyIban: InferredField | null;
+  counterparty: InferredField | null;
+  transactionId: InferredField | null;
+  /** Up to three free-text columns, longest first. */
+  description: string[];
+  /** "," or ".". */
+  decimalSeparator: string;
+}
+
 export interface CsvImportConfigInput {
   /** One character; empty = auto-detect. */
   delimiter: string;

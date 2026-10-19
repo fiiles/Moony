@@ -433,6 +433,7 @@ async fn run_app() {
             commands::bank_accounts::get_csv_presets,
             commands::bank_accounts::get_csv_preset_by_institution,
             commands::bank_accounts::parse_csv_file,
+            commands::bank_accounts::infer_csv_columns,
             commands::bank_accounts::preview_csv_import,
             commands::bank_accounts::import_csv_transactions,
             commands::bank_accounts::get_import_batches,

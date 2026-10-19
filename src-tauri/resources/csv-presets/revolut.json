@@ -18,5 +18,62 @@
     "equals": "COMPLETED"
   },
   "exportHelpUrl": "https://help.revolut.com/help/profile-and-plan/managing-my-account/account-statement-per-chosen-currency/",
-  "sampleFixture": "revolut.csv"
+  "sampleFixture": "revolut.csv",
+  "mobileExport": {
+    "route": "web",
+    "format": "CSV",
+    "webUrl": "https://www.revolut.com/",
+    "steps": {
+      "en": [
+        "Open the Revolut web app in Safari or Chrome and sign in.",
+        "Open “Accounts”, choose the currency, tap “More” → “Statement”, set the period and pick CSV.",
+        "Tap the export icon at the top right and choose Moony; the file must be CSV, not Excel or PDF."
+      ],
+      "cs": [
+        "V Safari nebo Chrome otevřete webovou aplikaci Revolut a přihlaste se.",
+        "Otevřete „Accounts“, vyberte měnu, klepněte na „More“ → „Statement“, nastavte období a vyberte CSV.",
+        "Klepněte na ikonu exportu vpravo nahoře a vyberte Moony; soubor musí být CSV, ne Excel ani PDF."
+      ],
+      "de": [
+        "Öffnen Sie die Revolut-Web-App in Safari oder Chrome und melden Sie sich an.",
+        "Öffnen Sie „Accounts“, wählen Sie die Währung, tippen Sie auf „More“ → „Statement“, stellen Sie den Zeitraum ein und wählen Sie CSV.",
+        "Tippen Sie oben rechts auf das Export-Symbol und wählen Sie Moony; die Datei muss CSV sein, nicht Excel oder PDF."
+      ],
+      "es": [
+        "Abre la aplicación web de Revolut en Safari o Chrome e inicia sesión.",
+        "Abre «Accounts», elige la divisa, toca «More» → «Statement», fija el periodo y elige CSV.",
+        "Toca el icono de exportar arriba a la derecha y elige Moony; el archivo debe ser CSV, no Excel ni PDF."
+      ],
+      "it": [
+        "Apri l'app web di Revolut in Safari o Chrome e accedi.",
+        "Apri «Accounts», scegli la valuta, tocca «More» → «Statement», imposta il periodo e scegli CSV.",
+        "Tocca l'icona di esportazione in alto a destra e scegli Moony; il file deve essere CSV, non Excel o PDF."
+      ],
+      "nb": [
+        "Åpne nettappen til Revolut i Safari eller Chrome og logg inn.",
+        "Åpne «Accounts», velg valuta, trykk på «More» → «Statement», velg periode og velg CSV.",
+        "Trykk på eksportikonet øverst til høyre og velg Moony; filen må være CSV, ikke Excel eller PDF."
+      ],
+      "pl": [
+        "Otwórz aplikację internetową Revolut w Safari lub Chrome i zaloguj się.",
+        "Otwórz „Accounts”, wybierz walutę, stuknij „More” → „Statement”, ustaw okres i wybierz CSV.",
+        "Stuknij ikonę eksportu w prawym górnym rogu i wybierz Moony; plik musi być CSV, nie Excel ani PDF."
+      ],
+      "sv": [
+        "Öppna Revoluts webbapp i Safari eller Chrome och logga in.",
+        "Öppna ”Accounts”, välj valutan, tryck på ”More” → ”Statement”, ställ in perioden och välj CSV.",
+        "Tryck på exportikonen uppe till höger och välj Moony; filen måste vara CSV, inte Excel eller PDF."
+      ],
+      "ja": [
+        "SafariまたはChromeでRevolutのWebアプリを開き、ログインします。",
+        "「Accounts」を開き、通貨を選んで「More」→「Statement」をタップし、期間を設定してCSVを選びます。",
+        "右上の書き出しアイコンをタップしてMoonyを選びます。ファイルはCSVにしてください（ExcelやPDFは読み取れません）。"
+      ],
+      "zh": [
+        "在 Safari 或 Chrome 中打开 Revolut 网页版并登录。",
+        "打开“Accounts”，选择币种，点按“More”→“Statement”，设置期间并选择 CSV。",
+        "点按右上角的导出图标并选择 Moony；文件必须是 CSV，不能是 Excel 或 PDF。"
+      ]
+    }
+  }
 }

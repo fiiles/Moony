@@ -320,6 +320,13 @@
       "notStatement": "Diese Datei enthält keinen Auszug, den Moony lesen kann.",
       "error": "Die Datei konnte nicht gelesen werden."
     },
+    "guide": {
+      "title": "So erhalten Sie einen Auszug: {{bank}}",
+      "format": "Wählen Sie das Format: {{format}}",
+      "openWeb": "Online-Banking öffnen",
+      "openFailed": "Der Browser konnte nicht geöffnet werden.",
+      "banks": "Anleitungen der Banken"
+    },
     "preview": {
       "hint": "Tippen Sie auf eine Zahlung, um ihre Kategorie zu wählen.",
       "more_one": "und {{count}} weitere",

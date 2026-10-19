@@ -32,6 +32,7 @@ import { bankAccountsApi, receivedFilesApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { dialogPathToFsPath } from '@/mobile/lib/export-file';
+import { guideForAccount, guidesList } from '@/mobile/lib/export-guide';
 import {
   PREVIEW_ROWS,
   chooseAccount,
@@ -126,6 +127,13 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
   const preset = csv?.detectedPresetId
     ? presets.find((candidate) => candidate.id === csv.detectedPresetId)
     : undefined;
+  // The export guides (spec §8.6, rung 2): the account's bank on the picker, every bank when a file cannot be read
+  const guides = useMemo(() => guidesList(presets), [presets]);
+  const requestedAccount = accounts.find((account) => account.id === request.accountId);
+  const accountGuide = useMemo(
+    () => guideForAccount(presets, requestedAccount),
+    [presets, requestedAccount]
+  );
 
   // ── The files the sheet holds on to ─────────────────────────────────────────
 
@@ -528,6 +536,8 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
     pickDateOrder: setPickedDateOrder,
     csv,
     preset,
+    guides,
+    accountGuide,
     openAccounts,
     accounts,
     target,

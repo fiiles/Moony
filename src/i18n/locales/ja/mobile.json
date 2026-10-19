@@ -303,6 +303,13 @@
       "notStatement": "このファイルにはMoonyが読み取れる明細が含まれていません。",
       "error": "ファイルを読み取れませんでした。"
     },
+    "guide": {
+      "title": "明細の入手方法：{{bank}}",
+      "format": "形式は{{format}}を選びます",
+      "openWeb": "インターネットバンキングを開く",
+      "openFailed": "ブラウザを開けませんでした。",
+      "banks": "銀行別ガイド"
+    },
     "preview": {
       "hint": "支払いをタップするとカテゴリを選べます。",
       "more_other": "ほか{{count}}件"

@@ -16,7 +16,7 @@
 //! generic column patterns, so "Datum zaúčtování" in a preset finds
 //! "DATUM ZAUCTOVANI" in a file.
 
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::sync::LazyLock;
 
 use serde::{Deserialize, Serialize};
@@ -31,6 +31,35 @@ use super::csv_import::columns::{find_column, normalize_header};
 pub struct CsvRowFilter {
     pub column: String,
     pub equals: String,
+}
+
+/// Where a bank hands out its statement file on a phone: in its own app, or in its internet
+/// banking opened in the phone's browser (wire type — TS `ExportRoute`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "lowercase")]
+pub enum ExportRoute {
+    App,
+    Web,
+}
+
+/// How to get this bank's statement file onto a phone (spec §8.6, rung 2; wire type — TS
+/// `MobileExportGuide`). Data, like the rest of the preset: the guide ships in the preset file and
+/// is shown, never executed. `steps` is locale → two to four short imperative steps.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+#[serde(deny_unknown_fields)]
+pub struct MobileExportGuide {
+    pub route: ExportRoute,
+    /// What the person picks in the bank ("CSV").
+    pub format: String,
+    /// Locale code (`en`, `cs`, …) → the steps; every locale the app ships is present.
+    pub steps: BTreeMap<String, Vec<String>>,
+    /// A bare URL scheme (`fio`, never `fio://`) that opens the bank's own app. No bank documents
+    /// one today; it stays `None` until one does.
+    #[serde(rename = "appUrlScheme", default)]
+    pub app_url_scheme: Option<String>,
+    /// The bank's internet-banking entry (`https://…`); required for a `web` route.
+    #[serde(rename = "webUrl", default)]
+    pub web_url: Option<String>,
 }
 
 /// One bank's CSV format (wire type — TS `CsvPreset`). `schemaVersion: 1`.
@@ -98,6 +127,10 @@ pub struct CsvPreset {
     /// preset must import without errors (checked by `all_presets_are_valid`).
     #[serde(rename = "sampleFixture", default)]
     pub sample_fixture: Option<String>,
+    /// How to get this bank's statement file on a phone (the phone app's import sheet shows it).
+    /// Every bank preset carries one; the generic layouts do not.
+    #[serde(rename = "mobileExport", default)]
+    pub mobile_export: Option<MobileExportGuide>,
 }
 
 /// Every embedded preset source. Adding a preset = add the JSON file and one
@@ -238,6 +271,66 @@ fn validate_preset(p: &CsvPreset) -> Result<(), String> {
     if let Some(fixture) = &p.sample_fixture {
         if fixture.contains('/') || fixture.contains('\\') || !fixture.ends_with(".csv") {
             return fail("sampleFixture must be a bare .csv file name");
+        }
+    }
+    if let Some(guide) = &p.mobile_export {
+        validate_mobile_export(id, guide)?;
+    }
+    Ok(())
+}
+
+/// The languages the app ships (`src/i18n/languages.ts`): a guide has steps in every one of them,
+/// because a missing locale would fall back to English on a phone set to another language.
+const SHIPPED_LOCALES: [&str; 10] = ["en", "cs", "de", "es", "it", "nb", "pl", "sv", "ja", "zh"];
+
+/// Schemes that never open a bank's app: a guide's `appUrlScheme` is handed to the system opener.
+const NOT_AN_APP_SCHEME: [&str; 6] = ["http", "https", "javascript", "data", "file", "blob"];
+
+/// `fio` — a scheme without the `:` or `://` that follows it (RFC 3986: a lowercase letter, then
+/// lowercase letters, digits, `+`, `-` or `.`).
+fn is_bare_scheme(scheme: &str) -> bool {
+    let mut chars = scheme.chars();
+    chars.next().is_some_and(|c| c.is_ascii_lowercase())
+        && chars.all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || "+-.".contains(c))
+}
+
+fn validate_mobile_export(id: &str, guide: &MobileExportGuide) -> Result<(), String> {
+    let fail = |msg: &str| Err(format!("preset '{id}': mobileExport: {msg}"));
+
+    if guide.format.trim().is_empty() {
+        return fail("format is empty");
+    }
+    for locale in SHIPPED_LOCALES {
+        if !guide.steps.contains_key(locale) {
+            return fail(&format!("steps has no locale '{locale}'"));
+        }
+    }
+    for (locale, steps) in &guide.steps {
+        if !SHIPPED_LOCALES.contains(&locale.as_str()) {
+            return fail(&format!("steps has an unknown locale '{locale}'"));
+        }
+        if !(2..=4).contains(&steps.len()) {
+            return fail(&format!(
+                "steps for '{locale}' must have 2 to 4 entries, not {}",
+                steps.len()
+            ));
+        }
+        if steps.iter().any(|step| step.trim().is_empty()) {
+            return fail(&format!("steps for '{locale}' has an empty entry"));
+        }
+    }
+    match (&guide.web_url, guide.route) {
+        (Some(url), _) if !url.starts_with("https://") || url.len() <= "https://".len() => {
+            return fail("webUrl must be an https:// URL");
+        }
+        (None, ExportRoute::Web) => return fail("a web route needs a webUrl (https://)"),
+        _ => {}
+    }
+    if let Some(scheme) = &guide.app_url_scheme {
+        if !is_bare_scheme(scheme) || NOT_AN_APP_SCHEME.contains(&scheme.as_str()) {
+            return fail(&format!(
+                "appUrlScheme '{scheme}' must be a bare app scheme (fio, not fio://)"
+            ));
         }
     }
     Ok(())
@@ -466,6 +559,217 @@ mod tests {
         // Non-https help link, path-like fixture
         assert!(parse_preset(&base(r#","exportHelpUrl":"http://x.test""#)).is_err());
         assert!(parse_preset(&base(r#","sampleFixture":"../x.csv""#)).is_err());
+    }
+
+    // ---- the mobile export guide ----
+
+    const GUIDE_LOCALES: [&str; 10] = ["en", "cs", "de", "es", "it", "nb", "pl", "sv", "ja", "zh"];
+
+    /// The `steps` object of a guide: the same `steps` in each of `locales`.
+    fn steps_json(locales: &[&str], steps: &[&str]) -> String {
+        let list = steps
+            .iter()
+            .map(|s| format!(r#""{s}""#))
+            .collect::<Vec<_>>()
+            .join(",");
+        let entries = locales
+            .iter()
+            .map(|l| format!(r#""{l}":[{list}]"#))
+            .collect::<Vec<_>>()
+            .join(",");
+        format!("{{{entries}}}")
+    }
+
+    /// A minimal preset carrying `"mobileExport": { <guide> }`.
+    fn preset_with_guide(guide: &str) -> String {
+        format!(
+            r#"{{"schemaVersion":1,"id":"x","bankName":"X","country":"CZ","matchHeaders":["Date","Amount"],
+            "delimiter":";","encoding":"UTF-8","dateColumn":"Date","dateFormat":"%d.%m.%Y",
+            "amountColumn":"Amount","descriptionColumns":["Note"],"mobileExport":{{{guide}}}}}"#
+        )
+    }
+
+    /// A valid web guide with `extra` appended to its fields.
+    fn web_guide(extra: &str) -> String {
+        format!(
+            r#""route":"web","format":"CSV","webUrl":"https://bank.example/","steps":{}{extra}"#,
+            steps_json(
+                &GUIDE_LOCALES,
+                &["Sign in", "Export as CSV", "Share to Moony"]
+            )
+        )
+    }
+
+    #[test]
+    fn a_mobile_export_guide_is_optional_and_parses() {
+        let plain = parse_preset(&preset_with_guide(&web_guide(""))).expect("valid guide");
+        let guide = plain.mobile_export.expect("guide");
+        assert_eq!(guide.route, ExportRoute::Web);
+        assert_eq!(guide.format, "CSV");
+        assert_eq!(guide.web_url.as_deref(), Some("https://bank.example/"));
+        assert_eq!(guide.app_url_scheme, None);
+        assert_eq!(guide.steps["cs"].len(), 3);
+
+        // A preset without the block is still a preset
+        let without = parse_preset(
+            r#"{"schemaVersion":1,"id":"x","bankName":"X","country":"CZ","matchHeaders":["Date","Amount"],
+            "delimiter":";","encoding":"UTF-8","dateColumn":"Date","dateFormat":"%d.%m.%Y",
+            "amountColumn":"Amount","descriptionColumns":["Note"]}"#,
+        )
+        .expect("a preset needs no guide");
+        assert!(without.mobile_export.is_none());
+
+        // The guide is a closed shape: a misspelt field is an error, not silently dropped
+        let err = parse_preset(&preset_with_guide(&web_guide(r#","webUrls":[]"#))).unwrap_err();
+        assert!(err.contains("webUrls"), "{err}");
+    }
+
+    #[test]
+    fn a_mobile_export_guide_needs_all_ten_locales() {
+        // Nine of ten: Japanese is missing
+        let nine: Vec<&str> = GUIDE_LOCALES
+            .iter()
+            .copied()
+            .filter(|l| *l != "ja")
+            .collect();
+        let guide = format!(
+            r#""route":"web","format":"CSV","webUrl":"https://bank.example/","steps":{}"#,
+            steps_json(&nine, &["Sign in", "Export as CSV", "Share to Moony"])
+        );
+        let err = parse_preset(&preset_with_guide(&guide)).unwrap_err();
+        assert!(err.contains("'ja'"), "{err}");
+
+        // A locale the app does not ship is a typo, not extra data
+        let mut eleven = GUIDE_LOCALES.to_vec();
+        eleven.push("cz");
+        let guide = format!(
+            r#""route":"web","format":"CSV","webUrl":"https://bank.example/","steps":{}"#,
+            steps_json(&eleven, &["Sign in", "Export as CSV", "Share to Moony"])
+        );
+        let err = parse_preset(&preset_with_guide(&guide)).unwrap_err();
+        assert!(err.contains("'cz'"), "{err}");
+
+        // Two to four steps per locale, none of them blank
+        for steps in [
+            vec!["Only one"],
+            vec!["One", "Two", "Three", "Four", "Five"],
+            vec!["One", "  ", "Three"],
+            vec!["One", "", "Three"],
+        ] {
+            let guide = format!(
+                r#""route":"web","format":"CSV","webUrl":"https://bank.example/","steps":{}"#,
+                steps_json(&GUIDE_LOCALES, &steps)
+            );
+            let err = parse_preset(&preset_with_guide(&guide)).unwrap_err();
+            assert!(err.contains("steps"), "{steps:?}: {err}");
+        }
+        for steps in [vec!["One", "Two"], vec!["One", "Two", "Three", "Four"]] {
+            let guide = format!(
+                r#""route":"web","format":"CSV","webUrl":"https://bank.example/","steps":{}"#,
+                steps_json(&GUIDE_LOCALES, &steps)
+            );
+            assert!(
+                parse_preset(&preset_with_guide(&guide)).is_ok(),
+                "{steps:?}"
+            );
+        }
+
+        // The format the person picks is named
+        let err = parse_preset(&preset_with_guide(
+            &web_guide("").replace(r#""format":"CSV""#, r#""format":" ""#),
+        ))
+        .unwrap_err();
+        assert!(err.contains("format"), "{err}");
+    }
+
+    #[test]
+    fn a_web_route_needs_an_https_url() {
+        let without = web_guide("").replace(r#""webUrl":"https://bank.example/","#, "");
+        let err = parse_preset(&preset_with_guide(&without)).unwrap_err();
+        assert!(err.contains("webUrl"), "{err}");
+
+        for url in [
+            "http://bank.example/",
+            "bank.example",
+            "javascript:alert(1)",
+            "",
+        ] {
+            let guide = web_guide("").replace("https://bank.example/", url);
+            let err = parse_preset(&preset_with_guide(&guide)).unwrap_err();
+            assert!(err.contains("webUrl"), "{url}: {err}");
+        }
+
+        // An app route may leave it out, but one that is given is https too
+        let app = format!(
+            r#""route":"app","format":"CSV","steps":{}"#,
+            steps_json(
+                &GUIDE_LOCALES,
+                &["Open the app", "Export as CSV", "Share to Moony"]
+            )
+        );
+        assert!(parse_preset(&preset_with_guide(&app)).is_ok());
+        let err = parse_preset(&preset_with_guide(&format!(
+            r#"{app},"webUrl":"http://bank.example/""#
+        )))
+        .unwrap_err();
+        assert!(err.contains("webUrl"), "{err}");
+    }
+
+    #[test]
+    fn a_url_scheme_is_bare() {
+        for scheme in ["fio", "mbank-app", "cz.fio.banking", "app2"] {
+            let guide = web_guide(&format!(r#","appUrlScheme":"{scheme}""#));
+            assert!(
+                parse_preset(&preset_with_guide(&guide)).is_ok(),
+                "{scheme} is a bare scheme"
+            );
+        }
+        for scheme in [
+            "fio://",
+            "fio:",
+            "fio://open",
+            "fio banka",
+            "1fio",
+            "",
+            "https",
+            "javascript",
+        ] {
+            let guide = web_guide(&format!(r#","appUrlScheme":"{scheme}""#));
+            let err = parse_preset(&preset_with_guide(&guide)).unwrap_err();
+            assert!(err.contains("appUrlScheme"), "{scheme}: {err}");
+        }
+    }
+
+    /// Every bank preset (not the generic UK layout) carries a guide for each locale; the guides
+    /// hold what the bank-export research found (docs/plans/2026-10-16-mobile-app-bank-exports.md),
+    /// so the app routes are the ones that research confirmed and no preset invents an app scheme.
+    #[test]
+    fn every_bank_preset_carries_a_mobile_guide() {
+        for preset in all_presets() {
+            if preset.id == "uk-debit-credit" {
+                assert!(
+                    preset.mobile_export.is_none(),
+                    "uk-debit-credit is a layout, not a bank"
+                );
+                continue;
+            }
+            let guide = preset
+                .mobile_export
+                .as_ref()
+                .unwrap_or_else(|| panic!("{}: no mobileExport guide", preset.id));
+            assert_eq!(guide.format, "CSV", "{}", preset.id);
+            assert_eq!(
+                guide.app_url_scheme, None,
+                "{}: no scheme is documented",
+                preset.id
+            );
+            let expected = if matches!(preset.id.as_str(), "mbank" | "wise") {
+                ExportRoute::App
+            } else {
+                ExportRoute::Web
+            };
+            assert_eq!(guide.route, expected, "{}", preset.id);
+        }
     }
 
     #[test]

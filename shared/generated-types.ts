@@ -594,7 +594,12 @@ transactionIdColumn?: string | null; rowFilter?: CsvRowFilter | null; exportHelp
  * File name in `src-tauri/tests/fixtures/csv/` that this
  * preset must import without errors (checked by `all_presets_are_valid`).
  */
-sampleFixture?: string | null }
+sampleFixture?: string | null; 
+/**
+ * How to get this bank's statement file on a phone (the phone app's import sheet shows it).
+ * Every bank preset carries one; the generic layouts do not.
+ */
+mobileExport?: MobileExportGuide | null }
 
 /**
  * What `parse_csv_file` learned about a file (TS `CsvPreviewResult`).
@@ -889,6 +894,12 @@ dividendPerShare: string | null;
  * Yearly dividend of the whole position in the report currency.
  */
 yearlyDividend: string | null }
+
+/**
+ * Where a bank hands out its statement file on a phone: in its own app, or in its internet
+ * banking opened in the phone's browser (wire type — TS `ExportRoute`).
+ */
+export type ExportRoute = "app" | "web"
 
 /**
  * Summary of a full JSON export.
@@ -1376,6 +1387,30 @@ direction: string | null;
  * Number of stale accounts.
  */
 count: number | null }
+
+/**
+ * How to get this bank's statement file onto a phone (spec §8.6, rung 2; wire type — TS
+ * `MobileExportGuide`). Data, like the rest of the preset: the guide ships in the preset file and
+ * is shown, never executed. `steps` is locale → two to four short imperative steps.
+ */
+export type MobileExportGuide = { route: ExportRoute; 
+/**
+ * What the person picks in the bank ("CSV").
+ */
+format: string; 
+/**
+ * Locale code (`en`, `cs`, …) → the steps; every locale the app ships is present.
+ */
+steps: Partial<{ [key in string]: string[] }>; 
+/**
+ * A bare URL scheme (`fio`, never `fio://`) that opens the bank's own app. No bank documents
+ * one today; it stays `None` until one does.
+ */
+appUrlScheme?: string | null; 
+/**
+ * The bank's internet-banking entry (`https://…`); required for a `web` route.
+ */
+webUrl?: string | null }
 
 /**
  * Done-state of the dashboard "Getting started" checklist plus the

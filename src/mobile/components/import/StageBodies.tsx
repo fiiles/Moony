@@ -2,9 +2,11 @@ import { useTranslation } from 'react-i18next';
 import { Landmark, Plus, RefreshCw } from 'lucide-react';
 import type { BankAccountWithInstitution, DateOrder, StatementInspection } from '@shared/schema';
 import type { Unreadable } from '@/mobile/hooks/use-import-flow';
+import { BankGuides, ExportGuide } from '@/mobile/components/import/ExportGuide';
 import { FileBar } from '@/mobile/components/import/FileBar';
 import { ImportNote } from '@/mobile/components/import/ImportNote';
 import { NeutralChip, PickGroup, PickRow } from '@/mobile/components/PickRow';
+import type { GuidedPreset } from '@/mobile/lib/export-guide';
 
 const DATE_ORDERS: readonly DateOrder[] = ['dmy', 'mdy', 'ymd'];
 
@@ -19,13 +21,17 @@ function ReadsLine() {
   );
 }
 
-/** No file yet: one sentence and what can be read; "Vybrat soubor" is the footer's primary. */
-export function PickBody() {
+/**
+ * No file yet: one sentence and what can be read; "Vybrat soubor" is the footer's primary. Under it,
+ * how the account's bank hands out a statement file (when the account is known and its bank has a guide).
+ */
+export function PickBody({ guide }: { guide: GuidedPreset | null }) {
   const { t } = useTranslation('mobile');
   return (
     <div className="pt-1">
       <p className="mx-1 my-0 text-m-body text-ink-2">{t('import.pick.lead')}</p>
       <ReadsLine />
+      {guide && <ExportGuide preset={guide} />}
     </div>
   );
 }
@@ -46,15 +52,18 @@ export function ReadingBody({ fileName }: { fileName: string }) {
 
 /**
  * A file the sheet cannot read says so plainly (the reason, what it can read) and never shows a
- * raw error: a read error is translated before it gets here. "Vybrat jiný soubor" is the footer's
- * primary.
+ * raw error: a read error is translated before it gets here. Under it the banks that have an
+ * export guide ("Návody bank"), each opening its guide in place. "Vybrat jiný soubor" is the
+ * footer's primary.
  */
 export function UnreadableBody({
   fileName,
   unreadable,
+  guides,
 }: {
   fileName: string;
   unreadable: Unreadable;
+  guides: readonly GuidedPreset[];
 }) {
   const { t } = useTranslation('mobile');
   return (
@@ -67,6 +76,7 @@ export function UnreadableBody({
         <p className="mx-1 mb-0 mt-1.5 text-m-sub text-ink-3">{unreadable.detail}</p>
       )}
       <ReadsLine />
+      <BankGuides presets={guides} />
     </div>
   );
 }

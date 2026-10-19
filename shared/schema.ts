@@ -1435,6 +1435,23 @@ export interface CsvRowFilter {
   equals: string;
 }
 
+/** Where a bank hands out its statement file on a phone: in its own app, or in its internet banking in the browser. */
+export type ExportRoute = 'app' | 'web';
+
+/**
+ * How to get a bank's statement file onto a phone (spec §8.6, rung 2) — the `mobileExport` block of a
+ * preset. `steps` maps a UI language code to two to four short steps; every language the app ships is
+ * present. `appUrlScheme` is a bare scheme (`fio`), `webUrl` an `https://` entry (required for `web`).
+ */
+export interface MobileExportGuide {
+  route: ExportRoute;
+  /** What the person picks in the bank ("CSV"). */
+  format: string;
+  steps: Record<string, string[]>;
+  appUrlScheme: string | null;
+  webUrl: string | null;
+}
+
 /**
  * One bank's CSV format — JSON data under `src-tauri/resources/csv-presets/`.
  * Exactly one of `amountColumn` or the `debitColumn` + `creditColumn` pair is set.
@@ -1470,6 +1487,8 @@ export interface CsvPreset {
   rowFilter: CsvRowFilter | null;
   exportHelpUrl: string | null;
   sampleFixture: string | null;
+  /** How to get this bank's statement file on a phone; `null` for the generic layouts. */
+  mobileExport: MobileExportGuide | null;
 }
 
 /**

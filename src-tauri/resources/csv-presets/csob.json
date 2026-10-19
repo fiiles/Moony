@@ -14,5 +14,62 @@
   "counterpartyColumn": "název protiúčtu",
   "counterpartyIbanColumn": "číslo protiúčtu",
   "currencyColumn": "měna",
-  "balanceColumn": "zůstatek"
+  "balanceColumn": "zůstatek",
+  "mobileExport": {
+    "route": "web",
+    "format": "CSV",
+    "webUrl": "https://online.csob.cz/",
+    "steps": {
+      "en": [
+        "Open ČSOB internet banking in Safari or Chrome and sign in.",
+        "Open the account's “Pohyby”, set the period and export them as CSV.",
+        "Share the file with Moony, or save it to Files and choose it here with “Choose file”."
+      ],
+      "cs": [
+        "V Safari nebo Chrome otevřete internetové bankovnictví ČSOB a přihlaste se.",
+        "U účtu otevřete „Pohyby“, nastavte období a exportujte je do CSV.",
+        "Sdílejte soubor do Moony, nebo ho uložte do Souborů a vyberte ho zde přes „Vybrat soubor“."
+      ],
+      "de": [
+        "Öffnen Sie das Online-Banking von ČSOB in Safari oder Chrome und melden Sie sich an.",
+        "Öffnen Sie beim Konto „Pohyby“, stellen Sie den Zeitraum ein und exportieren Sie sie als CSV.",
+        "Teilen Sie die Datei mit Moony oder speichern Sie sie in „Dateien“ und wählen Sie sie hier mit „Datei wählen“."
+      ],
+      "es": [
+        "Abre la banca por internet de ČSOB en Safari o Chrome e inicia sesión.",
+        "Abre «Pohyby» de la cuenta, fija el periodo y expórtalos como CSV.",
+        "Comparte el archivo con Moony, o guárdalo en Archivos y elígelo aquí con «Elegir archivo»."
+      ],
+      "it": [
+        "Apri l'home banking di ČSOB in Safari o Chrome e accedi.",
+        "Apri «Pohyby» del conto, imposta il periodo ed esportali in CSV.",
+        "Condividi il file con Moony, oppure salvalo in File e sceglilo qui con «Scegli file»."
+      ],
+      "nb": [
+        "Åpne nettbanken til ČSOB i Safari eller Chrome og logg inn.",
+        "Åpne «Pohyby» for kontoen, velg periode og eksporter dem som CSV.",
+        "Del filen med Moony, eller lagre den i Filer og velg den her med «Velg fil»."
+      ],
+      "pl": [
+        "Otwórz bankowość internetową ČSOB w Safari lub Chrome i zaloguj się.",
+        "Otwórz „Pohyby” konta, ustaw okres i wyeksportuj je do CSV.",
+        "Udostępnij plik aplikacji Moony albo zapisz go w Plikach i wybierz tutaj przez „Wybierz plik”."
+      ],
+      "sv": [
+        "Öppna internetbanken hos ČSOB i Safari eller Chrome och logga in.",
+        "Öppna ”Pohyby” för kontot, ställ in perioden och exportera dem som CSV.",
+        "Dela filen med Moony, eller spara den i Filer och välj den här med ”Välj fil”."
+      ],
+      "ja": [
+        "SafariまたはChromeでČSOBのインターネットバンキングを開き、ログインします。",
+        "口座の「Pohyby」を開き、期間を設定してCSVで書き出します。",
+        "ファイルをMoonyに共有するか、「ファイル」に保存して、ここで「ファイルを選択」から選びます。"
+      ],
+      "zh": [
+        "在 Safari 或 Chrome 中打开 ČSOB 网上银行并登录。",
+        "打开账户的“Pohyby”，设置期间并导出为 CSV。",
+        "将文件共享给 Moony，或存到“文件”后在此处点按“选择文件”。"
+      ]
+    }
+  }
 }

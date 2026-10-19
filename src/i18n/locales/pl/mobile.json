@@ -354,6 +354,13 @@
       "notStatement": "Ten plik nie zawiera wyciągu, który Moony potrafi odczytać.",
       "error": "Nie udało się odczytać pliku."
     },
+    "guide": {
+      "title": "Jak uzyskać wyciąg: {{bank}}",
+      "format": "Wybierz format: {{format}}",
+      "openWeb": "Otwórz bankowość internetową",
+      "openFailed": "Nie udało się otworzyć przeglądarki.",
+      "banks": "Instrukcje banków"
+    },
     "preview": {
       "hint": "Dotknij płatności, aby wybrać jej kategorię.",
       "more_one": "i jeszcze {{count}}",

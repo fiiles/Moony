@@ -320,6 +320,13 @@
       "notStatement": "Den här filen innehåller inget kontoutdrag som Moony kan läsa.",
       "error": "Filen kunde inte läsas."
     },
+    "guide": {
+      "title": "Så får du ett kontoutdrag: {{bank}}",
+      "format": "Välj formatet: {{format}}",
+      "openWeb": "Öppna internetbanken",
+      "openFailed": "Webbläsaren kunde inte öppnas.",
+      "banks": "Bankguider"
+    },
     "preview": {
       "hint": "Tryck på en betalning för att välja kategori.",
       "more_one": "och {{count}} till",

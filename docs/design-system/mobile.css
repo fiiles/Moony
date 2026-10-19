@@ -858,6 +858,25 @@
 .m-imp-facts b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
 .m-imp-primary { margin-bottom: 14px; }
 
+/* The export guide (spec §8.6 rung 2): how to get a statement file out of one bank on a phone. The section head
+   (16 / 620, it wraps: "So erhalten Sie einen Auszug: Česká spořitelna" is long), the bank's steps as a numbered list
+   (a 22 px `well-2` number chip, the step 13 / 450 `ink-2`, wrapping), the format to pick as a caption (11 / 500 `ink-3`)
+   and, for a bank reached through its web banking, a secondary 44 px button that opens it in the system browser.
+   Under "Vybrat soubor" it is the account's bank; on "this file cannot be read" the banks are a list of `.m-pick`
+   rows (`.m-pick__chip--ini`: the bank's initials in the chip) and a tapped bank's guide opens in place under a
+   44 px text button back to the list (`.m-imp-act` with `.m-guide__back`). */
+.m-guide { margin: 18px 0 8px; }
+.m-guide__t { margin: 0 4px 6px; color: var(--ink); font-size: var(--m-fs-section); font-weight: var(--m-fw-section); letter-spacing: var(--m-ls-section); line-height: 1.25; }
+.m-guide__steps { margin: 0; padding: 0; list-style: none; }
+.m-guide__steps li { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: start; gap: 10px; padding: 7px 4px; color: var(--ink-2); font-size: 13px; font-weight: 450; line-height: 1.45; overflow-wrap: break-word; }
+.m-guide__n { display: grid; place-items: center; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; background: var(--well-2); color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: 700; font-variant-numeric: tabular-nums; }
+.m-guide__fmt { margin: 6px 4px 0; color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.35; }
+.m-guide .m-btn { max-width: 100%; height: 44px; margin-top: 10px; padding: 0 16px; font-size: var(--m-fs-sub); }
+.m-guide .m-btn svg { width: 16px; height: 16px; stroke-width: 1.75; }
+.m-guide__back { gap: 4px; }
+.m-guide__back svg { flex: none; width: 16px; height: 16px; stroke-width: 1.75; }
+.m-pick__chip--ini { color: var(--ink-2); font-size: var(--m-fs-caption); font-weight: 700; }
+
 /* ===== The categorize queue (spec §8.5, prototype frame 05; `CategorizeQueue.tsx`, `QueueRow.tsx`) =====
    The page: the lead line (13 / 450 `ink-3`: the account and the statement the payments came from, "· 3 already
    handled"), the count as a 20 / 650 heading ("9 payments without a category" — the prototype's large count, kept in the

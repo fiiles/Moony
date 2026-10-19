@@ -303,6 +303,13 @@
       "notStatement": "此文件不包含 Moony 能读取的账单。",
       "error": "无法读取该文件。"
     },
+    "guide": {
+      "title": "如何获取账单：{{bank}}",
+      "format": "请选择格式：{{format}}",
+      "openWeb": "打开网上银行",
+      "openFailed": "无法打开浏览器。",
+      "banks": "各银行指南"
+    },
     "preview": {
       "hint": "点按一笔付款即可选择其类别。",
       "more_other": "还有 {{count}} 笔"

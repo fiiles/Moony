@@ -320,6 +320,13 @@
       "notStatement": "This file doesn't hold a statement Moony can read.",
       "error": "The file could not be read."
     },
+    "guide": {
+      "title": "How to get a statement: {{bank}}",
+      "format": "Choose the format: {{format}}",
+      "openWeb": "Open internet banking",
+      "openFailed": "The browser could not be opened.",
+      "banks": "Bank guides"
+    },
     "preview": {
       "hint": "Tap a payment to choose its category.",
       "more_one": "and {{count}} more",

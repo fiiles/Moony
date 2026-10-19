@@ -337,6 +337,13 @@
       "notStatement": "Questo file non contiene un estratto che Moony sappia leggere.",
       "error": "Non è stato possibile leggere il file."
     },
+    "guide": {
+      "title": "Come ottenere un estratto: {{bank}}",
+      "format": "Scegli il formato: {{format}}",
+      "openWeb": "Apri l'home banking",
+      "openFailed": "Non è stato possibile aprire il browser.",
+      "banks": "Guide delle banche"
+    },
     "preview": {
       "hint": "Tocca un pagamento per scegliere la sua categoria.",
       "more_one": "e {{count}} altro",

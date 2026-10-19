@@ -119,6 +119,8 @@ pub fn collect_types() -> TypeCollection {
     // CSV import models
     types.register::<crate::services::csv_presets::CsvPreset>();
     types.register::<crate::services::csv_presets::CsvRowFilter>();
+    types.register::<crate::services::csv_presets::ExportRoute>();
+    types.register::<crate::services::csv_presets::MobileExportGuide>();
     types.register::<crate::services::csv_import::CsvImportConfig>();
     types.register::<crate::services::csv_import::CsvCategoryOverride>();
     types.register::<crate::services::csv_import::CsvImportResult>();

@@ -337,6 +337,13 @@
       "notStatement": "Tento soubor neobsahuje výpis, který bych uměl přečíst.",
       "error": "Soubor se nepodařilo přečíst."
     },
+    "guide": {
+      "title": "Jak získat výpis: {{bank}}",
+      "format": "Vyberte formát: {{format}}",
+      "openWeb": "Otevřít internetové bankovnictví",
+      "openFailed": "Prohlížeč se nepodařilo otevřít.",
+      "banks": "Návody bank"
+    },
     "preview": {
       "hint": "Klepnutím na platbu zvolíte její kategorii.",
       "more_one": "a {{count}} další",

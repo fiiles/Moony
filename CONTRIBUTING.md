@@ -437,7 +437,13 @@ needs no manual column mapping.
      "balanceColumn": "Balance",
      "rowFilter": { "column": "State", "equals": "COMPLETED" },
      "exportHelpUrl": "https://…",
-     "sampleFixture": "revolut.csv"
+     "sampleFixture": "revolut.csv",
+     "mobileExport": {
+       "route": "web",
+       "format": "CSV",
+       "webUrl": "https://…",
+       "steps": { "en": ["…", "…", "…"], "cs": ["…", "…", "…"] }
+     }
    }
    ```
 
@@ -458,11 +464,25 @@ needs no manual column mapping.
      the bank; it feeds duplicate detection.
    - `institutionId` ties the preset to a row of the seeded `institutions` table;
      omit it for banks that are not seeded.
+   - `mobileExport` is the guide the phone app's import sheet shows ("how to get a
+     statement file from this bank on a phone"). Every bank preset carries one; a
+     generic layout (`uk-debit-credit`) does not. `route` is `app` only when the
+     bank's own app exports the file (mBank, Wise), otherwise `web` (the bank's
+     internet banking in the phone's browser) and then `webUrl` — the bank's public
+     internet-banking address, `https://` — is required. `format` is what the person
+     picks in the bank ("CSV"). `steps` has an entry for **every** locale the app
+     ships (`en`, `cs`, `de`, `es`, `it`, `nb`, `pl`, `sv`, `ja`, `zh`), two to four
+     short imperative steps each; keep the bank's own menu labels in the language of
+     its screens and translate only the words around them. Write only what the
+     bank's help pages document — never that an app "cannot" export, only the path
+     that works. `appUrlScheme` (a bare scheme such as `fio`, never `fio://`) is set
+     only when the bank documents one; none does today.
 3. Register the file in `PRESET_SOURCES` in `src-tauri/src/services/csv_presets.rs`.
 4. Run `cd src-tauri && cargo test csv` — `all_presets_are_valid` parses every
-   preset, checks it is detected from its own headers (and not shadowed), and
-   imports its `sampleFixture` (a synthetic file when there is none) with zero
-   errors. Presets without a real fixture are best-effort until someone with that
+   preset, checks it is detected from its own headers (and not shadowed), checks
+   its `mobileExport` guide (all ten locales, 2–4 steps, an `https://` `webUrl` for
+   a `web` route, a bare `appUrlScheme`), and imports its `sampleFixture` (a
+   synthetic file when there is none) with zero errors. Presets without a real fixture are best-effort until someone with that
    bank confirms them.
 
 Column names the generic detector does not know yet (a new language) are added to

@@ -320,6 +320,13 @@
       "notStatement": "Denne filen inneholder ikke en kontoutskrift Moony kan lese.",
       "error": "Filen kunne ikke leses."
     },
+    "guide": {
+      "title": "Slik får du en kontoutskrift: {{bank}}",
+      "format": "Velg formatet: {{format}}",
+      "openWeb": "Åpne nettbanken",
+      "openFailed": "Nettleseren kunne ikke åpnes.",
+      "banks": "Veiledninger for banker"
+    },
     "preview": {
       "hint": "Trykk på en betaling for å velge kategori.",
       "more_one": "og {{count}} til",

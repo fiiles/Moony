@@ -308,11 +308,14 @@
 
   <section class="part">
     <h2>Import výpisu</h2>
-    <p>Jeden vysoký sheet (<code>.m-sheet--full</code>), jehož fáze střídají titulek, větu, tělo a patičku. Nahoře vždy pruh souboru (<code>.m-filebar</code>: čip 36 pt, název s výpustkou, formát a účet z výpisu pod ním). <strong>Náhled</strong>: poznámky k výpisu (výpis jiného účtu je červený box <code>.m-box--loss</code> s textovým tlačítkem 44 pt a spínačem „stejně importovat“; že výpis sedí, je klidná <code>.m-note--ok</code>), řádek počtů (<code>.m-imp-count</code>), období a počty kategorií (<code>.m-imp-meta</code>), řádky plateb (<code>.m-row</code>: iniciály, protistrana, podřádek „datum · kategorie“, podepsaná částka ve vlastní měně; duplicita je na 50 % se štítkem, chyba má červený štítek <code>.m-row__badge--loss</code>) a „und 43 weitere“. Patička má jedinou hlavní akci. <strong>Hotovo</strong>: tři statistiky, věty (<code>.m-imp-facts</code>), jedna hlavní akce „Zařadit N plateb“ a další kroky jako řádky se šipkou; patička je jen „Hotovo“. <strong>Účet</strong>: řádky výběru s druhým řádkem (<code>.m-pick__main</code>, <code>.m-pick__s</code>). <strong>Kategorie</strong> platby: sheet nad sheetem, „Podle pravidel“ první.</p>
+    <p>Jeden vysoký sheet (<code>.m-sheet--full</code>), jehož fáze střídají titulek, větu, tělo a patičku. Nahoře vždy pruh souboru (<code>.m-filebar</code>: čip 36 pt, název s výpustkou, formát a účet z výpisu pod ním). <strong>Náhled</strong>: poznámky k výpisu (výpis jiného účtu je červený box <code>.m-box--loss</code> s textovým tlačítkem 44 pt a spínačem „stejně importovat“; že výpis sedí, je klidná <code>.m-note--ok</code>), řádek počtů (<code>.m-imp-count</code>), období a počty kategorií (<code>.m-imp-meta</code>), řádky plateb (<code>.m-row</code>: iniciály, protistrana, podřádek „datum · kategorie“, podepsaná částka ve vlastní měně; duplicita je na 50 % se štítkem, chyba má červený štítek <code>.m-row__badge--loss</code>) a „und 43 weitere“. Patička má jedinou hlavní akci. <strong>Hotovo</strong>: tři statistiky, věty (<code>.m-imp-facts</code>), jedna hlavní akce „Zařadit N plateb“ a další kroky jako řádky se šipkou; patička je jen „Hotovo“. <strong>Účet</strong>: řádky výběru s druhým řádkem (<code>.m-pick__main</code>, <code>.m-pick__s</code>). <strong>Kategorie</strong> platby: sheet nad sheetem, „Podle pravidel“ první. <strong>Návod banky</strong> (<code>.m-guide</code>): pod „Vybrat soubor“ návod banky účtu — nadpis 16 / 620 (zalamuje se), kroky jako číslovaný seznam (<code>.m-guide__steps</code>, číslo v kroužku 22 pt, text 13 / 450 <code>ink-2</code>), formát jako popisek 11 / 500 a u banky, ke které se jde přes webové bankovnictví, sekundární tlačítko 44 pt „Online-Banking öffnen“; u banky s exportem přímo v aplikaci tlačítko není. U <strong>nečitelného souboru</strong> jsou banky seznam řádků výběru (<code>.m-pick__chip--ini</code>: iniciály banky) a klepnutá banka otevře svůj návod na místě pod textovým tlačítkem zpět (<code>.m-guide__back</code>).</p>
     <div class="phones" id="importPreview"></div>
     <div class="phones" id="importDone" style="margin-top: 26px"></div>
     <div class="phones" id="importAccount" style="margin-top: 26px"></div>
     <div class="phones" id="importChoice" style="margin-top: 26px"></div>
+    <div class="phones" id="importGuide" style="margin-top: 26px"></div>
+    <div class="phones" id="importGuides" style="margin-top: 26px"></div>
+    <div class="phones" id="importGuideOpen" style="margin-top: 26px"></div>
   </section>
 
   <section class="part">
@@ -952,6 +955,129 @@
   </div>
 </template>
 
+<!-- The import sheet's picker with the account's bank guide (a web route: the button opens its internet banking), at the three widths. -->
+<template id="import-pick-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Kontoauszug importieren">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Kontoauszug importieren</div><div class="m-sheet__s">In Girokonto · Česká spořitelna</div></div>
+      <div class="m-sheet__body">
+        <div style="padding-top: 4px">
+          <p class="m-imp-lead">Wählen Sie die Datei, die Sie bei Ihrer Bank heruntergeladen haben.</p>
+          <p class="m-imp-sub">Unterstützt: CSV, CAMT.053 (XML), MT940, OFX/QFX und QIF.</p>
+        </div>
+        <section class="m-guide" aria-labelledby="guide-cs">
+          <h3 class="m-guide__t" id="guide-cs">So erhalten Sie einen Auszug: Česká spořitelna</h3>
+          <ol class="m-guide__steps">
+            <li><span class="m-guide__n" aria-hidden="true">1</span><span>Öffnen Sie das Online-Banking von Česká spořitelna in Safari oder Chrome und melden Sie sich an.</span></li>
+            <li><span class="m-guide__n" aria-hidden="true">2</span><span>Öffnen Sie beim Konto „Historie“, tippen Sie oben rechts auf das Pfeil-Symbol, stellen Sie den Zeitraum ein und wählen Sie CSV.</span></li>
+            <li><span class="m-guide__n" aria-hidden="true">3</span><span>Teilen Sie die Datei mit Moony oder speichern Sie sie in „Dateien“ und wählen Sie sie hier mit „Datei wählen“.</span></li>
+          </ol>
+          <p class="m-guide__fmt">Wählen Sie das Format: CSV</p>
+          <button class="m-btn m-btn--secondary" type="button" data-icon="external-link" data-size="16"><span>Online-Banking öffnen</span></button>
+        </section>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Datei wählen</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The import sheet when a file cannot be read: the banks that have a guide, as a list of pick rows, at the three widths. -->
+<template id="import-guides-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Datei nicht lesbar">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Datei nicht lesbar</div></div>
+      <div class="m-sheet__body">
+        <div role="alert">
+          <div class="m-filebar"><span class="m-filebar__ic" data-icon="file-text" data-size="16"></span><span class="m-filebar__main"><span class="m-filebar__t">Kontoauszug-Oktober-2026.pdf</span></span></div>
+          <p class="m-imp-lead">PDF-Auszüge kann Moony noch nicht lesen – laden Sie bei Ihrer Bank CSV, CAMT, MT940, OFX oder QIF herunter.</p>
+          <p class="m-imp-sub">Unterstützt: CSV, CAMT.053 (XML), MT940, OFX/QFX und QIF.</p>
+        </div>
+        <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Anleitungen der Banken</div>
+        <div role="group" aria-label="Anleitungen der Banken">
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">AB</span><span class="m-pick__main"><span class="m-pick__l">Air Bank</span><span class="m-pick__s">Tschechien</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">ČS</span><span class="m-pick__main"><span class="m-pick__l">Česká spořitelna</span><span class="m-pick__s">Tschechien</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">ČS</span><span class="m-pick__main"><span class="m-pick__l">ČSOB</span><span class="m-pick__s">Tschechien</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">FB</span><span class="m-pick__main"><span class="m-pick__l">Fio banka</span><span class="m-pick__s">Tschechien</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">KB</span><span class="m-pick__main"><span class="m-pick__l">Komerční banka</span><span class="m-pick__s">Tschechien</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">MB</span><span class="m-pick__main"><span class="m-pick__l">mBank</span><span class="m-pick__s">Tschechien</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">MM</span><span class="m-pick__main"><span class="m-pick__l">MONETA Money Bank</span><span class="m-pick__s">Tschechien</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">RA</span><span class="m-pick__main"><span class="m-pick__l">Raiffeisenbank</span><span class="m-pick__s">Tschechien</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">DK</span><span class="m-pick__main"><span class="m-pick__l">DKB</span><span class="m-pick__s">Deutschland</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">IN</span><span class="m-pick__main"><span class="m-pick__l">ING</span><span class="m-pick__s">Deutschland</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">N</span><span class="m-pick__main"><span class="m-pick__l">N26</span><span class="m-pick__s">Deutschland</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">SP</span><span class="m-pick__main"><span class="m-pick__l">Sparkasse</span><span class="m-pick__s">Deutschland</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">RE</span><span class="m-pick__main"><span class="m-pick__l">Revolut</span><span class="m-pick__s">Vereinigtes Königreich</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">WI</span><span class="m-pick__main"><span class="m-pick__l">Wise</span><span class="m-pick__s">Vereinigtes Königreich</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">CH</span><span class="m-pick__main"><span class="m-pick__l">Chase</span><span class="m-pick__s">USA</span></span></button>
+        </div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Andere Datei wählen</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- A bank's guide opened in place from that list (an app route: no web button), under the way back to the list, at the three widths. -->
+<template id="import-guide-open-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Datei nicht lesbar">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Datei nicht lesbar</div></div>
+      <div class="m-sheet__body">
+        <div role="alert">
+          <div class="m-filebar"><span class="m-filebar__ic" data-icon="file-text" data-size="16"></span><span class="m-filebar__main"><span class="m-filebar__t">Kontoauszug-Oktober-2026.pdf</span></span></div>
+          <p class="m-imp-lead">PDF-Auszüge kann Moony noch nicht lesen – laden Sie bei Ihrer Bank CSV, CAMT, MT940, OFX oder QIF herunter.</p>
+          <p class="m-imp-sub">Unterstützt: CSV, CAMT.053 (XML), MT940, OFX/QFX und QIF.</p>
+        </div>
+        <div style="margin-top: 8px">
+          <button class="m-imp-act m-guide__back" type="button" data-icon="chevron-left" data-size="16">Anleitungen der Banken</button>
+          <section class="m-guide" aria-labelledby="guide-mbank">
+          <h3 class="m-guide__t" id="guide-mbank">So erhalten Sie einen Auszug: mBank</h3>
+          <ol class="m-guide__steps">
+            <li><span class="m-guide__n" aria-hidden="true">1</span><span>Tippen Sie in der mBank-App im unteren Menü auf „finance“ und oben auf „historie“.</span></li>
+            <li><span class="m-guide__n" aria-hidden="true">2</span><span>Tippen Sie oben rechts auf den blauen Pfeil, wählen Sie Konto und Zeitraum und laden Sie als CSV herunter.</span></li>
+            <li><span class="m-guide__n" aria-hidden="true">3</span><span>Teilen Sie die Datei mit Moony oder speichern Sie sie in „Dateien“ und wählen Sie sie hier mit „Datei wählen“.</span></li>
+          </ol>
+          <p class="m-guide__fmt">Wählen Sie das Format: CSV</p>
+        </section>
+        </div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Andere Datei wählen</span></button></div>
+    </div>
+  </div>
+</template>
+
 <!-- The category choice of a preview row, stacked over the import sheet, at the three widths. -->
 <template id="import-choice-frame">
   <div class="m-screen" lang="de">
@@ -1000,6 +1126,7 @@
     "eye": '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
     "trending-down": '<path d="M16 17h6v-6"/><path d="m22 17-8.5-8.5-5 5L2 7"/>',
     "chevron-left": '<path d="m15 18-6-6 6-6"/>',
+    "external-link": '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
     "clock": '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
     "banknote": '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
     "arrow-right-left": '<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>',
@@ -1240,6 +1367,9 @@
   frames("importDone", "import-done-frame", "Import: Fertig");
   frames("importAccount", "import-account-frame", "Import: Konto");
   frames("importChoice", "import-choice-frame", "Import: Kategorie");
+  frames("importGuide", "import-pick-frame", "Import: Anleitung");
+  frames("importGuides", "import-guides-frame", "Import: Banken");
+  frames("importGuideOpen", "import-guide-open-frame", "Import: Anleitung offen");
   frames("queue", "queue-frame", "Zařazení plateb");
 
   /* Budget rows: category chip as on the Cashflow rows, the limit as the value, validity and the changes to

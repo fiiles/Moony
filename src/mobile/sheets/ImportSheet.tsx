@@ -201,10 +201,14 @@ export function ImportSheet({ request, open, onOpenChange }: ImportSheetProps) {
         footer={footer}
         full
       >
-        {stage === 'pick' && <PickBody />}
+        {stage === 'pick' && <PickBody guide={flow.accountGuide} />}
         {stage === 'reading' && <ReadingBody fileName={flow.fileName} />}
         {stage === 'unreadable' && flow.unreadable && (
-          <UnreadableBody fileName={flow.fileName} unreadable={flow.unreadable} />
+          <UnreadableBody
+            fileName={flow.fileName}
+            unreadable={flow.unreadable}
+            guides={flow.guides}
+          />
         )}
         {stage === 'account' && (
           <AccountBody

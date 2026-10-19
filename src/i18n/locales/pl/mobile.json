@@ -361,6 +361,54 @@
       "openFailed": "Nie udało się otworzyć przeglądarki.",
       "banks": "Instrukcje banków"
     },
+    "recognize": {
+      "title": "Tak to rozumiem",
+      "caption": "Trzy transakcje z pliku, tak jak je odczytam:",
+      "captionFew": "Transakcje z pliku, tak jak je odczytam:",
+      "unknownFormat": "format jeszcze nieznany",
+      "tab": "tabulator",
+      "previewFailed": "Nie udało się teraz wczytać przykładowych wierszy. Rozpoznane kolumny poniżej nadal obowiązują.",
+      "looksRight": "Wygląda dobrze",
+      "fix": "Popraw…",
+      "use": "Zastosuj",
+      "field": {
+        "transactionId": "ID transakcji"
+      },
+      "notFound": "nie znaleziono",
+      "unused": "nieużywane",
+      "unusedWhy": {
+        "description": "płatności trudniej przypisać do kategorii",
+        "counterparty": "nie zobaczysz, kto zapłacił ani komu zapłacono",
+        "currency": "waluta pochodzi z konta",
+        "balance": "nie zaproponuję salda konta na podstawie pliku",
+        "transactionId": "duplikaty rozpoznam po dacie i kwocie"
+      },
+      "signVerified": "znak sprawdzony na podstawie salda",
+      "signInverted": "wydatki w tym pliku wyglądają na dodatnie – sprawdź przykład",
+      "fixTitle": "Co poprawić?",
+      "fixLead": "Dotknij pola, które zostało źle odczytane.",
+      "ask": {
+        "date": "Co jest datą?",
+        "amount": "Co jest kwotą?",
+        "description": "Co jest opisem?",
+        "counterparty": "Co jest kontrahentem?",
+        "currency": "Co jest walutą?",
+        "balance": "Co jest saldem?",
+        "transactionId": "Co jest ID transakcji?"
+      },
+      "lead": {
+        "date": "Wybierz kolumnę z datą każdej transakcji.",
+        "amount": "Wybierz kolumnę z kwotą transakcji. Wydatki powinny być ujemne.",
+        "description": "Wybierz kolumnę z tekstem płatności, na przykład tytułem lub notatką. Pomaga przy kategoryzacji płatności.",
+        "counterparty": "Wybierz kolumnę z nazwą tego, kto zapłacił lub komu zapłacono.",
+        "currency": "Wybierz kolumnę z kodem waluty, na przykład CZK lub EUR.",
+        "balance": "Wybierz kolumnę z saldem po każdej transakcji.",
+        "transactionId": "Wybierz kolumnę z unikalnym numerem, który bank nadaje każdej transakcji."
+      },
+      "sample": "Przykład po twoim wyborze:",
+      "sampleHint": "Wybierz kolumnę, a pokażę, jak odczytam transakcję.",
+      "pair": "para kolumn"
+    },
     "preview": {
       "hint": "Dotknij płatności, aby wybrać jej kategorię.",
       "more_one": "i jeszcze {{count}}",

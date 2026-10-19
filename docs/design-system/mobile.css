@@ -815,6 +815,9 @@
 .m-filebar__main { flex: 1; min-width: 0; }
 .m-filebar__t { display: block; overflow: hidden; color: var(--ink); font-size: var(--m-fs-row); font-weight: var(--m-fw-row); letter-spacing: var(--m-ls-row); line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
 .m-filebar__s { display: block; overflow: hidden; color: var(--ink-4); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* The recognition's file bar line ("48 rows · delimiter ; · UTF-8 · format not known yet") wraps: all of it is news, and the
+   last part is the point. */
+.m-filebar__s--wrap { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
 
 /* A sheet footer's primary whose label can be long ("48 Transaktionen importieren" beside "Abbrechen" at 360): it wraps to a
    second line (as the button pair's labels do) instead of ending in an ellipsis, and grows to 48 px + one more line. */
@@ -876,6 +879,48 @@
 .m-guide__back { gap: 4px; }
 .m-guide__back svg { flex: none; width: 16px; height: 16px; stroke-width: 1.75; }
 .m-pick__chip--ini { color: var(--ink-2); font-size: var(--m-fs-caption); font-weight: 700; }
+
+/* The guided recognition of an unknown CSV (spec §8.6 rung 3, prototype frames 06–07; `RecognizeStep.tsx`,
+   `CorrectStep.tsx`). "Takhle tomu rozumím": under the file bar the section head (`.m-t-section`, 16 / 620) and one
+   sentence (12 / 500 `ink-3`), three real rows of the file as entity rows (`.m-rows`; the sub-line says "date · what it
+   was for", no category), then the list of what was recognized (`.m-recog`): a 16 px check in `gain` (a minus in `ink-5`
+   for a field that is not read), the field's name 13 / 600 and the columns it reads 12 / 500 `ink-3`, in a grid of 20 px,
+   34 % (92 px at least) and the rest, rows `line-soft` apart. Every text wraps — a column's name is never cut. A field that
+   is not read is at `ink-4` with what that means for the import ("not found · I'll spot duplicates by date and amount");
+   the amount line may add "sign checked against the balance" or, in `loss` with a 14 px warning glyph, that expenses in
+   the file look positive (`.m-recog__warn`). */
+.m-recog { margin: 12px 0 0; padding: 0; list-style: none; }
+.m-recog__row { display: grid; grid-template-columns: 20px minmax(92px, 34%) minmax(0, 1fr); gap: 8px; align-items: start; padding: 9px 0; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: 13px; font-weight: 450; line-height: 1.4; }
+.m-recog__row:first-child { border-top: 0; }
+.m-recog__row--no { color: var(--ink-4); }
+.m-recog__ic { display: block; flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--gain); }
+.m-recog__ic svg { width: 16px; height: 16px; stroke-width: 2; }
+.m-recog__row--no .m-recog__ic { color: var(--ink-5); }
+.m-recog__f { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+.m-recog__row--no .m-recog__f { color: var(--ink-4); }
+.m-recog__v { min-width: 0; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.4; overflow-wrap: anywhere; }
+.m-recog__warn { display: flex; align-items: flex-start; gap: 6px; margin-top: 2px; color: var(--loss); }
+.m-recog__warn svg { flex: none; width: 14px; height: 14px; margin-top: 1px; stroke-width: 1.75; }
+
+/* "Opravit…" (frame 07): first the fields as entity rows with a chevron (`.m-row--chev`, the chip a rounded square with the
+   field's glyph, what the field reads now under its name), then one field's columns as radio options (`.m-colopt`, in a
+   `radiogroup`): 56 px at least, paper with a `line` hairline, radius 12, 8 px apart; a 22 px radio circle (`line-strong`; the
+   chosen one `ink` with a white check) and the column's header 15 / 600 (it wraps) over its two sample values 12 / 500 `ink-4`
+   (tabular, one line, an ellipsis ends a long one). The chosen option has the focus border and ring. A pair of columns
+   (debit + credit) carries the caption "(pair of columns)" (`.m-colopt__cap`, 11 / 500 `ink-3`) after its headers; "nepoužít"
+   has no samples; the two readings of an ambiguous date show the order and, under it, the column and one date spelled out
+   ("3. April 2026") so that they cannot be mistaken. Under the options "Ukázka po výběru:" (`.m-t-caption`) and one entity
+   row — the file's first row as it would be read. While amounts are hidden the cells of an amount column and any cell that
+   reads as an amount show the mask; text stays. */
+.m-colopt { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; align-items: center; width: 100%; min-height: 56px; margin-bottom: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); font: inherit; text-align: left; }
+.m-colopt:active { background: var(--well); }
+.m-colopt[aria-checked="true"] { border-color: var(--focus-border); box-shadow: var(--focus-ring); }
+.m-colopt__radio { display: grid; place-items: center; width: 22px; height: 22px; border: 1.5px solid var(--line-strong); border-radius: 50%; color: var(--ink-inverse); }
+.m-colopt__radio svg { width: 12px; height: 12px; stroke-width: 2.5; }
+.m-colopt[aria-checked="true"] .m-colopt__radio { border-color: var(--ink); background: var(--ink); }
+.m-colopt__t { display: block; font-size: var(--m-fs-row); font-weight: var(--m-fw-row); letter-spacing: var(--m-ls-row); line-height: 1.3; overflow-wrap: anywhere; }
+.m-colopt__cap { margin-left: 6px; color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); letter-spacing: 0; }
+.m-colopt__s { display: block; margin-top: 2px; overflow: hidden; color: var(--ink-4); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
 
 /* ===== The categorize queue (spec §8.5, prototype frame 05; `CategorizeQueue.tsx`, `QueueRow.tsx`) =====
    The page: the lead line (13 / 450 `ink-3`: the account and the statement the payments came from, "· 3 already

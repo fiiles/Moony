@@ -20,13 +20,19 @@ interface PreviewRowsProps {
   total: number;
   /** The target account's currency, for a row whose file has no currency column. */
   accountCurrency: string;
-  categories: readonly TransactionCategory[];
+  categories?: readonly TransactionCategory[];
   /** The category the person chose in this preview, by the row's `line`. */
-  overrides: ReadonlyMap<number, string>;
+  overrides?: ReadonlyMap<number, string>;
   /** A row that will be written was tapped: its category is to be chosen. */
-  onPick: (row: CsvPreviewRow) => void;
+  onPick?: (row: CsvPreviewRow) => void;
   /** The list on screen belongs to older choices and is being replaced. */
   updating: boolean;
+  /**
+   * The rows are the guided recognition's samples ("Takhle tomu rozumím"): the sub-line says
+   * "date · what it was for" instead of the category, a row is never a duplicate or tappable —
+   * the file is only being read — and one that cannot be read says so.
+   */
+  sample?: boolean;
 }
 
 /** A row the import will write: its category can be chosen. */
@@ -40,15 +46,18 @@ const willWrite = (row: Pick<CsvPreviewRow, 'status'>) =>
  * amounts are hidden with the sign kept. A row the import skips (a duplicate, a zero amount) is at
  * half strength with its reason as a badge, an error row says what is wrong with it; a row that
  * will be written opens the category choice on a tap. "a N dalších" counts what is not shown.
+ * `sample` draws the three rows of the recognition the same way with their description in place
+ * of the category (README §13, "Import recognition").
  */
 export function PreviewRows({
   rows,
   total,
   accountCurrency,
-  categories,
-  overrides,
+  categories = [],
+  overrides = new Map<number, string>(),
   onPick,
   updating,
+  sample = false,
 }: PreviewRowsProps) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
@@ -72,7 +81,8 @@ export function PreviewRows({
     const credit = amount?.type === 'credit';
     const picked = overrides.get(row.line);
     const category = categoryById.get(picked ?? row.categoryId ?? '');
-    const writes = willWrite(row);
+    // A sample is how the file reads, whatever the account already holds: only a row that cannot be read stands apart
+    const writes = sample ? row.status !== 'error' : willWrite(row);
     const message = row.message ? translateRowMessage(row.message, tb, tc) : null;
 
     const parts: ReactNode[] = [
@@ -93,6 +103,13 @@ export function PreviewRows({
       row.status === 'error' && <RowBadge tone="loss">{tb('csvImport.status.error')}</RowBadge>,
       row.status !== 'ok' && row.status !== 'promoted' && message,
     ].filter(Boolean);
+    // The recognition's rows: what the payment was for stands where the category does
+    const sampleParts: ReactNode[] = [
+      row.bookingDate !== null ? fmt.day(row.bookingDate) : '—',
+      details.find((detail) => detail !== title),
+      row.status === 'error' && <RowBadge tone="loss">{tb('csvImport.status.error')}</RowBadge>,
+      row.status === 'error' && message,
+    ].filter(Boolean);
 
     return (
       <EntityRow
@@ -103,7 +120,7 @@ export function PreviewRows({
           </RowChip>
         }
         title={title}
-        sub={parts.map((part, i) => (
+        sub={(sample ? sampleParts : parts).map((part, i) => (
           <Fragment key={i}>
             {i > 0 && ' · '}
             {part}
@@ -111,8 +128,8 @@ export function PreviewRows({
         ))}
         value={amount ? signedAmountText(moneyText, amount) : '—'}
         valueTone={credit && writes ? 'gain' : undefined}
-        muted={row.status === 'duplicate' || row.status === 'skipped'}
-        onClick={writes ? () => onPick(row) : undefined}
+        muted={!sample && (row.status === 'duplicate' || row.status === 'skipped')}
+        onClick={!sample && writes && onPick ? () => onPick(row) : undefined}
       />
     );
   };

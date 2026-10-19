@@ -308,7 +308,7 @@
 
   <section class="part">
     <h2>Import výpisu</h2>
-    <p>Jeden vysoký sheet (<code>.m-sheet--full</code>), jehož fáze střídají titulek, větu, tělo a patičku. Nahoře vždy pruh souboru (<code>.m-filebar</code>: čip 36 pt, název s výpustkou, formát a účet z výpisu pod ním). <strong>Náhled</strong>: poznámky k výpisu (výpis jiného účtu je červený box <code>.m-box--loss</code> s textovým tlačítkem 44 pt a spínačem „stejně importovat“; že výpis sedí, je klidná <code>.m-note--ok</code>), řádek počtů (<code>.m-imp-count</code>), období a počty kategorií (<code>.m-imp-meta</code>), řádky plateb (<code>.m-row</code>: iniciály, protistrana, podřádek „datum · kategorie“, podepsaná částka ve vlastní měně; duplicita je na 50 % se štítkem, chyba má červený štítek <code>.m-row__badge--loss</code>) a „und 43 weitere“. Patička má jedinou hlavní akci. <strong>Hotovo</strong>: tři statistiky, věty (<code>.m-imp-facts</code>), jedna hlavní akce „Zařadit N plateb“ a další kroky jako řádky se šipkou; patička je jen „Hotovo“. <strong>Účet</strong>: řádky výběru s druhým řádkem (<code>.m-pick__main</code>, <code>.m-pick__s</code>). <strong>Kategorie</strong> platby: sheet nad sheetem, „Podle pravidel“ první. <strong>Návod banky</strong> (<code>.m-guide</code>): pod „Vybrat soubor“ návod banky účtu — nadpis 16 / 620 (zalamuje se), kroky jako číslovaný seznam (<code>.m-guide__steps</code>, číslo v kroužku 22 pt, text 13 / 450 <code>ink-2</code>), formát jako popisek 11 / 500 a u banky, ke které se jde přes webové bankovnictví, sekundární tlačítko 44 pt „Online-Banking öffnen“; u banky s exportem přímo v aplikaci tlačítko není. U <strong>nečitelného souboru</strong> jsou banky seznam řádků výběru (<code>.m-pick__chip--ini</code>: iniciály banky) a klepnutá banka otevře svůj návod na místě pod textovým tlačítkem zpět (<code>.m-guide__back</code>).</p>
+    <p>Jeden vysoký sheet (<code>.m-sheet--full</code>), jehož fáze střídají titulek, větu, tělo a patičku. Nahoře vždy pruh souboru (<code>.m-filebar</code>: čip 36 pt, název s výpustkou, formát a účet z výpisu pod ním). <strong>Náhled</strong>: poznámky k výpisu (výpis jiného účtu je červený box <code>.m-box--loss</code> s textovým tlačítkem 44 pt a spínačem „stejně importovat“; že výpis sedí, je klidná <code>.m-note--ok</code>), řádek počtů (<code>.m-imp-count</code>), období a počty kategorií (<code>.m-imp-meta</code>), řádky plateb (<code>.m-row</code>: iniciály, protistrana, podřádek „datum · kategorie“, podepsaná částka ve vlastní měně; duplicita je na 50 % se štítkem, chyba má červený štítek <code>.m-row__badge--loss</code>) a „und 43 weitere“. Patička má jedinou hlavní akci. <strong>Hotovo</strong>: tři statistiky, věty (<code>.m-imp-facts</code>), jedna hlavní akce „Zařadit N plateb“ a další kroky jako řádky se šipkou; patička je jen „Hotovo“. <strong>Účet</strong>: řádky výběru s druhým řádkem (<code>.m-pick__main</code>, <code>.m-pick__s</code>). <strong>Kategorie</strong> platby: sheet nad sheetem, „Podle pravidel“ první. <strong>Návod banky</strong> (<code>.m-guide</code>): pod „Vybrat soubor“ návod banky účtu — nadpis 16 / 620 (zalamuje se), kroky jako číslovaný seznam (<code>.m-guide__steps</code>, číslo v kroužku 22 pt, text 13 / 450 <code>ink-2</code>), formát jako popisek 11 / 500 a u banky, ke které se jde přes webové bankovnictví, sekundární tlačítko 44 pt „Online-Banking öffnen“; u banky s exportem přímo v aplikaci tlačítko není. U <strong>nečitelného souboru</strong> jsou banky seznam řádků výběru (<code>.m-pick__chip--ini</code>: iniciály banky) a klepnutá banka otevře svůj návod na místě pod textovým tlačítkem zpět (<code>.m-guide__back</code>). <strong>Rozpoznání neznámého CSV</strong> (spec §8.6, stupeň 3; prototyp 06–07): pod pruhem souboru „So verstehe ich die Datei“, tři skutečné řádky souboru jako řádky plateb (podřádek „datum · k čemu platba byla“) a seznam toho, co se rozpoznalo (<code>.m-recog</code>: zelená fajfka, jméno pole 13 / 600 a čtená pole 12 / 500; nečtené pole má minus, je na <code>ink-4</code> a říká, co to pro import znamená; řádek částky může říct, že znaménko ověřil zůstatek, nebo červeně <code>.m-recog__warn</code>, že výdaje vypadají kladně). Patička: „Korrigieren…“ a hlavní „Sieht richtig aus“. <strong>Oprava</strong>: nejdřív pole jako řádky s šipkou, pak sloupce jednoho pole jako volby (<code>.m-colopt</code>: kruh 22 pt, záhlaví sloupce 15 / 600 a pod ním dvě ukázkové hodnoty; dvojice sloupců má popisek „(Spaltenpaar)“, u data, jehož den a měsíc nejdou poznat, jsou to dvě čtení sloupce s jedním datem napsaným slovy) a pod nimi jeden znovu přečtený řádek. Nikdy mřížka sloupců.</p>
     <div class="phones" id="importPreview"></div>
     <div class="phones" id="importDone" style="margin-top: 26px"></div>
     <div class="phones" id="importAccount" style="margin-top: 26px"></div>
@@ -316,6 +316,11 @@
     <div class="phones" id="importGuide" style="margin-top: 26px"></div>
     <div class="phones" id="importGuides" style="margin-top: 26px"></div>
     <div class="phones" id="importGuideOpen" style="margin-top: 26px"></div>
+    <div class="phones" id="importRecognize" style="margin-top: 26px"></div>
+    <div class="phones" id="importRecognizeWarn" style="margin-top: 26px"></div>
+    <div class="phones" id="importFields" style="margin-top: 26px"></div>
+    <div class="phones" id="importCorrect" style="margin-top: 26px"></div>
+    <div class="phones" id="importOrder" style="margin-top: 26px"></div>
   </section>
 
   <section class="part">
@@ -1077,6 +1082,162 @@
   </div>
 </template>
 
+<!-- The guided recognition of an unknown CSV (frame 06): three rows of the file and what was recognized, at the three widths. -->
+<template id="import-recognize-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Kontoauszug importieren">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Kontoauszug importieren</div><div class="m-sheet__s">In Girokonto · Fio · Geteilt</div></div>
+      <div class="m-sheet__body">
+        <div class="m-filebar"><span class="m-filebar__ic" data-icon="file-text" data-size="16"></span><span class="m-filebar__main"><span class="m-filebar__t">kontoauszug_2026-09.csv</span><span class="m-filebar__s m-filebar__s--wrap">48 Zeilen · Trennzeichen „;“ · Kodierung UTF-8 · Format noch unbekannt</span></span></div>
+        <h3 class="m-t-section" style="margin: 4px 4px 2px; color: var(--ink)">So verstehe ich die Datei</h3>
+        <p class="m-t-sub" style="margin: 0 4px 8px; color: var(--ink-3)">Drei Zahlungen aus der Datei, so wie ich sie lese:</p>
+        <div class="m-rows" data-rows="importSample" style="margin-bottom: 8px"></div>
+        <ul class="m-recog">
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Datum</b><span class="m-recog__v">Datum zaúčtování</span></li>
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Betrag</b><span class="m-recog__v">Částka · Vorzeichen anhand des Saldos geprüft</span></li>
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Beschreibung</b><span class="m-recog__v">Zpráva pro příjemce · Poznámka</span></li>
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Gegenpartei</b><span class="m-recog__v">Název protiúčtu · Číslo protiúčtu</span></li>
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Währung</b><span class="m-recog__v">Měna</span></li>
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Kontostand</b><span class="m-recog__v">Zůstatek po pohybu</span></li>
+          <li class="m-recog__row m-recog__row--no"><span class="m-recog__ic" data-icon="minus" data-size="16"></span><b class="m-recog__f">Transaktions-ID</b><span class="m-recog__v">nicht gefunden · Duplikate erkenne ich an Datum und Betrag</span></li>
+        </ul>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Korrigieren…</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Sieht richtig aus</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The same, with a file whose expenses look positive and fields that were not found. -->
+<template id="import-recognize-warn-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Kontoauszug importieren">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Kontoauszug importieren</div><div class="m-sheet__s">In Girokonto · Fio</div></div>
+      <div class="m-sheet__body">
+        <div class="m-filebar"><span class="m-filebar__ic" data-icon="file-text" data-size="16"></span><span class="m-filebar__main"><span class="m-filebar__t">kontoauszug_2026-09.csv</span><span class="m-filebar__s m-filebar__s--wrap">48 Zeilen · Trennzeichen „;“ · Kodierung UTF-8 · Format noch unbekannt</span></span></div>
+        <h3 class="m-t-section" style="margin: 4px 4px 2px; color: var(--ink)">So verstehe ich die Datei</h3>
+        <p class="m-t-sub" style="margin: 0 4px 8px; color: var(--ink-3)">Drei Zahlungen aus der Datei, so wie ich sie lese:</p>
+        <div class="m-rows" data-rows="importSampleInverted" style="margin-bottom: 8px"></div>
+        <ul class="m-recog">
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Datum</b><span class="m-recog__v">Buchungsdatum</span></li>
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Betrag</b><span class="m-recog__v">Umsatz<span class="m-recog__warn"><span data-icon="triangle-alert" data-size="14"></span><span>Ausgaben in dieser Datei wirken positiv – prüfen Sie die Beispielzeilen</span></span></span></li>
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Beschreibung</b><span class="m-recog__v">Verwendungszweck</span></li>
+          <li class="m-recog__row m-recog__row--no"><span class="m-recog__ic" data-icon="minus" data-size="16"></span><b class="m-recog__f">Gegenpartei</b><span class="m-recog__v">nicht gefunden · man sieht nicht, wer gezahlt hat oder bezahlt wurde</span></li>
+          <li class="m-recog__row m-recog__row--no"><span class="m-recog__ic" data-icon="minus" data-size="16"></span><b class="m-recog__f">Währung</b><span class="m-recog__v">nicht verwendet · die Währung kommt vom Konto</span></li>
+        </ul>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Korrigieren…</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Sieht richtig aus</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- "Korrigieren…": the fields, as rows with a chevron. -->
+<template id="import-fields-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Was soll ich korrigieren?">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Was soll ich korrigieren?</div><div class="m-sheet__s">Tippen Sie auf das Feld, das ich falsch gelesen habe.</div></div>
+      <div class="m-sheet__body">
+        <div class="m-rows" data-rows="importFields"></div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost m-btn--block" type="button"><span>Zurück</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- One field's columns (frame 07): radio options with two sample values each, a pair of columns, and one re-read row. -->
+<template id="import-correct-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Was ist der Betrag?">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Was ist der Betrag?</div><div class="m-sheet__s">Wählen Sie die Spalte mit dem Betrag der Zahlung. Ausgaben sollten negativ sein.</div></div>
+      <div class="m-sheet__body">
+        <div role="radiogroup" aria-label="Was ist der Betrag?">
+          <button class="m-colopt" type="button" role="radio" aria-checked="true"><span class="m-colopt__radio" data-icon="check" data-size="12"></span><span><span class="m-colopt__t">Částka</span><span class="m-colopt__s">−1 249,00 · 61 200,00</span></span></button>
+          <button class="m-colopt" type="button" role="radio" aria-checked="false"><span class="m-colopt__radio"></span><span><span class="m-colopt__t">Zůstatek po pohybu</span><span class="m-colopt__s">86 420,00 · 87 669,00</span></span></button>
+          <button class="m-colopt" type="button" role="radio" aria-checked="false"><span class="m-colopt__radio"></span><span><span class="m-colopt__t">Odchozí + Příchozí<span class="m-colopt__cap">(Spaltenpaar)</span></span><span class="m-colopt__s">1 249,00 / — · — / 61 200,00</span></span></button>
+          <button class="m-colopt" type="button" role="radio" aria-checked="false"><span class="m-colopt__radio"></span><span><span class="m-colopt__t">Poplatek a provize poskytovatele platebních služeb</span><span class="m-colopt__s">0,00 · 0,00</span></span></button>
+        </div>
+        <p class="m-t-caption" style="margin: 6px 2px 10px">Beispiel nach Ihrer Wahl:</p>
+        <div class="m-rows" data-rows="importSampleOne" style="margin-bottom: 4px"></div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Zurück</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Übernehmen</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- A date whose day and month cannot be told: the two readings of the column, one date spelled out for each. -->
+<template id="import-order-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Wie sind die Daten geschrieben?">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Wie sind die Daten geschrieben?</div><div class="m-sheet__s">Jedes Datum in der Datei lässt sich auf beide Arten lesen. Prüfen Sie es an einer Zahlung, die Sie kennen.</div></div>
+      <div class="m-sheet__body">
+        <div role="radiogroup" aria-label="Was ist das Datum?">
+          <button class="m-colopt" type="button" role="radio" aria-checked="true"><span class="m-colopt__radio" data-icon="check" data-size="12"></span><span><span class="m-colopt__t">Tag.Monat.Jahr</span><span class="m-colopt__s">Datum zaúčtování · 3. April 2026</span></span></button>
+          <button class="m-colopt" type="button" role="radio" aria-checked="false"><span class="m-colopt__radio"></span><span><span class="m-colopt__t">Monat/Tag/Jahr</span><span class="m-colopt__s">Datum zaúčtování · 4. März 2026</span></span></button>
+          <button class="m-colopt" type="button" role="radio" aria-checked="false"><span class="m-colopt__radio"></span><span><span class="m-colopt__t">Datum valuty</span><span class="m-colopt__s">03.04.2026 · 05.04.2026</span></span></button>
+          <button class="m-colopt" type="button" role="radio" aria-checked="false"><span class="m-colopt__radio"></span><span><span class="m-colopt__t">ID operace</span><span class="m-colopt__s">9001 · 9002</span></span></button>
+        </div>
+        <p class="m-t-caption" style="margin: 6px 2px 10px">Beispiel nach Ihrer Wahl:</p>
+        <div class="m-rows" data-rows="importSampleDate" style="margin-bottom: 4px"></div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Übernehmen</span></button></div>
+    </div>
+  </div>
+</template>
+
 <!-- The category choice of a preview row, stacked over the import sheet, at the three widths. -->
 <template id="import-choice-frame">
   <div class="m-screen" lang="de">
@@ -1134,6 +1295,10 @@
     "shopping-cart": '<path d="m2.05 2.05 1.099-.028a1 1 0 0 1 1.008.815l2.69 14.347A1 1 0 0 0 7.83 18H18"/><path d="M4.563 5h16.435a1 1 0 0 1 .981 1.204l-1.026 6.226A2 2 0 0 1 18.962 14H6.25"/><circle cx="18" cy="20" r="2"/><circle cx="8" cy="20" r="2"/>',
     "triangle-alert": '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
     "list": '<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/>',
+    "align-left": '<path d="M15 12H3"/><path d="M17 18H3"/><path d="M21 6H3"/>',
+    "user": '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    "coins": '<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/>',
+    "hash": '<line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/>',
     "scale": '<path d="M12 3v18"/><path d="m19 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1"/><path d="m5 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M7 21h10"/>',
     "utensils": '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>'
   });
@@ -1289,6 +1454,34 @@
       row("RO", "Rohlik.cz", "13. 10. · " + badge("Duplikat"), "− 2&nbsp;311 Kč", "", { cls: "m-row--muted" }),
       row("UN", "Unbekannte Zahlung", "9. 10. · " + '<span class="m-row__badge m-row__badge--loss">Fehler</span>' + " · Betrag nicht lesbar", "—")
     ],
+    /* The recognition's three rows: the date, the counterparty, "date · what it was for" and the signed amount in its own
+       currency (the credit's chip in gain); the inverted file shows its expenses as credits, which is what the warning says. */
+    importSample: [
+      row("LP", "Lidl Praha 4", "10. 10. 2026 · Kartenzahlung", "− 1&nbsp;249 Kč"),
+      row("UA", "Umbrella a.s.", "9. 10. 2026 · Gehalt 09/2026", "+ 61&nbsp;200 Kč", "", { chip: "m-row__chip--gain", gain: true }),
+      row("BO", "Bolt Operations", "8. 10. 2026 · Kartenzahlung", "− 189 Kč")
+    ],
+    importSampleInverted: [
+      row("LP", "Lidl Praha 4", "10. 10. 2026 · Kartenzahlung", "+ 1&nbsp;249 Kč", "", { chip: "m-row__chip--gain", gain: true }),
+      row("UA", "Umbrella a.s.", "9. 10. 2026 · Gehalt 09/2026", "− 61&nbsp;200 Kč"),
+      row("BO", "Bolt Operations", "8. 10. 2026 · Kartenzahlung", "+ 189 Kč", "", { chip: "m-row__chip--gain", gain: true })
+    ],
+    importSampleOne: [
+      row("LP", "Lidl Praha 4", "10. 10. 2026 · Kartenzahlung", "− 1&nbsp;249 Kč")
+    ],
+    importSampleDate: [
+      row("LP", "Lidl Praha 4", "3. 4. 2026 · Kartenzahlung", "− 1&nbsp;249 Kč")
+    ],
+    /* The fields of "Korrigieren…": a rounded-square chip with the field's glyph, what it reads now, a chevron. */
+    importFields: [
+      row("", "Datum", "Datum zaúčtování", "", "", { icon: "calendar", chip: "m-row__chip--sq" }),
+      row("", "Betrag", "Částka", "", "", { icon: "banknote", chip: "m-row__chip--sq" }),
+      row("", "Beschreibung", "Zpráva pro příjemce · Poznámka", "", "", { icon: "align-left", chip: "m-row__chip--sq" }),
+      row("", "Gegenpartei", "Název protiúčtu · Číslo protiúčtu", "", "", { icon: "user", chip: "m-row__chip--sq" }),
+      row("", "Währung", "Měna", "", "", { icon: "coins", chip: "m-row__chip--sq" }),
+      row("", "Kontostand", "Zůstatek po pohybu", "", "", { icon: "scale", chip: "m-row__chip--sq" }),
+      row("", "Transaktions-ID", "nicht gefunden", "", "", { icon: "hash", chip: "m-row__chip--sq" })
+    ],
     /* The done step's next steps: a row with a chevron each; the carried-out one is ticked and at half strength. */
     importNext: [
       row("", "Importierte Transaktionen anzeigen", "48 Zeilen mit dem Stapel „kontoauszug-oktober-2026-vollstaendig.xml“", "", "", { icon: "list" }),
@@ -1369,6 +1562,11 @@
   frames("importGuide", "import-pick-frame", "Import: Anleitung");
   frames("importGuides", "import-guides-frame", "Import: Banken");
   frames("importGuideOpen", "import-guide-open-frame", "Import: Anleitung offen");
+  frames("importRecognize", "import-recognize-frame", "Import: Erkennung");
+  frames("importRecognizeWarn", "import-recognize-warn-frame", "Import: Erkennung (Vorzeichen)");
+  frames("importFields", "import-fields-frame", "Import: Felder");
+  frames("importCorrect", "import-correct-frame", "Import: Korrektur");
+  frames("importOrder", "import-order-frame", "Import: Datumsreihenfolge");
   frames("queue", "queue-frame", "Zařazení plateb");
 
   /* Budget rows: category chip as on the Cashflow rows, the limit as the value, validity and the changes to

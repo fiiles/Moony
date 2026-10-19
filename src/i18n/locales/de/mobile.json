@@ -327,6 +327,54 @@
       "openFailed": "Der Browser konnte nicht geöffnet werden.",
       "banks": "Anleitungen der Banken"
     },
+    "recognize": {
+      "title": "So verstehe ich die Datei",
+      "caption": "Drei Zahlungen aus der Datei, so wie ich sie lese:",
+      "captionFew": "Zahlungen aus der Datei, so wie ich sie lese:",
+      "unknownFormat": "Format noch unbekannt",
+      "tab": "Tabulator",
+      "previewFailed": "Die Beispielzeilen konnten gerade nicht geladen werden. Die erkannten Spalten unten gelten trotzdem.",
+      "looksRight": "Sieht richtig aus",
+      "fix": "Korrigieren…",
+      "use": "Übernehmen",
+      "field": {
+        "transactionId": "Transaktions-ID"
+      },
+      "notFound": "nicht gefunden",
+      "unused": "nicht verwendet",
+      "unusedWhy": {
+        "description": "Zahlungen lassen sich schwerer kategorisieren",
+        "counterparty": "man sieht nicht, wer gezahlt hat oder bezahlt wurde",
+        "currency": "die Währung kommt vom Konto",
+        "balance": "ich schlage keinen Kontostand aus der Datei vor",
+        "transactionId": "Duplikate erkenne ich an Datum und Betrag"
+      },
+      "signVerified": "Vorzeichen anhand des Saldos geprüft",
+      "signInverted": "Ausgaben in dieser Datei wirken positiv – prüfen Sie die Beispielzeilen",
+      "fixTitle": "Was soll ich korrigieren?",
+      "fixLead": "Tippen Sie auf das Feld, das ich falsch gelesen habe.",
+      "ask": {
+        "date": "Was ist das Datum?",
+        "amount": "Was ist der Betrag?",
+        "description": "Was ist die Beschreibung?",
+        "counterparty": "Was ist die Gegenpartei?",
+        "currency": "Was ist die Währung?",
+        "balance": "Was ist der Kontostand?",
+        "transactionId": "Was ist die Transaktions-ID?"
+      },
+      "lead": {
+        "date": "Wählen Sie die Spalte mit dem Datum jeder Zahlung.",
+        "amount": "Wählen Sie die Spalte mit dem Betrag der Zahlung. Ausgaben sollten negativ sein.",
+        "description": "Wählen Sie die Spalte mit dem Zahlungstext, etwa Verwendungszweck oder Notiz. Er hilft beim Kategorisieren der Zahlungen.",
+        "counterparty": "Wählen Sie die Spalte mit dem Namen dessen, der gezahlt hat oder bezahlt wurde.",
+        "currency": "Wählen Sie die Spalte mit dem Währungscode, zum Beispiel CZK oder EUR.",
+        "balance": "Wählen Sie die Spalte mit dem Kontostand nach jeder Zahlung.",
+        "transactionId": "Wählen Sie die Spalte mit der eindeutigen Nummer, die die Bank jeder Zahlung gibt."
+      },
+      "sample": "Beispiel nach Ihrer Wahl:",
+      "sampleHint": "Wählen Sie eine Spalte, dann zeige ich, wie ich die Zahlung lesen würde.",
+      "pair": "Spaltenpaar"
+    },
     "preview": {
       "hint": "Tippen Sie auf eine Zahlung, um ihre Kategorie zu wählen.",
       "more_one": "und {{count}} weitere",

@@ -327,6 +327,54 @@
       "openFailed": "Nettleseren kunne ikke åpnes.",
       "banks": "Veiledninger for banker"
     },
+    "recognize": {
+      "title": "Slik forstår jeg filen",
+      "caption": "Tre transaksjoner fra filen, slik jeg leser dem:",
+      "captionFew": "Transaksjoner fra filen, slik jeg leser dem:",
+      "unknownFormat": "formatet er ikke kjent ennå",
+      "tab": "tabulator",
+      "previewFailed": "Eksempelradene kunne ikke lastes akkurat nå. Kolonnene under gjelder likevel.",
+      "looksRight": "Ser riktig ut",
+      "fix": "Rett opp…",
+      "use": "Bruk",
+      "field": {
+        "transactionId": "Transaksjons-ID"
+      },
+      "notFound": "ikke funnet",
+      "unused": "ikke brukt",
+      "unusedWhy": {
+        "description": "betalinger er vanskeligere å kategorisere",
+        "counterparty": "du ser ikke hvem som betalte eller fikk betalt",
+        "currency": "valutaen hentes fra kontoen",
+        "balance": "jeg foreslår ingen kontosaldo ut fra filen",
+        "transactionId": "jeg kjenner igjen duplikater på dato og beløp"
+      },
+      "signVerified": "fortegnet er kontrollert mot saldoen",
+      "signInverted": "utgiftene i filen ser positive ut – sjekk eksempelet",
+      "fixTitle": "Hva skal jeg rette opp?",
+      "fixLead": "Trykk på feltet jeg leste feil.",
+      "ask": {
+        "date": "Hva er datoen?",
+        "amount": "Hva er beløpet?",
+        "description": "Hva er beskrivelsen?",
+        "counterparty": "Hva er motparten?",
+        "currency": "Hva er valutaen?",
+        "balance": "Hva er saldoen?",
+        "transactionId": "Hva er transaksjons-ID-en?"
+      },
+      "lead": {
+        "date": "Velg kolonnen med datoen for hver transaksjon.",
+        "amount": "Velg kolonnen med transaksjonens beløp. Utgifter skal være negative.",
+        "description": "Velg kolonnen med betalingens tekst, for eksempel melding eller notat. Den hjelper med å kategorisere betalinger.",
+        "counterparty": "Velg kolonnen med navnet på den som betalte eller fikk betalt.",
+        "currency": "Velg kolonnen med valutakoden, for eksempel CZK eller EUR.",
+        "balance": "Velg kolonnen med saldoen etter hver transaksjon.",
+        "transactionId": "Velg kolonnen med det unike nummeret banken gir hver transaksjon."
+      },
+      "sample": "Eksempel etter valget ditt:",
+      "sampleHint": "Velg en kolonne, så viser jeg hvordan jeg ville lest transaksjonen.",
+      "pair": "kolonnepar"
+    },
     "preview": {
       "hint": "Trykk på en betaling for å velge kategori.",
       "more_one": "og {{count}} til",

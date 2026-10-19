@@ -33,13 +33,15 @@ import { translateApiError } from '@/lib/translate-api-error';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { dialogPathToFsPath } from '@/mobile/lib/export-file';
 import { guideForAccount, guidesList } from '@/mobile/lib/export-guide';
+import { useRecognition } from '@/mobile/hooks/use-recognition';
 import {
   PREVIEW_ROWS,
   chooseAccount,
-  csvReadable,
+  csvRecognizable,
   fileKind,
   isOpenAccount,
   pickedFileStillWanted,
+  presetReadable,
   statementNeedsStage,
   type ImportRequest,
   type ImportStage,
@@ -66,12 +68,15 @@ function discardPath(copy: string) {
  * The import sheet's state machine (spec §8.6), one `ImportStage` at a time:
  *
  *   pick → reading → [statement] → [account] → preview → importing → done
+ *                  ↘ [recognize ⇄ correct] (a CSV no preset describes) → [account] → preview
  *                  ↘ unreadable (a PDF, a photo, a file that is no statement, a read error)
  *
  * It reuses the desktop's parsers, previews and write commands as they are; this hook only walks
  * the file through them and keeps what the stages show. `reading` is where a file is told apart:
  * `inspectStatementFile` first (CAMT.053, MT940, OFX, QIF), `parseCsvFile` when that says null;
- * the account is asked only when it cannot be told (`chooseAccount`). A read is dropped when the
+ * a CSV a bank preset describes goes on, any other is recognized from its content
+ * (`useRecognition`: "Takhle tomu rozumím" and the per-field correction) before it does. The
+ * account is asked only when it cannot be told (`chooseAccount`). A read is dropped when the
  * person started another or closed the sheet (`reads`). The copy a share or the picker made is
  * discarded when the sheet closes, is replaced by another file, or is unmounted (iOS only).
  */
@@ -106,6 +111,18 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
   const reads = useRef(0);
   /** The file the sheet works on, while it is a copy to discard. */
   const owned = useRef<string | null>(null);
+  /** The account the entry point named (or a new one made for the file), for the account choice after a recognition. */
+  const preselectedRef = useRef<string | undefined>(undefined);
+
+  const giveUp = (why: Unreadable) => {
+    setUnreadable(why);
+    setStage('unreadable');
+  };
+  const recognition = useRecognition({
+    active: open && (stage === 'recognize' || stage === 'correct'),
+    goTo: setStage,
+    onUnreadable: () => giveUp({ reason: 'notStatement' }),
+  });
 
   const kind = statement ? 'statement' : csv ? 'csv' : null;
   const summary = statement?.statements.find((s) => s.index === statementIndex);
@@ -155,11 +172,6 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
       queryFn: () => bankAccountsApi.getAll(),
       staleTime: 10_000,
     });
-
-  const giveUp = (why: Unreadable) => {
-    setUnreadable(why);
-    setStage('unreadable');
-  };
 
   /**
    * The statement `inspection` for `index` goes to the account the file says it belongs to (or the
@@ -222,6 +234,7 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
     setAccountConfirmed(false);
     setOverrides([]);
     setResult(null);
+    recognition.reset();
     setStage('reading');
 
     const named = fileKind(fileNameFromPath(filePath));
@@ -230,6 +243,7 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
       const all = await fetchAccounts();
       if (mine !== reads.current) return;
       const preselected = forced ?? request.accountId;
+      preselectedRef.current = preselected;
       // The account only anchors the statement's account check; without any, the person adds one
       const anchor = preselected ?? all.find((account) => isOpenAccount(account, todayDay))?.id;
       if (!anchor) {
@@ -269,8 +283,20 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
         country
       );
       if (mine !== reads.current) return;
-      if (!csvReadable(parsed)) return giveUp({ reason: 'notStatement' });
+      if (!csvRecognizable(parsed)) return giveUp({ reason: 'notStatement' });
       setCsv(parsed);
+      if (!presetReadable(parsed)) {
+        // Rung 3: no preset describes the file, its content does. Nothing is written until the person accepts it.
+        const inferred = await bankAccountsApi.inferCsvColumns(filePath, {
+          delimiter: parsed.delimiter,
+          headerRow: parsed.headerRow,
+          encoding: parsed.encoding,
+          country,
+        });
+        if (mine !== reads.current) return;
+        setStage(recognition.begin({ csv: parsed, path: filePath, inferred, anchorId: anchor }));
+        return;
+      }
       const known = await queryClient.fetchQuery({
         queryKey: PRESETS_KEY,
         queryFn: () => bankAccountsApi.getCsvPresets(),
@@ -369,6 +395,30 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
     }
   };
 
+  /** "Vypadá to správně": the recognized columns are the import's mapping; on to the account. */
+  const continueFromRecognition = async () => {
+    if (!csv || recognition.mapping === null) return;
+    const mine = ++reads.current;
+    try {
+      const all = await fetchAccounts();
+      if (mine !== reads.current) return;
+      const choice = chooseAccount({
+        preselected: preselectedRef.current,
+        accounts: all,
+        todayDay,
+      });
+      if (choice.accountId === null) {
+        setStage('account');
+        return;
+      }
+      setTargetId(choice.accountId);
+      setStage('preview');
+    } catch (error) {
+      if (mine !== reads.current) return;
+      giveUp({ reason: 'error', detail: translateApiError(error as Error, tc) });
+    }
+  };
+
   /**
    * An account was chosen (or just created, or is the one the statement belongs to): it becomes
    * the target, a statement is read again for it, and the preview opens.
@@ -432,9 +482,14 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
         : null,
     [statement, statementIndex, orderValue, overrides]
   );
+  // A recognized CSV is imported with the mapping the person accepted, any other with its preset's
+  const recognizedMapping = recognition.mapping;
   const csvConfig = useMemo(
-    () => (csv ? buildImportConfig(mappingFromInspection(csv), csv, 0, [], overrides) : null),
-    [csv, overrides]
+    () =>
+      csv
+        ? buildImportConfig(recognizedMapping ?? mappingFromInspection(csv), csv, 0, [], overrides)
+        : null,
+    [csv, recognizedMapping, overrides]
   );
   // New objects on every render would restart the previews' debounce each time
   const statementPreviewOptions = useMemo(
@@ -536,8 +591,10 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
     pickDateOrder: setPickedDateOrder,
     csv,
     preset,
+    recognition,
     guides,
     accountGuide,
+    requestedAccount,
     openAccounts,
     accounts,
     target,
@@ -558,6 +615,7 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
     importedId,
     chooseFile,
     continueFromStatement,
+    continueFromRecognition,
     selectAccount,
     runImport,
     finish,

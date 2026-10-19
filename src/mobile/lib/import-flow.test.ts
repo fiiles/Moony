@@ -3,12 +3,13 @@ import type { CsvImportResult, CsvPreviewResult } from '@shared/schema';
 import { maskMoney } from './hide-amounts';
 import {
   chooseAccount,
-  csvReadable,
+  csvRecognizable,
   exactMoneyText,
   fileKind,
   importFacts,
   isOpenAccount,
   pickedFileStillWanted,
+  presetReadable,
   previewAmount,
   statementNeedsStage,
 } from './import-flow';
@@ -296,7 +297,7 @@ describe('statementNeedsStage', () => {
   });
 });
 
-describe('csvReadable', () => {
+describe('CSV files', () => {
   const inspection = (patch: Partial<CsvPreviewResult>): CsvPreviewResult => ({
     headers: [],
     sampleRows: [],
@@ -314,48 +315,85 @@ describe('csvReadable', () => {
     ...patch,
   });
 
-  it('is readable with a date and an amount column, a preset or not', () => {
-    expect(
-      csvReadable(
-        inspection({
-          detectedPresetId: 'fio',
-          suggestedMappings: { date: ['Datum', 1], amount: ['Objem', 1] },
-        })
-      )
-    ).toBe(true);
-    expect(
-      csvReadable(
-        inspection({ suggestedMappings: { date: ['Date', 0.95], amount: ['Amount', 0.95] } })
-      )
-    ).toBe(true);
+  describe('presetReadable', () => {
+    it('goes straight to the preview with a detected preset that names a date and an amount', () => {
+      expect(
+        presetReadable(
+          inspection({
+            detectedPresetId: 'fio',
+            suggestedMappings: { date: ['Datum', 1], amount: ['Objem', 1] },
+          })
+        )
+      ).toBe(true);
+    });
+
+    it('accepts a debit and a credit column instead of one amount', () => {
+      expect(
+        presetReadable(
+          inspection({
+            detectedPresetId: 'uk-debit-credit',
+            suggestedMappings: { date: ['Date', 1], debit: ['Out', 1], credit: ['In', 1] },
+          })
+        )
+      ).toBe(true);
+    });
+
+    it('is not a preset file when no preset was detected, even if the headers name both columns', () => {
+      // Rung 2 is a preset match only: any other CSV is recognized from its content
+      expect(
+        presetReadable(
+          inspection({ suggestedMappings: { date: ['Date', 0.95], amount: ['Amount', 0.95] } })
+        )
+      ).toBe(false);
+    });
+
+    it('is not a preset file when the preset left the date or the amount out', () => {
+      expect(
+        presetReadable(
+          inspection({ detectedPresetId: 'fio', suggestedMappings: { amount: ['Objem', 1] } })
+        )
+      ).toBe(false);
+      expect(
+        presetReadable(
+          inspection({ detectedPresetId: 'fio', suggestedMappings: { date: ['Datum', 1] } })
+        )
+      ).toBe(false);
+    });
+
+    it('is not a preset file while the day and month of its dates are a guess', () => {
+      expect(
+        presetReadable(
+          inspection({
+            dateFormatAmbiguous: true,
+            detectedPresetId: 'fio',
+            suggestedMappings: { date: ['Datum', 1], amount: ['Objem', 1] },
+          })
+        )
+      ).toBe(false);
+    });
   });
 
-  it('is readable with a debit and a credit column instead of one amount', () => {
-    expect(
-      csvReadable(
-        inspection({
-          suggestedMappings: { date: ['Date', 1], debit: ['Out', 1], credit: ['In', 1] },
-        })
-      )
-    ).toBe(true);
-  });
+  describe('csvRecognizable', () => {
+    it('can be recognized with two named columns and a row to look at', () => {
+      expect(csvRecognizable(inspection({ headers: ['A', 'B'], sampleRows: [['1', '2']] }))).toBe(
+        true
+      );
+    });
 
-  it('is not readable without a date or without an amount', () => {
-    expect(csvReadable(inspection({ suggestedMappings: { amount: ['Amount', 1] } }))).toBe(false);
-    expect(csvReadable(inspection({ suggestedMappings: { date: ['Date', 1] } }))).toBe(false);
-    expect(csvReadable(inspection({}))).toBe(false);
-  });
+    it('is no statement without rows, with one column or with no header', () => {
+      expect(csvRecognizable(inspection({ headers: ['A', 'B'], sampleRows: [] }))).toBe(false);
+      expect(csvRecognizable(inspection({ headers: ['A'], sampleRows: [['1']] }))).toBe(false);
+      expect(csvRecognizable(inspection({ headers: ['', ' ', 'A'], sampleRows: [['1']] }))).toBe(
+        false
+      );
+      expect(csvRecognizable(inspection({}))).toBe(false);
+    });
 
-  it('is not readable while the day and month of its dates are a guess', () => {
-    expect(
-      csvReadable(
-        inspection({
-          dateFormatAmbiguous: true,
-          detectedPresetId: 'fio',
-          suggestedMappings: { date: ['Datum', 1], amount: ['Objem', 1] },
-        })
-      )
-    ).toBe(false);
+    it('counts a header once however often the file repeats it', () => {
+      expect(csvRecognizable(inspection({ headers: ['A', 'A'], sampleRows: [['1', '2']] }))).toBe(
+        false
+      );
+    });
   });
 });
 

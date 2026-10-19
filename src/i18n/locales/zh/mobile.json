@@ -310,6 +310,54 @@
       "openFailed": "无法打开浏览器。",
       "banks": "各银行指南"
     },
+    "recognize": {
+      "title": "我是这样理解的",
+      "caption": "文件中的三笔交易，按我的读法显示如下：",
+      "captionFew": "文件中的交易，按我的读法显示如下：",
+      "unknownFormat": "格式暂未识别",
+      "tab": "制表符",
+      "previewFailed": "暂时无法加载示例行。下面识别出的列仍然有效。",
+      "looksRight": "没错",
+      "fix": "修改…",
+      "use": "应用",
+      "field": {
+        "transactionId": "交易 ID"
+      },
+      "notFound": "未找到",
+      "unused": "不使用",
+      "unusedWhy": {
+        "description": "付款更难分类",
+        "counterparty": "看不到是谁付款或收款",
+        "currency": "货币取自账户",
+        "balance": "不会根据文件建议账户余额",
+        "transactionId": "按日期和金额识别重复项"
+      },
+      "signVerified": "已用余额核对符号",
+      "signInverted": "此文件中的支出看起来是正数，请检查示例",
+      "fixTitle": "要修改什么？",
+      "fixLead": "请点按我读错的字段。",
+      "ask": {
+        "date": "日期是哪一列？",
+        "amount": "金额是哪一列？",
+        "description": "说明是哪一列？",
+        "counterparty": "交易对方是哪一列？",
+        "currency": "货币是哪一列？",
+        "balance": "余额是哪一列？",
+        "transactionId": "交易 ID 是哪一列？"
+      },
+      "lead": {
+        "date": "请选择包含每笔交易日期的列。",
+        "amount": "请选择包含交易金额的列。支出应为负数。",
+        "description": "请选择包含付款文字的列，例如附言或备注。它有助于给付款分类。",
+        "counterparty": "请选择包含付款方或收款方名称的列。",
+        "currency": "请选择包含货币代码的列，例如 CZK 或 EUR。",
+        "balance": "请选择包含每笔交易后余额的列。",
+        "transactionId": "请选择包含银行为每笔交易分配的唯一编号的列。"
+      },
+      "sample": "选择后的示例：",
+      "sampleHint": "选择一列，我会展示我将如何读取这笔交易。",
+      "pair": "两列一组"
+    },
     "preview": {
       "hint": "点按一笔付款即可选择其类别。",
       "more_other": "还有 {{count}} 笔"

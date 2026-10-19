@@ -344,6 +344,54 @@
       "openFailed": "Non è stato possibile aprire il browser.",
       "banks": "Guide delle banche"
     },
+    "recognize": {
+      "title": "Così ho capito il file",
+      "caption": "Tre movimenti dal file, come li leggerò:",
+      "captionFew": "Movimenti dal file, come li leggerò:",
+      "unknownFormat": "formato non ancora noto",
+      "tab": "tabulazione",
+      "previewFailed": "Non è stato possibile caricare ora le righe di esempio. Le colonne riconosciute qui sotto valgono comunque.",
+      "looksRight": "Sembra giusto",
+      "fix": "Correggi…",
+      "use": "Applica",
+      "field": {
+        "transactionId": "ID del movimento"
+      },
+      "notFound": "non trovato",
+      "unused": "non usato",
+      "unusedWhy": {
+        "description": "i pagamenti sono più difficili da categorizzare",
+        "counterparty": "non vedrai chi ha pagato o chi è stato pagato",
+        "currency": "la valuta viene dal conto",
+        "balance": "non proporrò il saldo del conto in base al file",
+        "transactionId": "riconoscerò i duplicati da data e importo"
+      },
+      "signVerified": "segno verificato con il saldo",
+      "signInverted": "le spese in questo file sembrano positive: controlla l'esempio",
+      "fixTitle": "Cosa devo correggere?",
+      "fixLead": "Tocca il campo che ho letto male.",
+      "ask": {
+        "date": "Cos'è la data?",
+        "amount": "Cos'è l'importo?",
+        "description": "Cos'è la descrizione?",
+        "counterparty": "Cos'è la controparte?",
+        "currency": "Cos'è la valuta?",
+        "balance": "Cos'è il saldo?",
+        "transactionId": "Cos'è l'ID del movimento?"
+      },
+      "lead": {
+        "date": "Scegli la colonna con la data di ogni movimento.",
+        "amount": "Scegli la colonna con l'importo del movimento. Le spese devono essere negative.",
+        "description": "Scegli la colonna con il testo del pagamento, come un messaggio o una nota. Aiuta a categorizzare i pagamenti.",
+        "counterparty": "Scegli la colonna con il nome di chi ha pagato o di chi è stato pagato.",
+        "currency": "Scegli la colonna con il codice della valuta, per esempio CZK o EUR.",
+        "balance": "Scegli la colonna con il saldo dopo ogni movimento.",
+        "transactionId": "Scegli la colonna con il numero univoco che la banca assegna a ogni movimento."
+      },
+      "sample": "Esempio dopo la tua scelta:",
+      "sampleHint": "Scegli una colonna e ti mostro come leggerei il movimento.",
+      "pair": "coppia di colonne"
+    },
     "preview": {
       "hint": "Tocca un pagamento per scegliere la sua categoria.",
       "more_one": "e {{count}} altro",

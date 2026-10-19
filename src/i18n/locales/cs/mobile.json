@@ -344,6 +344,54 @@
       "openFailed": "Prohlížeč se nepodařilo otevřít.",
       "banks": "Návody bank"
     },
+    "recognize": {
+      "title": "Takhle tomu rozumím",
+      "caption": "Tři pohyby ze souboru tak, jak je načtu:",
+      "captionFew": "Pohyby ze souboru tak, jak je načtu:",
+      "unknownFormat": "formát zatím neznám",
+      "tab": "tabulátor",
+      "previewFailed": "Ukázku pohybů se teď nepodařilo načíst. Rozpoznané sloupce níže přesto platí.",
+      "looksRight": "Vypadá to správně",
+      "fix": "Opravit…",
+      "use": "Použít",
+      "field": {
+        "transactionId": "ID pohybu"
+      },
+      "notFound": "nenalezeno",
+      "unused": "nepoužito",
+      "unusedWhy": {
+        "description": "platby se hůř zařazují do kategorií",
+        "counterparty": "nebude vidět, kdo platil nebo komu se platilo",
+        "currency": "měna se vezme z účtu",
+        "balance": "zůstatek účtu podle souboru nenavrhnu",
+        "transactionId": "duplicity poznám podle data a částky"
+      },
+      "signVerified": "znaménko ověřeno podle zůstatku",
+      "signInverted": "výdaje v souboru vypadají kladně — zkontrolujte ukázku",
+      "fixTitle": "Co opravit?",
+      "fixLead": "Klepněte na pole, které jsem přečetl špatně.",
+      "ask": {
+        "date": "Co je datum?",
+        "amount": "Co je částka?",
+        "description": "Co je popis?",
+        "counterparty": "Co je protistrana?",
+        "currency": "Co je měna?",
+        "balance": "Co je zůstatek?",
+        "transactionId": "Co je ID pohybu?"
+      },
+      "lead": {
+        "date": "Vyberte sloupec s datem pohybu.",
+        "amount": "Vyberte sloupec, který nese částku pohybu. Výdaje mají být záporné.",
+        "description": "Vyberte sloupec s textem platby, třeba zprávou nebo poznámkou. Pomáhá zařazovat platby do kategorií.",
+        "counterparty": "Vyberte sloupec se jménem toho, kdo platil nebo komu se platilo.",
+        "currency": "Vyberte sloupec s kódem měny, například CZK nebo EUR.",
+        "balance": "Vyberte sloupec se zůstatkem po každém pohybu.",
+        "transactionId": "Vyberte sloupec s jedinečným číslem, které banka dává každému pohybu."
+      },
+      "sample": "Ukázka po výběru:",
+      "sampleHint": "Vyberte sloupec a ukážu, jak bych pohyb přečetl.",
+      "pair": "dvojice sloupců"
+    },
     "preview": {
       "hint": "Klepnutím na platbu zvolíte její kategorii.",
       "more_one": "a {{count}} další",

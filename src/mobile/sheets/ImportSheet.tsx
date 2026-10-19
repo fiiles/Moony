@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/button';
 import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
 import { useCategories } from '@/hooks/use-categories';
 import { useFormat } from '@/lib/use-format';
+import { CorrectStep } from '@/mobile/components/import/CorrectStep';
 import { DoneStep } from '@/mobile/components/import/DoneStep';
 import { FOOTER_GHOST, FOOTER_GHOST_WIDE, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
 import { PreviewBody } from '@/mobile/components/import/PreviewBody';
+import { RecognizeStep } from '@/mobile/components/import/RecognizeStep';
 import {
   AccountBody,
   PickBody,
@@ -34,7 +36,8 @@ interface ImportSheetProps {
 /**
  * The import sheet (spec §8.6, README §13 "Import sheet"): one tall sheet whose stages swap its
  * title, sentence, body and footer — pick a file, read it, which statement and how its dates
- * read, which account, the preview with the category each payment would get, the write, and the
+ * read, how an unknown CSV is understood ("Takhle tomu rozumím") and the per-field correction of
+ * it, which account, the preview with the category each payment would get, the write, and the
  * done step. The flow (`useImportFlow`) walks the file through the desktop's parsers and commands;
  * this component only draws the stage it is in. The footer has one primary at most. A file the
  * sheet cannot read says why and offers another. The category choice and the new-account form
@@ -62,7 +65,8 @@ export function ImportSheet({ request, open, onOpenChange }: ImportSheetProps) {
     onOpenChange(false);
   };
 
-  const target = flow.target;
+  // Before the account is chosen the recognition only knows the one the entry point named
+  const target = flow.target ?? (flow.recognition.csv ? flow.requestedAccount : undefined);
   const accountLine = target
     ? [
         t('import.intoAccount', { account: target.name }),
@@ -76,9 +80,24 @@ export function ImportSheet({ request, open, onOpenChange }: ImportSheetProps) {
       : undefined;
   const result = flow.result;
 
+  const recognition = flow.recognition;
+  const view = recognition.view;
   let title = t('import.title');
   let description = accountLine;
   switch (stage) {
+    case 'correct':
+      if (view.kind === 'field') {
+        // A date whose day and month cannot be told is the same question the QIF import asks
+        const order = view.field === 'date' && recognition.options.some((o) => o.kind === 'order');
+        title = order ? t('import.statement.dateTitle') : t(`import.recognize.ask.${view.field}`);
+        description = order
+          ? tb('statementImport.dateOrder.hint')
+          : t(`import.recognize.lead.${view.field}`);
+      } else {
+        title = t('import.recognize.fixTitle');
+        description = t('import.recognize.fixLead');
+      }
+      break;
     case 'account':
       title = t('import.account.sheetTitle');
       description = flow.openAccounts.length > 0 ? t('import.account.lead') : undefined;
@@ -182,6 +201,38 @@ export function ImportSheet({ request, open, onOpenChange }: ImportSheetProps) {
         </>
       );
       break;
+    case 'recognize':
+      footer = (
+        <>
+          <Button variant="ghost" className={FOOTER_GHOST} onClick={recognition.openFields}>
+            {t('import.recognize.fix')}
+          </Button>
+          {primary(t('import.recognize.looksRight'), () => void flow.continueFromRecognition())}
+        </>
+      );
+      break;
+    case 'correct':
+      footer =
+        view.kind === 'field' ? (
+          <>
+            {/* A question the recognition asked itself has nothing to go back to: the person can only leave */}
+            {view.start ? (
+              cancel(false)
+            ) : (
+              <Button variant="ghost" className={FOOTER_GHOST} onClick={recognition.back}>
+                {tc('buttons.back')}
+              </Button>
+            )}
+            {primary(t('import.recognize.use'), recognition.apply, {
+              disabled: !recognition.canApply,
+            })}
+          </>
+        ) : (
+          <Button variant="ghost" className={FOOTER_GHOST_WIDE} onClick={recognition.back}>
+            {tc('buttons.back')}
+          </Button>
+        );
+      break;
     default:
       footer = cancel(true);
   }
@@ -219,6 +270,10 @@ export function ImportSheet({ request, open, onOpenChange }: ImportSheetProps) {
             onNew={() => setAddOpen(true)}
           />
         )}
+        {stage === 'recognize' && (
+          <RecognizeStep fileName={flow.fileName} recognition={recognition} />
+        )}
+        {stage === 'correct' && <CorrectStep recognition={recognition} />}
         {stage === 'statement' && flow.statement && (
           <StatementBody
             fileName={flow.fileName}

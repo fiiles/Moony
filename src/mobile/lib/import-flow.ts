@@ -12,12 +12,14 @@ import type {
 import {
   isMappingComplete,
   mappingFromInspection,
+  uniqueHeaders,
 } from '@/components/bank-accounts/csv-import/import-config';
 import { daysBetween } from '@/utils/milestones';
 
 /**
- * The stages of the import sheet. `recognize` and `correct` belong to the unknown-CSV recognition
- * (the next tasks): a CSV without a usable mapping ends in `unreadable` until they exist.
+ * The stages of the import sheet. `recognize` ("Takhle tomu rozumím") and `correct` (the list of
+ * fields and the per-field correction) belong to the guided recognition of a CSV no preset
+ * describes (`recognition.ts`, `use-recognition.ts`).
  */
 export type ImportStage =
   | 'pick'
@@ -186,12 +188,25 @@ export function statementNeedsStage(inspection: {
 }
 
 /**
- * Whether a CSV can go to its preview without anyone telling the app what its columns are: a
- * date column and an amount (or debit and credit) were found, and the day and month of its dates
- * are not a guess. The app never guesses the date or the amount silently (spec §8.6).
+ * Whether a CSV goes straight to its preview (spec §8.6, rung 2): a bank preset matched its header
+ * signature and names a date and an amount (or a debit and a credit column). Any other CSV is
+ * recognized from its content first, even when its headers happen to name both columns.
  */
-export function csvReadable(inspection: CsvPreviewResult): boolean {
-  return !inspection.dateFormatAmbiguous && isMappingComplete(mappingFromInspection(inspection));
+export function presetReadable(inspection: CsvPreviewResult): boolean {
+  return (
+    inspection.detectedPresetId !== null &&
+    !inspection.dateFormatAmbiguous &&
+    isMappingComplete(mappingFromInspection(inspection))
+  );
+}
+
+/**
+ * Whether there is anything to recognize in a CSV: two named columns (a statement has at least a
+ * date and an amount) and a row to look at. An empty file, a file of one column and a bare header
+ * are no statement, and say so instead of opening a correction with nothing to pick from.
+ */
+export function csvRecognizable(inspection: CsvPreviewResult): boolean {
+  return uniqueHeaders(inspection.headers).length >= 2 && inspection.sampleRows.length > 0;
 }
 
 /**

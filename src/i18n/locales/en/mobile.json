@@ -327,6 +327,54 @@
       "openFailed": "The browser could not be opened.",
       "banks": "Bank guides"
     },
+    "recognize": {
+      "title": "Here is how I read it",
+      "caption": "Three movements from the file, as I will read them:",
+      "captionFew": "Movements from the file, as I will read them:",
+      "unknownFormat": "format not known yet",
+      "tab": "tab",
+      "previewFailed": "The sample rows could not be loaded just now. The columns below still apply.",
+      "looksRight": "Looks right",
+      "fix": "Fix…",
+      "use": "Apply",
+      "field": {
+        "transactionId": "Transaction ID"
+      },
+      "notFound": "not found",
+      "unused": "not used",
+      "unusedWhy": {
+        "description": "payments are harder to categorize",
+        "counterparty": "you won't see who paid or was paid",
+        "currency": "the currency comes from the account",
+        "balance": "I won't suggest the account balance from the file",
+        "transactionId": "I'll spot duplicates by date and amount"
+      },
+      "signVerified": "sign checked against the balance",
+      "signInverted": "expenses in this file look positive — check the sample",
+      "fixTitle": "What should I fix?",
+      "fixLead": "Tap the field I read wrongly.",
+      "ask": {
+        "date": "What is the date?",
+        "amount": "What is the amount?",
+        "description": "What is the description?",
+        "counterparty": "What is the counterparty?",
+        "currency": "What is the currency?",
+        "balance": "What is the balance?",
+        "transactionId": "What is the transaction ID?"
+      },
+      "lead": {
+        "date": "Choose the column that holds the date of each movement.",
+        "amount": "Choose the column that holds the amount of a movement. Expenses should be negative.",
+        "description": "Choose the column with the text of the payment, such as a message or a note. It helps to categorize payments.",
+        "counterparty": "Choose the column with the name of who paid or was paid.",
+        "currency": "Choose the column with the currency code, for example CZK or EUR.",
+        "balance": "Choose the column with the balance after each movement.",
+        "transactionId": "Choose the column with the unique number the bank gives each movement."
+      },
+      "sample": "Sample after your choice:",
+      "sampleHint": "Choose a column and I'll show how I would read a movement.",
+      "pair": "pair of columns"
+    },
     "preview": {
       "hint": "Tap a payment to choose its category.",
       "more_one": "and {{count}} more",

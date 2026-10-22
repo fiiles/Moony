@@ -5,7 +5,9 @@ import { Download, House, Landmark, Tag, Upload, type LucideIcon } from 'lucide-
 import { Button } from '@/components/ui/button';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
+import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import { useUpkeep } from '@/mobile/hooks/use-upkeep';
+import { queuePath } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import type { UpkeepKind, UpkeepRow } from '@/mobile/lib/upkeep';
 import { routes, settingsPath } from '@/mobile/shell/routes';
@@ -28,12 +30,14 @@ const VERBS: Record<UpkeepKind, string> = {
 };
 
 /**
- * Where a verb leads. Zálohovat opens Záloha a přenos; Zařadit and Importovat arrive with their
- * flows (Phases 2 and 4) and until then open the tab that will hold them.
+ * Where a verb that leads to a screen leads. Zálohovat opens Záloha a přenos, Přecenit the Majetek
+ * tab; Zařadit opens the categorize queue (`queuePath`: of one account when exactly one holds the
+ * payments). Zaznamenat and Importovat open sheets instead (`UpkeepItem`).
  */
-const TARGETS: Record<Exclude<UpkeepKind, 'balances_stale'>, string> = {
-  uncategorized: routes.finance,
-  statement_due: routes.finance,
+const TARGETS: Record<
+  Exclude<UpkeepKind, 'balances_stale' | 'statement_due' | 'uncategorized'>,
+  string
+> = {
   backup_stale: settingsPath('backup'),
   valuation_stale: routes.wealth,
 };
@@ -48,6 +52,7 @@ const TARGETS: Record<Exclude<UpkeepKind, 'balances_stale'>, string> = {
 export function UpkeepCard() {
   const { t } = useTranslation('mobile');
   const { rows, accounts, lastImportByAccount } = useUpkeep();
+  const { openImport } = useImportSheet();
   // The accounts are frozen at opening: saving removes them from the card while the sheet closes.
   const [sheet, setSheet] = useState<{ open: boolean; accountIds: string[] }>({
     open: false,
@@ -76,6 +81,7 @@ export function UpkeepCard() {
                 accounts={accounts}
                 lastImportByAccount={lastImportByAccount}
                 onRecord={() => setSheet({ open: true, accountIds: row.accountIds ?? [] })}
+                onImport={() => openImport({ accountId: row.accountIds?.[0], source: 'upkeep' })}
               />
             ))}
           </ul>
@@ -96,10 +102,18 @@ interface UpkeepItemProps {
   accounts: ReturnType<typeof useUpkeep>['accounts'];
   lastImportByAccount: Record<string, number | null>;
   onRecord: () => void;
+  onImport: () => void;
 }
 
 /** One row of the card: icon, title and sub-line, and the verb. */
-function UpkeepItem({ row, primary, accounts, lastImportByAccount, onRecord }: UpkeepItemProps) {
+function UpkeepItem({
+  row,
+  primary,
+  accounts,
+  lastImportByAccount,
+  onRecord,
+  onImport,
+}: UpkeepItemProps) {
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
   const titleId = useId();
@@ -143,14 +157,15 @@ function UpkeepItem({ row, primary, accounts, lastImportByAccount, onRecord }: U
   );
   const variant = primary ? 'default' : 'secondary';
 
+  // Zaznamenat and Importovat open a sheet; the other verbs go to a screen
   let action: ReactNode;
-  if (row.kind === 'balances_stale') {
+  if (row.kind === 'balances_stale' || row.kind === 'statement_due') {
     action = (
       <Button
         variant={variant}
         className={buttonClass}
         aria-describedby={titleId}
-        onClick={onRecord}
+        onClick={row.kind === 'balances_stale' ? onRecord : onImport}
       >
         {verb}
       </Button>
@@ -158,7 +173,10 @@ function UpkeepItem({ row, primary, accounts, lastImportByAccount, onRecord }: U
   } else {
     action = (
       <Button asChild variant={variant} className={buttonClass}>
-        <Link href={TARGETS[row.kind]} aria-describedby={titleId}>
+        <Link
+          href={row.kind === 'uncategorized' ? queuePath(row.accountIds ?? []) : TARGETS[row.kind]}
+          aria-describedby={titleId}
+        >
           {verb}
         </Link>
       </Button>

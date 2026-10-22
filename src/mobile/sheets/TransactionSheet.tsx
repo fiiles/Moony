@@ -36,6 +36,8 @@ interface TransactionSheetProps {
   onPickCategory: () => void;
   /** Says what the sheet has changed on the row, so that the copy the caller holds follows. */
   onChange?: (patch: Partial<BankTransaction>) => void;
+  /** The payment has been deleted (the sheet closes itself); for a list that holds its own copy of the row. */
+  onDeleted?: () => void;
 }
 
 /** The segment's choices: the automatic meaning, or one of the three roles. */
@@ -56,6 +58,7 @@ export function TransactionSheet({
   flow,
   onPickCategory,
   onChange,
+  onDeleted,
 }: TransactionSheetProps) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
@@ -198,6 +201,7 @@ export function TransactionSheet({
             onSuccess: () => {
               setConfirmOpen(false);
               close();
+              onDeleted?.();
             },
           })
         }

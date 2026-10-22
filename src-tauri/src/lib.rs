@@ -124,7 +124,10 @@ async fn run_app() {
             .plugin(tauri_plugin_haptics::init())
             // Unused so far: kept for the Phase 4 agenda reminders.
             .plugin(tauri_plugin_notification::init())
-            .plugin(moony_keychain::init());
+            .plugin(moony_keychain::init())
+            // The files the system opened in Moony, until the webview asks for them (a cold start
+            // from the share sheet delivers them before the webview listens).
+            .manage(services::received_files::ReceivedFiles::default());
     }
 
     builder
@@ -195,6 +198,11 @@ async fn run_app() {
             commands::backup::stage_text_export,
             #[cfg(mobile)]
             commands::backup::discard_text_export,
+            // Statement files the system opened in Moony (services::received_files)
+            #[cfg(mobile)]
+            commands::received_files::take_received_files,
+            #[cfg(mobile)]
+            commands::received_files::discard_received_file,
             // System (services::logging)
             commands::system::open_logs_folder,
             // Auth commands
@@ -425,6 +433,7 @@ async fn run_app() {
             commands::bank_accounts::get_csv_presets,
             commands::bank_accounts::get_csv_preset_by_institution,
             commands::bank_accounts::parse_csv_file,
+            commands::bank_accounts::infer_csv_columns,
             commands::bank_accounts::preview_csv_import,
             commands::bank_accounts::import_csv_transactions,
             commands::bank_accounts::get_import_batches,
@@ -492,6 +501,8 @@ async fn run_app() {
             commands::categorization::preview_learned_rule_history,
             commands::categorization::apply_learned_rule_to_history,
             commands::categorization::restore_transaction_categories,
+            commands::categorization::get_categorize_queue,
+            commands::categorization::snooze_categorization,
             commands::categorization::get_custom_rules,
             commands::categorization::create_custom_rule,
             commands::categorization::update_custom_rule,
@@ -499,9 +510,11 @@ async fn run_app() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app, event| {
-            if let tauri::RunEvent::Exit = event {
-                commands::attachments::wipe_open_copies(app);
-            }
+        .run(|app, event| match event {
+            tauri::RunEvent::Exit => commands::attachments::wipe_open_copies(app),
+            // A statement shared or opened into the phone app (iOS and Android)
+            #[cfg(mobile)]
+            tauri::RunEvent::Opened { urls } => commands::received_files::on_opened(app, &urls),
+            _ => {}
         });
 }

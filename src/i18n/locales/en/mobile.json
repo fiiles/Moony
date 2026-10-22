@@ -169,10 +169,37 @@
     },
     "cashTrendLabel": "Cash trend chart"
   },
+  "queue": {
+    "source": {
+      "mcp": "MCP suggestion",
+      "learned": "learned",
+      "rule": "by rule",
+      "pack": "rule pack"
+    },
+    "other": "Other…",
+    "choose": "Choose a category…",
+    "keep": "Skip",
+    "keepMenu": "Skip for {{days}} days",
+    "snoozed": "Skipped for {{days}} days",
+    "categorized": "Categorized",
+    "also_one": "Also categorized {{count}} other payment from {{name}}",
+    "also_other": "Also categorized {{count}} other payments from {{name}}",
+    "alsoSub": "Same counterparty and direction on this account",
+    "alsoRestored": "Restored to how they were",
+    "handled_one": "{{count}} already handled",
+    "handled_other": "{{count}} already handled",
+    "progress": "{{done}} of {{total}}",
+    "caption": "Tap a suggestion to accept it. “{{keep}}” puts a payment off for {{days}} days. What you categorize is remembered as a rule for this account.",
+    "showCashflow": "Show cashflow",
+    "empty": {
+      "title": "All categorized",
+      "hint": "New payments will appear here after the next import.",
+      "snoozed_one": "{{count}} payment you skipped will come back later.",
+      "snoozed_other": "{{count}} payments you skipped will come back later."
+    }
+  },
   "placeholder": {
     "detail": "The detail comes in phase 4.",
-    "queue": "The categorize queue comes in phase 2b.",
-    "import": "Statement import comes in phase 2b.",
     "form": "The add form comes in phase 2b.",
     "edit": "Editing comes in phase 2b.",
     "delete": "Deleting comes in phase 2b.",
@@ -259,6 +286,118 @@
     "suggested": "Suggested",
     "decline": "Decline suggestion",
     "empty": "No category matches"
+  },
+  "import": {
+    "title": "Import statement",
+    "intoAccount": "Into {{account}}",
+    "fromShare": "From sharing",
+    "reads": "Supported: {{formats}}.",
+    "reading": "Reading the file…",
+    "importing": "Writing the payments…",
+    "pick": {
+      "lead": "Choose the file you downloaded from your bank.",
+      "choose": "Choose file",
+      "chooseOther": "Choose another file"
+    },
+    "account": {
+      "sheetTitle": "Which account?",
+      "lead": "Choose the account the payments belong to.",
+      "none": "You have no open account yet. Add the one this file belongs to.",
+      "title": "Accounts",
+      "new": "New account…"
+    },
+    "statement": {
+      "title": "Which statement?",
+      "dateTitle": "How are the dates written?",
+      "continue": "Continue"
+    },
+    "unreadable": {
+      "title": "Can't read this file",
+      "pdf": "Moony can't read a PDF statement yet — download CSV, CAMT, MT940, OFX or QIF from your bank.",
+      "image": "Moony can't read a photo or scan of a statement — download CSV, CAMT, MT940, OFX or QIF from your bank.",
+      "notStatement": "This file doesn't hold a statement Moony can read.",
+      "error": "The file could not be read."
+    },
+    "guide": {
+      "title": "How to get a statement: {{bank}}",
+      "format": "Choose the format: {{format}}",
+      "openWeb": "Open internet banking",
+      "openFailed": "The browser could not be opened.",
+      "banks": "Bank guides"
+    },
+    "recognize": {
+      "title": "Here is how I read it",
+      "caption": "Three movements from the file, as I will read them:",
+      "captionFew": "Movements from the file, as I will read them:",
+      "unknownFormat": "format not known yet",
+      "tab": "tab",
+      "previewFailed": "The sample rows could not be loaded just now. The columns below still apply.",
+      "looksRight": "Looks right",
+      "fix": "Fix…",
+      "use": "Apply",
+      "field": {
+        "transactionId": "Transaction ID"
+      },
+      "notFound": "not found",
+      "unused": "not used",
+      "unusedWhy": {
+        "description": "payments are harder to categorize",
+        "counterparty": "you won't see who paid or was paid",
+        "currency": "the currency comes from the account",
+        "balance": "I won't suggest the account balance from the file",
+        "transactionId": "I'll spot duplicates by date and amount"
+      },
+      "signVerified": "sign checked against the balance",
+      "signInverted": "expenses in this file look positive — check the sample",
+      "signsBlocked": "Moony can't import a file whose expenses are positive yet. If another column holds the amount, choose it; otherwise cancel the import.",
+      "allPositive": "Every amount is positive — expenses would be saved as income.",
+      "pairSides": "Expenses: {{debit}} · Income: {{credit}}",
+      "fixTitle": "What should I fix?",
+      "fixLead": "Tap the field I read wrongly.",
+      "ask": {
+        "date": "What is the date?",
+        "amount": "What is the amount?",
+        "description": "What is the description?",
+        "counterparty": "What is the counterparty?",
+        "currency": "What is the currency?",
+        "balance": "What is the balance?",
+        "transactionId": "What is the transaction ID?"
+      },
+      "lead": {
+        "date": "Choose the column that holds the date of each movement.",
+        "amount": "Choose the column that holds the amount of a movement. Expenses should be negative.",
+        "description": "Choose the column with the text of the payment, such as a message or a note. It helps to categorize payments.",
+        "counterparty": "Choose the column with the name of who paid or was paid.",
+        "currency": "Choose the column with the currency code, for example CZK or EUR.",
+        "balance": "Choose the column with the balance after each movement.",
+        "transactionId": "Choose the column with the unique number the bank gives each movement."
+      },
+      "sample": "Sample after your choice:",
+      "sampleHint": "Choose a column and I'll show how I would read a movement.",
+      "pair": "pair of columns"
+    },
+    "preview": {
+      "hint": "Tap a payment to choose its category.",
+      "more_one": "and {{count}} more",
+      "more_other": "and {{count}} more"
+    },
+    "choice": {
+      "title": "Categorization",
+      "byRules": "By the rules",
+      "byRulesSub": "Your pick is removed"
+    },
+    "done": {
+      "lastBalance": "Balance after the last payment: <b>{{balance}}</b>.",
+      "categorized_one": "{{count}} payment was categorized by the rules.",
+      "categorized_other": "{{count}} payments were categorized by the rules.",
+      "open_one": "{{count}} is still without a category.",
+      "open_other": "{{count}} are still without a category.",
+      "allSorted": "Everything has a category.",
+      "promoted_one": "{{count}} pending payment was booked.",
+      "promoted_other": "{{count}} pending payments were booked.",
+      "queue_one": "Categorize {{count}} payment",
+      "queue_other": "Categorize {{count}} payments"
+    }
   },
   "wealth": {
     "placeholder": {
@@ -372,6 +511,7 @@
       "reminders": "Reminders",
       "remindersSub": "{{on}} of {{total}} groups",
       "import": "Import",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
       "deleteSub": "after typing a confirmation word"
     },
     "version": "Moony {{version}} · {{privacy}}",

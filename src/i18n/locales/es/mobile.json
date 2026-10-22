@@ -182,10 +182,40 @@
     },
     "cashTrendLabel": "Gráfico del efectivo"
   },
+  "queue": {
+    "source": {
+      "mcp": "sugerencia de MCP",
+      "learned": "aprendido",
+      "rule": "por regla",
+      "pack": "paquete de reglas"
+    },
+    "other": "Otra…",
+    "choose": "Elegir categoría…",
+    "keep": "Omitir",
+    "keepMenu": "Omitir durante {{days}} días",
+    "snoozed": "Omitido durante {{days}} días",
+    "categorized": "Categorizado",
+    "also_one": "También se categorizó {{count}} pago más de {{name}}",
+    "also_many": "También se categorizaron {{count}} pagos más de {{name}}",
+    "also_other": "También se categorizaron {{count}} pagos más de {{name}}",
+    "alsoSub": "Misma contraparte y misma dirección en esta cuenta",
+    "alsoRestored": "Restaurados como estaban",
+    "handled_one": "{{count}} ya gestionado",
+    "handled_many": "{{count}} ya gestionados",
+    "handled_other": "{{count}} ya gestionados",
+    "progress": "{{done}} de {{total}}",
+    "caption": "Toca una sugerencia para aceptarla. «{{keep}}» aparta un pago durante {{days}} días. Lo que categorices se aprende como regla para esta cuenta.",
+    "showCashflow": "Ver flujo de caja",
+    "empty": {
+      "title": "Todo categorizado",
+      "hint": "Los pagos nuevos aparecerán aquí tras la próxima importación.",
+      "snoozed_one": "{{count}} pago omitido volverá más adelante.",
+      "snoozed_many": "{{count}} pagos omitidos volverán más adelante.",
+      "snoozed_other": "{{count}} pagos omitidos volverán más adelante."
+    }
+  },
   "placeholder": {
     "detail": "El detalle llega en la fase 4.",
-    "queue": "La cola de clasificación llega en la fase 2b.",
-    "import": "La importación de extractos llega en la fase 2b.",
     "form": "El formulario para añadir llega en la fase 2b.",
     "edit": "La edición llega en la fase 2b.",
     "delete": "El borrado llega en la fase 2b.",
@@ -273,6 +303,123 @@
     "suggested": "Sugerencia",
     "decline": "Rechazar sugerencia",
     "empty": "Ninguna categoría coincide"
+  },
+  "import": {
+    "title": "Importar extracto",
+    "intoAccount": "A {{account}}",
+    "fromShare": "Compartido",
+    "reads": "Compatible: {{formats}}.",
+    "reading": "Leyendo el archivo…",
+    "importing": "Guardando los pagos…",
+    "pick": {
+      "lead": "Elige el archivo que descargaste de tu banco.",
+      "choose": "Elegir archivo",
+      "chooseOther": "Elegir otro archivo"
+    },
+    "account": {
+      "sheetTitle": "¿A qué cuenta?",
+      "lead": "Elige la cuenta a la que pertenecen los pagos.",
+      "none": "Aún no tienes ninguna cuenta abierta. Añade aquella a la que pertenece este archivo.",
+      "title": "Cuentas",
+      "new": "Cuenta nueva…"
+    },
+    "statement": {
+      "title": "¿Qué extracto?",
+      "dateTitle": "¿Cómo están escritas las fechas?",
+      "continue": "Continuar"
+    },
+    "unreadable": {
+      "title": "No se puede leer el archivo",
+      "pdf": "Moony aún no puede leer un extracto en PDF: descarga de tu banco CSV, CAMT, MT940, OFX o QIF.",
+      "image": "Moony no puede leer una foto o un escaneo de un extracto: descarga de tu banco CSV, CAMT, MT940, OFX o QIF.",
+      "notStatement": "Este archivo no contiene un extracto que Moony pueda leer.",
+      "error": "No se pudo leer el archivo."
+    },
+    "guide": {
+      "title": "Cómo obtener un extracto: {{bank}}",
+      "format": "Elige el formato: {{format}}",
+      "openWeb": "Abrir la banca por internet",
+      "openFailed": "No se pudo abrir el navegador.",
+      "banks": "Guías de los bancos"
+    },
+    "recognize": {
+      "title": "Así entiendo el archivo",
+      "caption": "Tres movimientos del archivo, tal como los leeré:",
+      "captionFew": "Movimientos del archivo, tal como los leeré:",
+      "unknownFormat": "formato aún desconocido",
+      "tab": "tabulador",
+      "previewFailed": "No se pudieron cargar ahora las filas de muestra. Las columnas reconocidas de abajo siguen valiendo.",
+      "looksRight": "Se ve bien",
+      "fix": "Corregir…",
+      "use": "Aplicar",
+      "field": {
+        "transactionId": "ID del movimiento"
+      },
+      "notFound": "no encontrado",
+      "unused": "sin usar",
+      "unusedWhy": {
+        "description": "los pagos son más difíciles de categorizar",
+        "counterparty": "no se verá quién pagó ni a quién se pagó",
+        "currency": "la moneda se toma de la cuenta",
+        "balance": "no propondré el saldo de la cuenta a partir del archivo",
+        "transactionId": "detectaré los duplicados por fecha e importe"
+      },
+      "signVerified": "signo comprobado con el saldo",
+      "signInverted": "los gastos de este archivo parecen positivos: revisa la muestra",
+      "signsBlocked": "Moony todavía no puede importar un archivo cuyos gastos son positivos. Si otra columna contiene el importe, elígela; si no, cancela la importación.",
+      "allPositive": "Todos los importes son positivos: los gastos se guardarían como ingresos.",
+      "pairSides": "Gastos: {{debit}} · Ingresos: {{credit}}",
+      "fixTitle": "¿Qué corrijo?",
+      "fixLead": "Toca el campo que he leído mal.",
+      "ask": {
+        "date": "¿Qué es la fecha?",
+        "amount": "¿Qué es el importe?",
+        "description": "¿Qué es la descripción?",
+        "counterparty": "¿Qué es la contraparte?",
+        "currency": "¿Qué es la moneda?",
+        "balance": "¿Qué es el saldo?",
+        "transactionId": "¿Qué es el ID del movimiento?"
+      },
+      "lead": {
+        "date": "Elige la columna con la fecha de cada movimiento.",
+        "amount": "Elige la columna con el importe del movimiento. Los gastos deben ser negativos.",
+        "description": "Elige la columna con el texto del pago, como un mensaje o una nota. Ayuda a categorizar los pagos.",
+        "counterparty": "Elige la columna con el nombre de quien pagó o recibió el pago.",
+        "currency": "Elige la columna con el código de la moneda, por ejemplo CZK o EUR.",
+        "balance": "Elige la columna con el saldo tras cada movimiento.",
+        "transactionId": "Elige la columna con el número único que el banco asigna a cada movimiento."
+      },
+      "sample": "Muestra con tu elección:",
+      "sampleHint": "Elige una columna y te enseño cómo leería un movimiento.",
+      "pair": "par de columnas"
+    },
+    "preview": {
+      "hint": "Toca un pago para elegir su categoría.",
+      "more_one": "y {{count}} más",
+      "more_many": "y {{count}} más",
+      "more_other": "y {{count}} más"
+    },
+    "choice": {
+      "title": "Categorización",
+      "byRules": "Según las reglas",
+      "byRulesSub": "Se descarta tu elección"
+    },
+    "done": {
+      "lastBalance": "Saldo tras el último pago: <b>{{balance}}</b>.",
+      "categorized_one": "Las reglas categorizaron {{count}} pago.",
+      "categorized_many": "Las reglas categorizaron {{count}} pagos.",
+      "categorized_other": "Las reglas categorizaron {{count}} pagos.",
+      "open_one": "{{count}} sigue sin categoría.",
+      "open_many": "{{count}} siguen sin categoría.",
+      "open_other": "{{count}} siguen sin categoría.",
+      "allSorted": "Todo tiene categoría.",
+      "promoted_one": "Se contabilizó {{count}} pago pendiente.",
+      "promoted_many": "Se contabilizaron {{count}} pagos pendientes.",
+      "promoted_other": "Se contabilizaron {{count}} pagos pendientes.",
+      "queue_one": "Categorizar {{count}} pago",
+      "queue_many": "Categorizar {{count}} pagos",
+      "queue_other": "Categorizar {{count}} pagos"
+    }
   },
   "wealth": {
     "placeholder": {
@@ -390,6 +537,7 @@
       "reminders": "Recordatorios",
       "remindersSub": "{{on}} de {{total}} grupos",
       "import": "Importar",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
       "deleteSub": "tras escribir una palabra de confirmación"
     },
     "version": "Moony {{version}} · {{privacy}}",

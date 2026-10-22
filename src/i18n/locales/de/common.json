@@ -210,6 +210,7 @@
     "backupNewerThanApp": "Diese Sicherung wurde mit einer neueren Moony-Version erstellt. Aktualisieren Sie zuerst Moony.",
     "backupDestinationMissing": "Der Zielordner existiert nicht.",
     "backupExportInvalid": "Dieser Dateiname ist nicht zulässig.",
+    "receivedFileOutside": "Diese Datei kann von hier aus nicht entfernt werden.",
     "sellExceedsHoldings": "Sie können an diesem Datum nicht mehr verkaufen, als Sie halten.",
     "csvEmptyFile": "Die Datei ist leer oder hat keine Kopfzeile.",
     "csvColumnsNotFound": "Die ausgewählten Spalten wurden in der Datei nicht gefunden. Prüfen Sie die Kopfzeile und die Spaltenzuordnung.",
@@ -289,7 +290,9 @@
     "statementInvestmentOnly": "Diese Datei enthält nur Wertpapiertransaktionen. Nutzen Sie dafür den Broker-Import.",
     "statementMalformed": "Die Kontoauszugsdatei ist beschädigt oder unvollständig ({{detail}}).",
     "statementIndexInvalid": "Wählen Sie einen der Kontoauszüge in der Datei.",
-    "statementDateOrderInvalid": "Eine Datumsreihenfolge kann nur für QIF-Dateien gewählt werden."
+    "statementDateOrderInvalid": "Eine Datumsreihenfolge kann nur für QIF-Dateien gewählt werden.",
+    "snoozeSelectionInvalid": "Wählen Sie 1 bis 1000 Zahlungen aus.",
+    "snoozeDaysInvalid": "Geben Sie eine Anzahl von 1 bis 365 Tagen an."
   },
   "auth": {
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",

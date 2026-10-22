@@ -57,10 +57,11 @@ import {
   sortAccounts,
   type AccountSort,
 } from '@/mobile/lib/finance-rows';
+import { queuePath } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import { initials } from '@/mobile/lib/initials';
 import { NavIconButton } from '@/mobile/shell/NavBar';
-import { accountPath, loanPath, policyPath, routes } from '@/mobile/shell/routes';
+import { accountPath, loanPath, policyPath } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 
 type AddKind = 'account' | 'loan' | 'policy';
@@ -330,8 +331,8 @@ export default function Finance() {
 
 /**
  * "Nezařazené platby" as a dark row above the accounts, only while there are any: one account
- * names itself (and the statement they came from), several are counted. It opens the account's
- * ledger filtered to them, or the categorize queue across accounts.
+ * names itself (and the statement they came from), several are counted. It opens the categorize
+ * queue, of that account when one holds the payments, else of every account.
  */
 function UncategorizedRow({ finance }: { finance: FinanceData }) {
   const { t } = useTranslation('mobile');
@@ -363,9 +364,7 @@ function UncategorizedRow({ finance }: { finance: FinanceData }) {
         title={t('finance.uncategorized')}
         sub={sub}
         value={fmt.number(uncategorized.count)}
-        href={
-          only === undefined ? routes.uncategorized : `${accountPath(only)}?category=uncategorized`
-        }
+        href={queuePath(uncategorized.accountIds)}
       />
     </EntityRows>
   );

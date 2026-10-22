@@ -305,7 +305,49 @@
     <p>Formulář limitu (krok po výběru kategorie): řádek kategorie, pole <code>.m-field</code> s měsíčním limitem a nápovědou s průměrem, dvě měsíční pole vedle sebe (<code>.m-field-grid</code>; Do má textovou akci „Ohne Ende“), věta o tom, co konec znamená, box naplánovaných změn na <code>well</code> a po prvním klepnutí na uložení červený box s limity, které uložení nahradí; hlavní tlačítko pak říká „Ersetzen und speichern“. Sheet je <code>--full</code> (95 %).</p>
     <div class="phones" id="limit"></div>
   </section>
+
+  <section class="part">
+    <h2>Import výpisu</h2>
+    <p>Jeden vysoký sheet (<code>.m-sheet--full</code>), jehož fáze střídají titulek, větu, tělo a patičku. Nahoře vždy pruh souboru (<code>.m-filebar</code>: čip 36 pt, název s výpustkou, formát a účet z výpisu pod ním). <strong>Náhled</strong>: poznámky k výpisu (výpis jiného účtu je červený box <code>.m-box--loss</code> s textovým tlačítkem 44 pt a spínačem „stejně importovat“; že výpis sedí, je klidná <code>.m-note--ok</code>), řádek počtů (<code>.m-imp-count</code>), období a počty kategorií (<code>.m-imp-meta</code>), řádky plateb (<code>.m-row</code>: iniciály, protistrana, podřádek „datum · kategorie“, podepsaná částka ve vlastní měně; duplicita je na 50 % se štítkem, chyba má červený štítek <code>.m-row__badge--loss</code>) a „und 43 weitere“. Patička má jedinou hlavní akci. <strong>Hotovo</strong>: tři statistiky, věty (<code>.m-imp-facts</code>), jedna hlavní akce „Zařadit N plateb“ a další kroky jako řádky se šipkou; patička je jen „Hotovo“. <strong>Účet</strong>: řádky výběru s druhým řádkem (<code>.m-pick__main</code>, <code>.m-pick__s</code>). <strong>Kategorie</strong> platby: sheet nad sheetem, „Podle pravidel“ první. <strong>Návod banky</strong> (<code>.m-guide</code>): pod „Vybrat soubor“ návod banky účtu — nadpis 16 / 620 (zalamuje se), kroky jako číslovaný seznam (<code>.m-guide__steps</code>, číslo v kroužku 22 pt, text 13 / 450 <code>ink-2</code>), formát jako popisek 11 / 500 a u banky, ke které se jde přes webové bankovnictví, sekundární tlačítko 44 pt „Online-Banking öffnen“; u banky s exportem přímo v aplikaci tlačítko není. U <strong>nečitelného souboru</strong> jsou banky seznam řádků výběru (<code>.m-pick__chip--ini</code>: iniciály banky) a klepnutá banka otevře svůj návod na místě pod textovým tlačítkem zpět (<code>.m-guide__back</code>). <strong>Rozpoznání neznámého CSV</strong> (spec §8.6, stupeň 3; prototyp 06–07): pod pruhem souboru „So verstehe ich die Datei“, tři skutečné řádky souboru jako řádky plateb (podřádek „datum · k čemu platba byla“) a seznam toho, co se rozpoznalo (<code>.m-recog</code>: zelená fajfka, jméno pole 13 / 600 a čtená pole 12 / 500; nečtené pole má minus, je na <code>ink-4</code> a říká, co to pro import znamená; řádek částky může říct, že znaménko ověřil zůstatek, nebo červeně <code>.m-recog__warn</code>, že výdaje vypadají kladně; částka z dvojice sloupců jmenuje strany „Ausgaben: … · Einnahmen: …“). Patička: „Korrigieren…“ a hlavní „Sieht richtig aus“. Soubor, jehož výdaje zůstatek dokazuje kladné, takhle naimportovat nejde: pod řádky červený box <code>.m-box--loss</code> to řekne rovnou a nabídne „Korrigieren…“, patička je „Abbrechen“ a hlavní tlačítko je vypnuté. <strong>Oprava</strong>: nejdřív pole jako řádky s šipkou, pak sloupce jednoho pole jako volby (<code>.m-colopt</code>: kruh 22 pt, záhlaví sloupce 15 / 600 a pod ním dvě ukázkové hodnoty; dvojice sloupců jmenuje strany „Ausgaben: Odchozí · Einnahmen: Příchozí“ a má popisek „(Spaltenpaar)“ — dvojici, kterou nic neorientuje, nabízí oběma směry —, u data, jehož den a měsíc nejdou poznat, jsou to dvě čtení sloupce s jedním datem napsaným slovy) a pod nimi jeden znovu přečtený řádek. Nikdy mřížka sloupců.</p>
+    <div class="phones" id="importPreview"></div>
+    <div class="phones" id="importDone" style="margin-top: 26px"></div>
+    <div class="phones" id="importAccount" style="margin-top: 26px"></div>
+    <div class="phones" id="importChoice" style="margin-top: 26px"></div>
+    <div class="phones" id="importGuide" style="margin-top: 26px"></div>
+    <div class="phones" id="importGuides" style="margin-top: 26px"></div>
+    <div class="phones" id="importGuideOpen" style="margin-top: 26px"></div>
+    <div class="phones" id="importRecognize" style="margin-top: 26px"></div>
+    <div class="phones" id="importRecognizeWarn" style="margin-top: 26px"></div>
+    <div class="phones" id="importFields" style="margin-top: 26px"></div>
+    <div class="phones" id="importCorrect" style="margin-top: 26px"></div>
+    <div class="phones" id="importOrder" style="margin-top: 26px"></div>
+  </section>
+
+  <section class="part">
+    <h2>Zařazení plateb</h2>
+    <p>Fronta nezařazených plateb (spec §8.5, prototyp 05): titulek navigační lišty „Nicht kategorisierte Zahlungen“, pod ním řádek s účtem a výpisem (<code>.m-queue__lead</code>), počet jako nadpis 20 / 650 (<code>.m-queue__count</code>), řádek průběhu s <code>.m-pbar</code> a „3 von 12“ (<code>.m-queue__prog</code>) a řádky: entitní řádek (60 pt, chip, protistrana, podřádek „den · detail“, podepsaná částka) s druhým blokem uvnitř téhož <code>.m-swipe</code> — řádkem pilulek (<code>.m-pillrow</code>). Tmavá pilulka (<code>.m-pill--dark</code>) je návrh (zaškrtnutí, kategorie, malý zdroj „nach Regel“, „gelernt“, „Regelpaket“, „MCP-Vorschlag“) a přijímá se klepnutím, duchová (<code>--ghost</code>) je „Andere…“ / „Überspringen“, prostá „Kategorie wählen…“. Vyřízený řádek (<code>.m-queue__item.is-done</code>) je na <code>well</code> se zelenou pilulkou (<code>--done</code>) a jednou rozbalenou větou s přepínačem (<code>.m-queue__more</code>); odložený (<code>is-left</code>) má jen větu s hodinami (<code>.m-queue__note</code>). Pilulky mají plochu dotyku 44 pt a při dlouhém názvu se zalamují.</p>
+    <div class="phones" id="queue"></div>
+  </section>
 </div>
+
+<!-- The categorize queue (frame 05), rendered at the three widths. -->
+<template id="queue-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Nicht kategorisierte Zahlungen</h1>
+      <div class="m-nav__side m-nav__side--end"></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-queue__lead">Girokonto · aus dem Auszug vom 10. 10. · 3 bereits erledigt</p>
+      <h2 class="m-queue__count">9 Zahlungen ohne Kategorie</h2>
+      <div class="m-queue__prog"><span class="m-pbar"><i style="width:25%"></i></span><span>3 von 12</span></div>
+      <div data-rows="queue"></div>
+      <p class="m-queue__cap">Tippen Sie auf einen Vorschlag, um ihn zu übernehmen. „Überspringen“ stellt eine Zahlung für 30 Tage zurück. Was Sie kategorisieren, wird als Regel für dieses Konto gelernt.</p>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+  </div>
+</template>
 
 <!-- The Majetek frame, rendered at the three widths. -->
 <template id="wealth-frame">
@@ -815,6 +857,431 @@
   </div>
 </template>
 
+<!-- The import sheet: the preview of a statement that belongs to another account, at the three widths. -->
+<template id="import-preview-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Girokonto</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Fio · CZK · 2100123456/2010</p>
+      <div data-rows="ledgerToday"></div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Kontoauszug importieren">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Kontoauszug importieren</div><div class="m-sheet__s">In Girokonto · Fio · Geteilt</div></div>
+      <div class="m-sheet__body">
+        <div class="m-filebar"><span class="m-filebar__ic" data-icon="file-text" data-size="16"></span><span class="m-filebar__main"><span class="m-filebar__t">kontoauszug-oktober-2026-vollstaendig.xml</span><span class="m-filebar__s">CAMT.053 · CZ6508000000192000145399</span></span></div>
+        <div class="m-box m-box--loss" role="alert">
+          <p class="m-imp-warn"><span data-icon="triangle-alert" data-size="15"></span><span>Dieser Auszug gehört zu Sparkonto.</span></p>
+          <button class="m-imp-act" type="button">In Sparkonto importieren</button>
+        </div>
+        <div class="m-imp-confirm"><label class="m-switchrow"><span class="m-switchrow__main"><span class="m-switchrow__t">Trotzdem in dieses Konto importieren</span></span><span class="m-switchrow__sw" role="switch" aria-checked="false"></span></label></div>
+        <div class="m-note m-note--ok"><span data-icon="check" data-size="15"></span><span>Der Auszug geht auf: Anfangssaldo plus Zahlungen ergibt den Schlusssaldo.</span></div>
+        <p class="m-imp-count">48 Transaktionen werden importiert · 3 Duplikate übersprungen</p>
+        <p class="m-imp-meta">1. 10. 2026 – 31. 10. 2026 · 36 kategorisiert · 12 ohne Kategorie</p>
+        <p class="m-imp-meta"><span class="m-imp-meta__loss">1 Fehler</span></p>
+        <p class="m-imp-hint">Tippen Sie auf eine Zahlung, um ihre Kategorie zu wählen.</p>
+        <div class="m-rows" data-rows="importRows" style="margin-bottom: 8px"></div>
+        <p class="m-imp-more">und 43 weitere</p>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>48 Transaktionen importieren</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The import sheet's done step, at the three widths. -->
+<template id="import-done-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Girokonto</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Fio · CZK · 2100123456/2010</p>
+      <div data-rows="ledgerToday"></div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Kontoauszug importiert">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Kontoauszug importiert</div><div class="m-sheet__s">48 Transaktionen vom 1. 10. 2026 bis 31. 10. 2026.</div></div>
+      <div class="m-sheet__body">
+        <div class="m-stats">
+          <div class="m-stat"><div class="m-stat__l">Importiert</div><div class="m-stat__v">48</div></div>
+          <div class="m-stat"><div class="m-stat__l">Duplikate</div><div class="m-stat__v">3</div></div>
+          <div class="m-stat"><div class="m-stat__l">Fehler</div><div class="m-stat__v m-stat__v--loss">1</div></div>
+        </div>
+        <div class="m-imp-facts">
+          <p>Kontostand laut Auszug zum 31. 10. 2026: <b>30&nbsp;196,12 Kč</b>.</p>
+          <p>36 Zahlungen wurden von den Regeln kategorisiert. 12 haben noch keine Kategorie.</p>
+        </div>
+        <button class="m-btn m-btn--primary m-btn--block m-imp-primary" type="button"><span>12 Zahlungen kategorisieren</span></button>
+        <div class="m-rows" data-rows="importNext"></div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost m-btn--block" type="button"><span>Fertig</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The import sheet's account stage (a statement that names no account of the person's), at the three widths. -->
+<template id="import-account-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="In welches Konto?">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">In welches Konto?</div><div class="m-sheet__s">Wählen Sie das Konto, zu dem die Zahlungen gehören.</div></div>
+      <div class="m-sheet__body">
+        <div class="m-filebar"><span class="m-filebar__ic" data-icon="file-text" data-size="16"></span><span class="m-filebar__main"><span class="m-filebar__t">Pohyby_2100123456_2026-10.csv</span></span></div>
+        <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Konten</div>
+        <div role="radiogroup" aria-label="Konten">
+          <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" data-icon="landmark" data-size="15"></span><span class="m-pick__main"><span class="m-pick__l">Girokonto</span><span class="m-pick__s">Fio · CZK</span></span></button>
+          <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" data-icon="landmark" data-size="15"></span><span class="m-pick__main"><span class="m-pick__l">Sparkonto für den Urlaub und die Rücklagen</span><span class="m-pick__s">Česká spořitelna · CZK</span></span></button>
+          <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" data-icon="landmark" data-size="15"></span><span class="m-pick__main"><span class="m-pick__l">EUR-Konto</span><span class="m-pick__s">Revolut · EUR</span></span></button>
+        </div>
+        <button class="m-pick" type="button"><span class="m-pick__chip" data-icon="plus" data-size="15"></span><span class="m-pick__l">Neues Konto…</span></button>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost m-btn--block" type="button"><span>Abbrechen</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The import sheet's picker with the account's bank guide (a web route: the button opens its internet banking), at the three widths. -->
+<template id="import-pick-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Kontoauszug importieren">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Kontoauszug importieren</div><div class="m-sheet__s">In Girokonto · Česká spořitelna</div></div>
+      <div class="m-sheet__body">
+        <div style="padding-top: 4px">
+          <p class="m-imp-lead">Wählen Sie die Datei, die Sie bei Ihrer Bank heruntergeladen haben.</p>
+          <p class="m-imp-sub">Unterstützt: CSV, CAMT.053 (XML), MT940, OFX/QFX und QIF.</p>
+        </div>
+        <section class="m-guide" aria-labelledby="guide-cs">
+          <h3 class="m-guide__t" id="guide-cs">So erhalten Sie einen Auszug: Česká spořitelna</h3>
+          <ol class="m-guide__steps">
+            <li><span class="m-guide__n" aria-hidden="true">1</span><span>Öffnen Sie das Online-Banking von Česká spořitelna in Safari oder Chrome und melden Sie sich an.</span></li>
+            <li><span class="m-guide__n" aria-hidden="true">2</span><span>Öffnen Sie beim Konto „Historie“, tippen Sie oben rechts auf das Pfeil-Symbol, stellen Sie den Zeitraum ein und wählen Sie CSV.</span></li>
+            <li><span class="m-guide__n" aria-hidden="true">3</span><span>Teilen Sie die Datei mit Moony oder speichern Sie sie in „Dateien“ und wählen Sie sie hier mit „Datei wählen“.</span></li>
+          </ol>
+          <p class="m-guide__fmt">Wählen Sie das Format: CSV</p>
+          <button class="m-btn m-btn--secondary" type="button" data-icon="external-link" data-size="16"><span>Online-Banking öffnen</span></button>
+        </section>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Datei wählen</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The import sheet when a file cannot be read: the banks that have a guide, as a list of pick rows, at the three widths. -->
+<template id="import-guides-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Datei nicht lesbar">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Datei nicht lesbar</div></div>
+      <div class="m-sheet__body">
+        <div role="alert">
+          <div class="m-filebar"><span class="m-filebar__ic" data-icon="file-text" data-size="16"></span><span class="m-filebar__main"><span class="m-filebar__t">Kontoauszug-Oktober-2026.pdf</span></span></div>
+          <p class="m-imp-lead">PDF-Auszüge kann Moony noch nicht lesen – laden Sie bei Ihrer Bank CSV, CAMT, MT940, OFX oder QIF herunter.</p>
+          <p class="m-imp-sub">Unterstützt: CSV, CAMT.053 (XML), MT940, OFX/QFX und QIF.</p>
+        </div>
+        <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Anleitungen der Banken</div>
+        <div role="group" aria-label="Anleitungen der Banken">
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">AB</span><span class="m-pick__main"><span class="m-pick__l">Air Bank</span><span class="m-pick__s">Tschechien</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">ČS</span><span class="m-pick__main"><span class="m-pick__l">Česká spořitelna</span><span class="m-pick__s">Tschechien</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">ČS</span><span class="m-pick__main"><span class="m-pick__l">ČSOB</span><span class="m-pick__s">Tschechien</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">FB</span><span class="m-pick__main"><span class="m-pick__l">Fio banka</span><span class="m-pick__s">Tschechien</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">KB</span><span class="m-pick__main"><span class="m-pick__l">Komerční banka</span><span class="m-pick__s">Tschechien</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">MB</span><span class="m-pick__main"><span class="m-pick__l">mBank</span><span class="m-pick__s">Tschechien</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">RA</span><span class="m-pick__main"><span class="m-pick__l">Raiffeisenbank</span><span class="m-pick__s">Tschechien</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">DK</span><span class="m-pick__main"><span class="m-pick__l">DKB</span><span class="m-pick__s">Deutschland</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">IN</span><span class="m-pick__main"><span class="m-pick__l">ING</span><span class="m-pick__s">Deutschland</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">N</span><span class="m-pick__main"><span class="m-pick__l">N26</span><span class="m-pick__s">Deutschland</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">SP</span><span class="m-pick__main"><span class="m-pick__l">Sparkasse</span><span class="m-pick__s">Deutschland</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">RE</span><span class="m-pick__main"><span class="m-pick__l">Revolut</span><span class="m-pick__s">Vereinigtes Königreich</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">WI</span><span class="m-pick__main"><span class="m-pick__l">Wise</span><span class="m-pick__s">Vereinigtes Königreich</span></span></button>
+          <button class="m-pick" type="button"><span class="m-pick__chip m-pick__chip--ini">CH</span><span class="m-pick__main"><span class="m-pick__l">Chase</span><span class="m-pick__s">USA</span></span></button>
+        </div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Andere Datei wählen</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- A bank's guide opened in place from that list (an app route: no web button), under the way back to the list, at the three widths. -->
+<template id="import-guide-open-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Datei nicht lesbar">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Datei nicht lesbar</div></div>
+      <div class="m-sheet__body">
+        <div role="alert">
+          <div class="m-filebar"><span class="m-filebar__ic" data-icon="file-text" data-size="16"></span><span class="m-filebar__main"><span class="m-filebar__t">Kontoauszug-Oktober-2026.pdf</span></span></div>
+          <p class="m-imp-lead">PDF-Auszüge kann Moony noch nicht lesen – laden Sie bei Ihrer Bank CSV, CAMT, MT940, OFX oder QIF herunter.</p>
+          <p class="m-imp-sub">Unterstützt: CSV, CAMT.053 (XML), MT940, OFX/QFX und QIF.</p>
+        </div>
+        <div style="margin-top: 8px">
+          <button class="m-imp-act m-guide__back" type="button" data-icon="chevron-left" data-size="16">Anleitungen der Banken</button>
+          <section class="m-guide" aria-labelledby="guide-revolut">
+          <h3 class="m-guide__t" id="guide-revolut">So erhalten Sie einen Auszug: Revolut</h3>
+          <ol class="m-guide__steps">
+            <li><span class="m-guide__n" aria-hidden="true">1</span><span>Tippen Sie in der Revolut-App auf „Accounts“, wählen Sie die Währung und tippen Sie auf „More“ (…) → „Statement“.</span></li>
+            <li><span class="m-guide__n" aria-hidden="true">2</span><span>Stellen Sie den Zeitraum ein, wählen Sie Excel und tippen Sie auf „Generate“; Moony liest die Datei, wenn sie eine CSV-Datei ist.</span></li>
+            <li><span class="m-guide__n" aria-hidden="true">3</span><span>Tippen Sie oben rechts auf das Export-Symbol und wählen Sie Moony.</span></li>
+          </ol>
+          <p class="m-guide__fmt">Wählen Sie das Format: Excel (CSV)</p>
+        </section>
+        </div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Andere Datei wählen</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The guided recognition of an unknown CSV (frame 06): three rows of the file and what was recognized, at the three widths. -->
+<template id="import-recognize-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Kontoauszug importieren">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Kontoauszug importieren</div><div class="m-sheet__s">In Girokonto · Fio · Geteilt</div></div>
+      <div class="m-sheet__body">
+        <div class="m-filebar"><span class="m-filebar__ic" data-icon="file-text" data-size="16"></span><span class="m-filebar__main"><span class="m-filebar__t">kontoauszug_2026-09.csv</span><span class="m-filebar__s m-filebar__s--wrap">48 Zeilen · Trennzeichen „;“ · Kodierung UTF-8 · Format noch unbekannt</span></span></div>
+        <h3 class="m-t-section" style="margin: 4px 4px 2px; color: var(--ink)">So verstehe ich die Datei</h3>
+        <p class="m-t-sub" style="margin: 0 4px 8px; color: var(--ink-3)">Drei Zahlungen aus der Datei, so wie ich sie lese:</p>
+        <div class="m-rows" data-rows="importSample" style="margin-bottom: 8px"></div>
+        <ul class="m-recog">
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Datum</b><span class="m-recog__v">Datum zaúčtování</span></li>
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Betrag</b><span class="m-recog__v">Částka · Vorzeichen anhand des Saldos geprüft</span></li>
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Beschreibung</b><span class="m-recog__v">Zpráva pro příjemce · Poznámka</span></li>
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Gegenpartei</b><span class="m-recog__v">Název protiúčtu · Číslo protiúčtu</span></li>
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Währung</b><span class="m-recog__v">Měna</span></li>
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Kontostand</b><span class="m-recog__v">Zůstatek po pohybu</span></li>
+          <li class="m-recog__row m-recog__row--no"><span class="m-recog__ic" data-icon="minus" data-size="16"></span><b class="m-recog__f">Transaktions-ID</b><span class="m-recog__v">nicht gefunden · Duplikate erkenne ich an Datum und Betrag</span></li>
+        </ul>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Korrigieren…</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Sieht richtig aus</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The same, with a file whose expenses the balance proves positive (it cannot be imported as read: the red box
+     with "Korrigieren…", "Abbrechen" and the primary disabled) and fields that were not found. -->
+<template id="import-recognize-warn-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Kontoauszug importieren">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Kontoauszug importieren</div><div class="m-sheet__s">In Girokonto · Fio</div></div>
+      <div class="m-sheet__body">
+        <div class="m-filebar"><span class="m-filebar__ic" data-icon="file-text" data-size="16"></span><span class="m-filebar__main"><span class="m-filebar__t">kontoauszug_2026-09.csv</span><span class="m-filebar__s m-filebar__s--wrap">48 Zeilen · Trennzeichen „;“ · Kodierung UTF-8 · Format noch unbekannt</span></span></div>
+        <h3 class="m-t-section" style="margin: 4px 4px 2px; color: var(--ink)">So verstehe ich die Datei</h3>
+        <p class="m-t-sub" style="margin: 0 4px 8px; color: var(--ink-3)">Drei Zahlungen aus der Datei, so wie ich sie lese:</p>
+        <div class="m-rows" data-rows="importSampleInverted" style="margin-bottom: 8px"></div>
+        <div class="m-box m-box--loss" role="alert">
+          <p class="m-imp-warn"><span data-icon="triangle-alert" data-size="15"></span><span>Eine Datei, in der Ausgaben positiv sind, kann Moony noch nicht importieren. Steht der Betrag in einer anderen Spalte, wählen Sie diese; sonst brechen Sie den Import ab.</span></p>
+          <button class="m-imp-act" type="button">Korrigieren…</button>
+        </div>
+        <ul class="m-recog">
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Datum</b><span class="m-recog__v">Buchungsdatum</span></li>
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Betrag</b><span class="m-recog__v">Umsatz<span class="m-recog__warn"><span data-icon="triangle-alert" data-size="14"></span><span>Ausgaben in dieser Datei wirken positiv – prüfen Sie die Beispielzeilen</span></span></span></li>
+          <li class="m-recog__row"><span class="m-recog__ic" data-icon="check" data-size="16"></span><b class="m-recog__f">Beschreibung</b><span class="m-recog__v">Verwendungszweck</span></li>
+          <li class="m-recog__row m-recog__row--no"><span class="m-recog__ic" data-icon="minus" data-size="16"></span><b class="m-recog__f">Gegenpartei</b><span class="m-recog__v">nicht gefunden · man sieht nicht, wer gezahlt hat oder bezahlt wurde</span></li>
+          <li class="m-recog__row m-recog__row--no"><span class="m-recog__ic" data-icon="minus" data-size="16"></span><b class="m-recog__f">Währung</b><span class="m-recog__v">nicht verwendet · die Währung kommt vom Konto</span></li>
+        </ul>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button" disabled><span>Sieht richtig aus</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- "Korrigieren…": the fields, as rows with a chevron. -->
+<template id="import-fields-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Was soll ich korrigieren?">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Was soll ich korrigieren?</div><div class="m-sheet__s">Tippen Sie auf das Feld, das ich falsch gelesen habe.</div></div>
+      <div class="m-sheet__body">
+        <div class="m-rows" data-rows="importFields"></div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost m-btn--block" type="button"><span>Zurück</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- One field's columns (frame 07): radio options with two sample values each, a pair of columns, and one re-read row. -->
+<template id="import-correct-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Was ist der Betrag?">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Was ist der Betrag?</div><div class="m-sheet__s">Wählen Sie die Spalte mit dem Betrag der Zahlung. Ausgaben sollten negativ sein.</div></div>
+      <div class="m-sheet__body">
+        <div role="radiogroup" aria-label="Was ist der Betrag?">
+          <button class="m-colopt" type="button" role="radio" aria-checked="true"><span class="m-colopt__radio" data-icon="check" data-size="12"></span><span><span class="m-colopt__t">Částka</span><span class="m-colopt__s">−1 249,00 · 61 200,00</span></span></button>
+          <button class="m-colopt" type="button" role="radio" aria-checked="false"><span class="m-colopt__radio"></span><span><span class="m-colopt__t">Zůstatek po pohybu</span><span class="m-colopt__s">86 420,00 · 87 669,00</span></span></button>
+          <button class="m-colopt" type="button" role="radio" aria-checked="false"><span class="m-colopt__radio"></span><span><span class="m-colopt__t">Ausgaben: Odchozí · Einnahmen: Příchozí<span class="m-colopt__cap">(Spaltenpaar)</span></span><span class="m-colopt__s">1 249,00 / — · — / 61 200,00</span></span></button>
+          <button class="m-colopt" type="button" role="radio" aria-checked="false"><span class="m-colopt__radio"></span><span><span class="m-colopt__t">Poplatek a provize poskytovatele platebních služeb</span><span class="m-colopt__s">0,00 · 0,00</span></span></button>
+        </div>
+        <p class="m-t-caption" style="margin: 6px 2px 10px">Beispiel nach Ihrer Wahl:</p>
+        <div class="m-rows" data-rows="importSampleOne" style="margin-bottom: 4px"></div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Zurück</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Übernehmen</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- A date whose day and month cannot be told: the two readings of the column, one date spelled out for each. -->
+<template id="import-order-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__btn" type="button" aria-label="Beträge ausblenden" data-icon="eye"></button></div>
+      <div class="m-nav__title" aria-hidden="true">Übersicht</div>
+      <div class="m-nav__side m-nav__side--end"><span class="m-avatar">AM</span></div>
+    </header>
+    <main class="m-screen__body">
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="overview"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Wie sind die Daten geschrieben?">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Wie sind die Daten geschrieben?</div><div class="m-sheet__s">Jedes Datum in der Datei lässt sich auf beide Arten lesen. Prüfen Sie es an einer Zahlung, die Sie kennen.</div></div>
+      <div class="m-sheet__body">
+        <div role="radiogroup" aria-label="Was ist das Datum?">
+          <button class="m-colopt" type="button" role="radio" aria-checked="true"><span class="m-colopt__radio" data-icon="check" data-size="12"></span><span><span class="m-colopt__t">Tag.Monat.Jahr</span><span class="m-colopt__s m-colopt__s--wrap">3. April 2026 · Datum zaúčtování transakce včetně času</span></span></button>
+          <button class="m-colopt" type="button" role="radio" aria-checked="false"><span class="m-colopt__radio"></span><span><span class="m-colopt__t">Monat/Tag/Jahr</span><span class="m-colopt__s m-colopt__s--wrap">4. März 2026 · Datum zaúčtování transakce včetně času</span></span></button>
+          <button class="m-colopt" type="button" role="radio" aria-checked="false"><span class="m-colopt__radio"></span><span><span class="m-colopt__t">Datum valuty</span><span class="m-colopt__s">03.04.2026 · 05.04.2026</span></span></button>
+          <button class="m-colopt" type="button" role="radio" aria-checked="false"><span class="m-colopt__radio"></span><span><span class="m-colopt__t">ID operace</span><span class="m-colopt__s">9001 · 9002</span></span></button>
+        </div>
+        <p class="m-t-caption" style="margin: 6px 2px 10px">Beispiel nach Ihrer Wahl:</p>
+        <div class="m-rows" data-rows="importSampleDate" style="margin-bottom: 4px"></div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Übernehmen</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The category choice of a preview row, stacked over the import sheet, at the three widths. -->
+<template id="import-choice-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Girokonto</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Fio · CZK · 2100123456/2010</p>
+      <div data-rows="ledgerToday"></div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Kategorie">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Kategorie</div></div>
+      <div class="m-sheet__body">
+        <div class="m-search"><span class="m-search__ic" data-icon="search" data-size="16"></span><input class="m-search__i" type="search" placeholder="Suchen..." aria-label="Suchen..."></div>
+        <section>
+          <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Kategorisierung</div>
+          <div role="radiogroup" aria-label="Kategorisierung">
+            <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" data-icon="tag" data-size="15"></span><span class="m-pick__main"><span class="m-pick__l">Nach den Regeln</span><span class="m-pick__s">Ihre Wahl wird verworfen</span></span></button>
+          </div>
+        </section>
+        <section>
+          <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Alle Kategorien</div>
+          <div role="radiogroup" aria-label="Alle Kategorien">
+            <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" style="background: color-mix(in srgb, var(--s2) 15%, transparent); color: var(--s2)" data-icon="receipt" data-size="15"></span><span class="m-pick__l">Lebensmittel</span></button>
+            <button class="m-pick" type="button" role="radio" aria-checked="true"><span class="m-pick__chip" style="background: color-mix(in srgb, var(--s1) 15%, transparent); color: var(--s1)" data-icon="credit-card" data-size="15"></span><span class="m-pick__l">Einkäufe</span><span class="m-pick__check" data-icon="check" data-size="18"></span></button>
+            <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__chip" style="background: color-mix(in srgb, var(--s3) 15%, transparent); color: var(--s3)" data-icon="house" data-size="15"></span><span class="m-pick__l">Wohnen und Nebenkosten für die ganze Familie</span></button>
+          </div>
+        </section>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost m-btn--block" type="button"><span>Abbrechen</span></button></div>
+    </div>
+  </div>
+</template>
+
 <script src="icons.js"></script>
 <script>
 (function () {
@@ -824,12 +1291,20 @@
     "eye": '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
     "trending-down": '<path d="M16 17h6v-6"/><path d="m22 17-8.5-8.5-5 5L2 7"/>',
     "chevron-left": '<path d="m15 18-6-6 6-6"/>',
+    "external-link": '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
     "clock": '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
     "banknote": '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
     "arrow-right-left": '<path d="m16 3 4 4-4 4"/><path d="M20 7H4"/><path d="m8 21-4-4 4-4"/><path d="M4 17h16"/>',
     "sparkles": '<path d="M11.017 2.814a1 1 0 0 1 1.966 0l1.051 5.558a2 2 0 0 0 1.594 1.594l5.558 1.051a1 1 0 0 1 0 1.966l-5.558 1.051a2 2 0 0 0-1.594 1.594l-1.051 5.558a1 1 0 0 1-1.966 0l-1.051-5.558a2 2 0 0 0-1.594-1.594l-5.558-1.051a1 1 0 0 1 0-1.966l5.558-1.051a2 2 0 0 0 1.594-1.594z"/><path d="M20 2v4"/><path d="M22 4h-4"/><circle cx="4" cy="20" r="2"/>',
     "layers": '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>',
     "shopping-cart": '<path d="m2.05 2.05 1.099-.028a1 1 0 0 1 1.008.815l2.69 14.347A1 1 0 0 0 7.83 18H18"/><path d="M4.563 5h16.435a1 1 0 0 1 .981 1.204l-1.026 6.226A2 2 0 0 1 18.962 14H6.25"/><circle cx="18" cy="20" r="2"/><circle cx="8" cy="20" r="2"/>',
+    "triangle-alert": '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    "list": '<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/>',
+    "align-left": '<path d="M15 12H3"/><path d="M17 18H3"/><path d="M21 6H3"/>',
+    "user": '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+    "coins": '<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/>',
+    "hash": '<line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/>',
+    "scale": '<path d="M12 3v18"/><path d="m19 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1"/><path d="m5 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M7 21h10"/>',
     "utensils": '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>'
   });
 
@@ -864,6 +1339,23 @@
     return '<div class="m-swipe"><span class="m-swipe__panel m-swipe__panel--end" aria-hidden="true"><span data-icon="' + iconName + '" data-size="18"></span>' + label + '</span>' +
       html.replace('<a class="m-row', '<a style="transform: translateX(-98px)" class="m-row') + '</div>';
   }
+  /* The categorize queue (frame 05): the entity row in its swipe box and, inside the same box, the pill row —
+     a dark pill (the suggestion and its source) with "Andere…", or "Kategorie wählen…" with "Überspringen", the
+     green pill of a row that is dealt with (on `well`, with the expansion once), the sentence of a row put off. */
+  function pill(tone, label, o) {
+    o = o || {};
+    var icon = o.icon ? '<span data-icon="' + o.icon + '" data-size="14" aria-hidden="true"></span>' : "";
+    var small = o.source ? '<small>· ' + o.source + '</small>' : "";
+    var text = o.icon ? '<span class="m-pill__t">' + label + '</span>' : label;
+    var tag = tone === "done" ? "span" : "button";
+    return '<' + tag + (tag === "button" ? ' type="button"' : "") + ' class="m-pill' + (tone ? " m-pill--" + tone : "") + '">' + icon + text + small + '</' + tag + '>';
+  }
+  function queueItem(o) {
+    var r = row(o.chip, o.title, o.sub, o.value, "", { gain: o.gain, chip: o.gain ? "m-row__chip--gain" : "" });
+    return '<div class="m-swipe m-queue__item' + (o.state ? " is-" + o.state : "") + '">' + r +
+      '<div class="m-pillrow">' + o.pills + '</div>' + (o.more || "") + '</div>';
+  }
+  var QUEUE_MORE = '<div class="m-queue__more"><label class="m-switchrow"><span class="m-switchrow__main"><span class="m-switchrow__t">Auch 3 weitere Zahlungen von Lidl Praha 4 kategorisiert</span><span class="m-switchrow__s">Gleiche Gegenpartei und Richtung auf diesem Konto</span></span><span class="m-switchrow__sw" role="switch" aria-checked="true"></span></label></div>';
   var ROWS = {
     wealthInvest: [
       row("", "Aktien und ETFs", "12 Positionen · VWCE, CSPX, AAPL +9", "2&nbsp;650&nbsp;000 Kč", '<span class="m-change"><span class="m-change__badge m-change__badge--gain">▲ 3,2 %</span>+ 82&nbsp;300 Kč</span>', { icon: "trending-up" }),
@@ -945,6 +1437,62 @@
       swipe(row("ZS", "Zalando SE", "Kleidung · " + badge("Erstattung") + " · Rücksendung 88123", "+ 1&nbsp;290 Kč", "", { chip: "m-row__chip--gain", gain: true })),
       swipe(row("", "XTB · eigenes Konto", "Investitionen, Sparen und Umbuchungen", "− 33&nbsp;120 Kč", "", { icon: "arrow-right-left" }))
     ],
+    /* The categorize queue: an open row with a suggestion (rule, learned, rule pack — a long name at the end), one without,
+       a credit, a row that is done with the expansion, and one that was put off. */
+    queue: [
+      queueItem({ chip: "AC", title: "Alza.cz a.s.", sub: "Heute · Bestellung 2201983", value: "− 4&nbsp;590 Kč", pills: pill("dark", "Elektronik", { icon: "check", source: "nach Regel" }) + pill("ghost", "Andere…") }),
+      queueItem({ chip: "LP", title: "Lidl Praha 4", sub: "15. 10. · Kartenzahlung", value: "− 1&nbsp;249 Kč", state: "done", pills: pill("done", "Lebensmittel", { icon: "check" }), more: QUEUE_MORE }),
+      queueItem({ chip: "ZO", title: "Zubní ordinace", sub: "13. 10. · Überweisung · 2300…/2010", value: "− 800 Kč", pills: pill("", "Kategorie wählen…", { icon: "tag" }) + pill("ghost", "Überspringen") }),
+      queueItem({ chip: "NE", title: "Netflix", sub: "12. 10. · Kartenzahlung", value: "− 319 Kč", pills: pill("dark", "Abonnements", { icon: "check", source: "gelernt" }) + pill("ghost", "Andere…") }),
+      queueItem({ chip: "DP", title: "Dopravní podnik hl. m. Prahy", sub: "11. 10. · Kartenzahlung", value: "− 550 Kč", pills: pill("dark", "Verkehr", { icon: "check", source: "Regelpaket" }) + pill("ghost", "Andere…") }),
+      queueItem({ chip: "BO", title: "Bolt Operations", sub: "10. 10. · Kartenzahlung", value: "− 189 Kč", pills: pill("dark", "Restaurants &amp; Gastronomie", { icon: "check", source: "MCP-Vorschlag" }) + pill("ghost", "Andere…") }),
+      queueItem({ chip: "JN", title: "Jan Novák", sub: "10. 10. · Überweisung · „für das Mittagessen“", value: "+ 250 Kč", gain: true, pills: pill("", "Kategorie wählen…", { icon: "tag" }) + pill("ghost", "Überspringen") }),
+      queueItem({ chip: "RO", title: "Rohlik.cz", sub: "9. 10. · Kartenzahlung", value: "− 2&nbsp;311 Kč", state: "left", pills: '<span class="m-queue__note"><span data-icon="clock" data-size="14" aria-hidden="true"></span>Für 30 Tage übersprungen</span>' })
+    ],
+    /* The import preview: the entity row of a movement with "Datum · Kategorie" in the sub-line (a credit's chip in
+       gain, "Ohne Kategorie" as the ledger's badge, a choice of the person marked "manuell"), a duplicate at half
+       strength with its reason, an error with the red badge and "—" for an amount that could not be read. */
+    importRows: [
+      row("LP", "Lidl Praha 4", "14. 10. · Lebensmittel", "− 1&nbsp;249 Kč"),
+      row("UA", "Umbrella a.s.", "1. 10. · Gehalt · manuell", "+ 61&nbsp;200 Kč", "", { chip: "m-row__chip--gain", gain: true }),
+      row("AC", "Alza.cz a.s.", "12. 10. · " + badge("Ohne Kategorie"), "− 4&nbsp;590 Kč"),
+      row("RO", "Rohlik.cz", "13. 10. · " + badge("Duplikat"), "− 2&nbsp;311 Kč", "", { cls: "m-row--muted" }),
+      row("UN", "Unbekannte Zahlung", "9. 10. · " + '<span class="m-row__badge m-row__badge--loss">Fehler</span>' + " · Betrag nicht lesbar", "—")
+    ],
+    /* The recognition's three rows: the date, the counterparty, "date · what it was for" and the signed amount in its own
+       currency (the credit's chip in gain); the inverted file shows its expenses as credits, which is what the warning says. */
+    importSample: [
+      row("LP", "Lidl Praha 4", "10. 10. 2026 · Kartenzahlung", "− 1&nbsp;249 Kč"),
+      row("UA", "Umbrella a.s.", "9. 10. 2026 · Gehalt 09/2026", "+ 61&nbsp;200 Kč", "", { chip: "m-row__chip--gain", gain: true }),
+      row("BO", "Bolt Operations", "8. 10. 2026 · Kartenzahlung", "− 189 Kč")
+    ],
+    importSampleInverted: [
+      row("LP", "Lidl Praha 4", "10. 10. 2026 · Kartenzahlung", "+ 1&nbsp;249 Kč", "", { chip: "m-row__chip--gain", gain: true }),
+      row("UA", "Umbrella a.s.", "9. 10. 2026 · Gehalt 09/2026", "− 61&nbsp;200 Kč"),
+      row("BO", "Bolt Operations", "8. 10. 2026 · Kartenzahlung", "+ 189 Kč", "", { chip: "m-row__chip--gain", gain: true })
+    ],
+    importSampleOne: [
+      row("LP", "Lidl Praha 4", "10. 10. 2026 · Kartenzahlung", "− 1&nbsp;249 Kč")
+    ],
+    importSampleDate: [
+      row("LP", "Lidl Praha 4", "3. 4. 2026 · Kartenzahlung", "− 1&nbsp;249 Kč")
+    ],
+    /* The fields of "Korrigieren…": a rounded-square chip with the field's glyph, what it reads now, a chevron. */
+    importFields: [
+      row("", "Datum", "Datum zaúčtování", "", "", { icon: "calendar", chip: "m-row__chip--sq" }),
+      row("", "Betrag", "Částka", "", "", { icon: "banknote", chip: "m-row__chip--sq" }),
+      row("", "Beschreibung", "Zpráva pro příjemce · Poznámka", "", "", { icon: "align-left", chip: "m-row__chip--sq" }),
+      row("", "Gegenpartei", "Název protiúčtu · Číslo protiúčtu", "", "", { icon: "user", chip: "m-row__chip--sq" }),
+      row("", "Währung", "Měna", "", "", { icon: "coins", chip: "m-row__chip--sq" }),
+      row("", "Kontostand", "Zůstatek po pohybu", "", "", { icon: "scale", chip: "m-row__chip--sq" }),
+      row("", "Transaktions-ID", "nicht gefunden", "", "", { icon: "hash", chip: "m-row__chip--sq" })
+    ],
+    /* The done step's next steps: a row with a chevron each; the carried-out one is ticked and at half strength. */
+    importNext: [
+      row("", "Importierte Transaktionen anzeigen", "48 Zeilen mit dem Stapel „kontoauszug-oktober-2026-vollstaendig.xml“", "", "", { icon: "list" }),
+      row("", "Länderpaket Tschechien aktivieren", "Erkennt lokale Händler und kategorisiert Ihre Transaktionen automatisch.", "", "", { icon: "sparkles" }),
+      row("", "Kontostand auf 30&nbsp;196,12 Kč setzen", "Auszugssaldo zum 31. 10. 2026", "", "", { icon: "scale", cls: "m-row--muted" })
+    ],
     settings: [
       row("", "Sicherheit", "Face ID · Sperre nach 1 Minute", "", "", { icon: "lock" }),
       row("", "Sicherung und Übertragung", "iCloud Drive · heute 7:30", "", "", { icon: "download" }),
@@ -1012,6 +1560,19 @@
   }
   frames("budgets", "budgets-frame", "Rozpočty");
   frames("limit", "limit-frame", "Limit-Sheet");
+  frames("importPreview", "import-preview-frame", "Import: Vorschau");
+  frames("importDone", "import-done-frame", "Import: Fertig");
+  frames("importAccount", "import-account-frame", "Import: Konto");
+  frames("importChoice", "import-choice-frame", "Import: Kategorie");
+  frames("importGuide", "import-pick-frame", "Import: Anleitung");
+  frames("importGuides", "import-guides-frame", "Import: Banken");
+  frames("importGuideOpen", "import-guide-open-frame", "Import: Anleitung offen");
+  frames("importRecognize", "import-recognize-frame", "Import: Erkennung");
+  frames("importRecognizeWarn", "import-recognize-warn-frame", "Import: Erkennung (Vorzeichen)");
+  frames("importFields", "import-fields-frame", "Import: Felder");
+  frames("importCorrect", "import-correct-frame", "Import: Korrektur");
+  frames("importOrder", "import-order-frame", "Import: Datumsreihenfolge");
+  frames("queue", "queue-frame", "Zařazení plateb");
 
   /* Budget rows: category chip as on the Cashflow rows, the limit as the value, validity and the changes to
      come in the sub-line, "Geplant" / "beendet" under the value (an ended row at half strength); the rows of
@@ -1182,8 +1743,9 @@
         if (el.parentElement.closest(".m-seg, .m-flows")) return;
         var r = el.getBoundingClientRect();
         if (!r.width && !r.height) return;
-        /* A swiped row is clipped by its `.m-swipe`, so what lies beyond the edge is not seen. */
-        var clipped = el.closest(".m-swipe") && !el.classList.contains("m-swipe");
+        /* A swiped row is clipped by its `.m-swipe`, so what lies beyond the edge is not seen; the pill row and the
+           expansion of a queue row do not slide and are checked like the rest. */
+        var clipped = el.closest(".m-swipe") && !el.classList.contains("m-swipe") && !el.closest(".m-pillrow, .m-queue__more");
         if (!clipped && (r.right > edge.right + 0.5 || r.left < edge.left - 0.5)) over.push(el.className || el.tagName);
         if (el.classList.contains("m-seg") && el.scrollWidth > el.clientWidth + 0.5) scrolls++;
         if (el.classList.contains("m-flows") && el.scrollWidth > el.clientWidth + 0.5) strips++;

@@ -169,10 +169,37 @@
     },
     "cashTrendLabel": "Diagramm zum Bargeldverlauf"
   },
+  "queue": {
+    "source": {
+      "mcp": "MCP-Vorschlag",
+      "learned": "gelernt",
+      "rule": "nach Regel",
+      "pack": "Regelpaket"
+    },
+    "other": "Andere…",
+    "choose": "Kategorie wählen…",
+    "keep": "Überspringen",
+    "keepMenu": "Für {{days}} Tage überspringen",
+    "snoozed": "Für {{days}} Tage übersprungen",
+    "categorized": "Kategorisiert",
+    "also_one": "Auch {{count}} weitere Zahlung von {{name}} kategorisiert",
+    "also_other": "Auch {{count}} weitere Zahlungen von {{name}} kategorisiert",
+    "alsoSub": "Gleiche Gegenpartei und Richtung auf diesem Konto",
+    "alsoRestored": "Wiederhergestellt wie zuvor",
+    "handled_one": "{{count}} bereits erledigt",
+    "handled_other": "{{count}} bereits erledigt",
+    "progress": "{{done}} von {{total}}",
+    "caption": "Tippen Sie auf einen Vorschlag, um ihn zu übernehmen. „{{keep}}“ stellt eine Zahlung für {{days}} Tage zurück. Was Sie kategorisieren, wird als Regel für dieses Konto gelernt.",
+    "showCashflow": "Cashflow anzeigen",
+    "empty": {
+      "title": "Alles kategorisiert",
+      "hint": "Neue Zahlungen erscheinen hier nach dem nächsten Import.",
+      "snoozed_one": "{{count}} übersprungene Zahlung kommt später zurück.",
+      "snoozed_other": "{{count}} übersprungene Zahlungen kommen später zurück."
+    }
+  },
   "placeholder": {
     "detail": "Die Detailansicht kommt in Phase 4.",
-    "queue": "Die Zuordnungsliste kommt in Phase 2b.",
-    "import": "Der Auszugsimport kommt in Phase 2b.",
     "form": "Das Formular zum Hinzufügen kommt in Phase 2b.",
     "edit": "Das Bearbeiten kommt in Phase 2b.",
     "delete": "Das Löschen kommt in Phase 2b.",
@@ -259,6 +286,118 @@
     "suggested": "Vorschlag",
     "decline": "Vorschlag ablehnen",
     "empty": "Keine Kategorie passt"
+  },
+  "import": {
+    "title": "Kontoauszug importieren",
+    "intoAccount": "In {{account}}",
+    "fromShare": "Geteilt",
+    "reads": "Unterstützt: {{formats}}.",
+    "reading": "Datei wird gelesen…",
+    "importing": "Zahlungen werden geschrieben…",
+    "pick": {
+      "lead": "Wählen Sie die Datei, die Sie bei Ihrer Bank heruntergeladen haben.",
+      "choose": "Datei wählen",
+      "chooseOther": "Andere Datei wählen"
+    },
+    "account": {
+      "sheetTitle": "In welches Konto?",
+      "lead": "Wählen Sie das Konto, zu dem die Zahlungen gehören.",
+      "none": "Sie haben noch kein offenes Konto. Legen Sie das Konto an, zu dem diese Datei gehört.",
+      "title": "Konten",
+      "new": "Neues Konto…"
+    },
+    "statement": {
+      "title": "Welcher Auszug?",
+      "dateTitle": "Wie sind die Daten geschrieben?",
+      "continue": "Weiter"
+    },
+    "unreadable": {
+      "title": "Datei nicht lesbar",
+      "pdf": "PDF-Auszüge kann Moony noch nicht lesen – laden Sie bei Ihrer Bank CSV, CAMT, MT940, OFX oder QIF herunter.",
+      "image": "Fotos oder Scans von Auszügen kann Moony nicht lesen – laden Sie bei Ihrer Bank CSV, CAMT, MT940, OFX oder QIF herunter.",
+      "notStatement": "Diese Datei enthält keinen Auszug, den Moony lesen kann.",
+      "error": "Die Datei konnte nicht gelesen werden."
+    },
+    "guide": {
+      "title": "So erhalten Sie einen Auszug: {{bank}}",
+      "format": "Wählen Sie das Format: {{format}}",
+      "openWeb": "Online-Banking öffnen",
+      "openFailed": "Der Browser konnte nicht geöffnet werden.",
+      "banks": "Anleitungen der Banken"
+    },
+    "recognize": {
+      "title": "So verstehe ich die Datei",
+      "caption": "Drei Zahlungen aus der Datei, so wie ich sie lese:",
+      "captionFew": "Zahlungen aus der Datei, so wie ich sie lese:",
+      "unknownFormat": "Format noch unbekannt",
+      "tab": "Tabulator",
+      "previewFailed": "Die Beispielzeilen konnten gerade nicht geladen werden. Die erkannten Spalten unten gelten trotzdem.",
+      "looksRight": "Sieht richtig aus",
+      "fix": "Korrigieren…",
+      "use": "Übernehmen",
+      "field": {
+        "transactionId": "Transaktions-ID"
+      },
+      "notFound": "nicht gefunden",
+      "unused": "nicht verwendet",
+      "unusedWhy": {
+        "description": "Zahlungen lassen sich schwerer kategorisieren",
+        "counterparty": "man sieht nicht, wer gezahlt hat oder bezahlt wurde",
+        "currency": "die Währung kommt vom Konto",
+        "balance": "ich schlage keinen Kontostand aus der Datei vor",
+        "transactionId": "Duplikate erkenne ich an Datum und Betrag"
+      },
+      "signVerified": "Vorzeichen anhand des Saldos geprüft",
+      "signInverted": "Ausgaben in dieser Datei wirken positiv – prüfen Sie die Beispielzeilen",
+      "signsBlocked": "Eine Datei, in der Ausgaben positiv sind, kann Moony noch nicht importieren. Steht der Betrag in einer anderen Spalte, wählen Sie diese; sonst brechen Sie den Import ab.",
+      "allPositive": "Alle Beträge sind positiv – Ausgaben würden als Einnahmen gespeichert.",
+      "pairSides": "Ausgaben: {{debit}} · Einnahmen: {{credit}}",
+      "fixTitle": "Was soll ich korrigieren?",
+      "fixLead": "Tippen Sie auf das Feld, das ich falsch gelesen habe.",
+      "ask": {
+        "date": "Was ist das Datum?",
+        "amount": "Was ist der Betrag?",
+        "description": "Was ist die Beschreibung?",
+        "counterparty": "Was ist die Gegenpartei?",
+        "currency": "Was ist die Währung?",
+        "balance": "Was ist der Kontostand?",
+        "transactionId": "Was ist die Transaktions-ID?"
+      },
+      "lead": {
+        "date": "Wählen Sie die Spalte mit dem Datum jeder Zahlung.",
+        "amount": "Wählen Sie die Spalte mit dem Betrag der Zahlung. Ausgaben sollten negativ sein.",
+        "description": "Wählen Sie die Spalte mit dem Zahlungstext, etwa Verwendungszweck oder Notiz. Er hilft beim Kategorisieren der Zahlungen.",
+        "counterparty": "Wählen Sie die Spalte mit dem Namen dessen, der gezahlt hat oder bezahlt wurde.",
+        "currency": "Wählen Sie die Spalte mit dem Währungscode, zum Beispiel CZK oder EUR.",
+        "balance": "Wählen Sie die Spalte mit dem Kontostand nach jeder Zahlung.",
+        "transactionId": "Wählen Sie die Spalte mit der eindeutigen Nummer, die die Bank jeder Zahlung gibt."
+      },
+      "sample": "Beispiel nach Ihrer Wahl:",
+      "sampleHint": "Wählen Sie eine Spalte, dann zeige ich, wie ich die Zahlung lesen würde.",
+      "pair": "Spaltenpaar"
+    },
+    "preview": {
+      "hint": "Tippen Sie auf eine Zahlung, um ihre Kategorie zu wählen.",
+      "more_one": "und {{count}} weitere",
+      "more_other": "und {{count}} weitere"
+    },
+    "choice": {
+      "title": "Kategorisierung",
+      "byRules": "Nach den Regeln",
+      "byRulesSub": "Ihre Wahl wird verworfen"
+    },
+    "done": {
+      "lastBalance": "Saldo nach der letzten Zahlung: <b>{{balance}}</b>.",
+      "categorized_one": "{{count}} Zahlung wurde von den Regeln kategorisiert.",
+      "categorized_other": "{{count}} Zahlungen wurden von den Regeln kategorisiert.",
+      "open_one": "{{count}} hat noch keine Kategorie.",
+      "open_other": "{{count}} haben noch keine Kategorie.",
+      "allSorted": "Alles hat eine Kategorie.",
+      "promoted_one": "{{count}} vorgemerkte Zahlung wurde gebucht.",
+      "promoted_other": "{{count}} vorgemerkte Zahlungen wurden gebucht.",
+      "queue_one": "{{count}} Zahlung kategorisieren",
+      "queue_other": "{{count}} Zahlungen kategorisieren"
+    }
   },
   "wealth": {
     "placeholder": {
@@ -372,6 +511,7 @@
       "reminders": "Erinnerungen",
       "remindersSub": "{{on}} von {{total}} Gruppen",
       "import": "Import",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
       "deleteSub": "nach Eingabe eines Bestätigungsworts"
     },
     "version": "Moony {{version}} · {{privacy}}",

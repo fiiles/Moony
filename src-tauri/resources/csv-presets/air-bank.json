@@ -14,5 +14,62 @@
   "counterpartyColumn": "Název protistrany",
   "counterpartyIbanColumn": "Číslo účtu protistrany",
   "currencyColumn": "Měna účtu",
-  "exportHelpUrl": "https://www.airbank.cz/co-vas-nejvic-zajima/export-vypisu/"
+  "exportHelpUrl": "https://www.airbank.cz/co-vas-nejvic-zajima/export-vypisu/",
+  "mobileExport": {
+    "route": "web",
+    "format": "CSV",
+    "webUrl": "https://ib.airbank.cz/",
+    "steps": {
+      "en": [
+        "Open Air Bank internet banking in Safari or Chrome and sign in.",
+        "Open “Historie plateb”, tap the export icon at the bottom left and choose CSV.",
+        "Share the file with Moony, or save it to Files and choose it here with “Choose file”."
+      ],
+      "cs": [
+        "V Safari nebo Chrome otevřete internetové bankovnictví Air Bank a přihlaste se.",
+        "Otevřete „Historie plateb“, klepněte na ikonu exportu vlevo dole a zvolte CSV.",
+        "Sdílejte soubor do Moony, nebo ho uložte do Souborů a vyberte ho zde přes „Vybrat soubor“."
+      ],
+      "de": [
+        "Öffnen Sie das Online-Banking von Air Bank in Safari oder Chrome und melden Sie sich an.",
+        "Öffnen Sie „Historie plateb“, tippen Sie unten links auf das Export-Symbol und wählen Sie CSV.",
+        "Teilen Sie die Datei mit Moony oder speichern Sie sie in „Dateien“ und wählen Sie sie hier mit „Datei wählen“."
+      ],
+      "es": [
+        "Abre la banca por internet de Air Bank en Safari o Chrome e inicia sesión.",
+        "Abre «Historie plateb», toca el icono de exportar abajo a la izquierda y elige CSV.",
+        "Comparte el archivo con Moony, o guárdalo en Archivos y elígelo aquí con «Elegir archivo»."
+      ],
+      "it": [
+        "Apri l'home banking di Air Bank in Safari o Chrome e accedi.",
+        "Apri «Historie plateb», tocca l'icona di esportazione in basso a sinistra e scegli CSV.",
+        "Condividi il file con Moony, oppure salvalo in File e sceglilo qui con «Scegli file»."
+      ],
+      "nb": [
+        "Åpne nettbanken til Air Bank i Safari eller Chrome og logg inn.",
+        "Åpne «Historie plateb», trykk på eksportikonet nederst til venstre og velg CSV.",
+        "Del filen med Moony, eller lagre den i Filer og velg den her med «Velg fil»."
+      ],
+      "pl": [
+        "Otwórz bankowość internetową banku Air Bank w Safari lub Chrome i zaloguj się.",
+        "Otwórz „Historie plateb”, stuknij ikonę eksportu w lewym dolnym rogu i wybierz CSV.",
+        "Udostępnij plik aplikacji Moony albo zapisz go w Plikach i wybierz tutaj przez „Wybierz plik”."
+      ],
+      "sv": [
+        "Öppna internetbanken hos Air Bank i Safari eller Chrome och logga in.",
+        "Öppna ”Historie plateb”, tryck på exportikonen nere till vänster och välj CSV.",
+        "Dela filen med Moony, eller spara den i Filer och välj den här med ”Välj fil”."
+      ],
+      "ja": [
+        "SafariまたはChromeでAir Bankのインターネットバンキングを開き、ログインします。",
+        "「Historie plateb」を開き、左下の書き出しアイコンをタップしてCSVを選びます。",
+        "ファイルをMoonyに共有するか、「ファイル」に保存して、ここで「ファイルを選択」から選びます。"
+      ],
+      "zh": [
+        "在 Safari 或 Chrome 中打开 Air Bank 网上银行并登录。",
+        "打开“Historie plateb”，点按左下角的导出图标，选择 CSV。",
+        "将文件共享给 Moony，或存到“文件”后在此处点按“选择文件”。"
+      ]
+    }
+  }
 }

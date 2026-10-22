@@ -210,6 +210,7 @@
     "backupNewerThanApp": "Tato záloha vznikla v novější verzi Moony. Nejdřív Moony aktualizujte.",
     "backupDestinationMissing": "Cílová složka neexistuje.",
     "backupExportInvalid": "Tento název souboru není povolen.",
+    "receivedFileOutside": "Tento soubor odsud nelze odstranit.",
     "sellExceedsHoldings": "Nelze prodat více, než k danému datu držíte.",
     "csvEmptyFile": "Soubor je prázdný nebo neobsahuje řádek záhlaví.",
     "csvColumnsNotFound": "Vybrané sloupce nebyly v souboru nalezeny. Zkontrolujte řádek záhlaví a mapování sloupců.",
@@ -289,7 +290,9 @@
     "statementInvestmentOnly": "Tento soubor obsahuje jen investiční transakce. Použijte pro ně import od brokera.",
     "statementMalformed": "Soubor výpisu je poškozený nebo neúplný ({{detail}}).",
     "statementIndexInvalid": "Vyberte jeden z výpisů v souboru.",
-    "statementDateOrderInvalid": "Pořadí data lze zvolit jen u souborů QIF."
+    "statementDateOrderInvalid": "Pořadí data lze zvolit jen u souborů QIF.",
+    "snoozeSelectionInvalid": "Vyberte 1 až 1000 plateb.",
+    "snoozeDaysInvalid": "Zadejte počet dnů od 1 do 365."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

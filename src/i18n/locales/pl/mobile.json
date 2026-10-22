@@ -195,10 +195,43 @@
     },
     "cashTrendLabel": "Wykres gotówki"
   },
+  "queue": {
+    "source": {
+      "mcp": "propozycja z MCP",
+      "learned": "wyuczone",
+      "rule": "wg reguły",
+      "pack": "pakiet reguł"
+    },
+    "other": "Inna…",
+    "choose": "Wybierz kategorię…",
+    "keep": "Pomiń",
+    "keepMenu": "Pomiń na {{days}} dni",
+    "snoozed": "Pominięta na {{days}} dni",
+    "categorized": "Zakategoryzowano",
+    "also_one": "Zakategoryzowano też {{count}} inną płatność od {{name}}",
+    "also_few": "Zakategoryzowano też {{count}} inne płatności od {{name}}",
+    "also_many": "Zakategoryzowano też {{count}} innych płatności od {{name}}",
+    "also_other": "Zakategoryzowano też {{count}} innej płatności od {{name}}",
+    "alsoSub": "Ten sam kontrahent i kierunek na tym koncie",
+    "alsoRestored": "Przywrócono jak było",
+    "handled_one": "{{count}} już obsłużona",
+    "handled_few": "{{count}} już obsłużone",
+    "handled_many": "{{count}} już obsłużonych",
+    "handled_other": "{{count}} już obsłużonych",
+    "progress": "{{done}} z {{total}}",
+    "caption": "Dotknij propozycji, aby ją zaakceptować. „{{keep}}” odkłada płatność na {{days}} dni. To, co skategoryzujesz, zostaje zapamiętane jako reguła dla tego konta.",
+    "showCashflow": "Pokaż przepływy",
+    "empty": {
+      "title": "Wszystko zakategoryzowane",
+      "hint": "Nowe płatności pojawią się tu po następnym imporcie.",
+      "snoozed_one": "{{count}} pominięta płatność wróci później.",
+      "snoozed_few": "{{count}} pominięte płatności wrócą później.",
+      "snoozed_many": "{{count}} pominiętych płatności wróci później.",
+      "snoozed_other": "{{count}} pominiętych płatności wróci później."
+    }
+  },
   "placeholder": {
     "detail": "Szczegóły pojawią się w fazie 4.",
-    "queue": "Kolejka przypisywania pojawi się w fazie 2b.",
-    "import": "Import wyciągów pojawi się w fazie 2b.",
     "form": "Formularz dodawania pojawi się w fazie 2b.",
     "edit": "Edycja pojawi się w fazie 2b.",
     "delete": "Usuwanie pojawi się w fazie 2b.",
@@ -287,6 +320,128 @@
     "suggested": "Propozycja",
     "decline": "Odrzuć propozycję",
     "empty": "Żadna kategoria nie pasuje"
+  },
+  "import": {
+    "title": "Importuj wyciąg",
+    "intoAccount": "Do konta {{account}}",
+    "fromShare": "Z udostępnienia",
+    "reads": "Obsługiwane: {{formats}}.",
+    "reading": "Czytam plik…",
+    "importing": "Zapisuję płatności…",
+    "pick": {
+      "lead": "Wybierz plik pobrany z twojego banku.",
+      "choose": "Wybierz plik",
+      "chooseOther": "Wybierz inny plik"
+    },
+    "account": {
+      "sheetTitle": "Na które konto?",
+      "lead": "Wybierz konto, do którego należą płatności.",
+      "none": "Nie masz jeszcze otwartego konta. Dodaj to, do którego należy plik.",
+      "title": "Konta",
+      "new": "Nowe konto…"
+    },
+    "statement": {
+      "title": "Który wyciąg?",
+      "dateTitle": "Jak zapisano daty?",
+      "continue": "Dalej"
+    },
+    "unreadable": {
+      "title": "Nie można odczytać pliku",
+      "pdf": "Moony nie odczyta jeszcze wyciągu w PDF – pobierz z banku CSV, CAMT, MT940, OFX lub QIF.",
+      "image": "Moony nie odczyta zdjęcia ani skanu wyciągu – pobierz z banku CSV, CAMT, MT940, OFX lub QIF.",
+      "notStatement": "Ten plik nie zawiera wyciągu, który Moony potrafi odczytać.",
+      "error": "Nie udało się odczytać pliku."
+    },
+    "guide": {
+      "title": "Jak uzyskać wyciąg: {{bank}}",
+      "format": "Wybierz format: {{format}}",
+      "openWeb": "Otwórz bankowość internetową",
+      "openFailed": "Nie udało się otworzyć przeglądarki.",
+      "banks": "Instrukcje banków"
+    },
+    "recognize": {
+      "title": "Tak to rozumiem",
+      "caption": "Trzy transakcje z pliku, tak jak je odczytam:",
+      "captionFew": "Transakcje z pliku, tak jak je odczytam:",
+      "unknownFormat": "format jeszcze nieznany",
+      "tab": "tabulator",
+      "previewFailed": "Nie udało się teraz wczytać przykładowych wierszy. Rozpoznane kolumny poniżej nadal obowiązują.",
+      "looksRight": "Wygląda dobrze",
+      "fix": "Popraw…",
+      "use": "Zastosuj",
+      "field": {
+        "transactionId": "ID transakcji"
+      },
+      "notFound": "nie znaleziono",
+      "unused": "nieużywane",
+      "unusedWhy": {
+        "description": "płatności trudniej przypisać do kategorii",
+        "counterparty": "nie zobaczysz, kto zapłacił ani komu zapłacono",
+        "currency": "waluta pochodzi z konta",
+        "balance": "nie zaproponuję salda konta na podstawie pliku",
+        "transactionId": "duplikaty rozpoznam po dacie i kwocie"
+      },
+      "signVerified": "znak sprawdzony na podstawie salda",
+      "signInverted": "wydatki w tym pliku wyglądają na dodatnie – sprawdź przykład",
+      "signsBlocked": "Moony nie potrafi jeszcze zaimportować pliku, w którym wydatki są dodatnie. Jeśli kwota jest w innej kolumnie, wybierz ją, w przeciwnym razie anuluj import.",
+      "allPositive": "Wszystkie kwoty są dodatnie – wydatki zapisałyby się jako przychody.",
+      "pairSides": "Wydatki: {{debit}} · Przychody: {{credit}}",
+      "fixTitle": "Co poprawić?",
+      "fixLead": "Dotknij pola, które zostało źle odczytane.",
+      "ask": {
+        "date": "Co jest datą?",
+        "amount": "Co jest kwotą?",
+        "description": "Co jest opisem?",
+        "counterparty": "Co jest kontrahentem?",
+        "currency": "Co jest walutą?",
+        "balance": "Co jest saldem?",
+        "transactionId": "Co jest ID transakcji?"
+      },
+      "lead": {
+        "date": "Wybierz kolumnę z datą każdej transakcji.",
+        "amount": "Wybierz kolumnę z kwotą transakcji. Wydatki powinny być ujemne.",
+        "description": "Wybierz kolumnę z tekstem płatności, na przykład tytułem lub notatką. Pomaga przy kategoryzacji płatności.",
+        "counterparty": "Wybierz kolumnę z nazwą tego, kto zapłacił lub komu zapłacono.",
+        "currency": "Wybierz kolumnę z kodem waluty, na przykład CZK lub EUR.",
+        "balance": "Wybierz kolumnę z saldem po każdej transakcji.",
+        "transactionId": "Wybierz kolumnę z unikalnym numerem, który bank nadaje każdej transakcji."
+      },
+      "sample": "Przykład po twoim wyborze:",
+      "sampleHint": "Wybierz kolumnę, a pokażę, jak odczytam transakcję.",
+      "pair": "para kolumn"
+    },
+    "preview": {
+      "hint": "Dotknij płatności, aby wybrać jej kategorię.",
+      "more_one": "i jeszcze {{count}}",
+      "more_few": "i jeszcze {{count}}",
+      "more_many": "i jeszcze {{count}}",
+      "more_other": "i jeszcze {{count}}"
+    },
+    "choice": {
+      "title": "Kategoryzacja",
+      "byRules": "Według reguł",
+      "byRulesSub": "Twój wybór zostanie usunięty"
+    },
+    "done": {
+      "lastBalance": "Saldo po ostatniej płatności: <b>{{balance}}</b>.",
+      "categorized_one": "Reguły skategoryzowały {{count}} płatność.",
+      "categorized_few": "Reguły skategoryzowały {{count}} płatności.",
+      "categorized_many": "Reguły skategoryzowały {{count}} płatności.",
+      "categorized_other": "Reguły skategoryzowały {{count}} płatności.",
+      "open_one": "{{count}} nadal bez kategorii.",
+      "open_few": "{{count}} nadal bez kategorii.",
+      "open_many": "{{count}} nadal bez kategorii.",
+      "open_other": "{{count}} nadal bez kategorii.",
+      "allSorted": "Wszystko ma kategorię.",
+      "promoted_one": "Zaksięgowano {{count}} oczekującą płatność.",
+      "promoted_few": "Zaksięgowano {{count}} oczekujące płatności.",
+      "promoted_many": "Zaksięgowano {{count}} oczekujących płatności.",
+      "promoted_other": "Zaksięgowano {{count}} oczekujących płatności.",
+      "queue_one": "Skategoryzuj {{count}} płatność",
+      "queue_few": "Skategoryzuj {{count}} płatności",
+      "queue_many": "Skategoryzuj {{count}} płatności",
+      "queue_other": "Skategoryzuj {{count}} płatności"
+    }
   },
   "wealth": {
     "placeholder": {
@@ -408,6 +563,7 @@
       "reminders": "Przypomnienia",
       "remindersSub": "{{on}} z {{total}} grup",
       "import": "Import",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
       "deleteSub": "po wpisaniu słowa potwierdzenia"
     },
     "version": "Moony {{version}} · {{privacy}}",

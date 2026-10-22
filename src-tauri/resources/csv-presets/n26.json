@@ -13,5 +13,62 @@
   "counterpartyColumn": "Partner Name",
   "counterpartyIbanColumn": "Partner Iban",
   "exportHelpUrl": "https://support.n26.com/en-eu/payments-transfers-and-withdrawals/balance-and-limits/how-to-get-bank-statement-n26",
-  "sampleFixture": "n26.csv"
+  "sampleFixture": "n26.csv",
+  "mobileExport": {
+    "route": "web",
+    "format": "CSV",
+    "webUrl": "https://n26.com/",
+    "steps": {
+      "en": [
+        "Open the N26 web app in Safari or Chrome and sign in.",
+        "Open “Downloads”, choose “Account Activity”, set the start and end date and pick CSV.",
+        "Share the file with Moony, or save it to Files and choose it here with “Choose file”."
+      ],
+      "cs": [
+        "V Safari nebo Chrome otevřete webovou aplikaci N26 a přihlaste se.",
+        "Otevřete „Downloads“, zvolte „Account Activity“, nastavte datum od a do a vyberte CSV.",
+        "Sdílejte soubor do Moony, nebo ho uložte do Souborů a vyberte ho zde přes „Vybrat soubor“."
+      ],
+      "de": [
+        "Öffnen Sie die N26-Web-App in Safari oder Chrome und melden Sie sich an.",
+        "Öffnen Sie „Downloads“, wählen Sie „Account Activity“, legen Sie Start- und Enddatum fest und wählen Sie CSV.",
+        "Teilen Sie die Datei mit Moony oder speichern Sie sie in „Dateien“ und wählen Sie sie hier mit „Datei wählen“."
+      ],
+      "es": [
+        "Abre la aplicación web de N26 en Safari o Chrome e inicia sesión.",
+        "Abre «Downloads», elige «Account Activity», fija la fecha de inicio y de fin y elige CSV.",
+        "Comparte el archivo con Moony, o guárdalo en Archivos y elígelo aquí con «Elegir archivo»."
+      ],
+      "it": [
+        "Apri l'app web di N26 in Safari o Chrome e accedi.",
+        "Apri «Downloads», scegli «Account Activity», imposta la data di inizio e di fine e scegli CSV.",
+        "Condividi il file con Moony, oppure salvalo in File e sceglilo qui con «Scegli file»."
+      ],
+      "nb": [
+        "Åpne nettappen til N26 i Safari eller Chrome og logg inn.",
+        "Åpne «Downloads», velg «Account Activity», sett start- og sluttdato og velg CSV.",
+        "Del filen med Moony, eller lagre den i Filer og velg den her med «Velg fil»."
+      ],
+      "pl": [
+        "Otwórz aplikację internetową N26 w Safari lub Chrome i zaloguj się.",
+        "Otwórz „Downloads”, wybierz „Account Activity”, ustaw datę początkową i końcową i wybierz CSV.",
+        "Udostępnij plik aplikacji Moony albo zapisz go w Plikach i wybierz tutaj przez „Wybierz plik”."
+      ],
+      "sv": [
+        "Öppna N26s webbapp i Safari eller Chrome och logga in.",
+        "Öppna ”Downloads”, välj ”Account Activity”, ställ in start- och slutdatum och välj CSV.",
+        "Dela filen med Moony, eller spara den i Filer och välj den här med ”Välj fil”."
+      ],
+      "ja": [
+        "SafariまたはChromeでN26のWebアプリを開き、ログインします。",
+        "「Downloads」を開き、「Account Activity」を選んで、開始日と終了日を設定しCSVを選びます。",
+        "ファイルをMoonyに共有するか、「ファイル」に保存して、ここで「ファイルを選択」から選びます。"
+      ],
+      "zh": [
+        "在 Safari 或 Chrome 中打开 N26 网页版并登录。",
+        "打开“Downloads”，选择“Account Activity”，设置起止日期并选择 CSV。",
+        "将文件共享给 Moony，或存到“文件”后在此处点按“选择文件”。"
+      ]
+    }
+  }
 }

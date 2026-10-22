@@ -4,6 +4,47 @@ use crate::models::bank_transactions::{
     BankTransaction, TransactionFilters, TransactionQueryResult,
 };
 use rusqlite::Connection;
+
+/// The columns of one ledger row, in the order [`transaction_from_row`] reads them. The last one
+/// is the file name of the import the row came from, a subquery on `bank_transactions`, so the
+/// statement that uses this list must select `FROM bank_transactions` unaliased.
+pub(crate) const TRANSACTION_COLUMNS: &str = "id, bank_account_id, transaction_id, tx_type, amount, currency,
+             description, counterparty_name, counterparty_iban, booking_date, value_date,
+             category_id, merchant_category_code, remittance_info, suggested_category_id,
+             status, data_source, created_at, flow_kind, counterparty_bank_code, counterparty_country, import_batch_id, import_line, row_balance,
+             (SELECT file_name FROM csv_import_batches WHERE id=bank_transactions.import_batch_id)";
+
+/// A ledger row read with [`TRANSACTION_COLUMNS`].
+pub(crate) fn transaction_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<BankTransaction> {
+    Ok(BankTransaction {
+        flow_kind: row.get(18)?,
+        id: row.get(0)?,
+        bank_account_id: row.get(1)?,
+        transaction_id: row.get(2)?,
+        tx_type: row.get(3)?,
+        amount: row.get(4)?,
+        currency: row.get(5)?,
+        description: row.get(6)?,
+        counterparty_name: row.get(7)?,
+        counterparty_iban: row.get(8)?,
+        counterparty_bank_code: row.get(19)?,
+        counterparty_country: row.get(20)?,
+        import_batch_id: row.get(21)?,
+        import_line: row.get(22)?,
+        row_balance: row.get(23)?,
+        import_file_name: row.get(24)?,
+        booking_date: row.get(9)?,
+        value_date: row.get(10)?,
+        category_id: row.get(11)?,
+        merchant_category_code: row.get(12)?,
+        remittance_info: row.get(13)?,
+        suggested_category_id: row.get(14)?,
+        status: row.get(15)?,
+        data_source: row.get(16)?,
+        created_at: row.get(17)?,
+    })
+}
+
 pub fn get_transactions(
     conn: &Connection,
     account_id: &str,
@@ -15,14 +56,8 @@ pub fn get_transactions(
         return Err(AppError::Validation("validation.paginationInvalid".into()));
     }
     // Build base query
-    let mut sql = String::from(
-            "SELECT id, bank_account_id, transaction_id, tx_type, amount, currency,
-             description, counterparty_name, counterparty_iban, booking_date, value_date,
-             category_id, merchant_category_code, remittance_info, suggested_category_id,
-             status, data_source, created_at, flow_kind, counterparty_bank_code, counterparty_country, import_batch_id, import_line, row_balance,
-             (SELECT file_name FROM csv_import_batches WHERE id=bank_transactions.import_batch_id)
-             FROM bank_transactions WHERE bank_account_id = ?",
-        );
+    let mut sql =
+        format!("SELECT {TRANSACTION_COLUMNS} FROM bank_transactions WHERE bank_account_id = ?");
 
     let mut count_sql =
         String::from("SELECT COUNT(*) FROM bank_transactions WHERE bank_account_id = ?");
@@ -85,35 +120,7 @@ pub fn get_transactions(
 
     let mut stmt = conn.prepare(&sql)?;
     let transactions: Vec<BankTransaction> = stmt
-        .query_map(params_refs.as_slice(), |row| {
-            Ok(BankTransaction {
-                flow_kind: row.get(18)?,
-                id: row.get(0)?,
-                bank_account_id: row.get(1)?,
-                transaction_id: row.get(2)?,
-                tx_type: row.get(3)?,
-                amount: row.get(4)?,
-                currency: row.get(5)?,
-                description: row.get(6)?,
-                counterparty_name: row.get(7)?,
-                counterparty_iban: row.get(8)?,
-                counterparty_bank_code: row.get(19)?,
-                counterparty_country: row.get(20)?,
-                import_batch_id: row.get(21)?,
-                import_line: row.get(22)?,
-                row_balance: row.get(23)?,
-                import_file_name: row.get(24)?,
-                booking_date: row.get(9)?,
-                value_date: row.get(10)?,
-                category_id: row.get(11)?,
-                merchant_category_code: row.get(12)?,
-                remittance_info: row.get(13)?,
-                suggested_category_id: row.get(14)?,
-                status: row.get(15)?,
-                data_source: row.get(16)?,
-                created_at: row.get(17)?,
-            })
-        })?
+        .query_map(params_refs.as_slice(), transaction_from_row)?
         .collect::<rusqlite::Result<Vec<_>>>()?;
 
     // Get total count (reuse params without search duplicates)

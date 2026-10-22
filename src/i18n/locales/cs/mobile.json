@@ -182,10 +182,40 @@
     },
     "cashTrendLabel": "Graf vývoje hotovosti"
   },
+  "queue": {
+    "source": {
+      "mcp": "návrh z MCP",
+      "learned": "naučené",
+      "rule": "podle pravidla",
+      "pack": "balíček pravidel"
+    },
+    "other": "Jiná…",
+    "choose": "Vybrat kategorii…",
+    "keep": "Nechat",
+    "keepMenu": "Nechat na {{days}} dní",
+    "snoozed": "Nechána na {{days}} dní",
+    "categorized": "Zařazeno",
+    "also_one": "Zařazena i {{count}} další platba od {{name}}",
+    "also_few": "Zařazeny i {{count}} další platby od {{name}}",
+    "also_other": "Zařazeno i {{count}} dalších plateb od {{name}}",
+    "alsoSub": "Stejná protistrana a směr na tomto účtu",
+    "alsoRestored": "Vráceno, jak to bylo",
+    "handled_one": "{{count}} už vyřízena",
+    "handled_few": "{{count}} už vyřízeny",
+    "handled_other": "{{count}} už vyřízeno",
+    "progress": "{{done}} z {{total}}",
+    "caption": "Klepnutí na návrh ho přijme. „{{keep}}“ odloží platbu na {{days}} dní. Co zařadíte, se stane naučeným pravidlem pro tento účet.",
+    "showCashflow": "Zobrazit cashflow",
+    "empty": {
+      "title": "Všechno zařazeno",
+      "hint": "Nové platby se tu objeví po dalším importu.",
+      "snoozed_one": "{{count}} odložená platba se sem později vrátí.",
+      "snoozed_few": "{{count}} odložené platby se sem později vrátí.",
+      "snoozed_other": "{{count}} odložených plateb se sem později vrátí."
+    }
+  },
   "placeholder": {
     "detail": "Detail přijde ve fázi 4.",
-    "queue": "Zařazování plateb přijde ve fázi 2b.",
-    "import": "Import výpisu přijde ve fázi 2b.",
     "form": "Formulář pro přidání přijde ve fázi 2b.",
     "edit": "Úpravy přijdou ve fázi 2b.",
     "delete": "Mazání přijde ve fázi 2b.",
@@ -273,6 +303,123 @@
     "suggested": "Návrh",
     "decline": "Odmítnout návrh",
     "empty": "Žádná kategorie neodpovídá"
+  },
+  "import": {
+    "title": "Import výpisu",
+    "intoAccount": "Do účtu {{account}}",
+    "fromShare": "Ze sdílení",
+    "reads": "Umím číst: {{formats}}.",
+    "reading": "Čtu soubor…",
+    "importing": "Zapisuji platby…",
+    "pick": {
+      "lead": "Vyberte soubor, který jste si stáhli z banky.",
+      "choose": "Vybrat soubor",
+      "chooseOther": "Vybrat jiný soubor"
+    },
+    "account": {
+      "sheetTitle": "Do kterého účtu?",
+      "lead": "Vyberte účet, do kterého platby patří.",
+      "none": "Zatím nemáte žádný otevřený účet. Přidejte ten, ke kterému soubor patří.",
+      "title": "Účty",
+      "new": "Nový účet…"
+    },
+    "statement": {
+      "title": "Který výpis?",
+      "dateTitle": "Jak jsou zapsaná data?",
+      "continue": "Pokračovat"
+    },
+    "unreadable": {
+      "title": "Soubor nejde přečíst",
+      "pdf": "Výpis v PDF zatím přečíst neumím — stáhněte si z banky CSV, CAMT, MT940, OFX nebo QIF.",
+      "image": "Fotku ani sken výpisu přečíst neumím — stáhněte si z banky CSV, CAMT, MT940, OFX nebo QIF.",
+      "notStatement": "Tento soubor neobsahuje výpis, který bych uměl přečíst.",
+      "error": "Soubor se nepodařilo přečíst."
+    },
+    "guide": {
+      "title": "Jak získat výpis: {{bank}}",
+      "format": "Vyberte formát: {{format}}",
+      "openWeb": "Otevřít internetové bankovnictví",
+      "openFailed": "Prohlížeč se nepodařilo otevřít.",
+      "banks": "Návody bank"
+    },
+    "recognize": {
+      "title": "Takhle tomu rozumím",
+      "caption": "Tři pohyby ze souboru tak, jak je načtu:",
+      "captionFew": "Pohyby ze souboru tak, jak je načtu:",
+      "unknownFormat": "formát zatím neznám",
+      "tab": "tabulátor",
+      "previewFailed": "Ukázku pohybů se teď nepodařilo načíst. Rozpoznané sloupce níže přesto platí.",
+      "looksRight": "Vypadá to správně",
+      "fix": "Opravit…",
+      "use": "Použít",
+      "field": {
+        "transactionId": "ID pohybu"
+      },
+      "notFound": "nenalezeno",
+      "unused": "nepoužito",
+      "unusedWhy": {
+        "description": "platby se hůř zařazují do kategorií",
+        "counterparty": "nebude vidět, kdo platil nebo komu se platilo",
+        "currency": "měna se vezme z účtu",
+        "balance": "zůstatek účtu podle souboru nenavrhnu",
+        "transactionId": "duplicity poznám podle data a částky"
+      },
+      "signVerified": "znaménko ověřeno podle zůstatku",
+      "signInverted": "výdaje v souboru vypadají kladně — zkontrolujte ukázku",
+      "signsBlocked": "Soubor, ve kterém jsou výdaje kladně, zatím Moony naimportovat neumí. Pokud částku obsahuje jiný sloupec, vyberte ho, jinak import zrušte.",
+      "allPositive": "Všechny částky jsou kladné — výdaje by se uložily jako příjmy.",
+      "pairSides": "Výdaje: {{debit}} · Příjmy: {{credit}}",
+      "fixTitle": "Co opravit?",
+      "fixLead": "Klepněte na pole, které jsem přečetl špatně.",
+      "ask": {
+        "date": "Co je datum?",
+        "amount": "Co je částka?",
+        "description": "Co je popis?",
+        "counterparty": "Co je protistrana?",
+        "currency": "Co je měna?",
+        "balance": "Co je zůstatek?",
+        "transactionId": "Co je ID pohybu?"
+      },
+      "lead": {
+        "date": "Vyberte sloupec s datem pohybu.",
+        "amount": "Vyberte sloupec, který nese částku pohybu. Výdaje mají být záporné.",
+        "description": "Vyberte sloupec s textem platby, třeba zprávou nebo poznámkou. Pomáhá zařazovat platby do kategorií.",
+        "counterparty": "Vyberte sloupec se jménem toho, kdo platil nebo komu se platilo.",
+        "currency": "Vyberte sloupec s kódem měny, například CZK nebo EUR.",
+        "balance": "Vyberte sloupec se zůstatkem po každém pohybu.",
+        "transactionId": "Vyberte sloupec s jedinečným číslem, které banka dává každému pohybu."
+      },
+      "sample": "Ukázka po výběru:",
+      "sampleHint": "Vyberte sloupec a ukážu, jak bych pohyb přečetl.",
+      "pair": "dvojice sloupců"
+    },
+    "preview": {
+      "hint": "Klepnutím na platbu zvolíte její kategorii.",
+      "more_one": "a {{count}} další",
+      "more_few": "a {{count}} další",
+      "more_other": "a {{count}} dalších"
+    },
+    "choice": {
+      "title": "Zařazení",
+      "byRules": "Podle pravidel",
+      "byRulesSub": "Vaše volba se zruší"
+    },
+    "done": {
+      "lastBalance": "Zůstatek po poslední platbě: <b>{{balance}}</b>.",
+      "categorized_one": "{{count}} pohyb zařadila pravidla.",
+      "categorized_few": "{{count}} pohyby zařadila pravidla.",
+      "categorized_other": "{{count}} pohybů zařadila pravidla.",
+      "open_one": "{{count}} zůstává bez kategorie.",
+      "open_few": "{{count}} zůstávají bez kategorie.",
+      "open_other": "{{count}} zůstává bez kategorie.",
+      "allSorted": "Všechno má kategorii.",
+      "promoted_one": "{{count}} čekající platba byla zaúčtována.",
+      "promoted_few": "{{count}} čekající platby byly zaúčtovány.",
+      "promoted_other": "{{count}} čekajících plateb bylo zaúčtováno.",
+      "queue_one": "Zařadit {{count}} platbu",
+      "queue_few": "Zařadit {{count}} platby",
+      "queue_other": "Zařadit {{count}} plateb"
+    }
   },
   "wealth": {
     "placeholder": {
@@ -390,6 +537,7 @@
       "reminders": "Připomínky",
       "remindersSub": "{{on}} z {{total}} skupin",
       "import": "Import",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
       "deleteSub": "po potvrzení napsáním slova"
     },
     "version": "Moony {{version}} · {{privacy}}",

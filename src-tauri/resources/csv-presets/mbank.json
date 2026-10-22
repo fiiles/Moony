@@ -10,5 +10,61 @@
   "dateFormat": "%d-%m-%Y",
   "amountColumn": "#Částka",
   "descriptionColumns": ["#Popis operace"],
-  "counterpartyColumn": "#Příjemce/plátce"
+  "counterpartyColumn": "#Příjemce/plátce",
+  "mobileExport": {
+    "route": "app",
+    "format": "CSV",
+    "steps": {
+      "en": [
+        "In the mBank app, tap “finance” in the bottom menu, then “historie” at the top.",
+        "Tap the blue arrow at the top right, choose the account and the period, and download as CSV.",
+        "Share the file with Moony, or save it to Files and choose it here with “Choose file”."
+      ],
+      "cs": [
+        "V aplikaci mBank klepněte ve spodním menu na „finance“ a nahoře na „historie“.",
+        "Klepněte na modrou šipku vpravo nahoře, vyberte účet a období a stáhněte jako CSV.",
+        "Sdílejte soubor do Moony, nebo ho uložte do Souborů a vyberte ho zde přes „Vybrat soubor“."
+      ],
+      "de": [
+        "Tippen Sie in der mBank-App im unteren Menü auf „finance“ und oben auf „historie“.",
+        "Tippen Sie oben rechts auf den blauen Pfeil, wählen Sie Konto und Zeitraum und laden Sie als CSV herunter.",
+        "Teilen Sie die Datei mit Moony oder speichern Sie sie in „Dateien“ und wählen Sie sie hier mit „Datei wählen“."
+      ],
+      "es": [
+        "En la app de mBank, toca «finance» en el menú inferior y «historie» arriba.",
+        "Toca la flecha azul de arriba a la derecha, elige la cuenta y el periodo y descarga como CSV.",
+        "Comparte el archivo con Moony, o guárdalo en Archivos y elígelo aquí con «Elegir archivo»."
+      ],
+      "it": [
+        "Nell'app mBank tocca «finance» nel menu in basso e «historie» in alto.",
+        "Tocca la freccia blu in alto a destra, scegli il conto e il periodo e scarica in CSV.",
+        "Condividi il file con Moony, oppure salvalo in File e sceglilo qui con «Scegli file»."
+      ],
+      "nb": [
+        "I mBank-appen trykker du på «finance» i menyen nederst og «historie» øverst.",
+        "Trykk på den blå pilen øverst til høyre, velg konto og periode og last ned som CSV.",
+        "Del filen med Moony, eller lagre den i Filer og velg den her med «Velg fil»."
+      ],
+      "pl": [
+        "W aplikacji mBank stuknij w dolnym menu „finance”, a u góry „historie”.",
+        "Stuknij niebieską strzałkę w prawym górnym rogu, wybierz konto i okres i pobierz jako CSV.",
+        "Udostępnij plik aplikacji Moony albo zapisz go w Plikach i wybierz tutaj przez „Wybierz plik”."
+      ],
+      "sv": [
+        "Tryck i mBank-appen på ”finance” i den nedre menyn och på ”historie” högst upp.",
+        "Tryck på den blå pilen uppe till höger, välj konto och period och ladda ner som CSV.",
+        "Dela filen med Moony, eller spara den i Filer och välj den här med ”Välj fil”."
+      ],
+      "ja": [
+        "mBankアプリで下のメニューの「finance」、続けて上部の「historie」をタップします。",
+        "右上の青い矢印をタップし、口座と期間を選んでCSVでダウンロードします。",
+        "ファイルをMoonyに共有するか、「ファイル」に保存して、ここで「ファイルを選択」から選びます。"
+      ],
+      "zh": [
+        "在 mBank 应用中，点按底部菜单的“finance”，再点按顶部的“historie”。",
+        "点按右上角的蓝色箭头，选择账户和期间，下载为 CSV。",
+        "将文件共享给 Moony，或存到“文件”后在此处点按“选择文件”。"
+      ]
+    }
+  }
 }

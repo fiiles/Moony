@@ -22,6 +22,20 @@ export interface PickOptions {
   applyHistory: boolean;
   /** Display name of a category `categories` does not hold yet (one created a moment ago). */
   categoryName?: string;
+  /**
+   * Called once the learning has written, with the other payments it categorized (empty when it
+   * took none along). Not called when there was nothing to learn or the learning failed. It runs
+   * after `pick` has resolved, never before.
+   */
+  onApplied?: (changed: ChangedRow[]) => void;
+  /**
+   * The caller shows the payments a learned pick took along itself (the queue's expansion, which
+   * has the undo): no toast, and no undo toast, for a pick that categorized other payments. What has
+   * no rows to show inline is still said — a pick that took none along ("Kategorie naučena") — and
+   * so is every re-pointed custom rule (it rewrites a rule the person wrote, whatever it took
+   * along) and every failure.
+   */
+  quiet?: boolean;
 }
 
 export interface Categorize {
@@ -80,7 +94,14 @@ export function useCategorize(
     }
   };
 
-  const historyToast = (title: string, description: string | undefined, changed: ChangedRow[]) => {
+  const historyToast = (
+    title: string,
+    description: string | undefined,
+    changed: ChangedRow[],
+    quiet = false
+  ) => {
+    // Only a batch the caller shows inline stays unsaid; the rest has nothing else that reports it
+    if (quiet && changed.length > 0) return;
     if (changed.length === 0) {
       toast(title, { description });
       return;
@@ -148,6 +169,7 @@ export function useCategorize(
           undefined,
           changed
         );
+        options.onApplied?.(changed);
         await refreshAfterWrite();
         return;
       }
@@ -173,8 +195,10 @@ export function useCategorize(
           ? t('categorization.learnedApplied', { count: changed.length })
           : t('categorization.learned'),
         changed.length > 0 ? `"${learnKey}" → ${pickedName}` : `"${learnKey}"`,
-        changed
+        changed,
+        options.quiet
       );
+      options.onApplied?.(changed);
       await refreshAfterWrite();
     } catch (error) {
       // The preview could not be fetched or the write failed: nothing was remembered, the row stays saved

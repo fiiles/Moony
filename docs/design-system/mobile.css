@@ -246,6 +246,7 @@
   border-radius: var(--r-1); background: var(--well-2); color: var(--ink-3);
   font-size: var(--m-fs-caption); font-weight: 600; line-height: 18px; vertical-align: 2px;
 }
+.m-row__badge--loss { background: var(--loss-soft); color: var(--loss); } /* "Chyba" in the import preview */
 .m-row__v {
   flex: none; max-width: 60%; margin-left: auto; color: var(--ink); /* an absurd value never squeezes the title away */
   font-size: var(--m-fs-row); font-weight: var(--m-fw-row); letter-spacing: var(--m-ls-row); line-height: 1.3;
@@ -660,6 +661,12 @@
 .m-pick__chip { display: grid; flex: none; place-items: center; width: 28px; height: 28px; border-radius: 50%; background: var(--well-2); color: var(--ink-3); }
 .m-pick__l { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .m-pick__check { flex: none; width: 18px; height: 18px; }
+/* A pick row with a second line (an account's "Fio · CZK", a statement's currency and payment count, the category
+   choice's "By the rules"): the label and the sub-line share one column, each ending in an ellipsis; the row stays
+   44 px at least. */
+.m-pick__main { flex: 1; min-width: 0; }
+.m-pick__main > .m-pick__l { display: block; }
+.m-pick__s { display: block; overflow: hidden; color: var(--ink-4); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); text-overflow: ellipsis; white-space: nowrap; }
 
 /* ===== Transaction sheet and category picker (spec §8.4) ===== */
 
@@ -793,12 +800,185 @@
    the transaction sheet's, so the label, the value, `--stack` and the sub-line are as described above. */
 .m-kvcard { padding: 4px 16px; }
 
+/* ===== Import sheet (spec §8.6, README §13 "Import sheet") =====
+   One tall sheet (`.m-sheet--full`) whose stages swap the title, the sentence, the body and the footer: pick a
+   file, reading, which statement and how its dates read, which account, the preview, the write, the done step,
+   or "this file cannot be read". The footer has one primary at most ("Importovat N transakcí", "Vybrat soubor",
+   "Pokračovat", "Vybrat jiný soubor"; the done step's footer is "Hotovo" alone). Every stage after the picker
+   starts with the file bar. */
+
+/* File bar: the file the sheet is working on. A 36 px paper chip with the file glyph, the name 15 / 600 (ellipsis)
+   and a 12 / 500 `ink-4` line under it ("CAMT.053 · CZ65 0800 …"), on `well`, radius 12, 52 px at least. */
+.m-filebar { display: flex; align-items: center; gap: 12px; min-height: 52px; margin-bottom: 12px; padding: 8px 12px; border-radius: 12px; background: var(--well); }
+.m-filebar__ic { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border-radius: 10px; background: var(--paper); box-shadow: var(--sh-1); color: var(--ink-3); }
+.m-filebar__ic svg { width: 16px; height: 16px; stroke-width: 1.75; }
+.m-filebar__main { flex: 1; min-width: 0; }
+.m-filebar__t { display: block; overflow: hidden; color: var(--ink); font-size: var(--m-fs-row); font-weight: var(--m-fw-row); letter-spacing: var(--m-ls-row); line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; }
+.m-filebar__s { display: block; overflow: hidden; color: var(--ink-4); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+/* The recognition's file bar line ("48 rows · delimiter ; · UTF-8 · format not known yet") wraps: all of it is news, and the
+   last part is the point. */
+.m-filebar__s--wrap { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+
+/* A sheet footer's primary whose label can be long ("48 Transaktionen importieren" beside "Abbrechen" at 360): it wraps to a
+   second line (as the button pair's labels do) instead of ending in an ellipsis, and grows to 48 px + one more line. */
+.m-btn--wrap { height: auto; min-height: 48px; padding-block: 8px; line-height: 1.15; text-align: center; white-space: normal; }
+.m-btn--wrap > span { overflow: visible; overflow-wrap: break-word; hyphens: auto; }
+
+/* The sentences of the picker, the reading and the unreadable stages: 15 / 450 `ink-2`, the supported formats
+   12 / 500 `ink-3` under it, the reading line with a turning arrow (it stands still under reduced motion). */
+.m-imp-lead { margin: 0 4px; color: var(--ink-2); font-size: var(--m-fs-body); font-weight: var(--m-fw-body); line-height: 1.45; }
+.m-imp-sub { margin: 8px 4px 0; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; }
+.m-imp-wait { display: flex; align-items: center; gap: 8px; margin: 0 4px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); }
+.m-imp-wait svg { width: 14px; height: 14px; }
+
+/* The notes under the file bar. An informative or reassuring sentence is the quiet `.m-note` (`--ok`: the green check
+   of "the statement adds up"); one the person has to look at before importing is the red box (`.m-box--loss`) with
+   its glyph and, when something resolves it, a text button under the sentence (44 px, `ink`). */
+.m-note--ok svg { color: var(--gain); }
+.m-imp-warn { display: flex; align-items: flex-start; gap: 8px; margin: 0; }
+.m-imp-warn svg { flex: none; width: 15px; height: 15px; margin-top: 1px; stroke-width: 1.75; }
+.m-imp-act { display: flex; align-items: center; justify-content: flex-start; width: 100%; height: 44px; margin-top: 6px; padding: 0 8px; border: 0; border-radius: 10px; background: none; color: var(--ink); font: inherit; font-size: var(--m-fs-sub); font-weight: 600; text-align: left; }
+.m-imp-act:active { background: var(--well-2); }
+.m-imp-confirm { margin: -4px 0 12px; } /* the "import anyway" switch (`.m-switchrow`) right under the red box */
+
+/* The preview's counts: "48 Transaktionen werden importiert · 3 Duplikate übersprungen" 15 / 600 `ink`, the period and the
+   category counts 12 / 500 `ink-3` (tabular) under it, errors in `loss`, then the one line that says a tap chooses a category
+   (11 `ink-4`), the rows (`.m-rows` of entity rows, below) and "und 43 weitere" (12 `ink-3`). */
+.m-imp-count { margin: 0 4px 2px; color: var(--ink); font-size: var(--m-fs-row); font-weight: var(--m-fw-row); letter-spacing: var(--m-ls-row); line-height: 1.3; }
+.m-imp-meta { margin: 0 4px 2px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; font-variant-numeric: tabular-nums; }
+.m-imp-meta__loss { color: var(--loss); }
+.m-imp-hint { margin: 8px 4px; color: var(--ink-4); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.3; }
+.m-imp-more { margin: 0 4px 14px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; }
+.m-imp-rows { transition: opacity var(--t-base); }
+.m-imp-rows[aria-busy="true"] { opacity: .6; }
+
+/* The done step: the three stats (`.m-stats`), the sentences under them — the statement's balance, what the rules did,
+   booked pending payments — 12 / 500 `ink-3` with the numbers in `ink` / 600, the one primary of the step (block, 48 px,
+   14 px under) and the next steps as entity rows with a chevron; a step that was carried out is ticked (the `gain` chip)
+   and at half strength. */
+.m-imp-facts { display: grid; gap: 6px; margin: 0 4px 14px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.35; }
+.m-imp-facts p { margin: 0; }
+.m-imp-facts b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+.m-imp-primary { margin-bottom: 14px; }
+
+/* The export guide (spec §8.6 rung 2): how to get a statement file out of one bank on a phone. The section head
+   (16 / 620, it wraps: "So erhalten Sie einen Auszug: Česká spořitelna" is long), the bank's steps as a numbered list
+   (a 22 px `well-2` number chip, the step 13 / 450 `ink-2`, wrapping), the format to pick as a caption (11 / 500 `ink-3`)
+   and, for a bank reached through its web banking, a secondary 44 px button that opens it in the system browser.
+   Under "Vybrat soubor" it is the account's bank; on "this file cannot be read" the banks are a list of `.m-pick`
+   rows (`.m-pick__chip--ini`: the bank's initials in the chip) and a tapped bank's guide opens in place under a
+   44 px text button back to the list (`.m-imp-act` with `.m-guide__back`). */
+.m-guide { margin: 18px 0 8px; }
+.m-guide__t { margin: 0 4px 6px; color: var(--ink); font-size: var(--m-fs-section); font-weight: var(--m-fw-section); letter-spacing: var(--m-ls-section); line-height: 1.25; }
+.m-guide__steps { margin: 0; padding: 0; list-style: none; }
+.m-guide__steps li { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: start; gap: 10px; padding: 7px 4px; color: var(--ink-2); font-size: 13px; font-weight: 450; line-height: 1.45; overflow-wrap: break-word; }
+.m-guide__n { display: grid; place-items: center; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; background: var(--well-2); color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: 700; font-variant-numeric: tabular-nums; }
+.m-guide__fmt { margin: 6px 4px 0; color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.35; }
+.m-guide .m-btn { max-width: 100%; height: 44px; margin-top: 10px; padding: 0 16px; font-size: var(--m-fs-sub); }
+.m-guide .m-btn svg { width: 16px; height: 16px; stroke-width: 1.75; }
+.m-guide__back { gap: 4px; }
+.m-guide__back svg { flex: none; width: 16px; height: 16px; stroke-width: 1.75; }
+.m-pick__chip--ini { color: var(--ink-2); font-size: var(--m-fs-caption); font-weight: 700; }
+
+/* The guided recognition of an unknown CSV (spec §8.6 rung 3, prototype frames 06–07; `RecognizeStep.tsx`,
+   `CorrectStep.tsx`). "Takhle tomu rozumím": under the file bar the section head (`.m-t-section`, 16 / 620) and one
+   sentence (12 / 500 `ink-3`), three real rows of the file as entity rows (`.m-rows`; the sub-line says "date · what it
+   was for", no category), then the list of what was recognized (`.m-recog`): a 16 px check in `gain` (a minus in `ink-5`
+   for a field that is not read), the field's name 13 / 600 and the columns it reads 12 / 500 `ink-3`, in a grid of 20 px,
+   34 % (92 px at least) and the rest, rows `line-soft` apart. Every text wraps — a column's name is never cut. A field that
+   is not read is at `ink-4` with what that means for the import ("not found · I'll spot duplicates by date and amount");
+   the amount line may add "sign checked against the balance" or, in `loss` with a 14 px warning glyph, that expenses in
+   the file look positive (`.m-recog__warn`). */
+.m-recog { margin: 12px 0 0; padding: 0; list-style: none; }
+.m-recog__row { display: grid; grid-template-columns: 20px minmax(92px, 34%) minmax(0, 1fr); gap: 8px; align-items: start; padding: 9px 0; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: 13px; font-weight: 450; line-height: 1.4; }
+.m-recog__row:first-child { border-top: 0; }
+.m-recog__row--no { color: var(--ink-4); }
+.m-recog__ic { display: block; flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--gain); }
+.m-recog__ic svg { width: 16px; height: 16px; stroke-width: 2; }
+.m-recog__row--no .m-recog__ic { color: var(--ink-5); }
+.m-recog__f { color: var(--ink); font-weight: 600; overflow-wrap: anywhere; }
+.m-recog__row--no .m-recog__f { color: var(--ink-4); }
+.m-recog__v { min-width: 0; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.4; overflow-wrap: anywhere; }
+.m-recog__warn { display: flex; align-items: flex-start; gap: 6px; margin-top: 2px; color: var(--loss); }
+.m-recog__warn svg { flex: none; width: 14px; height: 14px; margin-top: 1px; stroke-width: 1.75; }
+
+/* "Opravit…" (frame 07): first the fields as entity rows with a chevron (`.m-row--chev`, the chip a rounded square with the
+   field's glyph, what the field reads now under its name), then one field's columns as radio options (`.m-colopt`, in a
+   `radiogroup`): 56 px at least, paper with a `line` hairline, radius 12, 8 px apart; a 22 px radio circle (`line-strong`; the
+   chosen one `ink` with a white check) and the column's header 15 / 600 (it wraps) over its two sample values 12 / 500 `ink-4`
+   (tabular, one line, an ellipsis ends a long one). The chosen option has the focus border and ring. A pair of columns
+   (debit + credit) carries the caption "(pair of columns)" (`.m-colopt__cap`, 11 / 500 `ink-3`) after its headers; "nepoužít"
+   has no samples; the two readings of a date column whose dates read both ways (the inferred column, or any other column
+   whose sample cells all have the day and month at most 12) show the order and, under it, one date spelled out and then
+   the column ("3. April 2026 · Datum zaúčtování", the date first and the line wrapping: a long header must not hide the one
+   thing that tells the two apart, `.m-colopt__s--wrap`). Under the options "Ukázka po výběru:" (`.m-t-caption`) and one
+   entity row — the file's first row as it would be read. While amounts are hidden every digit of the cells of an amount
+   column (the inferred or the corrected one, a pair that looks like a debit and a credit, and on the amount and balance
+   questions any numeric column) shows the mask, and in any other column a cell that says it is an amount (a sign, a
+   decimal mark, a thousands space, a currency, "1500,-"); text, dates and plain integers (an id) stay. */
+.m-colopt { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; align-items: center; width: 100%; min-height: 56px; margin-bottom: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper); color: var(--ink); font: inherit; text-align: left; }
+.m-colopt:active { background: var(--well); }
+.m-colopt[aria-checked="true"] { border-color: var(--focus-border); box-shadow: var(--focus-ring); }
+.m-colopt__radio { display: grid; place-items: center; width: 22px; height: 22px; border: 1.5px solid var(--line-strong); border-radius: 50%; color: var(--ink-inverse); }
+.m-colopt__radio svg { width: 12px; height: 12px; stroke-width: 2.5; }
+.m-colopt[aria-checked="true"] .m-colopt__radio { border-color: var(--ink); background: var(--ink); }
+.m-colopt__t { display: block; font-size: var(--m-fs-row); font-weight: var(--m-fw-row); letter-spacing: var(--m-ls-row); line-height: 1.3; overflow-wrap: anywhere; }
+.m-colopt__cap { margin-left: 6px; color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); letter-spacing: 0; }
+.m-colopt__s { display: block; margin-top: 2px; overflow: hidden; color: var(--ink-4); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.m-colopt__s--wrap { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: anywhere; }
+
+/* ===== The categorize queue (spec §8.5, prototype frame 05; `CategorizeQueue.tsx`, `QueueRow.tsx`) =====
+   The page: the lead line (13 / 450 `ink-3`: the account and the statement the payments came from, "· 3 already
+   handled"), the count as a 20 / 650 heading ("9 payments without a category" — the prototype's large count, kept in the
+   body under the nav bar's title), the progress row (a `.m-pbar` and "3 of 12", 11 `ink-3`), the rows and the one
+   caption of the frame. A payment is the entity row (`.m-row`, 60 px, in its swipe box `.m-swipe`) with a second block
+   inside the same box: the pill row. The divider and the background belong to both blocks; a row that is dealt with
+   (`is-done`: the green pill; `is-left`: put off) is on `well`. */
+.m-queue__lead { margin: 2px 2px 4px; color: var(--ink-3); font-size: 13px; font-weight: 450; line-height: 1.4; }
+.m-queue__count { margin: 0 2px 10px; color: var(--ink); font-size: var(--m-fs-title); font-weight: var(--m-fw-title); letter-spacing: var(--m-ls-title); line-height: 1.2; }
+.m-queue__prog { display: flex; align-items: center; gap: 10px; margin: 0 2px 12px; color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); font-variant-numeric: tabular-nums; }
+.m-queue__prog .m-pbar { flex: 1; min-width: 0; }
+.m-queue__prog > span:last-child { flex: none; white-space: nowrap; }
+.m-queue__cap { margin: 0 4px; color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.35; }
+.m-queue__item.is-done, .m-queue__item.is-done > .m-row,
+.m-queue__item.is-left, .m-queue__item.is-left > .m-row { background: var(--well); }
+
+/* The pill row: 36 px pills (radius 18, 12 / 600) 8 px apart under the row, wrapping when the category's name is long;
+   each hit area reaches 44 px (`.m-pill::after`) and the pills of a wrapped line touch exactly. A plain pill
+   ("Vybrat kategorii…") is `well-2`; `--dark` is the suggestion (a check, the category, its source in 10 / 500
+   `ink-inverse-2`: accept); `--ghost` is "Jiná…" / "Nechat" (hairline `line-strong`); `--done` is the category the row
+   got (`gain-soft`, not a button). The name ends with an ellipsis (`.m-pill__t`), the source never shrinks. */
+.m-pillrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 14px 12px; }
+.m-pillrow .m-pill {
+  gap: 6px; max-width: 100%; height: 36px; padding: 0 14px; border: 0; border-radius: 18px;
+  background: var(--well-2); color: var(--ink); font-weight: 600; -webkit-touch-callout: none;
+}
+.m-pillrow .m-pill:active { background: var(--well-3); }
+.m-pillrow .m-pill svg { color: inherit; }
+.m-pillrow .m-pill small { flex: none; color: inherit; font-size: var(--fs-micro); font-weight: 500; }
+.m-pillrow .m-pill__t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.m-pillrow .m-pill--dark { background: var(--dark-grad); box-shadow: var(--sh-dark); color: var(--ink-inverse); }
+.m-pillrow .m-pill--dark:active { background: var(--dark-grad-hover); }
+.m-pillrow .m-pill--dark small { color: var(--ink-inverse-2); }
+.m-pillrow .m-pill--ghost { border: 1px solid var(--line-strong); background: transparent; color: var(--ink-2); }
+.m-pillrow .m-pill--ghost:active { background: var(--well); }
+.m-pillrow .m-pill--done { background: var(--gain-soft); color: var(--gain); }
+.m-pillrow .m-pill--done::after { display: none; }
+/* A payment put off with "Nechat": no pills, the 12 / 600 `ink-3` sentence with a 14 px clock. */
+.m-queue__note { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: 600; }
+.m-queue__note svg { width: 14px; height: 14px; stroke-width: 1.75; }
+/* The expansion, once, under the row whose remembered pick took other payments along: a hairline and a switch row
+   (`.m-switchrow`, on). Turned off, the payments are restored and the switch stays off and disabled. */
+.m-queue__more { margin: 0 14px 4px; padding-top: 4px; border-top: 1px solid var(--line-soft); }
+
 @media (prefers-reduced-motion: no-preference) {
+  @keyframes m-imp-spin { to { transform: rotate(360deg); } }
+  .m-imp-wait svg { animation: m-imp-spin 1s linear infinite; }
   @keyframes m-sheet-in { from { transform: translateY(100%); } }
   @keyframes m-scrim-in { from { opacity: 0; } }
   .m-sheet { animation: m-sheet-in 260ms var(--ease); }
   .m-scrim { animation: m-scrim-in var(--t-base) var(--ease); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .m-nav, .m-nav__title, .m-seg__btn, .m-swipe > .m-row, .m-flows__col, .m-row--flash { transition: none; }
+  .m-nav, .m-nav__title, .m-seg__btn, .m-swipe > .m-row, .m-flows__col, .m-row--flash, .m-imp-rows { transition: none; }
 }

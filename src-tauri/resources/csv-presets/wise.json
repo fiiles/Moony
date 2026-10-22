@@ -3,6 +3,7 @@
   "id": "wise",
   "bankName": "Wise",
   "country": "GB",
+  "institutionId": "inst_wise",
   "matchHeaders": ["TransferWise ID", "Date", "Amount", "Currency", "Description"],
   "delimiter": ",",
   "encoding": "UTF-8",
@@ -16,5 +17,61 @@
   "balanceColumn": "Running Balance",
   "transactionIdColumn": "TransferWise ID",
   "exportHelpUrl": "https://wise.com/help/articles/2736049/how-do-i-download-a-statement",
-  "sampleFixture": "wise.csv"
+  "sampleFixture": "wise.csv",
+  "mobileExport": {
+    "route": "app",
+    "format": "CSV",
+    "steps": {
+      "en": [
+        "In the Wise app, open a currency balance and tap the three dots at the top right.",
+        "Choose “Statements and reports”, pick CSV, set the period (up to 365 days) and confirm with your password.",
+        "Share the file with Moony, or save it to Files and choose it here with “Choose file”."
+      ],
+      "cs": [
+        "V aplikaci Wise otevřete měnový zůstatek a klepněte na tři tečky vpravo nahoře.",
+        "Zvolte „Statements and reports“, vyberte CSV, nastavte období (nejvýše 365 dní) a potvrďte heslem.",
+        "Sdílejte soubor do Moony, nebo ho uložte do Souborů a vyberte ho zde přes „Vybrat soubor“."
+      ],
+      "de": [
+        "Öffnen Sie in der Wise-App ein Währungskonto und tippen Sie oben rechts auf die drei Punkte.",
+        "Wählen Sie „Kontoauszüge und Berichte“, wählen Sie CSV, stellen Sie den Zeitraum ein (höchstens 365 Tage) und bestätigen Sie mit Ihrem Passwort.",
+        "Teilen Sie die Datei mit Moony oder speichern Sie sie in „Dateien“ und wählen Sie sie hier mit „Datei wählen“."
+      ],
+      "es": [
+        "En la app de Wise, abre un saldo en una divisa y toca los tres puntos de arriba a la derecha.",
+        "Elige «Statements and reports», elige CSV, fija el periodo (máximo 365 días) y confirma con tu contraseña.",
+        "Comparte el archivo con Moony, o guárdalo en Archivos y elígelo aquí con «Elegir archivo»."
+      ],
+      "it": [
+        "Nell'app Wise apri un saldo in valuta e tocca i tre puntini in alto a destra.",
+        "Scegli «Statements and reports», scegli CSV, imposta il periodo (al massimo 365 giorni) e conferma con la password.",
+        "Condividi il file con Moony, oppure salvalo in File e sceglilo qui con «Scegli file»."
+      ],
+      "nb": [
+        "Åpne en valutasaldo i Wise-appen og trykk på de tre prikkene øverst til høyre.",
+        "Velg «Statements and reports», velg CSV, sett perioden (høyst 365 dager) og bekreft med passordet ditt.",
+        "Del filen med Moony, eller lagre den i Filer og velg den her med «Velg fil»."
+      ],
+      "pl": [
+        "W aplikacji Wise otwórz saldo w wybranej walucie i stuknij trzy kropki w prawym górnym rogu.",
+        "Wybierz „Statements and reports”, wybierz CSV, ustaw okres (najwyżej 365 dni) i potwierdź hasłem.",
+        "Udostępnij plik aplikacji Moony albo zapisz go w Plikach i wybierz tutaj przez „Wybierz plik”."
+      ],
+      "sv": [
+        "Öppna ett valutasaldo i Wise-appen och tryck på de tre punkterna uppe till höger.",
+        "Välj ”Statements and reports”, välj CSV, ställ in perioden (högst 365 dagar) och bekräfta med ditt lösenord.",
+        "Dela filen med Moony, eller spara den i Filer och välj den här med ”Välj fil”."
+      ],
+      "ja": [
+        "Wiseアプリで通貨残高を開き、右上の三点アイコンをタップします。",
+        "「Statements and reports」を選び、CSVを選択し、期間（最長365日）を設定してパスワードで確認します。",
+        "ファイルをMoonyに共有するか、「ファイル」に保存して、ここで「ファイルを選択」から選びます。"
+      ],
+      "zh": [
+        "在 Wise 应用中打开某个币种余额，点按右上角的三个点。",
+        "选择“Statements and reports”，选择 CSV，设置期间（最长 365 天）并输入密码确认。",
+        "将文件共享给 Moony，或存到“文件”后在此处点按“选择文件”。"
+      ]
+    }
+  }
 }

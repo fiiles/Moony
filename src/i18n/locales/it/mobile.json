@@ -182,10 +182,40 @@
     },
     "cashTrendLabel": "Grafico della liquidità"
   },
+  "queue": {
+    "source": {
+      "mcp": "suggerimento MCP",
+      "learned": "appreso",
+      "rule": "da regola",
+      "pack": "pacchetto di regole"
+    },
+    "other": "Altra…",
+    "choose": "Scegli categoria…",
+    "keep": "Salta",
+    "keepMenu": "Salta per {{days}} giorni",
+    "snoozed": "Saltato per {{days}} giorni",
+    "categorized": "Categorizzato",
+    "also_one": "Categorizzato anche {{count}} altro pagamento da {{name}}",
+    "also_many": "Categorizzati anche {{count}} altri pagamenti da {{name}}",
+    "also_other": "Categorizzati anche {{count}} altri pagamenti da {{name}}",
+    "alsoSub": "Stessa controparte e stessa direzione su questo conto",
+    "alsoRestored": "Ripristinati come prima",
+    "handled_one": "{{count}} già gestito",
+    "handled_many": "{{count}} già gestiti",
+    "handled_other": "{{count}} già gestiti",
+    "progress": "{{done}} su {{total}}",
+    "caption": "Tocca un suggerimento per accettarlo. «{{keep}}» mette da parte un pagamento per {{days}} giorni. Ciò che categorizzi viene appreso come regola per questo conto.",
+    "showCashflow": "Mostra flusso di cassa",
+    "empty": {
+      "title": "Tutto categorizzato",
+      "hint": "I nuovi pagamenti compariranno qui dopo la prossima importazione.",
+      "snoozed_one": "{{count}} pagamento saltato tornerà più avanti.",
+      "snoozed_many": "{{count}} pagamenti saltati torneranno più avanti.",
+      "snoozed_other": "{{count}} pagamenti saltati torneranno più avanti."
+    }
+  },
   "placeholder": {
     "detail": "Il dettaglio arriva nella fase 4.",
-    "queue": "La coda di classificazione arriva nella fase 2b.",
-    "import": "L'importazione degli estratti arriva nella fase 2b.",
     "form": "Il modulo di aggiunta arriva nella fase 2b.",
     "edit": "La modifica arriva nella fase 2b.",
     "delete": "L'eliminazione arriva nella fase 2b.",
@@ -273,6 +303,123 @@
     "suggested": "Suggerimento",
     "decline": "Rifiuta il suggerimento",
     "empty": "Nessuna categoria corrisponde"
+  },
+  "import": {
+    "title": "Importa estratto conto",
+    "intoAccount": "Nel conto {{account}}",
+    "fromShare": "Condiviso",
+    "reads": "Supportato: {{formats}}.",
+    "reading": "Lettura del file…",
+    "importing": "Scrittura dei pagamenti…",
+    "pick": {
+      "lead": "Scegli il file che hai scaricato dalla tua banca.",
+      "choose": "Scegli file",
+      "chooseOther": "Scegli un altro file"
+    },
+    "account": {
+      "sheetTitle": "In quale conto?",
+      "lead": "Scegli il conto a cui appartengono i pagamenti.",
+      "none": "Non hai ancora nessun conto aperto. Aggiungi quello a cui appartiene questo file.",
+      "title": "Conti",
+      "new": "Nuovo conto…"
+    },
+    "statement": {
+      "title": "Quale estratto?",
+      "dateTitle": "Come sono scritte le date?",
+      "continue": "Continua"
+    },
+    "unreadable": {
+      "title": "File non leggibile",
+      "pdf": "Moony non sa ancora leggere un estratto in PDF: scarica dalla tua banca CSV, CAMT, MT940, OFX o QIF.",
+      "image": "Moony non sa leggere una foto o una scansione di un estratto: scarica dalla tua banca CSV, CAMT, MT940, OFX o QIF.",
+      "notStatement": "Questo file non contiene un estratto che Moony sappia leggere.",
+      "error": "Non è stato possibile leggere il file."
+    },
+    "guide": {
+      "title": "Come ottenere un estratto: {{bank}}",
+      "format": "Scegli il formato: {{format}}",
+      "openWeb": "Apri l'home banking",
+      "openFailed": "Non è stato possibile aprire il browser.",
+      "banks": "Guide delle banche"
+    },
+    "recognize": {
+      "title": "Così ho capito il file",
+      "caption": "Tre movimenti dal file, come li leggerò:",
+      "captionFew": "Movimenti dal file, come li leggerò:",
+      "unknownFormat": "formato non ancora noto",
+      "tab": "tabulazione",
+      "previewFailed": "Non è stato possibile caricare ora le righe di esempio. Le colonne riconosciute qui sotto valgono comunque.",
+      "looksRight": "Sembra giusto",
+      "fix": "Correggi…",
+      "use": "Applica",
+      "field": {
+        "transactionId": "ID del movimento"
+      },
+      "notFound": "non trovato",
+      "unused": "non usato",
+      "unusedWhy": {
+        "description": "i pagamenti sono più difficili da categorizzare",
+        "counterparty": "non vedrai chi ha pagato o chi è stato pagato",
+        "currency": "la valuta viene dal conto",
+        "balance": "non proporrò il saldo del conto in base al file",
+        "transactionId": "riconoscerò i duplicati da data e importo"
+      },
+      "signVerified": "segno verificato con il saldo",
+      "signInverted": "le spese in questo file sembrano positive: controlla l'esempio",
+      "signsBlocked": "Moony non può ancora importare un file in cui le uscite sono positive. Se un'altra colonna contiene l'importo, sceglila; altrimenti annulla l'importazione.",
+      "allPositive": "Tutti gli importi sono positivi: le uscite verrebbero salvate come entrate.",
+      "pairSides": "Uscite: {{debit}} · Entrate: {{credit}}",
+      "fixTitle": "Cosa devo correggere?",
+      "fixLead": "Tocca il campo che ho letto male.",
+      "ask": {
+        "date": "Cos'è la data?",
+        "amount": "Cos'è l'importo?",
+        "description": "Cos'è la descrizione?",
+        "counterparty": "Cos'è la controparte?",
+        "currency": "Cos'è la valuta?",
+        "balance": "Cos'è il saldo?",
+        "transactionId": "Cos'è l'ID del movimento?"
+      },
+      "lead": {
+        "date": "Scegli la colonna con la data di ogni movimento.",
+        "amount": "Scegli la colonna con l'importo del movimento. Le spese devono essere negative.",
+        "description": "Scegli la colonna con il testo del pagamento, come un messaggio o una nota. Aiuta a categorizzare i pagamenti.",
+        "counterparty": "Scegli la colonna con il nome di chi ha pagato o di chi è stato pagato.",
+        "currency": "Scegli la colonna con il codice della valuta, per esempio CZK o EUR.",
+        "balance": "Scegli la colonna con il saldo dopo ogni movimento.",
+        "transactionId": "Scegli la colonna con il numero univoco che la banca assegna a ogni movimento."
+      },
+      "sample": "Esempio dopo la tua scelta:",
+      "sampleHint": "Scegli una colonna e ti mostro come leggerei il movimento.",
+      "pair": "coppia di colonne"
+    },
+    "preview": {
+      "hint": "Tocca un pagamento per scegliere la sua categoria.",
+      "more_one": "e {{count}} altro",
+      "more_many": "e altri {{count}}",
+      "more_other": "e altri {{count}}"
+    },
+    "choice": {
+      "title": "Categorizzazione",
+      "byRules": "Secondo le regole",
+      "byRulesSub": "La tua scelta viene annullata"
+    },
+    "done": {
+      "lastBalance": "Saldo dopo l'ultimo pagamento: <b>{{balance}}</b>.",
+      "categorized_one": "Le regole hanno categorizzato {{count}} pagamento.",
+      "categorized_many": "Le regole hanno categorizzato {{count}} pagamenti.",
+      "categorized_other": "Le regole hanno categorizzato {{count}} pagamenti.",
+      "open_one": "{{count}} è ancora senza categoria.",
+      "open_many": "{{count}} sono ancora senza categoria.",
+      "open_other": "{{count}} sono ancora senza categoria.",
+      "allSorted": "Tutto ha una categoria.",
+      "promoted_one": "{{count}} pagamento in sospeso è stato registrato.",
+      "promoted_many": "{{count}} pagamenti in sospeso sono stati registrati.",
+      "promoted_other": "{{count}} pagamenti in sospeso sono stati registrati.",
+      "queue_one": "Categorizza {{count}} pagamento",
+      "queue_many": "Categorizza {{count}} pagamenti",
+      "queue_other": "Categorizza {{count}} pagamenti"
+    }
   },
   "wealth": {
     "placeholder": {
@@ -390,6 +537,7 @@
       "reminders": "Promemoria",
       "remindersSub": "{{on}} di {{total}} gruppi",
       "import": "Importa",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
       "deleteSub": "dopo aver scritto una parola di conferma"
     },
     "version": "Moony {{version}} · {{privacy}}",

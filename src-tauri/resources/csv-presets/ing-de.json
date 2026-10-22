@@ -12,5 +12,62 @@
   "descriptionColumns": ["Verwendungszweck", "Buchungstext"],
   "counterpartyColumn": "Auftraggeber/Empfänger",
   "currencyColumn": "Währung",
-  "balanceColumn": "Saldo"
+  "balanceColumn": "Saldo",
+  "mobileExport": {
+    "route": "web",
+    "format": "CSV",
+    "webUrl": "https://www.ing.de/",
+    "steps": {
+      "en": [
+        "Open ING internet banking in Safari or Chrome and sign in.",
+        "Open “Umsatzanzeige”, scroll to the end of the page, tap “Exportieren” and choose CSV.",
+        "Share the file with Moony, or save it to Files and choose it here with “Choose file”."
+      ],
+      "cs": [
+        "V Safari nebo Chrome otevřete internetové bankovnictví ING a přihlaste se.",
+        "Otevřete „Umsatzanzeige“, přejděte na konec stránky, klepněte na „Exportieren“ a zvolte CSV.",
+        "Sdílejte soubor do Moony, nebo ho uložte do Souborů a vyberte ho zde přes „Vybrat soubor“."
+      ],
+      "de": [
+        "Öffnen Sie das Online-Banking der ING in Safari oder Chrome und melden Sie sich an.",
+        "Öffnen Sie die „Umsatzanzeige“, scrollen Sie ans Seitenende, tippen Sie auf „Exportieren“ und wählen Sie CSV.",
+        "Teilen Sie die Datei mit Moony oder speichern Sie sie in „Dateien“ und wählen Sie sie hier mit „Datei wählen“."
+      ],
+      "es": [
+        "Abre la banca por internet de ING en Safari o Chrome e inicia sesión.",
+        "Abre «Umsatzanzeige», baja hasta el final de la página, toca «Exportieren» y elige CSV.",
+        "Comparte el archivo con Moony, o guárdalo en Archivos y elígelo aquí con «Elegir archivo»."
+      ],
+      "it": [
+        "Apri l'home banking di ING in Safari o Chrome e accedi.",
+        "Apri «Umsatzanzeige», scorri fino in fondo alla pagina, tocca «Exportieren» e scegli CSV.",
+        "Condividi il file con Moony, oppure salvalo in File e sceglilo qui con «Scegli file»."
+      ],
+      "nb": [
+        "Åpne nettbanken til ING i Safari eller Chrome og logg inn.",
+        "Åpne «Umsatzanzeige», rull til bunnen av siden, trykk på «Exportieren» og velg CSV.",
+        "Del filen med Moony, eller lagre den i Filer og velg den her med «Velg fil»."
+      ],
+      "pl": [
+        "Otwórz bankowość internetową banku ING w Safari lub Chrome i zaloguj się.",
+        "Otwórz „Umsatzanzeige”, przewiń na koniec strony, stuknij „Exportieren” i wybierz CSV.",
+        "Udostępnij plik aplikacji Moony albo zapisz go w Plikach i wybierz tutaj przez „Wybierz plik”."
+      ],
+      "sv": [
+        "Öppna internetbanken hos ING i Safari eller Chrome och logga in.",
+        "Öppna ”Umsatzanzeige”, scrolla till sidans slut, tryck på ”Exportieren” och välj CSV.",
+        "Dela filen med Moony, eller spara den i Filer och välj den här med ”Välj fil”."
+      ],
+      "ja": [
+        "SafariまたはChromeでINGのインターネットバンキングを開き、ログインします。",
+        "「Umsatzanzeige」を開き、ページ下部の「Exportieren」をタップしてCSVを選びます。",
+        "ファイルをMoonyに共有するか、「ファイル」に保存して、ここで「ファイルを選択」から選びます。"
+      ],
+      "zh": [
+        "在 Safari 或 Chrome 中打开 ING 网上银行并登录。",
+        "打开“Umsatzanzeige”，滚动到页面底部，点按“Exportieren”并选择 CSV。",
+        "将文件共享给 Moony，或存到“文件”后在此处点按“选择文件”。"
+      ]
+    }
+  }
 }

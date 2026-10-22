@@ -2,6 +2,8 @@ import { useEffect } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/lib/protected-route';
+import { ReceivedFileHost } from '@/mobile/components/import/ReceivedFileHost';
+import { ImportSheetProvider } from '@/mobile/hooks/use-import-sheet';
 import { useNotificationSchedule } from '@/mobile/hooks/use-notification-schedule';
 import { clearEnrolmentAsked } from '@/mobile/lib/biometrics';
 import Agenda from '@/mobile/pages/Agenda';
@@ -10,11 +12,8 @@ import Cashflow from '@/mobile/pages/Cashflow';
 import CashflowCategory from '@/mobile/pages/CashflowCategory';
 import Finance from '@/mobile/pages/Finance';
 import AccountDetail from '@/mobile/pages/finance/AccountDetail';
-import {
-  LoanPlaceholder,
-  PolicyPlaceholder,
-  QueuePlaceholder,
-} from '@/mobile/pages/finance/FinancePlaceholder';
+import CategorizeQueue from '@/mobile/pages/finance/CategorizeQueue';
+import { LoanPlaceholder, PolicyPlaceholder } from '@/mobile/pages/finance/FinancePlaceholder';
 import Lock from '@/mobile/pages/Lock';
 import Overview from '@/mobile/pages/Overview';
 import PositionDetail from '@/mobile/pages/PositionDetail';
@@ -42,7 +41,9 @@ function NotificationScheduler() {
 /**
  * Phone shell (spec §6): the four tab roots behind the lock, the lock screen outside it, and the
  * tab bar over the unlocked tab screens. Navigation is the browser history (wouter), so Android
- * back pops whatever was pushed.
+ * back pops whatever was pushed. The import sheet lives above the routes (`ImportSheetProvider`),
+ * so every entry point can open it and it outlives the screen that did; `ReceivedFileHost` feeds
+ * it the statements the system opened in Moony.
  */
 export function MobileShell() {
   const [location] = useLocation();
@@ -61,7 +62,7 @@ export function MobileShell() {
   }, [appStatus]);
 
   return (
-    <>
+    <ImportSheetProvider>
       <Switch>
         {/* Lock screen and first run: outside `ProtectedRoute`, which redirects here while locked. */}
         <Route path={routes.auth} component={Lock} />
@@ -72,7 +73,7 @@ export function MobileShell() {
         <ProtectedRoute path={routes.accountDetail} component={AccountDetail} />
         <ProtectedRoute path={routes.loanDetail} component={LoanPlaceholder} />
         <ProtectedRoute path={routes.policyDetail} component={PolicyPlaceholder} />
-        <ProtectedRoute path={routes.uncategorized} component={QueuePlaceholder} />
+        <ProtectedRoute path={routes.uncategorized} component={CategorizeQueue} />
         <ProtectedRoute path={routes.cashflow} component={Cashflow} />
         <ProtectedRoute path={routes.cashflowCategory} component={CashflowCategory} />
         <ProtectedRoute path={routes.budgets} component={Budgets} />
@@ -97,6 +98,10 @@ export function MobileShell() {
       <EnableBiometricsSheet />
       {/* Only while unlocked: it reads the milestones, which the locked database cannot answer. */}
       {appStatus === 'unlocked' && <NotificationScheduler />}
-    </>
+      {/* A statement shared into the app opens the import sheet after the unlock, once. It stays
+          mounted through a lock (and drains only while unlocked), so a path it has taken but not
+          yet shown survives every unlock. */}
+      <ReceivedFileHost />
+    </ImportSheetProvider>
   );
 }

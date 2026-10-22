@@ -169,10 +169,37 @@
     },
     "cashTrendLabel": "Diagram over kontanter"
   },
+  "queue": {
+    "source": {
+      "mcp": "MCP-forslag",
+      "learned": "lært",
+      "rule": "etter regel",
+      "pack": "regelpakke"
+    },
+    "other": "Annen…",
+    "choose": "Velg kategori…",
+    "keep": "Hopp over",
+    "keepMenu": "Hopp over i {{days}} dager",
+    "snoozed": "Hoppet over i {{days}} dager",
+    "categorized": "Kategorisert",
+    "also_one": "Kategoriserte også {{count}} annen betaling fra {{name}}",
+    "also_other": "Kategoriserte også {{count}} andre betalinger fra {{name}}",
+    "alsoSub": "Samme motpart og retning på denne kontoen",
+    "alsoRestored": "Gjenopprettet slik de var",
+    "handled_one": "{{count}} allerede behandlet",
+    "handled_other": "{{count}} allerede behandlet",
+    "progress": "{{done}} av {{total}}",
+    "caption": "Trykk på et forslag for å godta det. «{{keep}}» setter en betaling til side i {{days}} dager. Det du kategoriserer, huskes som en regel for denne kontoen.",
+    "showCashflow": "Vis kontantstrøm",
+    "empty": {
+      "title": "Alt er kategorisert",
+      "hint": "Nye betalinger vises her etter neste import.",
+      "snoozed_one": "{{count}} betaling du hoppet over, kommer tilbake senere.",
+      "snoozed_other": "{{count}} betalinger du hoppet over, kommer tilbake senere."
+    }
+  },
   "placeholder": {
     "detail": "Detaljvisningen kommer i fase 4.",
-    "queue": "Kategoriseringskøen kommer i fase 2b.",
-    "import": "Import av kontoutskrifter kommer i fase 2b.",
     "form": "Skjemaet for å legge til kommer i fase 2b.",
     "edit": "Redigering kommer i fase 2b.",
     "delete": "Sletting kommer i fase 2b.",
@@ -259,6 +286,118 @@
     "suggested": "Forslag",
     "decline": "Avslå forslaget",
     "empty": "Ingen kategori passer"
+  },
+  "import": {
+    "title": "Importer kontoutskrift",
+    "intoAccount": "Til {{account}}",
+    "fromShare": "Delt",
+    "reads": "Støttet: {{formats}}.",
+    "reading": "Leser filen…",
+    "importing": "Skriver betalingene…",
+    "pick": {
+      "lead": "Velg filen du lastet ned fra banken din.",
+      "choose": "Velg fil",
+      "chooseOther": "Velg en annen fil"
+    },
+    "account": {
+      "sheetTitle": "Til hvilken konto?",
+      "lead": "Velg kontoen betalingene hører til.",
+      "none": "Du har ingen åpne kontoer ennå. Legg til den filen hører til.",
+      "title": "Kontoer",
+      "new": "Ny konto…"
+    },
+    "statement": {
+      "title": "Hvilken kontoutskrift?",
+      "dateTitle": "Hvordan er datoene skrevet?",
+      "continue": "Fortsett"
+    },
+    "unreadable": {
+      "title": "Kan ikke lese filen",
+      "pdf": "Moony kan ikke lese kontoutskrifter i PDF ennå – last ned CSV, CAMT, MT940, OFX eller QIF fra banken din.",
+      "image": "Moony kan ikke lese bilder eller skanninger av kontoutskrifter – last ned CSV, CAMT, MT940, OFX eller QIF fra banken din.",
+      "notStatement": "Denne filen inneholder ikke en kontoutskrift Moony kan lese.",
+      "error": "Filen kunne ikke leses."
+    },
+    "guide": {
+      "title": "Slik får du en kontoutskrift: {{bank}}",
+      "format": "Velg formatet: {{format}}",
+      "openWeb": "Åpne nettbanken",
+      "openFailed": "Nettleseren kunne ikke åpnes.",
+      "banks": "Veiledninger for banker"
+    },
+    "recognize": {
+      "title": "Slik forstår jeg filen",
+      "caption": "Tre transaksjoner fra filen, slik jeg leser dem:",
+      "captionFew": "Transaksjoner fra filen, slik jeg leser dem:",
+      "unknownFormat": "formatet er ikke kjent ennå",
+      "tab": "tabulator",
+      "previewFailed": "Eksempelradene kunne ikke lastes akkurat nå. Kolonnene under gjelder likevel.",
+      "looksRight": "Ser riktig ut",
+      "fix": "Rett opp…",
+      "use": "Bruk",
+      "field": {
+        "transactionId": "Transaksjons-ID"
+      },
+      "notFound": "ikke funnet",
+      "unused": "ikke brukt",
+      "unusedWhy": {
+        "description": "betalinger er vanskeligere å kategorisere",
+        "counterparty": "du ser ikke hvem som betalte eller fikk betalt",
+        "currency": "valutaen hentes fra kontoen",
+        "balance": "jeg foreslår ingen kontosaldo ut fra filen",
+        "transactionId": "jeg kjenner igjen duplikater på dato og beløp"
+      },
+      "signVerified": "fortegnet er kontrollert mot saldoen",
+      "signInverted": "utgiftene i filen ser positive ut – sjekk eksempelet",
+      "signsBlocked": "Moony kan ennå ikke importere en fil der utgiftene er positive. Hvis en annen kolonne har beløpet, velg den – ellers avbryt importen.",
+      "allPositive": "Alle beløpene er positive – utgifter ville blitt lagret som inntekter.",
+      "pairSides": "Utgifter: {{debit}} · Inntekter: {{credit}}",
+      "fixTitle": "Hva skal jeg rette opp?",
+      "fixLead": "Trykk på feltet jeg leste feil.",
+      "ask": {
+        "date": "Hva er datoen?",
+        "amount": "Hva er beløpet?",
+        "description": "Hva er beskrivelsen?",
+        "counterparty": "Hva er motparten?",
+        "currency": "Hva er valutaen?",
+        "balance": "Hva er saldoen?",
+        "transactionId": "Hva er transaksjons-ID-en?"
+      },
+      "lead": {
+        "date": "Velg kolonnen med datoen for hver transaksjon.",
+        "amount": "Velg kolonnen med transaksjonens beløp. Utgifter skal være negative.",
+        "description": "Velg kolonnen med betalingens tekst, for eksempel melding eller notat. Den hjelper med å kategorisere betalinger.",
+        "counterparty": "Velg kolonnen med navnet på den som betalte eller fikk betalt.",
+        "currency": "Velg kolonnen med valutakoden, for eksempel CZK eller EUR.",
+        "balance": "Velg kolonnen med saldoen etter hver transaksjon.",
+        "transactionId": "Velg kolonnen med det unike nummeret banken gir hver transaksjon."
+      },
+      "sample": "Eksempel etter valget ditt:",
+      "sampleHint": "Velg en kolonne, så viser jeg hvordan jeg ville lest transaksjonen.",
+      "pair": "kolonnepar"
+    },
+    "preview": {
+      "hint": "Trykk på en betaling for å velge kategori.",
+      "more_one": "og {{count}} til",
+      "more_other": "og {{count}} til"
+    },
+    "choice": {
+      "title": "Kategorisering",
+      "byRules": "Etter reglene",
+      "byRulesSub": "Valget ditt fjernes"
+    },
+    "done": {
+      "lastBalance": "Saldo etter siste betaling: <b>{{balance}}</b>.",
+      "categorized_one": "Reglene kategoriserte {{count}} betaling.",
+      "categorized_other": "Reglene kategoriserte {{count}} betalinger.",
+      "open_one": "{{count}} er fortsatt uten kategori.",
+      "open_other": "{{count}} er fortsatt uten kategori.",
+      "allSorted": "Alt har en kategori.",
+      "promoted_one": "{{count}} ventende betaling ble bokført.",
+      "promoted_other": "{{count}} ventende betalinger ble bokført.",
+      "queue_one": "Kategoriser {{count}} betaling",
+      "queue_other": "Kategoriser {{count}} betalinger"
+    }
   },
   "wealth": {
     "placeholder": {
@@ -372,6 +511,7 @@
       "reminders": "Påminnelser",
       "remindersSub": "{{on}} av {{total}} grupper",
       "import": "Import",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
       "deleteSub": "etter at du har skrevet et bekreftelsesord"
     },
     "version": "Moony {{version}} · {{privacy}}",

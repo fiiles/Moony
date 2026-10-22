@@ -156,10 +156,34 @@
     },
     "cashTrendLabel": "現金の推移グラフ"
   },
+  "queue": {
+    "source": {
+      "mcp": "MCPの提案",
+      "learned": "学習済み",
+      "rule": "ルールによる",
+      "pack": "ルールパック"
+    },
+    "other": "別のカテゴリ…",
+    "choose": "カテゴリを選ぶ…",
+    "keep": "スキップ",
+    "keepMenu": "{{days}}日間スキップ",
+    "snoozed": "{{days}}日間スキップ中",
+    "categorized": "分類済み",
+    "also_other": "{{name}}の他の支払い{{count}}件も分類しました",
+    "alsoSub": "この口座で同じ取引相手・同じ方向",
+    "alsoRestored": "元の状態に戻しました",
+    "handled_other": "{{count}}件は処理済み",
+    "progress": "{{done}} / {{total}}",
+    "caption": "提案をタップすると受け入れます。「{{keep}}」を選ぶと、その支払いは{{days}}日間後回しになります。分類した内容は、この口座のルールとして学習されます。",
+    "showCashflow": "キャッシュフローを表示",
+    "empty": {
+      "title": "すべて分類済み",
+      "hint": "次回のインポート後、新しい支払いがここに表示されます。",
+      "snoozed_other": "スキップした支払い{{count}}件は、後でここに戻ります。"
+    }
+  },
   "placeholder": {
     "detail": "詳細画面はフェーズ4で提供します。",
-    "queue": "分類キューはフェーズ2bで提供します。",
-    "import": "明細の取り込みはフェーズ2bで提供します。",
     "form": "追加フォームはフェーズ2bで提供します。",
     "edit": "編集はフェーズ2bで提供します。",
     "delete": "削除はフェーズ2bで提供します。",
@@ -245,6 +269,113 @@
     "suggested": "提案",
     "decline": "提案を却下",
     "empty": "一致するカテゴリがありません"
+  },
+  "import": {
+    "title": "明細をインポート",
+    "intoAccount": "{{account}}へ",
+    "fromShare": "共有から",
+    "reads": "対応形式：{{formats}}。",
+    "reading": "ファイルを読み込んでいます…",
+    "importing": "支払いを書き込んでいます…",
+    "pick": {
+      "lead": "銀行からダウンロードしたファイルを選んでください。",
+      "choose": "ファイルを選択",
+      "chooseOther": "別のファイルを選択"
+    },
+    "account": {
+      "sheetTitle": "どの口座ですか？",
+      "lead": "支払いが属する口座を選んでください。",
+      "none": "開いている口座がまだありません。このファイルに対応する口座を追加してください。",
+      "title": "口座",
+      "new": "新しい口座…"
+    },
+    "statement": {
+      "title": "どの明細ですか？",
+      "dateTitle": "日付の書き方",
+      "continue": "続ける"
+    },
+    "unreadable": {
+      "title": "ファイルを読み取れません",
+      "pdf": "PDFの明細はまだ読み取れません。銀行からCSV、CAMT、MT940、OFX、QIFをダウンロードしてください。",
+      "image": "写真やスキャンした明細は読み取れません。銀行からCSV、CAMT、MT940、OFX、QIFをダウンロードしてください。",
+      "notStatement": "このファイルにはMoonyが読み取れる明細が含まれていません。",
+      "error": "ファイルを読み取れませんでした。"
+    },
+    "guide": {
+      "title": "明細の入手方法：{{bank}}",
+      "format": "形式は{{format}}を選びます",
+      "openWeb": "インターネットバンキングを開く",
+      "openFailed": "ブラウザを開けませんでした。",
+      "banks": "銀行別ガイド"
+    },
+    "recognize": {
+      "title": "このように読み取りました",
+      "caption": "ファイル内の3件の取引を、このように読み取ります。",
+      "captionFew": "ファイル内の取引を、このように読み取ります。",
+      "unknownFormat": "形式はまだ不明",
+      "tab": "タブ",
+      "previewFailed": "サンプルの行を読み込めませんでした。以下の認識結果はそのまま有効です。",
+      "looksRight": "合っています",
+      "fix": "修正…",
+      "use": "適用",
+      "field": {
+        "transactionId": "取引 ID"
+      },
+      "notFound": "見つかりません",
+      "unused": "使用しません",
+      "unusedWhy": {
+        "description": "支払いのカテゴリ分けがしにくくなります",
+        "counterparty": "誰との取引か表示されません",
+        "currency": "通貨は口座のものを使います",
+        "balance": "ファイルから口座残高を提案しません",
+        "transactionId": "日付と金額で重複を判定します"
+      },
+      "signVerified": "残高で符号を確認済み",
+      "signInverted": "このファイルでは支出がプラスに見えます。サンプルを確認してください",
+      "signsBlocked": "支出がプラスになっているファイルは、Moonyではまだインポートできません。金額が別の列にある場合はその列を選び、そうでなければインポートをキャンセルしてください。",
+      "allPositive": "すべての金額がプラスです。このままでは支出が収入として保存されます。",
+      "pairSides": "支出：{{debit}} · 収入：{{credit}}",
+      "fixTitle": "どこを修正しますか？",
+      "fixLead": "読み違えた項目をタップしてください。",
+      "ask": {
+        "date": "日付はどれですか？",
+        "amount": "金額はどれですか？",
+        "description": "説明はどれですか？",
+        "counterparty": "取引相手はどれですか？",
+        "currency": "通貨はどれですか？",
+        "balance": "残高はどれですか？",
+        "transactionId": "取引 ID はどれですか？"
+      },
+      "lead": {
+        "date": "各取引の日付が入っている列を選んでください。",
+        "amount": "取引の金額が入っている列を選んでください。支出はマイナスになります。",
+        "description": "メッセージやメモなど、支払いの内容を示す列を選んでください。カテゴリ分けに役立ちます。",
+        "counterparty": "支払った側、または受け取った側の名前の列を選んでください。",
+        "currency": "CZK や EUR などの通貨コードの列を選んでください。",
+        "balance": "各取引後の残高が入っている列を選んでください。",
+        "transactionId": "銀行が各取引に付ける固有の番号の列を選んでください。"
+      },
+      "sample": "選択後のサンプル:",
+      "sampleHint": "列を選ぶと、取引がどう読み取られるかを表示します。",
+      "pair": "2列の組み合わせ"
+    },
+    "preview": {
+      "hint": "支払いをタップするとカテゴリを選べます。",
+      "more_other": "ほか{{count}}件"
+    },
+    "choice": {
+      "title": "分類",
+      "byRules": "ルールに任せる",
+      "byRulesSub": "選択を取り消します"
+    },
+    "done": {
+      "lastBalance": "最後の支払い後の残高：<b>{{balance}}</b>。",
+      "categorized_other": "ルールで{{count}}件の支払いを分類しました。",
+      "open_other": "{{count}}件はカテゴリがありません。",
+      "allSorted": "すべてにカテゴリがあります。",
+      "promoted_other": "保留中の支払い{{count}}件を記帳しました。",
+      "queue_other": "{{count}}件の支払いを分類"
+    }
   },
   "wealth": {
     "placeholder": {
@@ -354,6 +485,7 @@
       "reminders": "リマインダー",
       "remindersSub": "{{total}}グループ中{{on}}グループ",
       "import": "インポート",
+      "importSub": "CSV、CAMT.053、MT940、OFX、QIF",
       "deleteSub": "確認の単語を入力して実行"
     },
     "version": "Moony {{version}} · {{privacy}}",

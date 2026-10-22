@@ -87,6 +87,7 @@ import type {
   TransactionQueryResult,
   CsvPreset,
   CsvPreviewResult,
+  InferredColumns,
   CsvImportPreview,
   CsvImportResult,
   CsvImportConfigInput,
@@ -127,6 +128,7 @@ import type {
   InsertScopedLearning,
   ChangedRow,
   RecategorizationPreview,
+  CategorizeQueue,
   CustomRule,
   CustomRuleInput,
   RuleHitCount,
@@ -960,6 +962,23 @@ export const dataApi = {
 };
 
 // ============================================================================
+// Received files API — statements shared or opened into the phone app
+// ============================================================================
+
+/** Emitted (no payload) when files were queued for `receivedFilesApi.take()`. Phones only. */
+export const RECEIVED_FILES_EVENT = 'received-files';
+
+// Both calls exist on phones only (registered under `#[cfg(mobile)]`). iOS copies a statement that
+// was shared or opened into Moony into the app's Inbox folders and the copy stays there as
+// plaintext: `take` drains the paths the system opened (oldest first, empty when there are none)
+// and `discard` deletes one copy once it is imported or abandoned. A path outside the Inbox
+// folders is refused (`validation.receivedFileOutside`); a copy that is already gone is fine.
+export const receivedFilesApi = {
+  take: () => tauriInvoke<string[]>('take_received_files'),
+  discard: (path: string) => tauriInvoke<void>('discard_received_file', { path }),
+};
+
+// ============================================================================
 // System API
 // ============================================================================
 
@@ -1049,6 +1068,22 @@ export const bankAccountsApi = {
       presetId,
       encoding,
       country,
+    }),
+  /**
+   * Infer the columns of a CSV no preset describes from their content (the phone's guided
+   * recognition). Pass back the `delimiter`, `headerRow` and `encoding` that `parseCsvFile`
+   * reported; `country` is the profile country. Reads the first 200 data rows, writes nothing.
+   */
+  inferCsvColumns: (
+    filePath: string,
+    options: { delimiter?: string; headerRow?: number; encoding?: string; country?: string } = {}
+  ) =>
+    tauriInvoke<InferredColumns>('infer_csv_columns', {
+      filePath,
+      delimiter: options.delimiter,
+      headerRow: options.headerRow,
+      encoding: options.encoding,
+      country: options.country,
     }),
   /** Dry run: parsed rows with ok / error / duplicate / skipped status; writes nothing. */
   previewCsvImport: (accountId: string, filePath: string, config: CsvImportConfigInput) =>
@@ -1203,6 +1238,19 @@ export const categorizationApi = {
   /** Undo a bulk recategorization. Returns how many rows were restored. */
   restoreTransactionCategories: (rows: ChangedRow[]) =>
     tauriInvoke<number>('restore_transaction_categories', { rows }),
+
+  // ==================== The categorize queue (phone, spec 2026-10-17 §8.5) ====================
+
+  /**
+   * Booked payments without a category, newest first (at most 500, `total` counts all), each with
+   * the category the app would suggest; one account or all of them. Snoozed payments are left out.
+   */
+  getCategorizeQueue: (accountId?: string) =>
+    tauriInvoke<CategorizeQueue>('get_categorize_queue', { accountId: accountId ?? null }),
+
+  /** Hold uncategorized payments back from the queue for `days` days (1–365). Returns how many were held back. */
+  snoozeCategorization: (transactionIds: string[], days: number) =>
+    tauriInvoke<number>('snooze_categorization', { input: { transactionIds, days } }),
 
   // Forget a learned payee combination
   forget: (payee: string | null, counterpartyIban: string | null) =>

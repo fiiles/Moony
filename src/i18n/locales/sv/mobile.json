@@ -169,10 +169,37 @@
     },
     "cashTrendLabel": "Diagram över kontanter"
   },
+  "queue": {
+    "source": {
+      "mcp": "MCP-förslag",
+      "learned": "inlärt",
+      "rule": "enligt regel",
+      "pack": "regelpaket"
+    },
+    "other": "Annan…",
+    "choose": "Välj kategori…",
+    "keep": "Hoppa över",
+    "keepMenu": "Hoppa över i {{days}} dagar",
+    "snoozed": "Överhoppad i {{days}} dagar",
+    "categorized": "Kategoriserad",
+    "also_one": "Kategoriserade även {{count}} annan betalning från {{name}}",
+    "also_other": "Kategoriserade även {{count}} andra betalningar från {{name}}",
+    "alsoSub": "Samma motpart och riktning på det här kontot",
+    "alsoRestored": "Återställda som de var",
+    "handled_one": "{{count}} redan hanterad",
+    "handled_other": "{{count}} redan hanterade",
+    "progress": "{{done}} av {{total}}",
+    "caption": "Tryck på ett förslag för att godta det. ”{{keep}}” skjuter upp en betalning i {{days}} dagar. Det du kategoriserar lärs in som en regel för det här kontot.",
+    "showCashflow": "Visa kassaflöde",
+    "empty": {
+      "title": "Allt är kategoriserat",
+      "hint": "Nya betalningar visas här efter nästa import.",
+      "snoozed_one": "{{count}} överhoppad betalning kommer tillbaka senare.",
+      "snoozed_other": "{{count}} överhoppade betalningar kommer tillbaka senare."
+    }
+  },
   "placeholder": {
     "detail": "Detaljvyn kommer i fas 4.",
-    "queue": "Kategoriseringskön kommer i fas 2b.",
-    "import": "Import av kontoutdrag kommer i fas 2b.",
     "form": "Formuläret för att lägga till kommer i fas 2b.",
     "edit": "Redigering kommer i fas 2b.",
     "delete": "Radering kommer i fas 2b.",
@@ -259,6 +286,118 @@
     "suggested": "Förslag",
     "decline": "Avvisa förslaget",
     "empty": "Ingen kategori matchar"
+  },
+  "import": {
+    "title": "Importera kontoutdrag",
+    "intoAccount": "Till {{account}}",
+    "fromShare": "Delad",
+    "reads": "Stöds: {{formats}}.",
+    "reading": "Läser filen…",
+    "importing": "Skriver betalningarna…",
+    "pick": {
+      "lead": "Välj filen du laddade ner från din bank.",
+      "choose": "Välj fil",
+      "chooseOther": "Välj en annan fil"
+    },
+    "account": {
+      "sheetTitle": "Till vilket konto?",
+      "lead": "Välj kontot som betalningarna hör till.",
+      "none": "Du har inget öppet konto än. Lägg till det som filen hör till.",
+      "title": "Konton",
+      "new": "Nytt konto…"
+    },
+    "statement": {
+      "title": "Vilket kontoutdrag?",
+      "dateTitle": "Hur är datumen skrivna?",
+      "continue": "Fortsätt"
+    },
+    "unreadable": {
+      "title": "Filen kan inte läsas",
+      "pdf": "Moony kan inte läsa kontoutdrag i PDF än – ladda ner CSV, CAMT, MT940, OFX eller QIF från din bank.",
+      "image": "Moony kan inte läsa foton eller skanningar av kontoutdrag – ladda ner CSV, CAMT, MT940, OFX eller QIF från din bank.",
+      "notStatement": "Den här filen innehåller inget kontoutdrag som Moony kan läsa.",
+      "error": "Filen kunde inte läsas."
+    },
+    "guide": {
+      "title": "Så får du ett kontoutdrag: {{bank}}",
+      "format": "Välj formatet: {{format}}",
+      "openWeb": "Öppna internetbanken",
+      "openFailed": "Webbläsaren kunde inte öppnas.",
+      "banks": "Bankguider"
+    },
+    "recognize": {
+      "title": "Så här tolkar jag filen",
+      "caption": "Tre transaktioner ur filen, så som jag läser dem:",
+      "captionFew": "Transaktioner ur filen, så som jag läser dem:",
+      "unknownFormat": "formatet är ännu okänt",
+      "tab": "tabb",
+      "previewFailed": "Exempelraderna kunde inte läsas in just nu. Kolumnerna nedan gäller ändå.",
+      "looksRight": "Ser rätt ut",
+      "fix": "Rätta…",
+      "use": "Använd",
+      "field": {
+        "transactionId": "Transaktions-ID"
+      },
+      "notFound": "hittades inte",
+      "unused": "används inte",
+      "unusedWhy": {
+        "description": "betalningar är svårare att kategorisera",
+        "counterparty": "du ser inte vem som betalade eller fick betalt",
+        "currency": "valutan hämtas från kontot",
+        "balance": "jag föreslår inget kontosaldo utifrån filen",
+        "transactionId": "dubbletter känner jag igen på datum och belopp"
+      },
+      "signVerified": "tecknet kontrollerat mot saldot",
+      "signInverted": "utgifterna i filen ser positiva ut – kontrollera exemplet",
+      "signsBlocked": "Moony kan ännu inte importera en fil där utgifterna är positiva. Om en annan kolumn har beloppet, välj den – annars avbryt importen.",
+      "allPositive": "Alla belopp är positiva – utgifter skulle sparas som inkomster.",
+      "pairSides": "Utgifter: {{debit}} · Inkomster: {{credit}}",
+      "fixTitle": "Vad ska jag rätta?",
+      "fixLead": "Tryck på fältet som jag läste fel.",
+      "ask": {
+        "date": "Vad är datumet?",
+        "amount": "Vad är beloppet?",
+        "description": "Vad är beskrivningen?",
+        "counterparty": "Vad är motparten?",
+        "currency": "Vad är valutan?",
+        "balance": "Vad är saldot?",
+        "transactionId": "Vad är transaktions-ID?"
+      },
+      "lead": {
+        "date": "Välj kolumnen med datumet för varje transaktion.",
+        "amount": "Välj kolumnen med transaktionens belopp. Utgifter ska vara negativa.",
+        "description": "Välj kolumnen med betalningens text, till exempel meddelande eller anteckning. Den hjälper till att kategorisera betalningar.",
+        "counterparty": "Välj kolumnen med namnet på den som betalade eller fick betalt.",
+        "currency": "Välj kolumnen med valutakoden, till exempel CZK eller EUR.",
+        "balance": "Välj kolumnen med saldot efter varje transaktion.",
+        "transactionId": "Välj kolumnen med det unika nummer som banken ger varje transaktion."
+      },
+      "sample": "Exempel efter ditt val:",
+      "sampleHint": "Välj en kolumn så visar jag hur jag skulle läsa transaktionen.",
+      "pair": "kolumnpar"
+    },
+    "preview": {
+      "hint": "Tryck på en betalning för att välja kategori.",
+      "more_one": "och {{count}} till",
+      "more_other": "och {{count}} till"
+    },
+    "choice": {
+      "title": "Kategorisering",
+      "byRules": "Enligt reglerna",
+      "byRulesSub": "Ditt val tas bort"
+    },
+    "done": {
+      "lastBalance": "Saldo efter sista betalningen: <b>{{balance}}</b>.",
+      "categorized_one": "Reglerna kategoriserade {{count}} betalning.",
+      "categorized_other": "Reglerna kategoriserade {{count}} betalningar.",
+      "open_one": "{{count}} saknar fortfarande kategori.",
+      "open_other": "{{count}} saknar fortfarande kategori.",
+      "allSorted": "Allt har en kategori.",
+      "promoted_one": "{{count}} väntande betalning bokfördes.",
+      "promoted_other": "{{count}} väntande betalningar bokfördes.",
+      "queue_one": "Kategorisera {{count}} betalning",
+      "queue_other": "Kategorisera {{count}} betalningar"
+    }
   },
   "wealth": {
     "placeholder": {
@@ -372,6 +511,7 @@
       "reminders": "Påminnelser",
       "remindersSub": "{{on}} av {{total}} grupper",
       "import": "Import",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
       "deleteSub": "efter att du skrivit ett bekräftelseord"
     },
     "version": "Moony {{version}} · {{privacy}}",

@@ -156,10 +156,34 @@
     },
     "cashTrendLabel": "现金走势图"
   },
+  "queue": {
+    "source": {
+      "mcp": "MCP 建议",
+      "learned": "已学习",
+      "rule": "按规则",
+      "pack": "规则包"
+    },
+    "other": "其他…",
+    "choose": "选择类别…",
+    "keep": "跳过",
+    "keepMenu": "跳过 {{days}} 天",
+    "snoozed": "已跳过 {{days}} 天",
+    "categorized": "已分类",
+    "also_other": "同时已将 {{name}} 的另外 {{count}} 笔付款分类",
+    "alsoSub": "此账户上相同的交易对方和方向",
+    "alsoRestored": "已恢复原状",
+    "handled_other": "已处理 {{count}} 笔",
+    "progress": "{{done}} / {{total}}",
+    "caption": "点按建议即可接受。“{{keep}}”会将该笔付款搁置 {{days}} 天。您分类的结果会作为规则记住，用于此账户。",
+    "showCashflow": "查看现金流",
+    "empty": {
+      "title": "已全部分类",
+      "hint": "下次导入后，新的付款会显示在这里。",
+      "snoozed_other": "已跳过的 {{count}} 笔付款稍后会回到这里。"
+    }
+  },
   "placeholder": {
     "detail": "详情页将在第 4 阶段推出。",
-    "queue": "分类队列将在第 2b 阶段推出。",
-    "import": "对账单导入将在第 2b 阶段推出。",
     "form": "添加表单将在第 2b 阶段推出。",
     "edit": "编辑功能将在第 2b 阶段推出。",
     "delete": "删除功能将在第 2b 阶段推出。",
@@ -245,6 +269,113 @@
     "suggested": "建议",
     "decline": "拒绝建议",
     "empty": "没有匹配的类别"
+  },
+  "import": {
+    "title": "导入账单",
+    "intoAccount": "导入到 {{account}}",
+    "fromShare": "来自分享",
+    "reads": "支持：{{formats}}。",
+    "reading": "正在读取文件…",
+    "importing": "正在写入付款…",
+    "pick": {
+      "lead": "请选择您从银行下载的文件。",
+      "choose": "选择文件",
+      "chooseOther": "选择其他文件"
+    },
+    "account": {
+      "sheetTitle": "导入到哪个账户？",
+      "lead": "请选择这些付款所属的账户。",
+      "none": "您还没有未关闭的账户。请添加此文件所属的账户。",
+      "title": "账户",
+      "new": "新建账户…"
+    },
+    "statement": {
+      "title": "哪一份账单？",
+      "dateTitle": "日期是如何书写的？",
+      "continue": "继续"
+    },
+    "unreadable": {
+      "title": "无法读取该文件",
+      "pdf": "Moony 暂时无法读取 PDF 账单——请从银行下载 CSV、CAMT、MT940、OFX 或 QIF。",
+      "image": "Moony 无法读取账单的照片或扫描件——请从银行下载 CSV、CAMT、MT940、OFX 或 QIF。",
+      "notStatement": "此文件不包含 Moony 能读取的账单。",
+      "error": "无法读取该文件。"
+    },
+    "guide": {
+      "title": "如何获取账单：{{bank}}",
+      "format": "请选择格式：{{format}}",
+      "openWeb": "打开网上银行",
+      "openFailed": "无法打开浏览器。",
+      "banks": "各银行指南"
+    },
+    "recognize": {
+      "title": "我是这样理解的",
+      "caption": "文件中的三笔交易，按我的读法显示如下：",
+      "captionFew": "文件中的交易，按我的读法显示如下：",
+      "unknownFormat": "格式暂未识别",
+      "tab": "制表符",
+      "previewFailed": "暂时无法加载示例行。下面识别出的列仍然有效。",
+      "looksRight": "没错",
+      "fix": "修改…",
+      "use": "应用",
+      "field": {
+        "transactionId": "交易 ID"
+      },
+      "notFound": "未找到",
+      "unused": "不使用",
+      "unusedWhy": {
+        "description": "付款更难分类",
+        "counterparty": "看不到是谁付款或收款",
+        "currency": "货币取自账户",
+        "balance": "不会根据文件建议账户余额",
+        "transactionId": "按日期和金额识别重复项"
+      },
+      "signVerified": "已用余额核对符号",
+      "signInverted": "此文件中的支出看起来是正数，请检查示例",
+      "signsBlocked": "Moony 暂时无法导入支出为正数的文件。如果金额在另一列，请选择该列；否则请取消导入。",
+      "allPositive": "所有金额都是正数，支出会被保存为收入。",
+      "pairSides": "支出：{{debit}} · 收入：{{credit}}",
+      "fixTitle": "要修改什么？",
+      "fixLead": "请点按我读错的字段。",
+      "ask": {
+        "date": "日期是哪一列？",
+        "amount": "金额是哪一列？",
+        "description": "说明是哪一列？",
+        "counterparty": "交易对方是哪一列？",
+        "currency": "货币是哪一列？",
+        "balance": "余额是哪一列？",
+        "transactionId": "交易 ID 是哪一列？"
+      },
+      "lead": {
+        "date": "请选择包含每笔交易日期的列。",
+        "amount": "请选择包含交易金额的列。支出应为负数。",
+        "description": "请选择包含付款文字的列，例如附言或备注。它有助于给付款分类。",
+        "counterparty": "请选择包含付款方或收款方名称的列。",
+        "currency": "请选择包含货币代码的列，例如 CZK 或 EUR。",
+        "balance": "请选择包含每笔交易后余额的列。",
+        "transactionId": "请选择包含银行为每笔交易分配的唯一编号的列。"
+      },
+      "sample": "选择后的示例：",
+      "sampleHint": "选择一列，我会展示我将如何读取这笔交易。",
+      "pair": "两列一组"
+    },
+    "preview": {
+      "hint": "点按一笔付款即可选择其类别。",
+      "more_other": "还有 {{count}} 笔"
+    },
+    "choice": {
+      "title": "分类",
+      "byRules": "按规则",
+      "byRulesSub": "将取消您的选择"
+    },
+    "done": {
+      "lastBalance": "最后一笔付款后的余额：<b>{{balance}}</b>。",
+      "categorized_other": "规则已将 {{count}} 笔付款分类。",
+      "open_other": "还有 {{count}} 笔未分类。",
+      "allSorted": "全部已分类。",
+      "promoted_other": "已入账 {{count}} 笔待处理付款。",
+      "queue_other": "分类 {{count}} 笔付款"
+    }
   },
   "wealth": {
     "placeholder": {
@@ -354,6 +485,7 @@
       "reminders": "提醒",
       "remindersSub": "已开启 {{on}}/{{total}} 组",
       "import": "导入",
+      "importSub": "CSV、CAMT.053、MT940、OFX、QIF",
       "deleteSub": "输入确认词后执行"
     },
     "version": "Moony {{version}} · {{privacy}}",

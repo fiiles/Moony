@@ -210,6 +210,7 @@
     "backupNewerThanApp": "Ta kopia zapasowa została utworzona w nowszej wersji Moony. Najpierw zaktualizuj Moony.",
     "backupDestinationMissing": "Folder docelowy nie istnieje.",
     "backupExportInvalid": "Ta nazwa pliku jest niedozwolona.",
+    "receivedFileOutside": "Tego pliku nie można stąd usunąć.",
     "sellExceedsHoldings": "Nie możesz sprzedać więcej, niż posiadasz w tym dniu.",
     "csvEmptyFile": "Plik jest pusty lub nie ma wiersza nagłówka.",
     "csvColumnsNotFound": "Nie znaleziono wybranych kolumn w pliku. Sprawdź wiersz nagłówka i przypisanie kolumn.",
@@ -289,7 +290,9 @@
     "statementInvestmentOnly": "Ten plik zawiera wyłącznie transakcje inwestycyjne. Użyj do nich importu od brokera.",
     "statementMalformed": "Plik wyciągu jest uszkodzony lub niekompletny ({{detail}}).",
     "statementIndexInvalid": "Wybierz jeden z wyciągów w pliku.",
-    "statementDateOrderInvalid": "Kolejność daty można wybrać tylko dla plików QIF."
+    "statementDateOrderInvalid": "Kolejność daty można wybrać tylko dla plików QIF.",
+    "snoozeSelectionInvalid": "Wybierz od 1 do 1000 płatności.",
+    "snoozeDaysInvalid": "Wybierz liczbę dni od 1 do 365."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

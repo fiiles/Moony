@@ -15,6 +15,10 @@
 //
 // Also the privacy screen: a blur over the key window while the app is not active, so the
 // app-switcher snapshot shows no amounts.
+//
+// And the status bar style: the app's theme, set outright through `preferredStatusBarStyle` of
+// Tauri's view controller, because the sampled style lags behind a live theme switch on iOS 26
+// and does not exist before iOS 26 (see `setStatusBarStyle`).
 
 import LocalAuthentication
 import Security
@@ -55,6 +59,11 @@ struct PrivacyScreenArgs: Decodable {
   let enabled: Bool
 }
 
+struct StatusBarStyleArgs: Decodable {
+  /// The app's resolved theme: "light" or "dark".
+  let theme: String
+}
+
 private enum ItemRead {
   case found(Data)
   case missing
@@ -70,6 +79,10 @@ class MoonyKeychainPlugin: Plugin {
   private var privacyScreenEnabled = true
   private var privacyView: UIVisualEffectView?
   private var observers: [NSObjectProtocol] = []
+  // Main thread only: the theme the status bar follows and the view controller class whose
+  // `preferredStatusBarStyle` already reads it.
+  private var statusBarTheme: String?
+  private var statusBarHookClass: ObjectIdentifier?
 
   public override func load(webview: WKWebView) {
     guard observers.isEmpty else { return }
@@ -144,6 +157,16 @@ class MoonyKeychainPlugin: Plugin {
       if !args.enabled {
         self.hidePrivacyScreen()
       }
+    }
+    invoke.resolve()
+  }
+
+  @objc func setStatusBarStyle(_ invoke: Invoke) {
+    guard let args = arguments(invoke, StatusBarStyleArgs.self) else { return }
+    // Answer at once, as `setPrivacyScreen` does; UIKit is main-thread only.
+    DispatchQueue.main.async {
+      self.statusBarTheme = args.theme
+      self.applyStatusBarStyle()
     }
     invoke.resolve()
   }
@@ -429,6 +452,69 @@ class MoonyKeychainPlugin: Plugin {
   private func describe(_ status: OSStatus) -> String {
     let message = SecCopyErrorMessageString(status, nil) as String? ?? "unknown"
     return "OSStatus \(status) (\(message))"
+  }
+
+  // MARK: - Status bar
+
+  /// The style for the stored theme: dark icons over the light theme, light icons over the dark
+  /// one, the system's choice for anything else (nothing stored yet).
+  private func statusBarStyle() -> UIStatusBarStyle {
+    switch statusBarTheme {
+    case "light":
+      return .darkContent
+    case "dark":
+      return .lightContent
+    default:
+      return .default
+    }
+  }
+
+  /// Main thread only. Makes the view controller report the stored theme's style, then asks UIKit
+  /// to read it again.
+  private func applyStatusBarStyle() {
+    guard let controller = manager.viewController else {
+      Logger.debug("status bar style kept: no view controller yet", category: logCategory)
+      return
+    }
+    installStatusBarStyleHook(on: controller)
+    controller.setNeedsStatusBarAppearanceUpdate()
+  }
+
+  /// The system samples the page under the status bar and, on iOS 26, keeps the style it sampled
+  /// before a theme switch repainted (light icons over a light page until the next scroll); before
+  /// iOS 26 it does not sample at all. An explicit `preferredStatusBarStyle` settles both. Tauri's
+  /// view controller (tao's `TaoUIViewController`) does not override it, so the getter is
+  /// replaced once on that class, with a block that reads `statusBarTheme`. Never on
+  /// `UIViewController` itself: that would restyle every view controller in the process, the
+  /// system's own included.
+  private func installStatusBarStyleHook(on controller: UIViewController) {
+    let controllerClass: AnyClass = type(of: controller)
+    guard controllerClass != UIViewController.self else {
+      Logger.error(
+        "status bar style not set: the view controller is a plain UIViewController",
+        category: logCategory)
+      return
+    }
+    let identifier = ObjectIdentifier(controllerClass)
+    guard statusBarHookClass != identifier else { return }
+
+    let selector = #selector(getter: UIViewController.preferredStatusBarStyle)
+    guard let inherited = class_getInstanceMethod(UIViewController.self, selector),
+      let encoding = method_getTypeEncoding(inherited)
+    else {
+      Logger.error(
+        "status bar style not set: preferredStatusBarStyle not found", category: logCategory)
+      return
+    }
+    // The block is `-preferredStatusBarStyle` (an NSInteger enum) with `self` as its argument.
+    let reader: @convention(block) (UIViewController) -> Int = { [weak self] _ in
+      (self?.statusBarStyle() ?? .default).rawValue
+    }
+    class_replaceMethod(
+      controllerClass, selector, imp_implementationWithBlock(reader), encoding)
+    statusBarHookClass = identifier
+    Logger.debug(
+      "status bar style hooked on \(NSStringFromClass(controllerClass))", category: logCategory)
   }
 
   // MARK: - Privacy screen

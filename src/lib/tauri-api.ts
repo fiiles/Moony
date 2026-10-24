@@ -8,6 +8,7 @@
 import { invoke, type InvokeArgs, type InvokeOptions } from '@tauri-apps/api/core';
 import i18n from '@/i18n';
 import { toApiError } from '@/lib/api-error';
+import type { ResolvedTheme } from '@/utils/theme';
 import type {
   AssetValuation,
   InsertAssetValuation,
@@ -255,7 +256,7 @@ export interface KeychainStatus {
 }
 
 /**
- * The two commands of the in-repo keychain plugin (`src-tauri/plugins/moony-keychain`) the webview
+ * The commands of the in-repo keychain plugin (`src-tauri/plugins/moony-keychain`) the webview
  * may call; its `guest-js/index.ts` documents them but sits outside the app's build. `store`,
  * `retrieve` and `remove` carry the database key and stay on the Rust side. Phones only: on the
  * desktop shell the commands do not exist and the calls reject.
@@ -266,6 +267,14 @@ export const keychainApi = {
   /** Blur the app in the app switcher (on by default in the plugin). */
   setPrivacyScreen: (enabled: boolean) =>
     tauriInvoke<void>('plugin:moony-keychain|set_privacy_screen', { enabled }),
+
+  /**
+   * Sets the status bar style outright (`plugin:moony-keychain|set_status_bar_style`): dark icons
+   * over the light theme, light icons over the dark one. Phones only (the iOS and Android halves
+   * of the plugin); the desktop shell has no such command and the call rejects.
+   */
+  setStatusBarStyle: (theme: ResolvedTheme) =>
+    tauriInvoke<void>('plugin:moony-keychain|set_status_bar_style', { theme }),
 };
 
 // ============================================================================

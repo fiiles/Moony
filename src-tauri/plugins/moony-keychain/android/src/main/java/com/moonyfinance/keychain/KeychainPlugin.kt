@@ -9,6 +9,8 @@
 // Also the privacy screen: an opaque view in the app's canvas colour over the window while the
 // activity is paused, and on Android 13+ no recents screenshot at all. No FLAG_SECURE, so the
 // person can still take screenshots.
+//
+// And the status bar style: dark or light icons to match the app's theme (`setStatusBarStyle`).
 
 package com.moonyfinance.keychain
 
@@ -30,6 +32,7 @@ import androidx.biometric.BiometricManager
 import androidx.biometric.BiometricManager.Authenticators.BIOMETRIC_STRONG
 import androidx.biometric.BiometricPrompt
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.fragment.app.FragmentActivity
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
@@ -82,6 +85,12 @@ class RemoveArgs {
 @InvokeArg
 class PrivacyScreenArgs {
     var enabled: Boolean = true
+}
+
+@InvokeArg
+class StatusBarStyleArgs {
+    // The app's resolved theme: "light" or "dark".
+    lateinit var theme: String
 }
 
 @TauriPlugin
@@ -224,6 +233,24 @@ class KeychainPlugin(private val activity: Activity) : Plugin(activity) {
                 }
             }
             // Answer at once: a Rust caller blocks on the answer.
+            invoke.resolve()
+        }
+    }
+
+    /**
+     * Dark status bar icons over the light theme, light icons over the dark one. UNVERIFIED ON
+     * ANDROID, like the rest of this file: exercise it on a device.
+     */
+    @Command
+    fun setStatusBarStyle(invoke: Invoke) {
+        guarded(invoke) {
+            val args = invoke.parseArgs(StatusBarStyleArgs::class.java)
+            val light = args.theme == "light"
+            activity.runOnUiThread {
+                val window = activity.window
+                val controller = WindowInsetsControllerCompat(window, window.decorView)
+                controller.isAppearanceLightStatusBars = light
+            }
             invoke.resolve()
         }
     }

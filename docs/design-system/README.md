@@ -408,8 +408,12 @@ bar, sheets and segment, Inter bundled). The reference width is 390 pt; every la
   after unlock the profile's value wins and the device mirror follows. Nothing pins the native
   interface style (`UIUserInterfaceStyle` is not in `Info.ios.plist`): tao's window `setTheme` and
   `setBackgroundColor`, which the provider calls guarded, are unsupported on iOS and Android, so the
-  page alone carries the theme. The iOS 26 status bar follows the luminance of the page under it, and
-  what the system draws follows the OS appearance, so a choice against the OS changes the page only.
+  page alone carries the theme. The status bar follows the theme through the keychain plugin's
+  `set_status_bar_style` (`StatusBarStyle` in `MobileApp`): on iOS an explicit
+  `preferredStatusBarStyle` on tao's view controller, because the iOS 26 bar samples the page under it
+  and keeps its old style after a live switch, and earlier iOS does not sample at all; on Android
+  `isAppearanceLightStatusBars`. What else the system draws follows the OS appearance, so a choice
+  against the OS changes the page and the status bar only.
   The provider also shows the window once, after its first stamp (`showWindow()`); tao ignores
   `visible: false` on iOS and Android, so the phone window is up from launch and the call is a no-op
   there. A chart that needs a colour value in code reads it through `useChartTokens()`, which re-reads

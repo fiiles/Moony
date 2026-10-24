@@ -1,4 +1,4 @@
-import { useLayoutEffect } from 'react';
+import { useEffect, useLayoutEffect } from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { Toaster } from '@/components/ui/toaster';
@@ -7,11 +7,12 @@ import { AuthProvider } from '@/hooks/use-auth';
 import { CurrencyProvider } from '@/lib/currency-provider';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { I18nProvider } from '@/i18n/I18nProvider';
-import { ThemeProvider } from '@/theme/ThemeProvider';
+import { ThemeProvider, useResolvedTheme } from '@/theme/ThemeProvider';
 import { SyncProvider } from '@/hooks/SyncProvider';
 import { MobileShell } from '@/mobile/shell/MobileShell';
 import { HideAmountsProvider } from '@/mobile/hooks/use-hide-amounts';
 import { useBackgroundLock } from '@/mobile/hooks/use-background-lock';
+import { applyStatusBarStyle } from '@/mobile/lib/status-bar';
 import { useVisibleHeight } from '@/mobile/lib/use-visible-height';
 
 /**
@@ -34,6 +35,19 @@ const TOAST_OFFSET = {
 function BackgroundLock() {
   const { covered } = useBackgroundLock();
   return covered ? <div aria-hidden className="fixed inset-0 z-[2147483647] bg-canvas" /> : null;
+}
+
+/**
+ * The native status bar follows the resolved theme (`applyStatusBarStyle`): the OS samples the page
+ * under the bar and lags behind a live switch, so the style is set outright on every change. Must
+ * sit inside `ThemeProvider`; renders nothing.
+ */
+function StatusBarStyle() {
+  const theme = useResolvedTheme();
+  useEffect(() => {
+    void applyStatusBarStyle(theme);
+  }, [theme]);
+  return null;
 }
 
 /**
@@ -65,6 +79,7 @@ export default function MobileApp() {
                 <TooltipProvider delayDuration={200}>
                   <HideAmountsProvider>
                     <BackgroundLock />
+                    <StatusBarStyle />
                     <ErrorBoundary>
                       <MobileShell />
                     </ErrorBoundary>

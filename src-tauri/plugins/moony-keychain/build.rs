@@ -5,6 +5,7 @@ const COMMANDS: &[&str] = &[
     "retrieve",
     "remove",
     "set_privacy_screen",
+    "set_status_bar_style",
     "status",
 ];
 

@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/mobile-schema.json",
   "identifier": "mobile",
-  "description": "Capability for the main window on iOS and Android. Same file-access stance as the desktop capability (the webview gets no filesystem access to the app data dir; attachments arrive through the moony-file scheme), plus the phone hardware plugins: haptics, local notifications, and the in-repo keychain behind biometric unlock (its default set grants status and the privacy screen only; the stored DB key stays on the Rust side). The webview has no fs commands on the phone (fs:deny-default only): the files the iOS export picker exports, a backup archive and the recovery key's text, are written to Documents and removed again by Rust commands, because the picker can only export a file that already sits there. Granting fs commands would let a compromised webview touch every file the dialog plugin adds to the fs scope when the person picks one. No updater and no process plugin: the app stores ship updates.",
+  "description": "Capability for the main window on iOS and Android. Same file-access stance as the desktop capability (the webview gets no filesystem access to the app data dir; attachments arrive through the moony-file scheme), plus the phone hardware plugins: haptics, local notifications, and the in-repo keychain behind biometric unlock (its default set grants status and the privacy screen only; the stored DB key stays on the Rust side) and, granted beside it on purpose, the status bar style command, which makes the iOS and Android status bar follow the app's light or dark theme. The webview has no fs commands on the phone (fs:deny-default only): the files the iOS export picker exports, a backup archive and the recovery key's text, are written to Documents and removed again by Rust commands, because the picker can only export a file that already sits there. Granting fs commands would let a compromised webview touch every file the dialog plugin adds to the fs scope when the person picks one. No updater and no process plugin: the app stores ship updates.",
   "windows": ["main"],
   "platforms": ["iOS", "android"],
   "permissions": [
@@ -13,6 +13,7 @@
     "fs:deny-default",
     "haptics:default",
     "notification:default",
-    "moony-keychain:default"
+    "moony-keychain:default",
+    "moony-keychain:allow-set-status-bar-style"
   ]
 }

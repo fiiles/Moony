@@ -2,10 +2,10 @@
 //!
 //! Spec D10: these commands never call update_todays_snapshot — the watchlist
 //! has zero effect on portfolio value. The one thing they share with the portfolio refresh is
-//! the history rebuild after a quote unit change (a followed ticker can be a held one, and the
-//! refresh reports a change only once), see `rebuild_history_for_unit_changes`.
+//! the history rebuild after a quote unit change or a new split (a followed ticker can be a held
+//! one, and the refresh reports either only once), see `rebuild_history_after_quote_refresh`.
 
-use crate::commands::price_api::rebuild_history_for_unit_changes;
+use crate::commands::price_api::rebuild_history_after_quote_refresh;
 use crate::db::Database;
 use crate::error::Result;
 use crate::models::stock_monitor::{
@@ -45,7 +45,7 @@ pub async fn follow_stock(
     )
     .await
     {
-        rebuild_history_for_unit_changes(&app, &db, &recalc, &result);
+        rebuild_history_after_quote_refresh(&app, &db, &recalc, &result);
     }
     let _ = price_api::refresh_stock_metadata_yahoo(&db, tickers, false).await;
     Ok(watched)
@@ -77,7 +77,7 @@ pub async fn follow_portfolio_stocks(
         )
         .await
         {
-            rebuild_history_for_unit_changes(&app, &db, &recalc, &result);
+            rebuild_history_after_quote_refresh(&app, &db, &recalc, &result);
         }
         let _ = price_api::refresh_stock_metadata_yahoo(&db, added.clone(), false).await;
     }
@@ -138,6 +138,7 @@ pub async fn refresh_watched_stock_prices(
             remaining_tickers: vec![],
             rate_limit_hit: false,
             unit_changed: vec![],
+            new_splits: vec![],
         });
     }
     let force = force_refresh.unwrap_or(false);
@@ -148,7 +149,7 @@ pub async fn refresh_watched_stock_prices(
         WATCHLIST_PRICE_TTL_SECONDS,
     )
     .await?;
-    rebuild_history_for_unit_changes(&app, &db, &recalc, &result);
+    rebuild_history_after_quote_refresh(&app, &db, &recalc, &result);
     // Manual refresh forces metadata too, so corrected fields (e.g. a fixed
     // dividend yield) heal immediately instead of after the 24 h TTL.
     let _ = price_api::refresh_stock_metadata_yahoo(&db, tickers, force).await;
@@ -179,7 +180,7 @@ pub async fn get_stock_monitor_detail(
     )
     .await
     {
-        rebuild_history_for_unit_changes(&app, &db, &recalc, &result);
+        rebuild_history_after_quote_refresh(&app, &db, &recalc, &result);
     }
     let _ = price_api::refresh_stock_metadata_yahoo(&db, vec![t.clone()], force).await;
     db.with_conn(|conn| stock_monitor::get_stock_monitor_detail(conn, &t))

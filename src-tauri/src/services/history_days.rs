@@ -1140,6 +1140,7 @@ pub fn rebuild_days(
     let mut stats = RebuildStats {
         upserted: 0,
         deleted: prune_before_first_fact(conn, &plan)?,
+        full_rebuild_from: None,
     };
     for (chunk_start, chunk_end) in plan.chunks() {
         let chunk = rebuild_chunk(conn, &mut plan, chunk_start, chunk_end)?;

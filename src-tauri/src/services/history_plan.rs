@@ -39,7 +39,10 @@ const DAY: i64 = SECONDS_PER_DAY;
 /// Yahoo instead of one stale price. Version 3 repeats it once more: loans are always the
 /// ledger walk now, so a profile that ran version 2 may hold days (backfill and live) that still
 /// carry a phantom loan remainder taken from a live row recorded by the old valuation model.
-pub const REBUILD_VERSION: i64 = 3;
+/// Version 4 repeats it for stock splits: the full-range fetch of every ticker records the
+/// splits Yahoo reports for its holding period and rewrites the stock history with split-adjusted
+/// closes (spec `2026-10-24-stock-splits-design.md`, D16).
+pub const REBUILD_VERSION: i64 = 4;
 
 const VERSION_KEY: &str = "history_rebuild_version";
 
@@ -494,17 +497,19 @@ mod tests {
     }
 
     #[test]
-    fn the_rebuild_version_is_three() {
+    fn the_rebuild_version_is_four() {
         // Version 2 repeated the one-time rebuild for profiles that ran version 1 (date-precise
         // static triggers could leave days on an old remainder; crypto days older than
         // CoinGecko's year had one stale price). Version 3 repeats it for loans: they are always
-        // derived from their ledger, so a loan remainder taken from a live row is gone. Raise
-        // this number (and the docs that name it) only for a rebuild that must run again.
-        assert_eq!(REBUILD_VERSION, 3);
+        // derived from their ledger, so a loan remainder taken from a live row is gone. Version 4
+        // repeats it for stock splits: the full-range fetch detects past splits and stores
+        // split-adjusted closes. Raise this number (and the docs that name it) only for a
+        // rebuild that must run again.
+        assert_eq!(REBUILD_VERSION, 4);
     }
 
     #[test]
-    fn a_profile_that_ran_version_two_rebuilds_once_more() {
+    fn a_profile_that_ran_version_three_rebuilds_once_more() {
         let conn = setup_test_db();
         balance_record(&conn, d(-30));
         trade(&conn, "investment_transactions", "AAPL", "buy", "2", d(-20));
@@ -512,13 +517,13 @@ mod tests {
         for offset in -30..0 {
             history_row(&conn, d(offset));
         }
-        // a version 2 profile: complete history, the old flag
+        // a version 3 profile: complete history, the old flag
         conn.execute(
-            "INSERT INTO app_config (key, value) VALUES ('history_rebuild_version', '2')",
+            "INSERT INTO app_config (key, value) VALUES ('history_rebuild_version', '3')",
             [],
         )
         .expect("old flag");
-        assert_eq!(stored_rebuild_version(&conn).expect("stored"), 2);
+        assert_eq!(stored_rebuild_version(&conn).expect("stored"), 3);
 
         let plan = plan_startup(&conn, d(0)).expect("plan");
         assert!(plan.one_time, "the flag is below the current version");
@@ -535,10 +540,13 @@ mod tests {
 
         // the flag is stored only once the days rebuild succeeded (`rebuild_version_earned`)
         assert!(!rebuild_version_earned(&outcome(false, &[])));
-        assert_eq!(stored_rebuild_version(&conn).expect("unchanged"), 2);
+        assert_eq!(stored_rebuild_version(&conn).expect("unchanged"), 3);
         assert!(rebuild_version_earned(&outcome(true, &["BTC"])));
         store_rebuild_version(&conn).expect("store");
-        assert_eq!(stored_rebuild_version(&conn).expect("stored"), 3);
+        assert_eq!(
+            stored_rebuild_version(&conn).expect("stored"),
+            REBUILD_VERSION
+        );
 
         let again = plan_startup(&conn, d(0)).expect("plan");
         assert!(!again.one_time, "it runs once");

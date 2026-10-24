@@ -23,6 +23,10 @@
 //!   `running`, `done` or `failed` (see [`HistoryRecalcEvent`]); the header badge listens
 //!   to it. Once a batch has finished the established `recalculation-complete` event also
 //!   fires so the trend charts refetch.
+//! * **Splits.** A stock rebuild records the splits its fetch reports
+//!   (`stock_splits::record_detected`). A new one found by a rebuild that started after the
+//!   ticker's first transaction queues the ticker again from that day ([`Job::StockTicker`]),
+//!   so the closes before the window are split-adjusted too (spec D18).
 //! * **Completion.** A caller that needs to know how the batch ended (the one-time rebuild
 //!   stores its version flag then) passes a [`Completion`] and gets a [`BatchOutcome`]: whether
 //!   the portfolio days were re-derived, and which tickers failed. A ticker the provider keeps
@@ -48,6 +52,7 @@ use crate::services::history_days::{plan_rebuild, prune_before_first_fact, rebui
 use crate::services::portfolio_history::SECONDS_PER_DAY;
 use crate::services::price_api::{self, HistoricalPrice};
 use crate::services::pricing::AssetKind;
+use crate::services::stock_splits::{self, StockSplitSource};
 use crate::services::ticker_history::{
     apply_ticker_plan, plan_ticker_history, DayPlan, RebuildStats,
 };
@@ -229,6 +234,19 @@ struct Queue {
     worker_active: bool,
 }
 
+impl Queue {
+    /// Add `jobs`, keeping the earliest date per key.
+    fn add(&mut self, jobs: impl IntoIterator<Item = Job>) {
+        for job in jobs {
+            let from = job.from_day();
+            self.pending
+                .entry(job.key())
+                .and_modify(|earliest| *earliest = (*earliest).min(from))
+                .or_insert(from);
+        }
+    }
+}
+
 /// Queue of pending history rebuilds, shared as Tauri managed state.
 #[derive(Clone, Default)]
 pub struct HistoryRecalc {
@@ -248,14 +266,7 @@ impl HistoryRecalc {
     /// draining the queue, i.e. the caller must start one.
     fn enqueue(&self, jobs: impl IntoIterator<Item = Job>, completion: Option<Completion>) -> bool {
         let mut queue = self.lock();
-        for job in jobs {
-            let from = job.from_day();
-            queue
-                .pending
-                .entry(job.key())
-                .and_modify(|earliest| *earliest = (*earliest).min(from))
-                .or_insert(from);
-        }
+        queue.add(jobs);
         queue.completions.extend(completion);
         if queue.worker_active {
             false
@@ -263,6 +274,13 @@ impl HistoryRecalc {
             queue.worker_active = true;
             true
         }
+    }
+
+    /// Queue follow-up work found by the running batch (a new split, spec D18), keeping the
+    /// earliest date per key. Only the worker calls this: it takes the jobs with its next batch,
+    /// so no other worker is started.
+    fn requeue(&self, jobs: impl IntoIterator<Item = Job>) {
+        self.lock().add(jobs);
     }
 
     /// Everything queued so far with the completions that wait for it, or `None` — and the
@@ -412,23 +430,32 @@ async fn run_batch(
     }
 
     let mut failed: BTreeSet<String> = BTreeSet::new();
+    // Full rebuilds asked for by a new split (spec D18): queued for the next batch.
+    let mut follow_ups: Vec<Job> = Vec::new();
     for (ticker, from) in &batch.stocks {
-        if let Err(e) =
-            rebuild_stock_ticker_with_policy(db, ticker, *from, until, price_rule, strict).await
-        {
-            log::warn!("[RECALC] Rebuilding a stock ticker's history failed: {e}");
-            failed.insert(ticker.clone());
+        match rebuild_stock_ticker_with_policy(db, ticker, *from, until, price_rule, strict).await {
+            Ok(stats) => follow_ups.extend(
+                stats
+                    .full_rebuild_from
+                    .map(|first| Job::StockTicker(ticker.clone(), first)),
+            ),
+            Err(e) => {
+                log::warn!("[RECALC] Rebuilding a stock ticker's history failed: {e}");
+                failed.insert(ticker.clone());
+            }
         }
     }
-    rebuild_unseeded_tickers(
-        db,
-        AssetKind::Stock,
-        (earliest, until),
-        &batch.stocks,
-        price_rule,
-        strict,
-    )
-    .await;
+    follow_ups.extend(
+        rebuild_unseeded_tickers(
+            db,
+            AssetKind::Stock,
+            (earliest, until),
+            &batch.stocks,
+            price_rule,
+            strict,
+        )
+        .await,
+    );
 
     for (ticker, from) in &batch.crypto {
         if let Err(e) =
@@ -452,6 +479,8 @@ async fn run_batch(
     if let Err(e) = &days {
         log::warn!("[RECALC] Re-deriving the portfolio history failed: {e}");
     }
+    // Before the statuses: a ticker with a follow-up stays `running` until it has run.
+    state.requeue(follow_ups);
 
     for ticker in &tickers {
         // Queued again while this batch ran: the next batch reports it.
@@ -477,7 +506,8 @@ async fn run_batch(
 
 /// Held tickers (outside `queued`) without any history row in `range` would be missing from
 /// the portfolio days: give them one too. Best effort — a failure is logged and the ticker
-/// is tried again by the next batch that finds it still without history.
+/// is tried again by the next batch that finds it still without history. Returns the full
+/// rebuilds a new split asks for (spec D18).
 async fn rebuild_unseeded_tickers(
     db: &Database,
     kind: AssetKind,
@@ -485,15 +515,16 @@ async fn rebuild_unseeded_tickers(
     queued: &BTreeMap<String, i64>,
     price_rule: PriceRule,
     strict: bool,
-) {
+) -> Vec<Job> {
     let until = range.1;
     let missing = match unseeded_ticker_jobs(db, kind, range, queued) {
         Ok(missing) => missing,
         Err(e) => {
             log::warn!("[RECALC] Could not look for tickers without history: {e}");
-            return;
+            return Vec::new();
         }
     };
+    let mut follow_ups = Vec::new();
     for (ticker, from) in missing {
         let rebuilt = match kind {
             AssetKind::Stock => {
@@ -504,10 +535,16 @@ async fn rebuild_unseeded_tickers(
                     .await
             }
         };
-        if let Err(e) = rebuilt {
-            log::warn!("[RECALC] Backfilling a ticker's history failed: {e}");
+        match rebuilt {
+            Ok(stats) => follow_ups.extend(
+                stats
+                    .full_rebuild_from
+                    .map(|first| Job::StockTicker(ticker, first)),
+            ),
+            Err(e) => log::warn!("[RECALC] Backfilling a ticker's history failed: {e}"),
         }
     }
+    follow_ups
 }
 
 /// The tickers [`rebuild_unseeded_tickers`] fetches quotes for, each with the day its rebuild
@@ -551,6 +588,7 @@ pub async fn rebuild_days_async(
     let mut stats = RebuildStats {
         upserted: 0,
         deleted,
+        full_rebuild_from: None,
     };
     for (chunk_start, chunk_end) in plan.chunks() {
         let chunk = db.with_conn(|conn| rebuild_chunk(conn, &mut plan, chunk_start, chunk_end))?;
@@ -736,32 +774,53 @@ async fn rebuild_stock_ticker_with_policy(
         return Ok(RebuildStats::default());
     }
 
-    let has_transactions = db.with_conn(|conn| {
-        Ok(conn.query_row(
-            "SELECT EXISTS(SELECT 1 FROM investment_transactions WHERE ticker = ?1)",
-            [ticker],
-            |row| row.get::<_, bool>(0),
-        )?)
+    let tickers = [ticker.to_string()];
+    let first_day = db.with_conn(|conn| {
+        Ok(rebuild_jobs(conn, &tickers)?
+            .first()
+            .map(|(_, first)| *first))
     })?;
-    let quotes = if has_transactions {
-        let tickers = [ticker.to_string()];
-        if strict {
-            price_api::get_historical_stock_prices_yahoo_strict(&tickers, from_day, until_day)
-                .await?
-        } else {
-            price_api::get_historical_stock_prices_yahoo(&tickers, from_day, until_day).await?
-        }
+    let fetched = if first_day.is_some() {
+        price_api::get_historical_stock_series_yahoo(&tickers, from_day, until_day, strict).await?
     } else {
         Default::default()
     };
-    let prices: &[HistoricalPrice] = quotes.get(ticker).map(Vec::as_slice).unwrap_or(&[]);
+    let series = fetched.get(ticker);
+    let prices: &[HistoricalPrice] = series.map_or(&[], |series| series.prices.as_slice());
+    let new_splits = match series {
+        Some(series) if !series.splits.is_empty() => record_new_splits(db, ticker, &series.splits),
+        _ => 0,
+    };
 
     let plan = db.with_conn(|conn| {
         plan_ticker_history(conn, AssetKind::Stock, ticker, from_day, until_day, |day| {
             price_rule(prices, day).map(|quote| (quote.price, quote.currency.clone()))
         })
     })?;
-    apply_plan_in_chunks(db, AssetKind::Stock, ticker, &plan).await
+    let mut stats = apply_plan_in_chunks(db, AssetKind::Stock, ticker, &plan).await?;
+    stats.full_rebuild_from = needs_full_rebuild(new_splits, from_day, first_day);
+    Ok(stats)
+}
+
+/// Records the splits a history fetch reported (spec D5) and returns how many were new. A
+/// failure is logged: the history itself was fetched, and a later fetch records them.
+fn record_new_splits(db: &Database, ticker: &str, splits: &[stock_splits::DetectedSplit]) -> usize {
+    db.with_conn(|conn| {
+        stock_splits::record_detected(conn, ticker, splits, StockSplitSource::Yahoo)
+    })
+    .map(|inserted| inserted.len())
+    .unwrap_or_else(|e| {
+        log::warn!("[RECALC] Recording the splits of a history fetch failed: {e}");
+        0
+    })
+}
+
+/// Where the full rebuild a new split asks for starts (spec D18): the ticker's first
+/// transaction day when the fetch recorded new splits but started after that day, so the closes
+/// before it are still the unadjusted ones. `None` when nothing is new or the fetch already
+/// covered the whole history.
+fn needs_full_rebuild(new_rows: usize, from_day: i64, first_day: Option<i64>) -> Option<i64> {
+    first_day.filter(|&first| new_rows > 0 && floor_day(first) < from_day)
 }
 
 /// Rebuild one crypto ticker's history rows from `from_ts` through `until_day`, like
@@ -1074,6 +1133,25 @@ mod tests {
     }
 
     #[test]
+    fn a_follow_up_of_a_running_batch_goes_to_the_same_worker() {
+        let queue = HistoryRecalc::new();
+        assert!(queue.enqueue([stock("AAPL", 40 * DAY)], None));
+        queue.take_batch().expect("first batch");
+
+        // The batch found a new split: the full rebuild goes behind it, earliest date kept.
+        queue.requeue([stock("AAPL", 10 * DAY)]);
+        queue.requeue([stock("AAPL", 20 * DAY)]);
+        assert!(queue.is_pending_ticker("AAPL"));
+        assert!(
+            !queue.enqueue([], None),
+            "the running worker still owns the queue"
+        );
+        let (second, _) = queue.take_batch().expect("the follow-up batch");
+        assert_eq!(second.stocks["AAPL"], 10 * DAY);
+        assert!(queue.take_batch().is_none());
+    }
+
+    #[test]
     fn a_worker_that_panics_leaves_the_queue_open_for_the_next_job() {
         let state = HistoryRecalc::new();
         assert!(state.enqueue([Job::Days(86_400)], None), "starts a worker");
@@ -1276,6 +1354,21 @@ mod tests {
         let jobs = rebuild_jobs(&conn, &tickers(&["WATCH.L", "CSPX.L", "WATCH.L"])).expect("jobs");
         assert_eq!(jobs, vec![("CSPX.L".to_string(), 100 * DAY)]);
         assert!(rebuild_jobs(&conn, &[]).expect("none").is_empty());
+    }
+
+    #[test]
+    fn a_new_split_found_by_a_partial_rebuild_asks_for_the_full_history() {
+        let first = 10 * DAY;
+        assert_eq!(needs_full_rebuild(1, 40 * DAY, Some(first)), Some(first));
+        assert_eq!(needs_full_rebuild(2, first + DAY, Some(first)), Some(first));
+        // Nothing new, or the fetch already started at the first transaction.
+        assert_eq!(needs_full_rebuild(0, 40 * DAY, Some(first)), None);
+        assert_eq!(needs_full_rebuild(1, first, Some(first)), None);
+        assert_eq!(needs_full_rebuild(1, first - DAY, Some(first)), None);
+        // A first transaction later on its own first day is still that day.
+        assert_eq!(needs_full_rebuild(1, first, Some(first + 3_600)), None);
+        // No transactions, nothing to rebuild.
+        assert_eq!(needs_full_rebuild(1, 40 * DAY, None), None);
     }
 
     #[test]

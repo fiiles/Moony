@@ -88,6 +88,7 @@ export function OtherAssetAddSheet({ open, onOpenChange }: OtherAssetAddSheetPro
     setInput((current) => ({ ...current, ...patch }));
   const form = otherAssetFormState(input);
   const { currency } = input;
+  const currencyText = `${currency} · ${currencyName(currency, fmt.locale)}`;
 
   const submit = () => {
     // A second Enter while the save runs must not save twice (`loading` only blocks taps)
@@ -168,12 +169,14 @@ export function OtherAssetAddSheet({ open, onOpenChange }: OtherAssetAddSheetPro
           <div className="mb-3 divide-y divide-line-soft rounded-r4 border border-line bg-paper px-4 py-1 shadow-e1">
             <KeyValueRow
               label={tc('labels.currency')}
-              value={`${currency} · ${currencyName(currency, fmt.locale)}`}
+              value={currencyText}
+              ariaLabel={`${tc('labels.currency')}, ${currencyText}`}
               onClick={() => setCurrencyOpen(true)}
             />
           </div>
           <AmountField
             label={to('modal.add.marketPrice')}
+            aria-label={to('modal.add.marketPrice')}
             unit={currency}
             value={input.priceText}
             onChange={(event) => edit({ priceText: event.target.value })}
@@ -203,6 +206,7 @@ export function OtherAssetAddSheet({ open, onOpenChange }: OtherAssetAddSheetPro
               </h3>
               <AmountField
                 label={tc('labels.quantity')}
+                aria-label={tc('labels.quantity')}
                 unit={to('table.unit')}
                 value={input.quantityText}
                 onChange={(event) => edit({ quantityText: event.target.value })}
@@ -211,6 +215,7 @@ export function OtherAssetAddSheet({ open, onOpenChange }: OtherAssetAddSheetPro
               />
               <AmountField
                 label={to('modal.add.pricePerUnit')}
+                aria-label={to('modal.add.pricePerUnit')}
                 unit={currency}
                 value={input.purchasePriceText}
                 onChange={(event) => edit({ purchasePriceText: event.target.value })}
@@ -239,6 +244,7 @@ export function OtherAssetAddSheet({ open, onOpenChange }: OtherAssetAddSheetPro
                   <PickRow
                     key={type}
                     label={to(`modal.add.yieldTypes.${YIELD_LABEL[type]}`)}
+                    ariaLabel={to(`modal.add.yieldTypes.${YIELD_LABEL[type]}`)}
                     checked={input.yieldType === type}
                     onSelect={() => edit({ yieldType: type })}
                   />
@@ -248,6 +254,7 @@ export function OtherAssetAddSheet({ open, onOpenChange }: OtherAssetAddSheetPro
                 <div className="mt-2">
                   <AmountField
                     label={to('modal.add.yieldValue')}
+                    aria-label={to('modal.add.yieldValue')}
                     unit={input.yieldType === 'fixed' ? currency : '%'}
                     value={input.yieldText}
                     onChange={(event) => edit({ yieldText: event.target.value })}
@@ -297,6 +304,8 @@ function InputField({ label, error, className, ...props }: InputFieldProps) {
       <input
         {...props}
         id={id}
+        // Named by the visible label, whatever the placeholder says
+        aria-label={label}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
         className={cn(

@@ -12,6 +12,11 @@ interface KeyValueRowProps {
   /** The chevron of a row that opens something; on by default with `onClick`. */
   chevron?: boolean;
   /**
+   * The accessible name of a row that opens something, when its content should be said as one
+   * phrase ("Měna, CZK · česká koruna"): `aria-label` of the button.
+   */
+  ariaLabel?: string;
+  /**
    * The label above the value, which takes the row's full width and wraps (a note, a control)
    * instead of sitting at the right of a one-line value.
    */
@@ -31,6 +36,7 @@ export function KeyValueRow({
   sub,
   onClick,
   chevron = onClick !== undefined,
+  ariaLabel,
   stack = false,
 }: KeyValueRowProps) {
   const content = stack ? (
@@ -64,6 +70,7 @@ export function KeyValueRow({
     return (
       <button
         type="button"
+        aria-label={ariaLabel}
         onClick={onClick}
         className={cn(
           className,

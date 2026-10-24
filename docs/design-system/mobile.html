@@ -1372,9 +1372,9 @@
       <div class="m-sheet__handle"></div>
       <div class="m-sheet__head"><div class="m-sheet__t">Sonstigen Vermögenswert hinzufügen</div><div class="m-sheet__s">Fügen Sie Ihrem Portfolio einen neuen individuellen Vermögenswert hinzu.</div></div>
       <div class="m-sheet__body">
-        <div class="m-field"><label class="m-field__l" for="oa-name-closed">Name des Vermögenswerts</label><input class="m-field__i m-field__i--plain" id="oa-name-closed" value="Goldbarren" placeholder="z. B. Goldbarren"></div>
-        <div class="m-card m-kvcard" style="margin-bottom: 12px"><button class="m-kv m-kv--tap" type="button"><span class="m-kv__l">Währung</span><div class="m-kv__r"><div class="m-kv__v">CZK · Tschechische Krone</div></div><span class="m-kv__chev" data-icon="chevron-right" data-size="16"></span></button></div>
-        <div class="m-field"><label class="m-field__l">Aktueller Marktpreis (pro Stück)</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" placeholder="0" value="1 900"><span class="m-field__u">CZK</span></div><p class="m-field__h">Ihre Schätzung pro Stück für heute; später durch Neubewertung änderbar.</p></div>
+        <div class="m-field"><label class="m-field__l">Name des Vermögenswerts</label><input class="m-field__i m-field__i--plain" aria-label="Name des Vermögenswerts" value="Goldbarren" placeholder="z. B. Goldbarren"></div>
+        <div class="m-card m-kvcard" style="margin-bottom: 12px"><button class="m-kv m-kv--tap" type="button" aria-label="Währung, CZK · Tschechische Krone"><span class="m-kv__l">Währung</span><div class="m-kv__r"><div class="m-kv__v">CZK · Tschechische Krone</div></div><span class="m-kv__chev" data-icon="chevron-right" data-size="16"></span></button></div>
+        <div class="m-field"><label class="m-field__l">Aktueller Marktpreis (pro Stück)</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" aria-label="Aktueller Marktpreis (pro Stück)" placeholder="0" value="1 900"><span class="m-field__u">CZK</span></div><p class="m-field__h">Ihre Schätzung pro Stück für heute; später durch Neubewertung änderbar.</p></div>
         <button class="m-disclose" type="button" aria-expanded="false"><span>Weitere Angaben</span><span data-icon="chevron-down" data-size="16"></span></button>
       </div>
       <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Vermögenswert hinzufügen</span></button></div>
@@ -1396,25 +1396,25 @@
       <div class="m-sheet__handle"></div>
       <div class="m-sheet__head"><div class="m-sheet__t">Sonstigen Vermögenswert hinzufügen</div><div class="m-sheet__s">Fügen Sie Ihrem Portfolio einen neuen individuellen Vermögenswert hinzu.</div></div>
       <div class="m-sheet__body">
-        <div class="m-field"><label class="m-field__l" for="oa-name-open">Name des Vermögenswerts</label><input class="m-field__i m-field__i--plain" id="oa-name-open" value="Goldbarren" placeholder="z. B. Goldbarren"></div>
-        <div class="m-card m-kvcard" style="margin-bottom: 12px"><button class="m-kv m-kv--tap" type="button"><span class="m-kv__l">Währung</span><div class="m-kv__r"><div class="m-kv__v">CZK · Tschechische Krone</div></div><span class="m-kv__chev" data-icon="chevron-right" data-size="16"></span></button></div>
-        <div class="m-field"><label class="m-field__l">Aktueller Marktpreis (pro Stück)</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" placeholder="0" value="1 900"><span class="m-field__u">CZK</span></div><p class="m-field__h">Ihre Schätzung pro Stück für heute; später durch Neubewertung änderbar.</p></div>
+        <div class="m-field"><label class="m-field__l">Name des Vermögenswerts</label><input class="m-field__i m-field__i--plain" aria-label="Name des Vermögenswerts" value="Goldbarren" placeholder="z. B. Goldbarren"></div>
+        <div class="m-card m-kvcard" style="margin-bottom: 12px"><button class="m-kv m-kv--tap" type="button" aria-label="Währung, CZK · Tschechische Krone"><span class="m-kv__l">Währung</span><div class="m-kv__r"><div class="m-kv__v">CZK · Tschechische Krone</div></div><span class="m-kv__chev" data-icon="chevron-right" data-size="16"></span></button></div>
+        <div class="m-field"><label class="m-field__l">Aktueller Marktpreis (pro Stück)</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" aria-label="Aktueller Marktpreis (pro Stück)" placeholder="0" value="1 900"><span class="m-field__u">CZK</span></div><p class="m-field__h">Ihre Schätzung pro Stück für heute; später durch Neubewertung änderbar.</p></div>
         <button class="m-disclose" type="button" aria-expanded="true"><span>Weitere Angaben</span><span data-icon="chevron-up" data-size="16"></span></button>
         <div class="m-t-sub" style="margin: 8px 4px 6px; color: var(--ink-3); font-weight: 600">Erster Kauf (optional)</div>
-        <div class="m-field"><label class="m-field__l">Menge</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" placeholder="0" value="12"><span class="m-field__u">Stk.</span></div></div>
-        <div class="m-field"><label class="m-field__l">Preis / Stück</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" placeholder="0" value="1 780"><span class="m-field__u">CZK</span></div></div>
-        <div class="m-field"><label class="m-field__l" for="oa-date">Datum</label><input class="m-field__i m-field__i--plain" id="oa-date" type="date" value="2026-03-03"></div>
+        <div class="m-field"><label class="m-field__l">Menge</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" aria-label="Menge" placeholder="0" value="12"><span class="m-field__u">Stk.</span></div></div>
+        <div class="m-field"><label class="m-field__l">Preis / Stück</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" aria-label="Preis / Stück" placeholder="0" value="1 780"><span class="m-field__u">CZK</span></div></div>
+        <div class="m-field"><label class="m-field__l">Datum</label><input class="m-field__i m-field__i--plain" type="date" aria-label="Datum" value="2026-03-03"></div>
         <p class="m-field__h">Wenn ausgefüllt, wird eine Kauftransaktion angelegt.</p>
         <div class="m-t-sub" style="margin: 20px 4px 4px; color: var(--ink-3); font-weight: 600">Ertrag (optional)</div>
         <p class="m-field__h" style="margin: 0 2px 4px">Erträge, die dieser Vermögenswert jedes Jahr abwirft, zum Beispiel Miete oder Zinsen.</p>
         <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Ertragsart</div>
         <div role="radiogroup" aria-label="Ertragsart">
-          <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__l">Keiner</span></button>
-          <button class="m-pick" type="button" role="radio" aria-checked="true"><span class="m-pick__l">Fester Betrag (jährlich)</span><span class="m-pick__check" data-icon="check" data-size="18"></span></button>
-          <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__l">% des Kaufpreises</span></button>
-          <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__l">% des Marktpreises</span></button>
+          <button class="m-pick" type="button" role="radio" aria-checked="false" aria-label="Keiner"><span class="m-pick__l">Keiner</span></button>
+          <button class="m-pick" type="button" role="radio" aria-checked="true" aria-label="Fester Betrag (jährlich)"><span class="m-pick__l">Fester Betrag (jährlich)</span><span class="m-pick__check" data-icon="check" data-size="18"></span></button>
+          <button class="m-pick" type="button" role="radio" aria-checked="false" aria-label="% des Kaufpreises"><span class="m-pick__l">% des Kaufpreises</span></button>
+          <button class="m-pick" type="button" role="radio" aria-checked="false" aria-label="% des Marktpreises"><span class="m-pick__l">% des Marktpreises</span></button>
         </div>
-        <div style="margin-top: 8px"><div class="m-field"><label class="m-field__l">Ertragswert</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" placeholder="0" value="1 200"><span class="m-field__u">CZK</span></div></div></div>
+        <div style="margin-top: 8px"><div class="m-field"><label class="m-field__l">Ertragswert</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" aria-label="Ertragswert" placeholder="0" value="1 200"><span class="m-field__u">CZK</span></div></div></div>
       </div>
       <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Vermögenswert hinzufügen</span></button></div>
     </div>

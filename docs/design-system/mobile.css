@@ -466,6 +466,51 @@
 }
 .m-result__n { display: block; margin-top: 4px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.4; }
 
+/* ===== Documents: the policy's and the property's "Dokumenty" (spec §8.8; `DocumentsSection.tsx`) =====
+   A document is an entity row (`.m-row--chev`: a square chip with a page or a picture glyph, the name, "typ · velikost · den",
+   a chevron — no trailing value, so the chevron stays). A tap opens the viewer and a long press the menu with Smazat, so the
+   row's text cannot be selected and a vertical drag still scrolls (`.m-docrow`). With no documents the section is its head
+   and one line (`__empty`, 12 / 500 `ink-3`, wrapping). */
+.m-docrow { -webkit-user-select: none; user-select: none; touch-action: pan-y; }
+.m-docrow__empty { margin: 0 2px 14px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.4; }
+
+/* Capture buttons (`CaptureButtons.tsx`): Vyfotit and Vybrat soubor, two secondary buttons of the pair's size (48 px, the label
+   13 px and allowed a second line) under the list. Each drives a hidden file input (`__i`, still in the layout so that the
+   system picker opens from the button's tap); the camera's is `accept="image/*" capture="environment"`. */
+.m-capture { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.m-capture .m-btn { padding: 0 10px; font-size: 13px; text-align: center; white-space: normal; }
+.m-capture .m-btn > span { overflow: visible; overflow-wrap: break-word; hyphens: auto; }
+.m-capture__i { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* A text field of a sheet (the add-document sheet's Název): the amount field's box without the room for a unit, the
+   digits proportional. */
+.m-field__i--text { padding: 0 14px; font-variant-numeric: normal; }
+
+/* The document viewer's body (`DocumentViewerSheet.tsx`, a tall sheet): an image contained and as large as the room allows
+   (`__img`; the system pinches it), a PDF as its page placeholders in a scroll box of its own (`__pages`, with `__page`: pdf.js
+   judges which pages are in view against its parent, so the parent is the scroller, not the sheet's body), a skeleton until the
+   picture or the first page is ready (`__skeleton`) and, for a file the phone cannot show, one sentence (`__note`). The room is
+   95 % of the screen less 13 rem (the handle, the head, the footer and the home indicator). */
+.m-docview { position: relative; }
+.m-docview__img {
+  display: block; max-width: 100%; max-height: calc(var(--m-vh, 100dvh) * .95 - 13rem); margin: 0 auto;
+  border-radius: var(--r-2); object-fit: contain;
+}
+.m-docview__pages {
+  display: flex; flex-direction: column; gap: 12px; max-height: calc(var(--m-vh, 100dvh) * .95 - 13rem); padding: 8px;
+  overflow-y: auto; overscroll-behavior: contain; border-radius: var(--r-3); background: var(--well);
+}
+.m-docview__page { flex: none; width: 100%; border: 1px solid var(--line); border-radius: var(--r-2); background: var(--paper); box-shadow: var(--sh-1); }
+.m-docview__skeleton {
+  position: absolute; inset: 0; z-index: 1; border-radius: var(--r-3);
+  background: linear-gradient(90deg, var(--well-2) 25%, var(--well) 50%, var(--well-2) 75%); background-size: 200% 100%;
+}
+.m-docview__note { margin: 0; padding: 24px 4px; color: var(--ink-3); font-size: var(--m-fs-body); text-align: center; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes m-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  .m-docview__skeleton { animation: m-shimmer 1.4s linear infinite; }
+}
+
 /* ===== Allocation bar and its legend (Majetek, spec §8.8; `AllocationBar.tsx`) =====
    Inside the hero (`.m-card--hero`), under the change line: a thin 100 % bar of one `<i>` per share
    (the four largest classes in `s1`–`s4`, the folded bucket in `s-other` with a `line` ring), then a

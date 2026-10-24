@@ -327,6 +327,19 @@
       "menu": "Menu zdarzenia"
     }
   },
+  "documents": {
+    "takePhoto": "Zrób zdjęcie",
+    "chooseFile": "Wybierz plik",
+    "fromPhotos": "Wybierz ze zdjęć",
+    "photoName": "Zdjęcie {{date}}",
+    "count_one": "{{count}} · szyfrowany",
+    "count_few": "{{count}} · szyfrowane",
+    "count_many": "{{count}} · szyfrowanych",
+    "count_other": "{{count}} · szyfrowanych",
+    "openOnComputer": "Tego pliku nie można wyświetlić na telefonie. Otwórz go w Moony na komputerze.",
+    "saving": "Szyfruję i zapisuję…",
+    "rowMenu": "Więcej akcji: {{name}}"
+  },
   "transaction": {
     "flowSaved": "Znaczenie zapisane",
     "done": "Gotowe",

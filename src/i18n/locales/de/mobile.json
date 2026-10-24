@@ -285,6 +285,17 @@
       "menu": "Ereignismenü"
     }
   },
+  "documents": {
+    "takePhoto": "Foto aufnehmen",
+    "chooseFile": "Datei wählen",
+    "fromPhotos": "Aus Fotos wählen",
+    "photoName": "Foto {{date}}",
+    "count_one": "{{count}} · verschlüsselt",
+    "count_other": "{{count}} · verschlüsselt",
+    "openOnComputer": "Diese Datei lässt sich auf dem Telefon nicht anzeigen. Öffnen Sie sie in Moony auf Ihrem Computer.",
+    "saving": "Wird verschlüsselt und gespeichert…",
+    "rowMenu": "Weitere Aktionen: {{name}}"
+  },
   "transaction": {
     "flowSaved": "Bedeutung gespeichert",
     "done": "Fertig",

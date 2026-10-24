@@ -264,6 +264,16 @@
       "menu": "イベントメニュー"
     }
   },
+  "documents": {
+    "takePhoto": "撮影",
+    "chooseFile": "ファイルを選択",
+    "fromPhotos": "写真から選択",
+    "photoName": "写真 {{date}}",
+    "count_other": "{{count}}件 · 暗号化済み",
+    "openOnComputer": "このファイルはスマートフォンでは表示できません。パソコンの Moony で開いてください。",
+    "saving": "暗号化して保存しています…",
+    "rowMenu": "その他の操作: {{name}}"
+  },
   "transaction": {
     "flowSaved": "意味を保存しました",
     "done": "完了",

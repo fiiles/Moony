@@ -306,6 +306,18 @@
       "menu": "Menu dell'evento"
     }
   },
+  "documents": {
+    "takePhoto": "Scatta una foto",
+    "chooseFile": "Scegli un file",
+    "fromPhotos": "Scegli dalle foto",
+    "photoName": "Foto {{date}}",
+    "count_one": "{{count}} · cifrato",
+    "count_many": "{{count}} · cifrati",
+    "count_other": "{{count}} · cifrati",
+    "openOnComputer": "Questo file non può essere mostrato sul telefono. Aprilo in Moony sul computer.",
+    "saving": "Cifratura e salvataggio…",
+    "rowMenu": "Altre azioni: {{name}}"
+  },
   "transaction": {
     "flowSaved": "Significato salvato",
     "done": "Fatto",

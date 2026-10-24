@@ -306,6 +306,18 @@
       "menu": "Nabídka události"
     }
   },
+  "documents": {
+    "takePhoto": "Vyfotit",
+    "chooseFile": "Vybrat soubor",
+    "fromPhotos": "Vybrat z fotek",
+    "photoName": "Foto {{date}}",
+    "count_one": "{{count}} · šifrovaný",
+    "count_few": "{{count}} · šifrované",
+    "count_other": "{{count}} · šifrovaných",
+    "openOnComputer": "Tento soubor telefon zobrazit neumí. Otevřete ho v Moony na počítači.",
+    "saving": "Šifruji a ukládám…",
+    "rowMenu": "Další akce: {{name}}"
+  },
   "transaction": {
     "flowSaved": "Význam uložen",
     "done": "Hotovo",

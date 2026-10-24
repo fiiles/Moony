@@ -285,6 +285,17 @@
       "menu": "Event menu"
     }
   },
+  "documents": {
+    "takePhoto": "Take a photo",
+    "chooseFile": "Choose a file",
+    "fromPhotos": "Choose from photos",
+    "photoName": "Photo {{date}}",
+    "count_one": "{{count}} · encrypted",
+    "count_other": "{{count}} · encrypted",
+    "openOnComputer": "This file can't be shown on the phone. Open Moony on your computer to view it.",
+    "saving": "Encrypting and saving…",
+    "rowMenu": "More actions: {{name}}"
+  },
   "transaction": {
     "flowSaved": "Meaning saved",
     "done": "Done",

@@ -256,6 +256,14 @@
   </section>
 
   <section class="part">
+    <h2>Dokumenty: pojistka a nemovitost</h2>
+    <p>Sekce „Dokumente“ pod detailem pojistky (spec §8.8, prototyp 14) na 360, 390 a 430: hlavička s počtem a „verschlüsselt“ (<code>.m-sec__n</code>), dokumenty jako řádky s hranatým čipem, jménem a „typ · velikost · den“ (<code>.m-docrow</code> na <code>.m-row--chev</code>; dlouhé jméno končí třemi tečkami), pod nimi dvě sekundární tlačítka <code>.m-capture</code> (Foto aufnehmen · Datei wählen). Druhá sekce je sekce bez dokumentů: jediná věta (<code>.m-docrow__empty</code>) a tlačítka. Pod rámečky je sheet přidání (název v <code>.m-field__i--text</code>, typ jako řádky <code>.m-pick</code>, odmítnutí zůstává ve sheetu červeně) a prohlížeč (velký sheet, titulek je název, stránky PDF v posuvném boxu <code>.m-docview__pages</code>; obrázek je <code>.m-docview__img</code>, do načtení <code>.m-docview__skeleton</code>, soubor, který telefon nezobrazí, jedna věta <code>.m-docview__note</code>).</p>
+    <div class="phones" id="documents"></div>
+    <div class="phones" id="document-add" style="margin-top: 26px"></div>
+    <div class="phones" id="document-view" style="margin-top: 26px"></div>
+  </section>
+
+  <section class="part">
     <h2>Sheet a pole pro částku</h2>
     <p>Sheet nad obrazovkou: tab bar pod scrimem, držadlo, titulek, jedna věta, pole <code>.m-field</code> (štítek, 48 pt pole, měna uvnitř vpravo, placeholder je poslední zůstatek; druhé pole je vyplněné, třetí s chybou, čtvrté se zapnutým přepínačem ±) a patička na <code>well</code> s tlačítkem Zrušit vlevo a hlavní akcí vpravo. V aplikaci sheet zavírá klepnutí na scrim, Zrušit a Android zpět.</p>
     <div class="phones" id="sheets"></div>
@@ -567,6 +575,108 @@
         <div class="m-result" aria-live="polite"><span class="m-result__v">24 Monate früher getilgt</span><span class="m-result__n">Sie sparen 98&nbsp;400 Kč an Zinsen · die Rate bleibt 12&nbsp;340 Kč · Ende 10/2047</span></div>
       </div>
       <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary" type="button"><span>Als erfolgt erfassen</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The documents of a policy and of a property (a policy pushed on Finance), rendered at the three widths. -->
+<template id="documents-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Haushaltsversicherung</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Kooperativa · Sachversicherung · aktiv</p>
+      <div class="m-sec"><span class="m-sec__t">Dokumente</span><span class="m-sec__n">3 · verschlüsselt</span></div>
+      <div class="m-rows">
+        <button class="m-row m-row--chev m-docrow" type="button"><span class="m-row__chip m-row__chip--sq" data-icon="file-text" data-size="16"></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Versicherungsvertrag Haushalt 2024</span></span><span class="m-row__line"><span class="m-row__s">Vertrag · 2,1 MB · 9.1.2024</span></span></span><span class="m-row__chev" data-icon="chevron-right" data-size="16"></span></button>
+        <button class="m-row m-row--chev m-docrow" type="button"><span class="m-row__chip m-row__chip--sq" data-icon="image" data-size="16"></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Nachtrag 2025 zur Elektronikversicherung außerhalb des Haushalts</span></span><span class="m-row__line"><span class="m-row__s">Bescheinigung · 1,2 MB · 12.1.2025</span></span></span><span class="m-row__chev" data-icon="chevron-right" data-size="16"></span></button>
+        <button class="m-row m-row--chev m-docrow" type="button"><span class="m-row__chip m-row__chip--sq" data-icon="file-text" data-size="16"></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Schadensmeldung Wasserschaden</span></span><span class="m-row__line"><span class="m-row__s">Schadensfall · 830 kB · 3.6.2025</span></span></span><span class="m-row__chev" data-icon="chevron-right" data-size="16"></span></button>
+      </div>
+      <div class="m-capture">
+        <button class="m-btn m-btn--secondary" type="button" data-icon="camera" data-size="16"><span>Foto aufnehmen</span></button>
+        <button class="m-btn m-btn--secondary" type="button" data-icon="upload" data-size="16"><span>Datei wählen</span></button>
+        <input class="m-capture__i" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+        <input class="m-capture__i" type="file" tabindex="-1" aria-hidden="true">
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Dokumente</span></div>
+      <p class="m-docrow__empty">Noch keine Dokumente angehängt</p>
+      <div class="m-capture">
+        <button class="m-btn m-btn--secondary" type="button" data-icon="camera" data-size="16"><span>Foto aufnehmen</span></button>
+        <button class="m-btn m-btn--secondary" type="button" data-icon="upload" data-size="16"><span>Datei wählen</span></button>
+      </div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+  </div>
+</template>
+
+<!-- The add-document sheet over the policy, at the three widths: a photo's dated name, the type, a refusal. -->
+<template id="document-add-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Haushaltsversicherung</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Kooperativa · Sachversicherung · aktiv</p>
+      <div class="m-sec"><span class="m-sec__t">Dokumente</span><span class="m-sec__n">3 · verschlüsselt</span></div>
+      <div class="m-rows">
+        <button class="m-row m-row--chev m-docrow" type="button"><span class="m-row__chip m-row__chip--sq" data-icon="file-text" data-size="16"></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Versicherungsvertrag Haushalt 2024</span></span><span class="m-row__line"><span class="m-row__s">Vertrag · 2,1 MB · 9.1.2024</span></span></span><span class="m-row__chev" data-icon="chevron-right" data-size="16"></span></button>
+      </div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet" role="dialog" aria-modal="true" aria-label="Dokument hinzufügen">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Dokument hinzufügen</div><div class="m-sheet__s">2,4 MB</div></div>
+      <div class="m-sheet__body">
+        <div class="m-field"><label class="m-field__l" for="doc-name">Name</label><input class="m-field__i m-field__i--text" id="doc-name" type="text" value="Foto 24.10.2026"></div>
+        <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Dokumentart</div>
+        <div role="radiogroup" aria-label="Dokumentart">
+          <button class="m-pick" type="button" role="radio" aria-checked="true"><span class="m-pick__l">Vertrag</span><span class="m-pick__check" data-icon="check" data-size="18"></span></button>
+          <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__l">Bescheinigung</span></button>
+          <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__l">Schadensfall</span></button>
+          <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__l">Sonstiges</span></button>
+        </div>
+        <p class="m-field__e" role="alert">Der Name ist zu lang.</p>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary" type="button"><span>Speichern</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The document viewer over the policy, at the three widths: a PDF, page by page, in its own scroll box. -->
+<template id="document-view-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Haushaltsversicherung</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Kooperativa · Sachversicherung · aktiv</p>
+      <div class="m-sec"><span class="m-sec__t">Dokumente</span><span class="m-sec__n">3 · verschlüsselt</span></div>
+      <div class="m-rows">
+        <button class="m-row m-row--chev m-docrow" type="button"><span class="m-row__chip m-row__chip--sq" data-icon="file-text" data-size="16"></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Versicherungsvertrag Haushalt 2024</span></span><span class="m-row__line"><span class="m-row__s">Vertrag · 2,1 MB · 9.1.2024</span></span></span><span class="m-row__chev" data-icon="chevron-right" data-size="16"></span></button>
+      </div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Versicherungsvertrag Haushalt 2024">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Versicherungsvertrag Haushalt 2024</div><div class="m-sheet__s">Vertrag · 2,1 MB · 9.1.2024</div></div>
+      <div class="m-sheet__body">
+        <div class="m-docview">
+          <div class="m-docview__pages" style="max-height: 470px">
+            <div class="m-docview__page" style="aspect-ratio: 210 / 297; padding: 28px 24px; background-clip: content-box; background-image: repeating-linear-gradient(var(--well-2) 0 7px, transparent 7px 17px)"></div>
+            <div class="m-docview__page" style="aspect-ratio: 210 / 297; padding: 28px 24px; background-clip: content-box; background-image: repeating-linear-gradient(var(--well-2) 0 7px, transparent 7px 17px)"></div>
+          </div>
+        </div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost m-btn--block" type="button"><span>Schließen</span></button></div>
     </div>
   </div>
 </template>
@@ -1393,6 +1503,8 @@
     "layers": '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>',
     "shopping-cart": '<path d="m2.05 2.05 1.099-.028a1 1 0 0 1 1.008.815l2.69 14.347A1 1 0 0 0 7.83 18H18"/><path d="M4.563 5h16.435a1 1 0 0 1 .981 1.204l-1.026 6.226A2 2 0 0 1 18.962 14H6.25"/><circle cx="18" cy="20" r="2"/><circle cx="8" cy="20" r="2"/>',
     "triangle-alert": '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    "camera": '<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>',
+    "image": '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
     "calendar-clock": '<path d="M16 14v2.2l1.6 1"/><path d="M16 2v3"/><path d="M21 7.338V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h2.338"/><path d="M3 9h5.859"/><path d="M8 2v3"/><circle cx="16" cy="16" r="6"/>',
     "list": '<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/>',
     "align-left": '<path d="M15 12H3"/><path d="M17 18H3"/><path d="M21 6H3"/>',
@@ -1616,6 +1728,9 @@
   renderFrames("pickers", document.getElementById("picker-frame"), " · výběr kategorie");
   renderFrames("loan", document.getElementById("loan-frame"), " · úvěr");
   renderFrames("extra", document.getElementById("extra-frame"), " · mimořádná splátka");
+  renderFrames("documents", document.getElementById("documents-frame"), " · dokumenty");
+  renderFrames("document-add", document.getElementById("document-add-frame"), " · přidání dokumentu");
+  renderFrames("document-view", document.getElementById("document-view-frame"), " · prohlížeč");
 
   /* Flows strips: 12 months (Nov 2025 – Oct 2026) of incoming/outgoing values as "in,out|…", the
      bars scaled to the largest month, the newest selected, the strip scrolled to its end. */

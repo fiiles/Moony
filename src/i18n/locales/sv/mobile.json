@@ -285,6 +285,17 @@
       "menu": "Händelsemeny"
     }
   },
+  "documents": {
+    "takePhoto": "Ta foto",
+    "chooseFile": "Välj fil",
+    "fromPhotos": "Välj från foton",
+    "photoName": "Foto {{date}}",
+    "count_one": "{{count}} · krypterat",
+    "count_other": "{{count}} · krypterade",
+    "openOnComputer": "Den här filen kan inte visas på telefonen. Öppna den i Moony på datorn.",
+    "saving": "Krypterar och sparar…",
+    "rowMenu": "Fler åtgärder: {{name}}"
+  },
   "transaction": {
     "flowSaved": "Betydelse sparad",
     "done": "Klart",

@@ -306,6 +306,18 @@
       "menu": "Menú del evento"
     }
   },
+  "documents": {
+    "takePhoto": "Hacer una foto",
+    "chooseFile": "Elegir archivo",
+    "fromPhotos": "Elegir de las fotos",
+    "photoName": "Foto {{date}}",
+    "count_one": "{{count}} · cifrado",
+    "count_many": "{{count}} · cifrados",
+    "count_other": "{{count}} · cifrados",
+    "openOnComputer": "Este archivo no se puede mostrar en el teléfono. Ábrelo en Moony en tu ordenador.",
+    "saving": "Cifrando y guardando…",
+    "rowMenu": "Más acciones: {{name}}"
+  },
   "transaction": {
     "flowSaved": "Significado guardado",
     "done": "Listo",

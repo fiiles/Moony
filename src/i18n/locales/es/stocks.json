@@ -780,12 +780,22 @@
         "adjusted": "las operaciones anteriores del archivo parecen ya recalculadas",
         "unknown": "no se puede saber si el archivo ya está recalculado"
       },
-      "alsoStored_one": "también recalcula {{count}} operación guardada",
-      "alsoStored_many": "también recalcula {{count}} operaciones guardadas",
-      "alsoStored_other": "también recalcula {{count}} operaciones guardadas",
+      "storedVerdict": {
+        "unadjusted_one": "{{count}} operación guardada anterior está en unidades previas al split",
+        "unadjusted_many": "{{count}} operaciones guardadas anteriores están en unidades previas al split",
+        "unadjusted_other": "{{count}} operaciones guardadas anteriores están en unidades previas al split",
+        "adjusted_one": "{{count}} operación guardada anterior ya parece recalculada",
+        "adjusted_many": "{{count}} operaciones guardadas anteriores ya parecen recalculadas",
+        "adjusted_other": "{{count}} operaciones guardadas anteriores ya parecen recalculadas",
+        "unknown_one": "Moony no puede saber si {{count}} operación guardada anterior ya está recalculada",
+        "unknown_many": "Moony no puede saber si {{count}} operaciones guardadas anteriores ya están recalculadas",
+        "unknown_other": "Moony no puede saber si {{count}} operaciones guardadas anteriores ya están recalculadas"
+      },
       "mixedUnitsWarning": "Las operaciones guardadas anteriores al split se quedan en sus unidades originales; después de la importación, confirma o descarta el split en la página de la posición.",
       "convert": "Recalcular",
-      "convertFor": "Recalcular las operaciones de {{ticker}} por el split {{ratio}}"
+      "convertFor": "Recalcular las operaciones de {{ticker}} por el split {{ratio}}",
+      "applyStored": "Recalcular también las operaciones guardadas",
+      "applyStoredFor": "Recalcular las operaciones guardadas de {{ticker}} por el split {{ratio}}"
     }
   },
   "eyebrow": "Cartera",

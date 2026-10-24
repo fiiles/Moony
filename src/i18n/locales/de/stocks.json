@@ -757,11 +757,19 @@
         "adjusted": "die Trades davor wirken in der Datei bereits umgerechnet",
         "unknown": "nicht erkennbar, ob die Datei bereits umgerechnet ist"
       },
-      "alsoStored_one": "rechnet auch {{count}} gespeicherte Transaktion um",
-      "alsoStored_other": "rechnet auch {{count}} gespeicherte Transaktionen um",
+      "storedVerdict": {
+        "unadjusted_one": "{{count}} gespeicherte Transaktion davor ist in Einheiten vor dem Split",
+        "unadjusted_other": "{{count}} gespeicherte Transaktionen davor sind in Einheiten vor dem Split",
+        "adjusted_one": "{{count}} gespeicherte Transaktion davor sieht bereits umgerechnet aus",
+        "adjusted_other": "{{count}} gespeicherte Transaktionen davor sehen bereits umgerechnet aus",
+        "unknown_one": "Moony kann nicht erkennen, ob {{count}} gespeicherte Transaktion davor bereits umgerechnet ist",
+        "unknown_other": "Moony kann nicht erkennen, ob {{count}} gespeicherte Transaktionen davor bereits umgerechnet sind"
+      },
       "mixedUnitsWarning": "Gespeicherte Transaktionen vor dem Split bleiben in ihren ursprünglichen Einheiten; bestätigen oder verwerfen Sie den Split nach dem Import auf der Seite der Position.",
       "convert": "Umrechnen",
-      "convertFor": "Trades von {{ticker}} für den Split {{ratio}} umrechnen"
+      "convertFor": "Trades von {{ticker}} für den Split {{ratio}} umrechnen",
+      "applyStored": "Auch gespeicherte Transaktionen umrechnen",
+      "applyStoredFor": "Gespeicherte Transaktionen von {{ticker}} für den Split {{ratio}} umrechnen"
     }
   },
   "eyebrow": "Portfolio",

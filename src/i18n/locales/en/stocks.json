@@ -757,11 +757,19 @@
         "adjusted": "the file's trades before it already look converted",
         "unknown": "Moony cannot tell whether the file is already converted"
       },
-      "alsoStored_one": "also converts {{count}} stored transaction",
-      "alsoStored_other": "also converts {{count}} stored transactions",
+      "storedVerdict": {
+        "unadjusted_one": "{{count}} stored transaction before it is in pre-split units",
+        "unadjusted_other": "{{count}} stored transactions before it are in pre-split units",
+        "adjusted_one": "{{count}} stored transaction before it already looks converted",
+        "adjusted_other": "{{count}} stored transactions before it already look converted",
+        "unknown_one": "Moony cannot tell whether {{count}} stored transaction before it is converted",
+        "unknown_other": "Moony cannot tell whether {{count}} stored transactions before it are converted"
+      },
       "mixedUnitsWarning": "Stored transactions before the split stay in their original units; confirm or dismiss the split on the position page after the import.",
       "convert": "Convert",
-      "convertFor": "Convert the {{ticker}} trades for the {{ratio}} split"
+      "convertFor": "Convert the {{ticker}} trades for the {{ratio}} split",
+      "applyStored": "Convert stored transactions too",
+      "applyStoredFor": "Convert the stored {{ticker}} transactions for the {{ratio}} split"
     }
   },
   "eyebrow": "Portfolio",

@@ -7,19 +7,23 @@
 //! transaction holds the split records and the rows; a rule failure still found
 //! while writing aborts the whole import with that row's message.
 //!
-//! Splits (spec D14): every split choice of a non-skipped instrument is
-//! recorded in `stock_splits` (source `import`) when Moony has no row for its
-//! `(ticker, day)`: `keep` as `dismissed`, `convert` as applied. A `convert`
-//! split that is `pending` or unknown is applied to the stored rows (D10)
-//! **before** the file's rows are written: the stored rows are in pre-split
-//! units, the file's rows already in today's (the preview scaled both the same
-//! way). Existing `applied` and `dismissed` rows, and a `keep` of a pending
-//! one, stay as they are. Undo of the batch deletes its rows and leaves the
-//! split records.
+//! Splits (spec D14): the file's action (`convert`/`keep`) and the stored
+//! rows' switch (`apply_stored`) are two decisions. A split chosen
+//! `apply_stored` that Moony holds as `pending` or does not know is applied to
+//! the stored rows (D10) **before** the file's rows are written: the stored
+//! rows are in pre-split units, the file's rows already in today's (the
+//! preview scaled both the same way). A split Moony has no row for is
+//! recorded (source `import`) as `applied` by that apply, else as `pending`
+//! when the ticker still has rows dated before it (the user left them as they
+//! are: the position page is where the split waits), else as `dismissed` for
+//! `keep` or `applied` for `convert` (the file's rows arrive in today's units
+//! and nothing waits). Existing `applied` and `dismissed` rows stay, and so
+//! does a pending one that is not applied. Undo of the batch deletes its rows
+//! and leaves the split records.
 
 use rusqlite::Connection;
 
-use super::simulate::{simulate, ticker_convert_splits, SimulatedTrade, TradeOutcome};
+use super::simulate::{simulate, ticker_split_choices, SimulatedTrade, TradeOutcome};
 use super::types::{
     ParsedFile, StockImportConfig, StockImportInstrument, StockImportResult, StockInstrumentStatus,
     StockRowMessage, StockSplitAction, StockSplitOverride,
@@ -168,11 +172,10 @@ fn row_failure(line: usize, message: &str) -> AppError {
 }
 
 /// The split choices the import acts on, `(ticker, split)` per ticker of a
-/// non-skipped instrument in file order: first the `convert` splits exactly as
-/// the preview scales the stored rows with them (`ticker_convert_splits`: a day
-/// any instrument of the ticker converts is converted, the first such entry
-/// counts), then the `keep` splits of the remaining days (the first entry
-/// counts).
+/// non-skipped instrument in file order, one per split day exactly as the
+/// preview scales the stored rows with them (`ticker_split_choices`: a day any
+/// instrument of the ticker converts or applies is converted or applied, the
+/// first entry counts otherwise).
 fn split_choices(
     instruments: &[StockImportInstrument],
     config: &StockImportConfig,
@@ -187,7 +190,7 @@ fn split_choices(
     }
     let mut choices = Vec::new();
     for ticker in tickers {
-        let splits = || {
+        let chosen = ticker_split_choices(
             instruments
                 .iter()
                 .filter(|i| {
@@ -195,51 +198,53 @@ fn split_choices(
                         && i.ticker.as_deref() == Some(ticker)
                 })
                 .filter_map(|i| config.override_for(&i.key))
-                .flat_map(|o| &o.splits)
-        };
-        let mut chosen = ticker_convert_splits(splits());
-        for split in splits().filter(|s| s.action == StockSplitAction::Keep) {
-            if !chosen
-                .iter()
-                .any(|c| c.effective_day == split.effective_day)
-            {
-                chosen.push(split.clone());
-            }
-        }
+                .flat_map(|o| &o.splits),
+        );
         choices.extend(chosen.into_iter().map(|split| (ticker.to_string(), split)));
     }
     choices
 }
 
-/// Records the split choices and applies the `convert` ones the stored rows
-/// have not had (D14, see the module docs); returns what each apply did. Runs
-/// before the file's rows are written. An apply that would oversell the stored
-/// history fails with `validation.stockSplitOversold`.
+/// Records the split choices and applies the `apply_stored` ones the stored
+/// rows have not had (D14, see the module docs); returns what each apply did.
+/// Runs before the file's rows are written. An apply that would oversell the
+/// stored history fails with `validation.stockSplitOversold`.
 fn record_splits(
     conn: &Connection,
     choices: &[(String, StockSplitOverride)],
 ) -> Result<Vec<StockSplitApplyResult>> {
     let mut applied = Vec::new();
     for (ticker, split) in choices {
-        let existing = stock_splits::find(conn, ticker, split.effective_day)?;
-        match (split.action, existing) {
-            (StockSplitAction::Convert, None) => {
-                let row = stock_splits::insert_from_import(
-                    conn,
-                    ticker,
-                    split,
-                    StockSplitStatus::Pending,
-                )?;
+        match stock_splits::find(conn, ticker, split.effective_day)? {
+            None => {
+                let waiting = stock_splits::pre_split_count(conn, ticker, split.effective_day)? > 0;
+                let converts = split.action == StockSplitAction::Convert;
+                if (split.apply_stored && waiting) || (converts && !waiting) {
+                    // Rewrite the stored rows (none, for a convert without any: the record
+                    // still says the rows before the split are in today's units).
+                    let row = stock_splits::insert_from_import(
+                        conn,
+                        ticker,
+                        split,
+                        StockSplitStatus::Pending,
+                    )?;
+                    applied.push(stock_splits::apply(conn, &row.id)?);
+                } else {
+                    // Stored rows left as they are still wait for the split; none, and a kept
+                    // file, is a split with nothing to do.
+                    let status = if waiting {
+                        StockSplitStatus::Pending
+                    } else {
+                        StockSplitStatus::Dismissed
+                    };
+                    stock_splits::insert_from_import(conn, ticker, split, status)?;
+                }
+            }
+            Some(row) if row.status == StockSplitStatus::Pending && split.apply_stored => {
                 applied.push(stock_splits::apply(conn, &row.id)?);
             }
-            (StockSplitAction::Convert, Some(row)) if row.status == StockSplitStatus::Pending => {
-                applied.push(stock_splits::apply(conn, &row.id)?);
-            }
-            (StockSplitAction::Keep, None) => {
-                stock_splits::insert_from_import(conn, ticker, split, StockSplitStatus::Dismissed)?;
-            }
-            // Applied and dismissed rows stay; a kept pending split stays pending.
-            (_, Some(_)) => {}
+            // Applied and dismissed rows stay; a pending split not applied stays pending.
+            Some(_) => {}
         }
     }
     Ok(applied)
@@ -750,13 +755,22 @@ mod tests {
 
     // ---- splits (D14) ---------------------------------------------------------
 
-    /// A 10:1 split of `effective_day`.
+    /// A 10:1 split of `effective_day`, the stored rows left alone.
     fn split(effective_day: i64, action: StockSplitAction) -> StockSplitOverride {
         StockSplitOverride {
             effective_day,
             numerator: "10".into(),
             denominator: "1".into(),
             action,
+            apply_stored: false,
+        }
+    }
+
+    /// `split` that also applies to the stored rows.
+    fn with_stored(split: StockSplitOverride) -> StockSplitOverride {
+        StockSplitOverride {
+            apply_stored: true,
+            ..split
         }
     }
 
@@ -857,12 +871,15 @@ mod tests {
     }
 
     #[test]
-    fn convert_applies_a_pending_split_to_stored_rows() {
+    fn apply_stored_applies_a_pending_split_to_stored_rows() {
         let mut conn = db();
         add_stored(&conn, "AAPL", "buy", "3", "950", day(100), None);
         record_split(&conn, "AAPL", day(200), "pending");
         let f = file(vec![sell(2, day(300), "AAPL", 25.0, 120.0)]);
-        let cfg = with_splits(vec![split(day(200), StockSplitAction::Convert)]);
+        let cfg = with_splits(vec![with_stored(split(
+            day(200),
+            StockSplitAction::Convert,
+        ))]);
 
         let result = import(&mut conn, &f, &cfg, "f.csv").unwrap();
 
@@ -882,11 +899,14 @@ mod tests {
     }
 
     #[test]
-    fn convert_with_an_absent_row_rewrites_stored_rows_and_records_applied() {
+    fn apply_stored_with_an_absent_row_rewrites_stored_rows_and_records_applied() {
         let mut conn = db();
         add_stored(&conn, "AAPL", "buy", "3", "950", day(100), None);
         let f = file(vec![sell(2, day(300), "AAPL", 25.0, 120.0)]);
-        let cfg = with_splits(vec![split(day(200), StockSplitAction::Convert)]);
+        let cfg = with_splits(vec![with_stored(split(
+            day(200),
+            StockSplitAction::Convert,
+        ))]);
 
         let result = import(&mut conn, &f, &cfg, "f.csv").unwrap();
 
@@ -902,55 +922,114 @@ mod tests {
     }
 
     #[test]
-    fn keep_leaves_a_pending_split_pending() {
+    fn the_stored_rows_left_alone_leave_a_pending_split_pending() {
+        // Whatever the file's action: the stored switch is the stored rows' decision.
+        for action in [StockSplitAction::Convert, StockSplitAction::Keep] {
+            let mut conn = db();
+            add_stored(&conn, "AAPL", "buy", "3", "950", day(100), None);
+            record_split(&conn, "AAPL", day(200), "pending");
+            let f = file(vec![buy(2, day(300), "AAPL", 2.0, 100.0)]);
+            let cfg = with_splits(vec![split(day(200), action)]);
+
+            let result = import(&mut conn, &f, &cfg, "f.csv").unwrap();
+
+            assert_eq!(result.imported, 1, "{action:?}");
+            assert_eq!(
+                amounts(&conn, "AAPL"),
+                vec![pair("3", "950"), pair("2", "100")],
+                "{action:?}"
+            );
+            let (source, status, resolved, _) = split_row(&conn, "AAPL", day(200)).unwrap();
+            assert_eq!((source.as_str(), status.as_str()), ("yahoo", "pending"));
+            assert_eq!(resolved, None);
+            assert_eq!(position(&conn, "AAPL").unwrap().1, "5");
+            assert!(result.updated_positions.contains(&"AAPL".to_string()));
+        }
+    }
+
+    #[test]
+    fn the_stored_rows_left_alone_record_an_absent_split_as_pending() {
+        for action in [StockSplitAction::Convert, StockSplitAction::Keep] {
+            let mut conn = db();
+            add_stored(&conn, "AAPL", "buy", "3", "950", day(100), None);
+            let f = file(vec![buy(2, day(300), "AAPL", 2.0, 100.0)]);
+            let cfg = with_splits(vec![split(day(200), action)]);
+
+            let result = import(&mut conn, &f, &cfg, "f.csv").unwrap();
+
+            assert_eq!(result.imported, 1, "{action:?}");
+            assert_eq!(
+                amounts(&conn, "AAPL"),
+                vec![pair("3", "950"), pair("2", "100")],
+                "{action:?}"
+            );
+            let (source, status, resolved, applied_count) =
+                split_row(&conn, "AAPL", day(200)).expect("recorded");
+            assert_eq!(
+                (source.as_str(), status.as_str()),
+                ("import", "pending"),
+                "{action:?}: the position page is where the split waits"
+            );
+            assert_eq!((resolved, applied_count), (None, None));
+        }
+    }
+
+    #[test]
+    fn keep_with_apply_stored_rewrites_the_stored_rows_and_keeps_the_file_rows() {
+        // The headline case: a pre-split position, a file the broker already adjusted.
         let mut conn = db();
         add_stored(&conn, "AAPL", "buy", "3", "950", day(100), None);
         record_split(&conn, "AAPL", day(200), "pending");
-        let f = file(vec![buy(2, day(300), "AAPL", 2.0, 100.0)]);
-        let cfg = with_splits(vec![split(day(200), StockSplitAction::Keep)]);
+        let f = file(vec![
+            buy(2, day(150), "AAPL", 10.0, 90.0),
+            sell(3, day(300), "AAPL", 35.0, 120.0),
+        ]);
+        let cfg = with_splits(vec![with_stored(split(day(200), StockSplitAction::Keep))]);
 
         let result = import(&mut conn, &f, &cfg, "f.csv").unwrap();
 
-        assert_eq!(result.imported, 1);
+        assert_eq!((result.imported, result.converted), (2, 0));
         assert_eq!(
             amounts(&conn, "AAPL"),
-            vec![pair("3", "950"), pair("2", "100")]
+            vec![pair("30", "95"), pair("10", "90"), pair("35", "120")],
+            "the stored row rewritten, the file's rows as they came"
         );
-        let (source, status, resolved, _) = split_row(&conn, "AAPL", day(200)).unwrap();
-        assert_eq!((source.as_str(), status.as_str()), ("yahoo", "pending"));
-        assert_eq!(resolved, None);
+        let (source, status, _, applied_count) = split_row(&conn, "AAPL", day(200)).unwrap();
+        assert_eq!((source.as_str(), status.as_str()), ("yahoo", "applied"));
+        assert_eq!(applied_count, Some(1));
         assert_eq!(position(&conn, "AAPL").unwrap().1, "5");
+        assert_eq!(result.updated_positions, vec!["AAPL"]);
+        assert_eq!(result.earliest_day, Some(day(100)));
     }
 
     #[test]
     fn existing_applied_row_is_left_alone() {
         for status in ["applied", "dismissed"] {
             for action in [StockSplitAction::Convert, StockSplitAction::Keep] {
-                let mut conn = db();
-                add_stored(&conn, "AAPL", "buy", "30", "95", day(100), None);
-                record_split(&conn, "AAPL", day(200), status);
-                let f = file(vec![buy(2, day(300), "AAPL", 1.0, 100.0)]);
+                for apply_stored in [false, true] {
+                    let mut conn = db();
+                    add_stored(&conn, "AAPL", "buy", "30", "95", day(100), None);
+                    record_split(&conn, "AAPL", day(200), status);
+                    let f = file(vec![buy(2, day(300), "AAPL", 1.0, 100.0)]);
+                    let mut choice = split(day(200), action);
+                    choice.apply_stored = apply_stored;
 
-                let result = import(
-                    &mut conn,
-                    &f,
-                    &with_splits(vec![split(day(200), action)]),
-                    "f.csv",
-                )
-                .unwrap();
+                    let result =
+                        import(&mut conn, &f, &with_splits(vec![choice]), "f.csv").unwrap();
 
-                assert_eq!(result.imported, 1, "{status} {action:?}");
-                assert_eq!(
-                    amounts(&conn, "AAPL"),
-                    vec![pair("30", "95"), pair("1", "100")],
-                    "{status} {action:?}"
-                );
-                let row = split_row(&conn, "AAPL", day(200)).unwrap();
-                assert_eq!(
-                    row,
-                    ("yahoo".to_string(), status.to_string(), Some(7), None),
-                    "{action:?}"
-                );
+                    assert_eq!(result.imported, 1, "{status} {action:?} {apply_stored}");
+                    assert_eq!(
+                        amounts(&conn, "AAPL"),
+                        vec![pair("30", "95"), pair("1", "100")],
+                        "{status} {action:?} {apply_stored}"
+                    );
+                    let row = split_row(&conn, "AAPL", day(200)).unwrap();
+                    assert_eq!(
+                        row,
+                        ("yahoo".to_string(), status.to_string(), Some(7), None),
+                        "{action:?} {apply_stored}"
+                    );
+                }
             }
         }
     }
@@ -976,7 +1055,10 @@ mod tests {
         add_stored(&conn, "AAPL", "buy", "3", "950", day(50), None);
         record_split(&conn, "AAPL", day(200), "pending");
         let f = file(vec![buy(2, day(300), "AAPL", 1.0, 100.0)]);
-        let cfg = with_splits(vec![split(day(200), StockSplitAction::Convert)]);
+        let cfg = with_splits(vec![with_stored(split(
+            day(200),
+            StockSplitAction::Convert,
+        ))]);
 
         let result = import(&mut conn, &f, &cfg, "f.csv").unwrap();
 
@@ -996,7 +1078,10 @@ mod tests {
             buy(2, day(100), "AAPL", 3.0, 950.0), // converted: the stored row again
             buy(3, day(300), "MSFT", 1.0, 300.0),
         ]);
-        let cfg = with_splits(vec![split(day(200), StockSplitAction::Convert)]);
+        let cfg = with_splits(vec![with_stored(split(
+            day(200),
+            StockSplitAction::Convert,
+        ))]);
 
         let result = import(&mut conn, &f, &cfg, "f.csv").unwrap();
 
@@ -1015,7 +1100,10 @@ mod tests {
     fn splits_of_a_skipped_instrument_are_ignored() {
         let mut conn = db();
         add_stored(&conn, "AAPL", "buy", "3", "950", day(100), None);
-        let mut cfg = with_splits(vec![split(day(200), StockSplitAction::Convert)]);
+        let mut cfg = with_splits(vec![with_stored(split(
+            day(200),
+            StockSplitAction::Convert,
+        ))]);
         cfg.instrument_overrides[0].skip = true;
         let f = file(vec![
             buy(2, day(300), "AAPL", 1.0, 100.0),
@@ -1031,13 +1119,16 @@ mod tests {
     }
 
     #[test]
-    fn a_convert_of_any_instrument_of_the_ticker_is_applied_as_the_preview_scales() {
+    fn an_apply_stored_of_any_instrument_of_the_ticker_is_applied_as_the_preview_scales() {
         let mut conn = db();
         add_stored(&conn, "AAPL", "buy", "3", "950", day(100), None);
         let mut by_isin = isin_trade();
         by_isin.day = day(300);
         let f = file(vec![by_isin, sell(3, day(300), "AAPL", 25.0, 120.0)]);
-        let mut cfg = with_splits(vec![split(day(200), StockSplitAction::Convert)]);
+        let mut cfg = with_splits(vec![with_stored(split(
+            day(200),
+            StockSplitAction::Convert,
+        ))]);
         cfg.instrument_overrides.insert(
             0,
             StockInstrumentOverride {
@@ -1074,7 +1165,7 @@ mod tests {
             buy(3, day(300), "BAD", 1.0, 1.0),
         ]);
         let mut cfg = with_splits(vec![
-            split(day(200), StockSplitAction::Convert),
+            with_stored(split(day(200), StockSplitAction::Convert)),
             split(day(250), StockSplitAction::Keep),
         ]);
         cfg.instrument_overrides[0].splits[1].numerator = "2".into();

@@ -757,11 +757,19 @@
         "adjusted": "affärerna före den ser redan omräknade ut i filen",
         "unknown": "det går inte att avgöra om filen redan är omräknad"
       },
-      "alsoStored_one": "räknar också om {{count}} sparad transaktion",
-      "alsoStored_other": "räknar också om {{count}} sparade transaktioner",
+      "storedVerdict": {
+        "unadjusted_one": "{{count}} sparad transaktion före den är i enheter från före splitten",
+        "unadjusted_other": "{{count}} sparade transaktioner före den är i enheter från före splitten",
+        "adjusted_one": "{{count}} sparad transaktion före den ser redan omräknad ut",
+        "adjusted_other": "{{count}} sparade transaktioner före den ser redan omräknade ut",
+        "unknown_one": "Moony kan inte avgöra om {{count}} sparad transaktion före den redan är omräknad",
+        "unknown_other": "Moony kan inte avgöra om {{count}} sparade transaktioner före den redan är omräknade"
+      },
       "mixedUnitsWarning": "Sparade transaktioner före splitten ligger kvar i de ursprungliga enheterna; bekräfta eller avvisa splitten på innehavets sida efter importen.",
       "convert": "Räkna om",
-      "convertFor": "Räkna om affärerna i {{ticker}} för splitten {{ratio}}"
+      "convertFor": "Räkna om affärerna i {{ticker}} för splitten {{ratio}}",
+      "applyStored": "Räkna också om sparade transaktioner",
+      "applyStoredFor": "Räkna om de sparade transaktionerna i {{ticker}} för splitten {{ratio}}"
     }
   },
   "eyebrow": "Portfölj",

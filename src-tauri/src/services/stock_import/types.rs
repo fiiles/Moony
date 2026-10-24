@@ -114,12 +114,12 @@ pub struct StockImportTransforms {
 }
 
 /// What the import does with the file's trades dated before a split (TS `StockSplitAction`).
+/// The ticker's stored rows are a separate decision: `StockSplitOverride::apply_stored`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "lowercase")]
 pub enum StockSplitAction {
     /// The file is in pre-split units: its trades dated before the split are converted to
-    /// today's units (`quantity × n/d`, `price × d/n`), and a split the ticker's stored rows have
-    /// not had yet (`pending`, or unknown to Moony) is applied to them too (spec D13, D14).
+    /// today's units (`quantity × n/d`, `price × d/n`) (spec D13).
     Convert,
     /// The file is already in today's units: nothing is converted.
     Keep,
@@ -136,7 +136,13 @@ pub struct StockSplitOverride {
     pub numerator: String,
     /// Integer as text, e.g. `"1"` of a 10:1 split.
     pub denominator: String,
+    /// What happens to the file's trades dated before the split.
     pub action: StockSplitAction,
+    /// Also apply the split to the ticker's stored transactions before the import, when Moony
+    /// holds it as `pending` or has no row for it (D14); independent of `action`. Absent in
+    /// configs from before the stored rows had a choice of their own.
+    #[serde(rename = "applyStored", default)]
+    pub apply_stored: bool,
 }
 
 /// The user's choice for one instrument in the preview (TS `StockInstrumentOverride`).
@@ -558,6 +564,11 @@ pub struct StockSplitCheckSplit {
     /// Stored transactions of the ticker dated before the split (the D14 line).
     #[serde(rename = "storedPreSplitCount")]
     pub stored_pre_split_count: i64,
+    /// D7 over those stored transactions, as the position page judges them (against
+    /// `stock_value_history`, cumulative over the ticker's pending splits); `unknown` unless the
+    /// split is pending or unknown to Moony and such rows exist.
+    #[serde(rename = "storedVerdict")]
+    pub stored_verdict: StockSplitVerdict,
 }
 
 /// The split check of one instrument of the file (TS `StockSplitCheck`, D12).
@@ -796,6 +807,7 @@ mod tests {
             numerator: n.into(),
             denominator: d.into(),
             action: StockSplitAction::Convert,
+            apply_stored: false,
         };
         let mut c = config();
         c.instrument_overrides = vec![StockInstrumentOverride {
@@ -832,6 +844,17 @@ mod tests {
         .unwrap();
         assert_eq!(over.splits[0].action, StockSplitAction::Convert);
         assert_eq!(over.splits[0].effective_day, 1_718_000_000);
+        assert!(
+            !over.splits[0].apply_stored,
+            "a choice from before the stored rows had their own switch leaves them alone"
+        );
+
+        let over: StockInstrumentOverride = serde_json::from_str(
+            r#"{"key":"symbol:NVDA","splits":[{"effectiveDay":1718000000,"numerator":"10","denominator":"1","action":"keep","applyStored":true}]}"#,
+        )
+        .unwrap();
+        assert_eq!(over.splits[0].action, StockSplitAction::Keep);
+        assert!(over.splits[0].apply_stored);
     }
 
     #[test]

@@ -32,6 +32,7 @@ import {
   instrumentCheck,
   isPenceCode,
   needsLookup,
+  storedRowsUndecided,
   type InstrumentCheck,
 } from './import-config';
 import type { LookupProgress } from './instrument-lookup';
@@ -64,6 +65,12 @@ interface InstrumentsPanelProps {
     effectiveDay: number,
     action: StockSplitAction
   ) => void;
+  /** Also rewrite the ticker's stored transactions before the split, or leave them (D14). */
+  onSplitApplyStored: (
+    instrument: StockImportInstrument,
+    effectiveDay: number,
+    applyStored: boolean
+  ) => void;
 }
 
 /**
@@ -91,6 +98,7 @@ export function InstrumentsPanel({
   isCheckingSplits,
   splitCheckFailed,
   onSplitAction,
+  onSplitApplyStored,
 }: InstrumentsPanelProps) {
   const { t } = useTranslation('stocks');
   const [editingKey, setEditingKey] = useState<string | null>(null);
@@ -202,6 +210,9 @@ export function InstrumentsPanel({
                     onSplitAction={(effectiveDay, action) =>
                       onSplitAction(instrument, effectiveDay, action)
                     }
+                    onSplitApplyStored={(effectiveDay, applyStored) =>
+                      onSplitApplyStored(instrument, effectiveDay, applyStored)
+                    }
                   />
                 );
               })}
@@ -257,6 +268,7 @@ interface InstrumentRowsProps {
   /** The split choices in the instrument's override. */
   splitChoices: readonly StockSplitOverride[];
   onSplitAction: (effectiveDay: number, action: StockSplitAction) => void;
+  onSplitApplyStored: (effectiveDay: number, applyStored: boolean) => void;
 }
 
 /** The row of one instrument and, while it is edited, the editor under it. */
@@ -277,6 +289,7 @@ function InstrumentRows({
   splitCheck,
   splitChoices,
   onSplitAction,
+  onSplitApplyStored,
 }: InstrumentRowsProps) {
   const { t } = useTranslation('stocks');
   const fmt = useFormat();
@@ -374,21 +387,18 @@ function InstrumentRows({
               <ul className="m-0 grid list-none gap-1.5 p-0">
                 {splitLines.splits.map((split) => {
                   const ratio = ratioText(split.numerator, split.denominator);
-                  const action = splitChoices.find(
-                    (c) => c.effectiveDay === split.effectiveDay
-                  )?.action;
-                  // A convert rewrites the stored rows too when Moony has not had the split yet (D14).
-                  const alsoStored =
-                    action === 'convert' &&
-                    split.storedPreSplitCount > 0 &&
-                    (split.storedStatus === 'pending' || split.storedStatus === null);
-                  // Keep leaves the stored pre-split rows as they are while the file's trades
-                  // before the split come in too: say the split still waits on the position page.
+                  const choice = splitChoices.find((c) => c.effectiveDay === split.effectiveDay);
+                  const action = choice?.action;
+                  // The stored rows dated before the split are a decision of their own while
+                  // Moony has not had the split yet (D14): a second switch, judged like the
+                  // position page judges them.
+                  const storedUndecided = storedRowsUndecided(split);
+                  const applyStored = choice?.applyStored ?? false;
+                  // The file's trades before the split come in (in today's units, converted or
+                  // as the broker adjusted them) while the stored rows stay as they are: say the
+                  // split still waits on the position page.
                   const mixedUnits =
-                    action === 'keep' &&
-                    split.storedPreSplitCount > 0 &&
-                    (split.storedStatus === 'pending' || split.storedStatus === null) &&
-                    split.trades.length > 0;
+                    storedUndecided && !applyStored && choice != null && split.trades.length > 0;
                   return (
                     <li
                       key={split.effectiveDay}
@@ -403,10 +413,10 @@ function InstrumentRows({
                         </b>
                         {' · '}
                         {t(`importWizard.splits.verdict.${split.verdict}`)}
-                        {alsoStored && (
+                        {storedUndecided && (
                           <>
                             {' · '}
-                            {t('importWizard.splits.alsoStored', {
+                            {t(`importWizard.splits.storedVerdict.${split.storedVerdict}`, {
                               count: split.storedPreSplitCount,
                             })}
                           </>
@@ -418,20 +428,38 @@ function InstrumentRows({
                           </span>
                         )}
                       </span>
-                      <label className="flex shrink-0 cursor-pointer items-center gap-2 font-600 text-ink-2">
-                        <Switch
-                          checked={action === 'convert'}
-                          disabled={action == null}
-                          onCheckedChange={(checked) =>
-                            onSplitAction(split.effectiveDay, checked ? 'convert' : 'keep')
-                          }
-                          aria-label={t('importWizard.splits.convertFor', {
-                            ticker: primary,
-                            ratio,
-                          })}
-                        />
-                        {t('importWizard.splits.convert')}
-                      </label>
+                      <span className="flex shrink-0 flex-col items-end gap-1.5">
+                        <label className="flex cursor-pointer items-center gap-2 font-600 text-ink-2">
+                          <Switch
+                            checked={action === 'convert'}
+                            disabled={action == null}
+                            onCheckedChange={(checked) =>
+                              onSplitAction(split.effectiveDay, checked ? 'convert' : 'keep')
+                            }
+                            aria-label={t('importWizard.splits.convertFor', {
+                              ticker: primary,
+                              ratio,
+                            })}
+                          />
+                          {t('importWizard.splits.convert')}
+                        </label>
+                        {storedUndecided && (
+                          <label className="flex cursor-pointer items-center gap-2 font-600 text-ink-2">
+                            <Switch
+                              checked={applyStored}
+                              disabled={choice == null}
+                              onCheckedChange={(checked) =>
+                                onSplitApplyStored(split.effectiveDay, checked)
+                              }
+                              aria-label={t('importWizard.splits.applyStoredFor', {
+                                ticker: primary,
+                                ratio,
+                              })}
+                            />
+                            {t('importWizard.splits.applyStored')}
+                          </label>
+                        )}
+                      </span>
                     </li>
                   );
                 })}

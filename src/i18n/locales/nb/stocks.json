@@ -757,11 +757,19 @@
         "adjusted": "handlene før den ser allerede omregnet ut i filen",
         "unknown": "kan ikke avgjøre om filen allerede er omregnet"
       },
-      "alsoStored_one": "omregner også {{count}} lagret transaksjon",
-      "alsoStored_other": "omregner også {{count}} lagrede transaksjoner",
+      "storedVerdict": {
+        "unadjusted_one": "{{count}} lagret transaksjon før den er i enheter fra før splitten",
+        "unadjusted_other": "{{count}} lagrede transaksjoner før den er i enheter fra før splitten",
+        "adjusted_one": "{{count}} lagret transaksjon før den ser allerede omregnet ut",
+        "adjusted_other": "{{count}} lagrede transaksjoner før den ser allerede omregnet ut",
+        "unknown_one": "Moony kan ikke avgjøre om {{count}} lagret transaksjon før den allerede er omregnet",
+        "unknown_other": "Moony kan ikke avgjøre om {{count}} lagrede transaksjoner før den allerede er omregnet"
+      },
       "mixedUnitsWarning": "Lagrede transaksjoner før splitten blir stående i de opprinnelige enhetene; bekreft eller avvis splitten på posisjonssiden etter importen.",
       "convert": "Omregn",
-      "convertFor": "Omregn handlene i {{ticker}} for splitten {{ratio}}"
+      "convertFor": "Omregn handlene i {{ticker}} for splitten {{ratio}}",
+      "applyStored": "Omregn også lagrede transaksjoner",
+      "applyStoredFor": "Omregn de lagrede transaksjonene i {{ticker}} for splitten {{ratio}}"
     }
   },
   "eyebrow": "Portefølje",

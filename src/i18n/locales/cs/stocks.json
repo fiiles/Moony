@@ -781,12 +781,22 @@
         "adjusted": "obchody před ním vypadají v souboru už přepočtené",
         "unknown": "nelze poznat, zda je soubor už přepočtený"
       },
-      "alsoStored_one": "přepočítá i {{count}} uloženou transakci",
-      "alsoStored_few": "přepočítá i {{count}} uložené transakce",
-      "alsoStored_other": "přepočítá i {{count}} uložených transakcí",
+      "storedVerdict": {
+        "unadjusted_one": "{{count}} uložená transakce před ním je v původních jednotkách",
+        "unadjusted_few": "{{count}} uložené transakce před ním jsou v původních jednotkách",
+        "unadjusted_other": "{{count}} uložených transakcí před ním je v původních jednotkách",
+        "adjusted_one": "{{count}} uložená transakce před ním vypadá už přepočtená",
+        "adjusted_few": "{{count}} uložené transakce před ním vypadají už přepočtené",
+        "adjusted_other": "{{count}} uložených transakcí před ním vypadá už přepočtených",
+        "unknown_one": "nelze poznat, zda je {{count}} uložená transakce před ním už přepočtená",
+        "unknown_few": "nelze poznat, zda jsou {{count}} uložené transakce před ním už přepočtené",
+        "unknown_other": "nelze poznat, zda je {{count}} uložených transakcí před ním už přepočtených"
+      },
       "mixedUnitsWarning": "Uložené transakce před splitem zůstanou v původních jednotkách; po importu split potvrďte nebo zamítněte na detailu pozice.",
       "convert": "Přepočítat",
-      "convertFor": "Přepočítat obchody {{ticker}} podle splitu {{ratio}}"
+      "convertFor": "Přepočítat obchody {{ticker}} podle splitu {{ratio}}",
+      "applyStored": "Přepočítat i uložené transakce",
+      "applyStoredFor": "Přepočítat i uložené transakce {{ticker}} podle splitu {{ratio}}"
     }
   },
   "eyebrow": "Portfolio",

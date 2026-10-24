@@ -780,12 +780,22 @@
         "adjusted": "le operazioni precedenti nel file sembrano già ricalcolate",
         "unknown": "impossibile capire se il file è già ricalcolato"
       },
-      "alsoStored_one": "ricalcola anche {{count}} transazione salvata",
-      "alsoStored_many": "ricalcola anche {{count}} transazioni salvate",
-      "alsoStored_other": "ricalcola anche {{count}} transazioni salvate",
+      "storedVerdict": {
+        "unadjusted_one": "{{count}} operazione salvata precedente è in unità pre-split",
+        "unadjusted_many": "{{count}} operazioni salvate precedenti sono in unità pre-split",
+        "unadjusted_other": "{{count}} operazioni salvate precedenti sono in unità pre-split",
+        "adjusted_one": "{{count}} operazione salvata precedente sembra già ricalcolata",
+        "adjusted_many": "{{count}} operazioni salvate precedenti sembrano già ricalcolate",
+        "adjusted_other": "{{count}} operazioni salvate precedenti sembrano già ricalcolate",
+        "unknown_one": "Moony non sa dire se {{count}} operazione salvata precedente è già ricalcolata",
+        "unknown_many": "Moony non sa dire se {{count}} operazioni salvate precedenti sono già ricalcolate",
+        "unknown_other": "Moony non sa dire se {{count}} operazioni salvate precedenti sono già ricalcolate"
+      },
       "mixedUnitsWarning": "Le operazioni salvate prima dello split restano nelle unità originali; dopo l'importazione conferma o ignora lo split nella pagina della posizione.",
       "convert": "Ricalcola",
-      "convertFor": "Ricalcola le operazioni di {{ticker}} per lo split {{ratio}}"
+      "convertFor": "Ricalcola le operazioni di {{ticker}} per lo split {{ratio}}",
+      "applyStored": "Ricalcola anche le operazioni salvate",
+      "applyStoredFor": "Ricalcola le operazioni salvate di {{ticker}} per lo split {{ratio}}"
     }
   },
   "eyebrow": "Portafoglio",

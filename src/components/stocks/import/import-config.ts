@@ -29,6 +29,7 @@ import type {
   StockRowStatus,
   StockSplitAction,
   StockSplitCheck,
+  StockSplitCheckSplit,
   StockSplitOverride,
   StockSplitVerdict,
   StockTypeValueAction,
@@ -976,13 +977,23 @@ export function defaultSplitAction(verdict: StockSplitVerdict): StockSplitAction
   return verdict === 'unadjusted' ? 'convert' : 'keep';
 }
 
-/** The split choices of one instrument's check, each with the default action. */
+/**
+ * Whether the import also rewrites the ticker's stored transactions by default: only when they
+ * look pre-split (the check judges them as the position page does; `unknown` when the split is
+ * already resolved or no stored row is dated before it, so nothing is applied then).
+ */
+export function defaultApplyStored(split: StockSplitCheckSplit): boolean {
+  return split.storedVerdict === 'unadjusted';
+}
+
+/** The split choices of one instrument's check, each with the defaults. */
 export function splitOverridesFor(check: StockSplitCheck): StockSplitOverride[] {
   return check.splits.map((split) => ({
     effectiveDay: split.effectiveDay,
     numerator: split.numerator,
     denominator: split.denominator,
     action: defaultSplitAction(split.verdict),
+    applyStored: defaultApplyStored(split),
   }));
 }
 
@@ -997,10 +1008,10 @@ function withSplits(
 
 /**
  * The overrides after a split check of the whole file: every instrument gets the splits its
- * check reports, with the action already chosen for the same day kept and the default for a new
+ * check reports, with the choices already made for the same day kept and the defaults for a new
  * one. Splits the check no longer reports go, and so do those of an instrument it does not
- * report at all (nothing of it is imported, yet a convert would still rewrite its stored rows);
- * an override left with nothing in it is dropped.
+ * report at all (nothing of it is imported, yet an applied split would still rewrite its stored
+ * rows); an override left with nothing in it is dropped.
  */
 export function mergeSplitOverrides(
   current: readonly StockInstrumentOverride[],
@@ -1012,7 +1023,9 @@ export function mergeSplitOverrides(
     if (!check) return [];
     return splitOverridesFor(check).map((split) => {
       const previous = chosen.find((c) => c.effectiveDay === split.effectiveDay);
-      return previous ? { ...split, action: previous.action } : split;
+      return previous
+        ? { ...split, action: previous.action, applyStored: previous.applyStored }
+        : split;
     });
   };
   const updated = current.flatMap((o) => {
@@ -1028,6 +1041,26 @@ export function mergeSplitOverrides(
   return [...updated, ...added];
 }
 
+/** What the user can change about one split: the file's action, the stored rows' switch. */
+export type SplitChoice = Partial<Pick<StockSplitOverride, 'action' | 'applyStored'>>;
+
+/** `overrides` with one split of one instrument changed by `choice`; unchanged when absent. */
+export function setSplitChoice(
+  overrides: readonly StockInstrumentOverride[],
+  key: string,
+  effectiveDay: number,
+  choice: SplitChoice
+): StockInstrumentOverride[] {
+  return overrides.map((o) =>
+    o.key === key && o.splits?.some((s) => s.effectiveDay === effectiveDay)
+      ? {
+          ...o,
+          splits: o.splits.map((s) => (s.effectiveDay === effectiveDay ? { ...s, ...choice } : s)),
+        }
+      : o
+  );
+}
+
 /** `overrides` with the action of one split of one instrument changed; unchanged when absent. */
 export function setSplitAction(
   overrides: readonly StockInstrumentOverride[],
@@ -1035,13 +1068,17 @@ export function setSplitAction(
   effectiveDay: number,
   action: StockSplitAction
 ): StockInstrumentOverride[] {
-  return overrides.map((o) =>
-    o.key === key && o.splits?.some((s) => s.effectiveDay === effectiveDay)
-      ? {
-          ...o,
-          splits: o.splits.map((s) => (s.effectiveDay === effectiveDay ? { ...s, action } : s)),
-        }
-      : o
+  return setSplitChoice(overrides, key, effectiveDay, { action });
+}
+
+/**
+ * Whether the stored rows of a split still need a decision: Moony holds it as pending or has no
+ * row for it, and the ticker has transactions dated before it.
+ */
+export function storedRowsUndecided(split: StockSplitCheckSplit): boolean {
+  return (
+    split.storedPreSplitCount > 0 &&
+    (split.storedStatus === 'pending' || split.storedStatus === null)
   );
 }
 

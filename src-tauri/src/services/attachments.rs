@@ -514,6 +514,49 @@ pub struct NewDocument<'a> {
     pub file_type: &'a str,
 }
 
+/// Where one kind of document lives: its table, its owners' table and the column that joins them.
+struct DocumentTables {
+    documents: &'static str,
+    owners: &'static str,
+    owner_column: &'static str,
+    /// The `NotFound` message for an owner that does not exist (only the bytes flow looks it up).
+    owner_missing: &'static str,
+}
+
+const INSURANCE_TABLES: DocumentTables = DocumentTables {
+    documents: "insurance_documents",
+    owners: "insurance_policies",
+    owner_column: "insurance_id",
+    owner_missing: "Insurance policy not found",
+};
+
+const REAL_ESTATE_TABLES: DocumentTables = DocumentTables {
+    documents: "real_estate_documents",
+    owners: "real_estate",
+    owner_column: "real_estate_id",
+    owner_missing: "Real estate not found",
+};
+
+/// What a document's row records about its file, known before the bytes are stored.
+struct FileFacts {
+    original_name: String,
+    mime_type: String,
+    len: i64,
+}
+
+impl FileFacts {
+    /// `head` is the file's first bytes ([`SNIFF_BYTES`] of them): they decide the MIME type before
+    /// the name does.
+    fn new(original_name: String, head: &[u8], len: u64) -> Self {
+        let mime_type = attachment_store::sniff_mime(Some(&original_name), head).to_string();
+        Self {
+            original_name,
+            mime_type,
+            len: len as i64,
+        }
+    }
+}
+
 struct StoredDocument {
     id: String,
     mime_type: String,
@@ -521,11 +564,98 @@ struct StoredDocument {
     file_size: i64,
 }
 
+/// Insert the row of a document whose blob is already in the store, and describe what was stored.
+/// It runs inside the caller's transaction, which holds the blob too and commits both.
+fn insert_document_row(
+    tx: &Connection,
+    tables: &DocumentTables,
+    owner_id: &str,
+    blob_id: &str,
+    facts: FileFacts,
+    doc: &NewDocument,
+    now: i64,
+) -> Result<StoredDocument> {
+    let id = Uuid::new_v4().to_string();
+    tx.execute(
+        &format!(
+            "INSERT INTO {} (id, {}, name, description, blob_id, mime_type,
+                             original_name, file_type, file_size, uploaded_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            tables.documents, tables.owner_column
+        ),
+        rusqlite::params![
+            id,
+            owner_id,
+            doc.name,
+            doc.description,
+            blob_id,
+            facts.mime_type,
+            facts.original_name,
+            doc.file_type,
+            facts.len,
+            now
+        ],
+    )?;
+    Ok(StoredDocument {
+        id,
+        extension: extension_of(&facts.original_name),
+        mime_type: facts.mime_type,
+        file_size: facts.len,
+    })
+}
+
+fn insurance_document(
+    insurance_id: &str,
+    doc: &NewDocument,
+    stored: StoredDocument,
+    now: i64,
+) -> InsuranceDocument {
+    InsuranceDocument {
+        id: stored.id,
+        insurance_id: insurance_id.to_string(),
+        name: doc.name.to_string(),
+        description: doc.description.map(str::to_string),
+        mime_type: stored.mime_type,
+        extension: stored.extension,
+        file_type: doc.file_type.to_string(),
+        file_size: Some(stored.file_size),
+        uploaded_at: now,
+    }
+}
+
+fn real_estate_document(
+    real_estate_id: &str,
+    doc: &NewDocument,
+    stored: StoredDocument,
+    now: i64,
+) -> RealEstateDocument {
+    RealEstateDocument {
+        id: stored.id,
+        real_estate_id: real_estate_id.to_string(),
+        name: doc.name.to_string(),
+        description: doc.description.map(str::to_string),
+        mime_type: stored.mime_type,
+        extension: stored.extension,
+        file_type: doc.file_type.to_string(),
+        file_size: Some(stored.file_size),
+        uploaded_at: now,
+    }
+}
+
+/// A document may be at most [`attachment_store::MAX_DOCUMENT_BYTES`]. It takes only the length,
+/// so it runs before anything is opened, hashed or written (and is tested with numbers, never by
+/// allocating 100 MB).
+pub fn check_document_len(len: u64) -> Result<()> {
+    if len > attachment_store::MAX_DOCUMENT_BYTES {
+        return Err(AppError::Validation("validation.attachmentTooLarge".into()));
+    }
+    Ok(())
+}
+
 /// Stream the file the user picked into the store and insert its row, in one transaction.
 fn store_document(
     conn: &Connection,
-    table: &str,
-    owner_column: &str,
+    tables: &DocumentTables,
     owner_id: &str,
     source: &Path,
     doc: &NewDocument,
@@ -543,37 +673,13 @@ fn store_document(
     let mut file =
         File::open(source).map_err(|e| AppError::Internal(format!("Cannot open the file: {e}")))?;
     let head = read_head(&mut file)?;
-    let mime_type = attachment_store::sniff_mime(Some(&original_name), &head).to_string();
+    let facts = FileFacts::new(original_name, &head, len);
 
-    let id = Uuid::new_v4().to_string();
     let tx = conn.unchecked_transaction()?;
     let blob = attachment_store::put_reader(&tx, &mut file, len)?;
-    tx.execute(
-        &format!(
-            "INSERT INTO {table} (id, {owner_column}, name, description, blob_id, mime_type,
-                                  original_name, file_type, file_size, uploaded_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)"
-        ),
-        rusqlite::params![
-            id,
-            owner_id,
-            doc.name,
-            doc.description,
-            blob.id,
-            mime_type,
-            original_name,
-            doc.file_type,
-            len as i64,
-            now
-        ],
-    )?;
+    let stored = insert_document_row(&tx, tables, owner_id, &blob.id, facts, doc, now)?;
     tx.commit()?;
-    Ok(StoredDocument {
-        id,
-        mime_type,
-        extension: extension_of(&original_name),
-        file_size: len as i64,
-    })
+    Ok(stored)
 }
 
 /// How many of a file's first bytes the MIME sniff looks at.
@@ -606,26 +712,8 @@ pub fn add_insurance_document(
     doc: &NewDocument,
     now: i64,
 ) -> Result<InsuranceDocument> {
-    let stored = store_document(
-        conn,
-        "insurance_documents",
-        "insurance_id",
-        insurance_id,
-        source,
-        doc,
-        now,
-    )?;
-    Ok(InsuranceDocument {
-        id: stored.id,
-        insurance_id: insurance_id.to_string(),
-        name: doc.name.to_string(),
-        description: doc.description.map(str::to_string),
-        mime_type: stored.mime_type,
-        extension: stored.extension,
-        file_type: doc.file_type.to_string(),
-        file_size: Some(stored.file_size),
-        uploaded_at: now,
-    })
+    let stored = store_document(conn, &INSURANCE_TABLES, insurance_id, source, doc, now)?;
+    Ok(insurance_document(insurance_id, doc, stored, now))
 }
 
 /// Attach a document to a property.
@@ -636,42 +724,14 @@ pub fn add_real_estate_document(
     doc: &NewDocument,
     now: i64,
 ) -> Result<RealEstateDocument> {
-    let stored = store_document(
-        conn,
-        "real_estate_documents",
-        "real_estate_id",
-        real_estate_id,
-        source,
-        doc,
-        now,
-    )?;
-    Ok(RealEstateDocument {
-        id: stored.id,
-        real_estate_id: real_estate_id.to_string(),
-        name: doc.name.to_string(),
-        description: doc.description.map(str::to_string),
-        mime_type: stored.mime_type,
-        extension: stored.extension,
-        file_type: doc.file_type.to_string(),
-        file_size: Some(stored.file_size),
-        uploaded_at: now,
-    })
+    let stored = store_document(conn, &REAL_ESTATE_TABLES, real_estate_id, source, doc, now)?;
+    Ok(real_estate_document(real_estate_id, doc, stored, now))
 }
 
 // ----------------------------------------------------------------------------
 // From bytes (the phone: a photographed contract or a file from the Files app exists only as
 // bytes in the webview, which has no file-system access, and no plaintext copy may be written)
 // ----------------------------------------------------------------------------
-
-/// A document may be at most [`attachment_store::MAX_DOCUMENT_BYTES`]. It takes only the length,
-/// so it runs before anything is opened, hashed or written (and is tested with numbers, never by
-/// allocating 100 MB).
-pub fn check_document_len(len: u64) -> Result<()> {
-    if len > attachment_store::MAX_DOCUMENT_BYTES {
-        return Err(AppError::Validation("validation.attachmentTooLarge".into()));
-    }
-    Ok(())
-}
 
 /// The base name of a file name the webview sent. A picked file's name can carry a path
 /// (`../../x/a.pdf`, `C:\a.pdf`); only its last component is kept, and that is used for the MIME
@@ -731,28 +791,6 @@ pub fn document_upload<T: DeserializeOwned>(headers: &HeaderMap) -> Result<Docum
     })
 }
 
-/// Where one kind of document lives: its table, its owners' table and the column that joins them.
-struct DocumentTables {
-    documents: &'static str,
-    owners: &'static str,
-    owner_column: &'static str,
-    owner_missing: &'static str,
-}
-
-const INSURANCE_TABLES: DocumentTables = DocumentTables {
-    documents: "insurance_documents",
-    owners: "insurance_policies",
-    owner_column: "insurance_id",
-    owner_missing: "Insurance policy not found",
-};
-
-const REAL_ESTATE_TABLES: DocumentTables = DocumentTables {
-    documents: "real_estate_documents",
-    owners: "real_estate",
-    owner_column: "real_estate_id",
-    owner_missing: "Real estate not found",
-};
-
 /// Put the bytes of a document into the store and insert its row, in one transaction. The owner
 /// is looked up first, so an unknown policy or property stores nothing; empty or oversized bytes
 /// are refused before the database is touched.
@@ -769,10 +807,8 @@ fn store_document_bytes(
         return Err(AppError::Validation("validation.fileRequired".into()));
     }
     check_document_len(bytes.len() as u64)?;
-    let original_name = base_name(file_name);
     let head = &bytes[..bytes.len().min(SNIFF_BYTES)];
-    let mime_type = attachment_store::sniff_mime(Some(&original_name), head).to_string();
-    let len = bytes.len() as i64;
+    let facts = FileFacts::new(base_name(file_name), head, bytes.len() as u64);
 
     let tx = conn.unchecked_transaction()?;
     let owner_exists: bool = tx.query_row(
@@ -787,34 +823,9 @@ fn store_document_bytes(
         return Err(AppError::NotFound(tables.owner_missing.into()));
     }
     let blob = attachment_store::put_bytes(&tx, bytes)?;
-    let id = Uuid::new_v4().to_string();
-    tx.execute(
-        &format!(
-            "INSERT INTO {} (id, {}, name, description, blob_id, mime_type,
-                             original_name, file_type, file_size, uploaded_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
-            tables.documents, tables.owner_column
-        ),
-        rusqlite::params![
-            id,
-            owner_id,
-            doc.name,
-            doc.description,
-            blob.id,
-            mime_type,
-            original_name,
-            doc.file_type,
-            len,
-            now
-        ],
-    )?;
+    let stored = insert_document_row(&tx, tables, owner_id, &blob.id, facts, doc, now)?;
     tx.commit()?;
-    Ok(StoredDocument {
-        id,
-        mime_type,
-        extension: extension_of(&original_name),
-        file_size: len,
-    })
+    Ok(stored)
 }
 
 /// Attach a document to an insurance policy from its bytes. `file_name` is whatever the picker
@@ -836,17 +847,7 @@ pub fn add_insurance_document_bytes(
         doc,
         now,
     )?;
-    Ok(InsuranceDocument {
-        id: stored.id,
-        insurance_id: insurance_id.to_string(),
-        name: doc.name.to_string(),
-        description: doc.description.map(str::to_string),
-        mime_type: stored.mime_type,
-        extension: stored.extension,
-        file_type: doc.file_type.to_string(),
-        file_size: Some(stored.file_size),
-        uploaded_at: now,
-    })
+    Ok(insurance_document(insurance_id, doc, stored, now))
 }
 
 /// Attach a document to a property from its bytes. `file_name` is whatever the picker reported;
@@ -868,17 +869,7 @@ pub fn add_real_estate_document_bytes(
         doc,
         now,
     )?;
-    Ok(RealEstateDocument {
-        id: stored.id,
-        real_estate_id: real_estate_id.to_string(),
-        name: doc.name.to_string(),
-        description: doc.description.map(str::to_string),
-        mime_type: stored.mime_type,
-        extension: stored.extension,
-        file_type: doc.file_type.to_string(),
-        file_size: Some(stored.file_size),
-        uploaded_at: now,
-    })
+    Ok(real_estate_document(real_estate_id, doc, stored, now))
 }
 
 // ============================================================================

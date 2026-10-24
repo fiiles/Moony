@@ -187,25 +187,36 @@ export function useProperty(id: string | undefined): PropertyData {
 }
 
 /**
+ * The candidates are read fresh every time the sheet opens, whatever the global `staleTime` says:
+ * the desktop's property form (Upravit) links and unlinks loans on save without refreshing the
+ * lists of what is still free, so a cached list could offer a loan that another property has just
+ * taken, and a tap would silently move it. While that read is under way the sheet shows its
+ * skeleton, never the cached list.
+ */
+const FRESH_ON_OPEN = { staleTime: 0, refetchOnMount: 'always' } as const;
+
+/**
  * The loans the Připojit sheet offers: those that are not linked to any property (`get_available_
  * loans`; linking one that belongs to another property would silently move it), without the ones
- * already linked here. Loaded only while the sheet is open.
+ * already linked here. Read fresh and only while the sheet is open (`FRESH_ON_OPEN`).
  */
-export function useLinkableLoans(linked: readonly Loan[], enabled: boolean) {
-  const { data, isLoading } = useQuery<Loan[]>({
+export function useLinkableLoans(linked: readonly Loan[], open: boolean) {
+  const { data, isFetching } = useQuery<Loan[]>({
     queryKey: ['available-loans'],
     queryFn: () => loansApi.getAvailable(),
-    enabled,
+    enabled: open,
+    ...FRESH_ON_OPEN,
   });
-  return { candidates: linkCandidates(data ?? NO_LOANS, linked), isLoading };
+  return { candidates: linkCandidates(data ?? NO_LOANS, linked), isLoading: isFetching };
 }
 
 /** The policies the Připojit sheet offers: the same rule as `useLinkableLoans` (`get_available_insurances`). */
-export function useLinkablePolicies(linked: readonly InsurancePolicy[], enabled: boolean) {
-  const { data, isLoading } = useQuery<InsurancePolicy[]>({
+export function useLinkablePolicies(linked: readonly InsurancePolicy[], open: boolean) {
+  const { data, isFetching } = useQuery<InsurancePolicy[]>({
     queryKey: ['available-insurances'],
     queryFn: () => insuranceApi.getAvailable(),
-    enabled,
+    enabled: open,
+    ...FRESH_ON_OPEN,
   });
-  return { candidates: linkCandidates(data ?? NO_POLICIES, linked), isLoading };
+  return { candidates: linkCandidates(data ?? NO_POLICIES, linked), isLoading: isFetching };
 }

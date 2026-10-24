@@ -20,6 +20,7 @@ import {
   isoToUtcDay,
   linkCandidates,
   monthlyRent,
+  oneEstimateOnly,
   policyPremium,
   propertyMissing,
   propertyOwnKeys,
@@ -27,6 +28,7 @@ import {
   propertyTrace,
   revalueData,
   todayIso,
+  traceSpansDays,
 } from './property-detail';
 
 const DAY = 86_400;
@@ -678,5 +680,69 @@ describe('propertyOwnKeys', () => {
       ['real-estate-photo-batches', 'p1'],
       ['real-estate-documents', 'p1'],
     ]);
+  });
+});
+
+describe('traceSpansDays', () => {
+  it('is false for no points, one point, and points that all fall on one UTC day', () => {
+    expect(traceSpansDays([])).toBe(false);
+    expect(traceSpansDays([{ t: TODAY, value: 5_000_000 }])).toBe(false);
+    // One estimate dated today and the line's end a few hours later: one day, nothing to draw
+    expect(
+      traceSpansDays([
+        { t: TODAY, value: 5_000_000 },
+        { t: NOW, value: 5_000_000 },
+      ])
+    ).toBe(false);
+  });
+
+  it('is true once the points reach two different UTC days, however close', () => {
+    expect(
+      traceSpansDays([
+        { t: TODAY - DAY, value: 4_900_000 },
+        { t: NOW, value: 5_000_000 },
+      ])
+    ).toBe(true);
+    // 23:59 and 00:01 across midnight are two days
+    expect(
+      traceSpansDays([
+        { t: TODAY - 60, value: 1 },
+        { t: TODAY + 60, value: 1 },
+      ])
+    ).toBe(true);
+  });
+
+  it('follows the trace: a property valued today and never bought has no span, with a purchase it has', () => {
+    const today = valuation({ valuedAt: TODAY, value: '5000000' });
+    expect(
+      traceSpansDays(
+        propertyTrace([today], { day: null, value: null }, NOW, 5_000_000, convertAt).points
+      )
+    ).toBe(false);
+    expect(traceSpansDays(propertyTrace([today], PURCHASE, NOW, 5_000_000, convertAt).points)).toBe(
+      true
+    );
+  });
+});
+
+describe('oneEstimateOnly', () => {
+  const at = (valuedAt: number) => valuation({ valuedAt });
+  const eventsOf = (
+    valuations: AssetValuation[],
+    purchase: { day: number | null; value: number | null } = PURCHASE
+  ) => propertyTrace(valuations, purchase, NOW, 5_000_000, convertAt).events;
+
+  it('is true for a trace with one estimate and no purchase mark', () => {
+    expect(oneEstimateOnly(eventsOf([at(day(2025, 6, 1))], { day: null, value: null }))).toBe(true);
+  });
+
+  it('is false with a purchase mark, with several estimates and with none', () => {
+    expect(oneEstimateOnly(eventsOf([at(day(2025, 6, 1))]))).toBe(false);
+    expect(
+      oneEstimateOnly(
+        eventsOf([at(day(2024, 6, 1)), at(day(2025, 6, 1))], { day: null, value: null })
+      )
+    ).toBe(false);
+    expect(oneEstimateOnly([])).toBe(false);
   });
 });

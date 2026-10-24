@@ -9,6 +9,7 @@ import type {
 import { parsePaymentFrequency, type PaymentFrequency } from '@shared/calculations';
 import { recordCurrency } from '@shared/currencies';
 import type { ConvertAtFn } from '@shared/fx';
+import { utcDayFloor } from '@/utils/chart-axis';
 import type { ChartEvent } from '@/utils/chart-scale';
 import type { PropertyRow, YearlyBalance, NativeAmount } from '@/utils/real-estate';
 import { convertValuations, dailyValuations, valuationTrace } from '@/utils/valuation-trace';
@@ -111,6 +112,22 @@ export function propertyTrace(
       ]
     : marks;
   return { points, events, missing };
+}
+
+/**
+ * Whether the trace reaches two different UTC days. One estimate dated today and no purchase gives
+ * a line from this morning to now: a flat stroke across one day with four equal axis labels, which
+ * says nothing — such a trace is not drawn.
+ */
+export function traceSpansDays(points: readonly CostPoint[]): boolean {
+  if (points.length < 2) return false;
+  const first = utcDayFloor(points[0].t);
+  return points.some((point) => utcDayFloor(point.t) !== first);
+}
+
+/** One estimate and no purchase on the trace: nothing to read a trend from yet (the desktop's hint). */
+export function oneEstimateOnly(events: readonly TraceEvent[]): boolean {
+  return events.length === 1 && events[0].kind === 'estimate';
 }
 
 /**

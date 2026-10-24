@@ -942,7 +942,8 @@
 .m-kv__v--gain { color: var(--gain); }
 .m-kv__v--loss { color: var(--loss); }
 .m-kv__v--total { font-weight: 600; }
-.m-field__i--date { padding: 0 12px; text-align: left; -webkit-appearance: none; appearance: none; }
+.m-field__i--date { margin: 0; padding: 0 14px; text-align: left; -webkit-appearance: none; appearance: none; }
+.m-field__i--date::-webkit-date-and-time-value { text-align: left; } /* WKWebView centres the value of a date input */
 .m-field__l--split { display: flex; justify-content: space-between; gap: 12px; } /* the label with "nepovinné" at its right end */
 .m-field__l--split > :last-child { color: var(--ink-4); font-weight: 500; }
 

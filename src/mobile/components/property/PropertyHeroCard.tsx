@@ -6,7 +6,12 @@ import { ChartLegend, type LegendItem } from '@/components/charts/ChartLegend';
 import { Hero } from '@/mobile/components/Hero';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import type { PropertyData } from '@/mobile/hooks/use-property';
-import { appreciationOf, type TraceEvent } from '@/mobile/lib/property-detail';
+import {
+  appreciationOf,
+  oneEstimateOnly,
+  traceSpansDays,
+  type TraceEvent,
+} from '@/mobile/lib/property-detail';
 
 /** Whole amounts: the hero shows no decimals. */
 const WHOLE = { decimals: 0 } as const;
@@ -24,7 +29,8 @@ interface PropertyHeroCardProps {
  * amount) and the valuation trace under it — a straight line from the purchase through every
  * estimate to today, with ▲ for the purchase and ○ for each revaluation (a tap opens the callout
  * with its day, its note and the amount). The trace has one horizon, so the chart stands without a
- * period segment. Every amount goes through the eye; the numbers are the desktop hero's.
+ * period segment, and a trace that does not reach two days (one estimate dated today, no purchase)
+ * is not drawn: the desktop's hint stands in its place. Every amount goes through the eye; the numbers are the desktop hero's.
  */
 export function PropertyHeroCard({ row, trace, currency }: PropertyHeroCardProps) {
   const { t } = useTranslation('realEstate');
@@ -32,7 +38,9 @@ export function PropertyHeroCard({ row, trace, currency }: PropertyHeroCardProps
   const moneyText = useMoneyText();
   const appreciation = appreciationOf(row);
   const label = t('detail.heroValue');
-  const charted = trace.points.length > 1;
+  // A trace inside one day (one estimate dated today, no purchase) is not drawn: the hero is the compact one
+  const charted = traceSpansDays(trace.points);
+  const hint = oneEstimateOnly(trace.events);
 
   const eventTip = (cluster: EventCluster<TraceEvent>) => {
     const e = cluster.events[0];
@@ -48,7 +56,6 @@ export function PropertyHeroCard({ row, trace, currency }: PropertyHeroCardProps
     };
   };
 
-  const marks = trace.events.filter((e) => e.kind === 'estimate');
   const legend: LegendItem[] = [
     { label: t('detail.chart.value'), swatch: { kind: 'line' } },
     ...(trace.events.some((e) => e.kind === 'purchase')
@@ -74,21 +81,21 @@ export function PropertyHeroCard({ row, trace, currency }: PropertyHeroCardProps
             }
           : undefined
       }
-      points={trace.points}
-      events={trace.events}
+      points={charted ? trace.points : undefined}
+      events={charted ? trace.events : undefined}
       renderEventTip={eventTip}
       chartLabel={label}
     >
-      {charted && (
+      {charted ? (
         <ChartLegend
           items={legend}
           // One estimate and no purchase on the line: nothing to read a trend from yet
-          note={
-            marks.length === 1 && marks.length === trace.events.length
-              ? t('detail.chart.hint')
-              : undefined
-          }
+          note={hint ? t('detail.chart.hint') : undefined}
         />
+      ) : (
+        hint && (
+          <p className="mb-0 mt-2 text-micro font-medium text-ink-4">{t('detail.chart.hint')}</p>
+        )
       )}
     </Hero>
   );

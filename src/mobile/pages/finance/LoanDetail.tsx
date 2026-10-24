@@ -227,7 +227,7 @@ function LoanBody({
       <LoanAlerts row={row} schedule={schedule} today={today} onRecordRate={onRecordRate} />
       <LoanStats row={row} stats={stats} today={today} />
       <Button
-        className="h-12 w-full whitespace-normal rounded-[10px] text-m-row"
+        className="h-auto min-h-12 w-full whitespace-normal py-2 text-center rounded-[10px] text-m-row"
         disabled={noExtra}
         onClick={onExtraPayment}
       >

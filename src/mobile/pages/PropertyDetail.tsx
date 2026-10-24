@@ -162,7 +162,7 @@ function PropertyBody({ view, currency, onRevalue }: PropertyBodyProps) {
       <PropertyHeroCard row={row} trace={trace} currency={currency} />
       <PropertyStats row={row} balance={balance} currency={currency} />
       <Button
-        className="h-12 w-full whitespace-normal rounded-[10px] text-m-row [&_svg]:size-4"
+        className="h-auto min-h-12 w-full whitespace-normal py-2 text-center rounded-[10px] text-m-row [&_svg]:size-4"
         onClick={onRevalue}
       >
         <ArrowUp strokeWidth={1.75} aria-hidden />

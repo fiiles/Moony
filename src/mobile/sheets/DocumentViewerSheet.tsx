@@ -61,12 +61,13 @@ const TAP_SLOP = 10;
  * the title, the document in a full sheet, a zoom button and Zavřít. An image shows contained, a PDF
  * page by page (`PdfPages`, the desktop's), anything else says it opens on the computer. A double
  * tap — or the zoom button, for anyone who cannot double-tap — toggles 1× and 2× (the content twice
- * the box's width, the box scrolling both ways, a new document opening at 1×); the app's viewport
- * does not allow the system's pinch. The bytes come decrypted through the `moony-file` scheme only
- * while the app is unlocked and nothing is written to disk: the picture and the pages cannot be
- * selected, dragged or long-pressed into the system's Copy / Share / Save menu. There is no "open
- * elsewhere" and no "save a copy" here: both end in a desktop-only command (`open_with_system`, a
- * save dialog).
+ * the box's width, the box scrolling both ways, a new document opening at 1×); the system's pinch
+ * (allowed since the viewport is no longer locked to scale 1, README §13 "Dynamic Type") zooms the
+ * whole page with the sheet, not the document in its box. The bytes come decrypted through the
+ * `moony-file` scheme only while the app is unlocked and nothing is written to disk: the picture
+ * and the pages cannot be selected, dragged or long-pressed into the system's Copy / Share / Save
+ * menu. There is no "open elsewhere" and no "save a copy" here: both end in a desktop-only command
+ * (`open_with_system`, a save dialog).
  */
 export function DocumentViewerSheet({
   open,

@@ -85,13 +85,13 @@ export function ExtraPaymentSheet({
         <>
           <Button
             variant="ghost"
-            className="h-12 rounded-[10px] px-[18px] text-m-row"
+            className="h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] px-[18px] text-m-row"
             onClick={() => onOpenChange(false)}
           >
             {tc('buttons.cancel')}
           </Button>
           <Button
-            className="h-12 flex-1 rounded-[10px] text-m-row"
+            className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
             disabled={whatIf === null}
             onClick={() =>
               leaveAfterSheet(

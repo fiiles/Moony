@@ -186,7 +186,7 @@ function PolicyBody({ row, property, noticeDays, today, onEdit }: PolicyBodyProp
       <PolicyFacts facts={facts} today={today} />
       <Button
         variant="secondary"
-        className="mb-3.5 h-12 w-full whitespace-normal rounded-[10px] text-m-row [&_svg]:size-4"
+        className="mb-3.5 h-auto min-h-12 w-full whitespace-normal py-2 text-center rounded-[10px] text-m-row [&_svg]:size-4"
         onClick={onEdit}
       >
         <Pencil strokeWidth={1.75} aria-hidden />

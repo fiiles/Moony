@@ -161,7 +161,7 @@ function AddForm({
           autoComplete="off"
           autoCorrect="off"
           enterKeyHint="done"
-          className="h-12 w-full rounded-[10px] border border-line-strong bg-paper px-3.5 text-m-body text-ink transition-[border-color,box-shadow] duration-fast placeholder:text-ink-5 focus:border-focus focus:shadow-focus focus-visible:outline-none"
+          className="h-12 w-full rounded-[10px] border border-line-strong bg-paper px-3.5 text-m-field text-ink transition-[border-color,box-shadow] duration-fast placeholder:text-ink-5 focus:border-focus focus:shadow-focus focus-visible:outline-none"
         />
         <PickGroup title={td('documents.type')}>
           {fileTypes.map((type) => (

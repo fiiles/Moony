@@ -17,9 +17,12 @@ interface CaptureButtonsProps {
   onFiles: (files: File[], source: DocumentSource) => void;
 }
 
-/** One of the two buttons: 48 pt, as `ButtonPair`'s (the label may wrap to a second line). */
+/**
+ * One of the two buttons, as `ButtonPair`'s: at least 48 pt, the label in the lead role and allowed
+ * a second line, so a larger text makes the button taller, never wider.
+ */
 const CAPTURE_BUTTON =
-  'h-12 min-w-0 whitespace-normal rounded-[10px] px-2.5 text-center text-[13px] font-semibold leading-tight hyphens-auto [&_svg]:size-4';
+  'h-auto min-h-12 min-w-0 whitespace-normal rounded-[10px] px-2.5 py-2 text-center text-m-lead font-semibold leading-tight hyphens-auto [&_svg]:size-4';
 
 /** Visually hidden but still in the layout: a file input iOS opens from a click on another element. */
 const HIDDEN_INPUT = 'sr-only';

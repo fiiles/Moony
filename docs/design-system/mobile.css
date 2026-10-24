@@ -496,11 +496,11 @@
 .m-docrow { -webkit-user-select: none; user-select: none; touch-action: pan-y; }
 .m-docrow__empty { margin: 0 2px 14px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.4; }
 
-/* Capture buttons (`CaptureButtons.tsx`): Vyfotit and Vybrat soubor, two secondary buttons of the pair's size (48 px, the label
-   13 px and allowed a second line) under the list. Each drives a hidden file input (`__i`, still in the layout so that the
+/* Capture buttons (`CaptureButtons.tsx`): Vyfotit and Vybrat soubor, two secondary buttons of the pair's size (at least 48 px,
+   the label in the lead role and allowed a second line, so a larger text makes them taller) under the list. Each drives a hidden file input (`__i`, still in the layout so that the
    system picker opens from the button's tap); the camera's is `accept="image/*" capture="environment"`. */
 .m-capture { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
-.m-capture .m-btn { padding: 0 10px; font-size: 13px; text-align: center; white-space: normal; }
+.m-capture .m-btn { padding: 8px 10px; font-size: var(--m-fs-lead); }
 .m-capture .m-btn > span { overflow: visible; overflow-wrap: break-word; hyphens: auto; }
 .m-capture__i { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 
@@ -512,8 +512,8 @@
    both ways, 95 % of the screen less 13 rem tall — the handle, the head, the footer and the home indicator) holding an image
    (`__img`, contained and as large as the room allows) or a PDF's page placeholders (`__pages` with `__page`: pdf.js judges which
    pages are in view against its parent, so the box is that parent), a skeleton until the picture or the first page is ready
-   (`__skeleton`) and, for a file the phone cannot show, one sentence (`__note`). The app's viewport has `maximum-scale=1`, so the
-   system does not pinch: a double tap or the footer's zoom button (`__zoom`, 48 px) toggles 1× ↔ 2× (`--zoomed`), the content
+   (`__skeleton`) and, for a file the phone cannot show, one sentence (`__note`). The system's pinch zooms the whole page (the viewport is
+   no longer locked to scale 1), not the document in its box: a double tap or the footer's zoom button (`__zoom`, 48 px) toggles 1× ↔ 2× (`--zoomed`), the content
    becoming twice the box's width (the PDF's host is measured once per start, so its pages are drawn again at that width). What
    is shown cannot be selected, dragged or long-pressed into the system's Copy / Share / Save menu: no selection, no callout, no
    pointer on the picture and the canvases. */

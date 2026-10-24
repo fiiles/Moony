@@ -93,9 +93,7 @@ export function PropertyHeroCard({ row, trace, currency }: PropertyHeroCardProps
           note={hint ? t('detail.chart.hint') : undefined}
         />
       ) : (
-        hint && (
-          <p className="mb-0 mt-2 text-micro font-medium text-ink-4">{t('detail.chart.hint')}</p>
-        )
+        hint && <p className="mb-0 mt-2 text-m-note text-ink-4">{t('detail.chart.hint')}</p>
       )}
     </Hero>
   );

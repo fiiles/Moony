@@ -7,6 +7,7 @@ import {
   cryptoPath,
   isSettingsSection,
   loanPath,
+  otherAssetPath,
   policyPath,
   positionPath,
   propertyPath,
@@ -42,6 +43,9 @@ describe('tabForPath', () => {
     expect(tabForPath(routes.cryptoList)).toBe('wealth');
     expect(tabForPath(cryptoPath('c1'))).toBe('wealth');
     expect(routes.cryptoDetail.replace(':id', 'c1')).toBe(cryptoPath('c1'));
+    expect(tabForPath(routes.otherAssetsList)).toBe('wealth');
+    expect(tabForPath(otherAssetPath('a1'))).toBe('wealth');
+    expect(routes.otherAssetDetail.replace(':id', 'a1')).toBe(otherAssetPath('a1'));
   });
 
   it('keeps a screen pushed on Přehled in Přehled', () => {

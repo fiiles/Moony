@@ -427,7 +427,10 @@
     "otherAssets": {
       "count_one": "{{count}} post",
       "count_other": "{{count}} poster",
-      "valuedOn": "värderad {{date}}"
+      "valuedOn": "värderad {{date}}",
+      "moreDetails": "Fler uppgifter",
+      "loadFailed": "Tillgångarna kunde inte läsas in.",
+      "notFound": "Tillgången hittades inte"
     },
     "realEstate": {
       "personal": "egen bostad",

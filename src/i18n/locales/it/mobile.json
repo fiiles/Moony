@@ -451,7 +451,10 @@
       "count_one": "{{count}} voce",
       "count_many": "{{count}} voci",
       "count_other": "{{count}} voci",
-      "valuedOn": "valutato il {{date}}"
+      "valuedOn": "valutato il {{date}}",
+      "moreDetails": "Altri dati",
+      "loadFailed": "Impossibile caricare i beni.",
+      "notFound": "Bene non trovato"
     },
     "realEstate": {
       "personal": "uso personale",

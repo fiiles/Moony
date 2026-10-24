@@ -451,7 +451,10 @@
       "count_one": "{{count}} elemento",
       "count_many": "{{count}} elementos",
       "count_other": "{{count}} elementos",
-      "valuedOn": "valorado el {{date}}"
+      "valuedOn": "valorado el {{date}}",
+      "moreDetails": "Más datos",
+      "loadFailed": "No se pudieron cargar los activos.",
+      "notFound": "Activo no encontrado"
     },
     "realEstate": {
       "personal": "vivienda habitual",

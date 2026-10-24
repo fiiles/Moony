@@ -475,7 +475,10 @@
       "count_few": "{{count}} pozycje",
       "count_many": "{{count}} pozycji",
       "count_other": "{{count}} pozycji",
-      "valuedOn": "wycena z {{date}}"
+      "valuedOn": "wycena z {{date}}",
+      "moreDetails": "Więcej danych",
+      "loadFailed": "Nie udało się wczytać aktywów.",
+      "notFound": "Nie znaleziono aktywa"
     },
     "realEstate": {
       "personal": "własna",

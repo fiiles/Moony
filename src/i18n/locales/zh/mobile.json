@@ -403,7 +403,10 @@
     },
     "otherAssets": {
       "count_other": "{{count}} 项",
-      "valuedOn": "{{date}} 估值"
+      "valuedOn": "{{date}} 估值",
+      "moreDetails": "更多信息",
+      "loadFailed": "无法加载资产。",
+      "notFound": "未找到资产"
     },
     "realEstate": {
       "personal": "自住",

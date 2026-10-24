@@ -81,6 +81,7 @@
     <p>Komponenty telefonu z <code>mobile.css</code> na tokenech z <code>tokens.css</code>: obrazovka s navigační lištou a jednou posuvnou plochou, tab bar, Údržba, hero (i kompaktní), řádek statistik, entitní řádky (i s datovým čipem, štítkem v názvu a panelem přejetí), rozložení majetku, segment, karta vývoje, pole, tlačítka, sheet a Cashflow (období, stepper, pruhy, poznámka, řádek s ukazatelem). React shell v <code>src/mobile/</code> jim odpovídá vizuálně. Rámečky mají šířky 360 (nejužší běžný Android), 390 (reference) a 430 pt s bezpečnými okraji daného zařízení; texty jsou německy, protože němčina běží nejdéle.</p>
     <p>Pod každým rámečkem je výsledek kontroly vodorovného přetečení (nic nesmí přesáhnout obrazovku, posuvná plocha se nesmí posouvat do stran) a seznam textů, které se zkrátí výpustkou. Obrazovky se dají posouvat: velký titulek se po odjetí složí do navigační lišty.</p>
     <p>Majetek přidává alokační pruh s legendou (<code>.m-abar</code>, <code>.m-legend</code>), řádek změny (<code>.m-change</code>), stránku třídy Akcie (podřádek, hero s legendou značek, nástrojová lišta s řazením, složený seznam) a detail pozice (přerušovaná čára „Vloženo“, dvojice tlačítek, dvě řady statistik, řádky obchodů se zábleskem, karta řádků štítek–hodnota).</p>
+    <p>Ostatní aktivum přidává pod dvojici tlačítek plnošířkové sekundární (<code>.m-btn-pair--stack</code>), pole bez jednotky uvnitř (<code>.m-field__i--plain</code>: název, datum) a formulář se sbaleným řádkem „Weitere Angaben“ (<code>.m-disclose</code> mimo sheet transakce).</p>
   </header>
 
   <section class="part">
@@ -241,6 +242,18 @@
     <h2>Detail pozice: hodnota, vloženo a obchody</h2>
     <p>Pozice otevřená z Akcií na 360, 390 a 430: zpět s názvem rodiče, ticker jako jediný titulek a podřádek <code>.m-nav__sub</code> (název a měna); hero s grafem, jehož přerušovaná čára „Vloženo“ (<code>cost</code>, 1,5 pt, <code>chart-cost</code>) a značky nákupu a prodeje mají legendu; dvojice tlačítek Koupit · Prodat (<code>.m-btn-pair</code>); dvě řady po třech statistikách (hodnota v měně akcie, cena, vloženo; nerealizovaný a realizovaný výsledek, dividendy), jeden výsledek v <code>--gain</code>. Transakce jsou segment Vše · Nákupy · Prodeje a řádky obchodů: nákup s „−“, prodej v <code>gain</code> s „+“ a součtem v původní měně pod částkou; druhý řádek ukazuje záblesk <code>.m-row--flash.is-hot</code>, který po klepnutí na značku v grafu naskočí a za 1,2 s odezní. Poslední řádek <code>.m-rows__more</code> rozbalí zbytek, na konci je karta <code>.m-kvcard</code> z řádků <code>.m-kv</code> („Über den Fonds“).</p>
     <div class="phones" id="position"></div>
+  </section>
+
+  <section class="part">
+    <h2>Ostatní aktivum: stránka třídy, světlý detail a přidání</h2>
+    <p>Stránka třídy (spec §8.8) na 360, 390 a 430: zpět s názvem Majetku, jeden titulek a dvě tlačítka vpravo (<code>···</code> a <code>+</code>); hero s hodnotou aktiv a čarou bez legendy značek (aktiva v seznamu nemají obchodní značky) a řádky aktiv: ikona drahokamu v čipu, název, v podřádku „množství × cena“ v měně aktiva nebo „bewertet am“ u aktiva, z něhož se nic nedrží, hodnota v hlavní měně a pod ní změna proti nákupní ceně (<code>.m-change</code>; aktivum, které nic nestálo, změnu nemá). Aktivum v měně bez kurzu má „—“ bez změny.</p>
+    <div class="phones" id="otherAssets"></div>
+    <p style="margin-top: 26px">Detail aktiva: ve středu navigační lišty název, pod ní množství a měna ceny (<code>.m-nav__sub</code>); hero s hodnotou v měně ceny (native je závazné, ADR 0012) a se schodovou čarou odhadů — každý odhad drží do dalšího, bez přerušované čáry „Vloženo“ — a se značkami nákupu a prodeje; dvojice Kaufen · Verkaufen a pod ní plnošířkové sekundární tlačítko Neu bewerten (<code>.m-btn-pair--stack</code> + <code>.m-btn--block</code>: dvojice si nechá vlastní mezeru 10 pt místo 14); tři statistiky (množství s cenou za kus, průměrná nákupní cena s celkem investovaným, nerealizovaný výsledek v <code>--gain</code>) a transakce s řádky obchodů.</p>
+    <div class="phones" id="otherAsset"></div>
+    <p style="margin-top: 26px">Přidání aktiva (spec §10.5, „povinná pole první, zbytek pod Další údaje“): celovýškový sheet; nahoře název (<code>.m-field__i--plain</code>), měna jako řádek s šipkou v kartě <code>.m-kvcard</code> (otevře výběr měny) a dnešní cena za kus s měnou uvnitř pole a nápovědou. Pod nimi sbalený řádek „Weitere Angaben“ (<code>.m-disclose</code>, 44 pt, šipka dolů): každé otevření sheetu začíná sbalené, a uložení, které selže na skrytém poli, ho rozbalí.</p>
+    <div class="phones" id="otherAssetAdd"></div>
+    <p style="margin-top: 26px">Rozbalené „Weitere Angaben“ (šipka nahoru): první nákup — množství s jednotkou, cena za kus s měnou, datum jako pole <code>type="date"</code> (<code>.m-field__i--plain</code>, platformní výběr) a věta o tom, že z vyplněného nákupu vznikne první transakce — a výnos: typ jako řádky výběru <code>.m-pick</code> a hodnota s měnou nebo „%“ uvnitř pole, jakmile typ není „Keiner“.</p>
+    <div class="phones" id="otherAssetAddOpen"></div>
   </section>
 
   <section class="part">
@@ -1282,6 +1295,132 @@
   </div>
 </template>
 
+<!-- The Ostatní aktiva class page (pushed on Majetek), rendered at the three widths. -->
+<template id="other-assets-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Vermögen</span></button></div>
+      <h1 class="m-nav__title">Sonstiges Vermögen</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button><button class="m-nav__btn" type="button" aria-label="Vermögenswert hinzufügen" data-icon="plus"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <div class="m-card m-card--hero">
+        <div class="m-hero__label">Wert</div>
+        <div class="m-hero__value">207&nbsp;800 Kč</div>
+        <div class="m-hero__delta"><span class="m-badge m-badge--gain">▲ 1,2 %</span><span>+ 2&nbsp;400 Kč in 30 Tagen · investiert 190&nbsp;000 Kč</span></div>
+        <div class="m-hero__seg"><div class="m-seg"><button class="m-seg__btn is-active" type="button">30 Tage</button><button class="m-seg__btn" type="button">3 Monate</button><button class="m-seg__btn" type="button">Dieses Jahr</button><button class="m-seg__btn" type="button">1 Jahr</button><button class="m-seg__btn" type="button">Alle</button></div></div>
+        <svg class="m-hero__chart demo-chart" data-chart></svg>
+      </div>
+      <div data-rows="assets"></div>
+    </main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+  </div>
+</template>
+
+<!-- The asset's light detail (pushed on Ostatní aktiva), rendered at the three widths. -->
+<template id="other-asset-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Sonstiges Vermögen</span></button></div>
+      <h1 class="m-nav__title">Goldbarren</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">12 Stk. · CZK</p>
+      <div class="m-card m-card--hero">
+        <div class="m-hero__label">Positionswert · 12 Stk.</div>
+        <div class="m-hero__value">22&nbsp;800 Kč</div>
+        <div class="m-hero__delta"><span class="m-badge m-badge--gain">▲ 4,6 %</span><span>+ 1&nbsp;000 Kč in 30 Tagen</span></div>
+        <div class="m-hero__seg"><div class="m-seg"><button class="m-seg__btn is-active" type="button">30 Tage</button><button class="m-seg__btn" type="button">3 Monate</button><button class="m-seg__btn" type="button">Dieses Jahr</button><button class="m-seg__btn" type="button">1 Jahr</button><button class="m-seg__btn" type="button">Alle</button></div></div>
+        <svg class="m-hero__chart demo-chart" data-chart="step"></svg>
+        <div class="demo-legend">
+          <span><i class="demo-legend__line"></i>Positionswert</span>
+          <span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><polygon points="5,0 10,10 0,10" fill="var(--chart-line)"/></svg>Kauf</span>
+          <span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><polygon points="0.75,0.75 9.25,0.75 5,9.25" fill="var(--paper)" stroke="var(--chart-line)" stroke-width="1.5"/></svg>Verkauf</span>
+        </div>
+      </div>
+      <div class="m-btn-pair m-btn-pair--stack">
+        <button class="m-btn m-btn--primary" type="button" data-icon="plus" data-size="16"><span>Kaufen</span></button>
+        <button class="m-btn m-btn--secondary" type="button" data-icon="minus" data-size="16"><span>Verkaufen</span></button>
+      </div>
+      <button class="m-btn m-btn--secondary m-btn--block" type="button" data-icon="arrow-up" data-size="16"><span>Neu bewerten</span></button>
+      <div class="m-stats">
+        <div class="m-stat"><div class="m-stat__l">Menge</div><div class="m-stat__v">12</div><div class="m-stat__n">1&nbsp;900 Kč pro Stück</div></div>
+        <div class="m-stat"><div class="m-stat__l">Ø Kurs</div><div class="m-stat__v">1&nbsp;814 Kč</div><div class="m-stat__n">investiert 21&nbsp;771 Kč</div></div>
+        <div class="m-stat"><div class="m-stat__l">Nicht realisierte Rendite</div><div class="m-stat__v m-stat__v--gain">+ 1&nbsp;029 Kč</div><div class="m-stat__n">+ 4,7 % ggü. Investition</div></div>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Transaktionen</span><span class="m-sec__n">3</span></div>
+      <div class="m-seg" style="margin-bottom: 8px"><button class="m-seg__btn is-active" type="button">Alle</button><button class="m-seg__btn" type="button">Käufe</button><button class="m-seg__btn" type="button">Verkäufe</button></div>
+      <div data-rows="assetTrades"></div>
+    </main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+  </div>
+</template>
+
+<!-- The add-asset sheet over the class page: the fold closed (every opening starts so) and open. -->
+<template id="other-asset-add-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Vermögen</span></button></div>
+      <h1 class="m-nav__title">Sonstiges Vermögen</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button><button class="m-nav__btn" type="button" aria-label="Vermögenswert hinzufügen" data-icon="plus"></button></div>
+    </header>
+    <main class="m-screen__body"><div data-rows="assets"></div></main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Sonstigen Vermögenswert hinzufügen">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Sonstigen Vermögenswert hinzufügen</div><div class="m-sheet__s">Fügen Sie Ihrem Portfolio einen neuen individuellen Vermögenswert hinzu.</div></div>
+      <div class="m-sheet__body">
+        <div class="m-field"><label class="m-field__l" for="oa-name-closed">Name des Vermögenswerts</label><input class="m-field__i m-field__i--plain" id="oa-name-closed" value="Goldbarren" placeholder="z. B. Goldbarren"></div>
+        <div class="m-card m-kvcard" style="margin-bottom: 12px"><button class="m-kv m-kv--tap" type="button"><span class="m-kv__l">Währung</span><div class="m-kv__r"><div class="m-kv__v">CZK · Tschechische Krone</div></div><span class="m-kv__chev" data-icon="chevron-right" data-size="16"></span></button></div>
+        <div class="m-field"><label class="m-field__l">Aktueller Marktpreis (pro Stück)</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" placeholder="0" value="1 900"><span class="m-field__u">CZK</span></div><p class="m-field__h">Ihre Schätzung pro Stück für heute; später durch Neubewertung änderbar.</p></div>
+        <button class="m-disclose" type="button" aria-expanded="false"><span>Weitere Angaben</span><span data-icon="chevron-down" data-size="16"></span></button>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Vermögenswert hinzufügen</span></button></div>
+    </div>
+  </div>
+</template>
+
+<template id="other-asset-add-open-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Vermögen</span></button></div>
+      <h1 class="m-nav__title">Sonstiges Vermögen</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button><button class="m-nav__btn" type="button" aria-label="Vermögenswert hinzufügen" data-icon="plus"></button></div>
+    </header>
+    <main class="m-screen__body"><div data-rows="assets"></div></main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Sonstigen Vermögenswert hinzufügen">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Sonstigen Vermögenswert hinzufügen</div><div class="m-sheet__s">Fügen Sie Ihrem Portfolio einen neuen individuellen Vermögenswert hinzu.</div></div>
+      <div class="m-sheet__body">
+        <div class="m-field"><label class="m-field__l" for="oa-name-open">Name des Vermögenswerts</label><input class="m-field__i m-field__i--plain" id="oa-name-open" value="Goldbarren" placeholder="z. B. Goldbarren"></div>
+        <div class="m-card m-kvcard" style="margin-bottom: 12px"><button class="m-kv m-kv--tap" type="button"><span class="m-kv__l">Währung</span><div class="m-kv__r"><div class="m-kv__v">CZK · Tschechische Krone</div></div><span class="m-kv__chev" data-icon="chevron-right" data-size="16"></span></button></div>
+        <div class="m-field"><label class="m-field__l">Aktueller Marktpreis (pro Stück)</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" placeholder="0" value="1 900"><span class="m-field__u">CZK</span></div><p class="m-field__h">Ihre Schätzung pro Stück für heute; später durch Neubewertung änderbar.</p></div>
+        <button class="m-disclose" type="button" aria-expanded="true"><span>Weitere Angaben</span><span data-icon="chevron-up" data-size="16"></span></button>
+        <div class="m-t-sub" style="margin: 8px 4px 6px; color: var(--ink-3); font-weight: 600">Erster Kauf (optional)</div>
+        <div class="m-field"><label class="m-field__l">Menge</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" placeholder="0" value="12"><span class="m-field__u">Stk.</span></div></div>
+        <div class="m-field"><label class="m-field__l">Preis / Stück</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" placeholder="0" value="1 780"><span class="m-field__u">CZK</span></div></div>
+        <div class="m-field"><label class="m-field__l" for="oa-date">Datum</label><input class="m-field__i m-field__i--plain" id="oa-date" type="date" value="2026-03-03"></div>
+        <p class="m-field__h">Wenn ausgefüllt, wird eine Kauftransaktion angelegt.</p>
+        <div class="m-t-sub" style="margin: 20px 4px 4px; color: var(--ink-3); font-weight: 600">Ertrag (optional)</div>
+        <p class="m-field__h" style="margin: 0 2px 4px">Erträge, die dieser Vermögenswert jedes Jahr abwirft, zum Beispiel Miete oder Zinsen.</p>
+        <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Ertragsart</div>
+        <div role="radiogroup" aria-label="Ertragsart">
+          <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__l">Keiner</span></button>
+          <button class="m-pick" type="button" role="radio" aria-checked="true"><span class="m-pick__l">Fester Betrag (jährlich)</span><span class="m-pick__check" data-icon="check" data-size="18"></span></button>
+          <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__l">% des Kaufpreises</span></button>
+          <button class="m-pick" type="button" role="radio" aria-checked="false"><span class="m-pick__l">% des Marktpreises</span></button>
+        </div>
+        <div style="margin-top: 8px"><div class="m-field"><label class="m-field__l">Ertragswert</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" placeholder="0" value="1 200"><span class="m-field__u">CZK</span></div></div></div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Vermögenswert hinzufügen</span></button></div>
+    </div>
+  </div>
+</template>
+
 <script src="icons.js"></script>
 <script>
 (function () {
@@ -1305,7 +1444,8 @@
     "coins": '<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/>',
     "hash": '<line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/>',
     "scale": '<path d="M12 3v18"/><path d="m19 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1"/><path d="m5 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M7 21h10"/>',
-    "utensils": '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>'
+    "utensils": '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+    "arrow-up": '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>'
   });
 
   var TABS = [
@@ -1386,6 +1526,21 @@
       row("", "Verkauf · 5 Stk.", "2. 6. 2026 · 104,10 €", "+ 12&nbsp;880 Kč", "520,50 €", { icon: "trending-down", chip: "m-row__chip--gain", gain: true, cls: "m-row--flash" }),
       row("", "Kauf · 15 Stk.", "15. 5. 2026 · 101,80 €", "− 38&nbsp;020 Kč", "1&nbsp;527,00 €", { icon: "trending-up", cls: "m-row--flash" }),
       '<button class="m-rows__more" type="button">Alle 28 anzeigen</button>'
+    ],
+    /* The Ostatní aktiva list: "quantity × price" in the asset's own currency, the value in the report currency over the
+       change against the purchase cost; an asset held in none shows the day it was valued, one without a rate "—" and no
+       change, one that cost nothing no change. */
+    assets: [
+      row("", "Goldbarren", "12 × 1&nbsp;900 Kč", "22&nbsp;800 Kč", up("4,7", "+ 1&nbsp;029 Kč"), { icon: "gem" }),
+      row("", "Škoda 110 R, Baujahr 1974", "1 × 185&nbsp;000 Kč", "185&nbsp;000 Kč", "", { icon: "gem" }),
+      row("", "Münzsammlung", "bewertet am 5. 9.", "0 Kč", "", { icon: "gem" }),
+      row("", "Anteil an der Brauerei Černá Hora", "40 × 12,50 AED", "—", "", { icon: "gem" })
+    ],
+    /* An asset's trades in its own currency (the report currency too here, so the total says it twice as the app does). */
+    assetTrades: [
+      row("", "Kauf · 4 Stk.", "14. 10. 2026 · 1&nbsp;900 Kč", "− 7&nbsp;600 Kč", "7&nbsp;600,00 Kč", { icon: "trending-up" }),
+      row("", "Verkauf · 2 Stk.", "2. 8. 2026 · 1&nbsp;820 Kč", "+ 3&nbsp;640 Kč", "3&nbsp;640,00 Kč", { icon: "trending-down", chip: "m-row__chip--gain", gain: true }),
+      row("", "Kauf · 10 Stk.", "3. 3. 2026 · 1&nbsp;780 Kč", "− 17&nbsp;800 Kč", "17&nbsp;800,00 Kč", { icon: "trending-up" })
     ],
     accounts: [
       row("FIO", "Girokonto", "Fio · CZK · Auszug 10. 10.", "86&nbsp;420 Kč", "+ 9&nbsp;870 Kč · 30 Tage"),
@@ -1573,6 +1728,10 @@
   frames("importCorrect", "import-correct-frame", "Import: Korrektur");
   frames("importOrder", "import-order-frame", "Import: Datumsreihenfolge");
   frames("queue", "queue-frame", "Zařazení plateb");
+  frames("otherAssets", "other-assets-frame", "Aktiva");
+  frames("otherAsset", "other-asset-frame", "Aktivum");
+  frames("otherAssetAdd", "other-asset-add-frame", "Aktivum hinzufügen");
+  frames("otherAssetAddOpen", "other-asset-add-open-frame", "Weitere Angaben");
 
   /* Budget rows: category chip as on the Cashflow rows, the limit as the value, validity and the changes to
      come in the sub-line, "Geplant" / "beendet" under the value (an ended row at half strength); the rows of

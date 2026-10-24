@@ -451,7 +451,10 @@
       "count_one": "{{count}} položka",
       "count_few": "{{count}} položky",
       "count_other": "{{count}} položek",
-      "valuedOn": "oceněno {{date}}"
+      "valuedOn": "oceněno {{date}}",
+      "moreDetails": "Další údaje",
+      "loadFailed": "Aktiva se nepodařilo načíst.",
+      "notFound": "Aktivum nenalezeno"
     },
     "realEstate": {
       "personal": "osobní",

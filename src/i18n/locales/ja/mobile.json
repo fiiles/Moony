@@ -403,7 +403,10 @@
     },
     "otherAssets": {
       "count_other": "{{count}}件",
-      "valuedOn": "{{date}}に評価"
+      "valuedOn": "{{date}}に評価",
+      "moreDetails": "その他の項目",
+      "loadFailed": "資産を読み込めませんでした。",
+      "notFound": "資産が見つかりません"
     },
     "realEstate": {
       "personal": "自己居住用",

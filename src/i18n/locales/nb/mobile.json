@@ -427,7 +427,10 @@
     "otherAssets": {
       "count_one": "{{count}} post",
       "count_other": "{{count}} poster",
-      "valuedOn": "verdsatt {{date}}"
+      "valuedOn": "verdsatt {{date}}",
+      "moreDetails": "Flere opplysninger",
+      "loadFailed": "Eiendelene kunne ikke lastes.",
+      "notFound": "Eiendelen ble ikke funnet"
     },
     "realEstate": {
       "personal": "egen bolig",

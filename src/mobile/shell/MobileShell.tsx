@@ -18,17 +18,15 @@ import AccountDetail from '@/mobile/pages/finance/AccountDetail';
 import CategorizeQueue from '@/mobile/pages/finance/CategorizeQueue';
 import { LoanPlaceholder, PolicyPlaceholder } from '@/mobile/pages/finance/FinancePlaceholder';
 import Lock from '@/mobile/pages/Lock';
+import OtherAssetDetail from '@/mobile/pages/OtherAssetDetail';
+import OtherAssets from '@/mobile/pages/OtherAssets';
 import Overview from '@/mobile/pages/Overview';
 import PositionDetail from '@/mobile/pages/PositionDetail';
 import Settings from '@/mobile/pages/Settings';
 import SettingsSection from '@/mobile/pages/settings/SettingsSection';
 import Stocks from '@/mobile/pages/Stocks';
 import Wealth from '@/mobile/pages/Wealth';
-import {
-  OtherAssetsPlaceholder,
-  PropertyPlaceholder,
-  RealEstatePlaceholder,
-} from '@/mobile/pages/WealthPlaceholder';
+import { PropertyPlaceholder, RealEstatePlaceholder } from '@/mobile/pages/WealthPlaceholder';
 import { EnableBiometricsSheet } from '@/mobile/sheets/EnableBiometricsSheet';
 import { routes, tabForPath } from './routes';
 import { TabBar } from './TabBar';
@@ -87,7 +85,9 @@ export function MobileShell() {
         <ProtectedRoute path={routes.cryptoDetail} component={CryptoDetail} />
         {/* The Dluhopisy class page */}
         <ProtectedRoute path={routes.bondsList} component={Bonds} />
-        <ProtectedRoute path={routes.otherAssetsList} component={OtherAssetsPlaceholder} />
+        {/* The Ostatní aktiva class page and an asset of it */}
+        <ProtectedRoute path={routes.otherAssetsList} component={OtherAssets} />
+        <ProtectedRoute path={routes.otherAssetDetail} component={OtherAssetDetail} />
         <ProtectedRoute path={routes.realEstateList} component={RealEstatePlaceholder} />
         <ProtectedRoute path={routes.propertyDetail} component={PropertyPlaceholder} />
         {/* Nastavení and the pages pushed on it (spec §8.9) */}

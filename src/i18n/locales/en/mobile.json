@@ -427,7 +427,10 @@
     "otherAssets": {
       "count_one": "{{count}} item",
       "count_other": "{{count}} items",
-      "valuedOn": "valued {{date}}"
+      "valuedOn": "valued {{date}}",
+      "moreDetails": "More details",
+      "loadFailed": "Assets could not be loaded.",
+      "notFound": "Asset not found"
     },
     "realEstate": {
       "personal": "personal",

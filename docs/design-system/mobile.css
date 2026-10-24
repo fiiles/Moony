@@ -466,7 +466,8 @@
    `ink-4`), the decimal keypad, optionally the ± toggle on the left (below). The placeholder (`ink-5`) is the last known value. An error is 12 / 600
    `loss` under the field; without an error a hint may stand there instead (11 `ink-3`). A month field is the same field with the
    platform's month picker (`input type="month"`, no unit inside, `min` and `max` unset), two side by side in a 12 px grid, with an
-   optional text action beside the label ("Bez konce"). */
+   optional text action beside the label ("Bez konce"). A text field (the asset's name) and a date field (`input type="date"`, the day of
+   its first purchase) are the same field without the unit and take the month field's padding: `--plain`. */
 .m-field { margin-bottom: 12px; }
 .m-field:last-child { margin-bottom: 0; }
 .m-field__l { display: block; margin: 0 2px 6px; color: var(--ink-2); font-size: var(--m-fs-sub); font-weight: 600; }
@@ -518,7 +519,7 @@
 }
 .m-field__a::after { content: ""; position: absolute; inset: -12px -6px 0; }
 .m-field__a:active { color: var(--ink); }
-.m-field__i--month { padding: 0 14px; text-align: left; -webkit-appearance: none; appearance: none; }
+.m-field__i--month, .m-field__i--plain { padding: 0 14px; text-align: left; -webkit-appearance: none; appearance: none; }
 
 /* ===== Buttons at phone size =====
    48 px, radius 10, label 15 / 600. Primary dark material (one per screen), secondary paper with
@@ -549,6 +550,10 @@
 .m-btn-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
 .m-btn-pair .m-btn { padding: 0 10px; font-size: 13px; text-align: center; white-space: normal; }
 .m-btn-pair .m-btn > span { overflow: visible; overflow-wrap: break-word; hyphens: auto; }
+/* A full-width secondary under a pair (the other asset's "Přecenit" under Koupit · Prodat): the pair gives up its
+   14 px below for the 10 px of its own gap, and the button (`.m-btn--block`) keeps the 14 px every block leaves. */
+.m-btn-pair--stack { margin-bottom: 10px; }
+.m-btn-pair--stack + .m-btn--block { margin-bottom: 14px; }
 
 /* ===== Sheet: forms and pickers rise from the bottom =====
    Paper, top radius 17, drag handle, title 20, one sentence, body, footer on well with the ghost

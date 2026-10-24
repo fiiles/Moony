@@ -427,7 +427,10 @@
     "otherAssets": {
       "count_one": "{{count}} Posten",
       "count_other": "{{count}} Posten",
-      "valuedOn": "bewertet am {{date}}"
+      "valuedOn": "bewertet am {{date}}",
+      "moreDetails": "Weitere Angaben",
+      "loadFailed": "Die Vermögenswerte konnten nicht geladen werden.",
+      "notFound": "Vermögenswert nicht gefunden"
     },
     "realEstate": {
       "personal": "selbst genutzt",

@@ -343,6 +343,14 @@
     "limitsTotal": "totale {{amount}}",
     "total": "Totale · {{payments}}"
   },
+  "property": {
+    "notFound": "Questo immobile non esiste più.",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "{{rent}} all'anno",
+    "perYear": "all'anno",
+    "loanPayment": "rata {{amount}} / mese",
+    "rowMenu": "Altre azioni: {{name}}"
+  },
   "transaction": {
     "flowSaved": "Significato salvato",
     "done": "Fatto",

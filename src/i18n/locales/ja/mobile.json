@@ -295,6 +295,14 @@
     "limitsTotal": "合計 {{amount}}",
     "total": "合計 · {{payments}}"
   },
+  "property": {
+    "notFound": "この物件は存在しません。",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "年間 {{rent}}",
+    "perYear": "年間",
+    "loanPayment": "返済額 月 {{amount}}",
+    "rowMenu": "その他の操作: {{name}}"
+  },
   "transaction": {
     "flowSaved": "意味を保存しました",
     "done": "完了",

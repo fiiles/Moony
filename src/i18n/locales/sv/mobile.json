@@ -319,6 +319,14 @@
     "limitsTotal": "totalt {{amount}}",
     "total": "Totalt · {{payments}}"
   },
+  "property": {
+    "notFound": "Den här fastigheten finns inte längre.",
+    "ltv": "belåning {{ltv}}",
+    "rentYear": "{{rent}} per år",
+    "perYear": "per år",
+    "loanPayment": "betalning {{amount}} / mån",
+    "rowMenu": "Fler åtgärder: {{name}}"
+  },
   "transaction": {
     "flowSaved": "Betydelse sparad",
     "done": "Klart",

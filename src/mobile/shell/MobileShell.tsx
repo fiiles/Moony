@@ -18,6 +18,7 @@ import PolicyDetail from '@/mobile/pages/finance/PolicyDetail';
 import Lock from '@/mobile/pages/Lock';
 import Overview from '@/mobile/pages/Overview';
 import PositionDetail from '@/mobile/pages/PositionDetail';
+import PropertyDetail from '@/mobile/pages/PropertyDetail';
 import Settings from '@/mobile/pages/Settings';
 import SettingsSection from '@/mobile/pages/settings/SettingsSection';
 import Stocks from '@/mobile/pages/Stocks';
@@ -26,7 +27,6 @@ import {
   BondsPlaceholder,
   CryptoPlaceholder,
   OtherAssetsPlaceholder,
-  PropertyPlaceholder,
   RealEstatePlaceholder,
 } from '@/mobile/pages/WealthPlaceholder';
 import { EnableBiometricsSheet } from '@/mobile/sheets/EnableBiometricsSheet';
@@ -86,7 +86,7 @@ export function MobileShell() {
         <ProtectedRoute path={routes.bondsList} component={BondsPlaceholder} />
         <ProtectedRoute path={routes.otherAssetsList} component={OtherAssetsPlaceholder} />
         <ProtectedRoute path={routes.realEstateList} component={RealEstatePlaceholder} />
-        <ProtectedRoute path={routes.propertyDetail} component={PropertyPlaceholder} />
+        <ProtectedRoute path={routes.propertyDetail} component={PropertyDetail} />
         {/* Nastavení and the pages pushed on it (spec §8.9) */}
         <ProtectedRoute path={routes.settings} component={Settings} />
         <ProtectedRoute path={routes.settingsSection} component={SettingsSection} />

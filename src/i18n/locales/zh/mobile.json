@@ -295,6 +295,14 @@
     "limitsTotal": "合计 {{amount}}",
     "total": "合计 · {{payments}}"
   },
+  "property": {
+    "notFound": "该房产已不存在。",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "年租金 {{rent}}",
+    "perYear": "每年",
+    "loanPayment": "还款额 {{amount}} / 月",
+    "rowMenu": "更多操作：{{name}}"
+  },
   "transaction": {
     "flowSaved": "含义已保存",
     "done": "完成",

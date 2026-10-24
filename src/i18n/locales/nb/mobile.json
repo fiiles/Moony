@@ -319,6 +319,14 @@
     "limitsTotal": "totalt {{amount}}",
     "total": "Totalt · {{payments}}"
   },
+  "property": {
+    "notFound": "Denne eiendommen finnes ikke lenger.",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "{{rent}} i året",
+    "perYear": "i året",
+    "loanPayment": "termin {{amount}} / mnd",
+    "rowMenu": "Flere handlinger: {{name}}"
+  },
   "transaction": {
     "flowSaved": "Betydning lagret",
     "done": "Ferdig",

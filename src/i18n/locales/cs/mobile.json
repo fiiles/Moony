@@ -343,6 +343,14 @@
     "limitsTotal": "celkem {{amount}}",
     "total": "Celkem · {{payments}}"
   },
+  "property": {
+    "notFound": "Tato nemovitost už neexistuje.",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "{{rent}} ročně",
+    "perYear": "ročně",
+    "loanPayment": "splátka {{amount}} / měs.",
+    "rowMenu": "Další akce: {{name}}"
+  },
   "transaction": {
     "flowSaved": "Význam uložen",
     "done": "Hotovo",

@@ -921,6 +921,31 @@
   font-size: var(--m-fs-title); font-weight: var(--m-fw-title); letter-spacing: var(--m-ls-title); line-height: 1.2;
 }
 
+/* ===== Property detail (spec §8.8 "Nemovitost", `PropertyDetail.tsx`) =====
+   The pushed screen of a property under Majetek. Its sub-line has two lines (`.m-nav__sub--lines`, two `p`): the address, which
+   ends with an ellipsis when it does not fit, then the type and the rent ("Investiční nemovitost · Pronajato · nájem 16 500 Kč
+   měsíčně"), which wraps. The hero is the position's without its period segment (the trace has one horizon): the chart follows
+   the change line 12 px under it. Under "Finance" a group (the loans, the policies, the yearly balance) has a smaller head
+   (`.m-sec--group`: the title 12 / 600 `ink-3`, its action the section head's `.m-sec__a`, a 44 px target). What stands in place
+   of rows (`.m-prop__line`, 12 / 500 `ink-3`, wrapping) or under the balance card (`.m-prop__note`, 11 / 500) is a line of words.
+   The balance card is a `.m-card .m-kvcard` whose values are `gain` or `loss` (`.m-kv__v--gain`, `--loss`) and, for the two
+   results, 600 (`--total`). The date field of the revaluation sheet is the platform's date picker in the field's frame
+   (`.m-field__i--date`, no unit inside, the latest day today). */
+.m-nav__sub--lines { overflow: visible; text-overflow: clip; white-space: normal; }
+.m-nav__sub--lines > p { margin: 0; }
+.m-nav__sub--lines > :first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-hero__delta + .m-hero__chart { margin-top: 12px; }
+.m-sec--group .m-sec__t { color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: 600; letter-spacing: 0; line-height: 1.3; }
+.m-sec__a:is(button) { padding: 0; border: 0; background: none; font: inherit; font-size: var(--m-fs-sub); font-weight: 600; } /* a section action that is not a link (Připojit) */
+.m-prop__line { margin: 0 2px 14px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.4; }
+.m-prop__note { margin: 0 2px 14px; color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.4; }
+.m-kv__v--gain { color: var(--gain); }
+.m-kv__v--loss { color: var(--loss); }
+.m-kv__v--total { font-weight: 600; }
+.m-field__i--date { padding: 0 12px; text-align: left; -webkit-appearance: none; appearance: none; }
+.m-field__l--split { display: flex; justify-content: space-between; gap: 12px; } /* the label with "nepovinné" at its right end */
+.m-field__l--split > :last-child { color: var(--ink-4); font-weight: 500; }
+
 /* ===== Import sheet (spec §8.6, README §13 "Import sheet") =====
    One tall sheet (`.m-sheet--full`) whose stages swap the title, the sentence, the body and the footer: pick a
    file, reading, which statement and how its dates read, which account, the preview, the write, the done step,

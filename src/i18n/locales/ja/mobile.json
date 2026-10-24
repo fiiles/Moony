@@ -395,7 +395,10 @@
     "bonds": {
       "count_other": "{{count}}銘柄",
       "nearest": "直近の満期 {{month}}",
-      "coupon": "クーポン {{amount}} / 年"
+      "coupon": "クーポン {{amount}} / 年",
+      "upcoming": "直近のクーポンと満期",
+      "noUpcoming": "今後1年間にクーポンや満期はありません。",
+      "allRepaid": "すべての銘柄が償還済みです。メニュー「···」の「{{action}}」をオンにすると表示されます。"
     },
     "otherAssets": {
       "count_other": "{{count}}件",

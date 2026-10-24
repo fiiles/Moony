@@ -3,10 +3,7 @@ import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import type { PositionRowBase } from '@/utils/positions';
 import { ChangeLine } from './ChangeLine';
-
-/** The badge after a ticker ("ručně", "uzavřená"): 18 pt, 11 / 600 `ink-3` on `well-2`. */
-const BADGE =
-  'ml-1.5 inline-flex h-[18px] items-center rounded-r1 bg-well-2 px-1.5 align-[2px] text-m-caption font-semibold text-ink-3';
+import { RowBadge } from './RowBadge';
 
 interface PositionRowProps {
   row: PositionRowBase;
@@ -38,8 +35,8 @@ export function PositionRow({ row, name, href, currency }: PositionRowProps) {
       title={
         <>
           {row.ticker}
-          {row.isManualPrice && <span className={BADGE}>{ts('detail.manual')}</span>}
-          {closed && <span className={BADGE}>{t('wealth.stocks.closedBadge')}</span>}
+          {row.isManualPrice && <RowBadge>{ts('detail.manual')}</RowBadge>}
+          {closed && <RowBadge>{t('wealth.stocks.closedBadge')}</RowBadge>}
         </>
       }
       sub={name}

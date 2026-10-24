@@ -418,7 +418,10 @@
       "count_one": "{{count}} issue",
       "count_other": "{{count}} issues",
       "nearest": "nearest maturity {{month}}",
-      "coupon": "coupon {{amount}} / year"
+      "coupon": "coupon {{amount}} / year",
+      "upcoming": "Next coupons and maturities",
+      "noUpcoming": "No coupon or maturity in the coming year.",
+      "allRepaid": "Every issue is repaid. Turn on “{{action}}” in the ··· menu to see them."
     },
     "otherAssets": {
       "count_one": "{{count}} item",

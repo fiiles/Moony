@@ -464,7 +464,10 @@
       "count_many": "{{count}} emisji",
       "count_other": "{{count}} emisji",
       "nearest": "najbliższy wykup {{month, lower}}",
-      "coupon": "kupon {{amount}} / rok"
+      "coupon": "kupon {{amount}} / rok",
+      "upcoming": "Najbliższe kupony i terminy wykupu",
+      "noUpcoming": "W najbliższym roku nie przypada żaden kupon ani termin wykupu.",
+      "allRepaid": "Wszystkie emisje zostały wykupione. Włącz w menu ··· „{{action}}”, aby je zobaczyć."
     },
     "otherAssets": {
       "count_one": "{{count}} pozycja",

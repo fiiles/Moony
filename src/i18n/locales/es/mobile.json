@@ -441,7 +441,10 @@
       "count_many": "{{count}} emisiones",
       "count_other": "{{count}} emisiones",
       "nearest": "próximo vencimiento {{month, lower}}",
-      "coupon": "cupón {{amount}} / año"
+      "coupon": "cupón {{amount}} / año",
+      "upcoming": "Próximos cupones y vencimientos",
+      "noUpcoming": "No hay cupones ni vencimientos en el próximo año.",
+      "allRepaid": "Todas las emisiones están amortizadas. Activa «{{action}}» en el menú ··· para verlas."
     },
     "otherAssets": {
       "count_one": "{{count}} elemento",

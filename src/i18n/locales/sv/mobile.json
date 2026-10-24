@@ -418,7 +418,10 @@
       "count_one": "{{count}} emission",
       "count_other": "{{count}} emissioner",
       "nearest": "närmaste förfall {{month, lower}}",
-      "coupon": "kupong {{amount}} / år"
+      "coupon": "kupong {{amount}} / år",
+      "upcoming": "Nästa kuponger och förfall",
+      "noUpcoming": "Inga kuponger eller förfall under det kommande året.",
+      "allRepaid": "Alla emissioner är återbetalda. Slå på ”{{action}}” i menyn ··· för att se dem."
     },
     "otherAssets": {
       "count_one": "{{count}} post",

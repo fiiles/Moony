@@ -441,7 +441,10 @@
       "count_few": "{{count}} emise",
       "count_other": "{{count}} emisí",
       "nearest": "nejbližší splatnost {{month}}",
-      "coupon": "kupón {{amount}} / rok"
+      "coupon": "kupón {{amount}} / rok",
+      "upcoming": "Nejbližší kupóny a splatnosti",
+      "noUpcoming": "V nejbližším roce nepřipadá žádný kupón ani splatnost.",
+      "allRepaid": "Všechny emise jsou splacené. Zapněte v nabídce ··· „{{action}}“, abyste je viděli."
     },
     "otherAssets": {
       "count_one": "{{count}} položka",

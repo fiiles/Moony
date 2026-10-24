@@ -418,7 +418,10 @@
       "count_one": "{{count}} emisjon",
       "count_other": "{{count}} emisjoner",
       "nearest": "nærmeste forfall {{month, lower}}",
-      "coupon": "kupong {{amount}} / år"
+      "coupon": "kupong {{amount}} / år",
+      "upcoming": "Neste kuponger og forfall",
+      "noUpcoming": "Ingen kuponger eller forfall det kommende året.",
+      "allRepaid": "Alle emisjoner er innfridd. Slå på «{{action}}» i menyen ··· for å se dem."
     },
     "otherAssets": {
       "count_one": "{{count}} post",

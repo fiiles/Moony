@@ -418,7 +418,10 @@
       "count_one": "{{count}} Emission",
       "count_other": "{{count}} Emissionen",
       "nearest": "nächste Fälligkeit {{month}}",
-      "coupon": "Kupon {{amount}} / Jahr"
+      "coupon": "Kupon {{amount}} / Jahr",
+      "upcoming": "Nächste Kupons und Fälligkeiten",
+      "noUpcoming": "Im kommenden Jahr ist kein Kupon und keine Fälligkeit fällig.",
+      "allRepaid": "Alle Emissionen sind getilgt. Aktivieren Sie im Menü ··· „{{action}}“, um sie zu sehen."
     },
     "otherAssets": {
       "count_one": "{{count}} Posten",

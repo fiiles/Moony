@@ -7,6 +7,7 @@ import { ImportSheetProvider } from '@/mobile/hooks/use-import-sheet';
 import { useNotificationSchedule } from '@/mobile/hooks/use-notification-schedule';
 import { clearEnrolmentAsked } from '@/mobile/lib/biometrics';
 import Agenda from '@/mobile/pages/Agenda';
+import Bonds from '@/mobile/pages/Bonds';
 import Budgets from '@/mobile/pages/Budgets';
 import Cashflow from '@/mobile/pages/Cashflow';
 import CashflowCategory from '@/mobile/pages/CashflowCategory';
@@ -24,7 +25,6 @@ import SettingsSection from '@/mobile/pages/settings/SettingsSection';
 import Stocks from '@/mobile/pages/Stocks';
 import Wealth from '@/mobile/pages/Wealth';
 import {
-  BondsPlaceholder,
   OtherAssetsPlaceholder,
   PropertyPlaceholder,
   RealEstatePlaceholder,
@@ -85,7 +85,8 @@ export function MobileShell() {
         {/* The Krypto class page and a coin of it. */}
         <ProtectedRoute path={routes.cryptoList} component={Crypto} />
         <ProtectedRoute path={routes.cryptoDetail} component={CryptoDetail} />
-        <ProtectedRoute path={routes.bondsList} component={BondsPlaceholder} />
+        {/* The Dluhopisy class page */}
+        <ProtectedRoute path={routes.bondsList} component={Bonds} />
         <ProtectedRoute path={routes.otherAssetsList} component={OtherAssetsPlaceholder} />
         <ProtectedRoute path={routes.realEstateList} component={RealEstatePlaceholder} />
         <ProtectedRoute path={routes.propertyDetail} component={PropertyPlaceholder} />

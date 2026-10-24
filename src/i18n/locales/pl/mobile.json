@@ -343,6 +343,18 @@
     "zoomIn": "Powiększ",
     "zoomOut": "Pomniejsz"
   },
+  "policy": {
+    "copy": "Skopiuj numer umowy",
+    "copied": "Numer umowy skopiowany",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Okres umowy",
+    "termOpen": "od {{start}} · bezterminowa",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "rocznica {{date}}",
+    "notice": "Wypowiedz do",
+    "limitsTotal": "łącznie {{amount}}",
+    "total": "Razem · {{payments}}"
+  },
   "transaction": {
     "flowSaved": "Znaczenie zapisane",
     "done": "Gotowe",

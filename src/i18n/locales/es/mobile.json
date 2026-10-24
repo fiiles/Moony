@@ -321,6 +321,18 @@
     "zoomIn": "Acercar",
     "zoomOut": "Alejar"
   },
+  "policy": {
+    "copy": "Copiar número de contrato",
+    "copied": "Número de contrato copiado",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Vigencia",
+    "termOpen": "desde {{start}} · indefinida",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "aniversario {{date}}",
+    "notice": "Cancelar antes de",
+    "limitsTotal": "total {{amount}}",
+    "total": "Total · {{payments}}"
+  },
   "transaction": {
     "flowSaved": "Significado guardado",
     "done": "Listo",

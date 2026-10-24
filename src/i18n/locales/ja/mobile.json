@@ -277,6 +277,18 @@
     "zoomIn": "拡大",
     "zoomOut": "縮小"
   },
+  "policy": {
+    "copy": "契約番号をコピー",
+    "copied": "契約番号をコピーしました",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "契約期間",
+    "termOpen": "{{start}}から · 期間の定めなし",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "更新日 {{date}}",
+    "notice": "解約通知の期限",
+    "limitsTotal": "合計 {{amount}}",
+    "total": "合計 · {{payments}}"
+  },
   "transaction": {
     "flowSaved": "意味を保存しました",
     "done": "完了",

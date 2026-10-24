@@ -299,6 +299,18 @@
     "zoomIn": "Zooma in",
     "zoomOut": "Zooma ut"
   },
+  "policy": {
+    "copy": "Kopiera avtalsnummer",
+    "copied": "Avtalsnummer kopierat",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Avtalstid",
+    "termOpen": "från {{start}} · tillsvidare",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "förnyelse {{date}}",
+    "notice": "Säg upp senast",
+    "limitsTotal": "totalt {{amount}}",
+    "total": "Totalt · {{payments}}"
+  },
   "transaction": {
     "flowSaved": "Betydelse sparad",
     "done": "Klart",

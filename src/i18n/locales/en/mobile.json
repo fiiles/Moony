@@ -299,6 +299,18 @@
     "zoomIn": "Zoom in",
     "zoomOut": "Zoom out"
   },
+  "policy": {
+    "copy": "Copy contract number",
+    "copied": "Contract number copied",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Contract term",
+    "termOpen": "from {{start}} · open-ended",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "anniversary {{date}}",
+    "notice": "Cancel by",
+    "limitsTotal": "total {{amount}}",
+    "total": "Total · {{payments}}"
+  },
   "transaction": {
     "flowSaved": "Meaning saved",
     "done": "Done",

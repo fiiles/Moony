@@ -299,6 +299,18 @@
     "zoomIn": "Zoom inn",
     "zoomOut": "Zoom ut"
   },
+  "policy": {
+    "copy": "Kopier avtalenummer",
+    "copied": "Avtalenummer kopiert",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Varighet",
+    "termOpen": "fra {{start}} · løpende",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "årsdag {{date}}",
+    "notice": "Si opp innen",
+    "limitsTotal": "totalt {{amount}}",
+    "total": "Totalt · {{payments}}"
+  },
   "transaction": {
     "flowSaved": "Betydning lagret",
     "done": "Ferdig",

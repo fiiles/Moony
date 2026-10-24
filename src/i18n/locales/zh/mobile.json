@@ -277,6 +277,18 @@
     "zoomIn": "放大",
     "zoomOut": "缩小"
   },
+  "policy": {
+    "copy": "复制合同编号",
+    "copied": "已复制合同编号",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "合同期限",
+    "termOpen": "自 {{start}} 起 · 无固定期限",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "周年日 {{date}}",
+    "notice": "解约通知截止日",
+    "limitsTotal": "合计 {{amount}}",
+    "total": "合计 · {{payments}}"
+  },
   "transaction": {
     "flowSaved": "含义已保存",
     "done": "完成",

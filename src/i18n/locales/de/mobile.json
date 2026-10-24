@@ -299,6 +299,18 @@
     "zoomIn": "Vergrößern",
     "zoomOut": "Verkleinern"
   },
+  "policy": {
+    "copy": "Vertragsnummer kopieren",
+    "copied": "Vertragsnummer kopiert",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Laufzeit",
+    "termOpen": "ab {{start}} · unbefristet",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "Jahrestag {{date}}",
+    "notice": "Kündigung bis",
+    "limitsTotal": "gesamt {{amount}}",
+    "total": "Gesamt · {{payments}}"
+  },
   "transaction": {
     "flowSaved": "Bedeutung gespeichert",
     "done": "Fertig",

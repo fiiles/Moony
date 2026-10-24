@@ -321,6 +321,18 @@
     "zoomIn": "Přiblížit",
     "zoomOut": "Oddálit"
   },
+  "policy": {
+    "copy": "Zkopírovat číslo smlouvy",
+    "copied": "Číslo smlouvy zkopírováno",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Platnost",
+    "termOpen": "od {{start}} · neurčitá",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "výročí {{date}}",
+    "notice": "Výpověď nejpozději",
+    "limitsTotal": "celkem {{amount}}",
+    "total": "Celkem · {{payments}}"
+  },
   "transaction": {
     "flowSaved": "Význam uložen",
     "done": "Hotovo",

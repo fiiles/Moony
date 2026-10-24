@@ -265,6 +265,12 @@
   </section>
 
   <section class="part">
+    <h2>Detail pojistky: fakta nahoře, graf dole</h2>
+    <p>Pojistka otevřená z Finance na 360, 390 a 430 (spec §8.8, prototyp 14): zpět s názvem záložky, název pojistky jako titulek, vpravo textové tlačítko Upravit (<code>.m-nav__back--text</code>) a <code>···</code>; podřádek <code>.m-nav__sub</code> (pojišťovna · typ · stav). Fakta jsou jedna karta <code>.m-kvcard</code> z řádků <code>.m-kv</code> — číslo smlouvy s 44 pt tlačítkem kopírování (<code>.m-kv__copy</code>, číslo se nemaskuje), pojišťovna (dlouhý název se zalomí na druhý řádek, <code>.m-kv__v--wrap</code>), typ, pojistné s frekvencí, příští platba se vzdáleností, platnost s výročím v podřádku, „Kündigung bis“ (poslední den výpovědi) a pojištěná nemovitost jako řádek s šipkou. Pak limity krytí jako řádky bez čipu (<code>.m-row--noicon</code>) s celkem v hlavičce, dokumenty, poznámky (<code>.m-prose</code> na <code>.m-card</code>, zalomení řádků zůstává) a jako poslední zaplacené pojistné (<code>.m-premium</code>): štítek, součet a schodová čára, plná do dneška a dál přerušovaná jako plán dalších dvanácti plateb.</p>
+    <div class="phones" id="policy"></div>
+  </section>
+
+  <section class="part">
     <h2>Sheet a pole pro částku</h2>
     <p>Sheet nad obrazovkou: tab bar pod scrimem, držadlo, titulek, jedna věta, pole <code>.m-field</code> (štítek, 48 pt pole, měna uvnitř vpravo, placeholder je poslední zůstatek; druhé pole je vyplněné, třetí s chybou, čtvrté se zapnutým přepínačem ±) a patička na <code>well</code> s tlačítkem Zrušit vlevo a hlavní akcí vpravo. V aplikaci sheet zavírá klepnutí na scrim, Zrušit a Android zpět.</p>
     <div class="phones" id="sheets"></div>
@@ -607,6 +613,55 @@
       <div class="m-capture">
         <button class="m-btn m-btn--secondary" type="button" data-icon="camera" data-size="16"><span>Foto aufnehmen</span></button>
         <button class="m-btn m-btn--secondary" type="button" data-icon="upload" data-size="16"><span>Datei wählen</span></button>
+      </div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+  </div>
+</template>
+
+<!-- The policy detail (a policy pushed on Finance), rendered at the three widths. -->
+<template id="policy-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Haushaltsversicherung</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__back m-nav__back--text" type="button"><span>Bearbeiten</span></button><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Kooperativa · Sachversicherung · aktiv</p>
+      <div class="m-card m-kvcard">
+        <div class="m-kv"><span class="m-kv__l">Vertragsnummer</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--id">8&nbsp;540&nbsp;221&nbsp;937</div></div><button class="m-kv__copy" type="button" aria-label="Vertragsnummer kopieren" data-icon="copy" data-size="16"></button></div>
+        <div class="m-kv"><span class="m-kv__l">Versicherer</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--wrap">Kooperativa pojišťovna, a.s., Vienna Insurance Group</div></div></div>
+        <div class="m-kv"><span class="m-kv__l">Art</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--wrap">Sachversicherung</div></div></div>
+        <div class="m-kv"><span class="m-kv__l">Beitrag</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--wrap">2&nbsp;150 Kč · vierteljährlich</div></div></div>
+        <div class="m-kv"><span class="m-kv__l">Nächste Zahlung</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--wrap">4. 11. 2026 · noch 11 Tage</div></div></div>
+        <div class="m-kv"><span class="m-kv__l">Laufzeit</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--wrap">ab 4. 1. 2024 · unbefristet</div><div class="m-kv__s">Jahrestag 4. 1. 2027</div></div></div>
+        <div class="m-kv"><span class="m-kv__l">Kündigung bis</span><div class="m-kv__r"><div class="m-kv__v">22. 11. 2026</div></div></div>
+        <button class="m-kv m-kv--tap" type="button"><span class="m-kv__l">Immobilie</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--wrap">Wohnung Lipová</div></div><span class="m-kv__chev" data-icon="chevron-right" data-size="16"></span></button>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Deckungslimits</span><span class="m-sec__n">gesamt 6,65 Mio. Kč</span></div>
+      <div class="m-rows">
+        <div class="m-row m-row--noicon"><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Haushalt</span><span class="m-row__v">5&nbsp;000&nbsp;000 Kč</span></span></span></div>
+        <div class="m-row m-row--noicon"><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Haftpflicht für Schäden an Dritten</span><span class="m-row__v">1&nbsp;500&nbsp;000 Kč</span></span></span></div>
+        <div class="m-row m-row--noicon"><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Elektronik</span><span class="m-row__v">1&nbsp;500 €</span></span></span></div>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Dokumente</span><span class="m-sec__n">2 · verschlüsselt</span></div>
+      <div class="m-rows">
+        <button class="m-row m-row--chev m-docrow" type="button"><span class="m-row__chip m-row__chip--sq" data-icon="file-text" data-size="16"></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Versicherungsvertrag Haushalt 2024</span></span><span class="m-row__line"><span class="m-row__s">Vertrag · 2,1 MB · 4.1.2024</span></span></span><span class="m-row__chev" data-icon="chevron-right" data-size="16"></span></button>
+        <button class="m-row m-row--chev m-docrow" type="button"><span class="m-row__chip m-row__chip--sq" data-icon="image" data-size="16"></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Nachtrag 2025</span></span><span class="m-row__line"><span class="m-row__s">Bescheinigung · 1,2 MB · 12.1.2025</span></span></span><span class="m-row__chev" data-icon="chevron-right" data-size="16"></span></button>
+      </div>
+      <div class="m-capture">
+        <button class="m-btn m-btn--secondary" type="button" data-icon="camera" data-size="16"><span>Foto aufnehmen</span></button>
+        <button class="m-btn m-btn--secondary" type="button" data-icon="upload" data-size="16"><span>Datei wählen</span></button>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Notizen</span></div>
+      <div class="m-card"><p class="m-prose">Rabatt 10 % für schadenfreien Verlauf seit Januar 2025.
+Schadenmeldung: 957 105 105.</p></div>
+      <div class="m-sec"><span class="m-sec__t">Gezahlte Beiträge</span><span class="m-sec__n">seit Beginn</span></div>
+      <div class="m-card m-premium">
+        <div class="m-premium__l">Gesamt · 11 Zahlungen</div>
+        <div class="m-premium__v">23&nbsp;650 Kč</div>
+        <svg class="m-trend__chart demo-chart" data-chart="premiums"></svg>
       </div>
     </main>
     <nav class="m-tabbar" data-active="finance"></nav>
@@ -1537,6 +1592,7 @@
     "triangle-alert": '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
     "zoom-in": '<circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="11" x2="11" y1="8" y2="14"/><line x1="8" x2="14" y1="11" y2="11"/>',
     "zoom-out": '<circle cx="11" cy="11" r="8"/><line x1="21" x2="16.65" y1="21" y2="16.65"/><line x1="8" x2="14" y1="11" y2="11"/>',
+    "copy": '<rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
     "camera": '<path d="M13.997 4a2 2 0 0 1 1.76 1.05l.486.9A2 2 0 0 0 18.003 7H20a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1.997a2 2 0 0 0 1.759-1.048l.489-.904A2 2 0 0 1 10.004 4z"/><circle cx="12" cy="13" r="3"/>',
     "image": '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
     "calendar-clock": '<path d="M16 14v2.2l1.6 1"/><path d="M16 2v3"/><path d="M21 7.338V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h2.338"/><path d="M3 9h5.859"/><path d="M8 2v3"/><circle cx="16" cy="16" r="6"/>',
@@ -1763,6 +1819,7 @@
   renderFrames("loan", document.getElementById("loan-frame"), " · úvěr");
   renderFrames("extra", document.getElementById("extra-frame"), " · mimořádná splátka");
   renderFrames("documents", document.getElementById("documents-frame"), " · dokumenty");
+  renderFrames("policy", document.getElementById("policy-frame"), " · pojistka");
   renderFrames("document-add", document.getElementById("document-add-frame"), " · přidání dokumentu");
   renderFrames("document-view", document.getElementById("document-view-frame"), " · prohlížeč");
   renderFrames("document-zoom", document.getElementById("document-zoom-frame"), " · prohlížeč 2×");
@@ -1956,6 +2013,21 @@
       }
       svg.setAttribute("viewBox", "0 0 300 160"); svg.setAttribute("preserveAspectRatio", "none");
       svg.innerHTML = '<path d="' + actual + 'V160H0Z"/><path class="m-chart__projected" d="' + plan + '"/><path d="' + actual + '"/>';
+      return;
+    }
+    if (svg.dataset.chart === "premiums") {
+      /* A policy's cumulative premiums: a step at each payment, solid up to today (11 payments made, a reading today a
+         little after the last), the next 12 dashed as the plan. */
+      var made = 11, ahead = 12, total = made + ahead, gap = 300 / (total - 1);
+      var paid = "", planned = "", todayX = ((made - 1) * gap + gap / 2).toFixed(1);
+      for (var k = 0; k < total; k++) {
+        var px = (k * gap).toFixed(1), py = (140 - k * 5.2).toFixed(1);
+        if (k < made) paid += (k ? "H" + px + "V" + py : "M" + px + " " + py);
+        else planned += "H" + px + "V" + py;
+        if (k === made - 1) { paid += "H" + todayX; planned = "M" + todayX + " " + py + planned; }
+      }
+      svg.setAttribute("viewBox", "0 0 300 160"); svg.setAttribute("preserveAspectRatio", "none");
+      svg.innerHTML = '<path d="' + paid + 'V160H0Z"/><path class="m-chart__projected" d="' + planned + '"/><path d="' + paid + '"/>';
       return;
     }
     if (svg.dataset.chart === "step") {

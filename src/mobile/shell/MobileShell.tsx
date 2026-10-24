@@ -13,8 +13,8 @@ import CashflowCategory from '@/mobile/pages/CashflowCategory';
 import Finance from '@/mobile/pages/Finance';
 import AccountDetail from '@/mobile/pages/finance/AccountDetail';
 import CategorizeQueue from '@/mobile/pages/finance/CategorizeQueue';
-import { PolicyPlaceholder } from '@/mobile/pages/finance/FinancePlaceholder';
 import LoanDetail from '@/mobile/pages/finance/LoanDetail';
+import PolicyDetail from '@/mobile/pages/finance/PolicyDetail';
 import Lock from '@/mobile/pages/Lock';
 import Overview from '@/mobile/pages/Overview';
 import PositionDetail from '@/mobile/pages/PositionDetail';
@@ -73,7 +73,7 @@ export function MobileShell() {
         {/* Pushed on Finance; the screens come in Phase 2a (account), 2b (queue) and 4 (loan, policy). */}
         <ProtectedRoute path={routes.accountDetail} component={AccountDetail} />
         <ProtectedRoute path={routes.loanDetail} component={LoanDetail} />
-        <ProtectedRoute path={routes.policyDetail} component={PolicyPlaceholder} />
+        <ProtectedRoute path={routes.policyDetail} component={PolicyDetail} />
         <ProtectedRoute path={routes.uncategorized} component={CategorizeQueue} />
         <ProtectedRoute path={routes.cashflow} component={Cashflow} />
         <ProtectedRoute path={routes.cashflowCategory} component={CashflowCategory} />

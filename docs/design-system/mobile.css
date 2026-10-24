@@ -509,23 +509,25 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
    digits proportional. */
 .m-field__i--text { padding: 0 14px; font-variant-numeric: normal; }
 
-/* The document viewer's body (`DocumentViewerSheet.tsx`, a tall sheet): one scroll box (`__box`: `well`, 8 px padding, scrolling
-   both ways, 95 % of the screen less 13 rem tall — the handle, the head, the footer and the home indicator) holding an image
-   (`__img`, contained and as large as the room allows) or a PDF's page placeholders (`__pages` with `__page`: pdf.js judges which
-   pages are in view against its parent, so the box is that parent), a skeleton until the picture or the first page is ready
-   (`__skeleton`) and, for a file the phone cannot show, one sentence (`__note`). The system's pinch zooms the whole page (the viewport is
-   no longer locked to scale 1), not the document in its box: a double tap or the footer's zoom button (`__zoom`, 48 px) toggles 1× ↔ 2× (`--zoomed`), the content
-   becoming twice the box's width (the PDF's host is measured once per start, so its pages are drawn again at that width). What
-   is shown cannot be selected, dragged or long-pressed into the system's Copy / Share / Save menu: no selection, no callout, no
-   pointer on the picture and the canvases. */
-.m-docview { position: relative; }
+/* The document viewer's body (`DocumentViewerSheet.tsx`, a tall sheet that is filled, `.m-sheet--fill`): one scroll box (`__box`:
+   `well`, 8 px padding, scrolling both ways) that takes all the room between the sheet's head and its footer — the sheet is its full
+   95 % and its body a column that does not scroll — so the box is the one scroller at every text size (a larger title or footer
+   leaves it less room, never a second scroll around it). It holds an image (`__img`, contained in the box at 1×: the box's height is
+   definite, so `max-height: 100%` holds) or a PDF's page placeholders (`__pages` with `__page`: pdf.js judges which pages are in view
+   against its parent, so the box is that parent), a skeleton until the picture or the first page is ready (`__skeleton`) and, for a
+   file the phone cannot show, one sentence (`__note`). The box takes panning only (`touch-action: pan-x pan-y`): the viewport is no
+   longer locked to scale 1, so a pinch there would zoom the whole page with the sheet; it does nothing. The zoom is a double tap or
+   the footer's zoom button (`__zoom`, 48 px), 1× ↔ 2× (`--zoomed`), the content becoming twice the box's width (the PDF's host is
+   measured once per start, so its pages are drawn again at that width). What is shown cannot be selected, dragged or long-pressed
+   into the system's Copy / Share / Save menu: no selection, no callout, no pointer on the picture and the canvases. */
+.m-docview { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
 .m-docview__box {
-  max-height: calc(var(--m-vh, 100dvh) * .95 - 13rem); padding: 8px; overflow: auto; overscroll-behavior: contain;
-  border-radius: var(--r-3); background: var(--well); touch-action: manipulation;
+  flex: 1 1 auto; min-height: 0; padding: 8px; overflow: auto; overscroll-behavior: contain;
+  border-radius: var(--r-3); background: var(--well); touch-action: pan-x pan-y;
   -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
 }
 .m-docview__img {
-  display: block; max-width: 100%; max-height: calc(var(--m-vh, 100dvh) * .95 - 14rem); margin: 0 auto;
+  display: block; max-width: 100%; max-height: 100%; margin: 0 auto;
   border-radius: var(--r-2); object-fit: contain; pointer-events: none; -webkit-user-drag: none;
 }
 .m-docview--zoomed .m-docview__img { width: 200%; max-width: none; max-height: none; }
@@ -682,6 +684,11 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
   border-radius: var(--r-5) var(--r-5) 0 0; background: var(--paper); box-shadow: var(--sh-modal);
 }
 .m-sheet--full { max-height: 95%; }
+/* A sheet whose body is one box that scrolls itself (the document viewer; `Sheet`'s `fill`): the sheet is as tall as it may be
+   and its body a column that does not scroll, so its one child (`flex: 1 1 auto; min-height: 0`) fills it and is the only scroller. */
+.m-sheet--fill { height: 93%; }
+.m-sheet--full.m-sheet--fill { height: 95%; }
+.m-sheet--fill .m-sheet__body { display: flex; flex-direction: column; overflow: hidden; }
 .m-sheet__handle { flex: none; width: 36px; height: 5px; margin: 8px auto 0; border-radius: 3px; background: var(--well-3); }
 .m-sheet__head { flex: none; padding: 12px 20px 4px; }
 .m-sheet__t {

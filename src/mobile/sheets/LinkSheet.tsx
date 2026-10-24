@@ -2,6 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { PickRow } from '@/mobile/components/PickRow';
 import { Sheet } from '@/mobile/components/Sheet';
+import { FOOTER_GHOST_WIDE } from '@/mobile/components/import/styles';
 
 /** One loan or policy the sheet offers: its name and a second line ("2 400 000 Kč", "Kooperativa · Majetek"). */
 export interface LinkCandidate {
@@ -49,11 +50,7 @@ export function LinkSheet({
       title={t(loan ? 'linkDialog.loanTitle' : 'linkDialog.insuranceTitle')}
       description={t(loan ? 'linkDialog.loanDescription' : 'linkDialog.insuranceDescription')}
       footer={
-        <Button
-          variant="ghost"
-          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-          onClick={() => onOpenChange(false)}
-        >
+        <Button variant="ghost" className={FOOTER_GHOST_WIDE} onClick={() => onOpenChange(false)}>
           {tc('buttons.cancel')}
         </Button>
       }

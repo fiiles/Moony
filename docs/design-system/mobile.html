@@ -299,7 +299,7 @@
 
   <section class="part">
     <h2>Dokumenty: pojistka a nemovitost</h2>
-    <p>Sekce „Dokumente“ pod detailem pojistky (spec §8.8, prototyp 14) na 360, 390 a 430: hlavička s počtem a „verschlüsselt“ (<code>.m-sec__n</code>), dokumenty jako řádky s hranatým čipem, jménem a „typ · velikost · den“ (<code>.m-docrow</code> na <code>.m-row--chev</code>; dlouhé jméno končí třemi tečkami), pod nimi dvě sekundární tlačítka <code>.m-capture</code> (Foto aufnehmen · Datei wählen). Druhá sekce je sekce bez dokumentů: jediná věta (<code>.m-docrow__empty</code>) a tlačítka. Pod rámečky je sheet přidání (název v <code>.m-field__i--text</code>, typ jako řádky <code>.m-pick</code>, odmítnutí zůstává ve sheetu červeně) a prohlížeč (velký sheet, titulek je název, stránky PDF v jednom posuvném boxu <code>.m-docview__box</code> (<code>.m-docview__pages</code>); obrázek je <code>.m-docview__img</code>, dvojklik nebo tlačítko lupy v patce (<code>.m-docview__zoom</code>) přepíná 1× ↔ 2× (<code>.m-docview--zoomed</code>: obsah dvojnásobně široký, box se posouvá oběma směry; poslední rámeček), do načtení <code>.m-docview__skeleton</code>, soubor, který telefon nezobrazí, jedna věta <code>.m-docview__note</code>).</p>
+    <p>Sekce „Dokumente“ pod detailem pojistky (spec §8.8, prototyp 14) na 360, 390 a 430: hlavička s počtem a „verschlüsselt“ (<code>.m-sec__n</code>), dokumenty jako řádky s hranatým čipem, jménem a „typ · velikost · den“ (<code>.m-docrow</code> na <code>.m-row--chev</code>; dlouhé jméno končí třemi tečkami), pod nimi dvě sekundární tlačítka <code>.m-capture</code> (Foto aufnehmen · Datei wählen). Druhá sekce je sekce bez dokumentů: jediná věta (<code>.m-docrow__empty</code>) a tlačítka. Pod rámečky je sheet přidání (název v <code>.m-field__i--text</code>, typ jako řádky <code>.m-pick</code>, odmítnutí zůstává ve sheetu červeně) a prohlížeč (velký sheet celé výšky, titulek je název, stránky PDF v jednom posuvném boxu <code>.m-docview__box</code> (<code>.m-docview__pages</code>), který vyplní místo mezi hlavičkou a patičkou (<code>.m-sheet--fill</code>), takže je jediným posuvníkem při každé velikosti písma, a pinch v něm nic nedělá (<code>touch-action: pan-x pan-y</code>); obrázek je <code>.m-docview__img</code>, dvojklik nebo tlačítko lupy v patce (<code>.m-docview__zoom</code>) přepíná 1× ↔ 2× (<code>.m-docview--zoomed</code>: obsah dvojnásobně široký, box se posouvá oběma směry; poslední rámeček), do načtení <code>.m-docview__skeleton</code>, soubor, který telefon nezobrazí, jedna věta <code>.m-docview__note</code>).</p>
     <div class="phones" id="documents"></div>
     <div class="phones" id="document-add" style="margin-top: 26px"></div>
     <div class="phones" id="document-view" style="margin-top: 26px"></div>
@@ -926,12 +926,12 @@ Fondsvorschuss 2&nbsp;000 Kč monatlich.</p></div>
     </main>
     <nav class="m-tabbar" data-active="finance"></nav>
     <div class="m-scrim"></div>
-    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Versicherungsvertrag Haushalt 2024">
+    <div class="m-sheet m-sheet--full m-sheet--fill" role="dialog" aria-modal="true" aria-label="Versicherungsvertrag Haushalt 2024">
       <div class="m-sheet__handle"></div>
       <div class="m-sheet__head"><div class="m-sheet__t">Versicherungsvertrag Haushalt 2024</div><div class="m-sheet__s">Vertrag · 2,1 MB · 9.1.2024</div></div>
       <div class="m-sheet__body">
         <div class="m-docview">
-          <div class="m-docview__box" style="max-height: 470px">
+          <div class="m-docview__box">
             <div class="m-docview__pages">
               <div class="m-docview__page" style="aspect-ratio: 210 / 297; padding: 28px 24px; background-clip: content-box; background-image: repeating-linear-gradient(var(--well-2) 0 7px, transparent 7px 17px)"></div>
               <div class="m-docview__page" style="aspect-ratio: 210 / 297; padding: 28px 24px; background-clip: content-box; background-image: repeating-linear-gradient(var(--well-2) 0 7px, transparent 7px 17px)"></div>
@@ -958,12 +958,12 @@ Fondsvorschuss 2&nbsp;000 Kč monatlich.</p></div>
     </main>
     <nav class="m-tabbar" data-active="finance"></nav>
     <div class="m-scrim"></div>
-    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Nachtrag 2025">
+    <div class="m-sheet m-sheet--full m-sheet--fill" role="dialog" aria-modal="true" aria-label="Nachtrag 2025">
       <div class="m-sheet__handle"></div>
       <div class="m-sheet__head"><div class="m-sheet__t">Nachtrag 2025</div><div class="m-sheet__s">Bescheinigung · 1,2 MB · 12.1.2025</div></div>
       <div class="m-sheet__body">
         <div class="m-docview m-docview--zoomed">
-          <div class="m-docview__box" style="max-height: 470px">
+          <div class="m-docview__box">
             <div class="m-docview__img" style="aspect-ratio: 4 / 3; background: repeating-linear-gradient(45deg, var(--well-2) 0 14px, var(--well-3) 14px 28px)" role="img" aria-label="Nachtrag 2025"></div>
           </div>
         </div>

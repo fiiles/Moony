@@ -43,13 +43,6 @@ interface DocumentViewerSheetProps {
 
 type Status = 'loading' | 'ready' | 'failed';
 
-/**
- * The room the document has inside the tall sheet: 95 % of the screen less the handle, the head and
- * the footer (about 13 rem with the home indicator). The box scrolls inside it — `PdfPages` judges
- * which pages are in view against its parent, which therefore must be a box of this size.
- */
-const VIEW_MAX_HEIGHT = 'calc(var(--m-vh, 100dvh) * 0.95 - 13rem)';
-
 /** The zoom step: the content is this many times the box's width. */
 const ZOOM = 2;
 
@@ -61,13 +54,16 @@ const TAP_SLOP = 10;
  * the title, the document in a full sheet, a zoom button and Zavřít. An image shows contained, a PDF
  * page by page (`PdfPages`, the desktop's), anything else says it opens on the computer. A double
  * tap — or the zoom button, for anyone who cannot double-tap — toggles 1× and 2× (the content twice
- * the box's width, the box scrolling both ways, a new document opening at 1×); the system's pinch
- * (allowed since the viewport is no longer locked to scale 1, README §13 "Dynamic Type") zooms the
- * whole page with the sheet, not the document in its box. The bytes come decrypted through the
- * `moony-file` scheme only while the app is unlocked and nothing is written to disk: the picture
- * and the pages cannot be selected, dragged or long-pressed into the system's Copy / Share / Save
- * menu. There is no "open elsewhere" and no "save a copy" here: both end in a desktop-only command
- * (`open_with_system`, a save dialog).
+ * the box's width, the box scrolling both ways, a new document opening at 1×). A pinch over the
+ * document does nothing: the viewport is no longer locked to scale 1 (README §13 "Dynamic Type"),
+ * so the box allows panning only (`touch-action: pan-x pan-y`), or the pinch would zoom the whole
+ * page with the sheet. The box fills the sheet between its head and its footer (`Sheet`'s `fill`),
+ * so it is the one scroller at every text size — `PdfPages` judges which pages are in view against
+ * its parent, which is this box. The bytes come decrypted through the `moony-file` scheme only
+ * while the app is unlocked and nothing is written to disk: the picture and the pages cannot be
+ * selected, dragged or long-pressed into the system's Copy / Share / Save menu. There is no "open
+ * elsewhere" and no "save a copy" here: both end in a desktop-only command (`open_with_system`, a
+ * save dialog).
  */
 export function DocumentViewerSheet({
   open,
@@ -143,6 +139,7 @@ export function DocumentViewerSheet({
       open={open}
       onOpenChange={onOpenChange}
       full
+      fill
       title={shown?.name ?? ''}
       description={sub}
       footer={
@@ -253,7 +250,8 @@ function ViewerBody({
   const url = attachmentUrl(kind, doc.id);
   const loading = status === 'loading';
   return (
-    <div className="relative">
+    // A column that fills the sheet's body: the box takes all of it and is the one scroller
+    <div className="relative flex min-h-0 flex-1 flex-col">
       {loading && (
         <>
           <Skeleton className="absolute inset-0 z-[1] rounded-r3" />
@@ -264,13 +262,14 @@ function ViewerBody({
       )}
       <div
         ref={boxRef}
-        // Scrolls both ways at 2×; no text selection, no callout and no context menu on what is shown
+        // Fills the sheet and scrolls both ways at 2×; a pan scrolls it, a pinch does nothing (the
+        // page would zoom with the sheet); no text selection, no callout and no context menu on
+        // what is shown
         className={cn(
-          'select-none overflow-auto overscroll-contain rounded-r3 bg-well p-2 [-webkit-touch-callout:none] [touch-action:manipulation] [&_canvas]:pointer-events-none',
+          'min-h-0 flex-1 select-none overflow-auto overscroll-contain rounded-r3 bg-well p-2 [-webkit-touch-callout:none] [touch-action:pan-x_pan-y] [&_canvas]:pointer-events-none',
           // `PdfPages`' host is the box's one child: at 2× it is twice the box's width
           view === 'pdf' && (zoomed ? '[&>div]:w-[200%]' : '[&>div]:w-full')
         )}
-        style={{ maxHeight: VIEW_MAX_HEIGHT, minHeight: loading ? '40dvh' : undefined }}
         onPointerDown={pressed}
         onPointerUp={released}
         onPointerCancel={() => {
@@ -286,12 +285,12 @@ function ViewerBody({
             draggable={false}
             onLoad={onReady}
             onError={onFailed}
-            className="pointer-events-none mx-auto block max-w-full select-none rounded-r2 object-contain [-webkit-touch-callout:none]"
-            style={
-              zoomed
-                ? { width: `${ZOOM * 100}%`, maxWidth: 'none' }
-                : { maxHeight: `calc(${VIEW_MAX_HEIGHT} - 1rem)` }
-            }
+            // At 1× contained in the box (its height is definite: it fills the sheet), at 2× twice its width
+            className={cn(
+              'pointer-events-none mx-auto block select-none rounded-r2 object-contain [-webkit-touch-callout:none]',
+              !zoomed && 'max-h-full max-w-full'
+            )}
+            style={zoomed ? { width: `${ZOOM * 100}%`, maxWidth: 'none' } : undefined}
           />
         ) : (
           <Suspense fallback={null}>

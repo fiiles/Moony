@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button';
 import { AmountField } from '@/mobile/components/AmountField';
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
+import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
 import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { parseAmountInput } from '@/mobile/lib/amount-input';
@@ -83,15 +84,11 @@ export function ExtraPaymentSheet({
       description={tl('detail.whatIf.subtitle')}
       footer={
         <>
-          <Button
-            variant="ghost"
-            className="h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] px-[18px] text-m-row"
-            onClick={() => onOpenChange(false)}
-          >
+          <Button variant="ghost" className={FOOTER_GHOST} onClick={() => onOpenChange(false)}>
             {tc('buttons.cancel')}
           </Button>
           <Button
-            className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
+            className={FOOTER_PRIMARY}
             disabled={whatIf === null}
             onClick={() =>
               leaveAfterSheet(

@@ -9,7 +9,7 @@ import type { InsertInvestmentTransaction } from '@shared/schema';
  * Query keys (prefix-matched) whose data is derived from stock transactions.
  * Mirrors the `stocks` domain list in SyncProvider plus the analysis views.
  */
-const STOCK_TRANSACTION_KEYS = [
+export const STOCK_TRANSACTION_KEYS = [
   ['investments'],
   ['investment'],
   ['investment-transactions'],

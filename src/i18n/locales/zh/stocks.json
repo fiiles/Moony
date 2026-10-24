@@ -738,5 +738,15 @@
     "recordDescription": "导入“{{file}}”已没有任何交易，只会删除它的记录。",
     "recordDeleted": "导入记录已删除",
     "deleted_other": "已删除 {{count}} 笔导入的交易"
+  },
+  "splits": {
+    "toast": {
+      "applied_other": "{{ticker}}：已重新计算 {{count}} 笔交易（{{ratio}}）",
+      "reverted_other": "{{ticker}}：已撤销拆股（{{ratio}}），已还原 {{count}} 笔交易",
+      "recorded_other": "{{ticker}}：已记录拆股（{{ratio}}），已重新计算 {{count}} 笔交易",
+      "dismissed": "{{ticker}}：已忽略拆股（{{ratio}}）",
+      "deleted": "拆股记录已删除"
+    },
+    "undo": "撤销"
   }
 }

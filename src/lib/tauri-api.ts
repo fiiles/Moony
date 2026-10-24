@@ -142,6 +142,9 @@ import type {
   StockImportPreview,
   StockImportResult,
   StockImportUndoResult,
+  StockSplit,
+  InsertStockSplit,
+  StockSplitApplyResult,
   StockInstrumentQuery,
   StockInstrumentResolution,
 } from '../../shared/schema';
@@ -1104,6 +1107,17 @@ export const stockImportApi = {
   deleteFormat: (id: string) => tauriInvoke<void>('delete_stock_import_format', { id }),
 };
 
+/** Stock splits (Rust `commands/stock_splits.rs`, spec 2026-10-24-stock-splits-design.md). */
+export const stockSplitsApi = {
+  list: (ticker: string) => tauriInvoke<StockSplit[]>('list_stock_splits', { ticker }),
+  apply: (id: string) => tauriInvoke<StockSplitApplyResult>('apply_stock_split', { id }),
+  revert: (id: string) => tauriInvoke<StockSplitApplyResult>('revert_stock_split', { id }),
+  dismiss: (id: string) => tauriInvoke<StockSplit>('dismiss_stock_split', { id }),
+  record: (data: InsertStockSplit) =>
+    tauriInvoke<StockSplitApplyResult>('record_stock_split', { data }),
+  remove: (id: string) => tauriInvoke<void>('delete_stock_split', { id }),
+};
+
 export const stockTagsApi = {
   getAll: () => tauriInvoke<StockTag[]>('get_all_stock_tags'),
 
@@ -1387,6 +1401,7 @@ export const api = {
   export: exportApi,
   bankAccounts: bankAccountsApi,
   stockTags: stockTagsApi,
+  stockSplits: stockSplitsApi,
   categorization: categorizationApi,
   budgeting: budgetingApi,
   milestones: milestonesApi,

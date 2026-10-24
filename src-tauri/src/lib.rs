@@ -158,6 +158,13 @@ async fn run_app() {
             commands::milestones::clear_milestone_state,
             commands::milestones::get_milestone_muted_kinds,
             commands::milestones::set_milestone_muted_kinds,
+            // Stock splits (services::stock_splits)
+            commands::stock_splits::list_stock_splits,
+            commands::stock_splits::apply_stock_split,
+            commands::stock_splits::revert_stock_split,
+            commands::stock_splits::dismiss_stock_split,
+            commands::stock_splits::record_stock_split,
+            commands::stock_splits::delete_stock_split,
             // Backup / restore / export (services::backup)
             commands::backup::create_backup,
             commands::backup::inspect_backup,

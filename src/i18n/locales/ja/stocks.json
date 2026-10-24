@@ -738,5 +738,15 @@
     "recordDescription": "インポート「{{file}}」には取引が残っていません。記録のみ削除されます。",
     "recordDeleted": "インポート記録を削除しました",
     "deleted_other": "インポートした取引を{{count}}件削除しました"
+  },
+  "splits": {
+    "toast": {
+      "applied_other": "{{ticker}}：{{count}}件の取引を再計算しました（{{ratio}}）",
+      "reverted_other": "{{ticker}}：分割（{{ratio}}）を取り消し、{{count}}件の取引を元に戻しました",
+      "recorded_other": "{{ticker}}：分割（{{ratio}}）を記録し、{{count}}件の取引を再計算しました",
+      "dismissed": "{{ticker}}：分割（{{ratio}}）を無視しました",
+      "deleted": "分割を削除しました"
+    },
+    "undo": "元に戻す"
   }
 }

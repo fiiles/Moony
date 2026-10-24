@@ -762,5 +762,18 @@
     "recordDeleted": "Importposten borttagen",
     "deleted_one": "{{count}} importerad affär borttagen",
     "deleted_other": "{{count}} importerade affärer borttagna"
+  },
+  "splits": {
+    "toast": {
+      "applied_one": "{{ticker}}: {{count}} transaktion omräknad ({{ratio}})",
+      "applied_other": "{{ticker}}: {{count}} transaktioner omräknade ({{ratio}})",
+      "reverted_one": "{{ticker}}: splitten {{ratio}} ångrad, {{count}} transaktion återställd",
+      "reverted_other": "{{ticker}}: splitten {{ratio}} ångrad, {{count}} transaktioner återställda",
+      "recorded_one": "{{ticker}}: splitten {{ratio}} registrerad, {{count}} transaktion omräknad",
+      "recorded_other": "{{ticker}}: splitten {{ratio}} registrerad, {{count}} transaktioner omräknade",
+      "dismissed": "{{ticker}}: splitten {{ratio}} avvisad",
+      "deleted": "Splitten har tagits bort"
+    },
+    "undo": "Ångra"
   }
 }

@@ -810,5 +810,24 @@
     "deleted_few": "Usunięto {{count}} zaimportowane transakcje",
     "deleted_many": "Usunięto {{count}} zaimportowanych transakcji",
     "deleted_other": "Usunięto {{count}} zaimportowanych transakcji"
+  },
+  "splits": {
+    "toast": {
+      "applied_one": "{{ticker}}: przeliczono {{count}} transakcję ({{ratio}})",
+      "applied_few": "{{ticker}}: przeliczono {{count}} transakcje ({{ratio}})",
+      "applied_many": "{{ticker}}: przeliczono {{count}} transakcji ({{ratio}})",
+      "applied_other": "{{ticker}}: przeliczono {{count}} transakcji ({{ratio}})",
+      "reverted_one": "{{ticker}}: split {{ratio}} cofnięty, przywrócono {{count}} transakcję",
+      "reverted_few": "{{ticker}}: split {{ratio}} cofnięty, przywrócono {{count}} transakcje",
+      "reverted_many": "{{ticker}}: split {{ratio}} cofnięty, przywrócono {{count}} transakcji",
+      "reverted_other": "{{ticker}}: split {{ratio}} cofnięty, przywrócono {{count}} transakcji",
+      "recorded_one": "{{ticker}}: split {{ratio}} zapisany, przeliczono {{count}} transakcję",
+      "recorded_few": "{{ticker}}: split {{ratio}} zapisany, przeliczono {{count}} transakcje",
+      "recorded_many": "{{ticker}}: split {{ratio}} zapisany, przeliczono {{count}} transakcji",
+      "recorded_other": "{{ticker}}: split {{ratio}} zapisany, przeliczono {{count}} transakcji",
+      "dismissed": "{{ticker}}: split {{ratio}} odrzucony",
+      "deleted": "Split usunięty"
+    },
+    "undo": "Cofnij"
   }
 }

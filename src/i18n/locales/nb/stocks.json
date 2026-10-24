@@ -762,5 +762,18 @@
     "recordDeleted": "Importoppføring slettet",
     "deleted_one": "Slettet {{count}} importert handel",
     "deleted_other": "Slettet {{count}} importerte handler"
+  },
+  "splits": {
+    "toast": {
+      "applied_one": "{{ticker}}: {{count}} transaksjon omregnet ({{ratio}})",
+      "applied_other": "{{ticker}}: {{count}} transaksjoner omregnet ({{ratio}})",
+      "reverted_one": "{{ticker}}: splitten {{ratio}} er angret, {{count}} transaksjon gjenopprettet",
+      "reverted_other": "{{ticker}}: splitten {{ratio}} er angret, {{count}} transaksjoner gjenopprettet",
+      "recorded_one": "{{ticker}}: splitten {{ratio}} er registrert, {{count}} transaksjon omregnet",
+      "recorded_other": "{{ticker}}: splitten {{ratio}} er registrert, {{count}} transaksjoner omregnet",
+      "dismissed": "{{ticker}}: splitten {{ratio}} er avvist",
+      "deleted": "Splitten er slettet"
+    },
+    "undo": "Angre"
   }
 }

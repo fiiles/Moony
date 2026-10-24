@@ -762,5 +762,18 @@
     "recordDeleted": "Import record deleted",
     "deleted_one": "Deleted {{count}} imported trade",
     "deleted_other": "Deleted {{count}} imported trades"
+  },
+  "splits": {
+    "toast": {
+      "applied_one": "{{ticker}}: {{count}} transaction recalculated ({{ratio}})",
+      "applied_other": "{{ticker}}: {{count}} transactions recalculated ({{ratio}})",
+      "reverted_one": "{{ticker}}: split {{ratio}} undone, {{count}} transaction restored",
+      "reverted_other": "{{ticker}}: split {{ratio}} undone, {{count}} transactions restored",
+      "recorded_one": "{{ticker}}: split {{ratio}} recorded, {{count}} transaction recalculated",
+      "recorded_other": "{{ticker}}: split {{ratio}} recorded, {{count}} transactions recalculated",
+      "dismissed": "{{ticker}}: split {{ratio}} dismissed",
+      "deleted": "Split deleted"
+    },
+    "undo": "Undo"
   }
 }

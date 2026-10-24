@@ -762,5 +762,18 @@
     "recordDeleted": "Importeintrag gelöscht",
     "deleted_one": "{{count}} importierter Trade gelöscht",
     "deleted_other": "{{count}} importierte Trades gelöscht"
+  },
+  "splits": {
+    "toast": {
+      "applied_one": "{{ticker}}: {{count}} Transaktion umgerechnet ({{ratio}})",
+      "applied_other": "{{ticker}}: {{count}} Transaktionen umgerechnet ({{ratio}})",
+      "reverted_one": "{{ticker}}: Split {{ratio}} rückgängig gemacht, {{count}} Transaktion wiederhergestellt",
+      "reverted_other": "{{ticker}}: Split {{ratio}} rückgängig gemacht, {{count}} Transaktionen wiederhergestellt",
+      "recorded_one": "{{ticker}}: Split {{ratio}} erfasst, {{count}} Transaktion umgerechnet",
+      "recorded_other": "{{ticker}}: Split {{ratio}} erfasst, {{count}} Transaktionen umgerechnet",
+      "dismissed": "{{ticker}}: Split {{ratio}} verworfen",
+      "deleted": "Split gelöscht"
+    },
+    "undo": "Rückgängig"
   }
 }

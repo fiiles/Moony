@@ -786,5 +786,21 @@
     "deleted_one": "Eliminata {{count}} operazione importata",
     "deleted_many": "Eliminate {{count}} operazioni importate",
     "deleted_other": "Eliminate {{count}} operazioni importate"
+  },
+  "splits": {
+    "toast": {
+      "applied_one": "{{ticker}}: {{count}} operazione ricalcolata ({{ratio}})",
+      "applied_many": "{{ticker}}: {{count}} operazioni ricalcolate ({{ratio}})",
+      "applied_other": "{{ticker}}: {{count}} operazioni ricalcolate ({{ratio}})",
+      "reverted_one": "{{ticker}}: split {{ratio}} annullato, {{count}} operazione ripristinata",
+      "reverted_many": "{{ticker}}: split {{ratio}} annullato, {{count}} operazioni ripristinate",
+      "reverted_other": "{{ticker}}: split {{ratio}} annullato, {{count}} operazioni ripristinate",
+      "recorded_one": "{{ticker}}: split {{ratio}} registrato, {{count}} operazione ricalcolata",
+      "recorded_many": "{{ticker}}: split {{ratio}} registrato, {{count}} operazioni ricalcolate",
+      "recorded_other": "{{ticker}}: split {{ratio}} registrato, {{count}} operazioni ricalcolate",
+      "dismissed": "{{ticker}}: split {{ratio}} scartato",
+      "deleted": "Split eliminato"
+    },
+    "undo": "Annulla"
   }
 }

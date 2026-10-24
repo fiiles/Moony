@@ -787,5 +787,24 @@
     "deleted_one": "Smazán {{count}} importovaný obchod",
     "deleted_few": "Smazány {{count}} importované obchody",
     "deleted_other": "Smazáno {{count}} importovaných obchodů"
+  },
+  "splits": {
+    "toast": {
+      "applied_one": "{{ticker}}: {{count}} transakce přepočtena ({{ratio}})",
+      "applied_few": "{{ticker}}: {{count}} transakce přepočteny ({{ratio}})",
+      "applied_many": "{{ticker}}: {{count}} transakce přepočteno ({{ratio}})",
+      "applied_other": "{{ticker}}: {{count}} transakcí přepočteno ({{ratio}})",
+      "reverted_one": "{{ticker}}: split {{ratio}} vrácen, {{count}} transakce obnovena",
+      "reverted_few": "{{ticker}}: split {{ratio}} vrácen, {{count}} transakce obnoveny",
+      "reverted_many": "{{ticker}}: split {{ratio}} vrácen, {{count}} transakce obnoveno",
+      "reverted_other": "{{ticker}}: split {{ratio}} vrácen, {{count}} transakcí obnoveno",
+      "recorded_one": "{{ticker}}: split {{ratio}} zaznamenán, {{count}} transakce přepočtena",
+      "recorded_few": "{{ticker}}: split {{ratio}} zaznamenán, {{count}} transakce přepočteny",
+      "recorded_many": "{{ticker}}: split {{ratio}} zaznamenán, {{count}} transakce přepočteno",
+      "recorded_other": "{{ticker}}: split {{ratio}} zaznamenán, {{count}} transakcí přepočteno",
+      "dismissed": "{{ticker}}: split {{ratio}} odmítnut",
+      "deleted": "Split smazán"
+    },
+    "undo": "Vrátit"
   }
 }

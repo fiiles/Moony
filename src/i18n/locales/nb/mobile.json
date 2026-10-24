@@ -518,7 +518,8 @@
       },
       "above": "Over",
       "below": "Under",
-      "openPosition": "Åpne beholdningen"
+      "openPosition": "Åpne beholdningen",
+      "notesEmpty": "Ingen notater ennå. Trykk på Rediger for å legge til analysenotater — markdown fungerer."
     }
   },
   "settings": {

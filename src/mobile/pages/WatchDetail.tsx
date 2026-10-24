@@ -38,6 +38,7 @@ import { shortDayOptions } from '@/mobile/lib/format-day';
 import { statTone } from '@/mobile/lib/stat-money';
 import {
   priceOf,
+  shownPercent,
   watchPoints,
   watchPriceAt,
   watchPriceText,
@@ -181,11 +182,15 @@ export default function WatchDetail() {
       followedAt !== null && sinceSeries ? watchPriceAt(sinceSeries, followedAt) : null;
     const sinceChange = watchPrice !== null ? changeFromReference(current, watchPrice) : null;
 
+    // The tone and the sign follow the percent as it is written, so a change that rounds to zero is neutral
+    const todayPct = shownPercent(today?.pct ?? null);
+    const sincePct = shownPercent(sinceChange?.pct ?? null);
+
     const stats: StatItem[] = [
       {
         label: t('wealth.watch.stats.today'),
-        value: today ? fmt.percent(today.pct / 100, 1, { signed: true }) : '—',
-        tone: statTone(today?.abs ?? null),
+        value: todayPct === null ? '—' : fmt.percent(todayPct / 100, 1, { signed: true }),
+        tone: statTone(todayPct),
         note: today ? watchPriceText(fmt, today.abs, currency, true) : undefined,
       },
       {
@@ -204,8 +209,8 @@ export default function WatchDetail() {
       },
       {
         label: t('wealth.watch.stats.since'),
-        value: sinceChange ? fmt.percent(sinceChange.pct / 100, 1, { signed: true }) : '—',
-        tone: statTone(sinceChange?.abs ?? null),
+        value: sincePct === null ? '—' : fmt.percent(sincePct / 100, 1, { signed: true }),
+        tone: statTone(sincePct),
         note:
           followedAt !== null
             ? fmt.day(followedAt, shortDayOptions(followedAt))
@@ -228,7 +233,8 @@ export default function WatchDetail() {
           change={
             periodChange
               ? {
-                  ratio: periodChange.pct / 100,
+                  // Rounded as the badge writes it: a change of none is neutral, not a gain
+                  ratio: (shownPercent(periodChange.pct) ?? 0) / 100,
                   text: `${watchPriceText(fmt, periodChange.abs, currency, true)} ${changeLabel}`,
                 }
               : undefined

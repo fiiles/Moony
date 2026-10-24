@@ -518,7 +518,8 @@
       },
       "above": "Above",
       "below": "Below",
-      "openPosition": "Open position"
+      "openPosition": "Open position",
+      "notesEmpty": "No notes yet. Tap Edit to add research notes — markdown works."
     }
   },
   "settings": {

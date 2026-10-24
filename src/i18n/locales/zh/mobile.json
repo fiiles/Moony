@@ -492,7 +492,8 @@
       },
       "above": "高于",
       "below": "低于",
-      "openPosition": "打开持仓"
+      "openPosition": "打开持仓",
+      "notesEmpty": "还没有笔记。点按“编辑”添加研究笔记，支持 Markdown。"
     }
   },
   "settings": {

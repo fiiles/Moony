@@ -81,13 +81,14 @@ interface WatchNotesProps {
 
 /**
  * "Poznámky" of a followed stock (spec §8.8): the notes are rendered as markdown in a paper card
- * (the desktop's `MarkdownView` rules: GitHub flavour, the empty text when there are none) and
+ * (the desktop's `MarkdownView` rules: GitHub flavour; the empty sentence says "tap", not the desktop's "click") and
  * "Upravit" in the section head turns the card into a plain text area — body type, eight rows —
  * with Zrušit and Uložit under it. There is no toolbar and no preview on the phone: markdown is
  * typed as text and read in view mode.
  */
 export function WatchNotes({ notes, saving, onSave }: WatchNotesProps) {
   const { t } = useTranslation('stockMonitor');
+  const { t: tp } = useTranslation('mobile');
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(notes);
 
@@ -150,7 +151,9 @@ export function WatchNotes({ notes, saving, onSave }: WatchNotesProps) {
           </div>
         </div>
       ) : notes.trim() === '' ? (
-        <p className={cn(CARD, 'm-0 text-m-sub leading-[1.5] text-ink-3')}>{t('notes.empty')}</p>
+        <p className={cn(CARD, 'm-0 text-m-sub leading-[1.5] text-ink-3')}>
+          {tp('wealth.watch.notesEmpty')}
+        </p>
       ) : (
         <div className={cn(CARD, PROSE)}>
           <ReactMarkdown remarkPlugins={[remarkGfm]} components={MARKDOWN_COMPONENTS}>

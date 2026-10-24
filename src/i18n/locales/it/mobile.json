@@ -544,7 +544,8 @@
       },
       "above": "Sopra",
       "below": "Sotto",
-      "openPosition": "Apri posizione"
+      "openPosition": "Apri posizione",
+      "notesEmpty": "Ancora nessuna nota. Tocca Modifica per aggiungere note di ricerca — il markdown funziona."
     }
   },
   "settings": {

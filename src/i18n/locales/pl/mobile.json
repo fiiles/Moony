@@ -570,7 +570,8 @@
       },
       "above": "Powyżej",
       "below": "Poniżej",
-      "openPosition": "Otwórz pozycję"
+      "openPosition": "Otwórz pozycję",
+      "notesEmpty": "Brak notatek. Stuknij Edytuj, aby dodać notatki z analizy — markdown działa."
     }
   },
   "settings": {

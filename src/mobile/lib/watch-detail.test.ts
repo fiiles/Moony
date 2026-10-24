@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { StockPricePoint } from '@shared/schema';
 import {
   priceOf,
+  shownPercent,
   watchPoints,
   watchPriceAt,
   watchPriceText,
@@ -27,6 +28,25 @@ describe('priceOf', () => {
     expect(priceOf(null)).toBeNull();
     expect(priceOf('')).toBeNull();
     expect(priceOf('n/a')).toBeNull();
+  });
+});
+
+describe('shownPercent', () => {
+  it('keeps what is not known', () => {
+    expect(shownPercent(null)).toBeNull();
+  });
+
+  it('rounds to the one decimal the page writes, half away from zero', () => {
+    expect(shownPercent(1.234)).toBe(1.2);
+    expect(shownPercent(-1.26)).toBe(-1.3);
+    expect(shownPercent(0.05)).toBe(0.1);
+    expect(shownPercent(-0.05)).toBe(-0.1);
+  });
+
+  it('is a plain zero for a change that rounds to none, so it carries no tone or sign', () => {
+    expect(shownPercent(0.04)).toBe(0);
+    expect(shownPercent(-0.04)).toBe(0);
+    expect(shownPercent(0)).toBe(0);
   });
 });
 

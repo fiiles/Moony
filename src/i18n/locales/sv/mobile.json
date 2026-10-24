@@ -518,7 +518,8 @@
       },
       "above": "Över",
       "below": "Under",
-      "openPosition": "Öppna innehavet"
+      "openPosition": "Öppna innehavet",
+      "notesEmpty": "Inga anteckningar ännu. Tryck på Redigera för att lägga till analysanteckningar — markdown fungerar."
     }
   },
   "settings": {

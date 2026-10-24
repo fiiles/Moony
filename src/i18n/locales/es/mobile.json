@@ -544,7 +544,8 @@
       },
       "above": "Por encima",
       "below": "Por debajo",
-      "openPosition": "Abrir posición"
+      "openPosition": "Abrir posición",
+      "notesEmpty": "Aún no hay notas. Toca Editar para añadir notas de análisis — markdown funciona."
     }
   },
   "settings": {

@@ -36,6 +36,18 @@ export function watchPriceText(
 }
 
 /**
+ * A percent change as the page writes it: rounded to its one decimal, half away from zero (as
+ * `Intl` does), and a plain zero — never "-0" — when it rounds to none. The tone and the sign of a
+ * stat follow this number, not the raw one: a change of 0.03 % is written "0,0 %" and must not be
+ * coloured as a gain. `null` stays `null`.
+ */
+export function shownPercent(pct: number | null): number | null {
+  if (pct === null) return null;
+  const rounded = (Math.sign(pct) * Math.round(Math.abs(pct) * 10)) / 10;
+  return rounded === 0 ? 0 : rounded;
+}
+
+/**
  * The Yahoo range that draws a phone period (ruling 7), and where to cut it when the range is
  * longer than the period: 90 days come from the six-month range and are trimmed to the last 90
  * days (`watchPoints`). The intraday ranges (1D, 5D) stay on the desktop.

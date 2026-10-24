@@ -492,7 +492,8 @@
       },
       "above": "上回る",
       "below": "下回る",
-      "openPosition": "保有銘柄を開く"
+      "openPosition": "保有銘柄を開く",
+      "notesEmpty": "メモはまだありません。「編集」をタップしてリサーチメモを追加してください。Markdown が使えます。"
     }
   },
   "settings": {

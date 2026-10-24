@@ -54,7 +54,10 @@ const WHOLE = { decimals: 0 } as const;
  * return of this year), then the segment Pozice · Sledované. Positions are rows with sort, search
  * and the first eight until "Zobrazit všech N"; the watched ones are rows with their own price.
  * Someone who only watches has no positions to show a value for: the segment comes first, opened
- * on Sledované, with the empty state inside Pozice. The numbers are the desktop's (the same
+ * on Sledované, with the empty state inside Pozice. A class with nothing in it (no positions, nothing
+ * watched) shows the same segment — without the hero, the stats and the prices line — opened on
+ * Pozice, whose empty state adds the first position, while Sledované holds the search that starts
+ * a watch: the search is the only way to a watch detail. The numbers are the desktop's (the same
  * queries), in the report currency; every amount goes through the eye of Přehled. The sort, the
  * closed toggle, the period and the segment are remembered for the session, so a visit to a
  * position does not reset them.
@@ -127,8 +130,6 @@ export default function Stocks() {
     >
       {isLoading || (!hasPositions && watchedLoading) ? (
         <ClassSkeleton />
-      ) : view.kind === 'empty' ? (
-        <NoPositions onAdd={() => setAddOpen(true)} />
       ) : view.kind === 'error' ? (
         <LoadFailed />
       ) : (

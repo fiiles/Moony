@@ -518,7 +518,8 @@
       },
       "above": "Über",
       "below": "Unter",
-      "openPosition": "Position öffnen"
+      "openPosition": "Position öffnen",
+      "notesEmpty": "Noch keine Notizen. Tippen Sie auf „Bearbeiten“, um Recherchenotizen hinzuzufügen — Markdown funktioniert."
     }
   },
   "settings": {

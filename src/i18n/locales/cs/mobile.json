@@ -544,7 +544,8 @@
       },
       "above": "Nad",
       "below": "Pod",
-      "openPosition": "Otevřít pozici"
+      "openPosition": "Otevřít pozici",
+      "notesEmpty": "Zatím žádné poznámky. Klepněte na Upravit a přidejte poznámky — markdown funguje."
     }
   },
   "settings": {

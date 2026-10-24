@@ -297,7 +297,7 @@
     "takePhoto": "Ta bilde",
     "chooseFile": "Velg fil",
     "fromPhotos": "Velg fra bilder",
-    "photoName": "Foto {{date}}",
+    "photoName": "Bilde {{date}}",
     "count_one": "{{count}} · kryptert",
     "count_other": "{{count}} · krypterte",
     "openOnComputer": "Denne filen kan ikke vises på telefonen. Åpne den i Moony på datamaskinen.",

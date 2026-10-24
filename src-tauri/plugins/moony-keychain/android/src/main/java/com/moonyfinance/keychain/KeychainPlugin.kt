@@ -228,6 +228,20 @@ class KeychainPlugin(private val activity: Activity) : Plugin(activity) {
         }
     }
 
+    /**
+     * Keeping the app data out of device backups is a no-op here for now: on Android it is not a
+     * per-folder flag but `android:allowBackup="false"` (or `<full-backup-content>` and
+     * `<data-extraction-rules>`) in the app manifest, which does not exist until `tauri android
+     * init` (plan Phase 7). Answers `excluded: false`, so the Rust side logs that nothing is
+     * excluded instead of claiming it. (The keystore blobs already live in `noBackupFilesDir`.)
+     */
+    @Command
+    fun excludeFromBackup(invoke: Invoke) {
+        guarded(invoke) {
+            invoke.resolve(JSObject().apply { put("excluded", false) })
+        }
+    }
+
     // ---- Privacy screen ----
 
     override fun onPause(activity: AppCompatActivity) {

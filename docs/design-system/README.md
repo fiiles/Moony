@@ -557,6 +557,10 @@ turns into paths, while Android's `open()` returns `content://` URIs that `inspe
 so Android restore is a follow-up. Where it runs, restore switches biometric unlock off first, clears the
 enrolment flag, cancels the old profile's pending notifications and reloads into the lock, so the next
 password unlock offers biometrics again and plans the restored profile's notifications.
+The phone's data folder is excluded from iOS device backups (iCloud, Finder: `isExcludedFromBackup`, set
+at every start and again after setup and restore through the keychain plugin's Rust-only
+`exclude_from_backup`), so the backup the person saves here is the only copy outside the phone, and the
+Záloha note and the first-run Záloha lead say so.
 
 **Notifications** (`mobile/lib/notification-plan.ts`, `mobile/hooks/use-notification-schedule.ts`).
 Scheduling runs on iOS only (ruling 16 of the Phase 5 plan; `schedulesOnThisDevice`): the Android

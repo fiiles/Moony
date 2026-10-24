@@ -1,4 +1,5 @@
 use std::marker::PhantomData;
+use std::path::Path;
 
 use serde::de::DeserializeOwned;
 use tauri::{plugin::PluginApi, AppHandle, Runtime};
@@ -36,6 +37,12 @@ impl<R: Runtime> Keychain<R> {
     pub fn status(&self) -> Result<Status> {
         Err(KeychainError::Unsupported)
     }
+
+    /// Unsupported like every other call: the desktop never calls it (device backups are a phone
+    /// concern), and an `Ok(false)` would claim a folder that was never touched is not excluded.
+    pub fn exclude_from_backup(&self, _path: &Path) -> Result<bool> {
+        Err(KeychainError::Unsupported)
+    }
 }
 
 #[cfg(test)]
@@ -59,5 +66,9 @@ mod tests {
             Err(KeychainError::Unsupported)
         );
         assert_eq!(keychain.status(), Err(KeychainError::Unsupported));
+        assert_eq!(
+            keychain.exclude_from_backup(Path::new("/data")),
+            Err(KeychainError::Unsupported)
+        );
     }
 }

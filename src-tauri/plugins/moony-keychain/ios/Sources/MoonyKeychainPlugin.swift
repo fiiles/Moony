@@ -14,7 +14,8 @@
 // extension in another file would be an Objective-C category the linker drops.
 //
 // Also the privacy screen: a blur over the key window while the app is not active, so the
-// app-switcher snapshot shows no amounts.
+// app-switcher snapshot shows no amounts; and `excludeFromBackup`, which keeps the app's data
+// folder out of iCloud and Finder device backups.
 
 import LocalAuthentication
 import Security
@@ -53,6 +54,10 @@ struct RemoveArgs: Decodable {
 
 struct PrivacyScreenArgs: Decodable {
   let enabled: Bool
+}
+
+struct ExcludeFromBackupArgs: Decodable {
+  let path: String
 }
 
 private enum ItemRead {
@@ -146,6 +151,31 @@ class MoonyKeychainPlugin: Plugin {
       }
     }
     invoke.resolve()
+  }
+
+  /// Keeps a folder (and everything in it) out of iCloud and Finder device backups: sets
+  /// `isExcludedFromBackup` on it, then reads the value back and answers it, so the caller knows
+  /// the flag took. The app data folder is the one caller (Rust only, no webview permission).
+  @objc func excludeFromBackup(_ invoke: Invoke) {
+    guard let args = arguments(invoke, ExcludeFromBackupArgs.self) else { return }
+    workQueue.async {
+      do {
+        var folder = URL(fileURLWithPath: args.path, isDirectory: true)
+        var values = URLResourceValues()
+        values.isExcludedFromBackup = true
+        try folder.setResourceValues(values)
+        // A fresh URL: `folder` may serve the flag from its own resource-value cache.
+        let stored = try URL(fileURLWithPath: args.path, isDirectory: true)
+          .resourceValues(forKeys: [.isExcludedFromBackupKey])
+        invoke.resolve(["excluded": stored.isExcludedFromBackup ?? false])
+      } catch {
+        // Domain and code only: the error's description can quote the path.
+        let failure = error as NSError
+        self.reject(
+          invoke, .failed,
+          "Could not exclude the folder from device backups: \(failure.domain) \(failure.code)")
+      }
+    }
   }
 
   // MARK: - Keychain

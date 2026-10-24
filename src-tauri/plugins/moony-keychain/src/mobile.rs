@@ -1,10 +1,12 @@
+use std::path::Path;
+
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use tauri::{
     plugin::{PluginApi, PluginHandle},
     AppHandle, Runtime,
 };
 
-use crate::{Result, Status};
+use crate::{KeychainError, Result, Status};
 
 #[cfg(target_os = "android")]
 const PLUGIN_IDENTIFIER: &str = "com.moonyfinance.keychain";
@@ -51,9 +53,19 @@ struct PrivacyScreenPayload {
     enabled: bool,
 }
 
+#[derive(Serialize)]
+struct ExcludeFromBackupPayload<'a> {
+    path: &'a str,
+}
+
 #[derive(Deserialize)]
 struct RetrieveResponse {
     value: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct ExcludeFromBackupResponse {
+    excluded: bool,
 }
 
 impl<R: Runtime> Keychain<R> {
@@ -95,6 +107,23 @@ impl<R: Runtime> Keychain<R> {
     pub fn set_privacy_screen(&self, enabled: bool) -> Result<()> {
         self.0
             .run_mobile_plugin("setPrivacyScreen", PrivacyScreenPayload { enabled })
+            .map_err(Into::into)
+    }
+
+    /// Keeps the folder at `path` (and everything in it) out of device backups and returns whether
+    /// that holds afterwards. iOS sets `isExcludedFromBackup` on the folder and reads the value
+    /// back, so `Ok(false)` means the flag did not take; Android answers `Ok(false)` until its
+    /// backup rules exist (plan Phase 7). The folder must exist. Rust-only, like `store`.
+    pub fn exclude_from_backup(&self, path: &Path) -> Result<bool> {
+        let path = path
+            .to_str()
+            .ok_or_else(|| KeychainError::Failed("the path is not valid UTF-8".to_string()))?;
+        self.0
+            .run_mobile_plugin::<ExcludeFromBackupResponse>(
+                "excludeFromBackup",
+                ExcludeFromBackupPayload { path },
+            )
+            .map(|response| response.excluded)
             .map_err(Into::into)
     }
 

@@ -617,7 +617,7 @@
     "restoreTitle": "Przywracanie i przenoszenie",
     "restoreLead": "Przywróć kopię zapasową z tego telefonu albo przenieś profil z Moony na komputerze: wybierz plik kopii i po przywróceniu odblokuj hasłem, które obowiązywało w chwili jej utworzenia.",
     "restoreConfirmDescription": "Kopia z {{date}} (Moony {{version}}, załączników: {{attachments}}, {{size}}) zastąpi dane na tym telefonie. Jeśli chcesz zachować obecne dane, najpierw zrób ich kopię zapasową. Po zakończeniu Moony się zablokuje; odblokuj je hasłem używanym w chwili tworzenia kopii.",
-    "osBackupNote": "Zaszyfrowany profil jest też w kopii zapasowej samego telefonu (iCloud lub komputer); bez hasła nikt go nie otworzy."
+    "osBackupNote": "Profil nie jest zapisywany w kopii zapasowej samego telefonu (iCloud ani komputer). Jedyną kopią poza telefonem jest kopia zapasowa Moony, którą zapiszesz samodzielnie."
   },
   "firstRun": {
     "privacyLead": "Moony przechowuje wszystko w zaszyfrowanej bazie danych na tym telefonie. Bez chmury, bez konta u nas.",
@@ -646,7 +646,7 @@
       "backup": "Kopia zapasowa"
     },
     "backupTitle": "Zrób kopię zapasową danych",
-    "backupLead": "Ten telefon przechowuje jedyną kopię twoich danych. Zapisz zaszyfrowaną kopię zapasową w iCloud Drive lub w wybranym folderze; Moony nigdy jej nie widzi.",
+    "backupLead": "Ten telefon przechowuje jedyną kopię twoich danych, której nie ma w kopii zapasowej telefonu (iCloud ani komputer). Zapisz zaszyfrowaną kopię zapasową w iCloud Drive lub w wybranym folderze; Moony nigdy jej nie widzi.",
     "currencyPick": "Waluta główna",
     "countryPick": "Kraj bankowości",
     "searchCurrency": "Szukaj waluty"

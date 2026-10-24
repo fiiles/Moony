@@ -168,6 +168,9 @@ pub async fn restore_backup(
     crate::services::auth::logout(&db, &session);
     crate::commands::attachments::wipe_open_copies(&app);
     backup::restore_backup(&dir, &PathBuf::from(path), &known_migrations())?;
+    // The restore may have recreated folders: keep the profile out of device backups (phone only).
+    #[cfg(mobile)]
+    crate::commands::device_backup::exclude_data_dir(&app).await;
     Ok(())
 }
 

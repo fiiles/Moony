@@ -61,6 +61,16 @@ fn spawn_staged_export_sweep(app: tauri::AppHandle) {
     });
 }
 
+/// Phones only: keep the profile folder out of iCloud and computer backups, at every start and off
+/// the main thread (the folder is created first on a first launch). Best effort: a problem is
+/// logged and never blocks startup.
+#[cfg(mobile)]
+fn spawn_device_backup_exclusion(app: tauri::AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        commands::device_backup::exclude_data_dir(&app).await;
+    });
+}
+
 /// Desktop `main` and the generated iOS / Android entry points all start here. The body runs
 /// inside Tauri's own tokio runtime (`async_runtime::block_on`), the same multi-thread runtime
 /// the commands and `tokio::spawn` calls use, so nothing changes for the desktop; a
@@ -86,6 +96,8 @@ async fn run_app() {
             spawn_legacy_temp_cleanup(app.handle().clone());
             #[cfg(mobile)]
             spawn_staged_export_sweep(app.handle().clone());
+            #[cfg(mobile)]
+            spawn_device_backup_exclusion(app.handle().clone());
             // The window starts hidden and the frontend shows it once the theme is stamped (spec D10);
             // if the frontend never does, show it anyway so a broken bundle is not an invisible app.
             let handle = app.handle().clone();

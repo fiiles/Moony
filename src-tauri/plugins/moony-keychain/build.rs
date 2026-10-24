@@ -6,6 +6,7 @@ const COMMANDS: &[&str] = &[
     "remove",
     "set_privacy_screen",
     "status",
+    "exclude_from_backup",
 ];
 
 fn main() {

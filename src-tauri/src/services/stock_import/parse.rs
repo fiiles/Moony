@@ -818,6 +818,7 @@ nedatum;nákup;AAPL;1;185,50;USD\n\
                 name: None,
                 currency: None,
                 skip: true,
+                splits: vec![],
             },
             StockInstrumentOverride {
                 key: "symbol:AAPL".into(),
@@ -825,6 +826,7 @@ nedatum;nákup;AAPL;1;185,50;USD\n\
                 name: Some("Apple".into()),
                 currency: Some("EUR".into()),
                 skip: false,
+                splits: vec![],
             },
         ];
         let rows = "15.01.2024;nákup;msft;1;1;USD\n16.01.2024;nákup;AAPL;1;1;USD\n17.01.2024;prodej;MSFT;1;2;USD\n";

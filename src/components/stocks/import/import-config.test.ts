@@ -818,7 +818,15 @@ describe('date formats', () => {
 
 describe('summarizePreview', () => {
   const preview = (counts: Partial<StockImportPreview['counts']> = {}) => ({
-    counts: { total: 10, willImport: 6, duplicates: 2, skipped: 1, errors: 1, ...counts },
+    counts: {
+      total: 10,
+      willImport: 6,
+      duplicates: 2,
+      skipped: 1,
+      errors: 1,
+      converted: 0,
+      ...counts,
+    },
   });
 
   it('passes the counts of the whole file through', () => {
@@ -828,7 +836,9 @@ describe('summarizePreview', () => {
       skipped: 1,
       errors: 1,
       total: 10,
+      converted: 0,
     });
+    expect(summarizePreview(preview({ converted: 3 })).converted).toBe(3);
   });
 
   it('takes the backend at its word about duplicates imported anyway', () => {
@@ -882,6 +892,13 @@ describe('instrument overrides', () => {
     expect(hasOverrideContent({ key: 'a' })).toBe(false);
     expect(hasOverrideContent({ key: 'a', skip: false })).toBe(false);
     expect(hasOverrideContent({ key: 'a', currency: 'EUR' })).toBe(true);
+    expect(hasOverrideContent({ key: 'a', splits: [] })).toBe(false);
+    expect(
+      hasOverrideContent({
+        key: 'a',
+        splits: [{ effectiveDay: 1, numerator: '10', denominator: '1', action: 'keep' }],
+      })
+    ).toBe(true);
     expect(isSkipped([{ key: 'a', skip: true }], 'a')).toBe(true);
     expect(isSkipped([{ key: 'a', skip: true }], 'b')).toBe(false);
   });

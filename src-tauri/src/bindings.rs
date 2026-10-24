@@ -153,6 +153,8 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::services::stock_import::StockImportTransforms>();
     types.register::<crate::services::stock_import::StockTypeValueMapping>();
     types.register::<crate::services::stock_import::StockInstrumentOverride>();
+    types.register::<crate::services::stock_import::StockSplitOverride>();
+    types.register::<crate::services::stock_import::StockSplitAction>();
     types.register::<crate::services::stock_import::StockCsvInspectOptions>();
     types.register::<crate::services::stock_import::StockCsvInspection>();
     types.register::<crate::services::stock_import::StockColumnSuggestion>();

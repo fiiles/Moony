@@ -70,6 +70,8 @@ pub fn import(
         duplicates: 0,
         skipped: parsed.skipped.len(),
         errors: parsed.errors.len(),
+        // Filled once the import applies the split choices (D14).
+        converted: 0,
         new_positions: Vec::new(),
         updated_positions: Vec::new(),
         messages,
@@ -270,6 +272,7 @@ mod tests {
         let mut cfg = config("custom");
         cfg.instrument_overrides = vec![StockInstrumentOverride {
             skip: true,
+            splits: vec![],
             ..over("symbol:OPT")
         }];
         let mut f = file(vec![
@@ -423,6 +426,7 @@ mod tests {
             name: Some("Vanguard FTSE All-World".into()),
             currency: Some("eur".into()),
             skip: false,
+            splits: vec![],
         }
     }
 

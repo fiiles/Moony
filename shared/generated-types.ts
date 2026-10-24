@@ -2016,7 +2016,11 @@ importAnywayLines?: number[] }
 /**
  * Row counts of a preview, over the whole file (TS `StockImportCounts`).
  */
-export type StockImportCounts = { total: number; willImport: number; duplicates: number; skipped: number; errors: number }
+export type StockImportCounts = { total: number; willImport: number; duplicates: number; skipped: number; errors: number; 
+/**
+ * Rows that will be imported converted to post-split units (D13).
+ */
+converted: number }
 
 /**
  * One security of the file (TS `StockImportInstrument`).
@@ -2064,6 +2068,10 @@ export type StockImportResult = {
  * `None` when nothing was imported (no batch is recorded).
  */
 batchId: string | null; imported: number; duplicates: number; skipped: number; errors: number; 
+/**
+ * Imported rows converted to post-split units (D13).
+ */
+converted: number; 
 /**
  * Tickers of positions the import created.
  */
@@ -2156,7 +2164,12 @@ currency?: string | null;
 /**
  * Exclude every trade of this instrument.
  */
-skip?: boolean }
+skip?: boolean; 
+/**
+ * Splits of the ticker inside the file's trade range (D13). Absent in configs and saved
+ * formats from before splits were known.
+ */
+splits?: StockSplitOverride[] }
 
 /**
  * What to look up on Yahoo Finance for one instrument (TS `StockInstrumentQuery`).
@@ -2390,10 +2403,43 @@ preSplitCount: number;
 verdict: StockSplitVerdict }
 
 /**
+ * What the import does with the file's trades dated before a split (TS `StockSplitAction`).
+ */
+export type StockSplitAction = 
+/**
+ * The file is in pre-split units: its trades dated before the split are converted to
+ * today's units (`quantity × n/d`, `price × d/n`), and a split the ticker's stored rows have
+ * not had yet (`pending`, or unknown to Moony) is applied to them too (spec D13, D14).
+ */
+"convert" | 
+/**
+ * The file is already in today's units: nothing is converted.
+ */
+"keep"
+
+/**
  * What an apply or revert did: the split as it is now, how many transactions were
  * rewritten, and the ticker's first transaction day (where the history rebuild starts).
  */
 export type StockSplitApplyResult = { split: StockSplit; rewritten: number; earliestDay: number | null }
+
+/**
+ * A split of an instrument's ticker and what the import does about it (TS
+ * `StockSplitOverride`, spec D13). The wizard fills it from `check_stock_splits`.
+ */
+export type StockSplitOverride = { 
+/**
+ * UTC midnight of the ex-date; trades dated before it are pre-split.
+ */
+effectiveDay: number; 
+/**
+ * Integer as text, e.g. `"10"` of a 10:1 split.
+ */
+numerator: string; 
+/**
+ * Integer as text, e.g. `"1"` of a 10:1 split.
+ */
+denominator: string; action: StockSplitAction }
 
 /**
  * Where a split record came from.

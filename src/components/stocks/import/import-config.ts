@@ -761,6 +761,8 @@ export interface PreviewSummary {
   skipped: number;
   errors: number;
   total: number;
+  /** Rows to be written that a split converted to post-split units (part of `willImport`). */
+  converted: number;
 }
 
 /**
@@ -776,6 +778,7 @@ export function summarizePreview(preview: Pick<StockImportPreview, 'counts'>): P
     skipped: counts.skipped,
     errors: counts.errors,
     total: counts.total,
+    converted: counts.converted,
   };
 }
 
@@ -792,7 +795,13 @@ type OverridePatch = Partial<
 
 /** An override that changes something; an empty one is dropped. */
 export function hasOverrideContent(override: StockInstrumentOverride): boolean {
-  return Boolean(override.ticker || override.name || override.currency || override.skip);
+  return Boolean(
+    override.ticker ||
+    override.name ||
+    override.currency ||
+    override.skip ||
+    (override.splits?.length ?? 0) > 0
+  );
 }
 
 /**

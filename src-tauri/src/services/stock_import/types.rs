@@ -10,6 +10,7 @@ use specta::Type;
 
 use crate::error::{AppError, Result};
 use crate::services::csv_import::CsvDateRange;
+use crate::services::stock_splits::ratio_parts;
 
 /// Built-in sources (adapters). A hand mapping is `custom`; a saved custom
 /// format is `format:<uuid>`.
@@ -112,6 +113,32 @@ pub struct StockImportTransforms {
     pub broker_id_per_order: bool,
 }
 
+/// What the import does with the file's trades dated before a split (TS `StockSplitAction`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+#[serde(rename_all = "lowercase")]
+pub enum StockSplitAction {
+    /// The file is in pre-split units: its trades dated before the split are converted to
+    /// today's units (`quantity × n/d`, `price × d/n`), and a split the ticker's stored rows have
+    /// not had yet (`pending`, or unknown to Moony) is applied to them too (spec D13, D14).
+    Convert,
+    /// The file is already in today's units: nothing is converted.
+    Keep,
+}
+
+/// A split of an instrument's ticker and what the import does about it (TS
+/// `StockSplitOverride`, spec D13). The wizard fills it from `check_stock_splits`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct StockSplitOverride {
+    /// UTC midnight of the ex-date; trades dated before it are pre-split.
+    #[serde(rename = "effectiveDay")]
+    pub effective_day: i64,
+    /// Integer as text, e.g. `"10"` of a 10:1 split.
+    pub numerator: String,
+    /// Integer as text, e.g. `"1"` of a 10:1 split.
+    pub denominator: String,
+    pub action: StockSplitAction,
+}
+
 /// The user's choice for one instrument in the preview (TS `StockInstrumentOverride`).
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
 pub struct StockInstrumentOverride {
@@ -131,6 +158,10 @@ pub struct StockInstrumentOverride {
     /// Exclude every trade of this instrument.
     #[serde(default)]
     pub skip: bool,
+    /// Splits of the ticker inside the file's trade range (D13). Absent in configs and saved
+    /// formats from before splits were known.
+    #[serde(default)]
+    pub splits: Vec<StockSplitOverride>,
 }
 
 /// Configuration of one preview or import (TS `StockImportConfig`).
@@ -247,6 +278,12 @@ impl StockImportConfig {
                         .all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '^' | '='))
                 {
                     return invalid("tickerInvalid");
+                }
+            }
+            for split in &o.splits {
+                ratio_parts(&split.numerator, &split.denominator)?;
+                if split.effective_day <= 0 {
+                    return invalid("stockSplitDayInvalid");
                 }
             }
         }
@@ -438,6 +475,8 @@ pub struct StockImportCounts {
     pub duplicates: usize,
     pub skipped: usize,
     pub errors: usize,
+    /// Rows that will be imported converted to post-split units (D13).
+    pub converted: usize,
 }
 
 /// Dry run of an import (TS `StockImportPreview`).
@@ -501,6 +540,8 @@ pub struct StockImportResult {
     pub duplicates: usize,
     pub skipped: usize,
     pub errors: usize,
+    /// Imported rows converted to post-split units (D13).
+    pub converted: usize,
     /// Tickers of positions the import created.
     #[serde(rename = "newPositions")]
     pub new_positions: Vec<String>,
@@ -696,12 +737,58 @@ mod tests {
             name: None,
             currency: Some("EUR".into()),
             skip: false,
+            splits: vec![],
         }];
         assert!(c.validate().is_ok());
         assert_eq!(c.override_for("symbol:AAPL").map(|o| o.skip), Some(false));
 
         c.instrument_overrides[0].ticker = Some("BAD TICKER".into());
         assert_eq!(key(c.validate()), "validation.tickerInvalid");
+    }
+
+    #[test]
+    fn split_overrides_are_checked() {
+        let split = |n: &str, d: &str, effective_day: i64| StockSplitOverride {
+            effective_day,
+            numerator: n.into(),
+            denominator: d.into(),
+            action: StockSplitAction::Convert,
+        };
+        let mut c = config();
+        c.instrument_overrides = vec![StockInstrumentOverride {
+            key: "symbol:NVDA".into(),
+            ticker: None,
+            name: None,
+            currency: None,
+            skip: false,
+            splits: vec![split("10", "1", 1_718_000_000)],
+        }];
+        assert!(c.validate().is_ok());
+
+        for (n, d) in [("0", "1"), ("2", "2"), ("1.5", "1"), ("", "1")] {
+            c.instrument_overrides[0].splits = vec![split(n, d, 1_718_000_000)];
+            assert_eq!(
+                key(c.validate()),
+                "validation.stockSplitRatioInvalid",
+                "{n}:{d}"
+            );
+        }
+        c.instrument_overrides[0].splits = vec![split("10", "1", 0)];
+        assert_eq!(key(c.validate()), "validation.stockSplitDayInvalid");
+    }
+
+    #[test]
+    fn an_override_from_before_splits_still_reads() {
+        let over: StockInstrumentOverride =
+            serde_json::from_str(r#"{"key":"symbol:AAPL","skip":true}"#).unwrap();
+        assert!(over.splits.is_empty());
+
+        let over: StockInstrumentOverride = serde_json::from_str(
+            r#"{"key":"symbol:NVDA","splits":[{"effectiveDay":1718000000,"numerator":"10","denominator":"1","action":"convert"}]}"#,
+        )
+        .unwrap();
+        assert_eq!(over.splits[0].action, StockSplitAction::Convert);
+        assert_eq!(over.splits[0].effective_day, 1_718_000_000);
     }
 
     #[test]

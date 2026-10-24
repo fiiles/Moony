@@ -971,6 +971,7 @@ Dividend (Ordinary),2023-12-27 12:05:25,US56035L1044,MAIN,\"Main Street Capital\
             name: None,
             currency: None,
             skip: true,
+            splits: vec![],
         }];
         config.import_anyway_lines = vec![3];
         saved_format(id, &TRADING212_HEADERS, config)

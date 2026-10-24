@@ -2203,6 +2203,26 @@ export interface StockInstrumentOverride {
    */
   currency?: string | null;
   skip?: boolean;
+  /** Splits of the ticker inside the file's trade range (spec D13); absent in older configs. */
+  splits?: StockSplitOverride[];
+}
+
+/**
+ * `convert`: the file is in pre-split units, its trades dated before the split are converted
+ * (quantity × n/d, price × d/n) and a split the stored rows have not had yet is applied to them
+ * too (D14). `keep`: the file is already in today's units.
+ */
+export type StockSplitAction = 'convert' | 'keep';
+
+/** A split of an instrument's ticker and what the import does about it (spec D13). */
+export interface StockSplitOverride {
+  /** UTC midnight of the ex-date; trades dated before it are pre-split. */
+  effectiveDay: number;
+  /** Integer as text, e.g. "10" of a 10:1 split. */
+  numerator: string;
+  /** Integer as text, e.g. "1" of a 10:1 split. */
+  denominator: string;
+  action: StockSplitAction;
 }
 
 export interface StockImportConfig {
@@ -2317,6 +2337,8 @@ export interface StockImportCounts {
   duplicates: number;
   skipped: number;
   errors: number;
+  /** Rows that will be imported converted to post-split units (D13). */
+  converted: number;
 }
 
 export interface StockImportPreview {
@@ -2359,6 +2381,8 @@ export interface StockImportResult {
   duplicates: number;
   skipped: number;
   errors: number;
+  /** Imported rows converted to post-split units (D13). */
+  converted: number;
   newPositions: string[];
   updatedPositions: string[];
   messages: StockRowMessage[];

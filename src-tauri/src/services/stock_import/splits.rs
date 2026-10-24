@@ -11,9 +11,9 @@ use rusqlite::{params, Connection};
 use crate::db::Database;
 use crate::error::Result;
 use crate::services::price_api::{self, HistoricalSeries};
-use crate::services::stock_splits::classify::{classify, verdict_of};
+use crate::services::stock_splits::classify::{classify_cumulative, verdict_of};
 use crate::services::stock_splits::types::ratio_is_valid;
-use crate::services::stock_splits::{DetectedSplit, StockSplitStatus};
+use crate::services::stock_splits::{DetectedSplit, StockSplitStatus, StockSplitVerdict};
 
 use super::simulate::simulate;
 use super::types::{
@@ -206,7 +206,9 @@ fn first_day(group: &TickerGroup) -> Option<i64> {
 }
 
 /// The splits of `series` after the group's first trade, oldest first, each with the D7
-/// verdict of the trades dated before it (a trade on the ex-date is post-split).
+/// verdict of the trades dated before it (a trade on the ex-date is post-split). A trade is
+/// classified against the cumulative factor of every split dated after it, since the file's
+/// rows are the broker's and the closes are adjusted for all splits.
 fn check_group(group: &TickerGroup, series: &HistoricalSeries) -> Vec<StockSplitCheckSplit> {
     let Some(first) = first_day(group) else {
         return Vec::new();
@@ -220,28 +222,41 @@ fn check_group(group: &TickerGroup, series: &HistoricalSeries) -> Vec<StockSplit
     let mut splits: Vec<DetectedSplit> = series
         .splits
         .iter()
-        .filter(|s| s.effective_day > first && ratio_is_valid(s.numerator, s.denominator))
+        .filter(|s| ratio_is_valid(s.numerator, s.denominator))
         .copied()
         .collect();
     splits.sort_by_key(|s| s.effective_day);
     splits.dedup_by_key(|s| s.effective_day);
 
+    // One answer per trade: is it in today's units?
+    let verdict_of_trade: HashMap<usize, StockSplitVerdict> = group
+        .trades
+        .iter()
+        .map(|(line, day, price, currency)| {
+            let ratios: Vec<(u64, u64)> = splits
+                .iter()
+                .filter(|s| s.effective_day > *day)
+                .map(|s| (s.numerator, s.denominator))
+                .collect();
+            let verdict = classify_cumulative(*price, currency, closes.get(day).copied(), &ratios);
+            (*line, verdict)
+        })
+        .collect();
+
     splits
         .into_iter()
+        .filter(|s| s.effective_day > first)
         .map(|split| {
             let trades: Vec<StockSplitCheckTrade> = group
                 .trades
                 .iter()
                 .filter(|&&(_, day, _, _)| day < split.effective_day)
-                .map(|(line, day, price, currency)| StockSplitCheckTrade {
+                .map(|(line, _, _, _)| StockSplitCheckTrade {
                     line: *line,
-                    verdict: classify(
-                        *price,
-                        currency,
-                        closes.get(day).copied(),
-                        split.numerator,
-                        split.denominator,
-                    ),
+                    verdict: verdict_of_trade
+                        .get(line)
+                        .copied()
+                        .unwrap_or(StockSplitVerdict::Unknown),
                 })
                 .collect();
             let verdicts: Vec<_> = trades.iter().map(|t| t.verdict).collect();
@@ -278,7 +293,7 @@ mod tests {
     use super::*;
     use crate::error::AppError;
     use crate::services::price_api::HistoricalPrice;
-    use crate::services::stock_splits::{DetectedSplit, StockSplitVerdict};
+    use crate::services::stock_splits::DetectedSplit;
 
     /// A close quoted mid-afternoon of `day` (the check floors it to the UTC day).
     fn close(day: i64, price: f64, currency: &str) -> HistoricalPrice {
@@ -373,6 +388,39 @@ mod tests {
                 }],
             }]
         );
+    }
+
+    #[tokio::test]
+    async fn trades_before_several_splits_use_the_cumulative_factor() {
+        let series = HistoricalSeries {
+            prices: vec![close(day(100), 95.0, "USD"), close(day(250), 95.0, "USD")],
+            splits: vec![split(day(200), 4, 1), split(day(300), 10, 1)],
+        };
+        let checks = check_with(
+            |_ticker, _from, _to| {
+                let series = series.clone();
+                async move { Ok(series) }
+            },
+            vec![group(vec![
+                (2, day(100), 3800.0, "USD"),
+                (3, day(250), 950.0, "USD"),
+            ])],
+            day(400),
+        )
+        .await;
+
+        let unadjusted = |line| StockSplitCheckTrade {
+            line,
+            verdict: StockSplitVerdict::Unadjusted,
+        };
+        let splits = &checks[0].splits;
+        assert_eq!(splits.len(), 2);
+        assert_eq!(splits[0].effective_day, day(200));
+        assert_eq!(splits[0].verdict, StockSplitVerdict::Unadjusted);
+        assert_eq!(splits[0].trades, vec![unadjusted(2)]);
+        assert_eq!(splits[1].effective_day, day(300));
+        assert_eq!(splits[1].verdict, StockSplitVerdict::Unadjusted);
+        assert_eq!(splits[1].trades, vec![unadjusted(2), unadjusted(3)]);
     }
 
     #[tokio::test]

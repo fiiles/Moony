@@ -21,15 +21,30 @@ pub enum StockSplitVerdict {
 // The wire name is `StockSplitVerdict`; this module and its callers say `Verdict`.
 pub use self::StockSplitVerdict as Verdict;
 
-/// D7 for one transaction. `close` is `(price, currency)` of the trade day when known.
+/// D7 for one transaction against one split `n:d`. `close` is `(price, currency)` of the trade
+/// day when known.
 pub fn classify(price: f64, currency: &str, close: Option<(f64, &str)>, n: u64, d: u64) -> Verdict {
+    classify_cumulative(price, currency, close, &[(n, d)])
+}
+
+/// D7 for one transaction against every split dated after it (`(n, d)` each): the expected
+/// unadjusted price is the close times the cumulative factor, the product of all `n/d`, since
+/// the close is adjusted for all of them. A ratio with a zero part makes the verdict unknown.
+pub fn classify_cumulative(
+    price: f64,
+    currency: &str,
+    close: Option<(f64, &str)>,
+    ratios: &[(u64, u64)],
+) -> Verdict {
     let Some((close, close_currency)) = close else {
         return Verdict::Unknown;
     };
-    if !close_currency.eq_ignore_ascii_case(currency) || n == 0 || d == 0 {
+    if !close_currency.eq_ignore_ascii_case(currency)
+        || ratios.iter().any(|&(n, d)| n == 0 || d == 0)
+    {
         return Verdict::Unknown;
     }
-    let factor = n as f64 / d as f64;
+    let factor: f64 = ratios.iter().map(|&(n, d)| n as f64 / d as f64).product();
     // Close to 1 the two bands overlap, so a price cannot tell the cases apart.
     if factor > 0.5 && factor < 2.0 {
         return Verdict::Unknown;
@@ -110,6 +125,38 @@ mod tests {
         assert_eq!(classify(950.0, "USD", None, 10, 1), Verdict::Unknown);
         assert_eq!(
             classify(950.0, "USD", Some((96.0, "GBP")), 10, 1),
+            Verdict::Unknown
+        );
+    }
+
+    #[test]
+    fn cumulative_factor_of_every_later_split() {
+        // 4:1 then 10:1: an unadjusted price is 40 × the adjusted close.
+        assert_eq!(
+            classify_cumulative(3800.0, "USD", Some((95.0, "USD")), &[(4, 1), (10, 1)]),
+            Verdict::Unadjusted
+        );
+        assert_eq!(
+            classify_cumulative(96.0, "USD", Some((95.0, "USD")), &[(4, 1), (10, 1)]),
+            Verdict::Adjusted
+        );
+        // Against one of the two alone it is out of both bands.
+        assert_eq!(
+            classify_cumulative(3800.0, "USD", Some((95.0, "USD")), &[(10, 1)]),
+            Verdict::Unknown
+        );
+        // Two 3:2 splits leave the overlap: 2.25 × close is unadjusted.
+        assert_eq!(
+            classify_cumulative(225.0, "USD", Some((100.0, "USD")), &[(3, 2), (3, 2)]),
+            Verdict::Unadjusted
+        );
+        // A split and its reverse cancel out: the bands overlap.
+        assert_eq!(
+            classify_cumulative(100.0, "USD", Some((100.0, "USD")), &[(2, 1), (1, 2)]),
+            Verdict::Unknown
+        );
+        assert_eq!(
+            classify_cumulative(100.0, "USD", Some((100.0, "USD")), &[]),
             Verdict::Unknown
         );
     }

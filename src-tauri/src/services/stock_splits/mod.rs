@@ -21,7 +21,7 @@ use uuid::Uuid;
 use crate::error::{AppError, Result};
 use crate::services::investments::{ensure_valid_holdings_history, recalculate_investment_metrics};
 use crate::services::stock_import::types::StockSplitOverride;
-use classify::{classify, verdict_of};
+use classify::{classify_cumulative, verdict_of};
 use scale::{scale_amount, Rounding};
 use types::ratio_is_valid;
 
@@ -455,7 +455,7 @@ fn query(conn: &Connection, filter: &str, values: impl Params) -> Result<Vec<Sto
             )| {
                 let status = StockSplitStatus::parse(&status)?;
                 let verdict = if status == StockSplitStatus::Pending {
-                    stored_verdict(conn, &ticker, effective_day, &numerator, &denominator)?
+                    stored_verdict(conn, &ticker, effective_day)?
                 } else {
                     StockSplitVerdict::Unknown
                 };
@@ -488,19 +488,37 @@ fn pre_split_count(conn: &Connection, ticker: &str, effective_day: i64) -> Resul
 }
 
 /// D7 for a stored split: each pre-split transaction against the stored close of its UTC day
-/// (D18: adjusted once a rebuild covered that day).
+/// (D18: adjusted once a rebuild covered that day), with the cumulative factor of the ticker's
+/// pending splits dated after the transaction (applied ones are already in the rows, dismissed
+/// ones count as adjusted).
 fn stored_verdict(
     conn: &Connection,
     ticker: &str,
     effective_day: i64,
-    numerator: &str,
-    denominator: &str,
 ) -> Result<StockSplitVerdict> {
-    let Ok((n, d)) = ratio_parts(numerator, denominator) else {
-        return Ok(StockSplitVerdict::Unknown);
+    let pending: Vec<(i64, (u64, u64))> = {
+        let mut stmt = conn.prepare(
+            "SELECT effective_day, numerator, denominator FROM stock_splits
+             WHERE ticker = ?1 AND status = 'pending'",
+        )?;
+        let rows = stmt
+            .query_map(params![ticker], |r| {
+                Ok((
+                    r.get::<_, i64>(0)?,
+                    r.get::<_, String>(1)?,
+                    r.get::<_, String>(2)?,
+                ))
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        rows.into_iter()
+            .filter_map(|(day, n, d)| ratio_parts(&n, &d).ok().map(|ratio| (day, ratio)))
+            .collect()
     };
+    if !pending.iter().any(|&(day, _)| day == effective_day) {
+        return Ok(StockSplitVerdict::Unknown);
+    }
     let mut stmt = conn.prepare(
-        "SELECT t.price_per_unit, t.currency, h.price, h.currency
+        "SELECT t.price_per_unit, t.currency, t.transaction_date, h.price, h.currency
          FROM investment_transactions t
          LEFT JOIN stock_value_history h
              ON h.ticker = t.ticker
@@ -512,22 +530,27 @@ fn stored_verdict(
             Ok((
                 r.get::<_, String>(0)?,
                 r.get::<_, String>(1)?,
-                r.get::<_, Option<String>>(2)?,
+                r.get::<_, i64>(2)?,
                 r.get::<_, Option<String>>(3)?,
+                r.get::<_, Option<String>>(4)?,
             ))
         })?
         .map(|row| {
-            let (price, currency, close, close_currency) = row?;
+            let (price, currency, day, close, close_currency) = row?;
             let close = close
                 .and_then(|c| c.trim().parse::<f64>().ok())
                 .zip(close_currency);
+            let ratios: Vec<(u64, u64)> = pending
+                .iter()
+                .filter(|&&(split_day, _)| split_day > day)
+                .map(|&(_, ratio)| ratio)
+                .collect();
             Ok(match price.trim().parse::<f64>() {
-                Ok(price) => classify(
+                Ok(price) => classify_cumulative(
                     price,
                     &currency,
                     close.as_ref().map(|(c, cur)| (*c, cur.as_str())),
-                    n,
-                    d,
+                    &ratios,
                 ),
                 Err(_) => StockSplitVerdict::Unknown,
             })
@@ -840,6 +863,54 @@ mod tests {
         assert_eq!(verdict("950", true), StockSplitVerdict::Unadjusted);
         assert_eq!(verdict("96", true), StockSplitVerdict::Adjusted);
         assert_eq!(verdict("950", false), StockSplitVerdict::Unknown);
+    }
+
+    #[test]
+    fn verdict_uses_the_cumulative_factor_of_the_pending_splits() {
+        let conn = setup_test_db();
+        for (id, day_number) in [("h1", 100), ("h2", 250)] {
+            conn.execute(
+                "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+                 VALUES (?1, 'NVDA', ?2, '1', '95', 'USD')",
+                rusqlite::params![id, day(day_number)],
+            )
+            .unwrap();
+        }
+        // Bought before both splits at 40 × the adjusted close, and between them at 10 ×.
+        tx(&conn, "NVDA", "buy", "1", "3800", day(100));
+        tx(&conn, "NVDA", "buy", "1", "950", day(250));
+        record_detected(
+            &conn,
+            "NVDA",
+            &[split(200, 4, 1), split(300, 10, 1)],
+            StockSplitSource::Yahoo,
+        )
+        .unwrap();
+        let verdicts = |conn: &Connection| -> Vec<(i64, StockSplitVerdict)> {
+            list_for_ticker(conn, "NVDA")
+                .unwrap()
+                .iter()
+                .map(|s| (s.effective_day, s.verdict))
+                .collect()
+        };
+        assert_eq!(
+            verdicts(&conn),
+            vec![
+                (day(300), StockSplitVerdict::Unadjusted),
+                (day(200), StockSplitVerdict::Unadjusted),
+            ]
+        );
+
+        // A dismissed split counts as adjusted: the 3800 buy is then 4 × the expected price.
+        let four = find(&conn, "NVDA", day(200)).unwrap().unwrap();
+        dismiss(&conn, &four.id).unwrap();
+        assert_eq!(
+            verdicts(&conn),
+            vec![
+                (day(300), StockSplitVerdict::Unadjusted),
+                (day(200), StockSplitVerdict::Unknown),
+            ]
+        );
     }
 
     #[test]

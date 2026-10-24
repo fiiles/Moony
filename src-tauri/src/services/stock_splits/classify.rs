@@ -9,14 +9,17 @@ pub(crate) const BAND_LOW: f64 = 0.7;
 /// Upper bound of the band a price must fall in, relative to its expected value.
 pub(crate) const BAND_HIGH: f64 = 1.4;
 
-/// Whether a transaction's price is already expressed in post-split terms.
+/// Whether a transaction's price is already expressed in post-split terms (D7).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize, Type)]
 #[serde(rename_all = "lowercase")]
-pub enum Verdict {
+pub enum StockSplitVerdict {
     Adjusted,
     Unadjusted,
     Unknown,
 }
+
+// The wire name is `StockSplitVerdict`; this module and its callers say `Verdict`.
+pub use self::StockSplitVerdict as Verdict;
 
 /// D7 for one transaction. `close` is `(price, currency)` of the trade day when known.
 pub fn classify(price: f64, currency: &str, close: Option<(f64, &str)>, n: u64, d: u64) -> Verdict {

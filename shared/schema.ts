@@ -724,6 +724,16 @@ export const insertInvestmentTransactionSchema = z.object({
 });
 export type InsertInvestmentTransaction = z.infer<typeof insertInvestmentTransactionSchema>;
 
+// Manual stock split (Rust `services::stock_splits::types::InsertStockSplit`, spec D11). The
+// backend validates the ratio and the day; `effectiveDay` is the UTC midnight of the ex-date.
+export const insertStockSplitSchema = z.object({
+  ticker: z.string().min(1, 'validation.tickerRequired'),
+  effectiveDay: z.number().int(),
+  numerator: z.string().regex(/^\d+$/, 'validation.stockSplitRatioInvalid'),
+  denominator: z.string().regex(/^\d+$/, 'validation.stockSplitRatioInvalid'),
+});
+export type InsertStockSplit = z.infer<typeof insertStockSplitSchema>;
+
 // Stock Monitor schema
 export const insertWatchedStockSchema = z.object({
   ticker: z.string().min(1, 'validation.tickerInvalid'),
@@ -2376,6 +2386,43 @@ export interface SavedStockImportFormat {
   headerSignature: string;
   config: StockImportConfig;
   createdAt: number;
+}
+
+// ============================================================================
+// Stock splits (src-tauri/src/services/stock_splits/types.rs) — spec 2026-10-24-stock-splits
+// ============================================================================
+
+export type StockSplitStatus = 'pending' | 'applied' | 'dismissed';
+export type StockSplitSource = 'yahoo' | 'manual' | 'import';
+/** Whether the pre-split transactions are already in post-split units (spec D7). */
+export type StockSplitVerdict = 'adjusted' | 'unadjusted' | 'unknown';
+
+export interface StockSplit {
+  id: string;
+  ticker: string;
+  /** UTC midnight of the ex-date. */
+  effectiveDay: number;
+  /** Integer as text, e.g. "4". */
+  numerator: string;
+  /** Integer as text, e.g. "1". */
+  denominator: string;
+  source: StockSplitSource;
+  status: StockSplitStatus;
+  detectedAt: number;
+  resolvedAt: number | null;
+  /** Transactions rewritten by the last apply. */
+  appliedCount: number | null;
+  /** Transactions of the ticker dated before effectiveDay, now. */
+  preSplitCount: number;
+  /** D7 from stock_value_history; 'unknown' unless pending. */
+  verdict: StockSplitVerdict;
+}
+
+/** What an apply or revert did; `earliestDay` is the ticker's first transaction day. */
+export interface StockSplitApplyResult {
+  split: StockSplit;
+  rewritten: number;
+  earliestDay: number | null;
 }
 
 export type FlowSource = 'explicit' | 'ownAccount' | 'category' | 'direction';

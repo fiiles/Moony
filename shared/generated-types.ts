@@ -1100,6 +1100,11 @@ export type InsertScopedLearning = { bankAccountId: string; isCredit: boolean; p
 export type InsertStockInvestment = { ticker: string; companyName: string }
 
 /**
+ * A split the user records by hand (D11). The caller trims and uppercases `ticker`.
+ */
+export type InsertStockSplit = { ticker: string; effectiveDay: number; numerator: string; denominator: string }
+
+/**
  * Data for creating a stock tag
  */
 export type InsertStockTag = { name: string; color: string | null; groupId: string | null }
@@ -2351,6 +2356,57 @@ export type StockRowStatus =
  * Cannot be imported (see `message`).
  */
 "error"
+
+/**
+ * One `stock_splits` row plus what is derived on read: the number of transactions dated
+ * before the split (D6) and, for a pending split, the D7 verdict.
+ */
+export type StockSplit = { id: string; ticker: string; 
+/**
+ * UTC midnight of the ex-date.
+ */
+effectiveDay: number; 
+/**
+ * Integer as text, e.g. `"4"`.
+ */
+numerator: string; 
+/**
+ * Integer as text, e.g. `"1"`.
+ */
+denominator: string; source: StockSplitSource; status: StockSplitStatus; detectedAt: number; resolvedAt: number | null; 
+/**
+ * Transactions rewritten by the last apply.
+ */
+appliedCount: number | null; 
+/**
+ * Transactions of the ticker dated before `effective_day`, now.
+ */
+preSplitCount: number; 
+/**
+ * D7 from `stock_value_history`; `unknown` unless pending.
+ */
+verdict: StockSplitVerdict }
+
+/**
+ * What an apply or revert did: the split as it is now, how many transactions were
+ * rewritten, and the ticker's first transaction day (where the history rebuild starts).
+ */
+export type StockSplitApplyResult = { split: StockSplit; rewritten: number; earliestDay: number | null }
+
+/**
+ * Where a split record came from.
+ */
+export type StockSplitSource = "yahoo" | "manual" | "import"
+
+/**
+ * Where a split stands: detected and waiting, applied to the stored rows, or dismissed.
+ */
+export type StockSplitStatus = "pending" | "applied" | "dismissed"
+
+/**
+ * Whether a transaction's price is already expressed in post-split terms (D7).
+ */
+export type StockSplitVerdict = "adjusted" | "unadjusted" | "unknown"
 
 /**
  * Stock tag for categorizing investments (e.g., Growth, Value, Dividend)

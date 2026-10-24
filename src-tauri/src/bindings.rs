@@ -171,6 +171,14 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::services::stock_import::StockImportUndoResult>();
     types.register::<crate::services::stock_import::SavedStockImportFormat>();
 
+    // Stock splits
+    types.register::<crate::services::stock_splits::StockSplit>();
+    types.register::<crate::services::stock_splits::InsertStockSplit>();
+    types.register::<crate::services::stock_splits::StockSplitVerdict>();
+    types.register::<crate::services::stock_splits::StockSplitApplyResult>();
+    types.register::<crate::services::stock_splits::StockSplitStatus>();
+    types.register::<crate::services::stock_splits::StockSplitSource>();
+
     // Stock tags models
     types.register::<crate::models::StockTag>();
     types.register::<crate::models::InsertStockTag>();

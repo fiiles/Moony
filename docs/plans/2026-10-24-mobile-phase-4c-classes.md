@@ -206,4 +206,17 @@ Rulings taken while planning (spec §8.8 is the authority; each says what it cos
 10. The crypto and other-asset heroes reuse the `stocks:` legend and callout strings (Hodnota, Nákup, Prodej, Vloženo): the words are class-neutral.
 11. (Task 6) Uzavřené pozice becomes a sheet listing the closed positions with their realized result instead of a toggle that mixed them into the list, as the spec's `···` item names a list.
 
-Rulings taken while executing: (appended as the ledger records them)
+Rulings taken while executing (ledger `.superpowers/sdd/2026-10-24-mobile-phase-4c-classes/progress.md`):
+
+12. (P1) `WatchKeyData.tsx` joins the files allowed to format unmasked prices: the 52-week low and high are Yahoo's public prices like the hero's. In the end one function formats them all (`watchPriceText` in `watch-detail.ts`).
+13. (P2) A zero-coupon bond with a maturity still gets its maturity row (principal × quantity) in the dated list; only bonds without a maturity are left out. Costs one row per zero-coupon bond if the owner wanted them hidden.
+14. (P3, P4) The other-asset trace takes the quantity held on each day from the trades (an asset without trades uses today's quantity), uses a trade's own price as an estimate until the first valuation in the price currency exists, and carries the last estimate before the shown period onto its start (a step line holds its value). Without this a fresh asset and an asset not revalued inside the period showed no line. Costs trade prices standing in for estimates until the first revaluation.
+15. Deleting a coin invalidates the contract's keys with `refetchType: 'inactive'`: the detail reads its coin from the list query (there is no single-coin command), so an active refetch flashed "not found" behind the closing sheet; the next visit refetches.
+16. Coin quantities show eight decimals (`quantityDigits`, Akcie keeps four), as the desktop crypto detail does.
+17. Dluhopisy says when the bonds could not be loaded through a phone-side observer on the same `['bonds']` key, so `src/hooks` stays untouched.
+18. An empty Akcie (no positions, nothing watched) keeps the Pozice · Sledované segment, so the Sledované search, the only phone entry to following a stock, is always reachable.
+19. The watch chart's value axis stays masked under hide amounts (`ScrubChart` masks every axis and is shared); the price, the stats and the key data stay visible.
+20. The CSV export prepends a UTF-8 BOM, as the desktop export does, so Excel and Numbers read accents.
+21. (F1) The first purchase date in the add-asset sheet is the native date input (the phone's `DayPickerSheet` picks a day of the month only), capped at today with an error for a future day.
+22. The final review's two Important findings (the bond rate note hid its figure; saving notes flashed the old text) and nine minor ones were fixed in one wave (6a98aaef); the remaining minors are listed in the hand-over.
+23. `feat/mobile` 8a109181 (Phase 6a dark mode, Dynamic Type, Vzhled) was merged into this branch at the parent's request (d0c6003e), and this phase's screens were brought to README §13 "A new phone screen must" (da6ffa6d): fields in `text-m-field`, minimum heights around button labels, one `type-size-ok` marker for the notes' inline code. Shared desktop pieces the class pages use (`ConversionQualityNote`, `EmptyState`, `ChartLegend`) still do not scale with Dynamic Type, as on the Phase 6a pages: a phone-wide follow-up.

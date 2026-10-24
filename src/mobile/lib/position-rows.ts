@@ -8,10 +8,17 @@ export const ROWS_FOLD = 8;
 
 interface Sortable {
   ticker: string;
-  companyName: string;
+  /** A stock's name; a coin has `name` instead. */
+  companyName?: string;
+  name?: string;
   quantity: number;
   marketValue: number | null;
   gainLossPercent: number | null;
+}
+
+/** What a row is called: the company name or the coin name, the ticker when there is neither. */
+export function displayName(row: { ticker: string; companyName?: string; name?: string }): string {
+  return row.companyName || row.name || row.ticker;
 }
 
 /** Lower case without diacritics: "Nestlé" is found by "nestle". */
@@ -19,27 +26,25 @@ const plain = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toL
 
 /** Whether a position's ticker or name contains the query; an empty query matches everything. */
 export function searchMatches(
-  row: Pick<Sortable, 'ticker' | 'companyName'>,
+  row: Pick<Sortable, 'ticker' | 'companyName' | 'name'>,
   query: string
 ): boolean {
   const needle = plain(query.trim());
   if (needle === '') return true;
-  return plain(row.ticker).includes(needle) || plain(row.companyName).includes(needle);
+  return plain(row.ticker).includes(needle) || plain(displayName(row)).includes(needle);
 }
 
 /**
- * The positions list as the page shows it: closed positions (quantity 0) only on request, the
- * search applied, then sorted — by value or return highest first with the unknown ones last, or by
- * name. Equal rows keep their order.
+ * The positions list as the page shows it: the open positions only (the closed ones, quantity 0,
+ * are the sheet Uzavřené pozice), the search applied, then sorted — by value or return highest
+ * first with the unknown ones last, or by name. Equal rows keep their order.
  */
 export function positionRows<T extends Sortable>(
   rows: readonly T[],
-  opts: { sort: PositionSort; search: string; showClosed: boolean }
+  opts: { sort: PositionSort; search: string }
 ): T[] {
-  const { sort, search, showClosed } = opts;
-  const shown = rows.filter(
-    (row) => (showClosed || row.quantity > 0) && searchMatches(row, search)
-  );
+  const { sort, search } = opts;
+  const shown = rows.filter((row) => row.quantity > 0 && searchMatches(row, search));
   switch (sort) {
     case 'value':
       return shown.sort((a, b) => compareKnown(b.marketValue, a.marketValue));
@@ -47,9 +52,7 @@ export function positionRows<T extends Sortable>(
       return shown.sort((a, b) => compareKnown(b.gainLossPercent, a.gainLossPercent));
     case 'name':
       return shown.sort((a, b) =>
-        (a.companyName || a.ticker).localeCompare(b.companyName || b.ticker, undefined, {
-          sensitivity: 'base',
-        })
+        displayName(a).localeCompare(displayName(b), undefined, { sensitivity: 'base' })
       );
   }
 }

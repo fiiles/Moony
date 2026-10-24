@@ -519,13 +519,21 @@
       "count_many": "{{count}} emissioni",
       "count_other": "{{count}} emissioni",
       "nearest": "prossima scadenza {{month, lower}}",
-      "coupon": "cedola {{amount}} / anno"
+      "coupon": "cedola {{amount}} / anno",
+      "upcoming": "Prossime cedole e scadenze",
+      "noUpcoming": "Nel prossimo anno non sono previste cedole né scadenze.",
+      "allRepaid": "Tutte le emissioni sono rimborsate. Attiva «{{action}}» nel menu ··· per vederle.",
+      "loadFailed": "Impossibile caricare le obbligazioni.",
+      "rateNote": "{{rate}} annuo ponderato"
     },
     "otherAssets": {
       "count_one": "{{count}} voce",
       "count_many": "{{count}} voci",
       "count_other": "{{count}} voci",
-      "valuedOn": "valutato il {{date}}"
+      "valuedOn": "valutato il {{date}}",
+      "moreDetails": "Altri dati",
+      "loadFailed": "Impossibile caricare i beni.",
+      "notFound": "Bene non trovato"
     },
     "realEstate": {
       "personal": "uso personale",
@@ -581,6 +589,15 @@
       "targetReached": "obiettivo raggiunto",
       "dayChange": "oggi"
     },
+    "crypto": {
+      "largestNote": "{{share}} delle cripto",
+      "heldNote": "{{share}} delle cripto · {{date}}"
+    },
+    "closed": {
+      "on": "chiusa il {{date}}",
+      "empty": "Nessuna posizione chiusa finora.",
+      "onlyClosed": "Qui ci sono solo posizioni chiuse. Apri «{{action}}» nel menu ··· per vederle."
+    },
     "position": {
       "heroLabel": "Valore della posizione · {{quantity}} {{unit}}",
       "perUnit": "{{price}} per unità",
@@ -602,6 +619,17 @@
       "followed": "Aggiunta alla lista di osservazione",
       "range52": "Intervallo 52 settimane",
       "renamed": "Nome salvato"
+    },
+    "watch": {
+      "stats": {
+        "today": "Oggi",
+        "since": "Da quando segui",
+        "noTarget": "nessun obiettivo"
+      },
+      "above": "Sopra",
+      "below": "Sotto",
+      "openPosition": "Apri posizione",
+      "notesEmpty": "Ancora nessuna nota. Tocca Modifica per aggiungere note di ricerca — il markdown funziona."
     }
   },
   "settings": {

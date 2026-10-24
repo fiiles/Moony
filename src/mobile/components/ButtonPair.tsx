@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 
 interface PairButton {
   label: string;
@@ -16,11 +17,20 @@ const PAIR_BUTTON =
  * Two buttons sharing a row (README §13, `.m-btn-pair`): the account detail's "Zaznamenat
  * zůstatek" (primary) and "Importovat výpis" (secondary) under the nav bar — the spec's kept
  * exception to one primary per screen. A label that does not fit wraps to a second line instead
- * of overflowing (German at 360).
+ * of overflowing (German at 360). A full-width button that belongs under the pair (an other
+ * asset's Přecenit) takes the pair's own 10 pt gap: `className="mb-2.5"` (`.m-btn-pair--stack`).
  */
-export function ButtonPair({ primary, secondary }: { primary: PairButton; secondary: PairButton }) {
+export function ButtonPair({
+  primary,
+  secondary,
+  className,
+}: {
+  primary: PairButton;
+  secondary: PairButton;
+  className?: string;
+}) {
   return (
-    <div className="mb-3.5 grid grid-cols-2 gap-2.5">
+    <div className={cn('mb-3.5 grid grid-cols-2 gap-2.5', className)}>
       <Button className={PAIR_BUTTON} onClick={primary.onClick} disabled={primary.disabled}>
         <primary.icon strokeWidth={1.75} aria-hidden />
         {primary.label}

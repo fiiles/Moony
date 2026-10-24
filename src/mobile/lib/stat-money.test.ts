@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { statMoneyOptions } from './stat-money';
+import { statMoneyOptions, statTone } from './stat-money';
 
 describe('statMoneyOptions', () => {
   it('shows whole amounts under a million', () => {
@@ -15,5 +15,17 @@ describe('statMoneyOptions', () => {
       decimals: 2,
       signed: true,
     });
+  });
+});
+
+describe('statTone', () => {
+  it('has no tone at zero or for an unknown result', () => {
+    expect(statTone(null)).toBeUndefined();
+    expect(statTone(0)).toBeUndefined();
+  });
+
+  it('is green above zero and red under it', () => {
+    expect(statTone(2)).toBe('gain');
+    expect(statTone(-1)).toBe('loss');
   });
 });

@@ -99,6 +99,8 @@
     <p>Komponenty telefonu z <code>mobile.css</code> na tokenech z <code>tokens.css</code>: obrazovka s navigační lištou a jednou posuvnou plochou, tab bar, Údržba, hero (i kompaktní), řádek statistik, entitní řádky (i s datovým čipem, štítkem v názvu a panelem přejetí), rozložení majetku, segment, karta vývoje, pole, tlačítka, sheet a Cashflow (období, stepper, pruhy, poznámka, řádek s ukazatelem). React shell v <code>src/mobile/</code> jim odpovídá vizuálně. Rámečky mají šířky 360 (nejužší běžný Android), 390 (reference) a 430 pt s bezpečnými okraji daného zařízení; texty jsou německy, protože němčina běží nejdéle.</p>
     <p>Pod každým rámečkem je výsledek kontroly vodorovného přetečení (nic nesmí přesáhnout obrazovku, posuvná plocha se nesmí posouvat do stran) a seznam textů, které se zkrátí výpustkou. Obrazovky se dají posouvat: velký titulek se po odjetí složí do navigační lišty.</p>
     <p>Majetek přidává alokační pruh s legendou (<code>.m-abar</code>, <code>.m-legend</code>), řádek změny (<code>.m-change</code>), stránku třídy Akcie (podřádek, hero s legendou značek, nástrojová lišta s řazením, složený seznam) a detail pozice (přerušovaná čára „Vloženo“, dvojice tlačítek, dvě řady statistik, řádky obchodů se zábleskem, karta řádků štítek–hodnota).</p>
+    <p>Ostatní aktivum přidává pod dvojici tlačítek plnošířkové sekundární (<code>.m-btn-pair--stack</code>), pole bez jednotky uvnitř (<code>.m-field__i--plain</code>: název, datum) a formulář se sbaleným řádkem „Weitere Angaben“ (<code>.m-disclose</code> mimo sheet transakce).</p>
+    <p>Sledované přidává detail sledovaného tickeru: hero s přerušovanou čárou cíle (<code>cost</code>), dvojici Nastavit cíl · Koupit, statistiky dnes · cíl · od sledování a poznámky jako markdown v kartě <code>.m-notes</code> (nadpisy, seznamy, odkazy, kód, citace, tabulka; v úpravě prosté textové pole).</p>
     <p>Přepínač Světlý / Tmavý (nebo klávesa <code>D</code>, nebo <code>?theme=dark</code> v adrese) přepíše <code>data-theme</code> na <code>&lt;html&gt;</code>: každý rámeček se vykreslí na tmavých tokenech z <code>tokens.css</code> a kontrola přetečení pod nimi proběhne znovu.</p>
     <div class="m-seg theme-seg" id="theme-seg" role="group" aria-label="Motiv"><button class="m-seg__btn is-active" type="button" data-value="light" aria-pressed="true">Světlý</button><button class="m-seg__btn" type="button" data-value="dark" aria-pressed="false">Tmavý</button></div>
     <p style="margin-top: 14px">Přepínač Velikosti písma (nebo <code>?size=130</code> / <code>?size=max</code> v adrese) nastaví <code>--m-type-scale</code> na <code>&lt;html&gt;</code> na 1 / 1,3 / 3,1 (nejvyšší nastavení iOS „Přístupnost“: 53 pt tělo z 17). Textové role rostou nejvýš na 130 %, display a hodnoty statistik nejvýš na 110 %, tab bar a osy grafů zůstávají; řádky se zvětšují, nic nesmí přetéct do šířky a kontrola pod rámečky proběhne znovu.</p>
@@ -266,6 +268,26 @@
     <h2>Detail pozice: hodnota, vloženo a obchody</h2>
     <p>Pozice otevřená z Akcií na 360, 390 a 430: zpět s názvem rodiče, ticker jako jediný titulek a podřádek <code>.m-nav__sub</code> (název a měna); hero s grafem, jehož přerušovaná čára „Vloženo“ (<code>cost</code>, 1,5 pt, <code>chart-cost</code>) a značky nákupu a prodeje mají legendu; dvojice tlačítek Koupit · Prodat (<code>.m-btn-pair</code>); dvě řady po třech statistikách (hodnota v měně akcie, cena, vloženo; nerealizovaný a realizovaný výsledek, dividendy), jeden výsledek v <code>--gain</code>. Transakce jsou segment Vše · Nákupy · Prodeje a řádky obchodů: nákup s „−“, prodej v <code>gain</code> s „+“ a součtem v původní měně pod částkou; druhý řádek ukazuje záblesk <code>.m-row--flash.is-hot</code>, který po klepnutí na značku v grafu naskočí a za 1,2 s odezní. Poslední řádek <code>.m-rows__more</code> rozbalí zbytek, na konci je karta <code>.m-kvcard</code> z řádků <code>.m-kv</code> („Über den Fonds“).</p>
     <div class="phones" id="position"></div>
+  </section>
+
+  <section class="part">
+    <h2>Ostatní aktivum: stránka třídy, světlý detail a přidání</h2>
+    <p>Stránka třídy (spec §8.8) na 360, 390 a 430: zpět s názvem Majetku, jeden titulek a dvě tlačítka vpravo (<code>···</code> a <code>+</code>); hero s hodnotou aktiv a čarou bez legendy značek (aktiva v seznamu nemají obchodní značky) a řádky aktiv: ikona drahokamu v čipu, název, v podřádku „množství × cena“ v měně aktiva nebo „bewertet am“ u aktiva, z něhož se nic nedrží, hodnota v hlavní měně a pod ní změna proti nákupní ceně (<code>.m-change</code>; aktivum, které nic nestálo, změnu nemá). Aktivum v měně bez kurzu má „—“ bez změny.</p>
+    <div class="phones" id="otherAssets"></div>
+    <p style="margin-top: 26px">Detail aktiva: ve středu navigační lišty název, pod ní množství a měna ceny (<code>.m-nav__sub</code>); hero s hodnotou v měně ceny (native je závazné, ADR 0012) a se schodovou čarou odhadů — každý odhad drží do dalšího, bez přerušované čáry „Vloženo“ — a se značkami nákupu a prodeje; dvojice Kaufen · Verkaufen a pod ní plnošířkové sekundární tlačítko Neu bewerten (<code>.m-btn-pair--stack</code> + <code>.m-btn--block</code>: dvojice si nechá vlastní mezeru 10 pt místo 14); tři statistiky (množství s cenou za kus, průměrná nákupní cena s celkem investovaným, nerealizovaný výsledek v <code>--gain</code>) a transakce s řádky obchodů.</p>
+    <div class="phones" id="otherAsset"></div>
+    <p style="margin-top: 26px">Přidání aktiva (spec §10.5, „povinná pole první, zbytek pod Další údaje“): celovýškový sheet; nahoře název (<code>.m-field__i--plain</code>), měna jako řádek s šipkou v kartě <code>.m-kvcard</code> (otevře výběr měny) a dnešní cena za kus s měnou uvnitř pole a nápovědou. Pod nimi sbalený řádek „Weitere Angaben“ (<code>.m-disclose</code>, 44 pt, šipka dolů): každé otevření sheetu začíná sbalené, a uložení, které selže na skrytém poli, ho rozbalí.</p>
+    <div class="phones" id="otherAssetAdd"></div>
+    <p style="margin-top: 26px">Rozbalené „Weitere Angaben“ (šipka nahoru): první nákup — množství s jednotkou, cena za kus s měnou, datum jako pole <code>type="date"</code> (<code>.m-field__i--plain</code>, platformní výběr) a věta o tom, že z vyplněného nákupu vznikne první transakce — a výnos: typ jako řádky výběru <code>.m-pick</code> a hodnota s měnou nebo „%“ uvnitř pole, jakmile typ není „Keiner“.</p>
+    <div class="phones" id="otherAssetAddOpen"></div>
+  </section>
+
+  <section class="part">
+    <h2>Sledované: detail tickeru a poznámky</h2>
+    <p>Detail sledované akcie (spec §8.8) na 360, 390 a 430: zpět s názvem Akcií, ticker jako jediný titulek a podřádek <code>.m-nav__sub</code> (název a burza); hero s cenou v měně akcie, čarou ceny a přerušovanou čárou cíle (<code>cost</code>, 1,5 pt, <code>chart-cost</code>) s legendou „Kurs“ a „Zielkurs“; dvojice Ziel bearbeiten · Kaufen (u akcie, kterou nesledujete, je hlavním tlačítkem Beobachten); tři statistiky — dnes, cíl s tím, kolik zbývá, a změna od začátku sledování; poznámky jako markdown v kartě <code>.m-notes</code> pod hlavou sekce s textovou akcí „Bearbeiten“ (nadpisy, seznam, číslovaný seznam, odkaz s dlouhou adresou, <code>kód</code>, blok kódu a tabulka, které se posouvají do stran uvnitř karty, citace) a karta klíčových údajů <code>.m-kvcard</code>, jejíž poslední řádek „Im Portfolio“ otevře pozici. Ceny tickeru jsou veřejná čísla z Yahoo, proto zůstávají vidět i při skrytých částkách.</p>
+    <div class="phones" id="watch"></div>
+    <p style="margin-top: 26px">Poznámky v úpravě: karta se změní na prosté textové pole (<code>.m-notes__area</code>, písmo těla, osm řádků) a pod ním Abbrechen · Speichern (<code>.m-notes__edit</code>). Nástrojová lišta ani náhled na telefonu nejsou: markdown se píše jako text a čte se v zobrazení.</p>
+    <div class="phones" id="watchEdit"></div>
   </section>
 
   <section class="part">
@@ -1756,16 +1778,243 @@ Fondsvorschuss 2&nbsp;000 Kč monatlich.</p></div>
   </div>
 </template>
 
+<!-- The Ostatní aktiva class page (pushed on Majetek), rendered at the three widths. -->
+<template id="other-assets-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Vermögen</span></button></div>
+      <h1 class="m-nav__title">Sonstiges Vermögen</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button><button class="m-nav__btn" type="button" aria-label="Vermögenswert hinzufügen" data-icon="plus"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <div class="m-card m-card--hero">
+        <div class="m-hero__label">Wert</div>
+        <div class="m-hero__value">207&nbsp;800 Kč</div>
+        <div class="m-hero__delta"><span class="m-badge m-badge--gain">▲ 1,2 %</span><span>+ 2&nbsp;400 Kč in 30 Tagen · investiert 190&nbsp;000 Kč</span></div>
+        <div class="m-hero__seg"><div class="m-seg"><button class="m-seg__btn is-active" type="button">30 Tage</button><button class="m-seg__btn" type="button">3 Monate</button><button class="m-seg__btn" type="button">Dieses Jahr</button><button class="m-seg__btn" type="button">1 Jahr</button><button class="m-seg__btn" type="button">Alle</button></div></div>
+        <svg class="m-hero__chart demo-chart" data-chart></svg>
+      </div>
+      <div data-rows="assets"></div>
+    </main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+  </div>
+</template>
+
+<!-- The asset's light detail (pushed on Ostatní aktiva), rendered at the three widths. -->
+<template id="other-asset-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Sonstiges Vermögen</span></button></div>
+      <h1 class="m-nav__title">Goldbarren</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">12 Stk. · CZK</p>
+      <div class="m-card m-card--hero">
+        <div class="m-hero__label">Positionswert · 12 Stk.</div>
+        <div class="m-hero__value">22&nbsp;800 Kč</div>
+        <div class="m-hero__delta"><span class="m-badge m-badge--gain">▲ 4,6 %</span><span>+ 1&nbsp;000 Kč in 30 Tagen</span></div>
+        <div class="m-hero__seg"><div class="m-seg"><button class="m-seg__btn is-active" type="button">30 Tage</button><button class="m-seg__btn" type="button">3 Monate</button><button class="m-seg__btn" type="button">Dieses Jahr</button><button class="m-seg__btn" type="button">1 Jahr</button><button class="m-seg__btn" type="button">Alle</button></div></div>
+        <svg class="m-hero__chart demo-chart" data-chart="step"></svg>
+        <div class="demo-legend">
+          <span><i class="demo-legend__line"></i>Positionswert</span>
+          <span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><polygon points="5,0 10,10 0,10" fill="var(--chart-line)"/></svg>Kauf</span>
+          <span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><polygon points="0.75,0.75 9.25,0.75 5,9.25" fill="var(--paper)" stroke="var(--chart-line)" stroke-width="1.5"/></svg>Verkauf</span>
+        </div>
+      </div>
+      <div class="m-btn-pair m-btn-pair--stack">
+        <button class="m-btn m-btn--primary" type="button" data-icon="plus" data-size="16"><span>Kaufen</span></button>
+        <button class="m-btn m-btn--secondary" type="button" data-icon="minus" data-size="16"><span>Verkaufen</span></button>
+      </div>
+      <button class="m-btn m-btn--secondary m-btn--block" type="button" data-icon="arrow-up" data-size="16"><span>Neu bewerten</span></button>
+      <div class="m-stats">
+        <div class="m-stat"><div class="m-stat__l">Menge</div><div class="m-stat__v">12</div><div class="m-stat__n">1&nbsp;900 Kč pro Stück</div></div>
+        <div class="m-stat"><div class="m-stat__l">Ø Kurs</div><div class="m-stat__v">1&nbsp;814 Kč</div><div class="m-stat__n">investiert 21&nbsp;771 Kč</div></div>
+        <div class="m-stat"><div class="m-stat__l">Nicht realisierte Rendite</div><div class="m-stat__v m-stat__v--gain">+ 1&nbsp;029 Kč</div><div class="m-stat__n">+ 4,7 % ggü. Investition</div></div>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Transaktionen</span><span class="m-sec__n">3</span></div>
+      <div class="m-seg" style="margin-bottom: 8px"><button class="m-seg__btn is-active" type="button">Alle</button><button class="m-seg__btn" type="button">Käufe</button><button class="m-seg__btn" type="button">Verkäufe</button></div>
+      <div data-rows="assetTrades"></div>
+    </main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+  </div>
+</template>
+
+<!-- The add-asset sheet over the class page: the fold closed (every opening starts so) and open. -->
+<template id="other-asset-add-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Vermögen</span></button></div>
+      <h1 class="m-nav__title">Sonstiges Vermögen</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button><button class="m-nav__btn" type="button" aria-label="Vermögenswert hinzufügen" data-icon="plus"></button></div>
+    </header>
+    <main class="m-screen__body"><div data-rows="assets"></div></main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Sonstigen Vermögenswert hinzufügen">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Sonstigen Vermögenswert hinzufügen</div><div class="m-sheet__s">Fügen Sie Ihrem Portfolio einen neuen individuellen Vermögenswert hinzu.</div></div>
+      <div class="m-sheet__body">
+        <div class="m-field"><label class="m-field__l">Name des Vermögenswerts</label><input class="m-field__i m-field__i--plain" aria-label="Name des Vermögenswerts" value="Goldbarren" placeholder="z. B. Goldbarren"></div>
+        <div class="m-card m-kvcard" style="margin-bottom: 12px"><button class="m-kv m-kv--tap" type="button" aria-label="Währung, CZK · Tschechische Krone"><span class="m-kv__l">Währung</span><div class="m-kv__r"><div class="m-kv__v">CZK · Tschechische Krone</div></div><span class="m-kv__chev" data-icon="chevron-right" data-size="16"></span></button></div>
+        <div class="m-field"><label class="m-field__l">Aktueller Marktpreis (pro Stück)</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" aria-label="Aktueller Marktpreis (pro Stück)" placeholder="0" value="1 900"><span class="m-field__u">CZK</span></div><p class="m-field__h">Ihre Schätzung pro Stück für heute; später durch Neubewertung änderbar.</p></div>
+        <button class="m-disclose" type="button" aria-expanded="false"><span>Weitere Angaben</span><span data-icon="chevron-down" data-size="16"></span></button>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Vermögenswert hinzufügen</span></button></div>
+    </div>
+  </div>
+</template>
+
+<template id="other-asset-add-open-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Vermögen</span></button></div>
+      <h1 class="m-nav__title">Sonstiges Vermögen</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button><button class="m-nav__btn" type="button" aria-label="Vermögenswert hinzufügen" data-icon="plus"></button></div>
+    </header>
+    <main class="m-screen__body"><div data-rows="assets"></div></main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Sonstigen Vermögenswert hinzufügen">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Sonstigen Vermögenswert hinzufügen</div><div class="m-sheet__s">Fügen Sie Ihrem Portfolio einen neuen individuellen Vermögenswert hinzu.</div></div>
+      <div class="m-sheet__body">
+        <div class="m-field"><label class="m-field__l">Name des Vermögenswerts</label><input class="m-field__i m-field__i--plain" aria-label="Name des Vermögenswerts" value="Goldbarren" placeholder="z. B. Goldbarren"></div>
+        <div class="m-card m-kvcard" style="margin-bottom: 12px"><button class="m-kv m-kv--tap" type="button" aria-label="Währung, CZK · Tschechische Krone"><span class="m-kv__l">Währung</span><div class="m-kv__r"><div class="m-kv__v">CZK · Tschechische Krone</div></div><span class="m-kv__chev" data-icon="chevron-right" data-size="16"></span></button></div>
+        <div class="m-field"><label class="m-field__l">Aktueller Marktpreis (pro Stück)</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" aria-label="Aktueller Marktpreis (pro Stück)" placeholder="0" value="1 900"><span class="m-field__u">CZK</span></div><p class="m-field__h">Ihre Schätzung pro Stück für heute; später durch Neubewertung änderbar.</p></div>
+        <button class="m-disclose" type="button" aria-expanded="true"><span>Weitere Angaben</span><span data-icon="chevron-up" data-size="16"></span></button>
+        <div class="m-t-sub" style="margin: 8px 4px 6px; color: var(--ink-3); font-weight: 600">Erster Kauf (optional)</div>
+        <div class="m-field"><label class="m-field__l">Menge</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" aria-label="Menge" placeholder="0" value="12"><span class="m-field__u">Stk.</span></div></div>
+        <div class="m-field"><label class="m-field__l">Preis / Stück</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" aria-label="Preis / Stück" placeholder="0" value="1 780"><span class="m-field__u">CZK</span></div></div>
+        <div class="m-field"><label class="m-field__l">Datum</label><input class="m-field__i m-field__i--plain" type="date" aria-label="Datum" value="2026-03-03"></div>
+        <p class="m-field__h">Wenn ausgefüllt, wird eine Kauftransaktion angelegt.</p>
+        <div class="m-t-sub" style="margin: 20px 4px 4px; color: var(--ink-3); font-weight: 600">Ertrag (optional)</div>
+        <p class="m-field__h" style="margin: 0 2px 4px">Erträge, die dieser Vermögenswert jedes Jahr abwirft, zum Beispiel Miete oder Zinsen.</p>
+        <div class="m-t-sub" style="margin: 8px 4px 2px; color: var(--ink-3); font-weight: 600">Ertragsart</div>
+        <div role="radiogroup" aria-label="Ertragsart">
+          <button class="m-pick" type="button" role="radio" aria-checked="false" aria-label="Keiner"><span class="m-pick__l">Keiner</span></button>
+          <button class="m-pick" type="button" role="radio" aria-checked="true" aria-label="Fester Betrag (jährlich)"><span class="m-pick__l">Fester Betrag (jährlich)</span><span class="m-pick__check" data-icon="check" data-size="18"></span></button>
+          <button class="m-pick" type="button" role="radio" aria-checked="false" aria-label="% des Kaufpreises"><span class="m-pick__l">% des Kaufpreises</span></button>
+          <button class="m-pick" type="button" role="radio" aria-checked="false" aria-label="% des Marktpreises"><span class="m-pick__l">% des Marktpreises</span></button>
+        </div>
+        <div style="margin-top: 8px"><div class="m-field"><label class="m-field__l">Ertragswert</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" aria-label="Ertragswert" placeholder="0" value="1 200"><span class="m-field__u">CZK</span></div></div></div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>Vermögenswert hinzufügen</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The watch detail (a watched ticker pushed on Akcie): hero with the dashed target line, button pair, three stats, the notes as markdown, key data. -->
+<template id="watch-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Aktien</span></button></div>
+      <h1 class="m-nav__title">AAPL</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Apple Inc. · NASDAQ</p>
+      <div class="m-card m-card--hero">
+        <div class="m-hero__label">Kurs</div>
+        <div class="m-hero__value">187,40&nbsp;$</div>
+        <div class="m-hero__delta"><span class="m-badge m-badge--gain">▲ 3,1 %</span><span>+ 5,62&nbsp;$ in 30 Tagen</span></div>
+        <div class="m-hero__seg"><div class="m-seg"><button class="m-seg__btn is-active" type="button">30 Tage</button><button class="m-seg__btn" type="button">3 Monate</button><button class="m-seg__btn" type="button">Dieses Jahr</button><button class="m-seg__btn" type="button">1 Jahr</button><button class="m-seg__btn" type="button">Alle</button></div></div>
+        <svg class="m-hero__chart demo-chart" data-chart data-cost="flat"></svg>
+        <div class="demo-legend">
+          <span><i class="demo-legend__line"></i>Kurs</span>
+          <span><i class="demo-legend__dash"></i>Zielkurs</span>
+        </div>
+      </div>
+      <div class="m-btn-pair">
+        <button class="m-btn m-btn--primary" type="button" data-icon="target" data-size="16"><span>Ziel bearbeiten</span></button>
+        <button class="m-btn m-btn--secondary" type="button" data-icon="plus" data-size="16"><span>Kaufen</span></button>
+      </div>
+      <div class="m-stats">
+        <div class="m-stat"><div class="m-stat__l">Heute</div><div class="m-stat__v m-stat__v--gain">+ 1,2 %</div><div class="m-stat__n">+ 2,22&nbsp;$</div></div>
+        <div class="m-stat"><div class="m-stat__l">Ziel</div><div class="m-stat__v">210,00&nbsp;$</div><div class="m-stat__n">noch 12,1 %</div></div>
+        <div class="m-stat"><div class="m-stat__l">Seit Beobachtung</div><div class="m-stat__v m-stat__v--gain">+ 8,4 %</div><div class="m-stat__n">12. 8.</div></div>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Notizen</span><button class="m-sec__a" type="button">Bearbeiten</button></div>
+      <div class="m-notes">
+        <h2>Investmentthese</h2>
+        <p>Starkes <strong>Servicegeschäft</strong> mit hohen Margen. Nachkaufen unter <code>165&nbsp;$</code>, Details im <a href="#">Aktionärsbrief</a>.</p>
+        <h3>Beobachten</h3>
+        <ul>
+          <li>Umsatz im Bereich Dienstleistungen</li>
+          <li>Aktienrückkäufe: <del>2 Mrd.</del> 3 Mrd. $
+            <ul><li>Dividende wächst weiter</li></ul>
+          </li>
+        </ul>
+        <ol>
+          <li>Bericht Ende Oktober abwarten</li>
+          <li>Nicht vor dem Bericht nachkaufen</li>
+        </ol>
+        <blockquote>Geduld ist auch eine Position.</blockquote>
+        <p><a href="#">https://investor.example.com/aktionaersbrief-2026-q3-ausfuehrliche-fassung</a></p>
+        <pre><code>Kaufpreis ≤ 0,8 × fairer Wert (Stand Oktober 2026)</code></pre>
+        <table>
+          <tr><th>Quartal</th><th>Umsatz</th><th>Marge</th><th>Ausblick</th></tr>
+          <tr><td>Q2 2026</td><td>85,8 Mrd.</td><td>44,5 %</td><td>solide</td></tr>
+          <tr><td>Q3 2026</td><td>94,9 Mrd.</td><td>45,2 %</td><td>besser</td></tr>
+        </table>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Kennzahlen</span></div>
+      <div class="m-card m-kvcard">
+        <div class="m-kv"><span class="m-kv__l">Börse</span><div class="m-kv__r"><div class="m-kv__v">NASDAQ</div></div></div>
+        <div class="m-kv"><span class="m-kv__l">Währung</span><div class="m-kv__r"><div class="m-kv__v">USD</div></div></div>
+        <div class="m-kv"><span class="m-kv__l">Marktkapitalisierung</span><div class="m-kv__r"><div class="m-kv__v">2,87 Bio. $</div></div></div>
+        <div class="m-kv"><span class="m-kv__l">KGV</span><div class="m-kv__r"><div class="m-kv__v">31,4</div></div></div>
+        <div class="m-kv"><span class="m-kv__l">Dividendenrendite</span><div class="m-kv__r"><div class="m-kv__v">0,44 %</div></div></div>
+        <div class="m-kv m-kv--stack"><div class="m-kv__r"><span class="m-kv__l">52-Wochen-Spanne</span><div class="m-kv__v">164,08 $ – 199,62 $</div></div></div>
+        <button class="m-kv m-kv--tap" type="button" aria-label="Im Portfolio, Im Portfolio öffnen"><span class="m-kv__l">Im Portfolio</span><div class="m-kv__r"><div class="m-kv__v">Position öffnen</div></div><span class="m-kv__chev" data-icon="chevron-right" data-size="16"></span></button>
+      </div>
+    </main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+  </div>
+</template>
+
+<!-- The notes in edit mode: the section head without its action, the plain text area, Abbrechen · Speichern. -->
+<template id="watch-edit-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Aktien</span></button></div>
+      <h1 class="m-nav__title">AAPL</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Apple Inc. · NASDAQ</p>
+      <div class="m-sec"><span class="m-sec__t">Notizen</span></div>
+      <textarea class="m-notes__area" rows="8" aria-label="Notizen" placeholder="Notizen in Markdown schreiben …">## Investmentthese
+Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
+
+- Umsatz im Bereich Dienstleistungen
+- Aktienrückkäufe beobachten
+
+> Geduld ist auch eine Position.</textarea>
+      <div class="m-notes__edit">
+        <button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button>
+        <button class="m-btn m-btn--primary" type="button"><span>Speichern</span></button>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Kennzahlen</span></div>
+      <div class="m-card m-kvcard">
+        <div class="m-kv"><span class="m-kv__l">Börse</span><div class="m-kv__r"><div class="m-kv__v">NASDAQ</div></div></div>
+        <div class="m-kv"><span class="m-kv__l">Währung</span><div class="m-kv__r"><div class="m-kv__v">USD</div></div></div>
+      </div>
+    </main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+  </div>
+</template>
+
 <script src="icons.js"></script>
 <script>
 (function () {
   /* Lucide paths the style-guide set does not carry yet (same as the prototype). */
   Object.assign(window.ICONS, {
+    "target": '<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
     "briefcase": '<path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/>',
     "eye": '<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
     "trending-down": '<path d="M16 17h6v-6"/><path d="m22 17-8.5-8.5-5 5L2 7"/>',
     "chevron-left": '<path d="m15 18-6-6 6-6"/>',
-    "arrow-up": '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
     "external-link": '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
     "clock": '<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>',
     "banknote": '<rect width="20" height="12" x="2" y="6" rx="2"/><circle cx="12" cy="12" r="2"/><path d="M6 12h.01M18 12h.01"/>',
@@ -1786,7 +2035,8 @@ Fondsvorschuss 2&nbsp;000 Kč monatlich.</p></div>
     "coins": '<circle cx="8" cy="8" r="6"/><path d="M18.09 10.37A6 6 0 1 1 10.34 18"/><path d="M7 6h1v4"/><path d="m16.71 13.88.7.71-2.82 2.82"/>',
     "hash": '<line x1="4" x2="20" y1="9" y2="9"/><line x1="4" x2="20" y1="15" y2="15"/><line x1="10" x2="8" y1="3" y2="21"/><line x1="16" x2="14" y1="3" y2="21"/>',
     "scale": '<path d="M12 3v18"/><path d="m19 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M3 7h1a17 17 0 0 0 8-2 17 17 0 0 0 8 2h1"/><path d="m5 8 3 8a5 5 0 0 1-6 0zV7"/><path d="M7 21h10"/>',
-    "utensils": '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>'
+    "utensils": '<path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"/>',
+    "arrow-up": '<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>'
   });
 
   var TABS = [
@@ -1874,6 +2124,21 @@ Fondsvorschuss 2&nbsp;000 Kč monatlich.</p></div>
       row("", "Verkauf · 5 Stk.", "2. 6. 2026 · 104,10 €", "+ 12&nbsp;880 Kč", "520,50 €", { icon: "trending-down", chip: "m-row__chip--gain", gain: true, cls: "m-row--flash" }),
       row("", "Kauf · 15 Stk.", "15. 5. 2026 · 101,80 €", "− 38&nbsp;020 Kč", "1&nbsp;527,00 €", { icon: "trending-up", cls: "m-row--flash" }),
       '<button class="m-rows__more" type="button">Alle 28 anzeigen</button>'
+    ],
+    /* The Ostatní aktiva list: "quantity × price" in the asset's own currency, the value in the report currency over the
+       change against the purchase cost; an asset held in none shows the day it was valued, one without a rate "—" and no
+       change, one that cost nothing no change. */
+    assets: [
+      row("", "Goldbarren", "12 × 1&nbsp;900 Kč", "22&nbsp;800 Kč", up("4,7", "+ 1&nbsp;029 Kč"), { icon: "gem" }),
+      row("", "Škoda 110 R, Baujahr 1974", "1 × 185&nbsp;000 Kč", "185&nbsp;000 Kč", "", { icon: "gem" }),
+      row("", "Münzsammlung", "bewertet am 5. 9.", "0 Kč", "", { icon: "gem" }),
+      row("", "Anteil an der Brauerei Černá Hora", "40 × 12,50 AED", "—", "", { icon: "gem" })
+    ],
+    /* An asset's trades in its own currency (the report currency too here, so the total says it twice as the app does). */
+    assetTrades: [
+      row("", "Kauf · 4 Stk.", "14. 10. 2026 · 1&nbsp;900 Kč", "− 7&nbsp;600 Kč", "7&nbsp;600,00 Kč", { icon: "trending-up" }),
+      row("", "Verkauf · 2 Stk.", "2. 8. 2026 · 1&nbsp;820 Kč", "+ 3&nbsp;640 Kč", "3&nbsp;640,00 Kč", { icon: "trending-down", chip: "m-row__chip--gain", gain: true }),
+      row("", "Kauf · 10 Stk.", "3. 3. 2026 · 1&nbsp;780 Kč", "− 17&nbsp;800 Kč", "17&nbsp;800,00 Kč", { icon: "trending-up" })
     ],
     accounts: [
       row("FIO", "Girokonto", "Fio · CZK · Auszug 10. 10.", "86&nbsp;420 Kč", "+ 9&nbsp;870 Kč · 30 Tage"),
@@ -2072,6 +2337,12 @@ Fondsvorschuss 2&nbsp;000 Kč monatlich.</p></div>
   frames("importCorrect", "import-correct-frame", "Import: Korrektur");
   frames("importOrder", "import-order-frame", "Import: Datumsreihenfolge");
   frames("queue", "queue-frame", "Zařazení plateb");
+  frames("otherAssets", "other-assets-frame", "Aktiva");
+  frames("otherAsset", "other-asset-frame", "Aktivum");
+  frames("otherAssetAdd", "other-asset-add-frame", "Aktivum hinzufügen");
+  frames("otherAssetAddOpen", "other-asset-add-open-frame", "Weitere Angaben");
+  frames("watch", "watch-frame", "Beobachtet");
+  frames("watchEdit", "watch-edit-frame", "Notizen bearbeiten");
 
   /* Budget rows: category chip as on the Cashflow rows, the limit as the value, validity and the changes to
      come in the sub-line, "Geplant" / "beendet" under the value (an ended row at half strength); the rows of
@@ -2243,7 +2514,7 @@ Fondsvorschuss 2&nbsp;000 Kč monatlich.</p></div>
     }
     svg.setAttribute("viewBox", "0 0 300 160"); svg.setAttribute("preserveAspectRatio", "none");
     /* A position's dashed "Vloženo": a step line under the value that climbs with every buy. */
-    var cost = svg.hasAttribute("data-cost") ? '<path class="demo-chart__cost" d="M0 126H90V120H190V104H300"/>' : "";
+    var cost = svg.hasAttribute("data-cost") ? '<path class="demo-chart__cost" d="' + (svg.dataset.cost === "flat" ? "M0 14H300" : "M0 126H90V120H190V104H300") + '"/>' : "";
     svg.innerHTML = '<path d="' + line + 'L300 160L0 160Z"/>' + cost + '<path d="' + line + '"/>';
   });
 
@@ -2276,8 +2547,9 @@ Fondsvorschuss 2&nbsp;000 Kč monatlich.</p></div>
       var edge = screen.getBoundingClientRect(), over = [], cut = [], scrolls = 0, strips = 0;
       screen.querySelectorAll("*").forEach(function (el) {
         if (el.closest("svg") && el.tagName.toLowerCase() !== "svg") return;
-        /* The zoomed viewer's content is twice the box's width and scrolls inside it (`.m-docview__box`), like a segment. */
-        if (el.parentElement.closest(".m-seg, .m-flows, .m-docview__box")) return;
+        /* A box that scrolls sideways inside the card holds what is wider than it, like a segment: the zoomed viewer's
+           content (twice the box's width, `.m-docview__box`) and a code block or a table of the watch notes. */
+        if (el.parentElement.closest(".m-seg, .m-flows, .m-docview__box, .m-notes pre, .m-notes table")) return;
         var r = el.getBoundingClientRect();
         if (!r.width && !r.height) return;
         /* A swiped row is clipped by its `.m-swipe`, so what lies beyond the edge is not seen; the pill row and the

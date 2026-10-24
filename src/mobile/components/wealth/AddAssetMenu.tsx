@@ -2,7 +2,6 @@ import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Bitcoin, FileText, Gem, House, TrendingUp, type LucideIcon } from 'lucide-react';
 import { AddCryptoModal } from '@/components/crypto/AddCryptoModal';
-import { AddOtherAssetModal } from '@/components/other-assets/AddOtherAssetModal';
 import { AddRealEstateModal } from '@/components/real-estate/AddRealEstateModal';
 import { AddInvestmentModal } from '@/components/stocks/AddInvestmentModal';
 import { BondsFormDialog } from '@/components/bonds/BondsFormDialog';
@@ -14,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useBondMutations } from '@/hooks/use-bond-mutations';
+import { OtherAssetAddSheet } from '@/mobile/sheets/OtherAssetAddSheet';
 
 /** What the `+` can add: the five kinds of asset Majetek lists (spec §6). */
 export type AddKind = 'investment' | 'crypto' | 'bond' | 'property' | 'asset';
@@ -39,9 +39,10 @@ interface AddAssetMenuProps {
 
 /**
  * The typed `+` of Majetek (spec §6): a menu of the five kinds of asset — investici, kryptoměnu,
- * dluhopis, nemovitost, aktivum — and the five desktop add dialogs it opens, mounted once here
- * (the phone has no add forms of its own yet). The dialogs write through the desktop's own
- * mutations, so the mutation contract and the snapshot are theirs.
+ * dluhopis, nemovitost, aktivum — and the four desktop add dialogs and the phone's own add sheet
+ * for an other asset it opens, mounted once here. The dialogs write through the desktop's own
+ * mutations, so the mutation contract and the snapshot are theirs; the sheet's are
+ * `useOtherAssetMutations`.
  */
 export function AddAssetMenu({ trigger, open, onOpenChange }: AddAssetMenuProps) {
   const { t } = useTranslation('mobile');
@@ -84,7 +85,7 @@ export function AddAssetMenu({ trigger, open, onOpenChange }: AddAssetMenuProps)
         isLoading={createBond.isPending}
       />
       <AddRealEstateModal open={kind === 'property'} onOpenChange={closeWhenDismissed} />
-      <AddOtherAssetModal open={kind === 'asset'} onOpenChange={closeWhenDismissed} />
+      <OtherAssetAddSheet open={kind === 'asset'} onOpenChange={closeWhenDismissed} />
     </>
   );
 }

@@ -151,6 +151,7 @@
   font-size: var(--m-fs-section); font-weight: var(--m-fw-section); letter-spacing: var(--m-ls-section); line-height: 1.25;
 }
 .m-sec__a { position: relative; flex: none; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: 600; white-space: nowrap; }
+button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-size: var(--m-fs-sub); font-weight: 600; } /* the action that does not navigate ("Upravit" on the notes) */
 .m-sec__a::after { content: ""; position: absolute; inset: -14px -8px; } /* a 44 px hit area around the 12 px text */
 .m-sec__n { flex: none; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: 600; white-space: nowrap; } /* the section's one number, nothing to tap */
 
@@ -575,7 +576,8 @@
    `ink-4`), the decimal keypad, optionally the ± toggle on the left (below). The placeholder (`ink-5`) is the last known value. An error is 12 / 600
    `loss` under the field; without an error a hint may stand there instead (11 `ink-3`). A month field is the same field with the
    platform's month picker (`input type="month"`, no unit inside, `min` and `max` unset), two side by side in a 12 px grid, with an
-   optional text action beside the label ("Bez konce").
+   optional text action beside the label ("Bez konce"). A text field (the asset's name) and a date field (`input type="date"`, the day of
+   its first purchase) are the same field without the unit and take the month field's padding: `--plain`.
    A field is never under 16 px (`--m-fs-field`). The shell also floors every `input`, `textarea` and `select` it
    shows at that size under `html[data-shell='mobile']` (src/index.css), which is how the desktop dialogs the phone
    opens as they are keep iOS from zooming into a focused field; this contract draws the phone's own fields only. */
@@ -630,7 +632,7 @@
 }
 .m-field__a::after { content: ""; position: absolute; inset: -12px -6px 0; }
 .m-field__a:active { color: var(--ink); }
-.m-field__i--month { padding: 0 14px; text-align: left; -webkit-appearance: none; appearance: none; }
+.m-field__i--month, .m-field__i--plain { padding: 0 14px; text-align: left; -webkit-appearance: none; appearance: none; }
 
 /* ===== Buttons at phone size =====
    At least 48 px, radius 10, label 15 / 600. Primary dark material (one per screen), secondary
@@ -662,6 +664,10 @@
 .m-btn-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
 .m-btn-pair .m-btn { padding: 8px 10px; font-size: var(--m-fs-lead); }
 .m-btn-pair .m-btn > span { overflow: visible; overflow-wrap: break-word; hyphens: auto; }
+/* A full-width secondary under a pair (the other asset's "Přecenit" under Koupit · Prodat): the pair gives up its
+   14 px below for the 10 px of its own gap, and the button (`.m-btn--block`) keeps the 14 px every block leaves. */
+.m-btn-pair--stack { margin-bottom: 10px; }
+.m-btn-pair--stack + .m-btn--block { margin-bottom: 14px; }
 
 /* ===== Sheet: forms and pickers rise from the bottom =====
    Paper, top radius 17, drag handle, title 20, one sentence, body, footer on well with the ghost
@@ -972,6 +978,58 @@
 .m-field__i--date::-webkit-date-and-time-value { text-align: left; } /* WKWebView centres the value of a date input */
 .m-field__l--split { display: flex; justify-content: space-between; gap: 12px; } /* the label with "nepovinné" at its right end */
 .m-field__l--split > :last-child { color: var(--ink-4); font-weight: 500; }
+
+/* ===== The notes of a watched stock (spec §8.8; `WatchNotes.tsx`) =====
+   The watch detail is made of existing blocks — the hero with its dashed target line (the cost line, `chart-cost`), `.m-btn-pair`,
+   `.m-stats`, the section heads and `.m-kvcard` — and one of its own: the notes, which are markdown. `.m-notes` is the card the
+   rendered markdown sits in (paper, `line` hairline, radius 15, `sh-1`, 14 / 16 px of padding, 14 px under) and the typography of
+   what the markdown makes inside it, on the phone's tokens only: 15 / 450 `ink-2` text with 10 px between paragraphs; the headings in
+   `ink` (h1 the section size, h2 the row size, h3 and h4 the body size at 600) with 12 px above and 6 below; lists at 20 px with 3 px
+   between the items; strong in `ink` 600; a link `ink`, underlined 3 px off; inline code on `well-2` (radius 6, monospace at .9 em); a code
+   block on `well` (radius 10, 12 px, scrolls sideways, never wraps); a quote with a 3 px `line-strong` rule at its left in `ink-3`;
+   a table at 12 px that scrolls sideways inside the card. Long words and addresses wrap anywhere. No notes: the same card with the
+   sentence "Noch keine Notizen" in `ink-3` (`--empty`). Editing replaces the card with a plain text area (`__area`: the field's look,
+   field type, eight rows, no resize) and the two buttons of a sheet's footer under it (`__edit`: ghost Zrušit, primary Uložit). */
+.m-notes {
+  margin-bottom: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-4);
+  background: var(--paper); box-shadow: var(--sh-1); color: var(--ink-2);
+  font-size: var(--m-fs-body); font-weight: var(--m-fw-body); line-height: 1.45; overflow-wrap: anywhere;
+}
+.m-notes > :first-child { margin-top: 0; }
+.m-notes > :last-child { margin-bottom: 0; }
+.m-notes p { margin: 0 0 10px; }
+.m-notes h1, .m-notes h2, .m-notes h3, .m-notes h4 { margin: 12px 0 6px; color: var(--ink); }
+.m-notes h1 { font-size: var(--m-fs-section); font-weight: var(--m-fw-section); letter-spacing: var(--m-ls-section); line-height: 1.25; }
+.m-notes h2 { font-size: var(--m-fs-row); font-weight: var(--m-fw-row); letter-spacing: var(--m-ls-row); line-height: 1.3; }
+.m-notes h3, .m-notes h4 { font-size: var(--m-fs-body); font-weight: 600; }
+.m-notes ul, .m-notes ol { margin: 0 0 10px; padding-left: 20px; }
+.m-notes ul { list-style: disc; }
+.m-notes ol { list-style: decimal; }
+.m-notes li { margin-bottom: 3px; }
+.m-notes li > ul, .m-notes li > ol { margin: 3px 0 0; }
+.m-notes strong { color: var(--ink); font-weight: 600; }
+.m-notes del { color: var(--ink-3); }
+.m-notes a { color: var(--ink); text-decoration: underline; text-underline-offset: 3px; }
+.m-notes code { padding: 1px 5px; border-radius: 6px; background: var(--well-2); font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: .9em; }
+.m-notes pre { margin: 0 0 10px; padding: 10px 12px; overflow-x: auto; border-radius: 10px; background: var(--well); }
+.m-notes pre code { padding: 0; background: none; font-size: var(--m-fs-sub); overflow-wrap: normal; }
+.m-notes blockquote { margin: 0 0 10px; padding-left: 12px; border-left: 3px solid var(--line-strong); color: var(--ink-3); }
+.m-notes hr { margin: 12px 0; border: 0; border-top: 1px solid var(--line); }
+.m-notes table { display: block; max-width: 100%; margin: 0 0 10px; overflow-x: auto; border-collapse: collapse; font-size: var(--m-fs-sub); }
+.m-notes th, .m-notes td { padding: 4px 8px; }
+.m-notes th { border-bottom: 1px solid var(--line); color: var(--ink); font-weight: 600; text-align: left; }
+.m-notes td { border-bottom: 1px solid var(--line-soft); }
+.m-notes img { max-width: 100%; height: auto; }
+.m-notes--empty { color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.5; }
+.m-notes__area {
+  display: block; width: 100%; margin: 0; padding: 12px 14px; resize: none; border: 1px solid var(--line-strong); border-radius: 10px;
+  background: var(--paper); color: var(--ink); font: inherit; font-size: var(--m-fs-field); font-weight: var(--m-fw-body); line-height: 1.45;
+  transition: border-color var(--t-fast), box-shadow var(--t-fast);
+}
+.m-notes__area::placeholder { color: var(--ink-5); }
+.m-notes__area:focus { outline: 0; border-color: var(--focus-border); box-shadow: var(--focus-ring); }
+.m-notes__edit { display: flex; align-items: center; gap: 10px; margin: 10px 0 14px; }
+.m-notes__edit .m-btn--primary { flex: 1; }
 
 /* ===== Import sheet (spec §8.6, README §13 "Import sheet") =====
    One tall sheet (`.m-sheet--full`) whose stages swap the title, the sentence, the body and the footer: pick a

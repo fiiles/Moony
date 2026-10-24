@@ -1,4 +1,4 @@
-import type { InvestmentTransaction, TickerValueHistoryReport } from '@shared/schema';
+import type { TickerValueHistoryReport } from '@shared/schema';
 import type { LinePoint } from '@/components/charts/MoonyLineChart';
 import { utcDayFloor } from '@/utils/chart-axis';
 import type { ChartEvent } from '@/utils/chart-scale';
@@ -11,10 +11,24 @@ export interface CostPoint extends LinePoint {
   cost?: number;
 }
 
+/**
+ * What a position's ledger needs of a trade, stock or crypto: a stock's `InvestmentTransaction`
+ * and a coin's `CryptoTransaction` both have it (they differ in `companyName` and `name`).
+ */
+export interface LedgerTx {
+  id: string;
+  type: string;
+  ticker: string;
+  quantity: string;
+  pricePerUnit: string;
+  currency: string;
+  transactionDate: number;
+}
+
 /** A buy or a sell as a mark on the line; the transaction stays at hand for the callout. */
-export interface PositionEvent extends ChartEvent {
+export interface PositionEvent<T extends LedgerTx = LedgerTx> extends ChartEvent {
   type: 'buy' | 'sell';
-  tx: InvestmentTransaction;
+  tx: T;
 }
 
 export type TxFilter = 'all' | 'buy' | 'sell';
@@ -55,7 +69,7 @@ export function positionPoints(
 }
 
 /** Every trade as a mark on its day: ▲ for a buy, ▽ for a sell. */
-export function positionEvents(transactions: readonly InvestmentTransaction[]): PositionEvent[] {
+export function positionEvents<T extends LedgerTx>(transactions: readonly T[]): PositionEvent<T>[] {
   return transactions.map((tx) => ({
     id: tx.id,
     t: tx.transactionDate,
@@ -65,16 +79,16 @@ export function positionEvents(transactions: readonly InvestmentTransaction[]): 
 }
 
 /** The ledger as the page lists it: newest first, all of it or only the buys or the sells. */
-export function filterTransactions(
-  transactions: readonly InvestmentTransaction[],
+export function filterTransactions<T extends Pick<LedgerTx, 'type' | 'transactionDate'>>(
+  transactions: readonly T[],
   filter: TxFilter
-): InvestmentTransaction[] {
+): T[] {
   const rows = [...transactions].sort((a, b) => b.transactionDate - a.transactionDate);
   return filter === 'all' ? rows : rows.filter((tx) => tx.type === filter);
 }
 
 /** What a trade moved in its own currency: quantity × price per unit; 0 for a figure that is not a number. */
-export function nativeTotal(tx: Pick<InvestmentTransaction, 'quantity' | 'pricePerUnit'>): number {
+export function nativeTotal(tx: Pick<LedgerTx, 'quantity' | 'pricePerUnit'>): number {
   return (parseFloat(tx.quantity) || 0) * (parseFloat(tx.pricePerUnit) || 0);
 }
 
@@ -88,8 +102,8 @@ export function ytdRange(nowSec: number): { fromTs: number; toTs: number } {
  * them when the current one leaves it out) and whether the list must unfold because the fold hides
  * it. A row that is not in the ledger at all changes nothing.
  */
-export function revealRow(
-  transactions: readonly InvestmentTransaction[],
+export function revealRow<T extends Pick<LedgerTx, 'id' | 'type' | 'transactionDate'>>(
+  transactions: readonly T[],
   filter: TxFilter,
   id: string,
   fold = ROWS_FOLD

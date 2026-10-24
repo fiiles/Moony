@@ -519,13 +519,21 @@
       "count_few": "{{count}} emise",
       "count_other": "{{count}} emisí",
       "nearest": "nejbližší splatnost {{month}}",
-      "coupon": "kupón {{amount}} / rok"
+      "coupon": "kupón {{amount}} / rok",
+      "upcoming": "Nejbližší kupóny a splatnosti",
+      "noUpcoming": "V nejbližším roce nepřipadá žádný kupón ani splatnost.",
+      "allRepaid": "Všechny emise jsou splacené. Zapněte v nabídce ··· „{{action}}“, abyste je viděli.",
+      "loadFailed": "Dluhopisy se nepodařilo načíst.",
+      "rateNote": "{{rate}} p. a. vážený průměr"
     },
     "otherAssets": {
       "count_one": "{{count}} položka",
       "count_few": "{{count}} položky",
       "count_other": "{{count}} položek",
-      "valuedOn": "oceněno {{date}}"
+      "valuedOn": "oceněno {{date}}",
+      "moreDetails": "Další údaje",
+      "loadFailed": "Aktiva se nepodařilo načíst.",
+      "notFound": "Aktivum nenalezeno"
     },
     "realEstate": {
       "personal": "osobní",
@@ -581,6 +589,15 @@
       "targetReached": "cíl dosažen",
       "dayChange": "dnes"
     },
+    "crypto": {
+      "largestNote": "{{share}} z krypta",
+      "heldNote": "{{share}} z krypta · {{date}}"
+    },
+    "closed": {
+      "on": "uzavřeno {{date}}",
+      "empty": "Zatím není uzavřená žádná pozice.",
+      "onlyClosed": "Jsou tu jen uzavřené pozice. Otevřete v nabídce ··· „{{action}}“, abyste je viděli."
+    },
     "position": {
       "heroLabel": "Hodnota pozice · {{quantity}} {{unit}}",
       "perUnit": "{{price}} za kus",
@@ -602,6 +619,17 @@
       "followed": "Přidáno do sledovaných",
       "range52": "52T rozpětí",
       "renamed": "Název uložen"
+    },
+    "watch": {
+      "stats": {
+        "today": "Dnes",
+        "since": "Od sledování",
+        "noTarget": "bez cíle"
+      },
+      "above": "Nad",
+      "below": "Pod",
+      "openPosition": "Otevřít pozici",
+      "notesEmpty": "Zatím žádné poznámky. Klepněte na Upravit a přidejte poznámky — markdown funguje."
     }
   },
   "settings": {

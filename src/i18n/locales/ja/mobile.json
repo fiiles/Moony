@@ -459,11 +459,19 @@
     "bonds": {
       "count_other": "{{count}}銘柄",
       "nearest": "直近の満期 {{month}}",
-      "coupon": "クーポン {{amount}} / 年"
+      "coupon": "クーポン {{amount}} / 年",
+      "upcoming": "直近のクーポンと満期",
+      "noUpcoming": "今後1年間にクーポンや満期はありません。",
+      "allRepaid": "すべての銘柄が償還済みです。メニュー「···」の「{{action}}」をオンにすると表示されます。",
+      "loadFailed": "債券を読み込めませんでした。",
+      "rateNote": "年率 {{rate}} 加重平均"
     },
     "otherAssets": {
       "count_other": "{{count}}件",
-      "valuedOn": "{{date}}に評価"
+      "valuedOn": "{{date}}に評価",
+      "moreDetails": "その他の項目",
+      "loadFailed": "資産を読み込めませんでした。",
+      "notFound": "資産が見つかりません"
     },
     "realEstate": {
       "personal": "自己居住用",
@@ -517,9 +525,18 @@
       "targetReached": "目標に到達",
       "dayChange": "本日"
     },
+    "crypto": {
+      "largestNote": "暗号資産の{{share}}",
+      "heldNote": "暗号資産の{{share}} · {{date}}"
+    },
+    "closed": {
+      "on": "{{date}}に決済",
+      "empty": "決済済みのポジションはまだありません。",
+      "onlyClosed": "ここには決済済みのポジションしかありません。メニュー「···」の「{{action}}」を開くと表示されます。"
+    },
     "position": {
       "heroLabel": "ポジションの評価額 · {{quantity}} {{unit}}",
-      "perUnit": "1株あたり {{price}}",
+      "perUnit": "1単位あたり {{price}}",
       "stats": {
         "value": "評価額",
         "inCurrency": "{{currency}}建て",
@@ -536,6 +553,17 @@
       "followed": "ウォッチリストに追加しました",
       "range52": "52週レンジ",
       "renamed": "名称を保存しました"
+    },
+    "watch": {
+      "stats": {
+        "today": "本日",
+        "since": "フォロー開始以降",
+        "noTarget": "目標未設定"
+      },
+      "above": "上回る",
+      "below": "下回る",
+      "openPosition": "保有銘柄を開く",
+      "notesEmpty": "メモはまだありません。「編集」をタップしてリサーチメモを追加してください。Markdown が使えます。"
     }
   },
   "settings": {

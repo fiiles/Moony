@@ -549,14 +549,22 @@
       "count_many": "{{count}} emisji",
       "count_other": "{{count}} emisji",
       "nearest": "najbliższy wykup {{month, lower}}",
-      "coupon": "kupon {{amount}} / rok"
+      "coupon": "kupon {{amount}} / rok",
+      "upcoming": "Najbliższe kupony i terminy wykupu",
+      "noUpcoming": "W najbliższym roku nie przypada żaden kupon ani termin wykupu.",
+      "allRepaid": "Wszystkie emisje zostały wykupione. Włącz w menu ··· „{{action}}”, aby je zobaczyć.",
+      "loadFailed": "Nie udało się wczytać obligacji.",
+      "rateNote": "{{rate}} rocznie, ważona"
     },
     "otherAssets": {
       "count_one": "{{count}} pozycja",
       "count_few": "{{count}} pozycje",
       "count_many": "{{count}} pozycji",
       "count_other": "{{count}} pozycji",
-      "valuedOn": "wycena z {{date}}"
+      "valuedOn": "wycena z {{date}}",
+      "moreDetails": "Więcej danych",
+      "loadFailed": "Nie udało się wczytać aktywów.",
+      "notFound": "Nie znaleziono aktywa"
     },
     "realEstate": {
       "personal": "własna",
@@ -613,6 +621,15 @@
       "targetReached": "cel osiągnięty",
       "dayChange": "dziś"
     },
+    "crypto": {
+      "largestNote": "{{share}} krypto",
+      "heldNote": "{{share}} krypto · {{date}}"
+    },
+    "closed": {
+      "on": "zamknięta {{date}}",
+      "empty": "Żadna pozycja nie jest jeszcze zamknięta.",
+      "onlyClosed": "Są tu tylko zamknięte pozycje. Otwórz w menu ··· „{{action}}”, aby je zobaczyć."
+    },
     "position": {
       "heroLabel": "Wartość pozycji · {{quantity}} {{unit}}",
       "perUnit": "{{price}} za sztukę",
@@ -635,6 +652,17 @@
       "followed": "Dodano do obserwowanych",
       "range52": "Zakres 52 tyg.",
       "renamed": "Nazwa zapisana"
+    },
+    "watch": {
+      "stats": {
+        "today": "Dziś",
+        "since": "Od obserwacji",
+        "noTarget": "brak celu"
+      },
+      "above": "Powyżej",
+      "below": "Poniżej",
+      "openPosition": "Otwórz pozycję",
+      "notesEmpty": "Brak notatek. Stuknij Edytuj, aby dodać notatki z analizy — markdown działa."
     }
   },
   "settings": {

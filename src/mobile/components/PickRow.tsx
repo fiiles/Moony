@@ -39,6 +39,7 @@ export function PickRow({
   sub,
   lang,
   checked,
+  ariaLabel,
   onSelect,
 }: {
   icon?: ReactNode;
@@ -49,12 +50,15 @@ export function PickRow({
   lang?: string;
   /** Whether this choice is the current one; leave it out for a row that is not a choice. */
   checked?: boolean;
+  /** The button's accessible name when the label (and sub) is not it, set explicitly: `aria-label`. */
+  ariaLabel?: string;
   onSelect: () => void;
 }) {
   return (
     <button
       type="button"
       {...(checked === undefined ? {} : { role: 'radio', 'aria-checked': checked })}
+      aria-label={ariaLabel}
       onClick={onSelect}
       className="flex min-h-11 w-full items-center gap-3 px-1 py-1.5 text-left text-m-body text-ink [-webkit-touch-callout:none] active:bg-well focus-visible:outline-none focus-visible:shadow-focus"
     >

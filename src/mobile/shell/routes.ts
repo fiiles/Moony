@@ -28,8 +28,14 @@ export const routes = {
   stocks: '/wealth/stocks',
   positionDetail: '/wealth/stocks/:id',
   cryptoList: '/wealth/crypto',
+  /** A coin of Krypto (`:id` is the position's id). */
+  cryptoDetail: '/wealth/crypto/:id',
   bondsList: '/wealth/bonds',
   otherAssetsList: '/wealth/other-assets',
+  /** An other asset (`:id` is the asset's id). */
+  otherAssetDetail: '/wealth/other-assets/:id',
+  /** A watched ticker of Akcie, followed or not (`:ticker` is the Yahoo symbol, escaped by `watchPath`). */
+  watchDetail: '/wealth/watch/:ticker',
   realEstateList: '/wealth/real-estate',
   propertyDetail: '/wealth/real-estate/:id',
   settings: '/settings',
@@ -45,6 +51,10 @@ export const policyPath = (id: string) => `/finance/policies/${id}`;
 
 /** Paths of the details pushed on Majetek, for a `Link` or `setLocation`. */
 export const positionPath = (id: string) => `/wealth/stocks/${id}`;
+export const cryptoPath = (id: string) => `/wealth/crypto/${id}`;
+export const otherAssetPath = (id: string) => `/wealth/other-assets/${id}`;
+/** A symbol can hold characters a path cannot (`^GSPC`, `BRK/B`), so it is escaped. */
+export const watchPath = (ticker: string) => `/wealth/watch/${encodeURIComponent(ticker)}`;
 export const propertyPath = (id: string) => `/wealth/real-estate/${id}`;
 
 /** The pushed pages of Nastavení, in root order. */

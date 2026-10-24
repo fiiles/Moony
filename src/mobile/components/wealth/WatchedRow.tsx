@@ -1,62 +1,59 @@
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
 import type { WatchedStockRow } from '@shared/schema';
-import { priceDecimals } from '@shared/currencies';
-import { dayChange, targetReached } from '@/utils/stock-monitor';
+import { useFormat } from '@/lib/use-format';
+import { dayChange } from '@/utils/stock-monitor';
 import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
-import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { priceOf, watchPriceText, watchTargetState } from '@/mobile/lib/watch-detail';
+import { watchPath } from '@/mobile/shell/routes';
 import { ChangeLine } from './ChangeLine';
-
-/** A price string of the wire as a number; `null` when it is missing or not one. */
-const priceOf = (value: string | null) => {
-  const n = parseFloat(value ?? '');
-  return Number.isFinite(n) ? n : null;
-};
+import { RowBadge } from './RowBadge';
 
 /**
  * A watched stock (spec §8.8, prototype frame 11): the ticker with its name, the price in the
- * stock's own currency, the change since yesterday's close ("▲ 1,2 % dnes") and, when there is a
- * target, where it stands ("cíl 120 $", "cíl dosažen"). The prices are native and never
- * converted; they go through the eye like every amount. A tap will open the watch detail (a
- * later part of Phase 4): for now it says so.
+ * stock's own currency and the change since yesterday's close ("▲ 1,2 % dnes"). The target is a
+ * badge after the ticker — "cíl 120 $" while it waits, "cíl dosažen" once the price has crossed
+ * it — and nothing without a target. A tap opens the watch detail.
+ *
+ * The prices are Yahoo's public numbers, native and never converted: unlike the person's amounts
+ * they stay visible while amounts are hidden (the one exception to the eye).
  */
 export function WatchedRow({ row }: { row: WatchedStockRow }) {
   const { t } = useTranslation('mobile');
-  const moneyText = useMoneyText();
+  const fmt = useFormat();
   const currency = row.currency ?? '';
-  const price = (value: number) =>
-    moneyText(value, currency, { decimals: priceDecimals(value, currency) });
 
   const current = priceOf(row.currentPrice);
   const target = priceOf(row.targetPrice);
   const day = dayChange(row.currentPrice, row.previousClose);
+  const targetState = watchTargetState(current, target, row.targetDirection);
   const targetText =
-    target === null
+    target === null || targetState === 'none'
       ? null
-      : targetReached(current, target, row.targetDirection)
+      : targetState === 'reached'
         ? t('wealth.stocks.targetReached')
-        : t('wealth.stocks.target', { price: price(target) });
+        : t('wealth.stocks.target', { price: watchPriceText(fmt, target, currency) });
 
   return (
     <EntityRow
       chip={<RowChip>{row.ticker.slice(0, 2).toUpperCase()}</RowChip>}
-      title={row.ticker}
+      title={
+        <>
+          {row.ticker}
+          {targetText !== null && <RowBadge>{targetText}</RowBadge>}
+        </>
+      }
       sub={row.shortName ?? row.longName ?? ''}
-      value={current === null ? '—' : price(current)}
+      value={current === null ? '—' : watchPriceText(fmt, current, currency)}
       valueSub={
-        day !== null || targetText !== null ? (
-          <>
-            <ChangeLine
-              change={day === null ? null : { delta: day.abs, ratio: day.pct / 100 }}
-              currency={currency}
-              trail={t('wealth.stocks.dayChange')}
-            />
-            {day !== null && targetText !== null && ' · '}
-            {targetText}
-          </>
+        day !== null ? (
+          <ChangeLine
+            change={{ delta: day.abs, ratio: day.pct / 100 }}
+            currency={currency}
+            trail={t('wealth.stocks.dayChange')}
+          />
         ) : undefined
       }
-      onClick={() => toast(t('wealth.placeholder.watchDetail'))}
+      href={watchPath(row.ticker)}
     />
   );
 }

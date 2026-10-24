@@ -2,32 +2,62 @@ import { useTranslation } from 'react-i18next';
 import { priceDecimals } from '@shared/currencies';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
-import { costPerUnit, type StockRow } from '@/utils/positions';
+import { costPerUnit, type PositionRowBase, type StockRow } from '@/utils/positions';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import { priceStamp } from '@/mobile/lib/position-rows';
-import { statMoneyOptions } from '@/mobile/lib/stat-money';
+import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
 
-/** The tone of a signed result: green above zero, red under it, none at zero or unknown. */
-const toneOf = (value: number | null): StatItem['tone'] =>
-  value === null || value === 0 ? undefined : value > 0 ? 'gain' : 'loss';
+/**
+ * The dividends of a year as the sixth stat of a stock's position: the yearly dividend of the
+ * position in the report currency with its yield on the value, "—" without one. A hook for the
+ * words and the eye of Přehled; the number is the backend's (`toStockRow`).
+ */
+// eslint-disable-next-line react-refresh/only-export-components -- the stock's sixth stat lives with the stats it completes
+export function useDividendStat(holding: StockRow, reportCurrency: string): StatItem {
+  const { t: ts } = useTranslation('stocks');
+  const fmt = useFormat();
+  const moneyText = useMoneyText();
+
+  const { marketValue, yearlyDividend } = holding;
+  const dividend = yearlyDividend !== null && yearlyDividend > 0 ? yearlyDividend : null;
+  return {
+    label: ts('detail.dividends'),
+    value:
+      dividend === null
+        ? '—'
+        : moneyText(dividend, reportCurrency, { ...statMoneyOptions(dividend), signed: false }),
+    note:
+      dividend === null
+        ? ts('detail.noDividend')
+        : ts('detail.dividendNote', {
+            percent: fmt.percent(
+              marketValue !== null && marketValue > 0 ? dividend / marketValue : 0,
+              1
+            ),
+          }),
+  };
+}
 
 interface PositionStatsProps {
-  holding: StockRow;
+  holding: PositionRowBase;
   reportCurrency: string;
   /** How many sells the position has had (the note of the realized result). */
   sells: number;
+  /** The last stat of the second row: a stock's dividends, a coin's holding time. */
+  sixth: StatItem;
 }
 
 /**
- * The six stats of a position (spec §8.8), two rows of three: what it is worth in the stock's own
+ * The six stats of a position (spec §8.8), two rows of three: what it is worth in its own
  * currency, its price in the report currency and when it was fetched, what is invested; then the
- * unrealized and the realized result and the dividends of a year. The numbers are the backend's
- * (`toStockRow`), in the report currency; only the value and the price are the stock's own.
- * Every amount goes through the eye of Přehled.
+ * unrealized and the realized result and `sixth` (a stock's dividends of a year, see
+ * `useDividendStat`). The numbers are the backend's (`toStockRow`, `toCryptoRow`), in the report
+ * currency; only the value and the price are the position's own. Every amount goes through the
+ * eye of Přehled.
  */
-export function PositionStats({ holding, reportCurrency, sells }: PositionStatsProps) {
+export function PositionStats({ holding, reportCurrency, sells, sixth }: PositionStatsProps) {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
   const fmt = useFormat();
@@ -36,7 +66,7 @@ export function PositionStats({ holding, reportCurrency, sells }: PositionStatsP
 
   const stockCurrency = holding.originalCurrency;
   const nativePrice = holding.originalCurrentPrice;
-  const { marketValue, totalCost, gainLoss, realizedGain, yearlyDividend } = holding;
+  const { totalCost, gainLoss, realizedGain } = holding;
 
   const statMoney = (amount: number, currency = reportCurrency, signed = false) =>
     moneyText(amount, currency, { ...statMoneyOptions(amount), signed });
@@ -62,7 +92,6 @@ export function PositionStats({ holding, reportCurrency, sells }: PositionStatsP
         : ts('summary.notUpdated');
 
   const average = costPerUnit(totalCost, holding.quantity);
-  const dividend = yearlyDividend !== null && yearlyDividend > 0 ? yearlyDividend : null;
 
   const first: StatItem[] = [
     {
@@ -81,7 +110,7 @@ export function PositionStats({ holding, reportCurrency, sells }: PositionStatsP
     {
       label: ts('detail.unrealized'),
       value: gainLoss === null ? '—' : statMoney(gainLoss, reportCurrency, true),
-      tone: toneOf(gainLoss),
+      tone: statTone(gainLoss),
       note:
         gainLoss !== null && holding.gainLossPercent !== null
           ? ts('detail.vsInvestedPct', {
@@ -92,22 +121,10 @@ export function PositionStats({ holding, reportCurrency, sells }: PositionStatsP
     {
       label: ts('detail.realized'),
       value: realizedGain === null ? '—' : statMoney(realizedGain, reportCurrency, true),
-      tone: toneOf(realizedGain),
+      tone: statTone(realizedGain),
       note: sells > 0 ? ts('detail.sells', { count: sells }) : ts('detail.noSells'),
     },
-    {
-      label: ts('detail.dividends'),
-      value: dividend === null ? '—' : statMoney(dividend),
-      note:
-        dividend === null
-          ? ts('detail.noDividend')
-          : ts('detail.dividendNote', {
-              percent: fmt.percent(
-                marketValue !== null && marketValue > 0 ? dividend / marketValue : 0,
-                1
-              ),
-            }),
-    },
+    sixth,
   ];
 
   return (

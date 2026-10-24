@@ -1,11 +1,14 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQueryClient } from '@tanstack/react-query';
-import { useLocation, useRoute } from 'wouter';
+import { useRoute } from 'wouter';
 import { Minus, Plus } from 'lucide-react';
+import type { InvestmentTransaction } from '@shared/schema';
+import { useInvestmentTransactionMutations } from '@/hooks/use-investment-mutations';
 import type { ChartPeriod } from '@/utils/period';
+import type { StockRow } from '@/utils/positions';
 import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { BuyInvestmentModal } from '@/components/stocks/BuyInvestmentModal';
+import { EditTransactionModal } from '@/components/stocks/EditTransactionModal';
 import { SellInvestmentModal } from '@/components/stocks/SellInvestmentModal';
 import { ButtonPair } from '@/mobile/components/ButtonPair';
 import { SectionHead } from '@/mobile/components/SectionHead';
@@ -13,16 +16,14 @@ import { CompanyCard } from '@/mobile/components/wealth/CompanyCard';
 import { PositionHeroCard } from '@/mobile/components/wealth/PositionHeroCard';
 import { PositionLedger } from '@/mobile/components/wealth/PositionLedger';
 import { PositionMenu } from '@/mobile/components/wealth/PositionMenu';
-import { PositionStats } from '@/mobile/components/wealth/PositionStats';
+import { PositionStats, useDividendStat } from '@/mobile/components/wealth/PositionStats';
 import { useBack } from '@/mobile/hooks/use-back';
+import { useLeaveDeleted } from '@/mobile/hooks/use-leave-deleted';
 import { usePosition } from '@/mobile/hooks/use-position';
 import { usePositionLedger } from '@/mobile/hooks/use-position-ledger';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { positionPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
-
-/** How long after leaving a deleted position the screen may still be it (a restored deep link). */
-const DELETED_GUARD_MS = 250;
 
 /**
  * A position of the Akcie list (spec §8.8, prototype frame 12): the ticker in the nav bar with the
@@ -35,37 +36,34 @@ export default function PositionDetail() {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
   const [, params] = useRoute(routes.positionDetail);
-  const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
   const back = useBack(routes.stocks);
   const [period, setPeriod] = useState<ChartPeriod>('30D');
   const [trade, setTrade] = useState<'buy' | 'sell' | null>(null);
+  const [editing, setEditing] = useState<InvestmentTransaction | null>(null);
   const data = usePosition(params?.id, period);
   const ledger = usePositionLedger(data.transactions);
+  const { deleteTransaction } = useInvestmentTransactionMutations();
   const { holding, reportCurrency } = data;
 
-  // The position is gone: back to Akcie as Back does, so the history keeps no ghost of it. Its own
-  // queries are dropped once the screen has left (history.back lands asynchronously): removed
-  // while it is still up, a re-render would rebuild them empty and flash the skeleton. On a
-  // restored deep link the detail is the first entry and back has nowhere to go; the screen is
-  // then replaced.
-  const leaveDeleted = (id: string) => {
-    back();
-    window.setTimeout(() => {
-      if (window.location.pathname === positionPath(id)) {
-        setLocation(routes.stocks, { replace: true });
-      }
-      queryClient.removeQueries({ queryKey: ['investment', id] });
-      queryClient.removeQueries({ queryKey: ['investment-transactions', id] });
-    }, DELETED_GUARD_MS);
-  };
+  // The position is gone: back to Akcie, its own queries dropped (see `useLeaveDeleted`)
+  const leaveDeleted = useLeaveDeleted(routes.stocks);
 
   return (
     <Screen
       title={holding?.ticker ?? ''}
       leading={<NavTextButton label={t('wealth.stocks.back')} onClick={back} chevron />}
       trailing={
-        holding && <PositionMenu holding={holding} onDeleted={() => leaveDeleted(holding.id)} />
+        holding && (
+          <PositionMenu
+            holding={holding}
+            onDeleted={() =>
+              leaveDeleted(positionPath(holding.id), [
+                ['investment', holding.id],
+                ['investment-transactions', holding.id],
+              ])
+            }
+          />
+        )
       }
     >
       {data.isLoading ? (
@@ -88,6 +86,7 @@ export default function PositionDetail() {
             holding={holding}
             history={data.history}
             transactions={data.transactions}
+            unit={ts('table.unit')}
             reportCurrency={reportCurrency}
             period={period}
             onPeriodChange={setPeriod}
@@ -102,7 +101,7 @@ export default function PositionDetail() {
               disabled: holding.quantity <= 0,
             }}
           />
-          <PositionStats
+          <StockStats
             holding={holding}
             reportCurrency={reportCurrency}
             sells={data.transactions.filter((tx) => tx.type === 'sell').length}
@@ -113,6 +112,16 @@ export default function PositionDetail() {
             currency={reportCurrency}
             convertAt={data.convertAt}
             ratesReady={data.ratesReady}
+            unit={ts('table.unit')}
+            deleteTransaction={deleteTransaction}
+            onEdit={setEditing}
+          />
+          <EditTransactionModal
+            transaction={editing}
+            open={editing !== null}
+            onOpenChange={(open) => {
+              if (!open) setEditing(null);
+            }}
           />
           <SectionHead title={ts('detail.about')} note={ts('detail.source')} />
           <CompanyCard
@@ -135,6 +144,22 @@ export default function PositionDetail() {
         </>
       )}
     </Screen>
+  );
+}
+
+/** The six stats of a stock: the dividends of a year are the sixth. */
+function StockStats({
+  holding,
+  reportCurrency,
+  sells,
+}: {
+  holding: StockRow;
+  reportCurrency: string;
+  sells: number;
+}) {
+  const sixth = useDividendStat(holding, reportCurrency);
+  return (
+    <PositionStats holding={holding} reportCurrency={reportCurrency} sells={sells} sixth={sixth} />
   );
 }
 

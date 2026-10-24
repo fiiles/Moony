@@ -7,15 +7,20 @@ import { ImportSheetProvider } from '@/mobile/hooks/use-import-sheet';
 import { useNotificationSchedule } from '@/mobile/hooks/use-notification-schedule';
 import { clearEnrolmentAsked } from '@/mobile/lib/biometrics';
 import Agenda from '@/mobile/pages/Agenda';
+import Bonds from '@/mobile/pages/Bonds';
 import Budgets from '@/mobile/pages/Budgets';
 import Cashflow from '@/mobile/pages/Cashflow';
 import CashflowCategory from '@/mobile/pages/CashflowCategory';
+import Crypto from '@/mobile/pages/Crypto';
+import CryptoDetail from '@/mobile/pages/CryptoDetail';
 import Finance from '@/mobile/pages/Finance';
 import AccountDetail from '@/mobile/pages/finance/AccountDetail';
 import CategorizeQueue from '@/mobile/pages/finance/CategorizeQueue';
 import LoanDetail from '@/mobile/pages/finance/LoanDetail';
 import PolicyDetail from '@/mobile/pages/finance/PolicyDetail';
 import Lock from '@/mobile/pages/Lock';
+import OtherAssetDetail from '@/mobile/pages/OtherAssetDetail';
+import OtherAssets from '@/mobile/pages/OtherAssets';
 import Overview from '@/mobile/pages/Overview';
 import PositionDetail from '@/mobile/pages/PositionDetail';
 import PropertyDetail from '@/mobile/pages/PropertyDetail';
@@ -23,12 +28,8 @@ import Settings from '@/mobile/pages/Settings';
 import SettingsSection from '@/mobile/pages/settings/SettingsSection';
 import Stocks from '@/mobile/pages/Stocks';
 import Wealth from '@/mobile/pages/Wealth';
-import {
-  BondsPlaceholder,
-  CryptoPlaceholder,
-  OtherAssetsPlaceholder,
-  RealEstatePlaceholder,
-} from '@/mobile/pages/WealthPlaceholder';
+import WatchDetail from '@/mobile/pages/WatchDetail';
+import { RealEstatePlaceholder } from '@/mobile/pages/WealthPlaceholder';
 import { EnableBiometricsSheet } from '@/mobile/sheets/EnableBiometricsSheet';
 import { routes, tabForPath } from './routes';
 import { TabBar } from './TabBar';
@@ -82,9 +83,16 @@ export function MobileShell() {
         {/* Pushed on Majetek: the Akcie class page and a position of it. */}
         <ProtectedRoute path={routes.stocks} component={Stocks} />
         <ProtectedRoute path={routes.positionDetail} component={PositionDetail} />
-        <ProtectedRoute path={routes.cryptoList} component={CryptoPlaceholder} />
-        <ProtectedRoute path={routes.bondsList} component={BondsPlaceholder} />
-        <ProtectedRoute path={routes.otherAssetsList} component={OtherAssetsPlaceholder} />
+        {/* A watched ticker, followed or not: from a Sledované row or a search result. */}
+        <ProtectedRoute path={routes.watchDetail} component={WatchDetail} />
+        {/* The Krypto class page and a coin of it. */}
+        <ProtectedRoute path={routes.cryptoList} component={Crypto} />
+        <ProtectedRoute path={routes.cryptoDetail} component={CryptoDetail} />
+        {/* The Dluhopisy class page */}
+        <ProtectedRoute path={routes.bondsList} component={Bonds} />
+        {/* The Ostatní aktiva class page and an asset of it */}
+        <ProtectedRoute path={routes.otherAssetsList} component={OtherAssets} />
+        <ProtectedRoute path={routes.otherAssetDetail} component={OtherAssetDetail} />
         <ProtectedRoute path={routes.realEstateList} component={RealEstatePlaceholder} />
         <ProtectedRoute path={routes.propertyDetail} component={PropertyDetail} />
         {/* Nastavení and the pages pushed on it (spec §8.9) */}

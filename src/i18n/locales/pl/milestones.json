@@ -67,6 +67,10 @@
     "savings_rate_end": "Koniec promocyjnego oprocentowania",
     "watch_target_below": "Cena {{price}} spadła do celu {{target}}",
     "watch_target_above": "Cena {{price}} osiągnęła cel {{target}}",
+    "stock_split_one": "Split {{ratio}} z dnia {{date}} · {{count}} transakcja przed splitem",
+    "stock_split_few": "Split {{ratio}} z dnia {{date}} · {{count}} transakcje przed splitem",
+    "stock_split_many": "Split {{ratio}} z dnia {{date}} · {{count}} transakcji przed splitem",
+    "stock_split_other": "Split {{ratio}} z dnia {{date}} · {{count}} transakcji przed splitem",
     "loan_fixation_expired": "Stałe oprocentowanie skończyło się {{date}} · wpisz nową stopę",
     "loan_balance_check": "Brak wpisanego salda od {{date}} · wpisz aktualne saldo",
     "valuation_stale": "Brak nowej wyceny od {{date}} · przeszacuj",
@@ -115,7 +119,7 @@
     },
     "targets": {
       "label": "Ceny docelowe akcji",
-      "hint": "Gdy cena osiągnie cel w danym kierunku.",
+      "hint": "Gdy cena osiągnie cel w danym kierunku lub gdy Moony wykryje split akcji.",
       "mute": "Nie przypominaj o cenach docelowych"
     },
     "backup": {

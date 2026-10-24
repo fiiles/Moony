@@ -55,6 +55,7 @@
     "savings_rate_end": "优惠利率结束",
     "watch_target_below": "价格 {{price}} 已跌至目标价 {{target}}",
     "watch_target_above": "价格 {{price}} 已达到目标价 {{target}}",
+    "stock_split_other": "拆股 {{ratio}}（{{date}}）· 拆股前有 {{count}} 笔交易",
     "loan_fixation_expired": "固定利率已于 {{date}} 结束 · 请输入新利率",
     "loan_balance_check": "自 {{date}} 起未输入余额 · 请输入当前余额",
     "valuation_stale": "自 {{date}} 起没有新的估值 · 请重新估值",
@@ -97,7 +98,7 @@
     },
     "targets": {
       "label": "股票目标价",
-      "hint": "当价格朝目标方向达到目标价时提醒。",
+      "hint": "当价格朝目标方向达到目标价，或 Moony 检测到拆股时提醒。",
       "mute": "不再提醒目标价"
     },
     "backup": {

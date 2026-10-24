@@ -63,6 +63,9 @@
     "savings_rate_end": "Termina el tipo promocional",
     "watch_target_below": "El precio {{price}} ha bajado hasta el objetivo {{target}}",
     "watch_target_above": "El precio {{price}} ha alcanzado el objetivo {{target}}",
+    "stock_split_one": "Split {{ratio}} el {{date}} · {{count}} operación antes del split",
+    "stock_split_many": "Split {{ratio}} el {{date}} · {{count}} operaciones antes del split",
+    "stock_split_other": "Split {{ratio}} el {{date}} · {{count}} operaciones antes del split",
     "loan_fixation_expired": "El tipo fijo terminó el {{date}} · introduce el tipo nuevo",
     "loan_balance_check": "Sin saldo introducido desde el {{date}} · introduce el saldo actual",
     "valuation_stale": "Sin tasación nueva desde el {{date}} · vuelve a valorarlo",
@@ -109,7 +112,7 @@
     },
     "targets": {
       "label": "Precios objetivo de acciones",
-      "hint": "Cuando el precio alcanza el objetivo en su sentido.",
+      "hint": "Cuando el precio alcanza el objetivo en su sentido, o cuando Moony detecta un split de acciones.",
       "mute": "No recordarme precios objetivo"
     },
     "backup": {

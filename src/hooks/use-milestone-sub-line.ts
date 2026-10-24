@@ -47,6 +47,12 @@ export function useMilestoneSubLine(formatMoney?: Formatters['money']) {
           price: price(m, m.referenceAmount),
           target: price(m, m.amount),
         });
+      case 'stock_split':
+        return t('sub.stock_split', {
+          ratio: m.direction ?? '',
+          date: day(m.actionDay),
+          count: m.count ?? 0,
+        });
       case 'backup_stale':
         return m.sinceDay === null
           ? t('sub.backup_never')

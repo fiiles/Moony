@@ -63,6 +63,9 @@
     "savings_rate_end": "Zvýhodněná sazba končí",
     "watch_target_below": "Cena {{price}} klesla na cíl {{target}}",
     "watch_target_above": "Cena {{price}} dosáhla cíle {{target}}",
+    "stock_split_one": "Split {{ratio}} k {{date}} · {{count}} transakce před splitem",
+    "stock_split_few": "Split {{ratio}} k {{date}} · {{count}} transakce před splitem",
+    "stock_split_other": "Split {{ratio}} k {{date}} · {{count}} transakcí před splitem",
     "loan_fixation_expired": "Fixace skončila {{date}} · doplňte novou sazbu",
     "loan_balance_check": "Zůstatek nezadán od {{date}} · zadejte aktuální zůstatek",
     "valuation_stale": "Bez nového odhadu od {{date}} · přeceňte",
@@ -109,7 +112,7 @@
     },
     "targets": {
       "label": "Cílové ceny akcií",
-      "hint": "Když cena dosáhne cílové ceny ve zvoleném směru.",
+      "hint": "Když cena dosáhne cílové ceny ve zvoleném směru, nebo když Moony zjistí split akcie.",
       "mute": "Nepřipomínat cílové ceny"
     },
     "backup": {

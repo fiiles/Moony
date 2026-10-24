@@ -59,6 +59,8 @@
     "savings_rate_end": "Kampanjräntan upphör",
     "watch_target_below": "Kursen {{price}} föll till målet {{target}}",
     "watch_target_above": "Kursen {{price}} nådde målet {{target}}",
+    "stock_split_one": "Split {{ratio}} den {{date}} · {{count}} transaktion före splitten",
+    "stock_split_other": "Split {{ratio}} den {{date}} · {{count}} transaktioner före splitten",
     "loan_fixation_expired": "Räntebindningen upphörde {{date}} · ange den nya räntan",
     "loan_balance_check": "Inget saldo angivet sedan {{date}} · ange aktuellt saldo",
     "valuation_stale": "Ingen ny värdering sedan {{date}} · omvärdera",
@@ -103,7 +105,7 @@
     },
     "targets": {
       "label": "Målkurser för aktier",
-      "hint": "När kursen når målet i sin riktning.",
+      "hint": "När kursen når målet i sin riktning, eller när Moony upptäcker en aktiesplit.",
       "mute": "Påminn mig inte om målkurser"
     },
     "backup": {

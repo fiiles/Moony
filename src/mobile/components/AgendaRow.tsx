@@ -48,7 +48,7 @@ export function AgendaRow({ m }: { m: Milestone }) {
   const day = agendaDay(m, today);
   const rel = relativeLabel(daysBetween(today, day));
   const urgent = isUrgent(m, today);
-  const target = m.kind === 'watch_target';
+  const target = m.kind === 'watch_target' || m.kind === 'stock_split';
   const remindKey = isUpkeep(m) ? 'actions.remindMonth' : 'actions.remindWeek';
 
   // Not hidden from screen readers: the sub-line leaves the date out, the chip is where it is said.

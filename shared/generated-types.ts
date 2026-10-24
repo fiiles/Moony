@@ -1307,7 +1307,7 @@ key: string;
  * `insurance_anniversary`, `insurance_end`, `insurance_payment`, `loan_fixation_end`,
  * `loan_fixation_expired`, `loan_payoff`, `loan_balance_check`, `bond_maturity`,
  * `bond_coupon`, `account_termination`, `savings_rate_end`, `balances_stale`,
- * `backup_stale`, `valuation_stale`, `watch_target`.
+ * `backup_stale`, `valuation_stale`, `watch_target`, `stock_split`.
  */
 kind: string; 
 /**
@@ -1319,7 +1319,8 @@ stage: string;
  */
 tone: string; 
 /**
- * Policy, loan, bond, account or property id; the ticker for targets.
+ * Policy, loan, bond, account or property id; the ticker for targets; the stock
+ * investment id for splits.
  */
 sourceId: string | null; 
 /**
@@ -1331,7 +1332,8 @@ title: string;
  */
 dueDay: number | null; 
 /**
- * Last day to act when it differs from the event (insurance notice deadline).
+ * Last day to act when it differs from the event (insurance notice deadline); the
+ * ex-date of a stock split.
  */
 actionDay: number | null; 
 /**
@@ -1347,11 +1349,11 @@ amount: string | null; currency: string | null;
  */
 referenceAmount: string | null; 
 /**
- * `below` / `above` for targets.
+ * `below` / `above` for targets; `<numerator>:<denominator>` for a stock split.
  */
 direction: string | null; 
 /**
- * Number of stale accounts.
+ * Number of stale accounts; transactions dated before a stock split.
  */
 count: number | null }
 

@@ -124,7 +124,7 @@ export function AgendaRow({ m, onNavigate }: { m: Milestone; onNavigate?: () => 
   const day = agendaDay(m, today);
   const rel = relativeLabel(daysBetween(today, day));
   const urgent = isUrgent(m, today);
-  const target = m.kind === 'watch_target';
+  const target = m.kind === 'watch_target' || m.kind === 'stock_split';
   const sub = subLine(m);
 
   return (

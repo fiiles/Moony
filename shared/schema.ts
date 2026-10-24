@@ -2133,7 +2133,8 @@ export type MilestoneKind =
   | 'balances_stale'
   | 'backup_stale'
   | 'valuation_stale'
-  | 'watch_target';
+  | 'watch_target'
+  | 'stock_split';
 export type MilestoneStage = 'now' | 'soon';
 export type MilestoneTone = 'action' | 'info';
 export type MilestoneState = 'done' | 'snoozed';

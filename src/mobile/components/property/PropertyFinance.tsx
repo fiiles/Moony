@@ -7,6 +7,7 @@ import type { YearlyBalance } from '@/utils/real-estate';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
 import { RowMenu, RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
 import { SectionHead } from '@/mobile/components/SectionHead';
+import { GroupHead } from '@/mobile/components/property/GroupHead';
 import { YearlyBalanceCard } from '@/mobile/components/property/YearlyBalanceCard';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useLinkableLoans, useLinkablePolicies } from '@/mobile/hooks/use-property';
@@ -25,30 +26,6 @@ interface PropertyFinanceProps {
   policies: readonly InsurancePolicy[];
   /** The main currency. */
   currency: string;
-}
-
-/** The head of one group under "Finance": its name and the action that adds to it (a 44 pt target). */
-function GroupHead({
-  title,
-  action,
-}: {
-  title: string;
-  action?: { label: string; onClick: () => void };
-}) {
-  return (
-    <div className="mx-0.5 mb-2 mt-4 flex items-baseline justify-between gap-3">
-      <h3 className="m-0 min-w-0 truncate text-m-sub font-semibold text-ink-3">{title}</h3>
-      {action && (
-        <button
-          type="button"
-          onClick={action.onClick}
-          className="relative flex-none whitespace-nowrap text-m-sub font-semibold text-ink-3 [-webkit-touch-callout:none] after:absolute after:-inset-x-2 after:-inset-y-[14px] after:content-[''] active:text-ink"
-        >
-          {action.label}
-        </button>
-      )}
-    </div>
-  );
 }
 
 /**

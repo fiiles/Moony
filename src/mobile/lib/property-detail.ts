@@ -2,23 +2,33 @@ import type { QueryKey } from '@tanstack/react-query';
 import type {
   AssetValuation,
   InsertAssetValuation,
+  InsertRealEstateOneTimeCost,
   InsurancePolicy,
   RealEstate,
   RealEstateOneTimeCost,
+  RealEstatePhotoBatch,
+  RecurringCost,
 } from '@shared/schema';
 import { parsePaymentFrequency, type PaymentFrequency } from '@shared/calculations';
 import { recordCurrency } from '@shared/currencies';
 import type { ConvertAtFn } from '@shared/fx';
+import type { Formatters } from '@/lib/format';
 import { utcDayFloor } from '@/utils/chart-axis';
 import type { ChartEvent } from '@/utils/chart-scale';
-import type { PropertyRow, YearlyBalance, NativeAmount } from '@/utils/real-estate';
+import {
+  yearlyFactor,
+  type PropertyRow,
+  type YearlyBalance,
+  type NativeAmount,
+} from '@/utils/real-estate';
 import { convertValuations, dailyValuations, valuationTrace } from '@/utils/valuation-trace';
 import { parseAmountInput } from './amount-input';
 import type { CostPoint } from './position-series';
 
 /**
  * The property detail's numbers as pure functions (spec §8.8 "Nemovitost"): the valuation trace,
- * the four stats, the yearly balance card, the link candidates and the revaluation form. They are
+ * the four stats, the yearly balance card, the link candidates, the revaluation form, the costs
+ * with their form, and the batch a photo taken today joins. They are
  * the desktop page's rules (`pages/RealEstateDetail.tsx`) without its strings and formatting; the
  * phone screen words and masks them.
  */
@@ -395,6 +405,210 @@ export function revalueData(
       note: form.note.trim() || null,
     },
   };
+}
+
+/**
+ * The batch a photo taken today joins: the one of today's UTC day (a batch is a day, ADR 0008), so
+ * all the photos of one day end up together. `today` is today's UTC-midnight second or any moment
+ * of the day; `null` while no batch has that day, and the first photo then starts one. When the
+ * desktop has made two batches for the day, the first (the list comes newest day first) takes it.
+ */
+export function todayBatch<T extends { photoDate: number }>(
+  batches: readonly T[],
+  today: number
+): T | null {
+  const dayStart = utcDayFloor(today);
+  return batches.find((batch) => utcDayFloor(batch.photoDate) === dayStart) ?? null;
+}
+
+/** One photo of the gallery with what the viewer and the delete need of its batch. */
+export interface GalleryPhoto {
+  id: string;
+  batchId: string;
+  /** The batch's day (UTC midnight). */
+  day: number;
+  /** The batch's note, as typed on the computer. */
+  description: string | null;
+  /** The only photo of its batch: deleting it deletes the batch, so none is left empty. */
+  last: boolean;
+}
+
+/**
+ * The photos of the gallery in the order the grid draws them: the newest batch's first (a later-
+ * created batch first within a day), each batch's photos as stored. A batch without photos
+ * has nothing to draw.
+ */
+export function galleryPhotos(batches: readonly RealEstatePhotoBatch[]): GalleryPhoto[] {
+  return [...batches]
+    .sort((a, b) => b.photoDate - a.photoDate || b.createdAt - a.createdAt)
+    .flatMap((batch) =>
+      batch.photos.map<GalleryPhoto>((photo) => ({
+        id: photo.id,
+        batchId: batch.id,
+        day: batch.photoDate,
+        description: batch.description,
+        last: batch.photos.length === 1,
+      }))
+    );
+}
+
+/**
+ * The costs' text: the phone's `useMoneyText()` as `money` (masked while amounts are hidden, so
+ * a cost is never written in the clear) and `fmt.day` as `day`.
+ */
+export type CostText = Pick<Formatters, 'money' | 'day'>;
+
+/** One recurring cost of the property as its row shows it, in the cost's own currency. */
+export interface RecurringCostRow {
+  /** The place in `property.recurringCosts`: what `withoutRecurring` removes. */
+  index: number;
+  name: string;
+  /** `monthly`, `quarterly` or `yearly`, lower case (the desktop's `detail.frequency.*`). */
+  frequency: string;
+  /** How many of its payments make a year (`yearlyFactor`: 12, 4, else 1). */
+  perYear: number;
+  /** One payment. */
+  amount: string;
+  /** The payments of a year. */
+  yearly: string;
+}
+
+/** One one-time cost as its row shows it. */
+export interface OneTimeCostRow {
+  id: string;
+  name: string;
+  description: string | null;
+  /** The day it was paid. */
+  day: string;
+  amount: string;
+  /** The stored cost: what the edit sheet starts from. */
+  cost: RealEstateOneTimeCost;
+}
+
+/** Whole amounts: the cost rows show no decimals. */
+const WHOLE = { decimals: 0 } as const;
+
+/**
+ * The rows of "Náklady" (`pages/RealEstateDetail.tsx`'s two tables): the recurring costs in their
+ * order with the amount of a year (`yearlyFactor`), and the one-time costs newest day first (the
+ * later-saved first within a day). Every amount is in its own currency — the native value is the
+ * authoritative one — and goes through `text.money`, so nothing needs a rate.
+ */
+export function costRows(
+  property: RealEstate,
+  costs: readonly RealEstateOneTimeCost[],
+  text: CostText
+): { recurring: RecurringCostRow[]; oneTime: OneTimeCostRow[] } {
+  const recurring = (property.recurringCosts ?? []).map<RecurringCostRow>((cost, index) => {
+    const amount = Number(cost.amount) || 0;
+    const currency = recordCurrency(cost.currency);
+    const perYear = yearlyFactor(cost.frequency);
+    return {
+      index,
+      name: cost.name,
+      frequency: (cost.frequency || '').toLowerCase(),
+      perYear,
+      amount: text.money(amount, currency, WHOLE),
+      yearly: text.money(amount * perYear, currency, WHOLE),
+    };
+  });
+  const oneTime = [...costs]
+    .sort((a, b) => b.date - a.date || b.createdAt - a.createdAt)
+    .map<OneTimeCostRow>((cost) => ({
+      id: cost.id,
+      name: cost.name,
+      description: cost.description,
+      day: text.day(cost.date),
+      amount: text.money(Number(cost.amount) || 0, recordCurrency(cost.currency), WHOLE),
+      cost,
+    }));
+  return { recurring, oneTime };
+}
+
+/** The costs without the recurring one at `index`; a list it has no such place in is unchanged. */
+export function withoutRecurring(costs: readonly RecurringCost[], index: number): RecurringCost[] {
+  return costs.filter((_, place) => place !== index);
+}
+
+export type CostKind = 'recurring' | 'oneTime';
+export type CostFrequency = 'monthly' | 'quarterly' | 'yearly';
+
+/** What the cost sheet holds while it is open: the one form of both kinds. */
+export interface CostForm {
+  realEstateId: string;
+  kind: CostKind;
+  name: string;
+  /** As typed on the keypad. */
+  amountText: string;
+  /** A recurring cost's. */
+  frequency: CostFrequency;
+  /** A one-time cost's day: `YYYY-MM-DD`, or empty. */
+  dateIso: string;
+  /** A one-time cost's note. */
+  description: string;
+}
+
+export interface CostErrors {
+  name?: 'required';
+  amount?: 'required' | 'invalid' | 'notPositive';
+  /** A recurring cost has no day. */
+  date?: 'required' | 'future';
+}
+
+/** The amount of a cost: a positive number as decimal text; why not, else. */
+function costAmount(
+  text: string
+): { amount: string } | { error: 'required' | 'invalid' | 'notPositive' } {
+  if (text.trim() === '') return { error: 'required' };
+  const parsed = parseAmountInput(text);
+  const value = Number(parsed);
+  if (parsed === null || !Number.isFinite(value)) return { error: 'invalid' };
+  return value > 0 ? { amount: parsed } : { error: 'notPositive' };
+}
+
+/**
+ * What stops a cost form from being saved. A cost is a name and a positive amount (the desktop's
+ * recurring dialog asks the same), and a one-time cost also the day it was paid — today at most:
+ * a cost is a payment that has been made, and a day ahead has no rate yet. `today` is `YYYY-MM-DD`.
+ */
+export function costErrors(form: CostForm, today: string): CostErrors {
+  const errors: CostErrors = {};
+  if (form.name.trim() === '') errors.name = 'required';
+  const amount = costAmount(form.amountText);
+  if ('error' in amount) errors.amount = amount.error;
+  if (form.kind === 'oneTime') {
+    if (form.dateIso === '') errors.date = 'required';
+    else if (form.dateIso > today) errors.date = 'future';
+  }
+  return errors;
+}
+
+/**
+ * The one-time cost a form makes, in `currency` (the property's, or the cost's own when it is
+ * edited): the amount as decimal text, the day as its UTC-midnight second (a number the backend
+ * keeps, never a `Date`), the trimmed name and note. `null` for a form with no name, no positive
+ * amount or no day; the sheet shows why (`costErrors`) and never calls the backend with it.
+ */
+export function costInput(form: CostForm, currency: string): InsertRealEstateOneTimeCost | null {
+  const name = form.name.trim();
+  const amount = costAmount(form.amountText);
+  if (name === '' || 'error' in amount || form.dateIso === '') return null;
+  return {
+    realEstateId: form.realEstateId,
+    name,
+    description: form.description.trim() || undefined,
+    amount: amount.amount,
+    currency,
+    date: isoToUtcDay(form.dateIso),
+  };
+}
+
+/** The recurring cost a form makes, in `currency`; `null` for a form with no name or no positive amount. */
+export function recurringInput(form: CostForm, currency: string): RecurringCost | null {
+  const name = form.name.trim();
+  const amount = costAmount(form.amountText);
+  if (name === '' || 'error' in amount) return null;
+  return { name, amount: Number(amount.amount), frequency: form.frequency, currency };
 }
 
 /** The queries kept under the property's own id: dropped once the screen has left a deleted property. */

@@ -7,7 +7,10 @@ import { useCurrency } from '@/lib/currency';
 import type { PropertyRow, YearlyBalance } from '@/utils/real-estate';
 import { Button } from '@/components/ui/button';
 import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { DocumentsSection } from '@/mobile/components/documents/DocumentsSection';
+import { PropertyCosts } from '@/mobile/components/property/PropertyCosts';
 import { PropertyFinance } from '@/mobile/components/property/PropertyFinance';
+import { PropertyGallery } from '@/mobile/components/property/PropertyGallery';
 import { PropertyHeroCard } from '@/mobile/components/property/PropertyHeroCard';
 import { PropertyMenu } from '@/mobile/components/property/PropertyMenu';
 import { PropertyStats } from '@/mobile/components/property/PropertyStats';
@@ -24,6 +27,9 @@ import { propertyPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { RevalueSheet } from '@/mobile/sheets/RevalueSheet';
+
+/** The types of a property's documents the add sheet offers, in order (the desktop's own). */
+const DOCUMENT_TYPES = ['deed', 'contract', 'appraisal', 'other'] as const;
 
 /** A property that has loaded: what the screen draws from. */
 type LoadedProperty = PropertyData & {
@@ -42,10 +48,11 @@ export default function PropertyDetail() {
  * The property detail (spec §8.8 "Nemovitost"): the name in the nav bar with `···` (Upravit,
  * Historie přecenění, Smazat nemovitost), the address and the "Investiční · pronajato" line, the
  * value with its trace and the change against the purchase, four stats, the primary **Přecenit**,
- * Finance (the linked loans and policies with Připojit, the yearly balance) and the notes. The
- * numbers are the desktop detail's (`useProperty`, the pure rules in `property-detail.ts`) in the
- * main currency, a missing rate shown as "—" and named in the note under the line; the property
- * form and the list of estimates are the desktop's dialogs.
+ * Finance (the linked loans and policies with Připojit, the yearly balance), Náklady, Galerie,
+ * Dokumenty (each its own component) and the notes. The numbers are the desktop detail's
+ * (`useProperty`, the pure rules in `property-detail.ts`) in the main currency, a missing rate
+ * shown as "—" and named in the note under the line; the property form and the list of estimates
+ * are the desktop's dialogs.
  *
  * The page owns the delete (its confirm sheet and the mutation, `useDeleteAndLeave`): the property
  * drops out of the cache while the delete is still finishing, which takes the `···` menu away, and
@@ -132,7 +139,7 @@ interface PropertyBodyProps {
 function PropertyBody({ view, currency, onRevalue }: PropertyBodyProps) {
   const { t: tr } = useTranslation('realEstate');
   const moneyText = useMoneyText();
-  const { property, row, balance, trace, missing, loans, policies } = view;
+  const { property, row, balance, trace, missing, loans, policies, costs } = view;
 
   // The nav bar keeps its one title, so the address, the type and the rent are the first lines
   const rent = monthlyRent(property, balance);
@@ -175,7 +182,14 @@ function PropertyBody({ view, currency, onRevalue }: PropertyBodyProps) {
         policies={policies}
         currency={currency}
       />
-      {/* Náklady, Galerie and Dokumenty go here, between Finance and Poznámky (the next task) */}
+      <PropertyCosts property={property} costs={costs} balance={balance} currency={currency} />
+      <PropertyGallery propertyId={property.id} />
+      <DocumentsSection
+        kind="real-estate-document"
+        ownerId={property.id}
+        fileTypes={DOCUMENT_TYPES}
+        typeLabel={(type) => tr(`documents.types.${type}`)}
+      />
       <SectionHead title={tr('detail.tabs.notes')} />
       {/* Read here; written in Upravit, where the desktop keeps them */}
       {property.notes ? (

@@ -5,6 +5,7 @@ import type {
   Loan,
   RealEstate,
   RealEstateOneTimeCost,
+  RealEstatePhotoBatch,
 } from '@shared/schema';
 import {
   propertyRow,
@@ -16,7 +17,11 @@ import {
   appreciationOf,
   balanceNote,
   balanceRows,
+  costErrors,
+  costInput,
+  costRows,
   costsMissing,
+  galleryPhotos,
   isoToUtcDay,
   linkCandidates,
   monthlyRent,
@@ -26,9 +31,13 @@ import {
   propertyOwnKeys,
   propertyStatItems,
   propertyTrace,
+  recurringInput,
   revalueData,
+  todayBatch,
   todayIso,
   traceSpansDays,
+  withoutRecurring,
+  type CostForm,
 } from './property-detail';
 
 const DAY = 86_400;
@@ -744,5 +753,334 @@ describe('oneEstimateOnly', () => {
       )
     ).toBe(false);
     expect(oneEstimateOnly([])).toBe(false);
+  });
+});
+
+describe('todayBatch', () => {
+  const batch = (id: string, photoDate: number): RealEstatePhotoBatch => ({
+    id,
+    realEstateId: 'p',
+    photoDate,
+    description: null,
+    photos: [],
+    createdAt: photoDate,
+  });
+
+  it("is the batch of today's UTC day", () => {
+    const batches = [batch('today', TODAY), batch('older', TODAY - 3 * DAY)];
+    expect(todayBatch(batches, TODAY)?.id).toBe('today');
+  });
+
+  it("is null while no batch has today's day (a photo then starts a new one)", () => {
+    expect(
+      todayBatch([batch('older', TODAY - DAY), batch('later', TODAY + DAY)], TODAY)
+    ).toBeNull();
+    expect(todayBatch([], TODAY)).toBeNull();
+  });
+
+  it('compares days, not instants: any moment of the day finds the batch of its midnight', () => {
+    const batches = [batch('yesterday', TODAY - 1), batch('today', TODAY)];
+    expect(todayBatch(batches, NOW)?.id).toBe('today');
+    // The last second of yesterday is yesterday's batch, never today's
+    expect(todayBatch([batch('yesterday', TODAY - 1)], TODAY)).toBeNull();
+    expect(todayBatch([batch('today', TODAY + 23 * 3600)], TODAY)?.id).toBe('today');
+  });
+
+  it('takes the first batch of the day when the desktop made two', () => {
+    expect(todayBatch([batch('a', TODAY), batch('b', TODAY)], TODAY)?.id).toBe('a');
+  });
+});
+
+describe('costRows', () => {
+  const money = (amount: number, currency: string) => `${amount} ${currency}`;
+  const text = { money, day: (utcDay: number) => `d${utcDay}` };
+  const cost = (partial: Partial<RealEstateOneTimeCost>): RealEstateOneTimeCost => ({
+    id: 'c',
+    realEstateId: 'p',
+    name: 'Rekonstrukce',
+    description: null,
+    amount: '100000',
+    currency: 'CZK',
+    date: day(2024, 1, 1),
+    createdAt: 0,
+    ...partial,
+  });
+
+  it('has a row for every recurring cost: name, frequency, amount and the amount of a year', () => {
+    const rows = costRows(
+      property({
+        recurringCosts: [
+          { name: 'Fond oprav', amount: 1500, frequency: 'monthly', currency: 'CZK' },
+          { name: 'Pojistka', amount: 900, frequency: 'Quarterly', currency: 'EUR' },
+          { name: 'Daň', amount: 3200, frequency: 'yearly' },
+        ],
+      }),
+      [],
+      text
+    ).recurring;
+    expect(rows).toEqual([
+      {
+        index: 0,
+        name: 'Fond oprav',
+        frequency: 'monthly',
+        perYear: 12,
+        amount: '1500 CZK',
+        yearly: '18000 CZK',
+      },
+      {
+        index: 1,
+        name: 'Pojistka',
+        frequency: 'quarterly',
+        perYear: 4,
+        amount: '900 EUR',
+        yearly: '3600 EUR',
+      },
+      // A blank currency is the default one, as everywhere else
+      {
+        index: 2,
+        name: 'Daň',
+        frequency: 'yearly',
+        perYear: 1,
+        amount: '3200 CZK',
+        yearly: '3200 CZK',
+      },
+    ]);
+  });
+
+  it('reads a frequency the app does not know as a year and an amount that is no number as nothing', () => {
+    const [row] = costRows(
+      property({
+        recurringCosts: [
+          { name: 'Různé', amount: Number.NaN, frequency: 'weekly', currency: 'CZK' },
+        ],
+      }),
+      [],
+      text
+    ).recurring;
+    expect(row.perYear).toBe(1);
+    expect(row.amount).toBe('0 CZK');
+    expect(row.yearly).toBe('0 CZK');
+  });
+
+  it('lists the one-time costs newest first, each in its own currency', () => {
+    const rows = costRows(
+      property(),
+      [
+        cost({ id: 'old', name: 'Okna', date: day(2022, 3, 1), amount: '80000' }),
+        cost({
+          id: 'new',
+          name: 'Střecha',
+          date: day(2025, 8, 9),
+          description: 'Pokrývač',
+          currency: 'EUR',
+          amount: '12000',
+        }),
+        cost({ id: 'mid', name: 'Kotel', date: day(2023, 11, 20), amount: '45000.50' }),
+      ],
+      text
+    ).oneTime;
+    expect(rows.map((row) => row.id)).toEqual(['new', 'mid', 'old']);
+    expect(rows[0]).toMatchObject({
+      name: 'Střecha',
+      description: 'Pokrývač',
+      day: `d${day(2025, 8, 9)}`,
+      amount: '12000 EUR',
+    });
+    expect(rows[1].amount).toBe('45000.5 CZK');
+  });
+
+  it('puts the later-saved of two costs of one day first, and keeps the cost itself for the edit sheet', () => {
+    const first = cost({ id: 'a', createdAt: 1 });
+    const second = cost({ id: 'b', createdAt: 2 });
+    const rows = costRows(property(), [first, second], text).oneTime;
+    expect(rows.map((row) => row.id)).toEqual(['b', 'a']);
+    expect(rows[1].cost).toBe(first);
+  });
+
+  it('is empty for a property without costs, and does not touch the costs it was given', () => {
+    const costs = [
+      cost({ id: 'x', date: day(2020, 1, 1) }),
+      cost({ id: 'y', date: day(2021, 1, 1) }),
+    ];
+    expect(costRows(property(), [], text)).toEqual({ recurring: [], oneTime: [] });
+    costRows(property(), costs, text);
+    expect(costs.map((c) => c.id)).toEqual(['x', 'y']);
+  });
+});
+
+describe('withoutRecurring', () => {
+  const costs = [
+    { name: 'Energie', amount: 2000, frequency: 'monthly', currency: 'CZK' },
+    { name: 'Fond oprav', amount: 1500, frequency: 'monthly', currency: 'CZK' },
+    { name: 'Fond oprav', amount: 1500, frequency: 'monthly', currency: 'CZK' },
+    { name: 'Daň', amount: 3200, frequency: 'yearly', currency: 'CZK' },
+  ];
+
+  it('removes exactly one entry, the one at the index', () => {
+    expect(withoutRecurring(costs, 0).map((c) => c.name)).toEqual([
+      'Fond oprav',
+      'Fond oprav',
+      'Daň',
+    ]);
+    expect(withoutRecurring(costs, 3).map((c) => c.name)).toEqual([
+      'Energie',
+      'Fond oprav',
+      'Fond oprav',
+    ]);
+  });
+
+  it('removes only one of two identical entries', () => {
+    expect(withoutRecurring(costs, 1)).toHaveLength(3);
+    expect(withoutRecurring(costs, 1).filter((c) => c.name === 'Fond oprav')).toHaveLength(1);
+  });
+
+  it('leaves the list as it was for an index it does not have, and never changes the list it is given', () => {
+    expect(withoutRecurring(costs, 4)).toEqual(costs);
+    expect(withoutRecurring(costs, -1)).toEqual(costs);
+    expect(withoutRecurring(costs, 4)).not.toBe(costs);
+    withoutRecurring(costs, 0);
+    expect(costs).toHaveLength(4);
+  });
+});
+
+describe('cost form', () => {
+  const form = (partial: Partial<CostForm> = {}): CostForm => ({
+    realEstateId: 'p',
+    kind: 'oneTime',
+    name: ' Nová střecha ',
+    amountText: '85 300,50',
+    frequency: 'monthly',
+    dateIso: '2026-10-20',
+    description: ' pokrývač Novák ',
+    ...partial,
+  });
+
+  describe('costInput', () => {
+    it('makes the one-time cost: the amount as decimal text, the day as a UTC-midnight number, trimmed text', () => {
+      const input = costInput(form(), 'CZK');
+      expect(input).toEqual({
+        realEstateId: 'p',
+        name: 'Nová střecha',
+        description: 'pokrývač Novák',
+        amount: '85300.50',
+        currency: 'CZK',
+        date: day(2026, 10, 20),
+      });
+      // A number the backend keeps (`utc_day`), never a `Date`
+      expect(typeof input?.date).toBe('number');
+    });
+
+    it('leaves the description out when it is blank', () => {
+      expect(costInput(form({ description: '   ' }), 'CZK')?.description).toBeUndefined();
+    });
+
+    it('takes the currency it is given (a cost keeps its own when it is edited)', () => {
+      expect(costInput(form(), 'EUR')?.currency).toBe('EUR');
+    });
+
+    it('is null for a form that cannot be saved: no name, no amount, a zero or a negative one, no day', () => {
+      expect(costInput(form({ name: '   ' }), 'CZK')).toBeNull();
+      expect(costInput(form({ amountText: '' }), 'CZK')).toBeNull();
+      expect(costInput(form({ amountText: 'abc' }), 'CZK')).toBeNull();
+      expect(costInput(form({ amountText: '0' }), 'CZK')).toBeNull();
+      expect(costInput(form({ amountText: '-5' }), 'CZK')).toBeNull();
+      expect(costInput(form({ dateIso: '' }), 'CZK')).toBeNull();
+    });
+  });
+
+  describe('recurringInput', () => {
+    it('makes the recurring cost: a number amount, the frequency and the currency', () => {
+      expect(recurringInput(form({ kind: 'recurring', frequency: 'quarterly' }), 'CZK')).toEqual({
+        name: 'Nová střecha',
+        amount: 85300.5,
+        frequency: 'quarterly',
+        currency: 'CZK',
+      });
+    });
+
+    it('is null without a name or without a positive amount, and wants no day', () => {
+      expect(recurringInput(form({ kind: 'recurring', name: '' }), 'CZK')).toBeNull();
+      expect(recurringInput(form({ kind: 'recurring', amountText: '0' }), 'CZK')).toBeNull();
+      expect(recurringInput(form({ kind: 'recurring', dateIso: '' }), 'CZK')).not.toBeNull();
+    });
+  });
+
+  describe('costErrors', () => {
+    const TODAY_ISO = '2026-10-24';
+
+    it('has none for a form that can be saved', () => {
+      expect(costErrors(form(), TODAY_ISO)).toEqual({});
+      expect(costErrors(form({ kind: 'recurring', dateIso: '' }), TODAY_ISO)).toEqual({});
+    });
+
+    it("names a missing name and the amount's problem", () => {
+      expect(costErrors(form({ name: ' ' }), TODAY_ISO).name).toBe('required');
+      expect(costErrors(form({ amountText: '' }), TODAY_ISO).amount).toBe('required');
+      expect(costErrors(form({ amountText: '12 abc' }), TODAY_ISO).amount).toBe('invalid');
+      expect(costErrors(form({ amountText: '0' }), TODAY_ISO).amount).toBe('notPositive');
+      expect(costErrors(form({ amountText: '-3' }), TODAY_ISO).amount).toBe('notPositive');
+    });
+
+    it('wants a day for a one-time cost, and not later than today', () => {
+      expect(costErrors(form({ dateIso: '' }), TODAY_ISO).date).toBe('required');
+      expect(costErrors(form({ dateIso: '2026-10-25' }), TODAY_ISO).date).toBe('future');
+      expect(costErrors(form({ dateIso: TODAY_ISO }), TODAY_ISO).date).toBeUndefined();
+    });
+
+    it('does not ask a recurring cost for a day', () => {
+      expect(
+        costErrors(form({ kind: 'recurring', dateIso: '2099-01-01' }), TODAY_ISO).date
+      ).toBeUndefined();
+    });
+  });
+});
+
+describe('galleryPhotos', () => {
+  const batch = (
+    id: string,
+    photoDate: number,
+    photoIds: string[],
+    description: string | null = null
+  ): RealEstatePhotoBatch => ({
+    id,
+    realEstateId: 'p',
+    photoDate,
+    description,
+    photos: photoIds.map((photoId) => ({ id: photoId, batchId: id, createdAt: photoDate })),
+    createdAt: photoDate,
+  });
+
+  it('lists the photos of the newest batch first, each with its batch, day and description', () => {
+    const photos = galleryPhotos([
+      batch('old', day(2025, 6, 1), ['o1']),
+      batch('new', day(2026, 10, 24), ['n1', 'n2'], 'Po rekonstrukci'),
+    ]);
+    expect(photos.map((photo) => photo.id)).toEqual(['n1', 'n2', 'o1']);
+    expect(photos[0]).toEqual({
+      id: 'n1',
+      batchId: 'new',
+      day: day(2026, 10, 24),
+      description: 'Po rekonstrukci',
+      last: false,
+    });
+  });
+
+  it('marks the only photo of a batch as its last, so that deleting it deletes the batch', () => {
+    const photos = galleryPhotos([
+      batch('one', day(2026, 1, 1), ['a']),
+      batch('two', day(2026, 2, 1), ['b', 'c']),
+    ]);
+    expect(photos.find((photo) => photo.id === 'a')?.last).toBe(true);
+    expect(photos.find((photo) => photo.id === 'b')?.last).toBe(false);
+    expect(photos.find((photo) => photo.id === 'c')?.last).toBe(false);
+  });
+
+  it('puts the later-created of two batches of one day first, and skips a batch without photos', () => {
+    const early = { ...batch('early', day(2026, 5, 5), ['e']), createdAt: 1 };
+    const late = { ...batch('late', day(2026, 5, 5), ['l']), createdAt: 2 };
+    expect(
+      galleryPhotos([early, late, batch('empty', day(2026, 9, 9), [])]).map((p) => p.id)
+    ).toEqual(['l', 'e']);
+    expect(galleryPhotos([])).toEqual([]);
   });
 });

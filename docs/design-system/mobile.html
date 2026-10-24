@@ -322,6 +322,17 @@
   </section>
 
   <section class="part">
+    <h2>Nemovitost: náklady, galerie a dokumenty</h2>
+    <p>Mezi Financemi a Poznámkami (spec §8.8; v aplikaci <code>PropertyCosts</code>, <code>PropertyGallery</code> a <code>DocumentsSection</code>) na 360, 390 a 430. <strong>Kosten</strong> mají v hlavě jediné číslo — roční součet pravidelných nákladů v hlavní měně, <code>.m-sec__n</code>, vynechané bez nich — a dvě skupiny s menší hlavičkou (<code>.m-sec--group</code>; první nese akci <strong>Kosten hinzufügen</strong>): pravidelné náklady (čip se smyčkou, název, „monatlich“, platba ve vlastní měně a v podřádku platby za rok) a historie jednorázových (čip s účtenkou, název, den a popis, částka ve vlastní měně), nejnovější první. Řádek s hodnotou nemá šipku; klepnutí upraví jednorázový náklad, dlouhé stisknutí otevře nabídku (Upravit · Smazat, u pravidelného jen Smazat) a Smazat se ptá v potvrzovacím sheetu. <strong>Galerie</strong> je mřížka tří čtvercových náhledů (<code>.m-gal</code>, <code>__cell</code>), nejnovější skupina první, s počtem fotek v hlavě; pod ní <code>.m-capture</code> Foto aufnehmen · Aus Fotos wählen. <strong>Dokumente</strong> jsou sdílená sekce z předchozí části. Druhý rámeček ukazuje prázdné řádky a tlačítka při nahrávání (<code>disabled</code>, „Hochladen 2 / 5“).</p>
+    <div class="phones" id="property-costs"></div>
+    <div class="phones" id="property-costs-empty" style="margin-top: 26px"></div>
+    <p style="margin-top: 26px">Sheet <strong>Kosten hinzufügen</strong> nad nemovitostí: segment Laufend · Einmalig, název, částka v měně nemovitosti (náklad v jiné měně se zadává v počítači) a u pravidelného nákladu segment intervalu — u jednorázového místo něj datum (nejpozději dnes, <code>.m-field__i--date</code>) a nepovinný popis. Druhý rámeček je úprava jednorázového nákladu: bez segmentu druhu (uložený náklad si druh drží), s nápovědou „Derzeit …“ pod částkou, která při skrytých částkách říká starou hodnotu zakrytou a pole nechá prázdné, a s chybou data. Pod tím <strong>prohlížeč fotky</strong>: celá výška (<code>.m-sheet--full .m-sheet--fill</code>), den skupiny jako titulek a její popis pod ním, jedna fotka celá v boxu <code>.m-photoview</code> (jen posun, bez přiblížení; bez výběru, bez systémové nabídky Kopírovat / Sdílet / Uložit) a patička Foto löschen · Schließen.</p>
+    <div class="phones" id="cost-add" style="margin-top: 26px"></div>
+    <div class="phones" id="cost-edit" style="margin-top: 26px"></div>
+    <div class="phones" id="photo-view" style="margin-top: 26px"></div>
+  </section>
+
+  <section class="part">
     <h2>Nejbližší platby: datum, den v týdnu a vzdálenost v podřádku</h2>
     <p>Datovaný seznam pod řádky pojistek na Finance na 360, 390 a 430 (spec §8.4, §8.8; v aplikaci <code>UpcomingPremiums</code>): hlava „Nächste Zahlungen“ s poznámkou „90 Tage“, řádky s datovým čipem (<code>.m-row--date</code>, <code>.m-dchip</code>: den a pod ním <strong>den v týdnu</strong> — „Sa.“, „Mo.“, vždy se vejde do 54 pt, kdežto „in 2 Monaten“ ne), názvem pojistky, pojišťovnou s <strong>vzdáleností</strong> v podřádku („Kooperativa · in 8 Tagen“, <code>.m-row__s--split</code>: dlouhá pojišťovna končí výpustkou jako jediná, vzdálenost zůstane) a částkou v měně pojistky (nikdy nepřepočtenou). Čip nikdy není tmavý: pojistné je trvalá platba, ne lhůta. Pět řádků, pak „Alle 7 anzeigen“ rozbalí zbytek na místě. Řádky jsou po 8, 23, 38, 52 a 73 dnech od 16. 10.; popisek čipu je pro jistotu zkrácen výpustkou (<code>.m-dchip small</code>), takže nikdy nepřetéká.</p>
     <div class="phones" id="upcoming"></div>
@@ -845,6 +856,175 @@ Fondsvorschuss 2&nbsp;000 Kč monatlich.</p></div>
         </div>
       </div>
       <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button" style="flex: 1"><span>Abbrechen</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- Kosten, Galerie and Dokumente of a property between Finance and the notes, at the three widths: the recurring and the one-time
+     costs in their own currencies (the last one in euros), a long name, the gallery's grid of three, the shared documents section. -->
+<template id="property-costs-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Vermögen</span></button></div>
+      <h1 class="m-nav__title">Wohnung Lipová</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <div class="m-nav__sub m-nav__sub--lines"><p>Lipová 12, 120 00 Praha 2</p><p>Anlageimmobilie · Vermietet · Miete 14&nbsp;500 Kč pro Monat</p></div>
+      <div class="m-sec"><span class="m-sec__t">Kosten</span><span class="m-sec__n">gesamt 24&nbsp;000 Kč pro Jahr</span></div>
+      <div class="m-sec m-sec--group"><span class="m-sec__t">Laufende Kosten</span><button class="m-sec__a" type="button">Kosten hinzufügen</button></div>
+      <div data-rows="propertyRecurring"></div>
+      <div class="m-sec m-sec--group"><span class="m-sec__t">Verlauf der Einmalkosten</span></div>
+      <div data-rows="propertyOneTime"></div>
+      <div class="m-sec"><span class="m-sec__t">Galerie</span><span class="m-sec__n">6 Fotos</span></div>
+      <ul class="m-gal" data-gal="6"></ul>
+      <div class="m-capture">
+        <button class="m-btn m-btn--secondary" type="button" data-icon="camera" data-size="16"><span>Foto aufnehmen</span></button>
+        <button class="m-btn m-btn--secondary" type="button" data-icon="upload" data-size="16"><span>Aus Fotos wählen</span></button>
+        <input class="m-capture__i" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+        <input class="m-capture__i" type="file" tabindex="-1" aria-hidden="true">
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Dokumente</span><span class="m-sec__n">1 · verschlüsselt</span></div>
+      <div class="m-rows">
+        <button class="m-row m-row--chev m-docrow" type="button"><span class="m-row__chip m-row__chip--sq" data-icon="file-text" data-size="16"></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Kaufvertrag Wohnung Lipová</span></span><span class="m-row__line"><span class="m-row__s">Vertrag · 2,1 MB · 9.1.2024</span></span></span><span class="m-row__chev" data-icon="chevron-right" data-size="16"></span></button>
+      </div>
+      <div class="m-capture">
+        <button class="m-btn m-btn--secondary" type="button" data-icon="camera" data-size="16"><span>Foto aufnehmen</span></button>
+        <button class="m-btn m-btn--secondary" type="button" data-icon="upload" data-size="16"><span>Datei wählen</span></button>
+        <input class="m-capture__i" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+        <input class="m-capture__i" type="file" tabindex="-1" aria-hidden="true">
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Notizen</span></div>
+      <p class="m-prop__line">Keine Notizen vorhanden.</p>
+    </main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+  </div>
+</template>
+
+<!-- The same sections with nothing in them, at the three widths: the desktop's lines, and the gallery's buttons while the photos
+     go in (disabled, "Hochladen 2 / 5" on both). -->
+<template id="property-costs-empty-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Vermögen</span></button></div>
+      <h1 class="m-nav__title">Wohnung Lipová</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <div class="m-nav__sub m-nav__sub--lines"><p>Lipová 12, 120 00 Praha 2</p><p>Anlageimmobilie · Vermietet · Miete 14&nbsp;500 Kč pro Monat</p></div>
+      <div class="m-sec"><span class="m-sec__t">Kosten</span></div>
+      <div class="m-sec m-sec--group"><span class="m-sec__t">Laufende Kosten</span><button class="m-sec__a" type="button">Kosten hinzufügen</button></div>
+      <p class="m-prop__line">Keine laufenden Kosten</p>
+      <div class="m-sec m-sec--group"><span class="m-sec__t">Verlauf der Einmalkosten</span></div>
+      <p class="m-prop__line">Keine Einmalkosten erfasst.</p>
+      <div class="m-sec"><span class="m-sec__t">Galerie</span></div>
+      <p class="m-docrow__empty">Noch keine Fotos</p>
+      <div class="m-capture">
+        <button class="m-btn m-btn--secondary" type="button" data-icon="camera" data-size="16" disabled aria-busy="true"><span>Hochladen 2 / 5</span></button>
+        <button class="m-btn m-btn--secondary" type="button" data-icon="upload" data-size="16" disabled aria-busy="true"><span>Hochladen 2 / 5</span></button>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Dokumente</span></div>
+      <p class="m-docrow__empty">Noch keine Dokumente angehängt</p>
+      <div class="m-capture">
+        <button class="m-btn m-btn--secondary" type="button" data-icon="camera" data-size="16"><span>Foto aufnehmen</span></button>
+        <button class="m-btn m-btn--secondary" type="button" data-icon="upload" data-size="16"><span>Datei wählen</span></button>
+        <input class="m-capture__i" type="file" accept="image/*" capture="environment" tabindex="-1" aria-hidden="true">
+        <input class="m-capture__i" type="file" tabindex="-1" aria-hidden="true">
+      </div>
+    </main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+  </div>
+</template>
+
+<!-- The cost sheet over the property, at the three widths: a new recurring cost (the kind segment, the name, the amount in the
+     property's currency, the interval segment). -->
+<template id="cost-add-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Vermögen</span></button></div>
+      <h1 class="m-nav__title">Wohnung Lipová</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <div class="m-nav__sub m-nav__sub--lines"><p>Lipová 12, 120 00 Praha 2</p><p>Anlageimmobilie · Vermietet · Miete 14&nbsp;500 Kč pro Monat</p></div>
+      <div class="m-sec"><span class="m-sec__t">Kosten</span><span class="m-sec__n">gesamt 24&nbsp;000 Kč pro Jahr</span></div>
+      <div class="m-sec m-sec--group"><span class="m-sec__t">Laufende Kosten</span><button class="m-sec__a" type="button">Kosten hinzufügen</button></div>
+      <div data-rows="propertyRecurring"></div>
+    </main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet" role="dialog" aria-modal="true" aria-label="Kosten hinzufügen">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Kosten hinzufügen</div><div class="m-sheet__s">Regelmäßige Ausgaben wie Nebenkosten, Gebühren oder Instandhaltung. Sie verringern den Netto-Cashflow der Immobilie.</div></div>
+      <div class="m-sheet__body">
+        <div class="m-seg" role="group" aria-label="Art" style="margin-bottom: 14px"><button class="m-seg__btn is-active" type="button" aria-pressed="true">Laufend</button><button class="m-seg__btn" type="button" aria-pressed="false">Einmalig</button></div>
+        <div class="m-field"><label class="m-field__l" for="cost-name">Name</label><input class="m-field__i m-field__i--text" id="cost-name" type="text" placeholder="z. B. Nebenkosten" value="Hausgeld"></div>
+        <div class="m-field"><label class="m-field__l" for="cost-amount">Betrag</label><div class="m-field__w"><input class="m-field__i" id="cost-amount" inputmode="decimal" value="1500"><span class="m-field__u">CZK</span></div></div>
+        <div class="m-t-sub" style="margin: 0 2px 6px; color: var(--ink-2); font-weight: 600">Intervall</div>
+        <div class="m-seg" role="group" aria-label="Intervall"><button class="m-seg__btn is-active" type="button" aria-pressed="true">Monatlich</button><button class="m-seg__btn" type="button" aria-pressed="false">Vierteljährlich</button><button class="m-seg__btn" type="button" aria-pressed="false">Jährlich</button></div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary" type="button"><span>Kosten hinzufügen</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The cost sheet editing a one-time cost, at the three widths: no kind segment, "Derzeit …" under the amount (masked while amounts
+     are hidden, and the field then starts empty), a day in the future refused, the optional note; the primary waits for the fix. -->
+<template id="cost-edit-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Vermögen</span></button></div>
+      <h1 class="m-nav__title">Wohnung Lipová</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <div class="m-nav__sub m-nav__sub--lines"><p>Lipová 12, 120 00 Praha 2</p><p>Anlageimmobilie · Vermietet · Miete 14&nbsp;500 Kč pro Monat</p></div>
+      <div class="m-sec"><span class="m-sec__t">Kosten</span><span class="m-sec__n">gesamt 24&nbsp;000 Kč pro Jahr</span></div>
+      <div class="m-sec m-sec--group"><span class="m-sec__t">Verlauf der Einmalkosten</span></div>
+      <div data-rows="propertyOneTime"></div>
+    </main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet" role="dialog" aria-modal="true" aria-label="Einmalkosten bearbeiten">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Einmalkosten bearbeiten</div><div class="m-sheet__s">Details der Ausgabe aktualisieren.</div></div>
+      <div class="m-sheet__body">
+        <div class="m-field"><label class="m-field__l" for="edit-name">Name</label><input class="m-field__i m-field__i--text" id="edit-name" type="text" placeholder="z. B. Küchenrenovierung" value="Neue Küche"></div>
+        <div class="m-field"><label class="m-field__l" for="edit-amount">Betrag</label><div class="m-field__w"><input class="m-field__i" id="edit-amount" inputmode="decimal" value="85300"><span class="m-field__u">CZK</span></div><p class="m-field__h">Derzeit 85&nbsp;300 Kč</p></div>
+        <div class="m-field"><label class="m-field__l" for="edit-date">Datum</label><input class="m-field__i m-field__i--date" id="edit-date" type="date" value="2026-11-02" max="2026-10-24" aria-invalid="true"><p class="m-field__e" role="alert">Das Datum einer Ausgabe darf nicht in der Zukunft liegen.</p></div>
+        <div class="m-field"><label class="m-field__l m-field__l--split" for="edit-note"><span>Beschreibung</span><span>optional</span></label><input class="m-field__i m-field__i--text" id="edit-note" type="text" placeholder="Details zur Ausgabe..." value="Küchenstudio Novák"></div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary" type="button" disabled><span>Kosten aktualisieren</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The photo viewer over the gallery, at the three widths: the batch's day and note, one photo whole in its box, no zoom. -->
+<template id="photo-view-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Vermögen</span></button></div>
+      <h1 class="m-nav__title">Wohnung Lipová</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <div class="m-nav__sub m-nav__sub--lines"><p>Lipová 12, 120 00 Praha 2</p><p>Anlageimmobilie · Vermietet · Miete 14&nbsp;500 Kč pro Monat</p></div>
+      <div class="m-sec"><span class="m-sec__t">Galerie</span><span class="m-sec__n">6 Fotos</span></div>
+      <ul class="m-gal" data-gal="6"></ul>
+    </main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full m-sheet--fill" role="dialog" aria-modal="true" aria-label="24. Oktober 2026">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">24. Oktober 2026</div><div class="m-sheet__s">Nach der Renovierung der Küche</div></div>
+      <div class="m-sheet__body">
+        <div class="m-docview">
+          <div class="m-photoview">
+            <div role="img" aria-label="Foto vom 24.10.2026" style="width: 100%; aspect-ratio: 4 / 3; background: repeating-linear-gradient(45deg, var(--well-2) 0 14px, var(--well-3) 14px 28px)"></div>
+          </div>
+        </div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--danger" type="button"><span>Foto löschen</span></button><button class="m-btn m-btn--primary" type="button"><span>Schließen</span></button></div>
     </div>
   </div>
 </template>
@@ -2098,6 +2278,18 @@ Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
       row("", "Hypothek Lipová", "Rate 12&nbsp;340 Kč / Monat", "950&nbsp;000 Kč", "", { icon: "credit-card" }),
       row("", "Renovierungskredit der Wohnung in der Vinohradská, zweiter Abschnitt", "Rate 4&nbsp;120 Kč / Monat", "186&nbsp;400 Kč", "", { icon: "credit-card" })
     ],
+    /* Costs in their own currencies: the payments of a year in the trailing sub for a cost paid more than once a year, none for a
+       yearly one; a one-time cost's sub is its day and its note (a long one ends with an ellipsis); the last is in euros. */
+    propertyRecurring: [
+      row("", "Hausgeld", "monatlich", "1&nbsp;500 Kč", "18&nbsp;000 Kč pro Jahr", { icon: "repeat" }),
+      row("", "Gebäudeversicherung für Wohnung, Keller und Garage samt Sonderumlage Dach", "vierteljährlich", "2&nbsp;150 Kč", "8&nbsp;600 Kč pro Jahr", { icon: "repeat" }),
+      row("", "Grundsteuer", "jährlich", "3&nbsp;200 Kč", "", { icon: "repeat" })
+    ],
+    propertyOneTime: [
+      row("", "Neue Küche", "14.9.2026 · Küchenstudio Novák", "85&nbsp;300 Kč", "", { icon: "receipt" }),
+      row("", "Fenstertausch Schlafzimmer, Wohnzimmer und Balkontür", "2.3.2025", "42&nbsp;000 Kč", "", { icon: "receipt" }),
+      row("", "Kesselwartung", "20.11.2024 · Wartungsvertrag mit dem Heizungsbauer aus Vinohrady", "2&nbsp;400 €", "", { icon: "receipt" })
+    ],
     propertyPolicies: [
       row("", "Haushaltsversicherung", "Kooperativa pojišťovna, a.s., Vienna Insurance Group", "2&nbsp;150 Kč", "vierteljährlich", { icon: "shield" })
     ],
@@ -2279,6 +2471,11 @@ Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
   renderFrames("property", document.getElementById("property-frame"), " · nemovitost");
   renderFrames("revalue", document.getElementById("revalue-frame"), " · přecenění");
   renderFrames("link", document.getElementById("link-frame"), " · připojení úvěru");
+  renderFrames("property-costs", document.getElementById("property-costs-frame"), " · náklady, galerie");
+  renderFrames("property-costs-empty", document.getElementById("property-costs-empty-frame"), " · prázdné sekce");
+  renderFrames("cost-add", document.getElementById("cost-add-frame"), " · nový náklad");
+  renderFrames("cost-edit", document.getElementById("cost-edit-frame"), " · úprava nákladu");
+  renderFrames("photo-view", document.getElementById("photo-view-frame"), " · prohlížeč fotky");
   renderFrames("upcoming", document.getElementById("upcoming-frame"), " · nejbližší platby");
   renderFrames("document-add", document.getElementById("document-add-frame"), " · přidání dokumentu");
   renderFrames("document-view", document.getElementById("document-view-frame"), " · prohlížeč");
@@ -2452,6 +2649,15 @@ Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
 
   document.querySelectorAll("[data-rows]").forEach(function (el) {
     el.outerHTML = '<div class="m-rows">' + ROWS[el.dataset.rows].join("") + '</div>';
+  });
+  /* The gallery's thumbnails: striped stand-ins for the photos (the app draws `<img>`s cropped to fill the cell). */
+  document.querySelectorAll("[data-gal]").forEach(function (list) {
+    var angles = [45, -45, 20, 90, 135, 0], html = "";
+    for (var i = 0; i < +list.dataset.gal; i++) {
+      var step = 10 + i * 3;
+      html += '<li><button class="m-gal__cell" type="button" aria-label="Foto vom 24.10.2026" style="background: repeating-linear-gradient(' + angles[i % angles.length] + 'deg, var(--well-2) 0 ' + step + 'px, var(--well-3) ' + step + 'px ' + step * 2 + 'px)"></button></li>';
+    }
+    list.innerHTML = html;
   });
   document.querySelectorAll(".m-tabbar").forEach(function (bar) {
     bar.setAttribute("aria-label", "Hauptnavigation");

@@ -349,7 +349,30 @@
     "rentYear": "{{rent}} ročně",
     "perYear": "ročně",
     "loanPayment": "splátka {{amount}} / měs.",
-    "rowMenu": "Další akce: {{name}}"
+    "rowMenu": "Další akce: {{name}}",
+    "costKindRecurring": "Pravidelný",
+    "costKindOneTime": "Jednorázový",
+    "costYear": "{{amount}} ročně",
+    "costCurrent": "Nyní {{amount}}",
+    "costDateInFuture": "Datum nákladu nemůže být v budoucnosti.",
+    "costNameRequired": "Zadejte název nákladu.",
+    "confirmDeleteRecurring": "Tím trvale smažete pravidelný náklad „{{name}}“ ({{amount}}, {{frequency}}). Tuto akci nelze vrátit zpět.",
+    "photoCount_one": "{{count}} fotka",
+    "photoCount_few": "{{count}} fotky",
+    "photoCount_other": "{{count}} fotek",
+    "uploading": "Nahrávám {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} fotku se nepodařilo uložit.",
+    "photosSkipped_few": "{{count}} fotky se nepodařilo uložit.",
+    "photosSkipped_other": "{{count}} fotek se nepodařilo uložit.",
+    "photoOpen": "Fotka z {{day}}",
+    "photoFailed": "Fotku se nepodařilo zobrazit.",
+    "photoDeleted": "Fotka smazána",
+    "deletePhoto": "Smazat fotku",
+    "deletePhotoConfirm": {
+      "title": "Smazat fotku?",
+      "description": "Fotka bude trvale smazána. Tuto akci nelze vrátit zpět.",
+      "descriptionLast": "Je to poslední fotka ze dne {{day}}, takže se smaže i celá skupina fotek toho dne. Tuto akci nelze vrátit zpět."
+    }
   },
   "transaction": {
     "flowSaved": "Význam uložen",

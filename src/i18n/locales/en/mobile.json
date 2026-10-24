@@ -325,7 +325,28 @@
     "rentYear": "{{rent}} a year",
     "perYear": "a year",
     "loanPayment": "payment {{amount}} / mo",
-    "rowMenu": "More actions: {{name}}"
+    "rowMenu": "More actions: {{name}}",
+    "costKindRecurring": "Recurring",
+    "costKindOneTime": "One-time",
+    "costYear": "{{amount}} a year",
+    "costCurrent": "Currently {{amount}}",
+    "costDateInFuture": "The date of a cost can't be in the future.",
+    "costNameRequired": "Enter a name for the cost.",
+    "confirmDeleteRecurring": "This will permanently delete the recurring cost “{{name}}” ({{amount}}, {{frequency}}). This action cannot be undone.",
+    "photoCount_one": "{{count}} photo",
+    "photoCount_other": "{{count}} photos",
+    "uploading": "Uploading {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} photo could not be saved.",
+    "photosSkipped_other": "{{count}} photos could not be saved.",
+    "photoOpen": "Photo from {{day}}",
+    "photoFailed": "The photo could not be shown.",
+    "photoDeleted": "Photo deleted",
+    "deletePhoto": "Delete photo",
+    "deletePhotoConfirm": {
+      "title": "Delete this photo?",
+      "description": "The photo will be deleted permanently. This action cannot be undone.",
+      "descriptionLast": "This is the last photo of {{day}}, so that day's photo batch is deleted with it. This action cannot be undone."
+    }
   },
   "transaction": {
     "flowSaved": "Meaning saved",

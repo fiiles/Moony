@@ -986,6 +986,34 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
 .m-field__l--split { display: flex; justify-content: space-between; gap: 12px; } /* the label with "nepovinné" at its right end */
 .m-field__l--split > :last-child { color: var(--ink-4); font-weight: 500; }
 
+/* ===== Property costs, gallery and photo viewer (spec §8.8 "Nemovitost"; `PropertyCosts.tsx`, `PropertyGallery.tsx`, `PhotoViewerSheet.tsx`) =====
+   "Náklady" is made of existing blocks: the section head with its one number (`.m-sec__n`: "celkem 24 000 Kč ročně", left out
+   without recurring costs), the group heads (`.m-sec--group`, the first with the action Přidat náklad: `.m-sec__a`, 44 px) and
+   entity rows — a chip (a loop for a recurring cost, a receipt for a one-time one), the name, "měsíčně" or "den · popis", the
+   amount in the cost's own currency as the trailing value and, for a recurring cost paid more than once a year, the payments of a
+   year as the trailing sub. A row has a value, so it has no chevron; a tap edits a one-time cost, a long press opens the menu.
+   The gallery is a grid of three square thumbnails (`.m-gal`, 6 px gaps; `__cell`: radius 8, a `line` hairline on `well`, the
+   picture cropped to fill), the newest batch first, under the head with the count of photos; Vyfotit · Vybrat z fotek are
+   `.m-capture` (disabled and reading "Nahrávám 2 / 5" while the photos go in one by one). A thumbnail, like the photo, cannot be
+   selected, dragged or long-pressed into the system's Copy / Share / Save menu. The photo viewer is the document viewer's tall,
+   filled sheet (`.m-sheet--full .m-sheet--fill`) holding one picture: `.m-photoview` is its box — `well`, 8 px padding, the picture
+   centred and contained whole, panning only (`touch-action: pan-x pan-y`), no zoom — over a footer of Smazat fotku (the sheet footer's
+   `.m-btn--danger`, as the transaction sheet's) and Zavřít. */
+.m-gal { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 14px; padding: 0; list-style: none; }
+.m-gal__cell {
+  position: relative; display: block; width: 100%; aspect-ratio: 1; padding: 0; overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--r-2); background: var(--well);
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.m-gal__cell:active { opacity: 0.8; }
+.m-gal__cell > img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; -webkit-user-drag: none; }
+.m-photoview {
+  display: flex; flex: 1 1 auto; align-items: center; justify-content: center; min-height: 0; padding: 8px; overflow: hidden;
+  overscroll-behavior: contain; border-radius: var(--r-3); background: var(--well); touch-action: pan-x pan-y;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.m-photoview > :is(img, [role="img"]) { display: block; max-width: 100%; max-height: 100%; border-radius: var(--r-2); object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
+
 /* ===== The notes of a watched stock (spec §8.8; `WatchNotes.tsx`) =====
    The watch detail is made of existing blocks — the hero with its dashed target line (the cost line, `chart-cost`), `.m-btn-pair`,
    `.m-stats`, the section heads and `.m-kvcard` — and one of its own: the notes, which are markdown. `.m-notes` is the card the

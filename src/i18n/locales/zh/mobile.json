@@ -301,7 +301,26 @@
     "rentYear": "年租金 {{rent}}",
     "perYear": "每年",
     "loanPayment": "还款额 {{amount}} / 月",
-    "rowMenu": "更多操作：{{name}}"
+    "rowMenu": "更多操作：{{name}}",
+    "costKindRecurring": "定期",
+    "costKindOneTime": "一次性",
+    "costYear": "每年 {{amount}}",
+    "costCurrent": "当前 {{amount}}",
+    "costDateInFuture": "费用日期不能晚于今天。",
+    "costNameRequired": "请输入费用名称。",
+    "confirmDeleteRecurring": "这将永久删除定期费用“{{name}}”（{{amount}}，{{frequency}}）。此操作无法撤销。",
+    "photoCount_other": "{{count}} 张",
+    "uploading": "正在上传 {{current}} / {{total}}",
+    "photosSkipped_other": "有 {{count}} 张照片无法保存。",
+    "photoOpen": "{{day}} 的照片",
+    "photoFailed": "无法显示这张照片。",
+    "photoDeleted": "照片已删除",
+    "deletePhoto": "删除照片",
+    "deletePhotoConfirm": {
+      "title": "删除这张照片？",
+      "description": "这张照片将被永久删除。此操作无法撤销。",
+      "descriptionLast": "这是 {{day}} 的最后一张照片，该日的照片批次也将一并删除。此操作无法撤销。"
+    }
   },
   "transaction": {
     "flowSaved": "含义已保存",

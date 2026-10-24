@@ -373,7 +373,32 @@
     "rentYear": "{{rent}} rocznie",
     "perYear": "rocznie",
     "loanPayment": "rata {{amount}} / mies.",
-    "rowMenu": "Więcej akcji: {{name}}"
+    "rowMenu": "Więcej akcji: {{name}}",
+    "costKindRecurring": "Cykliczny",
+    "costKindOneTime": "Jednorazowy",
+    "costYear": "{{amount}} rocznie",
+    "costCurrent": "Teraz {{amount}}",
+    "costDateInFuture": "Data kosztu nie może być z przyszłości.",
+    "costNameRequired": "Podaj nazwę kosztu.",
+    "confirmDeleteRecurring": "Koszt cykliczny „{{name}}” ({{amount}}, {{frequency}}) zostanie usunięty na stałe. Tej operacji nie można cofnąć.",
+    "photoCount_one": "{{count}} zdjęcie",
+    "photoCount_few": "{{count}} zdjęcia",
+    "photoCount_many": "{{count}} zdjęć",
+    "photoCount_other": "{{count}} zdjęcia",
+    "uploading": "Wysyłam {{current}} / {{total}}",
+    "photosSkipped_one": "Nie udało się zapisać {{count}} zdjęcia.",
+    "photosSkipped_few": "Nie udało się zapisać {{count}} zdjęć.",
+    "photosSkipped_many": "Nie udało się zapisać {{count}} zdjęć.",
+    "photosSkipped_other": "Nie udało się zapisać {{count}} zdjęcia.",
+    "photoOpen": "Zdjęcie z {{day}}",
+    "photoFailed": "Nie udało się wyświetlić zdjęcia.",
+    "photoDeleted": "Zdjęcie usunięte",
+    "deletePhoto": "Usuń zdjęcie",
+    "deletePhotoConfirm": {
+      "title": "Usunąć to zdjęcie?",
+      "description": "Zdjęcie zostanie usunięte na stałe. Tej operacji nie można cofnąć.",
+      "descriptionLast": "To ostatnie zdjęcie z {{day}}, więc zostanie usunięty także cały zestaw zdjęć z tego dnia. Tej operacji nie można cofnąć."
+    }
   },
   "transaction": {
     "flowSaved": "Znaczenie zapisane",

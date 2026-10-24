@@ -349,7 +349,30 @@
     "rentYear": "{{rent}} all'anno",
     "perYear": "all'anno",
     "loanPayment": "rata {{amount}} / mese",
-    "rowMenu": "Altre azioni: {{name}}"
+    "rowMenu": "Altre azioni: {{name}}",
+    "costKindRecurring": "Ricorrente",
+    "costKindOneTime": "Una tantum",
+    "costYear": "{{amount}} all'anno",
+    "costCurrent": "Attualmente {{amount}}",
+    "costDateInFuture": "La data di un costo non può essere futura.",
+    "costNameRequired": "Inserisci un nome per il costo.",
+    "confirmDeleteRecurring": "Verrà eliminato definitivamente il costo ricorrente «{{name}}» ({{amount}}, {{frequency}}). L'operazione non si può annullare.",
+    "photoCount_one": "{{count}} foto",
+    "photoCount_many": "{{count}} foto",
+    "photoCount_other": "{{count}} foto",
+    "uploading": "Caricamento {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} foto non è stata salvata.",
+    "photosSkipped_many": "{{count}} foto non sono state salvate.",
+    "photosSkipped_other": "{{count}} foto non sono state salvate.",
+    "photoOpen": "Foto del {{day}}",
+    "photoFailed": "Non è stato possibile mostrare la foto.",
+    "photoDeleted": "Foto eliminata",
+    "deletePhoto": "Elimina foto",
+    "deletePhotoConfirm": {
+      "title": "Eliminare questa foto?",
+      "description": "La foto verrà eliminata definitivamente. L'operazione non si può annullare.",
+      "descriptionLast": "È l'ultima foto del {{day}}, quindi verrà eliminato anche il gruppo di foto di quel giorno. L'operazione non si può annullare."
+    }
   },
   "transaction": {
     "flowSaved": "Significato salvato",

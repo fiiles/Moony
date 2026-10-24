@@ -349,7 +349,30 @@
     "rentYear": "{{rent}} al año",
     "perYear": "al año",
     "loanPayment": "cuota {{amount}} / mes",
-    "rowMenu": "Más acciones: {{name}}"
+    "rowMenu": "Más acciones: {{name}}",
+    "costKindRecurring": "Recurrente",
+    "costKindOneTime": "Único",
+    "costYear": "{{amount}} al año",
+    "costCurrent": "Ahora {{amount}}",
+    "costDateInFuture": "La fecha de un gasto no puede ser futura.",
+    "costNameRequired": "Escribe un nombre para el gasto.",
+    "confirmDeleteRecurring": "Se eliminará de forma permanente el gasto recurrente «{{name}}» ({{amount}}, {{frequency}}). Esta acción no se puede deshacer.",
+    "photoCount_one": "{{count}} foto",
+    "photoCount_many": "{{count}} fotos",
+    "photoCount_other": "{{count}} fotos",
+    "uploading": "Subiendo {{current}} / {{total}}",
+    "photosSkipped_one": "No se pudo guardar {{count}} foto.",
+    "photosSkipped_many": "No se pudieron guardar {{count}} fotos.",
+    "photosSkipped_other": "No se pudieron guardar {{count}} fotos.",
+    "photoOpen": "Foto del {{day}}",
+    "photoFailed": "No se pudo mostrar la foto.",
+    "photoDeleted": "Foto eliminada",
+    "deletePhoto": "Eliminar foto",
+    "deletePhotoConfirm": {
+      "title": "¿Eliminar esta foto?",
+      "description": "La foto se eliminará de forma permanente. Esta acción no se puede deshacer.",
+      "descriptionLast": "Es la última foto del {{day}}, así que también se eliminará el lote de fotos de ese día. Esta acción no se puede deshacer."
+    }
   },
   "transaction": {
     "flowSaved": "Significado guardado",

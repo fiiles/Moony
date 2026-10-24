@@ -325,7 +325,28 @@
     "rentYear": "{{rent}} pro Jahr",
     "perYear": "pro Jahr",
     "loanPayment": "Rate {{amount}} / Monat",
-    "rowMenu": "Weitere Aktionen: {{name}}"
+    "rowMenu": "Weitere Aktionen: {{name}}",
+    "costKindRecurring": "Laufend",
+    "costKindOneTime": "Einmalig",
+    "costYear": "{{amount}} pro Jahr",
+    "costCurrent": "Derzeit {{amount}}",
+    "costDateInFuture": "Das Datum einer Ausgabe darf nicht in der Zukunft liegen.",
+    "costNameRequired": "Geben Sie einen Namen für die Kosten ein.",
+    "confirmDeleteRecurring": "Damit werden die laufenden Kosten „{{name}}“ ({{amount}}, {{frequency}}) dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.",
+    "photoCount_one": "{{count}} Foto",
+    "photoCount_other": "{{count}} Fotos",
+    "uploading": "Hochladen {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} Foto konnte nicht gespeichert werden.",
+    "photosSkipped_other": "{{count}} Fotos konnten nicht gespeichert werden.",
+    "photoOpen": "Foto vom {{day}}",
+    "photoFailed": "Das Foto konnte nicht angezeigt werden.",
+    "photoDeleted": "Foto gelöscht",
+    "deletePhoto": "Foto löschen",
+    "deletePhotoConfirm": {
+      "title": "Dieses Foto löschen?",
+      "description": "Das Foto wird dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.",
+      "descriptionLast": "Das ist das letzte Foto vom {{day}}, daher wird auch der Fotostapel dieses Tages gelöscht. Das lässt sich nicht rückgängig machen."
+    }
   },
   "transaction": {
     "flowSaved": "Bedeutung gespeichert",

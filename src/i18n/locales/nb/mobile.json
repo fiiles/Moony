@@ -325,7 +325,28 @@
     "rentYear": "{{rent}} i året",
     "perYear": "i året",
     "loanPayment": "termin {{amount}} / mnd",
-    "rowMenu": "Flere handlinger: {{name}}"
+    "rowMenu": "Flere handlinger: {{name}}",
+    "costKindRecurring": "Fast",
+    "costKindOneTime": "Engangs",
+    "costYear": "{{amount}} i året",
+    "costCurrent": "Nå {{amount}}",
+    "costDateInFuture": "Datoen for en kostnad kan ikke ligge i fremtiden.",
+    "costNameRequired": "Skriv inn et navn på kostnaden.",
+    "confirmDeleteRecurring": "Dette sletter den faste kostnaden «{{name}}» ({{amount}}, {{frequency}}) permanent. Dette kan ikke angres.",
+    "photoCount_one": "{{count}} bilde",
+    "photoCount_other": "{{count}} bilder",
+    "uploading": "Laster opp {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} bilde kunne ikke lagres.",
+    "photosSkipped_other": "{{count}} bilder kunne ikke lagres.",
+    "photoOpen": "Bilde fra {{day}}",
+    "photoFailed": "Bildet kunne ikke vises.",
+    "photoDeleted": "Bildet er slettet",
+    "deletePhoto": "Slett bilde",
+    "deletePhotoConfirm": {
+      "title": "Slette dette bildet?",
+      "description": "Bildet slettes permanent. Dette kan ikke angres.",
+      "descriptionLast": "Dette er det siste bildet fra {{day}}, så bildegruppen for den dagen slettes også. Dette kan ikke angres."
+    }
   },
   "transaction": {
     "flowSaved": "Betydning lagret",

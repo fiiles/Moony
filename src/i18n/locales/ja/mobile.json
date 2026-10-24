@@ -301,7 +301,26 @@
     "rentYear": "年間 {{rent}}",
     "perYear": "年間",
     "loanPayment": "返済額 月 {{amount}}",
-    "rowMenu": "その他の操作: {{name}}"
+    "rowMenu": "その他の操作: {{name}}",
+    "costKindRecurring": "定期",
+    "costKindOneTime": "一時",
+    "costYear": "年間 {{amount}}",
+    "costCurrent": "現在 {{amount}}",
+    "costDateInFuture": "費用の日付は未来にできません。",
+    "costNameRequired": "費用の名前を入力してください。",
+    "confirmDeleteRecurring": "定期費用「{{name}}」（{{amount}}、{{frequency}}）を完全に削除します。この操作は元に戻せません。",
+    "photoCount_other": "{{count}} 枚",
+    "uploading": "アップロード中 {{current}} / {{total}}",
+    "photosSkipped_other": "{{count}} 枚の写真を保存できませんでした。",
+    "photoOpen": "{{day}} の写真",
+    "photoFailed": "写真を表示できませんでした。",
+    "photoDeleted": "写真を削除しました",
+    "deletePhoto": "写真を削除",
+    "deletePhotoConfirm": {
+      "title": "この写真を削除しますか？",
+      "description": "写真を完全に削除します。この操作は元に戻せません。",
+      "descriptionLast": "{{day}} の最後の写真です。その日の写真グループも一緒に削除されます。この操作は元に戻せません。"
+    }
   },
   "transaction": {
     "flowSaved": "意味を保存しました",

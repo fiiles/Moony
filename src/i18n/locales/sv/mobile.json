@@ -325,7 +325,28 @@
     "rentYear": "{{rent}} per år",
     "perYear": "per år",
     "loanPayment": "betalning {{amount}} / mån",
-    "rowMenu": "Fler åtgärder: {{name}}"
+    "rowMenu": "Fler åtgärder: {{name}}",
+    "costKindRecurring": "Återkommande",
+    "costKindOneTime": "Engångs",
+    "costYear": "{{amount}} per år",
+    "costCurrent": "Just nu {{amount}}",
+    "costDateInFuture": "Datumet för en kostnad kan inte ligga i framtiden.",
+    "costNameRequired": "Ange ett namn på kostnaden.",
+    "confirmDeleteRecurring": "Den återkommande kostnaden ”{{name}}” ({{amount}}, {{frequency}}) tas bort permanent. Det går inte att ångra.",
+    "photoCount_one": "{{count}} foto",
+    "photoCount_other": "{{count}} foton",
+    "uploading": "Laddar upp {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} foto kunde inte sparas.",
+    "photosSkipped_other": "{{count}} foton kunde inte sparas.",
+    "photoOpen": "Foto från {{day}}",
+    "photoFailed": "Fotot kunde inte visas.",
+    "photoDeleted": "Fotot har tagits bort",
+    "deletePhoto": "Ta bort foto",
+    "deletePhotoConfirm": {
+      "title": "Ta bort det här fotot?",
+      "description": "Fotot tas bort permanent. Det går inte att ångra.",
+      "descriptionLast": "Det här är det sista fotot från {{day}}, så fotoomgången för den dagen tas också bort. Det går inte att ångra."
+    }
   },
   "transaction": {
     "flowSaved": "Betydelse sparad",

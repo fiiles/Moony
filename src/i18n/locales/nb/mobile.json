@@ -418,12 +418,20 @@
       "count_one": "{{count}} emisjon",
       "count_other": "{{count}} emisjoner",
       "nearest": "nærmeste forfall {{month, lower}}",
-      "coupon": "kupong {{amount}} / år"
+      "coupon": "kupong {{amount}} / år",
+      "upcoming": "Neste kuponger og forfall",
+      "noUpcoming": "Ingen kuponger eller forfall det kommende året.",
+      "allRepaid": "Alle emisjoner er innfridd. Slå på «{{action}}» i menyen ··· for å se dem.",
+      "loadFailed": "Obligasjonene kunne ikke lastes.",
+      "rateNote": "{{rate}} p.a. vektet"
     },
     "otherAssets": {
       "count_one": "{{count}} post",
       "count_other": "{{count}} poster",
-      "valuedOn": "verdsatt {{date}}"
+      "valuedOn": "verdsatt {{date}}",
+      "moreDetails": "Flere opplysninger",
+      "loadFailed": "Eiendelene kunne ikke lastes.",
+      "notFound": "Eiendelen ble ikke funnet"
     },
     "realEstate": {
       "personal": "egen bolig",
@@ -478,6 +486,15 @@
       "targetReached": "målet nådd",
       "dayChange": "i dag"
     },
+    "crypto": {
+      "largestNote": "{{share}} av krypto",
+      "heldNote": "{{share}} av krypto · {{date}}"
+    },
+    "closed": {
+      "on": "avsluttet {{date}}",
+      "empty": "Ingen beholdninger er avsluttet ennå.",
+      "onlyClosed": "Bare avsluttede beholdninger her. Åpne «{{action}}» i menyen ··· for å se dem."
+    },
     "position": {
       "heroLabel": "Verdi av beholdningen · {{quantity}} {{unit}}",
       "perUnit": "{{price}} per stk.",
@@ -498,6 +515,17 @@
       "followed": "Lagt til i følgelisten",
       "range52": "52-ukers spenn",
       "renamed": "Navn lagret"
+    },
+    "watch": {
+      "stats": {
+        "today": "I dag",
+        "since": "Siden følging",
+        "noTarget": "ingen mål satt"
+      },
+      "above": "Over",
+      "below": "Under",
+      "openPosition": "Åpne beholdningen",
+      "notesEmpty": "Ingen notater ennå. Trykk på Rediger for å legge til analysenotater — markdown fungerer."
     }
   },
   "settings": {

@@ -418,12 +418,20 @@
       "count_one": "{{count}} Emission",
       "count_other": "{{count}} Emissionen",
       "nearest": "nächste Fälligkeit {{month}}",
-      "coupon": "Kupon {{amount}} / Jahr"
+      "coupon": "Kupon {{amount}} / Jahr",
+      "upcoming": "Nächste Kupons und Fälligkeiten",
+      "noUpcoming": "Im kommenden Jahr ist kein Kupon und keine Fälligkeit fällig.",
+      "allRepaid": "Alle Emissionen sind getilgt. Aktivieren Sie im Menü ··· „{{action}}“, um sie zu sehen.",
+      "loadFailed": "Die Anleihen konnten nicht geladen werden.",
+      "rateNote": "{{rate}} p. a. gewichtet"
     },
     "otherAssets": {
       "count_one": "{{count}} Posten",
       "count_other": "{{count}} Posten",
-      "valuedOn": "bewertet am {{date}}"
+      "valuedOn": "bewertet am {{date}}",
+      "moreDetails": "Weitere Angaben",
+      "loadFailed": "Die Vermögenswerte konnten nicht geladen werden.",
+      "notFound": "Vermögenswert nicht gefunden"
     },
     "realEstate": {
       "personal": "selbst genutzt",
@@ -478,6 +486,15 @@
       "targetReached": "Ziel erreicht",
       "dayChange": "heute"
     },
+    "crypto": {
+      "largestNote": "{{share}} der Kryptos",
+      "heldNote": "{{share}} der Kryptos · {{date}}"
+    },
+    "closed": {
+      "on": "geschlossen {{date}}",
+      "empty": "Noch keine Position geschlossen.",
+      "onlyClosed": "Hier gibt es nur geschlossene Positionen. Öffnen Sie im Menü ··· „{{action}}“, um sie zu sehen."
+    },
     "position": {
       "heroLabel": "Positionswert · {{quantity}} {{unit}}",
       "perUnit": "{{price}} pro Stück",
@@ -498,6 +515,17 @@
       "followed": "Zur Beobachtungsliste hinzugefügt",
       "range52": "52-Wochen-Spanne",
       "renamed": "Name gespeichert"
+    },
+    "watch": {
+      "stats": {
+        "today": "Heute",
+        "since": "Seit Beobachtung",
+        "noTarget": "kein Ziel gesetzt"
+      },
+      "above": "Über",
+      "below": "Unter",
+      "openPosition": "Position öffnen",
+      "notesEmpty": "Noch keine Notizen. Tippen Sie auf „Bearbeiten“, um Recherchenotizen hinzuzufügen — Markdown funktioniert."
     }
   },
   "settings": {

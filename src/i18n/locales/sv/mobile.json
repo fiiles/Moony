@@ -418,12 +418,20 @@
       "count_one": "{{count}} emission",
       "count_other": "{{count}} emissioner",
       "nearest": "närmaste förfall {{month, lower}}",
-      "coupon": "kupong {{amount}} / år"
+      "coupon": "kupong {{amount}} / år",
+      "upcoming": "Nästa kuponger och förfall",
+      "noUpcoming": "Inga kuponger eller förfall under det kommande året.",
+      "allRepaid": "Alla emissioner är återbetalda. Slå på ”{{action}}” i menyn ··· för att se dem.",
+      "loadFailed": "Obligationerna kunde inte läsas in.",
+      "rateNote": "{{rate}} per år, viktad"
     },
     "otherAssets": {
       "count_one": "{{count}} post",
       "count_other": "{{count}} poster",
-      "valuedOn": "värderad {{date}}"
+      "valuedOn": "värderad {{date}}",
+      "moreDetails": "Fler uppgifter",
+      "loadFailed": "Tillgångarna kunde inte läsas in.",
+      "notFound": "Tillgången hittades inte"
     },
     "realEstate": {
       "personal": "egen bostad",
@@ -478,6 +486,15 @@
       "targetReached": "målet nått",
       "dayChange": "i dag"
     },
+    "crypto": {
+      "largestNote": "{{share}} av krypto",
+      "heldNote": "{{share}} av krypto · {{date}}"
+    },
+    "closed": {
+      "on": "stängt {{date}}",
+      "empty": "Inget innehav är stängt ännu.",
+      "onlyClosed": "Här finns bara stängda innehav. Öppna ”{{action}}” i menyn ··· för att se dem."
+    },
     "position": {
       "heroLabel": "Innehavets värde · {{quantity}} {{unit}}",
       "perUnit": "{{price}} per st",
@@ -498,6 +515,17 @@
       "followed": "Tillagd i bevakningslistan",
       "range52": "52-veckorsintervall",
       "renamed": "Namn sparat"
+    },
+    "watch": {
+      "stats": {
+        "today": "I dag",
+        "since": "Sedan bevakning",
+        "noTarget": "inget mål satt"
+      },
+      "above": "Över",
+      "below": "Under",
+      "openPosition": "Öppna innehavet",
+      "notesEmpty": "Inga anteckningar ännu. Tryck på Redigera för att lägga till analysanteckningar — markdown fungerar."
     }
   },
   "settings": {

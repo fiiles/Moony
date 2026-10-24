@@ -1,7 +1,6 @@
-import { useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { listen } from '@tauri-apps/api/event';
 import { toast } from 'sonner';
 import type {
   InvestmentTransaction,
@@ -13,8 +12,9 @@ import { useTransactionFx } from '@/hooks/use-fx';
 import { useCurrency } from '@/lib/currency';
 import { investmentsApi, portfolioApi, stockMonitorApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
-import { chartPeriodStart, type ChartPeriod } from '@/utils/period';
+import type { ChartPeriod } from '@/utils/period';
 import { toStockRow, type StockRow } from '@/utils/positions';
+import { useTickerHistory } from './use-ticker-history';
 
 /**
  * Company data moves slowly and the backend asks Yahoo at most once a day, so within the hour a
@@ -56,12 +56,11 @@ export interface PositionData {
 /**
  * Everything the position detail shows (spec §8.8), from the queries of the desktop's
  * `StockDetail` and `PositionHero` so the cache is shared: the position in the report currency,
- * its trades, the value history of the period (refetched when the backend finishes a
- * recalculation, and backfilled once for a position imported without history) and the company
- * data in two steps.
+ * its trades, the value history of the period (`useTickerHistory`: refetched when the backend
+ * finishes a recalculation, and backfilled once for a position imported without history) and the
+ * company data in two steps.
  */
 export function usePosition(id: string | undefined, period: ChartPeriod): PositionData {
-  const queryClient = useQueryClient();
   const { currencyCode, fxRevision } = useCurrency();
 
   const { data: position, isLoading } = useQuery<StockPosition | null>({
@@ -82,39 +81,7 @@ export function usePosition(id: string | undefined, period: ChartPeriod): Positi
   // Each trade converts at the rates of its own day; the hero takes everything from the backend.
   const { ready: ratesReady, convertAt } = useTransactionFx(transactionData);
 
-  useEffect(() => {
-    if (!ticker) return;
-    const unlisten = listen('recalculation-complete', () => {
-      queryClient.invalidateQueries({ queryKey: ['ticker-history', 'stock', ticker] });
-    });
-    return () => {
-      unlisten.then((stop) => stop());
-    };
-  }, [queryClient, ticker]);
-
-  // On-demand backfill, once per ticker, so the chart has history after a fresh import
-  useEffect(() => {
-    if (!ticker) return;
-    investmentsApi
-      .backfillHistory(ticker)
-      .then((result) => {
-        if (result.days_processed > 0) {
-          queryClient.invalidateQueries({ queryKey: ['ticker-history', 'stock', ticker] });
-        }
-      })
-      .catch((error) => console.error(`[Chart] Backfill failed for ${ticker}:`, error));
-  }, [queryClient, ticker]);
-
-  // First UTC day of the period (open for "All"): it only changes with the day, so it keys the query
-  const periodStart = chartPeriodStart(period, Date.now() / 1000);
-  const { data: history } = useQuery<TickerValueHistoryReport>({
-    queryKey: ['ticker-history', 'stock', ticker, periodStart ?? 'all', currencyCode, fxRevision],
-    queryFn: () =>
-      investmentsApi.getHistory(ticker!, currencyCode, periodStart, Math.floor(Date.now() / 1000)),
-    enabled: !!ticker,
-    staleTime: 0,
-    refetchOnMount: 'always',
-  });
+  const history = useTickerHistory('stock', ticker, period);
 
   // Company data comes from Yahoo through the stock_data cache. The stored record shows at once;
   // the second query lets the backend fetch it first when it is missing or over a day old, so a

@@ -1,11 +1,11 @@
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { priceDecimals } from '@shared/currencies';
-import type { InvestmentTransaction, TickerValueHistoryReport } from '@shared/schema';
+import type { TickerValueHistoryReport } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import type { EventCluster } from '@/utils/chart-scale';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
-import type { StockRow } from '@/utils/positions';
+import type { PositionRowBase } from '@/utils/positions';
 import { ChartLegend } from '@/components/charts/ChartLegend';
 import { Hero } from '@/mobile/components/Hero';
 import { Money } from '@/mobile/components/Money';
@@ -16,6 +16,7 @@ import {
   nativeTotal,
   positionEvents,
   positionPoints,
+  type LedgerTx,
   type PositionEvent,
 } from '@/mobile/lib/position-series';
 
@@ -23,10 +24,14 @@ import {
 const WHOLE = { decimals: 0 } as const;
 
 interface PositionHeroCardProps {
-  holding: StockRow;
+  holding: PositionRowBase;
   /** The value history of the period, each day in the report currency. */
   history: TickerValueHistoryReport | undefined;
-  transactions: readonly InvestmentTransaction[];
+  transactions: readonly LedgerTx[];
+  /** What the quantity is counted in ("ks" for shares): the label and the marks' callouts. */
+  unit: string;
+  /** Decimals the quantity is written with (default 4; a coin is held to 8). */
+  quantityDigits?: number;
   reportCurrency: string;
   period: ChartPeriod;
   onPeriodChange: (period: ChartPeriod) => void;
@@ -45,6 +50,8 @@ export function PositionHeroCard({
   holding,
   history,
   transactions,
+  unit,
+  quantityDigits = 4,
   reportCurrency,
   period,
   onPeriodChange,
@@ -99,7 +106,7 @@ export function PositionHeroCard({
     const txCurrency = tx.currency || reportCurrency;
     return {
       title: ts(tx.type === 'sell' ? 'detail.events.sell' : 'detail.events.buy', {
-        quantity: `${fmt.number(parseFloat(tx.quantity) || 0, { maximumFractionDigits: 4 })} ${ts('table.unit')}`,
+        quantity: `${fmt.number(parseFloat(tx.quantity) || 0, { maximumFractionDigits: quantityDigits })} ${unit}`,
         price: moneyText(price, txCurrency, { decimals: priceDecimals(price, txCurrency) }),
       }),
       lines: [
@@ -111,8 +118,8 @@ export function PositionHeroCard({
   };
 
   const label = t('wealth.position.heroLabel', {
-    quantity: fmt.number(quantity, { maximumFractionDigits: 4 }),
-    unit: ts('table.unit'),
+    quantity: fmt.number(quantity, { maximumFractionDigits: quantityDigits }),
+    unit,
   });
   const missing = history?.fxQuality.missingCurrencies ?? [];
 

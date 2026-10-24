@@ -418,12 +418,20 @@
       "count_one": "{{count}} issue",
       "count_other": "{{count}} issues",
       "nearest": "nearest maturity {{month}}",
-      "coupon": "coupon {{amount}} / year"
+      "coupon": "coupon {{amount}} / year",
+      "upcoming": "Next coupons and maturities",
+      "noUpcoming": "No coupon or maturity in the coming year.",
+      "allRepaid": "Every issue is repaid. Turn on “{{action}}” in the ··· menu to see them.",
+      "loadFailed": "Bonds could not be loaded.",
+      "rateNote": "{{rate}} p.a. weighted"
     },
     "otherAssets": {
       "count_one": "{{count}} item",
       "count_other": "{{count}} items",
-      "valuedOn": "valued {{date}}"
+      "valuedOn": "valued {{date}}",
+      "moreDetails": "More details",
+      "loadFailed": "Assets could not be loaded.",
+      "notFound": "Asset not found"
     },
     "realEstate": {
       "personal": "personal",
@@ -478,6 +486,15 @@
       "targetReached": "target reached",
       "dayChange": "today"
     },
+    "crypto": {
+      "largestNote": "{{share}} of crypto",
+      "heldNote": "{{share}} of crypto · {{date}}"
+    },
+    "closed": {
+      "on": "closed {{date}}",
+      "empty": "No position is closed yet.",
+      "onlyClosed": "Only closed positions here. Open “{{action}}” in the ··· menu to see them."
+    },
     "position": {
       "heroLabel": "Position value · {{quantity}} {{unit}}",
       "perUnit": "{{price}} per unit",
@@ -498,6 +515,17 @@
       "followed": "Added to the watchlist",
       "range52": "52-week range",
       "renamed": "Name saved"
+    },
+    "watch": {
+      "stats": {
+        "today": "Today",
+        "since": "Since following",
+        "noTarget": "no target set"
+      },
+      "above": "Above",
+      "below": "Below",
+      "openPosition": "Open position",
+      "notesEmpty": "No notes yet. Tap Edit to add research notes — markdown works."
     }
   },
   "settings": {

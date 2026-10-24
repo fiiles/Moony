@@ -6,11 +6,12 @@ import { dataApi } from '@/lib/tauri-api';
 import { exportsOnThisDevice, type ExportOutcome } from '@/mobile/lib/export-file';
 
 /**
- * Hands a short text to the system's Files picker (the recovery key's `.txt`): Rust writes it to
- * `Documents/<fileName>`, which the iOS save picker then exports to the place the person chooses,
- * and Rust removes the staged file again, whatever the person did. The webview has no fs commands:
- * `fileName` must be a name Rust allow-lists (`RECOVERY_KEY_FILE`). Where exporting does not work
- * (anything but iOS) nothing is staged: the person is told and the outcome is `'cancelled'`.
+ * Hands a text to the system's Files picker (the recovery key's `.txt`, a class page's CSV): Rust
+ * writes it to `Documents/<fileName>`, which the iOS save picker then exports to the place the
+ * person chooses, and Rust removes the staged file again, whatever the person did. The webview has
+ * no fs commands: `fileName` must be a name Rust allow-lists (`RECOVERY_KEY_FILE`, the names in
+ * `use-class-export.ts`). Where exporting does not work (anything but iOS) nothing is staged: the
+ * person is told and the outcome is `'cancelled'`.
  *
  * A removal that fails rejects the whole export, even after the picker saved the file: the text
  * would still be lying in Documents, and the caller must say so rather than report a clean save.

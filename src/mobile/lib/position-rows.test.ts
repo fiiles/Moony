@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  displayName,
   foldRows,
   positionRows,
   priceStamp,
@@ -22,41 +23,63 @@ const chf = row('NESN', 'Nestlé', 3, null, null);
 const old = row('OLD', 'Closed Co', 0, 0, null);
 
 describe('positionRows', () => {
-  it('hides closed positions unless asked, sorts by value with unknown values last', () => {
+  it('lists open positions only, sorted by value with unknown values last', () => {
     expect(
-      positionRows([cez, chf, old, vwce], { sort: 'value', search: '', showClosed: false }).map(
-        (r) => r.ticker
-      )
+      positionRows([cez, chf, old, vwce], { sort: 'value', search: '' }).map((r) => r.ticker)
     ).toEqual(['VWCE', 'CEZ', 'NESN']);
-    expect(
-      positionRows([cez, old, vwce], { sort: 'value', search: '', showClosed: true }).map(
-        (r) => r.ticker
-      )
-    ).toEqual(['VWCE', 'CEZ', 'OLD']);
   });
 
   it('sorts by return and by name', () => {
     expect(
-      positionRows([cez, chf, vwce], { sort: 'gain', search: '', showClosed: false }).map(
-        (r) => r.ticker
-      )
+      positionRows([cez, chf, vwce], { sort: 'gain', search: '' }).map((r) => r.ticker)
     ).toEqual(['VWCE', 'CEZ', 'NESN']);
     expect(
-      positionRows([vwce, cez, chf], { sort: 'name', search: '', showClosed: false }).map(
-        (r) => r.ticker
-      )
+      positionRows([vwce, cez, chf], { sort: 'name', search: '' }).map((r) => r.ticker)
     ).toEqual(['CEZ', 'NESN', 'VWCE']);
   });
 
   it('filters by ticker or name, without case and diacritics', () => {
     expect(
-      positionRows([cez, vwce, chf], { sort: 'value', search: 'nestle', showClosed: false }).map(
-        (r) => r.ticker
-      )
+      positionRows([cez, vwce, chf], { sort: 'value', search: 'nestle' }).map((r) => r.ticker)
     ).toEqual(['NESN']);
     expect(searchMatches(cez, ' cez')).toBe(true);
     expect(searchMatches(cez, 'vanguard')).toBe(false);
     expect(searchMatches(cez, '')).toBe(true);
+  });
+});
+
+describe('displayName', () => {
+  it('prefers the company name, then the coin name, then the ticker', () => {
+    expect(displayName({ ticker: 'BTC', name: 'Bitcoin' })).toBe('Bitcoin');
+    expect(displayName({ ticker: 'AAPL', companyName: 'Apple' })).toBe('Apple');
+    expect(displayName({ ticker: 'AAPL', companyName: '' })).toBe('AAPL');
+  });
+});
+
+describe('positionRows over crypto-shaped rows', () => {
+  // A coin has a `name` and no `companyName`; one without a rate has no value and no return
+  const coin = (
+    ticker: string,
+    name: string,
+    marketValue: number | null,
+    gainLossPercent: number | null
+  ) => ({ ticker, name, quantity: 1, marketValue, gainLossPercent });
+  const eth = coin('ETH', 'Ethereum', null, null);
+  const btc = coin('BTC', 'Bitcoin', 100, 5);
+
+  it('sorts a coin without a rate last by value, by return and by name', () => {
+    const tickers = (sort: 'value' | 'gain' | 'name') =>
+      positionRows([eth, btc], { sort, search: '' }).map((r) => r.ticker);
+    expect(tickers('value')).toEqual(['BTC', 'ETH']);
+    expect(tickers('gain')).toEqual(['BTC', 'ETH']);
+    expect(tickers('name')).toEqual(['BTC', 'ETH']);
+  });
+
+  it('finds a coin by its name', () => {
+    expect(
+      positionRows([eth, btc], { sort: 'value', search: 'ethe' }).map((r) => r.ticker)
+    ).toEqual(['ETH']);
+    expect(searchMatches(btc, 'bitco')).toBe(true);
   });
 });
 

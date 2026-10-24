@@ -395,11 +395,19 @@
     "bonds": {
       "count_other": "{{count}} 只债券",
       "nearest": "最近到期 {{month}}",
-      "coupon": "票息 {{amount}} / 年"
+      "coupon": "票息 {{amount}} / 年",
+      "upcoming": "近期票息与到期",
+      "noUpcoming": "未来一年内没有票息或到期。",
+      "allRepaid": "所有债券均已兑付。在“···”菜单中开启“{{action}}”即可查看。",
+      "loadFailed": "无法加载债券。",
+      "rateNote": "{{rate}} 年化 加权平均"
     },
     "otherAssets": {
       "count_other": "{{count}} 项",
-      "valuedOn": "{{date}} 估值"
+      "valuedOn": "{{date}} 估值",
+      "moreDetails": "更多信息",
+      "loadFailed": "无法加载资产。",
+      "notFound": "未找到资产"
     },
     "realEstate": {
       "personal": "自住",
@@ -453,9 +461,18 @@
       "targetReached": "已达目标价",
       "dayChange": "今日"
     },
+    "crypto": {
+      "largestNote": "占加密货币 {{share}}",
+      "heldNote": "占加密货币 {{share}} · {{date}}"
+    },
+    "closed": {
+      "on": "{{date}} 平仓",
+      "empty": "还没有已平仓的持仓。",
+      "onlyClosed": "这里只有已平仓的持仓。在“···”菜单中打开“{{action}}”即可查看。"
+    },
     "position": {
       "heroLabel": "持仓价值 · {{quantity}} {{unit}}",
-      "perUnit": "每股 {{price}}",
+      "perUnit": "每单位 {{price}}",
       "stats": {
         "value": "价值",
         "inCurrency": "以 {{currency}} 计",
@@ -472,6 +489,17 @@
       "followed": "已添加到自选列表",
       "range52": "52 周区间",
       "renamed": "名称已保存"
+    },
+    "watch": {
+      "stats": {
+        "today": "今日",
+        "since": "关注以来",
+        "noTarget": "未设置目标价"
+      },
+      "above": "高于",
+      "below": "低于",
+      "openPosition": "打开持仓",
+      "notesEmpty": "还没有笔记。点按“编辑”添加研究笔记，支持 Markdown。"
     }
   },
   "settings": {

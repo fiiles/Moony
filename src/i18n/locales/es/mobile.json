@@ -441,13 +441,21 @@
       "count_many": "{{count}} emisiones",
       "count_other": "{{count}} emisiones",
       "nearest": "próximo vencimiento {{month, lower}}",
-      "coupon": "cupón {{amount}} / año"
+      "coupon": "cupón {{amount}} / año",
+      "upcoming": "Próximos cupones y vencimientos",
+      "noUpcoming": "No hay cupones ni vencimientos en el próximo año.",
+      "allRepaid": "Todas las emisiones están amortizadas. Activa «{{action}}» en el menú ··· para verlas.",
+      "loadFailed": "No se pudieron cargar los bonos.",
+      "rateNote": "{{rate}} anual ponderado"
     },
     "otherAssets": {
       "count_one": "{{count}} elemento",
       "count_many": "{{count}} elementos",
       "count_other": "{{count}} elementos",
-      "valuedOn": "valorado el {{date}}"
+      "valuedOn": "valorado el {{date}}",
+      "moreDetails": "Más datos",
+      "loadFailed": "No se pudieron cargar los activos.",
+      "notFound": "Activo no encontrado"
     },
     "realEstate": {
       "personal": "vivienda habitual",
@@ -503,6 +511,15 @@
       "targetReached": "objetivo alcanzado",
       "dayChange": "hoy"
     },
+    "crypto": {
+      "largestNote": "{{share}} de cripto",
+      "heldNote": "{{share}} de cripto · {{date}}"
+    },
+    "closed": {
+      "on": "cerrada el {{date}}",
+      "empty": "Todavía no hay posiciones cerradas.",
+      "onlyClosed": "Aquí solo hay posiciones cerradas. Abre «{{action}}» en el menú ··· para verlas."
+    },
     "position": {
       "heroLabel": "Valor de la posición · {{quantity}} {{unit}}",
       "perUnit": "{{price}} por unidad",
@@ -524,6 +541,17 @@
       "followed": "Añadida a la lista de seguimiento",
       "range52": "Rango de 52 semanas",
       "renamed": "Nombre guardado"
+    },
+    "watch": {
+      "stats": {
+        "today": "Hoy",
+        "since": "Desde el seguimiento",
+        "noTarget": "sin objetivo"
+      },
+      "above": "Por encima",
+      "below": "Por debajo",
+      "openPosition": "Abrir posición",
+      "notesEmpty": "Aún no hay notas. Toca Editar para añadir notas de análisis — markdown funciona."
     }
   },
   "settings": {

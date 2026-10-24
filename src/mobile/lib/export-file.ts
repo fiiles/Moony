@@ -10,7 +10,7 @@
  * no fs commands. Only iOS exports this way (`exportsOnThisDevice`).
  */
 
-/** The one text file the phone stages in Documents (an allow-listed name in Rust): the recovery key's text. */
+/** The recovery key's text file, one of the names Rust allow-lists for staging (`TEXT_EXPORT_FILE_NAMES`; the others are the class pages' CSVs, `use-class-export.ts`). */
 export const RECOVERY_KEY_FILE = 'moony-recovery-key.txt';
 
 /** What an export came to: a file in a place the person chose, or nothing (the picker was cancelled). */

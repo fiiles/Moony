@@ -81,9 +81,17 @@ pub fn is_staged_export_path(document_dir: &Path, path: &Path) -> bool {
             .is_some_and(is_export_file_name)
 }
 
-/// The text files the phone may stage in Documents for the Files export: the recovery key's text.
-/// A fixed list, so the command that writes one can never be pointed at another file.
-const TEXT_EXPORT_FILE_NAMES: [&str; 1] = ["moony-recovery-key.txt"];
+/// The text files the phone may stage in Documents for the Files export: the recovery key's text
+/// and the CSV of each class page (stocks, crypto, bonds, other assets — the name stays fixed, the
+/// dated one the export command returns is only the desktop's). A fixed list, so the command that
+/// writes one can never be pointed at another file.
+const TEXT_EXPORT_FILE_NAMES: [&str; 5] = [
+    "moony-recovery-key.txt",
+    "moony-stock-transactions.csv",
+    "moony-crypto-transactions.csv",
+    "moony-bonds.csv",
+    "moony-other-assets.csv",
+];
 
 /// Whether `name` is one of the text files that may be staged (`TEXT_EXPORT_FILE_NAMES`).
 pub fn is_text_export_file_name(name: &str) -> bool {
@@ -102,7 +110,7 @@ pub fn is_staged_text_export_path(document_dir: &Path, path: &Path) -> bool {
 
 /// Write `contents` to `document_dir/<file_name>` (an existing file is replaced) for the Files
 /// export to pick up; only an allow-listed name is accepted. A write that fails half way leaves
-/// nothing behind. The contents (the recovery key) are never logged.
+/// nothing behind. The contents (the recovery key, or a class's CSV export) are never logged.
 pub fn write_text_export(document_dir: &Path, file_name: &str, contents: &str) -> Result<PathBuf> {
     if !is_text_export_file_name(file_name) {
         return Err(AppError::Validation(
@@ -1315,6 +1323,40 @@ mod tests {
         ] {
             assert!(!is_text_export_file_name(bad), "{bad}");
         }
+    }
+
+    #[test]
+    fn the_class_pages_csv_exports_are_on_the_allow_list() {
+        // The names the phone's class pages stage (`use-class-export.ts`), one per class
+        for good in [
+            "moony-stock-transactions.csv",
+            "moony-crypto-transactions.csv",
+            "moony-bonds.csv",
+            "moony-other-assets.csv",
+        ] {
+            assert!(is_text_export_file_name(good), "{good}");
+        }
+        // The backend's own dated file name is not one of them, nor is a path or another case
+        for bad in [
+            "../moony-bonds.csv",
+            "moony-bonds-2026-10-24.csv",
+            "Moony-bonds.csv",
+            "moony-bonds.csv.txt",
+            "moony-real-estate.csv",
+            "bonds.csv",
+        ] {
+            assert!(!is_text_export_file_name(bad), "{bad}");
+        }
+    }
+
+    #[test]
+    fn a_class_csv_export_is_written_to_the_documents_folder() {
+        let dir = tempfile::tempdir().expect("dir");
+        let path = write_text_export(dir.path(), "moony-bonds.csv", "name;value\n").expect("write");
+        assert_eq!(path, dir.path().join("moony-bonds.csv"));
+        assert_eq!(fs::read_to_string(&path).expect("read"), "name;value\n");
+        let err = write_text_export(dir.path(), "../moony-bonds.csv", "x").expect_err("path");
+        assert!(matches!(err, AppError::Validation(k) if k == "validation.backupExportInvalid"));
     }
 
     #[test]

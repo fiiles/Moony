@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Download, Ellipsis, FileText, Plus } from 'lucide-react';
-import { toast } from 'sonner';
 import type { Bond, InsertBond } from '@shared/schema';
 import { useBondMutations } from '@/hooks/use-bond-mutations';
 import { useBonds, type BondsMetrics } from '@/hooks/use-bonds';
@@ -28,6 +27,7 @@ import { ClassSkeleton } from '@/mobile/components/wealth/ClassSkeleton';
 import { MoreRow } from '@/mobile/components/wealth/MoreRow';
 import { useBack } from '@/mobile/hooks/use-back';
 import { useBondsLoadFailed } from '@/mobile/hooks/use-bonds-failed';
+import { useClassExport } from '@/mobile/hooks/use-class-export';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
 import { bondRows } from '@/mobile/lib/bond-rows';
@@ -56,6 +56,7 @@ export default function Bonds() {
   const back = useBack(routes.wealth);
   const { bonds, metrics, isLoading, today } = useBonds();
   const loadFailed = useBondsLoadFailed();
+  const { exportCsv, isPending: exporting } = useClassExport('bonds');
   const { currencyCode, fxReady } = useCurrency();
   const { createMutation, updateMutation, deleteMutation } = useBondMutations();
   const [showMatured, setShowMatured] = useRemembered('bonds.showMatured', false);
@@ -64,7 +65,6 @@ export default function Bonds() {
   const [editing, setEditing] = useState<Bond | null>(null);
   const [deleting, setDeleting] = useState<Bond | null>(null);
 
-  const later = () => toast(t('wealth.placeholder.later'));
   const openAdd = () => {
     setEditing(null);
     setFormOpen(true);
@@ -103,7 +103,7 @@ export default function Bonds() {
                 {tb('table.showMatured')}
               </DropdownMenuCheckboxItem>
               <DropdownMenuSeparator />
-              <RowMenuItem onSelect={later}>
+              <RowMenuItem disabled={exporting} onSelect={() => void exportCsv()}>
                 <Download strokeWidth={1.75} aria-hidden />
                 {tc('buttons.export')}
               </RowMenuItem>

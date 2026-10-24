@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Download, Ellipsis, Gem, Plus } from 'lucide-react';
-import { toast } from 'sonner';
 import { priceDecimals } from '@shared/currencies';
 import { useFormat } from '@/lib/use-format';
 import type { OtherAssetRow } from '@/utils/other-assets';
@@ -18,6 +17,7 @@ import { ClassEmpty } from '@/mobile/components/wealth/ClassEmpty';
 import { ClassHero } from '@/mobile/components/wealth/ClassHero';
 import { ClassSkeleton } from '@/mobile/components/wealth/ClassSkeleton';
 import { useBack } from '@/mobile/hooks/use-back';
+import { useClassExport } from '@/mobile/hooks/use-class-export';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useOtherAssets } from '@/mobile/hooks/use-other-asset';
 import { OtherAssetAddSheet } from '@/mobile/sheets/OtherAssetAddSheet';
@@ -44,9 +44,9 @@ export default function OtherAssets() {
   const { t: tc } = useTranslation('common');
   const back = useBack(routes.wealth);
   const { assets, rows, totals, costReady, reportCurrency, isLoading, isError } = useOtherAssets();
+  const { exportCsv, isPending: exporting } = useClassExport('otherAssets');
   const [addOpen, setAddOpen] = useState(false);
 
-  const later = () => toast(t('wealth.placeholder.later'));
   // The currencies left out of the values, and — once the costs are in — of the costs
   const missing = costReady
     ? [...new Set([...totals.missing, ...totals.missingCost])]
@@ -70,7 +70,7 @@ export default function OtherAssets() {
               </NavIconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[240px]">
-              <RowMenuItem onSelect={later}>
+              <RowMenuItem disabled={exporting} onSelect={() => void exportCsv()}>
                 <Download strokeWidth={1.75} aria-hidden />
                 {tc('buttons.export')}
               </RowMenuItem>

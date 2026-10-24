@@ -17,7 +17,6 @@ interface PositionListProps<R extends PositionRowBase & { companyName?: string; 
   hrefOf: (row: R) => string;
   /** The report currency: the value and the gain of a row are the backend's, converted into it. */
   currency: string;
-  showClosed: boolean;
   /** A refresh is running: the list is dimmed. */
   dimmed: boolean;
   /** The sort is remembered for the session under `${rememberKey}.sort`. */
@@ -27,14 +26,14 @@ interface PositionListProps<R extends PositionRowBase & { companyName?: string; 
 /**
  * The positions of a class: a toolbar (the sort pill and the search toggle), the search field
  * while it is on, then the positions as rows — the first eight, "Zobrazit všech N" for the rest.
- * Closed positions wait behind the `···` menu. A search that finds nothing says so instead of
- * showing an empty list.
+ * Closed positions are not listed: they wait in the sheet behind the `···` menu, which the hint
+ * names when nothing else is left. A search that finds nothing says so instead of showing an
+ * empty list.
  */
 export function PositionList<R extends PositionRowBase & { companyName?: string; name?: string }>({
   rows,
   hrefOf,
   currency,
-  showClosed,
   dimmed,
   rememberKey,
 }: PositionListProps<R>) {
@@ -57,7 +56,7 @@ export function PositionList<R extends PositionRowBase & { companyName?: string;
     if (searchOpen) searchBox.current?.querySelector('input')?.focus();
   }, [searchOpen]);
 
-  const shownRows = positionRows(rows, { sort, search, showClosed });
+  const shownRows = positionRows(rows, { sort, search });
   const { shown, hidden } = foldRows(shownRows, expanded);
 
   return (
@@ -94,7 +93,9 @@ export function PositionList<R extends PositionRowBase & { companyName?: string;
       )}
       {shownRows.length === 0 ? (
         <p className="mx-0.5 py-6 text-center text-m-body text-ink-3">
-          {search.trim() === '' ? ts('table.onlyClosedPositions') : ts('table.noResults.title')}
+          {search.trim() === ''
+            ? t('wealth.closed.onlyClosed', { action: t('wealth.stocks.menu.closed') })
+            : ts('table.noResults.title')}
         </p>
       ) : (
         <EntityRows className={dimmed ? 'opacity-50 transition-opacity' : undefined}>

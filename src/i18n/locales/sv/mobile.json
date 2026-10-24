@@ -489,6 +489,11 @@
       "largestNote": "{{share}} av krypto",
       "heldNote": "{{date}} · {{share}}"
     },
+    "closed": {
+      "on": "stängt {{date}}",
+      "empty": "Inget innehav är stängt ännu.",
+      "onlyClosed": "Här finns bara stängda innehav. Öppna ”{{action}}” i menyn ··· för att se dem."
+    },
     "position": {
       "heroLabel": "Innehavets värde · {{quantity}} {{unit}}",
       "perUnit": "{{price}} per st",

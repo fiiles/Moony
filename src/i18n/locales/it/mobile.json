@@ -514,6 +514,11 @@
       "largestNote": "{{share}} delle cripto",
       "heldNote": "{{date}} · {{share}}"
     },
+    "closed": {
+      "on": "chiusa il {{date}}",
+      "empty": "Nessuna posizione chiusa finora.",
+      "onlyClosed": "Qui ci sono solo posizioni chiuse. Apri «{{action}}» nel menu ··· per vederle."
+    },
     "position": {
       "heroLabel": "Valore della posizione · {{quantity}} {{unit}}",
       "perUnit": "{{price}} per unità",

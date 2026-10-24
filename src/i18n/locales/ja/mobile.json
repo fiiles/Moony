@@ -464,6 +464,11 @@
       "largestNote": "暗号資産の{{share}}",
       "heldNote": "{{date}} · {{share}}"
     },
+    "closed": {
+      "on": "{{date}}に決済",
+      "empty": "決済済みのポジションはまだありません。",
+      "onlyClosed": "ここには決済済みのポジションしかありません。メニュー「···」の「{{action}}」を開くと表示されます。"
+    },
     "position": {
       "heroLabel": "ポジションの評価額 · {{quantity}} {{unit}}",
       "perUnit": "1単位あたり {{price}}",

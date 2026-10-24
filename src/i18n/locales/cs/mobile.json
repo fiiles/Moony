@@ -514,6 +514,11 @@
       "largestNote": "{{share}} z krypta",
       "heldNote": "{{date}} · {{share}}"
     },
+    "closed": {
+      "on": "uzavřeno {{date}}",
+      "empty": "Zatím není uzavřená žádná pozice.",
+      "onlyClosed": "Jsou tu jen uzavřené pozice. Otevřete v nabídce ··· „{{action}}“, abyste je viděli."
+    },
     "position": {
       "heroLabel": "Hodnota pozice · {{quantity}} {{unit}}",
       "perUnit": "{{price}} za kus",

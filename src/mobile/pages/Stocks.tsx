@@ -1,7 +1,16 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
-import { Download, Ellipsis, History, Plus, RefreshCw, TrendingUp, Upload } from 'lucide-react';
+import {
+  Archive,
+  Download,
+  Ellipsis,
+  History,
+  Plus,
+  RefreshCw,
+  TrendingUp,
+  Upload,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import type { StockPositions, WatchedStockRow } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
@@ -10,7 +19,6 @@ import { useWatchedStocks } from '@/hooks/use-stock-monitor';
 import { amountOf, totalOf } from '@/utils/positions';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -30,6 +38,7 @@ import { PricesLine } from '@/mobile/components/wealth/PricesLine';
 import { TickerResultRow } from '@/mobile/components/wealth/TickerResultRow';
 import { WatchedRow } from '@/mobile/components/wealth/WatchedRow';
 import { useBack } from '@/mobile/hooks/use-back';
+import { useClassExport } from '@/mobile/hooks/use-class-export';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
 import {
@@ -41,6 +50,7 @@ import {
 import { useTickerSearch } from '@/mobile/hooks/use-ticker-search';
 import { stocksView, type StocksTab } from '@/mobile/lib/position-rows';
 import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
+import { ClosedPositionsSheet } from '@/mobile/sheets/ClosedPositionsSheet';
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
 import { positionPath, routes, watchPath } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -58,9 +68,10 @@ const WHOLE = { decimals: 0 } as const;
  * watched) shows the same segment — without the hero, the stats and the prices line — opened on
  * Pozice, whose empty state adds the first position, while Sledované holds the search that starts
  * a watch: the search is the only way to a watch detail. The numbers are the desktop's (the same
- * queries), in the report currency; every amount goes through the eye of Přehled. The sort, the
- * closed toggle, the period and the segment are remembered for the session, so a visit to a
- * position does not reset them.
+ * queries), in the report currency; every amount goes through the eye of Přehled. The list holds
+ * the open positions; the closed ones are the sheet Uzavřené pozice in the `···` menu, and Export
+ * there hands the transactions' CSV to the Files picker. The sort, the period and the segment are
+ * remembered for the session, so a visit to a position does not reset them.
  */
 export default function Stocks() {
   const { t } = useTranslation('mobile');
@@ -70,12 +81,14 @@ export default function Stocks() {
   const { positions, rows, reportCurrency, isLoading, isError } = useStockPositions();
   const { transactions: trades, convertAt } = useStockTrades();
   const refresh = useRefreshStockPrices();
+  const { exportCsv, isPending: exporting } = useClassExport('stocks');
   const { data: watched = [], isLoading: watchedLoading } = useWatchedStocks();
-  // How the page was left is kept for the session (a position remounts it); the add dialog is
-  // not, so it does not reopen on return. `null`: no segment chosen yet, so the view's own opens.
+  // How the page was left is kept for the session (a position remounts it); the add dialog and the
+  // closed sheet are not, so they do not reopen on return. `null`: no segment chosen yet, so the
+  // view's own opens.
   const [chosenTab, setTab] = useRemembered<StocksTab | null>('stocks.tab', null);
-  const [showClosed, setShowClosed] = useRemembered('stocks.showClosed', false);
   const [addOpen, setAddOpen] = useState(false);
+  const [closedOpen, setClosedOpen] = useState(false);
   const view = stocksView(rows, watched, isError);
   const tab = chosenTab ?? view.defaultTab;
   const hasPositions = rows.length > 0;
@@ -108,15 +121,12 @@ export default function Stocks() {
                 <History strokeWidth={1.75} aria-hidden />
                 {ts('importHistory.title')}
               </RowMenuItem>
-              <DropdownMenuCheckboxItem
-                className="min-h-11 text-m-body"
-                checked={showClosed}
-                onCheckedChange={setShowClosed}
-              >
+              <RowMenuItem onSelect={() => setClosedOpen(true)}>
+                <Archive strokeWidth={1.75} aria-hidden />
                 {t('wealth.stocks.menu.closed')}
-              </DropdownMenuCheckboxItem>
+              </RowMenuItem>
               <DropdownMenuSeparator />
-              <RowMenuItem onSelect={later}>
+              <RowMenuItem disabled={exporting} onSelect={() => void exportCsv()}>
                 <Download strokeWidth={1.75} aria-hidden />
                 {tc('buttons.export')}
               </RowMenuItem>
@@ -177,7 +187,6 @@ export default function Stocks() {
                 rows={rows}
                 hrefOf={(row) => positionPath(row.id)}
                 currency={reportCurrency}
-                showClosed={showClosed}
                 dimmed={refresh.isPending}
                 rememberKey="stocks"
               />
@@ -191,6 +200,14 @@ export default function Stocks() {
         </>
       )}
       <AddInvestmentModal open={addOpen} onOpenChange={setAddOpen} />
+      <ClosedPositionsSheet
+        open={closedOpen}
+        onOpenChange={setClosedOpen}
+        rows={rows}
+        trades={trades}
+        currency={reportCurrency}
+        hrefOf={(row) => positionPath(row.id)}
+      />
     </Screen>
   );
 }

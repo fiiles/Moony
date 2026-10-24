@@ -489,6 +489,11 @@
       "largestNote": "{{share}} av krypto",
       "heldNote": "{{date}} · {{share}}"
     },
+    "closed": {
+      "on": "avsluttet {{date}}",
+      "empty": "Ingen beholdninger er avsluttet ennå.",
+      "onlyClosed": "Bare avsluttede beholdninger her. Åpne «{{action}}» i menyen ··· for å se dem."
+    },
     "position": {
       "heroLabel": "Verdi av beholdningen · {{quantity}} {{unit}}",
       "perUnit": "{{price}} per stk.",

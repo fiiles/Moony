@@ -35,18 +35,16 @@ export function searchMatches(
 }
 
 /**
- * The positions list as the page shows it: closed positions (quantity 0) only on request, the
- * search applied, then sorted — by value or return highest first with the unknown ones last, or by
- * name. Equal rows keep their order.
+ * The positions list as the page shows it: the open positions only (the closed ones, quantity 0,
+ * are the sheet Uzavřené pozice), the search applied, then sorted — by value or return highest
+ * first with the unknown ones last, or by name. Equal rows keep their order.
  */
 export function positionRows<T extends Sortable>(
   rows: readonly T[],
-  opts: { sort: PositionSort; search: string; showClosed: boolean }
+  opts: { sort: PositionSort; search: string }
 ): T[] {
-  const { sort, search, showClosed } = opts;
-  const shown = rows.filter(
-    (row) => (showClosed || row.quantity > 0) && searchMatches(row, search)
-  );
+  const { sort, search } = opts;
+  const shown = rows.filter((row) => row.quantity > 0 && searchMatches(row, search));
   switch (sort) {
     case 'value':
       return shown.sort((a, b) => compareKnown(b.marketValue, a.marketValue));

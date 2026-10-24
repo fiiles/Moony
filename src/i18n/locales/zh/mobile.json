@@ -464,6 +464,11 @@
       "largestNote": "占加密货币 {{share}}",
       "heldNote": "{{date}} · {{share}}"
     },
+    "closed": {
+      "on": "{{date}} 平仓",
+      "empty": "还没有已平仓的持仓。",
+      "onlyClosed": "这里只有已平仓的持仓。在“···”菜单中打开“{{action}}”即可查看。"
+    },
     "position": {
       "heroLabel": "持仓价值 · {{quantity}} {{unit}}",
       "perUnit": "每单位 {{price}}",

@@ -1,13 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Bitcoin, Download, Ellipsis, Plus, RefreshCw } from 'lucide-react';
-import { toast } from 'sonner';
+import { Archive, Bitcoin, Download, Ellipsis, Plus, RefreshCw } from 'lucide-react';
 import type { CryptoPositions } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { amountOf, totalOf, type CryptoRow } from '@/utils/positions';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -22,14 +20,15 @@ import { ClassSkeleton } from '@/mobile/components/wealth/ClassSkeleton';
 import { PositionList } from '@/mobile/components/wealth/PositionList';
 import { PricesLine } from '@/mobile/components/wealth/PricesLine';
 import { useBack } from '@/mobile/hooks/use-back';
+import { useClassExport } from '@/mobile/hooks/use-class-export';
 import {
   useCryptoPositions,
   useCryptoTrades,
   useRefreshCryptoPrices,
 } from '@/mobile/hooks/use-crypto';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
-import { useRemembered } from '@/mobile/hooks/use-remembered';
 import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
+import { ClosedPositionsSheet } from '@/mobile/sheets/ClosedPositionsSheet';
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
 import { cryptoPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -41,8 +40,10 @@ import { Screen } from '@/mobile/shell/Screen';
  * "Zobrazit všech N". Coins pay no dividends and have no performance report, so the stats are the
  * desktop's own (`CryptoSummary`) and there is no Pozice · Sledované segment (the watchlist is
  * Yahoo's stocks). The numbers are the desktop's (the same queries), in the report currency; every
- * amount goes through the eye of Přehled. The sort, the closed toggle and the period are remembered
- * for the session, so a visit to a coin does not reset them.
+ * amount goes through the eye of Přehled. The list holds the open coins; the closed ones are the
+ * sheet Uzavřené pozice in the `···` menu, and Export there hands the transactions' CSV to the
+ * Files picker. The sort and the period are remembered for the session, so a visit to a coin does
+ * not reset them.
  */
 export default function Crypto() {
   const { t } = useTranslation('mobile');
@@ -53,14 +54,14 @@ export default function Crypto() {
   const { positions, rows, reportCurrency, isLoading, isError } = useCryptoPositions();
   const { transactions: trades, convertAt } = useCryptoTrades();
   const refresh = useRefreshCryptoPrices();
-  // How the page was left is kept for the session (a coin remounts it); the add dialog is not, so
-  // it does not reopen on return.
-  const [showClosed, setShowClosed] = useRemembered('crypto.showClosed', false);
+  const { exportCsv, isPending: exporting } = useClassExport('crypto');
+  // The add dialog and the closed sheet are not kept for the session (a coin remounts the page), so
+  // they do not reopen on return.
   const [addOpen, setAddOpen] = useState(false);
+  const [closedOpen, setClosedOpen] = useState(false);
   const hasPositions = rows.length > 0;
 
   const open = rows.filter((row) => row.quantity > 0);
-  const later = () => toast(t('wealth.placeholder.later'));
 
   return (
     <Screen
@@ -79,15 +80,12 @@ export default function Crypto() {
                 <RefreshCw strokeWidth={1.75} aria-hidden />
                 {tcr('refreshPrices')}
               </RowMenuItem>
-              <DropdownMenuCheckboxItem
-                className="min-h-11 text-m-body"
-                checked={showClosed}
-                onCheckedChange={setShowClosed}
-              >
+              <RowMenuItem onSelect={() => setClosedOpen(true)}>
+                <Archive strokeWidth={1.75} aria-hidden />
                 {t('wealth.stocks.menu.closed')}
-              </DropdownMenuCheckboxItem>
+              </RowMenuItem>
               <DropdownMenuSeparator />
-              <RowMenuItem onSelect={later}>
+              <RowMenuItem disabled={exporting} onSelect={() => void exportCsv()}>
                 <Download strokeWidth={1.75} aria-hidden />
                 {tc('buttons.export')}
               </RowMenuItem>
@@ -137,13 +135,20 @@ export default function Crypto() {
             rows={rows}
             hrefOf={(row) => cryptoPath(row.id)}
             currency={reportCurrency}
-            showClosed={showClosed}
             dimmed={refresh.isPending}
             rememberKey="crypto"
           />
         </>
       )}
       <AddCryptoModal open={addOpen} onOpenChange={setAddOpen} />
+      <ClosedPositionsSheet
+        open={closedOpen}
+        onOpenChange={setClosedOpen}
+        rows={rows}
+        trades={trades}
+        currency={reportCurrency}
+        hrefOf={(row) => cryptoPath(row.id)}
+      />
     </Screen>
   );
 }

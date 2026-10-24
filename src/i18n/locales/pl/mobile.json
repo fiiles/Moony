@@ -539,6 +539,11 @@
       "largestNote": "{{share}} krypto",
       "heldNote": "{{date}} · {{share}}"
     },
+    "closed": {
+      "on": "zamknięta {{date}}",
+      "empty": "Żadna pozycja nie jest jeszcze zamknięta.",
+      "onlyClosed": "Są tu tylko zamknięte pozycje. Otwórz w menu ··· „{{action}}”, aby je zobaczyć."
+    },
     "position": {
       "heroLabel": "Wartość pozycji · {{quantity}} {{unit}}",
       "perUnit": "{{price}} za sztukę",

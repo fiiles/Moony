@@ -266,7 +266,7 @@
 
   <section class="part">
     <h2>Detail pojistky: fakta nahoře, graf dole</h2>
-    <p>Pojistka otevřená z Finance na 360, 390 a 430 (spec §8.8, prototyp 14): zpět s názvem záložky, název pojistky jako titulek, vpravo textové tlačítko Upravit (<code>.m-nav__back--text</code>) a <code>···</code>; podřádek <code>.m-nav__sub</code> (pojišťovna · typ · stav). Fakta jsou jedna karta <code>.m-kvcard</code> z řádků <code>.m-kv</code> — číslo smlouvy s 44 pt tlačítkem kopírování (<code>.m-kv__copy</code>, číslo se nemaskuje), pojišťovna (dlouhý název se zalomí na druhý řádek, <code>.m-kv__v--wrap</code>), typ, pojistné s frekvencí, příští platba se vzdáleností, platnost s výročím v podřádku, „Kündigung bis“ (poslední den výpovědi) a pojištěná nemovitost jako řádek s šipkou. Pak limity krytí jako řádky bez čipu (<code>.m-row--noicon</code>) s celkem v hlavičce, dokumenty, poznámky (<code>.m-prose</code> na <code>.m-card</code>, zalomení řádků zůstává) a jako poslední zaplacené pojistné (<code>.m-premium</code>): štítek, součet a schodová čára, plná do dneška a dál přerušovaná jako plán dalších dvanácti plateb.</p>
+    <p>Pojistka otevřená z Finance na 360, 390 a 430 (spec §8.8, prototyp 14): zpět s názvem záložky, název pojistky jako titulek, vpravo jen <code>···</code>; podřádek <code>.m-nav__sub</code> (pojišťovna · typ · stav), kde se dlouhý název pojišťovny zkrátí výpustkou jako jediný, takže stav vždy zůstane vidět (<code>.m-nav__sub--split</code>). Fakta jsou jedna karta <code>.m-kvcard</code> z řádků <code>.m-kv</code> — číslo smlouvy s 44 pt tlačítkem kopírování (<code>.m-kv__copy</code>, číslo se nemaskuje), pojišťovna (dlouhý název se zalomí na druhý řádek, <code>.m-kv__v--wrap</code>), typ, pojistné s frekvencí, jednorázová platba (vlastní řádek, vlastní měna), příští platba se vzdáleností, platnost s výročím v podřádku, „Kündigung bis“ (poslední den výpovědi) a pojištěná nemovitost jako řádek s šipkou. Pod kartou je sekundární tlačítko přes celou šířku Upravit (<code>.m-btn--secondary .m-btn--block</code>). Pak limity krytí jako řádky bez čipu (<code>.m-row--noicon</code>) s celkem v hlavičce, dokumenty, poznámky (<code>.m-prose</code> na <code>.m-card</code>, zalomení řádků zůstává) a jako poslední zaplacené pojistné (<code>.m-premium</code>): štítek, součet a schodová čára, plná do dneška a dál přerušovaná jako plán dalších dvanácti plateb.</p>
     <div class="phones" id="policy"></div>
   </section>
 
@@ -625,20 +625,22 @@
     <header class="m-nav">
       <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
       <h1 class="m-nav__title">Haushaltsversicherung</h1>
-      <div class="m-nav__side m-nav__side--end"><button class="m-nav__back m-nav__back--text" type="button"><span>Bearbeiten</span></button><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
     </header>
     <main class="m-screen__body">
-      <p class="m-nav__sub">Kooperativa · Sachversicherung · aktiv</p>
+      <p class="m-nav__sub m-nav__sub--split"><span>Kooperativa pojišťovna, a.s., Vienna Insurance Group</span><span>&nbsp;· Sachversicherung · aktiv</span></p>
       <div class="m-card m-kvcard">
         <div class="m-kv"><span class="m-kv__l">Vertragsnummer</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--id">8&nbsp;540&nbsp;221&nbsp;937</div></div><button class="m-kv__copy" type="button" aria-label="Vertragsnummer kopieren" data-icon="copy" data-size="16"></button></div>
         <div class="m-kv"><span class="m-kv__l">Versicherer</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--wrap">Kooperativa pojišťovna, a.s., Vienna Insurance Group</div></div></div>
         <div class="m-kv"><span class="m-kv__l">Art</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--wrap">Sachversicherung</div></div></div>
         <div class="m-kv"><span class="m-kv__l">Beitrag</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--wrap">2&nbsp;150 Kč · vierteljährlich</div></div></div>
+        <div class="m-kv"><span class="m-kv__l">Einmalzahlung</span><div class="m-kv__r"><div class="m-kv__v">5&nbsp;000 €</div></div></div>
         <div class="m-kv"><span class="m-kv__l">Nächste Zahlung</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--wrap">4. 11. 2026 · noch 11 Tage</div></div></div>
         <div class="m-kv"><span class="m-kv__l">Laufzeit</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--wrap">ab 4. 1. 2024 · unbefristet</div><div class="m-kv__s">Jahrestag 4. 1. 2027</div></div></div>
         <div class="m-kv"><span class="m-kv__l">Kündigung bis</span><div class="m-kv__r"><div class="m-kv__v">22. 11. 2026</div></div></div>
         <button class="m-kv m-kv--tap" type="button"><span class="m-kv__l">Immobilie</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--wrap">Wohnung Lipová</div></div><span class="m-kv__chev" data-icon="chevron-right" data-size="16"></span></button>
       </div>
+      <button class="m-btn m-btn--secondary m-btn--block" type="button" data-icon="pencil" data-size="16" style="margin-bottom: 14px"><span>Bearbeiten</span></button>
       <div class="m-sec"><span class="m-sec__t">Deckungslimits</span><span class="m-sec__n">gesamt 6,65 Mio. Kč</span></div>
       <div class="m-rows">
         <div class="m-row m-row--noicon"><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Haushalt</span><span class="m-row__v">5&nbsp;000&nbsp;000 Kč</span></span></span></div>

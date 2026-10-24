@@ -161,6 +161,41 @@ describe('policyFacts', () => {
     expect(keys(facts(policy({ regularPayment: '0' })))).not.toContain('premium');
   });
 
+  it('gives the one-time amount of a recurring policy its own row after the premium, in its own currency', () => {
+    const lump = facts(policy({ oneTimePayment: '5000', oneTimePaymentCurrency: 'EUR' }));
+    expect(keys(lump)).toEqual([
+      'number',
+      'provider',
+      'type',
+      'premium',
+      'oneTime',
+      'nextPayment',
+      'term',
+    ]);
+    expect(lump.find((fact) => fact.key === 'oneTime')).toEqual({
+      key: 'oneTime',
+      amount: 5000,
+      currency: 'EUR',
+    });
+  });
+
+  it('reads a one-time amount with no currency recorded in the premium\u2019s currency', () => {
+    const lump = facts(
+      policy({
+        oneTimePayment: '5000',
+        oneTimePaymentCurrency: null,
+        regularPaymentCurrency: 'EUR',
+      })
+    );
+    expect(lump.find((fact) => fact.key === 'oneTime')).toMatchObject({ currency: 'EUR' });
+  });
+
+  it('has no one-time row without an amount, nor for a one-time policy whose premium is that amount', () => {
+    expect(keys(facts(policy({ oneTimePayment: null })))).not.toContain('oneTime');
+    expect(keys(facts(policy({ oneTimePayment: '0' })))).not.toContain('oneTime');
+    expect(keys(facts(policy(ONE_TIME)))).not.toContain('oneTime');
+  });
+
   it('has no next payment for an ended policy, whose term runs from start to end', () => {
     const ended = facts(policy(ENDED), null, 43);
     expect(keys(ended)).toEqual(['number', 'provider', 'type', 'premium', 'term']);
@@ -207,6 +242,34 @@ describe('premiumPoints', () => {
     const result = premiumPoints(policy(), TODAY);
     expect(result.paidToDay).toBe(12 * 2150);
     expect(result.paymentsMade).toBe(12);
+  });
+
+  it('leaves a one-time amount in another currency out of the sum, never adding it 1:1', () => {
+    const mixed = policy({ oneTimePayment: '5000', oneTimePaymentCurrency: 'EUR' });
+    const result = premiumPoints(mixed, TODAY);
+    expect(result).toEqual(premiumPoints(policy(), TODAY));
+    expect(result.paidToDay).toBe(12 * 2150);
+    // Whichever of the two is the foreign one
+    const other = policy({
+      oneTimePayment: '5000',
+      oneTimePaymentCurrency: 'CZK',
+      regularPaymentCurrency: 'EUR',
+    });
+    expect(premiumPoints(other, TODAY).paidToDay).toBe(12 * 2150);
+  });
+
+  it('adds a one-time amount in the premium\u2019s currency, or with none recorded, at the start', () => {
+    const same = policy({ oneTimePayment: '5000', oneTimePaymentCurrency: 'CZK' });
+    expect(premiumPoints(same, TODAY).paidToDay).toBe(12 * 2150 + 5000);
+    const unset = policy({ oneTimePayment: '5000', oneTimePaymentCurrency: null });
+    expect(premiumPoints(unset, TODAY).paidToDay).toBe(12 * 2150 + 5000);
+  });
+
+  it('keeps the lump sum of a one-time policy, which is its own premium in its own currency', () => {
+    // The regular currency is CZK, the lump sum EUR: nothing else is added to it
+    const once = premiumPoints(policy(ONE_TIME), TODAY);
+    expect(once.paidToDay).toBe(12000);
+    expect(once.points.length).toBeGreaterThanOrEqual(2);
   });
 
   it('has nothing ahead of an ended policy: the line stops today', () => {

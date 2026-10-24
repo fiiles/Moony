@@ -2,12 +2,14 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoute } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
+import { Pencil } from 'lucide-react';
 import type { RealEstate } from '@shared/schema';
 import { useAuth } from '@/hooks/use-auth';
 import { useInsurance, useInsuranceMutations } from '@/hooks/use-insurance';
 import { insuranceApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import type { InsuranceRow } from '@/utils/insurance';
+import { Button } from '@/components/ui/button';
 import { EndPolicyDialog } from '@/components/insurance/EndPolicyDialog';
 import { InsuranceFormDialog } from '@/components/insurance/InsuranceFormDialog';
 import { DocumentsSection } from '@/mobile/components/documents/DocumentsSection';
@@ -89,15 +91,12 @@ function PolicyDetailPage({ id }: { id: string | undefined }) {
       leading={<NavTextButton label={t('tabs.finance')} onClick={back} chevron />}
       trailing={
         row && (
-          <>
-            <NavTextButton label={ti('actions.edit')} onClick={() => setEditOpen(true)} />
-            <PolicyMenu
-              ended={row.ended}
-              onEnd={() => setEndOpen(true)}
-              onReactivate={() => setStatus.mutate({ policy: row.policy, status: 'active' })}
-              onDelete={() => setDeleteOpen(true)}
-            />
-          </>
+          <PolicyMenu
+            ended={row.ended}
+            onEnd={() => setEndOpen(true)}
+            onReactivate={() => setStatus.mutate({ policy: row.policy, status: 'active' })}
+            onDelete={() => setDeleteOpen(true)}
+          />
         )
       }
     >
@@ -107,6 +106,7 @@ function PolicyDetailPage({ id }: { id: string | undefined }) {
           property={property}
           noticeDays={user?.insuranceNoticeDays}
           today={today}
+          onEdit={() => setEditOpen(true)}
         />
       ) : loading ? (
         <PolicySkeleton />
@@ -155,31 +155,43 @@ interface PolicyBodyProps {
   property: RealEstate | null | undefined;
   noticeDays: number | null | undefined;
   today: number;
+  onEdit: () => void;
 }
 
 /** The loaded screen, top to bottom. */
-function PolicyBody({ row, property, noticeDays, today }: PolicyBodyProps) {
+function PolicyBody({ row, property, noticeDays, today, onEdit }: PolicyBodyProps) {
   const { t: ti } = useTranslation('insurance');
   const { policy } = row;
   const facts = useMemo(
     () => policyFacts(policy, row, property, noticeDays, today),
     [policy, row, property, noticeDays, today]
   );
-  // The nav bar keeps its one title, so the insurer, the type and the state are the first line
-  const caption = [
-    policy.provider.trim(),
+  // The nav bar keeps its one title, so the insurer, the type and the state are the first line.
+  // Only the insurer ends with an ellipsis when it does not fit: the state is read first.
+  const provider = policy.provider.trim();
+  const rest = [
     ti(`types.${policy.type}`, { defaultValue: policy.type }),
     ti(row.ended ? 'detail.statusEnded' : 'detail.statusActive'),
-  ]
-    .filter(Boolean)
-    .join(' · ');
+  ].join(' · ');
 
   return (
     <>
-      <p className="mx-0.5 -mt-0.5 mb-2.5 truncate text-center text-m-caption text-ink-3">
-        {caption}
+      <p className="mx-0.5 -mt-0.5 mb-2.5 flex justify-center text-m-caption text-ink-3">
+        {provider && <span className="min-w-0 truncate">{provider}</span>}
+        <span className="flex-none whitespace-nowrap">
+          {provider && '\u00a0· '}
+          {rest}
+        </span>
       </p>
       <PolicyFacts facts={facts} today={today} />
+      <Button
+        variant="secondary"
+        className="mb-3.5 h-12 w-full whitespace-normal rounded-[10px] text-m-row [&_svg]:size-4"
+        onClick={onEdit}
+      >
+        <Pencil strokeWidth={1.75} aria-hidden />
+        {ti('actions.edit')}
+      </Button>
       <PolicyLimits row={row} />
       <DocumentsSection
         kind="insurance-document"

@@ -123,6 +123,14 @@ export function PolicyFacts({ facts, today }: PolicyFactsProps) {
               />
             );
           }
+          case 'oneTime':
+            return (
+              <KeyValueRow
+                key={fact.key}
+                label={ti('detail.contract.oneTime')}
+                value={moneyText(fact.amount, fact.currency, { decimals: 0 })}
+              />
+            );
           case 'nextPayment':
             return (
               <KeyValueRow

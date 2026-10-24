@@ -1,5 +1,6 @@
 import type { InsurancePolicy, RealEstate } from '@shared/schema';
-import type { PaymentFrequency } from '@shared/calculations';
+import { recordCurrency } from '@shared/currencies';
+import { parsePaymentFrequency, type PaymentFrequency } from '@shared/calculations';
 import { dayFloor, dueDay } from '@shared/calculations/loan-amortization';
 import { paidSeries, type InsuranceRow, type PaidPoint } from '@/utils/insurance';
 
@@ -45,6 +46,23 @@ export function noticeDeadline(
   return deadline >= dayFloor(today) ? deadline : null;
 }
 
+/**
+ * The one-time amount a recurring policy keeps next to its regular premium, in its own currency
+ * (the premium's when none is recorded: the amount cannot be told otherwise); `null` without one.
+ * A one-time policy has none of its own: its premium is that amount.
+ */
+function oneTimeOf(
+  policy: InsurancePolicy,
+  frequency: PaymentFrequency | null
+): { amount: number; currency: string } | null {
+  const amount = Number(policy.oneTimePayment) || 0;
+  if (frequency === 'one_time' || amount <= 0) return null;
+  return {
+    amount,
+    currency: recordCurrency(policy.oneTimePaymentCurrency || policy.regularPaymentCurrency),
+  };
+}
+
 /** One line of the contract card; the screen turns it into a label and a value. */
 export type PolicyFact =
   | { key: 'number'; number: string }
@@ -52,6 +70,8 @@ export type PolicyFact =
   | { key: 'type'; type: string }
   /** `frequency` is `null` for a one-time premium (and for a frequency the app does not know). */
   | { key: 'premium'; amount: number; currency: string; frequency: PaymentFrequency | null }
+  /** The one-time amount a recurring policy also keeps, in its own currency. */
+  | { key: 'oneTime'; amount: number; currency: string }
   | { key: 'nextPayment'; day: number }
   /** `end` is the contractual end, `anniversary` the next one of an open-ended policy. */
   | { key: 'term'; start: number; end: number | null; anniversary: number | null }
@@ -61,7 +81,8 @@ export type PolicyFact =
 /**
  * The facts of the contract card in the order the card shows them: the contract number, the
  * insurer, the type, the premium (a one-time policy's lump sum, in its own currency, with no
- * frequency), the next payment, the term (the start and the end, or the start and the next
+ * frequency), the one-time amount a recurring policy also keeps (its own row, in its own currency),
+ * the next payment, the term (the start and the end, or the start and the next
  * anniversary of an open-ended policy), the cancellation deadline and the insured property. A
  * fact that is not known is left out: no number, no premium, no payment ahead (an ended or a
  * one-time policy), no deadline, no linked property.
@@ -89,6 +110,9 @@ export function policyFacts(
       frequency: row.frequency === 'one_time' ? null : row.frequency,
     });
   }
+  // A recurring policy may keep a one-time amount too; a one-time policy's premium is that amount
+  const lump = oneTimeOf(policy, row.frequency);
+  if (lump) facts.push({ key: 'oneTime', ...lump });
   if (!row.ended && row.nextPayment !== null) {
     facts.push({ key: 'nextPayment', day: row.nextPayment });
   }
@@ -119,9 +143,16 @@ export interface PremiumPoints {
  * The cumulative-premiums line of the detail: `paidSeries` (the payments made, a reading today and
  * the next twelve payments) as one series, in the policy's own currency. A policy that has not
  * started has paid nothing and has no line yet.
+ *
+ * `paidSeries` adds a one-time amount to the regular premiums as plain numbers. A recurring
+ * policy whose one-time amount is in another currency than its premium would be summed 1:1, so the
+ * series is built without that amount (the contract card shows it as its own row); a one-time
+ * policy's lump sum is its whole premium and stays, in its own currency.
  */
 export function premiumPoints(policy: InsurancePolicy, today: number): PremiumPoints {
-  const series = paidSeries(policy, today, 12);
+  const lump = oneTimeOf(policy, parsePaymentFrequency(policy.paymentFrequency));
+  const foreign = lump !== null && lump.currency !== recordCurrency(policy.regularPaymentCurrency);
+  const series = paidSeries(foreign ? { ...policy, oneTimePayment: null } : policy, today, 12);
   const started = dayFloor(policy.startDate) <= dayFloor(today);
   return {
     points: started ? [...series.past, ...series.future] : [],

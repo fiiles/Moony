@@ -564,12 +564,14 @@
         "willImport": "待导入 {{count}}",
         "duplicates": "重复 {{count}}",
         "skipped": "已跳过 {{count}}",
-        "errors": "错误 {{count}}"
+        "errors": "错误 {{count}}",
+        "converted": "已重新计算 {{count}}"
       },
       "feeNote": "不会导入手续费",
       "nothingToImport": "没有可导入的内容：每一行都是重复项、已跳过或有错误。",
       "statusNew": "新增",
       "statusSkipped": "已跳过",
+      "statusConverted": "已重新计算",
       "statusError": "错误",
       "statusDuplicate": "重复",
       "duplicateImportAnyway": "仍然导入",
@@ -652,6 +654,7 @@
       "duplicates": "重复",
       "skipped": "已跳过",
       "errors": "错误",
+      "converted": "因拆股重新计算",
       "newPositions": "新持仓：",
       "updatedPositions": "加入已有持仓：",
       "moreTickers_other": "另有 {{count}} 项",
@@ -721,7 +724,20 @@
       "duplicateSimilar": "Moony 中已有类似的交易：同一天、数量相同，价格相差在 0.5 % 以内",
       "cannotParse": "无法读取该行"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "正在检查拆股…",
+      "unchecked": "无法核对拆股",
+      "line": "{{date}} 拆股 {{ratio}}",
+      "verdict": {
+        "unadjusted": "文件中此前的交易为拆股前单位",
+        "adjusted": "文件中此前的交易似乎已重新计算",
+        "unknown": "无法判断文件是否已重新计算"
+      },
+      "alsoStored_other": "同时重新计算 {{count}} 笔已保存的交易",
+      "convert": "重新计算",
+      "convertFor": "按拆股 {{ratio}} 重新计算 {{ticker}} 的交易"
+    }
   },
   "eyebrow": "投资组合",
   "export": "导出",

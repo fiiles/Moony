@@ -591,12 +591,14 @@
         "willImport": "K importu {{count}}",
         "duplicates": "Duplicity {{count}}",
         "skipped": "Přeskočeno {{count}}",
-        "errors": "Chyby {{count}}"
+        "errors": "Chyby {{count}}",
+        "converted": "Přepočteno {{count}}"
       },
       "feeNote": "Poplatky se neimportují",
       "nothingToImport": "Nic k importu: všechny řádky jsou duplicity, přeskočené nebo chybné.",
       "statusNew": "Nový",
       "statusSkipped": "Přeskočeno",
+      "statusConverted": "Přepočteno",
       "statusError": "Chyba",
       "statusDuplicate": "Duplicita",
       "duplicateImportAnyway": "importovat i tak",
@@ -689,6 +691,7 @@
       "duplicates": "Duplicity",
       "skipped": "Přeskočeno",
       "errors": "Chyby",
+      "converted": "Přepočteno kvůli splitu",
       "newPositions": "Nové pozice:",
       "updatedPositions": "Doplněno k existujícím:",
       "moreTickers_one": "+{{count}} další",
@@ -768,7 +771,22 @@
       "duplicateSimilar": "Podobný obchod už v Moony je: stejný den a počet kusů, cena se liší nejvýš o 0,5 %",
       "cannotParse": "Řádek se nepodařilo přečíst"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "Kontrola splitů…",
+      "unchecked": "Splity se nepodařilo ověřit",
+      "line": "Split {{ratio}} k {{date}}",
+      "verdict": {
+        "unadjusted": "obchody před ním jsou v souboru v původních jednotkách",
+        "adjusted": "obchody před ním vypadají v souboru už přepočtené",
+        "unknown": "nelze poznat, zda je soubor už přepočtený"
+      },
+      "alsoStored_one": "přepočítá i {{count}} uloženou transakci",
+      "alsoStored_few": "přepočítá i {{count}} uložené transakce",
+      "alsoStored_other": "přepočítá i {{count}} uložených transakcí",
+      "convert": "Přepočítat",
+      "convertFor": "Přepočítat obchody {{ticker}} podle splitu {{ratio}}"
+    }
   },
   "eyebrow": "Portfolio",
   "export": "Export",

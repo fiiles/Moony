@@ -590,12 +590,14 @@
         "willImport": "Da importare {{count}}",
         "duplicates": "Duplicati {{count}}",
         "skipped": "Saltati {{count}}",
-        "errors": "Errori {{count}}"
+        "errors": "Errori {{count}}",
+        "converted": "Ricalcolate {{count}}"
       },
       "feeNote": "Le commissioni non vengono importate",
       "nothingToImport": "Niente da importare: ogni riga è un duplicato, saltata o con un errore.",
       "statusNew": "Nuova",
       "statusSkipped": "Saltata",
+      "statusConverted": "Ricalcolata",
       "statusError": "Errore",
       "statusDuplicate": "Duplicato",
       "duplicateImportAnyway": "importa comunque",
@@ -688,6 +690,7 @@
       "duplicates": "Duplicati",
       "skipped": "Saltate",
       "errors": "Errori",
+      "converted": "Ricalcolate per split",
       "newPositions": "Nuove posizioni:",
       "updatedPositions": "Aggiunte a quelle esistenti:",
       "moreTickers_one": "+{{count}} altro",
@@ -767,7 +770,22 @@
       "duplicateSimilar": "Un'operazione simile è già presente in Moony: stesso giorno e quantità, prezzo entro lo 0,5 %",
       "cannotParse": "Impossibile leggere la riga"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "Verifica degli split…",
+      "unchecked": "Impossibile verificare gli split",
+      "line": "Split {{ratio}} del {{date}}",
+      "verdict": {
+        "unadjusted": "le operazioni precedenti nel file sono in unità pre-split",
+        "adjusted": "le operazioni precedenti nel file sembrano già ricalcolate",
+        "unknown": "impossibile capire se il file è già ricalcolato"
+      },
+      "alsoStored_one": "ricalcola anche {{count}} transazione salvata",
+      "alsoStored_many": "ricalcola anche {{count}} transazioni salvate",
+      "alsoStored_other": "ricalcola anche {{count}} transazioni salvate",
+      "convert": "Ricalcola",
+      "convertFor": "Ricalcola le operazioni di {{ticker}} per lo split {{ratio}}"
+    }
   },
   "eyebrow": "Portafoglio",
   "export": "Esporta",

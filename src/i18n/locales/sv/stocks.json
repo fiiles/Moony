@@ -577,12 +577,14 @@
         "willImport": "Att importera {{count}}",
         "duplicates": "Dubbletter {{count}}",
         "skipped": "Överhoppade {{count}}",
-        "errors": "Fel {{count}}"
+        "errors": "Fel {{count}}",
+        "converted": "Omräknade {{count}}"
       },
       "feeNote": "Avgifter importeras inte",
       "nothingToImport": "Inget att importera: varje rad är en dubblett, överhoppad eller har ett fel.",
       "statusNew": "Ny",
       "statusSkipped": "Överhoppad",
+      "statusConverted": "Omräknad",
       "statusError": "Fel",
       "statusDuplicate": "Dubblett",
       "duplicateImportAnyway": "importera ändå",
@@ -670,6 +672,7 @@
       "duplicates": "Dubbletter",
       "skipped": "Överhoppade",
       "errors": "Fel",
+      "converted": "Omräknade på grund av split",
       "newPositions": "Nya innehav:",
       "updatedPositions": "Tillagt till befintliga:",
       "moreTickers_one": "+{{count}} till",
@@ -744,7 +747,21 @@
       "duplicateSimilar": "En liknande affär finns redan i Moony: samma dag och antal, pris inom 0,5 %",
       "cannotParse": "Raden kunde inte läsas"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "Kontrollerar splittar…",
+      "unchecked": "Splittar kunde inte kontrolleras",
+      "line": "Split {{ratio}} den {{date}}",
+      "verdict": {
+        "unadjusted": "affärerna före den är i filen i enheter från före splitten",
+        "adjusted": "affärerna före den ser redan omräknade ut i filen",
+        "unknown": "det går inte att avgöra om filen redan är omräknad"
+      },
+      "alsoStored_one": "räknar också om {{count}} sparad transaktion",
+      "alsoStored_other": "räknar också om {{count}} sparade transaktioner",
+      "convert": "Räkna om",
+      "convertFor": "Räkna om affärerna i {{ticker}} för splitten {{ratio}}"
+    }
   },
   "eyebrow": "Portfölj",
   "export": "Exportera",

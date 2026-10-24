@@ -254,6 +254,9 @@ export function ResultStep({
           <Tile value={result.duplicates} label={t('importWizard.result.duplicates')} />
           <Tile value={result.skipped} label={t('importWizard.result.skipped')} />
           <Tile value={result.errors} label={t('importWizard.result.errors')} tone="loss" />
+          {result.converted > 0 && (
+            <Tile value={result.converted} label={t('importWizard.result.converted')} />
+          )}
         </div>
 
         {(result.newPositions.length > 0 || result.updatedPositions.length > 0) && (

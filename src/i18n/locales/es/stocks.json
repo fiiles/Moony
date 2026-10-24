@@ -590,12 +590,14 @@
         "willImport": "Por importar {{count}}",
         "duplicates": "Duplicados {{count}}",
         "skipped": "Omitidas {{count}}",
-        "errors": "Errores {{count}}"
+        "errors": "Errores {{count}}",
+        "converted": "Recalculadas {{count}}"
       },
       "feeNote": "Las comisiones no se importan",
       "nothingToImport": "No hay nada que importar: todas las filas son duplicados, están omitidas o tienen un error.",
       "statusNew": "Nueva",
       "statusSkipped": "Omitida",
+      "statusConverted": "Recalculada",
       "statusError": "Error",
       "statusDuplicate": "Duplicada",
       "duplicateImportAnyway": "importar de todos modos",
@@ -688,6 +690,7 @@
       "duplicates": "Duplicadas",
       "skipped": "Omitidas",
       "errors": "Errores",
+      "converted": "Recalculadas por split",
       "newPositions": "Posiciones nuevas:",
       "updatedPositions": "Añadidas a existentes:",
       "moreTickers_one": "+{{count}} más",
@@ -767,7 +770,22 @@
       "duplicateSimilar": "Ya hay en Moony una operación similar: mismo día y cantidad, precio dentro del 0,5 %",
       "cannotParse": "No se pudo leer la fila"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "Comprobando splits…",
+      "unchecked": "No se pudieron comprobar los splits",
+      "line": "Split {{ratio}} el {{date}}",
+      "verdict": {
+        "unadjusted": "las operaciones anteriores del archivo están en unidades previas al split",
+        "adjusted": "las operaciones anteriores del archivo parecen ya recalculadas",
+        "unknown": "no se puede saber si el archivo ya está recalculado"
+      },
+      "alsoStored_one": "también recalcula {{count}} operación guardada",
+      "alsoStored_many": "también recalcula {{count}} operaciones guardadas",
+      "alsoStored_other": "también recalcula {{count}} operaciones guardadas",
+      "convert": "Recalcular",
+      "convertFor": "Recalcular las operaciones de {{ticker}} por el split {{ratio}}"
+    }
   },
   "eyebrow": "Cartera",
   "export": "Exportar",

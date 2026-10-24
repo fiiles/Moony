@@ -577,12 +577,14 @@
         "willImport": "Skal importeres {{count}}",
         "duplicates": "Duplikater {{count}}",
         "skipped": "Hoppet over {{count}}",
-        "errors": "Feil {{count}}"
+        "errors": "Feil {{count}}",
+        "converted": "Omregnet {{count}}"
       },
       "feeNote": "Gebyrer importeres ikke",
       "nothingToImport": "Ingenting å importere: hver rad er et duplikat, hoppet over eller har en feil.",
       "statusNew": "Ny",
       "statusSkipped": "Hoppet over",
+      "statusConverted": "Omregnet",
       "statusError": "Feil",
       "statusDuplicate": "Duplikat",
       "duplicateImportAnyway": "importer likevel",
@@ -670,6 +672,7 @@
       "duplicates": "Duplikater",
       "skipped": "Hoppet over",
       "errors": "Feil",
+      "converted": "Omregnet på grunn av splitt",
       "newPositions": "Nye beholdninger:",
       "updatedPositions": "Lagt til eksisterende:",
       "moreTickers_one": "+{{count}} til",
@@ -744,7 +747,21 @@
       "duplicateSimilar": "En lignende handel finnes allerede i Moony: samme dag og antall, kurs innenfor 0,5 %",
       "cannotParse": "Raden kunne ikke leses"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "Sjekker splitter…",
+      "unchecked": "Splitter kunne ikke sjekkes",
+      "line": "Splitt {{ratio}} {{date}}",
+      "verdict": {
+        "unadjusted": "handlene før den er i filen i enheter fra før splitten",
+        "adjusted": "handlene før den ser allerede omregnet ut i filen",
+        "unknown": "kan ikke avgjøre om filen allerede er omregnet"
+      },
+      "alsoStored_one": "omregner også {{count}} lagret transaksjon",
+      "alsoStored_other": "omregner også {{count}} lagrede transaksjoner",
+      "convert": "Omregn",
+      "convertFor": "Omregn handlene i {{ticker}} for splitten {{ratio}}"
+    }
   },
   "eyebrow": "Portefølje",
   "export": "Eksporter",

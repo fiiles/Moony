@@ -603,12 +603,14 @@
         "willImport": "Do importu: {{count}}",
         "duplicates": "Duplikaty: {{count}}",
         "skipped": "Pominięte: {{count}}",
-        "errors": "Błędy: {{count}}"
+        "errors": "Błędy: {{count}}",
+        "converted": "Przeliczone: {{count}}"
       },
       "feeNote": "Opłaty nie są importowane",
       "nothingToImport": "Nie ma czego importować: każdy wiersz jest duplikatem, został pominięty lub ma błąd.",
       "statusNew": "Nowa",
       "statusSkipped": "Pominięta",
+      "statusConverted": "Przeliczona",
       "statusError": "Błąd",
       "statusDuplicate": "Duplikat",
       "duplicateImportAnyway": "importuj mimo to",
@@ -706,6 +708,7 @@
       "duplicates": "Duplikaty",
       "skipped": "Pominięte",
       "errors": "Błędy",
+      "converted": "Przeliczone z powodu splitu",
       "newPositions": "Nowe pozycje:",
       "updatedPositions": "Dodano do istniejących:",
       "moreTickers_one": "+{{count}} więcej",
@@ -790,7 +793,23 @@
       "duplicateSimilar": "Podobna transakcja jest już w Moony: ten sam dzień i ilość, cena w granicach 0,5 %",
       "cannotParse": "Nie udało się odczytać wiersza"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "Sprawdzanie splitów…",
+      "unchecked": "Nie udało się sprawdzić splitów",
+      "line": "Split {{ratio}} z {{date}}",
+      "verdict": {
+        "unadjusted": "transakcje sprzed niego są w pliku w jednostkach sprzed splitu",
+        "adjusted": "transakcje sprzed niego wyglądają w pliku na już przeliczone",
+        "unknown": "nie da się rozpoznać, czy plik jest już przeliczony"
+      },
+      "alsoStored_one": "przeliczy też {{count}} zapisaną transakcję",
+      "alsoStored_few": "przeliczy też {{count}} zapisane transakcje",
+      "alsoStored_many": "przeliczy też {{count}} zapisanych transakcji",
+      "alsoStored_other": "przeliczy też {{count}} zapisanej transakcji",
+      "convert": "Przelicz",
+      "convertFor": "Przelicz transakcje {{ticker}} według splitu {{ratio}}"
+    }
   },
   "eyebrow": "Portfel",
   "export": "Eksport",

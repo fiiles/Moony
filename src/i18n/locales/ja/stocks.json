@@ -564,12 +564,14 @@
         "willImport": "インポート {{count}}",
         "duplicates": "重複 {{count}}",
         "skipped": "スキップ {{count}}",
-        "errors": "エラー {{count}}"
+        "errors": "エラー {{count}}",
+        "converted": "再計算 {{count}}"
       },
       "feeNote": "手数料はインポートされません",
       "nothingToImport": "インポートするものがありません。すべての行が、重複、スキップ、またはエラーです。",
       "statusNew": "新規",
       "statusSkipped": "スキップ",
+      "statusConverted": "再計算済み",
       "statusError": "エラー",
       "statusDuplicate": "重複",
       "duplicateImportAnyway": "それでもインポート",
@@ -652,6 +654,7 @@
       "duplicates": "重複",
       "skipped": "スキップ",
       "errors": "エラー",
+      "converted": "分割により再計算",
       "newPositions": "新規のポジション：",
       "updatedPositions": "既存に追加：",
       "moreTickers_other": "他{{count}}件",
@@ -721,7 +724,20 @@
       "duplicateSimilar": "似た取引がすでに Moony にあります：同じ日、同じ数量で、価格の差は0.5 %以内です",
       "cannotParse": "この行を読み取れませんでした"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "分割を確認中…",
+      "unchecked": "分割を確認できませんでした",
+      "line": "{{date}}の分割（{{ratio}}）",
+      "verdict": {
+        "unadjusted": "ファイル内のそれ以前の取引は分割前の単位です",
+        "adjusted": "ファイル内のそれ以前の取引は再計算済みのようです",
+        "unknown": "ファイルが再計算済みかどうか判断できません"
+      },
+      "alsoStored_other": "保存済みの取引{{count}}件も再計算します",
+      "convert": "再計算",
+      "convertFor": "{{ticker}}の取引を分割（{{ratio}}）に合わせて再計算"
+    }
   },
   "eyebrow": "ポートフォリオ",
   "export": "エクスポート",

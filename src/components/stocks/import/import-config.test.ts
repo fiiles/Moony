@@ -9,6 +9,9 @@ import type {
   StockInstrumentOverride,
   StockInstrumentResolution,
   StockPreviewRow,
+  StockSplitCheck,
+  StockSplitCheckSplit,
+  StockSplitVerdict,
 } from '@shared/schema';
 import {
   AUTO_VALUE,
@@ -19,10 +22,12 @@ import {
   classifyResultMessage,
   columnOptions,
   columnToSelectValue,
+  convertedLines,
   currencyLabel,
   currencyOverrideFor,
   dateFormatChoices,
   dateFormatLabel,
+  defaultSplitAction,
   directionModePatch,
   fileStem,
   findTypeValue,
@@ -46,15 +51,18 @@ import {
   mappedColumns,
   mappingFromInspection,
   mergeAutoOverrides,
+  mergeSplitOverrides,
   missingSymbolCount,
   needsLookup,
   normalizeTicker,
   optionLabel,
   rowStatusByLine,
   selectValueToColumn,
+  setSplitAction,
   setTypeValueAction,
   sourceHelpUrl,
   sourceMismatch,
+  splitOverridesFor,
   suggestedColumn,
   suggestionConfidence,
   summarizeMapping,
@@ -963,6 +971,129 @@ describe('instrument overrides', () => {
     expect(merged).toEqual([
       { key: 'a', ticker: 'MINE.DE' },
       { key: 'b', currency: 'EUR' },
+    ]);
+  });
+});
+
+describe('split choices', () => {
+  const DAY = 1_717_977_600; // 2024-06-10
+  const LATER = 1_749_513_600; // 2025-06-10
+
+  const checkSplit = (
+    effectiveDay: number,
+    verdict: StockSplitVerdict,
+    trades: number[] = []
+  ): StockSplitCheckSplit => ({
+    effectiveDay,
+    numerator: '10',
+    denominator: '1',
+    verdict,
+    trades: trades.map((line) => ({ line, verdict })),
+    storedStatus: null,
+    storedPreSplitCount: 0,
+  });
+  const check = (key: string, splits: StockSplitCheckSplit[], checked = true): StockSplitCheck => ({
+    key,
+    ticker: key.toUpperCase(),
+    checked,
+    splits,
+  });
+  const choice = (effectiveDay: number, action: 'convert' | 'keep') => ({
+    effectiveDay,
+    numerator: '10',
+    denominator: '1',
+    action,
+  });
+
+  it('converts a file in pre-split units and keeps anything else by default', () => {
+    expect(defaultSplitAction('unadjusted')).toBe('convert');
+    expect(defaultSplitAction('adjusted')).toBe('keep');
+    expect(defaultSplitAction('unknown')).toBe('keep');
+  });
+
+  it('turns the splits of a check into choices with the default action', () => {
+    expect(
+      splitOverridesFor(
+        check('nvda', [checkSplit(DAY, 'unadjusted'), checkSplit(LATER, 'adjusted')])
+      )
+    ).toEqual([choice(DAY, 'convert'), choice(LATER, 'keep')]);
+    expect(splitOverridesFor(check('nvda', [], false))).toEqual([]);
+  });
+
+  it('adds the splits of a check to an instrument with or without an override', () => {
+    const merged = mergeSplitOverrides(
+      [{ key: 'a', ticker: 'A.DE' }],
+      [check('a', [checkSplit(DAY, 'adjusted')]), check('b', [checkSplit(DAY, 'unadjusted')])]
+    );
+    expect(merged).toEqual([
+      { key: 'a', ticker: 'A.DE', splits: [choice(DAY, 'keep')] },
+      { key: 'b', splits: [choice(DAY, 'convert')] },
+    ]);
+  });
+
+  it('keeps what was chosen for a split the check reports again', () => {
+    const merged = mergeSplitOverrides(
+      [{ key: 'a', splits: [choice(DAY, 'keep')] }],
+      [check('a', [checkSplit(DAY, 'unadjusted'), checkSplit(LATER, 'unadjusted')])]
+    );
+    expect(merged).toEqual([{ key: 'a', splits: [choice(DAY, 'keep'), choice(LATER, 'convert')] }]);
+  });
+
+  it('drops the splits a new check no longer reports, and an override left empty', () => {
+    const merged = mergeSplitOverrides(
+      [
+        { key: 'a', ticker: 'A.DE', splits: [choice(DAY, 'convert')] },
+        { key: 'b', splits: [choice(DAY, 'convert')] },
+        { key: 'c', skip: true, splits: [choice(DAY, 'convert')] },
+        { key: 'd', splits: [choice(DAY, 'convert'), choice(LATER, 'keep')] },
+      ],
+      [check('a', []), check('b', [], false), check('d', [checkSplit(LATER, 'unadjusted')])]
+    );
+    // `c` has nothing to import any more (skipped): a convert there would still rewrite its
+    // stored rows (D14), so it goes too.
+    expect(merged).toEqual([
+      { key: 'a', ticker: 'A.DE' },
+      { key: 'c', skip: true },
+      { key: 'd', splits: [choice(LATER, 'keep')] },
+    ]);
+  });
+
+  it('switches one split of one instrument', () => {
+    const current: StockInstrumentOverride[] = [
+      { key: 'a', splits: [choice(DAY, 'convert'), choice(LATER, 'convert')] },
+      { key: 'b', splits: [choice(DAY, 'convert')] },
+    ];
+    expect(setSplitAction(current, 'a', LATER, 'keep')).toEqual([
+      { key: 'a', splits: [choice(DAY, 'convert'), choice(LATER, 'keep')] },
+      { key: 'b', splits: [choice(DAY, 'convert')] },
+    ]);
+    expect(setSplitAction(current, 'a', 42, 'keep')).toEqual(current);
+    expect(setSplitAction(current, 'z', DAY, 'keep')).toEqual(current);
+  });
+
+  it('knows the file lines a convert choice scales', () => {
+    const checks = [
+      check('a', [
+        checkSplit(DAY, 'unadjusted', [2, 3]),
+        checkSplit(LATER, 'unadjusted', [2, 3, 5]),
+      ]),
+      check('b', [checkSplit(DAY, 'unadjusted', [4])]),
+    ];
+    const lines = convertedLines(checks, [
+      { key: 'a', splits: [choice(DAY, 'keep'), choice(LATER, 'convert')] },
+      { key: 'b', splits: [choice(DAY, 'keep')] },
+    ]);
+    expect([...lines].sort()).toEqual([2, 3, 5]);
+    expect(convertedLines(checks, []).size).toBe(0);
+  });
+
+  it('still applies a lookup to an instrument that has only split choices', () => {
+    const merged = mergeAutoOverrides(
+      [{ key: 'a', splits: [choice(DAY, 'convert')] }],
+      [{ key: 'a', ticker: 'A.DE', name: 'A' }]
+    );
+    expect(merged).toEqual([
+      { key: 'a', ticker: 'A.DE', name: 'A', splits: [choice(DAY, 'convert')] },
     ]);
   });
 });

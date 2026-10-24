@@ -577,12 +577,14 @@
         "willImport": "Zu importieren {{count}}",
         "duplicates": "Duplikate {{count}}",
         "skipped": "Übersprungen {{count}}",
-        "errors": "Fehler {{count}}"
+        "errors": "Fehler {{count}}",
+        "converted": "Umgerechnet {{count}}"
       },
       "feeNote": "Gebühren werden nicht importiert",
       "nothingToImport": "Nichts zu importieren: Jede Zeile ist ein Duplikat, übersprungen oder fehlerhaft.",
       "statusNew": "Neu",
       "statusSkipped": "Übersprungen",
+      "statusConverted": "Umgerechnet",
       "statusError": "Fehler",
       "statusDuplicate": "Duplikat",
       "duplicateImportAnyway": "trotzdem importieren",
@@ -670,6 +672,7 @@
       "duplicates": "Duplikate",
       "skipped": "Übersprungen",
       "errors": "Fehler",
+      "converted": "Wegen Split umgerechnet",
       "newPositions": "Neue Positionen:",
       "updatedPositions": "Zu bestehenden hinzugefügt:",
       "moreTickers_one": "+{{count}} weitere",
@@ -744,7 +747,21 @@
       "duplicateSimilar": "Ein ähnlicher Trade ist bereits in Moony: gleicher Tag und gleiche Menge, Kurs innerhalb von 0,5 %",
       "cannotParse": "Die Zeile konnte nicht gelesen werden"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "Splits werden geprüft…",
+      "unchecked": "Splits konnten nicht geprüft werden",
+      "line": "Split {{ratio}} am {{date}}",
+      "verdict": {
+        "unadjusted": "die Trades davor sind in der Datei in alten Einheiten",
+        "adjusted": "die Trades davor wirken in der Datei bereits umgerechnet",
+        "unknown": "nicht erkennbar, ob die Datei bereits umgerechnet ist"
+      },
+      "alsoStored_one": "rechnet auch {{count}} gespeicherte Transaktion um",
+      "alsoStored_other": "rechnet auch {{count}} gespeicherte Transaktionen um",
+      "convert": "Umrechnen",
+      "convertFor": "Trades von {{ticker}} für den Split {{ratio}} umrechnen"
+    }
   },
   "eyebrow": "Portfolio",
   "export": "Exportieren",

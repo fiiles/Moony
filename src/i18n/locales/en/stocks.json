@@ -577,12 +577,14 @@
         "willImport": "To import {{count}}",
         "duplicates": "Duplicates {{count}}",
         "skipped": "Skipped {{count}}",
-        "errors": "Errors {{count}}"
+        "errors": "Errors {{count}}",
+        "converted": "Converted {{count}}"
       },
       "feeNote": "Fees are not imported",
       "nothingToImport": "Nothing to import: every row is a duplicate, skipped or has an error.",
       "statusNew": "New",
       "statusSkipped": "Skipped",
+      "statusConverted": "Converted",
       "statusError": "Error",
       "statusDuplicate": "Duplicate",
       "duplicateImportAnyway": "import anyway",
@@ -670,6 +672,7 @@
       "duplicates": "Duplicates",
       "skipped": "Skipped",
       "errors": "Errors",
+      "converted": "Converted for a split",
       "newPositions": "New positions:",
       "updatedPositions": "Added to existing:",
       "moreTickers_one": "+{{count}} more",
@@ -744,7 +747,21 @@
       "duplicateSimilar": "A similar trade is already in Moony: same day and quantity, price within 0.5 %",
       "cannotParse": "The row could not be read"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "Checking splits…",
+      "unchecked": "Splits could not be checked",
+      "line": "{{ratio}} split on {{date}}",
+      "verdict": {
+        "unadjusted": "the file's trades before it are in pre-split units",
+        "adjusted": "the file's trades before it already look converted",
+        "unknown": "Moony cannot tell whether the file is already converted"
+      },
+      "alsoStored_one": "also converts {{count}} stored transaction",
+      "alsoStored_other": "also converts {{count}} stored transactions",
+      "convert": "Convert",
+      "convertFor": "Convert the {{ticker}} trades for the {{ratio}} split"
+    }
   },
   "eyebrow": "Portfolio",
   "export": "Export",

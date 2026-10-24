@@ -447,6 +447,7 @@ knows as type roles):
 | Note (stat note, flow-strip and agenda sub-lines) | 10 / 500, line 1.3 | `m-fs-note` | `text-m-note` | 130 % |
 | Eyebrow | 10 / 700 / +0.12em, uppercase | `fs-eyebrow` | `text-eyebrow` | fixed |
 | Tab bar label | 10 / 600 | `fs-micro` | `text-micro` (the tab bar only) | fixed |
+| Swipe panel label | 11 / 650 | `fs-caption` | `text-caption` (the swipe panel only) | fixed |
 | Chart axis ticks | 10 / 500 | (in the chart) | — | fixed |
 
 **Dynamic Type** (spec §10.2). The text roles grow with the system text size, up to 130 %; display and
@@ -456,12 +457,24 @@ system font `font: -apple-system-body` (17 px at the default "Large"), so a hidd
 and `typeScaleFrom(px)` (px ÷ 17, three decimals; 1 for anything that is not a positive number) is the
 factor. `index.css` clamps it twice, `--m-text-k` to 1…1.3 and `--m-value-k` to 1…1.1, and every
 `--m-fs-*` token is its design size times one of them; nothing shrinks below the design size, so a
-smaller iOS size changes nothing. The floor of the stat value's shrink-to-fit (12 px) grows with the
-110 %, not the 130 %. Android's WebView and a browser do not know the keyword (`CSS.supports` is false):
+smaller iOS size changes nothing. Android's WebView and a browser do not know the keyword (`CSS.supports` is false):
 nothing is set and the factor stays 1. Neither platform sends an event when the size is changed in
 Settings, so the probe is read again when the app returns (`visibilitychange`, window `focus`); there is
-no live listener. The tab bar (its label and its 56 pt) and the chart axis ticks stay fixed (ruling): they
-are orientation, not reading text, and four tabs share the 360 pt width. **A field is never
+no live listener. The tab bar (its label and its 56 pt), the chart axis ticks and the label of a swipe
+panel stay fixed (ruling): the first two are orientation, not reading text, and four tabs share the 360 pt
+width; the panel is as tall as its row and a label that grew with the text clipped at 130 % in cs, de and
+pl (its actions are also in the row's long-press menu, which scales).
+
+**Figures that fit.** A money figure never wraps or ends in an ellipsis: the hero, stat, cashflow and
+transaction amounts shrink to their box (`useFitText`, `fitSizeFor`): the font size at which the text
+just holds the box's fractional content width, 2 % under it (WebKit ends a line in an ellipsis when the
+text is wider than the box by a fraction of a pixel, which the first version of the measure, on the
+box's width rounded to whole pixels, hit at the 110 % cap), measured from the size drawn now, so the
+answer is the same at every text size; a box that changes height with its font size makes the hook
+measure again, which is how a live change of the text size is seen without an event. Its clamp keeps a
+fixed floor (12 px for a stat, 20 px for a hero amount), never one that grows with the text size: a
+floor above the fit is a cut, and a figure that fits at the default size must fit at every size. A
+value that does not fit even at the floor goes in a row of two, as before. **A field is never
 under 16 px** (`--m-fs-field: max(16px, var(--m-fs-body))`, `text-m-field`): iOS zooms the page into a
 focused field whose text is smaller, which is why the viewport lock (`maximum-scale=1`) is gone and the
 viewport is `width=device-width, initial-scale=1.0, viewport-fit=cover` (the desktop's webviews ignore
@@ -648,7 +661,7 @@ no `.dark` classes, so the dark token block switches them for free (§10.6).
   hand-tinted circle.
 - **set its text in `text-m-*` roles only.** No `text-[13px]` or any other px size (a size that has to be
   off the table is `text-[length:calc(14px*var(--m-text-k))]`, and says why); `text-micro` stays in the
-  tab bar. The roles carry their line height, and a different weight is an explicit `font-*` next to the
+  tab bar and `text-caption` in the swipe panel, the two labels that do not scale. The roles carry their line height, and a different weight is an explicit `font-*` next to the
   role.
 - **draw every field in `text-m-field`**: `input`, `textarea`, `select`, the shadcn `Input` and the lock
   and first-run fields, `AmountField`, `MonthField`, `SearchField`, the date field of the filter. Never

@@ -5,7 +5,7 @@ import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
 import type { ChartPeriod } from '@/utils/period';
-import { useFitText } from '@/mobile/hooks/use-fit-text';
+import { HERO_FLOOR, useFitText } from '@/mobile/hooks/use-fit-text';
 import type { CostPoint } from '@/mobile/lib/position-series';
 import { ScrubChart } from './ScrubChart';
 import { Segment } from './Segment';
@@ -110,7 +110,7 @@ export function Hero<E extends ChartEvent>({
         style={
           fit === null
             ? undefined
-            : { fontSize: `clamp(var(--m-fs-title), ${fit}px, var(--m-fs-display))` }
+            : { fontSize: `clamp(${HERO_FLOOR}, ${fit}px, var(--m-fs-display))` }
         }
       >
         <span>{shownValue}</span>

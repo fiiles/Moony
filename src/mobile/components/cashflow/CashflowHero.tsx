@@ -1,6 +1,6 @@
 import { useRef, type ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { useFitText } from '@/mobile/hooks/use-fit-text';
+import { HERO_FLOOR, useFitText } from '@/mobile/hooks/use-fit-text';
 
 type HeroTone = 'gain' | 'loss' | 'neutral';
 
@@ -49,7 +49,7 @@ export function CashflowHero({ label, value, formatValue, tone, note }: Cashflow
         style={
           fit === null
             ? undefined
-            : { fontSize: `clamp(var(--m-fs-title), ${fit}px, var(--m-fs-display))` }
+            : { fontSize: `clamp(${HERO_FLOOR}, ${fit}px, var(--m-fs-display))` }
         }
       >
         <span>{shownValue}</span>

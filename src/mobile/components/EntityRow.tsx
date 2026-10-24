@@ -248,7 +248,13 @@ export function EntityRow({
   );
 }
 
-/** The panel a swipe uncovers (prototype `.row__action`): dark material, icon over a 11 / 650 label. */
+/**
+ * The panel a swipe uncovers (prototype `.row__action`): dark material, icon over a 11 / 650 label.
+ * The label is a fixed 11 px (`text-caption`, the desktop role, not a `text-m-*` one): the panel is
+ * as tall as its row, and a label that grew with the text size clipped at 130 % ("Připomenout za
+ * týden", "In einer Woche erinnern" take three or four lines). The same actions are in the row's
+ * long-press menu, which does scale.
+ */
 function SwipePanel({
   side,
   label,
@@ -262,7 +268,7 @@ function SwipePanel({
     <span
       aria-hidden
       className={cn(
-        'absolute inset-y-0 flex flex-col items-center justify-center gap-1 hyphens-auto break-words bg-dark-grad px-2 text-center text-m-caption font-650 leading-tight text-ink-inverse',
+        'absolute inset-y-0 flex flex-col items-center justify-center gap-1 hyphens-auto break-words bg-dark-grad px-1 text-center text-caption font-650 leading-tight text-ink-inverse',
         side === 'left' ? 'left-0' : 'right-0'
       )}
       style={{ width: SWIPE_MAX }}

@@ -16,7 +16,7 @@ import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
 import { useDeleteDescription } from '@/mobile/hooks/use-delete-description';
-import { useFitText } from '@/mobile/hooks/use-fit-text';
+import { HERO_FLOOR, useFitText } from '@/mobile/hooks/use-fit-text';
 import { useLedgerMutations } from '@/mobile/hooks/use-ledger-mutations';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRetained } from '@/mobile/hooks/use-retained';
@@ -236,7 +236,7 @@ function Amount({ tx }: { tx: BankTransaction }) {
         style={
           fit === null
             ? undefined
-            : { fontSize: `clamp(var(--m-fs-title), ${fit}px, var(--m-fs-display))` }
+            : { fontSize: `clamp(${HERO_FLOOR}, ${fit}px, var(--m-fs-display))` }
         }
       >
         <span>{text}</span>

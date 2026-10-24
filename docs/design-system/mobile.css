@@ -179,8 +179,8 @@
 /* ===== Stat row: three (or two, or one) stats; value 17, label 11, note 10 =====
    A label may wrap (hyphenated, German runs long); the value and the note sit at the bottom so
    the values stay on one line across the row. The value keeps 17 px down to the content box of a
-   third at the 390 pt reference (86 px) and then shrinks with the card (19.7 cqi, floor 12 px, which grows with
-   the stat values' 110 % cap, never with the text roles' 130 %), as the
+   third at the 390 pt reference (86 px) and then shrinks with the card (19.7 cqi, floor 12 px, a fixed size: a floor
+   that grew with the text size would cut a value that fits at the default one), as the
    desktop stat does; every stat in a row shares one size. A third holds about nine characters at
    17 px ("6,78 mil.", "214 380"); a longer amount goes in a row of two. */
 .m-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
@@ -198,7 +198,7 @@
 }
 .m-stat__v {
   margin-top: auto; overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap;
-  font-size: var(--m-fs-stat); font-size: clamp(calc(12px * var(--m-value-k)), 19.7cqi, var(--m-fs-stat));
+  font-size: var(--m-fs-stat); font-size: clamp(12px, 19.7cqi, var(--m-fs-stat));
   font-weight: var(--m-fw-stat); letter-spacing: var(--m-ls-stat); line-height: 1.15;
 }
 .m-stat__v--gain { color: var(--gain); }
@@ -291,7 +291,9 @@
 .m-dchip--soon small { color: var(--ink-inverse-2); }
 
 /* Swipe actions (prototype note 5): the row slides over a 98 px panel of dark material that waits
-   under it, an 18 px icon over an 11 / 650 label. The row follows the finger up to the panel's
+   under it, an 18 px icon over an 11 / 650 label, which stays 11 px at every text size (chrome like the
+   tab bar label: the panel is as tall as its row, and a label that grew with the text clipped at 130 %
+   in cs, de and pl; the same actions are in the row's long-press menu, which does scale). The row follows the finger up to the panel's
    width; released past 60 px it fires the action and snaps back (180 ms); a vertical drag scrolls
    the page. A swipe row is the `li` that clips the panel and carries the divider (`--m-row-inset`:
    62 px, or 80 with a date chip at the default text size: 26 px plus the chip's width, which grows with
@@ -302,8 +304,8 @@
 .m-swipe > .m-row { z-index: 1; transition: transform var(--t-base) var(--ease); }
 .m-swipe__panel {
   position: absolute; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
-  width: 98px; padding: 0 8px; background: var(--dark-grad); color: var(--ink-inverse);
-  font-size: var(--m-fs-caption); font-weight: 650; line-height: 1.25; text-align: center; hyphens: auto; overflow-wrap: break-word;
+  width: 98px; padding: 0 4px; background: var(--dark-grad); color: var(--ink-inverse);
+  font-size: var(--fs-caption); font-weight: 650; line-height: 1.25; text-align: center; hyphens: auto; overflow-wrap: break-word;
 }
 .m-swipe__panel--start { left: 0; }
 .m-swipe__panel--end { right: 0; }

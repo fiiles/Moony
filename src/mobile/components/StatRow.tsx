@@ -12,8 +12,12 @@ export interface StatItem {
   tone?: 'gain' | 'loss';
 }
 
-/** The floor of a stat value: 12 px, growing with the 110 % cap of the stat values (not the text roles' 130 %). */
-const STAT_FLOOR = 'calc(12px * var(--m-value-k))';
+/**
+ * The floor of a stat value: a fixed 12 px, never one that grows with the text size. A floor above
+ * the fit is a cut (an ellipsis on a money value), and a stat that fits at the default size must
+ * fit at every size.
+ */
+const STAT_FLOOR = '12px';
 
 /** The contract's rule (`.m-stat__v`): 17 px down to the 86 px box of a third, then with the card. */
 const CONTAINER_SIZE = `clamp(${STAT_FLOOR}, 19.7cqi, var(--m-fs-stat))`;

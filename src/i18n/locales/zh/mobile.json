@@ -154,6 +154,12 @@
       "loan": "贷款",
       "policy": "保单"
     },
+    "insurance": {
+      "type": "保单类型",
+      "upcoming": "近期付款",
+      "upcomingNote_other": "{{count}} 天",
+      "showAll_other": "显示全部 {{count}} 笔"
+    },
     "cashTrendLabel": "现金走势图"
   },
   "queue": {

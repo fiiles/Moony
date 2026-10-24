@@ -154,6 +154,12 @@
       "loan": "ローン",
       "policy": "保険"
     },
+    "insurance": {
+      "type": "契約の種類",
+      "upcoming": "直近の支払い",
+      "upcomingNote_other": "{{count}}日間",
+      "showAll_other": "{{count}}件をすべて表示"
+    },
     "cashTrendLabel": "現金の推移グラフ"
   },
   "queue": {

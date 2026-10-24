@@ -180,6 +180,16 @@
       "loan": "Préstamo",
       "policy": "Póliza"
     },
+    "insurance": {
+      "type": "Tipo de póliza",
+      "upcoming": "Próximos pagos",
+      "upcomingNote_one": "{{count}} día",
+      "upcomingNote_many": "{{count}} días",
+      "upcomingNote_other": "{{count}} días",
+      "showAll_one": "Mostrar todos ({{count}})",
+      "showAll_many": "Mostrar todos ({{count}})",
+      "showAll_other": "Mostrar todos ({{count}})"
+    },
     "cashTrendLabel": "Gráfico del efectivo"
   },
   "queue": {

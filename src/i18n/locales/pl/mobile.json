@@ -193,6 +193,18 @@
       "loan": "Kredyt",
       "policy": "Polisa"
     },
+    "insurance": {
+      "type": "Typ polisy",
+      "upcoming": "Najbliższe płatności",
+      "upcomingNote_one": "{{count}} dzień",
+      "upcomingNote_few": "{{count}} dni",
+      "upcomingNote_many": "{{count}} dni",
+      "upcomingNote_other": "{{count}} dnia",
+      "showAll_one": "Pokaż {{count}}",
+      "showAll_few": "Pokaż wszystkie {{count}}",
+      "showAll_many": "Pokaż wszystkie {{count}}",
+      "showAll_other": "Pokaż wszystkie {{count}}"
+    },
     "cashTrendLabel": "Wykres gotówki"
   },
   "queue": {

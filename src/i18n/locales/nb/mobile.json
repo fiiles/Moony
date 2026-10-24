@@ -167,6 +167,14 @@
       "loan": "Lån",
       "policy": "Forsikring"
     },
+    "insurance": {
+      "type": "Forsikringstype",
+      "upcoming": "Neste betalinger",
+      "upcomingNote_one": "{{count}} dag",
+      "upcomingNote_other": "{{count}} dager",
+      "showAll_one": "Vis {{count}}",
+      "showAll_other": "Vis alle {{count}}"
+    },
     "cashTrendLabel": "Diagram over kontanter"
   },
   "queue": {

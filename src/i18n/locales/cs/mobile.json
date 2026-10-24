@@ -180,6 +180,16 @@
       "loan": "Úvěr",
       "policy": "Pojistka"
     },
+    "insurance": {
+      "type": "Typ pojištění",
+      "upcoming": "Nejbližší platby",
+      "upcomingNote_one": "{{count}} den",
+      "upcomingNote_few": "{{count}} dny",
+      "upcomingNote_other": "{{count}} dní",
+      "showAll_one": "Zobrazit {{count}}",
+      "showAll_few": "Zobrazit všechny {{count}}",
+      "showAll_other": "Zobrazit všech {{count}}"
+    },
     "cashTrendLabel": "Graf vývoje hotovosti"
   },
   "queue": {

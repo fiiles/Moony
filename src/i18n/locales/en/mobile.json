@@ -167,6 +167,14 @@
       "loan": "Loan",
       "policy": "Policy"
     },
+    "insurance": {
+      "type": "Policy type",
+      "upcoming": "Upcoming payments",
+      "upcomingNote_one": "{{count}} day",
+      "upcomingNote_other": "{{count}} days",
+      "showAll_one": "Show all {{count}}",
+      "showAll_other": "Show all {{count}}"
+    },
     "cashTrendLabel": "Cash trend chart"
   },
   "queue": {

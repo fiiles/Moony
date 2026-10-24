@@ -43,6 +43,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
+import { UpcomingPremiums } from '@/mobile/components/finance/UpcomingPremiums';
 import { Hero } from '@/mobile/components/Hero';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { TrendCard } from '@/mobile/components/TrendCard';
@@ -60,6 +61,7 @@ import {
 import { queuePath } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import { initials } from '@/mobile/lib/initials';
+import { policyTypes } from '@/mobile/lib/upcoming-premiums';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 import { accountPath, loanPath, policyPath } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -98,8 +100,9 @@ const MENU_ITEM = 'min-h-11 text-m-body';
  * Finance tab root (spec §8.4, prototype frame 03): the compact total on accounts, the payments
  * without a category, then accounts, loans and policies as entity rows — each section head carries
  * its one number — and the cash trend. `+` adds an account, a loan or a policy (the desktop's
- * dialogs); `···` sorts the accounts and shows the paid-off loans and ended policies. The desktop's
- * list pages have no phone equivalent beyond this (summary stats, trajectory, payment calendar).
+ * dialogs); `···` sorts the accounts, filters the policies by type and shows the paid-off loans and
+ * ended policies. The desktop's list pages have no phone equivalent beyond this (summary stats,
+ * trajectory); its payment calendar is "Nejbližší platby" under the policies.
  */
 export default function Finance() {
   const { t } = useTranslation('mobile');
@@ -116,6 +119,7 @@ export default function Finance() {
   const [sort, setSort] = useRemembered<AccountSort>('finance.sort', 'balance');
   const [showMatured, setShowMatured] = useRemembered('finance.showMatured', false);
   const [showEnded, setShowEnded] = useRemembered('finance.showEnded', false);
+  const [policyType, setPolicyType] = useRemembered('finance.policyType', 'all');
   const [period, setPeriod] = useRemembered<ChartPeriod>('finance.period', DEFAULT_PERIOD);
   const [addKind, setAddKind] = useState<AddKind | null>(null);
   const { createAccount } = useBankAccountMutations();
@@ -137,12 +141,20 @@ export default function Finance() {
         .sort((a, b) => (b.converted?.outstanding ?? -1) - (a.converted?.outstanding ?? -1)),
     [loans.rows, showMatured]
   );
+  const shownPolicies = useMemo(
+    () => insurance.rows.filter((row) => showEnded || !row.ended),
+    [insurance.rows, showEnded]
+  );
+  // The type filter offers the types of the policies shown; a remembered type that has gone (its
+  // last policy ended or was deleted) is no filter, or the list would be empty with no menu to undo it
+  const types = useMemo(() => policyTypes(shownPolicies), [shownPolicies]);
+  const typeFilter = types.includes(policyType) ? policyType : 'all';
   const policyRows = useMemo(
     () =>
-      insurance.rows
-        .filter((row) => showEnded || !row.ended)
+      shownPolicies
+        .filter((row) => typeFilter === 'all' || row.policy.type === typeFilter)
         .sort((a, b) => nextDay(a) - nextDay(b)),
-    [insurance.rows, showEnded]
+    [shownPolicies, typeFilter]
   );
 
   // Currencies the totals, the section heads or the history leave out for want of a rate
@@ -212,6 +224,23 @@ export default function Finance() {
                 ))}
               </DropdownMenuRadioGroup>
               <DropdownMenuSeparator />
+              {/* Filters the policy rows and "Nejbližší platby", never the head's yearly total */}
+              {types.length > 1 && (
+                <>
+                  <DropdownMenuLabel>{t('finance.insurance.type')}</DropdownMenuLabel>
+                  <DropdownMenuRadioGroup value={typeFilter} onValueChange={setPolicyType}>
+                    <DropdownMenuRadioItem value="all" className={MENU_ITEM}>
+                      {t('insurance:table.allTypes')}
+                    </DropdownMenuRadioItem>
+                    {types.map((type) => (
+                      <DropdownMenuRadioItem key={type} value={type} className={MENU_ITEM}>
+                        {t(`insurance:types.${type}`, { defaultValue: type })}
+                      </DropdownMenuRadioItem>
+                    ))}
+                  </DropdownMenuRadioGroup>
+                  <DropdownMenuSeparator />
+                </>
+              )}
               <DropdownMenuCheckboxItem
                 className={MENU_ITEM}
                 checked={showMatured}
@@ -291,6 +320,7 @@ export default function Finance() {
           )}
           <LoansSection finance={finance} rows={loanRows} />
           <PoliciesSection finance={finance} rows={policyRows} />
+          <UpcomingPremiums rows={policyRows} today={insurance.today} />
           {accounts.length > 0 && (trend.points.length > 1 || period !== DEFAULT_PERIOD) && (
             <TrendCard
               title={t('finance.sections.cashTrend')}

@@ -167,6 +167,14 @@
       "loan": "Kredit",
       "policy": "Police"
     },
+    "insurance": {
+      "type": "Art der Police",
+      "upcoming": "Nächste Zahlungen",
+      "upcomingNote_one": "{{count}} Tag",
+      "upcomingNote_other": "{{count}} Tage",
+      "showAll_one": "Alle {{count}} anzeigen",
+      "showAll_other": "Alle {{count}} anzeigen"
+    },
     "cashTrendLabel": "Diagramm zum Bargeldverlauf"
   },
   "queue": {

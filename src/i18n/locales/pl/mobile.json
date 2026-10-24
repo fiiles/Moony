@@ -292,11 +292,11 @@
   },
   "loan": {
     "nextPayment": "Następna rata {{amount}} · {{date}}",
+    "notStarted": "Zaczyna się {{date}}",
     "stats": {
       "since": "od {{month, lower}}",
       "extra": "nadpłaty {{amount}}",
-      "until": "do {{month, lower}}",
-      "noFixation": "bez stałej stopy"
+      "until": "do {{month, lower}}"
     },
     "alerts": {
       "fixationSoon_one": "Stała stopa kończy się za {{count}} dzień. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
@@ -319,6 +319,9 @@
       "showAll_few": "Pokaż wszystkie {{count}}",
       "showAll_many": "Pokaż wszystkie {{count}}",
       "showAll_other": "Pokaż wszystkie {{count}}"
+    },
+    "extra": {
+      "noChange": "Ta kwota nie zmienia ani okresu spłaty, ani raty, ani odsetek."
     },
     "events": {
       "menu": "Menu zdarzenia"

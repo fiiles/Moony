@@ -13,6 +13,7 @@ import {
   loanChartEvents,
   loanDetailStats,
   loanWindow,
+  manualBalance,
   scheduleYears,
   upcomingRows,
 } from './loan-detail';
@@ -40,7 +41,7 @@ function loan(partial: Partial<Loan> = {}): Loan {
     endDate: day(2049, 5, 15),
     balanceAnchorAmount: null,
     balanceAnchorDate: null,
-    outstandingBalance: '0',
+    outstandingBalance: '1000000.00',
     balanceMode: 'estimated',
     events: [],
     createdAt: 0,
@@ -157,6 +158,19 @@ describe('loanWindow', () => {
     expect(loanBalanceAt(manual.ledger, day(2026, 6, 20)).balance).toBe(2_400_000);
     expect(loanBalanceAt(manual.ledger, TODAY).balance).toBe(2_400_000);
   });
+
+  it('has only the drawdown reading in the past of a loan that has not started', () => {
+    const later = rowOf({ startDate: day(2026, 12, 1), endDate: null, principal: '1000000' });
+    const past = loanWindow(later.trajectory, TODAY, 'past');
+    expect(past.points).toHaveLength(1);
+    expect(past.points[0].t).toBe(day(2026, 12, 1));
+    // The 5-year window starts at the drawdown, which is ahead of today, and runs on as the plan
+    const five = loanWindow(later.trajectory, TODAY, '5');
+    expect(five.start).toBe(day(2026, 12, 1));
+    expect(five.end).toBe(dueDay(TODAY, 60));
+    expect(five.points[0]).toEqual({ t: day(2026, 12, 1), value: 1_000_000 });
+    expect(five.points.every((p) => p.t >= day(2026, 12, 1))).toBe(true);
+  });
 });
 
 describe('loanChartEvents', () => {
@@ -213,7 +227,7 @@ describe('loanDetailStats', () => {
   it("takes the desktop's numbers for an automatic loan", () => {
     const row = rowOf();
     const schedule = scheduleOf(row);
-    const stats = loanDetailStats(row, [], schedule);
+    const stats = loanDetailStats(row, [], schedule, TODAY);
     const { trajectory } = row;
     expect(stats.balance).toBe(trajectory.balanceToday);
     expect(stats.interestPaid).toBe(trajectory.interestPaid);
@@ -240,7 +254,7 @@ describe('loanDetailStats', () => {
       event({ kind: 'rate_change', eventDay: day(2025, 5, 15), rate: '4.1' }),
     ];
     const row = rowOf({ events: extra });
-    const stats = loanDetailStats(row, extra, scheduleOf(row));
+    const stats = loanDetailStats(row, extra, scheduleOf(row), TODAY);
     expect(stats.extraPaid).toBeCloseTo(75_000.5, 6);
   });
 
@@ -252,7 +266,7 @@ describe('loanDetailStats', () => {
       balanceMode: 'manual',
       events: [balanceCheck],
     });
-    const stats = loanDetailStats(row, [balanceCheck], scheduleOf(row));
+    const stats = loanDetailStats(row, [balanceCheck], scheduleOf(row), TODAY);
     expect(stats.balance).toBe(loanBalanceAt(row.ledger, TODAY).balance);
     expect(stats.balance).toBe(2_400_000);
     expect(stats.principalRepaid).toBe(700_000);
@@ -272,7 +286,7 @@ describe('loanDetailStats', () => {
     });
     expect(short.trajectory.end).toBe('endDate');
     expect(short.trajectory.payoffDay).toBeNull();
-    const stats = loanDetailStats(short, [], scheduleOf(short, { paymentsRemaining: null }));
+    const stats = loanDetailStats(short, [], scheduleOf(short, { paymentsRemaining: null }), TODAY);
     const last = short.trajectory.upcoming[short.trajectory.upcoming.length - 1];
     expect(stats.endBalance).toBeCloseTo(last.balanceAfter, 6);
     expect(stats.endBalance).toBeGreaterThan(0);
@@ -282,7 +296,7 @@ describe('loanDetailStats', () => {
 
   it('has no payments left to count for a loan without a payment', () => {
     const stuck = rowOf({ monthlyPayment: '0' });
-    const stats = loanDetailStats(stuck, [], scheduleOf(stuck, { paymentsRemaining: null }));
+    const stats = loanDetailStats(stuck, [], scheduleOf(stuck, { paymentsRemaining: null }), TODAY);
     expect(stats.remaining).toBeNull();
     expect(stats.next).toBeNull();
     expect(stats.endBalance).toBeNull();
@@ -291,7 +305,78 @@ describe('loanDetailStats', () => {
 
   it('gives the fixation end of the row', () => {
     const row = rowOf({ interestRateValidityDate: day(2026, 10, 13) });
-    expect(loanDetailStats(row, [], scheduleOf(row)).fixationEnd).toBe(day(2026, 10, 13));
+    const stats = loanDetailStats(row, [], scheduleOf(row), TODAY);
+    expect(stats.fixationEnd).toBe(day(2026, 10, 13));
+    expect(stats.fixationEnded).toBeNull();
+  });
+
+  it('tells a fixation that has ended (today or past) from a loan without one', () => {
+    const none = rowOf();
+    const noneStats = loanDetailStats(none, [], scheduleOf(none), TODAY);
+    expect(noneStats.fixationEnd).toBeNull();
+    expect(noneStats.fixationEnded).toBeNull();
+    for (const validity of [TODAY, TODAY - 40 * DAY]) {
+      const row = rowOf({ interestRateValidityDate: validity });
+      const stats = loanDetailStats(row, [], scheduleOf(row), TODAY);
+      expect(stats.fixationEnd).toBeNull();
+      expect(stats.fixationEnded).toBe(validity);
+    }
+  });
+
+  it('has repaid nothing before the drawdown: 0 and 0 %, not the whole principal', () => {
+    const later = rowOf({ startDate: day(2026, 12, 1), endDate: null, principal: '1000000' });
+    const stats = loanDetailStats(later, [], scheduleOf(later), TODAY);
+    expect(stats.started).toBe(false);
+    expect(stats.balance).toBe(0);
+    expect(stats.principalRepaid).toBe(0);
+    expect(stats.repaidShare).toBe(0);
+    expect(stats.interestPaid).toBe(0);
+    expect(stats.startDay).toBe(day(2026, 12, 1));
+    // A loan that has started is `started`, a paid-off one too
+    expect(loanDetailStats(rowOf(), [], scheduleOf(rowOf()), TODAY).started).toBe(true);
+    const paid = rowOf({ outstandingBalance: '0' });
+    expect(loanDetailStats(paid, [], scheduleOf(paid), TODAY).started).toBe(true);
+    expect(loanDetailStats(later, [], scheduleOf(later), day(2026, 12, 1)).started).toBe(true);
+  });
+});
+
+describe('manualBalance', () => {
+  const manualLoan = {
+    balanceAnchorAmount: '2400000',
+    balanceAnchorDate: RECORD,
+    outstandingBalance: '2400000.00',
+    balanceMode: 'manual' as const,
+    events: [balanceCheck],
+  };
+
+  it('is the mirror of the newest record while the balance is a manual one', () => {
+    expect(manualBalance(rowOf(manualLoan), TODAY)).toEqual({ amount: 2_400_000, day: RECORD });
+  });
+
+  it('is nothing for an estimated balance', () => {
+    expect(manualBalance(rowOf(), TODAY)).toBeNull();
+    expect(manualBalance(rowOf({ monthlyPayment: '0' }), TODAY)).toBeNull();
+  });
+
+  it('falls back to the newest record of the ledger when the mirror is missing', () => {
+    const older = event({ kind: 'balance_check', eventDay: day(2025, 11, 20), amount: '2900000' });
+    const row = rowOf({
+      ...manualLoan,
+      balanceAnchorAmount: null,
+      balanceAnchorDate: null,
+      events: [older, balanceCheck],
+    });
+    expect(row.mode).toBe('manual');
+    expect(manualBalance(row, TODAY)).toEqual({ amount: 2_400_000, day: RECORD });
+    // A record dated after today does not hold today
+    const future = event({ kind: 'balance_check', eventDay: TODAY + 5 * DAY, amount: '1000000' });
+    const withFuture = rowOf({
+      ...manualLoan,
+      balanceAnchorAmount: null,
+      balanceAnchorDate: null,
+      events: [balanceCheck, future],
+    });
+    expect(manualBalance(withFuture, TODAY)).toEqual({ amount: 2_400_000, day: RECORD });
   });
 });
 
@@ -377,6 +462,28 @@ describe('loanAlerts', () => {
     expect(loanAlerts(edge, scheduleOf(edge), TODAY).map((a) => a.kind)).toEqual([
       'fixationPassed',
     ]);
+  });
+
+  it('has no fixation alert for a loan that is paid off, past its end date or not started', () => {
+    const soon = TODAY + 5 * DAY;
+    const paid = rowOf({ outstandingBalance: '0', interestRateValidityDate: soon });
+    expect(paid.matured).toBe(true);
+    expect(loanAlerts(paid, scheduleOf(paid), TODAY)).toEqual([]);
+
+    const ended = rowOf({ endDate: day(2026, 1, 15), interestRateValidityDate: soon });
+    expect(ended.matured).toBe(true);
+    expect(loanAlerts(ended, scheduleOf(ended), TODAY)).toEqual([]);
+
+    const later = rowOf({
+      startDate: day(2026, 12, 1),
+      endDate: null,
+      interestRateValidityDate: soon,
+    });
+    expect(loanAlerts(later, scheduleOf(later), TODAY)).toEqual([]);
+
+    // The same fixation on a loan that is running still alerts
+    const live = rowOf({ interestRateValidityDate: soon });
+    expect(loanAlerts(live, scheduleOf(live), TODAY).map((a) => a.kind)).toEqual(['fixationSoon']);
   });
 
   it('lists the schedule warnings before the fixation alert', () => {

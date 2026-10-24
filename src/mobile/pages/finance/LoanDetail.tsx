@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQueryClient } from '@tanstack/react-query';
-import { useLocation, useRoute } from 'wouter';
+import { useRoute } from 'wouter';
 import type { LoanEvent, LoanEventKind, LoanSchedule as LoanScheduleData } from '@shared/schema';
 import { useLoanEvents } from '@/hooks/use-loan-events';
+import { useLoanMutations } from '@/hooks/use-loan-mutations';
 import { useLoans, useLoanSchedule } from '@/hooks/use-loans';
 import { useLoanText } from '@/hooks/use-loan-text';
 import { useFormat } from '@/lib/use-format';
@@ -18,20 +18,30 @@ import { LoanMenu } from '@/mobile/components/loan/LoanMenu';
 import { LoanSchedule } from '@/mobile/components/loan/LoanSchedule';
 import { LoanStats } from '@/mobile/components/loan/LoanStats';
 import { useBack } from '@/mobile/hooks/use-back';
+import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
+import { useRetained } from '@/mobile/hooks/use-retained';
 import { loanDetailStats, type LoanHorizon } from '@/mobile/lib/loan-detail';
 import { loanPath, routes } from '@/mobile/shell/routes';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { Screen } from '@/mobile/shell/Screen';
+import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { ExtraPaymentSheet } from '@/mobile/sheets/ExtraPaymentSheet';
-
-/** How long after leaving a deleted loan the screen may still be it (a restored deep link). */
-const DELETED_GUARD_MS = 250;
 
 /** The event dialog the screen has open: its kind, and for an extra payment the what-if's values. */
 interface EventDialogState {
   kind: LoanEventKind;
   initial?: { amount?: number; mode?: ExtraPaymentMode };
 }
+
+/** What the screen shows of a loan: the row, its schedule and its events. */
+interface LoanView {
+  row: LoanRow;
+  schedule: LoanScheduleData;
+  events: LoanEvent[];
+}
+
+/** A stable empty list: a new one per render would keep `LoanView` from ever settling. */
+const NO_EVENTS: LoanEvent[] = [];
 
 /** Route entry: another loan remounts the page, so its horizon, sheets and dialogs start over. */
 export default function LoanDetail() {
@@ -46,44 +56,47 @@ export default function LoanDetail() {
  * schedule and the events. The numbers are the desktop detail's (`useLoans`, the schedule and the
  * events queries) in the loan's own currency, a hand-entered balance holding exactly as it does
  * there; the dialogs for the loan's form and for the events are the desktop's.
+ *
+ * The page owns the delete (its confirm sheet and the mutation, `useDeleteAndLeave`): the loan
+ * drops out of `useLoans` while the delete is still finishing, which takes the `···` menu away, and
+ * the page keeps showing the loan until it has left.
  */
 function LoanDetailPage({ id }: { id: string | undefined }) {
   const { t } = useTranslation('mobile');
   const { t: tl } = useTranslation('loans');
   const fmt = useFormat();
   const text = useLoanText();
-  const [, setLocation] = useLocation();
-  const queryClient = useQueryClient();
   const back = useBack(routes.finance);
   const { rows, isLoading: loansLoading, today } = useLoans();
   const { data: schedule, isLoading: scheduleLoading } = useLoanSchedule(id);
-  const { data: events = [] } = useLoanEvents(id);
+  const { data: events = NO_EVENTS } = useLoanEvents(id);
+  const { deleteMutation } = useLoanMutations();
 
   const [horizon, setHorizon] = useState<LoanHorizon>('5');
   const [extraOpen, setExtraOpen] = useState(false);
   const [eventDialog, setEventDialog] = useState<EventDialogState | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const row = rows.find((r) => r.loan.id === id);
-  const loan = row?.loan;
-
-  // The loan is gone: back to Finance as Back does, so the history keeps no ghost of it. Its own
-  // queries are dropped once the screen has left (history.back lands asynchronously): removed
-  // while it is still up, a re-render would rebuild them empty and flash the skeleton. On a
-  // restored deep link the detail is the first entry and back has nowhere to go; the screen is
-  // then replaced.
-  const leaveDeleted = (loanId: string) => {
-    back();
-    window.setTimeout(() => {
-      if (window.location.pathname === loanPath(loanId)) {
-        setLocation(routes.finance, { replace: true });
-      }
-      queryClient.removeQueries({ queryKey: ['loan-schedule', loanId] });
-      queryClient.removeQueries({ queryKey: ['loan-events', loanId] });
-    }, DELETED_GUARD_MS);
-  };
-
-  const loading = loansLoading || (loan !== undefined && scheduleLoading);
-  const ready = row !== undefined && loan !== undefined && schedule !== undefined;
+  const current = useMemo<LoanView | null>(
+    () => (row && schedule ? { row, schedule, events } : null),
+    [row, schedule, events]
+  );
+  const kept = useRetained(current);
+  const exit = useDeleteAndLeave({
+    home: routes.finance,
+    pathOf: loanPath,
+    keysOf: (loanId) => [
+      ['loan-schedule', loanId],
+      ['loan-events', loanId],
+    ],
+    remove: (loanId) => deleteMutation.mutateAsync(loanId),
+    closeSheet: () => setDeleteOpen(false),
+  });
+  // A loan being deleted stays on screen (as it was) until the screen has left
+  const view = exit.deleting ? kept : current;
+  const loan = view?.row.loan;
+  const loading = loansLoading || (row !== undefined && scheduleLoading);
 
   return (
     <Screen
@@ -94,43 +107,40 @@ function LoanDetailPage({ id }: { id: string | undefined }) {
           <LoanMenu
             loan={loan}
             onOpenEvent={(kind) => setEventDialog({ kind })}
-            onDeleted={() => leaveDeleted(loan.id)}
+            onDelete={() => setDeleteOpen(true)}
           />
         )
       }
     >
-      {loading ? (
-        <LoanSkeleton />
-      ) : !ready ? (
-        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">{tl('detail.notFound')}</p>
-      ) : (
+      {view ? (
         <LoanBody
-          row={row}
-          events={events}
-          schedule={schedule}
+          view={view}
           today={today}
           horizon={horizon}
           onHorizonChange={setHorizon}
           caption={[
-            row.currency,
-            fmt.percent((Number(loan.interestRate) || 0) / 100, 2),
-            row.fixationEnd !== null
-              ? tl('table.fixedUntil', { month: text.monthYear(row.fixationEnd) })
-              : null,
-          ]
-            .filter(Boolean)
-            .join(' · ')}
+            view.row.currency,
+            fmt.percent((Number(view.row.loan.interestRate) || 0) / 100, 2),
+            // As the Finance list words it: the fixation still ahead, else a fixed rate
+            view.row.fixationEnd !== null
+              ? tl('table.fixedUntil', { month: text.monthYear(view.row.fixationEnd) })
+              : tl('table.fixedRate'),
+          ].join(' · ')}
           onExtraPayment={() => setExtraOpen(true)}
           onRecordRate={() => setEventDialog({ kind: 'rate_change' })}
         />
+      ) : loading ? (
+        <LoanSkeleton />
+      ) : (
+        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">{tl('detail.notFound')}</p>
       )}
 
-      {ready && (
+      {view && (
         <>
           <ExtraPaymentSheet
             open={extraOpen}
             onOpenChange={setExtraOpen}
-            row={row}
+            row={view.row}
             today={today}
             onRecord={(amount, mode) =>
               setEventDialog({ kind: 'extra_payment', initial: { amount, mode } })
@@ -142,14 +152,23 @@ function LoanDetailPage({ id }: { id: string | undefined }) {
               onOpenChange={(next) => {
                 if (!next) setEventDialog(null);
               }}
-              loan={row.loan}
-              ledger={row.ledger}
-              plan={row.plan}
+              loan={view.row.loan}
+              ledger={view.row.ledger}
+              plan={view.row.plan}
               today={today}
               kind={eventDialog.kind}
               initial={eventDialog.initial}
             />
           )}
+          <ConfirmSheet
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            title={tl('confirmDelete.title')}
+            description={tl('confirmDelete.description', { name: view.row.loan.name })}
+            confirmLabel={tl('actions.delete')}
+            isPending={deleteMutation.isPending}
+            onConfirm={() => exit.run(view.row.loan.id)}
+          />
         </>
       )}
     </Screen>
@@ -157,9 +176,7 @@ function LoanDetailPage({ id }: { id: string | undefined }) {
 }
 
 interface LoanBodyProps {
-  row: LoanRow;
-  events: LoanEvent[];
-  schedule: LoanScheduleData;
+  view: LoanView;
   today: number;
   horizon: LoanHorizon;
   onHorizonChange: (horizon: LoanHorizon) => void;
@@ -170,9 +187,7 @@ interface LoanBodyProps {
 
 /** The loaded screen, top to bottom. */
 function LoanBody({
-  row,
-  events,
-  schedule,
+  view,
   today,
   horizon,
   onHorizonChange,
@@ -180,13 +195,20 @@ function LoanBody({
   onExtraPayment,
   onRecordRate,
 }: LoanBodyProps) {
+  const { t } = useTranslation('mobile');
   const { t: tl } = useTranslation('loans');
-  const stats = loanDetailStats(row, events, schedule);
+  const fmt = useFormat();
+  const { row, schedule, events } = view;
+  const stats = loanDetailStats(row, events, schedule, today);
 
-  // Mimořádná splátka needs a payment to shorten or lower, and a balance to pay down
-  const noExtra = row.mode === 'static' || row.outstanding <= 0;
-  const noExtraReason =
-    row.outstanding <= 0 ? tl('detail.stats.paidOff') : tl('detail.hero.noPayment');
+  // Mimořádná splátka needs a loan that has started, a payment to shorten or lower, and a balance
+  // to pay down
+  const noExtra = !stats.started || row.mode === 'static' || row.outstanding <= 0;
+  const noExtraReason = !stats.started
+    ? t('loan.notStarted', { date: fmt.day(row.loan.startDate) })
+    : row.outstanding <= 0
+      ? tl('detail.stats.paidOff')
+      : tl('detail.hero.noPayment');
 
   return (
     <>

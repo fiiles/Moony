@@ -64,6 +64,8 @@ export function LoanHeroCard({
   );
 
   const note = (() => {
+    // A loan that has not started owes nothing yet, but it is not paid off
+    if (!stats.started) return t('loan.notStarted', { date: fmt.day(loan.startDate) });
     if (stats.balance <= 0) return tl('detail.hero.paidOff');
     if (stats.next) {
       return t('loan.nextPayment', {

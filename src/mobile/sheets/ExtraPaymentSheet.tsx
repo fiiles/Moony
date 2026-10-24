@@ -46,6 +46,7 @@ export function ExtraPaymentSheet({
   today,
   onRecord,
 }: ExtraPaymentSheetProps) {
+  const { t } = useTranslation('mobile');
   const { t: tl } = useTranslation('loans');
   const { t: tc } = useTranslation('common');
   const moneyText = useMoneyText();
@@ -148,7 +149,10 @@ export function ExtraPaymentSheet({
           <span className="block text-m-sub text-ink-3">
             {planPayment <= 0
               ? tl('detail.whatIf.noPayment')
-              : tl('detail.whatIf.noEffect', { amount: money(balance) })}
+              : result?.kind === 'noEffect'
+                ? // A valid amount that changes neither the term nor the payment nor the interest
+                  t('loan.extra.noChange')
+                : tl('detail.whatIf.noEffect', { amount: money(balance) })}
           </span>
         )}
       </div>

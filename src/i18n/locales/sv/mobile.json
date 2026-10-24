@@ -258,11 +258,11 @@
   },
   "loan": {
     "nextPayment": "Nästa betalning {{amount}} · {{date}}",
+    "notStarted": "Börjar {{date}}",
     "stats": {
       "since": "sedan {{month, lower}}",
       "extra": "extra {{amount}}",
-      "until": "till {{month, lower}}",
-      "noFixation": "utan räntebindning"
+      "until": "till {{month, lower}}"
     },
     "alerts": {
       "fixationSoon_one": "Räntebindningen upphör om {{count}} dag. När banken har bekräftat den nya räntan, registrera den – betalningen och planen räknas om.",
@@ -277,6 +277,9 @@
       "yearSub_other": "{{count}} betalningar · ränta {{interest}}",
       "showAll_one": "Visa {{count}}",
       "showAll_other": "Visa alla {{count}}"
+    },
+    "extra": {
+      "noChange": "Beloppet ändrar varken löptiden, betalningen eller räntan."
     },
     "events": {
       "menu": "Händelsemeny"

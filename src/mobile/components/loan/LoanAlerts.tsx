@@ -1,53 +1,11 @@
-import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CalendarClock, Info, TriangleAlert, type LucideIcon } from 'lucide-react';
+import { CalendarClock, Info, TriangleAlert } from 'lucide-react';
 import type { LoanSchedule } from '@shared/schema';
-import { dayFloor } from '@shared/calculations/loan-amortization';
 import { useFormat } from '@/lib/use-format';
-import { cn } from '@/lib/utils';
 import type { LoanRow } from '@/utils/loans';
+import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
-import { loanAlerts, type LoanAlert } from '@/mobile/lib/loan-detail';
-
-interface InlineAlertProps {
-  icon: LucideIcon;
-  /** The quiet variant: no border (the manual balance's note, which asks for nothing). */
-  muted?: boolean;
-  /** A text action under the sentence: a 44 pt target. */
-  action?: { label: string; onClick: () => void };
-  children: ReactNode;
-}
-
-/**
- * An inline alert (README §13, `.m-alert`): a sentence next to its cause on `well`, radius 11, 12 /
- * 500 `ink-2`, a 15 pt glyph in `ink-3`, at least 44 pt tall, wrapping. It may end with one text
- * action. A warning has the hairline border (the desktop's alert), a note has none.
- */
-export function InlineAlert({ icon: Icon, muted = false, action, children }: InlineAlertProps) {
-  return (
-    <div
-      role={muted ? 'note' : 'alert'}
-      className={cn(
-        'mb-2.5 flex min-h-11 items-start gap-2.5 rounded-[11px] border bg-well px-3 py-2.5 text-m-sub text-ink-2',
-        muted ? 'border-transparent' : 'border-line'
-      )}
-    >
-      <Icon aria-hidden className="mt-px size-[15px] flex-none text-ink-3" strokeWidth={1.75} />
-      <div className="min-w-0 leading-[1.4]">
-        <p className="m-0">{children}</p>
-        {action && (
-          <button
-            type="button"
-            onClick={action.onClick}
-            className="-mb-2.5 mt-0.5 inline-flex min-h-11 items-center text-m-sub font-semibold text-ink [-webkit-touch-callout:none] active:text-ink-3"
-          >
-            {action.label}
-          </button>
-        )}
-      </div>
-    </div>
-  );
-}
+import { loanAlerts, manualBalance, type LoanAlert } from '@/mobile/lib/loan-detail';
 
 interface LoanAlertsProps {
   row: LoanRow;
@@ -69,7 +27,6 @@ export function LoanAlerts({ row, schedule, today, onRecordRate }: LoanAlertsPro
   const { t: tl } = useTranslation('loans');
   const fmt = useFormat();
   const moneyText = useMoneyText();
-  const { loan } = row;
   const money = (value: number) => moneyText(value, row.currency);
   const recordRate = { label: tl('actions.rateChange'), onClick: onRecordRate };
 
@@ -120,18 +77,14 @@ export function LoanAlerts({ row, schedule, today, onRecordRate }: LoanAlertsPro
   };
 
   // The desktop's valuation note, worded here: its hook formats the amount without the eye
-  const manual =
-    row.mode === 'manual' && loan.balanceAnchorAmount !== null && loan.balanceAnchorDate !== null;
+  const manual = manualBalance(row, today);
 
   return (
     <>
       {loanAlerts(row, schedule, today).map(alert)}
       {manual && (
         <InlineAlert icon={Info} muted>
-          {tl('valuation.manual', {
-            amount: money(Number(loan.balanceAnchorAmount) || 0),
-            date: fmt.day(dayFloor(loan.balanceAnchorDate!)),
-          })}
+          {tl('valuation.manual', { amount: money(manual.amount), date: fmt.day(manual.day) })}
         </InlineAlert>
       )}
     </>

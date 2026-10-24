@@ -258,11 +258,11 @@
   },
   "loan": {
     "nextPayment": "Neste termin {{amount}} · {{date}}",
+    "notStarted": "Starter {{date}}",
     "stats": {
       "since": "siden {{month, lower}}",
       "extra": "ekstra {{amount}}",
-      "until": "til {{month, lower}}",
-      "noFixation": "uten bindingstid"
+      "until": "til {{month, lower}}"
     },
     "alerts": {
       "fixationSoon_one": "Bindingstiden utløper om {{count}} dag. Når banken har bekreftet den nye renten, registrer den – terminen og planen beregnes på nytt.",
@@ -277,6 +277,9 @@
       "yearSub_other": "{{count}} terminer · renter {{interest}}",
       "showAll_one": "Vis {{count}}",
       "showAll_other": "Vis alle {{count}}"
+    },
+    "extra": {
+      "noChange": "Dette beløpet endrer verken løpetiden, terminen eller rentene."
     },
     "events": {
       "menu": "Hendelsesmeny"

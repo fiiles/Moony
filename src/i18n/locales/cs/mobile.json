@@ -275,11 +275,11 @@
   },
   "loan": {
     "nextPayment": "Příští splátka {{amount}} · {{date}}",
+    "notStarted": "Začíná {{date}}",
     "stats": {
       "since": "od {{month}}",
       "extra": "mimořádně {{amount}}",
-      "until": "do {{month}}",
-      "noFixation": "bez fixace"
+      "until": "do {{month}}"
     },
     "alerts": {
       "fixationSoon_one": "Fixace končí za {{count}} den. Až banka potvrdí novou sazbu, zapište ji — splátka a plán se přepočítají.",
@@ -298,6 +298,9 @@
       "showAll_one": "Zobrazit {{count}}",
       "showAll_few": "Zobrazit všechny {{count}}",
       "showAll_other": "Zobrazit všech {{count}}"
+    },
+    "extra": {
+      "noChange": "Tato částka nezmění ani dobu splácení, ani splátku, ani úroky."
     },
     "events": {
       "menu": "Nabídka události"

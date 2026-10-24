@@ -275,11 +275,11 @@
   },
   "loan": {
     "nextPayment": "Próxima cuota {{amount}} · {{date}}",
+    "notStarted": "Empieza el {{date}}",
     "stats": {
       "since": "desde {{month, lower}}",
       "extra": "extra {{amount}}",
-      "until": "hasta {{month, lower}}",
-      "noFixation": "sin tipo fijo"
+      "until": "hasta {{month, lower}}"
     },
     "alerts": {
       "fixationSoon_one": "El tipo fijo termina en {{count}} día. Cuando el banco confirme el nuevo tipo, regístralo: la cuota y el plan se recalcularán.",
@@ -298,6 +298,9 @@
       "showAll_one": "Mostrar todas ({{count}})",
       "showAll_many": "Mostrar todas ({{count}})",
       "showAll_other": "Mostrar todas ({{count}})"
+    },
+    "extra": {
+      "noChange": "Este importe no cambia ni el plazo, ni la cuota, ni los intereses."
     },
     "events": {
       "menu": "Menú del evento"

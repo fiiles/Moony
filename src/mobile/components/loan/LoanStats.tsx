@@ -36,7 +36,9 @@ export function LoanStats({ row, stats, today }: LoanStatsProps) {
   const interest = {
     label: tl('detail.stats.interest'),
     value: money(stats.interestPaid),
-    note: t('loan.stats.since', { month: text.monthYear(stats.startDay) }),
+    note: stats.started
+      ? t('loan.stats.since', { month: text.monthYear(stats.startDay) })
+      : t('loan.notStarted', { date: fmt.day(loan.startDate) }),
   };
 
   const principal = {
@@ -51,7 +53,8 @@ export function LoanStats({ row, stats, today }: LoanStatsProps) {
   };
 
   const remainingNote = (() => {
-    if (stats.balance <= 0) return tl('detail.stats.paidOff');
+    // A loan that has not started owes nothing yet, but it is not paid off
+    if (stats.started && stats.balance <= 0) return tl('detail.stats.paidOff');
     if (stats.endBalance !== null) {
       return tl('detail.stats.remainingToEnd', {
         month: text.monthYear(loan.endDate!),
@@ -70,10 +73,12 @@ export function LoanStats({ row, stats, today }: LoanStatsProps) {
     note: remainingNote,
   };
 
-  const fixation =
-    stats.fixationEnd !== null
+  // The fixation still ahead; one that has ended (the validity day is today or past) says so; a
+  // loan without a validity date has a fixed rate, as the Finance list words it
+  const fixation = {
+    label: tl('detail.stats.fixation'),
+    ...(stats.fixationEnd !== null
       ? {
-          label: tl('detail.stats.fixation'),
           value: text.monthYear(stats.fixationEnd),
           note: tl('detail.stats.fixationNote', {
             duration: text.months(monthsAhead(today, stats.fixationEnd)),
@@ -85,11 +90,13 @@ export function LoanStats({ row, stats, today }: LoanStatsProps) {
             ),
           }),
         }
-      : {
-          label: tl('detail.stats.fixation'),
-          value: '—',
-          note: t('loan.stats.noFixation'),
-        };
+      : stats.fixationEnded !== null
+        ? {
+            value: text.monthYear(stats.fixationEnded),
+            note: tl('table.fixationEnded', { month: text.monthYear(stats.fixationEnded) }),
+          }
+        : { value: '—', note: tl('table.fixedRate') }),
+  };
 
   return (
     // The two rows sit 10 pt apart, as the stats within a row do

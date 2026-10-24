@@ -275,11 +275,11 @@
   },
   "loan": {
     "nextPayment": "Prossima rata {{amount}} · {{date}}",
+    "notStarted": "Inizia il {{date}}",
     "stats": {
       "since": "da {{month, lower}}",
       "extra": "extra {{amount}}",
-      "until": "fino a {{month, lower}}",
-      "noFixation": "senza tasso fisso"
+      "until": "fino a {{month, lower}}"
     },
     "alerts": {
       "fixationSoon_one": "Il tasso fisso termina tra {{count}} giorno. Quando la banca conferma il nuovo tasso, registralo: la rata e il piano vengono ricalcolati.",
@@ -298,6 +298,9 @@
       "showAll_one": "Mostra tutte ({{count}})",
       "showAll_many": "Mostra tutte ({{count}})",
       "showAll_other": "Mostra tutte ({{count}})"
+    },
+    "extra": {
+      "noChange": "Questo importo non cambia né la durata, né la rata, né gli interessi."
     },
     "events": {
       "menu": "Menu dell'evento"

@@ -2,6 +2,7 @@ import type { LoanEvent, LoanSchedule } from '@shared/schema';
 import {
   dayFloor,
   dueDay,
+  loanAnchor,
   type AmortizationScheduleRow,
 } from '@shared/calculations/loan-amortization';
 import type { ChartEvent } from '@/utils/chart-scale';
@@ -121,7 +122,9 @@ export function loanChartEvents(row: LoanRow, events: readonly LoanEvent[]): Loa
 }
 
 export interface LoanDetailStats {
-  /** The balance today from the ledger walk. */
+  /** The drawdown day is today or past. A loan that has not started owes nothing yet and is not paid off. */
+  started: boolean;
+  /** The balance today from the ledger walk (0 before the drawdown). */
   balance: number;
   /** First reading of the balance path: the drawdown day. */
   startDay: number;
@@ -139,18 +142,26 @@ export interface LoanDetailStats {
   payoffDay: number | null;
   /** The balance the plan leaves at the contractual end date (payment a bit low); else `null`. */
   endBalance: number | null;
+  /** The day the rate's fixation ends, while it is still ahead of today. */
   fixationEnd: number | null;
+  /** The day the rate's fixation ended, when that is today or past (the row's `fixationEnd` is then `null`). */
+  fixationEnded: number | null;
   /** The next payment of the plan; `null` without one. */
   next: AmortizationScheduleRow | null;
 }
 
-/** The desktop detail's hero and stat numbers (`LoanDetail.tsx`, `LoanDetailBody`). */
+/**
+ * The desktop detail's hero and stat numbers (`LoanDetail.tsx`, `LoanDetailBody`). A loan that has
+ * not started yet (`today` before its drawdown) has repaid nothing: 0 and 0 %, not its principal.
+ */
 export function loanDetailStats(
   row: LoanRow,
   events: readonly LoanEvent[],
-  schedule: Pick<LoanSchedule, 'paymentsRemaining'>
+  schedule: Pick<LoanSchedule, 'paymentsRemaining'>,
+  today: number
 ): LoanDetailStats {
   const { loan, trajectory } = row;
+  const started = dayFloor(loan.startDate) <= dayFloor(today);
   const principal = Number(loan.principal) || 0;
   const balance = trajectory.balanceToday;
   const payoffDay = trajectory.payoffDay;
@@ -161,11 +172,12 @@ export function loanDetailStats(
       ? (upcoming[upcoming.length - 1]?.balanceAfter ?? balance)
       : null;
   return {
+    started,
     balance,
     startDay: trajectory.past[0]?.t ?? dayFloor(loan.startDate),
     interestPaid: trajectory.interestPaid,
-    principalRepaid: Math.max(0, principal - balance),
-    repaidShare: principal > 0 ? Math.max(0, 1 - balance / principal) : 0,
+    principalRepaid: started ? Math.max(0, principal - balance) : 0,
+    repaidShare: started && principal > 0 ? Math.max(0, 1 - balance / principal) : 0,
     extraPaid: events
       .filter((e) => e.kind === 'extra_payment')
       .reduce((sum, e) => sum + (Number(e.amount) || 0), 0),
@@ -174,8 +186,35 @@ export function loanDetailStats(
     payoffDay,
     endBalance,
     fixationEnd: row.fixationEnd,
+    // `row.fixationEnd` is null without a validity date and from the validity day on
+    fixationEnded:
+      loan.interestRateValidityDate !== null && row.fixationEnd === null
+        ? dayFloor(loan.interestRateValidityDate)
+        : null,
     next: upcoming[0] ?? null,
   };
+}
+
+/**
+ * The hand-entered balance that holds today, for the note that says so: the loan's mirror of the
+ * newest manual record, else the newest `balance_check` event up to today, else the plan's anchor
+ * (as the desktop's valuation note falls back). `null` unless the balance is a manual one.
+ */
+export function manualBalance(row: LoanRow, today: number): { amount: number; day: number } | null {
+  if (row.mode !== 'manual') return null;
+  const { loan } = row;
+  if (loan.balanceAnchorAmount !== null && loan.balanceAnchorDate !== null) {
+    return {
+      amount: Number(loan.balanceAnchorAmount) || 0,
+      day: dayFloor(loan.balanceAnchorDate),
+    };
+  }
+  const newest = row.ledger.events
+    .filter((e) => e.kind === 'balance_check' && dayFloor(e.day) <= dayFloor(today))
+    .sort((a, b) => dayFloor(b.day) - dayFloor(a.day) || b.createdAt - a.createdAt)[0];
+  if (newest) return { amount: Math.max(0, newest.amount ?? 0), day: dayFloor(newest.day) };
+  const anchor = loanAnchor(row.plan);
+  return { amount: anchor.amount, day: anchor.day };
 }
 
 export type LoanAlert =
@@ -196,7 +235,8 @@ const FIXATION_PASSED_DAYS = 60;
 /**
  * What the screen warns about, in order: the schedule's warnings (`LoanWarnings` on the desktop —
  * a loan without a payment says so even when the schedule does not), then the rate's fixation
- * ending within 30 days, or ended up to 60 days ago with no rate change dated on or after it.
+ * ending within 30 days, or ended up to 60 days ago with no rate change dated on or after it. A
+ * loan that is paid off, past its end date or not started has no rate to write, so no fixation alert.
  */
 export function loanAlerts(row: LoanRow, schedule: LoanSchedule, today: number): LoanAlert[] {
   const { loan } = row;
@@ -229,7 +269,8 @@ export function loanAlerts(row: LoanRow, schedule: LoanSchedule, today: number):
     }
   });
 
-  if (loan.interestRateValidityDate !== null) {
+  const live = !row.matured && row.trajectory.balanceToday > 0;
+  if (live && loan.interestRateValidityDate !== null) {
     const validity = dayFloor(loan.interestRateValidityDate);
     const day = dayFloor(today);
     const ahead = Math.round((validity - day) / DAY);

@@ -258,11 +258,11 @@
   },
   "loan": {
     "nextPayment": "Next payment {{amount}} · {{date}}",
+    "notStarted": "Starts {{date}}",
     "stats": {
       "since": "since {{month}}",
       "extra": "extra {{amount}}",
-      "until": "until {{month}}",
-      "noFixation": "no fixed rate"
+      "until": "until {{month}}"
     },
     "alerts": {
       "fixationSoon_one": "The fixed rate ends in {{count}} day. Once the bank confirms the new rate, record it — the payment and the plan are recalculated.",
@@ -277,6 +277,9 @@
       "yearSub_other": "{{count}} payments · interest {{interest}}",
       "showAll_one": "Show all {{count}}",
       "showAll_other": "Show all {{count}}"
+    },
+    "extra": {
+      "noChange": "This amount changes neither the term nor the payment nor the interest."
     },
     "events": {
       "menu": "Event menu"

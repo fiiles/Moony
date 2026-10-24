@@ -253,9 +253,9 @@ export function ScrubChart<E extends ChartEvent>({
   // The static chart: rebuilt only when its data or size changes, never while scrubbing.
   const chart = useMemo(() => {
     if (width <= 0 || points.length < 2) return null;
-    // The end ring sits on the last reading of the solid line ("today" when the rest is a plan)
-    const last =
-      [...rows].reverse().find((row) => row.actual !== undefined) ?? rows[rows.length - 1];
+    // The end ring sits on the last reading of the solid line ("today" when the rest is a plan);
+    // a line that is all plan (a loan that has not started) has none
+    const last = [...rows].reverse().find((row) => row.actual !== undefined);
     return (
       <ComposedChart width={width} height={height} data={rows} margin={MARGIN}>
         <defs>
@@ -323,15 +323,17 @@ export function ScrubChart<E extends ChartEvent>({
           activeDot={false}
           isAnimationActive={false}
         />
-        <ReferenceDot
-          x={last.t}
-          y={last.value}
-          r={4.5}
-          fill={tk.paper}
-          stroke={tk.line}
-          strokeWidth={2}
-          ifOverflow="visible"
-        />
+        {last && (
+          <ReferenceDot
+            x={last.t}
+            y={last.value}
+            r={4.5}
+            fill={tk.paper}
+            stroke={tk.line}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        )}
       </ComposedChart>
     );
   }, [

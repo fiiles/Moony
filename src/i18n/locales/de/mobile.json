@@ -258,11 +258,11 @@
   },
   "loan": {
     "nextPayment": "Nächste Rate {{amount}} · {{date}}",
+    "notStarted": "Beginnt am {{date}}",
     "stats": {
       "since": "seit {{month}}",
       "extra": "Sonderzahlung {{amount}}",
-      "until": "bis {{month}}",
-      "noFixation": "ohne Zinsbindung"
+      "until": "bis {{month}}"
     },
     "alerts": {
       "fixationSoon_one": "Die Zinsbindung endet in {{count}} Tag. Sobald die Bank den neuen Zinssatz bestätigt, tragen Sie ihn ein — Rate und Plan werden neu berechnet.",
@@ -277,6 +277,9 @@
       "yearSub_other": "{{count}} Raten · Zinsen {{interest}}",
       "showAll_one": "Alle {{count}} anzeigen",
       "showAll_other": "Alle {{count}} anzeigen"
+    },
+    "extra": {
+      "noChange": "Dieser Betrag ändert weder Laufzeit noch Rate noch Zinsen."
     },
     "events": {
       "menu": "Ereignismenü"

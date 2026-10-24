@@ -120,6 +120,18 @@ describe('splitProjected', () => {
     expect(splitProjected(points, 99).every((p) => p.actual !== undefined)).toBe(true);
   });
 
+  it('is all plan when the split is before the first reading (a loan that has not started)', () => {
+    const rows = splitProjected(points, -5);
+    expect(rows.map((p) => p.t)).toEqual([0, 10, 20]);
+    expect(rows.every((p) => p.actual === undefined)).toBe(true);
+    expect(rows.map((p) => p.projected)).toEqual([10, 8, 6]);
+    // On the first reading the line starts where the plan does: that one reading is both
+    const onFirst = splitProjected(points, 0);
+    expect(onFirst[0].actual).toBe(10);
+    expect(onFirst[0].projected).toBe(10);
+    expect(onFirst.slice(1).every((p) => p.actual === undefined)).toBe(true);
+  });
+
   it('does not duplicate a split that sits on a point', () => {
     expect(splitProjected(points, 10).map((p) => p.t)).toEqual([0, 10, 20]);
     expect(splitProjected(points, 0).map((p) => p.t)).toEqual([0, 10, 20]);

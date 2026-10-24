@@ -619,7 +619,7 @@
       "backup": "Záloha"
     },
     "backupTitle": "Zálohujte si data",
-    "backupLead": "Telefon je jediná kopie vašich dat a do zálohy telefonu (iCloud ani počítač) se neukládají. Uložte šifrovanou zálohu do iCloud Drive nebo vybrané složky; Moony ji nikdy nevidí.",
+    "backupLead": "Vaše data jsou jen v tomto telefonu a do zálohy telefonu (iCloud ani počítač) se neukládají. Uložte šifrovanou zálohu do iCloud Drive nebo vybrané složky; Moony ji nikdy nevidí.",
     "currencyPick": "Hlavní měna",
     "countryPick": "Země bankovnictví",
     "searchCurrency": "Hledat měnu"

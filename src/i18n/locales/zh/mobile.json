@@ -565,7 +565,7 @@
       "backup": "备份"
     },
     "backupTitle": "备份您的数据",
-    "backupLead": "这部手机上保存着您数据的唯一副本，它也不在手机自身的备份（iCloud 或电脑）中。请将加密备份保存到 iCloud Drive 或您选择的文件夹；Moony 永远看不到它。",
+    "backupLead": "这部手机上保存着您数据的唯一副本，它不在手机自身的备份（iCloud 或电脑）中。请将加密备份保存到 iCloud Drive 或您选择的文件夹；Moony 永远看不到它。",
     "currencyPick": "主货币",
     "countryPick": "银行所在国家",
     "searchCurrency": "搜索货币"

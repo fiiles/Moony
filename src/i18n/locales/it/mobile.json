@@ -571,6 +571,9 @@
       "title": "Lingua dell'app",
       "lead": "Numeri e date seguono la lingua."
     },
+    "appearance": {
+      "lead": "Sistema segue l'aspetto chiaro o scuro del telefono."
+    },
     "delete": {
       "title": "Eliminare tutti i dati?",
       "lead": "Elimina in modo permanente il database, le chiavi e gli allegati da questo telefono. Le copie di backup fuori dal telefono restano. Fai prima un backup: è l'unica via per tornare indietro.",

@@ -544,6 +544,9 @@
       "title": "Appens språk",
       "lead": "Siffror och datum följer språket."
     },
+    "appearance": {
+      "lead": "System följer telefonens ljusa eller mörka utseende."
+    },
     "delete": {
       "title": "Radera alla data?",
       "lead": "Raderar databasen, nycklarna och bilagorna på den här telefonen för gott. Säkerhetskopior utanför telefonen finns kvar. Gör en säkerhetskopia först — det är den enda vägen tillbaka.",

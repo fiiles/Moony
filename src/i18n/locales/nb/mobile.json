@@ -544,6 +544,9 @@
       "title": "Appspråk",
       "lead": "Tall og datoer følger språket."
     },
+    "appearance": {
+      "lead": "System følger telefonens lyse eller mørke utseende."
+    },
     "delete": {
       "title": "Slette alle data?",
       "lead": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt. Sikkerhetskopier utenfor telefonen blir liggende. Ta en sikkerhetskopi først — det er den eneste veien tilbake.",

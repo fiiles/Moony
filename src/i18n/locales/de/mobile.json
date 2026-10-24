@@ -544,6 +544,9 @@
       "title": "App-Sprache",
       "lead": "Zahlen und Datumsangaben richten sich nach der Sprache."
     },
+    "appearance": {
+      "lead": "System folgt dem hellen oder dunklen Erscheinungsbild des Telefons."
+    },
     "delete": {
       "title": "Alle Daten löschen?",
       "lead": "Löscht die Datenbank, die Schlüssel und die Anhänge auf diesem Telefon dauerhaft. Sicherungskopien außerhalb des Telefons bleiben erhalten. Erstellen Sie zuerst eine Sicherung — sie ist der einzige Weg zurück.",

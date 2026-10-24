@@ -571,6 +571,9 @@
       "title": "Jazyk aplikace",
       "lead": "Čísla a data se formátují podle jazyka."
     },
+    "appearance": {
+      "lead": "Systém sleduje světlý nebo tmavý vzhled telefonu."
+    },
     "delete": {
       "title": "Smazat všechna data?",
       "lead": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu. Kopie zálohy mimo telefon zůstanou. Nejdřív si udělejte zálohu — je to jediná cesta zpět.",

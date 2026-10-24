@@ -544,6 +544,9 @@
       "title": "App language",
       "lead": "Numbers and dates follow the language."
     },
+    "appearance": {
+      "lead": "System follows the phone's light or dark appearance."
+    },
     "delete": {
       "title": "Delete all data?",
       "lead": "Permanently deletes the database, the keys and the attachments from this phone. Backup copies outside the phone stay. Make a backup first — it is the only way back.",

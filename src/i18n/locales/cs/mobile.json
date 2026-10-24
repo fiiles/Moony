@@ -444,7 +444,8 @@
       "coupon": "kupón {{amount}} / rok",
       "upcoming": "Nejbližší kupóny a splatnosti",
       "noUpcoming": "V nejbližším roce nepřipadá žádný kupón ani splatnost.",
-      "allRepaid": "Všechny emise jsou splacené. Zapněte v nabídce ··· „{{action}}“, abyste je viděli."
+      "allRepaid": "Všechny emise jsou splacené. Zapněte v nabídce ··· „{{action}}“, abyste je viděli.",
+      "loadFailed": "Dluhopisy se nepodařilo načíst."
     },
     "otherAssets": {
       "count_one": "{{count}} položka",

@@ -444,7 +444,8 @@
       "coupon": "cupón {{amount}} / año",
       "upcoming": "Próximos cupones y vencimientos",
       "noUpcoming": "No hay cupones ni vencimientos en el próximo año.",
-      "allRepaid": "Todas las emisiones están amortizadas. Activa «{{action}}» en el menú ··· para verlas."
+      "allRepaid": "Todas las emisiones están amortizadas. Activa «{{action}}» en el menú ··· para verlas.",
+      "loadFailed": "No se pudieron cargar los bonos."
     },
     "otherAssets": {
       "count_one": "{{count}} elemento",

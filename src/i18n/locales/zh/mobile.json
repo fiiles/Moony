@@ -398,7 +398,8 @@
       "coupon": "票息 {{amount}} / 年",
       "upcoming": "近期票息与到期",
       "noUpcoming": "未来一年内没有票息或到期。",
-      "allRepaid": "所有债券均已兑付。在“···”菜单中开启“{{action}}”即可查看。"
+      "allRepaid": "所有债券均已兑付。在“···”菜单中开启“{{action}}”即可查看。",
+      "loadFailed": "无法加载债券。"
     },
     "otherAssets": {
       "count_other": "{{count}} 项",

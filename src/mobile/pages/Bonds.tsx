@@ -27,6 +27,7 @@ import { ClassEmpty } from '@/mobile/components/wealth/ClassEmpty';
 import { ClassSkeleton } from '@/mobile/components/wealth/ClassSkeleton';
 import { MoreRow } from '@/mobile/components/wealth/MoreRow';
 import { useBack } from '@/mobile/hooks/use-back';
+import { useBondsLoadFailed } from '@/mobile/hooks/use-bonds-failed';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
 import { bondRows } from '@/mobile/lib/bond-rows';
@@ -54,6 +55,7 @@ export default function Bonds() {
   const { t: tc } = useTranslation('common');
   const back = useBack(routes.wealth);
   const { bonds, metrics, isLoading, today } = useBonds();
+  const loadFailed = useBondsLoadFailed();
   const { currencyCode, fxReady } = useCurrency();
   const { createMutation, updateMutation, deleteMutation } = useBondMutations();
   const [showMatured, setShowMatured] = useRemembered('bonds.showMatured', false);
@@ -116,13 +118,18 @@ export default function Bonds() {
       {isLoading || !fxReady ? (
         <ClassSkeleton />
       ) : bonds.length === 0 ? (
-        <ClassEmpty
-          icon={<FileText />}
-          title={tb('empty.title')}
-          description={tb('empty.description')}
-          addLabel={tb('addBond')}
-          onAdd={openAdd}
-        />
+        // A failed load is not "no bonds yet": said as such, with no empty state to add the first one
+        loadFailed ? (
+          <LoadFailed />
+        ) : (
+          <ClassEmpty
+            icon={<FileText />}
+            title={tb('empty.title')}
+            description={tb('empty.description')}
+            addLabel={tb('addBond')}
+            onAdd={openAdd}
+          />
+        )
       ) : (
         <>
           {/* Live issues in a currency without a rate are left out of the stats (named here) */}
@@ -250,5 +257,15 @@ function UpcomingPayments({ payments }: { payments: readonly BondPayment[] }) {
         </EntityRows>
       )}
     </>
+  );
+}
+
+/** The bonds could not be loaded: said as such, not shown as "no bonds yet". */
+function LoadFailed() {
+  const { t } = useTranslation('mobile');
+  return (
+    <p role="alert" className="mx-0.5 py-6 text-center text-m-body text-ink-3">
+      {t('wealth.bonds.loadFailed')}
+    </p>
   );
 }

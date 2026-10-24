@@ -421,7 +421,8 @@
       "coupon": "kupong {{amount}} / år",
       "upcoming": "Nästa kuponger och förfall",
       "noUpcoming": "Inga kuponger eller förfall under det kommande året.",
-      "allRepaid": "Alla emissioner är återbetalda. Slå på ”{{action}}” i menyn ··· för att se dem."
+      "allRepaid": "Alla emissioner är återbetalda. Slå på ”{{action}}” i menyn ··· för att se dem.",
+      "loadFailed": "Obligationerna kunde inte läsas in."
     },
     "otherAssets": {
       "count_one": "{{count}} post",

@@ -444,7 +444,8 @@
       "coupon": "cedola {{amount}} / anno",
       "upcoming": "Prossime cedole e scadenze",
       "noUpcoming": "Nel prossimo anno non sono previste cedole né scadenze.",
-      "allRepaid": "Tutte le emissioni sono rimborsate. Attiva «{{action}}» nel menu ··· per vederle."
+      "allRepaid": "Tutte le emissioni sono rimborsate. Attiva «{{action}}» nel menu ··· per vederle.",
+      "loadFailed": "Impossibile caricare le obbligazioni."
     },
     "otherAssets": {
       "count_one": "{{count}} voce",

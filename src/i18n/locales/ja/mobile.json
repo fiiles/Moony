@@ -398,7 +398,8 @@
       "coupon": "クーポン {{amount}} / 年",
       "upcoming": "直近のクーポンと満期",
       "noUpcoming": "今後1年間にクーポンや満期はありません。",
-      "allRepaid": "すべての銘柄が償還済みです。メニュー「···」の「{{action}}」をオンにすると表示されます。"
+      "allRepaid": "すべての銘柄が償還済みです。メニュー「···」の「{{action}}」をオンにすると表示されます。",
+      "loadFailed": "債券を読み込めませんでした。"
     },
     "otherAssets": {
       "count_other": "{{count}}件",

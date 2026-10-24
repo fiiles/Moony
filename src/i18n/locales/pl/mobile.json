@@ -467,7 +467,8 @@
       "coupon": "kupon {{amount}} / rok",
       "upcoming": "Najbliższe kupony i terminy wykupu",
       "noUpcoming": "W najbliższym roku nie przypada żaden kupon ani termin wykupu.",
-      "allRepaid": "Wszystkie emisje zostały wykupione. Włącz w menu ··· „{{action}}”, aby je zobaczyć."
+      "allRepaid": "Wszystkie emisje zostały wykupione. Włącz w menu ··· „{{action}}”, aby je zobaczyć.",
+      "loadFailed": "Nie udało się wczytać obligacji."
     },
     "otherAssets": {
       "count_one": "{{count}} pozycja",

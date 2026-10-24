@@ -722,6 +722,7 @@
     },
     "row": {
       "notATrade": "Kein Kauf und kein Verkauf",
+      "splitRow": "Split-Zeile — Moony rechnet sie nicht um, prüfen Sie die Mengen vor dem Split",
       "zeroQuantity": "Menge null",
       "assetClass": "Andere Anlageklasse",
       "instrumentSkipped": "Das Wertpapier wird übersprungen",

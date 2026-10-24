@@ -722,6 +722,7 @@
     },
     "row": {
       "notATrade": "Varken köp eller försäljning",
+      "splitRow": "Splitrad — Moony räknar inte om den, kontrollera antalen före splitten",
       "zeroQuantity": "Noll i antal",
       "assetClass": "Ett annat tillgångsslag",
       "instrumentSkipped": "Värdepapperet hoppas över",

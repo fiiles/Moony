@@ -699,6 +699,7 @@
     },
     "row": {
       "notATrade": "買付でも売却でもありません",
+      "splitRow": "株式分割の行です。Moonyは換算しないため、分割前の数量を確認してください",
       "zeroQuantity": "数量がゼロです",
       "assetClass": "別の資産クラスです",
       "instrumentSkipped": "この銘柄はスキップされています",

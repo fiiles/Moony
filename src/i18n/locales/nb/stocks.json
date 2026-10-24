@@ -722,6 +722,7 @@
     },
     "row": {
       "notATrade": "Ikke et kjøp eller et salg",
+      "splitRow": "Splittrad — Moony regner den ikke om, kontroller mengdene før splitten",
       "zeroQuantity": "Antall på null",
       "assetClass": "En annen aktivaklasse",
       "instrumentSkipped": "Verdipapiret er hoppet over",

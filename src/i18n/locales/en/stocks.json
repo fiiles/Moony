@@ -722,6 +722,7 @@
     },
     "row": {
       "notATrade": "Not a purchase or a sale",
+      "splitRow": "Split row — Moony does not convert it, check the quantities before the split",
       "zeroQuantity": "Zero quantity",
       "assetClass": "Another asset class",
       "instrumentSkipped": "The security is skipped",

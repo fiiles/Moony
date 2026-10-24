@@ -768,6 +768,7 @@
     },
     "row": {
       "notATrade": "To nie jest zakup ani sprzedaż",
+      "splitRow": "Wiersz splitu — Moony go nie przelicza, sprawdź ilości sprzed splitu",
       "zeroQuantity": "Zerowa ilość",
       "assetClass": "Inna klasa aktywów",
       "instrumentSkipped": "Instrument jest pominięty",

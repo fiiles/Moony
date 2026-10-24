@@ -745,6 +745,7 @@
     },
     "row": {
       "notATrade": "Non è un acquisto né una vendita",
+      "splitRow": "Riga di split — Moony non la converte, controlla le quantità prima dello split",
       "zeroQuantity": "Quantità zero",
       "assetClass": "Un'altra classe di attività",
       "instrumentSkipped": "Il titolo è stato saltato",

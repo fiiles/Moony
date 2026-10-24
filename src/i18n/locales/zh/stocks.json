@@ -699,6 +699,7 @@
     },
     "row": {
       "notATrade": "不是买入或卖出",
+      "splitRow": "拆股行——Moony 不会换算，请检查拆股前的数量",
       "zeroQuantity": "数量为零",
       "assetClass": "属于其他资产类别",
       "instrumentSkipped": "该证券已被跳过",

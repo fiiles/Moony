@@ -973,6 +973,7 @@ export type ResultMessageGroup = 'duplicates' | 'skipped' | 'errors';
 
 const SKIPPED_KEYS: ReadonlySet<string> = new Set([
   'importWizard.row.notATrade',
+  'importWizard.row.splitRow',
   'importWizard.row.zeroQuantity',
   'importWizard.row.assetClass',
   'importWizard.row.instrumentSkipped',

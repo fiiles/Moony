@@ -25,7 +25,7 @@ use crate::services::date_parser;
 use crate::services::quote_unit::{is_pence, pence_to_pounds};
 
 use super::adapters::xtb;
-use super::columns::{fold_value, has_fee_column};
+use super::columns::{fold_value, has_fee_column, is_split_value};
 use super::detect::{data_records, date_part, delimiter_char, is_isin};
 use super::types::{
     CurrencyMode, DirectionMode, ParsedFile, ParsedTrade, StockImportConfig, StockRowMessage,
@@ -34,6 +34,9 @@ use super::types::{
 
 /// Row messages (`stocks` namespace) and the one `common` key a row can carry.
 pub const ROW_NOT_A_TRADE: &str = "importWizard.row.notATrade";
+/// A split row is skipped like any non-trade, but named, so the user checks
+/// the quantities before it.
+pub const ROW_SPLIT: &str = "importWizard.row.splitRow";
 pub const ROW_ZERO_QUANTITY: &str = "importWizard.row.zeroQuantity";
 pub const ROW_ASSET_CLASS: &str = "importWizard.row.assetClass";
 pub const ROW_DATE_UNPARSEABLE: &str = "importWizard.row.dateUnparseable";
@@ -151,7 +154,12 @@ impl<'a> RowReader<'a> {
                 Some(TypeValueAction::Buy) => direction = Some(TradeDirection::Buy),
                 Some(TypeValueAction::Sell) => direction = Some(TradeDirection::Sell),
                 Some(TypeValueAction::Skip) | None => {
-                    return Err(skip(ROW_NOT_A_TRADE, non_empty(value)))
+                    let key = if is_split_value(value) {
+                        ROW_SPLIT
+                    } else {
+                        ROW_NOT_A_TRADE
+                    };
+                    return Err(skip(key, non_empty(value)));
                 }
             }
         }
@@ -487,7 +495,7 @@ nedatum;nákup;AAPL;1;185,50;USD\n\
             [
                 note(3, "importWizard.row.notATrade", Some("dividenda")),
                 note(4, "importWizard.row.zeroQuantity", None),
-                note(12, "importWizard.row.notATrade", Some("split")),
+                note(12, "importWizard.row.splitRow", Some("split")),
             ]
         );
         assert_eq!(

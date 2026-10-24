@@ -746,6 +746,7 @@
     },
     "row": {
       "notATrade": "Nejde o nákup ani prodej",
+      "splitRow": "Řádek splitu — Moony ho nepřevádí, zkontrolujte množství před splitem",
       "zeroQuantity": "Nulový počet kusů",
       "assetClass": "Jiný druh aktiva",
       "instrumentSkipped": "Cenný papír je přeskočen",

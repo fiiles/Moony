@@ -31,5 +31,6 @@ pub mod real_estate;
 pub mod statement_import;
 pub mod stock_import;
 pub mod stock_monitor;
+pub mod stock_splits;
 pub mod stock_tags;
 pub mod system;

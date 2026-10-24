@@ -16,10 +16,10 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::services::history_recalc::{HistoryRecalc, Job};
 use crate::services::stock_import::{
-    batches, formats, import, inspect, instruments, parse, preview, SavedStockImportFormat,
+    batches, formats, import, inspect, instruments, parse, preview, splits, SavedStockImportFormat,
     StockCsvInspectOptions, StockCsvInspection, StockImportBatch, StockImportConfig,
     StockImportPreview, StockImportResult, StockImportUndoResult, StockInstrumentQuery,
-    StockInstrumentResolution,
+    StockInstrumentResolution, StockSplitCheck,
 };
 
 /// Read a CSV file's bytes (decoding happens in the service).
@@ -102,6 +102,21 @@ pub async fn preview_stock_csv_import(
     let bytes = read_csv_file(&file_path)?;
     let parsed = parse::parse_file(&bytes, &config)?;
     db.with_conn(|conn| preview::preview(conn, &parsed, &config))
+}
+
+/// The splits Yahoo reports after each instrument's first trade in the file, with the D7
+/// verdicts (spec D12). The database is read under a short lock and released before the
+/// network; writes nothing.
+#[tauri::command]
+pub async fn check_stock_splits(
+    db: State<'_, Database>,
+    file_path: String,
+    config: StockImportConfig,
+) -> Result<Vec<StockSplitCheck>> {
+    config.validate()?;
+    let bytes = read_csv_file(&file_path)?;
+    let parsed = parse::parse_file(&bytes, &config)?;
+    splits::check_splits(&db, &parsed, &config).await
 }
 
 /// Import the rows the preview would import, atomically, as one batch.

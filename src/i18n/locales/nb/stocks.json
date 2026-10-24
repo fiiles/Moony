@@ -315,7 +315,8 @@
     "menu": {
       "editPrice": "Rediger kurs",
       "editDividend": "Rediger utbytteanslag",
-      "editName": "Rediger navn"
+      "editName": "Rediger navn",
+      "recordSplit": "Registrer splitt"
     },
     "status": {
       "pricesUpdated": "Kurser oppdatert {{when}}",
@@ -576,12 +577,14 @@
         "willImport": "Skal importeres {{count}}",
         "duplicates": "Duplikater {{count}}",
         "skipped": "Hoppet over {{count}}",
-        "errors": "Feil {{count}}"
+        "errors": "Feil {{count}}",
+        "converted": "Omregnet {{count}}"
       },
       "feeNote": "Gebyrer importeres ikke",
       "nothingToImport": "Ingenting å importere: hver rad er et duplikat, hoppet over eller har en feil.",
       "statusNew": "Ny",
       "statusSkipped": "Hoppet over",
+      "statusConverted": "Omregnet",
       "statusError": "Feil",
       "statusDuplicate": "Duplikat",
       "duplicateImportAnyway": "importer likevel",
@@ -669,6 +672,7 @@
       "duplicates": "Duplikater",
       "skipped": "Hoppet over",
       "errors": "Feil",
+      "converted": "Omregnet på grunn av splitt",
       "newPositions": "Nye beholdninger:",
       "updatedPositions": "Lagt til eksisterende:",
       "moreTickers_one": "+{{count}} til",
@@ -721,6 +725,7 @@
     },
     "row": {
       "notATrade": "Ikke et kjøp eller et salg",
+      "splitRow": "Splittrad — Moony regner den ikke om, kontroller mengdene før splitten",
       "zeroQuantity": "Antall på null",
       "assetClass": "En annen aktivaklasse",
       "instrumentSkipped": "Verdipapiret er hoppet over",
@@ -742,7 +747,22 @@
       "duplicateSimilar": "En lignende handel finnes allerede i Moony: samme dag og antall, kurs innenfor 0,5 %",
       "cannotParse": "Raden kunne ikke leses"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "Sjekker splitter…",
+      "unchecked": "Splitter kunne ikke sjekkes",
+      "line": "Splitt {{ratio}} {{date}}",
+      "verdict": {
+        "unadjusted": "handlene før den er i filen i enheter fra før splitten",
+        "adjusted": "handlene før den ser allerede omregnet ut i filen",
+        "unknown": "kan ikke avgjøre om filen allerede er omregnet"
+      },
+      "alsoStored_one": "omregner også {{count}} lagret transaksjon",
+      "alsoStored_other": "omregner også {{count}} lagrede transaksjoner",
+      "mixedUnitsWarning": "Lagrede transaksjoner før splitten blir stående i de opprinnelige enhetene; bekreft eller avvis splitten på posisjonssiden etter importen.",
+      "convert": "Omregn",
+      "convertFor": "Omregn handlene i {{ticker}} for splitten {{ratio}}"
+    }
   },
   "eyebrow": "Portefølje",
   "export": "Eksporter",
@@ -762,5 +782,66 @@
     "recordDeleted": "Importoppføring slettet",
     "deleted_one": "Slettet {{count}} importert handel",
     "deleted_other": "Slettet {{count}} importerte handler"
+  },
+  "splits": {
+    "toast": {
+      "applied_one": "{{ticker}}: {{count}} transaksjon omregnet ({{ratio}})",
+      "applied_other": "{{ticker}}: {{count}} transaksjoner omregnet ({{ratio}})",
+      "reverted_one": "{{ticker}}: splitten {{ratio}} er angret, {{count}} transaksjon gjenopprettet",
+      "reverted_other": "{{ticker}}: splitten {{ratio}} er angret, {{count}} transaksjoner gjenopprettet",
+      "recorded_one": "{{ticker}}: splitten {{ratio}} er registrert, {{count}} transaksjon omregnet",
+      "recorded_other": "{{ticker}}: splitten {{ratio}} er registrert, {{count}} transaksjoner omregnet",
+      "dismissed": "{{ticker}}: splitten {{ratio}} er avvist",
+      "deleted": "Splitten er slettet"
+    },
+    "undo": "Angre",
+    "banner": {
+      "title": "Splitt {{ratio}} {{date}}",
+      "unadjusted_one": "{{count}} transaksjon før splitten ser ut til å være i opprinnelige enheter.",
+      "unadjusted_other": "{{count}} transaksjoner før splitten ser ut til å være i opprinnelige enheter.",
+      "adjusted_one": "{{count}} transaksjon før splitten ser allerede omregnet ut.",
+      "adjusted_other": "{{count}} transaksjoner før splitten ser allerede omregnet ut.",
+      "unknown": "Moony kan ikke avgjøre om transaksjonene før splitten allerede er omregnet."
+    },
+    "actions": {
+      "apply": "Regn om transaksjoner",
+      "dismiss": "Allerede tatt hensyn til",
+      "revert": "Angre omregning",
+      "delete": "Slett",
+      "manage": "Administrer splitter"
+    },
+    "dialog": {
+      "title": "Splitter for {{ticker}}",
+      "description": "Splitter Moony har funnet eller du har registrert, og hva som skjedde med transaksjonene før dem.",
+      "empty": "Ingen splitter ennå. Registrer en manglende splitt nedenfor."
+    },
+    "columns": {
+      "date": "Dato",
+      "ratio": "Forhold",
+      "source": "Kilde",
+      "status": "Status",
+      "count": "Transaksjoner"
+    },
+    "status": {
+      "pending": "Venter",
+      "applied": "Brukt",
+      "dismissed": "Tatt hensyn til"
+    },
+    "source": {
+      "yahoo": "Yahoo Finance",
+      "manual": "Manuelt",
+      "import": "Import"
+    },
+    "form": {
+      "title": "Registrer en splitt manuelt",
+      "description": "Moony regner straks om transaksjonene før denne dagen til dagens enheter.",
+      "date": "Dato (ex-dato)",
+      "numerator": "Nye aksjer",
+      "denominator": "For gamle aksjer",
+      "submit": "Registrer og regn om"
+    },
+    "appliedLine_one": "Splitt {{ratio}} {{date}} · {{count}} transaksjon omregnet",
+    "appliedLine_other": "Splitt {{ratio}} {{date}} · {{count}} transaksjoner omregnet",
+    "hint": "{{date}} var det en splitt {{ratio}}; oppgi antall og kurs i dagens enheter."
   }
 }

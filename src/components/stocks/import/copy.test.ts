@@ -81,6 +81,7 @@ describe('stocks.importWizard copy', () => {
   it('translates every row message the parsers and the simulation emit', () => {
     const keys = [
       'notATrade',
+      'splitRow',
       'zeroQuantity',
       'assetClass',
       'instrumentSkipped',

@@ -321,7 +321,8 @@
     "menu": {
       "editPrice": "Modifica prezzo",
       "editDividend": "Modifica stima del dividendo",
-      "editName": "Modifica nome"
+      "editName": "Modifica nome",
+      "recordSplit": "Registra split"
     },
     "status": {
       "pricesUpdated": "Prezzi aggiornati {{when}}",
@@ -589,12 +590,14 @@
         "willImport": "Da importare {{count}}",
         "duplicates": "Duplicati {{count}}",
         "skipped": "Saltati {{count}}",
-        "errors": "Errori {{count}}"
+        "errors": "Errori {{count}}",
+        "converted": "Ricalcolate {{count}}"
       },
       "feeNote": "Le commissioni non vengono importate",
       "nothingToImport": "Niente da importare: ogni riga è un duplicato, saltata o con un errore.",
       "statusNew": "Nuova",
       "statusSkipped": "Saltata",
+      "statusConverted": "Ricalcolata",
       "statusError": "Errore",
       "statusDuplicate": "Duplicato",
       "duplicateImportAnyway": "importa comunque",
@@ -687,6 +690,7 @@
       "duplicates": "Duplicati",
       "skipped": "Saltate",
       "errors": "Errori",
+      "converted": "Ricalcolate per split",
       "newPositions": "Nuove posizioni:",
       "updatedPositions": "Aggiunte a quelle esistenti:",
       "moreTickers_one": "+{{count}} altro",
@@ -744,6 +748,7 @@
     },
     "row": {
       "notATrade": "Non è un acquisto né una vendita",
+      "splitRow": "Riga di split — Moony non la converte, controlla le quantità prima dello split",
       "zeroQuantity": "Quantità zero",
       "assetClass": "Un'altra classe di attività",
       "instrumentSkipped": "Il titolo è stato saltato",
@@ -765,7 +770,23 @@
       "duplicateSimilar": "Un'operazione simile è già presente in Moony: stesso giorno e quantità, prezzo entro lo 0,5 %",
       "cannotParse": "Impossibile leggere la riga"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "Verifica degli split…",
+      "unchecked": "Impossibile verificare gli split",
+      "line": "Split {{ratio}} del {{date}}",
+      "verdict": {
+        "unadjusted": "le operazioni precedenti nel file sono in unità pre-split",
+        "adjusted": "le operazioni precedenti nel file sembrano già ricalcolate",
+        "unknown": "impossibile capire se il file è già ricalcolato"
+      },
+      "alsoStored_one": "ricalcola anche {{count}} transazione salvata",
+      "alsoStored_many": "ricalcola anche {{count}} transazioni salvate",
+      "alsoStored_other": "ricalcola anche {{count}} transazioni salvate",
+      "mixedUnitsWarning": "Le operazioni salvate prima dello split restano nelle unità originali; dopo l'importazione conferma o ignora lo split nella pagina della posizione.",
+      "convert": "Ricalcola",
+      "convertFor": "Ricalcola le operazioni di {{ticker}} per lo split {{ratio}}"
+    }
   },
   "eyebrow": "Portafoglio",
   "export": "Esporta",
@@ -786,5 +807,72 @@
     "deleted_one": "Eliminata {{count}} operazione importata",
     "deleted_many": "Eliminate {{count}} operazioni importate",
     "deleted_other": "Eliminate {{count}} operazioni importate"
+  },
+  "splits": {
+    "toast": {
+      "applied_one": "{{ticker}}: {{count}} operazione ricalcolata ({{ratio}})",
+      "applied_many": "{{ticker}}: {{count}} operazioni ricalcolate ({{ratio}})",
+      "applied_other": "{{ticker}}: {{count}} operazioni ricalcolate ({{ratio}})",
+      "reverted_one": "{{ticker}}: split {{ratio}} annullato, {{count}} operazione ripristinata",
+      "reverted_many": "{{ticker}}: split {{ratio}} annullato, {{count}} operazioni ripristinate",
+      "reverted_other": "{{ticker}}: split {{ratio}} annullato, {{count}} operazioni ripristinate",
+      "recorded_one": "{{ticker}}: split {{ratio}} registrato, {{count}} operazione ricalcolata",
+      "recorded_many": "{{ticker}}: split {{ratio}} registrato, {{count}} operazioni ricalcolate",
+      "recorded_other": "{{ticker}}: split {{ratio}} registrato, {{count}} operazioni ricalcolate",
+      "dismissed": "{{ticker}}: split {{ratio}} scartato",
+      "deleted": "Split eliminato"
+    },
+    "undo": "Annulla",
+    "banner": {
+      "title": "Split {{ratio}} del {{date}}",
+      "unadjusted_one": "{{count}} operazione prima dello split sembra nelle unità originali.",
+      "unadjusted_many": "{{count}} operazioni prima dello split sembrano nelle unità originali.",
+      "unadjusted_other": "{{count}} operazioni prima dello split sembrano nelle unità originali.",
+      "adjusted_one": "{{count}} operazione prima dello split sembra già ricalcolata.",
+      "adjusted_many": "{{count}} operazioni prima dello split sembrano già ricalcolate.",
+      "adjusted_other": "{{count}} operazioni prima dello split sembrano già ricalcolate.",
+      "unknown": "Moony non riesce a capire se le operazioni prima dello split sono già ricalcolate."
+    },
+    "actions": {
+      "apply": "Ricalcola operazioni",
+      "dismiss": "Già considerato",
+      "revert": "Annulla ricalcolo",
+      "delete": "Elimina",
+      "manage": "Gestisci split"
+    },
+    "dialog": {
+      "title": "Split di {{ticker}}",
+      "description": "Gli split trovati da Moony o registrati da te, e cosa è successo alle operazioni precedenti.",
+      "empty": "Ancora nessuno split. Registra qui sotto quello che manca."
+    },
+    "columns": {
+      "date": "Data",
+      "ratio": "Rapporto",
+      "source": "Fonte",
+      "status": "Stato",
+      "count": "Operazioni"
+    },
+    "status": {
+      "pending": "In attesa",
+      "applied": "Applicato",
+      "dismissed": "Considerato"
+    },
+    "source": {
+      "yahoo": "Yahoo Finance",
+      "manual": "Manuale",
+      "import": "Importazione"
+    },
+    "form": {
+      "title": "Registra uno split manualmente",
+      "description": "Moony ricalcola subito le operazioni precedenti a questo giorno nelle unità di oggi.",
+      "date": "Data (ex-date)",
+      "numerator": "Azioni nuove",
+      "denominator": "Per azioni vecchie",
+      "submit": "Registra e ricalcola"
+    },
+    "appliedLine_one": "Split {{ratio}} del {{date}} · {{count}} operazione ricalcolata",
+    "appliedLine_many": "Split {{ratio}} del {{date}} · {{count}} operazioni ricalcolate",
+    "appliedLine_other": "Split {{ratio}} del {{date}} · {{count}} operazioni ricalcolate",
+    "hint": "Il {{date}} c'è stato uno split {{ratio}}; inserisci quantità e prezzo nelle unità di oggi."
   }
 }

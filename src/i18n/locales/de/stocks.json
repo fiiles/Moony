@@ -315,7 +315,8 @@
     "menu": {
       "editPrice": "Kurs bearbeiten",
       "editDividend": "Dividendenschätzung bearbeiten",
-      "editName": "Name bearbeiten"
+      "editName": "Name bearbeiten",
+      "recordSplit": "Split erfassen"
     },
     "status": {
       "pricesUpdated": "Kurse aktualisiert {{when}}",
@@ -576,12 +577,14 @@
         "willImport": "Zu importieren {{count}}",
         "duplicates": "Duplikate {{count}}",
         "skipped": "Übersprungen {{count}}",
-        "errors": "Fehler {{count}}"
+        "errors": "Fehler {{count}}",
+        "converted": "Umgerechnet {{count}}"
       },
       "feeNote": "Gebühren werden nicht importiert",
       "nothingToImport": "Nichts zu importieren: Jede Zeile ist ein Duplikat, übersprungen oder fehlerhaft.",
       "statusNew": "Neu",
       "statusSkipped": "Übersprungen",
+      "statusConverted": "Umgerechnet",
       "statusError": "Fehler",
       "statusDuplicate": "Duplikat",
       "duplicateImportAnyway": "trotzdem importieren",
@@ -669,6 +672,7 @@
       "duplicates": "Duplikate",
       "skipped": "Übersprungen",
       "errors": "Fehler",
+      "converted": "Wegen Split umgerechnet",
       "newPositions": "Neue Positionen:",
       "updatedPositions": "Zu bestehenden hinzugefügt:",
       "moreTickers_one": "+{{count}} weitere",
@@ -721,6 +725,7 @@
     },
     "row": {
       "notATrade": "Kein Kauf und kein Verkauf",
+      "splitRow": "Split-Zeile — Moony rechnet sie nicht um, prüfen Sie die Mengen vor dem Split",
       "zeroQuantity": "Menge null",
       "assetClass": "Andere Anlageklasse",
       "instrumentSkipped": "Das Wertpapier wird übersprungen",
@@ -742,7 +747,22 @@
       "duplicateSimilar": "Ein ähnlicher Trade ist bereits in Moony: gleicher Tag und gleiche Menge, Kurs innerhalb von 0,5 %",
       "cannotParse": "Die Zeile konnte nicht gelesen werden"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "Splits werden geprüft…",
+      "unchecked": "Splits konnten nicht geprüft werden",
+      "line": "Split {{ratio}} am {{date}}",
+      "verdict": {
+        "unadjusted": "die Trades davor sind in der Datei in alten Einheiten",
+        "adjusted": "die Trades davor wirken in der Datei bereits umgerechnet",
+        "unknown": "nicht erkennbar, ob die Datei bereits umgerechnet ist"
+      },
+      "alsoStored_one": "rechnet auch {{count}} gespeicherte Transaktion um",
+      "alsoStored_other": "rechnet auch {{count}} gespeicherte Transaktionen um",
+      "mixedUnitsWarning": "Gespeicherte Transaktionen vor dem Split bleiben in ihren ursprünglichen Einheiten; bestätigen oder verwerfen Sie den Split nach dem Import auf der Seite der Position.",
+      "convert": "Umrechnen",
+      "convertFor": "Trades von {{ticker}} für den Split {{ratio}} umrechnen"
+    }
   },
   "eyebrow": "Portfolio",
   "export": "Exportieren",
@@ -762,5 +782,66 @@
     "recordDeleted": "Importeintrag gelöscht",
     "deleted_one": "{{count}} importierter Trade gelöscht",
     "deleted_other": "{{count}} importierte Trades gelöscht"
+  },
+  "splits": {
+    "toast": {
+      "applied_one": "{{ticker}}: {{count}} Transaktion umgerechnet ({{ratio}})",
+      "applied_other": "{{ticker}}: {{count}} Transaktionen umgerechnet ({{ratio}})",
+      "reverted_one": "{{ticker}}: Split {{ratio}} rückgängig gemacht, {{count}} Transaktion wiederhergestellt",
+      "reverted_other": "{{ticker}}: Split {{ratio}} rückgängig gemacht, {{count}} Transaktionen wiederhergestellt",
+      "recorded_one": "{{ticker}}: Split {{ratio}} erfasst, {{count}} Transaktion umgerechnet",
+      "recorded_other": "{{ticker}}: Split {{ratio}} erfasst, {{count}} Transaktionen umgerechnet",
+      "dismissed": "{{ticker}}: Split {{ratio}} verworfen",
+      "deleted": "Split gelöscht"
+    },
+    "undo": "Rückgängig",
+    "banner": {
+      "title": "Split {{ratio}} am {{date}}",
+      "unadjusted_one": "{{count}} Transaktion vor dem Split scheint noch in den ursprünglichen Einheiten zu sein.",
+      "unadjusted_other": "{{count}} Transaktionen vor dem Split scheinen noch in den ursprünglichen Einheiten zu sein.",
+      "adjusted_one": "{{count}} Transaktion vor dem Split scheint bereits umgerechnet zu sein.",
+      "adjusted_other": "{{count}} Transaktionen vor dem Split scheinen bereits umgerechnet zu sein.",
+      "unknown": "Moony kann nicht erkennen, ob die Transaktionen vor dem Split bereits umgerechnet sind."
+    },
+    "actions": {
+      "apply": "Transaktionen umrechnen",
+      "dismiss": "Bereits berücksichtigt",
+      "revert": "Umrechnung rückgängig machen",
+      "delete": "Löschen",
+      "manage": "Splits verwalten"
+    },
+    "dialog": {
+      "title": "Splits von {{ticker}}",
+      "description": "Splits, die Moony gefunden oder Sie erfasst haben, und was mit den Transaktionen davor geschehen ist.",
+      "empty": "Noch keine Splits. Einen fehlenden Split erfassen Sie unten."
+    },
+    "columns": {
+      "date": "Datum",
+      "ratio": "Verhältnis",
+      "source": "Quelle",
+      "status": "Status",
+      "count": "Transaktionen"
+    },
+    "status": {
+      "pending": "Offen",
+      "applied": "Angewendet",
+      "dismissed": "Berücksichtigt"
+    },
+    "source": {
+      "yahoo": "Yahoo Finance",
+      "manual": "Manuell",
+      "import": "Import"
+    },
+    "form": {
+      "title": "Split manuell erfassen",
+      "description": "Moony rechnet die Transaktionen vor diesem Tag sofort in heutige Einheiten um.",
+      "date": "Datum (Ex-Tag)",
+      "numerator": "Neue Stücke",
+      "denominator": "Für alte Stücke",
+      "submit": "Erfassen und umrechnen"
+    },
+    "appliedLine_one": "Split {{ratio}} am {{date}} · {{count}} Transaktion umgerechnet",
+    "appliedLine_other": "Split {{ratio}} am {{date}} · {{count}} Transaktionen umgerechnet",
+    "hint": "Am {{date}} gab es einen Split {{ratio}}; geben Sie Menge und Kurs in heutigen Einheiten ein."
   }
 }

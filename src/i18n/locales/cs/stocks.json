@@ -322,7 +322,8 @@
     "menu": {
       "editPrice": "Upravit cenu",
       "editDividend": "Upravit odhad dividendy",
-      "editName": "Upravit název"
+      "editName": "Upravit název",
+      "recordSplit": "Zaznamenat split"
     },
     "status": {
       "pricesUpdated": "Ceny aktualizovány {{when}}",
@@ -590,12 +591,14 @@
         "willImport": "K importu {{count}}",
         "duplicates": "Duplicity {{count}}",
         "skipped": "Přeskočeno {{count}}",
-        "errors": "Chyby {{count}}"
+        "errors": "Chyby {{count}}",
+        "converted": "Přepočteno {{count}}"
       },
       "feeNote": "Poplatky se neimportují",
       "nothingToImport": "Nic k importu: všechny řádky jsou duplicity, přeskočené nebo chybné.",
       "statusNew": "Nový",
       "statusSkipped": "Přeskočeno",
+      "statusConverted": "Přepočteno",
       "statusError": "Chyba",
       "statusDuplicate": "Duplicita",
       "duplicateImportAnyway": "importovat i tak",
@@ -688,6 +691,7 @@
       "duplicates": "Duplicity",
       "skipped": "Přeskočeno",
       "errors": "Chyby",
+      "converted": "Přepočteno kvůli splitu",
       "newPositions": "Nové pozice:",
       "updatedPositions": "Doplněno k existujícím:",
       "moreTickers_one": "+{{count}} další",
@@ -745,6 +749,7 @@
     },
     "row": {
       "notATrade": "Nejde o nákup ani prodej",
+      "splitRow": "Řádek splitu — Moony ho nepřevádí, zkontrolujte množství před splitem",
       "zeroQuantity": "Nulový počet kusů",
       "assetClass": "Jiný druh aktiva",
       "instrumentSkipped": "Cenný papír je přeskočen",
@@ -766,7 +771,23 @@
       "duplicateSimilar": "Podobný obchod už v Moony je: stejný den a počet kusů, cena se liší nejvýš o 0,5 %",
       "cannotParse": "Řádek se nepodařilo přečíst"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "Kontrola splitů…",
+      "unchecked": "Splity se nepodařilo ověřit",
+      "line": "Split {{ratio}} k {{date}}",
+      "verdict": {
+        "unadjusted": "obchody před ním jsou v souboru v původních jednotkách",
+        "adjusted": "obchody před ním vypadají v souboru už přepočtené",
+        "unknown": "nelze poznat, zda je soubor už přepočtený"
+      },
+      "alsoStored_one": "přepočítá i {{count}} uloženou transakci",
+      "alsoStored_few": "přepočítá i {{count}} uložené transakce",
+      "alsoStored_other": "přepočítá i {{count}} uložených transakcí",
+      "mixedUnitsWarning": "Uložené transakce před splitem zůstanou v původních jednotkách; po importu split potvrďte nebo zamítněte na detailu pozice.",
+      "convert": "Přepočítat",
+      "convertFor": "Přepočítat obchody {{ticker}} podle splitu {{ratio}}"
+    }
   },
   "eyebrow": "Portfolio",
   "export": "Export",
@@ -787,5 +808,78 @@
     "deleted_one": "Smazán {{count}} importovaný obchod",
     "deleted_few": "Smazány {{count}} importované obchody",
     "deleted_other": "Smazáno {{count}} importovaných obchodů"
+  },
+  "splits": {
+    "toast": {
+      "applied_one": "{{ticker}}: {{count}} transakce přepočtena ({{ratio}})",
+      "applied_few": "{{ticker}}: {{count}} transakce přepočteny ({{ratio}})",
+      "applied_many": "{{ticker}}: {{count}} transakce přepočteno ({{ratio}})",
+      "applied_other": "{{ticker}}: {{count}} transakcí přepočteno ({{ratio}})",
+      "reverted_one": "{{ticker}}: split {{ratio}} vrácen, {{count}} transakce obnovena",
+      "reverted_few": "{{ticker}}: split {{ratio}} vrácen, {{count}} transakce obnoveny",
+      "reverted_many": "{{ticker}}: split {{ratio}} vrácen, {{count}} transakce obnoveno",
+      "reverted_other": "{{ticker}}: split {{ratio}} vrácen, {{count}} transakcí obnoveno",
+      "recorded_one": "{{ticker}}: split {{ratio}} zaznamenán, {{count}} transakce přepočtena",
+      "recorded_few": "{{ticker}}: split {{ratio}} zaznamenán, {{count}} transakce přepočteny",
+      "recorded_many": "{{ticker}}: split {{ratio}} zaznamenán, {{count}} transakce přepočteno",
+      "recorded_other": "{{ticker}}: split {{ratio}} zaznamenán, {{count}} transakcí přepočteno",
+      "dismissed": "{{ticker}}: split {{ratio}} odmítnut",
+      "deleted": "Split smazán"
+    },
+    "undo": "Vrátit",
+    "banner": {
+      "title": "Split {{ratio}} k {{date}}",
+      "unadjusted_one": "{{count}} transakce před splitem vypadá v původních jednotkách.",
+      "unadjusted_few": "{{count}} transakce před splitem vypadají v původních jednotkách.",
+      "unadjusted_many": "{{count}} transakce před splitem vypadá v původních jednotkách.",
+      "unadjusted_other": "{{count}} transakcí před splitem vypadá v původních jednotkách.",
+      "adjusted_one": "{{count}} transakce před splitem vypadá už přepočtená.",
+      "adjusted_few": "{{count}} transakce před splitem vypadají už přepočtené.",
+      "adjusted_many": "{{count}} transakce před splitem vypadá už přepočtená.",
+      "adjusted_other": "{{count}} transakcí před splitem vypadá už přepočtených.",
+      "unknown": "Moony nedokáže poznat, zda jsou transakce před splitem přepočtené."
+    },
+    "actions": {
+      "apply": "Přepočítat transakce",
+      "dismiss": "Už je zohledněno",
+      "revert": "Vrátit přepočet",
+      "delete": "Smazat",
+      "manage": "Spravovat splity"
+    },
+    "dialog": {
+      "title": "Splity {{ticker}}",
+      "description": "Splity, které Moony našel nebo jste zaznamenali, a co se stalo s transakcemi před nimi.",
+      "empty": "Zatím žádný split. Chybějící split zaznamenejte níže."
+    },
+    "columns": {
+      "date": "Datum",
+      "ratio": "Poměr",
+      "source": "Zdroj",
+      "status": "Stav",
+      "count": "Transakce"
+    },
+    "status": {
+      "pending": "Čeká",
+      "applied": "Aplikován",
+      "dismissed": "Zohledněno"
+    },
+    "source": {
+      "yahoo": "Yahoo Finance",
+      "manual": "Ručně",
+      "import": "Import"
+    },
+    "form": {
+      "title": "Zaznamenat split ručně",
+      "description": "Moony hned přepočítá transakce před tímto dnem na dnešní jednotky.",
+      "date": "Datum (ex-date)",
+      "numerator": "Nových kusů",
+      "denominator": "Za starých kusů",
+      "submit": "Zaznamenat a přepočítat"
+    },
+    "appliedLine_one": "Split {{ratio}} k {{date}} · {{count}} transakce přepočtena",
+    "appliedLine_few": "Split {{ratio}} k {{date}} · {{count}} transakce přepočteny",
+    "appliedLine_many": "Split {{ratio}} k {{date}} · {{count}} transakce přepočteno",
+    "appliedLine_other": "Split {{ratio}} k {{date}} · {{count}} transakcí přepočteno",
+    "hint": "K {{date}} proběhl split {{ratio}}; zadejte množství a cenu v dnešních jednotkách."
   }
 }

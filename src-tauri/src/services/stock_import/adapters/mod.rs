@@ -752,6 +752,7 @@ mod tests {
                 name: None,
                 currency: Some("GBX".into()),
                 skip: false,
+                splits: vec![],
             },
             StockInstrumentOverride {
                 key: "symbol:VUSA.L".into(),
@@ -759,6 +760,7 @@ mod tests {
                 name: None,
                 currency: Some("GBP".into()),
                 skip: false,
+                splits: vec![],
             },
         ];
         let parsed = parse_file(bytes, &config).expect("parse");

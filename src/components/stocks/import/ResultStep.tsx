@@ -249,11 +249,16 @@ export function ResultStep({
               : t('importWizard.result.summaryCount', { count: result.imported })}
         </p>
 
-        <div className="my-4 grid grid-cols-4 gap-2.5">
+        <div
+          className={cn('my-4 grid gap-2.5', result.converted > 0 ? 'grid-cols-5' : 'grid-cols-4')}
+        >
           <Tile value={result.imported} label={t('importWizard.result.imported')} />
           <Tile value={result.duplicates} label={t('importWizard.result.duplicates')} />
           <Tile value={result.skipped} label={t('importWizard.result.skipped')} />
           <Tile value={result.errors} label={t('importWizard.result.errors')} tone="loss" />
+          {result.converted > 0 && (
+            <Tile value={result.converted} label={t('importWizard.result.converted')} />
+          )}
         </div>
 
         {(result.newPositions.length > 0 || result.updatedPositions.length > 0) && (

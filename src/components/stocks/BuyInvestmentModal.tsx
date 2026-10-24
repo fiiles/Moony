@@ -28,6 +28,7 @@ import { useEffect } from 'react';
 import type { HoldingData } from '@/utils/stocks';
 import { tradeCurrency, tradePricePrefill } from '@/utils/positions';
 import { useTranslation } from 'react-i18next';
+import { PreSplitHint } from '@/components/stocks/PreSplitHint';
 
 const formSchema = z.object({
   quantity: requiredNumber('validation.quantityRequired').positive('validation.quantityPositive'),
@@ -173,6 +174,7 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
                     <Input type="date" {...field} />
                   </FormControl>
                   <FormMessage />
+                  <PreSplitHint ticker={investment.ticker} date={field.value} />
                 </FormItem>
               )}
             />

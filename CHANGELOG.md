@@ -6,6 +6,14 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Stock splits.** Moony finds stock splits in the Yahoo Finance history of your positions and
+  shows a banner on the stock and in the overview agenda. Nothing changes until you confirm: you
+  can apply a split (the earlier trades are rewritten to today's share count and price), revert
+  it, dismiss it or enter one by hand. The broker CSV import checks the file's prices against the
+  splits Yahoo reports and offers to convert rows dated before a split or keep them as they are.
+
 ## [1.0.0] - 2026-10-19
 
 The first stable release.

@@ -10,6 +10,7 @@
     "upkeepHide": "折りたたむ",
     "today": "今日",
     "target": "目標",
+    "split": "分割",
     "rowMenu": "リマインダーのオプション：{{title}}"
   },
   "status": {
@@ -55,6 +56,7 @@
     "savings_rate_end": "優遇金利の終了",
     "watch_target_below": "価格 {{price}} が目標 {{target}} まで下がりました",
     "watch_target_above": "価格 {{price}} が目標 {{target}} に到達しました",
+    "stock_split_other": "株式分割 {{ratio}}（{{date}}）· 分割前の取引 {{count}}件",
     "loan_fixation_expired": "固定金利は {{date}} に終了 · 新しい金利を入力してください",
     "loan_balance_check": "{{date}} から残高が入力されていません · 現在の残高を入力してください",
     "valuation_stale": "{{date}} 以降、評価の更新がありません · 再評価してください",
@@ -97,7 +99,7 @@
     },
     "targets": {
       "label": "株式の目標価格",
-      "hint": "価格が設定した方向で目標に到達したときに通知します。",
+      "hint": "価格が設定した方向で目標に到達したとき、またはMoonyが株式分割を検出したときに通知します。",
       "mute": "目標価格を通知しない"
     },
     "backup": {

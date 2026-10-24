@@ -623,6 +623,10 @@ fn validate_bulk_row(row: &BulkStockRow) -> Result<()> {
 /// With a `batch`, its `stock_import_batches` row is written in the same
 /// transaction and every written row carries its id; no batch is recorded when
 /// no row ends up written. Every row stores its `external_id`.
+///
+/// Phase 2 runs in a savepoint: on its own it is a transaction of its own, and
+/// inside a caller's transaction (the CSV import applies splits first, D14) it
+/// nests, so a refused row rolls back only this call's writes.
 pub fn bulk_create_stock_transactions(
     conn: &mut rusqlite::Connection,
     rows: &[BulkStockRow],
@@ -660,7 +664,7 @@ pub fn bulk_create_stock_transactions(
         )
     });
 
-    let tx = conn.transaction()?;
+    let tx = conn.savepoint()?;
     // The batch row goes in first: the transactions reference it.
     let batch_id = match batch {
         Some(batch) if !rows.is_empty() => {

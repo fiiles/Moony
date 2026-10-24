@@ -309,7 +309,8 @@
     "menu": {
       "editPrice": "価格を編集",
       "editDividend": "配当の予想を編集",
-      "editName": "名称を編集"
+      "editName": "名称を編集",
+      "recordSplit": "分割を記録"
     },
     "status": {
       "pricesUpdated": "価格更新 {{when}}",
@@ -563,12 +564,14 @@
         "willImport": "インポート {{count}}",
         "duplicates": "重複 {{count}}",
         "skipped": "スキップ {{count}}",
-        "errors": "エラー {{count}}"
+        "errors": "エラー {{count}}",
+        "converted": "再計算 {{count}}"
       },
       "feeNote": "手数料はインポートされません",
       "nothingToImport": "インポートするものがありません。すべての行が、重複、スキップ、またはエラーです。",
       "statusNew": "新規",
       "statusSkipped": "スキップ",
+      "statusConverted": "再計算済み",
       "statusError": "エラー",
       "statusDuplicate": "重複",
       "duplicateImportAnyway": "それでもインポート",
@@ -651,6 +654,7 @@
       "duplicates": "重複",
       "skipped": "スキップ",
       "errors": "エラー",
+      "converted": "分割により再計算",
       "newPositions": "新規のポジション：",
       "updatedPositions": "既存に追加：",
       "moreTickers_other": "他{{count}}件",
@@ -698,6 +702,7 @@
     },
     "row": {
       "notATrade": "買付でも売却でもありません",
+      "splitRow": "株式分割の行です。Moonyは換算しないため、分割前の数量を確認してください",
       "zeroQuantity": "数量がゼロです",
       "assetClass": "別の資産クラスです",
       "instrumentSkipped": "この銘柄はスキップされています",
@@ -719,7 +724,21 @@
       "duplicateSimilar": "似た取引がすでに Moony にあります：同じ日、同じ数量で、価格の差は0.5 %以内です",
       "cannotParse": "この行を読み取れませんでした"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "分割を確認中…",
+      "unchecked": "分割を確認できませんでした",
+      "line": "{{date}}の分割（{{ratio}}）",
+      "verdict": {
+        "unadjusted": "ファイル内のそれ以前の取引は分割前の単位です",
+        "adjusted": "ファイル内のそれ以前の取引は再計算済みのようです",
+        "unknown": "ファイルが再計算済みかどうか判断できません"
+      },
+      "alsoStored_other": "保存済みの取引{{count}}件も再計算します",
+      "mixedUnitsWarning": "分割前の保存済みの取引は元の単位のままです。インポート後、銘柄の詳細ページで分割を確定するか却下してください。",
+      "convert": "再計算",
+      "convertFor": "{{ticker}}の取引を分割（{{ratio}}）に合わせて再計算"
+    }
   },
   "eyebrow": "ポートフォリオ",
   "export": "エクスポート",
@@ -738,5 +757,60 @@
     "recordDescription": "インポート「{{file}}」には取引が残っていません。記録のみ削除されます。",
     "recordDeleted": "インポート記録を削除しました",
     "deleted_other": "インポートした取引を{{count}}件削除しました"
+  },
+  "splits": {
+    "toast": {
+      "applied_other": "{{ticker}}：{{count}}件の取引を再計算しました（{{ratio}}）",
+      "reverted_other": "{{ticker}}：分割（{{ratio}}）を取り消し、{{count}}件の取引を元に戻しました",
+      "recorded_other": "{{ticker}}：分割（{{ratio}}）を記録し、{{count}}件の取引を再計算しました",
+      "dismissed": "{{ticker}}：分割（{{ratio}}）を無視しました",
+      "deleted": "分割を削除しました"
+    },
+    "undo": "元に戻す",
+    "banner": {
+      "title": "{{date}}の分割（{{ratio}}）",
+      "unadjusted_other": "分割前の取引{{count}}件は元の単位のままのようです。",
+      "adjusted_other": "分割前の取引{{count}}件はすでに再計算済みのようです。",
+      "unknown": "分割前の取引が再計算済みかどうか、Moonyでは判断できません。"
+    },
+    "actions": {
+      "apply": "取引を再計算",
+      "dismiss": "反映済み",
+      "revert": "再計算を取り消す",
+      "delete": "削除",
+      "manage": "分割を管理"
+    },
+    "dialog": {
+      "title": "{{ticker}}の分割",
+      "description": "Moonyが見つけた分割や記録した分割と、それより前の取引の扱いです。",
+      "empty": "分割はまだありません。不足している分割は下で記録してください。"
+    },
+    "columns": {
+      "date": "日付",
+      "ratio": "比率",
+      "source": "取得元",
+      "status": "状態",
+      "count": "取引"
+    },
+    "status": {
+      "pending": "未処理",
+      "applied": "適用済み",
+      "dismissed": "反映済み"
+    },
+    "source": {
+      "yahoo": "Yahoo Finance",
+      "manual": "手動",
+      "import": "インポート"
+    },
+    "form": {
+      "title": "分割を手動で記録",
+      "description": "この日より前の取引をすぐに現在の単位へ再計算します。",
+      "date": "日付（権利落ち日）",
+      "numerator": "新しい株数",
+      "denominator": "旧株数",
+      "submit": "記録して再計算"
+    },
+    "appliedLine_other": "{{date}}の分割（{{ratio}}）・取引{{count}}件を再計算済み",
+    "hint": "{{date}}に分割（{{ratio}}）がありました。数量と価格は現在の単位で入力してください。"
   }
 }

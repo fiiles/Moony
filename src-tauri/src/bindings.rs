@@ -153,6 +153,8 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::services::stock_import::StockImportTransforms>();
     types.register::<crate::services::stock_import::StockTypeValueMapping>();
     types.register::<crate::services::stock_import::StockInstrumentOverride>();
+    types.register::<crate::services::stock_import::StockSplitOverride>();
+    types.register::<crate::services::stock_import::StockSplitAction>();
     types.register::<crate::services::stock_import::StockCsvInspectOptions>();
     types.register::<crate::services::stock_import::StockCsvInspection>();
     types.register::<crate::services::stock_import::StockColumnSuggestion>();
@@ -166,10 +168,21 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::services::stock_import::StockInstrumentQuery>();
     types.register::<crate::services::stock_import::StockInstrumentCandidate>();
     types.register::<crate::services::stock_import::StockInstrumentResolution>();
+    types.register::<crate::services::stock_import::StockSplitCheck>();
+    types.register::<crate::services::stock_import::StockSplitCheckSplit>();
+    types.register::<crate::services::stock_import::StockSplitCheckTrade>();
     types.register::<crate::services::stock_import::StockImportResult>();
     types.register::<crate::services::stock_import::StockImportBatch>();
     types.register::<crate::services::stock_import::StockImportUndoResult>();
     types.register::<crate::services::stock_import::SavedStockImportFormat>();
+
+    // Stock splits
+    types.register::<crate::services::stock_splits::StockSplit>();
+    types.register::<crate::services::stock_splits::InsertStockSplit>();
+    types.register::<crate::services::stock_splits::StockSplitVerdict>();
+    types.register::<crate::services::stock_splits::StockSplitApplyResult>();
+    types.register::<crate::services::stock_splits::StockSplitStatus>();
+    types.register::<crate::services::stock_splits::StockSplitSource>();
 
     // Stock tags models
     types.register::<crate::models::StockTag>();

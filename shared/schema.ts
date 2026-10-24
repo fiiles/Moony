@@ -724,6 +724,16 @@ export const insertInvestmentTransactionSchema = z.object({
 });
 export type InsertInvestmentTransaction = z.infer<typeof insertInvestmentTransactionSchema>;
 
+// Manual stock split (Rust `services::stock_splits::types::InsertStockSplit`, spec D11). The
+// backend validates the ratio and the day; `effectiveDay` is the UTC midnight of the ex-date.
+export const insertStockSplitSchema = z.object({
+  ticker: z.string().min(1, 'validation.tickerRequired'),
+  effectiveDay: z.number().int(),
+  numerator: z.string().regex(/^\d+$/, 'validation.stockSplitRatioInvalid'),
+  denominator: z.string().regex(/^\d+$/, 'validation.stockSplitRatioInvalid'),
+});
+export type InsertStockSplit = z.infer<typeof insertStockSplitSchema>;
+
 // Stock Monitor schema
 export const insertWatchedStockSchema = z.object({
   ticker: z.string().min(1, 'validation.tickerInvalid'),
@@ -2123,7 +2133,8 @@ export type MilestoneKind =
   | 'balances_stale'
   | 'backup_stale'
   | 'valuation_stale'
-  | 'watch_target';
+  | 'watch_target'
+  | 'stock_split';
 export type MilestoneStage = 'now' | 'soon';
 export type MilestoneTone = 'action' | 'info';
 export type MilestoneState = 'done' | 'snoozed';
@@ -2192,6 +2203,26 @@ export interface StockInstrumentOverride {
    */
   currency?: string | null;
   skip?: boolean;
+  /** Splits of the ticker inside the file's trade range (spec D13); absent in older configs. */
+  splits?: StockSplitOverride[];
+}
+
+/**
+ * `convert`: the file is in pre-split units, its trades dated before the split are converted
+ * (quantity × n/d, price × d/n) and a split the stored rows have not had yet is applied to them
+ * too (D14). `keep`: the file is already in today's units.
+ */
+export type StockSplitAction = 'convert' | 'keep';
+
+/** A split of an instrument's ticker and what the import does about it (spec D13). */
+export interface StockSplitOverride {
+  /** UTC midnight of the ex-date; trades dated before it are pre-split. */
+  effectiveDay: number;
+  /** Integer as text, e.g. "10" of a 10:1 split. */
+  numerator: string;
+  /** Integer as text, e.g. "1" of a 10:1 split. */
+  denominator: string;
+  action: StockSplitAction;
 }
 
 export interface StockImportConfig {
@@ -2306,6 +2337,8 @@ export interface StockImportCounts {
   duplicates: number;
   skipped: number;
   errors: number;
+  /** Rows that will be imported converted to post-split units (D13). */
+  converted: number;
 }
 
 export interface StockImportPreview {
@@ -2348,6 +2381,8 @@ export interface StockImportResult {
   duplicates: number;
   skipped: number;
   errors: number;
+  /** Imported rows converted to post-split units (D13). */
+  converted: number;
   newPositions: string[];
   updatedPositions: string[];
   messages: StockRowMessage[];
@@ -2376,6 +2411,78 @@ export interface SavedStockImportFormat {
   headerSignature: string;
   config: StockImportConfig;
   createdAt: number;
+}
+
+// ============================================================================
+// Stock splits (src-tauri/src/services/stock_splits/types.rs) — spec 2026-10-24-stock-splits
+// ============================================================================
+
+export type StockSplitStatus = 'pending' | 'applied' | 'dismissed';
+export type StockSplitSource = 'yahoo' | 'manual' | 'import';
+/** Whether the pre-split transactions are already in post-split units (spec D7). */
+export type StockSplitVerdict = 'adjusted' | 'unadjusted' | 'unknown';
+
+export interface StockSplit {
+  id: string;
+  ticker: string;
+  /** UTC midnight of the ex-date. */
+  effectiveDay: number;
+  /** Integer as text, e.g. "4". */
+  numerator: string;
+  /** Integer as text, e.g. "1". */
+  denominator: string;
+  source: StockSplitSource;
+  status: StockSplitStatus;
+  detectedAt: number;
+  resolvedAt: number | null;
+  /** Transactions rewritten by the last apply. */
+  appliedCount: number | null;
+  /** Transactions of the ticker dated before effectiveDay, now. */
+  preSplitCount: number;
+  /** D7 from stock_value_history; 'unknown' unless pending. */
+  verdict: StockSplitVerdict;
+}
+
+/** What an apply or revert did; `earliestDay` is the ticker's first transaction day. */
+export interface StockSplitApplyResult {
+  split: StockSplit;
+  rewritten: number;
+  earliestDay: number | null;
+}
+
+/** One file trade dated before a split, with its D7 verdict (import wizard, spec D12). */
+export interface StockSplitCheckTrade {
+  /** 1-based line of the file. */
+  line: number;
+  verdict: StockSplitVerdict;
+}
+
+/** A split Yahoo reports after an instrument's first trade in the file (spec D12). */
+export interface StockSplitCheckSplit {
+  /** UTC midnight of the ex-date. */
+  effectiveDay: number;
+  /** Integer as text, e.g. "10". */
+  numerator: string;
+  /** Integer as text, e.g. "1". */
+  denominator: string;
+  /** D7 over `trades`. */
+  verdict: StockSplitVerdict;
+  /** The will-import trades dated before the split, in file order. */
+  trades: StockSplitCheckTrade[];
+  /** The stock_splits row of (ticker, effectiveDay), if any. */
+  storedStatus: StockSplitStatus | null;
+  /** Stored transactions of the ticker dated before the split (the D14 line). */
+  storedPreSplitCount: number;
+}
+
+/** The split check of one instrument of the file; `checked: false` when offline (spec D12). */
+export interface StockSplitCheck {
+  /** StockImportInstrument.key. */
+  key: string;
+  ticker: string;
+  checked: boolean;
+  /** Oldest first; empty when not checked. */
+  splits: StockSplitCheckSplit[];
 }
 
 export type FlowSource = 'explicit' | 'ownAccount' | 'category' | 'direction';

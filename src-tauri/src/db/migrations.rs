@@ -87,6 +87,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("020_bond_purchase_date", MIGRATION_020),
         ("021_encrypted_attachments", MIGRATION_021),
         ("022_profile_theme", MIGRATION_022),
+        ("023_stock_splits", MIGRATION_023),
     ]
 }
 
@@ -2820,6 +2821,29 @@ pub(crate) const MIGRATION_022: &str = r#"
 ALTER TABLE user_profile ADD COLUMN theme TEXT NOT NULL DEFAULT 'system';
 "#;
 
+/// 023: stock splits. `stock_splits` holds the splits found for a ticker (Yahoo), entered by hand or
+/// carried in an import, each `pending` until the user applies or dismisses it; applying rewrites the
+/// ticker's transactions dated before the split to the post-split basis, and its value history is
+/// then rebuilt from the split-adjusted closes. `stock_data.splits_checked_at`
+/// is when the splits of a ticker were last looked up.
+pub(crate) const MIGRATION_023: &str = r#"
+CREATE TABLE IF NOT EXISTS stock_splits (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL,
+    effective_day INTEGER NOT NULL,          -- UTC midnight of the ex-date
+    numerator TEXT NOT NULL,                 -- integer as text, e.g. '4'
+    denominator TEXT NOT NULL,               -- integer as text, e.g. '1'
+    source TEXT NOT NULL CHECK (source IN ('yahoo', 'manual', 'import')),
+    status TEXT NOT NULL CHECK (status IN ('pending', 'applied', 'dismissed')),
+    detected_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    resolved_at INTEGER,
+    applied_count INTEGER,                   -- transactions rewritten by the last apply
+    UNIQUE (ticker, effective_day)
+);
+CREATE INDEX IF NOT EXISTS idx_stock_splits_ticker ON stock_splits(ticker);
+ALTER TABLE stock_data ADD COLUMN splits_checked_at INTEGER;
+"#;
+
 #[cfg(test)]
 mod migration_012 {
     use super::*;
@@ -3890,5 +3914,97 @@ mod migration_022 {
             })
             .expect("theme");
         assert_eq!(theme, "system");
+    }
+}
+
+#[cfg(test)]
+mod stock_splits_tests {
+    use super::*;
+
+    /// A database as it was before `023`: every migration that comes earlier in the chain.
+    fn database_before_023() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "023_stock_splits")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, original_price, price_date) VALUES ('d1', 'NVDA', '100', 1)",
+            [],
+        )
+        .expect("legacy quote row");
+        conn
+    }
+
+    const INSERT_SPLIT: &str = "INSERT INTO stock_splits (id, ticker, effective_day, numerator, denominator, source, status) VALUES (?1, ?2, ?3, '10', '1', ?4, ?5)";
+
+    #[test]
+    fn migration_023_creates_stock_splits_and_the_check_column() {
+        let conn = database_before_023();
+        run_migrations(&conn).expect("migrate");
+
+        conn.execute(
+            INSERT_SPLIT,
+            ["a", "NVDA", "1718000000", "yahoo", "pending"],
+        )
+        .expect("first split");
+        assert!(
+            conn.execute(
+                INSERT_SPLIT,
+                ["b", "NVDA", "1718000000", "manual", "pending"]
+            )
+            .is_err(),
+            "UNIQUE(ticker, effective_day)"
+        );
+        conn.execute(
+            INSERT_SPLIT,
+            ["c", "NVDA", "1718086400", "import", "applied"],
+        )
+        .expect("another day of the same ticker");
+        assert!(
+            conn.execute(INSERT_SPLIT, ["d", "X", "1", "guess", "pending"])
+                .is_err(),
+            "source CHECK"
+        );
+        assert!(
+            conn.execute(INSERT_SPLIT, ["e", "X", "1", "yahoo", "gone"])
+                .is_err(),
+            "status CHECK"
+        );
+
+        let (detected_at, resolved_at, applied_count): (i64, Option<i64>, Option<i64>) = conn
+            .query_row(
+                "SELECT detected_at, resolved_at, applied_count FROM stock_splits WHERE id = 'a'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("defaults");
+        assert!(detected_at > 0, "detected_at defaults to now");
+        assert_eq!(resolved_at, None);
+        assert_eq!(applied_count, None);
+
+        let index: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_stock_splits_ticker'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("index");
+        assert_eq!(index, 1);
+
+        let checked: Option<i64> = conn
+            .query_row(
+                "SELECT splits_checked_at FROM stock_data WHERE id = 'd1'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("column exists");
+        assert_eq!(
+            checked, None,
+            "an existing quote row has never been checked"
+        );
+        conn.execute("UPDATE stock_data SET splits_checked_at = 1", [])
+            .expect("column is writable");
     }
 }

@@ -152,7 +152,7 @@ export default function OtherAssetDetail() {
           />
           <Button
             variant="secondary"
-            className="mb-3.5 h-12 w-full rounded-[10px] text-m-row [&_svg]:size-4"
+            className="mb-3.5 h-auto min-h-12 w-full whitespace-normal rounded-[10px] py-2 text-m-row [&_svg]:size-4"
             onClick={() => setDialog('revalue')}
           >
             <ArrowUp strokeWidth={1.75} aria-hidden />

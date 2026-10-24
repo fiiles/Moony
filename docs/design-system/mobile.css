@@ -842,7 +842,7 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
    block on `well` (radius 10, 12 px, scrolls sideways, never wraps); a quote with a 3 px `line-strong` rule at its left in `ink-3`;
    a table at 12 px that scrolls sideways inside the card. Long words and addresses wrap anywhere. No notes: the same card with the
    sentence "Noch keine Notizen" in `ink-3` (`--empty`). Editing replaces the card with a plain text area (`__area`: the field's look,
-   body type, eight rows, no resize) and the two buttons of a sheet's footer under it (`__edit`: ghost Zrušit, primary Uložit). */
+   field type, eight rows, no resize) and the two buttons of a sheet's footer under it (`__edit`: ghost Zrušit, primary Uložit). */
 .m-notes {
   margin-bottom: 14px; padding: 14px 16px; border: 1px solid var(--line); border-radius: var(--r-4);
   background: var(--paper); box-shadow: var(--sh-1); color: var(--ink-2);
@@ -876,7 +876,7 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
 .m-notes--empty { color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.5; }
 .m-notes__area {
   display: block; width: 100%; margin: 0; padding: 12px 14px; resize: none; border: 1px solid var(--line-strong); border-radius: 10px;
-  background: var(--paper); color: var(--ink); font: inherit; font-size: var(--m-fs-body); font-weight: var(--m-fw-body); line-height: 1.45;
+  background: var(--paper); color: var(--ink); font: inherit; font-size: var(--m-fs-field); font-weight: var(--m-fw-body); line-height: 1.45;
   transition: border-color var(--t-fast), box-shadow var(--t-fast);
 }
 .m-notes__area::placeholder { color: var(--ink-5); }

@@ -190,7 +190,7 @@ export function WatchTargetSheet({
           <Button
             type="button"
             variant="ghost"
-            className="mt-3 h-11 w-full rounded-[10px] text-m-row text-loss"
+            className="mt-3 h-auto min-h-11 w-full whitespace-normal rounded-[10px] py-2 text-m-row text-loss"
             disabled={targetPriceMutation.isPending}
             onClick={remove}
           >

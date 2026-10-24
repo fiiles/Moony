@@ -29,6 +29,7 @@ const PROSE =
   '[&_li]:mb-[3px] [&_li>ul]:mt-[3px] [&_li>ol]:mt-[3px] ' +
   '[&_strong]:font-semibold [&_strong]:text-ink [&_del]:text-ink-3 ' +
   '[&_a]:text-ink [&_a]:underline [&_a]:underline-offset-[3px] ' +
+  // type-size-ok: 0.9em of the surrounding text role, so inline code follows the text size with it
   '[&_code]:rounded-[6px] [&_code]:bg-well-2 [&_code]:px-[5px] [&_code]:py-px [&_code]:font-mono [&_code]:text-[0.9em] ' +
   '[&_pre]:mb-2.5 [&_pre]:mt-0 [&_pre]:overflow-x-auto [&_pre]:rounded-[10px] [&_pre]:bg-well [&_pre]:px-3 [&_pre]:py-2.5 ' +
   '[&_pre_code]:bg-transparent [&_pre_code]:p-0 [&_pre_code]:text-m-sub [&_pre_code]:[overflow-wrap:normal] ' +
@@ -82,7 +83,7 @@ interface WatchNotesProps {
 /**
  * "Poznámky" of a followed stock (spec §8.8): the notes are rendered as markdown in a paper card
  * (the desktop's `MarkdownView` rules: GitHub flavour; the empty sentence says "tap", not the desktop's "click") and
- * "Upravit" in the section head turns the card into a plain text area — body type, eight rows —
+ * "Upravit" in the section head turns the card into a plain text area — field type, eight rows —
  * with Zrušit and Uložit under it. There is no toolbar and no preview on the phone: markdown is
  * typed as text and read in view mode.
  */
@@ -129,7 +130,7 @@ export function WatchNotes({ notes, saving, onSave }: WatchNotesProps) {
             aria-label={t('notes.title')}
             placeholder={t('notes.placeholder')}
             autoCapitalize="sentences"
-            className="m-0 block w-full resize-none rounded-[10px] border border-line-strong bg-paper px-3.5 py-3 text-m-body text-ink transition-[border-color,box-shadow] duration-fast placeholder:text-ink-5 focus:border-focus focus:shadow-focus focus-visible:outline-none"
+            className="m-0 block w-full resize-none rounded-[10px] border border-line-strong bg-paper px-3.5 py-3 text-m-field text-ink transition-[border-color,box-shadow] duration-fast placeholder:text-ink-5 focus:border-focus focus:shadow-focus focus-visible:outline-none"
           />
           <div className="mt-2.5 flex items-center gap-2.5">
             <Button

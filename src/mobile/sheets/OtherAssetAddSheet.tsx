@@ -317,7 +317,7 @@ function InputField({ label, error, className, ...props }: InputFieldProps) {
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
         className={cn(
-          'm-0 block h-12 w-full min-w-0 appearance-none rounded-[10px] border border-line-strong bg-paper px-3.5 text-left text-m-body text-ink transition-[border-color,box-shadow] duration-fast placeholder:text-ink-5 focus:border-focus focus:shadow-focus focus-visible:outline-none aria-[invalid=true]:border-loss aria-[invalid=true]:focus:shadow-loss-ring [&::-webkit-date-and-time-value]:text-left',
+          'm-0 block h-12 w-full min-w-0 appearance-none rounded-[10px] border border-line-strong bg-paper px-3.5 text-left text-m-field text-ink transition-[border-color,box-shadow] duration-fast placeholder:text-ink-5 focus:border-focus focus:shadow-focus focus-visible:outline-none aria-[invalid=true]:border-loss aria-[invalid=true]:focus:shadow-loss-ring [&::-webkit-date-and-time-value]:text-left',
           props.type === 'date' && 'num',
           className
         )}

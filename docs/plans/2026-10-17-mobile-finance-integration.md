@@ -3,7 +3,7 @@
 Date 2026-10-17. Spec: `docs/specs/2026-10-16-mobile-app-design.md` (§8.4 Finance; §4 principle 7
 and D6 hide amounts). Parent plans: `docs/plans/2026-10-16-mobile-app.md` (Phase 1, feat/mobile)
 and `docs/plans/2026-10-16-mobile-app-finance.md` (Phase 2a, arrives with the merge in Task 1).
-Hand-over note of Phase 2a: `/Users/filipkral/Library/Application Support/Claude/side-session-notes/local_5f063dc4-d8a4-4b43-816b-1067b3357f71/mobile-finance-2a.md`.
+Hand-over note of Phase 2a: `mobile-finance-2a.md` in the shared side-session notes folder.
 
 ## Goal
 
@@ -15,7 +15,7 @@ review. The parent session merges this branch into `feat/mobile`; nobody pushes.
 
 ## Global Constraints
 
-- Worktree `/Users/filipkral/Programování/FinanceApp/Moony-tauri/.claude/worktrees/mobile-finance-integration-8da3a6`,
+- Worktree `.claude/worktrees/mobile-finance-integration-8da3a6`,
   branch `claude/mobile-finance-integration-8da3a6`. `git branch --show-current` before every commit.
   Never push; never touch `main`, `feat/mobile`, `claude/mobile-finance-2e89a2` or other worktrees.
   Stage explicit paths only (`git add <path>`; never `git add -A` or `git add .`); never `git stash`.
@@ -200,22 +200,22 @@ exactly one hook file; new lib tests pass; typecheck, lint, test, format green.
 No code. The controller runs the four gates once more at the branch head, then verifies on the
 simulator through the dev browser bridge:
 
-1. Demo profile: terminate the app (`xcrun simctl terminate E3EF021E-F419-4E45-96E4-E305A5B1B326 com.moonyfinance.mobile`),
-   find the container (`xcrun simctl get_app_container E3EF021E-F419-4E45-96E4-E305A5B1B326 com.moonyfinance.mobile data`),
+1. Demo profile: terminate the app on the iPhone 17 Pro simulator (address it by its UDID, `xcrun simctl list devices`; `xcrun simctl terminate <UDID> com.moonyfinance.mobile`),
+   find the container (`xcrun simctl get_app_container <UDID> com.moonyfinance.mobile data`),
    replace `<container>/Library/Application Support/com.moonyfinance.mobile` with a copy of
-   `/private/tmp/claude-501/-Users-filipkral-Programov-n--FinanceApp-Moony-tauri/9ca3991e-1cce-4f7a-ac67-202f50de16cc/scratchpad/demo-profile`
+   the `demo-profile` folder in the session's scratchpad
    (Alex Novák, password `demo1234`; biometrics off → decline the enrolment sheet with "Teď ne").
 2. `env VITE_MOONY_SHELL=mobile npm run dev -- --port 1430 --strictPort` in the background from this
    worktree (the dev bridge needs the shell variable, `src/lib/platform.ts:16`: a plain `npm run dev`
    serves the desktop shell to both the pane and the simulator); launch the app
-   (`xcrun simctl launch E3EF021E-F419-4E45-96E4-E305A5B1B326 com.moonyfinance.mobile`); open
+   (`xcrun simctl launch <UDID> com.moonyfinance.mobile`); open
    `http://localhost:1430` in the browser pane (`preview_start` with `url:`, never `name:`),
    `resize_window` 390×844. Never `xcrun simctl … booted` (another session drives the iPhone 17).
 3. Verify: Finance tab, account detail (hero, flows strip, ledger, balance history), transaction
    sheet, category picker render; toggle the eye on Přehled and confirm every amount on the Finance
    screens is masked ("•••• Kč", "+ •••• Kč"), counts and percents stay; leave Finance to a detail
    and back → sort/toggles/period kept.
-4. Evidence: `xcrun simctl io E3EF021E-F419-4E45-96E4-E305A5B1B326 screenshot <path>` and pane
+4. Evidence: `xcrun simctl io <UDID> screenshot <path>` and pane
    screenshots into `.superpowers/sdd/2026-10-17-mobile-finance-integration/shots/`; two or three
    masked device screenshots committed as `docs/screenshots/mobile/finance-21-hidden-*.png`
    (`docs(mobile): hide-amounts verification screenshots`).

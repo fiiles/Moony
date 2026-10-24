@@ -24,7 +24,7 @@ Process (from the parent task and the parent session's message of 2026-10-19):
 - `invoke()` only in `src/lib/tauri-api.ts`.
 - Gate per task before committing: `npm run lint`, `npm run typecheck`, `npm test`, `npm run format:check` (run `npm run format` first). A task that changes Rust also runs `cd src-tauri && cargo fmt`, `cd src-tauri && cargo clippy --all-targets -- -D warnings`, `cd src-tauri && cargo test`, `cd src-tauri && cargo clippy --target aarch64-apple-ios-sim --lib -- -D warnings`. Conventional Commit, trailer `Co-Authored-By: <the model that wrote the code> <noreply@anthropic.com>` (Claude Sonnet 5.5 / Claude Opus 5.5 / Claude Haiku 5.5).
 - Subagents: implementers `sonnet` (Task 7: `opus`), translations and data entry `haiku`, task reviews `sonnet`, reviews of Rust / security / capability tasks (1, 4, 6, 7) `opus`, final whole-branch review `opus`; always an explicit `model`, never Fable. Ledger `.superpowers/sdd/2026-10-18-mobile-phase-2b-import/progress.md`.
-- Simulator (controller only, never an implementer): iPhone 17, UDID `9B31123B-089C-451D-858B-587ACE9BEB2D`, Vite on port 1440, addressed by UDID, never `booted`. The demo profile (Alex Novák, `demo1234`) comes from the scratchpad copy named in the brief, or `cd src-tauri && cargo run --bin seed_demo -- --out <scratch path>`.
+- Simulator (controller only, never an implementer): iPhone 17, Vite on port 1440, addressed by UDID, never `booted`. The demo profile (Alex Novák, `demo1234`) comes from the scratchpad copy named in the brief, or `cd src-tauri && cargo run --bin seed_demo -- --out <scratch path>`.
 
 From the spec:
 
@@ -249,7 +249,7 @@ Question: can text-layer PDF statements of the three most common Czech banks (Č
 ## Task 10: Simulator verification and screenshots (controller)
 
 - Build from this worktree in the background: `npm run tauri -- ios dev "iPhone 17" --config '{"build":{"devUrl":"http://localhost:1440","beforeDevCommand":"npm run dev -- --port 1440 --strictPort"}}'` (≥ 25 GB free first); after the first build, check the generated `src-tauri/gen/apple/moony_iOS/Info.plist` holds the document types and commit it.
-- Demo profile into the app container; sample files from `src-tauri/tests/fixtures/` (`csv/fio.csv`, `statements/camt053/basic.xml`, `statements/mt940/cz-free-text.sta`, an unknown CSV made from `fio.csv` with renamed headers) copied into the container's `Documents` and shared in with `xcrun simctl openurl 9B31123B-089C-451D-858B-587ACE9BEB2D file://…`; the picker through the Files app.
+- Demo profile into the app container; sample files from `src-tauri/tests/fixtures/` (`csv/fio.csv`, `statements/camt053/basic.xml`, `statements/mt940/cz-free-text.sta`, an unknown CSV made from `fio.csv` with renamed headers) copied into the container's `Documents` and shared in on the iPhone 17 simulator with `xcrun simctl openurl <UDID> file://…`; the picker through the Files app.
 - Evidence: a CSV imported end to end from share-in while locked (unlock → sheet once), a CAMT statement via the picker, an unknown CSV through "Takhle tomu rozumím" with one correction, the queue used (accept a pill, picker, "Nechat", the batch switch, empty state), hide amounts on the preview and the queue, the Inbox copy gone afterwards (`ls` of the container). Screenshots `docs/screenshots/mobile/import-NN.png` committed. Afterwards `pkill -f "tauri ios dev"`, `pkill -f "vite --port 1440"`.
 
 ---

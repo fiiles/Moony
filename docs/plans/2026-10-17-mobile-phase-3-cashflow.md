@@ -42,7 +42,7 @@ Session rules:
 - Phase 1 components are the vocabulary: `EntityRow`/`EntityRows`/`RowChip`, `StatRow`, `SectionHead`, `Sheet` (+ `useSheetHistory` — one sheet open at a time; this base's hook holds one history entry), `AmountField`, `Screen`/`NavBar`/`NavIconButton`/`NavTextButton`, `useBack`, `useHideAmounts`, `useMoneyText()` / `<Money>` / `maskMoney` for EVERY money string (counts and percents stay visible), `useFitText`, `useFormat()`. Tokens only (`bg-paper`, `text-ink-3`, `bg-s1`, `var(--s3)`…), no raw hex, `text-m-*` type roles, Lucide 24 / stroke 1.75 in bars, 16 in chips.
 - New components under `src/mobile/components/cashflow/`, sheets under `src/mobile/sheets/` named `Cashflow…` / `Budget…`, pure helpers + tests under `src/mobile/lib/`, pages `src/mobile/pages/Cashflow.tsx`, `CashflowCategory.tsx`, `Budgets.tsx`.
 - Gate per task before committing: `npm run lint && npm run typecheck && npm test && npm run format:check` (run `npm run format` first). Stage explicit paths only (never `git add -A`); never `git stash`. Commit: Conventional Commit (`feat(mobile): …`), trailer `Co-Authored-By: <the model that wrote the code> <noreply@anthropic.com>`.
-- Verification is the browser-bridge pane at 390 × 844 driving the app installed on the "iPhone 17" simulator (UDID `9B31123B-089C-451D-858B-587ACE9BEB2D`, bundle `com.moonyfinance.mobile`), Vite on port 1440 from this worktree (Task 0). Screenshots go to `docs/screenshots/mobile/cashflow-NN-<name>.png`.
+- Verification is the browser-bridge pane at 390 × 844 driving the app installed on the "iPhone 17" simulator (bundle `com.moonyfinance.mobile`), Vite on port 1440 from this worktree (Task 0). Screenshots go to `docs/screenshots/mobile/cashflow-NN-<name>.png`.
 
 ### API inventory (all existing, `src/lib/tauri-api.ts`)
 
@@ -81,7 +81,7 @@ Inputs the spec implies and no task's tests exercise directly; each line's test 
 ## Task 0: Dev loop and demo profile (controller, no commit)
 
 - [ ] **Step 1:** `pkill -f "vite --port 1440"` (a finished session left one). From this worktree, in the background: `npm run dev -- --port 1440 --strictPort`.
-- [ ] **Step 2:** Give the simulator app the demo profile: `xcrun simctl get_app_container 9B31123B-089C-451D-858B-587ACE9BEB2D com.moonyfinance.mobile data` prints the container; replace `<container>/Library/Application Support/com.moonyfinance.mobile` with a copy of `/private/tmp/claude-501/-Users-filipkral-Programov-n--FinanceApp-Moony-tauri/9ca3991e-1cce-4f7a-ac67-202f50de16cc/scratchpad/demo-profile` (Alex Novák, password `demo1234`, 180 days of transactions, five budgets). Terminate and launch: `xcrun simctl terminate … com.moonyfinance.mobile`, `xcrun simctl launch … com.moonyfinance.mobile`.
+- [ ] **Step 2:** Give the simulator app the demo profile: `xcrun simctl get_app_container <UDID> com.moonyfinance.mobile data` (the iPhone 17 simulator's UDID) prints the container; replace `<container>/Library/Application Support/com.moonyfinance.mobile` with a copy of the `demo-profile` folder in the session's scratchpad (Alex Novák, password `demo1234`, 180 days of transactions, five budgets). Terminate and launch: `xcrun simctl terminate … com.moonyfinance.mobile`, `xcrun simctl launch … com.moonyfinance.mobile`.
 - [ ] **Step 3:** `preview_start` with `url: http://localhost:1440` (never `name:`), `resize_window` 390 × 844; unlock with the password (the Phase 1 backend has no biometric commands); the Cashflow tab shows the placeholder. Record the recipe in the ledger.
 
 ## Task 1: Period state, report hook and row models

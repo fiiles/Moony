@@ -20,9 +20,9 @@
 - Contract values: touch targets ≥ 44 pt; side gutter 16 pt; entity row 60 pt (52 single-line); chevron only on rows without a trailing value (`EntityRow` enforces it); hero chart 160, trend chart 120, bars 110 (spec §10.4); type roles `text-m-*`; primary button = dark material, one per screen (the two-button pair under the detail's nav bar is the spec's kept exception).
 - New components are added to the contract in the same commit: a class block in `docs/design-system/mobile.css`, a demo in `docs/design-system/mobile.html` (German copy, 360/390/430; the page's check must report no horizontal overflow at 360), a row in README §13's component table.
 - Gate per task before committing: `npm run lint && npm run typecheck && npm test`. Commit: Conventional Commit (`feat(mobile): …`), trailer `Co-Authored-By: <the model that wrote the code> <noreply@anthropic.com>`. Once at the end: `cd src-tauri && cargo check` (nothing in Rust changed; it proves it).
-- Simulator: "iPhone 17" (UDID `9B31123B-089C-451D-858B-587ACE9BEB2D`) with Vite on port 1440 — never "iPhone 17 Pro" or ports 1420/1430 (other sessions). Command (run in the background, it takes minutes):
+- Simulator: "iPhone 17" (address it by its UDID, `xcrun simctl list devices`) with Vite on port 1440 — never "iPhone 17 Pro" or ports 1420/1430 (other sessions). Command (run in the background, it takes minutes):
   `npm run tauri -- ios dev "iPhone 17" --config '{"build":{"devUrl":"http://localhost:1440","beforeDevCommand":"npm run dev -- --port 1440 --strictPort"}}'`
-  Screenshots: `xcrun simctl io 9B31123B-089C-451D-858B-587ACE9BEB2D screenshot docs/screenshots/mobile/finance-NN-name.png`. Test data comes from a temporary dev button (kept in `.superpowers/sdd/2026-10-16-mobile-app-finance/seed.tsx`, pasted into `Finance.tsx` only while seeding, never committed — `git diff --stat` before every commit must not show it).
+  Screenshots: `xcrun simctl io <UDID> screenshot docs/screenshots/mobile/finance-NN-name.png` (the iPhone 17 simulator's UDID). Test data comes from a temporary dev button (kept in `.superpowers/sdd/2026-10-16-mobile-app-finance/seed.tsx`, pasted into `Finance.tsx` only while seeding, never committed — `git diff --stat` before every commit must not show it).
 
 ### API inventory (all existing, `src/lib/tauri-api.ts`)
 
@@ -68,11 +68,11 @@ Reusable i18n (do not duplicate): `bank_accounts:` `balanceHero.label` ("Balance
 
 - [ ] **Step 1: Boot the simulator and start the dev loop in the background**
 
-Run: `xcrun simctl boot 9B31123B-089C-451D-858B-587ACE9BEB2D` (ignore "already booted"), then the dev command from Global Constraints in the background. Expected: the Moony first-run wizard on "iPhone 17".
+Run: `xcrun simctl boot <UDID>` for the iPhone 17 simulator (ignore "already booted"), then the dev command from Global Constraints in the background. Expected: the Moony first-run wizard on "iPhone 17".
 
 - [ ] **Step 2: Create the test profile through the wizard**
 
-Name "Tereza Nováková", language Czech, main currency CZK, password `finance-2a-test` (a throwaway test profile on a simulator; write it to `run-notes.md`). Expected: the empty Přehled.
+Name "Tereza Nováková", language Czech, main currency CZK, password "the test profile's password" (a throwaway test profile on a simulator; write it to `run-notes.md`). Expected: the empty Přehled.
 
 - [ ] **Step 3: Write the seed and run it once through a temporary button**
 
@@ -641,7 +641,7 @@ Replace the two placeholders: `openTx` → `<TransactionSheet tx={openTx} open={
 
 - [ ] **Step 1:** `cd src-tauri && cargo check` (expected: unchanged, compiles). `git log --oneline 150765c2..HEAD` lists the three feature commits plus any review fixes.
 - [ ] **Step 2:** Whole-branch review by a fresh reviewer (opus) against this plan and spec §8.4; fix findings as `fix(mobile): …` commits.
-- [ ] **Step 3:** Report to the parent session: branch, commits, what the simulator shows (screenshot list), what is unverified (Android, dark mode, 360 dp only through `mobile.html`), the rulings: loan rows drop "banka" (no bank on a loan); the `+` items open the desktop dialogs or a placeholder per kind as verified; Smazat účet is a confirm sheet ending in a placeholder toast; balance and import history sheets are read-only; the uncategorized row leads to the single account prefiltered or to the queue placeholder; the account detail's hero change line is the 30-day flow net (prototype), not the record delta; chevron exception on picker-style key-value rows. Leave the note in `/Users/filipkral/Library/Application Support/Claude/side-session-notes/local_5f063dc4-d8a4-4b43-816b-1067b3357f71/mobile-finance-2a.md`.
+- [ ] **Step 3:** Report to the parent session: branch, commits, what the simulator shows (screenshot list), what is unverified (Android, dark mode, 360 dp only through `mobile.html`), the rulings: loan rows drop "banka" (no bank on a loan); the `+` items open the desktop dialogs or a placeholder per kind as verified; Smazat účet is a confirm sheet ending in a placeholder toast; balance and import history sheets are read-only; the uncategorized row leads to the single account prefiltered or to the queue placeholder; the account detail's hero change line is the 30-day flow net (prototype), not the record delta; chevron exception on picker-style key-value rows. Leave the note in the shared side-session notes folder as `mobile-finance-2a.md`.
 
 ## As built / rulings (2026-10-17)
 

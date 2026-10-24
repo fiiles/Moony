@@ -327,7 +327,8 @@
     "menu": {
       "editPrice": "Edytuj cenę",
       "editDividend": "Edytuj szacunek dywidendy",
-      "editName": "Edytuj nazwę"
+      "editName": "Edytuj nazwę",
+      "recordSplit": "Zapisz split"
     },
     "status": {
       "pricesUpdated": "Ceny zaktualizowane {{when}}",
@@ -828,6 +829,60 @@
       "dismissed": "{{ticker}}: split {{ratio}} odrzucony",
       "deleted": "Split usunięty"
     },
-    "undo": "Cofnij"
+    "undo": "Cofnij",
+    "banner": {
+      "title": "Split {{ratio}} z {{date}}",
+      "unadjusted_one": "{{count}} transakcja sprzed splitu wygląda na zapisaną w pierwotnych jednostkach.",
+      "unadjusted_few": "{{count}} transakcje sprzed splitu wyglądają na zapisane w pierwotnych jednostkach.",
+      "unadjusted_many": "{{count}} transakcji sprzed splitu wygląda na zapisane w pierwotnych jednostkach.",
+      "unadjusted_other": "{{count}} transakcji sprzed splitu wygląda na zapisane w pierwotnych jednostkach.",
+      "adjusted_one": "{{count}} transakcja sprzed splitu wygląda na już przeliczoną.",
+      "adjusted_few": "{{count}} transakcje sprzed splitu wyglądają na już przeliczone.",
+      "adjusted_many": "{{count}} transakcji sprzed splitu wygląda na już przeliczone.",
+      "adjusted_other": "{{count}} transakcji sprzed splitu wygląda na już przeliczone.",
+      "unknown": "Moony nie potrafi rozpoznać, czy transakcje sprzed splitu są już przeliczone."
+    },
+    "actions": {
+      "apply": "Przelicz transakcje",
+      "dismiss": "Już uwzględniono",
+      "revert": "Cofnij przeliczenie",
+      "delete": "Usuń",
+      "manage": "Zarządzaj splitami"
+    },
+    "dialog": {
+      "title": "Splity {{ticker}}",
+      "description": "Splity znalezione przez Moony lub zapisane przez ciebie i to, co stało się z transakcjami sprzed nich.",
+      "empty": "Brak splitów. Brakujący split zapisz poniżej."
+    },
+    "columns": {
+      "date": "Data",
+      "ratio": "Proporcja",
+      "source": "Źródło",
+      "status": "Stan",
+      "count": "Transakcje"
+    },
+    "status": {
+      "pending": "Oczekuje",
+      "applied": "Zastosowany",
+      "dismissed": "Uwzględniony"
+    },
+    "source": {
+      "yahoo": "Yahoo Finance",
+      "manual": "Ręcznie",
+      "import": "Import"
+    },
+    "form": {
+      "title": "Zapisz split ręcznie",
+      "description": "Moony od razu przeliczy transakcje sprzed tego dnia na dzisiejsze jednostki.",
+      "date": "Data (dzień odcięcia)",
+      "numerator": "Nowych akcji",
+      "denominator": "Za starych akcji",
+      "submit": "Zapisz i przelicz"
+    },
+    "appliedLine_one": "Split {{ratio}} z {{date}} · przeliczono {{count}} transakcję",
+    "appliedLine_few": "Split {{ratio}} z {{date}} · przeliczono {{count}} transakcje",
+    "appliedLine_many": "Split {{ratio}} z {{date}} · przeliczono {{count}} transakcji",
+    "appliedLine_other": "Split {{ratio}} z {{date}} · przeliczono {{count}} transakcji",
+    "hint": "{{date}} nastąpił split {{ratio}}; wpisz liczbę i cenę w dzisiejszych jednostkach."
   }
 }

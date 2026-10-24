@@ -12,6 +12,7 @@ import {
   Plus,
   Receipt,
   RefreshCw,
+  Split,
   Tag,
   Trash2,
 } from 'lucide-react';
@@ -22,12 +23,14 @@ import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useTransactionFx } from '@/hooks/use-fx';
 import { useInvestmentTransactionMutations } from '@/hooks/use-investment-mutations';
+import { useStockSplits } from '@/hooks/use-stock-splits';
 import { useShellPage } from '@/components/shell/shell-context';
 import { cn } from '@/lib/utils';
 import { formatAmountWithCode } from '@/utils/format-amount';
 import { costPerUnit, toStockRow } from '@/utils/positions';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { formatMarketCap } from '@/utils/stock-monitor';
+import { ratioText as splitRatioText } from '@/utils/stock-splits';
 import { BackLink, PageHead } from '@/components/shell/PageHead';
 import { HeroValue } from '@/components/common/HeroCard';
 import { Stat, Stats } from '@/components/common/Stat';
@@ -70,6 +73,8 @@ import { ManualDividendModal } from '@/components/stocks/ManualDividendModal';
 import { EditTransactionModal } from '@/components/stocks/EditTransactionModal';
 import { PositionHero } from '@/components/stocks/PositionHero';
 import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { StockSplitBanner } from '@/components/stocks/StockSplitBanner';
+import { StockSplitsDialog } from '@/components/stocks/StockSplitsDialog';
 
 type LedgerFilter = 'all' | 'buy' | 'sell';
 
@@ -93,6 +98,7 @@ export default function StockDetail() {
   const [showDividendModal, setShowDividendModal] = useState(false);
   const [showEditNameModal, setShowEditNameModal] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [showSplitsDialog, setShowSplitsDialog] = useState(false);
   const [editableName, setEditableName] = useState('');
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<InvestmentTransaction | null>(null);
@@ -132,6 +138,10 @@ export default function StockDetail() {
     staleTime: COMPANY_INFO_STALE_TIME_MS,
   });
   const companyInfo = freshCompanyInfo.data ?? storedCompanyInfo.data;
+  const { data: splits = [] } = useStockSplits(ticker);
+  const appliedSplits = splits
+    .filter((split) => split.status === 'applied')
+    .sort((a, b) => b.effectiveDay - a.effectiveDay);
   const companyFetching = freshCompanyInfo.isFetching;
   const refetchCompanyInfo = freshCompanyInfo.refetch;
 
@@ -469,6 +479,10 @@ export default function StockDetail() {
                   <ChartCandlestick />
                   {t('detail.openInMonitor')}
                 </DropdownMenuItem>
+                <DropdownMenuItem onSelect={() => setShowSplitsDialog(true)}>
+                  <Split />
+                  {t('detail.menu.recordSplit')}
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem variant="danger" onSelect={() => setShowDeleteDialog(true)}>
                   <Trash2 />
@@ -492,6 +506,7 @@ export default function StockDetail() {
       />
 
       <ConversionQualityNote quality={position?.fxQuality} currency={reportCurrency} />
+      <StockSplitBanner splits={splits} onManage={() => setShowSplitsDialog(true)} />
 
       <PositionHero
         type="stock"
@@ -618,6 +633,19 @@ export default function StockDetail() {
               ]}
             />
           </CardHeader>
+          {appliedSplits.length > 0 && (
+            <div className="border-t border-line px-[14px] py-2.5 text-micro font-500 text-ink-4">
+              {appliedSplits.map((split) => (
+                <p key={split.id} className="m-0">
+                  {t('splits.appliedLine', {
+                    ratio: splitRatioText(split.numerator, split.denominator),
+                    date: fmt.day(split.effectiveDay),
+                    count: split.appliedCount ?? split.preSplitCount,
+                  })}
+                </p>
+              ))}
+            </div>
+          )}
           {ledger.length === 0 ? (
             <p className="border-t border-line px-[14px] py-10 text-center text-table text-ink-3">
               {t('detail.transactions.empty')}
@@ -817,6 +845,12 @@ export default function StockDetail() {
         open={showDividendModal}
         onOpenChange={setShowDividendModal}
         investment={holdingData}
+      />
+      <StockSplitsDialog
+        open={showSplitsDialog}
+        onOpenChange={setShowSplitsDialog}
+        ticker={investment.ticker}
+        splits={splits}
       />
       <EditTransactionModal
         transaction={editingTransaction}

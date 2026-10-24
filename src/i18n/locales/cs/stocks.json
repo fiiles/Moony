@@ -322,7 +322,8 @@
     "menu": {
       "editPrice": "Upravit cenu",
       "editDividend": "Upravit odhad dividendy",
-      "editName": "Upravit název"
+      "editName": "Upravit název",
+      "recordSplit": "Zaznamenat split"
     },
     "status": {
       "pricesUpdated": "Ceny aktualizovány {{when}}",
@@ -805,6 +806,60 @@
       "dismissed": "{{ticker}}: split {{ratio}} odmítnut",
       "deleted": "Split smazán"
     },
-    "undo": "Vrátit"
+    "undo": "Vrátit",
+    "banner": {
+      "title": "Split {{ratio}} k {{date}}",
+      "unadjusted_one": "{{count}} transakce před splitem vypadá v původních jednotkách.",
+      "unadjusted_few": "{{count}} transakce před splitem vypadají v původních jednotkách.",
+      "unadjusted_many": "{{count}} transakce před splitem vypadá v původních jednotkách.",
+      "unadjusted_other": "{{count}} transakcí před splitem vypadá v původních jednotkách.",
+      "adjusted_one": "{{count}} transakce před splitem vypadá už přepočtená.",
+      "adjusted_few": "{{count}} transakce před splitem vypadají už přepočtené.",
+      "adjusted_many": "{{count}} transakce před splitem vypadá už přepočtená.",
+      "adjusted_other": "{{count}} transakcí před splitem vypadá už přepočtených.",
+      "unknown": "Moony nedokáže poznat, zda jsou transakce před splitem přepočtené."
+    },
+    "actions": {
+      "apply": "Přepočítat transakce",
+      "dismiss": "Už je zohledněno",
+      "revert": "Vrátit přepočet",
+      "delete": "Smazat",
+      "manage": "Spravovat splity"
+    },
+    "dialog": {
+      "title": "Splity {{ticker}}",
+      "description": "Splity, které Moony našel nebo jste zaznamenali, a co se stalo s transakcemi před nimi.",
+      "empty": "Zatím žádný split. Chybějící split zaznamenejte níže."
+    },
+    "columns": {
+      "date": "Datum",
+      "ratio": "Poměr",
+      "source": "Zdroj",
+      "status": "Stav",
+      "count": "Transakce"
+    },
+    "status": {
+      "pending": "Čeká",
+      "applied": "Aplikován",
+      "dismissed": "Zohledněno"
+    },
+    "source": {
+      "yahoo": "Yahoo Finance",
+      "manual": "Ručně",
+      "import": "Import"
+    },
+    "form": {
+      "title": "Zaznamenat split ručně",
+      "description": "Moony hned přepočítá transakce před tímto dnem na dnešní jednotky.",
+      "date": "Datum (ex-date)",
+      "numerator": "Nových kusů",
+      "denominator": "Za starých kusů",
+      "submit": "Zaznamenat a přepočítat"
+    },
+    "appliedLine_one": "Split {{ratio}} k {{date}} · {{count}} transakce přepočtena",
+    "appliedLine_few": "Split {{ratio}} k {{date}} · {{count}} transakce přepočteny",
+    "appliedLine_many": "Split {{ratio}} k {{date}} · {{count}} transakce přepočteno",
+    "appliedLine_other": "Split {{ratio}} k {{date}} · {{count}} transakcí přepočteno",
+    "hint": "K {{date}} proběhl split {{ratio}}; zadejte množství a cenu v dnešních jednotkách."
   }
 }

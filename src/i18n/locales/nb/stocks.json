@@ -315,7 +315,8 @@
     "menu": {
       "editPrice": "Rediger kurs",
       "editDividend": "Rediger utbytteanslag",
-      "editName": "Rediger navn"
+      "editName": "Rediger navn",
+      "recordSplit": "Registrer splitt"
     },
     "status": {
       "pricesUpdated": "Kurser oppdatert {{when}}",
@@ -774,6 +775,54 @@
       "dismissed": "{{ticker}}: splitten {{ratio}} er avvist",
       "deleted": "Splitten er slettet"
     },
-    "undo": "Angre"
+    "undo": "Angre",
+    "banner": {
+      "title": "Splitt {{ratio}} {{date}}",
+      "unadjusted_one": "{{count}} transaksjon før splitten ser ut til å være i opprinnelige enheter.",
+      "unadjusted_other": "{{count}} transaksjoner før splitten ser ut til å være i opprinnelige enheter.",
+      "adjusted_one": "{{count}} transaksjon før splitten ser allerede omregnet ut.",
+      "adjusted_other": "{{count}} transaksjoner før splitten ser allerede omregnet ut.",
+      "unknown": "Moony kan ikke avgjøre om transaksjonene før splitten allerede er omregnet."
+    },
+    "actions": {
+      "apply": "Regn om transaksjoner",
+      "dismiss": "Allerede tatt hensyn til",
+      "revert": "Angre omregning",
+      "delete": "Slett",
+      "manage": "Administrer splitter"
+    },
+    "dialog": {
+      "title": "Splitter for {{ticker}}",
+      "description": "Splitter Moony har funnet eller du har registrert, og hva som skjedde med transaksjonene før dem.",
+      "empty": "Ingen splitter ennå. Registrer en manglende splitt nedenfor."
+    },
+    "columns": {
+      "date": "Dato",
+      "ratio": "Forhold",
+      "source": "Kilde",
+      "status": "Status",
+      "count": "Transaksjoner"
+    },
+    "status": {
+      "pending": "Venter",
+      "applied": "Brukt",
+      "dismissed": "Tatt hensyn til"
+    },
+    "source": {
+      "yahoo": "Yahoo Finance",
+      "manual": "Manuelt",
+      "import": "Import"
+    },
+    "form": {
+      "title": "Registrer en splitt manuelt",
+      "description": "Moony regner straks om transaksjonene før denne dagen til dagens enheter.",
+      "date": "Dato (ex-dato)",
+      "numerator": "Nye aksjer",
+      "denominator": "For gamle aksjer",
+      "submit": "Registrer og regn om"
+    },
+    "appliedLine_one": "Splitt {{ratio}} {{date}} · {{count}} transaksjon omregnet",
+    "appliedLine_other": "Splitt {{ratio}} {{date}} · {{count}} transaksjoner omregnet",
+    "hint": "{{date}} var det en splitt {{ratio}}; oppgi antall og kurs i dagens enheter."
   }
 }

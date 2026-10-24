@@ -315,7 +315,8 @@
     "menu": {
       "editPrice": "Edit price",
       "editDividend": "Edit dividend estimate",
-      "editName": "Edit name"
+      "editName": "Edit name",
+      "recordSplit": "Record split"
     },
     "status": {
       "pricesUpdated": "Prices updated {{when}}",
@@ -774,6 +775,54 @@
       "dismissed": "{{ticker}}: split {{ratio}} dismissed",
       "deleted": "Split deleted"
     },
-    "undo": "Undo"
+    "undo": "Undo",
+    "banner": {
+      "title": "{{ratio}} split on {{date}}",
+      "unadjusted_one": "{{count}} transaction before the split looks like it is in the original units.",
+      "unadjusted_other": "{{count}} transactions before the split look like they are in the original units.",
+      "adjusted_one": "{{count}} transaction before the split already looks recalculated.",
+      "adjusted_other": "{{count}} transactions before the split already look recalculated.",
+      "unknown": "Moony cannot tell whether the transactions before the split are already recalculated."
+    },
+    "actions": {
+      "apply": "Recalculate transactions",
+      "dismiss": "Already accounted for",
+      "revert": "Undo recalculation",
+      "delete": "Delete",
+      "manage": "Manage splits"
+    },
+    "dialog": {
+      "title": "{{ticker}} splits",
+      "description": "Splits Moony found or you recorded, and what happened to the transactions before them.",
+      "empty": "No splits yet. Record a missing one below."
+    },
+    "columns": {
+      "date": "Date",
+      "ratio": "Ratio",
+      "source": "Source",
+      "status": "Status",
+      "count": "Transactions"
+    },
+    "status": {
+      "pending": "Pending",
+      "applied": "Applied",
+      "dismissed": "Accounted for"
+    },
+    "source": {
+      "yahoo": "Yahoo Finance",
+      "manual": "Manual",
+      "import": "Import"
+    },
+    "form": {
+      "title": "Record a split manually",
+      "description": "Moony recalculates the transactions before this day into today's units right away.",
+      "date": "Date (ex-date)",
+      "numerator": "New shares",
+      "denominator": "For old shares",
+      "submit": "Record and recalculate"
+    },
+    "appliedLine_one": "{{ratio}} split on {{date}} · {{count}} transaction recalculated",
+    "appliedLine_other": "{{ratio}} split on {{date}} · {{count}} transactions recalculated",
+    "hint": "A {{ratio}} split took effect on {{date}}; enter quantity and price in today's units."
   }
 }

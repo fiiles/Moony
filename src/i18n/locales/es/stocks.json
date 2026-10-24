@@ -321,7 +321,8 @@
     "menu": {
       "editPrice": "Editar precio",
       "editDividend": "Editar estimación de dividendo",
-      "editName": "Editar nombre"
+      "editName": "Editar nombre",
+      "recordSplit": "Registrar split"
     },
     "status": {
       "pricesUpdated": "Precios actualizados {{when}}",
@@ -801,6 +802,57 @@
       "dismissed": "{{ticker}}: split {{ratio}} descartado",
       "deleted": "Split eliminado"
     },
-    "undo": "Deshacer"
+    "undo": "Deshacer",
+    "banner": {
+      "title": "Split {{ratio}} el {{date}}",
+      "unadjusted_one": "{{count}} operación anterior al split parece estar en las unidades originales.",
+      "unadjusted_many": "{{count}} operaciones anteriores al split parecen estar en las unidades originales.",
+      "unadjusted_other": "{{count}} operaciones anteriores al split parecen estar en las unidades originales.",
+      "adjusted_one": "{{count}} operación anterior al split ya parece recalculada.",
+      "adjusted_many": "{{count}} operaciones anteriores al split ya parecen recalculadas.",
+      "adjusted_other": "{{count}} operaciones anteriores al split ya parecen recalculadas.",
+      "unknown": "Moony no puede saber si las operaciones anteriores al split ya están recalculadas."
+    },
+    "actions": {
+      "apply": "Recalcular operaciones",
+      "dismiss": "Ya está contemplado",
+      "revert": "Deshacer el recálculo",
+      "delete": "Eliminar",
+      "manage": "Gestionar splits"
+    },
+    "dialog": {
+      "title": "Splits de {{ticker}}",
+      "description": "Los splits que Moony encontró o que registraste, y qué pasó con las operaciones anteriores.",
+      "empty": "Aún no hay splits. Registra abajo uno que falte."
+    },
+    "columns": {
+      "date": "Fecha",
+      "ratio": "Proporción",
+      "source": "Origen",
+      "status": "Estado",
+      "count": "Operaciones"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "applied": "Aplicado",
+      "dismissed": "Contemplado"
+    },
+    "source": {
+      "yahoo": "Yahoo Finance",
+      "manual": "Manual",
+      "import": "Importación"
+    },
+    "form": {
+      "title": "Registrar un split manualmente",
+      "description": "Moony recalcula al instante las operaciones anteriores a este día en las unidades actuales.",
+      "date": "Fecha (ex-date)",
+      "numerator": "Acciones nuevas",
+      "denominator": "Por acciones antiguas",
+      "submit": "Registrar y recalcular"
+    },
+    "appliedLine_one": "Split {{ratio}} el {{date}} · {{count}} operación recalculada",
+    "appliedLine_many": "Split {{ratio}} el {{date}} · {{count}} operaciones recalculadas",
+    "appliedLine_other": "Split {{ratio}} el {{date}} · {{count}} operaciones recalculadas",
+    "hint": "El {{date}} hubo un split {{ratio}}; introduce la cantidad y el precio en las unidades actuales."
   }
 }

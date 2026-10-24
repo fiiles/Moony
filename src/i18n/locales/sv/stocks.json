@@ -315,7 +315,8 @@
     "menu": {
       "editPrice": "Redigera kurs",
       "editDividend": "Redigera utdelningsuppskattning",
-      "editName": "Redigera namn"
+      "editName": "Redigera namn",
+      "recordSplit": "Registrera split"
     },
     "status": {
       "pricesUpdated": "Kurserna uppdaterades {{when}}",
@@ -774,6 +775,54 @@
       "dismissed": "{{ticker}}: splitten {{ratio}} avvisad",
       "deleted": "Splitten har tagits bort"
     },
-    "undo": "Ångra"
+    "undo": "Ångra",
+    "banner": {
+      "title": "Split {{ratio}} den {{date}}",
+      "unadjusted_one": "{{count}} transaktion före splitten verkar vara i de ursprungliga enheterna.",
+      "unadjusted_other": "{{count}} transaktioner före splitten verkar vara i de ursprungliga enheterna.",
+      "adjusted_one": "{{count}} transaktion före splitten verkar redan vara omräknad.",
+      "adjusted_other": "{{count}} transaktioner före splitten verkar redan vara omräknade.",
+      "unknown": "Moony kan inte avgöra om transaktionerna före splitten redan är omräknade."
+    },
+    "actions": {
+      "apply": "Räkna om transaktioner",
+      "dismiss": "Redan beaktad",
+      "revert": "Ångra omräkning",
+      "delete": "Ta bort",
+      "manage": "Hantera splittar"
+    },
+    "dialog": {
+      "title": "Splittar för {{ticker}}",
+      "description": "Splittar som Moony har hittat eller du har registrerat, och vad som hände med transaktionerna före dem.",
+      "empty": "Inga splittar ännu. Registrera en som saknas nedan."
+    },
+    "columns": {
+      "date": "Datum",
+      "ratio": "Kvot",
+      "source": "Källa",
+      "status": "Status",
+      "count": "Transaktioner"
+    },
+    "status": {
+      "pending": "Väntar",
+      "applied": "Tillämpad",
+      "dismissed": "Beaktad"
+    },
+    "source": {
+      "yahoo": "Yahoo Finance",
+      "manual": "Manuell",
+      "import": "Import"
+    },
+    "form": {
+      "title": "Registrera en split manuellt",
+      "description": "Moony räknar direkt om transaktionerna före den här dagen till dagens enheter.",
+      "date": "Datum (x-dag)",
+      "numerator": "Nya aktier",
+      "denominator": "För gamla aktier",
+      "submit": "Registrera och räkna om"
+    },
+    "appliedLine_one": "Split {{ratio}} den {{date}} · {{count}} transaktion omräknad",
+    "appliedLine_other": "Split {{ratio}} den {{date}} · {{count}} transaktioner omräknade",
+    "hint": "Den {{date}} gjordes en split {{ratio}}; ange antal och kurs i dagens enheter."
   }
 }

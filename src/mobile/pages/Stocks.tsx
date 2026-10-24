@@ -1,9 +1,11 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useLocation } from 'wouter';
 import { Download, Ellipsis, History, Plus, RefreshCw, TrendingUp, Upload } from 'lucide-react';
 import { toast } from 'sonner';
-import type { StockPositions } from '@shared/schema';
+import type { StockPositions, WatchedStockRow } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
+import { cn } from '@/lib/utils';
 import { useWatchedStocks } from '@/hooks/use-stock-monitor';
 import { amountOf, totalOf } from '@/utils/positions';
 import {
@@ -17,6 +19,7 @@ import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { AddInvestmentModal } from '@/components/stocks/AddInvestmentModal';
 import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
 import { EntityRows } from '@/mobile/components/EntityRow';
+import { SearchField } from '@/mobile/components/SearchField';
 import { Segment } from '@/mobile/components/Segment';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { ClassEmpty } from '@/mobile/components/wealth/ClassEmpty';
@@ -24,6 +27,7 @@ import { ClassHero } from '@/mobile/components/wealth/ClassHero';
 import { ClassSkeleton } from '@/mobile/components/wealth/ClassSkeleton';
 import { PositionList } from '@/mobile/components/wealth/PositionList';
 import { PricesLine } from '@/mobile/components/wealth/PricesLine';
+import { TickerResultRow } from '@/mobile/components/wealth/TickerResultRow';
 import { WatchedRow } from '@/mobile/components/wealth/WatchedRow';
 import { useBack } from '@/mobile/hooks/use-back';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -34,10 +38,11 @@ import {
   useStockTrades,
   useTwrThisYear,
 } from '@/mobile/hooks/use-stocks';
+import { useTickerSearch } from '@/mobile/hooks/use-ticker-search';
 import { stocksView, type StocksTab } from '@/mobile/lib/position-rows';
 import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
-import { positionPath, routes } from '@/mobile/shell/routes';
+import { positionPath, routes, watchPath } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 
 /** Whole amounts: the class page shows no decimals. */
@@ -181,22 +186,69 @@ export default function Stocks() {
               <NoPositions onAdd={() => setAddOpen(true)} />
             )}
           </div>
-          {tab === 'watched' &&
-            (watched.length === 0 ? (
-              <p className="mx-0.5 py-6 text-center text-m-body text-ink-3">
-                {t('wealth.stocks.watchedEmpty')}
-              </p>
-            ) : (
-              <EntityRows>
-                {watched.map((row) => (
-                  <WatchedRow key={row.id} row={row} />
-                ))}
-              </EntityRows>
-            ))}
+          {tab === 'watched' && <WatchedList rows={watched} />}
         </>
       )}
       <AddInvestmentModal open={addOpen} onOpenChange={setAddOpen} />
     </Screen>
+  );
+}
+
+/** The ticker search starts at two characters, as the desktop's does. */
+const SEARCH_FROM = 2;
+
+/**
+ * The Sledované segment (spec §8.8): the search field (Yahoo) on top, under it the watched stocks
+ * as rows — or, from two characters on, what the search found. A hit opens the watch detail of its
+ * symbol and clears the field, so coming back shows the list; following happens on the detail, as
+ * on the desktop. While an answer is on its way the last hits stay (dimmed), and "no results" is
+ * only said for a term that has been asked.
+ */
+function WatchedList({ rows }: { rows: WatchedStockRow[] }) {
+  const { t } = useTranslation('mobile');
+  const { t: tm } = useTranslation('stockMonitor');
+  const [, setLocation] = useLocation();
+  const [query, setQuery] = useState('');
+  const { results, isFetching } = useTickerSearch(query);
+  const searching = query.trim().length >= SEARCH_FROM;
+
+  const open = (symbol: string) => {
+    setQuery('');
+    setLocation(watchPath(symbol));
+  };
+
+  return (
+    <>
+      <SearchField
+        value={query}
+        onChange={setQuery}
+        placeholder={tm('search.placeholder')}
+        clearLabel={t('wealth.stocks.clearSearch')}
+      />
+      {searching ? (
+        results.length > 0 ? (
+          <EntityRows className={cn('transition-opacity', isFetching && 'opacity-60')}>
+            {results.map((result) => (
+              <TickerResultRow key={result.symbol} result={result} onPick={open} />
+            ))}
+          </EntityRows>
+        ) : (
+          <p role="status" className="mx-0.5 py-6 text-center text-m-body text-ink-3">
+            {isFetching ? tm('search.searching') : tm('search.noResults')}
+          </p>
+        )
+      ) : rows.length === 0 ? (
+        <p className="mx-0.5 py-6 text-center text-m-body text-ink-3">
+          {t('wealth.stocks.watchedEmpty')}
+        </p>
+      ) : (
+        <EntityRows>
+          {rows.map((row) => (
+            <WatchedRow key={row.id} row={row} />
+          ))}
+        </EntityRows>
+      )}
+    </>
   );
 }
 

@@ -483,6 +483,16 @@
       "followed": "ウォッチリストに追加しました",
       "range52": "52週レンジ",
       "renamed": "名称を保存しました"
+    },
+    "watch": {
+      "stats": {
+        "today": "本日",
+        "since": "フォロー開始以降",
+        "noTarget": "目標未設定"
+      },
+      "above": "上回る",
+      "below": "下回る",
+      "openPosition": "保有銘柄を開く"
     }
   },
   "settings": {

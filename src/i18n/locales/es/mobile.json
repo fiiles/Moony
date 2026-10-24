@@ -535,6 +535,16 @@
       "followed": "Añadida a la lista de seguimiento",
       "range52": "Rango de 52 semanas",
       "renamed": "Nombre guardado"
+    },
+    "watch": {
+      "stats": {
+        "today": "Hoy",
+        "since": "Desde el seguimiento",
+        "noTarget": "sin objetivo"
+      },
+      "above": "Por encima",
+      "below": "Por debajo",
+      "openPosition": "Abrir posición"
     }
   },
   "settings": {

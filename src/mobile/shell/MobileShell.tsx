@@ -26,6 +26,7 @@ import Settings from '@/mobile/pages/Settings';
 import SettingsSection from '@/mobile/pages/settings/SettingsSection';
 import Stocks from '@/mobile/pages/Stocks';
 import Wealth from '@/mobile/pages/Wealth';
+import WatchDetail from '@/mobile/pages/WatchDetail';
 import { PropertyPlaceholder, RealEstatePlaceholder } from '@/mobile/pages/WealthPlaceholder';
 import { EnableBiometricsSheet } from '@/mobile/sheets/EnableBiometricsSheet';
 import { routes, tabForPath } from './routes';
@@ -80,6 +81,8 @@ export function MobileShell() {
         {/* Pushed on Majetek: the Akcie class page and a position of it. */}
         <ProtectedRoute path={routes.stocks} component={Stocks} />
         <ProtectedRoute path={routes.positionDetail} component={PositionDetail} />
+        {/* A watched ticker, followed or not: from a Sledované row or a search result. */}
+        <ProtectedRoute path={routes.watchDetail} component={WatchDetail} />
         {/* The Krypto class page and a coin of it. */}
         <ProtectedRoute path={routes.cryptoList} component={Crypto} />
         <ProtectedRoute path={routes.cryptoDetail} component={CryptoDetail} />

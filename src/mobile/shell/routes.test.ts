@@ -14,6 +14,7 @@ import {
   routes,
   settingsPath,
   tabForPath,
+  watchPath,
 } from './routes';
 
 describe('tabForPath', () => {
@@ -46,6 +47,17 @@ describe('tabForPath', () => {
     expect(tabForPath(routes.otherAssetsList)).toBe('wealth');
     expect(tabForPath(otherAssetPath('a1'))).toBe('wealth');
     expect(routes.otherAssetDetail.replace(':id', 'a1')).toBe(otherAssetPath('a1'));
+    expect(tabForPath(watchPath('AAPL'))).toBe('wealth');
+  });
+
+  it('builds the watch detail path from the ticker, escaped', () => {
+    expect(routes.watchDetail).toBe('/wealth/watch/:ticker');
+    expect(watchPath('AAPL')).toBe('/wealth/watch/AAPL');
+    expect(routes.watchDetail.replace(':ticker', 'AAPL')).toBe(watchPath('AAPL'));
+    // An index or a share class is one path segment, not a path
+    expect(watchPath('^GSPC')).toBe('/wealth/watch/%5EGSPC');
+    expect(watchPath('BRK/B')).toBe('/wealth/watch/BRK%2FB');
+    expect(tabForPath(watchPath('BRK/B'))).toBe('wealth');
   });
 
   it('keeps a screen pushed on Přehled in Přehled', () => {

@@ -535,6 +535,16 @@
       "followed": "Přidáno do sledovaných",
       "range52": "52T rozpětí",
       "renamed": "Název uložen"
+    },
+    "watch": {
+      "stats": {
+        "today": "Dnes",
+        "since": "Od sledování",
+        "noTarget": "bez cíle"
+      },
+      "above": "Nad",
+      "below": "Pod",
+      "openPosition": "Otevřít pozici"
     }
   },
   "settings": {

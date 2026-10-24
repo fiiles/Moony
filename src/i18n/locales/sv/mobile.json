@@ -509,6 +509,16 @@
       "followed": "Tillagd i bevakningslistan",
       "range52": "52-veckorsintervall",
       "renamed": "Namn sparat"
+    },
+    "watch": {
+      "stats": {
+        "today": "I dag",
+        "since": "Sedan bevakning",
+        "noTarget": "inget mål satt"
+      },
+      "above": "Över",
+      "below": "Under",
+      "openPosition": "Öppna innehavet"
     }
   },
   "settings": {

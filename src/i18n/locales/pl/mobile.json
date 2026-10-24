@@ -561,6 +561,16 @@
       "followed": "Dodano do obserwowanych",
       "range52": "Zakres 52 tyg.",
       "renamed": "Nazwa zapisana"
+    },
+    "watch": {
+      "stats": {
+        "today": "Dziś",
+        "since": "Od obserwacji",
+        "noTarget": "brak celu"
+      },
+      "above": "Powyżej",
+      "below": "Poniżej",
+      "openPosition": "Otwórz pozycję"
     }
   },
   "settings": {

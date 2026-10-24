@@ -509,6 +509,16 @@
       "followed": "Zur Beobachtungsliste hinzugefügt",
       "range52": "52-Wochen-Spanne",
       "renamed": "Name gespeichert"
+    },
+    "watch": {
+      "stats": {
+        "today": "Heute",
+        "since": "Seit Beobachtung",
+        "noTarget": "kein Ziel gesetzt"
+      },
+      "above": "Über",
+      "below": "Unter",
+      "openPosition": "Position öffnen"
     }
   },
   "settings": {

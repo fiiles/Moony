@@ -509,6 +509,16 @@
       "followed": "Lagt til i følgelisten",
       "range52": "52-ukers spenn",
       "renamed": "Navn lagret"
+    },
+    "watch": {
+      "stats": {
+        "today": "I dag",
+        "since": "Siden følging",
+        "noTarget": "ingen mål satt"
+      },
+      "above": "Over",
+      "below": "Under",
+      "openPosition": "Åpne beholdningen"
     }
   },
   "settings": {

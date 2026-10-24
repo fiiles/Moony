@@ -509,6 +509,16 @@
       "followed": "Added to the watchlist",
       "range52": "52-week range",
       "renamed": "Name saved"
+    },
+    "watch": {
+      "stats": {
+        "today": "Today",
+        "since": "Since following",
+        "noTarget": "no target set"
+      },
+      "above": "Above",
+      "below": "Below",
+      "openPosition": "Open position"
     }
   },
   "settings": {

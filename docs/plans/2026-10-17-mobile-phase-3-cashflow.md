@@ -246,7 +246,7 @@ Inputs the spec implies and no task's tests exercise directly; each line's test 
 - [ ] **Step 1:** `git log --oneline 2d2c8d7b..HEAD` lists the five feature commits plus review fixes; the four gates at HEAD; `git status` clean.
 - [ ] **Step 2:** Whole-branch review by a fresh reviewer (opus) of `git diff 2d2c8d7b..HEAD` against this plan and spec §8.7; one fix round as `fix(mobile): …`; re-review.
 - [ ] **Step 3:** Copy the final screenshots to `docs/screenshots/mobile/cashflow-NN-<name>.png`, commit `docs(mobile): phase 3 verification screenshots`.
-- [ ] **Step 4:** Write the Czech hand-over `.superpowers/sdd/2026-10-17-mobile-phase-3-cashflow/handover.md` and copy it to the shared notes folder (`…/side-session-notes/local_5f063dc4-d8a4-4b43-816b-1067b3357f71/mobile-cashflow-3.md`): what is on the branch, commits, verified, unverified, rulings, follow-ups, missing backend commands. Stop the Vite on 1440. Report branch and head SHA.
+- [ ] **Step 4:** Write the Czech hand-over `.superpowers/sdd/2026-10-17-mobile-phase-3-cashflow/handover.md` and copy it to the shared side-session notes folder as `mobile-cashflow-3.md`: what is on the branch, commits, verified, unverified, rulings, follow-ups, missing backend commands. Stop the Vite on 1440. Report branch and head SHA.
 
 ## As built / rulings
 

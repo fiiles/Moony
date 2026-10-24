@@ -168,6 +168,9 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::services::stock_import::StockInstrumentQuery>();
     types.register::<crate::services::stock_import::StockInstrumentCandidate>();
     types.register::<crate::services::stock_import::StockInstrumentResolution>();
+    types.register::<crate::services::stock_import::StockSplitCheck>();
+    types.register::<crate::services::stock_import::StockSplitCheckSplit>();
+    types.register::<crate::services::stock_import::StockSplitCheckTrade>();
     types.register::<crate::services::stock_import::StockImportResult>();
     types.register::<crate::services::stock_import::StockImportBatch>();
     types.register::<crate::services::stock_import::StockImportUndoResult>();

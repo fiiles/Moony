@@ -10,7 +10,7 @@ use specta::Type;
 
 use crate::error::{AppError, Result};
 use crate::services::csv_import::CsvDateRange;
-use crate::services::stock_splits::ratio_parts;
+use crate::services::stock_splits::{ratio_parts, StockSplitStatus, StockSplitVerdict};
 
 /// Built-in sources (adapters). A hand mapping is `custom`; a saved custom
 /// format is `format:<uuid>`.
@@ -528,6 +528,49 @@ pub struct StockInstrumentResolution {
     /// The lookup failed (offline, rate limit): unverified, not unknown.
     #[serde(rename = "lookupFailed")]
     pub lookup_failed: bool,
+}
+
+/// One file trade dated before a split, with its D7 verdict (TS `StockSplitCheckTrade`).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct StockSplitCheckTrade {
+    /// 1-based line of the file.
+    pub line: usize,
+    pub verdict: StockSplitVerdict,
+}
+
+/// A split Yahoo reports after an instrument's first trade (TS `StockSplitCheckSplit`, D12).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct StockSplitCheckSplit {
+    /// UTC midnight of the ex-date.
+    #[serde(rename = "effectiveDay")]
+    pub effective_day: i64,
+    /// Integer as text, e.g. `"10"` of a 10:1 split.
+    pub numerator: String,
+    /// Integer as text, e.g. `"1"` of a 10:1 split.
+    pub denominator: String,
+    /// D7 over `trades`.
+    pub verdict: StockSplitVerdict,
+    /// The will-import trades dated before the split, in file order.
+    pub trades: Vec<StockSplitCheckTrade>,
+    /// Status of the `stock_splits` row of `(ticker, effectiveDay)`, if any.
+    #[serde(rename = "storedStatus")]
+    pub stored_status: Option<StockSplitStatus>,
+    /// Stored transactions of the ticker dated before the split (the D14 line).
+    #[serde(rename = "storedPreSplitCount")]
+    pub stored_pre_split_count: i64,
+}
+
+/// The split check of one instrument of the file (TS `StockSplitCheck`, D12).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct StockSplitCheck {
+    /// `StockImportInstrument.key`.
+    pub key: String,
+    pub ticker: String,
+    /// `false` when the history could not be fetched (offline, unknown symbol); `splits` is
+    /// then empty.
+    pub checked: bool,
+    /// Oldest first.
+    pub splits: Vec<StockSplitCheckSplit>,
 }
 
 /// Outcome of an import (TS `StockImportResult`).

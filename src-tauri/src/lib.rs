@@ -418,6 +418,7 @@ async fn run_app() {
             commands::stock_import::inspect_stock_csv,
             commands::stock_import::resolve_stock_instruments,
             commands::stock_import::preview_stock_csv_import,
+            commands::stock_import::check_stock_splits,
             commands::stock_import::import_stock_csv,
             commands::stock_import::list_stock_import_batches,
             commands::stock_import::undo_stock_import_batch,

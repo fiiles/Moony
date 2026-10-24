@@ -145,6 +145,7 @@ import type {
   StockSplit,
   InsertStockSplit,
   StockSplitApplyResult,
+  StockSplitCheck,
   StockInstrumentQuery,
   StockInstrumentResolution,
 } from '../../shared/schema';
@@ -1096,6 +1097,9 @@ export const stockImportApi = {
     tauriInvoke<StockInstrumentResolution[]>('resolve_stock_instruments', { queries }),
   preview: (filePath: string, config: StockImportConfig) =>
     tauriInvoke<StockImportPreview>('preview_stock_csv_import', { filePath, config }),
+  /** Yahoo splits after each instrument's first trade, with the D7 verdicts (spec D12). */
+  checkSplits: (filePath: string, config: StockImportConfig) =>
+    tauriInvoke<StockSplitCheck[]>('check_stock_splits', { filePath, config }),
   import: (filePath: string, config: StockImportConfig) =>
     tauriInvoke<StockImportResult>('import_stock_csv', { filePath, config }),
   listBatches: () => tauriInvoke<StockImportBatch[]>('list_stock_import_batches'),

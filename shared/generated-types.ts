@@ -2424,6 +2424,66 @@ export type StockSplitAction =
 export type StockSplitApplyResult = { split: StockSplit; rewritten: number; earliestDay: number | null }
 
 /**
+ * The split check of one instrument of the file (TS `StockSplitCheck`, D12).
+ */
+export type StockSplitCheck = { 
+/**
+ * `StockImportInstrument.key`.
+ */
+key: string; ticker: string; 
+/**
+ * `false` when the history could not be fetched (offline, unknown symbol); `splits` is
+ * then empty.
+ */
+checked: boolean; 
+/**
+ * Oldest first.
+ */
+splits: StockSplitCheckSplit[] }
+
+/**
+ * A split Yahoo reports after an instrument's first trade (TS `StockSplitCheckSplit`, D12).
+ */
+export type StockSplitCheckSplit = { 
+/**
+ * UTC midnight of the ex-date.
+ */
+effectiveDay: number; 
+/**
+ * Integer as text, e.g. `"10"` of a 10:1 split.
+ */
+numerator: string; 
+/**
+ * Integer as text, e.g. `"1"` of a 10:1 split.
+ */
+denominator: string; 
+/**
+ * D7 over `trades`.
+ */
+verdict: StockSplitVerdict; 
+/**
+ * The will-import trades dated before the split, in file order.
+ */
+trades: StockSplitCheckTrade[]; 
+/**
+ * Status of the `stock_splits` row of `(ticker, effectiveDay)`, if any.
+ */
+storedStatus: StockSplitStatus | null; 
+/**
+ * Stored transactions of the ticker dated before the split (the D14 line).
+ */
+storedPreSplitCount: number }
+
+/**
+ * One file trade dated before a split, with its D7 verdict (TS `StockSplitCheckTrade`).
+ */
+export type StockSplitCheckTrade = { 
+/**
+ * 1-based line of the file.
+ */
+line: number; verdict: StockSplitVerdict }
+
+/**
  * A split of an instrument's ticker and what the import does about it (TS
  * `StockSplitOverride`, spec D13). The wizard fills it from `check_stock_splits`.
  */

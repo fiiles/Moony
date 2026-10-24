@@ -2450,6 +2450,41 @@ export interface StockSplitApplyResult {
   earliestDay: number | null;
 }
 
+/** One file trade dated before a split, with its D7 verdict (import wizard, spec D12). */
+export interface StockSplitCheckTrade {
+  /** 1-based line of the file. */
+  line: number;
+  verdict: StockSplitVerdict;
+}
+
+/** A split Yahoo reports after an instrument's first trade in the file (spec D12). */
+export interface StockSplitCheckSplit {
+  /** UTC midnight of the ex-date. */
+  effectiveDay: number;
+  /** Integer as text, e.g. "10". */
+  numerator: string;
+  /** Integer as text, e.g. "1". */
+  denominator: string;
+  /** D7 over `trades`. */
+  verdict: StockSplitVerdict;
+  /** The will-import trades dated before the split, in file order. */
+  trades: StockSplitCheckTrade[];
+  /** The stock_splits row of (ticker, effectiveDay), if any. */
+  storedStatus: StockSplitStatus | null;
+  /** Stored transactions of the ticker dated before the split (the D14 line). */
+  storedPreSplitCount: number;
+}
+
+/** The split check of one instrument of the file; `checked: false` when offline (spec D12). */
+export interface StockSplitCheck {
+  /** StockImportInstrument.key. */
+  key: string;
+  ticker: string;
+  checked: boolean;
+  /** Oldest first; empty when not checked. */
+  splits: StockSplitCheckSplit[];
+}
+
 export type FlowSource = 'explicit' | 'ownAccount' | 'category' | 'direction';
 export type FxQuality = 'historical' | 'estimated' | 'missing';
 /** What a converted response could not (or only approximately) convert. */

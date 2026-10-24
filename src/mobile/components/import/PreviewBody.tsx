@@ -160,7 +160,7 @@ function StatementNotes({ flow }: { flow: ImportFlow }) {
     <Button
       type="button"
       variant="ghost"
-      className="mt-1.5 h-11 w-full justify-start rounded-[10px] px-2 text-m-sub text-ink"
+      className="mt-1.5 h-auto min-h-11 whitespace-normal py-2 text-left w-full justify-start rounded-[10px] px-2 text-m-sub text-ink"
       disabled={flow.switching}
       onClick={() => void flow.selectAccount(matchedId)}
     >

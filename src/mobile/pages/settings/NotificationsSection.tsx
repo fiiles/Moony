@@ -81,7 +81,7 @@ export default function NotificationsSection() {
         {state === 'default' && (
           <div className="px-1 py-3">
             <Button
-              className="h-12 w-full rounded-[10px] text-m-row"
+              className="h-auto min-h-12 whitespace-normal py-2 text-center w-full rounded-[10px] text-m-row"
               loading={isPending}
               onClick={() => void request()}
             >
@@ -137,7 +137,7 @@ export default function NotificationsSection() {
 
       <Button
         variant="secondary"
-        className="h-12 w-full rounded-[10px] text-m-row"
+        className="h-auto min-h-12 whitespace-normal py-2 text-center w-full rounded-[10px] text-m-row"
         disabled={!granted}
         onClick={sendTest}
       >

@@ -599,6 +599,9 @@
       "title": "Jazyk aplikace",
       "lead": "Čísla a data se formátují podle jazyka."
     },
+    "appearance": {
+      "lead": "Systém sleduje světlý nebo tmavý vzhled telefonu."
+    },
     "delete": {
       "title": "Smazat všechna data?",
       "lead": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu. Kopie zálohy mimo telefon zůstanou. Nejdřív si udělejte zálohu — je to jediná cesta zpět.",
@@ -618,7 +621,7 @@
     "restoreTitle": "Obnovení a přenos",
     "restoreLead": "Obnovte zálohu z tohoto telefonu, nebo přeneste profil z Moony na počítači: vyberte soubor zálohy a po obnovení odemkněte heslem, které platilo při jejím vytvoření.",
     "restoreConfirmDescription": "Záloha z {{date}} (Moony {{version}}, {{attachments}} příloh, {{size}}) nahradí data v tomto telefonu. Chcete-li současná data zachovat, nejdřív je zálohujte. Moony se poté zamkne; odemkněte ho heslem, které platilo v době vytvoření zálohy.",
-    "osBackupNote": "Šifrovaný profil je i v záloze telefonu (iCloud nebo počítač); bez hesla ho nikdo neotevře."
+    "osBackupNote": "Profil se neukládá do zálohy telefonu (iCloud ani počítač). Jedinou kopií mimo telefon je záloha Moony, kterou si sami uložíte."
   },
   "firstRun": {
     "privacyLead": "Moony ukládá vše do šifrované databáze v tomto telefonu. Žádný cloud, žádný účet u nás.",
@@ -647,7 +650,7 @@
       "backup": "Záloha"
     },
     "backupTitle": "Zálohujte si data",
-    "backupLead": "Telefon je jediná kopie vašich dat. Uložte šifrovanou zálohu do iCloud Drive nebo vybrané složky; Moony ji nikdy nevidí.",
+    "backupLead": "Vaše data jsou jen v tomto telefonu a do zálohy telefonu (iCloud ani počítač) se neukládají. Uložte šifrovanou zálohu do iCloud Drive nebo vybrané složky; Moony ji nikdy nevidí.",
     "currencyPick": "Hlavní měna",
     "countryPick": "Země bankovnictví",
     "searchCurrency": "Hledat měnu"

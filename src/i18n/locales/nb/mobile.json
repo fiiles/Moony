@@ -572,6 +572,9 @@
       "title": "Appspråk",
       "lead": "Tall og datoer følger språket."
     },
+    "appearance": {
+      "lead": "System følger telefonens lyse eller mørke utseende."
+    },
     "delete": {
       "title": "Slette alle data?",
       "lead": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt. Sikkerhetskopier utenfor telefonen blir liggende. Ta en sikkerhetskopi først — det er den eneste veien tilbake.",
@@ -591,7 +594,7 @@
     "restoreTitle": "Gjenoppretting og overføring",
     "restoreLead": "Gjenopprett en sikkerhetskopi fra denne telefonen, eller overfør en profil fra Moony på datamaskinen: velg filen med sikkerhetskopien, og lås opp etter gjenopprettingen med passordet som gjaldt da den ble laget.",
     "restoreConfirmDescription": "Sikkerhetskopien fra {{date}} (Moony {{version}}, {{attachments}} vedlegg, {{size}}) erstatter dataene på denne telefonen. Ta en sikkerhetskopi først hvis du vil beholde dagens data. Moony låses etterpå; lås den opp med passordet som var i bruk da sikkerhetskopien ble laget.",
-    "osBackupNote": "Den krypterte profilen finnes også i telefonens egen sikkerhetskopi (iCloud eller datamaskin); uten passordet kan ingen åpne den."
+    "osBackupNote": "Profilen lagres ikke i telefonens egen sikkerhetskopi (iCloud eller datamaskin). Moony-sikkerhetskopien du selv lagrer, er den eneste kopien utenfor telefonen."
   },
   "firstRun": {
     "privacyLead": "Moony lagrer alt i en kryptert database på denne telefonen. Ingen sky, ingen konto hos oss.",
@@ -620,7 +623,7 @@
       "backup": "Sikkerhetskopi"
     },
     "backupTitle": "Ta sikkerhetskopi av dataene dine",
-    "backupLead": "Denne telefonen har den eneste kopien av dataene dine. Lagre en kryptert sikkerhetskopi i iCloud Drive eller en mappe du velger; Moony ser den aldri.",
+    "backupLead": "Denne telefonen har den eneste kopien av dataene dine, og den er ikke med i telefonens egen sikkerhetskopi (iCloud eller datamaskin). Lagre en kryptert sikkerhetskopi i iCloud Drive eller en mappe du velger; Moony ser den aldri.",
     "currencyPick": "Hovedvaluta",
     "countryPick": "Bankland",
     "searchCurrency": "Søk etter valuta"

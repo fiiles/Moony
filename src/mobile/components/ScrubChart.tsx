@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { Area, CartesianGrid, ComposedChart, Line, ReferenceDot, XAxis, YAxis } from 'recharts';
 import { useFormat } from '@/lib/use-format';
-import { chartTokens } from '@/lib/tokens';
+import { useChartTokens } from '@/theme/ThemeProvider';
 import { cn } from '@/lib/utils';
 import {
   clusterEvents,
@@ -98,7 +98,7 @@ export function ScrubChart<E extends ChartEvent>({
 }: ScrubChartProps<E>) {
   const fmt = useFormat();
   const { hidden } = useHideAmounts();
-  const tk = useMemo(chartTokens, []);
+  const tk = useChartTokens();
   const gradientId = useId().replace(/:/g, '');
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);

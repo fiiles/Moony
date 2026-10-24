@@ -3,7 +3,8 @@
 //! and its handlers are `#[cfg(mobile)]`).
 //!
 //! The master key never reaches the webview: these commands call the plugin from Rust, and the
-//! webview's own permission set allows only the plugin's `status` and `set_privacy_screen`.
+//! webview's own permission set allows only the plugin's `status`, `set_privacy_screen` and
+//! `set_status_bar_style`.
 
 use std::path::{Path, PathBuf};
 

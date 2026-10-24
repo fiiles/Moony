@@ -24,8 +24,8 @@ import {
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { EntityRow } from './EntityRow';
 
-/** Width of the date chip (prototype `.dchip`). */
-const DATE_CHIP = 54;
+/** Width of the date chip (prototype `.dchip`): 54 pt at the default text size, wider with the text. */
+const DATE_CHIP = 'calc(54px * var(--m-text-k))';
 
 /**
  * Agenda row of "Co vás čeká" (spec §8.3 item 4, prototype note 5): the entity row with a 54 × 42
@@ -55,7 +55,7 @@ export function AgendaRow({ m }: { m: Milestone }) {
   const chip = (
     <span
       className={cn(
-        'flex h-[42px] flex-none flex-col items-center justify-center rounded-[9px] leading-tight',
+        'flex min-h-[42px] flex-none flex-col items-center justify-center rounded-[9px] py-0.5 leading-tight',
         urgent ? 'bg-dark-grad shadow-dark' : 'bg-well'
       )}
       style={{ width: DATE_CHIP }}
@@ -70,7 +70,7 @@ export function AgendaRow({ m }: { m: Milestone }) {
       </b>
       <small
         className={cn(
-          'mt-px whitespace-nowrap text-micro font-medium',
+          'mt-px whitespace-nowrap text-m-note',
           urgent ? 'text-ink-inverse-2' : 'text-ink-4'
         )}
       >

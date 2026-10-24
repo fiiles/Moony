@@ -1,10 +1,13 @@
 //! Moony's phone keychain: one secret per key, stored behind the device biometry (iOS Keychain
 //! with `.biometryCurrentSet`, Android Keystore with an enrolment-bound AES-GCM key), plus the
-//! privacy screen that covers the app in the app switcher / recents.
+//! privacy screen that covers the app in the app switcher / recents, and the call that keeps the
+//! app's data out of iOS device backups.
 //!
 //! Rust is the only caller of [`Keychain::store`] / [`Keychain::retrieve`] /
 //! [`Keychain::remove`]: the default permission set grants the webview `status` and
-//! `set_privacy_screen` only, so a stored secret never crosses into JavaScript.
+//! `set_privacy_screen` only, so a stored secret never crosses into JavaScript. The same goes for
+//! [`Keychain::exclude_from_backup`], which keeps the app's data folder, the webview's storage and
+//! the staged and received files out of device backups.
 //!
 //! Accepted residual: on its way to and from the native side the secret (the app's master key as
 //! hex) is plain text that `zeroize::Zeroizing` cannot reach: the JSON the plugin bridge carries

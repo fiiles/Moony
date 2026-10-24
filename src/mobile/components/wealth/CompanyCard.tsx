@@ -118,7 +118,7 @@ export function CompanyCard({ name, info, stockCurrency, pending, onRetry }: Com
         </p>
         <Button
           variant="secondary"
-          className="mt-2.5 h-11 rounded-[10px] px-4 text-m-sub [&_svg]:size-4"
+          className="mt-2.5 h-auto min-h-11 whitespace-normal py-2 text-center rounded-[10px] px-4 text-m-sub [&_svg]:size-4"
           onClick={onRetry}
         >
           <RefreshCw strokeWidth={1.75} aria-hidden />

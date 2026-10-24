@@ -153,7 +153,7 @@ function UpkeepItem({
 
   const verb = t(VERBS[row.kind]);
   const buttonClass = cn(
-    'relative h-[34px] rounded-[9px] px-[11px] text-m-sub font-semibold after:absolute after:inset-x-0 after:-inset-y-[5px] after:content-[""]'
+    'relative h-auto min-h-[34px] rounded-[9px] px-[11px] py-1 text-m-sub font-semibold after:absolute after:inset-x-0 after:-inset-y-[5px] after:content-[""]'
   );
   const variant = primary ? 'default' : 'secondary';
 
@@ -192,7 +192,10 @@ function UpkeepItem({
         <Icon strokeWidth={1.75} />
       </span>
       <div className="min-w-0">
-        <div id={titleId} className="text-[14px] font-semibold tracking-[-0.01em] text-ink">
+        <div
+          id={titleId}
+          className="text-[length:calc(14px*var(--m-text-k))] font-semibold tracking-[-0.01em] text-ink"
+        >
           {t(row.title.key, row.title.params)}
         </div>
         {sub && <div className="mt-px truncate text-m-sub text-ink-4">{sub}</div>}

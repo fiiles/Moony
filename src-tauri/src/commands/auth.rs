@@ -150,7 +150,7 @@ pub async fn confirm_setup(
         exclude_personal_real_estate: None,
     };
 
-    pending.confirm(|prepared| {
+    let profile = pending.confirm(|prepared| {
         auth::confirm_setup(
             &db,
             &session,
@@ -159,7 +159,11 @@ pub async fn confirm_setup(
             &data.password,
             prepared,
         )
-    })
+    })?;
+    // The folder was (re)created for the new profile: keep it out of device backups (phone only).
+    #[cfg(mobile)]
+    crate::commands::device_backup::exclude_data_dir(&app).await;
+    Ok(profile)
 }
 
 /// Unlock existing account

@@ -34,7 +34,7 @@ export function ChangeLine({ change, currency, options, trail, className }: Chan
       {ratio !== null && (
         <span
           className={cn(
-            'inline-flex h-[18px] flex-none items-center rounded-r1 px-1.5 text-m-caption font-semibold leading-none',
+            'inline-flex min-h-[18px] flex-none items-center rounded-r1 px-1.5 py-0.5 text-m-caption font-semibold leading-none',
             up ? 'bg-gain-soft text-gain' : down ? 'bg-loss-soft text-loss' : 'bg-well-2 text-ink-2'
           )}
         >

@@ -545,6 +545,9 @@
       "title": "应用语言",
       "lead": "数字和日期按所选语言格式化。"
     },
+    "appearance": {
+      "lead": "「跟随系统」会沿用手机的浅色或深色外观。"
+    },
     "delete": {
       "title": "删除所有数据？",
       "lead": "将永久删除这部手机上的数据库、密钥和附件。手机之外的备份副本会保留。请先创建备份——这是恢复数据的唯一途径。",
@@ -564,7 +567,7 @@
     "restoreTitle": "恢复与迁移",
     "restoreLead": "恢复这部手机上的备份，或从电脑上的 Moony 迁移个人资料：选择备份文件，恢复后请使用创建备份时的密码解锁。",
     "restoreConfirmDescription": "创建于 {{date}} 的备份（Moony {{version}}，{{attachments}} 个附件，{{size}}）将替换这部手机上的数据。如需保留当前数据，请先备份。之后 Moony 会锁定；请使用创建该备份时的密码解锁。",
-    "osBackupNote": "加密的个人资料也包含在手机自身的备份中（iCloud 或电脑）；没有密码，任何人都无法打开。"
+    "osBackupNote": "个人资料不会保存到手机自身的备份中（iCloud 或电脑）。您自己保存的 Moony 备份是手机之外的唯一副本。"
   },
   "firstRun": {
     "privacyLead": "Moony 将所有内容存放在这部手机上的加密数据库中。没有云端，也无需在我们这里注册账户。",
@@ -593,7 +596,7 @@
       "backup": "备份"
     },
     "backupTitle": "备份您的数据",
-    "backupLead": "这部手机上保存着您数据的唯一副本。请将加密备份保存到 iCloud Drive 或您选择的文件夹；Moony 永远看不到它。",
+    "backupLead": "这部手机上保存着您数据的唯一副本，它不在手机自身的备份（iCloud 或电脑）中。请将加密备份保存到 iCloud Drive 或您选择的文件夹；Moony 永远看不到它。",
     "currencyPick": "主货币",
     "countryPick": "银行所在国家",
     "searchCurrency": "搜索货币"

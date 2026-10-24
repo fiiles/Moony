@@ -54,7 +54,7 @@ export function CashflowAccountsSheet({
       description={tr('readiness.accountScopeHelp')}
       footer={
         <Button
-          className="h-12 flex-1 rounded-[10px] text-m-row"
+          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
           disabled={draft.size === 0}
           onClick={() => onDone([...draft])}
         >
@@ -64,7 +64,7 @@ export function CashflowAccountsSheet({
     >
       <Button
         variant="ghost"
-        className="relative mb-1 h-[34px] rounded-[9px] px-3 text-m-sub font-semibold after:absolute after:inset-x-0 after:-inset-y-[5px] after:content-['']"
+        className="relative mb-1 h-auto min-h-[34px] rounded-[9px] px-3 py-1 text-m-sub font-semibold after:absolute after:inset-x-0 after:-inset-y-[5px] after:content-['']"
         onClick={() => setDraft(new Set(accounts.map((account) => account.id)))}
       >
         {tr('readiness.allAccounts')}

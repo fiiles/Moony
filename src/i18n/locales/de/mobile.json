@@ -572,6 +572,9 @@
       "title": "App-Sprache",
       "lead": "Zahlen und Datumsangaben richten sich nach der Sprache."
     },
+    "appearance": {
+      "lead": "System folgt dem hellen oder dunklen Erscheinungsbild des Telefons."
+    },
     "delete": {
       "title": "Alle Daten löschen?",
       "lead": "Löscht die Datenbank, die Schlüssel und die Anhänge auf diesem Telefon dauerhaft. Sicherungskopien außerhalb des Telefons bleiben erhalten. Erstellen Sie zuerst eine Sicherung — sie ist der einzige Weg zurück.",
@@ -591,7 +594,7 @@
     "restoreTitle": "Wiederherstellung und Übertragung",
     "restoreLead": "Stellen Sie eine Sicherung von diesem Telefon wieder her oder übertragen Sie ein Profil aus Moony auf dem Computer: Wählen Sie die Sicherungsdatei aus und entsperren Sie nach der Wiederherstellung mit dem Passwort, das bei ihrer Erstellung galt.",
     "restoreConfirmDescription": "Die Sicherung vom {{date}} (Moony {{version}}, {{attachments}} Anhänge, {{size}}) ersetzt die Daten auf diesem Telefon. Sichern Sie zuerst, wenn Sie die aktuellen Daten behalten möchten. Danach sperrt sich Moony; entsperren Sie es mit dem Passwort, das beim Erstellen der Sicherung galt.",
-    "osBackupNote": "Das verschlüsselte Profil ist auch in der Sicherung des Telefons (iCloud oder Computer) enthalten; ohne das Passwort kann es niemand öffnen."
+    "osBackupNote": "Das Profil wird nicht in der Sicherung des Telefons (iCloud oder Computer) gespeichert. Die Moony-Sicherung, die Sie selbst speichern, ist die einzige Kopie außerhalb des Telefons."
   },
   "firstRun": {
     "privacyLead": "Moony speichert alles in einer verschlüsselten Datenbank auf diesem Telefon. Keine Cloud, kein Konto bei uns.",
@@ -620,7 +623,7 @@
       "backup": "Sicherung"
     },
     "backupTitle": "Sichern Sie Ihre Daten",
-    "backupLead": "Dieses Telefon enthält die einzige Kopie Ihrer Daten. Speichern Sie eine verschlüsselte Sicherung in iCloud Drive oder in einem Ordner Ihrer Wahl; Moony sieht sie nie.",
+    "backupLead": "Dieses Telefon enthält die einzige Kopie Ihrer Daten; sie ist nicht in der Sicherung des Telefons (iCloud oder Computer) enthalten. Speichern Sie eine verschlüsselte Sicherung in iCloud Drive oder in einem Ordner Ihrer Wahl; Moony sieht sie nie.",
     "currencyPick": "Hauptwährung",
     "countryPick": "Land der Bank",
     "searchCurrency": "Währung suchen"

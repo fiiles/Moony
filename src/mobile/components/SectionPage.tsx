@@ -25,9 +25,7 @@ export function SectionPage({ title, lead, children }: SectionPageProps) {
       tabBar={false}
       leading={<NavTextButton label={tc('nav.settings')} onClick={back} chevron />}
     >
-      {lead && (
-        <p className="mx-0.5 mb-3.5 mt-1 text-[13px] font-450 leading-[1.4] text-ink-3">{lead}</p>
-      )}
+      {lead && <p className="mx-0.5 mb-3.5 mt-1 text-m-lead text-ink-3">{lead}</p>}
       {children}
     </Screen>
   );

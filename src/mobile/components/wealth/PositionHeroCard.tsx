@@ -169,7 +169,7 @@ export function PositionHeroCard({
         />
       )}
       {missing.length > 0 && (
-        <p className="mb-0 mt-2 text-micro text-loss" role="note">
+        <p className="mb-0 mt-2 text-m-note font-semibold text-loss" role="note">
           {ts('detail.chartFxMissing', { currencies: missing.join(', ') })}
         </p>
       )}

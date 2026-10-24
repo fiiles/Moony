@@ -6,6 +6,10 @@
 <title>Moony — mobilní vrstva design systému</title>
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="mobile.css">
+<script>
+  /* The theme is stamped before the first paint (`?theme=dark`), so nothing transitions from light to dark on load. */
+  document.documentElement.setAttribute("data-theme", new URLSearchParams(location.search).get("theme") === "dark" ? "dark" : "light");
+</script>
 <style>
   /* ===== Page chrome (not part of the contract; tokens only, like the contract) ===== */
   *, *::before, *::after { box-sizing: border-box; }
@@ -17,6 +21,8 @@
   .doc-head h1 { margin: 6px 0 8px; font-size: 26px; font-weight: 600; letter-spacing: -.05em; }
   .doc-head p, .part > p { margin: 0 0 8px; color: var(--ink-3); font-size: 14px; line-height: 1.55; }
   .doc-head code, .part code { font-family: ui-monospace, SF Mono, Menlo, monospace; font-size: 12px; color: var(--ink-2); }
+  .theme-seg { width: 220px; margin-top: 14px; }
+  .size-seg { width: 330px; margin-top: 10px; }
   .part { margin-top: 44px; }
   .part > h2 { margin: 0 0 6px; font-size: 20px; font-weight: 600; letter-spacing: -.04em; }
   .type { width: 100%; max-width: 760px; border-collapse: collapse; margin-top: 14px; }
@@ -83,22 +89,29 @@
     <p>Majetek přidává alokační pruh s legendou (<code>.m-abar</code>, <code>.m-legend</code>), řádek změny (<code>.m-change</code>), stránku třídy Akcie (podřádek, hero s legendou značek, nástrojová lišta s řazením, složený seznam) a detail pozice (přerušovaná čára „Vloženo“, dvojice tlačítek, dvě řady statistik, řádky obchodů se zábleskem, karta řádků štítek–hodnota).</p>
     <p>Ostatní aktivum přidává pod dvojici tlačítek plnošířkové sekundární (<code>.m-btn-pair--stack</code>), pole bez jednotky uvnitř (<code>.m-field__i--plain</code>: název, datum) a formulář se sbaleným řádkem „Weitere Angaben“ (<code>.m-disclose</code> mimo sheet transakce).</p>
     <p>Sledované přidává detail sledovaného tickeru: hero s přerušovanou čárou cíle (<code>cost</code>), dvojici Nastavit cíl · Koupit, statistiky dnes · cíl · od sledování a poznámky jako markdown v kartě <code>.m-notes</code> (nadpisy, seznamy, odkazy, kód, citace, tabulka; v úpravě prosté textové pole).</p>
+    <p>Přepínač Světlý / Tmavý (nebo klávesa <code>D</code>, nebo <code>?theme=dark</code> v adrese) přepíše <code>data-theme</code> na <code>&lt;html&gt;</code>: každý rámeček se vykreslí na tmavých tokenech z <code>tokens.css</code> a kontrola přetečení pod nimi proběhne znovu.</p>
+    <div class="m-seg theme-seg" id="theme-seg" role="group" aria-label="Motiv"><button class="m-seg__btn is-active" type="button" data-value="light" aria-pressed="true">Světlý</button><button class="m-seg__btn" type="button" data-value="dark" aria-pressed="false">Tmavý</button></div>
+    <p style="margin-top: 14px">Přepínač Velikosti písma (nebo <code>?size=130</code> / <code>?size=max</code> v adrese) nastaví <code>--m-type-scale</code> na <code>&lt;html&gt;</code> na 1 / 1,3 / 3,1 (nejvyšší nastavení iOS „Přístupnost“: 53 pt tělo z 17). Textové role rostou nejvýš na 130 %, display a hodnoty statistik nejvýš na 110 %, tab bar a osy grafů zůstávají; řádky se zvětšují, nic nesmí přetéct do šířky a kontrola pod rámečky proběhne znovu.</p>
+    <div class="m-seg size-seg" id="size-seg" role="group" aria-label="Velikost písma"><button class="m-seg__btn is-active" type="button" data-value="1" aria-pressed="true">100 %</button><button class="m-seg__btn" type="button" data-value="1.3" aria-pressed="false">130 %</button><button class="m-seg__btn" type="button" data-value="3.1" aria-pressed="false">Největší</button></div>
   </header>
 
   <section class="part">
     <h2>Typografie telefonu</h2>
-    <p>Inter Variable, tabulková čísla. Role mají vlastní tokeny <code>--m-fs-*</code>, <code>--m-fw-*</code>, <code>--m-ls-*</code> a v Tailwindu jména <code>text-m-*</code>.</p>
+    <p>Inter Variable, tabulková čísla. Role mají vlastní tokeny <code>--m-fs-*</code>, <code>--m-fw-*</code>, <code>--m-ls-*</code> a v Tailwindu jména <code>text-m-*</code>. Velikosti jsou návrhové (při výchozí velikosti textu iOS); s nastavením systému rostou: textové role do 130 %, display a hodnota statistiky do 110 % (Dynamic Type, README §13).</p>
     <table class="type" lang="de">
-      <tr><td class="m-t-display">4&nbsp;356&nbsp;920 Kč</td><td><code>m-display · 36 / 580 / −0.06em</code></td></tr>
-      <tr><td class="m-t-title-lg">Übersicht</td><td><code>m-title-lg · 30 / 600 / −0.05em</code></td></tr>
-      <tr><td class="m-t-title">Girokonto</td><td><code>m-title · 20 / 650 / −0.04em</code></td></tr>
-      <tr><td class="m-t-section">Was ansteht</td><td><code>m-section · 16 / 620 / −0.03em</code></td></tr>
-      <tr><td class="m-t-stat">214&nbsp;380 Kč</td><td><code>m-stat · 17 / 600 / −0.03em</code></td></tr>
-      <tr><td class="m-t-row">Sparkonto</td><td><code>m-row · 15 / 600 / −0.01em</code></td></tr>
-      <tr><td class="m-t-body">Drei Salden sind älter als einen Monat.</td><td><code>m-body · 15 / 450, řádek 1.45</code></td></tr>
-      <tr><td class="m-t-sub">Fio · CZK · Auszug 10. 10.</td><td><code>m-sub · 12 / 500 (podřádek, štítek)</code></td></tr>
-      <tr><td class="m-t-caption">zuletzt aktualisiert 9:41</td><td><code>m-caption · 11 / 500, ink-3</code></td></tr>
-      <tr><td class="m-t-eyebrow">Heute</td><td><code>eyebrow · 10 / 700 / +0.12em (desktopový token)</code></td></tr>
+      <tr><td class="m-t-display">4&nbsp;356&nbsp;920 Kč</td><td><code>m-display · 36 / 580 / −0.06em · do 110 %</code></td></tr>
+      <tr><td class="m-t-title-lg">Übersicht</td><td><code>m-title-lg · 30 / 600 / −0.05em · do 130 %</code></td></tr>
+      <tr><td class="m-t-title">Girokonto</td><td><code>m-title · 20 / 650 / −0.04em · do 130 %</code></td></tr>
+      <tr><td class="m-t-section">Was ansteht</td><td><code>m-section · 16 / 620 / −0.03em · do 130 %</code></td></tr>
+      <tr><td class="m-t-stat">214&nbsp;380 Kč</td><td><code>m-stat · 17 / 600 / −0.03em · do 110 %</code></td></tr>
+      <tr><td class="m-t-row">Sparkonto</td><td><code>m-row · 15 / 600 / −0.01em · do 130 %</code></td></tr>
+      <tr><td class="m-t-body">Drei Salden sind älter als einen Monat.</td><td><code>m-body · 15 / 450, řádek 1.45 · do 130 %</code></td></tr>
+      <tr><td class="m-t-field">Girokonto Fio</td><td><code>m-field · max(16, m-body) / 450, řádek 1.3 · každé pole; nikdy pod 16 px, jinak iOS při zaostření přiblíží stránku</code></td></tr>
+      <tr><td class="m-t-lead">Ein Satz unter dem Titel.</td><td><code>m-lead · 13 / 450, řádek 1.4 · do 130 % (věta pod titulkem a sheetu, textové odkazy)</code></td></tr>
+      <tr><td class="m-t-sub">Fio · CZK · Auszug 10. 10.</td><td><code>m-sub · 12 / 500 · do 130 % (podřádek, štítek)</code></td></tr>
+      <tr><td class="m-t-caption">zuletzt aktualisiert 9:41</td><td><code>m-caption · 11 / 500, ink-3 · do 130 %</code></td></tr>
+      <tr><td class="m-t-note">noch 3 Tage</td><td><code>m-note · 10 / 500, řádek 1.3 · do 130 % (poznámka statistiky, podřádky pásu toků a agendy)</code></td></tr>
+      <tr><td class="m-t-eyebrow">Heute</td><td><code>eyebrow · 10 / 700 / +0.12em (desktopový token) · pevná</code></td></tr>
     </table>
   </section>
 
@@ -531,14 +544,14 @@
       </div>
       <div class="m-sec"><span class="m-sec__t">Was ansteht</span><span class="m-sec__a">Alle anzeigen (4)</span></div>
       <div class="m-rows">
-        <div class="m-swipe" style="--m-row-inset: 80px">
+        <div class="m-swipe" style="--m-row-inset: calc(26px + 54px * var(--m-text-k))">
           <div class="m-row m-row--date"><span class="m-dchip m-dchip--soon"><b>20. 10.</b><small>in 4 Tagen</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Hypothek Lipová</span></span><span class="m-row__line"><span class="m-row__s">Zinsbindung endet · Česká spořitelna</span></span></span></div>
         </div>
-        <div class="m-swipe" style="--m-row-inset: 80px">
+        <div class="m-swipe" style="--m-row-inset: calc(26px + 54px * var(--m-text-k))">
           <span class="m-swipe__panel m-swipe__panel--start" aria-hidden="true"><span data-icon="clock" data-size="18"></span>In einer Woche erinnern</span>
           <div class="m-row m-row--date" style="transform: translateX(98px)"><span class="m-dchip"><b>4. 11.</b><small>in 19 Tagen</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Lebensversicherung</span></span><span class="m-row__line"><span class="m-row__s">Kündigungsfrist · Kooperativa</span></span></span></div>
         </div>
-        <div class="m-swipe" style="--m-row-inset: 80px">
+        <div class="m-swipe" style="--m-row-inset: calc(26px + 54px * var(--m-text-k))">
           <div class="m-row m-row--date"><span class="m-dchip"><b>15. 11.</b><small>in 30 Tagen</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Revolut Sparkonto</span></span><span class="m-row__line"><span class="m-row__s">Aktionszins endet</span></span></span></div>
         </div>
       </div>
@@ -2025,13 +2038,13 @@ Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
       });
       var body = screen.querySelector(".m-screen__body");
       if (body.scrollWidth > body.clientWidth + 0.5) over.push("m-screen__body scrolls sideways");
-      /* Row heights: two-line rows at least 60 px, single-line rows exactly 52 px. */
+      /* Row heights: two-line rows at least 60 px, single-line rows at least 52 px (they grow with the text size). */
       var rows = [].slice.call(screen.querySelectorAll(".m-row")), badRows = [], singles = [];
       rows.forEach(function (row) {
         var h = Math.round(row.getBoundingClientRect().height * 10) / 10;
         var single = row.classList.contains("m-row--single");
         if (single) singles.push(h);
-        if (single ? Math.abs(h - 52) > 0.5 : h < 59.5) badRows.push(row.querySelector(".m-row__t").textContent + " " + h + " px");
+        if (single ? h < 51.5 : h < 59.5) badRows.push(row.querySelector(".m-row__t").textContent + " " + h + " px");
       });
       var width = Math.round(edge.width);
       out.className = "frame__check " + (over.length || badRows.length ? "is-bad" : "is-ok");
@@ -2039,11 +2052,67 @@ Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
         (scrolls ? " · segment se posouvá: " + scrolls : "") +
         (strips ? " · pás toků se posouvá: " + strips : "") +
         (rows.length ? " · řádky " + rows.length + (badRows.length ? ", špatná výška: " + badRows.join(" | ") : ", výšky v pořádku") +
-          (singles.length ? " (jednořádkové " + singles.join(", ") + " px)" : "") : "") +
+          (singles.length ? " (jednořádkové " + singles.join(", ") + " px, nejméně 52)" : "") : "") +
         " · zkráceno výpustkou: " + (cut.length ? cut.join(" | ") : "nic");
     });
   }
   document.querySelectorAll(".m-flows").forEach(function (strip) { strip.scrollLeft = strip.scrollWidth; });
+
+  /* Theme switch (the style guide's pattern): Světlý / Tmavý in the doc head, `?theme=dark` in the URL, key D.
+     It stamps `data-theme` on <html>, which switches the token block; the overflow check runs again after it. */
+  function setTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    document.querySelectorAll("#theme-seg .m-seg__btn").forEach(function (b) {
+      var on = b.getAttribute("data-value") === t;
+      b.classList.toggle("is-active", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+  function applyTheme(t) {
+    setTheme(t);
+    try { history.replaceState(null, "", currentQuery() + location.hash); } catch (err) {}
+    check();
+  }
+  document.getElementById("theme-seg").addEventListener("click", function (e) {
+    var b = e.target.closest(".m-seg__btn");
+    if (b) applyTheme(b.getAttribute("data-value"));
+  });
+  document.addEventListener("keydown", function (e) {
+    if ((e.key === "d" || e.key === "D") && !e.metaKey && !e.ctrlKey && !e.altKey && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
+  });
+  setTheme(new URLSearchParams(location.search).get("theme") === "dark" ? "dark" : "light");
+
+  /* Text-size switch (Dynamic Type): 100 % / 130 % / Největší set the raw factor `--m-type-scale` on <html>, as the app's
+     probe does from iOS's body size (17 px = 1; the largest accessibility setting, 53 px, is 3.1). The text roles
+     clamp it to 130 %, display and stat values to 110 % (`--m-text-k`, `--m-value-k`), so 130 % and Největší look
+     alike for the roles; the check runs again after it. `?size=130` / `?size=max` stamps it from the URL. */
+  var SIZE_PARAM = { "1": null, "1.3": "130", "3.1": "max" };
+  function setSize(v) {
+    document.documentElement.style.setProperty("--m-type-scale", v);
+    document.querySelectorAll("#size-seg .m-seg__btn").forEach(function (b) {
+      var on = b.getAttribute("data-value") === v;
+      b.classList.toggle("is-active", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+  function currentQuery() {
+    var q = [], size = SIZE_PARAM[document.documentElement.style.getPropertyValue("--m-type-scale")] || null;
+    q.push("theme=" + document.documentElement.getAttribute("data-theme"));
+    if (size) q.push("size=" + size);
+    return "?" + q.join("&");
+  }
+  function applySize(v) {
+    setSize(v);
+    try { history.replaceState(null, "", currentQuery() + location.hash); } catch (err) {}
+    check();
+  }
+  document.getElementById("size-seg").addEventListener("click", function (e) {
+    var b = e.target.closest(".m-seg__btn");
+    if (b) applySize(b.getAttribute("data-value"));
+  });
+  var sizeParam = new URLSearchParams(location.search).get("size");
+  setSize(sizeParam === "max" ? "3.1" : sizeParam === "130" ? "1.3" : "1");
+
   check();
   window.addEventListener("resize", check);
   if (document.fonts) document.fonts.ready.then(check);

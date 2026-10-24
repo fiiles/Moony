@@ -572,6 +572,9 @@
       "title": "Appens språk",
       "lead": "Siffror och datum följer språket."
     },
+    "appearance": {
+      "lead": "System följer telefonens ljusa eller mörka utseende."
+    },
     "delete": {
       "title": "Radera alla data?",
       "lead": "Raderar databasen, nycklarna och bilagorna på den här telefonen för gott. Säkerhetskopior utanför telefonen finns kvar. Gör en säkerhetskopia först — det är den enda vägen tillbaka.",
@@ -591,7 +594,7 @@
     "restoreTitle": "Återställning och överföring",
     "restoreLead": "Återställ en säkerhetskopia från den här telefonen eller överför en profil från Moony på datorn: välj säkerhetskopians fil och lås upp efter återställningen med det lösenord som gällde när den skapades.",
     "restoreConfirmDescription": "Säkerhetskopian från {{date}} (Moony {{version}}, {{attachments}} bilagor, {{size}}) ersätter data på den här telefonen. Säkerhetskopiera först om du vill behålla dina nuvarande data. Moony låses därefter; lås upp med det lösenord som gällde när säkerhetskopian skapades.",
-    "osBackupNote": "Den krypterade profilen finns också i telefonens egen säkerhetskopia (iCloud eller dator); utan lösenordet kan ingen öppna den."
+    "osBackupNote": "Profilen sparas inte i telefonens egen säkerhetskopia (iCloud eller dator). Moony-säkerhetskopian som du själv sparar är den enda kopian utanför telefonen."
   },
   "firstRun": {
     "privacyLead": "Moony lagrar allt i en krypterad databas på den här telefonen. Inget moln, inget konto hos oss.",
@@ -620,7 +623,7 @@
       "backup": "Säkerhetskopia"
     },
     "backupTitle": "Säkerhetskopiera dina data",
-    "backupLead": "Den här telefonen har den enda kopian av dina data. Spara en krypterad säkerhetskopia i iCloud Drive eller i en mapp du väljer; Moony ser den aldrig.",
+    "backupLead": "Den här telefonen har den enda kopian av dina data, och den finns inte med i telefonens egen säkerhetskopia (iCloud eller dator). Spara en krypterad säkerhetskopia i iCloud Drive eller i en mapp du väljer; Moony ser den aldrig.",
     "currencyPick": "Huvudvaluta",
     "countryPick": "Land för bank",
     "searchCurrency": "Sök valuta"

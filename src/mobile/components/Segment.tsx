@@ -34,7 +34,7 @@ export function Segment<T extends string>({
       }}
       aria-label={label}
       className={cn(
-        'flex h-9 max-w-full gap-px overflow-x-auto rounded-r2 bg-well-2 p-[3px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
+        'flex min-h-9 max-w-full gap-px overflow-x-auto rounded-r2 bg-well-2 p-[3px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden',
         className
       )}
     >
@@ -42,7 +42,7 @@ export function Segment<T extends string>({
         <ToggleGroupPrimitive.Item
           key={option.value}
           value={option.value}
-          className="h-[30px] flex-[1_0_auto] whitespace-nowrap rounded-r1 px-1.5 text-m-caption font-semibold leading-none text-ink-3 transition-colors duration-fast data-[state=on]:bg-paper data-[state=on]:text-ink data-[state=on]:shadow-seg focus-visible:outline-none focus-visible:shadow-focus"
+          className="min-h-[30px] flex-[1_0_auto] whitespace-nowrap rounded-r1 px-1.5 py-1 text-m-caption font-semibold leading-none text-ink-3 transition-colors duration-fast data-[state=on]:bg-paper data-[state=on]:text-ink data-[state=on]:shadow-seg focus-visible:outline-none focus-visible:shadow-focus"
         >
           {option.label}
         </ToggleGroupPrimitive.Item>

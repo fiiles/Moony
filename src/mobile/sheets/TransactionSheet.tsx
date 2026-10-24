@@ -16,7 +16,7 @@ import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
 import { useDeleteDescription } from '@/mobile/hooks/use-delete-description';
-import { useFitText } from '@/mobile/hooks/use-fit-text';
+import { HERO_FLOOR, useFitText } from '@/mobile/hooks/use-fit-text';
 import { useLedgerMutations } from '@/mobile/hooks/use-ledger-mutations';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRetained } from '@/mobile/hooks/use-retained';
@@ -123,12 +123,15 @@ export function TransactionSheet({
           <>
             <Button
               variant="ghost"
-              className="h-12 rounded-[10px] px-[18px] text-m-row text-loss"
+              className="h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] px-[18px] text-m-row text-loss"
               onClick={() => setConfirmOpen(true)}
             >
               {tb('transaction.delete')}
             </Button>
-            <Button className="h-12 flex-1 rounded-[10px] text-m-row" onClick={close}>
+            <Button
+              className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
+              onClick={close}
+            >
               {t('transaction.done')}
             </Button>
           </>
@@ -233,7 +236,7 @@ function Amount({ tx }: { tx: BankTransaction }) {
         style={
           fit === null
             ? undefined
-            : { fontSize: `clamp(var(--m-fs-title), ${fit}px, var(--m-fs-display))` }
+            : { fontSize: `clamp(${HERO_FLOOR}, ${fit}px, var(--m-fs-display))` }
         }
       >
         <span>{text}</span>

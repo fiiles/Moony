@@ -11,7 +11,7 @@ interface PairButton {
 
 /** One button of the pair: 48 pt, radius 10, the label 13 px and allowed a second line. */
 const PAIR_BUTTON =
-  'h-12 min-w-0 whitespace-normal rounded-[10px] px-2.5 text-center text-[13px] font-semibold leading-tight hyphens-auto [&_svg]:size-4';
+  'h-auto min-h-12 min-w-0 whitespace-normal rounded-[10px] px-2.5 py-2 text-center text-m-lead font-semibold leading-tight hyphens-auto [&_svg]:size-4';
 
 /**
  * Two buttons sharing a row (README §13, `.m-btn-pair`): the account detail's "Zaznamenat

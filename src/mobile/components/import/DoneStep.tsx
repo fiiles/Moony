@@ -206,7 +206,10 @@ export function DoneStep({ result, accountId, fileName, onQueue, onShow }: DoneS
       </div>
 
       {facts.uncategorized > 0 && (
-        <Button className="mb-3.5 h-12 w-full rounded-[10px] text-m-row" onClick={onQueue}>
+        <Button
+          className="mb-3.5 h-auto min-h-12 whitespace-normal py-2 text-center w-full rounded-[10px] text-m-row"
+          onClick={onQueue}
+        >
           {t('import.done.queue', { count: facts.uncategorized })}
         </Button>
       )}

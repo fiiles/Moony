@@ -478,6 +478,10 @@
       "targetReached": "målet nådd",
       "dayChange": "i dag"
     },
+    "crypto": {
+      "largestNote": "{{share}} av krypto",
+      "heldNote": "{{date}} · {{share}}"
+    },
     "position": {
       "heroLabel": "Verdi av beholdningen · {{quantity}} {{unit}}",
       "perUnit": "{{price}} per stk.",

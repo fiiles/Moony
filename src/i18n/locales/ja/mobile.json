@@ -453,9 +453,13 @@
       "targetReached": "目標に到達",
       "dayChange": "本日"
     },
+    "crypto": {
+      "largestNote": "暗号資産の{{share}}",
+      "heldNote": "{{date}} · {{share}}"
+    },
     "position": {
       "heroLabel": "ポジションの評価額 · {{quantity}} {{unit}}",
-      "perUnit": "1株あたり {{price}}",
+      "perUnit": "1単位あたり {{price}}",
       "stats": {
         "value": "評価額",
         "inCurrency": "{{currency}}建て",

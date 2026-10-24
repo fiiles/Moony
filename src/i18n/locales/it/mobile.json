@@ -503,6 +503,10 @@
       "targetReached": "obiettivo raggiunto",
       "dayChange": "oggi"
     },
+    "crypto": {
+      "largestNote": "{{share}} delle cripto",
+      "heldNote": "{{date}} · {{share}}"
+    },
     "position": {
       "heroLabel": "Valore della posizione · {{quantity}} {{unit}}",
       "perUnit": "{{price}} per unità",

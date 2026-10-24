@@ -28,6 +28,8 @@ export const routes = {
   stocks: '/wealth/stocks',
   positionDetail: '/wealth/stocks/:id',
   cryptoList: '/wealth/crypto',
+  /** A coin of Krypto (`:id` is the position's id). */
+  cryptoDetail: '/wealth/crypto/:id',
   bondsList: '/wealth/bonds',
   otherAssetsList: '/wealth/other-assets',
   realEstateList: '/wealth/real-estate',
@@ -45,6 +47,7 @@ export const policyPath = (id: string) => `/finance/policies/${id}`;
 
 /** Paths of the details pushed on Majetek, for a `Link` or `setLocation`. */
 export const positionPath = (id: string) => `/wealth/stocks/${id}`;
+export const cryptoPath = (id: string) => `/wealth/crypto/${id}`;
 export const propertyPath = (id: string) => `/wealth/real-estate/${id}`;
 
 /** The pushed pages of Nastavení, in root order. */

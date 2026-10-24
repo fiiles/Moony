@@ -10,6 +10,8 @@ import Agenda from '@/mobile/pages/Agenda';
 import Budgets from '@/mobile/pages/Budgets';
 import Cashflow from '@/mobile/pages/Cashflow';
 import CashflowCategory from '@/mobile/pages/CashflowCategory';
+import Crypto from '@/mobile/pages/Crypto';
+import CryptoDetail from '@/mobile/pages/CryptoDetail';
 import Finance from '@/mobile/pages/Finance';
 import AccountDetail from '@/mobile/pages/finance/AccountDetail';
 import CategorizeQueue from '@/mobile/pages/finance/CategorizeQueue';
@@ -23,7 +25,6 @@ import Stocks from '@/mobile/pages/Stocks';
 import Wealth from '@/mobile/pages/Wealth';
 import {
   BondsPlaceholder,
-  CryptoPlaceholder,
   OtherAssetsPlaceholder,
   PropertyPlaceholder,
   RealEstatePlaceholder,
@@ -81,7 +82,9 @@ export function MobileShell() {
         {/* Pushed on Majetek: the Akcie class page and a position of it. */}
         <ProtectedRoute path={routes.stocks} component={Stocks} />
         <ProtectedRoute path={routes.positionDetail} component={PositionDetail} />
-        <ProtectedRoute path={routes.cryptoList} component={CryptoPlaceholder} />
+        {/* The Krypto class page and a coin of it. */}
+        <ProtectedRoute path={routes.cryptoList} component={Crypto} />
+        <ProtectedRoute path={routes.cryptoDetail} component={CryptoDetail} />
         <ProtectedRoute path={routes.bondsList} component={BondsPlaceholder} />
         <ProtectedRoute path={routes.otherAssetsList} component={OtherAssetsPlaceholder} />
         <ProtectedRoute path={routes.realEstateList} component={RealEstatePlaceholder} />

@@ -22,6 +22,8 @@ interface PositionLedgerProps<T extends LedgerTx> {
   ratesReady: boolean;
   /** What the quantity is counted in ("ks" for shares). */
   unit: string;
+  /** Decimals the quantity is written with (default 4; a coin is held to 8). */
+  quantityDigits?: number;
   /** The delete of a trade (the position's own mutation); the confirm sheet runs it. */
   deleteTransaction: {
     mutate: (id: string, opts: { onSuccess: () => void }) => void;
@@ -45,6 +47,7 @@ export function PositionLedger<T extends LedgerTx>({
   convertAt,
   ratesReady,
   unit,
+  quantityDigits = 4,
   deleteTransaction,
   onEdit,
 }: PositionLedgerProps<T>) {
@@ -65,7 +68,7 @@ export function PositionLedger<T extends LedgerTx>({
     ? ts('detail.confirmDeleteTransaction.description', {
         type: (pendingDelete.type === 'buy' ? tc('buttons.buy') : tc('buttons.sell')).toLowerCase(),
         quantity: fmt.number(parseFloat(pendingDelete.quantity) || 0, {
-          maximumFractionDigits: 4,
+          maximumFractionDigits: quantityDigits,
         }),
         ticker: pendingDelete.ticker,
         date: fmt.day(pendingDelete.transactionDate),
@@ -94,6 +97,7 @@ export function PositionLedger<T extends LedgerTx>({
               key={tx.id}
               tx={tx}
               unit={unit}
+              quantityDigits={quantityDigits}
               currency={currency}
               convertAt={convertAt}
               ratesReady={ratesReady}

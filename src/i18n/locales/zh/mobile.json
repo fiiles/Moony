@@ -453,9 +453,13 @@
       "targetReached": "已达目标价",
       "dayChange": "今日"
     },
+    "crypto": {
+      "largestNote": "占加密货币 {{share}}",
+      "heldNote": "{{date}} · {{share}}"
+    },
     "position": {
       "heroLabel": "持仓价值 · {{quantity}} {{unit}}",
-      "perUnit": "每股 {{price}}",
+      "perUnit": "每单位 {{price}}",
       "stats": {
         "value": "价值",
         "inCurrency": "以 {{currency}} 计",

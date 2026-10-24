@@ -19,6 +19,8 @@ interface TradeRowProps<T extends LedgerTx> {
   tx: T;
   /** What the quantity is counted in ("ks" for shares). */
   unit: string;
+  /** Decimals the quantity is written with (default 4; a coin is held to 8). */
+  quantityDigits?: number;
   /** The report currency the value is converted into. */
   currency: string;
   /** Converts at the rates of the trade's own day; `null` without a rate and until `ratesReady`. */
@@ -42,6 +44,7 @@ interface TradeRowProps<T extends LedgerTx> {
 export function TradeRow<T extends LedgerTx>({
   tx,
   unit,
+  quantityDigits = 4,
   currency,
   convertAt,
   ratesReady,
@@ -79,7 +82,7 @@ export function TradeRow<T extends LedgerTx>({
         </RowChip>
       }
       title={t(`wealth.position.tx.${sell ? 'sell' : 'buy'}`, {
-        quantity: fmt.number(quantity, { maximumFractionDigits: 4 }),
+        quantity: fmt.number(quantity, { maximumFractionDigits: quantityDigits }),
         unit,
       })}
       sub={`${fmt.day(tx.transactionDate)} · ${moneyText(price, txCurrency, {

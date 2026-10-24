@@ -256,6 +256,32 @@
       "delete": "Löschen"
     }
   },
+  "loan": {
+    "nextPayment": "Nächste Rate {{amount}} · {{date}}",
+    "stats": {
+      "since": "seit {{month}}",
+      "extra": "Sonderzahlung {{amount}}",
+      "until": "bis {{month}}",
+      "noFixation": "ohne Zinsbindung"
+    },
+    "alerts": {
+      "fixationSoon_one": "Die Zinsbindung endet in {{count}} Tag. Sobald die Bank den neuen Zinssatz bestätigt, tragen Sie ihn ein — Rate und Plan werden neu berechnet.",
+      "fixationSoon_other": "Die Zinsbindung endet in {{count}} Tagen. Sobald die Bank den neuen Zinssatz bestätigt, tragen Sie ihn ein — Rate und Plan werden neu berechnet.",
+      "fixationToday": "Die Zinsbindung endet heute. Sobald die Bank den neuen Zinssatz bestätigt, tragen Sie ihn ein — Rate und Plan werden neu berechnet.",
+      "fixationPassed_one": "Die Zinsbindung endete vor {{count}} Tag. Tragen Sie den neuen Zinssatz ein, damit Rate und Plan neu berechnet werden.",
+      "fixationPassed_other": "Die Zinsbindung endete vor {{count}} Tagen. Tragen Sie den neuen Zinssatz ein, damit Rate und Plan neu berechnet werden."
+    },
+    "schedule": {
+      "left": "Rest {{amount}}",
+      "yearSub_one": "{{count}} Rate · Zinsen {{interest}}",
+      "yearSub_other": "{{count}} Raten · Zinsen {{interest}}",
+      "showAll_one": "Alle {{count}} anzeigen",
+      "showAll_other": "Alle {{count}} anzeigen"
+    },
+    "events": {
+      "menu": "Ereignismenü"
+    }
+  },
   "transaction": {
     "flowSaved": "Bedeutung gespeichert",
     "done": "Fertig",

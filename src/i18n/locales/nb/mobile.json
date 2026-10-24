@@ -256,6 +256,32 @@
       "delete": "Slett"
     }
   },
+  "loan": {
+    "nextPayment": "Neste termin {{amount}} · {{date}}",
+    "stats": {
+      "since": "siden {{month, lower}}",
+      "extra": "ekstra {{amount}}",
+      "until": "til {{month, lower}}",
+      "noFixation": "uten bindingstid"
+    },
+    "alerts": {
+      "fixationSoon_one": "Bindingstiden utløper om {{count}} dag. Når banken har bekreftet den nye renten, registrer den – terminen og planen beregnes på nytt.",
+      "fixationSoon_other": "Bindingstiden utløper om {{count}} dager. Når banken har bekreftet den nye renten, registrer den – terminen og planen beregnes på nytt.",
+      "fixationToday": "Bindingstiden utløper i dag. Når banken har bekreftet den nye renten, registrer den – terminen og planen beregnes på nytt.",
+      "fixationPassed_one": "Bindingstiden utløp for {{count}} dag siden. Registrer den nye renten, så terminen og planen beregnes på nytt.",
+      "fixationPassed_other": "Bindingstiden utløp for {{count}} dager siden. Registrer den nye renten, så terminen og planen beregnes på nytt."
+    },
+    "schedule": {
+      "left": "{{amount}} igjen",
+      "yearSub_one": "{{count}} termin · renter {{interest}}",
+      "yearSub_other": "{{count}} terminer · renter {{interest}}",
+      "showAll_one": "Vis {{count}}",
+      "showAll_other": "Vis alle {{count}}"
+    },
+    "events": {
+      "menu": "Hendelsesmeny"
+    }
+  },
   "transaction": {
     "flowSaved": "Betydning lagret",
     "done": "Ferdig",

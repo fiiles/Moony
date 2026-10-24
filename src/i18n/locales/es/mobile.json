@@ -273,6 +273,36 @@
       "delete": "Eliminar"
     }
   },
+  "loan": {
+    "nextPayment": "Próxima cuota {{amount}} · {{date}}",
+    "stats": {
+      "since": "desde {{month, lower}}",
+      "extra": "extra {{amount}}",
+      "until": "hasta {{month, lower}}",
+      "noFixation": "sin tipo fijo"
+    },
+    "alerts": {
+      "fixationSoon_one": "El tipo fijo termina en {{count}} día. Cuando el banco confirme el nuevo tipo, regístralo: la cuota y el plan se recalcularán.",
+      "fixationSoon_many": "El tipo fijo termina en {{count}} días. Cuando el banco confirme el nuevo tipo, regístralo: la cuota y el plan se recalcularán.",
+      "fixationSoon_other": "El tipo fijo termina en {{count}} días. Cuando el banco confirme el nuevo tipo, regístralo: la cuota y el plan se recalcularán.",
+      "fixationToday": "El tipo fijo termina hoy. Cuando el banco confirme el nuevo tipo, regístralo: la cuota y el plan se recalcularán.",
+      "fixationPassed_one": "El tipo fijo terminó hace {{count}} día. Registra el nuevo tipo para que la cuota y el plan se recalculen.",
+      "fixationPassed_many": "El tipo fijo terminó hace {{count}} días. Registra el nuevo tipo para que la cuota y el plan se recalculen.",
+      "fixationPassed_other": "El tipo fijo terminó hace {{count}} días. Registra el nuevo tipo para que la cuota y el plan se recalculen."
+    },
+    "schedule": {
+      "left": "quedan {{amount}}",
+      "yearSub_one": "{{count}} cuota · intereses {{interest}}",
+      "yearSub_many": "{{count}} cuotas · intereses {{interest}}",
+      "yearSub_other": "{{count}} cuotas · intereses {{interest}}",
+      "showAll_one": "Mostrar todas ({{count}})",
+      "showAll_many": "Mostrar todas ({{count}})",
+      "showAll_other": "Mostrar todas ({{count}})"
+    },
+    "events": {
+      "menu": "Menú del evento"
+    }
+  },
   "transaction": {
     "flowSaved": "Significado guardado",
     "done": "Listo",

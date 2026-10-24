@@ -273,6 +273,36 @@
       "delete": "Smazat"
     }
   },
+  "loan": {
+    "nextPayment": "Příští splátka {{amount}} · {{date}}",
+    "stats": {
+      "since": "od {{month}}",
+      "extra": "mimořádně {{amount}}",
+      "until": "do {{month}}",
+      "noFixation": "bez fixace"
+    },
+    "alerts": {
+      "fixationSoon_one": "Fixace končí za {{count}} den. Až banka potvrdí novou sazbu, zapište ji — splátka a plán se přepočítají.",
+      "fixationSoon_few": "Fixace končí za {{count}} dny. Až banka potvrdí novou sazbu, zapište ji — splátka a plán se přepočítají.",
+      "fixationSoon_other": "Fixace končí za {{count}} dní. Až banka potvrdí novou sazbu, zapište ji — splátka a plán se přepočítají.",
+      "fixationToday": "Fixace končí dnes. Až banka potvrdí novou sazbu, zapište ji — splátka a plán se přepočítají.",
+      "fixationPassed_one": "Fixace skončila před {{count}} dnem. Zapište novou sazbu, aby se splátka a plán přepočítaly.",
+      "fixationPassed_few": "Fixace skončila před {{count}} dny. Zapište novou sazbu, aby se splátka a plán přepočítaly.",
+      "fixationPassed_other": "Fixace skončila před {{count}} dny. Zapište novou sazbu, aby se splátka a plán přepočítaly."
+    },
+    "schedule": {
+      "left": "zbývá {{amount}}",
+      "yearSub_one": "{{count}} splátka · úrok {{interest}}",
+      "yearSub_few": "{{count}} splátky · úrok {{interest}}",
+      "yearSub_other": "{{count}} splátek · úrok {{interest}}",
+      "showAll_one": "Zobrazit {{count}}",
+      "showAll_few": "Zobrazit všechny {{count}}",
+      "showAll_other": "Zobrazit všech {{count}}"
+    },
+    "events": {
+      "menu": "Nabídka události"
+    }
+  },
   "transaction": {
     "flowSaved": "Význam uložen",
     "done": "Hotovo",

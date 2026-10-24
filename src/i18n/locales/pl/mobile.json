@@ -290,6 +290,40 @@
       "delete": "Usuń"
     }
   },
+  "loan": {
+    "nextPayment": "Następna rata {{amount}} · {{date}}",
+    "stats": {
+      "since": "od {{month, lower}}",
+      "extra": "nadpłaty {{amount}}",
+      "until": "do {{month, lower}}",
+      "noFixation": "bez stałej stopy"
+    },
+    "alerts": {
+      "fixationSoon_one": "Stała stopa kończy się za {{count}} dzień. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
+      "fixationSoon_few": "Stała stopa kończy się za {{count}} dni. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
+      "fixationSoon_many": "Stała stopa kończy się za {{count}} dni. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
+      "fixationSoon_other": "Stała stopa kończy się za {{count}} dnia. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
+      "fixationToday": "Stała stopa kończy się dzisiaj. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
+      "fixationPassed_one": "Stała stopa skończyła się {{count}} dzień temu. Zapisz nową stopę, aby rata i plan zostały przeliczone.",
+      "fixationPassed_few": "Stała stopa skończyła się {{count}} dni temu. Zapisz nową stopę, aby rata i plan zostały przeliczone.",
+      "fixationPassed_many": "Stała stopa skończyła się {{count}} dni temu. Zapisz nową stopę, aby rata i plan zostały przeliczone.",
+      "fixationPassed_other": "Stała stopa skończyła się {{count}} dnia temu. Zapisz nową stopę, aby rata i plan zostały przeliczone."
+    },
+    "schedule": {
+      "left": "zostaje {{amount}}",
+      "yearSub_one": "{{count}} rata · odsetki {{interest}}",
+      "yearSub_few": "{{count}} raty · odsetki {{interest}}",
+      "yearSub_many": "{{count}} rat · odsetki {{interest}}",
+      "yearSub_other": "{{count}} raty · odsetki {{interest}}",
+      "showAll_one": "Pokaż {{count}}",
+      "showAll_few": "Pokaż wszystkie {{count}}",
+      "showAll_many": "Pokaż wszystkie {{count}}",
+      "showAll_other": "Pokaż wszystkie {{count}}"
+    },
+    "events": {
+      "menu": "Menu zdarzenia"
+    }
+  },
   "transaction": {
     "flowSaved": "Znaczenie zapisane",
     "done": "Gotowe",

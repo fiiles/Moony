@@ -60,6 +60,11 @@
   .demo-chart .demo-chart__cost { fill: none; stroke: var(--chart-cost); stroke-width: 1.5; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
   .demo-legend .demo-legend__line { width: 14px; height: 2px; border-radius: 1px; background: var(--chart-line); }
   .demo-legend .demo-legend__dash { width: 14px; height: 2px; border-radius: 0; background: repeating-linear-gradient(90deg, var(--chart-cost) 0 3px, transparent 3px 5px); }
+  /* The loan hero's legend: the plan's dash in `chart-line` (the cost dash above is `chart-cost`), the extra
+     payment's ring in `gain` and the milestones' ring in `chart-line` (the app's `ChartLegend`, a desktop component). */
+  .demo-legend .demo-legend__plan { width: 14px; height: 2px; border-radius: 0; background: repeating-linear-gradient(90deg, var(--chart-line) 0 3px, transparent 3px 5px); }
+  .demo-legend .demo-legend__ring { width: 8px; height: 8px; border: 1.5px solid var(--chart-line); border-radius: 50%; background: var(--paper); }
+  .demo-legend .demo-legend__ring--gain { border-color: var(--gain); }
   .demo-stack { display: grid; gap: 10px; margin-bottom: 14px; }
   .demo-inline { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
 
@@ -241,6 +246,13 @@
     <h2>Detail pozice: hodnota, vloženo a obchody</h2>
     <p>Pozice otevřená z Akcií na 360, 390 a 430: zpět s názvem rodiče, ticker jako jediný titulek a podřádek <code>.m-nav__sub</code> (název a měna); hero s grafem, jehož přerušovaná čára „Vloženo“ (<code>cost</code>, 1,5 pt, <code>chart-cost</code>) a značky nákupu a prodeje mají legendu; dvojice tlačítek Koupit · Prodat (<code>.m-btn-pair</code>); dvě řady po třech statistikách (hodnota v měně akcie, cena, vloženo; nerealizovaný a realizovaný výsledek, dividendy), jeden výsledek v <code>--gain</code>. Transakce jsou segment Vše · Nákupy · Prodeje a řádky obchodů: nákup s „−“, prodej v <code>gain</code> s „+“ a součtem v původní měně pod částkou; druhý řádek ukazuje záblesk <code>.m-row--flash.is-hot</code>, který po klepnutí na značku v grafu naskočí a za 1,2 s odezní. Poslední řádek <code>.m-rows__more</code> rozbalí zbytek, na konci je karta <code>.m-kvcard</code> z řádků <code>.m-kv</code> („Über den Fonds“).</p>
     <div class="phones" id="position"></div>
+  </section>
+
+  <section class="part">
+    <h2>Detail úvěru: skutečnost, plán a splátky</h2>
+    <p>Úvěr otevřený z Finance na 360, 390 a 430 (spec §8.8, prototyp 13): zpět s názvem záložky, název úvěru jako titulek a podřádek <code>.m-nav__sub</code> (měna · sazba · fixace); hero se zůstatkem, jehož poznámka „Nächste Rate …“ stojí na místě řádku změny, segment Bisher · 5 Jahre · Bis zur Tilgung a schodová čára zůstatku, plná do dneška a dál přerušovaná jako plán (<code>.m-chart__projected</code>, 1,5 pt, bez plochy pod ní) s legendou značek; pod heroem varování jako inline alerty (<code>.m-alert</code>: fixace končí s akcí „Zinsänderung erfassen“ a klidná poznámka <code>--muted</code>, že ručně zadaný zůstatek platí); dvě řady po dvou statistikách, hlavní tlačítko přes celou šířku, splátky jako řádky bez čipu (den, „Zinsen · Tilgung“, splátka a zbývá) složené po čtyřech za <code>.m-rows__more</code> a události s datovými čipy (<code>.m-dchip</code>: den a rok), poslední je čerpání. Pod rámečky je sheet mimořádné splátky: pole částky, segment Zkrátit dobu · Snížit splátku a živý výsledek (<code>.m-result</code>).</p>
+    <div class="phones" id="loan"></div>
+    <div class="phones" id="extra" style="margin-top: 26px"></div>
   </section>
 
   <section class="part">
@@ -474,6 +486,88 @@
       </div>
     </main>
     <nav class="m-tabbar" data-active="wealth"></nav>
+  </div>
+</template>
+
+<!-- The loan detail frame (a loan pushed on Finance), rendered at the three widths. -->
+<template id="loan-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Hypothek Lipová</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">CZK · 3,10 % · fester Zins bis 10/2026</p>
+      <div class="m-card m-card--hero">
+        <div class="m-hero__label">Restschuld</div>
+        <div class="m-hero__value">2&nbsp;418&nbsp;760 Kč</div>
+        <div class="m-hero__delta"><span>Nächste Rate 12&nbsp;340 Kč · 20. 10.</span></div>
+        <div class="m-hero__seg"><div class="m-seg"><button class="m-seg__btn" type="button">Bisher</button><button class="m-seg__btn is-active" type="button">5 Jahre</button><button class="m-seg__btn" type="button">Bis zur Tilgung</button></div></div>
+        <svg class="m-hero__chart demo-chart" data-chart="loan"></svg>
+        <div class="demo-legend">
+          <span><i class="demo-legend__line"></i>Saldo</span>
+          <span><i class="demo-legend__plan"></i>Nach Plan</span>
+          <span><svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true"><polygon points="5,0 10,10 0,10" fill="var(--chart-line)"/></svg>Auszahlung</span>
+          <span><i class="demo-legend__ring demo-legend__ring--gain"></i>Sondertilgung</span>
+          <span><i class="demo-legend__ring"></i>Zinsbindung und Meilensteine</span>
+        </div>
+      </div>
+      <div class="m-alert" role="alert" data-icon="calendar-clock" data-size="15"><div><p class="m-alert__t">Die Zinsbindung endet in 4 Tagen. Sobald die Bank den neuen Zinssatz bestätigt, tragen Sie ihn ein — Rate und Plan werden neu berechnet.</p><button class="m-alert__act" type="button">Zinsänderung erfassen</button></div></div>
+      <div class="m-alert m-alert--muted" role="note" data-icon="info" data-size="15"><div><p class="m-alert__t">Manuell eingegebener Saldo 2&nbsp;400&nbsp;000 Kč zum 3. 3. 2026 — er gilt, bis Sie ihn ändern.</p></div></div>
+      <div class="m-stats m-stats--2" style="margin-bottom: 10px">
+        <div class="m-stat"><div class="m-stat__l">Gezahlte Zinsen</div><div class="m-stat__v">412&nbsp;300 Kč</div><div class="m-stat__n">seit 5/2019</div></div>
+        <div class="m-stat"><div class="m-stat__l">Getilgt</div><div class="m-stat__v">686&nbsp;880 Kč</div><div class="m-stat__n">21 % · Sonderzahlung 50&nbsp;000 Kč</div></div>
+      </div>
+      <div class="m-stats m-stats--2">
+        <div class="m-stat"><div class="m-stat__l">Verbleibende Raten</div><div class="m-stat__v">287</div><div class="m-stat__n">bis 3/2050</div></div>
+        <div class="m-stat"><div class="m-stat__l">Ende der Zinsbindung</div><div class="m-stat__v">10/2026</div><div class="m-stat__n">noch 4 Tage · bei 4 % Rate 13&nbsp;880 Kč, bei 2 % 12&nbsp;110 Kč</div></div>
+      </div>
+      <button class="m-btn m-btn--primary m-btn--block" type="button"><span>Sondertilgung</span></button>
+      <div class="m-sec"><span class="m-sec__t">Tilgungsplan</span></div>
+      <div class="m-seg" style="margin-bottom: 8px"><button class="m-seg__btn is-active" type="button">Nächste 12</button><button class="m-seg__btn" type="button">Nach Jahr</button></div>
+      <div class="m-rows">
+        <div class="m-row m-row--noicon"><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">20. 10. 2026</span><span class="m-row__v">12&nbsp;340 Kč</span></span><span class="m-row__line"><span class="m-row__s">Zinsen 6&nbsp;270 Kč · Tilgung 5&nbsp;600 Kč</span><span class="m-row__vs">Rest 2&nbsp;413&nbsp;160 Kč</span></span></span></div>
+        <div class="m-row m-row--noicon"><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">20. 11. 2026</span><span class="m-row__v">12&nbsp;340 Kč</span></span><span class="m-row__line"><span class="m-row__s">Zinsen 6&nbsp;256 Kč · Tilgung 5&nbsp;614 Kč</span><span class="m-row__vs">Rest 2&nbsp;407&nbsp;546 Kč</span></span></span></div>
+        <div class="m-row m-row--noicon"><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">20. 12. 2026</span><span class="m-row__v">12&nbsp;340 Kč</span></span><span class="m-row__line"><span class="m-row__s">Zinsen 6&nbsp;243 Kč · Tilgung 5&nbsp;627 Kč</span><span class="m-row__vs">Rest 2&nbsp;401&nbsp;919 Kč</span></span></span></div>
+        <div class="m-row m-row--noicon"><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">20. 1. 2027</span><span class="m-row__v">12&nbsp;340 Kč</span></span><span class="m-row__line"><span class="m-row__s">Zinsen 6&nbsp;229 Kč · Tilgung 5&nbsp;641 Kč</span><span class="m-row__vs">Rest 2&nbsp;396&nbsp;278 Kč</span></span></span></div>
+        <button class="m-rows__more" type="button">Alle 12 anzeigen</button>
+      </div>
+      <div class="m-sec"><span class="m-sec__t">Ereignisse</span><span class="m-sec__n">3</span></div>
+      <div class="m-rows">
+        <div class="m-row m-row--date"><span class="m-dchip"><b>3. 3.</b><small>2026</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Manueller Saldo 2&nbsp;400&nbsp;000 Kč</span></span><span class="m-row__line"><span class="m-row__s">gilt, bis Sie ihn ändern</span></span></span></div>
+        <div class="m-row m-row--date"><span class="m-dchip"><b>15. 5.</b><small>2023</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Sonderzahlung 50&nbsp;000 Kč</span></span><span class="m-row__line"><span class="m-row__s">der Plan läuft vom reduzierten Saldo weiter</span></span></span></div>
+        <div class="m-row m-row--date"><span class="m-dchip"><b>15. 5.</b><small>2019</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Auszahlung 3&nbsp;100&nbsp;000 Kč</span></span><span class="m-row__line"><span class="m-row__s">Beginn des Kredits</span></span></span></div>
+      </div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+  </div>
+</template>
+
+<!-- The extra-payment sheet over the loan, at the three widths. -->
+<template id="extra-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Hypothek Lipová</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">CZK · 3,10 % · fester Zins bis 10/2026</p>
+      <div data-rows="accounts"></div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet" role="dialog" aria-modal="true" aria-label="Sondertilgung">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Sondertilgung</div><div class="m-sheet__s">Was sie mit Laufzeit und Zinsen machen würde</div></div>
+      <div class="m-sheet__body">
+        <div class="m-field"><label class="m-field__l">Betrag</label><div class="m-field__w"><input class="m-field__i" inputmode="decimal" value="120000"><span class="m-field__u">CZK</span></div><p class="m-field__h">Vergleichen Sie die beiden Optionen, die Banken anbieten.</p></div>
+        <div class="m-seg" style="margin: 4px 0 12px"><button class="m-seg__btn is-active" type="button">Laufzeit verkürzen</button><button class="m-seg__btn" type="button">Rate senken</button></div>
+        <div class="m-result" aria-live="polite"><span class="m-result__v">24 Monate früher getilgt</span><span class="m-result__n">Sie sparen 98&nbsp;400 Kč an Zinsen · die Rate bleibt 12&nbsp;340 Kč · Ende 10/2047</span></div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary" type="button"><span>Als erfolgt erfassen</span></button></div>
+    </div>
   </div>
 </template>
 
@@ -1299,6 +1393,7 @@
     "layers": '<path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"/><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"/><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"/>',
     "shopping-cart": '<path d="m2.05 2.05 1.099-.028a1 1 0 0 1 1.008.815l2.69 14.347A1 1 0 0 0 7.83 18H18"/><path d="M4.563 5h16.435a1 1 0 0 1 .981 1.204l-1.026 6.226A2 2 0 0 1 18.962 14H6.25"/><circle cx="18" cy="20" r="2"/><circle cx="8" cy="20" r="2"/>',
     "triangle-alert": '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+    "calendar-clock": '<path d="M16 14v2.2l1.6 1"/><path d="M16 2v3"/><path d="M21 7.338V5a2 2 0 00-2-2H5a2 2 0 00-2 2v14a2 2 0 002 2h2.338"/><path d="M3 9h5.859"/><path d="M8 2v3"/><circle cx="16" cy="16" r="6"/>',
     "list": '<path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M3 6h.01"/><path d="M8 12h13"/><path d="M8 18h13"/><path d="M8 6h13"/>',
     "align-left": '<path d="M15 12H3"/><path d="M17 18H3"/><path d="M21 6H3"/>',
     "user": '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
@@ -1519,6 +1614,8 @@
   renderFrames("sheets", document.getElementById("sheet-frame"), " · sheet");
   renderFrames("txsheets", document.getElementById("tx-frame"), " · transakce");
   renderFrames("pickers", document.getElementById("picker-frame"), " · výběr kategorie");
+  renderFrames("loan", document.getElementById("loan-frame"), " · úvěr");
+  renderFrames("extra", document.getElementById("extra-frame"), " · mimořádná splátka");
 
   /* Flows strips: 12 months (Nov 2025 – Oct 2026) of incoming/outgoing values as "in,out|…", the
      bars scaled to the largest month, the newest selected, the strip scrolled to its end. */
@@ -1698,6 +1795,19 @@
   document.querySelectorAll("[data-chart]").forEach(function (svg) {
     var pts = [], n = 30, line;
     for (var i = 0; i <= n; i++) pts.push([i * 10, 112 - i * 2.1 - Math.sin(i / 2.3) * 9 - (i >= 19 ? 22 : 0)]);
+    if (svg.dataset.chart === "loan") {
+      /* A loan's balance, 12 months back to 60 ahead, a reading a month as a step line: solid up to today (the
+         sixth of the window), the plan dashed after it. Paying the principal off speeds up, so the line bends. */
+      var months = 72, today = 12, actual = "", plan = "";
+      for (var m = 0; m <= months; m++) {
+        var x = (m * 300 / months).toFixed(1), y = (38 + 88 * Math.pow(m / months, 1.6)).toFixed(1);
+        if (m <= today) actual += (m ? "H" + x + "V" + y : "M" + x + " " + y);
+        if (m >= today) plan += (m === today ? "M" + x + " " + y : "H" + x + "V" + y);
+      }
+      svg.setAttribute("viewBox", "0 0 300 160"); svg.setAttribute("preserveAspectRatio", "none");
+      svg.innerHTML = '<path d="' + actual + 'V160H0Z"/><path class="m-chart__projected" d="' + plan + '"/><path d="' + actual + '"/>';
+      return;
+    }
     if (svg.dataset.chart === "step") {
       /* The account's balance records: the value holds until the next record (a step line). */
       var steps = [[0, 118], [46, 104], [98, 109], [150, 86], [204, 92], [256, 64], [300, 64]];

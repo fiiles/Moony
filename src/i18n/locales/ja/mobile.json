@@ -239,6 +239,28 @@
       "delete": "削除"
     }
   },
+  "loan": {
+    "nextPayment": "次回の返済 {{amount}} · {{date}}",
+    "stats": {
+      "since": "{{month}}から",
+      "extra": "追加返済 {{amount}}",
+      "until": "{{month}}まで",
+      "noFixation": "固定金利なし"
+    },
+    "alerts": {
+      "fixationSoon_other": "固定金利はあと{{count}}日で終了します。銀行が新しい金利を確定したら記録してください。返済額と計画が再計算されます。",
+      "fixationToday": "固定金利は本日終了します。銀行が新しい金利を確定したら記録してください。返済額と計画が再計算されます。",
+      "fixationPassed_other": "固定金利は{{count}}日前に終了しました。新しい金利を記録すると、返済額と計画が再計算されます。"
+    },
+    "schedule": {
+      "left": "残り {{amount}}",
+      "yearSub_other": "{{count}}回 · 利息 {{interest}}",
+      "showAll_other": "全{{count}}回を表示"
+    },
+    "events": {
+      "menu": "イベントメニュー"
+    }
+  },
   "transaction": {
     "flowSaved": "意味を保存しました",
     "done": "完了",

@@ -17,7 +17,7 @@ interface HeroChange {
   text: ReactNode;
 }
 
-interface HeroProps<E extends ChartEvent> {
+interface HeroProps<E extends ChartEvent, P extends string> {
   label: string;
   /** Today's value; `null` when it could not be valued (shown as "—"). */
   value: number | null;
@@ -27,18 +27,25 @@ interface HeroProps<E extends ChartEvent> {
   change?: HeroChange;
   note?: ReactNode;
   /**
-   * The chart and its period segment: `points` and the other four come together. Without `points`
-   * the hero is the compact one (Finance's "Celkem na účtech"): no segment, no chart.
+   * The chart and its period segment. Without `points` the hero is the compact one (Finance's
+   * "Celkem na účtech"): no segment, no chart. With `points` the chart is drawn; the segment above
+   * it needs `period`, `periods` (two at least) and `onPeriodChange` as well — a chart without them
+   * has no segment (the property trace of a property that has one horizon). `P` is the segment's
+   * value: a `ChartPeriod` by default, or the loan's own horizons with `periodLabel`.
    */
-  period?: ChartPeriod;
-  periods?: readonly ChartPeriod[];
-  onPeriodChange?: (period: ChartPeriod) => void;
+  period?: P;
+  periods?: readonly P[];
+  onPeriodChange?: (period: P) => void;
+  /** The label of a segment option; default the period's long name (`common:periodsLong.<p>`). */
+  periodLabel?: (period: P) => string;
   points?: CostPoint[];
   zeroBaseline?: boolean;
   /** A step line (the account's balance records): each value holds until the next point. */
   step?: boolean;
   /** The dashed cost line of a position ("Vloženo"); the points carry its values. */
   cost?: boolean;
+  /** From this time on the line is a plan, drawn dashed (a loan's schedule after today). */
+  projectedFrom?: number;
   events?: E[];
   renderEventTip?: (cluster: EventCluster<E>) => LineTip;
   /** A tap on a mark opened its callout: the events it stands for. */
@@ -56,9 +63,11 @@ interface HeroProps<E extends ChartEvent> {
  * the change line, the period segment between the number and the chart, the 160 pt chart. While a
  * finger scrubs the chart, the number and the date rewrite to that day; release snaps back to
  * today. The desktop's decorative circle at 60 %. Without `points` it is the compact hero
- * (`.m-card--compact`, spec §8.4): the number and its change line only.
+ * (`.m-card--compact`, spec §8.4): the number and its change line only; with `points` and no period
+ * trio the chart stands without a segment. `projectedFrom` draws the rest of the line as a dashed
+ * plan (the loan's schedule); `periodLabel` words a segment that is not a `ChartPeriod`.
  */
-export function Hero<E extends ChartEvent>({
+export function Hero<E extends ChartEvent, P extends string = ChartPeriod>({
   label,
   value,
   formatValue,
@@ -67,22 +76,25 @@ export function Hero<E extends ChartEvent>({
   period,
   periods,
   onPeriodChange,
+  periodLabel,
   points,
   zeroBaseline,
   step,
   cost,
+  projectedFrom,
   events,
   renderEventTip,
   onMarkTap,
   chartLabel,
   children,
-}: HeroProps<E>) {
+}: HeroProps<E, P>) {
   const { t } = useTranslation('common');
   const fmt = useFormat();
-  const charted =
-    points !== undefined &&
+  const charted = points !== undefined;
+  const segmented =
     period !== undefined &&
     periods !== undefined &&
+    periods.length >= 2 &&
     onPeriodChange !== undefined;
   const [scrub, setScrub] = useState<LinePoint | null>(null);
 
@@ -141,10 +153,13 @@ export function Hero<E extends ChartEvent>({
           note && <span className="min-w-0 truncate">{note}</span>
         )}
       </div>
-      {charted && (
+      {segmented && (
         <Segment
           value={period}
-          options={periods.map((p) => ({ value: p, label: t(`periodsLong.${p}`) }))}
+          options={periods.map((p) => ({
+            value: p,
+            label: periodLabel ? periodLabel(p) : t(`periodsLong.${p}`),
+          }))}
           onChange={(next) => {
             setScrub(null);
             onPeriodChange(next);
@@ -156,11 +171,14 @@ export function Hero<E extends ChartEvent>({
       {charted && points.length > 1 && (
         <ScrubChart<E>
           // A new period starts a new chart: no scrub or callout carries over.
-          key={period}
+          key={period ?? 'chart'}
+          // Without the segment the chart follows the change line directly
+          className={segmented ? undefined : 'mt-3'}
           points={points}
           zeroBaseline={zeroBaseline}
           step={step}
           cost={cost}
+          projectedFrom={projectedFrom}
           events={events}
           renderEventTip={renderEventTip}
           onMarkTap={onMarkTap}

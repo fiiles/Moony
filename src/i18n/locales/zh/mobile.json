@@ -239,6 +239,28 @@
       "delete": "删除"
     }
   },
+  "loan": {
+    "nextPayment": "下次还款 {{amount}} · {{date}}",
+    "stats": {
+      "since": "自 {{month}}",
+      "extra": "额外还款 {{amount}}",
+      "until": "至 {{month}}",
+      "noFixation": "无固定利率期"
+    },
+    "alerts": {
+      "fixationSoon_other": "固定利率期将在 {{count}} 天后结束。银行确认新利率后，请您记录下来，月供和还款计划会重新计算。",
+      "fixationToday": "固定利率期今天结束。银行确认新利率后，请您记录下来，月供和还款计划会重新计算。",
+      "fixationPassed_other": "固定利率期已于 {{count}} 天前结束。请您记录新利率，月供和还款计划会重新计算。"
+    },
+    "schedule": {
+      "left": "剩余 {{amount}}",
+      "yearSub_other": "{{count}} 笔还款 · 利息 {{interest}}",
+      "showAll_other": "显示全部 {{count}} 笔"
+    },
+    "events": {
+      "menu": "事件菜单"
+    }
+  },
   "transaction": {
     "flowSaved": "含义已保存",
     "done": "完成",

@@ -273,6 +273,36 @@
       "delete": "Elimina"
     }
   },
+  "loan": {
+    "nextPayment": "Prossima rata {{amount}} · {{date}}",
+    "stats": {
+      "since": "da {{month, lower}}",
+      "extra": "extra {{amount}}",
+      "until": "fino a {{month, lower}}",
+      "noFixation": "senza tasso fisso"
+    },
+    "alerts": {
+      "fixationSoon_one": "Il tasso fisso termina tra {{count}} giorno. Quando la banca conferma il nuovo tasso, registralo: la rata e il piano vengono ricalcolati.",
+      "fixationSoon_many": "Il tasso fisso termina tra {{count}} giorni. Quando la banca conferma il nuovo tasso, registralo: la rata e il piano vengono ricalcolati.",
+      "fixationSoon_other": "Il tasso fisso termina tra {{count}} giorni. Quando la banca conferma il nuovo tasso, registralo: la rata e il piano vengono ricalcolati.",
+      "fixationToday": "Il tasso fisso termina oggi. Quando la banca conferma il nuovo tasso, registralo: la rata e il piano vengono ricalcolati.",
+      "fixationPassed_one": "Il tasso fisso è terminato {{count}} giorno fa. Registra il nuovo tasso per ricalcolare la rata e il piano.",
+      "fixationPassed_many": "Il tasso fisso è terminato {{count}} giorni fa. Registra il nuovo tasso per ricalcolare la rata e il piano.",
+      "fixationPassed_other": "Il tasso fisso è terminato {{count}} giorni fa. Registra il nuovo tasso per ricalcolare la rata e il piano."
+    },
+    "schedule": {
+      "left": "residuo {{amount}}",
+      "yearSub_one": "{{count}} rata · interessi {{interest}}",
+      "yearSub_many": "{{count}} rate · interessi {{interest}}",
+      "yearSub_other": "{{count}} rate · interessi {{interest}}",
+      "showAll_one": "Mostra tutte ({{count}})",
+      "showAll_many": "Mostra tutte ({{count}})",
+      "showAll_other": "Mostra tutte ({{count}})"
+    },
+    "events": {
+      "menu": "Menu dell'evento"
+    }
+  },
   "transaction": {
     "flowSaved": "Significato salvato",
     "done": "Fatto",

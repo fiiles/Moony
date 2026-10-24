@@ -1,31 +1,23 @@
 import { useTranslation } from 'react-i18next';
 import { useRoute } from 'wouter';
 import { useInsurance } from '@/hooks/use-insurance';
-import { useLoans } from '@/hooks/use-loans';
 import { useBack } from '@/mobile/hooks/use-back';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 
-type Kind = 'loan' | 'policy';
-
 /**
- * What a row of the Finance tab opens until its own screen exists: the loan and the policy detail
- * come in Phase 4. It names the record (a deep link to an id that is gone keeps the tab's name)
- * and says when it is coming.
+ * What a row of the Finance tab opens until its own screen exists: the policy detail comes in
+ * Phase 4 (the loan's is `LoanDetail`). It names the record (a deep link to an id that is gone
+ * keeps the tab's name) and says when it is coming.
  */
-export default function FinancePlaceholder({ kind }: { kind: Kind }) {
+export function PolicyPlaceholder() {
   const { t } = useTranslation('mobile');
   const back = useBack(routes.finance);
-  const [, loanParams] = useRoute(routes.loanDetail);
   const [, policyParams] = useRoute(routes.policyDetail);
-  const { loans } = useLoans();
   const { policies } = useInsurance();
 
-  const title =
-    kind === 'loan'
-      ? loans.find((loan) => loan.id === loanParams?.id)?.name
-      : policies.find((policy) => policy.id === policyParams?.id)?.policyName;
+  const title = policies.find((policy) => policy.id === policyParams?.id)?.policyName;
 
   return (
     <Screen
@@ -36,6 +28,3 @@ export default function FinancePlaceholder({ kind }: { kind: Kind }) {
     </Screen>
   );
 }
-
-export const LoanPlaceholder = () => <FinancePlaceholder kind="loan" />;
-export const PolicyPlaceholder = () => <FinancePlaceholder kind="policy" />;

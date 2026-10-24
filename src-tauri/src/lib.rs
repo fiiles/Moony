@@ -61,13 +61,13 @@ fn spawn_staged_export_sweep(app: tauri::AppHandle) {
     });
 }
 
-/// Phones only: keep the profile folder out of iCloud and computer backups, at every start and off
-/// the main thread (the folder is created first on a first launch). Best effort: a problem is
-/// logged and never blocks startup.
+/// Phones only: keep the profile folder, the webview's storage and the received files folder out of
+/// iCloud and computer backups, at every start and off the main thread (the folders are created
+/// first on a first launch). Best effort: a problem is logged and never blocks startup.
 #[cfg(mobile)]
 fn spawn_device_backup_exclusion(app: tauri::AppHandle) {
     tauri::async_runtime::spawn(async move {
-        commands::device_backup::exclude_data_dir(&app).await;
+        commands::device_backup::exclude_at_start(&app).await;
     });
 }
 

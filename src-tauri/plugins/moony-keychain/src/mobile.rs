@@ -110,10 +110,10 @@ impl<R: Runtime> Keychain<R> {
             .map_err(Into::into)
     }
 
-    /// Keeps the folder at `path` (and everything in it) out of device backups and returns whether
-    /// that holds afterwards. iOS sets `isExcludedFromBackup` on the folder and reads the value
-    /// back, so `Ok(false)` means the flag did not take; Android answers `Ok(false)` until its
-    /// backup rules exist (plan Phase 7). The folder must exist. Rust-only, like `store`.
+    /// Keeps the file or folder at `path` (a folder with everything in it) out of device backups
+    /// and returns whether that holds afterwards. iOS sets `isExcludedFromBackup` on the path and
+    /// reads the value back, so `Ok(false)` means the flag did not take; Android answers `Ok(false)`
+    /// until its backup rules exist (plan Phase 7). The path must exist. Rust-only, like `store`.
     pub fn exclude_from_backup(&self, path: &Path) -> Result<bool> {
         let path = path
             .to_str()

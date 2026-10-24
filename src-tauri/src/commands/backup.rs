@@ -86,6 +86,8 @@ pub async fn stage_backup_export(
         }
         return Err(e);
     }
+    // The staged archive must not reach a device backup while it waits for the Files sheet.
+    crate::commands::device_backup::exclude_staged_file(&app, &dest).await;
     path_string(&dest)
 }
 
@@ -130,6 +132,8 @@ pub async fn stage_text_export(
     contents: String,
 ) -> Result<String> {
     let dest = backup::write_text_export(&documents_dir(&app)?, &file_name, &contents)?;
+    // The recovery key's text is plain: keep it out of a device backup while it waits.
+    crate::commands::device_backup::exclude_staged_file(&app, &dest).await;
     path_string(&dest)
 }
 

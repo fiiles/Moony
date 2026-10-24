@@ -560,7 +560,10 @@ password unlock offers biometrics again and plans the restored profile's notific
 The phone's data folder is excluded from iOS device backups (iCloud, Finder: `isExcludedFromBackup`, set
 at every start and again after setup and restore through the keychain plugin's Rust-only
 `exclude_from_backup`), so the backup the person saves here is the only copy outside the phone, and the
-Záloha note and the first-run Záloha lead say so.
+Záloha note and the first-run Záloha lead say so. The same flag covers the webview's `Library/WebKit` folder
+(its localStorage holds the greeting name and the device preferences in plain text), each file staged in
+`Documents/` (the archive and the recovery key's text, flagged right after they are written) and
+`Documents/Inbox`, where a statement opened in Moony lands.
 
 **Notifications** (`mobile/lib/notification-plan.ts`, `mobile/hooks/use-notification-schedule.ts`).
 Scheduling runs on iOS only (ruling 16 of the Phase 5 plan; `schedulesOnThisDevice`): the Android

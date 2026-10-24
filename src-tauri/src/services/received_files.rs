@@ -79,9 +79,15 @@ impl ReceivedFiles {
 /// and `<tmp>/<identifier>-Inbox` (the document picker's copy).
 pub fn inbox_dirs(document_dir: &Path, temp_dir: &Path, identifier: &str) -> [PathBuf; 2] {
     [
-        document_dir.join("Inbox"),
+        documents_inbox(document_dir),
         temp_dir.join(format!("{identifier}-Inbox")),
     ]
+}
+
+/// `<Documents>/Inbox`: where iOS copies a file opened in Moony (the other inbox folder lives in
+/// the tmp folder, which is never backed up).
+pub fn documents_inbox(document_dir: &Path) -> PathBuf {
+    document_dir.join("Inbox")
 }
 
 /// The canonical path of `path` when it is a received copy: a regular file (not a link) that sits

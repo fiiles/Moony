@@ -9,7 +9,7 @@ only the Rust side handles (through `KeychainExt`, which needs no permission), s
 never reaches JavaScript. Grant `moony-keychain:allow-store`, `allow-retrieve` or
 `allow-remove` explicitly only for a value the webview is meant to see.
 
-`exclude_from_backup` is left out too: the app's Rust side calls it on its own data folder, and the
-webview has no reason to point it at another path.
+`exclude_from_backup` is left out too: the app's Rust side calls it on its own folders and staged
+files, and the webview has no reason to point it at another path.
 """
 permissions = ["allow-status", "allow-set-privacy-screen"]

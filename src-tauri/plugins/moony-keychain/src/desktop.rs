@@ -39,7 +39,7 @@ impl<R: Runtime> Keychain<R> {
     }
 
     /// Unsupported like every other call: the desktop never calls it (device backups are a phone
-    /// concern), and an `Ok(false)` would claim a folder that was never touched is not excluded.
+    /// concern), and an `Ok(false)` would claim a path that was never touched is not excluded.
     pub fn exclude_from_backup(&self, _path: &Path) -> Result<bool> {
         Err(KeychainError::Unsupported)
     }

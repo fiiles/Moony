@@ -21,6 +21,9 @@ use super::types::{
 };
 
 const DAY_SECONDS: i64 = 86_400;
+/// Tickers fetched back to back before a pause, and the pause (the pacing of `price_api`).
+const FETCH_BATCH: usize = 5;
+const FETCH_PAUSE_MS: u64 = 500;
 
 /// The will-import trades of one instrument and what Moony stores for its ticker.
 #[derive(Debug, Clone, Default)]
@@ -48,8 +51,10 @@ pub async fn check_splits(
     config: &StockImportConfig,
 ) -> Result<Vec<StockSplitCheck>> {
     let groups = db.with_conn(|conn| groups(conn, parsed, config))?;
-    let today = floor_day(chrono::Utc::now().timestamp());
-    Ok(check_with(fetch_series, groups, today).await)
+    // The window ends now, not at today's midnight: a split with today's ex-date and a file
+    // whose trades are all from the last day or two would otherwise get no data.
+    let now = chrono::Utc::now().timestamp();
+    Ok(check_with(fetch_series, groups, now).await)
 }
 
 /// The ticker's daily closes and splits over `[from, to]` from Yahoo; an error when the
@@ -148,11 +153,12 @@ fn stored_days(conn: &Connection, ticker: &str) -> Result<Vec<i64>> {
 
 /// [`check_splits`] once the groups are read, with the history fetch injected: `fetch(ticker,
 /// from, to)` returns the ticker's series. Each ticker is fetched once, from the earliest
-/// trade of its groups through `today`; the checks keep the order of `groups`.
+/// trade of its groups through `until` (a unix time); the checks keep the order of `groups`.
+/// Every 5 tickers it pauses 500 ms, as the chunked fetch of `price_api` does.
 pub(crate) async fn check_with<F, Fut>(
     fetch: F,
     groups: Vec<TickerGroup>,
-    today: i64,
+    until: i64,
 ) -> Vec<StockSplitCheck>
 where
     F: Fn(String, i64, i64) -> Fut,
@@ -170,8 +176,11 @@ where
     }
 
     let mut series_of: HashMap<String, HistoricalSeries> = HashMap::new();
-    for (ticker, from) in first_day_of {
-        match fetch(ticker.clone(), from, today).await {
+    for (index, (ticker, from)) in first_day_of.into_iter().enumerate() {
+        if index > 0 && index % FETCH_BATCH == 0 {
+            tokio::time::sleep(tokio::time::Duration::from_millis(FETCH_PAUSE_MS)).await;
+        }
+        match fetch(ticker.clone(), from, until).await {
             // No closes at all: Yahoo does not know the symbol.
             Ok(series) if !series.prices.is_empty() => {
                 series_of.insert(ticker, series);
@@ -388,6 +397,34 @@ mod tests {
                 }],
             }]
         );
+    }
+
+    #[tokio::test]
+    async fn a_trade_dated_today_is_checked_and_the_window_reaches_now() {
+        // Mid-afternoon of day 300: the window must end here, not at the day's midnight.
+        let now = day(300) + 15 * 3_600;
+        let fetched = RefCell::new(Vec::new());
+        let checks = check_with(
+            |ticker, from, to| {
+                fetched.borrow_mut().push((ticker, from, to));
+                async {
+                    Ok(HistoricalSeries {
+                        prices: vec![close(day(300), 120.0, "USD")],
+                        splits: vec![],
+                    })
+                }
+            },
+            vec![group(vec![(2, day(300), 120.0, "USD")])],
+            now,
+        )
+        .await;
+
+        assert_eq!(
+            fetched.into_inner(),
+            vec![("NVDA".to_string(), day(300), now)]
+        );
+        assert!(checks[0].checked);
+        assert!(checks[0].splits.is_empty());
     }
 
     #[tokio::test]

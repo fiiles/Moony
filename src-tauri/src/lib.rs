@@ -313,6 +313,7 @@ async fn run_app() {
             // Real estate document commands
             commands::real_estate::get_real_estate_documents,
             commands::real_estate::add_real_estate_document,
+            commands::real_estate::add_real_estate_document_bytes,
             commands::real_estate::delete_real_estate_document,
             commands::real_estate::open_real_estate_document,
             // Insurance commands
@@ -323,6 +324,7 @@ async fn run_app() {
             commands::insurance::delete_insurance,
             commands::insurance::get_insurance_documents,
             commands::insurance::add_insurance_document,
+            commands::insurance::add_insurance_document_bytes,
             commands::insurance::delete_insurance_document,
             commands::insurance::open_insurance_document,
             // Insurance real estate linking commands

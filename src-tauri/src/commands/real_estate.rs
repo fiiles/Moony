@@ -591,6 +591,37 @@ pub async fn add_real_estate_document(
     })
 }
 
+/// Add a document to a real estate property from its bytes (the phone: a photographed contract or
+/// a file from the Files app, which the webview holds only as bytes and may not write to disk).
+/// The bytes are the IPC body; the `owner-id`, `file-name` and `document` headers carry the
+/// property's id, the file's name and the entries as `InsertRealEstateDocument` JSON, the last two
+/// percent-encoded. The bytes go straight into the encrypted attachments store.
+#[tauri::command]
+pub async fn add_real_estate_document_bytes(
+    db: State<'_, Database>,
+    request: tauri::ipc::Request<'_>,
+) -> Result<RealEstateDocument> {
+    let upload = attachments::document_upload::<InsertRealEstateDocument>(request.headers())?;
+    upload.data.validate()?;
+    let bytes = photos_service::photo_bytes(request.body())?;
+    let doc = attachments::NewDocument {
+        name: &upload.data.name,
+        description: upload.data.description.as_deref(),
+        file_type: upload.data.file_type.as_deref().unwrap_or("other"),
+    };
+    let now = chrono::Utc::now().timestamp();
+    db.with_conn(|conn| {
+        attachments::add_real_estate_document_bytes(
+            conn,
+            &upload.owner_id,
+            &upload.file_name,
+            &bytes,
+            &doc,
+            now,
+        )
+    })
+}
+
 /// Delete a real estate document
 #[tauri::command]
 pub async fn delete_real_estate_document(

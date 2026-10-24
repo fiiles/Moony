@@ -539,6 +539,24 @@ export const realEstateApi = {
   ) =>
     tauriInvoke<RealEstateDocument>('add_real_estate_document', { realEstateId, filePath, data }),
 
+  // The phone's twin of addDocument: a photographed or picked file exists only as bytes in the
+  // webview, which has no file-system access. The bytes are the raw IPC body (so no plaintext copy
+  // is written anywhere); the file name and the entries travel as percent-encoded headers, because
+  // an HTTP header value is ASCII.
+  addDocumentBytes: (
+    realEstateId: string,
+    bytes: Uint8Array,
+    fileName: string,
+    data: { name: string; description?: string; fileType?: string }
+  ) =>
+    tauriInvoke<RealEstateDocument>('add_real_estate_document_bytes', bytes, {
+      headers: {
+        'owner-id': realEstateId,
+        'file-name': encodeURIComponent(fileName),
+        document: encodeURIComponent(JSON.stringify(data)),
+      },
+    }),
+
   deleteDocument: (documentId: string) =>
     tauriInvoke<void>('delete_real_estate_document', { documentId }),
 
@@ -592,6 +610,21 @@ export const insuranceApi = {
     filePath: string,
     data: { name: string; description?: string; fileType?: string }
   ) => tauriInvoke<InsuranceDocument>('add_insurance_document', { insuranceId, filePath, data }),
+
+  // The phone's twin of addDocument (see realEstateApi.addDocumentBytes).
+  addDocumentBytes: (
+    insuranceId: string,
+    bytes: Uint8Array,
+    fileName: string,
+    data: { name: string; description?: string; fileType?: string }
+  ) =>
+    tauriInvoke<InsuranceDocument>('add_insurance_document_bytes', bytes, {
+      headers: {
+        'owner-id': insuranceId,
+        'file-name': encodeURIComponent(fileName),
+        document: encodeURIComponent(JSON.stringify(data)),
+      },
+    }),
 
   deleteDocument: (documentId: string) =>
     tauriInvoke<void>('delete_insurance_document', { documentId }),

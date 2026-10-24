@@ -4,6 +4,10 @@
 <dict>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Moony unlocks your data with Face ID.</string>
+	<!-- The camera photographs documents (contracts) and the property; the photos go straight
+	     into the encrypted attachments store and are never written to disk as plain files. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Moony photographs documents and your property; the photos are stored encrypted on this phone.</string>
 	<!-- The phone shell is light only until Phase 6 (dark phone tokens): pin the system chrome
 	     (status bar, alerts) to light so a dark OS appearance does not draw white status-bar text
 	     over the light shell. Remove together with the Phase 6 dark mode. -->

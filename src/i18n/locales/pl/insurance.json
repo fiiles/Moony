@@ -290,7 +290,7 @@
     "documents": "Dokumenty"
   },
   "documents": {
-    "subtitle": "Przechowywane w zaszyfrowanym folderze aplikacji",
+    "subtitle": "Zapisane w postaci zaszyfrowanej w Moony",
     "columns": {
       "document": "Dokument",
       "type": "Typ",
@@ -324,9 +324,5 @@
       "title": "Usuń dokument",
       "description": "Usunąć „{{name}}”? Plik zostanie usunięty na stałe."
     }
-  },
-  "mcp": {
-    "tipSummary": "Nie chce ci się wszystkiego wpisywać? Asystent AI może dodać polisy na podstawie umowy.",
-    "bannerBody": "Uruchom serwer MCP, prześlij Claude umowę, ofertę lub podsumowanie polisy i poproś, by dodał polisę za ciebie."
   }
 }

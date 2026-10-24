@@ -35,7 +35,7 @@ Checklist for a new routed page. Conventions and rationale are owned by
 ## Verify
 
 ```bash
-npm run lint && npm run typecheck && npm test
+npm run lint && npm run typecheck && npm run format:check && npm test
 ```
 
 Plus a visual check: `npm run tauri dev` → open the page from the sidebar, in English

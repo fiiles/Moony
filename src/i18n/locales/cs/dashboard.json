@@ -48,7 +48,6 @@
   },
   "allocation": {
     "title": "Rozložení majetku",
-    "open": "Otevřít investice",
     "center": "Aktiva"
   },
   "moves": {
@@ -80,7 +79,7 @@
   },
   "gettingStarted": {
     "title": "Začínáme",
-    "subtitle": "Čtyři kroky, po kterých Moony začne dávat smysl. Karta zmizí, až budete hotovi.",
+    "subtitle": "Pár kroků, po kterých Moony začne dávat smysl. Volitelné můžete přeskočit, karta zmizí, až budete hotovi.",
     "importStatement": "Importovat bankovní výpis",
     "importStatementHint": "Přidejte účet a importujte výpis ze své banky.",
     "addInvestment": "Přidat investici",
@@ -90,7 +89,8 @@
     "makeBackup": "Udělat zálohu",
     "makeBackupHint": "Jeden soubor se vším, v Nastavení → Data a zálohy.",
     "dismiss": "Skrýt",
-    "done": "Hotovo"
+    "done": "Hotovo",
+    "optional": "Volitelné"
   },
   "welcome": "Vítejte zpět, {{name}}!",
   "overview": "Zde je váš finanční přehled pro dnešní den.",

@@ -1,6 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowDown, ArrowUp, ArrowUpDown, Ellipsis, Pencil, Search, Trash2 } from 'lucide-react';
+import { Ellipsis, Pencil, Search, Trash2 } from 'lucide-react';
 import type { Bond } from '@shared/schema';
 import type { ConvertFn } from '@shared/fx';
 import {
@@ -36,6 +36,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { AssetLogo } from '@/components/common/AssetLogo';
+import { SortableTableHead } from '@/components/common/SortableTableHead';
 import { ConvertedMoney } from '@/components/common/ConvertedMoney';
 import { untilText } from '@/components/bonds/bond-until';
 import { cn } from '@/lib/utils';
@@ -118,36 +119,7 @@ export function BondsTable({ bonds, today, convert, onEdit, onDelete }: BondsTab
   const liveCoupons = live.reduce((s, b) => s + (bondCoupon(b, convert) ?? 0), 0);
   const money = (value: number) => fmt.money(value, currencyCode, { decimals: 0 });
 
-  const SortHead = ({
-    column,
-    children,
-    align = 'right',
-    className,
-  }: {
-    column: SortColumn;
-    children: ReactNode;
-    align?: 'left' | 'right';
-    className?: string;
-  }) => {
-    const active = sortColumn === column;
-    const Icon = !active ? ArrowUpDown : sortDirection === 'asc' ? ArrowUp : ArrowDown;
-    return (
-      <TableHead className={cn(align === 'right' && 'text-right', className)}>
-        <button
-          type="button"
-          onClick={() => handleSort(column)}
-          aria-sort={active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}
-          className={cn(
-            'inline-flex items-center gap-1 rounded-r1 text-thead uppercase transition-colors duration-fast hover:text-ink focus-visible:outline-none focus-visible:shadow-focus',
-            active && 'text-ink'
-          )}
-        >
-          {children}
-          <Icon className={cn('size-3', !active && 'opacity-60')} aria-hidden />
-        </button>
-      </TableHead>
-    );
-  };
+  const sortProps = { sortColumn, sortDirection, onSort: handleSort };
 
   return (
     <Card variant="table">
@@ -177,15 +149,27 @@ export function BondsTable({ bonds, today, convert, onEdit, onDelete }: BondsTab
       <Table>
         <TableHeader>
           <TableRow>
-            <SortHead column="name" align="left" className="w-[28%]">
+            <SortableTableHead {...sortProps} column="name" align="left" className="w-[28%]">
               {t('table.bond')}
-            </SortHead>
-            <SortHead column="nominal">{t('table.nominal')}</SortHead>
-            <SortHead column="quantity">{t('table.quantity')}</SortHead>
-            <SortHead column="value">{t('table.value')}</SortHead>
-            <SortHead column="rate">{t('table.coupon')}</SortHead>
-            <SortHead column="yearly">{t('table.yearly')}</SortHead>
-            <SortHead column="maturity">{t('table.maturity')}</SortHead>
+            </SortableTableHead>
+            <SortableTableHead {...sortProps} column="nominal">
+              {t('table.nominal')}
+            </SortableTableHead>
+            <SortableTableHead {...sortProps} column="quantity">
+              {t('table.quantity')}
+            </SortableTableHead>
+            <SortableTableHead {...sortProps} column="value">
+              {t('table.value')}
+            </SortableTableHead>
+            <SortableTableHead {...sortProps} column="rate">
+              {t('table.coupon')}
+            </SortableTableHead>
+            <SortableTableHead {...sortProps} column="yearly">
+              {t('table.yearly')}
+            </SortableTableHead>
+            <SortableTableHead {...sortProps} column="maturity">
+              {t('table.maturity')}
+            </SortableTableHead>
             <TableHead className="w-10">
               <span className="sr-only">{t('table.actions')}</span>
             </TableHead>

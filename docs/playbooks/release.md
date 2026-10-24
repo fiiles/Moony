@@ -1,13 +1,13 @@
 # Playbook: Cut a Release
 
-How a Moony release is built, published and verified, and what is still missing before the
-installers can be signed by Apple and Microsoft. This is the execution checklist; the design
+How a Moony release is built, published and verified, how the macOS signing and notarization
+works, and what is still missing before the Windows installer can be signed. This is the execution checklist; the design
 of the in-app updater itself lives in `src-tauri/tauri.conf.json` (`plugins.updater`) and
 `src/hooks/use-updater.tsx`.
 
 Releases are built by GitHub Actions from a tag and published by hand from a draft. They are
-unsigned by Apple and Microsoft today (see [Code signing and
-notarization](#code-signing-and-notarization-not-set-up-yet)); the **updater signature**
+signed and notarized for macOS (Developer ID), and not signed for Windows yet (see [Code signing
+and notarization](#code-signing-and-notarization)); the **updater signature**
 (minisign key pair) is a different thing, is part of every release build, and is covered in
 [Updater signing key](#updater-signing-key).
 
@@ -41,7 +41,7 @@ On a clean `main`:
 
 ```bash
 # frontend and backend gates (same as CI)
-npm run lint && npm run typecheck && npm test
+npm run lint && npm run typecheck && npm run format:check && npm test
 cd src-tauri && cargo fmt --check && cargo clippy -- -D warnings && cargo test
 
 # generated types must match the Rust types
@@ -93,30 +93,48 @@ fourth place to edit. Use [Semantic Versioning](https://semver.org/): MAJOR for 
 changes (for example an incompatible database or MCP change), MINOR for features, PATCH for
 fixes.
 
+Also in the bump commit (`check-version` does not read these, so nothing fails if you forget):
+
+- **The iOS project version fields**: `CFBundleShortVersionString` and `CFBundleVersion` in
+  `src-tauri/gen/apple/project.yml` and in `src-tauri/gen/apple/moony_iOS/Info.plist`.
+- **The status text** in the README ("Status and compatibility") and in `ROADMAP.md`, when the
+  release changes what they say.
+- **`npm run licenses`**, committed when `THIRD_PARTY_LICENSES.md` changed.
+- **The compare links at the bottom of `CHANGELOG.md`**: point `[Unreleased]` at
+  `compare/vX.Y.Z...HEAD` and add `[X.Y.Z]` with the link from the previous version's tag.
+
 ```bash
-git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json CHANGELOG.md
-git commit -m "chore(release): v0.9.1"
+git add package.json package-lock.json src-tauri/Cargo.toml src-tauri/Cargo.lock src-tauri/tauri.conf.json \
+  src-tauri/gen/apple/project.yml src-tauri/gen/apple/moony_iOS/Info.plist \
+  README.md ROADMAP.md THIRD_PARTY_LICENSES.md CHANGELOG.md
+git commit -m "chore(release): v1.0.0"
 ```
 
 > **The updater only offers a version that is higher than the installed one.** Builds from the
-> previous repository (1.x) keep checking that repository's releases, so anyone still on one of
-> them has to install 0.9.x by hand. Say so in the notes of the first release.
+> old private repository keep checking that repository, not this one; their users install the
+> current version by hand.
 
 ## Tag and build
 
 The release workflow starts on any tag that begins with `v`. It cannot be started by hand:
 
+Push `main` alone first and wait until CI (Frontend, Rust Check, Rust iOS Check) is green; only
+then tag and push the tag. Never use `git push --all` or `git push --mirror`: a local archive
+branch has unrelated history and must not reach the public repository.
+
 ```bash
-git tag v0.9.1
-git push origin main v0.9.1
+git push origin main
+# wait for CI on that commit to be green, then:
+git tag v1.0.0
+git push origin v1.0.0
 ```
 
 The tag name decides how the release is published:
 
 - `vX.Y.Z` is a full release. Once published it becomes the "latest" release that the updater
   endpoint (`…/releases/latest/download/latest.json`) serves.
-- A tag with a hyphen (`v1.0.0-rc.1`, `v0.9.0-test.1`) is created as a **pre-release**
-  (`prerelease: contains(github.ref_name, '-')` in `release.yml`). GitHub's "latest" skips
+- A tag with a hyphen (`v1.0.0-rc.1`, `v1.0.0-test.1`) is created as a **pre-release**
+  (the `create-release` job in `release.yml` sets it for any tag containing `-`). GitHub's "latest" skips
   pre-releases, so the updater never offers one.
 
 `.github/workflows/release.yml` runs three stages:
@@ -125,7 +143,7 @@ The tag name decides how the release is published:
    the first `version = "…"` line of `src-tauri/Cargo.toml` and fails unless all three equal the
    tag without its leading `v` and without a pre-release suffix (`v1.0.0-rc.1` requires
    `1.0.0` in the manifests). Nothing is built and no release is created on a mismatch. To
-   recover, delete the tag (`git push origin --delete v0.9.1 && git tag -d v0.9.1`), fix the
+   recover, delete the tag (`git push origin --delete v1.0.0 && git tag -d v1.0.0`), fix the
    version, and tag again.
 2. **`create-release`** creates the **draft** release `Moony v<version>` once, with the body
    from `.github/release-body.md` (`@VERSION@` replaced, `@CHANGES@` replaced by the version's
@@ -152,16 +170,20 @@ The tag name decides how the release is published:
 ### A test build without a public release
 
 To try the pipeline, or the installers, without publishing anything, tag the commit with a
-pre-release suffix. The manifests keep their plain version, so no bump is needed:
+pre-release suffix:
 
 ```bash
-git tag v0.9.0-test.1
-git push origin v0.9.0-test.1
+git tag v1.0.0-rc.1      # manifests must already say 1.0.0, and CHANGELOG.md needs a "## [1.0.0]" section
+git push origin v1.0.0-rc.1
 ```
+
+Any suffixed tag (`-rc.1`, `-test.1`) is checked like the full one: it still needs the matching
+`## [X.Y.Z]` section in `CHANGELOG.md` and the bumped manifests, so bump the version and write the
+changelog first.
 
 The run creates a **draft pre-release** with the full set of artifacts. When you are done,
 delete the draft under *Releases*, then the tag
-(`git push origin --delete v0.9.0-test.1 && git tag -d v0.9.0-test.1`).
+(`git push origin --delete v1.0.0-rc.1 && git tag -d v1.0.0-rc.1`).
 
 ## Review and publish the draft
 
@@ -170,61 +192,88 @@ delete the draft under *Releases*, then the tag
    `.sig` files, and `latest.json`.
 3. Check the body. It opens with the version's "What's new" section from `CHANGELOG.md`, then
    `.github/release-body.md` continues with a download table with the
-   exact file names, and first-launch steps for unsigned builds on macOS (`xattr`), Windows
-   (browser warning and SmartScreen) and Linux; keep those sections and add a short
+   exact file names, and a note that the Mac app opens normally, first-launch steps for the unsigned
+   Windows installer (browser warning and SmartScreen) and Linux; keep those sections and add a short
    highlights paragraph on top if the release deserves one. A tag with a hyphen must show as
    a pre-release.
 4. Install the artifacts on clean machines — at least one macOS, one Windows and one Linux
-   — and confirm the first-run wizard, unlock and the About version. Expect the Gatekeeper /
-   SmartScreen warnings described in the README for as long as builds are unsigned.
-5. Click **Publish release**. Only a published, non-pre-release release is served by
+   — and confirm the first-run wizard, unlock and the About version. The Mac app must open without any
+   warning; expect the SmartScreen warning described in the README for as long as the Windows
+   installer is unsigned.
+5. Before clicking Publish, check the draft has 15 assets, the six file names of the download
+   table in `.github/release-body.md`, and a `latest.json` with 10 platform keys:
+
+   ```bash
+   gh release download vX.Y.Z -R fiiles/Moony -p latest.json -O - | jq '.platforms | keys'
+   ```
+6. Click **Publish release**. Only a published, non-pre-release release is served by
    `…/releases/latest/download/latest.json`.
-6. Once an older version exists, install it on a machine, open Moony, let it check for updates
+7. Once an older version exists, install it on a machine, open Moony, let it check for updates
    and run the update end to end (download, signature verification, restart).
 
-## Code signing and notarization (not set up yet)
+## Code signing and notarization
 
-Without OS-level signing, macOS Gatekeeper reports the app as "damaged" or from an
-"unidentified developer", and Windows SmartScreen shows "Windows protected your PC". Users can
-get past both (README, "Install"), but it costs trust and first-run conversions. Signing needs
-accounts and money that the project does not have yet. Below is what the owner has to obtain;
-once it exists, the workflow needs only environment variables and, for Windows, one extra step.
+macOS is set up: release builds are signed with a Developer ID Application certificate and
+notarized by Apple, so Gatekeeper opens the app without any warning. Windows is **not set up
+yet**: without Authenticode signing, SmartScreen shows "Windows protected your PC" and users
+get past it with the steps in the README ("Install"). Signing the Windows installer needs a
+certificate that the project does not have yet; the routes are listed below.
 
-### macOS: Developer ID signing and notarization
+### macOS: Developer ID signing and notarization (set up)
 
-1. **Apple Developer Program membership** (paid, yearly), enrolled as an individual or an
-   organization.
-2. **Developer ID Application certificate.** Create it in the developer account (Certificates,
-   IDs & Profiles) or in Xcode, install it in the login keychain, and export it with its private
-   key as a `.p12` file protected by a password. Encode it for a secret:
-   `base64 -i DeveloperID.p12 | pbcopy`.
-3. **Repository secrets** read by `tauri-action` / the Tauri CLI:
+The release workflow (`.github/workflows/release.yml`) does this on both macOS legs (Apple
+Silicon and Intel):
+
+1. **Switch.** Signing is on only when the repository secret `APPLE_CERTIFICATE` exists
+   (`APPLE_SIGNING`). Without it the Macs build unsigned. Tauri starts signing as soon as
+   `APPLE_CERTIFICATE` is set, even to an empty string, so the step *Apple signing and
+   notarization* exports the variables into the job environment only when the secret exists.
+2. **Repository secrets** the step reads:
 
    | Secret | Value |
    |---|---|
-   | `APPLE_CERTIFICATE` | the base64 of the `.p12` file |
-   | `APPLE_CERTIFICATE_PASSWORD` | the password chosen when exporting |
-   | `APPLE_SIGNING_IDENTITY` | e.g. `Developer ID Application: Your Name (TEAMID)` |
+   | `APPLE_CERTIFICATE` | the base64 of the Developer ID Application `.p12` file (`base64 -i DeveloperID.p12 \| pbcopy`) |
+   | `APPLE_CERTIFICATE_PASSWORD` | the password chosen when exporting the `.p12` |
+   | `APPLE_SIGNING_IDENTITY` | the certificate name, `Developer ID Application: Filip Král (TEAMID)` |
+
+   Notarization credentials, one of two sets (the Apple ID set wins when `APPLE_ID` is set):
+
+   | Secret | Value |
+   |---|---|
    | `APPLE_ID` | the Apple ID used for notarization |
    | `APPLE_PASSWORD` | an **app-specific password** for that Apple ID (appleid.apple.com → Sign-In and Security) |
    | `APPLE_TEAM_ID` | the 10-character team ID |
 
-   An App Store Connect API key (`APPLE_API_ISSUER`, `APPLE_API_KEY`, `APPLE_API_KEY_PATH`) is
-   an accepted alternative to the Apple ID / app-specific password pair.
-4. **Notarization** is performed by the Tauri bundler when the variables above are present: it
-   signs with the hardened runtime, submits the app with `xcrun notarytool` and staples the
-   ticket. Both macOS legs (Apple Silicon and Intel) are signed this way. Check whether the app
-   needs an entitlements file (`bundle.macOS.entitlements`); the Tauri defaults normally do not.
-5. **Verify a build by hand:**
+   or an App Store Connect API key:
+
+   | Secret | Value |
+   |---|---|
+   | `APPLE_API_ISSUER` | the issuer ID |
+   | `APPLE_API_KEY` | the key ID |
+   | `APPLE_API_KEY_P8` | the content of the `.p8` key file; the step writes it to a temporary file and exports `APPLE_API_KEY_PATH` |
+
+   If signing is on but neither `APPLE_ID` nor `APPLE_API_KEY` is set, the step fails with an
+   error instead of building a signed but un-notarized app.
+3. **Build.** The Tauri bundler signs with the hardened runtime, submits the app for
+   notarization and staples the ticket. Check whether the app needs an entitlements file
+   (`bundle.macOS.entitlements`) if a future change adds capabilities; the Tauri defaults
+   normally do not.
+4. **Verification.** After the build, the step *Verify the macOS signature and notarization*
+   runs `codesign --verify --deep --strict`, `spctl --assess --type execute` and
+   `xcrun stapler validate` on `Moony.app`. If any of them fails, the leg fails and the release
+   check goes red; the assets are already in the draft, which stays unpublished. The temporary
+   `.p8` key file is removed at the end.
+5. **Verify a download by hand:**
 
    ```bash
    codesign --verify --deep --strict --verbose=2 /Applications/Moony.app
    spctl --assess --type execute --verbose=4 /Applications/Moony.app
-   xcrun stapler validate Moony_<version>_aarch64.dmg
-   # manual notarization, if ever needed
-   xcrun notarytool submit Moony_<version>_aarch64.dmg --apple-id <id> --team-id <team> --password <app-specific> --wait
-   xcrun stapler staple Moony_<version>_aarch64.dmg
+   xcrun stapler validate /Applications/Moony.app
    ```
+
+To renew an expired certificate, create a new Developer ID Application certificate, export it as
+a `.p12` and replace `APPLE_CERTIFICATE`, `APPLE_CERTIFICATE_PASSWORD` and, if the name changed,
+`APPLE_SIGNING_IDENTITY`.
 
 ### Windows: Authenticode signing
 
@@ -267,15 +316,14 @@ npm run tauri signer generate -- -w ~/.tauri/moony-updater.key
   and cannot verify new updates — those users must install the new version by hand. A new
   repository or a new secret store does not need a new key: reuse the same pair.
 
-### When signing is in place
+### When Windows signing is in place
 
-- Add the `APPLE_*` variables (and the Windows ones) to the `env:` block of the `tauri-action`
-  step in `release.yml`; do not touch the build matrix.
-- Remove the "Unsigned builds" section from the release body (`.github/release-body.md`), and update the
-  unsigned-build paragraphs in `README.md` ("Install"), `SECURITY.md` (scope) and this
-  playbook.
-- Re-test the whole first-run path from a downloaded installer on a clean macOS and Windows
-  machine, with the quarantine flag set (a download from the browser, not a local build).
+- Add the Windows variables or signing step to `release.yml`; do not touch the build matrix.
+- Rename the Windows section of the release body (`.github/release-body.md`, "First launch on
+  Windows") or remove it, and update the unsigned-installer paragraphs in `README.md`
+  ("Install"), `SECURITY.md` (scope), `ROADMAP.md` and this playbook.
+- Re-test the whole first-run path from a downloaded installer on a clean Windows machine, with
+  the download mark set (a download from the browser, not a local build).
 
 ## Troubleshooting
 
@@ -296,11 +344,13 @@ update check is not switched off in Settings.
 the private key that signed the release, or an installer was modified after it was signed
 (see "Order matters" above).
 
-**macOS says the app is "damaged"** (unsigned builds) — `xattr -cr /Applications/Moony.app`
-removes the download quarantine flag, or use *Open Anyway* in System Settings → Privacy &
-Security; this is the first-install workaround from the README. An update installed by the
-in-app updater is written by Moony itself and normally does not carry the flag again — worth
-confirming on a real update before promising it in release notes.
+**macOS says the app is "damaged" or from an unidentified developer** — this should not happen
+with 1.0.0 and later. Check that the release was built with the Apple secrets (the leg log shows
+the *Apple signing and notarization* and *Verify the macOS signature and notarization* steps; if
+they were skipped, `APPLE_CERTIFICATE` was missing) and run the manual checks above on the
+downloaded app. The message is expected only for builds before 1.0 and for copies built from
+source. For those, `xattr -cr /Applications/Moony.app` removes the download quarantine flag, or
+use *Open Anyway* in System Settings → Privacy & Security.
 
 ## Key files
 

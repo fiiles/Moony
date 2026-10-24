@@ -183,7 +183,7 @@
     "paymentNonNegative": "El pago no puede ser negativo",
     "endDateAfterStart": "La fecha de fin debe ser posterior a la de inicio",
     "attachmentTooLarge": "El archivo supera los 100 MB.",
-    "exportIntoDataFolder": "No se puede guardar una copia en la carpeta de datos de Moony. Elija otro lugar.",
+    "exportIntoDataFolder": "No se puede guardar una copia en la carpeta de datos de Moony. Elige otro lugar.",
     "documentNameRequired": "El nombre del documento es obligatorio",
     "nameTooLong": "El nombre es demasiado largo",
     "accountNameTooLong": "El nombre de la cuenta es demasiado largo",
@@ -504,7 +504,8 @@
     "realEstate": "¿No te apetece teclearlo todo? El asistente de IA puede añadir un inmueble a partir de sus documentos.",
     "otherAssets": "¿No te apetece teclearlo todo? El asistente de IA puede añadir activos a partir de una factura o una lista.",
     "watchlist": "El asistente de IA puede seguir acciones por ti: solo dile cuáles.",
-    "body": "Inicia el servidor MCP, dale a Claude el documento o describe lo que tienes y pídele que lo añada por ti. Te muestra lo que ha leído y no guarda nada hasta que lo confirmes.",
+    "insurance": "¿No te apetece escribirlo todo? El asistente de IA puede añadir pólizas a partir de un contrato.",
+    "body": "Inicia el servidor MCP, conéctalo a una herramienta de IA compatible con MCP, dale el documento o describe lo que tienes y pídele que lo añada por ti. Revisa lo que ha leído antes de dejar que guarde nada.",
     "setupLink": "Configurar servidor MCP"
   },
   "a11y": {
@@ -556,10 +557,11 @@
     "viewer": {
       "description": "Vista previa del documento adjunto",
       "loading": "Cargando la vista previa…",
-      "failed": "No se pudo mostrar la vista previa. Puede guardar el documento o abrirlo en otra aplicación.",
+      "failed": "No se pudo mostrar la vista previa. Puedes guardar el documento o abrirlo en otra aplicación.",
       "saveCopy": "Guardar una copia…",
       "openElsewhere": "Abrir en otra aplicación",
-      "saved": "Copia guardada"
+      "saved": "Copia guardada",
+      "savedDescription": "La copia guardada no está cifrada."
     },
     "openElsewhere": {
       "title": "¿Abrir fuera de Moony?",

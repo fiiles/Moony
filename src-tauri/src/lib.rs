@@ -92,7 +92,9 @@ async fn run_app() {
             std::thread::spawn(move || {
                 std::thread::sleep(std::time::Duration::from_secs(3));
                 if let Some(window) = handle.get_webview_window("main") {
-                    if !window.is_visible().unwrap_or(true) {
+                    // A window the user minimized in those 3 s also reports not visible on macOS.
+                    let minimized = window.is_minimized().unwrap_or(false);
+                    if !minimized && !window.is_visible().unwrap_or(true) {
                         let _ = window.show();
                     }
                 }

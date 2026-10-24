@@ -283,7 +283,7 @@
     "documents": "Dokumenty"
   },
   "documents": {
-    "subtitle": "Uložené v šifrované složce aplikace",
+    "subtitle": "Uložené šifrovaně v Moony",
     "columns": {
       "document": "Dokument",
       "type": "Typ",
@@ -317,9 +317,5 @@
       "title": "Smazat dokument",
       "description": "Opravdu chcete smazat „{{name}}“? Soubor bude trvale odstraněn."
     }
-  },
-  "mcp": {
-    "tipSummary": "Nechce se vám vše přepisovat? AI asistent umí pojistky přidat ze smlouvy.",
-    "bannerBody": "Spusť MCP server, nahraj smlouvu, nabídku nebo shrnutí pojistky do Claude a požádej ho, ať pojistku přidá za tebe."
   }
 }

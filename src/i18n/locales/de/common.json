@@ -501,7 +501,8 @@
     "realEstate": "Keine Lust, alles abzutippen? Der KI-Assistent kann eine Immobilie aus ihren Unterlagen hinzufügen.",
     "otherAssets": "Keine Lust, alles abzutippen? Der KI-Assistent kann Vermögenswerte aus einer Rechnung oder Liste hinzufügen.",
     "watchlist": "Der KI-Assistent kann Aktien für Sie beobachten — sagen Sie ihm einfach, welche.",
-    "body": "Starten Sie den MCP-Server, geben Sie Claude das Dokument oder beschreiben Sie, was Sie haben, und bitten Sie ihn, es hinzuzufügen. Er zeigt Ihnen, was er gelesen hat, und schreibt nichts, bevor Sie bestätigen.",
+    "insurance": "Keine Lust, alles einzutippen? Der KI-Assistent kann Policen aus einem Vertrag hinzufügen.",
+    "body": "Starten Sie den MCP-Server, verbinden Sie ihn mit einem KI-Tool, das MCP unterstützt, geben Sie ihm das Dokument oder beschreiben Sie, was Sie haben, und bitten Sie es, es für Sie einzutragen. Prüfen Sie, was es gelesen hat, bevor Sie es etwas speichern lassen.",
     "setupLink": "MCP-Server einrichten"
   },
   "a11y": {
@@ -555,7 +556,8 @@
       "failed": "Die Vorschau konnte nicht angezeigt werden. Sie können das Dokument speichern oder in einer anderen App öffnen.",
       "saveCopy": "Kopie speichern…",
       "openElsewhere": "In anderer App öffnen",
-      "saved": "Kopie gespeichert"
+      "saved": "Kopie gespeichert",
+      "savedDescription": "Die gespeicherte Kopie ist nicht verschlüsselt."
     },
     "openElsewhere": {
       "title": "Außerhalb von Moony öffnen?",

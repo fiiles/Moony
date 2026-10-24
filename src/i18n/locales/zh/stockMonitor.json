@@ -3,7 +3,7 @@
   "subtitle": "您正在考虑的股票：以其自身货币计价的价格、目标价和您的笔记。",
   "cancel": "取消",
   "search": {
-    "placeholder": "搜索股票（代码或名称）以开始关注",
+    "placeholder": "查找要关注的股票",
     "noResults": "未找到股票",
     "searching": "正在搜索…"
   },
@@ -20,10 +20,10 @@
     "fiftyTwoWeekHigh": "52 周最高",
     "title": "关注中",
     "sub": "相对前一收盘价的涨跌 · 52 周区间，含当前价格和目标价",
-    "sort": {
-      "name": "按名称",
-      "change": "按涨跌",
-      "target": "按目标价"
+    "search": "搜索已关注的股票",
+    "noResults": {
+      "title": "未找到结果",
+      "description": "请尝试其他名称或代码。"
     },
     "changeToday": "今日涨跌",
     "range": "52 周区间",

@@ -4,8 +4,9 @@
  */
 
 import { currencyDecimals } from '@shared/currencies';
-import type { TargetDirection } from '@shared/schema';
+import type { TargetDirection, WatchedStockRow } from '@shared/schema';
 import { getFormatters } from '@/lib/format';
+import { matchesSearch } from '@/utils/holdings-search';
 
 export const CHART_PERIODS = ['1D', '5D', '1M', '6M', 'YTD', '1Y', '5Y', 'MAX'] as const;
 export type ChartPeriod = (typeof CHART_PERIODS)[number];
@@ -144,4 +145,81 @@ export function formatMarketCap(
   const fmt = getFormatters(locale, mainCurrency);
   const build = (decimals: number) => fmt.money(v, currency ?? '', { compact: true, decimals });
   return fitDecimals(build, 2, maxLength);
+}
+
+/** A watched stock's name in lists: the short name, then the long name, then the ticker. */
+export function watchedDisplayName(row: WatchedStockRow): string {
+  return row.shortName ?? row.longName ?? row.ticker;
+}
+
+/** The watchlist search: every word must match the ticker or a name (case and diacritics ignored). */
+export function filterWatchedRows(rows: WatchedStockRow[], term: string): WatchedStockRow[] {
+  if (!term.trim()) return rows;
+  return rows.filter((row) => matchesSearch(term, [row.ticker, row.shortName, row.longName]));
+}
+
+export type WatchSortColumn = 'name' | 'change' | 'range' | 'target' | 'held';
+
+const priceOf = (v: string | null) => {
+  const n = parseFloat(v ?? '');
+  return isFinite(n) ? n : null;
+};
+
+/** Where the price sits in its 52-week range: 0 at the low, 1 at the high. */
+function rangePosition(row: WatchedStockRow): number | null {
+  const current = priceOf(row.currentPrice);
+  const low = priceOf(row.fiftyTwoWeekLow);
+  const high = priceOf(row.fiftyTwoWeekHigh);
+  if (current === null || low === null || high === null || high <= low) return null;
+  return (current - low) / (high - low);
+}
+
+/** How far the price still has to move to the target, in percent; a reached target is 0. */
+function targetGap(row: WatchedStockRow): number | null {
+  const distance = targetDistance(row.currentPrice, row.targetPrice);
+  if (distance === null) return null;
+  const reached = targetReached(
+    priceOf(row.currentPrice),
+    priceOf(row.targetPrice),
+    row.targetDirection
+  );
+  return reached ? 0 : Math.abs(distance);
+}
+
+function sortValue(row: WatchedStockRow, column: Exclude<WatchSortColumn, 'name'>): number | null {
+  switch (column) {
+    case 'change':
+      return dayChange(row.currentPrice, row.previousClose)?.pct ?? null;
+    case 'range':
+      return rangePosition(row);
+    case 'target':
+      return targetGap(row);
+    case 'held':
+      return row.isHeld ? 1 : 0;
+  }
+}
+
+/**
+ * Watchlist table order by a column head. Rows without a value for the column
+ * (no price, no target) stay at the bottom in both directions; ties go by name.
+ */
+export function sortWatchedRows(
+  rows: WatchedStockRow[],
+  column: WatchSortColumn,
+  direction: 'asc' | 'desc',
+  locale: string
+): WatchedStockRow[] {
+  const sign = direction === 'asc' ? 1 : -1;
+  const byName = (a: WatchedStockRow, b: WatchedStockRow) =>
+    watchedDisplayName(a).localeCompare(watchedDisplayName(b), locale, { sensitivity: 'base' });
+  return [...rows].sort((a, b) => {
+    if (column === 'name') return sign * byName(a, b);
+    const va = sortValue(a, column);
+    const vb = sortValue(b, column);
+    if (va === null || vb === null) {
+      if (va !== vb) return va === null ? 1 : -1;
+      return byName(a, b);
+    }
+    return sign * (va - vb) || byName(a, b);
+  });
 }

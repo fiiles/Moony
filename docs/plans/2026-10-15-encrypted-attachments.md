@@ -5,8 +5,8 @@ decisions (D1–D13) below refer to it; ADR 0017 records the storage decision. T
 D1–D13 and accepted ADR 0017 on 2026-10-15.
 
 Work happens in a sibling worktree, for example `../Moony-tauri-attachments` on the branch
-`feat/encrypted-attachments`. Other sessions switch branches in the shared checkout
-`/Users/filipkral/Programování/FinanceApp/Moony-tauri`, so never commit there. Demo runs from
+`feat/encrypted-attachments`. Other sessions switch branches in the shared checkout,
+so never commit there. Demo runs from
 the worktree use their own port (1421 or 1422), and nobody types the real profile's password.
 
 Read `AGENTS.md` (the ten rules), `docs/standards/rust-backend.md`,
@@ -34,7 +34,7 @@ npm run lint && npm run typecheck && npm test
 | 4. Viewer, save a copy, open elsewhere, temp copy wiping | done — live demo (dev bridge): a text PDF and a JPEG 2000 PDF rendered in the viewer (JPX centre pixel exact), a .docx showed the D3 dialog, `logout` removed `<cache>/open` with a planted leftover; `npm run build` emits the 200 pdf.js assets (3.9 MB) under `dist/pdfjs/`. Not yet seen in a production WKWebView window (the spike covered pdf.js, CORS and CSP there): Task 8 | 45c89379 |
 | 5. Conversion of plain files, status and leftovers in Settings → Data | done — live demo on a `seed_demo --legacy-attachments` profile: unlock converted 3 items (2 photos, 1 PDF), originals went to `attachments-converted/`, the legacy folders were pruned, `attachments.db` held no plaintext PDF/JPEG bytes, Settings → Data showed "stored encrypted: 3" and a planted former-identifier folder as a leftover; the next unlock deleted the quarantine, leaving only the encrypted files. The seeder part of Task 7 (`--legacy-attachments`, demo attachments) landed here | 19bb4e89 |
 | 6. Backup format 2, restore, integrity, delete account | done — live demo: the backup zip held exactly `moony.db`, `attachments.db`, `salt`, `key.enc`, `recovery.enc`, `manifest.json` (no plaintext PDF/JPEG bytes in either database), `verify_database` was ok, and restoring it then unlocking served the photos from the restored store. Deviations: a format 2 archive must contain every file its manifest lists (rather than "`attachments.db` is required"), and a store that is not attached is copied as it is | 784a4a86 |
-| 7. Tooling, recovery-key copy, living docs, ADR 0017 accepted | done — seeder in 19bb4e89; D10 note under the recovery key; PRIVACY, SECURITY, README, ROADMAP, CHANGELOG (Unreleased: the release-notes text), database.md, overview.md, DEPRECATED.md. `local_anonymize_profile` (git-ignored, also in `Moony-launch/tools/`) opened its copy with `Database::open_with_key`, which now attaches an empty store under the OLD key before the rekey; both copies now drop it before the final open (uncommitted local edits, outside this repo's history) | 03357f03, be116d4e |
+| 7. Tooling, recovery-key copy, living docs, ADR 0017 accepted | done — seeder in 19bb4e89; D10 note under the recovery key; PRIVACY, SECURITY, README, ROADMAP, CHANGELOG (Unreleased: the release-notes text), database.md, overview.md, DEPRECATED.md. A local, git-ignored anonymization tool opened its copy with `Database::open_with_key`, which now attaches an empty store under the OLD key before the rekey; it now drops it before the final open | 03357f03, be116d4e |
 | 8. Verification and review | done — see "Task 8 notes" | 519ac3fa |
 
 ## Task 0 outcome (2026-10-15)

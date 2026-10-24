@@ -17,10 +17,7 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
-  ArrowDown,
   ArrowDownLeft,
-  ArrowUp,
-  ArrowUpDown,
   CalendarSearch,
   Ellipsis,
   History,
@@ -73,6 +70,7 @@ import {
 } from '@/utils/bank-activity';
 import { BackLink, PageHead } from '@/components/shell/PageHead';
 import { EmptyState } from '@/components/common/EmptyState';
+import { SortableTableHead } from '@/components/common/SortableTableHead';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -681,35 +679,7 @@ function BankAccountDetailPage() {
       setSortDirection('desc');
     }
   };
-  const SortHead = ({
-    column,
-    children,
-    align = 'left',
-    className,
-  }: {
-    column: SortColumn;
-    children: React.ReactNode;
-    align?: 'left' | 'right';
-    className?: string;
-  }) => {
-    const active = sortColumn === column;
-    const Icon = !active ? ArrowUpDown : sortDirection === 'asc' ? ArrowUp : ArrowDown;
-    return (
-      <TableHead className={cn(align === 'right' && 'text-right', className)}>
-        <button
-          type="button"
-          onClick={() => handleSort(column)}
-          className={cn(
-            'inline-flex items-center gap-1 rounded-r1 text-thead uppercase transition-colors duration-fast hover:text-ink focus-visible:outline-none focus-visible:shadow-focus',
-            active && 'text-ink'
-          )}
-        >
-          {children}
-          <Icon className={cn('size-3', !active && 'opacity-60')} aria-hidden />
-        </button>
-      </TableHead>
-    );
-  };
+  const sortProps = { sortColumn, sortDirection, onSort: handleSort, align: 'left' as const };
 
   const dayLabel = (ts: number) => {
     const day = utcDayFloor(ts);
@@ -1036,16 +1006,16 @@ function BankAccountDetailPage() {
               <Table className="table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <SortHead column="description" className="w-[27%]">
+                    <SortableTableHead {...sortProps} column="description" className="w-[27%]">
                       {t('transaction.counterparty')}
-                    </SortHead>
+                    </SortableTableHead>
                     <TableHead className="w-[28%]">{t('transaction.detail')}</TableHead>
-                    <SortHead column="category" className="w-[22%]">
+                    <SortableTableHead {...sortProps} column="category" className="w-[22%]">
                       {t('transaction.category')}
-                    </SortHead>
-                    <SortHead column="amount" align="right">
+                    </SortableTableHead>
+                    <SortableTableHead {...sortProps} column="amount" align="right">
                       {t('transaction.amount')}
-                    </SortHead>
+                    </SortableTableHead>
                     <TableHead className="w-12">
                       <span className="sr-only">{tc('labels.actions')}</span>
                     </TableHead>

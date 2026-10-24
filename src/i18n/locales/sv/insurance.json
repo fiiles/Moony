@@ -276,7 +276,7 @@
     "documents": "Dokument"
   },
   "documents": {
-    "subtitle": "Lagras i appens krypterade mapp",
+    "subtitle": "Lagrade krypterat i Moony",
     "columns": {
       "document": "Dokument",
       "type": "Typ",
@@ -310,9 +310,5 @@
       "title": "Ta bort dokument",
       "description": "Ta bort ”{{name}}”? Filen tas bort permanent."
     }
-  },
-  "mcp": {
-    "tipSummary": "Orkar du inte skriva in allt? AI-assistenten kan lägga till försäkringar utifrån ett avtal.",
-    "bannerBody": "Starta MCP-servern, ladda upp avtalet, erbjudandet eller försäkringsbrevet till Claude och be den lägga till försäkringen åt dig."
   }
 }

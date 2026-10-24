@@ -90,3 +90,10 @@ firstrun-home/
 
 # Local one-off tools (data conversions, experiments): never committed
 src-tauri/src/bin/local_*.rs
+
+# Agent worktrees and mobile build outputs (the iOS project ignores its own build folders)
+.claude/worktrees/
+src-tauri/gen/android/**/build/
+src-tauri/gen/android/.gradle/
+src-tauri/gen/android/local.properties
+DerivedData/

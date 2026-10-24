@@ -501,7 +501,8 @@
     "realEstate": "Don't feel like typing it all in? The AI assistant can add a property from its documents.",
     "otherAssets": "Don't feel like typing it all in? The AI assistant can add assets from an invoice or a list.",
     "watchlist": "The AI assistant can follow stocks for you — just tell it which ones.",
-    "body": "Start the MCP server, give Claude the document or describe what you have, and ask it to add it for you. It shows you what it read and writes nothing until you confirm.",
+    "insurance": "Don't feel like typing it all in? The AI assistant can add policies from a contract.",
+    "body": "Start the MCP server, connect it to an AI tool that supports MCP, then give it the document or describe what you have and ask it to add it for you. Check what it read before you let it save anything.",
     "setupLink": "Set up MCP server"
   },
   "a11y": {
@@ -555,7 +556,8 @@
       "failed": "The preview could not be shown. You can save the document or open it in another app.",
       "saveCopy": "Save a copy…",
       "openElsewhere": "Open in another app",
-      "saved": "Copy saved"
+      "saved": "Copy saved",
+      "savedDescription": "The saved copy is not encrypted."
     },
     "openElsewhere": {
       "title": "Open outside Moony?",

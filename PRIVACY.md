@@ -38,7 +38,7 @@ Be aware of these, because the "encrypted database" claim does not cover them:
 | Copies you save | Where you choose ("Save a copy…", "Download" in the photo gallery) | A readable copy, like any export. |
 | "Export all data (JSON)" | The file you choose | A plain-text JSON dump of your data (API keys and the MCP token are left out). Attachments are not part of it. Handle it like a bank statement. |
 | Attachments from 0.12 or earlier, briefly | `real_estate_photos/`, `real_estate_documents/`, `insurance_documents/` and then `attachments-converted/` in the data folder | Earlier versions kept attachments as plain files. The first unlock of a newer version moves them into `attachments.db` in the background; the originals wait in `attachments-converted/` until the next unlock checks the encrypted copies and deletes them. Plain files that no attachment uses any more (earlier versions left them behind when you deleted a property or a policy) go the same way. Copies the operating system kept (Time Machine, file-system snapshots) are not affected. Originals that sit outside the data folder (from before an identifier change) are encrypted but never deleted: Settings → Data and backups lists them so you can delete them yourself. |
-| Device settings | The operating system's WebView profile (`localStorage`) | The interface language, auto-lock minutes, the update-check switch, which sidebar groups are open, dismissed tips, the period, split and custom date range chosen in the stocks analysis, which cashflow-planning rows are expanded, the time the app was last locked, and your **first name** (it is shown in the greeting on the lock screen, which is displayed before the database is unlocked). No balances, amounts or account data. Delete Account clears them. |
+| Device settings | The operating system's WebView profile (`localStorage`) | The interface language, the theme (System, Light or Dark), auto-lock minutes, the update-check switch, which sidebar groups are open, dismissed tips, whether you have ever picked a payment's category yourself (it only decides when a tip about AI categorization is shown), whether you ticked "Don't ask again" on the one-time warning before a document opens in another app, the period, split and custom date range chosen in the stocks analysis, which cashflow-planning rows are expanded, the time the app was last locked, and your **first name** (it is shown in the greeting on the lock screen, which is displayed before the database is unlocked). No balances, amounts or account data. Delete Account clears them. |
 | Application logs | The log folder (account menu at the bottom of the sidebar → About → Open logs) | Meant for troubleshooting. They can contain technical details such as ticker symbols and file paths. Read them before attaching them to a public bug report. |
 
 Full-disk encryption (FileVault, BitLocker, LUKS) is the right complement to all of the above.
@@ -49,7 +49,7 @@ Moony makes network requests only in these situations. Every request also reveal
 address to the service that receives it, as any internet request does.
 
 The requests to the ECB, Frankfurter and CoinGecko identify the app as `Moony/<version>` (for
-example `Moony/0.10.0`) in the `User-Agent` header, so those services can see which version is
+example `Moony/1.0.0`) in the `User-Agent` header, so those services can see which version is
 asking. Yahoo Finance requests carry the fixed, browser-style user agent that the price library
 sets (the same string on every operating system), not Moony's name. The update check uses the
 updater plugin's own user agent, described in the GitHub row.
@@ -60,7 +60,7 @@ updater plugin's own user agent, described in the GitHub row.
 | **CoinGecko** (`api.coingecko.com`) | The CoinGecko IDs of your crypto holdings (that is, the composition of your crypto portfolio), search text, and date ranges for history. If you enter your own optional CoinGecko API key in Settings → Integrations, it is sent as a request header. | After unlocking, when you add a holding, when history is back-filled. | Yes — same as above. |
 | **European Central Bank** (`www.ecb.europa.eu`) | Nothing from your data; it is a download of the public daily reference rates. The ECB sees your IP address and the `Moony/<version>` user agent. | When exchange rates are stale. | Yes — rates then simply go stale. Currencies the ECB does not publish never get an automatic rate (Settings → General → Currency explains this). |
 | **Frankfurter** (`api.frankfurter.dev`, serves ECB historical rates) | The ISO codes of the currencies found in your data (accounts, transactions, stock and crypto positions and their quotes, properties, loans, bonds, insurance, budgets, your profile; the euro itself and currencies without a rate source are left out) and the date range still missing, which can reach back to your earliest dated record (a transaction, a purchase date, a loan start) minus ten days. | When you enter or import transactions in a currency whose history is missing, and on rate refresh. Best effort: failures are ignored. | Yes — without it historical conversions fall back to current rates. |
-| **GitHub** (`github.com` and `release-assets.githubusercontent.com`) | A plain request for `latest.json` of the latest release (`github.com/fiiles/Moony/releases/latest/download/latest.json`), which GitHub redirects to its release-asset host. The request carries the user agent of the updater plugin, `tauri-plugin-updater/<plugin version>` (`tauri-plugin-updater/2.13.3` in Moony 0.10.0), and `Accept: application/json`. Moony's own version, your operating system and your CPU architecture are not part of the request. If you accept an update, the installer for your platform is downloaded from the same release with the same user agent (so GitHub can tell which platform's file you fetched), and its signature is verified against the public key built into the app. GitHub decides which host serves release files and can change it, so a firewall rule may need to allow `*.githubusercontent.com`. | Once per app start, after you unlock, and whenever you press the manual check. | Yes — Settings → Security → Updates has a switch for the automatic check. |
+| **GitHub** (`github.com` and `release-assets.githubusercontent.com`) | A plain request for `latest.json` of the latest release (`github.com/fiiles/Moony/releases/latest/download/latest.json`), which GitHub redirects to its release-asset host. The request carries the user agent of the updater plugin, `tauri-plugin-updater/<plugin version>` (`tauri-plugin-updater/2.14.0` in Moony 1.0.0), and `Accept: application/json`. Moony's own version, your operating system and your CPU architecture are not part of the request. If you accept an update, the installer for your platform is downloaded from the same release with the same user agent (so GitHub can tell which platform's file you fetched), and its signature is verified against the public key built into the app. GitHub decides which host serves release files and can change it, so a firewall rule may need to allow `*.githubusercontent.com`. | Once per app start, after you unlock, and whenever you press the manual check. | Yes — Settings → Security → Updates has a switch for the automatic check. |
 | **Your AI client** (MCP, optional) | Whatever the client asks for and the tools return — potentially your full financial data. | Only while the MCP server is enabled, the app is unlocked and a client connected with your token. | Off by default; see below. |
 
 Notes:
@@ -91,13 +91,15 @@ trust, and regenerate the token when you stop using one.
   price library keeps in memory for its requests.
 - No remote configuration and no code that is loaded while the app runs: the only code that
   arrives from outside is a signed update that you choose to install.
-- No server and no sync, so nothing for anyone to read remotely. The optional MCP server is off
-  by default and listens on `127.0.0.1` only; whoever holds its token on your computer can read
-  and change your data (see above).
+- No sync, so nothing for anyone to read remotely. The
+  optional MCP server is off by default and listens on `127.0.0.1` only; whoever holds its token
+  on your computer can read and change your data (see above).
 
-If an online feature is ever added, for example sync between your own devices, it will be
-optional and off until you turn it on, and this page will describe what it sends before the
-release that adds it.
+Today Moony has no sync, no bank connection and no mobile app. If a feature that sends data over
+the internet is ever added (for example fetching balances and transactions through a bank-data
+service, or syncing your own devices), it will be optional and off until you turn it on, and this
+page will describe what it sends, and to whom, before the release that adds it. The one permanent
+promise on this page is: no telemetry.
 
 ## Where your data lives
 
@@ -126,12 +128,13 @@ button. Moony never moves this folder on its own, and uninstalling the app does 
 by default.
 
 **Upgrading from 0.10.0 or earlier:** those versions kept the folder under the old identifier
-`com.filipkral.moony`, in the same place as in the table above. 0.11.0 looks in the folder named
-`com.moonyfinance.desktop` and does not move anything itself. To keep your data, quit Moony and
-rename the old folder to the new name before the first start of 0.11.0. If 0.11.0 has already
-started and created the new folder, quit it, delete the new folder (it holds only what 0.11.0
-created there; back it up first if you already entered data in it), then rename the old one. The
-old folder is never deleted for you.
+`com.filipkral.moony`, in the same place as in the table above. 0.11.0 and every later version,
+including 1.0, look in the folder named `com.moonyfinance.desktop` and do not move anything
+themselves. To keep your data, quit Moony and rename the old folder to the new name before the
+first start of 0.11.0 or any later version (an in-app update from 0.10.0 to 1.0 counts). If the new
+version has already started and created the new folder, quit it, delete the new folder (it holds
+only what the new version created there; back it up first if you already entered data in it), then
+rename the old one. The old folder is never deleted for you.
 
 Preferences that the web view keeps on your computer may start from their defaults once: the
 language of the lock screen, auto-lock and the automatic update check, which is on by default. If

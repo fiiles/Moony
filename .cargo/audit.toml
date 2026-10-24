@@ -4,9 +4,11 @@
 #   cargo audit --file src-tauri/Cargo.lock --deny warnings
 #
 # Vulnerabilities, unsound crates and yanked crates fail the build. The advisories below are the
-# only exceptions: all are "unmaintained" / "unsound" notices (no known exploit) for crates that
-# are pulled in by Tauri or by the `image` crate and cannot be removed from this repository.
-# Review the list on every Tauri / image upgrade and delete entries that are gone.
+# only exceptions, for crates that are pulled in by Tauri or by the `image` crate and cannot be
+# removed from this repository: "unmaintained" / "unsound" notices with no known exploit, and the
+# zip 4 extraction advisories of tauri-plugin-updater, whose code path Moony never reaches (see
+# the reason next to each). Review the list on every Tauri / image upgrade and delete entries that
+# are gone.
 
 [advisories]
 ignore = [
@@ -35,4 +37,19 @@ ignore = [
   "RUSTSEC-2025-0100", # unic-ucd-ident
   # paste: unmaintained proc-macro, via the image crate's AVIF / EXR codecs (rav1e, pulp).
   "RUSTSEC-2024-0436",
+  # zip 4.6.1 extraction advisories (SUID bits, symlinks out of the target, permissions through
+  # symlinks). The zip 4 copy comes only from tauri-plugin-updater, which unpacks a `.zip` update
+  # payload on Windows after its minisign signature has been verified; Moony ships the NSIS `.exe`
+  # as the Windows update (`createUpdaterArtifacts: true`), never a `.zip`, and its own backup code
+  # uses zip 9. Delete these once the updater moves to zip 9 (tauri-apps/plugins-workspace#3698,
+  # merged, not yet released).
+  "RUSTSEC-2026-0367",
+  "RUSTSEC-2026-0368",
+  "RUSTSEC-2026-0369",
+  # zvariant / zbus_names / zvariant_derive: unmaintained since they were merged into zbus 6. zbus 5
+  # is the Linux D-Bus client of tauri-plugin-opener (and of the phone-only notification plugin);
+  # delete these when those plugins move to zbus 6.
+  "RUSTSEC-2026-0370", # zvariant
+  "RUSTSEC-2026-0371", # zbus_names
+  "RUSTSEC-2026-0372", # zvariant_derive
 ]

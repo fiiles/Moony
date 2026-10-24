@@ -3,14 +3,18 @@ import {
   CHART_PERIODS,
   changeFromReference,
   dayChange,
+  filterWatchedRows,
   formatMarketCap,
   formatNativePrice,
   inferTargetDirection,
   latestFetchedAt,
   percentFromFraction,
+  sortWatchedRows,
   targetDistance,
   targetReached,
+  watchedDisplayName,
 } from './stock-monitor';
+import type { WatchedStockRow } from '@shared/schema';
 
 describe('dayChange', () => {
   it('computes absolute and percent change vs previous close', () => {
@@ -206,5 +210,111 @@ describe('targetReached', () => {
   it('is never reached without both numbers', () => {
     expect(targetReached(null, 600, 'below')).toBe(false);
     expect(targetReached(600, null, 'below')).toBe(false);
+  });
+});
+
+describe('watchlist search and sort', () => {
+  const row = (over: Partial<WatchedStockRow>): WatchedStockRow => ({
+    id: over.ticker ?? 'X',
+    ticker: 'X',
+    targetPrice: null,
+    targetDirection: null,
+    notes: '',
+    shortName: null,
+    longName: null,
+    currency: 'USD',
+    currentPrice: '100',
+    previousClose: '100',
+    fiftyTwoWeekLow: '50',
+    fiftyTwoWeekHigh: '150',
+    exchange: null,
+    priceFetchedAt: null,
+    heldInvestmentId: null,
+    isHeld: false,
+    followedAt: 0,
+    ...over,
+  });
+  const apple = row({ ticker: 'AAPL', shortName: 'Apple Inc.', previousClose: '98' });
+  const cez = row({ ticker: 'CEZ.PR', shortName: 'ČEZ', previousClose: '105', isHeld: true });
+  const msft = row({ ticker: 'MSFT', longName: 'Microsoft Corporation', previousClose: null });
+  const rows = [msft, cez, apple];
+  const tickers = (list: WatchedStockRow[]) => list.map((r) => r.ticker);
+
+  it('names a row by its short name, then the long name, then the ticker', () => {
+    expect(watchedDisplayName(apple)).toBe('Apple Inc.');
+    expect(watchedDisplayName(msft)).toBe('Microsoft Corporation');
+    expect(watchedDisplayName(row({ ticker: 'ZZ' }))).toBe('ZZ');
+  });
+
+  it('filters by ticker or name, ignoring case and diacritics', () => {
+    expect(tickers(filterWatchedRows(rows, 'cez'))).toEqual(['CEZ.PR']);
+    expect(tickers(filterWatchedRows(rows, 'micro'))).toEqual(['MSFT']);
+    expect(tickers(filterWatchedRows(rows, 'aapl'))).toEqual(['AAPL']);
+    expect(filterWatchedRows(rows, '  ')).toEqual(rows);
+  });
+
+  it('sorts by name in both directions', () => {
+    expect(tickers(sortWatchedRows(rows, 'name', 'asc', 'cs'))).toEqual(['AAPL', 'CEZ.PR', 'MSFT']);
+    expect(tickers(sortWatchedRows(rows, 'name', 'desc', 'cs'))).toEqual([
+      'MSFT',
+      'CEZ.PR',
+      'AAPL',
+    ]);
+  });
+
+  it('sorts by the day change and keeps unknown changes last in both directions', () => {
+    expect(tickers(sortWatchedRows(rows, 'change', 'desc', 'cs'))).toEqual([
+      'AAPL',
+      'CEZ.PR',
+      'MSFT',
+    ]);
+    expect(tickers(sortWatchedRows(rows, 'change', 'asc', 'cs'))).toEqual([
+      'CEZ.PR',
+      'AAPL',
+      'MSFT',
+    ]);
+  });
+
+  it('sorts by the position in the 52-week range', () => {
+    const low = row({ ticker: 'LOW', currentPrice: '60' });
+    const high = row({ ticker: 'HIGH', currentPrice: '140' });
+    const none = row({ ticker: 'NONE', fiftyTwoWeekHigh: null });
+    expect(tickers(sortWatchedRows([none, low, high], 'range', 'desc', 'cs'))).toEqual([
+      'HIGH',
+      'LOW',
+      'NONE',
+    ]);
+    expect(tickers(sortWatchedRows([none, high, low], 'range', 'asc', 'cs'))).toEqual([
+      'LOW',
+      'HIGH',
+      'NONE',
+    ]);
+  });
+
+  it('sorts by the distance left to the target, reached targets first, none last', () => {
+    const near = row({ ticker: 'NEAR', targetPrice: '105', targetDirection: 'above' });
+    const far = row({ ticker: 'FAR', targetPrice: '70', targetDirection: 'below' });
+    const hit = row({ ticker: 'HIT', targetPrice: '90', targetDirection: 'above' });
+    const none = row({ ticker: 'NONE' });
+    expect(tickers(sortWatchedRows([none, far, near, hit], 'target', 'asc', 'cs'))).toEqual([
+      'HIT',
+      'NEAR',
+      'FAR',
+      'NONE',
+    ]);
+    expect(tickers(sortWatchedRows([none, far, near, hit], 'target', 'desc', 'cs'))).toEqual([
+      'FAR',
+      'NEAR',
+      'HIT',
+      'NONE',
+    ]);
+  });
+
+  it('sorts held stocks first, then by name', () => {
+    expect(tickers(sortWatchedRows(rows, 'held', 'desc', 'cs'))).toEqual([
+      'CEZ.PR',
+      'AAPL',
+      'MSFT',
+    ]);
   });
 });

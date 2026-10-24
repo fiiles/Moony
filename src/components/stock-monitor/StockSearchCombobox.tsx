@@ -13,9 +13,9 @@ interface StockSearchComboboxProps {
 }
 
 /**
- * Ticker search (prototype `stock-monitor.html`): a wide search field whose
- * results drop down as a pop surface; picking one opens the ticker's detail,
- * where it can be followed.
+ * Ticker search in the watchlist head, as tall as the head buttons: its results
+ * drop down as a pop surface; picking one opens the ticker's detail, where it
+ * can be followed.
  */
 export function StockSearchCombobox({ className }: StockSearchComboboxProps) {
   const { t } = useTranslation('stockMonitor');
@@ -80,9 +80,10 @@ export function StockSearchCombobox({ className }: StockSearchComboboxProps) {
   };
 
   return (
-    <div ref={containerRef} className={cn('relative w-[320px]', className)}>
+    <div ref={containerRef} className={cn('relative w-[280px]', className)}>
       <InputWrap icon={<Search />}>
         <Input
+          className="h-control text-table"
           value={query}
           onChange={(e) => handleQueryChange(e.target.value)}
           onKeyDown={(e) => {
@@ -94,7 +95,7 @@ export function StockSearchCombobox({ className }: StockSearchComboboxProps) {
         />
       </InputWrap>
       {open && (
-        <div className="absolute z-50 mt-1.5 w-full overflow-hidden rounded-r3 border border-line-strong bg-paper shadow-pop">
+        <div className="absolute right-0 z-50 mt-1.5 w-[360px] min-w-full overflow-hidden rounded-r3 border border-line-strong bg-paper shadow-pop">
           {searching ? (
             <div className="px-3 py-2.5 text-table text-ink-3">{t('search.searching')}</div>
           ) : results.length === 0 ? (

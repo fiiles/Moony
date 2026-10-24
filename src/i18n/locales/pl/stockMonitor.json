@@ -3,7 +3,7 @@
   "subtitle": "Akcje, które rozważasz: ceny w ich własnej walucie, ceny docelowe i twoje notatki.",
   "cancel": "Anuluj",
   "search": {
-    "placeholder": "Wyszukaj akcję (symbol lub nazwa), aby zacząć ją obserwować",
+    "placeholder": "Znajdź akcję do obserwowania",
     "noResults": "Nie znaleziono akcji",
     "searching": "Wyszukiwanie…"
   },
@@ -20,10 +20,10 @@
     "fiftyTwoWeekHigh": "Maks. 52 tyg.",
     "title": "Obserwowane",
     "sub": "Zmiana względem poprzedniego zamknięcia · zakres 52 tygodni z aktualną ceną i celem",
-    "sort": {
-      "name": "Wg nazwy",
-      "change": "Wg zmiany",
-      "target": "Wg celu"
+    "search": "Szukaj w obserwowanych",
+    "noResults": {
+      "title": "Nic nie znaleziono",
+      "description": "Spróbuj innej nazwy lub tickera."
     },
     "changeToday": "Zmiana dziś",
     "range": "Zakres 52 tyg.",

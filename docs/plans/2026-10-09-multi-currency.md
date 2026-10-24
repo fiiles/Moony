@@ -832,7 +832,7 @@ rg -n "convert_to_czk|convertToCzK|convertFromCzK|formatCurrencyRaw|formatCurren
 ### Task 22: Phase 2 review checkpoint
 
 - [ ] Full gates + bindings drift check.
-- [ ] Launch the demo profile (`moony-demo` launch config, password from memory note `dev-bridge-background-throttling`) only if the dev bridge is available; otherwise rely on tests. Smoke: Dashboard, Stocks, StockDetail, Crypto, Bonds, Loans, Insurance, Real estate, Other assets, Bank accounts, Projection, Stocks analysis in CZK, EUR and AED main currency; switch currency and confirm refetch.
+- [ ] Launch the demo profile (the `moony-demo` launch config, which turns `backgroundThrottling` off so that an idle Mac does not suspend the webview; the password is in `CONTRIBUTING.md` → "Demo data") only if the dev bridge is available; otherwise rely on tests. Smoke: Dashboard, Stocks, StockDetail, Crypto, Bonds, Loans, Insurance, Real estate, Other assets, Bank accounts, Projection, Stocks analysis in CZK, EUR and AED main currency; switch currency and confirm refetch.
 - [ ] Code review subagent (sonnet) over phase-2 diff; fix; commit.
 
 ---
@@ -954,7 +954,7 @@ From now on the live writer stores `real_estate_personal_by_currency` (personal 
 ### Task 26: Final verification and merge
 
 - [ ] Full gates on both sides; `cargo test generate_bindings -- --ignored` and `git diff --exit-code shared/generated-types.ts`.
-- [ ] Migration dry run on a profile copy: if the demo profile database file exists (memory note `dev-bridge-background-throttling` names the `moony-demo` launch config), copy it into the scratchpad, open it with the app's migration runner in a throwaway test binary or `cargo test -- --ignored` helper that takes a path, and compare before/after: for every snapshot row with complete breakdowns, the CZK net worth computed before (old totals) equals the net worth recomputed from breakdowns at that day's rates within 0.01 CZK. Never touch the real profile.
+- [ ] Migration dry run on a profile copy: if the demo profile database file exists (the `moony-demo` launch config uses `demo-home` as its `HOME`), copy it into the scratchpad, open it with the app's migration runner in a throwaway test binary or `cargo test -- --ignored` helper that takes a path, and compare before/after: for every snapshot row with complete breakdowns, the CZK net worth computed before (old totals) equals the net worth recomputed from breakdowns at that day's rates within 0.01 CZK. Never touch the real profile.
 - [ ] Independent whole-branch review (sonnet) against the spec acceptance list; fix wave; re-review.
 - [ ] Record the outcome in `docs/audits/2026-10-09-multi-currency-audit.md` under a new "Implementation result" section (commits, verification numbers, accepted limitations).
 - [ ] `git switch main && git merge --no-ff feat/multi-currency` (local only, no push).

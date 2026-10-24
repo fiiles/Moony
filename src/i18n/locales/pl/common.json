@@ -507,7 +507,8 @@
     "realEstate": "Nie chce Ci się wszystkiego przepisywać? Asystent AI może dodać nieruchomość z jej dokumentów.",
     "otherAssets": "Nie chce Ci się wszystkiego przepisywać? Asystent AI może dodać aktywa z faktury lub listy.",
     "watchlist": "Asystent AI może obserwować akcje za Ciebie — wystarczy mu powiedzieć, które.",
-    "body": "Uruchom serwer MCP, przekaż Claude dokument lub opisz, co masz, i poproś, by dodał to za Ciebie. Pokaże, co odczytał, i niczego nie zapisze, dopóki nie potwierdzisz.",
+    "insurance": "Nie chce ci się wszystkiego wpisywać? Asystent AI może dodać polisy na podstawie umowy.",
+    "body": "Uruchom serwer MCP, podłącz go do narzędzia AI obsługującego MCP, przekaż mu dokument lub opisz, co masz, i poproś, żeby dodał to za Ciebie. Zanim pozwolisz mu cokolwiek zapisać, sprawdź, co odczytał.",
     "setupLink": "Skonfiguruj serwer MCP"
   },
   "a11y": {
@@ -563,7 +564,8 @@
       "failed": "Nie udało się wyświetlić podglądu. Możesz zapisać dokument lub otworzyć go w innej aplikacji.",
       "saveCopy": "Zapisz kopię…",
       "openElsewhere": "Otwórz w innej aplikacji",
-      "saved": "Kopia zapisana"
+      "saved": "Kopia zapisana",
+      "savedDescription": "Zapisana kopia nie jest zaszyfrowana."
     },
     "openElsewhere": {
       "title": "Otworzyć poza Moony?",

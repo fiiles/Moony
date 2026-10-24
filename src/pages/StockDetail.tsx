@@ -885,7 +885,7 @@ export default function StockDetail() {
               disabled={!editableName.trim() || updateNameMutation.isPending}
               loading={updateNameMutation.isPending}
             >
-              {updateNameMutation.isPending ? tc('buttons.saving') : t('detail.editName.save')}
+              {updateNameMutation.isPending ? tc('status.saving') : t('detail.editName.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

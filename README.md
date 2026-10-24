@@ -10,7 +10,7 @@
 [![Latest release](https://img.shields.io/github/v/release/fiiles/Moony?display_name=tag)](https://github.com/fiiles/Moony/releases/latest)
 [![License: AGPL-3.0](https://img.shields.io/badge/license-AGPL--3.0-blue.svg)](./LICENSE)
 
-Beta (0.10, on the way to 1.0) · macOS · Windows · Linux · ten languages
+macOS · Windows · Linux · ten languages
 
 </div>
 
@@ -63,6 +63,8 @@ tablet app, or a budget shared by a household (one profile on one computer, no s
   and Czech are machine-translated and [corrections are welcome](./CONTRIBUTING.md#translations).
   The main currency can be any of the 36 that have an exchange-rate source; every amount keeps its
   own currency and nothing is converted 1:1 or at an invented rate ([details](./docs/currencies.md)).
+- **Light and dark.** Settings → General → Appearance: System (follows macOS, Windows or Linux),
+  Light or Dark.
 
 **Bank presets**, recognized from the header row of an export. Fintechs: Revolut, Wise, N26.
 Germany: Sparkasse, DKB\*, ING Germany\*. United Kingdom: a generic debit/credit layout. United
@@ -80,11 +82,12 @@ Get the installer from the [latest release](https://github.com/fiiles/Moony/rele
 (all versions: [Releases](https://github.com/fiiles/Moony/releases)). Builds: macOS (Apple
 Silicon and Intel), Windows (x64), Linux (x86_64, built on Ubuntu 24.04).
 
-> **Moony's installers are not code-signed yet.** Signing needs an Apple Developer Program
-> membership and a Windows code-signing certificate, which the project does not have; it is
-> planned (see [ROADMAP.md](./ROADMAP.md)). Until then macOS and Windows show a warning the first
-> time you open the app. The app is not damaged: follow the steps below once. Updates inside the
-> app are verified with the project's own signature either way.
+> **The Windows installer is not code-signed yet.** Signing needs a Windows code-signing
+> certificate, which the project does not have; it is planned (see [ROADMAP.md](./ROADMAP.md)).
+> Until then Windows shows a warning the first time you open the app. The app is not harmful:
+> follow the Windows steps below once. The Mac app is signed with an Apple Developer ID and
+> notarized by Apple. Updates inside the app are verified with the project's own signature
+> either way.
 
 <details>
 <summary><strong>macOS</strong></summary>
@@ -94,18 +97,7 @@ Silicon and Intel), Windows (x64), Linux (x86_64, built on Ubuntu 24.04).
    Not sure which Mac you have? Apple menu → **About This Mac**: the *Chip* line says
    *Apple M…* or *Intel*.
 2. Open the `.dmg` and drag **Moony** into **Applications**.
-3. Open **Terminal** (Applications → Utilities) and run this once:
-
-   ```bash
-   xattr -cr /Applications/Moony.app
-   ```
-
-   It removes the "downloaded from the internet" mark that makes macOS say *"Moony is damaged
-   and can't be opened"* (Gatekeeper). Then open Moony as usual.
-
-   If macOS instead says it *cannot verify the developer*, you can also go to **System
-   Settings → Privacy & Security**, scroll to *Security* and click **Open Anyway** next to
-   Moony.
+3. Open Moony. It is signed and notarized by Apple, so it opens like any other app.
 
 </details>
 
@@ -151,7 +143,7 @@ public key; switch the check off in *Settings → Security → Updates*.
 
 The checkable version is **[PRIVACY.md](./PRIVACY.md)**; vulnerabilities go through **[SECURITY.md](./SECURITY.md)**.
 
-- **Local only.** AES-256 encrypted SQLite databases (SQLCipher) in your user profile: one for
+- **Local-first.** AES-256 encrypted SQLite databases (SQLCipher) in your user profile: one for
   your records, one for the photos and documents you attach. No account, no cloud, no sync, and no
   telemetry: no analytics, no usage statistics, no crash reports.
 - **What leaves your computer.** Ticker symbols, ISINs, crypto IDs, search text, currencies and
@@ -176,7 +168,8 @@ of your attachments, and offers:
 - **Back up now:** one ZIP with consistent, still encrypted snapshots of both databases and the
   key files.
 - **Restore from backup:** replaces your data; the current data is moved to a `pre-restore-…`
-  folder first, never deleted. Unlock with the password that belongs to the backup.
+  folder first, never deleted. Unlock with the password that belongs to the backup. Also on the
+  lock screen and in the first-run wizard, so a new computer needs no throwaway account.
 - **Export all data (JSON):** a plain-text dump of your records, without attachment files, API
   keys and the MCP token. **Verify database:** an integrity check.
 
@@ -189,8 +182,7 @@ only together with the key files. *Settings → Account → Delete data…* does
 Moony can serve your data to an AI assistant such as Claude over the Model Context Protocol. It
 is off by default, listens on `127.0.0.1` only, needs the app to be unlocked and a bearer token,
 and offers 44 tools that read and, in part, write your data. The assistant processes whatever it
-reads, usually in its provider's cloud, and tool names may change before 1.0
-([setup](./docs/mcp.md)).
+reads, usually in its provider's cloud ([setup](./docs/mcp.md)).
 
 ## Data sources and attribution
 
@@ -208,12 +200,14 @@ wrong or out of date; check anything that matters against your bank and broker s
 
 ## Status and compatibility
 
-Moony 0.10 is the beta for 1.0. Databases created with 0.10.x are meant to open in 1.0 without
-manual steps. That is a goal, not a guarantee, backed by append-only migrations and an automatic
-copy of the database next to itself (`moony.db.bak-<time>`, the newest three are kept) before a
-migration. Keep your own backup: an older version refuses a database that a newer one has
-migrated, and the MCP interface may still change before 1.0. See [CHANGELOG.md](./CHANGELOG.md)
-and [ROADMAP.md](./ROADMAP.md).
+Moony 1.0 is the first stable release. Your database is upgraded in place by append-only
+migrations, and Moony first copies it next to itself (`moony.db.bak-<time>`, the newest three are
+kept). That is a safeguard, not a guarantee: keep your own backup, because an older version
+refuses a database that a newer one has migrated. If you come from 0.10.0 or older, read
+[Where your data lives](./PRIVACY.md#where-your-data-lives) first: the data folder was renamed in
+0.11.0. The MCP tool names and result shapes have changed only by additions and documented fixes
+since 0.10.0; if a later release changes them incompatibly, [CHANGELOG.md](./CHANGELOG.md) says
+so. Plans are in [ROADMAP.md](./ROADMAP.md).
 
 ## Built with AI assistance
 

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
-import { Ellipsis, Eye, Plus, RefreshCw } from 'lucide-react';
+import { Ellipsis, Eye, Plus, RefreshCw, Search } from 'lucide-react';
 import type { WatchedStockRow } from '@shared/schema';
 import { currencyDecimals } from '@shared/currencies';
 import { exchangeName } from '@/utils/exchange-names';
@@ -12,15 +12,18 @@ import { usePortfolioFollowCandidates, useWatchedStocks } from '@/hooks/use-stoc
 import { useStockMonitorMutations } from '@/hooks/use-stock-monitor-mutations';
 import {
   dayChange,
+  filterWatchedRows,
   formatNativePrice,
   latestFetchedAt,
-  targetDistance,
+  sortWatchedRows,
   targetReached,
+  watchedDisplayName as displayName,
+  type WatchSortColumn,
 } from '@/utils/stock-monitor';
 import { PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Segmented } from '@/components/ui/segmented';
+import { Input, InputWrap } from '@/components/ui/input';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Table,
@@ -38,6 +41,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
+import { SortableTableHead } from '@/components/common/SortableTableHead';
 import { EmptyState } from '@/components/common/EmptyState';
 import { McpTip } from '@/components/common/McpTip';
 import { AssetLogo } from '@/components/common/AssetLogo';
@@ -51,19 +55,17 @@ import {
 import { AddInvestmentModal } from '@/components/stocks/AddInvestmentModal';
 import { ChangeBadge, ChangeNote } from '@/components/common/ChangeBadge';
 
-type SortKey = 'name' | 'change' | 'target';
-
 const num = (v: string | null) => {
   const n = parseFloat(v ?? '');
   return isFinite(n) ? n : null;
 };
-const displayName = (row: WatchedStockRow) => row.shortName ?? row.longName ?? row.ticker;
 
 /**
  * Watchlist (design system §7 Watchlist, prototype `stock-monitor.html`):
  * native-currency prices, day change against the previous close, the 52-week
  * range with the current price and the target tick, target state, three stats
- * and a wide search that starts following a stock.
+ * and a search in the head that starts following a stock. The table card
+ * filters the watched stocks and sorts by its column heads, like the stocks list.
  */
 export default function StockMonitor() {
   const { t } = useTranslation('stockMonitor');
@@ -77,7 +79,9 @@ export default function StockMonitor() {
   const { unfollowMutation, refreshMutation, followPortfolioMutation, targetPriceMutation } =
     useStockMonitorMutations();
 
-  const [sort, setSort] = useState<SortKey>('name');
+  const [search, setSearch] = useState('');
+  const [sortColumn, setSortColumn] = useState<WatchSortColumn>('name');
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc');
   const [target, setTarget] = useState<TargetPriceTarget | null>(null);
   const [pendingUnfollow, setPendingUnfollow] = useState<WatchedStockRow | null>(null);
   const [buy, setBuy] = useState<WatchedStockRow | null>(null);
@@ -106,25 +110,21 @@ export default function StockMonitor() {
     return fmt.number(n, { minimumFractionDigits: d, maximumFractionDigits: d });
   };
 
-  const sorted = useMemo(() => {
-    const list = [...rows];
-    if (sort === 'name') {
-      list.sort((a, b) => displayName(a).localeCompare(displayName(b), locale));
-    } else if (sort === 'change') {
-      list.sort(
-        (a, b) =>
-          (dayChange(b.currentPrice, b.previousClose)?.pct ?? -Infinity) -
-          (dayChange(a.currentPrice, a.previousClose)?.pct ?? -Infinity)
-      );
-    } else {
-      const dist = (r: WatchedStockRow) => {
-        const d = targetDistance(r.currentPrice, r.targetPrice);
-        return d === null ? Infinity : Math.abs(d);
-      };
-      list.sort((a, b) => dist(a) - dist(b));
+  const handleSort = (column: WatchSortColumn) => {
+    if (sortColumn === column) setSortDirection((d) => (d === 'asc' ? 'desc' : 'asc'));
+    else {
+      setSortColumn(column);
+      // The alphabet and the closest target start from the top; the rest from the largest.
+      setSortDirection(column === 'name' || column === 'target' ? 'asc' : 'desc');
     }
-    return list;
-  }, [rows, sort, locale]);
+  };
+
+  const sorted = useMemo(
+    () => sortWatchedRows(filterWatchedRows(rows, search), sortColumn, sortDirection, locale),
+    [rows, search, sortColumn, sortDirection, locale]
+  );
+
+  const sortProps = { sortColumn, sortDirection, onSort: handleSort };
 
   // Stats
   const heldCount = rows.filter((r) => r.isHeld).length;
@@ -168,6 +168,7 @@ export default function StockMonitor() {
       description={t('subtitle')}
       actions={
         <>
+          <StockSearchCombobox />
           <Button
             variant="outline"
             onClick={() => refreshMutation.mutate()}
@@ -233,7 +234,6 @@ export default function StockMonitor() {
     return (
       <>
         {head}
-        <StockSearchCombobox className="mb-5" />
         <Stats columns={3}>
           <StatSkeleton />
           <StatSkeleton />
@@ -247,7 +247,6 @@ export default function StockMonitor() {
     return (
       <>
         {head}
-        <StockSearchCombobox className="mb-5" />
         <EmptyState
           icon={<Eye />}
           title={t('empty.title')}
@@ -275,7 +274,6 @@ export default function StockMonitor() {
   return (
     <>
       {head}
-      <StockSearchCombobox className="mb-5" />
 
       <Stats columns={3}>
         <Stat
@@ -342,29 +340,54 @@ export default function StockMonitor() {
             <CardTitle>{t('table.title')}</CardTitle>
             <CardDescription>{t('table.sub')}</CardDescription>
           </div>
-          <Segmented
-            value={sort}
-            onValueChange={setSort}
-            options={[
-              { value: 'name', label: t('table.sort.name') },
-              { value: 'change', label: t('table.sort.change') },
-              { value: 'target', label: t('table.sort.target') },
-            ]}
-          />
+          <InputWrap icon={<Search />} className="w-60">
+            <Input
+              className="h-[35px] text-table"
+              placeholder={t('table.search')}
+              aria-label={t('table.search')}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              data-testid="input-search-watched"
+            />
+          </InputWrap>
         </CardHeader>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[26%]">{t('table.stock')}</TableHead>
+              <SortableTableHead {...sortProps} column="name" align="left" className="w-[26%]">
+                {t('table.stock')}
+              </SortableTableHead>
+              {/* Prices are in each stock's own currency, so they don't sort against each other. */}
               <TableHead className="text-right">{t('table.price')}</TableHead>
-              <TableHead className="text-right">{t('table.changeToday')}</TableHead>
-              <TableHead className="text-right">{t('table.range')}</TableHead>
-              <TableHead className="text-right">{t('table.target')}</TableHead>
-              <TableHead className="text-right">{t('table.held')}</TableHead>
+              <SortableTableHead {...sortProps} column="change">
+                {t('table.changeToday')}
+              </SortableTableHead>
+              <SortableTableHead {...sortProps} column="range">
+                {t('table.range')}
+              </SortableTableHead>
+              <SortableTableHead {...sortProps} column="target">
+                {t('table.target')}
+              </SortableTableHead>
+              <SortableTableHead {...sortProps} column="held">
+                {t('table.held')}
+              </SortableTableHead>
               <TableHead className="w-10" />
             </TableRow>
           </TableHeader>
           <TableBody>
+            {sorted.length === 0 && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={7} className="py-12">
+                  <div className="grid place-items-center text-center text-ink-3">
+                    <Search className="mb-3 size-7 text-ink-5" aria-hidden />
+                    <h3 className="mb-1.5 text-h3 text-ink">{t('table.noResults.title')}</h3>
+                    <p className="m-0 max-w-[320px] text-table">
+                      {t('table.noResults.description')}
+                    </p>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
             {sorted.map((row) => {
               const change = dayChange(row.currentPrice, row.previousClose);
               const current = num(row.currentPrice);
@@ -527,7 +550,7 @@ export default function StockMonitor() {
           </TableBody>
         </Table>
         <div className="flex items-center justify-between gap-4 border-t border-line px-[14px] py-3 text-micro font-500 text-ink-4">
-          <span>{t('table.footer', { count: rows.length })}</span>
+          <span>{t('table.footer', { count: sorted.length })}</span>
           <span>{t('table.source')}</span>
         </div>
       </Card>

@@ -3,6 +3,7 @@ import { useLocation } from 'wouter';
 import { useTranslation } from 'react-i18next';
 import { Landmark, Plus, Target, Wallet } from 'lucide-react';
 import { useFormat } from '@/lib/use-format';
+import { useAuth } from '@/hooks/use-auth';
 import { useGreeting } from '@/hooks/use-greeting';
 import {
   ASSET_CLASSES,
@@ -12,6 +13,7 @@ import {
 import { useNetWorthJumpTip } from '@/hooks/use-net-worth-jump-tip';
 import { useRecentMoves } from '@/hooks/use-recent-moves';
 import type { JumpEvent } from '@/utils/net-worth-jumps';
+import { investmentPage } from '@/utils/getting-started';
 import { CHART_PERIODS } from '@/utils/period';
 import TimePeriodSelector, { type Period } from '@/components/cashflow/TimePeriodSelector';
 import { PageHead, SectionHead } from '@/components/shell/PageHead';
@@ -31,6 +33,7 @@ import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 export default function Dashboard() {
   const { t } = useTranslation('dashboard');
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const fmt = useFormat();
   const [selectedPeriod, setSelectedPeriod] = useState<Period>('30D');
 
@@ -147,9 +150,12 @@ export default function Dashboard() {
   }
 
   if (isEmptyPortfolio) {
+    // Only the areas chosen in the wizard / Settings get a shortcut
+    const investmentHref = investmentPage(user?.menuPreferences);
     return (
       <>
         {head}
+        <GettingStartedCard />
         <EmptyState
           icon={<Wallet />}
           title={t('empty.title')}
@@ -160,10 +166,12 @@ export default function Dashboard() {
                 <Landmark />
                 {t('empty.addAccount')}
               </Button>
-              <Button variant="outline" onClick={() => setLocation('/stocks')}>
-                <Plus />
-                {t('empty.addInvestment')}
-              </Button>
+              {investmentHref && (
+                <Button variant="outline" onClick={() => setLocation(investmentHref)}>
+                  <Plus />
+                  {t('empty.addInvestment')}
+                </Button>
+              )}
               <Button variant="outline" onClick={() => setLocation('/reports/budgeting')}>
                 <Target />
                 {t('empty.setBudget')}
@@ -269,10 +277,7 @@ export default function Dashboard() {
 
       <div className="mt-9 grid grid-cols-[1.15fr_0.85fr] gap-[18px]">
         <section className="flex flex-col">
-          <SectionHead
-            title={t('allocation.title')}
-            link={{ href: '/stocks', label: t('allocation.open') }}
-          />
+          <SectionHead title={t('allocation.title')} />
           {/* Stretches to the height of "Poslední pohyby"; the ring centers vertically */}
           <Card variant="flat" className="flex flex-1 items-center">
             <CardContent className="w-full pt-5">

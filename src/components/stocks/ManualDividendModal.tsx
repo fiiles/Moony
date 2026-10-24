@@ -206,7 +206,7 @@ export function ManualDividendModal({ open, onOpenChange, investment }: ManualDi
                 >
                   {deleteMutation.isPending
                     ? tc('status.deleting', { defaultValue: 'Deleting...' })
-                    : tc('actions.delete', { defaultValue: 'Delete' })}
+                    : tc('buttons.delete')}
                 </Button>
               )}
             </div>

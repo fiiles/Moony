@@ -269,7 +269,7 @@
     "documents": "文档"
   },
   "documents": {
-    "subtitle": "存放在应用的加密文件夹中",
+    "subtitle": "在 Moony 中加密存储",
     "columns": {
       "document": "文档",
       "type": "类型",
@@ -303,9 +303,5 @@
       "title": "删除文档",
       "description": "删除“{{name}}”吗？该文件将被永久删除。"
     }
-  },
-  "mcp": {
-    "tipSummary": "不想一项项手动输入？AI 助手可以根据合同为您添加保单。",
-    "bannerBody": "启动 MCP 服务器，将合同、报价单或保单摘要上传给 Claude，并让它为您添加保单。"
   }
 }

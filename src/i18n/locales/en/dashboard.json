@@ -48,7 +48,6 @@
   },
   "allocation": {
     "title": "Asset allocation",
-    "open": "Open investments",
     "center": "Assets"
   },
   "moves": {
@@ -80,7 +79,7 @@
   },
   "gettingStarted": {
     "title": "Getting started",
-    "subtitle": "Four steps that make Moony useful. This card disappears when you are done.",
+    "subtitle": "A few steps after which Moony starts making sense. Optional ones can be skipped; the card disappears once you're done.",
     "importStatement": "Import a bank statement",
     "importStatementHint": "Add an account and import a statement from your bank.",
     "addInvestment": "Add an investment",
@@ -90,7 +89,8 @@
     "makeBackup": "Make a backup",
     "makeBackupHint": "One file with everything, in Settings → Data and backups.",
     "dismiss": "Dismiss",
-    "done": "Done"
+    "done": "Done",
+    "optional": "Optional"
   },
   "welcome": "Welcome back, {{name}}!",
   "overview": "Here's your financial overview for today.",

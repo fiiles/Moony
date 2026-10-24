@@ -73,8 +73,9 @@ Out of scope:
   new findings.
 - Weak or reused passwords chosen by the user, and loss of both password and recovery key
   (there is deliberately no backdoor).
-- Releases being **unsigned** by Apple and Microsoft for now (see the install notes in
-  [README.md](./README.md#download-and-install)); the in-app updater still verifies its own signature.
+- The Windows installer not being **signed by Microsoft** yet (see the install notes in
+  [README.md](./README.md#download-and-install)); macOS builds are signed and notarized, and
+  the in-app updater verifies its own signature on every platform.
 - What a third-party AI client does with data after you connected it over MCP.
 - Vulnerabilities in dependencies with no demonstrable effect on Moony — please report them
   upstream. Reports that only restate the output of an automated scanner, denial of service of

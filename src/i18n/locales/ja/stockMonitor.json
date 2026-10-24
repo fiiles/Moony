@@ -3,7 +3,7 @@
   "subtitle": "検討中の銘柄：各銘柄の通貨での価格、目標価格、メモ。",
   "cancel": "キャンセル",
   "search": {
-    "placeholder": "銘柄（シンボルまたは名称）を検索してフォロー",
+    "placeholder": "フォローする銘柄を検索",
     "noResults": "銘柄が見つかりません",
     "searching": "検索中…"
   },
@@ -20,10 +20,10 @@
     "fiftyTwoWeekHigh": "52週高値",
     "title": "ウォッチ中",
     "sub": "前日終値との差 · 現在価格と目標を含む52週レンジ",
-    "sort": {
-      "name": "名前順",
-      "change": "変動順",
-      "target": "目標順"
+    "search": "フォロー中の銘柄を検索",
+    "noResults": {
+      "title": "見つかりません",
+      "description": "別の名前またはティッカーをお試しください。"
     },
     "changeToday": "本日の変動",
     "range": "52週レンジ",

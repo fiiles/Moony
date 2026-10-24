@@ -276,7 +276,7 @@
     "documents": "Documents"
   },
   "documents": {
-    "subtitle": "Stored in the app's encrypted folder",
+    "subtitle": "Stored encrypted in Moony",
     "columns": {
       "document": "Document",
       "type": "Type",
@@ -310,9 +310,5 @@
       "title": "Delete document",
       "description": "Delete \"{{name}}\"? The file will be removed permanently."
     }
-  },
-  "mcp": {
-    "tipSummary": "Don't feel like typing it all in? The AI assistant can add policies from a contract.",
-    "bannerBody": "Start the MCP server, upload the contract, offer or policy summary to Claude and ask it to add the policy for you."
   }
 }

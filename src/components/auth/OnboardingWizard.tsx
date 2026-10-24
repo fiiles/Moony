@@ -64,6 +64,7 @@ import { StatementImportDialog } from '@/components/bank-accounts/StatementImpor
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
 import { OnboardingPreview, type PreviewAreas } from '@/components/auth/OnboardingPreview';
+import { RestoreBackup } from '@/components/common/RestoreBackup';
 import './onboarding.css';
 
 type Step = 'welcome' | 'account' | 'recovery' | 'areas' | 'firstAccount';
@@ -398,6 +399,23 @@ export function OnboardingWizard({
                   {tc('buttons.continue')}
                 </Button>
               )}
+              {/* Moving from another computer or reinstalling: skip the setup entirely */}
+              <RestoreBackup fresh>
+                {(pick, busy) => (
+                  <p className="m-0 mt-4 border-t border-line-soft pt-4 text-caption font-500 text-ink-3">
+                    {t('onboarding.welcome.restoreLead')}{' '}
+                    <button
+                      type="button"
+                      onClick={pick}
+                      disabled={busy}
+                      className="font-650 text-ink underline underline-offset-[3px] hover:text-ink-2 disabled:pointer-events-none disabled:opacity-50"
+                      data-testid="onboarding-restore-backup"
+                    >
+                      {t('onboarding.welcome.restoreBackup')}
+                    </button>
+                  </p>
+                )}
+              </RestoreBackup>
             </div>
           )}
 

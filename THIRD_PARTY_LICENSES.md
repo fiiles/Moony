@@ -19,8 +19,8 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 
 | Ecosystem | Packages |
 | --- | ---: |
-| npm | 227 |
-| Rust | 670 |
+| npm | 229 |
+| Rust | 676 |
 
 ### npm — packages per licence
 
@@ -28,7 +28,7 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 | --- | ---: |
 | MIT | 201 |
 | ISC | 13 |
-| MIT OR Apache-2.0 | 5 |
+| MIT OR Apache-2.0 | 7 |
 | Apache-2.0 | 2 |
 | 0BSD | 1 |
 | Apache-2.0 OR MIT | 1 |
@@ -41,20 +41,21 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 
 | Licence | Packages |
 | --- | ---: |
-| MIT OR Apache-2.0 | 334 |
+| MIT OR Apache-2.0 | 336 |
 | MIT | 158 |
-| Apache-2.0 OR MIT | 64 |
+| Apache-2.0 OR MIT | 66 |
 | Unicode-3.0 | 18 |
 | Zlib OR Apache-2.0 OR MIT | 18 |
 | Unlicense OR MIT | 14 |
 | BSD-3-Clause | 7 |
+| MIT OR Apache-2.0 OR Zlib | 6 |
 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT | 5 |
-| MIT OR Apache-2.0 OR Zlib | 5 |
 | MPL-2.0 | 5 |
 | Apache-2.0 | 4 |
 | BSD-2-Clause | 4 |
 | Apache-2.0 OR ISC OR MIT | 3 |
 | ISC | 3 |
+| (MIT OR Apache-2.0) AND Unicode-3.0 | 2 |
 | BSD-2-Clause OR Apache-2.0 OR MIT | 2 |
 | BSD-3-Clause OR Apache-2.0 | 2 |
 | BSD-3-Clause OR MIT OR Apache-2.0 | 2 |
@@ -63,7 +64,6 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 | Zlib | 2 |
 | (Apache-2.0 OR MIT) AND BSD-3-Clause | 1 |
 | (MIT OR Apache-2.0) AND NCSA | 1 |
-| (MIT OR Apache-2.0) AND Unicode-3.0 | 1 |
 | 0BSD OR MIT OR Apache-2.0 | 1 |
 | Apache-2.0 AND ISC | 1 |
 | Apache-2.0 AND MIT | 1 |
@@ -102,45 +102,45 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | @floating-ui/react-dom | 2.1.9 | MIT |
 | @floating-ui/utils | 0.2.12 | MIT |
 | @fontsource-variable/inter | 5.3.0 | OFL-1.1 |
-| @hookform/resolvers | 5.9.1 | MIT |
+| @hookform/resolvers | 5.9.2 | MIT |
 | @napi-rs/canvas | 1.0.11 | MIT |
 | @napi-rs/canvas-darwin-arm64 | 1.0.11 | MIT |
 | @radix-ui/number | 1.1.3 | MIT |
 | @radix-ui/primitive | 1.2.0 | MIT |
-| @radix-ui/react-alert-dialog | 1.2.0 | MIT |
+| @radix-ui/react-alert-dialog | 1.2.1 | MIT |
 | @radix-ui/react-arrow | 1.1.17 | MIT |
-| @radix-ui/react-avatar | 1.3.0 | MIT |
-| @radix-ui/react-checkbox | 1.4.0 | MIT |
-| @radix-ui/react-collapsible | 1.2.0 | MIT |
+| @radix-ui/react-avatar | 1.3.1 | MIT |
+| @radix-ui/react-checkbox | 1.4.1 | MIT |
+| @radix-ui/react-collapsible | 1.2.1 | MIT |
 | @radix-ui/react-collection | 1.2.0 | MIT |
 | @radix-ui/react-compose-refs | 1.1.5 | MIT |
 | @radix-ui/react-context | 1.3.0 | MIT |
-| @radix-ui/react-dialog | 1.3.0 | MIT |
+| @radix-ui/react-dialog | 1.3.1 | MIT |
 | @radix-ui/react-direction | 1.2.0 | MIT |
-| @radix-ui/react-dismissable-layer | 1.2.0 | MIT |
-| @radix-ui/react-dropdown-menu | 2.2.0 | MIT |
+| @radix-ui/react-dismissable-layer | 1.2.1 | MIT |
+| @radix-ui/react-dropdown-menu | 2.2.1 | MIT |
 | @radix-ui/react-focus-guards | 1.2.0 | MIT |
-| @radix-ui/react-focus-scope | 1.3.0 | MIT |
+| @radix-ui/react-focus-scope | 1.3.1 | MIT |
 | @radix-ui/react-id | 1.1.4 | MIT |
 | @radix-ui/react-label | 2.1.17 | MIT |
-| @radix-ui/react-menu | 2.2.0 | MIT |
-| @radix-ui/react-popover | 1.3.0 | MIT |
+| @radix-ui/react-menu | 2.2.1 | MIT |
+| @radix-ui/react-popover | 1.3.1 | MIT |
 | @radix-ui/react-popper | 1.4.0 | MIT |
 | @radix-ui/react-portal | 1.2.0 | MIT |
 | @radix-ui/react-presence | 1.1.11 | MIT |
 | @radix-ui/react-primitive | 2.2.0 | MIT |
-| @radix-ui/react-progress | 1.2.0 | MIT |
-| @radix-ui/react-radio-group | 1.5.0 | MIT |
-| @radix-ui/react-roving-focus | 1.2.0 | MIT |
+| @radix-ui/react-progress | 1.2.1 | MIT |
+| @radix-ui/react-radio-group | 1.5.1 | MIT |
+| @radix-ui/react-roving-focus | 1.2.1 | MIT |
 | @radix-ui/react-scroll-area | 1.4.0 | MIT |
-| @radix-ui/react-select | 2.4.0 | MIT |
+| @radix-ui/react-select | 2.4.1 | MIT |
 | @radix-ui/react-separator | 1.2.0 | MIT |
 | @radix-ui/react-slot | 1.5.0 | MIT |
-| @radix-ui/react-switch | 1.4.0 | MIT |
-| @radix-ui/react-tabs | 1.2.0 | MIT |
-| @radix-ui/react-toggle | 1.2.0 | MIT |
-| @radix-ui/react-toggle-group | 1.2.0 | MIT |
-| @radix-ui/react-tooltip | 1.4.0 | MIT |
+| @radix-ui/react-switch | 1.4.1 | MIT |
+| @radix-ui/react-tabs | 1.2.1 | MIT |
+| @radix-ui/react-toggle | 1.2.1 | MIT |
+| @radix-ui/react-toggle-group | 1.2.1 | MIT |
+| @radix-ui/react-tooltip | 1.4.1 | MIT |
 | @radix-ui/react-use-callback-ref | 1.1.5 | MIT |
 | @radix-ui/react-use-controllable-state | 1.3.0 | MIT |
 | @radix-ui/react-use-effect-event | 0.0.5 | MIT |
@@ -153,14 +153,16 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | @reduxjs/toolkit | 2.13.0 | MIT |
 | @standard-schema/spec | 1.1.0 | MIT |
 | @standard-schema/utils | 0.3.0 | MIT |
-| @tanstack/query-core | 5.104.2 | MIT |
-| @tanstack/react-query | 5.104.2 | MIT |
-| @tauri-apps/api | 2.12.3 | Apache-2.0 OR MIT |
-| @tauri-apps/plugin-dialog | 2.8.2 | MIT OR Apache-2.0 |
-| @tauri-apps/plugin-fs | 2.7.0 | MIT OR Apache-2.0 |
-| @tauri-apps/plugin-opener | 2.7.1 | MIT OR Apache-2.0 |
+| @tanstack/query-core | 5.104.4 | MIT |
+| @tanstack/react-query | 5.104.4 | MIT |
+| @tauri-apps/api | 2.12.4 | Apache-2.0 OR MIT |
+| @tauri-apps/plugin-dialog | 2.8.3 | MIT OR Apache-2.0 |
+| @tauri-apps/plugin-fs | 2.7.1 | MIT OR Apache-2.0 |
+| @tauri-apps/plugin-haptics | 2.4.2 | MIT OR Apache-2.0 |
+| @tauri-apps/plugin-notification | 2.7.0 | MIT OR Apache-2.0 |
+| @tauri-apps/plugin-opener | 2.7.2 | MIT OR Apache-2.0 |
 | @tauri-apps/plugin-process | 2.4.0 | MIT OR Apache-2.0 |
-| @tauri-apps/plugin-updater | 2.13.3 | MIT OR Apache-2.0 |
+| @tauri-apps/plugin-updater | 2.14.0 | MIT OR Apache-2.0 |
 | @types/d3-array | 3.2.2 | MIT |
 | @types/d3-color | 3.1.3 | MIT |
 | @types/d3-ease | 3.0.2 | MIT |
@@ -218,7 +220,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | hast-util-whitespace | 3.0.0 | MIT |
 | html-parse-stringify | 4.0.1 | MIT |
 | html-url-attributes | 3.0.1 | MIT |
-| i18next | 26.4.4 | MIT |
+| i18next | 26.5.2 | MIT |
 | i18next-browser-languagedetector | 8.2.1 | MIT |
 | immer | 11.1.21 | MIT |
 | inline-style-parser | 0.2.7 | MIT |
@@ -229,7 +231,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | is-hexadecimal | 2.0.1 | MIT |
 | is-plain-obj | 4.1.0 | MIT |
 | longest-streak | 3.1.0 | MIT |
-| lucide-react | 1.55.0 | ISC |
+| lucide-react | 1.59.0 | ISC |
 | markdown-table | 3.0.4 | MIT |
 | mdast-util-find-and-replace | 3.0.3 | MIT |
 | mdast-util-from-markdown | 2.1.0 | MIT |
@@ -279,10 +281,10 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | parse-entities | 4.0.2 | MIT |
 | pdfjs-dist | 6.4.299 | Apache-2.0 |
 | property-information | 7.2.0 | MIT |
-| react | 19.3.0 | MIT |
-| react-dom | 19.3.0 | MIT |
+| react | 19.3.1 | MIT |
+| react-dom | 19.3.1 | MIT |
 | react-hook-form | 7.90.0 | MIT |
-| react-i18next | 17.0.16 | MIT |
+| react-i18next | 17.1.0 | MIT |
 | react-markdown | 10.1.0 | MIT |
 | react-redux | 9.3.0 | MIT |
 | react-remove-scroll | 2.7.2 | MIT |
@@ -406,7 +408,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | cmake | 0.1.58 | MIT OR Apache-2.0 |
 | cmov | 0.5.4 | Apache-2.0 OR MIT |
 | color_quant | 1.1.0 | MIT |
-| combine | 4.6.8 | MIT |
+| combine | 4.6.9 | MIT |
 | concurrent-queue | 2.5.0 | Apache-2.0 OR MIT |
 | cookie | 0.18.2 | MIT OR Apache-2.0 |
 | cookie_store | 0.22.1 | MIT OR Apache-2.0 |
@@ -438,10 +440,10 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | darling_core | 0.24.1 | MIT |
 | darling_macro | 0.24.1 | MIT |
 | dbus | 0.9.12 | Apache-2.0 OR MIT |
-| defmt | 1.1.1 | MIT OR Apache-2.0 |
-| defmt-macros | 1.1.1 | MIT OR Apache-2.0 |
-| defmt-parser | 1.0.0 | MIT OR Apache-2.0 |
-| deranged | 0.5.8 | MIT OR Apache-2.0 |
+| defmt | 1.2.0 | MIT OR Apache-2.0 |
+| defmt-macros | 1.2.0 | MIT OR Apache-2.0 |
+| defmt-parser | 1.1.0 | MIT OR Apache-2.0 |
+| deranged | 0.5.9 | MIT OR Apache-2.0 |
 | derive_arbitrary | 1.5.0 | MIT OR Apache-2.0 |
 | derive_more | 2.1.1 | MIT |
 | derive_more-impl | 2.1.1 | MIT |
@@ -470,7 +472,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | env_filter | 0.1.4 | MIT OR Apache-2.0 |
 | equator | 0.4.2 | MIT |
 | equator-macro | 0.4.2 | MIT |
-| equivalent | 1.0.2 | Apache-2.0 OR MIT |
+| equivalent | 1.0.3 | Apache-2.0 OR MIT |
 | erased-serde | 0.4.10 | MIT OR Apache-2.0 |
 | errno | 0.3.14 | MIT OR Apache-2.0 |
 | event-listener | 5.4.2 | Apache-2.0 OR MIT |
@@ -567,7 +569,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | indexmap | 2.14.2 | Apache-2.0 OR MIT |
 | infer | 0.22.0 | MIT |
 | Inflector | 0.11.4 | BSD-2-Clause |
-| inout | 0.2.2 | MIT OR Apache-2.0 |
+| inout | 0.2.4 | MIT OR Apache-2.0 |
 | interpolate_name | 0.2.4 | MIT |
 | ipnet | 2.12.2 | MIT OR Apache-2.0 |
 | is-docker | 0.2.0 | MIT |
@@ -596,7 +598,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | lebe | 0.5.3 | BSD-3-Clause |
 | libappindicator | 0.9.0 | Apache-2.0 OR MIT |
 | libappindicator-sys | 0.9.0 | Apache-2.0 OR MIT |
-| libc | 0.2.190 | MIT OR Apache-2.0 |
+| libc | 0.2.191 | MIT OR Apache-2.0 |
 | libdbus-sys | 0.2.7 | Apache-2.0 OR MIT |
 | libfuzzer-sys | 0.4.13 | (MIT OR Apache-2.0) AND NCSA |
 | libloading | 0.7.4 | ISC |
@@ -610,6 +612,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | log | 0.4.34 | MIT OR Apache-2.0 |
 | loop9 | 0.1.5 | MIT |
 | lru-slab | 0.1.3 | MIT OR Apache-2.0 OR Zlib |
+| mac-notification-sys | 0.6.15 | MIT OR Apache-2.0 |
 | markup5ever | 0.39.0 | MIT OR Apache-2.0 |
 | matchit | 0.8.4 | MIT AND BSD-3-Clause |
 | maybe-rayon | 0.1.1 | MIT |
@@ -631,9 +634,10 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | no_std_io2 | 0.9.4 | Apache-2.0 OR MIT |
 | nom | 8.0.0 | MIT |
 | noop_proc_macro | 0.3.0 | MIT |
+| notify-rust | 4.18.2 | MIT OR Apache-2.0 |
 | num_enum | 0.7.6 | BSD-3-Clause OR MIT OR Apache-2.0 |
 | num_enum_derive | 0.7.6 | BSD-3-Clause OR MIT OR Apache-2.0 |
-| num_threads | 0.1.7 | MIT OR Apache-2.0 |
+| num_threads | 0.1.8 | MIT OR Apache-2.0 |
 | num-bigint | 0.4.8 | MIT OR Apache-2.0 |
 | num-complex | 0.4.6 | MIT OR Apache-2.0 |
 | num-conv | 0.2.2 | MIT OR Apache-2.0 |
@@ -748,7 +752,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | rustc-hash | 2.1.3 | Apache-2.0 OR MIT |
 | rustix | 1.1.5 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 | rustls | 0.23.46 | Apache-2.0 OR ISC OR MIT |
-| rustls-native-certs | 0.8.4 | Apache-2.0 OR ISC OR MIT |
+| rustls-native-certs | 0.8.5 | Apache-2.0 OR ISC OR MIT |
 | rustls-pki-types | 1.15.1 | MIT OR Apache-2.0 |
 | rustls-platform-verifier | 0.7.1 | MIT OR Apache-2.0 |
 | rustls-platform-verifier-android | 0.2.0 | MIT OR Apache-2.0 |
@@ -757,12 +761,12 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | ryu | 1.0.23 | Apache-2.0 OR BSL-1.0 |
 | salsa20 | 0.11.0 | MIT OR Apache-2.0 |
 | same-file | 1.0.6 | Unlicense OR MIT |
-| schannel | 0.1.29 | MIT |
+| schannel | 0.1.30 | MIT |
 | schemars | 0.8.22 | MIT |
 | schemars | 0.9.0 | MIT |
-| schemars | 1.2.2 | MIT |
+| schemars | 1.2.3 | MIT |
 | schemars_derive | 0.8.22 | MIT |
-| schemars_derive | 1.2.2 | MIT |
+| schemars_derive | 1.2.3 | MIT |
 | scopeguard | 1.2.0 | MIT OR Apache-2.0 |
 | scrypt | 0.12.0 | MIT OR Apache-2.0 |
 | security-framework | 3.7.0 | MIT OR Apache-2.0 |
@@ -808,6 +812,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | sqlite-wasm-rs | 0.5.5 | MIT |
 | sse-stream | 0.2.6 | MIT OR Apache-2.0 |
 | stable_deref_trait | 1.2.1 | MIT OR Apache-2.0 |
+| static_vcruntime | 3.0.0 | MIT OR Apache-2.0 OR Zlib |
 | string_cache | 0.9.0 | MIT OR Apache-2.0 |
 | string_cache_codegen | 0.6.1 | MIT OR Apache-2.0 |
 | strsim | 0.11.1 | MIT |
@@ -825,21 +830,24 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | tao-macros | 0.1.4 | MIT OR Apache-2.0 |
 | tar | 0.4.46 | MIT OR Apache-2.0 |
 | target-lexicon | 0.12.16 | Apache-2.0 WITH LLVM-exception |
-| tauri | 2.12.3 | Apache-2.0 OR MIT |
-| tauri-build | 2.7.2 | Apache-2.0 OR MIT |
-| tauri-codegen | 2.7.2 | Apache-2.0 OR MIT |
-| tauri-macros | 2.7.2 | Apache-2.0 OR MIT |
-| tauri-plugin | 2.7.1 | Apache-2.0 OR MIT |
-| tauri-plugin-dialog | 2.8.2 | Apache-2.0 OR MIT |
-| tauri-plugin-fs | 2.7.0 | Apache-2.0 OR MIT |
+| tauri | 2.12.4 | Apache-2.0 OR MIT |
+| tauri-build | 2.7.3 | Apache-2.0 OR MIT |
+| tauri-codegen | 2.7.3 | Apache-2.0 OR MIT |
+| tauri-macros | 2.7.3 | Apache-2.0 OR MIT |
+| tauri-plugin | 2.7.2 | Apache-2.0 OR MIT |
+| tauri-plugin-dialog | 2.8.3 | Apache-2.0 OR MIT |
+| tauri-plugin-fs | 2.7.1 | Apache-2.0 OR MIT |
+| tauri-plugin-haptics | 2.4.2 | Apache-2.0 OR MIT |
 | tauri-plugin-log | 2.10.1 | Apache-2.0 OR MIT |
-| tauri-plugin-opener | 2.7.1 | Apache-2.0 OR MIT |
+| tauri-plugin-notification | 2.7.0 | Apache-2.0 OR MIT |
+| tauri-plugin-opener | 2.7.2 | Apache-2.0 OR MIT |
 | tauri-plugin-process | 2.4.0 | Apache-2.0 OR MIT |
-| tauri-plugin-updater | 2.13.3 | Apache-2.0 OR MIT |
-| tauri-runtime | 2.12.1 | Apache-2.0 OR MIT |
-| tauri-runtime-wry | 2.12.1 | Apache-2.0 OR MIT |
-| tauri-utils | 2.10.1 | Apache-2.0 OR MIT |
+| tauri-plugin-updater | 2.14.0 | Apache-2.0 OR MIT |
+| tauri-runtime | 2.12.2 | Apache-2.0 OR MIT |
+| tauri-runtime-wry | 2.12.2 | Apache-2.0 OR MIT |
+| tauri-utils | 2.10.2 | Apache-2.0 OR MIT |
 | tauri-winres | 0.3.6 | MIT |
+| tauri-winrt-notification | 0.8.1 | MIT OR Apache-2.0 |
 | tempfile | 3.27.0 | MIT OR Apache-2.0 |
 | tendril | 0.5.1 | MIT OR Apache-2.0 |
 | thiserror | 1.0.69 | MIT OR Apache-2.0 |
@@ -852,7 +860,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | time-macros | 0.2.32 | MIT OR Apache-2.0 |
 | tinystr | 0.8.4 | Unicode-3.0 |
 | tinyvec | 1.13.3 | Zlib OR Apache-2.0 OR MIT |
-| tokio | 1.53.2 | MIT |
+| tokio | 1.53.3 | MIT |
 | tokio-macros | 2.7.2 | MIT |
 | tokio-rustls | 0.26.6 | MIT OR Apache-2.0 |
 | tokio-stream | 0.1.19 | MIT |
@@ -880,7 +888,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | typenum | 1.20.1 | MIT OR Apache-2.0 |
 | uds_windows | 1.2.1 | MIT |
 | unicode-ident | 1.0.27 | (MIT OR Apache-2.0) AND Unicode-3.0 |
-| unicode-normalization | 0.1.25 | MIT OR Apache-2.0 |
+| unicode-normalization | 0.1.26 | (MIT OR Apache-2.0) AND Unicode-3.0 |
 | unicode-segmentation | 1.13.3 | MIT OR Apache-2.0 |
 | universal-hash | 0.6.1 | MIT OR Apache-2.0 |
 | untrusted | 0.9.0 | ISC |
@@ -978,10 +986,10 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | yoke-derive | 0.8.4 | Unicode-3.0 |
 | zbus | 5.19.0 | MIT |
 | zbus_macros | 5.19.0 | MIT |
-| zbus_names | 4.3.4 | MIT |
+| zbus_names | 4.3.5 | MIT |
 | zcheapstr | 1.1.0 | MIT |
-| zerocopy | 0.8.62 | BSD-2-Clause OR Apache-2.0 OR MIT |
-| zerocopy-derive | 0.8.62 | BSD-2-Clause OR Apache-2.0 OR MIT |
+| zerocopy | 0.8.63 | BSD-2-Clause OR Apache-2.0 OR MIT |
+| zerocopy-derive | 0.8.63 | BSD-2-Clause OR Apache-2.0 OR MIT |
 | zerofrom | 0.1.8 | Unicode-3.0 |
 | zerofrom-derive | 0.1.8 | Unicode-3.0 |
 | zeroize | 1.9.1 | Apache-2.0 OR MIT |
@@ -989,12 +997,12 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | zerovec | 0.11.8 | Unicode-3.0 |
 | zerovec-derive | 0.11.6 | Unicode-3.0 |
 | zip | 4.6.1 | MIT |
-| zip | 9.0.3 | MIT |
+| zip | 9.0.5 | MIT |
 | zlib-rs | 0.6.8 | Zlib |
 | zmij | 1.0.23 | MIT |
 | zune-core | 0.5.3 | MIT OR Apache-2.0 OR Zlib |
 | zune-inflate | 0.2.54 | MIT OR Apache-2.0 OR Zlib |
 | zune-jpeg | 0.5.15 | MIT OR Apache-2.0 OR Zlib |
-| zvariant | 5.15.0 | MIT |
-| zvariant_derive | 5.15.0 | MIT |
+| zvariant | 5.15.1 | MIT |
+| zvariant_derive | 5.15.1 | MIT |
 | zvariant_utils | 4.2.0 | MIT |

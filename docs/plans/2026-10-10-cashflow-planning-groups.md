@@ -1697,7 +1697,7 @@ Expected: PASS. Fix every lint error (the `react-hooks` rules are strict: no `se
 
 - [ ] **Step 7: Verify in the app**
 
-Start the demo profile from the worktree on port 1421 (see the memory note "dev-server-port-collision": `HOME` = the shared checkout's `demo-home`, `--config` with `devUrl` 1421 and `beforeDevCommand` `npm run dev -- --port 1421 --strictPort`), confirm the lock screen greets "Alex" before typing the demo password, open `/reports/cashflow-planning` and check:
+Start the demo profile from the worktree on port 1421 (use a separate dev-server port whenever another dev server runs: `HOME` = the shared checkout's `demo-home`, `--config` with `devUrl` 1421 and `beforeDevCommand` `npm run dev -- --port 1421 --strictPort`), confirm the lock screen greets "Alex" before typing the demo password, open `/reports/cashflow-planning` and check:
 
 1. every category is one collapsed row with count / origin / total; clicking expands it; reload keeps it expanded;
 2. "···" on an automatic row → "Nezapočítávat" mutes the row, adds "Mimo plán", lowers the category total, section net, stats and flow bar; "Započítat" restores;

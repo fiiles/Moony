@@ -504,7 +504,8 @@
     "realEstate": "Non ti va di digitare tutto? L'assistente IA può aggiungere un immobile dai suoi documenti.",
     "otherAssets": "Non ti va di digitare tutto? L'assistente IA può aggiungere beni da una fattura o da un elenco.",
     "watchlist": "L'assistente IA può seguire le azioni per te: digli solo quali.",
-    "body": "Avvia il server MCP, dai a Claude il documento o descrivi cosa hai e chiedigli di aggiungerlo per te. Ti mostra cosa ha letto e non salva nulla finché non confermi.",
+    "insurance": "Non hai voglia di inserire tutto a mano? L'assistente AI può aggiungere le polizze da un contratto.",
+    "body": "Avvia il server MCP, collegalo a uno strumento di IA che supporta MCP, passagli il documento o descrivi cosa hai e chiedigli di aggiungerlo per te. Controlla cosa ha letto prima di lasciargli salvare qualcosa.",
     "setupLink": "Configura server MCP"
   },
   "a11y": {
@@ -559,7 +560,8 @@
       "failed": "Impossibile mostrare l'anteprima. Puoi salvare il documento o aprirlo in un'altra app.",
       "saveCopy": "Salva una copia…",
       "openElsewhere": "Apri in un'altra app",
-      "saved": "Copia salvata"
+      "saved": "Copia salvata",
+      "savedDescription": "La copia salvata non è cifrata."
     },
     "openElsewhere": {
       "title": "Aprire fuori da Moony?",

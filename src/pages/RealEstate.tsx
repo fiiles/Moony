@@ -3,18 +3,7 @@ import { Link, useLocation } from 'wouter';
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Ellipsis,
-  ExternalLink,
-  House,
-  Pencil,
-  Plus,
-  Search,
-  Trash2,
-} from 'lucide-react';
+import { ArrowUp, Ellipsis, ExternalLink, House, Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import type { Loan, RealEstate } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
 import { exportApi, portfolioApi, realEstateApi } from '@/lib/tauri-api';
@@ -35,6 +24,7 @@ import {
   type RealEstateEvent,
 } from '@/utils/real-estate-events';
 import { ConvertedMoney } from '@/components/common/ConvertedMoney';
+import { SortableTableHead } from '@/components/common/SortableTableHead';
 import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useShellPage } from '@/components/shell/shell-context';
@@ -269,38 +259,7 @@ export default function RealEstatePage() {
 
   // Head of a fixed-layout column: a label that does not fit ends in "…" (the full text is
   // in the title) and the sort icon keeps its place, instead of the label widening the column.
-  const SortHead = ({
-    column,
-    children,
-    align = 'right',
-    className,
-  }: {
-    column: SortColumn;
-    children: string;
-    align?: 'left' | 'right';
-    className?: string;
-  }) => {
-    const active = sortColumn === column;
-    const Icon = !active ? ArrowUpDown : sortDirection === 'asc' ? ArrowUp : ArrowDown;
-    return (
-      <TableHead className={cn(align === 'right' && 'text-right', className)}>
-        <button
-          type="button"
-          onClick={() => handleSort(column)}
-          aria-sort={active ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}
-          title={children}
-          className={cn(
-            'inline-flex max-w-full items-center gap-1 rounded-r1 text-thead uppercase transition-colors duration-fast hover:text-ink focus-visible:outline-none focus-visible:shadow-focus',
-            active && 'text-ink'
-          )}
-        >
-          {/* leading-4: the ellipsis clip must not cut the accents of Czech capitals (Í, Á, Ž) */}
-          <span className="truncate leading-4">{children}</span>
-          <Icon className={cn('size-3 shrink-0', !active && 'opacity-60')} aria-hidden />
-        </button>
-      </TableHead>
-    );
-  };
+  const sortProps = { sortColumn, sortDirection, onSort: handleSort, truncate: true };
 
   const isEmpty = !isLoading && properties.length === 0;
   /** First line of a numeric cell: one line, the full text in the title. */
@@ -485,21 +444,37 @@ export default function RealEstatePage() {
             <Table className="table-fixed">
               <TableHeader>
                 <TableRow>
-                  <SortHead column="name" align="left">
+                  <SortableTableHead {...sortProps} column="name" align="left">
                     {t('table.property')}
-                  </SortHead>
-                  <SortHead column="value" className="w-[22.5%] min-[1240px]:w-[18.5%]">
+                  </SortableTableHead>
+                  <SortableTableHead
+                    {...sortProps}
+                    column="value"
+                    className="w-[22.5%] min-[1240px]:w-[18.5%]"
+                  >
                     {t('table.marketValue')}
-                  </SortHead>
-                  <SortHead column="appreciation" className="w-[18.2%] min-[1240px]:w-[15.5%]">
+                  </SortableTableHead>
+                  <SortableTableHead
+                    {...sortProps}
+                    column="appreciation"
+                    className="w-[18.2%] min-[1240px]:w-[15.5%]"
+                  >
                     {t('table.appreciation')}
-                  </SortHead>
-                  <SortHead column="rent" className="hidden w-[16.5%] min-[1240px]:table-cell">
+                  </SortableTableHead>
+                  <SortableTableHead
+                    {...sortProps}
+                    column="rent"
+                    className="hidden w-[16.5%] min-[1240px]:table-cell"
+                  >
                     {t('table.rentYield')}
-                  </SortHead>
-                  <SortHead column="equity" className="w-[16.3%] min-[1240px]:w-[14.5%]">
+                  </SortableTableHead>
+                  <SortableTableHead
+                    {...sortProps}
+                    column="equity"
+                    className="w-[16.3%] min-[1240px]:w-[14.5%]"
+                  >
                     {t('table.equity')}
-                  </SortHead>
+                  </SortableTableHead>
                   <TableHead className="w-11">
                     <span className="sr-only">{t('table.actions')}</span>
                   </TableHead>

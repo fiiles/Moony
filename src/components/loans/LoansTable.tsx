@@ -1,21 +1,14 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
-import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  Ellipsis,
-  ExternalLink,
-  Pencil,
-  Trash2,
-} from 'lucide-react';
+import { Ellipsis, ExternalLink, Pencil, Trash2 } from 'lucide-react';
 import type { Loan } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
 import type { LoanRow } from '@/utils/loans';
 import { monthsAhead } from '@/utils/loans';
 import { compareConverted } from '@/utils/fx-totals';
 import { ConvertedMoney } from '@/components/common/ConvertedMoney';
+import { SortableTableHead } from '@/components/common/SortableTableHead';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useLoanText } from '@/hooks/use-loan-text';
@@ -112,36 +105,7 @@ export function LoansTable({ rows, today, onEdit, onDelete }: LoansTableProps) {
   const totalOutstanding = active.reduce((s, r) => s + (r.converted?.outstanding ?? 0), 0);
   const totalPayments = active.reduce((s, r) => s + (r.converted?.payment ?? 0), 0);
 
-  const SortHead = ({
-    column,
-    children,
-    align = 'right',
-    className,
-  }: {
-    column: SortColumn;
-    children: ReactNode;
-    align?: 'left' | 'right';
-    className?: string;
-  }) => {
-    const activeCol = sortColumn === column;
-    const Icon = !activeCol ? ArrowUpDown : sortDirection === 'asc' ? ArrowUp : ArrowDown;
-    return (
-      <TableHead className={cn(align === 'right' && 'text-right', className)}>
-        <button
-          type="button"
-          onClick={() => handleSort(column)}
-          aria-sort={activeCol ? (sortDirection === 'asc' ? 'ascending' : 'descending') : undefined}
-          className={cn(
-            'inline-flex items-center gap-1 rounded-r1 text-thead uppercase transition-colors duration-fast hover:text-ink focus-visible:outline-none focus-visible:shadow-focus',
-            activeCol && 'text-ink'
-          )}
-        >
-          {children}
-          <Icon className={cn('size-3', !activeCol && 'opacity-60')} aria-hidden />
-        </button>
-      </TableHead>
-    );
-  };
+  const sortProps = { sortColumn, sortDirection, onSort: handleSort };
 
   const sub = (content: ReactNode) => (
     <small className="mt-[3px] block text-micro font-500 text-ink-4">{content}</small>
@@ -219,14 +183,24 @@ export function LoansTable({ rows, today, onEdit, onDelete }: LoansTableProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <SortHead column="name" align="left" className="w-[26%]">
+            <SortableTableHead {...sortProps} column="name" align="left" className="w-[26%]">
               {t('table.loan')}
-            </SortHead>
-            <SortHead column="outstanding">{t('table.outstanding')}</SortHead>
-            <SortHead column="principal">{t('table.principal')}</SortHead>
-            <SortHead column="rate">{t('table.rate')}</SortHead>
-            <SortHead column="payment">{t('table.payment')}</SortHead>
-            <SortHead column="payoff">{t('table.payoff')}</SortHead>
+            </SortableTableHead>
+            <SortableTableHead {...sortProps} column="outstanding">
+              {t('table.outstanding')}
+            </SortableTableHead>
+            <SortableTableHead {...sortProps} column="principal">
+              {t('table.principal')}
+            </SortableTableHead>
+            <SortableTableHead {...sortProps} column="rate">
+              {t('table.rate')}
+            </SortableTableHead>
+            <SortableTableHead {...sortProps} column="payment">
+              {t('table.payment')}
+            </SortableTableHead>
+            <SortableTableHead {...sortProps} column="payoff">
+              {t('table.payoff')}
+            </SortableTableHead>
             <TableHead className="w-10">
               <span className="sr-only">{t('table.actions')}</span>
             </TableHead>

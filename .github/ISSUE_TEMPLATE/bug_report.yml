@@ -18,7 +18,7 @@ body:
     attributes:
       label: Moony version
       description: Open the account menu at the bottom of the sidebar, choose About and copy the version number.
-      placeholder: e.g. 0.10.0
+      placeholder: e.g. 1.0.0
     validations:
       required: true
   - type: input

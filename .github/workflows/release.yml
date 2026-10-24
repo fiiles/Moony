@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Tag must equal the version in all three manifests
         # A pre-release suffix (v1.0.0-rc.1, v0.9.0-test.1) is ignored for the comparison:
@@ -49,7 +49,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Create the draft once, before any build leg
         id: create
@@ -115,23 +115,30 @@ jobs:
 
     runs-on: ${{ matrix.platform }}
 
+    env:
+      # macOS signing and notarization switch on only once the Developer ID secrets exist; without
+      # them the Macs build unsigned as before. Tauri starts signing as soon as APPLE_CERTIFICATE is
+      # set, even to an empty string, so the variables are exported by a step instead.
+      APPLE_SIGNING: ${{ secrets.APPLE_CERTIFICATE != '' }}
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
           cache: 'npm'
 
       - name: Install Rust stable
-        uses: dtolnay/rust-toolchain@stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
         with:
+          toolchain: stable
           targets: ${{ contains(matrix.platform, 'macos') && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
 
       - name: Cache Rust build
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: src-tauri
           key: ${{ matrix.platform }}${{ matrix.args }}
@@ -162,8 +169,49 @@ jobs:
       - name: Install frontend dependencies
         run: npm ci
 
+      - name: Apple signing and notarization
+        # Developer ID Application certificate (base64 .p12); Tauri imports it into a temporary
+        # keychain of its own. Notarization uses an Apple ID with an app-specific password, or an
+        # App Store Connect API key when no Apple ID secret is set.
+        if: contains(matrix.platform, 'macos') && env.APPLE_SIGNING == 'true'
+        shell: bash
+        env:
+          CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          ID: ${{ secrets.APPLE_ID }}
+          ID_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+          API_KEY: ${{ secrets.APPLE_API_KEY }}
+          API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          {
+            echo "APPLE_CERTIFICATE=$CERTIFICATE"
+            echo "APPLE_CERTIFICATE_PASSWORD=$CERTIFICATE_PASSWORD"
+            echo "APPLE_SIGNING_IDENTITY=$SIGNING_IDENTITY"
+          } >> "$GITHUB_ENV"
+          if [ -n "$ID" ]; then
+            {
+              echo "APPLE_ID=$ID"
+              echo "APPLE_PASSWORD=$ID_PASSWORD"
+              echo "APPLE_TEAM_ID=$TEAM_ID"
+            } >> "$GITHUB_ENV"
+          elif [ -n "$API_KEY" ]; then
+            key_path="$RUNNER_TEMP/AuthKey_$API_KEY.p8"
+            printf '%s\n' "$API_KEY_P8" > "$key_path"
+            {
+              echo "APPLE_API_ISSUER=$API_ISSUER"
+              echo "APPLE_API_KEY=$API_KEY"
+              echo "APPLE_API_KEY_PATH=$key_path"
+            } >> "$GITHUB_ENV"
+          else
+            echo "::error::Signing is on but neither APPLE_ID nor APPLE_API_KEY is set, so the app cannot be notarized."
+            exit 1
+          fi
+
       - name: Build the app
-        uses: tauri-apps/tauri-action@v1
+        uses: tauri-apps/tauri-action@1deb371b0cd8bd54025b384f1cd735e725c4060f # v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
@@ -176,3 +224,15 @@ jobs:
           # page body alone).
           releaseBody: ${{ steps.body.outputs.text }}
           args: ${{ matrix.args }}
+
+      - name: Verify the macOS signature and notarization
+        # Fails the leg (and so the release check) if the app came out unsigned or without a
+        # stapled notarization ticket; the assets are already in the draft, which stays unpublished.
+        if: contains(matrix.platform, 'macos') && env.APPLE_SIGNING == 'true'
+        shell: bash
+        run: |
+          app="$(ls -d src-tauri/target/*/release/bundle/macos/Moony.app | head -n1)"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          spctl --assess --type execute --verbose=4 "$app"
+          xcrun stapler validate "$app"
+          rm -f "$RUNNER_TEMP"/AuthKey_*.p8

@@ -1,12 +1,9 @@
 import { completeAccountIdentifier } from '@/utils/iban-utils';
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import {
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
   Ellipsis,
   Eye,
   Landmark,
@@ -34,6 +31,7 @@ import { useShellPage } from '@/components/shell/shell-context';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { PageHead } from '@/components/shell/PageHead';
 import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
+import { SortableTableHead } from '@/components/common/SortableTableHead';
 import PortfolioTrendCard from '@/components/common/PortfolioTrendCard';
 import { EmptyState } from '@/components/common/EmptyState';
 import { McpTip } from '@/components/common/McpTip';
@@ -199,35 +197,7 @@ export default function BankAccounts() {
     }
   };
 
-  const SortHead = ({
-    column,
-    children,
-    align = 'right',
-    className,
-  }: {
-    column: SortColumn;
-    children: ReactNode;
-    align?: 'left' | 'right';
-    className?: string;
-  }) => {
-    const active = sortColumn === column;
-    const Icon = !active ? ArrowUpDown : sortDirection === 'asc' ? ArrowUp : ArrowDown;
-    return (
-      <TableHead className={cn(align === 'right' && 'text-right', className)}>
-        <button
-          type="button"
-          onClick={() => handleSort(column)}
-          className={cn(
-            'inline-flex items-center gap-1 rounded-r1 text-thead uppercase transition-colors duration-fast hover:text-ink focus-visible:outline-none focus-visible:shadow-focus',
-            active && 'text-ink'
-          )}
-        >
-          {children}
-          <Icon className={cn('size-3', !active && 'opacity-60')} aria-hidden />
-        </button>
-      </TableHead>
-    );
-  };
+  const sortProps = { sortColumn, sortDirection, onSort: handleSort };
 
   const today = utcDayFloor(Date.now() / 1000);
   const dayLabel = (ts: number) => {
@@ -383,13 +353,19 @@ export default function BankAccounts() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <SortHead column="name" align="left" className="w-[34%]">
+                  <SortableTableHead {...sortProps} column="name" align="left" className="w-[34%]">
                     {t('table.account')}
-                  </SortHead>
+                  </SortableTableHead>
                   <TableHead>{t('fields.currency')}</TableHead>
-                  <SortHead column="balance">{t('fields.balance')}</SortHead>
-                  <SortHead column="change">{t('table.change30')}</SortHead>
-                  <SortHead column="last">{t('table.lastMovement')}</SortHead>
+                  <SortableTableHead {...sortProps} column="balance">
+                    {t('fields.balance')}
+                  </SortableTableHead>
+                  <SortableTableHead {...sortProps} column="change">
+                    {t('table.change30')}
+                  </SortableTableHead>
+                  <SortableTableHead {...sortProps} column="last">
+                    {t('table.lastMovement')}
+                  </SortableTableHead>
                   <TableHead className="w-10">
                     <span className="sr-only">{tc('labels.actions')}</span>
                   </TableHead>

@@ -146,9 +146,9 @@ export function useTheme(): ThemeContextValue {
 }
 
 /**
- * The theme on screen, or `light` where no provider is mounted: the phone shell (`src/mobile/`) is
- * light only until Phase 6 and has no `ThemeProvider`, but shares the toaster with the desktop.
- * Desktop components that need the preference or the chart palette keep using `useTheme()`.
+ * The theme on screen, or `light` for a tree without a `ThemeProvider`. Shared components such as
+ * the toaster read it, so they work in both shells; components that need the preference or the
+ * chart palette use `useTheme()` / `useChartTokens()`.
  */
 // eslint-disable-next-line react-refresh/only-export-components
 export function useResolvedTheme(): ResolvedTheme {

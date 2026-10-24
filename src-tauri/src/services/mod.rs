@@ -27,6 +27,7 @@ pub mod currency;
 pub mod date_parser;
 pub mod dated_facts;
 pub mod dedup;
+pub mod device_backup;
 pub mod document_files;
 pub mod financial_semantics;
 pub mod fx;

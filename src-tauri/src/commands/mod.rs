@@ -16,6 +16,9 @@ pub mod categories;
 pub mod categorization;
 pub mod company_info;
 pub mod crypto;
+/// Phones only: the keychain plugin is a mobile dependency.
+#[cfg(mobile)]
+pub(crate) mod device_backup;
 pub mod export;
 pub mod insurance;
 pub mod investments;

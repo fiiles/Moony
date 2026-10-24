@@ -470,7 +470,7 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
           <>
             {account.name}
             {account.excludeFromBalance && (
-              <span className="ml-1.5 inline-flex h-[18px] items-center rounded-r1 bg-well-2 px-1.5 align-[2px] text-m-caption font-semibold text-ink-3">
+              <span className="ml-1.5 inline-flex min-h-[18px] items-center rounded-r1 bg-well-2 px-1.5 py-px align-[2px] text-m-caption font-semibold leading-[1.3] text-ink-3">
                 {tb('table.excluded')}
               </span>
             )}

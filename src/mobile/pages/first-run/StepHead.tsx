@@ -18,7 +18,7 @@ export function StepHead({ title, lead }: { title: string; lead: string }) {
       >
         {title}
       </h1>
-      <p className="mb-5 mt-1.5 text-[13px] font-450 leading-[1.4] text-ink-3">{lead}</p>
+      <p className="mb-5 mt-1.5 text-m-lead text-ink-3">{lead}</p>
     </>
   );
 }

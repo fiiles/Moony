@@ -65,7 +65,11 @@ export function CategoryPickerSheet({
       onOpenChange={onOpenChange}
       title={t('picker.title')}
       footer={
-        <Button variant="ghost" className="h-12 flex-1 rounded-[10px] text-m-row" onClick={close}>
+        <Button
+          variant="ghost"
+          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
+          onClick={close}
+        >
           {tc('buttons.cancel')}
         </Button>
       }
@@ -198,7 +202,7 @@ function PickerBody({
               type="button"
               onClick={accept}
               aria-label={`${tb('categorization.acceptSuggestion')}: ${categoryName(suggestion)}`}
-              className="relative inline-flex h-9 min-w-0 items-center gap-2 rounded-[10px] border border-dashed border-line-strong bg-paper py-0 pl-2.5 pr-3 text-m-sub font-semibold text-ink-2 [-webkit-touch-callout:none] after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] active:bg-well focus-visible:outline-none focus-visible:shadow-focus"
+              className="relative inline-flex min-h-9 min-w-0 items-center gap-2 rounded-[10px] border border-dashed border-line-strong bg-paper py-1 pl-2.5 pr-3 text-m-sub font-semibold text-ink-2 [-webkit-touch-callout:none] after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] active:bg-well focus-visible:outline-none focus-visible:shadow-focus"
             >
               <Sparkles aria-hidden className="size-3.5 flex-none text-ink-3" strokeWidth={1.75} />
               <CategoryIconChip category={suggestion} className="size-6 [&_svg]:size-3.5" />

@@ -649,6 +649,9 @@
       "title": "Idioma de la app",
       "lead": "Los números y las fechas siguen el idioma."
     },
+    "appearance": {
+      "lead": "Sistema sigue la apariencia clara u oscura del teléfono."
+    },
     "delete": {
       "title": "¿Eliminar todos los datos?",
       "lead": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: es la única forma de recuperar los datos.",
@@ -668,7 +671,7 @@
     "restoreTitle": "Restauración y traslado",
     "restoreLead": "Restaura una copia de seguridad de este teléfono o traslada un perfil desde Moony en el ordenador: elige el archivo de la copia y, tras restaurarla, desbloquea con la contraseña que estaba en uso cuando se creó.",
     "restoreConfirmDescription": "La copia del {{date}} (Moony {{version}}, {{attachments}} adjuntos, {{size}}) sustituye los datos de este teléfono. Haz antes una copia si quieres conservar los datos actuales. Después Moony se bloqueará; desbloquéalo con la contraseña que se usaba cuando se creó la copia.",
-    "osBackupNote": "El perfil cifrado también está en la copia de seguridad del propio teléfono (iCloud u ordenador); sin la contraseña nadie puede abrirlo."
+    "osBackupNote": "El perfil no se guarda en la copia de seguridad del propio teléfono (iCloud u ordenador). La copia de seguridad de Moony que guardes tú es la única copia fuera del teléfono."
   },
   "firstRun": {
     "privacyLead": "Moony guarda todo en una base de datos cifrada en este teléfono. Sin nube y sin cuenta con nosotros.",
@@ -697,7 +700,7 @@
       "backup": "Copia de seguridad"
     },
     "backupTitle": "Haz una copia de seguridad de tus datos",
-    "backupLead": "Este teléfono guarda la única copia de tus datos. Guarda una copia de seguridad cifrada en iCloud Drive o en una carpeta que elijas; Moony nunca la ve.",
+    "backupLead": "Este teléfono guarda la única copia de tus datos, y no está en la copia de seguridad del propio teléfono (iCloud u ordenador). Guarda una copia de seguridad cifrada en iCloud Drive o en una carpeta que elijas; Moony nunca la ve.",
     "currencyPick": "Moneda principal",
     "countryPick": "País del banco",
     "searchCurrency": "Buscar moneda"

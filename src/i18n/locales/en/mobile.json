@@ -615,6 +615,9 @@
       "title": "App language",
       "lead": "Numbers and dates follow the language."
     },
+    "appearance": {
+      "lead": "System follows the phone's light or dark appearance."
+    },
     "delete": {
       "title": "Delete all data?",
       "lead": "Permanently deletes the database, the keys and the attachments from this phone. Backup copies outside the phone stay. Make a backup first — it is the only way back.",
@@ -634,7 +637,7 @@
     "restoreTitle": "Restore and transfer",
     "restoreLead": "Restore a backup from this phone, or transfer a profile from Moony on the computer: choose the backup file and, after the restore, unlock with the password that was in use when it was created.",
     "restoreConfirmDescription": "The backup from {{date}} (Moony {{version}}, {{attachments}} attachments, {{size}}) replaces the data on this phone. Back up first if you want to keep the current data. Moony then locks; unlock it with the password that was in use when the backup was made.",
-    "osBackupNote": "The encrypted profile is also in the phone's own backup (iCloud or a computer); no one can open it without the password."
+    "osBackupNote": "The profile is not saved in the phone's own backup (iCloud or a computer). The Moony backup you save yourself is the only copy outside this phone."
   },
   "firstRun": {
     "privacyLead": "Moony stores everything in an encrypted database on this phone. No cloud, no account with us.",
@@ -663,7 +666,7 @@
       "backup": "Backup"
     },
     "backupTitle": "Back up your data",
-    "backupLead": "This phone holds the only copy of your data. Save an encrypted backup to iCloud Drive or a folder you choose; Moony never sees it.",
+    "backupLead": "This phone holds the only copy of your data, and it is not in the phone's own backup (iCloud or a computer). Save an encrypted backup to iCloud Drive or a folder you choose; Moony never sees it.",
     "currencyPick": "Main currency",
     "countryPick": "Banking country",
     "searchCurrency": "Search currency"

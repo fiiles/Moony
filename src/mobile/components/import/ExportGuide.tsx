@@ -45,7 +45,7 @@ export function ExportGuide({ preset }: { preset: GuidedPreset }) {
         {steps.map((step, index) => (
           <li
             key={index}
-            className="grid grid-cols-[22px_minmax(0,1fr)] items-start gap-2.5 px-1 py-[7px] text-[13px] font-450 leading-[1.45] text-ink-2 [overflow-wrap:break-word]"
+            className="grid grid-cols-[22px_minmax(0,1fr)] items-start gap-2.5 px-1 py-[7px] text-m-lead leading-[1.45] text-ink-2 [overflow-wrap:break-word]"
           >
             <span
               aria-hidden
@@ -63,7 +63,7 @@ export function ExportGuide({ preset }: { preset: GuidedPreset }) {
       {webUrl && (
         <Button
           variant="secondary"
-          className="mt-2.5 h-11 max-w-full rounded-[10px] px-4 text-m-sub [&_svg]:size-4"
+          className="mt-2.5 h-auto min-h-11 whitespace-normal py-2 text-center max-w-full rounded-[10px] px-4 text-m-sub [&_svg]:size-4"
           onClick={() => void openWeb()}
         >
           <ExternalLink aria-hidden strokeWidth={1.75} />
@@ -115,7 +115,7 @@ export function BankGuides({ presets }: { presets: readonly GuidedPreset[] }) {
         <Button
           type="button"
           variant="ghost"
-          className="h-11 w-full justify-start gap-1 rounded-[10px] px-2 text-m-sub text-ink"
+          className="h-auto min-h-11 whitespace-normal py-2 text-left w-full justify-start gap-1 rounded-[10px] px-2 text-m-sub text-ink"
           onClick={() => setOpenId(null)}
         >
           <ChevronLeft aria-hidden strokeWidth={1.75} className="!size-4" />

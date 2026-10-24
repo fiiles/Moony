@@ -78,7 +78,7 @@ function PillButton({
       onClick={onClick}
       aria-label={label}
       className={cn(
-        "relative inline-flex h-9 max-w-full min-w-0 items-center gap-1.5 rounded-full px-3.5 text-m-sub font-semibold [-webkit-touch-callout:none] after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] focus-visible:outline-none focus-visible:shadow-focus [&_svg]:size-3.5 [&_svg]:flex-none",
+        "relative inline-flex min-h-9 max-w-full min-w-0 items-center gap-1.5 rounded-full px-3.5 py-1 text-m-sub font-semibold [-webkit-touch-callout:none] after:absolute after:inset-x-0 after:-inset-y-1 after:content-[''] focus-visible:outline-none focus-visible:shadow-focus [&_svg]:size-3.5 [&_svg]:flex-none",
         PILL_TONES[tone]
       )}
     >
@@ -144,7 +144,7 @@ export function QueueRow({
     );
   } else if (state === 'done') {
     pills = (
-      <span className="inline-flex h-9 max-w-full min-w-0 items-center gap-1.5 rounded-full bg-gain-soft px-3.5 text-m-sub font-semibold text-gain [&_svg]:size-3.5 [&_svg]:flex-none">
+      <span className="inline-flex min-h-9 max-w-full min-w-0 items-center gap-1.5 rounded-full bg-gain-soft px-3.5 py-1 text-m-sub font-semibold text-gain [&_svg]:size-3.5 [&_svg]:flex-none">
         <Check aria-hidden strokeWidth={2} />
         <span className="truncate">
           {doneCategory ? categoryName(doneCategory) : t('queue.categorized')}
@@ -163,7 +163,7 @@ export function QueueRow({
         >
           <Check aria-hidden strokeWidth={2} />
           <span className="min-w-0 truncate">{name}</span>
-          <small aria-hidden className="flex-none text-micro font-medium text-ink-inverse-2">
+          <small aria-hidden className="flex-none text-m-note text-ink-inverse-2">
             · {source}
           </small>
         </PillButton>

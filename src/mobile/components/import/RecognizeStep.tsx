@@ -91,7 +91,7 @@ export function RecognizeStep({
             <Button
               type="button"
               variant="ghost"
-              className="mt-1.5 h-11 w-full justify-start rounded-[10px] px-2 text-m-sub text-ink"
+              className="mt-1.5 h-auto min-h-11 whitespace-normal py-2 text-left w-full justify-start rounded-[10px] px-2 text-m-sub text-ink"
               onClick={recognition.openFields}
             >
               {t('import.recognize.fix')}
@@ -109,7 +109,7 @@ export function RecognizeStep({
             <li
               key={field}
               className={cn(
-                'grid grid-cols-[20px_minmax(92px,34%)_minmax(0,1fr)] items-start gap-2 border-t border-line-soft py-[9px] text-[13px] font-450 leading-[1.4] first:border-t-0',
+                'grid grid-cols-[20px_minmax(92px,34%)_minmax(0,1fr)] items-start gap-2 border-t border-line-soft py-[9px] text-m-lead first:border-t-0',
                 read ? 'text-ink-2' : 'text-ink-4'
               )}
             >

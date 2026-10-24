@@ -253,7 +253,7 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
             <p className="mb-3 mt-0 text-m-body text-ink-3">{t('account.ledger.loadError')}</p>
             <Button
               variant="secondary"
-              className="h-11 rounded-[10px] px-4 text-m-row"
+              className="h-auto min-h-11 whitespace-normal py-2 text-center rounded-[10px] px-4 text-m-row"
               onClick={() => void queue.refetch()}
             >
               {t('account.ledger.retry')}
@@ -277,7 +277,7 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
               className={offered ? 'px-5 py-8' : 'px-5 py-12'}
               action={
                 <Button
-                  className="h-12 w-full rounded-[10px] px-6 text-m-row"
+                  className="h-auto min-h-12 whitespace-normal py-2 text-center w-full rounded-[10px] px-6 text-m-row"
                   onClick={() => setLocation(routes.cashflow)}
                 >
                   {t('queue.showCashflow')}
@@ -286,11 +286,7 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
             />
           ) : (
             <>
-              {lead && (
-                <p className="mx-0.5 mb-1 mt-0.5 text-[13px] font-450 leading-[1.4] text-ink-3">
-                  {lead}
-                </p>
-              )}
+              {lead && <p className="mx-0.5 mb-1 mt-0.5 text-m-lead text-ink-3">{lead}</p>}
               <h2 className="mx-0.5 mb-2.5 mt-0 text-m-title text-ink">
                 {t('upkeep.uncategorized', { count: open })}
               </h2>

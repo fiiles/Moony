@@ -79,7 +79,7 @@ export function AmountField({
           aria-invalid={error ? true : undefined}
           aria-describedby={error ? `${unitId} ${errorId}` : hint ? `${unitId} ${hintId}` : unitId}
           className={cn(
-            'h-12 w-full rounded-[10px] border border-line-strong bg-paper pr-16 text-m-body text-ink num transition-[border-color,box-shadow] duration-fast placeholder:text-ink-5 focus:border-focus focus:shadow-focus focus-visible:outline-none aria-[invalid=true]:border-loss aria-[invalid=true]:focus:shadow-loss-ring',
+            'h-12 w-full rounded-[10px] border border-line-strong bg-paper pr-16 text-m-field text-ink num transition-[border-color,box-shadow] duration-fast placeholder:text-ink-5 focus:border-focus focus:shadow-focus focus-visible:outline-none aria-[invalid=true]:border-loss aria-[invalid=true]:focus:shadow-loss-ring',
             onNegativeChange ? 'pl-[52px]' : 'pl-3.5',
             className
           )}

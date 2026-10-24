@@ -2,13 +2,24 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getVersion } from '@tauri-apps/api/app';
 import { useTranslation } from 'react-i18next';
-import { Bell, CalendarClock, FileText, Globe, Lock, Trash2, Upload, User } from 'lucide-react';
+import {
+  Bell,
+  CalendarClock,
+  FileText,
+  Globe,
+  Lock,
+  SunMoon,
+  Trash2,
+  Upload,
+  User,
+} from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useMilestoneMutedKinds } from '@/hooks/use-milestones';
 import { languageInfo } from '@/i18n/languages';
 import { useLanguage } from '@/i18n/I18nProvider';
 import { biometricApi, onboardingApi } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
+import { useTheme } from '@/theme/ThemeProvider';
 import { deviceStorage } from '@/utils/device-storage';
 import { MILESTONE_GROUP_IDS, kindsOf } from '@/utils/milestones';
 import { EntityRows } from '@/mobile/components/EntityRow';
@@ -23,10 +34,11 @@ import { renderTextRef, securitySummary } from '@/mobile/lib/settings-summary';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes, settingsPath } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { AppearanceSheet } from '@/mobile/sheets/AppearanceSheet';
 import { DeleteProfileSheet } from '@/mobile/sheets/DeleteProfileSheet';
 import { LanguagePickerSheet } from '@/mobile/sheets/LanguagePickerSheet';
 
-type SheetKind = 'language' | 'delete';
+type SheetKind = 'language' | 'appearance' | 'delete';
 
 /** The app version, `''` until it is known (and where the shell cannot tell, such as a browser). */
 function useAppVersion(): string {
@@ -45,10 +57,11 @@ function useAppVersion(): string {
 
 /**
  * Nastavení from the avatar on Přehled (spec §8.9): the profile head, then the rows by what they
- * are — profile and language; security, backup, notifications and reminders, each with its state
- * in the sub-line and a page of its own (`/settings/:section`); import; lock and delete — and the
- * version with the promise under it. Language and delete open sheets, and so does import: the
- * import sheet that every entry point shares (`useImportSheet`), asked here without an account.
+ * are — profile, language and Vzhled; security, backup, notifications and reminders, each with its
+ * state in the sub-line and a page of its own (`/settings/:section`); import; lock and delete — and
+ * the version with the promise under it. Language, Vzhled and delete open sheets, and so does
+ * import: the import sheet that every entry point shares (`useImportSheet`), asked here without an
+ * account.
  */
 export default function Settings() {
   const { t } = useTranslation('mobile');
@@ -56,6 +69,7 @@ export default function Settings() {
   const { t: ts } = useTranslation('settings');
   const { user, lockMutation } = useAuth();
   const { language } = useLanguage();
+  const { preference } = useTheme();
   const fmt = useFormat();
   const back = useBack(routes.overview);
   const { openImport } = useImportSheet();
@@ -133,9 +147,7 @@ export default function Settings() {
         <div className="min-w-0">
           <p className="m-0 truncate text-m-title text-ink">{fullName}</p>
           {user?.email && (
-            <p className="m-0 mt-0.5 truncate text-[13px] font-450 leading-[1.4] text-ink-3">
-              {user.email}
-            </p>
+            <p className="m-0 mt-0.5 truncate text-m-lead text-ink-3">{user.email}</p>
           )}
         </div>
       </div>
@@ -152,6 +164,12 @@ export default function Settings() {
           title={t('settings.rows.language')}
           sub={languageInfo(language).native}
           onClick={() => setSheet('language')}
+        />
+        <SettingsRow
+          icon={SunMoon}
+          title={ts('appearance.title')}
+          sub={ts(`appearance.${preference}`)}
+          onClick={() => setSheet('appearance')}
         />
       </EntityRows>
 
@@ -215,6 +233,7 @@ export default function Settings() {
       </p>
 
       <LanguagePickerSheet open={sheet === 'language'} onOpenChange={closeSheet} />
+      <AppearanceSheet open={sheet === 'appearance'} onOpenChange={closeSheet} />
       <DeleteProfileSheet open={sheet === 'delete'} onOpenChange={closeSheet} />
     </Screen>
   );

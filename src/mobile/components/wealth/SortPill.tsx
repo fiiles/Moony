@@ -29,7 +29,7 @@ export function SortPill<T extends string>({ value, options, onChange, label }: 
         <button
           type="button"
           aria-label={current ? `${label}: ${current.label}` : label}
-          className="relative inline-flex h-[34px] items-center gap-1 rounded-[10px] bg-well-2 px-2.5 text-m-sub font-semibold text-ink-2 [-webkit-touch-callout:none] after:absolute after:-inset-y-[5px] after:inset-x-0 after:content-[''] active:bg-well-3"
+          className="relative inline-flex min-h-[34px] items-center gap-1 rounded-[10px] bg-well-2 px-2.5 py-1 text-m-sub font-semibold text-ink-2 [-webkit-touch-callout:none] after:absolute after:-inset-y-[5px] after:inset-x-0 after:content-[''] active:bg-well-3"
         >
           <span>{current?.label}</span>
           <ChevronDown aria-hidden className="size-3.5 flex-none" strokeWidth={1.75} />

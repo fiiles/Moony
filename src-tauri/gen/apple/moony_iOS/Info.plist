@@ -44,8 +44,6 @@
 	<string>Moony unlocks your data with Face ID.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Moony photographs documents and your property; the photos are stored encrypted on this phone.</string>
-	<key>UIUserInterfaceStyle</key>
-	<string>Light</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

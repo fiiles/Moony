@@ -78,6 +78,10 @@ pub async fn take_received_files(
         spawn_startup_sweep(&app, paths.clone());
     }
     let taken = paths.len();
+    if taken > 0 {
+        // iOS may have (re)created the Inbox since the start: keep the statements out of backups.
+        crate::commands::device_backup::exclude_received_files_dir(&app).await;
+    }
     let strings: Vec<String> = paths
         .into_iter()
         .filter_map(|path| path.into_os_string().into_string().ok())

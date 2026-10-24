@@ -1,6 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { RealEstatePhoto, RealEstatePhotoBatch } from '@shared/schema';
-import { uploadToTodayBatch, type PhotoApi, type PhotoSource } from './photo-upload';
+import {
+  deletePhotoLive,
+  uploadToTodayBatch,
+  type PhotoApi,
+  type PhotoDeleteApi,
+  type PhotoSource,
+} from './photo-upload';
 
 const DAY = 86_400;
 const TODAY = Date.UTC(2026, 9, 24) / 1000;
@@ -196,5 +202,57 @@ describe('uploadToTodayBatch', () => {
     await expect(uploadToTodayBatch(api, 'p', [], TODAY)).rejects.toThrow();
     expect(api.getPhotoBatches).not.toHaveBeenCalled();
     expect(api.createPhotoBatch).not.toHaveBeenCalled();
+  });
+});
+
+describe('deletePhotoLive', () => {
+  const withPhotos = (id: string, photoIds: string[]): RealEstatePhotoBatch => ({
+    ...batch(id, TODAY),
+    photos: photoIds.map((photoId) => ({ id: photoId, batchId: id, createdAt: 0 })),
+  });
+
+  /** The backend as it is when the delete confirms: `batches` is the live state. */
+  function deleteApi(batches: RealEstatePhotoBatch[]) {
+    return {
+      getPhotoBatches: vi.fn<PhotoDeleteApi['getPhotoBatches']>(async () => batches),
+      deletePhoto: vi.fn<PhotoDeleteApi['deletePhoto']>(async () => undefined),
+      deletePhotoBatch: vi.fn<PhotoDeleteApi['deletePhotoBatch']>(async () => undefined),
+    };
+  }
+
+  it("deletes the batch with the photo when it is the batch's only photo now", async () => {
+    const api = deleteApi([withPhotos('b1', ['a'])]);
+    await expect(deletePhotoLive(api, 'p', 'a')).resolves.toBe('batch');
+    expect(api.getPhotoBatches).toHaveBeenCalledWith('p');
+    expect(api.deletePhotoBatch).toHaveBeenCalledWith('b1');
+    expect(api.deletePhoto).not.toHaveBeenCalled();
+  });
+
+  it('deletes only the photo when the batch has gained photos since it was opened', async () => {
+    // Opened when it was the batch's only photo; an upload into the batch landed before the confirm
+    const api = deleteApi([withPhotos('b1', ['a', 'new1', 'new2'])]);
+    await expect(deletePhotoLive(api, 'p', 'a')).resolves.toBe('photo');
+    expect(api.deletePhoto).toHaveBeenCalledWith('a');
+    expect(api.deletePhotoBatch).not.toHaveBeenCalled();
+  });
+
+  it('deletes nothing for a photo that is gone already', async () => {
+    const api = deleteApi([withPhotos('b1', ['x'])]);
+    await expect(deletePhotoLive(api, 'p', 'a')).resolves.toBe('gone');
+    expect(api.deletePhoto).not.toHaveBeenCalled();
+    expect(api.deletePhotoBatch).not.toHaveBeenCalled();
+  });
+
+  it('passes a failure of the backend on, and never decides from an earlier read', async () => {
+    const failing = deleteApi([withPhotos('b1', ['a', 'b'])]);
+    failing.deletePhoto.mockRejectedValueOnce(new Error('database locked'));
+    await expect(deletePhotoLive(failing, 'p', 'a')).rejects.toThrow('database locked');
+    // Asked twice, read twice: the second answer follows what the first left behind
+    const batches = [withPhotos('b1', ['a', 'b'])];
+    const api = deleteApi(batches);
+    await deletePhotoLive(api, 'p', 'a');
+    batches[0] = withPhotos('b1', ['b']);
+    await expect(deletePhotoLive(api, 'p', 'b')).resolves.toBe('batch');
+    expect(api.getPhotoBatches).toHaveBeenCalledTimes(2);
   });
 });

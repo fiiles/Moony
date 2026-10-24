@@ -14,7 +14,11 @@ import { useRealEstateMutations } from '@/hooks/use-real-estate-mutations';
 import { portfolioApi, realEstateApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { realEstateUpdatePayload } from '@/utils/real-estate-payload';
-import { uploadToTodayBatch, type UploadProgress } from '@/mobile/lib/photo-upload';
+import {
+  deletePhotoLive,
+  uploadToTodayBatch,
+  type UploadProgress,
+} from '@/mobile/lib/photo-upload';
 import { withoutRecurring } from '@/mobile/lib/property-detail';
 
 /** What a link or an unlink acts on: a loan or a policy of the property. */
@@ -205,19 +209,14 @@ export function usePropertyCostMutations(id: string | undefined) {
   return { addRecurring, saveOneTime, removeOneTime, removeRecurring };
 }
 
-/** A photo to delete: the batch it is in, and whether it is that batch's only one. */
-export interface PhotoRemoval {
-  photoId: string;
-  batchId: string;
-  last: boolean;
-}
-
 /**
  * The writes of "Galerie" (spec §8.8): picked photos go into today's batch one by one
  * (`uploadToTodayBatch`; `progress` is the photo on its way, for "Nahrávám 2 / 5"), and a photo is
- * deleted. The last photo of a batch goes with its batch, in the one transaction of
- * `deletePhotoBatch`, so no empty batch is left behind. Photos carry no money, so — like the
- * desktop gallery — only the property's batches are refreshed, not the metrics or the snapshot.
+ * deleted by its id (`deletePhotoLive`): what goes with it — the whole batch, if the photo is still
+ * its only one, in the one transaction of `deletePhotoBatch` — is decided on the batches as they are
+ * when the delete is confirmed, not as they were when the photo was opened. Photos carry no money,
+ * so — like the desktop gallery — only the property's batches are refreshed, not the metrics or the
+ * snapshot.
  */
 export function usePropertyPhotoMutations(id: string | undefined) {
   const queryClient = useQueryClient();
@@ -247,8 +246,7 @@ export function usePropertyPhotoMutations(id: string | undefined) {
   });
 
   const removePhoto = useMutation({
-    mutationFn: ({ photoId, batchId, last }: PhotoRemoval) =>
-      last ? realEstateApi.deletePhotoBatch(batchId) : realEstateApi.deletePhoto(photoId),
+    mutationFn: (photoId: string) => deletePhotoLive(realEstateApi, id!, photoId),
     onSuccess: async () => {
       await refresh();
       toast(tm('property.photoDeleted'));

@@ -453,6 +453,27 @@ export function galleryPhotos(batches: readonly RealEstatePhotoBatch[]): Gallery
 }
 
 /**
+ * What deleting a photo does, decided on the batches as they are *now*: the whole batch when the
+ * photo is still its only one (none is left empty), the photo alone when the batch has other
+ * photos — an upload into today's batch may have landed after the photo was opened, and a decision
+ * made when it was tapped would delete those with it. `gone` when no batch holds the photo (it was
+ * deleted elsewhere), so there is nothing left to delete.
+ */
+export type PhotoDeletion =
+  { kind: 'batch'; batchId: string } | { kind: 'photo'; photoId: string } | { kind: 'gone' };
+
+export function photoDeletion(
+  batches: readonly RealEstatePhotoBatch[],
+  photoId: string
+): PhotoDeletion {
+  const batch = batches.find((candidate) => candidate.photos.some((photo) => photo.id === photoId));
+  if (!batch) return { kind: 'gone' };
+  return batch.photos.length === 1
+    ? { kind: 'batch', batchId: batch.id }
+    : { kind: 'photo', photoId };
+}
+
+/**
  * The costs' text: the phone's `useMoneyText()` as `money` (masked while amounts are hidden, so
  * a cost is never written in the clear) and `fmt.day` as `day`.
  */
@@ -546,6 +567,15 @@ export interface CostForm {
   dateIso: string;
   /** A one-time cost's note. */
   description: string;
+  /**
+   * The stored amount of an edited cost whose amount field was left empty because amounts are
+   * hidden (a prefilled field would show it): it stands in for the field until something is
+   * typed, so changing only the name, the day or the note does not need the amount again.
+   * `null` for a new cost and while the amount is shown.
+   */
+  keptAmount: string | null;
+  /** The stored day (`YYYY-MM-DD`) of an edited cost, which it may keep even when it is ahead; `null` for a new cost. */
+  originalDateIso: string | null;
 }
 
 export interface CostErrors {
@@ -567,18 +597,39 @@ function costAmount(
 }
 
 /**
+ * The amount a form stands for: what is typed, or — while the field is empty and the stored amount
+ * of an edited cost is kept beside it (`keptAmount`) — that amount. Typed text is judged as typed,
+ * the stored amount never covers a wrong one.
+ */
+function formAmount(form: CostForm) {
+  const kept = form.amountText.trim() === '' ? form.keptAmount : null;
+  return costAmount(kept ?? form.amountText);
+}
+
+/**
+ * The latest day a cost's day may be (`YYYY-MM-DD`): today — a cost is a payment that has been made,
+ * and a day ahead has no rate yet — or, for an edited cost that the computer dated ahead, that day:
+ * it may keep it, though not move it further out. What the date field's `max` is.
+ */
+export function latestCostDay(form: Pick<CostForm, 'originalDateIso'>, today: string): string {
+  return form.originalDateIso !== null && form.originalDateIso > today
+    ? form.originalDateIso
+    : today;
+}
+
+/**
  * What stops a cost form from being saved. A cost is a name and a positive amount (the desktop's
- * recurring dialog asks the same), and a one-time cost also the day it was paid — today at most:
- * a cost is a payment that has been made, and a day ahead has no rate yet. `today` is `YYYY-MM-DD`.
+ * recurring dialog asks the same; `keptAmount` may stand in for the field), and a one-time cost
+ * also the day it was paid, up to `latestCostDay`. `today` is `YYYY-MM-DD`.
  */
 export function costErrors(form: CostForm, today: string): CostErrors {
   const errors: CostErrors = {};
   if (form.name.trim() === '') errors.name = 'required';
-  const amount = costAmount(form.amountText);
+  const amount = formAmount(form);
   if ('error' in amount) errors.amount = amount.error;
   if (form.kind === 'oneTime') {
     if (form.dateIso === '') errors.date = 'required';
-    else if (form.dateIso > today) errors.date = 'future';
+    else if (form.dateIso > latestCostDay(form, today)) errors.date = 'future';
   }
   return errors;
 }
@@ -591,7 +642,7 @@ export function costErrors(form: CostForm, today: string): CostErrors {
  */
 export function costInput(form: CostForm, currency: string): InsertRealEstateOneTimeCost | null {
   const name = form.name.trim();
-  const amount = costAmount(form.amountText);
+  const amount = formAmount(form);
   if (name === '' || 'error' in amount || form.dateIso === '') return null;
   return {
     realEstateId: form.realEstateId,
@@ -606,7 +657,7 @@ export function costInput(form: CostForm, currency: string): InsertRealEstateOne
 /** The recurring cost a form makes, in `currency`; `null` for a form with no name or no positive amount. */
 export function recurringInput(form: CostForm, currency: string): RecurringCost | null {
   const name = form.name.trim();
-  const amount = costAmount(form.amountText);
+  const amount = formAmount(form);
   if (name === '' || 'error' in amount) return null;
   return { name, amount: Number(amount.amount), frequency: form.frequency, currency };
 }

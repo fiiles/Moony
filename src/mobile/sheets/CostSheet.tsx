@@ -1,4 +1,4 @@
-import { useId, useState } from 'react';
+import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { RealEstate, RealEstateOneTimeCost } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
@@ -15,6 +15,7 @@ import { usePropertyCostMutations } from '@/mobile/hooks/use-property-mutations'
 import {
   costErrors,
   costInput,
+  latestCostDay,
   recurringInput,
   todayIso,
   type CostErrors,
@@ -37,8 +38,10 @@ const TEXT_FIELD =
 
 /**
  * The form a sheet opens with. A new cost starts as a recurring one for today; an edited cost with
- * its own values — except while the amounts are hidden, when the field starts empty: a prefilled
- * amount would show what the eye hides (the hint under it says what it was, masked).
+ * its own values — except while the amounts are hidden, when the field starts empty (a prefilled
+ * amount would show what the eye hides) and the stored amount waits beside it (`keptAmount`): it is
+ * what is saved until something is typed. The stored day is kept too, so that a cost the computer
+ * dated ahead can be edited without moving it.
  */
 function startForm(
   property: RealEstate,
@@ -50,9 +53,11 @@ function startForm(
     kind: cost ? 'oneTime' : 'recurring',
     name: cost?.name ?? '',
     amountText: cost && !hidden ? String(Number(cost.amount) || 0) : '',
+    keptAmount: cost && hidden ? cost.amount : null,
     frequency: 'monthly',
     dateIso: cost ? isoDateFromUtcTimestamp(cost.date) : todayIso(),
     description: cost?.description ?? '',
+    originalDateIso: cost ? isoDateFromUtcTimestamp(cost.date) : null,
   };
 }
 
@@ -63,11 +68,14 @@ const FREQUENCIES: readonly CostFrequency[] = ['monthly', 'quarterly', 'yearly']
  * desktop's `AddRecurringCostModal` and `OneTimeCostModal`): Pravidelný · Jednorázový (a stored
  * cost keeps its kind, so editing has no segment), the name, the amount in the property's currency
  * — a cost in another one is added on the computer, and an edited cost keeps its own — then the
- * frequency of a recurring cost, or the day (today at most) and an optional note of a one-time one.
- * The cost is written through the property's cost mutations, every write refreshing what rule 7
- * lists, and the sheet closes once it is saved; a refusal is the mutation's own toast and the sheet
- * stays. While the amounts are hidden an edited cost's amount starts empty, and what it was is
- * said masked; the amount typed is an input and is never masked.
+ * frequency of a recurring cost, or the day (today at most; an edited cost that the computer dated
+ * ahead may keep that day) and an optional note of a one-time one. Return on the name goes on to
+ * the amount. The cost is written through the property's cost mutations, every write refreshing
+ * what rule 7 lists, and the sheet closes once it is saved; a refusal is the mutation's own toast
+ * and the sheet stays. While the amounts are hidden an edited cost's amount field starts empty and
+ * shows the masked amount as its placeholder: left empty it saves the stored amount, so the name,
+ * the day or the note can change without typing the amount again; the amount typed is an input and
+ * is never masked.
  *
  * Every opening starts over, from the stored cost or from a recurring one.
  */
@@ -78,6 +86,7 @@ export function CostSheet({ open, onOpenChange, property, cost }: CostSheetProps
   const moneyText = useMoneyText();
   const { hidden } = useHideAmounts();
   const formId = useId();
+  const amountField = useRef<HTMLInputElement>(null);
   const { addRecurring, saveOneTime } = usePropertyCostMutations(property.id);
   const currency = recordCurrency(cost ? cost.currency : property.marketPriceCurrency);
 
@@ -203,6 +212,12 @@ export function CostSheet({ open, onOpenChange, property, cost }: CostSheetProps
             maxLength={100}
             autoComplete="off"
             enterKeyHint="next"
+            onKeyDown={(event) => {
+              if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+              // Return goes on to the amount; the form is submitted from its last field
+              event.preventDefault();
+              amountField.current?.focus();
+            }}
             aria-invalid={nameError ? true : undefined}
             aria-describedby={nameError ? nameErrorId : undefined}
             className={TEXT_FIELD}
@@ -218,10 +233,16 @@ export function CostSheet({ open, onOpenChange, property, cost }: CostSheetProps
           )}
         </div>
         <AmountField
+          ref={amountField}
           label={tr('modal.cost.amount')}
           unit={currency}
           value={form.amountText}
-          placeholder="0"
+          // The stored amount that an empty field saves, masked while the amounts are hidden
+          placeholder={
+            form.keptAmount !== null
+              ? moneyText(Number(form.keptAmount) || 0, currency, { decimals: 0 })
+              : '0'
+          }
           error={amountError}
           hint={
             cost
@@ -254,7 +275,7 @@ export function CostSheet({ open, onOpenChange, property, cost }: CostSheetProps
               <DateField
                 label={tr('modal.cost.date')}
                 value={form.dateIso}
-                max={today}
+                max={latestCostDay(form, today)}
                 onChange={(dateIso) => change({ dateIso })}
                 error={dateError}
               />

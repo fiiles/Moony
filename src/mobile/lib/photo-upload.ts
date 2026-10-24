@@ -1,6 +1,6 @@
 import type { RealEstatePhoto, RealEstatePhotoBatch } from '@shared/schema';
 import { utcDayFloor } from '@/utils/chart-axis';
-import { todayBatch } from './property-detail';
+import { photoDeletion, todayBatch } from './property-detail';
 
 /** The backend commands the upload needs (`realEstateApi`'s); injected so the rules can be tested. */
 export interface PhotoApi {
@@ -84,4 +84,30 @@ export async function uploadToTodayBatch(
     throw failure;
   }
   return { batchId: batch.id, saved, skipped: files.length - saved };
+}
+
+/** The backend commands the delete needs (`realEstateApi`'s); injected so the rules can be tested. */
+export interface PhotoDeleteApi {
+  getPhotoBatches(realEstateId: string): Promise<RealEstatePhotoBatch[]>;
+  deletePhoto(photoId: string): Promise<void>;
+  deletePhotoBatch(batchId: string): Promise<void>;
+}
+
+/**
+ * Deletes a photo, deciding what goes with it from the batches **as they are when the delete is
+ * confirmed** (`photoDeletion`), never from what they were when the photo was opened: an upload into
+ * today's batch can land in between, and the batch is deleted only if the photo is still its only
+ * one — otherwise it would take the new photos with it. A batch's last photo goes with the batch in
+ * the one transaction of `deletePhotoBatch`, so none is left empty. Resolves with what was deleted;
+ * `gone` when the photo was deleted elsewhere already.
+ */
+export async function deletePhotoLive(
+  api: PhotoDeleteApi,
+  realEstateId: string,
+  photoId: string
+): Promise<'batch' | 'photo' | 'gone'> {
+  const deletion = photoDeletion(await api.getPhotoBatches(realEstateId), photoId);
+  if (deletion.kind === 'batch') await api.deletePhotoBatch(deletion.batchId);
+  else if (deletion.kind === 'photo') await api.deletePhoto(deletion.photoId);
+  return deletion.kind;
 }

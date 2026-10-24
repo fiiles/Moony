@@ -45,6 +45,7 @@ export function PropertyGallery({ propertyId }: PropertyGalleryProps) {
     data: batches = NO_BATCHES,
     isLoading,
     error: loadError,
+    refetch,
   } = useQuery<RealEstatePhotoBatch[]>({
     queryKey: ['real-estate-photo-batches', propertyId],
     queryFn: () => realEstateApi.getPhotoBatches(propertyId),
@@ -55,6 +56,11 @@ export function PropertyGallery({ propertyId }: PropertyGalleryProps) {
   const [viewing, setViewing] = useState<GalleryPhoto | null>(null);
   const [viewOpen, setViewOpen] = useState(false);
   const [confirmOpen, setConfirmOpen] = useState(false);
+
+  // What the confirm sentence says is read from the batches as they are now (refreshed when the
+  // sheet opens): an upload may have landed since the thumbnail was tapped. The delete itself decides
+  // on a fresh read of its own as well (`deletePhotoLive`).
+  const live = viewing ? (photos.find((photo) => photo.id === viewing.id) ?? viewing) : null;
 
   const chosen = (files: File[]) => {
     const { photos: usable, heic, unsupported } = splitPhotoFiles(files);
@@ -123,7 +129,7 @@ export function PropertyGallery({ propertyId }: PropertyGalleryProps) {
         pickLabel={uploading ?? t('documents.fromPhotos')}
         pickAccept={PHOTO_ACCEPT}
         multiple
-        disabled={upload.isPending}
+        disabled={upload.isPending || removePhoto.isPending}
         onFiles={chosen}
       />
       {uploading && (
@@ -135,30 +141,31 @@ export function PropertyGallery({ propertyId }: PropertyGalleryProps) {
         open={viewOpen}
         onOpenChange={setViewOpen}
         photo={viewing}
-        onDelete={() => setConfirmOpen(true)}
+        onDelete={() => {
+          setConfirmOpen(true);
+          // The sentence in the confirm sheet follows the batches as they are now
+          void refetch();
+        }}
       />
       <ConfirmSheet
         open={confirmOpen}
         onOpenChange={setConfirmOpen}
         title={t('property.deletePhotoConfirm.title')}
         description={
-          viewing?.last
-            ? t('property.deletePhotoConfirm.descriptionLast', { day: fmt.day(viewing.day) })
+          live?.last
+            ? t('property.deletePhotoConfirm.descriptionLast', { day: fmt.day(live.day) })
             : t('property.deletePhotoConfirm.description')
         }
         confirmLabel={t('property.deletePhoto')}
         isPending={removePhoto.isPending}
         onConfirm={() => {
           if (!viewing) return;
-          removePhoto.mutate(
-            { photoId: viewing.id, batchId: viewing.batchId, last: viewing.last },
-            {
-              onSuccess: () => {
-                setConfirmOpen(false);
-                setViewOpen(false);
-              },
-            }
-          );
+          removePhoto.mutate(viewing.id, {
+            onSuccess: () => {
+              setConfirmOpen(false);
+              setViewOpen(false);
+            },
+          });
         }}
       />
     </>

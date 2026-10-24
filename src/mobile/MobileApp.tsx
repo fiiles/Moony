@@ -7,12 +7,14 @@ import { AuthProvider } from '@/hooks/use-auth';
 import { CurrencyProvider } from '@/lib/currency-provider';
 import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 import { I18nProvider } from '@/i18n/I18nProvider';
+import { ThemeProvider, useResolvedTheme } from '@/theme/ThemeProvider';
 import { SyncProvider } from '@/hooks/SyncProvider';
 import { MobileShell } from '@/mobile/shell/MobileShell';
 import { HideAmountsProvider } from '@/mobile/hooks/use-hide-amounts';
 import { useBackgroundLock } from '@/mobile/hooks/use-background-lock';
+import { applyStatusBarStyle } from '@/mobile/lib/status-bar';
+import { useTypeScale } from '@/mobile/lib/use-type-scale';
 import { useVisibleHeight } from '@/mobile/lib/use-visible-height';
-import { showWindow } from '@/theme/window-theme';
 
 /**
  * Toasts sit above the tab bar (spec §10.3), centred between the 16 pt gutters: 12 pt over the
@@ -37,12 +39,28 @@ function BackgroundLock() {
 }
 
 /**
+ * The native status bar follows the resolved theme (`applyStatusBarStyle`): the OS samples the page
+ * under the bar and lags behind a live switch, so the style is set outright on every change. Must
+ * sit inside `ThemeProvider`; renders nothing.
+ */
+function StatusBarStyle() {
+  const theme = useResolvedTheme();
+  useEffect(() => {
+    void applyStatusBarStyle(theme);
+  }, [theme]);
+  return null;
+}
+
+/**
  * Root of the phone shell: the provider stack of `App.tsx` without the desktop-only updater,
- * around `MobileShell` (tab bar, nav bar, the four tab roots). The hide-amounts state sits above
- * the shell, so every screen and sheet shares it.
+ * around `MobileShell` (tab bar, nav bar, the four tab roots). The `ThemeProvider` is the
+ * desktop's, unchanged: `theme-boot.js` stamps `data-theme` before the first paint, the provider
+ * keeps it after that (the OS appearance under `system`) and shows the window once, after its
+ * first stamp. The hide-amounts state sits above the shell, so every screen and sheet shares it.
  */
 export default function MobileApp() {
   useVisibleHeight();
+  useTypeScale();
 
   // `index.css` drops the desktop's 1080 px minimum width under this attribute, before the first paint.
   useLayoutEffect(() => {
@@ -53,38 +71,31 @@ export default function MobileApp() {
     };
   }, []);
 
-  // The window is configured hidden (`tauri.conf.json`, so the desktop never flashes the wrong theme)
-  // and `lib.rs` shows it after 3 s if the frontend never does. The desktop `ThemeProvider` shows it
-  // once the theme is stamped; the phone has no provider (light only, `main.tsx`), so it shows the
-  // window itself after the first render. tao 0.37 ignores `visible: false` on iOS and Android (the
-  // window is up from launch), so this is a no-op there today; the call keeps the phone from relying
-  // on that.
-  useEffect(() => {
-    void showWindow();
-  }, []);
-
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <I18nProvider>
-          <CurrencyProvider>
-            <SyncProvider>
-              <TooltipProvider delayDuration={200}>
-                <HideAmountsProvider>
-                  <BackgroundLock />
-                  <ErrorBoundary>
-                    <MobileShell />
-                  </ErrorBoundary>
-                </HideAmountsProvider>
-                <Toaster
-                  position="bottom-center"
-                  offset={TOAST_OFFSET}
-                  mobileOffset={TOAST_OFFSET}
-                />
-              </TooltipProvider>
-            </SyncProvider>
-          </CurrencyProvider>
-        </I18nProvider>
+        <ThemeProvider>
+          <I18nProvider>
+            <CurrencyProvider>
+              <SyncProvider>
+                <TooltipProvider delayDuration={200}>
+                  <HideAmountsProvider>
+                    <BackgroundLock />
+                    <StatusBarStyle />
+                    <ErrorBoundary>
+                      <MobileShell />
+                    </ErrorBoundary>
+                  </HideAmountsProvider>
+                  <Toaster
+                    position="bottom-center"
+                    offset={TOAST_OFFSET}
+                    mobileOffset={TOAST_OFFSET}
+                  />
+                </TooltipProvider>
+              </SyncProvider>
+            </CurrencyProvider>
+          </I18nProvider>
+        </ThemeProvider>
       </AuthProvider>
     </QueryClientProvider>
   );

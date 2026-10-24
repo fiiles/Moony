@@ -79,7 +79,7 @@ export default function RemindersSection() {
         <Input
           id="insurance-notice-days"
           aria-describedby="insurance-notice-hint"
-          className="h-12 rounded-[10px] text-m-body"
+          className="h-12 rounded-[10px] text-m-field"
           // Plain text, not type="number": WebKit reports '' for a partial entry such as "-" or
           // "1e", which would read as "no reminder"; the parser must see what was typed.
           type="text"

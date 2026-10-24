@@ -397,37 +397,99 @@ bar, sheets and segment, Inter bundled). The reference width is 390 pt; every la
   tokens, every class prefixed `m-` so the two layers never collide. Its own `:root` defines the phone
   tokens (safe areas, bar heights, type scale); `src/index.css` carries the same block (keep the two
   identical). Its other sources are the tokens of `tokens.css` only, including `hero-orb`, `sh-seg`,
-  `sh-destructive` and `loss-ring`, which exist in both themes (table in §2). `src/mobile/` matches
-  `mobile.css` visually and never imports it. The phone is light only until Phase 6: `src/main.tsx`
-  overwrites the `data-theme` that `theme-boot.js` stamped with `light` before the first render, the
-  shell has no `ThemeProvider` (the shared toaster falls back to light through `useResolvedTheme()`),
-  and `MobileApp` shows the window itself after its first render (`showWindow()`, capability
-  `core:window:allow-show`) instead of waiting for the provider that does it on the desktop. tao
-  ignores `visible: false` on iOS and Android, so the phone window is up from launch and the call is
-  a no-op there today.
+  `sh-destructive` and `loss-ring`, which exist in both themes (table in §2) and read right on the
+  phone in dark: the orb is moonlight (lighter than paper), the drops of both shadows are black-based
+  (`sh-destructive` keeps a faint white inset) and the ring is the dark `loss`. `src/mobile/` matches
+  `mobile.css` visually and never imports it.
+- **Dark.** The phone has no theme of its own: the desktop's `ThemeProvider` is mounted unchanged in
+  `MobileApp` (inside `AuthProvider`), the preference is the profile's `theme` (Systém / Světlý /
+  Tmavý), and `data-theme` on `<html>` switches the dark token block of §2 for every component, with no
+  `.dark` class. `public/theme-boot.js` stamps `data-theme` before the first paint on both shells (the
+  device's stored choice, else the OS appearance), so the lock screen is already in the right theme;
+  after unlock the profile's value wins and the device mirror follows. Nothing pins the native
+  interface style (`UIUserInterfaceStyle` is not in `Info.ios.plist`), and the window calls of the
+  provider, `setTheme` and `setBackgroundColor`, never reach tao on the phone: the phone capability
+  grants the webview `core:window:allow-show` and neither of those two (the desktop capability grants
+  both), so the call is refused and the provider's guard swallows the refusal. The page carries the
+  theme, and the one native piece the app sets is the status bar: it follows the theme through the
+  keychain plugin's `set_status_bar_style` (`StatusBarStyle` in `MobileApp`; the phone capability
+  grants `moony-keychain:allow-set-status-bar-style` beside the default set), on iOS an explicit
+  `preferredStatusBarStyle` on tao's view controller, because the iOS 26 bar samples the page under it
+  and keeps its old style after a live switch (checked on iOS 26.3; whether earlier iOS samples the
+  page at all was not verified, and the explicit style does not depend on it), on Android
+  `isAppearanceLightStatusBars`. What else the system draws follows the OS appearance, so a choice
+  against the OS changes the page and the status bar only.
+  The provider also shows the window once, after its first stamp (`showWindow()`); tao ignores
+  `visible: false` on iOS and Android, so the phone window is up from launch and the call is a no-op
+  there. A chart that needs a colour value in code reads it through `useChartTokens()`, which re-reads
+  the palette on every switch; the other marks use `var(--…)` in the SVG. No chart reads a token once.
 - **`mobile.html`** shows the components at 360, 390 and 430 with German copy (German runs longest): the tab root with Údržba, hero, stats, agenda rows (a dark date chip, a swiped row), the allocation ring and legend and the entity rows, the Finance tab root (compact hero, accounts with every kind of trailing sub and the badge in a title, the loan and policy heads with their one number, the trend card), the account detail (the nav sub-line, the button pair, the hero with a step line, two stats, the flows strip that scrolls while the page does not, the search, the toolbar with the dotted filter button, two day groups under sticky heads with badges in the sub-lines and a row swiped onto "Kategorie"), the Cashflow tab (period bar, savings hero, bars, budget note and category rows with their bars), Spravovat rozpočty and the limit sheet, the sheet with its amount fields, the filter sheet's pick rows, the transaction sheet (amount, label-and-value rows, the meaning segment, the folded details) and the category picker (search, suggestion pill, recent and all categories, the pinned learning switches).
   Under each frame a check reports anything that extends past the screen or scrolls it sideways, and
   lists the texts that end with an ellipsis. Open it after changing a phone component: nothing may
-  overflow at 360. It also shows Majetek's tab root (the compact hero with the allocation bar, class rows with their change lines, an empty class and a class without a rate), the Akcie class page (the pushed screen with its sub-line, the hero with legend, the Pozice · Sledované segment, the toolbar with the sort pill and the position rows) and the position detail (the pushed screen of a position: the sub-line, the hero with the dashed cost line and its legend, the button pair, the six stats in two rows, the trade rows — one of them mid-flash — with the folded list, and the key-value card of the company). The import sheet is shown as its preview (a statement of another account: the file bar, the red box with its button and switch, the balance check, the counts, rows with a category, a manual choice, a missing category, a duplicate and an error, the footer's wrapping primary), its done step (stats, sentences, the primary and the next steps), its account stage (pick rows with a second line), the category choice over it, and the export guide (under the picker with a web route's button, as the list of banks when a file cannot be read, and one bank's guide opened in place with an app route). The categorize queue is shown as its page (the nav bar, the lead line, the count, the progress row, and eight rows: one with each pill row — a suggestion with its source, a long category name, no suggestion, a credit — a done row on `well` with its expansion, and one put off) at the three widths.
+  overflow at 360, in either theme or at any text size. A Světlý / Tmavý segment in the head (also
+  `?theme=dark` and the `D` key, as in the style guide) stamps `data-theme` on `<html>`, so every frame
+  renders on the dark tokens, and the check runs again after a switch. A "Velikost písma" segment
+  (100 % · 130 % · Největší, also `?size=130` / `?size=max`) sets `--m-type-scale` to 1 / 1.3 / 3.1
+  (the largest iOS accessibility size is 53 px, 3.1) and runs the check again; rows may then be taller,
+  so its row rule is "at least 60 px, single-line at least 52". It also shows Majetek's tab root (the compact hero with the allocation bar, class rows with their change lines, an empty class and a class without a rate), the Akcie class page (the pushed screen with its sub-line, the hero with legend, the Pozice · Sledované segment, the toolbar with the sort pill and the position rows) and the position detail (the pushed screen of a position: the sub-line, the hero with the dashed cost line and its legend, the button pair, the six stats in two rows, the trade rows — one of them mid-flash — with the folded list, and the key-value card of the company). The import sheet is shown as its preview (a statement of another account: the file bar, the red box with its button and switch, the balance check, the counts, rows with a category, a manual choice, a missing category, a duplicate and an error, the footer's wrapping primary), its done step (stats, sentences, the primary and the next steps), its account stage (pick rows with a second line), the category choice over it, and the export guide (under the picker with a web route's button, as the list of banks when a file cannot be read, and one bank's guide opened in place with an app route). The categorize queue is shown as its page (the nav bar, the lead line, the count, the progress row, and eight rows: one with each pill row — a suggestion with its source, a long category name, no suggestion, a credit — a done row on `well` with its expansion, and one put off) at the three widths.
 
 Phone type scale (Inter Variable, tabular numerals on every number; Tailwind `text-m-*`, which `cn()`
 knows as type roles):
 
-| Role | Size / weight / tracking | Token | Tailwind |
-|---|---|---|---|
-| Display (hero number) | 36 / 580 / −0.06em | `m-fs-display` | `text-m-display` |
-| Large title | 30 / 600 / −0.05em | `m-fs-title-lg` | `text-m-title-lg` |
-| Title (collapsed nav bar, sheet) | 20 / 650 / −0.04em | `m-fs-title` | `text-m-title` |
-| Section | 16 / 620 / −0.03em | `m-fs-section` | `text-m-section` |
-| Stat value | 17 / 600 / −0.03em | `m-fs-stat` | `text-m-stat` |
-| Row title and value | 15 / 600 / −0.01em | `m-fs-row` | `text-m-row` |
-| Body | 15 / 450, line 1.45 | `m-fs-body` | `text-m-body` |
-| Row sub, badge | 12 / 500 | `m-fs-sub` | `text-m-sub` |
-| Caption | 11 / 500, ink-3 | `m-fs-caption` | `text-m-caption` |
-| Eyebrow | 10 / 700 / +0.12em, uppercase | `fs-eyebrow` | `text-eyebrow` |
+| Role | Size / weight / tracking | Token | Tailwind | Scales to |
+|---|---|---|---|---|
+| Display (hero number) | 36 / 580 / −0.06em | `m-fs-display` | `text-m-display` | 110 % |
+| Large title | 30 / 600 / −0.05em | `m-fs-title-lg` | `text-m-title-lg` | 130 % |
+| Title (collapsed nav bar, sheet) | 20 / 650 / −0.04em | `m-fs-title` | `text-m-title` | 130 % |
+| Section | 16 / 620 / −0.03em | `m-fs-section` | `text-m-section` | 130 % |
+| Stat value | 17 / 600 / −0.03em | `m-fs-stat` | `text-m-stat` | 110 % |
+| Row title and value | 15 / 600 / −0.01em | `m-fs-row` | `text-m-row` | 130 % |
+| Body | 15 / 450, line 1.45 | `m-fs-body` | `text-m-body` | 130 % |
+| Field (every input) | max(16, body) / 450, line 1.3 | `m-fs-field` | `text-m-field` | 130 % |
+| Lead (the sentence under a title or sheet title, text links) | 13 / 450, line 1.4 | `m-fs-lead` | `text-m-lead` | 130 % |
+| Row sub, badge | 12 / 500 | `m-fs-sub` | `text-m-sub` | 130 % |
+| Caption | 11 / 500, ink-3 | `m-fs-caption` | `text-m-caption` | 130 % |
+| Note (stat note, flow-strip and agenda sub-lines) | 10 / 500, line 1.3 | `m-fs-note` | `text-m-note` | 130 % |
+| Eyebrow | 10 / 700 / +0.12em, uppercase | `fs-eyebrow` | `text-eyebrow` | fixed |
+| Tab bar label | 10 / 600 | `fs-micro` | `text-micro` (the tab bar only) | fixed |
+| Swipe panel label | 11 / 650 | `fs-caption` | `text-caption` (the swipe panel only) | fixed |
+| Chart axis ticks | 10 / 500 | (in the chart) | — | fixed |
 
-The sentence under a large title or a sheet title is 13 / 450 `ink-3` (prototype). With the system text
-size the text roles will scale up to 130 % and display and stat values up to 110 % (spec §10.2).
+**Dynamic Type** (spec §10.2). The text roles grow with the system text size, up to 130 %; display and
+stat values up to 110 %. `useTypeScale()` (`src/mobile/lib/use-type-scale.ts`, called in `MobileApp`) puts
+the iOS size on `<html>` as `--m-type-scale`, the raw factor of the default: WKWebView exposes it as the
+system font `font: -apple-system-body` (17 px at the default "Large"), so a hidden fixed probe is measured
+and `typeScaleFrom(px)` (px ÷ 17, three decimals; 1 for anything that is not a positive number) is the
+factor. `index.css` clamps it twice, `--m-text-k` to 1…1.3 and `--m-value-k` to 1…1.1, and every
+`--m-fs-*` token is its design size times one of them; nothing shrinks below the design size, so a
+smaller iOS size changes nothing. Android's WebView and a browser do not know the keyword (`CSS.supports` is false):
+nothing is set and the factor stays 1. Neither platform sends an event when the size is changed in
+Settings, so the probe is read again when the app returns (`visibilitychange`, window `focus`); there is
+no live listener. The tab bar (its label and its 56 pt), the chart axis ticks and the label of a swipe
+panel stay fixed (ruling): the first two are orientation, not reading text, and four tabs share the 360 pt
+width; the panel is as tall as its row and a label that grew with the text clipped at 130 % in cs, de and
+pl (its actions are also in the row's long-press menu, which scales).
+
+**Figures that fit.** A money figure never wraps or ends in an ellipsis: the hero, stat, cashflow and
+transaction amounts shrink to their box (`useFitText`, `fitSizeFor`): the font size at which the text
+just holds the box's fractional content width, 2 % under it (WebKit ends a line in an ellipsis when the
+text is wider than the box by a fraction of a pixel, which the first version of the measure, on the
+box's width rounded to whole pixels, hit at the 110 % cap), measured from the size drawn now, so the
+answer is the same at every text size; a box that changes height with its font size makes the hook
+measure again, which is how a live change of the text size is seen without an event. Its clamp keeps a
+fixed floor (12 px for a stat, 20 px for a hero amount), never one that grows with the text size: a
+floor above the fit is a cut, and a figure that fits at the default size must fit at every size. A
+value that does not fit even at the floor goes in a row of two, as before. **A field is never
+under 16 px** (`--m-fs-field: max(16px, var(--m-fs-body))`, `text-m-field`): iOS zooms the page into a
+focused field whose text is smaller, which is why the viewport lock (`maximum-scale=1`) is gone and the
+viewport is `width=device-width, initial-scale=1.0, viewport-fit=cover` (the desktop's webviews ignore
+the meta). Pinch zoom is therefore allowed; `touch-action: manipulation` under `data-shell='mobile'`
+removes only the double-tap zoom, and `use-visible-height.ts` neither shrinks the app box nor pins the
+page to the top while the visual viewport is zoomed (`visibleHeightFor`). Fixed heights around text are
+minimums (`min-h-12` on a button, a row's 60 / 52 pt, the segment's 30 pt) and a button's label wraps and
+grows it, so a larger text makes things taller, never wider: the fixed 54 pt date chip of an agenda row
+widens with the text role instead. A row's title and sub-lines still end with an ellipsis, so at the
+largest sizes they say less.
 
 **Screen.** A screen is the nav bar (44 pt under the top safe area) over one scroll area with a 16 pt
 gutter and room at the bottom for the tab bar (56 pt above the bottom safe area), which is fixed over it.
@@ -449,7 +511,7 @@ in one column without the live preview — Soukromí (currency and country as pi
 (the key box with Zkopírovat and "Uložit do Souborů", two groups to verify), Co sledovat (switch rows),
 První účet (name, amount field, currency) — then Biometrie ("Odemykat Moony obličejem?", Zapnout / Teď
 ne; left out when the phone has no usable biometry) and Záloha ("Telefon je jediná kopie vašich dat…",
-the first backup now / Teď ne). Every field and primary is 48 pt, text links 44 pt, the step progress
+the first backup now / Teď ne). Every field and primary is (at least) 48 pt, text links at least 44 pt, the step progress
 caption ("2 / 7 · Účet") sits over a 3 pt bar, and there is no way back once the database exists. The
 desktop `OnboardingWizard` is not used on the phone. The lock is centred: brand, a 76 pt rounded paper
 square with the lock glyph (the biometric button while biometric unlock is on), a 22 / 650 greeting, a
@@ -594,3 +656,49 @@ Where the contract differs from the prototype it follows the spec: badges 12 / 5
 drew 9–10 px), the hero chart 160 pt (§10.4; 150), the collapsed nav title 20 pt (§10.3; the prototype's
 detail title was 17 with a sub-line), and the entity row's two lines above. Components use tokens only and
 no `.dark` classes, so the dark token block switches them for free (§10.6).
+
+**A new phone screen must**
+
+- **use tokens only.** No hex, `rgb()`, `hsl()`, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()` or
+  Tailwind palette colour (any `bg-`, `text-`, `border-` with or without a side, `ring-`,
+  `ring-offset-`, `accent-`, `caret-`, `placeholder-` ... utility) anywhere under `src/mobile/`:
+  `src/mobile/no-colour-literals.test.ts` fails otherwise. A literal that cannot be a token carries a
+  `colour-literal-ok: <reason>` comment on its line or the line above (a marker without a reason does
+  not count).
+- **take contrast material from `dark` and `ink-inverse`.** The primary button, the dark date chip, a
+  pressed option and a checked switch are `dark` with `ink-inverse` text; in the dark theme that
+  material is the light one, so nothing may assume it is dark. A control shared with the desktop (the
+  `Switch` the phone renders) keeps its desktop thumb rule, `ink-2` when off in dark (D13b).
+- **draw chart colours from `useChartTokens()` or `var(--…)`.** Never `chartTokens` (it reads the
+  palette once, so the chart stays in the theme it mounted in): the same test fails on any use of it
+  under `src/mobile/`.
+- **draw a category's chip through `CategoryIconChip`** (or the phone's 36 pt `CategoryChip`, which
+  carries the same `cat-chip` rule), so the glyph is lifted towards ink in dark (D7); never a
+  hand-tinted circle.
+- **set its text in `text-m-*` roles only.** No `text-[13px]` or any other px size (a size that has to be
+  off the table is `text-[length:calc(14px*var(--m-text-k))]`, and says why); `text-micro` stays in the
+  tab bar and `text-caption` in the swipe panel, the two labels that do not scale.
+  `src/mobile/type-roles.test.ts` fails on a px size, a Tailwind default size (`text-sm`), and on
+  `text-micro` or `text-caption` outside those two files; a size that has to stay carries a
+  `type-size-ok: <reason>` comment on its line or the line above. The roles carry their line height, and
+  a different weight is an explicit `font-*` next to the role.
+- **draw every field in `text-m-field`**: `input`, `textarea`, `select`, the shadcn `Input` and the lock
+  and first-run fields, `AmountField`, `MonthField`, `SearchField`, the date field of the filter. Never
+  under 16 px, or iOS zooms the page into it. The shell backs this with a floor in `src/index.css`:
+  under `html[data-shell='mobile']`, every `input` (except checkbox, radio, range and file), `textarea`
+  and `select` is `font-size: var(--m-fs-field)`, whatever class it carries (it is an element rule, so it
+  is more specific than a single `text-*` utility). The desktop dialogs the phone opens as they are (add
+  account, add stock, buy, sell, a new category...) get nothing else: their fields are 16 px and grow
+  with the text size like any `text-m-field`, but their labels, buttons and spacing keep the desktop's
+  sizes and do not scale with Dynamic Type. A field drawn larger than `--m-fs-field` on purpose would
+  be shrunk by the floor; there is none (a display figure is never an input), so a phone screen that
+  needs one must exempt it in `src/index.css` and say why. Do not rely on the floor for a phone-made
+  field: write `text-m-field` there too, so the contract reads in the class.
+- **use minimum heights around text.** A button that holds a label is `h-auto min-h-12 whitespace-normal
+  py-2` (a pill `min-h-9`, a segment `min-h-[30px]`, a badge `min-h-[18px]`), a row keeps its 60 / 52 pt
+  minimum: a fixed `h-*` around text clips it at a larger text size. A fixed-height field or an icon
+  button is fine, they hold one line of a capped size or no text.
+- **be checked in `mobile.html` and in the simulator, in both themes**, at 360, 390 and 430, with the
+  OS appearance flipped while the app is open under Systém, and with the text size at "Největší" at
+  360 (the head's text-size segment on the demo page; in the app `--m-type-scale: 3.1` set by hand on
+  `<html>`, or the iOS "Larger Text" setting).

@@ -598,6 +598,9 @@
       "title": "Język aplikacji",
       "lead": "Liczby i daty są formatowane według języka."
     },
+    "appearance": {
+      "lead": "System podąża za jasnym lub ciemnym wyglądem telefonu."
+    },
     "delete": {
       "title": "Usunąć wszystkie dane?",
       "lead": "Trwale usuwa bazę danych, klucze i załączniki z tego telefonu. Kopie zapasowe poza telefonem zostają. Najpierw zrób kopię zapasową — to jedyna droga powrotu.",

@@ -131,6 +131,32 @@ Denies the set_privacy_screen command without any pre-configured scope.
 <tr>
 <td>
 
+`moony-keychain:allow-set-status-bar-style`
+
+</td>
+<td>
+
+Enables the set_status_bar_style command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`moony-keychain:deny-set-status-bar-style`
+
+</td>
+<td>
+
+Denies the set_status_bar_style command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
 `moony-keychain:allow-status`
 
 </td>

@@ -33,7 +33,7 @@ export function SearchField({ value, onChange, placeholder, clearLabel }: Search
         onChange={(event) => onChange(event.target.value)}
         placeholder={placeholder}
         aria-label={placeholder}
-        className="block h-11 w-full appearance-none rounded-[12px] border-0 bg-well-2 pl-10 pr-10 text-m-body text-ink placeholder:text-ink-4 focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
+        className="block h-11 w-full appearance-none rounded-[12px] border-0 bg-well-2 pl-10 pr-10 text-m-field text-ink placeholder:text-ink-4 focus-visible:outline-none focus-visible:shadow-focus [&::-webkit-search-cancel-button]:appearance-none [&::-webkit-search-decoration]:appearance-none"
       />
       {value && (
         <button

@@ -13,7 +13,8 @@ import type { BackupInspection } from '@shared/schema';
 const CARD = 'mb-3.5 rounded-r4 border border-line bg-paper px-3 shadow-e1';
 
 /** The 48 pt buttons of the section's two actions. */
-const BUTTON = 'h-12 w-full rounded-[10px] text-m-row';
+const BUTTON =
+  'h-auto min-h-12 whitespace-normal py-2 text-center w-full rounded-[10px] text-m-row';
 
 /**
  * Nastavení → Záloha a přenos (spec §8.9): when the last backup was made, "Zálohovat nyní" and the

@@ -33,8 +33,9 @@ const profileSchema = z.object({
 type ProfileData = z.infer<typeof profileSchema>;
 
 /** Fields and the primary button as on the lock screen (`Lock.tsx`): 48 pt, radius 10. */
-const field48 = 'h-12 rounded-[10px] text-m-body';
-const primaryButton = 'h-12 w-full rounded-[10px] text-m-row';
+const field48 = 'h-12 rounded-[10px] text-m-field';
+const primaryButton =
+  'h-auto min-h-12 whitespace-normal py-2 text-center w-full rounded-[10px] text-m-row';
 const fieldMessage = 'text-left text-m-sub';
 
 /**

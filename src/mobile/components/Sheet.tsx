@@ -71,7 +71,7 @@ export function Sheet({
               {title}
             </DialogPrimitive.Title>
             {description && (
-              <DialogPrimitive.Description className="mt-[3px] text-[13px] font-450 leading-[1.4] text-ink-3">
+              <DialogPrimitive.Description className="mt-[3px] text-m-lead text-ink-3">
                 {description}
               </DialogPrimitive.Description>
             )}

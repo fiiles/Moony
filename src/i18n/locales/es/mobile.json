@@ -571,6 +571,9 @@
       "title": "Idioma de la app",
       "lead": "Los números y las fechas siguen el idioma."
     },
+    "appearance": {
+      "lead": "Sistema sigue la apariencia clara u oscura del teléfono."
+    },
     "delete": {
       "title": "¿Eliminar todos los datos?",
       "lead": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: es la única forma de recuperar los datos.",

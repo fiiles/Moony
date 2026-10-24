@@ -48,7 +48,7 @@ export function RowBadge({ children, tone }: { children: ReactNode; tone?: 'loss
   return (
     <span
       className={cn(
-        'inline-flex h-[18px] items-center rounded-r1 px-1.5 align-[1px] text-m-caption font-semibold leading-[18px]',
+        'inline-flex min-h-[18px] items-center rounded-r1 px-1.5 py-px align-[1px] text-m-caption font-semibold leading-[1.3]',
         tone === 'loss' ? 'bg-loss-soft text-loss' : 'bg-well-2 text-ink-3'
       )}
     >

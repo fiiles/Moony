@@ -708,7 +708,7 @@ function LedgerSection({
           <p className="mb-3 mt-0 text-m-body text-ink-3">{t('account.ledger.loadError')}</p>
           <Button
             variant="secondary"
-            className="h-11 rounded-[10px] px-4 text-m-row"
+            className="h-auto min-h-11 whitespace-normal py-2 text-center rounded-[10px] px-4 text-m-row"
             onClick={ledger.retry}
           >
             {t('account.ledger.retry')}
@@ -726,7 +726,7 @@ function LedgerSection({
           action={
             <Button
               variant="ghost"
-              className="h-11 rounded-[10px] px-4 text-m-row"
+              className="h-auto min-h-11 whitespace-normal py-2 text-center rounded-[10px] px-4 text-m-row"
               onClick={() => onStateChange(() => DEFAULT_LEDGER)}
             >
               {t('account.ledger.showAll')}

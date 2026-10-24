@@ -4,11 +4,6 @@
 <dict>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Moony unlocks your data with Face ID.</string>
-	<!-- The phone shell is light only until Phase 6 (dark phone tokens): pin the system chrome
-	     (status bar, alerts) to light so a dark OS appearance does not draw white status-bar text
-	     over the light shell. Remove together with the Phase 6 dark mode. -->
-	<key>UIUserInterfaceStyle</key>
-	<string>Light</string>
 	<!-- Bank statements shared or opened into the phone app (share sheet, "Open in"). The document
 	     types live here, not in tauri.conf.json, because they are iOS only: bundle.fileAssociations
 	     would register the desktop app for CSV files too. iOS hands the app a copy in

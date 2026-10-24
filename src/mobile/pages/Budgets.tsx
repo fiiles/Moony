@@ -103,7 +103,7 @@ export default function Budgets() {
         className="px-5 py-8"
         action={
           <Button
-            className="h-12 rounded-[10px] px-5 text-m-row"
+            className="h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] px-5 text-m-row"
             disabled={!limits.canPick}
             onClick={addBudget}
           >
@@ -179,9 +179,7 @@ export default function Budgets() {
         </NavIconButton>
       }
     >
-      <p className="mx-0.5 mb-3.5 text-[13px] font-450 leading-[1.4] text-ink-3">
-        {tb('manage.description')}
-      </p>
+      <p className="mx-0.5 mb-3.5 text-m-lead text-ink-3">{tb('manage.description')}</p>
       {body}
       <BudgetLimitSheet {...limits.sheetProps} />
       <BudgetDeleteSheet pending={pendingDelete} onClose={() => setPendingDelete(null)} />
@@ -344,7 +342,7 @@ function UnbudgetedItem({ row, category, currency, onSetLimit }: UnbudgetedItemP
       <Button
         variant="secondary"
         aria-describedby={titleId}
-        className='relative h-[34px] flex-none rounded-[9px] px-[11px] text-m-sub font-semibold after:absolute after:inset-x-0 after:-inset-y-[5px] after:content-[""]'
+        className='relative h-auto min-h-[34px] flex-none rounded-[9px] px-[11px] py-1 text-m-sub font-semibold after:absolute after:inset-x-0 after:-inset-y-[5px] after:content-[""]'
         onClick={onSetLimit}
       >
         {tb('actions.setLimit')}

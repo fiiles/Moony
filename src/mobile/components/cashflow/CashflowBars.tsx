@@ -1,7 +1,7 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Bar, BarChart, CartesianGrid, Cell, XAxis, YAxis } from 'recharts';
 import { useFormat } from '@/lib/use-format';
-import { chartTokens } from '@/lib/tokens';
+import { useChartTokens } from '@/theme/ThemeProvider';
 import { niceTicks, valueDomain } from '@/utils/chart-scale';
 import { AXIS_WIDTH, CategoryAxis } from '@/components/charts/ChartAxis';
 import { ChartLegend } from '@/components/charts/ChartLegend';
@@ -42,7 +42,7 @@ interface CashflowBarsProps {
 export function CashflowBars({ bars, names, label, monthLabel, onSelectMonth }: CashflowBarsProps) {
   const fmt = useFormat();
   const { hidden } = useHideAmounts();
-  const tk = useMemo(chartTokens, []);
+  const tk = useChartTokens();
   const [incomeName, expenseName] = names;
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);

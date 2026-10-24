@@ -339,8 +339,9 @@ fn converted_trade(trade: &ParsedTrade, splits: &[StockSplitOverride]) -> (Parse
 }
 
 /// The `convert` splits of the instruments stored under one ticker, each split once (two
-/// instruments of a ticker may both list it).
-fn ticker_convert_splits<'a>(
+/// instruments of a ticker may both list it; the first one's entry counts). The import applies
+/// the same set to the stored rows (`import::split_choices`).
+pub(super) fn ticker_convert_splits<'a>(
     splits: impl Iterator<Item = &'a StockSplitOverride>,
 ) -> Vec<StockSplitOverride> {
     let mut seen: HashSet<i64> = HashSet::new();
@@ -1123,6 +1124,38 @@ pub(crate) mod test_db {
                 resolved_at INTEGER,
                 applied_count INTEGER,
                 UNIQUE (ticker, effective_day)
+            );
+            -- What applying a split reads and rewrites besides the transactions (D10).
+            CREATE TABLE stock_value_history (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                recorded_at INTEGER NOT NULL,
+                quantity TEXT NOT NULL,
+                price TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                UNIQUE (ticker, recorded_at)
+            );
+            CREATE TABLE stock_price_overrides (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                price TEXT NOT NULL,
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE watched_stocks (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                target_price TEXT,
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE dividend_overrides (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE,
+                yearly_dividend_sum TEXT NOT NULL,
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE dividend_data (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL UNIQUE
             );
             "#,
         )

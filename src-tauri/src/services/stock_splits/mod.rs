@@ -20,6 +20,7 @@ use uuid::Uuid;
 
 use crate::error::{AppError, Result};
 use crate::services::investments::{ensure_valid_holdings_history, recalculate_investment_metrics};
+use crate::services::stock_import::types::StockSplitOverride;
 use classify::{classify, verdict_of};
 use scale::{scale_amount, Rounding};
 use types::ratio_is_valid;
@@ -60,6 +61,55 @@ pub fn get(conn: &Connection, id: &str) -> Result<StockSplit> {
         .into_iter()
         .next()
         .ok_or_else(|| AppError::NotFound("Stock split not found".into()))
+}
+
+/// The split on record for `(ticker, effective_day)`, if any.
+pub fn find(conn: &Connection, ticker: &str, effective_day: i64) -> Result<Option<StockSplit>> {
+    Ok(query(
+        conn,
+        "ticker = ?1 AND effective_day = ?2",
+        params![ticker, effective_day],
+    )?
+    .into_iter()
+    .next())
+}
+
+/// Records a split the stock import's file spans (D14), source `import`, for a `(ticker, day)`
+/// with no row yet (the caller checked with [`find`]). `status` is `dismissed` for a split
+/// the file is already adjusted for, or `pending` for one the import goes on to [`apply`]
+/// (which rewrites the stored rows dated before it and sets it `applied`); `applied` itself
+/// is reached only through [`apply`]. Errors: `validation.stockSplitRatioInvalid`,
+/// `validation.stockSplitNotPending` for `applied`.
+pub fn insert_from_import(
+    conn: &Connection,
+    ticker: &str,
+    split: &StockSplitOverride,
+    status: StockSplitStatus,
+) -> Result<StockSplit> {
+    if status == StockSplitStatus::Applied {
+        return Err(not_pending());
+    }
+    let (n, d) = ratio_parts(&split.numerator, &split.denominator)?;
+    let id = Uuid::new_v4().to_string();
+    let detected_at = now();
+    let resolved_at = (status == StockSplitStatus::Dismissed).then_some(detected_at);
+    conn.execute(
+        "INSERT INTO stock_splits
+             (id, ticker, effective_day, numerator, denominator, source, status, detected_at,
+              resolved_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, 'import', ?6, ?7, ?8)",
+        params![
+            id,
+            ticker,
+            split.effective_day,
+            n.to_string(),
+            d.to_string(),
+            status.as_str(),
+            detected_at,
+            resolved_at,
+        ],
+    )?;
+    get(conn, &id)
 }
 
 /// Stores the detected splits that are new and relevant (D5, D6) as `pending` and returns
@@ -1110,5 +1160,84 @@ mod tests {
         assert_eq!(before[0].id, id);
         assert!(applied_before(&conn, "NVDA", day(300)).unwrap().is_empty());
         assert!(applied_before(&conn, "AAPL", day(100)).unwrap().is_empty());
+    }
+
+    fn import_split(effective_day: i64, n: &str, d: &str) -> StockSplitOverride {
+        StockSplitOverride {
+            effective_day,
+            numerator: n.into(),
+            denominator: d.into(),
+            action: crate::services::stock_import::types::StockSplitAction::Convert,
+        }
+    }
+
+    #[test]
+    fn find_returns_the_row_of_the_ticker_and_day() {
+        let conn = setup_test_db();
+        let (_, _, id) = nvda(&conn);
+        assert_eq!(find(&conn, "NVDA", day(200)).unwrap().unwrap().id, id);
+        assert!(find(&conn, "NVDA", day(201)).unwrap().is_none());
+        assert!(find(&conn, "AAPL", day(200)).unwrap().is_none());
+    }
+
+    #[test]
+    fn insert_from_import_records_a_dismissed_or_a_pending_split() {
+        let conn = setup_test_db();
+        tx(&conn, "NVDA", "buy", "3", "950", day(100));
+
+        let kept = insert_from_import(
+            &conn,
+            "NVDA",
+            &import_split(day(200), " 10", "1"),
+            StockSplitStatus::Dismissed,
+        )
+        .unwrap();
+        assert_eq!(kept.source, StockSplitSource::Import);
+        assert_eq!(kept.status, StockSplitStatus::Dismissed);
+        assert_eq!(
+            (kept.numerator.as_str(), kept.denominator.as_str()),
+            ("10", "1")
+        );
+        assert!(kept.resolved_at.is_some());
+        assert_eq!(kept.applied_count, None);
+
+        let pending = insert_from_import(
+            &conn,
+            "NVDA",
+            &import_split(day(300), "2", "1"),
+            StockSplitStatus::Pending,
+        )
+        .unwrap();
+        assert_eq!(pending.status, StockSplitStatus::Pending);
+        assert_eq!(pending.resolved_at, None);
+        let applied = apply(&conn, &pending.id).unwrap();
+        assert_eq!(applied.split.status, StockSplitStatus::Applied);
+        assert_eq!(applied.split.source, StockSplitSource::Import);
+        assert_eq!(applied.rewritten, 1);
+    }
+
+    #[test]
+    fn insert_from_import_refuses_applied_and_bad_ratios() {
+        let conn = setup_test_db();
+        let err = insert_from_import(
+            &conn,
+            "NVDA",
+            &import_split(day(200), "10", "1"),
+            StockSplitStatus::Applied,
+        )
+        .unwrap_err();
+        assert_eq!(validation_key(err), "validation.stockSplitNotPending");
+        let err = insert_from_import(
+            &conn,
+            "NVDA",
+            &import_split(day(200), "1", "1"),
+            StockSplitStatus::Dismissed,
+        )
+        .unwrap_err();
+        assert_eq!(validation_key(err), "validation.stockSplitRatioInvalid");
+        let none: i64 = conn
+            .query_row("SELECT COUNT(*) FROM stock_splits", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(none, 0);
     }
 }

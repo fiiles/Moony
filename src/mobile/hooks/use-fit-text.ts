@@ -1,5 +1,5 @@
-import { useLayoutEffect, useState, type RefObject } from 'react';
-import { fitSizeFor } from '@/mobile/lib/fit-size';
+import { useLayoutEffect, useRef, useState, type RefObject } from 'react';
+import { fitSizeFor, settleFit } from '@/mobile/lib/fit-size';
 
 /**
  * The floor of a fitted hero, amount or stat figure in `clamp(floor, fit, max)`: the title size at
@@ -31,13 +31,19 @@ function contentWidth(box: HTMLElement): number {
  * Measures again when the container or a figure changes size (a figure's box changes height with
  * its font size, so a change of the text size, or a fit that did not hold exactly, is seen and
  * corrected from the size actually drawn), when the fonts have loaded, and when `watch` changes
- * (the text).
+ * (the text). A measure that only grows back one half-pixel step to the size just left is ignored
+ * (`settleFit`), so two neighbouring sizes never take turns.
  */
 export function useFitText(
   container: RefObject<HTMLElement | null>,
   watch: unknown
 ): number | null {
   const [fit, setFit] = useState<number | null>(null);
+  /** The fit drawn now and the one before it, for `settleFit`. */
+  const drawn = useRef<{ current: number | null; previous: number | null }>({
+    current: null,
+    previous: null,
+  });
 
   useLayoutEffect(() => {
     const root = container.current;
@@ -54,7 +60,14 @@ export function useFitText(
         );
         if (own !== null) size = Math.min(size, own);
       }
-      setFit(Number.isFinite(size) ? size : null);
+      const next = settleFit(
+        Number.isFinite(size) ? size : null,
+        drawn.current.current,
+        drawn.current.previous
+      );
+      if (next === drawn.current.current) return;
+      drawn.current = { current: next, previous: drawn.current.current };
+      setFit(next);
     };
     measure();
     const observer = new ResizeObserver(measure);

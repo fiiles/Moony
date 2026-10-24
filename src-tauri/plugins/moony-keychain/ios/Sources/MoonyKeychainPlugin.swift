@@ -18,7 +18,7 @@
 //
 // And the status bar style: the app's theme, set outright through `preferredStatusBarStyle` of
 // Tauri's view controller, because the sampled style lags behind a live theme switch on iOS 26
-// and does not exist before iOS 26 (see `setStatusBarStyle`).
+// (checked on 26.3; earlier iOS was not verified, see `setStatusBarStyle`).
 
 import LocalAuthentication
 import Security
@@ -481,12 +481,12 @@ class MoonyKeychainPlugin: Plugin {
   }
 
   /// The system samples the page under the status bar and, on iOS 26, keeps the style it sampled
-  /// before a theme switch repainted (light icons over a light page until the next scroll); before
-  /// iOS 26 it does not sample at all. An explicit `preferredStatusBarStyle` settles both. Tauri's
-  /// view controller (tao's `TaoUIViewController`) does not override it, so the getter is
-  /// replaced once on that class, with a block that reads `statusBarTheme`. Never on
-  /// `UIViewController` itself: that would restyle every view controller in the process, the
-  /// system's own included.
+  /// before a theme switch repainted (light icons over a light page until the next scroll; checked
+  /// on 26.3). What earlier iOS does was not verified. An explicit `preferredStatusBarStyle` does
+  /// not depend on the sampling. Tauri's view controller (tao's `TaoUIViewController`) does not
+  /// override it, so the getter is replaced once on that class, with a block that reads
+  /// `statusBarTheme`. Never on `UIViewController` itself: that would restyle every view
+  /// controller in the process, the system's own included.
   private func installStatusBarStyleHook(on controller: UIViewController) {
     let controllerClass: AnyClass = type(of: controller)
     guard controllerClass != UIViewController.self else {

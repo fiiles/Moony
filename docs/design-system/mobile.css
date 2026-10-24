@@ -483,7 +483,10 @@
    `ink-4`), the decimal keypad, optionally the ± toggle on the left (below). The placeholder (`ink-5`) is the last known value. An error is 12 / 600
    `loss` under the field; without an error a hint may stand there instead (11 `ink-3`). A month field is the same field with the
    platform's month picker (`input type="month"`, no unit inside, `min` and `max` unset), two side by side in a 12 px grid, with an
-   optional text action beside the label ("Bez konce"). */
+   optional text action beside the label ("Bez konce").
+   A field is never under 16 px (`--m-fs-field`). The shell also floors every `input`, `textarea` and `select` it
+   shows at that size under `html[data-shell='mobile']` (src/index.css), which is how the desktop dialogs the phone
+   opens as they are keep iOS from zooming into a focused field; this contract draws the phone's own fields only. */
 .m-field { margin-bottom: 12px; }
 .m-field:last-child { margin-bottom: 0; }
 .m-field__l { display: block; margin: 0 2px 6px; color: var(--ink-2); font-size: var(--m-fs-sub); font-weight: 600; }
@@ -626,7 +629,7 @@
 .m-flows__bar--out { background: var(--s3); }
 .m-flows__l {
   max-width: 100%; margin-top: 4px; overflow: hidden; color: var(--ink-4); text-overflow: ellipsis; white-space: nowrap;
-  font-size: var(--m-fs-note); font-weight: 500; line-height: 1.4;
+  font-size: var(--m-fs-note); font-weight: 500; line-height: 1.3; /* the note role (`text-m-note`) */
 }
 .m-flows__l + .m-flows__l { margin-top: 0; } /* January's year under its name */
 

@@ -398,20 +398,25 @@ bar, sheets and segment, Inter bundled). The reference width is 390 pt; every la
   tokens (safe areas, bar heights, type scale); `src/index.css` carries the same block (keep the two
   identical). Its other sources are the tokens of `tokens.css` only, including `hero-orb`, `sh-seg`,
   `sh-destructive` and `loss-ring`, which exist in both themes (table in §2) and read right on the
-  phone in dark: the orb is moonlight (lighter than paper), both shadows are black-based and the ring is
-  the dark `loss`. `src/mobile/` matches `mobile.css` visually and never imports it.
+  phone in dark: the orb is moonlight (lighter than paper), the drops of both shadows are black-based
+  (`sh-destructive` keeps a faint white inset) and the ring is the dark `loss`. `src/mobile/` matches
+  `mobile.css` visually and never imports it.
 - **Dark.** The phone has no theme of its own: the desktop's `ThemeProvider` is mounted unchanged in
   `MobileApp` (inside `AuthProvider`), the preference is the profile's `theme` (Systém / Světlý /
   Tmavý), and `data-theme` on `<html>` switches the dark token block of §2 for every component, with no
   `.dark` class. `public/theme-boot.js` stamps `data-theme` before the first paint on both shells (the
   device's stored choice, else the OS appearance), so the lock screen is already in the right theme;
   after unlock the profile's value wins and the device mirror follows. Nothing pins the native
-  interface style (`UIUserInterfaceStyle` is not in `Info.ios.plist`): tao's window `setTheme` and
-  `setBackgroundColor`, which the provider calls guarded, are unsupported on iOS and Android, so the
-  page alone carries the theme. The status bar follows the theme through the keychain plugin's
-  `set_status_bar_style` (`StatusBarStyle` in `MobileApp`): on iOS an explicit
+  interface style (`UIUserInterfaceStyle` is not in `Info.ios.plist`), and the window calls of the
+  provider, `setTheme` and `setBackgroundColor`, never reach tao on the phone: the phone capability
+  grants the webview `core:window:allow-show` and neither of those two (the desktop capability grants
+  both), so the call is refused and the provider's guard swallows the refusal. The page carries the
+  theme, and the one native piece the app sets is the status bar: it follows the theme through the
+  keychain plugin's `set_status_bar_style` (`StatusBarStyle` in `MobileApp`; the phone capability
+  grants `moony-keychain:allow-set-status-bar-style` beside the default set), on iOS an explicit
   `preferredStatusBarStyle` on tao's view controller, because the iOS 26 bar samples the page under it
-  and keeps its old style after a live switch, and earlier iOS does not sample at all; on Android
+  and keeps its old style after a live switch (checked on iOS 26.3; whether earlier iOS samples the
+  page at all was not verified, and the explicit style does not depend on it), on Android
   `isAppearanceLightStatusBars`. What else the system draws follows the OS appearance, so a choice
   against the OS changes the page and the status bar only.
   The provider also shows the window once, after its first stamp (`showWindow()`); tao ignores
@@ -647,25 +652,41 @@ no `.dark` classes, so the dark token block switches them for free (§10.6).
 
 **A new phone screen must**
 
-- **use tokens only.** No hex, `rgb()`, `hsl()` or Tailwind palette colour anywhere under `src/mobile/`:
+- **use tokens only.** No hex, `rgb()`, `hsl()`, `hwb()`, `lab()`, `lch()`, `oklab()`, `oklch()` or
+  Tailwind palette colour (any `bg-`, `text-`, `border-` with or without a side, `ring-`,
+  `ring-offset-`, `accent-`, `caret-`, `placeholder-` ... utility) anywhere under `src/mobile/`:
   `src/mobile/no-colour-literals.test.ts` fails otherwise. A literal that cannot be a token carries a
-  `colour-literal-ok: <reason>` comment on its line or the line above.
+  `colour-literal-ok: <reason>` comment on its line or the line above (a marker without a reason does
+  not count).
 - **take contrast material from `dark` and `ink-inverse`.** The primary button, the dark date chip, a
   pressed option and a checked switch are `dark` with `ink-inverse` text; in the dark theme that
   material is the light one, so nothing may assume it is dark. A control shared with the desktop (the
   `Switch` the phone renders) keeps its desktop thumb rule, `ink-2` when off in dark (D13b).
-- **draw chart colours from `useChartTokens()` or `var(--…)`.** Never `useMemo(chartTokens, [])`, which
-  freezes the theme the chart mounted in (the same test catches it).
+- **draw chart colours from `useChartTokens()` or `var(--…)`.** Never `chartTokens` (it reads the
+  palette once, so the chart stays in the theme it mounted in): the same test fails on any use of it
+  under `src/mobile/`.
 - **draw a category's chip through `CategoryIconChip`** (or the phone's 36 pt `CategoryChip`, which
   carries the same `cat-chip` rule), so the glyph is lifted towards ink in dark (D7); never a
   hand-tinted circle.
 - **set its text in `text-m-*` roles only.** No `text-[13px]` or any other px size (a size that has to be
   off the table is `text-[length:calc(14px*var(--m-text-k))]`, and says why); `text-micro` stays in the
-  tab bar and `text-caption` in the swipe panel, the two labels that do not scale. The roles carry their line height, and a different weight is an explicit `font-*` next to the
-  role.
+  tab bar and `text-caption` in the swipe panel, the two labels that do not scale.
+  `src/mobile/type-roles.test.ts` fails on a px size, a Tailwind default size (`text-sm`), and on
+  `text-micro` or `text-caption` outside those two files; a size that has to stay carries a
+  `type-size-ok: <reason>` comment on its line or the line above. The roles carry their line height, and
+  a different weight is an explicit `font-*` next to the role.
 - **draw every field in `text-m-field`**: `input`, `textarea`, `select`, the shadcn `Input` and the lock
   and first-run fields, `AmountField`, `MonthField`, `SearchField`, the date field of the filter. Never
-  under 16 px, or iOS zooms the page into it.
+  under 16 px, or iOS zooms the page into it. The shell backs this with a floor in `src/index.css`:
+  under `html[data-shell='mobile']`, every `input` (except checkbox, radio, range and file), `textarea`
+  and `select` is `font-size: var(--m-fs-field)`, whatever class it carries (it is an element rule, so it
+  is more specific than a single `text-*` utility). The desktop dialogs the phone opens as they are (add
+  account, add stock, buy, sell, a new category...) get nothing else: their fields are 16 px and grow
+  with the text size like any `text-m-field`, but their labels, buttons and spacing keep the desktop's
+  sizes and do not scale with Dynamic Type. A field drawn larger than `--m-fs-field` on purpose would
+  be shrunk by the floor; there is none (a display figure is never an input), so a phone screen that
+  needs one must exempt it in `src/index.css` and say why. Do not rely on the floor for a phone-made
+  field: write `text-m-field` there too, so the contract reads in the class.
 - **use minimum heights around text.** A button that holds a label is `h-auto min-h-12 whitespace-normal
   py-2` (a pill `min-h-9`, a segment `min-h-[30px]`, a badge `min-h-[18px]`), a row keeps its 60 / 52 pt
   minimum: a fixed `h-*` around text clips it at a larger text size. A fixed-height field or an icon

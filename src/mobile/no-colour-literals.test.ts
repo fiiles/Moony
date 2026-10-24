@@ -31,18 +31,21 @@ function sources(dir: URL, prefix = ''): string[] {
 
 const PALETTE =
   '(?:white|black|slate|gray|zinc|neutral|stone|red|orange|amber|yellow|lime|green|emerald|teal|cyan|sky|blue|indigo|violet|purple|fuchsia|pink|rose)';
-const UTILITY = '(?:bg|text|border|fill|stroke|ring|shadow|from|via|to|divide|outline|decoration)';
+// `border-<side>-`, `ring-offset-` and the form-control utilities paint a colour as much as `bg-` does.
+const UTILITY =
+  '(?:bg|text|border|border-[trblxyse]|fill|stroke|ring|ring-offset|shadow|from|via|to|divide|outline|decoration|accent|caret|placeholder)';
 
 /** What the gate rejects; each pattern names the kind of literal it catches. */
 const FORBIDDEN: ReadonlyArray<readonly [string, RegExp]> = [
   ['a hex colour', /#[0-9a-f]{3,8}\b/i],
   ['an rgb() / rgba() colour', /\brgba?\(/i],
   ['an hsl() / hsla() colour', /\bhsla?\(/i],
+  ['an hwb(), lab(), lch(), oklab() or oklch() colour', /\b(?:hwb|oklch|oklab|lch|lab)\(/i],
   ['a Tailwind palette colour', new RegExp(`\\b${UTILITY}-${PALETTE}\\b`)],
 ];
 
-/** A line (or the one above it) carrying this marker with a reason is exempt. */
-const ESCAPE = 'colour-literal-ok:';
+/** A line (or the one above it) carrying this marker, followed by a reason, is exempt. */
+const ESCAPE = /colour-literal-ok:\s*\S/;
 
 /** A comment-only line: prose may talk about a colour, it paints none. */
 const isCommentLine = (line: string) => /^\s*(\/\/|\/\*|\*)/.test(line);
@@ -53,9 +56,25 @@ function findLiterals(source: string): string[] {
   const found: string[] = [];
   lines.forEach((line, i) => {
     if (isCommentLine(line)) return;
-    if (line.includes(ESCAPE) || (i > 0 && lines[i - 1].includes(ESCAPE))) return;
+    if (ESCAPE.test(line) || (i > 0 && ESCAPE.test(lines[i - 1]))) return;
     for (const [kind, pattern] of FORBIDDEN) {
       if (pattern.test(line)) found.push(`line ${i + 1}: ${kind} — ${line.trim()}`);
+    }
+  });
+  return found;
+}
+
+/**
+ * The lines of `source` that name `chartTokens`, the one-shot reader of the chart palette
+ * (`src/lib/tokens.ts`): imported by a phone chart it reads the palette once and keeps it, so the
+ * chart stays in the theme it mounted in. `useChartTokens()` re-reads it on every switch. A
+ * comment may name it; code under src/mobile may not.
+ */
+function findChartTokens(source: string): string[] {
+  const found: string[] = [];
+  source.split('\n').forEach((line, i) => {
+    if (!isCommentLine(line) && /\bchartTokens\b/.test(line)) {
+      found.push(`line ${i + 1}: ${line.trim()}`);
     }
   });
   return found;
@@ -78,6 +97,24 @@ describe('the phone shell paints no literal colours', () => {
     // One entry per kind and line, however many classes of that kind the line holds.
     expect(findLiterals('<div className="bg-white text-slate-500" />')).toHaveLength(1);
     expect(findLiterals('<path className="stroke-rose-500" />')).toHaveLength(1);
+    expect(findLiterals('const c = "oklch(0.7 0.1 200)";')).toHaveLength(1);
+    expect(findLiterals('const c = "hwb(200 10% 10%)";')).toHaveLength(1);
+    expect(findLiterals('const c = "lab(50% 40 59.5)";')).toHaveLength(1);
+    // The side, offset and form-control utilities of Tailwind carry a palette colour too.
+    expect(findLiterals('<div className="border-t-red-500" />')).toHaveLength(1);
+    expect(findLiterals('<div className="border-x-slate-200" />')).toHaveLength(1);
+    expect(findLiterals('<div className="ring-offset-white" />')).toHaveLength(1);
+    expect(findLiterals('<input className="accent-indigo-500" />')).toHaveLength(1);
+    expect(findLiterals('<input className="caret-blue-500" />')).toHaveLength(1);
+    expect(findLiterals('<input className="placeholder-gray-400" />')).toHaveLength(1);
+    expect(findLiterals('<div className="outline-black" />')).toHaveLength(1);
+    // The themed names that look alike are tokens, not palette colours.
+    expect(
+      findLiterals('<div className="border-t-line ring-offset-canvas caret-ink" />')
+    ).toHaveLength(0);
+    expect(
+      findLiterals('<input className="placeholder:text-ink-4 border-line-strong" />')
+    ).toHaveLength(0);
     expect(findLiterals('<div className="bg-surface text-ink border-line" />')).toHaveLength(0);
     expect(findLiterals('// the old #fff literal is gone')).toHaveLength(0);
     expect(
@@ -86,23 +123,44 @@ describe('the phone shell paints no literal colours', () => {
     expect(
       findLiterals('// colour-literal-ok: a QR code is black on white\nconst c = "#fff";')
     ).toHaveLength(0);
+    // A marker without a reason exempts nothing.
+    expect(findLiterals('const c = "#fff"; // colour-literal-ok:')).toHaveLength(1);
+    expect(findLiterals('const c = "#fff"; // colour-literal-ok:   ')).toHaveLength(1);
+    expect(findLiterals('// colour-literal-ok:\nconst c = "#fff";')).toHaveLength(1);
     expect(findLiterals('// colour-literal-ok: one\nconst a = 1;\nconst c = "#fff";')).toHaveLength(
       1
     );
   });
 
-  it('has no hex, rgb(), hsl() or Tailwind palette colour in a non-test source', () => {
+  it('has no hex, rgb(), hsl() or other colour function, or Tailwind palette colour in a non-test source', () => {
     const offenders = files.flatMap((file) =>
       findLiterals(readFileSync(new URL(file, ROOT), 'utf8')).map((hit) => `${file} ${hit}`)
     );
     expect(offenders, 'use a token (var(--…) or a themed class), or mark the line').toEqual([]);
   });
 
-  it('reads chart colours through useChartTokens(), never a frozen useMemo(chartTokens)', () => {
-    // `useMemo(chartTokens, [])` reads the palette once and keeps it: the chart stays in the theme
-    // it mounted in after a switch. `useChartTokens()` re-reads on every theme change.
-    const offenders = files.filter((file) =>
-      /useMemo\(\s*chartTokens\b/.test(readFileSync(new URL(file, ROOT), 'utf8'))
+  it('catches the one-shot chart palette and lets the comments talk about it', () => {
+    expect(findChartTokens("import { chartTokens } from '@/lib/tokens';")).toHaveLength(1);
+    expect(
+      findChartTokens('import {\n  chartTokens,\n  token,\n} from "@/lib/tokens";')
+    ).toHaveLength(1);
+    expect(findChartTokens("import { chartTokens as palette } from '@/lib/tokens';")).toHaveLength(
+      1
+    );
+    expect(findChartTokens('const tk = useMemo(chartTokens, []);')).toHaveLength(1);
+    expect(findChartTokens("import { useChartTokens } from '@/theme/ThemeProvider';")).toHaveLength(
+      0
+    );
+    expect(findChartTokens('// never chartTokens() here: it reads the palette once')).toHaveLength(
+      0
+    );
+  });
+
+  it('never imports chartTokens: charts read the palette through useChartTokens()', () => {
+    // `chartTokens` reads the palette once and keeps it: the chart stays in the theme it mounted in
+    // after a switch. `useChartTokens()` re-reads it on every theme change.
+    const offenders = files.flatMap((file) =>
+      findChartTokens(readFileSync(new URL(file, ROOT), 'utf8')).map((hit) => `${file} ${hit}`)
     );
     expect(offenders).toEqual([]);
   });

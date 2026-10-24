@@ -337,6 +337,26 @@
     touch-action: manipulation;
   }
 
+  /* The shell floor for text fields. iOS zooms the page into a focused field drawn under 16 px,
+     and the viewport is no longer locked to scale 1 (so Dynamic Type can show the page, README §13),
+     which makes that zoom stick. The phone's own fields are `text-m-field` (= --m-fs-field, never
+     under 16 px); the desktop dialogs the phone opens as they are (add account, add stock, buy,
+     sell...) draw their `Input` and `Textarea` in `text-body` (13 px). This rule gives every such
+     field the same size. It is an element rule with the shell attribute, so it is more specific than
+     any single-class utility (`.text-body`, `.text-[…]`, `.text-caption`; Tailwind 3 has no native
+     cascade layers, so specificity decides), and equals `text-m-field` where a phone field already
+     has it. Checkboxes, radios, sliders and file pickers open no keyboard and keep their size. Only
+     the field follows `--m-fs-field` (so it grows with Dynamic Type from 16 px); the rest of a
+     reused desktop dialog stays at desktop sizes. */
+  html[data-shell='mobile']
+    :is(
+      input:not([type='checkbox'], [type='radio'], [type='range'], [type='file']),
+      textarea,
+      select
+    ) {
+    font-size: var(--m-fs-field);
+  }
+
   /* Japanese and Chinese: Inter has no CJK glyphs, so name the system faces for them
      (after Inter, which keeps Latin text and numbers), and drop the tight tracking —
      negative letter-spacing makes ideographs collide. Numbers (`.num`) keep theirs. */

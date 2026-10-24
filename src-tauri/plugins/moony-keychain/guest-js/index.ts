@@ -36,8 +36,8 @@ export function setPrivacyScreen(enabled: boolean): Promise<void> {
 /**
  * Sets the status bar style outright: dark icons over the `light` theme, light icons over the
  * `dark` one. iOS replaces `preferredStatusBarStyle` on Tauri's view controller (the sampled style
- * lags behind a live theme switch on iOS 26 and is absent before it); Android sets
- * `isAppearanceLightStatusBars` (unverified on Android).
+ * lags behind a live theme switch on iOS 26, checked on 26.3; earlier iOS was not verified); Android
+ * sets `isAppearanceLightStatusBars` (unverified on Android).
  */
 export function setStatusBarStyle(theme: ResolvedTheme): Promise<void> {
   return invoke<void>('plugin:moony-keychain|set_status_bar_style', { theme });

@@ -10,6 +10,7 @@
     "upkeepHide": "Zwiń",
     "today": "Dziś",
     "target": "cel",
+    "split": "split",
     "rowMenu": "Opcje przypomnienia: {{title}}"
   },
   "status": {

@@ -759,6 +759,7 @@
       },
       "alsoStored_one": "also converts {{count}} stored transaction",
       "alsoStored_other": "also converts {{count}} stored transactions",
+      "mixedUnitsWarning": "Stored transactions before the split stay in their original units; confirm or dismiss the split on the position page after the import.",
       "convert": "Convert",
       "convertFor": "Convert the {{ticker}} trades for the {{ratio}} split"
     }

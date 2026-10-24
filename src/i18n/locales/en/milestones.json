@@ -10,6 +10,7 @@
     "upkeepHide": "Collapse",
     "today": "Today",
     "target": "target",
+    "split": "split",
     "rowMenu": "Reminder options: {{title}}"
   },
   "status": {

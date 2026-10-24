@@ -783,6 +783,7 @@
       "alsoStored_one": "también recalcula {{count}} operación guardada",
       "alsoStored_many": "también recalcula {{count}} operaciones guardadas",
       "alsoStored_other": "también recalcula {{count}} operaciones guardadas",
+      "mixedUnitsWarning": "Las operaciones guardadas anteriores al split se quedan en sus unidades originales; después de la importación, confirma o descarta el split en la página de la posición.",
       "convert": "Recalcular",
       "convertFor": "Recalcular las operaciones de {{ticker}} por el split {{ratio}}"
     }

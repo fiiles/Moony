@@ -20,10 +20,10 @@ export function useStockSplitMutations() {
   const { t: tc } = useTranslation('common');
 
   const refreshAfterTransactionChange = async () => {
+    // STOCK_TRANSACTION_KEYS includes ['stock-splits'].
     for (const queryKey of STOCK_TRANSACTION_KEYS) {
       queryClient.invalidateQueries({ queryKey });
     }
-    queryClient.invalidateQueries({ queryKey: ['stock-splits'] });
     queryClient.invalidateQueries({ queryKey: ['milestones'] });
     queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
     queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });

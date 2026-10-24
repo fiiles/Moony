@@ -807,6 +807,7 @@
       "alsoStored_few": "przeliczy też {{count}} zapisane transakcje",
       "alsoStored_many": "przeliczy też {{count}} zapisanych transakcji",
       "alsoStored_other": "przeliczy też {{count}} zapisanej transakcji",
+      "mixedUnitsWarning": "Zapisane transakcje sprzed splitu pozostaną w pierwotnych jednostkach; po imporcie potwierdź lub odrzuć split na stronie pozycji.",
       "convert": "Przelicz",
       "convertFor": "Przelicz transakcje {{ticker}} według splitu {{ratio}}"
     }

@@ -759,6 +759,7 @@
       },
       "alsoStored_one": "rechnet auch {{count}} gespeicherte Transaktion um",
       "alsoStored_other": "rechnet auch {{count}} gespeicherte Transaktionen um",
+      "mixedUnitsWarning": "Gespeicherte Transaktionen vor dem Split bleiben in ihren ursprünglichen Einheiten; bestätigen oder verwerfen Sie den Split nach dem Import auf der Seite der Position.",
       "convert": "Umrechnen",
       "convertFor": "Trades von {{ticker}} für den Split {{ratio}} umrechnen"
     }

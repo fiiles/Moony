@@ -784,6 +784,7 @@
       "alsoStored_one": "přepočítá i {{count}} uloženou transakci",
       "alsoStored_few": "přepočítá i {{count}} uložené transakce",
       "alsoStored_other": "přepočítá i {{count}} uložených transakcí",
+      "mixedUnitsWarning": "Uložené transakce před splitem zůstanou v původních jednotkách; po importu split potvrďte nebo zamítněte na detailu pozice.",
       "convert": "Přepočítat",
       "convertFor": "Přepočítat obchody {{ticker}} podle splitu {{ratio}}"
     }

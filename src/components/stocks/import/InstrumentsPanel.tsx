@@ -382,6 +382,13 @@ function InstrumentRows({
                     action === 'convert' &&
                     split.storedPreSplitCount > 0 &&
                     (split.storedStatus === 'pending' || split.storedStatus === null);
+                  // Keep leaves the stored pre-split rows as they are while the file's trades
+                  // before the split come in too: say the split still waits on the position page.
+                  const mixedUnits =
+                    action === 'keep' &&
+                    split.storedPreSplitCount > 0 &&
+                    (split.storedStatus === 'pending' || split.storedStatus === null) &&
+                    split.trades.length > 0;
                   return (
                     <li
                       key={split.effectiveDay}
@@ -403,6 +410,12 @@ function InstrumentRows({
                               count: split.storedPreSplitCount,
                             })}
                           </>
+                        )}
+                        {mixedUnits && (
+                          <span className="mt-0.5 flex items-start gap-1.5 font-600 text-loss">
+                            <TriangleAlert className="mt-px size-3 shrink-0" aria-hidden />
+                            {t('importWizard.splits.mixedUnitsWarning')}
+                          </span>
                         )}
                       </span>
                       <label className="flex shrink-0 cursor-pointer items-center gap-2 font-600 text-ink-2">

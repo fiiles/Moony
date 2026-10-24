@@ -7,7 +7,8 @@ import type { InsertInvestmentTransaction } from '@shared/schema';
 
 /**
  * Query keys (prefix-matched) whose data is derived from stock transactions.
- * Mirrors the `stocks` domain list in SyncProvider plus the analysis views.
+ * Mirrors the `stocks` domain list in SyncProvider plus the analysis views and the
+ * split rows (a split is listed only while transactions are dated before it).
  */
 export const STOCK_TRANSACTION_KEYS = [
   ['investments'],
@@ -18,6 +19,7 @@ export const STOCK_TRANSACTION_KEYS = [
   ['dividend-summary'],
   ['stocks-analysis'],
   ['stock-performance'],
+  ['stock-splits'],
 ] as const;
 
 /**

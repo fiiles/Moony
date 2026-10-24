@@ -783,6 +783,7 @@
       "alsoStored_one": "ricalcola anche {{count}} transazione salvata",
       "alsoStored_many": "ricalcola anche {{count}} transazioni salvate",
       "alsoStored_other": "ricalcola anche {{count}} transazioni salvate",
+      "mixedUnitsWarning": "Le operazioni salvate prima dello split restano nelle unità originali; dopo l'importazione conferma o ignora lo split nella pagina della posizione.",
       "convert": "Ricalcola",
       "convertFor": "Ricalcola le operazioni di {{ticker}} per lo split {{ratio}}"
     }

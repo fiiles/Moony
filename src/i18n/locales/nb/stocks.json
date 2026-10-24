@@ -759,6 +759,7 @@
       },
       "alsoStored_one": "omregner også {{count}} lagret transaksjon",
       "alsoStored_other": "omregner også {{count}} lagrede transaksjoner",
+      "mixedUnitsWarning": "Lagrede transaksjoner før splitten blir stående i de opprinnelige enhetene; bekreft eller avvis splitten på posisjonssiden etter importen.",
       "convert": "Omregn",
       "convertFor": "Omregn handlene i {{ticker}} for splitten {{ratio}}"
     }

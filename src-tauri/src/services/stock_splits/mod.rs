@@ -154,9 +154,11 @@ pub fn record_detected(
     Ok(inserted)
 }
 
-/// Applies a pending split (D10): rewrites the pre-split transactions and side data, marks it
-/// `applied`, and recomputes the positions. A history that would sell more than it holds
-/// aborts everything with `validation.stockSplitOversold`.
+/// Applies a pending or dismissed split (D10; a dismissed one means the user changed their
+/// mind): rewrites the pre-split transactions and side data, marks it `applied`, and
+/// recomputes the positions. An applied split is refused (`validation.stockSplitNotPending`);
+/// a history that would sell more than it holds aborts everything with
+/// `validation.stockSplitOversold`.
 pub fn apply(conn: &Connection, id: &str) -> Result<StockSplitApplyResult> {
     in_savepoint(conn, || apply_in(conn, id))
 }
@@ -344,7 +346,7 @@ pub(crate) fn rewrite_pre_split_rows(
 /// [`apply`] without its savepoint, for callers that hold one.
 fn apply_in(conn: &Connection, id: &str) -> Result<StockSplitApplyResult> {
     let split = get(conn, id)?;
-    if split.status != StockSplitStatus::Pending {
+    if split.status == StockSplitStatus::Applied {
         return Err(not_pending());
     }
     let (n, d) = ratio_parts(&split.numerator, &split.denominator)?;
@@ -961,6 +963,24 @@ mod tests {
     }
 
     #[test]
+    fn apply_accepts_a_dismissed_split() {
+        let conn = setup_test_db();
+        let (pre, post, id) = nvda(&conn);
+        dismiss(&conn, &id).unwrap();
+
+        let r = apply(&conn, &id).unwrap();
+        assert_eq!(r.rewritten, 1);
+        assert_eq!(r.split.status, StockSplitStatus::Applied);
+        assert_eq!(r.split.applied_count, Some(1));
+        assert_eq!(row(&conn, &pre), pair("30", "95"));
+        assert_eq!(row(&conn, &post), pair("20", "120"));
+        assert_eq!(quantity_of_position(&conn, "NVDA"), "50");
+
+        let err = apply(&conn, &id).unwrap_err();
+        assert_eq!(validation_key(err), "validation.stockSplitNotPending");
+    }
+
+    #[test]
     fn apply_scales_side_data_older_than_the_ex_date_only() {
         let conn = setup_test_db();
         let (_, _, id) = nvda(&conn);
@@ -1085,6 +1105,52 @@ mod tests {
 
         let err = revert(&conn, &id).unwrap_err();
         assert_eq!(validation_key(err), "validation.stockSplitNotApplied");
+    }
+
+    #[test]
+    fn revert_restores_side_data_and_leaves_other_tickers_alone() {
+        let conn = setup_test_db();
+        let buy = tx(&conn, "AAPL", "buy", "15", "165.3", day(100));
+        let other_buy = tx(&conn, "MSFT", "buy", "7", "310.5", day(90));
+        let other_sell = tx(&conn, "MSFT", "sell", "2", "320", day(120));
+        let new =
+            record_detected(&conn, "AAPL", &[split(200, 4, 1)], StockSplitSource::Yahoo).unwrap();
+        let id = new[0].id.clone();
+        conn.execute_batch(&format!(
+            "INSERT INTO stock_price_overrides (id, ticker, price, currency, updated_at)
+                 VALUES ('o1', 'AAPL', '170.2', 'USD', {old});
+             INSERT INTO watched_stocks (id, ticker, target_price, updated_at)
+                 VALUES ('w1', 'AAPL', '180', {old});
+             INSERT INTO dividend_overrides (id, ticker, yearly_dividend_sum, currency, updated_at)
+                 VALUES ('d1', 'AAPL', '0.92', 'USD', {old});",
+            old = day(150),
+        ))
+        .unwrap();
+
+        let text = |sql: &str| -> String { conn.query_row(sql, [], |r| r.get(0)).unwrap() };
+        let side_data = || {
+            (
+                text("SELECT price FROM stock_price_overrides WHERE id = 'o1'"),
+                text("SELECT target_price FROM watched_stocks WHERE id = 'w1'"),
+                text("SELECT yearly_dividend_sum FROM dividend_overrides WHERE id = 'd1'"),
+            )
+        };
+        let original = side_data();
+
+        apply(&conn, &id).unwrap();
+        assert_eq!(
+            side_data(),
+            ("42.55".to_string(), "45".to_string(), "0.23".to_string())
+        );
+        assert_eq!(row(&conn, &other_buy), pair("7", "310.5"));
+        assert_eq!(row(&conn, &other_sell), pair("2", "320"));
+
+        revert(&conn, &id).unwrap();
+        assert_eq!(side_data(), original);
+        assert_eq!(row(&conn, &buy), pair("15", "165.3"));
+        assert_eq!(row(&conn, &other_buy), pair("7", "310.5"));
+        assert_eq!(row(&conn, &other_sell), pair("2", "320"));
+        assert_eq!(quantity_of_position(&conn, "MSFT"), "0", "never recomputed");
     }
 
     #[test]

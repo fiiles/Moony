@@ -2823,7 +2823,8 @@ ALTER TABLE user_profile ADD COLUMN theme TEXT NOT NULL DEFAULT 'system';
 
 /// 023: stock splits. `stock_splits` holds the splits found for a ticker (Yahoo), entered by hand or
 /// carried in an import, each `pending` until the user applies or dismisses it; applying rewrites the
-/// ticker's transactions and quote history to the post-split basis. `stock_data.splits_checked_at`
+/// ticker's transactions dated before the split to the post-split basis, and its value history is
+/// then rebuilt from the split-adjusted closes. `stock_data.splits_checked_at`
 /// is when the splits of a ticker were last looked up.
 pub(crate) const MIGRATION_023: &str = r#"
 CREATE TABLE IF NOT EXISTS stock_splits (

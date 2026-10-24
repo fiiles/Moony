@@ -759,6 +759,7 @@
       },
       "alsoStored_one": "räknar också om {{count}} sparad transaktion",
       "alsoStored_other": "räknar också om {{count}} sparade transaktioner",
+      "mixedUnitsWarning": "Sparade transaktioner före splitten ligger kvar i de ursprungliga enheterna; bekräfta eller avvisa splitten på innehavets sida efter importen.",
       "convert": "Räkna om",
       "convertFor": "Räkna om affärerna i {{ticker}} för splitten {{ratio}}"
     }

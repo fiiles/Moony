@@ -735,6 +735,7 @@
         "unknown": "无法判断文件是否已重新计算"
       },
       "alsoStored_other": "同时重新计算 {{count}} 笔已保存的交易",
+      "mixedUnitsWarning": "拆股前已保存的交易仍保留原始单位；导入后请在持仓详情页确认或忽略该拆股。",
       "convert": "重新计算",
       "convertFor": "按拆股 {{ratio}} 重新计算 {{ticker}} 的交易"
     }

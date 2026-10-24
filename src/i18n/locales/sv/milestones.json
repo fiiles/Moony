@@ -10,6 +10,7 @@
     "upkeepHide": "Dölj",
     "today": "I dag",
     "target": "mål",
+    "split": "split",
     "rowMenu": "Alternativ för påminnelsen: {{title}}"
   },
   "status": {

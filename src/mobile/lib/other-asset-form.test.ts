@@ -7,7 +7,7 @@ const input = (patch: Partial<OtherAssetFormInput> = {}): OtherAssetFormInput =>
   priceText: '1 850,50',
   quantityText: '',
   purchasePriceText: '',
-  purchaseDate: '2026-10-24',
+  purchaseDate: '2026-03-01',
   yieldType: 'none',
   yieldText: '',
   ...patch,
@@ -80,6 +80,26 @@ describe('otherAssetFormState', () => {
 
   it('ignores the date while there is no purchase', () => {
     expect(otherAssetFormState(input({ purchaseDate: '' })).valid).toBe(true);
+    // Not even a day to come: with no purchase there is nothing to date
+    expect(otherAssetFormState(input({ purchaseDate: '2099-01-01' })).valid).toBe(true);
+  });
+
+  it('refuses a first-purchase day after today (UTC) and takes today itself', () => {
+    const purchase = { quantityText: '2', purchasePriceText: '5' };
+    const future = otherAssetFormState(
+      input({ ...purchase, purchaseDate: '2026-10-25' }),
+      '2026-10-24'
+    );
+    expect(future.valid).toBe(false);
+    expect(future.errors).toEqual({ date: 'future' });
+    expect(future.foldError).toBe(true);
+    expect(future.payload).toBeNull();
+    expect(
+      otherAssetFormState(input({ ...purchase, purchaseDate: '2026-10-24' }), '2026-10-24').valid
+    ).toBe(true);
+    expect(
+      otherAssetFormState(input({ ...purchase, purchaseDate: '2026-10-23' }), '2026-10-24').valid
+    ).toBe(true);
   });
 
   it('sends the yield by its type and leaves an empty value out', () => {

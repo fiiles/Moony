@@ -110,7 +110,7 @@ pub fn is_staged_text_export_path(document_dir: &Path, path: &Path) -> bool {
 
 /// Write `contents` to `document_dir/<file_name>` (an existing file is replaced) for the Files
 /// export to pick up; only an allow-listed name is accepted. A write that fails half way leaves
-/// nothing behind. The contents (the recovery key) are never logged.
+/// nothing behind. The contents (the recovery key, or a class's CSV export) are never logged.
 pub fn write_text_export(document_dir: &Path, file_name: &str, contents: &str) -> Result<PathBuf> {
     if !is_text_export_file_name(file_name) {
         return Err(AppError::Validation(

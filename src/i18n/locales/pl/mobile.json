@@ -468,7 +468,8 @@
       "upcoming": "Najbliższe kupony i terminy wykupu",
       "noUpcoming": "W najbliższym roku nie przypada żaden kupon ani termin wykupu.",
       "allRepaid": "Wszystkie emisje zostały wykupione. Włącz w menu ··· „{{action}}”, aby je zobaczyć.",
-      "loadFailed": "Nie udało się wczytać obligacji."
+      "loadFailed": "Nie udało się wczytać obligacji.",
+      "rateNote": "{{rate}} rocznie, ważona"
     },
     "otherAssets": {
       "count_one": "{{count}} pozycja",
@@ -537,7 +538,7 @@
     },
     "crypto": {
       "largestNote": "{{share}} krypto",
-      "heldNote": "{{date}} · {{share}}"
+      "heldNote": "{{share}} krypto · {{date}}"
     },
     "closed": {
       "on": "zamknięta {{date}}",

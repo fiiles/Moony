@@ -1,8 +1,9 @@
 import { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useRoute } from 'wouter';
 import { Ellipsis, Eye, EyeOff, Plus, RefreshCw, Target } from 'lucide-react';
-import type { StockPricePoint } from '@shared/schema';
+import type { StockMonitorDetail, StockPricePoint } from '@shared/schema';
 import {
   useStockMonitorDetail,
   useStockPriceRange,
@@ -82,6 +83,7 @@ export default function WatchDetail() {
   const { t: td } = useTranslation('dashboard');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
+  const queryClient = useQueryClient();
   const [, params] = useRoute(routes.watchDetail);
   const ticker = tickerOf(params?.ticker);
   const back = useBack(routes.stocks);
@@ -158,8 +160,9 @@ export default function WatchDetail() {
   );
 
   let body;
-  if (isError || (detail && current === null)) {
-    // Yahoo knows nothing of the ticker, or gave no price: said so, not a blank page
+  if ((isError && !detail) || (detail && current === null)) {
+    // Yahoo knows nothing of the ticker, or gave no price: said so, not a blank page. A refetch
+    // that fails behind a page already loaded leaves that page as it is.
     body = <EmptyState icon={<Eye />} title={tm('detail.noData')} description={ticker} />;
   } else if (isLoading || !detail || current === null) {
     body = <ClassSkeleton />;
@@ -281,7 +284,15 @@ export default function WatchDetail() {
           <WatchNotes
             notes={detail.notes}
             saving={notesMutation.isPending}
-            onSave={(notes) => notesMutation.mutateAsync({ ticker: detail.ticker, notes })}
+            onSave={async (notes) => {
+              await notesMutation.mutateAsync({ ticker: detail.ticker, notes });
+              // The refetch the save triggers lands after this resolves: the card leaves the editor
+              // on the saved text, not on the old one for the time it takes
+              queryClient.setQueryData<StockMonitorDetail>(
+                ['stock-monitor', 'detail', ticker],
+                (old) => (old ? { ...old, notes } : old)
+              );
+            }}
           />
         )}
         <WatchKeyData detail={detail} />

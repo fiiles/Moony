@@ -399,7 +399,8 @@
       "upcoming": "直近のクーポンと満期",
       "noUpcoming": "今後1年間にクーポンや満期はありません。",
       "allRepaid": "すべての銘柄が償還済みです。メニュー「···」の「{{action}}」をオンにすると表示されます。",
-      "loadFailed": "債券を読み込めませんでした。"
+      "loadFailed": "債券を読み込めませんでした。",
+      "rateNote": "年率 {{rate}} 加重平均"
     },
     "otherAssets": {
       "count_other": "{{count}}件",
@@ -462,7 +463,7 @@
     },
     "crypto": {
       "largestNote": "暗号資産の{{share}}",
-      "heldNote": "{{date}} · {{share}}"
+      "heldNote": "暗号資産の{{share}} · {{date}}"
     },
     "closed": {
       "on": "{{date}}に決済",

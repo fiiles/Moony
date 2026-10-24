@@ -227,7 +227,15 @@ export function OtherAssetAddSheet({ open, onOpenChange }: OtherAssetAddSheetPro
                 label={tc('labels.date')}
                 value={input.purchaseDate}
                 onChange={(event) => edit({ purchaseDate: event.target.value })}
-                error={errors.date && tc('validation.dateRequired')}
+                // A day to come is refused with a message, as the bond form does (`max` alone can
+                // block a submit silently in some webviews)
+                max={todayIsoUtc()}
+                error={
+                  errors.date &&
+                  (errors.date === 'future'
+                    ? tc('validation.purchaseDateInFuture')
+                    : tc('validation.dateRequired'))
+                }
               />
               <p className="mx-0.5 mb-0 mt-1.5 text-m-caption text-ink-3">
                 {to('modal.add.initialPurchaseHint')}

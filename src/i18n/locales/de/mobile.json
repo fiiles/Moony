@@ -422,7 +422,8 @@
       "upcoming": "Nächste Kupons und Fälligkeiten",
       "noUpcoming": "Im kommenden Jahr ist kein Kupon und keine Fälligkeit fällig.",
       "allRepaid": "Alle Emissionen sind getilgt. Aktivieren Sie im Menü ··· „{{action}}“, um sie zu sehen.",
-      "loadFailed": "Die Anleihen konnten nicht geladen werden."
+      "loadFailed": "Die Anleihen konnten nicht geladen werden.",
+      "rateNote": "{{rate}} p. a. gewichtet"
     },
     "otherAssets": {
       "count_one": "{{count}} Posten",
@@ -487,7 +488,7 @@
     },
     "crypto": {
       "largestNote": "{{share}} der Kryptos",
-      "heldNote": "{{date}} · {{share}}"
+      "heldNote": "{{share}} der Kryptos · {{date}}"
     },
     "closed": {
       "on": "geschlossen {{date}}",

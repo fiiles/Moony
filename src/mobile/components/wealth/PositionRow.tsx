@@ -18,16 +18,14 @@ interface PositionRowProps {
 /**
  * A position of a class list, Akcie or Krypto (spec §8.8, prototype frame 11): the first two
  * letters of the ticker in the chip (no logo fetch: it would tell the network what is held), the
- * ticker with its "ručně" / "uzavřená" badge over the name, the value in the report currency over
- * the return with its amount. A tap opens the position. A value that could not be converted is
- * "—" with no return, never one measured against nothing.
+ * ticker with its "ručně" badge over the name, the value in the report currency over the return
+ * with its amount. A tap opens the position. A value that could not be converted is "—" with no
+ * return, never one measured against nothing. Closed positions are not listed here (`positionRows`).
  */
 export function PositionRow({ row, name, href, currency }: PositionRowProps) {
-  const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
   const moneyText = useMoneyText();
   const { marketValue, gainLoss, gainLossPercent } = row;
-  const closed = row.quantity <= 0;
 
   return (
     <EntityRow
@@ -36,7 +34,6 @@ export function PositionRow({ row, name, href, currency }: PositionRowProps) {
         <>
           {row.ticker}
           {row.isManualPrice && <RowBadge>{ts('detail.manual')}</RowBadge>}
-          {closed && <RowBadge>{t('wealth.stocks.closedBadge')}</RowBadge>}
         </>
       }
       sub={name}

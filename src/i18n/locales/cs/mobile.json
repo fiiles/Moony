@@ -445,7 +445,8 @@
       "upcoming": "Nejbližší kupóny a splatnosti",
       "noUpcoming": "V nejbližším roce nepřipadá žádný kupón ani splatnost.",
       "allRepaid": "Všechny emise jsou splacené. Zapněte v nabídce ··· „{{action}}“, abyste je viděli.",
-      "loadFailed": "Dluhopisy se nepodařilo načíst."
+      "loadFailed": "Dluhopisy se nepodařilo načíst.",
+      "rateNote": "{{rate}} p. a. vážený průměr"
     },
     "otherAssets": {
       "count_one": "{{count}} položka",
@@ -512,7 +513,7 @@
     },
     "crypto": {
       "largestNote": "{{share}} z krypta",
-      "heldNote": "{{date}} · {{share}}"
+      "heldNote": "{{share}} z krypta · {{date}}"
     },
     "closed": {
       "on": "uzavřeno {{date}}",

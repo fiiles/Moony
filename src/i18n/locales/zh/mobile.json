@@ -399,7 +399,8 @@
       "upcoming": "近期票息与到期",
       "noUpcoming": "未来一年内没有票息或到期。",
       "allRepaid": "所有债券均已兑付。在“···”菜单中开启“{{action}}”即可查看。",
-      "loadFailed": "无法加载债券。"
+      "loadFailed": "无法加载债券。",
+      "rateNote": "{{rate}} 年化 加权平均"
     },
     "otherAssets": {
       "count_other": "{{count}} 项",
@@ -462,7 +463,7 @@
     },
     "crypto": {
       "largestNote": "占加密货币 {{share}}",
-      "heldNote": "{{date}} · {{share}}"
+      "heldNote": "占加密货币 {{share}} · {{date}}"
     },
     "closed": {
       "on": "{{date}} 平仓",

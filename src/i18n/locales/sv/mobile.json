@@ -422,7 +422,8 @@
       "upcoming": "Nästa kuponger och förfall",
       "noUpcoming": "Inga kuponger eller förfall under det kommande året.",
       "allRepaid": "Alla emissioner är återbetalda. Slå på ”{{action}}” i menyn ··· för att se dem.",
-      "loadFailed": "Obligationerna kunde inte läsas in."
+      "loadFailed": "Obligationerna kunde inte läsas in.",
+      "rateNote": "{{rate}} per år, viktad"
     },
     "otherAssets": {
       "count_one": "{{count}} post",
@@ -487,7 +488,7 @@
     },
     "crypto": {
       "largestNote": "{{share}} av krypto",
-      "heldNote": "{{date}} · {{share}}"
+      "heldNote": "{{share}} av krypto · {{date}}"
     },
     "closed": {
       "on": "stängt {{date}}",

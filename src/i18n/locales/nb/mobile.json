@@ -422,7 +422,8 @@
       "upcoming": "Neste kuponger og forfall",
       "noUpcoming": "Ingen kuponger eller forfall det kommende året.",
       "allRepaid": "Alle emisjoner er innfridd. Slå på «{{action}}» i menyen ··· for å se dem.",
-      "loadFailed": "Obligasjonene kunne ikke lastes."
+      "loadFailed": "Obligasjonene kunne ikke lastes.",
+      "rateNote": "{{rate}} p.a. vektet"
     },
     "otherAssets": {
       "count_one": "{{count}} post",
@@ -487,7 +488,7 @@
     },
     "crypto": {
       "largestNote": "{{share}} av krypto",
-      "heldNote": "{{date}} · {{share}}"
+      "heldNote": "{{share}} av krypto · {{date}}"
     },
     "closed": {
       "on": "avsluttet {{date}}",

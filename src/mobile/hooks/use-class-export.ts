@@ -24,7 +24,7 @@ const EXPORTS = {
  * A byte-order mark in front of the CSV, as the desktop's export writes it: Excel and Numbers
  * read a UTF-8 file without one as the system's code page and garble the accents.
  */
-const BOM = '﻿';
+const BOM = '\uFEFF';
 
 /**
  * "Export" in the `···` of Akcie, Krypto, Dluhopisy and Ostatní aktiva (spec §8.8): fetches the

@@ -445,7 +445,8 @@
       "upcoming": "Próximos cupones y vencimientos",
       "noUpcoming": "No hay cupones ni vencimientos en el próximo año.",
       "allRepaid": "Todas las emisiones están amortizadas. Activa «{{action}}» en el menú ··· para verlas.",
-      "loadFailed": "No se pudieron cargar los bonos."
+      "loadFailed": "No se pudieron cargar los bonos.",
+      "rateNote": "{{rate}} anual ponderado"
     },
     "otherAssets": {
       "count_one": "{{count}} elemento",
@@ -512,7 +513,7 @@
     },
     "crypto": {
       "largestNote": "{{share}} de cripto",
-      "heldNote": "{{date}} · {{share}}"
+      "heldNote": "{{share}} de cripto · {{date}}"
     },
     "closed": {
       "on": "cerrada el {{date}}",

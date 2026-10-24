@@ -183,14 +183,19 @@ export default function Bonds() {
  * Three stats (spec §8.8, the desktop's `BondsSummary`): the face value of the live issues with
  * their number, the yearly coupon with the weighted rate (a credit, so green), and the nearest
  * maturity with what it returns. The stats are in the main currency at the current rates; the
- * nearest maturity's amount, when its currency has no rate, stands in its own.
+ * nearest maturity's amount, when its currency has no rate, stands in its own. When every live
+ * issue lacks a rate the face value and the coupon are "—" (ADR 0012), not a 0 that is no sum.
  */
 function BondStats({ metrics, currency }: { metrics: BondsMetrics; currency: string }) {
+  const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bonds');
   const fmt = useFormat();
   const moneyText = useMoneyText();
 
   const income = metrics.projectedYearlyIncome;
+  // Live issues, none of them in a currency with a rate: the totals are not 0, they are unknown
+  const unconverted =
+    metrics.liveCount > 0 && metrics.currencies.every((code) => metrics.missing.includes(code));
   const { nearest } = metrics;
   const nearestDay = nearest?.maturityDate ?? null;
   const returns =
@@ -203,14 +208,21 @@ function BondStats({ metrics, currency }: { metrics: BondsMetrics; currency: str
   const stats: StatItem[] = [
     {
       label: tb('summary.nominal'),
-      value: moneyText(metrics.totalValue, currency, statMoneyOptions(metrics.totalValue)),
+      value: unconverted
+        ? '—'
+        : moneyText(metrics.totalValue, currency, statMoneyOptions(metrics.totalValue)),
       note: tb('summary.issues', { count: metrics.liveCount }),
     },
     {
       label: tb('summary.yearlyCoupon'),
-      value: moneyText(income, currency, { ...statMoneyOptions(income), signed: true }),
+      value: unconverted
+        ? '—'
+        : moneyText(income, currency, { ...statMoneyOptions(income), signed: true }),
       tone: statTone(income),
-      note: tb('summary.weightedRate', { rate: fmt.percent(metrics.averageYield / 100, 2) }),
+      // The figure first, since the note is cut at the third of a row; no rate for what has none
+      note: unconverted
+        ? undefined
+        : t('wealth.bonds.rateNote', { rate: fmt.percent(metrics.averageYield / 100, 2) }),
     },
     {
       label: tb('summary.nearestMaturity'),

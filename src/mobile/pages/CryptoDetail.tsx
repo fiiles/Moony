@@ -168,16 +168,18 @@ function CoinStats({
 
   // Whole months as the desktop counts them, but only the larger unit: "2 years 7 months" would
   // not fit a third of the row at 17 pt and would shrink the figures beside it. The day it began
-  // is in the note, so nothing is lost.
+  // is in the note, so nothing is lost. A coin bought this month is "less than a month", as there.
   const held = firstBuy
     ? monthsBetween(firstBuy.transactionDate, Math.floor(Date.now() / 1000))
     : null;
   const durationText =
     held === null
       ? null
-      : held.years > 0
-        ? tcr('detail.duration.years', { count: held.years })
-        : tcr('detail.duration.months', { count: held.months });
+      : held.totalMonths === 0
+        ? tcr('detail.duration.lessThanMonth')
+        : held.years > 0
+          ? tcr('detail.duration.years', { count: held.years })
+          : tcr('detail.duration.months', { count: held.months });
 
   // The share of the class is the open coin's value over all the coins'; a coin that is closed or
   // has no rate has none to say

@@ -118,10 +118,11 @@ pub async fn finish_backup_export(
     removed
 }
 
-/// Phones only. Write a short text (the recovery key's) to `Documents/<file_name>` for the Files
-/// export to pick up; only the names on `services::backup`'s allow-list are accepted and an
-/// existing file is replaced. The webview has no fs commands: this and `discard_text_export` are
-/// its only way to put a file in Documents. Returns the path to hand to `discard_text_export`.
+/// Phones only. Write a text (the recovery key, or a class's CSV export) to
+/// `Documents/<file_name>` for the Files export to pick up; only the names on
+/// `services::backup`'s allow-list are accepted and an existing file is replaced. The webview has
+/// no fs commands: this and `discard_text_export` are its only way to put a file in Documents.
+/// Returns the path to hand to `discard_text_export`.
 #[cfg(mobile)]
 #[tauri::command]
 pub async fn stage_text_export(

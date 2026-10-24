@@ -4,7 +4,7 @@
  * mutation; here they are a pure function so the sheet only renders them.
  */
 import type { InsertOtherAsset, InsertOtherAssetTransaction } from '@shared/schema';
-import { utcDayStart } from '@/utils/period';
+import { todayIsoUtc, utcDayStart } from '@/utils/period';
 import { parseAmountInput } from './amount-input';
 
 /** The yield types the backend knows, in the order the sheet lists them. */
@@ -33,7 +33,7 @@ export interface OtherAssetFormState {
     price?: AmountError;
     quantity?: AmountError;
     purchasePrice?: AmountError;
-    date?: 'required';
+    date?: 'required' | 'future';
     yield?: 'invalid' | 'negative';
   };
   valid: boolean;
@@ -53,11 +53,15 @@ function amount(text: string): { text: string; value: number } | null {
 /**
  * Reads the form. The name and today's price are required (a price of 0 is allowed, as the backend
  * does). The first purchase is begun by typing a quantity or a price: it then needs both, above
- * zero, and a day — half of one is named, not dropped silently — and goes with the asset as its
- * first buy; left empty the asset starts with quantity 0 and no purchase average, as on the
- * desktop. The yield value is optional; typed with a type of "none" it is not sent.
+ * zero, and a day that is not after `today` (UTC, as the backend counts it) — half of one is named,
+ * not dropped silently — and goes with the asset as its first buy; left empty the asset starts with
+ * quantity 0 and no purchase average, as on the desktop. The yield value is optional; typed with a
+ * type of "none" it is not sent.
  */
-export function otherAssetFormState(form: OtherAssetFormInput): OtherAssetFormState {
+export function otherAssetFormState(
+  form: OtherAssetFormInput,
+  today: string = todayIsoUtc()
+): OtherAssetFormState {
   const errors: OtherAssetFormState['errors'] = {};
 
   const name = form.name.trim();
@@ -81,6 +85,7 @@ export function otherAssetFormState(form: OtherAssetFormInput): OtherAssetFormSt
     else if (purchasePrice.value <= 0) errors.purchasePrice = 'positive';
 
     if (!/^\d{4}-\d{2}-\d{2}$/.test(form.purchaseDate)) errors.date = 'required';
+    else if (form.purchaseDate > today) errors.date = 'future';
   }
 
   const yielded = amount(form.yieldText);

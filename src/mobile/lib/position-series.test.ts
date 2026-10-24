@@ -20,6 +20,18 @@ const h = (recordedAt: number, value: string | null, costBasis: string | null) =
   costBasis,
   isStale: false,
 });
+const cryptoTx = (id: string, type: string, date: number) => ({
+  id,
+  investmentId: 'c',
+  type,
+  ticker: 'BTC',
+  name: 'Bitcoin',
+  quantity: '0.5',
+  pricePerUnit: '60000',
+  currency: 'USD',
+  transactionDate: date,
+  createdAt: date,
+});
 const tx = (id: string, type: string, date: number, quantity = '10', pricePerUnit = '110.4') => ({
   id,
   investmentId: 'i',
@@ -84,6 +96,22 @@ describe('positionEvents and filterTransactions', () => {
     expect(filterTransactions(txs, 'all').map((t) => t.id)).toEqual(['c', 'b', 'a']);
     expect(filterTransactions(txs, 'buy').map((t) => t.id)).toEqual(['c', 'a']);
     expect(filterTransactions(txs, 'sell').map((t) => t.id)).toEqual(['b']);
+  });
+
+  it('takes a crypto trade as it does a stock trade, keeping the same object', () => {
+    const buy = cryptoTx('x', 'buy', T - 5 * DAY);
+    const sell = cryptoTx('y', 'sell', T - DAY);
+    const events = positionEvents([buy, sell]);
+    expect(events.map((e) => [e.id, e.t, e.type])).toEqual([
+      ['x', T - 5 * DAY, 'buy'],
+      ['y', T - DAY, 'sell'],
+    ]);
+    expect(events[0].tx).toBe(buy);
+    expect(events[0].tx.name).toBe('Bitcoin');
+    const rows = filterTransactions([buy, sell], 'all');
+    expect(rows[0]).toBe(sell);
+    expect(rows[1]).toBe(buy);
+    expect(filterTransactions([buy, sell], 'buy')[0]).toBe(buy);
   });
 
   it('totals a trade natively', () => {

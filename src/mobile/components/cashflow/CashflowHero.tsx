@@ -54,7 +54,7 @@ export function CashflowHero({ label, value, formatValue, tone, note }: Cashflow
       >
         <span>{shownValue}</span>
       </div>
-      <div className="flex h-5 min-w-0 items-center whitespace-nowrap text-m-sub text-ink-3">
+      <div className="flex min-h-5 min-w-0 items-center whitespace-nowrap text-m-sub text-ink-3">
         {note && <span className="min-w-0 truncate">{note}</span>}
       </div>
     </section>

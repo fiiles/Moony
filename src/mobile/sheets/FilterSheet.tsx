@@ -65,12 +65,15 @@ export function FilterSheet({ open, onOpenChange, state, categories, onApply }: 
         <>
           <Button
             variant="ghost"
-            className="h-12 rounded-[10px] px-[18px] text-m-row"
+            className="h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] px-[18px] text-m-row"
             onClick={() => apply({ ...DEFAULT_LEDGER, kind: state.kind, search: state.search })}
           >
             {t('account.filter.reset')}
           </Button>
-          <Button className="h-12 flex-1 rounded-[10px] text-m-row" onClick={() => apply(draft)}>
+          <Button
+            className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
+            onClick={() => apply(draft)}
+          >
             {t('account.filter.apply')}
           </Button>
         </>
@@ -148,7 +151,7 @@ function DateField({
         type="date"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="block h-12 w-full min-w-0 rounded-[10px] border border-line-strong bg-paper px-3 text-m-body text-ink num transition-[border-color,box-shadow] duration-fast focus:border-focus focus:shadow-focus focus-visible:outline-none"
+        className="block h-12 w-full min-w-0 rounded-[10px] border border-line-strong bg-paper px-3 text-m-field text-ink num transition-[border-color,box-shadow] duration-fast focus:border-focus focus:shadow-focus focus-visible:outline-none"
       />
     </div>
   );

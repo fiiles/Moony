@@ -17,6 +17,13 @@ describe('cn (tailwind-merge with the design tokens)', () => {
     expect(cn('text-m-body', 'text-m-sub')).toBe('text-m-sub');
   });
 
+  it('knows the Dynamic Type roles: lead, note and field', () => {
+    expect(cn('text-m-lead', 'text-ink-3')).toBe('text-m-lead text-ink-3');
+    expect(cn('text-m-note', 'text-ink-4')).toBe('text-m-note text-ink-4');
+    expect(cn('text-m-field', 'text-ink')).toBe('text-m-field text-ink');
+    expect(cn('text-m-body', 'text-m-field')).toBe('text-m-field');
+  });
+
   it('treats the numeric weights as weights, not families', () => {
     expect(cn('font-600', 'font-650')).toBe('font-650');
     expect(cn('font-650', 'font-mono')).toBe('font-650 font-mono');

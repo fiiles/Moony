@@ -13,6 +13,7 @@ import { MobileShell } from '@/mobile/shell/MobileShell';
 import { HideAmountsProvider } from '@/mobile/hooks/use-hide-amounts';
 import { useBackgroundLock } from '@/mobile/hooks/use-background-lock';
 import { applyStatusBarStyle } from '@/mobile/lib/status-bar';
+import { useTypeScale } from '@/mobile/lib/use-type-scale';
 import { useVisibleHeight } from '@/mobile/lib/use-visible-height';
 
 /**
@@ -59,6 +60,7 @@ function StatusBarStyle() {
  */
 export default function MobileApp() {
   useVisibleHeight();
+  useTypeScale();
 
   // `index.css` drops the desktop's 1080 px minimum width under this attribute, before the first paint.
   useLayoutEffect(() => {

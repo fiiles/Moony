@@ -66,8 +66,11 @@ interface EntityRowProps {
   className?: string;
   /** Leading element: a `RowChip`, or a wider element such as the agenda's date chip. */
   chip?: ReactNode;
-  /** Width of `chip` when it is not the 36 pt chip (the dividers inset to the title). */
-  chipWidth?: number;
+  /**
+   * Width of `chip` when it is not the 36 pt chip (the dividers inset to the title): a number of
+   * points, or a CSS length for a chip that grows with the text size.
+   */
+  chipWidth?: number | string;
   title: ReactNode;
   sub?: ReactNode;
   /** Trailing value on the title line (tabular). */
@@ -143,11 +146,12 @@ export function EntityRow({
   const hasSubLine = !!sub || !!valueSub;
   const single = !hasSubLine && !bar;
   const hasChip = chip !== undefined;
-  const columns = [hasChip ? `${chipWidth}px` : null, 'minmax(0, 1fr)', showChevron ? '16px' : null]
+  const chipColumn = typeof chipWidth === 'number' ? `${chipWidth}px` : chipWidth;
+  const columns = [hasChip ? chipColumn : null, 'minmax(0, 1fr)', showChevron ? '16px' : null]
     .filter(Boolean)
     .join(' ');
   // 14 pt padding + chip + 12 pt gap: the divider starts at the title's left edge.
-  const inset = hasChip ? 14 + chipWidth + 12 : 14;
+  const inset = hasChip ? `calc(26px + ${chipColumn})` : '14px';
 
   const content = (
     <>
@@ -236,7 +240,7 @@ export function EntityRow({
         muted && 'opacity-50',
         className
       )}
-      style={{ '--m-row-inset': `${inset}px` } as CSSProperties}
+      style={{ '--m-row-inset': inset } as CSSProperties}
     >
       {below ? <div className="relative overflow-hidden bg-inherit">{swipeable}</div> : swipeable}
       {below}

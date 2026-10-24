@@ -328,7 +328,7 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
                 excluded ? (
                   <span className="flex min-w-0 items-center">
                     <span className="min-w-0 truncate">{property.name}</span>
-                    <span className="ml-1.5 inline-flex h-[18px] flex-none items-center rounded-r1 bg-well-2 px-1.5 text-m-caption font-semibold text-ink-3">
+                    <span className="ml-1.5 inline-flex min-h-[18px] flex-none items-center rounded-r1 bg-well-2 px-1.5 py-0.5 text-m-caption font-semibold text-ink-3">
                       {t('realEstate:table.excluded')}
                     </span>
                   </span>

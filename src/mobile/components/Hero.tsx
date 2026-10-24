@@ -115,7 +115,7 @@ export function Hero<E extends ChartEvent>({
       >
         <span>{shownValue}</span>
       </div>
-      <div className="flex h-5 min-w-0 items-center gap-1.5 whitespace-nowrap text-m-sub text-ink-3">
+      <div className="flex min-h-5 min-w-0 items-center gap-1.5 whitespace-nowrap text-m-sub text-ink-3">
         {scrub ? (
           <span className="min-w-0 truncate num">
             {fmt.day(scrub.t, { day: 'numeric', month: 'numeric', year: 'numeric' })}
@@ -124,7 +124,7 @@ export function Hero<E extends ChartEvent>({
           <>
             <span
               className={cn(
-                'inline-flex h-5 flex-none items-center gap-1 rounded-r1 px-[7px] text-m-sub leading-none num',
+                'inline-flex min-h-5 flex-none items-center gap-1 rounded-r1 px-[7px] py-0.5 text-m-sub leading-none num',
                 up
                   ? 'bg-gain-soft text-gain'
                   : down

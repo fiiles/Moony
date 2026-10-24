@@ -68,7 +68,7 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
         <>
           <Button
             variant="ghost"
-            className="h-12 rounded-[10px] px-[18px] text-m-row"
+            className="h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] px-[18px] text-m-row"
             disabled={remove.isPending}
             onClick={() => change(false)}
           >
@@ -76,7 +76,7 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
           </Button>
           <Button
             variant="destructive"
-            className="h-12 flex-1 rounded-[10px] text-m-row"
+            className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
             loading={remove.isPending}
             disabled={!confirmed || remove.isPending}
             onClick={() => remove.mutate()}
@@ -100,7 +100,7 @@ export function DeleteProfileSheet({ open, onOpenChange }: DeleteProfileSheetPro
         spellCheck={false}
         enterKeyHint="done"
         readOnly={remove.isPending}
-        className="mt-1.5 h-12 rounded-[10px] text-m-body"
+        className="mt-1.5 h-12 rounded-[10px] text-m-field"
       />
     </Sheet>
   );

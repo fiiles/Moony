@@ -12,14 +12,17 @@ export interface StatItem {
   tone?: 'gain' | 'loss';
 }
 
+/** The floor of a stat value: 12 px, growing with the 110 % cap of the stat values (not the text roles' 130 %). */
+const STAT_FLOOR = 'calc(12px * var(--m-value-k))';
+
 /** The contract's rule (`.m-stat__v`): 17 px down to the 86 px box of a third, then with the card. */
-const CONTAINER_SIZE = 'clamp(var(--m-fs-sub), 19.7cqi, var(--m-fs-stat))';
+const CONTAINER_SIZE = `clamp(${STAT_FLOOR}, 19.7cqi, var(--m-fs-stat))`;
 
 /**
  * Stat row (spec §10.3, README §13, `.m-stats`): three (or two, or one) stats, label 11 (may wrap,
  * hyphenated), value 17, note 10; the values sit on one line across the row. A value never wraps:
  * the contract's container rule shrinks it with a narrow card, and a value longer than its card
- * shrinks the whole row to fit (every stat in a row shares one size, floor `m-fs-sub`).
+ * shrinks the whole row to fit (every stat in a row shares one size, floor `STAT_FLOOR`).
  */
 export function StatRow({ stats }: { stats: StatItem[] }) {
   const rowRef = useRef<HTMLDivElement>(null);
@@ -52,13 +55,13 @@ export function StatRow({ stats }: { stats: StatItem[] }) {
               fontSize:
                 fit === null
                   ? CONTAINER_SIZE
-                  : `clamp(var(--m-fs-sub), min(${fit}px, 19.7cqi), var(--m-fs-stat))`,
+                  : `clamp(${STAT_FLOOR}, min(${fit}px, 19.7cqi), var(--m-fs-stat))`,
             }}
           >
             <span>{stat.value}</span>
           </span>
           {stat.note !== undefined && stat.note !== null && (
-            <span className="mt-[3px] truncate text-micro font-medium text-ink-4">{stat.note}</span>
+            <span className="mt-[3px] truncate text-m-note text-ink-4">{stat.note}</span>
           )}
         </div>
       ))}

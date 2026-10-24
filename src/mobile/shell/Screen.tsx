@@ -62,9 +62,7 @@ export function Screen({
           <div ref={setMarker} aria-hidden className="h-px" />
         )}
         {large && subtitle && (
-          <p className="mx-0.5 mb-3.5 mt-0 text-[13px] font-450 leading-[1.4] text-ink-3">
-            {subtitle}
-          </p>
+          <p className="mx-0.5 mb-3.5 mt-0 text-m-lead text-ink-3">{subtitle}</p>
         )}
         {children}
       </main>

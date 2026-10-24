@@ -166,7 +166,7 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
       title={title}
       leading={<NavTextButton chevron label={t('tabs.cashflow')} onClick={back} />}
     >
-      <p className="mx-0.5 mb-3.5 text-[13px] font-450 leading-[1.4] text-ink-3">{summary}</p>
+      <p className="mx-0.5 mb-3.5 text-m-lead text-ink-3">{summary}</p>
       {snapshot === null ? (
         isError ? (
           <ReportError onRetry={() => void refetch()} />
@@ -193,7 +193,7 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
           {rows.length > limit && (
             <Button
               variant="secondary"
-              className="h-12 w-full rounded-[10px] text-m-row"
+              className="h-auto min-h-12 whitespace-normal py-2 text-center w-full rounded-[10px] text-m-row"
               onClick={() => setLimit(limit + DRILLDOWN_PAGE)}
             >
               {t('cashflow.showMore', { count: Math.min(DRILLDOWN_PAGE, rows.length - limit) })}

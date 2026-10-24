@@ -147,9 +147,7 @@ export default function Settings() {
         <div className="min-w-0">
           <p className="m-0 truncate text-m-title text-ink">{fullName}</p>
           {user?.email && (
-            <p className="m-0 mt-0.5 truncate text-[13px] font-450 leading-[1.4] text-ink-3">
-              {user.email}
-            </p>
+            <p className="m-0 mt-0.5 truncate text-m-lead text-ink-3">{user.email}</p>
           )}
         </div>
       </div>

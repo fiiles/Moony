@@ -30,7 +30,7 @@ export function ImportHistorySheet({ open, onOpenChange, batches }: ImportHistor
       description={newestFirst.length === 0 ? t('importHistory.empty') : undefined}
       footer={
         <Button
-          className="h-12 flex-1 rounded-[10px] text-m-row"
+          className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
           onClick={() => onOpenChange(false)}
         >
           {tc('buttons.close')}

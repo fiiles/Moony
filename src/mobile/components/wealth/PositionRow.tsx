@@ -7,7 +7,7 @@ import { ChangeLine } from './ChangeLine';
 
 /** The badge after a ticker ("ručně", "uzavřená"): 18 pt, 11 / 600 `ink-3` on `well-2`. */
 const BADGE =
-  'ml-1.5 inline-flex h-[18px] items-center rounded-r1 bg-well-2 px-1.5 align-[2px] text-m-caption font-semibold text-ink-3';
+  'ml-1.5 inline-flex min-h-[18px] items-center rounded-r1 bg-well-2 px-1.5 py-0.5 align-[2px] text-m-caption font-semibold text-ink-3';
 
 interface PositionRowProps {
   row: StockRow;

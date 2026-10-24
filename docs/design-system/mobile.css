@@ -14,16 +14,26 @@
   --m-nav-h: 44px;    /* nav bar, under the top safe area */
   --m-tabbar-h: 56px; /* tab bar, above the bottom safe area */
 
-  /* ---- Phone type scale (§10.2): size / weight / tracking per role ---- */
-  --m-fs-display: 36px;  --m-fw-display: 580;  --m-ls-display: -0.06em;  /* hero number */
-  --m-fs-title-lg: 30px; --m-fw-title-lg: 600; --m-ls-title-lg: -0.05em; /* large title */
-  --m-fs-title: 20px;    --m-fw-title: 650;    --m-ls-title: -0.04em;    /* collapsed nav title, sheet title */
-  --m-fs-section: 16px;  --m-fw-section: 620;  --m-ls-section: -0.03em;  /* section head */
-  --m-fs-stat: 17px;     --m-fw-stat: 600;     --m-ls-stat: -0.03em;     /* stat value */
-  --m-fs-row: 15px;      --m-fw-row: 600;      --m-ls-row: -0.01em;      /* row title and value */
-  --m-fs-body: 15px;     --m-fw-body: 450;                               /* body, line 1.45 */
-  --m-fs-sub: 12px;      --m-fw-sub: 500;                                /* row sub, badge */
-  --m-fs-caption: 11px;  --m-fw-caption: 500;                            /* caption */
+  /* ---- Phone type scale (§10.2): size / weight / tracking per role ----
+     Dynamic Type: the app publishes the iOS text size as --m-type-scale (1 at the default
+     "Large"; the demo page's switch sets it by hand). Text roles grow with it up to 130 %
+     (--m-text-k), display and stat values up to 110 % (--m-value-k). The tab bar label and the
+     chart axis ticks stay fixed. */
+  --m-type-scale: 1;
+  --m-text-k: clamp(1, var(--m-type-scale), 1.3);
+  --m-value-k: clamp(1, var(--m-type-scale), 1.1);
+  --m-fs-display: calc(36px * var(--m-value-k));  --m-fw-display: 580;  --m-ls-display: -0.06em;  /* hero number */
+  --m-fs-title-lg: calc(30px * var(--m-text-k));  --m-fw-title-lg: 600; --m-ls-title-lg: -0.05em; /* large title */
+  --m-fs-title: calc(20px * var(--m-text-k));     --m-fw-title: 650;    --m-ls-title: -0.04em;    /* collapsed nav title, sheet title */
+  --m-fs-section: calc(16px * var(--m-text-k));   --m-fw-section: 620;  --m-ls-section: -0.03em;  /* section head */
+  --m-fs-stat: calc(17px * var(--m-value-k));     --m-fw-stat: 600;     --m-ls-stat: -0.03em;     /* stat value */
+  --m-fs-row: calc(15px * var(--m-text-k));       --m-fw-row: 600;      --m-ls-row: -0.01em;      /* row title and value */
+  --m-fs-body: calc(15px * var(--m-text-k));      --m-fw-body: 450;                               /* body, line 1.45 */
+  --m-fs-field: max(16px, var(--m-fs-body));                                                      /* every field: never under 16 px, or iOS zooms in on focus */
+  --m-fs-lead: calc(13px * var(--m-text-k));                                                      /* the sentence under a title or sheet title, text links; weight 450, line 1.4 */
+  --m-fs-sub: calc(12px * var(--m-text-k));       --m-fw-sub: 500;                                /* row sub, badge */
+  --m-fs-caption: calc(11px * var(--m-text-k));   --m-fw-caption: 500;                            /* caption */
+  --m-fs-note: calc(10px * var(--m-text-k));                                                      /* stat note, flow-strip and agenda sub-lines; weight 500, line 1.3 */
   /* Eyebrow: the desktop fs-eyebrow (10 / 700 / +0.12em, uppercase). */
 }
 
@@ -37,6 +47,9 @@
 .m-t-body { font-size: var(--m-fs-body); font-weight: var(--m-fw-body); line-height: 1.45; }
 .m-t-sub { font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; }
 .m-t-caption { color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.35; }
+.m-t-lead { font-size: var(--m-fs-lead); font-weight: 450; line-height: 1.4; }
+.m-t-note { font-size: var(--m-fs-note); font-weight: 500; line-height: 1.3; }
+.m-t-field { font-size: var(--m-fs-field); font-weight: var(--m-fw-body); line-height: 1.3; }
 .m-t-eyebrow { color: var(--ink-4); font-size: var(--fs-eyebrow); font-weight: var(--fw-eyebrow); letter-spacing: var(--ls-eyebrow); line-height: 1; text-transform: uppercase; }
 
 /* ===== Screen: nav bar on top, one scroll area, the tab bar fixed over its bottom =====
@@ -96,12 +109,12 @@
   color: var(--ink-2); font-size: var(--m-fs-caption); font-weight: 700;
 }
 
-/* Large title (collapses into the nav bar) and the one sentence under it (13 px, as the sheet sentence). */
+/* Large title (collapses into the nav bar) and the one sentence under it (the lead role, as the sheet sentence). */
 .m-title-lg {
   margin: 6px 2px 3px; color: var(--ink); overflow-wrap: break-word; hyphens: auto;
   font-size: var(--m-fs-title-lg); font-weight: var(--m-fw-title-lg); letter-spacing: var(--m-ls-title-lg); line-height: 1.1;
 }
-.m-title-sub { margin: 0 2px 14px; color: var(--ink-3); font-size: 13px; font-weight: 450; line-height: 1.4; }
+.m-title-sub { margin: 0 2px 14px; color: var(--ink-3); font-size: var(--m-fs-lead); font-weight: 450; line-height: 1.4; }
 
 /* ===== Tab bar =====
    Paper with a hairline on top, 56 px plus the bottom safe area, four equal tabs: Lucide 24
@@ -166,7 +179,8 @@
 /* ===== Stat row: three (or two, or one) stats; value 17, label 11, note 10 =====
    A label may wrap (hyphenated, German runs long); the value and the note sit at the bottom so
    the values stay on one line across the row. The value keeps 17 px down to the content box of a
-   third at the 390 pt reference (86 px) and then shrinks with the card (19.7 cqi, floor 12 px), as the
+   third at the 390 pt reference (86 px) and then shrinks with the card (19.7 cqi, floor 12 px, which grows with
+   the stat values' 110 % cap, never with the text roles' 130 %), as the
    desktop stat does; every stat in a row shares one size. A third holds about nine characters at
    17 px ("6,78 mil.", "214 380"); a longer amount goes in a row of two. */
 .m-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
@@ -184,14 +198,14 @@
 }
 .m-stat__v {
   margin-top: auto; overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap;
-  font-size: var(--m-fs-stat); font-size: clamp(var(--m-fs-sub), 19.7cqi, var(--m-fs-stat));
+  font-size: var(--m-fs-stat); font-size: clamp(calc(12px * var(--m-value-k)), 19.7cqi, var(--m-fs-stat));
   font-weight: var(--m-fw-stat); letter-spacing: var(--m-ls-stat); line-height: 1.15;
 }
 .m-stat__v--gain { color: var(--gain); }
 .m-stat__v--loss { color: var(--loss); }
 .m-stat__n {
   margin-top: 3px; overflow: hidden; color: var(--ink-4); text-overflow: ellipsis; white-space: nowrap;
-  font-size: var(--fs-micro); font-weight: 500; line-height: 1.3;
+  font-size: var(--m-fs-note); font-weight: 500; line-height: 1.3;
 }
 
 /* ===== Entity row: one pattern for accounts, positions, bonds, properties, loans, policies,
@@ -236,15 +250,15 @@
   font-size: var(--m-fs-row); font-weight: var(--m-fw-row); letter-spacing: var(--m-ls-row); line-height: 1.3;
 }
 .m-row__s { flex: 1 1 auto; color: var(--ink-4); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; }
-.m-row__s .m-badge { height: 18px; padding: 0 6px; vertical-align: 1px; }
-/* A badge inside a row's title ("Vyloučeno" after an account's name): 18 px, 11 / 600 `ink-3` on
-   `well-2`, set 6 px after the name; the title still ends with an ellipsis. Its text line is the
-   badge's full 18 px, so a caron above a capital ("Čekající") stays whole where the row's line clips
-   at the badge's edges; never `overflow: hidden` on the text. */
+.m-row__s .m-badge { height: auto; min-height: 18px; padding: 1px 6px; vertical-align: 1px; }
+/* A badge inside a row's title ("Vyloučeno" after an account's name): at least 18 px (it grows with the
+   text size), 11 / 600 `ink-3` on `well-2`, set 6 px after the name; the title still ends with an ellipsis.
+   Its box is the line box's height, so a caron above a capital ("Čekající") stays whole where the row's
+   line clips at the badge's edges; never `overflow: hidden` on the text. */
 .m-row__badge {
-  display: inline-flex; align-items: center; height: 18px; margin-left: 6px; padding: 0 6px;
+  display: inline-flex; align-items: center; min-height: 18px; margin-left: 6px; padding: 1px 6px;
   border-radius: var(--r-1); background: var(--well-2); color: var(--ink-3);
-  font-size: var(--m-fs-caption); font-weight: 600; line-height: 18px; vertical-align: 2px;
+  font-size: var(--m-fs-caption); font-weight: 600; line-height: 1.3; vertical-align: 2px;
 }
 .m-row__badge--loss { background: var(--loss-soft); color: var(--loss); } /* "Chyba" in the import preview */
 .m-row__v {
@@ -259,19 +273,19 @@
    sub-line and the title end with an ellipsis before it. `--muted`: a row that has run out (an ended
    budget), the whole row and its divider at half strength. */
 .m-row--act { grid-template-columns: 36px minmax(0, 1fr) auto; }
-.m-row--act .m-btn--sm { padding: 0 11px; }
+.m-row--act .m-btn--sm { padding: 4px 11px; }
 .m-row--muted { opacity: .5; }
 /* Date chip (agenda rows, prototype note 5): 54 × 42 on `well`, the day above its distance; dark
    material for a deadline at most 7 days away. The row's first column is 54 px, so the divider
    insets to 80. */
-.m-row--date { grid-template-columns: 54px minmax(0, 1fr); }
-.m-row + .m-row--date::before { left: 80px; }
+.m-row--date { grid-template-columns: calc(54px * var(--m-text-k)) minmax(0, 1fr); }
+.m-row + .m-row--date::before { left: calc(26px + 54px * var(--m-text-k)); }
 .m-dchip {
-  display: flex; flex: none; flex-direction: column; align-items: center; justify-content: center; width: 54px; height: 42px;
+  display: flex; flex: none; flex-direction: column; align-items: center; justify-content: center; width: calc(54px * var(--m-text-k)); min-height: 42px; padding: 2px 0;
   border-radius: 9px; background: var(--well); line-height: 1.25;
 }
 .m-dchip b { color: var(--ink); font-size: var(--m-fs-sub); font-weight: 650; letter-spacing: -.01em; white-space: nowrap; }
-.m-dchip small { margin-top: 1px; color: var(--ink-4); font-size: var(--fs-micro); font-weight: 500; white-space: nowrap; }
+.m-dchip small { margin-top: 1px; color: var(--ink-4); font-size: var(--m-fs-note); font-weight: 500; white-space: nowrap; }
 .m-dchip--soon { background: var(--dark-grad); box-shadow: var(--sh-dark); }
 .m-dchip--soon b { color: var(--ink-inverse); }
 .m-dchip--soon small { color: var(--ink-inverse-2); }
@@ -280,7 +294,8 @@
    under it, an 18 px icon over an 11 / 650 label. The row follows the finger up to the panel's
    width; released past 60 px it fires the action and snaps back (180 ms); a vertical drag scrolls
    the page. A swipe row is the `li` that clips the panel and carries the divider (`--m-row-inset`:
-   62 px, or 80 with a date chip) that the sibling rule above draws for plain rows. */
+   62 px, or 80 with a date chip at the default text size: 26 px plus the chip's width, which grows with
+   the text) that the sibling rule above draws for plain rows. */
 .m-swipe { position: relative; overflow: hidden; }
 .m-swipe::before { content: ""; position: absolute; top: 0; right: 0; left: var(--m-row-inset, 62px); z-index: 2; border-top: 1px solid var(--line-soft); pointer-events: none; }
 .m-swipe:first-child::before { display: none; }
@@ -296,7 +311,7 @@
 
 /* ===== Badge (desktop rules at the phone's sub size) ===== */
 .m-badge {
-  display: inline-flex; flex: none; align-items: center; gap: 4px; height: 20px; padding: 0 7px;
+  display: inline-flex; flex: none; align-items: center; gap: 4px; min-height: 20px; padding: 2px 7px;
   border-radius: var(--r-1); background: var(--well-2); color: var(--ink-2);
   font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1; white-space: nowrap;
 }
@@ -305,12 +320,12 @@
 
 /* ===== Segmented control: 36 px as on the desktop; scrolls sideways when it does not fit ===== */
 .m-seg {
-  display: flex; gap: 1px; max-width: 100%; height: 36px; padding: 3px; overflow-x: auto;
+  display: flex; gap: 1px; max-width: 100%; min-height: 36px; padding: 3px; overflow-x: auto;
   border-radius: var(--r-2); background: var(--well-2); scrollbar-width: none;
 }
 .m-seg::-webkit-scrollbar { display: none; }
 .m-seg__btn {
-  flex: 1 0 auto; height: 30px; padding: 0 6px; border: 0; border-radius: var(--r-1); background: transparent;
+  flex: 1 0 auto; min-height: 30px; padding: 4px 6px; border: 0; border-radius: var(--r-1); background: transparent;
   color: var(--ink-3); font: inherit; font-size: var(--m-fs-caption); font-weight: 600; line-height: 1; white-space: nowrap;
   transition: background var(--t-fast), color var(--t-fast);
 }
@@ -338,12 +353,12 @@
 }
 .m-todo__ic svg { width: 17px; height: 17px; stroke-width: 1.75; }
 .m-todo__main { min-width: 0; }
-.m-todo__t { color: var(--ink); font-size: 14px; font-weight: 600; letter-spacing: -.01em; }
+.m-todo__t { color: var(--ink); font-size: calc(14px * var(--m-text-k)); font-weight: 600; letter-spacing: -.01em; }
 .m-todo__s {
   margin-top: 1px; overflow: hidden; color: var(--ink-4); text-overflow: ellipsis; white-space: nowrap;
   font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3;
 }
-.m-todo .m-btn--sm { padding: 0 11px; }
+.m-todo .m-btn--sm { padding: 4px 11px; }
 
 /* ===== Rozložení majetku: ring and legend (prototype frame 02) =====
    In a `.m-card`: the 110 px ring on the left, 22 px thick, in `s1`–`s4` with the folded bucket in
@@ -378,7 +393,7 @@
 /* The savings hero is the hero card without segment and chart: its number is green or red by its
    sign, and its one note line keeps the 20 px a change badge would give it. */
 .m-hero__value--loss { color: var(--loss); }
-.m-hero__delta--note { height: 20px; }
+.m-hero__delta--note { min-height: 20px; }
 
 /* Twelve-month bars: a 110 px chart box (the desktop bars' rules, README §8; months outside the
    period at 35 % opacity, no tooltip). One transparent button per month lies over the plot, the
@@ -453,9 +468,9 @@
    date where the amount would be ("▲ 1,3 % 5. 10."). No badge when there is no share to write. */
 .m-change { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
 .m-change__badge {
-  display: inline-flex; flex: none; align-items: center; height: 18px; padding: 0 6px;
+  display: inline-flex; flex: none; align-items: center; min-height: 18px; padding: 1px 6px;
   border-radius: var(--r-1); background: var(--well-2); color: var(--ink-2);
-  font-size: var(--m-fs-caption); font-weight: 600; line-height: 18px;
+  font-size: var(--m-fs-caption); font-weight: 600; line-height: 1.3;
 }
 .m-change__badge--gain { background: var(--gain-soft); color: var(--gain); }
 .m-change__badge--loss { background: var(--loss-soft); color: var(--loss); }
@@ -473,7 +488,7 @@
 .m-field__w { position: relative; }
 .m-field__i {
   display: block; width: 100%; height: 48px; padding: 0 64px 0 14px; border: 1px solid var(--line-strong); border-radius: 10px;
-  background: var(--paper); color: var(--ink); font: inherit; font-size: var(--m-fs-body); font-variant-numeric: tabular-nums;
+  background: var(--paper); color: var(--ink); font: inherit; font-size: var(--m-fs-field); font-variant-numeric: tabular-nums;
   transition: border-color var(--t-fast), box-shadow var(--t-fast);
 }
 .m-field__i::placeholder { color: var(--ink-5); }
@@ -521,19 +536,20 @@
 .m-field__i--month { padding: 0 14px; text-align: left; -webkit-appearance: none; appearance: none; }
 
 /* ===== Buttons at phone size =====
-   48 px, radius 10, label 15 / 600. Primary dark material (one per screen), secondary paper with
-   line-strong, ghost for Zrušit in a sheet footer, danger text-only, destructive solid only in
-   confirm sheets. Full width in sheets and under heroes; two side by side share the row and
-   their labels may wrap to a second line (13 px) instead of overflowing. Small (34 px, inline in
-   a card row) keeps a 44 px hit area. */
+   At least 48 px, radius 10, label 15 / 600. Primary dark material (one per screen), secondary
+   paper with line-strong, ghost for Zrušit in a sheet footer, danger text-only, destructive solid
+   only in confirm sheets. Full width in sheets and under heroes; a label that does not fit (a long
+   label, a large text size) wraps to a second line and the button grows, it never overflows. Two
+   side by side share the row (the lead size). Small (at least 34 px, inline in a card row) keeps a
+   44 px hit area. */
 .m-btn {
   position: relative; display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 0;
-  height: 48px; padding: 0 18px; border: 1px solid transparent; border-radius: 10px; background: none;
+  min-height: 48px; padding: 8px 18px; border: 1px solid transparent; border-radius: 10px; background: none;
   color: var(--ink); font: inherit; font-size: var(--m-fs-row); font-weight: 600; letter-spacing: var(--m-ls-row);
-  line-height: 1.15; text-decoration: none; white-space: nowrap; -webkit-touch-callout: none;
+  line-height: 1.15; text-align: center; text-decoration: none; white-space: normal; -webkit-touch-callout: none;
 }
 .m-btn svg { flex: none; }
-.m-btn > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.m-btn > span { min-width: 0; overflow-wrap: break-word; hyphens: auto; }
 .m-btn--primary { background: var(--dark-grad); box-shadow: var(--sh-dark); color: var(--ink-inverse); }
 .m-btn--primary:active { background: var(--dark-lo); }
 .m-btn--secondary { border-color: var(--line-strong); background: var(--paper); box-shadow: var(--sh-btn); }
@@ -543,11 +559,11 @@
 .m-btn--danger:active { background: var(--loss-soft); }
 .m-btn--destructive { background: var(--loss); box-shadow: var(--sh-destructive); color: var(--ink-inverse); }
 .m-btn--block { width: 100%; }
-.m-btn--sm { height: 34px; padding: 0 12px; border-radius: 9px; font-size: var(--m-fs-sub); }
+.m-btn--sm { min-height: 34px; padding: 4px 12px; border-radius: 9px; font-size: var(--m-fs-sub); }
 .m-btn--sm::after { content: ""; position: absolute; inset: -5px 0; }
 .m-btn:disabled { opacity: .45; pointer-events: none; }
 .m-btn-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
-.m-btn-pair .m-btn { padding: 0 10px; font-size: 13px; text-align: center; white-space: normal; }
+.m-btn-pair .m-btn { padding: 8px 10px; font-size: var(--m-fs-lead); }
 .m-btn-pair .m-btn > span { overflow: visible; overflow-wrap: break-word; hyphens: auto; }
 
 /* ===== Sheet: forms and pickers rise from the bottom =====
@@ -569,7 +585,7 @@
   color: var(--ink); overflow-wrap: break-word; hyphens: auto;
   font-size: var(--m-fs-title); font-weight: var(--m-fw-title); letter-spacing: var(--m-ls-title); line-height: 1.2;
 }
-.m-sheet__s { margin-top: 3px; color: var(--ink-3); font-size: 13px; line-height: 1.4; }
+.m-sheet__s { margin-top: 3px; color: var(--ink-3); font-size: var(--m-fs-lead); line-height: 1.4; }
 .m-sheet__body { flex: 1 1 auto; min-height: 0; padding: 8px 16px 14px; overflow-y: auto; overscroll-behavior: contain; }
 .m-sheet__foot {
   flex: none; display: flex; align-items: center; gap: 10px; padding: 12px 16px calc(12px + var(--safe-bottom));
@@ -608,7 +624,7 @@
 .m-flows__bar--out { background: var(--s3); }
 .m-flows__l {
   max-width: 100%; margin-top: 4px; overflow: hidden; color: var(--ink-4); text-overflow: ellipsis; white-space: nowrap;
-  font-size: var(--fs-micro); font-weight: 500; line-height: 1.4;
+  font-size: var(--m-fs-note); font-weight: 500; line-height: 1.4;
 }
 .m-flows__l + .m-flows__l { margin-top: 0; } /* January's year under its name */
 
@@ -617,7 +633,7 @@
 .m-search { position: relative; margin-bottom: 10px; }
 .m-search__i {
   display: block; width: 100%; height: 44px; padding: 0 40px; border: 0; border-radius: 12px; background: var(--well-2);
-  color: var(--ink); font: inherit; font-size: var(--m-fs-body); -webkit-appearance: none; appearance: none;
+  color: var(--ink); font: inherit; font-size: var(--m-fs-field); -webkit-appearance: none; appearance: none;
 }
 .m-search__i::placeholder { color: var(--ink-4); }
 .m-search__i:focus-visible { outline: 0; box-shadow: var(--focus-ring); }
@@ -687,7 +703,7 @@
    radio menu of the options. In Akcie's toolbar it sits at the start and the search toggle (an
    `.m-iconbtn`, `aria-pressed`) at the end. */
 .m-sortpill {
-  position: relative; display: inline-flex; align-items: center; gap: 4px; height: 34px; padding: 0 10px; border: 0; border-radius: 10px;
+  position: relative; display: inline-flex; align-items: center; gap: 4px; min-height: 34px; padding: 4px 10px; border: 0; border-radius: 10px;
   background: var(--well-2); color: var(--ink-2); font: inherit; font-size: var(--m-fs-sub); font-weight: 600; white-space: nowrap;
   -webkit-touch-callout: none;
 }
@@ -786,7 +802,7 @@
    reaches 44 px like a small button's. Beside it a 44 px × (`__x`) declines. `.m-pill-row` holds both. */
 .m-pill-row { display: flex; align-items: center; gap: 4px; padding: 4px 0; }
 .m-pill {
-  position: relative; display: inline-flex; align-items: center; gap: 8px; min-width: 0; height: 36px; padding: 0 12px 0 10px;
+  position: relative; display: inline-flex; align-items: center; gap: 8px; min-width: 0; min-height: 36px; padding: 4px 12px 4px 10px;
   border: 1px dashed var(--line-strong); border-radius: 10px; background: var(--paper); color: var(--ink-2);
   font: inherit; font-size: var(--m-fs-sub); font-weight: 600; white-space: nowrap;
 }
@@ -826,7 +842,7 @@
 
 /* A sheet footer's primary whose label can be long ("48 Transaktionen importieren" beside "Abbrechen" at 360): it wraps to a
    second line (as the button pair's labels do) instead of ending in an ellipsis, and grows to 48 px + one more line. */
-.m-btn--wrap { height: auto; min-height: 48px; padding-block: 8px; line-height: 1.15; text-align: center; white-space: normal; }
+.m-btn--wrap { line-height: 1.15; } /* a label that may be long: every .m-btn wraps now; this only keeps the tighter line */
 .m-btn--wrap > span { overflow: visible; overflow-wrap: break-word; hyphens: auto; }
 
 /* The sentences of the picker, the reading and the unreadable stages: 15 / 450 `ink-2`, the supported formats
@@ -842,7 +858,7 @@
 .m-note--ok svg { color: var(--gain); }
 .m-imp-warn { display: flex; align-items: flex-start; gap: 8px; margin: 0; }
 .m-imp-warn svg { flex: none; width: 15px; height: 15px; margin-top: 1px; stroke-width: 1.75; }
-.m-imp-act { display: flex; align-items: center; justify-content: flex-start; width: 100%; height: 44px; margin-top: 6px; padding: 0 8px; border: 0; border-radius: 10px; background: none; color: var(--ink); font: inherit; font-size: var(--m-fs-sub); font-weight: 600; text-align: left; }
+.m-imp-act { display: flex; align-items: center; justify-content: flex-start; width: 100%; min-height: 44px; margin-top: 6px; padding: 4px 8px; border: 0; border-radius: 10px; background: none; color: var(--ink); font: inherit; font-size: var(--m-fs-sub); font-weight: 600; text-align: left; }
 .m-imp-act:active { background: var(--well-2); }
 .m-imp-confirm { margin: -4px 0 12px; } /* the "import anyway" switch (`.m-switchrow`) right under the red box */
 
@@ -876,10 +892,10 @@
 .m-guide { margin: 18px 0 8px; }
 .m-guide__t { margin: 0 4px 6px; color: var(--ink); font-size: var(--m-fs-section); font-weight: var(--m-fw-section); letter-spacing: var(--m-ls-section); line-height: 1.25; }
 .m-guide__steps { margin: 0; padding: 0; list-style: none; }
-.m-guide__steps li { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: start; gap: 10px; padding: 7px 4px; color: var(--ink-2); font-size: 13px; font-weight: 450; line-height: 1.45; overflow-wrap: break-word; }
+.m-guide__steps li { display: grid; grid-template-columns: 22px minmax(0, 1fr); align-items: start; gap: 10px; padding: 7px 4px; color: var(--ink-2); font-size: var(--m-fs-lead); font-weight: 450; line-height: 1.45; overflow-wrap: break-word; }
 .m-guide__n { display: grid; place-items: center; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; background: var(--well-2); color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: 700; font-variant-numeric: tabular-nums; }
 .m-guide__fmt { margin: 6px 4px 0; color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.35; }
-.m-guide .m-btn { max-width: 100%; height: 44px; margin-top: 10px; padding: 0 16px; font-size: var(--m-fs-sub); }
+.m-guide .m-btn { max-width: 100%; min-height: 44px; margin-top: 10px; padding: 6px 16px; font-size: var(--m-fs-sub); }
 .m-guide .m-btn svg { width: 16px; height: 16px; stroke-width: 1.75; }
 .m-guide__back { gap: 4px; }
 .m-guide__back svg { flex: none; width: 16px; height: 16px; stroke-width: 1.75; }
@@ -895,7 +911,7 @@
    the amount line may add "sign checked against the balance" or, in `loss` with a 14 px warning glyph, that expenses in
    the file look positive (`.m-recog__warn`). */
 .m-recog { margin: 12px 0 0; padding: 0; list-style: none; }
-.m-recog__row { display: grid; grid-template-columns: 20px minmax(92px, 34%) minmax(0, 1fr); gap: 8px; align-items: start; padding: 9px 0; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: 13px; font-weight: 450; line-height: 1.4; }
+.m-recog__row { display: grid; grid-template-columns: 20px minmax(92px, 34%) minmax(0, 1fr); gap: 8px; align-items: start; padding: 9px 0; border-top: 1px solid var(--line-soft); color: var(--ink-2); font-size: var(--m-fs-lead); font-weight: 450; line-height: 1.4; }
 .m-recog__row:first-child { border-top: 0; }
 .m-recog__row--no { color: var(--ink-4); }
 .m-recog__ic { display: block; flex: none; width: 16px; height: 16px; margin-top: 2px; color: var(--gain); }
@@ -939,7 +955,7 @@
    caption of the frame. A payment is the entity row (`.m-row`, 60 px, in its swipe box `.m-swipe`) with a second block
    inside the same box: the pill row. The divider and the background belong to both blocks; a row that is dealt with
    (`is-done`: the green pill; `is-left`: put off) is on `well`. */
-.m-queue__lead { margin: 2px 2px 4px; color: var(--ink-3); font-size: 13px; font-weight: 450; line-height: 1.4; }
+.m-queue__lead { margin: 2px 2px 4px; color: var(--ink-3); font-size: var(--m-fs-lead); font-weight: 450; line-height: 1.4; }
 .m-queue__count { margin: 0 2px 10px; color: var(--ink); font-size: var(--m-fs-title); font-weight: var(--m-fw-title); letter-spacing: var(--m-ls-title); line-height: 1.2; }
 .m-queue__prog { display: flex; align-items: center; gap: 10px; margin: 0 2px 12px; color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); font-variant-numeric: tabular-nums; }
 .m-queue__prog .m-pbar { flex: 1; min-width: 0; }
@@ -955,12 +971,12 @@
    got (`gain-soft`, not a button). The name ends with an ellipsis (`.m-pill__t`), the source never shrinks. */
 .m-pillrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 14px 12px; }
 .m-pillrow .m-pill {
-  gap: 6px; max-width: 100%; height: 36px; padding: 0 14px; border: 0; border-radius: 18px;
+  gap: 6px; max-width: 100%; min-height: 36px; padding: 4px 14px; border: 0; border-radius: 18px;
   background: var(--well-2); color: var(--ink); font-weight: 600; -webkit-touch-callout: none;
 }
 .m-pillrow .m-pill:active { background: var(--well-3); }
 .m-pillrow .m-pill svg { color: inherit; }
-.m-pillrow .m-pill small { flex: none; color: inherit; font-size: var(--fs-micro); font-weight: 500; }
+.m-pillrow .m-pill small { flex: none; color: inherit; font-size: var(--m-fs-note); font-weight: 500; }
 .m-pillrow .m-pill__t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .m-pillrow .m-pill--dark { background: var(--dark-grad); box-shadow: var(--sh-dark); color: var(--ink-inverse); }
 .m-pillrow .m-pill--dark:active { background: var(--dark-grad-hover); }

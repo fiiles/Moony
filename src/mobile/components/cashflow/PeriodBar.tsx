@@ -35,13 +35,13 @@ export function PeriodBar({ timeframe, offset, label, onTimeframeChange, onStep 
           if (next) onTimeframeChange(next as PeriodTimeframe);
         }}
         aria-label={t('periods.label')}
-        className="flex h-9 w-full max-w-full gap-px overflow-x-auto rounded-r2 bg-well-2 p-[3px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex min-h-9 w-full max-w-full gap-px overflow-x-auto rounded-r2 bg-well-2 p-[3px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         {TIMEFRAMES.map((tf) => (
           <ToggleGroupPrimitive.Item
             key={tf}
             value={tf}
-            className="h-[30px] flex-[1_0_auto] whitespace-nowrap rounded-r1 px-1.5 text-m-caption font-semibold leading-none text-ink-3 transition-colors duration-fast data-[state=on]:bg-paper data-[state=on]:text-ink data-[state=on]:shadow-seg focus-visible:outline-none focus-visible:shadow-focus"
+            className="min-h-[30px] flex-[1_0_auto] whitespace-nowrap rounded-r1 px-1.5 py-1 text-m-caption font-semibold leading-none text-ink-3 transition-colors duration-fast data-[state=on]:bg-paper data-[state=on]:text-ink data-[state=on]:shadow-seg focus-visible:outline-none focus-visible:shadow-focus"
           >
             {t(`periods.timeframe.${tf}`)}
           </ToggleGroupPrimitive.Item>

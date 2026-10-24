@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useFormat } from '@/lib/use-format';
 import { daysBetween, relativeLabel } from '@/utils/milestones';
 import type { InsuranceRow } from '@/utils/insurance';
 import { DateChip, DATE_CHIP_WIDTH } from '@/mobile/components/DateChip';
@@ -23,13 +24,16 @@ interface UpcomingPremiumsProps {
 /**
  * "Nejbližší platby" under the policy rows (spec §8.4, §8.8): the premiums falling due in the next
  * 90 days as a dated list in place of the desktop's 12-month calendar chart — a date chip (the day
- * and its distance), the policy's name and insurer, the amount in the policy's own currency
- * (never converted, never summed; masked with the eye). Five rows, then "Zobrazit všech N" unfolds
- * the rest in place; a tap opens the policy. Nothing is rendered without a payment ahead (every
- * policy ended, or only one-time premiums).
+ * over its weekday), the policy's name, the insurer with the distance ("Allianz · za 73 dní") and
+ * the amount in the policy's own currency (never converted, never summed; masked with the eye). The
+ * distance is in the sub-line, not in the chip: "in 2 Monaten" does not fit 54 pt, a weekday
+ * always does; a long insurer is the part of the sub-line that gives way. Five rows, then "Zobrazit
+ * všech N" unfolds the rest in place; a tap opens the policy. Nothing is rendered without a payment
+ * ahead (every policy ended, or only one-time premiums).
  */
 export function UpcomingPremiums({ rows, today }: UpcomingPremiumsProps) {
   const { t } = useTranslation('mobile');
+  const fmt = useFormat();
   const moneyText = useMoneyText();
   const [expanded, setExpanded] = useState(false);
   const payments = useMemo(() => upcomingPremiums(rows, today), [rows, today]);
@@ -45,18 +49,26 @@ export function UpcomingPremiums({ rows, today }: UpcomingPremiumsProps) {
       <EntityRows>
         {shown.map((payment) => {
           const distance = relativeLabel(daysBetween(today, payment.day));
+          const when = t(`milestones:relative.${distance.key}`, { count: distance.count });
           return (
             <EntityRow
               key={`${payment.policyId}:${payment.day}`}
               chip={
-                <DateChip
-                  day={payment.day}
-                  caption={t(`milestones:relative.${distance.key}`, { count: distance.count })}
-                />
+                <DateChip day={payment.day} caption={fmt.day(payment.day, { weekday: 'short' })} />
               }
               chipWidth={DATE_CHIP_WIDTH}
               title={payment.name}
-              sub={payment.provider}
+              sub={
+                <span className="flex min-w-0">
+                  {payment.provider && (
+                    <>
+                      <span className="min-w-0 truncate">{payment.provider}</span>
+                      <span className="flex-none whitespace-pre"> · </span>
+                    </>
+                  )}
+                  <span className="flex-none">{when}</span>
+                </span>
+              }
               value={moneyText(payment.amount, payment.currency, { decimals: 0 })}
               href={policyPath(payment.policyId)}
             />

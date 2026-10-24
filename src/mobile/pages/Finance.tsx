@@ -61,7 +61,7 @@ import {
 import { queuePath } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import { initials } from '@/mobile/lib/initials';
-import { policyTypes } from '@/mobile/lib/upcoming-premiums';
+import { effectiveType, policyTypes } from '@/mobile/lib/upcoming-premiums';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 import { accountPath, loanPath, policyPath } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -145,10 +145,9 @@ export default function Finance() {
     () => insurance.rows.filter((row) => showEnded || !row.ended),
     [insurance.rows, showEnded]
   );
-  // The type filter offers the types of the policies shown; a remembered type that has gone (its
-  // last policy ended or was deleted) is no filter, or the list would be empty with no menu to undo it
+  // The type filter offers the types of the policies shown; a remembered type that has gone is none
   const types = useMemo(() => policyTypes(shownPolicies), [shownPolicies]);
-  const typeFilter = types.includes(policyType) ? policyType : 'all';
+  const typeFilter = effectiveType(types, policyType);
   const policyRows = useMemo(
     () =>
       shownPolicies

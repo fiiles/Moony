@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { InsurancePolicy } from '@shared/schema';
 import { insuranceRow, type InsuranceRow } from '@/utils/insurance';
-import { policyTypes, upcomingPremiums } from './upcoming-premiums';
+import { effectiveType, policyTypes, upcomingPremiums } from './upcoming-premiums';
 
 const DAY = 86_400;
 const day = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d) / 1000;
@@ -219,5 +219,30 @@ describe('policyTypes', () => {
 
   it('is empty without policies', () => {
     expect(policyTypes([])).toEqual([]);
+  });
+});
+
+describe('effectiveType', () => {
+  const present = ['life', 'vehicle', 'other'];
+
+  it('keeps "all", the filter that is off', () => {
+    expect(effectiveType(present, 'all')).toBe('all');
+    expect(effectiveType([], 'all')).toBe('all');
+  });
+
+  it('keeps a remembered type that a policy still has', () => {
+    expect(effectiveType(present, 'vehicle')).toBe('vehicle');
+    expect(effectiveType(present, 'other')).toBe('other');
+  });
+
+  it('is "all" for a remembered type that has gone, so the list is never empty with no way back', () => {
+    expect(effectiveType(present, 'property')).toBe('all');
+    expect(effectiveType(['life'], 'vehicle')).toBe('all');
+    expect(effectiveType([], 'life')).toBe('all');
+  });
+
+  it('is "all" for anything that is not a type (a value left behind by another version)', () => {
+    expect(effectiveType(present, '')).toBe('all');
+    expect(effectiveType(present, 'Life')).toBe('all');
   });
 });

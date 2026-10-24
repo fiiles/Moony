@@ -78,3 +78,12 @@ export function policyTypes(rows: readonly InsuranceRow[]): string[] {
   const unknown = [...present].filter((type) => !TYPE_ORDER.includes(type)).sort();
   return [...known, ...unknown];
 }
+
+/**
+ * The type filter in force: the remembered type while a policy still has it, else "all". A type
+ * whose last policy ended or was deleted must not leave the list empty with no menu to undo it (the
+ * group is offered only among two or more types); "all" is the filter that is off.
+ */
+export function effectiveType(types: readonly string[], remembered: string): string {
+  return types.includes(remembered) ? remembered : 'all';
+}

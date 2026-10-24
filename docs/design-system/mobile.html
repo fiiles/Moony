@@ -271,6 +271,12 @@
   </section>
 
   <section class="part">
+    <h2>Nejbližší platby: datum, den v týdnu a vzdálenost v podřádku</h2>
+    <p>Datovaný seznam pod řádky pojistek na Finance na 360, 390 a 430 (spec §8.4, §8.8; v aplikaci <code>UpcomingPremiums</code>): hlava „Nächste Zahlungen“ s poznámkou „90 Tage“, řádky s datovým čipem (<code>.m-row--date</code>, <code>.m-dchip</code>: den a pod ním <strong>den v týdnu</strong> — „Sa.“, „Mo.“, vždy se vejde do 54 pt, kdežto „in 2 Monaten“ ne), názvem pojistky, pojišťovnou s <strong>vzdáleností</strong> v podřádku („Kooperativa · in 8 Tagen“, <code>.m-row__s--split</code>: dlouhá pojišťovna končí výpustkou jako jediná, vzdálenost zůstane) a částkou v měně pojistky (nikdy nepřepočtenou). Čip nikdy není tmavý: pojistné je trvalá platba, ne lhůta. Pět řádků, pak „Alle 7 anzeigen“ rozbalí zbytek na místě. Řádky jsou po 8, 23, 38, 52 a 73 dnech od 16. 10.; popisek čipu je pro jistotu zkrácen výpustkou (<code>.m-dchip small</code>), takže nikdy nepřetéká.</p>
+    <div class="phones" id="upcoming"></div>
+  </section>
+
+  <section class="part">
     <h2>Sheet a pole pro částku</h2>
     <p>Sheet nad obrazovkou: tab bar pod scrimem, držadlo, titulek, jedna věta, pole <code>.m-field</code> (štítek, 48 pt pole, měna uvnitř vpravo, placeholder je poslední zůstatek; druhé pole je vyplněné, třetí s chybou, čtvrté se zapnutým přepínačem ±) a patička na <code>well</code> s tlačítkem Zrušit vlevo a hlavní akcí vpravo. V aplikaci sheet zavírá klepnutí na scrim, Zrušit a Android zpět.</p>
     <div class="phones" id="sheets"></div>
@@ -664,6 +670,30 @@ Schadenmeldung: 957 105 105.</p></div>
         <div class="m-premium__l">Gesamt · 11 Zahlungen</div>
         <div class="m-premium__v">23&nbsp;650 Kč</div>
         <svg class="m-trend__chart demo-chart" data-chart="premiums"></svg>
+      </div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+  </div>
+</template>
+
+<!-- "Nächste Zahlungen" under the policy rows of the Finance tab, at the three widths: the weekday in the chip, the
+     distance in the sub-line after the insurer (a long insurer gives way), the More row; today is 16. 10. 2026. -->
+<template id="upcoming-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"></div>
+      <h1 class="m-nav__title">Finanzen</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Hinzufügen" data-icon="plus"></button><button class="m-nav__btn" type="button" aria-label="Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <div class="m-sec"><span class="m-sec__t">Nächste Zahlungen</span><span class="m-sec__n">90 Tage</span></div>
+      <div class="m-rows">
+        <a class="m-row m-row--date" href="#"><span class="m-dchip"><b>24. 10.</b><small>Sa.</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Hausratversicherung</span><span class="m-row__v">2&nbsp;150 Kč</span></span><span class="m-row__line"><span class="m-row__s m-row__s--split"><span>Kooperativa</span><span>&nbsp;· in 8 Tagen</span></span></span></span></a>
+        <a class="m-row m-row--date" href="#"><span class="m-dchip"><b>8. 11.</b><small>So.</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Reiseversicherung</span><span class="m-row__v">890 Kč</span></span><span class="m-row__line"><span class="m-row__s m-row__s--split"><span>Generali Česká pojišťovna a. s.</span><span>&nbsp;· in 23 Tagen</span></span></span></span></a>
+        <a class="m-row m-row--date" href="#"><span class="m-dchip"><b>23. 11.</b><small>Mo.</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Lebensversicherung</span><span class="m-row__v">80&nbsp;€</span></span><span class="m-row__line"><span class="m-row__s m-row__s--split"><span>Allianz</span><span>&nbsp;· in 38 Tagen</span></span></span></span></a>
+        <a class="m-row m-row--date" href="#"><span class="m-dchip"><b>7. 12.</b><small>Mo.</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Rechtsschutz</span><span class="m-row__v">540 Kč</span></span><span class="m-row__line"><span class="m-row__s m-row__s--split"><span>ARAG</span><span>&nbsp;· in 52 Tagen</span></span></span></span></a>
+        <a class="m-row m-row--date" href="#"><span class="m-dchip"><b>28. 12.</b><small>Mo.</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Kfz-Haftpflicht</span><span class="m-row__v">3&nbsp;400 Kč</span></span><span class="m-row__line"><span class="m-row__s m-row__s--split"><span>Kooperativa</span><span>&nbsp;· in 73 Tagen</span></span></span></span></a>
+        <button class="m-rows__more" type="button">Alle 7 anzeigen</button>
       </div>
     </main>
     <nav class="m-tabbar" data-active="finance"></nav>
@@ -1822,6 +1852,7 @@ Schadenmeldung: 957 105 105.</p></div>
   renderFrames("extra", document.getElementById("extra-frame"), " · mimořádná splátka");
   renderFrames("documents", document.getElementById("documents-frame"), " · dokumenty");
   renderFrames("policy", document.getElementById("policy-frame"), " · pojistka");
+  renderFrames("upcoming", document.getElementById("upcoming-frame"), " · nejbližší platby");
   renderFrames("document-add", document.getElementById("document-add-frame"), " · přidání dokumentu");
   renderFrames("document-view", document.getElementById("document-view-frame"), " · prohlížeč");
   renderFrames("document-zoom", document.getElementById("document-zoom-frame"), " · prohlížeč 2×");

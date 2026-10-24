@@ -7,7 +7,7 @@ export const DATE_CHIP_WIDTH = 54;
 interface DateChipProps {
   /** The day the chip stands for (UTC unix seconds); shown as "20. 10." (day and month). */
   day: number;
-  /** The line under the day: its distance ("za 4 dny") or its year ("2026"). */
+  /** The line under the day: its distance ("za 4 dny"), its weekday ("so") or its year ("2026"). */
   caption: string;
   /** Dark material: a deadline at most 7 days away. */
   urgent?: boolean;
@@ -20,7 +20,10 @@ interface DateChipProps {
  * over its caption 10 / 500, on `well` (radius 9), in dark material for an urgent date. The agenda
  * rows, the loan's events and the premiums coming up use it as the leading element of an
  * `EntityRow` (`chipWidth={DATE_CHIP_WIDTH}`). It is not hidden from screen readers: the row's
- * sub-line leaves the date out, the chip is where it is said.
+ * sub-line leaves the date out, the chip is where it is said. The caption is cut with an ellipsis
+ * as a last guard, so nothing is painted outside the chip (a distance in words, "in 2 Monaten", is
+ * wider than 54 pt in most languages: the premiums coming up put the weekday here and the distance
+ * in the row's sub-line).
  */
 export function DateChip({ day, caption, urgent = false, label }: DateChipProps) {
   const fmt = useFormat();
@@ -42,7 +45,7 @@ export function DateChip({ day, caption, urgent = false, label }: DateChipProps)
       </b>
       <small
         className={cn(
-          'mt-px whitespace-nowrap text-micro font-medium',
+          'mt-px max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-micro font-medium',
           urgent ? 'text-ink-inverse-2' : 'text-ink-4'
         )}
       >

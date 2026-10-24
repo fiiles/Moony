@@ -1058,6 +1058,17 @@ describe('split choices', () => {
     ]);
   });
 
+  it('drops every split choice when the check reports nothing (a failed check)', () => {
+    const merged = mergeSplitOverrides(
+      [
+        { key: 'a', ticker: 'OTHER', splits: [choice(DAY, 'convert')] },
+        { key: 'b', splits: [choice(DAY, 'keep')] },
+      ],
+      []
+    );
+    expect(merged).toEqual([{ key: 'a', ticker: 'OTHER' }]);
+  });
+
   it('switches one split of one instrument', () => {
     const current: StockInstrumentOverride[] = [
       { key: 'a', splits: [choice(DAY, 'convert'), choice(LATER, 'convert')] },

@@ -31,8 +31,8 @@ const EMPTY_STATE: CheckState = { signature: null, checks: {}, error: null };
  * The splits Yahoo reports for the file's trades (`checkSplits`, spec D12): once the instruments
  * are resolved, then again only when what the trades would be stored under changes — an
  * instrument's ticker or whether it is skipped — debounced like the preview. A response that is
- * no longer the latest is dropped; a failed check keeps the previous checks on screen and does
- * not block the import.
+ * no longer the latest is dropped; a failed check reports no splits at all (the choices go, so
+ * nothing is converted) and does not block the import.
  */
 export function useSplitChecks({
   enabled,
@@ -86,7 +86,10 @@ export function useSplitChecks({
         if (requestId !== request.current) return;
         inFlight.current = null;
         console.error('Split check failed:', error);
-        setState((previous) => ({ ...previous, signature, error }));
+        // Unchecked means nothing is converted: the earlier checks (and the choices made from
+        // them) may belong to a ticker the instrument no longer has.
+        setState({ signature, checks: {}, error });
+        onCheckedRef.current([]);
       }
     );
   }, [ready, filePath, signature, debounced, state.signature]);

@@ -377,9 +377,9 @@ function InstrumentRows({
                   const action = splitChoices.find(
                     (c) => c.effectiveDay === split.effectiveDay
                   )?.action;
-                  // What the switch also does: a convert rewrites the stored rows too when Moony
-                  // has not had the split yet (D14).
+                  // A convert rewrites the stored rows too when Moony has not had the split yet (D14).
                   const alsoStored =
+                    action === 'convert' &&
                     split.storedPreSplitCount > 0 &&
                     (split.storedStatus === 'pending' || split.storedStatus === null);
                   return (

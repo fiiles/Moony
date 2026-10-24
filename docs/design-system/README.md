@@ -397,18 +397,29 @@ bar, sheets and segment, Inter bundled). The reference width is 390 pt; every la
   tokens, every class prefixed `m-` so the two layers never collide. Its own `:root` defines the phone
   tokens (safe areas, bar heights, type scale); `src/index.css` carries the same block (keep the two
   identical). Its other sources are the tokens of `tokens.css` only, including `hero-orb`, `sh-seg`,
-  `sh-destructive` and `loss-ring`, which exist in both themes (table in §2). `src/mobile/` matches
-  `mobile.css` visually and never imports it. The phone is light only until Phase 6: `src/main.tsx`
-  overwrites the `data-theme` that `theme-boot.js` stamped with `light` before the first render, the
-  shell has no `ThemeProvider` (the shared toaster falls back to light through `useResolvedTheme()`),
-  and `MobileApp` shows the window itself after its first render (`showWindow()`, capability
-  `core:window:allow-show`) instead of waiting for the provider that does it on the desktop. tao
-  ignores `visible: false` on iOS and Android, so the phone window is up from launch and the call is
-  a no-op there today.
+  `sh-destructive` and `loss-ring`, which exist in both themes (table in §2) and read right on the
+  phone in dark: the orb is moonlight (lighter than paper), both shadows are black-based and the ring is
+  the dark `loss`. `src/mobile/` matches `mobile.css` visually and never imports it.
+- **Dark.** The phone has no theme of its own: the desktop's `ThemeProvider` is mounted unchanged in
+  `MobileApp` (inside `AuthProvider`), the preference is the profile's `theme` (Systém / Světlý /
+  Tmavý), and `data-theme` on `<html>` switches the dark token block of §2 for every component, with no
+  `.dark` class. `public/theme-boot.js` stamps `data-theme` before the first paint on both shells (the
+  device's stored choice, else the OS appearance), so the lock screen is already in the right theme;
+  after unlock the profile's value wins and the device mirror follows. Nothing pins the native
+  interface style (`UIUserInterfaceStyle` is not in `Info.ios.plist`): tao's window `setTheme` and
+  `setBackgroundColor`, which the provider calls guarded, are unsupported on iOS and Android, so the
+  page alone carries the theme. The iOS 26 status bar follows the luminance of the page under it, and
+  what the system draws follows the OS appearance, so a choice against the OS changes the page only.
+  The provider also shows the window once, after its first stamp (`showWindow()`); tao ignores
+  `visible: false` on iOS and Android, so the phone window is up from launch and the call is a no-op
+  there. A chart that needs a colour value in code reads it through `useChartTokens()`, which re-reads
+  the palette on every switch; the other marks use `var(--…)` in the SVG. No chart reads a token once.
 - **`mobile.html`** shows the components at 360, 390 and 430 with German copy (German runs longest): the tab root with Údržba, hero, stats, agenda rows (a dark date chip, a swiped row), the allocation ring and legend and the entity rows, the Finance tab root (compact hero, accounts with every kind of trailing sub and the badge in a title, the loan and policy heads with their one number, the trend card), the account detail (the nav sub-line, the button pair, the hero with a step line, two stats, the flows strip that scrolls while the page does not, the search, the toolbar with the dotted filter button, two day groups under sticky heads with badges in the sub-lines and a row swiped onto "Kategorie"), the Cashflow tab (period bar, savings hero, bars, budget note and category rows with their bars), Spravovat rozpočty and the limit sheet, the sheet with its amount fields, the filter sheet's pick rows, the transaction sheet (amount, label-and-value rows, the meaning segment, the folded details) and the category picker (search, suggestion pill, recent and all categories, the pinned learning switches).
   Under each frame a check reports anything that extends past the screen or scrolls it sideways, and
   lists the texts that end with an ellipsis. Open it after changing a phone component: nothing may
-  overflow at 360. It also shows Majetek's tab root (the compact hero with the allocation bar, class rows with their change lines, an empty class and a class without a rate), the Akcie class page (the pushed screen with its sub-line, the hero with legend, the Pozice · Sledované segment, the toolbar with the sort pill and the position rows) and the position detail (the pushed screen of a position: the sub-line, the hero with the dashed cost line and its legend, the button pair, the six stats in two rows, the trade rows — one of them mid-flash — with the folded list, and the key-value card of the company). The import sheet is shown as its preview (a statement of another account: the file bar, the red box with its button and switch, the balance check, the counts, rows with a category, a manual choice, a missing category, a duplicate and an error, the footer's wrapping primary), its done step (stats, sentences, the primary and the next steps), its account stage (pick rows with a second line), the category choice over it, and the export guide (under the picker with a web route's button, as the list of banks when a file cannot be read, and one bank's guide opened in place with an app route). The categorize queue is shown as its page (the nav bar, the lead line, the count, the progress row, and eight rows: one with each pill row — a suggestion with its source, a long category name, no suggestion, a credit — a done row on `well` with its expansion, and one put off) at the three widths.
+  overflow at 360, in either theme. A Světlý / Tmavý segment in the head (also `?theme=dark` and the `D`
+  key, as in the style guide) stamps `data-theme` on `<html>`, so every frame renders on the dark
+  tokens, and the check runs again after a switch. It also shows Majetek's tab root (the compact hero with the allocation bar, class rows with their change lines, an empty class and a class without a rate), the Akcie class page (the pushed screen with its sub-line, the hero with legend, the Pozice · Sledované segment, the toolbar with the sort pill and the position rows) and the position detail (the pushed screen of a position: the sub-line, the hero with the dashed cost line and its legend, the button pair, the six stats in two rows, the trade rows — one of them mid-flash — with the folded list, and the key-value card of the company). The import sheet is shown as its preview (a statement of another account: the file bar, the red box with its button and switch, the balance check, the counts, rows with a category, a manual choice, a missing category, a duplicate and an error, the footer's wrapping primary), its done step (stats, sentences, the primary and the next steps), its account stage (pick rows with a second line), the category choice over it, and the export guide (under the picker with a web route's button, as the list of banks when a file cannot be read, and one bank's guide opened in place with an app route). The categorize queue is shown as its page (the nav bar, the lead line, the count, the progress row, and eight rows: one with each pill row — a suggestion with its source, a long category name, no suggestion, a credit — a done row on `well` with its expansion, and one put off) at the three widths.
 
 Phone type scale (Inter Variable, tabular numerals on every number; Tailwind `text-m-*`, which `cn()`
 knows as type roles):
@@ -587,3 +598,20 @@ Where the contract differs from the prototype it follows the spec: badges 12 / 5
 drew 9–10 px), the hero chart 160 pt (§10.4; 150), the collapsed nav title 20 pt (§10.3; the prototype's
 detail title was 17 with a sub-line), and the entity row's two lines above. Components use tokens only and
 no `.dark` classes, so the dark token block switches them for free (§10.6).
+
+**A new phone screen must**
+
+- **use tokens only.** No hex, `rgb()`, `hsl()` or Tailwind palette colour anywhere under `src/mobile/`:
+  `src/mobile/no-colour-literals.test.ts` fails otherwise. A literal that cannot be a token carries a
+  `colour-literal-ok: <reason>` comment on its line or the line above.
+- **take contrast material from `dark` and `ink-inverse`.** The primary button, the dark date chip, a
+  pressed option and a checked switch are `dark` with `ink-inverse` text; in the dark theme that
+  material is the light one, so nothing may assume it is dark. A control shared with the desktop (the
+  `Switch` the phone renders) keeps its desktop thumb rule, `ink-2` when off in dark (D13b).
+- **draw chart colours from `useChartTokens()` or `var(--…)`.** Never `useMemo(chartTokens, [])`, which
+  freezes the theme the chart mounted in (the same test catches it).
+- **draw a category's chip through `CategoryIconChip`** (or the phone's 36 pt `CategoryChip`, which
+  carries the same `cat-chip` rule), so the glyph is lifted towards ink in dark (D7); never a
+  hand-tinted circle.
+- **be checked in `mobile.html` and in the simulator, in both themes**, at 360, 390 and 430, with the
+  OS appearance flipped while the app is open under Systém.

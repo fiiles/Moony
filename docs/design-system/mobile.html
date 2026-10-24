@@ -6,6 +6,10 @@
 <title>Moony — mobilní vrstva design systému</title>
 <link rel="stylesheet" href="tokens.css">
 <link rel="stylesheet" href="mobile.css">
+<script>
+  /* The theme is stamped before the first paint (`?theme=dark`), so nothing transitions from light to dark on load. */
+  document.documentElement.setAttribute("data-theme", new URLSearchParams(location.search).get("theme") === "dark" ? "dark" : "light");
+</script>
 <style>
   /* ===== Page chrome (not part of the contract; tokens only, like the contract) ===== */
   *, *::before, *::after { box-sizing: border-box; }
@@ -17,6 +21,7 @@
   .doc-head h1 { margin: 6px 0 8px; font-size: 26px; font-weight: 600; letter-spacing: -.05em; }
   .doc-head p, .part > p { margin: 0 0 8px; color: var(--ink-3); font-size: 14px; line-height: 1.55; }
   .doc-head code, .part code { font-family: ui-monospace, SF Mono, Menlo, monospace; font-size: 12px; color: var(--ink-2); }
+  .theme-seg { width: 220px; margin-top: 14px; }
   .part { margin-top: 44px; }
   .part > h2 { margin: 0 0 6px; font-size: 20px; font-weight: 600; letter-spacing: -.04em; }
   .type { width: 100%; max-width: 760px; border-collapse: collapse; margin-top: 14px; }
@@ -81,6 +86,8 @@
     <p>Komponenty telefonu z <code>mobile.css</code> na tokenech z <code>tokens.css</code>: obrazovka s navigační lištou a jednou posuvnou plochou, tab bar, Údržba, hero (i kompaktní), řádek statistik, entitní řádky (i s datovým čipem, štítkem v názvu a panelem přejetí), rozložení majetku, segment, karta vývoje, pole, tlačítka, sheet a Cashflow (období, stepper, pruhy, poznámka, řádek s ukazatelem). React shell v <code>src/mobile/</code> jim odpovídá vizuálně. Rámečky mají šířky 360 (nejužší běžný Android), 390 (reference) a 430 pt s bezpečnými okraji daného zařízení; texty jsou německy, protože němčina běží nejdéle.</p>
     <p>Pod každým rámečkem je výsledek kontroly vodorovného přetečení (nic nesmí přesáhnout obrazovku, posuvná plocha se nesmí posouvat do stran) a seznam textů, které se zkrátí výpustkou. Obrazovky se dají posouvat: velký titulek se po odjetí složí do navigační lišty.</p>
     <p>Majetek přidává alokační pruh s legendou (<code>.m-abar</code>, <code>.m-legend</code>), řádek změny (<code>.m-change</code>), stránku třídy Akcie (podřádek, hero s legendou značek, nástrojová lišta s řazením, složený seznam) a detail pozice (přerušovaná čára „Vloženo“, dvojice tlačítek, dvě řady statistik, řádky obchodů se zábleskem, karta řádků štítek–hodnota).</p>
+    <p>Přepínač Světlý / Tmavý (nebo klávesa <code>D</code>, nebo <code>?theme=dark</code> v adrese) přepíše <code>data-theme</code> na <code>&lt;html&gt;</code>: každý rámeček se vykreslí na tmavých tokenech z <code>tokens.css</code> a kontrola přetečení pod nimi proběhne znovu.</p>
+    <div class="m-seg theme-seg" id="theme-seg" role="group" aria-label="Motiv"><button class="m-seg__btn is-active" type="button" data-value="light" aria-pressed="true">Světlý</button><button class="m-seg__btn" type="button" data-value="dark" aria-pressed="false">Tmavý</button></div>
   </header>
 
   <section class="part">
@@ -1772,6 +1779,31 @@
     });
   }
   document.querySelectorAll(".m-flows").forEach(function (strip) { strip.scrollLeft = strip.scrollWidth; });
+
+  /* Theme switch (the style guide's pattern): Světlý / Tmavý in the doc head, `?theme=dark` in the URL, key D.
+     It stamps `data-theme` on <html>, which switches the token block; the overflow check runs again after it. */
+  function setTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    document.querySelectorAll("#theme-seg .m-seg__btn").forEach(function (b) {
+      var on = b.getAttribute("data-value") === t;
+      b.classList.toggle("is-active", on);
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+  }
+  function applyTheme(t) {
+    setTheme(t);
+    try { history.replaceState(null, "", "?theme=" + t + location.hash); } catch (err) {}
+    check();
+  }
+  document.getElementById("theme-seg").addEventListener("click", function (e) {
+    var b = e.target.closest(".m-seg__btn");
+    if (b) applyTheme(b.getAttribute("data-value"));
+  });
+  document.addEventListener("keydown", function (e) {
+    if ((e.key === "d" || e.key === "D") && !e.metaKey && !e.ctrlKey && !e.altKey && !/INPUT|SELECT|TEXTAREA/.test(document.activeElement.tagName)) applyTheme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
+  });
+  setTheme(new URLSearchParams(location.search).get("theme") === "dark" ? "dark" : "light");
+
   check();
   window.addEventListener("resize", check);
   if (document.fonts) document.fonts.ready.then(check);

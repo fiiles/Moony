@@ -486,26 +486,37 @@
    digits proportional. */
 .m-field__i--text { padding: 0 14px; font-variant-numeric: normal; }
 
-/* The document viewer's body (`DocumentViewerSheet.tsx`, a tall sheet): an image contained and as large as the room allows
-   (`__img`; the system pinches it), a PDF as its page placeholders in a scroll box of its own (`__pages`, with `__page`: pdf.js
-   judges which pages are in view against its parent, so the parent is the scroller, not the sheet's body), a skeleton until the
-   picture or the first page is ready (`__skeleton`) and, for a file the phone cannot show, one sentence (`__note`). The room is
-   95 % of the screen less 13 rem (the handle, the head, the footer and the home indicator). */
+/* The document viewer's body (`DocumentViewerSheet.tsx`, a tall sheet): one scroll box (`__box`: `well`, 8 px padding, scrolling
+   both ways, 95 % of the screen less 13 rem tall — the handle, the head, the footer and the home indicator) holding an image
+   (`__img`, contained and as large as the room allows) or a PDF's page placeholders (`__pages` with `__page`: pdf.js judges which
+   pages are in view against its parent, so the box is that parent), a skeleton until the picture or the first page is ready
+   (`__skeleton`) and, for a file the phone cannot show, one sentence (`__note`). The app's viewport has `maximum-scale=1`, so the
+   system does not pinch: a double tap or the footer's zoom button (`__zoom`, 48 px) toggles 1× ↔ 2× (`--zoomed`), the content
+   becoming twice the box's width (the PDF's host is measured once per start, so its pages are drawn again at that width). What
+   is shown cannot be selected, dragged or long-pressed into the system's Copy / Share / Save menu: no selection, no callout, no
+   pointer on the picture and the canvases. */
 .m-docview { position: relative; }
+.m-docview__box {
+  max-height: calc(var(--m-vh, 100dvh) * .95 - 13rem); padding: 8px; overflow: auto; overscroll-behavior: contain;
+  border-radius: var(--r-3); background: var(--well); touch-action: manipulation;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
 .m-docview__img {
-  display: block; max-width: 100%; max-height: calc(var(--m-vh, 100dvh) * .95 - 13rem); margin: 0 auto;
-  border-radius: var(--r-2); object-fit: contain;
+  display: block; max-width: 100%; max-height: calc(var(--m-vh, 100dvh) * .95 - 14rem); margin: 0 auto;
+  border-radius: var(--r-2); object-fit: contain; pointer-events: none; -webkit-user-drag: none;
 }
-.m-docview__pages {
-  display: flex; flex-direction: column; gap: 12px; max-height: calc(var(--m-vh, 100dvh) * .95 - 13rem); padding: 8px;
-  overflow-y: auto; overscroll-behavior: contain; border-radius: var(--r-3); background: var(--well);
-}
+.m-docview--zoomed .m-docview__img { width: 200%; max-width: none; max-height: none; }
+.m-docview__pages { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.m-docview--zoomed .m-docview__pages { width: 200%; }
+.m-docview__pages canvas { pointer-events: none; }
 .m-docview__page { flex: none; width: 100%; border: 1px solid var(--line); border-radius: var(--r-2); background: var(--paper); box-shadow: var(--sh-1); }
 .m-docview__skeleton {
   position: absolute; inset: 0; z-index: 1; border-radius: var(--r-3);
   background: linear-gradient(90deg, var(--well-2) 25%, var(--well) 50%, var(--well-2) 75%); background-size: 200% 100%;
 }
 .m-docview__note { margin: 0; padding: 24px 4px; color: var(--ink-3); font-size: var(--m-fs-body); text-align: center; }
+.m-docview__zoom { flex: none; width: 48px; padding: 0; }
+.m-docview__zoom svg { width: 20px; height: 20px; stroke-width: 1.75; }
 @media (prefers-reduced-motion: no-preference) {
   @keyframes m-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
   .m-docview__skeleton { animation: m-shimmer 1.4s linear infinite; }

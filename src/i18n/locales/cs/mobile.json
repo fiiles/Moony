@@ -316,7 +316,10 @@
     "count_other": "{{count}} · šifrovaných",
     "openOnComputer": "Tento soubor telefon zobrazit neumí. Otevřete ho v Moony na počítači.",
     "saving": "Šifruji a ukládám…",
-    "rowMenu": "Další akce: {{name}}"
+    "rowMenu": "Další akce: {{name}}",
+    "previewFailed": "Náhled se nepodařilo zobrazit. Otevřete dokument v Moony na počítači.",
+    "zoomIn": "Přiblížit",
+    "zoomOut": "Oddálit"
   },
   "transaction": {
     "flowSaved": "Význam uložen",

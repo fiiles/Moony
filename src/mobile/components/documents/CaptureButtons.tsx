@@ -8,7 +8,7 @@ interface CaptureButtonsProps {
   cameraLabel: string;
   /** "Vybrat soubor" for a document, "Vybrat z fotek" for a photo. */
   pickLabel: string;
-  /** The picker's `accept` (the gallery's `PHOTO_ACCEPT`); none for a document, so any file can be chosen. */
+  /** The picker's `accept`: a document's `DOCUMENT_ACCEPT`, the gallery's `PHOTO_ACCEPT`; none lets any file be chosen. */
   pickAccept?: string;
   /** The picker takes several files (the gallery); the camera always gives one. */
   multiple?: boolean;
@@ -28,8 +28,9 @@ const HIDDEN_INPUT = 'sr-only';
  * "Vyfotit" and "Vybrat soubor" (README §13, `.m-capture`; spec §8.8, §9): two secondary buttons
  * under a list of documents or photos, each driving a hidden file input. The camera's is exactly
  * `accept="image/*" capture="environment"`, which opens the system camera and hands back the
- * photograph as a `File`; the picker's has no `accept` for documents (iOS then offers Photo
- * Library, Take Photo and Choose File), the gallery narrows it to its photo types.
+ * photograph as a `File`; the picker's `accept` is the caller's (a document's filter or the
+ * gallery's photo types — naming JPEG and not HEIC makes WebKit convert a Photo Library original to
+ * JPEG), and a picker with none (a plain file input) would offer every file.
  *
  * The input is opened by `click()` inside the button's own click handler — WKWebView opens a
  * picker only from a user gesture. Both inputs are emptied right after their files have been read,

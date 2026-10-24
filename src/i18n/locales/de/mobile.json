@@ -294,7 +294,10 @@
     "count_other": "{{count}} · verschlüsselt",
     "openOnComputer": "Diese Datei lässt sich auf dem Telefon nicht anzeigen. Öffnen Sie sie in Moony auf Ihrem Computer.",
     "saving": "Wird verschlüsselt und gespeichert…",
-    "rowMenu": "Weitere Aktionen: {{name}}"
+    "rowMenu": "Weitere Aktionen: {{name}}",
+    "previewFailed": "Die Vorschau konnte nicht angezeigt werden. Öffnen Sie das Dokument in Moony auf Ihrem Computer.",
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern"
   },
   "transaction": {
     "flowSaved": "Bedeutung gespeichert",

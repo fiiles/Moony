@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { getFormatters } from '@/lib/format';
 import {
+  DOCUMENT_ACCEPT,
   MAX_DOCUMENT_BYTES,
   documentNameFrom,
   documentSub,
   fileSizeText,
+  isDoubleTap,
   pickedFileProblem,
+  scrollAfterZoom,
 } from './documents';
 
 const cs = getFormatters('cs-CZ', 'CZK');
@@ -143,5 +146,60 @@ describe('documentSub', () => {
     expect(documentSub({ ...doc, fileType: 'appraisal' }, label, cs)).toBe(
       'appraisal · 1,2 MB · 24. 10. 2026'
     );
+  });
+});
+
+describe('DOCUMENT_ACCEPT', () => {
+  const entries = DOCUMENT_ACCEPT.split(',');
+
+  it('is the desktop document filter: pdf, doc, docx, jpg, jpeg, png, gif', () => {
+    expect(entries).toEqual([
+      'application/pdf',
+      '.pdf',
+      '.doc',
+      '.docx',
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+    ]);
+  });
+
+  it('names no HEIC type, so that WebKit converts a Photo Library original to JPEG', () => {
+    expect(entries.some((entry) => /hei[cf]/i.test(entry))).toBe(false);
+    expect(entries).not.toContain('image/*');
+  });
+});
+
+describe('isDoubleTap', () => {
+  const tap = (time: number, x = 100, y = 200) => ({ time, x, y });
+
+  it('is a second tap soon after the first, near it', () => {
+    expect(isDoubleTap(tap(1000), tap(1200, 110, 195))).toBe(true);
+    expect(isDoubleTap(tap(1000), tap(1300))).toBe(true);
+  });
+
+  it('is not the first tap, a slow second one or a far one', () => {
+    expect(isDoubleTap(null, tap(1000))).toBe(false);
+    expect(isDoubleTap(tap(1000), tap(1301))).toBe(false);
+    expect(isDoubleTap(tap(1000), tap(1100, 160, 200))).toBe(false);
+    expect(isDoubleTap(tap(1000), tap(1100, 100, 260))).toBe(false);
+  });
+
+  it('is not a tap that seems to come before the first', () => {
+    expect(isDoubleTap(tap(1000), tap(900))).toBe(false);
+  });
+});
+
+describe('scrollAfterZoom', () => {
+  it('keeps the point under the finger where it was when zooming in', () => {
+    // The point 100 px into the box, the box not scrolled: at 2× it is 200 px into the content
+    expect(scrollAfterZoom(0, 100, 1, 2)).toBe(100);
+    // Scrolled by 50: the point is 150 px into the content, 300 px at 2×
+    expect(scrollAfterZoom(50, 100, 1, 2)).toBe(200);
+  });
+
+  it('goes back towards the start when zooming out, never below zero', () => {
+    expect(scrollAfterZoom(200, 100, 2, 1)).toBe(50);
+    expect(scrollAfterZoom(40, 100, 2, 1)).toBe(0);
   });
 });

@@ -294,7 +294,10 @@
     "count_other": "{{count}} · krypterade",
     "openOnComputer": "Den här filen kan inte visas på telefonen. Öppna den i Moony på datorn.",
     "saving": "Krypterar och sparar…",
-    "rowMenu": "Fler åtgärder: {{name}}"
+    "rowMenu": "Fler åtgärder: {{name}}",
+    "previewFailed": "Förhandsvisningen kunde inte visas. Öppna dokumentet i Moony på datorn.",
+    "zoomIn": "Zooma in",
+    "zoomOut": "Zooma ut"
   },
   "transaction": {
     "flowSaved": "Betydelse sparad",

@@ -272,7 +272,10 @@
     "count_other": "{{count}} 份 · 已加密",
     "openOnComputer": "手机无法显示此文件。请在电脑上的 Moony 中打开。",
     "saving": "正在加密并保存…",
-    "rowMenu": "更多操作：{{name}}"
+    "rowMenu": "更多操作：{{name}}",
+    "previewFailed": "无法显示预览。请在电脑上的 Moony 中打开该文档。",
+    "zoomIn": "放大",
+    "zoomOut": "缩小"
   },
   "transaction": {
     "flowSaved": "含义已保存",

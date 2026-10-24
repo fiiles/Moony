@@ -294,7 +294,10 @@
     "count_other": "{{count}} · encrypted",
     "openOnComputer": "This file can't be shown on the phone. Open Moony on your computer to view it.",
     "saving": "Encrypting and saving…",
-    "rowMenu": "More actions: {{name}}"
+    "rowMenu": "More actions: {{name}}",
+    "previewFailed": "The preview could not be shown. Open the document in Moony on your computer.",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out"
   },
   "transaction": {
     "flowSaved": "Meaning saved",

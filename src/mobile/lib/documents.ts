@@ -111,3 +111,41 @@ export function documentSub(
     .filter(Boolean)
     .join(' · ');
 }
+
+/**
+ * The picker's `accept` for a document: the desktop's document filter (pdf, doc, docx, jpg, jpeg,
+ * png, gif). It names JPEG and not HEIC, so WebKit converts a Photo Library original to JPEG
+ * instead of handing over the HEIC (one that arrives anyway is still refused by `pickedFileProblem`).
+ */
+export const DOCUMENT_ACCEPT = 'application/pdf,.pdf,.doc,.docx,image/jpeg,image/png,image/gif';
+
+/** One tap of the viewer: when (a pointer event's `timeStamp`, ms) and where (client px). */
+export interface TapPoint {
+  time: number;
+  x: number;
+  y: number;
+}
+
+/** A second tap counts as a double tap within this long of the first … */
+const DOUBLE_TAP_MS = 300;
+/** … and this far from it. */
+const DOUBLE_TAP_PX = 30;
+
+/** Whether `tap` is the second tap of a double tap that began with `previous`. */
+export function isDoubleTap(previous: TapPoint | null, tap: TapPoint): boolean {
+  if (previous === null) return false;
+  const elapsed = tap.time - previous.time;
+  return (
+    elapsed >= 0 &&
+    elapsed <= DOUBLE_TAP_MS &&
+    Math.hypot(tap.x - previous.x, tap.y - previous.y) <= DOUBLE_TAP_PX
+  );
+}
+
+/**
+ * Where a scroll box should be scrolled (one axis) after its content went from `from`× to `to`×
+ * its width, so that the point `pointer` px into the box stays under the finger. Never below 0.
+ */
+export function scrollAfterZoom(scroll: number, pointer: number, from: number, to: number): number {
+  return Math.max(0, ((scroll + pointer) / from) * to - pointer);
+}

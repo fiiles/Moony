@@ -316,7 +316,10 @@
     "count_other": "{{count}} · cifrati",
     "openOnComputer": "Questo file non può essere mostrato sul telefono. Aprilo in Moony sul computer.",
     "saving": "Cifratura e salvataggio…",
-    "rowMenu": "Altre azioni: {{name}}"
+    "rowMenu": "Altre azioni: {{name}}",
+    "previewFailed": "Non è stato possibile mostrare l'anteprima. Apri il documento in Moony sul computer.",
+    "zoomIn": "Ingrandisci",
+    "zoomOut": "Riduci"
   },
   "transaction": {
     "flowSaved": "Significato salvato",

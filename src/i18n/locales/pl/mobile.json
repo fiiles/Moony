@@ -338,7 +338,10 @@
     "count_other": "{{count}} · szyfrowanych",
     "openOnComputer": "Tego pliku nie można wyświetlić na telefonie. Otwórz go w Moony na komputerze.",
     "saving": "Szyfruję i zapisuję…",
-    "rowMenu": "Więcej akcji: {{name}}"
+    "rowMenu": "Więcej akcji: {{name}}",
+    "previewFailed": "Nie udało się wyświetlić podglądu. Otwórz dokument w Moony na komputerze.",
+    "zoomIn": "Powiększ",
+    "zoomOut": "Pomniejsz"
   },
   "transaction": {
     "flowSaved": "Znaczenie zapisane",

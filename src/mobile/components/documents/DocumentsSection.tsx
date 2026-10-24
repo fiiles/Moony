@@ -6,7 +6,12 @@ import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
-import { documentSub, pickedFileProblem, type DocumentSource } from '@/mobile/lib/documents';
+import {
+  DOCUMENT_ACCEPT,
+  documentSub,
+  pickedFileProblem,
+  type DocumentSource,
+} from '@/mobile/lib/documents';
 import { AddDocumentSheet, type PickedDocument } from '@/mobile/sheets/AddDocumentSheet';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { DocumentViewerSheet } from '@/mobile/sheets/DocumentViewerSheet';
@@ -133,6 +138,7 @@ export function DocumentsSection({ kind, ownerId, fileTypes, typeLabel }: Docume
       <CaptureButtons
         cameraLabel={t('documents.takePhoto')}
         pickLabel={t('documents.chooseFile')}
+        pickAccept={DOCUMENT_ACCEPT}
         onFiles={chosen}
       />
       <AddDocumentSheet

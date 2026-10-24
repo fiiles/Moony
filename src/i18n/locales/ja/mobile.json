@@ -272,7 +272,10 @@
     "count_other": "{{count}}件 · 暗号化済み",
     "openOnComputer": "このファイルはスマートフォンでは表示できません。パソコンの Moony で開いてください。",
     "saving": "暗号化して保存しています…",
-    "rowMenu": "その他の操作: {{name}}"
+    "rowMenu": "その他の操作: {{name}}",
+    "previewFailed": "プレビューを表示できませんでした。パソコンの Moony でドキュメントを開いてください。",
+    "zoomIn": "拡大",
+    "zoomOut": "縮小"
   },
   "transaction": {
     "flowSaved": "意味を保存しました",

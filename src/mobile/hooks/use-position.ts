@@ -59,14 +59,24 @@ export interface PositionData {
  * its trades, the value history of the period (`useTickerHistory`: refetched when the backend
  * finishes a recalculation, and backfilled once for a position imported without history) and the
  * company data in two steps.
+ *
+ * `live` is false while the position is being deleted: its queries keep what they have and fetch
+ * nothing more. `delete_investment` emits `recalculation-complete` before it returns, and
+ * SyncProvider answers that by invalidating every `['investment']` query
+ * (`invalidateAfterPriceRefresh`); the page still showing the position would otherwise ask the
+ * backend for the id it has just deleted (`get_investment` fails) while it leaves.
  */
-export function usePosition(id: string | undefined, period: ChartPeriod): PositionData {
+export function usePosition(
+  id: string | undefined,
+  period: ChartPeriod,
+  live = true
+): PositionData {
   const { currencyCode, fxRevision } = useCurrency();
 
   const { data: position, isLoading } = useQuery<StockPosition | null>({
     queryKey: ['investment', id, currencyCode, fxRevision],
     queryFn: () => investmentsApi.get(id!, currencyCode),
-    enabled: !!id,
+    enabled: !!id && live,
   });
   const investment = position?.investment;
   const ticker = investment?.ticker;
@@ -75,13 +85,13 @@ export function usePosition(id: string | undefined, period: ChartPeriod): Positi
   const { data: transactionData } = useQuery<InvestmentTransaction[]>({
     queryKey: ['investment-transactions', id],
     queryFn: () => investmentsApi.getTransactions(id!),
-    enabled: !!id,
+    enabled: !!id && live,
   });
   const transactions = useMemo(() => transactionData ?? [], [transactionData]);
   // Each trade converts at the rates of its own day; the hero takes everything from the backend.
   const { ready: ratesReady, convertAt } = useTransactionFx(transactionData);
 
-  const history = useTickerHistory('stock', ticker, period);
+  const history = useTickerHistory('stock', ticker, period, live);
 
   // Company data comes from Yahoo through the stock_data cache. The stored record shows at once;
   // the second query lets the backend fetch it first when it is missing or over a day old, so a
@@ -124,9 +134,11 @@ export function usePosition(id: string | undefined, period: ChartPeriod): Positi
  * `useDeleteCrypto` does, so the class list does not refetch under the open screen; the list that
  * mounts next finds them invalidated and refetches. The position's own key
  * (`['investment', id, …]`) is not one of them, so what keeps the screen from turning "not found"
- * while the delete finishes is the page's retained view (`useRetained` while `exit.deleting`).
+ * while the delete finishes is the page's retained view (`useRetained` while `exit.deleting`), and
+ * the page pauses the position's queries meanwhile (`usePosition(…, live)`). `ticker` is needed
+ * by `follow` only.
  */
-export function usePositionMutations(id: string | undefined, ticker: string | undefined) {
+export function usePositionMutations(id: string | undefined, ticker?: string) {
   const queryClient = useQueryClient();
   const { currencyCode } = useCurrency();
   const { t } = useTranslation('mobile');

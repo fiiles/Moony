@@ -66,17 +66,7 @@ export default function PositionDetail() {
   const [trade, setTrade] = useState<'buy' | 'sell' | null>(null);
   const [editing, setEditing] = useState<InvestmentTransaction | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const data = usePosition(params?.id, period);
-  const ledger = usePositionLedger(data.transactions);
-  const { deleteTransaction } = useInvestmentTransactionMutations();
-  const { holding, position, history, companyInfo, companyPending, reportCurrency } = data;
-  const { remove } = usePositionMutations(params?.id, holding?.ticker);
-
-  const current = useMemo<PositionView | null>(
-    () => (holding ? { holding, position, history, companyInfo, companyPending } : null),
-    [holding, position, history, companyInfo, companyPending]
-  );
-  const kept = useRetained(current);
+  const { remove } = usePositionMutations(params?.id);
   const exit = useDeleteAndLeave({
     home: routes.stocks,
     pathOf: positionPath,
@@ -87,6 +77,18 @@ export default function PositionDetail() {
     remove: () => remove.mutateAsync(),
     closeSheet: () => setDeleteOpen(false),
   });
+  // While the delete runs nothing the page reads is fetched again: the backend's recalculation
+  // event would otherwise refetch the deleted id (`usePosition`'s `live`)
+  const data = usePosition(params?.id, period, !exit.deleting);
+  const ledger = usePositionLedger(data.transactions);
+  const { deleteTransaction } = useInvestmentTransactionMutations();
+  const { holding, position, history, companyInfo, companyPending, reportCurrency } = data;
+
+  const current = useMemo<PositionView | null>(
+    () => (holding ? { holding, position, history, companyInfo, companyPending } : null),
+    [holding, position, history, companyInfo, companyPending]
+  );
+  const kept = useRetained(current);
   // A position being deleted stays on screen (as it was) until the screen has left
   const view = exit.deleting ? kept : current;
 

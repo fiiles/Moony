@@ -744,6 +744,30 @@
     "appearance": {
       "lead": "System podąża za jasnym lub ciemnym wyglądem telefonu."
     },
+    "import": {
+      "lead": "Wyciągi z banku: formaty, których się nauczyłem, i instrukcje eksportu.",
+      "formats": "Poznane formaty",
+      "empty": "Gdy potwierdzisz, jak czytam nieznany plik, zapamiętam jego format i następnym razem odczytam go bez pytań.",
+      "sub": "{{account}} · poznany {{created}} · ostatnio użyty {{lastUsed}}",
+      "subNoAccount": "poznany {{created}} · ostatnio użyty {{lastUsed}}",
+      "shadowed": "bank ma wbudowany format",
+      "guides": "Instrukcje eksportu",
+      "guidesRow": "Jak uzyskać wyciąg z banku",
+      "renamed": "Zmieniono nazwę formatu",
+      "deleted": "Usunięto format",
+      "format": {
+        "title": "Poznany format",
+        "name": "Nazwa",
+        "account": "Konto",
+        "created": "Poznany",
+        "lastUsed": "Ostatnio użyty",
+        "columns": "Kolumny",
+        "field": "{{field}}: {{column}}",
+        "delete": "Usuń format",
+        "deleteTitle": "Usunąć format {{name}}?",
+        "deleteLead": "Następny plik w tym formacie ponownie przejdzie przez rozpoznawanie."
+      }
+    },
     "delete": {
       "title": "Usunąć wszystkie dane?",
       "lead": "Trwale usuwa bazę danych, klucze i załączniki z tego telefonu. Kopie zapasowe poza telefonem zostają. Najpierw zrób kopię zapasową — to jedyna droga powrotu.",

@@ -672,6 +672,30 @@
     "appearance": {
       "lead": "System følger telefonens lyse eller mørke utseende."
     },
+    "import": {
+      "lead": "Kontoutskrifter: formatene jeg har lært, og veiledninger for eksport.",
+      "formats": "Lærte formater",
+      "empty": "Når du bekrefter hvordan jeg leser en ukjent fil, husker jeg formatet og leser den uten spørsmål neste gang.",
+      "sub": "{{account}} · lært {{created}} · sist brukt {{lastUsed}}",
+      "subNoAccount": "lært {{created}} · sist brukt {{lastUsed}}",
+      "shadowed": "banken har et innebygd format",
+      "guides": "Eksportveiledninger",
+      "guidesRow": "Slik får du en kontoutskrift fra banken",
+      "renamed": "Formatet er omdøpt",
+      "deleted": "Formatet er slettet",
+      "format": {
+        "title": "Lært format",
+        "name": "Navn",
+        "account": "Konto",
+        "created": "Lært",
+        "lastUsed": "Sist brukt",
+        "columns": "Kolonner",
+        "field": "{{field}}: {{column}}",
+        "delete": "Slett format",
+        "deleteTitle": "Slette formatet {{name}}?",
+        "deleteLead": "Neste fil i dette formatet går gjennom gjenkjenningen på nytt."
+      }
+    },
     "delete": {
       "title": "Slette alle data?",
       "lead": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt. Sikkerhetskopier utenfor telefonen blir liggende. Ta en sikkerhetskopi først — det er den eneste veien tilbake.",

@@ -64,6 +64,7 @@ export const SETTINGS_SECTIONS = [
   'reminders',
   'notifications',
   'backup',
+  'import',
 ] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];

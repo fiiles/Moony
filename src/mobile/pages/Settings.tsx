@@ -25,7 +25,6 @@ import { MILESTONE_GROUP_IDS, kindsOf } from '@/utils/milestones';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
 import { useBack } from '@/mobile/hooks/use-back';
-import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import { useNotificationPermission } from '@/mobile/hooks/use-notification-permission';
 import { readBackgroundLockMinutes } from '@/mobile/lib/background-lock';
 import { BIOMETRIC_STATUS_KEY } from '@/mobile/lib/biometrics';
@@ -58,10 +57,9 @@ function useAppVersion(): string {
 /**
  * Nastavení from the avatar on Přehled (spec §8.9): the profile head, then the rows by what they
  * are — profile, language and Vzhled; security, backup, notifications and reminders, each with its
- * state in the sub-line and a page of its own (`/settings/:section`); import; lock and delete — and
- * the version with the promise under it. Language, Vzhled and delete open sheets, and so does
- * import: the import sheet that every entry point shares (`useImportSheet`), asked here without an
- * account.
+ * state in the sub-line and a page of its own (`/settings/:section`); import, whose page holds the
+ * learned formats and the export guides and starts the import sheet; lock and delete — and the
+ * version with the promise under it. Language, Vzhled and delete open sheets.
  */
 export default function Settings() {
   const { t } = useTranslation('mobile');
@@ -72,7 +70,6 @@ export default function Settings() {
   const { preference } = useTheme();
   const fmt = useFormat();
   const back = useBack(routes.overview);
-  const { openImport } = useImportSheet();
   const version = useAppVersion();
   const [sheet, setSheet] = useState<SheetKind | null>(null);
   const closeSheet = (open: boolean) => {
@@ -205,7 +202,7 @@ export default function Settings() {
           icon={FileText}
           title={t('settings.rows.import')}
           sub={t('settings.rows.importSub')}
-          onClick={() => openImport({ source: 'settings' })}
+          href={settingsPath('import')}
         />
       </EntityRows>
 

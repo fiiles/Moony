@@ -672,6 +672,30 @@
     "appearance": {
       "lead": "System följer telefonens ljusa eller mörka utseende."
     },
+    "import": {
+      "lead": "Kontoutdrag: formaten jag har lärt mig och guider för export.",
+      "formats": "Inlärda format",
+      "empty": "När du bekräftar hur jag läser en okänd fil minns jag dess format och läser den utan frågor nästa gång.",
+      "sub": "{{account}} · inlärt {{created}} · senast använt {{lastUsed}}",
+      "subNoAccount": "inlärt {{created}} · senast använt {{lastUsed}}",
+      "shadowed": "banken har ett inbyggt format",
+      "guides": "Exportguider",
+      "guidesRow": "Så får du ett kontoutdrag från banken",
+      "renamed": "Formatet har bytt namn",
+      "deleted": "Formatet har tagits bort",
+      "format": {
+        "title": "Inlärt format",
+        "name": "Namn",
+        "account": "Konto",
+        "created": "Inlärt",
+        "lastUsed": "Senast använt",
+        "columns": "Kolumner",
+        "field": "{{field}}: {{column}}",
+        "delete": "Ta bort format",
+        "deleteTitle": "Ta bort formatet {{name}}?",
+        "deleteLead": "Nästa fil i det här formatet går genom igenkänningen igen."
+      }
+    },
     "delete": {
       "title": "Radera alla data?",
       "lead": "Raderar databasen, nycklarna och bilagorna på den här telefonen för gott. Säkerhetskopior utanför telefonen finns kvar. Gör en säkerhetskopia först — det är den enda vägen tillbaka.",

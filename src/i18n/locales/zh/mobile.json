@@ -636,6 +636,30 @@
     "appearance": {
       "lead": "「跟随系统」会沿用手机的浅色或深色外观。"
     },
+    "import": {
+      "lead": "银行账单：已学习的格式和导出指南。",
+      "formats": "已学习的格式",
+      "empty": "当您确认我如何读取一个陌生文件后，我会记住它的格式，下次无需提问即可读取。",
+      "sub": "{{account}} · 学习于 {{created}} · 最近使用 {{lastUsed}}",
+      "subNoAccount": "学习于 {{created}} · 最近使用 {{lastUsed}}",
+      "shadowed": "银行已有内置格式",
+      "guides": "导出指南",
+      "guidesRow": "如何从银行获取账单",
+      "renamed": "格式已重命名",
+      "deleted": "格式已删除",
+      "format": {
+        "title": "已学习的格式",
+        "name": "名称",
+        "account": "账户",
+        "created": "学习于",
+        "lastUsed": "最近使用",
+        "columns": "列",
+        "field": "{{field}}：{{column}}",
+        "delete": "删除格式",
+        "deleteTitle": "删除格式“{{name}}”？",
+        "deleteLead": "此格式的下一个文件将重新经过识别。"
+      }
+    },
     "delete": {
       "title": "删除所有数据？",
       "lead": "将永久删除这部手机上的数据库、密钥和附件。手机之外的备份副本会保留。请先创建备份——这是恢复数据的唯一途径。",

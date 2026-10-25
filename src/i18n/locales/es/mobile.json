@@ -708,6 +708,30 @@
     "appearance": {
       "lead": "Sistema sigue la apariencia clara u oscura del teléfono."
     },
+    "import": {
+      "lead": "Extractos del banco: los formatos que he aprendido y guías para exportarlos.",
+      "formats": "Formatos aprendidos",
+      "empty": "Cuando confirmas cómo leo un archivo desconocido, recuerdo su formato y la próxima vez lo leo sin preguntas.",
+      "sub": "{{account}} · aprendido {{created}} · último uso {{lastUsed}}",
+      "subNoAccount": "aprendido {{created}} · último uso {{lastUsed}}",
+      "shadowed": "el banco tiene un formato integrado",
+      "guides": "Guías de exportación",
+      "guidesRow": "Cómo obtener un extracto de tu banco",
+      "renamed": "Formato renombrado",
+      "deleted": "Formato eliminado",
+      "format": {
+        "title": "Formato aprendido",
+        "name": "Nombre",
+        "account": "Cuenta",
+        "created": "Aprendido",
+        "lastUsed": "Último uso",
+        "columns": "Columnas",
+        "field": "{{field}}: {{column}}",
+        "delete": "Eliminar formato",
+        "deleteTitle": "¿Eliminar el formato {{name}}?",
+        "deleteLead": "El próximo archivo en este formato volverá a pasar por el reconocimiento."
+      }
+    },
     "delete": {
       "title": "¿Eliminar todos los datos?",
       "lead": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: es la única forma de recuperar los datos.",

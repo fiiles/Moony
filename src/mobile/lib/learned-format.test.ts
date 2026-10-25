@@ -8,6 +8,7 @@ import {
   applyLearning,
   defaultFormatName,
   learnedFormatInsert,
+  learnedFormatSub,
   learnedMappingFrom,
   learnedPreselect,
   learningAfterImport,
@@ -473,5 +474,37 @@ describe('applyLearning', () => {
     await expect(applyLearning({ kind: 'save', insert }, target)).resolves.toBeNull();
     const gone = store({ markUsed: () => Promise.reject(new Error('Learned format not found')) });
     await expect(applyLearning({ kind: 'markUsed', id: 'learned:1' }, gone)).resolves.toBeNull();
+  });
+});
+
+describe('learnedFormatSub', () => {
+  const unicredit = { id: 'a', name: 'Běžný účet', institution: { name: 'UniCredit' } };
+  const accounts = [
+    unicredit,
+    { id: 'b', name: 'Spořicí', institution: null },
+    { id: 'c', name: 'Hotovost', institution: { name: '  ' } },
+  ];
+
+  it('names the account with its institution', () => {
+    expect(learnedFormatSub(format({ accountId: 'a' }), accounts).account).toBe(
+      'Běžný účet · UniCredit'
+    );
+  });
+
+  it('names an account without an institution by its name alone', () => {
+    expect(learnedFormatSub(format({ accountId: 'b' }), accounts).account).toBe('Spořicí');
+    expect(learnedFormatSub(format({ accountId: 'c' }), accounts).account).toBe('Hotovost');
+  });
+
+  it('has no account when the account is gone or the format never had one', () => {
+    expect(learnedFormatSub(format({ accountId: 'gone' }), accounts).account).toBeNull();
+    expect(learnedFormatSub(format({ accountId: null }), accounts).account).toBeNull();
+    expect(learnedFormatSub(format({ accountId: 'a' }), []).account).toBeNull();
+  });
+
+  it('passes the dates through as they are', () => {
+    expect(
+      learnedFormatSub(format({ createdAt: 1_760_000_000, lastUsedAt: 1_761_000_000 }), accounts)
+    ).toEqual({ account: null, created: 1_760_000_000, lastUsed: 1_761_000_000 });
   });
 });

@@ -4,7 +4,8 @@
  * the preview. The store is `learnedFormatsApi` (Rust `services/csv_import/learned.rs`); this file
  * holds what the import flow decides around it — how a stored mapping is read against the file in
  * hand, what a new format is called, which account it preselects and when an import teaches or
- * marks one used. Nothing here touches the network, a file or a React hook.
+ * marks one used — and what Nastavení → Import says about a stored format (`learnedFormatSub`).
+ * Nothing here touches the network, a file or a React hook.
  */
 import type {
   CsvPreviewResult,
@@ -241,5 +242,26 @@ export function learnedFormatInsert(input: {
     headerRow: csv.headerRow,
     mapping: learnedMappingFrom(input.mapping),
     accountId: input.accountId,
+  };
+}
+
+/**
+ * What a learned format's row and sheet say about it besides its name: the account it was learned
+ * for — its name with the institution ("Běžný účet · UniCredit"), `null` when it has none or the
+ * account has since been deleted — and the two dates (unix seconds, as stored; the caller writes
+ * them in the person's language).
+ */
+export function learnedFormatSub(
+  format: Pick<LearnedCsvFormat, 'accountId' | 'createdAt' | 'lastUsedAt'>,
+  accounts: readonly { id: string; name: string; institution?: { name: string } | null }[]
+): { account: string | null; created: number; lastUsed: number } {
+  const account = format.accountId
+    ? accounts.find((candidate) => candidate.id === format.accountId)
+    : undefined;
+  const institution = account?.institution?.name.trim();
+  return {
+    account: account ? [account.name, institution].filter(Boolean).join(' · ') : null,
+    created: format.createdAt,
+    lastUsed: format.lastUsedAt,
   };
 }

@@ -672,6 +672,30 @@
     "appearance": {
       "lead": "System folgt dem hellen oder dunklen Erscheinungsbild des Telefons."
     },
+    "import": {
+      "lead": "Kontoauszüge: die Formate, die ich gelernt habe, und Anleitungen zum Export.",
+      "formats": "Gelernte Formate",
+      "empty": "Wenn Sie bestätigen, wie ich eine unbekannte Datei lese, merke ich mir ihr Format und lese sie beim nächsten Mal ohne Rückfragen.",
+      "sub": "{{account}} · gelernt {{created}} · zuletzt genutzt {{lastUsed}}",
+      "subNoAccount": "gelernt {{created}} · zuletzt genutzt {{lastUsed}}",
+      "shadowed": "die Bank hat ein integriertes Format",
+      "guides": "Anleitungen zum Export",
+      "guidesRow": "So erhalten Sie einen Auszug von Ihrer Bank",
+      "renamed": "Format umbenannt",
+      "deleted": "Format gelöscht",
+      "format": {
+        "title": "Gelerntes Format",
+        "name": "Name",
+        "account": "Konto",
+        "created": "Gelernt",
+        "lastUsed": "Zuletzt verwendet",
+        "columns": "Spalten",
+        "field": "{{field}}: {{column}}",
+        "delete": "Format löschen",
+        "deleteTitle": "Format {{name}} löschen?",
+        "deleteLead": "Die nächste Datei in diesem Format durchläuft die Erkennung erneut."
+      }
+    },
     "delete": {
       "title": "Alle Daten löschen?",
       "lead": "Löscht die Datenbank, die Schlüssel und die Anhänge auf diesem Telefon dauerhaft. Sicherungskopien außerhalb des Telefons bleiben erhalten. Erstellen Sie zuerst eine Sicherung — sie ist der einzige Weg zurück.",

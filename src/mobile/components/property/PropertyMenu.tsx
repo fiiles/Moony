@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { AddRealEstateModal } from '@/components/real-estate/AddRealEstateModal';
-import { ValuationHistoryDialog } from '@/components/valuations/ValuationHistoryDialog';
+import { MaskedValuationHistoryDialog } from '@/mobile/components/MaskedValuationHistoryDialog';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 
 /** The classes of a menu item on the phone: 44 pt tall, body type, 18 pt icons. */
@@ -64,7 +64,7 @@ export function PropertyMenu({ property, valuations, onDelete }: PropertyMenuPro
       </DropdownMenu>
 
       <AddRealEstateModal realEstate={property} open={editOpen} onOpenChange={setEditOpen} />
-      <ValuationHistoryDialog
+      <MaskedValuationHistoryDialog
         open={historyOpen}
         onOpenChange={setHistoryOpen}
         kind="realEstate"

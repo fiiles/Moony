@@ -81,16 +81,17 @@ pub fn is_staged_export_path(document_dir: &Path, path: &Path) -> bool {
             .is_some_and(is_export_file_name)
 }
 
-/// The text files the phone may stage in Documents for the Files export: the recovery key's text
-/// and the CSV of each class page (stocks, crypto, bonds, other assets — the name stays fixed, the
-/// dated one the export command returns is only the desktop's). A fixed list, so the command that
-/// writes one can never be pointed at another file.
-const TEXT_EXPORT_FILE_NAMES: [&str; 5] = [
+/// The text files the phone may stage in Documents for the Files export: the recovery key's text,
+/// the CSV of each class page (stocks, crypto, bonds, other assets — the name stays fixed, the
+/// dated one the export command returns is only the desktop's) and the Cashflow tab's report. A
+/// fixed list, so the command that writes one can never be pointed at another file.
+const TEXT_EXPORT_FILE_NAMES: [&str; 6] = [
     "moony-recovery-key.txt",
     "moony-stock-transactions.csv",
     "moony-crypto-transactions.csv",
     "moony-bonds.csv",
     "moony-other-assets.csv",
+    "moony-cashflow.csv",
 ];
 
 /// Whether `name` is one of the text files that may be staged (`TEXT_EXPORT_FILE_NAMES`).
@@ -110,7 +111,7 @@ pub fn is_staged_text_export_path(document_dir: &Path, path: &Path) -> bool {
 
 /// Write `contents` to `document_dir/<file_name>` (an existing file is replaced) for the Files
 /// export to pick up; only an allow-listed name is accepted. A write that fails half way leaves
-/// nothing behind. The contents (the recovery key, or a class's CSV export) are never logged.
+/// nothing behind. The contents (the recovery key, or a CSV export) are never logged.
 pub fn write_text_export(document_dir: &Path, file_name: &str, contents: &str) -> Result<PathBuf> {
     if !is_text_export_file_name(file_name) {
         return Err(AppError::Validation(
@@ -1313,11 +1314,19 @@ mod tests {
 
     #[test]
     fn text_export_file_name_is_on_the_allow_list_only() {
-        assert!(is_text_export_file_name("moony-recovery-key.txt"));
+        // The recovery key's text and the Cashflow tab's CSV (`cashflow-export.ts`; the class
+        // pages' names have their own test below)
+        for good in ["moony-recovery-key.txt", "moony-cashflow.csv"] {
+            assert!(is_text_export_file_name(good), "{good}");
+        }
         for bad in [
             "moony-recovery-key.txt.zip",
             "../moony-recovery-key.txt",
             "Moony-recovery-key.txt",
+            "cashflow.csv",
+            "moony-cashflow.csv.txt",
+            "../moony-cashflow.csv",
+            "Moony-cashflow.csv",
             "moony.db",
             "",
         ] {
@@ -1381,11 +1390,13 @@ mod tests {
     #[test]
     fn a_text_export_is_written_to_the_documents_folder_and_overwritten() {
         let dir = tempfile::tempdir().expect("dir");
-        let path = write_text_export(dir.path(), "moony-recovery-key.txt", "first").expect("write");
-        assert_eq!(path, dir.path().join("moony-recovery-key.txt"));
-        assert_eq!(fs::read_to_string(&path).expect("read"), "first");
-        write_text_export(dir.path(), "moony-recovery-key.txt", "second").expect("overwrite");
-        assert_eq!(fs::read_to_string(&path).expect("read"), "second");
+        for name in ["moony-recovery-key.txt", "moony-cashflow.csv"] {
+            let path = write_text_export(dir.path(), name, "first").expect("write");
+            assert_eq!(path, dir.path().join(name));
+            assert_eq!(fs::read_to_string(&path).expect("read"), "first");
+            write_text_export(dir.path(), name, "second").expect("overwrite");
+            assert_eq!(fs::read_to_string(&path).expect("read"), "second");
+        }
     }
 
     #[test]

@@ -209,6 +209,8 @@
     "backupInvalidArchive": "此文件不是 Moony 备份（或已损坏）。",
     "backupNewerThanApp": "此备份由更新版本的 Moony 创建。请先更新 Moony。",
     "backupDestinationMissing": "目标文件夹不存在。",
+    "backupExportInvalid": "不允许使用此文件名。",
+    "receivedFileOutside": "无法从此处删除此文件。",
     "sellExceedsHoldings": "卖出数量不能超过当天的持有数量。",
     "stockSplitRatioInvalid": "拆股比例必须是两个不同的正整数。",
     "stockSplitDayInvalid": "拆股日期不能是未来的日期。",
@@ -294,7 +296,9 @@
     "statementInvestmentOnly": "该文件仅包含投资交易。请使用券商导入功能来导入。",
     "statementMalformed": "账单文件已损坏或不完整（{{detail}}）。",
     "statementIndexInvalid": "请选择文件中的一份账单。",
-    "statementDateOrderInvalid": "只有 QIF 文件才能选择日期顺序。"
+    "statementDateOrderInvalid": "只有 QIF 文件才能选择日期顺序。",
+    "snoozeSelectionInvalid": "请选择 1 至 1000 笔付款。",
+    "snoozeDaysInvalid": "请选择 1 至 365 之间的天数。"
   },
   "auth": {
     "wrongPassword": "您输入的密码不正确，请重试。",

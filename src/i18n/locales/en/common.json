@@ -209,6 +209,8 @@
     "backupInvalidArchive": "This file is not a Moony backup (or it is damaged).",
     "backupNewerThanApp": "This backup was created by a newer Moony version. Update Moony first.",
     "backupDestinationMissing": "The destination folder does not exist.",
+    "backupExportInvalid": "This file name is not allowed.",
+    "receivedFileOutside": "This file cannot be removed from here.",
     "sellExceedsHoldings": "You cannot sell more than you hold on that date.",
     "stockSplitRatioInvalid": "The split ratio must be two different positive whole numbers.",
     "stockSplitDayInvalid": "The split date cannot be in the future.",
@@ -294,7 +296,9 @@
     "statementInvestmentOnly": "This file contains only investment transactions. Use the broker import for those.",
     "statementMalformed": "The statement file is damaged or incomplete ({{detail}}).",
     "statementIndexInvalid": "Choose one of the statements in the file.",
-    "statementDateOrderInvalid": "A date order can only be chosen for QIF files."
+    "statementDateOrderInvalid": "A date order can only be chosen for QIF files.",
+    "snoozeSelectionInvalid": "Choose between 1 and 1000 payments.",
+    "snoozeDaysInvalid": "Choose a number of days from 1 to 365."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

@@ -35,6 +35,9 @@ const twMerge = extendTailwindMerge({
         'm-body',
         'm-sub',
         'm-caption',
+        'm-lead',
+        'm-note',
+        'm-field',
       ],
       'font-weight': ['450', '480', '500', '550', '570', '580', '600', '620', '650', '700', '750'],
       shadow: [

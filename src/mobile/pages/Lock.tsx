@@ -3,7 +3,8 @@
  *
  * The same states as the desktop `auth-page.tsx` — first-run wizard, unlock, three-step recovery —
  * on phone surfaces: the lock is centred under the status bar and above the home indicator, the
- * recovery is a pushed full-height screen with a back button, the wizard drops its live preview.
+ * recovery is a pushed full-height screen with a back button, the first run is the phone's own
+ * (`FirstRun`: seven steps in one column, no live preview).
  * Credential failures show inline under the field; the provider toasts everything else.
  *
  * With biometric unlock switched on, "Odemknout obličejem" comes first and the system prompt opens
@@ -44,7 +45,6 @@ import { Input } from '@/components/ui/input';
 import { MoonMark } from '@/components/common/MoonMark';
 import { LanguageSelect } from '@/components/common/LanguageSelect';
 import { OnboardingWelcome } from '@/components/auth/OnboardingWelcome';
-import { OnboardingWizard } from '@/components/auth/OnboardingWizard';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
 import { RecoverySteps } from '@/components/auth/RecoverySteps';
@@ -59,6 +59,7 @@ import {
   shouldAutoPrompt,
 } from '@/mobile/lib/biometrics';
 import { whenVisible } from '@/mobile/lib/when-visible';
+import { FirstRun } from '@/mobile/pages/FirstRun';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -93,18 +94,19 @@ function Frame({ children }: { children: ReactNode }) {
 }
 
 /** The phone's primary button (README §13): 48 pt, radius 10, 15 / 600. */
-const primaryButton = 'h-12 w-full rounded-[10px] text-m-row';
+const primaryButton =
+  'h-auto min-h-12 whitespace-normal py-2 text-center w-full rounded-[10px] text-m-row';
 /**
- * Fields on the lock and recovery screens: 48 pt, 15 pt text. iOS would zoom into a field under
- * 16 px on focus; `maximum-scale=1` in `index.html` is what stops that, at the accessibility cost
- * of no pinch zoom. Scaling the `text-m-*` roles with the system text size (Dynamic Type, spec
- * §10.2) is scheduled for Phase 6; until then the viewport lock is a deliberate trade-off.
+ * Fields on the lock and recovery screens: 48 pt, `text-m-field` (never under 16 px, growing with
+ * the system text size). iOS zooms into a focused field whose text is under 16 px, which is why
+ * every phone field uses that role, so the viewport needs no `maximum-scale` and pinch zoom stays
+ * allowed (Dynamic Type, spec §10.2).
  */
-const field48 = 'h-12 rounded-[10px] text-m-body';
+const field48 = 'h-12 rounded-[10px] text-m-field';
 const fieldMessage = 'text-left text-m-sub';
 /** The text links under the form ("Použít heslo", "Zapomenuté heslo?"): 44 pt tall. */
 const textLink =
-  'mt-2.5 h-11 px-3 text-[13px] font-650 text-ink-2 underline underline-offset-[3px] [-webkit-touch-callout:none] active:text-ink disabled:pointer-events-none disabled:opacity-45';
+  'mt-2.5 h-auto min-h-11 px-3 py-2 text-m-lead font-650 text-ink-2 underline underline-offset-[3px] [-webkit-touch-callout:none] active:text-ink disabled:pointer-events-none disabled:opacity-45';
 
 export default function Lock() {
   const { user, appStatus, recoveryKey } = useAuth();
@@ -149,7 +151,7 @@ export default function Lock() {
       <div className="relative h-full overflow-y-auto overscroll-contain bg-canvas">
         <header className="pointer-events-none absolute inset-x-0 top-[var(--safe-top)] z-10 flex h-11 items-center justify-end px-3">
           <LanguageSelect
-            className="pointer-events-auto h-11"
+            className="pointer-events-auto h-11 text-m-note"
             showFormatSample={false}
             value={selectedLanguage}
             onChange={handleLanguageChange}
@@ -157,10 +159,8 @@ export default function Lock() {
           />
         </header>
         {introDone ? (
-          <OnboardingWizard
+          <FirstRun
             language={selectedLanguage}
-            preview={false}
-            touch
             onFinished={() => {
               setWizardDone(true);
               setLocation(routes.overview);
@@ -298,7 +298,7 @@ function UnlockScreen({
             )}
           </div>
 
-          <h1 className="m-0 text-[22px] font-650 tracking-[-0.04em] text-ink">
+          <h1 className="m-0 text-[length:calc(22px*var(--m-text-k))] font-650 tracking-[-0.04em] text-ink">
             {greetingName ? t('login.titleNamed', { name: greetingName }) : t('login.title')}
           </h1>
           <p className="mb-[26px] mt-1.5 text-m-sub text-ink-3">
@@ -405,7 +405,7 @@ function UnlockScreen({
       </main>
 
       <footer className="flex flex-col items-center gap-2 px-7 pb-6">
-        <LanguageSelect className="h-11" value={language} onChange={onLanguageChange} />
+        <LanguageSelect className="h-11 text-m-note" value={language} onChange={onLanguageChange} />
         <span className="inline-flex items-center gap-1 text-m-caption text-ink-4">
           <LockIcon className="size-[11px]" aria-hidden />
           {tm('lock.caption')}

@@ -37,6 +37,40 @@
       "noHistory": "履歴なし"
     }
   },
+  "cashflow": {
+    "subtitle_other": "{{count}}口座の実際の収入と支出",
+    "moves_other": "{{count}}件の取引",
+    "shareOfExpenses": "支出の{{share}}",
+    "shareOfIncome": "収入の{{share}}",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "上限に近い",
+    "overLimit": "上限超過",
+    "budgetSummary": "予算: 上限内 {{ok}} · 超過 {{over}} · 上限に近い {{near}}",
+    "partial": "この期間はまだ終わっていません。次の明細で数値が補完されます。",
+    "empty": {
+      "title": "取引はまだありません",
+      "description": "キャッシュフローは口座の入出金から計算されます。口座を追加して明細を取り込んでください。",
+      "action": "財務を開く"
+    },
+    "accounts": {
+      "title": "レポートの口座",
+      "done": "完了"
+    },
+    "picker": {
+      "title": "カテゴリ",
+      "change": "カテゴリを変更",
+      "current": "現在のカテゴリ"
+    },
+    "limitSheet": {
+      "pick": "支出を管理したいカテゴリを選んでください。"
+    },
+    "budgets": {
+      "ended": "終了",
+      "averageNote": "直近6か月の平均"
+    },
+    "showMore_other": "さらに{{count}}件の取引を表示",
+    "rowMenu": "その他の操作: {{title}}"
+  },
   "upkeep": {
     "title": "データの更新",
     "count_other": "{{count}}件",
@@ -77,5 +111,623 @@
     "enabled": "生体認証によるロック解除をオンにしました",
     "notEnabled": "生体認証によるロック解除はオンになっていません",
     "unavailable": "現在、生体認証は使用できません。パスワードでロックを解除してください。"
+  },
+  "finance": {
+    "accounts_other": "{{count}}口座",
+    "loans_other": "{{count}}件のローン",
+    "policies_other": "{{count}}件の保険",
+    "total": "口座内の合計",
+    "change30": "30日間で{{amount}}",
+    "noMovements": "30日間の入出金なし",
+    "uncategorized": "未分類の支払い",
+    "sections": {
+      "accounts": "口座",
+      "loans": "ローン",
+      "insurance": "保険",
+      "cashTrend": "現金の推移"
+    },
+    "manual": "手入力",
+    "statementOn": "{{date}}の明細",
+    "balanceOn": "{{date}}の残高",
+    "trail": {
+      "change": "{{amount}} · 30日間",
+      "staleStatement_other": "明細は{{count}}日前",
+      "staleBalance_other": "残高は{{count}}日前",
+      "approx": "≈ {{amount}}",
+      "noRate": "{{currency}}のレートなし"
+    },
+    "perMonth": "月 {{amount}}",
+    "nextPayment": "次回の支払い {{date}}",
+    "menu": {
+      "sort": "並べ替え",
+      "sortBalance": "残高順",
+      "sortName": "名前順",
+      "sortChange": "30日間の変動順",
+      "sortLast": "最終入出金順",
+      "showMatured": "完済したローンを表示",
+      "showEnded": "終了した保険を表示",
+      "export": "エクスポート"
+    },
+    "add": {
+      "title": "追加",
+      "account": "口座",
+      "loan": "ローン",
+      "policy": "保険"
+    },
+    "insurance": {
+      "type": "契約の種類",
+      "upcoming": "直近の支払い",
+      "upcomingNote_other": "{{count}}日間",
+      "showAll_other": "{{count}}件をすべて表示"
+    },
+    "cashTrendLabel": "現金の推移グラフ"
+  },
+  "queue": {
+    "source": {
+      "mcp": "MCPの提案",
+      "learned": "学習済み",
+      "rule": "ルールによる",
+      "pack": "ルールパック"
+    },
+    "other": "別のカテゴリ…",
+    "choose": "カテゴリを選ぶ…",
+    "keep": "スキップ",
+    "keepMenu": "{{days}}日間スキップ",
+    "snoozed": "{{days}}日間スキップ中",
+    "categorized": "分類済み",
+    "also_other": "{{name}}の他の支払い{{count}}件も分類しました",
+    "alsoSub": "この口座で同じ取引相手・同じ方向",
+    "alsoRestored": "元の状態に戻しました",
+    "handled_other": "{{count}}件は処理済み",
+    "progress": "{{done}} / {{total}}",
+    "caption": "提案をタップすると受け入れます。「{{keep}}」を選ぶと、その支払いは{{days}}日間後回しになります。分類した内容は、この口座のルールとして学習されます。",
+    "showCashflow": "キャッシュフローを表示",
+    "empty": {
+      "title": "すべて分類済み",
+      "hint": "次回のインポート後、新しい支払いがここに表示されます。",
+      "snoozed_other": "スキップした支払い{{count}}件は、後でここに戻ります。"
+    }
+  },
+  "placeholder": {
+    "export": "エクスポートは後日提供します。"
+  },
+  "account": {
+    "record": "残高を記録",
+    "import": "明細をインポート",
+    "menu": {
+      "edit": "口座を編集",
+      "balanceHistory": "残高履歴",
+      "importHistory": "インポート履歴",
+      "delete": "口座を削除"
+    },
+    "stats": {
+      "changeThisYear": "今年の増減",
+      "avgPerMonth": "月平均",
+      "yearlyInterest": "年間利息"
+    },
+    "flows": {
+      "title": "入出金の推移"
+    },
+    "ledger": {
+      "title": "入出金",
+      "search": "取引相手または説明で検索",
+      "all": "すべて",
+      "in": "入金",
+      "out": "出金",
+      "filter": "フィルター",
+      "noCategory": "カテゴリなし",
+      "categorize": "カテゴリ",
+      "details": "詳細",
+      "count_other": "{{count}}件",
+      "empty": "該当する入出金はありません",
+      "emptyHint": "期間またはフィルターを変更してください。",
+      "showAll": "すべて表示",
+      "loadError": "入出金を読み込めませんでした。",
+      "retry": "再試行"
+    },
+    "filter": {
+      "title": "フィルター",
+      "category": "カテゴリ",
+      "all": "すべて",
+      "period": "期間",
+      "from": "開始",
+      "to": "終了",
+      "apply": "適用",
+      "reset": "リセット"
+    },
+    "rowMenu": {
+      "details": "詳細",
+      "category": "カテゴリ",
+      "delete": "削除"
+    }
+  },
+  "loan": {
+    "nextPayment": "次回の返済 {{amount}} · {{date}}",
+    "notStarted": "{{date}}に開始",
+    "stats": {
+      "since": "{{month}}から",
+      "extra": "追加返済 {{amount}}",
+      "until": "{{month}}まで"
+    },
+    "alerts": {
+      "fixationSoon_other": "固定金利はあと{{count}}日で終了します。銀行が新しい金利を確定したら記録してください。返済額と計画が再計算されます。",
+      "fixationToday": "固定金利は本日終了します。銀行が新しい金利を確定したら記録してください。返済額と計画が再計算されます。",
+      "fixationPassed_other": "固定金利は{{count}}日前に終了しました。新しい金利を記録すると、返済額と計画が再計算されます。"
+    },
+    "schedule": {
+      "left": "残り {{amount}}",
+      "yearSub_other": "{{count}}回 · 利息 {{interest}}",
+      "showAll_other": "全{{count}}回を表示"
+    },
+    "extra": {
+      "noChange": "この金額では、返済期間も返済額も利息も変わりません。"
+    },
+    "events": {
+      "menu": "イベントメニュー"
+    }
+  },
+  "documents": {
+    "takePhoto": "撮影",
+    "chooseFile": "ファイルを選択",
+    "fromPhotos": "写真から選択",
+    "photoName": "写真 {{date}}",
+    "count_other": "{{count}}件 · 暗号化済み",
+    "openOnComputer": "このファイルはスマートフォンでは表示できません。パソコンの Moony で開いてください。",
+    "saving": "暗号化して保存しています…",
+    "rowMenu": "その他の操作: {{name}}",
+    "previewFailed": "プレビューを表示できませんでした。パソコンの Moony でドキュメントを開いてください。",
+    "zoomIn": "拡大",
+    "zoomOut": "縮小"
+  },
+  "policy": {
+    "copy": "契約番号をコピー",
+    "copied": "契約番号をコピーしました",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "契約期間",
+    "termOpen": "{{start}}から · 期間の定めなし",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "更新日 {{date}}",
+    "notice": "解約通知の期限",
+    "limitsTotal": "合計 {{amount}}",
+    "total": "合計 · {{payments}}"
+  },
+  "property": {
+    "notFound": "この物件は存在しません。",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "年間 {{rent}}",
+    "perYear": "年間",
+    "loanPayment": "返済額 月 {{amount}}",
+    "rowMenu": "その他の操作: {{name}}",
+    "costKindRecurring": "定期",
+    "costKindOneTime": "一時",
+    "costYear": "年間 {{amount}}",
+    "costCurrent": "現在 {{amount}}",
+    "costDateInFuture": "費用の日付は未来にできません。",
+    "costNameRequired": "費用の名前を入力してください。",
+    "confirmDeleteRecurring": "定期費用「{{name}}」（{{amount}}、{{frequency}}）を完全に削除します。この操作は元に戻せません。",
+    "photoCount_other": "{{count}} 枚",
+    "uploading": "アップロード中 {{current}} / {{total}}",
+    "photosSkipped_other": "{{count}} 枚の写真を保存できませんでした。",
+    "photoOpen": "{{day}} の写真",
+    "photoFailed": "写真を表示できませんでした。",
+    "photoDeleted": "写真を削除しました",
+    "deletePhoto": "写真を削除",
+    "deletePhotoConfirm": {
+      "title": "この写真を削除しますか？",
+      "description": "写真を完全に削除します。この操作は元に戻せません。",
+      "descriptionLast": "{{day}} の最後の写真です。その日の写真グループも一緒に削除されます。この操作は元に戻せません。"
+    }
+  },
+  "transaction": {
+    "flowSaved": "意味を保存しました",
+    "done": "完了",
+    "counterparty": "取引相手",
+    "date": "日付",
+    "category": "カテゴリ",
+    "flow": "意味",
+    "note": "メモ",
+    "details": "詳細",
+    "bankId": "銀行ID",
+    "valueDate": "起算日",
+    "file": "ファイル",
+    "line": "行",
+    "sourceLabel": "入力元",
+    "source": {
+      "manual": "手入力",
+      "csv_import": "インポート済み",
+      "api_sync": "同期済み"
+    },
+    "status": "状態",
+    "booked": "確定",
+    "currency": "通貨"
+  },
+  "picker": {
+    "title": "カテゴリ",
+    "recent": "最近使ったもの",
+    "all": "すべてのカテゴリ",
+    "suggested": "提案",
+    "decline": "提案を却下",
+    "empty": "一致するカテゴリがありません"
+  },
+  "import": {
+    "title": "明細をインポート",
+    "intoAccount": "{{account}}へ",
+    "fromShare": "共有から",
+    "reads": "対応形式：{{formats}}。",
+    "reading": "ファイルを読み込んでいます…",
+    "importing": "支払いを書き込んでいます…",
+    "pick": {
+      "lead": "銀行からダウンロードしたファイルを選んでください。",
+      "choose": "ファイルを選択",
+      "chooseOther": "別のファイルを選択"
+    },
+    "account": {
+      "sheetTitle": "どの口座ですか？",
+      "lead": "支払いが属する口座を選んでください。",
+      "none": "開いている口座がまだありません。このファイルに対応する口座を追加してください。",
+      "title": "口座",
+      "new": "新しい口座…"
+    },
+    "statement": {
+      "title": "どの明細ですか？",
+      "dateTitle": "日付の書き方",
+      "continue": "続ける"
+    },
+    "unreadable": {
+      "title": "ファイルを読み取れません",
+      "pdf": "PDFの明細はまだ読み取れません。銀行からCSV、CAMT、MT940、OFX、QIFをダウンロードしてください。",
+      "image": "写真やスキャンした明細は読み取れません。銀行からCSV、CAMT、MT940、OFX、QIFをダウンロードしてください。",
+      "notStatement": "このファイルにはMoonyが読み取れる明細が含まれていません。",
+      "error": "ファイルを読み取れませんでした。"
+    },
+    "guide": {
+      "title": "明細の入手方法：{{bank}}",
+      "format": "形式は{{format}}を選びます",
+      "openWeb": "インターネットバンキングを開く",
+      "openFailed": "ブラウザを開けませんでした。",
+      "banks": "銀行別ガイド"
+    },
+    "recognize": {
+      "title": "このように読み取りました",
+      "caption": "ファイル内の3件の取引を、このように読み取ります。",
+      "captionFew": "ファイル内の取引を、このように読み取ります。",
+      "unknownFormat": "形式はまだ不明",
+      "tab": "タブ",
+      "previewFailed": "サンプルの行を読み込めませんでした。以下の認識結果はそのまま有効です。",
+      "looksRight": "合っています",
+      "fix": "修正…",
+      "use": "適用",
+      "field": {
+        "transactionId": "取引 ID"
+      },
+      "notFound": "見つかりません",
+      "unused": "使用しません",
+      "unusedWhy": {
+        "description": "支払いのカテゴリ分けがしにくくなります",
+        "counterparty": "誰との取引か表示されません",
+        "currency": "通貨は口座のものを使います",
+        "balance": "ファイルから口座残高を提案しません",
+        "transactionId": "日付と金額で重複を判定します"
+      },
+      "signVerified": "残高で符号を確認済み",
+      "signInverted": "このファイルでは支出がプラスに見えます。サンプルを確認してください",
+      "signsBlocked": "支出がプラスになっているファイルは、Moonyではまだインポートできません。金額が別の列にある場合はその列を選び、そうでなければインポートをキャンセルしてください。",
+      "allPositive": "すべての金額がプラスです。このままでは支出が収入として保存されます。",
+      "pairSides": "支出：{{debit}} · 収入：{{credit}}",
+      "fixTitle": "どこを修正しますか？",
+      "fixLead": "読み違えた項目をタップしてください。",
+      "ask": {
+        "date": "日付はどれですか？",
+        "amount": "金額はどれですか？",
+        "description": "説明はどれですか？",
+        "counterparty": "取引相手はどれですか？",
+        "currency": "通貨はどれですか？",
+        "balance": "残高はどれですか？",
+        "transactionId": "取引 ID はどれですか？"
+      },
+      "lead": {
+        "date": "各取引の日付が入っている列を選んでください。",
+        "amount": "取引の金額が入っている列を選んでください。支出はマイナスになります。",
+        "description": "メッセージやメモなど、支払いの内容を示す列を選んでください。カテゴリ分けに役立ちます。",
+        "counterparty": "支払った側、または受け取った側の名前の列を選んでください。",
+        "currency": "CZK や EUR などの通貨コードの列を選んでください。",
+        "balance": "各取引後の残高が入っている列を選んでください。",
+        "transactionId": "銀行が各取引に付ける固有の番号の列を選んでください。"
+      },
+      "sample": "選択後のサンプル:",
+      "sampleHint": "列を選ぶと、取引がどう読み取られるかを表示します。",
+      "pair": "2列の組み合わせ"
+    },
+    "preview": {
+      "hint": "支払いをタップするとカテゴリを選べます。",
+      "more_other": "ほか{{count}}件"
+    },
+    "choice": {
+      "title": "分類",
+      "byRules": "ルールに任せる",
+      "byRulesSub": "選択を取り消します"
+    },
+    "done": {
+      "lastBalance": "最後の支払い後の残高：<b>{{balance}}</b>。",
+      "categorized_other": "ルールで{{count}}件の支払いを分類しました。",
+      "open_other": "{{count}}件はカテゴリがありません。",
+      "allSorted": "すべてにカテゴリがあります。",
+      "promoted_other": "保留中の支払い{{count}}件を記帳しました。",
+      "queue_other": "{{count}}件の支払いを分類"
+    }
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "このページは現在、パソコンのMoonyでのみ利用できます。"
+    },
+    "subtitle": "投資、不動産、現金",
+    "sections": {
+      "investments": "投資",
+      "realEstate": "不動産",
+      "cash": "現金"
+    },
+    "cash": {
+      "title": "口座残高"
+    },
+    "bonds": {
+      "count_other": "{{count}}銘柄",
+      "nearest": "直近の満期 {{month}}",
+      "coupon": "クーポン {{amount}} / 年",
+      "upcoming": "直近のクーポンと満期",
+      "noUpcoming": "今後1年間にクーポンや満期はありません。",
+      "allRepaid": "すべての銘柄が償還済みです。メニュー「···」の「{{action}}」をオンにすると表示されます。",
+      "loadFailed": "債券を読み込めませんでした。",
+      "rateNote": "年率 {{rate}} 加重平均"
+    },
+    "otherAssets": {
+      "count_other": "{{count}}件",
+      "valuedOn": "{{date}}に評価",
+      "moreDetails": "その他の項目",
+      "loadFailed": "資産を読み込めませんでした。",
+      "notFound": "資産が見つかりません"
+    },
+    "realEstate": {
+      "personal": "自己居住用",
+      "investment": "投資用",
+      "rent": "家賃 {{amount}} / 月",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "保有資産はまだありません",
+      "description": "最初の投資、不動産、またはその他の資産を追加しましょう。",
+      "class": "まだありません"
+    },
+    "add": {
+      "label": "追加",
+      "investment": "投資",
+      "crypto": "暗号資産",
+      "bond": "債券",
+      "property": "物件",
+      "asset": "資産"
+    },
+    "noRate": "{{currency}}の為替レートなし",
+    "stocks": {
+      "back": "株式",
+      "pricesAt": "価格 {{time}}",
+      "pricesOn": "価格 {{date}}",
+      "invested": "投資額 {{amount}}",
+      "dividendsYear": "配当 / 年",
+      "yieldNote": "利回り {{percent}}",
+      "twrYtd": "今年のリターン",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "履歴はまだありません",
+      "positionsTab": "ポジション · {{count}}",
+      "watchedTab": "ウォッチ中 · {{count}}",
+      "sort": {
+        "label": "並べ替え",
+        "value": "評価額順",
+        "gain": "リターン順",
+        "name": "名前順"
+      },
+      "searchToggle": "検索",
+      "clearSearch": "検索をクリア",
+      "showAll_other": "{{count}} 件のポジションをすべて表示",
+      "menu": {
+        "closed": "決済済みのポジション"
+      },
+      "closedBadge": "決済済み",
+      "watchedEmpty": "ウォッチ中の銘柄はまだありません。",
+      "loadFailed": "ポジションを読み込めませんでした。",
+      "target": "目標 {{price}}",
+      "targetReached": "目標に到達",
+      "dayChange": "本日"
+    },
+    "crypto": {
+      "largestNote": "暗号資産の{{share}}",
+      "heldNote": "暗号資産の{{share}} · {{date}}"
+    },
+    "closed": {
+      "on": "{{date}}に決済",
+      "empty": "決済済みのポジションはまだありません。",
+      "onlyClosed": "ここには決済済みのポジションしかありません。メニュー「···」の「{{action}}」を開くと表示されます。"
+    },
+    "position": {
+      "heroLabel": "ポジションの評価額 · {{quantity}} {{unit}}",
+      "perUnit": "1単位あたり {{price}}",
+      "stats": {
+        "value": "評価額",
+        "inCurrency": "{{currency}}建て",
+        "price": "価格"
+      },
+      "tx": {
+        "buy": "買付 · {{quantity}} {{unit}}",
+        "sell": "売却 · {{quantity}} {{unit}}",
+        "showAll_other": "{{count}} 件をすべて表示",
+        "menu": "取引メニュー"
+      },
+      "follow": "フォロー",
+      "following": "フォロー中",
+      "followed": "ウォッチリストに追加しました",
+      "range52": "52週レンジ",
+      "renamed": "名称を保存しました"
+    },
+    "watch": {
+      "stats": {
+        "today": "本日",
+        "since": "フォロー開始以降",
+        "noTarget": "目標未設定"
+      },
+      "above": "上回る",
+      "below": "下回る",
+      "openPosition": "保有銘柄を開く",
+      "notesEmpty": "メモはまだありません。「編集」をタップしてリサーチメモを追加してください。Markdown が使えます。"
+    }
+  },
+  "settings": {
+    "rows": {
+      "profile": "プロフィール",
+      "profileNoEmail": "名前とメールアドレス",
+      "language": "言語",
+      "security": "セキュリティ",
+      "backup": "バックアップと移行",
+      "notifications": "通知",
+      "reminders": "リマインダー",
+      "remindersSub": "{{total}}グループ中{{on}}グループ",
+      "import": "インポート",
+      "importSub": "CSV、CAMT.053、MT940、OFX、QIF",
+      "deleteSub": "確認の単語を入力して実行"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "テレメトリなし",
+    "security": {
+      "lead": "このスマートフォンでのロック解除、バックグラウンドでのロック、金額の非表示を設定します。",
+      "biometrics": "{{methodKey}}でロック解除",
+      "methodFace": "顔認証",
+      "methodTouch": "指紋認証",
+      "methodGeneric": "生体認証",
+      "biometricsOn": "{{methodKey}}でロック解除",
+      "biometricsOff": "パスワードのみ",
+      "biometricsDisabled": "生体認証によるロック解除をオフにしました",
+      "lockAfterLabel": "アプリを離れてからロックするまでの時間",
+      "lockAfterHint": "この時間が過ぎると、アプリに戻ったときに再びロックされます。",
+      "optionNow": "すぐ",
+      "optionMinutes": "{{count}}分",
+      "lockNow": "すぐにロック",
+      "lockAfter_other": "{{count}}分後にロック",
+      "hideOnLaunch": "起動時に金額を非表示",
+      "hideOnLaunchHint": "起動するたびに金額が非表示の状態で始まります。概要の目のアイコンで再び表示できます。",
+      "hideOnLaunchShort": "起動時に金額を非表示"
+    },
+    "profile": {
+      "lead": "名前は概要のあいさつに表示されます。",
+      "currencyReadOnly": "基準通貨はパソコンのMoonyで変更できます。"
+    },
+    "language": {
+      "title": "アプリの言語",
+      "lead": "数値と日付は言語に合わせて表示されます。"
+    },
+    "appearance": {
+      "lead": "「システム」はスマートフォンのライトまたはダークの外観に従います。"
+    },
+    "delete": {
+      "title": "すべてのデータを削除しますか？",
+      "lead": "このスマートフォンからデータベース、キー、添付ファイルを完全に削除します。スマートフォンの外にあるバックアップのコピーは残ります。先にバックアップを作成してください。元に戻す唯一の方法です。",
+      "confirmLabel": "確認のため {{word}} と入力してください",
+      "confirm": "データを削除",
+      "failed": "削除に失敗しました"
+    }
+  },
+  "backup": {
+    "lead": "バックアップは暗号化された1つのファイルで、データベース、キー、添付ファイルが入っています。開けるのはあなたのパスワードだけです。",
+    "last": "最後のバックアップ",
+    "lastOn": "最後のバックアップ {{date}}",
+    "never": "まだバックアップがありません",
+    "what": "iCloud Drive や「ファイル」内の別のフォルダに保存してください。Moony はこのファイルにアクセスできません。",
+    "notSaved": "バックアップは保存されませんでした",
+    "unavailableHere": "バックアップは今のところ iPhone でのみ利用できます。",
+    "restoreTitle": "復元と移行",
+    "restoreLead": "このスマートフォンのバックアップを復元するか、パソコンのMoonyからプロフィールを移行します。バックアップファイルを選び、復元後は作成時に使っていたパスワードでロックを解除してください。",
+    "restoreConfirmDescription": "{{date}}のバックアップ（Moony {{version}}、添付ファイル {{attachments}}件、{{size}}）で、このスマートフォンのデータが置き換えられます。現在のデータを残したい場合は、先にバックアップを作成してください。復元後、Moony はロックされます。バックアップ作成時に使っていたパスワードでロックを解除してください。",
+    "osBackupNote": "プロフィールは、スマートフォン自体のバックアップ（iCloud またはパソコン）には保存されません。スマートフォンの外にある唯一のコピーは、ご自身で保存した Moony のバックアップです。"
+  },
+  "firstRun": {
+    "privacyLead": "Moony はすべてをこのスマートフォン上の暗号化データベースに保存します。クラウドも、当社のアカウントも不要です。",
+    "points": {
+      "encryption": {
+        "title": "AES-256 暗号化",
+        "text": "– データベースを開けるのはあなたのパスワードだけです。写真や書類もデータベース内で暗号化されています。"
+      },
+      "localOnly": {
+        "title": "クラウドなし",
+        "text": "– データはどこにも送信しません。バックアップは「ファイル」や iCloud Drive にご自身で保存します。"
+      },
+      "marketData": {
+        "title": "市場データ",
+        "text": "– 取得するのは、追跡している株式・通貨・暗号資産の価格だけです（Yahoo Finance、CoinGecko、ECB）。オフラインでも動作します。"
+      }
+    },
+    "recoveryLead": "パスワードを忘れた場合にデータへアクセスできる唯一の手段です。パスワードマネージャー、「ファイル」、紙など、このスマートフォンの外に保管してください。",
+    "saveToFiles": "「ファイル」に保存",
+    "recoveryFileNote": "このキーで Moony のパスワードをリセットできます。このスマートフォン上の Moony のデータ、またはそのバックアップと合わせてのみ使えるため、バックアップも保管してください。このファイルは誰にも渡さないでください。",
+    "areasLead": "Moonyで管理する項目を選んでください。設定からいつでも変更できます。",
+    "firstAccountLead": "名前と残高だけで十分です。明細のインポートは後から行えます。",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "生体認証",
+      "backup": "バックアップ"
+    },
+    "backupTitle": "データをバックアップ",
+    "backupLead": "このスマートフォンにあるのがデータの唯一のコピーで、スマートフォン自体のバックアップ（iCloud またはパソコン）には含まれません。暗号化したバックアップを iCloud Drive または選んだフォルダに保存してください。Moony がそれを見ることはありません。",
+    "currencyPick": "基準通貨",
+    "countryPick": "取引銀行の国",
+    "searchCurrency": "通貨を検索"
+  },
+  "notifications": {
+    "lead": "Moonyのリマインドはこのスマートフォンだけで行われ、サーバーは使いません。ロックを解除するたびに予定が組み直されます。",
+    "permission": {
+      "label": "通知",
+      "granted": "許可済み",
+      "denied": "ブロック中",
+      "notAsked": "まだ許可されていません",
+      "notGranted": "許可されていません",
+      "allow": "通知を許可",
+      "deniedHint": "スマートフォンの設定 → Moony → 通知で許可してください。",
+      "unavailable": "この端末では利用できません。",
+      "needed": "先に通知を許可してください。"
+    },
+    "deadlines": {
+      "label": "期限",
+      "hint": "期限の14日前と1日前。"
+    },
+    "upkeep": {
+      "label": "毎月のデータ整理",
+      "hint": "毎月{{day}}日：残高と明細。",
+      "day": "毎月の日付",
+      "dayLabel": "毎月{{day}}日",
+      "dayValue": "{{day}}日",
+      "title": "データを整理する時間です",
+      "body": "残高を記録して、明細を取り込みましょう。"
+    },
+    "backup": {
+      "label": "バックアップ",
+      "hint": "最後のバックアップから30日以上たったとき。",
+      "title": "Moonyをバックアップしましょう",
+      "stale": "最後のバックアップは1か月以上前です。",
+      "never": "まだバックアップがありません。"
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}}まであと14日",
+      "tomorrow": "{{whatKey}}は明日",
+      "kind": {
+        "insurance_anniversary": "保険の解約通知期限",
+        "insurance_end": "保険の満了",
+        "loan_fixation_end": "固定金利の終了",
+        "bond_maturity": "債券の償還",
+        "account_termination": "口座の終了",
+        "savings_rate_end": "優遇金利の終了"
+      }
+    },
+    "test": {
+      "send": "テスト通知を送る",
+      "title": "テスト通知",
+      "body": "Moonyのリマインドはこのように表示されます。",
+      "sent": "10秒後に届きます"
+    }
   }
 }

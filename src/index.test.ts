@@ -10,14 +10,21 @@ const read = (path: string) =>
   readFileSync(new URL(path, import.meta.url), 'utf8').replace(/'/g, '"');
 const INDEX = read('./index.css');
 const TOKENS = read('../docs/design-system/tokens.css');
+const MOBILE = read('../docs/design-system/mobile.css');
+/** The comment that opens the phone layer in index.css; its `:root` block follows it. */
+const PHONE_LAYER = 'Phone layer (docs/design-system/mobile.css is the source of truth';
 /** Theme-independent names, plus the two gradients that follow `--dark-hi/lo` through var(). */
 const THEME_FREE =
   /^--(r-|fs-|fw-|ls-|sp-|font$|dark-grad|sidebar-w$|page-|control-h|input-h$|nav-row-h$|table-row-h$|t-fast$|t-base$|ease$)/;
 
-function block(css: string, selector: string): Map<string, string> {
-  const start = css.indexOf(selector + ' {');
+/** The declarations of the first `selector { … }` block at or after `after` (a marker in `css`). */
+function block(css: string, selector: string, after = ''): Map<string, string> {
+  const from = css.indexOf(after);
+  expect(from, `marker ${after}`).toBeGreaterThanOrEqual(0);
+  const start = css.indexOf(selector + ' {', from);
   expect(start, `${selector} block`).toBeGreaterThanOrEqual(0);
-  const body = css.slice(start, css.indexOf('\n}', start));
+  // Comments can hold a ';' or a '--name: x;' of their own
+  const body = css.slice(start, css.indexOf('\n}', start)).replace(/\/\*[\s\S]*?\*\//g, '');
   const out = new Map<string, string>();
   for (const m of body.matchAll(/(--[\w-]+)\s*:\s*([^;]+);/g)) out.set(m[1], normalize(m[2]));
   return out;
@@ -56,6 +63,21 @@ describe('theme token blocks', () => {
     expect(block(INDEX, ':root[data-theme="dark"]').size).toBeGreaterThan(50);
     for (const css of [INDEX, TOKENS]) {
       expect(css).toMatch(/:root\[data-theme="dark"\] \{\s*color-scheme: dark;/);
+    }
+  });
+});
+
+describe('phone token block', () => {
+  it('index.css and mobile.css declare the same names with the same values', () => {
+    const app = block(INDEX, ':root', PHONE_LAYER);
+    const doc = block(MOBILE, ':root');
+    // The block after the marker is the phone one, not the theme tokens
+    expect(app.has('--m-fs-field')).toBe(true);
+    expect(app.has('--ink')).toBe(false);
+    expect(app.size).toBeGreaterThan(30);
+    expect([...doc.keys()].sort()).toEqual([...app.keys()].sort());
+    for (const [name, value] of app) {
+      expect(doc.get(name), name).toBe(value);
     }
   });
 });

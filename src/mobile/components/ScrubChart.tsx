@@ -10,7 +10,7 @@ import {
 } from 'react';
 import { Area, CartesianGrid, ComposedChart, Line, ReferenceDot, XAxis, YAxis } from 'recharts';
 import { useFormat } from '@/lib/use-format';
-import { chartTokens } from '@/lib/tokens';
+import { useChartTokens } from '@/theme/ThemeProvider';
 import { cn } from '@/lib/utils';
 import {
   clusterEvents,
@@ -27,7 +27,8 @@ import type { LinePoint, LineTip } from '@/components/charts/MoonyLineChart';
 import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import { MASK } from '@/mobile/lib/hide-amounts';
 import { selectionTick } from '@/mobile/lib/haptics';
-import { nearestPoint, toPlotX, toPlotY } from '@/mobile/lib/scrub';
+import type { CostPoint } from '@/mobile/lib/position-series';
+import { nearestPoint, splitProjected, stepValueAt, toPlotX, toPlotY } from '@/mobile/lib/scrub';
 
 /** Plot margins, shared by the Recharts layer and the scrub overlay that must sit on its line. */
 const MARGIN = { top: 14, right: 0, bottom: 6, left: 0 };
@@ -37,10 +38,21 @@ const TAP_SLOP_PX = 6;
 const MARK_HIT_RADIUS = 14;
 
 interface ScrubChartProps<E extends ChartEvent> {
-  /** Sorted by `t`; at least two to draw a line. */
-  points: LinePoint[];
+  /** Sorted by `t`; at least two to draw a line. A point may carry the cost basis of its day. */
+  points: CostPoint[];
   /** Zero baseline for "Vše"; otherwise truncated with 15 % headroom below (README §8). */
   zeroBaseline?: boolean;
+  /** A step line (a balance that changes only at a record): each value holds until the next point. */
+  step?: boolean;
+  /** The dashed step line of the cost basis ("Vloženo", a position); the value domain holds it. */
+  cost?: boolean;
+  /**
+   * From this time (unix seconds) the line is a plan: the readings after it are drawn dashed (the
+   * loan's schedule ahead of today), with no area under them. The line and the plan share the
+   * reading at `projectedFrom`, the end ring sits on the last reading at or before it, and a
+   * scrub over the plan reports the planned value.
+   */
+  projectedFrom?: number;
   /** 160 pt in the hero (spec §10.4). */
   height?: number;
   /** Value ticks ("4,2 mil."); default the locale's compact number. */
@@ -48,6 +60,8 @@ interface ScrubChartProps<E extends ChartEvent> {
   /** Big-step marks (README §9): tappable, each opens a callout with `renderEventTip`. */
   events?: E[];
   renderEventTip?: (cluster: EventCluster<E>) => LineTip;
+  /** A tap opened a mark's callout: the events it stands for (the page flashes their rows). */
+  onMarkTap?: (cluster: EventCluster<E>) => void;
   /** The day under the finger while scrubbing, `null` on release. */
   onScrub: (point: LinePoint | null) => void;
   /** Accessible name of the chart. */
@@ -73,22 +87,27 @@ interface Gesture {
  * callout with the dated facts.
  *
  * The Recharts layer is static; the crosshair, the marks and the callout are an overlay on the
- * same geometry (`toPlotX` / `toPlotY`), so scrubbing never re-renders the chart.
+ * same geometry (`toPlotX` / `toPlotY`), so scrubbing never re-renders the chart. With `projectedFrom`
+ * the line continues as a dashed plan (`.m-chart__projected`, README §13).
  */
 export function ScrubChart<E extends ChartEvent>({
   points,
   zeroBaseline = false,
+  step = false,
+  cost = false,
+  projectedFrom,
   height = 160,
   formatTick,
   events,
   renderEventTip,
+  onMarkTap,
   onScrub,
   label,
   className,
 }: ScrubChartProps<E>) {
   const fmt = useFormat();
   const { hidden } = useHideAmounts();
-  const tk = useMemo(chartTokens, []);
+  const tk = useChartTokens();
   const gradientId = useId().replace(/:/g, '');
   const wrapRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -114,11 +133,15 @@ export function ScrubChart<E extends ChartEvent>({
   const domain = useMemo(
     () =>
       valueDomain(
-        points.map((p) => p.value),
+        [...points.map((p) => p.value), ...(cost ? points.flatMap((p) => p.cost ?? []) : [])],
         { zeroBaseline }
       ),
-    [points, zeroBaseline]
+    [points, cost, zeroBaseline]
   );
+  // The line as drawn: the solid part up to `projectedFrom`, the dashed plan from it (the scrub and
+  // the marks keep to `points`, whose values are the same)
+  const rows = useMemo(() => splitProjected(points, projectedFrom), [points, projectedFrom]);
+  const hasProjected = rows.some((row) => row.projected !== undefined);
   // A refetch can shorten the series under a finger; a new period remounts the chart (`key`).
   const point = active === null ? null : (points[active] ?? null);
   const pointX = point ? toPlotX(point.t, t0, t1, plotWidth) : 0;
@@ -132,9 +155,15 @@ export function ScrubChart<E extends ChartEvent>({
     return clusters.map((cluster) => ({
       cluster,
       x: toPlotX(cluster.t, t0, t1, plotWidth),
-      y: toPlotY(valueAt(points, cluster.t), domain, MARGIN.top, plotHeight),
+      // A mark sits on the line: a step line holds its value, a plain one interpolates.
+      y: toPlotY(
+        step ? stepValueAt(points, cluster.t) : valueAt(points, cluster.t),
+        domain,
+        MARGIN.top,
+        plotHeight
+      ),
     }));
-  }, [events, t0, t1, plotWidth, points, domain, plotHeight]);
+  }, [events, t0, t1, plotWidth, points, step, domain, plotHeight]);
 
   // The value axis tells the size of the line: with amounts hidden every tick is the mask (even
   // a compact "4,2 mil." would give the magnitude away).
@@ -214,7 +243,9 @@ export function ScrubChart<E extends ChartEvent>({
     if (!g || g.id !== event.pointerId) return;
     if (!g.scrubbing && g.mark !== null) {
       const mark = g.mark;
-      setCallout((open) => (open === mark ? null : mark));
+      const opens = callout !== mark;
+      setCallout(opens ? mark : null);
+      if (opens && marks[mark]) onMarkTap?.(marks[mark].cluster);
     }
     endScrub();
   };
@@ -222,9 +253,11 @@ export function ScrubChart<E extends ChartEvent>({
   // The static chart: rebuilt only when its data or size changes, never while scrubbing.
   const chart = useMemo(() => {
     if (width <= 0 || points.length < 2) return null;
-    const last = points[points.length - 1];
+    // The end ring sits on the last reading of the solid line ("today" when the rest is a plan);
+    // a line that is all plan (a loan that has not started) has none
+    const last = [...rows].reverse().find((row) => row.actual !== undefined);
     return (
-      <ComposedChart width={width} height={height} data={points} margin={MARGIN}>
+      <ComposedChart width={width} height={height} data={rows} margin={MARGIN}>
         <defs>
           <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0" stopColor={tk.area} stopOpacity={0.8} />
@@ -246,17 +279,42 @@ export function ScrubChart<E extends ChartEvent>({
           allowDataOverflow
         />
         <Area
-          type="linear"
-          dataKey="value"
+          type={step ? 'stepAfter' : 'linear'}
+          dataKey="actual"
           stroke="none"
           fill={`url(#${gradientId})`}
           isAnimationActive={false}
           activeDot={false}
           baseValue={domain[0]}
         />
+        {cost && (
+          <Line
+            type="stepAfter"
+            dataKey="cost"
+            stroke={tk.cost}
+            strokeWidth={1.5}
+            strokeDasharray="4 4"
+            dot={false}
+            activeDot={false}
+            isAnimationActive={false}
+            connectNulls
+          />
+        )}
+        {hasProjected && (
+          <Line
+            type={step ? 'stepAfter' : 'linear'}
+            dataKey="projected"
+            stroke={tk.line}
+            strokeWidth={1.5}
+            strokeDasharray="4 4"
+            dot={false}
+            activeDot={false}
+            isAnimationActive={false}
+          />
+        )}
         <Line
-          type="linear"
-          dataKey="value"
+          type={step ? 'stepAfter' : 'linear'}
+          dataKey="actual"
           stroke={tk.line}
           strokeWidth={2.25}
           strokeLinecap="round"
@@ -265,18 +323,35 @@ export function ScrubChart<E extends ChartEvent>({
           activeDot={false}
           isAnimationActive={false}
         />
-        <ReferenceDot
-          x={last.t}
-          y={last.value}
-          r={4.5}
-          fill={tk.paper}
-          stroke={tk.line}
-          strokeWidth={2}
-          ifOverflow="visible"
-        />
+        {last && (
+          <ReferenceDot
+            x={last.t}
+            y={last.value}
+            r={4.5}
+            fill={tk.paper}
+            stroke={tk.line}
+            strokeWidth={2}
+            ifOverflow="visible"
+          />
+        )}
       </ComposedChart>
     );
-  }, [width, height, points, gradientId, tk, t0, t1, domain, ticks, tickFormatter]);
+  }, [
+    width,
+    height,
+    points,
+    rows,
+    hasProjected,
+    step,
+    cost,
+    gradientId,
+    tk,
+    t0,
+    t1,
+    domain,
+    ticks,
+    tickFormatter,
+  ]);
 
   const shown = callout === null ? null : (marks[callout] ?? null);
 

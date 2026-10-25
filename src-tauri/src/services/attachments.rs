@@ -6,16 +6,20 @@
 //! opening in another app treat both the same way.
 //!
 //! New documents go straight into the store ([`add_insurance_document`],
-//! [`add_real_estate_document`]). Deleting a row deletes its blob in the same transaction and its
-//! legacy file after the commit; a legacy file outside the current data folder is never deleted.
+//! [`add_real_estate_document`] from a path the user picked; [`add_insurance_document_bytes`],
+//! [`add_real_estate_document_bytes`] from bytes the webview holds, e.g. a photo taken on the
+//! phone). Deleting a row deletes its blob in the same transaction and its legacy file after the
+//! commit; a legacy file outside the current data folder is never deleted.
 
 use crate::error::{AppError, Result};
 use crate::models::{AttachmentKind, InsuranceDocument, RealEstateDocument};
 use crate::services::{attachment_store, document_files, real_estate_photos};
 use rusqlite::{Connection, OptionalExtension};
+use serde::de::DeserializeOwned;
 use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom};
 use std::path::{Component, Path, PathBuf};
+use tauri::http::HeaderMap;
 use uuid::Uuid;
 
 /// Folder of legacy insurance documents under the app data dir.
@@ -510,6 +514,49 @@ pub struct NewDocument<'a> {
     pub file_type: &'a str,
 }
 
+/// Where one kind of document lives: its table, its owners' table and the column that joins them.
+struct DocumentTables {
+    documents: &'static str,
+    owners: &'static str,
+    owner_column: &'static str,
+    /// The `NotFound` message for an owner that does not exist (only the bytes flow looks it up).
+    owner_missing: &'static str,
+}
+
+const INSURANCE_TABLES: DocumentTables = DocumentTables {
+    documents: "insurance_documents",
+    owners: "insurance_policies",
+    owner_column: "insurance_id",
+    owner_missing: "Insurance policy not found",
+};
+
+const REAL_ESTATE_TABLES: DocumentTables = DocumentTables {
+    documents: "real_estate_documents",
+    owners: "real_estate",
+    owner_column: "real_estate_id",
+    owner_missing: "Real estate not found",
+};
+
+/// What a document's row records about its file, known before the bytes are stored.
+struct FileFacts {
+    original_name: String,
+    mime_type: String,
+    len: i64,
+}
+
+impl FileFacts {
+    /// `head` is the file's first bytes ([`SNIFF_BYTES`] of them): they decide the MIME type before
+    /// the name does.
+    fn new(original_name: String, head: &[u8], len: u64) -> Self {
+        let mime_type = attachment_store::sniff_mime(Some(&original_name), head).to_string();
+        Self {
+            original_name,
+            mime_type,
+            len: len as i64,
+        }
+    }
+}
+
 struct StoredDocument {
     id: String,
     mime_type: String,
@@ -517,11 +564,98 @@ struct StoredDocument {
     file_size: i64,
 }
 
+/// Insert the row of a document whose blob is already in the store, and describe what was stored.
+/// It runs inside the caller's transaction, which holds the blob too and commits both.
+fn insert_document_row(
+    tx: &Connection,
+    tables: &DocumentTables,
+    owner_id: &str,
+    blob_id: &str,
+    facts: FileFacts,
+    doc: &NewDocument,
+    now: i64,
+) -> Result<StoredDocument> {
+    let id = Uuid::new_v4().to_string();
+    tx.execute(
+        &format!(
+            "INSERT INTO {} (id, {}, name, description, blob_id, mime_type,
+                             original_name, file_type, file_size, uploaded_at)
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+            tables.documents, tables.owner_column
+        ),
+        rusqlite::params![
+            id,
+            owner_id,
+            doc.name,
+            doc.description,
+            blob_id,
+            facts.mime_type,
+            facts.original_name,
+            doc.file_type,
+            facts.len,
+            now
+        ],
+    )?;
+    Ok(StoredDocument {
+        id,
+        extension: extension_of(&facts.original_name),
+        mime_type: facts.mime_type,
+        file_size: facts.len,
+    })
+}
+
+fn insurance_document(
+    insurance_id: &str,
+    doc: &NewDocument,
+    stored: StoredDocument,
+    now: i64,
+) -> InsuranceDocument {
+    InsuranceDocument {
+        id: stored.id,
+        insurance_id: insurance_id.to_string(),
+        name: doc.name.to_string(),
+        description: doc.description.map(str::to_string),
+        mime_type: stored.mime_type,
+        extension: stored.extension,
+        file_type: doc.file_type.to_string(),
+        file_size: Some(stored.file_size),
+        uploaded_at: now,
+    }
+}
+
+fn real_estate_document(
+    real_estate_id: &str,
+    doc: &NewDocument,
+    stored: StoredDocument,
+    now: i64,
+) -> RealEstateDocument {
+    RealEstateDocument {
+        id: stored.id,
+        real_estate_id: real_estate_id.to_string(),
+        name: doc.name.to_string(),
+        description: doc.description.map(str::to_string),
+        mime_type: stored.mime_type,
+        extension: stored.extension,
+        file_type: doc.file_type.to_string(),
+        file_size: Some(stored.file_size),
+        uploaded_at: now,
+    }
+}
+
+/// A document may be at most [`attachment_store::MAX_DOCUMENT_BYTES`]. It takes only the length,
+/// so it runs before anything is opened, hashed or written (and is tested with numbers, never by
+/// allocating 100 MB).
+pub fn check_document_len(len: u64) -> Result<()> {
+    if len > attachment_store::MAX_DOCUMENT_BYTES {
+        return Err(AppError::Validation("validation.attachmentTooLarge".into()));
+    }
+    Ok(())
+}
+
 /// Stream the file the user picked into the store and insert its row, in one transaction.
 fn store_document(
     conn: &Connection,
-    table: &str,
-    owner_column: &str,
+    tables: &DocumentTables,
     owner_id: &str,
     source: &Path,
     doc: &NewDocument,
@@ -535,48 +669,25 @@ fn store_document(
     let len = fs::metadata(source)
         .map_err(|e| AppError::Internal(format!("Cannot read the file: {e}")))?
         .len();
-    if len > attachment_store::MAX_DOCUMENT_BYTES {
-        return Err(AppError::Validation("validation.attachmentTooLarge".into()));
-    }
+    check_document_len(len)?;
     let mut file =
         File::open(source).map_err(|e| AppError::Internal(format!("Cannot open the file: {e}")))?;
     let head = read_head(&mut file)?;
-    let mime_type = attachment_store::sniff_mime(Some(&original_name), &head).to_string();
+    let facts = FileFacts::new(original_name, &head, len);
 
-    let id = Uuid::new_v4().to_string();
     let tx = conn.unchecked_transaction()?;
     let blob = attachment_store::put_reader(&tx, &mut file, len)?;
-    tx.execute(
-        &format!(
-            "INSERT INTO {table} (id, {owner_column}, name, description, blob_id, mime_type,
-                                  original_name, file_type, file_size, uploaded_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)"
-        ),
-        rusqlite::params![
-            id,
-            owner_id,
-            doc.name,
-            doc.description,
-            blob.id,
-            mime_type,
-            original_name,
-            doc.file_type,
-            len as i64,
-            now
-        ],
-    )?;
+    let stored = insert_document_row(&tx, tables, owner_id, &blob.id, facts, doc, now)?;
     tx.commit()?;
-    Ok(StoredDocument {
-        id,
-        mime_type,
-        extension: extension_of(&original_name),
-        file_size: len as i64,
-    })
+    Ok(stored)
 }
+
+/// How many of a file's first bytes the MIME sniff looks at.
+const SNIFF_BYTES: usize = 16;
 
 /// The first bytes of a file (for MIME sniffing), with the file rewound to its start.
 fn read_head(file: &mut File) -> Result<Vec<u8>> {
-    let mut head = vec![0u8; 16];
+    let mut head = vec![0u8; SNIFF_BYTES];
     let mut filled = 0;
     while filled < head.len() {
         let n = file
@@ -601,26 +712,8 @@ pub fn add_insurance_document(
     doc: &NewDocument,
     now: i64,
 ) -> Result<InsuranceDocument> {
-    let stored = store_document(
-        conn,
-        "insurance_documents",
-        "insurance_id",
-        insurance_id,
-        source,
-        doc,
-        now,
-    )?;
-    Ok(InsuranceDocument {
-        id: stored.id,
-        insurance_id: insurance_id.to_string(),
-        name: doc.name.to_string(),
-        description: doc.description.map(str::to_string),
-        mime_type: stored.mime_type,
-        extension: stored.extension,
-        file_type: doc.file_type.to_string(),
-        file_size: Some(stored.file_size),
-        uploaded_at: now,
-    })
+    let stored = store_document(conn, &INSURANCE_TABLES, insurance_id, source, doc, now)?;
+    Ok(insurance_document(insurance_id, doc, stored, now))
 }
 
 /// Attach a document to a property.
@@ -631,26 +724,152 @@ pub fn add_real_estate_document(
     doc: &NewDocument,
     now: i64,
 ) -> Result<RealEstateDocument> {
-    let stored = store_document(
+    let stored = store_document(conn, &REAL_ESTATE_TABLES, real_estate_id, source, doc, now)?;
+    Ok(real_estate_document(real_estate_id, doc, stored, now))
+}
+
+// ----------------------------------------------------------------------------
+// From bytes (the phone: a photographed contract or a file from the Files app exists only as
+// bytes in the webview, which has no file-system access, and no plaintext copy may be written)
+// ----------------------------------------------------------------------------
+
+/// The base name of a file name the webview sent. A picked file's name can carry a path
+/// (`../../x/a.pdf`, `C:\a.pdf`); only its last component is kept, and that is used for the MIME
+/// sniff, the extension and `original_name` only, never to reach a file.
+pub fn base_name(name: &str) -> String {
+    let last = name
+        .trim_end_matches(['/', '\\'])
+        .rsplit(['/', '\\'])
+        .next()
+        .unwrap_or_default()
+        .trim();
+    match last {
+        "" | "." | ".." => "document".to_string(),
+        last => last.to_string(),
+    }
+}
+
+/// What the webview sends with a document's bytes, read from the request headers.
+pub struct DocumentUpload<T> {
+    /// `owner-id`: the policy or property the document belongs to.
+    pub owner_id: String,
+    /// `file-name`: the picked file's name, not yet reduced to its base name.
+    pub file_name: String,
+    /// `document`: the user's entries (`InsertInsuranceDocument` / `InsertRealEstateDocument`),
+    /// not yet validated.
+    pub data: T,
+}
+
+/// The text of a header, or an error naming it. A value that is not visible ASCII is as good as
+/// missing.
+fn header_text<'a>(headers: &'a HeaderMap, name: &str) -> Result<&'a str> {
+    headers
+        .get(name)
+        .and_then(|value| value.to_str().ok())
+        .ok_or_else(|| AppError::Internal(format!("The request needs a readable {name} header")))
+}
+
+/// A percent-encoded header (an HTTP header value is ASCII, file names and entries are not).
+fn decoded_header(headers: &HeaderMap, name: &str) -> Result<String> {
+    urlencoding::decode(header_text(headers, name)?)
+        .map(|text| text.into_owned())
+        .map_err(|_| AppError::Internal(format!("The {name} header is not valid UTF-8 text")))
+}
+
+/// Read the headers of a document upload: `owner-id` as is, `file-name` and `document` (JSON,
+/// camelCase) percent-decoded. A missing or malformed header is an `Internal` error: the webview
+/// builds them, the user never types them.
+pub fn document_upload<T: DeserializeOwned>(headers: &HeaderMap) -> Result<DocumentUpload<T>> {
+    let owner_id = header_text(headers, "owner-id")?.to_string();
+    let file_name = decoded_header(headers, "file-name")?;
+    let data = serde_json::from_str(&decoded_header(headers, "document")?)
+        .map_err(|e| AppError::Internal(format!("The document header is not valid: {e}")))?;
+    Ok(DocumentUpload {
+        owner_id,
+        file_name,
+        data,
+    })
+}
+
+/// Put the bytes of a document into the store and insert its row, in one transaction. The owner
+/// is looked up first, so an unknown policy or property stores nothing; empty or oversized bytes
+/// are refused before the database is touched.
+fn store_document_bytes(
+    conn: &Connection,
+    tables: &DocumentTables,
+    owner_id: &str,
+    file_name: &str,
+    bytes: &[u8],
+    doc: &NewDocument,
+    now: i64,
+) -> Result<StoredDocument> {
+    if bytes.is_empty() {
+        return Err(AppError::Validation("validation.fileRequired".into()));
+    }
+    check_document_len(bytes.len() as u64)?;
+    let head = &bytes[..bytes.len().min(SNIFF_BYTES)];
+    let facts = FileFacts::new(base_name(file_name), head, bytes.len() as u64);
+
+    let tx = conn.unchecked_transaction()?;
+    let owner_exists: bool = tx.query_row(
+        &format!(
+            "SELECT EXISTS(SELECT 1 FROM {} WHERE id = ?1)",
+            tables.owners
+        ),
+        [owner_id],
+        |row| row.get(0),
+    )?;
+    if !owner_exists {
+        return Err(AppError::NotFound(tables.owner_missing.into()));
+    }
+    let blob = attachment_store::put_bytes(&tx, bytes)?;
+    let stored = insert_document_row(&tx, tables, owner_id, &blob.id, facts, doc, now)?;
+    tx.commit()?;
+    Ok(stored)
+}
+
+/// Attach a document to an insurance policy from its bytes. `file_name` is whatever the picker
+/// reported; only its base name is kept.
+pub fn add_insurance_document_bytes(
+    conn: &Connection,
+    insurance_id: &str,
+    file_name: &str,
+    bytes: &[u8],
+    doc: &NewDocument,
+    now: i64,
+) -> Result<InsuranceDocument> {
+    let stored = store_document_bytes(
         conn,
-        "real_estate_documents",
-        "real_estate_id",
-        real_estate_id,
-        source,
+        &INSURANCE_TABLES,
+        insurance_id,
+        file_name,
+        bytes,
         doc,
         now,
     )?;
-    Ok(RealEstateDocument {
-        id: stored.id,
-        real_estate_id: real_estate_id.to_string(),
-        name: doc.name.to_string(),
-        description: doc.description.map(str::to_string),
-        mime_type: stored.mime_type,
-        extension: stored.extension,
-        file_type: doc.file_type.to_string(),
-        file_size: Some(stored.file_size),
-        uploaded_at: now,
-    })
+    Ok(insurance_document(insurance_id, doc, stored, now))
+}
+
+/// Attach a document to a property from its bytes. `file_name` is whatever the picker reported;
+/// only its base name is kept.
+pub fn add_real_estate_document_bytes(
+    conn: &Connection,
+    real_estate_id: &str,
+    file_name: &str,
+    bytes: &[u8],
+    doc: &NewDocument,
+    now: i64,
+) -> Result<RealEstateDocument> {
+    let stored = store_document_bytes(
+        conn,
+        &REAL_ESTATE_TABLES,
+        real_estate_id,
+        file_name,
+        bytes,
+        doc,
+        now,
+    )?;
+    Ok(real_estate_document(real_estate_id, doc, stored, now))
 }
 
 // ============================================================================
@@ -878,6 +1097,10 @@ mod tests {
         files_schema::migrate(&conn).expect("files schema");
         conn.execute_batch(
             r#"
+            CREATE TABLE insurance_policies (id TEXT PRIMARY KEY);
+            CREATE TABLE real_estate (id TEXT PRIMARY KEY);
+            INSERT INTO insurance_policies (id) VALUES ('pol');
+            INSERT INTO real_estate (id) VALUES ('re');
             CREATE TABLE insurance_documents (
                 id TEXT PRIMARY KEY, insurance_id TEXT, name TEXT, description TEXT, file_path TEXT,
                 blob_id TEXT, mime_type TEXT, original_name TEXT, file_type TEXT, file_size INTEGER,
@@ -1252,6 +1475,309 @@ mod tests {
             Some("validation.attachmentTooLarge")
         );
         assert_eq!(blob_count(&conn), 0);
+    }
+
+    // ------------------------------------------------------------------------
+    // Documents from bytes (the phone camera and Files picker)
+    // ------------------------------------------------------------------------
+
+    fn row_count(conn: &Connection, table: &str) -> i64 {
+        conn.query_row(&format!("SELECT count(*) FROM {table}"), [], |r| r.get(0))
+            .expect("count")
+    }
+
+    fn original_name_of(conn: &Connection, table: &str, id: &str) -> Option<String> {
+        conn.query_row(
+            &format!("SELECT original_name FROM {table} WHERE id = ?1"),
+            [id],
+            |r| r.get(0),
+        )
+        .expect("row")
+    }
+
+    #[test]
+    fn byte_document_is_stored_with_sniffed_mime() {
+        let conn = setup_test_db();
+        let data_dir = tempfile::tempdir().expect("data dir");
+        let bytes = b"%PDF-1.7 policy".as_slice();
+
+        let doc =
+            add_insurance_document_bytes(&conn, "pol", "smlouva.pdf", bytes, &DOC, 1_700_000_000)
+                .expect("add");
+        assert_eq!(doc.insurance_id, "pol");
+        assert_eq!(doc.name, "Smlouva");
+        assert_eq!(doc.mime_type, "application/pdf");
+        assert_eq!(doc.extension.as_deref(), Some("pdf"));
+        assert_eq!(doc.file_size, Some(bytes.len() as i64));
+        assert_eq!(doc.file_type, "contract");
+        assert_eq!(doc.uploaded_at, 1_700_000_000);
+
+        let row: (Option<String>, Option<String>, Option<i64>) = conn
+            .query_row(
+                "SELECT file_path, blob_id, file_size FROM insurance_documents WHERE id = ?1",
+                [&doc.id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("row");
+        assert_eq!(row.0, None);
+        assert!(row.1.is_some());
+        assert_eq!(row.2, Some(bytes.len() as i64));
+        assert_eq!(
+            original_name_of(&conn, "insurance_documents", &doc.id).as_deref(),
+            Some("smlouva.pdf")
+        );
+        let resolved = resolve(
+            &conn,
+            data_dir.path(),
+            AttachmentKind::InsuranceDocument,
+            &doc.id,
+            Variant::Full,
+        )
+        .expect("resolve")
+        .expect("row");
+        assert_eq!(read_bytes(&conn, &resolved).expect("bytes"), bytes.to_vec());
+        assert!(fs::read_dir(data_dir.path()).expect("dir").next().is_none());
+
+        // The first bytes decide the type, so a photographed page without an extension is a PDF
+        // here too.
+        let nameless =
+            add_insurance_document_bytes(&conn, "pol", "scan", bytes, &DOC, 0).expect("add");
+        assert_eq!(nameless.mime_type, "application/pdf");
+        assert_eq!(nameless.extension, None);
+    }
+
+    #[test]
+    fn byte_real_estate_document_is_stored_with_sniffed_mime() {
+        let conn = setup_test_db();
+        let data_dir = tempfile::tempdir().expect("data dir");
+        let bytes = b"%PDF-1.7 deed".as_slice();
+
+        let doc =
+            add_real_estate_document_bytes(&conn, "re", "kupni.pdf", bytes, &DOC, 5).expect("add");
+        assert_eq!(doc.real_estate_id, "re");
+        assert_eq!(doc.mime_type, "application/pdf");
+        assert_eq!(doc.extension.as_deref(), Some("pdf"));
+        assert_eq!(doc.file_size, Some(bytes.len() as i64));
+        assert_eq!(doc.file_type, "contract");
+        assert_eq!(doc.uploaded_at, 5);
+        assert_eq!(
+            original_name_of(&conn, "real_estate_documents", &doc.id).as_deref(),
+            Some("kupni.pdf")
+        );
+        let resolved = resolve(
+            &conn,
+            data_dir.path(),
+            AttachmentKind::RealEstateDocument,
+            &doc.id,
+            Variant::Full,
+        )
+        .expect("resolve")
+        .expect("row");
+        assert_eq!(read_bytes(&conn, &resolved).expect("bytes"), bytes.to_vec());
+        assert_eq!(blob_count(&conn), 1);
+    }
+
+    #[test]
+    fn byte_document_name_with_path_is_reduced_to_base_name() {
+        let conn = setup_test_db();
+        let doc =
+            add_insurance_document_bytes(&conn, "pol", "../../x/smlouva.pdf", b"%PDF-1.7", &DOC, 0)
+                .expect("add");
+        assert_eq!(
+            original_name_of(&conn, "insurance_documents", &doc.id).as_deref(),
+            Some("smlouva.pdf")
+        );
+        assert_eq!(doc.extension.as_deref(), Some("pdf"));
+
+        let re = add_real_estate_document_bytes(
+            &conn,
+            "re",
+            "C:\\Users\\Filip\\kupni.pdf",
+            b"%PDF-1.7",
+            &DOC,
+            0,
+        )
+        .expect("add");
+        assert_eq!(
+            original_name_of(&conn, "real_estate_documents", &re.id).as_deref(),
+            Some("kupni.pdf")
+        );
+
+        for (given, expected) in [
+            ("..\\..\\x\\smlouva.pdf", "smlouva.pdf"),
+            ("/private/var/tmp/IMG_0001.jpeg", "IMG_0001.jpeg"),
+            ("Pojistná smlouva.pdf", "Pojistná smlouva.pdf"),
+            ("dir/", "dir"),
+            ("..", "document"),
+            (".", "document"),
+            ("a/..", "document"),
+            ("a\\..", "document"),
+            ("", "document"),
+            ("   ", "document"),
+            ("/", "document"),
+        ] {
+            assert_eq!(base_name(given), expected, "name {given:?}");
+        }
+    }
+
+    #[test]
+    fn byte_document_rejects_empty_bytes() {
+        let conn = setup_test_db();
+        for err in [
+            add_insurance_document_bytes(&conn, "pol", "a.pdf", &[], &DOC, 0).expect_err("empty"),
+            add_real_estate_document_bytes(&conn, "re", "a.pdf", &[], &DOC, 0).expect_err("empty"),
+        ] {
+            assert_eq!(
+                err.keyed().map(|(k, _)| k).as_deref(),
+                Some("validation.fileRequired")
+            );
+        }
+        assert_eq!(blob_count(&conn), 0);
+        assert_eq!(row_count(&conn, "insurance_documents"), 0);
+        assert_eq!(row_count(&conn, "real_estate_documents"), 0);
+    }
+
+    #[test]
+    fn document_len_limit() {
+        let max = attachment_store::MAX_DOCUMENT_BYTES;
+        assert!(check_document_len(0).is_ok());
+        assert!(check_document_len(1).is_ok());
+        assert!(check_document_len(max).is_ok());
+        for len in [max + 1, u64::MAX] {
+            let err = check_document_len(len).expect_err("too large");
+            assert_eq!(
+                err.keyed().map(|(k, _)| k).as_deref(),
+                Some("validation.attachmentTooLarge")
+            );
+        }
+    }
+
+    #[test]
+    fn byte_document_for_unknown_owner_is_not_found() {
+        let conn = setup_test_db();
+        let err = add_insurance_document_bytes(&conn, "ghost", "a.pdf", b"%PDF-1.7", &DOC, 0)
+            .expect_err("no policy");
+        assert!(matches!(err, AppError::NotFound(_)));
+        let err = add_real_estate_document_bytes(&conn, "ghost", "a.pdf", b"%PDF-1.7", &DOC, 0)
+            .expect_err("no property");
+        assert!(matches!(err, AppError::NotFound(_)));
+        // A policy's id does not open a property's documents, and the other way round.
+        assert!(matches!(
+            add_real_estate_document_bytes(&conn, "pol", "a.pdf", b"%PDF-1.7", &DOC, 0),
+            Err(AppError::NotFound(_))
+        ));
+        assert!(matches!(
+            add_insurance_document_bytes(&conn, "re", "a.pdf", b"%PDF-1.7", &DOC, 0),
+            Err(AppError::NotFound(_))
+        ));
+
+        assert_eq!(blob_count(&conn), 0);
+        assert_eq!(row_count(&conn, "insurance_documents"), 0);
+        assert_eq!(row_count(&conn, "real_estate_documents"), 0);
+
+        // The refusals leave the connection usable.
+        add_insurance_document_bytes(&conn, "pol", "a.pdf", b"%PDF-1.7", &DOC, 0).expect("add");
+        assert_eq!(blob_count(&conn), 1);
+    }
+
+    #[test]
+    fn a_failed_insert_leaves_no_blob_behind() {
+        let conn = setup_test_db();
+        conn.execute_batch(
+            "CREATE TRIGGER refuse BEFORE INSERT ON insurance_documents
+             BEGIN SELECT RAISE(ABORT, 'refused'); END;",
+        )
+        .expect("trigger");
+        let err = add_insurance_document_bytes(&conn, "pol", "a.pdf", b"%PDF-1.7", &DOC, 0)
+            .expect_err("insert refused");
+        assert!(matches!(err, AppError::Database(_)));
+        assert_eq!(blob_count(&conn), 0);
+        assert_eq!(row_count(&conn, "insurance_documents"), 0);
+    }
+
+    fn upload_headers_of(
+        owner_id: &str,
+        file_name: &str,
+        document: &str,
+    ) -> tauri::http::HeaderMap {
+        let mut headers = tauri::http::HeaderMap::new();
+        for (name, value) in [
+            ("owner-id", owner_id.to_string()),
+            ("file-name", urlencoding::encode(file_name).into_owned()),
+            ("document", urlencoding::encode(document).into_owned()),
+        ] {
+            headers.insert(
+                name,
+                tauri::http::HeaderValue::from_str(&value).expect("ASCII header"),
+            );
+        }
+        headers
+    }
+
+    #[test]
+    fn upload_headers_are_read_and_percent_decoded() {
+        let json =
+            r#"{"name":"Pojistná smlouva č. 7","description":"Čeština","fileType":"contract"}"#;
+        let headers = upload_headers_of("pol", "Pojistná smlouva č. 7.pdf", json);
+
+        let upload = document_upload::<crate::models::InsertInsuranceDocument>(&headers)
+            .expect("upload headers");
+        assert_eq!(upload.owner_id, "pol");
+        assert_eq!(upload.file_name, "Pojistná smlouva č. 7.pdf");
+        assert_eq!(upload.data.name, "Pojistná smlouva č. 7");
+        assert_eq!(upload.data.description.as_deref(), Some("Čeština"));
+        assert_eq!(upload.data.file_type.as_deref(), Some("contract"));
+        assert!(upload.data.validate().is_ok());
+
+        let upload = document_upload::<crate::models::InsertRealEstateDocument>(&headers)
+            .expect("upload headers");
+        assert_eq!(upload.data.name, "Pojistná smlouva č. 7");
+    }
+
+    #[test]
+    fn missing_or_malformed_upload_headers_are_errors_not_panics() {
+        type Doc = crate::models::InsertInsuranceDocument;
+        let good = upload_headers_of("pol", "a.pdf", r#"{"name":"A"}"#);
+        assert!(document_upload::<Doc>(&good).is_ok());
+
+        for missing in ["owner-id", "file-name", "document"] {
+            let mut headers = good.clone();
+            headers.remove(missing);
+            assert!(
+                matches!(document_upload::<Doc>(&headers), Err(AppError::Internal(_))),
+                "without {missing}"
+            );
+        }
+
+        let bad_values = [
+            ("document", "not json"),
+            ("document", "%7B%22name%22%3A1%7D"),
+            ("document", "%7B%7D"),
+            ("file-name", "%FF%FE"),
+            ("document", "%FF"),
+        ];
+        for (name, value) in bad_values {
+            let mut headers = good.clone();
+            headers.insert(
+                name,
+                tauri::http::HeaderValue::from_str(value).expect("ASCII header"),
+            );
+            assert!(
+                matches!(document_upload::<Doc>(&headers), Err(AppError::Internal(_))),
+                "{name}: {value}"
+            );
+        }
+
+        // A header that is not text at all.
+        let mut headers = good.clone();
+        headers.insert(
+            "owner-id",
+            tauri::http::HeaderValue::from_bytes(&[0xE9, 0xFF]).expect("opaque header"),
+        );
+        assert!(matches!(
+            document_upload::<Doc>(&headers),
+            Err(AppError::Internal(_))
+        ));
     }
 
     #[test]

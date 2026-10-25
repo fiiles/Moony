@@ -209,6 +209,8 @@
     "backupInvalidArchive": "Ten plik nie jest kopią zapasową Moony (lub jest uszkodzony).",
     "backupNewerThanApp": "Ta kopia zapasowa została utworzona w nowszej wersji Moony. Najpierw zaktualizuj Moony.",
     "backupDestinationMissing": "Folder docelowy nie istnieje.",
+    "backupExportInvalid": "Ta nazwa pliku jest niedozwolona.",
+    "receivedFileOutside": "Tego pliku nie można stąd usunąć.",
     "sellExceedsHoldings": "Nie możesz sprzedać więcej, niż posiadasz w tym dniu.",
     "stockSplitRatioInvalid": "Współczynnik podziału musi składać się z dwóch różnych dodatnich liczb całkowitych.",
     "stockSplitDayInvalid": "Data podziału nie może być w przyszłości.",
@@ -294,7 +296,9 @@
     "statementInvestmentOnly": "Ten plik zawiera wyłącznie transakcje inwestycyjne. Użyj do nich importu od brokera.",
     "statementMalformed": "Plik wyciągu jest uszkodzony lub niekompletny ({{detail}}).",
     "statementIndexInvalid": "Wybierz jeden z wyciągów w pliku.",
-    "statementDateOrderInvalid": "Kolejność daty można wybrać tylko dla plików QIF."
+    "statementDateOrderInvalid": "Kolejność daty można wybrać tylko dla plików QIF.",
+    "snoozeSelectionInvalid": "Wybierz od 1 do 1000 płatności.",
+    "snoozeDaysInvalid": "Wybierz liczbę dni od 1 do 365."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

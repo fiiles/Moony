@@ -133,6 +133,11 @@ export default {
         "m-body": ["var(--m-fs-body)", { lineHeight: "1.45", fontWeight: "var(--m-fw-body)" }],
         "m-sub": ["var(--m-fs-sub)", { lineHeight: "1.3", fontWeight: "var(--m-fw-sub)" }],
         "m-caption": ["var(--m-fs-caption)", { lineHeight: "1.35", fontWeight: "var(--m-fw-caption)" }],
+        // Lead: the sentence under a title or sheet title, text links. Note: stat note, flow-strip and agenda sub-lines.
+        "m-lead": ["var(--m-fs-lead)", { lineHeight: "1.4", fontWeight: "450" }],
+        "m-note": ["var(--m-fs-note)", { lineHeight: "1.3", fontWeight: "500" }],
+        // Every field: never under 16 px, or iOS zooms the page into it on focus.
+        "m-field": ["var(--m-fs-field)", { lineHeight: "1.3", fontWeight: "var(--m-fw-body)" }],
       },
       fontWeight: {
         450: "450",

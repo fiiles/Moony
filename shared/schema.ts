@@ -1314,6 +1314,39 @@ export interface RecategorizationPreview {
   byCategory: CategoryCount[];
 }
 
+/** Where a suggested category comes from (the pill's sub-label on the phone). */
+export type SuggestionSource = 'mcp' | 'learned' | 'rule' | 'pack';
+
+/** A category the app would give a payment, and where the idea comes from. */
+export interface CategorySuggestion {
+  categoryId: string;
+  source: SuggestionSource;
+}
+
+/** One payment of the categorize queue and the category suggested for it, if any. */
+export interface CategorizeQueueRow {
+  transaction: BankTransaction;
+  suggestion: CategorySuggestion | null;
+}
+
+/** Booked payments without a category, newest first. */
+export interface CategorizeQueue {
+  /** The newest payments, capped; `total` counts all of them. */
+  rows: CategorizeQueueRow[];
+  /** Every payment waiting in the queue (not snoozed), listed or not. */
+  total: number;
+  /** Uncategorized payments held back from the queue by a snooze that is still running. */
+  snoozed: number;
+}
+
+/** Hold uncategorized payments back from the queue for a number of days. */
+export interface SnoozeCategorization {
+  /** 1 to 1000 payment ids. */
+  transactionIds: string[];
+  /** 1 to 365. */
+  days: number;
+}
+
 /** Custom categorization rule from the database */
 export interface CustomRule {
   id: string;
@@ -1412,6 +1445,23 @@ export interface CsvRowFilter {
   equals: string;
 }
 
+/** Where a bank hands out its statement file on a phone: in its own app, or in its internet banking in the browser. */
+export type ExportRoute = 'app' | 'web';
+
+/**
+ * How to get a bank's statement file onto a phone (spec §8.6, rung 2) — the `mobileExport` block of a
+ * preset. `steps` maps a UI language code to two to four short steps; every language the app ships is
+ * present. `appUrlScheme` is a bare scheme (`fio`), `webUrl` an `https://` entry (required for `web`).
+ */
+export interface MobileExportGuide {
+  route: ExportRoute;
+  /** What the person picks in the bank ("CSV"; Revolut's personal statement offers "Excel (CSV)"). */
+  format: string;
+  steps: Record<string, string[]>;
+  appUrlScheme: string | null;
+  webUrl: string | null;
+}
+
 /**
  * One bank's CSV format — JSON data under `src-tauri/resources/csv-presets/`.
  * Exactly one of `amountColumn` or the `debitColumn` + `creditColumn` pair is set.
@@ -1447,6 +1497,8 @@ export interface CsvPreset {
   rowFilter: CsvRowFilter | null;
   exportHelpUrl: string | null;
   sampleFixture: string | null;
+  /** How to get this bank's statement file on a phone; `null` for the generic layouts. */
+  mobileExport: MobileExportGuide | null;
 }
 
 /**
@@ -1531,6 +1583,52 @@ export interface CsvPreviewResult {
   suggestedDescriptionColumns: string[];
   /** The detected preset's row filter, resolved to the file's own header spelling. */
   suggestedRowFilter: CsvRowFilter | null;
+}
+
+/** One column the content inference assigned to a role. */
+export interface InferredField {
+  /** The file's own header of the column. */
+  column: string;
+  /**
+   * 0..1: the share of the column's cells that matched the role, 0.1 lower when no header
+   * synonym agreed and only the content decided.
+   */
+  confidence: number;
+}
+
+/**
+ * What a running balance says about the amounts' signs: `verified` = expenses are negative,
+ * `inverted` = the file prints expenses positive, `unchecked` = no balance agrees.
+ */
+export type SignCheck = 'verified' | 'inverted' | 'unchecked';
+
+/**
+ * The roles `infer_csv_columns` assigned to the columns of a CSV no preset describes, from
+ * their content (mobile spec §8.6 rung 3). Columns are named by the file's own headers;
+ * null = not recognized.
+ */
+export interface InferredColumns {
+  date: InferredField | null;
+  /** chrono format of `date`, date part only; null without a date column. */
+  dateFormat: string | null;
+  /** Day/month order cannot be told from the values; `dateFormat` is the European guess. */
+  dateAmbiguous: boolean;
+  /** A single signed amount column; null when the file has a debit/credit pair instead. */
+  amount: InferredField | null;
+  debit: InferredField | null;
+  credit: InferredField | null;
+  /** A running balance that agrees with the amounts; it is what `signCheck` rests on. */
+  balance: InferredField | null;
+  signCheck: SignCheck;
+  currency: InferredField | null;
+  /** IBANs or Czech domestic account numbers of the other party. */
+  counterpartyIban: InferredField | null;
+  counterparty: InferredField | null;
+  transactionId: InferredField | null;
+  /** Up to three free-text columns, longest first. */
+  description: string[];
+  /** "," or ".". */
+  decimalSeparator: string;
 }
 
 export interface CsvImportConfigInput {

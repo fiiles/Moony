@@ -37,6 +37,43 @@
       "noHistory": "ingen historik"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Faktiska inkomster och utgifter från {{count}} konto",
+    "subtitle_other": "Faktiska inkomster och utgifter från {{count}} konton",
+    "moves_one": "{{count}} transaktion",
+    "moves_other": "{{count}} transaktioner",
+    "shareOfExpenses": "{{share}} av utgifterna",
+    "shareOfIncome": "{{share}} av inkomsterna",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "nära gränsen",
+    "overLimit": "över gränsen",
+    "budgetSummary": "Budgetar: {{ok}} inom gränsen · {{over}} över gränsen · {{near}} nära gränsen",
+    "partial": "Perioden har inte tagit slut än; siffrorna fylls i med nästa kontoutdrag.",
+    "empty": {
+      "title": "Inga transaktioner än",
+      "description": "Kassaflödet beräknas från betalningarna på dina konton. Lägg till ett konto och importera ett kontoutdrag.",
+      "action": "Öppna Ekonomi"
+    },
+    "accounts": {
+      "title": "Konton i rapporten",
+      "done": "Klar"
+    },
+    "picker": {
+      "title": "Kategori",
+      "change": "Ändra kategori",
+      "current": "Nuvarande kategori"
+    },
+    "limitSheet": {
+      "pick": "Välj den kategori vars utgifter du vill hålla koll på."
+    },
+    "budgets": {
+      "ended": "avslutad",
+      "averageNote": "⌀ senaste 6 månaderna"
+    },
+    "showMore_one": "Visa {{count}} transaktion till",
+    "showMore_other": "Visa {{count}} transaktioner till",
+    "rowMenu": "Fler åtgärder: {{title}}"
+  },
   "upkeep": {
     "title": "Dataunderhåll",
     "count_one": "{{count}} sak",
@@ -82,5 +119,651 @@
     "enabled": "Biometrisk upplåsning påslagen",
     "notEnabled": "Biometrisk upplåsning slogs inte på",
     "unavailable": "Biometri är inte tillgänglig just nu. Lås upp med lösenordet."
+  },
+  "finance": {
+    "accounts_one": "{{count}} konto",
+    "accounts_other": "{{count}} konton",
+    "loans_one": "{{count}} lån",
+    "loans_other": "{{count}} lån",
+    "policies_one": "{{count}} försäkring",
+    "policies_other": "{{count}} försäkringar",
+    "total": "Totalt på konton",
+    "change30": "{{amount}} på 30 dagar",
+    "noMovements": "inga rörelser på 30 dagar",
+    "uncategorized": "Betalningar utan kategori",
+    "sections": {
+      "accounts": "Konton",
+      "loans": "Lån",
+      "insurance": "Försäkringar",
+      "cashTrend": "Kontanter över tid"
+    },
+    "manual": "manuellt",
+    "statementOn": "kontoutdrag {{date}}",
+    "balanceOn": "saldo {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 dagar",
+      "staleStatement_one": "kontoutdrag {{count}} dag gammalt",
+      "staleStatement_other": "kontoutdrag {{count}} dagar gammalt",
+      "staleBalance_one": "saldo {{count}} dag gammalt",
+      "staleBalance_other": "saldo {{count}} dagar gammalt",
+      "approx": "≈ {{amount}}",
+      "noRate": "ingen kurs för {{currency}}"
+    },
+    "perMonth": "{{amount}} / mån",
+    "nextPayment": "nästa betalning {{date}}",
+    "menu": {
+      "sort": "Sortera",
+      "sortBalance": "Efter saldo",
+      "sortName": "Efter namn",
+      "sortChange": "Efter förändring på 30 dagar",
+      "sortLast": "Efter senaste rörelse",
+      "showMatured": "Visa betalda lån",
+      "showEnded": "Visa avslutade försäkringar",
+      "export": "Exportera"
+    },
+    "add": {
+      "title": "Lägg till",
+      "account": "Konto",
+      "loan": "Lån",
+      "policy": "Försäkring"
+    },
+    "insurance": {
+      "type": "Försäkringstyp",
+      "upcoming": "Kommande betalningar",
+      "upcomingNote_one": "{{count}} dag",
+      "upcomingNote_other": "{{count}} dagar",
+      "showAll_one": "Visa {{count}}",
+      "showAll_other": "Visa alla {{count}}"
+    },
+    "cashTrendLabel": "Diagram över kontanter"
+  },
+  "queue": {
+    "source": {
+      "mcp": "MCP-förslag",
+      "learned": "inlärt",
+      "rule": "enligt regel",
+      "pack": "regelpaket"
+    },
+    "other": "Annan…",
+    "choose": "Välj kategori…",
+    "keep": "Hoppa över",
+    "keepMenu": "Hoppa över i {{days}} dagar",
+    "snoozed": "Överhoppad i {{days}} dagar",
+    "categorized": "Kategoriserad",
+    "also_one": "Kategoriserade även {{count}} annan betalning från {{name}}",
+    "also_other": "Kategoriserade även {{count}} andra betalningar från {{name}}",
+    "alsoSub": "Samma motpart och riktning på det här kontot",
+    "alsoRestored": "Återställda som de var",
+    "handled_one": "{{count}} redan hanterad",
+    "handled_other": "{{count}} redan hanterade",
+    "progress": "{{done}} av {{total}}",
+    "caption": "Tryck på ett förslag för att godta det. ”{{keep}}” skjuter upp en betalning i {{days}} dagar. Det du kategoriserar lärs in som en regel för det här kontot.",
+    "showCashflow": "Visa kassaflöde",
+    "empty": {
+      "title": "Allt är kategoriserat",
+      "hint": "Nya betalningar visas här efter nästa import.",
+      "snoozed_one": "{{count}} överhoppad betalning kommer tillbaka senare.",
+      "snoozed_other": "{{count}} överhoppade betalningar kommer tillbaka senare."
+    }
+  },
+  "placeholder": {
+    "export": "Export kommer senare."
+  },
+  "account": {
+    "record": "Registrera saldo",
+    "import": "Importera kontoutdrag",
+    "menu": {
+      "edit": "Redigera konto",
+      "balanceHistory": "Saldohistorik",
+      "importHistory": "Importhistorik",
+      "delete": "Ta bort konto"
+    },
+    "stats": {
+      "changeThisYear": "Förändring i år",
+      "avgPerMonth": "Genomsnitt per månad",
+      "yearlyInterest": "Årlig ränta"
+    },
+    "flows": {
+      "title": "Flöden"
+    },
+    "ledger": {
+      "title": "Rörelser",
+      "search": "Sök på motpart eller beskrivning",
+      "all": "Alla",
+      "in": "Inkommande",
+      "out": "Utgående",
+      "filter": "Filter",
+      "noCategory": "Utan kategori",
+      "categorize": "Kategori",
+      "details": "Detaljer",
+      "count_one": "{{count}} rörelse",
+      "count_other": "{{count}} rörelser",
+      "empty": "Inga rörelser matchar",
+      "emptyHint": "Ändra perioden eller filtret.",
+      "showAll": "Visa alla",
+      "loadError": "Rörelserna kunde inte läsas in.",
+      "retry": "Försök igen"
+    },
+    "filter": {
+      "title": "Filter",
+      "category": "Kategori",
+      "all": "Alla",
+      "period": "Period",
+      "from": "Från",
+      "to": "Till",
+      "apply": "Använd",
+      "reset": "Återställ"
+    },
+    "rowMenu": {
+      "details": "Detaljer",
+      "category": "Kategori",
+      "delete": "Ta bort"
+    }
+  },
+  "loan": {
+    "nextPayment": "Nästa betalning {{amount}} · {{date}}",
+    "notStarted": "Börjar {{date}}",
+    "stats": {
+      "since": "sedan {{month, lower}}",
+      "extra": "extra {{amount}}",
+      "until": "till {{month, lower}}"
+    },
+    "alerts": {
+      "fixationSoon_one": "Räntebindningen upphör om {{count}} dag. När banken har bekräftat den nya räntan, registrera den – betalningen och planen räknas om.",
+      "fixationSoon_other": "Räntebindningen upphör om {{count}} dagar. När banken har bekräftat den nya räntan, registrera den – betalningen och planen räknas om.",
+      "fixationToday": "Räntebindningen upphör i dag. När banken har bekräftat den nya räntan, registrera den – betalningen och planen räknas om.",
+      "fixationPassed_one": "Räntebindningen upphörde för {{count}} dag sedan. Registrera den nya räntan så att betalningen och planen räknas om.",
+      "fixationPassed_other": "Räntebindningen upphörde för {{count}} dagar sedan. Registrera den nya räntan så att betalningen och planen räknas om."
+    },
+    "schedule": {
+      "left": "{{amount}} kvar",
+      "yearSub_one": "{{count}} betalning · ränta {{interest}}",
+      "yearSub_other": "{{count}} betalningar · ränta {{interest}}",
+      "showAll_one": "Visa {{count}}",
+      "showAll_other": "Visa alla {{count}}"
+    },
+    "extra": {
+      "noChange": "Beloppet ändrar varken löptiden, betalningen eller räntan."
+    },
+    "events": {
+      "menu": "Händelsemeny"
+    }
+  },
+  "documents": {
+    "takePhoto": "Ta foto",
+    "chooseFile": "Välj fil",
+    "fromPhotos": "Välj från foton",
+    "photoName": "Foto {{date}}",
+    "count_one": "{{count}} · krypterat",
+    "count_other": "{{count}} · krypterade",
+    "openOnComputer": "Den här filen kan inte visas på telefonen. Öppna den i Moony på datorn.",
+    "saving": "Krypterar och sparar…",
+    "rowMenu": "Fler åtgärder: {{name}}",
+    "previewFailed": "Förhandsvisningen kunde inte visas. Öppna dokumentet i Moony på datorn.",
+    "zoomIn": "Zooma in",
+    "zoomOut": "Zooma ut"
+  },
+  "policy": {
+    "copy": "Kopiera avtalsnummer",
+    "copied": "Avtalsnummer kopierat",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Avtalstid",
+    "termOpen": "från {{start}} · tillsvidare",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "förnyelse {{date}}",
+    "notice": "Säg upp senast",
+    "limitsTotal": "totalt {{amount}}",
+    "total": "Totalt · {{payments}}"
+  },
+  "property": {
+    "notFound": "Den här fastigheten finns inte längre.",
+    "ltv": "belåning {{ltv}}",
+    "rentYear": "{{rent}} per år",
+    "perYear": "per år",
+    "loanPayment": "betalning {{amount}} / mån",
+    "rowMenu": "Fler åtgärder: {{name}}",
+    "costKindRecurring": "Återkommande",
+    "costKindOneTime": "Engångs",
+    "costYear": "{{amount}} per år",
+    "costCurrent": "Just nu {{amount}}",
+    "costDateInFuture": "Datumet för en kostnad kan inte ligga i framtiden.",
+    "costNameRequired": "Ange ett namn på kostnaden.",
+    "confirmDeleteRecurring": "Den återkommande kostnaden ”{{name}}” ({{amount}}, {{frequency}}) tas bort permanent. Det går inte att ångra.",
+    "photoCount_one": "{{count}} foto",
+    "photoCount_other": "{{count}} foton",
+    "uploading": "Laddar upp {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} foto kunde inte sparas.",
+    "photosSkipped_other": "{{count}} foton kunde inte sparas.",
+    "photoOpen": "Foto från {{day}}",
+    "photoFailed": "Fotot kunde inte visas.",
+    "photoDeleted": "Fotot har tagits bort",
+    "deletePhoto": "Ta bort foto",
+    "deletePhotoConfirm": {
+      "title": "Ta bort det här fotot?",
+      "description": "Fotot tas bort permanent. Det går inte att ångra.",
+      "descriptionLast": "Det här är det sista fotot från {{day}}, så fotoomgången för den dagen tas också bort. Det går inte att ångra."
+    }
+  },
+  "transaction": {
+    "flowSaved": "Betydelse sparad",
+    "done": "Klart",
+    "counterparty": "Motpart",
+    "date": "Datum",
+    "category": "Kategori",
+    "flow": "Betydelse",
+    "note": "Anteckning",
+    "details": "Detaljer",
+    "bankId": "Bank-ID",
+    "valueDate": "Valutadatum",
+    "file": "Fil",
+    "line": "Rad",
+    "sourceLabel": "Källa",
+    "source": {
+      "manual": "Inlagd för hand",
+      "csv_import": "Importerad",
+      "api_sync": "Synkroniserad"
+    },
+    "status": "Status",
+    "booked": "Bokförd",
+    "currency": "Valuta"
+  },
+  "picker": {
+    "title": "Kategori",
+    "recent": "Nyligen använda",
+    "all": "Alla kategorier",
+    "suggested": "Förslag",
+    "decline": "Avvisa förslaget",
+    "empty": "Ingen kategori matchar"
+  },
+  "import": {
+    "title": "Importera kontoutdrag",
+    "intoAccount": "Till {{account}}",
+    "fromShare": "Delad",
+    "reads": "Stöds: {{formats}}.",
+    "reading": "Läser filen…",
+    "importing": "Skriver betalningarna…",
+    "pick": {
+      "lead": "Välj filen du laddade ner från din bank.",
+      "choose": "Välj fil",
+      "chooseOther": "Välj en annan fil"
+    },
+    "account": {
+      "sheetTitle": "Till vilket konto?",
+      "lead": "Välj kontot som betalningarna hör till.",
+      "none": "Du har inget öppet konto än. Lägg till det som filen hör till.",
+      "title": "Konton",
+      "new": "Nytt konto…"
+    },
+    "statement": {
+      "title": "Vilket kontoutdrag?",
+      "dateTitle": "Hur är datumen skrivna?",
+      "continue": "Fortsätt"
+    },
+    "unreadable": {
+      "title": "Filen kan inte läsas",
+      "pdf": "Moony kan inte läsa kontoutdrag i PDF än – ladda ner CSV, CAMT, MT940, OFX eller QIF från din bank.",
+      "image": "Moony kan inte läsa foton eller skanningar av kontoutdrag – ladda ner CSV, CAMT, MT940, OFX eller QIF från din bank.",
+      "notStatement": "Den här filen innehåller inget kontoutdrag som Moony kan läsa.",
+      "error": "Filen kunde inte läsas."
+    },
+    "guide": {
+      "title": "Så får du ett kontoutdrag: {{bank}}",
+      "format": "Välj formatet: {{format}}",
+      "openWeb": "Öppna internetbanken",
+      "openFailed": "Webbläsaren kunde inte öppnas.",
+      "banks": "Bankguider"
+    },
+    "recognize": {
+      "title": "Så här tolkar jag filen",
+      "caption": "Tre transaktioner ur filen, så som jag läser dem:",
+      "captionFew": "Transaktioner ur filen, så som jag läser dem:",
+      "unknownFormat": "formatet är ännu okänt",
+      "tab": "tabb",
+      "previewFailed": "Exempelraderna kunde inte läsas in just nu. Kolumnerna nedan gäller ändå.",
+      "looksRight": "Ser rätt ut",
+      "fix": "Rätta…",
+      "use": "Använd",
+      "field": {
+        "transactionId": "Transaktions-ID"
+      },
+      "notFound": "hittades inte",
+      "unused": "används inte",
+      "unusedWhy": {
+        "description": "betalningar är svårare att kategorisera",
+        "counterparty": "du ser inte vem som betalade eller fick betalt",
+        "currency": "valutan hämtas från kontot",
+        "balance": "jag föreslår inget kontosaldo utifrån filen",
+        "transactionId": "dubbletter känner jag igen på datum och belopp"
+      },
+      "signVerified": "tecknet kontrollerat mot saldot",
+      "signInverted": "utgifterna i filen ser positiva ut – kontrollera exemplet",
+      "signsBlocked": "Moony kan ännu inte importera en fil där utgifterna är positiva. Om en annan kolumn har beloppet, välj den – annars avbryt importen.",
+      "allPositive": "Alla belopp är positiva – utgifter skulle sparas som inkomster.",
+      "pairSides": "Utgifter: {{debit}} · Inkomster: {{credit}}",
+      "fixTitle": "Vad ska jag rätta?",
+      "fixLead": "Tryck på fältet som jag läste fel.",
+      "ask": {
+        "date": "Vad är datumet?",
+        "amount": "Vad är beloppet?",
+        "description": "Vad är beskrivningen?",
+        "counterparty": "Vad är motparten?",
+        "currency": "Vad är valutan?",
+        "balance": "Vad är saldot?",
+        "transactionId": "Vad är transaktions-ID?"
+      },
+      "lead": {
+        "date": "Välj kolumnen med datumet för varje transaktion.",
+        "amount": "Välj kolumnen med transaktionens belopp. Utgifter ska vara negativa.",
+        "description": "Välj kolumnen med betalningens text, till exempel meddelande eller anteckning. Den hjälper till att kategorisera betalningar.",
+        "counterparty": "Välj kolumnen med namnet på den som betalade eller fick betalt.",
+        "currency": "Välj kolumnen med valutakoden, till exempel CZK eller EUR.",
+        "balance": "Välj kolumnen med saldot efter varje transaktion.",
+        "transactionId": "Välj kolumnen med det unika nummer som banken ger varje transaktion."
+      },
+      "sample": "Exempel efter ditt val:",
+      "sampleHint": "Välj en kolumn så visar jag hur jag skulle läsa transaktionen.",
+      "pair": "kolumnpar"
+    },
+    "preview": {
+      "hint": "Tryck på en betalning för att välja kategori.",
+      "more_one": "och {{count}} till",
+      "more_other": "och {{count}} till"
+    },
+    "choice": {
+      "title": "Kategorisering",
+      "byRules": "Enligt reglerna",
+      "byRulesSub": "Ditt val tas bort"
+    },
+    "done": {
+      "lastBalance": "Saldo efter sista betalningen: <b>{{balance}}</b>.",
+      "categorized_one": "Reglerna kategoriserade {{count}} betalning.",
+      "categorized_other": "Reglerna kategoriserade {{count}} betalningar.",
+      "open_one": "{{count}} saknar fortfarande kategori.",
+      "open_other": "{{count}} saknar fortfarande kategori.",
+      "allSorted": "Allt har en kategori.",
+      "promoted_one": "{{count}} väntande betalning bokfördes.",
+      "promoted_other": "{{count}} väntande betalningar bokfördes.",
+      "queue_one": "Kategorisera {{count}} betalning",
+      "queue_other": "Kategorisera {{count}} betalningar"
+    }
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "Än så länge finns den här sidan bara i Moony på datorn."
+    },
+    "subtitle": "Investeringar, fastigheter och kontanter",
+    "sections": {
+      "investments": "Investeringar",
+      "realEstate": "Fastigheter",
+      "cash": "Kontanter"
+    },
+    "cash": {
+      "title": "På konton"
+    },
+    "bonds": {
+      "count_one": "{{count}} emission",
+      "count_other": "{{count}} emissioner",
+      "nearest": "närmaste förfall {{month, lower}}",
+      "coupon": "kupong {{amount}} / år",
+      "upcoming": "Nästa kuponger och förfall",
+      "noUpcoming": "Inga kuponger eller förfall under det kommande året.",
+      "allRepaid": "Alla emissioner är återbetalda. Slå på ”{{action}}” i menyn ··· för att se dem.",
+      "loadFailed": "Obligationerna kunde inte läsas in.",
+      "rateNote": "{{rate}} per år, viktad"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} post",
+      "count_other": "{{count}} poster",
+      "valuedOn": "värderad {{date}}",
+      "moreDetails": "Fler uppgifter",
+      "loadFailed": "Tillgångarna kunde inte läsas in.",
+      "notFound": "Tillgången hittades inte"
+    },
+    "realEstate": {
+      "personal": "egen bostad",
+      "investment": "investering",
+      "rent": "hyra {{amount}} / månad",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Inget ägt ännu",
+      "description": "Lägg till din första investering, fastighet eller annan tillgång.",
+      "class": "inget ännu"
+    },
+    "add": {
+      "label": "Lägg till",
+      "investment": "Investering",
+      "crypto": "Kryptovaluta",
+      "bond": "Obligation",
+      "property": "Fastighet",
+      "asset": "Tillgång"
+    },
+    "noRate": "ingen växelkurs för {{currency}}",
+    "stocks": {
+      "back": "Aktier",
+      "pricesAt": "kurser {{time}}",
+      "pricesOn": "kurser {{date}}",
+      "invested": "investerat {{amount}}",
+      "dividendsYear": "Utdelning / år",
+      "yieldNote": "avkastning {{percent}}",
+      "twrYtd": "Avkastning i år",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "ingen historik ännu",
+      "positionsTab": "Innehav · {{count}}",
+      "watchedTab": "Bevakade · {{count}}",
+      "sort": {
+        "label": "Sortering",
+        "value": "Efter värde",
+        "gain": "Efter avkastning",
+        "name": "Efter namn"
+      },
+      "searchToggle": "Sök",
+      "clearSearch": "Rensa sökningen",
+      "showAll_one": "Visa {{count}} innehav",
+      "showAll_other": "Visa alla {{count}} innehav",
+      "menu": {
+        "closed": "Stängda innehav"
+      },
+      "closedBadge": "stängt",
+      "watchedEmpty": "Du bevakar inga aktier ännu.",
+      "loadFailed": "Innehaven kunde inte läsas in.",
+      "target": "mål {{price}}",
+      "targetReached": "målet nått",
+      "dayChange": "i dag"
+    },
+    "crypto": {
+      "largestNote": "{{share}} av krypto",
+      "heldNote": "{{share}} av krypto · {{date}}"
+    },
+    "closed": {
+      "on": "stängt {{date}}",
+      "empty": "Inget innehav är stängt ännu.",
+      "onlyClosed": "Här finns bara stängda innehav. Öppna ”{{action}}” i menyn ··· för att se dem."
+    },
+    "position": {
+      "heroLabel": "Innehavets värde · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} per st",
+      "stats": {
+        "value": "Värde",
+        "inCurrency": "i {{currency}}",
+        "price": "Kurs"
+      },
+      "tx": {
+        "buy": "Köp · {{quantity}} {{unit}}",
+        "sell": "Försäljning · {{quantity}} {{unit}}",
+        "showAll_one": "Visa {{count}}",
+        "showAll_other": "Visa alla {{count}}",
+        "menu": "Transaktionsmeny"
+      },
+      "follow": "Bevaka",
+      "following": "Bevakas",
+      "followed": "Tillagd i bevakningslistan",
+      "range52": "52-veckorsintervall",
+      "renamed": "Namn sparat"
+    },
+    "watch": {
+      "stats": {
+        "today": "I dag",
+        "since": "Sedan bevakning",
+        "noTarget": "inget mål satt"
+      },
+      "above": "Över",
+      "below": "Under",
+      "openPosition": "Öppna innehavet",
+      "notesEmpty": "Inga anteckningar ännu. Tryck på Redigera för att lägga till analysanteckningar — markdown fungerar."
+    }
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profil",
+      "profileNoEmail": "Namn och e-post",
+      "language": "Språk",
+      "security": "Säkerhet",
+      "backup": "Säkerhetskopia och överföring",
+      "notifications": "Aviseringar",
+      "reminders": "Påminnelser",
+      "remindersSub": "{{on}} av {{total}} grupper",
+      "import": "Import",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
+      "deleteSub": "efter att du skrivit ett bekräftelseord"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "ingen telemetri",
+    "security": {
+      "lead": "Upplåsning, lås i bakgrunden och dolda belopp på den här telefonen.",
+      "biometrics": "Lås upp med {{methodKey}}",
+      "methodFace": "ansiktet",
+      "methodTouch": "fingeravtryck",
+      "methodGeneric": "biometri",
+      "biometricsOn": "Upplåsning med {{methodKey}}",
+      "biometricsOff": "Bara lösenord",
+      "biometricsDisabled": "Biometrisk upplåsning avstängd",
+      "lockAfterLabel": "Lås efter att du lämnat appen",
+      "lockAfterHint": "Efter den här tiden låses appen igen när du kommer tillbaka.",
+      "optionNow": "Direkt",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "lås direkt",
+      "lockAfter_one": "lås efter {{count}} minut",
+      "lockAfter_other": "lås efter {{count}} minuter",
+      "hideOnLaunch": "Dölj belopp vid start",
+      "hideOnLaunchHint": "Varje start börjar med dolda belopp; ögat i Översikt visar dem igen.",
+      "hideOnLaunchShort": "belopp dolda vid start"
+    },
+    "profile": {
+      "lead": "Ditt namn visas i hälsningen i Översikt.",
+      "currencyReadOnly": "Huvudvalutan ändrar du i Moony på datorn."
+    },
+    "language": {
+      "title": "Appens språk",
+      "lead": "Siffror och datum följer språket."
+    },
+    "appearance": {
+      "lead": "System följer telefonens ljusa eller mörka utseende."
+    },
+    "delete": {
+      "title": "Radera alla data?",
+      "lead": "Raderar databasen, nycklarna och bilagorna på den här telefonen för gott. Säkerhetskopior utanför telefonen finns kvar. Gör en säkerhetskopia först — det är den enda vägen tillbaka.",
+      "confirmLabel": "Skriv {{word}} för att bekräfta",
+      "confirm": "Radera data",
+      "failed": "Raderingen misslyckades"
+    }
+  },
+  "backup": {
+    "lead": "En säkerhetskopia är en krypterad fil: databasen, nycklarna och bilagorna. Bara ditt lösenord öppnar den.",
+    "last": "Senaste säkerhetskopia",
+    "lastOn": "Senaste säkerhetskopia {{date}}",
+    "never": "Ingen säkerhetskopia ännu",
+    "what": "Spara den i iCloud Drive eller en annan mapp i Filer. Moony har ingen åtkomst till den.",
+    "notSaved": "Säkerhetskopian sparades inte",
+    "unavailableHere": "Säkerhetskopiering fungerar tills vidare bara på iPhone.",
+    "restoreTitle": "Återställning och överföring",
+    "restoreLead": "Återställ en säkerhetskopia från den här telefonen eller överför en profil från Moony på datorn: välj säkerhetskopians fil och lås upp efter återställningen med det lösenord som gällde när den skapades.",
+    "restoreConfirmDescription": "Säkerhetskopian från {{date}} (Moony {{version}}, {{attachments}} bilagor, {{size}}) ersätter data på den här telefonen. Säkerhetskopiera först om du vill behålla dina nuvarande data. Moony låses därefter; lås upp med det lösenord som gällde när säkerhetskopian skapades.",
+    "osBackupNote": "Profilen sparas inte i telefonens egen säkerhetskopia (iCloud eller dator). Moony-säkerhetskopian som du själv sparar är den enda kopian utanför telefonen."
+  },
+  "firstRun": {
+    "privacyLead": "Moony lagrar allt i en krypterad databas på den här telefonen. Inget moln, inget konto hos oss.",
+    "points": {
+      "encryption": {
+        "title": "AES-256-kryptering",
+        "text": "– bara ditt lösenord öppnar databasen; foton och dokument är krypterade i den."
+      },
+      "localOnly": {
+        "title": "Inget moln",
+        "text": "– vi skickar ingenting någonstans; du sparar säkerhetskopian själv i Filer eller iCloud Drive."
+      },
+      "marketData": {
+        "title": "Marknadsdata",
+        "text": "– bara kurserna för de aktier, valutor och kryptotillgångar du följer hämtas (Yahoo Finance, CoinGecko, ECB). Appen fungerar även offline."
+      }
+    },
+    "recoveryLead": "Den enda vägen till dina data om du glömmer lösenordet. Förvara den utanför den här telefonen – i en lösenordshanterare, i Filer eller på papper.",
+    "saveToFiles": "Spara i Filer",
+    "recoveryFileNote": "Den här nyckeln återställer ditt Moony-lösenord. Den fungerar bara tillsammans med Moony-data på den här telefonen eller en säkerhetskopia av dem, så spara även den säkerhetskopian. Ge inte filen till någon.",
+    "areasLead": "Välj vad du vill följa i Moony. Du kan ändra detta när som helst i Inställningar.",
+    "firstAccountLead": "Ett namn och ett saldo räcker. Kontoutdraget kan du importera senare.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometri",
+      "backup": "Säkerhetskopia"
+    },
+    "backupTitle": "Säkerhetskopiera dina data",
+    "backupLead": "Den här telefonen har den enda kopian av dina data, och den finns inte med i telefonens egen säkerhetskopia (iCloud eller dator). Spara en krypterad säkerhetskopia i iCloud Drive eller i en mapp du väljer; Moony ser den aldrig.",
+    "currencyPick": "Huvudvaluta",
+    "countryPick": "Land för bank",
+    "searchCurrency": "Sök valuta"
+  },
+  "notifications": {
+    "lead": "Moony påminner bara från den här telefonen, utan server. Aviseringarna planeras varje gång du låser upp.",
+    "permission": {
+      "label": "Aviseringar",
+      "granted": "Tillåtet",
+      "denied": "Blockerade",
+      "notAsked": "Inte tillåtna ännu",
+      "notGranted": "Inte tillåtet",
+      "allow": "Tillåt aviseringar",
+      "deniedHint": "Tillåt dem i telefonens Inställningar → Moony → Aviseringar.",
+      "unavailable": "Inte tillgängliga på den här enheten.",
+      "needed": "Tillåt aviseringar först."
+    },
+    "deadlines": {
+      "label": "Tidsfrister",
+      "hint": "14 dagar och 1 dag före tidsfristen."
+    },
+    "upkeep": {
+      "label": "Månatligt underhåll",
+      "hint": "Dag {{day}} i månaden: saldon och kontoutdrag.",
+      "day": "Dag i månaden",
+      "dayLabel": "Dag {{day}} i månaden",
+      "dayValue": "{{day}}",
+      "title": "Dags att underhålla datan",
+      "body": "Registrera saldona och importera kontoutdragen."
+    },
+    "backup": {
+      "label": "Säkerhetskopia",
+      "hint": "När den senaste säkerhetskopian är äldre än 30 dagar.",
+      "title": "Säkerhetskopiera Moony",
+      "stale": "Den senaste säkerhetskopian är över en månad gammal.",
+      "never": "Du har ingen säkerhetskopia än."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} om 14 dagar",
+      "tomorrow": "{{whatKey}} i morgon",
+      "kind": {
+        "insurance_anniversary": "Uppsägningsfrist för försäkringen",
+        "insurance_end": "Försäkringen upphör",
+        "loan_fixation_end": "Den bundna räntan upphör",
+        "bond_maturity": "Obligationen förfaller",
+        "account_termination": "Kontot avslutas",
+        "savings_rate_end": "Kampanjräntan upphör"
+      }
+    },
+    "test": {
+      "send": "Skicka en testavisering",
+      "title": "Testavisering",
+      "body": "Så här ser en påminnelse från Moony ut.",
+      "sent": "Kommer om 10 sekunder"
+    }
   }
 }

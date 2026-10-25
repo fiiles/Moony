@@ -18,5 +18,61 @@
     "equals": "COMPLETED"
   },
   "exportHelpUrl": "https://help.revolut.com/help/profile-and-plan/managing-my-account/account-statement-per-chosen-currency/",
-  "sampleFixture": "revolut.csv"
+  "sampleFixture": "revolut.csv",
+  "mobileExport": {
+    "route": "app",
+    "format": "Excel (CSV)",
+    "steps": {
+      "en": [
+        "In the Revolut app, tap “Accounts”, choose the currency and tap “More” (…) → “Statement”.",
+        "Set the period, choose Excel and tap “Generate”; Moony reads the file if it is a CSV.",
+        "Tap the export icon at the top right and choose Moony."
+      ],
+      "cs": [
+        "V aplikaci Revolut klepněte na „Accounts“, vyberte měnu a klepněte na „More“ (…) → „Statement“.",
+        "Nastavte období, zvolte Excel a klepněte na „Generate“; Moony soubor načte, pokud je to CSV.",
+        "Klepněte na ikonu exportu vpravo nahoře a vyberte Moony."
+      ],
+      "de": [
+        "Tippen Sie in der Revolut-App auf „Accounts“, wählen Sie die Währung und tippen Sie auf „More“ (…) → „Statement“.",
+        "Stellen Sie den Zeitraum ein, wählen Sie Excel und tippen Sie auf „Generate“; Moony liest die Datei, wenn sie eine CSV-Datei ist.",
+        "Tippen Sie oben rechts auf das Export-Symbol und wählen Sie Moony."
+      ],
+      "es": [
+        "En la app de Revolut, toca «Accounts», elige la divisa y toca «More» (…) → «Statement».",
+        "Fija el periodo, elige Excel y toca «Generate»; Moony lee el archivo si es un CSV.",
+        "Toca el icono de exportar arriba a la derecha y elige Moony."
+      ],
+      "it": [
+        "Nell'app Revolut tocca «Accounts», scegli la valuta e tocca «More» (…) → «Statement».",
+        "Imposta il periodo, scegli Excel e tocca «Generate»; Moony legge il file se è un CSV.",
+        "Tocca l'icona di esportazione in alto a destra e scegli Moony."
+      ],
+      "nb": [
+        "Trykk på «Accounts» i Revolut-appen, velg valuta og trykk på «More» (…) → «Statement».",
+        "Velg periode, velg Excel og trykk på «Generate»; Moony leser filen hvis den er en CSV-fil.",
+        "Trykk på eksportikonet øverst til høyre og velg Moony."
+      ],
+      "pl": [
+        "W aplikacji Revolut stuknij „Accounts”, wybierz walutę i stuknij „More” (…) → „Statement”.",
+        "Ustaw okres, wybierz Excel i stuknij „Generate”; Moony odczyta plik, jeśli jest to CSV.",
+        "Stuknij ikonę eksportu w prawym górnym rogu i wybierz Moony."
+      ],
+      "sv": [
+        "Tryck på ”Accounts” i Revolut-appen, välj valutan och tryck på ”More” (…) → ”Statement”.",
+        "Ställ in perioden, välj Excel och tryck på ”Generate”; Moony läser filen om den är en CSV-fil.",
+        "Tryck på exportikonen uppe till höger och välj Moony."
+      ],
+      "ja": [
+        "Revolutアプリで「Accounts」をタップし、通貨を選んで「More」（…）→「Statement」をタップします。",
+        "期間を設定し、Excelを選んで「Generate」をタップします。MoonyはCSVファイルであれば読み取れます。",
+        "右上の書き出しアイコンをタップして、Moonyを選びます。"
+      ],
+      "zh": [
+        "在 Revolut 应用中点按“Accounts”，选择币种，再点按“More”（…）→“Statement”。",
+        "设置期间，选择 Excel 并点按“Generate”；如果文件是 CSV，Moony 就能读取。",
+        "点按右上角的导出图标并选择 Moony。"
+      ]
+    }
+  }
 }

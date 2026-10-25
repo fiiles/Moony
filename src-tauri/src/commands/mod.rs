@@ -16,6 +16,9 @@ pub mod categories;
 pub mod categorization;
 pub mod company_info;
 pub mod crypto;
+/// Phones only: the keychain plugin is a mobile dependency.
+#[cfg(mobile)]
+pub(crate) mod device_backup;
 pub mod export;
 pub mod insurance;
 pub mod investments;
@@ -28,6 +31,9 @@ pub mod portfolio;
 pub mod price_api;
 pub mod projection;
 pub mod real_estate;
+/// Phones only: `RunEvent::Opened` exists on iOS and Android, and the Inbox folders on iOS.
+#[cfg(mobile)]
+pub mod received_files;
 pub mod statement_import;
 pub mod stock_import;
 pub mod stock_monitor;

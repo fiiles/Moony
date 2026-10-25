@@ -88,6 +88,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("021_encrypted_attachments", MIGRATION_021),
         ("022_profile_theme", MIGRATION_022),
         ("023_stock_splits", MIGRATION_023),
+        ("024_categorize_snooze", MIGRATION_024),
     ]
 }
 
@@ -2844,6 +2845,14 @@ CREATE INDEX IF NOT EXISTS idx_stock_splits_ticker ON stock_splits(ticker);
 ALTER TABLE stock_data ADD COLUMN splits_checked_at INTEGER;
 "#;
 
+/// 024: the phone's categorize queue can hold a payment back ("Bez kategorie, nechat", 30 days):
+/// `categorize_snoozed_until` is the unix second the hold ends, NULL for a payment that was never
+/// held back. Nothing on the desktop reads it. (Built as 023 on the unreleased phone branch; it
+/// moved to 024 when main's 023_stock_splits reached the release line first.)
+pub(crate) const MIGRATION_024: &str = r#"
+ALTER TABLE bank_transactions ADD COLUMN categorize_snoozed_until INTEGER;
+"#;
+
 #[cfg(test)]
 mod migration_012 {
     use super::*;
@@ -3914,6 +3923,80 @@ mod migration_022 {
             })
             .expect("theme");
         assert_eq!(theme, "system");
+    }
+}
+
+#[cfg(test)]
+mod migration_024 {
+    use super::*;
+
+    fn database_before_024() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "024_categorize_snooze")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn.execute_batch(
+            "INSERT INTO bank_accounts (id, name, currency) VALUES ('a1', 'Main', 'CZK');
+             INSERT INTO bank_transactions
+                (id, bank_account_id, tx_type, amount, currency, booking_date)
+             VALUES ('t1', 'a1', 'debit', '120.50', 'CZK', 1790000000);",
+        )
+        .expect("legacy transaction");
+        conn
+    }
+
+    #[test]
+    fn migration_024_adds_a_nullable_snooze_column() {
+        let conn = database_before_024();
+        run_migrations(&conn).expect("migrate");
+
+        let (declared, not_null, default): (String, i64, Option<String>) = conn
+            .query_row(
+                "SELECT type, \"notnull\", dflt_value FROM pragma_table_info('bank_transactions')
+                 WHERE name = 'categorize_snoozed_until'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("snooze column");
+        assert_eq!(declared, "INTEGER");
+        assert_eq!(not_null, 0);
+        assert_eq!(default, None);
+    }
+
+    #[test]
+    fn an_existing_payment_is_not_snoozed_after_the_migration() {
+        let conn = database_before_024();
+        run_migrations(&conn).expect("migrate");
+
+        let (amount, snoozed): (String, Option<i64>) = conn
+            .query_row(
+                "SELECT amount, categorize_snoozed_until FROM bank_transactions WHERE id = 't1'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .expect("legacy transaction");
+        assert_eq!(amount, "120.50");
+        assert_eq!(snoozed, None);
+    }
+
+    #[test]
+    fn the_categorize_queue_reads_the_migrated_schema() {
+        let conn = database_before_024();
+        run_migrations(&conn).expect("migrate");
+        let engine = crate::services::categorization::CategorizationEngine::new_empty();
+
+        let queue = crate::services::categorize_queue::list(&conn, &engine, None, 1_800_000_000)
+            .expect("queue");
+        assert_eq!(queue.total, 1);
+        assert_eq!(queue.rows[0].transaction.id, "t1");
+
+        let ids = vec!["t1".to_string()];
+        crate::services::categorize_queue::snooze(&conn, &ids, 1_800_086_400).expect("snooze");
+        let queue = crate::services::categorize_queue::list(&conn, &engine, None, 1_800_000_000)
+            .expect("queue");
+        assert_eq!((queue.total, queue.snoozed), (0, 1));
     }
 }
 

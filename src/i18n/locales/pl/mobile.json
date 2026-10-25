@@ -37,6 +37,49 @@
       "noHistory": "brak historii"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Rzeczywiste przychody i wydatki z {{count}} konta",
+    "subtitle_few": "Rzeczywiste przychody i wydatki z {{count}} kont",
+    "subtitle_many": "Rzeczywiste przychody i wydatki z {{count}} kont",
+    "subtitle_other": "Rzeczywiste przychody i wydatki z {{count}} konta",
+    "moves_one": "{{count}} transakcja",
+    "moves_few": "{{count}} transakcje",
+    "moves_many": "{{count}} transakcji",
+    "moves_other": "{{count}} transakcji",
+    "shareOfExpenses": "{{share}} wydatków",
+    "shareOfIncome": "{{share}} przychodów",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "blisko limitu",
+    "overLimit": "powyżej limitu",
+    "budgetSummary": "Budżety: {{ok}} w limicie · {{over}} powyżej limitu · {{near}} blisko limitu",
+    "partial": "Okres jeszcze się nie skończył; liczby uzupełnią się wraz z następnym wyciągiem.",
+    "empty": {
+      "title": "Jeszcze brak transakcji",
+      "description": "Przepływy są liczone z płatności na twoich kontach. Dodaj konto i zaimportuj wyciąg.",
+      "action": "Otwórz Finanse"
+    },
+    "accounts": {
+      "title": "Konta w raporcie",
+      "done": "Gotowe"
+    },
+    "picker": {
+      "title": "Kategoria",
+      "change": "Zmień kategorię",
+      "current": "Bieżąca kategoria"
+    },
+    "limitSheet": {
+      "pick": "Wybierz kategorię, której wydatki chcesz pilnować."
+    },
+    "budgets": {
+      "ended": "zakończony",
+      "averageNote": "⌀ z ostatnich 6 miesięcy"
+    },
+    "showMore_one": "Pokaż kolejną {{count}} transakcję",
+    "showMore_few": "Pokaż kolejne {{count}} transakcje",
+    "showMore_many": "Pokaż kolejnych {{count}} transakcji",
+    "showMore_other": "Pokaż kolejne {{count}} transakcji",
+    "rowMenu": "Więcej akcji: {{title}}"
+  },
   "upkeep": {
     "title": "Aktualizacja danych",
     "count_one": "{{count}} pozycja",
@@ -92,5 +135,707 @@
     "enabled": "Odblokowywanie biometrią włączone",
     "notEnabled": "Odblokowywanie biometrią nie zostało włączone",
     "unavailable": "Biometria jest teraz niedostępna. Odblokuj hasłem."
+  },
+  "finance": {
+    "accounts_one": "{{count}} konto",
+    "accounts_few": "{{count}} konta",
+    "accounts_many": "{{count}} kont",
+    "accounts_other": "{{count}} konta",
+    "loans_one": "{{count}} kredyt",
+    "loans_few": "{{count}} kredyty",
+    "loans_many": "{{count}} kredytów",
+    "loans_other": "{{count}} kredytu",
+    "policies_one": "{{count}} polisa",
+    "policies_few": "{{count}} polisy",
+    "policies_many": "{{count}} polis",
+    "policies_other": "{{count}} polisy",
+    "total": "Łącznie na kontach",
+    "change30": "{{amount}} w 30 dni",
+    "noMovements": "brak ruchów w 30 dni",
+    "uncategorized": "Płatności bez kategorii",
+    "sections": {
+      "accounts": "Konta",
+      "loans": "Kredyty",
+      "insurance": "Ubezpieczenia",
+      "cashTrend": "Gotówka w czasie"
+    },
+    "manual": "ręcznie",
+    "statementOn": "wyciąg z {{date}}",
+    "balanceOn": "saldo z {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 dni",
+      "staleStatement_one": "wyciąg sprzed {{count}} dnia",
+      "staleStatement_few": "wyciąg sprzed {{count}} dni",
+      "staleStatement_many": "wyciąg sprzed {{count}} dni",
+      "staleStatement_other": "wyciąg sprzed {{count}} dnia",
+      "staleBalance_one": "saldo sprzed {{count}} dnia",
+      "staleBalance_few": "saldo sprzed {{count}} dni",
+      "staleBalance_many": "saldo sprzed {{count}} dni",
+      "staleBalance_other": "saldo sprzed {{count}} dnia",
+      "approx": "≈ {{amount}}",
+      "noRate": "brak kursu dla {{currency}}"
+    },
+    "perMonth": "{{amount}} / mies.",
+    "nextPayment": "następna płatność {{date}}",
+    "menu": {
+      "sort": "Sortuj",
+      "sortBalance": "Według salda",
+      "sortName": "Według nazwy",
+      "sortChange": "Według zmiany w 30 dni",
+      "sortLast": "Według ostatniego ruchu",
+      "showMatured": "Pokaż spłacone kredyty",
+      "showEnded": "Pokaż zakończone polisy",
+      "export": "Eksport"
+    },
+    "add": {
+      "title": "Dodaj",
+      "account": "Konto",
+      "loan": "Kredyt",
+      "policy": "Polisa"
+    },
+    "insurance": {
+      "type": "Typ polisy",
+      "upcoming": "Najbliższe płatności",
+      "upcomingNote_one": "{{count}} dzień",
+      "upcomingNote_few": "{{count}} dni",
+      "upcomingNote_many": "{{count}} dni",
+      "upcomingNote_other": "{{count}} dnia",
+      "showAll_one": "Pokaż {{count}}",
+      "showAll_few": "Pokaż wszystkie {{count}}",
+      "showAll_many": "Pokaż wszystkie {{count}}",
+      "showAll_other": "Pokaż wszystkie {{count}}"
+    },
+    "cashTrendLabel": "Wykres gotówki"
+  },
+  "queue": {
+    "source": {
+      "mcp": "propozycja z MCP",
+      "learned": "wyuczone",
+      "rule": "wg reguły",
+      "pack": "pakiet reguł"
+    },
+    "other": "Inna…",
+    "choose": "Wybierz kategorię…",
+    "keep": "Pomiń",
+    "keepMenu": "Pomiń na {{days}} dni",
+    "snoozed": "Pominięta na {{days}} dni",
+    "categorized": "Zakategoryzowano",
+    "also_one": "Zakategoryzowano też {{count}} inną płatność od {{name}}",
+    "also_few": "Zakategoryzowano też {{count}} inne płatności od {{name}}",
+    "also_many": "Zakategoryzowano też {{count}} innych płatności od {{name}}",
+    "also_other": "Zakategoryzowano też {{count}} innej płatności od {{name}}",
+    "alsoSub": "Ten sam kontrahent i kierunek na tym koncie",
+    "alsoRestored": "Przywrócono jak było",
+    "handled_one": "{{count}} już obsłużona",
+    "handled_few": "{{count}} już obsłużone",
+    "handled_many": "{{count}} już obsłużonych",
+    "handled_other": "{{count}} już obsłużonych",
+    "progress": "{{done}} z {{total}}",
+    "caption": "Dotknij propozycji, aby ją zaakceptować. „{{keep}}” odkłada płatność na {{days}} dni. To, co skategoryzujesz, zostaje zapamiętane jako reguła dla tego konta.",
+    "showCashflow": "Pokaż przepływy",
+    "empty": {
+      "title": "Wszystko zakategoryzowane",
+      "hint": "Nowe płatności pojawią się tu po następnym imporcie.",
+      "snoozed_one": "{{count}} pominięta płatność wróci później.",
+      "snoozed_few": "{{count}} pominięte płatności wrócą później.",
+      "snoozed_many": "{{count}} pominiętych płatności wróci później.",
+      "snoozed_other": "{{count}} pominiętych płatności wróci później."
+    }
+  },
+  "placeholder": {
+    "export": "Eksport pojawi się później."
+  },
+  "account": {
+    "record": "Zapisz saldo",
+    "import": "Importuj wyciąg",
+    "menu": {
+      "edit": "Edytuj konto",
+      "balanceHistory": "Historia salda",
+      "importHistory": "Historia importów",
+      "delete": "Usuń konto"
+    },
+    "stats": {
+      "changeThisYear": "Zmiana w tym roku",
+      "avgPerMonth": "Średnio miesięcznie",
+      "yearlyInterest": "Roczne odsetki"
+    },
+    "flows": {
+      "title": "Przepływy"
+    },
+    "ledger": {
+      "title": "Ruchy",
+      "search": "Szukaj po kontrahencie lub opisie",
+      "all": "Wszystkie",
+      "in": "Przychodzące",
+      "out": "Wychodzące",
+      "filter": "Filtr",
+      "noCategory": "Bez kategorii",
+      "categorize": "Kategoria",
+      "details": "Szczegóły",
+      "count_one": "{{count}} ruch",
+      "count_few": "{{count}} ruchy",
+      "count_many": "{{count}} ruchów",
+      "count_other": "{{count}} ruchu",
+      "empty": "Brak pasujących ruchów",
+      "emptyHint": "Zmień okres lub filtr.",
+      "showAll": "Pokaż wszystkie",
+      "loadError": "Nie udało się wczytać ruchów.",
+      "retry": "Spróbuj ponownie"
+    },
+    "filter": {
+      "title": "Filtr",
+      "category": "Kategoria",
+      "all": "Wszystkie",
+      "period": "Okres",
+      "from": "Od",
+      "to": "Do",
+      "apply": "Zastosuj",
+      "reset": "Resetuj"
+    },
+    "rowMenu": {
+      "details": "Szczegóły",
+      "category": "Kategoria",
+      "delete": "Usuń"
+    }
+  },
+  "loan": {
+    "nextPayment": "Następna rata {{amount}} · {{date}}",
+    "notStarted": "Zaczyna się {{date}}",
+    "stats": {
+      "since": "od {{month, lower}}",
+      "extra": "nadpłaty {{amount}}",
+      "until": "do {{month, lower}}"
+    },
+    "alerts": {
+      "fixationSoon_one": "Stała stopa kończy się za {{count}} dzień. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
+      "fixationSoon_few": "Stała stopa kończy się za {{count}} dni. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
+      "fixationSoon_many": "Stała stopa kończy się za {{count}} dni. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
+      "fixationSoon_other": "Stała stopa kończy się za {{count}} dnia. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
+      "fixationToday": "Stała stopa kończy się dzisiaj. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
+      "fixationPassed_one": "Stała stopa skończyła się {{count}} dzień temu. Zapisz nową stopę, aby rata i plan zostały przeliczone.",
+      "fixationPassed_few": "Stała stopa skończyła się {{count}} dni temu. Zapisz nową stopę, aby rata i plan zostały przeliczone.",
+      "fixationPassed_many": "Stała stopa skończyła się {{count}} dni temu. Zapisz nową stopę, aby rata i plan zostały przeliczone.",
+      "fixationPassed_other": "Stała stopa skończyła się {{count}} dnia temu. Zapisz nową stopę, aby rata i plan zostały przeliczone."
+    },
+    "schedule": {
+      "left": "zostaje {{amount}}",
+      "yearSub_one": "{{count}} rata · odsetki {{interest}}",
+      "yearSub_few": "{{count}} raty · odsetki {{interest}}",
+      "yearSub_many": "{{count}} rat · odsetki {{interest}}",
+      "yearSub_other": "{{count}} raty · odsetki {{interest}}",
+      "showAll_one": "Pokaż {{count}}",
+      "showAll_few": "Pokaż wszystkie {{count}}",
+      "showAll_many": "Pokaż wszystkie {{count}}",
+      "showAll_other": "Pokaż wszystkie {{count}}"
+    },
+    "extra": {
+      "noChange": "Ta kwota nie zmienia ani okresu spłaty, ani raty, ani odsetek."
+    },
+    "events": {
+      "menu": "Menu zdarzenia"
+    }
+  },
+  "documents": {
+    "takePhoto": "Zrób zdjęcie",
+    "chooseFile": "Wybierz plik",
+    "fromPhotos": "Wybierz ze zdjęć",
+    "photoName": "Zdjęcie {{date}}",
+    "count_one": "{{count}} · szyfrowany",
+    "count_few": "{{count}} · szyfrowane",
+    "count_many": "{{count}} · szyfrowanych",
+    "count_other": "{{count}} · szyfrowanych",
+    "openOnComputer": "Tego pliku nie można wyświetlić na telefonie. Otwórz go w Moony na komputerze.",
+    "saving": "Szyfruję i zapisuję…",
+    "rowMenu": "Więcej akcji: {{name}}",
+    "previewFailed": "Nie udało się wyświetlić podglądu. Otwórz dokument w Moony na komputerze.",
+    "zoomIn": "Powiększ",
+    "zoomOut": "Pomniejsz"
+  },
+  "policy": {
+    "copy": "Skopiuj numer umowy",
+    "copied": "Numer umowy skopiowany",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Okres umowy",
+    "termOpen": "od {{start}} · bezterminowa",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "rocznica {{date}}",
+    "notice": "Wypowiedzenie do",
+    "limitsTotal": "łącznie {{amount}}",
+    "total": "Razem · {{payments}}"
+  },
+  "property": {
+    "notFound": "Ta nieruchomość już nie istnieje.",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "{{rent}} rocznie",
+    "perYear": "rocznie",
+    "loanPayment": "rata {{amount}} / mies.",
+    "rowMenu": "Więcej akcji: {{name}}",
+    "costKindRecurring": "Cykliczny",
+    "costKindOneTime": "Jednorazowy",
+    "costYear": "{{amount}} rocznie",
+    "costCurrent": "Teraz {{amount}}",
+    "costDateInFuture": "Data kosztu nie może być z przyszłości.",
+    "costNameRequired": "Podaj nazwę kosztu.",
+    "confirmDeleteRecurring": "Koszt cykliczny „{{name}}” ({{amount}}, {{frequency}}) zostanie usunięty na stałe. Tej operacji nie można cofnąć.",
+    "photoCount_one": "{{count}} zdjęcie",
+    "photoCount_few": "{{count}} zdjęcia",
+    "photoCount_many": "{{count}} zdjęć",
+    "photoCount_other": "{{count}} zdjęcia",
+    "uploading": "Wysyłam {{current}} / {{total}}",
+    "photosSkipped_one": "Nie udało się zapisać {{count}} zdjęcia.",
+    "photosSkipped_few": "Nie udało się zapisać {{count}} zdjęć.",
+    "photosSkipped_many": "Nie udało się zapisać {{count}} zdjęć.",
+    "photosSkipped_other": "Nie udało się zapisać {{count}} zdjęcia.",
+    "photoOpen": "Zdjęcie z {{day}}",
+    "photoFailed": "Nie udało się wyświetlić zdjęcia.",
+    "photoDeleted": "Zdjęcie usunięte",
+    "deletePhoto": "Usuń zdjęcie",
+    "deletePhotoConfirm": {
+      "title": "Usunąć to zdjęcie?",
+      "description": "Zdjęcie zostanie usunięte na stałe. Tej operacji nie można cofnąć.",
+      "descriptionLast": "To ostatnie zdjęcie z {{day}}, więc zostanie usunięty także cały zestaw zdjęć z tego dnia. Tej operacji nie można cofnąć."
+    }
+  },
+  "transaction": {
+    "flowSaved": "Znaczenie zapisane",
+    "done": "Gotowe",
+    "counterparty": "Kontrahent",
+    "date": "Data",
+    "category": "Kategoria",
+    "flow": "Znaczenie",
+    "note": "Notatka",
+    "details": "Szczegóły",
+    "bankId": "ID banku",
+    "valueDate": "Data waluty",
+    "file": "Plik",
+    "line": "Wiersz",
+    "sourceLabel": "Źródło",
+    "source": {
+      "manual": "Wpisano ręcznie",
+      "csv_import": "Zaimportowano",
+      "api_sync": "Zsynchronizowano"
+    },
+    "status": "Status",
+    "booked": "Zaksięgowana",
+    "currency": "Waluta"
+  },
+  "picker": {
+    "title": "Kategoria",
+    "recent": "Ostatnio używane",
+    "all": "Wszystkie kategorie",
+    "suggested": "Propozycja",
+    "decline": "Odrzuć propozycję",
+    "empty": "Żadna kategoria nie pasuje"
+  },
+  "import": {
+    "title": "Importuj wyciąg",
+    "intoAccount": "Do konta {{account}}",
+    "fromShare": "Z udostępnienia",
+    "reads": "Obsługiwane: {{formats}}.",
+    "reading": "Czytam plik…",
+    "importing": "Zapisuję płatności…",
+    "pick": {
+      "lead": "Wybierz plik pobrany z twojego banku.",
+      "choose": "Wybierz plik",
+      "chooseOther": "Wybierz inny plik"
+    },
+    "account": {
+      "sheetTitle": "Na które konto?",
+      "lead": "Wybierz konto, do którego należą płatności.",
+      "none": "Nie masz jeszcze otwartego konta. Dodaj to, do którego należy plik.",
+      "title": "Konta",
+      "new": "Nowe konto…"
+    },
+    "statement": {
+      "title": "Który wyciąg?",
+      "dateTitle": "Jak zapisano daty?",
+      "continue": "Dalej"
+    },
+    "unreadable": {
+      "title": "Nie można odczytać pliku",
+      "pdf": "Moony nie odczyta jeszcze wyciągu w PDF – pobierz z banku CSV, CAMT, MT940, OFX lub QIF.",
+      "image": "Moony nie odczyta zdjęcia ani skanu wyciągu – pobierz z banku CSV, CAMT, MT940, OFX lub QIF.",
+      "notStatement": "Ten plik nie zawiera wyciągu, który Moony potrafi odczytać.",
+      "error": "Nie udało się odczytać pliku."
+    },
+    "guide": {
+      "title": "Jak uzyskać wyciąg: {{bank}}",
+      "format": "Wybierz format: {{format}}",
+      "openWeb": "Otwórz bankowość internetową",
+      "openFailed": "Nie udało się otworzyć przeglądarki.",
+      "banks": "Instrukcje banków"
+    },
+    "recognize": {
+      "title": "Tak to rozumiem",
+      "caption": "Trzy transakcje z pliku, tak jak je odczytam:",
+      "captionFew": "Transakcje z pliku, tak jak je odczytam:",
+      "unknownFormat": "format jeszcze nieznany",
+      "tab": "tabulator",
+      "previewFailed": "Nie udało się teraz wczytać przykładowych wierszy. Rozpoznane kolumny poniżej nadal obowiązują.",
+      "looksRight": "Wygląda dobrze",
+      "fix": "Popraw…",
+      "use": "Zastosuj",
+      "field": {
+        "transactionId": "ID transakcji"
+      },
+      "notFound": "nie znaleziono",
+      "unused": "nieużywane",
+      "unusedWhy": {
+        "description": "płatności trudniej przypisać do kategorii",
+        "counterparty": "nie zobaczysz, kto zapłacił ani komu zapłacono",
+        "currency": "waluta pochodzi z konta",
+        "balance": "nie zaproponuję salda konta na podstawie pliku",
+        "transactionId": "duplikaty rozpoznam po dacie i kwocie"
+      },
+      "signVerified": "znak sprawdzony na podstawie salda",
+      "signInverted": "wydatki w tym pliku wyglądają na dodatnie – sprawdź przykład",
+      "signsBlocked": "Moony nie potrafi jeszcze zaimportować pliku, w którym wydatki są dodatnie. Jeśli kwota jest w innej kolumnie, wybierz ją, w przeciwnym razie anuluj import.",
+      "allPositive": "Wszystkie kwoty są dodatnie – wydatki zapisałyby się jako przychody.",
+      "pairSides": "Wydatki: {{debit}} · Przychody: {{credit}}",
+      "fixTitle": "Co poprawić?",
+      "fixLead": "Dotknij pola, które zostało źle odczytane.",
+      "ask": {
+        "date": "Co jest datą?",
+        "amount": "Co jest kwotą?",
+        "description": "Co jest opisem?",
+        "counterparty": "Co jest kontrahentem?",
+        "currency": "Co jest walutą?",
+        "balance": "Co jest saldem?",
+        "transactionId": "Co jest ID transakcji?"
+      },
+      "lead": {
+        "date": "Wybierz kolumnę z datą każdej transakcji.",
+        "amount": "Wybierz kolumnę z kwotą transakcji. Wydatki powinny być ujemne.",
+        "description": "Wybierz kolumnę z tekstem płatności, na przykład tytułem lub notatką. Pomaga przy kategoryzacji płatności.",
+        "counterparty": "Wybierz kolumnę z nazwą tego, kto zapłacił lub komu zapłacono.",
+        "currency": "Wybierz kolumnę z kodem waluty, na przykład CZK lub EUR.",
+        "balance": "Wybierz kolumnę z saldem po każdej transakcji.",
+        "transactionId": "Wybierz kolumnę z unikalnym numerem, który bank nadaje każdej transakcji."
+      },
+      "sample": "Przykład po twoim wyborze:",
+      "sampleHint": "Wybierz kolumnę, a pokażę, jak odczytam transakcję.",
+      "pair": "para kolumn"
+    },
+    "preview": {
+      "hint": "Dotknij płatności, aby wybrać jej kategorię.",
+      "more_one": "i jeszcze {{count}}",
+      "more_few": "i jeszcze {{count}}",
+      "more_many": "i jeszcze {{count}}",
+      "more_other": "i jeszcze {{count}}"
+    },
+    "choice": {
+      "title": "Kategoryzacja",
+      "byRules": "Według reguł",
+      "byRulesSub": "Twój wybór zostanie usunięty"
+    },
+    "done": {
+      "lastBalance": "Saldo po ostatniej płatności: <b>{{balance}}</b>.",
+      "categorized_one": "Reguły skategoryzowały {{count}} płatność.",
+      "categorized_few": "Reguły skategoryzowały {{count}} płatności.",
+      "categorized_many": "Reguły skategoryzowały {{count}} płatności.",
+      "categorized_other": "Reguły skategoryzowały {{count}} płatności.",
+      "open_one": "{{count}} nadal bez kategorii.",
+      "open_few": "{{count}} nadal bez kategorii.",
+      "open_many": "{{count}} nadal bez kategorii.",
+      "open_other": "{{count}} nadal bez kategorii.",
+      "allSorted": "Wszystko ma kategorię.",
+      "promoted_one": "Zaksięgowano {{count}} oczekującą płatność.",
+      "promoted_few": "Zaksięgowano {{count}} oczekujące płatności.",
+      "promoted_many": "Zaksięgowano {{count}} oczekujących płatności.",
+      "promoted_other": "Zaksięgowano {{count}} oczekujących płatności.",
+      "queue_one": "Skategoryzuj {{count}} płatność",
+      "queue_few": "Skategoryzuj {{count}} płatności",
+      "queue_many": "Skategoryzuj {{count}} płatności",
+      "queue_other": "Skategoryzuj {{count}} płatności"
+    }
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "Na razie ta strona jest dostępna tylko w Moony na komputerze."
+    },
+    "subtitle": "Inwestycje, nieruchomości i gotówka",
+    "sections": {
+      "investments": "Inwestycje",
+      "realEstate": "Nieruchomości",
+      "cash": "Gotówka"
+    },
+    "cash": {
+      "title": "Na kontach"
+    },
+    "bonds": {
+      "count_one": "{{count}} emisja",
+      "count_few": "{{count}} emisje",
+      "count_many": "{{count}} emisji",
+      "count_other": "{{count}} emisji",
+      "nearest": "najbliższy wykup {{month, lower}}",
+      "coupon": "kupon {{amount}} / rok",
+      "upcoming": "Najbliższe kupony i terminy wykupu",
+      "noUpcoming": "W najbliższym roku nie przypada żaden kupon ani termin wykupu.",
+      "allRepaid": "Wszystkie emisje zostały wykupione. Włącz w menu ··· „{{action}}”, aby je zobaczyć.",
+      "loadFailed": "Nie udało się wczytać obligacji.",
+      "rateNote": "{{rate}} rocznie, ważona"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} pozycja",
+      "count_few": "{{count}} pozycje",
+      "count_many": "{{count}} pozycji",
+      "count_other": "{{count}} pozycji",
+      "valuedOn": "wycena z {{date}}",
+      "moreDetails": "Więcej danych",
+      "loadFailed": "Nie udało się wczytać aktywów.",
+      "notFound": "Nie znaleziono aktywa"
+    },
+    "realEstate": {
+      "personal": "własna",
+      "investment": "inwestycyjna",
+      "rent": "najem {{amount}} / mies.",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Jeszcze nic nie posiadasz",
+      "description": "Dodaj pierwszą inwestycję, nieruchomość lub inne aktywo.",
+      "class": "jeszcze nic"
+    },
+    "add": {
+      "label": "Dodaj",
+      "investment": "Inwestycję",
+      "crypto": "Kryptowalutę",
+      "bond": "Obligację",
+      "property": "Nieruchomość",
+      "asset": "Aktywo"
+    },
+    "noRate": "brak kursu wymiany dla {{currency}}",
+    "stocks": {
+      "back": "Akcje",
+      "pricesAt": "ceny {{time}}",
+      "pricesOn": "ceny {{date}}",
+      "invested": "zainwestowano {{amount}}",
+      "dividendsYear": "Dywidendy / rok",
+      "yieldNote": "stopa dywidendy {{percent}}",
+      "twrYtd": "Zwrot w tym roku",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "jeszcze brak historii",
+      "positionsTab": "Pozycje · {{count}}",
+      "watchedTab": "Obserwowane · {{count}}",
+      "sort": {
+        "label": "Sortowanie",
+        "value": "Według wartości",
+        "gain": "Według zwrotu",
+        "name": "Według nazwy"
+      },
+      "searchToggle": "Szukaj",
+      "clearSearch": "Wyczyść wyszukiwanie",
+      "showAll_one": "Pokaż {{count}} pozycję",
+      "showAll_few": "Pokaż wszystkie {{count}} pozycje",
+      "showAll_many": "Pokaż wszystkie {{count}} pozycji",
+      "showAll_other": "Pokaż wszystkie {{count}} pozycji",
+      "menu": {
+        "closed": "Zamknięte pozycje"
+      },
+      "closedBadge": "zamknięta",
+      "watchedEmpty": "Nie obserwujesz jeszcze żadnych akcji.",
+      "loadFailed": "Nie udało się wczytać pozycji.",
+      "target": "cel {{price}}",
+      "targetReached": "cel osiągnięty",
+      "dayChange": "dziś"
+    },
+    "crypto": {
+      "largestNote": "{{share}} krypto",
+      "heldNote": "{{share}} krypto · {{date}}"
+    },
+    "closed": {
+      "on": "zamknięta {{date}}",
+      "empty": "Żadna pozycja nie jest jeszcze zamknięta.",
+      "onlyClosed": "Są tu tylko zamknięte pozycje. Otwórz w menu ··· „{{action}}”, aby je zobaczyć."
+    },
+    "position": {
+      "heroLabel": "Wartość pozycji · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} za sztukę",
+      "stats": {
+        "value": "Wartość",
+        "inCurrency": "w {{currency}}",
+        "price": "Cena"
+      },
+      "tx": {
+        "buy": "Zakup · {{quantity}} {{unit}}",
+        "sell": "Sprzedaż · {{quantity}} {{unit}}",
+        "showAll_one": "Pokaż {{count}}",
+        "showAll_few": "Pokaż wszystkie {{count}}",
+        "showAll_many": "Pokaż wszystkie {{count}}",
+        "showAll_other": "Pokaż wszystkie {{count}}",
+        "menu": "Menu transakcji"
+      },
+      "follow": "Obserwuj",
+      "following": "Obserwowana",
+      "followed": "Dodano do obserwowanych",
+      "range52": "Zakres 52 tyg.",
+      "renamed": "Nazwa zapisana"
+    },
+    "watch": {
+      "stats": {
+        "today": "Dziś",
+        "since": "Od obserwacji",
+        "noTarget": "brak celu"
+      },
+      "above": "Powyżej",
+      "below": "Poniżej",
+      "openPosition": "Otwórz pozycję",
+      "notesEmpty": "Brak notatek. Stuknij Edytuj, aby dodać notatki z analizy — markdown działa."
+    }
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profil",
+      "profileNoEmail": "Imię i e-mail",
+      "language": "Język",
+      "security": "Bezpieczeństwo",
+      "backup": "Kopia zapasowa i przenoszenie",
+      "notifications": "Powiadomienia",
+      "reminders": "Przypomnienia",
+      "remindersSub": "{{on}} z {{total}} grup",
+      "import": "Import",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
+      "deleteSub": "po wpisaniu słowa potwierdzenia"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "bez telemetrii",
+    "security": {
+      "lead": "Odblokowywanie, blokada w tle i ukrywanie kwot na tym telefonie.",
+      "biometrics": "Odblokowuj {{methodKey}}",
+      "methodFace": "twarzą",
+      "methodTouch": "odciskiem palca",
+      "methodGeneric": "biometrią",
+      "biometricsOn": "Odblokowanie {{methodKey}}",
+      "biometricsOff": "Tylko hasło",
+      "biometricsDisabled": "Odblokowywanie biometrią wyłączone",
+      "lockAfterLabel": "Blokuj po wyjściu z aplikacji",
+      "lockAfterHint": "Po tym czasie aplikacja blokuje się ponownie po powrocie.",
+      "optionNow": "Od razu",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "blokada od razu",
+      "lockAfter_one": "blokada po {{count}} minucie",
+      "lockAfter_few": "blokada po {{count}} minutach",
+      "lockAfter_many": "blokada po {{count}} minutach",
+      "lockAfter_other": "blokada po {{count}} minuty",
+      "hideOnLaunch": "Ukrywaj kwoty po uruchomieniu",
+      "hideOnLaunchHint": "Każde uruchomienie zaczyna się z ukrytymi kwotami; oko w Przeglądzie pokazuje je ponownie.",
+      "hideOnLaunchShort": "kwoty ukryte po uruchomieniu"
+    },
+    "profile": {
+      "lead": "Twoje imię pojawia się w powitaniu w Przeglądzie.",
+      "currencyReadOnly": "Walutę główną zmienisz w Moony na komputerze."
+    },
+    "language": {
+      "title": "Język aplikacji",
+      "lead": "Liczby i daty są formatowane według języka."
+    },
+    "appearance": {
+      "lead": "System podąża za jasnym lub ciemnym wyglądem telefonu."
+    },
+    "delete": {
+      "title": "Usunąć wszystkie dane?",
+      "lead": "Trwale usuwa bazę danych, klucze i załączniki z tego telefonu. Kopie zapasowe poza telefonem zostają. Najpierw zrób kopię zapasową — to jedyna droga powrotu.",
+      "confirmLabel": "Aby potwierdzić, wpisz {{word}}",
+      "confirm": "Usuń dane",
+      "failed": "Nie udało się usunąć"
+    }
+  },
+  "backup": {
+    "lead": "Kopia zapasowa to jeden zaszyfrowany plik: baza danych, klucze i załączniki. Otworzy go tylko twoje hasło.",
+    "last": "Ostatnia kopia zapasowa",
+    "lastOn": "Ostatnia kopia zapasowa {{date}}",
+    "never": "Brak kopii zapasowej",
+    "what": "Zapisz ją w iCloud Drive lub w innym folderze w aplikacji Pliki. Moony nie ma do niej dostępu.",
+    "notSaved": "Kopia zapasowa nie została zapisana",
+    "unavailableHere": "Kopia zapasowa na razie działa tylko na iPhonie.",
+    "restoreTitle": "Przywracanie i przenoszenie",
+    "restoreLead": "Przywróć kopię zapasową z tego telefonu albo przenieś profil z Moony na komputerze: wybierz plik kopii i po przywróceniu odblokuj hasłem, które obowiązywało w chwili jej utworzenia.",
+    "restoreConfirmDescription": "Kopia z {{date}} (Moony {{version}}, załączników: {{attachments}}, {{size}}) zastąpi dane na tym telefonie. Jeśli chcesz zachować obecne dane, najpierw zrób ich kopię zapasową. Po zakończeniu Moony się zablokuje; odblokuj je hasłem używanym w chwili tworzenia kopii.",
+    "osBackupNote": "Profil nie jest zapisywany w kopii zapasowej samego telefonu (iCloud ani komputer). Jedyną kopią poza telefonem jest kopia zapasowa Moony, którą zapiszesz samodzielnie."
+  },
+  "firstRun": {
+    "privacyLead": "Moony przechowuje wszystko w zaszyfrowanej bazie danych na tym telefonie. Bez chmury, bez konta u nas.",
+    "points": {
+      "encryption": {
+        "title": "Szyfrowanie AES-256",
+        "text": "– bazę otwiera tylko twoje hasło; zdjęcia i dokumenty są w niej zaszyfrowane."
+      },
+      "localOnly": {
+        "title": "Bez chmury",
+        "text": "– nigdzie niczego nie wysyłamy; kopię zapasową zapisujesz sam w aplikacji Pliki lub w iCloud Drive."
+      },
+      "marketData": {
+        "title": "Dane rynkowe",
+        "text": "– pobierane są tylko ceny akcji, walut i kryptowalut, które śledzisz (Yahoo Finance, CoinGecko, EBC). Aplikacja działa także offline."
+      }
+    },
+    "recoveryLead": "Jedyna droga do twoich danych, jeśli zapomnisz hasła. Przechowuj go poza tym telefonem – w menedżerze haseł, w aplikacji Pliki lub na papierze.",
+    "saveToFiles": "Zapisz w Plikach",
+    "recoveryFileNote": "Ten klucz resetuje twoje hasło do Moony. Działa tylko razem z danymi Moony na tym telefonie lub z ich kopią zapasową, więc zapisz także tę kopię. Nie przekazuj tego pliku nikomu.",
+    "areasLead": "Wybierz, co chcesz śledzić w Moony. Możesz to zmienić w dowolnym momencie w Ustawieniach.",
+    "firstAccountLead": "Wystarczy nazwa i saldo. Wyciąg zaimportujesz później.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometria",
+      "backup": "Kopia zapasowa"
+    },
+    "backupTitle": "Zrób kopię zapasową danych",
+    "backupLead": "Ten telefon przechowuje jedyną kopię twoich danych, której nie ma w kopii zapasowej telefonu (iCloud ani komputer). Zapisz zaszyfrowaną kopię zapasową w iCloud Drive lub w wybranym folderze; Moony nigdy jej nie widzi.",
+    "currencyPick": "Waluta główna",
+    "countryPick": "Kraj bankowości",
+    "searchCurrency": "Szukaj waluty"
+  },
+  "notifications": {
+    "lead": "Moony przypomina tylko z tego telefonu, bez serwera. Powiadomienia są planowane przy każdym odblokowaniu.",
+    "permission": {
+      "label": "Powiadomienia",
+      "granted": "Dozwolone",
+      "denied": "Zablokowane",
+      "notAsked": "Jeszcze niedozwolone",
+      "notGranted": "Niedozwolone",
+      "allow": "Zezwól na powiadomienia",
+      "deniedHint": "Zezwól na nie w Ustawieniach telefonu → Moony → Powiadomienia.",
+      "unavailable": "Niedostępne na tym urządzeniu.",
+      "needed": "Najpierw zezwól na powiadomienia."
+    },
+    "deadlines": {
+      "label": "Terminy",
+      "hint": "14 dni i 1 dzień przed terminem."
+    },
+    "upkeep": {
+      "label": "Miesięczna aktualizacja danych",
+      "hint": "{{day}}. dzień miesiąca: salda i wyciągi.",
+      "day": "Dzień miesiąca",
+      "dayLabel": "{{day}}. dzień miesiąca",
+      "dayValue": "{{day}}.",
+      "title": "Czas zadbać o dane",
+      "body": "Zapisz salda i zaimportuj wyciągi."
+    },
+    "backup": {
+      "label": "Kopia zapasowa",
+      "hint": "Gdy ostatnia kopia jest starsza niż 30 dni.",
+      "title": "Zrób kopię zapasową Moony",
+      "stale": "Ostatnia kopia jest starsza niż miesiąc.",
+      "never": "Nie masz jeszcze żadnej kopii zapasowej."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} za 14 dni",
+      "tomorrow": "{{whatKey}} jutro",
+      "kind": {
+        "insurance_anniversary": "Termin wypowiedzenia ubezpieczenia",
+        "insurance_end": "Koniec ubezpieczenia",
+        "loan_fixation_end": "Koniec stałego oprocentowania",
+        "bond_maturity": "Wykup obligacji",
+        "account_termination": "Koniec konta",
+        "savings_rate_end": "Koniec promocyjnego oprocentowania"
+      }
+    },
+    "test": {
+      "send": "Wyślij powiadomienie testowe",
+      "title": "Powiadomienie testowe",
+      "body": "Tak wygląda przypomnienie z Moony.",
+      "sent": "Przyjdzie za 10 sekund"
+    }
   }
 }

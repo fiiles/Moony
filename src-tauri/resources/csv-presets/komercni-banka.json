@@ -13,5 +13,62 @@
   "descriptionColumns": ["Popis příkazce", "Popis pro příjemce"],
   "counterpartyColumn": "Název protiúčtu",
   "counterpartyIbanColumn": "Číslo protiúčtu",
-  "currencyColumn": "Měna"
+  "currencyColumn": "Měna",
+  "mobileExport": {
+    "route": "web",
+    "format": "CSV",
+    "webUrl": "https://www.kb.cz/",
+    "steps": {
+      "en": [
+        "Open Komerční banka internet banking in Safari or Chrome and sign in.",
+        "Open “Stažení účetních dat”, set the period and choose the CSV format.",
+        "Share the file with Moony, or save it to Files and choose it here with “Choose file”."
+      ],
+      "cs": [
+        "V Safari nebo Chrome otevřete internetové bankovnictví Komerční banky a přihlaste se.",
+        "Otevřete „Stažení účetních dat“, nastavte období a zvolte formát CSV.",
+        "Sdílejte soubor do Moony, nebo ho uložte do Souborů a vyberte ho zde přes „Vybrat soubor“."
+      ],
+      "de": [
+        "Öffnen Sie das Online-Banking von Komerční banka in Safari oder Chrome und melden Sie sich an.",
+        "Öffnen Sie „Stažení účetních dat“, stellen Sie den Zeitraum ein und wählen Sie das Format CSV.",
+        "Teilen Sie die Datei mit Moony oder speichern Sie sie in „Dateien“ und wählen Sie sie hier mit „Datei wählen“."
+      ],
+      "es": [
+        "Abre la banca por internet de Komerční banka en Safari o Chrome e inicia sesión.",
+        "Abre «Stažení účetních dat», fija el periodo y elige el formato CSV.",
+        "Comparte el archivo con Moony, o guárdalo en Archivos y elígelo aquí con «Elegir archivo»."
+      ],
+      "it": [
+        "Apri l'home banking di Komerční banka in Safari o Chrome e accedi.",
+        "Apri «Stažení účetních dat», imposta il periodo e scegli il formato CSV.",
+        "Condividi il file con Moony, oppure salvalo in File e sceglilo qui con «Scegli file»."
+      ],
+      "nb": [
+        "Åpne nettbanken til Komerční banka i Safari eller Chrome og logg inn.",
+        "Åpne «Stažení účetních dat», velg periode og velg formatet CSV.",
+        "Del filen med Moony, eller lagre den i Filer og velg den her med «Velg fil»."
+      ],
+      "pl": [
+        "Otwórz bankowość internetową banku Komerční banka w Safari lub Chrome i zaloguj się.",
+        "Otwórz „Stažení účetních dat”, ustaw okres i wybierz format CSV.",
+        "Udostępnij plik aplikacji Moony albo zapisz go w Plikach i wybierz tutaj przez „Wybierz plik”."
+      ],
+      "sv": [
+        "Öppna internetbanken hos Komerční banka i Safari eller Chrome och logga in.",
+        "Öppna ”Stažení účetních dat”, ställ in perioden och välj formatet CSV.",
+        "Dela filen med Moony, eller spara den i Filer och välj den här med ”Välj fil”."
+      ],
+      "ja": [
+        "SafariまたはChromeでKomerční bankaのインターネットバンキングを開き、ログインします。",
+        "「Stažení účetních dat」を開き、期間を設定してCSV形式を選びます。",
+        "ファイルをMoonyに共有するか、「ファイル」に保存して、ここで「ファイルを選択」から選びます。"
+      ],
+      "zh": [
+        "在 Safari 或 Chrome 中打开 Komerční banka 网上银行并登录。",
+        "打开“Stažení účetních dat”，设置期间并选择 CSV 格式。",
+        "将文件共享给 Moony，或存到“文件”后在此处点按“选择文件”。"
+      ]
+    }
+  }
 }

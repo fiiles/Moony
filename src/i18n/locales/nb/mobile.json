@@ -37,6 +37,43 @@
       "noHistory": "ingen historikk"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Faktiske inntekter og utgifter fra {{count}} konto",
+    "subtitle_other": "Faktiske inntekter og utgifter fra {{count}} kontoer",
+    "moves_one": "{{count}} transaksjon",
+    "moves_other": "{{count}} transaksjoner",
+    "shareOfExpenses": "{{share}} av utgiftene",
+    "shareOfIncome": "{{share}} av inntektene",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "nær grensen",
+    "overLimit": "over grensen",
+    "budgetSummary": "Budsjetter: {{ok}} innenfor grensen · {{over}} over grensen · {{near}} nær grensen",
+    "partial": "Perioden er ikke over ennå; tallene fylles ut med neste kontoutskrift.",
+    "empty": {
+      "title": "Ingen transaksjoner ennå",
+      "description": "Kontantstrømmen beregnes ut fra betalingene på kontoene dine. Legg til en konto og importer en kontoutskrift.",
+      "action": "Åpne Økonomi"
+    },
+    "accounts": {
+      "title": "Kontoer i rapporten",
+      "done": "Ferdig"
+    },
+    "picker": {
+      "title": "Kategori",
+      "change": "Endre kategori",
+      "current": "Gjeldende kategori"
+    },
+    "limitSheet": {
+      "pick": "Velg kategorien du vil følge opp utgiftene i."
+    },
+    "budgets": {
+      "ended": "avsluttet",
+      "averageNote": "⌀ siste 6 måneder"
+    },
+    "showMore_one": "Vis {{count}} transaksjon til",
+    "showMore_other": "Vis {{count}} transaksjoner til",
+    "rowMenu": "Flere handlinger: {{title}}"
+  },
   "upkeep": {
     "title": "Datavedlikehold",
     "count_one": "{{count}} oppgave",
@@ -82,5 +119,651 @@
     "enabled": "Biometrisk opplåsing slått på",
     "notEnabled": "Biometrisk opplåsing ble ikke slått på",
     "unavailable": "Biometri er ikke tilgjengelig nå. Lås opp med passordet."
+  },
+  "finance": {
+    "accounts_one": "{{count}} konto",
+    "accounts_other": "{{count}} kontoer",
+    "loans_one": "{{count}} lån",
+    "loans_other": "{{count}} lån",
+    "policies_one": "{{count}} forsikring",
+    "policies_other": "{{count}} forsikringer",
+    "total": "Totalt på kontoer",
+    "change30": "{{amount}} på 30 dager",
+    "noMovements": "ingen bevegelser på 30 dager",
+    "uncategorized": "Betalinger uten kategori",
+    "sections": {
+      "accounts": "Kontoer",
+      "loans": "Lån",
+      "insurance": "Forsikringer",
+      "cashTrend": "Kontanter over tid"
+    },
+    "manual": "manuelt",
+    "statementOn": "kontoutskrift {{date}}",
+    "balanceOn": "saldo {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 dager",
+      "staleStatement_one": "kontoutskrift {{count}} dag gammel",
+      "staleStatement_other": "kontoutskrift {{count}} dager gammel",
+      "staleBalance_one": "saldo {{count}} dag gammel",
+      "staleBalance_other": "saldo {{count}} dager gammel",
+      "approx": "≈ {{amount}}",
+      "noRate": "ingen kurs for {{currency}}"
+    },
+    "perMonth": "{{amount}} / mnd",
+    "nextPayment": "neste betaling {{date}}",
+    "menu": {
+      "sort": "Sorter",
+      "sortBalance": "Etter saldo",
+      "sortName": "Etter navn",
+      "sortChange": "Etter endring på 30 dager",
+      "sortLast": "Etter siste bevegelse",
+      "showMatured": "Vis nedbetalte lån",
+      "showEnded": "Vis avsluttede forsikringer",
+      "export": "Eksporter"
+    },
+    "add": {
+      "title": "Legg til",
+      "account": "Konto",
+      "loan": "Lån",
+      "policy": "Forsikring"
+    },
+    "insurance": {
+      "type": "Forsikringstype",
+      "upcoming": "Neste betalinger",
+      "upcomingNote_one": "{{count}} dag",
+      "upcomingNote_other": "{{count}} dager",
+      "showAll_one": "Vis {{count}}",
+      "showAll_other": "Vis alle {{count}}"
+    },
+    "cashTrendLabel": "Diagram over kontanter"
+  },
+  "queue": {
+    "source": {
+      "mcp": "MCP-forslag",
+      "learned": "lært",
+      "rule": "etter regel",
+      "pack": "regelpakke"
+    },
+    "other": "Annen…",
+    "choose": "Velg kategori…",
+    "keep": "Hopp over",
+    "keepMenu": "Hopp over i {{days}} dager",
+    "snoozed": "Hoppet over i {{days}} dager",
+    "categorized": "Kategorisert",
+    "also_one": "Kategoriserte også {{count}} annen betaling fra {{name}}",
+    "also_other": "Kategoriserte også {{count}} andre betalinger fra {{name}}",
+    "alsoSub": "Samme motpart og retning på denne kontoen",
+    "alsoRestored": "Gjenopprettet slik de var",
+    "handled_one": "{{count}} allerede behandlet",
+    "handled_other": "{{count}} allerede behandlet",
+    "progress": "{{done}} av {{total}}",
+    "caption": "Trykk på et forslag for å godta det. «{{keep}}» setter en betaling til side i {{days}} dager. Det du kategoriserer, huskes som en regel for denne kontoen.",
+    "showCashflow": "Vis kontantstrøm",
+    "empty": {
+      "title": "Alt er kategorisert",
+      "hint": "Nye betalinger vises her etter neste import.",
+      "snoozed_one": "{{count}} betaling du hoppet over, kommer tilbake senere.",
+      "snoozed_other": "{{count}} betalinger du hoppet over, kommer tilbake senere."
+    }
+  },
+  "placeholder": {
+    "export": "Eksport kommer senere."
+  },
+  "account": {
+    "record": "Registrer saldo",
+    "import": "Importer kontoutskrift",
+    "menu": {
+      "edit": "Rediger konto",
+      "balanceHistory": "Saldohistorikk",
+      "importHistory": "Importhistorikk",
+      "delete": "Slett konto"
+    },
+    "stats": {
+      "changeThisYear": "Endring i år",
+      "avgPerMonth": "Gjennomsnitt per måned",
+      "yearlyInterest": "Årlig rente"
+    },
+    "flows": {
+      "title": "Pengestrømmer"
+    },
+    "ledger": {
+      "title": "Bevegelser",
+      "search": "Søk etter motpart eller beskrivelse",
+      "all": "Alle",
+      "in": "Innkommende",
+      "out": "Utgående",
+      "filter": "Filter",
+      "noCategory": "Uten kategori",
+      "categorize": "Kategori",
+      "details": "Detaljer",
+      "count_one": "{{count}} bevegelse",
+      "count_other": "{{count}} bevegelser",
+      "empty": "Ingen bevegelser samsvarer",
+      "emptyHint": "Endre perioden eller filteret.",
+      "showAll": "Vis alle",
+      "loadError": "Kunne ikke laste bevegelsene.",
+      "retry": "Prøv igjen"
+    },
+    "filter": {
+      "title": "Filter",
+      "category": "Kategori",
+      "all": "Alle",
+      "period": "Periode",
+      "from": "Fra",
+      "to": "Til",
+      "apply": "Bruk",
+      "reset": "Tilbakestill"
+    },
+    "rowMenu": {
+      "details": "Detaljer",
+      "category": "Kategori",
+      "delete": "Slett"
+    }
+  },
+  "loan": {
+    "nextPayment": "Neste termin {{amount}} · {{date}}",
+    "notStarted": "Starter {{date}}",
+    "stats": {
+      "since": "siden {{month, lower}}",
+      "extra": "ekstra {{amount}}",
+      "until": "til {{month, lower}}"
+    },
+    "alerts": {
+      "fixationSoon_one": "Bindingstiden utløper om {{count}} dag. Når banken har bekreftet den nye renten, registrer den – terminen og planen beregnes på nytt.",
+      "fixationSoon_other": "Bindingstiden utløper om {{count}} dager. Når banken har bekreftet den nye renten, registrer den – terminen og planen beregnes på nytt.",
+      "fixationToday": "Bindingstiden utløper i dag. Når banken har bekreftet den nye renten, registrer den – terminen og planen beregnes på nytt.",
+      "fixationPassed_one": "Bindingstiden utløp for {{count}} dag siden. Registrer den nye renten, så terminen og planen beregnes på nytt.",
+      "fixationPassed_other": "Bindingstiden utløp for {{count}} dager siden. Registrer den nye renten, så terminen og planen beregnes på nytt."
+    },
+    "schedule": {
+      "left": "{{amount}} igjen",
+      "yearSub_one": "{{count}} termin · renter {{interest}}",
+      "yearSub_other": "{{count}} terminer · renter {{interest}}",
+      "showAll_one": "Vis {{count}}",
+      "showAll_other": "Vis alle {{count}}"
+    },
+    "extra": {
+      "noChange": "Dette beløpet endrer verken løpetiden, terminen eller rentene."
+    },
+    "events": {
+      "menu": "Hendelsesmeny"
+    }
+  },
+  "documents": {
+    "takePhoto": "Ta bilde",
+    "chooseFile": "Velg fil",
+    "fromPhotos": "Velg fra bilder",
+    "photoName": "Bilde {{date}}",
+    "count_one": "{{count}} · kryptert",
+    "count_other": "{{count}} · krypterte",
+    "openOnComputer": "Denne filen kan ikke vises på telefonen. Åpne den i Moony på datamaskinen.",
+    "saving": "Krypterer og lagrer…",
+    "rowMenu": "Flere handlinger: {{name}}",
+    "previewFailed": "Forhåndsvisningen kunne ikke vises. Åpne dokumentet i Moony på datamaskinen.",
+    "zoomIn": "Zoom inn",
+    "zoomOut": "Zoom ut"
+  },
+  "policy": {
+    "copy": "Kopier avtalenummer",
+    "copied": "Avtalenummer kopiert",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Varighet",
+    "termOpen": "fra {{start}} · løpende",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "årsdag {{date}}",
+    "notice": "Si opp innen",
+    "limitsTotal": "totalt {{amount}}",
+    "total": "Totalt · {{payments}}"
+  },
+  "property": {
+    "notFound": "Denne eiendommen finnes ikke lenger.",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "{{rent}} i året",
+    "perYear": "i året",
+    "loanPayment": "termin {{amount}} / mnd",
+    "rowMenu": "Flere handlinger: {{name}}",
+    "costKindRecurring": "Fast",
+    "costKindOneTime": "Engangs",
+    "costYear": "{{amount}} i året",
+    "costCurrent": "Nå {{amount}}",
+    "costDateInFuture": "Datoen for en kostnad kan ikke ligge i fremtiden.",
+    "costNameRequired": "Skriv inn et navn på kostnaden.",
+    "confirmDeleteRecurring": "Dette sletter den faste kostnaden «{{name}}» ({{amount}}, {{frequency}}) permanent. Dette kan ikke angres.",
+    "photoCount_one": "{{count}} bilde",
+    "photoCount_other": "{{count}} bilder",
+    "uploading": "Laster opp {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} bilde kunne ikke lagres.",
+    "photosSkipped_other": "{{count}} bilder kunne ikke lagres.",
+    "photoOpen": "Bilde fra {{day}}",
+    "photoFailed": "Bildet kunne ikke vises.",
+    "photoDeleted": "Bildet er slettet",
+    "deletePhoto": "Slett bilde",
+    "deletePhotoConfirm": {
+      "title": "Slette dette bildet?",
+      "description": "Bildet slettes permanent. Dette kan ikke angres.",
+      "descriptionLast": "Dette er det siste bildet fra {{day}}, så bildegruppen for den dagen slettes også. Dette kan ikke angres."
+    }
+  },
+  "transaction": {
+    "flowSaved": "Betydning lagret",
+    "done": "Ferdig",
+    "counterparty": "Motpart",
+    "date": "Dato",
+    "category": "Kategori",
+    "flow": "Betydning",
+    "note": "Notat",
+    "details": "Detaljer",
+    "bankId": "Bank-ID",
+    "valueDate": "Valørdato",
+    "file": "Fil",
+    "line": "Linje",
+    "sourceLabel": "Kilde",
+    "source": {
+      "manual": "Lagt inn for hånd",
+      "csv_import": "Importert",
+      "api_sync": "Synkronisert"
+    },
+    "status": "Status",
+    "booked": "Bokført",
+    "currency": "Valuta"
+  },
+  "picker": {
+    "title": "Kategori",
+    "recent": "Nylig brukt",
+    "all": "Alle kategorier",
+    "suggested": "Forslag",
+    "decline": "Avslå forslaget",
+    "empty": "Ingen kategori passer"
+  },
+  "import": {
+    "title": "Importer kontoutskrift",
+    "intoAccount": "Til {{account}}",
+    "fromShare": "Delt",
+    "reads": "Støttet: {{formats}}.",
+    "reading": "Leser filen…",
+    "importing": "Skriver betalingene…",
+    "pick": {
+      "lead": "Velg filen du lastet ned fra banken din.",
+      "choose": "Velg fil",
+      "chooseOther": "Velg en annen fil"
+    },
+    "account": {
+      "sheetTitle": "Til hvilken konto?",
+      "lead": "Velg kontoen betalingene hører til.",
+      "none": "Du har ingen åpne kontoer ennå. Legg til den filen hører til.",
+      "title": "Kontoer",
+      "new": "Ny konto…"
+    },
+    "statement": {
+      "title": "Hvilken kontoutskrift?",
+      "dateTitle": "Hvordan er datoene skrevet?",
+      "continue": "Fortsett"
+    },
+    "unreadable": {
+      "title": "Kan ikke lese filen",
+      "pdf": "Moony kan ikke lese kontoutskrifter i PDF ennå – last ned CSV, CAMT, MT940, OFX eller QIF fra banken din.",
+      "image": "Moony kan ikke lese bilder eller skanninger av kontoutskrifter – last ned CSV, CAMT, MT940, OFX eller QIF fra banken din.",
+      "notStatement": "Denne filen inneholder ikke en kontoutskrift Moony kan lese.",
+      "error": "Filen kunne ikke leses."
+    },
+    "guide": {
+      "title": "Slik får du en kontoutskrift: {{bank}}",
+      "format": "Velg formatet: {{format}}",
+      "openWeb": "Åpne nettbanken",
+      "openFailed": "Nettleseren kunne ikke åpnes.",
+      "banks": "Veiledninger for banker"
+    },
+    "recognize": {
+      "title": "Slik forstår jeg filen",
+      "caption": "Tre transaksjoner fra filen, slik jeg leser dem:",
+      "captionFew": "Transaksjoner fra filen, slik jeg leser dem:",
+      "unknownFormat": "formatet er ikke kjent ennå",
+      "tab": "tabulator",
+      "previewFailed": "Eksempelradene kunne ikke lastes akkurat nå. Kolonnene under gjelder likevel.",
+      "looksRight": "Ser riktig ut",
+      "fix": "Rett opp…",
+      "use": "Bruk",
+      "field": {
+        "transactionId": "Transaksjons-ID"
+      },
+      "notFound": "ikke funnet",
+      "unused": "ikke brukt",
+      "unusedWhy": {
+        "description": "betalinger er vanskeligere å kategorisere",
+        "counterparty": "du ser ikke hvem som betalte eller fikk betalt",
+        "currency": "valutaen hentes fra kontoen",
+        "balance": "jeg foreslår ingen kontosaldo ut fra filen",
+        "transactionId": "jeg kjenner igjen duplikater på dato og beløp"
+      },
+      "signVerified": "fortegnet er kontrollert mot saldoen",
+      "signInverted": "utgiftene i filen ser positive ut – sjekk eksempelet",
+      "signsBlocked": "Moony kan ennå ikke importere en fil der utgiftene er positive. Hvis en annen kolonne har beløpet, velg den – ellers avbryt importen.",
+      "allPositive": "Alle beløpene er positive – utgifter ville blitt lagret som inntekter.",
+      "pairSides": "Utgifter: {{debit}} · Inntekter: {{credit}}",
+      "fixTitle": "Hva skal jeg rette opp?",
+      "fixLead": "Trykk på feltet jeg leste feil.",
+      "ask": {
+        "date": "Hva er datoen?",
+        "amount": "Hva er beløpet?",
+        "description": "Hva er beskrivelsen?",
+        "counterparty": "Hva er motparten?",
+        "currency": "Hva er valutaen?",
+        "balance": "Hva er saldoen?",
+        "transactionId": "Hva er transaksjons-ID-en?"
+      },
+      "lead": {
+        "date": "Velg kolonnen med datoen for hver transaksjon.",
+        "amount": "Velg kolonnen med transaksjonens beløp. Utgifter skal være negative.",
+        "description": "Velg kolonnen med betalingens tekst, for eksempel melding eller notat. Den hjelper med å kategorisere betalinger.",
+        "counterparty": "Velg kolonnen med navnet på den som betalte eller fikk betalt.",
+        "currency": "Velg kolonnen med valutakoden, for eksempel CZK eller EUR.",
+        "balance": "Velg kolonnen med saldoen etter hver transaksjon.",
+        "transactionId": "Velg kolonnen med det unike nummeret banken gir hver transaksjon."
+      },
+      "sample": "Eksempel etter valget ditt:",
+      "sampleHint": "Velg en kolonne, så viser jeg hvordan jeg ville lest transaksjonen.",
+      "pair": "kolonnepar"
+    },
+    "preview": {
+      "hint": "Trykk på en betaling for å velge kategori.",
+      "more_one": "og {{count}} til",
+      "more_other": "og {{count}} til"
+    },
+    "choice": {
+      "title": "Kategorisering",
+      "byRules": "Etter reglene",
+      "byRulesSub": "Valget ditt fjernes"
+    },
+    "done": {
+      "lastBalance": "Saldo etter siste betaling: <b>{{balance}}</b>.",
+      "categorized_one": "Reglene kategoriserte {{count}} betaling.",
+      "categorized_other": "Reglene kategoriserte {{count}} betalinger.",
+      "open_one": "{{count}} er fortsatt uten kategori.",
+      "open_other": "{{count}} er fortsatt uten kategori.",
+      "allSorted": "Alt har en kategori.",
+      "promoted_one": "{{count}} ventende betaling ble bokført.",
+      "promoted_other": "{{count}} ventende betalinger ble bokført.",
+      "queue_one": "Kategoriser {{count}} betaling",
+      "queue_other": "Kategoriser {{count}} betalinger"
+    }
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "Foreløpig finnes denne siden bare i Moony på datamaskinen."
+    },
+    "subtitle": "Investeringer, eiendom og kontanter",
+    "sections": {
+      "investments": "Investeringer",
+      "realEstate": "Eiendom",
+      "cash": "Kontanter"
+    },
+    "cash": {
+      "title": "På kontoer"
+    },
+    "bonds": {
+      "count_one": "{{count}} emisjon",
+      "count_other": "{{count}} emisjoner",
+      "nearest": "nærmeste forfall {{month, lower}}",
+      "coupon": "kupong {{amount}} / år",
+      "upcoming": "Neste kuponger og forfall",
+      "noUpcoming": "Ingen kuponger eller forfall det kommende året.",
+      "allRepaid": "Alle emisjoner er innfridd. Slå på «{{action}}» i menyen ··· for å se dem.",
+      "loadFailed": "Obligasjonene kunne ikke lastes.",
+      "rateNote": "{{rate}} p.a. vektet"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} post",
+      "count_other": "{{count}} poster",
+      "valuedOn": "verdsatt {{date}}",
+      "moreDetails": "Flere opplysninger",
+      "loadFailed": "Eiendelene kunne ikke lastes.",
+      "notFound": "Eiendelen ble ikke funnet"
+    },
+    "realEstate": {
+      "personal": "egen bolig",
+      "investment": "investering",
+      "rent": "leie {{amount}} / måned",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Ingenting eid ennå",
+      "description": "Legg til din første investering, eiendom eller annen eiendel.",
+      "class": "ingenting ennå"
+    },
+    "add": {
+      "label": "Legg til",
+      "investment": "Investering",
+      "crypto": "Kryptovaluta",
+      "bond": "Obligasjon",
+      "property": "Eiendom",
+      "asset": "Eiendel"
+    },
+    "noRate": "ingen valutakurs for {{currency}}",
+    "stocks": {
+      "back": "Aksjer",
+      "pricesAt": "kurser {{time}}",
+      "pricesOn": "kurser {{date}}",
+      "invested": "investert {{amount}}",
+      "dividendsYear": "Utbytte / år",
+      "yieldNote": "avkastning {{percent}}",
+      "twrYtd": "Avkastning i år",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "ingen historikk ennå",
+      "positionsTab": "Beholdninger · {{count}}",
+      "watchedTab": "Fulgte · {{count}}",
+      "sort": {
+        "label": "Sortering",
+        "value": "Etter verdi",
+        "gain": "Etter avkastning",
+        "name": "Etter navn"
+      },
+      "searchToggle": "Søk",
+      "clearSearch": "Tøm søket",
+      "showAll_one": "Vis {{count}} beholdning",
+      "showAll_other": "Vis alle {{count}} beholdninger",
+      "menu": {
+        "closed": "Avsluttede beholdninger"
+      },
+      "closedBadge": "avsluttet",
+      "watchedEmpty": "Du følger ingen aksjer ennå.",
+      "loadFailed": "Beholdningene kunne ikke lastes.",
+      "target": "mål {{price}}",
+      "targetReached": "målet nådd",
+      "dayChange": "i dag"
+    },
+    "crypto": {
+      "largestNote": "{{share}} av krypto",
+      "heldNote": "{{share}} av krypto · {{date}}"
+    },
+    "closed": {
+      "on": "avsluttet {{date}}",
+      "empty": "Ingen beholdninger er avsluttet ennå.",
+      "onlyClosed": "Bare avsluttede beholdninger her. Åpne «{{action}}» i menyen ··· for å se dem."
+    },
+    "position": {
+      "heroLabel": "Verdi av beholdningen · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} per stk.",
+      "stats": {
+        "value": "Verdi",
+        "inCurrency": "i {{currency}}",
+        "price": "Kurs"
+      },
+      "tx": {
+        "buy": "Kjøp · {{quantity}} {{unit}}",
+        "sell": "Salg · {{quantity}} {{unit}}",
+        "showAll_one": "Vis {{count}}",
+        "showAll_other": "Vis alle {{count}}",
+        "menu": "Transaksjonsmeny"
+      },
+      "follow": "Følg",
+      "following": "Følger",
+      "followed": "Lagt til i følgelisten",
+      "range52": "52-ukers spenn",
+      "renamed": "Navn lagret"
+    },
+    "watch": {
+      "stats": {
+        "today": "I dag",
+        "since": "Siden følging",
+        "noTarget": "ingen mål satt"
+      },
+      "above": "Over",
+      "below": "Under",
+      "openPosition": "Åpne beholdningen",
+      "notesEmpty": "Ingen notater ennå. Trykk på Rediger for å legge til analysenotater — markdown fungerer."
+    }
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profil",
+      "profileNoEmail": "Navn og e-post",
+      "language": "Språk",
+      "security": "Sikkerhet",
+      "backup": "Sikkerhetskopi og overføring",
+      "notifications": "Varsler",
+      "reminders": "Påminnelser",
+      "remindersSub": "{{on}} av {{total}} grupper",
+      "import": "Import",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
+      "deleteSub": "etter at du har skrevet et bekreftelsesord"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "ingen telemetri",
+    "security": {
+      "lead": "Opplåsing, lås i bakgrunnen og skjulte beløp på denne telefonen.",
+      "biometrics": "Lås opp med {{methodKey}}",
+      "methodFace": "ansiktet",
+      "methodTouch": "fingeravtrykk",
+      "methodGeneric": "biometri",
+      "biometricsOn": "Opplåsing med {{methodKey}}",
+      "biometricsOff": "Bare passord",
+      "biometricsDisabled": "Biometrisk opplåsing slått av",
+      "lockAfterLabel": "Lås etter at du forlater appen",
+      "lockAfterHint": "Etter denne tiden låses appen igjen når du kommer tilbake.",
+      "optionNow": "Straks",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "lås straks",
+      "lockAfter_one": "lås etter {{count}} minutt",
+      "lockAfter_other": "lås etter {{count}} minutter",
+      "hideOnLaunch": "Skjul beløp ved oppstart",
+      "hideOnLaunchHint": "Hver oppstart begynner med skjulte beløp; øyet i Oversikt viser dem igjen.",
+      "hideOnLaunchShort": "beløp skjult ved oppstart"
+    },
+    "profile": {
+      "lead": "Navnet ditt vises i hilsenen i Oversikt.",
+      "currencyReadOnly": "Hovedvaluta endrer du i Moony på datamaskinen."
+    },
+    "language": {
+      "title": "Appspråk",
+      "lead": "Tall og datoer følger språket."
+    },
+    "appearance": {
+      "lead": "System følger telefonens lyse eller mørke utseende."
+    },
+    "delete": {
+      "title": "Slette alle data?",
+      "lead": "Sletter databasen, nøklene og vedleggene på denne telefonen for godt. Sikkerhetskopier utenfor telefonen blir liggende. Ta en sikkerhetskopi først — det er den eneste veien tilbake.",
+      "confirmLabel": "Skriv {{word}} for å bekrefte",
+      "confirm": "Slett data",
+      "failed": "Slettingen mislyktes"
+    }
+  },
+  "backup": {
+    "lead": "En sikkerhetskopi er én kryptert fil: databasen, nøklene og vedleggene. Bare passordet ditt åpner den.",
+    "last": "Siste sikkerhetskopi",
+    "lastOn": "Siste sikkerhetskopi {{date}}",
+    "never": "Ingen sikkerhetskopi ennå",
+    "what": "Lagre den i iCloud Drive eller en annen mappe i Filer. Moony har ikke tilgang til den.",
+    "notSaved": "Sikkerhetskopien ble ikke lagret",
+    "unavailableHere": "Sikkerhetskopiering fungerer foreløpig bare på iPhone.",
+    "restoreTitle": "Gjenoppretting og overføring",
+    "restoreLead": "Gjenopprett en sikkerhetskopi fra denne telefonen, eller overfør en profil fra Moony på datamaskinen: velg filen med sikkerhetskopien, og lås opp etter gjenopprettingen med passordet som gjaldt da den ble laget.",
+    "restoreConfirmDescription": "Sikkerhetskopien fra {{date}} (Moony {{version}}, {{attachments}} vedlegg, {{size}}) erstatter dataene på denne telefonen. Ta en sikkerhetskopi først hvis du vil beholde dagens data. Moony låses etterpå; lås den opp med passordet som var i bruk da sikkerhetskopien ble laget.",
+    "osBackupNote": "Profilen lagres ikke i telefonens egen sikkerhetskopi (iCloud eller datamaskin). Moony-sikkerhetskopien du selv lagrer, er den eneste kopien utenfor telefonen."
+  },
+  "firstRun": {
+    "privacyLead": "Moony lagrer alt i en kryptert database på denne telefonen. Ingen sky, ingen konto hos oss.",
+    "points": {
+      "encryption": {
+        "title": "AES-256-kryptering",
+        "text": "– bare passordet ditt åpner databasen; bilder og dokumenter er kryptert inni den."
+      },
+      "localOnly": {
+        "title": "Ingen sky",
+        "text": "– vi sender ingenting noe sted; du lagrer sikkerhetskopien selv i Filer eller iCloud Drive."
+      },
+      "marketData": {
+        "title": "Markedsdata",
+        "text": "– bare kursene på aksjene, valutaene og kryptovalutaene du følger, hentes (Yahoo Finance, CoinGecko, ESB). Appen fungerer også uten nett."
+      }
+    },
+    "recoveryLead": "Den eneste veien til dataene dine hvis du glemmer passordet. Oppbevar den utenfor denne telefonen – i en passordbehandler, i Filer eller på papir.",
+    "saveToFiles": "Lagre i Filer",
+    "recoveryFileNote": "Denne nøkkelen tilbakestiller Moony-passordet ditt. Den fungerer bare sammen med Moony-dataene på denne telefonen eller en sikkerhetskopi av dem, så lagre også den sikkerhetskopien. Ikke gi denne filen til noen.",
+    "areasLead": "Velg hva du vil følge i Moony. Du kan endre dette når som helst i Innstillinger.",
+    "firstAccountLead": "Et navn og en saldo er nok. Kontoutskriften kan du importere senere.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometri",
+      "backup": "Sikkerhetskopi"
+    },
+    "backupTitle": "Ta sikkerhetskopi av dataene dine",
+    "backupLead": "Denne telefonen har den eneste kopien av dataene dine, og den er ikke med i telefonens egen sikkerhetskopi (iCloud eller datamaskin). Lagre en kryptert sikkerhetskopi i iCloud Drive eller en mappe du velger; Moony ser den aldri.",
+    "currencyPick": "Hovedvaluta",
+    "countryPick": "Bankland",
+    "searchCurrency": "Søk etter valuta"
+  },
+  "notifications": {
+    "lead": "Moony varsler bare fra denne telefonen, uten server. Varslene planlegges hver gang du låser opp.",
+    "permission": {
+      "label": "Varsler",
+      "granted": "Tillatt",
+      "denied": "Blokkert",
+      "notAsked": "Ikke tillatt ennå",
+      "notGranted": "Ikke tillatt",
+      "allow": "Tillat varsler",
+      "deniedHint": "Tillat dem i Innstillinger på telefonen → Moony → Varsler.",
+      "unavailable": "Ikke tilgjengelig på denne enheten.",
+      "needed": "Tillat varsler først."
+    },
+    "deadlines": {
+      "label": "Frister",
+      "hint": "14 dager og 1 dag før fristen."
+    },
+    "upkeep": {
+      "label": "Månedlig vedlikehold",
+      "hint": "Dag {{day}} i måneden: saldoer og kontoutskrifter.",
+      "day": "Dag i måneden",
+      "dayLabel": "Dag {{day}} i måneden",
+      "dayValue": "{{day}}.",
+      "title": "På tide å vedlikeholde dataene",
+      "body": "Registrer saldoene og importer kontoutskriftene."
+    },
+    "backup": {
+      "label": "Sikkerhetskopi",
+      "hint": "Når den siste sikkerhetskopien er eldre enn 30 dager.",
+      "title": "Ta sikkerhetskopi av Moony",
+      "stale": "Den siste sikkerhetskopien er over en måned gammel.",
+      "never": "Du har ingen sikkerhetskopi ennå."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} om 14 dager",
+      "tomorrow": "{{whatKey}} i morgen",
+      "kind": {
+        "insurance_anniversary": "Oppsigelsesfrist for forsikringen",
+        "insurance_end": "Forsikringen utløper",
+        "loan_fixation_end": "Fastrenten utløper",
+        "bond_maturity": "Obligasjonen forfaller",
+        "account_termination": "Kontoen avsluttes",
+        "savings_rate_end": "Kampanjerenten utløper"
+      }
+    },
+    "test": {
+      "send": "Send et testvarsel",
+      "title": "Testvarsel",
+      "body": "Slik ser en påminnelse fra Moony ut.",
+      "sent": "Kommer om 10 sekunder"
+    }
   }
 }

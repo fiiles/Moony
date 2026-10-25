@@ -8,6 +8,7 @@
 import { invoke, type InvokeArgs, type InvokeOptions } from '@tauri-apps/api/core';
 import i18n from '@/i18n';
 import { toApiError } from '@/lib/api-error';
+import type { ResolvedTheme } from '@/utils/theme';
 import type {
   AssetValuation,
   InsertAssetValuation,
@@ -87,6 +88,7 @@ import type {
   TransactionQueryResult,
   CsvPreset,
   CsvPreviewResult,
+  InferredColumns,
   CsvImportPreview,
   CsvImportResult,
   CsvImportConfigInput,
@@ -127,6 +129,7 @@ import type {
   InsertScopedLearning,
   ChangedRow,
   RecategorizationPreview,
+  CategorizeQueue,
   CustomRule,
   CustomRuleInput,
   RuleHitCount,
@@ -257,7 +260,7 @@ export interface KeychainStatus {
 }
 
 /**
- * The two commands of the in-repo keychain plugin (`src-tauri/plugins/moony-keychain`) the webview
+ * The commands of the in-repo keychain plugin (`src-tauri/plugins/moony-keychain`) the webview
  * may call; its `guest-js/index.ts` documents them but sits outside the app's build. `store`,
  * `retrieve` and `remove` carry the database key and stay on the Rust side. Phones only: on the
  * desktop shell the commands do not exist and the calls reject.
@@ -268,6 +271,14 @@ export const keychainApi = {
   /** Blur the app in the app switcher (on by default in the plugin). */
   setPrivacyScreen: (enabled: boolean) =>
     tauriInvoke<void>('plugin:moony-keychain|set_privacy_screen', { enabled }),
+
+  /**
+   * Sets the status bar style outright (`plugin:moony-keychain|set_status_bar_style`): dark icons
+   * over the light theme, light icons over the dark one. Phones only (the iOS and Android halves
+   * of the plugin); the desktop shell has no such command and the call rejects.
+   */
+  setStatusBarStyle: (theme: ResolvedTheme) =>
+    tauriInvoke<void>('plugin:moony-keychain|set_status_bar_style', { theme }),
 };
 
 // ============================================================================
@@ -541,6 +552,24 @@ export const realEstateApi = {
   ) =>
     tauriInvoke<RealEstateDocument>('add_real_estate_document', { realEstateId, filePath, data }),
 
+  // The phone's twin of addDocument: a photographed or picked file exists only as bytes in the
+  // webview, which has no file-system access. The bytes are the raw IPC body (so no plaintext copy
+  // is written anywhere); the file name and the entries travel as percent-encoded headers, because
+  // an HTTP header value is ASCII.
+  addDocumentBytes: (
+    realEstateId: string,
+    bytes: Uint8Array,
+    fileName: string,
+    data: { name: string; description?: string; fileType?: string }
+  ) =>
+    tauriInvoke<RealEstateDocument>('add_real_estate_document_bytes', bytes, {
+      headers: {
+        'owner-id': realEstateId,
+        'file-name': encodeURIComponent(fileName),
+        document: encodeURIComponent(JSON.stringify(data)),
+      },
+    }),
+
   deleteDocument: (documentId: string) =>
     tauriInvoke<void>('delete_real_estate_document', { documentId }),
 
@@ -594,6 +623,21 @@ export const insuranceApi = {
     filePath: string,
     data: { name: string; description?: string; fileType?: string }
   ) => tauriInvoke<InsuranceDocument>('add_insurance_document', { insuranceId, filePath, data }),
+
+  // The phone's twin of addDocument (see realEstateApi.addDocumentBytes).
+  addDocumentBytes: (
+    insuranceId: string,
+    bytes: Uint8Array,
+    fileName: string,
+    data: { name: string; description?: string; fileType?: string }
+  ) =>
+    tauriInvoke<InsuranceDocument>('add_insurance_document_bytes', bytes, {
+      headers: {
+        'owner-id': insuranceId,
+        'file-name': encodeURIComponent(fileName),
+        document: encodeURIComponent(JSON.stringify(data)),
+      },
+    }),
 
   deleteDocument: (documentId: string) =>
     tauriInvoke<void>('delete_insurance_document', { documentId }),
@@ -946,10 +990,38 @@ export const dataApi = {
   getDataLocation: () => tauriInvoke<DataLocation>('get_data_location'),
   openDataFolder: () => tauriInvoke<void>('open_data_folder'),
   createBackup: (destPath: string) => tauriInvoke<BackupManifest>('create_backup', { destPath }),
+  // The four below exist on phones only (registered under `#[cfg(mobile)]`): a file is staged in
+  // the app's Documents folder by Rust, exported through the Files picker, and the staged copy
+  // removed by Rust again (the webview has no fs commands). A backup is recorded only when it was
+  // exported. The stage calls resolve with the staged path, which the matching finish / discard
+  // call takes back; the text export accepts one allow-listed file name (the recovery key's).
+  stageBackupExport: (fileName: string) => tauriInvoke<string>('stage_backup_export', { fileName }),
+  finishBackupExport: (path: string, exported: boolean) =>
+    tauriInvoke<void>('finish_backup_export', { path, exported }),
+  stageTextExport: (fileName: string, contents: string) =>
+    tauriInvoke<string>('stage_text_export', { fileName, contents }),
+  discardTextExport: (path: string) => tauriInvoke<void>('discard_text_export', { path }),
   inspectBackup: (path: string) => tauriInvoke<BackupInspection>('inspect_backup', { path }),
   restoreBackup: (path: string) => tauriInvoke<void>('restore_backup', { path }),
   exportAllData: (destPath: string) => tauriInvoke<ExportSummary>('export_all_data', { destPath }),
   verifyDatabase: () => tauriInvoke<IntegrityReport>('verify_database'),
+};
+
+// ============================================================================
+// Received files API — statements shared or opened into the phone app
+// ============================================================================
+
+/** Emitted (no payload) when files were queued for `receivedFilesApi.take()`. Phones only. */
+export const RECEIVED_FILES_EVENT = 'received-files';
+
+// Both calls exist on phones only (registered under `#[cfg(mobile)]`). iOS copies a statement that
+// was shared or opened into Moony into the app's Inbox folders and the copy stays there as
+// plaintext: `take` drains the paths the system opened (oldest first, empty when there are none)
+// and `discard` deletes one copy once it is imported or abandoned. A path outside the Inbox
+// folders is refused (`validation.receivedFileOutside`); a copy that is already gone is fine.
+export const receivedFilesApi = {
+  take: () => tauriInvoke<string[]>('take_received_files'),
+  discard: (path: string) => tauriInvoke<void>('discard_received_file', { path }),
 };
 
 // ============================================================================
@@ -1042,6 +1114,22 @@ export const bankAccountsApi = {
       presetId,
       encoding,
       country,
+    }),
+  /**
+   * Infer the columns of a CSV no preset describes from their content (the phone's guided
+   * recognition). Pass back the `delimiter`, `headerRow` and `encoding` that `parseCsvFile`
+   * reported; `country` is the profile country. Reads the first 200 data rows, writes nothing.
+   */
+  inferCsvColumns: (
+    filePath: string,
+    options: { delimiter?: string; headerRow?: number; encoding?: string; country?: string } = {}
+  ) =>
+    tauriInvoke<InferredColumns>('infer_csv_columns', {
+      filePath,
+      delimiter: options.delimiter,
+      headerRow: options.headerRow,
+      encoding: options.encoding,
+      country: options.country,
     }),
   /** Dry run: parsed rows with ok / error / duplicate / skipped status; writes nothing. */
   previewCsvImport: (accountId: string, filePath: string, config: CsvImportConfigInput) =>
@@ -1210,6 +1298,19 @@ export const categorizationApi = {
   /** Undo a bulk recategorization. Returns how many rows were restored. */
   restoreTransactionCategories: (rows: ChangedRow[]) =>
     tauriInvoke<number>('restore_transaction_categories', { rows }),
+
+  // ==================== The categorize queue (phone, spec 2026-10-17 §8.5) ====================
+
+  /**
+   * Booked payments without a category, newest first (at most 500, `total` counts all), each with
+   * the category the app would suggest; one account or all of them. Snoozed payments are left out.
+   */
+  getCategorizeQueue: (accountId?: string) =>
+    tauriInvoke<CategorizeQueue>('get_categorize_queue', { accountId: accountId ?? null }),
+
+  /** Hold uncategorized payments back from the queue for `days` days (1–365). Returns how many were held back. */
+  snoozeCategorization: (transactionIds: string[], days: number) =>
+    tauriInvoke<number>('snooze_categorization', { input: { transactionIds, days } }),
 
   // Forget a learned payee combination
   forget: (payee: string | null, counterpartyIban: string | null) =>

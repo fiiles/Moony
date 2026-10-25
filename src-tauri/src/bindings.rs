@@ -119,6 +119,8 @@ pub fn collect_types() -> TypeCollection {
     // CSV import models
     types.register::<crate::services::csv_presets::CsvPreset>();
     types.register::<crate::services::csv_presets::CsvRowFilter>();
+    types.register::<crate::services::csv_presets::ExportRoute>();
+    types.register::<crate::services::csv_presets::MobileExportGuide>();
     types.register::<crate::services::csv_import::CsvImportConfig>();
     types.register::<crate::services::csv_import::CsvCategoryOverride>();
     types.register::<crate::services::csv_import::CsvImportResult>();
@@ -129,6 +131,9 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::bank_accounts::InsertBalanceRecord>();
     types.register::<crate::services::csv_import::CsvPreviewRow>();
     types.register::<crate::services::csv_import::CsvPreviewResult>();
+    types.register::<crate::services::csv_import::InferredColumns>();
+    types.register::<crate::services::csv_import::InferredField>();
+    types.register::<crate::services::csv_import::SignCheck>();
     types.register::<crate::services::csv_import::CsvRowMessage>();
     types.register::<crate::services::csv_import::CsvRowStatus>();
     types.register::<crate::services::csv_import::CsvDateRange>();
@@ -265,6 +270,11 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::categorization::ChangedRow>();
     types.register::<crate::models::categorization::GoverningRule>();
     types.register::<crate::models::categorization::RecategorizationPreview>();
+    types.register::<crate::models::categorization::SuggestionSource>();
+    types.register::<crate::models::categorization::CategorySuggestion>();
+    types.register::<crate::models::categorization::CategorizeQueueRow>();
+    types.register::<crate::models::categorization::CategorizeQueue>();
+    types.register::<crate::models::categorization::SnoozeCategorization>();
     types.register::<crate::commands::categorization::RulePackInfo>();
     types.register::<crate::commands::categorization::PackRuleInfo>();
     types.register::<crate::services::categorization::hits::RuleHitCount>();

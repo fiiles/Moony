@@ -315,6 +315,28 @@ export type CashflowSection = { income: CashflowCategory[]; expenses: CashflowCa
 export type CategorizationOverview = { total: number; categorized: number; bySource: SourceCount[] }
 
 /**
+ * Booked payments without a category, newest first.
+ */
+export type CategorizeQueue = { 
+/**
+ * The newest payments, capped; `total` counts all of them.
+ */
+rows: CategorizeQueueRow[]; 
+/**
+ * Every payment waiting in the queue (not snoozed), listed or not.
+ */
+total: number; 
+/**
+ * Uncategorized payments held back from the queue by a snooze that is still running.
+ */
+snoozed: number }
+
+/**
+ * One payment of the queue and the category suggested for it, if any.
+ */
+export type CategorizeQueueRow = { transaction: BankTransaction; suggestion: CategorySuggestion | null }
+
+/**
  * One current-category bucket of the payments a rewritten rule covers.
  */
 export type CategoryCount = { 
@@ -327,6 +349,11 @@ categoryId: string | null; count: number }
  * Category spending summary for a period
  */
 export type CategorySpendingSummary = { budgetCurrency: string | null; budgetSpent: string | null; budgetLimitNative: string | null; budgetLimitFxQuality: FxQuality | null; budgetLimit: string | null; categoryId: string; categoryName: string; categoryIcon: string | null; categoryColor: string | null; totalAmount: string; transactionCount: number; budgetGoal: BudgetGoal | null; budgetPercentage: number | null }
+
+/**
+ * A category the app would give a payment, and where the idea comes from.
+ */
+export type CategorySuggestion = { categoryId: string; source: SuggestionSource }
 
 /**
  * How many rows reference a category — what a delete would have to move.
@@ -567,7 +594,13 @@ transactionIdColumn?: string | null; rowFilter?: CsvRowFilter | null; exportHelp
  * File name in `src-tauri/tests/fixtures/csv/` that this
  * preset must import without errors (checked by `all_presets_are_valid`).
  */
-sampleFixture?: string | null }
+sampleFixture?: string | null; 
+/**
+ * How to get this bank's statement file on a phone (the phone app's import sheet shows it).
+ * Every bank whose phone export path is documented carries one; the generic layouts do not,
+ * nor does Moneta until a device check (no CSV export was found).
+ */
+mobileExport?: MobileExportGuide | null }
 
 /**
  * What `parse_csv_file` learned about a file (TS `CsvPreviewResult`).
@@ -864,6 +897,12 @@ dividendPerShare: string | null;
 yearlyDividend: string | null }
 
 /**
+ * Where a bank hands out its statement file on a phone: in its own app, or in its internet
+ * banking opened in the phone's browser (wire type — TS `ExportRoute`).
+ */
+export type ExportRoute = "app" | "web"
+
+/**
  * Summary of a full JSON export.
  */
 export type ExportSummary = { path: string; tableCount: number; rowCount: number }
@@ -936,6 +975,55 @@ batches: ImportOverlapBatch[] }
  * file (TS `ImportOverlapBatch`).
  */
 export type ImportOverlapBatch = { fileName: string; dateRange: CsvDateRange }
+
+/**
+ * The roles `infer_csv_columns` assigned to the columns of a CSV no preset describes, from
+ * their content (mobile spec §8.6 rung 3; TS `InferredColumns`). Every column is named by the
+ * file's own header; `null` = not recognized.
+ */
+export type InferredColumns = { date: InferredField | null; 
+/**
+ * chrono format of `date`, date part only; `null` without a date column.
+ */
+dateFormat: string | null; 
+/**
+ * Day/month order cannot be told from the values; `dateFormat` is the European guess.
+ */
+dateAmbiguous: boolean; 
+/**
+ * A single signed amount column; `null` when the file has a debit/credit pair instead.
+ */
+amount: InferredField | null; debit: InferredField | null; credit: InferredField | null; 
+/**
+ * A running balance that agrees with the amounts; it is what `signCheck` rests on.
+ */
+balance: InferredField | null; signCheck: SignCheck; currency: InferredField | null; 
+/**
+ * IBANs or Czech domestic account numbers of the other party.
+ */
+counterpartyIban: InferredField | null; counterparty: InferredField | null; transactionId: InferredField | null; 
+/**
+ * Up to three free-text columns, longest first.
+ */
+description: string[]; 
+/**
+ * `","` or `"."`.
+ */
+decimalSeparator: string }
+
+/**
+ * One column the content inference assigned to a role (TS `InferredField`).
+ */
+export type InferredField = { 
+/**
+ * The file's own header of the column.
+ */
+column: string; 
+/**
+ * 0–1: the share of the column's cells that matched the role, 0.1 lower when no header
+ * synonym agreed and only the content decided.
+ */
+confidence: number }
 
 /**
  * Data for recording a valuation.
@@ -1358,6 +1446,30 @@ direction: string | null;
 count: number | null }
 
 /**
+ * How to get this bank's statement file onto a phone (spec §8.6, rung 2; wire type — TS
+ * `MobileExportGuide`). Data, like the rest of the preset: the guide ships in the preset file and
+ * is shown, never executed. `steps` is locale → two to four short imperative steps.
+ */
+export type MobileExportGuide = { route: ExportRoute; 
+/**
+ * What the person picks in the bank ("CSV"; Revolut's personal statement offers "Excel (CSV)").
+ */
+format: string; 
+/**
+ * Locale code (`en`, `cs`, …) → the steps; every locale the app ships is present.
+ */
+steps: Partial<{ [key in string]: string[] }>; 
+/**
+ * A bare URL scheme (`fio`, never `fio://`) that opens the bank's own app. No bank documents
+ * one today; it stays `None` until one does.
+ */
+appUrlScheme?: string | null; 
+/**
+ * The bank's internet-banking entry (`https://…`); required for a `web` route.
+ */
+webUrl?: string | null }
+
+/**
  * Done-state of the dashboard "Getting started" checklist plus the
  * onboarding flags stored in `app_config`.
  */
@@ -1737,6 +1849,28 @@ export type SetCashflowPlanInclusion = {
  * `category:<categoryKey>`, an automatic source id, or `item:<manual item id>`.
  */
 key: string; included: boolean }
+
+/**
+ * What a running balance says about the amounts' signs (TS `SignCheck`).
+ */
+export type SignCheck = 
+/**
+ * The balance moves by the amount: expenses are negative, as Moony expects.
+ */
+"verified" | 
+/**
+ * The balance moves by minus the amount: the file prints expenses positive.
+ */
+"inverted" | 
+/**
+ * No balance column agrees with the amounts; the signs are taken as printed.
+ */
+"unchecked"
+
+/**
+ * Hold uncategorized payments back from the queue for a number of days.
+ */
+export type SnoozeCategorization = { transactionIds: string[]; days: number }
 
 /**
  * How many entries of a statement carry one source category (QIF `L` line).
@@ -2568,6 +2702,27 @@ suggested: TypeValueAction }
  * Every stock position with its tags in `currency`.
  */
 export type StocksAnalysis = { currency: string; fxQuality: ConversionQuality; items: StockInvestmentWithTags[] }
+
+/**
+ * Where a suggested category comes from (the pill's sub-label on the phone).
+ */
+export type SuggestionSource = 
+/**
+ * An AI client suggested it through the local API and waits for the user.
+ */
+"mcp" | 
+/**
+ * A payee the user categorized before.
+ */
+"learned" | 
+/**
+ * A custom rule, or a transfer between the user's own accounts.
+ */
+"rule" | 
+/**
+ * A rule of an enabled locale pack.
+ */
+"pack"
 
 /**
  * One recorded day of a ticker's position. Quantity, price and currency are the native facts;

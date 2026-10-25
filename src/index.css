@@ -240,36 +240,47 @@
  * Phone layer (docs/design-system/mobile.css is the source of truth; keep the two identical):
  * safe areas, bar heights and the phone type scale, used by the mobile shell (src/mobile/) through
  * the Tailwind names in tailwind.config.ts (`text-m-*`). README §13.
+ *
+ * Dynamic Type: `useTypeScale` (src/mobile/lib/use-type-scale.ts) publishes the iOS text size as
+ * `--m-type-scale` (1 at the default "Large"). Text roles grow with it up to 130 % (`--m-text-k`),
+ * display and stat values up to 110 % (`--m-value-k`); the tab bar label and the chart axis ticks
+ * stay fixed. A field is never under 16 px, or iOS zooms the page into it on focus.
  */
 :root {
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
   --m-nav-h: 44px;
   --m-tabbar-h: 56px;
-  --m-fs-display: 36px;
+  --m-type-scale: 1;
+  --m-text-k: clamp(1, var(--m-type-scale), 1.3);
+  --m-value-k: clamp(1, var(--m-type-scale), 1.1);
+  --m-fs-display: calc(36px * var(--m-value-k));
   --m-fw-display: 580;
   --m-ls-display: -0.06em;
-  --m-fs-title-lg: 30px;
+  --m-fs-title-lg: calc(30px * var(--m-text-k));
   --m-fw-title-lg: 600;
   --m-ls-title-lg: -0.05em;
-  --m-fs-title: 20px;
+  --m-fs-title: calc(20px * var(--m-text-k));
   --m-fw-title: 650;
   --m-ls-title: -0.04em;
-  --m-fs-section: 16px;
+  --m-fs-section: calc(16px * var(--m-text-k));
   --m-fw-section: 620;
   --m-ls-section: -0.03em;
-  --m-fs-stat: 17px;
+  --m-fs-stat: calc(17px * var(--m-value-k));
   --m-fw-stat: 600;
   --m-ls-stat: -0.03em;
-  --m-fs-row: 15px;
+  --m-fs-row: calc(15px * var(--m-text-k));
   --m-fw-row: 600;
   --m-ls-row: -0.01em;
-  --m-fs-body: 15px;
+  --m-fs-body: calc(15px * var(--m-text-k));
   --m-fw-body: 450;
-  --m-fs-sub: 12px;
+  --m-fs-field: max(16px, var(--m-fs-body));
+  --m-fs-lead: calc(13px * var(--m-text-k));
+  --m-fs-sub: calc(12px * var(--m-text-k));
   --m-fw-sub: 500;
-  --m-fs-caption: 11px;
+  --m-fs-caption: calc(11px * var(--m-text-k));
   --m-fw-caption: 500;
+  --m-fs-note: calc(10px * var(--m-text-k));
 }
 
 @layer base {
@@ -318,9 +329,32 @@
     height: var(--m-vh, auto);
   }
 
-  /* Touch: no grey flash over a tapped link or button; the components draw their own pressed state. */
+  /* Touch: no grey flash over a tapped link or button; the components draw their own pressed state.
+     No double-tap zoom (a fast second tap on a row or a chart is not a zoom request); pinch zoom
+     stays: the viewport is no longer locked to scale 1 (Dynamic Type, README §13). */
   html[data-shell='mobile'] {
     -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* The shell floor for text fields. iOS zooms the page into a focused field drawn under 16 px,
+     and the viewport is no longer locked to scale 1 (so Dynamic Type can show the page, README §13),
+     which makes that zoom stick. The phone's own fields are `text-m-field` (= --m-fs-field, never
+     under 16 px); the desktop dialogs the phone opens as they are (add account, add stock, buy,
+     sell...) draw their `Input` and `Textarea` in `text-body` (13 px). This rule gives every such
+     field the same size. It is an element rule with the shell attribute, so it is more specific than
+     any single-class utility (`.text-body`, `.text-[…]`, `.text-caption`; Tailwind 3 has no native
+     cascade layers, so specificity decides), and equals `text-m-field` where a phone field already
+     has it. Checkboxes, radios, sliders and file pickers open no keyboard and keep their size. Only
+     the field follows `--m-fs-field` (so it grows with Dynamic Type from 16 px); the rest of a
+     reused desktop dialog stays at desktop sizes. */
+  html[data-shell='mobile']
+    :is(
+      input:not([type='checkbox'], [type='radio'], [type='range'], [type='file']),
+      textarea,
+      select
+    ) {
+    font-size: var(--m-fs-field);
   }
 
   /* Japanese and Chinese: Inter has no CJK glyphs, so name the system faces for them

@@ -37,6 +37,43 @@
       "noHistory": "no history yet"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Actual income and expenses from {{count}} account",
+    "subtitle_other": "Actual income and expenses from {{count}} accounts",
+    "moves_one": "{{count}} transaction",
+    "moves_other": "{{count}} transactions",
+    "shareOfExpenses": "{{share}} of expenses",
+    "shareOfIncome": "{{share}} of income",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "near the limit",
+    "overLimit": "over the limit",
+    "budgetSummary": "Budgets: {{ok}} within limit · {{over}} over limit · {{near}} near the limit",
+    "partial": "This period has not ended yet; the numbers will fill in with the next statement.",
+    "empty": {
+      "title": "No transactions yet",
+      "description": "Cashflow is calculated from the payments on your accounts. Add an account and import a statement.",
+      "action": "Open Finance"
+    },
+    "accounts": {
+      "title": "Accounts in the report",
+      "done": "Done"
+    },
+    "picker": {
+      "title": "Category",
+      "change": "Change category",
+      "current": "Current category"
+    },
+    "limitSheet": {
+      "pick": "Choose the category whose spending you want to keep in check."
+    },
+    "budgets": {
+      "ended": "ended",
+      "averageNote": "⌀ over the last 6 months"
+    },
+    "showMore_one": "Show {{count}} more transaction",
+    "showMore_other": "Show {{count}} more transactions",
+    "rowMenu": "More actions: {{title}}"
+  },
   "upkeep": {
     "title": "Data upkeep",
     "count_one": "{{count}} item",
@@ -82,5 +119,651 @@
     "enabled": "Biometric unlock turned on",
     "notEnabled": "Biometric unlock was not turned on",
     "unavailable": "Biometrics are not available right now. Unlock with your password."
+  },
+  "finance": {
+    "accounts_one": "{{count}} account",
+    "accounts_other": "{{count}} accounts",
+    "loans_one": "{{count}} loan",
+    "loans_other": "{{count}} loans",
+    "policies_one": "{{count}} policy",
+    "policies_other": "{{count}} policies",
+    "total": "Total on accounts",
+    "change30": "{{amount}} over 30 days",
+    "noMovements": "no movements in 30 days",
+    "uncategorized": "Uncategorized payments",
+    "sections": {
+      "accounts": "Accounts",
+      "loans": "Loans",
+      "insurance": "Insurance",
+      "cashTrend": "Cash trend"
+    },
+    "manual": "by hand",
+    "statementOn": "statement {{date}}",
+    "balanceOn": "balance {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 days",
+      "staleStatement_one": "statement {{count}} day old",
+      "staleStatement_other": "statement {{count}} days old",
+      "staleBalance_one": "balance {{count}} day old",
+      "staleBalance_other": "balance {{count}} days old",
+      "approx": "≈ {{amount}}",
+      "noRate": "no rate for {{currency}}"
+    },
+    "perMonth": "{{amount}} / mo",
+    "nextPayment": "next payment {{date}}",
+    "menu": {
+      "sort": "Sort",
+      "sortBalance": "By balance",
+      "sortName": "By name",
+      "sortChange": "By 30-day change",
+      "sortLast": "By last movement",
+      "showMatured": "Show paid-off loans",
+      "showEnded": "Show ended policies",
+      "export": "Export"
+    },
+    "add": {
+      "title": "Add",
+      "account": "Account",
+      "loan": "Loan",
+      "policy": "Policy"
+    },
+    "insurance": {
+      "type": "Policy type",
+      "upcoming": "Upcoming payments",
+      "upcomingNote_one": "{{count}} day",
+      "upcomingNote_other": "{{count}} days",
+      "showAll_one": "Show all {{count}}",
+      "showAll_other": "Show all {{count}}"
+    },
+    "cashTrendLabel": "Cash trend chart"
+  },
+  "queue": {
+    "source": {
+      "mcp": "MCP suggestion",
+      "learned": "learned",
+      "rule": "by rule",
+      "pack": "rule pack"
+    },
+    "other": "Other…",
+    "choose": "Choose a category…",
+    "keep": "Skip",
+    "keepMenu": "Skip for {{days}} days",
+    "snoozed": "Skipped for {{days}} days",
+    "categorized": "Categorized",
+    "also_one": "Also categorized {{count}} other payment from {{name}}",
+    "also_other": "Also categorized {{count}} other payments from {{name}}",
+    "alsoSub": "Same counterparty and direction on this account",
+    "alsoRestored": "Restored to how they were",
+    "handled_one": "{{count}} already handled",
+    "handled_other": "{{count}} already handled",
+    "progress": "{{done}} of {{total}}",
+    "caption": "Tap a suggestion to accept it. “{{keep}}” puts a payment off for {{days}} days. What you categorize is remembered as a rule for this account.",
+    "showCashflow": "Show cashflow",
+    "empty": {
+      "title": "All categorized",
+      "hint": "New payments will appear here after the next import.",
+      "snoozed_one": "{{count}} payment you skipped will come back later.",
+      "snoozed_other": "{{count}} payments you skipped will come back later."
+    }
+  },
+  "placeholder": {
+    "export": "Export comes later."
+  },
+  "account": {
+    "record": "Record balance",
+    "import": "Import statement",
+    "menu": {
+      "edit": "Edit account",
+      "balanceHistory": "Balance history",
+      "importHistory": "Import history",
+      "delete": "Delete account"
+    },
+    "stats": {
+      "changeThisYear": "Change this year",
+      "avgPerMonth": "Average per month",
+      "yearlyInterest": "Yearly interest"
+    },
+    "flows": {
+      "title": "Flows"
+    },
+    "ledger": {
+      "title": "Movements",
+      "search": "Search by counterparty or description",
+      "all": "All",
+      "in": "Incoming",
+      "out": "Outgoing",
+      "filter": "Filter",
+      "noCategory": "No category",
+      "categorize": "Category",
+      "details": "Details",
+      "count_one": "{{count}} movement",
+      "count_other": "{{count}} movements",
+      "empty": "No movements match",
+      "emptyHint": "Change the period or the filter.",
+      "showAll": "Show all",
+      "loadError": "The movements could not be loaded.",
+      "retry": "Try again"
+    },
+    "filter": {
+      "title": "Filter",
+      "category": "Category",
+      "all": "All",
+      "period": "Period",
+      "from": "From",
+      "to": "To",
+      "apply": "Apply",
+      "reset": "Reset"
+    },
+    "rowMenu": {
+      "details": "Details",
+      "category": "Category",
+      "delete": "Delete"
+    }
+  },
+  "loan": {
+    "nextPayment": "Next payment {{amount}} · {{date}}",
+    "notStarted": "Starts {{date}}",
+    "stats": {
+      "since": "since {{month}}",
+      "extra": "extra {{amount}}",
+      "until": "until {{month}}"
+    },
+    "alerts": {
+      "fixationSoon_one": "The fixed rate ends in {{count}} day. Once the bank confirms the new rate, record it — the payment and the plan are recalculated.",
+      "fixationSoon_other": "The fixed rate ends in {{count}} days. Once the bank confirms the new rate, record it — the payment and the plan are recalculated.",
+      "fixationToday": "The fixed rate ends today. Once the bank confirms the new rate, record it — the payment and the plan are recalculated.",
+      "fixationPassed_one": "The fixed rate ended {{count}} day ago. Record the new rate so that the payment and the plan are recalculated.",
+      "fixationPassed_other": "The fixed rate ended {{count}} days ago. Record the new rate so that the payment and the plan are recalculated."
+    },
+    "schedule": {
+      "left": "{{amount}} left",
+      "yearSub_one": "{{count}} payment · interest {{interest}}",
+      "yearSub_other": "{{count}} payments · interest {{interest}}",
+      "showAll_one": "Show all {{count}}",
+      "showAll_other": "Show all {{count}}"
+    },
+    "extra": {
+      "noChange": "This amount changes neither the term nor the payment nor the interest."
+    },
+    "events": {
+      "menu": "Event menu"
+    }
+  },
+  "documents": {
+    "takePhoto": "Take a photo",
+    "chooseFile": "Choose a file",
+    "fromPhotos": "Choose from photos",
+    "photoName": "Photo {{date}}",
+    "count_one": "{{count}} · encrypted",
+    "count_other": "{{count}} · encrypted",
+    "openOnComputer": "This file can't be shown on the phone. Open Moony on your computer to view it.",
+    "saving": "Encrypting and saving…",
+    "rowMenu": "More actions: {{name}}",
+    "previewFailed": "The preview could not be shown. Open the document in Moony on your computer.",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out"
+  },
+  "policy": {
+    "copy": "Copy contract number",
+    "copied": "Contract number copied",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Contract term",
+    "termOpen": "from {{start}} · open-ended",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "anniversary {{date}}",
+    "notice": "Cancel by",
+    "limitsTotal": "total {{amount}}",
+    "total": "Total · {{payments}}"
+  },
+  "property": {
+    "notFound": "This property no longer exists.",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "{{rent}} a year",
+    "perYear": "a year",
+    "loanPayment": "payment {{amount}} / mo",
+    "rowMenu": "More actions: {{name}}",
+    "costKindRecurring": "Recurring",
+    "costKindOneTime": "One-time",
+    "costYear": "{{amount}} a year",
+    "costCurrent": "Currently {{amount}}",
+    "costDateInFuture": "The date of a cost can't be in the future.",
+    "costNameRequired": "Enter a name for the cost.",
+    "confirmDeleteRecurring": "This will permanently delete the recurring cost “{{name}}” ({{amount}}, {{frequency}}). This action cannot be undone.",
+    "photoCount_one": "{{count}} photo",
+    "photoCount_other": "{{count}} photos",
+    "uploading": "Uploading {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} photo could not be saved.",
+    "photosSkipped_other": "{{count}} photos could not be saved.",
+    "photoOpen": "Photo from {{day}}",
+    "photoFailed": "The photo could not be shown.",
+    "photoDeleted": "Photo deleted",
+    "deletePhoto": "Delete photo",
+    "deletePhotoConfirm": {
+      "title": "Delete this photo?",
+      "description": "The photo will be deleted permanently. This action cannot be undone.",
+      "descriptionLast": "This is the last photo of {{day}}, so that day's photo batch is deleted with it. This action cannot be undone."
+    }
+  },
+  "transaction": {
+    "flowSaved": "Meaning saved",
+    "done": "Done",
+    "counterparty": "Counterparty",
+    "date": "Date",
+    "category": "Category",
+    "flow": "Meaning",
+    "note": "Note",
+    "details": "Details",
+    "bankId": "Bank ID",
+    "valueDate": "Value date",
+    "file": "File",
+    "line": "Line",
+    "sourceLabel": "Source",
+    "source": {
+      "manual": "Entered by hand",
+      "csv_import": "Imported",
+      "api_sync": "Synced"
+    },
+    "status": "Status",
+    "booked": "Booked",
+    "currency": "Currency"
+  },
+  "picker": {
+    "title": "Category",
+    "recent": "Recently used",
+    "all": "All categories",
+    "suggested": "Suggested",
+    "decline": "Decline suggestion",
+    "empty": "No category matches"
+  },
+  "import": {
+    "title": "Import statement",
+    "intoAccount": "Into {{account}}",
+    "fromShare": "From sharing",
+    "reads": "Supported: {{formats}}.",
+    "reading": "Reading the file…",
+    "importing": "Writing the payments…",
+    "pick": {
+      "lead": "Choose the file you downloaded from your bank.",
+      "choose": "Choose file",
+      "chooseOther": "Choose another file"
+    },
+    "account": {
+      "sheetTitle": "Which account?",
+      "lead": "Choose the account the payments belong to.",
+      "none": "You have no open account yet. Add the one this file belongs to.",
+      "title": "Accounts",
+      "new": "New account…"
+    },
+    "statement": {
+      "title": "Which statement?",
+      "dateTitle": "How are the dates written?",
+      "continue": "Continue"
+    },
+    "unreadable": {
+      "title": "Can't read this file",
+      "pdf": "Moony can't read a PDF statement yet — download CSV, CAMT, MT940, OFX or QIF from your bank.",
+      "image": "Moony can't read a photo or scan of a statement — download CSV, CAMT, MT940, OFX or QIF from your bank.",
+      "notStatement": "This file doesn't hold a statement Moony can read.",
+      "error": "The file could not be read."
+    },
+    "guide": {
+      "title": "How to get a statement: {{bank}}",
+      "format": "Choose the format: {{format}}",
+      "openWeb": "Open internet banking",
+      "openFailed": "The browser could not be opened.",
+      "banks": "Bank guides"
+    },
+    "recognize": {
+      "title": "Here is how I read it",
+      "caption": "Three movements from the file, as I will read them:",
+      "captionFew": "Movements from the file, as I will read them:",
+      "unknownFormat": "format not known yet",
+      "tab": "tab",
+      "previewFailed": "The sample rows could not be loaded just now. The columns below still apply.",
+      "looksRight": "Looks right",
+      "fix": "Fix…",
+      "use": "Apply",
+      "field": {
+        "transactionId": "Transaction ID"
+      },
+      "notFound": "not found",
+      "unused": "not used",
+      "unusedWhy": {
+        "description": "payments are harder to categorize",
+        "counterparty": "you won't see who paid or was paid",
+        "currency": "the currency comes from the account",
+        "balance": "I won't suggest the account balance from the file",
+        "transactionId": "I'll spot duplicates by date and amount"
+      },
+      "signVerified": "sign checked against the balance",
+      "signInverted": "expenses in this file look positive — check the sample",
+      "signsBlocked": "Moony can't import a file whose expenses are positive yet. If another column holds the amount, choose it; otherwise cancel the import.",
+      "allPositive": "Every amount is positive — expenses would be saved as income.",
+      "pairSides": "Expenses: {{debit}} · Income: {{credit}}",
+      "fixTitle": "What should I fix?",
+      "fixLead": "Tap the field I read wrongly.",
+      "ask": {
+        "date": "What is the date?",
+        "amount": "What is the amount?",
+        "description": "What is the description?",
+        "counterparty": "What is the counterparty?",
+        "currency": "What is the currency?",
+        "balance": "What is the balance?",
+        "transactionId": "What is the transaction ID?"
+      },
+      "lead": {
+        "date": "Choose the column that holds the date of each movement.",
+        "amount": "Choose the column that holds the amount of a movement. Expenses should be negative.",
+        "description": "Choose the column with the text of the payment, such as a message or a note. It helps to categorize payments.",
+        "counterparty": "Choose the column with the name of who paid or was paid.",
+        "currency": "Choose the column with the currency code, for example CZK or EUR.",
+        "balance": "Choose the column with the balance after each movement.",
+        "transactionId": "Choose the column with the unique number the bank gives each movement."
+      },
+      "sample": "Sample after your choice:",
+      "sampleHint": "Choose a column and I'll show how I would read a movement.",
+      "pair": "pair of columns"
+    },
+    "preview": {
+      "hint": "Tap a payment to choose its category.",
+      "more_one": "and {{count}} more",
+      "more_other": "and {{count}} more"
+    },
+    "choice": {
+      "title": "Categorization",
+      "byRules": "By the rules",
+      "byRulesSub": "Your pick is removed"
+    },
+    "done": {
+      "lastBalance": "Balance after the last payment: <b>{{balance}}</b>.",
+      "categorized_one": "{{count}} payment was categorized by the rules.",
+      "categorized_other": "{{count}} payments were categorized by the rules.",
+      "open_one": "{{count}} is still without a category.",
+      "open_other": "{{count}} are still without a category.",
+      "allSorted": "Everything has a category.",
+      "promoted_one": "{{count}} pending payment was booked.",
+      "promoted_other": "{{count}} pending payments were booked.",
+      "queue_one": "Categorize {{count}} payment",
+      "queue_other": "Categorize {{count}} payments"
+    }
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "For now, this page is only in Moony on your computer."
+    },
+    "subtitle": "Investments, property and cash",
+    "sections": {
+      "investments": "Investments",
+      "realEstate": "Property",
+      "cash": "Cash"
+    },
+    "cash": {
+      "title": "On accounts"
+    },
+    "bonds": {
+      "count_one": "{{count}} issue",
+      "count_other": "{{count}} issues",
+      "nearest": "nearest maturity {{month}}",
+      "coupon": "coupon {{amount}} / year",
+      "upcoming": "Next coupons and maturities",
+      "noUpcoming": "No coupon or maturity in the coming year.",
+      "allRepaid": "Every issue is repaid. Turn on “{{action}}” in the ··· menu to see them.",
+      "loadFailed": "Bonds could not be loaded.",
+      "rateNote": "{{rate}} p.a. weighted"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} item",
+      "count_other": "{{count}} items",
+      "valuedOn": "valued {{date}}",
+      "moreDetails": "More details",
+      "loadFailed": "Assets could not be loaded.",
+      "notFound": "Asset not found"
+    },
+    "realEstate": {
+      "personal": "personal",
+      "investment": "investment",
+      "rent": "rent {{amount}} / month",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Nothing owned yet",
+      "description": "Add your first investment, property or other asset.",
+      "class": "nothing yet"
+    },
+    "add": {
+      "label": "Add",
+      "investment": "Investment",
+      "crypto": "Cryptocurrency",
+      "bond": "Bond",
+      "property": "Property",
+      "asset": "Asset"
+    },
+    "noRate": "no rate for {{currency}}",
+    "stocks": {
+      "back": "Stocks",
+      "pricesAt": "prices {{time}}",
+      "pricesOn": "prices {{date}}",
+      "invested": "invested {{amount}}",
+      "dividendsYear": "Dividends / year",
+      "yieldNote": "yield {{percent}}",
+      "twrYtd": "Return this year",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "no history yet",
+      "positionsTab": "Positions · {{count}}",
+      "watchedTab": "Watched · {{count}}",
+      "sort": {
+        "label": "Sort",
+        "value": "By value",
+        "gain": "By return",
+        "name": "By name"
+      },
+      "searchToggle": "Search",
+      "clearSearch": "Clear search",
+      "showAll_one": "Show all {{count}} positions",
+      "showAll_other": "Show all {{count}} positions",
+      "menu": {
+        "closed": "Closed positions"
+      },
+      "closedBadge": "closed",
+      "watchedEmpty": "You are not watching any stocks yet.",
+      "loadFailed": "Positions could not be loaded.",
+      "target": "target {{price}}",
+      "targetReached": "target reached",
+      "dayChange": "today"
+    },
+    "crypto": {
+      "largestNote": "{{share}} of crypto",
+      "heldNote": "{{share}} of crypto · {{date}}"
+    },
+    "closed": {
+      "on": "closed {{date}}",
+      "empty": "No position is closed yet.",
+      "onlyClosed": "Only closed positions here. Open “{{action}}” in the ··· menu to see them."
+    },
+    "position": {
+      "heroLabel": "Position value · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} per unit",
+      "stats": {
+        "value": "Value",
+        "inCurrency": "in {{currency}}",
+        "price": "Price"
+      },
+      "tx": {
+        "buy": "Buy · {{quantity}} {{unit}}",
+        "sell": "Sell · {{quantity}} {{unit}}",
+        "showAll_one": "Show all {{count}}",
+        "showAll_other": "Show all {{count}}",
+        "menu": "Transaction menu"
+      },
+      "follow": "Watch",
+      "following": "Watching",
+      "followed": "Added to the watchlist",
+      "range52": "52-week range",
+      "renamed": "Name saved"
+    },
+    "watch": {
+      "stats": {
+        "today": "Today",
+        "since": "Since following",
+        "noTarget": "no target set"
+      },
+      "above": "Above",
+      "below": "Below",
+      "openPosition": "Open position",
+      "notesEmpty": "No notes yet. Tap Edit to add research notes — markdown works."
+    }
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profile",
+      "profileNoEmail": "Name and email",
+      "language": "Language",
+      "security": "Security",
+      "backup": "Backup and transfer",
+      "notifications": "Notifications",
+      "reminders": "Reminders",
+      "remindersSub": "{{on}} of {{total}} groups",
+      "import": "Import",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
+      "deleteSub": "after typing a confirmation word"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "no telemetry",
+    "security": {
+      "lead": "Unlocking, the lock in the background and hiding amounts on this phone.",
+      "biometrics": "Unlock with {{methodKey}}",
+      "methodFace": "your face",
+      "methodTouch": "your fingerprint",
+      "methodGeneric": "biometrics",
+      "biometricsOn": "Unlocks with {{methodKey}}",
+      "biometricsOff": "Password only",
+      "biometricsDisabled": "Biometric unlock turned off",
+      "lockAfterLabel": "Lock after leaving the app",
+      "lockAfterHint": "After this long away from the app, it locks again when you return.",
+      "optionNow": "Immediately",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "lock immediately",
+      "lockAfter_one": "lock after {{count}} minute",
+      "lockAfter_other": "lock after {{count}} minutes",
+      "hideOnLaunch": "Hide amounts on launch",
+      "hideOnLaunchHint": "Every launch starts with amounts hidden; the eye on Overview shows them again.",
+      "hideOnLaunchShort": "amounts hidden on launch"
+    },
+    "profile": {
+      "lead": "Your name appears in the greeting on Overview.",
+      "currencyReadOnly": "Change the main currency in Moony on your computer."
+    },
+    "language": {
+      "title": "App language",
+      "lead": "Numbers and dates follow the language."
+    },
+    "appearance": {
+      "lead": "System follows the phone's light or dark appearance."
+    },
+    "delete": {
+      "title": "Delete all data?",
+      "lead": "Permanently deletes the database, the keys and the attachments from this phone. Backup copies outside the phone stay. Make a backup first — it is the only way back.",
+      "confirmLabel": "Type {{word}} to confirm",
+      "confirm": "Delete data",
+      "failed": "Deletion failed"
+    }
+  },
+  "backup": {
+    "lead": "A backup is one encrypted file: the database, the keys and the attachments. Only your password opens it.",
+    "last": "Last backup",
+    "lastOn": "Last backup {{date}}",
+    "never": "No backup yet",
+    "what": "Save it to iCloud Drive or another folder in Files. Moony has no access to it.",
+    "notSaved": "Backup not saved",
+    "unavailableHere": "Backups work on iPhone only for now.",
+    "restoreTitle": "Restore and transfer",
+    "restoreLead": "Restore a backup from this phone, or transfer a profile from Moony on the computer: choose the backup file and, after the restore, unlock with the password that was in use when it was created.",
+    "restoreConfirmDescription": "The backup from {{date}} (Moony {{version}}, {{attachments}} attachments, {{size}}) replaces the data on this phone. Back up first if you want to keep the current data. Moony then locks; unlock it with the password that was in use when the backup was made.",
+    "osBackupNote": "The profile is not saved in the phone's own backup (iCloud or a computer). The Moony backup you save yourself is the only copy outside this phone."
+  },
+  "firstRun": {
+    "privacyLead": "Moony stores everything in an encrypted database on this phone. No cloud, no account with us.",
+    "points": {
+      "encryption": {
+        "title": "AES-256 encryption",
+        "text": "– only your password opens the database; photos and documents are encrypted inside it."
+      },
+      "localOnly": {
+        "title": "No cloud",
+        "text": "– we send nothing anywhere; you save the backup to Files or iCloud Drive yourself."
+      },
+      "marketData": {
+        "title": "Market data",
+        "text": "– only the stock, currency and crypto rates you follow are downloaded (Yahoo Finance, CoinGecko, ECB). The app works offline too."
+      }
+    },
+    "recoveryLead": "The only way to your data if you forget the password. Store it outside this phone: in a password manager, in Files, or on paper.",
+    "saveToFiles": "Save to Files",
+    "recoveryFileNote": "This key resets your Moony password. It works only together with the Moony data on this phone or a backup of it, so keep that backup too. Do not give this file to anyone.",
+    "areasLead": "Choose what you want to track in Moony. You can change this anytime in Settings.",
+    "firstAccountLead": "A name and a balance are enough. You can import a statement later.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometrics",
+      "backup": "Backup"
+    },
+    "backupTitle": "Back up your data",
+    "backupLead": "This phone holds the only copy of your data, and it is not in the phone's own backup (iCloud or a computer). Save an encrypted backup to iCloud Drive or a folder you choose; Moony never sees it.",
+    "currencyPick": "Main currency",
+    "countryPick": "Banking country",
+    "searchCurrency": "Search currency"
+  },
+  "notifications": {
+    "lead": "Moony reminds you from this phone only, with no server. It plans the notifications each time you unlock.",
+    "permission": {
+      "label": "Notifications",
+      "granted": "Allowed",
+      "denied": "Blocked",
+      "notAsked": "Not allowed yet",
+      "notGranted": "Not allowed",
+      "allow": "Allow notifications",
+      "deniedHint": "Allow them in your phone's Settings → Moony → Notifications.",
+      "unavailable": "Not available on this device.",
+      "needed": "Allow notifications first."
+    },
+    "deadlines": {
+      "label": "Deadlines",
+      "hint": "14 days and 1 day before the deadline."
+    },
+    "upkeep": {
+      "label": "Monthly upkeep",
+      "hint": "Day {{day}} of the month: balances and statements.",
+      "day": "Day of the month",
+      "dayLabel": "Day {{day}} of the month",
+      "dayValue": "{{day}}",
+      "title": "Time for data upkeep",
+      "body": "Record your balances and import your statements."
+    },
+    "backup": {
+      "label": "Backup",
+      "hint": "When the last backup is older than 30 days.",
+      "title": "Back up Moony",
+      "stale": "Your last backup is over a month old.",
+      "never": "You have no backup yet."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} in 14 days",
+      "tomorrow": "{{whatKey}} tomorrow",
+      "kind": {
+        "insurance_anniversary": "Insurance cancellation deadline",
+        "insurance_end": "Insurance ends",
+        "loan_fixation_end": "Fixed rate ends",
+        "bond_maturity": "Bond maturity",
+        "account_termination": "Account ends",
+        "savings_rate_end": "Promotional rate ends"
+      }
+    },
+    "test": {
+      "send": "Send a test notification",
+      "title": "Test notification",
+      "body": "This is what a Moony reminder looks like.",
+      "sent": "Arrives in 10 seconds"
+    }
   }
 }

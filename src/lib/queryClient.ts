@@ -14,6 +14,13 @@ const mutationCache = new MutationCache({
  * Unlike the Express.js version, we don't use a default queryFn
  * because Tauri invoke calls are not URL-based.
  * Each hook will explicitly call the Tauri API.
+ *
+ * `networkMode: 'always'`: every query and mutation here is a local IPC call, not a network
+ * request. The default ('online') pauses them all once the webview fires `offline`, so the app
+ * (the phone's import sheet, Cashflow's skeletons) would hang until a reload whenever the
+ * machine loses its connection. That mode also turns `refetchOnReconnect` off by default, so it
+ * is set back on: a query with a finite `staleTime` whose command reaches the network (a stock's
+ * company info) refreshes when the connection returns, as it did before.
  */
 export const queryClient = new QueryClient({
   mutationCache,
@@ -23,9 +30,12 @@ export const queryClient = new QueryClient({
       refetchOnWindowFocus: false,
       staleTime: Infinity,
       retry: false,
+      networkMode: 'always',
+      refetchOnReconnect: true,
     },
     mutations: {
       retry: false,
+      networkMode: 'always',
     },
   },
 });

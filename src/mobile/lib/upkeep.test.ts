@@ -268,6 +268,18 @@ describe('buildUpkeepRows', () => {
         { key: 'upkeep.valuationStale', params: { name: 'Chata' } },
       ]);
     });
+
+    it('keeps the property it is about, for Přecenit', () => {
+      const rows = buildUpkeepRows(
+        input({
+          milestones: [
+            milestone('valuation_stale', { sourceId: 'p1', title: 'Byt Lipová' }),
+            milestone('valuation_stale', { title: 'Bez id' }),
+          ],
+        })
+      );
+      expect(rows.map((r) => r.sourceId)).toEqual(['p1', undefined]);
+    });
   });
 
   it('ignores milestones that are not upkeep of this card', () => {

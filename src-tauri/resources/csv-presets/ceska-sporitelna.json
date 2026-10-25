@@ -15,5 +15,62 @@
   "counterpartyIbanColumn": "Číslo protiúčtu",
   "currencyColumn": "Měna",
   "exportHelpUrl": "https://www.csas.cz/cs/caste-dotazy/jak-z-george-exportovat-transakce",
-  "sampleFixture": "ceska-sporitelna.csv"
+  "sampleFixture": "ceska-sporitelna.csv",
+  "mobileExport": {
+    "route": "web",
+    "format": "CSV",
+    "webUrl": "https://www.csas.cz/",
+    "steps": {
+      "en": [
+        "Open Česká spořitelna internet banking in Safari or Chrome and sign in.",
+        "Open the account's “Historie”, tap the arrow icon at the top right, set the period and choose CSV.",
+        "Share the file with Moony, or save it to Files and choose it here with “Choose file”."
+      ],
+      "cs": [
+        "V Safari nebo Chrome otevřete internetové bankovnictví České spořitelny a přihlaste se.",
+        "U účtu otevřete „Historie“, klepněte na ikonu šipky vpravo nahoře, nastavte období a zvolte CSV.",
+        "Sdílejte soubor do Moony, nebo ho uložte do Souborů a vyberte ho zde přes „Vybrat soubor“."
+      ],
+      "de": [
+        "Öffnen Sie das Online-Banking von Česká spořitelna in Safari oder Chrome und melden Sie sich an.",
+        "Öffnen Sie beim Konto „Historie“, tippen Sie oben rechts auf das Pfeil-Symbol, stellen Sie den Zeitraum ein und wählen Sie CSV.",
+        "Teilen Sie die Datei mit Moony oder speichern Sie sie in „Dateien“ und wählen Sie sie hier mit „Datei wählen“."
+      ],
+      "es": [
+        "Abre la banca por internet de Česká spořitelna en Safari o Chrome e inicia sesión.",
+        "En la cuenta, abre «Historie», toca el icono de flecha arriba a la derecha, fija el periodo y elige CSV.",
+        "Comparte el archivo con Moony, o guárdalo en Archivos y elígelo aquí con «Elegir archivo»."
+      ],
+      "it": [
+        "Apri l'home banking di Česká spořitelna in Safari o Chrome e accedi.",
+        "Nel conto apri «Historie», tocca l'icona a freccia in alto a destra, imposta il periodo e scegli CSV.",
+        "Condividi il file con Moony, oppure salvalo in File e sceglilo qui con «Scegli file»."
+      ],
+      "nb": [
+        "Åpne nettbanken til Česká spořitelna i Safari eller Chrome og logg inn.",
+        "Åpne «Historie» på kontoen, trykk på pilikonet øverst til høyre, velg periode og velg CSV.",
+        "Del filen med Moony, eller lagre den i Filer og velg den her med «Velg fil»."
+      ],
+      "pl": [
+        "Otwórz bankowość internetową banku Česká spořitelna w Safari lub Chrome i zaloguj się.",
+        "Na koncie otwórz „Historie”, stuknij ikonę strzałki w prawym górnym rogu, ustaw okres i wybierz CSV.",
+        "Udostępnij plik aplikacji Moony albo zapisz go w Plikach i wybierz tutaj przez „Wybierz plik”."
+      ],
+      "sv": [
+        "Öppna internetbanken hos Česká spořitelna i Safari eller Chrome och logga in.",
+        "Öppna ”Historie” på kontot, tryck på pilikonen uppe till höger, ställ in perioden och välj CSV.",
+        "Dela filen med Moony, eller spara den i Filer och välj den här med ”Välj fil”."
+      ],
+      "ja": [
+        "SafariまたはChromeでČeská spořitelnaのインターネットバンキングを開き、ログインします。",
+        "口座で「Historie」を開き、右上の矢印アイコンをタップして、期間を設定しCSVを選びます。",
+        "ファイルをMoonyに共有するか、「ファイル」に保存して、ここで「ファイルを選択」から選びます。"
+      ],
+      "zh": [
+        "在 Safari 或 Chrome 中打开 Česká spořitelna 网上银行并登录。",
+        "在账户中打开“Historie”，点按右上角的箭头图标，设置期间并选择 CSV。",
+        "将文件共享给 Moony，或存到“文件”后在此处点按“选择文件”。"
+      ]
+    }
+  }
 }

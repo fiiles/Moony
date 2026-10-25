@@ -20,6 +20,7 @@ use super::types::{
 };
 use super::CategorizationEngine;
 use crate::error::{AppError, Result};
+use crate::models::bank_transactions::BankTransaction;
 use crate::models::categorization::{
     CategoryCount, ChangedRow, GoverningRule, RecategorizationPreview,
 };
@@ -50,11 +51,38 @@ struct Candidate {
 
 const CANDIDATE_COLUMNS: &str = "id, description, counterparty_name, counterparty_iban, counterparty_bank_code, counterparty_country, amount, tx_type, bank_account_id, category_id, categorization_source";
 
+/// The engine's signed amount and direction of a stored payment: the amount is kept positive as
+/// TEXT and the direction is `tx_type`. No rule matches on the amount, so a text that does not
+/// parse reads as 0 here rather than failing the whole read.
+fn engine_amount(amount: &str, tx_type: &str) -> (f64, bool) {
+    let value: f64 = amount.trim().parse().unwrap_or(0.0);
+    let is_credit = tx_type.eq_ignore_ascii_case("credit");
+    (
+        if is_credit { value.abs() } else { -value.abs() },
+        is_credit,
+    )
+}
+
+/// A ledger row as the engine sees it (the categorize queue reads its suggestions through this).
+pub(crate) fn input_from_transaction(tx: &BankTransaction) -> TransactionInput {
+    let (amount, is_credit) = engine_amount(&tx.amount, &tx.tx_type);
+    TransactionInput {
+        id: tx.id.clone(),
+        description: tx.description.clone(),
+        counterparty: tx.counterparty_name.clone(),
+        counterparty_iban: tx.counterparty_iban.clone(),
+        counterparty_bank_code: tx.counterparty_bank_code.clone(),
+        counterparty_country: tx.counterparty_country.clone(),
+        amount,
+        is_credit,
+        bank_account_id: Some(tx.bank_account_id.clone()),
+    }
+}
+
 fn candidate_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Candidate> {
     let amount: String = row.get(6)?;
     let tx_type: String = row.get(7)?;
-    let value: f64 = amount.trim().parse().unwrap_or(0.0);
-    let is_credit = tx_type.eq_ignore_ascii_case("credit");
+    let (amount, is_credit) = engine_amount(&amount, &tx_type);
     Ok(Candidate {
         input: TransactionInput {
             id: row.get(0)?,
@@ -63,7 +91,7 @@ fn candidate_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<Candidate> {
             counterparty_iban: row.get(3)?,
             counterparty_bank_code: row.get(4)?,
             counterparty_country: row.get(5)?,
-            amount: if is_credit { value.abs() } else { -value.abs() },
+            amount,
             is_credit,
             bank_account_id: row.get(8)?,
         },

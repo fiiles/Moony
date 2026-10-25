@@ -6,6 +6,8 @@
 //! - [`amounts`] — decimal separator consensus and the amount cell parser;
 //! - [`rows`] — phase 1: typed rows, no database (`parse_rows`);
 //! - [`inspect`] — what `parse_csv_file` reports about a file;
+//! - [`infer`] — the roles of the columns of a file no preset describes, from their content
+//!   (the phone's guided recognition, `infer_csv_columns`);
 //! - this module — duplicate classification, [`preview_rows`] (no writes) and
 //!   [`import_rows`] (one SQL transaction through the shared write path,
 //!   ADR 0007). Both take [`ParsedImport`] rows, so any format that parses to
@@ -17,6 +19,7 @@
 pub mod amounts;
 pub mod columns;
 pub mod decode;
+pub mod infer;
 pub mod inspect;
 pub mod rows;
 pub mod types;
@@ -36,12 +39,14 @@ pub use columns::{normalize_header, suggest_column_mappings};
 pub use decode::{
     decode_csv_content, decode_csv_content_for_country, detect_csv_delimiter, detect_header_row,
 };
+pub use infer::{infer_columns, infer_csv, InferOptions};
 pub use inspect::{decode_for_import, decode_for_import_in, inspect_csv, InspectOptions};
 pub use rows::{parse_rows, ParsedImport, ParsedRow, RowState};
 pub use types::{
     CsvCategoryOverride, CsvDateRange, CsvImportConfig, CsvImportPreview, CsvImportResult,
     CsvPreviewResult, CsvPreviewRow, CsvRowMessage, CsvRowStatus, DeclaredBalance, ImportOptions,
-    ImportOverlap, ImportOverlapBatch, SourceCategoryMapping,
+    ImportOverlap, ImportOverlapBatch, InferredColumns, InferredField, SignCheck,
+    SourceCategoryMapping,
 };
 
 /// Rows listed by a preview; counts always cover the whole file.
@@ -674,6 +679,8 @@ pub fn import_rows(
 
 #[cfg(test)]
 mod core_tests;
+#[cfg(test)]
+mod infer_tests;
 #[cfg(test)]
 pub(crate) mod test_support;
 #[cfg(test)]

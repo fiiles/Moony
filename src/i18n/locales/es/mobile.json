@@ -37,6 +37,46 @@
       "noHistory": "sin historial"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Ingresos y gastos reales de {{count}} cuenta",
+    "subtitle_many": "Ingresos y gastos reales de {{count}} cuentas",
+    "subtitle_other": "Ingresos y gastos reales de {{count}} cuentas",
+    "moves_one": "{{count}} movimiento",
+    "moves_many": "{{count}} movimientos",
+    "moves_other": "{{count}} movimientos",
+    "shareOfExpenses": "{{share}} de los gastos",
+    "shareOfIncome": "{{share}} de los ingresos",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "cerca del límite",
+    "overLimit": "por encima del límite",
+    "budgetSummary": "Presupuestos: {{ok}} dentro del límite · {{over}} por encima del límite · {{near}} cerca del límite",
+    "partial": "El periodo aún no ha terminado; las cifras se completarán con el próximo extracto.",
+    "empty": {
+      "title": "Aún no hay movimientos",
+      "description": "El flujo de caja se calcula a partir de los pagos de tus cuentas. Añade una cuenta e importa un extracto.",
+      "action": "Abrir Finanzas"
+    },
+    "accounts": {
+      "title": "Cuentas en el informe",
+      "done": "Listo"
+    },
+    "picker": {
+      "title": "Categoría",
+      "change": "Cambiar categoría",
+      "current": "Categoría actual"
+    },
+    "limitSheet": {
+      "pick": "Elige la categoría cuyos gastos quieres controlar."
+    },
+    "budgets": {
+      "ended": "finalizado",
+      "averageNote": "⌀ de los últimos 6 meses"
+    },
+    "showMore_one": "Mostrar {{count}} movimiento más",
+    "showMore_many": "Mostrar {{count}} movimientos más",
+    "showMore_other": "Mostrar {{count}} movimientos más",
+    "rowMenu": "Más acciones: {{title}}"
+  },
   "upkeep": {
     "title": "Mantenimiento de datos",
     "count_one": "{{count}} tarea",
@@ -87,5 +127,679 @@
     "enabled": "Desbloqueo biométrico activado",
     "notEnabled": "No se ha activado el desbloqueo biométrico",
     "unavailable": "La biometría no está disponible ahora. Desbloquea con tu contraseña."
+  },
+  "finance": {
+    "accounts_one": "{{count}} cuenta",
+    "accounts_many": "{{count}} cuentas",
+    "accounts_other": "{{count}} cuentas",
+    "loans_one": "{{count}} préstamo",
+    "loans_many": "{{count}} préstamos",
+    "loans_other": "{{count}} préstamos",
+    "policies_one": "{{count}} póliza",
+    "policies_many": "{{count}} pólizas",
+    "policies_other": "{{count}} pólizas",
+    "total": "Total en cuentas",
+    "change30": "{{amount}} en 30 días",
+    "noMovements": "sin movimientos en 30 días",
+    "uncategorized": "Pagos sin categoría",
+    "sections": {
+      "accounts": "Cuentas",
+      "loans": "Préstamos",
+      "insurance": "Seguros",
+      "cashTrend": "Efectivo a lo largo del tiempo"
+    },
+    "manual": "manual",
+    "statementOn": "extracto del {{date}}",
+    "balanceOn": "saldo del {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 días",
+      "staleStatement_one": "extracto de hace {{count}} día",
+      "staleStatement_many": "extracto de hace {{count}} días",
+      "staleStatement_other": "extracto de hace {{count}} días",
+      "staleBalance_one": "saldo de hace {{count}} día",
+      "staleBalance_many": "saldo de hace {{count}} días",
+      "staleBalance_other": "saldo de hace {{count}} días",
+      "approx": "≈ {{amount}}",
+      "noRate": "sin tipo de cambio para {{currency}}"
+    },
+    "perMonth": "{{amount}} / mes",
+    "nextPayment": "próximo pago {{date}}",
+    "menu": {
+      "sort": "Ordenar",
+      "sortBalance": "Por saldo",
+      "sortName": "Por nombre",
+      "sortChange": "Por variación a 30 días",
+      "sortLast": "Por último movimiento",
+      "showMatured": "Mostrar préstamos liquidados",
+      "showEnded": "Mostrar pólizas finalizadas",
+      "export": "Exportar"
+    },
+    "add": {
+      "title": "Añadir",
+      "account": "Cuenta",
+      "loan": "Préstamo",
+      "policy": "Póliza"
+    },
+    "insurance": {
+      "type": "Tipo de póliza",
+      "upcoming": "Próximos pagos",
+      "upcomingNote_one": "{{count}} día",
+      "upcomingNote_many": "{{count}} días",
+      "upcomingNote_other": "{{count}} días",
+      "showAll_one": "Mostrar todos ({{count}})",
+      "showAll_many": "Mostrar todos ({{count}})",
+      "showAll_other": "Mostrar todos ({{count}})"
+    },
+    "cashTrendLabel": "Gráfico del efectivo"
+  },
+  "queue": {
+    "source": {
+      "mcp": "sugerencia de MCP",
+      "learned": "aprendido",
+      "rule": "por regla",
+      "pack": "paquete de reglas"
+    },
+    "other": "Otra…",
+    "choose": "Elegir categoría…",
+    "keep": "Omitir",
+    "keepMenu": "Omitir durante {{days}} días",
+    "snoozed": "Omitido durante {{days}} días",
+    "categorized": "Categorizado",
+    "also_one": "También se categorizó {{count}} pago más de {{name}}",
+    "also_many": "También se categorizaron {{count}} pagos más de {{name}}",
+    "also_other": "También se categorizaron {{count}} pagos más de {{name}}",
+    "alsoSub": "Misma contraparte y misma dirección en esta cuenta",
+    "alsoRestored": "Restaurados como estaban",
+    "handled_one": "{{count}} ya gestionado",
+    "handled_many": "{{count}} ya gestionados",
+    "handled_other": "{{count}} ya gestionados",
+    "progress": "{{done}} de {{total}}",
+    "caption": "Toca una sugerencia para aceptarla. «{{keep}}» aparta un pago durante {{days}} días. Lo que categorices se aprende como regla para esta cuenta.",
+    "showCashflow": "Ver flujo de caja",
+    "empty": {
+      "title": "Todo categorizado",
+      "hint": "Los pagos nuevos aparecerán aquí tras la próxima importación.",
+      "snoozed_one": "{{count}} pago omitido volverá más adelante.",
+      "snoozed_many": "{{count}} pagos omitidos volverán más adelante.",
+      "snoozed_other": "{{count}} pagos omitidos volverán más adelante."
+    }
+  },
+  "placeholder": {
+    "export": "La exportación llega más adelante."
+  },
+  "account": {
+    "record": "Registrar saldo",
+    "import": "Importar extracto",
+    "menu": {
+      "edit": "Editar cuenta",
+      "balanceHistory": "Historial de saldo",
+      "importHistory": "Historial de importaciones",
+      "delete": "Eliminar cuenta"
+    },
+    "stats": {
+      "changeThisYear": "Variación este año",
+      "avgPerMonth": "Media mensual",
+      "yearlyInterest": "Intereses anuales"
+    },
+    "flows": {
+      "title": "Flujos"
+    },
+    "ledger": {
+      "title": "Movimientos",
+      "search": "Buscar por contraparte o descripción",
+      "all": "Todos",
+      "in": "Entrantes",
+      "out": "Salientes",
+      "filter": "Filtro",
+      "noCategory": "Sin categoría",
+      "categorize": "Categoría",
+      "details": "Detalles",
+      "count_one": "{{count}} movimiento",
+      "count_many": "{{count}} movimientos",
+      "count_other": "{{count}} movimientos",
+      "empty": "Ningún movimiento coincide",
+      "emptyHint": "Cambia el periodo o el filtro.",
+      "showAll": "Mostrar todos",
+      "loadError": "No se han podido cargar los movimientos.",
+      "retry": "Reintentar"
+    },
+    "filter": {
+      "title": "Filtro",
+      "category": "Categoría",
+      "all": "Todas",
+      "period": "Periodo",
+      "from": "Desde",
+      "to": "Hasta",
+      "apply": "Aplicar",
+      "reset": "Restablecer"
+    },
+    "rowMenu": {
+      "details": "Detalles",
+      "category": "Categoría",
+      "delete": "Eliminar"
+    }
+  },
+  "loan": {
+    "nextPayment": "Próxima cuota {{amount}} · {{date}}",
+    "notStarted": "Empieza el {{date}}",
+    "stats": {
+      "since": "desde {{month, lower}}",
+      "extra": "extra {{amount}}",
+      "until": "hasta {{month, lower}}"
+    },
+    "alerts": {
+      "fixationSoon_one": "El tipo fijo termina en {{count}} día. Cuando el banco confirme el nuevo tipo, regístralo: la cuota y el plan se recalcularán.",
+      "fixationSoon_many": "El tipo fijo termina en {{count}} días. Cuando el banco confirme el nuevo tipo, regístralo: la cuota y el plan se recalcularán.",
+      "fixationSoon_other": "El tipo fijo termina en {{count}} días. Cuando el banco confirme el nuevo tipo, regístralo: la cuota y el plan se recalcularán.",
+      "fixationToday": "El tipo fijo termina hoy. Cuando el banco confirme el nuevo tipo, regístralo: la cuota y el plan se recalcularán.",
+      "fixationPassed_one": "El tipo fijo terminó hace {{count}} día. Registra el nuevo tipo para que la cuota y el plan se recalculen.",
+      "fixationPassed_many": "El tipo fijo terminó hace {{count}} días. Registra el nuevo tipo para que la cuota y el plan se recalculen.",
+      "fixationPassed_other": "El tipo fijo terminó hace {{count}} días. Registra el nuevo tipo para que la cuota y el plan se recalculen."
+    },
+    "schedule": {
+      "left": "quedan {{amount}}",
+      "yearSub_one": "{{count}} cuota · intereses {{interest}}",
+      "yearSub_many": "{{count}} cuotas · intereses {{interest}}",
+      "yearSub_other": "{{count}} cuotas · intereses {{interest}}",
+      "showAll_one": "Mostrar todas ({{count}})",
+      "showAll_many": "Mostrar todas ({{count}})",
+      "showAll_other": "Mostrar todas ({{count}})"
+    },
+    "extra": {
+      "noChange": "Este importe no cambia ni el plazo, ni la cuota, ni los intereses."
+    },
+    "events": {
+      "menu": "Menú del evento"
+    }
+  },
+  "documents": {
+    "takePhoto": "Hacer una foto",
+    "chooseFile": "Elegir archivo",
+    "fromPhotos": "Elegir de las fotos",
+    "photoName": "Foto {{date}}",
+    "count_one": "{{count}} · cifrado",
+    "count_many": "{{count}} · cifrados",
+    "count_other": "{{count}} · cifrados",
+    "openOnComputer": "Este archivo no se puede mostrar en el teléfono. Ábrelo en Moony en tu ordenador.",
+    "saving": "Cifrando y guardando…",
+    "rowMenu": "Más acciones: {{name}}",
+    "previewFailed": "No se pudo mostrar la vista previa. Abre el documento en Moony en tu ordenador.",
+    "zoomIn": "Acercar",
+    "zoomOut": "Alejar"
+  },
+  "policy": {
+    "copy": "Copiar número de contrato",
+    "copied": "Número de contrato copiado",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Vigencia",
+    "termOpen": "desde {{start}} · indefinida",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "aniversario {{date}}",
+    "notice": "Cancelar antes de",
+    "limitsTotal": "total {{amount}}",
+    "total": "Total · {{payments}}"
+  },
+  "property": {
+    "notFound": "Este inmueble ya no existe.",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "{{rent}} al año",
+    "perYear": "al año",
+    "loanPayment": "cuota {{amount}} / mes",
+    "rowMenu": "Más acciones: {{name}}",
+    "costKindRecurring": "Recurrente",
+    "costKindOneTime": "Único",
+    "costYear": "{{amount}} al año",
+    "costCurrent": "Ahora {{amount}}",
+    "costDateInFuture": "La fecha de un gasto no puede ser futura.",
+    "costNameRequired": "Escribe un nombre para el gasto.",
+    "confirmDeleteRecurring": "Se eliminará de forma permanente el gasto recurrente «{{name}}» ({{amount}}, {{frequency}}). Esta acción no se puede deshacer.",
+    "photoCount_one": "{{count}} foto",
+    "photoCount_many": "{{count}} fotos",
+    "photoCount_other": "{{count}} fotos",
+    "uploading": "Subiendo {{current}} / {{total}}",
+    "photosSkipped_one": "No se pudo guardar {{count}} foto.",
+    "photosSkipped_many": "No se pudieron guardar {{count}} fotos.",
+    "photosSkipped_other": "No se pudieron guardar {{count}} fotos.",
+    "photoOpen": "Foto del {{day}}",
+    "photoFailed": "No se pudo mostrar la foto.",
+    "photoDeleted": "Foto eliminada",
+    "deletePhoto": "Eliminar foto",
+    "deletePhotoConfirm": {
+      "title": "¿Eliminar esta foto?",
+      "description": "La foto se eliminará de forma permanente. Esta acción no se puede deshacer.",
+      "descriptionLast": "Es la última foto del {{day}}, así que también se eliminará el lote de fotos de ese día. Esta acción no se puede deshacer."
+    }
+  },
+  "transaction": {
+    "flowSaved": "Significado guardado",
+    "done": "Listo",
+    "counterparty": "Contraparte",
+    "date": "Fecha",
+    "category": "Categoría",
+    "flow": "Significado",
+    "note": "Nota",
+    "details": "Detalles",
+    "bankId": "ID del banco",
+    "valueDate": "Fecha valor",
+    "file": "Archivo",
+    "line": "Línea",
+    "sourceLabel": "Origen",
+    "source": {
+      "manual": "Introducido a mano",
+      "csv_import": "Importado",
+      "api_sync": "Sincronizado"
+    },
+    "status": "Estado",
+    "booked": "Contabilizado",
+    "currency": "Moneda"
+  },
+  "picker": {
+    "title": "Categoría",
+    "recent": "Usadas recientemente",
+    "all": "Todas las categorías",
+    "suggested": "Sugerencia",
+    "decline": "Rechazar sugerencia",
+    "empty": "Ninguna categoría coincide"
+  },
+  "import": {
+    "title": "Importar extracto",
+    "intoAccount": "A {{account}}",
+    "fromShare": "Compartido",
+    "reads": "Compatible: {{formats}}.",
+    "reading": "Leyendo el archivo…",
+    "importing": "Guardando los pagos…",
+    "pick": {
+      "lead": "Elige el archivo que descargaste de tu banco.",
+      "choose": "Elegir archivo",
+      "chooseOther": "Elegir otro archivo"
+    },
+    "account": {
+      "sheetTitle": "¿A qué cuenta?",
+      "lead": "Elige la cuenta a la que pertenecen los pagos.",
+      "none": "Aún no tienes ninguna cuenta abierta. Añade aquella a la que pertenece este archivo.",
+      "title": "Cuentas",
+      "new": "Cuenta nueva…"
+    },
+    "statement": {
+      "title": "¿Qué extracto?",
+      "dateTitle": "¿Cómo están escritas las fechas?",
+      "continue": "Continuar"
+    },
+    "unreadable": {
+      "title": "No se puede leer el archivo",
+      "pdf": "Moony aún no puede leer un extracto en PDF: descarga de tu banco CSV, CAMT, MT940, OFX o QIF.",
+      "image": "Moony no puede leer una foto o un escaneo de un extracto: descarga de tu banco CSV, CAMT, MT940, OFX o QIF.",
+      "notStatement": "Este archivo no contiene un extracto que Moony pueda leer.",
+      "error": "No se pudo leer el archivo."
+    },
+    "guide": {
+      "title": "Cómo obtener un extracto: {{bank}}",
+      "format": "Elige el formato: {{format}}",
+      "openWeb": "Abrir la banca por internet",
+      "openFailed": "No se pudo abrir el navegador.",
+      "banks": "Guías de los bancos"
+    },
+    "recognize": {
+      "title": "Así entiendo el archivo",
+      "caption": "Tres movimientos del archivo, tal como los leeré:",
+      "captionFew": "Movimientos del archivo, tal como los leeré:",
+      "unknownFormat": "formato aún desconocido",
+      "tab": "tabulador",
+      "previewFailed": "No se pudieron cargar ahora las filas de muestra. Las columnas reconocidas de abajo siguen valiendo.",
+      "looksRight": "Se ve bien",
+      "fix": "Corregir…",
+      "use": "Aplicar",
+      "field": {
+        "transactionId": "ID del movimiento"
+      },
+      "notFound": "no encontrado",
+      "unused": "sin usar",
+      "unusedWhy": {
+        "description": "los pagos son más difíciles de categorizar",
+        "counterparty": "no se verá quién pagó ni a quién se pagó",
+        "currency": "la moneda se toma de la cuenta",
+        "balance": "no propondré el saldo de la cuenta a partir del archivo",
+        "transactionId": "detectaré los duplicados por fecha e importe"
+      },
+      "signVerified": "signo comprobado con el saldo",
+      "signInverted": "los gastos de este archivo parecen positivos: revisa la muestra",
+      "signsBlocked": "Moony todavía no puede importar un archivo cuyos gastos son positivos. Si otra columna contiene el importe, elígela; si no, cancela la importación.",
+      "allPositive": "Todos los importes son positivos: los gastos se guardarían como ingresos.",
+      "pairSides": "Gastos: {{debit}} · Ingresos: {{credit}}",
+      "fixTitle": "¿Qué corrijo?",
+      "fixLead": "Toca el campo que he leído mal.",
+      "ask": {
+        "date": "¿Qué es la fecha?",
+        "amount": "¿Qué es el importe?",
+        "description": "¿Qué es la descripción?",
+        "counterparty": "¿Qué es la contraparte?",
+        "currency": "¿Qué es la moneda?",
+        "balance": "¿Qué es el saldo?",
+        "transactionId": "¿Qué es el ID del movimiento?"
+      },
+      "lead": {
+        "date": "Elige la columna con la fecha de cada movimiento.",
+        "amount": "Elige la columna con el importe del movimiento. Los gastos deben ser negativos.",
+        "description": "Elige la columna con el texto del pago, como un mensaje o una nota. Ayuda a categorizar los pagos.",
+        "counterparty": "Elige la columna con el nombre de quien pagó o recibió el pago.",
+        "currency": "Elige la columna con el código de la moneda, por ejemplo CZK o EUR.",
+        "balance": "Elige la columna con el saldo tras cada movimiento.",
+        "transactionId": "Elige la columna con el número único que el banco asigna a cada movimiento."
+      },
+      "sample": "Muestra con tu elección:",
+      "sampleHint": "Elige una columna y te enseño cómo leería un movimiento.",
+      "pair": "par de columnas"
+    },
+    "preview": {
+      "hint": "Toca un pago para elegir su categoría.",
+      "more_one": "y {{count}} más",
+      "more_many": "y {{count}} más",
+      "more_other": "y {{count}} más"
+    },
+    "choice": {
+      "title": "Categorización",
+      "byRules": "Según las reglas",
+      "byRulesSub": "Se descarta tu elección"
+    },
+    "done": {
+      "lastBalance": "Saldo tras el último pago: <b>{{balance}}</b>.",
+      "categorized_one": "Las reglas categorizaron {{count}} pago.",
+      "categorized_many": "Las reglas categorizaron {{count}} pagos.",
+      "categorized_other": "Las reglas categorizaron {{count}} pagos.",
+      "open_one": "{{count}} sigue sin categoría.",
+      "open_many": "{{count}} siguen sin categoría.",
+      "open_other": "{{count}} siguen sin categoría.",
+      "allSorted": "Todo tiene categoría.",
+      "promoted_one": "Se contabilizó {{count}} pago pendiente.",
+      "promoted_many": "Se contabilizaron {{count}} pagos pendientes.",
+      "promoted_other": "Se contabilizaron {{count}} pagos pendientes.",
+      "queue_one": "Categorizar {{count}} pago",
+      "queue_many": "Categorizar {{count}} pagos",
+      "queue_other": "Categorizar {{count}} pagos"
+    }
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "Por ahora, esta página solo está en Moony en el ordenador."
+    },
+    "subtitle": "Inversiones, inmuebles y efectivo",
+    "sections": {
+      "investments": "Inversiones",
+      "realEstate": "Inmuebles",
+      "cash": "Efectivo"
+    },
+    "cash": {
+      "title": "En cuentas"
+    },
+    "bonds": {
+      "count_one": "{{count}} emisión",
+      "count_many": "{{count}} emisiones",
+      "count_other": "{{count}} emisiones",
+      "nearest": "próximo vencimiento {{month, lower}}",
+      "coupon": "cupón {{amount}} / año",
+      "upcoming": "Próximos cupones y vencimientos",
+      "noUpcoming": "No hay cupones ni vencimientos en el próximo año.",
+      "allRepaid": "Todas las emisiones están amortizadas. Activa «{{action}}» en el menú ··· para verlas.",
+      "loadFailed": "No se pudieron cargar los bonos.",
+      "rateNote": "{{rate}} anual ponderado"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} elemento",
+      "count_many": "{{count}} elementos",
+      "count_other": "{{count}} elementos",
+      "valuedOn": "valorado el {{date}}",
+      "moreDetails": "Más datos",
+      "loadFailed": "No se pudieron cargar los activos.",
+      "notFound": "Activo no encontrado"
+    },
+    "realEstate": {
+      "personal": "vivienda habitual",
+      "investment": "inversión",
+      "rent": "alquiler {{amount}} / mes",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Aún no tienes nada",
+      "description": "Añade tu primera inversión, inmueble u otro activo.",
+      "class": "todavía nada"
+    },
+    "add": {
+      "label": "Añadir",
+      "investment": "Inversión",
+      "crypto": "Criptomoneda",
+      "bond": "Bono",
+      "property": "Inmueble",
+      "asset": "Activo"
+    },
+    "noRate": "sin tipo de cambio para {{currency}}",
+    "stocks": {
+      "back": "Acciones",
+      "pricesAt": "precios {{time}}",
+      "pricesOn": "precios {{date}}",
+      "invested": "invertido {{amount}}",
+      "dividendsYear": "Dividendos / año",
+      "yieldNote": "rendimiento {{percent}}",
+      "twrYtd": "Rentabilidad este año",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "aún sin historial",
+      "positionsTab": "Posiciones · {{count}}",
+      "watchedTab": "Seguidas · {{count}}",
+      "sort": {
+        "label": "Orden",
+        "value": "Por valor",
+        "gain": "Por rentabilidad",
+        "name": "Por nombre"
+      },
+      "searchToggle": "Buscar",
+      "clearSearch": "Borrar búsqueda",
+      "showAll_one": "Mostrar {{count}} posición",
+      "showAll_many": "Mostrar todas las {{count}} posiciones",
+      "showAll_other": "Mostrar todas las {{count}} posiciones",
+      "menu": {
+        "closed": "Posiciones cerradas"
+      },
+      "closedBadge": "cerrada",
+      "watchedEmpty": "Aún no sigues ninguna acción.",
+      "loadFailed": "No se pudieron cargar las posiciones.",
+      "target": "objetivo {{price}}",
+      "targetReached": "objetivo alcanzado",
+      "dayChange": "hoy"
+    },
+    "crypto": {
+      "largestNote": "{{share}} de cripto",
+      "heldNote": "{{share}} de cripto · {{date}}"
+    },
+    "closed": {
+      "on": "cerrada el {{date}}",
+      "empty": "Todavía no hay posiciones cerradas.",
+      "onlyClosed": "Aquí solo hay posiciones cerradas. Abre «{{action}}» en el menú ··· para verlas."
+    },
+    "position": {
+      "heroLabel": "Valor de la posición · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} por unidad",
+      "stats": {
+        "value": "Valor",
+        "inCurrency": "en {{currency}}",
+        "price": "Precio"
+      },
+      "tx": {
+        "buy": "Compra · {{quantity}} {{unit}}",
+        "sell": "Venta · {{quantity}} {{unit}}",
+        "showAll_one": "Mostrar todas ({{count}})",
+        "showAll_many": "Mostrar todas ({{count}})",
+        "showAll_other": "Mostrar todas ({{count}})",
+        "menu": "Menú del movimiento"
+      },
+      "follow": "Seguir",
+      "following": "Siguiendo",
+      "followed": "Añadida a la lista de seguimiento",
+      "range52": "Rango de 52 semanas",
+      "renamed": "Nombre guardado"
+    },
+    "watch": {
+      "stats": {
+        "today": "Hoy",
+        "since": "Desde el seguimiento",
+        "noTarget": "sin objetivo"
+      },
+      "above": "Por encima",
+      "below": "Por debajo",
+      "openPosition": "Abrir posición",
+      "notesEmpty": "Aún no hay notas. Toca Editar para añadir notas de análisis — markdown funciona."
+    }
+  },
+  "settings": {
+    "rows": {
+      "profile": "Perfil",
+      "profileNoEmail": "Nombre y correo",
+      "language": "Idioma",
+      "security": "Seguridad",
+      "backup": "Copia de seguridad y traslado",
+      "notifications": "Notificaciones",
+      "reminders": "Recordatorios",
+      "remindersSub": "{{on}} de {{total}} grupos",
+      "import": "Importar",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
+      "deleteSub": "tras escribir una palabra de confirmación"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "sin telemetría",
+    "security": {
+      "lead": "Desbloqueo, bloqueo en segundo plano y ocultar importes en este teléfono.",
+      "biometrics": "Desbloquear con {{methodKey}}",
+      "methodFace": "la cara",
+      "methodTouch": "la huella",
+      "methodGeneric": "biometría",
+      "biometricsOn": "Desbloqueo con {{methodKey}}",
+      "biometricsOff": "Solo contraseña",
+      "biometricsDisabled": "Desbloqueo biométrico desactivado",
+      "lockAfterLabel": "Bloquear al salir de la app",
+      "lockAfterHint": "Pasado este tiempo, la app se bloquea de nuevo al volver.",
+      "optionNow": "Al instante",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "bloqueo inmediato",
+      "lockAfter_one": "bloqueo tras {{count}} minuto",
+      "lockAfter_many": "bloqueo tras {{count}} minutos",
+      "lockAfter_other": "bloqueo tras {{count}} minutos",
+      "hideOnLaunch": "Ocultar importes al abrir",
+      "hideOnLaunchHint": "Cada inicio empieza con los importes ocultos; el ojo de Resumen los vuelve a mostrar.",
+      "hideOnLaunchShort": "importes ocultos al abrir"
+    },
+    "profile": {
+      "lead": "Tu nombre aparece en el saludo del Resumen.",
+      "currencyReadOnly": "La moneda principal se cambia en Moony en el ordenador."
+    },
+    "language": {
+      "title": "Idioma de la app",
+      "lead": "Los números y las fechas siguen el idioma."
+    },
+    "appearance": {
+      "lead": "Sistema sigue la apariencia clara u oscura del teléfono."
+    },
+    "delete": {
+      "title": "¿Eliminar todos los datos?",
+      "lead": "Elimina de forma permanente la base de datos, las claves y los adjuntos de este teléfono. Las copias de seguridad fuera del teléfono se conservan. Haz antes una copia de seguridad: es la única forma de recuperar los datos.",
+      "confirmLabel": "Escribe {{word}} para confirmar",
+      "confirm": "Eliminar datos",
+      "failed": "No se pudo eliminar"
+    }
+  },
+  "backup": {
+    "lead": "Una copia de seguridad es un archivo cifrado: la base de datos, las claves y los adjuntos. Solo la abre tu contraseña.",
+    "last": "Última copia de seguridad",
+    "lastOn": "Última copia de seguridad {{date}}",
+    "never": "Aún no hay copia de seguridad",
+    "what": "Guárdala en iCloud Drive o en otra carpeta de la app Archivos. Moony no tiene acceso a ella.",
+    "notSaved": "Copia de seguridad no guardada",
+    "unavailableHere": "Las copias de seguridad por ahora solo funcionan en iPhone.",
+    "restoreTitle": "Restauración y traslado",
+    "restoreLead": "Restaura una copia de seguridad de este teléfono o traslada un perfil desde Moony en el ordenador: elige el archivo de la copia y, tras restaurarla, desbloquea con la contraseña que estaba en uso cuando se creó.",
+    "restoreConfirmDescription": "La copia del {{date}} (Moony {{version}}, {{attachments}} adjuntos, {{size}}) sustituye los datos de este teléfono. Haz antes una copia si quieres conservar los datos actuales. Después Moony se bloqueará; desbloquéalo con la contraseña que se usaba cuando se creó la copia.",
+    "osBackupNote": "El perfil no se guarda en la copia de seguridad del propio teléfono (iCloud u ordenador). La copia de seguridad de Moony que guardes tú es la única copia fuera del teléfono."
+  },
+  "firstRun": {
+    "privacyLead": "Moony guarda todo en una base de datos cifrada en este teléfono. Sin nube y sin cuenta con nosotros.",
+    "points": {
+      "encryption": {
+        "title": "Cifrado AES-256",
+        "text": "– solo tu contraseña abre la base de datos; las fotos y los documentos están cifrados dentro de ella."
+      },
+      "localOnly": {
+        "title": "Sin nube",
+        "text": "– no enviamos nada a ninguna parte; la copia de seguridad la guardas tú en Archivos o iCloud Drive."
+      },
+      "marketData": {
+        "title": "Datos de mercado",
+        "text": "– solo se descargan los precios de las acciones, divisas y criptomonedas que sigues (Yahoo Finance, CoinGecko, BCE). La app también funciona sin conexión."
+      }
+    },
+    "recoveryLead": "Es la única vía para acceder a tus datos si olvidas la contraseña. Guárdala fuera de este teléfono: en un gestor de contraseñas, en Archivos o en papel.",
+    "saveToFiles": "Guardar en Archivos",
+    "recoveryFileNote": "Esta clave restablece tu contraseña de Moony. Solo funciona junto con los datos de Moony de este teléfono o con una copia de seguridad de ellos, así que guarda también esa copia. No entregues este archivo a nadie.",
+    "areasLead": "Elige qué quieres seguir en Moony. Puedes cambiarlo cuando quieras en Ajustes.",
+    "firstAccountLead": "Basta con un nombre y un saldo. El extracto lo importarás más adelante.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometría",
+      "backup": "Copia de seguridad"
+    },
+    "backupTitle": "Haz una copia de seguridad de tus datos",
+    "backupLead": "Este teléfono guarda la única copia de tus datos, y no está en la copia de seguridad del propio teléfono (iCloud u ordenador). Guarda una copia de seguridad cifrada en iCloud Drive o en una carpeta que elijas; Moony nunca la ve.",
+    "currencyPick": "Moneda principal",
+    "countryPick": "País del banco",
+    "searchCurrency": "Buscar moneda"
+  },
+  "notifications": {
+    "lead": "Moony te avisa solo desde este teléfono, sin servidor. Las notificaciones se planifican cada vez que desbloqueas.",
+    "permission": {
+      "label": "Notificaciones",
+      "granted": "Permitido",
+      "denied": "Bloqueadas",
+      "notAsked": "Aún no permitidas",
+      "notGranted": "No permitido",
+      "allow": "Permitir notificaciones",
+      "deniedHint": "Permítelas en Ajustes del teléfono → Moony → Notificaciones.",
+      "unavailable": "No están disponibles en este dispositivo.",
+      "needed": "Primero permite las notificaciones."
+    },
+    "deadlines": {
+      "label": "Plazos",
+      "hint": "14 días y 1 día antes del plazo."
+    },
+    "upkeep": {
+      "label": "Mantenimiento mensual",
+      "hint": "Día {{day}} del mes: saldos y extractos.",
+      "day": "Día del mes",
+      "dayLabel": "Día {{day}} del mes",
+      "dayValue": "{{day}}",
+      "title": "Toca mantener los datos",
+      "body": "Registra los saldos e importa los extractos."
+    },
+    "backup": {
+      "label": "Copia de seguridad",
+      "hint": "Cuando la última copia tiene más de 30 días.",
+      "title": "Haz una copia de Moony",
+      "stale": "La última copia tiene más de un mes.",
+      "never": "Todavía no tienes ninguna copia."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} en 14 días",
+      "tomorrow": "{{whatKey}} mañana",
+      "kind": {
+        "insurance_anniversary": "Plazo para cancelar el seguro",
+        "insurance_end": "Termina el seguro",
+        "loan_fixation_end": "Termina el tipo fijo",
+        "bond_maturity": "Vencimiento del bono",
+        "account_termination": "Termina la cuenta",
+        "savings_rate_end": "Termina el tipo promocional"
+      }
+    },
+    "test": {
+      "send": "Enviar notificación de prueba",
+      "title": "Notificación de prueba",
+      "body": "Así se ve un recordatorio de Moony.",
+      "sent": "Llegará en 10 segundos"
+    }
   }
 }

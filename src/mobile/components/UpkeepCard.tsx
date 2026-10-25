@@ -5,9 +5,12 @@ import { Download, House, Landmark, Tag, Upload, type LucideIcon } from 'lucide-
 import { Button } from '@/components/ui/button';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
+import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import { useUpkeep } from '@/mobile/hooks/use-upkeep';
+import { queuePath } from '@/mobile/lib/categorize-queue';
+import { shortDayOptions } from '@/mobile/lib/format-day';
 import type { UpkeepKind, UpkeepRow } from '@/mobile/lib/upkeep';
-import { routes } from '@/mobile/shell/routes';
+import { propertyPath, routes, settingsPath } from '@/mobile/shell/routes';
 import { RecordBalancesSheet } from '@/mobile/sheets/RecordBalancesSheet';
 
 const ICONS: Record<UpkeepKind, LucideIcon> = {
@@ -27,15 +30,22 @@ const VERBS: Record<UpkeepKind, string> = {
 };
 
 /**
- * Where a verb leads. Zařadit, Importovat and Zálohovat arrive with their flows (Phases 2, 5 and
- * 4); until then they open the tab that will hold them.
+ * Where a verb that leads to a screen leads. Zálohovat opens Záloha a přenos, Přecenit the
+ * property (its detail has the Přecenit button; the Majetek tab, which lists the properties, for a
+ * row that does not name one); Zařadit opens the categorize queue (`queuePath`: of one account when
+ * exactly one holds the payments). Zaznamenat and Importovat open sheets instead (`UpkeepItem`).
  */
-const TARGETS: Record<Exclude<UpkeepKind, 'balances_stale'>, string> = {
-  uncategorized: routes.finance,
-  statement_due: routes.finance,
-  backup_stale: routes.settings,
-  valuation_stale: routes.wealth,
-};
+function targetOf(row: UpkeepRow): string {
+  switch (row.kind) {
+    case 'uncategorized':
+      return queuePath(row.accountIds ?? []);
+    case 'valuation_stale':
+      return row.sourceId ? propertyPath(row.sourceId) : routes.wealth;
+    default:
+      // `backup_stale`: the other two kinds open a sheet and never ask
+      return settingsPath('backup');
+  }
+}
 
 /**
  * Údržba (spec §8.3 item 1, prototype frame 02 and note 2): an action card on `well`, first on
@@ -47,6 +57,7 @@ const TARGETS: Record<Exclude<UpkeepKind, 'balances_stale'>, string> = {
 export function UpkeepCard() {
   const { t } = useTranslation('mobile');
   const { rows, accounts, lastImportByAccount } = useUpkeep();
+  const { openImport } = useImportSheet();
   // The accounts are frozen at opening: saving removes them from the card while the sheet closes.
   const [sheet, setSheet] = useState<{ open: boolean; accountIds: string[] }>({
     open: false,
@@ -75,6 +86,7 @@ export function UpkeepCard() {
                 accounts={accounts}
                 lastImportByAccount={lastImportByAccount}
                 onRecord={() => setSheet({ open: true, accountIds: row.accountIds ?? [] })}
+                onImport={() => openImport({ accountId: row.accountIds?.[0], source: 'upkeep' })}
               />
             ))}
           </ul>
@@ -95,26 +107,25 @@ interface UpkeepItemProps {
   accounts: ReturnType<typeof useUpkeep>['accounts'];
   lastImportByAccount: Record<string, number | null>;
   onRecord: () => void;
+  onImport: () => void;
 }
 
 /** One row of the card: icon, title and sub-line, and the verb. */
-function UpkeepItem({ row, primary, accounts, lastImportByAccount, onRecord }: UpkeepItemProps) {
+function UpkeepItem({
+  row,
+  primary,
+  accounts,
+  lastImportByAccount,
+  onRecord,
+  onImport,
+}: UpkeepItemProps) {
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
   const titleId = useId();
   const Icon = ICONS[row.kind];
   const byId = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
 
-  // "10. 10.", with the year when it is not this one
-  const shortDay = (unixSeconds: number) =>
-    fmt.day(unixSeconds, {
-      day: 'numeric',
-      month: 'numeric',
-      year:
-        new Date(unixSeconds * 1000).getUTCFullYear() !== new Date().getUTCFullYear()
-          ? 'numeric'
-          : undefined,
-    });
+  const shortDay = (unixSeconds: number) => fmt.day(unixSeconds, shortDayOptions(unixSeconds));
 
   const names = (row.accountIds ?? []).flatMap((id) => byId.get(id)?.name ?? []);
   let sub: string | null = null;
@@ -147,18 +158,19 @@ function UpkeepItem({ row, primary, accounts, lastImportByAccount, onRecord }: U
 
   const verb = t(VERBS[row.kind]);
   const buttonClass = cn(
-    'relative h-[34px] rounded-[9px] px-[11px] text-m-sub font-semibold after:absolute after:inset-x-0 after:-inset-y-[5px] after:content-[""]'
+    'relative h-auto min-h-[34px] rounded-[9px] px-[11px] py-1 text-m-sub font-semibold after:absolute after:inset-x-0 after:-inset-y-[5px] after:content-[""]'
   );
   const variant = primary ? 'default' : 'secondary';
 
+  // Zaznamenat and Importovat open a sheet; the other verbs go to a screen
   let action: ReactNode;
-  if (row.kind === 'balances_stale') {
+  if (row.kind === 'balances_stale' || row.kind === 'statement_due') {
     action = (
       <Button
         variant={variant}
         className={buttonClass}
         aria-describedby={titleId}
-        onClick={onRecord}
+        onClick={row.kind === 'balances_stale' ? onRecord : onImport}
       >
         {verb}
       </Button>
@@ -166,7 +178,7 @@ function UpkeepItem({ row, primary, accounts, lastImportByAccount, onRecord }: U
   } else {
     action = (
       <Button asChild variant={variant} className={buttonClass}>
-        <Link href={TARGETS[row.kind]} aria-describedby={titleId}>
+        <Link href={targetOf(row)} aria-describedby={titleId}>
           {verb}
         </Link>
       </Button>
@@ -182,7 +194,10 @@ function UpkeepItem({ row, primary, accounts, lastImportByAccount, onRecord }: U
         <Icon strokeWidth={1.75} />
       </span>
       <div className="min-w-0">
-        <div id={titleId} className="text-[14px] font-semibold tracking-[-0.01em] text-ink">
+        <div
+          id={titleId}
+          className="text-[length:calc(14px*var(--m-text-k))] font-semibold tracking-[-0.01em] text-ink"
+        >
           {t(row.title.key, row.title.params)}
         </div>
         {sub && <div className="mt-px truncate text-m-sub text-ink-4">{sub}</div>}

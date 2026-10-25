@@ -488,6 +488,64 @@ pub struct CsvPreviewResult {
     pub suggested_row_filter: Option<CsvRowFilter>,
 }
 
+/// One column the content inference assigned to a role (TS `InferredField`).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct InferredField {
+    /// The file's own header of the column.
+    pub column: String,
+    /// 0–1: the share of the column's cells that matched the role, 0.1 lower when no header
+    /// synonym agreed and only the content decided.
+    pub confidence: f32,
+}
+
+/// What a running balance says about the amounts' signs (TS `SignCheck`).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum SignCheck {
+    /// The balance moves by the amount: expenses are negative, as Moony expects.
+    #[serde(rename = "verified")]
+    Verified,
+    /// The balance moves by minus the amount: the file prints expenses positive.
+    #[serde(rename = "inverted")]
+    Inverted,
+    /// No balance column agrees with the amounts; the signs are taken as printed.
+    #[serde(rename = "unchecked")]
+    Unchecked,
+}
+
+/// The roles `infer_csv_columns` assigned to the columns of a CSV no preset describes, from
+/// their content (mobile spec §8.6 rung 3; TS `InferredColumns`). Every column is named by the
+/// file's own header; `null` = not recognized.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct InferredColumns {
+    pub date: Option<InferredField>,
+    /// chrono format of `date`, date part only; `null` without a date column.
+    #[serde(rename = "dateFormat")]
+    pub date_format: Option<String>,
+    /// Day/month order cannot be told from the values; `dateFormat` is the European guess.
+    #[serde(rename = "dateAmbiguous")]
+    pub date_ambiguous: bool,
+    /// A single signed amount column; `null` when the file has a debit/credit pair instead.
+    pub amount: Option<InferredField>,
+    pub debit: Option<InferredField>,
+    pub credit: Option<InferredField>,
+    /// A running balance that agrees with the amounts; it is what `signCheck` rests on.
+    pub balance: Option<InferredField>,
+    #[serde(rename = "signCheck")]
+    pub sign_check: SignCheck,
+    pub currency: Option<InferredField>,
+    /// IBANs or Czech domestic account numbers of the other party.
+    #[serde(rename = "counterpartyIban")]
+    pub counterparty_iban: Option<InferredField>,
+    pub counterparty: Option<InferredField>,
+    #[serde(rename = "transactionId")]
+    pub transaction_id: Option<InferredField>,
+    /// Up to three free-text columns, longest first.
+    pub description: Vec<String>,
+    /// `","` or `"."`.
+    #[serde(rename = "decimalSeparator")]
+    pub decimal_separator: String,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

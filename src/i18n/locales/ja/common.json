@@ -209,6 +209,8 @@
     "backupInvalidArchive": "このファイルは Moony のバックアップではないか、破損しています。",
     "backupNewerThanApp": "このバックアップは新しいバージョンの Moony で作成されました。先に Moony を更新してください。",
     "backupDestinationMissing": "保存先のフォルダが存在しません。",
+    "backupExportInvalid": "このファイル名は使用できません。",
+    "receivedFileOutside": "このファイルはここから削除できません。",
     "sellExceedsHoldings": "その日の保有数量を超えて売却することはできません。",
     "stockSplitRatioInvalid": "分割比率は異なる2つの正の整数で指定してください。",
     "stockSplitDayInvalid": "分割日に未来の日付は指定できません。",
@@ -294,7 +296,9 @@
     "statementInvestmentOnly": "このファイルには投資取引のみが含まれています。投資取引には証券会社用のインポートをご利用ください。",
     "statementMalformed": "明細ファイルが破損しているか、不完全です（{{detail}}）。",
     "statementIndexInvalid": "ファイル内の明細を1つ選択してください。",
-    "statementDateOrderInvalid": "日付の順序を選択できるのはQIFファイルのみです。"
+    "statementDateOrderInvalid": "日付の順序を選択できるのはQIFファイルのみです。",
+    "snoozeSelectionInvalid": "1〜1000件の支払いを選択してください。",
+    "snoozeDaysInvalid": "日数は1〜365の範囲で指定してください。"
   },
   "auth": {
     "wrongPassword": "入力したパスワードが正しくありません。もう一度お試しください。",

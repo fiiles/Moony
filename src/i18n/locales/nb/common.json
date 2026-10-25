@@ -209,6 +209,8 @@
     "backupInvalidArchive": "Denne filen er ikke en Moony-sikkerhetskopi (eller den er skadet).",
     "backupNewerThanApp": "Denne sikkerhetskopien er laget av en nyere Moony-versjon. Oppdater Moony først.",
     "backupDestinationMissing": "Målmappen finnes ikke.",
+    "backupExportInvalid": "Dette filnavnet er ikke tillatt.",
+    "receivedFileOutside": "Denne filen kan ikke fjernes herfra.",
     "sellExceedsHoldings": "Du kan ikke selge mer enn du har på den datoen.",
     "stockSplitRatioInvalid": "Splittforholdet må være to ulike positive heltall.",
     "stockSplitDayInvalid": "Splittdatoen kan ikke være i fremtiden.",
@@ -294,7 +296,9 @@
     "statementInvestmentOnly": "Denne filen inneholder bare investeringstransaksjoner. Bruk meglerimporten for dem.",
     "statementMalformed": "Kontoutskriftsfilen er skadet eller ufullstendig ({{detail}}).",
     "statementIndexInvalid": "Velg en av kontoutskriftene i filen.",
-    "statementDateOrderInvalid": "Datorekkefølgen kan bare velges for QIF-filer."
+    "statementDateOrderInvalid": "Datorekkefølgen kan bare velges for QIF-filer.",
+    "snoozeSelectionInvalid": "Velg fra 1 til 1000 betalinger.",
+    "snoozeDaysInvalid": "Velg et antall dager fra 1 til 365."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

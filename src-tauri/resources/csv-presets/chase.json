@@ -11,5 +11,62 @@
   "amountColumn": "Amount",
   "descriptionColumns": ["Description"],
   "balanceColumn": "Balance",
-  "sampleFixture": "us-chase.csv"
+  "sampleFixture": "us-chase.csv",
+  "mobileExport": {
+    "route": "web",
+    "format": "CSV",
+    "webUrl": "https://www.chase.com/",
+    "steps": {
+      "en": [
+        "Open Chase internet banking in Safari or Chrome and sign in.",
+        "Open the account, tap the download icon above the transactions (“Download account activity”) and choose CSV.",
+        "Share the file with Moony, or save it to Files and choose it here with “Choose file”."
+      ],
+      "cs": [
+        "V Safari nebo Chrome otevřete internetové bankovnictví Chase a přihlaste se.",
+        "Otevřete účet, klepněte na ikonu stažení nad transakcemi („Download account activity“) a zvolte CSV.",
+        "Sdílejte soubor do Moony, nebo ho uložte do Souborů a vyberte ho zde přes „Vybrat soubor“."
+      ],
+      "de": [
+        "Öffnen Sie das Online-Banking von Chase in Safari oder Chrome und melden Sie sich an.",
+        "Öffnen Sie das Konto, tippen Sie über den Umsätzen auf das Download-Symbol („Download account activity“) und wählen Sie CSV.",
+        "Teilen Sie die Datei mit Moony oder speichern Sie sie in „Dateien“ und wählen Sie sie hier mit „Datei wählen“."
+      ],
+      "es": [
+        "Abre la banca por internet de Chase en Safari o Chrome e inicia sesión.",
+        "Abre la cuenta, toca el icono de descarga sobre los movimientos («Download account activity») y elige CSV.",
+        "Comparte el archivo con Moony, o guárdalo en Archivos y elígelo aquí con «Elegir archivo»."
+      ],
+      "it": [
+        "Apri l'home banking di Chase in Safari o Chrome e accedi.",
+        "Apri il conto, tocca l'icona di download sopra i movimenti («Download account activity») e scegli CSV.",
+        "Condividi il file con Moony, oppure salvalo in File e sceglilo qui con «Scegli file»."
+      ],
+      "nb": [
+        "Åpne nettbanken til Chase i Safari eller Chrome og logg inn.",
+        "Åpne kontoen, trykk på nedlastingsikonet over transaksjonene («Download account activity») og velg CSV.",
+        "Del filen med Moony, eller lagre den i Filer og velg den her med «Velg fil»."
+      ],
+      "pl": [
+        "Otwórz bankowość internetową banku Chase w Safari lub Chrome i zaloguj się.",
+        "Otwórz konto, stuknij ikonę pobierania nad transakcjami („Download account activity”) i wybierz CSV.",
+        "Udostępnij plik aplikacji Moony albo zapisz go w Plikach i wybierz tutaj przez „Wybierz plik”."
+      ],
+      "sv": [
+        "Öppna internetbanken hos Chase i Safari eller Chrome och logga in.",
+        "Öppna kontot, tryck på nedladdningsikonen ovanför transaktionerna (”Download account activity”) och välj CSV.",
+        "Dela filen med Moony, eller spara den i Filer och välj den här med ”Välj fil”."
+      ],
+      "ja": [
+        "SafariまたはChromeでChaseのインターネットバンキングを開き、ログインします。",
+        "口座を開き、取引一覧の上にあるダウンロードアイコン（「Download account activity」）をタップしてCSVを選びます。",
+        "ファイルをMoonyに共有するか、「ファイル」に保存して、ここで「ファイルを選択」から選びます。"
+      ],
+      "zh": [
+        "在 Safari 或 Chrome 中打开 Chase 网上银行并登录。",
+        "打开账户，点按交易列表上方的下载图标（“Download account activity”），选择 CSV。",
+        "将文件共享给 Moony，或存到“文件”后在此处点按“选择文件”。"
+      ]
+    }
+  }
 }

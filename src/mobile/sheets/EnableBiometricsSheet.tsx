@@ -1,18 +1,17 @@
 import { useState } from 'react';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
 import { useAuth } from '@/hooks/use-auth';
-import { isAuthApiError } from '@/lib/api-error';
-import { queryClient } from '@/lib/queryClient';
 import { biometricApi } from '@/lib/tauri-api';
 import { Button } from '@/components/ui/button';
 import { BiometryIcon } from '@/mobile/components/BiometryIcon';
 import { Sheet } from '@/mobile/components/Sheet';
+import { useBiometricEnrolment } from '@/mobile/hooks/use-biometric-enrolment';
+import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import {
   BIOMETRIC_STATUS_KEY,
   biometricCopy,
-  biometricFailure,
+  enrolmentOfferOpen,
   markEnrolmentAsked,
   shouldOfferEnrolment,
   wasEnrolmentAsked,
@@ -32,10 +31,15 @@ function storage(): Storage | null {
  * "Zapnout" asks for Face ID / Touch ID ("Zapnout odemykání biometrií") and stores the session's
  * master key behind biometry (in Rust; the key never reaches the webview), "Teď ne" leaves it.
  * Either answer, or closing the sheet, sets `moony-biometrics-asked`.
+ *
+ * It never opens over the import sheet: a statement shared into Moony while it was locked opens
+ * first (`sharedPending`, from `ReceivedFileHost`), and the offer follows once that sheet has
+ * closed (`enrolmentOfferOpen`).
  */
-export function EnableBiometricsSheet() {
+export function EnableBiometricsSheet({ sharedPending = false }: { sharedPending?: boolean }) {
   const { t } = useTranslation('mobile');
   const { appStatus, unlockMutation, lockMutation } = useAuth();
+  const { open: importOpen } = useImportSheet();
   const [asked, setAsked] = useState(() => wasEnrolmentAsked(storage()));
 
   // The flag is read when a password unlock is submitted, not only at mount: a clear since then
@@ -64,32 +68,19 @@ export function EnableBiometricsSheet() {
     setAsked(true);
   };
 
-  const enable = useMutation({
-    mutationFn: () => biometricApi.enable(t('biometrics.enableReason')),
-    onSuccess: () => toast(t('biometrics.enabled')),
-    onError: (error) => {
-      // A dismissed system prompt is an answer. A refused one (not recognised, locked out, the
-      // permission denied) is said without the backend's words, which are about unlocking.
-      // Anything else says what went wrong.
-      const failure = biometricFailure(isAuthApiError(error) ? error.key : undefined);
-      if (failure === 'cancelled') {
-        toast(t('biometrics.notEnabled'));
-      } else if (failure === 'other') {
-        toast.error(t('biometrics.notEnabled'), { description: error.message });
-      } else {
-        toast.error(t('biometrics.notEnabled'));
-      }
-    },
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: BIOMETRIC_STATUS_KEY });
-      close();
-    },
-  });
+  const { enable } = useBiometricEnrolment();
 
   const type = status.data?.biometryType ?? 'none';
   const copy = biometricCopy(type);
-  // Stays up while "Zapnout" runs, then the answer closes it.
-  const open = passwordUnlocked && (shouldOfferEnrolment(status.data, asked) || enable.isPending);
+  // Stays up while "Zapnout" runs, then the answer closes it; waits for a shared file's import.
+  const open =
+    passwordUnlocked &&
+    enrolmentOfferOpen({
+      offered: shouldOfferEnrolment(status.data, asked),
+      enabling: enable.isPending,
+      importOpen,
+      sharedPending,
+    });
 
   return (
     <Sheet
@@ -103,17 +94,17 @@ export function EnableBiometricsSheet() {
         <>
           <Button
             variant="ghost"
-            className="h-12 rounded-[10px] px-[18px] text-m-row"
+            className="h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] px-[18px] text-m-row"
             disabled={enable.isPending}
             onClick={close}
           >
             {t('biometrics.notNow')}
           </Button>
           <Button
-            className="h-12 flex-1 rounded-[10px] text-m-row"
+            className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
             loading={enable.isPending}
             disabled={enable.isPending}
-            onClick={() => enable.mutate()}
+            onClick={() => enable.mutate(undefined, { onSettled: close })}
           >
             {t('biometrics.enable')}
           </Button>

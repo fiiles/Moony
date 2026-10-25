@@ -7,10 +7,6 @@ import './index.css';
 
 async function bootstrap() {
   const mobile = isMobileShell(import.meta.env);
-  // The phone is light only until Phase 6 (dark phone tokens): `theme-boot.js` stamped `data-theme`
-  // from the OS appearance, which would put the desktop's dark block under a shell that has no
-  // ThemeProvider and no dark design. Overwrite its only attribute before anything renders.
-  if (mobile) document.documentElement.dataset.theme = 'light';
   // Dev-only: lets the app run in a plain browser against the real backend.
   if (import.meta.env.DEV) await import('./dev/browser-bridge');
   // The phone shell is its own chunk: the desktop never loads it.

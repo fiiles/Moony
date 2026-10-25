@@ -5,6 +5,7 @@ use crate::error::{AppError, Result};
 use crate::models::{
     InsertInsuranceDocument, InsertInsurancePolicy, InsuranceDocument, InsurancePolicy, RealEstate,
 };
+use crate::services::{attachments, real_estate_photos};
 use tauri::{Manager, State};
 
 /// Get all insurance policies
@@ -183,6 +184,38 @@ pub async fn add_insurance_document(
             conn,
             &insurance_id,
             std::path::Path::new(&file_path),
+            &doc,
+            now,
+        )
+    })
+}
+
+/// Add a document to an insurance policy from its bytes (the phone: a photographed contract or a
+/// file from the Files app, which the webview holds only as bytes and may not write to disk). The
+/// bytes are the IPC body; the `owner-id`, `file-name` and `document` headers carry the policy's
+/// id, the file's name and the entries as `InsertInsuranceDocument` JSON, the last two
+/// percent-encoded. The bytes go straight into the encrypted attachments store.
+#[tauri::command]
+pub async fn add_insurance_document_bytes(
+    db: State<'_, Database>,
+    request: tauri::ipc::Request<'_>,
+) -> Result<InsuranceDocument> {
+    let upload = attachments::document_upload::<InsertInsuranceDocument>(request.headers())?;
+    // Validate inputs at the trust boundary (before any field access)
+    upload.data.validate()?;
+    let bytes = real_estate_photos::photo_bytes(request.body())?;
+    let doc = attachments::NewDocument {
+        name: &upload.data.name,
+        description: upload.data.description.as_deref(),
+        file_type: upload.data.file_type.as_deref().unwrap_or("other"),
+    };
+    let now = chrono::Utc::now().timestamp();
+    db.with_conn(|conn| {
+        attachments::add_insurance_document_bytes(
+            conn,
+            &upload.owner_id,
+            &upload.file_name,
+            &bytes,
             &doc,
             now,
         )

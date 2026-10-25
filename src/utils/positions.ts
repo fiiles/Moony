@@ -28,7 +28,7 @@ export function costPerUnit(costBasis: number | null, quantity: number): number 
 }
 
 /** What every position row shares, stock or crypto. */
-interface PositionRowBase {
+export interface PositionRowBase {
   id: string;
   ticker: string;
   quantity: number;

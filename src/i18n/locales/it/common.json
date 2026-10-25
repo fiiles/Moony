@@ -209,6 +209,8 @@
     "backupInvalidArchive": "Questo file non è un backup di Moony (oppure è danneggiato).",
     "backupNewerThanApp": "Questo backup è stato creato da una versione di Moony più recente. Aggiorna prima Moony.",
     "backupDestinationMissing": "La cartella di destinazione non esiste.",
+    "backupExportInvalid": "Questo nome di file non è consentito.",
+    "receivedFileOutside": "Questo file non può essere rimosso da qui.",
     "sellExceedsHoldings": "Non puoi vendere più di quanto possiedi a quella data.",
     "stockSplitRatioInvalid": "Il rapporto del frazionamento deve essere composto da due numeri interi positivi diversi.",
     "stockSplitDayInvalid": "La data del frazionamento non può essere nel futuro.",
@@ -294,7 +296,9 @@
     "statementInvestmentOnly": "Questo file contiene solo operazioni di investimento. Usa per queste l'importazione del broker.",
     "statementMalformed": "Il file dell'estratto conto è danneggiato o incompleto ({{detail}}).",
     "statementIndexInvalid": "Scegli uno degli estratti conto presenti nel file.",
-    "statementDateOrderInvalid": "L'ordine della data può essere scelto solo per i file QIF."
+    "statementDateOrderInvalid": "L'ordine della data può essere scelto solo per i file QIF.",
+    "snoozeSelectionInvalid": "Seleziona da 1 a 1000 pagamenti.",
+    "snoozeDaysInvalid": "Scegli un numero di giorni da 1 a 365."
   },
   "auth": {
     "wrongPassword": "La password inserita non è corretta. Riprova.",

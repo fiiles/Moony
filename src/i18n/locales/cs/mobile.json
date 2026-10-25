@@ -37,6 +37,46 @@
       "noHistory": "bez historie"
     }
   },
+  "cashflow": {
+    "subtitle_one": "Skutečné příjmy a výdaje z {{count}} účtu",
+    "subtitle_few": "Skutečné příjmy a výdaje ze {{count}} účtů",
+    "subtitle_other": "Skutečné příjmy a výdaje z {{count}} účtů",
+    "moves_one": "{{count}} pohyb",
+    "moves_few": "{{count}} pohyby",
+    "moves_other": "{{count}} pohybů",
+    "shareOfExpenses": "{{share}} výdajů",
+    "shareOfIncome": "{{share}} příjmů",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "blíží se limitu",
+    "overLimit": "nad limitem",
+    "budgetSummary": "Rozpočty: {{ok}} v mezích · {{over}} nad limitem · {{near}} blíží se limitu",
+    "partial": "Období ještě neskončilo, čísla se doplní s dalším výpisem.",
+    "empty": {
+      "title": "Zatím žádné transakce",
+      "description": "Cashflow se počítá z plateb na vašich účtech. Přidejte účet a naimportujte výpis.",
+      "action": "Otevřít Finance"
+    },
+    "accounts": {
+      "title": "Účty v přehledu",
+      "done": "Hotovo"
+    },
+    "picker": {
+      "title": "Kategorie",
+      "change": "Změnit kategorii",
+      "current": "Aktuální kategorie"
+    },
+    "limitSheet": {
+      "pick": "Vyberte kategorii, pro kterou chcete hlídat výdaje."
+    },
+    "budgets": {
+      "ended": "ukončen",
+      "averageNote": "⌀ za posledních 6 měsíců"
+    },
+    "showMore_one": "Zobrazit další {{count}} transakci",
+    "showMore_few": "Zobrazit další {{count}} transakce",
+    "showMore_other": "Zobrazit dalších {{count}} transakcí",
+    "rowMenu": "Další akce: {{title}}"
+  },
   "upkeep": {
     "title": "Údržba",
     "count_one": "{{count}} věc",
@@ -87,5 +127,679 @@
     "enabled": "Odemykání biometrií zapnuto",
     "notEnabled": "Odemykání biometrií nebylo zapnuto",
     "unavailable": "Biometrie teď není k dispozici, odemkněte heslem."
+  },
+  "finance": {
+    "accounts_one": "{{count}} účet",
+    "accounts_few": "{{count}} účty",
+    "accounts_other": "{{count}} účtů",
+    "loans_one": "{{count}} úvěr",
+    "loans_few": "{{count}} úvěry",
+    "loans_other": "{{count}} úvěrů",
+    "policies_one": "{{count}} pojistka",
+    "policies_few": "{{count}} pojistky",
+    "policies_other": "{{count}} pojistek",
+    "total": "Celkem na účtech",
+    "change30": "{{amount}} za 30 dní",
+    "noMovements": "bez pohybů za 30 dní",
+    "uncategorized": "Nezařazené platby",
+    "sections": {
+      "accounts": "Účty",
+      "loans": "Úvěry",
+      "insurance": "Pojištění",
+      "cashTrend": "Vývoj hotovosti"
+    },
+    "manual": "ručně",
+    "statementOn": "výpis {{date}}",
+    "balanceOn": "zůstatek {{date}}",
+    "trail": {
+      "change": "{{amount}} · 30 dní",
+      "staleStatement_one": "výpis {{count}} den starý",
+      "staleStatement_few": "výpis {{count}} dny starý",
+      "staleStatement_other": "výpis {{count}} dní starý",
+      "staleBalance_one": "zůstatek {{count}} den starý",
+      "staleBalance_few": "zůstatek {{count}} dny starý",
+      "staleBalance_other": "zůstatek {{count}} dní starý",
+      "approx": "≈ {{amount}}",
+      "noRate": "bez kurzu pro {{currency}}"
+    },
+    "perMonth": "{{amount}} / měs",
+    "nextPayment": "příští platba {{date}}",
+    "menu": {
+      "sort": "Řazení",
+      "sortBalance": "Podle zůstatku",
+      "sortName": "Podle názvu",
+      "sortChange": "Podle změny za 30 dní",
+      "sortLast": "Podle posledního pohybu",
+      "showMatured": "Zobrazit splacené úvěry",
+      "showEnded": "Zobrazit ukončené pojistky",
+      "export": "Export"
+    },
+    "add": {
+      "title": "Přidat",
+      "account": "Účet",
+      "loan": "Úvěr",
+      "policy": "Pojistka"
+    },
+    "insurance": {
+      "type": "Typ pojištění",
+      "upcoming": "Nejbližší platby",
+      "upcomingNote_one": "{{count}} den",
+      "upcomingNote_few": "{{count}} dny",
+      "upcomingNote_other": "{{count}} dní",
+      "showAll_one": "Zobrazit {{count}}",
+      "showAll_few": "Zobrazit všechny {{count}}",
+      "showAll_other": "Zobrazit všech {{count}}"
+    },
+    "cashTrendLabel": "Graf vývoje hotovosti"
+  },
+  "queue": {
+    "source": {
+      "mcp": "návrh z MCP",
+      "learned": "naučené",
+      "rule": "podle pravidla",
+      "pack": "balíček pravidel"
+    },
+    "other": "Jiná…",
+    "choose": "Vybrat kategorii…",
+    "keep": "Nechat",
+    "keepMenu": "Nechat na {{days}} dní",
+    "snoozed": "Nechána na {{days}} dní",
+    "categorized": "Zařazeno",
+    "also_one": "Zařazena i {{count}} další platba od {{name}}",
+    "also_few": "Zařazeny i {{count}} další platby od {{name}}",
+    "also_other": "Zařazeno i {{count}} dalších plateb od {{name}}",
+    "alsoSub": "Stejná protistrana a směr na tomto účtu",
+    "alsoRestored": "Vráceno, jak to bylo",
+    "handled_one": "{{count}} už vyřízena",
+    "handled_few": "{{count}} už vyřízeny",
+    "handled_other": "{{count}} už vyřízeno",
+    "progress": "{{done}} z {{total}}",
+    "caption": "Klepnutí na návrh ho přijme. „{{keep}}“ odloží platbu na {{days}} dní. Co zařadíte, se stane naučeným pravidlem pro tento účet.",
+    "showCashflow": "Zobrazit cashflow",
+    "empty": {
+      "title": "Všechno zařazeno",
+      "hint": "Nové platby se tu objeví po dalším importu.",
+      "snoozed_one": "{{count}} odložená platba se sem později vrátí.",
+      "snoozed_few": "{{count}} odložené platby se sem později vrátí.",
+      "snoozed_other": "{{count}} odložených plateb se sem později vrátí."
+    }
+  },
+  "placeholder": {
+    "export": "Export přijde později."
+  },
+  "account": {
+    "record": "Zaznamenat zůstatek",
+    "import": "Importovat výpis",
+    "menu": {
+      "edit": "Upravit účet",
+      "balanceHistory": "Historie zůstatku",
+      "importHistory": "Historie importů",
+      "delete": "Smazat účet"
+    },
+    "stats": {
+      "changeThisYear": "Změna letos",
+      "avgPerMonth": "Průměrně za měsíc",
+      "yearlyInterest": "Roční úrok"
+    },
+    "flows": {
+      "title": "Toky"
+    },
+    "ledger": {
+      "title": "Pohyby",
+      "search": "Hledat podle protistrany nebo popisu",
+      "all": "Vše",
+      "in": "Příchozí",
+      "out": "Odchozí",
+      "filter": "Filtr",
+      "noCategory": "Bez kategorie",
+      "categorize": "Kategorie",
+      "details": "Podrobnosti",
+      "count_one": "{{count}} pohyb",
+      "count_few": "{{count}} pohyby",
+      "count_other": "{{count}} pohybů",
+      "empty": "Žádné pohyby neodpovídají",
+      "emptyHint": "Změňte období nebo filtr.",
+      "showAll": "Zobrazit vše",
+      "loadError": "Pohyby se nepodařilo načíst.",
+      "retry": "Zkusit znovu"
+    },
+    "filter": {
+      "title": "Filtr",
+      "category": "Kategorie",
+      "all": "Vše",
+      "period": "Období",
+      "from": "Od",
+      "to": "Do",
+      "apply": "Použít",
+      "reset": "Zrušit filtry"
+    },
+    "rowMenu": {
+      "details": "Podrobnosti",
+      "category": "Kategorie",
+      "delete": "Smazat"
+    }
+  },
+  "loan": {
+    "nextPayment": "Příští splátka {{amount}} · {{date}}",
+    "notStarted": "Začíná {{date}}",
+    "stats": {
+      "since": "od {{month}}",
+      "extra": "mimořádně {{amount}}",
+      "until": "do {{month}}"
+    },
+    "alerts": {
+      "fixationSoon_one": "Fixace končí za {{count}} den. Až banka potvrdí novou sazbu, zapište ji — splátka a plán se přepočítají.",
+      "fixationSoon_few": "Fixace končí za {{count}} dny. Až banka potvrdí novou sazbu, zapište ji — splátka a plán se přepočítají.",
+      "fixationSoon_other": "Fixace končí za {{count}} dní. Až banka potvrdí novou sazbu, zapište ji — splátka a plán se přepočítají.",
+      "fixationToday": "Fixace končí dnes. Až banka potvrdí novou sazbu, zapište ji — splátka a plán se přepočítají.",
+      "fixationPassed_one": "Fixace skončila před {{count}} dnem. Zapište novou sazbu, aby se splátka a plán přepočítaly.",
+      "fixationPassed_few": "Fixace skončila před {{count}} dny. Zapište novou sazbu, aby se splátka a plán přepočítaly.",
+      "fixationPassed_other": "Fixace skončila před {{count}} dny. Zapište novou sazbu, aby se splátka a plán přepočítaly."
+    },
+    "schedule": {
+      "left": "zbývá {{amount}}",
+      "yearSub_one": "{{count}} splátka · úrok {{interest}}",
+      "yearSub_few": "{{count}} splátky · úrok {{interest}}",
+      "yearSub_other": "{{count}} splátek · úrok {{interest}}",
+      "showAll_one": "Zobrazit {{count}}",
+      "showAll_few": "Zobrazit všechny {{count}}",
+      "showAll_other": "Zobrazit všech {{count}}"
+    },
+    "extra": {
+      "noChange": "Tato částka nezmění ani dobu splácení, ani splátku, ani úroky."
+    },
+    "events": {
+      "menu": "Nabídka události"
+    }
+  },
+  "documents": {
+    "takePhoto": "Vyfotit",
+    "chooseFile": "Vybrat soubor",
+    "fromPhotos": "Vybrat z fotek",
+    "photoName": "Foto {{date}}",
+    "count_one": "{{count}} · šifrovaný",
+    "count_few": "{{count}} · šifrované",
+    "count_other": "{{count}} · šifrovaných",
+    "openOnComputer": "Tento soubor telefon zobrazit neumí. Otevřete ho v Moony na počítači.",
+    "saving": "Šifruji a ukládám…",
+    "rowMenu": "Další akce: {{name}}",
+    "previewFailed": "Náhled se nepodařilo zobrazit. Otevřete dokument v Moony na počítači.",
+    "zoomIn": "Přiblížit",
+    "zoomOut": "Oddálit"
+  },
+  "policy": {
+    "copy": "Zkopírovat číslo smlouvy",
+    "copied": "Číslo smlouvy zkopírováno",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Platnost",
+    "termOpen": "od {{start}} · neurčitá",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "výročí {{date}}",
+    "notice": "Výpověď nejpozději",
+    "limitsTotal": "celkem {{amount}}",
+    "total": "Celkem · {{payments}}"
+  },
+  "property": {
+    "notFound": "Tato nemovitost už neexistuje.",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "{{rent}} ročně",
+    "perYear": "ročně",
+    "loanPayment": "splátka {{amount}} / měs.",
+    "rowMenu": "Další akce: {{name}}",
+    "costKindRecurring": "Pravidelný",
+    "costKindOneTime": "Jednorázový",
+    "costYear": "{{amount}} ročně",
+    "costCurrent": "Nyní {{amount}}",
+    "costDateInFuture": "Datum nákladu nemůže být v budoucnosti.",
+    "costNameRequired": "Zadejte název nákladu.",
+    "confirmDeleteRecurring": "Tím trvale smažete pravidelný náklad „{{name}}“ ({{amount}}, {{frequency}}). Tuto akci nelze vrátit zpět.",
+    "photoCount_one": "{{count}} fotka",
+    "photoCount_few": "{{count}} fotky",
+    "photoCount_other": "{{count}} fotek",
+    "uploading": "Nahrávám {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} fotku se nepodařilo uložit.",
+    "photosSkipped_few": "{{count}} fotky se nepodařilo uložit.",
+    "photosSkipped_other": "{{count}} fotek se nepodařilo uložit.",
+    "photoOpen": "Fotka z {{day}}",
+    "photoFailed": "Fotku se nepodařilo zobrazit.",
+    "photoDeleted": "Fotka smazána",
+    "deletePhoto": "Smazat fotku",
+    "deletePhotoConfirm": {
+      "title": "Smazat fotku?",
+      "description": "Fotka bude trvale smazána. Tuto akci nelze vrátit zpět.",
+      "descriptionLast": "Je to poslední fotka ze dne {{day}}, takže se smaže i celá skupina fotek toho dne. Tuto akci nelze vrátit zpět."
+    }
+  },
+  "transaction": {
+    "flowSaved": "Význam uložen",
+    "done": "Hotovo",
+    "counterparty": "Protistrana",
+    "date": "Datum",
+    "category": "Kategorie",
+    "flow": "Význam pohybu",
+    "note": "Poznámka",
+    "details": "Podrobnosti",
+    "bankId": "ID banky",
+    "valueDate": "Valuta",
+    "file": "Soubor",
+    "line": "Řádek",
+    "sourceLabel": "Zdroj",
+    "source": {
+      "manual": "Zadáno ručně",
+      "csv_import": "Importováno",
+      "api_sync": "Synchronizováno"
+    },
+    "status": "Stav",
+    "booked": "Zaúčtováno",
+    "currency": "Měna"
+  },
+  "picker": {
+    "title": "Kategorie",
+    "recent": "Naposledy použité",
+    "all": "Všechny kategorie",
+    "suggested": "Návrh",
+    "decline": "Odmítnout návrh",
+    "empty": "Žádná kategorie neodpovídá"
+  },
+  "import": {
+    "title": "Import výpisu",
+    "intoAccount": "Do účtu {{account}}",
+    "fromShare": "Ze sdílení",
+    "reads": "Umím číst: {{formats}}.",
+    "reading": "Čtu soubor…",
+    "importing": "Zapisuji platby…",
+    "pick": {
+      "lead": "Vyberte soubor, který jste si stáhli z banky.",
+      "choose": "Vybrat soubor",
+      "chooseOther": "Vybrat jiný soubor"
+    },
+    "account": {
+      "sheetTitle": "Do kterého účtu?",
+      "lead": "Vyberte účet, do kterého platby patří.",
+      "none": "Zatím nemáte žádný otevřený účet. Přidejte ten, ke kterému soubor patří.",
+      "title": "Účty",
+      "new": "Nový účet…"
+    },
+    "statement": {
+      "title": "Který výpis?",
+      "dateTitle": "Jak jsou zapsaná data?",
+      "continue": "Pokračovat"
+    },
+    "unreadable": {
+      "title": "Soubor nejde přečíst",
+      "pdf": "Výpis v PDF zatím přečíst neumím — stáhněte si z banky CSV, CAMT, MT940, OFX nebo QIF.",
+      "image": "Fotku ani sken výpisu přečíst neumím — stáhněte si z banky CSV, CAMT, MT940, OFX nebo QIF.",
+      "notStatement": "Tento soubor neobsahuje výpis, který bych uměl přečíst.",
+      "error": "Soubor se nepodařilo přečíst."
+    },
+    "guide": {
+      "title": "Jak získat výpis: {{bank}}",
+      "format": "Vyberte formát: {{format}}",
+      "openWeb": "Otevřít internetové bankovnictví",
+      "openFailed": "Prohlížeč se nepodařilo otevřít.",
+      "banks": "Návody bank"
+    },
+    "recognize": {
+      "title": "Takhle tomu rozumím",
+      "caption": "Tři pohyby ze souboru tak, jak je načtu:",
+      "captionFew": "Pohyby ze souboru tak, jak je načtu:",
+      "unknownFormat": "formát zatím neznám",
+      "tab": "tabulátor",
+      "previewFailed": "Ukázku pohybů se teď nepodařilo načíst. Rozpoznané sloupce níže přesto platí.",
+      "looksRight": "Vypadá to správně",
+      "fix": "Opravit…",
+      "use": "Použít",
+      "field": {
+        "transactionId": "ID pohybu"
+      },
+      "notFound": "nenalezeno",
+      "unused": "nepoužito",
+      "unusedWhy": {
+        "description": "platby se hůř zařazují do kategorií",
+        "counterparty": "nebude vidět, kdo platil nebo komu se platilo",
+        "currency": "měna se vezme z účtu",
+        "balance": "zůstatek účtu podle souboru nenavrhnu",
+        "transactionId": "duplicity poznám podle data a částky"
+      },
+      "signVerified": "znaménko ověřeno podle zůstatku",
+      "signInverted": "výdaje v souboru vypadají kladně — zkontrolujte ukázku",
+      "signsBlocked": "Soubor, ve kterém jsou výdaje kladně, zatím Moony naimportovat neumí. Pokud částku obsahuje jiný sloupec, vyberte ho, jinak import zrušte.",
+      "allPositive": "Všechny částky jsou kladné — výdaje by se uložily jako příjmy.",
+      "pairSides": "Výdaje: {{debit}} · Příjmy: {{credit}}",
+      "fixTitle": "Co opravit?",
+      "fixLead": "Klepněte na pole, které jsem přečetl špatně.",
+      "ask": {
+        "date": "Co je datum?",
+        "amount": "Co je částka?",
+        "description": "Co je popis?",
+        "counterparty": "Co je protistrana?",
+        "currency": "Co je měna?",
+        "balance": "Co je zůstatek?",
+        "transactionId": "Co je ID pohybu?"
+      },
+      "lead": {
+        "date": "Vyberte sloupec s datem pohybu.",
+        "amount": "Vyberte sloupec, který nese částku pohybu. Výdaje mají být záporné.",
+        "description": "Vyberte sloupec s textem platby, třeba zprávou nebo poznámkou. Pomáhá zařazovat platby do kategorií.",
+        "counterparty": "Vyberte sloupec se jménem toho, kdo platil nebo komu se platilo.",
+        "currency": "Vyberte sloupec s kódem měny, například CZK nebo EUR.",
+        "balance": "Vyberte sloupec se zůstatkem po každém pohybu.",
+        "transactionId": "Vyberte sloupec s jedinečným číslem, které banka dává každému pohybu."
+      },
+      "sample": "Ukázka po výběru:",
+      "sampleHint": "Vyberte sloupec a ukážu, jak bych pohyb přečetl.",
+      "pair": "dvojice sloupců"
+    },
+    "preview": {
+      "hint": "Klepnutím na platbu zvolíte její kategorii.",
+      "more_one": "a {{count}} další",
+      "more_few": "a {{count}} další",
+      "more_other": "a {{count}} dalších"
+    },
+    "choice": {
+      "title": "Zařazení",
+      "byRules": "Podle pravidel",
+      "byRulesSub": "Vaše volba se zruší"
+    },
+    "done": {
+      "lastBalance": "Zůstatek po poslední platbě: <b>{{balance}}</b>.",
+      "categorized_one": "{{count}} pohyb zařadila pravidla.",
+      "categorized_few": "{{count}} pohyby zařadila pravidla.",
+      "categorized_other": "{{count}} pohybů zařadila pravidla.",
+      "open_one": "{{count}} zůstává bez kategorie.",
+      "open_few": "{{count}} zůstávají bez kategorie.",
+      "open_other": "{{count}} zůstává bez kategorie.",
+      "allSorted": "Všechno má kategorii.",
+      "promoted_one": "{{count}} čekající platba byla zaúčtována.",
+      "promoted_few": "{{count}} čekající platby byly zaúčtovány.",
+      "promoted_other": "{{count}} čekajících plateb bylo zaúčtováno.",
+      "queue_one": "Zařadit {{count}} platbu",
+      "queue_few": "Zařadit {{count}} platby",
+      "queue_other": "Zařadit {{count}} plateb"
+    }
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "Tato stránka je zatím jen v Moony na počítači."
+    },
+    "subtitle": "Investice, nemovitosti a hotovost",
+    "sections": {
+      "investments": "Investice",
+      "realEstate": "Nemovitosti",
+      "cash": "Hotovost"
+    },
+    "cash": {
+      "title": "Na účtech"
+    },
+    "bonds": {
+      "count_one": "{{count}} emise",
+      "count_few": "{{count}} emise",
+      "count_other": "{{count}} emisí",
+      "nearest": "nejbližší splatnost {{month}}",
+      "coupon": "kupón {{amount}} / rok",
+      "upcoming": "Nejbližší kupóny a splatnosti",
+      "noUpcoming": "V nejbližším roce nepřipadá žádný kupón ani splatnost.",
+      "allRepaid": "Všechny emise jsou splacené. Zapněte v nabídce ··· „{{action}}“, abyste je viděli.",
+      "loadFailed": "Dluhopisy se nepodařilo načíst.",
+      "rateNote": "{{rate}} p. a. vážený průměr"
+    },
+    "otherAssets": {
+      "count_one": "{{count}} položka",
+      "count_few": "{{count}} položky",
+      "count_other": "{{count}} položek",
+      "valuedOn": "oceněno {{date}}",
+      "moreDetails": "Další údaje",
+      "loadFailed": "Aktiva se nepodařilo načíst.",
+      "notFound": "Aktivum nenalezeno"
+    },
+    "realEstate": {
+      "personal": "osobní",
+      "investment": "investiční",
+      "rent": "nájem {{amount}} / měsíc",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "Zatím žádný majetek",
+      "description": "Přidejte první investici, nemovitost nebo jiné aktivum.",
+      "class": "zatím nic"
+    },
+    "add": {
+      "label": "Přidat",
+      "investment": "Investici",
+      "crypto": "Kryptoměnu",
+      "bond": "Dluhopis",
+      "property": "Nemovitost",
+      "asset": "Aktivum"
+    },
+    "noRate": "bez kurzu pro {{currency}}",
+    "stocks": {
+      "back": "Akcie",
+      "pricesAt": "ceny {{time}}",
+      "pricesOn": "ceny {{date}}",
+      "invested": "vloženo {{amount}}",
+      "dividendsYear": "Dividendy / rok",
+      "yieldNote": "výnos {{percent}}",
+      "twrYtd": "Zhodnocení letos",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "zatím bez historie",
+      "positionsTab": "Pozice · {{count}}",
+      "watchedTab": "Sledované · {{count}}",
+      "sort": {
+        "label": "Řazení",
+        "value": "Podle hodnoty",
+        "gain": "Podle výnosu",
+        "name": "Podle názvu"
+      },
+      "searchToggle": "Hledat",
+      "clearSearch": "Smazat hledání",
+      "showAll_one": "Zobrazit {{count}} pozici",
+      "showAll_few": "Zobrazit všechny {{count}} pozice",
+      "showAll_other": "Zobrazit všech {{count}} pozic",
+      "menu": {
+        "closed": "Uzavřené pozice"
+      },
+      "closedBadge": "uzavřená",
+      "watchedEmpty": "Zatím nesledujete žádnou akcii.",
+      "loadFailed": "Pozice se nepodařilo načíst.",
+      "target": "cíl {{price}}",
+      "targetReached": "cíl dosažen",
+      "dayChange": "dnes"
+    },
+    "crypto": {
+      "largestNote": "{{share}} z krypta",
+      "heldNote": "{{share}} z krypta · {{date}}"
+    },
+    "closed": {
+      "on": "uzavřeno {{date}}",
+      "empty": "Zatím není uzavřená žádná pozice.",
+      "onlyClosed": "Jsou tu jen uzavřené pozice. Otevřete v nabídce ··· „{{action}}“, abyste je viděli."
+    },
+    "position": {
+      "heroLabel": "Hodnota pozice · {{quantity}} {{unit}}",
+      "perUnit": "{{price}} za kus",
+      "stats": {
+        "value": "Hodnota",
+        "inCurrency": "v {{currency}}",
+        "price": "Cena"
+      },
+      "tx": {
+        "buy": "Nákup · {{quantity}} {{unit}}",
+        "sell": "Prodej · {{quantity}} {{unit}}",
+        "showAll_one": "Zobrazit {{count}}",
+        "showAll_few": "Zobrazit všechny {{count}}",
+        "showAll_other": "Zobrazit všech {{count}}",
+        "menu": "Nabídka transakce"
+      },
+      "follow": "Sledovat",
+      "following": "Sledováno",
+      "followed": "Přidáno do sledovaných",
+      "range52": "52T rozpětí",
+      "renamed": "Název uložen"
+    },
+    "watch": {
+      "stats": {
+        "today": "Dnes",
+        "since": "Od sledování",
+        "noTarget": "bez cíle"
+      },
+      "above": "Nad",
+      "below": "Pod",
+      "openPosition": "Otevřít pozici",
+      "notesEmpty": "Zatím žádné poznámky. Klepněte na Upravit a přidejte poznámky — markdown funguje."
+    }
+  },
+  "settings": {
+    "rows": {
+      "profile": "Profil",
+      "profileNoEmail": "Jméno a e-mail",
+      "language": "Jazyk",
+      "security": "Zabezpečení",
+      "backup": "Záloha a přenos",
+      "notifications": "Oznámení",
+      "reminders": "Připomínky",
+      "remindersSub": "{{on}} z {{total}} skupin",
+      "import": "Import",
+      "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
+      "deleteSub": "po potvrzení napsáním slova"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "žádná telemetrie",
+    "security": {
+      "lead": "Odemykání, zámek na pozadí a skrývání částek na tomto telefonu.",
+      "biometrics": "Odemykat {{methodKey}}",
+      "methodFace": "obličejem",
+      "methodTouch": "otiskem",
+      "methodGeneric": "biometrií",
+      "biometricsOn": "Odemykání {{methodKey}}",
+      "biometricsOff": "Jen heslo",
+      "biometricsDisabled": "Odemykání biometrií vypnuto",
+      "lockAfterLabel": "Zamknout po přechodu na pozadí",
+      "lockAfterHint": "Když aplikaci opustíte na déle, po návratu ji znovu odemknete.",
+      "optionNow": "Ihned",
+      "optionMinutes": "{{count}} min",
+      "lockNow": "zámek ihned",
+      "lockAfter_one": "zámek po {{count}} minutě",
+      "lockAfter_few": "zámek po {{count}} minutách",
+      "lockAfter_other": "zámek po {{count}} minutách",
+      "hideOnLaunch": "Skrývat částky po spuštění",
+      "hideOnLaunchHint": "Každé spuštění začne se skrytými částkami; oko na Přehledu je zase ukáže.",
+      "hideOnLaunchShort": "částky skryté po spuštění"
+    },
+    "profile": {
+      "lead": "Jméno se zobrazuje v pozdravu na Přehledu.",
+      "currencyReadOnly": "Hlavní měnu změníte v Moony na počítači."
+    },
+    "language": {
+      "title": "Jazyk aplikace",
+      "lead": "Čísla a data se formátují podle jazyka."
+    },
+    "appearance": {
+      "lead": "Systém sleduje světlý nebo tmavý vzhled telefonu."
+    },
+    "delete": {
+      "title": "Smazat všechna data?",
+      "lead": "Trvale smaže databázi, klíče a přílohy z tohoto telefonu. Kopie zálohy mimo telefon zůstanou. Nejdřív si udělejte zálohu — je to jediná cesta zpět.",
+      "confirmLabel": "Pro potvrzení napište {{word}}",
+      "confirm": "Smazat data",
+      "failed": "Smazání selhalo"
+    }
+  },
+  "backup": {
+    "lead": "Záloha je šifrovaný soubor: databáze, klíče a přílohy. Otevře ji jen vaše heslo.",
+    "last": "Poslední záloha",
+    "lastOn": "Poslední záloha {{date}}",
+    "never": "Zatím žádná záloha",
+    "what": "Uložte ji do iCloud Drive nebo jiné složky v Souborech. Moony k ní nemá přístup.",
+    "notSaved": "Záloha nebyla uložena",
+    "unavailableHere": "Zálohování zatím funguje jen na iPhonu.",
+    "restoreTitle": "Obnovení a přenos",
+    "restoreLead": "Obnovte zálohu z tohoto telefonu, nebo přeneste profil z Moony na počítači: vyberte soubor zálohy a po obnovení odemkněte heslem, které platilo při jejím vytvoření.",
+    "restoreConfirmDescription": "Záloha z {{date}} (Moony {{version}}, {{attachments}} příloh, {{size}}) nahradí data v tomto telefonu. Chcete-li současná data zachovat, nejdřív je zálohujte. Moony se poté zamkne; odemkněte ho heslem, které platilo v době vytvoření zálohy.",
+    "osBackupNote": "Profil se neukládá do zálohy telefonu (iCloud ani počítač). Jedinou kopií mimo telefon je záloha Moony, kterou si sami uložíte."
+  },
+  "firstRun": {
+    "privacyLead": "Moony ukládá vše do šifrované databáze v tomto telefonu. Žádný cloud, žádný účet u nás.",
+    "points": {
+      "encryption": {
+        "title": "Šifrování AES-256",
+        "text": "– databázi otevře jen vaše heslo; fotky a dokumenty jsou šifrované v ní."
+      },
+      "localOnly": {
+        "title": "Bez cloudu",
+        "text": "– data nikam neposíláme; zálohu si uložíte do Souborů nebo iCloud Drive sami."
+      },
+      "marketData": {
+        "title": "Tržní data",
+        "text": "– stahují se jen kurzy akcií, měn a kryptoměn, které sledujete (Yahoo Finance, CoinGecko, ECB). Aplikace funguje i offline."
+      }
+    },
+    "recoveryLead": "Jediná cesta k datům, když heslo zapomenete. Uložte ho mimo tento telefon: do správce hesel, do Souborů nebo na papír.",
+    "saveToFiles": "Uložit do Souborů",
+    "recoveryFileNote": "Tento klíč resetuje vaše heslo do Moony. Funguje jen spolu s daty Moony v tomto telefonu nebo s jejich zálohou, proto si zálohu uložte také. Soubor nikomu nedávejte.",
+    "areasLead": "Vyberte, co chcete v Moony sledovat. Změnit to můžete kdykoli v Nastavení.",
+    "firstAccountLead": "Stačí název a zůstatek. Výpis naimportujete později.",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "Biometrie",
+      "backup": "Záloha"
+    },
+    "backupTitle": "Zálohujte si data",
+    "backupLead": "Vaše data jsou jen v tomto telefonu a do zálohy telefonu (iCloud ani počítač) se neukládají. Uložte šifrovanou zálohu do iCloud Drive nebo vybrané složky; Moony ji nikdy nevidí.",
+    "currencyPick": "Hlavní měna",
+    "countryPick": "Země bankovnictví",
+    "searchCurrency": "Hledat měnu"
+  },
+  "notifications": {
+    "lead": "Moony připomíná jen z tohoto telefonu, bez serveru. Plánují se při každém odemknutí.",
+    "permission": {
+      "label": "Oznámení",
+      "granted": "Povoleno",
+      "denied": "Zakázáno",
+      "notAsked": "Zatím nepovoleno",
+      "notGranted": "Nepovoleno",
+      "allow": "Povolit oznámení",
+      "deniedHint": "Povolte je v Nastavení telefonu → Moony → Oznámení.",
+      "unavailable": "Na tomto zařízení nejsou dostupná.",
+      "needed": "Nejdřív povolte oznámení."
+    },
+    "deadlines": {
+      "label": "Termíny",
+      "hint": "14 dní a 1 den před termínem."
+    },
+    "upkeep": {
+      "label": "Měsíční údržba",
+      "hint": "{{day}}. den v měsíci: zůstatky a výpisy.",
+      "day": "Den v měsíci",
+      "dayLabel": "{{day}}. den v měsíci",
+      "dayValue": "{{day}}.",
+      "title": "Je čas na údržbu dat",
+      "body": "Zaznamenejte zůstatky a naimportujte výpisy."
+    },
+    "backup": {
+      "label": "Záloha",
+      "hint": "Když je poslední záloha starší než 30 dní.",
+      "title": "Zálohujte Moony",
+      "stale": "Poslední záloha je starší než měsíc.",
+      "never": "Zatím nemáte žádnou zálohu."
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "{{whatKey}} za 14 dní",
+      "tomorrow": "{{whatKey}} zítra",
+      "kind": {
+        "insurance_anniversary": "Termín pro výpověď pojistky",
+        "insurance_end": "Konec pojistky",
+        "loan_fixation_end": "Konec fixace",
+        "bond_maturity": "Splatnost dluhopisu",
+        "account_termination": "Konec účtu",
+        "savings_rate_end": "Konec zvýhodněné sazby"
+      }
+    },
+    "test": {
+      "send": "Poslat zkušební oznámení",
+      "title": "Zkušební oznámení",
+      "body": "Takhle vypadá připomínka z Moony.",
+      "sent": "Přijde za 10 sekund"
+    }
   }
 }

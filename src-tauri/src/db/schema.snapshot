@@ -203,7 +203,7 @@ CREATE TABLE bank_transactions (
     import_batch_id TEXT REFERENCES csv_import_batches(id) ON DELETE CASCADE,
     categorization_source TEXT,
     suggested_category_id TEXT REFERENCES transaction_categories(id), flow_kind TEXT
-    CHECK (flow_kind IS NULL OR flow_kind IN ('income', 'expense', 'transfer', 'investment', 'financing', 'adjustment')), counterparty_bank_code TEXT, counterparty_country TEXT, import_line INTEGER, row_balance TEXT,
+    CHECK (flow_kind IS NULL OR flow_kind IN ('income', 'expense', 'transfer', 'investment', 'financing', 'adjustment')), counterparty_bank_code TEXT, counterparty_country TEXT, import_line INTEGER, row_balance TEXT, categorize_snoozed_until INTEGER,
     UNIQUE(bank_account_id, transaction_id)
 )
 

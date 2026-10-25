@@ -37,6 +37,40 @@
       "noHistory": "暂无历史"
     }
   },
+  "cashflow": {
+    "subtitle_other": "来自 {{count}} 个账户的实际收入和支出",
+    "moves_other": "{{count}} 笔交易",
+    "shareOfExpenses": "占支出的 {{share}}",
+    "shareOfIncome": "占收入的 {{share}}",
+    "limitProgress": "{{spent}} / {{limit}}",
+    "near": "接近限额",
+    "overLimit": "超出限额",
+    "budgetSummary": "预算：{{ok}} 个在限额内 · {{over}} 个超限额 · {{near}} 个接近限额",
+    "partial": "本期尚未结束，数据将随下一份对账单补全。",
+    "empty": {
+      "title": "还没有交易",
+      "description": "现金流根据您账户中的付款计算。请添加账户并导入对账单。",
+      "action": "打开财务"
+    },
+    "accounts": {
+      "title": "报表中的账户",
+      "done": "完成"
+    },
+    "picker": {
+      "title": "类别",
+      "change": "更改类别",
+      "current": "当前类别"
+    },
+    "limitSheet": {
+      "pick": "请选择要控制支出的类别。"
+    },
+    "budgets": {
+      "ended": "已结束",
+      "averageNote": "⌀ 近 6 个月"
+    },
+    "showMore_other": "再显示 {{count}} 笔交易",
+    "rowMenu": "更多操作：{{title}}"
+  },
   "upkeep": {
     "title": "数据维护",
     "count_other": "{{count}} 项",
@@ -77,5 +111,623 @@
     "enabled": "已开启生物识别解锁",
     "notEnabled": "未开启生物识别解锁",
     "unavailable": "生物识别暂时不可用，请使用密码解锁。"
+  },
+  "finance": {
+    "accounts_other": "{{count}} 个账户",
+    "loans_other": "{{count}} 笔贷款",
+    "policies_other": "{{count}} 份保单",
+    "total": "账户总额",
+    "change30": "30 天内 {{amount}}",
+    "noMovements": "30 天内没有流水",
+    "uncategorized": "未分类付款",
+    "sections": {
+      "accounts": "账户",
+      "loans": "贷款",
+      "insurance": "保险",
+      "cashTrend": "现金走势"
+    },
+    "manual": "手动",
+    "statementOn": "{{date}} 对账单",
+    "balanceOn": "{{date}} 余额",
+    "trail": {
+      "change": "{{amount}} · 30 天",
+      "staleStatement_other": "对账单 {{count}} 天前",
+      "staleBalance_other": "余额 {{count}} 天前",
+      "approx": "≈ {{amount}}",
+      "noRate": "无 {{currency}} 汇率"
+    },
+    "perMonth": "{{amount}} / 月",
+    "nextPayment": "下次付款 {{date}}",
+    "menu": {
+      "sort": "排序",
+      "sortBalance": "按余额",
+      "sortName": "按名称",
+      "sortChange": "按 30 天变动",
+      "sortLast": "按最近流水",
+      "showMatured": "显示已还清的贷款",
+      "showEnded": "显示已终止的保单",
+      "export": "导出"
+    },
+    "add": {
+      "title": "添加",
+      "account": "账户",
+      "loan": "贷款",
+      "policy": "保单"
+    },
+    "insurance": {
+      "type": "保单类型",
+      "upcoming": "近期付款",
+      "upcomingNote_other": "{{count}} 天",
+      "showAll_other": "显示全部 {{count}} 笔"
+    },
+    "cashTrendLabel": "现金走势图"
+  },
+  "queue": {
+    "source": {
+      "mcp": "MCP 建议",
+      "learned": "已学习",
+      "rule": "按规则",
+      "pack": "规则包"
+    },
+    "other": "其他…",
+    "choose": "选择类别…",
+    "keep": "跳过",
+    "keepMenu": "跳过 {{days}} 天",
+    "snoozed": "已跳过 {{days}} 天",
+    "categorized": "已分类",
+    "also_other": "同时已将 {{name}} 的另外 {{count}} 笔付款分类",
+    "alsoSub": "此账户上相同的交易对方和方向",
+    "alsoRestored": "已恢复原状",
+    "handled_other": "已处理 {{count}} 笔",
+    "progress": "{{done}} / {{total}}",
+    "caption": "点按建议即可接受。“{{keep}}”会将该笔付款搁置 {{days}} 天。您分类的结果会作为规则记住，用于此账户。",
+    "showCashflow": "查看现金流",
+    "empty": {
+      "title": "已全部分类",
+      "hint": "下次导入后，新的付款会显示在这里。",
+      "snoozed_other": "已跳过的 {{count}} 笔付款稍后会回到这里。"
+    }
+  },
+  "placeholder": {
+    "export": "导出功能稍后推出。"
+  },
+  "account": {
+    "record": "记录余额",
+    "import": "导入账单",
+    "menu": {
+      "edit": "编辑账户",
+      "balanceHistory": "余额历史",
+      "importHistory": "导入历史",
+      "delete": "删除账户"
+    },
+    "stats": {
+      "changeThisYear": "今年变动",
+      "avgPerMonth": "月均",
+      "yearlyInterest": "年利息"
+    },
+    "flows": {
+      "title": "收支"
+    },
+    "ledger": {
+      "title": "流水",
+      "search": "按交易对方或说明搜索",
+      "all": "全部",
+      "in": "入账",
+      "out": "出账",
+      "filter": "筛选",
+      "noCategory": "无类别",
+      "categorize": "类别",
+      "details": "详情",
+      "count_other": "{{count}} 笔流水",
+      "empty": "没有匹配的流水",
+      "emptyHint": "请更改期间或筛选条件。",
+      "showAll": "显示全部",
+      "loadError": "无法加载流水。",
+      "retry": "重试"
+    },
+    "filter": {
+      "title": "筛选",
+      "category": "类别",
+      "all": "全部",
+      "period": "期间",
+      "from": "从",
+      "to": "至",
+      "apply": "应用",
+      "reset": "重置"
+    },
+    "rowMenu": {
+      "details": "详情",
+      "category": "类别",
+      "delete": "删除"
+    }
+  },
+  "loan": {
+    "nextPayment": "下次还款 {{amount}} · {{date}}",
+    "notStarted": "{{date}} 开始",
+    "stats": {
+      "since": "自 {{month}}",
+      "extra": "额外还款 {{amount}}",
+      "until": "至 {{month}}"
+    },
+    "alerts": {
+      "fixationSoon_other": "固定利率期将在 {{count}} 天后结束。银行确认新利率后，请您记录下来，月供和还款计划会重新计算。",
+      "fixationToday": "固定利率期今天结束。银行确认新利率后，请您记录下来，月供和还款计划会重新计算。",
+      "fixationPassed_other": "固定利率期已于 {{count}} 天前结束。请您记录新利率，月供和还款计划会重新计算。"
+    },
+    "schedule": {
+      "left": "剩余 {{amount}}",
+      "yearSub_other": "{{count}} 笔还款 · 利息 {{interest}}",
+      "showAll_other": "显示全部 {{count}} 笔"
+    },
+    "extra": {
+      "noChange": "该金额不会改变还款期限、月供或利息。"
+    },
+    "events": {
+      "menu": "事件菜单"
+    }
+  },
+  "documents": {
+    "takePhoto": "拍照",
+    "chooseFile": "选择文件",
+    "fromPhotos": "从照片中选择",
+    "photoName": "照片 {{date}}",
+    "count_other": "{{count}} 份 · 已加密",
+    "openOnComputer": "手机无法显示此文件。请在电脑上的 Moony 中打开。",
+    "saving": "正在加密并保存…",
+    "rowMenu": "更多操作：{{name}}",
+    "previewFailed": "无法显示预览。请在电脑上的 Moony 中打开该文档。",
+    "zoomIn": "放大",
+    "zoomOut": "缩小"
+  },
+  "policy": {
+    "copy": "复制合同编号",
+    "copied": "已复制合同编号",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "合同期限",
+    "termOpen": "自 {{start}} 起 · 无固定期限",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "周年日 {{date}}",
+    "notice": "解约通知截止日",
+    "limitsTotal": "合计 {{amount}}",
+    "total": "合计 · {{payments}}"
+  },
+  "property": {
+    "notFound": "该房产已不存在。",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "年租金 {{rent}}",
+    "perYear": "每年",
+    "loanPayment": "还款额 {{amount}} / 月",
+    "rowMenu": "更多操作：{{name}}",
+    "costKindRecurring": "定期",
+    "costKindOneTime": "一次性",
+    "costYear": "每年 {{amount}}",
+    "costCurrent": "当前 {{amount}}",
+    "costDateInFuture": "费用日期不能晚于今天。",
+    "costNameRequired": "请输入费用名称。",
+    "confirmDeleteRecurring": "这将永久删除定期费用“{{name}}”（{{amount}}，{{frequency}}）。此操作无法撤销。",
+    "photoCount_other": "{{count}} 张",
+    "uploading": "正在上传 {{current}} / {{total}}",
+    "photosSkipped_other": "有 {{count}} 张照片无法保存。",
+    "photoOpen": "{{day}} 的照片",
+    "photoFailed": "无法显示这张照片。",
+    "photoDeleted": "照片已删除",
+    "deletePhoto": "删除照片",
+    "deletePhotoConfirm": {
+      "title": "删除这张照片？",
+      "description": "这张照片将被永久删除。此操作无法撤销。",
+      "descriptionLast": "这是 {{day}} 的最后一张照片，该日的照片批次也将一并删除。此操作无法撤销。"
+    }
+  },
+  "transaction": {
+    "flowSaved": "含义已保存",
+    "done": "完成",
+    "counterparty": "交易对方",
+    "date": "日期",
+    "category": "类别",
+    "flow": "含义",
+    "note": "备注",
+    "details": "详情",
+    "bankId": "银行 ID",
+    "valueDate": "起息日",
+    "file": "文件",
+    "line": "行",
+    "sourceLabel": "来源",
+    "source": {
+      "manual": "手动输入",
+      "csv_import": "已导入",
+      "api_sync": "已同步"
+    },
+    "status": "状态",
+    "booked": "已入账",
+    "currency": "货币"
+  },
+  "picker": {
+    "title": "类别",
+    "recent": "最近使用",
+    "all": "所有类别",
+    "suggested": "建议",
+    "decline": "拒绝建议",
+    "empty": "没有匹配的类别"
+  },
+  "import": {
+    "title": "导入账单",
+    "intoAccount": "导入到 {{account}}",
+    "fromShare": "来自分享",
+    "reads": "支持：{{formats}}。",
+    "reading": "正在读取文件…",
+    "importing": "正在写入付款…",
+    "pick": {
+      "lead": "请选择您从银行下载的文件。",
+      "choose": "选择文件",
+      "chooseOther": "选择其他文件"
+    },
+    "account": {
+      "sheetTitle": "导入到哪个账户？",
+      "lead": "请选择这些付款所属的账户。",
+      "none": "您还没有未关闭的账户。请添加此文件所属的账户。",
+      "title": "账户",
+      "new": "新建账户…"
+    },
+    "statement": {
+      "title": "哪一份账单？",
+      "dateTitle": "日期是如何书写的？",
+      "continue": "继续"
+    },
+    "unreadable": {
+      "title": "无法读取该文件",
+      "pdf": "Moony 暂时无法读取 PDF 账单——请从银行下载 CSV、CAMT、MT940、OFX 或 QIF。",
+      "image": "Moony 无法读取账单的照片或扫描件——请从银行下载 CSV、CAMT、MT940、OFX 或 QIF。",
+      "notStatement": "此文件不包含 Moony 能读取的账单。",
+      "error": "无法读取该文件。"
+    },
+    "guide": {
+      "title": "如何获取账单：{{bank}}",
+      "format": "请选择格式：{{format}}",
+      "openWeb": "打开网上银行",
+      "openFailed": "无法打开浏览器。",
+      "banks": "各银行指南"
+    },
+    "recognize": {
+      "title": "我是这样理解的",
+      "caption": "文件中的三笔交易，按我的读法显示如下：",
+      "captionFew": "文件中的交易，按我的读法显示如下：",
+      "unknownFormat": "格式暂未识别",
+      "tab": "制表符",
+      "previewFailed": "暂时无法加载示例行。下面识别出的列仍然有效。",
+      "looksRight": "没错",
+      "fix": "修改…",
+      "use": "应用",
+      "field": {
+        "transactionId": "交易 ID"
+      },
+      "notFound": "未找到",
+      "unused": "不使用",
+      "unusedWhy": {
+        "description": "付款更难分类",
+        "counterparty": "看不到是谁付款或收款",
+        "currency": "货币取自账户",
+        "balance": "不会根据文件建议账户余额",
+        "transactionId": "按日期和金额识别重复项"
+      },
+      "signVerified": "已用余额核对符号",
+      "signInverted": "此文件中的支出看起来是正数，请检查示例",
+      "signsBlocked": "Moony 暂时无法导入支出为正数的文件。如果金额在另一列，请选择该列；否则请取消导入。",
+      "allPositive": "所有金额都是正数，支出会被保存为收入。",
+      "pairSides": "支出：{{debit}} · 收入：{{credit}}",
+      "fixTitle": "要修改什么？",
+      "fixLead": "请点按我读错的字段。",
+      "ask": {
+        "date": "日期是哪一列？",
+        "amount": "金额是哪一列？",
+        "description": "说明是哪一列？",
+        "counterparty": "交易对方是哪一列？",
+        "currency": "货币是哪一列？",
+        "balance": "余额是哪一列？",
+        "transactionId": "交易 ID 是哪一列？"
+      },
+      "lead": {
+        "date": "请选择包含每笔交易日期的列。",
+        "amount": "请选择包含交易金额的列。支出应为负数。",
+        "description": "请选择包含付款文字的列，例如附言或备注。它有助于给付款分类。",
+        "counterparty": "请选择包含付款方或收款方名称的列。",
+        "currency": "请选择包含货币代码的列，例如 CZK 或 EUR。",
+        "balance": "请选择包含每笔交易后余额的列。",
+        "transactionId": "请选择包含银行为每笔交易分配的唯一编号的列。"
+      },
+      "sample": "选择后的示例：",
+      "sampleHint": "选择一列，我会展示我将如何读取这笔交易。",
+      "pair": "两列一组"
+    },
+    "preview": {
+      "hint": "点按一笔付款即可选择其类别。",
+      "more_other": "还有 {{count}} 笔"
+    },
+    "choice": {
+      "title": "分类",
+      "byRules": "按规则",
+      "byRulesSub": "将取消您的选择"
+    },
+    "done": {
+      "lastBalance": "最后一笔付款后的余额：<b>{{balance}}</b>。",
+      "categorized_other": "规则已将 {{count}} 笔付款分类。",
+      "open_other": "还有 {{count}} 笔未分类。",
+      "allSorted": "全部已分类。",
+      "promoted_other": "已入账 {{count}} 笔待处理付款。",
+      "queue_other": "分类 {{count}} 笔付款"
+    }
+  },
+  "wealth": {
+    "placeholder": {
+      "classPage": "此页面目前仅在电脑上的 Moony 中提供。"
+    },
+    "subtitle": "投资、房产和现金",
+    "sections": {
+      "investments": "投资",
+      "realEstate": "房产",
+      "cash": "现金"
+    },
+    "cash": {
+      "title": "账户余额"
+    },
+    "bonds": {
+      "count_other": "{{count}} 只债券",
+      "nearest": "最近到期 {{month}}",
+      "coupon": "票息 {{amount}} / 年",
+      "upcoming": "近期票息与到期",
+      "noUpcoming": "未来一年内没有票息或到期。",
+      "allRepaid": "所有债券均已兑付。在“···”菜单中开启“{{action}}”即可查看。",
+      "loadFailed": "无法加载债券。",
+      "rateNote": "{{rate}} 年化 加权平均"
+    },
+    "otherAssets": {
+      "count_other": "{{count}} 项",
+      "valuedOn": "{{date}} 估值",
+      "moreDetails": "更多信息",
+      "loadFailed": "无法加载资产。",
+      "notFound": "未找到资产"
+    },
+    "realEstate": {
+      "personal": "自住",
+      "investment": "投资",
+      "rent": "租金 {{amount}} / 月",
+      "revaluedOn": "{{date}}"
+    },
+    "empty": {
+      "title": "暂无资产",
+      "description": "添加您的第一笔投资、房产或其他资产。",
+      "class": "暂无"
+    },
+    "add": {
+      "label": "添加",
+      "investment": "投资",
+      "crypto": "加密货币",
+      "bond": "债券",
+      "property": "房产",
+      "asset": "资产"
+    },
+    "noRate": "无 {{currency}} 汇率",
+    "stocks": {
+      "back": "股票",
+      "pricesAt": "价格 {{time}}",
+      "pricesOn": "价格 {{date}}",
+      "invested": "已投入 {{amount}}",
+      "dividendsYear": "股息 / 年",
+      "yieldNote": "收益率 {{percent}}",
+      "twrYtd": "今年收益",
+      "twrNote": "TWR · MWR {{mwr}}",
+      "twrNoHistory": "暂无历史",
+      "positionsTab": "持仓 · {{count}}",
+      "watchedTab": "关注 · {{count}}",
+      "sort": {
+        "label": "排序",
+        "value": "按价值",
+        "gain": "按收益",
+        "name": "按名称"
+      },
+      "searchToggle": "搜索",
+      "clearSearch": "清除搜索",
+      "showAll_other": "显示全部 {{count}} 个持仓",
+      "menu": {
+        "closed": "已平仓持仓"
+      },
+      "closedBadge": "已平仓",
+      "watchedEmpty": "您还没有关注任何股票。",
+      "loadFailed": "无法加载持仓。",
+      "target": "目标价 {{price}}",
+      "targetReached": "已达目标价",
+      "dayChange": "今日"
+    },
+    "crypto": {
+      "largestNote": "占加密货币 {{share}}",
+      "heldNote": "占加密货币 {{share}} · {{date}}"
+    },
+    "closed": {
+      "on": "{{date}} 平仓",
+      "empty": "还没有已平仓的持仓。",
+      "onlyClosed": "这里只有已平仓的持仓。在“···”菜单中打开“{{action}}”即可查看。"
+    },
+    "position": {
+      "heroLabel": "持仓价值 · {{quantity}} {{unit}}",
+      "perUnit": "每单位 {{price}}",
+      "stats": {
+        "value": "价值",
+        "inCurrency": "以 {{currency}} 计",
+        "price": "价格"
+      },
+      "tx": {
+        "buy": "买入 · {{quantity}} {{unit}}",
+        "sell": "卖出 · {{quantity}} {{unit}}",
+        "showAll_other": "显示全部 {{count}} 条",
+        "menu": "交易菜单"
+      },
+      "follow": "关注",
+      "following": "已关注",
+      "followed": "已添加到自选列表",
+      "range52": "52 周区间",
+      "renamed": "名称已保存"
+    },
+    "watch": {
+      "stats": {
+        "today": "今日",
+        "since": "关注以来",
+        "noTarget": "未设置目标价"
+      },
+      "above": "高于",
+      "below": "低于",
+      "openPosition": "打开持仓",
+      "notesEmpty": "还没有笔记。点按“编辑”添加研究笔记，支持 Markdown。"
+    }
+  },
+  "settings": {
+    "rows": {
+      "profile": "个人资料",
+      "profileNoEmail": "姓名和电子邮件",
+      "language": "语言",
+      "security": "安全",
+      "backup": "备份与迁移",
+      "notifications": "通知",
+      "reminders": "提醒",
+      "remindersSub": "已开启 {{on}}/{{total}} 组",
+      "import": "导入",
+      "importSub": "CSV、CAMT.053、MT940、OFX、QIF",
+      "deleteSub": "输入确认词后执行"
+    },
+    "version": "Moony {{version}} · {{privacy}}",
+    "noTelemetry": "无遥测",
+    "security": {
+      "lead": "在这部手机上设置解锁、后台锁定和隐藏金额。",
+      "biometrics": "使用{{methodKey}}解锁",
+      "methodFace": "面容",
+      "methodTouch": "指纹",
+      "methodGeneric": "生物识别",
+      "biometricsOn": "使用{{methodKey}}解锁",
+      "biometricsOff": "仅密码",
+      "biometricsDisabled": "已关闭生物识别解锁",
+      "lockAfterLabel": "离开应用后锁定",
+      "lockAfterHint": "超过这段时间后，返回应用时会再次锁定。",
+      "optionNow": "立即",
+      "optionMinutes": "{{count}} 分钟",
+      "lockNow": "立即锁定",
+      "lockAfter_other": "{{count}} 分钟后锁定",
+      "hideOnLaunch": "启动时隐藏金额",
+      "hideOnLaunchHint": "每次启动时金额都处于隐藏状态；概览中的眼睛图标可再次显示。",
+      "hideOnLaunchShort": "启动时隐藏金额"
+    },
+    "profile": {
+      "lead": "您的姓名会显示在概览的问候语中。",
+      "currencyReadOnly": "主货币请在电脑上的 Moony 中更改。"
+    },
+    "language": {
+      "title": "应用语言",
+      "lead": "数字和日期按所选语言格式化。"
+    },
+    "appearance": {
+      "lead": "「跟随系统」会沿用手机的浅色或深色外观。"
+    },
+    "delete": {
+      "title": "删除所有数据？",
+      "lead": "将永久删除这部手机上的数据库、密钥和附件。手机之外的备份副本会保留。请先创建备份——这是恢复数据的唯一途径。",
+      "confirmLabel": "请输入 {{word}} 以确认",
+      "confirm": "删除数据",
+      "failed": "删除失败"
+    }
+  },
+  "backup": {
+    "lead": "备份是一个加密文件：包含数据库、密钥和附件。只有您的密码才能打开。",
+    "last": "上次备份",
+    "lastOn": "上次备份 {{date}}",
+    "never": "尚无备份",
+    "what": "请保存到 iCloud Drive 或“文件”App 中的其他文件夹。Moony 无法访问该文件。",
+    "notSaved": "备份未保存",
+    "unavailableHere": "备份功能目前仅支持 iPhone。",
+    "restoreTitle": "恢复与迁移",
+    "restoreLead": "恢复这部手机上的备份，或从电脑上的 Moony 迁移个人资料：选择备份文件，恢复后请使用创建备份时的密码解锁。",
+    "restoreConfirmDescription": "创建于 {{date}} 的备份（Moony {{version}}，{{attachments}} 个附件，{{size}}）将替换这部手机上的数据。如需保留当前数据，请先备份。之后 Moony 会锁定；请使用创建该备份时的密码解锁。",
+    "osBackupNote": "个人资料不会保存到手机自身的备份中（iCloud 或电脑）。您自己保存的 Moony 备份是手机之外的唯一副本。"
+  },
+  "firstRun": {
+    "privacyLead": "Moony 将所有内容存放在这部手机上的加密数据库中。没有云端，也无需在我们这里注册账户。",
+    "points": {
+      "encryption": {
+        "title": "AES-256 加密",
+        "text": "——只有您的密码才能打开数据库；照片和文档在数据库内部已加密。"
+      },
+      "localOnly": {
+        "title": "没有云端",
+        "text": "——我们不会向任何地方发送数据；备份需要您自己保存到“文件”App 或 iCloud Drive。"
+      },
+      "marketData": {
+        "title": "市场数据",
+        "text": "——仅获取您所关注的股票、货币和加密货币的价格（Yahoo Finance、CoinGecko、欧洲央行）。应用在离线时同样可用。"
+      }
+    },
+    "recoveryLead": "忘记密码时，这是找回数据的唯一途径。请将其保存在这部手机之外——密码管理器、“文件”App，或写在纸上。",
+    "saveToFiles": "存储到“文件”",
+    "recoveryFileNote": "此密钥用于重置您的 Moony 密码。它必须与这部手机上的 Moony 数据或其备份配合使用，因此请同时保存备份。请不要把此文件交给任何人。",
+    "areasLead": "选择您想在 Moony 中管理的内容。您可以随时在设置中更改。",
+    "firstAccountLead": "只需名称和余额即可。账单可以稍后再导入。",
+    "stepLabel": "{{index}} / {{total}} · {{step}}",
+    "steps": {
+      "biometrics": "生物识别",
+      "backup": "备份"
+    },
+    "backupTitle": "备份您的数据",
+    "backupLead": "这部手机上保存着您数据的唯一副本，它不在手机自身的备份（iCloud 或电脑）中。请将加密备份保存到 iCloud Drive 或您选择的文件夹；Moony 永远看不到它。",
+    "currencyPick": "主货币",
+    "countryPick": "银行所在国家",
+    "searchCurrency": "搜索货币"
+  },
+  "notifications": {
+    "lead": "Moony 只在这部手机上提醒，不经过服务器。每次解锁时都会重新安排通知。",
+    "permission": {
+      "label": "通知",
+      "granted": "已允许",
+      "denied": "已禁止",
+      "notAsked": "尚未允许",
+      "notGranted": "未允许",
+      "allow": "允许通知",
+      "deniedHint": "请在手机“设置”→ Moony →“通知”中允许。",
+      "unavailable": "此设备不支持。",
+      "needed": "请先允许通知。"
+    },
+    "deadlines": {
+      "label": "期限",
+      "hint": "期限前 14 天和前 1 天。"
+    },
+    "upkeep": {
+      "label": "每月数据维护",
+      "hint": "每月 {{day}} 日：余额与对账单。",
+      "day": "每月几号",
+      "dayLabel": "每月 {{day}} 日",
+      "dayValue": "{{day}} 日",
+      "title": "该维护数据了",
+      "body": "请记录余额并导入对账单。"
+    },
+    "backup": {
+      "label": "备份",
+      "hint": "上次备份超过 30 天时。",
+      "title": "请备份 Moony",
+      "stale": "上次备份已超过一个月。",
+      "never": "您还没有备份。"
+    },
+    "deadline": {
+      "title": "{{title}}",
+      "in14": "距{{whatKey}}还有 14 天",
+      "tomorrow": "{{whatKey}}就在明天",
+      "kind": {
+        "insurance_anniversary": "保险解约通知截止日",
+        "insurance_end": "保险到期",
+        "loan_fixation_end": "固定利率结束",
+        "bond_maturity": "债券到期",
+        "account_termination": "账户结束",
+        "savings_rate_end": "优惠利率结束"
+      }
+    },
+    "test": {
+      "send": "发送测试通知",
+      "title": "测试通知",
+      "body": "Moony 的提醒就是这样显示的。",
+      "sent": "10 秒后送达"
+    }
   }
 }

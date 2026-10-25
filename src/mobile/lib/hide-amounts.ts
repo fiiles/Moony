@@ -1,7 +1,7 @@
 /**
  * Hide amounts on the phone (spec §4 principle 7, D6): one eye on Přehled covers every amount in
- * the app. The state is global and persists; "hide on launch" (a Settings switch from Phase 5,
- * read here already) starts every launch hidden. The pure parts: the stored state and the mask.
+ * the app. The state is global and persists; "hide on launch" (Nastavení → Zabezpečení) starts
+ * every launch hidden. The pure parts: the stored state and the mask.
  */
 import type { MoneyOptions } from '@/lib/format';
 
@@ -37,6 +37,24 @@ export function writeHideAmounts(
     storage?.setItem(HIDE_AMOUNTS_KEY, hidden ? '1' : '0');
   } catch {
     // Storage that cannot be written: the choice lasts for this session only.
+  }
+}
+
+/** Whether every launch starts hidden (the Zabezpečení switch), apart from where the eye was left. */
+export function readHideAmountsOnLaunch(
+  storage: Pick<Storage, 'getItem'> | null | undefined
+): boolean {
+  return readFlag(storage, HIDE_AMOUNTS_ON_LAUNCH_KEY);
+}
+
+export function writeHideAmountsOnLaunch(
+  storage: Pick<Storage, 'setItem'> | null | undefined,
+  on: boolean
+): void {
+  try {
+    storage?.setItem(HIDE_AMOUNTS_ON_LAUNCH_KEY, on ? '1' : '0');
+  } catch {
+    // Storage that cannot be written: the choice is not kept.
   }
 }
 

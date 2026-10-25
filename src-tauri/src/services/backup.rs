@@ -48,6 +48,123 @@ fn zip_err(context: &str, e: impl std::fmt::Display) -> AppError {
     AppError::Database(format!("{context}: {e}"))
 }
 
+/// Seconds since the Unix epoch, the stamp of a manifest and of the last-backup flag.
+pub fn unix_now() -> i64 {
+    chrono::Utc::now().timestamp()
+}
+
+// ========================== Phone export ==========================
+
+/// Whether `name` is exactly `moony-backup-YYYY-MM-DD.zip` (digits only, nothing before or after):
+/// the one name the phone stages a backup under in Documents before the Files picker exports it.
+pub fn is_export_file_name(name: &str) -> bool {
+    let Some(date) = name
+        .strip_prefix("moony-backup-")
+        .and_then(|rest| rest.strip_suffix(".zip"))
+    else {
+        return false;
+    };
+    date.len() == 10
+        && date.bytes().enumerate().all(|(i, b)| match i {
+            4 | 7 => b == b'-',
+            _ => b.is_ascii_digit(),
+        })
+}
+
+/// Whether `path` is a staged export: directly inside `document_dir` (compared as paths, nothing
+/// normalised, so a `..` or a subfolder never matches) and named like one.
+pub fn is_staged_export_path(document_dir: &Path, path: &Path) -> bool {
+    path.parent() == Some(document_dir)
+        && path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(is_export_file_name)
+}
+
+/// The text files the phone may stage in Documents for the Files export: the recovery key's text
+/// and the CSV of each class page (stocks, crypto, bonds, other assets — the name stays fixed, the
+/// dated one the export command returns is only the desktop's). A fixed list, so the command that
+/// writes one can never be pointed at another file.
+const TEXT_EXPORT_FILE_NAMES: [&str; 5] = [
+    "moony-recovery-key.txt",
+    "moony-stock-transactions.csv",
+    "moony-crypto-transactions.csv",
+    "moony-bonds.csv",
+    "moony-other-assets.csv",
+];
+
+/// Whether `name` is one of the text files that may be staged (`TEXT_EXPORT_FILE_NAMES`).
+pub fn is_text_export_file_name(name: &str) -> bool {
+    TEXT_EXPORT_FILE_NAMES.contains(&name)
+}
+
+/// Whether `path` is a staged text export: directly inside `document_dir` (nothing normalised) and
+/// named on the allow-list.
+pub fn is_staged_text_export_path(document_dir: &Path, path: &Path) -> bool {
+    path.parent() == Some(document_dir)
+        && path
+            .file_name()
+            .and_then(|name| name.to_str())
+            .is_some_and(is_text_export_file_name)
+}
+
+/// Write `contents` to `document_dir/<file_name>` (an existing file is replaced) for the Files
+/// export to pick up; only an allow-listed name is accepted. A write that fails half way leaves
+/// nothing behind. The contents (the recovery key, or a class's CSV export) are never logged.
+pub fn write_text_export(document_dir: &Path, file_name: &str, contents: &str) -> Result<PathBuf> {
+    if !is_text_export_file_name(file_name) {
+        return Err(AppError::Validation(
+            "validation.backupExportInvalid".into(),
+        ));
+    }
+    let dest = document_dir.join(file_name);
+    if let Err(e) = fs::write(&dest, contents) {
+        let _ = fs::remove_file(&dest);
+        return Err(io_err("Failed to stage the text export", e));
+    }
+    Ok(dest)
+}
+
+/// Remove a staged file; one that is already gone is fine.
+pub fn remove_staged_file(path: &Path) -> Result<()> {
+    match fs::remove_file(path) {
+        Err(e) if e.kind() != io::ErrorKind::NotFound => Err(AppError::Internal(format!(
+            "Failed to remove the staged file: {e}"
+        ))),
+        _ => Ok(()),
+    }
+}
+
+/// Remove what an interrupted export left in `document_dir`: every file directly inside it whose
+/// name is an export name (`is_export_file_name`, `is_text_export_file_name`). The app can be killed
+/// while the Files picker is open; the staged archive and the recovery key's text would stay. A file
+/// that cannot be removed is logged and skipped; a missing folder is an empty sweep. Returns how
+/// many files went.
+pub fn sweep_staged_exports(document_dir: &Path) -> Result<usize> {
+    let entries = match fs::read_dir(document_dir) {
+        Ok(entries) => entries,
+        Err(e) if e.kind() == io::ErrorKind::NotFound => return Ok(0),
+        Err(e) => return Err(io_err("Failed to list the documents folder", e)),
+    };
+    let mut removed = 0;
+    for entry in entries {
+        let entry = entry.map_err(|e| io_err("Failed to list the documents folder", e))?;
+        let is_file = entry.file_type().is_ok_and(|kind| kind.is_file());
+        let is_export = entry
+            .file_name()
+            .to_str()
+            .is_some_and(|name| is_export_file_name(name) || is_text_export_file_name(name));
+        if !(is_file && is_export) {
+            continue;
+        }
+        match fs::remove_file(entry.path()) {
+            Ok(()) => removed += 1,
+            Err(e) => log::warn!("[BACKUP] Could not remove a leftover staged export: {e}"),
+        }
+    }
+    Ok(removed)
+}
+
 // ========================== Create ==========================
 
 /// Snapshot the open database with `VACUUM INTO`, then zip it together with
@@ -194,7 +311,7 @@ fn write_archive(
     let manifest = BackupManifest {
         format: BACKUP_FORMAT,
         app_version: app_version.to_string(),
-        created_at: chrono::Utc::now().timestamp(),
+        created_at: unix_now(),
         migrations: crate::db::applied_migration_names(conn)?,
         files,
         attachment_count: attachment_row_count(conn),
@@ -1147,6 +1264,201 @@ mod tests {
         assert_eq!(
             report.messages,
             vec!["attachments: 1 attachment(s) have no content in the store".to_string()]
+        );
+    }
+
+    #[test]
+    fn export_file_name_accepts_only_the_dated_pattern() {
+        assert!(is_export_file_name("moony-backup-2026-10-17.zip"));
+        for bad in [
+            "moony-backup-2026-10-17.zip.txt",
+            "../moony-backup-2026-10-17.zip",
+            "moony-backup-20261017.zip",
+            "other.zip",
+            "",
+        ] {
+            assert!(!is_export_file_name(bad), "{bad}");
+        }
+    }
+
+    #[test]
+    fn staged_export_path_must_sit_directly_in_documents() {
+        let dir = Path::new("/c/Documents");
+        assert!(is_staged_export_path(
+            dir,
+            Path::new("/c/Documents/moony-backup-2026-10-17.zip")
+        ));
+        assert!(!is_staged_export_path(
+            dir,
+            Path::new("/c/Documents/sub/moony-backup-2026-10-17.zip")
+        ));
+        assert!(!is_staged_export_path(
+            dir,
+            Path::new("/c/Documents/moony.db")
+        ));
+        assert!(!is_staged_export_path(
+            dir,
+            Path::new("/c/moony-backup-2026-10-17.zip")
+        ));
+        // Nothing is normalised: a `..` in the path never matches, and neither does a bare name
+        assert!(!is_staged_export_path(
+            dir,
+            Path::new("/c/Documents/../Documents/moony-backup-2026-10-17.zip")
+        ));
+        assert!(!is_staged_export_path(
+            dir,
+            Path::new("moony-backup-2026-10-17.zip")
+        ));
+    }
+
+    #[test]
+    fn text_export_file_name_is_on_the_allow_list_only() {
+        assert!(is_text_export_file_name("moony-recovery-key.txt"));
+        for bad in [
+            "moony-recovery-key.txt.zip",
+            "../moony-recovery-key.txt",
+            "Moony-recovery-key.txt",
+            "moony.db",
+            "",
+        ] {
+            assert!(!is_text_export_file_name(bad), "{bad}");
+        }
+    }
+
+    #[test]
+    fn the_class_pages_csv_exports_are_on_the_allow_list() {
+        // The names the phone's class pages stage (`use-class-export.ts`), one per class
+        for good in [
+            "moony-stock-transactions.csv",
+            "moony-crypto-transactions.csv",
+            "moony-bonds.csv",
+            "moony-other-assets.csv",
+        ] {
+            assert!(is_text_export_file_name(good), "{good}");
+        }
+        // The backend's own dated file name is not one of them, nor is a path or another case
+        for bad in [
+            "../moony-bonds.csv",
+            "moony-bonds-2026-10-24.csv",
+            "Moony-bonds.csv",
+            "moony-bonds.csv.txt",
+            "moony-real-estate.csv",
+            "bonds.csv",
+        ] {
+            assert!(!is_text_export_file_name(bad), "{bad}");
+        }
+    }
+
+    #[test]
+    fn a_class_csv_export_is_written_to_the_documents_folder() {
+        let dir = tempfile::tempdir().expect("dir");
+        let path = write_text_export(dir.path(), "moony-bonds.csv", "name;value\n").expect("write");
+        assert_eq!(path, dir.path().join("moony-bonds.csv"));
+        assert_eq!(fs::read_to_string(&path).expect("read"), "name;value\n");
+        let err = write_text_export(dir.path(), "../moony-bonds.csv", "x").expect_err("path");
+        assert!(matches!(err, AppError::Validation(k) if k == "validation.backupExportInvalid"));
+    }
+
+    #[test]
+    fn staged_text_export_path_must_sit_directly_in_documents() {
+        let dir = Path::new("/c/Documents");
+        assert!(is_staged_text_export_path(
+            dir,
+            Path::new("/c/Documents/moony-recovery-key.txt")
+        ));
+        for bad in [
+            "/c/Documents/sub/moony-recovery-key.txt",
+            "/c/Documents/moony-backup-2026-10-17.zip",
+            "/c/Documents/moony.db",
+            "/c/moony-recovery-key.txt",
+            "/c/Documents/../Documents/moony-recovery-key.txt",
+            "moony-recovery-key.txt",
+        ] {
+            assert!(!is_staged_text_export_path(dir, Path::new(bad)), "{bad}");
+        }
+    }
+
+    #[test]
+    fn a_text_export_is_written_to_the_documents_folder_and_overwritten() {
+        let dir = tempfile::tempdir().expect("dir");
+        let path = write_text_export(dir.path(), "moony-recovery-key.txt", "first").expect("write");
+        assert_eq!(path, dir.path().join("moony-recovery-key.txt"));
+        assert_eq!(fs::read_to_string(&path).expect("read"), "first");
+        write_text_export(dir.path(), "moony-recovery-key.txt", "second").expect("overwrite");
+        assert_eq!(fs::read_to_string(&path).expect("read"), "second");
+    }
+
+    #[test]
+    fn a_text_export_under_another_name_is_refused_and_writes_nothing() {
+        let dir = tempfile::tempdir().expect("dir");
+        for bad in ["moony.db", "../moony-recovery-key.txt", "notes.txt", ""] {
+            let err = write_text_export(dir.path(), bad, "secret").expect_err(bad);
+            assert!(
+                matches!(err, AppError::Validation(k) if k == "validation.backupExportInvalid"),
+                "{bad}"
+            );
+        }
+        assert_eq!(fs::read_dir(dir.path()).expect("list").count(), 0);
+    }
+
+    #[test]
+    fn removing_a_staged_file_tolerates_one_that_is_gone() {
+        let dir = tempfile::tempdir().expect("dir");
+        let file = dir.path().join("moony-recovery-key.txt");
+        fs::write(&file, b"key").expect("write");
+        remove_staged_file(&file).expect("remove");
+        assert!(!file.exists());
+        remove_staged_file(&file).expect("a second removal is fine");
+    }
+
+    #[test]
+    fn the_sweep_removes_leftover_exports_and_nothing_else() {
+        let dir = tempfile::tempdir().expect("dir");
+        let root = dir.path();
+        for gone in [
+            "moony-backup-2026-10-17.zip",
+            "moony-backup-2026-10-18.zip",
+            "moony-recovery-key.txt",
+        ] {
+            fs::write(root.join(gone), b"x").expect(gone);
+        }
+        let kept = [
+            "notes.txt",
+            "moony-backup-old.zip",
+            "moony-backup-2026-10-17.zip.txt",
+            "moony-backup-2026-10-17.ZIP.bak",
+        ];
+        for name in kept {
+            fs::write(root.join(name), b"x").expect(name);
+        }
+        // A folder with a matching name, and a matching file one level down, are not exports
+        fs::create_dir(root.join("moony-backup-2026-10-19.zip")).expect("dir named like one");
+        fs::create_dir(root.join("sub")).expect("sub");
+        fs::write(root.join("sub/moony-backup-2026-10-17.zip"), b"x").expect("nested");
+
+        assert_eq!(sweep_staged_exports(root).expect("sweep"), 3);
+
+        let mut left: Vec<String> = fs::read_dir(root)
+            .expect("list")
+            .map(|e| e.expect("entry").file_name().to_string_lossy().into_owned())
+            .collect();
+        left.sort();
+        let mut expected: Vec<String> = kept.iter().map(|s| s.to_string()).collect();
+        expected.push("moony-backup-2026-10-19.zip".into());
+        expected.push("sub".into());
+        expected.sort();
+        assert_eq!(left, expected);
+        assert!(root.join("sub/moony-backup-2026-10-17.zip").exists());
+        // Nothing left to sweep the second time
+        assert_eq!(sweep_staged_exports(root).expect("sweep again"), 0);
+    }
+
+    #[test]
+    fn the_sweep_of_a_missing_folder_is_empty() {
+        let dir = tempfile::tempdir().expect("dir");
+        assert_eq!(
+            sweep_staged_exports(&dir.path().join("not-there")).expect("sweep"),
+            0
         );
     }
 }

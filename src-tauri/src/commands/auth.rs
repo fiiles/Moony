@@ -150,7 +150,7 @@ pub async fn confirm_setup(
         exclude_personal_real_estate: None,
     };
 
-    pending.confirm(|prepared| {
+    let profile = pending.confirm(|prepared| {
         auth::confirm_setup(
             &db,
             &session,
@@ -159,7 +159,11 @@ pub async fn confirm_setup(
             &data.password,
             prepared,
         )
-    })
+    })?;
+    // The folder was (re)created for the new profile: keep it out of device backups (phone only).
+    #[cfg(mobile)]
+    crate::commands::device_backup::exclude_data_dir(&app).await;
+    Ok(profile)
 }
 
 /// Unlock existing account
@@ -240,6 +244,15 @@ pub async fn logout(
     auth::logout(&db, &session);
     // Decrypted copies opened in other apps go with the session (D3).
     crate::commands::attachments::wipe_open_copies(&app);
+    // So do WebKit's plaintext copies of the files picked in the phone's upload sheets.
+    #[cfg(mobile)]
+    match app.path().temp_dir() {
+        Ok(temp_dir) => {
+            let removed = crate::services::upload_copies::sweep(&temp_dir);
+            log::info!("[UPLOAD] Upload copy sweep at lock removed {removed} file(s)");
+        }
+        Err(e) => log::warn!("[UPLOAD] Upload copy sweep at lock skipped: no temp dir: {e}"),
+    }
     Ok(())
 }
 

@@ -41,6 +41,55 @@ fn spawn_legacy_temp_cleanup(app: tauri::AppHandle) {
     });
 }
 
+/// Phones only: remove what an export that was interrupted (the app killed while the Files picker
+/// was open) left in Documents, a staged backup archive or the recovery key's text, once at
+/// startup and off the main thread. Best effort: a problem is logged and never blocks startup.
+#[cfg(mobile)]
+fn spawn_staged_export_sweep(app: tauri::AppHandle) {
+    let document_dir = match app.path().document_dir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            log::warn!("[BACKUP] Staged export sweep skipped: no documents dir: {e}");
+            return;
+        }
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        match services::backup::sweep_staged_exports(&document_dir) {
+            Ok(count) => log::info!("[BACKUP] Staged export sweep removed {count} file(s)"),
+            Err(e) => log::warn!("[BACKUP] Staged export sweep failed: {e}"),
+        }
+    });
+}
+
+/// Phones only: remove WebKit's plaintext copies of the files picked in the upload sheets (the
+/// `WKFileUploadPanel-*` folders in the container's tmp), once at startup and off the main thread.
+/// It never runs after an upload (another picked file may still be waiting in an open sheet); the
+/// lock runs it again (`logout`). Best effort: a problem is logged and never blocks startup.
+#[cfg(mobile)]
+fn spawn_upload_copy_sweep(app: tauri::AppHandle) {
+    let temp_dir = match app.path().temp_dir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            log::warn!("[UPLOAD] Upload copy sweep skipped: no temp dir: {e}");
+            return;
+        }
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        let removed = services::upload_copies::sweep(&temp_dir);
+        log::info!("[UPLOAD] Upload copy sweep removed {removed} file(s)");
+    });
+}
+
+/// Phones only: keep the profile folder, the webview's storage and the received files folder out of
+/// iCloud and computer backups, at every start and off the main thread (the folders are created
+/// first on a first launch). Best effort: a problem is logged and never blocks startup.
+#[cfg(mobile)]
+fn spawn_device_backup_exclusion(app: tauri::AppHandle) {
+    tauri::async_runtime::spawn(async move {
+        commands::device_backup::exclude_at_start(&app).await;
+    });
+}
+
 /// Desktop `main` and the generated iOS / Android entry points all start here. The body runs
 /// inside Tauri's own tokio runtime (`async_runtime::block_on`), the same multi-thread runtime
 /// the commands and `tokio::spawn` calls use, so nothing changes for the desktop; a
@@ -64,6 +113,12 @@ async fn run_app() {
         .setup(|app| {
             logging::log_startup_banner();
             spawn_legacy_temp_cleanup(app.handle().clone());
+            #[cfg(mobile)]
+            spawn_staged_export_sweep(app.handle().clone());
+            #[cfg(mobile)]
+            spawn_upload_copy_sweep(app.handle().clone());
+            #[cfg(mobile)]
+            spawn_device_backup_exclusion(app.handle().clone());
             // The window starts hidden and the frontend shows it once the theme is stamped (spec D10);
             // if the frontend never does, show it anyway so a broken bundle is not an invisible app.
             let handle = app.handle().clone();
@@ -102,9 +157,12 @@ async fn run_app() {
     {
         builder = builder
             .plugin(tauri_plugin_haptics::init())
-            // Unused so far: kept for the Phase 4 agenda reminders.
+            // The phone's reminder notifications (Nastavení → Oznámení) are scheduled through it.
             .plugin(tauri_plugin_notification::init())
-            .plugin(moony_keychain::init());
+            .plugin(moony_keychain::init())
+            // The files the system opened in Moony, until the webview asks for them (a cold start
+            // from the share sheet delivers them before the webview listens).
+            .manage(services::received_files::ReceivedFiles::default());
     }
 
     builder
@@ -173,6 +231,20 @@ async fn run_app() {
             commands::backup::verify_database,
             commands::backup::get_data_location,
             commands::backup::open_data_folder,
+            // Exports through the phone's Files picker (staged in Documents, removed afterwards)
+            #[cfg(mobile)]
+            commands::backup::stage_backup_export,
+            #[cfg(mobile)]
+            commands::backup::finish_backup_export,
+            #[cfg(mobile)]
+            commands::backup::stage_text_export,
+            #[cfg(mobile)]
+            commands::backup::discard_text_export,
+            // Statement files the system opened in Moony (services::received_files)
+            #[cfg(mobile)]
+            commands::received_files::take_received_files,
+            #[cfg(mobile)]
+            commands::received_files::discard_received_file,
             // System (services::logging)
             commands::system::open_logs_folder,
             // Auth commands
@@ -281,6 +353,7 @@ async fn run_app() {
             // Real estate document commands
             commands::real_estate::get_real_estate_documents,
             commands::real_estate::add_real_estate_document,
+            commands::real_estate::add_real_estate_document_bytes,
             commands::real_estate::delete_real_estate_document,
             commands::real_estate::open_real_estate_document,
             // Insurance commands
@@ -291,6 +364,7 @@ async fn run_app() {
             commands::insurance::delete_insurance,
             commands::insurance::get_insurance_documents,
             commands::insurance::add_insurance_document,
+            commands::insurance::add_insurance_document_bytes,
             commands::insurance::delete_insurance_document,
             commands::insurance::open_insurance_document,
             // Insurance real estate linking commands
@@ -403,6 +477,7 @@ async fn run_app() {
             commands::bank_accounts::get_csv_presets,
             commands::bank_accounts::get_csv_preset_by_institution,
             commands::bank_accounts::parse_csv_file,
+            commands::bank_accounts::infer_csv_columns,
             commands::bank_accounts::preview_csv_import,
             commands::bank_accounts::import_csv_transactions,
             commands::bank_accounts::get_import_batches,
@@ -471,6 +546,8 @@ async fn run_app() {
             commands::categorization::preview_learned_rule_history,
             commands::categorization::apply_learned_rule_to_history,
             commands::categorization::restore_transaction_categories,
+            commands::categorization::get_categorize_queue,
+            commands::categorization::snooze_categorization,
             commands::categorization::get_custom_rules,
             commands::categorization::create_custom_rule,
             commands::categorization::update_custom_rule,
@@ -478,9 +555,11 @@ async fn run_app() {
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
-        .run(|app, event| {
-            if let tauri::RunEvent::Exit = event {
-                commands::attachments::wipe_open_copies(app);
-            }
+        .run(|app, event| match event {
+            tauri::RunEvent::Exit => commands::attachments::wipe_open_copies(app),
+            // A statement shared or opened into the phone app (iOS and Android)
+            #[cfg(mobile)]
+            tauri::RunEvent::Opened { urls } => commands::received_files::on_opened(app, &urls),
+            _ => {}
         });
 }

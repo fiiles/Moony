@@ -44,3 +44,60 @@ export function toPlotY(
   if (hi <= lo) return top + height / 2;
   return top + ((hi - value) / (hi - lo)) * height;
 }
+
+/**
+ * Value of a step line (a balance that changes only at a record) at time `t`: the latest point at
+ * or before `t`; before the first point the first value, without points 0. Points sorted by `t`.
+ */
+export function stepValueAt(points: readonly { t: number; value: number }[], t: number): number {
+  if (points.length === 0) return 0;
+  let value = points[0].value;
+  for (const point of points) {
+    if (point.t > t) break;
+    value = point.value;
+  }
+  return value;
+}
+
+/** A reading of a chart line; `cost` is the dashed cost basis some lines carry. */
+interface Reading {
+  t: number;
+  value: number;
+  cost?: number;
+}
+
+/** A reading with the line it is drawn on: `actual` up to the split, `projected` from it on. */
+export interface SplitReading extends Reading {
+  actual?: number;
+  projected?: number;
+}
+
+/**
+ * The rows of a line that continues as a plan (a loan's schedule after today): readings at or
+ * before `projectedFrom` carry `actual`, readings at or after it carry `projected`, so the two lines
+ * share the reading on the split. A split between two readings gets one of its own at the step
+ * value of the reading before it (the phone draws a loan as a step line), so the lines meet there;
+ * a split on a reading or outside the range adds nothing. Without `projectedFrom` the whole line is
+ * `actual`. Every reading keeps its `value`, which the scrub reports whichever line it is on.
+ */
+export function splitProjected(
+  points: readonly Reading[],
+  projectedFrom: number | undefined
+): SplitReading[] {
+  if (projectedFrom === undefined) return points.map((p) => ({ ...p, actual: p.value }));
+  const needsSplit =
+    points.length > 1 &&
+    projectedFrom > points[0].t &&
+    projectedFrom < points[points.length - 1].t &&
+    !points.some((p) => p.t === projectedFrom);
+  const rows: Reading[] = needsSplit
+    ? [...points, { t: projectedFrom, value: stepValueAt(points, projectedFrom) }].sort(
+        (a, b) => a.t - b.t
+      )
+    : [...points];
+  return rows.map((p) => ({
+    ...p,
+    actual: p.t <= projectedFrom ? p.value : undefined,
+    projected: p.t >= projectedFrom ? p.value : undefined,
+  }));
+}

@@ -7,6 +7,9 @@ only the Rust side handles (through `KeychainExt`, which needs no permission), s
 never reaches JavaScript. Grant `moony-keychain:allow-store`, `allow-retrieve` or
 `allow-remove` explicitly only for a value the webview is meant to see.
 
+`exclude_from_backup` is left out too: the app's Rust side calls it on its own folders and staged
+files, and the webview has no reason to point it at another path.
+
 #### This default permission set includes the following:
 
 - `allow-status`
@@ -20,6 +23,32 @@ never reaches JavaScript. Grant `moony-keychain:allow-store`, `allow-retrieve` o
 <th>Description</th>
 </tr>
 
+
+<tr>
+<td>
+
+`moony-keychain:allow-exclude-from-backup`
+
+</td>
+<td>
+
+Enables the exclude_from_backup command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`moony-keychain:deny-exclude-from-backup`
+
+</td>
+<td>
+
+Denies the exclude_from_backup command without any pre-configured scope.
+
+</td>
+</tr>
 
 <tr>
 <td>
@@ -95,6 +124,32 @@ Enables the set_privacy_screen command without any pre-configured scope.
 <td>
 
 Denies the set_privacy_screen command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`moony-keychain:allow-set-status-bar-style`
+
+</td>
+<td>
+
+Enables the set_status_bar_style command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`moony-keychain:deny-set-status-bar-style`
+
+</td>
+<td>
+
+Denies the set_status_bar_style command without any pre-configured scope.
 
 </td>
 </tr>

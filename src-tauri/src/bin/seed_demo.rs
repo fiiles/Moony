@@ -604,12 +604,6 @@ fn seed_crypto(db: &Database, now: i64) {
             }
 
             conn.execute(
-                "UPDATE crypto_investments SET yahoo_symbol = ?1 WHERE id = ?2",
-                params![symbol, inv.id],
-            )
-            .expect("set yahoo symbol");
-
-            conn.execute(
                 "INSERT INTO crypto_prices (id, symbol, price, currency, fetched_at)
                  VALUES (?1, ?2, ?3, 'USD', ?4)",
                 params![

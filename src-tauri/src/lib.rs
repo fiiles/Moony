@@ -299,6 +299,7 @@ async fn run_app() {
             commands::crypto::get_all_crypto,
             commands::crypto::create_crypto,
             commands::crypto::delete_crypto,
+            commands::crypto::set_crypto_symbol,
             commands::crypto::get_crypto_transactions,
             commands::crypto::get_all_crypto_transactions,
             commands::crypto::create_crypto_transaction,

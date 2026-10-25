@@ -52,6 +52,7 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::InsertCryptoInvestment>();
     types.register::<crate::models::CryptoTransaction>();
     types.register::<crate::models::InsertCryptoTransaction>();
+    types.register::<crate::services::crypto_symbols::CryptoSearchResult>();
 
     // Bank account interest-rate zones
     types.register::<crate::models::SavingsAccountZone>();

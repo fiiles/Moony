@@ -8,7 +8,7 @@ use crate::models::{
 };
 use crate::services::crypto_investments as crypto_service;
 use crate::services::fx;
-use crate::services::history_recalc::{HistoryRecalc, Job};
+use crate::services::history_recalc::{crypto_rebuild_jobs, HistoryRecalc, Job};
 use crate::services::position_reports;
 use crate::services::pricing::AssetKind;
 use crate::services::ticker_history;
@@ -30,10 +30,14 @@ pub async fn create_crypto(
     db: State<'_, Database>,
     recalc: State<'_, HistoryRecalc>,
     app: AppHandle,
-    data: InsertCryptoInvestment,
+    mut data: InsertCryptoInvestment,
     initial_transaction: Option<InsertCryptoTransaction>,
 ) -> Result<CryptoInvestment> {
-    // 1. Validate inputs at the trust boundary
+    // 1. Validate inputs at the trust boundary (the symbol is trimmed and uppercased first)
+    data.yahoo_symbol = data
+        .yahoo_symbol
+        .map(|symbol| symbol.trim().to_ascii_uppercase())
+        .filter(|symbol| !symbol.is_empty());
     data.validate()?;
     if let Some(ref tx) = initial_transaction {
         tx.validate()?;
@@ -47,7 +51,7 @@ pub async fn create_crypto(
         crypto_service::create_crypto_with_transaction(
             conn,
             &ticker,
-            Some(&data.coingecko_id),
+            data.yahoo_symbol.as_deref(),
             &data.name,
             initial_transaction.as_ref(),
         )
@@ -72,6 +76,42 @@ pub async fn create_crypto(
     }
 
     Ok(inv)
+}
+
+/// Store the Yahoo Finance symbol picked for a holding (the symbol picker, spec D9), then queue
+/// the rebuild of its history from its first transaction so it follows the right coin.
+#[tauri::command]
+pub async fn set_crypto_symbol(
+    app: AppHandle,
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+    id: String,
+    symbol: String,
+) -> Result<()> {
+    // The service trims, uppercases and validates the symbol (`validation.yahooSymbolInvalid`).
+    let ticker = db.with_conn(|conn| {
+        crypto_service::set_symbol(conn, &id, &symbol)?;
+        Ok(crypto_service::get_crypto_by_id(conn, &id)?.ticker)
+    })?;
+
+    let jobs = db.with_conn(|conn| crypto_rebuild_jobs(conn, std::slice::from_ref(&ticker)))?;
+    if !jobs.is_empty() {
+        crate::commands::portfolio::schedule_history_rebuild(
+            &app,
+            &db,
+            &recalc,
+            jobs.into_iter()
+                .map(|(ticker, first)| Job::CryptoTicker(ticker, first))
+                .collect(),
+        );
+    }
+
+    crate::commands::portfolio::update_todays_snapshot(&db)
+        .await
+        .ok();
+    app.emit("recalculation-complete", ()).ok();
+
+    Ok(())
 }
 
 /// Delete crypto investment
@@ -261,15 +301,14 @@ pub async fn delete_crypto_transaction(
     app: AppHandle,
     tx_id: String,
 ) -> Result<()> {
-    let (date, ticker, _coingecko_id) =
-        db.with_conn(|conn| crypto_service::delete_transaction(conn, &tx_id))?;
+    let (date, ticker) = db.with_conn(|conn| crypto_service::delete_transaction(conn, &tx_id))?;
 
     // Update portfolio snapshot
     crate::commands::portfolio::update_todays_snapshot(&db)
         .await
         .ok();
 
-    // Queue the ticker's rebuild (the worker reads the price identity from the holding)
+    // Queue the ticker's rebuild (the worker reads the Yahoo symbol from the holding)
     crate::commands::portfolio::schedule_history_rebuild(
         &app,
         &db,
@@ -288,7 +327,6 @@ pub async fn update_crypto_price(
     symbol: String,
     price: String,
     currency: String,
-    _coingecko_id: Option<String>,
 ) -> Result<()> {
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();

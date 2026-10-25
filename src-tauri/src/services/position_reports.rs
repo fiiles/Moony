@@ -162,19 +162,12 @@ pub fn stock_position(conn: &Connection, id: &str, report_currency: &str) -> Res
 /// Every crypto position in `report_currency`.
 pub fn crypto_positions(conn: &Connection, report_currency: &str) -> Result<CryptoPositions> {
     let positions = positions::value_positions(conn, AssetKind::Crypto, report_currency, now())?;
-    let mut meta: HashMap<String, (String, String, String)> = {
+    let mut meta: HashMap<String, (Option<String>, String, String)> = {
         let mut stmt =
-            conn.prepare("SELECT id, coingecko_id, name, quantity FROM crypto_investments")?;
+            conn.prepare("SELECT id, yahoo_symbol, name, quantity FROM crypto_investments")?;
         let rows = stmt
             .query_map([], |row| {
-                Ok((
-                    row.get(0)?,
-                    (
-                        row.get::<_, Option<String>>(1)?.unwrap_or_default(),
-                        row.get(2)?,
-                        row.get(3)?,
-                    ),
-                ))
+                Ok((row.get(0)?, (row.get(1)?, row.get(2)?, row.get(3)?)))
             })?
             .collect::<rusqlite::Result<_>>()?;
         rows
@@ -184,13 +177,13 @@ pub fn crypto_positions(conn: &Connection, report_currency: &str) -> Result<Cryp
         .items
         .iter()
         .map(|item| {
-            let (coingecko_id, name, stored) = meta.remove(&item.investment_id).unwrap_or_default();
+            let (yahoo_symbol, name, stored) = meta.remove(&item.investment_id).unwrap_or_default();
             let quantity = wire_quantity(&stored, item.quantity);
             let price = pricing::resolve_crypto_price(conn, &item.ticker);
             EnrichedCryptoInvestment {
                 id: item.investment_id.clone(),
                 ticker: item.ticker.clone(),
-                coingecko_id,
+                yahoo_symbol,
                 name,
                 quantity,
                 average_price: item.average_price.to_string(),

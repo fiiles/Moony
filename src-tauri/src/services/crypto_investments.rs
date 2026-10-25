@@ -104,51 +104,106 @@ pub fn create_crypto_transaction_internal(
     })
 }
 
+/// A symbol supplied by a caller, trimmed and uppercased; `None` when absent or blank.
+/// An invalid one is `validation.yahooSymbolInvalid`.
+fn provided_symbol(yahoo_symbol: Option<&str>) -> Result<Option<String>> {
+    yahoo_symbol
+        .map(str::trim)
+        .filter(|symbol| !symbol.is_empty())
+        .map(crate::services::crypto_symbols::normalize_symbol)
+        .transpose()
+}
+
+/// Check a supplied symbol against the stored holding: a different symbol is
+/// `validation.yahooSymbolConflict`; a symbol for a holding that has none yet is stored.
+fn reconcile_symbol(
+    conn: &rusqlite::Connection,
+    investment_id: &str,
+    ticker_upper: &str,
+    stored: Option<&str>,
+    provided: Option<&str>,
+) -> Result<()> {
+    match (stored, provided) {
+        (Some(stored), Some(provided)) if stored != provided => {
+            Err(crate::error::AppError::validation_with(
+                "validation.yahooSymbolConflict",
+                serde_json::json!({ "ticker": ticker_upper }),
+            ))
+        }
+        (None, Some(provided)) => {
+            conn.execute(
+                "UPDATE crypto_investments SET yahoo_symbol = ?1 WHERE id = ?2",
+                rusqlite::params![provided, investment_id],
+            )?;
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
 /// Get or create a crypto investment by ticker
 /// Returns the investment ID
 /// This is the SINGLE SOURCE OF TRUTH for crypto investment lookup/creation
+///
+/// `yahoo_symbol` is optional: a new coin without one is stored unresolved (`NULL`) and the
+/// price refresh resolves it later (spec D4); one that differs from the stored symbol is a
+/// conflict.
 pub fn get_or_create_crypto(
     conn: &rusqlite::Connection,
     ticker: &str,
-    coingecko_id: Option<&str>,
+    yahoo_symbol: Option<&str>,
     name: &str,
 ) -> Result<String> {
     let ticker_upper = ticker.to_uppercase();
+    let provided = provided_symbol(yahoo_symbol)?;
 
     // Check if investment already exists
-    let existing: Option<(String, String)> = conn
+    let existing: Option<(String, Option<String>)> = conn
         .query_row(
-            "SELECT id, coingecko_id FROM crypto_investments WHERE ticker = ?1",
+            "SELECT id, yahoo_symbol FROM crypto_investments WHERE ticker = ?1",
             [&ticker_upper],
             |row| Ok((row.get(0)?, row.get(1)?)),
         )
         .optional()?;
 
     match existing {
-        Some((id, stored_coingecko_id)) => {
-            if coingecko_id
-                .map(str::trim)
-                .filter(|id| !id.is_empty())
-                .is_some_and(|id| id != stored_coingecko_id)
-            {
-                return Err(crate::error::AppError::validation_with(
-                    "validation.coingeckoIdConflict",
-                    serde_json::json!({ "ticker": ticker_upper }),
-                ));
-            }
+        Some((id, stored)) => {
+            reconcile_symbol(
+                conn,
+                &id,
+                &ticker_upper,
+                stored.as_deref(),
+                provided.as_deref(),
+            )?;
             Ok(id)
         }
         None => {
             let id = Uuid::new_v4().to_string();
 
             conn.execute(
-                "INSERT INTO crypto_investments (id, ticker, coingecko_id, name, quantity)
+                "INSERT INTO crypto_investments (id, ticker, yahoo_symbol, name, quantity)
                  VALUES (?1, ?2, ?3, ?4, '0')",
-                rusqlite::params![id, ticker_upper, coingecko_id, name],
+                rusqlite::params![id, ticker_upper, provided, name],
             )?;
             Ok(id)
         }
     }
+}
+
+/// Store the Yahoo symbol of a holding (the symbol picker): trimmed, uppercased and validated
+/// (`validation.yahooSymbolInvalid`); `NotFound` for an unknown holding.
+pub fn set_symbol(conn: &rusqlite::Connection, investment_id: &str, symbol: &str) -> Result<()> {
+    let symbol = crate::services::crypto_symbols::normalize_symbol(symbol)?;
+    let changed = conn.execute(
+        "UPDATE crypto_investments SET yahoo_symbol = ?1 WHERE id = ?2",
+        rusqlite::params![symbol, investment_id],
+    )?;
+    if changed == 0 {
+        return Err(crate::error::AppError::NotFound(
+            "Crypto investment not found".into(),
+        ));
+    }
+    Ok(())
 }
 
 /// Get crypto investment details by ID
@@ -157,13 +212,13 @@ pub fn get_crypto_by_id(
     investment_id: &str,
 ) -> Result<CryptoInvestment> {
     let mut inv = conn.query_row(
-        "SELECT id, ticker, coingecko_id, name, quantity FROM crypto_investments WHERE id = ?1",
+        "SELECT id, ticker, yahoo_symbol, name, quantity FROM crypto_investments WHERE id = ?1",
         [investment_id],
         |row| {
             Ok(CryptoInvestment {
                 id: row.get(0)?,
                 ticker: row.get(1)?,
-                coingecko_id: row.get(2)?,
+                yahoo_symbol: row.get(2)?,
                 name: row.get(3)?,
                 quantity: row.get(4)?,
                 average_price: "0".to_string(),
@@ -188,7 +243,7 @@ pub fn get_crypto_by_id(
 pub fn create_crypto_with_transaction(
     conn: &rusqlite::Connection,
     ticker: &str,
-    coingecko_id: Option<&str>,
+    yahoo_symbol: Option<&str>,
     name: &str,
     initial_transaction: Option<&InsertCryptoTransaction>,
 ) -> Result<CryptoInvestment> {
@@ -200,7 +255,7 @@ pub fn create_crypto_with_transaction(
     let ticker_upper = ticker.to_uppercase();
 
     // Get or create the investment
-    let investment_id = get_or_create_crypto(conn, &ticker_upper, coingecko_id, name)?;
+    let investment_id = get_or_create_crypto(conn, &ticker_upper, yahoo_symbol, name)?;
 
     // Create initial transaction if provided
     if let Some(tx) = initial_transaction {
@@ -253,18 +308,20 @@ pub fn add_transaction_to_crypto(
     Ok(tx)
 }
 
-/// Delete a crypto transaction and return its date and persisted price identity
-/// for the historical rebuild, even when deleting the holding's last row.
-pub fn delete_transaction(
-    conn: &rusqlite::Connection,
-    tx_id: &str,
-) -> Result<(i64, String, String)> {
+/// Delete a crypto transaction and return its date and the holding's ticker for the
+/// historical rebuild, even when deleting the holding's last row.
+pub fn delete_transaction(conn: &rusqlite::Connection, tx_id: &str) -> Result<(i64, String)> {
     let transaction = conn.unchecked_transaction()?;
     let conn = &transaction;
-    let (date,investment_id,ticker,coingecko_id): (i64,String,String,String) = conn.query_row(
-        "SELECT t.transaction_date,t.investment_id,i.ticker,i.coingecko_id FROM crypto_transactions t JOIN crypto_investments i ON i.id=t.investment_id WHERE t.id=?1",[tx_id],
-        |r| Ok((r.get(0)?,r.get(1)?,r.get(2)?,r.get(3)?)),
-    ).optional()?.ok_or_else(|| crate::error::AppError::NotFound("Transaction not found".into()))?;
+    let (date, investment_id, ticker): (i64, String, String) = conn
+        .query_row(
+            "SELECT t.transaction_date, t.investment_id, i.ticker FROM crypto_transactions t
+             JOIN crypto_investments i ON i.id = t.investment_id WHERE t.id = ?1",
+            [tx_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .optional()?
+        .ok_or_else(|| crate::error::AppError::NotFound("Transaction not found".into()))?;
     conn.execute("DELETE FROM crypto_transactions WHERE id=?1", [tx_id])?;
     let count: i64 = conn.query_row(
         "SELECT count(*) FROM crypto_transactions WHERE investment_id=?1",
@@ -285,20 +342,21 @@ pub fn delete_transaction(
         recalculate_crypto_metrics(conn, &investment_id)?;
     }
     transaction.commit()?;
-    Ok((date, ticker, coingecko_id))
+    Ok((date, ticker))
 }
 
 /// Unified import logic for a single crypto transaction. Mirrors
 /// services/investments.rs::import_single_transaction semantics: type check,
-/// sell-requires-position, CoinGecko identity, get-or-create, insert, recalc.
-/// A NEW coin additionally requires a CoinGecko id (NOT NULL column, needed
-/// for price fetching).
+/// sell-requires-position, Yahoo symbol identity, get-or-create, insert, recalc.
+/// The symbol is optional: a NEW coin without one is created unresolved and the
+/// price refresh resolves it (spec D4); a symbol that differs from the stored
+/// one is `validation.yahooSymbolConflict`.
 #[allow(clippy::too_many_arguments)]
 pub fn import_single_crypto_transaction(
     conn: &rusqlite::Connection,
     ticker: &str,
     name: &str,
-    coingecko_id: Option<&str>,
+    yahoo_symbol: Option<&str>,
     tx_type: &str,
     quantity: &str,
     price_per_unit: &str,
@@ -309,7 +367,7 @@ pub fn import_single_crypto_transaction(
         conn,
         ticker,
         name,
-        coingecko_id,
+        yahoo_symbol,
         tx_type,
         quantity,
         price_per_unit,
@@ -326,7 +384,7 @@ pub(crate) fn import_crypto_transaction_deferred(
     conn: &rusqlite::Connection,
     ticker: &str,
     name: &str,
-    coingecko_id: Option<&str>,
+    yahoo_symbol: Option<&str>,
     tx_type: &str,
     quantity: &str,
     price_per_unit: &str,
@@ -337,7 +395,7 @@ pub(crate) fn import_crypto_transaction_deferred(
         conn,
         ticker,
         name,
-        coingecko_id,
+        yahoo_symbol,
         tx_type,
         quantity,
         price_per_unit,
@@ -352,7 +410,7 @@ fn import_crypto_row(
     conn: &rusqlite::Connection,
     ticker: &str,
     name: &str,
-    coingecko_id: Option<&str>,
+    yahoo_symbol: Option<&str>,
     tx_type: &str,
     quantity: &str,
     price_per_unit: &str,
@@ -381,48 +439,20 @@ fn import_crypto_row(
         ));
     }
 
-    let existing: Option<(String, String)> = conn
-        .query_row(
-            "SELECT id, coingecko_id FROM crypto_investments WHERE ticker = ?1",
-            [&ticker_upper],
-            |row| Ok((row.get(0)?, row.get(1)?)),
-        )
-        .optional()?;
+    let exists: bool = conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM crypto_investments WHERE ticker = ?1)",
+        [&ticker_upper],
+        |row| row.get(0),
+    )?;
 
-    if tx_type_lower == "sell" && existing.is_none() {
+    if tx_type_lower == "sell" && !exists {
         return Err(AppError::validation_with(
             "validation.sellWithoutPosition",
             serde_json::json!({ "ticker": ticker_upper }),
         ));
     }
 
-    let investment_id = match existing {
-        Some((id, stored_coingecko_id)) => {
-            if coingecko_id
-                .map(str::trim)
-                .filter(|id| !id.is_empty())
-                .is_some_and(|id| id != stored_coingecko_id)
-            {
-                return Err(AppError::validation_with(
-                    "validation.coingeckoIdConflict",
-                    serde_json::json!({ "ticker": ticker_upper }),
-                ));
-            }
-            id
-        }
-        None => {
-            let cg = coingecko_id
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-                .ok_or_else(|| {
-                    AppError::validation_with(
-                        "validation.coingeckoIdForNewCoin",
-                        serde_json::json!({ "ticker": ticker_upper }),
-                    )
-                })?;
-            get_or_create_crypto(conn, &ticker_upper, Some(cg), name)?
-        }
-    };
+    let investment_id = get_or_create_crypto(conn, &ticker_upper, yahoo_symbol, name)?;
 
     if validate_holdings {
         crate::services::investments::ensure_sell_within_holdings(
@@ -468,7 +498,7 @@ mod tests {
             CREATE TABLE crypto_investments (
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL UNIQUE,
-                coingecko_id TEXT NOT NULL,
+                yahoo_symbol TEXT,
                 name TEXT NOT NULL,
                 quantity TEXT NOT NULL,
 
@@ -506,8 +536,8 @@ mod tests {
     fn crypto_sell_above_holdings_is_rejected() {
         let conn = setup_test_db();
         conn.execute(
-            "INSERT INTO crypto_investments (id, ticker, coingecko_id, name, quantity, currency)
-             VALUES ('btc-1', 'BTC', 'bitcoin', 'Bitcoin', '0', 'USD')",
+            "INSERT INTO crypto_investments (id, ticker, yahoo_symbol, name, quantity, currency)
+             VALUES ('btc-1', 'BTC', 'BTC-USD', 'Bitcoin', '0', 'USD')",
             [],
         )
         .expect("coin");
@@ -529,14 +559,86 @@ mod tests {
             .expect("sell all");
     }
 
+    fn stored_symbol(conn: &Connection, ticker: &str) -> Option<String> {
+        conn.query_row(
+            "SELECT yahoo_symbol FROM crypto_investments WHERE ticker = ?1",
+            [ticker],
+            |r| r.get(0),
+        )
+        .unwrap()
+    }
+
     #[test]
-    fn import_creates_coin_when_coingecko_id_present() {
+    fn a_new_coin_without_a_symbol_is_stored_unresolved() {
         let conn = setup_test_db();
+        get_or_create_crypto(&conn, "sui", None, "Sui").unwrap();
+        assert_eq!(stored_symbol(&conn, "SUI"), None);
+        get_or_create_crypto(&conn, "ARB", Some("  "), "Arbitrum").unwrap();
+        assert_eq!(stored_symbol(&conn, "ARB"), None);
+        get_or_create_crypto(&conn, "BTC", Some(" btc-usd "), "Bitcoin").unwrap();
+        assert_eq!(stored_symbol(&conn, "BTC").as_deref(), Some("BTC-USD"));
+    }
+
+    #[test]
+    fn a_symbol_that_differs_from_the_stored_one_is_a_conflict() {
+        let conn = setup_test_db();
+        let id = get_or_create_crypto(&conn, "BTC", Some("BTC-USD"), "Bitcoin").unwrap();
+        let err = get_or_create_crypto(&conn, "BTC", Some("ETH-USD"), "Bitcoin").unwrap_err();
+        assert_eq!(
+            err.keyed().expect("keyed"),
+            (
+                "validation.yahooSymbolConflict".to_string(),
+                serde_json::json!({ "ticker": "BTC" })
+            )
+        );
+        // the same symbol, any spelling, or none at all is the existing holding
+        assert_eq!(
+            get_or_create_crypto(&conn, "btc", Some("btc-usd"), "Bitcoin").unwrap(),
+            id
+        );
+        assert_eq!(
+            get_or_create_crypto(&conn, "BTC", None, "Bitcoin").unwrap(),
+            id
+        );
+        // an unresolved holding takes a supplied symbol
+        get_or_create_crypto(&conn, "SUI", None, "Sui").unwrap();
+        get_or_create_crypto(&conn, "SUI", Some("SUI20947-USD"), "Sui").unwrap();
+        assert_eq!(stored_symbol(&conn, "SUI").as_deref(), Some("SUI20947-USD"));
+    }
+
+    #[test]
+    fn set_symbol_normalizes_and_stores() {
+        let conn = setup_test_db();
+        let id = get_or_create_crypto(&conn, "SUI", None, "Sui").unwrap();
+        set_symbol(&conn, &id, " sui20947-usd ").unwrap();
+        assert_eq!(stored_symbol(&conn, "SUI").as_deref(), Some("SUI20947-USD"));
+        assert!(matches!(
+            set_symbol(&conn, "missing", "SUI20947-USD"),
+            Err(AppError::NotFound(_))
+        ));
+    }
+
+    #[test]
+    fn set_symbol_rejects_an_invalid_symbol() {
+        let conn = setup_test_db();
+        let id = get_or_create_crypto(&conn, "BTC", Some("BTC-USD"), "Bitcoin").unwrap();
+        let err = set_symbol(&conn, &id, "bitcoin").unwrap_err();
+        assert!(matches!(err, AppError::Validation(k) if k == "validation.yahooSymbolInvalid"));
+        assert_eq!(stored_symbol(&conn, "BTC").as_deref(), Some("BTC-USD"));
+    }
+
+    #[test]
+    fn import_creates_coin_without_symbol() {
+        let conn = setup_test_db();
+        import_single_crypto_transaction(
+            &conn, "xyz", "Mystery", None, "buy", "1", "10", "CZK", 1700000000,
+        )
+        .unwrap();
         import_single_crypto_transaction(
             &conn,
             "btc",
             "Bitcoin",
-            Some("bitcoin"),
+            Some("BTC-USD"),
             "buy",
             "0.5",
             "900000",
@@ -544,38 +646,55 @@ mod tests {
             1700000000,
         )
         .unwrap();
-        let (ticker, cg): (String, String) = conn
-            .query_row(
-                "SELECT ticker, coingecko_id FROM crypto_investments",
-                [],
-                |r| Ok((r.get(0)?, r.get(1)?)),
-            )
-            .unwrap();
-        assert_eq!(ticker, "BTC");
-        assert_eq!(cg, "bitcoin");
+        assert_eq!(stored_symbol(&conn, "XYZ"), None);
+        assert_eq!(stored_symbol(&conn, "BTC").as_deref(), Some("BTC-USD"));
     }
 
     #[test]
-    fn import_rejects_new_coin_without_coingecko_id() {
-        let conn = setup_test_db();
-        let err = import_single_crypto_transaction(
-            &conn, "XYZ", "Mystery", None, "buy", "1", "10", "CZK", 1700000000,
-        )
-        .unwrap_err();
-        assert!(
-            err.to_string().contains("validation.coingeckoIdForNewCoin"),
-            "err was: {err}"
-        );
-    }
-
-    #[test]
-    fn import_existing_coin_ignores_missing_coingecko_id() {
+    fn import_rejects_conflicting_symbol() {
         let conn = setup_test_db();
         import_single_crypto_transaction(
             &conn,
             "BTC",
             "Bitcoin",
-            Some("bitcoin"),
+            Some("BTC-USD"),
+            "buy",
+            "1",
+            "900000",
+            "CZK",
+            1700000000,
+        )
+        .unwrap();
+        let err = import_single_crypto_transaction(
+            &conn,
+            "BTC",
+            "Bitcoin",
+            Some("WBTC-USD"),
+            "buy",
+            "1",
+            "900000",
+            "CZK",
+            1700000001,
+        )
+        .unwrap_err();
+        assert!(
+            err.to_string().contains("validation.yahooSymbolConflict"),
+            "err was: {err}"
+        );
+        let n: i64 = conn
+            .query_row("SELECT COUNT(*) FROM crypto_transactions", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(n, 1);
+    }
+
+    #[test]
+    fn import_existing_coin_ignores_missing_symbol() {
+        let conn = setup_test_db();
+        import_single_crypto_transaction(
+            &conn,
+            "BTC",
+            "Bitcoin",
+            Some("BTC-USD"),
             "buy",
             "1",
             "900000",
@@ -591,6 +710,7 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM crypto_transactions", [], |r| r.get(0))
             .unwrap();
         assert_eq!(n, 2);
+        assert_eq!(stored_symbol(&conn, "BTC").as_deref(), Some("BTC-USD"));
     }
 
     #[test]
@@ -600,7 +720,7 @@ mod tests {
             &conn,
             "ETH",
             "Ethereum",
-            Some("ethereum"),
+            Some("ETH-USD"),
             "sell",
             "1",
             "80000",
@@ -612,7 +732,7 @@ mod tests {
             &conn,
             "ETH",
             "Ethereum",
-            Some("ethereum"),
+            Some("ETH-USD"),
             "hold",
             "1",
             "80000",
@@ -629,7 +749,7 @@ mod tests {
             &conn,
             "BTC",
             "Bitcoin",
-            Some("bitcoin"),
+            Some("BTC-USD"),
             "buy",
             "1",
             "900000",
@@ -666,7 +786,7 @@ mod tests {
         assert!(create_crypto_with_transaction(
             &conn,
             "BTC",
-            Some("bitcoin"),
+            Some("BTC-USD"),
             "Bitcoin",
             Some(&data)
         )
@@ -679,7 +799,7 @@ mod tests {
     #[test]
     fn decimal_liquidation_stores_exact_zero_crypto_quantity() {
         let conn = setup_test_db();
-        let id = get_or_create_crypto(&conn, "BTC", Some("bitcoin"), "Bitcoin").unwrap();
+        let id = get_or_create_crypto(&conn, "BTC", Some("BTC-USD"), "Bitcoin").unwrap();
         for (kind, qty, day) in [("buy", "0.1", 0), ("buy", "0.2", 1), ("sell", "0.3", 2)] {
             let data = InsertCryptoTransaction {
                 investment_id: Some(id.clone()),
@@ -704,7 +824,7 @@ mod tests {
     }
 
     fn deletion_fixture(conn: &Connection) -> (String, CryptoTransaction, CryptoTransaction) {
-        let id = get_or_create_crypto(conn, "BTC", Some("bitcoin"), "Bitcoin").unwrap();
+        let id = get_or_create_crypto(conn, "BTC", Some("BTC-USD"), "Bitcoin").unwrap();
         let data = |kind: &str, qty: &str, day: i64| InsertCryptoTransaction {
             investment_id: Some(id.clone()),
             tx_type: kind.into(),
@@ -734,17 +854,17 @@ mod tests {
     }
 
     #[test]
-    fn crypto_delete_returns_persisted_history_identity_and_cleans_up_last_row() {
+    fn crypto_delete_returns_the_history_ticker_and_cleans_up_last_row() {
         let conn = setup_test_db();
         let (id, buy, sale) = deletion_fixture(&conn);
         assert_eq!(
             delete_transaction(&conn, &sale.id).unwrap(),
-            (sale.transaction_date, "BTC".into(), "bitcoin".into())
+            (sale.transaction_date, "BTC".into())
         );
         assert_eq!(get_crypto_by_id(&conn, &id).unwrap().quantity, "10");
         assert_eq!(
             delete_transaction(&conn, &buy.id).unwrap(),
-            (buy.transaction_date, "BTC".into(), "bitcoin".into())
+            (buy.transaction_date, "BTC".into())
         );
         let count: i64 = conn
             .query_row("SELECT count(*) FROM crypto_investments", [], |r| r.get(0))
@@ -761,21 +881,10 @@ mod tests {
         let conn = setup_test_db();
         let key_of = |err: AppError| err.keyed().expect("keyed validation error");
         let err = import_single_crypto_transaction(
-            &conn, "XYZ", "Mystery", None, "buy", "1", "10", "CZK", 1700000000,
-        )
-        .unwrap_err();
-        assert_eq!(
-            key_of(err),
-            (
-                "validation.coingeckoIdForNewCoin".to_string(),
-                serde_json::json!({ "ticker": "XYZ" })
-            )
-        );
-        let err = import_single_crypto_transaction(
             &conn,
             "ETH",
             "Ethereum",
-            Some("ethereum"),
+            Some("ETH-USD"),
             "sell",
             "1",
             "10",
@@ -794,7 +903,7 @@ mod tests {
             &conn,
             "BTC",
             "Bitcoin",
-            Some("bitcoin"),
+            Some("BTC-USD"),
             "buy",
             "1",
             "900000",
@@ -806,7 +915,7 @@ mod tests {
             &conn,
             "BTC",
             "Bitcoin",
-            Some("wrapped-bitcoin"),
+            Some("WBTC-USD"),
             "buy",
             "1",
             "900000",
@@ -817,7 +926,7 @@ mod tests {
         assert_eq!(
             key_of(err),
             (
-                "validation.coingeckoIdConflict".to_string(),
+                "validation.yahooSymbolConflict".to_string(),
                 serde_json::json!({ "ticker": "BTC" })
             )
         );

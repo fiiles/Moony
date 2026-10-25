@@ -525,7 +525,7 @@ mod tests {
             CREATE TABLE crypto_investments (
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL UNIQUE,
-                coingecko_id TEXT NOT NULL,
+                yahoo_symbol TEXT,
                 name TEXT NOT NULL,
                 quantity TEXT NOT NULL,
                 currency TEXT NOT NULL DEFAULT 'CZK'
@@ -545,7 +545,6 @@ mod tests {
             CREATE TABLE crypto_prices (
                 id TEXT PRIMARY KEY,
                 symbol TEXT NOT NULL UNIQUE,
-                coingecko_id TEXT,
                 price TEXT NOT NULL,
                 currency TEXT NOT NULL DEFAULT 'USD',
                 fetched_at INTEGER NOT NULL DEFAULT (unixepoch())
@@ -864,8 +863,8 @@ mod tests {
         seed_rates(&conn, d2, &[("CZK", 25.0), ("USD", 1.0)]);
         conn.execute_batch(&format!(
             r#"
-            INSERT INTO crypto_investments (id, ticker, coingecko_id, name, quantity, currency)
-                VALUES ('c1', 'BTC', 'bitcoin', 'Bitcoin', '2', 'CZK');
+            INSERT INTO crypto_investments (id, ticker, yahoo_symbol, name, quantity, currency)
+                VALUES ('c1', 'BTC', 'BTC-USD', 'Bitcoin', '2', 'CZK');
             INSERT INTO crypto_transactions (id, investment_id, type, ticker, name, quantity,
                 price_per_unit, currency, transaction_date, created_at) VALUES
                 ('t1', 'c1', 'buy', 'BTC', 'Bitcoin', '1', '500000', 'CZK', {d1}, 1),

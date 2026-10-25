@@ -104,25 +104,17 @@ pub fn create_crypto_transaction_internal(
     })
 }
 
-/// A symbol supplied by a caller, trimmed and uppercased; `None` when absent or blank.
-/// An invalid one is `validation.yahooSymbolInvalid`.
-fn provided_symbol(yahoo_symbol: Option<&str>) -> Result<Option<String>> {
-    yahoo_symbol
-        .map(str::trim)
-        .filter(|symbol| !symbol.is_empty())
-        .map(crate::services::crypto_symbols::normalize_symbol)
-        .transpose()
-}
-
 /// Check a supplied symbol against the stored holding: a different symbol is
-/// `validation.yahooSymbolConflict`; a symbol for a holding that has none yet is stored.
+/// `validation.yahooSymbolConflict`; a symbol for a holding that has none yet (`NULL` or blank)
+/// is stored, and the result is `true` (the symbol was set now).
 fn reconcile_symbol(
     conn: &rusqlite::Connection,
     investment_id: &str,
     ticker_upper: &str,
     stored: Option<&str>,
     provided: Option<&str>,
-) -> Result<()> {
+) -> Result<bool> {
+    let stored = stored.filter(|symbol| !symbol.trim().is_empty());
     match (stored, provided) {
         (Some(stored), Some(provided)) if stored != provided => {
             Err(crate::error::AppError::validation_with(
@@ -135,27 +127,38 @@ fn reconcile_symbol(
                 "UPDATE crypto_investments SET yahoo_symbol = ?1 WHERE id = ?2",
                 rusqlite::params![provided, investment_id],
             )?;
-            Ok(())
+            Ok(true)
         }
-        _ => Ok(()),
+        _ => Ok(false),
     }
 }
 
+/// The holding a symbol-aware lookup found or created.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HoldingLookup {
+    pub id: String,
+    /// The supplied symbol filled an existing holding that had none: its history is on another
+    /// series (or none) and its cached price belongs to no symbol, so the caller rebuilds it
+    /// from its first transaction and refreshes the price, like the symbol picker does
+    /// (spec D7 / D9).
+    pub symbol_set_now: bool,
+}
+
 /// Get or create a crypto investment by ticker
-/// Returns the investment ID
 /// This is the SINGLE SOURCE OF TRUTH for crypto investment lookup/creation
 ///
 /// `yahoo_symbol` is optional: a new coin without one is stored unresolved (`NULL`) and the
 /// price refresh resolves it later (spec D4); one that differs from the stored symbol is a
-/// conflict.
+/// conflict. A symbol supplied for an existing unresolved holding is stored and reported as
+/// `symbol_set_now`.
 pub fn get_or_create_crypto(
     conn: &rusqlite::Connection,
     ticker: &str,
     yahoo_symbol: Option<&str>,
     name: &str,
-) -> Result<String> {
+) -> Result<HoldingLookup> {
     let ticker_upper = ticker.to_uppercase();
-    let provided = provided_symbol(yahoo_symbol)?;
+    let provided = crate::services::crypto_symbols::optional_symbol(yahoo_symbol)?;
 
     // Check if investment already exists
     let existing: Option<(String, Option<String>)> = conn
@@ -168,14 +171,14 @@ pub fn get_or_create_crypto(
 
     match existing {
         Some((id, stored)) => {
-            reconcile_symbol(
+            let symbol_set_now = reconcile_symbol(
                 conn,
                 &id,
                 &ticker_upper,
                 stored.as_deref(),
                 provided.as_deref(),
             )?;
-            Ok(id)
+            Ok(HoldingLookup { id, symbol_set_now })
         }
         None => {
             let id = Uuid::new_v4().to_string();
@@ -185,7 +188,10 @@ pub fn get_or_create_crypto(
                  VALUES (?1, ?2, ?3, ?4, '0')",
                 rusqlite::params![id, ticker_upper, provided, name],
             )?;
-            Ok(id)
+            Ok(HoldingLookup {
+                id,
+                symbol_set_now: false,
+            })
         }
     }
 }
@@ -203,6 +209,17 @@ pub fn set_symbol(conn: &rusqlite::Connection, investment_id: &str, symbol: &str
             "Crypto investment not found".into(),
         ));
     }
+    Ok(())
+}
+
+/// Drop the cached price of a ticker (`crypto_prices` is keyed by ticker). A symbol change
+/// calls it so that a failed refresh cannot leave the previous coin's price in place: the
+/// holding then shows as unpriced until a refresh succeeds.
+pub fn forget_cached_price(conn: &rusqlite::Connection, ticker: &str) -> Result<()> {
+    conn.execute(
+        "DELETE FROM crypto_prices WHERE symbol = ?1",
+        [ticker.trim().to_uppercase()],
+    )?;
     Ok(())
 }
 
@@ -238,6 +255,14 @@ pub fn get_crypto_by_id(
     Ok(inv)
 }
 
+/// A holding created or updated by [`create_crypto_reporting`].
+#[derive(Debug, Clone)]
+pub struct CreatedCrypto {
+    pub investment: CryptoInvestment,
+    /// See [`HoldingLookup::symbol_set_now`].
+    pub symbol_set_now: bool,
+}
+
 /// Create crypto investment with optional initial transaction
 /// This is the main entry point for creating crypto investments with transactions
 pub fn create_crypto_with_transaction(
@@ -247,6 +272,18 @@ pub fn create_crypto_with_transaction(
     name: &str,
     initial_transaction: Option<&InsertCryptoTransaction>,
 ) -> Result<CryptoInvestment> {
+    Ok(create_crypto_reporting(conn, ticker, yahoo_symbol, name, initial_transaction)?.investment)
+}
+
+/// [`create_crypto_with_transaction`] that also reports whether the supplied symbol was stored on
+/// an existing holding that had none, so the command can give it the picker's guarantees.
+pub fn create_crypto_reporting(
+    conn: &rusqlite::Connection,
+    ticker: &str,
+    yahoo_symbol: Option<&str>,
+    name: &str,
+    initial_transaction: Option<&InsertCryptoTransaction>,
+) -> Result<CreatedCrypto> {
     if let Some(data) = initial_transaction {
         data.validate()?;
     }
@@ -255,17 +292,20 @@ pub fn create_crypto_with_transaction(
     let ticker_upper = ticker.to_uppercase();
 
     // Get or create the investment
-    let investment_id = get_or_create_crypto(conn, &ticker_upper, yahoo_symbol, name)?;
+    let holding = get_or_create_crypto(conn, &ticker_upper, yahoo_symbol, name)?;
 
     // Create initial transaction if provided
     if let Some(tx) = initial_transaction {
-        add_transaction_to_crypto(conn, &investment_id, tx)?;
+        add_transaction_to_crypto(conn, &holding.id, tx)?;
     }
 
     // Return the investment
-    let investment = get_crypto_by_id(conn, &investment_id)?;
+    let investment = get_crypto_by_id(conn, &holding.id)?;
     transaction.commit()?;
-    Ok(investment)
+    Ok(CreatedCrypto {
+        investment,
+        symbol_set_now: holding.symbol_set_now,
+    })
 }
 
 /// Add a transaction to an existing crypto investment
@@ -363,7 +403,7 @@ pub fn import_single_crypto_transaction(
     currency: &str,
     transaction_date: i64,
 ) -> Result<String> {
-    import_crypto_row(
+    Ok(import_crypto_row(
         conn,
         ticker,
         name,
@@ -374,7 +414,8 @@ pub fn import_single_crypto_transaction(
         currency,
         transaction_date,
         true,
-    )
+    )?
+    .id)
 }
 
 /// Only the transactional bulk writer may defer holdings replay until every
@@ -390,7 +431,7 @@ pub(crate) fn import_crypto_transaction_deferred(
     price_per_unit: &str,
     currency: &str,
     transaction_date: i64,
-) -> Result<String> {
+) -> Result<HoldingLookup> {
     import_crypto_row(
         conn,
         ticker,
@@ -417,7 +458,7 @@ fn import_crypto_row(
     currency: &str,
     transaction_date: i64,
     validate_holdings: bool,
-) -> Result<String> {
+) -> Result<HoldingLookup> {
     use crate::error::AppError;
     InsertCryptoTransaction {
         investment_id: None,
@@ -452,7 +493,8 @@ fn import_crypto_row(
         ));
     }
 
-    let investment_id = get_or_create_crypto(conn, &ticker_upper, yahoo_symbol, name)?;
+    let holding = get_or_create_crypto(conn, &ticker_upper, yahoo_symbol, name)?;
+    let investment_id = holding.id.clone();
 
     if validate_holdings {
         crate::services::investments::ensure_sell_within_holdings(
@@ -481,7 +523,7 @@ fn import_crypto_row(
         recalculate_crypto_metrics(conn, &investment_id)?;
     }
 
-    Ok(investment_id)
+    Ok(holding)
 }
 
 #[cfg(test)]
@@ -582,7 +624,9 @@ mod tests {
     #[test]
     fn a_symbol_that_differs_from_the_stored_one_is_a_conflict() {
         let conn = setup_test_db();
-        let id = get_or_create_crypto(&conn, "BTC", Some("BTC-USD"), "Bitcoin").unwrap();
+        let id = get_or_create_crypto(&conn, "BTC", Some("BTC-USD"), "Bitcoin")
+            .unwrap()
+            .id;
         let err = get_or_create_crypto(&conn, "BTC", Some("ETH-USD"), "Bitcoin").unwrap_err();
         assert_eq!(
             err.keyed().expect("keyed"),
@@ -593,11 +637,15 @@ mod tests {
         );
         // the same symbol, any spelling, or none at all is the existing holding
         assert_eq!(
-            get_or_create_crypto(&conn, "btc", Some("btc-usd"), "Bitcoin").unwrap(),
+            get_or_create_crypto(&conn, "btc", Some("btc-usd"), "Bitcoin")
+                .unwrap()
+                .id,
             id
         );
         assert_eq!(
-            get_or_create_crypto(&conn, "BTC", None, "Bitcoin").unwrap(),
+            get_or_create_crypto(&conn, "BTC", None, "Bitcoin")
+                .unwrap()
+                .id,
             id
         );
         // an unresolved holding takes a supplied symbol
@@ -607,9 +655,133 @@ mod tests {
     }
 
     #[test]
+    fn a_supplied_symbol_on_an_unresolved_holding_is_reported_as_set_now() {
+        let conn = setup_test_db();
+        let created = get_or_create_crypto(&conn, "SUI", None, "Sui").unwrap();
+        assert!(!created.symbol_set_now, "a coin created without a symbol");
+
+        let filled = get_or_create_crypto(&conn, "SUI", Some("sui20947-usd"), "Sui").unwrap();
+        assert_eq!(filled.id, created.id);
+        assert!(
+            filled.symbol_set_now,
+            "the symbol filled an unresolved holding"
+        );
+        assert_eq!(stored_symbol(&conn, "SUI").as_deref(), Some("SUI20947-USD"));
+
+        let again = get_or_create_crypto(&conn, "SUI", Some("SUI20947-USD"), "Sui").unwrap();
+        assert!(!again.symbol_set_now, "the holding already had that symbol");
+        let without = get_or_create_crypto(&conn, "SUI", None, "Sui").unwrap();
+        assert!(!without.symbol_set_now, "nothing was supplied");
+    }
+
+    #[test]
+    fn a_new_coin_with_a_symbol_and_a_blank_stored_symbol_are_told_apart() {
+        let conn = setup_test_db();
+        let new = get_or_create_crypto(&conn, "BTC", Some("BTC-USD"), "Bitcoin").unwrap();
+        assert!(
+            !new.symbol_set_now,
+            "a coin created with its symbol has no old series"
+        );
+
+        // A stored blank symbol is unresolved, not a conflict.
+        conn.execute(
+            "INSERT INTO crypto_investments (id, ticker, yahoo_symbol, name, quantity, currency)
+             VALUES ('arb-1', 'ARB', '  ', 'Arbitrum', '0', 'USD')",
+            [],
+        )
+        .unwrap();
+        let blank = get_or_create_crypto(&conn, "ARB", Some("ARB11841-USD"), "Arbitrum").unwrap();
+        assert!(blank.symbol_set_now);
+        assert_eq!(stored_symbol(&conn, "ARB").as_deref(), Some("ARB11841-USD"));
+    }
+
+    #[test]
+    fn creating_with_a_transaction_reports_the_symbol_set_now() {
+        let conn = setup_test_db();
+        create_crypto_reporting(&conn, "SUI", None, "Sui", None).unwrap();
+        let tx = InsertCryptoTransaction {
+            investment_id: None,
+            tx_type: "buy".into(),
+            ticker: "SUI".into(),
+            name: "Sui".into(),
+            quantity: "2".into(),
+            price_per_unit: "1".into(),
+            currency: "USD".into(),
+            transaction_date: 1_700_000_000,
+        };
+        let created =
+            create_crypto_reporting(&conn, "SUI", Some("SUI20947-USD"), "Sui", Some(&tx)).unwrap();
+        assert!(created.symbol_set_now);
+        assert_eq!(
+            created.investment.yahoo_symbol.as_deref(),
+            Some("SUI20947-USD")
+        );
+        let again =
+            create_crypto_reporting(&conn, "SUI", Some("SUI20947-USD"), "Sui", Some(&tx)).unwrap();
+        assert!(!again.symbol_set_now);
+    }
+
+    #[test]
+    fn the_bulk_import_reports_a_symbol_set_now() {
+        let conn = setup_test_db();
+        get_or_create_crypto(&conn, "SUI", None, "Sui").unwrap();
+        let first = import_crypto_transaction_deferred(
+            &conn,
+            "SUI",
+            "Sui",
+            Some("SUI20947-USD"),
+            "buy",
+            "1",
+            "2",
+            "USD",
+            1_700_000_000,
+        )
+        .unwrap();
+        assert!(first.symbol_set_now);
+        let second = import_crypto_transaction_deferred(
+            &conn,
+            "SUI",
+            "Sui",
+            Some("SUI20947-USD"),
+            "buy",
+            "1",
+            "2",
+            "USD",
+            1_700_086_400,
+        )
+        .unwrap();
+        assert!(!second.symbol_set_now);
+    }
+
+    #[test]
+    fn forget_cached_price_drops_only_that_tickers_row() {
+        let conn = setup_test_db();
+        conn.execute_batch(
+            "CREATE TABLE crypto_prices (
+                id TEXT PRIMARY KEY, symbol TEXT NOT NULL UNIQUE, price TEXT NOT NULL,
+                currency TEXT NOT NULL, fetched_at INTEGER NOT NULL
+            );
+            INSERT INTO crypto_prices VALUES ('p1', 'SUI', '1.5', 'USD', 100);
+            INSERT INTO crypto_prices VALUES ('p2', 'BTC', '60000', 'USD', 100);",
+        )
+        .unwrap();
+        forget_cached_price(&conn, "sui").unwrap();
+        let left: Vec<String> = conn
+            .prepare("SELECT symbol FROM crypto_prices")
+            .unwrap()
+            .query_map([], |r| r.get(0))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
+        assert_eq!(left, vec!["BTC".to_string()]);
+        // a ticker without a row is not an error
+        forget_cached_price(&conn, "ETH").unwrap();
+    }
+
+    #[test]
     fn set_symbol_normalizes_and_stores() {
         let conn = setup_test_db();
-        let id = get_or_create_crypto(&conn, "SUI", None, "Sui").unwrap();
+        let id = get_or_create_crypto(&conn, "SUI", None, "Sui").unwrap().id;
         set_symbol(&conn, &id, " sui20947-usd ").unwrap();
         assert_eq!(stored_symbol(&conn, "SUI").as_deref(), Some("SUI20947-USD"));
         assert!(matches!(
@@ -621,7 +793,9 @@ mod tests {
     #[test]
     fn set_symbol_rejects_an_invalid_symbol() {
         let conn = setup_test_db();
-        let id = get_or_create_crypto(&conn, "BTC", Some("BTC-USD"), "Bitcoin").unwrap();
+        let id = get_or_create_crypto(&conn, "BTC", Some("BTC-USD"), "Bitcoin")
+            .unwrap()
+            .id;
         let err = set_symbol(&conn, &id, "bitcoin").unwrap_err();
         assert!(matches!(err, AppError::Validation(k) if k == "validation.yahooSymbolInvalid"));
         assert_eq!(stored_symbol(&conn, "BTC").as_deref(), Some("BTC-USD"));
@@ -799,7 +973,9 @@ mod tests {
     #[test]
     fn decimal_liquidation_stores_exact_zero_crypto_quantity() {
         let conn = setup_test_db();
-        let id = get_or_create_crypto(&conn, "BTC", Some("BTC-USD"), "Bitcoin").unwrap();
+        let id = get_or_create_crypto(&conn, "BTC", Some("BTC-USD"), "Bitcoin")
+            .unwrap()
+            .id;
         for (kind, qty, day) in [("buy", "0.1", 0), ("buy", "0.2", 1), ("sell", "0.3", 2)] {
             let data = InsertCryptoTransaction {
                 investment_id: Some(id.clone()),
@@ -824,7 +1000,9 @@ mod tests {
     }
 
     fn deletion_fixture(conn: &Connection) -> (String, CryptoTransaction, CryptoTransaction) {
-        let id = get_or_create_crypto(conn, "BTC", Some("BTC-USD"), "Bitcoin").unwrap();
+        let id = get_or_create_crypto(conn, "BTC", Some("BTC-USD"), "Bitcoin")
+            .unwrap()
+            .id;
         let data = |kind: &str, qty: &str, day: i64| InsertCryptoTransaction {
             investment_id: Some(id.clone()),
             tx_type: kind.into(),

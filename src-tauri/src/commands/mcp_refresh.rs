@@ -180,34 +180,41 @@ async fn refresh_derived_data(db: &Database, job: &mcp_refresh::PendingRefresh) 
             }
             // A job without a date is "from the first fact" (it wins over every dated write
             // queued next to it): each coin from its first transaction, the days from the
-            // first fact (`rebuild_days_async` clamps day 0).
-            let from = job.earliest_date.unwrap_or(0);
-            if from < today {
-                let firsts: HashMap<String, i64> = db
-                    .with_conn(|conn| history_recalc::crypto_rebuild_jobs(conn, &tickers))?
+            // first fact (`rebuild_days_async` clamps day 0). A coin whose symbol this refresh
+            // resolved is on a new Yahoo series, so it rebuilds from its first transaction too
+            // (spec D7) and the days follow it back.
+            let job_from = job.earliest_date.unwrap_or(0);
+            let firsts: HashMap<String, i64> = if job_from < today || !result.resolved.is_empty() {
+                db.with_conn(|conn| history_recalc::crypto_rebuild_jobs(conn, &tickers))?
                     .into_iter()
-                    .collect();
-                for ticker in &tickers {
-                    let from = match job.earliest_date {
-                        Some(from) => from,
-                        None => match firsts.get(ticker) {
-                            Some(first) => *first,
-                            None => continue,
-                        },
-                    };
-                    if from >= today {
-                        continue;
-                    }
-                    history_recalc::rebuild_crypto_ticker_strict(
-                        db,
-                        ticker,
-                        from,
-                        today,
-                        portfolio::find_closest_price,
-                    )
-                    .await?;
+                    .collect()
+            } else {
+                HashMap::new()
+            };
+            let mut days_from = job_from;
+            for ticker in &tickers {
+                let from = match job.earliest_date {
+                    Some(from) if !result.resolved.contains(ticker) => from,
+                    _ => match firsts.get(ticker) {
+                        Some(first) => *first,
+                        None => continue,
+                    },
+                };
+                if from >= today {
+                    continue;
                 }
-                history_recalc::rebuild_days_async(db, from, today).await?;
+                history_recalc::rebuild_crypto_ticker_strict(
+                    db,
+                    ticker,
+                    from,
+                    today,
+                    portfolio::find_closest_price,
+                )
+                .await?;
+                days_from = days_from.min(from);
+            }
+            if days_from < today {
+                history_recalc::rebuild_days_async(db, days_from, today).await?;
             }
         }
         // The portfolio days follow from the dated facts of accounts, real estate, loans, bonds

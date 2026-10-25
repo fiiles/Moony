@@ -708,9 +708,28 @@ impl MoonyMcp {
         if let Err(e) = check_bulk_size(args.transactions.len()) {
             return to_result(Err(e));
         }
-        let report = self.write_conn_mut("crypto", crypto::earliest_date(&args), |conn| {
-            crypto::crypto_transactions_create(conn, &args)
+        let written = self.write_conn_mut("crypto", crypto::earliest_date(&args), |conn| {
+            crypto::crypto_transactions_create_reporting(conn, &args)
         });
+        // A supplied symbol that filled an unresolved holding moves it to that coin's Yahoo
+        // series (spec D7 / D9): drop the old price and queue the rebuild of its history from
+        // its first transaction. A job without a date is "from the first fact", so the durable
+        // worker rebuilds each coin from its first transaction (and prices them all again).
+        let (report, symbols_set) = match written {
+            Ok((report, symbols_set)) => (Ok(report), symbols_set),
+            Err(e) => (Err(e), Vec::new()),
+        };
+        if !symbols_set.is_empty() {
+            let queued = self.db.with_conn(|conn| {
+                for ticker in &symbols_set {
+                    crate::services::crypto_investments::forget_cached_price(conn, ticker)?;
+                }
+                crate::services::mcp_refresh::enqueue(conn, "crypto", None)
+            });
+            if let Err(e) = queued {
+                log::warn!("[MCP] Could not queue the history rebuild after a symbol was set: {e}");
+            }
+        }
         let requested: Vec<String> = crypto::distinct_tickers(&args)
             .into_iter()
             .map(|(ticker, _)| ticker)

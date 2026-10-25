@@ -186,19 +186,17 @@ pub struct CryptoTransactionsCreateArgs {
     pub transactions: Vec<CryptoTransactionRow>,
 }
 
-/// The row's Yahoo symbol trimmed and uppercased; `None` when absent or blank.
+/// The row's Yahoo symbol, normalized like every entry point does
+/// (`crypto_symbols::optional_symbol`); `None` when absent, blank or invalid. An invalid one is
+/// rejected in phase 1 (`validate_crypto_row`) before any caller reads it.
 fn row_symbol(row: &CryptoTransactionRow) -> Option<String> {
-    row.yahoo_symbol
-        .as_deref()
-        .map(str::trim)
-        .filter(|symbol| !symbol.is_empty())
-        .map(str::to_ascii_uppercase)
+    crate::services::crypto_symbols::optional_symbol(row.yahoo_symbol.as_deref())
+        .ok()
+        .flatten()
 }
 
 fn validate_crypto_row(row: &CryptoTransactionRow) -> Result<()> {
-    if let Some(symbol) = row_symbol(row) {
-        crate::services::crypto_symbols::normalize_symbol(&symbol)?;
-    }
+    crate::services::crypto_symbols::optional_symbol(row.yahoo_symbol.as_deref())?;
     let insert = crate::models::InsertCryptoTransaction {
         investment_id: None,
         tx_type: row.tx_type.clone(),
@@ -222,6 +220,32 @@ fn validate_crypto_row(row: &CryptoTransactionRow) -> Result<()> {
 pub fn crypto_transactions_create(
     conn: &mut rusqlite::Connection,
     args: &CryptoTransactionsCreateArgs,
+) -> Result<BulkWriteReport> {
+    Ok(crypto_transactions_create_reporting(conn, args)?.0)
+}
+
+/// [`crypto_transactions_create`] that also returns the tickers whose supplied `yahooSymbol`
+/// filled an existing holding that had none, in this committed batch (empty when the batch was
+/// rejected). Such a holding's history sits on another series and its cached price belongs to
+/// no symbol: the caller rebuilds it from its first transaction and drops the old price, like
+/// the symbol picker does (spec D7 / D9). The wire report is unchanged.
+pub fn crypto_transactions_create_reporting(
+    conn: &mut rusqlite::Connection,
+    args: &CryptoTransactionsCreateArgs,
+) -> Result<(BulkWriteReport, Vec<String>)> {
+    let mut symbols_set = Vec::new();
+    let report = import_rows(conn, args, &mut symbols_set)?;
+    if !report.errors.is_empty() {
+        // Every rejection rolled the whole batch back.
+        symbols_set.clear();
+    }
+    Ok((report, symbols_set))
+}
+
+fn import_rows(
+    conn: &mut rusqlite::Connection,
+    args: &CryptoTransactionsCreateArgs,
+    symbols_set: &mut Vec<String>,
 ) -> Result<BulkWriteReport> {
     super::check_bulk_size(args.transactions.len())?;
 
@@ -296,7 +320,9 @@ pub fn crypto_transactions_create(
                     |r| r.get::<_, Option<String>>(0),
                 )
                 .optional()?
-                .flatten();
+                .flatten()
+                // A blank stored symbol is unresolved, like `NULL`.
+                .filter(|symbol| !symbol.trim().is_empty());
             if stored.is_some_and(|symbol| symbol != provided) {
                 drop(tx);
                 return Ok(BulkWriteReport {
@@ -339,7 +365,11 @@ pub fn crypto_transactions_create(
             &row.currency,
             row.transaction_date,
         ) {
-            Ok(id) => {
+            Ok(holding) => {
+                if holding.symbol_set_now && !symbols_set.contains(&ticker_upper) {
+                    symbols_set.push(ticker_upper.clone());
+                }
+                let id = holding.id;
                 if !written.iter().any(|(_, existing)| existing == &id) {
                     written.push((i, id));
                 }
@@ -698,7 +728,128 @@ mod bulk_tests {
         let report = crypto_transactions_create(&mut conn, &args).unwrap();
         assert_eq!(report.created, 0);
         assert_eq!(report.errors.len(), 1);
+        assert_eq!(report.errors[0].index, 0);
+        assert_eq!(
+            report.errors[0].message,
+            "Validation error: The Yahoo Finance symbol must be the coin's USD pair, for example BTC-USD"
+        );
         assert_eq!(holding_count(&conn), 0);
+    }
+
+    #[test]
+    fn a_batch_reports_the_tickers_whose_supplied_symbol_filled_an_unresolved_holding() {
+        let mut conn = setup_test_db();
+        let seed = CryptoTransactionsCreateArgs {
+            transactions: vec![
+                row("sui", None, "buy", "1", "2", "USD", 1_700_000_000),
+                row(
+                    "btc",
+                    Some("BTC-USD"),
+                    "buy",
+                    "1",
+                    "2",
+                    "USD",
+                    1_700_000_000,
+                ),
+            ],
+        };
+        let (_, set) = crypto_transactions_create_reporting(&mut conn, &seed).unwrap();
+        assert!(
+            set.is_empty(),
+            "new coins and a coin created with its symbol"
+        );
+
+        let args = CryptoTransactionsCreateArgs {
+            transactions: vec![
+                row(
+                    "sui",
+                    Some("SUI20947-USD"),
+                    "buy",
+                    "1",
+                    "2",
+                    "USD",
+                    1_700_086_400,
+                ),
+                row(
+                    "sui",
+                    Some("sui20947-usd"),
+                    "buy",
+                    "1",
+                    "3",
+                    "USD",
+                    1_700_172_800,
+                ),
+                row(
+                    "btc",
+                    Some("BTC-USD"),
+                    "buy",
+                    "1",
+                    "2",
+                    "USD",
+                    1_700_086_400,
+                ),
+            ],
+        };
+        let (report, set) = crypto_transactions_create_reporting(&mut conn, &args).unwrap();
+        assert_eq!(report.created, 3, "{report:?}");
+        assert_eq!(
+            set,
+            vec!["SUI".to_string()],
+            "once, and not the coin that had its symbol"
+        );
+
+        // The same batch again fills nothing: duplicates are skipped and the symbol is set.
+        let (_, set) = crypto_transactions_create_reporting(&mut conn, &args).unwrap();
+        assert!(set.is_empty());
+    }
+
+    #[test]
+    fn a_rejected_batch_reports_no_symbol_set() {
+        let mut conn = setup_test_db();
+        crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![row("sui", None, "buy", "1", "2", "USD", 1_700_000_000)],
+            },
+        )
+        .unwrap();
+        // The symbol is set by the first row, then the second row (a sell above the holdings)
+        // rolls the batch back.
+        let args = CryptoTransactionsCreateArgs {
+            transactions: vec![
+                row(
+                    "sui",
+                    Some("SUI20947-USD"),
+                    "buy",
+                    "1",
+                    "2",
+                    "USD",
+                    1_700_086_400,
+                ),
+                row(
+                    "sui",
+                    Some("SUI20947-USD"),
+                    "sell",
+                    "99",
+                    "2",
+                    "USD",
+                    1_700_172_800,
+                ),
+            ],
+        };
+        let (report, set) = crypto_transactions_create_reporting(&mut conn, &args).unwrap();
+        assert_eq!(report.errors.len(), 1, "{report:?}");
+        assert!(set.is_empty());
+        assert_eq!(holding_symbol(&conn, "SUI"), None, "rolled back");
+    }
+
+    fn holding_symbol(conn: &Connection, ticker: &str) -> Option<String> {
+        conn.query_row(
+            "SELECT yahoo_symbol FROM crypto_investments WHERE ticker = ?1",
+            [ticker],
+            |r| r.get(0),
+        )
+        .unwrap()
     }
 
     #[test]

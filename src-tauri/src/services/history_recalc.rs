@@ -859,7 +859,7 @@ async fn rebuild_crypto_ticker_with_policy(
     price_rule: PriceRule,
     strict: bool,
 ) -> Result<RebuildStats> {
-    let from_day = floor_day(from_ts);
+    let mut from_day = floor_day(from_ts);
     if from_day > until_day {
         return Ok(RebuildStats::default());
     }
@@ -874,7 +874,15 @@ async fn rebuild_crypto_ticker_with_policy(
 
     let prices: Vec<HistoricalPrice> = if has_transactions {
         let symbol = match crypto_symbols::ensure_symbol(db, ticker).await? {
-            Resolved::Already(symbol) | Resolved::Now(symbol) => symbol,
+            Resolved::Already(symbol) => symbol,
+            Resolved::Now(symbol) => {
+                // The holding was on no Yahoo series until now: the whole history moves to
+                // this coin's, so the range reaches back to its first transaction (spec D7).
+                let first =
+                    db.with_conn(|conn| crypto_rebuild_jobs(conn, &[ticker.to_string()]))?;
+                from_day = extend_to_first_day(from_day, first.first().map(|(_, first)| *first));
+                symbol
+            }
             Resolved::None => {
                 // Nothing to price the holding with: leave its history alone rather than
                 // invent one from today's quote.
@@ -890,12 +898,11 @@ async fn rebuild_crypto_ticker_with_policy(
             price_api::get_historical_stock_prices_yahoo(&symbols, from_day, until_day).await?
         };
         // The stored crypto price is always USD.
-        fetched
-            .remove(&symbols[0])
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|quote| quote.currency.eq_ignore_ascii_case("USD"))
-            .collect()
+        usd_quotes_or_error(
+            fetched.remove(&symbols[0]).unwrap_or_default(),
+            strict,
+            &symbols[0],
+        )?
     } else {
         Vec::new()
     };
@@ -919,6 +926,35 @@ async fn rebuild_crypto_ticker_with_policy(
         )
     })?;
     apply_plan_in_chunks(db, AssetKind::Crypto, ticker, &plan).await
+}
+
+/// The day a rebuild starts when the holding's symbol was resolved during it: the earlier of the
+/// requested day and the floor of its first transaction (`None`: no transaction, unchanged).
+fn extend_to_first_day(from_day: i64, first_transaction: Option<i64>) -> i64 {
+    first_transaction.map_or(from_day, |first| from_day.min(floor_day(first)))
+}
+
+/// The USD quotes of a fetched crypto series. Quotes in another currency are dropped (the stored
+/// crypto price is always USD); a strict rebuild whose fetch returned quotes but none in USD is
+/// `AppError::ExternalApi("No USD quotes for <symbol>")` instead of planning the range from the
+/// last known price, so a durable job keeps its retry intent. No quotes at all is an empty
+/// series, as before.
+fn usd_quotes_or_error(
+    quotes: Vec<HistoricalPrice>,
+    strict: bool,
+    symbol: &str,
+) -> Result<Vec<HistoricalPrice>> {
+    let fetched = quotes.len();
+    let usd: Vec<HistoricalPrice> = quotes
+        .into_iter()
+        .filter(|quote| quote.currency.eq_ignore_ascii_case("USD"))
+        .collect();
+    if strict && fetched > 0 && usd.is_empty() {
+        return Err(crate::error::AppError::ExternalApi(format!(
+            "No USD quotes for {symbol}"
+        )));
+    }
+    Ok(usd)
 }
 
 /// `(price, currency)` of the ticker's newest history row before `from_day`, else of its
@@ -1401,6 +1437,58 @@ mod tests {
         )
         .expect("schema");
         conn
+    }
+
+    #[test]
+    fn a_resolution_reaches_the_range_back_to_the_first_transaction() {
+        // The first transaction is earlier than the requested day: the whole series moves.
+        assert_eq!(
+            extend_to_first_day(50 * DAY, Some(10 * DAY + 3_600)),
+            10 * DAY
+        );
+        // A request that already starts earlier, or a holding without transactions, is unchanged.
+        assert_eq!(extend_to_first_day(5 * DAY, Some(10 * DAY)), 5 * DAY);
+        assert_eq!(extend_to_first_day(50 * DAY, None), 50 * DAY);
+    }
+
+    fn quote(timestamp: i64, currency: &str) -> HistoricalPrice {
+        HistoricalPrice {
+            timestamp,
+            price: 1.0,
+            currency: currency.to_string(),
+        }
+    }
+
+    #[test]
+    fn a_strict_rebuild_without_usd_quotes_fails_instead_of_carrying_the_last_price() {
+        let eur_only = vec![quote(DAY, "EUR"), quote(2 * DAY, "EUR")];
+        let err = usd_quotes_or_error(eur_only.clone(), true, "SUI20947-USD").unwrap_err();
+        assert!(
+            matches!(&err, crate::error::AppError::ExternalApi(m) if m == "No USD quotes for SUI20947-USD"),
+            "{err:?}"
+        );
+        // Not strict: today's behaviour, no USD rows, the plan falls back to the last known price.
+        assert!(usd_quotes_or_error(eur_only, false, "SUI20947-USD")
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn usd_quotes_are_kept_and_an_empty_fetch_is_not_an_error_even_when_strict() {
+        let mixed = vec![
+            quote(DAY, "USD"),
+            quote(2 * DAY, "EUR"),
+            quote(3 * DAY, "usd"),
+        ];
+        let kept = usd_quotes_or_error(mixed, true, "BTC-USD").unwrap();
+        assert_eq!(
+            kept.iter().map(|q| q.timestamp).collect::<Vec<_>>(),
+            vec![DAY, 3 * DAY]
+        );
+        // No quotes at all keeps today's meaning ("no data for the range").
+        assert!(usd_quotes_or_error(Vec::new(), true, "BTC-USD")
+            .unwrap()
+            .is_empty());
     }
 
     #[test]

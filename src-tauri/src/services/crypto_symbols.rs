@@ -74,6 +74,17 @@ pub fn normalize_symbol(input: &str) -> Result<String> {
     }
 }
 
+/// A symbol supplied by a caller (the add dialog, an MCP row), trimmed and uppercased: `None`
+/// when absent or blank, an invalid one is `validation.yahooSymbolInvalid`. The one
+/// normalization every entry point shares.
+pub fn optional_symbol(input: Option<&str>) -> Result<Option<String>> {
+    input
+        .map(str::trim)
+        .filter(|symbol| !symbol.is_empty())
+        .map(normalize_symbol)
+        .transpose()
+}
+
 #[derive(Deserialize)]
 struct SearchBody {
     quotes: Option<Vec<SearchQuote>>,
@@ -180,6 +191,25 @@ pub enum Resolved {
     None,
 }
 
+/// Store a resolved symbol on a holding that is still unresolved (`NULL` or blank) and read back
+/// what the holding has afterwards (`None` for a holding that is gone or still blank).
+fn store_resolved(conn: &rusqlite::Connection, id: &str, symbol: &str) -> Result<Option<String>> {
+    conn.execute(
+        "UPDATE crypto_investments SET yahoo_symbol = ?1
+         WHERE id = ?2 AND (yahoo_symbol IS NULL OR TRIM(yahoo_symbol) = '')",
+        rusqlite::params![symbol, id],
+    )?;
+    Ok(conn
+        .query_row(
+            "SELECT yahoo_symbol FROM crypto_investments WHERE id = ?1",
+            [id],
+            |row| row.get::<_, Option<String>>(0),
+        )
+        .optional()?
+        .flatten()
+        .filter(|stored| !stored.trim().is_empty()))
+}
+
 /// The holding's symbol: the stored one, else resolved (D4: `search_crypto(name)`, choose; else
 /// `search_crypto(ticker)`, choose) and stored. `Resolved::Already(s)` / `Resolved::Now(s)` /
 /// `Resolved::None`. A search failure is `None` (best effort, warn log), never an error; a
@@ -225,21 +255,7 @@ pub async fn ensure_symbol(db: &Database, ticker: &str) -> Result<Resolved> {
             continue;
         };
         // Stored only while the holding is still unresolved: a symbol picked meanwhile wins.
-        let stored: Option<String> = db.with_conn(|conn| {
-            conn.execute(
-                "UPDATE crypto_investments SET yahoo_symbol = ?1
-                 WHERE id = ?2 AND yahoo_symbol IS NULL",
-                rusqlite::params![symbol, id],
-            )?;
-            Ok(conn
-                .query_row(
-                    "SELECT yahoo_symbol FROM crypto_investments WHERE id = ?1",
-                    [&id],
-                    |row| row.get::<_, Option<String>>(0),
-                )
-                .optional()?
-                .flatten())
-        })?;
+        let stored = db.with_conn(|conn| store_resolved(conn, &id, &symbol))?;
         return Ok(match stored {
             Some(stored) if stored == symbol => {
                 log::debug!("[CRYPTO SYMBOL] {ticker} resolved to {symbol}");
@@ -412,5 +428,60 @@ mod tests {
         );
         assert_eq!(merged.len(), 2);
         assert_eq!(merged[1].symbol, "POL28321-USD");
+    }
+
+    #[test]
+    fn optional_symbol_trims_uppercases_and_drops_blanks() {
+        assert_eq!(optional_symbol(None).unwrap(), None);
+        assert_eq!(optional_symbol(Some("   ")).unwrap(), None);
+        assert_eq!(
+            optional_symbol(Some(" sui20947-usd ")).unwrap().as_deref(),
+            Some("SUI20947-USD")
+        );
+        assert!(matches!(
+            optional_symbol(Some("bitcoin")),
+            Err(AppError::Validation(key)) if key == "validation.yahooSymbolInvalid"
+        ));
+    }
+
+    fn holding_db(symbol: Option<&str>) -> rusqlite::Connection {
+        let conn = rusqlite::Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            "CREATE TABLE crypto_investments (
+                id TEXT PRIMARY KEY, ticker TEXT NOT NULL UNIQUE, yahoo_symbol TEXT,
+                name TEXT NOT NULL, quantity TEXT NOT NULL
+            );",
+        )
+        .expect("schema");
+        conn.execute(
+            "INSERT INTO crypto_investments (id, ticker, yahoo_symbol, name, quantity)
+             VALUES ('h1', 'ARB', ?1, 'Arbitrum', '1')",
+            [symbol],
+        )
+        .expect("holding");
+        conn
+    }
+
+    #[test]
+    fn a_resolution_fills_a_null_or_blank_symbol_and_never_overwrites_one() {
+        for blank in [None, Some(""), Some("  ")] {
+            let conn = holding_db(blank);
+            assert_eq!(
+                store_resolved(&conn, "h1", "ARB11841-USD")
+                    .unwrap()
+                    .as_deref(),
+                Some("ARB11841-USD"),
+                "a {blank:?} symbol is unresolved"
+            );
+        }
+        let conn = holding_db(Some("ARB-USD"));
+        assert_eq!(
+            store_resolved(&conn, "h1", "ARB11841-USD")
+                .unwrap()
+                .as_deref(),
+            Some("ARB-USD"),
+            "a symbol picked meanwhile wins"
+        );
+        assert_eq!(store_resolved(&conn, "gone", "ARB11841-USD").unwrap(), None);
     }
 }

@@ -927,6 +927,10 @@ fn search_failure(error: &AppError) -> String {
 /// as USD pairs. One failed request is logged; both failing is an error.
 pub async fn search_crypto(query: &str) -> Result<Vec<CryptoSearchResult>> {
     let query = query.trim();
+    // A blank query would search for the bare " USD" variant: nothing to look for, no request.
+    if query.is_empty() {
+        return Ok(Vec::new());
+    }
     log::debug!("[YAHOO SEARCH] Searching crypto: {}", query);
 
     let with_usd = yahoo_crypto_search(&format!("{query} USD")).await;
@@ -2672,5 +2676,12 @@ mod tests {
                 .unwrap()
                 .is_empty()
         );
+    }
+
+    #[tokio::test]
+    async fn a_blank_crypto_search_sends_nothing_and_finds_nothing() {
+        for query in ["", "   ", "\t\n"] {
+            assert!(search_crypto(query).await.unwrap().is_empty());
+        }
     }
 }

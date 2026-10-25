@@ -3,6 +3,7 @@ import { listen } from '@tauri-apps/api/event';
 import { useAuth } from '@/hooks/use-auth';
 import { RECEIVED_FILES_EVENT, receivedFilesApi } from '@/lib/tauri-api';
 import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
+import { errorKind } from '@/mobile/lib/error-kind';
 import { createReceivedQueue, createSerialDrain } from '@/mobile/lib/received-queue';
 
 /** Only the iOS shell registers the received-files commands (`#[cfg(mobile)]` in Rust). */
@@ -56,7 +57,8 @@ export function ReceivedFileHost({
       try {
         paths = await receivedFilesApi.take();
       } catch (error) {
-        console.warn('[received files] the shared files could not be read', error);
+        // The kind only: the error's text can carry an Inbox path with the statement's name
+        console.warn(`[received files] the shared files could not be read: ${errorKind(error)}`);
       }
       // A failed take answers with nothing: no file is on its way any more
       queue.offer(paths);

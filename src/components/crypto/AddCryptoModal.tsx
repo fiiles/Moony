@@ -3,7 +3,7 @@ import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Loader2, Search } from 'lucide-react';
@@ -12,7 +12,6 @@ import { cryptoApi, priceApi, type CryptoSearchResult } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { toPlainDecimal } from '@/utils/plain-decimal';
-import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { currencyCodeSchema, type CurrencyCode } from '@shared/currencies';
 import {
   Dialog,
@@ -34,7 +33,8 @@ import {
 import { Input, InputWrap } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
-import { AssetLogo } from '@/components/common/AssetLogo';
+import { CryptoSearchList } from '@/components/crypto/CryptoSearchList';
+import { useCryptoSearch } from '@/hooks/use-crypto-search';
 
 const formSchema = z.object({
   name: z.string().min(1, 'validation.nameRequired'),
@@ -46,11 +46,6 @@ const formSchema = z.object({
   date: z.string().optional(),
 });
 
-/** Pause after the last keystroke before the Yahoo Finance search starts. */
-const SEARCH_DEBOUNCE_MS = 400;
-const MIN_AUTO_SEARCH_CHARS = 2;
-const SEARCH_STALE_MS = 5 * 60 * 1000;
-
 interface AddCryptoModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -59,8 +54,8 @@ interface AddCryptoModalProps {
 /**
  * "Přidat kryptoměnu" (design system §6 Modal, prototype crypto.html): typing
  * a coin name shows Yahoo Finance suggestions inline (name and ticker); picking
- * one fills the ticker and the Yahoo symbol, then quantity, rate and date. The
- * first purchase becomes the position's first transaction.
+ * one fills the ticker and the Yahoo symbol (editing the ticker by hand drops the symbol),
+ * then quantity, rate and date. The first purchase becomes the position's first transaction.
  */
 export function AddCryptoModal({ open, onOpenChange }: AddCryptoModalProps) {
   const { t } = useTranslation('crypto');
@@ -83,25 +78,13 @@ export function AddCryptoModal({ open, onOpenChange }: AddCryptoModalProps) {
   });
 
   const [typedQuery, setTypedQuery] = useState('');
-  const debouncedQuery = useDebouncedValue(typedQuery, SEARCH_DEBOUNCE_MS);
   const [forcedQuery, setForcedQuery] = useState<string | null>(null);
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
-  const queryText = (forcedQuery ?? typedQuery).trim();
-  const minChars = forcedQuery === null ? MIN_AUTO_SEARCH_CHARS : 1;
-  const showSuggestions = open && suggestionsOpen && queryText.length >= minChars;
-  const typingPending = forcedQuery === null && debouncedQuery !== typedQuery;
-
-  const {
-    data: results = [],
-    isFetching: searching,
-    isError: searchFailed,
-  } = useQuery<CryptoSearchResult[]>({
-    queryKey: ['crypto-search', queryText],
-    queryFn: () => priceApi.searchCrypto(queryText),
-    enabled: showSuggestions && !typingPending,
-    staleTime: SEARCH_STALE_MS,
+  const search = useCryptoSearch({
+    typed: typedQuery,
+    forced: forcedQuery,
+    enabled: open && suggestionsOpen,
   });
-  const waiting = typingPending || searching;
 
   const handleTyping = (value: string) => {
     setTypedQuery(value);
@@ -226,16 +209,14 @@ export function AddCryptoModal({ open, onOpenChange }: AddCryptoModalProps) {
                         aria-label={t('modal.add.search')}
                         title={t('modal.add.search')}
                       >
-                        {waiting && showSuggestions ? (
+                        {search.waiting && search.show ? (
                           <Loader2 className="animate-spin" />
                         ) : (
                           <Search />
                         )}
                       </Button>
                     </div>
-                    {!showSuggestions && (
-                      <FormDescription>{t('modal.add.searchHint')}</FormDescription>
-                    )}
+                    {!search.show && <FormDescription>{t('modal.add.searchHint')}</FormDescription>}
                     <FormMessage />
                   </FormItem>
                 )}
@@ -252,6 +233,11 @@ export function AddCryptoModal({ open, onOpenChange }: AddCryptoModalProps) {
                         autoComplete="off"
                         className="uppercase"
                         {...field}
+                        onChange={(e) => {
+                          field.onChange(e);
+                          // A hand-edited ticker is no longer the picked listing's
+                          form.setValue('yahooSymbol', '');
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -260,41 +246,7 @@ export function AddCryptoModal({ open, onOpenChange }: AddCryptoModalProps) {
               />
             </div>
 
-            {showSuggestions && (
-              <div
-                className="overflow-hidden rounded-r3 border border-line-strong bg-paper shadow-pop"
-                aria-live="polite"
-              >
-                {waiting && results.length === 0 ? (
-                  <p className="flex items-center gap-2 px-3 py-2.5 text-table text-ink-3">
-                    <Loader2 className="size-3.5 animate-spin" />
-                    {t('modal.add.searching')}
-                  </p>
-                ) : searchFailed ? (
-                  <p className="px-3 py-2.5 text-table text-loss">{t('modal.add.searchError')}</p>
-                ) : results.length === 0 ? (
-                  <p className="px-3 py-2.5 text-table text-ink-3">{t('modal.add.noResults')}</p>
-                ) : (
-                  <ul className="m-0 max-h-56 list-none overflow-y-auto p-1">
-                    {results.map((result) => (
-                      <li key={result.symbol}>
-                        <button
-                          type="button"
-                          onClick={() => selectCoin(result)}
-                          className="flex w-full items-center gap-2.5 rounded-r1 px-2.5 py-2 text-left text-table text-ink transition-colors duration-fast hover:bg-well focus-visible:bg-well focus-visible:outline-none"
-                        >
-                          <AssetLogo ticker={result.ticker} type="crypto" variant="soft" />
-                          <span className="min-w-0 flex-1 truncate">
-                            <b className="font-650">{result.name}</b>{' '}
-                            <span className="text-ink-4">{result.ticker}</span>
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
+            {search.show && <CryptoSearchList search={search} onPick={selectCoin} />}
 
             <div className="grid grid-cols-2 gap-3">
               <FormField

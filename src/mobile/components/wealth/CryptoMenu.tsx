@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Ellipsis, Pencil, Trash2 } from 'lucide-react';
+import { Ellipsis, Pencil, Search, Trash2 } from 'lucide-react';
 import type { CryptoRow } from '@/utils/positions';
 import {
   DropdownMenu,
@@ -9,6 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { UpdateCryptoPriceModal } from '@/components/crypto/UpdateCryptoPriceModal';
+import { CryptoSymbolDialog } from '@/components/crypto/CryptoSymbolDialog';
 import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
 import { useDeleteCrypto } from '@/mobile/hooks/use-crypto';
 import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
@@ -16,7 +17,7 @@ import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 
 /**
- * The `···` of a coin (spec §8.8): Upravit cenu opens the desktop's rate dialog, Smazat pozici
+ * The `···` of a coin (spec §8.8): Upravit cenu opens the desktop's rate dialog, Zdroj kurzu its listing picker, Smazat pozici
  * asks in a confirm sheet and, once the coin is gone and the sheet's history entry with it, tells
  * the page to leave (`onDeleted`). There is no rename, dividend or follow for a coin, so these are
  * all. Each item is wired here with its dialog, so the page only places the button.
@@ -33,6 +34,7 @@ export function CryptoMenu({
   const { t: tc } = useTranslation('common');
   const remove = useDeleteCrypto(holding.id);
   const [priceOpen, setPriceOpen] = useState(false);
+  const [symbolOpen, setSymbolOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
@@ -48,6 +50,10 @@ export function CryptoMenu({
             <Pencil strokeWidth={1.75} aria-hidden />
             {t('detail.menu.editPrice')}
           </RowMenuItem>
+          <RowMenuItem onSelect={() => setSymbolOpen(true)}>
+            <Search strokeWidth={1.75} aria-hidden />
+            {t('detail.menu.changeSymbol')}
+          </RowMenuItem>
           <DropdownMenuSeparator />
           <RowMenuItem variant="danger" onSelect={() => setDeleteOpen(true)}>
             <Trash2 strokeWidth={1.75} aria-hidden />
@@ -57,6 +63,7 @@ export function CryptoMenu({
       </DropdownMenu>
 
       <UpdateCryptoPriceModal open={priceOpen} onOpenChange={setPriceOpen} investment={holding} />
+      <CryptoSymbolDialog open={symbolOpen} onOpenChange={setSymbolOpen} investment={holding} />
       <ConfirmSheet
         open={deleteOpen}
         onOpenChange={setDeleteOpen}

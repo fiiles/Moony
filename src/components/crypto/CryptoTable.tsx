@@ -56,6 +56,7 @@ interface CryptoTableProps {
   onBuy: (holding: CryptoTableRow) => void;
   onSell: (holding: CryptoTableRow) => void;
   onUpdatePrice: (holding: CryptoTableRow) => void;
+  onChangeSymbol: (holding: CryptoTableRow) => void;
   onDelete: (holding: CryptoTableRow) => void;
   isLoading?: boolean;
 }
@@ -74,6 +75,7 @@ export function CryptoTable({
   onBuy,
   onSell,
   onUpdatePrice,
+  onChangeSymbol,
   onDelete,
   isLoading,
 }: CryptoTableProps) {
@@ -342,6 +344,10 @@ export function CryptoTable({
                           <DropdownMenuItem onSelect={() => onUpdatePrice(h)}>
                             <Pencil />
                             {t('actions.updatePrice')}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => onChangeSymbol(h)}>
+                            <Search />
+                            {t('actions.changeSymbol')}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem variant="danger" onSelect={() => onDelete(h)}>

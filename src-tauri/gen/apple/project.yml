@@ -30,6 +30,10 @@ targets:
     sources:
       - path: Sources
       - path: Assets.xcassets
+      # <lang>.lproj/InfoPlist.strings: the Face ID and camera permission texts in the ten app
+      # languages (the xcodegen folder name of Simplified Chinese is zh-Hans). Their English
+      # fallback is src-tauri/Info.ios.plist.
+      - path: Localizations
       # Exclude built static libs: regenerating with xcodegen after a build
       # otherwise turns the per-configuration libapp.a copies into colliding
       # resources ("Multiple commands produce …/libapp.a"). They are linked
@@ -47,10 +51,10 @@ targets:
         LSRequiresIPhoneOS: true
         UILaunchStoryboardName: LaunchScreen
         UIRequiredDeviceCapabilities: [arm64, metal]
+        # iPhone: portrait only — the phone shell lays out for the top and bottom safe areas, not
+        # for landscape's side notch areas. The iPad keeps every orientation (multitasking).
         UISupportedInterfaceOrientations:
           - UIInterfaceOrientationPortrait
-          - UIInterfaceOrientationLandscapeLeft
-          - UIInterfaceOrientationLandscapeRight
         UISupportedInterfaceOrientations~ipad:
           - UIInterfaceOrientationPortrait
           - UIInterfaceOrientationPortraitUpsideDown

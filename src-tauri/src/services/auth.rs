@@ -423,11 +423,13 @@ pub fn confirm_change_password(
     // Decrypt master key with current password
     let master_key = crypto::decrypt_master_key_with_password(current_password, &salt, &key_path)?;
 
+    // The new recovery key first: each file is replaced atomically, the pair is not. Stopping
+    // between the two writes then leaves the old password and the new recovery key — the one the
+    // person just saved — rather than a saved key that opens nothing.
+    crypto::store_recovery_encrypted_key(&master_key, new_recovery_key, &salt, &recovery_path)?;
+
     // Re-encrypt master key with new password
     crypto::store_password_encrypted_key(&master_key, new_password, &salt, &key_path)?;
-
-    // Re-encrypt master key with new recovery key
-    crypto::store_recovery_encrypted_key(&master_key, new_recovery_key, &salt, &recovery_path)?;
 
     Ok(())
 }
@@ -488,11 +490,12 @@ pub fn confirm_recover(
         &recovery_path,
     )?);
 
+    // The new recovery key first, as in a password change: stopping between the two writes
+    // leaves the new recovery key the person just saved working.
+    crypto::store_recovery_encrypted_key(&master_key, new_recovery_key, &salt, &recovery_path)?;
+
     // Re-encrypt master key with new password
     crypto::store_password_encrypted_key(&master_key, new_password, &salt, &key_path)?;
-
-    // Re-encrypt master key with new recovery key
-    crypto::store_recovery_encrypted_key(&master_key, new_recovery_key, &salt, &recovery_path)?;
 
     // Open the database with the master key, as every unlock does
     unlock_with_master_key(db, session, db_path, &master_key)
@@ -1008,6 +1011,124 @@ mod tests {
             )
             .unwrap_err(),
             "auth.invalidRecoveryKey",
+        );
+    }
+
+    /// A password change that stops between its two key-file writes (a crash, a dead battery, the
+    /// system killing the app) must leave the recovery key the person was just shown working:
+    /// the new recovery key is written first, so a failed password write leaves the old password
+    /// and the new recovery key, never a saved key that opens nothing.
+    #[test]
+    fn change_password_writes_the_new_recovery_key_before_the_password() {
+        let dir = tempdir().expect("tempdir");
+        let db_path = write_key_files(dir.path(), "old-password");
+        let key_path = dir.path().join("key.enc");
+        let recovery_path = dir.path().join("recovery.enc");
+        // The password write fails: a folder takes its staging path.
+        fs::create_dir(crypto::staging_path(&key_path)).unwrap();
+        let new_key = "WXYZ-STUV-NPQR-JKLM-EFGH-ABCD";
+
+        assert!(
+            confirm_change_password(&db_path, "old-password", "new-password", new_key).is_err()
+        );
+
+        let salt = crypto::read_salt(&dir.path().join("salt")).unwrap();
+        assert!(crypto::decrypt_master_key_with_recovery(new_key, &salt, &recovery_path).is_ok());
+        assert!(crypto::decrypt_master_key_with_password("old-password", &salt, &key_path).is_ok());
+    }
+
+    /// The same order for a recovery: when the password write fails, the new recovery key the
+    /// person was just shown opens the profile (the old password, forgotten, is still the one in
+    /// `key.enc`).
+    #[test]
+    fn recover_writes_the_new_recovery_key_before_the_password() {
+        let dir = tempdir().expect("tempdir");
+        let db_path = write_key_files(dir.path(), "old-password");
+        let key_path = dir.path().join("key.enc");
+        let recovery_path = dir.path().join("recovery.enc");
+        fs::create_dir(crypto::staging_path(&key_path)).unwrap();
+        let new_key = "WXYZ-STUV-NPQR-JKLM-EFGH-ABCD";
+
+        assert!(confirm_recover(
+            &Database::new(),
+            &SessionKey::default(),
+            db_path,
+            RECOVERY_KEY,
+            "new-password",
+            new_key,
+        )
+        .is_err());
+
+        let salt = crypto::read_salt(&dir.path().join("salt")).unwrap();
+        assert!(crypto::decrypt_master_key_with_recovery(new_key, &salt, &recovery_path).is_ok());
+        assert!(crypto::decrypt_master_key_with_password("old-password", &salt, &key_path).is_ok());
+    }
+
+    /// The phone's password change while biometric unlock is on (ruling 14): the change re-wraps
+    /// the same master key, so the copy biometric unlock stored in the keychain still opens the
+    /// profile and nothing needs re-enrolling. The new password opens it, the old one is refused,
+    /// the old recovery key no longer opens it and the new one does; the marker is left alone and
+    /// nothing is written beside the key files.
+    #[test]
+    fn change_password_keeps_the_master_key_biometric_unlock_holds() {
+        let dir = tempdir().expect("tempdir");
+        let db_path = write_key_files(dir.path(), "old-password");
+        let salt = crypto::read_salt(&dir.path().join("salt")).unwrap();
+        let key_path = dir.path().join("key.enc");
+        let recovery_path = dir.path().join("recovery.enc");
+        // What biometric unlock stored when it was switched on: the session's master key.
+        let stored =
+            crypto::decrypt_master_key_with_password("old-password", &salt, &key_path).unwrap();
+        biometric_unlock::write_marker(dir.path(), true).unwrap();
+
+        let new_recovery_key = prepare_change_password(&db_path, "old-password").unwrap();
+        confirm_change_password(&db_path, "old-password", "new-password", &new_recovery_key)
+            .unwrap();
+
+        // The new password unwraps the very key biometric unlock holds.
+        assert_eq!(
+            crypto::decrypt_master_key_with_password("new-password", &salt, &key_path).unwrap(),
+            stored
+        );
+        unlock_with(&db_path, "new-password", open_with(stored)).unwrap();
+        // The old password is refused, before and after the key step alike.
+        assert_auth_key(
+            prepare_change_password(&db_path, "old-password").unwrap_err(),
+            "auth.wrongPassword",
+        );
+        assert_auth_key(
+            unlock_with(&db_path, "old-password", open_with(stored)).unwrap_err(),
+            "auth.wrongPassword",
+        );
+        // The old recovery key no longer opens the profile; the new one opens the same key.
+        assert_auth_key(
+            crypto::decrypt_master_key_with_recovery(RECOVERY_KEY, &salt, &recovery_path)
+                .unwrap_err(),
+            "auth.invalidRecoveryKey",
+        );
+        assert_eq!(
+            crypto::decrypt_master_key_with_recovery(&new_recovery_key, &salt, &recovery_path)
+                .unwrap(),
+            stored
+        );
+        // Biometric unlock stays on, and the change wrote nothing but the two key files.
+        assert_eq!(
+            biometric_unlock::read_marker(dir.path()),
+            biometric_unlock::Marker::Enabled
+        );
+        let mut files: Vec<String> = fs::read_dir(dir.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        files.sort();
+        assert_eq!(
+            files,
+            [
+                biometric_unlock::MARKER_FILE,
+                "key.enc",
+                "recovery.enc",
+                "salt"
+            ]
         );
     }
 

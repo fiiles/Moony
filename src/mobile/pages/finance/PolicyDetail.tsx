@@ -18,7 +18,7 @@ import { PolicyLimits } from '@/mobile/components/policy/PolicyLimits';
 import { PolicyMenu } from '@/mobile/components/policy/PolicyMenu';
 import { PolicyPremiums } from '@/mobile/components/policy/PolicyPremiums';
 import { SectionHead } from '@/mobile/components/SectionHead';
-import { useBack } from '@/mobile/hooks/use-back';
+import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { useRetained } from '@/mobile/hooks/use-retained';
 import { policyFacts } from '@/mobile/lib/policy-detail';
@@ -53,6 +53,8 @@ function PolicyDetailPage({ id }: { id: string | undefined }) {
   const { t } = useTranslation('mobile');
   const { t: ti } = useTranslation('insurance');
   const back = useBack(routes.finance);
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
+  const backText = useBackLabel(t('tabs.finance'));
   const { user } = useAuth();
   const { rows, isLoading, today } = useInsurance();
   // Until the quotes load a null conversion would read as a missing rate: the limits' ranking and
@@ -95,7 +97,7 @@ function PolicyDetailPage({ id }: { id: string | undefined }) {
   return (
     <Screen
       title={policy?.policyName ?? ''}
-      leading={<NavTextButton label={t('tabs.finance')} onClick={back} chevron />}
+      leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
         row && (
           <PolicyMenu
@@ -190,7 +192,7 @@ function PolicyBody({ row, property, noticeDays, today, onEdit }: PolicyBodyProp
           {rest}
         </span>
       </p>
-      <PolicyFacts facts={facts} today={today} />
+      <PolicyFacts facts={facts} today={today} from={policy.policyName} />
       <Button
         variant="secondary"
         className="mb-3.5 h-auto min-h-12 w-full whitespace-normal py-2 text-center rounded-[10px] text-m-row [&_svg]:size-4"

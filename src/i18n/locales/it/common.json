@@ -221,6 +221,8 @@
     "csvEmptyFile": "Il file è vuoto o non ha una riga di intestazione.",
     "csvColumnsNotFound": "Le colonne selezionate non sono state trovate nel file. Controlla la riga di intestazione e l'associazione delle colonne.",
     "csvDecimalSeparatorInvalid": "Il separatore decimale deve essere una virgola o un punto.",
+    "learnedFormatHeaderless": "Questa riga sembra contenere dati, non intestazioni di colonna.",
+    "learnedFormatColumns": "Il formato fa riferimento a una colonna che il file non ha.",
     "amountPositive": "L'importo deve essere positivo",
     "cashflowPeriodInvalid": "Il periodo non può finire prima di iniziare.",
     "balanceAnchorIncomplete": "Inserisci sia il debito residuo sia la sua data",

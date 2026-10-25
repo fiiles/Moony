@@ -12,6 +12,8 @@ interface RestoreBackupSheetProps {
   onOpenChange: (open: boolean) => void;
   onConfirm: () => void;
   isPending?: boolean;
+  /** The first run: there is no profile to replace yet, so the desktop wizard's question and sentence. */
+  fresh?: boolean;
 }
 
 /**
@@ -19,15 +21,17 @@ interface RestoreBackupSheetProps {
  * restore, with what the archive holds — its date, the Moony version that made it, the attachments
  * and the size. The sentence is the phone's own (`backup.restoreConfirmDescription`): the desktop's
  * promises a "pre-restore" folder with the old data, which the phone gives nobody access to, so it
- * says to back up first. An archive from a newer Moony says so in `text-loss` and cannot be
- * restored. The caller closes the sheet when the restore has succeeded; while it runs nothing
- * leaves the sheet.
+ * says to back up first. In the first run (`fresh`) nothing is replaced: the question is the desktop
+ * wizard's "Obnovit tuto zálohu?" with its sentence, and the button is not destructive. An archive
+ * from a newer Moony says so in `text-loss` and cannot be restored. The caller closes the sheet when
+ * the restore has succeeded; while it runs nothing leaves the sheet.
  */
 export function RestoreBackupSheet({
   inspection,
   onOpenChange,
   onConfirm,
   isPending = false,
+  fresh = false,
 }: RestoreBackupSheetProps) {
   const { t } = useTranslation('settings');
   const { t: tc } = useTranslation('common');
@@ -35,6 +39,14 @@ export function RestoreBackupSheet({
   const fmt = useFormat();
   // The sheet keeps what it showed while it slides away
   const shown = useRetained(inspection);
+  const details = shown
+    ? {
+        date: fmt.dateTime(shown.manifest.createdAt),
+        version: shown.manifest.appVersion,
+        attachments: shown.attachmentCount,
+        size: formatBytes(shown.archiveBytes, fmt.locale),
+      }
+    : null;
 
   return (
     <Sheet
@@ -43,15 +55,12 @@ export function RestoreBackupSheet({
         if (!next && isPending) return;
         onOpenChange(next);
       }}
-      title={t('data.restoreConfirmTitle')}
+      title={fresh ? t('data.restoreFreshTitle') : t('data.restoreConfirmTitle')}
       description={
-        shown
-          ? tm('backup.restoreConfirmDescription', {
-              date: fmt.dateTime(shown.manifest.createdAt),
-              version: shown.manifest.appVersion,
-              attachments: shown.attachmentCount,
-              size: formatBytes(shown.archiveBytes, fmt.locale),
-            })
+        details
+          ? fresh
+            ? t('data.restoreFreshDescription', details)
+            : tm('backup.restoreConfirmDescription', details)
           : undefined
       }
       footer={
@@ -65,7 +74,7 @@ export function RestoreBackupSheet({
             {tc('buttons.cancel')}
           </Button>
           <Button
-            variant="destructive"
+            variant={fresh ? 'default' : 'destructive'}
             className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
             loading={isPending}
             disabled={isPending || shown?.newerThanApp}

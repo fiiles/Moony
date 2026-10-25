@@ -7,6 +7,7 @@ import { exchangeName } from '@/utils/exchange-names';
 import { formatMarketCap, percentFromFraction } from '@/utils/stock-monitor';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
+import { backState } from '@/mobile/lib/back-label';
 import { priceOf, watchPriceText } from '@/mobile/lib/watch-detail';
 import { positionPath } from '@/mobile/shell/routes';
 
@@ -14,7 +15,8 @@ import { positionPath } from '@/mobile/shell/routes';
  * "Klíčové údaje" of a watched stock (spec §8.8): the section head and a key-value card (`.m-kvcard`, the company
  * card's look) with the exchange, the currency, the market cap, the P/E, the dividend yield and
  * the 52-week range, rows without a figure left out as the company card does. When the stock is
- * also held, the last row — "V portfoliu" — opens the position. The 52-week low and high are
+ * also held, the last row — "V portfoliu" — opens the position, whose back button then names the
+ * ticker (back returns here, not to Akcie). The 52-week low and high are
  * Yahoo's public prices like the hero's, so they stay visible while amounts are hidden (ruling
  * P1); the range is stacked because two prices with their currency do not fit a third of a narrow
  * phone in German.
@@ -76,7 +78,7 @@ export function WatchKeyData({ detail }: { detail: StockMonitorDetail }) {
             label={tm('table.held')}
             value={t('wealth.watch.openPosition')}
             ariaLabel={`${tm('table.held')}, ${tm('actions.openInPortfolio')}`}
-            onClick={() => setLocation(positionPath(heldId))}
+            onClick={() => setLocation(positionPath(heldId), { state: backState(detail.ticker) })}
           />
         )}
       </div>

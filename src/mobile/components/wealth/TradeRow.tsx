@@ -9,7 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
 import { Money } from '@/mobile/components/Money';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';

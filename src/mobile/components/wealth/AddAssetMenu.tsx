@@ -8,10 +8,10 @@ import { BondsFormDialog } from '@/components/bonds/BondsFormDialog';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { useBondMutations } from '@/hooks/use-bond-mutations';
 import { OtherAssetAddSheet } from '@/mobile/sheets/OtherAssetAddSheet';
 
@@ -65,14 +65,10 @@ export function AddAssetMenu({ trigger, open, onOpenChange }: AddAssetMenuProps)
         <DropdownMenuContent align="end" className="min-w-[220px]">
           <DropdownMenuLabel>{t('wealth.add.label')}</DropdownMenuLabel>
           {ITEMS.map(({ kind: itemKind, icon: Icon }) => (
-            <DropdownMenuItem
-              key={itemKind}
-              className="min-h-11 text-m-body [&_svg]:size-[18px]"
-              onSelect={() => setKind(itemKind)}
-            >
+            <RowMenuItem key={itemKind} onSelect={() => setKind(itemKind)}>
               <Icon strokeWidth={1.75} aria-hidden />
               {t(`wealth.add.${itemKind}`)}
-            </DropdownMenuItem>
+            </RowMenuItem>
           ))}
         </DropdownMenuContent>
       </DropdownMenu>

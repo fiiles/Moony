@@ -5,9 +5,6 @@
     "cashflow": "Kontantstrøm",
     "wealth": "Formue"
   },
-  "shell": {
-    "placeholder": "Denne skjermen er fortsatt under arbeid."
-  },
   "lock": {
     "caption": "AES-256 · kryptert på denne telefonen",
     "keySaved": "Jeg har lagret nøkkelen trygt utenfor denne telefonen",
@@ -59,12 +56,11 @@
       "done": "Ferdig"
     },
     "picker": {
-      "title": "Kategori",
-      "change": "Endre kategori",
-      "current": "Gjeldende kategori"
+      "change": "Endre kategori"
     },
     "limitSheet": {
-      "pick": "Velg kategorien du vil følge opp utgiftene i."
+      "pick": "Velg kategorien du vil følge opp utgiftene i.",
+      "current": "Nåværende grense: {{amount}}"
     },
     "budgets": {
       "ended": "avsluttet",
@@ -418,6 +414,7 @@
       "caption": "Tre transaksjoner fra filen, slik jeg leser dem:",
       "captionFew": "Transaksjoner fra filen, slik jeg leser dem:",
       "unknownFormat": "formatet er ikke kjent ennå",
+      "learnedFormat": "etter det lagrede formatet {{name}}",
       "tab": "tabulator",
       "previewFailed": "Eksempelradene kunne ikke lastes akkurat nå. Kolonnene under gjelder likevel.",
       "looksRight": "Ser riktig ut",
@@ -464,6 +461,11 @@
       "sampleHint": "Velg en kolonne, så viser jeg hvordan jeg ville lest transaksjonen.",
       "pair": "kolonnepar"
     },
+    "learned": {
+      "note": "Gjenkjent fra det lagrede formatet {{name}}",
+      "change": "Endre",
+      "remembered": "Jeg har husket formatet: Neste gang leser jeg denne filen uten spørsmål."
+    },
     "preview": {
       "hint": "Trykk på en betaling for å velge kategori.",
       "more_one": "og {{count}} til",
@@ -488,9 +490,6 @@
     }
   },
   "wealth": {
-    "placeholder": {
-      "classPage": "Foreløpig finnes denne siden bare i Moony på datamaskinen."
-    },
     "subtitle": "Investeringer, eiendom og kontanter",
     "sections": {
       "investments": "Investeringer",
@@ -532,7 +531,7 @@
     },
     "add": {
       "label": "Legg til",
-      "investment": "Investering",
+      "investment": "Aksje eller ETF",
       "crypto": "Kryptovaluta",
       "bond": "Obligasjon",
       "property": "Eiendom",
@@ -649,9 +648,17 @@
       "hideOnLaunchHint": "Hver oppstart begynner med skjulte beløp; øyet i Oversikt viser dem igjen.",
       "hideOnLaunchShort": "beløp skjult ved oppstart"
     },
+    "password": {
+      "title": "Endre passord",
+      "rowSub": "Du får en ny gjenopprettingsnøkkel",
+      "confirmHint": "Passordet endres først når du trykker på Endre passord. Til da gjelder det nåværende passordet og nøkkelen.",
+      "backupsKeepOld": "Sikkerhetskopier tatt før endringen åpnes fortsatt med det gamle passordet.",
+      "biometricsStay": "Opplåsing med {{methodKey}} forblir på.",
+      "fileTitle": "Moony-gjenopprettingsnøkkel – ny fra {{date}}",
+      "fileNote": "Gjelder først når passordendringen er fullført. Hvis du ikke fullførte endringen, gjelder den forrige nøkkelen fortsatt."
+    },
     "profile": {
-      "lead": "Navnet ditt vises i hilsenen i Oversikt.",
-      "currencyReadOnly": "Hovedvaluta endrer du i Moony på datamaskinen."
+      "lead": "Navnet ditt vises i hilsenen i Oversikt."
     },
     "language": {
       "title": "Appspråk",
@@ -659,6 +666,31 @@
     },
     "appearance": {
       "lead": "System følger telefonens lyse eller mørke utseende."
+    },
+    "import": {
+      "lead": "Kontoutskrifter: formatene jeg har lært, og veiledninger for eksport.",
+      "formats": "Lærte formater",
+      "empty": "Når du bekrefter hvordan jeg leser en ukjent fil, husker jeg formatet og leser den uten spørsmål neste gang.",
+      "sub": "{{account}} · sist brukt {{lastUsed}}",
+      "subNoAccount": "sist brukt {{lastUsed}}",
+      "shadowed": "banken har et innebygd format",
+      "guides": "Eksportveiledninger",
+      "guidesRow": "Slik får du en kontoutskrift fra banken",
+      "renamed": "Formatet er omdøpt",
+      "deleted": "Formatet er slettet",
+      "format": {
+        "title": "Lært format",
+        "name": "Navn",
+        "account": "Konto",
+        "created": "Lært",
+        "lastUsed": "Sist brukt",
+        "columns": "Kolonner",
+        "shadowedNote": "Filer med dette kolonneoppsettet leses av bankens innebygde format; dette lærte formatet brukes ikke.",
+        "field": "{{field}}: {{column}}",
+        "delete": "Slett format",
+        "deleteTitle": "Slette formatet {{name}}?",
+        "deleteLead": "Neste fil i dette formatet går gjennom gjenkjenningen på nytt."
+      }
     },
     "delete": {
       "title": "Slette alle data?",

@@ -450,6 +450,17 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
 .m-note:is(a):active { background: var(--well-2); }
 .m-note svg { flex: none; width: 15px; height: 15px; color: var(--ink-3); stroke-width: 1.75; }
 
+/* A quiet note with one action at its end (the import preview of a CSV a learned format reads: "Rozpoznáno podle uloženého
+   formátu Fio banka" · "Změnit"). The text button is the 44 px target and sets the note's height: the note drops its
+   vertical padding (6 px on the button's side) and the text, which wraps, carries 8 px of its own. 12 / 600 `ink`, tokens only. */
+.m-note--act { padding-top: 0; padding-bottom: 0; padding-right: 6px; }
+.m-note__t { flex: 1; min-width: 0; padding: 8px 0; overflow-wrap: break-word; }
+.m-note__act {
+  flex: none; min-width: 44px; min-height: 44px; padding: 8px 10px; border: 0; border-radius: 10px; background: none;
+  color: var(--ink); font: inherit; font-size: var(--m-fs-sub); font-weight: 600;
+}
+.m-note__act:active { background: var(--well-2); }
+
 /* Box inside a sheet's form (the limit sheet): the scheduled changes on `well`, the limits a save
    replaces in `loss` (the desktop's alert). A bold 12 line, then one line per item. */
 .m-box {
@@ -479,6 +490,12 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
   color: var(--ink); font: inherit; font-weight: 600; -webkit-touch-callout: none;
 }
 .m-alert__act:active { color: var(--ink-3); }
+.m-alert__act:disabled { opacity: .45; pointer-events: none; }
+/* A bold title above the sentence (a pending split's "Split 10:1 k 10. 6. 2024"), and a decision of two text actions
+   side by side (the emphasised one first), wrapping under each other when they do not fit. */
+.m-alert__h { margin: 0; color: var(--ink); font-weight: 600; }
+.m-alert__acts { display: flex; flex-wrap: wrap; column-gap: 16px; margin: 2px 0 -10px; }
+.m-alert__acts .m-alert__act { margin: 0; text-align: left; }
 
 /* The live result of a sheet's form (the extra payment): a box on `well`, radius 13, the headline 20 / 650 and the
    sentence that explains it 12 / 500 `ink-3` under it. It wraps; it is the sheet's `aria-live` region. */

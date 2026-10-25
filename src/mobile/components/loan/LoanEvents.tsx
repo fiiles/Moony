@@ -6,7 +6,7 @@ import { useLoanEventMutations } from '@/hooks/use-loan-events';
 import { useFormat } from '@/lib/use-format';
 import { DateChip, DATE_CHIP_WIDTH } from '@/mobile/components/DateChip';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
-import { RowMenu, RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';

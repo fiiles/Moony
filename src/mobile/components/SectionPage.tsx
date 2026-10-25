@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useBack } from '@/mobile/hooks/use-back';
+import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -19,11 +19,13 @@ interface SectionPageProps {
 export function SectionPage({ title, lead, children }: SectionPageProps) {
   const { t: tc } = useTranslation('common');
   const back = useBack(routes.settings);
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
+  const backText = useBackLabel(tc('nav.settings'));
   return (
     <Screen
       title={title}
       tabBar={false}
-      leading={<NavTextButton label={tc('nav.settings')} onClick={back} chevron />}
+      leading={<NavTextButton label={backText} onClick={back} chevron />}
     >
       {lead && <p className="mx-0.5 mb-3.5 mt-1 text-m-lead text-ink-3">{lead}</p>}
       {children}

@@ -3,16 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { useRoute } from 'wouter';
 import { ArrowUp, Minus, Plus } from 'lucide-react';
 import { priceDecimals, recordCurrency } from '@shared/currencies';
-import type { AssetValuation, OtherAssetTransaction } from '@shared/schema';
+import type { AssetValuation, OtherAsset, OtherAssetTransaction } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
-import type { EventCluster } from '@/utils/chart-scale';
 import type { OtherAssetRow } from '@/utils/other-assets';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
 import { Button } from '@/components/ui/button';
-import { ChartLegend } from '@/components/charts/ChartLegend';
+import { ScaledChartLegend } from '@/mobile/components/Scaled';
 import { BuyOtherAssetModal } from '@/components/other-assets/BuyOtherAssetModal';
 import { SellOtherAssetModal } from '@/components/other-assets/SellOtherAssetModal';
-import { RevalueDialog } from '@/components/valuations/RevalueDialog';
 import { ButtonPair } from '@/mobile/components/ButtonPair';
 import { Hero } from '@/mobile/components/Hero';
 import { Money } from '@/mobile/components/Money';
@@ -21,24 +19,29 @@ import { ClassSkeleton } from '@/mobile/components/wealth/ClassSkeleton';
 import { OtherAssetMenu } from '@/mobile/components/wealth/OtherAssetMenu';
 import { PositionLedger } from '@/mobile/components/wealth/PositionLedger';
 import { useBack } from '@/mobile/hooks/use-back';
-import { useLeaveDeleted } from '@/mobile/hooks/use-leave-deleted';
+import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useOtherAsset, useOtherAssetMutations } from '@/mobile/hooks/use-other-asset';
 import { usePositionLedger } from '@/mobile/hooks/use-position-ledger';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
+import { useRetained } from '@/mobile/hooks/use-retained';
+import { useTradeEventTip } from '@/mobile/hooks/use-trade-event-tip';
 import { changeSinceDayOptions } from '@/mobile/lib/change';
 import { pointsChange, trendChangeBase } from '@/mobile/lib/class-trend';
 import { otherAssetTrace, trimTrace } from '@/mobile/lib/other-asset-trace';
-import {
-  nativeTotal,
-  positionEvents,
-  type LedgerTx,
-  type PositionEvent,
-} from '@/mobile/lib/position-series';
+import { positionEvents, type LedgerTx } from '@/mobile/lib/position-series';
 import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { otherAssetPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
+import { RevalueSheet } from '@/mobile/sheets/RevalueSheet';
+
+/** What the screen shows of a loaded asset: the record and the row derived from it. */
+interface AssetView {
+  asset: OtherAsset;
+  row: OtherAssetRow;
+}
 
 /** A quantity of an asset is held to eight decimals, as the desktop's transactions list writes it. */
 const QUANTITY_DIGITS = 8;
@@ -54,8 +57,13 @@ type AssetTrade = OtherAssetTransaction & LedgerTx;
  * Prodat with Přecenit full-width under them, three stats and the transactions with their segment.
  * There is no company card and no market feed: the price is the person's own estimate. The hero is
  * the asset's native value in its price currency (ADR 0012, ruling 6); the numbers are the
- * desktop's (`otherAssetRow`, the same queries); the buy, sell, edit, revalue and valuation-history
- * dialogs are the desktop's. A trade has no Upravit (there is no update command), only Smazat.
+ * desktop's (`otherAssetRow`, the same queries); the buy, sell, edit and valuation-history dialogs
+ * are the desktop's, Přecenit is the phone's own sheet (`RevalueSheet`, the property's too). A
+ * trade has no Upravit (there is no update command), only Smazat.
+ *
+ * The page owns the delete (its confirm sheet and the mutation, `useDeleteAndLeave`): the asset
+ * drops out of the list the page reads while the delete is still finishing, which would take the
+ * `···` menu away, and the page keeps showing the asset until it has left.
  */
 export default function OtherAssetDetail() {
   const { t: to } = useTranslation('otherAssets');
@@ -65,7 +73,9 @@ export default function OtherAssetDetail() {
   const [, params] = useRoute(routes.otherAssetDetail);
   const back = useBack(routes.otherAssetsList);
   const [period, setPeriod] = useRemembered<ChartPeriod>('otherAsset.period', '30D');
-  const [dialog, setDialog] = useState<'buy' | 'sell' | 'revalue' | null>(null);
+  const [dialog, setDialog] = useState<'buy' | 'sell' | null>(null);
+  const [revalueOpen, setRevalueOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const data = useOtherAsset(params?.id);
   const { asset, row } = data;
   const trades = useMemo<AssetTrade[]>(
@@ -73,67 +83,50 @@ export default function OtherAssetDetail() {
     [data.transactions, asset?.name]
   );
   const ledger = usePositionLedger(trades);
-  const { deleteTransaction } = useOtherAssetMutations(params?.id);
-  // The dialog resets its form whenever it is handed another object, so this one is rebuilt only
-  // when what it holds changes — not on every render of the page
-  const price = row?.price;
-  const quantity = row?.quantity;
-  const revalueAsset = useMemo(
-    () =>
-      asset === null || price === undefined || quantity === undefined
-        ? null
-        : {
-            id: asset.id,
-            name: asset.name,
-            currentValue: price,
-            // The estimate continues in the newest valuation's currency
-            currency: recordCurrency(asset.marketPriceCurrency),
-            unit: to('table.unit'),
-            quantity,
-          },
-    [asset, price, quantity, to]
+  const { deleteTransaction, remove } = useOtherAssetMutations(params?.id);
+  const current = useMemo<AssetView | null>(
+    () => (!data.isLoading && asset && row ? { asset, row } : null),
+    [data.isLoading, asset, row]
   );
-
-  // The asset is gone: back to Ostatní aktiva, its own queries dropped (see `useLeaveDeleted`)
-  const leaveDeleted = useLeaveDeleted(routes.otherAssetsList);
+  const kept = useRetained(current);
+  const exit = useDeleteAndLeave({
+    home: routes.otherAssetsList,
+    pathOf: otherAssetPath,
+    keysOf: (assetId) => [
+      ['other-asset-transactions', assetId],
+      ['other-asset-valuations', assetId],
+    ],
+    remove: () => remove.mutateAsync(),
+    closeSheet: () => setDeleteOpen(false),
+  });
+  // An asset being deleted stays on screen (as it was) until the screen has left
+  const view = exit.deleting ? kept : current;
 
   return (
     <Screen
-      title={asset?.name ?? ''}
+      title={view?.asset.name ?? ''}
       leading={<NavTextButton label={td('cards.otherAssets')} onClick={back} chevron />}
       trailing={
-        asset && (
+        view && (
           <OtherAssetMenu
-            asset={asset}
+            asset={view.asset}
             valuations={data.valuations}
-            onDeleted={() =>
-              leaveDeleted(otherAssetPath(asset.id), [
-                ['other-asset-transactions', asset.id],
-                ['other-asset-valuations', asset.id],
-              ])
-            }
+            onDelete={() => setDeleteOpen(true)}
           />
         )
       }
     >
-      {data.isLoading ? (
-        // The outline of a class page is the detail's too: the hero, the stats and a few rows
-        <ClassSkeleton />
-      ) : data.notFound || !asset || !row ? (
-        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">
-          {t('wealth.otherAssets.notFound')}
-        </p>
-      ) : (
+      {view ? (
         <>
           {/* The nav bar keeps its one title, so the quantity and the price currency are the first line */}
           <p className="mx-0.5 -mt-0.5 mb-2.5 truncate text-center text-m-caption text-ink-3">
             {[
-              `${fmt.number(row.quantity, { maximumFractionDigits: QUANTITY_DIGITS })} ${to('table.unit')}`,
-              row.priceCurrency,
+              `${fmt.number(view.row.quantity, { maximumFractionDigits: QUANTITY_DIGITS })} ${to('table.unit')}`,
+              view.row.priceCurrency,
             ].join(' · ')}
           </p>
           <AssetHero
-            row={row}
+            row={view.row}
             valuations={data.valuations}
             trades={trades}
             period={period}
@@ -147,18 +140,18 @@ export default function OtherAssetDetail() {
               label: to('actions.sell'),
               icon: Minus,
               onClick: () => setDialog('sell'),
-              disabled: row.quantity <= 0,
+              disabled: view.row.quantity <= 0,
             }}
           />
           <Button
             variant="secondary"
             className="mb-3.5 h-auto min-h-12 w-full whitespace-normal rounded-[10px] py-2 text-m-row [&_svg]:size-4"
-            onClick={() => setDialog('revalue')}
+            onClick={() => setRevalueOpen(true)}
           >
             <ArrowUp strokeWidth={1.75} aria-hidden />
             {to('actions.revalue')}
           </Button>
-          <AssetStats row={row} />
+          <AssetStats row={view.row} />
           <PositionLedger
             ledger={ledger}
             count={trades.length}
@@ -170,22 +163,44 @@ export default function OtherAssetDetail() {
             deleteTransaction={deleteTransaction}
           />
           <BuyOtherAssetModal
-            asset={asset}
+            asset={view.asset}
             open={dialog === 'buy'}
             onOpenChange={(open) => !open && setDialog(null)}
           />
           <SellOtherAssetModal
-            asset={asset}
+            asset={view.asset}
             open={dialog === 'sell'}
             onOpenChange={(open) => !open && setDialog(null)}
           />
-          <RevalueDialog
-            open={dialog === 'revalue'}
-            onOpenChange={(open) => !open && setDialog(null)}
+          <RevalueSheet
+            open={revalueOpen}
+            onOpenChange={setRevalueOpen}
             kind="otherAsset"
-            asset={revalueAsset}
+            assetId={view.asset.id}
+            name={view.asset.name}
+            value={view.row.price}
+            // The estimate continues in the newest valuation's currency
+            currency={recordCurrency(view.asset.marketPriceCurrency)}
+            unit={to('table.unit')}
+            quantity={view.row.quantity}
+          />
+          <ConfirmSheet
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            title={to('confirmDelete.title')}
+            description={to('confirmDelete.description', { name: view.asset.name })}
+            confirmLabel={to('actions.delete')}
+            isPending={remove.isPending}
+            onConfirm={() => exit.run(view.asset.id)}
           />
         </>
+      ) : data.isLoading ? (
+        // The outline of a class page is the detail's too: the hero, the stats and a few rows
+        <ClassSkeleton />
+      ) : (
+        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">
+          {t('wealth.otherAssets.notFound')}
+        </p>
       )}
     </Screen>
   );
@@ -245,30 +260,7 @@ function AssetHero({
       positionEvents(trades).filter((event) => periodStart === undefined || event.t >= periodStart),
     [trades, periodStart]
   );
-  const eventTip = (cluster: EventCluster<PositionEvent<AssetTrade>>) => {
-    if (cluster.events.length > 1) {
-      const first = cluster.events[0].t;
-      const last = cluster.events[cluster.events.length - 1].t;
-      return {
-        title: ts('detail.events.cluster', { count: cluster.events.length }),
-        lines: [`${fmt.day(first)} – ${fmt.day(last)}`],
-      };
-    }
-    const { tx } = cluster.events[0];
-    const unitPrice = parseFloat(tx.pricePerUnit) || 0;
-    const txCurrency = tx.currency || priceCurrency;
-    return {
-      title: ts(tx.type === 'sell' ? 'detail.events.sell' : 'detail.events.buy', {
-        quantity: `${fmt.number(parseFloat(tx.quantity) || 0, { maximumFractionDigits: QUANTITY_DIGITS })} ${to('table.unit')}`,
-        price: moneyText(unitPrice, txCurrency, { decimals: priceDecimals(unitPrice, txCurrency) }),
-      }),
-      lines: [
-        `${fmt.day(tx.transactionDate)} · ${ts('detail.events.total', {
-          amount: moneyText(nativeTotal(tx), txCurrency),
-        })}`,
-      ],
-    };
-  };
+  const eventTip = useTradeEventTip<AssetTrade>(to('table.unit'), QUANTITY_DIGITS, priceCurrency);
 
   const label = t('wealth.position.heroLabel', {
     quantity: fmt.number(quantity, { maximumFractionDigits: QUANTITY_DIGITS }),
@@ -310,7 +302,7 @@ function AssetHero({
       chartLabel={label}
     >
       {points.length > 1 && (
-        <ChartLegend
+        <ScaledChartLegend
           items={[
             { label: ts('detail.legend.value'), swatch: { kind: 'line' } },
             { label: ts('detail.legend.buy'), swatch: { kind: 'event', type: 'buy' } },

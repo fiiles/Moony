@@ -6,15 +6,12 @@ import { useLoanMutations } from '@/hooks/use-loan-mutations';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { LoanFormDialog } from '@/components/loans/LoanFormDialog';
 import { NavIconButton } from '@/mobile/shell/NavBar';
-
-/** The classes of a menu item on the phone: 44 pt tall, body type, 18 pt icons. */
-const MENU_ITEM = 'min-h-11 text-m-body [&_svg]:size-[18px]';
 
 interface LoanMenuProps {
   loan: Loan;
@@ -52,23 +49,23 @@ export function LoanMenu({ loan, onOpenEvent, onDelete }: LoanMenuProps) {
           </NavIconButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[240px]">
-          <DropdownMenuItem className={MENU_ITEM} onSelect={() => setEditOpen(true)}>
+          <RowMenuItem onSelect={() => setEditOpen(true)}>
             <Pencil strokeWidth={1.75} aria-hidden />
             {tl('actions.edit')}
-          </DropdownMenuItem>
-          <DropdownMenuItem className={MENU_ITEM} onSelect={() => onOpenEvent('balance_check')}>
+          </RowMenuItem>
+          <RowMenuItem onSelect={() => onOpenEvent('balance_check')}>
             <Scale strokeWidth={1.75} aria-hidden />
             {tl('actions.balanceCheck')}
-          </DropdownMenuItem>
-          <DropdownMenuItem className={MENU_ITEM} onSelect={() => onOpenEvent('rate_change')}>
+          </RowMenuItem>
+          <RowMenuItem onSelect={() => onOpenEvent('rate_change')}>
             <Repeat strokeWidth={1.75} aria-hidden />
             {tl('actions.rateChange')}
-          </DropdownMenuItem>
+          </RowMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="danger" className={MENU_ITEM} onSelect={onDelete}>
+          <RowMenuItem variant="danger" onSelect={onDelete}>
             <Trash2 strokeWidth={1.75} aria-hidden />
             {tl('actions.delete')}
-          </DropdownMenuItem>
+          </RowMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

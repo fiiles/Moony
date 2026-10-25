@@ -17,6 +17,7 @@ import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
 import { useDeleteDescription } from '@/mobile/hooks/use-delete-description';
 import { HERO_FLOOR, useFitText } from '@/mobile/hooks/use-fit-text';
+import { useBankTransactionMutations } from '@/hooks/use-bank-account-mutations';
 import { useLedgerMutations } from '@/mobile/hooks/use-ledger-mutations';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRetained } from '@/mobile/hooks/use-retained';
@@ -64,7 +65,8 @@ export function TransactionSheet({
   const { t: tb } = useTranslation('bank_accounts');
   const fmt = useFormat();
   const categoryName = useCategoryName();
-  const { setFlowKind, deleteTransaction } = useLedgerMutations();
+  const { setFlowKind } = useLedgerMutations();
+  const { deleteTransaction } = useBankTransactionMutations();
   const describeDelete = useDeleteDescription();
   const shown = useRetained(tx);
   const [confirmOpen, setConfirmOpen] = useState(false);

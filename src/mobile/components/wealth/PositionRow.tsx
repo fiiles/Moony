@@ -3,7 +3,7 @@ import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import type { PositionRowBase } from '@/utils/positions';
 import { ChangeLine } from './ChangeLine';
-import { RowBadge } from './RowBadge';
+import { RowBadge } from '@/mobile/components/RowBadge';
 
 interface PositionRowProps {
   row: PositionRowBase;

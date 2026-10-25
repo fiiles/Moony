@@ -1,0 +1,5 @@
+/* Face ID permission prompt */
+"NSFaceIDUsageDescription" = "Moony 通过 Face ID 解锁您的数据。";
+
+/* Camera permission prompt */
+"NSCameraUsageDescription" = "Moony 会拍摄文档和您的房产；照片将加密存储在这部手机上。";

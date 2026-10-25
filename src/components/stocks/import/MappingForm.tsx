@@ -153,7 +153,7 @@ export function MappingForm({
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-x-6">
+    <div className="grid grid-cols-1 gap-x-6 sm:grid-cols-2">
       <div className="min-w-0 space-y-4">
         <div>
           {h4(t('importWizard.mapping.required'))}

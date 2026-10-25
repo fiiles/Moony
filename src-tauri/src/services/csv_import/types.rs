@@ -1,6 +1,6 @@
 //! Wire types of the CSV import (TS: `CsvImportConfigInput`, `CsvImportResult`,
 //! `CsvImportPreview`, `CsvPreviewRow`, `CsvPreviewResult`, `CsvRowMessage`,
-//! `CsvDateRange`). Per-field `#[serde(rename = "camelCase")]`, as everywhere in
+//! `CsvDateRange`, `LearnedCsvFormat`). Per-field `#[serde(rename = "camelCase")]`, as everywhere in
 //! this codebase; mirror every change in `shared/schema.ts`.
 
 use std::collections::HashMap;
@@ -544,6 +544,93 @@ pub struct InferredColumns {
     /// `","` or `"."`.
     #[serde(rename = "decimalSeparator")]
     pub decimal_separator: String,
+}
+
+/// How a learned format reads the columns of its file (TS `LearnedCsvMapping`): the parts of
+/// [`CsvImportConfig`] that describe the layout, with the file's own header names. Nothing that
+/// belongs to one file (skipped rows, overrides, the duplicate decision) is kept.
+/// Also the stored `app_config` shape: a new non-`Option` field needs `#[serde(default)]`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct LearnedCsvMapping {
+    #[serde(rename = "dateColumn")]
+    pub date_column: String,
+    /// chrono format, or `"auto"` to detect it from the column.
+    #[serde(rename = "dateFormat")]
+    pub date_format: String,
+    #[serde(rename = "amountColumn")]
+    pub amount_column: Option<String>,
+    #[serde(rename = "debitColumn")]
+    pub debit_column: Option<String>,
+    #[serde(rename = "creditColumn")]
+    pub credit_column: Option<String>,
+    #[serde(rename = "balanceColumn")]
+    pub balance_column: Option<String>,
+    #[serde(rename = "transactionIdColumn")]
+    pub transaction_id_column: Option<String>,
+    #[serde(rename = "descriptionColumns")]
+    pub description_columns: Vec<String>,
+    #[serde(rename = "counterpartyColumn")]
+    pub counterparty_column: Option<String>,
+    #[serde(rename = "counterpartyIbanColumn")]
+    pub counterparty_iban_column: Option<String>,
+    #[serde(rename = "counterpartyBankCodeColumn")]
+    pub counterparty_bank_code_column: Option<String>,
+    #[serde(rename = "counterpartyCountryColumn")]
+    pub counterparty_country_column: Option<String>,
+    #[serde(rename = "currencyColumn")]
+    pub currency_column: Option<String>,
+    /// `"auto"`, `","` or `"."`.
+    #[serde(rename = "decimalSeparator")]
+    pub decimal_separator: String,
+}
+
+/// A CSV layout the person confirmed once, recognised next month (mobile spec §8.6 rung 4; TS
+/// `LearnedCsvFormat`). Stored in `app_config` by `csv_import::learned`; `signature` is the
+/// layout's key (header cells, delimiter, column count), `headers` the cells it was learned
+/// from. Encoding and header row are what the file had when it was saved, not part of the key.
+/// Also the stored `app_config` shape: a new non-`Option` field needs `#[serde(default)]`.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct LearnedCsvFormat {
+    /// `learned:<uuid>`.
+    pub id: String,
+    pub name: String,
+    pub signature: String,
+    pub headers: Vec<String>,
+    /// One character: `,` `;` or a tab.
+    pub delimiter: String,
+    pub encoding: String,
+    /// 0-based line of the header row.
+    #[serde(rename = "headerRow")]
+    pub header_row: usize,
+    pub mapping: LearnedCsvMapping,
+    /// The account the layout was learned for, offered again on reuse.
+    #[serde(rename = "accountId")]
+    pub account_id: Option<String>,
+    /// Unix seconds.
+    #[serde(rename = "createdAt")]
+    pub created_at: i64,
+    /// Unix seconds of the last successful import with this format.
+    #[serde(rename = "lastUsedAt")]
+    pub last_used_at: i64,
+    /// The shipped preset whose headers this layout now matches, filled on every read (a preset
+    /// always wins over a learned format) and stored as `null`.
+    #[serde(rename = "shadowedByPresetId")]
+    pub shadowed_by_preset_id: Option<String>,
+}
+
+/// What `save_learned_csv_format` takes (TS `InsertLearnedCsvFormat`); `validate()` is in
+/// `csv_import::learned` beside the rules it applies.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub struct InsertLearnedCsvFormat {
+    pub name: String,
+    pub headers: Vec<String>,
+    pub delimiter: String,
+    pub encoding: String,
+    #[serde(rename = "headerRow")]
+    pub header_row: usize,
+    pub mapping: LearnedCsvMapping,
+    #[serde(rename = "accountId")]
+    pub account_id: Option<String>,
 }
 
 #[cfg(test)]

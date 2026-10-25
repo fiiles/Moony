@@ -10,7 +10,10 @@ import type {
   SavingsAccountZone,
 } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
-import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
+import {
+  useBankAccountMutations,
+  useBankTransactionMutations,
+} from '@/hooks/use-bank-account-mutations';
 import { useCategories } from '@/hooks/use-categories';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useFormat } from '@/lib/use-format';
@@ -30,15 +33,15 @@ import type { EventCluster } from '@/utils/chart-scale';
 import { completeAccountIdentifier } from '@/utils/iban-utils';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
 import { BankAccountFormDialog } from '@/components/bank-accounts/BankAccountFormDialog';
-import { EmptyState } from '@/components/common/EmptyState';
+import { ScaledEmptyState } from '@/mobile/components/Scaled';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { ButtonPair } from '@/mobile/components/ButtonPair';
 import { DayHead } from '@/mobile/components/DayHead';
 import { EntityRows } from '@/mobile/components/EntityRow';
@@ -50,12 +53,11 @@ import { SectionHead } from '@/mobile/components/SectionHead';
 import { Segment } from '@/mobile/components/Segment';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { useAccountDetail } from '@/mobile/hooks/use-account-detail';
-import { useBack } from '@/mobile/hooks/use-back';
+import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { useDeleteDescription } from '@/mobile/hooks/use-delete-description';
 import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import { useLedger, type Ledger } from '@/mobile/hooks/use-ledger';
-import { useLedgerMutations } from '@/mobile/hooks/use-ledger-mutations';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRetained } from '@/mobile/hooks/use-retained';
 import { balanceLine } from '@/mobile/lib/balance-line';
@@ -88,9 +90,6 @@ type RecordEvent = { id: string; t: number; type: 'mark' };
 
 /** The hero opens on a year of the balance line (the desktop's window). */
 const DEFAULT_PERIOD: ChartPeriod = '1Y';
-
-/** The menu items of `···`: 44 pt tall, body type (as Finance's menus). */
-const MENU_ITEM = 'min-h-11 text-m-body';
 
 /** The `.m-card` material. */
 const CARD =
@@ -125,6 +124,8 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   // are hidden
   const moneyText = useMoneyText();
   const back = useBack(routes.finance);
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
+  const backText = useBackLabel(t('tabs.finance'));
   const search = useSearch();
   const detail = useAccountDetail(id);
   const { records, zones, history, historyRows, historyLoaded } = detail;
@@ -141,7 +142,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
     [state, debouncedSearch]
   );
   const ledger = useLedger(id, ledgerState);
-  const { deleteTransaction } = useLedgerMutations();
+  const { deleteTransaction } = useBankTransactionMutations();
   const describeDelete = useDeleteDescription();
   const { openImport } = useImportSheet();
 
@@ -207,7 +208,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   return (
     <Screen
       title={account?.name ?? ''}
-      leading={<NavTextButton label={t('tabs.finance')} onClick={back} chevron />}
+      leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
         account && (
           <DropdownMenu>
@@ -217,23 +218,17 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
               </NavIconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[220px]">
-              <DropdownMenuItem className={MENU_ITEM} onSelect={() => setSheet('edit')}>
-                {t('account.menu.edit')}
-              </DropdownMenuItem>
-              <DropdownMenuItem className={MENU_ITEM} onSelect={() => setSheet('balanceHistory')}>
+              <RowMenuItem onSelect={() => setSheet('edit')}>{t('account.menu.edit')}</RowMenuItem>
+              <RowMenuItem onSelect={() => setSheet('balanceHistory')}>
                 {t('account.menu.balanceHistory')}
-              </DropdownMenuItem>
-              <DropdownMenuItem className={MENU_ITEM} onSelect={() => setSheet('importHistory')}>
+              </RowMenuItem>
+              <RowMenuItem onSelect={() => setSheet('importHistory')}>
                 {t('account.menu.importHistory')}
-              </DropdownMenuItem>
+              </RowMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                variant="danger"
-                className={MENU_ITEM}
-                onSelect={() => setSheet('deleteAccount')}
-              >
+              <RowMenuItem variant="danger" onSelect={() => setSheet('deleteAccount')}>
                 {t('account.menu.delete')}
-              </DropdownMenuItem>
+              </RowMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         )
@@ -264,7 +259,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
             secondary={{
               label: t('account.import'),
               icon: Upload,
-              onClick: () => openImport({ accountId: id, source: 'account' }),
+              onClick: () => openImport({ accountId: id, source: 'account', from: account.name }),
             }}
           />
           {showHero && (
@@ -319,7 +314,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
             />
           ) : (
             !showHero && (
-              <EmptyState
+              <ScaledEmptyState
                 icon={<Wallet />}
                 title={tb('empty.noDataTitle')}
                 description={tb('empty.noDataDescription')}
@@ -767,7 +762,7 @@ function LedgerSection({
       ) : ledger.isLoading ? (
         <RowsSkeleton />
       ) : groups.length === 0 ? (
-        <EmptyState
+        <ScaledEmptyState
           bare
           icon={<CalendarSearch />}
           title={t('account.ledger.empty')}

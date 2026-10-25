@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoute } from 'wouter';
 import { ArrowUp } from 'lucide-react';
+import { recordCurrency } from '@shared/currencies';
 import type { RealEstate } from '@shared/schema';
 import { useCurrency } from '@/lib/currency';
 import type { PropertyRow, YearlyBalance } from '@/utils/real-estate';
 import { Button } from '@/components/ui/button';
-import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { DocumentsSection } from '@/mobile/components/documents/DocumentsSection';
 import { PropertyCosts } from '@/mobile/components/property/PropertyCosts';
 import { PropertyFinance } from '@/mobile/components/property/PropertyFinance';
@@ -15,7 +16,7 @@ import { PropertyHeroCard } from '@/mobile/components/property/PropertyHeroCard'
 import { PropertyMenu } from '@/mobile/components/property/PropertyMenu';
 import { PropertyStats } from '@/mobile/components/property/PropertyStats';
 import { SectionHead } from '@/mobile/components/SectionHead';
-import { useBack } from '@/mobile/hooks/use-back';
+import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { useProperty, type PropertyData } from '@/mobile/hooks/use-property';
 import { usePropertyMutations } from '@/mobile/hooks/use-property-mutations';
@@ -62,6 +63,8 @@ function PropertyDetailPage({ id }: { id: string | undefined }) {
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('realEstate');
   const back = useBack(routes.wealth);
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
+  const backText = useBackLabel(t('tabs.wealth'));
   const { currencyCode } = useCurrency();
   const data = useProperty(id);
   const { remove } = usePropertyMutations(id);
@@ -91,7 +94,7 @@ function PropertyDetailPage({ id }: { id: string | undefined }) {
   return (
     <Screen
       title={view?.property.name ?? ''}
-      leading={<NavTextButton label={t('tabs.wealth')} onClick={back} chevron />}
+      leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
         view && (
           <PropertyMenu
@@ -112,7 +115,15 @@ function PropertyDetailPage({ id }: { id: string | undefined }) {
 
       {view && (
         <>
-          <RevalueSheet open={revalueOpen} onOpenChange={setRevalueOpen} property={view.property} />
+          <RevalueSheet
+            open={revalueOpen}
+            onOpenChange={setRevalueOpen}
+            kind="realEstate"
+            assetId={view.property.id}
+            name={view.property.name}
+            value={Number(view.property.marketPrice) || 0}
+            currency={recordCurrency(view.property.marketPriceCurrency)}
+          />
           <ConfirmSheet
             open={deleteOpen}
             onOpenChange={setDeleteOpen}
@@ -161,7 +172,7 @@ function PropertyBody({ view, currency, onRevalue }: PropertyBodyProps) {
         </p>
       </div>
       {/* Amounts that could not be converted into the main currency (left out of its totals) */}
-      <ConversionQualityNote
+      <ScaledConversionNote
         quality={{ missingCurrencies: missing }}
         currency={currency}
         className="mx-0.5 mb-3.5"

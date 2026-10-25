@@ -17,7 +17,7 @@ import { LoanHeroCard } from '@/mobile/components/loan/LoanHeroCard';
 import { LoanMenu } from '@/mobile/components/loan/LoanMenu';
 import { LoanSchedule } from '@/mobile/components/loan/LoanSchedule';
 import { LoanStats } from '@/mobile/components/loan/LoanStats';
-import { useBack } from '@/mobile/hooks/use-back';
+import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { useRetained } from '@/mobile/hooks/use-retained';
 import { loanDetailStats, type LoanHorizon } from '@/mobile/lib/loan-detail';
@@ -67,6 +67,8 @@ function LoanDetailPage({ id }: { id: string | undefined }) {
   const fmt = useFormat();
   const text = useLoanText();
   const back = useBack(routes.finance);
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
+  const backText = useBackLabel(t('tabs.finance'));
   const { rows, isLoading: loansLoading, today } = useLoans();
   const { data: schedule, isLoading: scheduleLoading } = useLoanSchedule(id);
   const { data: events = NO_EVENTS } = useLoanEvents(id);
@@ -101,7 +103,7 @@ function LoanDetailPage({ id }: { id: string | undefined }) {
   return (
     <Screen
       title={loan?.name ?? ''}
-      leading={<NavTextButton label={t('tabs.finance')} onClick={back} chevron />}
+      leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
         loan && (
           <LoanMenu

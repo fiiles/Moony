@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
-import { Ellipsis, Landmark } from 'lucide-react';
+import { Landmark } from 'lucide-react';
 import type { BudgetGoal, CashflowActuals } from '@shared/schema';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
@@ -9,17 +9,11 @@ import type { MoneyOptions } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { EmptyState } from '@/components/common/EmptyState';
-import { ReportError, ReportQualityNote } from '@/components/reports/ReportQualityNote';
+import { ScaledEmptyState, ScaledReportError, ScaledReportNote } from '@/mobile/components/Scaled';
 import { BudgetSummaryNote } from '@/mobile/components/cashflow/BudgetSummaryNote';
 import { CashflowBars } from '@/mobile/components/cashflow/CashflowBars';
 import { CashflowHero } from '@/mobile/components/cashflow/CashflowHero';
+import { CashflowMenu } from '@/mobile/components/cashflow/CashflowMenu';
 import { CategoryRow } from '@/mobile/components/cashflow/CategoryRow';
 import { ExpenseCategoryRow } from '@/mobile/components/cashflow/ExpenseCategoryRow';
 import { PeriodBar } from '@/mobile/components/cashflow/PeriodBar';
@@ -27,6 +21,7 @@ import { EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { StatRow } from '@/mobile/components/StatRow';
 import { useBudgetLimitSheet } from '@/mobile/hooks/use-budget-limit-sheet';
+import { useCsvExport } from '@/mobile/hooks/use-csv-export';
 import {
   useCashflowReport,
   useCashflowState,
@@ -50,8 +45,8 @@ import {
   type CategoryRowModel,
 } from '@/mobile/lib/cashflow-rows';
 import { reportRowLimit } from '@/mobile/lib/budget-rows';
+import { CASHFLOW_EXPORT_FILE, cashflowCsv } from '@/mobile/lib/cashflow-export';
 import { afterHistorySettles } from '@/mobile/lib/history-settle';
-import { NavIconButton } from '@/mobile/shell/NavBar';
 import { budgetsPath, cashflowCategoryPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 import { BudgetLimitSheet, type LimitMode } from '@/mobile/sheets/BudgetLimitSheet';
@@ -78,11 +73,12 @@ const amount = (value: string | null): number => Number(value) || 0;
 export default function Cashflow() {
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('reports');
-  const { t: tb } = useTranslation('budgeting');
-  const { t: tc } = useTranslation('common');
-  const [, setLocation] = useLocation();
+  const fmt = useFormat();
+  const { categories } = useCategories();
+  const categoryName = useCategoryName();
   const [state, setState] = useCashflowState();
   const report = useCashflowReport(state);
+  const { run: runExport, isPending: exporting } = useCsvExport();
   const { accounts, isLoading: accountsLoading } = useBankAccounts();
   const [accountsOpen, setAccountsOpen] = useState(false);
   // The accounts chosen in the sheet, waiting for the sheet's history entry to go
@@ -100,6 +96,32 @@ export default function Cashflow() {
     actuals,
     isError: report.isError,
   });
+
+  // Export writes the report on screen, never the previous period's still shown while the next
+  // loads (the menu item is disabled then); the CSV is not masked, a file the person asked for
+  const exportReport = () => {
+    if (!actuals || report.isPlaceholder) return;
+    const categoryById = new Map(categories.map((category) => [category.id, category]));
+    const titleLabels = {
+      categoryName,
+      uncategorized: tr('actuals.uncategorized'),
+      uncategorizedTransfers: tr('actuals.uncategorizedTransfers'),
+    };
+    void runExport(CASHFLOW_EXPORT_FILE, async () =>
+      cashflowCsv(
+        actuals,
+        (month) => fmt.day(month, { year: 'numeric', month: '2-digit' }),
+        (group) =>
+          categoryTitle(
+            group.key,
+            group.flowKind,
+            categoryById.get(group.key) ?? null,
+            group.name,
+            titleLabels
+          )
+      )
+    );
+  };
 
   // The sheet's `history.back()` raises its `popstate` a tick after it closed; the scope is
   // written to the URL (a replace) only after that, else it lands on the sheet's entry and is
@@ -126,27 +148,15 @@ export default function Cashflow() {
           : undefined
       }
       trailing={
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <NavIconButton aria-label={tc('labels.moreActions')}>
-              <Ellipsis strokeWidth={1.75} aria-hidden />
-            </NavIconButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[220px]">
-            <DropdownMenuItem
-              className="min-h-11 text-m-body"
-              onSelect={() => setAccountsOpen(true)}
-            >
-              {tr('readiness.accounts', { count: state.accountIds?.length ?? accountCount })}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              className="min-h-11 text-m-body"
-              onSelect={() => setLocation(budgetsPath(search))}
-            >
-              {tb('manage.title')}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <CashflowMenu
+          accountsLabel={tr('readiness.accounts', {
+            count: state.accountIds?.length ?? accountCount,
+          })}
+          onAccounts={() => setAccountsOpen(true)}
+          budgetsHref={budgetsPath(search)}
+          exportDisabled={exporting || report.isPlaceholder || !actuals}
+          onExport={exportReport}
+        />
       }
     >
       <PeriodBar
@@ -157,7 +167,7 @@ export default function Cashflow() {
         onStep={(delta) => setState({ ...state, offset: Math.min(0, state.offset + delta) })}
       />
       {body === 'error' ? (
-        <ReportError onRetry={report.refetch} />
+        <ScaledReportError onRetry={report.refetch} />
       ) : body === 'skeleton' || !actuals ? (
         <CashflowSkeleton />
       ) : body === 'noAccounts' ? (
@@ -168,7 +178,7 @@ export default function Cashflow() {
           className={cn('transition-opacity', report.isPlaceholder && 'opacity-60')}
           aria-busy={report.isPlaceholder}
         >
-          {report.isError && <ReportError onRetry={report.refetch} />}
+          {report.isError && <ScaledReportError onRetry={report.refetch} />}
           <ReportBody
             actuals={actuals}
             report={report}
@@ -272,7 +282,7 @@ function ReportBody({
     return (
       <>
         {bars.some((bar) => bar.income !== 0 || bar.expenses !== 0) && barsCard}
-        <EmptyState
+        <ScaledEmptyState
           bare
           icon={<Landmark />}
           title={tr('actuals.empty.periodTitle')}
@@ -332,7 +342,7 @@ function ReportBody({
 
   return (
     <>
-      <ReportQualityNote quality={actuals.quality} />
+      <ScaledReportNote quality={actuals.quality} />
       {isPartialPeriod(range.end, Date.now() / 1000) && (
         <p className="mx-0.5 mb-3 mt-0 text-m-caption text-ink-4">{t('cashflow.partial')}</p>
       )}
@@ -386,7 +396,7 @@ function EmptyCashflow() {
   const { t } = useTranslation('mobile');
   const [, setLocation] = useLocation();
   return (
-    <EmptyState
+    <ScaledEmptyState
       icon={<Landmark />}
       title={t('cashflow.empty.title')}
       description={t('cashflow.empty.description')}

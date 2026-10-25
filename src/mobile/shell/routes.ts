@@ -22,8 +22,8 @@ export const routes = {
   budgets: '/cashflow/budgets',
   wealth: '/wealth',
   /**
-   * Pushed on Majetek: the Akcie class page, a position (`:id` is the position's id), the class
-   * placeholders of the next Phase 4 part.
+   * Pushed on Majetek: the class pages (Akcie, Krypto, Dluhopisy, Ostatní aktiva) and their
+   * details; a property is pushed straight from Majetek's list (no class page of its own).
    */
   stocks: '/wealth/stocks',
   positionDetail: '/wealth/stocks/:id',
@@ -36,7 +36,6 @@ export const routes = {
   otherAssetDetail: '/wealth/other-assets/:id',
   /** A watched ticker of Akcie, followed or not (`:ticker` is the Yahoo symbol, escaped by `watchPath`). */
   watchDetail: '/wealth/watch/:ticker',
-  realEstateList: '/wealth/real-estate',
   propertyDetail: '/wealth/real-estate/:id',
   settings: '/settings',
   /** A section page pushed on Nastavení (`:section` is one of `SETTINGS_SECTIONS`). */
@@ -64,6 +63,7 @@ export const SETTINGS_SECTIONS = [
   'reminders',
   'notifications',
   'backup',
+  'import',
 ] as const;
 
 export type SettingsSection = (typeof SETTINGS_SECTIONS)[number];

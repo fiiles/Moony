@@ -42,6 +42,11 @@ export interface ImportRequest {
   /** A file that is already at hand (a shared one); without it the sheet starts on the picker. */
   path?: string;
   source: ImportSource;
+  /**
+   * The label of the screen the sheet opened on, when it is not the done step's targets' own parent
+   * (Přehled, Nastavení › Import): the account or the queue it opens then names it on its back button.
+   */
+  from?: string;
 }
 
 /** What a file's name says it is; the content decides the rest (a statement is told from its content). */

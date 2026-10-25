@@ -7,7 +7,7 @@ import { useFormat } from '@/lib/use-format';
 import { translateRowMessage } from '@/utils/csv-import-messages';
 import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
-import { RowBadge } from '@/mobile/components/LedgerRow';
+import { RowBadge } from '@/mobile/components/RowBadge';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { initials } from '@/mobile/lib/initials';
 import { previewAmount } from '@/mobile/lib/import-flow';
@@ -95,19 +95,31 @@ export function PreviewRows({
             categoryName(category)
           )
         ) : (
-          <RowBadge>{t('account.ledger.noCategory')}</RowBadge>
+          <RowBadge line="sub">{t('account.ledger.noCategory')}</RowBadge>
         )),
-      row.status === 'promoted' && <RowBadge>{tb('csvImport.status.promoted')}</RowBadge>,
-      row.status === 'duplicate' && <RowBadge>{tb('csvImport.status.duplicate')}</RowBadge>,
-      row.status === 'skipped' && <RowBadge>{tb('csvImport.status.skipped')}</RowBadge>,
-      row.status === 'error' && <RowBadge tone="loss">{tb('csvImport.status.error')}</RowBadge>,
+      row.status === 'promoted' && (
+        <RowBadge line="sub">{tb('csvImport.status.promoted')}</RowBadge>
+      ),
+      row.status === 'duplicate' && (
+        <RowBadge line="sub">{tb('csvImport.status.duplicate')}</RowBadge>
+      ),
+      row.status === 'skipped' && <RowBadge line="sub">{tb('csvImport.status.skipped')}</RowBadge>,
+      row.status === 'error' && (
+        <RowBadge line="sub" tone="loss">
+          {tb('csvImport.status.error')}
+        </RowBadge>
+      ),
       row.status !== 'ok' && row.status !== 'promoted' && message,
     ].filter(Boolean);
     // The recognition's rows: what the payment was for stands where the category does
     const sampleParts: ReactNode[] = [
       row.bookingDate !== null ? fmt.day(row.bookingDate) : '—',
       details.find((detail) => detail !== title),
-      row.status === 'error' && <RowBadge tone="loss">{tb('csvImport.status.error')}</RowBadge>,
+      row.status === 'error' && (
+        <RowBadge line="sub" tone="loss">
+          {tb('csvImport.status.error')}
+        </RowBadge>
+      ),
       row.status === 'error' && message,
     ].filter(Boolean);
 

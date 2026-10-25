@@ -5,9 +5,6 @@
     "cashflow": "Flusso di cassa",
     "wealth": "Patrimonio"
   },
-  "shell": {
-    "placeholder": "Questa schermata è ancora in preparazione."
-  },
   "lock": {
     "caption": "AES-256 · cifrato su questo telefono",
     "keySaved": "Ho conservato la chiave in un luogo sicuro, fuori da questo telefono",
@@ -61,12 +58,11 @@
       "done": "Fatto"
     },
     "picker": {
-      "title": "Categoria",
-      "change": "Cambia categoria",
-      "current": "Categoria attuale"
+      "change": "Cambia categoria"
     },
     "limitSheet": {
-      "pick": "Scegli la categoria di cui vuoi tenere sotto controllo le spese."
+      "pick": "Scegli la categoria di cui vuoi tenere sotto controllo le spese.",
+      "current": "Limite attuale: {{amount}}"
     },
     "budgets": {
       "ended": "terminato",
@@ -444,6 +440,7 @@
       "caption": "Tre movimenti dal file, come li leggerò:",
       "captionFew": "Movimenti dal file, come li leggerò:",
       "unknownFormat": "formato non ancora noto",
+      "learnedFormat": "secondo il formato salvato {{name}}",
       "tab": "tabulazione",
       "previewFailed": "Non è stato possibile caricare ora le righe di esempio. Le colonne riconosciute qui sotto valgono comunque.",
       "looksRight": "Sembra giusto",
@@ -490,6 +487,11 @@
       "sampleHint": "Scegli una colonna e ti mostro come leggerei il movimento.",
       "pair": "coppia di colonne"
     },
+    "learned": {
+      "note": "Riconosciuto dal formato salvato {{name}}",
+      "change": "Cambia",
+      "remembered": "Ho memorizzato il formato: la prossima volta leggerò questo file senza domande."
+    },
     "preview": {
       "hint": "Tocca un pagamento per scegliere la sua categoria.",
       "more_one": "e {{count}} altro",
@@ -519,9 +521,6 @@
     }
   },
   "wealth": {
-    "placeholder": {
-      "classPage": "Per ora questa pagina è solo in Moony sul computer."
-    },
     "subtitle": "Investimenti, immobili e liquidità",
     "sections": {
       "investments": "Investimenti",
@@ -565,7 +564,7 @@
     },
     "add": {
       "label": "Aggiungi",
-      "investment": "Investimento",
+      "investment": "Azione o ETF",
       "crypto": "Criptovaluta",
       "bond": "Obbligazione",
       "property": "Immobile",
@@ -685,9 +684,17 @@
       "hideOnLaunchHint": "Ogni avvio parte con gli importi nascosti; l'occhio in Panoramica li mostra di nuovo.",
       "hideOnLaunchShort": "importi nascosti all'avvio"
     },
+    "password": {
+      "title": "Cambia password",
+      "rowSub": "Riceverai una nuova chiave di recupero",
+      "confirmHint": "La password cambia solo quando tocchi Cambia password. Fino ad allora valgono la password e la chiave attuali.",
+      "backupsKeepOld": "I backup fatti prima della modifica si aprono ancora con la vecchia password.",
+      "biometricsStay": "Lo sblocco con {{methodKey}} resta attivo.",
+      "fileTitle": "Chiave di recupero di Moony — nuova del {{date}}",
+      "fileNote": "È valida solo quando il cambio della password è completato. Se non hai completato il cambio, resta valida la chiave precedente."
+    },
     "profile": {
-      "lead": "Il tuo nome compare nel saluto di Panoramica.",
-      "currencyReadOnly": "La valuta principale si cambia in Moony sul computer."
+      "lead": "Il tuo nome compare nel saluto di Panoramica."
     },
     "language": {
       "title": "Lingua dell'app",
@@ -695,6 +702,31 @@
     },
     "appearance": {
       "lead": "Sistema segue l'aspetto chiaro o scuro del telefono."
+    },
+    "import": {
+      "lead": "Estratti conto: i formati che ho imparato e le guide per esportarli.",
+      "formats": "Formati imparati",
+      "empty": "Quando confermi come leggo un file sconosciuto, memorizzo il suo formato e la prossima volta lo leggo senza domande.",
+      "sub": "{{account}} · ultimo uso {{lastUsed}}",
+      "subNoAccount": "ultimo uso {{lastUsed}}",
+      "shadowed": "la banca ha un formato integrato",
+      "guides": "Guide all'esportazione",
+      "guidesRow": "Come ottenere un estratto dalla tua banca",
+      "renamed": "Formato rinominato",
+      "deleted": "Formato eliminato",
+      "format": {
+        "title": "Formato imparato",
+        "name": "Nome",
+        "account": "Conto",
+        "created": "Imparato",
+        "lastUsed": "Ultimo uso",
+        "columns": "Colonne",
+        "shadowedNote": "I file con questa disposizione di colonne vengono letti dal formato integrato della banca; questo formato imparato non viene usato.",
+        "field": "{{field}}: {{column}}",
+        "delete": "Elimina formato",
+        "deleteTitle": "Eliminare il formato {{name}}?",
+        "deleteLead": "Il prossimo file in questo formato passerà di nuovo dal riconoscimento."
+      }
     },
     "delete": {
       "title": "Eliminare tutti i dati?",

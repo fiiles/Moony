@@ -25,7 +25,7 @@ export default function Agenda() {
       {agenda.length > 0 ? (
         <EntityRows className="mt-2">
           {agenda.map((m) => (
-            <AgendaRow key={m.key} m={m} />
+            <AgendaRow key={m.key} m={m} from={tm('card.title')} />
           ))}
         </EntityRows>
       ) : (

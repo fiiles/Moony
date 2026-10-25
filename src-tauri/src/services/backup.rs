@@ -58,14 +58,15 @@ pub fn unix_now() -> i64 {
 /// Whether `name` is exactly `moony-backup-YYYY-MM-DD.zip` (digits only, nothing before or after):
 /// the one name the phone stages a backup under in Documents before the Files picker exports it.
 pub fn is_export_file_name(name: &str) -> bool {
-    let Some(date) = name
-        .strip_prefix("moony-backup-")
+    name.strip_prefix("moony-backup-")
         .and_then(|rest| rest.strip_suffix(".zip"))
-    else {
-        return false;
-    };
-    date.len() == 10
-        && date.bytes().enumerate().all(|(i, b)| match i {
+        .is_some_and(is_date_stamp)
+}
+
+/// Whether `stamp` is shaped `YYYY-MM-DD` (ASCII digits and the two dashes, nothing else).
+fn is_date_stamp(stamp: &str) -> bool {
+    stamp.len() == 10
+        && stamp.bytes().enumerate().all(|(i, b)| match i {
             4 | 7 => b == b'-',
             _ => b.is_ascii_digit(),
         })
@@ -81,21 +82,48 @@ pub fn is_staged_export_path(document_dir: &Path, path: &Path) -> bool {
             .is_some_and(is_export_file_name)
 }
 
-/// The text files the phone may stage in Documents for the Files export: the recovery key's text
-/// and the CSV of each class page (stocks, crypto, bonds, other assets — the name stays fixed, the
-/// dated one the export command returns is only the desktop's). A fixed list, so the command that
-/// writes one can never be pointed at another file.
-const TEXT_EXPORT_FILE_NAMES: [&str; 5] = [
+/// The text files the phone may stage in Documents for the Files export: the recovery key's text,
+/// the CSV of each class page (stocks, crypto, bonds, other assets — the name stays fixed, the
+/// dated one the export command returns is only the desktop's) and the Cashflow tab's report. A
+/// fixed list, so the command that writes one can never be pointed at another file. The one other
+/// name is the new key of a password change (`is_dated_recovery_key_file_name`).
+const TEXT_EXPORT_FILE_NAMES: [&str; 6] = [
     "moony-recovery-key.txt",
     "moony-stock-transactions.csv",
     "moony-crypto-transactions.csv",
     "moony-bonds.csv",
     "moony-other-assets.csv",
+    "moony-cashflow.csv",
 ];
 
-/// Whether `name` is one of the text files that may be staged (`TEXT_EXPORT_FILE_NAMES`).
+/// Whether `name` is one of the text files that may be staged (`TEXT_EXPORT_FILE_NAMES`, or the
+/// dated recovery key of a password change).
 pub fn is_text_export_file_name(name: &str) -> bool {
-    TEXT_EXPORT_FILE_NAMES.contains(&name)
+    TEXT_EXPORT_FILE_NAMES.contains(&name) || is_dated_recovery_key_file_name(name)
+}
+
+/// Whether `name` is exactly `moony-recovery-key-YYYY-MM-DD-HHmm.txt`: the phone's password change
+/// saves its new key under the local day and time of the attempt, so it never replaces the first
+/// run's file, which holds the key that stays valid when the change is not finished, and two
+/// changes on one day do not share a name. The day-only `moony-recovery-key-YYYY-MM-DD.txt` of
+/// older builds stays accepted, so a file such a build staged and never finished is still swept.
+fn is_dated_recovery_key_file_name(name: &str) -> bool {
+    name.strip_prefix("moony-recovery-key-")
+        .and_then(|rest| rest.strip_suffix(".txt"))
+        .is_some_and(|stamp| is_date_stamp(stamp) || is_date_time_stamp(stamp))
+}
+
+/// Whether `stamp` is `YYYY-MM-DD-HHmm`: a day stamp, a hyphen and four digits.
+fn is_date_time_stamp(stamp: &str) -> bool {
+    stamp.len() == 15
+        && stamp.get(..10).is_some_and(is_date_stamp)
+        && stamp.bytes().skip(10).enumerate().all(|(i, b)| {
+            if i == 0 {
+                b == b'-'
+            } else {
+                b.is_ascii_digit()
+            }
+        })
 }
 
 /// Whether `path` is a staged text export: directly inside `document_dir` (nothing normalised) and
@@ -110,7 +138,7 @@ pub fn is_staged_text_export_path(document_dir: &Path, path: &Path) -> bool {
 
 /// Write `contents` to `document_dir/<file_name>` (an existing file is replaced) for the Files
 /// export to pick up; only an allow-listed name is accepted. A write that fails half way leaves
-/// nothing behind. The contents (the recovery key, or a class's CSV export) are never logged.
+/// nothing behind. The contents (the recovery key, or a CSV export) are never logged.
 pub fn write_text_export(document_dir: &Path, file_name: &str, contents: &str) -> Result<PathBuf> {
     if !is_text_export_file_name(file_name) {
         return Err(AppError::Validation(
@@ -1313,16 +1341,75 @@ mod tests {
 
     #[test]
     fn text_export_file_name_is_on_the_allow_list_only() {
-        assert!(is_text_export_file_name("moony-recovery-key.txt"));
+        // The recovery key's text and the Cashflow tab's CSV (`cashflow-export.ts`; the class
+        // pages' names have their own test below)
+        for good in ["moony-recovery-key.txt", "moony-cashflow.csv"] {
+            assert!(is_text_export_file_name(good), "{good}");
+        }
         for bad in [
             "moony-recovery-key.txt.zip",
             "../moony-recovery-key.txt",
             "Moony-recovery-key.txt",
+            "cashflow.csv",
+            "moony-cashflow.csv.txt",
+            "../moony-cashflow.csv",
+            "Moony-cashflow.csv",
             "moony.db",
             "",
         ] {
             assert!(!is_text_export_file_name(bad), "{bad}");
         }
+    }
+
+    /// The phone's password change saves its new key under the local day and time of the attempt
+    /// (`moony-recovery-key-YYYY-MM-DD-HHmm.txt`), so it never replaces the first run's file, which
+    /// holds the key that stays valid when the change is not finished, and two changes on one day
+    /// do not share a name. Exactly that shape, nothing else.
+    #[test]
+    fn a_dated_recovery_key_is_on_the_allow_list_in_exactly_that_shape() {
+        let dated = "moony-recovery-key-2026-10-25-1742.txt";
+        assert!(is_text_export_file_name(dated));
+        for bad in [
+            "moony-recovery-key-2026-10-25-1742.txt.zip",
+            "../moony-recovery-key-2026-10-25-1742.txt",
+            "moony-recovery-key-20261025-1742.txt",
+            "moony-recovery-key-2026-10-2x-1742.txt",
+            "moony-recovery-key-2026_10_25-1742.txt",
+            "moony-recovery-key-2026-10-25-1.txt",
+            "moony-recovery-key-2026-10-25-174.txt",
+            "moony-recovery-key-2026-10-25-17420.txt",
+            "moony-recovery-key-2026-10-25-17:42.txt",
+            "moony-recovery-key-2026-10-25-17x2.txt",
+            "moony-recovery-key-2026-10-25_1742.txt",
+            "moony-recovery-key-2026-10-25-.txt",
+            "moony-recovery-key-.txt",
+            "Moony-recovery-key-2026-10-25-1742.txt",
+            "moony-recovery-key-2026-10-25-1742.TXT",
+        ] {
+            assert!(!is_text_export_file_name(bad), "{bad}");
+        }
+
+        let dir = tempfile::tempdir().expect("dir");
+        let path = write_text_export(dir.path(), dated, "key").expect("write");
+        assert!(is_staged_text_export_path(dir.path(), &path));
+        // A leftover from an interrupted export goes with the sweep, as the first run's file does
+        assert_eq!(sweep_staged_exports(dir.path()).expect("sweep"), 1);
+        assert!(!path.exists());
+    }
+
+    /// Builds before the time was added named the key by the day only
+    /// (`moony-recovery-key-YYYY-MM-DD.txt`): that name stays on the list, so a file such a build
+    /// staged and never finished is still swept.
+    #[test]
+    fn an_older_builds_day_only_recovery_key_is_still_swept() {
+        let day_only = "moony-recovery-key-2026-10-25.txt";
+        assert!(is_text_export_file_name(day_only));
+
+        let dir = tempfile::tempdir().expect("dir");
+        let path = dir.path().join(day_only);
+        fs::write(&path, "key").expect("write");
+        assert_eq!(sweep_staged_exports(dir.path()).expect("sweep"), 1);
+        assert!(!path.exists());
     }
 
     #[test]
@@ -1381,11 +1468,13 @@ mod tests {
     #[test]
     fn a_text_export_is_written_to_the_documents_folder_and_overwritten() {
         let dir = tempfile::tempdir().expect("dir");
-        let path = write_text_export(dir.path(), "moony-recovery-key.txt", "first").expect("write");
-        assert_eq!(path, dir.path().join("moony-recovery-key.txt"));
-        assert_eq!(fs::read_to_string(&path).expect("read"), "first");
-        write_text_export(dir.path(), "moony-recovery-key.txt", "second").expect("overwrite");
-        assert_eq!(fs::read_to_string(&path).expect("read"), "second");
+        for name in ["moony-recovery-key.txt", "moony-cashflow.csv"] {
+            let path = write_text_export(dir.path(), name, "first").expect("write");
+            assert_eq!(path, dir.path().join(name));
+            assert_eq!(fs::read_to_string(&path).expect("read"), "first");
+            write_text_export(dir.path(), name, "second").expect("overwrite");
+            assert_eq!(fs::read_to_string(&path).expect("read"), "second");
+        }
     }
 
     #[test]

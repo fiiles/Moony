@@ -29,6 +29,8 @@ interface DoneStepProps {
   /** The account the import wrote to; the rows below act on it. */
   accountId: string;
   fileName: string;
+  /** This import saved (or replaced) the CSV layout as a learned format: one quiet line says so. */
+  remembered: boolean;
   /** "Zařadit M plateb": the sheet closes and the categorize queue of the account opens. */
   onQueue: () => void;
   /** "Zobrazit importované": the sheet closes and the account opens. */
@@ -44,10 +46,18 @@ const STEP_ORDER: readonly ShownStep[] = ['show', 'rulePack', 'balance'];
  * and what the rules did with the payments, the one primary — "Zařadit M plateb", the categorize
  * queue — while any are left, and the desktop's next steps as rows: show what was imported, turn
  * the suggested rule pack on (then the rules run over the account's open payments), set the
- * account's balance to the statement's. A step that was carried out stays, ticked. Every amount
- * is masked while amounts are hidden.
+ * account's balance to the statement's. A step that was carried out stays, ticked. A CSV layout
+ * the import just learned is one more quiet sentence. Every amount is masked while amounts are
+ * hidden.
  */
-export function DoneStep({ result, accountId, fileName, onQueue, onShow }: DoneStepProps) {
+export function DoneStep({
+  result,
+  accountId,
+  fileName,
+  remembered,
+  onQueue,
+  onShow,
+}: DoneStepProps) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
@@ -203,6 +213,7 @@ export function DoneStep({ result, accountId, fileName, onQueue, onShow }: DoneS
         {result.promotedCount > 0 && (
           <p className="m-0">{t('import.done.promoted', { count: result.promotedCount })}</p>
         )}
+        {remembered && <p className="m-0">{t('import.learned.remembered')}</p>}
       </div>
 
       {facts.uncategorized > 0 && (

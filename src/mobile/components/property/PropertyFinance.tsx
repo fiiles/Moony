@@ -5,7 +5,7 @@ import type { InsurancePolicy, Loan, RealEstate } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
 import type { YearlyBalance } from '@/utils/real-estate';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
-import { RowMenu, RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { GroupHead } from '@/mobile/components/property/GroupHead';
 import { YearlyBalanceCard } from '@/mobile/components/property/YearlyBalanceCard';
@@ -32,7 +32,8 @@ interface PropertyFinanceProps {
  * "Finance" of a property (spec §8.8 "Nemovitost"): the loans and the policies linked to it as
  * rows, each group with its Připojit, then the yearly balance. A loan row is the name, "splátka
  * 12 340 Kč / měs." and what is outstanding, a policy row the name, the insurer and the premium
- * with its frequency, each in its own currency; a tap opens the loan or the policy, a long press
+ * with its frequency, each in its own currency; a tap opens the loan or the policy (on Finance, its
+ * back button naming the property), a long press
  * the row menu with Odpojit. Připojit opens a sheet of the loans or policies no property owns yet,
  * so linking never moves one from another property. Every amount goes through the eye.
  */
@@ -117,6 +118,7 @@ export function PropertyFinance({
                 })}
                 value={moneyText(Number(loan.outstandingBalance) || 0, code, WHOLE)}
                 href={loanPath(loan.id)}
+                from={property.name}
                 onLongPress={() => setMenuFor(key)}
                 accessory={menu(key, 'loan', loan.id, loan.name)}
               />
@@ -153,6 +155,7 @@ export function PropertyFinance({
                     : policy.paymentFrequency
                 }
                 href={policyPath(policy.id)}
+                from={property.name}
                 onLongPress={() => setMenuFor(key)}
                 accessory={menu(key, 'insurance', policy.id, policy.policyName)}
               />

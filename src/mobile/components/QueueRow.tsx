@@ -10,10 +10,10 @@ import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text'
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { SNOOZE_DAYS, suggestionLabelKey, type RowState } from '@/mobile/lib/categorize-queue';
 import { initials } from '@/mobile/lib/initials';
@@ -47,9 +47,6 @@ interface QueueRowProps {
   /** Swipe right and the menu: the transaction sheet. */
   onDetails: () => void;
 }
-
-/** The menu items: 44 pt tall, body type (as `LedgerRow`'s menu). */
-const MENU_ITEM = 'min-h-11 text-m-body [&_svg]:size-[18px]';
 
 type PillTone = 'plain' | 'dark' | 'ghost';
 
@@ -226,21 +223,21 @@ export function QueueRow({
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-[220px]">
-            <DropdownMenuItem className={MENU_ITEM} onSelect={onDetails}>
+            <RowMenuItem onSelect={onDetails}>
               <Info />
               {t('account.rowMenu.details')}
-            </DropdownMenuItem>
-            <DropdownMenuItem className={MENU_ITEM} onSelect={onPick}>
+            </RowMenuItem>
+            <RowMenuItem onSelect={onPick}>
               <Tag />
               {t('account.rowMenu.category')}
-            </DropdownMenuItem>
+            </RowMenuItem>
             {open && (
               <>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className={MENU_ITEM} onSelect={onSnooze}>
+                <RowMenuItem onSelect={onSnooze}>
                   <Clock />
                   {t('queue.keepMenu', { days: SNOOZE_DAYS })}
-                </DropdownMenuItem>
+                </RowMenuItem>
               </>
             )}
           </DropdownMenuContent>

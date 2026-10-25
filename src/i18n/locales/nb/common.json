@@ -221,6 +221,8 @@
     "csvEmptyFile": "Filen er tom eller har ingen overskriftsrad.",
     "csvColumnsNotFound": "De valgte kolonnene ble ikke funnet i filen. Sjekk overskriftsraden og kolonnetilordningen.",
     "csvDecimalSeparatorInvalid": "Desimalskilletegnet må være komma eller punktum.",
+    "learnedFormatHeaderless": "Denne raden ser ut som data, ikke kolonneoverskrifter.",
+    "learnedFormatColumns": "Formatet viser til en kolonne som filen ikke har.",
     "amountPositive": "Beløpet må være positivt",
     "cashflowPeriodInvalid": "Perioden kan ikke slutte før den begynner.",
     "balanceAnchorIncomplete": "Skriv inn både restgjelden og datoen for den",

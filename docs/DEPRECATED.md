@@ -137,6 +137,12 @@ Attachment content moved into the encrypted store `attachments.db` (ADR 0017,
 `file_path` / `thumbnail_path` columns and `document_files::resolve_document_path` remain only
 for legacy rows that the conversion has not reached yet; never write new paths into them.
 
+## Removed with the phone polish (do not re-add)
+
+| Removed | Why it was removed | Use instead |
+|---|---|---|
+| The menu-owned delete on a phone detail: a `ConfirmSheet` plus the delete mutation inside the `···` menu, leaving through a per-call `onSuccess` (`src/mobile/hooks/use-leave-deleted.ts`, with `PositionMenu`, `CryptoMenu` and `OtherAssetMenu` as its users) | The menu unmounts when its record drops out of the list the page reads, the per-call callback is dropped with it, and the screen stays on the deleted record | `src/mobile/hooks/use-delete-and-leave.ts`, run by the page itself (the loan, policy, property, position, coin and other-asset details); the menu only asks (`onDelete`) |
+
 ## Removed with CoinGecko (do not re-add)
 
 Crypto prices, search and history moved to Yahoo Finance and a holding stores its Yahoo symbol

@@ -68,6 +68,8 @@ export function useRecognition({ active, goTo, onUnreadable, onNavigate }: UseRe
   const [choice, setChoice] = useState<string | null>(null);
   /** The person saw the question of the dates' day and month order. */
   const [orderConfirmed, setOrderConfirmed] = useState(false);
+  /** The name of the learned format the recognition started from, if it did ("Změnit"). */
+  const [seededFrom, setSeededFrom] = useState<string | null>(null);
 
   const options = useMemo(
     () =>
@@ -124,13 +126,23 @@ export function useRecognition({ active, goTo, onUnreadable, onNavigate }: UseRe
     return 'correct';
   };
 
-  /** The inference of a file is in: where the sheet goes next. */
-  const begin = (file: Session): 'recognize' | 'correct' => {
-    const first = mappingFromInferred(file.inferred, file.csv);
+  /**
+   * The inference of a file is in: where the sheet goes next. With a `seed` (the mapping and name
+   * of a learned format the person wants to change) the recognition starts from its mapping, on
+   * the rows rather than the questions, and its day and month order counts as confirmed — it was
+   * when the format was learned. The inference still gives the options and the sign check.
+   */
+  const begin = (
+    file: Session,
+    seed?: { mapping: MappingState; name: string }
+  ): 'recognize' | 'correct' => {
+    const first = seed?.mapping ?? mappingFromInferred(file.inferred, file.csv);
+    const seeded = seed !== undefined;
     setSession(file);
     setMapping(first);
-    setOrderConfirmed(false);
-    return show(recognitionStart(first, file.inferred), first, file, true);
+    setOrderConfirmed(seeded);
+    setSeededFrom(seed?.name ?? null);
+    return show(recognitionStart(first, file.inferred, seeded), first, file, true);
   };
 
   /** A new read starts: nothing of the previous file is kept. */
@@ -140,6 +152,7 @@ export function useRecognition({ active, goTo, onUnreadable, onNavigate }: UseRe
     setView({ kind: 'overview' });
     setChoice(null);
     setOrderConfirmed(false);
+    setSeededFrom(null);
   };
 
   /** "Opravit…": the list of fields. */
@@ -196,6 +209,8 @@ export function useRecognition({ active, goTo, onUnreadable, onNavigate }: UseRe
     csv: session?.csv ?? null,
     inferred: session?.inferred ?? null,
     mapping,
+    /** The learned format the recognition started from ("Změnit"), by name; `null` for a new layout. */
+    seededFrom,
     /** The mapping the open field's checked option would give (the committed one elsewhere). */
     pending: shown,
     /**

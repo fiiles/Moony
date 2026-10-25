@@ -16,9 +16,9 @@ import { useAuth } from '@/hooks/use-auth';
 import { useFormat } from '@/lib/use-format';
 import { amountOf } from '@/utils/positions';
 import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/common/EmptyState';
-import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { ScaledConversionNote, ScaledEmptyState } from '@/mobile/components/Scaled';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
+import { RowBadge } from '@/mobile/components/RowBadge';
 import { Hero } from '@/mobile/components/Hero';
 import { Money } from '@/mobile/components/Money';
 import { SectionHead } from '@/mobile/components/SectionHead';
@@ -117,7 +117,7 @@ export default function Wealth() {
       ) : (
         <>
           {/* Amounts the backend could not convert into the report currency (left out) */}
-          <ConversionQualityNote
+          <ScaledConversionNote
             quality={overview.fxQuality}
             currency={reportCurrency}
             className="mx-0.5 mb-3.5"
@@ -328,9 +328,7 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
                 excluded ? (
                   <span className="flex min-w-0 items-center">
                     <span className="min-w-0 truncate">{property.name}</span>
-                    <span className="ml-1.5 inline-flex min-h-[18px] flex-none items-center rounded-r1 bg-well-2 px-1.5 py-px text-m-caption font-semibold leading-[1.3] text-ink-3">
-                      {t('realEstate:table.excluded')}
-                    </span>
+                    <RowBadge className="flex-none">{t('realEstate:table.excluded')}</RowBadge>
                   </span>
                 ) : (
                   property.name
@@ -395,7 +393,7 @@ function CashSection({ wealth }: { wealth: WealthData }) {
 function EmptyWealth() {
   const { t } = useTranslation('mobile');
   return (
-    <EmptyState
+    <ScaledEmptyState
       icon={<Briefcase />}
       title={t('wealth.empty.title')}
       description={t('wealth.empty.description')}

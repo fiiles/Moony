@@ -221,6 +221,8 @@
     "csvEmptyFile": "Plik jest pusty lub nie ma wiersza nagłówka.",
     "csvColumnsNotFound": "Nie znaleziono wybranych kolumn w pliku. Sprawdź wiersz nagłówka i przypisanie kolumn.",
     "csvDecimalSeparatorInvalid": "Separator dziesiętny musi być przecinkiem lub kropką.",
+    "learnedFormatHeaderless": "Ten wiersz wygląda na dane, a nie na nagłówki kolumn.",
+    "learnedFormatColumns": "Format odwołuje się do kolumny, której nie ma w pliku.",
     "amountPositive": "Kwota musi być dodatnia",
     "cashflowPeriodInvalid": "Okres nie może kończyć się przed rozpoczęciem.",
     "balanceAnchorIncomplete": "Wpisz zarówno saldo do spłaty, jak i jego datę",

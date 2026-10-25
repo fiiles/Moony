@@ -118,7 +118,7 @@ export function SourceStep({
   };
 
   return (
-    <div className="grid grid-cols-[1fr_1.15fr] gap-6">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-[1fr_1.15fr]">
       <div className="min-w-0">
         <h4 className="mb-2 mt-1 text-caption font-700 text-ink-2">
           {t('importWizard.file.sourceHeading')}

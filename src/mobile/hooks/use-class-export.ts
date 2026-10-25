@@ -1,9 +1,6 @@
-import { useCallback, useState } from 'react';
-import { useTranslation } from 'react-i18next';
-import { toast } from 'sonner';
+import { useCallback } from 'react';
 import { exportApi } from '@/lib/tauri-api';
-import { translateApiError } from '@/lib/translate-api-error';
-import { useExportTextFile } from '@/mobile/hooks/use-export-text-file';
+import { useCsvExport } from '@/mobile/hooks/use-csv-export';
 
 /** The class pages that export their CSV. */
 export type ExportKind = 'stocks' | 'crypto' | 'bonds' | 'otherAssets';
@@ -21,47 +18,20 @@ const EXPORTS = {
 } as const;
 
 /**
- * A byte-order mark in front of the CSV, as the desktop's export writes it: Excel and Numbers
- * read a UTF-8 file without one as the system's code page and garble the accents.
- */
-const BOM = '\uFEFF';
-
-/**
  * "Export" in the `···` of Akcie, Krypto, Dluhopisy and Ostatní aktiva (spec §8.8): fetches the
- * class's CSV from the backend and hands it to the Files picker (`useExportTextFile`). A class with
- * nothing in it says so instead of opening the picker; a saved file is told ("Export dokončen" with
- * the number of records), a cancelled picker is not; a failure is told with its message. While it
- * runs `isPending` is on, so the menu item can be disabled.
+ * class's CSV from the backend and hands it to the Files picker. The run, its toasts and its
+ * pending state are `useCsvExport`'s (the Cashflow tab's Export shares them).
  */
 export function useClassExport(kind: ExportKind): {
   exportCsv: () => Promise<void>;
   isPending: boolean;
 } {
-  const { t: tc } = useTranslation('common');
-  const { exportText } = useExportTextFile();
-  const [isPending, setPending] = useState(false);
+  const { run, isPending } = useCsvExport();
 
-  const exportCsv = useCallback(async () => {
+  const exportCsv = useCallback(() => {
     const { fileName, load } = EXPORTS[kind];
-    setPending(true);
-    try {
-      const { csv, count } = await load();
-      if (count === 0) {
-        toast(tc('export.noData'), { description: tc('export.noDataDescription') });
-        return;
-      }
-      const outcome = await exportText(fileName, BOM + csv);
-      if (outcome === 'saved') {
-        toast(tc('export.success'), { description: tc('export.successDescription', { count }) });
-      }
-    } catch (error) {
-      toast.error(tc('status.error'), {
-        description: translateApiError(error instanceof Error ? error : String(error), tc),
-      });
-    } finally {
-      setPending(false);
-    }
-  }, [kind, exportText, tc]);
+    return run(fileName, load);
+  }, [kind, run]);
 
   return { exportCsv, isPending };
 }

@@ -8,10 +8,9 @@ import type { MoneyOptions } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import { currentMonthStart, type BudgetLimitPeriod } from '@/utils/budget-goal-versions';
 import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/common/EmptyState';
-import { ReportError } from '@/components/reports/ReportQualityNote';
+import { ScaledEmptyState, ScaledReportError } from '@/mobile/components/Scaled';
 import { CategoryChip } from '@/mobile/components/cashflow/CategoryChip';
-import { RowMenu, RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { useBack } from '@/mobile/hooks/use-back';
@@ -84,7 +83,7 @@ export default function Budgets() {
   let body: ReactNode;
   if (historyQuery.isError || categoriesQuery.isError) {
     body = (
-      <ReportError
+      <ScaledReportError
         onRetry={() => {
           void historyQuery.refetch();
           void categoriesQuery.refetch();
@@ -95,7 +94,7 @@ export default function Budgets() {
     body = <BudgetsSkeleton />;
   } else if (rows.length === 0 && unbudgeted.length === 0 && reportDone) {
     body = (
-      <EmptyState
+      <ScaledEmptyState
         bare
         icon={<PiggyBank />}
         title={tb('noBudgets.title')}
@@ -142,7 +141,7 @@ export default function Budgets() {
           <section>
             <SectionHead title={tb('unbudgeted.title')} note={t('cashflow.budgets.averageNote')} />
             {reportQuery.isError ? (
-              <ReportError onRetry={() => void reportQuery.refetch()} />
+              <ScaledReportError onRetry={() => void reportQuery.refetch()} />
             ) : reportQuery.isLoading ? (
               <BudgetsSkeleton rows={2} />
             ) : (

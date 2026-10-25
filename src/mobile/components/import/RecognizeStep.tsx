@@ -28,7 +28,8 @@ export function SampleSkeleton() {
 
 /**
  * "Takhle tomu rozumím" (spec §8.6 rung 3, README §13 "Import recognition"): the file bar with
- * what the reader found of the file and that its format is not known yet, three real rows of the
+ * what the reader found of the file and that its format is not known yet (or, after "Změnit" on a
+ * learned format, which saved format the recognition started from), three real rows of the
  * file drawn as Moony rows, and the list of what was recognized — a check and the columns for
  * every field that is read, a minus and what it costs for one that is not (the date and the
  * amount are always read here; a file without them opens on their correction instead). The
@@ -57,7 +58,10 @@ export function RecognizeStep({
       delimiter: csv.delimiter === '\t' ? t('import.recognize.tab') : csv.delimiter,
       encoding: csv.encoding,
     }),
-    t('import.recognize.unknownFormat'),
+    // After "Změnit" the person just read which saved format this is: the bar keeps naming it
+    recognition.seededFrom === null
+      ? t('import.recognize.unknownFormat')
+      : t('import.recognize.learnedFormat', { name: recognition.seededFrom }),
   ].join(' · ');
   const signCheck = signCheckFor(mapping, inferred);
   const full = recognition.previewLoading || rows.length >= SAMPLE_ROWS;

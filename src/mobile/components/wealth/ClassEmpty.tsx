@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/common/EmptyState';
+import { ScaledEmptyState } from '@/mobile/components/Scaled';
 
 interface ClassEmptyProps {
   icon: ReactNode;
@@ -15,7 +15,7 @@ interface ClassEmptyProps {
 /** Nothing owned: the empty state of a class, with the button that adds the first position. */
 export function ClassEmpty({ icon, title, description, addLabel, onAdd }: ClassEmptyProps) {
   return (
-    <EmptyState
+    <ScaledEmptyState
       icon={icon}
       title={title}
       description={description}

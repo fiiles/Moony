@@ -11,7 +11,7 @@ import {
   type TradeDayEvent,
   type TradeLike,
 } from '@/utils/trade-events';
-import { ChartLegend } from '@/components/charts/ChartLegend';
+import { ScaledChartLegend } from '@/mobile/components/Scaled';
 import { Hero } from '@/mobile/components/Hero';
 import { Money } from '@/mobile/components/Money';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -160,7 +160,7 @@ export function ClassHero({
       chartLabel={label}
     >
       {trades !== undefined && points.length > 1 && (
-        <ChartLegend
+        <ScaledChartLegend
           items={[
             { label: ts('chart.legend.value'), swatch: { kind: 'line' } },
             { label: ts('chart.legend.buy'), swatch: { kind: 'event', type: 'buy' } },

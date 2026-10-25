@@ -6,7 +6,7 @@ import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
 import { priceOf, watchPriceText, watchTargetState } from '@/mobile/lib/watch-detail';
 import { watchPath } from '@/mobile/shell/routes';
 import { ChangeLine } from './ChangeLine';
-import { RowBadge } from './RowBadge';
+import { RowBadge } from '@/mobile/components/RowBadge';
 
 /**
  * A watched stock (spec §8.8, prototype frame 11): the ticker with its name, the price in the

@@ -11,26 +11,28 @@ import { chartPeriodStart, type ChartPeriod } from '@/utils/period';
  * currency (the desktop `PositionHero`'s query, so the cache is shared): refetched when the
  * backend finishes a recalculation, and backfilled once per ticker so the chart has history after
  * a fresh import. `kind` picks the stock or the crypto commands; `undefined` until loaded and
- * while there is no ticker.
+ * while there is no ticker. With `live` false (the holding is being deleted) the line stays as it
+ * is: neither the query nor a recalculation fetches it again.
  */
 export function useTickerHistory(
   kind: 'stock' | 'crypto',
   ticker: string | undefined,
-  period: ChartPeriod
+  period: ChartPeriod,
+  live = true
 ): TickerValueHistoryReport | undefined {
   const queryClient = useQueryClient();
   const { currencyCode, fxRevision } = useCurrency();
   const api = kind === 'crypto' ? cryptoApi : investmentsApi;
 
   useEffect(() => {
-    if (!ticker) return;
+    if (!ticker || !live) return;
     const unlisten = listen('recalculation-complete', () => {
       queryClient.invalidateQueries({ queryKey: ['ticker-history', kind, ticker] });
     });
     return () => {
       unlisten.then((stop) => stop());
     };
-  }, [queryClient, kind, ticker]);
+  }, [queryClient, kind, ticker, live]);
 
   // On-demand backfill, once per ticker, so the chart has history after a fresh import
   useEffect(() => {
@@ -51,7 +53,7 @@ export function useTickerHistory(
     queryKey: ['ticker-history', kind, ticker, periodStart ?? 'all', currencyCode, fxRevision],
     queryFn: () =>
       api.getHistory(ticker!, currencyCode, periodStart, Math.floor(Date.now() / 1000)),
-    enabled: !!ticker,
+    enabled: !!ticker && live,
     staleTime: 0,
     refetchOnMount: 'always',
   });

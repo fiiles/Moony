@@ -1,6 +1,12 @@
 import { useMemo, useState } from 'react';
 import { Link, useLocation } from 'wouter';
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { ArrowUp, Ellipsis, ExternalLink, House, Pencil, Plus, Search, Trash2 } from 'lucide-react';
@@ -65,6 +71,13 @@ type SortColumn = 'name' | 'value' | 'appreciation' | 'rent' | 'equity';
 type Modal = 'edit' | 'revalue' | 'delete' | null;
 
 /**
+ * The linked loans of each property, in the properties' order (`useQueries`' `combine`). A function
+ * of the module, so its reference is stable: TanStack then shares the combined array structurally,
+ * and it changes only when a property's loans do — one fixed-size dependency for the rows.
+ */
+const loanLists = (results: UseQueryResult<Loan[]>[]) => results.map((result) => result.data);
+
+/**
  * Real estate list (design system §7 List, prototype real-estate.html): four
  * stats, the value trend, and a table with appreciation, rental yield and
  * equity / LTV per property; the personal residence is marked when it sits
@@ -94,12 +107,13 @@ export default function RealEstatePage() {
   });
 
   // Linked loans decide the equity of each property (amortized balance)
-  const loanQueries = useQueries({
+  const loansByProperty = useQueries({
     queries: properties.map((p) => ({
       queryKey: ['real-estate-loans', p.id],
       queryFn: () => realEstateApi.getLoans(p.id),
       staleTime: 60 * 1000,
     })),
+    combine: loanLists,
   });
 
   // Every property's estimates: the revaluation marks of the trend card
@@ -117,17 +131,9 @@ export default function RealEstatePage() {
   const rows = useMemo(
     (): PropertyRow[] =>
       properties.map((p, i) =>
-        propertyRow(
-          p,
-          (loanQueries[i]?.data ?? []) as Loan[],
-          excludePersonal,
-          convert,
-          dated.convertAt
-        )
+        propertyRow(p, loansByProperty[i] ?? [], excludePersonal, convert, dated.convertAt)
       ),
-    // loanQueries is a new array every render; its data is what matters
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [properties, excludePersonal, convert, dated.convertAt, ...loanQueries.map((q) => q.data)]
+    [properties, excludePersonal, convert, dated.convertAt, loansByProperty]
   );
 
   const counted = rows.filter((r) => !r.excluded);

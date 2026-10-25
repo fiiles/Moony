@@ -9,10 +9,11 @@ import { stockSplitsApi } from '@/lib/tauri-api';
  * (`invalidateAfterPriceRefresh`, which the daily split check runs inside and which the
  * `recalculation-complete` listener in SyncProvider calls).
  */
-export function useStockSplits(ticker: string | undefined) {
+export function useStockSplits(ticker: string | undefined, enabled = true) {
   return useQuery({
     queryKey: ['stock-splits', ticker],
     queryFn: () => stockSplitsApi.list(ticker as string),
-    enabled: !!ticker,
+    // `enabled` false keeps what was read and fetches nothing more (a phone page leaving a deleted position)
+    enabled: !!ticker && enabled,
   });
 }

@@ -13,14 +13,14 @@ import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useCategories } from '@/hooks/use-categories';
 import { cashflowApi } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
-import { EmptyState } from '@/components/common/EmptyState';
+import { ScaledEmptyState } from '@/mobile/components/Scaled';
 import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/mobile/components/cashflow/ProgressBar';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { PickRunner, type PickRun } from '@/mobile/components/queue/PickRunner';
 import { QueueSkeleton } from '@/mobile/components/queue/QueueSkeleton';
 import { QueueRow } from '@/mobile/components/QueueRow';
-import { useBack } from '@/mobile/hooks/use-back';
+import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import {
   useCategorizeQueue,
   useQueueSnapshot,
@@ -72,6 +72,8 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
   const back = useBack(routes.finance);
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
+  const backText = useBackLabel(t('tabs.finance'));
   const [, setLocation] = useLocation();
   const { categories, isLoading: categoriesLoading } = useCategories();
   const { accounts } = useBankAccounts();
@@ -245,7 +247,7 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
   return (
     <Screen
       title={t('finance.uncategorized')}
-      leading={<NavTextButton label={t('tabs.finance')} onClick={back} chevron />}
+      leading={<NavTextButton label={backText} onClick={back} chevron />}
     >
       {!ready ? (
         queue.isError ? (
@@ -265,7 +267,7 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
       ) : (
         <>
           {finished ? (
-            <EmptyState
+            <ScaledEmptyState
               bare
               icon={<CircleCheck />}
               title={t('queue.empty.title')}

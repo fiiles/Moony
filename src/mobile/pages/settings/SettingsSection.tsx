@@ -1,6 +1,7 @@
 import { Redirect, useParams } from 'wouter';
 import { isSettingsSection, routes } from '@/mobile/shell/routes';
 import BackupSection from './BackupSection';
+import ImportSection from './ImportSection';
 import NotificationsSection from './NotificationsSection';
 import ProfileSection from './ProfileSection';
 import RemindersSection from './RemindersSection';
@@ -25,5 +26,7 @@ export default function SettingsSection() {
       return <NotificationsSection />;
     case 'backup':
       return <BackupSection />;
+    case 'import':
+      return <ImportSection />;
   }
 }

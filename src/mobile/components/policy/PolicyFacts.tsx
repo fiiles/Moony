@@ -8,6 +8,7 @@ import { useFormat } from '@/lib/use-format';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import type { PolicyFact } from '@/mobile/lib/policy-detail';
+import { backState } from '@/mobile/lib/back-label';
 import { propertyPath } from '@/mobile/shell/routes';
 
 /** The contract card's material: a list of key-value rows on paper. */
@@ -66,6 +67,8 @@ function NumberRow({ label, number }: { label: string; number: string }) {
 interface PolicyFactsProps {
   facts: PolicyFact[];
   today: number;
+  /** The policy's name: the property's back button shows it (the property is on Majetek). */
+  from: string;
 }
 
 /**
@@ -73,9 +76,9 @@ interface PolicyFactsProps {
  * key-value card, a row per fact the policy has (`policyFacts`), the labels the desktop's contract
  * card has. The premium is an amount in the policy's own currency with its frequency — through the
  * eye; the term, the next payment, the cancellation deadline and the insured property are dates
- * and a name. The property is a row that opens it.
+ * and a name. The property is a row that opens it, its back button naming the policy.
  */
-export function PolicyFacts({ facts, today }: PolicyFactsProps) {
+export function PolicyFacts({ facts, today, from }: PolicyFactsProps) {
   const { t } = useTranslation('mobile');
   const { t: ti } = useTranslation('insurance');
   const fmt = useFormat();
@@ -182,7 +185,7 @@ export function PolicyFacts({ facts, today }: PolicyFactsProps) {
                 key={fact.key}
                 label={ti('detail.contract.property')}
                 value={<Wrapping>{fact.name}</Wrapping>}
-                onClick={() => setLocation(propertyPath(fact.id))}
+                onClick={() => setLocation(propertyPath(fact.id), { state: backState(from) })}
               />
             );
         }

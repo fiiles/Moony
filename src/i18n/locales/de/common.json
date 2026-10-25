@@ -221,6 +221,8 @@
     "csvEmptyFile": "Die Datei ist leer oder hat keine Kopfzeile.",
     "csvColumnsNotFound": "Die ausgewählten Spalten wurden in der Datei nicht gefunden. Prüfen Sie die Kopfzeile und die Spaltenzuordnung.",
     "csvDecimalSeparatorInvalid": "Das Dezimaltrennzeichen muss ein Komma oder ein Punkt sein.",
+    "learnedFormatHeaderless": "Diese Zeile sieht nach Daten aus, nicht nach Spaltenüberschriften.",
+    "learnedFormatColumns": "Das Format verweist auf eine Spalte, die in der Datei fehlt.",
     "amountPositive": "Der Betrag muss positiv sein",
     "cashflowPeriodInvalid": "Der Zeitraum darf nicht vor seinem Beginn enden.",
     "balanceAnchorIncomplete": "Geben Sie sowohl die Restschuld als auch ihr Datum ein",

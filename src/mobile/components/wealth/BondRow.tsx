@@ -3,11 +3,11 @@ import { useTranslation } from 'react-i18next';
 import { FileText, Pencil, Trash2 } from 'lucide-react';
 import type { Bond } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
-import { RowMenu, RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import type { BondRowModel } from '@/mobile/lib/bond-rows';
-import { RowBadge } from './RowBadge';
+import { RowBadge } from '@/mobile/components/RowBadge';
 
 interface BondRowProps {
   row: BondRowModel;

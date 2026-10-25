@@ -1632,6 +1632,68 @@ export interface InferredColumns {
   decimalSeparator: string;
 }
 
+/**
+ * How a learned format reads the columns of its file: the layout part of a CSV import
+ * configuration, with the file's own header names. Nothing that belongs to one file is kept.
+ */
+export interface LearnedCsvMapping {
+  dateColumn: string;
+  /** chrono format, or "auto" to detect it from the column. */
+  dateFormat: string;
+  amountColumn: string | null;
+  debitColumn: string | null;
+  creditColumn: string | null;
+  balanceColumn: string | null;
+  transactionIdColumn: string | null;
+  descriptionColumns: string[];
+  counterpartyColumn: string | null;
+  counterpartyIbanColumn: string | null;
+  counterpartyBankCodeColumn: string | null;
+  counterpartyCountryColumn: string | null;
+  currencyColumn: string | null;
+  /** "auto", "," or ".". */
+  decimalSeparator: string;
+}
+
+/**
+ * A CSV layout the person confirmed once, recognised next month (mobile spec §8.6 rung 4).
+ * Stored in the profile database; `signature` is the layout's key (header cells, delimiter and
+ * column count), `headers` the cells it was learned from. Encoding and header row are what the
+ * file had when it was saved and are not part of the key.
+ */
+export interface LearnedCsvFormat {
+  /** "learned:<uuid>". */
+  id: string;
+  name: string;
+  signature: string;
+  headers: string[];
+  /** One character: "," ";" or a tab. */
+  delimiter: string;
+  encoding: string;
+  /** 0-based line of the header row. */
+  headerRow: number;
+  mapping: LearnedCsvMapping;
+  /** The account the layout was learned for, offered again on reuse. */
+  accountId: string | null;
+  /** Unix seconds. */
+  createdAt: number;
+  /** Unix seconds of the last successful import with this format. */
+  lastUsedAt: number;
+  /** The shipped preset whose headers this layout now matches; a preset always wins. */
+  shadowedByPresetId: string | null;
+}
+
+/** What `save_learned_csv_format` takes. */
+export interface InsertLearnedCsvFormat {
+  name: string;
+  headers: string[];
+  delimiter: string;
+  encoding: string;
+  headerRow: number;
+  mapping: LearnedCsvMapping;
+  accountId: string | null;
+}
+
 export interface CsvImportConfigInput {
   /** One character; empty = auto-detect. */
   delimiter: string;

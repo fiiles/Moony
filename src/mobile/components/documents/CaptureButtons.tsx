@@ -1,6 +1,7 @@
 import { useRef, type ChangeEvent } from 'react';
 import { Camera, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { PAIR_BUTTON } from '@/mobile/components/ButtonPair';
 import type { DocumentSource } from '@/mobile/lib/documents';
 
 interface CaptureButtonsProps {
@@ -17,19 +18,13 @@ interface CaptureButtonsProps {
   onFiles: (files: File[], source: DocumentSource) => void;
 }
 
-/**
- * One of the two buttons, as `ButtonPair`'s: at least 48 pt, the label in the lead role and allowed
- * a second line, so a larger text makes the button taller, never wider.
- */
-const CAPTURE_BUTTON =
-  'h-auto min-h-12 min-w-0 whitespace-normal rounded-[10px] px-2.5 py-2 text-center text-m-lead font-semibold leading-tight hyphens-auto [&_svg]:size-4';
-
 /** Visually hidden but still in the layout: a file input iOS opens from a click on another element. */
 const HIDDEN_INPUT = 'sr-only';
 
 /**
  * "Vyfotit" and "Vybrat soubor" (README §13, `.m-capture`; spec §8.8, §9): two secondary buttons
- * under a list of documents or photos, each driving a hidden file input. The camera's is exactly
+ * of `ButtonPair`'s look (`PAIR_BUTTON`) under a list of documents or photos, each driving a hidden
+ * file input. The camera's is exactly
  * `accept="image/*" capture="environment"`, which opens the system camera and hands back the
  * photograph as a `File`; the picker's `accept` is the caller's (a document's filter or the
  * gallery's photo types — naming JPEG and not HEIC makes WebKit convert a Photo Library original to
@@ -65,7 +60,7 @@ export function CaptureButtons({
       <Button
         type="button"
         variant="secondary"
-        className={CAPTURE_BUTTON}
+        className={PAIR_BUTTON}
         disabled={disabled}
         onClick={() => cameraInput.current?.click()}
       >
@@ -75,7 +70,7 @@ export function CaptureButtons({
       <Button
         type="button"
         variant="secondary"
-        className={CAPTURE_BUTTON}
+        className={PAIR_BUTTON}
         disabled={disabled}
         onClick={() => pickInput.current?.click()}
       >

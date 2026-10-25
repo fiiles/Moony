@@ -1,10 +1,13 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
+import { KeyRound } from 'lucide-react';
 import { biometricApi } from '@/lib/tauri-api';
 import { deviceStorage } from '@/utils/device-storage';
+import { EntityRows } from '@/mobile/components/EntityRow';
 import { SectionPage } from '@/mobile/components/SectionPage';
 import { Segment } from '@/mobile/components/Segment';
+import { SettingsRow } from '@/mobile/components/SettingsRow';
 import { SwitchRow } from '@/mobile/components/SwitchRow';
 import { useBiometricEnrolment } from '@/mobile/hooks/use-biometric-enrolment';
 import {
@@ -15,6 +18,7 @@ import {
 import { BIOMETRIC_STATUS_KEY, biometricCopy } from '@/mobile/lib/biometrics';
 import { readHideAmountsOnLaunch, writeHideAmountsOnLaunch } from '@/mobile/lib/hide-amounts';
 import { biometryMethodKey, lockAfterOption, renderTextRef } from '@/mobile/lib/settings-summary';
+import { ChangePasswordSheet } from '@/mobile/sheets/ChangePasswordSheet';
 
 /** The card the section's controls sit in (`.m-card`), rows `line-soft` apart. */
 const CARD =
@@ -24,7 +28,8 @@ const CARD =
  * Nastavení → Zabezpečení (spec §8.9): biometric unlock, how soon the app locks after it was left
  * and whether every launch starts with the amounts hidden. The last two are device settings in
  * `localStorage`; `useBackgroundLock` reads the lock delay on every return to the foreground, and
- * the hide-on-launch switch is read when the app starts. Changing the password is not on the phone.
+ * the hide-on-launch switch is read when the app starts. Under the card, "Změnit heslo" opens the
+ * password change with its new recovery key (`ChangePasswordSheet`).
  */
 export default function SecuritySection() {
   const { t } = useTranslation('mobile');
@@ -32,6 +37,7 @@ export default function SecuritySection() {
   const { enable, disable } = useBiometricEnrolment();
   const [lockMinutes, setLockMinutes] = useState(() => readBackgroundLockMinutes(deviceStorage()));
   const [hideOnLaunch, setHideOnLaunch] = useState(() => readHideAmountsOnLaunch(deviceStorage()));
+  const [passwordOpen, setPasswordOpen] = useState(false);
 
   const data = status.data;
   const enrolled = data?.enrolled ?? false;
@@ -96,6 +102,15 @@ export default function SecuritySection() {
           }}
         />
       </div>
+      <EntityRows>
+        <SettingsRow
+          icon={KeyRound}
+          title={t('settings.password.title')}
+          sub={t('settings.password.rowSub')}
+          onClick={() => setPasswordOpen(true)}
+        />
+      </EntityRows>
+      <ChangePasswordSheet open={passwordOpen} onOpenChange={setPasswordOpen} />
     </SectionPage>
   );
 }

@@ -17,7 +17,7 @@ import { field48, fieldLabel, primaryButton, rowCard, textLink } from './styles'
  * The balance is typed on the decimal keypad with the ± toggle for an overdrawn account; an empty
  * field means no balance yet. Errors show under their field once "Vytvořit účet" has been tried.
  * "Zatím přeskočit" goes on without an account. The statement import is not part of the phone's
- * first run (it comes with the import in Phase 2b).
+ * first run: it is offered once Moony is open (Finance, an account, Nastavení › Import).
  */
 export function FirstAccountStep({ flow }: { flow: FirstRunFlow }) {
   const { t } = useTranslation('auth');

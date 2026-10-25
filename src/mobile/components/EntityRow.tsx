@@ -3,6 +3,7 @@ import { Link } from 'wouter';
 import { ChevronRight, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useSwipeActions } from '@/mobile/hooks/use-swipe-actions';
+import { backState } from '@/mobile/lib/back-label';
 import { SWIPE_MAX } from '@/mobile/lib/swipe';
 
 /** Width of the 36 pt chip column (`.m-row`). */
@@ -85,6 +86,11 @@ interface EntityRowProps {
   muted?: boolean;
   /** The whole row is the tap target: a link … */
   href?: string;
+  /**
+   * With `href` to a screen of another tab: the label of the screen the row is on, which the
+   * target's back button then shows (`backState`), as back returns here.
+   */
+  from?: string;
   /** … or an action. Without either the row is not interactive. */
   onClick?: () => void;
   /** Disclosure chevron; shown only on a row without a trailing value (README §13). */
@@ -127,6 +133,7 @@ export function EntityRow({
   bar,
   muted = false,
   href,
+  from,
   onClick,
   chevron = false,
   onSwipeLeft,
@@ -210,7 +217,13 @@ export function EntityRow({
       {onSwipeRight && <SwipePanel side="left" label={swipeRightLabel} icon={swipeRightIcon} />}
       {onSwipeLeft && <SwipePanel side="right" label={swipeLeftLabel} icon={swipeLeftIcon} />}
       {href ? (
-        <Link href={href} className={rowClass} style={rowStyle} {...gestureProps}>
+        <Link
+          href={href}
+          state={backState(from)}
+          className={rowClass}
+          style={rowStyle}
+          {...gestureProps}
+        >
           {content}
         </Link>
       ) : onClick ? (

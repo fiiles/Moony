@@ -50,11 +50,11 @@ export function leaveDeleted(
 }
 
 /**
- * The delete flow of a detail screen (the loan's; the policy and the property delete the same
- * way): the confirm sheet's button calls `run(id)`, and when the record is gone the sheet closes
- * and the screen goes back (`leaveAfterSheet` → `leaveDeleted`); on a restored deep link, where
- * back has nowhere to go, the screen is replaced by `home` after a short guard, then the record's
- * own queries are removed.
+ * The delete flow of a detail screen (the loan's; the policy, the property, the position, the coin
+ * and the other asset delete the same way): the confirm sheet's button calls `run(id)`, and when
+ * the record is gone the sheet closes and the screen goes back (`leaveAfterSheet` →
+ * `leaveDeleted`); on a restored deep link, where back has nowhere to go, the screen is replaced
+ * by `home` after a short guard, then the record's own queries are removed.
  *
  * Own it on the screen, not in a menu or a row that the screen unmounts when the record drops out
  * of its list: the list refetches while the delete is still finishing (a mutation hook that

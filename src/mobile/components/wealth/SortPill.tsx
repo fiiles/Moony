@@ -4,9 +4,9 @@ import {
   DropdownMenuContent,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { RowMenuRadioItem } from '@/mobile/components/RowMenu';
 
 interface SortPillProps<T extends string> {
   value: T;
@@ -39,13 +39,9 @@ export function SortPill<T extends string>({ value, options, onChange, label }: 
         <DropdownMenuLabel>{label}</DropdownMenuLabel>
         <DropdownMenuRadioGroup value={value} onValueChange={(next) => onChange(next as T)}>
           {options.map((option) => (
-            <DropdownMenuRadioItem
-              key={option.value}
-              value={option.value}
-              className="min-h-11 text-m-body"
-            >
+            <RowMenuRadioItem key={option.value} value={option.value}>
               {option.label}
-            </DropdownMenuRadioItem>
+            </RowMenuRadioItem>
           ))}
         </DropdownMenuRadioGroup>
       </DropdownMenuContent>

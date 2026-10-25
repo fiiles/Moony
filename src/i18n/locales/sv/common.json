@@ -221,6 +221,8 @@
     "csvEmptyFile": "Filen är tom eller har ingen rubrikrad.",
     "csvColumnsNotFound": "De valda kolumnerna hittades inte i filen. Kontrollera rubrikraden och kolumnkopplingen.",
     "csvDecimalSeparatorInvalid": "Decimaltecknet måste vara ett komma eller en punkt.",
+    "learnedFormatHeaderless": "Den här raden ser ut som data, inte som kolumnrubriker.",
+    "learnedFormatColumns": "Formatet hänvisar till en kolumn som filen inte har.",
     "amountPositive": "Beloppet måste vara positivt",
     "cashflowPeriodInvalid": "Perioden kan inte sluta före den börjar.",
     "balanceAnchorIncomplete": "Ange både den utestående skulden och dess datum",

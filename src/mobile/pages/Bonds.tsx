@@ -9,14 +9,13 @@ import { useFormat } from '@/lib/use-format';
 import { bondCurrency, bondFaceValue } from '@/utils/bonds';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { BondsFormDialog } from '@/components/bonds/BondsFormDialog';
-import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
-import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { ScaledConversionNote } from '@/mobile/components/Scaled';
+import { RowMenuCheckboxItem, RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
@@ -25,7 +24,8 @@ import { BondRow } from '@/mobile/components/wealth/BondRow';
 import { ClassEmpty } from '@/mobile/components/wealth/ClassEmpty';
 import { ClassSkeleton } from '@/mobile/components/wealth/ClassSkeleton';
 import { MoreRow } from '@/mobile/components/wealth/MoreRow';
-import { useBack } from '@/mobile/hooks/use-back';
+import { LoadFailed } from '@/mobile/components/wealth/LoadFailed';
+import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { useBondsLoadFailed } from '@/mobile/hooks/use-bonds-failed';
 import { useClassExport } from '@/mobile/hooks/use-class-export';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -54,6 +54,8 @@ export default function Bonds() {
   const { t: td } = useTranslation('dashboard');
   const { t: tc } = useTranslation('common');
   const back = useBack(routes.wealth);
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
+  const backText = useBackLabel(t('tabs.wealth'));
   const { bonds, metrics, isLoading, today } = useBonds();
   const loadFailed = useBondsLoadFailed();
   const { exportCsv, isPending: exporting } = useClassExport('bonds');
@@ -85,7 +87,7 @@ export default function Bonds() {
   return (
     <Screen
       title={td('cards.bonds')}
-      leading={<NavTextButton label={t('tabs.wealth')} onClick={back} chevron />}
+      leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
         <>
           <DropdownMenu>
@@ -95,13 +97,9 @@ export default function Bonds() {
               </NavIconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[240px]">
-              <DropdownMenuCheckboxItem
-                className="min-h-11 text-m-body"
-                checked={showMatured}
-                onCheckedChange={setShowMatured}
-              >
+              <RowMenuCheckboxItem checked={showMatured} onCheckedChange={setShowMatured}>
                 {tb('table.showMatured')}
-              </DropdownMenuCheckboxItem>
+              </RowMenuCheckboxItem>
               <DropdownMenuSeparator />
               <RowMenuItem disabled={exporting} onSelect={() => void exportCsv()}>
                 <Download strokeWidth={1.75} aria-hidden />
@@ -120,7 +118,7 @@ export default function Bonds() {
       ) : bonds.length === 0 ? (
         // A failed load is not "no bonds yet": said as such, with no empty state to add the first one
         loadFailed ? (
-          <LoadFailed />
+          <LoadFailed>{t('wealth.bonds.loadFailed')}</LoadFailed>
         ) : (
           <ClassEmpty
             icon={<FileText />}
@@ -133,7 +131,7 @@ export default function Bonds() {
       ) : (
         <>
           {/* Live issues in a currency without a rate are left out of the stats (named here) */}
-          <ConversionQualityNote
+          <ScaledConversionNote
             quality={{ missingCurrencies: metrics.missing }}
             currency={currencyCode}
             className="mx-0.5 mb-3.5"
@@ -269,15 +267,5 @@ function UpcomingPayments({ payments }: { payments: readonly BondPayment[] }) {
         </EntityRows>
       )}
     </>
-  );
-}
-
-/** The bonds could not be loaded: said as such, not shown as "no bonds yet". */
-function LoadFailed() {
-  const { t } = useTranslation('mobile');
-  return (
-    <p role="alert" className="mx-0.5 py-6 text-center text-m-body text-ink-3">
-      {t('wealth.bonds.loadFailed')}
-    </p>
   );
 }

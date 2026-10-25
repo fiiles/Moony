@@ -1,6 +1,6 @@
 import { FileText, Image as ImageIcon, Trash2 } from 'lucide-react';
 import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
-import { RowMenu, RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
 import { viewerKind } from '@/utils/attachment-viewer';
 import type { PhoneDocument } from './document-kind';
 

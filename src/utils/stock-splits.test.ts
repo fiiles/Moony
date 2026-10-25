@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { StockSplit } from '@shared/schema';
-import { defaultSplitChoice, isoDayToUnix, preSplitHint, ratioText } from './stock-splits';
+import {
+  defaultSplitChoice,
+  isoDayToUnix,
+  preSplitHint,
+  ratioText,
+  splitActionOrder,
+} from './stock-splits';
 
 const DAY = 86_400;
 const JUNE_10_2024 = Date.UTC(2024, 5, 10) / 1000;
@@ -68,6 +74,17 @@ describe('defaultSplitChoice', () => {
     expect(defaultSplitChoice('unadjusted')).toBe('apply');
     expect(defaultSplitChoice('adjusted')).toBe('dismiss');
     expect(defaultSplitChoice('unknown')).toBeNull();
+  });
+});
+
+describe('splitActionOrder', () => {
+  it('puts the emphasised action first', () => {
+    expect(splitActionOrder('unadjusted')).toEqual(['apply', 'dismiss']);
+    expect(splitActionOrder('adjusted')).toEqual(['dismiss', 'apply']);
+  });
+
+  it('keeps apply, dismiss when Moony cannot tell', () => {
+    expect(splitActionOrder('unknown')).toEqual(['apply', 'dismiss']);
   });
 });
 

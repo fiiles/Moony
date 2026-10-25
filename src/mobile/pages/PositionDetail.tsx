@@ -22,6 +22,7 @@ import { PositionHeroCard } from '@/mobile/components/wealth/PositionHeroCard';
 import { PositionLedger } from '@/mobile/components/wealth/PositionLedger';
 import { PositionMenu } from '@/mobile/components/wealth/PositionMenu';
 import { PositionStats, useDividendStat } from '@/mobile/components/wealth/PositionStats';
+import { SplitAlerts } from '@/mobile/components/wealth/SplitAlerts';
 import { useBack } from '@/mobile/hooks/use-back';
 import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { usePosition, usePositionMutations } from '@/mobile/hooks/use-position';
@@ -43,7 +44,7 @@ interface PositionView {
 
 /**
  * A position of the Akcie list (spec §8.8, prototype frame 12): the ticker in the nav bar with the
- * name and the currency under it, the value with its line, the dashed "Vloženo" and a mark for
+ * name and the currency under it, a pending split's decision (`SplitAlerts`), the value with its line, the dashed "Vloženo" and a mark for
  * every trade, Koupit · Prodat, six stats, the transactions with their segment and "O společnosti"
  * as a key-value card. The numbers are the desktop detail's (the same queries), in the report
  * currency; the buy and sell dialogs are the desktop's.
@@ -107,6 +108,8 @@ export default function PositionDetail() {
             currency={reportCurrency}
             className="mx-0.5 mb-3.5"
           />
+          {/* A pending split asks its decision here: Přehled's split row opens this page */}
+          <SplitAlerts ticker={view.holding.ticker} />
           <PositionHeroCard
             holding={view.holding}
             history={view.history}

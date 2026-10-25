@@ -5,7 +5,7 @@ import { Alert, AlertActions, AlertDescription, AlertTitle } from '@/components/
 import { Button } from '@/components/ui/button';
 import { useFormat } from '@/lib/use-format';
 import { useStockSplitMutations } from '@/hooks/use-stock-split-mutations';
-import { defaultSplitChoice, ratioText } from '@/utils/stock-splits';
+import { defaultSplitChoice, ratioText, splitActionOrder } from '@/utils/stock-splits';
 
 interface StockSplitBannerProps {
   /** The ticker's splits; only the pending ones get a banner. */
@@ -73,7 +73,9 @@ export function StockSplitBanner({ splits, onManage }: StockSplitBannerProps) {
             <AlertDescription>{body}</AlertDescription>
             <AlertActions className="mt-2.5 items-center">
               {/* The emphasised action leads; without a verdict the order stays apply, dismiss */}
-              {choice === 'dismiss' ? [dismissButton, applyButton] : [applyButton, dismissButton]}
+              {splitActionOrder(split.verdict).map((kind) =>
+                kind === 'apply' ? applyButton : dismissButton
+              )}
               <Button variant="link" size="sm" className="ml-1.5" onClick={onManage}>
                 {t('splits.actions.manage')}
               </Button>

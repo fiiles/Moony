@@ -30,6 +30,17 @@ export function defaultSplitChoice(verdict: StockSplitVerdict): 'apply' | 'dismi
 }
 
 /**
+ * The banner's two actions in their order: the emphasised one leads (`defaultSplitChoice`);
+ * without a verdict the order stays apply, dismiss. The desktop's buttons and the phone's text
+ * actions follow it alike.
+ */
+export function splitActionOrder(
+  verdict: StockSplitVerdict
+): ['apply', 'dismiss'] | ['dismiss', 'apply'] {
+  return defaultSplitChoice(verdict) === 'dismiss' ? ['dismiss', 'apply'] : ['apply', 'dismiss'];
+}
+
+/**
  * The UTC midnight (unix seconds) of a `yyyy-mm-dd` date input value, or null when the value is
  * empty or not a real calendar day.
  */

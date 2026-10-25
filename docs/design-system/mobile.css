@@ -490,6 +490,12 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
   color: var(--ink); font: inherit; font-weight: 600; -webkit-touch-callout: none;
 }
 .m-alert__act:active { color: var(--ink-3); }
+.m-alert__act:disabled { opacity: .45; pointer-events: none; }
+/* A bold title above the sentence (a pending split's "Split 10:1 k 10. 6. 2024"), and a decision of two text actions
+   side by side (the emphasised one first), wrapping under each other when they do not fit. */
+.m-alert__h { margin: 0; color: var(--ink); font-weight: 600; }
+.m-alert__acts { display: flex; flex-wrap: wrap; column-gap: 16px; margin: 2px 0 -10px; }
+.m-alert__acts .m-alert__act { margin: 0; text-align: left; }
 
 /* The live result of a sheet's form (the extra payment): a box on `well`, radius 13, the headline 20 / 650 and the
    sentence that explains it 12 / 500 `ink-3` under it. It wraps; it is the sheet's `aria-live` region. */

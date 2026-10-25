@@ -6,18 +6,15 @@ import type { StockRow } from '@/utils/positions';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { ManualDividendModal } from '@/components/stocks/ManualDividendModal';
 import { ManualPriceModal } from '@/components/stocks/ManualPriceModal';
 import { usePositionMutations } from '@/mobile/hooks/use-position';
 import { PositionRenameSheet } from '@/mobile/sheets/PositionRenameSheet';
 import { NavIconButton } from '@/mobile/shell/NavBar';
-
-/** The classes of a menu item on the phone: 44 pt tall, body type, 18 pt icons. */
-const MENU_ITEM = 'min-h-11 text-m-body [&_svg]:size-[18px]';
 
 /**
  * The `···` of a position (spec §8.8): Upravit cenu and Odhad dividendy open the desktop's dialogs,
@@ -57,31 +54,27 @@ export function PositionMenu({
           </NavIconButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[240px]">
-          <DropdownMenuItem className={MENU_ITEM} onSelect={() => setPriceOpen(true)}>
+          <RowMenuItem onSelect={() => setPriceOpen(true)}>
             <Pencil strokeWidth={1.75} aria-hidden />
             {ts('detail.menu.editPrice')}
-          </DropdownMenuItem>
-          <DropdownMenuItem className={MENU_ITEM} onSelect={() => setDividendOpen(true)}>
+          </RowMenuItem>
+          <RowMenuItem onSelect={() => setDividendOpen(true)}>
             <Receipt strokeWidth={1.75} aria-hidden />
             {ts('detail.menu.editDividend')}
-          </DropdownMenuItem>
-          <DropdownMenuItem className={MENU_ITEM} onSelect={() => setRenameOpen(true)}>
+          </RowMenuItem>
+          <RowMenuItem onSelect={() => setRenameOpen(true)}>
             <Tag strokeWidth={1.75} aria-hidden />
             {ts('detail.menu.editName')}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className={MENU_ITEM}
-            disabled={following || follow.isPending}
-            onSelect={() => follow.mutate()}
-          >
+          </RowMenuItem>
+          <RowMenuItem disabled={following || follow.isPending} onSelect={() => follow.mutate()}>
             <Eye strokeWidth={1.75} aria-hidden />
             {following ? t('wealth.position.following') : t('wealth.position.follow')}
-          </DropdownMenuItem>
+          </RowMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="danger" className={MENU_ITEM} onSelect={onDelete}>
+          <RowMenuItem variant="danger" onSelect={onDelete}>
             <Trash2 strokeWidth={1.75} aria-hidden />
             {ts('actions.deletePosition')}
-          </DropdownMenuItem>
+          </RowMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

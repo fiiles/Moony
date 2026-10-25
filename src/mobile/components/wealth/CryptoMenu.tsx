@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { UpdateCryptoPriceModal } from '@/components/crypto/UpdateCryptoPriceModal';
-import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 
 /**

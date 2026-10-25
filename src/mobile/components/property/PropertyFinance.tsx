@@ -5,7 +5,7 @@ import type { InsurancePolicy, Loan, RealEstate } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
 import type { YearlyBalance } from '@/utils/real-estate';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
-import { RowMenu, RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { GroupHead } from '@/mobile/components/property/GroupHead';
 import { YearlyBalanceCard } from '@/mobile/components/property/YearlyBalanceCard';

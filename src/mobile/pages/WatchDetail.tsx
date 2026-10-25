@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { AddInvestmentModal } from '@/components/stocks/AddInvestmentModal';
 import { ButtonPair } from '@/mobile/components/ButtonPair';
-import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { Hero } from '@/mobile/components/Hero';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { ClassSkeleton } from '@/mobile/components/wealth/ClassSkeleton';

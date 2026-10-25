@@ -10,12 +10,13 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { ScaledConversionNote } from '@/mobile/components/Scaled';
-import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
 import { ChangeLine } from '@/mobile/components/wealth/ChangeLine';
 import { ClassEmpty } from '@/mobile/components/wealth/ClassEmpty';
 import { ClassHero } from '@/mobile/components/wealth/ClassHero';
 import { ClassSkeleton } from '@/mobile/components/wealth/ClassSkeleton';
+import { LoadFailed } from '@/mobile/components/wealth/LoadFailed';
 import { useBack } from '@/mobile/hooks/use-back';
 import { useClassExport } from '@/mobile/hooks/use-class-export';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -87,7 +88,7 @@ export default function OtherAssets() {
       ) : assets.length === 0 ? (
         // A failed load is not "no assets yet": said as such, with no empty state to add the first one
         isError ? (
-          <LoadFailed />
+          <LoadFailed>{t('wealth.otherAssets.loadFailed')}</LoadFailed>
         ) : (
           <ClassEmpty
             icon={<Gem />}
@@ -159,15 +160,5 @@ function AssetRow({ row, currency }: { row: OtherAssetRow; currency: string }) {
       }
       href={otherAssetPath(asset.id)}
     />
-  );
-}
-
-/** The assets could not be loaded: said as such, not shown as "no assets yet". */
-function LoadFailed() {
-  const { t } = useTranslation('mobile');
-  return (
-    <p role="alert" className="mx-0.5 py-6 text-center text-m-body text-ink-3">
-      {t('wealth.otherAssets.loadFailed')}
-    </p>
   );
 }

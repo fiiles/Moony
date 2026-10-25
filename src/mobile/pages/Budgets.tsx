@@ -10,7 +10,7 @@ import { currentMonthStart, type BudgetLimitPeriod } from '@/utils/budget-goal-v
 import { Button } from '@/components/ui/button';
 import { ScaledEmptyState, ScaledReportError } from '@/mobile/components/Scaled';
 import { CategoryChip } from '@/mobile/components/cashflow/CategoryChip';
-import { RowMenu, RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { useBack } from '@/mobile/hooks/use-back';

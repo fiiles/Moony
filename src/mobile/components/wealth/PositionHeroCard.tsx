@@ -3,22 +3,16 @@ import { useTranslation } from 'react-i18next';
 import { priceDecimals } from '@shared/currencies';
 import type { TickerValueHistoryReport } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
-import type { EventCluster } from '@/utils/chart-scale';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
 import type { PositionRowBase } from '@/utils/positions';
 import { ScaledChartLegend } from '@/mobile/components/Scaled';
 import { Hero } from '@/mobile/components/Hero';
 import { Money } from '@/mobile/components/Money';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { useTradeEventTip } from '@/mobile/hooks/use-trade-event-tip';
 import { changeSinceDayOptions } from '@/mobile/lib/change';
 import { pointsChange, trendChangeBase } from '@/mobile/lib/class-trend';
-import {
-  nativeTotal,
-  positionEvents,
-  positionPoints,
-  type LedgerTx,
-  type PositionEvent,
-} from '@/mobile/lib/position-series';
+import { positionEvents, positionPoints, type LedgerTx } from '@/mobile/lib/position-series';
 
 /** Whole amounts: the hero's change and axis show no decimals. */
 const WHOLE = { decimals: 0 } as const;
@@ -92,30 +86,7 @@ export function PositionHeroCard({
       positionEvents(transactions).filter((e) => periodStart === undefined || e.t >= periodStart),
     [transactions, periodStart]
   );
-  const eventTip = (cluster: EventCluster<PositionEvent>) => {
-    if (cluster.events.length > 1) {
-      const first = cluster.events[0].t;
-      const last = cluster.events[cluster.events.length - 1].t;
-      return {
-        title: ts('detail.events.cluster', { count: cluster.events.length }),
-        lines: [`${fmt.day(first)} – ${fmt.day(last)}`],
-      };
-    }
-    const { tx } = cluster.events[0];
-    const price = parseFloat(tx.pricePerUnit) || 0;
-    const txCurrency = tx.currency || reportCurrency;
-    return {
-      title: ts(tx.type === 'sell' ? 'detail.events.sell' : 'detail.events.buy', {
-        quantity: `${fmt.number(parseFloat(tx.quantity) || 0, { maximumFractionDigits: quantityDigits })} ${unit}`,
-        price: moneyText(price, txCurrency, { decimals: priceDecimals(price, txCurrency) }),
-      }),
-      lines: [
-        `${fmt.day(tx.transactionDate)} · ${ts('detail.events.total', {
-          amount: moneyText(nativeTotal(tx), txCurrency),
-        })}`,
-      ],
-    };
-  };
+  const eventTip = useTradeEventTip(unit, quantityDigits, reportCurrency);
 
   const label = t('wealth.position.heroLabel', {
     quantity: fmt.number(quantity, { maximumFractionDigits: quantityDigits }),

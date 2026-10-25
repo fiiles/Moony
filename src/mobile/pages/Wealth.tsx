@@ -18,6 +18,7 @@ import { amountOf } from '@/utils/positions';
 import { Button } from '@/components/ui/button';
 import { ScaledConversionNote, ScaledEmptyState } from '@/mobile/components/Scaled';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
+import { RowBadge } from '@/mobile/components/RowBadge';
 import { Hero } from '@/mobile/components/Hero';
 import { Money } from '@/mobile/components/Money';
 import { SectionHead } from '@/mobile/components/SectionHead';
@@ -327,9 +328,7 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
                 excluded ? (
                   <span className="flex min-w-0 items-center">
                     <span className="min-w-0 truncate">{property.name}</span>
-                    <span className="ml-1.5 inline-flex min-h-[18px] flex-none items-center rounded-r1 bg-well-2 px-1.5 py-px text-m-caption font-semibold leading-[1.3] text-ink-3">
-                      {t('realEstate:table.excluded')}
-                    </span>
+                    <RowBadge className="flex-none">{t('realEstate:table.excluded')}</RowBadge>
                   </span>
                 ) : (
                   property.name

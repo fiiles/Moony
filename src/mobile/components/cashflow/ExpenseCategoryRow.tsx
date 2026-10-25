@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 import { List, Pencil, Plus } from 'lucide-react';
 import { CategoryRow } from './CategoryRow';
-import { RowMenu, RowMenuItem } from './RowMenu';
+import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
 
 interface ExpenseCategoryRowProps extends Omit<
   ComponentProps<typeof CategoryRow>,

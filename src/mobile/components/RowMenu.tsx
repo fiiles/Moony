@@ -3,10 +3,22 @@ import { Ellipsis } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
   DropdownMenu,
+  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+/**
+ * The phone's menu item (README §13): 44 pt tall, the body size, an 18 pt icon. Every menu of the
+ * phone uses it — a row's context menu, a nav bar's `···` and `+`, the desktop's milestone items
+ * on an agenda row (`itemClassName`).
+ */
+export const ROW_MENU_ITEM = 'min-h-11 text-m-body [&_svg]:size-[18px]';
+
+/** A checkbox or radio item: 44 pt tall, the body size; its indicator keeps the menu's size. */
+const ROW_MENU_CHOICE = 'min-h-11 text-m-body';
 
 interface RowMenuProps {
   open: boolean;
@@ -43,15 +55,26 @@ export function RowMenu({ open, onOpenChange, label, children }: RowMenuProps) {
   );
 }
 
-/** An item of a `RowMenu`: 44 pt tall, the body size, an 18 pt icon. */
+/** An item of a phone menu (`ROW_MENU_ITEM`): a `RowMenu`, a nav bar's `···` or `+`. */
 export function RowMenuItem({
   className,
   ...props
 }: ComponentPropsWithoutRef<typeof DropdownMenuItem>) {
-  return (
-    <DropdownMenuItem
-      className={cn('min-h-11 text-m-body [&_svg]:size-[18px]', className)}
-      {...props}
-    />
-  );
+  return <DropdownMenuItem className={cn(ROW_MENU_ITEM, className)} {...props} />;
+}
+
+/** A checkbox item of a phone menu ("Zobrazit splacené"): 44 pt tall, the body size. */
+export function RowMenuCheckboxItem({
+  className,
+  ...props
+}: ComponentPropsWithoutRef<typeof DropdownMenuCheckboxItem>) {
+  return <DropdownMenuCheckboxItem className={cn(ROW_MENU_CHOICE, className)} {...props} />;
+}
+
+/** A radio item of a phone menu (a sort): 44 pt tall, the body size. */
+export function RowMenuRadioItem({
+  className,
+  ...props
+}: ComponentPropsWithoutRef<typeof DropdownMenuRadioItem>) {
+  return <DropdownMenuRadioItem className={cn(ROW_MENU_CHOICE, className)} {...props} />;
 }

@@ -5,7 +5,6 @@ import { ArrowUp, Minus, Plus } from 'lucide-react';
 import { priceDecimals, recordCurrency } from '@shared/currencies';
 import type { AssetValuation, OtherAsset, OtherAssetTransaction } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
-import type { EventCluster } from '@/utils/chart-scale';
 import type { OtherAssetRow } from '@/utils/other-assets';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
 import { Button } from '@/components/ui/button';
@@ -26,15 +25,11 @@ import { useOtherAsset, useOtherAssetMutations } from '@/mobile/hooks/use-other-
 import { usePositionLedger } from '@/mobile/hooks/use-position-ledger';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
 import { useRetained } from '@/mobile/hooks/use-retained';
+import { useTradeEventTip } from '@/mobile/hooks/use-trade-event-tip';
 import { changeSinceDayOptions } from '@/mobile/lib/change';
 import { pointsChange, trendChangeBase } from '@/mobile/lib/class-trend';
 import { otherAssetTrace, trimTrace } from '@/mobile/lib/other-asset-trace';
-import {
-  nativeTotal,
-  positionEvents,
-  type LedgerTx,
-  type PositionEvent,
-} from '@/mobile/lib/position-series';
+import { positionEvents, type LedgerTx } from '@/mobile/lib/position-series';
 import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { otherAssetPath, routes } from '@/mobile/shell/routes';
@@ -265,30 +260,7 @@ function AssetHero({
       positionEvents(trades).filter((event) => periodStart === undefined || event.t >= periodStart),
     [trades, periodStart]
   );
-  const eventTip = (cluster: EventCluster<PositionEvent<AssetTrade>>) => {
-    if (cluster.events.length > 1) {
-      const first = cluster.events[0].t;
-      const last = cluster.events[cluster.events.length - 1].t;
-      return {
-        title: ts('detail.events.cluster', { count: cluster.events.length }),
-        lines: [`${fmt.day(first)} – ${fmt.day(last)}`],
-      };
-    }
-    const { tx } = cluster.events[0];
-    const unitPrice = parseFloat(tx.pricePerUnit) || 0;
-    const txCurrency = tx.currency || priceCurrency;
-    return {
-      title: ts(tx.type === 'sell' ? 'detail.events.sell' : 'detail.events.buy', {
-        quantity: `${fmt.number(parseFloat(tx.quantity) || 0, { maximumFractionDigits: QUANTITY_DIGITS })} ${to('table.unit')}`,
-        price: moneyText(unitPrice, txCurrency, { decimals: priceDecimals(unitPrice, txCurrency) }),
-      }),
-      lines: [
-        `${fmt.day(tx.transactionDate)} · ${ts('detail.events.total', {
-          amount: moneyText(nativeTotal(tx), txCurrency),
-        })}`,
-      ],
-    };
-  };
+  const eventTip = useTradeEventTip<AssetTrade>(to('table.unit'), QUANTITY_DIGITS, priceCurrency);
 
   const label = t('wealth.position.heroLabel', {
     quantity: fmt.number(quantity, { maximumFractionDigits: QUANTITY_DIGITS }),

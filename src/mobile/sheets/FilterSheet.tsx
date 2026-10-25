@@ -1,10 +1,11 @@
-import { useId, useState } from 'react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Layers, Tag } from 'lucide-react';
 import type { TransactionCategory } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
 import { CategoryIconChip } from '@/components/common/CategoryIcon';
 import { Button } from '@/components/ui/button';
+import { DateField } from '@/mobile/components/DateField';
 import { NeutralChip, PickGroup, PickRow } from '@/mobile/components/PickRow';
 import { Sheet } from '@/mobile/components/Sheet';
 import { DEFAULT_LEDGER, type LedgerState, type PeriodPreset } from '@/mobile/lib/ledger';
@@ -127,32 +128,5 @@ export function FilterSheet({ open, onOpenChange, state, categories, onApply }: 
         </div>
       )}
     </Sheet>
-  );
-}
-
-/** A 48 pt date field (`.m-field__i`) with its label above. */
-function DateField({
-  label,
-  value,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  const id = useId();
-  return (
-    <div className="min-w-0">
-      <label htmlFor={id} className="mx-0.5 mb-1.5 block text-m-sub font-semibold text-ink-2">
-        {label}
-      </label>
-      <input
-        id={id}
-        type="date"
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        className="block h-12 w-full min-w-0 rounded-[10px] border border-line-strong bg-paper px-3 text-m-field text-ink num transition-[border-color,box-shadow] duration-fast focus:border-focus focus:shadow-focus focus-visible:outline-none"
-      />
-    </div>
   );
 }

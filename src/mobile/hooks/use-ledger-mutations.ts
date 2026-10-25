@@ -11,15 +11,14 @@ export interface LedgerMutations {
   setCategory: UseMutationResult<void, Error, { id: string; categoryId: string | null }>;
   /** `null` returns the row to the automatic meaning. */
   setFlowKind: UseMutationResult<void, Error, { id: string; flowKind: FlowKind | null }>;
-  deleteTransaction: UseMutationResult<void, Error, string>;
   /** Accepts a pending MCP suggestion on this one row (nothing is learned). */
   acceptSuggestion: UseMutationResult<void, Error, string>;
   declineSuggestion: UseMutationResult<void, Error, string>;
 }
 
 /**
- * The ledger's writes on one transaction (spec §8.4): category, meaning, delete and the MCP
- * suggestion. Each refreshes the money flows (frontend standard rule 3: the domain keys, the
+ * The ledger's writes on one transaction (spec §8.4): category, meaning and the MCP suggestion
+ * (the delete is the desktop's `useBankTransactionMutations().deleteTransaction`). Each refreshes the money flows (frontend standard rule 3: the domain keys, the
  * snapshot and the history) and says what it did; a failure is a toast with the translated error.
  * `quiet` leaves the "what it did" toasts out, for a screen that shows the result itself (the
  * categorize queue turns the row over): errors are still said.
@@ -51,12 +50,6 @@ export function useLedgerMutations({ quiet = false }: { quiet?: boolean } = {}):
     onError,
   });
 
-  const deleteTransaction = useMutation({
-    mutationFn: (id: string) => bankAccountsApi.deleteTransaction(id),
-    onSuccess: () => done(t('bank_accounts:messages.transactionDeleted')),
-    onError,
-  });
-
   const acceptSuggestion = useMutation({
     mutationFn: async (id: string) => {
       await categorizationApi.acceptSuggestion(id);
@@ -71,5 +64,5 @@ export function useLedgerMutations({ quiet = false }: { quiet?: boolean } = {}):
     onError,
   });
 
-  return { setCategory, setFlowKind, deleteTransaction, acceptSuggestion, declineSuggestion };
+  return { setCategory, setFlowKind, acceptSuggestion, declineSuggestion };
 }

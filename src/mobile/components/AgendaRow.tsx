@@ -24,6 +24,7 @@ import { milestonePath } from '@/mobile/lib/milestone-path';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { DateChip, DATE_CHIP_WIDTH } from './DateChip';
 import { EntityRow } from './EntityRow';
+import { ROW_MENU_ITEM } from './RowMenu';
 
 /**
  * Agenda row of "Co vás čeká" (spec §8.3 item 4, prototype note 5): the entity row with the date
@@ -108,11 +109,7 @@ export function AgendaRow({ m, from }: { m: Milestone; from: string }) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-[220px]">
-            <MilestoneMenuItems
-              m={m}
-              actions={actions}
-              itemClassName="min-h-11 text-m-body [&_svg]:size-[18px]"
-            />
+            <MilestoneMenuItems m={m} actions={actions} itemClassName={ROW_MENU_ITEM} />
           </DropdownMenuContent>
         </DropdownMenu>
       }

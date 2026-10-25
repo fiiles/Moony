@@ -5,7 +5,7 @@ import type { RealEstate, RealEstateOneTimeCost } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import type { YearlyBalance } from '@/utils/real-estate';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
-import { RowMenu, RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { GroupHead } from '@/mobile/components/property/GroupHead';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';

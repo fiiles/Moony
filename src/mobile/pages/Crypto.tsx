@@ -12,13 +12,14 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { AddCryptoModal } from '@/components/crypto/AddCryptoModal';
-import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { ClassEmpty } from '@/mobile/components/wealth/ClassEmpty';
 import { ClassHero } from '@/mobile/components/wealth/ClassHero';
 import { ClassSkeleton } from '@/mobile/components/wealth/ClassSkeleton';
 import { PositionList } from '@/mobile/components/wealth/PositionList';
 import { PricesLine } from '@/mobile/components/wealth/PricesLine';
+import { LoadFailed } from '@/mobile/components/wealth/LoadFailed';
 import { useBack } from '@/mobile/hooks/use-back';
 import { useClassExport } from '@/mobile/hooks/use-class-export';
 import {
@@ -101,7 +102,7 @@ export default function Crypto() {
         <ClassSkeleton />
       ) : !hasPositions ? (
         isError ? (
-          <LoadFailed />
+          <LoadFailed>{t('wealth.stocks.loadFailed')}</LoadFailed>
         ) : (
           <NoCoins onAdd={() => setAddOpen(true)} />
         )
@@ -232,15 +233,5 @@ function NoCoins({ onAdd }: { onAdd: () => void }) {
       addLabel={tcr('addCrypto')}
       onAdd={onAdd}
     />
-  );
-}
-
-/** The coins could not be loaded: said as such, not shown as "no coins yet". */
-function LoadFailed() {
-  const { t } = useTranslation('mobile');
-  return (
-    <p role="alert" className="mx-0.5 py-6 text-center text-m-body text-ink-3">
-      {t('wealth.stocks.loadFailed')}
-    </p>
   );
 }

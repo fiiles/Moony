@@ -9,8 +9,11 @@ interface PairButton {
   disabled?: boolean;
 }
 
-/** One button of the pair: 48 pt, radius 10, the label 13 px and allowed a second line. */
-const PAIR_BUTTON =
+/**
+ * One button of the pair: 48 pt, radius 10, the label in the lead role and allowed a second line,
+ * so a larger text makes the button taller, never wider. `CaptureButtons` draws its two with it.
+ */
+export const PAIR_BUTTON =
   'h-auto min-h-12 min-w-0 whitespace-normal rounded-[10px] px-2.5 py-2 text-center text-m-lead font-semibold leading-tight hyphens-auto [&_svg]:size-4';
 
 /**

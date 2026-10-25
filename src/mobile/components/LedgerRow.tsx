@@ -7,20 +7,20 @@ import type {
   TransactionCategory,
 } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
-import { cn } from '@/lib/utils';
 import { rowFlowLabel } from '@/utils/money-flows';
 import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { initials } from '@/mobile/lib/initials';
 import { signedAmountText } from '@/mobile/lib/signed-amount';
 import { EntityRow, RowChip } from './EntityRow';
+import { RowBadge } from './RowBadge';
 
 interface LedgerRowProps {
   tx: BankTransaction;
@@ -33,28 +33,6 @@ interface LedgerRowProps {
   /** Swipe left: the category picker, directly. */
   onCategorize: () => void;
   onDelete: () => void;
-}
-
-/** The menu items: 44 pt tall, body type (as `AgendaRow`'s menu). */
-const MENU_ITEM = 'min-h-11 text-m-body [&_svg]:size-[18px]';
-
-/**
- * A badge in the sub-line ("Bez kategorie", "Čekající", "Vratka"; `.m-row__badge`; `loss` for the
- * import preview's "Chyba"). Shared with the import preview rows. Its text line is
- * the badge's full 18 pt (not `leading-none`), so a caron or an accent above a capital ("Č") stays
- * inside the sub-line, whose `truncate` box clips at the badge's edges.
- */
-export function RowBadge({ children, tone }: { children: ReactNode; tone?: 'loss' }) {
-  return (
-    <span
-      className={cn(
-        'inline-flex min-h-[18px] items-center rounded-r1 px-1.5 py-px align-[1px] text-m-caption font-semibold leading-[1.3]',
-        tone === 'loss' ? 'bg-loss-soft text-loss' : 'bg-well-2 text-ink-3'
-      )}
-    >
-      {children}
-    </span>
-  );
 }
 
 /**
@@ -78,9 +56,15 @@ export function LedgerRow({ tx, category, flow, onOpen, onCategorize, onDelete }
   const refund = !!flow && rowFlowLabel(flow, credit, !!category) === 'refund';
 
   const parts: ReactNode[] = [
-    category ? categoryName(category) : <RowBadge>{t('account.ledger.noCategory')}</RowBadge>,
-    tx.status === 'pending' && <RowBadge>{t('bank_accounts:readiness.pending')}</RowBadge>,
-    refund && <RowBadge>{t('bank_accounts:readiness.flowRefund')}</RowBadge>,
+    category ? (
+      categoryName(category)
+    ) : (
+      <RowBadge line="sub">{t('account.ledger.noCategory')}</RowBadge>
+    ),
+    tx.status === 'pending' && (
+      <RowBadge line="sub">{t('bank_accounts:readiness.pending')}</RowBadge>
+    ),
+    refund && <RowBadge line="sub">{t('bank_accounts:readiness.flowRefund')}</RowBadge>,
     detail,
   ].filter(Boolean);
   const sub = parts.map((part, i) => (
@@ -128,19 +112,19 @@ export function LedgerRow({ tx, category, flow, onOpen, onCategorize, onDelete }
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="min-w-[200px]">
-            <DropdownMenuItem className={MENU_ITEM} onSelect={onOpen}>
+            <RowMenuItem onSelect={onOpen}>
               <Info />
               {t('account.rowMenu.details')}
-            </DropdownMenuItem>
-            <DropdownMenuItem className={MENU_ITEM} onSelect={onCategorize}>
+            </RowMenuItem>
+            <RowMenuItem onSelect={onCategorize}>
               <Tag />
               {t('account.rowMenu.category')}
-            </DropdownMenuItem>
+            </RowMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem variant="danger" className={MENU_ITEM} onSelect={onDelete}>
+            <RowMenuItem variant="danger" onSelect={onDelete}>
               <Trash2 />
               {t('account.rowMenu.delete')}
-            </DropdownMenuItem>
+            </RowMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       }

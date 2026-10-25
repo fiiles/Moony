@@ -29,7 +29,7 @@ import { AddInvestmentModal } from '@/components/stocks/AddInvestmentModal';
 import { StockImportHistoryDialog } from '@/components/stocks/StockImportHistoryDialog';
 import { StockImportDialog } from '@/components/stocks/import/StockImportDialog';
 import { useStockImportBatches } from '@/components/stocks/import/use-stock-import-data';
-import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SearchField } from '@/mobile/components/SearchField';
 import { Segment } from '@/mobile/components/Segment';
@@ -41,6 +41,7 @@ import { PositionList } from '@/mobile/components/wealth/PositionList';
 import { PricesLine } from '@/mobile/components/wealth/PricesLine';
 import { TickerResultRow } from '@/mobile/components/wealth/TickerResultRow';
 import { WatchedRow } from '@/mobile/components/wealth/WatchedRow';
+import { LoadFailed } from '@/mobile/components/wealth/LoadFailed';
 import { useBack } from '@/mobile/hooks/use-back';
 import { useClassExport } from '@/mobile/hooks/use-class-export';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -170,7 +171,7 @@ export default function Stocks() {
       {isLoading || (!hasPositions && watchedLoading) ? (
         <ClassSkeleton />
       ) : view.kind === 'error' ? (
-        <LoadFailed />
+        <LoadFailed>{t('wealth.stocks.loadFailed')}</LoadFailed>
       ) : (
         <>
           {hasPositions && (
@@ -220,7 +221,7 @@ export default function Stocks() {
                 rememberKey="stocks"
               />
             ) : isError ? (
-              <LoadFailed />
+              <LoadFailed>{t('wealth.stocks.loadFailed')}</LoadFailed>
             ) : (
               <NoPositions onAdd={() => setAddOpen(true)} />
             )}
@@ -420,15 +421,5 @@ function NoPositions({ onAdd }: { onAdd: () => void }) {
       addLabel={ts('addInvestment')}
       onAdd={onAdd}
     />
-  );
-}
-
-/** The positions could not be loaded: said as such, not shown as "no positions yet". */
-function LoadFailed() {
-  const { t } = useTranslation('mobile');
-  return (
-    <p role="alert" className="mx-0.5 py-6 text-center text-m-body text-ink-3">
-      {t('wealth.stocks.loadFailed')}
-    </p>
   );
 }

@@ -32,16 +32,15 @@ import { LoanFormDialog } from '@/components/loans/LoanFormDialog';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuRadioGroup,
-  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { RowMenuItem, RowMenuRadioItem, RowMenuCheckboxItem } from '@/mobile/components/RowMenu';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
+import { RowBadge } from '@/mobile/components/RowBadge';
 import { UpcomingPremiums } from '@/mobile/components/finance/UpcomingPremiums';
 import { Hero } from '@/mobile/components/Hero';
 import { SectionHead } from '@/mobile/components/SectionHead';
@@ -91,9 +90,6 @@ const POLICY_ICONS: Record<string, LucideIcon> = {
 /** A policy's next payment day for sorting; one without a payment ahead goes last. */
 const nextDay = (row: FinanceData['insurance']['rows'][number]) =>
   row.nextPayment ?? Number.MAX_SAFE_INTEGER;
-
-/** The menu items of the `+` and `···` menus: 44 pt tall, body type (as `AgendaRow`'s menu). */
-const MENU_ITEM = 'min-h-11 text-m-body';
 
 /**
  * Finance tab root (spec §8.4, prototype frame 03): the compact total on accounts, the payments
@@ -192,15 +188,13 @@ export default function Finance() {
               </NavIconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[200px]">
-              <DropdownMenuItem className={MENU_ITEM} onSelect={() => setAddKind('account')}>
+              <RowMenuItem onSelect={() => setAddKind('account')}>
                 {t('finance.add.account')}
-              </DropdownMenuItem>
-              <DropdownMenuItem className={MENU_ITEM} onSelect={() => setAddKind('loan')}>
-                {t('finance.add.loan')}
-              </DropdownMenuItem>
-              <DropdownMenuItem className={MENU_ITEM} onSelect={() => setAddKind('policy')}>
+              </RowMenuItem>
+              <RowMenuItem onSelect={() => setAddKind('loan')}>{t('finance.add.loan')}</RowMenuItem>
+              <RowMenuItem onSelect={() => setAddKind('policy')}>
                 {t('finance.add.policy')}
-              </DropdownMenuItem>
+              </RowMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
@@ -216,9 +210,9 @@ export default function Finance() {
                 onValueChange={(next) => setSort(next as AccountSort)}
               >
                 {(Object.keys(SORT_LABELS) as AccountSort[]).map((key) => (
-                  <DropdownMenuRadioItem key={key} value={key} className={MENU_ITEM}>
+                  <RowMenuRadioItem key={key} value={key}>
                     {t(SORT_LABELS[key])}
-                  </DropdownMenuRadioItem>
+                  </RowMenuRadioItem>
                 ))}
               </DropdownMenuRadioGroup>
               <DropdownMenuSeparator />
@@ -227,39 +221,26 @@ export default function Finance() {
                 <>
                   <DropdownMenuLabel>{t('finance.insurance.type')}</DropdownMenuLabel>
                   <DropdownMenuRadioGroup value={typeFilter} onValueChange={setPolicyType}>
-                    <DropdownMenuRadioItem value="all" className={MENU_ITEM}>
-                      {t('insurance:table.allTypes')}
-                    </DropdownMenuRadioItem>
+                    <RowMenuRadioItem value="all">{t('insurance:table.allTypes')}</RowMenuRadioItem>
                     {types.map((type) => (
-                      <DropdownMenuRadioItem key={type} value={type} className={MENU_ITEM}>
+                      <RowMenuRadioItem key={type} value={type}>
                         {t(`insurance:types.${type}`, { defaultValue: type })}
-                      </DropdownMenuRadioItem>
+                      </RowMenuRadioItem>
                     ))}
                   </DropdownMenuRadioGroup>
                   <DropdownMenuSeparator />
                 </>
               )}
-              <DropdownMenuCheckboxItem
-                className={MENU_ITEM}
-                checked={showMatured}
-                onCheckedChange={setShowMatured}
-              >
+              <RowMenuCheckboxItem checked={showMatured} onCheckedChange={setShowMatured}>
                 {t('finance.menu.showMatured')}
-              </DropdownMenuCheckboxItem>
-              <DropdownMenuCheckboxItem
-                className={MENU_ITEM}
-                checked={showEnded}
-                onCheckedChange={setShowEnded}
-              >
+              </RowMenuCheckboxItem>
+              <RowMenuCheckboxItem checked={showEnded} onCheckedChange={setShowEnded}>
                 {t('finance.menu.showEnded')}
-              </DropdownMenuCheckboxItem>
+              </RowMenuCheckboxItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className={MENU_ITEM}
-                onSelect={() => toast(t('placeholder.export'))}
-              >
+              <RowMenuItem onSelect={() => toast(t('placeholder.export'))}>
                 {t('finance.menu.export')}
-              </DropdownMenuItem>
+              </RowMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </>
@@ -468,11 +449,7 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
         title={
           <>
             {account.name}
-            {account.excludeFromBalance && (
-              <span className="ml-1.5 inline-flex min-h-[18px] items-center rounded-r1 bg-well-2 px-1.5 py-px align-[2px] text-m-caption font-semibold leading-[1.3] text-ink-3">
-                {tb('table.excluded')}
-              </span>
-            )}
+            {account.excludeFromBalance && <RowBadge>{tb('table.excluded')}</RowBadge>}
           </>
         }
         sub={[

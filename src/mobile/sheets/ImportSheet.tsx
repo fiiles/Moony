@@ -24,8 +24,9 @@ import { useImportFlow } from '@/mobile/hooks/use-import-flow';
 import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
 import { backState } from '@/mobile/lib/back-label';
 import { useRetained } from '@/mobile/hooks/use-retained';
+import { queuePath } from '@/mobile/lib/categorize-queue';
 import type { ImportRequest } from '@/mobile/lib/import-flow';
-import { accountPath, routes } from '@/mobile/shell/routes';
+import { accountPath } from '@/mobile/shell/routes';
 import { CategoryChoiceSheet } from '@/mobile/sheets/CategoryChoiceSheet';
 
 interface ImportSheetProps {
@@ -250,9 +251,7 @@ export function ImportSheet({ request, open, onOpenChange }: ImportSheetProps) {
   // The screen under the sheet names itself on the target's back button (`ImportRequest.from`)
   const state = backState(request.from);
   const toQueue = (accountId: string) =>
-    leaveAfterSheet(close, () =>
-      setLocation(`${routes.uncategorized}?account=${accountId}`, { state })
-    );
+    leaveAfterSheet(close, () => setLocation(queuePath([accountId]), { state }));
   const toAccount = (accountId: string) =>
     leaveAfterSheet(close, () => setLocation(accountPath(accountId), { state }));
 

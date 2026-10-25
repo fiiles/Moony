@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { EditOtherAssetModal } from '@/components/other-assets/EditOtherAssetModal';
 import { MaskedValuationHistoryDialog } from '@/mobile/components/MaskedValuationHistoryDialog';
-import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 
 /**

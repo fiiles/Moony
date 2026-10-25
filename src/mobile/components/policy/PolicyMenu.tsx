@@ -3,14 +3,11 @@ import { Ellipsis, Lock, LockOpen, Trash2 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { NavIconButton } from '@/mobile/shell/NavBar';
-
-/** The classes of a menu item on the phone: 44 pt tall, body type, 18 pt icons. */
-const MENU_ITEM = 'min-h-11 text-m-body [&_svg]:size-[18px]';
 
 interface PolicyMenuProps {
   /** An ended policy offers Obnovit, a running one Ukončit. */
@@ -42,21 +39,21 @@ export function PolicyMenu({ ended, onEnd, onReactivate, onDelete }: PolicyMenuP
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[240px]">
         {ended ? (
-          <DropdownMenuItem className={MENU_ITEM} onSelect={onReactivate}>
+          <RowMenuItem onSelect={onReactivate}>
             <LockOpen strokeWidth={1.75} aria-hidden />
             {t('actions.reactivate')}
-          </DropdownMenuItem>
+          </RowMenuItem>
         ) : (
-          <DropdownMenuItem className={MENU_ITEM} onSelect={onEnd}>
+          <RowMenuItem onSelect={onEnd}>
             <Lock strokeWidth={1.75} aria-hidden />
             {t('actions.end')}
-          </DropdownMenuItem>
+          </RowMenuItem>
         )}
         <DropdownMenuSeparator />
-        <DropdownMenuItem variant="danger" className={MENU_ITEM} onSelect={onDelete}>
+        <RowMenuItem variant="danger" onSelect={onDelete}>
           <Trash2 strokeWidth={1.75} aria-hidden />
           {t('actions.delete')}
-        </DropdownMenuItem>
+        </RowMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );

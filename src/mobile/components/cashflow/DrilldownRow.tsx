@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Landmark, Tag } from 'lucide-react';
 import type { MoneyOptions } from '@/lib/format';
-import { RowMenu, RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
+import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
 import { Money } from '@/mobile/components/Money';
 import { initials } from '@/mobile/lib/initials';

@@ -5,16 +5,13 @@ import type { AssetValuation, RealEstate } from '@shared/schema';
 import {
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { AddRealEstateModal } from '@/components/real-estate/AddRealEstateModal';
 import { MaskedValuationHistoryDialog } from '@/mobile/components/MaskedValuationHistoryDialog';
 import { NavIconButton } from '@/mobile/shell/NavBar';
-
-/** The classes of a menu item on the phone: 44 pt tall, body type, 18 pt icons. */
-const MENU_ITEM = 'min-h-11 text-m-body [&_svg]:size-[18px]';
 
 interface PropertyMenuProps {
   property: RealEstate;
@@ -47,19 +44,19 @@ export function PropertyMenu({ property, valuations, onDelete }: PropertyMenuPro
           </NavIconButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[240px]">
-          <DropdownMenuItem className={MENU_ITEM} onSelect={() => setEditOpen(true)}>
+          <RowMenuItem onSelect={() => setEditOpen(true)}>
             <Pencil strokeWidth={1.75} aria-hidden />
             {t('detail.menu.edit')}
-          </DropdownMenuItem>
-          <DropdownMenuItem className={MENU_ITEM} onSelect={() => setHistoryOpen(true)}>
+          </RowMenuItem>
+          <RowMenuItem onSelect={() => setHistoryOpen(true)}>
             <History strokeWidth={1.75} aria-hidden />
             {t('detail.menu.valuationHistory')}
-          </DropdownMenuItem>
+          </RowMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem variant="danger" className={MENU_ITEM} onSelect={onDelete}>
+          <RowMenuItem variant="danger" onSelect={onDelete}>
             <Trash2 strokeWidth={1.75} aria-hidden />
             {t('detail.menu.delete')}
-          </DropdownMenuItem>
+          </RowMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 

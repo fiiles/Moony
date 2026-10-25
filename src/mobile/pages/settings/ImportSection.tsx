@@ -59,7 +59,10 @@ export default function ImportSection() {
 
   return (
     <SectionPage title={t('settings.rows.import')} lead={t('settings.import.lead')}>
-      <Button className={BUTTON} onClick={() => openImport({ source: 'settings' })}>
+      <Button
+        className={BUTTON}
+        onClick={() => openImport({ source: 'settings', from: t('settings.rows.import') })}
+      >
         {t('account.import')}
       </Button>
 

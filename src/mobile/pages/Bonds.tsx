@@ -25,7 +25,7 @@ import { BondRow } from '@/mobile/components/wealth/BondRow';
 import { ClassEmpty } from '@/mobile/components/wealth/ClassEmpty';
 import { ClassSkeleton } from '@/mobile/components/wealth/ClassSkeleton';
 import { MoreRow } from '@/mobile/components/wealth/MoreRow';
-import { useBack } from '@/mobile/hooks/use-back';
+import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { useBondsLoadFailed } from '@/mobile/hooks/use-bonds-failed';
 import { useClassExport } from '@/mobile/hooks/use-class-export';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -54,6 +54,8 @@ export default function Bonds() {
   const { t: td } = useTranslation('dashboard');
   const { t: tc } = useTranslation('common');
   const back = useBack(routes.wealth);
+  // The screen the push left when it came from another tab (a property's loan), else the parent
+  const backText = useBackLabel(t('tabs.wealth'));
   const { bonds, metrics, isLoading, today } = useBonds();
   const loadFailed = useBondsLoadFailed();
   const { exportCsv, isPending: exporting } = useClassExport('bonds');
@@ -85,7 +87,7 @@ export default function Bonds() {
   return (
     <Screen
       title={td('cards.bonds')}
-      leading={<NavTextButton label={t('tabs.wealth')} onClick={back} chevron />}
+      leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
         <>
           <DropdownMenu>

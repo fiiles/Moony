@@ -20,7 +20,7 @@ import { EntityRows } from '@/mobile/components/EntityRow';
 import { PickRunner, type PickRun } from '@/mobile/components/queue/PickRunner';
 import { QueueSkeleton } from '@/mobile/components/queue/QueueSkeleton';
 import { QueueRow } from '@/mobile/components/QueueRow';
-import { useBack } from '@/mobile/hooks/use-back';
+import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import {
   useCategorizeQueue,
   useQueueSnapshot,
@@ -72,6 +72,8 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
   const back = useBack(routes.finance);
+  // The screen the push left when it came from another tab (a property's loan), else the parent
+  const backText = useBackLabel(t('tabs.finance'));
   const [, setLocation] = useLocation();
   const { categories, isLoading: categoriesLoading } = useCategories();
   const { accounts } = useBankAccounts();
@@ -245,7 +247,7 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
   return (
     <Screen
       title={t('finance.uncategorized')}
-      leading={<NavTextButton label={t('tabs.finance')} onClick={back} chevron />}
+      leading={<NavTextButton label={backText} onClick={back} chevron />}
     >
       {!ready ? (
         queue.isError ? (

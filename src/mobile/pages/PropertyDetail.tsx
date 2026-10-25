@@ -16,7 +16,7 @@ import { PropertyHeroCard } from '@/mobile/components/property/PropertyHeroCard'
 import { PropertyMenu } from '@/mobile/components/property/PropertyMenu';
 import { PropertyStats } from '@/mobile/components/property/PropertyStats';
 import { SectionHead } from '@/mobile/components/SectionHead';
-import { useBack } from '@/mobile/hooks/use-back';
+import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { useProperty, type PropertyData } from '@/mobile/hooks/use-property';
 import { usePropertyMutations } from '@/mobile/hooks/use-property-mutations';
@@ -63,6 +63,8 @@ function PropertyDetailPage({ id }: { id: string | undefined }) {
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('realEstate');
   const back = useBack(routes.wealth);
+  // The screen the push left when it came from another tab (a property's loan), else the parent
+  const backText = useBackLabel(t('tabs.wealth'));
   const { currencyCode } = useCurrency();
   const data = useProperty(id);
   const { remove } = usePropertyMutations(id);
@@ -92,7 +94,7 @@ function PropertyDetailPage({ id }: { id: string | undefined }) {
   return (
     <Screen
       title={view?.property.name ?? ''}
-      leading={<NavTextButton label={t('tabs.wealth')} onClick={back} chevron />}
+      leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
         view && (
           <PropertyMenu

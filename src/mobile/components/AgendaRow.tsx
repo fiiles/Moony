@@ -33,10 +33,11 @@ import { EntityRow } from './EntityRow';
  * always does, and a long sub-line is the part that gives way. A crossed target and a split notice
  * are today's news instead: the chip reads "Today" over the kind and there is no distance. Swipe
  * right reminds again in a week (only when that ends before the date), swipe left hides; a long
- * press opens the full menu. A tap opens the source page (`milestonePath`); a kind without one on
- * the phone leaves the row inert.
+ * press opens the full menu. A tap opens the source page (`milestonePath`), whose back button names
+ * the screen the row is on (`from`: Přehled, or "Co vás čeká" in full); a kind without one on the
+ * phone leaves the row inert.
  */
-export function AgendaRow({ m }: { m: Milestone }) {
+export function AgendaRow({ m, from }: { m: Milestone; from: string }) {
   const { t } = useTranslation('milestones');
   const fmt = useFormat();
   // The sub-line names a payment, a coupon or a maturity amount: masked with the rest
@@ -93,6 +94,7 @@ export function AgendaRow({ m }: { m: Milestone }) {
       swipeLeftIcon={EyeOff}
       onLongPress={() => setMenuOpen(true)}
       href={milestonePath(m) ?? undefined}
+      from={from}
       accessory={
         <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           {/* The menu's anchor, and its way in for a screen reader or a keyboard: hidden until focused. */}

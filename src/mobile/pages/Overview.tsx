@@ -240,6 +240,7 @@ export default function Overview() {
 /** "Co vás čeká" (spec §8.3 item 4): three agenda rows and "Zobrazit vše (N)"; hidden when empty. */
 function AgendaSection() {
   const { t } = useTranslation('milestones');
+  const { t: tm } = useTranslation('mobile');
   const { data: milestones = [] } = useMilestones();
   const { agenda } = splitMilestones(milestones, utcDayFloor(Date.now() / 1000));
   if (agenda.length === 0) return null;
@@ -255,7 +256,7 @@ function AgendaSection() {
       />
       <EntityRows>
         {agenda.slice(0, AGENDA_ROWS).map((m) => (
-          <AgendaRow key={m.key} m={m} />
+          <AgendaRow key={m.key} m={m} from={tm('tabs.overview')} />
         ))}
       </EntityRows>
     </section>

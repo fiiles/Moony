@@ -7,6 +7,7 @@ import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import { useUpkeep } from '@/mobile/hooks/use-upkeep';
+import { backState } from '@/mobile/lib/back-label';
 import { queuePath } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import type { UpkeepKind, UpkeepRow } from '@/mobile/lib/upkeep';
@@ -33,7 +34,8 @@ const VERBS: Record<UpkeepKind, string> = {
  * Where a verb that leads to a screen leads. Zálohovat opens Záloha a přenos, Přecenit the
  * property (its detail has the Přecenit button; the Majetek tab, which lists the properties, for a
  * row that does not name one); Zařadit opens the categorize queue (`queuePath`: of one account when
- * exactly one holds the payments). Zaznamenat and Importovat open sheets instead (`UpkeepItem`).
+ * exactly one holds the payments). Each screen's back button then names Přehled (`backState`), as
+ * back returns here. Zaznamenat and Importovat open sheets instead (`UpkeepItem`).
  */
 function targetOf(row: UpkeepRow): string {
   switch (row.kind) {
@@ -86,7 +88,13 @@ export function UpkeepCard() {
                 accounts={accounts}
                 lastImportByAccount={lastImportByAccount}
                 onRecord={() => setSheet({ open: true, accountIds: row.accountIds ?? [] })}
-                onImport={() => openImport({ accountId: row.accountIds?.[0], source: 'upkeep' })}
+                onImport={() =>
+                  openImport({
+                    accountId: row.accountIds?.[0],
+                    source: 'upkeep',
+                    from: t('tabs.overview'),
+                  })
+                }
               />
             ))}
           </ul>
@@ -178,7 +186,7 @@ function UpkeepItem({
   } else {
     action = (
       <Button asChild variant={variant} className={buttonClass}>
-        <Link href={targetOf(row)} aria-describedby={titleId}>
+        <Link href={targetOf(row)} state={backState(t('tabs.overview'))} aria-describedby={titleId}>
           {verb}
         </Link>
       </Button>

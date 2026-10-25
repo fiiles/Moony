@@ -23,7 +23,7 @@ import { PositionLedger } from '@/mobile/components/wealth/PositionLedger';
 import { PositionMenu } from '@/mobile/components/wealth/PositionMenu';
 import { PositionStats, useDividendStat } from '@/mobile/components/wealth/PositionStats';
 import { SplitAlerts } from '@/mobile/components/wealth/SplitAlerts';
-import { useBack } from '@/mobile/hooks/use-back';
+import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { usePosition, usePositionMutations } from '@/mobile/hooks/use-position';
 import { usePositionLedger } from '@/mobile/hooks/use-position-ledger';
@@ -60,6 +60,8 @@ export default function PositionDetail() {
   const { t: ts } = useTranslation('stocks');
   const [, params] = useRoute(routes.positionDetail);
   const back = useBack(routes.stocks);
+  // The screen the push left when it came from another tab (a property's loan), else the parent
+  const backText = useBackLabel(t('wealth.stocks.back'));
   const [period, setPeriod] = useState<ChartPeriod>('30D');
   const [trade, setTrade] = useState<'buy' | 'sell' | null>(null);
   const [editing, setEditing] = useState<InvestmentTransaction | null>(null);
@@ -91,7 +93,7 @@ export default function PositionDetail() {
   return (
     <Screen
       title={view?.holding.ticker ?? ''}
-      leading={<NavTextButton label={t('wealth.stocks.back')} onClick={back} chevron />}
+      leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
         view && <PositionMenu holding={view.holding} onDelete={() => setDeleteOpen(true)} />
       }

@@ -22,6 +22,7 @@ import {
 import { Sheet } from '@/mobile/components/Sheet';
 import { useImportFlow } from '@/mobile/hooks/use-import-flow';
 import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
+import { backState } from '@/mobile/lib/back-label';
 import { useRetained } from '@/mobile/hooks/use-retained';
 import type { ImportRequest } from '@/mobile/lib/import-flow';
 import { accountPath, routes } from '@/mobile/shell/routes';
@@ -246,10 +247,14 @@ export function ImportSheet({ request, open, onOpenChange }: ImportSheetProps) {
       footer = cancel(true);
   }
 
+  // The screen under the sheet names itself on the target's back button (`ImportRequest.from`)
+  const state = backState(request.from);
   const toQueue = (accountId: string) =>
-    leaveAfterSheet(close, () => setLocation(`${routes.uncategorized}?account=${accountId}`));
+    leaveAfterSheet(close, () =>
+      setLocation(`${routes.uncategorized}?account=${accountId}`, { state })
+    );
   const toAccount = (accountId: string) =>
-    leaveAfterSheet(close, () => setLocation(accountPath(accountId)));
+    leaveAfterSheet(close, () => setLocation(accountPath(accountId), { state }));
 
   return (
     <>

@@ -50,7 +50,7 @@ import { SectionHead } from '@/mobile/components/SectionHead';
 import { Segment } from '@/mobile/components/Segment';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { useAccountDetail } from '@/mobile/hooks/use-account-detail';
-import { useBack } from '@/mobile/hooks/use-back';
+import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { useDeleteDescription } from '@/mobile/hooks/use-delete-description';
 import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
@@ -125,6 +125,8 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   // are hidden
   const moneyText = useMoneyText();
   const back = useBack(routes.finance);
+  // The screen the push left when it came from another tab (a property's loan), else the parent
+  const backText = useBackLabel(t('tabs.finance'));
   const search = useSearch();
   const detail = useAccountDetail(id);
   const { records, zones, history, historyRows, historyLoaded } = detail;
@@ -207,7 +209,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   return (
     <Screen
       title={account?.name ?? ''}
-      leading={<NavTextButton label={t('tabs.finance')} onClick={back} chevron />}
+      leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
         account && (
           <DropdownMenu>
@@ -264,7 +266,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
             secondary={{
               label: t('account.import'),
               icon: Upload,
-              onClick: () => openImport({ accountId: id, source: 'account' }),
+              onClick: () => openImport({ accountId: id, source: 'account', from: account.name }),
             }}
           />
           {showHero && (

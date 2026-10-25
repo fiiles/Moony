@@ -1,9 +1,8 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { BudgetGoalInterval } from '@shared/schema';
-import { Button } from '@/components/ui/button';
 import { useDeleteBudget, useDeleteBudgetIntervals } from '@/hooks/use-budget-goal-mutations';
-import { Sheet } from '@/mobile/components/Sheet';
+import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 
 /** What is waiting for a confirmation: a whole budget, or one interval of it. */
 export type PendingDelete =
@@ -25,10 +24,10 @@ interface BudgetDeleteSheetProps {
 
 /**
  * The confirmation before a budget or one of its intervals goes (the phone counterpart of the
- * desktop's two `ConfirmDeleteDialog`s, README §13 Confirm sheet): the question as the title, the
- * sentence that says what else goes (the past months of the spending reports) under it, a ghost
- * "Zrušit" and the solid red button — the one place a destructive button belongs. The button
- * names the deed, as the desktop's does ("Smazat celý rozpočet", "Smazat").
+ * desktop's two `ConfirmDeleteDialog`s, README §13 Confirm sheet): one shared `ConfirmSheet` with
+ * the question as the title, the sentence that says what else goes (the past months of the
+ * spending reports) under it, and the button that names the deed, as the desktop's does ("Smazat
+ * celý rozpočet", "Smazat"). The mutations close it through their `onDeleted` callbacks.
  */
 export function BudgetDeleteSheet({ pending, onClose }: BudgetDeleteSheetProps) {
   const [shown, setShown] = useState(pending);
@@ -50,7 +49,7 @@ export function BudgetDeleteSheet({ pending, onClose }: BudgetDeleteSheetProps) 
   };
 
   return (
-    <Sheet
+    <ConfirmSheet
       open={pending !== null}
       onOpenChange={(open) => {
         if (!open) onClose();
@@ -58,7 +57,7 @@ export function BudgetDeleteSheet({ pending, onClose }: BudgetDeleteSheetProps) 
       title={wholeBudget ? t('manage.deleteTitle') : t('manage.deleteIntervalTitle')}
       description={
         shown === null
-          ? undefined
+          ? ''
           : shown.kind === 'budget'
             ? t('manage.deleteDescription', { category: shown.name })
             : t('manage.deleteIntervalDescription', {
@@ -67,27 +66,9 @@ export function BudgetDeleteSheet({ pending, onClose }: BudgetDeleteSheetProps) 
                 period: shown.period,
               })
       }
-      footer={
-        <>
-          <Button
-            variant="ghost"
-            className="h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] px-[18px] text-m-row"
-            onClick={onClose}
-          >
-            {tc('buttons.cancel')}
-          </Button>
-          <Button
-            variant="destructive"
-            className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-            loading={isPending}
-            onClick={confirm}
-          >
-            {wholeBudget ? t('manage.delete') : tc('buttons.delete')}
-          </Button>
-        </>
-      }
-    >
-      {null}
-    </Sheet>
+      confirmLabel={wholeBudget ? t('manage.delete') : tc('buttons.delete')}
+      onConfirm={confirm}
+      isPending={isPending}
+    />
   );
 }

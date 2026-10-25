@@ -61,9 +61,7 @@
       "done": "Listo"
     },
     "picker": {
-      "title": "Categoría",
-      "change": "Cambiar categoría",
-      "current": "Categoría actual"
+      "change": "Cambiar categoría"
     },
     "limitSheet": {
       "pick": "Elige la categoría cuyos gastos quieres controlar."

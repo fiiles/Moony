@@ -9,6 +9,10 @@ interface EmptyStateProps {
   /** Render without the surrounding E3 card (inside an existing card). */
   bare?: boolean;
   className?: string;
+  /** Extra classes for the title; the phone passes a `text-m-*` role (default: none). */
+  titleClassName?: string;
+  /** Extra classes for the sentence under it; the phone passes a `text-m-*` role (default: none). */
+  descriptionClassName?: string;
 }
 
 /**
@@ -22,6 +26,8 @@ export function EmptyState({
   action,
   bare = false,
   className,
+  titleClassName,
+  descriptionClassName,
 }: EmptyStateProps) {
   const body = (
     <div
@@ -31,8 +37,10 @@ export function EmptyState({
       )}
     >
       {icon}
-      <h3 className="mb-1.5 text-h3 text-ink">{title}</h3>
-      <p className="m-0 max-w-[320px] text-table leading-[1.5]">{description}</p>
+      <h3 className={cn('mb-1.5 text-h3 text-ink', titleClassName)}>{title}</h3>
+      <p className={cn('m-0 max-w-[320px] text-table leading-[1.5]', descriptionClassName)}>
+        {description}
+      </p>
       {action && <div className="mt-4">{action}</div>}
     </div>
   );

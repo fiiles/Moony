@@ -10,30 +10,26 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { UpdateCryptoPriceModal } from '@/components/crypto/UpdateCryptoPriceModal';
 import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
-import { useDeleteCrypto } from '@/mobile/hooks/use-crypto';
-import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
-import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 
 /**
  * The `···` of a coin (spec §8.8): Upravit cenu opens the desktop's rate dialog, Smazat pozici
- * asks in a confirm sheet and, once the coin is gone and the sheet's history entry with it, tells
- * the page to leave (`onDeleted`). There is no rename, dividend or follow for a coin, so these are
- * all. Each item is wired here with its dialog, so the page only places the button.
+ * asks the page to confirm and delete (`onDelete`). The delete is the page's, not this menu's: the
+ * menu goes away as soon as the coin drops out of the list the page reads, taking its callbacks
+ * with it. There is no rename, dividend or follow for a coin, so these are all. The rate dialog is
+ * wired here, so the page only places the button.
  */
 export function CryptoMenu({
   holding,
-  onDeleted,
+  onDelete,
 }: {
   holding: CryptoRow;
-  /** The coin is deleted and its confirm sheet has closed: leave the screen. */
-  onDeleted: () => void;
+  /** Smazat pozici: the screen asks in its confirm sheet and deletes (`useDeleteAndLeave`). */
+  onDelete: () => void;
 }) {
   const { t } = useTranslation('crypto');
   const { t: tc } = useTranslation('common');
-  const remove = useDeleteCrypto(holding.id);
   const [priceOpen, setPriceOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
 
   return (
     <>
@@ -49,7 +45,7 @@ export function CryptoMenu({
             {t('detail.menu.editPrice')}
           </RowMenuItem>
           <DropdownMenuSeparator />
-          <RowMenuItem variant="danger" onSelect={() => setDeleteOpen(true)}>
+          <RowMenuItem variant="danger" onSelect={onDelete}>
             <Trash2 strokeWidth={1.75} aria-hidden />
             {t('detail.menu.delete')}
           </RowMenuItem>
@@ -57,23 +53,6 @@ export function CryptoMenu({
       </DropdownMenu>
 
       <UpdateCryptoPriceModal open={priceOpen} onOpenChange={setPriceOpen} investment={holding} />
-      <ConfirmSheet
-        open={deleteOpen}
-        onOpenChange={setDeleteOpen}
-        title={t('confirmDelete.title')}
-        description={t('confirmDelete.description', {
-          name: holding.name,
-          ticker: holding.ticker,
-        })}
-        confirmLabel={t('actions.delete')}
-        isPending={remove.isPending}
-        onConfirm={() =>
-          remove.mutate(undefined, {
-            // The sheet takes its own history entry off first, then the page goes back
-            onSuccess: () => leaveAfterSheet(() => setDeleteOpen(false), onDeleted),
-          })
-        }
-      />
     </>
   );
 }

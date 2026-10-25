@@ -4,7 +4,7 @@ import { useFormat } from '@/lib/use-format';
 import { useChartTokens } from '@/theme/ThemeProvider';
 import { niceTicks, valueDomain } from '@/utils/chart-scale';
 import { AXIS_WIDTH, CategoryAxis } from '@/components/charts/ChartAxis';
-import { ChartLegend } from '@/components/charts/ChartLegend';
+import { ScaledChartLegend } from '@/mobile/components/Scaled';
 import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import type { BarDatum } from '@/mobile/lib/cashflow-rows';
 import { MASK } from '@/mobile/lib/hide-amounts';
@@ -165,7 +165,7 @@ export function CashflowBars({ bars, names, label, monthLabel, onSelectMonth }: 
         </div>
       </div>
       {chart && <CategoryAxis labels={axisLabels} centered />}
-      <ChartLegend
+      <ScaledChartLegend
         className="mt-2.5"
         items={[
           { label: incomeName, swatch: { kind: 'block', color: 'var(--s1)' } },

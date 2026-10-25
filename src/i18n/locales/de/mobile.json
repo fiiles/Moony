@@ -59,9 +59,7 @@
       "done": "Fertig"
     },
     "picker": {
-      "title": "Kategorie",
-      "change": "Kategorie ändern",
-      "current": "Aktuelle Kategorie"
+      "change": "Kategorie ändern"
     },
     "limitSheet": {
       "pick": "Wählen Sie die Kategorie, deren Ausgaben Sie im Blick behalten möchten."

@@ -1,8 +1,7 @@
 import { useId, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import type { RealEstate } from '@shared/schema';
-import { recordCurrency } from '@shared/currencies';
-import { useValuationMutations } from '@/hooks/use-valuation-mutations';
+import { priceDecimals } from '@shared/currencies';
+import { useValuationMutations, type ValuationKind } from '@/hooks/use-valuation-mutations';
 import { Button } from '@/components/ui/button';
 import { AmountField } from '@/mobile/components/AmountField';
 import { DateField } from '@/mobile/components/DateField';
@@ -10,66 +9,73 @@ import { Sheet } from '@/mobile/components/Sheet';
 import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
 import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { todayIso } from '@/mobile/lib/property-detail';
 import {
+  revaluedTotal,
   revalueData,
-  todayIso,
+  startRevalueForm,
   type RevalueErrors,
-  type RevalueForm,
-} from '@/mobile/lib/property-detail';
+} from '@/mobile/lib/revalue';
 
 interface RevalueSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  property: RealEstate;
-}
-
-/**
- * The form of a new estimate: today's market price in the property's currency, today, no note.
- * With the amounts hidden the field starts empty: a prefilled price would show what the eye hides.
- */
-function startForm(property: RealEstate, hidden: boolean): RevalueForm {
-  return {
-    valueText: hidden ? '' : String(Number(property.marketPrice) || 0),
-    dateIso: todayIso(),
-    note: '',
-  };
+  kind: ValuationKind;
+  assetId: string;
+  name: string;
+  /** Today's estimate in `currency`: the whole value of a property, the price of one unit of an asset held by the unit. */
+  value: number;
+  currency: string;
+  /** Unit label of an asset held by the unit ("ks", "oz"); omitted for a whole property. */
+  unit?: string;
+  /** The units held: the hint then writes the total the typed price makes of them. */
+  quantity?: number;
 }
 
 /**
  * "Přecenit" (spec §8.8, the phone counterpart of the desktop's `RevalueDialog`): a new dated
- * estimate of the market value, in the property's own currency — the amount (today's estimate to
- * start from), the day (today at most) and an optional note. The older estimates stay on the
- * trace. Přecenit writes it through the valuation mutations (the domain keys, the metrics, the
- * cashflow and a fresh snapshot) and closes the sheet once it is saved; a refusal is the mutation's
- * own toast and the sheet stays. The estimate it replaces in the hint goes through the eye, and
- * with the amounts hidden the field starts empty instead of with that estimate; the amount typed is
- * an input and is never masked.
+ * estimate, in the asset's own currency — the amount (today's estimate to start from: the market
+ * value of a property, the price of one unit of another asset), the day (today at most) and an
+ * optional note. The older estimates stay on the trace. Přecenit writes it through the valuation
+ * mutations (the domain keys, the metrics, the cashflow and a fresh snapshot) and closes the sheet
+ * once it is saved; a refusal is the mutation's own toast and the sheet stays. The hint under the
+ * amount is the previous estimate, or — for an asset held by the unit, once a price is typed — the
+ * total it makes of the units held; both go through the eye, and with the amounts hidden the field
+ * starts empty instead of with the estimate. The amount typed is an input and is never masked.
  *
  * Every opening starts over from today's estimate and today.
  */
-export function RevalueSheet({ open, onOpenChange, property }: RevalueSheetProps) {
-  const { t } = useTranslation('realEstate');
+export function RevalueSheet({
+  open,
+  onOpenChange,
+  kind,
+  assetId,
+  name,
+  value,
+  currency,
+  unit,
+  quantity,
+}: RevalueSheetProps) {
   const { t: tc } = useTranslation('common');
   const moneyText = useMoneyText();
   const { hidden } = useHideAmounts();
   const formId = useId();
-  const { add } = useValuationMutations('realEstate', property.id);
-  const currency = recordCurrency(property.marketPriceCurrency);
+  const { add } = useValuationMutations(kind, assetId);
 
-  const [form, setForm] = useState(() => startForm(property, hidden));
+  const [form, setForm] = useState(() => startRevalueForm(value, hidden, todayIso()));
   // An empty amount is only called missing once the field has been left
   const [amountTouched, setAmountTouched] = useState(false);
   const [openedFor, setOpenedFor] = useState(open);
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setForm(startForm(property, hidden));
+      setForm(startRevalueForm(value, hidden, todayIso()));
       setAmountTouched(false);
     }
   }
 
   const today = todayIso();
-  const result = revalueData(form, { assetId: property.id, currency, today });
+  const result = revalueData(form, { assetId, currency, today });
   const errors: RevalueErrors = result.ok ? {} : result.errors;
   const amountError =
     errors.value === undefined || (errors.value === 'required' && !amountTouched)
@@ -84,6 +90,22 @@ export function RevalueSheet({ open, onOpenChange, property }: RevalueSheetProps
         ? tc('validation.valuationDateInFuture')
         : undefined;
 
+  // The hint: the total the typed price makes of the units held, else the estimate it replaces. A
+  // price per unit is written with its currency's own decimals, a whole property without any.
+  const perUnit = unit !== undefined;
+  const total = quantity === undefined ? null : revaluedTotal(form.valueText, quantity);
+  const hint =
+    total === null
+      ? tc('revalue.previousNote', {
+          previous: moneyText(value, currency, {
+            decimals: perUnit ? priceDecimals(value, currency) : 0,
+          }),
+        })
+      : tc('revalue.totalNote', {
+          total: moneyText(total, currency, { decimals: 0 }),
+          previous: moneyText(value, currency, { decimals: priceDecimals(value, currency) }),
+        });
+
   const submit = () => {
     // A second Enter while the save runs must not save twice (`loading` only blocks taps)
     if (!result.ok || add.isPending) return;
@@ -95,7 +117,7 @@ export function RevalueSheet({ open, onOpenChange, property }: RevalueSheetProps
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
-      title={tc('revalue.title', { name: property.name })}
+      title={tc('revalue.title', { name })}
       description={tc('revalue.description')}
       footer={
         <>
@@ -109,7 +131,7 @@ export function RevalueSheet({ open, onOpenChange, property }: RevalueSheetProps
             disabled={!result.ok}
             loading={add.isPending}
           >
-            {t('detail.revalue')}
+            {tc('revalue.submit')}
           </Button>
         </>
       }
@@ -123,14 +145,12 @@ export function RevalueSheet({ open, onOpenChange, property }: RevalueSheetProps
         }}
       >
         <AmountField
-          label={tc('revalue.marketValue')}
+          label={perUnit ? tc('revalue.pricePerUnit', { unit }) : tc('revalue.marketValue')}
           unit={currency}
           value={form.valueText}
           placeholder="0"
           error={amountError}
-          hint={tc('revalue.previousNote', {
-            previous: moneyText(Number(property.marketPrice) || 0, currency, { decimals: 0 }),
-          })}
+          hint={hint}
           onChange={(event) => setForm((f) => ({ ...f, valueText: event.target.value }))}
           onBlur={() => setAmountTouched(true)}
         />

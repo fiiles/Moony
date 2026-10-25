@@ -9,7 +9,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
 import { ChangeLine } from '@/mobile/components/wealth/ChangeLine';
@@ -100,7 +100,7 @@ export default function OtherAssets() {
       ) : (
         <>
           {/* Amounts the rates could not convert into the report currency (left out) */}
-          <ConversionQualityNote
+          <ScaledConversionNote
             quality={{ missingCurrencies: missing }}
             currency={reportCurrency}
             className="mx-0.5 mb-3.5"

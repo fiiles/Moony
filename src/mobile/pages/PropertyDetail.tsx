@@ -2,11 +2,12 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoute } from 'wouter';
 import { ArrowUp } from 'lucide-react';
+import { recordCurrency } from '@shared/currencies';
 import type { RealEstate } from '@shared/schema';
 import { useCurrency } from '@/lib/currency';
 import type { PropertyRow, YearlyBalance } from '@/utils/real-estate';
 import { Button } from '@/components/ui/button';
-import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { DocumentsSection } from '@/mobile/components/documents/DocumentsSection';
 import { PropertyCosts } from '@/mobile/components/property/PropertyCosts';
 import { PropertyFinance } from '@/mobile/components/property/PropertyFinance';
@@ -112,7 +113,15 @@ function PropertyDetailPage({ id }: { id: string | undefined }) {
 
       {view && (
         <>
-          <RevalueSheet open={revalueOpen} onOpenChange={setRevalueOpen} property={view.property} />
+          <RevalueSheet
+            open={revalueOpen}
+            onOpenChange={setRevalueOpen}
+            kind="realEstate"
+            assetId={view.property.id}
+            name={view.property.name}
+            value={Number(view.property.marketPrice) || 0}
+            currency={recordCurrency(view.property.marketPriceCurrency)}
+          />
           <ConfirmSheet
             open={deleteOpen}
             onOpenChange={setDeleteOpen}
@@ -161,7 +170,7 @@ function PropertyBody({ view, currency, onRevalue }: PropertyBodyProps) {
         </p>
       </div>
       {/* Amounts that could not be converted into the main currency (left out of its totals) */}
-      <ConversionQualityNote
+      <ScaledConversionNote
         quality={{ missingCurrencies: missing }}
         currency={currency}
         className="mx-0.5 mb-3.5"

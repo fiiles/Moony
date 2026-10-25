@@ -34,23 +34,38 @@ pub struct PreparedPhoto {
     thumb: Vec<u8>,
 }
 
-/// The image bytes of an upload request. The webview sends them as a raw body; when the custom
-/// protocol IPC is unavailable (blocked by the CSP, or a platform without it) Tauri falls back to
-/// postMessage and the same bytes arrive as a JSON array of numbers.
-pub fn photo_bytes(body: &InvokeBody) -> Result<Cow<'_, [u8]>> {
+/// The bytes of an upload request (a photo or a document). The webview sends them as a raw body;
+/// when the custom protocol IPC is unavailable (blocked by the CSP, or a platform without it)
+/// Tauri falls back to postMessage and the same bytes arrive as a JSON array of numbers.
+///
+/// A body longer than `max_len` bytes (a JSON array with more than `max_len` items) is refused
+/// with `validation.attachmentTooLarge` before anything is converted, so a huge array never
+/// becomes a byte vector. The count is checked before any item is read.
+pub fn upload_bytes(body: &InvokeBody, max_len: u64) -> Result<Cow<'_, [u8]>> {
     let not_bytes =
         || AppError::Internal("the upload expects the file bytes as the request body".into());
+    let too_large = || AppError::Validation("validation.attachmentTooLarge".into());
     match body {
-        InvokeBody::Raw(bytes) => Ok(Cow::Borrowed(bytes)),
-        InvokeBody::Json(serde_json::Value::Array(items)) => items
-            .iter()
-            .map(|v| {
-                v.as_u64()
-                    .and_then(|n| u8::try_from(n).ok())
-                    .ok_or_else(not_bytes)
-            })
-            .collect::<Result<Vec<u8>>>()
-            .map(Cow::Owned),
+        InvokeBody::Raw(bytes) => {
+            if bytes.len() as u64 > max_len {
+                return Err(too_large());
+            }
+            Ok(Cow::Borrowed(bytes))
+        }
+        InvokeBody::Json(serde_json::Value::Array(items)) => {
+            if items.len() as u64 > max_len {
+                return Err(too_large());
+            }
+            items
+                .iter()
+                .map(|v| {
+                    v.as_u64()
+                        .and_then(|n| u8::try_from(n).ok())
+                        .ok_or_else(not_bytes)
+                })
+                .collect::<Result<Vec<u8>>>()
+                .map(Cow::Owned)
+        }
         InvokeBody::Json(_) => Err(not_bytes()),
     }
 }
@@ -178,28 +193,68 @@ mod tests {
     }
 
     #[test]
-    fn photo_bytes_takes_a_raw_body_as_is() {
+    fn upload_bytes_takes_a_raw_body_as_is() {
         let body = InvokeBody::Raw(vec![1, 2, 255]);
-        assert_eq!(photo_bytes(&body).expect("bytes").as_ref(), &[1, 2, 255]);
+        assert_eq!(
+            upload_bytes(&body, 16).expect("bytes").as_ref(),
+            &[1, 2, 255]
+        );
     }
 
     #[test]
-    fn photo_bytes_reads_the_json_array_of_the_postmessage_fallback() {
+    fn upload_bytes_reads_the_json_array_of_the_postmessage_fallback() {
         let body = InvokeBody::Json(serde_json::json!([1, 2, 255]));
-        assert_eq!(photo_bytes(&body).expect("bytes").as_ref(), &[1, 2, 255]);
+        assert_eq!(
+            upload_bytes(&body, 16).expect("bytes").as_ref(),
+            &[1, 2, 255]
+        );
     }
 
     #[test]
-    fn photo_bytes_rejects_anything_but_bytes() {
+    fn upload_bytes_rejects_anything_but_bytes() {
         for value in [
             serde_json::json!({ "batchId": "b" }),
             serde_json::json!([1, 256]),
             serde_json::json!([1, -1]),
             serde_json::json!([1, "2"]),
         ] {
-            let err = photo_bytes(&InvokeBody::Json(value)).expect_err("not bytes");
+            let err = upload_bytes(&InvokeBody::Json(value), 16).expect_err("not bytes");
             assert!(matches!(err, AppError::Internal(_)));
         }
+    }
+
+    #[test]
+    fn upload_bytes_refuses_a_json_array_longer_than_the_limit() {
+        // The second array has a bad item as well: it is refused for its length, which shows the
+        // length is checked before any item is read.
+        for value in [
+            serde_json::json!([1, 2, 3, 4, 5]),
+            serde_json::json!([1, 2, 3, 4, "x"]),
+        ] {
+            let err = upload_bytes(&InvokeBody::Json(value), 4).expect_err("too long");
+            assert!(
+                matches!(&err, AppError::Validation(key) if key == "validation.attachmentTooLarge"),
+                "{err:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn upload_bytes_takes_an_array_at_the_limit() {
+        let body = InvokeBody::Json(serde_json::json!([1, 2, 3, 4]));
+        assert_eq!(
+            upload_bytes(&body, 4).expect("bytes").as_ref(),
+            &[1, 2, 3, 4]
+        );
+    }
+
+    #[test]
+    fn upload_bytes_refuses_a_raw_body_over_the_limit() {
+        let err = upload_bytes(&InvokeBody::Raw(vec![0; 5]), 4).expect_err("too long");
+        assert!(
+            matches!(&err, AppError::Validation(key) if key == "validation.attachmentTooLarge"),
+            "{err:?}"
+        );
     }
 
     #[test]

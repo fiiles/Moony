@@ -249,6 +249,30 @@ pub fn detect_header_row(content: &str, delimiter: char) -> usize {
     })
 }
 
+/// A record that is one quoted cell holding a whole delimited line, split into its
+/// fields; any other record unchanged. A spreadsheet that could not split a CSV puts
+/// each line into one cell and, saved again, quotes it with the inner quotes doubled
+/// (`"2026-10-05,buy,MCD,""McDonald's"",10,232.45,USD"`). The header line usually
+/// survives, so the file maps fine and every row would be skipped without this.
+pub fn unwrap_quoted_record(record: csv::StringRecord, delimiter: char) -> csv::StringRecord {
+    if record.len() != 1 {
+        return record;
+    }
+    let cell = &record[0];
+    if !cell.contains(delimiter) {
+        return record;
+    }
+    let Some(Ok(inner)) = csv_reader(cell, delimiter).records().next() else {
+        return record;
+    };
+    if inner.len() < 2 {
+        return record;
+    }
+    let mut unwrapped = inner;
+    unwrapped.set_position(record.position().cloned());
+    unwrapped
+}
+
 /// The header cells of the record at `header_row`, BOM and whitespace trimmed.
 pub fn read_headers(content: &str, delimiter: char, header_row: usize) -> Vec<String> {
     let tail = slice_from_line(content, header_row);
@@ -268,6 +292,59 @@ pub fn read_headers(content: &str, delimiter: char, header_row: usize) -> Vec<St
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn record(text: &str, delimiter: char) -> csv::StringRecord {
+        csv_reader(text, delimiter)
+            .records()
+            .next()
+            .expect("a record")
+            .expect("parses")
+    }
+
+    #[test]
+    fn a_whole_line_quoted_as_one_cell_is_unwrapped_into_its_fields() {
+        // A spreadsheet round trip wraps each line in quotes and doubles the inner ones.
+        let wrapped = record(
+            "\"2026-10-05,buy,MCD,\"\"McDonald's Corporation\"\",10,232.45,USD\"",
+            ',',
+        );
+        assert_eq!(wrapped.len(), 1);
+        let unwrapped = unwrap_quoted_record(wrapped, ',');
+        assert_eq!(
+            unwrapped.iter().collect::<Vec<_>>(),
+            [
+                "2026-10-05",
+                "buy",
+                "MCD",
+                "McDonald's Corporation",
+                "10",
+                "232.45",
+                "USD"
+            ]
+        );
+    }
+
+    #[test]
+    fn ordinary_records_are_left_alone() {
+        let plain = record("2026-10-05,buy,MCD", ',');
+        assert_eq!(unwrap_quoted_record(plain.clone(), ','), plain);
+        // One quoted cell without the delimiter inside is a genuine one-column row.
+        let single = record("\"just a note\"", ',');
+        assert_eq!(unwrap_quoted_record(single.clone(), ','), single);
+        // Another delimiter inside the cell does not count.
+        let other = record("\"a;b;c\"", ',');
+        assert_eq!(unwrap_quoted_record(other.clone(), ','), other);
+    }
+
+    #[test]
+    fn unwrapping_keeps_the_record_position() {
+        let mut reader = csv_reader("h\n\"a,b\"\n", ',');
+        let second = reader.records().nth(1).expect("row").expect("parses");
+        let byte = second.position().map(|p| p.byte());
+        let unwrapped = unwrap_quoted_record(second, ',');
+        assert_eq!(unwrapped.len(), 2);
+        assert_eq!(unwrapped.position().map(|p| p.byte()), byte);
+    }
 
     #[test]
     fn utf8_with_bom_is_decoded_and_stripped() {

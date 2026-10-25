@@ -441,6 +441,24 @@ mod tests {
     // ===================================================================
 
     #[test]
+    fn lines_wrapped_in_quotes_by_a_spreadsheet_still_parse() {
+        // Every data line quoted as one cell, inner quotes doubled, CRLF endings: what a
+        // Moony export looks like after a spreadsheet opened and saved it again.
+        let parsed = parse(
+            "\"15.01.2024;nákup;\"\"AAPL\"\";10;185,50;USD\"\r\n\
+\"20.02.2024;prodej;AAPL;5;190,25;USD\"\r\n",
+        );
+        assert!(
+            parsed.skipped.is_empty() && parsed.errors.is_empty(),
+            "{parsed:?}"
+        );
+        assert_eq!(parsed.trades.len(), 2);
+        assert_eq!(parsed.trades[0].symbol.as_deref(), Some("AAPL"));
+        assert_eq!((parsed.trades[0].line, parsed.trades[1].line), (2, 3));
+        assert_eq!(parsed.trades[1].direction, TradeDirection::Sell);
+    }
+
+    #[test]
     fn a_purchase_and_a_sale_become_trades() {
         let parsed =
             parse("15.01.2024;nákup;aapl;10;185,50;usd\n20.02.2024;prodej;AAPL;5;190,25;USD\n");

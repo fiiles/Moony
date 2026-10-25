@@ -157,7 +157,7 @@ async fn run_app() {
     {
         builder = builder
             .plugin(tauri_plugin_haptics::init())
-            // Unused so far: kept for the Phase 4 agenda reminders.
+            // The phone's reminder notifications (Nastavení → Oznámení) are scheduled through it.
             .plugin(tauri_plugin_notification::init())
             .plugin(moony_keychain::init())
             // The files the system opened in Moony, until the webview asks for them (a cold start

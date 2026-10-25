@@ -167,6 +167,14 @@
       "loan": "Lån",
       "policy": "Försäkring"
     },
+    "insurance": {
+      "type": "Försäkringstyp",
+      "upcoming": "Kommande betalningar",
+      "upcomingNote_one": "{{count}} dag",
+      "upcomingNote_other": "{{count}} dagar",
+      "showAll_one": "Visa {{count}}",
+      "showAll_other": "Visa alla {{count}}"
+    },
     "cashTrendLabel": "Diagram över kontanter"
   },
   "queue": {
@@ -254,6 +262,90 @@
       "details": "Detaljer",
       "category": "Kategori",
       "delete": "Ta bort"
+    }
+  },
+  "loan": {
+    "nextPayment": "Nästa betalning {{amount}} · {{date}}",
+    "notStarted": "Börjar {{date}}",
+    "stats": {
+      "since": "sedan {{month, lower}}",
+      "extra": "extra {{amount}}",
+      "until": "till {{month, lower}}"
+    },
+    "alerts": {
+      "fixationSoon_one": "Räntebindningen upphör om {{count}} dag. När banken har bekräftat den nya räntan, registrera den – betalningen och planen räknas om.",
+      "fixationSoon_other": "Räntebindningen upphör om {{count}} dagar. När banken har bekräftat den nya räntan, registrera den – betalningen och planen räknas om.",
+      "fixationToday": "Räntebindningen upphör i dag. När banken har bekräftat den nya räntan, registrera den – betalningen och planen räknas om.",
+      "fixationPassed_one": "Räntebindningen upphörde för {{count}} dag sedan. Registrera den nya räntan så att betalningen och planen räknas om.",
+      "fixationPassed_other": "Räntebindningen upphörde för {{count}} dagar sedan. Registrera den nya räntan så att betalningen och planen räknas om."
+    },
+    "schedule": {
+      "left": "{{amount}} kvar",
+      "yearSub_one": "{{count}} betalning · ränta {{interest}}",
+      "yearSub_other": "{{count}} betalningar · ränta {{interest}}",
+      "showAll_one": "Visa {{count}}",
+      "showAll_other": "Visa alla {{count}}"
+    },
+    "extra": {
+      "noChange": "Beloppet ändrar varken löptiden, betalningen eller räntan."
+    },
+    "events": {
+      "menu": "Händelsemeny"
+    }
+  },
+  "documents": {
+    "takePhoto": "Ta foto",
+    "chooseFile": "Välj fil",
+    "fromPhotos": "Välj från foton",
+    "photoName": "Foto {{date}}",
+    "count_one": "{{count}} · krypterat",
+    "count_other": "{{count}} · krypterade",
+    "openOnComputer": "Den här filen kan inte visas på telefonen. Öppna den i Moony på datorn.",
+    "saving": "Krypterar och sparar…",
+    "rowMenu": "Fler åtgärder: {{name}}",
+    "previewFailed": "Förhandsvisningen kunde inte visas. Öppna dokumentet i Moony på datorn.",
+    "zoomIn": "Zooma in",
+    "zoomOut": "Zooma ut"
+  },
+  "policy": {
+    "copy": "Kopiera avtalsnummer",
+    "copied": "Avtalsnummer kopierat",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Avtalstid",
+    "termOpen": "från {{start}} · tillsvidare",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "förnyelse {{date}}",
+    "notice": "Säg upp senast",
+    "limitsTotal": "totalt {{amount}}",
+    "total": "Totalt · {{payments}}"
+  },
+  "property": {
+    "notFound": "Den här fastigheten finns inte längre.",
+    "ltv": "belåning {{ltv}}",
+    "rentYear": "{{rent}} per år",
+    "perYear": "per år",
+    "loanPayment": "betalning {{amount}} / mån",
+    "rowMenu": "Fler åtgärder: {{name}}",
+    "costKindRecurring": "Återkommande",
+    "costKindOneTime": "Engångs",
+    "costYear": "{{amount}} per år",
+    "costCurrent": "Just nu {{amount}}",
+    "costDateInFuture": "Datumet för en kostnad kan inte ligga i framtiden.",
+    "costNameRequired": "Ange ett namn på kostnaden.",
+    "confirmDeleteRecurring": "Den återkommande kostnaden ”{{name}}” ({{amount}}, {{frequency}}) tas bort permanent. Det går inte att ångra.",
+    "photoCount_one": "{{count}} foto",
+    "photoCount_other": "{{count}} foton",
+    "uploading": "Laddar upp {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} foto kunde inte sparas.",
+    "photosSkipped_other": "{{count}} foton kunde inte sparas.",
+    "photoOpen": "Foto från {{day}}",
+    "photoFailed": "Fotot kunde inte visas.",
+    "photoDeleted": "Fotot har tagits bort",
+    "deletePhoto": "Ta bort foto",
+    "deletePhotoConfirm": {
+      "title": "Ta bort det här fotot?",
+      "description": "Fotot tas bort permanent. Det går inte att ångra.",
+      "descriptionLast": "Det här är det sista fotot från {{day}}, så fotoomgången för den dagen tas också bort. Det går inte att ångra."
     }
   },
   "transaction": {

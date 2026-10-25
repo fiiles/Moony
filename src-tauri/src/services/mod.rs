@@ -70,6 +70,7 @@ pub mod stock_performance;
 pub mod stock_tags;
 pub mod temp_cleanup;
 pub mod ticker_history;
+pub mod upload_copies;
 pub mod valuations;
 
 pub mod reporting;

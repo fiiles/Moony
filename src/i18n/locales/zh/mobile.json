@@ -154,6 +154,12 @@
       "loan": "贷款",
       "policy": "保单"
     },
+    "insurance": {
+      "type": "保单类型",
+      "upcoming": "近期付款",
+      "upcomingNote_other": "{{count}} 天",
+      "showAll_other": "显示全部 {{count}} 笔"
+    },
     "cashTrendLabel": "现金走势图"
   },
   "queue": {
@@ -237,6 +243,83 @@
       "details": "详情",
       "category": "类别",
       "delete": "删除"
+    }
+  },
+  "loan": {
+    "nextPayment": "下次还款 {{amount}} · {{date}}",
+    "notStarted": "{{date}} 开始",
+    "stats": {
+      "since": "自 {{month}}",
+      "extra": "额外还款 {{amount}}",
+      "until": "至 {{month}}"
+    },
+    "alerts": {
+      "fixationSoon_other": "固定利率期将在 {{count}} 天后结束。银行确认新利率后，请您记录下来，月供和还款计划会重新计算。",
+      "fixationToday": "固定利率期今天结束。银行确认新利率后，请您记录下来，月供和还款计划会重新计算。",
+      "fixationPassed_other": "固定利率期已于 {{count}} 天前结束。请您记录新利率，月供和还款计划会重新计算。"
+    },
+    "schedule": {
+      "left": "剩余 {{amount}}",
+      "yearSub_other": "{{count}} 笔还款 · 利息 {{interest}}",
+      "showAll_other": "显示全部 {{count}} 笔"
+    },
+    "extra": {
+      "noChange": "该金额不会改变还款期限、月供或利息。"
+    },
+    "events": {
+      "menu": "事件菜单"
+    }
+  },
+  "documents": {
+    "takePhoto": "拍照",
+    "chooseFile": "选择文件",
+    "fromPhotos": "从照片中选择",
+    "photoName": "照片 {{date}}",
+    "count_other": "{{count}} 份 · 已加密",
+    "openOnComputer": "手机无法显示此文件。请在电脑上的 Moony 中打开。",
+    "saving": "正在加密并保存…",
+    "rowMenu": "更多操作：{{name}}",
+    "previewFailed": "无法显示预览。请在电脑上的 Moony 中打开该文档。",
+    "zoomIn": "放大",
+    "zoomOut": "缩小"
+  },
+  "policy": {
+    "copy": "复制合同编号",
+    "copied": "已复制合同编号",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "合同期限",
+    "termOpen": "自 {{start}} 起 · 无固定期限",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "周年日 {{date}}",
+    "notice": "解约通知截止日",
+    "limitsTotal": "合计 {{amount}}",
+    "total": "合计 · {{payments}}"
+  },
+  "property": {
+    "notFound": "该房产已不存在。",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "年租金 {{rent}}",
+    "perYear": "每年",
+    "loanPayment": "还款额 {{amount}} / 月",
+    "rowMenu": "更多操作：{{name}}",
+    "costKindRecurring": "定期",
+    "costKindOneTime": "一次性",
+    "costYear": "每年 {{amount}}",
+    "costCurrent": "当前 {{amount}}",
+    "costDateInFuture": "费用日期不能晚于今天。",
+    "costNameRequired": "请输入费用名称。",
+    "confirmDeleteRecurring": "这将永久删除定期费用“{{name}}”（{{amount}}，{{frequency}}）。此操作无法撤销。",
+    "photoCount_other": "{{count}} 张",
+    "uploading": "正在上传 {{current}} / {{total}}",
+    "photosSkipped_other": "有 {{count}} 张照片无法保存。",
+    "photoOpen": "{{day}} 的照片",
+    "photoFailed": "无法显示这张照片。",
+    "photoDeleted": "照片已删除",
+    "deletePhoto": "删除照片",
+    "deletePhotoConfirm": {
+      "title": "删除这张照片？",
+      "description": "这张照片将被永久删除。此操作无法撤销。",
+      "descriptionLast": "这是 {{day}} 的最后一张照片，该日的照片批次也将一并删除。此操作无法撤销。"
     }
   },
   "transaction": {

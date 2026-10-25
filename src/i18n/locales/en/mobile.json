@@ -167,6 +167,14 @@
       "loan": "Loan",
       "policy": "Policy"
     },
+    "insurance": {
+      "type": "Policy type",
+      "upcoming": "Upcoming payments",
+      "upcomingNote_one": "{{count}} day",
+      "upcomingNote_other": "{{count}} days",
+      "showAll_one": "Show all {{count}}",
+      "showAll_other": "Show all {{count}}"
+    },
     "cashTrendLabel": "Cash trend chart"
   },
   "queue": {
@@ -254,6 +262,90 @@
       "details": "Details",
       "category": "Category",
       "delete": "Delete"
+    }
+  },
+  "loan": {
+    "nextPayment": "Next payment {{amount}} · {{date}}",
+    "notStarted": "Starts {{date}}",
+    "stats": {
+      "since": "since {{month}}",
+      "extra": "extra {{amount}}",
+      "until": "until {{month}}"
+    },
+    "alerts": {
+      "fixationSoon_one": "The fixed rate ends in {{count}} day. Once the bank confirms the new rate, record it — the payment and the plan are recalculated.",
+      "fixationSoon_other": "The fixed rate ends in {{count}} days. Once the bank confirms the new rate, record it — the payment and the plan are recalculated.",
+      "fixationToday": "The fixed rate ends today. Once the bank confirms the new rate, record it — the payment and the plan are recalculated.",
+      "fixationPassed_one": "The fixed rate ended {{count}} day ago. Record the new rate so that the payment and the plan are recalculated.",
+      "fixationPassed_other": "The fixed rate ended {{count}} days ago. Record the new rate so that the payment and the plan are recalculated."
+    },
+    "schedule": {
+      "left": "{{amount}} left",
+      "yearSub_one": "{{count}} payment · interest {{interest}}",
+      "yearSub_other": "{{count}} payments · interest {{interest}}",
+      "showAll_one": "Show all {{count}}",
+      "showAll_other": "Show all {{count}}"
+    },
+    "extra": {
+      "noChange": "This amount changes neither the term nor the payment nor the interest."
+    },
+    "events": {
+      "menu": "Event menu"
+    }
+  },
+  "documents": {
+    "takePhoto": "Take a photo",
+    "chooseFile": "Choose a file",
+    "fromPhotos": "Choose from photos",
+    "photoName": "Photo {{date}}",
+    "count_one": "{{count}} · encrypted",
+    "count_other": "{{count}} · encrypted",
+    "openOnComputer": "This file can't be shown on the phone. Open Moony on your computer to view it.",
+    "saving": "Encrypting and saving…",
+    "rowMenu": "More actions: {{name}}",
+    "previewFailed": "The preview could not be shown. Open the document in Moony on your computer.",
+    "zoomIn": "Zoom in",
+    "zoomOut": "Zoom out"
+  },
+  "policy": {
+    "copy": "Copy contract number",
+    "copied": "Contract number copied",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Contract term",
+    "termOpen": "from {{start}} · open-ended",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "anniversary {{date}}",
+    "notice": "Cancel by",
+    "limitsTotal": "total {{amount}}",
+    "total": "Total · {{payments}}"
+  },
+  "property": {
+    "notFound": "This property no longer exists.",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "{{rent}} a year",
+    "perYear": "a year",
+    "loanPayment": "payment {{amount}} / mo",
+    "rowMenu": "More actions: {{name}}",
+    "costKindRecurring": "Recurring",
+    "costKindOneTime": "One-time",
+    "costYear": "{{amount}} a year",
+    "costCurrent": "Currently {{amount}}",
+    "costDateInFuture": "The date of a cost can't be in the future.",
+    "costNameRequired": "Enter a name for the cost.",
+    "confirmDeleteRecurring": "This will permanently delete the recurring cost “{{name}}” ({{amount}}, {{frequency}}). This action cannot be undone.",
+    "photoCount_one": "{{count}} photo",
+    "photoCount_other": "{{count}} photos",
+    "uploading": "Uploading {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} photo could not be saved.",
+    "photosSkipped_other": "{{count}} photos could not be saved.",
+    "photoOpen": "Photo from {{day}}",
+    "photoFailed": "The photo could not be shown.",
+    "photoDeleted": "Photo deleted",
+    "deletePhoto": "Delete photo",
+    "deletePhotoConfirm": {
+      "title": "Delete this photo?",
+      "description": "The photo will be deleted permanently. This action cannot be undone.",
+      "descriptionLast": "This is the last photo of {{day}}, so that day's photo batch is deleted with it. This action cannot be undone."
     }
   },
   "transaction": {

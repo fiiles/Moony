@@ -61,6 +61,25 @@ fn spawn_staged_export_sweep(app: tauri::AppHandle) {
     });
 }
 
+/// Phones only: remove WebKit's plaintext copies of the files picked in the upload sheets (the
+/// `WKFileUploadPanel-*` folders in the container's tmp), once at startup and off the main thread.
+/// It never runs after an upload (another picked file may still be waiting in an open sheet); the
+/// lock runs it again (`logout`). Best effort: a problem is logged and never blocks startup.
+#[cfg(mobile)]
+fn spawn_upload_copy_sweep(app: tauri::AppHandle) {
+    let temp_dir = match app.path().temp_dir() {
+        Ok(dir) => dir,
+        Err(e) => {
+            log::warn!("[UPLOAD] Upload copy sweep skipped: no temp dir: {e}");
+            return;
+        }
+    };
+    tauri::async_runtime::spawn_blocking(move || {
+        let removed = services::upload_copies::sweep(&temp_dir);
+        log::info!("[UPLOAD] Upload copy sweep removed {removed} file(s)");
+    });
+}
+
 /// Phones only: keep the profile folder, the webview's storage and the received files folder out of
 /// iCloud and computer backups, at every start and off the main thread (the folders are created
 /// first on a first launch). Best effort: a problem is logged and never blocks startup.
@@ -96,6 +115,8 @@ async fn run_app() {
             spawn_legacy_temp_cleanup(app.handle().clone());
             #[cfg(mobile)]
             spawn_staged_export_sweep(app.handle().clone());
+            #[cfg(mobile)]
+            spawn_upload_copy_sweep(app.handle().clone());
             #[cfg(mobile)]
             spawn_device_backup_exclusion(app.handle().clone());
             // The window starts hidden and the frontend shows it once the theme is stamped (spec D10);
@@ -325,6 +346,7 @@ async fn run_app() {
             // Real estate document commands
             commands::real_estate::get_real_estate_documents,
             commands::real_estate::add_real_estate_document,
+            commands::real_estate::add_real_estate_document_bytes,
             commands::real_estate::delete_real_estate_document,
             commands::real_estate::open_real_estate_document,
             // Insurance commands
@@ -335,6 +357,7 @@ async fn run_app() {
             commands::insurance::delete_insurance,
             commands::insurance::get_insurance_documents,
             commands::insurance::add_insurance_document,
+            commands::insurance::add_insurance_document_bytes,
             commands::insurance::delete_insurance_document,
             commands::insurance::open_insurance_document,
             // Insurance real estate linking commands

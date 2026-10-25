@@ -167,6 +167,14 @@
       "loan": "Lån",
       "policy": "Forsikring"
     },
+    "insurance": {
+      "type": "Forsikringstype",
+      "upcoming": "Neste betalinger",
+      "upcomingNote_one": "{{count}} dag",
+      "upcomingNote_other": "{{count}} dager",
+      "showAll_one": "Vis {{count}}",
+      "showAll_other": "Vis alle {{count}}"
+    },
     "cashTrendLabel": "Diagram over kontanter"
   },
   "queue": {
@@ -254,6 +262,90 @@
       "details": "Detaljer",
       "category": "Kategori",
       "delete": "Slett"
+    }
+  },
+  "loan": {
+    "nextPayment": "Neste termin {{amount}} · {{date}}",
+    "notStarted": "Starter {{date}}",
+    "stats": {
+      "since": "siden {{month, lower}}",
+      "extra": "ekstra {{amount}}",
+      "until": "til {{month, lower}}"
+    },
+    "alerts": {
+      "fixationSoon_one": "Bindingstiden utløper om {{count}} dag. Når banken har bekreftet den nye renten, registrer den – terminen og planen beregnes på nytt.",
+      "fixationSoon_other": "Bindingstiden utløper om {{count}} dager. Når banken har bekreftet den nye renten, registrer den – terminen og planen beregnes på nytt.",
+      "fixationToday": "Bindingstiden utløper i dag. Når banken har bekreftet den nye renten, registrer den – terminen og planen beregnes på nytt.",
+      "fixationPassed_one": "Bindingstiden utløp for {{count}} dag siden. Registrer den nye renten, så terminen og planen beregnes på nytt.",
+      "fixationPassed_other": "Bindingstiden utløp for {{count}} dager siden. Registrer den nye renten, så terminen og planen beregnes på nytt."
+    },
+    "schedule": {
+      "left": "{{amount}} igjen",
+      "yearSub_one": "{{count}} termin · renter {{interest}}",
+      "yearSub_other": "{{count}} terminer · renter {{interest}}",
+      "showAll_one": "Vis {{count}}",
+      "showAll_other": "Vis alle {{count}}"
+    },
+    "extra": {
+      "noChange": "Dette beløpet endrer verken løpetiden, terminen eller rentene."
+    },
+    "events": {
+      "menu": "Hendelsesmeny"
+    }
+  },
+  "documents": {
+    "takePhoto": "Ta bilde",
+    "chooseFile": "Velg fil",
+    "fromPhotos": "Velg fra bilder",
+    "photoName": "Bilde {{date}}",
+    "count_one": "{{count}} · kryptert",
+    "count_other": "{{count}} · krypterte",
+    "openOnComputer": "Denne filen kan ikke vises på telefonen. Åpne den i Moony på datamaskinen.",
+    "saving": "Krypterer og lagrer…",
+    "rowMenu": "Flere handlinger: {{name}}",
+    "previewFailed": "Forhåndsvisningen kunne ikke vises. Åpne dokumentet i Moony på datamaskinen.",
+    "zoomIn": "Zoom inn",
+    "zoomOut": "Zoom ut"
+  },
+  "policy": {
+    "copy": "Kopier avtalenummer",
+    "copied": "Avtalenummer kopiert",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Varighet",
+    "termOpen": "fra {{start}} · løpende",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "årsdag {{date}}",
+    "notice": "Si opp innen",
+    "limitsTotal": "totalt {{amount}}",
+    "total": "Totalt · {{payments}}"
+  },
+  "property": {
+    "notFound": "Denne eiendommen finnes ikke lenger.",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "{{rent}} i året",
+    "perYear": "i året",
+    "loanPayment": "termin {{amount}} / mnd",
+    "rowMenu": "Flere handlinger: {{name}}",
+    "costKindRecurring": "Fast",
+    "costKindOneTime": "Engangs",
+    "costYear": "{{amount}} i året",
+    "costCurrent": "Nå {{amount}}",
+    "costDateInFuture": "Datoen for en kostnad kan ikke ligge i fremtiden.",
+    "costNameRequired": "Skriv inn et navn på kostnaden.",
+    "confirmDeleteRecurring": "Dette sletter den faste kostnaden «{{name}}» ({{amount}}, {{frequency}}) permanent. Dette kan ikke angres.",
+    "photoCount_one": "{{count}} bilde",
+    "photoCount_other": "{{count}} bilder",
+    "uploading": "Laster opp {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} bilde kunne ikke lagres.",
+    "photosSkipped_other": "{{count}} bilder kunne ikke lagres.",
+    "photoOpen": "Bilde fra {{day}}",
+    "photoFailed": "Bildet kunne ikke vises.",
+    "photoDeleted": "Bildet er slettet",
+    "deletePhoto": "Slett bilde",
+    "deletePhotoConfirm": {
+      "title": "Slette dette bildet?",
+      "description": "Bildet slettes permanent. Dette kan ikke angres.",
+      "descriptionLast": "Dette er det siste bildet fra {{day}}, så bildegruppen for den dagen slettes også. Dette kan ikke angres."
     }
   },
   "transaction": {

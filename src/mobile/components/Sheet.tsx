@@ -13,7 +13,14 @@ interface SheetProps {
   footer: ReactNode;
   /** A tall sheet (pickers): 95 % of the screen instead of 93 %. */
   full?: boolean;
-  /** The body; it scrolls when the sheet is not tall enough. */
+  /**
+   * The body is one box that fills the sheet and scrolls itself (the document viewer,
+   * `.m-sheet--fill`): the sheet is as tall as it may be (93 %, or 95 % with `full`) and its body a
+   * column that does not scroll, so its one child (`flex-1 min-h-0`) is the only scroller at every
+   * text size. Without it the sheet is as tall as its content and the body scrolls.
+   */
+  fill?: boolean;
+  /** The body; it scrolls when the sheet is not tall enough (with `fill`, its child does). */
   children: ReactNode;
 }
 
@@ -41,6 +48,7 @@ export function Sheet({
   description,
   footer,
   full = false,
+  fill = false,
   children,
 }: SheetProps) {
   useSheetHistory(open, () => onOpenChange(false));
@@ -62,7 +70,7 @@ export function Sheet({
           }}
           className={cn(
             'absolute inset-x-0 bottom-0 z-[41] flex flex-col rounded-t-r5 bg-paper text-ink-2 shadow-modal outline-none data-[state=open]:animate-sheet-in data-[state=closed]:animate-sheet-out motion-reduce:animate-none',
-            full ? 'max-h-[95%]' : 'max-h-[93%]'
+            fill ? (full ? 'h-[95%]' : 'h-[93%]') : full ? 'max-h-[95%]' : 'max-h-[93%]'
           )}
         >
           <div aria-hidden className="mx-auto mt-2 h-[5px] w-9 flex-none rounded-[3px] bg-well-3" />
@@ -76,7 +84,12 @@ export function Sheet({
               </DialogPrimitive.Description>
             )}
           </div>
-          <div className="min-h-0 flex-auto overflow-y-auto overscroll-contain px-4 pb-3.5 pt-2">
+          <div
+            className={cn(
+              'min-h-0 flex-auto px-4 pb-3.5 pt-2',
+              fill ? 'flex flex-col overflow-hidden' : 'overflow-y-auto overscroll-contain'
+            )}
+          >
             {children}
           </div>
           <div className="flex flex-none items-center gap-2.5 border-t border-line bg-well px-4 pb-[calc(12px+var(--safe-bottom))] pt-3">

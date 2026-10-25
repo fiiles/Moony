@@ -154,6 +154,12 @@
       "loan": "ローン",
       "policy": "保険"
     },
+    "insurance": {
+      "type": "契約の種類",
+      "upcoming": "直近の支払い",
+      "upcomingNote_other": "{{count}}日間",
+      "showAll_other": "{{count}}件をすべて表示"
+    },
     "cashTrendLabel": "現金の推移グラフ"
   },
   "queue": {
@@ -237,6 +243,83 @@
       "details": "詳細",
       "category": "カテゴリ",
       "delete": "削除"
+    }
+  },
+  "loan": {
+    "nextPayment": "次回の返済 {{amount}} · {{date}}",
+    "notStarted": "{{date}}に開始",
+    "stats": {
+      "since": "{{month}}から",
+      "extra": "追加返済 {{amount}}",
+      "until": "{{month}}まで"
+    },
+    "alerts": {
+      "fixationSoon_other": "固定金利はあと{{count}}日で終了します。銀行が新しい金利を確定したら記録してください。返済額と計画が再計算されます。",
+      "fixationToday": "固定金利は本日終了します。銀行が新しい金利を確定したら記録してください。返済額と計画が再計算されます。",
+      "fixationPassed_other": "固定金利は{{count}}日前に終了しました。新しい金利を記録すると、返済額と計画が再計算されます。"
+    },
+    "schedule": {
+      "left": "残り {{amount}}",
+      "yearSub_other": "{{count}}回 · 利息 {{interest}}",
+      "showAll_other": "全{{count}}回を表示"
+    },
+    "extra": {
+      "noChange": "この金額では、返済期間も返済額も利息も変わりません。"
+    },
+    "events": {
+      "menu": "イベントメニュー"
+    }
+  },
+  "documents": {
+    "takePhoto": "撮影",
+    "chooseFile": "ファイルを選択",
+    "fromPhotos": "写真から選択",
+    "photoName": "写真 {{date}}",
+    "count_other": "{{count}}件 · 暗号化済み",
+    "openOnComputer": "このファイルはスマートフォンでは表示できません。パソコンの Moony で開いてください。",
+    "saving": "暗号化して保存しています…",
+    "rowMenu": "その他の操作: {{name}}",
+    "previewFailed": "プレビューを表示できませんでした。パソコンの Moony でドキュメントを開いてください。",
+    "zoomIn": "拡大",
+    "zoomOut": "縮小"
+  },
+  "policy": {
+    "copy": "契約番号をコピー",
+    "copied": "契約番号をコピーしました",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "契約期間",
+    "termOpen": "{{start}}から · 期間の定めなし",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "更新日 {{date}}",
+    "notice": "解約通知の期限",
+    "limitsTotal": "合計 {{amount}}",
+    "total": "合計 · {{payments}}"
+  },
+  "property": {
+    "notFound": "この物件は存在しません。",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "年間 {{rent}}",
+    "perYear": "年間",
+    "loanPayment": "返済額 月 {{amount}}",
+    "rowMenu": "その他の操作: {{name}}",
+    "costKindRecurring": "定期",
+    "costKindOneTime": "一時",
+    "costYear": "年間 {{amount}}",
+    "costCurrent": "現在 {{amount}}",
+    "costDateInFuture": "費用の日付は未来にできません。",
+    "costNameRequired": "費用の名前を入力してください。",
+    "confirmDeleteRecurring": "定期費用「{{name}}」（{{amount}}、{{frequency}}）を完全に削除します。この操作は元に戻せません。",
+    "photoCount_other": "{{count}} 枚",
+    "uploading": "アップロード中 {{current}} / {{total}}",
+    "photosSkipped_other": "{{count}} 枚の写真を保存できませんでした。",
+    "photoOpen": "{{day}} の写真",
+    "photoFailed": "写真を表示できませんでした。",
+    "photoDeleted": "写真を削除しました",
+    "deletePhoto": "写真を削除",
+    "deletePhotoConfirm": {
+      "title": "この写真を削除しますか？",
+      "description": "写真を完全に削除します。この操作は元に戻せません。",
+      "descriptionLast": "{{day}} の最後の写真です。その日の写真グループも一緒に削除されます。この操作は元に戻せません。"
     }
   },
   "transaction": {

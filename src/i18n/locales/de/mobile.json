@@ -167,6 +167,14 @@
       "loan": "Kredit",
       "policy": "Police"
     },
+    "insurance": {
+      "type": "Art der Police",
+      "upcoming": "Nächste Zahlungen",
+      "upcomingNote_one": "{{count}} Tag",
+      "upcomingNote_other": "{{count}} Tage",
+      "showAll_one": "Alle {{count}} anzeigen",
+      "showAll_other": "Alle {{count}} anzeigen"
+    },
     "cashTrendLabel": "Diagramm zum Bargeldverlauf"
   },
   "queue": {
@@ -254,6 +262,90 @@
       "details": "Details",
       "category": "Kategorie",
       "delete": "Löschen"
+    }
+  },
+  "loan": {
+    "nextPayment": "Nächste Rate {{amount}} · {{date}}",
+    "notStarted": "Beginnt am {{date}}",
+    "stats": {
+      "since": "seit {{month}}",
+      "extra": "Sonderzahlung {{amount}}",
+      "until": "bis {{month}}"
+    },
+    "alerts": {
+      "fixationSoon_one": "Die Zinsbindung endet in {{count}} Tag. Sobald die Bank den neuen Zinssatz bestätigt, tragen Sie ihn ein — Rate und Plan werden neu berechnet.",
+      "fixationSoon_other": "Die Zinsbindung endet in {{count}} Tagen. Sobald die Bank den neuen Zinssatz bestätigt, tragen Sie ihn ein — Rate und Plan werden neu berechnet.",
+      "fixationToday": "Die Zinsbindung endet heute. Sobald die Bank den neuen Zinssatz bestätigt, tragen Sie ihn ein — Rate und Plan werden neu berechnet.",
+      "fixationPassed_one": "Die Zinsbindung endete vor {{count}} Tag. Tragen Sie den neuen Zinssatz ein, damit Rate und Plan neu berechnet werden.",
+      "fixationPassed_other": "Die Zinsbindung endete vor {{count}} Tagen. Tragen Sie den neuen Zinssatz ein, damit Rate und Plan neu berechnet werden."
+    },
+    "schedule": {
+      "left": "Rest {{amount}}",
+      "yearSub_one": "{{count}} Rate · Zinsen {{interest}}",
+      "yearSub_other": "{{count}} Raten · Zinsen {{interest}}",
+      "showAll_one": "Alle {{count}} anzeigen",
+      "showAll_other": "Alle {{count}} anzeigen"
+    },
+    "extra": {
+      "noChange": "Dieser Betrag ändert weder Laufzeit noch Rate noch Zinsen."
+    },
+    "events": {
+      "menu": "Ereignismenü"
+    }
+  },
+  "documents": {
+    "takePhoto": "Foto aufnehmen",
+    "chooseFile": "Datei wählen",
+    "fromPhotos": "Aus Fotos wählen",
+    "photoName": "Foto {{date}}",
+    "count_one": "{{count}} · verschlüsselt",
+    "count_other": "{{count}} · verschlüsselt",
+    "openOnComputer": "Diese Datei lässt sich auf dem Telefon nicht anzeigen. Öffnen Sie sie in Moony auf Ihrem Computer.",
+    "saving": "Wird verschlüsselt und gespeichert…",
+    "rowMenu": "Weitere Aktionen: {{name}}",
+    "previewFailed": "Die Vorschau konnte nicht angezeigt werden. Öffnen Sie das Dokument in Moony auf Ihrem Computer.",
+    "zoomIn": "Vergrößern",
+    "zoomOut": "Verkleinern"
+  },
+  "policy": {
+    "copy": "Vertragsnummer kopieren",
+    "copied": "Vertragsnummer kopiert",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Laufzeit",
+    "termOpen": "ab {{start}} · unbefristet",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "Jahrestag {{date}}",
+    "notice": "Kündigung bis",
+    "limitsTotal": "gesamt {{amount}}",
+    "total": "Gesamt · {{payments}}"
+  },
+  "property": {
+    "notFound": "Diese Immobilie existiert nicht mehr.",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "{{rent}} pro Jahr",
+    "perYear": "pro Jahr",
+    "loanPayment": "Rate {{amount}} / Monat",
+    "rowMenu": "Weitere Aktionen: {{name}}",
+    "costKindRecurring": "Laufend",
+    "costKindOneTime": "Einmalig",
+    "costYear": "{{amount}} pro Jahr",
+    "costCurrent": "Derzeit {{amount}}",
+    "costDateInFuture": "Das Datum einer Ausgabe darf nicht in der Zukunft liegen.",
+    "costNameRequired": "Geben Sie einen Namen für die Kosten ein.",
+    "confirmDeleteRecurring": "Damit werden die laufenden Kosten „{{name}}“ ({{amount}}, {{frequency}}) dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.",
+    "photoCount_one": "{{count}} Foto",
+    "photoCount_other": "{{count}} Fotos",
+    "uploading": "Hochladen {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} Foto konnte nicht gespeichert werden.",
+    "photosSkipped_other": "{{count}} Fotos konnten nicht gespeichert werden.",
+    "photoOpen": "Foto vom {{day}}",
+    "photoFailed": "Das Foto konnte nicht angezeigt werden.",
+    "photoDeleted": "Foto gelöscht",
+    "deletePhoto": "Foto löschen",
+    "deletePhotoConfirm": {
+      "title": "Dieses Foto löschen?",
+      "description": "Das Foto wird dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.",
+      "descriptionLast": "Das ist das letzte Foto vom {{day}}, daher wird auch der Fotostapel dieses Tages gelöscht. Das lässt sich nicht rückgängig machen."
     }
   },
   "transaction": {

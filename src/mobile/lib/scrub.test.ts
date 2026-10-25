@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { nearestPoint, stepValueAt, toPlotX, toPlotY } from './scrub';
+import { nearestPoint, splitProjected, stepValueAt, toPlotX, toPlotY } from './scrub';
 
 describe('nearestPoint', () => {
   const points = [{ x: 0 }, { x: 10 }, { x: 20 }];
@@ -70,5 +70,75 @@ describe('stepValueAt', () => {
 
   it('gives the first value before the first point', () => {
     expect(stepValueAt(points, -4)).toBe(1);
+  });
+});
+
+describe('splitProjected', () => {
+  const points = [
+    { t: 0, value: 10 },
+    { t: 10, value: 8 },
+    { t: 20, value: 6 },
+  ];
+
+  it('is the plain line without a split: every point actual, none projected', () => {
+    const rows = splitProjected(points, undefined);
+    expect(rows).toHaveLength(3);
+    expect(rows.map((p) => p.actual)).toEqual([10, 8, 6]);
+    expect(rows.every((p) => !('projected' in p) || p.projected === undefined)).toBe(true);
+  });
+
+  it('keeps the other fields of a point', () => {
+    const rows = splitProjected([{ t: 0, value: 1, cost: 4 }], undefined);
+    expect(rows[0]).toMatchObject({ t: 0, value: 1, cost: 4, actual: 1 });
+  });
+
+  it('draws the points up to the split as actual and from it as projected', () => {
+    const rows = splitProjected(points, 10);
+    expect(rows).toHaveLength(3);
+    expect(rows.map((p) => p.actual)).toEqual([10, 8, undefined]);
+    expect(rows.map((p) => p.projected)).toEqual([undefined, 8, 6]);
+  });
+
+  it('inserts a point at the split so that both lines meet, at the step value before it', () => {
+    const rows = splitProjected(points, 14);
+    expect(rows.map((p) => p.t)).toEqual([0, 10, 14, 20]);
+    const meet = rows[2];
+    expect(meet.value).toBe(8);
+    expect(meet.actual).toBe(8);
+    expect(meet.projected).toBe(8);
+    expect(rows[1].actual).toBe(8);
+    expect(rows[1].projected).toBeUndefined();
+    expect(rows[3].actual).toBeUndefined();
+    expect(rows[3].projected).toBe(6);
+  });
+
+  it('adds nothing when the split is outside the range', () => {
+    expect(splitProjected(points, -5)).toHaveLength(3);
+    expect(splitProjected(points, 99)).toHaveLength(3);
+    // Everything is plan before the range, everything actual after it
+    expect(splitProjected(points, -5).every((p) => p.projected !== undefined)).toBe(true);
+    expect(splitProjected(points, 99).every((p) => p.actual !== undefined)).toBe(true);
+  });
+
+  it('is all plan when the split is before the first reading (a loan that has not started)', () => {
+    const rows = splitProjected(points, -5);
+    expect(rows.map((p) => p.t)).toEqual([0, 10, 20]);
+    expect(rows.every((p) => p.actual === undefined)).toBe(true);
+    expect(rows.map((p) => p.projected)).toEqual([10, 8, 6]);
+    // On the first reading the line starts where the plan does: that one reading is both
+    const onFirst = splitProjected(points, 0);
+    expect(onFirst[0].actual).toBe(10);
+    expect(onFirst[0].projected).toBe(10);
+    expect(onFirst.slice(1).every((p) => p.actual === undefined)).toBe(true);
+  });
+
+  it('does not duplicate a split that sits on a point', () => {
+    expect(splitProjected(points, 10).map((p) => p.t)).toEqual([0, 10, 20]);
+    expect(splitProjected(points, 0).map((p) => p.t)).toEqual([0, 10, 20]);
+    expect(splitProjected(points, 20).map((p) => p.t)).toEqual([0, 10, 20]);
+  });
+
+  it('gives no rows for no points', () => {
+    expect(splitProjected([], 5)).toEqual([]);
   });
 });

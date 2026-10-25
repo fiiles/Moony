@@ -16,18 +16,20 @@ import CryptoDetail from '@/mobile/pages/CryptoDetail';
 import Finance from '@/mobile/pages/Finance';
 import AccountDetail from '@/mobile/pages/finance/AccountDetail';
 import CategorizeQueue from '@/mobile/pages/finance/CategorizeQueue';
-import { LoanPlaceholder, PolicyPlaceholder } from '@/mobile/pages/finance/FinancePlaceholder';
+import LoanDetail from '@/mobile/pages/finance/LoanDetail';
+import PolicyDetail from '@/mobile/pages/finance/PolicyDetail';
 import Lock from '@/mobile/pages/Lock';
 import OtherAssetDetail from '@/mobile/pages/OtherAssetDetail';
 import OtherAssets from '@/mobile/pages/OtherAssets';
 import Overview from '@/mobile/pages/Overview';
 import PositionDetail from '@/mobile/pages/PositionDetail';
+import PropertyDetail from '@/mobile/pages/PropertyDetail';
 import Settings from '@/mobile/pages/Settings';
 import SettingsSection from '@/mobile/pages/settings/SettingsSection';
 import Stocks from '@/mobile/pages/Stocks';
 import Wealth from '@/mobile/pages/Wealth';
 import WatchDetail from '@/mobile/pages/WatchDetail';
-import { PropertyPlaceholder, RealEstatePlaceholder } from '@/mobile/pages/WealthPlaceholder';
+import { RealEstatePlaceholder } from '@/mobile/pages/WealthPlaceholder';
 import { EnableBiometricsSheet } from '@/mobile/sheets/EnableBiometricsSheet';
 import { routes, tabForPath } from './routes';
 import { TabBar } from './TabBar';
@@ -71,8 +73,8 @@ export function MobileShell() {
         <ProtectedRoute path={routes.finance} component={Finance} />
         {/* Pushed on Finance; the screens come in Phase 2a (account), 2b (queue) and 4 (loan, policy). */}
         <ProtectedRoute path={routes.accountDetail} component={AccountDetail} />
-        <ProtectedRoute path={routes.loanDetail} component={LoanPlaceholder} />
-        <ProtectedRoute path={routes.policyDetail} component={PolicyPlaceholder} />
+        <ProtectedRoute path={routes.loanDetail} component={LoanDetail} />
+        <ProtectedRoute path={routes.policyDetail} component={PolicyDetail} />
         <ProtectedRoute path={routes.uncategorized} component={CategorizeQueue} />
         <ProtectedRoute path={routes.cashflow} component={Cashflow} />
         <ProtectedRoute path={routes.cashflowCategory} component={CashflowCategory} />
@@ -92,7 +94,7 @@ export function MobileShell() {
         <ProtectedRoute path={routes.otherAssetsList} component={OtherAssets} />
         <ProtectedRoute path={routes.otherAssetDetail} component={OtherAssetDetail} />
         <ProtectedRoute path={routes.realEstateList} component={RealEstatePlaceholder} />
-        <ProtectedRoute path={routes.propertyDetail} component={PropertyPlaceholder} />
+        <ProtectedRoute path={routes.propertyDetail} component={PropertyDetail} />
         {/* Nastavení and the pages pushed on it (spec §8.9) */}
         <ProtectedRoute path={routes.settings} component={Settings} />
         <ProtectedRoute path={routes.settingsSection} component={SettingsSection} />

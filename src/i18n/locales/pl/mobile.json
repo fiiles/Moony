@@ -193,6 +193,18 @@
       "loan": "Kredyt",
       "policy": "Polisa"
     },
+    "insurance": {
+      "type": "Typ polisy",
+      "upcoming": "Najbliższe płatności",
+      "upcomingNote_one": "{{count}} dzień",
+      "upcomingNote_few": "{{count}} dni",
+      "upcomingNote_many": "{{count}} dni",
+      "upcomingNote_other": "{{count}} dnia",
+      "showAll_one": "Pokaż {{count}}",
+      "showAll_few": "Pokaż wszystkie {{count}}",
+      "showAll_many": "Pokaż wszystkie {{count}}",
+      "showAll_other": "Pokaż wszystkie {{count}}"
+    },
     "cashTrendLabel": "Wykres gotówki"
   },
   "queue": {
@@ -288,6 +300,104 @@
       "details": "Szczegóły",
       "category": "Kategoria",
       "delete": "Usuń"
+    }
+  },
+  "loan": {
+    "nextPayment": "Następna rata {{amount}} · {{date}}",
+    "notStarted": "Zaczyna się {{date}}",
+    "stats": {
+      "since": "od {{month, lower}}",
+      "extra": "nadpłaty {{amount}}",
+      "until": "do {{month, lower}}"
+    },
+    "alerts": {
+      "fixationSoon_one": "Stała stopa kończy się za {{count}} dzień. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
+      "fixationSoon_few": "Stała stopa kończy się za {{count}} dni. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
+      "fixationSoon_many": "Stała stopa kończy się za {{count}} dni. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
+      "fixationSoon_other": "Stała stopa kończy się za {{count}} dnia. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
+      "fixationToday": "Stała stopa kończy się dzisiaj. Gdy bank potwierdzi nową stopę, zapisz ją — rata i plan zostaną przeliczone.",
+      "fixationPassed_one": "Stała stopa skończyła się {{count}} dzień temu. Zapisz nową stopę, aby rata i plan zostały przeliczone.",
+      "fixationPassed_few": "Stała stopa skończyła się {{count}} dni temu. Zapisz nową stopę, aby rata i plan zostały przeliczone.",
+      "fixationPassed_many": "Stała stopa skończyła się {{count}} dni temu. Zapisz nową stopę, aby rata i plan zostały przeliczone.",
+      "fixationPassed_other": "Stała stopa skończyła się {{count}} dnia temu. Zapisz nową stopę, aby rata i plan zostały przeliczone."
+    },
+    "schedule": {
+      "left": "zostaje {{amount}}",
+      "yearSub_one": "{{count}} rata · odsetki {{interest}}",
+      "yearSub_few": "{{count}} raty · odsetki {{interest}}",
+      "yearSub_many": "{{count}} rat · odsetki {{interest}}",
+      "yearSub_other": "{{count}} raty · odsetki {{interest}}",
+      "showAll_one": "Pokaż {{count}}",
+      "showAll_few": "Pokaż wszystkie {{count}}",
+      "showAll_many": "Pokaż wszystkie {{count}}",
+      "showAll_other": "Pokaż wszystkie {{count}}"
+    },
+    "extra": {
+      "noChange": "Ta kwota nie zmienia ani okresu spłaty, ani raty, ani odsetek."
+    },
+    "events": {
+      "menu": "Menu zdarzenia"
+    }
+  },
+  "documents": {
+    "takePhoto": "Zrób zdjęcie",
+    "chooseFile": "Wybierz plik",
+    "fromPhotos": "Wybierz ze zdjęć",
+    "photoName": "Zdjęcie {{date}}",
+    "count_one": "{{count}} · szyfrowany",
+    "count_few": "{{count}} · szyfrowane",
+    "count_many": "{{count}} · szyfrowanych",
+    "count_other": "{{count}} · szyfrowanych",
+    "openOnComputer": "Tego pliku nie można wyświetlić na telefonie. Otwórz go w Moony na komputerze.",
+    "saving": "Szyfruję i zapisuję…",
+    "rowMenu": "Więcej akcji: {{name}}",
+    "previewFailed": "Nie udało się wyświetlić podglądu. Otwórz dokument w Moony na komputerze.",
+    "zoomIn": "Powiększ",
+    "zoomOut": "Pomniejsz"
+  },
+  "policy": {
+    "copy": "Skopiuj numer umowy",
+    "copied": "Numer umowy skopiowany",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Okres umowy",
+    "termOpen": "od {{start}} · bezterminowa",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "rocznica {{date}}",
+    "notice": "Wypowiedzenie do",
+    "limitsTotal": "łącznie {{amount}}",
+    "total": "Razem · {{payments}}"
+  },
+  "property": {
+    "notFound": "Ta nieruchomość już nie istnieje.",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "{{rent}} rocznie",
+    "perYear": "rocznie",
+    "loanPayment": "rata {{amount}} / mies.",
+    "rowMenu": "Więcej akcji: {{name}}",
+    "costKindRecurring": "Cykliczny",
+    "costKindOneTime": "Jednorazowy",
+    "costYear": "{{amount}} rocznie",
+    "costCurrent": "Teraz {{amount}}",
+    "costDateInFuture": "Data kosztu nie może być z przyszłości.",
+    "costNameRequired": "Podaj nazwę kosztu.",
+    "confirmDeleteRecurring": "Koszt cykliczny „{{name}}” ({{amount}}, {{frequency}}) zostanie usunięty na stałe. Tej operacji nie można cofnąć.",
+    "photoCount_one": "{{count}} zdjęcie",
+    "photoCount_few": "{{count}} zdjęcia",
+    "photoCount_many": "{{count}} zdjęć",
+    "photoCount_other": "{{count}} zdjęcia",
+    "uploading": "Wysyłam {{current}} / {{total}}",
+    "photosSkipped_one": "Nie udało się zapisać {{count}} zdjęcia.",
+    "photosSkipped_few": "Nie udało się zapisać {{count}} zdjęć.",
+    "photosSkipped_many": "Nie udało się zapisać {{count}} zdjęć.",
+    "photosSkipped_other": "Nie udało się zapisać {{count}} zdjęcia.",
+    "photoOpen": "Zdjęcie z {{day}}",
+    "photoFailed": "Nie udało się wyświetlić zdjęcia.",
+    "photoDeleted": "Zdjęcie usunięte",
+    "deletePhoto": "Usuń zdjęcie",
+    "deletePhotoConfirm": {
+      "title": "Usunąć to zdjęcie?",
+      "description": "Zdjęcie zostanie usunięte na stałe. Tej operacji nie można cofnąć.",
+      "descriptionLast": "To ostatnie zdjęcie z {{day}}, więc zostanie usunięty także cały zestaw zdjęć z tego dnia. Tej operacji nie można cofnąć."
     }
   },
   "transaction": {

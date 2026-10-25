@@ -180,6 +180,16 @@
       "loan": "Úvěr",
       "policy": "Pojistka"
     },
+    "insurance": {
+      "type": "Typ pojištění",
+      "upcoming": "Nejbližší platby",
+      "upcomingNote_one": "{{count}} den",
+      "upcomingNote_few": "{{count}} dny",
+      "upcomingNote_other": "{{count}} dní",
+      "showAll_one": "Zobrazit {{count}}",
+      "showAll_few": "Zobrazit všechny {{count}}",
+      "showAll_other": "Zobrazit všech {{count}}"
+    },
     "cashTrendLabel": "Graf vývoje hotovosti"
   },
   "queue": {
@@ -271,6 +281,97 @@
       "details": "Podrobnosti",
       "category": "Kategorie",
       "delete": "Smazat"
+    }
+  },
+  "loan": {
+    "nextPayment": "Příští splátka {{amount}} · {{date}}",
+    "notStarted": "Začíná {{date}}",
+    "stats": {
+      "since": "od {{month}}",
+      "extra": "mimořádně {{amount}}",
+      "until": "do {{month}}"
+    },
+    "alerts": {
+      "fixationSoon_one": "Fixace končí za {{count}} den. Až banka potvrdí novou sazbu, zapište ji — splátka a plán se přepočítají.",
+      "fixationSoon_few": "Fixace končí za {{count}} dny. Až banka potvrdí novou sazbu, zapište ji — splátka a plán se přepočítají.",
+      "fixationSoon_other": "Fixace končí za {{count}} dní. Až banka potvrdí novou sazbu, zapište ji — splátka a plán se přepočítají.",
+      "fixationToday": "Fixace končí dnes. Až banka potvrdí novou sazbu, zapište ji — splátka a plán se přepočítají.",
+      "fixationPassed_one": "Fixace skončila před {{count}} dnem. Zapište novou sazbu, aby se splátka a plán přepočítaly.",
+      "fixationPassed_few": "Fixace skončila před {{count}} dny. Zapište novou sazbu, aby se splátka a plán přepočítaly.",
+      "fixationPassed_other": "Fixace skončila před {{count}} dny. Zapište novou sazbu, aby se splátka a plán přepočítaly."
+    },
+    "schedule": {
+      "left": "zbývá {{amount}}",
+      "yearSub_one": "{{count}} splátka · úrok {{interest}}",
+      "yearSub_few": "{{count}} splátky · úrok {{interest}}",
+      "yearSub_other": "{{count}} splátek · úrok {{interest}}",
+      "showAll_one": "Zobrazit {{count}}",
+      "showAll_few": "Zobrazit všechny {{count}}",
+      "showAll_other": "Zobrazit všech {{count}}"
+    },
+    "extra": {
+      "noChange": "Tato částka nezmění ani dobu splácení, ani splátku, ani úroky."
+    },
+    "events": {
+      "menu": "Nabídka události"
+    }
+  },
+  "documents": {
+    "takePhoto": "Vyfotit",
+    "chooseFile": "Vybrat soubor",
+    "fromPhotos": "Vybrat z fotek",
+    "photoName": "Foto {{date}}",
+    "count_one": "{{count}} · šifrovaný",
+    "count_few": "{{count}} · šifrované",
+    "count_other": "{{count}} · šifrovaných",
+    "openOnComputer": "Tento soubor telefon zobrazit neumí. Otevřete ho v Moony na počítači.",
+    "saving": "Šifruji a ukládám…",
+    "rowMenu": "Další akce: {{name}}",
+    "previewFailed": "Náhled se nepodařilo zobrazit. Otevřete dokument v Moony na počítači.",
+    "zoomIn": "Přiblížit",
+    "zoomOut": "Oddálit"
+  },
+  "policy": {
+    "copy": "Zkopírovat číslo smlouvy",
+    "copied": "Číslo smlouvy zkopírováno",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Platnost",
+    "termOpen": "od {{start}} · neurčitá",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "výročí {{date}}",
+    "notice": "Výpověď nejpozději",
+    "limitsTotal": "celkem {{amount}}",
+    "total": "Celkem · {{payments}}"
+  },
+  "property": {
+    "notFound": "Tato nemovitost už neexistuje.",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "{{rent}} ročně",
+    "perYear": "ročně",
+    "loanPayment": "splátka {{amount}} / měs.",
+    "rowMenu": "Další akce: {{name}}",
+    "costKindRecurring": "Pravidelný",
+    "costKindOneTime": "Jednorázový",
+    "costYear": "{{amount}} ročně",
+    "costCurrent": "Nyní {{amount}}",
+    "costDateInFuture": "Datum nákladu nemůže být v budoucnosti.",
+    "costNameRequired": "Zadejte název nákladu.",
+    "confirmDeleteRecurring": "Tím trvale smažete pravidelný náklad „{{name}}“ ({{amount}}, {{frequency}}). Tuto akci nelze vrátit zpět.",
+    "photoCount_one": "{{count}} fotka",
+    "photoCount_few": "{{count}} fotky",
+    "photoCount_other": "{{count}} fotek",
+    "uploading": "Nahrávám {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} fotku se nepodařilo uložit.",
+    "photosSkipped_few": "{{count}} fotky se nepodařilo uložit.",
+    "photosSkipped_other": "{{count}} fotek se nepodařilo uložit.",
+    "photoOpen": "Fotka z {{day}}",
+    "photoFailed": "Fotku se nepodařilo zobrazit.",
+    "photoDeleted": "Fotka smazána",
+    "deletePhoto": "Smazat fotku",
+    "deletePhotoConfirm": {
+      "title": "Smazat fotku?",
+      "description": "Fotka bude trvale smazána. Tuto akci nelze vrátit zpět.",
+      "descriptionLast": "Je to poslední fotka ze dne {{day}}, takže se smaže i celá skupina fotek toho dne. Tuto akci nelze vrátit zpět."
     }
   },
   "transaction": {

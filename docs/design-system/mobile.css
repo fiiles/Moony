@@ -176,6 +176,10 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
 .m-hero__delta > span:last-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
 .m-hero__seg { margin: 12px 0 8px; }
 .m-hero__chart { display: block; width: 100%; height: 160px; }
+/* The plan of a chart (a loan's schedule after today; `ScrubChart`'s `projectedFrom`): the line goes on dashed,
+   `chart-line` at 1.5 px, dash 4 4, no area under it. The solid line and the plan share the reading on the
+   day the plan starts, so they meet; the end ring sits on the last solid reading. */
+.m-chart__projected { fill: none; stroke: var(--chart-line); stroke-width: 1.5; stroke-dasharray: 4 4; vector-effect: non-scaling-stroke; }
 
 /* ===== Stat row: three (or two, or one) stats; value 17, label 11, note 10 =====
    A label may wrap (hyphenated, German runs long); the value and the note sit at the bottom so
@@ -252,6 +256,11 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
 }
 .m-row__s { flex: 1 1 auto; color: var(--ink-4); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; }
 .m-row__s .m-badge { height: auto; min-height: 18px; padding: 1px 6px; vertical-align: 1px; }
+/* A sub-line whose first part gives way to the rest (the premiums coming up: "insurer · in 73 days"): a long
+   insurer ends with an ellipsis, the distance after it stays. */
+.m-row__s--split { display: flex; }
+.m-row__s--split > :first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.m-row__s--split > :not(:first-child) { flex: none; white-space: pre; }
 /* A badge inside a row's title ("Vyloučeno" after an account's name): at least 18 px (it grows with the
    text size), 11 / 600 `ink-3` on `well-2`, set 6 px after the name; the title still ends with an ellipsis.
    Its box is the line box's height, so a caron above a capital ("Čekající") stays whole where the row's
@@ -286,7 +295,7 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
   border-radius: 9px; background: var(--well); line-height: 1.25;
 }
 .m-dchip b { color: var(--ink); font-size: var(--m-fs-sub); font-weight: 650; letter-spacing: -.01em; white-space: nowrap; }
-.m-dchip small { margin-top: 1px; color: var(--ink-4); font-size: var(--m-fs-note); font-weight: 500; white-space: nowrap; }
+.m-dchip small { max-width: 100%; margin-top: 1px; overflow: hidden; text-overflow: ellipsis; color: var(--ink-4); font-size: var(--m-fs-note); font-weight: 500; white-space: nowrap; }
 .m-dchip--soon { background: var(--dark-grad); box-shadow: var(--sh-dark); }
 .m-dchip--soon b { color: var(--ink-inverse); }
 .m-dchip--soon small { color: var(--ink-inverse-2); }
@@ -453,6 +462,91 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
 .m-box ul { margin: 0; padding: 0; list-style: none; }
 .m-box li + li { margin-top: 2px; }
 
+/* Inline alert (the loan detail's warnings, spec §8.8): a sentence next to its cause on `well`, radius 11, at least
+   44 px, 12 / 500 `ink-2`, wrapping, a 15 px glyph in `ink-3` at its top. A warning has the hairline border (the
+   desktop's alert); `--muted` is a note that asks for nothing (a hand-entered balance holds). `__act` is one text
+   action under the sentence, 12 / 600 `ink`: a 44 px target that reaches into the box's bottom padding. */
+.m-alert {
+  display: flex; align-items: flex-start; gap: 10px; min-height: 44px; margin-bottom: 10px; padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 11px; background: var(--well); color: var(--ink-2);
+  font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.4;
+}
+.m-alert--muted { border-color: transparent; }
+.m-alert svg { flex: none; width: 15px; height: 15px; margin-top: 1px; color: var(--ink-3); stroke-width: 1.75; }
+.m-alert__t { min-width: 0; margin: 0; }
+.m-alert__act {
+  display: inline-flex; align-items: center; min-height: 44px; margin: 2px 0 -10px; padding: 0; border: 0; background: none;
+  color: var(--ink); font: inherit; font-weight: 600; -webkit-touch-callout: none;
+}
+.m-alert__act:active { color: var(--ink-3); }
+
+/* The live result of a sheet's form (the extra payment): a box on `well`, radius 13, the headline 20 / 650 and the
+   sentence that explains it 12 / 500 `ink-3` under it. It wraps; it is the sheet's `aria-live` region. */
+.m-result { padding: 14px 16px; border-radius: var(--r-3); background: var(--well); }
+.m-result__v {
+  display: block; color: var(--ink); font-size: var(--m-fs-title); font-weight: var(--m-fw-title);
+  letter-spacing: var(--m-ls-title); line-height: 1.2;
+}
+.m-result__n { display: block; margin-top: 4px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.4; }
+
+/* ===== Documents: the policy's and the property's "Dokumenty" (spec §8.8; `DocumentsSection.tsx`) =====
+   A document is an entity row (`.m-row--chev`: a square chip with a page or a picture glyph, the name, "typ · velikost · den",
+   a chevron — no trailing value, so the chevron stays). A tap opens the viewer and a long press the menu with Smazat, so the
+   row's text cannot be selected and a vertical drag still scrolls (`.m-docrow`). With no documents the section is its head
+   and one line (`__empty`, 12 / 500 `ink-3`, wrapping). */
+.m-docrow { -webkit-user-select: none; user-select: none; touch-action: pan-y; }
+.m-docrow__empty { margin: 0 2px 14px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.4; }
+
+/* Capture buttons (`CaptureButtons.tsx`): Vyfotit and Vybrat soubor, two secondary buttons of the pair's size (at least 48 px,
+   the label in the lead role and allowed a second line, so a larger text makes them taller) under the list. Each drives a hidden file input (`__i`, still in the layout so that the
+   system picker opens from the button's tap); the camera's is `accept="image/*" capture="environment"`. */
+.m-capture { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 14px; }
+.m-capture .m-btn { padding: 8px 10px; font-size: var(--m-fs-lead); }
+.m-capture .m-btn > span { overflow: visible; overflow-wrap: break-word; hyphens: auto; }
+.m-capture__i { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* A text field of a sheet (the add-document sheet's Název): the amount field's box without the room for a unit, the
+   digits proportional. */
+.m-field__i--text { padding: 0 14px; font-variant-numeric: normal; }
+
+/* The document viewer's body (`DocumentViewerSheet.tsx`, a tall sheet that is filled, `.m-sheet--fill`): one scroll box (`__box`:
+   `well`, 8 px padding, scrolling both ways) that takes all the room between the sheet's head and its footer — the sheet is its full
+   95 % (while a document is shown; a note alone opens at its height) and its body a column that does not scroll — so the box is the one scroller at every text size (a larger title or footer
+   leaves it less room, never a second scroll around it). It holds an image (`__img`, contained in the box at 1×: the box's height is
+   definite, so `max-height: 100%` holds) or a PDF's page placeholders (`__pages` with `__page`: pdf.js judges which pages are in view
+   against its parent, so the box is that parent), a skeleton until the picture or the first page is ready (`__skeleton`) and, for a
+   file the phone cannot show, one sentence (`__note`). The box takes panning only (`touch-action: pan-x pan-y`): the viewport is no
+   longer locked to scale 1, so a pinch there would zoom the whole page with the sheet; it does nothing. The zoom is a double tap or
+   the footer's zoom button (`__zoom`, 48 px), 1× ↔ 2× (`--zoomed`), the content becoming twice the box's width (the PDF's host is
+   measured once per start, so its pages are drawn again at that width). What is shown cannot be selected, dragged or long-pressed
+   into the system's Copy / Share / Save menu: no selection, no callout, no pointer on the picture and the canvases. */
+.m-docview { position: relative; display: flex; flex: 1 1 auto; flex-direction: column; min-height: 0; }
+.m-docview__box {
+  flex: 1 1 auto; min-height: 0; padding: 8px; overflow: auto; overscroll-behavior: contain;
+  border-radius: var(--r-3); background: var(--well); touch-action: pan-x pan-y;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.m-docview__img {
+  display: block; max-width: 100%; max-height: 100%; margin: 0 auto;
+  border-radius: var(--r-2); object-fit: contain; pointer-events: none; -webkit-user-drag: none;
+}
+.m-docview--zoomed .m-docview__img { width: 200%; max-width: none; max-height: none; }
+.m-docview__pages { display: flex; flex-direction: column; gap: 12px; width: 100%; }
+.m-docview--zoomed .m-docview__pages { width: 200%; }
+.m-docview__pages canvas { pointer-events: none; }
+.m-docview__page { flex: none; width: 100%; border: 1px solid var(--line); border-radius: var(--r-2); background: var(--paper); box-shadow: var(--sh-1); }
+.m-docview__skeleton {
+  position: absolute; inset: 0; z-index: 1; border-radius: var(--r-3);
+  background: linear-gradient(90deg, var(--well-2) 25%, var(--well) 50%, var(--well-2) 75%); background-size: 200% 100%;
+}
+.m-docview__note { margin: 0; padding: 24px 4px; color: var(--ink-3); font-size: var(--m-fs-body); text-align: center; }
+.m-docview__zoom { flex: none; width: 48px; padding: 0; }
+.m-docview__zoom svg { width: 20px; height: 20px; stroke-width: 1.75; }
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes m-shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+  .m-docview__skeleton { animation: m-shimmer 1.4s linear infinite; }
+}
+
 /* ===== Allocation bar and its legend (Majetek, spec §8.8; `AllocationBar.tsx`) =====
    Inside the hero (`.m-card--hero`), under the change line: a thin 100 % bar of one `<i>` per share
    (the four largest classes in `s1`–`s4`, the folded bucket in `s-other` with a `line` ring), then a
@@ -590,6 +684,11 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
   border-radius: var(--r-5) var(--r-5) 0 0; background: var(--paper); box-shadow: var(--sh-modal);
 }
 .m-sheet--full { max-height: 95%; }
+/* A sheet whose body is one box that scrolls itself (the document viewer; `Sheet`'s `fill`): the sheet is as tall as it may be
+   and its body a column that does not scroll, so its one child (`flex: 1 1 auto; min-height: 0`) fills it and is the only scroller. */
+.m-sheet--fill { height: 93%; }
+.m-sheet--full.m-sheet--fill { height: 95%; }
+.m-sheet--fill .m-sheet__body { display: flex; flex-direction: column; overflow: hidden; }
 .m-sheet__handle { flex: none; width: 36px; height: 5px; margin: 8px auto 0; border-radius: 3px; background: var(--well-3); }
 .m-sheet__head { flex: none; padding: 12px 20px 4px; }
 .m-sheet__t {
@@ -613,6 +712,11 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
   margin: -2px 2px 10px; overflow: hidden; color: var(--ink-3); text-align: center; text-overflow: ellipsis; white-space: nowrap;
   font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.35;
 }
+/* A line with one long part first (the policy's insurer): only that part ends with an ellipsis, what follows it (the type and the
+   state, "· Majetkové · aktivní") keeps its room, so a long name never hides the state (`--split`: two spans). */
+.m-nav__sub--split { display: flex; justify-content: center; }
+.m-nav__sub--split > :first-child { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.m-nav__sub--split > :last-child { flex: none; }
 
 /* Flows strip ("Toky"): 12 months in a card, one 44 px wide button per month, newest at the right.
    Each column is the 110 px bar area (incoming `s1` and outgoing `s3` side by side, 10 px wide,
@@ -831,6 +935,86 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
    and under the rows and 16 px at the sides; the dividers are the rows' own (`.m-kv + .m-kv`). Its rows are
    the transaction sheet's, so the label, the value, `--stack` and the sub-line are as described above. */
 .m-kvcard { padding: 4px 16px; }
+
+/* ===== Policy detail (spec §8.8 "Pojistka", `PolicyDetail.tsx`) =====
+   The contract card is a `.m-card .m-kvcard` of `.m-kv` rows, with three differences. A value of a fact may take a second
+   line instead of ending with an ellipsis (`.m-kv__v--wrap`: a premium with its frequency, a term of two dates, a long
+   insurer or property name). The contract number (`--id`) wraps at its spaces and never inside a group of digits that fits
+   (`word-break: break-all` cut "8 540 221 937" as "…93 / 7" at the largest text); only a number with no space that is wider
+   than the cell breaks inside, where it must. Its row ends in the copy button
+   (`.m-kv__copy`): 44 × 44, a 16 px `ink-3` icon, reaching 12 px past the row's padding so the icon stays at the values'
+   right edge and 8 px above and under it so the row stays 44 px. The number is no amount: it is never masked.
+   The notes (`.m-prose`) are a `.m-card` with the text as typed, line breaks kept. The premiums card (`.m-premium`) is the trend
+   card's pattern without its segment: a label (12 / 500 `ink-3`), the paid total (20 / 650, tabular) and the 120 px chart. */
+.m-kv__v--wrap { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: break-word; }
+.m-kv__v--id { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: break-word; }
+.m-kv__copy {
+  display: inline-flex; flex: none; align-items: center; justify-content: center; width: 44px; height: 44px; margin: -8px -12px -8px 0;
+  padding: 0; border: 0; border-radius: 12px; background: none; color: var(--ink-3); -webkit-touch-callout: none;
+}
+.m-kv__copy svg { width: 16px; height: 16px; stroke-width: 1.75; }
+.m-kv__copy:active { background: var(--well-2); }
+.m-prose { margin: 0; overflow-wrap: break-word; white-space: pre-wrap; color: var(--ink-2); font-size: var(--m-fs-body); font-weight: var(--m-fw-body); line-height: 1.45; }
+.m-premium { padding: 12px 16px 8px; }
+.m-premium__l { overflow: hidden; color: var(--ink-3); text-overflow: ellipsis; white-space: nowrap; font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.3; }
+.m-premium__v {
+  margin: 2px 0 8px; overflow: hidden; color: var(--ink); text-overflow: ellipsis; white-space: nowrap; font-variant-numeric: tabular-nums;
+  font-size: var(--m-fs-title); font-weight: var(--m-fw-title); letter-spacing: var(--m-ls-title); line-height: 1.2;
+}
+
+/* ===== Property detail (spec §8.8 "Nemovitost", `PropertyDetail.tsx`) =====
+   The pushed screen of a property under Majetek. Its sub-line has two lines (`.m-nav__sub--lines`, two `p`): the address, which
+   ends with an ellipsis when it does not fit, then the type and the rent ("Investiční nemovitost · Pronajato · nájem 16 500 Kč
+   měsíčně"), which wraps. The hero is the position's without its period segment (the trace has one horizon): the chart follows
+   the change line 12 px under it. Under "Finance" a group (the loans, the policies, the yearly balance) has a smaller head
+   (`.m-sec--group`: the title 12 / 600 `ink-3`, its action the section head's `.m-sec__a`, a 44 px target). What stands in place
+   of rows (`.m-prop__line`, 12 / 500 `ink-3`, wrapping) or under the balance card (`.m-prop__note`, 11 / 500) is a line of words.
+   The balance card is a `.m-card .m-kvcard` whose values are `gain` or `loss` (`.m-kv__v--gain`, `--loss`) and, for the two
+   results, 600 (`--total`). The date field of the revaluation sheet is the platform's date picker in the field's frame
+   (`.m-field__i--date`, no unit inside, the latest day today). */
+.m-nav__sub--lines { overflow: visible; text-overflow: clip; white-space: normal; }
+.m-nav__sub--lines > p { margin: 0; }
+.m-nav__sub--lines > :first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.m-hero__delta + .m-hero__chart { margin-top: 12px; }
+.m-sec--group .m-sec__t { color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: 600; letter-spacing: 0; line-height: 1.3; }
+.m-sec__a:is(button) { padding: 0; border: 0; background: none; font: inherit; font-size: var(--m-fs-sub); font-weight: 600; } /* a section action that is not a link (Připojit) */
+.m-prop__line { margin: 0 2px 14px; color: var(--ink-3); font-size: var(--m-fs-sub); font-weight: var(--m-fw-sub); line-height: 1.4; }
+.m-prop__note { margin: 0 2px 14px; color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.4; }
+.m-kv__v--gain { color: var(--gain); }
+.m-kv__v--loss { color: var(--loss); }
+.m-kv__v--total { font-weight: 600; }
+.m-field__i--date { margin: 0; padding: 0 14px; text-align: left; -webkit-appearance: none; appearance: none; }
+.m-field__i--date::-webkit-date-and-time-value { text-align: left; } /* WKWebView centres the value of a date input */
+.m-field__l--split { display: flex; justify-content: space-between; gap: 12px; } /* the label with "nepovinné" at its right end */
+.m-field__l--split > :last-child { color: var(--ink-4); font-weight: 500; }
+
+/* ===== Property costs, gallery and photo viewer (spec §8.8 "Nemovitost"; `PropertyCosts.tsx`, `PropertyGallery.tsx`, `PhotoViewerSheet.tsx`) =====
+   "Náklady" is made of existing blocks: the section head with its one number (`.m-sec__n`: "celkem 24 000 Kč ročně", left out
+   without recurring costs), the group heads (`.m-sec--group`, the first with the action Přidat náklad: `.m-sec__a`, 44 px) and
+   entity rows — a chip (a loop for a recurring cost, a receipt for a one-time one), the name, "měsíčně" or "den · popis", the
+   amount in the cost's own currency as the trailing value and, for a recurring cost paid more than once a year, the payments of a
+   year as the trailing sub. A row has a value, so it has no chevron; a tap edits a one-time cost, a long press opens the menu.
+   The gallery is a grid of three square thumbnails (`.m-gal`, 6 px gaps; `__cell`: radius 8, a `line` hairline on `well`, the
+   picture cropped to fill), the newest batch first, under the head with the count of photos; Vyfotit · Vybrat z fotek are
+   `.m-capture` (disabled and reading "Nahrávám 2 / 5" while the photos go in one by one). A thumbnail, like the photo, cannot be
+   selected, dragged or long-pressed into the system's Copy / Share / Save menu. The photo viewer is the document viewer's tall,
+   filled sheet (`.m-sheet--full .m-sheet--fill`) holding one picture: `.m-photoview` is its box — `well`, 8 px padding, the picture
+   centred and contained whole, panning only (`touch-action: pan-x pan-y`), no zoom — over a footer of Smazat fotku (the sheet footer's
+   `.m-btn--danger`, as the transaction sheet's) and Zavřít. */
+.m-gal { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; margin: 0 0 14px; padding: 0; list-style: none; }
+.m-gal__cell {
+  position: relative; display: block; width: 100%; aspect-ratio: 1; padding: 0; overflow: hidden;
+  border: 1px solid var(--line); border-radius: var(--r-2); background: var(--well);
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.m-gal__cell:active { opacity: 0.8; }
+.m-gal__cell > img { display: block; width: 100%; height: 100%; object-fit: cover; pointer-events: none; -webkit-user-drag: none; }
+.m-photoview {
+  display: flex; flex: 1 1 auto; align-items: center; justify-content: center; min-height: 0; padding: 8px; overflow: hidden;
+  overscroll-behavior: contain; border-radius: var(--r-3); background: var(--well); touch-action: pan-x pan-y;
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+.m-photoview > :is(img, [role="img"]) { display: block; max-width: 100%; max-height: 100%; border-radius: var(--r-2); object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
 
 /* ===== The notes of a watched stock (spec §8.8; `WatchNotes.tsx`) =====
    The watch detail is made of existing blocks — the hero with its dashed target line (the cost line, `chart-cost`), `.m-btn-pair`,

@@ -180,6 +180,16 @@
       "loan": "Prestito",
       "policy": "Polizza"
     },
+    "insurance": {
+      "type": "Tipo di polizza",
+      "upcoming": "Prossimi pagamenti",
+      "upcomingNote_one": "{{count}} giorno",
+      "upcomingNote_many": "{{count}} giorni",
+      "upcomingNote_other": "{{count}} giorni",
+      "showAll_one": "Mostra tutti ({{count}})",
+      "showAll_many": "Mostra tutti ({{count}})",
+      "showAll_other": "Mostra tutti ({{count}})"
+    },
     "cashTrendLabel": "Grafico della liquidità"
   },
   "queue": {
@@ -271,6 +281,97 @@
       "details": "Dettagli",
       "category": "Categoria",
       "delete": "Elimina"
+    }
+  },
+  "loan": {
+    "nextPayment": "Prossima rata {{amount}} · {{date}}",
+    "notStarted": "Inizia il {{date}}",
+    "stats": {
+      "since": "da {{month, lower}}",
+      "extra": "extra {{amount}}",
+      "until": "fino a {{month, lower}}"
+    },
+    "alerts": {
+      "fixationSoon_one": "Il tasso fisso termina tra {{count}} giorno. Quando la banca conferma il nuovo tasso, registralo: la rata e il piano vengono ricalcolati.",
+      "fixationSoon_many": "Il tasso fisso termina tra {{count}} giorni. Quando la banca conferma il nuovo tasso, registralo: la rata e il piano vengono ricalcolati.",
+      "fixationSoon_other": "Il tasso fisso termina tra {{count}} giorni. Quando la banca conferma il nuovo tasso, registralo: la rata e il piano vengono ricalcolati.",
+      "fixationToday": "Il tasso fisso termina oggi. Quando la banca conferma il nuovo tasso, registralo: la rata e il piano vengono ricalcolati.",
+      "fixationPassed_one": "Il tasso fisso è terminato {{count}} giorno fa. Registra il nuovo tasso per ricalcolare la rata e il piano.",
+      "fixationPassed_many": "Il tasso fisso è terminato {{count}} giorni fa. Registra il nuovo tasso per ricalcolare la rata e il piano.",
+      "fixationPassed_other": "Il tasso fisso è terminato {{count}} giorni fa. Registra il nuovo tasso per ricalcolare la rata e il piano."
+    },
+    "schedule": {
+      "left": "residuo {{amount}}",
+      "yearSub_one": "{{count}} rata · interessi {{interest}}",
+      "yearSub_many": "{{count}} rate · interessi {{interest}}",
+      "yearSub_other": "{{count}} rate · interessi {{interest}}",
+      "showAll_one": "Mostra tutte ({{count}})",
+      "showAll_many": "Mostra tutte ({{count}})",
+      "showAll_other": "Mostra tutte ({{count}})"
+    },
+    "extra": {
+      "noChange": "Questo importo non cambia né la durata, né la rata, né gli interessi."
+    },
+    "events": {
+      "menu": "Menu dell'evento"
+    }
+  },
+  "documents": {
+    "takePhoto": "Scatta una foto",
+    "chooseFile": "Scegli un file",
+    "fromPhotos": "Scegli dalle foto",
+    "photoName": "Foto {{date}}",
+    "count_one": "{{count}} · cifrato",
+    "count_many": "{{count}} · cifrati",
+    "count_other": "{{count}} · cifrati",
+    "openOnComputer": "Questo file non può essere mostrato sul telefono. Aprilo in Moony sul computer.",
+    "saving": "Cifratura e salvataggio…",
+    "rowMenu": "Altre azioni: {{name}}",
+    "previewFailed": "Non è stato possibile mostrare l'anteprima. Apri il documento in Moony sul computer.",
+    "zoomIn": "Ingrandisci",
+    "zoomOut": "Riduci"
+  },
+  "policy": {
+    "copy": "Copia il numero di contratto",
+    "copied": "Numero di contratto copiato",
+    "premium": "{{amount}} · {{frequency}}",
+    "term": "Durata",
+    "termOpen": "dal {{start}} · a tempo indeterminato",
+    "termFixed": "{{start}} – {{end}}",
+    "anniversary": "ricorrenza {{date}}",
+    "notice": "Disdetta entro",
+    "limitsTotal": "totale {{amount}}",
+    "total": "Totale · {{payments}}"
+  },
+  "property": {
+    "notFound": "Questo immobile non esiste più.",
+    "ltv": "LTV {{ltv}}",
+    "rentYear": "{{rent}} all'anno",
+    "perYear": "all'anno",
+    "loanPayment": "rata {{amount}} / mese",
+    "rowMenu": "Altre azioni: {{name}}",
+    "costKindRecurring": "Ricorrente",
+    "costKindOneTime": "Una tantum",
+    "costYear": "{{amount}} all'anno",
+    "costCurrent": "Attualmente {{amount}}",
+    "costDateInFuture": "La data di un costo non può essere futura.",
+    "costNameRequired": "Inserisci un nome per il costo.",
+    "confirmDeleteRecurring": "Verrà eliminato definitivamente il costo ricorrente «{{name}}» ({{amount}}, {{frequency}}). L'operazione non si può annullare.",
+    "photoCount_one": "{{count}} foto",
+    "photoCount_many": "{{count}} foto",
+    "photoCount_other": "{{count}} foto",
+    "uploading": "Caricamento {{current}} / {{total}}",
+    "photosSkipped_one": "{{count}} foto non è stata salvata.",
+    "photosSkipped_many": "{{count}} foto non sono state salvate.",
+    "photosSkipped_other": "{{count}} foto non sono state salvate.",
+    "photoOpen": "Foto del {{day}}",
+    "photoFailed": "Non è stato possibile mostrare la foto.",
+    "photoDeleted": "Foto eliminata",
+    "deletePhoto": "Elimina foto",
+    "deletePhotoConfirm": {
+      "title": "Eliminare questa foto?",
+      "description": "La foto verrà eliminata definitivamente. L'operazione non si può annullare.",
+      "descriptionLast": "È l'ultima foto del {{day}}, quindi verrà eliminato anche il gruppo di foto di quel giorno. L'operazione non si può annullare."
     }
   },
   "transaction": {

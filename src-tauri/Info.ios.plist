@@ -4,6 +4,10 @@
 <dict>
 	<key>NSFaceIDUsageDescription</key>
 	<string>Moony unlocks your data with Face ID.</string>
+	<!-- The camera photographs documents (contracts) and the property; the photos go straight
+	     into the encrypted attachments store and are never written to disk as plain files. -->
+	<key>NSCameraUsageDescription</key>
+	<string>Moony photographs documents and your property; the photos are stored encrypted on this phone.</string>
 	<!-- Bank statements shared or opened into the phone app (share sheet, "Open in"). The document
 	     types live here, not in tauri.conf.json, because they are iOS only: bundle.fileAssociations
 	     would register the desktop app for CSV files too. iOS hands the app a copy in

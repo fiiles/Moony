@@ -664,8 +664,7 @@
       "fileNote": "Gjelder først når passordendringen er fullført. Hvis du ikke fullførte endringen, gjelder den forrige nøkkelen fortsatt."
     },
     "profile": {
-      "lead": "Navnet ditt vises i hilsenen i Oversikt.",
-      "currencyReadOnly": "Hovedvaluta endrer du i Moony på datamaskinen."
+      "lead": "Navnet ditt vises i hilsenen i Oversikt."
     },
     "language": {
       "title": "Appspråk",

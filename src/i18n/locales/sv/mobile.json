@@ -664,8 +664,7 @@
       "fileNote": "Gäller först när lösenordsbytet är slutfört. Om du inte slutförde bytet gäller den tidigare nyckeln fortfarande."
     },
     "profile": {
-      "lead": "Ditt namn visas i hälsningen i Översikt.",
-      "currencyReadOnly": "Huvudvalutan ändrar du i Moony på datorn."
+      "lead": "Ditt namn visas i hälsningen i Översikt."
     },
     "language": {
       "title": "Appens språk",

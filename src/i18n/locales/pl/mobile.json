@@ -736,8 +736,7 @@
       "fileNote": "Obowiązuje dopiero po zakończeniu zmiany hasła. Jeśli nie zakończono zmiany, nadal obowiązuje poprzedni klucz."
     },
     "profile": {
-      "lead": "Twoje imię pojawia się w powitaniu w Przeglądzie.",
-      "currencyReadOnly": "Walutę główną zmienisz w Moony na komputerze."
+      "lead": "Twoje imię pojawia się w powitaniu w Przeglądzie."
     },
     "language": {
       "title": "Język aplikacji",

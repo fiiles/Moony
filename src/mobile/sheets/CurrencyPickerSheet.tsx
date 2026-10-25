@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { CURRENCY_CODES, currencyName, type CurrencyCode } from '@shared/currencies';
 import { Button } from '@/components/ui/button';
@@ -18,13 +18,15 @@ interface CurrencyPickerSheetProps {
   options?: readonly CurrencyCode[];
   /** What is being chosen; "Hlavní měna" by default (the first account's currency says "Měna"). */
   title?: string;
+  /** What to say above the search (Nastavení's hints on the main currency); nothing by default. */
+  lead?: ReactNode;
 }
 
 /**
  * A currency picker (first run): the search over the list, one 44 pt row per currency as
  * "CZK · Česká koruna" with a check on the chosen one. The search matches the code and the name
  * in the UI language and in English, ignoring case and accents (the desktop combobox's ranking).
- * A tap picks the currency and closes the sheet.
+ * A tap picks the currency and closes the sheet. A `lead` scrolls with the list, above the search.
  */
 export function CurrencyPickerSheet({
   open,
@@ -33,6 +35,7 @@ export function CurrencyPickerSheet({
   onPick,
   options = CURRENCY_CODES,
   title,
+  lead,
 }: CurrencyPickerSheetProps) {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
@@ -57,6 +60,7 @@ export function CurrencyPickerSheet({
       {/* Its own component: the search starts empty every time the sheet opens */}
       <CurrencyList
         label={heading}
+        lead={lead}
         value={value}
         options={options}
         onPick={(code) => {
@@ -70,11 +74,13 @@ export function CurrencyPickerSheet({
 
 function CurrencyList({
   label,
+  lead,
   value,
   options,
   onPick,
 }: {
   label: string;
+  lead: ReactNode;
   value: CurrencyCode;
   options: readonly CurrencyCode[];
   onPick: (code: CurrencyCode) => void;
@@ -111,6 +117,7 @@ function CurrencyList({
 
   return (
     <>
+      {lead}
       <SearchField
         value={query}
         onChange={setQuery}

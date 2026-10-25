@@ -700,8 +700,7 @@
       "fileNote": "Solo es válida cuando termina el cambio de contraseña. Si no terminaste el cambio, sigue valiendo la clave anterior."
     },
     "profile": {
-      "lead": "Tu nombre aparece en el saludo del Resumen.",
-      "currencyReadOnly": "La moneda principal se cambia en Moony en el ordenador."
+      "lead": "Tu nombre aparece en el saludo del Resumen."
     },
     "language": {
       "title": "Idioma de la app",

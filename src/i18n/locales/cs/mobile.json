@@ -700,8 +700,7 @@
       "fileNote": "Platí až po dokončení změny hesla. Pokud jste změnu nedokončili, platí dál předchozí klíč."
     },
     "profile": {
-      "lead": "Jméno se zobrazuje v pozdravu na Přehledu.",
-      "currencyReadOnly": "Hlavní měnu změníte v Moony na počítači."
+      "lead": "Jméno se zobrazuje v pozdravu na Přehledu."
     },
     "language": {
       "title": "Jazyk aplikace",

@@ -664,8 +664,7 @@
       "fileNote": "Valid only once the password change is finished. If you did not finish the change, the previous key stays valid."
     },
     "profile": {
-      "lead": "Your name appears in the greeting on Overview.",
-      "currencyReadOnly": "Change the main currency in Moony on your computer."
+      "lead": "Your name appears in the greeting on Overview."
     },
     "language": {
       "title": "App language",

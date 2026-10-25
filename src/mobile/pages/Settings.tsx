@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getVersion } from '@tauri-apps/api/app';
 import { useTranslation } from 'react-i18next';
+import { FX_SUPPORTED_CODES, currencyName, isFxSupported } from '@shared/currencies';
 import {
   Bell,
   CalendarClock,
+  Coins,
   FileText,
   Globe,
   Lock,
@@ -15,8 +17,10 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
 import { useMilestoneMutedKinds } from '@/hooks/use-milestones';
+import { useSettingsMutations } from '@/hooks/use-settings-mutations';
 import { languageInfo } from '@/i18n/languages';
 import { useLanguage } from '@/i18n/I18nProvider';
+import { useCurrency } from '@/lib/currency';
 import { biometricApi, onboardingApi } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
 import { useTheme } from '@/theme/ThemeProvider';
@@ -25,6 +29,7 @@ import { MILESTONE_GROUP_IDS, kindsOf } from '@/utils/milestones';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
 import { useBack } from '@/mobile/hooks/use-back';
+import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useNotificationPermission } from '@/mobile/hooks/use-notification-permission';
 import { readBackgroundLockMinutes } from '@/mobile/lib/background-lock';
 import { BIOMETRIC_STATUS_KEY } from '@/mobile/lib/biometrics';
@@ -34,10 +39,11 @@ import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes, settingsPath } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 import { AppearanceSheet } from '@/mobile/sheets/AppearanceSheet';
+import { CurrencyPickerSheet } from '@/mobile/sheets/CurrencyPickerSheet';
 import { DeleteProfileSheet } from '@/mobile/sheets/DeleteProfileSheet';
 import { LanguagePickerSheet } from '@/mobile/sheets/LanguagePickerSheet';
 
-type SheetKind = 'language' | 'appearance' | 'delete';
+type SheetKind = 'language' | 'currency' | 'appearance' | 'delete';
 
 /** The app version, `''` until it is known (and where the shell cannot tell, such as a browser). */
 function useAppVersion(): string {
@@ -55,11 +61,37 @@ function useAppVersion(): string {
 }
 
 /**
+ * What the sheet of the main currency says above its search, as the desktop's "Jazyk a formáty"
+ * card does: what the currency is used for, the current one with an example amount (money, so it
+ * goes through `useMoneyText` and is masked while amounts are hidden), that entered amounts keep
+ * their own currency and, in `loss`, that the current currency has no rate source.
+ */
+function MainCurrencyHint() {
+  const { t } = useTranslation('settings');
+  const fmt = useFormat();
+  const money = useMoneyText();
+  const { currencyCode } = useCurrency();
+  return (
+    <div className="mb-3 grid gap-1 px-1 text-m-sub text-ink-3">
+      <p className="m-0">
+        {t('currency.mainHint')} {currencyName(currencyCode, fmt.locale)} ({currencyCode}) ·{' '}
+        {t('currency.example', { example: money(1234.56, currencyCode) })}
+      </p>
+      <p className="m-0">{t('currency.nativeHint')}</p>
+      {!isFxSupported(currencyCode) && (
+        <p className="m-0 font-semibold text-loss">{t('currency.unsupportedMain')}</p>
+      )}
+    </div>
+  );
+}
+
+/**
  * Nastavení from the avatar on Přehled (spec §8.9): the profile head, then the rows by what they
- * are — profile, language and Vzhled; security, backup, notifications and reminders, each with its
- * state in the sub-line and a page of its own (`/settings/:section`); import, whose page holds the
- * learned formats and the export guides and starts the import sheet; lock and delete — and the
- * version with the promise under it. Language, Vzhled and delete open sheets.
+ * are — profile, language, main currency and Vzhled; security, backup, notifications and
+ * reminders, each with its state in the sub-line and a page of its own (`/settings/:section`);
+ * import, whose page holds the learned formats and the export guides and starts the import sheet;
+ * lock and delete — and the version with the promise under it. Language, main currency, Vzhled and
+ * delete open sheets.
  */
 export default function Settings() {
   const { t } = useTranslation('mobile');
@@ -68,6 +100,8 @@ export default function Settings() {
   const { user, lockMutation } = useAuth();
   const { language } = useLanguage();
   const { preference } = useTheme();
+  const { currencyCode } = useCurrency();
+  const { updateProfile } = useSettingsMutations();
   const fmt = useFormat();
   const back = useBack(routes.overview);
   const version = useAppVersion();
@@ -163,6 +197,15 @@ export default function Settings() {
           onClick={() => setSheet('language')}
         />
         <SettingsRow
+          icon={Coins}
+          title={ts('currency.main')}
+          sub={`${currencyCode} · ${currencyName(currencyCode, fmt.locale)}`}
+          // One write at a time: the toast says when the previous one is done
+          onClick={() => {
+            if (!updateProfile.isPending) setSheet('currency');
+          }}
+        />
+        <SettingsRow
           icon={SunMoon}
           title={ts('appearance.title')}
           sub={ts(`appearance.${preference}`)}
@@ -230,6 +273,20 @@ export default function Settings() {
       </p>
 
       <LanguagePickerSheet open={sheet === 'language'} onOpenChange={closeSheet} />
+      <CurrencyPickerSheet
+        open={sheet === 'currency'}
+        onOpenChange={closeSheet}
+        title={ts('currency.main')}
+        lead={<MainCurrencyHint />}
+        value={currencyCode}
+        // The main currency needs a rate source, as on the desktop
+        options={FX_SUPPORTED_CODES}
+        onPick={(code) => {
+          // The sheet closes itself after a pick; the same currency is nothing to save
+          if (code === currencyCode || updateProfile.isPending) return;
+          updateProfile.mutate({ currency: code });
+        }}
+      />
       <AppearanceSheet open={sheet === 'appearance'} onOpenChange={closeSheet} />
       <DeleteProfileSheet open={sheet === 'delete'} onOpenChange={closeSheet} />
     </Screen>

@@ -700,8 +700,7 @@
       "fileNote": "È valida solo quando il cambio della password è completato. Se non hai completato il cambio, resta valida la chiave precedente."
     },
     "profile": {
-      "lead": "Il tuo nome compare nel saluto di Panoramica.",
-      "currencyReadOnly": "La valuta principale si cambia in Moony sul computer."
+      "lead": "Il tuo nome compare nel saluto di Panoramica."
     },
     "language": {
       "title": "Lingua dell'app",

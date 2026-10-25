@@ -664,8 +664,7 @@
       "fileNote": "Gilt erst, wenn die Passwortänderung abgeschlossen ist. Haben Sie die Änderung nicht abgeschlossen, gilt weiterhin der bisherige Schlüssel."
     },
     "profile": {
-      "lead": "Ihr Name erscheint in der Begrüßung in der Übersicht.",
-      "currencyReadOnly": "Die Hauptwährung ändern Sie in Moony auf dem Computer."
+      "lead": "Ihr Name erscheint in der Begrüßung in der Übersicht."
     },
     "language": {
       "title": "App-Sprache",

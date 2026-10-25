@@ -298,11 +298,11 @@ function FormStep({
 /**
  * The new recovery key, as the first run's step shows it (`RecoveryStep`): the warning, the key
  * box, "Uložit do Souborů" where the Files picker exports, the two groups to retype, and the quiet
- * sentences under them. The file is not the first run's: it is named and titled by the day of this
- * attempt (`moony-recovery-key-2026-10-25.txt`, „… nový od 25. 10. 2026“) and its note says the key
- * holds only once the change is done, so saving it never replaces the copy of the key that stays
- * valid when the change is abandoned. The file is dated by the day of the attempt: attempts on the
- * same day share its name.
+ * sentences under them. The file is not the first run's: it is named by the local day and time of
+ * this attempt and titled by its day (`moony-recovery-key-2026-10-25-1742.txt`, „… nový od 25. 10.
+ * 2026“), and its note says the key holds only once the change is done, so saving it never replaces
+ * the copy of the key that stays valid when the change is abandoned, and two attempts on one day
+ * save two files.
  */
 function KeyStep({
   recoveryKey,

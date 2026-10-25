@@ -102,13 +102,28 @@ pub fn is_text_export_file_name(name: &str) -> bool {
     TEXT_EXPORT_FILE_NAMES.contains(&name) || is_dated_recovery_key_file_name(name)
 }
 
-/// Whether `name` is exactly `moony-recovery-key-YYYY-MM-DD.txt`: the phone's password change saves
-/// its new key under the day of the attempt, so it never replaces the first run's file, which holds
-/// the key that stays valid when the change is not finished.
+/// Whether `name` is exactly `moony-recovery-key-YYYY-MM-DD-HHmm.txt`: the phone's password change
+/// saves its new key under the local day and time of the attempt, so it never replaces the first
+/// run's file, which holds the key that stays valid when the change is not finished, and two
+/// changes on one day do not share a name. The day-only `moony-recovery-key-YYYY-MM-DD.txt` of
+/// older builds stays accepted, so a file such a build staged and never finished is still swept.
 fn is_dated_recovery_key_file_name(name: &str) -> bool {
     name.strip_prefix("moony-recovery-key-")
         .and_then(|rest| rest.strip_suffix(".txt"))
-        .is_some_and(is_date_stamp)
+        .is_some_and(|stamp| is_date_stamp(stamp) || is_date_time_stamp(stamp))
+}
+
+/// Whether `stamp` is `YYYY-MM-DD-HHmm`: a day stamp, a hyphen and four digits.
+fn is_date_time_stamp(stamp: &str) -> bool {
+    stamp.len() == 15
+        && stamp.get(..10).is_some_and(is_date_stamp)
+        && stamp.bytes().skip(10).enumerate().all(|(i, b)| {
+            if i == 0 {
+                b == b'-'
+            } else {
+                b.is_ascii_digit()
+            }
+        })
 }
 
 /// Whether `path` is a staged text export: directly inside `document_dir` (nothing normalised) and
@@ -1346,23 +1361,30 @@ mod tests {
         }
     }
 
-    /// The phone's password change saves its new key under the day of the attempt
-    /// (`moony-recovery-key-YYYY-MM-DD.txt`), so it never replaces the first run's file, which holds
-    /// the key that stays valid when the change is not finished. Exactly that shape, nothing else.
+    /// The phone's password change saves its new key under the local day and time of the attempt
+    /// (`moony-recovery-key-YYYY-MM-DD-HHmm.txt`), so it never replaces the first run's file, which
+    /// holds the key that stays valid when the change is not finished, and two changes on one day
+    /// do not share a name. Exactly that shape, nothing else.
     #[test]
     fn a_dated_recovery_key_is_on_the_allow_list_in_exactly_that_shape() {
-        let dated = "moony-recovery-key-2026-10-25.txt";
+        let dated = "moony-recovery-key-2026-10-25-1742.txt";
         assert!(is_text_export_file_name(dated));
         for bad in [
-            "moony-recovery-key-2026-10-25.txt.zip",
-            "../moony-recovery-key-2026-10-25.txt",
-            "moony-recovery-key-20261025.txt",
-            "moony-recovery-key-2026-10-2x.txt",
-            "moony-recovery-key-2026_10_25.txt",
+            "moony-recovery-key-2026-10-25-1742.txt.zip",
+            "../moony-recovery-key-2026-10-25-1742.txt",
+            "moony-recovery-key-20261025-1742.txt",
+            "moony-recovery-key-2026-10-2x-1742.txt",
+            "moony-recovery-key-2026_10_25-1742.txt",
             "moony-recovery-key-2026-10-25-1.txt",
+            "moony-recovery-key-2026-10-25-174.txt",
+            "moony-recovery-key-2026-10-25-17420.txt",
+            "moony-recovery-key-2026-10-25-17:42.txt",
+            "moony-recovery-key-2026-10-25-17x2.txt",
+            "moony-recovery-key-2026-10-25_1742.txt",
+            "moony-recovery-key-2026-10-25-.txt",
             "moony-recovery-key-.txt",
-            "Moony-recovery-key-2026-10-25.txt",
-            "moony-recovery-key-2026-10-25.TXT",
+            "Moony-recovery-key-2026-10-25-1742.txt",
+            "moony-recovery-key-2026-10-25-1742.TXT",
         ] {
             assert!(!is_text_export_file_name(bad), "{bad}");
         }
@@ -1371,6 +1393,21 @@ mod tests {
         let path = write_text_export(dir.path(), dated, "key").expect("write");
         assert!(is_staged_text_export_path(dir.path(), &path));
         // A leftover from an interrupted export goes with the sweep, as the first run's file does
+        assert_eq!(sweep_staged_exports(dir.path()).expect("sweep"), 1);
+        assert!(!path.exists());
+    }
+
+    /// Builds before the time was added named the key by the day only
+    /// (`moony-recovery-key-YYYY-MM-DD.txt`): that name stays on the list, so a file such a build
+    /// staged and never finished is still swept.
+    #[test]
+    fn an_older_builds_day_only_recovery_key_is_still_swept() {
+        let day_only = "moony-recovery-key-2026-10-25.txt";
+        assert!(is_text_export_file_name(day_only));
+
+        let dir = tempfile::tempdir().expect("dir");
+        let path = dir.path().join(day_only);
+        fs::write(&path, "key").expect("write");
         assert_eq!(sweep_staged_exports(dir.path()).expect("sweep"), 1);
         assert!(!path.exists());
     }

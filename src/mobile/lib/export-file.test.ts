@@ -21,18 +21,24 @@ describe('RECOVERY_KEY_FILE', () => {
 });
 
 describe('changedRecoveryKeyFileName', () => {
-  it('dates the key of a password change by the local day of the attempt', () => {
-    expect(changedRecoveryKeyFileName(new Date(2026, 9, 25, 9, 30))).toBe(
-      'moony-recovery-key-2026-10-25.txt'
+  it('names the key of a password change by the local day and time of the attempt', () => {
+    expect(changedRecoveryKeyFileName(new Date(2026, 9, 25, 17, 42))).toBe(
+      'moony-recovery-key-2026-10-25-1742.txt'
     );
   });
 
-  it('pads the month and the day and keeps the local day around midnight', () => {
+  it('gives two attempts on one day two names', () => {
+    expect(changedRecoveryKeyFileName(new Date(2026, 9, 25, 9, 30))).not.toBe(
+      changedRecoveryKeyFileName(new Date(2026, 9, 25, 17, 42))
+    );
+  });
+
+  it('pads the month, the day, the hour and the minute and keeps the local day around midnight', () => {
     expect(changedRecoveryKeyFileName(new Date(2027, 0, 5, 0, 1))).toBe(
-      'moony-recovery-key-2027-01-05.txt'
+      'moony-recovery-key-2027-01-05-0001.txt'
     );
     expect(changedRecoveryKeyFileName(new Date(2026, 11, 31, 23, 59))).toBe(
-      'moony-recovery-key-2026-12-31.txt'
+      'moony-recovery-key-2026-12-31-2359.txt'
     );
   });
 

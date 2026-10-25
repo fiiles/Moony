@@ -1,10 +1,13 @@
-//! Pure Yahoo Finance symbol logic for crypto holdings (spec 2026-10-25, D2 / D4 / D5 / D6).
+//! Yahoo Finance symbol logic for crypto holdings (spec 2026-10-25, D2 / D4 / D5 / D6).
 //!
-//! No I/O lives here: the functions turn Yahoo symbols into display tickers and USD pairs,
-//! parse a `v1/finance/search` body, merge the rows of two searches, and choose the one symbol
-//! that matches a holding, or none (never a guess).
+//! The pure functions turn Yahoo symbols into display tickers and USD pairs, parse a
+//! `v1/finance/search` body, merge the rows of two searches, and choose the one symbol that
+//! matches a holding, or none (never a guess). [`ensure_symbol`] is the one piece with I/O: it
+//! resolves a holding's missing symbol through the search and stores it.
 
+use crate::db::Database;
 use crate::error::{AppError, Result};
+use rusqlite::OptionalExtension;
 use serde::{Deserialize, Serialize};
 use specta::Type;
 
@@ -63,7 +66,7 @@ pub fn is_valid_symbol(symbol: &str) -> bool {
 
 /// Trim + uppercase, then validate; Err(AppError::Validation("validation.yahooSymbolInvalid")).
 pub fn normalize_symbol(input: &str) -> Result<String> {
-    let symbol = input.trim().to_uppercase();
+    let symbol = input.trim().to_ascii_uppercase();
     if is_valid_symbol(&symbol) {
         Ok(symbol)
     } else {
@@ -85,26 +88,23 @@ struct SearchQuote {
     quote_type: Option<String>,
 }
 
-/// `shortname` with a trailing ` <QUOTE>` stripped, else `longname`, else the symbol.
+/// `shortname` with a trailing ` <QUOTE>` stripped, else `longname` stripped the same way, else
+/// the symbol.
 fn result_name(quote: &SearchQuote) -> String {
-    let stripped = quote.shortname.as_deref().map(|short| {
-        let short = short.trim();
+    let strip = |name: &str| -> String {
+        let name = name.trim();
         quote_of(&quote.symbol)
-            .and_then(|q| short.strip_suffix(&format!(" {q}")))
-            .unwrap_or(short)
+            .and_then(|q| name.strip_suffix(&format!(" {q}")))
+            .unwrap_or(name)
             .trim()
-    });
-    stripped
-        .filter(|s| !s.is_empty())
-        .or_else(|| {
-            quote
-                .longname
-                .as_deref()
-                .map(str::trim)
-                .filter(|s| !s.is_empty())
-        })
-        .unwrap_or(&quote.symbol)
-        .to_string()
+            .to_string()
+    };
+    [quote.shortname.as_deref(), quote.longname.as_deref()]
+        .into_iter()
+        .flatten()
+        .map(strip)
+        .find(|name| !name.is_empty())
+        .unwrap_or_else(|| quote.symbol.clone())
 }
 
 /// Parse a Yahoo `v1/finance/search` body (D6): CRYPTOCURRENCY rows only, USD pair, deduped by
@@ -167,6 +167,90 @@ pub fn choose_symbol(name: &str, ticker: &str, rows: &[CryptoSearchResult]) -> O
             }
         }
     }
+}
+
+/// What [`ensure_symbol`] found for a holding.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Resolved {
+    /// The holding already had this symbol.
+    Already(String),
+    /// The symbol was resolved and stored in this call.
+    Now(String),
+    /// No symbol: no holding, no unique match, or the search failed this time.
+    None,
+}
+
+/// The holding's symbol: the stored one, else resolved (D4: `search_crypto(name)`, choose; else
+/// `search_crypto(ticker)`, choose) and stored. `Resolved::Already(s)` / `Resolved::Now(s)` /
+/// `Resolved::None`. A search failure is `None` (best effort, warn log), never an error; a
+/// holding that already has a symbol is never resolved again.
+pub async fn ensure_symbol(db: &Database, ticker: &str) -> Result<Resolved> {
+    let ticker = ticker.trim().to_uppercase();
+    let holding: Option<(String, String, Option<String>)> = db.with_conn(|conn| {
+        Ok(conn
+            .query_row(
+                "SELECT id, name, yahoo_symbol FROM crypto_investments WHERE ticker = ?1",
+                [&ticker],
+                |row| Ok((row.get(0)?, row.get(1)?, row.get(2)?)),
+            )
+            .optional()?)
+    })?;
+    let Some((id, name, stored)) = holding else {
+        return Ok(Resolved::None);
+    };
+    if let Some(symbol) = stored.filter(|symbol| !symbol.trim().is_empty()) {
+        return Ok(Resolved::Already(symbol));
+    }
+
+    let mut queries = vec![name.trim().to_string()];
+    if !name.trim().eq_ignore_ascii_case(&ticker) {
+        queries.push(ticker.clone());
+    }
+    for query in queries.into_iter().filter(|query| !query.is_empty()) {
+        let rows = match crate::services::price_api::search_crypto(&query).await {
+            Ok(rows) => rows,
+            Err(error) => {
+                log::warn!(
+                    "[CRYPTO SYMBOL] Yahoo search failed, symbol not resolved this time: {error}"
+                );
+                return Ok(Resolved::None);
+            }
+        };
+        let Some(chosen) = choose_symbol(&name, &ticker, &rows) else {
+            continue;
+        };
+        // A row Yahoo spells outside the D2 rule is no choice; it must not fail the refresh.
+        let Ok(symbol) = normalize_symbol(&chosen) else {
+            log::debug!("[CRYPTO SYMBOL] {ticker}: the chosen row {chosen} is not a valid symbol");
+            continue;
+        };
+        // Stored only while the holding is still unresolved: a symbol picked meanwhile wins.
+        let stored: Option<String> = db.with_conn(|conn| {
+            conn.execute(
+                "UPDATE crypto_investments SET yahoo_symbol = ?1
+                 WHERE id = ?2 AND yahoo_symbol IS NULL",
+                rusqlite::params![symbol, id],
+            )?;
+            Ok(conn
+                .query_row(
+                    "SELECT yahoo_symbol FROM crypto_investments WHERE id = ?1",
+                    [&id],
+                    |row| row.get::<_, Option<String>>(0),
+                )
+                .optional()?
+                .flatten())
+        })?;
+        return Ok(match stored {
+            Some(stored) if stored == symbol => {
+                log::debug!("[CRYPTO SYMBOL] {ticker} resolved to {symbol}");
+                Resolved::Now(stored)
+            }
+            Some(stored) => Resolved::Already(stored),
+            None => Resolved::None,
+        });
+    }
+    log::debug!("[CRYPTO SYMBOL] {ticker} has no unique Yahoo symbol");
+    Ok(Resolved::None)
 }
 
 #[cfg(test)]
@@ -303,6 +387,18 @@ mod tests {
         ];
         assert_eq!(choose_symbol("Jupiter", "JUP", &jup), None); // identical names: no guess
         assert_eq!(choose_symbol("Bitcoin", "BTC", &arb), None);
+    }
+
+    #[test]
+    fn a_longname_loses_its_quote_suffix_too() {
+        let body = r#"{"quotes":[
+            {"symbol":"TON11419-USD","shortname":"","longname":"Toncoin USD","quoteType":"CRYPTOCURRENCY"},
+            {"symbol":"SUI20947-EUR","longname":"Sui EUR","quoteType":"CRYPTOCURRENCY"}
+        ]}"#;
+        let rows = parse_search_response(body).unwrap();
+        assert_eq!(rows[0].name, "Toncoin");
+        assert_eq!(rows[1].symbol, "SUI20947-USD");
+        assert_eq!(rows[1].name, "Sui");
     }
 
     #[test]

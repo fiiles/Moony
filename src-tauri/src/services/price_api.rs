@@ -1,15 +1,18 @@
 //! External API services for price fetching
 //!
-//! - Yahoo Finance API for stock prices and dividends (via yahoo_finance_api crate)
-//! - CoinGecko API for cryptocurrency prices and search
+//! - Yahoo Finance for stock prices, dividends and history (via the yahoo_finance_api crate)
+//! - Yahoo Finance for cryptocurrency prices and history (the same chart requests, by the
+//!   holding's Yahoo symbol) and the coin search (the `v1/finance/search` endpoint directly)
 
 use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::stock_monitor::StockPricePoint;
+use crate::services::crypto_symbols::{self, CryptoSearchResult, Resolved};
 use crate::services::quote_unit::{quote_unit, unit_changed as quote_unit_changed, QuoteUnit};
 use crate::services::stock_splits::{self, DetectedSplit, StockSplitSource};
-use serde::{Deserialize, Serialize};
-use std::collections::{BTreeMap, HashMap};
+use rusqlite::OptionalExtension;
+use serde::Serialize;
+use std::collections::HashMap;
 use yahoo_finance_api::{YResponse, YahooError};
 
 /// Get current Unix timestamp. Uses expect() because system clock
@@ -289,24 +292,6 @@ fn store_stock_quote(
         currency: unit.currency,
         unit_changed,
     })
-}
-
-// ============================================================================
-// CoinGecko API Types
-// ============================================================================
-
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub struct CoinGeckoSearchResult {
-    pub id: String,
-    pub symbol: String,
-    pub name: String,
-    pub market_cap_rank: Option<i32>,
-    pub thumb: Option<String>,
-}
-
-#[derive(Debug, Deserialize)]
-struct CoinGeckoSearchResponse {
-    coins: Option<Vec<CoinGeckoSearchResult>>,
 }
 
 // ============================================================================
@@ -665,7 +650,7 @@ pub(crate) fn get_currency_from_ticker(ticker: &str) -> &'static str {
 }
 
 // ============================================================================
-// Crypto Price Refresh (CoinGecko)
+// Crypto Price Refresh (Yahoo Finance)
 // ============================================================================
 
 #[derive(Debug, Serialize)]
@@ -675,128 +660,174 @@ pub struct CryptoPriceResult {
     pub currency: String,
 }
 
-/// Refresh crypto prices from CoinGecko API
-/// Takes coingecko_id -> ticker mapping
-pub async fn refresh_crypto_prices(
+/// What a crypto refresh did (the wire gets `updated` only; `resolved` drives the rebuild).
+#[derive(Debug, Default)]
+pub struct CryptoRefresh {
+    pub updated: Vec<CryptoPriceResult>,
+    /// Tickers whose Yahoo symbol this run resolved: their history is rebuilt from the first
+    /// transaction (spec D7).
+    pub resolved: Vec<String>,
+}
+
+/// The price text to store from a crypto chart quote: the stored crypto price is always USD, so a
+/// quote in another currency (or one that names none) is not stored.
+fn crypto_quote_to_store(quote: &ChartQuote) -> Option<String> {
+    quote
+        .currency
+        .as_deref()
+        .filter(|currency| currency.eq_ignore_ascii_case("USD"))
+        .map(|_| price_text(quote.price))
+}
+
+/// Refresh the price of every crypto holding from Yahoo Finance (spec D7).
+pub async fn refresh_crypto_prices(db: &Database, force_refresh: bool) -> Result<CryptoRefresh> {
+    let tickers: Vec<String> = db.with_conn(|conn| {
+        let mut stmt = conn.prepare("SELECT ticker FROM crypto_investments ORDER BY ticker")?;
+        let tickers = stmt
+            .query_map([], |row| row.get(0))?
+            .collect::<rusqlite::Result<Vec<String>>>()?;
+        Ok(tickers)
+    })?;
+    refresh_crypto_prices_for(db, &tickers, force_refresh).await
+}
+
+/// Refresh the listed crypto holdings: resolve a missing Yahoo symbol (best effort, spec D4),
+/// skip a price fetched within [`PRICE_CACHE_HOURS`] unless `force_refresh`, then one chart
+/// request per holding; only a USD quote is stored. An unresolved or failed holding is absent
+/// from `updated`.
+pub async fn refresh_crypto_prices_for(
     db: &Database,
-    api_key: Option<&str>,
-    id_to_ticker: HashMap<String, String>,
-) -> Result<Vec<CryptoPriceResult>> {
-    if id_to_ticker.is_empty() {
-        return Ok(vec![]);
+    tickers: &[String],
+    force_refresh: bool,
+) -> Result<CryptoRefresh> {
+    let mut refresh = CryptoRefresh::default();
+    if tickers.is_empty() {
+        return Ok(refresh);
     }
 
-    let ids: Vec<&str> = id_to_ticker.keys().map(|s| s.as_str()).collect();
-    let ids_param = ids.join(",");
-    let url = format!(
-        "https://api.coingecko.com/api/v3/simple/price?ids={}&vs_currencies=usd",
-        ids_param
+    let now = unix_timestamp_now();
+    let max_age_seconds = PRICE_CACHE_HOURS * 3600;
+    let mut unresolved: Vec<String> = Vec::new();
+    let mut failed: Vec<(String, String)> = Vec::new();
+
+    log::info!(
+        "[YAHOO CRYPTO] Fetching prices for {} crypto holdings",
+        tickers.len()
     );
 
-    log::debug!("[PRICE API] Fetching crypto prices for: {}", ids_param);
+    let provider = yahoo_connector()
+        .map_err(|e| AppError::ExternalApi(format!("Yahoo connector failed: {}", e)))?;
 
-    let client = crate::services::http::client();
-    let mut request = client.get(&url);
+    for ticker in tickers {
+        let ticker_upper = ticker.to_uppercase();
 
-    // Add API key header if provided
-    if let Some(key) = api_key {
-        if !key.is_empty() {
-            request = request.header("x-cg-demo-api-key", key);
-        }
-    }
+        let symbol = match crypto_symbols::ensure_symbol(db, &ticker_upper).await? {
+            Resolved::Already(symbol) => symbol,
+            Resolved::Now(symbol) => {
+                refresh.resolved.push(ticker_upper.clone());
+                symbol
+            }
+            Resolved::None => {
+                log::debug!("[YAHOO CRYPTO] {} unresolved, skipped", ticker_upper);
+                unresolved.push(ticker_upper);
+                continue;
+            }
+        };
 
-    let response = request
-        .send()
-        .await
-        .map_err(|e| AppError::ExternalApi(format!("CoinGecko request failed: {}", e)))?;
-
-    let status = response.status();
-    let body = response
-        .text()
-        .await
-        .map_err(|e| AppError::ExternalApi(format!("CoinGecko read error: {}", e)))?;
-
-    if !status.is_success() {
-        return Err(AppError::ExternalApi(coingecko_error_message(
-            status, &body,
-        )));
-    }
-
-    let price_data = parse_simple_price_usd(&body)?;
-
-    let mut updated_prices = Vec::new();
-    let now = unix_timestamp_now();
-
-    for (coingecko_id, usd_price) in price_data {
-        if let Some(ticker) = id_to_ticker.get(&coingecko_id) {
-            let ticker_upper = ticker.to_uppercase();
-
-            // Upsert into crypto_prices table
-            db.with_conn(|conn| {
-                conn.execute(
-                    "INSERT INTO crypto_prices (id, symbol, coingecko_id, price, currency, fetched_at)
-                     VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-                     ON CONFLICT(symbol) DO UPDATE SET
-                       price = ?4, currency = ?5, coingecko_id = ?3, fetched_at = ?6",
-                    rusqlite::params![
-                        uuid::Uuid::new_v4().to_string(),
-                        &ticker_upper,
-                        &coingecko_id,
-                        price_text(usd_price),
-                        "USD",
-                        now,
-                    ],
-                )?;
-                Ok(())
+        let should_fetch = force_refresh
+            || db.with_conn(|conn| {
+                let fetched_at: Option<i64> = conn
+                    .query_row(
+                        "SELECT fetched_at FROM crypto_prices WHERE symbol = ?1",
+                        [&ticker_upper],
+                        |row| row.get(0),
+                    )
+                    .optional()?;
+                Ok(fetched_at.is_none_or(|fetched_at| now - fetched_at >= max_age_seconds))
             })?;
+        if !should_fetch {
+            log::debug!(
+                "[YAHOO CRYPTO] Skipping {} (cached within {}s)",
+                ticker_upper,
+                max_age_seconds
+            );
+            continue;
+        }
 
-            log::debug!("[PRICE API] Updated {}: {} USD", ticker_upper, usd_price);
+        let quote = match provider.get_quote_range(&symbol, "1d", "5d").await {
+            Ok(response) => read_chart_quote(&response),
+            Err(e) => {
+                failed.push((ticker_upper, e.to_string()));
+                continue;
+            }
+        };
+        let Some(quote) = quote else {
+            failed.push((ticker_upper, "price unavailable".to_string()));
+            continue;
+        };
+        let Some(price) = crypto_quote_to_store(&quote) else {
+            log::warn!("[YAHOO CRYPTO] A crypto quote not in USD was skipped");
+            failed.push((
+                ticker_upper,
+                format!("quoted in {:?}, not USD", quote.currency),
+            ));
+            continue;
+        };
 
-            updated_prices.push(CryptoPriceResult {
-                ticker: ticker_upper,
-                price: usd_price,
-                currency: "USD".to_string(),
-            });
+        let stored = db.with_conn(|conn| {
+            conn.execute(
+                "INSERT INTO crypto_prices (id, symbol, price, currency, fetched_at)
+                 VALUES (?1, ?2, ?3, 'USD', ?4)
+                 ON CONFLICT(symbol) DO UPDATE SET
+                   price = excluded.price, currency = excluded.currency,
+                   fetched_at = excluded.fetched_at",
+                rusqlite::params![uuid::Uuid::new_v4().to_string(), &ticker_upper, price, now],
+            )?;
+            Ok(())
+        });
+        if let Err(e) = stored {
+            failed.push((ticker_upper, format!("DB error: {}", e)));
+            continue;
+        }
+        log::debug!("[YAHOO CRYPTO] Updated {}: {} USD", ticker_upper, price);
+        refresh.updated.push(CryptoPriceResult {
+            ticker: ticker_upper,
+            price: quote.price,
+            currency: "USD".to_string(),
+        });
+    }
+
+    log::info!(
+        "[YAHOO CRYPTO] Updated {} of {} crypto holdings",
+        refresh.updated.len(),
+        tickers.len()
+    );
+    if !refresh.updated.is_empty() {
+        let updated: Vec<_> = refresh.updated.iter().map(|p| p.ticker.as_str()).collect();
+        log::debug!("[YAHOO CRYPTO] Successfully updated: {:?}", updated);
+    }
+    if !refresh.resolved.is_empty() {
+        log::info!(
+            "[YAHOO CRYPTO] Resolved the Yahoo symbol of {} holdings; their history is rebuilt",
+            refresh.resolved.len()
+        );
+        log::debug!("[YAHOO CRYPTO] Resolved: {:?}", refresh.resolved);
+    }
+    if !unresolved.is_empty() {
+        log::info!(
+            "[YAHOO CRYPTO] {} holdings have no Yahoo symbol",
+            unresolved.len()
+        );
+        log::debug!("[YAHOO CRYPTO] Unresolved: {:?}", unresolved);
+    }
+    if !failed.is_empty() {
+        log::warn!("[YAHOO CRYPTO] Failed: {} holdings", failed.len());
+        for (ticker, reason) in &failed {
+            log::debug!("[YAHOO CRYPTO]   - {}: {}", ticker, reason);
         }
     }
 
-    Ok(updated_prices)
-}
-
-/// Builds a readable error for a non-2xx CoinGecko response. Error bodies look like
-/// `{"status":{"error_code":429,"error_message":"..."}}` or `{"error":"..."}`.
-fn coingecko_error_message(status: reqwest::StatusCode, body: &str) -> String {
-    let detail = serde_json::from_str::<serde_json::Value>(body)
-        .ok()
-        .and_then(|v| {
-            v.pointer("/status/error_message")
-                .or_else(|| v.get("error"))
-                .and_then(|m| m.as_str())
-                .map(str::to_string)
-        })
-        .unwrap_or_else(|| body.chars().take(200).collect());
-    if status == reqwest::StatusCode::TOO_MANY_REQUESTS {
-        format!(
-            "CoinGecko rate limit exceeded, try again in a minute ({})",
-            detail
-        )
-    } else {
-        format!("CoinGecko returned HTTP {}: {}", status.as_u16(), detail)
-    }
-}
-
-/// Parses a `/simple/price?vs_currencies=usd` body (`{"bitcoin":{"usd":12345.67}}`).
-/// Coins with a missing or null `usd` price are skipped instead of failing the whole batch.
-fn parse_simple_price_usd(body: &str) -> Result<HashMap<String, f64>> {
-    let raw: HashMap<String, HashMap<String, Option<f64>>> =
-        serde_json::from_str(body).map_err(|e| {
-            let snippet: String = body.chars().take(200).collect();
-            AppError::ExternalApi(format!("CoinGecko parse error: {} (body: {})", e, snippet))
-        })?;
-    Ok(raw
-        .into_iter()
-        .filter_map(|(id, prices)| prices.get("usd").copied().flatten().map(|p| (id, p)))
-        .collect())
+    Ok(refresh)
 }
 
 // ============================================================================
@@ -854,57 +885,73 @@ pub async fn search_stock_tickers(query: &str) -> Result<Vec<StockSearchResult>>
 }
 
 // ============================================================================
-// Crypto Search (CoinGecko)
+// Crypto Search (Yahoo Finance)
 // ============================================================================
 
-/// Search for cryptocurrencies by name/symbol
-pub async fn search_crypto(
-    api_key: Option<&str>,
-    query: &str,
-) -> Result<Vec<CoinGeckoSearchResult>> {
+/// Yahoo's search endpoint; no cookie or crumb is needed (spec D6).
+const YAHOO_SEARCH_URL: &str = "https://query2.finance.yahoo.com/v1/finance/search";
+
+/// One Yahoo search request, parsed into coins (`crypto_symbols::parse_search_response`).
+async fn yahoo_crypto_search(query: &str) -> Result<Vec<CryptoSearchResult>> {
     let url = format!(
-        "https://api.coingecko.com/api/v3/search?query={}",
+        "{YAHOO_SEARCH_URL}?q={}&newsCount=0&listsCount=0",
         urlencoding::encode(query)
     );
-
-    log::debug!("[PRICE API] Searching crypto: {}", query);
-
-    let client = crate::services::http::client();
-    let mut request = client.get(&url);
-
-    if let Some(key) = api_key {
-        if !key.is_empty() {
-            request = request.header("x-cg-demo-api-key", key);
-        }
-    }
-
-    let response = request
+    let response = crate::services::http::client()
+        .get(&url)
         .send()
         .await
-        .map_err(|e| AppError::ExternalApi(format!("CoinGecko search failed: {}", e)))?;
-
-    let data: CoinGeckoSearchResponse = response
-        .json::<CoinGeckoSearchResponse>()
+        // `without_url`: the URL carries the query (a portfolio coin); never log it above debug.
+        .map_err(|e| AppError::ExternalApi(format!("request failed: {}", e.without_url())))?;
+    let status = response.status();
+    if !status.is_success() {
+        return Err(AppError::ExternalApi(format!("HTTP {}", status.as_u16())));
+    }
+    let body = response
+        .text()
         .await
-        .map_err(|e| AppError::ExternalApi(format!("CoinGecko search parse error: {}", e)))?;
+        .map_err(|e| AppError::ExternalApi(format!("read failed: {}", e.without_url())))?;
+    crypto_symbols::parse_search_response(&body)
+}
 
-    let mut results: Vec<CoinGeckoSearchResult> = data
-        .coins
-        .unwrap_or_default()
-        .into_iter()
-        .map(|c| CoinGeckoSearchResult {
-            id: c.id,
-            symbol: c.symbol.to_uppercase(),
-            name: c.name,
-            market_cap_rank: c.market_cap_rank,
-            thumb: c.thumb,
-        })
-        .collect();
+/// The message inside an error from [`yahoo_crypto_search`].
+fn search_failure(error: &AppError) -> String {
+    match error {
+        AppError::ExternalApi(message) => message.clone(),
+        other => other.to_string(),
+    }
+}
 
-    // Sort by market cap rank (lower = better)
-    results.sort_by_key(|r| r.market_cap_rank.unwrap_or(99999));
+/// Search Yahoo Finance for coins (spec D6): first `<query> USD` (crypto rows only), then the
+/// plain query (a coin listed under another quote currency); the rows of both, merged by base,
+/// as USD pairs. One failed request is logged; both failing is an error.
+pub async fn search_crypto(query: &str) -> Result<Vec<CryptoSearchResult>> {
+    let query = query.trim();
+    log::debug!("[YAHOO SEARCH] Searching crypto: {}", query);
 
-    Ok(results)
+    let with_usd = yahoo_crypto_search(&format!("{query} USD")).await;
+    let plain = yahoo_crypto_search(query).await;
+    match (with_usd, plain) {
+        (Ok(first), Ok(second)) => Ok(crypto_symbols::merge_search_results(first, second)),
+        (Ok(first), Err(error)) => {
+            log::debug!(
+                "[YAHOO SEARCH] The plain crypto search failed: {}",
+                search_failure(&error)
+            );
+            Ok(first)
+        }
+        (Err(error), Ok(second)) => {
+            log::debug!(
+                "[YAHOO SEARCH] The USD crypto search failed: {}",
+                search_failure(&error)
+            );
+            Ok(second)
+        }
+        (Err(error), Err(_)) => Err(AppError::ExternalApi(format!(
+            "Yahoo search failed: {}",
+            search_failure(&error)
+        ))),
+    }
 }
 
 // ============================================================================
@@ -1252,64 +1299,6 @@ fn collect_historical_symbol<T: FetchedHistory>(
     }
 }
 
-fn parse_crypto_history_response(body: &str, strict: bool) -> Result<Vec<HistoricalPrice>> {
-    #[derive(Deserialize)]
-    struct RangeResponse {
-        prices: Option<Vec<(f64, f64)>>,
-        error: Option<serde_json::Value>,
-        status: Option<serde_json::Value>,
-    }
-    let data: RangeResponse = serde_json::from_str(body).map_err(|error| {
-        AppError::ExternalApi(format!("CoinGecko historical parse failed: {error}"))
-    })?;
-    if strict
-        && (data.error.is_some()
-            || data
-                .status
-                .as_ref()
-                .and_then(|status| status.get("error_code"))
-                .is_some())
-    {
-        return Err(AppError::ExternalApi(
-            "CoinGecko historical provider error".into(),
-        ));
-    }
-    let prices = match data.prices {
-        Some(prices) => prices,
-        None if strict => {
-            return Err(AppError::ExternalApi(
-                "CoinGecko historical prices missing".into(),
-            ))
-        }
-        None => return Ok(vec![]),
-    };
-    let mut daily_prices: HashMap<i64, f64> = HashMap::new();
-    for (ts_ms, price) in prices {
-        if strict && (!ts_ms.is_finite() || !price.is_finite() || price <= 0.0) {
-            return Err(AppError::ExternalApi(
-                "CoinGecko historical quote invalid".into(),
-            ));
-        }
-        let timestamp = (ts_ms / 1000.0) as i64;
-        let day = if strict {
-            crate::models::validation::utc_day(timestamp, "validation.invalidDate").map_err(
-                |_| AppError::ExternalApi("CoinGecko historical timestamp invalid".into()),
-            )?
-        } else {
-            (timestamp / 86400) * 86400
-        };
-        daily_prices.insert(day, price);
-    }
-    Ok(daily_prices
-        .into_iter()
-        .map(|(timestamp, price)| HistoricalPrice {
-            timestamp,
-            price,
-            currency: "USD".into(),
-        })
-        .collect())
-}
-
 /// Get historical stock prices from Yahoo Finance for a date range
 /// Returns a map of ticker -> (date_timestamp -> price)
 /// Uses batched requests with throttling to avoid rate limits
@@ -1412,334 +1401,6 @@ pub async fn get_historical_stock_series_yahoo(
     );
 
     Ok(results)
-}
-
-/// Get historical crypto prices from CoinGecko for a specific date
-/// CoinGecko's /history endpoint returns price for a specific date
-pub async fn get_historical_crypto_price_coingecko(
-    api_key: Option<&str>,
-    coingecko_id: &str,
-    date: &str, // Format: "dd-mm-yyyy"
-) -> Result<Option<f64>> {
-    let url = format!(
-        "https://api.coingecko.com/api/v3/coins/{}/history?date={}&localization=false",
-        coingecko_id, date
-    );
-
-    let client = crate::services::http::client();
-    let mut request = client.get(&url);
-
-    if let Some(key) = api_key {
-        if !key.is_empty() {
-            request = request.header("x-cg-demo-api-key", key);
-        }
-    }
-
-    let response = request.send().await.map_err(|e| {
-        AppError::ExternalApi(format!("CoinGecko historical request failed: {}", e))
-    })?;
-
-    if !response.status().is_success() {
-        return Ok(None);
-    }
-
-    #[derive(Deserialize)]
-    struct MarketData {
-        current_price: Option<HashMap<String, f64>>,
-    }
-
-    #[derive(Deserialize)]
-    struct HistoryResponse {
-        market_data: Option<MarketData>,
-    }
-
-    let data: HistoryResponse = response
-        .json()
-        .await
-        .map_err(|e| AppError::ExternalApi(format!("CoinGecko historical parse error: {}", e)))?;
-
-    if let Some(market_data) = data.market_data {
-        if let Some(prices) = market_data.current_price {
-            return Ok(prices.get("usd").copied());
-        }
-    }
-
-    Ok(None)
-}
-
-/// The first day a CoinGecko range request may ask for. The public and demo tiers (the only
-/// ones Moony sends keys for) reject ranges reaching more than 365 days back, so an older
-/// window would fail on every retry; earlier days fall back to the last known price.
-pub fn coingecko_history_start(from_day: i64, today_start: i64) -> i64 {
-    from_day.max(today_start - 365 * 86_400)
-}
-
-/// The Yahoo Finance symbol of a crypto ticker's USD price: `BTC` is `BTC-USD`.
-pub fn yahoo_crypto_symbol(ticker: &str) -> String {
-    format!("{}-USD", ticker.trim().to_ascii_uppercase())
-}
-
-/// Daily USD closes of a crypto ticker from Yahoo Finance (`{TICKER}-USD`) over
-/// `from_day..=until_day`: the days older than CoinGecko's year, which its free tiers do not
-/// serve. One request. Best effort: an unknown symbol, a response in another currency or a
-/// network failure gives no prices (the caller keeps the last known price for those days).
-pub async fn get_historical_crypto_prices_yahoo(
-    ticker: &str,
-    from_day: i64,
-    until_day: i64,
-) -> Vec<HistoricalPrice> {
-    let symbol = yahoo_crypto_symbol(ticker);
-    match get_historical_stock_prices_yahoo(std::slice::from_ref(&symbol), from_day, until_day)
-        .await
-    {
-        Ok(mut fetched) => fetched
-            .remove(&symbol)
-            .unwrap_or_default()
-            .into_iter()
-            .filter(|quote| quote.currency.eq_ignore_ascii_case("USD"))
-            .collect(),
-        Err(error) => {
-            log::warn!("[YAHOO HISTORICAL] No crypto history for a ticker: {error}");
-            Vec::new()
-        }
-    }
-}
-
-/// One daily price series of a crypto ticker from its two sources: `pre_window` (Yahoo Finance
-/// closes) for the days before `window_start`, the first day CoinGecko serves
-/// ([`coingecko_history_start`]), and `in_window` (CoinGecko) from that day on. Each source owns
-/// its side: a Yahoo quote dated on or after `window_start` and a CoinGecko quote before it are
-/// dropped, so the boundary day is priced once, by CoinGecko. A day appears at most once (the
-/// latest quote of a day wins), at the start of the day, and quotes without a positive finite
-/// price are skipped. The series is sorted by day; a day without a quote takes the previous one
-/// through the usual price rule (`backfill::price_at_or_before`), across the boundary too.
-pub fn merge_crypto_price_series(
-    pre_window: Vec<HistoricalPrice>,
-    in_window: Vec<HistoricalPrice>,
-    window_start: i64,
-) -> Vec<HistoricalPrice> {
-    const DAY: i64 = 86_400;
-    let boundary = window_start.div_euclid(DAY) * DAY;
-    let mut by_day: BTreeMap<i64, HistoricalPrice> = BTreeMap::new();
-    let sources = [(pre_window, false), (in_window, true)];
-    for (quotes, from_boundary) in sources {
-        let mut quotes: Vec<HistoricalPrice> = quotes
-            .into_iter()
-            .filter(|quote| quote.price.is_finite() && quote.price > 0.0)
-            .collect();
-        // The latest quote of a day replaces earlier ones of it.
-        quotes.sort_by_key(|quote| quote.timestamp);
-        for quote in quotes {
-            let day = quote.timestamp.div_euclid(DAY) * DAY;
-            if (day >= boundary) == from_boundary {
-                by_day.insert(
-                    day,
-                    HistoricalPrice {
-                        timestamp: day,
-                        ..quote
-                    },
-                );
-            }
-        }
-    }
-    by_day.into_values().collect()
-}
-
-/// Get historical crypto prices for multiple coins over a date range
-/// Uses CoinGecko's market_chart/range endpoint which is more efficient
-pub async fn get_historical_crypto_prices_coingecko(
-    api_key: Option<&str>,
-    id_to_ticker: &HashMap<String, String>,
-    start_timestamp: i64,
-    end_timestamp: i64,
-) -> Result<HashMap<String, Vec<HistoricalPrice>>> {
-    get_historical_crypto_prices_coingecko_impl(
-        api_key,
-        id_to_ticker,
-        start_timestamp,
-        end_timestamp,
-        false,
-    )
-    .await
-}
-
-/// Strict counterpart for durable work: a failed coin prevents a partial
-/// result from being mistaken for a completed backfill.
-pub async fn get_historical_crypto_prices_coingecko_strict(
-    api_key: Option<&str>,
-    id_to_ticker: &HashMap<String, String>,
-    start_timestamp: i64,
-    end_timestamp: i64,
-) -> Result<HashMap<String, Vec<HistoricalPrice>>> {
-    get_historical_crypto_prices_coingecko_impl(
-        api_key,
-        id_to_ticker,
-        start_timestamp,
-        end_timestamp,
-        true,
-    )
-    .await
-}
-
-async fn get_historical_crypto_prices_coingecko_impl(
-    api_key: Option<&str>,
-    id_to_ticker: &HashMap<String, String>,
-    start_timestamp: i64,
-    end_timestamp: i64,
-    strict: bool,
-) -> Result<HashMap<String, Vec<HistoricalPrice>>> {
-    if id_to_ticker.is_empty() {
-        return Ok(HashMap::new());
-    }
-
-    let mut results: HashMap<String, Vec<HistoricalPrice>> = HashMap::new();
-
-    log::info!(
-        "[COINGECKO HISTORICAL] Fetching historical prices for {} cryptos",
-        id_to_ticker.len()
-    );
-    log::info!(
-        "[COINGECKO HISTORICAL] API key present: {}",
-        api_key.map(|k| !k.is_empty()).unwrap_or(false)
-    );
-
-    let client = crate::services::http::client();
-
-    // Process each crypto with a delay to stay within CoinGecko free tier (~40 req/min)
-    for (idx, (coingecko_id, ticker)) in id_to_ticker.iter().enumerate() {
-        if idx > 0 {
-            tokio::time::sleep(tokio::time::Duration::from_millis(1500)).await;
-        }
-
-        let url = format!(
-            "https://api.coingecko.com/api/v3/coins/{}/market_chart/range?vs_currency=usd&from={}&to={}",
-            coingecko_id, start_timestamp, end_timestamp
-        );
-
-        let mut request = client.get(&url);
-
-        if let Some(key) = api_key {
-            if !key.is_empty() {
-                request = request.header("x-cg-demo-api-key", key);
-            }
-        }
-
-        match request.send().await {
-            Ok(response) => {
-                if response.status() == reqwest::StatusCode::TOO_MANY_REQUESTS {
-                    log::debug!(
-                        "[COINGECKO HISTORICAL] Rate limit hit at {} ({}), stopping early with {} results",
-                        ticker,
-                        coingecko_id,
-                        results.len()
-                    );
-                    if strict {
-                        return Err(AppError::ExternalApi(
-                            "CoinGecko historical rate limit exceeded".into(),
-                        ));
-                    }
-                    break;
-                }
-                if response.status().is_success() {
-                    let fetched = match response.text().await {
-                        Ok(body) => parse_crypto_history_response(&body, strict),
-                        Err(error) => Err(AppError::ExternalApi(format!(
-                            "CoinGecko historical response failed: {error}"
-                        ))),
-                    };
-                    collect_historical_symbol(&mut results, ticker, fetched, strict)?;
-                } else {
-                    // Log the actual error response body
-                    let status = response.status();
-                    let error_body = response.text().await.unwrap_or_default();
-                    if strict {
-                        return Err(AppError::ExternalApi(coingecko_error_message(
-                            status,
-                            &error_body,
-                        )));
-                    }
-                    log::debug!(
-                        "[COINGECKO HISTORICAL] {} - HTTP error: {} - Body: {}",
-                        ticker,
-                        status,
-                        error_body
-                    );
-                }
-            }
-            Err(e) => {
-                collect_historical_symbol(
-                    &mut results,
-                    ticker,
-                    Err(AppError::ExternalApi(format!(
-                        "CoinGecko historical request failed: {e}"
-                    ))),
-                    strict,
-                )?;
-            }
-        }
-    }
-
-    log::info!(
-        "[COINGECKO HISTORICAL] Fetched historical data for {} cryptos",
-        results.len()
-    );
-
-    Ok(results)
-}
-
-// ============================================================================
-// API Key Storage
-// ============================================================================
-
-/// Stored API keys. Only CoinGecko takes one (optional, demo tier); Yahoo Finance
-/// needs none. The Finnhub and Marketstack keys were removed in migration 011.
-#[derive(Debug, Serialize, Deserialize, Default)]
-pub struct ApiKeys {
-    pub coingecko: Option<String>,
-}
-
-/// Get API keys from app_config table
-pub fn get_api_keys(db: &Database) -> Result<ApiKeys> {
-    db.with_conn(|conn| {
-        let coingecko: Option<String> = conn
-            .query_row(
-                "SELECT value FROM app_config WHERE key = 'api_key_coingecko'",
-                [],
-                |row| row.get(0),
-            )
-            .ok();
-
-        Ok(ApiKeys { coingecko })
-    })
-}
-
-/// A CoinGecko key was entered or replaced (not merely saved again or left empty): crypto history
-/// fetched without it, or with an older one, may be incomplete and is worth rebuilding.
-pub fn coingecko_key_changed(before: &ApiKeys, after: &ApiKeys) -> bool {
-    let key = |keys: &ApiKeys| {
-        keys.coingecko
-            .as_deref()
-            .map(str::trim)
-            .unwrap_or("")
-            .to_string()
-    };
-    let new_key = key(after);
-    !new_key.is_empty() && new_key != key(before)
-}
-
-/// Save API keys to app_config table
-pub fn set_api_keys(db: &Database, keys: &ApiKeys) -> Result<()> {
-    db.with_conn(|conn| {
-        if let Some(ref key) = keys.coingecko {
-            conn.execute(
-                "INSERT INTO app_config (key, value) VALUES ('api_key_coingecko', ?1)
-                 ON CONFLICT(key) DO UPDATE SET value = ?1",
-                [key],
-            )?;
-        }
-
-        Ok(())
-    })
 }
 
 // ============================================================================
@@ -2071,24 +1732,6 @@ mod tests {
     use super::*;
 
     #[test]
-    fn coingecko_key_changed_only_for_a_new_non_empty_key() {
-        let keys = |k: Option<&str>| ApiKeys {
-            coingecko: k.map(str::to_string),
-        };
-        assert!(coingecko_key_changed(&keys(None), &keys(Some("CG-1"))));
-        assert!(coingecko_key_changed(
-            &keys(Some("CG-1")),
-            &keys(Some("CG-2"))
-        ));
-        assert!(!coingecko_key_changed(
-            &keys(Some("CG-1")),
-            &keys(Some(" CG-1 "))
-        ));
-        assert!(!coingecko_key_changed(&keys(Some("CG-1")), &keys(None)));
-        assert!(!coingecko_key_changed(&keys(None), &keys(Some("  "))));
-    }
-
-    #[test]
     fn ticker_suffixes_of_the_main_exchanges_name_their_currency() {
         for (ticker, currency) in [
             ("CDR.WA", "PLN"),
@@ -2162,45 +1805,6 @@ mod tests {
         assert_eq!(price_text(0.00000001), "0.00000001");
         assert_eq!(price_text(64250.5), "64250.5");
         assert_eq!(price_text(2.0), "2");
-    }
-
-    #[test]
-    fn simple_price_parses_integer_and_float_prices() {
-        let prices =
-            parse_simple_price_usd(r#"{"bitcoin":{"usd":83523},"ethereum":{"usd":2500.5}}"#)
-                .expect("parse");
-        assert_eq!(prices.get("bitcoin"), Some(&83523.0));
-        assert_eq!(prices.get("ethereum"), Some(&2500.5));
-    }
-
-    #[test]
-    fn simple_price_skips_null_or_missing_usd() {
-        let prices =
-            parse_simple_price_usd(r#"{"bitcoin":{"usd":1.0},"dead":{"usd":null},"empty":{}}"#)
-                .expect("parse");
-        assert_eq!(prices.len(), 1);
-        assert_eq!(prices.get("bitcoin"), Some(&1.0));
-    }
-
-    #[test]
-    fn simple_price_parse_error_includes_body() {
-        let err = parse_simple_price_usd("<html>oops</html>").unwrap_err();
-        assert!(err.to_string().contains("<html>oops</html>"));
-    }
-
-    #[test]
-    fn coingecko_error_message_extracts_rate_limit_detail() {
-        let body =
-            r#"{"status":{"error_code":429,"error_message":"You've exceeded the Rate Limit."}}"#;
-        let msg = coingecko_error_message(reqwest::StatusCode::TOO_MANY_REQUESTS, body);
-        assert!(msg.contains("rate limit"));
-        assert!(msg.contains("You've exceeded the Rate Limit."));
-    }
-
-    #[test]
-    fn coingecko_error_message_falls_back_to_raw_body() {
-        let msg = coingecko_error_message(reqwest::StatusCode::UNAUTHORIZED, "bad key");
-        assert_eq!(msg, "CoinGecko returned HTTP 401: bad key");
     }
 
     #[test]
@@ -2551,6 +2155,16 @@ mod tests {
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
         )
         .expect("a stored quote")
+    }
+
+    #[test]
+    fn a_crypto_quote_in_another_currency_is_not_stored() {
+        assert_eq!(crypto_quote_to_store(&quote(1.0, None, Some("EUR"))), None);
+        assert_eq!(
+            crypto_quote_to_store(&quote(80000.5, None, Some("usd"))).as_deref(),
+            Some("80000.5")
+        );
+        assert_eq!(crypto_quote_to_store(&quote(1.0, None, None)), None);
     }
 
     fn store(conn: &rusqlite::Connection, ticker: &str, quote: &ChartQuote) -> StoredQuote {
@@ -2927,220 +2541,6 @@ mod tests {
         assert!(historical_stock_points(&null_closes, "AAPL", true)
             .unwrap()
             .is_empty());
-        assert!(parse_crypto_history_response(r#"{"prices":[]}"#, true)
-            .unwrap()
-            .is_empty());
-        assert_eq!(
-            parse_crypto_history_response(
-                r#"{"prices":[[1700000000000,100],[1700400000000,101]]}"#,
-                true
-            )
-            .unwrap()
-            .len(),
-            2
-        );
-    }
-
-    #[test]
-    fn coingecko_history_requests_stay_within_the_demo_tier_year() {
-        let today = 20_000 * 86_400;
-        let recent = today - 30 * 86_400;
-        assert_eq!(coingecko_history_start(recent, today), recent);
-        assert_eq!(
-            coingecko_history_start(today - 5 * 365 * 86_400, today),
-            today - 365 * 86_400
-        );
-    }
-
-    fn usd(timestamp: i64, price: f64) -> HistoricalPrice {
-        HistoricalPrice {
-            timestamp,
-            price,
-            currency: "USD".into(),
-        }
-    }
-
-    /// The price the usual rule gives each of `days`, as `(day, price)`.
-    fn priced(series: &[HistoricalPrice], days: &[i64]) -> Vec<(i64, Option<f64>)> {
-        days.iter()
-            .map(|day| {
-                (
-                    *day,
-                    crate::services::backfill::price_at_or_before(series, *day)
-                        .map(|quote| quote.price),
-                )
-            })
-            .collect()
-    }
-
-    #[test]
-    fn a_crypto_ticker_is_quoted_by_yahoo_in_dollars() {
-        assert_eq!(yahoo_crypto_symbol("BTC"), "BTC-USD");
-        assert_eq!(yahoo_crypto_symbol(" eth "), "ETH-USD");
-    }
-
-    #[test]
-    fn the_crypto_series_takes_yahoo_before_the_window_and_coingecko_from_it() {
-        const D: i64 = 86_400;
-        let window = 400 * D;
-        let merged = merge_crypto_price_series(
-            vec![
-                usd(397 * D, 90.0),
-                usd(398 * D, 91.0),
-                usd(399 * D, 92.0),
-                // Yahoo quotes the window too: CoinGecko owns it
-                usd(400 * D, 555.0),
-                usd(401 * D, 556.0),
-            ],
-            vec![
-                // a CoinGecko quote before its window cannot be: it is dropped all the same
-                usd(399 * D, 777.0),
-                usd(400 * D, 100.0),
-                usd(401 * D, 101.0),
-            ],
-            window,
-        );
-        let days: Vec<(i64, f64)> = merged
-            .iter()
-            .map(|quote| (quote.timestamp, quote.price))
-            .collect();
-        assert_eq!(
-            days,
-            vec![
-                (397 * D, 90.0),
-                (398 * D, 91.0),
-                (399 * D, 92.0),
-                (400 * D, 100.0),
-                (401 * D, 101.0)
-            ],
-            "the boundary day once, from CoinGecko; Yahoo before it, CoinGecko from it"
-        );
-        assert!(merged.iter().all(|quote| quote.currency == "USD"));
-    }
-
-    #[test]
-    fn the_crypto_boundary_day_is_priced_once_whichever_time_of_day_a_quote_has() {
-        const D: i64 = 86_400;
-        let window = 400 * D + 5 * 3_600; // not a day start
-        let merged = merge_crypto_price_series(
-            vec![usd(399 * D + 23 * 3_600, 92.0), usd(400 * D + 600, 555.0)],
-            vec![usd(400 * D + 7_200, 100.0)],
-            window,
-        );
-        assert_eq!(merged.len(), 2);
-        assert_eq!((merged[0].timestamp, merged[0].price), (399 * D, 92.0));
-        assert_eq!((merged[1].timestamp, merged[1].price), (400 * D, 100.0));
-    }
-
-    #[test]
-    fn a_gap_in_the_crypto_series_carries_the_previous_price_across_the_boundary() {
-        const D: i64 = 86_400;
-        let window = 400 * D;
-        // Yahoo has no quote for 398; CoinGecko none for 400 (the boundary) and 402
-        let merged = merge_crypto_price_series(
-            vec![usd(397 * D, 90.0), usd(399 * D, 92.0)],
-            vec![usd(401 * D, 101.0), usd(403 * D, 103.0)],
-            window,
-        );
-        assert_eq!(
-            priced(
-                &merged,
-                &[
-                    396 * D,
-                    397 * D,
-                    398 * D,
-                    399 * D,
-                    400 * D,
-                    401 * D,
-                    402 * D,
-                    403 * D
-                ]
-            ),
-            vec![
-                (396 * D, None),
-                (397 * D, Some(90.0)),
-                (398 * D, Some(90.0)),
-                (399 * D, Some(92.0)),
-                (400 * D, Some(92.0)),
-                (401 * D, Some(101.0)),
-                (402 * D, Some(101.0)),
-                (403 * D, Some(103.0)),
-            ],
-            "no price before the first quote; every gap keeps the last one, across the boundary"
-        );
-    }
-
-    #[test]
-    fn the_crypto_series_keeps_the_latest_quote_of_a_day_and_skips_bad_prices() {
-        const D: i64 = 86_400;
-        let merged = merge_crypto_price_series(
-            vec![
-                usd(10 * D + 3_600, 1.0),
-                usd(10 * D + 7_200, 2.0),
-                usd(10 * D + 60, 0.5),
-                usd(11 * D, f64::NAN),
-                usd(12 * D, 0.0),
-                usd(13 * D, -4.0),
-                usd(9 * D, 3.0),
-            ],
-            vec![],
-            100 * D,
-        );
-        let days: Vec<(i64, f64)> = merged
-            .iter()
-            .map(|quote| (quote.timestamp, quote.price))
-            .collect();
-        assert_eq!(
-            days,
-            vec![(9 * D, 3.0), (10 * D, 2.0)],
-            "sorted, one per day"
-        );
-    }
-
-    #[test]
-    fn a_crypto_series_without_yahoo_or_without_coingecko_is_the_other_one() {
-        const D: i64 = 86_400;
-        let window = 400 * D;
-        assert!(merge_crypto_price_series(vec![], vec![], window).is_empty());
-        let only_coingecko = merge_crypto_price_series(vec![], vec![usd(401 * D, 101.0)], window);
-        assert_eq!(only_coingecko.len(), 1);
-        assert_eq!(only_coingecko[0].price, 101.0);
-        let only_yahoo = merge_crypto_price_series(vec![usd(300 * D, 50.0)], vec![], window);
-        assert_eq!(
-            priced(&only_yahoo, &[299 * D, 300 * D, 450 * D]),
-            vec![
-                (299 * D, None),
-                (300 * D, Some(50.0)),
-                (450 * D, Some(50.0))
-            ],
-            "with CoinGecko silent the last Yahoo close keeps carrying: today's old behaviour"
-        );
-    }
-
-    #[test]
-    fn strict_coingecko_history_rejects_http_success_error_payloads_and_bad_quotes() {
-        for body in [
-            r#"{}"#,
-            r#"{"prices":null}"#,
-            r#"{"error":"rate limit"}"#,
-            r#"{"status":{"error_code":429,"error_message":"limit"},"prices":[]}"#,
-            r#"{"prices":[[1700000000000,0]]}"#,
-            r#"{"prices":[[1e308,100]]}"#,
-            "<html>broken</html>",
-        ] {
-            assert!(parse_crypto_history_response(body, true).is_err(), "{body}");
-        }
-        assert!(parse_crypto_history_response("{}", false)
-            .unwrap()
-            .is_empty());
-        let prices = parse_crypto_history_response(
-            r#"{"prices":[[1700000000000,100],[1700000001000,101]]}"#,
-            true,
-        )
-        .unwrap();
-        assert_eq!(prices.len(), 1);
-        assert_eq!(prices[0].price, 101.0);
-        assert_eq!(prices[0].currency, "USD");
     }
 
     // ---- splits in a chart response (spec D2) ------------------------------------------
@@ -3272,14 +2672,5 @@ mod tests {
                 .unwrap()
                 .is_empty()
         );
-        assert!(get_historical_crypto_prices_coingecko_strict(
-            None,
-            &HashMap::new(),
-            i64::MAX,
-            i64::MIN
-        )
-        .await
-        .unwrap()
-        .is_empty());
     }
 }

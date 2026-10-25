@@ -57,7 +57,8 @@ export function StockImportHistoryDialog({
           </DialogDescription>
         </DialogHeader>
         {batches.length > 0 && (
-          <div className="-mx-[27px]">
+          // min-w-0: in a narrow window (the phone) the table scrolls sideways instead of widening the dialog past its edge
+          <div className="-mx-[27px] min-w-0">
             <Table containerClassName="max-h-[420px] overflow-y-auto">
               {/* The head's hairline is an inset shadow on the cells: a collapsed border would scroll away with the rows. */}
               <TableHeader className="sticky top-0 z-[1] bg-well [&_th]:shadow-[inset_0_-1px_0_var(--line)] [&_tr]:border-b-0">

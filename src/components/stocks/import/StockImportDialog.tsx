@@ -89,6 +89,10 @@ interface PendingUndo {
 interface StockImportDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Where "Zobrazit akcie" leads (the desktop's `/stocks`); the phone passes its own route. */
+  stocksPath?: string;
+  /** Where "Přiřadit štítky" leads, or `null` to leave that step out (the phone has no analysis). */
+  analysisPath?: string | null;
 }
 
 /**
@@ -97,7 +101,12 @@ interface StockImportDialogProps {
  * instruments confirmed on Yahoo Finance, then the result with the next steps
  * and undo. Rust reads and checks the file; this holds a path and a config.
  */
-export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps) {
+export function StockImportDialog({
+  open,
+  onOpenChange,
+  stocksPath = '/stocks',
+  analysisPath = '/reports/stocks-analysis',
+}: StockImportDialogProps) {
   const { t } = useTranslation('stocks');
   const { t: tc } = useTranslation('common');
   const { getLocale } = useLanguage();
@@ -465,13 +474,16 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
 
   const handleShowStocks = () => {
     handleClose();
-    setLocation('/stocks');
+    setLocation(stocksPath);
   };
 
-  const handleOpenAnalysis = () => {
-    handleClose();
-    setLocation('/reports/stocks-analysis');
-  };
+  const handleOpenAnalysis =
+    analysisPath === null
+      ? null
+      : () => {
+          handleClose();
+          setLocation(analysisPath);
+        };
 
   const rememberVisible = !isSavedFormatSource(mapping.source);
   const nameMissing = rememberVisible && remember.enabled && remember.name.trim() === '';

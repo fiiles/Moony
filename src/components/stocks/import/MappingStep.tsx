@@ -238,7 +238,7 @@ function MappingSummary({
           </Button>
         </div>
 
-        <dl className="m-0 mt-3.5 grid grid-cols-3 gap-x-5 gap-y-2.5">
+        <dl className="m-0 mt-3.5 grid grid-cols-2 gap-x-5 gap-y-2.5 sm:grid-cols-3">
           {items.map((item) => (
             <div key={item.role} className="flex min-w-0 items-baseline gap-1.5 text-table">
               <dt className="shrink-0 text-ink-4">{t(`importWizard.roles.${item.role}`)}</dt>

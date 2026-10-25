@@ -91,7 +91,8 @@ interface ResultStepProps {
   undone: StockImportUndoResult | null;
   isUndoing: boolean;
   onShowStocks: () => void;
-  onOpenAnalysis: () => void;
+  /** `null` leaves out "Přiřadit štítky" (a shell without the stock analysis). */
+  onOpenAnalysis: (() => void) | null;
   onImportAnother: () => void;
   /** Ask whether to undo (the dialog confirms and does it). */
   onUndo: () => void;
@@ -158,7 +159,7 @@ export function ResultStep({
       },
     ];
     return (
-      <div className="grid grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
         <div>
           <div className="mb-3.5 grid size-11 place-items-center rounded-full bg-well-2 text-ink-2">
             <Undo2 className="size-[22px]" aria-hidden />
@@ -190,7 +191,7 @@ export function ResultStep({
       action: t('importWizard.result.next.showAction'),
       onClick: onShowStocks,
     },
-    ...(result.newPositions.length > 0
+    ...(result.newPositions.length > 0 && onOpenAnalysis
       ? [
           {
             id: 'tags',
@@ -224,7 +225,7 @@ export function ResultStep({
   ];
 
   return (
-    <div className="grid grid-cols-2 gap-6">
+    <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
       <div>
         <div
           className={cn(
@@ -250,7 +251,10 @@ export function ResultStep({
         </p>
 
         <div
-          className={cn('my-4 grid gap-2.5', result.converted > 0 ? 'grid-cols-5' : 'grid-cols-4')}
+          className={cn(
+            'my-4 grid gap-2.5',
+            result.converted > 0 ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'
+          )}
         >
           <Tile value={result.imported} label={t('importWizard.result.imported')} />
           <Tile value={result.duplicates} label={t('importWizard.result.duplicates')} />

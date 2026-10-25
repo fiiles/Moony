@@ -1,11 +1,22 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
-import { Archive, Download, Ellipsis, Plus, RefreshCw, TrendingUp } from 'lucide-react';
-import type { StockPositions, WatchedStockRow } from '@shared/schema';
+import {
+  Archive,
+  Download,
+  Ellipsis,
+  History,
+  Plus,
+  RefreshCw,
+  TrendingUp,
+  Upload,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import type { StockImportBatch, StockPositions, WatchedStockRow } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { useWatchedStocks } from '@/hooks/use-stock-monitor';
+import { useStockImportMutations } from '@/hooks/use-stock-import-mutations';
 import { amountOf, totalOf } from '@/utils/positions';
 import {
   DropdownMenu,
@@ -15,6 +26,9 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { AddInvestmentModal } from '@/components/stocks/AddInvestmentModal';
+import { StockImportHistoryDialog } from '@/components/stocks/StockImportHistoryDialog';
+import { StockImportDialog } from '@/components/stocks/import/StockImportDialog';
+import { useStockImportBatches } from '@/components/stocks/import/use-stock-import-data';
 import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SearchField } from '@/mobile/components/SearchField';
@@ -41,6 +55,7 @@ import { useTickerSearch } from '@/mobile/hooks/use-ticker-search';
 import { stocksView, type StocksTab } from '@/mobile/lib/position-rows';
 import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
 import { ClosedPositionsSheet } from '@/mobile/sheets/ClosedPositionsSheet';
+import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
 import { positionPath, routes, watchPath } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -60,9 +75,10 @@ const WHOLE = { decimals: 0 } as const;
  * a watch: the search is the only way to a watch detail. The numbers are the desktop's (the same
  * queries), in the report currency; every amount goes through the eye of Přehled. The list holds
  * the open positions; the closed ones are the sheet Uzavřené pozice in the `···` menu, and Export
- * there hands the transactions' CSV to the Files picker. The broker-statement import and its
- * history are desktop-only for now: the desktop wizard is not phone-sized, and the phone's import
- * needs a design of its own (like the bank statement's import sheet). The sort, the period and the
+ * there hands the transactions' CSV to the Files picker. Importovat CSV opens the desktop's broker
+ * import wizard as it is (the same file picker, broker detection, review and split decisions), and
+ * Historie importů, shown once there is one, lists the recorded imports with the desktop's delete;
+ * its confirmation is the phone's sheet with the desktop's sentences. The sort, the period and the
  * segment are remembered for the session, so a visit to a position does not reset them.
  */
 export default function Stocks() {
@@ -81,6 +97,26 @@ export default function Stocks() {
   const [chosenTab, setTab] = useRemembered<StocksTab | null>('stocks.tab', null);
   const [addOpen, setAddOpen] = useState(false);
   const [closedOpen, setClosedOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const [importsOpen, setImportsOpen] = useState(false);
+  // The recorded imports (CSV and MCP) for Historie importů; the item shows once there is one
+  const { data: importBatches = [] } = useStockImportBatches(true);
+  const { undoBatch } = useStockImportMutations();
+  const [pendingBatch, setPendingBatch] = useState<StockImportBatch | null>(null);
+  const confirmDeleteBatch = async () => {
+    if (!pendingBatch) return;
+    try {
+      const outcome = await undoBatch.mutateAsync(pendingBatch.id);
+      toast(
+        pendingBatch.remainingCount > 0
+          ? ts('importHistory.deleted', { count: outcome.removed })
+          : ts('importHistory.recordDeleted')
+      );
+      setPendingBatch(null);
+    } catch (error) {
+      toast.error(ts('importWizard.toast.undoFailed'), { description: String(error) });
+    }
+  };
   const view = stocksView(rows, watched, isError);
   const tab = chosenTab ?? view.defaultTab;
   const hasPositions = rows.length > 0;
@@ -109,6 +145,16 @@ export default function Stocks() {
                 {t('wealth.stocks.menu.closed')}
               </RowMenuItem>
               <DropdownMenuSeparator />
+              <RowMenuItem onSelect={() => setImportOpen(true)}>
+                <Upload strokeWidth={1.75} aria-hidden />
+                {ts('importCSV')}
+              </RowMenuItem>
+              {importBatches.length > 0 && (
+                <RowMenuItem onSelect={() => setImportsOpen(true)}>
+                  <History strokeWidth={1.75} aria-hidden />
+                  {ts('importHistory.title')}
+                </RowMenuItem>
+              )}
               <RowMenuItem disabled={exporting} onSelect={() => void exportCsv()}>
                 <Download strokeWidth={1.75} aria-hidden />
                 {tc('buttons.export')}
@@ -190,6 +236,44 @@ export default function Stocks() {
         trades={trades}
         currency={reportCurrency}
         hrefOf={(row) => positionPath(row.id)}
+      />
+      {/* "Zobrazit akcie" lands here; the phone has no stock analysis to assign tags in */}
+      <StockImportDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        stocksPath={routes.stocks}
+        analysisPath={null}
+      />
+      <StockImportHistoryDialog
+        open={importsOpen}
+        onOpenChange={setImportsOpen}
+        batches={importBatches}
+        onDelete={(batch) => {
+          setImportsOpen(false);
+          setPendingBatch(batch);
+        }}
+      />
+      <ConfirmSheet
+        open={pendingBatch !== null}
+        onOpenChange={(next) => {
+          if (!next) setPendingBatch(null);
+        }}
+        title={ts('importHistory.deleteTitle')}
+        description={
+          pendingBatch && pendingBatch.remainingCount > 0
+            ? `${ts('importWizard.undo.description', {
+                count: pendingBatch.remainingCount,
+                file: pendingBatch.fileName,
+              })} ${ts('importWizard.undo.consequences')}`
+            : ts('importHistory.recordDescription', { file: pendingBatch?.fileName ?? '' })
+        }
+        confirmLabel={ts(
+          pendingBatch && pendingBatch.remainingCount > 0
+            ? 'importHistory.deleteConfirm'
+            : 'importHistory.deleteRecord'
+        )}
+        isPending={undoBatch.isPending}
+        onConfirm={() => void confirmDeleteBatch()}
       />
     </Screen>
   );

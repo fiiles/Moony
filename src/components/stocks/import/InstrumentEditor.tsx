@@ -153,7 +153,7 @@ export function InstrumentEditor({
 
   return (
     <div className="rounded-r3 border border-line bg-paper px-4 py-3.5">
-      <div className="grid grid-cols-[1fr_1.4fr_1fr] gap-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1.4fr_1fr]">
         <div className="grid gap-1.5">
           <Label htmlFor={`edit-symbol-${instrument.key}`}>{t('importWizard.roles.symbol')}</Label>
           <InputWrap

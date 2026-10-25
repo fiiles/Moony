@@ -624,7 +624,13 @@ for that reason: they size themselves to the shown text, so while amounts are hi
 mask. **The sign stays and the number is never compact:** "+ •••• Kč", "− •••• Kč" (the ledger row and
 the transaction sheet compose them with `signedAmountText`), and `useMoneyText` drops `compact` while
 hidden, so "6,78 mil. Kč" masks to "•••• Kč" and never leaks "mil.". Inputs are never masked; counts,
-percents and dates stay visible. A desktop dialog the phone opens as it is and that lists amounts takes
+percents and dates stay visible. Nor is a field prefilled with a stored amount while the amounts are hidden: a sheet that edits an
+existing amount then starts with the field empty and its hint shows the current value masked ("Současný
+limit: •••• Kč" in the limit sheet, "Nyní •••• Kč" in the cost sheet, the estimate a revaluation replaces),
+and where an empty field can mean "unchanged" it saves the stored amount (the limit and the cost sheet; a
+revaluation needs a new value). With the amounts shown the field is prefilled as before (`limitDefaults`,
+`CostSheet`'s `startForm`, `startRevalueForm`). The desktop's edit dialogs the phone opens as they are
+(Upravit on a loan, a policy, a property, an other asset or the bonds) are desktop forms and still prefill. A desktop dialog the phone opens as it is and that lists amounts takes
 the same formatter: Historie přecenění is `MaskedValuationHistoryDialog` (the desktop's
 `ValuationHistoryDialog` with `formatMoney={useMoneyText()}`, the delete confirmation included), and
 the account form's stored balance (`BankAccountFormDialog` with `formatMoney`). `src/mobile/pages/Overview.tsx` is the reference, and the check for a

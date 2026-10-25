@@ -64,7 +64,8 @@
       "change": "Změnit kategorii"
     },
     "limitSheet": {
-      "pick": "Vyberte kategorii, pro kterou chcete hlídat výdaje."
+      "pick": "Vyberte kategorii, pro kterou chcete hlídat výdaje.",
+      "current": "Současný limit: {{amount}}"
     },
     "budgets": {
       "ended": "ukončen",

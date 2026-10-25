@@ -62,7 +62,8 @@
       "change": "Ändra kategori"
     },
     "limitSheet": {
-      "pick": "Välj den kategori vars utgifter du vill hålla koll på."
+      "pick": "Välj den kategori vars utgifter du vill hålla koll på.",
+      "current": "Nuvarande gräns: {{amount}}"
     },
     "budgets": {
       "ended": "avslutad",

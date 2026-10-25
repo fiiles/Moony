@@ -64,7 +64,8 @@
       "change": "Cambia categoria"
     },
     "limitSheet": {
-      "pick": "Scegli la categoria di cui vuoi tenere sotto controllo le spese."
+      "pick": "Scegli la categoria di cui vuoi tenere sotto controllo le spese.",
+      "current": "Limite attuale: {{amount}}"
     },
     "budgets": {
       "ended": "terminato",

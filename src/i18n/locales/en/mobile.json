@@ -62,7 +62,8 @@
       "change": "Change category"
     },
     "limitSheet": {
-      "pick": "Choose the category whose spending you want to keep in check."
+      "pick": "Choose the category whose spending you want to keep in check.",
+      "current": "Current limit: {{amount}}"
     },
     "budgets": {
       "ended": "ended",

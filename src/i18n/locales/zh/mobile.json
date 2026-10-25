@@ -60,7 +60,8 @@
       "change": "更改类别"
     },
     "limitSheet": {
-      "pick": "请选择要控制支出的类别。"
+      "pick": "请选择要控制支出的类别。",
+      "current": "当前限额：{{amount}}"
     },
     "budgets": {
       "ended": "已结束",

@@ -80,6 +80,32 @@ describe('limitFormState', () => {
     const state = limitFormState({ amountText: '3000', from: '', until: '2026-09' });
     expect(state.errors).toEqual({ from: 'required' });
   });
+
+  it('saves the kept limit from an empty field while the amounts are hidden', () => {
+    const state = limitFormState({
+      amountText: '',
+      keptAmount: '8000',
+      from: '2026-10',
+      until: '',
+    });
+    expect(state.amount).toBe(8000);
+    expect(state.errors).toEqual({});
+    expect(state.valid).toBe(true);
+  });
+
+  it('reads what is typed over the kept limit', () => {
+    const state = limitFormState({
+      amountText: '2 500',
+      keptAmount: '8000',
+      from: '2026-10',
+      until: '',
+    });
+    expect(state.amount).toBe(2500);
+    expect(
+      limitFormState({ amountText: '0', keptAmount: '8000', from: '2026-10', until: '' }).errors
+        .amount
+    ).toBe('positive');
+  });
 });
 
 describe('limitSaveLabel', () => {
@@ -265,5 +291,19 @@ describe('limitDefaults', () => {
       from: '2027-01',
       until: '',
     });
+  });
+
+  it('opens an edit with an empty field while the amounts are hidden, keeping the limit aside', () => {
+    const limit = goal([{ effectiveMonth: MAR, amount: '8000.00', currency: 'CZK' }]);
+    expect(limitDefaults(limit, undefined, OCT, true)).toEqual({
+      amountText: '',
+      keptAmount: '8000',
+      from: '2026-10',
+      until: '',
+    });
+  });
+
+  it('opens an addition the same way whether the amounts are hidden or not', () => {
+    expect(limitDefaults(null, undefined, OCT, true)).toEqual(limitDefaults(null, undefined, OCT));
   });
 });

@@ -62,7 +62,8 @@
       "change": "Endre kategori"
     },
     "limitSheet": {
-      "pick": "Velg kategorien du vil følge opp utgiftene i."
+      "pick": "Velg kategorien du vil følge opp utgiftene i.",
+      "current": "Nåværende grense: {{amount}}"
     },
     "budgets": {
       "ended": "avsluttet",

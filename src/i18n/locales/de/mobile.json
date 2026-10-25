@@ -62,7 +62,8 @@
       "change": "Kategorie ändern"
     },
     "limitSheet": {
-      "pick": "Wählen Sie die Kategorie, deren Ausgaben Sie im Blick behalten möchten."
+      "pick": "Wählen Sie die Kategorie, deren Ausgaben Sie im Blick behalten möchten.",
+      "current": "Aktuelles Limit: {{amount}}"
     },
     "budgets": {
       "ended": "beendet",

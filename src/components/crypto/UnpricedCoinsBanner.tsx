@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { CircleHelp } from 'lucide-react';
-import type { CryptoRow } from '@/utils/positions';
+import { unpricedOpenCoins, type CryptoRow } from '@/utils/positions';
 import { Alert, AlertActions, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 
@@ -12,14 +12,14 @@ interface UnpricedCoinsBannerProps<T extends CryptoRow> {
 
 /**
  * Banner above the trend card naming the holdings Moony could not match to a Yahoo Finance
- * listing (`yahooSymbol` null). It has no dismiss state: it goes when every holding has a symbol.
+ * listing (`yahooSymbol` null; a sold-out coin needs none). It has no dismiss state: it goes when every holding has a symbol.
  */
 export function UnpricedCoinsBanner<T extends CryptoRow>({
   rows,
   onPick,
 }: UnpricedCoinsBannerProps<T>) {
   const { t } = useTranslation('crypto');
-  const unpriced = rows.filter((row) => row.yahooSymbol === null);
+  const unpriced = unpricedOpenCoins(rows);
   if (unpriced.length === 0) return null;
 
   return (

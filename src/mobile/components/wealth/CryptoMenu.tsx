@@ -17,10 +17,11 @@ import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 
 /**
- * The `···` of a coin (spec §8.8): Upravit cenu opens the desktop's rate dialog, Zdroj kurzu its listing picker, Smazat pozici
- * asks in a confirm sheet and, once the coin is gone and the sheet's history entry with it, tells
- * the page to leave (`onDeleted`). There is no rename, dividend or follow for a coin, so these are
- * all. Each item is wired here with its dialog, so the page only places the button.
+ * The `···` of a coin (spec §8.8): Upravit cenu opens the desktop's rate dialog, Zdroj kurzu its
+ * listing picker, Smazat pozici asks in a confirm sheet and, once the coin is gone and the sheet's
+ * history entry with it, tells the page to leave (`onDeleted`). There is no rename, dividend or
+ * follow for a coin, so these are all. Each item is wired here with its dialog, so the page only
+ * places the button.
  */
 export function CryptoMenu({
   holding,

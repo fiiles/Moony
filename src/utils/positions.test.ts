@@ -8,6 +8,8 @@ import {
   totalOf,
   tradeCurrency,
   tradePricePrefill,
+  unpricedOpenCoins,
+  type CryptoRow,
 } from './positions';
 
 function stock(overrides: Partial<EnrichedStockInvestment> = {}): EnrichedStockInvestment {
@@ -112,5 +114,23 @@ describe('trade form defaults', () => {
     expect(tradeCurrency(row)).toBe('EUR');
     expect(tradePricePrefill(row)).toBe(110);
     expect(tradePricePrefill(toStockRow(stock({ price: null })))).toBe(0);
+  });
+});
+
+describe('unpricedOpenCoins', () => {
+  const coin = (id: string, yahooSymbol: string | null, quantity: string): CryptoRow => ({
+    ...toStockRow(stock({ id, quantity })),
+    name: id,
+    yahooSymbol,
+  });
+
+  it('keeps open coins without a symbol and skips priced and sold-out ones', () => {
+    const rows = [
+      coin('sui', null, '5'),
+      coin('btc', 'BTC-USD', '1'),
+      coin('arb', null, '0'),
+      coin('jup', null, '2'),
+    ];
+    expect(unpricedOpenCoins(rows).map((r) => r.id)).toEqual(['sui', 'jup']);
   });
 });

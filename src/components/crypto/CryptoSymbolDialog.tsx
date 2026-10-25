@@ -25,18 +25,20 @@ interface CryptoSymbolDialogProps {
 
 /**
  * "Zdroj kurzu" (design system §6 Modal): says which Yahoo Finance listing a coin follows and
- * lets the user search for another; picking a row stores it, and the rate and the history are
+ * lets the user search for another (the search opens on the coin's name); picking a row stores it, and the rate and the history are
  * rebuilt from it. The search list is the add dialog's.
  */
 export function CryptoSymbolDialog({ open, onOpenChange, investment }: CryptoSymbolDialogProps) {
   const { t } = useTranslation('crypto');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
-  const [query, setQuery] = useState('');
+  // `null` until the user types: the field then shows (and searches) the coin's own name
+  const [typedQuery, setTypedQuery] = useState<string | null>(null);
+  const query = typedQuery ?? investment?.name ?? '';
   const search = useCryptoSearch({ typed: query, enabled: open });
 
   const handleOpenChange = (next: boolean) => {
-    if (!next) setQuery('');
+    if (!next) setTypedQuery(null);
     onOpenChange(next);
   };
 
@@ -75,7 +77,7 @@ export function CryptoSymbolDialog({ open, onOpenChange, investment }: CryptoSym
           <InputWrap icon={<Search />}>
             <Input
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
+              onChange={(e) => setTypedQuery(e.target.value)}
               placeholder={investment.name}
               aria-label={t('modal.add.search')}
               autoComplete="off"

@@ -86,7 +86,7 @@ export default function WatchDetail() {
   const [, params] = useRoute(routes.watchDetail);
   const ticker = tickerOf(params?.ticker);
   const back = useBack(routes.stocks);
-  // The screen the push left when it came from another tab (a property's loan), else the parent
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
   const backText = useBackLabel(t('wealth.stocks.back'));
   const [period, setPeriod] = useRemembered<ChartPeriod>('watch.period', '30D');
   const [targetOpen, setTargetOpen] = useState(false);

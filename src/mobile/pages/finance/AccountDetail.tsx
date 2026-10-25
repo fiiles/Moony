@@ -124,7 +124,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   // are hidden
   const moneyText = useMoneyText();
   const back = useBack(routes.finance);
-  // The screen the push left when it came from another tab (a property's loan), else the parent
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
   const backText = useBackLabel(t('tabs.finance'));
   const search = useSearch();
   const detail = useAccountDetail(id);

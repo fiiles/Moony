@@ -53,7 +53,7 @@ function PolicyDetailPage({ id }: { id: string | undefined }) {
   const { t } = useTranslation('mobile');
   const { t: ti } = useTranslation('insurance');
   const back = useBack(routes.finance);
-  // The screen the push left when it came from another tab (a property's loan), else the parent
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
   const backText = useBackLabel(t('tabs.finance'));
   const { user } = useAuth();
   const { rows, isLoading, today } = useInsurance();

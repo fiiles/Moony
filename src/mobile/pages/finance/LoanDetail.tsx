@@ -67,7 +67,7 @@ function LoanDetailPage({ id }: { id: string | undefined }) {
   const fmt = useFormat();
   const text = useLoanText();
   const back = useBack(routes.finance);
-  // The screen the push left when it came from another tab (a property's loan), else the parent
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
   const backText = useBackLabel(t('tabs.finance'));
   const { rows, isLoading: loansLoading, today } = useLoans();
   const { data: schedule, isLoading: scheduleLoading } = useLoanSchedule(id);

@@ -13,12 +13,13 @@ import { InlineAlert } from '@/mobile/components/InlineAlert';
  * opens this page, so the decision is here. The queries and mutations are the desktop's (the
  * apply runs the mutation contract and the forced price refresh, the toast offers the undo); the
  * splits dialog ("Spravovat splity", recording a split by hand) stays on the desktop. Nothing when
- * no split is pending.
+ * no split is pending. `live` false (the position is being deleted) keeps the alerts as they were:
+ * the recalculation the delete emits would otherwise refetch them empty under the confirm sheet.
  */
-export function SplitAlerts({ ticker }: { ticker: string }) {
+export function SplitAlerts({ ticker, live = true }: { ticker: string; live?: boolean }) {
   const { t } = useTranslation('stocks');
   const fmt = useFormat();
-  const { data: splits = [] } = useStockSplits(ticker);
+  const { data: splits = [] } = useStockSplits(ticker, live);
   const { apply, dismiss } = useStockSplitMutations();
   const pending = splits.filter((split) => split.status === 'pending');
   if (pending.length === 0) return null;

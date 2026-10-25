@@ -63,7 +63,7 @@ function PropertyDetailPage({ id }: { id: string | undefined }) {
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('realEstate');
   const back = useBack(routes.wealth);
-  // The screen the push left when it came from another tab (a property's loan), else the parent
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
   const backText = useBackLabel(t('tabs.wealth'));
   const { currencyCode } = useCurrency();
   const data = useProperty(id);

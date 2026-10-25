@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { listen } from '@tauri-apps/api/event';
 import { useAuth } from '@/hooks/use-auth';
 import { RECEIVED_FILES_EVENT, receivedFilesApi } from '@/lib/tauri-api';
@@ -38,18 +39,23 @@ export function ReceivedFileHost({
 }) {
   const { appStatus } = useAuth();
   const { openImport, open } = useImportSheet();
+  const { t: tc } = useTranslation('common');
   const unlocked = appStatus === 'unlocked';
 
   const openImportRef = useRef(openImport);
   const onPendingRef = useRef(onPendingChange);
+  // A shared file's import opens over whatever screen is up, so the account it leads to says a
+  // neutral "Zpět" rather than naming a page back may not reach
+  const backLabelRef = useRef(tc('buttons.back'));
   useEffect(() => {
     openImportRef.current = openImport;
     onPendingRef.current = onPendingChange;
-  }, [openImport, onPendingChange]);
+    backLabelRef.current = tc('buttons.back');
+  }, [openImport, onPendingChange, tc]);
 
   const [{ queue, drain, report }] = useState(() => {
     const queue = createReceivedQueue((path) => {
-      openImportRef.current({ path, source: 'shared' });
+      openImportRef.current({ path, source: 'shared', from: backLabelRef.current });
     });
     const report = () => onPendingRef.current?.(queue.pending());
     const drain = createSerialDrain(async () => {

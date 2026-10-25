@@ -19,7 +19,7 @@ interface SectionPageProps {
 export function SectionPage({ title, lead, children }: SectionPageProps) {
   const { t: tc } = useTranslation('common');
   const back = useBack(routes.settings);
-  // The screen the push left when it came from another tab (a property's loan), else the parent
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
   const backText = useBackLabel(tc('nav.settings'));
   return (
     <Screen

@@ -54,7 +54,7 @@ export default function Bonds() {
   const { t: td } = useTranslation('dashboard');
   const { t: tc } = useTranslation('common');
   const back = useBack(routes.wealth);
-  // The screen the push left when it came from another tab (a property's loan), else the parent
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
   const backText = useBackLabel(t('tabs.wealth'));
   const { bonds, metrics, isLoading, today } = useBonds();
   const loadFailed = useBondsLoadFailed();

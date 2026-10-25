@@ -72,7 +72,7 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
   const back = useBack(routes.finance);
-  // The screen the push left when it came from another tab (a property's loan), else the parent
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
   const backText = useBackLabel(t('tabs.finance'));
   const [, setLocation] = useLocation();
   const { categories, isLoading: categoriesLoading } = useCategories();

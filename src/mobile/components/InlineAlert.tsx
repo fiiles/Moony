@@ -38,7 +38,9 @@ export function InlineAlert({
   const actions = action === undefined ? [] : 'label' in action ? [action] : action;
   return (
     <div
-      role={muted ? 'note' : 'alert'}
+      // `status`, not `alert`: the alert is part of the page as it opens (a pending split, a loan's
+      // fixation), not a sudden event, so VoiceOver reads it in turn instead of interrupting
+      role={muted ? 'note' : 'status'}
       className={cn(
         'mb-2.5 flex min-h-11 items-start gap-2.5 rounded-[11px] border bg-well px-3 py-2.5 text-m-sub text-ink-2',
         muted ? 'border-transparent' : 'border-line'

@@ -23,7 +23,8 @@ const HIDDEN_INPUT = 'sr-only';
 
 /**
  * "Vyfotit" and "Vybrat soubor" (README §13, `.m-capture`; spec §8.8, §9): two secondary buttons
- * of `ButtonPair`'s look (`PAIR_BUTTON`) under a list of documents or photos, each driving a hidden file input. The camera's is exactly
+ * of `ButtonPair`'s look (`PAIR_BUTTON`) under a list of documents or photos, each driving a hidden
+ * file input. The camera's is exactly
  * `accept="image/*" capture="environment"`, which opens the system camera and hands back the
  * photograph as a `File`; the picker's `accept` is the caller's (a document's filter or the
  * gallery's photo types — naming JPEG and not HEIC makes WebKit convert a Photo Library original to

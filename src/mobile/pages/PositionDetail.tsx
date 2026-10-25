@@ -60,7 +60,7 @@ export default function PositionDetail() {
   const { t: ts } = useTranslation('stocks');
   const [, params] = useRoute(routes.positionDetail);
   const back = useBack(routes.stocks);
-  // The screen the push left when it came from another tab (a property's loan), else the parent
+  // The page the push came from (another tab, a sheet: `backLabel`), else the parent
   const backText = useBackLabel(t('wealth.stocks.back'));
   const [period, setPeriod] = useState<ChartPeriod>('30D');
   const [trade, setTrade] = useState<'buy' | 'sell' | null>(null);
@@ -113,7 +113,7 @@ export default function PositionDetail() {
             className="mx-0.5 mb-3.5"
           />
           {/* A pending split asks its decision here: Přehled's split row opens this page */}
-          <SplitAlerts ticker={view.holding.ticker} />
+          <SplitAlerts ticker={view.holding.ticker} live={!exit.deleting} />
           <PositionHeroCard
             holding={view.holding}
             history={view.history}

@@ -18,8 +18,9 @@ export interface LedgerMutations {
 
 /**
  * The ledger's writes on one transaction (spec §8.4): category, meaning and the MCP suggestion
- * (the delete is the desktop's `useBankTransactionMutations().deleteTransaction`). Each refreshes the money flows (frontend standard rule 3: the domain keys, the
- * snapshot and the history) and says what it did; a failure is a toast with the translated error.
+ * (the delete is the desktop's `useBankTransactionMutations().deleteTransaction`). Each refreshes
+ * the money flows (frontend standard rule 3: the domain keys, the snapshot and the history) and
+ * says what it did; a failure is a toast with the translated error.
  * `quiet` leaves the "what it did" toasts out, for a screen that shows the result itself (the
  * categorize queue turns the row over): errors are still said.
  */

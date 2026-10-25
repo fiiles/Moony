@@ -382,7 +382,7 @@ export const cryptoApi = {
     tauriInvoke<CryptoPositions>('get_all_crypto', { reportCurrency }),
 
   create: (
-    data: { ticker: string; name: string; coingeckoId?: string },
+    data: { ticker: string; name: string; yahooSymbol?: string },
     initialTransaction?: Omit<CryptoTransaction, 'id' | 'investmentId' | 'createdAt'>
   ) => tauriInvoke<CryptoInvestment>('create_crypto', { data, initialTransaction }),
 
@@ -400,8 +400,11 @@ export const cryptoApi = {
 
   deleteTransaction: (txId: string) => tauriInvoke<void>('delete_crypto_transaction', { txId }),
 
-  updatePrice: (symbol: string, price: string, currency: string, coingeckoId?: string) =>
-    tauriInvoke<void>('update_crypto_price', { symbol, price, currency, coingeckoId }),
+  updatePrice: (symbol: string, price: string, currency: string) =>
+    tauriInvoke<void>('update_crypto_price', { symbol, price, currency }),
+
+  /** Pins a holding to a Yahoo Finance symbol (the symbol picker). */
+  setSymbol: (id: string, symbol: string) => tauriInvoke<void>('set_crypto_symbol', { id, symbol }),
 
   deleteManualPrice: (symbol: string) =>
     tauriInvoke<void>('delete_crypto_manual_price', { symbol }),
@@ -737,12 +740,8 @@ export const portfolioApi = {
 };
 
 // ============================================================================
-// Price API (Yahoo Finance for stocks, CoinGecko for crypto)
+// Price API (Yahoo Finance for stocks and crypto)
 // ============================================================================
-
-export interface ApiKeys {
-  coingecko?: string;
-}
 
 export interface StockPriceResult {
   ticker: string;
@@ -763,12 +762,10 @@ export interface CryptoPriceResult {
   currency: string;
 }
 
-export interface CoinGeckoSearchResult {
-  id: string;
+export interface CryptoSearchResult {
   symbol: string;
+  ticker: string;
   name: string;
-  market_cap_rank: number | null;
-  thumb: string | null;
 }
 
 export interface DividendResult {
@@ -784,18 +781,17 @@ export interface StockSearchResult {
 }
 
 export const priceApi = {
-  getApiKeys: () => tauriInvoke<ApiKeys>('get_api_keys'),
-
-  setApiKeys: (keys: ApiKeys) => tauriInvoke<void>('set_api_keys', { keys }),
-
   refreshStockPrices: (forceRefresh?: boolean) =>
     tauriInvoke<StockPriceRefreshResult>('refresh_stock_prices', {
       forceRefresh: forceRefresh ?? false,
     }),
 
-  refreshCryptoPrices: () => tauriInvoke<CryptoPriceResult[]>('refresh_crypto_prices'),
+  refreshCryptoPrices: (forceRefresh?: boolean) =>
+    tauriInvoke<CryptoPriceResult[]>('refresh_crypto_prices', {
+      forceRefresh: forceRefresh ?? false,
+    }),
 
-  searchCrypto: (query: string) => tauriInvoke<CoinGeckoSearchResult[]>('search_crypto', { query }),
+  searchCrypto: (query: string) => tauriInvoke<CryptoSearchResult[]>('search_crypto', { query }),
 
   refreshDividends: () => tauriInvoke<DividendResult[]>('refresh_dividends'),
 

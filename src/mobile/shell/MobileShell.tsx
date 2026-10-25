@@ -29,7 +29,7 @@ import SettingsSection from '@/mobile/pages/settings/SettingsSection';
 import Stocks from '@/mobile/pages/Stocks';
 import Wealth from '@/mobile/pages/Wealth';
 import WatchDetail from '@/mobile/pages/WatchDetail';
-import { RealEstatePlaceholder } from '@/mobile/pages/WealthPlaceholder';
+import RealEstatePlaceholder from '@/mobile/pages/WealthPlaceholder';
 import { EnableBiometricsSheet } from '@/mobile/sheets/EnableBiometricsSheet';
 import { routes, tabForPath } from './routes';
 import { TabBar } from './TabBar';

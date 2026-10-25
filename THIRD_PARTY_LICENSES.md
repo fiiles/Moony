@@ -435,7 +435,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | csv-core | 0.1.13 | Unlicense OR MIT |
 | ctor | 1.0.13 | Apache-2.0 OR MIT |
 | ctr | 0.10.1 | MIT OR Apache-2.0 |
-| ctutils | 0.4.3 | Apache-2.0 OR MIT |
+| ctutils | 0.4.5 | Apache-2.0 OR MIT |
 | darling | 0.24.1 | MIT |
 | darling_core | 0.24.1 | MIT |
 | darling_macro | 0.24.1 | MIT |
@@ -756,7 +756,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | rustls-pki-types | 1.15.1 | MIT OR Apache-2.0 |
 | rustls-platform-verifier | 0.7.1 | MIT OR Apache-2.0 |
 | rustls-platform-verifier-android | 0.2.0 | MIT OR Apache-2.0 |
-| rustls-webpki | 0.103.15 | ISC |
+| rustls-webpki | 0.103.16 | ISC |
 | rustversion | 1.0.23 | MIT OR Apache-2.0 |
 | ryu | 1.0.23 | Apache-2.0 OR BSL-1.0 |
 | salsa20 | 0.11.0 | MIT OR Apache-2.0 |
@@ -918,7 +918,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | web-time | 1.1.0 | MIT OR Apache-2.0 |
 | webkit2gtk | 2.0.2 | MIT |
 | webkit2gtk-sys | 2.0.2 | MIT |
-| webpki-root-certs | 1.0.9 | CDLA-Permissive-2.0 |
+| webpki-root-certs | 1.0.11 | CDLA-Permissive-2.0 |
 | webview2-com | 0.39.1 | MIT |
 | webview2-com-macros | 0.8.1 | MIT |
 | webview2-com-sys | 0.39.1 | MIT |

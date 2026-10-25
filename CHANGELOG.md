@@ -6,6 +6,8 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-10-25
+
 ### Added
 
 - **Stock splits.** Moony finds stock splits in the Yahoo Finance history of your positions and
@@ -30,6 +32,19 @@ All notable changes to Moony are documented in this file. The format follows
   coin's USD pair, for example `BTC-USD`) instead of `coingeckoId`. A new coin no longer needs an
   identifier; when the symbol is omitted Moony looks it up from the ticker and name. A client that
   still sends `coingeckoId` has it ignored.
+- **Cashflow planning moved to Tools.** It now opens from the top of the Tools menu instead of
+  Money. Stock analysis and Stock monitor follow the Stocks switch in Settings, so hiding Stocks
+  hides them too.
+- **"AI assistant" in Settings.** The section that sets up the MCP connection was called
+  Integrations; it is now named for what it does.
+
+### Fixed
+
+- **CSV lines wrapped in quotes.** A CSV that a spreadsheet re-saved with each line packed into one
+  quoted cell imported no rows; the bank and the broker import now split such lines into their
+  columns.
+- **Security updates** of the TLS certificate checks (`rustls-webpki`, `webpki-root-certs`) and a
+  constant-time helper (`ctutils`) used by the app's network and crypto libraries.
 
 ### Removed
 
@@ -716,7 +731,8 @@ local tool). Everything below is new to the public.
 - The updater only offers versions higher than the installed one, so a machine running an
   older 1.x build from the previous private repository must install 0.9.0 by hand.
 
-[Unreleased]: https://github.com/fiiles/Moony/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/fiiles/Moony/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/fiiles/Moony/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/fiiles/Moony/compare/v0.13.0...v1.0.0
 [0.13.0]: https://github.com/fiiles/Moony/compare/v0.12.2...v0.13.0
 [0.12.2]: https://github.com/fiiles/Moony/compare/v0.12.1...v0.12.2

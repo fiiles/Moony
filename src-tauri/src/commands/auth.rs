@@ -244,6 +244,15 @@ pub async fn logout(
     auth::logout(&db, &session);
     // Decrypted copies opened in other apps go with the session (D3).
     crate::commands::attachments::wipe_open_copies(&app);
+    // So do WebKit's plaintext copies of the files picked in the phone's upload sheets.
+    #[cfg(mobile)]
+    match app.path().temp_dir() {
+        Ok(temp_dir) => {
+            let removed = crate::services::upload_copies::sweep(&temp_dir);
+            log::info!("[UPLOAD] Upload copy sweep at lock removed {removed} file(s)");
+        }
+        Err(e) => log::warn!("[UPLOAD] Upload copy sweep at lock skipped: no temp dir: {e}"),
+    }
     Ok(())
 }
 

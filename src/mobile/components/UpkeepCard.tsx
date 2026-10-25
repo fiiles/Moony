@@ -10,7 +10,7 @@ import { useUpkeep } from '@/mobile/hooks/use-upkeep';
 import { queuePath } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import type { UpkeepKind, UpkeepRow } from '@/mobile/lib/upkeep';
-import { routes, settingsPath } from '@/mobile/shell/routes';
+import { propertyPath, routes, settingsPath } from '@/mobile/shell/routes';
 import { RecordBalancesSheet } from '@/mobile/sheets/RecordBalancesSheet';
 
 const ICONS: Record<UpkeepKind, LucideIcon> = {
@@ -30,17 +30,22 @@ const VERBS: Record<UpkeepKind, string> = {
 };
 
 /**
- * Where a verb that leads to a screen leads. Zálohovat opens Záloha a přenos, Přecenit the Majetek
- * tab; Zařadit opens the categorize queue (`queuePath`: of one account when exactly one holds the
- * payments). Zaznamenat and Importovat open sheets instead (`UpkeepItem`).
+ * Where a verb that leads to a screen leads. Zálohovat opens Záloha a přenos, Přecenit the
+ * property (its detail has the Přecenit button; the Majetek tab, which lists the properties, for a
+ * row that does not name one); Zařadit opens the categorize queue (`queuePath`: of one account when
+ * exactly one holds the payments). Zaznamenat and Importovat open sheets instead (`UpkeepItem`).
  */
-const TARGETS: Record<
-  Exclude<UpkeepKind, 'balances_stale' | 'statement_due' | 'uncategorized'>,
-  string
-> = {
-  backup_stale: settingsPath('backup'),
-  valuation_stale: routes.wealth,
-};
+function targetOf(row: UpkeepRow): string {
+  switch (row.kind) {
+    case 'uncategorized':
+      return queuePath(row.accountIds ?? []);
+    case 'valuation_stale':
+      return row.sourceId ? propertyPath(row.sourceId) : routes.wealth;
+    default:
+      // `backup_stale`: the other two kinds open a sheet and never ask
+      return settingsPath('backup');
+  }
+}
 
 /**
  * Údržba (spec §8.3 item 1, prototype frame 02 and note 2): an action card on `well`, first on
@@ -173,10 +178,7 @@ function UpkeepItem({
   } else {
     action = (
       <Button asChild variant={variant} className={buttonClass}>
-        <Link
-          href={row.kind === 'uncategorized' ? queuePath(row.accountIds ?? []) : TARGETS[row.kind]}
-          aria-describedby={titleId}
-        >
+        <Link href={targetOf(row)} aria-describedby={titleId}>
           {verb}
         </Link>
       </Button>

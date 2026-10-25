@@ -59,9 +59,7 @@
       "done": "Done"
     },
     "picker": {
-      "title": "Category",
-      "change": "Change category",
-      "current": "Current category"
+      "change": "Change category"
     },
     "limitSheet": {
       "pick": "Choose the category whose spending you want to keep in check."

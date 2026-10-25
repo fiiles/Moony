@@ -36,6 +36,13 @@ export interface PickOptions {
    * along) and every failure.
    */
   quiet?: boolean;
+  /**
+   * Called once the toast's undo has given the payments a learned pick took along back
+   * (`restoreTransactionCategories` succeeded), with the same rows `onApplied` got. It runs before
+   * the money flows refresh, so what the caller marks follows the undo at once and a failed
+   * refresh cannot hold it back. Not called when the undo failed.
+   */
+  onRestored?: (changed: ChangedRow[]) => void;
 }
 
 export interface Categorize {
@@ -98,7 +105,8 @@ export function useCategorize(
     title: string,
     description: string | undefined,
     changed: ChangedRow[],
-    quiet = false
+    quiet = false,
+    onRestored?: (changed: ChangedRow[]) => void
   ) => {
     // Only a batch the caller shows inline stays unsaid; the rest has nothing else that reports it
     if (quiet && changed.length > 0) return;
@@ -120,6 +128,7 @@ export function useCategorize(
               showError(error);
               return;
             }
+            onRestored?.(changed);
             await refreshAfterWrite();
           })();
         },
@@ -167,7 +176,9 @@ export function useCategorize(
               })
             : t('categorization.ruleRetargeted', { rule: rule.name, category: pickedName }),
           undefined,
-          changed
+          changed,
+          false,
+          options.onRestored
         );
         options.onApplied?.(changed);
         await refreshAfterWrite();
@@ -196,7 +207,8 @@ export function useCategorize(
           : t('categorization.learned'),
         changed.length > 0 ? `"${learnKey}" → ${pickedName}` : `"${learnKey}"`,
         changed,
-        options.quiet
+        options.quiet,
+        options.onRestored
       );
       options.onApplied?.(changed);
       await refreshAfterWrite();

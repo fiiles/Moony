@@ -1,47 +1,52 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Redirect, useParams, useSearch } from 'wouter';
-import { Landmark, Tag } from 'lucide-react';
 import { toast } from 'sonner';
-import type { FlowKind, ReportTransaction } from '@shared/schema';
+import type {
+  BankTransaction,
+  EffectiveTransactionFlow,
+  FlowKind,
+  ReportTransaction,
+} from '@shared/schema';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
+import { getCompleteBankHistory } from '@/lib/bank-history';
 import { useCurrency } from '@/lib/currency';
-import type { MoneyOptions } from '@/lib/format';
-import { refreshMoneyFlows } from '@/lib/money-flow-refresh';
-import { bankAccountsApi, cashflowApi } from '@/lib/tauri-api';
+import { cashflowApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { useFormat } from '@/lib/use-format';
 import { utcDayFloor } from '@/utils/chart-axis';
-import { movedCount } from '@/utils/report-drilldown';
+import { applyBulkChanges, restoreBulkChanges } from '@/utils/report-drilldown';
 import { Button } from '@/components/ui/button';
-import { ReportError } from '@/components/reports/ReportQualityNote';
-import { RowMenu, RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
-import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
-import { Money } from '@/mobile/components/Money';
+import { ScaledReportError } from '@/mobile/components/Scaled';
+import {
+  DrilldownSkeleton,
+  DrilldownTransactionRow,
+} from '@/mobile/components/cashflow/DrilldownRow';
+import { EntityRows } from '@/mobile/components/EntityRow';
 import { usePeriodLabel } from '@/mobile/hooks/use-cashflow';
 import { useBack } from '@/mobile/hooks/use-back';
+import { useRecentCategoryIds } from '@/mobile/hooks/use-categorize-queue';
+import { useRetained } from '@/mobile/hooks/use-retained';
 import { cashflowSearch, parseCashflowSearch } from '@/mobile/lib/cashflow-period';
-import { DRILLDOWN_PAGE, drilldownRows, type DrilldownRow } from '@/mobile/lib/cashflow-drilldown';
+import { DRILLDOWN_PAGE, drilldownRows } from '@/mobile/lib/cashflow-drilldown';
 import { categoryTitle } from '@/mobile/lib/cashflow-rows';
-import { initials } from '@/mobile/lib/initials';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
-import { CashflowCategoryPickerSheet } from '@/mobile/sheets/CashflowCategoryPickerSheet';
+import { CategoryPickerSheet } from '@/mobile/sheets/CategoryPickerSheet';
+import { TransactionSheet } from '@/mobile/sheets/TransactionSheet';
 
 const FLOWS: readonly FlowKind[] = ['expense', 'income', 'transfer'];
-
-/** An amount with its sign ("− 250,00 Kč", "+ 32 000 Kč"). */
-const SIGNED: MoneyOptions = { signed: true };
 
 /**
  * The payments behind one category of the Cashflow report (spec §8.7, `/cashflow/category/<flow>/
  * <key>`): the selected period's list, with the period and the account scope it was pushed with.
- * Each row changes category through the picker — a tap, a swipe to the left and the long press's
- * menu all open it — and the report behind refreshes at once. A row that leaves the category
- * stays in the list, dimmed and marked "přesunuto" (the desktop drilldown's rule, so the list does
- * not reshuffle under the finger).
+ * A tap on a row opens its transaction sheet (the category and the meaning of the movement can be
+ * changed there, the payment deleted); a swipe to the left and the long press's menu open the
+ * category picker of Finance directly. The report behind refreshes at once. A row that leaves the
+ * category or the flow stays in the list, dimmed and marked "přesunuto" (the desktop drilldown's
+ * rule, so the list does not reshuffle under the finger); a deleted payment leaves it.
  */
 export default function CashflowCategory() {
   const { flow, key } = useParams<{ flow: string; key: string }>();
@@ -69,7 +74,18 @@ interface CategoryDrilldownProps {
   search: string;
 }
 
-/** The list and the picker of one category; `CashflowCategory` has checked the route's parameters. */
+/** The row as the sheets show it: the category changed here wins over the one it was loaded with. */
+function withChange(
+  tx: BankTransaction | null,
+  changes: ReadonlyMap<string, string | null>
+): BankTransaction | null {
+  return tx && changes.has(tx.id) ? { ...tx, categoryId: changes.get(tx.id) ?? null } : tx;
+}
+
+/** Without a label: the moved count of the whole snapshot never shows a day. */
+const NO_DAY = () => '';
+
+/** The list and the sheets of one category; `CashflowCategory` has checked the route's parameters. */
 function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownProps) {
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('reports');
@@ -108,13 +124,64 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
   // The first response is the list; what changes afterwards lies on top of it
   const [snapshot, setSnapshot] = useState<ReportTransaction[] | null>(null);
   if (snapshot === null && data) setSnapshot(data);
+  // The category picks made here (a pick, and the other payments a remembered pick took along)
   const [changes, setChanges] = useState<ReadonlyMap<string, string | null>>(new Map());
+  // The effective flow the transaction sheet read for the payments it was opened on
+  const [flows, setFlows] = useState<ReadonlyMap<string, FlowKind>>(new Map());
+  // Payments deleted in their sheet, or no longer in the account: they leave the list
+  const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
   const [limit, setLimit] = useState(DRILLDOWN_PAGE);
-  // The payment whose category is being chosen, with the category it has now
-  const [picking, setPicking] = useState<ReportTransaction | null>(null);
 
-  const rows = snapshot ?? [];
-  const moved = movedCount(rows, changes, categoryKey);
+  // The sheets work on the account's own row (`BankTransaction`), which the report's row lacks
+  const [detailsFor, setDetailsFor] = useState<BankTransaction | null>(null);
+  const [pickFor, setPickFor] = useState<BankTransaction | null>(null);
+  const detailsTx = useMemo(() => withChange(detailsFor, changes), [detailsFor, changes]);
+  const pickTx = useMemo(() => withChange(pickFor, changes), [pickFor, changes]);
+  // The sheets keep their row while they slide away, and so does what is read for it
+  const detailsRow = useRetained(detailsTx);
+  const flow = useQuery({
+    queryKey: ['effective-transaction-flows', [detailsRow?.id]],
+    queryFn: () => cashflowApi.getEffectiveFlows([detailsRow?.id as string]),
+    enabled: detailsRow !== null,
+  });
+  const recordFlow = useCallback(
+    (flow: EffectiveTransactionFlow) =>
+      setFlows((current) =>
+        current.get(flow.id) === flow.effectiveFlowKind
+          ? current
+          : new Map(current).set(flow.id, flow.effectiveFlowKind)
+      ),
+    []
+  );
+  // Whenever the meaning is read (a change of it refetches the query) the row follows it
+  const read = flow.data?.[0];
+  if (read && flows.get(read.id) !== read.effectiveFlowKind) recordFlow(read);
+  // A category carries a role: after a pick the row's meaning is read again, which also gives
+  // back what a row seen in another category earlier had recorded. A failed read leaves the
+  // category rule to mark the row.
+  const readFlowAgain = async (id: string) => {
+    try {
+      const [again] = await queryClient.fetchQuery({
+        queryKey: ['effective-transaction-flows', [id]],
+        queryFn: () => cashflowApi.getEffectiveFlows([id]),
+      });
+      if (again) recordFlow(again);
+    } catch {
+      /* nothing to say: the list only loses a mark */
+    }
+  };
+  const pickerRow = useRetained(pickTx);
+  const recentIds = useRecentCategoryIds(pickerRow?.bankAccountId);
+
+  const original = useMemo(() => snapshot ?? [], [snapshot]);
+  const rows = useMemo(() => original.filter((row) => !removed.has(row.id)), [original, removed]);
+  const flowRule = useMemo(() => ({ flowKind, current: flows }), [flowKind, flows]);
+  // The whole snapshot is judged, the list shows its first `limit`
+  const moved = useMemo(
+    () =>
+      drilldownRows(rows, changes, categoryKey, NO_DAY, flowRule).filter((row) => row.moved).length,
+    [rows, changes, categoryKey, flowRule]
+  );
 
   const today = utcDayFloor(Date.now() / 1000);
   const dayLabel = (date: number) => {
@@ -123,7 +190,7 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
     if (day === today - 86400) return tc('time.yesterday');
     return fmt.day(date, { day: 'numeric', month: 'numeric' });
   };
-  const visible = drilldownRows(rows.slice(0, limit), changes, categoryKey, dayLabel);
+  const visible = drilldownRows(rows.slice(0, limit), changes, categoryKey, dayLabel, flowRule);
 
   const title = categoryTitle(
     categoryKey,
@@ -144,20 +211,26 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
     .filter(Boolean)
     .join(' · ');
 
-  // The desktop's order: save, mark the row, refresh the reports behind
-  const changeCategory = async (txId: string, categoryId: string) => {
+  // The newest tap wins: a row opened while another is still being read replaces it
+  const opening = useRef(0);
+  /**
+   * The payment's own row, from the account's complete history (the entry the picker's recents
+   * read, so they share it). A payment that is not there any more was deleted elsewhere: it
+   * leaves the list and nothing opens.
+   */
+  const openFor = async (row: ReportTransaction, open: (tx: BankTransaction) => void) => {
+    const mine = ++opening.current;
     try {
-      await bankAccountsApi.updateTransactionCategory(txId, categoryId);
+      const history = await queryClient.fetchQuery({
+        queryKey: ['bank-transactions', row.bankAccountId, 'history'],
+        queryFn: () => getCompleteBankHistory(row.bankAccountId),
+      });
+      if (opening.current !== mine) return;
+      const found = history?.transactions.find((tx) => tx.id === row.id);
+      if (found) open(found);
+      else setRemoved((current) => new Set(current).add(row.id));
     } catch (error) {
-      toast.error(translateApiError(error as Error, tc));
-      throw error;
-    }
-    setChanges((current) => new Map(current).set(txId, categoryId));
-    // The category is saved; a failed refresh must not read as a failed change.
-    try {
-      await refreshMoneyFlows(queryClient);
-    } catch (error) {
-      toast.error(translateApiError(error as Error, tc));
+      if (opening.current === mine) toast.error(translateApiError(error as Error, tc));
     }
   };
 
@@ -169,7 +242,7 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
       <p className="mx-0.5 mb-3.5 text-m-lead text-ink-3">{summary}</p>
       {snapshot === null ? (
         isError ? (
-          <ReportError onRetry={() => void refetch()} />
+          <ScaledReportError onRetry={() => void refetch()} />
         ) : (
           <DrilldownSkeleton />
         )
@@ -183,10 +256,11 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
         <>
           <EntityRows>
             {visible.map((row) => (
-              <TransactionRow
+              <DrilldownTransactionRow
                 key={row.tx.id}
                 row={row}
-                onChange={(picked) => setPicking({ ...picked.tx, categoryId: picked.categoryId })}
+                onOpen={(picked) => void openFor(picked.tx, setDetailsFor)}
+                onCategorize={(picked) => void openFor(picked.tx, setPickFor)}
               />
             ))}
           </EntityRows>
@@ -201,104 +275,47 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
           )}
         </>
       )}
-      <CashflowCategoryPickerSheet
-        tx={picking}
-        open={picking !== null}
-        onOpenChange={(open) => {
-          if (!open) setPicking(null);
+      <TransactionSheet
+        tx={detailsTx}
+        open={detailsTx !== null}
+        onOpenChange={(next) => !next && setDetailsFor(null)}
+        category={categories.find((category) => category.id === detailsRow?.categoryId)}
+        flow={read}
+        onPickCategory={() => setPickFor(detailsFor)}
+        onChange={(patch) => {
+          if (!detailsFor) return;
+          const id = detailsFor.id;
+          setDetailsFor((current) => (current?.id === id ? { ...current, ...patch } : current));
         }}
+        onDeleted={() => detailsRow && setRemoved((current) => new Set(current).add(detailsRow.id))}
+      />
+      <CategoryPickerSheet
+        tx={pickTx}
+        open={pickTx !== null}
+        onOpenChange={(next) => !next && setPickFor(null)}
         categories={categories}
-        onPicked={changeCategory}
+        recentIds={recentIds}
+        onChange={(patch) => {
+          if (!pickFor) return;
+          const id = pickFor.id;
+          const { categoryId, ...rest } = patch;
+          if (typeof categoryId === 'string') {
+            setChanges((current) => new Map(current).set(id, categoryId));
+            void readFlowAgain(id);
+          }
+          // What else the picker changed (a declined suggestion) follows on the copies the sheets hold
+          if (Object.keys(rest).length > 0) {
+            setPickFor((current) => (current?.id === id ? { ...current, ...rest } : current));
+            setDetailsFor((current) => (current?.id === id ? { ...current, ...rest } : current));
+          }
+        }}
+        onHistoryApplied={(changed, categoryId) =>
+          setChanges((current) => applyBulkChanges(current, original, changed, categoryId))
+        }
+        onHistoryRestored={(changed) =>
+          setChanges((current) => restoreBulkChanges(current, original, changed))
+        }
       />
     </Screen>
-  );
-}
-
-interface TransactionRowProps {
-  row: DrilldownRow;
-  /** Open the picker for this payment. */
-  onChange: (row: DrilldownRow) => void;
-}
-
-/**
- * One payment as an entity row: initials chip (green for a credit), who and what, the amount in
- * its own currency with its worth in the report currency under it. A moved row is dimmed and says
- * so. Tap, swipe left and the long press's menu all change the category.
- */
-function TransactionRow({ row, onChange }: TransactionRowProps) {
-  const { t } = useTranslation('mobile');
-  const { t: tr } = useTranslation('reports');
-  const [menuOpen, setMenuOpen] = useState(false);
-  const { tx, credit } = row;
-  // The marker leads: the sub-line ends in an ellipsis when it is too long, and "přesunuto" is
-  // the one sign of a moved row that is not its dimming
-  const sub = (row.moved ? [tr('readiness.moved'), ...row.sub] : row.sub).join(' · ');
-  // The converted amount carries the row's own sign (`reportAmount`), not the report line's
-  const valueSub =
-    row.reportAmount === null ? (
-      tr('readiness.fxUnavailable')
-    ) : tx.currency !== tx.reportCurrency ? (
-      <Money value={row.reportAmount} currency={tx.reportCurrency} options={SIGNED} />
-    ) : undefined;
-
-  return (
-    <EntityRow
-      chip={
-        <RowChip tone={credit ? 'gain' : 'default'}>
-          {initials(row.title) || <Landmark strokeWidth={1.75} />}
-        </RowChip>
-      }
-      title={row.title}
-      sub={sub}
-      value={
-        <Money
-          value={Number(tx.amount) * (credit ? 1 : -1)}
-          currency={tx.currency}
-          options={SIGNED}
-        />
-      }
-      valueTone={credit ? 'gain' : undefined}
-      valueSub={valueSub}
-      muted={row.moved}
-      onClick={() => onChange(row)}
-      onSwipeLeft={() => onChange(row)}
-      swipeLeftLabel={t('upkeep.actions.categorize')}
-      swipeLeftIcon={Tag}
-      onLongPress={() => setMenuOpen(true)}
-      accessory={
-        <RowMenu
-          open={menuOpen}
-          onOpenChange={setMenuOpen}
-          label={t('cashflow.rowMenu', { title: row.title })}
-        >
-          <RowMenuItem onSelect={() => onChange(row)}>
-            <Tag aria-hidden strokeWidth={1.75} />
-            {t('cashflow.picker.change')}
-          </RowMenuItem>
-        </RowMenu>
-      }
-    />
-  );
-}
-
-/** While the list loads for the first time: three rows in outline. */
-function DrilldownSkeleton() {
-  return (
-    <div aria-hidden>
-      <EntityRows>
-        {[0, 1, 2].map((i) => (
-          <li
-            key={i}
-            className="flex min-h-[60px] list-none items-center gap-3 border-t border-line-soft px-3.5 first:border-t-0"
-          >
-            <div className="skeleton size-9 flex-none rounded-full" />
-            <div className="min-w-0 flex-1">
-              <div className="skeleton h-3.5 w-2/5" />
-              <div className="skeleton mt-2 h-3 w-3/5" />
-            </div>
-          </li>
-        ))}
-      </EntityRows>
-    </div>
   );
 }

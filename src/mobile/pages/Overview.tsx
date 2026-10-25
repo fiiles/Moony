@@ -26,8 +26,7 @@ import { splitMilestones } from '@/utils/milestones';
 import { CHART_PERIODS, type ChartPeriod } from '@/utils/period';
 import { Button } from '@/components/ui/button';
 import { ConvertedMoney } from '@/components/common/ConvertedMoney';
-import { EmptyState } from '@/components/common/EmptyState';
-import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { ScaledConversionNote, ScaledEmptyState } from '@/mobile/components/Scaled';
 import { AgendaRow } from '@/mobile/components/AgendaRow';
 import { AllocationRing } from '@/mobile/components/AllocationRing';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
@@ -190,7 +189,7 @@ export default function Overview() {
       ) : (
         <>
           {/* Amounts the backend could not convert into the report currency (left out) */}
-          <ConversionQualityNote
+          <ScaledConversionNote
             quality={overview.fxQuality}
             currency={reportCurrency}
             className="mx-0.5 mb-3.5"
@@ -396,7 +395,7 @@ function EmptyOverview() {
   const { t } = useTranslation('dashboard');
   const [, setLocation] = useLocation();
   return (
-    <EmptyState
+    <ScaledEmptyState
       icon={<Wallet />}
       title={t('empty.title')}
       description={t('empty.description')}

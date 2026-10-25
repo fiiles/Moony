@@ -13,7 +13,7 @@ import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useCategories } from '@/hooks/use-categories';
 import { cashflowApi } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
-import { EmptyState } from '@/components/common/EmptyState';
+import { ScaledEmptyState } from '@/mobile/components/Scaled';
 import { Button } from '@/components/ui/button';
 import { ProgressBar } from '@/mobile/components/cashflow/ProgressBar';
 import { EntityRows } from '@/mobile/components/EntityRow';
@@ -265,7 +265,7 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
       ) : (
         <>
           {finished ? (
-            <EmptyState
+            <ScaledEmptyState
               bare
               icon={<CircleCheck />}
               title={t('queue.empty.title')}

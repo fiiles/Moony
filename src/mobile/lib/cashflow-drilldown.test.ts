@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ReportTransaction } from '@shared/schema';
+import type { FlowKind, ReportTransaction } from '@shared/schema';
 import { DRILLDOWN_PAGE, drilldownRows } from './cashflow-drilldown';
 
 function tx(patch: Partial<ReportTransaction> = {}): ReportTransaction {
@@ -118,6 +118,84 @@ describe('drilldownRows', () => {
     );
     expect(row.moved).toBe(true);
     expect(row.categoryId).toBe('cat_y');
+  });
+
+  describe('the meaning of the payment', () => {
+    const expense = (current: ReadonlyMap<string, FlowKind>) => ({
+      flowKind: 'expense' as const,
+      current,
+    });
+
+    it('marks a row moved whose effective flow left the list, with no category change', () => {
+      const [row] = drilldownRows(
+        [tx()],
+        NO_CHANGES,
+        'cat_x',
+        day,
+        expense(new Map([['tx_1', 'transfer']]))
+      );
+      expect(row.moved).toBe(true);
+      expect(row.categoryId).toBe('cat_x');
+    });
+
+    it('does not mark a row moved whose effective flow is still the list’s', () => {
+      const [row] = drilldownRows(
+        [tx()],
+        NO_CHANGES,
+        'cat_x',
+        day,
+        expense(new Map([['tx_1', 'expense']]))
+      );
+      expect(row.moved).toBe(false);
+    });
+
+    it('leaves a row alone that is in neither map', () => {
+      const [row] = drilldownRows(
+        [tx()],
+        NO_CHANGES,
+        'cat_x',
+        day,
+        expense(new Map([['other', 'transfer']]))
+      );
+      expect(row.moved).toBe(false);
+    });
+
+    it('keeps a category move moved when the flow is still the list’s', () => {
+      const [row] = drilldownRows(
+        [tx()],
+        new Map([['tx_1', 'cat_y']]),
+        'cat_x',
+        day,
+        expense(new Map([['tx_1', 'expense']]))
+      );
+      expect(row.moved).toBe(true);
+    });
+
+    it('reads the rule against the list’s own flow, whichever it is', () => {
+      const rows = drilldownRows(
+        [tx({ id: 'in', effectiveFlowKind: 'income' })],
+        NO_CHANGES,
+        'cat_x',
+        day,
+        { flowKind: 'income', current: new Map([['in', 'income']]) }
+      );
+      expect(rows[0].moved).toBe(false);
+      const moved = drilldownRows([tx({ id: 'in' })], NO_CHANGES, 'cat_x', day, {
+        flowKind: 'income',
+        current: new Map([['in', 'expense']]),
+      });
+      expect(moved[0].moved).toBe(true);
+    });
+
+    it('applies the category rule alone when no flows are given', () => {
+      const rows = drilldownRows(
+        [tx({ id: 'a' }), tx({ id: 'b' })],
+        new Map([['a', 'cat_y']]),
+        'cat_x',
+        day
+      );
+      expect(rows.map((row) => row.moved)).toEqual([true, false]);
+    });
   });
 
   describe('reportAmount', () => {

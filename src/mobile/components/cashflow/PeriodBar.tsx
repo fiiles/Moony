@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
-import * as ToggleGroupPrimitive from '@radix-ui/react-toggle-group';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { PeriodTimeframe } from '@/utils/period';
+import { Segment } from '@/mobile/components/Segment';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 
 const TIMEFRAMES: readonly PeriodTimeframe[] = ['monthly', 'quarterly', 'yearly'];
@@ -19,7 +19,7 @@ interface PeriodBarProps {
 
 /**
  * Period bar of the Cashflow tab (spec §8.7, README §13, `.m-period`): the full-width 36 pt
- * Měsíc · Čtvrtletí · Rok segment (the hero's, Radix ToggleGroup) and under it the stepper
+ * Měsíc · Čtvrtletí · Rok segment (the shared `Segment`, the hero's) and under it the stepper
  * (`.m-stepper`) ‹ Říjen 2026 ›: two 44 pt icon buttons around the label, "next" disabled at the
  * current period.
  */
@@ -27,26 +27,13 @@ export function PeriodBar({ timeframe, offset, label, onTimeframeChange, onStep 
   const { t } = useTranslation('common');
   return (
     <div className="mb-1.5 mt-1">
-      <ToggleGroupPrimitive.Root
-        type="single"
+      <Segment
         value={timeframe}
-        onValueChange={(next) => {
-          // Pressing the active segment would clear the value: the period stays
-          if (next) onTimeframeChange(next as PeriodTimeframe);
-        }}
-        aria-label={t('periods.label')}
-        className="flex min-h-9 w-full max-w-full gap-px overflow-x-auto rounded-r2 bg-well-2 p-[3px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-      >
-        {TIMEFRAMES.map((tf) => (
-          <ToggleGroupPrimitive.Item
-            key={tf}
-            value={tf}
-            className="min-h-[30px] flex-[1_0_auto] whitespace-nowrap rounded-r1 px-1.5 py-1 text-m-caption font-semibold leading-none text-ink-3 transition-colors duration-fast data-[state=on]:bg-paper data-[state=on]:text-ink data-[state=on]:shadow-seg focus-visible:outline-none focus-visible:shadow-focus"
-          >
-            {t(`periods.timeframe.${tf}`)}
-          </ToggleGroupPrimitive.Item>
-        ))}
-      </ToggleGroupPrimitive.Root>
+        options={TIMEFRAMES.map((tf) => ({ value: tf, label: t(`periods.timeframe.${tf}`) }))}
+        onChange={onTimeframeChange}
+        label={t('periods.label')}
+        className="w-full"
+      />
       <div className="mt-0.5 grid grid-cols-[44px_minmax(0,1fr)_44px] items-center">
         <NavIconButton aria-label={t(`periods.prev.${timeframe}`)} onClick={() => onStep(-1)}>
           <ChevronLeft strokeWidth={1.75} aria-hidden />

@@ -59,9 +59,7 @@
       "done": "Ferdig"
     },
     "picker": {
-      "title": "Kategori",
-      "change": "Endre kategori",
-      "current": "Gjeldende kategori"
+      "change": "Endre kategori"
     },
     "limitSheet": {
       "pick": "Velg kategorien du vil følge opp utgiftene i."

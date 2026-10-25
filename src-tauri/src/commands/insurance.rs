@@ -5,7 +5,7 @@ use crate::error::{AppError, Result};
 use crate::models::{
     InsertInsuranceDocument, InsertInsurancePolicy, InsuranceDocument, InsurancePolicy, RealEstate,
 };
-use crate::services::{attachments, real_estate_photos};
+use crate::services::{attachment_store, attachments, real_estate_photos};
 use tauri::{Manager, State};
 
 /// Get all insurance policies
@@ -203,7 +203,8 @@ pub async fn add_insurance_document_bytes(
     let upload = attachments::document_upload::<InsertInsuranceDocument>(request.headers())?;
     // Validate inputs at the trust boundary (before any field access)
     upload.data.validate()?;
-    let bytes = real_estate_photos::photo_bytes(request.body())?;
+    let bytes =
+        real_estate_photos::upload_bytes(request.body(), attachment_store::MAX_DOCUMENT_BYTES)?;
     let doc = attachments::NewDocument {
         name: &upload.data.name,
         description: upload.data.description.as_deref(),

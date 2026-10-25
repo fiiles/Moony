@@ -26,10 +26,9 @@ import { useFormat } from '@/lib/use-format';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { CHART_PERIODS, type ChartPeriod } from '@/utils/period';
 import { BankAccountFormDialog } from '@/components/bank-accounts/BankAccountFormDialog';
-import { EmptyState } from '@/components/common/EmptyState';
+import { ScaledConversionNote, ScaledEmptyState } from '@/mobile/components/Scaled';
 import { InsuranceFormDialog } from '@/components/insurance/InsuranceFormDialog';
 import { LoanFormDialog } from '@/components/loans/LoanFormDialog';
-import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -269,7 +268,7 @@ export default function Finance() {
       {isLoading ? (
         <FinanceSkeleton />
       ) : isEmpty ? (
-        <EmptyState
+        <ScaledEmptyState
           icon={<Landmark />}
           title={tb('empty.title')}
           description={tb('empty.description')}
@@ -287,7 +286,7 @@ export default function Finance() {
       ) : (
         <>
           {/* Amounts left out of the totals for want of a rate (never counted as 0 or 1:1) */}
-          <ConversionQualityNote
+          <ScaledConversionNote
             quality={{ missingCurrencies: missing }}
             currency={mainCurrency}
             className="mx-0.5 mb-3.5"

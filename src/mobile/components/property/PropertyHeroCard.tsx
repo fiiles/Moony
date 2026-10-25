@@ -2,7 +2,7 @@ import { useTranslation } from 'react-i18next';
 import { useFormat } from '@/lib/use-format';
 import type { EventCluster } from '@/utils/chart-scale';
 import type { PropertyRow } from '@/utils/real-estate';
-import { ChartLegend, type LegendItem } from '@/components/charts/ChartLegend';
+import { type LegendItem, ScaledChartLegend } from '@/mobile/components/Scaled';
 import { Hero } from '@/mobile/components/Hero';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import type { PropertyData } from '@/mobile/hooks/use-property';
@@ -87,7 +87,7 @@ export function PropertyHeroCard({ row, trace, currency }: PropertyHeroCardProps
       chartLabel={label}
     >
       {charted ? (
-        <ChartLegend
+        <ScaledChartLegend
           items={legend}
           // One estimate and no purchase on the line: nothing to read a trend from yet
           note={hint ? t('detail.chart.hint') : undefined}

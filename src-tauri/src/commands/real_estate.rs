@@ -8,6 +8,7 @@ use crate::models::{
     InsertRealEstateOneTimeCost, InsurancePolicy, Loan, RealEstate, RealEstateDocument,
     RealEstateOneTimeCost, RealEstatePhoto, RealEstatePhotoBatch, UpdatePhotoBatch,
 };
+use crate::services::attachment_store;
 use crate::services::attachments;
 use crate::services::history_plan::{self, PropertyFacts};
 use crate::services::history_recalc::HistoryRecalc;
@@ -410,7 +411,7 @@ pub async fn add_photo_to_batch(
     db: State<'_, Database>,
     request: tauri::ipc::Request<'_>,
 ) -> Result<RealEstatePhoto> {
-    let bytes = photos_service::photo_bytes(request.body())?;
+    let bytes = photos_service::upload_bytes(request.body(), attachment_store::MAX_DOCUMENT_BYTES)?;
     let batch_id = request
         .headers()
         .get("batch-id")
@@ -603,7 +604,7 @@ pub async fn add_real_estate_document_bytes(
 ) -> Result<RealEstateDocument> {
     let upload = attachments::document_upload::<InsertRealEstateDocument>(request.headers())?;
     upload.data.validate()?;
-    let bytes = photos_service::photo_bytes(request.body())?;
+    let bytes = photos_service::upload_bytes(request.body(), attachment_store::MAX_DOCUMENT_BYTES)?;
     let doc = attachments::NewDocument {
         name: &upload.data.name,
         description: upload.data.description.as_deref(),

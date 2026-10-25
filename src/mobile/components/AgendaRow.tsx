@@ -11,7 +11,6 @@ import { MilestoneMenuItems } from '@/components/milestones/MilestoneRows';
 import { useMilestoneActions } from '@/hooks/use-milestone-mutations';
 import { useMilestoneSubLine } from '@/hooks/use-milestone-sub-line';
 import { useFormat } from '@/lib/use-format';
-import { cn } from '@/lib/utils';
 import { utcDayFloor } from '@/utils/chart-axis';
 import {
   agendaDay,
@@ -23,17 +22,19 @@ import {
 } from '@/utils/milestones';
 import { milestonePath } from '@/mobile/lib/milestone-path';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { DateChip, DATE_CHIP_WIDTH } from './DateChip';
 import { EntityRow } from './EntityRow';
 
-/** Width of the date chip (prototype `.dchip`): 54 pt at the default text size, wider with the text. */
-const DATE_CHIP = 'calc(54px * var(--m-text-k))';
-
 /**
- * Agenda row of "Co vás čeká" (spec §8.3 item 4, prototype note 5): the entity row with a 54 × 42
- * date chip (day and month, the distance under it; dark material for a deadline at most 7 days
- * away), the title and one sub-line. Swipe right reminds again in a week (only when that ends
- * before the date), swipe left hides; a long press opens the full menu. A tap opens the source
- * page (`milestonePath`); a kind without one on the phone leaves the row inert.
+ * Agenda row of "Co vás čeká" (spec §8.3 item 4, prototype note 5): the entity row with the date
+ * chip (day and month, the weekday under it; dark material for a deadline at most 7 days away), the
+ * title and one sub-line that ends with the distance ("Zinsbindung endet · in 2 Monaten"). The
+ * distance is in the sub-line, not in the chip: it does not fit 54 pt in most languages, a weekday
+ * always does, and a long sub-line is the part that gives way. A crossed target and a split notice
+ * are today's news instead: the chip reads "Today" over the kind and there is no distance. Swipe
+ * right reminds again in a week (only when that ends before the date), swipe left hides; a long
+ * press opens the full menu. A tap opens the source page (`milestonePath`); a kind without one on
+ * the phone leaves the row inert.
  */
 export function AgendaRow({ m }: { m: Milestone }) {
   const { t } = useTranslation('milestones');
@@ -54,40 +55,36 @@ export function AgendaRow({ m }: { m: Milestone }) {
   const chipWord = m.kind === 'stock_split' ? t('card.split') : t('card.target');
   const remindKey = isUpkeep(m) ? 'actions.remindMonth' : 'actions.remindWeek';
 
-  // Not hidden from screen readers: the sub-line leaves the date out, the chip is where it is said.
-  const chip = (
-    <span
-      className={cn(
-        'flex min-h-[42px] flex-none flex-col items-center justify-center rounded-[9px] py-0.5 leading-tight',
-        urgent ? 'bg-dark-grad shadow-dark' : 'bg-well'
+  // The chip is not hidden from screen readers: the sub-line leaves the date out, the chip says it.
+  const chip = todayChip ? (
+    <DateChip day={day} urgent={urgent} label={t('card.today')} caption={chipWord} />
+  ) : (
+    <DateChip day={day} urgent={urgent} caption={fmt.day(day, { weekday: 'short' })} />
+  );
+
+  // What happens, then how far away: the first part is cut with an ellipsis, the distance stays.
+  const what = subLine(m);
+  const distance = t(`relative.${rel.key}`, { count: rel.count });
+  const sub = todayChip ? (
+    what
+  ) : (
+    <span className="flex min-w-0">
+      {what && (
+        <>
+          <span className="min-w-0 truncate">{what}</span>
+          <span className="flex-none whitespace-pre"> · </span>
+        </>
       )}
-      style={{ width: DATE_CHIP }}
-    >
-      <b
-        className={cn(
-          'whitespace-nowrap text-m-sub font-650 tracking-[-0.01em] num',
-          urgent ? 'text-ink-inverse' : 'text-ink'
-        )}
-      >
-        {todayChip ? t('card.today') : fmt.day(day, { day: 'numeric', month: 'numeric' })}
-      </b>
-      <small
-        className={cn(
-          'mt-px whitespace-nowrap text-m-note',
-          urgent ? 'text-ink-inverse-2' : 'text-ink-4'
-        )}
-      >
-        {todayChip ? chipWord : t(`relative.${rel.key}`, { count: rel.count })}
-      </small>
+      <span className="flex-none">{distance}</span>
     </span>
   );
 
   return (
     <EntityRow
       chip={chip}
-      chipWidth={DATE_CHIP}
+      chipWidth={DATE_CHIP_WIDTH}
       title={m.title}
-      sub={subLine(m)}
+      sub={sub}
       onSwipeRight={canRemindLater(m, today) ? () => remindLater(m) : undefined}
       swipeRightLabel={t(remindKey)}
       swipeRightIcon={Clock}

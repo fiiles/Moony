@@ -35,6 +35,15 @@ interface CategoryPickerSheetProps {
    * along (`quiet`). The ledger passes nothing.
    */
   onApplied?: (changed: ChangedRow[]) => void;
+  /**
+   * Tells the caller which other payments a remembered pick took along and the category it gave
+   * them, once the learning has written (not when it took none). Unlike `onApplied` it leaves the
+   * sheet's own toast and its undo in place: a list that only has to mark the rows it holds (the
+   * Cashflow drilldown) reports the change here and keeps the toast.
+   */
+  onHistoryApplied?: (changed: ChangedRow[], categoryId: string) => void;
+  /** The toast's undo has given those payments back (`onHistoryApplied`'s `changed`). */
+  onHistoryRestored?: (changed: ChangedRow[]) => void;
 }
 
 /**
@@ -53,6 +62,8 @@ export function CategoryPickerSheet({
   recentIds,
   onChange,
   onApplied,
+  onHistoryApplied,
+  onHistoryRestored,
 }: CategoryPickerSheetProps) {
   const { t: tc } = useTranslation('common');
   const { t } = useTranslation('mobile');
@@ -83,6 +94,8 @@ export function CategoryPickerSheet({
           onClose={close}
           onChange={onChange}
           onApplied={onApplied}
+          onHistoryApplied={onHistoryApplied}
+          onHistoryRestored={onHistoryRestored}
         />
       )}
     </Sheet>
@@ -96,6 +109,8 @@ function PickerBody({
   onClose,
   onChange,
   onApplied,
+  onHistoryApplied,
+  onHistoryRestored,
 }: {
   tx: BankTransaction;
   categories: readonly TransactionCategory[];
@@ -103,6 +118,8 @@ function PickerBody({
   onClose: () => void;
   onChange?: (patch: Partial<BankTransaction>) => void;
   onApplied?: (changed: ChangedRow[]) => void;
+  onHistoryApplied?: (changed: ChangedRow[], categoryId: string) => void;
+  onHistoryRestored?: (changed: ChangedRow[]) => void;
 }) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
@@ -150,8 +167,15 @@ function PickerBody({
     const saved = await pick(id, {
       remember: remembering,
       ...options,
-      onApplied,
+      onApplied: onHistoryApplied
+        ? (changed) => {
+            onApplied?.(changed);
+            if (changed.length > 0) onHistoryApplied(changed, id);
+          }
+        : onApplied,
+      // Only `onApplied` takes the payments over from the sheet's toast
       quiet: onApplied !== undefined,
+      onRestored: onHistoryRestored,
     });
     if (!saved) return;
     onChange?.({ categoryId: id });

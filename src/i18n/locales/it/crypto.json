@@ -142,7 +142,6 @@
       "description": "Scegli la scheda di Yahoo Finance di questa moneta. Quotazione e storico vengono ricostruiti da lì.",
       "current": "Attuale: {{symbol}}",
       "none": "Nessuna scheda scelta finora.",
-      "submit": "Usa questa scheda",
       "saved": "Fonte della quotazione salvata"
     }
   },

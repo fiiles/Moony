@@ -152,8 +152,8 @@ The checkable version is **[PRIVACY.md](./PRIVACY.md)**; vulnerabilities go thro
 - **Local-first.** AES-256 encrypted SQLite databases (SQLCipher) in your user profile: one for
   your records, one for the photos and documents you attach. No account, no cloud, no sync, and no
   telemetry: no analytics, no usage statistics, no crash reports.
-- **What leaves your computer.** Ticker symbols, ISINs, crypto IDs, search text, currencies and
-  date ranges go to Yahoo Finance, CoinGecko and Frankfurter for prices and rates; the ECB's daily
+- **What leaves your computer.** Ticker symbols, ISINs, crypto symbols, search text, currencies and
+  date ranges go to Yahoo Finance and Frankfurter for prices and rates; the ECB's daily
   rates are downloaded, and the update check goes to GitHub. Balances, amounts, names and
   documents are not sent (an AI client you connect through MCP is the exception).
 - **Not encrypted.** The JSON export, copies you save, and the temporary copy of a document you
@@ -192,12 +192,11 @@ reads, usually in its provider's cloud ([setup](./docs/mcp.md)).
 
 ## Data sources and attribution
 
-- **Yahoo Finance** supplies stock prices, history, dividends, ticker search and company data, and crypto price history older than a year
+- **Yahoo Finance** supplies stock and crypto prices, history, dividends, ticker and coin search and company data
   through an unofficial, undocumented interface used by a community library
   ([`yahoo_finance_api`](https://crates.io/crates/yahoo_finance_api)). It can change, break or be
   rate-limited without notice, and Moony is not affiliated with Yahoo. A price can always be set
   by hand.
-- **CoinGecko** supplies crypto prices. Price data by [CoinGecko](https://www.coingecko.com).
 - **European Central Bank** (daily euro reference rates; source: ECB, published for information
   purposes only) and **[Frankfurter](https://frankfurter.dev)** (rate history) supply exchange rates.
 

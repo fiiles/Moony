@@ -132,7 +132,6 @@
       "description": "请选择该币种在 Yahoo Finance 上的标的。汇率和历史将据此重新生成。",
       "current": "当前：{{symbol}}",
       "none": "尚未选择标的。",
-      "submit": "使用此标的",
       "saved": "汇率来源已保存"
     }
   },

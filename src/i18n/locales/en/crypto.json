@@ -137,7 +137,6 @@
       "description": "Pick the Yahoo Finance listing of this coin. The rate and the history are rebuilt from it.",
       "current": "Current: {{symbol}}",
       "none": "No listing chosen yet.",
-      "submit": "Use this listing",
       "saved": "Rate source saved"
     }
   },

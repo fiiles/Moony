@@ -137,7 +137,6 @@
       "description": "Velg oppføringen til denne mynten på Yahoo Finance. Kurs og historikk bygges opp igjen fra den.",
       "current": "Nåværende: {{symbol}}",
       "none": "Ingen oppføring valgt ennå.",
-      "submit": "Bruk denne oppføringen",
       "saved": "Kurskilde lagret"
     }
   },

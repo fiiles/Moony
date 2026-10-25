@@ -142,7 +142,6 @@
       "description": "Elige el listado de esta moneda en Yahoo Finance. La cotización y el historial se reconstruyen a partir de él.",
       "current": "Actual: {{symbol}}",
       "none": "Aún no has elegido ningún listado.",
-      "submit": "Usar este listado",
       "saved": "Fuente de cotización guardada"
     }
   },

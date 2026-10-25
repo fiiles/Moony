@@ -137,7 +137,6 @@
       "description": "Välj kryptovalutans notering på Yahoo Finance. Kurs och historik byggs upp på nytt från den.",
       "current": "Nuvarande: {{symbol}}",
       "none": "Ingen notering vald än.",
-      "submit": "Använd den här noteringen",
       "saved": "Kurskälla sparad"
     }
   },

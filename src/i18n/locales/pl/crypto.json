@@ -147,7 +147,6 @@
       "description": "Wybierz notowanie tej monety w Yahoo Finance. Kurs i historia zostaną z niego odbudowane.",
       "current": "Obecne: {{symbol}}",
       "none": "Nie wybrano jeszcze notowania.",
-      "submit": "Użyj tego notowania",
       "saved": "Zapisano źródło kursu"
     }
   },

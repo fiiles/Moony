@@ -142,7 +142,6 @@
       "description": "Vyberte záznam této mince na Yahoo Finance. Kurz i historie se z něj znovu sestaví.",
       "current": "Nyní: {{symbol}}",
       "none": "Záznam zatím není vybrán.",
-      "submit": "Použít tento záznam",
       "saved": "Zdroj kurzu uložen"
     }
   },

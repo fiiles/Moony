@@ -137,7 +137,6 @@
       "description": "Wählen Sie den Eintrag dieser Münze bei Yahoo Finance. Kurs und Verlauf werden daraus neu aufgebaut.",
       "current": "Aktuell: {{symbol}}",
       "none": "Noch kein Eintrag gewählt.",
-      "submit": "Diesen Eintrag verwenden",
       "saved": "Kursquelle gespeichert"
     }
   },

@@ -215,6 +215,8 @@
     "csvEmptyFile": "Soubor je prázdný nebo neobsahuje řádek záhlaví.",
     "csvColumnsNotFound": "Vybrané sloupce nebyly v souboru nalezeny. Zkontrolujte řádek záhlaví a mapování sloupců.",
     "csvDecimalSeparatorInvalid": "Desetinný oddělovač musí být čárka nebo tečka.",
+    "learnedFormatHeaderless": "Tento řádek vypadá jako data, ne jako záhlaví sloupců.",
+    "learnedFormatColumns": "Formát odkazuje na sloupec, který soubor nemá.",
     "amountPositive": "Částka musí být kladná",
     "cashflowPeriodInvalid": "Období nesmí skončit dřív, než začne.",
     "balanceAnchorIncomplete": "Zadejte zůstatek i datum, ke kterému platí",

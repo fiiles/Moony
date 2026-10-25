@@ -534,6 +534,58 @@ pub async fn infer_csv_columns(
     ))
 }
 
+// Learned CSV layouts (mobile spec §8.6 rung 4): the layouts a person confirmed once, kept in
+// `app_config` by `csv_import::learned` and recognised next month by their header signature.
+
+/// The learned layouts, the one used last first.
+#[tauri::command]
+pub async fn list_learned_csv_formats(
+    db: State<'_, Database>,
+) -> Result<Vec<csv_import::LearnedCsvFormat>> {
+    db.with_conn(csv_import::learned::list_formats)
+}
+
+/// The format learned for a file with these header cells (as `parse_csv_file` reports them) and
+/// this delimiter; `None` when its layout was never confirmed.
+#[tauri::command]
+pub async fn find_learned_csv_format(
+    db: State<'_, Database>,
+    headers: Vec<String>,
+    delimiter: String,
+) -> Result<Option<csv_import::LearnedCsvFormat>> {
+    db.with_conn(|conn| csv_import::learned::find_format(conn, &headers, &delimiter))
+}
+
+/// Remember a confirmed layout; one layout has one format, saving it again replaces it.
+#[tauri::command]
+pub async fn save_learned_csv_format(
+    db: State<'_, Database>,
+    format: csv_import::InsertLearnedCsvFormat,
+) -> Result<csv_import::LearnedCsvFormat> {
+    format.validate()?;
+    db.with_conn(|conn| csv_import::learned::save_format(conn, &format))
+}
+
+#[tauri::command]
+pub async fn rename_learned_csv_format(
+    db: State<'_, Database>,
+    id: String,
+    name: String,
+) -> Result<csv_import::LearnedCsvFormat> {
+    db.with_conn(|conn| csv_import::learned::rename_format(conn, &id, &name))
+}
+
+#[tauri::command]
+pub async fn delete_learned_csv_format(db: State<'_, Database>, id: String) -> Result<()> {
+    db.with_conn(|conn| csv_import::learned::delete_format(conn, &id))
+}
+
+/// An import succeeded with this format: it is the most recently used one now.
+#[tauri::command]
+pub async fn mark_learned_csv_format_used(db: State<'_, Database>, id: String) -> Result<()> {
+    db.with_conn(|conn| csv_import::learned::mark_used(conn, &id))
+}
+
 /// Dry-run an import: parsed rows with their status (ok / error / duplicate /
 /// skipped), nothing is written.
 #[tauri::command]

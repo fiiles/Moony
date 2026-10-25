@@ -8,6 +8,8 @@
 //! - [`inspect`] — what `parse_csv_file` reports about a file;
 //! - [`infer`] — the roles of the columns of a file no preset describes, from their content
 //!   (the phone's guided recognition, `infer_csv_columns`);
+//! - [`learned`] — the layouts a person confirmed once, remembered by their header signature
+//!   (the phone's rung 4, `app_config`);
 //! - this module — duplicate classification, [`preview_rows`] (no writes) and
 //!   [`import_rows`] (one SQL transaction through the shared write path,
 //!   ADR 0007). Both take [`ParsedImport`] rows, so any format that parses to
@@ -21,6 +23,7 @@ pub mod columns;
 pub mod decode;
 pub mod infer;
 pub mod inspect;
+pub mod learned;
 pub mod rows;
 pub mod types;
 
@@ -45,8 +48,8 @@ pub use rows::{parse_rows, ParsedImport, ParsedRow, RowState};
 pub use types::{
     CsvCategoryOverride, CsvDateRange, CsvImportConfig, CsvImportPreview, CsvImportResult,
     CsvPreviewResult, CsvPreviewRow, CsvRowMessage, CsvRowStatus, DeclaredBalance, ImportOptions,
-    ImportOverlap, ImportOverlapBatch, InferredColumns, InferredField, SignCheck,
-    SourceCategoryMapping,
+    ImportOverlap, ImportOverlapBatch, InferredColumns, InferredField, InsertLearnedCsvFormat,
+    LearnedCsvFormat, LearnedCsvMapping, SignCheck, SourceCategoryMapping,
 };
 
 /// Rows listed by a preview; counts always cover the whole file.

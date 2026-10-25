@@ -215,6 +215,8 @@
     "csvEmptyFile": "文件为空，或没有表头行。",
     "csvColumnsNotFound": "在文件中找不到所选的列。请检查表头行和列映射。",
     "csvDecimalSeparatorInvalid": "小数分隔符必须是逗号或句点。",
+    "learnedFormatHeaderless": "这一行看起来是数据，而不是列标题。",
+    "learnedFormatColumns": "该格式引用了文件中不存在的列。",
     "amountPositive": "金额必须为正数",
     "cashflowPeriodInvalid": "结束时间不能早于开始时间。",
     "balanceAnchorIncomplete": "请同时输入未偿余额及其日期",

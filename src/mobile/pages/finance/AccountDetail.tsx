@@ -9,6 +9,7 @@ import type {
   InsertBankAccount,
   SavingsAccountZone,
 } from '@shared/schema';
+import { recordCurrency } from '@shared/currencies';
 import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
 import { useCategories } from '@/hooks/use-categories';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
@@ -126,7 +127,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   const back = useBack(routes.finance);
   const search = useSearch();
   const detail = useAccountDetail(id);
-  const { records, zones, history, historyRows, currency, historyLoaded } = detail;
+  const { records, zones, history, historyRows, historyLoaded } = detail;
   const { categories } = useCategories();
 
   const [state, setState] = useState<LedgerState>(() => ({
@@ -164,6 +165,8 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   // after the delete finds no account, and the confirm sheet lives under it
   const keptAccount = useRetained(detail.account ?? null);
   const account = exit.deleting ? keptAccount : detail.account;
+  // The kept account's own currency: once it is gone the detail falls back to the default one
+  const currency = account ? recordCurrency(account.currency) : detail.currency;
   // The row of the transaction sheet and the row of the category picker (the same one while the
   // picker is open over the sheet). They hold the row as the sheets saw it last: a write the
   // sheets make is reported through `patchTx`, since the ledger may no longer list the row once
@@ -347,6 +350,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
             open={sheet === 'edit'}
             onOpenChange={closeSheet}
             account={account}
+            formatMoney={moneyText}
             initialZones={zones.map((zone) => ({
               id: zone.id,
               fromAmount: zone.fromAmount,

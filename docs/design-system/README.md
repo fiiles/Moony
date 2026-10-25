@@ -617,7 +617,8 @@ the transaction sheet compose them with `signedAmountText`), and `useMoneyText` 
 hidden, so "6,78 mil. Kč" masks to "•••• Kč" and never leaks "mil.". Inputs are never masked; counts,
 percents and dates stay visible. A desktop dialog the phone opens as it is and that lists amounts takes
 the same formatter: Historie přecenění is `MaskedValuationHistoryDialog` (the desktop's
-`ValuationHistoryDialog` with `formatMoney={useMoneyText()}`, the delete confirmation included). `src/mobile/pages/Overview.tsx` is the reference, and the check for a
+`ValuationHistoryDialog` with `formatMoney={useMoneyText()}`, the delete confirmation included), and
+the account form's stored balance (`BankAccountFormDialog` with `formatMoney`). `src/mobile/pages/Overview.tsx` is the reference, and the check for a
 new screen is that `grep -rn "fmt.money(" src/mobile --include='*.ts' --include='*.tsx'` lists only
 `src/mobile/hooks/use-money-text.ts` and, for the watched ticker's public prices, `src/mobile/lib/watch-detail.ts`.
 **The one exception** is the company card's market cap ("O společnosti", `CompanyCard.tsx`): it is public

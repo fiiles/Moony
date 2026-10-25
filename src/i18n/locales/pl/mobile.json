@@ -726,6 +726,13 @@
       "hideOnLaunchHint": "Każde uruchomienie zaczyna się z ukrytymi kwotami; oko w Przeglądzie pokazuje je ponownie.",
       "hideOnLaunchShort": "kwoty ukryte po uruchomieniu"
     },
+    "password": {
+      "title": "Zmień hasło",
+      "rowSub": "Otrzymasz nowy klucz odzyskiwania",
+      "confirmHint": "Hasło zmieni się dopiero po stuknięciu Zmień hasło. Do tego czasu obowiązują obecne hasło i klucz.",
+      "backupsKeepOld": "Kopie zapasowe zrobione przed zmianą nadal otwierają się starym hasłem.",
+      "biometricsStay": "Odblokowanie {{methodKey}} pozostanie włączone."
+    },
     "profile": {
       "lead": "Twoje imię pojawia się w powitaniu w Przeglądzie.",
       "currencyReadOnly": "Walutę główną zmienisz w Moony na komputerze."

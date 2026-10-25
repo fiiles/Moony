@@ -654,6 +654,13 @@
       "hideOnLaunchHint": "Hver oppstart begynner med skjulte beløp; øyet i Oversikt viser dem igjen.",
       "hideOnLaunchShort": "beløp skjult ved oppstart"
     },
+    "password": {
+      "title": "Endre passord",
+      "rowSub": "Du får en ny gjenopprettingsnøkkel",
+      "confirmHint": "Passordet endres først når du trykker på Endre passord. Til da gjelder det nåværende passordet og nøkkelen.",
+      "backupsKeepOld": "Sikkerhetskopier tatt før endringen åpnes fortsatt med det gamle passordet.",
+      "biometricsStay": "Opplåsing med {{methodKey}} forblir på."
+    },
     "profile": {
       "lead": "Navnet ditt vises i hilsenen i Oversikt.",
       "currencyReadOnly": "Hovedvaluta endrer du i Moony på datamaskinen."

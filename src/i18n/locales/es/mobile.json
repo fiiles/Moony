@@ -690,6 +690,13 @@
       "hideOnLaunchHint": "Cada inicio empieza con los importes ocultos; el ojo de Resumen los vuelve a mostrar.",
       "hideOnLaunchShort": "importes ocultos al abrir"
     },
+    "password": {
+      "title": "Cambiar contraseña",
+      "rowSub": "Recibirás una clave de recuperación nueva",
+      "confirmHint": "La contraseña cambia solo cuando tocas Cambiar contraseña. Hasta entonces siguen valiendo la contraseña y la clave actuales.",
+      "backupsKeepOld": "Las copias de seguridad hechas antes del cambio se siguen abriendo con la contraseña anterior.",
+      "biometricsStay": "El desbloqueo con {{methodKey}} sigue activado."
+    },
     "profile": {
       "lead": "Tu nombre aparece en el saludo del Resumen.",
       "currencyReadOnly": "La moneda principal se cambia en Moony en el ordenador."

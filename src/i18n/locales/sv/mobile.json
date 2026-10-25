@@ -654,6 +654,13 @@
       "hideOnLaunchHint": "Varje start börjar med dolda belopp; ögat i Översikt visar dem igen.",
       "hideOnLaunchShort": "belopp dolda vid start"
     },
+    "password": {
+      "title": "Ändra lösenord",
+      "rowSub": "Du får en ny återställningsnyckel",
+      "confirmHint": "Lösenordet ändras först när du trycker på Ändra lösenord. Till dess gäller ditt nuvarande lösenord och din nyckel.",
+      "backupsKeepOld": "Säkerhetskopior gjorda före ändringen öppnas fortfarande med det gamla lösenordet.",
+      "biometricsStay": "Upplåsning med {{methodKey}} förblir på."
+    },
     "profile": {
       "lead": "Ditt namn visas i hälsningen i Översikt.",
       "currencyReadOnly": "Huvudvalutan ändrar du i Moony på datorn."

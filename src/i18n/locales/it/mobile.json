@@ -690,6 +690,13 @@
       "hideOnLaunchHint": "Ogni avvio parte con gli importi nascosti; l'occhio in Panoramica li mostra di nuovo.",
       "hideOnLaunchShort": "importi nascosti all'avvio"
     },
+    "password": {
+      "title": "Cambia password",
+      "rowSub": "Riceverai una nuova chiave di recupero",
+      "confirmHint": "La password cambia solo quando tocchi Cambia password. Fino ad allora valgono la password e la chiave attuali.",
+      "backupsKeepOld": "I backup fatti prima della modifica si aprono ancora con la vecchia password.",
+      "biometricsStay": "Lo sblocco con {{methodKey}} resta attivo."
+    },
     "profile": {
       "lead": "Il tuo nome compare nel saluto di Panoramica.",
       "currencyReadOnly": "La valuta principale si cambia in Moony sul computer."

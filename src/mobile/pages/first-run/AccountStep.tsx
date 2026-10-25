@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { cn } from '@/lib/utils';
 import type { FirstRunFlow, SetupFormValues } from '@/mobile/hooks/use-first-run';
+import { passwordStrength } from '@/mobile/lib/password-strength';
 import { StepHead } from './StepHead';
 import { field48, fieldMessage, primaryButton, textLink } from './styles';
 
@@ -26,18 +27,6 @@ const EMPTY: SetupFormValues = {
   password: '',
   confirmPassword: '',
 };
-
-/**
- * Simple length and variety strength hint: guidance, not a gate. 'weak' means "too short" (its
- * copy says so), so it applies only below the minimum length. As the desktop wizard's.
- */
-function passwordStrength(password: string): 'weak' | 'fair' | 'strong' | null {
-  if (!password) return null;
-  const variety = [/[a-z]/, /[A-Z]/, /\d/, /[^\w\s]/].filter((re) => re.test(password)).length;
-  if (password.length < MIN_PASSWORD_LENGTH) return 'weak';
-  if (password.length >= 14 && variety >= 3) return 'strong';
-  return 'fair';
-}
 
 /**
  * Účet: name, surname, an optional e-mail (only for the person's own orientation) and the password

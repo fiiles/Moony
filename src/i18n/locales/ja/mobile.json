@@ -618,6 +618,13 @@
       "hideOnLaunchHint": "起動するたびに金額が非表示の状態で始まります。概要の目のアイコンで再び表示できます。",
       "hideOnLaunchShort": "起動時に金額を非表示"
     },
+    "password": {
+      "title": "パスワードを変更",
+      "rowSub": "新しい復旧キーが発行されます",
+      "confirmHint": "「パスワードを変更」をタップするまでパスワードは変わりません。それまでは現在のパスワードとキーが有効です。",
+      "backupsKeepOld": "変更前に作成したバックアップは、引き続き古いパスワードで開きます。",
+      "biometricsStay": "{{methodKey}}によるロック解除はオンのままです。"
+    },
     "profile": {
       "lead": "名前は概要のあいさつに表示されます。",
       "currencyReadOnly": "基準通貨はパソコンのMoonyで変更できます。"

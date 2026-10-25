@@ -654,6 +654,13 @@
       "hideOnLaunchHint": "Jeder Start beginnt mit ausgeblendeten Beträgen; das Auge in der Übersicht blendet sie wieder ein.",
       "hideOnLaunchShort": "Beträge beim Start ausgeblendet"
     },
+    "password": {
+      "title": "Passwort ändern",
+      "rowSub": "Sie erhalten einen neuen Wiederherstellungsschlüssel",
+      "confirmHint": "Das Passwort ändert sich erst, wenn Sie auf „Passwort ändern“ tippen. Bis dahin gelten Ihr bisheriges Passwort und Ihr Schlüssel.",
+      "backupsKeepOld": "Sicherungen von vor der Änderung öffnen sich weiterhin mit dem alten Passwort.",
+      "biometricsStay": "Entsperren mit {{methodKey}} bleibt eingeschaltet."
+    },
     "profile": {
       "lead": "Ihr Name erscheint in der Begrüßung in der Übersicht.",
       "currencyReadOnly": "Die Hauptwährung ändern Sie in Moony auf dem Computer."

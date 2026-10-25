@@ -690,6 +690,13 @@
       "hideOnLaunchHint": "Každé spuštění začne se skrytými částkami; oko na Přehledu je zase ukáže.",
       "hideOnLaunchShort": "částky skryté po spuštění"
     },
+    "password": {
+      "title": "Změnit heslo",
+      "rowSub": "Dostanete nový obnovovací klíč",
+      "confirmHint": "Heslo se změní až po klepnutí na Změnit heslo. Do té doby platí současné heslo i klíč.",
+      "backupsKeepOld": "Zálohy pořízené před změnou se dál otevírají starým heslem.",
+      "biometricsStay": "Odemykání {{methodKey}} zůstane zapnuté."
+    },
     "profile": {
       "lead": "Jméno se zobrazuje v pozdravu na Přehledu.",
       "currencyReadOnly": "Hlavní měnu změníte v Moony na počítači."

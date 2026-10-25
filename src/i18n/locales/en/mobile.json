@@ -654,6 +654,13 @@
       "hideOnLaunchHint": "Every launch starts with amounts hidden; the eye on Overview shows them again.",
       "hideOnLaunchShort": "amounts hidden on launch"
     },
+    "password": {
+      "title": "Change password",
+      "rowSub": "You get a new recovery key",
+      "confirmHint": "The password changes only when you tap Change password. Until then your current password and key still work.",
+      "backupsKeepOld": "Backups made before the change still open with the old password.",
+      "biometricsStay": "Unlocking with {{methodKey}} stays on."
+    },
     "profile": {
       "lead": "Your name appears in the greeting on Overview.",
       "currencyReadOnly": "Change the main currency in Moony on your computer."

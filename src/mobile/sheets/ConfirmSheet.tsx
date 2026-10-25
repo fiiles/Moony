@@ -13,6 +13,8 @@ interface ConfirmSheetProps {
   confirmLabel: string;
   onConfirm: () => void;
   isPending?: boolean;
+  /** The solid button waits (without a spinner) for something else to settle first. */
+  confirmDisabled?: boolean;
 }
 
 /**
@@ -28,6 +30,7 @@ export function ConfirmSheet({
   confirmLabel,
   onConfirm,
   isPending = false,
+  confirmDisabled = false,
 }: ConfirmSheetProps) {
   const { t: tc } = useTranslation('common');
   return (
@@ -49,6 +52,7 @@ export function ConfirmSheet({
             variant="destructive"
             className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
             loading={isPending}
+            disabled={confirmDisabled}
             onClick={onConfirm}
           >
             {confirmLabel}

@@ -133,18 +133,20 @@ export function DocumentViewerSheet({
     if (!open) scrollTarget.current = null;
   }, [open]);
 
-  const canZoom = view !== 'external' && status !== 'failed';
+  // A document the phone cannot show (`external`) or one that failed is a line of text: it gets a
+  // normal-height sheet and no zoom, not a tall one that is nearly empty
+  const showsDocument = view !== 'external' && status !== 'failed';
   return (
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
       full
-      fill
+      fill={showsDocument}
       title={shown?.name ?? ''}
       description={sub}
       footer={
         <>
-          {canZoom && (
+          {showsDocument && (
             <Button
               type="button"
               variant="secondary"

@@ -54,6 +54,8 @@ export function usePropertyMutations(id: string | undefined) {
     queryClient.invalidateQueries({ queryKey: ['available-loans'] });
     queryClient.invalidateQueries({ queryKey: ['loans'] });
     queryClient.invalidateQueries({ queryKey: ['insurance'] });
+    // The property a policy's detail names, for every policy
+    queryClient.invalidateQueries({ queryKey: ['insurance-real-estate'] });
     queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
   };
   const invalidateLinks = () => {

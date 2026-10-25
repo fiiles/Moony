@@ -121,10 +121,15 @@ function LoanDetailPage({ id }: { id: string | undefined }) {
           caption={[
             view.row.currency,
             fmt.percent((Number(view.row.loan.interestRate) || 0) / 100, 2),
-            // As the Finance list words it: the fixation still ahead, else a fixed rate
+            // As the Finance list and the desktop's loans table word it: the fixation still ahead,
+            // else the month an ended one ran out, else a fixed rate
             view.row.fixationEnd !== null
               ? tl('table.fixedUntil', { month: text.monthYear(view.row.fixationEnd) })
-              : tl('table.fixedRate'),
+              : view.row.loan.interestRateValidityDate !== null
+                ? tl('table.fixationEnded', {
+                    month: text.monthYear(view.row.loan.interestRateValidityDate),
+                  })
+                : tl('table.fixedRate'),
           ].join(' · ')}
           onExtraPayment={() => setExtraOpen(true)}
           onRecordRate={() => setEventDialog({ kind: 'rate_change' })}

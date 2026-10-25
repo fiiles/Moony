@@ -12,6 +12,7 @@ import { AmountField } from '@/mobile/components/AmountField';
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
 import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
+import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { parseAmountInput } from '@/mobile/lib/amount-input';
@@ -19,6 +20,14 @@ import { extraPaymentText } from '@/mobile/lib/loan-detail';
 
 /** Whole amounts: the result shows no decimals. */
 const WHOLE = { decimals: 0 } as const;
+
+/**
+ * The amount an opening starts from: a round 5 % of the balance, or nothing while the amounts are
+ * hidden — the suggestion is a fraction of the balance, which would show what the eye hides.
+ */
+function startAmount(balance: number, hidden: boolean): string {
+  return hidden ? '' : String(suggestedExtraPayment(balance));
+}
 
 interface ExtraPaymentSheetProps {
   open: boolean;
@@ -38,7 +47,9 @@ interface ExtraPaymentSheetProps {
  * chosen. A loan without a payment says so instead of a result. Every amount goes through the eye;
  * the amount typed is an input and is never masked.
  *
- * Every opening starts over from the suggested amount and "Zkrátit dobu".
+ * Every opening starts over from the suggested amount and "Zkrátit dobu". With the amounts hidden the
+ * field starts empty instead: the suggestion is a fraction of the balance (as Přecenit's field starts
+ * empty rather than with the price).
  */
 export function ExtraPaymentSheet({
   open,
@@ -52,17 +63,18 @@ export function ExtraPaymentSheet({
   const { t: tc } = useTranslation('common');
   const moneyText = useMoneyText();
   const text = useLoanText();
+  const { hidden } = useHideAmounts();
   const balance = row.trajectory.balanceToday;
   const planPayment = row.plan.monthlyPayment;
   const money = (value: number) => moneyText(value, row.currency, WHOLE);
 
-  const [amountText, setAmountText] = useState(() => String(suggestedExtraPayment(balance)));
+  const [amountText, setAmountText] = useState(() => startAmount(balance, hidden));
   const [mode, setMode] = useState<ExtraPaymentMode>('term');
   const [openedFor, setOpenedFor] = useState(open);
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setAmountText(String(suggestedExtraPayment(balance)));
+      setAmountText(startAmount(balance, hidden));
       setMode('term');
     }
   }

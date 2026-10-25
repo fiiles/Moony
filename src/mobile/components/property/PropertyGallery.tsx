@@ -141,6 +141,9 @@ export function PropertyGallery({ propertyId }: PropertyGalleryProps) {
         open={viewOpen}
         onOpenChange={setViewOpen}
         photo={viewing}
+        // A photo committed between the delete's re-read of the batches and `deletePhotoBatch`
+        // would go with the batch: nothing is deleted while a photo is on its way
+        deleteDisabled={upload.isPending}
         onDelete={() => {
           setConfirmOpen(true);
           // The sentence in the confirm sheet follows the batches as they are now
@@ -158,8 +161,9 @@ export function PropertyGallery({ propertyId }: PropertyGalleryProps) {
         }
         confirmLabel={t('property.deletePhoto')}
         isPending={removePhoto.isPending}
+        confirmDisabled={upload.isPending}
         onConfirm={() => {
-          if (!viewing) return;
+          if (!viewing || upload.isPending) return;
           removePhoto.mutate(viewing.id, {
             onSuccess: () => {
               setConfirmOpen(false);

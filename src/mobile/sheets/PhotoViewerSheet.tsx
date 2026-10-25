@@ -16,6 +16,8 @@ interface PhotoViewerSheetProps {
   photo: GalleryPhoto | null;
   /** Smazat fotku: the gallery asks in its confirm sheet, over this one, and deletes. */
   onDelete: () => void;
+  /** A photo is still being uploaded: Smazat fotku waits (the batch it would delete may be growing). */
+  deleteDisabled?: boolean;
 }
 
 type Status = 'loading' | 'ready' | 'failed';
@@ -31,7 +33,13 @@ type Status = 'loading' | 'ready' | 'failed';
  * fotku does not delete: it asks the gallery to confirm, which deletes the photo — and its batch
  * when it was the batch's last — and closes both sheets.
  */
-export function PhotoViewerSheet({ open, onOpenChange, photo, onDelete }: PhotoViewerSheetProps) {
+export function PhotoViewerSheet({
+  open,
+  onOpenChange,
+  photo,
+  onDelete,
+  deleteDisabled = false,
+}: PhotoViewerSheetProps) {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
@@ -59,7 +67,12 @@ export function PhotoViewerSheet({ open, onOpenChange, photo, onDelete }: PhotoV
       description={shown?.description || undefined}
       footer={
         <>
-          <Button variant="ghost" className={cn(FOOTER_GHOST, 'text-loss')} onClick={onDelete}>
+          <Button
+            variant="ghost"
+            className={cn(FOOTER_GHOST, 'text-loss')}
+            disabled={deleteDisabled}
+            onClick={onDelete}
+          >
             {t('property.deletePhoto')}
           </Button>
           <Button className={FOOTER_PRIMARY} onClick={() => onOpenChange(false)}>

@@ -27,7 +27,7 @@ interface PolicyMenuProps {
  * The `···` of a policy (spec §8.8 "Pojistka"): Ukončit (or Obnovit for an ended policy) and
  * Smazat. The menu only asks; the dialog, the confirm sheet and the mutations are the screen's, as
  * the loan's delete is: the menu goes away as soon as the policy drops out of the list, taking its
- * callbacks with it. Upravit is its own button in the nav bar.
+ * callbacks with it. Upravit is not here: it is a full-width button under the facts card.
  */
 export function PolicyMenu({ ended, onEnd, onReactivate, onDelete }: PolicyMenuProps) {
   const { t } = useTranslation('insurance');

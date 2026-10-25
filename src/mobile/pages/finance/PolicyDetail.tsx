@@ -37,10 +37,11 @@ export default function PolicyDetail() {
 }
 
 /**
- * The policy detail (spec §8.8 "Pojistka", prototype frame 14): the name in the nav bar with
- * Upravit and `···` (Ukončit or Obnovit, Smazat), the "Kooperativa · Pojištění majetku · aktivní"
- * line, then facts first — the contract card, the limits, the documents, the notes — and the
- * cumulative-premiums line last. The numbers are the desktop detail's (`useInsurance`, the linked
+ * The policy detail (spec §8.8 "Pojistka", prototype frame 14): the name in the nav bar with `···`
+ * (Ukončit or Obnovit, Smazat), the "Kooperativa · Pojištění majetku · aktivní" line, then facts
+ * first — the contract card with the full-width Upravit button under it, the limits, the
+ * documents, the notes — and the cumulative-premiums line last. The numbers are the desktop
+ * detail's (`useInsurance`, the linked
  * property's query) in the policy's own currency, every amount through the eye; the policy form
  * and the end dialog are the desktop's.
  *
@@ -58,10 +59,16 @@ function PolicyDetailPage({ id }: { id: string | undefined }) {
   // the total of the coverage wait for them, as the desktop's do
   const { fxReady } = useCurrency();
   const { setStatus, remove: removePolicy } = useInsuranceMutations();
+  // The property a policy is linked to changes from places this page does not see (Připojit
+  // pojistku and Odpojit on the property detail, the desktop dialogs, a deleted property), so it is
+  // read fresh on every open, whatever the global `staleTime` says (the pattern of `FRESH_ON_OPEN`
+  // in `use-property.ts`)
   const { data: property } = useQuery<RealEstate | null>({
     queryKey: ['insurance-real-estate', id],
     queryFn: () => insuranceApi.getRealEstate(id!),
     enabled: !!id,
+    staleTime: 0,
+    refetchOnMount: 'always',
   });
 
   const [editOpen, setEditOpen] = useState(false);

@@ -77,11 +77,19 @@ function AddForm({
   const [fileType, setFileType] = useState(() => defaultType(fileTypes));
   const [error, setError] = useState<string | null>(null);
 
-  // A refusal that comes after the sheet was dismissed has no sheet to stay in: it is a toast
+  // Whether this form is still the sheet the person sees: open, and not replaced by the sheet of a
+  // newer pick (that one is a new form; this one has unmounted). A save that ends after the sheet was
+  // dismissed or replaced has no sheet to close, and a refusal has none to stay in: it is a toast.
   const openRef = useRef(open);
   useEffect(() => {
     openRef.current = open;
   });
+  useEffect(
+    () => () => {
+      openRef.current = false;
+    },
+    []
+  );
 
   const trimmed = name.trim();
 
@@ -94,7 +102,8 @@ function AddForm({
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: config.listKey(ownerId) });
       toast(td('documents.added'));
-      onOpenChange(false);
+      // Only the sheet that saved is closed: an earlier save finishing must not close a newer one
+      if (openRef.current) onOpenChange(false);
     },
     onError: (failure: Error) => {
       const message = translateApiError(failure, tc);
@@ -122,7 +131,13 @@ function AddForm({
       description={fileSizeText(file.size, fmt)}
       footer={
         <>
-          <Button variant="ghost" className={FOOTER_GHOST} onClick={() => onOpenChange(false)}>
+          {/* Cancel never stopped the upload: while it runs there is nothing to cancel */}
+          <Button
+            variant="ghost"
+            className={FOOTER_GHOST}
+            disabled={save.isPending}
+            onClick={() => onOpenChange(false)}
+          >
             {tc('buttons.cancel')}
           </Button>
           <Button

@@ -213,7 +213,15 @@ export function CostSheet({ open, onOpenChange, property, cost }: CostSheetProps
             autoComplete="off"
             enterKeyHint="next"
             onKeyDown={(event) => {
-              if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+              // The Enter that ends an IME composition (ja, zh) is the IME's: WebKit reports it with
+              // `isComposing` already false and the legacy keyCode 229
+              if (
+                event.key !== 'Enter' ||
+                event.nativeEvent.isComposing ||
+                event.nativeEvent.keyCode === 229
+              ) {
+                return;
+              }
               // Return goes on to the amount; the form is submitted from its last field
               event.preventDefault();
               amountField.current?.focus();

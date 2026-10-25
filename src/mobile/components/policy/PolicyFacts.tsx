@@ -46,7 +46,10 @@ function NumberRow({ label, number }: { label: string; number: string }) {
       <span className="max-w-[40%] flex-none hyphens-auto break-words text-m-sub text-ink-3">
         {label}
       </span>
-      <div className="min-w-0 flex-1 break-all text-right text-m-body text-ink num">{number}</div>
+      {/* Wraps at the number's spaces, never inside a group of digits that fits (`break-all` cut
+          "8 540 221 937" as "…93 / 7"); only a number with no space that is wider than the cell
+          still breaks, where it must */}
+      <div className="min-w-0 flex-1 break-words text-right text-m-body text-ink num">{number}</div>
       {/* 44 pt: it reaches past the row's padding so the icon stays at the value's right edge */}
       <button
         type="button"

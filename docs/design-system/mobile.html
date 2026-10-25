@@ -308,7 +308,7 @@
 
   <section class="part">
     <h2>Detail pojistky: fakta nahoře, graf dole</h2>
-    <p>Pojistka otevřená z Finance na 360, 390 a 430 (spec §8.8, prototyp 14): zpět s názvem záložky, název pojistky jako titulek, vpravo jen <code>···</code>; podřádek <code>.m-nav__sub</code> (pojišťovna · typ · stav), kde se dlouhý název pojišťovny zkrátí výpustkou jako jediný, takže stav vždy zůstane vidět (<code>.m-nav__sub--split</code>). Fakta jsou jedna karta <code>.m-kvcard</code> z řádků <code>.m-kv</code> — číslo smlouvy s 44 pt tlačítkem kopírování (<code>.m-kv__copy</code>, číslo se nemaskuje), pojišťovna (dlouhý název se zalomí na druhý řádek, <code>.m-kv__v--wrap</code>), typ, pojistné s frekvencí, jednorázová platba (vlastní řádek, vlastní měna), příští platba se vzdáleností, platnost s výročím v podřádku, „Kündigung bis“ (poslední den výpovědi) a pojištěná nemovitost jako řádek s šipkou. Pod kartou je sekundární tlačítko přes celou šířku Upravit (<code>.m-btn--secondary .m-btn--block</code>). Pak limity krytí jako řádky bez čipu (<code>.m-row--noicon</code>) s celkem v hlavičce, dokumenty, poznámky (<code>.m-prose</code> na <code>.m-card</code>, zalomení řádků zůstává) a jako poslední zaplacené pojistné (<code>.m-premium</code>): štítek, součet a schodová čára, plná do dneška a dál přerušovaná jako plán dalších dvanácti plateb.</p>
+    <p>Pojistka otevřená z Finance na 360, 390 a 430 (spec §8.8, prototyp 14): zpět s názvem záložky, název pojistky jako titulek, vpravo jen <code>···</code>; podřádek <code>.m-nav__sub</code> (pojišťovna · typ · stav), kde se dlouhý název pojišťovny zkrátí výpustkou jako jediný, takže stav vždy zůstane vidět (<code>.m-nav__sub--split</code>). Fakta jsou jedna karta <code>.m-kvcard</code> z řádků <code>.m-kv</code> — číslo smlouvy s 44 pt tlačítkem kopírování (<code>.m-kv__copy</code>, číslo se nemaskuje, zalamuje se jen v mezerách, <code>.m-kv__v--id</code>), pojišťovna (dlouhý název se zalomí na druhý řádek, <code>.m-kv__v--wrap</code>), typ, pojistné s frekvencí, jednorázová platba (vlastní řádek, vlastní měna), příští platba se vzdáleností, platnost s výročím v podřádku, „Kündigung bis“ (poslední den výpovědi) a pojištěná nemovitost jako řádek s šipkou. Pod kartou je sekundární tlačítko přes celou šířku Upravit (<code>.m-btn--secondary .m-btn--block</code>). Pak limity krytí jako řádky bez čipu (<code>.m-row--noicon</code>) s celkem v hlavičce, dokumenty, poznámky (<code>.m-prose</code> na <code>.m-card</code>, zalomení řádků zůstává) a jako poslední zaplacené pojistné (<code>.m-premium</code>): štítek, součet a schodová čára, plná do dneška a dál přerušovaná jako plán dalších dvanácti plateb.</p>
     <div class="phones" id="policy"></div>
   </section>
 
@@ -326,9 +326,10 @@
     <p>Mezi Financemi a Poznámkami (spec §8.8; v aplikaci <code>PropertyCosts</code>, <code>PropertyGallery</code> a <code>DocumentsSection</code>) na 360, 390 a 430. <strong>Kosten</strong> mají v hlavě jediné číslo — roční součet pravidelných nákladů v hlavní měně, <code>.m-sec__n</code>, vynechané bez nich — a dvě skupiny s menší hlavičkou (<code>.m-sec--group</code>; první nese akci <strong>Kosten hinzufügen</strong>): pravidelné náklady (čip se smyčkou, název, „monatlich“, platba ve vlastní měně a v podřádku platby za rok) a historie jednorázových (čip s účtenkou, název, den a popis, částka ve vlastní měně), nejnovější první. Řádek s hodnotou nemá šipku; klepnutí upraví jednorázový náklad, dlouhé stisknutí otevře nabídku (Upravit · Smazat, u pravidelného jen Smazat) a Smazat se ptá v potvrzovacím sheetu. <strong>Galerie</strong> je mřížka tří čtvercových náhledů (<code>.m-gal</code>, <code>__cell</code>), nejnovější skupina první, s počtem fotek v hlavě; pod ní <code>.m-capture</code> Foto aufnehmen · Aus Fotos wählen. <strong>Dokumente</strong> jsou sdílená sekce z předchozí části. Druhý rámeček ukazuje prázdné řádky a tlačítka při nahrávání (<code>disabled</code>, „Hochladen 2 / 5“).</p>
     <div class="phones" id="property-costs"></div>
     <div class="phones" id="property-costs-empty" style="margin-top: 26px"></div>
-    <p style="margin-top: 26px">Sheet <strong>Kosten hinzufügen</strong> nad nemovitostí: segment Laufend · Einmalig, název, částka v měně nemovitosti (náklad v jiné měně se zadává v počítači) a u pravidelného nákladu segment intervalu — u jednorázového místo něj datum (nejpozději dnes, <code>.m-field__i--date</code>) a nepovinný popis. Druhý rámeček je úprava jednorázového nákladu: bez segmentu druhu (uložený náklad si druh drží), s nápovědou „Derzeit …“ pod částkou, která při skrytých částkách říká starou hodnotu zakrytou — pole pak zůstane prázdné se zakrytou částkou jako zástupným textem a prázdné pole uloží původní částku —, a s chybou data (nový den po dnešku se odmítne; náklad, který počítač datoval dopředu, si svůj den ponechá, ale dál ho posunout nejde). Pod tím <strong>prohlížeč fotky</strong>: celá výška (<code>.m-sheet--full .m-sheet--fill</code>), den skupiny jako titulek a její popis pod ním, jedna fotka celá v boxu <code>.m-photoview</code> (jen posun, bez přiblížení; bez výběru, bez systémové nabídky Kopírovat / Sdílet / Uložit) a patička Foto löschen · Schließen.</p>
+    <p style="margin-top: 26px">Sheet <strong>Kosten hinzufügen</strong> nad nemovitostí: segment Laufend · Einmalig, název, částka v měně nemovitosti (náklad v jiné měně se zadává v počítači) a u pravidelného nákladu segment intervalu — u jednorázového místo něj datum (nejpozději dnes, <code>.m-field__i--date</code>) a nepovinný popis. Druhý rámeček je úprava jednorázového nákladu: bez segmentu druhu (uložený náklad si druh drží), s nápovědou „Derzeit …“ pod částkou a s chybou data — den smí být nejpozději dnes, jen náklad, který počítač datoval dopředu (zde 2. 11.), si svůj den ponechá a dál ho posunout nejde (5. 11. se odmítne a hlavní tlačítko čeká). Třetí rámeček je totéž při skrytých částkách: pole částky zůstane prázdné a zakrytou částku („•••• Kč“) má jako zástupný text i v nápovědě „Derzeit …“; dokud se do pole nic nenapíše, uloží se původní částka, takže jde změnit jen název, den nebo popis, a den nákladu (2. 11.) zůstává platný. Pod tím <strong>prohlížeč fotky</strong>: celá výška (<code>.m-sheet--full .m-sheet--fill</code>), den skupiny jako titulek a její popis pod ním, jedna fotka celá v boxu <code>.m-photoview</code> (jen posun, bez přiblížení; bez výběru, bez systémové nabídky Kopírovat / Sdílet / Uložit) a patička Foto löschen · Schließen.</p>
     <div class="phones" id="cost-add" style="margin-top: 26px"></div>
     <div class="phones" id="cost-edit" style="margin-top: 26px"></div>
+    <div class="phones" id="cost-edit-hidden" style="margin-top: 26px"></div>
     <div class="phones" id="photo-view" style="margin-top: 26px"></div>
   </section>
 
@@ -698,7 +699,7 @@
     <main class="m-screen__body">
       <p class="m-nav__sub m-nav__sub--split"><span>Kooperativa pojišťovna, a.s., Vienna Insurance Group</span><span>&nbsp;· Sachversicherung · aktiv</span></p>
       <div class="m-card m-kvcard">
-        <div class="m-kv"><span class="m-kv__l">Vertragsnummer</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--id">8&nbsp;540&nbsp;221&nbsp;937</div></div><button class="m-kv__copy" type="button" aria-label="Vertragsnummer kopieren" data-icon="copy" data-size="16"></button></div>
+        <div class="m-kv"><span class="m-kv__l">Vertragsnummer</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--id">8 540 221 937</div></div><button class="m-kv__copy" type="button" aria-label="Vertragsnummer kopieren" data-icon="copy" data-size="16"></button></div>
         <div class="m-kv"><span class="m-kv__l">Versicherer</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--wrap">Kooperativa pojišťovna, a.s., Vienna Insurance Group</div></div></div>
         <div class="m-kv"><span class="m-kv__l">Art</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--wrap">Sachversicherung</div></div></div>
         <div class="m-kv"><span class="m-kv__l">Beitrag</span><div class="m-kv__r"><div class="m-kv__v m-kv__v--wrap">2&nbsp;150 Kč · vierteljährlich</div></div></div>
@@ -968,8 +969,9 @@ Fondsvorschuss 2&nbsp;000 Kč monatlich.</p></div>
   </div>
 </template>
 
-<!-- The cost sheet editing a one-time cost, at the three widths: no kind segment, "Derzeit …" under the amount (masked while amounts
-     are hidden, and the field then starts empty), a day in the future refused, the optional note; the primary waits for the fix. -->
+<!-- The cost sheet editing a one-time cost, at the three widths: no kind segment, "Derzeit …" under the amount, the optional note.
+     A cost's day may be today at most, or — for a cost the computer dated ahead (here 2 Nov) — that day: it keeps it, and a day
+     moved further out than it (5 Nov) is refused, the primary waiting for the fix. -->
 <template id="cost-edit-frame">
   <div class="m-screen" lang="de">
     <header class="m-nav">
@@ -991,10 +993,42 @@ Fondsvorschuss 2&nbsp;000 Kč monatlich.</p></div>
       <div class="m-sheet__body">
         <div class="m-field"><label class="m-field__l" for="edit-name">Name</label><input class="m-field__i m-field__i--text" id="edit-name" type="text" placeholder="z. B. Küchenrenovierung" value="Neue Küche"></div>
         <div class="m-field"><label class="m-field__l" for="edit-amount">Betrag</label><div class="m-field__w"><input class="m-field__i" id="edit-amount" inputmode="decimal" value="85300"><span class="m-field__u">CZK</span></div><p class="m-field__h">Derzeit 85&nbsp;300 Kč</p></div>
-        <div class="m-field"><label class="m-field__l" for="edit-date">Datum</label><input class="m-field__i m-field__i--date" id="edit-date" type="date" value="2026-11-02" max="2026-10-24" aria-invalid="true"><p class="m-field__e" role="alert">Das Datum einer Ausgabe darf nicht in der Zukunft liegen.</p></div>
+        <div class="m-field"><label class="m-field__l" for="edit-date">Datum</label><input class="m-field__i m-field__i--date" id="edit-date" type="date" value="2026-11-05" max="2026-11-02" aria-invalid="true"><p class="m-field__e" role="alert">Das Datum einer Ausgabe darf nicht in der Zukunft liegen.</p></div>
         <div class="m-field"><label class="m-field__l m-field__l--split" for="edit-note"><span>Beschreibung</span><span>optional</span></label><input class="m-field__i m-field__i--text" id="edit-note" type="text" placeholder="Details zur Ausgabe..." value="Küchenstudio Novák"></div>
       </div>
       <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary" type="button" disabled><span>Kosten aktualisieren</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The same sheet while the amounts are hidden, at the three widths: the amount field starts empty and shows the masked amount as its
+     placeholder (and in "Derzeit …"); left empty it saves the stored amount, so the name, the day or the note change without typing it
+     again. The cost keeps its own future day (2 Nov, the date field's own max), so the primary is ready; what is behind is masked too. -->
+<template id="cost-edit-hidden-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Vermögen</span></button></div>
+      <h1 class="m-nav__title">Wohnung Lipová</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <div class="m-nav__sub m-nav__sub--lines"><p>Lipová 12, 120 00 Praha 2</p><p>Anlageimmobilie · Vermietet · Miete ••••&nbsp;Kč pro Monat</p></div>
+      <div class="m-sec"><span class="m-sec__t">Kosten</span><span class="m-sec__n">gesamt ••••&nbsp;Kč pro Jahr</span></div>
+      <div class="m-sec m-sec--group"><span class="m-sec__t">Verlauf der Einmalkosten</span></div>
+      <div data-rows="propertyOneTimeHidden"></div>
+    </main>
+    <nav class="m-tabbar" data-active="wealth"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet" role="dialog" aria-modal="true" aria-label="Einmalkosten bearbeiten">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Einmalkosten bearbeiten</div><div class="m-sheet__s">Details der Ausgabe aktualisieren.</div></div>
+      <div class="m-sheet__body">
+        <div class="m-field"><label class="m-field__l" for="edit-name-hidden">Name</label><input class="m-field__i m-field__i--text" id="edit-name-hidden" type="text" placeholder="z. B. Küchenrenovierung" value="Neue Küche"></div>
+        <div class="m-field"><label class="m-field__l" for="edit-amount-hidden">Betrag</label><div class="m-field__w"><input class="m-field__i" id="edit-amount-hidden" inputmode="decimal" placeholder="••••&nbsp;Kč"><span class="m-field__u">CZK</span></div><p class="m-field__h">Derzeit ••••&nbsp;Kč</p></div>
+        <div class="m-field"><label class="m-field__l" for="edit-date-hidden">Datum</label><input class="m-field__i m-field__i--date" id="edit-date-hidden" type="date" value="2026-11-02" max="2026-11-02"></div>
+        <div class="m-field"><label class="m-field__l m-field__l--split" for="edit-note-hidden"><span>Beschreibung</span><span>optional</span></label><input class="m-field__i m-field__i--text" id="edit-note-hidden" type="text" placeholder="Details zur Ausgabe..." value="Küchenstudio Novák"></div>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary" type="button"><span>Kosten aktualisieren</span></button></div>
     </div>
   </div>
 </template>
@@ -2290,6 +2324,12 @@ Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
       row("", "Fenstertausch Schlafzimmer, Wohnzimmer und Balkontür", "2.3.2025", "42&nbsp;000 Kč", "", { icon: "receipt" }),
       row("", "Kesselwartung", "20.11.2024 · Wartungsvertrag mit dem Heizungsbauer aus Vinohrady", "2&nbsp;400 €", "", { icon: "receipt" })
     ],
+    /* The same one-time costs while the amounts are hidden: the number is the mask, the unit and the text stay. */
+    propertyOneTimeHidden: [
+      row("", "Neue Küche", "14.9.2026 · Küchenstudio Novák", "••••&nbsp;Kč", "", { icon: "receipt" }),
+      row("", "Fenstertausch Schlafzimmer, Wohnzimmer und Balkontür", "2.3.2025", "••••&nbsp;Kč", "", { icon: "receipt" }),
+      row("", "Kesselwartung", "20.11.2024 · Wartungsvertrag mit dem Heizungsbauer aus Vinohrady", "••••&nbsp;€", "", { icon: "receipt" })
+    ],
     propertyPolicies: [
       row("", "Haushaltsversicherung", "Kooperativa pojišťovna, a.s., Vienna Insurance Group", "2&nbsp;150 Kč", "vierteljährlich", { icon: "shield" })
     ],
@@ -2475,6 +2515,7 @@ Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
   renderFrames("property-costs-empty", document.getElementById("property-costs-empty-frame"), " · prázdné sekce");
   renderFrames("cost-add", document.getElementById("cost-add-frame"), " · nový náklad");
   renderFrames("cost-edit", document.getElementById("cost-edit-frame"), " · úprava nákladu");
+  renderFrames("cost-edit-hidden", document.getElementById("cost-edit-hidden-frame"), " · úprava při skrytých částkách");
   renderFrames("photo-view", document.getElementById("photo-view-frame"), " · prohlížeč fotky");
   renderFrames("upcoming", document.getElementById("upcoming-frame"), " · nejbližší platby");
   renderFrames("document-add", document.getElementById("document-add-frame"), " · přidání dokumentu");

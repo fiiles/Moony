@@ -939,13 +939,15 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
 /* ===== Policy detail (spec §8.8 "Pojistka", `PolicyDetail.tsx`) =====
    The contract card is a `.m-card .m-kvcard` of `.m-kv` rows, with three differences. A value of a fact may take a second
    line instead of ending with an ellipsis (`.m-kv__v--wrap`: a premium with its frequency, a term of two dates, a long
-   insurer or property name). The contract number (`--id`) breaks anywhere, and its row ends in the copy button
+   insurer or property name). The contract number (`--id`) wraps at its spaces and never inside a group of digits that fits
+   (`word-break: break-all` cut "8 540 221 937" as "…93 / 7" at the largest text); only a number with no space that is wider
+   than the cell breaks inside, where it must. Its row ends in the copy button
    (`.m-kv__copy`): 44 × 44, a 16 px `ink-3` icon, reaching 12 px past the row's padding so the icon stays at the values'
    right edge and 8 px above and under it so the row stays 44 px. The number is no amount: it is never masked.
    The notes (`.m-prose`) are a `.m-card` with the text as typed, line breaks kept. The premiums card (`.m-premium`) is the trend
    card's pattern without its segment: a label (12 / 500 `ink-3`), the paid total (20 / 650, tabular) and the 120 px chart. */
 .m-kv__v--wrap { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: break-word; }
-.m-kv__v--id { overflow: visible; text-overflow: clip; white-space: normal; word-break: break-all; }
+.m-kv__v--id { overflow: visible; text-overflow: clip; white-space: normal; overflow-wrap: break-word; }
 .m-kv__copy {
   display: inline-flex; flex: none; align-items: center; justify-content: center; width: 44px; height: 44px; margin: -8px -12px -8px 0;
   padding: 0; border: 0; border-radius: 12px; background: none; color: var(--ink-3); -webkit-touch-callout: none;

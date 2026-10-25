@@ -536,9 +536,15 @@ function LoansSection({
             title={row.loan.name}
             sub={[
               fmt.percent(Number(row.loan.interestRate) / 100, 2),
-              row.fixationEnd
+              // The desktop's loans table wording: the fixation still ahead, else the month an
+              // ended one ran out, else a fixed rate
+              row.fixationEnd !== null
                 ? t('loans:table.fixedUntil', { month: monthYear(row.fixationEnd) })
-                : t('loans:table.fixedRate'),
+                : row.loan.interestRateValidityDate !== null
+                  ? t('loans:table.fixationEnded', {
+                      month: monthYear(row.loan.interestRateValidityDate),
+                    })
+                  : t('loans:table.fixedRate'),
             ].join(' · ')}
             value={moneyText(row.outstanding, row.currency, { decimals: 0 })}
             valueSub={

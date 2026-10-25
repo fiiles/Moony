@@ -15,7 +15,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { BondsFormDialog } from '@/components/bonds/BondsFormDialog';
-import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
@@ -133,7 +133,7 @@ export default function Bonds() {
       ) : (
         <>
           {/* Live issues in a currency without a rate are left out of the stats (named here) */}
-          <ConversionQualityNote
+          <ScaledConversionNote
             quality={{ missingCurrencies: metrics.missing }}
             currency={currencyCode}
             className="mx-0.5 mb-3.5"

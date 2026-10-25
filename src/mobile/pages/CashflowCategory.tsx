@@ -15,7 +15,7 @@ import { useFormat } from '@/lib/use-format';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { movedCount } from '@/utils/report-drilldown';
 import { Button } from '@/components/ui/button';
-import { ReportError } from '@/components/reports/ReportQualityNote';
+import { ScaledReportError } from '@/mobile/components/Scaled';
 import { RowMenu, RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
 import { Money } from '@/mobile/components/Money';
@@ -169,7 +169,7 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
       <p className="mx-0.5 mb-3.5 text-m-lead text-ink-3">{summary}</p>
       {snapshot === null ? (
         isError ? (
-          <ReportError onRetry={() => void refetch()} />
+          <ScaledReportError onRetry={() => void refetch()} />
         ) : (
           <DrilldownSkeleton />
         )

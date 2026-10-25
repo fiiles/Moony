@@ -130,3 +130,68 @@ describe('the phone shell sets its text in text-m-* roles', () => {
     ).toEqual([]);
   });
 });
+
+// The shared desktop pieces that set a fixed size (EmptyState, ChartLegend, the report quality notes)
+// reach a phone screen only through the wrappers in components/Scaled.tsx, which hand them `text-m-*`
+// roles through the pieces' own class props. A direct import would bring the desktop size back.
+const DESKTOP_PIECES = [
+  '@/components/common/EmptyState',
+  '@/components/charts/ChartLegend',
+  '@/components/reports/ReportQualityNote',
+];
+const SCALED_HOME = 'components/Scaled.tsx';
+
+/** The desktop piece modules `source` imports, once each (a static or re-export `from '…'`, on whichever line, or `import('…')`). */
+function desktopPieceImports(source: string): string[] {
+  const found: string[] = [];
+  const pattern = /(?:\bfrom\s*|\bimport\s*\(\s*)['"]([^'"]+)['"]/g;
+  for (const match of source.matchAll(pattern)) {
+    if (DESKTOP_PIECES.includes(match[1]) && !found.includes(match[1])) found.push(match[1]);
+  }
+  return found;
+}
+
+describe('the phone imports the shared desktop pieces through the Scaled wrappers', () => {
+  const files = sources(ROOT);
+
+  it('finds the desktop pieces an import names, on one line or two', () => {
+    expect(
+      desktopPieceImports("import { ChartLegend } from '@/components/charts/ChartLegend';")
+    ).toEqual(['@/components/charts/ChartLegend']);
+    expect(
+      desktopPieceImports(
+        "import {\n  ChartLegend,\n  type LegendItem,\n} from '@/components/charts/ChartLegend';"
+      )
+    ).toEqual(['@/components/charts/ChartLegend']);
+    expect(
+      desktopPieceImports('const m = await import("@/components/common/EmptyState");')
+    ).toEqual(['@/components/common/EmptyState']);
+    // Other desktop modules, the wrappers and a type re-export are not the pieces.
+    expect(desktopPieceImports("import { Card } from '@/components/ui/card';")).toEqual([]);
+    expect(
+      desktopPieceImports("import { ScaledEmptyState } from '@/mobile/components/Scaled';")
+    ).toEqual([]);
+    expect(
+      desktopPieceImports("import type { LegendItem } from '@/mobile/components/Scaled';")
+    ).toEqual([]);
+  });
+
+  it('imports all three desktop pieces in the one file that wraps them', () => {
+    // Without this the allowance below would pass for a wrapper file that wraps nothing.
+    expect(files).toContain(SCALED_HOME);
+    expect(desktopPieceImports(readFileSync(new URL(SCALED_HOME, ROOT), 'utf8')).sort()).toEqual(
+      [...DESKTOP_PIECES].sort()
+    );
+  });
+
+  it('has no phone file importing a desktop piece directly', () => {
+    const offenders = files
+      .filter((file) => file !== SCALED_HOME)
+      .flatMap((file) =>
+        desktopPieceImports(readFileSync(new URL(file, ROOT), 'utf8')).map(
+          (module) => `${file} imports ${module}`
+        )
+      );
+    expect(offenders, 'import the phone wrapper from @/mobile/components/Scaled').toEqual([]);
+  });
+});

@@ -6,7 +6,7 @@ import { useFormat } from '@/lib/use-format';
 import type { EventCluster } from '@/utils/chart-scale';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
 import type { PositionRowBase } from '@/utils/positions';
-import { ChartLegend } from '@/components/charts/ChartLegend';
+import { ScaledChartLegend } from '@/mobile/components/Scaled';
 import { Hero } from '@/mobile/components/Hero';
 import { Money } from '@/mobile/components/Money';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -159,7 +159,7 @@ export function PositionHeroCard({
       chartLabel={label}
     >
       {points.length > 1 && (
-        <ChartLegend
+        <ScaledChartLegend
           items={[
             { label: ts('detail.legend.value'), swatch: { kind: 'line' } },
             { label: ts('detail.legend.investedLong'), swatch: { kind: 'dash' } },

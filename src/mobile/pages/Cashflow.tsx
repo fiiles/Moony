@@ -15,8 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { EmptyState } from '@/components/common/EmptyState';
-import { ReportError, ReportQualityNote } from '@/components/reports/ReportQualityNote';
+import { ScaledEmptyState, ScaledReportError, ScaledReportNote } from '@/mobile/components/Scaled';
 import { BudgetSummaryNote } from '@/mobile/components/cashflow/BudgetSummaryNote';
 import { CashflowBars } from '@/mobile/components/cashflow/CashflowBars';
 import { CashflowHero } from '@/mobile/components/cashflow/CashflowHero';
@@ -157,7 +156,7 @@ export default function Cashflow() {
         onStep={(delta) => setState({ ...state, offset: Math.min(0, state.offset + delta) })}
       />
       {body === 'error' ? (
-        <ReportError onRetry={report.refetch} />
+        <ScaledReportError onRetry={report.refetch} />
       ) : body === 'skeleton' || !actuals ? (
         <CashflowSkeleton />
       ) : body === 'noAccounts' ? (
@@ -168,7 +167,7 @@ export default function Cashflow() {
           className={cn('transition-opacity', report.isPlaceholder && 'opacity-60')}
           aria-busy={report.isPlaceholder}
         >
-          {report.isError && <ReportError onRetry={report.refetch} />}
+          {report.isError && <ScaledReportError onRetry={report.refetch} />}
           <ReportBody
             actuals={actuals}
             report={report}
@@ -272,7 +271,7 @@ function ReportBody({
     return (
       <>
         {bars.some((bar) => bar.income !== 0 || bar.expenses !== 0) && barsCard}
-        <EmptyState
+        <ScaledEmptyState
           bare
           icon={<Landmark />}
           title={tr('actuals.empty.periodTitle')}
@@ -332,7 +331,7 @@ function ReportBody({
 
   return (
     <>
-      <ReportQualityNote quality={actuals.quality} />
+      <ScaledReportNote quality={actuals.quality} />
       {isPartialPeriod(range.end, Date.now() / 1000) && (
         <p className="mx-0.5 mb-3 mt-0 text-m-caption text-ink-4">{t('cashflow.partial')}</p>
       )}
@@ -386,7 +385,7 @@ function EmptyCashflow() {
   const { t } = useTranslation('mobile');
   const [, setLocation] = useLocation();
   return (
-    <EmptyState
+    <ScaledEmptyState
       icon={<Landmark />}
       title={t('cashflow.empty.title')}
       description={t('cashflow.empty.description')}

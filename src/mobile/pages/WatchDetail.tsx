@@ -14,8 +14,7 @@ import { useFormat } from '@/lib/use-format';
 import { exchangeName } from '@/utils/exchange-names';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
 import { changeFromReference, dayChange, targetDistance } from '@/utils/stock-monitor';
-import { ChartLegend } from '@/components/charts/ChartLegend';
-import { EmptyState } from '@/components/common/EmptyState';
+import { ScaledChartLegend, ScaledEmptyState } from '@/mobile/components/Scaled';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -163,7 +162,7 @@ export default function WatchDetail() {
   if ((isError && !detail) || (detail && current === null)) {
     // Yahoo knows nothing of the ticker, or gave no price: said so, not a blank page. A refetch
     // that fails behind a page already loaded leaves that page as it is.
-    body = <EmptyState icon={<Eye />} title={tm('detail.noData')} description={ticker} />;
+    body = <ScaledEmptyState icon={<Eye />} title={tm('detail.noData')} description={ticker} />;
   } else if (isLoading || !detail || current === null) {
     body = <ClassSkeleton />;
   } else {
@@ -252,7 +251,7 @@ export default function WatchDetail() {
           chartLabel={`${detail.ticker} · ${tm('detail.price')}`}
         >
           {points.length > 1 && (
-            <ChartLegend
+            <ScaledChartLegend
               items={[
                 { label: tm('detail.legend.price'), swatch: { kind: 'line' } },
                 ...(hasTarget

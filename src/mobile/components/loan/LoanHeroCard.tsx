@@ -5,7 +5,7 @@ import { useLoanText } from '@/hooks/use-loan-text';
 import { useFormat } from '@/lib/use-format';
 import type { EventCluster } from '@/utils/chart-scale';
 import type { LoanRow } from '@/utils/loans';
-import { ChartLegend } from '@/components/charts/ChartLegend';
+import { ScaledChartLegend } from '@/mobile/components/Scaled';
 import { Hero } from '@/mobile/components/Hero';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { shortDayOptions } from '@/mobile/lib/format-day';
@@ -166,7 +166,7 @@ export function LoanHeroCard({
       chartLabel={label}
     >
       {view.points.length > 1 && (
-        <ChartLegend
+        <ScaledChartLegend
           items={[
             { label: tl('detail.chart.legend.balance'), swatch: { kind: 'line' } },
             {

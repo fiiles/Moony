@@ -16,8 +16,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { useFormat } from '@/lib/use-format';
 import { amountOf } from '@/utils/positions';
 import { Button } from '@/components/ui/button';
-import { EmptyState } from '@/components/common/EmptyState';
-import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { ScaledConversionNote, ScaledEmptyState } from '@/mobile/components/Scaled';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
 import { Hero } from '@/mobile/components/Hero';
 import { Money } from '@/mobile/components/Money';
@@ -117,7 +116,7 @@ export default function Wealth() {
       ) : (
         <>
           {/* Amounts the backend could not convert into the report currency (left out) */}
-          <ConversionQualityNote
+          <ScaledConversionNote
             quality={overview.fxQuality}
             currency={reportCurrency}
             className="mx-0.5 mb-3.5"
@@ -395,7 +394,7 @@ function CashSection({ wealth }: { wealth: WealthData }) {
 function EmptyWealth() {
   const { t } = useTranslation('mobile');
   return (
-    <EmptyState
+    <ScaledEmptyState
       icon={<Briefcase />}
       title={t('wealth.empty.title')}
       description={t('wealth.empty.description')}

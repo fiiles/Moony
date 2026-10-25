@@ -27,7 +27,7 @@ import { utcDayFloor } from '@/utils/chart-axis';
 import type { EventCluster } from '@/utils/chart-scale';
 import { completeAccountIdentifier } from '@/utils/iban-utils';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
-import { EmptyState } from '@/components/common/EmptyState';
+import { ScaledEmptyState } from '@/mobile/components/Scaled';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -288,7 +288,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
             />
           ) : (
             !showHero && (
-              <EmptyState
+              <ScaledEmptyState
                 icon={<Wallet />}
                 title={tb('empty.noDataTitle')}
                 description={tb('empty.noDataDescription')}
@@ -717,7 +717,7 @@ function LedgerSection({
       ) : ledger.isLoading ? (
         <RowsSkeleton />
       ) : groups.length === 0 ? (
-        <EmptyState
+        <ScaledEmptyState
           bare
           icon={<CalendarSearch />}
           title={t('account.ledger.empty')}

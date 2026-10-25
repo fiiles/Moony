@@ -7,7 +7,7 @@ import type { RealEstate } from '@shared/schema';
 import { useCurrency } from '@/lib/currency';
 import type { PropertyRow, YearlyBalance } from '@/utils/real-estate';
 import { Button } from '@/components/ui/button';
-import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { DocumentsSection } from '@/mobile/components/documents/DocumentsSection';
 import { PropertyCosts } from '@/mobile/components/property/PropertyCosts';
 import { PropertyFinance } from '@/mobile/components/property/PropertyFinance';
@@ -170,7 +170,7 @@ function PropertyBody({ view, currency, onRevalue }: PropertyBodyProps) {
         </p>
       </div>
       {/* Amounts that could not be converted into the main currency (left out of its totals) */}
-      <ConversionQualityNote
+      <ScaledConversionNote
         quality={{ missingCurrencies: missing }}
         currency={currency}
         className="mx-0.5 mb-3.5"

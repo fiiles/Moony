@@ -9,7 +9,7 @@ import type { EventCluster } from '@/utils/chart-scale';
 import type { OtherAssetRow } from '@/utils/other-assets';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
 import { Button } from '@/components/ui/button';
-import { ChartLegend } from '@/components/charts/ChartLegend';
+import { ScaledChartLegend } from '@/mobile/components/Scaled';
 import { BuyOtherAssetModal } from '@/components/other-assets/BuyOtherAssetModal';
 import { SellOtherAssetModal } from '@/components/other-assets/SellOtherAssetModal';
 import { ButtonPair } from '@/mobile/components/ButtonPair';
@@ -330,7 +330,7 @@ function AssetHero({
       chartLabel={label}
     >
       {points.length > 1 && (
-        <ChartLegend
+        <ScaledChartLegend
           items={[
             { label: ts('detail.legend.value'), swatch: { kind: 'line' } },
             { label: ts('detail.legend.buy'), swatch: { kind: 'event', type: 'buy' } },

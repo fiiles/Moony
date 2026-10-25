@@ -8,7 +8,7 @@ import { useFormat } from '@/lib/use-format';
 import { monthsBetween } from '@/utils/duration';
 import type { ChartPeriod } from '@/utils/period';
 import { amountOf, type CryptoRow } from '@/utils/positions';
-import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { BuyCryptoModal } from '@/components/crypto/BuyCryptoModal';
 import { SellCryptoModal } from '@/components/crypto/SellCryptoModal';
 import { ButtonPair } from '@/mobile/components/ButtonPair';
@@ -94,7 +94,7 @@ export default function CryptoDetail() {
             {[view.holding.name, view.holding.originalCurrency].join(' · ')}
           </p>
           {/* The list's quality, shown when this coin is one of those not converted */}
-          <ConversionQualityNote
+          <ScaledConversionNote
             quality={
               view.holding.marketValue === null || view.holding.totalCost === null
                 ? view.positions?.fxQuality

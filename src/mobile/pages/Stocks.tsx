@@ -23,7 +23,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { AddInvestmentModal } from '@/components/stocks/AddInvestmentModal';
 import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
 import { EntityRows } from '@/mobile/components/EntityRow';
@@ -149,7 +149,7 @@ export default function Stocks() {
               {/* The nav bar keeps its one title, so the count and the age of the prices are the first line */}
               <PricesLine count={ts('summary.positions', { count: open.length })} rows={rows} />
               {/* Amounts the backend could not convert into the report currency (left out) */}
-              <ConversionQualityNote
+              <ScaledConversionNote
                 quality={positions?.fxQuality}
                 currency={reportCurrency}
                 className="mx-0.5 mb-3.5"

@@ -5,14 +5,17 @@ import { cn } from '@/lib/utils';
 export function ReportQualityNote({
   quality,
   planning = false,
+  className,
 }: {
   quality: ReportQuality;
   planning?: boolean;
+  /** Extra classes for the note; the phone passes a `text-m-*` role (default: none). */
+  className?: string;
 }) {
   const { t } = useTranslation('reports');
   if (quality.missingFxCount === 0 && quality.invalidAmountCount === 0) return null;
   return (
-    <div className="mb-5 space-y-1 text-micro text-ink-4" role="note">
+    <div className={cn('mb-5 space-y-1 text-micro text-ink-4', className)} role="note">
       {quality.missingFxCount > 0 && (
         <p className="text-loss">
           {t(planning ? 'readiness.missingPlanningFx' : 'readiness.missingFx', {
@@ -29,10 +32,20 @@ export function ReportQualityNote({
     </div>
   );
 }
-export function ReportError({ onRetry }: { onRetry: () => void }) {
+export function ReportError({
+  onRetry,
+  className,
+}: {
+  onRetry: () => void;
+  /** Extra classes for the box; the phone passes a `text-m-*` role (default: none). */
+  className?: string;
+}) {
   const { t } = useTranslation('reports');
   return (
-    <div className="mb-5 rounded-r3 bg-loss-soft p-4 text-table text-loss" role="alert">
+    <div
+      className={cn('mb-5 rounded-r3 bg-loss-soft p-4 text-table text-loss', className)}
+      role="alert"
+    >
       {t('readiness.reportError')}{' '}
       <button type="button" className="ml-3 font-650 underline" onClick={onRetry}>
         {t('readiness.retry')}

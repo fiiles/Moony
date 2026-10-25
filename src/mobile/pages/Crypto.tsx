@@ -10,7 +10,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { AddCryptoModal } from '@/components/crypto/AddCryptoModal';
 import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
@@ -110,7 +110,7 @@ export default function Crypto() {
           {/* The nav bar keeps its one title, so the count and the age of the prices are the first line */}
           <PricesLine count={tcr('summary.positions', { count: open.length })} rows={rows} />
           {/* Amounts the backend could not convert into the report currency (left out) */}
-          <ConversionQualityNote
+          <ScaledConversionNote
             quality={positions?.fxQuality}
             currency={reportCurrency}
             className="mx-0.5 mb-3.5"

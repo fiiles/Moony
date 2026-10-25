@@ -11,7 +11,7 @@ import type {
 import { useInvestmentTransactionMutations } from '@/hooks/use-investment-mutations';
 import type { ChartPeriod } from '@/utils/period';
 import type { StockRow } from '@/utils/positions';
-import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
+import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { BuyInvestmentModal } from '@/components/stocks/BuyInvestmentModal';
 import { EditTransactionModal } from '@/components/stocks/EditTransactionModal';
 import { SellInvestmentModal } from '@/components/stocks/SellInvestmentModal';
@@ -100,7 +100,7 @@ export default function PositionDetail() {
             {[view.holding.companyName, view.holding.originalCurrency].join(' · ')}
           </p>
           {/* Amounts the backend could not convert into the report currency (left out) */}
-          <ConversionQualityNote
+          <ScaledConversionNote
             quality={view.position?.fxQuality}
             currency={reportCurrency}
             className="mx-0.5 mb-3.5"

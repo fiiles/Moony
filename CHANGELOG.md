@@ -13,6 +13,8 @@ All notable changes to Moony are documented in this file. The format follows
   can apply a split (the earlier trades are rewritten to today's share count and price), revert
   it, dismiss it or enter one by hand. The broker CSV import checks the file's prices against the
   splits Yahoo reports and offers to convert rows dated before a split or keep them as they are.
+- **Linux on ARM.** Every release now also ships ARM64 (aarch64) builds for Linux: an AppImage,
+  a `.deb` and an `.rpm`, updated through the built-in updater like the x86_64 builds.
 
 ## [1.0.0] - 2026-10-19
 

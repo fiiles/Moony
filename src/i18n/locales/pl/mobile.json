@@ -470,6 +470,7 @@
       "caption": "Trzy transakcje z pliku, tak jak je odczytam:",
       "captionFew": "Transakcje z pliku, tak jak je odczytam:",
       "unknownFormat": "format jeszcze nieznany",
+      "learnedFormat": "według zapisanego formatu {{name}}",
       "tab": "tabulator",
       "previewFailed": "Nie udało się teraz wczytać przykładowych wierszy. Rozpoznane kolumny poniżej nadal obowiązują.",
       "looksRight": "Wygląda dobrze",

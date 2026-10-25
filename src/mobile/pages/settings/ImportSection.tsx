@@ -28,14 +28,14 @@ const BUTTON =
  * (its name; left out when the account is gone) and when it was last used, led by "banka má
  * vestavěný formát" when a shipped preset now matches its layout (the preset then reads the file;
  * the learned format waits). The rest is in the sheet. No format yet: one sentence on how one
- * comes to be.
+ * comes to be; a list that could not be read says nothing.
  */
 export default function ImportSection() {
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
   const { openImport } = useImportSheet();
   const { accounts } = useBankAccounts();
-  const { formats, isPending } = useLearnedFormats();
+  const { formats, isPending, isError } = useLearnedFormats();
   const [openId, setOpenId] = useState<string | null>(null);
   const [guidesOpen, setGuidesOpen] = useState(false);
 
@@ -77,8 +77,10 @@ export default function ImportSection() {
           ))}
         </EntityRows>
       ) : (
-        // Nothing is said until the list has been read: an empty store and a loading one differ
-        !isPending && (
+        // Nothing is said until the list has been read, nor when it could not be: an empty store,
+        // a loading one and an unreadable one differ
+        !isPending &&
+        !isError && (
           <p className="mx-0.5 mb-3.5 mt-0 text-m-caption text-ink-4">
             {t('settings.import.empty')}
           </p>

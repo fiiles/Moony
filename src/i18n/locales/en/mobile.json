@@ -418,6 +418,7 @@
       "caption": "Three movements from the file, as I will read them:",
       "captionFew": "Movements from the file, as I will read them:",
       "unknownFormat": "format not known yet",
+      "learnedFormat": "from your saved format {{name}}",
       "tab": "tab",
       "previewFailed": "The sample rows could not be loaded just now. The columns below still apply.",
       "looksRight": "Looks right",

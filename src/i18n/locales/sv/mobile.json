@@ -418,6 +418,7 @@
       "caption": "Tre transaktioner ur filen, så som jag läser dem:",
       "captionFew": "Transaktioner ur filen, så som jag läser dem:",
       "unknownFormat": "formatet är ännu okänt",
+      "learnedFormat": "enligt det sparade formatet {{name}}",
       "tab": "tabb",
       "previewFailed": "Exempelraderna kunde inte läsas in just nu. Kolumnerna nedan gäller ändå.",
       "looksRight": "Ser rätt ut",

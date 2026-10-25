@@ -301,7 +301,8 @@ function FormStep({
  * sentences under them. The file is not the first run's: it is named and titled by the day of this
  * attempt (`moony-recovery-key-2026-10-25.txt`, „… nový od 25. 10. 2026“) and its note says the key
  * holds only once the change is done, so saving it never replaces the copy of the key that stays
- * valid when the change is abandoned, and two attempts' files never read the same.
+ * valid when the change is abandoned. The file is dated by the day of the attempt: attempts on the
+ * same day share its name.
  */
 function KeyStep({
   recoveryKey,

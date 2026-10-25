@@ -418,6 +418,7 @@
       "caption": "Drei Zahlungen aus der Datei, so wie ich sie lese:",
       "captionFew": "Zahlungen aus der Datei, so wie ich sie lese:",
       "unknownFormat": "Format noch unbekannt",
+      "learnedFormat": "nach dem gespeicherten Format {{name}}",
       "tab": "Tabulator",
       "previewFailed": "Die Beispielzeilen konnten gerade nicht geladen werden. Die erkannten Spalten unten gelten trotzdem.",
       "looksRight": "Sieht richtig aus",

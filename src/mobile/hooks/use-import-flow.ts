@@ -495,15 +495,23 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
   /**
    * "Změnit" on a learned format's preview: the file is read from its content once more and the
    * recognition opens on the learned mapping, to correct it. What the person picks in the preview
-   * is dropped with the reading it was picked against; the format stays for its name and account.
+   * is dropped with the reading it was picked against; the format stays for its name and account,
+   * and the recognition's file bar names it.
    */
   const changeLearned = async () => {
-    if (stage !== 'preview' || !csv || !path || learnedMapping === null || targetId === null) {
+    if (
+      stage !== 'preview' ||
+      !csv ||
+      !path ||
+      learned === null ||
+      learnedMapping === null ||
+      targetId === null
+    ) {
       return;
     }
     const mine = ++reads.current;
     const file = { csv, path, anchorId: targetId };
-    const seed = learnedMapping;
+    const seed = { mapping: learnedMapping, name: learned.name };
     setStage('reading');
     try {
       const inferred = await bankAccountsApi.inferCsvColumns(path, {

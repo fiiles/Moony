@@ -444,6 +444,7 @@
       "caption": "Tre movimenti dal file, come li leggerò:",
       "captionFew": "Movimenti dal file, come li leggerò:",
       "unknownFormat": "formato non ancora noto",
+      "learnedFormat": "secondo il formato salvato {{name}}",
       "tab": "tabulazione",
       "previewFailed": "Non è stato possibile caricare ora le righe di esempio. Le colonne riconosciute qui sotto valgono comunque.",
       "looksRight": "Sembra giusto",

@@ -43,11 +43,13 @@ export function LearnedFormatSheet({ format, accounts, onOpenChange }: LearnedFo
   const shown = useRetained(format);
 
   // Every opening starts from the name the format has now, not from the last attempt; a rename
-  // that lands while the sheet is open does not replace what is being typed
+  // that lands while the sheet is open does not replace what is being typed. A format that is gone
+  // (a delete refused as not found reloads the list without it) takes its delete question along
   const [seededFor, setSeededFor] = useState<string | null>(null);
   const seed = format?.id ?? null;
   if (seed !== seededFor) {
     setSeededFor(seed);
+    setConfirmOpen(false);
     if (format) setValue(format.name);
   }
 

@@ -79,7 +79,7 @@ function MainCurrencyHint() {
       </p>
       <p className="m-0">{t('currency.nativeHint')}</p>
       {!isFxSupported(currencyCode) && (
-        <p className="m-0 font-semibold text-loss">{t('currency.unsupportedMain')}</p>
+        <p className="m-0 text-loss">{t('currency.unsupportedMain')}</p>
       )}
     </div>
   );

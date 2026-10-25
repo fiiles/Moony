@@ -444,6 +444,7 @@
       "caption": "Tres movimientos del archivo, tal como los leeré:",
       "captionFew": "Movimientos del archivo, tal como los leeré:",
       "unknownFormat": "formato aún desconocido",
+      "learnedFormat": "según el formato guardado {{name}}",
       "tab": "tabulador",
       "previewFailed": "No se pudieron cargar ahora las filas de muestra. Las columnas reconocidas de abajo siguen valiendo.",
       "looksRight": "Se ve bien",

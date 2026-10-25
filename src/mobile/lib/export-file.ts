@@ -16,8 +16,8 @@ export const RECOVERY_KEY_FILE = 'moony-recovery-key.txt';
 /**
  * The new recovery key of a password change, `moony-recovery-key-2026-10-25.txt`: the local day of
  * the attempt (the Rust allow-list accepts exactly this shape). A change may be abandoned, so its key
- * must never replace the first run's `RECOVERY_KEY_FILE`, which holds the key that then stays valid,
- * nor read the same as an older attempt's.
+ * must never replace the first run's `RECOVERY_KEY_FILE`, which holds the key that then stays valid.
+ * The name is dated by the day of the attempt, so attempts on the same day share it.
  */
 export function changedRecoveryKeyFileName(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, '0');

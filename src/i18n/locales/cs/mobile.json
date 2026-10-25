@@ -444,6 +444,7 @@
       "caption": "Tři pohyby ze souboru tak, jak je načtu:",
       "captionFew": "Pohyby ze souboru tak, jak je načtu:",
       "unknownFormat": "formát zatím neznám",
+      "learnedFormat": "podle uloženého formátu {{name}}",
       "tab": "tabulátor",
       "previewFailed": "Ukázku pohybů se teď nepodařilo načíst. Rozpoznané sloupce níže přesto platí.",
       "looksRight": "Vypadá to správně",

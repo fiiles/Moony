@@ -418,6 +418,7 @@
       "caption": "Tre transaksjoner fra filen, slik jeg leser dem:",
       "captionFew": "Transaksjoner fra filen, slik jeg leser dem:",
       "unknownFormat": "formatet er ikke kjent ennå",
+      "learnedFormat": "etter det lagrede formatet {{name}}",
       "tab": "tabulator",
       "previewFailed": "Eksempelradene kunne ikke lastes akkurat nå. Kolonnene under gjelder likevel.",
       "looksRight": "Ser riktig ut",

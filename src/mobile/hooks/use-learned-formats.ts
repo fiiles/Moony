@@ -8,10 +8,12 @@ import { LEARNED_FORMATS_KEY } from '@/mobile/lib/learned-format';
 
 /**
  * The CSV layouts the person confirmed once (spec §8.6 rung 4, `learnedFormatsApi`) for
- * Nastavení → Import: the list, the one used last first, and the two things the page lets them do
- * — rename one and delete one. Both refresh the list; a refusal (an empty or too long name, a format
- * that is gone) is said in a toast and the call rejects, so a sheet keeps its place. The import
- * flow keeps its own copy of what a learned format read; nothing here touches an import.
+ * Nastavení → Import: the list, the one used last first, whether it could not be read, and the two
+ * things the page lets them do — rename one and delete one. Both refresh the list, whatever their
+ * outcome; a refusal (an empty or too long name, a format that is gone) is said in a toast and the
+ * mutation errors, so a caller's `onSuccess` (the sheet closing) does not run and the sheet keeps
+ * its place — a format that is gone then leaves the list, which closes its sheet. The import flow
+ * keeps its own copy of what a learned format read; nothing here touches an import.
  */
 export function useLearnedFormats() {
   const { t } = useTranslation('mobile');
@@ -20,8 +22,11 @@ export function useLearnedFormats() {
 
   const list = useQuery({ queryKey: LEARNED_FORMATS_KEY, queryFn: learnedFormatsApi.list });
 
-  const failed = (error: Error) =>
+  // A refusal is said, and the list is read again: a format that is gone (NotFound) leaves it
+  const failed = (error: Error) => {
     toast.error(tc('status.error'), { description: translateApiError(error, tc) });
+    void queryClient.invalidateQueries({ queryKey: LEARNED_FORMATS_KEY });
+  };
 
   const rename = useMutation({
     mutationFn: ({ id, name }: { id: string; name: string }) => learnedFormatsApi.rename(id, name),
@@ -45,5 +50,11 @@ export function useLearnedFormats() {
     onError: failed,
   });
 
-  return { formats: list.data ?? [], isPending: list.isPending, rename, remove };
+  return {
+    formats: list.data ?? [],
+    isPending: list.isPending,
+    isError: list.isError,
+    rename,
+    remove,
+  };
 }

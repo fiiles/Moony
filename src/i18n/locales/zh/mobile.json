@@ -392,6 +392,7 @@
       "caption": "文件中的三笔交易，按我的读法显示如下：",
       "captionFew": "文件中的交易，按我的读法显示如下：",
       "unknownFormat": "格式暂未识别",
+      "learnedFormat": "按保存的格式“{{name}}”",
       "tab": "制表符",
       "previewFailed": "暂时无法加载示例行。下面识别出的列仍然有效。",
       "looksRight": "没错",

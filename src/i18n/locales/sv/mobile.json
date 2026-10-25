@@ -5,9 +5,6 @@
     "cashflow": "Kassaflöde",
     "wealth": "Förmögenhet"
   },
-  "shell": {
-    "placeholder": "Den här skärmen är fortfarande under arbete."
-  },
   "lock": {
     "caption": "AES-256 · krypterat på den här telefonen",
     "keySaved": "Jag har nyckeln sparad på ett säkert ställe utanför den här telefonen",
@@ -493,9 +490,6 @@
     }
   },
   "wealth": {
-    "placeholder": {
-      "classPage": "Än så länge finns den här sidan bara i Moony på datorn."
-    },
     "subtitle": "Investeringar, fastigheter och kontanter",
     "sections": {
       "investments": "Investeringar",

@@ -5,9 +5,6 @@
     "cashflow": "Cashflow",
     "wealth": "Vermögen"
   },
-  "shell": {
-    "placeholder": "Dieser Bildschirm ist noch in Arbeit."
-  },
   "lock": {
     "caption": "AES-256 · verschlüsselt auf diesem Telefon",
     "keySaved": "Ich habe den Schlüssel sicher außerhalb dieses Telefons aufbewahrt",
@@ -493,9 +490,6 @@
     }
   },
   "wealth": {
-    "placeholder": {
-      "classPage": "Diese Seite gibt es vorerst nur in Moony auf dem Computer."
-    },
     "subtitle": "Geldanlagen, Immobilien und Bargeld",
     "sections": {
       "investments": "Geldanlagen",

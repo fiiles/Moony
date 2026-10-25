@@ -5,9 +5,6 @@
     "cashflow": "Cashflow",
     "wealth": "Majetek"
   },
-  "shell": {
-    "placeholder": "Tato obrazovka se ještě připravuje."
-  },
   "lock": {
     "caption": "AES-256 · šifrováno v tomto telefonu",
     "keySaved": "Klíč mám bezpečně uložený mimo tento telefon",
@@ -524,9 +521,6 @@
     }
   },
   "wealth": {
-    "placeholder": {
-      "classPage": "Tato stránka je zatím jen v Moony na počítači."
-    },
     "subtitle": "Investice, nemovitosti a hotovost",
     "sections": {
       "investments": "Investice",

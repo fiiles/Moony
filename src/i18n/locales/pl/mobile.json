@@ -5,9 +5,6 @@
     "cashflow": "Przepływy",
     "wealth": "Majątek"
   },
-  "shell": {
-    "placeholder": "Ten ekran jest jeszcze w przygotowaniu."
-  },
   "lock": {
     "caption": "AES-256 · zaszyfrowane na tym telefonie",
     "keySaved": "Mam klucz bezpiecznie zapisany poza tym telefonem",
@@ -555,9 +552,6 @@
     }
   },
   "wealth": {
-    "placeholder": {
-      "classPage": "Na razie ta strona jest dostępna tylko w Moony na komputerze."
-    },
     "subtitle": "Inwestycje, nieruchomości i gotówka",
     "sections": {
       "investments": "Inwestycje",

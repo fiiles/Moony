@@ -5,9 +5,6 @@
     "cashflow": "现金流",
     "wealth": "资产"
   },
-  "shell": {
-    "placeholder": "此页面仍在建设中。"
-  },
   "lock": {
     "caption": "AES-256 · 在这部手机上加密",
     "keySaved": "我已将密钥安全保存在这部手机之外",
@@ -462,9 +459,6 @@
     }
   },
   "wealth": {
-    "placeholder": {
-      "classPage": "此页面目前仅在电脑上的 Moony 中提供。"
-    },
     "subtitle": "投资、房产和现金",
     "sections": {
       "investments": "投资",

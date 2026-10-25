@@ -5,9 +5,6 @@
     "cashflow": "キャッシュフロー",
     "wealth": "資産"
   },
-  "shell": {
-    "placeholder": "この画面は準備中です。"
-  },
   "lock": {
     "caption": "AES-256 · このスマートフォンで暗号化",
     "keySaved": "キーをこのスマートフォンの外に安全に保管しました",
@@ -462,9 +459,6 @@
     }
   },
   "wealth": {
-    "placeholder": {
-      "classPage": "このページは現在、パソコンのMoonyでのみ利用できます。"
-    },
     "subtitle": "投資、不動産、現金",
     "sections": {
       "investments": "投資",

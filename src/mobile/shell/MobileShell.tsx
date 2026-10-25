@@ -29,7 +29,6 @@ import SettingsSection from '@/mobile/pages/settings/SettingsSection';
 import Stocks from '@/mobile/pages/Stocks';
 import Wealth from '@/mobile/pages/Wealth';
 import WatchDetail from '@/mobile/pages/WatchDetail';
-import RealEstatePlaceholder from '@/mobile/pages/WealthPlaceholder';
 import { EnableBiometricsSheet } from '@/mobile/sheets/EnableBiometricsSheet';
 import { routes, tabForPath } from './routes';
 import { TabBar } from './TabBar';
@@ -73,7 +72,7 @@ export function MobileShell() {
         <ProtectedRoute path={routes.overview} component={Overview} />
         <ProtectedRoute path={routes.agenda} component={Agenda} />
         <ProtectedRoute path={routes.finance} component={Finance} />
-        {/* Pushed on Finance; the screens come in Phase 2a (account), 2b (queue) and 4 (loan, policy). */}
+        {/* Pushed on Finance: an account, a loan, a policy and the categorize queue. */}
         <ProtectedRoute path={routes.accountDetail} component={AccountDetail} />
         <ProtectedRoute path={routes.loanDetail} component={LoanDetail} />
         <ProtectedRoute path={routes.policyDetail} component={PolicyDetail} />
@@ -95,7 +94,6 @@ export function MobileShell() {
         {/* The Ostatní aktiva class page and an asset of it */}
         <ProtectedRoute path={routes.otherAssetsList} component={OtherAssets} />
         <ProtectedRoute path={routes.otherAssetDetail} component={OtherAssetDetail} />
-        <ProtectedRoute path={routes.realEstateList} component={RealEstatePlaceholder} />
         <ProtectedRoute path={routes.propertyDetail} component={PropertyDetail} />
         {/* Nastavení and the pages pushed on it (spec §8.9) */}
         <ProtectedRoute path={routes.settings} component={Settings} />

@@ -50,6 +50,12 @@ describe('tabForPath', () => {
     expect(tabForPath(watchPath('AAPL'))).toBe('wealth');
   });
 
+  it('pushes a property straight on Majetek: there is no Nemovitosti list page', () => {
+    expect(routes.propertyDetail.replace(':id', 'x')).toBe(propertyPath('x'));
+    // A restored link to the old list path is no screen: the shell's catch-all sends it to Přehled
+    expect(Object.values(routes)).not.toContain('/wealth/real-estate');
+  });
+
   it('builds the watch detail path from the ticker, escaped', () => {
     expect(routes.watchDetail).toBe('/wealth/watch/:ticker');
     expect(watchPath('AAPL')).toBe('/wealth/watch/AAPL');

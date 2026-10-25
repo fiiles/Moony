@@ -5,9 +5,6 @@
     "cashflow": "Flujo de caja",
     "wealth": "Patrimonio"
   },
-  "shell": {
-    "placeholder": "Esta pantalla todavía está en preparación."
-  },
   "lock": {
     "caption": "AES-256 · cifrado en este teléfono",
     "keySaved": "Tengo la clave guardada en un lugar seguro fuera de este teléfono",
@@ -524,9 +521,6 @@
     }
   },
   "wealth": {
-    "placeholder": {
-      "classPage": "Por ahora, esta página solo está en Moony en el ordenador."
-    },
     "subtitle": "Inversiones, inmuebles y efectivo",
     "sections": {
       "investments": "Inversiones",

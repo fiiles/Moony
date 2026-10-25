@@ -86,21 +86,25 @@ export function useRefreshCryptoPrices() {
  * the list (there is no single-position command), its trades, and the value history of the period
  * (`useTickerHistory`: refetched when the backend finishes a recalculation, and backfilled once for
  * a coin imported without history).
+ *
+ * `live` is false while the coin is being deleted, as for a position (`usePosition`): its trades
+ * and its value line keep what they have and fetch nothing more, so the recalculation event the
+ * delete emits does not ask the backend for the coin it has just removed while the page leaves.
  */
-export function useCryptoPosition(id: string | undefined, period: ChartPeriod) {
+export function useCryptoPosition(id: string | undefined, period: ChartPeriod, live = true) {
   const { positions, rows, reportCurrency, isLoading } = useCryptoPositions();
   const holding = useMemo(() => rows.find((row) => row.id === id) ?? null, [rows, id]);
 
   const { data: transactionData } = useQuery<CryptoTransaction[]>({
     queryKey: ['crypto-transactions', id],
     queryFn: () => cryptoApi.getTransactions(id!),
-    enabled: !!id,
+    enabled: !!id && live,
   });
   const transactions = useMemo(() => transactionData ?? [], [transactionData]);
   // Each trade converts at the rates of its own day; the hero takes everything from the backend.
   const { ready: ratesReady, convertAt } = useTransactionFx(transactionData);
 
-  const history = useTickerHistory('crypto', holding?.ticker, period);
+  const history = useTickerHistory('crypto', holding?.ticker, period, live);
 
   return {
     positions,

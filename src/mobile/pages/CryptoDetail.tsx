@@ -60,17 +60,7 @@ export default function CryptoDetail() {
   const [period, setPeriod] = useState<ChartPeriod>('30D');
   const [trade, setTrade] = useState<'buy' | 'sell' | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const data = useCryptoPosition(params?.id, period);
-  const ledger = usePositionLedger(data.transactions);
-  const { deleteTransaction } = useCryptoTransactionMutations();
   const remove = useDeleteCrypto(params?.id);
-  const { holding, positions, history, reportCurrency } = data;
-
-  const current = useMemo<CoinView | null>(
-    () => (holding ? { holding, positions, history } : null),
-    [holding, positions, history]
-  );
-  const kept = useRetained(current);
   const exit = useDeleteAndLeave({
     home: routes.cryptoList,
     pathOf: cryptoPath,
@@ -78,6 +68,18 @@ export default function CryptoDetail() {
     remove: () => remove.mutateAsync(),
     closeSheet: () => setDeleteOpen(false),
   });
+  // While the delete runs nothing the page reads is fetched again: the backend's recalculation
+  // event would otherwise refetch the deleted coin (`useCryptoPosition`'s `live`)
+  const data = useCryptoPosition(params?.id, period, !exit.deleting);
+  const ledger = usePositionLedger(data.transactions);
+  const { deleteTransaction } = useCryptoTransactionMutations();
+  const { holding, positions, history, reportCurrency } = data;
+
+  const current = useMemo<CoinView | null>(
+    () => (holding ? { holding, positions, history } : null),
+    [holding, positions, history]
+  );
+  const kept = useRetained(current);
   // A coin being deleted stays on screen (as it was) until the screen has left
   const view = exit.deleting ? kept : current;
 

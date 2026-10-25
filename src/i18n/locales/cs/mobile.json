@@ -442,6 +442,7 @@
       "caption": "Tři pohyby ze souboru tak, jak je načtu:",
       "captionFew": "Pohyby ze souboru tak, jak je načtu:",
       "unknownFormat": "formát zatím neznám",
+      "learnedFormat": "podle uloženého formátu {{name}}",
       "tab": "tabulátor",
       "previewFailed": "Ukázku pohybů se teď nepodařilo načíst. Rozpoznané sloupce níže přesto platí.",
       "looksRight": "Vypadá to správně",
@@ -487,6 +488,11 @@
       "sample": "Ukázka po výběru:",
       "sampleHint": "Vyberte sloupec a ukážu, jak bych pohyb přečetl.",
       "pair": "dvojice sloupců"
+    },
+    "learned": {
+      "note": "Rozpoznáno podle uloženého formátu {{name}}",
+      "change": "Změnit",
+      "remembered": "Formát jsem si zapamatoval: příště tento soubor přečtu bez otázek."
     },
     "preview": {
       "hint": "Klepnutím na platbu zvolíte její kategorii.",
@@ -683,9 +689,17 @@
       "hideOnLaunchHint": "Každé spuštění začne se skrytými částkami; oko na Přehledu je zase ukáže.",
       "hideOnLaunchShort": "částky skryté po spuštění"
     },
+    "password": {
+      "title": "Změnit heslo",
+      "rowSub": "Dostanete nový obnovovací klíč",
+      "confirmHint": "Heslo se změní až po klepnutí na Změnit heslo. Do té doby platí současné heslo i klíč.",
+      "backupsKeepOld": "Zálohy pořízené před změnou se dál otevírají starým heslem.",
+      "biometricsStay": "Odemykání {{methodKey}} zůstane zapnuté.",
+      "fileTitle": "Obnovovací klíč Moony — nový od {{date}}",
+      "fileNote": "Platí až po dokončení změny hesla. Pokud jste změnu nedokončili, platí dál předchozí klíč."
+    },
     "profile": {
-      "lead": "Jméno se zobrazuje v pozdravu na Přehledu.",
-      "currencyReadOnly": "Hlavní měnu změníte v Moony na počítači."
+      "lead": "Jméno se zobrazuje v pozdravu na Přehledu."
     },
     "language": {
       "title": "Jazyk aplikace",
@@ -693,6 +707,31 @@
     },
     "appearance": {
       "lead": "Systém sleduje světlý nebo tmavý vzhled telefonu."
+    },
+    "import": {
+      "lead": "Výpisy z banky: formáty, které jsem se naučil, a návody k exportu.",
+      "formats": "Naučené formáty",
+      "empty": "Když potvrdíte, jak čtu neznámý soubor, zapamatuji si jeho formát a příště ho přečtu bez otázek.",
+      "sub": "{{account}} · naposledy {{lastUsed}}",
+      "subNoAccount": "naposledy {{lastUsed}}",
+      "shadowed": "banka má vestavěný formát",
+      "guides": "Návody k exportu",
+      "guidesRow": "Jak získat výpis z banky",
+      "renamed": "Formát přejmenován",
+      "deleted": "Formát smazán",
+      "format": {
+        "title": "Naučený formát",
+        "name": "Název",
+        "account": "Účet",
+        "created": "Naučeno",
+        "lastUsed": "Naposledy použito",
+        "columns": "Sloupce",
+        "shadowedNote": "Soubory s tímto uspořádáním sloupců čte vestavěný formát banky; tento naučený formát se nepoužije.",
+        "field": "{{field}}: {{column}}",
+        "delete": "Smazat formát",
+        "deleteTitle": "Smazat formát {{name}}?",
+        "deleteLead": "Příští soubor v tomto formátu znovu projde rozpoznáním."
+      }
     },
     "delete": {
       "title": "Smazat všechna data?",

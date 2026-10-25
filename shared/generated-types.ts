@@ -1116,6 +1116,12 @@ export type InsertInsurancePolicy = { type: string; provider: string; policyName
 export type InsertInvestmentTransaction = { investmentId: string | null; type: string; ticker: string; companyName: string; quantity: string; pricePerUnit: string; currency: string; transactionDate: number }
 
 /**
+ * What `save_learned_csv_format` takes (TS `InsertLearnedCsvFormat`); `validate()` is in
+ * `csv_import::learned` beside the rules it applies.
+ */
+export type InsertLearnedCsvFormat = { name: string; headers: string[]; delimiter: string; encoding: string; headerRow: number; mapping: LearnedCsvMapping; accountId: string | null }
+
+/**
  * Data for creating/updating loan
  */
 export type InsertLoan = { name: string; principal: string; currency: string | null; interestRate: string | null; 
@@ -1259,6 +1265,60 @@ export type InvestmentTransaction = { id: string; investmentId: string; type: st
  * A stock position with its transactions and tags (one IPC call for the detail page).
  */
 export type InvestmentWithDetails = { currency: string; fxQuality: ConversionQuality; investment: EnrichedStockInvestment; transactions: InvestmentTransaction[]; tags: StockTag[] }
+
+/**
+ * A CSV layout the person confirmed once, recognised next month (mobile spec §8.6 rung 4; TS
+ * `LearnedCsvFormat`). Stored in `app_config` by `csv_import::learned`; `signature` is the
+ * layout's key (header cells, delimiter, column count), `headers` the cells it was learned
+ * from. Encoding and header row are what the file had when it was saved, not part of the key.
+ * Also the stored `app_config` shape: a new non-`Option` field needs `#[serde(default)]`.
+ */
+export type LearnedCsvFormat = { 
+/**
+ * `learned:<uuid>`.
+ */
+id: string; name: string; signature: string; headers: string[]; 
+/**
+ * One character: `,` `;` or a tab.
+ */
+delimiter: string; encoding: string; 
+/**
+ * 0-based line of the header row.
+ */
+headerRow: number; mapping: LearnedCsvMapping; 
+/**
+ * The account the layout was learned for, offered again on reuse.
+ */
+accountId: string | null; 
+/**
+ * Unix seconds.
+ */
+createdAt: number; 
+/**
+ * Unix seconds of the last successful import with this format.
+ */
+lastUsedAt: number; 
+/**
+ * The shipped preset whose headers this layout now matches, filled on every read (a preset
+ * always wins over a learned format) and stored as `null`.
+ */
+shadowedByPresetId: string | null }
+
+/**
+ * How a learned format reads the columns of its file (TS `LearnedCsvMapping`): the parts of
+ * [`CsvImportConfig`] that describe the layout, with the file's own header names. Nothing that
+ * belongs to one file (skipped rows, overrides, the duplicate decision) is kept.
+ * Also the stored `app_config` shape: a new non-`Option` field needs `#[serde(default)]`.
+ */
+export type LearnedCsvMapping = { dateColumn: string; 
+/**
+ * chrono format, or `"auto"` to detect it from the column.
+ */
+dateFormat: string; amountColumn: string | null; debitColumn: string | null; creditColumn: string | null; balanceColumn: string | null; transactionIdColumn: string | null; descriptionColumns: string[]; counterpartyColumn: string | null; counterpartyIbanColumn: string | null; counterpartyBankCodeColumn: string | null; counterpartyCountryColumn: string | null; currencyColumn: string | null; 
+/**
+ * `"auto"`, `","` or `"."`.
+ */
+decimalSeparator: string }
 
 export type LearnedPayeeEntry = { id: string; ruleType: string; normalizedPayee: string | null; originalPayee: string | null; counterpartyIban: string | null; categoryId: string; bankAccountId: string | null; isCredit: boolean | null; createdAt: number; updatedAt: number }
 

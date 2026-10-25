@@ -1016,6 +1016,74 @@ mod tests {
         );
     }
 
+    /// The phone's password change while biometric unlock is on (ruling 14): the change re-wraps
+    /// the same master key, so the copy biometric unlock stored in the keychain still opens the
+    /// profile and nothing needs re-enrolling. The new password opens it, the old one is refused,
+    /// the old recovery key no longer opens it and the new one does; the marker is left alone and
+    /// nothing is written beside the key files.
+    #[test]
+    fn change_password_keeps_the_master_key_biometric_unlock_holds() {
+        let dir = tempdir().expect("tempdir");
+        let db_path = write_key_files(dir.path(), "old-password");
+        let salt = crypto::read_salt(&dir.path().join("salt")).unwrap();
+        let key_path = dir.path().join("key.enc");
+        let recovery_path = dir.path().join("recovery.enc");
+        // What biometric unlock stored when it was switched on: the session's master key.
+        let stored =
+            crypto::decrypt_master_key_with_password("old-password", &salt, &key_path).unwrap();
+        biometric_unlock::write_marker(dir.path(), true).unwrap();
+
+        let new_recovery_key = prepare_change_password(&db_path, "old-password").unwrap();
+        confirm_change_password(&db_path, "old-password", "new-password", &new_recovery_key)
+            .unwrap();
+
+        // The new password unwraps the very key biometric unlock holds.
+        assert_eq!(
+            crypto::decrypt_master_key_with_password("new-password", &salt, &key_path).unwrap(),
+            stored
+        );
+        unlock_with(&db_path, "new-password", open_with(stored)).unwrap();
+        // The old password is refused, before and after the key step alike.
+        assert_auth_key(
+            prepare_change_password(&db_path, "old-password").unwrap_err(),
+            "auth.wrongPassword",
+        );
+        assert_auth_key(
+            unlock_with(&db_path, "old-password", open_with(stored)).unwrap_err(),
+            "auth.wrongPassword",
+        );
+        // The old recovery key no longer opens the profile; the new one opens the same key.
+        assert_auth_key(
+            crypto::decrypt_master_key_with_recovery(RECOVERY_KEY, &salt, &recovery_path)
+                .unwrap_err(),
+            "auth.invalidRecoveryKey",
+        );
+        assert_eq!(
+            crypto::decrypt_master_key_with_recovery(&new_recovery_key, &salt, &recovery_path)
+                .unwrap(),
+            stored
+        );
+        // Biometric unlock stays on, and the change wrote nothing but the two key files.
+        assert_eq!(
+            biometric_unlock::read_marker(dir.path()),
+            biometric_unlock::Marker::Enabled
+        );
+        let mut files: Vec<String> = fs::read_dir(dir.path())
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name().to_string_lossy().into_owned())
+            .collect();
+        files.sort();
+        assert_eq!(
+            files,
+            [
+                biometric_unlock::MARKER_FILE,
+                "key.enc",
+                "recovery.enc",
+                "salt"
+            ]
+        );
+    }
+
     /// a profile whose key.enc predates the KDF header (60 bytes, N=2^14)
     /// still unlocks, and a password change re-wraps it with the current cost.
     #[test]

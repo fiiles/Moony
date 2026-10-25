@@ -390,6 +390,7 @@
       "caption": "文件中的三笔交易，按我的读法显示如下：",
       "captionFew": "文件中的交易，按我的读法显示如下：",
       "unknownFormat": "格式暂未识别",
+      "learnedFormat": "按保存的格式“{{name}}”",
       "tab": "制表符",
       "previewFailed": "暂时无法加载示例行。下面识别出的列仍然有效。",
       "looksRight": "没错",
@@ -435,6 +436,11 @@
       "sample": "选择后的示例：",
       "sampleHint": "选择一列，我会展示我将如何读取这笔交易。",
       "pair": "两列一组"
+    },
+    "learned": {
+      "note": "已按保存的格式“{{name}}”识别",
+      "change": "更改",
+      "remembered": "已记住该格式：下次读取此文件时不再提问。"
     },
     "preview": {
       "hint": "点按一笔付款即可选择其类别。",
@@ -611,9 +617,17 @@
       "hideOnLaunchHint": "每次启动时金额都处于隐藏状态；概览中的眼睛图标可再次显示。",
       "hideOnLaunchShort": "启动时隐藏金额"
     },
+    "password": {
+      "title": "更改密码",
+      "rowSub": "会生成新的恢复密钥",
+      "confirmHint": "点按“更改密码”后才会更改密码。在此之前，当前密码和密钥仍然有效。",
+      "backupsKeepOld": "更改前创建的备份仍需使用旧密码打开。",
+      "biometricsStay": "{{methodKey}}解锁将保持开启。",
+      "fileTitle": "Moony 恢复密钥（{{date}} 生成的新密钥）",
+      "fileNote": "完成密码更改后才生效。如果未完成更改，之前的密钥仍然有效。"
+    },
     "profile": {
-      "lead": "您的姓名会显示在概览的问候语中。",
-      "currencyReadOnly": "主货币请在电脑上的 Moony 中更改。"
+      "lead": "您的姓名会显示在概览的问候语中。"
     },
     "language": {
       "title": "应用语言",
@@ -621,6 +635,31 @@
     },
     "appearance": {
       "lead": "「跟随系统」会沿用手机的浅色或深色外观。"
+    },
+    "import": {
+      "lead": "银行账单：已学习的格式和导出指南。",
+      "formats": "已学习的格式",
+      "empty": "当您确认我如何读取一个陌生文件后，我会记住它的格式，下次无需提问即可读取。",
+      "sub": "{{account}} · 最近使用 {{lastUsed}}",
+      "subNoAccount": "最近使用 {{lastUsed}}",
+      "shadowed": "银行已有内置格式",
+      "guides": "导出指南",
+      "guidesRow": "如何从银行获取账单",
+      "renamed": "格式已重命名",
+      "deleted": "格式已删除",
+      "format": {
+        "title": "已学习的格式",
+        "name": "名称",
+        "account": "账户",
+        "created": "学习于",
+        "lastUsed": "最近使用",
+        "columns": "列",
+        "shadowedNote": "具有此列布局的文件由银行的内置格式读取；此已学习的格式不会被使用。",
+        "field": "{{field}}：{{column}}",
+        "delete": "删除格式",
+        "deleteTitle": "删除格式“{{name}}”？",
+        "deleteLead": "此格式的下一个文件将重新经过识别。"
+      }
     },
     "delete": {
       "title": "删除所有数据？",

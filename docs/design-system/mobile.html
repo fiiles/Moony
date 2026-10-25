@@ -404,8 +404,9 @@
 
   <section class="part">
     <h2>Import výpisu</h2>
-    <p>Jeden vysoký sheet (<code>.m-sheet--full</code>), jehož fáze střídají titulek, větu, tělo a patičku. Nahoře vždy pruh souboru (<code>.m-filebar</code>: čip 36 pt, název s výpustkou, formát a účet z výpisu pod ním). <strong>Náhled</strong>: poznámky k výpisu (výpis jiného účtu je červený box <code>.m-box--loss</code> s textovým tlačítkem 44 pt a spínačem „stejně importovat“; že výpis sedí, je klidná <code>.m-note--ok</code>), řádek počtů (<code>.m-imp-count</code>), období a počty kategorií (<code>.m-imp-meta</code>), řádky plateb (<code>.m-row</code>: iniciály, protistrana, podřádek „datum · kategorie“, podepsaná částka ve vlastní měně; duplicita je na 50 % se štítkem, chyba má červený štítek <code>.m-row__badge--loss</code>) a „und 43 weitere“. Patička má jedinou hlavní akci. <strong>Hotovo</strong>: tři statistiky, věty (<code>.m-imp-facts</code>), jedna hlavní akce „Zařadit N plateb“ a další kroky jako řádky se šipkou; patička je jen „Hotovo“. <strong>Účet</strong>: řádky výběru s druhým řádkem (<code>.m-pick__main</code>, <code>.m-pick__s</code>). <strong>Kategorie</strong> platby: sheet nad sheetem, „Podle pravidel“ první. <strong>Návod banky</strong> (<code>.m-guide</code>): pod „Vybrat soubor“ návod banky účtu — nadpis 16 / 620 (zalamuje se), kroky jako číslovaný seznam (<code>.m-guide__steps</code>, číslo v kroužku 22 pt, text 13 / 450 <code>ink-2</code>), formát jako popisek 11 / 500 a u banky, ke které se jde přes webové bankovnictví, sekundární tlačítko 44 pt „Online-Banking öffnen“; u banky s exportem přímo v aplikaci tlačítko není. U <strong>nečitelného souboru</strong> jsou banky seznam řádků výběru (<code>.m-pick__chip--ini</code>: iniciály banky) a klepnutá banka otevře svůj návod na místě pod textovým tlačítkem zpět (<code>.m-guide__back</code>). <strong>Rozpoznání neznámého CSV</strong> (spec §8.6, stupeň 3; prototyp 06–07): pod pruhem souboru „So verstehe ich die Datei“, tři skutečné řádky souboru jako řádky plateb (podřádek „datum · k čemu platba byla“) a seznam toho, co se rozpoznalo (<code>.m-recog</code>: zelená fajfka, jméno pole 13 / 600 a čtená pole 12 / 500; nečtené pole má minus, je na <code>ink-4</code> a říká, co to pro import znamená; řádek částky může říct, že znaménko ověřil zůstatek, nebo červeně <code>.m-recog__warn</code>, že výdaje vypadají kladně; částka z dvojice sloupců jmenuje strany „Ausgaben: … · Einnahmen: …“). Patička: „Korrigieren…“ a hlavní „Sieht richtig aus“. Soubor, jehož výdaje zůstatek dokazuje kladné, takhle naimportovat nejde: pod řádky červený box <code>.m-box--loss</code> to řekne rovnou a nabídne „Korrigieren…“, patička je „Abbrechen“ a hlavní tlačítko je vypnuté. <strong>Oprava</strong>: nejdřív pole jako řádky s šipkou, pak sloupce jednoho pole jako volby (<code>.m-colopt</code>: kruh 22 pt, záhlaví sloupce 15 / 600 a pod ním dvě ukázkové hodnoty; dvojice sloupců jmenuje strany „Ausgaben: Odchozí · Einnahmen: Příchozí“ a má popisek „(Spaltenpaar)“ — dvojici, kterou nic neorientuje, nabízí oběma směry —, u data, jehož den a měsíc nejdou poznat, jsou to dvě čtení sloupce s jedním datem napsaným slovy) a pod nimi jeden znovu přečtený řádek. Nikdy mřížka sloupců.</p>
+    <p>Jeden vysoký sheet (<code>.m-sheet--full</code>), jehož fáze střídají titulek, větu, tělo a patičku. Nahoře vždy pruh souboru (<code>.m-filebar</code>: čip 36 pt, název s výpustkou, formát a účet z výpisu pod ním). <strong>Náhled</strong>: poznámky k výpisu (výpis jiného účtu je červený box <code>.m-box--loss</code> s textovým tlačítkem 44 pt a spínačem „stejně importovat“; že výpis sedí, je klidná <code>.m-note--ok</code>; CSV, které čte formát uložený z dřívějška, začíná klidnou poznámkou <code>.m-note--act</code> „Erkannt anhand des gespeicherten Formats …“ s textovým tlačítkem 44 pt „Ändern“ na konci řádku, <code>.m-note__act</code>), řádek počtů (<code>.m-imp-count</code>), období a počty kategorií (<code>.m-imp-meta</code>), řádky plateb (<code>.m-row</code>: iniciály, protistrana, podřádek „datum · kategorie“, podepsaná částka ve vlastní měně; duplicita je na 50 % se štítkem, chyba má červený štítek <code>.m-row__badge--loss</code>) a „und 43 weitere“. Patička má jedinou hlavní akci. <strong>Hotovo</strong>: tři statistiky, věty (<code>.m-imp-facts</code>; po CSV, jehož rozložení se právě uložilo, je poslední klidná věta „Format gemerkt: …“), jedna hlavní akce „Zařadit N plateb“ a další kroky jako řádky se šipkou; patička je jen „Hotovo“. <strong>Účet</strong>: řádky výběru s druhým řádkem (<code>.m-pick__main</code>, <code>.m-pick__s</code>). <strong>Kategorie</strong> platby: sheet nad sheetem, „Podle pravidel“ první. <strong>Návod banky</strong> (<code>.m-guide</code>): pod „Vybrat soubor“ návod banky účtu — nadpis 16 / 620 (zalamuje se), kroky jako číslovaný seznam (<code>.m-guide__steps</code>, číslo v kroužku 22 pt, text 13 / 450 <code>ink-2</code>), formát jako popisek 11 / 500 a u banky, ke které se jde přes webové bankovnictví, sekundární tlačítko 44 pt „Online-Banking öffnen“; u banky s exportem přímo v aplikaci tlačítko není. U <strong>nečitelného souboru</strong> jsou banky seznam řádků výběru (<code>.m-pick__chip--ini</code>: iniciály banky) a klepnutá banka otevře svůj návod na místě pod textovým tlačítkem zpět (<code>.m-guide__back</code>). <strong>Rozpoznání neznámého CSV</strong> (spec §8.6, stupeň 3; prototyp 06–07): pod pruhem souboru „So verstehe ich die Datei“, tři skutečné řádky souboru jako řádky plateb (podřádek „datum · k čemu platba byla“) a seznam toho, co se rozpoznalo (<code>.m-recog</code>: zelená fajfka, jméno pole 13 / 600 a čtená pole 12 / 500; nečtené pole má minus, je na <code>ink-4</code> a říká, co to pro import znamená; řádek částky může říct, že znaménko ověřil zůstatek, nebo červeně <code>.m-recog__warn</code>, že výdaje vypadají kladně; částka z dvojice sloupců jmenuje strany „Ausgaben: … · Einnahmen: …“). Patička: „Korrigieren…“ a hlavní „Sieht richtig aus“. Soubor, jehož výdaje zůstatek dokazuje kladné, takhle naimportovat nejde: pod řádky červený box <code>.m-box--loss</code> to řekne rovnou a nabídne „Korrigieren…“, patička je „Abbrechen“ a hlavní tlačítko je vypnuté. <strong>Oprava</strong>: nejdřív pole jako řádky s šipkou, pak sloupce jednoho pole jako volby (<code>.m-colopt</code>: kruh 22 pt, záhlaví sloupce 15 / 600 a pod ním dvě ukázkové hodnoty; dvojice sloupců jmenuje strany „Ausgaben: Odchozí · Einnahmen: Příchozí“ a má popisek „(Spaltenpaar)“ — dvojici, kterou nic neorientuje, nabízí oběma směry —, u data, jehož den a měsíc nejdou poznat, jsou to dvě čtení sloupce s jedním datem napsaným slovy) a pod nimi jeden znovu přečtený řádek. Nikdy mřížka sloupců.</p>
     <div class="phones" id="importPreview"></div>
+    <div class="phones" id="importLearned" style="margin-top: 26px"></div>
     <div class="phones" id="importDone" style="margin-top: 26px"></div>
     <div class="phones" id="importAccount" style="margin-top: 26px"></div>
     <div class="phones" id="importChoice" style="margin-top: 26px"></div>
@@ -1604,7 +1605,40 @@ Fondsvorschuss 2&nbsp;000 Kč monatlich.</p></div>
   </div>
 </template>
 
-<!-- The import sheet's done step, at the three widths. -->
+<!-- The import sheet's preview of a CSV a learned format reads (rung 4): the quiet note with its "Ändern" button, a long
+     format name that wraps, then the counts and rows as in any preview. -->
+<template id="import-learned-frame">
+  <div class="m-screen" lang="de">
+    <header class="m-nav">
+      <div class="m-nav__side"><button class="m-nav__back" type="button" data-icon="chevron-left" data-size="22"><span>Finanzen</span></button></div>
+      <h1 class="m-nav__title">Girokonto</h1>
+      <div class="m-nav__side m-nav__side--end"><button class="m-nav__btn" type="button" aria-label="Weitere Aktionen" data-icon="ellipsis"></button></div>
+    </header>
+    <main class="m-screen__body">
+      <p class="m-nav__sub">Fio · CZK · 2100123456/2010</p>
+      <div data-rows="ledgerToday"></div>
+    </main>
+    <nav class="m-tabbar" data-active="finance"></nav>
+    <div class="m-scrim"></div>
+    <div class="m-sheet m-sheet--full" role="dialog" aria-modal="true" aria-label="Kontoauszug importieren">
+      <div class="m-sheet__handle"></div>
+      <div class="m-sheet__head"><div class="m-sheet__t">Kontoauszug importieren</div><div class="m-sheet__s">In Girokonto · Fio</div></div>
+      <div class="m-sheet__body">
+        <div class="m-filebar"><span class="m-filebar__ic" data-icon="file-text" data-size="16"></span><span class="m-filebar__main"><span class="m-filebar__t">Pohyby_2100123456_2026-10.csv</span><span class="m-filebar__s">CSV</span></span></div>
+        <div class="m-note m-note--act"><span data-icon="info" data-size="15"></span><span class="m-note__t">Erkannt anhand des gespeicherten Formats Fio banka – Girokonto Privat</span><button class="m-note__act" type="button">Ändern</button></div>
+        <p class="m-imp-count">48 Transaktionen werden importiert · 3 Duplikate übersprungen</p>
+        <p class="m-imp-meta">1. 10. 2026 – 31. 10. 2026 · 36 kategorisiert · 12 ohne Kategorie</p>
+        <p class="m-imp-meta"><span class="m-imp-meta__loss">1 Fehler</span></p>
+        <p class="m-imp-hint">Tippen Sie auf eine Zahlung, um ihre Kategorie zu wählen.</p>
+        <div class="m-rows" data-rows="importRows" style="margin-bottom: 8px"></div>
+        <p class="m-imp-more">und 43 weitere</p>
+      </div>
+      <div class="m-sheet__foot"><button class="m-btn m-btn--ghost" type="button"><span>Abbrechen</span></button><button class="m-btn m-btn--primary m-btn--wrap" type="button"><span>48 Transaktionen importieren</span></button></div>
+    </div>
+  </div>
+</template>
+
+<!-- The import sheet's done step, at the three widths; its last sentence is what a CSV whose layout was just saved as a learned format adds. -->
 <template id="import-done-frame">
   <div class="m-screen" lang="de">
     <header class="m-nav">
@@ -1630,6 +1664,7 @@ Fondsvorschuss 2&nbsp;000 Kč monatlich.</p></div>
         <div class="m-imp-facts">
           <p>Kontostand laut Auszug zum 31. 10. 2026: <b>30&nbsp;196,12 Kč</b>.</p>
           <p>36 Zahlungen wurden von den Regeln kategorisiert. 12 haben noch keine Kategorie.</p>
+          <p>Ich habe mir das Format gemerkt: Beim nächsten Mal lese ich diese Datei ohne Rückfragen.</p>
         </div>
         <button class="m-btn m-btn--primary m-btn--block m-imp-primary" type="button"><span>12 Zahlungen kategorisieren</span></button>
         <div class="m-rows" data-rows="importNext"></div>
@@ -2563,6 +2598,7 @@ Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
   frames("budgets", "budgets-frame", "Rozpočty");
   frames("limit", "limit-frame", "Limit-Sheet");
   frames("importPreview", "import-preview-frame", "Import: Vorschau");
+  frames("importLearned", "import-learned-frame", "Import: Gelerntes Format");
   frames("importDone", "import-done-frame", "Import: Fertig");
   frames("importAccount", "import-account-frame", "Import: Konto");
   frames("importChoice", "import-choice-frame", "Import: Kategorie");

@@ -89,6 +89,8 @@ import type {
   CsvPreset,
   CsvPreviewResult,
   InferredColumns,
+  LearnedCsvFormat,
+  InsertLearnedCsvFormat,
   CsvImportPreview,
   CsvImportResult,
   CsvImportConfigInput,
@@ -1171,6 +1173,33 @@ export const bankAccountsApi = {
   getImportBatches: (accountId: string) =>
     tauriInvoke<CsvImportBatch[]>('get_import_batches', { accountId }),
   deleteImportBatch: (batchId: string) => tauriInvoke<number>('delete_import_batch', { batchId }),
+};
+
+/**
+ * CSV layouts the person confirmed once (mobile import, rung 4), kept in the profile database
+ * and recognised next month by their header signature. Rust `commands/bank_accounts.rs`,
+ * `services/csv_import/learned.rs`.
+ */
+export const learnedFormatsApi = {
+  /** The learned layouts, the one used last first. */
+  list: () => tauriInvoke<LearnedCsvFormat[]>('list_learned_csv_formats'),
+  /**
+   * The format learned for a file with these header cells (as `parseCsvFile` reports them) and
+   * this delimiter; null when its layout was never confirmed.
+   */
+  find: (headers: string[], delimiter: string) =>
+    tauriInvoke<LearnedCsvFormat | null>('find_learned_csv_format', { headers, delimiter }),
+  /**
+   * Remember a confirmed layout; saving a layout again replaces it. Refused with
+   * `validation.learnedFormatHeaderless` when the header row is a transaction.
+   */
+  save: (format: InsertLearnedCsvFormat) =>
+    tauriInvoke<LearnedCsvFormat>('save_learned_csv_format', { format }),
+  rename: (id: string, name: string) =>
+    tauriInvoke<LearnedCsvFormat>('rename_learned_csv_format', { id, name }),
+  remove: (id: string) => tauriInvoke<void>('delete_learned_csv_format', { id }),
+  /** An import succeeded with this format: it is the most recently used one now. */
+  markUsed: (id: string) => tauriInvoke<void>('mark_learned_csv_format_used', { id }),
 };
 
 // ============================================================================

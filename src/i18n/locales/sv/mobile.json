@@ -416,6 +416,7 @@
       "caption": "Tre transaktioner ur filen, så som jag läser dem:",
       "captionFew": "Transaktioner ur filen, så som jag läser dem:",
       "unknownFormat": "formatet är ännu okänt",
+      "learnedFormat": "enligt det sparade formatet {{name}}",
       "tab": "tabb",
       "previewFailed": "Exempelraderna kunde inte läsas in just nu. Kolumnerna nedan gäller ändå.",
       "looksRight": "Ser rätt ut",
@@ -461,6 +462,11 @@
       "sample": "Exempel efter ditt val:",
       "sampleHint": "Välj en kolumn så visar jag hur jag skulle läsa transaktionen.",
       "pair": "kolumnpar"
+    },
+    "learned": {
+      "note": "Igenkänt från det sparade formatet {{name}}",
+      "change": "Ändra",
+      "remembered": "Jag har kommit ihåg formatet: nästa gång läser jag den här filen utan frågor."
     },
     "preview": {
       "hint": "Tryck på en betalning för att välja kategori.",
@@ -647,9 +653,17 @@
       "hideOnLaunchHint": "Varje start börjar med dolda belopp; ögat i Översikt visar dem igen.",
       "hideOnLaunchShort": "belopp dolda vid start"
     },
+    "password": {
+      "title": "Ändra lösenord",
+      "rowSub": "Du får en ny återställningsnyckel",
+      "confirmHint": "Lösenordet ändras först när du trycker på Ändra lösenord. Till dess gäller ditt nuvarande lösenord och din nyckel.",
+      "backupsKeepOld": "Säkerhetskopior gjorda före ändringen öppnas fortfarande med det gamla lösenordet.",
+      "biometricsStay": "Upplåsning med {{methodKey}} förblir på.",
+      "fileTitle": "Moonys återställningsnyckel – ny från {{date}}",
+      "fileNote": "Gäller först när lösenordsbytet är slutfört. Om du inte slutförde bytet gäller den tidigare nyckeln fortfarande."
+    },
     "profile": {
-      "lead": "Ditt namn visas i hälsningen i Översikt.",
-      "currencyReadOnly": "Huvudvalutan ändrar du i Moony på datorn."
+      "lead": "Ditt namn visas i hälsningen i Översikt."
     },
     "language": {
       "title": "Appens språk",
@@ -657,6 +671,31 @@
     },
     "appearance": {
       "lead": "System följer telefonens ljusa eller mörka utseende."
+    },
+    "import": {
+      "lead": "Kontoutdrag: formaten jag har lärt mig och guider för export.",
+      "formats": "Inlärda format",
+      "empty": "När du bekräftar hur jag läser en okänd fil minns jag dess format och läser den utan frågor nästa gång.",
+      "sub": "{{account}} · senast använt {{lastUsed}}",
+      "subNoAccount": "senast använt {{lastUsed}}",
+      "shadowed": "banken har ett inbyggt format",
+      "guides": "Exportguider",
+      "guidesRow": "Så får du ett kontoutdrag från banken",
+      "renamed": "Formatet har bytt namn",
+      "deleted": "Formatet har tagits bort",
+      "format": {
+        "title": "Inlärt format",
+        "name": "Namn",
+        "account": "Konto",
+        "created": "Inlärt",
+        "lastUsed": "Senast använt",
+        "columns": "Kolumner",
+        "shadowedNote": "Filer med den här kolumnordningen läses av bankens inbyggda format; det här inlärda formatet används inte.",
+        "field": "{{field}}: {{column}}",
+        "delete": "Ta bort format",
+        "deleteTitle": "Ta bort formatet {{name}}?",
+        "deleteLead": "Nästa fil i det här formatet går genom igenkänningen igen."
+      }
     },
     "delete": {
       "title": "Radera alla data?",

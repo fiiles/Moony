@@ -221,6 +221,8 @@
     "csvEmptyFile": "ファイルが空か、ヘッダー行がありません。",
     "csvColumnsNotFound": "選択した列がファイル内に見つかりませんでした。ヘッダー行と列の割り当てを確認してください。",
     "csvDecimalSeparatorInvalid": "小数点の区切り文字はカンマまたはピリオドにしてください。",
+    "learnedFormatHeaderless": "この行は列見出しではなくデータのようです。",
+    "learnedFormatColumns": "この形式は、ファイルにない列を参照しています。",
     "amountPositive": "金額は正の値にしてください",
     "cashflowPeriodInvalid": "期間の終了日を開始日より前にすることはできません。",
     "balanceAnchorIncomplete": "残高とその日付の両方を入力してください",

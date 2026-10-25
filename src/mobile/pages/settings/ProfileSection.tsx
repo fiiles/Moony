@@ -2,7 +2,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { z } from 'zod';
-import { currencyName } from '@shared/currencies';
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -15,9 +14,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/use-auth';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
-import { useCurrency } from '@/lib/currency';
-import { useFormat } from '@/lib/use-format';
-import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { SectionPage } from '@/mobile/components/SectionPage';
 
 /**
@@ -39,18 +35,14 @@ const primaryButton =
 const fieldMessage = 'text-left text-m-sub';
 
 /**
- * Nastavení → Profil (spec §8.9): name, surname and e-mail as on the desktop's profile card, and
- * the main currency, which is read-only here: changing it re-bases every report and is done in
- * Moony on the computer.
+ * Nastavení → Profil (spec §8.9): name, surname and e-mail as on the desktop's profile card. The
+ * main currency is not here: it is a row of Nastavení next to the language (Jazyk a měna).
  */
 export default function ProfileSection() {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
-  const { t: ts } = useTranslation('settings');
   const { user } = useAuth();
   const { updateProfile } = useSettingsMutations();
-  const { currencyCode } = useCurrency();
-  const fmt = useFormat();
 
   const form = useForm<ProfileData>({
     resolver: zodResolver(profileSchema),
@@ -136,16 +128,6 @@ export default function ProfileSection() {
           </Button>
         </form>
       </Form>
-
-      <div className="mt-5 rounded-r4 border border-line bg-paper px-3 shadow-e1">
-        {/* `stack`: the sub-line says why the row cannot be edited, so it wraps instead of ending in an ellipsis */}
-        <KeyValueRow
-          stack
-          label={ts('currency.main')}
-          value={`${currencyCode} · ${currencyName(currencyCode, fmt.locale)}`}
-          sub={t('settings.profile.currencyReadOnly')}
-        />
-      </div>
     </SectionPage>
   );
 }

@@ -468,6 +468,7 @@
       "caption": "Trzy transakcje z pliku, tak jak je odczytam:",
       "captionFew": "Transakcje z pliku, tak jak je odczytam:",
       "unknownFormat": "format jeszcze nieznany",
+      "learnedFormat": "według zapisanego formatu {{name}}",
       "tab": "tabulator",
       "previewFailed": "Nie udało się teraz wczytać przykładowych wierszy. Rozpoznane kolumny poniżej nadal obowiązują.",
       "looksRight": "Wygląda dobrze",
@@ -513,6 +514,11 @@
       "sample": "Przykład po twoim wyborze:",
       "sampleHint": "Wybierz kolumnę, a pokażę, jak odczytam transakcję.",
       "pair": "para kolumn"
+    },
+    "learned": {
+      "note": "Rozpoznano według zapisanego formatu {{name}}",
+      "change": "Zmień",
+      "remembered": "Zapamiętałem format: następnym razem odczytam ten plik bez pytań."
     },
     "preview": {
       "hint": "Dotknij płatności, aby wybrać jej kategorię.",
@@ -719,9 +725,17 @@
       "hideOnLaunchHint": "Każde uruchomienie zaczyna się z ukrytymi kwotami; oko w Przeglądzie pokazuje je ponownie.",
       "hideOnLaunchShort": "kwoty ukryte po uruchomieniu"
     },
+    "password": {
+      "title": "Zmień hasło",
+      "rowSub": "Otrzymasz nowy klucz odzyskiwania",
+      "confirmHint": "Hasło zmieni się dopiero po stuknięciu Zmień hasło. Do tego czasu obowiązują obecne hasło i klucz.",
+      "backupsKeepOld": "Kopie zapasowe zrobione przed zmianą nadal otwierają się starym hasłem.",
+      "biometricsStay": "Odblokowanie {{methodKey}} pozostanie włączone.",
+      "fileTitle": "Klucz odzyskiwania Moony — nowy z {{date}}",
+      "fileNote": "Obowiązuje dopiero po zakończeniu zmiany hasła. Jeśli nie zakończono zmiany, nadal obowiązuje poprzedni klucz."
+    },
     "profile": {
-      "lead": "Twoje imię pojawia się w powitaniu w Przeglądzie.",
-      "currencyReadOnly": "Walutę główną zmienisz w Moony na komputerze."
+      "lead": "Twoje imię pojawia się w powitaniu w Przeglądzie."
     },
     "language": {
       "title": "Język aplikacji",
@@ -729,6 +743,31 @@
     },
     "appearance": {
       "lead": "System podąża za jasnym lub ciemnym wyglądem telefonu."
+    },
+    "import": {
+      "lead": "Wyciągi z banku: formaty, których się nauczyłem, i instrukcje eksportu.",
+      "formats": "Poznane formaty",
+      "empty": "Gdy potwierdzisz, jak czytam nieznany plik, zapamiętam jego format i następnym razem odczytam go bez pytań.",
+      "sub": "{{account}} · ostatnio użyty {{lastUsed}}",
+      "subNoAccount": "ostatnio użyty {{lastUsed}}",
+      "shadowed": "bank ma wbudowany format",
+      "guides": "Instrukcje eksportu",
+      "guidesRow": "Jak uzyskać wyciąg z banku",
+      "renamed": "Zmieniono nazwę formatu",
+      "deleted": "Usunięto format",
+      "format": {
+        "title": "Poznany format",
+        "name": "Nazwa",
+        "account": "Konto",
+        "created": "Poznany",
+        "lastUsed": "Ostatnio użyty",
+        "columns": "Kolumny",
+        "shadowedNote": "Pliki z takim układem kolumn odczytuje wbudowany format banku; ten poznany format nie jest używany.",
+        "field": "{{field}}: {{column}}",
+        "delete": "Usuń format",
+        "deleteTitle": "Usunąć format {{name}}?",
+        "deleteLead": "Następny plik w tym formacie ponownie przejdzie przez rozpoznawanie."
+      }
     },
     "delete": {
       "title": "Usunąć wszystkie dane?",

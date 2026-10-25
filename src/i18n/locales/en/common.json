@@ -221,6 +221,8 @@
     "csvEmptyFile": "The file is empty or has no header row.",
     "csvColumnsNotFound": "The selected columns were not found in the file. Check the header row and the column mapping.",
     "csvDecimalSeparatorInvalid": "The decimal separator must be a comma or a dot.",
+    "learnedFormatHeaderless": "This row looks like data, not column headings.",
+    "learnedFormatColumns": "The format refers to a column the file does not have.",
     "amountPositive": "Amount must be positive",
     "cashflowPeriodInvalid": "The period cannot end before it starts.",
     "balanceAnchorIncomplete": "Enter both the outstanding balance and its date",

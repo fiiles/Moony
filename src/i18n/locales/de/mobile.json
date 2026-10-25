@@ -416,6 +416,7 @@
       "caption": "Drei Zahlungen aus der Datei, so wie ich sie lese:",
       "captionFew": "Zahlungen aus der Datei, so wie ich sie lese:",
       "unknownFormat": "Format noch unbekannt",
+      "learnedFormat": "nach dem gespeicherten Format {{name}}",
       "tab": "Tabulator",
       "previewFailed": "Die Beispielzeilen konnten gerade nicht geladen werden. Die erkannten Spalten unten gelten trotzdem.",
       "looksRight": "Sieht richtig aus",
@@ -461,6 +462,11 @@
       "sample": "Beispiel nach Ihrer Wahl:",
       "sampleHint": "Wählen Sie eine Spalte, dann zeige ich, wie ich die Zahlung lesen würde.",
       "pair": "Spaltenpaar"
+    },
+    "learned": {
+      "note": "Erkannt anhand des gespeicherten Formats {{name}}",
+      "change": "Ändern",
+      "remembered": "Ich habe mir das Format gemerkt: Beim nächsten Mal lese ich diese Datei ohne Rückfragen."
     },
     "preview": {
       "hint": "Tippen Sie auf eine Zahlung, um ihre Kategorie zu wählen.",
@@ -647,9 +653,17 @@
       "hideOnLaunchHint": "Jeder Start beginnt mit ausgeblendeten Beträgen; das Auge in der Übersicht blendet sie wieder ein.",
       "hideOnLaunchShort": "Beträge beim Start ausgeblendet"
     },
+    "password": {
+      "title": "Passwort ändern",
+      "rowSub": "Sie erhalten einen neuen Wiederherstellungsschlüssel",
+      "confirmHint": "Das Passwort ändert sich erst, wenn Sie auf „Passwort ändern“ tippen. Bis dahin gelten Ihr bisheriges Passwort und Ihr Schlüssel.",
+      "backupsKeepOld": "Sicherungen von vor der Änderung öffnen sich weiterhin mit dem alten Passwort.",
+      "biometricsStay": "Entsperren mit {{methodKey}} bleibt eingeschaltet.",
+      "fileTitle": "Moony-Wiederherstellungsschlüssel – neu vom {{date}}",
+      "fileNote": "Gilt erst, wenn die Passwortänderung abgeschlossen ist. Haben Sie die Änderung nicht abgeschlossen, gilt weiterhin der bisherige Schlüssel."
+    },
     "profile": {
-      "lead": "Ihr Name erscheint in der Begrüßung in der Übersicht.",
-      "currencyReadOnly": "Die Hauptwährung ändern Sie in Moony auf dem Computer."
+      "lead": "Ihr Name erscheint in der Begrüßung in der Übersicht."
     },
     "language": {
       "title": "App-Sprache",
@@ -657,6 +671,31 @@
     },
     "appearance": {
       "lead": "System folgt dem hellen oder dunklen Erscheinungsbild des Telefons."
+    },
+    "import": {
+      "lead": "Kontoauszüge: die Formate, die ich gelernt habe, und Anleitungen zum Export.",
+      "formats": "Gelernte Formate",
+      "empty": "Wenn Sie bestätigen, wie ich eine unbekannte Datei lese, merke ich mir ihr Format und lese sie beim nächsten Mal ohne Rückfragen.",
+      "sub": "{{account}} · zuletzt genutzt {{lastUsed}}",
+      "subNoAccount": "zuletzt genutzt {{lastUsed}}",
+      "shadowed": "die Bank hat ein integriertes Format",
+      "guides": "Anleitungen zum Export",
+      "guidesRow": "So erhalten Sie einen Auszug von Ihrer Bank",
+      "renamed": "Format umbenannt",
+      "deleted": "Format gelöscht",
+      "format": {
+        "title": "Gelerntes Format",
+        "name": "Name",
+        "account": "Konto",
+        "created": "Gelernt",
+        "lastUsed": "Zuletzt verwendet",
+        "columns": "Spalten",
+        "shadowedNote": "Dateien mit dieser Spaltenanordnung liest das integrierte Format der Bank; dieses gelernte Format wird nicht verwendet.",
+        "field": "{{field}}: {{column}}",
+        "delete": "Format löschen",
+        "deleteTitle": "Format {{name}} löschen?",
+        "deleteLead": "Die nächste Datei in diesem Format durchläuft die Erkennung erneut."
+      }
     },
     "delete": {
       "title": "Alle Daten löschen?",

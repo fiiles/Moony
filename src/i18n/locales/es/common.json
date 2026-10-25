@@ -221,6 +221,8 @@
     "csvEmptyFile": "El archivo está vacío o no tiene fila de encabezado.",
     "csvColumnsNotFound": "No se han encontrado en el archivo las columnas seleccionadas. Revisa la fila de encabezado y la asignación de columnas.",
     "csvDecimalSeparatorInvalid": "El separador decimal debe ser una coma o un punto.",
+    "learnedFormatHeaderless": "Esta fila parece contener datos, no encabezados de columna.",
+    "learnedFormatColumns": "El formato se refiere a una columna que el archivo no tiene.",
     "amountPositive": "El importe debe ser positivo",
     "cashflowPeriodInvalid": "El periodo no puede terminar antes de empezar.",
     "balanceAnchorIncomplete": "Introduce el saldo pendiente y su fecha",

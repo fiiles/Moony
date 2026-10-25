@@ -9,7 +9,6 @@ import { MenuVisibilityCard } from '@/components/settings/MenuVisibilityCard';
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
 import { AutoLockSlot } from '@/components/settings/AutoLockSlot';
 import { UpdatesCard } from '@/components/settings/UpdatesCard';
-import { ApiKeysCard } from '@/components/settings/ApiKeysCard';
 import { McpServerCard } from '@/components/settings/McpServerCard';
 import { RulePacksCard } from '@/components/settings/RulePacksCard';
 import { CategorizationRulesLinkCard } from '@/components/settings/CategorizationRulesLinkCard';
@@ -47,12 +46,7 @@ export function DataSettingsSection() {
 
 /** /settings/integrations */
 export function IntegrationsSection() {
-  return (
-    <>
-      <ApiKeysCard />
-      <McpServerCard />
-    </>
-  );
+  return <McpServerCard />;
 }
 
 /** /settings/categorization */

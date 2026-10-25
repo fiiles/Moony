@@ -337,7 +337,7 @@ pub fn stock_transactions_create(
 }
 
 /// Distinct tickers touched by this batch, for the data-changed event payload.
-/// The second element (a per-ticker CoinGecko id) is always `None` for stocks;
+/// The second element (a crypto holding's Yahoo symbol) is always `None` for stocks;
 /// it exists so the event helper shares one shape with the crypto tool.
 pub fn distinct_tickers(args: &StockTransactionsCreateArgs) -> Vec<(String, Option<String>)> {
     let mut v: Vec<(String, Option<String>)> = args

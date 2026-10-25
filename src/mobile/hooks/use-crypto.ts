@@ -69,7 +69,7 @@ export function useRefreshCryptoPrices() {
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: () => priceApi.refreshCryptoPrices(),
+    mutationFn: () => priceApi.refreshCryptoPrices(true),
     onSuccess: () => {
       void invalidateAfterPriceRefresh(queryClient);
       toast(t('detail.pricesRefreshed'));

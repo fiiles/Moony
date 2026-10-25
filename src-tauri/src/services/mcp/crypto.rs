@@ -48,7 +48,7 @@ pub fn crypto_list(conn: &Connection) -> Result<Value> {
         .map(|item| (item.investment_id.as_str(), item))
         .collect();
     let mut stmt = conn.prepare(
-        "SELECT ci.id, ci.ticker, ci.coingecko_id, ci.name, ci.quantity,
+        "SELECT ci.id, ci.ticker, ci.yahoo_symbol, ci.name, ci.quantity,
                 ci.currency, cp.fetched_at
          FROM crypto_investments ci
          LEFT JOIN crypto_prices cp ON ci.ticker = cp.symbol
@@ -57,7 +57,7 @@ pub fn crypto_list(conn: &Connection) -> Result<Value> {
     let rows: Vec<Value> = stmt.query_map([], |row| Ok(serde_json::json!({
         "id": row.get::<_, String>(0)?,
         "ticker": row.get::<_, String>(1)?,
-        "coingeckoId": sql_to_json(row.get::<_, rusqlite::types::Value>(2).unwrap_or(rusqlite::types::Value::Null)),
+        "yahooSymbol": sql_to_json(row.get::<_, rusqlite::types::Value>(2).unwrap_or(rusqlite::types::Value::Null)),
         "name": row.get::<_, String>(3)?,
         "quantity": row.get::<_, String>(4)?,
         "currency": row.get::<_, String>(5)?,
@@ -155,11 +155,11 @@ pub struct CryptoTransactionRow {
         description = "Coin name; used when the holding is created. Defaults to the ticker"
     )]
     pub name: Option<String>,
-    #[serde(rename = "coingeckoId")]
+    #[serde(rename = "yahooSymbol")]
     #[schemars(
-        description = "CoinGecko id, e.g. \"bitcoin\" — REQUIRED when this import creates a new holding (needed for price fetching)"
+        description = "Yahoo Finance symbol of the coin's USD pair, e.g. BTC-USD or SUI20947-USD; when omitted Moony looks it up from the ticker and name"
     )]
-    pub coingecko_id: Option<String>,
+    pub yahoo_symbol: Option<String>,
     #[serde(rename = "type")]
     #[schemars(description = "buy or sell")]
     pub tx_type: String,
@@ -186,7 +186,17 @@ pub struct CryptoTransactionsCreateArgs {
     pub transactions: Vec<CryptoTransactionRow>,
 }
 
+/// The row's Yahoo symbol, normalized like every entry point does
+/// (`crypto_symbols::optional_symbol`); `None` when absent, blank or invalid. An invalid one is
+/// rejected in phase 1 (`validate_crypto_row`) before any caller reads it.
+fn row_symbol(row: &CryptoTransactionRow) -> Option<String> {
+    crate::services::crypto_symbols::optional_symbol(row.yahoo_symbol.as_deref())
+        .ok()
+        .flatten()
+}
+
 fn validate_crypto_row(row: &CryptoTransactionRow) -> Result<()> {
+    crate::services::crypto_symbols::optional_symbol(row.yahoo_symbol.as_deref())?;
     let insert = crate::models::InsertCryptoTransaction {
         investment_id: None,
         tx_type: row.tx_type.clone(),
@@ -203,12 +213,39 @@ fn validate_crypto_row(row: &CryptoTransactionRow) -> Result<()> {
 /// Two-phase bulk import. Phase 1: every row field-validates. Phase 2: one SQL
 /// transaction; rows sorted by date (buys before sells within a date — a sell
 /// may need a position created earlier in the same batch); duplicates skipped;
-/// business-rule failures mid-batch (sell without position, conflicting identity,
-/// new coin missing a coingeckoId) roll the WHOLE batch back and are reported
-/// as that row's error.
+/// business-rule failures mid-batch (sell without position, conflicting
+/// yahooSymbol) roll the WHOLE batch back and are reported as that row's error.
+/// A new coin without a yahooSymbol is created unresolved; the price refresh
+/// looks its symbol up (spec D4).
 pub fn crypto_transactions_create(
     conn: &mut rusqlite::Connection,
     args: &CryptoTransactionsCreateArgs,
+) -> Result<BulkWriteReport> {
+    Ok(crypto_transactions_create_reporting(conn, args)?.0)
+}
+
+/// [`crypto_transactions_create`] that also returns the tickers whose supplied `yahooSymbol`
+/// filled an existing holding that had none, in this committed batch (empty when the batch was
+/// rejected). Such a holding's history sits on another series and its cached price belongs to
+/// no symbol: the caller rebuilds it from its first transaction and drops the old price, like
+/// the symbol picker does (spec D7 / D9). The wire report is unchanged.
+pub fn crypto_transactions_create_reporting(
+    conn: &mut rusqlite::Connection,
+    args: &CryptoTransactionsCreateArgs,
+) -> Result<(BulkWriteReport, Vec<String>)> {
+    let mut symbols_set = Vec::new();
+    let report = import_rows(conn, args, &mut symbols_set)?;
+    if !report.errors.is_empty() {
+        // Every rejection rolled the whole batch back.
+        symbols_set.clear();
+    }
+    Ok((report, symbols_set))
+}
+
+fn import_rows(
+    conn: &mut rusqlite::Connection,
+    args: &CryptoTransactionsCreateArgs,
+    symbols_set: &mut Vec<String>,
 ) -> Result<BulkWriteReport> {
     super::check_bulk_size(args.transactions.len())?;
 
@@ -231,20 +268,15 @@ pub fn crypto_transactions_create(
         });
     }
 
-    // Reject conflicting IDs across the entire request, including rows that
+    // Reject conflicting symbols across the entire request, including rows that
     // would otherwise be skipped as duplicates.
     let mut identities = std::collections::HashMap::<String, String>::new();
     for (index, row) in args.transactions.iter().enumerate() {
-        if let Some(id) = row
-            .coingecko_id
-            .as_deref()
-            .map(str::trim)
-            .filter(|id| !id.is_empty())
-        {
+        if let Some(symbol) = row_symbol(row) {
             let ticker = row.ticker.to_uppercase();
             if identities
-                .insert(ticker.clone(), id.to_string())
-                .is_some_and(|previous| previous != id)
+                .insert(ticker.clone(), symbol.clone())
+                .is_some_and(|previous| previous != symbol)
             {
                 return Ok(BulkWriteReport {
                     import_batch_id: None,
@@ -253,7 +285,7 @@ pub fn crypto_transactions_create(
                     skipped_duplicates: vec![],
                     errors: vec![RowError {
                         index,
-                        message: format!("{ticker}: conflicting coingeckoId values in batch"),
+                        message: format!("{ticker}: conflicting yahooSymbol values in batch"),
                     }],
                 });
             }
@@ -280,20 +312,18 @@ pub fn crypto_transactions_create(
     for &i in &order {
         let row = &args.transactions[i];
         let ticker_upper = row.ticker.to_uppercase();
-        let provided_id = row
-            .coingecko_id
-            .as_deref()
-            .map(str::trim)
-            .filter(|id| !id.is_empty());
-        if let Some(provided_id) = provided_id {
-            let stored_id: Option<String> = tx
+        if let Some(provided) = row_symbol(row) {
+            let stored: Option<String> = tx
                 .query_row(
-                    "SELECT coingecko_id FROM crypto_investments WHERE ticker = ?1",
+                    "SELECT yahoo_symbol FROM crypto_investments WHERE ticker = ?1",
                     [&ticker_upper],
-                    |r| r.get(0),
+                    |r| r.get::<_, Option<String>>(0),
                 )
-                .optional()?;
-            if stored_id.is_some_and(|id| id != provided_id) {
+                .optional()?
+                .flatten()
+                // A blank stored symbol is unresolved, like `NULL`.
+                .filter(|symbol| !symbol.trim().is_empty());
+            if stored.is_some_and(|symbol| symbol != provided) {
                 drop(tx);
                 return Ok(BulkWriteReport {
                     import_batch_id: None,
@@ -303,7 +333,7 @@ pub fn crypto_transactions_create(
                     errors: vec![RowError {
                         index: i,
                         message: format!(
-                            "{ticker_upper}: coingeckoId conflicts with stored holding"
+                            "{ticker_upper}: yahooSymbol conflicts with stored holding"
                         ),
                     }],
                 });
@@ -335,7 +365,11 @@ pub fn crypto_transactions_create(
             &row.currency,
             row.transaction_date,
         ) {
-            Ok(id) => {
+            Ok(holding) => {
+                if holding.symbol_set_now && !symbols_set.contains(&ticker_upper) {
+                    symbols_set.push(ticker_upper.clone());
+                }
+                let id = holding.id;
                 if !written.iter().any(|(_, existing)| existing == &id) {
                     written.push((i, id));
                 }
@@ -408,8 +442,8 @@ pub fn crypto_transactions_create(
     })
 }
 
-/// Legacy input helper for touched tickers. Callers that schedule pricing work
-/// must load CoinGecko IDs from the committed holdings instead of this input.
+/// Legacy input helper for touched tickers with the yahooSymbol a row supplied. Callers that
+/// schedule pricing work must load the symbols from the committed holdings instead of this input.
 pub fn distinct_tickers(args: &CryptoTransactionsCreateArgs) -> Vec<(String, Option<String>)> {
     let mut map: std::collections::BTreeMap<String, Option<String>> =
         std::collections::BTreeMap::new();
@@ -417,9 +451,7 @@ pub fn distinct_tickers(args: &CryptoTransactionsCreateArgs) -> Vec<(String, Opt
         let ticker_upper = row.ticker.to_uppercase();
         let entry = map.entry(ticker_upper).or_insert(None);
         if entry.is_none() {
-            if let Some(id) = &row.coingecko_id {
-                *entry = Some(id.clone());
-            }
+            *entry = row_symbol(row);
         }
     }
     map.into_iter().collect()
@@ -441,7 +473,7 @@ mod bulk_tests {
             CREATE TABLE crypto_investments (
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL UNIQUE,
-                coingecko_id TEXT NOT NULL,
+                yahoo_symbol TEXT,
                 name TEXT NOT NULL,
                 quantity TEXT NOT NULL,
 
@@ -475,7 +507,7 @@ mod bulk_tests {
 
     fn row(
         ticker: &str,
-        coingecko_id: Option<&str>,
+        yahoo_symbol: Option<&str>,
         tx_type: &str,
         quantity: &str,
         price: &str,
@@ -485,7 +517,7 @@ mod bulk_tests {
         CryptoTransactionRow {
             ticker: ticker.to_string(),
             name: None,
-            coingecko_id: coingecko_id.map(String::from),
+            yahoo_symbol: yahoo_symbol.map(String::from),
             tx_type: tx_type.to_string(),
             quantity: quantity.to_string(),
             price_per_unit: price.to_string(),
@@ -550,7 +582,7 @@ mod bulk_tests {
             transactions: vec![
                 row(
                     "btc",
-                    Some("bitcoin"),
+                    Some("BTC-USD"),
                     "buy",
                     "1",
                     "900000",
@@ -585,7 +617,7 @@ mod bulk_tests {
                 row("btc", None, "sell", "4", "910000", "CZK", 1_700_000_000),
                 row(
                     "btc",
-                    Some("bitcoin"),
+                    Some("BTC-USD"),
                     "buy",
                     "10",
                     "900000",
@@ -616,7 +648,7 @@ mod bulk_tests {
         let seed = CryptoTransactionsCreateArgs {
             transactions: vec![row(
                 "btc",
-                Some("bitcoin"),
+                Some("BTC-USD"),
                 "buy",
                 "5",
                 "900000",
@@ -648,31 +680,176 @@ mod bulk_tests {
     }
 
     #[test]
-    fn new_coin_without_coingecko_id_rejects_at_phase2_and_rolls_back() {
+    fn new_coin_without_symbol_is_created_unresolved() {
         let mut conn = setup_test_db();
         let args = CryptoTransactionsCreateArgs {
             transactions: vec![
                 row(
                     "btc",
-                    Some("bitcoin"),
+                    Some(" btc-usd "),
                     "buy",
                     "1",
                     "900000",
                     "CZK",
                     1_700_000_000,
-                ), // would succeed alone
-                row("xyz", None, "buy", "10", "5", "CZK", 1_700_100_000), // new coin, no id -> fails
+                ),
+                row("xyz", None, "buy", "10", "5", "CZK", 1_700_100_000), // new coin, no symbol
             ],
+        };
+        let report = crypto_transactions_create(&mut conn, &args).unwrap();
+        assert!(report.errors.is_empty(), "{report:?}");
+        assert_eq!(report.created, 2);
+        let symbol = |ticker: &str| -> Option<String> {
+            conn.query_row(
+                "SELECT yahoo_symbol FROM crypto_investments WHERE ticker = ?1",
+                [ticker],
+                |r| r.get(0),
+            )
+            .unwrap()
+        };
+        assert_eq!(symbol("BTC").as_deref(), Some("BTC-USD"));
+        assert_eq!(symbol("XYZ"), None);
+    }
+
+    #[test]
+    fn an_invalid_symbol_is_a_phase1_row_error() {
+        let mut conn = setup_test_db();
+        let args = CryptoTransactionsCreateArgs {
+            transactions: vec![row(
+                "btc",
+                Some("bitcoin"),
+                "buy",
+                "1",
+                "900000",
+                "CZK",
+                1_700_000_000,
+            )],
         };
         let report = crypto_transactions_create(&mut conn, &args).unwrap();
         assert_eq!(report.created, 0);
         assert_eq!(report.errors.len(), 1);
-        assert_eq!(report.errors[0].index, 1);
-        let message = &report.errors[0].message;
-        assert!(message.contains("needs its CoinGecko ID"), "{message}");
-        assert!(!message.contains("validation."), "{message}");
-        assert_eq!(holding_count(&conn), 0, "BTC buy must be rolled back too");
-        assert_eq!(tx_count(&conn), 0);
+        assert_eq!(report.errors[0].index, 0);
+        assert_eq!(
+            report.errors[0].message,
+            "Validation error: The Yahoo Finance symbol must be the coin's USD pair, for example BTC-USD"
+        );
+        assert_eq!(holding_count(&conn), 0);
+    }
+
+    #[test]
+    fn a_batch_reports_the_tickers_whose_supplied_symbol_filled_an_unresolved_holding() {
+        let mut conn = setup_test_db();
+        let seed = CryptoTransactionsCreateArgs {
+            transactions: vec![
+                row("sui", None, "buy", "1", "2", "USD", 1_700_000_000),
+                row(
+                    "btc",
+                    Some("BTC-USD"),
+                    "buy",
+                    "1",
+                    "2",
+                    "USD",
+                    1_700_000_000,
+                ),
+            ],
+        };
+        let (_, set) = crypto_transactions_create_reporting(&mut conn, &seed).unwrap();
+        assert!(
+            set.is_empty(),
+            "new coins and a coin created with its symbol"
+        );
+
+        let args = CryptoTransactionsCreateArgs {
+            transactions: vec![
+                row(
+                    "sui",
+                    Some("SUI20947-USD"),
+                    "buy",
+                    "1",
+                    "2",
+                    "USD",
+                    1_700_086_400,
+                ),
+                row(
+                    "sui",
+                    Some("sui20947-usd"),
+                    "buy",
+                    "1",
+                    "3",
+                    "USD",
+                    1_700_172_800,
+                ),
+                row(
+                    "btc",
+                    Some("BTC-USD"),
+                    "buy",
+                    "1",
+                    "2",
+                    "USD",
+                    1_700_086_400,
+                ),
+            ],
+        };
+        let (report, set) = crypto_transactions_create_reporting(&mut conn, &args).unwrap();
+        assert_eq!(report.created, 3, "{report:?}");
+        assert_eq!(
+            set,
+            vec!["SUI".to_string()],
+            "once, and not the coin that had its symbol"
+        );
+
+        // The same batch again fills nothing: duplicates are skipped and the symbol is set.
+        let (_, set) = crypto_transactions_create_reporting(&mut conn, &args).unwrap();
+        assert!(set.is_empty());
+    }
+
+    #[test]
+    fn a_rejected_batch_reports_no_symbol_set() {
+        let mut conn = setup_test_db();
+        crypto_transactions_create(
+            &mut conn,
+            &CryptoTransactionsCreateArgs {
+                transactions: vec![row("sui", None, "buy", "1", "2", "USD", 1_700_000_000)],
+            },
+        )
+        .unwrap();
+        // The symbol is set by the first row, then the second row (a sell above the holdings)
+        // rolls the batch back.
+        let args = CryptoTransactionsCreateArgs {
+            transactions: vec![
+                row(
+                    "sui",
+                    Some("SUI20947-USD"),
+                    "buy",
+                    "1",
+                    "2",
+                    "USD",
+                    1_700_086_400,
+                ),
+                row(
+                    "sui",
+                    Some("SUI20947-USD"),
+                    "sell",
+                    "99",
+                    "2",
+                    "USD",
+                    1_700_172_800,
+                ),
+            ],
+        };
+        let (report, set) = crypto_transactions_create_reporting(&mut conn, &args).unwrap();
+        assert_eq!(report.errors.len(), 1, "{report:?}");
+        assert!(set.is_empty());
+        assert_eq!(holding_symbol(&conn, "SUI"), None, "rolled back");
+    }
+
+    fn holding_symbol(conn: &Connection, ticker: &str) -> Option<String> {
+        conn.query_row(
+            "SELECT yahoo_symbol FROM crypto_investments WHERE ticker = ?1",
+            [ticker],
+            |r| r.get(0),
+        )
+        .unwrap()
     }
 
     #[test]
@@ -681,7 +858,7 @@ mod bulk_tests {
         let seed = CryptoTransactionsCreateArgs {
             transactions: vec![row(
                 "btc",
-                Some("bitcoin"),
+                Some("BTC-USD"),
                 "buy",
                 "10",
                 "900000",
@@ -733,7 +910,7 @@ mod bulk_tests {
         for i in 0..oversized_count {
             transactions.push(row(
                 "btc",
-                if i == 0 { Some("bitcoin") } else { None },
+                if i == 0 { Some("BTC-USD") } else { None },
                 "buy",
                 "1",
                 "900000",
@@ -769,7 +946,7 @@ mod bulk_tests {
         let mut conn = setup_test_db();
         let mut bad = row(
             "btc",
-            Some("bitcoin"),
+            Some("BTC-USD"),
             "buy",
             "10",
             "900000",
@@ -782,7 +959,7 @@ mod bulk_tests {
                 bad,
                 row(
                     "eth",
-                    Some("ethereum"),
+                    Some("ETH-USD"),
                     "buy",
                     "5",
                     "60000",
@@ -803,20 +980,20 @@ mod bulk_tests {
     }
 
     #[test]
-    fn distinct_tickers_prefers_some_coingecko_id_when_deduping() {
+    fn distinct_tickers_prefers_some_symbol_when_deduping() {
         let args = CryptoTransactionsCreateArgs {
             transactions: vec![
                 row("btc", None, "buy", "1", "900000", "CZK", 1),
-                row("btc", Some("bitcoin"), "sell", "1", "900000", "CZK", 2),
-                row("eth", Some("ethereum"), "buy", "1", "60000", "CZK", 3),
+                row("btc", Some("BTC-USD"), "sell", "1", "900000", "CZK", 2),
+                row("eth", Some("ETH-USD"), "buy", "1", "60000", "CZK", 3),
             ],
         };
         let tickers = distinct_tickers(&args);
         assert_eq!(
             tickers,
             vec![
-                ("BTC".to_string(), Some("bitcoin".to_string())),
-                ("ETH".to_string(), Some("ethereum".to_string())),
+                ("BTC".to_string(), Some("BTC-USD".to_string())),
+                ("ETH".to_string(), Some("ETH-USD".to_string())),
             ]
         );
     }
@@ -830,7 +1007,7 @@ mod bulk_tests {
                 transactions: vec![
                     row(
                         "BTC",
-                        Some("bitcoin"),
+                        Some("BTC-USD"),
                         "buy",
                         "1",
                         "100",
@@ -854,7 +1031,7 @@ mod bulk_tests {
                 transactions: vec![
                     row(
                         "BTC",
-                        Some("bitcoin"),
+                        Some("BTC-USD"),
                         "buy",
                         "10",
                         "100",
@@ -887,7 +1064,7 @@ mod bulk_tests {
                 transactions: vec![
                     row(
                         "BTC",
-                        Some("ethereum"),
+                        Some("ETH-USD"),
                         "buy",
                         "1",
                         "100",
@@ -896,7 +1073,7 @@ mod bulk_tests {
                     ),
                     row(
                         "BTC",
-                        Some("bitcoin"),
+                        Some("BTC-USD"),
                         "buy",
                         "1",
                         "100",
@@ -915,7 +1092,7 @@ mod bulk_tests {
             &CryptoTransactionsCreateArgs {
                 transactions: vec![row(
                     "BTC",
-                    Some("bitcoin"),
+                    Some("BTC-USD"),
                     "buy",
                     "1",
                     "100",
@@ -930,7 +1107,7 @@ mod bulk_tests {
             &CryptoTransactionsCreateArgs {
                 transactions: vec![row(
                     "BTC",
-                    Some("ethereum"),
+                    Some("ETH-USD"),
                     "buy",
                     "1",
                     "100",
@@ -953,7 +1130,7 @@ mod bulk_tests {
             &CryptoTransactionsCreateArgs {
                 transactions: vec![row(
                     "BTC",
-                    Some("bitcoin"),
+                    Some("BTC-USD"),
                     "buy",
                     "10",
                     "100",
@@ -984,7 +1161,7 @@ mod bulk_tests {
         let mut conn = setup_test_db();
         let first = row(
             "BTC",
-            Some("bitcoin"),
+            Some("BTC-USD"),
             "buy",
             "1",
             "100",
@@ -1036,7 +1213,7 @@ mod bulk_tests {
         const D: i64 = 1_699_920_000;
         let seed = CryptoTransactionsCreateArgs {
             transactions: vec![
-                row("BTC", Some("bitcoin"), "buy", "10", "100", "USD", D),
+                row("BTC", Some("BTC-USD"), "buy", "10", "100", "USD", D),
                 row("BTC", None, "sell", "8", "100", "USD", D + 3 * 86400),
             ],
         };
@@ -1068,7 +1245,7 @@ mod bulk_tests {
         let mut conn = setup_test_db();
         let a = row(
             "BTC",
-            Some("bitcoin"),
+            Some("BTC-USD"),
             "buy",
             "1",
             "100",
@@ -1111,11 +1288,11 @@ mod bulk_tests {
     }
 
     #[test]
-    fn crypto_keeps_distinct_transaction_currencies_and_rejects_conflicting_ids() {
+    fn crypto_keeps_distinct_transaction_currencies_and_rejects_conflicting_symbols() {
         let mut conn = setup_test_db();
         let a = row(
             "BTC",
-            Some("bitcoin"),
+            Some("BTC-USD"),
             "buy",
             "1",
             "100",
@@ -1133,7 +1310,7 @@ mod bulk_tests {
         .unwrap();
         assert_eq!(report.created, 2, "{report:?}");
         let mut conflicting = a.clone();
-        conflicting.coingecko_id = Some("ethereum".into());
+        conflicting.yahoo_symbol = Some("ETH-USD".into());
         let report = crypto_transactions_create(
             &mut conn,
             &CryptoTransactionsCreateArgs {
@@ -1142,7 +1319,12 @@ mod bulk_tests {
         )
         .unwrap();
         assert_eq!(report.created, 0);
-        assert!(report.errors[0].message.contains("coingeckoId"));
+        assert!(
+            report.errors[0]
+                .message
+                .contains("yahooSymbol conflicts with stored holding"),
+            "{report:?}"
+        );
         let mut fresh = setup_test_db();
         let report = crypto_transactions_create(
             &mut fresh,
@@ -1306,7 +1488,7 @@ mod list_tests {
         let conn = Connection::open_in_memory().expect("db");
         conn.execute_batch(
             r#"
-            CREATE TABLE crypto_investments (id TEXT PRIMARY KEY, ticker TEXT, coingecko_id TEXT, name TEXT, quantity TEXT, currency TEXT NOT NULL);
+            CREATE TABLE crypto_investments (id TEXT PRIMARY KEY, ticker TEXT, yahoo_symbol TEXT, name TEXT, quantity TEXT, currency TEXT NOT NULL);
             CREATE TABLE crypto_prices (symbol TEXT PRIMARY KEY, price TEXT, currency TEXT, fetched_at INTEGER);
             CREATE TABLE crypto_price_overrides (symbol TEXT PRIMARY KEY, price TEXT, currency TEXT, updated_at INTEGER);
             CREATE TABLE crypto_transactions (id TEXT PRIMARY KEY, investment_id TEXT, type TEXT, ticker TEXT, name TEXT, quantity TEXT, price_per_unit TEXT, currency TEXT, transaction_date INTEGER, created_at INTEGER NOT NULL DEFAULT 0);
@@ -1315,8 +1497,8 @@ mod list_tests {
             INSERT INTO user_profile (currency) VALUES ('EUR');
             INSERT INTO exchange_rate_history VALUES (1699920000, 'CZK', 25.0), (1699920000, 'USD', 1.0);
             INSERT INTO crypto_investments VALUES
-                ('c1', 'BTC', 'bitcoin', 'Bitcoin', '1', 'USD'),
-                ('c2', 'KWC', 'kwc', 'Kuwait Coin', '1', 'KWD');
+                ('c1', 'BTC', 'BTC-USD', 'Bitcoin', '1', 'USD'),
+                ('c2', 'KWC', NULL, 'Kuwait Coin', '1', 'KWD');
             INSERT INTO crypto_transactions (id, investment_id, type, ticker, name, quantity, price_per_unit, currency, transaction_date) VALUES
                 ('t1', 'c1', 'buy', 'BTC', 'Bitcoin', '1', '30000', 'USD', 1700000000),
                 ('t2', 'c2', 'buy', 'KWC', 'Kuwait Coin', '1', '10', 'KWD', 1700000000);

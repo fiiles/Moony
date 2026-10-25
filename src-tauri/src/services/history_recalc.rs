@@ -1,13 +1,13 @@
 //! The one background queue of history rebuilds.
 //!
 //! A write command (a transaction, a balance record, a valuation, a loan, …) used to finish
-//! its history work before returning: a Yahoo or CoinGecko round trip (hundreds of
+//! its history work before returning: a Yahoo round trip (hundreds of
 //! milliseconds, up to the 15 s timeout when offline) plus the database work, so the dialog
 //! hung and the UI looked frozen. The command now writes its rows, queues what changed
 //! here and returns (spec `docs/specs/2026-10-13-history-from-dated-facts-design.md`, A5).
 //!
 //! * **Jobs.** [`Job::StockTicker`] and [`Job::CryptoTicker`] rebuild one ticker's value
-//!   history from a day (quotes from Yahoo / CoinGecko); [`Job::Days`] re-derives the
+//!   history from a day (quotes from Yahoo Finance); [`Job::Days`] re-derives the
 //!   portfolio days from the dated facts (`services/history_days.rs`). Every batch ends
 //!   with a days rebuild from the earliest date of the whole batch, so a ticker job needs
 //!   no separate `Days` job: the aggregate follows its ticker.
@@ -39,7 +39,7 @@
 //! The pure parts (queue, chunking) are unit-tested; the quote fetches are the only network
 //! steps and sit behind [`rebuild_stock_ticker`] and [`rebuild_crypto_ticker`].
 
-use std::collections::{BTreeMap, BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::{Arc, Mutex, PoisonError};
 
 use rusqlite::OptionalExtension;
@@ -48,6 +48,7 @@ use specta::Type;
 
 use crate::db::Database;
 use crate::error::Result;
+use crate::services::crypto_symbols::{self, Resolved};
 use crate::services::history_days::{plan_rebuild, prune_before_first_fact, rebuild_chunk};
 use crate::services::portfolio_history::SECONDS_PER_DAY;
 use crate::services::price_api::{self, HistoricalPrice};
@@ -136,8 +137,8 @@ pub type Completion = Box<dyn FnOnce(&BatchOutcome) + Send>;
 pub enum Job {
     /// Rebuild a stock ticker's value history from the day.
     StockTicker(String, i64),
-    /// Rebuild a crypto ticker's value history from the day (the CoinGecko id is read
-    /// from `crypto_investments` when the job runs).
+    /// Rebuild a crypto ticker's value history from the day (the Yahoo symbol is read from
+    /// `crypto_investments`, and resolved when missing, when the job runs).
     CryptoTicker(String, i64),
     /// Re-derive the portfolio days from the dated facts from the day. A day before the
     /// first fact is clamped to it (`history_days::plan_rebuild`), so `Days(0)` is "all".
@@ -660,8 +661,7 @@ fn first_transaction_jobs(
         .collect())
 }
 
-/// Every crypto ticker with transactions from its first transaction day: what a CoinGecko key
-/// change rebuilds.
+/// Every crypto ticker with transactions from its first transaction day.
 pub fn crypto_ticker_jobs(conn: &rusqlite::Connection) -> Result<Vec<Job>> {
     first_transaction_jobs(conn, "crypto_transactions", Job::CryptoTicker)
 }
@@ -824,12 +824,12 @@ fn needs_full_rebuild(new_rows: usize, from_day: i64, first_day: Option<i64>) ->
 }
 
 /// Rebuild one crypto ticker's history rows from `from_ts` through `until_day`, like
-/// [`rebuild_stock_ticker`]. The CoinGecko id is read from `crypto_investments`. A ticker
-/// without transactions skips the fetch (a deleted holding only loses its rows); a holding
-/// with transactions but no id is left alone. CoinGecko's free tiers serve 365 days back,
-/// so the days before that window are priced from Yahoo Finance's daily `{TICKER}-USD` closes
-/// (one request, [`price_api::merge_crypto_price_series`]); a day neither source quotes keeps
-/// the last known price (the price before the range, else today's quote), else no row.
+/// [`rebuild_stock_ticker`] (spec D8). A ticker without transactions skips the fetch (a deleted
+/// holding only loses its rows). Otherwise the holding's Yahoo symbol is read, and resolved when
+/// missing (`crypto_symbols::ensure_symbol`); a holding without one is left alone, in strict mode
+/// too, because a retry cannot fix it (the symbol picker can). With a symbol the daily USD closes
+/// of the whole range come in one Yahoo request; a day without a quote keeps the last known
+/// price (the price before the range, else today's quote), else no row.
 pub async fn rebuild_crypto_ticker(
     db: &Database,
     ticker: &str,
@@ -859,71 +859,52 @@ async fn rebuild_crypto_ticker_with_policy(
     price_rule: PriceRule,
     strict: bool,
 ) -> Result<RebuildStats> {
-    let from_day = floor_day(from_ts);
+    let mut from_day = floor_day(from_ts);
     if from_day > until_day {
         return Ok(RebuildStats::default());
     }
 
-    let (coingecko_id, has_transactions) = db.with_conn(|conn| {
-        let id: Option<String> = conn
-            .query_row(
-                "SELECT coingecko_id FROM crypto_investments WHERE ticker = ?1",
-                [ticker],
-                |row| row.get::<_, Option<String>>(0),
-            )
-            .optional()?
-            .flatten();
-        let has_transactions = conn.query_row(
+    let has_transactions = db.with_conn(|conn| {
+        Ok(conn.query_row(
             "SELECT EXISTS(SELECT 1 FROM crypto_transactions WHERE ticker = ?1)",
             [ticker],
             |row| row.get::<_, bool>(0),
-        )?;
-        Ok((id.filter(|id| !id.trim().is_empty()), has_transactions))
+        )?)
     })?;
 
-    let prices: Vec<HistoricalPrice> = match coingecko_id {
-        None if has_transactions => {
-            // Nothing to price the holding with: leave its history alone rather than
-            // invent one from today's quote.
-            log::debug!("[RECALC] Crypto holding without a CoinGecko id skipped");
-            return Ok(RebuildStats::default());
-        }
-        Some(id) if has_transactions => {
-            let api_keys = price_api::get_api_keys(db)?;
-            let id_to_ticker = HashMap::from([(id, ticker.to_string())]);
-            let fetch_from = price_api::coingecko_history_start(from_day, until_day);
-            let fetched = if strict {
-                price_api::get_historical_crypto_prices_coingecko_strict(
-                    api_keys.coingecko.as_deref(),
-                    &id_to_ticker,
-                    fetch_from,
-                    until_day,
-                )
+    let prices: Vec<HistoricalPrice> = if has_transactions {
+        let symbol = match crypto_symbols::ensure_symbol(db, ticker).await? {
+            Resolved::Already(symbol) => symbol,
+            Resolved::Now(symbol) => {
+                // The holding was on no Yahoo series until now: the whole history moves to
+                // this coin's, so the range reaches back to its first transaction (spec D7).
+                let first =
+                    db.with_conn(|conn| crypto_rebuild_jobs(conn, &[ticker.to_string()]))?;
+                from_day = extend_to_first_day(from_day, first.first().map(|(_, first)| *first));
+                symbol
+            }
+            Resolved::None => {
+                // Nothing to price the holding with: leave its history alone rather than
+                // invent one from today's quote.
+                log::debug!("[RECALC] Crypto holding without a Yahoo symbol skipped");
+                return Ok(RebuildStats::default());
+            }
+        };
+        let symbols = [symbol];
+        let mut fetched = if strict {
+            price_api::get_historical_stock_prices_yahoo_strict(&symbols, from_day, until_day)
                 .await?
-            } else {
-                price_api::get_historical_crypto_prices_coingecko(
-                    api_keys.coingecko.as_deref(),
-                    &id_to_ticker,
-                    fetch_from,
-                    until_day,
-                )
-                .await?
-            };
-            // CoinGecko serves no day older than its window: Yahoo Finance quotes the coin
-            // further back. It is best effort even for a strict rebuild: with no quote from it
-            // (an unknown symbol, offline) those days keep the last known price, as before.
-            let older = if from_day < fetch_from {
-                price_api::get_historical_crypto_prices_yahoo(ticker, from_day, fetch_from).await
-            } else {
-                Vec::new()
-            };
-            price_api::merge_crypto_price_series(
-                older,
-                fetched.get(ticker).cloned().unwrap_or_default(),
-                fetch_from,
-            )
-        }
-        _ => Vec::new(),
+        } else {
+            price_api::get_historical_stock_prices_yahoo(&symbols, from_day, until_day).await?
+        };
+        // The stored crypto price is always USD.
+        usd_quotes_or_error(
+            fetched.remove(&symbols[0]).unwrap_or_default(),
+            strict,
+            &symbols[0],
+        )?
+    } else {
+        Vec::new()
     };
 
     let plan = db.with_conn(|conn| {
@@ -945,6 +926,35 @@ async fn rebuild_crypto_ticker_with_policy(
         )
     })?;
     apply_plan_in_chunks(db, AssetKind::Crypto, ticker, &plan).await
+}
+
+/// The day a rebuild starts when the holding's symbol was resolved during it: the earlier of the
+/// requested day and the floor of its first transaction (`None`: no transaction, unchanged).
+fn extend_to_first_day(from_day: i64, first_transaction: Option<i64>) -> i64 {
+    first_transaction.map_or(from_day, |first| from_day.min(floor_day(first)))
+}
+
+/// The USD quotes of a fetched crypto series. Quotes in another currency are dropped (the stored
+/// crypto price is always USD); a strict rebuild whose fetch returned quotes but none in USD is
+/// `AppError::ExternalApi("No USD quotes for <symbol>")` instead of planning the range from the
+/// last known price, so a durable job keeps its retry intent. No quotes at all is an empty
+/// series, as before.
+fn usd_quotes_or_error(
+    quotes: Vec<HistoricalPrice>,
+    strict: bool,
+    symbol: &str,
+) -> Result<Vec<HistoricalPrice>> {
+    let fetched = quotes.len();
+    let usd: Vec<HistoricalPrice> = quotes
+        .into_iter()
+        .filter(|quote| quote.currency.eq_ignore_ascii_case("USD"))
+        .collect();
+    if strict && fetched > 0 && usd.is_empty() {
+        return Err(crate::error::AppError::ExternalApi(format!(
+            "No USD quotes for {symbol}"
+        )));
+    }
+    Ok(usd)
 }
 
 /// `(price, currency)` of the ticker's newest history row before `from_day`, else of its
@@ -1430,6 +1440,58 @@ mod tests {
     }
 
     #[test]
+    fn a_resolution_reaches_the_range_back_to_the_first_transaction() {
+        // The first transaction is earlier than the requested day: the whole series moves.
+        assert_eq!(
+            extend_to_first_day(50 * DAY, Some(10 * DAY + 3_600)),
+            10 * DAY
+        );
+        // A request that already starts earlier, or a holding without transactions, is unchanged.
+        assert_eq!(extend_to_first_day(5 * DAY, Some(10 * DAY)), 5 * DAY);
+        assert_eq!(extend_to_first_day(50 * DAY, None), 50 * DAY);
+    }
+
+    fn quote(timestamp: i64, currency: &str) -> HistoricalPrice {
+        HistoricalPrice {
+            timestamp,
+            price: 1.0,
+            currency: currency.to_string(),
+        }
+    }
+
+    #[test]
+    fn a_strict_rebuild_without_usd_quotes_fails_instead_of_carrying_the_last_price() {
+        let eur_only = vec![quote(DAY, "EUR"), quote(2 * DAY, "EUR")];
+        let err = usd_quotes_or_error(eur_only.clone(), true, "SUI20947-USD").unwrap_err();
+        assert!(
+            matches!(&err, crate::error::AppError::ExternalApi(m) if m == "No USD quotes for SUI20947-USD"),
+            "{err:?}"
+        );
+        // Not strict: today's behaviour, no USD rows, the plan falls back to the last known price.
+        assert!(usd_quotes_or_error(eur_only, false, "SUI20947-USD")
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
+    fn usd_quotes_are_kept_and_an_empty_fetch_is_not_an_error_even_when_strict() {
+        let mixed = vec![
+            quote(DAY, "USD"),
+            quote(2 * DAY, "EUR"),
+            quote(3 * DAY, "usd"),
+        ];
+        let kept = usd_quotes_or_error(mixed, true, "BTC-USD").unwrap();
+        assert_eq!(
+            kept.iter().map(|q| q.timestamp).collect::<Vec<_>>(),
+            vec![DAY, 3 * DAY]
+        );
+        // No quotes at all keeps today's meaning ("no data for the range").
+        assert!(usd_quotes_or_error(Vec::new(), true, "BTC-USD")
+            .unwrap()
+            .is_empty());
+    }
+
+    #[test]
     fn the_last_known_crypto_price_is_the_row_before_the_range_else_the_current_quote() {
         let conn = crypto_db();
         assert_eq!(
@@ -1677,7 +1739,7 @@ mod tests {
             run_batch(&HistoryRecalc::new(), &db, &notify, no_quote, &batch, true)
                 .await
                 .is_clean(),
-            "a holding without an id or transactions needs no provider, strict or not"
+            "a holding without a symbol or transactions needs no provider, strict or not"
         );
 
         assert_eq!(
@@ -1714,8 +1776,8 @@ mod tests {
         db.with_conn(|conn| {
             if crypto {
                 conn.execute(
-                    "INSERT INTO crypto_investments (id, ticker, coingecko_id, name, quantity)
-                     VALUES (?1, ?2, 'id', ?2, ?3)",
+                    "INSERT INTO crypto_investments (id, ticker, yahoo_symbol, name, quantity)
+                     VALUES (?1, ?2, ?2 || '-USD', ?2, ?3)",
                     rusqlite::params![format!("inv-{ticker}"), ticker, held.to_string()],
                 )?;
             } else {

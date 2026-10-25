@@ -137,6 +137,20 @@ Attachment content moved into the encrypted store `attachments.db` (ADR 0017,
 `file_path` / `thumbnail_path` columns and `document_files::resolve_document_path` remain only
 for legacy rows that the conversion has not reached yet; never write new paths into them.
 
+## Removed with CoinGecko (do not re-add)
+
+Crypto prices, search and history moved to Yahoo Finance and a holding stores its Yahoo symbol
+(ADR 0020, `docs/specs/2026-10-25-crypto-prices-yahoo-design.md`).
+
+| Removed | Why it was removed | Use instead |
+|---|---|---|
+| `get_api_keys` / `set_api_keys`, `ApiKeys`, the `api_key_coingecko` config row | The only API key in the app was CoinGecko's optional one; migration 025 wipes the stored secret | Nothing: Yahoo Finance needs no key |
+| `ApiKeysCard` (Settings → Integrations) | Its only content was the CoinGecko key | Settings → Integrations holds the MCP card only |
+| `CoinGeckoApiKeyBanner`, `UserProfile.coingeckoModalDismissed` / the `coingecko_modal_dismissed` column | Asked for a key that no longer exists | The unpriced-coins banner on the crypto page and the "Rate source…" picker (`CryptoSymbolDialog`, `set_crypto_symbol`) |
+| `coingecko_id` columns and the `coingeckoId` field (wire contract, MCP `crypto_transactions_create`) | Tied a holding's identity to a provider that is gone | `crypto_investments.yahoo_symbol` / `yahooSymbol` (optional; resolved lazily by `services/crypto_symbols.rs`, never guessed) |
+| `get_historical_crypto_prices_coingecko*`, `coingecko_history_start`, the 1.5 s pause between coins | CoinGecko's 365-day, rate-limited history | One Yahoo chart request per ticker for the whole range (`get_historical_stock_prices_yahoo` / `_strict`) |
+| `merge_crypto_price_series`, `get_historical_crypto_prices_yahoo`, `yahoo_crypto_symbol` | Stitched CoinGecko's year to Yahoo's older days and derived `<TICKER>-USD` from the ticker, which is the wrong coin for some tickers (`ARB`, `TON`) and missing for others (`SUI`, `PEPE`) | The symbol stored on the holding; never build a Yahoo crypto symbol from a ticker |
+
 ## Deprecated type sources
 
 | Path | Why deprecated | Use instead |

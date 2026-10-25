@@ -51,8 +51,6 @@ pub struct UserProfile {
     pub language: String,
     #[serde(rename = "excludePersonalRealEstate")]
     pub exclude_personal_real_estate: bool,
-    #[serde(rename = "coingeckoModalDismissed", default)]
-    pub coingecko_modal_dismissed: bool,
     #[serde(rename = "mcpServerEnabled", default)]
     pub mcp_server_enabled: bool,
     /// ISO 3166-1 alpha-2 country of the profile (`CZ`), None until set.
@@ -159,8 +157,6 @@ pub struct UpdateUserProfile {
     pub language: Option<String>,
     #[serde(rename = "excludePersonalRealEstate")]
     pub exclude_personal_real_estate: Option<bool>,
-    #[serde(rename = "coingeckoModalDismissed")]
-    pub coingecko_modal_dismissed: Option<bool>,
     #[serde(rename = "mcpServerEnabled")]
     pub mcp_server_enabled: Option<bool>,
     /// `Some("")` clears the country; otherwise two ASCII letters (stored upper case).

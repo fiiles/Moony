@@ -4,7 +4,7 @@ Date: 2026-08-12
 
 ## Status
 
-Accepted
+Accepted; the coingeckoId requirement is superseded by [0020](0020-yahoo-finance-for-crypto-prices.md)
 
 ## Context
 

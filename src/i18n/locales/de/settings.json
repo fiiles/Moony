@@ -12,7 +12,7 @@
       "general": "Profil, Sprache, Währung und was das Menü anzeigt.",
       "security": "Passwort, automatische Sperre und App-Updates.",
       "data": "Wo Ihre Daten liegen und wie Sie eine Kopie davon aufbewahren.",
-      "integrations": "API-Schlüssel für Kurse und der lokale MCP-Server für KI-Assistenten.",
+      "integrations": "Der lokale MCP-Server für KI-Assistenten.",
       "categorization": "Regelpakete, Kategorien und Ihre eigenen Kategorisierungsregeln.",
       "account": "Ihre Daten von diesem Computer löschen."
     }
@@ -42,24 +42,6 @@
     "recoveryKeyDescription": "Ihr Passwort wird geändert und ein neuer Wiederherstellungsschlüssel erzeugt.",
     "oldKeyInvalid": "Ihr alter Wiederherstellungsschlüssel funktioniert nicht mehr",
     "confirmHint": "Stellen Sie sicher, dass Sie Ihren Wiederherstellungsschlüssel notiert oder kopiert haben, bevor Sie bestätigen. Das Passwort wird erst geändert, wenn Sie auf die Schaltfläche oben klicken."
-  },
-  "apiKeys": {
-    "title": "API-Schlüssel",
-    "description": "Konfigurieren Sie den optionalen API-Schlüssel für den Abruf von Kryptokursen. Aktienkurse benötigen keinen Schlüssel.",
-    "coingecko": {
-      "label": "CoinGecko-API-Schlüssel",
-      "getDemoKey": "Demo-Schlüssel holen",
-      "placeholder": "Optional – die kostenlose Stufe funktioniert ohne Schlüssel",
-      "hint": "Für Kryptokurse und die Suche (die kostenlose Stufe erlaubt kein Laden historischer Kurse)",
-      "hint2": "Die kostenlose Stufe erlaubt kein Laden historischer Kurse"
-    },
-    "save": "API-Schlüssel speichern",
-    "saving": "Wird gespeichert...",
-    "saved": "API-Schlüssel gespeichert",
-    "savedDescription": "Ihre API-Schlüssel wurden aktualisiert.",
-    "optional": "optional",
-    "show": "Schlüssel anzeigen",
-    "hide": "Schlüssel verbergen"
   },
   "currency": {
     "title": "Währung",
@@ -102,6 +84,8 @@
     "statusError": "MCP-Server konnte nicht gestartet werden: {{error}}",
     "endpoint": "Endpunkt-URL",
     "token": "Zugriffstoken",
+    "showToken": "Token anzeigen",
+    "hideToken": "Token ausblenden",
     "tokenHint": "Wird als Authorization-Header (Bearer) gesendet. Behandeln Sie es wie ein Passwort.",
     "regenerate": "Neu erzeugen",
     "regenerateHint": "Beim Neuerzeugen werden alle Client-Konfigurationen ungültig, die das aktuelle Token verwenden.",

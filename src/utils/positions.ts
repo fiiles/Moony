@@ -112,11 +112,16 @@ export function toStockRow(inv: EnrichedStockInvestment): StockRow {
 /** A crypto position row. */
 export interface CryptoRow extends PositionRowBase {
   name: string;
-  coingeckoId: string;
+  yahooSymbol: string | null;
 }
 
 export function toCryptoRow(inv: EnrichedCryptoInvestment): CryptoRow {
-  return { ...baseRow(inv), name: inv.name || inv.ticker, coingeckoId: inv.coingeckoId };
+  return { ...baseRow(inv), name: inv.name || inv.ticker, yahooSymbol: inv.yahooSymbol };
+}
+
+/** The open coins without a Yahoo listing: a sold-out coin needs no rate source. */
+export function unpricedOpenCoins<T extends CryptoRow>(rows: readonly T[]): T[] {
+  return rows.filter((row) => row.yahooSymbol === null && row.quantity > 0);
 }
 
 /** The open position with the highest known return in percent, if any. */

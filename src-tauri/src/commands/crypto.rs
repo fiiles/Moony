@@ -10,6 +10,7 @@ use crate::services::crypto_investments as crypto_service;
 use crate::services::fx;
 use crate::services::history_recalc::{HistoryRecalc, Job};
 use crate::services::position_reports;
+use crate::services::price_api;
 use crate::services::pricing::AssetKind;
 use crate::services::ticker_history;
 use tauri::{AppHandle, Emitter, State};
@@ -30,10 +31,12 @@ pub async fn create_crypto(
     db: State<'_, Database>,
     recalc: State<'_, HistoryRecalc>,
     app: AppHandle,
-    data: InsertCryptoInvestment,
+    mut data: InsertCryptoInvestment,
     initial_transaction: Option<InsertCryptoTransaction>,
 ) -> Result<CryptoInvestment> {
-    // 1. Validate inputs at the trust boundary
+    // 1. Validate inputs at the trust boundary (the symbol is trimmed and uppercased first)
+    data.yahoo_symbol =
+        crate::services::crypto_symbols::optional_symbol(data.yahoo_symbol.as_deref())?;
     data.validate()?;
     if let Some(ref tx) = initial_transaction {
         tx.validate()?;
@@ -42,16 +45,33 @@ pub async fn create_crypto(
     let ticker = data.ticker.to_uppercase();
     let initial_tx_date = initial_transaction.as_ref().map(|t| t.transaction_date);
 
-    // 2. Delegate to service layer
-    let inv = db.with_conn(|conn| {
-        crypto_service::create_crypto_with_transaction(
+    // 2. Delegate to service layer. A supplied symbol that fills an existing unresolved holding
+    //    drops its cached price (it belongs to no symbol) in the same step.
+    let created = db.with_conn(|conn| {
+        let created = crypto_service::create_crypto_reporting(
             conn,
             &ticker,
-            Some(&data.coingecko_id),
+            data.yahoo_symbol.as_deref(),
             &data.name,
             initial_transaction.as_ref(),
-        )
+        )?;
+        if created.symbol_set_now {
+            crypto_service::forget_cached_price(conn, &ticker)?;
+        }
+        Ok(created)
     })?;
+    let inv = created.investment;
+    let tickers = [ticker.clone()];
+
+    // The holding now follows a symbol it had none for: price it from that symbol (best effort,
+    // a failed quote is retried by the next refresh) and rebuild its history from its first
+    // transaction, like the symbol picker does (spec D7 / D9).
+    if created.symbol_set_now {
+        if let Err(e) = price_api::refresh_crypto_prices_for(&db, &tickers, true).await {
+            log::warn!("[YAHOO CRYPTO] Price refresh after a symbol was set failed: {e}");
+        }
+        crate::commands::price_api::rebuild_crypto_history(&app, &db, &recalc, &tickers);
+    }
 
     // 3. Handle side effects (portfolio updates)
     crate::commands::portfolio::update_todays_snapshot(&db)
@@ -67,11 +87,48 @@ pub async fn create_crypto(
             &recalc,
             vec![Job::CryptoTicker(ticker, date)],
         );
-
+    }
+    if initial_tx_date.is_some() || created.symbol_set_now {
         app.emit("recalculation-complete", ()).ok();
     }
 
     Ok(inv)
+}
+
+/// Store the Yahoo Finance symbol picked for a holding (the symbol picker, spec D9), refresh its
+/// price from that symbol and queue the rebuild of its history from its first transaction, so it
+/// follows the right coin.
+#[tauri::command]
+pub async fn set_crypto_symbol(
+    app: AppHandle,
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+    id: String,
+    symbol: String,
+) -> Result<()> {
+    // The service trims, uppercases and validates the symbol (`validation.yahooSymbolInvalid`).
+    // The cached price belonged to the previous coin: drop it before the refresh, so a failed
+    // refresh leaves the holding unpriced (honest) instead of showing the old coin's price.
+    let ticker = db.with_conn(|conn| {
+        crypto_service::set_symbol(conn, &id, &symbol)?;
+        let ticker = crypto_service::get_crypto_by_id(conn, &id)?.ticker;
+        crypto_service::forget_cached_price(conn, &ticker)?;
+        Ok(ticker)
+    })?;
+    let tickers = [ticker];
+
+    // Best effort: the symbol is stored; a failed quote is retried by the next refresh.
+    if let Err(e) = price_api::refresh_crypto_prices_for(&db, &tickers, true).await {
+        log::warn!("[YAHOO CRYPTO] Price refresh after a symbol change failed: {e}");
+    }
+    crate::commands::price_api::rebuild_crypto_history(&app, &db, &recalc, &tickers);
+
+    crate::commands::portfolio::update_todays_snapshot(&db)
+        .await
+        .ok();
+    app.emit("recalculation-complete", ()).ok();
+
+    Ok(())
 }
 
 /// Delete crypto investment
@@ -261,15 +318,14 @@ pub async fn delete_crypto_transaction(
     app: AppHandle,
     tx_id: String,
 ) -> Result<()> {
-    let (date, ticker, _coingecko_id) =
-        db.with_conn(|conn| crypto_service::delete_transaction(conn, &tx_id))?;
+    let (date, ticker) = db.with_conn(|conn| crypto_service::delete_transaction(conn, &tx_id))?;
 
     // Update portfolio snapshot
     crate::commands::portfolio::update_todays_snapshot(&db)
         .await
         .ok();
 
-    // Queue the ticker's rebuild (the worker reads the price identity from the holding)
+    // Queue the ticker's rebuild (the worker reads the Yahoo symbol from the holding)
     crate::commands::portfolio::schedule_history_rebuild(
         &app,
         &db,
@@ -288,7 +344,6 @@ pub async fn update_crypto_price(
     symbol: String,
     price: String,
     currency: String,
-    _coingecko_id: Option<String>,
 ) -> Result<()> {
     let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();

@@ -41,7 +41,7 @@ use crate::services::categorization::CategorizationEngine;
 #[derive(Clone, serde::Serialize)]
 struct McpDataChanged {
     domain: String,
-    /// (ticker, coingeckoId) pairs — coingeckoId set only for crypto
+    /// (ticker, yahooSymbol) pairs — the symbol is set only for a resolved crypto holding
     tickers: Vec<(String, Option<String>)>,
     #[serde(rename = "earliestDate")]
     earliest_date: Option<i64>,
@@ -154,7 +154,7 @@ pub struct RowError {
 /// implies `created == 0` and nothing was written — whether the rejection
 /// came from phase-1 field validation (bank, stock, crypto) or a phase-2
 /// business-rule failure that rolled back the whole batch (stock/crypto only:
-/// sell without position, currency mismatch, missing coingeckoId).
+/// sell without position, currency mismatch, conflicting yahooSymbol).
 #[derive(Debug, serde::Serialize)]
 pub struct BulkWriteReport {
     #[serde(rename = "importBatchId", skip_serializing_if = "Option::is_none")]
@@ -428,7 +428,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "List all cryptocurrency holdings with ticker, name, CoinGecko ID, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary's totalValue sums the known values, totalCostBasis the known costs, totalUnrealizedGain only the positions whose value and cost are both known and totalRealizedGain the known realized gains. A summary total is null (not 0) when positions hold amounts for it but none of them could be converted. A gain percentage uses only the cost of positions whose value and cost are both known. `fxEstimated` (per row and for the response) is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
+        description = "List all cryptocurrency holdings with ticker, name, Yahoo Finance symbol, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary's totalValue sums the known values, totalCostBasis the known costs, totalUnrealizedGain only the positions whose value and cost are both known and totalRealizedGain the known realized gains. A summary total is null (not 0) when positions hold amounts for it but none of them could be converted. A gain percentage uses only the cost of positions whose value and cost are both known. `fxEstimated` (per row and for the response) is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
     )]
     fn crypto_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(crypto::crypto_list))
@@ -699,7 +699,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Bulk-import cryptocurrency buy/sell transactions (designed for parsed exchange exports). Holdings are created automatically on the first buy of a new coin — supply coingeckoId (e.g. \"bitcoin\") for coins not yet in Moony so prices can be fetched. A sell requires an existing position and sufficient chronological holdings. Prices retain each transaction currency; CoinGecko identity must match the existing holding.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation. Import in batches of about 100 rows at a time (max 200 per call); split larger exports across multiple calls — safe to do because duplicate rows are skipped and reported.\nAll-or-nothing with per-row errors; possible duplicates (same ticker+UTC day+type+numeric quantity+numeric price+currency) are skipped and reported; importAnyway allows confirmed distinct fills.\ntype: buy | sell. Dates: Unix timestamps (seconds). Quantities/prices: positive numeric strings."
+        description = "Bulk-import cryptocurrency buy/sell transactions (designed for parsed exchange exports). Holdings are created automatically on the first buy of a new coin — supply yahooSymbol (the Yahoo Finance USD pair, e.g. BTC-USD or SUI20947-USD) when you know it; otherwise Moony looks the coin up from its ticker and name. A yahooSymbol must match the existing holding. A sell requires an existing position and sufficient chronological holdings. Prices retain each transaction currency.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation. Import in batches of about 100 rows at a time (max 200 per call); split larger exports across multiple calls — safe to do because duplicate rows are skipped and reported.\nAll-or-nothing with per-row errors; possible duplicates (same ticker+UTC day+type+numeric quantity+numeric price+currency) are skipped and reported; importAnyway allows confirmed distinct fills.\ntype: buy | sell. Dates: Unix timestamps (seconds). Quantities/prices: positive numeric strings."
     )]
     fn crypto_transactions_create(
         &self,
@@ -708,9 +708,28 @@ impl MoonyMcp {
         if let Err(e) = check_bulk_size(args.transactions.len()) {
             return to_result(Err(e));
         }
-        let report = self.write_conn_mut("crypto", crypto::earliest_date(&args), |conn| {
-            crypto::crypto_transactions_create(conn, &args)
+        let written = self.write_conn_mut("crypto", crypto::earliest_date(&args), |conn| {
+            crypto::crypto_transactions_create_reporting(conn, &args)
         });
+        // A supplied symbol that filled an unresolved holding moves it to that coin's Yahoo
+        // series (spec D7 / D9): drop the old price and queue the rebuild of its history from
+        // its first transaction. A job without a date is "from the first fact", so the durable
+        // worker rebuilds each coin from its first transaction (and prices them all again).
+        let (report, symbols_set) = match written {
+            Ok((report, symbols_set)) => (Ok(report), symbols_set),
+            Err(e) => (Err(e), Vec::new()),
+        };
+        if !symbols_set.is_empty() {
+            let queued = self.db.with_conn(|conn| {
+                for ticker in &symbols_set {
+                    crate::services::crypto_investments::forget_cached_price(conn, ticker)?;
+                }
+                crate::services::mcp_refresh::enqueue(conn, "crypto", None)
+            });
+            if let Err(e) = queued {
+                log::warn!("[MCP] Could not queue the history rebuild after a symbol was set: {e}");
+            }
+        }
         let requested: Vec<String> = crypto::distinct_tickers(&args)
             .into_iter()
             .map(|(ticker, _)| ticker)

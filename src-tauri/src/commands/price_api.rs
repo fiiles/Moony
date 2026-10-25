@@ -3,12 +3,11 @@
 use crate::commands::portfolio;
 use crate::db::Database;
 use crate::error::Result;
+use crate::services::crypto_symbols::CryptoSearchResult;
 use crate::services::history_recalc::{self, HistoryRecalc, Job};
 use crate::services::price_api::{
-    self, ApiKeys, CoinGeckoSearchResult, CryptoPriceResult, DividendResult,
-    StockPriceRefreshResult, StockSearchResult,
+    self, CryptoPriceResult, DividendResult, StockPriceRefreshResult, StockSearchResult,
 };
-use std::collections::HashMap;
 use tauri::{AppHandle, State};
 
 /// Queue the history rebuild a stock price refresh asks for. The tickers in
@@ -52,32 +51,30 @@ fn rebuild_full_history(
     }
 }
 
-/// Get all API keys
-#[tauri::command]
-pub async fn get_api_keys(db: State<'_, Database>) -> Result<ApiKeys> {
-    price_api::get_api_keys(&db)
-}
-
-/// Set API keys. A new CoinGecko key queues a rebuild of every crypto ticker from its first
-/// transaction: what was fetched without it (rate limits, failed requests) may have holes.
-#[tauri::command]
-pub async fn set_api_keys(
-    app: AppHandle,
-    db: State<'_, Database>,
-    recalc: State<'_, HistoryRecalc>,
-    keys: ApiKeys,
-) -> Result<()> {
-    let before = price_api::get_api_keys(&db)?;
-    price_api::set_api_keys(&db, &keys)?;
-    if price_api::coingecko_key_changed(&before, &keys) {
-        match db.with_conn(history_recalc::crypto_ticker_jobs) {
-            Ok(jobs) => portfolio::schedule_history_rebuild(&app, &db, &recalc, jobs),
-            Err(e) => {
-                log::warn!("[RECALC] Could not queue the crypto rebuild after a key change: {e}")
-            }
-        }
+/// Queue a rebuild of each crypto ticker from its first transaction (a holding whose Yahoo symbol
+/// was just resolved or picked: its history moves to that coin's Yahoo series, spec D7 / D9). A
+/// ticker without transactions has no history. Never fails: a problem is only logged.
+pub fn rebuild_crypto_history(
+    app: &AppHandle,
+    db: &Database,
+    recalc: &HistoryRecalc,
+    tickers: &[String],
+) {
+    if tickers.is_empty() {
+        return;
     }
-    Ok(())
+    match db.with_conn(|conn| history_recalc::crypto_rebuild_jobs(conn, tickers)) {
+        Ok(jobs) if !jobs.is_empty() => portfolio::schedule_history_rebuild(
+            app,
+            db,
+            recalc,
+            jobs.into_iter()
+                .map(|(ticker, first)| Job::CryptoTicker(ticker, first))
+                .collect(),
+        ),
+        Ok(_) => {}
+        Err(e) => log::warn!("[RECALC] Could not queue the rebuild of crypto history: {e}"),
+    }
 }
 
 /// Refresh stock prices from Yahoo Finance
@@ -124,53 +121,30 @@ pub async fn refresh_stock_prices(
     Ok(result)
 }
 
-/// Refresh crypto prices from CoinGecko
+/// Refresh crypto prices from Yahoo Finance (spec D7). The holdings whose symbol this refresh
+/// resolved get their history rebuilt from their first transaction. `force_refresh` skips the
+/// 4 h cache (the explicit refresh buttons pass it).
 #[tauri::command]
-pub async fn refresh_crypto_prices(db: State<'_, Database>) -> Result<Vec<CryptoPriceResult>> {
-    // Get API key (optional for CoinGecko)
-    let keys = price_api::get_api_keys(&db)?;
-    let api_key = keys.coingecko.as_deref();
+pub async fn refresh_crypto_prices(
+    app: AppHandle,
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+    force_refresh: Option<bool>,
+) -> Result<Vec<CryptoPriceResult>> {
+    let result = price_api::refresh_crypto_prices(&db, force_refresh.unwrap_or(false)).await?;
 
-    // Get all crypto investments with their coingecko IDs
-    let id_to_ticker: HashMap<String, String> = db.with_conn(|conn| {
-        let mut stmt = conn.prepare(
-            "SELECT ticker, coingecko_id FROM crypto_investments WHERE coingecko_id IS NOT NULL",
-        )?;
-        let map: HashMap<String, String> = stmt
-            .query_map([], |row| {
-                let ticker: String = row.get(0)?;
-                let coingecko_id: String = row.get(1)?;
-                Ok((coingecko_id, ticker))
-            })?
-            .filter_map(|r| r.ok())
-            .collect();
-        Ok(map)
-    })?;
+    // Before the snapshot: it can fail, and a resolution is not reported a second time.
+    rebuild_crypto_history(&app, &db, &recalc, &result.resolved);
 
-    if id_to_ticker.is_empty() {
-        return Ok(vec![]);
-    }
-
-    // Fetch prices
-    let result = price_api::refresh_crypto_prices(&db, api_key, id_to_ticker).await?;
-
-    // Update portfolio snapshot
     crate::commands::portfolio::update_todays_snapshot(&db).await?;
 
-    Ok(result)
+    Ok(result.updated)
 }
 
-/// Search for cryptocurrencies using CoinGecko
+/// Search Yahoo Finance for coins (spec D6).
 #[tauri::command]
-pub async fn search_crypto(
-    db: State<'_, Database>,
-    query: String,
-) -> Result<Vec<CoinGeckoSearchResult>> {
-    // Get API key (optional)
-    let keys = price_api::get_api_keys(&db)?;
-    let api_key = keys.coingecko.as_deref();
-
-    price_api::search_crypto(api_key, &query).await
+pub async fn search_crypto(query: String) -> Result<Vec<CryptoSearchResult>> {
+    price_api::search_crypto(&query).await
 }
 
 /// Refresh dividend data from Yahoo Finance

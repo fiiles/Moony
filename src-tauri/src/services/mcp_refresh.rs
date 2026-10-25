@@ -57,15 +57,17 @@ pub fn acknowledge(conn: &Connection, job: &PendingRefresh) -> Result<()> {
     Ok(())
 }
 
-/// The quote identities used by both event metadata and the durable worker are committed facts.
+/// The quote identities used by both event metadata and the durable worker are committed facts:
+/// the holding's Yahoo symbol, `None` for an unknown ticker or an unresolved holding.
 pub fn crypto_identity(conn: &Connection, ticker: &str) -> Result<Option<String>> {
     Ok(conn
         .query_row(
-            "SELECT coingecko_id FROM crypto_investments WHERE ticker = ?1",
+            "SELECT yahoo_symbol FROM crypto_investments WHERE ticker = ?1",
             [ticker],
-            |r| r.get(0),
+            |r| r.get::<_, Option<String>>(0),
         )
-        .optional()?)
+        .optional()?
+        .flatten())
 }
 
 pub fn committed_crypto_tickers(
@@ -86,9 +88,10 @@ pub fn stock_tickers(conn: &Connection) -> Result<Vec<String>> {
     Ok(rows)
 }
 
-pub fn crypto_identities(conn: &Connection) -> Result<Vec<(String, String)>> {
+/// Every crypto holding as `(ticker, yahoo_symbol)`; the symbol is `None` while unresolved.
+pub fn crypto_identities(conn: &Connection) -> Result<Vec<(String, Option<String>)>> {
     let mut stmt =
-        conn.prepare("SELECT coingecko_id, ticker FROM crypto_investments ORDER BY ticker")?;
+        conn.prepare("SELECT ticker, yahoo_symbol FROM crypto_investments ORDER BY ticker")?;
     let rows = stmt
         .query_map([], |r| Ok((r.get(0)?, r.get(1)?)))?
         .collect::<rusqlite::Result<_>>()?;
@@ -205,12 +208,16 @@ mod tests {
     #[test]
     fn crypto_event_identity_comes_from_committed_data() {
         let conn = db();
-        conn.execute_batch("CREATE TABLE crypto_investments(ticker TEXT PRIMARY KEY, coingecko_id TEXT); INSERT INTO crypto_investments VALUES ('BTC','bitcoin');").unwrap();
+        conn.execute_batch("CREATE TABLE crypto_investments(ticker TEXT PRIMARY KEY, yahoo_symbol TEXT); INSERT INTO crypto_investments VALUES ('BTC','BTC-USD'), ('SUI', NULL);").unwrap();
         assert_eq!(
-            committed_crypto_tickers(&conn, &["BTC".into()]).unwrap(),
-            vec![("BTC".into(), Some("bitcoin".into()))]
+            committed_crypto_tickers(&conn, &["BTC".into(), "SUI".into()]).unwrap(),
+            vec![("BTC".into(), Some("BTC-USD".into())), ("SUI".into(), None)]
         );
         assert_eq!(crypto_identity(&conn, "ETH").unwrap(), None);
+        assert_eq!(
+            crypto_identities(&conn).unwrap(),
+            vec![("BTC".into(), Some("BTC-USD".into())), ("SUI".into(), None)]
+        );
     }
 
     #[test]

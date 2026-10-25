@@ -16,6 +16,26 @@ All notable changes to Moony are documented in this file. The format follows
 - **Linux on ARM.** Every release now also ships ARM64 (aarch64) builds for Linux: an AppImage,
   a `.deb` and an `.rpm`, updated through the built-in updater like the x86_64 builds.
 
+### Changed
+
+- **Crypto prices come from Yahoo Finance.** Rates, the coin search and the price history of your
+  crypto holdings now come from Yahoo Finance, the same source as stock prices. Your existing
+  holdings are matched to their Yahoo listing by name and ticker the first time prices refresh;
+  where Moony cannot tell which coin is meant (for example two listings with the same name), it
+  never guesses: the crypto page asks you to pick the listing ("Rate source…", "Zdroj kurzu…" in
+  Czech). Every coin whose listing is set or matched this way has its price history rebuilt from
+  its first transaction on Yahoo's daily closes; only a coin that stays unmatched keeps the
+  history already stored.
+- **MCP:** `crypto_transactions_create` takes an optional `yahooSymbol` (the Yahoo symbol of the
+  coin's USD pair, for example `BTC-USD`) instead of `coingeckoId`. A new coin no longer needs an
+  identifier; when the symbol is omitted Moony looks it up from the ticker and name. A client that
+  still sends `coingeckoId` has it ignored.
+
+### Removed
+
+- **CoinGecko.** The service, its optional API key, the CoinGecko card in Settings → Integrations
+  and the banner that asked for a key are gone; Moony makes no request to CoinGecko any more.
+
 ## [1.0.0] - 2026-10-19
 
 The first stable release.

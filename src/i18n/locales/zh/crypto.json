@@ -5,7 +5,7 @@
   "loading": "正在加载您的加密货币组合…",
   "empty": {
     "title": "还没有加密货币",
-    "description": "添加您的第一个币种：我们会在 CoinGecko 上查找它，汇率将自动保持最新。"
+    "description": "添加您的第一个币种：我们会在 Yahoo Finance 上查找它，汇率将自动保持最新。"
   },
   "addCrypto": "添加加密货币",
   "refreshPrices": "刷新汇率",
@@ -53,8 +53,9 @@
     "return": "收益",
     "actions": "操作",
     "showClosed": "显示已平仓持仓",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "手动汇率",
+    "noSource": "无汇率来源",
     "closed": "{{date}} 已平仓",
     "realized": "已实现 {{amount}}",
     "noResults": {
@@ -73,26 +74,26 @@
     "buy": "买入",
     "sell": "卖出",
     "updatePrice": "手动设置汇率",
+    "changeSymbol": "汇率来源…",
     "delete": "删除持仓"
   },
   "badges": {
     "manual": "手动"
   },
   "tooltip": {
-    "manualPrice": "手动设置的汇率——在您移除之前，将覆盖 CoinGecko 的汇率。"
+    "manualPrice": "手动设置的汇率——在您移除之前，将覆盖 Yahoo Finance 的汇率。"
   },
   "modal": {
     "add": {
       "title": "添加加密货币",
-      "description": "在 CoinGecko 上查找币种，其汇率随后会自动更新。",
+      "description": "在 Yahoo Finance 上查找币种，其汇率随后会自动更新。",
       "coin": "加密货币",
       "ticker": "代码",
-      "search": "搜索 CoinGecko",
-      "searchHint": "输入名称或代码以查看 CoinGecko 的匹配结果。",
-      "searching": "正在搜索 CoinGecko…",
-      "searchError": "搜索失败。请检查网络连接，或“设置”中的 CoinGecko 密钥。",
+      "search": "搜索 Yahoo Finance",
+      "searchHint": "输入名称或代码以查看匹配结果。",
+      "searching": "正在搜索 Yahoo Finance…",
+      "searchError": "搜索失败。请检查网络连接。",
       "noResults": "没有匹配的币种。您可以手动填写代码和名称。",
-      "rank": "#{{rank}}",
       "quantity": "数量",
       "pricePerUnit": "单价",
       "purchaseDate": "买入日期",
@@ -121,11 +122,18 @@
     },
     "updatePrice": {
       "title": "手动汇率 · {{name}}",
-      "description": "在您移除手动汇率之前，将覆盖 CoinGecko 的汇率。",
+      "description": "在您移除手动汇率之前，将覆盖 Yahoo Finance 的汇率。",
       "price": "每 1 {{ticker}} 的汇率",
       "total": "持仓价值（{{quantity}} {{ticker}}）",
       "remove": "移除手动汇率",
       "submit": "保存汇率"
+    },
+    "symbol": {
+      "title": "{{name}} 的汇率来源",
+      "description": "请选择该币种在 Yahoo Finance 上的标的。汇率和历史将据此重新生成。",
+      "current": "当前：{{symbol}}",
+      "none": "尚未选择标的。",
+      "saved": "汇率来源已保存"
     }
   },
   "confirmDelete": {
@@ -139,15 +147,15 @@
     "deleted": "持仓已删除",
     "priceUpdated": "手动汇率已保存",
     "manualPriceDeleted": "手动汇率已移除",
-    "pricesRefreshed_other": "已从 CoinGecko 更新 {{count}} 个汇率",
-    "pricesRefreshedDescription": "已从 CoinGecko 获取当前汇率",
+    "pricesRefreshed_other": "已从 Yahoo Finance 更新 {{count}} 个汇率",
+    "pricesRefreshedDescription": "已从 Yahoo Finance 获取当前汇率",
     "refreshFailed": "汇率刷新失败",
     "addFailed": "添加加密货币失败"
   },
   "detail": {
     "backToList": "返回加密货币",
     "notFound": "未找到持仓",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "手动汇率",
     "quantityUnits": "{{quantity}} {{ticker}}",
     "avgBuyPrice": "平均成本 {{price}}",
@@ -157,6 +165,7 @@
     "sell": "卖出",
     "menu": {
       "editPrice": "手动设置汇率",
+      "changeSymbol": "汇率来源…",
       "delete": "删除持仓"
     },
     "status": {
@@ -229,10 +238,9 @@
       "description": "这将永久删除该笔{{type}}交易（{{quantity}} × {{ticker}}，{{date}}，{{amount}}），此操作无法撤销。"
     }
   },
-  "coingeckoBanner": {
-    "title": "CoinGecko API 密钥（可选）",
-    "message": "没有密钥也能获取汇率。在“设置”中添加免费的 CoinGecko 密钥后，还可加载图表所需的汇率历史。",
-    "goToSettings": "打开设置",
-    "dismiss": "关闭"
+  "unpricedBanner": {
+    "title_other": "{{count}} 个币种没有汇率来源",
+    "message": "Moony 无法确定 {{tickers}} 对应 Yahoo Finance 上的哪个标的。选择后，汇率和历史将随之补全。",
+    "pick": "选择标的"
   }
 }

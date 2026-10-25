@@ -21,6 +21,7 @@ pub mod company_info;
 pub mod cost_basis;
 pub mod crypto;
 pub mod crypto_investments;
+pub mod crypto_symbols;
 pub mod csv_import;
 pub mod csv_presets;
 pub mod currency;

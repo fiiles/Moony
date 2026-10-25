@@ -694,7 +694,7 @@
       },
       "marketData": {
         "title": "Market data",
-        "text": "– only the stock, currency and crypto rates you follow are downloaded (Yahoo Finance, CoinGecko, ECB). The app works offline too."
+        "text": "– only the stock, currency and crypto rates you follow are downloaded (Yahoo Finance, ECB). The app works offline too."
       }
     },
     "recoveryLead": "The only way to your data if you forget the password. Store it outside this phone: in a password manager, in Files, or on paper.",

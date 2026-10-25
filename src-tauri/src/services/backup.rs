@@ -769,7 +769,7 @@ mod tests {
             CREATE TABLE loans (id TEXT PRIMARY KEY, principal TEXT NOT NULL, note BLOB);
             INSERT INTO loans (id, principal, note) VALUES ('l1', '1000.50', X'0102');
             CREATE TABLE app_config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
-            INSERT INTO app_config (key, value) VALUES ('api_key_coingecko', 'cg-secret');
+            INSERT INTO app_config (key, value) VALUES ('some_other_setting', 'x');
             "#,
         )
         .expect("schema");

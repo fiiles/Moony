@@ -85,7 +85,7 @@ export function DataStatus({ override }: { override?: ShellStatus }) {
           queryClient.invalidateQueries({ queryKey: FX_HISTORY_KEY });
         }),
         priceApi.refreshStockPrices(),
-        priceApi.refreshCryptoPrices(),
+        priceApi.refreshCryptoPrices(true),
       ]);
       await refetch();
       void invalidateAfterPriceRefresh(queryClient);

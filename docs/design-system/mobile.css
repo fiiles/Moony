@@ -511,7 +511,7 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
 
 /* The document viewer's body (`DocumentViewerSheet.tsx`, a tall sheet that is filled, `.m-sheet--fill`): one scroll box (`__box`:
    `well`, 8 px padding, scrolling both ways) that takes all the room between the sheet's head and its footer — the sheet is its full
-   95 % and its body a column that does not scroll — so the box is the one scroller at every text size (a larger title or footer
+   95 % (while a document is shown; a note alone opens at its height) and its body a column that does not scroll — so the box is the one scroller at every text size (a larger title or footer
    leaves it less room, never a second scroll around it). It holds an image (`__img`, contained in the box at 1×: the box's height is
    definite, so `max-height: 100%` holds) or a PDF's page placeholders (`__pages` with `__page`: pdf.js judges which pages are in view
    against its parent, so the box is that parent), a skeleton until the picture or the first page is ready (`__skeleton`) and, for a

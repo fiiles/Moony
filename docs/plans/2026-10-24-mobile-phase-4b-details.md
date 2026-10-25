@@ -269,4 +269,26 @@ Rulings taken while planning (each with what it costs if wrong):
 14. **`WealthPlaceholder.tsx` is not edited** (the sibling branch rewrites it); its `PropertyPlaceholder` export is left unused for the parent's merge.
 15. **The property detail shows the desktop detail's numbers in the desktop's currency** (`propertyRow`, `yearlyBalance`, `valuationTrace`).
 
-Rulings taken while executing: (added as they are taken)
+Rulings taken while executing (each with what it costs if wrong; the ledger has the full trail):
+
+16. **`documentNameFrom(fileName, source, photoName)`** takes the formatted photo name from the caller (a pure function cannot call `t()`). Costs nothing.
+17. **A hand-entered loan balance holds exactly** until it is changed (owner rule): the manual-balance case reads exactly the entered amount, with the note that it holds. Costs nothing.
+18. **The desktop dialogs the phone opens show their own previews unmasked** with the eye on (reuse-only, as in earlier phases). Costs a masked phone sheet per dialog if the eye should cover dialogs.
+19. **Delete leaves from the page, not from the menu** (`use-delete-and-leave`): the delete is awaited on the screen, `history.back()` only while the screen is still the record's, a restored deep link is replaced by the tab root, a second tap does nothing. The loan, the policy and the property delete this way. Costs nothing; Phase 4c's `use-leave-deleted` has the shape that stranded the loan screen (follow-up).
+20. **The owner-exists check runs on the new byte path only**; the desktop path command is unchanged (a desktop behaviour change is the owner's call). Costs one check later.
+21. **Document zoom is a double-tap / button toggle 1× ↔ 2×** for images and PDF pages, the box scrolling both ways; the box has `touch-action: pan-x pan-y`, so a pinch over the document no longer zooms the page and the sheet (6a re-enabled page pinch). Costs pinch inside the viewer.
+22. **"Vybrat soubor" filters to the desktop's document types** (pdf, doc, docx, jpg, jpeg, png, gif), so WebKit hands Photo Library HEIC originals over as JPEG instead of a refused HEIC. Costs other types (xlsx, txt…), which the desktop dialog does not offer either.
+23. **The viewer of a document fills the sheet's remaining height** (one scroller at the largest text); the sheet footers use the shared `FOOTER_*` classes. A document the phone cannot show opens a normal-height sheet.
+24. **The policy's Upravit is a full-width secondary button under the facts card**, not a nav button: the nav keeps back, title and `···` like the loan, so the policy name is readable at 402 pt. Costs one button row.
+25. **The premiums series never adds a one-time amount in another currency 1:1**; a recurring policy's one-time amount is its own facts row (desktop `contract.oneTime`). The caption puts the status first, so truncation never hides "ukončeno".
+26. **The upcoming-payments chip caption is the short weekday**; the distance ("za 73 dní") is in the row's sub-line. The shared relative labels overflow the 54 pt chip in most languages (measured); `DateChip` truncates as a last guard. Costs the prototype's relative caption in the chip.
+27. **A stale remembered policy type falls back to "all"** (`effectiveType`).
+28. **The purchase ▲ in the property hero follows the desktop rule** (purchase date, price and rate known), not "precedes the first estimate". Costs nothing.
+29. **A valuation trace spanning fewer than two distinct days shows no chart**, only the one-estimate note. Costs nothing.
+30. **`feat/mobile` was merged twice before Task 7** (8a109181 as Task M, d9b5c629 as Task M2), so the costs and the gallery were built under the dark-mode and Dynamic Type rules. Both sides kept in every conflict.
+31. **Photo deletion resolves against the live batch** at confirm (a stale "last photo" flag never deletes photos the person did not pick); editing a cost while amounts are hidden keeps the stored amount unless the field is touched; a future-dated one-time cost keeps its own day as the field's maximum; Return in the cost name moves to the amount.
+32. **sv keeps "fotoomgången"** (the sv desktop uses it for the same batch). Costs changing both together if ever.
+33. **WebKit's plaintext upload copies are swept on the phone** (`services/upload_copies.rs`, final review): the `tmp/WKFileUploadPanel-*` folders WKWebView leaves after every pick or photo go at startup and at lock (`logout`), never after an upload (a second picked file may still wait in an open sheet). Verified on the simulator: 3 leftovers removed at start, 1 at lock. Costs a copy living until the next lock or launch.
+34. **An ended fixation reads the desktop's three-way wording** ("fixace skončila …") in the loan caption and the Finance row, like the stat. Costs nothing.
+35. **The contract number wraps at its spaces** (`overflow-wrap: break-word`, not `break-normal`): a long number without spaces may still break inside, rather than run under the copy button. Costs nothing.
+36. **The policy's linked property is read fresh on every opening**; extra-payment and add-document sheets got their small races closed (hidden prefill empty, a late save no longer closes a newer sheet, Smazat fotku disabled while an upload runs, IME Return ignored).

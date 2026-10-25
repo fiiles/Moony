@@ -63,9 +63,7 @@
       "done": "Gotowe"
     },
     "picker": {
-      "title": "Kategoria",
-      "change": "Zmień kategorię",
-      "current": "Bieżąca kategoria"
+      "change": "Zmień kategorię"
     },
     "limitSheet": {
       "pick": "Wybierz kategorię, której wydatki chcesz pilnować."

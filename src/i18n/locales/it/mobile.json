@@ -61,9 +61,7 @@
       "done": "Fatto"
     },
     "picker": {
-      "title": "Categoria",
-      "change": "Cambia categoria",
-      "current": "Categoria attuale"
+      "change": "Cambia categoria"
     },
     "limitSheet": {
       "pick": "Scegli la categoria di cui vuoi tenere sotto controllo le spese."

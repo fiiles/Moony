@@ -61,9 +61,7 @@
       "done": "Hotovo"
     },
     "picker": {
-      "title": "Kategorie",
-      "change": "Změnit kategorii",
-      "current": "Aktuální kategorie"
+      "change": "Změnit kategorii"
     },
     "limitSheet": {
       "pick": "Vyberte kategorii, pro kterou chcete hlídat výdaje."

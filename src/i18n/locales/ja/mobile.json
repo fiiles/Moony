@@ -57,9 +57,7 @@
       "done": "完了"
     },
     "picker": {
-      "title": "カテゴリ",
-      "change": "カテゴリを変更",
-      "current": "現在のカテゴリ"
+      "change": "カテゴリを変更"
     },
     "limitSheet": {
       "pick": "支出を管理したいカテゴリを選んでください。"

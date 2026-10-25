@@ -74,17 +74,98 @@ fn has_long_digit_run(cell: &str) -> bool {
     false
 }
 
-/// An amount the import would read: a number with a digit in it, in either decimal notation.
+/// A currency sign (Unicode general category Sc): `$ ¢ £ ¤ ¥`, the Currency Symbols block
+/// (`€ ₹ ₽ …`) and the few scattered elsewhere.
+fn is_currency_sign(c: char) -> bool {
+    matches!(
+        c,
+        '$' | '\u{a2}'..='\u{a5}'
+            | '\u{58f}'
+            | '\u{60b}'
+            | '\u{7fe}'..='\u{7ff}'
+            | '\u{9f2}'..='\u{9f3}'
+            | '\u{9fb}'
+            | '\u{af1}'
+            | '\u{bf9}'
+            | '\u{e3f}'
+            | '\u{17db}'
+            | '\u{20a0}'..='\u{20cf}'
+            | '\u{a838}'
+            | '\u{fdfc}'
+            | '\u{fe69}'
+            | '\u{ff04}'
+            | '\u{ffe0}'..='\u{ffe1}'
+            | '\u{ffe5}'..='\u{ffe6}'
+            | '\u{11fdd}'..='\u{11fe0}'
+            | '\u{1e2ff}'
+            | '\u{1ecb0}'
+    )
+}
+
+/// What an amount is written with besides its letters: digits, decimal and thousands marks
+/// (`.` `,` spaces incl. NBSP and narrow NBSP, apostrophes), signs (`+` and the minus and dashes
+/// the amount reader takes for one), parentheses and currency signs.
+fn is_amount_mark(c: char) -> bool {
+    c.is_ascii_digit()
+        || c.is_whitespace()
+        || is_currency_sign(c)
+        || matches!(
+            c,
+            '.' | ','
+                | '\u{a0}'
+                | '\u{202f}'
+                | '\''
+                | '\u{2019}'
+                | '+'
+                | '-'
+                | '\u{2212}'
+                | '\u{2012}'
+                | '\u{2013}'
+                | '('
+                | ')'
+        )
+}
+
+/// The letters of `cell` around its amount marks are at most one currency code: none, or one run
+/// of up to three letters ("CZK", "EUR", "Kč"). Anything else (two words, a longer word, a sign
+/// that is no amount mark) makes the cell text.
+fn letters_are_a_currency_code(cell: &str) -> bool {
+    let mut runs = 0;
+    let mut run = 0;
+    for c in cell.chars() {
+        if is_amount_mark(c) {
+            run = 0;
+        } else if c.is_alphabetic() {
+            if run == 0 {
+                runs += 1;
+            }
+            run += 1;
+            if runs > 1 || run > 3 {
+                return false;
+            }
+        } else {
+            return false;
+        }
+    }
+    true
+}
+
+/// An amount the import would read, and nothing more: a number with a digit in it, in either
+/// decimal notation, whose letters are at most one currency code. The amount reader strips the
+/// letters at a cell's edges, so "Popis 1", "Address Line 1" or "E2E Reference" read as 1 or 2
+/// to it; their words are what makes them column names.
 fn reads_as_amount(cell: &str) -> bool {
     cell.chars().any(|c| c.is_ascii_digit())
         && [',', '.']
             .into_iter()
             .any(|decimal| clean_and_parse_amount(cell, decimal).is_ok())
+        && letters_are_a_currency_code(cell)
 }
 
-/// Whether one of the cells of what was taken for a header row is a value: a date, an amount or
-/// a run of at least six digits (an account or document number). A file without a header line
-/// has its first transaction there, and a transaction is never learned.
+/// Whether one of the cells of what was taken for a header row is a value: a date, an amount
+/// (letters at most one currency code, so "Popis 1" stays a column name) or a run of at least
+/// six digits (an account or document number). A file without a header line has its first
+/// transaction there, and a transaction is never learned.
 pub fn header_looks_like_data(headers: &[String]) -> bool {
     headers
         .iter()
@@ -178,9 +259,9 @@ impl InsertLearnedCsvFormat {
                 "validation.learnedFormatHeaderless".into(),
             ));
         }
-        // The csv reader takes one byte as the delimiter.
-        let mut delimiter = self.delimiter.chars();
-        if !matches!((delimiter.next(), delimiter.next()), (Some(c), None) if c.is_ascii()) {
+        // A comma, a semicolon or a tab: the delimiters the import detects
+        // (`detect_csv_delimiter`), and so the only ones a layout can have been read with.
+        if !matches!(self.delimiter.as_str(), "," | ";" | "\t") {
             return Err(AppError::Validation(
                 "validation.csvDelimiterInvalid".into(),
             ));
@@ -364,7 +445,7 @@ pub fn delete_format(conn: &Connection, id: &str) -> Result<()> {
     let before = formats.len();
     formats.retain(|f| f.id != id);
     if formats.len() == before {
-        return Err(AppError::NotFound("Learned format not found".into()));
+        return Err(not_found());
     }
     write_formats(conn, &formats)
 }
@@ -666,6 +747,14 @@ mod tests {
             vec!["Datum", "199"],
             vec!["Datum", "1,234.50"],
             vec!["Datum", "CZK 1 200,00"],
+            vec!["Datum", "1 525,77"],
+            vec!["Datum", "1\u{a0}525,77\u{202f}Kč"],
+            vec!["Datum", "CZK 100"],
+            vec!["Datum", "$1,234.56"],
+            vec!["Datum", "€ 12,50"],
+            vec!["Datum", "-£12.50"],
+            vec!["Datum", "+1'234.50 CHF"],
+            vec!["Datum", "−199,00 EUR"],
             vec!["Datum", "(45.10)"],
             vec!["Date", "2026-09-29"],
             vec!["Datum", "29/09/2026"],
@@ -683,9 +772,27 @@ mod tests {
             vec!["Booking date", "Amount (EUR)", "Currency"],
             vec!["Číslo účtu", "Zůstatek po transakci", "Typ transakce"],
             vec!["IBAN", "BIC", "Reference"],
+            // A number inside a column name is no amount: the words around it are more than a
+            // currency code
+            vec!["Datum", "Popis 1"],
+            vec!["Datum", "Address Line 1"],
+            vec!["Datum", "Option 1 Name"],
+            vec!["Datum", "E2E Reference"],
         ] {
             assert!(!header_looks_like_data(&headers(&cells)), "{cells:?}");
         }
+    }
+
+    #[test]
+    fn a_layout_with_numbered_column_names_is_learned() {
+        let conn = db();
+        let mut numbered = input(
+            "Numbered",
+            &["Datum", "Částka", "Popis 1", "Popis 2", "E2E Reference"],
+        );
+        numbered.mapping.description_columns = vec!["Popis 1".into(), "Popis 2".into()];
+        let saved = save_format(&conn, &numbered).expect("numbered names are column names");
+        assert_eq!(list_formats(&conn).unwrap(), vec![saved]);
     }
 
     #[test]
@@ -973,7 +1080,7 @@ mod tests {
                 "{cells:?}"
             );
         }
-        for delimiter in ["", ";;", "ab", "é"] {
+        for delimiter in ["", ";;", "ab", "é", "|", " ", ":"] {
             let mut odd = input("ok", &THREE);
             odd.delimiter = delimiter.into();
             assert_eq!(
@@ -982,7 +1089,7 @@ mod tests {
                 "{delimiter:?}"
             );
         }
-        for delimiter in [",", ";", "\t", "|"] {
+        for delimiter in [",", ";", "\t"] {
             let mut fine = input("ok", &THREE);
             fine.delimiter = delimiter.into();
             assert!(fine.validate().is_ok(), "{delimiter:?}");

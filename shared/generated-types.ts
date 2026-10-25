@@ -1271,6 +1271,7 @@ export type InvestmentWithDetails = { currency: string; fxQuality: ConversionQua
  * `LearnedCsvFormat`). Stored in `app_config` by `csv_import::learned`; `signature` is the
  * layout's key (header cells, delimiter, column count), `headers` the cells it was learned
  * from. Encoding and header row are what the file had when it was saved, not part of the key.
+ * Also the stored `app_config` shape: a new non-`Option` field needs `#[serde(default)]`.
  */
 export type LearnedCsvFormat = { 
 /**
@@ -1307,6 +1308,7 @@ shadowedByPresetId: string | null }
  * How a learned format reads the columns of its file (TS `LearnedCsvMapping`): the parts of
  * [`CsvImportConfig`] that describe the layout, with the file's own header names. Nothing that
  * belongs to one file (skipped rows, overrides, the duplicate decision) is kept.
+ * Also the stored `app_config` shape: a new non-`Option` field needs `#[serde(default)]`.
  */
 export type LearnedCsvMapping = { dateColumn: string; 
 /**

@@ -397,8 +397,6 @@ async fn run_app() {
             commands::portfolio::backfill_crypto_ticker_history,
             commands::portfolio::trigger_import_recalculation,
             // Price API commands
-            commands::price_api::get_api_keys,
-            commands::price_api::set_api_keys,
             commands::price_api::refresh_stock_prices,
             commands::price_api::refresh_crypto_prices,
             commands::price_api::search_crypto,

@@ -126,7 +126,7 @@ mod tests {
 
     #[test]
     fn midnight_stamped_daily_prices_belong_to_their_own_day() {
-        // CoinGecko prices are stamped with the UTC day start.
+        // Yahoo's daily crypto bars are stamped with the UTC day start.
         let prices = vec![hp(day(2026, 9, 25), 100.0), hp(day(2026, 9, 26), 105.0)];
         assert_eq!(
             price_at_or_before(&prices, day(2026, 9, 25)).unwrap().price,

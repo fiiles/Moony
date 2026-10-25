@@ -8,8 +8,9 @@ use crate::models::{
 };
 use crate::services::crypto_investments as crypto_service;
 use crate::services::fx;
-use crate::services::history_recalc::{crypto_rebuild_jobs, HistoryRecalc, Job};
+use crate::services::history_recalc::{HistoryRecalc, Job};
 use crate::services::position_reports;
+use crate::services::price_api;
 use crate::services::pricing::AssetKind;
 use crate::services::ticker_history;
 use tauri::{AppHandle, Emitter, State};
@@ -78,8 +79,9 @@ pub async fn create_crypto(
     Ok(inv)
 }
 
-/// Store the Yahoo Finance symbol picked for a holding (the symbol picker, spec D9), then queue
-/// the rebuild of its history from its first transaction so it follows the right coin.
+/// Store the Yahoo Finance symbol picked for a holding (the symbol picker, spec D9), refresh its
+/// price from that symbol and queue the rebuild of its history from its first transaction, so it
+/// follows the right coin.
 #[tauri::command]
 pub async fn set_crypto_symbol(
     app: AppHandle,
@@ -93,18 +95,13 @@ pub async fn set_crypto_symbol(
         crypto_service::set_symbol(conn, &id, &symbol)?;
         Ok(crypto_service::get_crypto_by_id(conn, &id)?.ticker)
     })?;
+    let tickers = [ticker];
 
-    let jobs = db.with_conn(|conn| crypto_rebuild_jobs(conn, std::slice::from_ref(&ticker)))?;
-    if !jobs.is_empty() {
-        crate::commands::portfolio::schedule_history_rebuild(
-            &app,
-            &db,
-            &recalc,
-            jobs.into_iter()
-                .map(|(ticker, first)| Job::CryptoTicker(ticker, first))
-                .collect(),
-        );
+    // Best effort: the symbol is stored; a failed quote is retried by the next refresh.
+    if let Err(e) = price_api::refresh_crypto_prices_for(&db, &tickers, true).await {
+        log::warn!("[YAHOO CRYPTO] Price refresh after a symbol change failed: {e}");
     }
+    crate::commands::price_api::rebuild_crypto_history(&app, &db, &recalc, &tickers);
 
     crate::commands::portfolio::update_todays_snapshot(&db)
         .await

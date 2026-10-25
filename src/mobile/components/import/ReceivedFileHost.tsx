@@ -23,29 +23,46 @@ const receivesFiles = () => import.meta.env.TAURI_ENV_PLATFORM === 'ios';
  * The host stays mounted through a lock and only works while unlocked, so the queue — the paths
  * that are taken but not yet shown, and the one on the sheet — outlives every unlock: a path is
  * neither lost with a screen nor shown twice.
+ *
+ * `onPendingChange` tells the shell whether a shared file is on its way (`ReceivedQueue.pending`:
+ * while locked and until the drain after the unlock answers, while a path waits, and while the
+ * sheet shows one), so the one-time biometric offer waits for the import (`enrolmentOfferOpen`).
+ * It is already up when the app unlocks: the offer's status is cached by the lock screen and is
+ * decided on the first unlocked render, before any effect here could run.
  */
-export function ReceivedFileHost() {
+export function ReceivedFileHost({
+  onPendingChange,
+}: {
+  onPendingChange?: (pending: boolean) => void;
+}) {
   const { appStatus } = useAuth();
   const { openImport, open } = useImportSheet();
   const unlocked = appStatus === 'unlocked';
 
   const openImportRef = useRef(openImport);
+  const onPendingRef = useRef(onPendingChange);
   useEffect(() => {
     openImportRef.current = openImport;
-  }, [openImport]);
+    onPendingRef.current = onPendingChange;
+  }, [openImport, onPendingChange]);
 
-  const [{ queue, drain }] = useState(() => {
+  const [{ queue, drain, report }] = useState(() => {
     const queue = createReceivedQueue((path) => {
       openImportRef.current({ path, source: 'shared' });
     });
+    const report = () => onPendingRef.current?.(queue.pending());
     const drain = createSerialDrain(async () => {
+      let paths: string[] = [];
       try {
-        queue.offer(await receivedFilesApi.take());
+        paths = await receivedFilesApi.take();
       } catch (error) {
         console.warn('[received files] the shared files could not be read', error);
       }
+      // A failed take answers with nothing: no file is on its way any more
+      queue.offer(paths);
+      report();
     });
-    return { queue, drain };
+    return { queue, drain, report };
   });
 
   // The sheet is taken while one is open and while the app is locked (a lock closes the sheet)
@@ -53,10 +70,18 @@ export function ReceivedFileHost() {
   useEffect(() => {
     if (taken) queue.sheetOpened();
     else queue.sheetClosed();
-  }, [taken, queue]);
+    report();
+  }, [taken, queue, report]);
 
   useEffect(() => {
-    if (!unlocked || !receivesFiles()) return;
+    if (!receivesFiles()) return;
+    if (!unlocked) {
+      // Rust keeps what is shared while locked: until the drain after the next unlock answers, a
+      // file may be on its way
+      queue.expect();
+      report();
+      return;
+    }
     let current = true;
     let unlisten: (() => void) | undefined;
     // Listen first, then drain: a file that arrives in between is still seen by the drain, and
@@ -74,7 +99,7 @@ export function ReceivedFileHost() {
       current = false;
       unlisten?.();
     };
-  }, [unlocked, drain]);
+  }, [unlocked, drain, queue, report]);
 
   return null;
 }

@@ -80,6 +80,63 @@ describe('createReceivedQueue', () => {
   });
 });
 
+describe('createReceivedQueue pending', () => {
+  it('is_not_pending_with_nothing_expected_waiting_or_shown', () => {
+    const { queue } = setup();
+    expect(queue.pending()).toBe(false);
+    queue.sheetClosed();
+    expect(queue.pending()).toBe(false);
+  });
+
+  it('is_pending_from_the_lock_until_the_drain_after_the_unlock_answers_with_nothing', () => {
+    const { queue } = setup();
+    // Locked (the sheet is taken), then unlocked with the drain not answered yet: a shared file
+    // may be about to open
+    queue.expect();
+    queue.sheetOpened();
+    expect(queue.pending()).toBe(true);
+    queue.sheetClosed();
+    expect(queue.pending()).toBe(true);
+    queue.offer([]);
+    expect(queue.pending()).toBe(false);
+  });
+
+  it('stays_pending_while_the_shared_file_is_on_the_sheet_and_until_it_closes', () => {
+    const { queue, delivered } = setup();
+    queue.expect();
+    queue.offer(['/inbox/a.xml']);
+    expect(delivered).toEqual(['/inbox/a.xml']);
+    expect(queue.pending()).toBe(true);
+    // The host reports the sheet open, then closed
+    queue.sheetOpened();
+    expect(queue.pending()).toBe(true);
+    queue.sheetClosed();
+    expect(queue.pending()).toBe(false);
+  });
+
+  it('stays_pending_through_a_second_file_that_opens_when_the_first_closes', () => {
+    const { queue, delivered } = setup();
+    queue.expect();
+    queue.offer(['/inbox/a.xml', '/inbox/b.xml']);
+    queue.sheetOpened();
+    queue.sheetClosed();
+    // b opens at once: there is no moment with nothing pending between the two sheets
+    expect(delivered).toEqual(['/inbox/a.xml', '/inbox/b.xml']);
+    expect(queue.pending()).toBe(true);
+    queue.sheetOpened();
+    queue.sheetClosed();
+    expect(queue.pending()).toBe(false);
+  });
+
+  it('is_pending_while_a_file_waits_behind_a_sheet_the_person_opened', () => {
+    const { queue, delivered } = setup();
+    queue.sheetOpened();
+    queue.offer(['/inbox/a.xml']);
+    expect(delivered).toEqual([]);
+    expect(queue.pending()).toBe(true);
+  });
+});
+
 describe('createSerialDrain', () => {
   /** A run the test finishes by hand. */
   function setupDrain() {

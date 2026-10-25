@@ -536,7 +536,7 @@
     },
     "add": {
       "label": "Legg til",
-      "investment": "Investering",
+      "investment": "Aksje eller ETF",
       "crypto": "Kryptovaluta",
       "bond": "Obligasjon",
       "property": "Eiendom",

@@ -536,7 +536,7 @@
     },
     "add": {
       "label": "Add",
-      "investment": "Investment",
+      "investment": "Stock or ETF",
       "crypto": "Cryptocurrency",
       "bond": "Bond",
       "property": "Property",

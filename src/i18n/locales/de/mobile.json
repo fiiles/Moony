@@ -536,7 +536,7 @@
     },
     "add": {
       "label": "Hinzufügen",
-      "investment": "Geldanlage",
+      "investment": "Aktie oder ETF",
       "crypto": "Kryptowährung",
       "bond": "Anleihe",
       "property": "Immobilie",

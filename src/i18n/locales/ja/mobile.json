@@ -503,7 +503,7 @@
     },
     "add": {
       "label": "追加",
-      "investment": "投資",
+      "investment": "株式またはETF",
       "crypto": "暗号資産",
       "bond": "債券",
       "property": "物件",

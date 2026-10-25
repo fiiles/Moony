@@ -730,7 +730,7 @@
       },
       "marketData": {
         "title": "Dati di mercato",
-        "text": "– vengono scaricati solo i prezzi di azioni, valute e cripto che segui (Yahoo Finance, CoinGecko, BCE). L'app funziona anche offline."
+        "text": "– vengono scaricati solo i prezzi di azioni, valute e cripto che segui (Yahoo Finance, BCE). L'app funziona anche offline."
       }
     },
     "recoveryLead": "È l'unico modo per accedere ai tuoi dati se dimentichi la password. Conservala fuori da questo telefono: in un gestore di password, in File o su carta.",

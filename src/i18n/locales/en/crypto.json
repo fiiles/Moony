@@ -5,7 +5,7 @@
   "loading": "Loading your crypto portfolio...",
   "empty": {
     "title": "No cryptocurrencies yet",
-    "description": "Add your first coin: we look it up on CoinGecko and the rate keeps itself up to date."
+    "description": "Add your first coin: we look it up on Yahoo Finance and the rate keeps itself up to date."
   },
   "addCrypto": "Add cryptocurrency",
   "refreshPrices": "Refresh rates",
@@ -56,7 +56,7 @@
     "return": "Return",
     "actions": "Actions",
     "showClosed": "Show closed positions",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "manual rate",
     "closed": "closed {{date}}",
     "realized": "{{amount}} realized",
@@ -78,26 +78,26 @@
     "buy": "Buy",
     "sell": "Sell",
     "updatePrice": "Set rate manually",
+    "changeSymbol": "Rate source…",
     "delete": "Delete position"
   },
   "badges": {
     "manual": "manual"
   },
   "tooltip": {
-    "manualPrice": "Manually set rate – overrides CoinGecko until you remove it."
+    "manualPrice": "Manually set rate – overrides Yahoo Finance until you remove it."
   },
   "modal": {
     "add": {
       "title": "Add cryptocurrency",
-      "description": "Look the coin up on CoinGecko; its rate then updates automatically.",
+      "description": "Look the coin up on Yahoo Finance; its rate then updates automatically.",
       "coin": "Cryptocurrency",
       "ticker": "Ticker",
-      "search": "Search CoinGecko",
-      "searchHint": "Type a name or ticker to see CoinGecko matches.",
-      "searching": "Searching CoinGecko…",
-      "searchError": "Search failed. Check your connection or the CoinGecko key in Settings.",
+      "search": "Search Yahoo Finance",
+      "searchHint": "Type a name or ticker to see matches.",
+      "searching": "Searching Yahoo Finance…",
+      "searchError": "Search failed. Check your connection.",
       "noResults": "No coin matches. You can fill in the ticker and name by hand.",
-      "rank": "#{{rank}}",
       "quantity": "Quantity",
       "pricePerUnit": "Price per unit",
       "purchaseDate": "Purchase date",
@@ -126,11 +126,19 @@
     },
     "updatePrice": {
       "title": "Manual rate · {{name}}",
-      "description": "Overrides the CoinGecko rate until you remove the manual one.",
+      "description": "Overrides the Yahoo Finance rate until you remove the manual one.",
       "price": "Rate per 1 {{ticker}}",
       "total": "Position value ({{quantity}} {{ticker}})",
       "remove": "Remove manual rate",
       "submit": "Save rate"
+    },
+    "symbol": {
+      "title": "Rate source for {{name}}",
+      "description": "Pick the Yahoo Finance listing of this coin. The rate and the history are rebuilt from it.",
+      "current": "Current: {{symbol}}",
+      "none": "No listing chosen yet.",
+      "submit": "Use this listing",
+      "saved": "Rate source saved"
     }
   },
   "confirmDelete": {
@@ -144,16 +152,16 @@
     "deleted": "Position deleted",
     "priceUpdated": "Manual rate saved",
     "manualPriceDeleted": "Manual rate removed",
-    "pricesRefreshed_one": "Updated {{count}} rate from CoinGecko",
-    "pricesRefreshed_other": "Updated {{count}} rates from CoinGecko",
-    "pricesRefreshedDescription": "Current rates fetched from CoinGecko",
+    "pricesRefreshed_one": "Updated {{count}} rate from Yahoo Finance",
+    "pricesRefreshed_other": "Updated {{count}} rates from Yahoo Finance",
+    "pricesRefreshedDescription": "Current rates fetched from Yahoo Finance",
     "refreshFailed": "Rate refresh failed",
     "addFailed": "Adding the cryptocurrency failed"
   },
   "detail": {
     "backToList": "Back to crypto",
     "notFound": "Position not found",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "manual rate",
     "quantityUnits": "{{quantity}} {{ticker}}",
     "avgBuyPrice": "average cost {{price}}",
@@ -163,6 +171,7 @@
     "sell": "Sell",
     "menu": {
       "editPrice": "Set rate manually",
+      "changeSymbol": "Rate source…",
       "delete": "Delete position"
     },
     "status": {
@@ -240,10 +249,10 @@
       "description": "This permanently deletes the {{type}} transaction ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). This cannot be undone."
     }
   },
-  "coingeckoBanner": {
-    "title": "CoinGecko API key (optional)",
-    "message": "Rates work without a key. A free CoinGecko key added in Settings also loads rate history for the charts.",
-    "goToSettings": "Open Settings",
-    "dismiss": "Dismiss"
+  "unpricedBanner": {
+    "title_one": "{{count}} coin has no rate source",
+    "title_other": "{{count}} coins have no rate source",
+    "message": "Moony could not tell which Yahoo Finance listing {{tickers}} is. Pick it and the rate and history follow.",
+    "pick": "Pick the listing"
   }
 }

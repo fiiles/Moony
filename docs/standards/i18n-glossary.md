@@ -7,7 +7,7 @@ that language.
 
 ## Never translate
 
-Moony, AES-256, SQLCipher, MCP, Claude, CoinGecko, Yahoo Finance, ISIN, ticker symbols,
+Moony, AES-256, SQLCipher, MCP, Claude, Yahoo Finance, ISIN, ticker symbols,
 currency codes (CZK, EUR, …), file formats (CSV, XLSX, PDF, JSON), file names
 (`moony-recovery-key.txt`), URLs, broker and bank names (XTB, Trading 212, Interactive
 Brokers / IBKR, Revolut, Degiro, Fio, Air Bank, …), keyboard keys.

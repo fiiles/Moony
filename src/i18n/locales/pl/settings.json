@@ -12,7 +12,7 @@
       "general": "Profil, język, waluta i to, co pokazuje menu.",
       "security": "Hasło, automatyczna blokada i aktualizacje aplikacji.",
       "data": "Gdzie leżą twoje dane i jak zachować ich kopię.",
-      "integrations": "Klucze API do cen i lokalny serwer MCP dla asystentów AI.",
+      "integrations": "Lokalny serwer MCP dla asystentów AI.",
       "categorization": "Pakiety reguł, kategorie i twoje własne reguły kategoryzacji.",
       "account": "Usuwanie twoich danych z tego komputera."
     }
@@ -42,24 +42,6 @@
     "recoveryKeyDescription": "Twoje hasło zostanie zmienione i wygenerowany zostanie nowy klucz odzyskiwania.",
     "oldKeyInvalid": "Twój stary klucz odzyskiwania przestanie działać!",
     "confirmHint": "Upewnij się, że klucz odzyskiwania jest zapisany lub skopiowany, zanim potwierdzisz. Hasło zostanie zmienione dopiero po kliknięciu przycisku powyżej."
-  },
-  "apiKeys": {
-    "title": "Klucze API",
-    "description": "Skonfiguruj opcjonalny klucz API używany do pobierania cen kryptowalut. Ceny akcji nie wymagają klucza.",
-    "coingecko": {
-      "label": "Klucz API CoinGecko",
-      "getDemoKey": "Pobierz klucz demo",
-      "placeholder": "Opcjonalnie – darmowy plan działa bez klucza",
-      "hint": "Używany do cen kryptowalut i wyszukiwania (darmowy plan nie pozwala wczytywać cen historycznych)",
-      "hint2": "Darmowy plan nie pozwala wczytywać cen historycznych"
-    },
-    "save": "Zapisz klucze API",
-    "saving": "Zapisywanie...",
-    "saved": "Klucze API zapisane",
-    "savedDescription": "Twoje klucze API zostały zaktualizowane.",
-    "optional": "opcjonalnie",
-    "show": "Pokaż klucz",
-    "hide": "Ukryj klucz"
   },
   "currency": {
     "title": "Waluta",
@@ -102,6 +84,8 @@
     "statusError": "Nie udało się uruchomić serwera MCP: {{error}}",
     "endpoint": "Adres URL punktu końcowego",
     "token": "Token dostępu",
+    "showToken": "Pokaż token",
+    "hideToken": "Ukryj token",
     "tokenHint": "Wysyłany jako nagłówek Authorization: Bearer. Traktuj go jak hasło.",
     "regenerate": "Wygeneruj ponownie",
     "regenerateHint": "Ponowne wygenerowanie unieważnia każdą konfigurację klienta używającą obecnego tokenu.",

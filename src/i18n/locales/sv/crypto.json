@@ -5,7 +5,7 @@
   "loading": "Laddar din kryptoportfölj...",
   "empty": {
     "title": "Inga kryptovalutor ännu",
-    "description": "Lägg till din första kryptovaluta: vi slår upp den på CoinGecko och kursen uppdateras automatiskt."
+    "description": "Lägg till din första kryptovaluta: vi slår upp den på Yahoo Finance och kursen uppdateras automatiskt."
   },
   "addCrypto": "Lägg till kryptovaluta",
   "refreshPrices": "Uppdatera kurser",
@@ -56,7 +56,7 @@
     "return": "Avkastning",
     "actions": "Åtgärder",
     "showClosed": "Visa stängda innehav",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "manuell kurs",
     "closed": "stängt {{date}}",
     "realized": "{{amount}} realiserat",
@@ -78,26 +78,26 @@
     "buy": "Köp",
     "sell": "Sälj",
     "updatePrice": "Ange kurs manuellt",
+    "changeSymbol": "Kurskälla…",
     "delete": "Ta bort innehav"
   },
   "badges": {
     "manual": "manuell"
   },
   "tooltip": {
-    "manualPrice": "Manuellt angiven kurs – ersätter CoinGecko tills du tar bort den."
+    "manualPrice": "Manuellt angiven kurs – ersätter Yahoo Finance tills du tar bort den."
   },
   "modal": {
     "add": {
       "title": "Lägg till kryptovaluta",
-      "description": "Slå upp kryptovalutan på CoinGecko; dess kurs uppdateras sedan automatiskt.",
+      "description": "Slå upp kryptovalutan på Yahoo Finance; dess kurs uppdateras sedan automatiskt.",
       "coin": "Kryptovaluta",
       "ticker": "Ticker",
-      "search": "Sök på CoinGecko",
-      "searchHint": "Skriv ett namn eller en ticker för att se träffar från CoinGecko.",
-      "searching": "Söker på CoinGecko…",
-      "searchError": "Sökningen misslyckades. Kontrollera din anslutning eller CoinGecko-nyckeln i Inställningar.",
+      "search": "Sök på Yahoo Finance",
+      "searchHint": "Skriv ett namn eller en ticker för att se träffar.",
+      "searching": "Söker på Yahoo Finance…",
+      "searchError": "Sökningen misslyckades. Kontrollera din anslutning.",
       "noResults": "Ingen kryptovaluta matchar. Du kan fylla i ticker och namn manuellt.",
-      "rank": "#{{rank}}",
       "quantity": "Antal",
       "pricePerUnit": "Pris per enhet",
       "purchaseDate": "Köpdatum",
@@ -126,11 +126,19 @@
     },
     "updatePrice": {
       "title": "Manuell kurs · {{name}}",
-      "description": "Ersätter CoinGecko-kursen tills du tar bort den manuella.",
+      "description": "Ersätter Yahoo Finance-kursen tills du tar bort den manuella.",
       "price": "Kurs per 1 {{ticker}}",
       "total": "Innehavets värde ({{quantity}} {{ticker}})",
       "remove": "Ta bort manuell kurs",
       "submit": "Spara kurs"
+    },
+    "symbol": {
+      "title": "Kurskälla för {{name}}",
+      "description": "Välj kryptovalutans notering på Yahoo Finance. Kurs och historik byggs upp på nytt från den.",
+      "current": "Nuvarande: {{symbol}}",
+      "none": "Ingen notering vald än.",
+      "submit": "Använd den här noteringen",
+      "saved": "Kurskälla sparad"
     }
   },
   "confirmDelete": {
@@ -144,16 +152,16 @@
     "deleted": "Innehavet har tagits bort",
     "priceUpdated": "Den manuella kursen har sparats",
     "manualPriceDeleted": "Den manuella kursen har tagits bort",
-    "pricesRefreshed_one": "{{count}} kurs uppdaterad från CoinGecko",
-    "pricesRefreshed_other": "{{count}} kurser uppdaterade från CoinGecko",
-    "pricesRefreshedDescription": "Aktuella kurser hämtade från CoinGecko",
+    "pricesRefreshed_one": "{{count}} kurs uppdaterad från Yahoo Finance",
+    "pricesRefreshed_other": "{{count}} kurser uppdaterade från Yahoo Finance",
+    "pricesRefreshedDescription": "Aktuella kurser hämtade från Yahoo Finance",
     "refreshFailed": "Det gick inte att uppdatera kurserna",
     "addFailed": "Det gick inte att lägga till kryptovalutan"
   },
   "detail": {
     "backToList": "Tillbaka till krypto",
     "notFound": "Innehavet hittades inte",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "manuell kurs",
     "quantityUnits": "{{quantity}} {{ticker}}",
     "avgBuyPrice": "snittkostnad {{price}}",
@@ -163,6 +171,7 @@
     "sell": "Sälj",
     "menu": {
       "editPrice": "Ange kurs manuellt",
+      "changeSymbol": "Kurskälla…",
       "delete": "Ta bort innehav"
     },
     "status": {
@@ -240,10 +249,10 @@
       "description": "Transaktionen av typen {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) tas bort permanent. Det går inte att ångra."
     }
   },
-  "coingeckoBanner": {
-    "title": "API-nyckel för CoinGecko (valfritt)",
-    "message": "Kurser fungerar utan nyckel. En gratis CoinGecko-nyckel som läggs till i Inställningar läser också in kurshistorik till diagrammen.",
-    "goToSettings": "Öppna Inställningar",
-    "dismiss": "Avfärda"
+  "unpricedBanner": {
+    "title_one": "{{count}} kryptovaluta saknar kurskälla",
+    "title_other": "{{count}} kryptovalutor saknar kurskälla",
+    "message": "Moony kunde inte avgöra vilken notering på Yahoo Finance {{tickers}} är. Välj den så följer kurs och historik med.",
+    "pick": "Välj notering"
   }
 }

@@ -730,7 +730,7 @@
       },
       "marketData": {
         "title": "Tržní data",
-        "text": "– stahují se jen kurzy akcií, měn a kryptoměn, které sledujete (Yahoo Finance, CoinGecko, ECB). Aplikace funguje i offline."
+        "text": "– stahují se jen kurzy akcií, měn a kryptoměn, které sledujete (Yahoo Finance, ECB). Aplikace funguje i offline."
       }
     },
     "recoveryLead": "Jediná cesta k datům, když heslo zapomenete. Uložte ho mimo tento telefon: do správce hesel, do Souborů nebo na papír.",

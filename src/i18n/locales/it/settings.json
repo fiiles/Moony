@@ -12,7 +12,7 @@
       "general": "Profilo, lingua, valuta e cosa mostra il menu.",
       "security": "Password, blocco automatico e aggiornamenti dell'app.",
       "data": "Dove si trovano i tuoi dati e come conservarne una copia.",
-      "integrations": "Chiavi API per i prezzi e server MCP locale per gli assistenti AI.",
+      "integrations": "Il server MCP locale per gli assistenti AI.",
       "categorization": "Pacchetti di regole, categorie e le tue regole di categorizzazione.",
       "account": "Eliminazione dei tuoi dati da questo computer."
     }
@@ -42,24 +42,6 @@
     "recoveryKeyDescription": "La tua password verrà cambiata e verrà generata una nuova chiave di recupero.",
     "oldKeyInvalid": "La vecchia chiave di recupero non funzionerà più!",
     "confirmHint": "Assicurati di aver annotato o copiato la chiave di recupero prima di confermare. La password verrà cambiata solo dopo aver cliccato il pulsante qui sopra."
-  },
-  "apiKeys": {
-    "title": "Chiavi API",
-    "description": "Configura la chiave API facoltativa usata per scaricare i prezzi delle criptovalute. I prezzi delle azioni non richiedono alcuna chiave.",
-    "coingecko": {
-      "label": "Chiave API di CoinGecko",
-      "getDemoKey": "Ottieni una chiave demo",
-      "placeholder": "Facoltativa - il piano gratuito funziona senza chiave",
-      "hint": "Usata per le quotazioni delle cripto e la ricerca (il piano gratuito non consente di caricare i prezzi storici)",
-      "hint2": "Il piano gratuito non consente di caricare i prezzi storici"
-    },
-    "save": "Salva chiavi API",
-    "saving": "Salvataggio...",
-    "saved": "Chiavi API salvate",
-    "savedDescription": "Le tue chiavi API sono state aggiornate.",
-    "optional": "facoltativa",
-    "show": "Mostra chiave",
-    "hide": "Nascondi chiave"
   },
   "currency": {
     "title": "Valuta",
@@ -102,6 +84,8 @@
     "statusError": "Impossibile avviare il server MCP: {{error}}",
     "endpoint": "URL dell'endpoint",
     "token": "Token di accesso",
+    "showToken": "Mostra token",
+    "hideToken": "Nascondi token",
     "tokenHint": "Inviato come intestazione Authorization: Bearer. Trattalo come una password.",
     "regenerate": "Rigenera",
     "regenerateHint": "Rigenerare il token invalida ogni configurazione client che usa quello attuale.",

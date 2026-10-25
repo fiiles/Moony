@@ -694,7 +694,7 @@
       },
       "marketData": {
         "title": "Marknadsdata",
-        "text": "– bara kurserna för de aktier, valutor och kryptotillgångar du följer hämtas (Yahoo Finance, CoinGecko, ECB). Appen fungerar även offline."
+        "text": "– bara kurserna för de aktier, valutor och kryptotillgångar du följer hämtas (Yahoo Finance, ECB). Appen fungerar även offline."
       }
     },
     "recoveryLead": "Den enda vägen till dina data om du glömmer lösenordet. Förvara den utanför den här telefonen – i en lösenordshanterare, i Filer eller på papper.",

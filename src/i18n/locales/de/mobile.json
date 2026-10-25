@@ -694,7 +694,7 @@
       },
       "marketData": {
         "title": "Marktdaten",
-        "text": "– heruntergeladen werden nur die Kurse der Aktien, Währungen und Kryptowerte, die Sie verfolgen (Yahoo Finance, CoinGecko, EZB). Die App funktioniert auch offline."
+        "text": "– heruntergeladen werden nur die Kurse der Aktien, Währungen und Kryptowerte, die Sie verfolgen (Yahoo Finance, EZB). Die App funktioniert auch offline."
       }
     },
     "recoveryLead": "Der einzige Weg zu Ihren Daten, falls Sie das Passwort vergessen. Bewahren Sie ihn außerhalb dieses Telefons auf – in einem Passwortmanager, in „Dateien“ oder auf Papier.",

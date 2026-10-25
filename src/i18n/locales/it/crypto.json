@@ -5,7 +5,7 @@
   "loading": "Caricamento del portafoglio cripto...",
   "empty": {
     "title": "Ancora nessuna criptovaluta",
-    "description": "Aggiungi la tua prima moneta: la cerchiamo su CoinGecko e la quotazione si aggiorna da sola."
+    "description": "Aggiungi la tua prima moneta: la cerchiamo su Yahoo Finance e la quotazione si aggiorna da sola."
   },
   "addCrypto": "Aggiungi criptovaluta",
   "refreshPrices": "Aggiorna quotazioni",
@@ -59,7 +59,7 @@
     "return": "Rendimento",
     "actions": "Azioni",
     "showClosed": "Mostra posizioni chiuse",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "quotazione manuale",
     "closed": "chiusa il {{date}}",
     "realized": "{{amount}} realizzati",
@@ -83,26 +83,26 @@
     "buy": "Acquista",
     "sell": "Vendi",
     "updatePrice": "Imposta quotazione manuale",
+    "changeSymbol": "Fonte quotazione…",
     "delete": "Elimina posizione"
   },
   "badges": {
     "manual": "manuale"
   },
   "tooltip": {
-    "manualPrice": "Quotazione impostata a mano – ha la precedenza su CoinGecko finché non la rimuovi."
+    "manualPrice": "Quotazione impostata a mano – ha la precedenza su Yahoo Finance finché non la rimuovi."
   },
   "modal": {
     "add": {
       "title": "Aggiungi criptovaluta",
-      "description": "Cerca la moneta su CoinGecko; la sua quotazione si aggiornerà poi automaticamente.",
+      "description": "Cerca la moneta su Yahoo Finance; la sua quotazione si aggiornerà poi automaticamente.",
       "coin": "Criptovaluta",
       "ticker": "Ticker",
-      "search": "Cerca su CoinGecko",
-      "searchHint": "Scrivi un nome o un ticker per vedere i risultati di CoinGecko.",
-      "searching": "Ricerca su CoinGecko…",
-      "searchError": "Ricerca non riuscita. Controlla la connessione o la chiave CoinGecko in Impostazioni.",
+      "search": "Cerca su Yahoo Finance",
+      "searchHint": "Scrivi un nome o un ticker per vedere i risultati.",
+      "searching": "Ricerca su Yahoo Finance…",
+      "searchError": "Ricerca non riuscita. Controlla la connessione.",
       "noResults": "Nessuna moneta corrisponde. Puoi inserire ticker e nome a mano.",
-      "rank": "#{{rank}}",
       "quantity": "Quantità",
       "pricePerUnit": "Prezzo per unità",
       "purchaseDate": "Data di acquisto",
@@ -131,11 +131,19 @@
     },
     "updatePrice": {
       "title": "Quotazione manuale · {{name}}",
-      "description": "Ha la precedenza sulla quotazione di CoinGecko finché non rimuovi quella manuale.",
+      "description": "Ha la precedenza sulla quotazione di Yahoo Finance finché non rimuovi quella manuale.",
       "price": "Quotazione per 1 {{ticker}}",
       "total": "Valore della posizione ({{quantity}} {{ticker}})",
       "remove": "Rimuovi quotazione manuale",
       "submit": "Salva quotazione"
+    },
+    "symbol": {
+      "title": "Fonte della quotazione per {{name}}",
+      "description": "Scegli la scheda di Yahoo Finance di questa moneta. Quotazione e storico vengono ricostruiti da lì.",
+      "current": "Attuale: {{symbol}}",
+      "none": "Nessuna scheda scelta finora.",
+      "submit": "Usa questa scheda",
+      "saved": "Fonte della quotazione salvata"
     }
   },
   "confirmDelete": {
@@ -149,17 +157,17 @@
     "deleted": "Posizione eliminata",
     "priceUpdated": "Quotazione manuale salvata",
     "manualPriceDeleted": "Quotazione manuale rimossa",
-    "pricesRefreshed_one": "Aggiornata {{count}} quotazione da CoinGecko",
-    "pricesRefreshed_many": "Aggiornate {{count}} quotazioni da CoinGecko",
-    "pricesRefreshed_other": "Aggiornate {{count}} quotazioni da CoinGecko",
-    "pricesRefreshedDescription": "Quotazioni attuali scaricate da CoinGecko",
+    "pricesRefreshed_one": "Aggiornata {{count}} quotazione da Yahoo Finance",
+    "pricesRefreshed_many": "Aggiornate {{count}} quotazioni da Yahoo Finance",
+    "pricesRefreshed_other": "Aggiornate {{count}} quotazioni da Yahoo Finance",
+    "pricesRefreshedDescription": "Quotazioni attuali scaricate da Yahoo Finance",
     "refreshFailed": "Aggiornamento delle quotazioni non riuscito",
     "addFailed": "Impossibile aggiungere la criptovaluta"
   },
   "detail": {
     "backToList": "Torna alle cripto",
     "notFound": "Posizione non trovata",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "quotazione manuale",
     "quantityUnits": "{{quantity}} {{ticker}}",
     "avgBuyPrice": "costo medio {{price}}",
@@ -169,6 +177,7 @@
     "sell": "Vendi",
     "menu": {
       "editPrice": "Imposta quotazione manuale",
+      "changeSymbol": "Fonte quotazione…",
       "delete": "Elimina posizione"
     },
     "status": {
@@ -251,10 +260,11 @@
       "description": "Verrà eliminata definitivamente l'operazione di tipo {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). L'operazione non si può annullare."
     }
   },
-  "coingeckoBanner": {
-    "title": "Chiave API di CoinGecko (facoltativa)",
-    "message": "Le quotazioni funzionano anche senza chiave. Una chiave CoinGecko gratuita, aggiunta in Impostazioni, carica anche lo storico delle quotazioni per i grafici.",
-    "goToSettings": "Apri Impostazioni",
-    "dismiss": "Chiudi"
+  "unpricedBanner": {
+    "title_one": "{{count}} moneta senza fonte della quotazione",
+    "title_many": "{{count}} monete senza fonte della quotazione",
+    "title_other": "{{count}} monete senza fonte della quotazione",
+    "message": "Moony non è riuscita a capire a quale scheda di Yahoo Finance corrisponda {{tickers}}. Scegli la scheda e quotazione e storico si aggiorneranno.",
+    "pick": "Scegli la scheda"
   }
 }

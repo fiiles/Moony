@@ -734,10 +734,16 @@
         "adjusted": "文件中此前的交易似乎已重新计算",
         "unknown": "无法判断文件是否已重新计算"
       },
-      "alsoStored_other": "同时重新计算 {{count}} 笔已保存的交易",
+      "storedVerdict": {
+        "unadjusted_other": "拆股前已保存的 {{count}} 笔交易仍为拆股前单位",
+        "adjusted_other": "拆股前已保存的 {{count}} 笔交易看起来已重新计算",
+        "unknown_other": "无法判断拆股前已保存的 {{count}} 笔交易是否已重新计算"
+      },
       "mixedUnitsWarning": "拆股前已保存的交易仍保留原始单位；导入后请在持仓详情页确认或忽略该拆股。",
       "convert": "重新计算",
-      "convertFor": "按拆股 {{ratio}} 重新计算 {{ticker}} 的交易"
+      "convertFor": "按拆股 {{ratio}} 重新计算 {{ticker}} 的交易",
+      "applyStored": "同时重新计算已保存的交易",
+      "applyStoredFor": "按拆股 {{ratio}} 重新计算 {{ticker}} 已保存的交易"
     }
   },
   "eyebrow": "投资组合",

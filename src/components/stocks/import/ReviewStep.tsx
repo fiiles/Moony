@@ -67,6 +67,12 @@ interface ReviewStepProps {
     effectiveDay: number,
     action: StockSplitAction
   ) => void;
+  /** Also rewrite the ticker's stored transactions before a split, or leave them (D14). */
+  onSplitApplyStored: (
+    instrument: StockImportInstrument,
+    effectiveDay: number,
+    applyStored: boolean
+  ) => void;
 }
 
 /** `symbol:AAPL` / `isin:US…` without the prefix, for a row whose ticker is not known. */
@@ -101,6 +107,7 @@ export function ReviewStep({
   isCheckingSplits,
   splitCheckFailed,
   onSplitAction,
+  onSplitApplyStored,
 }: ReviewStepProps) {
   const { t } = useTranslation('stocks');
   const { t: tc } = useTranslation('common');
@@ -241,6 +248,7 @@ export function ReviewStep({
         isCheckingSplits={isCheckingSplits}
         splitCheckFailed={splitCheckFailed}
         onSplitAction={onSplitAction}
+        onSplitApplyStored={onSplitApplyStored}
       />
 
       <section className={cn('mt-5 transition-opacity duration-fast', isUpdating && 'opacity-60')}>

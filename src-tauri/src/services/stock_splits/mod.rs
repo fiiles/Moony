@@ -481,7 +481,7 @@ fn query(conn: &Connection, filter: &str, values: impl Params) -> Result<Vec<Sto
 }
 
 /// Transactions of `ticker` dated before `effective_day` (D6).
-fn pre_split_count(conn: &Connection, ticker: &str, effective_day: i64) -> Result<i64> {
+pub(crate) fn pre_split_count(conn: &Connection, ticker: &str, effective_day: i64) -> Result<i64> {
     Ok(conn.query_row(
         "SELECT COUNT(*) FROM investment_transactions WHERE ticker = ?1 AND transaction_date < ?2",
         params![ticker, effective_day],
@@ -492,33 +492,66 @@ fn pre_split_count(conn: &Connection, ticker: &str, effective_day: i64) -> Resul
 /// D7 for a stored split: each pre-split transaction against the stored close of its UTC day
 /// (D18: adjusted once a rebuild covered that day), with the cumulative factor of the ticker's
 /// pending splits dated after the transaction (applied ones are already in the rows, dismissed
-/// ones count as adjusted).
+/// ones count as adjusted). `unknown` unless the split is pending.
 fn stored_verdict(
     conn: &Connection,
     ticker: &str,
     effective_day: i64,
 ) -> Result<StockSplitVerdict> {
-    let pending: Vec<(i64, (u64, u64))> = {
-        let mut stmt = conn.prepare(
-            "SELECT effective_day, numerator, denominator FROM stock_splits
-             WHERE ticker = ?1 AND status = 'pending'",
-        )?;
-        let rows = stmt
-            .query_map(params![ticker], |r| {
-                Ok((
-                    r.get::<_, i64>(0)?,
-                    r.get::<_, String>(1)?,
-                    r.get::<_, String>(2)?,
-                ))
-            })?
-            .collect::<std::result::Result<Vec<_>, _>>()?;
-        rows.into_iter()
-            .filter_map(|(day, n, d)| ratio_parts(&n, &d).ok().map(|ratio| (day, ratio)))
-            .collect()
-    };
+    let pending = pending_ratios(conn, ticker)?;
     if !pending.iter().any(|&(day, _)| day == effective_day) {
         return Ok(StockSplitVerdict::Unknown);
     }
+    classify_stored(conn, ticker, effective_day, &pending)
+}
+
+/// [`stored_verdict`] for a split `n:d` of `effective_day` the import wizard found, which Moony
+/// may hold as `pending` or not know at all: the ticker's stored transactions dated before it,
+/// judged as the position page would once the split is pending (the ticker's pending splits
+/// plus this one when it has no row). The caller does not ask about applied or dismissed ones.
+pub fn stored_verdict_for(
+    conn: &Connection,
+    ticker: &str,
+    effective_day: i64,
+    numerator: u64,
+    denominator: u64,
+) -> Result<StockSplitVerdict> {
+    let mut pending = pending_ratios(conn, ticker)?;
+    if !pending.iter().any(|&(day, _)| day == effective_day) {
+        pending.push((effective_day, (numerator, denominator)));
+    }
+    classify_stored(conn, ticker, effective_day, &pending)
+}
+
+/// `(effective_day, (n, d))` of the ticker's pending splits with a valid ratio.
+fn pending_ratios(conn: &Connection, ticker: &str) -> Result<Vec<(i64, (u64, u64))>> {
+    let mut stmt = conn.prepare(
+        "SELECT effective_day, numerator, denominator FROM stock_splits
+         WHERE ticker = ?1 AND status = 'pending'",
+    )?;
+    let rows = stmt
+        .query_map(params![ticker], |r| {
+            Ok((
+                r.get::<_, i64>(0)?,
+                r.get::<_, String>(1)?,
+                r.get::<_, String>(2)?,
+            ))
+        })?
+        .collect::<std::result::Result<Vec<_>, _>>()?;
+    Ok(rows
+        .into_iter()
+        .filter_map(|(day, n, d)| ratio_parts(&n, &d).ok().map(|ratio| (day, ratio)))
+        .collect())
+}
+
+/// D7 over the ticker's transactions dated before `effective_day`, each against the stored
+/// close of its day with the cumulative factor of the `pending` splits dated after it.
+fn classify_stored(
+    conn: &Connection,
+    ticker: &str,
+    effective_day: i64,
+    pending: &[(i64, (u64, u64))],
+) -> Result<StockSplitVerdict> {
     let mut stmt = conn.prepare(
         "SELECT t.price_per_unit, t.currency, t.transaction_date, h.price, h.currency
          FROM investment_transactions t
@@ -934,6 +967,47 @@ mod tests {
     }
 
     #[test]
+    fn stored_verdict_for_judges_a_split_moony_does_not_hold_yet() {
+        let conn = setup_test_db();
+        conn.execute(
+            "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+             VALUES ('h1', 'NVDA', ?1, '3', '96', 'USD')",
+            [day(100)],
+        )
+        .unwrap();
+        tx(&conn, "NVDA", "buy", "3", "950", day(100));
+
+        // No row for the split: the given ratio is what the rows are judged against.
+        assert_eq!(
+            stored_verdict_for(&conn, "NVDA", day(200), 10, 1).unwrap(),
+            StockSplitVerdict::Unadjusted
+        );
+        assert_eq!(
+            stored_verdict_for(&conn, "NVDA", day(200), 2, 1).unwrap(),
+            StockSplitVerdict::Unknown,
+            "a 2:1 factor cannot tell the cases apart"
+        );
+        // A pending row: the same answer as the position page gives.
+        record_detected(&conn, "NVDA", &[split(200, 10, 1)], StockSplitSource::Yahoo).unwrap();
+        assert_eq!(
+            stored_verdict_for(&conn, "NVDA", day(200), 10, 1).unwrap(),
+            list_for_ticker(&conn, "NVDA").unwrap()[0].verdict
+        );
+        // Another pending split after the rows counts in the factor.
+        record_detected(&conn, "NVDA", &[split(300, 4, 1)], StockSplitSource::Yahoo).unwrap();
+        assert_eq!(
+            stored_verdict_for(&conn, "NVDA", day(200), 10, 1).unwrap(),
+            StockSplitVerdict::Unknown,
+            "950 is neither 40 × nor 1 × the close"
+        );
+        // No rows before the split: nothing to judge.
+        assert_eq!(
+            stored_verdict_for(&conn, "NVDA", day(50), 10, 1).unwrap(),
+            StockSplitVerdict::Unknown
+        );
+    }
+
+    #[test]
     fn apply_rewrites_only_pre_split_rows_and_keeps_cost_basis() {
         let conn = setup_test_db();
         let (pre, post, id) = nvda(&conn);
@@ -1305,6 +1379,7 @@ mod tests {
             numerator: n.into(),
             denominator: d.into(),
             action: crate::services::stock_import::types::StockSplitAction::Convert,
+            apply_stored: true,
         }
     }
 

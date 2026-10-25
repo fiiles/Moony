@@ -192,6 +192,7 @@ mod tests {
                 numerator: "10".into(),
                 denominator: "1".into(),
                 action: StockSplitAction::Convert,
+                apply_stored: false,
             }],
             ..over("symbol:AAPL")
         }];

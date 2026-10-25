@@ -2209,8 +2209,8 @@ export interface StockInstrumentOverride {
 
 /**
  * `convert`: the file is in pre-split units, its trades dated before the split are converted
- * (quantity × n/d, price × d/n) and a split the stored rows have not had yet is applied to them
- * too (D14). `keep`: the file is already in today's units.
+ * (quantity × n/d, price × d/n). `keep`: the file is already in today's units. The stored rows
+ * are a decision of their own: `StockSplitOverride.applyStored`.
  */
 export type StockSplitAction = 'convert' | 'keep';
 
@@ -2222,7 +2222,14 @@ export interface StockSplitOverride {
   numerator: string;
   /** Integer as text, e.g. "1" of a 10:1 split. */
   denominator: string;
+  /** What happens to the file's trades dated before the split. */
   action: StockSplitAction;
+  /**
+   * Also apply the split to the ticker's stored transactions before the import, when Moony holds
+   * it as pending or has no row for it (D14); independent of `action`. The backend reads an
+   * absent field as `false`.
+   */
+  applyStored: boolean;
 }
 
 export interface StockImportConfig {
@@ -2473,6 +2480,12 @@ export interface StockSplitCheckSplit {
   storedStatus: StockSplitStatus | null;
   /** Stored transactions of the ticker dated before the split (the D14 line). */
   storedPreSplitCount: number;
+  /**
+   * D7 over those stored transactions as the position page judges them (against the stored
+   * value history, cumulative over the ticker's pending splits); `unknown` unless the split is
+   * pending or unknown to Moony and such rows exist.
+   */
+  storedVerdict: StockSplitVerdict;
 }
 
 /** The split check of one instrument of the file; `checked: false` when offline (spec D12). */

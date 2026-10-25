@@ -803,13 +803,25 @@
         "adjusted": "transakcje sprzed niego wyglądają w pliku na już przeliczone",
         "unknown": "nie da się rozpoznać, czy plik jest już przeliczony"
       },
-      "alsoStored_one": "przeliczy też {{count}} zapisaną transakcję",
-      "alsoStored_few": "przeliczy też {{count}} zapisane transakcje",
-      "alsoStored_many": "przeliczy też {{count}} zapisanych transakcji",
-      "alsoStored_other": "przeliczy też {{count}} zapisanej transakcji",
+      "storedVerdict": {
+        "unadjusted_one": "{{count}} zapisana transakcja sprzed niego jest w jednostkach sprzed splitu",
+        "unadjusted_few": "{{count}} zapisane transakcje sprzed niego są w jednostkach sprzed splitu",
+        "unadjusted_many": "{{count}} zapisanych transakcji sprzed niego jest w jednostkach sprzed splitu",
+        "unadjusted_other": "{{count}} zapisanej transakcji sprzed niego jest w jednostkach sprzed splitu",
+        "adjusted_one": "{{count}} zapisana transakcja sprzed niego wygląda na już przeliczoną",
+        "adjusted_few": "{{count}} zapisane transakcje sprzed niego wyglądają na już przeliczone",
+        "adjusted_many": "{{count}} zapisanych transakcji sprzed niego wygląda na już przeliczone",
+        "adjusted_other": "{{count}} zapisanej transakcji sprzed niego wygląda na już przeliczone",
+        "unknown_one": "Moony nie potrafi stwierdzić, czy {{count}} zapisana transakcja sprzed niego jest już przeliczona",
+        "unknown_few": "Moony nie potrafi stwierdzić, czy {{count}} zapisane transakcje sprzed niego są już przeliczone",
+        "unknown_many": "Moony nie potrafi stwierdzić, czy {{count}} zapisanych transakcji sprzed niego jest już przeliczonych",
+        "unknown_other": "Moony nie potrafi stwierdzić, czy {{count}} zapisanej transakcji sprzed niego jest już przeliczone"
+      },
       "mixedUnitsWarning": "Zapisane transakcje sprzed splitu pozostaną w pierwotnych jednostkach; po imporcie potwierdź lub odrzuć split na stronie pozycji.",
       "convert": "Przelicz",
-      "convertFor": "Przelicz transakcje {{ticker}} według splitu {{ratio}}"
+      "convertFor": "Przelicz transakcje {{ticker}} według splitu {{ratio}}",
+      "applyStored": "Przelicz też zapisane transakcje",
+      "applyStoredFor": "Przelicz zapisane transakcje {{ticker}} według splitu {{ratio}}"
     }
   },
   "eyebrow": "Portfel",

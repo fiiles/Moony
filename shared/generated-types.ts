@@ -2404,12 +2404,12 @@ verdict: StockSplitVerdict }
 
 /**
  * What the import does with the file's trades dated before a split (TS `StockSplitAction`).
+ * The ticker's stored rows are a separate decision: `StockSplitOverride::apply_stored`.
  */
 export type StockSplitAction = 
 /**
  * The file is in pre-split units: its trades dated before the split are converted to
- * today's units (`quantity × n/d`, `price × d/n`), and a split the ticker's stored rows have
- * not had yet (`pending`, or unknown to Moony) is applied to them too (spec D13, D14).
+ * today's units (`quantity × n/d`, `price × d/n`) (spec D13).
  */
 "convert" | 
 /**
@@ -2472,7 +2472,13 @@ storedStatus: StockSplitStatus | null;
 /**
  * Stored transactions of the ticker dated before the split (the D14 line).
  */
-storedPreSplitCount: number }
+storedPreSplitCount: number; 
+/**
+ * D7 over those stored transactions, as the position page judges them (against
+ * `stock_value_history`, cumulative over the ticker's pending splits); `unknown` unless the
+ * split is pending or unknown to Moony and such rows exist.
+ */
+storedVerdict: StockSplitVerdict }
 
 /**
  * One file trade dated before a split, with its D7 verdict (TS `StockSplitCheckTrade`).
@@ -2499,7 +2505,17 @@ numerator: string;
 /**
  * Integer as text, e.g. `"1"` of a 10:1 split.
  */
-denominator: string; action: StockSplitAction }
+denominator: string; 
+/**
+ * What happens to the file's trades dated before the split.
+ */
+action: StockSplitAction; 
+/**
+ * Also apply the split to the ticker's stored transactions before the import, when Moony
+ * holds it as `pending` or has no row for it (D14); independent of `action`. Absent in
+ * configs from before the stored rows had a choice of their own.
+ */
+applyStored?: boolean }
 
 /**
  * Where a split record came from.

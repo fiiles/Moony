@@ -27,6 +27,7 @@ import {
   currencyOverrideFor,
   dateFormatChoices,
   dateFormatLabel,
+  defaultApplyStored,
   defaultSplitAction,
   directionModePatch,
   fileStem,
@@ -59,10 +60,12 @@ import {
   rowStatusByLine,
   selectValueToColumn,
   setSplitAction,
+  setSplitChoice,
   setTypeValueAction,
   sourceHelpUrl,
   sourceMismatch,
   splitOverridesFor,
+  storedRowsUndecided,
   suggestedColumn,
   suggestionConfidence,
   summarizeMapping,
@@ -904,7 +907,15 @@ describe('instrument overrides', () => {
     expect(
       hasOverrideContent({
         key: 'a',
-        splits: [{ effectiveDay: 1, numerator: '10', denominator: '1', action: 'keep' }],
+        splits: [
+          {
+            effectiveDay: 1,
+            numerator: '10',
+            denominator: '1',
+            action: 'keep',
+            applyStored: false,
+          },
+        ],
       })
     ).toBe(true);
     expect(isSkipped([{ key: 'a', skip: true }], 'a')).toBe(true);
@@ -982,7 +993,10 @@ describe('split choices', () => {
   const checkSplit = (
     effectiveDay: number,
     verdict: StockSplitVerdict,
-    trades: number[] = []
+    trades: number[] = [],
+    stored: Partial<
+      Pick<StockSplitCheckSplit, 'storedStatus' | 'storedPreSplitCount' | 'storedVerdict'>
+    > = {}
   ): StockSplitCheckSplit => ({
     effectiveDay,
     numerator: '10',
@@ -991,6 +1005,8 @@ describe('split choices', () => {
     trades: trades.map((line) => ({ line, verdict })),
     storedStatus: null,
     storedPreSplitCount: 0,
+    storedVerdict: 'unknown',
+    ...stored,
   });
   const check = (key: string, splits: StockSplitCheckSplit[], checked = true): StockSplitCheck => ({
     key,
@@ -998,11 +1014,12 @@ describe('split choices', () => {
     checked,
     splits,
   });
-  const choice = (effectiveDay: number, action: 'convert' | 'keep') => ({
+  const choice = (effectiveDay: number, action: 'convert' | 'keep', applyStored = false) => ({
     effectiveDay,
     numerator: '10',
     denominator: '1',
     action,
+    applyStored,
   });
 
   it('converts a file in pre-split units and keeps anything else by default', () => {
@@ -1011,7 +1028,44 @@ describe('split choices', () => {
     expect(defaultSplitAction('unknown')).toBe('keep');
   });
 
-  it('turns the splits of a check into choices with the default action', () => {
+  it('rewrites the stored rows by default only when they look pre-split', () => {
+    const stored = (storedVerdict: StockSplitVerdict) =>
+      checkSplit(DAY, 'adjusted', [], {
+        storedStatus: 'pending',
+        storedPreSplitCount: 2,
+        storedVerdict,
+      });
+    expect(defaultApplyStored(stored('unadjusted'))).toBe(true);
+    expect(defaultApplyStored(stored('adjusted'))).toBe(false);
+    expect(defaultApplyStored(stored('unknown'))).toBe(false);
+  });
+
+  it('knows when the stored rows of a split still need a decision', () => {
+    const split = (
+      storedStatus: StockSplitCheckSplit['storedStatus'],
+      storedPreSplitCount: number
+    ) => checkSplit(DAY, 'adjusted', [], { storedStatus, storedPreSplitCount });
+    expect(storedRowsUndecided(split('pending', 2))).toBe(true);
+    expect(storedRowsUndecided(split(null, 1))).toBe(true);
+    expect(storedRowsUndecided(split('applied', 2))).toBe(false);
+    expect(storedRowsUndecided(split('dismissed', 2))).toBe(false);
+    expect(storedRowsUndecided(split('pending', 0))).toBe(false);
+    expect(storedRowsUndecided(split(null, 0))).toBe(false);
+  });
+
+  it('turns the splits of a check into choices with the defaults', () => {
+    expect(
+      splitOverridesFor(
+        check('nvda', [
+          checkSplit(DAY, 'unadjusted', [], {
+            storedStatus: 'pending',
+            storedPreSplitCount: 1,
+            storedVerdict: 'unadjusted',
+          }),
+          checkSplit(LATER, 'adjusted'),
+        ])
+      )
+    ).toEqual([choice(DAY, 'convert', true), choice(LATER, 'keep')]);
     expect(
       splitOverridesFor(
         check('nvda', [checkSplit(DAY, 'unadjusted'), checkSplit(LATER, 'adjusted')])
@@ -1033,10 +1087,21 @@ describe('split choices', () => {
 
   it('keeps what was chosen for a split the check reports again', () => {
     const merged = mergeSplitOverrides(
-      [{ key: 'a', splits: [choice(DAY, 'keep')] }],
-      [check('a', [checkSplit(DAY, 'unadjusted'), checkSplit(LATER, 'unadjusted')])]
+      [{ key: 'a', splits: [choice(DAY, 'keep', true)] }],
+      [
+        check('a', [
+          checkSplit(DAY, 'unadjusted', [], {
+            storedStatus: 'pending',
+            storedPreSplitCount: 1,
+            storedVerdict: 'adjusted',
+          }),
+          checkSplit(LATER, 'unadjusted'),
+        ]),
+      ]
     );
-    expect(merged).toEqual([{ key: 'a', splits: [choice(DAY, 'keep'), choice(LATER, 'convert')] }]);
+    expect(merged).toEqual([
+      { key: 'a', splits: [choice(DAY, 'keep', true), choice(LATER, 'convert')] },
+    ]);
   });
 
   it('drops the splits a new check no longer reports, and an override left empty', () => {
@@ -1080,6 +1145,22 @@ describe('split choices', () => {
     ]);
     expect(setSplitAction(current, 'a', 42, 'keep')).toEqual(current);
     expect(setSplitAction(current, 'z', DAY, 'keep')).toEqual(current);
+  });
+
+  it('switches the stored rows of one split on their own', () => {
+    const current = [
+      { key: 'a', splits: [choice(DAY, 'keep'), choice(LATER, 'convert')] },
+      { key: 'b', splits: [choice(DAY, 'convert')] },
+    ];
+    expect(setSplitChoice(current, 'a', DAY, { applyStored: true })).toEqual([
+      { key: 'a', splits: [choice(DAY, 'keep', true), choice(LATER, 'convert')] },
+      { key: 'b', splits: [choice(DAY, 'convert')] },
+    ]);
+    expect(setSplitChoice(current, 'a', LATER, { action: 'keep', applyStored: true })).toEqual([
+      { key: 'a', splits: [choice(DAY, 'keep'), choice(LATER, 'keep', true)] },
+      { key: 'b', splits: [choice(DAY, 'convert')] },
+    ]);
+    expect(setSplitChoice(current, 'b', LATER, { applyStored: true })).toEqual(current);
   });
 
   it('knows the file lines a convert choice scales', () => {

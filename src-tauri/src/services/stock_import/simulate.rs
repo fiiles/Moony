@@ -20,10 +20,12 @@
 //! file's range, each to `convert` or `keep`. A file trade dated before a `convert` split is
 //! turned into today's share units (`quantity × n/d`, `price × d/n`) before anything else, the
 //! pence step included, so every rule below compares converted numbers. The stored
-//! transactions dated before a `convert` split that Moony holds as `pending`, or does not know
-//! at all, are scaled the same way in memory: the import rewrites them in the same transaction,
-//! so the duplicate and sell rules see the state the import creates. An `applied` split's rows
-//! are already in today's units and a `dismissed` one's were judged to be: they stay as stored.
+//! transactions are a decision of their own (`apply_stored`, independent of `convert`/`keep`):
+//! those dated before an `apply_stored` split that Moony holds as `pending`, or does not know
+//! at all, are scaled the same way in memory, since the import rewrites them in the same
+//! transaction, so the duplicate and sell rules see the state the import creates. An
+//! `applied` split's rows are already in today's units and a `dismissed` one's were judged to
+//! be: they stay as stored, whatever the choice says.
 //!
 //! Rows are replayed in date order, buys before sells within a day, per
 //! ticker, starting from the transactions the ticker already has. A row is
@@ -315,13 +317,22 @@ fn split_factor(split: &StockSplitOverride) -> Option<f64> {
 }
 
 /// The factor that turns a quantity of `day` into today's units: the product of `n/d` over the
-/// `convert` splits dated after `day` (a trade on the ex-date is post-split); 1.0 when none.
-pub(crate) fn convert_factor(splits: &[StockSplitOverride], day: i64) -> f64 {
+/// `splits` dated after `day` (a trade on the ex-date is post-split); 1.0 when none.
+fn factor_after<'a>(splits: impl Iterator<Item = &'a StockSplitOverride>, day: i64) -> f64 {
     splits
-        .iter()
-        .filter(|s| s.action == StockSplitAction::Convert && s.effective_day > day)
+        .filter(|s| s.effective_day > day)
         .filter_map(split_factor)
         .product()
+}
+
+/// [`factor_after`] over the `convert` splits: what a file trade of `day` is scaled by.
+pub(crate) fn convert_factor(splits: &[StockSplitOverride], day: i64) -> f64 {
+    factor_after(
+        splits
+            .iter()
+            .filter(|s| s.action == StockSplitAction::Convert),
+        day,
+    )
 }
 
 /// A file trade in today's units under its instrument's `splits`, and whether it changed.
@@ -338,29 +349,41 @@ fn converted_trade(trade: &ParsedTrade, splits: &[StockSplitOverride]) -> (Parse
     (converted, true)
 }
 
-/// The `convert` splits of the instruments stored under one ticker, each split once (two
-/// instruments of a ticker may both list it; the first one's entry counts). The import applies
-/// the same set to the stored rows (`import::split_choices`).
-pub(super) fn ticker_convert_splits<'a>(
+/// One choice per split day over the instruments stored under one ticker (two instruments of
+/// a ticker may both list a split): the first entry of the day, converting the file's trades
+/// when any instrument converts and applying the stored rows when any instrument applies them.
+/// The import records and applies the same set (`import::split_choices`).
+pub(super) fn ticker_split_choices<'a>(
     splits: impl Iterator<Item = &'a StockSplitOverride>,
 ) -> Vec<StockSplitOverride> {
-    let mut seen: HashSet<i64> = HashSet::new();
-    splits
-        .filter(|s| s.action == StockSplitAction::Convert && seen.insert(s.effective_day))
-        .cloned()
-        .collect()
+    let mut chosen: Vec<StockSplitOverride> = Vec::new();
+    for split in splits {
+        match chosen
+            .iter_mut()
+            .find(|c| c.effective_day == split.effective_day)
+        {
+            Some(first) => {
+                if split.action == StockSplitAction::Convert {
+                    first.action = StockSplitAction::Convert;
+                }
+                first.apply_stored |= split.apply_stored;
+            }
+            None => chosen.push(split.clone()),
+        }
+    }
+    chosen
 }
 
-/// The `convert` splits whose stored rows the import rewrites too (D14): those Moony holds as
-/// `pending` for the ticker, or does not know at all. An `applied` split's rows are already in
-/// today's units; a `dismissed` one's were judged to be.
-fn stored_convert_splits(
+/// The splits the import rewrites the stored rows with (D14): the `apply_stored` ones of
+/// `splits` that Moony holds as `pending` for the ticker, or does not know at all. An
+/// `applied` split's rows are already in today's units; a `dismissed` one's were judged to be.
+fn stored_applied_splits(
     conn: &Connection,
     ticker: &str,
     splits: &[StockSplitOverride],
 ) -> Result<Vec<StockSplitOverride>> {
     let mut rewritten = Vec::new();
-    for split in splits {
+    for split in splits.iter().filter(|s| s.apply_stored) {
         let status: Option<String> = conn
             .query_row(
                 "SELECT status FROM stock_splits WHERE ticker = ?1 AND effective_day = ?2",
@@ -412,10 +435,11 @@ impl Stored {
         })
     }
 
-    /// In the units it has once the import applied `splits` (the stored rows' `convert`
-    /// splits): `quantity × factor`, `price ÷ factor`, as for a file trade.
+    /// In the units it has once the import applied `splits` (the ones it rewrites the stored
+    /// rows with, whatever their file action): `quantity × factor`, `price ÷ factor`, as for a
+    /// file trade.
     fn scale(&mut self, splits: &[StockSplitOverride]) {
-        let factor = convert_factor(splits, self.day);
+        let factor = factor_after(splits.iter(), self.day);
         if factor != 1.0 {
             self.quantity = self.quantity.map(|q| q * factor);
             self.price = self.price.map(|p| p / factor);
@@ -529,7 +553,7 @@ struct TickerState {
     /// The transactions the ticker has in the database, in the units the import leaves them in
     /// (scaled by `stored_splits`).
     stored: Vec<Stored>,
-    /// The `convert` splits the import also applies to the stored rows (pending or unknown).
+    /// The splits the import applies to the stored rows (`apply_stored`, pending or unknown).
     stored_splits: Vec<StockSplitOverride>,
     /// Currency of the position: the existing one, else the first accepted
     /// row's.
@@ -540,8 +564,8 @@ struct TickerState {
 }
 
 impl TickerState {
-    /// The ticker's position and stored rows; `splits` are the `convert` splits its
-    /// instruments carry, of which the pending and unknown ones scale the stored rows.
+    /// The ticker's position and stored rows; `splits` are the split choices of its
+    /// instruments, of which the `apply_stored` pending and unknown ones scale the stored rows.
     fn load(conn: &Connection, ticker: &str, splits: &[StockSplitOverride]) -> Result<Self> {
         let position = find_position(conn, ticker)?;
         let mut stored = match &position {
@@ -551,7 +575,7 @@ impl TickerState {
         let stored_splits = if stored.is_empty() || splits.is_empty() {
             Vec::new()
         } else {
-            stored_convert_splits(conn, ticker, splits)?
+            stored_applied_splits(conn, ticker, splits)?
         };
         for row in &mut stored {
             row.scale(&stored_splits);
@@ -868,7 +892,7 @@ pub fn simulate(
     for plan in &plans {
         if let Some(ticker) = &plan.ticker {
             if !states.contains_key(ticker) {
-                let splits = ticker_convert_splits(
+                let splits = ticker_split_choices(
                     plans
                         .iter()
                         .filter(|p| !p.skipped && p.ticker.as_ref() == Some(ticker))
@@ -2655,6 +2679,15 @@ mod tests {
             numerator: n.to_string(),
             denominator: d.to_string(),
             action,
+            apply_stored: false,
+        }
+    }
+
+    /// `split` that also applies to the stored rows.
+    fn stored(split: StockSplitOverride) -> StockSplitOverride {
+        StockSplitOverride {
+            apply_stored: true,
+            ..split
         }
     }
 
@@ -2693,6 +2726,30 @@ mod tests {
         );
         assert_eq!(convert_factor(&splits, day(400)), 1.0);
         assert_eq!(convert_factor(&[], day(0)), 1.0);
+    }
+
+    #[test]
+    fn ticker_split_choices_merge_the_instruments_of_a_ticker() {
+        let by_symbol = [
+            split(day(200), "10", "1", StockSplitAction::Keep),
+            stored(split(day(300), "2", "1", StockSplitAction::Convert)),
+        ];
+        let by_isin = [
+            stored(split(day(200), "10", "1", StockSplitAction::Convert)),
+            split(day(300), "2", "1", StockSplitAction::Keep),
+            split(day(400), "4", "1", StockSplitAction::Keep),
+        ];
+        let chosen = ticker_split_choices(by_symbol.iter().chain(&by_isin));
+        assert_eq!(
+            chosen,
+            vec![
+                stored(split(day(200), "10", "1", StockSplitAction::Convert)),
+                stored(split(day(300), "2", "1", StockSplitAction::Convert)),
+                split(day(400), "4", "1", StockSplitAction::Keep),
+            ],
+            "a day any instrument converts or applies is converted or applied"
+        );
+        assert!(ticker_split_choices(std::iter::empty()).is_empty());
     }
 
     #[test]
@@ -2789,32 +2846,63 @@ mod tests {
     }
 
     #[test]
-    fn pending_stored_rows_are_scaled_for_the_check() {
+    fn pending_stored_rows_are_scaled_for_the_check_when_applied() {
         let conn = db();
         add_stored(&conn, "AAPL", "buy", "3", "950", day(100), None);
         record_split(&conn, "AAPL", day(200), "pending");
         let trades = vec![sell(2, day(300), "AAPL", 25.0, 120.0)];
+        // The stored switch decides, whatever the file's action is.
+        for action in [StockSplitAction::Convert, StockSplitAction::Keep] {
+            let sim = run(
+                &conn,
+                trades.clone(),
+                &with_splits(vec![stored(split(day(200), "10", "1", action))]),
+            );
+            assert_eq!(sim.trades[0].outcome, TradeOutcome::New, "{action:?}");
+            assert!(
+                !sim.trades[0].converted,
+                "a post-split row is not converted"
+            );
+        }
+
+        // Without it the pending split stays pending: the stored rows stay in old units.
+        for action in [StockSplitAction::Convert, StockSplitAction::Keep] {
+            let kept = run(
+                &conn,
+                trades.clone(),
+                &with_splits(vec![split(day(200), "10", "1", action)]),
+            );
+            assert_eq!(
+                error_key(&kept.trades[0].outcome),
+                (KEY_SELL_EXCEEDS_HOLDINGS, Some("3")),
+                "{action:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_kept_file_with_the_stored_rows_applied_has_no_mixed_units() {
+        // The headline case: stored rows pre-split, the file already broker-adjusted.
+        let conn = db();
+        add_stored(&conn, "AAPL", "buy", "3", "950", day(100), None);
+        record_split(&conn, "AAPL", day(200), "pending");
         let sim = run(
             &conn,
-            trades.clone(),
-            &with_splits(vec![split(day(200), "10", "1", StockSplitAction::Convert)]),
+            vec![
+                buy(2, day(150), "AAPL", 10.0, 90.0),
+                sell(3, day(300), "AAPL", 35.0, 120.0),
+            ],
+            &with_splits(vec![stored(split(
+                day(200),
+                "10",
+                "1",
+                StockSplitAction::Keep,
+            ))]),
         );
-        assert_eq!(sim.trades[0].outcome, TradeOutcome::New);
-        assert!(
-            !sim.trades[0].converted,
-            "a post-split row is not converted"
-        );
-
-        // Keep leaves the pending split pending: the stored rows stay in old units.
-        let kept = run(
-            &conn,
-            trades,
-            &with_splits(vec![split(day(200), "10", "1", StockSplitAction::Keep)]),
-        );
-        assert_eq!(
-            error_key(&kept.trades[0].outcome),
-            (KEY_SELL_EXCEEDS_HOLDINGS, Some("3"))
-        );
+        assert_eq!(outcomes(&sim), vec![TradeOutcome::New, TradeOutcome::New]);
+        assert_eq!(sim.trades[0].quantity_text(), "10", "kept as the file says");
+        assert!(!sim.trades[0].converted);
+        // 30 rewritten stored shares + 10 from the file cover the sell of 35.
     }
 
     #[test]
@@ -2827,7 +2915,12 @@ mod tests {
                 buy(2, day(100), "AAPL", 3.0, 950.0),
                 sell(3, day(300), "AAPL", 50.0, 120.0),
             ],
-            &with_splits(vec![split(day(200), "10", "1", StockSplitAction::Convert)]),
+            &with_splits(vec![stored(split(
+                day(200),
+                "10",
+                "1",
+                StockSplitAction::Convert,
+            ))]),
         );
         assert_eq!(
             sim.trades[0].outcome,
@@ -2848,7 +2941,12 @@ mod tests {
         let sim = run(
             &conn,
             vec![sell(2, day(300), "AAPL", 25.0, 120.0)],
-            &with_splits(vec![split(day(200), "10", "1", StockSplitAction::Convert)]),
+            &with_splits(vec![stored(split(
+                day(200),
+                "10",
+                "1",
+                StockSplitAction::Convert,
+            ))]),
         );
         assert_eq!(
             error_key(&sim.trades[0].outcome),
@@ -2869,7 +2967,12 @@ mod tests {
             Some("degiro:O1"),
         );
         record_split(&conn, "AAPL", day(200), "pending");
-        let mut cfg = with_splits(vec![split(day(200), "10", "1", StockSplitAction::Convert)]);
+        let mut cfg = with_splits(vec![stored(split(
+            day(200),
+            "10",
+            "1",
+            StockSplitAction::Convert,
+        ))]);
         cfg.source = SOURCE_DEGIRO.into();
         let sim = run(
             &conn,

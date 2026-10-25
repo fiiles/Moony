@@ -58,7 +58,7 @@ import {
   missingSymbolCount,
   normalizeTicker,
   rowStatusByLine,
-  setSplitAction,
+  setSplitChoice,
   summarizePreview,
   updateOverride,
   type MappingState,
@@ -311,7 +311,17 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
     effectiveDay: number,
     action: StockSplitAction
   ) => {
-    setOverrides((current) => setSplitAction(current, instrument.key, effectiveDay, action));
+    setOverrides((current) => setSplitChoice(current, instrument.key, effectiveDay, { action }));
+  };
+
+  const chooseSplitApplyStored = (
+    instrument: StockImportInstrument,
+    effectiveDay: number,
+    applyStored: boolean
+  ) => {
+    setOverrides((current) =>
+      setSplitChoice(current, instrument.key, effectiveDay, { applyStored })
+    );
   };
 
   const editInstrument = (instrument: StockImportInstrument, edit: InstrumentEdit) => {
@@ -564,6 +574,7 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
                 isCheckingSplits={splitChecks.isChecking}
                 splitCheckFailed={splitChecks.error != null}
                 onSplitAction={chooseSplitAction}
+                onSplitApplyStored={chooseSplitApplyStored}
               />
             )}
 

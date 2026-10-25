@@ -620,3 +620,34 @@ fn migration_023_creates_stock_splits_and_the_check_column() {
   then merge: `git -C ../Moony-tauri worktree add <scratch>/main-merge main`, `git merge
   --no-ff feat/stock-splits`, verify `git merge-base --is-ancestor feat/stock-splits main`,
   remove the scratch worktree. Never push.
+
+## Addendum 2026-10-24 — the stored rows' own decision (amends D13/D14)
+
+The final review of the merged branch found a gap: with `keep` (the default for a file the
+broker already adjusted) on a ticker whose stored rows are still pre-split and whose split is
+pending, the import wrote post-split rows dated before the split next to pre-split stored rows,
+and afterwards neither apply nor dismiss was right. The only guard was a warning line.
+
+**Decision:** the stored rows get a decision of their own, independent of the file's
+`convert`/`keep`:
+
+- `StockSplitCheckSplit.storedVerdict` — D7 over the ticker's stored transactions dated before
+  the split, judged as the position page does (`stock_splits::stored_verdict_for`: against
+  `stock_value_history`, cumulative over the ticker's pending splits, the checked split counted
+  in when Moony has no row for it); `unknown` unless the split is pending or unknown to Moony and
+  such rows exist. Filled under a second short lock after the Yahoo fetch.
+- `StockSplitOverride.applyStored` (serde default `false`) — "also apply this split to the stored
+  rows before the import". The wizard shows a second switch, "Přepočítat i uložené transakce",
+  under the convert switch whenever the stored rows are undecided (`storedStatus` pending or
+  absent and `storedPreSplitCount > 0`), defaulting to on for `storedVerdict: unadjusted` and off
+  otherwise. The stored-verdict text with the count replaces the old "přepočítá i N uložených
+  transakcí" line.
+- `simulate` scales the stored state by the `applyStored` splits (pending or unknown ones), no
+  longer by the file's `convert`; `import::record_splits` applies a pending or unknown split
+  when `applyStored`, whatever the file action. A split Moony has no row for is recorded
+  `applied` by that apply; without it, `pending` when stored rows are dated before it (they still
+  wait on the position page), else `applied` for `convert` / `dismissed` for `keep` as before.
+  Preview and import share `ticker_split_choices` (one choice per day and ticker: converts if any
+  instrument converts, applies if any applies).
+- The mixed-units warning stays only when the stored switch is off while the file has trades
+  dated before the split (they arrive in today's units either way).

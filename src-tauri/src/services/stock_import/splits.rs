@@ -1,6 +1,9 @@
 //! The split check of the import wizard (spec D12, D22): which splits Yahoo reports after the
 //! first trade of each instrument the file would import, and whether the file's prices are
 //! already adjusted for them (D7, against the fetched closes, never `stock_value_history`).
+//! Each split also carries the verdict of the ticker's stored transactions dated before it,
+//! judged as the position page does (`stock_splits::stored_verdict_for`, against
+//! `stock_value_history`), so the wizard can offer the stored rows a conversion of their own.
 //! Reads only; the network part runs with the database lock released.
 
 use std::collections::HashMap;
@@ -13,7 +16,7 @@ use crate::error::Result;
 use crate::services::price_api::{self, HistoricalSeries};
 use crate::services::stock_splits::classify::{classify_cumulative, verdict_of};
 use crate::services::stock_splits::types::ratio_is_valid;
-use crate::services::stock_splits::{DetectedSplit, StockSplitStatus, StockSplitVerdict};
+use crate::services::stock_splits::{self, DetectedSplit, StockSplitStatus, StockSplitVerdict};
 
 use super::simulate::simulate;
 use super::types::{
@@ -43,8 +46,9 @@ pub(crate) struct TickerGroup {
 ///
 /// The file is replayed with the config as given but without its split choices (the check
 /// is what fills them), the groups and the stored state are read under one short lock, and
-/// the Yahoo history is fetched after it is released. A ticker whose history cannot be
-/// fetched is reported `checked: false`. Writes nothing.
+/// the Yahoo history is fetched after it is released; a second short lock judges the stored
+/// rows of the splits found. A ticker whose history cannot be fetched is reported
+/// `checked: false`. Writes nothing.
 pub async fn check_splits(
     db: &Database,
     parsed: &ParsedFile,
@@ -54,7 +58,29 @@ pub async fn check_splits(
     // The window ends now, not at today's midnight: a split with today's ex-date and a file
     // whose trades are all from the last day or two would otherwise get no data.
     let now = chrono::Utc::now().timestamp();
-    Ok(check_with(fetch_series, groups, now).await)
+    let mut checks = check_with(fetch_series, groups, now).await;
+    db.with_conn(|conn| stored_verdicts(conn, &mut checks))?;
+    Ok(checks)
+}
+
+/// Fills `stored_verdict` of every split: the D7 verdict of the ticker's stored transactions
+/// dated before it (D14), for a split Moony holds as `pending` or has no row for and that has
+/// such rows; `unknown` otherwise (there is nothing to decide about the stored rows then).
+pub(crate) fn stored_verdicts(conn: &Connection, checks: &mut [StockSplitCheck]) -> Result<()> {
+    for check in checks.iter_mut() {
+        for split in &mut check.splits {
+            let undecided = matches!(split.stored_status, None | Some(StockSplitStatus::Pending));
+            if !undecided || split.stored_pre_split_count == 0 {
+                continue;
+            }
+            let Ok((n, d)) = stock_splits::ratio_parts(&split.numerator, &split.denominator) else {
+                continue;
+            };
+            split.stored_verdict =
+                stock_splits::stored_verdict_for(conn, &check.ticker, split.effective_day, n, d)?;
+        }
+    }
+    Ok(())
 }
 
 /// The ticker's daily closes and splits over `[from, to]` from Yahoo; an error when the
@@ -280,6 +306,8 @@ fn check_group(group: &TickerGroup, series: &HistoricalSeries) -> Vec<StockSplit
                     .stored_days
                     .partition_point(|&day| day < split.effective_day)
                     as i64,
+                // Filled by `stored_verdicts` under the second lock.
+                stored_verdict: StockSplitVerdict::Unknown,
             }
         })
         .collect()
@@ -394,6 +422,7 @@ mod tests {
                     }],
                     stored_status: None,
                     stored_pre_split_count: 0,
+                    stored_verdict: StockSplitVerdict::Unknown,
                 }],
             }]
         );
@@ -617,6 +646,7 @@ mod tests {
             numerator: "10".into(),
             denominator: "1".into(),
             action: StockSplitAction::Convert,
+            apply_stored: true,
         }];
         chosen.instrument_overrides = vec![nvda];
 
@@ -636,5 +666,107 @@ mod tests {
         assert_eq!(groups[0].stored_days, vec![day(80), day(220)]);
         assert_eq!(groups[1].ticker, "AAPL");
         assert!(groups[1].stored_days.is_empty());
+    }
+
+    /// A check of NVDA with one 10:1 split on day 200 in `stored_status` with
+    /// `stored_pre_split_count` rows before it.
+    fn check_of(status: Option<StockSplitStatus>, stored_pre_split_count: i64) -> StockSplitCheck {
+        StockSplitCheck {
+            key: "symbol:NVDA".into(),
+            ticker: "NVDA".into(),
+            checked: true,
+            splits: vec![StockSplitCheckSplit {
+                effective_day: day(200),
+                numerator: "10".into(),
+                denominator: "1".into(),
+                verdict: StockSplitVerdict::Adjusted,
+                trades: vec![],
+                stored_status: status,
+                stored_pre_split_count,
+                stored_verdict: StockSplitVerdict::Unknown,
+            }],
+        }
+    }
+
+    fn add_close(conn: &Connection, ticker: &str, day: i64, price: &str) {
+        conn.execute(
+            "INSERT INTO stock_value_history (id, ticker, recorded_at, quantity, price, currency)
+             VALUES (?1, ?2, ?3, '1', ?4, 'USD')",
+            params![format!("h-{ticker}-{day}"), ticker, day, price],
+        )
+        .expect("close");
+    }
+
+    #[test]
+    fn stored_verdicts_judge_the_stored_rows_of_pending_and_unknown_splits() {
+        let conn = db();
+        add_stored(&conn, "NVDA", "buy", "3", "950", day(100), None);
+        add_close(&conn, "NVDA", day(100), "96");
+
+        // No row for the split yet: judged against the split the check found.
+        let mut checks = vec![check_of(None, 1)];
+        stored_verdicts(&conn, &mut checks).unwrap();
+        assert_eq!(
+            checks[0].splits[0].stored_verdict,
+            StockSplitVerdict::Unadjusted
+        );
+
+        // A pending row: the position page's verdict.
+        conn.execute(
+            "INSERT INTO stock_splits (id, ticker, effective_day, numerator, denominator, source,
+                                       status)
+             VALUES ('s1', 'NVDA', ?1, '10', '1', 'yahoo', 'pending')",
+            [day(200)],
+        )
+        .expect("split");
+        let mut checks = vec![check_of(Some(StockSplitStatus::Pending), 1)];
+        stored_verdicts(&conn, &mut checks).unwrap();
+        assert_eq!(
+            checks[0].splits[0].stored_verdict,
+            StockSplitVerdict::Unadjusted
+        );
+
+        // Without a close the rows cannot be judged.
+        conn.execute("DELETE FROM stock_value_history", [])
+            .expect("clear");
+        let mut checks = vec![check_of(Some(StockSplitStatus::Pending), 1)];
+        stored_verdicts(&conn, &mut checks).unwrap();
+        assert_eq!(
+            checks[0].splits[0].stored_verdict,
+            StockSplitVerdict::Unknown
+        );
+    }
+
+    #[test]
+    fn stored_verdicts_leave_resolved_splits_and_empty_positions_unknown() {
+        let conn = db();
+        add_stored(&conn, "NVDA", "buy", "3", "950", day(100), None);
+        add_close(&conn, "NVDA", day(100), "96");
+
+        for status in [StockSplitStatus::Applied, StockSplitStatus::Dismissed] {
+            let mut checks = vec![check_of(Some(status), 1)];
+            stored_verdicts(&conn, &mut checks).unwrap();
+            assert_eq!(
+                checks[0].splits[0].stored_verdict,
+                StockSplitVerdict::Unknown,
+                "{status:?}: nothing left to decide"
+            );
+        }
+        // No stored rows before the split: nothing to judge (and no query).
+        let mut checks = vec![check_of(None, 0)];
+        stored_verdicts(&conn, &mut checks).unwrap();
+        assert_eq!(
+            checks[0].splits[0].stored_verdict,
+            StockSplitVerdict::Unknown
+        );
+        // An unchecked instrument has no splits to fill.
+        let mut checks = vec![StockSplitCheck {
+            key: "symbol:AAPL".into(),
+            ticker: "AAPL".into(),
+            checked: false,
+            splits: vec![],
+        }];
+        stored_verdicts(&conn, &mut checks).unwrap();
+        assert!(checks[0].splits.is_empty());
     }
 }

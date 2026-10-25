@@ -734,10 +734,16 @@
         "adjusted": "ファイル内のそれ以前の取引は再計算済みのようです",
         "unknown": "ファイルが再計算済みかどうか判断できません"
       },
-      "alsoStored_other": "保存済みの取引{{count}}件も再計算します",
+      "storedVerdict": {
+        "unadjusted_other": "それ以前の保存済みの取引{{count}}件は分割前の単位です",
+        "adjusted_other": "それ以前の保存済みの取引{{count}}件はすでに再計算済みのようです",
+        "unknown_other": "それ以前の保存済みの取引{{count}}件が再計算済みかどうか判定できません"
+      },
       "mixedUnitsWarning": "分割前の保存済みの取引は元の単位のままです。インポート後、銘柄の詳細ページで分割を確定するか却下してください。",
       "convert": "再計算",
-      "convertFor": "{{ticker}}の取引を分割（{{ratio}}）に合わせて再計算"
+      "convertFor": "{{ticker}}の取引を分割（{{ratio}}）に合わせて再計算",
+      "applyStored": "保存済みの取引も再計算",
+      "applyStoredFor": "{{ticker}}の保存済みの取引を分割（{{ratio}}）に合わせて再計算"
     }
   },
   "eyebrow": "ポートフォリオ",

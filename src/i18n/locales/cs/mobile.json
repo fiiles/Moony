@@ -225,10 +225,6 @@
     }
   },
   "placeholder": {
-    "detail": "Detail přijde ve fázi 4.",
-    "form": "Formulář pro přidání přijde ve fázi 2b.",
-    "edit": "Úpravy přijdou ve fázi 2b.",
-    "delete": "Mazání přijde ve fázi 2b.",
     "export": "Export přijde později."
   },
   "account": {
@@ -524,9 +520,7 @@
   },
   "wealth": {
     "placeholder": {
-      "classPage": "Stránka této třídy přijde v další části fáze 4.",
-      "watchDetail": "Detail sledované akcie přijde v další části fáze 4.",
-      "later": "Přijde v další části fáze 4."
+      "classPage": "Tato stránka je zatím jen v Moony na počítači."
     },
     "subtitle": "Investice, nemovitosti a hotovost",
     "sections": {
@@ -602,7 +596,6 @@
       "showAll_few": "Zobrazit všechny {{count}} pozice",
       "showAll_other": "Zobrazit všech {{count}} pozic",
       "menu": {
-        "import": "Importovat výpis brokera",
         "closed": "Uzavřené pozice"
       },
       "closedBadge": "uzavřená",

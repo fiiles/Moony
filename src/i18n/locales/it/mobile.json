@@ -225,10 +225,6 @@
     }
   },
   "placeholder": {
-    "detail": "Il dettaglio arriva nella fase 4.",
-    "form": "Il modulo di aggiunta arriva nella fase 2b.",
-    "edit": "La modifica arriva nella fase 2b.",
-    "delete": "L'eliminazione arriva nella fase 2b.",
     "export": "L'esportazione arriva più avanti."
   },
   "account": {
@@ -524,9 +520,7 @@
   },
   "wealth": {
     "placeholder": {
-      "classPage": "La pagina di questa classe arriverà nella prossima parte della fase 4.",
-      "watchDetail": "Il dettaglio dell'azione osservata arriverà nella prossima parte della fase 4.",
-      "later": "Arriverà nella prossima parte della fase 4."
+      "classPage": "Per ora questa pagina è solo in Moony sul computer."
     },
     "subtitle": "Investimenti, immobili e liquidità",
     "sections": {
@@ -602,7 +596,6 @@
       "showAll_many": "Mostra tutte le {{count}} posizioni",
       "showAll_other": "Mostra tutte le {{count}} posizioni",
       "menu": {
-        "import": "Importa estratto del broker",
         "closed": "Posizioni chiuse"
       },
       "closedBadge": "chiusa",

@@ -29,7 +29,7 @@ describe('nav tree (design system §5)', () => {
     expect(NAV_GROUPS.map((g) => g.id)).toEqual(['money', 'investments', 'liabilities', 'tools']);
   });
 
-  it('keeps every existing route path and adds cashflow planning after cashflow', () => {
+  it('keeps every existing route path, with cashflow planning first under tools', () => {
     const urls = [OVERVIEW_ITEM, ...NAV_GROUPS.flatMap((g) => g.items), SETTINGS_ITEM].map(
       (i) => i.url
     );
@@ -38,7 +38,6 @@ describe('nav tree (design system §5)', () => {
       '/bank-accounts',
       '/reports/budgeting',
       '/reports/cashflow',
-      '/reports/cashflow-planning',
       '/stocks',
       '/crypto',
       '/bonds',
@@ -46,6 +45,7 @@ describe('nav tree (design system §5)', () => {
       '/other-assets',
       '/loans',
       '/insurance',
+      '/reports/cashflow-planning',
       '/reports/projection',
       '/reports/stocks-analysis',
       '/stock-monitor',
@@ -120,7 +120,9 @@ describe('findNavLocation (breadcrumb)', () => {
 
   it('tells cashflow and cashflow planning apart', () => {
     expect(findNavLocation('/reports/cashflow')?.item.id).toBe('cashflow');
-    expect(findNavLocation('/reports/cashflow-planning')?.item.id).toBe('cashflowPlanning');
+    const planning = findNavLocation('/reports/cashflow-planning');
+    expect(planning?.item.id).toBe('cashflowPlanning');
+    expect(planning?.group?.id).toBe('tools');
   });
 
   it('returns undefined for routes outside the tree', () => {
@@ -160,10 +162,18 @@ describe('visibleItems', () => {
     const prefs = { loans: false, insurance: false, investments: false };
     expect(visibleItems(money, prefs)).toHaveLength(money.items.length);
   });
+
+  it('hides the stock tools together with stocks', () => {
+    const tools = NAV_GROUPS.find((g) => g.id === 'tools')!;
+    const ids = visibleItems(tools, { investments: false }).map((i) => i.id);
+    expect(ids).not.toContain('stocksAnalysis');
+    expect(ids).not.toContain('stockMonitor');
+    expect(ids).toContain('cashflowPlanning');
+  });
 });
 
 describe('menuToggleItems', () => {
-  it('lists exactly the sidebar items that can be hidden, in sidebar order', () => {
+  it('lists one toggle per flag, in sidebar order', () => {
     expect(menuToggleItems().map((i) => i.prefKey)).toEqual([
       'investments',
       'crypto',

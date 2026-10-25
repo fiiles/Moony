@@ -62,12 +62,6 @@ export const NAV_GROUPS: NavGroup[] = [
       { id: 'bankAccounts', labelKey: 'nav.bankAccounts', url: '/bank-accounts', icon: Landmark },
       { id: 'budgets', labelKey: 'nav.budgets', url: '/reports/budgeting', icon: PiggyBank },
       { id: 'cashflow', labelKey: 'nav.cashflow', url: '/reports/cashflow', icon: BarChart3 },
-      {
-        id: 'cashflowPlanning',
-        labelKey: 'nav.cashflowPlanning',
-        url: '/reports/cashflow-planning',
-        icon: Repeat,
-      },
     ],
   },
   {
@@ -117,18 +111,26 @@ export const NAV_GROUPS: NavGroup[] = [
     id: 'tools',
     labelKey: 'nav.groupTools',
     items: [
+      {
+        id: 'cashflowPlanning',
+        labelKey: 'nav.cashflowPlanning',
+        url: '/reports/cashflow-planning',
+        icon: Repeat,
+      },
       { id: 'projection', labelKey: 'nav.projection', url: '/reports/projection', icon: LineChart },
       {
         id: 'stocksAnalysis',
         labelKey: 'nav.stocksAnalysis',
         url: '/reports/stocks-analysis',
         icon: Tag,
+        prefKey: 'investments',
       },
       {
         id: 'stockMonitor',
         labelKey: 'nav.stockMonitor',
         url: '/stock-monitor',
         icon: ChartCandlestick,
+        prefKey: 'investments',
       },
       {
         id: 'annuityCalculator',
@@ -175,10 +177,18 @@ export function visibleItems(
   return group.items.filter((item) => isItemVisible(item, prefs));
 }
 
-/** Items that have a visibility toggle in Settings, in sidebar order. */
+/**
+ * One Settings toggle per flag, in sidebar order: the first item carrying a
+ * flag names the toggle (Stocks also hides Stock analysis and Stock monitor).
+ */
 export function menuToggleItems(): (NavItem & { prefKey: MenuPrefKey })[] {
+  const seen = new Set<MenuPrefKey>();
   return NAV_GROUPS.flatMap((g) => g.items).filter(
-    (item): item is NavItem & { prefKey: MenuPrefKey } => item.prefKey !== undefined
+    (item): item is NavItem & { prefKey: MenuPrefKey } => {
+      if (item.prefKey === undefined || seen.has(item.prefKey)) return false;
+      seen.add(item.prefKey);
+      return true;
+    }
   );
 }
 

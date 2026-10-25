@@ -21,6 +21,7 @@ import {
   isUrgent,
   relativeLabel,
 } from '@/utils/milestones';
+import { milestonePath } from '@/mobile/lib/milestone-path';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { EntityRow } from './EntityRow';
 
@@ -31,8 +32,8 @@ const DATE_CHIP = 'calc(54px * var(--m-text-k))';
  * Agenda row of "Co vás čeká" (spec §8.3 item 4, prototype note 5): the entity row with a 54 × 42
  * date chip (day and month, the distance under it; dark material for a deadline at most 7 days
  * away), the title and one sub-line. Swipe right reminds again in a week (only when that ends
- * before the date), swipe left hides; a long press opens the full menu. The source pages are not
- * on the phone yet, so a tap does nothing.
+ * before the date), swipe left hides; a long press opens the full menu. A tap opens the source
+ * page (`milestonePath`); a kind without one on the phone leaves the row inert.
  */
 export function AgendaRow({ m }: { m: Milestone }) {
   const { t } = useTranslation('milestones');
@@ -94,6 +95,7 @@ export function AgendaRow({ m }: { m: Milestone }) {
       swipeLeftLabel={t('actions.hide')}
       swipeLeftIcon={EyeOff}
       onLongPress={() => setMenuOpen(true)}
+      href={milestonePath(m) ?? undefined}
       accessory={
         <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           {/* The menu's anchor, and its way in for a screen reader or a keyboard: hidden until focused. */}

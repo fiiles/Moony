@@ -20,6 +20,18 @@ export interface ReceivedQueue {
   sheetOpened(): void;
   /** The sheet is free again; the path it showed is done, and the next waiting one is delivered. */
   sheetClosed(): void;
+  /**
+   * A drain is due (the app is locked; the unlock starts it): until it answers — `offer`, with
+   * what it found or with nothing — a shared file may be about to open.
+   */
+  expect(): void;
+  /**
+   * A shared file is on its way to the sheet or on it: a drain that has not answered, a path that
+   * waits, or the path the sheet shows until it closes. The one-time biometric offer waits for it
+   * (`enrolmentOfferOpen`), so the import the person came for opens first. A second waiting path
+   * keeps it pending through the moment the first sheet closes and the next one opens.
+   */
+  pending(): boolean;
 }
 
 /**
@@ -33,6 +45,7 @@ export function createReceivedQueue(deliver: (path: string) => void): ReceivedQu
   const waiting: string[] = [];
   let showing: string | null = null;
   let taken = false;
+  let expecting = false;
 
   const pump = () => {
     if (taken) return;
@@ -45,6 +58,7 @@ export function createReceivedQueue(deliver: (path: string) => void): ReceivedQu
 
   return {
     offer(paths) {
+      expecting = false;
       for (const path of paths) {
         if (outstanding.has(path)) continue;
         outstanding.add(path);
@@ -62,6 +76,12 @@ export function createReceivedQueue(deliver: (path: string) => void): ReceivedQu
         showing = null;
       }
       pump();
+    },
+    expect() {
+      expecting = true;
+    },
+    pending() {
+      return expecting || waiting.length > 0 || showing !== null;
     },
   };
 }

@@ -243,10 +243,6 @@
     }
   },
   "placeholder": {
-    "detail": "Szczegóły pojawią się w fazie 4.",
-    "form": "Formularz dodawania pojawi się w fazie 2b.",
-    "edit": "Edycja pojawi się w fazie 2b.",
-    "delete": "Usuwanie pojawi się w fazie 2b.",
     "export": "Eksport pojawi się później."
   },
   "account": {
@@ -560,9 +556,7 @@
   },
   "wealth": {
     "placeholder": {
-      "classPage": "Strona tej klasy pojawi się w kolejnej części fazy 4.",
-      "watchDetail": "Szczegóły obserwowanej akcji pojawią się w kolejnej części fazy 4.",
-      "later": "Pojawi się w kolejnej części fazy 4."
+      "classPage": "Na razie ta strona jest dostępna tylko w Moony na komputerze."
     },
     "subtitle": "Inwestycje, nieruchomości i gotówka",
     "sections": {
@@ -641,7 +635,6 @@
       "showAll_many": "Pokaż wszystkie {{count}} pozycji",
       "showAll_other": "Pokaż wszystkie {{count}} pozycji",
       "menu": {
-        "import": "Importuj wyciąg z domu maklerskiego",
         "closed": "Zamknięte pozycje"
       },
       "closedBadge": "zamknięta",

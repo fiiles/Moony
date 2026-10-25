@@ -26,10 +26,13 @@ const photo = (batchId: string): RealEstatePhoto => ({
   createdAt: 0,
 });
 
-/** A picked file: its bytes are what `arrayBuffer` gives, and reading can fail. */
+/**
+ * A picked file: its bytes are what `arrayBuffer` gives, and reading can fail. The name only goes
+ * into the read error, as a browser's may: the upload never sees it.
+ */
 function file(name: string, bytes: number[] = [1, 2, 3], fails = false): PhotoSource {
   return {
-    name,
+    size: bytes.length,
     arrayBuffer: () =>
       fails
         ? Promise.reject(new Error(`cannot read ${name}`))
@@ -145,6 +148,20 @@ describe('uploadToTodayBatch', () => {
       TODAY
     );
     expect(result).toEqual({ batchId: 'today', saved: 2, skipped: 2 });
+  });
+
+  it("logs a skipped photo by its place, size and the error's kind, never its name", async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const api = fakeApi([batch('today', TODAY)]);
+    await uploadToTodayBatch(
+      api,
+      'p',
+      [file('Smlouva_Novak.jpg', [1, 2], true), file('ok.jpg')],
+      TODAY
+    );
+    const lines = logged.mock.calls.map((args) => args.map(String).join(' '));
+    expect(lines).toEqual(['Photo 1 of 2 (2 bytes) could not be saved: Error']);
+    expect(lines.join('\n')).not.toContain('Novak');
   });
 
   it('fails when no photo was saved, with the first error, and leaves a batch that was there alone', async () => {

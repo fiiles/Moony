@@ -7,9 +7,11 @@ import { Button } from '@/components/ui/button';
 import { BiometryIcon } from '@/mobile/components/BiometryIcon';
 import { Sheet } from '@/mobile/components/Sheet';
 import { useBiometricEnrolment } from '@/mobile/hooks/use-biometric-enrolment';
+import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import {
   BIOMETRIC_STATUS_KEY,
   biometricCopy,
+  enrolmentOfferOpen,
   markEnrolmentAsked,
   shouldOfferEnrolment,
   wasEnrolmentAsked,
@@ -29,10 +31,15 @@ function storage(): Storage | null {
  * "Zapnout" asks for Face ID / Touch ID ("Zapnout odemykání biometrií") and stores the session's
  * master key behind biometry (in Rust; the key never reaches the webview), "Teď ne" leaves it.
  * Either answer, or closing the sheet, sets `moony-biometrics-asked`.
+ *
+ * It never opens over the import sheet: a statement shared into Moony while it was locked opens
+ * first (`sharedPending`, from `ReceivedFileHost`), and the offer follows once that sheet has
+ * closed (`enrolmentOfferOpen`).
  */
-export function EnableBiometricsSheet() {
+export function EnableBiometricsSheet({ sharedPending = false }: { sharedPending?: boolean }) {
   const { t } = useTranslation('mobile');
   const { appStatus, unlockMutation, lockMutation } = useAuth();
+  const { open: importOpen } = useImportSheet();
   const [asked, setAsked] = useState(() => wasEnrolmentAsked(storage()));
 
   // The flag is read when a password unlock is submitted, not only at mount: a clear since then
@@ -65,8 +72,15 @@ export function EnableBiometricsSheet() {
 
   const type = status.data?.biometryType ?? 'none';
   const copy = biometricCopy(type);
-  // Stays up while "Zapnout" runs, then the answer closes it.
-  const open = passwordUnlocked && (shouldOfferEnrolment(status.data, asked) || enable.isPending);
+  // Stays up while "Zapnout" runs, then the answer closes it; waits for a shared file's import.
+  const open =
+    passwordUnlocked &&
+    enrolmentOfferOpen({
+      offered: shouldOfferEnrolment(status.data, asked),
+      enabling: enable.isPending,
+      importOpen,
+      sharedPending,
+    });
 
   return (
     <Sheet

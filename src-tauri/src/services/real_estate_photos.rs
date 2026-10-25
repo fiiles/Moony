@@ -39,7 +39,7 @@ pub struct PreparedPhoto {
 /// postMessage and the same bytes arrive as a JSON array of numbers.
 pub fn photo_bytes(body: &InvokeBody) -> Result<Cow<'_, [u8]>> {
     let not_bytes =
-        || AppError::Internal("add_photo_to_batch expects the image bytes as the body".into());
+        || AppError::Internal("the upload expects the file bytes as the request body".into());
     match body {
         InvokeBody::Raw(bytes) => Ok(Cow::Borrowed(bytes)),
         InvokeBody::Json(serde_json::Value::Array(items)) => items

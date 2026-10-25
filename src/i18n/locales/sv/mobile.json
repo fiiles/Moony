@@ -207,10 +207,6 @@
     }
   },
   "placeholder": {
-    "detail": "Detaljvyn kommer i fas 4.",
-    "form": "Formuläret för att lägga till kommer i fas 2b.",
-    "edit": "Redigering kommer i fas 2b.",
-    "delete": "Radering kommer i fas 2b.",
     "export": "Export kommer senare."
   },
   "account": {
@@ -498,9 +494,7 @@
   },
   "wealth": {
     "placeholder": {
-      "classPage": "Sidan för den här klassen kommer i nästa del av fas 4.",
-      "watchDetail": "Detaljerna för den bevakade aktien kommer i nästa del av fas 4.",
-      "later": "Kommer i nästa del av fas 4."
+      "classPage": "Än så länge finns den här sidan bara i Moony på datorn."
     },
     "subtitle": "Investeringar, fastigheter och kontanter",
     "sections": {
@@ -573,7 +567,6 @@
       "showAll_one": "Visa {{count}} innehav",
       "showAll_other": "Visa alla {{count}} innehav",
       "menu": {
-        "import": "Importera mäklarutdrag",
         "closed": "Stängda innehav"
       },
       "closedBadge": "stängt",

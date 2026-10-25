@@ -207,10 +207,6 @@
     }
   },
   "placeholder": {
-    "detail": "Detaljvisningen kommer i fase 4.",
-    "form": "Skjemaet for å legge til kommer i fase 2b.",
-    "edit": "Redigering kommer i fase 2b.",
-    "delete": "Sletting kommer i fase 2b.",
     "export": "Eksport kommer senere."
   },
   "account": {
@@ -498,9 +494,7 @@
   },
   "wealth": {
     "placeholder": {
-      "classPage": "Siden for denne klassen kommer i neste del av fase 4.",
-      "watchDetail": "Detaljene for den fulgte aksjen kommer i neste del av fase 4.",
-      "later": "Kommer i neste del av fase 4."
+      "classPage": "Foreløpig finnes denne siden bare i Moony på datamaskinen."
     },
     "subtitle": "Investeringer, eiendom og kontanter",
     "sections": {
@@ -573,7 +567,6 @@
       "showAll_one": "Vis {{count}} beholdning",
       "showAll_other": "Vis alle {{count}} beholdninger",
       "menu": {
-        "import": "Importer meglerutskrift",
         "closed": "Avsluttede beholdninger"
       },
       "closedBadge": "avsluttet",

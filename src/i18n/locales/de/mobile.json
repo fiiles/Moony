@@ -207,10 +207,6 @@
     }
   },
   "placeholder": {
-    "detail": "Die Detailansicht kommt in Phase 4.",
-    "form": "Das Formular zum Hinzufügen kommt in Phase 2b.",
-    "edit": "Das Bearbeiten kommt in Phase 2b.",
-    "delete": "Das Löschen kommt in Phase 2b.",
     "export": "Der Export kommt später."
   },
   "account": {
@@ -498,9 +494,7 @@
   },
   "wealth": {
     "placeholder": {
-      "classPage": "Die Seite dieser Klasse kommt im nächsten Teil von Phase 4.",
-      "watchDetail": "Das Detail der beobachteten Aktie kommt im nächsten Teil von Phase 4.",
-      "later": "Kommt im nächsten Teil von Phase 4."
+      "classPage": "Diese Seite gibt es vorerst nur in Moony auf dem Computer."
     },
     "subtitle": "Geldanlagen, Immobilien und Bargeld",
     "sections": {
@@ -573,7 +567,6 @@
       "showAll_one": "Alle {{count}} Position anzeigen",
       "showAll_other": "Alle {{count}} Positionen anzeigen",
       "menu": {
-        "import": "Broker-Auszug importieren",
         "closed": "Geschlossene Positionen"
       },
       "closedBadge": "geschlossen",

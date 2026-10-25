@@ -24,6 +24,8 @@ export interface UpkeepRow {
   accountIds?: string[];
   /** UTC day shown in the sub-line of a `statement_due` row: the account's last import. */
   sinceDay?: number;
+  /** The property a `valuation_stale` row is about: Přecenit opens it. */
+  sourceId?: string;
 }
 
 /** What the card needs of an account (`BankAccount`, or one with its institution). */
@@ -139,6 +141,7 @@ export function buildUpkeepRows(input: UpkeepInput): UpkeepRow[] {
       id: `valuation_stale:${m.sourceId ?? m.key}`,
       kind: 'valuation_stale',
       title: { key: 'upkeep.valuationStale', params: { name: m.title } },
+      sourceId: m.sourceId ?? undefined,
     });
   }
 

@@ -124,13 +124,19 @@ export function useRecognition({ active, goTo, onUnreadable, onNavigate }: UseRe
     return 'correct';
   };
 
-  /** The inference of a file is in: where the sheet goes next. */
-  const begin = (file: Session): 'recognize' | 'correct' => {
-    const first = mappingFromInferred(file.inferred, file.csv);
+  /**
+   * The inference of a file is in: where the sheet goes next. With a `seed` (the mapping of a
+   * learned format the person wants to change) the recognition starts from it, on the rows rather
+   * than the questions, and its day and month order counts as confirmed — it was when the format
+   * was learned. The inference still gives the options and the sign check.
+   */
+  const begin = (file: Session, seed?: MappingState): 'recognize' | 'correct' => {
+    const first = seed ?? mappingFromInferred(file.inferred, file.csv);
+    const seeded = seed !== undefined;
     setSession(file);
     setMapping(first);
-    setOrderConfirmed(false);
-    return show(recognitionStart(first, file.inferred), first, file, true);
+    setOrderConfirmed(seeded);
+    return show(recognitionStart(first, file.inferred, seeded), first, file, true);
   };
 
   /** A new read starts: nothing of the previous file is kept. */

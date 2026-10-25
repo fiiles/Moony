@@ -468,6 +468,11 @@
       "sampleHint": "Velg en kolonne, så viser jeg hvordan jeg ville lest transaksjonen.",
       "pair": "kolonnepar"
     },
+    "learned": {
+      "note": "Gjenkjent fra det lagrede formatet {{name}}",
+      "change": "Endre",
+      "remembered": "Jeg har husket formatet: Neste gang leser jeg denne filen uten spørsmål."
+    },
     "preview": {
       "hint": "Trykk på en betaling for å velge kategori.",
       "more_one": "og {{count}} til",

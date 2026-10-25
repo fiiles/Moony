@@ -494,6 +494,11 @@
       "sampleHint": "Vyberte sloupec a ukážu, jak bych pohyb přečetl.",
       "pair": "dvojice sloupců"
     },
+    "learned": {
+      "note": "Rozpoznáno podle uloženého formátu {{name}}",
+      "change": "Změnit",
+      "remembered": "Formát jsem si zapamatoval: příště tento soubor přečtu bez otázek."
+    },
     "preview": {
       "hint": "Klepnutím na platbu zvolíte její kategorii.",
       "more_one": "a {{count}} další",

@@ -301,6 +301,7 @@ export function ImportSheet({ request, open, onOpenChange }: ImportSheetProps) {
             result={result}
             accountId={flow.importedId}
             fileName={flow.fileName}
+            remembered={flow.remembered !== null}
             onQueue={() => toQueue(flow.importedId as string)}
             onShow={() => toAccount(flow.importedId as string)}
           />

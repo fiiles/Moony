@@ -520,6 +520,11 @@
       "sampleHint": "Wybierz kolumnę, a pokażę, jak odczytam transakcję.",
       "pair": "para kolumn"
     },
+    "learned": {
+      "note": "Rozpoznano według zapisanego formatu {{name}}",
+      "change": "Zmień",
+      "remembered": "Zapamiętałem format: następnym razem odczytam ten plik bez pytań."
+    },
     "preview": {
       "hint": "Dotknij płatności, aby wybrać jej kategorię.",
       "more_one": "i jeszcze {{count}}",

@@ -468,6 +468,11 @@
       "sampleHint": "Choose a column and I'll show how I would read a movement.",
       "pair": "pair of columns"
     },
+    "learned": {
+      "note": "Recognized from your saved format {{name}}",
+      "change": "Change",
+      "remembered": "I remembered this format: next time I will read this file without any questions."
+    },
     "preview": {
       "hint": "Tap a payment to choose its category.",
       "more_one": "and {{count}} more",

@@ -8,6 +8,7 @@ import type {
   CsvCategoryOverride,
   CsvImportResult,
   CsvPreviewResult,
+  LearnedCsvFormat,
   StatementImportOptionsInput,
   StatementInspection,
   DateOrder,
@@ -16,6 +17,7 @@ import {
   buildImportConfig,
   fileNameFromPath,
   mappingFromInspection,
+  type MappingState,
   statementDateOrder,
   statementImportBlocked,
   summarizePreview,
@@ -28,7 +30,7 @@ import { useCsvPreview } from '@/components/bank-accounts/csv-import/use-csv-pre
 import { useStatementPreview } from '@/components/bank-accounts/csv-import/use-statement-preview';
 import { useAuth } from '@/hooks/use-auth';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
-import { bankAccountsApi, receivedFilesApi } from '@/lib/tauri-api';
+import { bankAccountsApi, learnedFormatsApi, receivedFilesApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { dialogPathToFsPath } from '@/mobile/lib/export-file';
@@ -47,6 +49,16 @@ import {
   type ImportRequest,
   type ImportStage,
 } from '@/mobile/lib/import-flow';
+import {
+  LEARNED_FORMATS_KEY,
+  applyLearning,
+  defaultFormatName,
+  learnedFormatInsert,
+  learnedPreselect,
+  learningAfterImport,
+  mappingForFile,
+  type CsvSource,
+} from '@/mobile/lib/learned-format';
 
 /** Why a file ended in the `unreadable` stage; `error` carries the translated message as its detail. */
 export interface Unreadable {
@@ -65,21 +77,29 @@ function discardPath(copy: string) {
   if (discardsCopies()) void receivedFilesApi.discard(copy).catch(() => undefined);
 }
 
+/** The format learned for a layout, if any; a store that cannot be read is the same as an empty one. */
+const findLearned = (inspection: CsvPreviewResult) =>
+  learnedFormatsApi.find(inspection.headers, inspection.delimiter).catch(() => null);
+
 /**
  * The import sheet's state machine (spec §8.6), one `ImportStage` at a time:
  *
  *   pick → reading → [statement] → [account] → preview → importing → done
  *                  ↘ [recognize ⇄ correct] (a CSV no preset describes) → [account] → preview
+ *                  ↘ [account] → preview (a CSV layout the person confirmed before: a learned format)
  *                  ↘ unreadable (a PDF, a photo, a file that is no statement, a read error)
  *
  * It reuses the desktop's parsers, previews and write commands as they are; this hook only walks
  * the file through them and keeps what the stages show. `reading` is where a file is told apart:
  * `inspectStatementFile` first (CAMT.053, MT940, OFX, QIF), `parseCsvFile` when that says null;
  * a CSV a bank preset describes goes on, any other is recognized from its content
- * (`useRecognition`: "Takhle tomu rozumím" and the per-field correction) before it does. The
- * account is asked only when it cannot be told (`chooseAccount`). A read is dropped when the
- * person started another or closed the sheet (`reads`). The copy a share or the picker made is
- * discarded when the sheet closes, is replaced by another file, or is unmounted (iOS only).
+ * (`useRecognition`: "Takhle tomu rozumím" and the per-field correction) before it does — unless
+ * the person confirmed that layout once (rung 4, `learned-format.ts`): then it is read as they
+ * confirmed it, and "Změnit" opens the recognition on that mapping. A successful import saves a
+ * recognized layout and marks a learned one used. The account is asked only when it cannot be
+ * told (`chooseAccount`). A read is dropped when the person started another or closed the sheet
+ * (`reads`). The copy a share or the picker made is discarded when the sheet closes, is replaced
+ * by another file, or is unmounted (iOS only).
  */
 export function useImportFlow(request: ImportRequest, open: boolean) {
   const { t: tc } = useTranslation('common');
@@ -107,6 +127,12 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
   const [importedId, setImportedId] = useState<string | null>(null);
   /** The statement is being read again for another target account. */
   const [switching, setSwitching] = useState(false);
+  /** The format learned for this file's layout; kept for its name and account after "Změnit". */
+  const [learned, setLearned] = useState<LearnedCsvFormat | null>(null);
+  /** `learned` read against the file: the mapping the preview uses, until the person changes it. */
+  const [learnedMapping, setLearnedMapping] = useState<MappingState | null>(null);
+  /** The format this import saved or replaced; the done step says so. */
+  const [remembered, setRemembered] = useState<LearnedCsvFormat | null>(null);
 
   /** Bumped per read; an answer that is no longer the latest is dropped. */
   const reads = useRef(0);
@@ -130,6 +156,7 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
   });
 
   const kind = statement ? 'statement' : csv ? 'csv' : null;
+  const fileName = path ? fileNameFromPath(path) : '';
   const summary = statement?.statements.find((s) => s.index === statementIndex);
   const dateOrder = statement
     ? statementDateOrder(statement, pickedDateOrder)
@@ -222,6 +249,28 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
   };
 
   /**
+   * A CSV's mapping is settled, recognized or learned: it goes to the account the entry point named,
+   * else the one `format` was learned for, else the only open one; the account list asks otherwise.
+   */
+  const settleCsvAccount = (
+    format: LearnedCsvFormat | null,
+    all: readonly BankAccountWithInstitution[],
+    requested: string | undefined
+  ) => {
+    const choice = chooseAccount({
+      preselected: learnedPreselect({ format, requested, accounts: all, todayDay }),
+      accounts: all,
+      todayDay,
+    });
+    if (choice.accountId === null) {
+      setStage('account');
+      return;
+    }
+    setTargetId(choice.accountId);
+    setStage('preview');
+  };
+
+  /**
    * Reads `filePath` from the start. `forced` is an account that was just created for it: the
    * file's account check is anchored there.
    */
@@ -239,6 +288,9 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
     setAccountConfirmed(false);
     setOverrides([]);
     setResult(null);
+    setLearned(null);
+    setLearnedMapping(null);
+    setRemembered(null);
     recognition.reset();
     setStage('reading');
 
@@ -291,6 +343,16 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
       if (!csvRecognizable(parsed)) return giveUp({ reason: 'notStatement' });
       setCsv(parsed);
       if (!presetReadable(parsed)) {
+        // Rung 4: a layout the person confirmed before is read as they confirmed it, without a question
+        const format = await findLearned(parsed);
+        if (mine !== reads.current) return;
+        setLearned(format);
+        const confirmed = format ? mappingForFile(format, parsed) : null;
+        if (confirmed) {
+          setLearnedMapping(confirmed);
+          settleCsvAccount(format, all, preselected);
+          return;
+        }
         // Rung 3: no preset describes the file, its content does. Nothing is written until the person accepts it.
         const inferred = await bankAccountsApi.inferCsvColumns(filePath, {
           delimiter: parsed.delimiter,
@@ -423,20 +485,41 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
     try {
       const all = await fetchAccounts();
       if (!wanted()) return;
-      const choice = chooseAccount({
-        preselected: preselectedRef.current,
-        accounts: all,
-        todayDay,
-      });
-      if (choice.accountId === null) {
-        setStage('account');
-        return;
-      }
-      setTargetId(choice.accountId);
-      setStage('preview');
+      settleCsvAccount(learned, all, preselectedRef.current);
     } catch (error) {
       if (!wanted()) return;
       giveUp({ reason: 'error', detail: translateApiError(error as Error, tc) });
+    }
+  };
+
+  /**
+   * "Změnit" on a learned format's preview: the file is read from its content once more and the
+   * recognition opens on the learned mapping, to correct it. What the person picks in the preview
+   * is dropped with the reading it was picked against; the format stays for its name and account.
+   */
+  const changeLearned = async () => {
+    if (stage !== 'preview' || !csv || !path || learnedMapping === null || targetId === null) {
+      return;
+    }
+    const mine = ++reads.current;
+    const file = { csv, path, anchorId: targetId };
+    const seed = learnedMapping;
+    setStage('reading');
+    try {
+      const inferred = await bankAccountsApi.inferCsvColumns(path, {
+        delimiter: csv.delimiter,
+        headerRow: csv.headerRow,
+        encoding: csv.encoding,
+        country,
+      });
+      if (mine !== reads.current) return;
+      setOverrides([]);
+      setLearnedMapping(null);
+      setStage(recognition.begin({ ...file, inferred }, seed));
+    } catch (error) {
+      if (mine !== reads.current) return;
+      setStage('preview');
+      toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
     }
   };
 
@@ -503,14 +586,23 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
         : null,
     [statement, statementIndex, orderValue, overrides]
   );
-  // A recognized CSV is imported with the mapping the person accepted, any other with its preset's
+  // A recognized CSV is imported with the mapping the person accepted, a learned one with the format's,
+  // any other with its preset's
   const recognizedMapping = recognition.mapping;
+  const source: CsvSource =
+    learnedMapping !== null ? 'learned' : recognizedMapping !== null ? 'recognized' : 'preset';
   const csvConfig = useMemo(
     () =>
       csv
-        ? buildImportConfig(recognizedMapping ?? mappingFromInspection(csv), csv, 0, [], overrides)
+        ? buildImportConfig(
+            recognizedMapping ?? learnedMapping ?? mappingFromInspection(csv),
+            csv,
+            0,
+            [],
+            overrides
+          )
         : null,
-    [csv, recognizedMapping, overrides]
+    [csv, recognizedMapping, learnedMapping, overrides]
   );
   // New objects on every render would restart the previews' debounce each time
   const statementPreviewOptions = useMemo(
@@ -569,6 +661,35 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
   const csvMutation = useCsvImportMutation(targetId ?? '');
   const statementMutation = useStatementImportMutation();
 
+  /**
+   * What the store learns from a CSV that was just imported into `accountId` (rung 4): the layout
+   * the person confirmed is saved — under the name they gave a format they then changed, else the
+   * account's institution — and a learned format that read the file is marked used. Best effort
+   * (`applyLearning`): it never fails the import. Resolves with the saved format, which is what the
+   * done step reports.
+   */
+  const learnFrom = async (accountId: string): Promise<LearnedCsvFormat | null> => {
+    const insert =
+      csv && recognizedMapping
+        ? learnedFormatInsert({
+            name:
+              learned?.name ??
+              defaultFormatName(
+                accounts.find((account) => account.id === accountId),
+                fileName
+              ),
+            accountId,
+            csv,
+            mapping: recognizedMapping,
+          })
+        : null;
+    const learning = learningAfterImport({ source, learned, insert });
+    if (learning.kind === 'none') return null;
+    const saved = await applyLearning(learning, learnedFormatsApi);
+    void queryClient.invalidateQueries({ queryKey: LEARNED_FORMATS_KEY });
+    return saved;
+  };
+
   const runImport = async () => {
     if (!canImport || targetId === null || path === null) return;
     // The account this write goes to; the done step acts on it
@@ -587,6 +708,7 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
           : await csvMutation.mutateAsync({ filePath: path, config: csvConfig! });
       setResult(written);
       setImportedId(writeAccountId);
+      if (kind === 'csv') setRemembered(await learnFrom(writeAccountId));
       setStage('done');
     } catch (error) {
       toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
@@ -603,7 +725,7 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
   return {
     stage,
     path,
-    fileName: path ? fileNameFromPath(path) : '',
+    fileName,
     unreadable,
     kind,
     statement,
@@ -615,6 +737,9 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
     csv,
     preset,
     recognition,
+    source,
+    learned,
+    remembered,
     guides,
     accountGuide,
     requestedAccount,
@@ -639,6 +764,7 @@ export function useImportFlow(request: ImportRequest, open: boolean) {
     chooseFile,
     continueFromStatement,
     continueFromRecognition,
+    changeLearned,
     selectAccount,
     runImport,
     finish,

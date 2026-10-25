@@ -468,6 +468,11 @@
       "sampleHint": "Wählen Sie eine Spalte, dann zeige ich, wie ich die Zahlung lesen würde.",
       "pair": "Spaltenpaar"
     },
+    "learned": {
+      "note": "Erkannt anhand des gespeicherten Formats {{name}}",
+      "change": "Ändern",
+      "remembered": "Ich habe mir das Format gemerkt: Beim nächsten Mal lese ich diese Datei ohne Rückfragen."
+    },
     "preview": {
       "hint": "Tippen Sie auf eine Zahlung, um ihre Kategorie zu wählen.",
       "more_one": "und {{count}} weitere",

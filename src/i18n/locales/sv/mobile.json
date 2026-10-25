@@ -468,6 +468,11 @@
       "sampleHint": "Välj en kolumn så visar jag hur jag skulle läsa transaktionen.",
       "pair": "kolumnpar"
     },
+    "learned": {
+      "note": "Igenkänt från det sparade formatet {{name}}",
+      "change": "Ändra",
+      "remembered": "Jag har kommit ihåg formatet: nästa gång läser jag den här filen utan frågor."
+    },
     "preview": {
       "hint": "Tryck på en betalning för att välja kategori.",
       "more_one": "och {{count}} till",

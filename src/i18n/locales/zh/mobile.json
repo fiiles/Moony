@@ -442,6 +442,11 @@
       "sampleHint": "选择一列，我会展示我将如何读取这笔交易。",
       "pair": "两列一组"
     },
+    "learned": {
+      "note": "已按保存的格式“{{name}}”识别",
+      "change": "更改",
+      "remembered": "已记住该格式：下次读取此文件时不再提问。"
+    },
     "preview": {
       "hint": "点按一笔付款即可选择其类别。",
       "more_other": "还有 {{count}} 笔"

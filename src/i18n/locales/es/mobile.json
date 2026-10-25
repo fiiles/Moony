@@ -494,6 +494,11 @@
       "sampleHint": "Elige una columna y te enseño cómo leería un movimiento.",
       "pair": "par de columnas"
     },
+    "learned": {
+      "note": "Reconocido por el formato guardado {{name}}",
+      "change": "Cambiar",
+      "remembered": "He recordado el formato: la próxima vez leeré este archivo sin preguntas."
+    },
     "preview": {
       "hint": "Toca un pago para elegir su categoría.",
       "more_one": "y {{count}} más",

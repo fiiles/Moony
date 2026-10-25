@@ -31,7 +31,6 @@ import { AddCryptoModal } from '@/components/crypto/AddCryptoModal';
 import { BuyCryptoModal } from '@/components/crypto/BuyCryptoModal';
 import { SellCryptoModal } from '@/components/crypto/SellCryptoModal';
 import { UpdateCryptoPriceModal } from '@/components/crypto/UpdateCryptoPriceModal';
-import { CoinGeckoApiKeyBanner } from '@/components/crypto/CoinGeckoApiKeyBanner';
 import { CryptoSummary } from '@/components/crypto/CryptoSummary';
 import { CryptoTable, type CryptoTableRow } from '@/components/crypto/CryptoTable';
 import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
@@ -114,7 +113,7 @@ export default function Crypto() {
   const sellCount = (allTransactions ?? []).filter((tx) => tx.type === 'sell').length;
 
   const refreshPricesMutation = useMutation({
-    mutationFn: () => priceApi.refreshCryptoPrices(),
+    mutationFn: () => priceApi.refreshCryptoPrices(true),
     onSuccess: (result) => {
       void invalidateAfterPriceRefresh(queryClient);
       toast(t('toast.pricesRefreshed', { count: result.length }), {
@@ -271,8 +270,6 @@ export default function Crypto() {
             latestFetchedAt={latestFetchedAt}
             isLoading={refreshPricesMutation.isPending}
           />
-
-          <CoinGeckoApiKeyBanner />
 
           <PortfolioTrendCard<TradeDayEvent>
             type="crypto"

@@ -232,7 +232,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         queryClient.invalidateQueries({ queryKey: ['dividend-summary'] });
       })
       .catch(console.error);
-    // Crypto prices (CoinGecko)
+    // Crypto prices (Yahoo Finance)
     priceApi
       .refreshCryptoPrices()
       .then(() => invalidateAfterPriceRefresh(queryClient))

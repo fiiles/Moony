@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Loader2, Search } from 'lucide-react';
 import { requiredNumber } from '@/utils/form-schemas';
-import { cryptoApi, priceApi, type CoinGeckoSearchResult } from '@/lib/tauri-api';
+import { cryptoApi, priceApi, type CryptoSearchResult } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { toPlainDecimal } from '@/utils/plain-decimal';
@@ -39,14 +39,14 @@ import { AssetLogo } from '@/components/common/AssetLogo';
 const formSchema = z.object({
   name: z.string().min(1, 'validation.nameRequired'),
   ticker: z.string().min(1, 'validation.tickerRequired'),
-  coingeckoId: z.string().optional(),
+  yahooSymbol: z.string().optional(),
   quantity: requiredNumber('validation.quantityRequired').positive('validation.quantityPositive'),
   pricePerUnit: requiredNumber('validation.priceRequired').min(0, 'validation.priceNonNegative'),
   currency: currencyCodeSchema,
   date: z.string().optional(),
 });
 
-/** Pause after the last keystroke before the CoinGecko search starts. */
+/** Pause after the last keystroke before the Yahoo Finance search starts. */
 const SEARCH_DEBOUNCE_MS = 400;
 const MIN_AUTO_SEARCH_CHARS = 2;
 const SEARCH_STALE_MS = 5 * 60 * 1000;
@@ -58,8 +58,8 @@ interface AddCryptoModalProps {
 
 /**
  * "Přidat kryptoměnu" (design system §6 Modal, prototype crypto.html): typing
- * a coin name shows CoinGecko suggestions inline (rank and ticker); picking one
- * fills the ticker and the CoinGecko id, then quantity, rate and date. The
+ * a coin name shows Yahoo Finance suggestions inline (name and ticker); picking
+ * one fills the ticker and the Yahoo symbol, then quantity, rate and date. The
  * first purchase becomes the position's first transaction.
  */
 export function AddCryptoModal({ open, onOpenChange }: AddCryptoModalProps) {
@@ -74,7 +74,7 @@ export function AddCryptoModal({ open, onOpenChange }: AddCryptoModalProps) {
     defaultValues: {
       name: '',
       ticker: '',
-      coingeckoId: '',
+      yahooSymbol: '',
       quantity: 0,
       pricePerUnit: 0,
       currency: 'USD',
@@ -95,7 +95,7 @@ export function AddCryptoModal({ open, onOpenChange }: AddCryptoModalProps) {
     data: results = [],
     isFetching: searching,
     isError: searchFailed,
-  } = useQuery<CoinGeckoSearchResult[]>({
+  } = useQuery<CryptoSearchResult[]>({
     queryKey: ['crypto-search', queryText],
     queryFn: () => priceApi.searchCrypto(queryText),
     enabled: showSuggestions && !typingPending,
@@ -120,10 +120,10 @@ export function AddCryptoModal({ open, onOpenChange }: AddCryptoModalProps) {
     setTypedQuery('');
   };
 
-  const selectCoin = (result: CoinGeckoSearchResult) => {
-    form.setValue('ticker', result.symbol.toUpperCase(), { shouldValidate: true });
+  const selectCoin = (result: CryptoSearchResult) => {
+    form.setValue('ticker', result.ticker, { shouldValidate: true });
     form.setValue('name', result.name, { shouldValidate: true });
-    form.setValue('coingeckoId', result.id);
+    form.setValue('yahooSymbol', result.symbol);
     setSuggestionsOpen(false);
   };
 
@@ -132,7 +132,7 @@ export function AddCryptoModal({ open, onOpenChange }: AddCryptoModalProps) {
       const cryptoData = {
         ticker: values.ticker,
         name: values.name,
-        coingeckoId: values.coingeckoId || undefined,
+        yahooSymbol: values.yahooSymbol || undefined,
       };
       const initialTransaction = {
         type: 'buy',
@@ -277,22 +277,17 @@ export function AddCryptoModal({ open, onOpenChange }: AddCryptoModalProps) {
                 ) : (
                   <ul className="m-0 max-h-56 list-none overflow-y-auto p-1">
                     {results.map((result) => (
-                      <li key={result.id}>
+                      <li key={result.symbol}>
                         <button
                           type="button"
                           onClick={() => selectCoin(result)}
                           className="flex w-full items-center gap-2.5 rounded-r1 px-2.5 py-2 text-left text-table text-ink transition-colors duration-fast hover:bg-well focus-visible:bg-well focus-visible:outline-none"
                         >
-                          <AssetLogo ticker={result.symbol} type="crypto" variant="soft" />
+                          <AssetLogo ticker={result.ticker} type="crypto" variant="soft" />
                           <span className="min-w-0 flex-1 truncate">
                             <b className="font-650">{result.name}</b>{' '}
-                            <span className="text-ink-4">{result.symbol.toUpperCase()}</span>
+                            <span className="text-ink-4">{result.ticker}</span>
                           </span>
-                          {result.market_cap_rank !== null && (
-                            <span className="shrink-0 text-micro font-600 text-ink-4 num">
-                              {t('modal.add.rank', { rank: result.market_cap_rank })}
-                            </span>
-                          )}
                         </button>
                       </li>
                     ))}

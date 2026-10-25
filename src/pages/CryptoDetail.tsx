@@ -122,7 +122,7 @@ export default function CryptoDetail() {
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await priceApi.refreshCryptoPrices();
+      await priceApi.refreshCryptoPrices(true);
       await invalidateAfterPriceRefresh(queryClient);
       toast(t('detail.pricesRefreshed'));
     } catch (error) {
@@ -337,7 +337,7 @@ export default function CryptoDetail() {
           crypto.ticker,
           crypto.isManualPrice
             ? t('detail.manualSource')
-            : crypto.coingeckoId
+            : crypto.yahooSymbol
               ? t('detail.source')
               : null,
           nativeCurrency,

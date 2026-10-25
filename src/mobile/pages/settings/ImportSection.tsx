@@ -24,10 +24,11 @@ const BUTTON =
  * Nastavení → Import (spec §8.6 rung 4, §8.9): "Importovat výpis" (the import sheet every entry
  * point shares, asked here without an account), the layouts the person confirmed once — "Naučené
  * formáty", each a row that opens its sheet to rename or delete it — and the export guides of the
- * banks in a sheet. A format's row says which account it was learned for (left out when that
- * account is gone), when, when it was last used, and that the bank has a built-in format now when
- * a shipped preset matches its layout (the preset then reads the file; the learned format waits).
- * No format yet: one sentence on how one comes to be.
+ * banks in a sheet. A format's row says, in the one line it has, which account it was learned for
+ * (its name; left out when the account is gone) and when it was last used, led by "banka má
+ * vestavěný formát" when a shipped preset now matches its layout (the preset then reads the file;
+ * the learned format waits). The rest is in the sheet. No format yet: one sentence on how one
+ * comes to be.
  */
 export default function ImportSection() {
   const { t } = useTranslation('mobile');
@@ -41,17 +42,19 @@ export default function ImportSection() {
   // A format that is gone (deleted, or the list reloaded without it) closes its sheet
   const opened = formats.find((format) => format.id === openId) ?? null;
 
-  // Created and last-used are real instants (the store's clock), written short like a sub-line's day
+  // Last used is a real instant (the store's clock), written short like a sub-line's day
   const day = (unixSeconds: number) =>
     fmt.date(new Date(unixSeconds * 1000), shortDayOptions(unixSeconds));
+  // What fits one line: the account's own name and the last import. A format a bank preset now
+  // shadows leads with that, or it would be cut off; the rest (institution, learned day) is in the sheet
   const subOf = (format: LearnedCsvFormat): string => {
-    const { account, created, lastUsed } = learnedFormatSub(format, accounts);
-    const when = { created: day(created), lastUsed: day(lastUsed) };
+    const { account, lastUsed } = learnedFormatSub(format, accounts);
+    const when = { lastUsed: day(lastUsed) };
     const text =
       account === null
         ? t('settings.import.subNoAccount', when)
         : t('settings.import.sub', { account, ...when });
-    return format.shadowedByPresetId ? `${text} · ${t('settings.import.shadowed')}` : text;
+    return format.shadowedByPresetId ? `${t('settings.import.shadowed')} · ${text}` : text;
   };
 
   return (

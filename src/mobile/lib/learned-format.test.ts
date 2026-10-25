@@ -485,26 +485,41 @@ describe('learnedFormatSub', () => {
     { id: 'c', name: 'Hotovost', institution: { name: '  ' } },
   ];
 
-  it('names the account with its institution', () => {
-    expect(learnedFormatSub(format({ accountId: 'a' }), accounts).account).toBe(
+  it('names the account on its own for the row, without its institution', () => {
+    expect(learnedFormatSub(format({ accountId: 'a' }), accounts).account).toBe('Běžný účet');
+    expect(learnedFormatSub(format({ accountId: 'b' }), accounts).account).toBe('Spořicí');
+  });
+
+  it('names the account with its institution for the sheet', () => {
+    expect(learnedFormatSub(format({ accountId: 'a' }), accounts).accountLabel).toBe(
       'Běžný účet · UniCredit'
     );
   });
 
-  it('names an account without an institution by its name alone', () => {
-    expect(learnedFormatSub(format({ accountId: 'b' }), accounts).account).toBe('Spořicí');
-    expect(learnedFormatSub(format({ accountId: 'c' }), accounts).account).toBe('Hotovost');
+  it('names an account without an institution by its name alone, blank or none', () => {
+    expect(learnedFormatSub(format({ accountId: 'b' }), accounts).accountLabel).toBe('Spořicí');
+    expect(learnedFormatSub(format({ accountId: 'c' }), accounts).accountLabel).toBe('Hotovost');
   });
 
   it('has no account when the account is gone or the format never had one', () => {
-    expect(learnedFormatSub(format({ accountId: 'gone' }), accounts).account).toBeNull();
-    expect(learnedFormatSub(format({ accountId: null }), accounts).account).toBeNull();
-    expect(learnedFormatSub(format({ accountId: 'a' }), []).account).toBeNull();
+    for (const none of [
+      learnedFormatSub(format({ accountId: 'gone' }), accounts),
+      learnedFormatSub(format({ accountId: null }), accounts),
+      learnedFormatSub(format({ accountId: 'a' }), []),
+    ]) {
+      expect(none.account).toBeNull();
+      expect(none.accountLabel).toBeNull();
+    }
   });
 
   it('passes the dates through as they are', () => {
     expect(
       learnedFormatSub(format({ createdAt: 1_760_000_000, lastUsedAt: 1_761_000_000 }), accounts)
-    ).toEqual({ account: null, created: 1_760_000_000, lastUsed: 1_761_000_000 });
+    ).toEqual({
+      account: null,
+      accountLabel: null,
+      created: 1_760_000_000,
+      lastUsed: 1_761_000_000,
+    });
   });
 });

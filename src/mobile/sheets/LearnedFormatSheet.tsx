@@ -24,8 +24,9 @@ interface LearnedFormatSheetProps {
 
 /**
  * A learned CSV format (spec §8.6 rung 4, Nastavení → Import): its name as a field, what it was
- * learned from — the account, the day, the last import with it and the columns it reads — and
- * "Smazat formát". Rename is the footer's Uložit (off while the name is unchanged or empty) and
+ * learned from — the account with its institution, the day, the last import with it and the
+ * columns it reads — a quiet note when the bank's own preset now reads this layout (the format
+ * waits), and "Smazat formát". Rename is the footer's Uložit (off while the name is unchanged or empty) and
  * closes the sheet; the delete asks first in a confirm sheet that says the next file will be
  * recognized again. The store's own refusals are toasts (`useLearnedFormats`).
  */
@@ -139,13 +140,19 @@ export function LearnedFormatSheet({ format, accounts, onOpenChange }: LearnedFo
 
         {shown && facts && (
           <div className="mt-3 divide-y divide-line-soft">
-            {facts.account !== null && (
-              <KeyValueRow label={t('settings.import.format.account')} value={facts.account} />
+            {facts.accountLabel !== null && (
+              <KeyValueRow label={t('settings.import.format.account')} value={facts.accountLabel} />
             )}
             <KeyValueRow label={t('settings.import.format.created')} value={day(facts.created)} />
             <KeyValueRow label={t('settings.import.format.lastUsed')} value={day(facts.lastUsed)} />
             <KeyValueRow stack label={t('settings.import.format.columns')} value={columns} />
           </div>
+        )}
+
+        {shown?.shadowedByPresetId && (
+          <p className="mx-0.5 mb-0 mt-3 text-m-sub text-ink-3">
+            {t('settings.import.format.shadowedNote')}
+          </p>
         )}
 
         <Button

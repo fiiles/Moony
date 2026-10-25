@@ -247,20 +247,28 @@ export function learnedFormatInsert(input: {
 
 /**
  * What a learned format's row and sheet say about it besides its name: the account it was learned
- * for — its name with the institution ("Běžný účet · UniCredit"), `null` when it has none or the
- * account has since been deleted — and the two dates (unix seconds, as stored; the caller writes
- * them in the person's language).
+ * for — `account` is its own name, which is all the list row has room for (the format's name is
+ * usually the institution already), `accountLabel` the name with the institution ("Běžný účet ·
+ * UniCredit") for the sheet; both `null` when the format has none or the account has since been
+ * deleted — and the two dates (unix seconds, as stored; the caller writes them in the person's
+ * language).
  */
 export function learnedFormatSub(
   format: Pick<LearnedCsvFormat, 'accountId' | 'createdAt' | 'lastUsedAt'>,
   accounts: readonly { id: string; name: string; institution?: { name: string } | null }[]
-): { account: string | null; created: number; lastUsed: number } {
+): {
+  account: string | null;
+  accountLabel: string | null;
+  created: number;
+  lastUsed: number;
+} {
   const account = format.accountId
     ? accounts.find((candidate) => candidate.id === format.accountId)
     : undefined;
   const institution = account?.institution?.name.trim();
   return {
-    account: account ? [account.name, institution].filter(Boolean).join(' · ') : null,
+    account: account?.name ?? null,
+    accountLabel: account ? [account.name, institution].filter(Boolean).join(' · ') : null,
     created: format.createdAt,
     lastUsed: format.lastUsedAt,
   };

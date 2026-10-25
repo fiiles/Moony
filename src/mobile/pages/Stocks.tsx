@@ -51,7 +51,7 @@ import {
   useStockPositions,
   useStockTrades,
   useTwrThisYear,
-} from '@/mobile/hooks/use-stocks';
+} from '@/mobile/hooks/use-stock-positions';
 import { useTickerSearch } from '@/mobile/hooks/use-ticker-search';
 import { stocksView, type StocksTab } from '@/mobile/lib/position-rows';
 import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';

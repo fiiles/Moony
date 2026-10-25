@@ -10,7 +10,7 @@ import { useCurrency } from '@/lib/currency';
 import { cryptoApi, otherAssetsApi, realEstateApi } from '@/lib/tauri-api';
 import { toCryptoRow } from '@/utils/positions';
 import { tickerSummary } from '@/utils/trade-events';
-import { useStockPositions } from '@/mobile/hooks/use-stocks';
+import { useStockPositions } from '@/mobile/hooks/use-stock-positions';
 import { periodChange, type PeriodChange } from '@/mobile/lib/change';
 import {
   propertyChange,

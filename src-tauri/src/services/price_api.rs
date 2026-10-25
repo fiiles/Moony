@@ -922,9 +922,9 @@ fn search_failure(error: &AppError) -> String {
     }
 }
 
-/// Search Yahoo Finance for coins (spec D6): first `<query> USD` (crypto rows only), then the
-/// plain query (a coin listed under another quote currency); the rows of both, merged by base,
-/// as USD pairs. One failed request is logged; both failing is an error.
+/// Search Yahoo Finance for coins (spec D6): `<query> USD` (crypto rows only) and the plain query
+/// (a coin listed under another quote currency), sent concurrently; the rows of both, merged by
+/// base, as USD pairs. One failed request is logged; both failing is an error.
 pub async fn search_crypto(query: &str) -> Result<Vec<CryptoSearchResult>> {
     let query = query.trim();
     // A blank query would search for the bare " USD" variant: nothing to look for, no request.
@@ -933,8 +933,11 @@ pub async fn search_crypto(query: &str) -> Result<Vec<CryptoSearchResult>> {
     }
     log::debug!("[YAHOO SEARCH] Searching crypto: {}", query);
 
-    let with_usd = yahoo_crypto_search(&format!("{query} USD")).await;
-    let plain = yahoo_crypto_search(query).await;
+    let with_usd_query = format!("{query} USD");
+    let (with_usd, plain) = tokio::join!(
+        yahoo_crypto_search(&with_usd_query),
+        yahoo_crypto_search(query)
+    );
     match (with_usd, plain) {
         (Ok(first), Ok(second)) => Ok(crypto_symbols::merge_search_results(first, second)),
         (Ok(first), Err(error)) => {

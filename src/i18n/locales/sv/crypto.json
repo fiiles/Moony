@@ -58,6 +58,7 @@
     "showClosed": "Visa stängda innehav",
     "source": "Yahoo Finance",
     "manualSource": "manuell kurs",
+    "noSource": "saknar kurskälla",
     "closed": "stängt {{date}}",
     "realized": "{{amount}} realiserat",
     "noResults": {

@@ -6,8 +6,9 @@ import { AssetLogo } from '@/components/common/AssetLogo';
 
 /**
  * The suggestion box under a coin search field (design system §6, the add dialog's list): a
- * searching line, the error or no-match line, or the matches with name and ticker. Picking a row
- * hands its Yahoo listing to the dialog.
+ * searching line, the error or no-match line, or the matches with name, ticker and Yahoo symbol
+ * (the symbol tells same-name listings apart). Picking a row hands its Yahoo listing to the
+ * dialog.
  */
 export function CryptoSearchList({
   search,
@@ -45,7 +46,8 @@ export function CryptoSearchList({
                 <AssetLogo ticker={result.ticker} type="crypto" variant="soft" />
                 <span className="min-w-0 flex-1 truncate">
                   <b className="font-650">{result.name}</b>{' '}
-                  <span className="text-ink-4">{result.ticker}</span>
+                  <span className="text-ink-4">{result.ticker}</span>{' '}
+                  <span className="text-ink-4">{result.symbol}</span>
                 </span>
               </button>
             </li>

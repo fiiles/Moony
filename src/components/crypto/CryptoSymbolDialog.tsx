@@ -24,9 +24,9 @@ interface CryptoSymbolDialogProps {
 }
 
 /**
- * "Zdroj kurzu" (design system §6 Modal): says which Yahoo Finance listing a coin follows and
- * lets the user search for another (the search opens on the coin's name); picking a row stores it, and the rate and the history are
- * rebuilt from it. The search list is the add dialog's.
+ * "Rate source" (design system §6 Modal): says which Yahoo Finance listing a coin follows and
+ * lets the user search for another (the search opens on the coin's name); picking a row stores
+ * it, and the rate and the history are rebuilt from it. The search list is the add dialog's.
  */
 export function CryptoSymbolDialog({ open, onOpenChange, investment }: CryptoSymbolDialogProps) {
   const { t } = useTranslation('crypto');

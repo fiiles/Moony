@@ -12,7 +12,8 @@ interface UnpricedCoinsBannerProps<T extends CryptoRow> {
 
 /**
  * Banner above the trend card naming the holdings Moony could not match to a Yahoo Finance
- * listing (`yahooSymbol` null; a sold-out coin needs none). It has no dismiss state: it goes when every holding has a symbol.
+ * listing (`yahooSymbol` null; a sold-out coin needs none). It has no dismiss state: it goes when
+ * every holding has a symbol.
  */
 export function UnpricedCoinsBanner<T extends CryptoRow>({
   rows,

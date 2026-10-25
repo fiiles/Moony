@@ -180,6 +180,18 @@ pub fn choose_symbol(name: &str, ticker: &str, rows: &[CryptoSearchResult]) -> O
     }
 }
 
+/// D4 over both searches: the rows of the name search then the ticker search, merged by base
+/// (first wins), and one [`choose_symbol`] over the merged rows, so a coin that only one search
+/// happens to surface is never chosen while the other search showed it is ambiguous.
+pub fn choose_from_searches(
+    name: &str,
+    ticker: &str,
+    name_rows: Vec<CryptoSearchResult>,
+    ticker_rows: Vec<CryptoSearchResult>,
+) -> Option<String> {
+    choose_symbol(name, ticker, &merge_search_results(name_rows, ticker_rows))
+}
+
 /// What [`ensure_symbol`] found for a holding.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Resolved {
@@ -210,8 +222,8 @@ fn store_resolved(conn: &rusqlite::Connection, id: &str, symbol: &str) -> Result
         .filter(|stored| !stored.trim().is_empty()))
 }
 
-/// The holding's symbol: the stored one, else resolved (D4: `search_crypto(name)`, choose; else
-/// `search_crypto(ticker)`, choose) and stored. `Resolved::Already(s)` / `Resolved::Now(s)` /
+/// The holding's symbol: the stored one, else resolved (D4: `search_crypto(name)` and
+/// `search_crypto(ticker)`, merged, one choice) and stored. `Resolved::Already(s)` / `Resolved::Now(s)` /
 /// `Resolved::None`. A search failure is `None` (best effort, warn log), never an error; a
 /// holding that already has a symbol is never resolved again.
 pub async fn ensure_symbol(db: &Database, ticker: &str) -> Result<Resolved> {
@@ -236,34 +248,42 @@ pub async fn ensure_symbol(db: &Database, ticker: &str) -> Result<Resolved> {
     if !name.trim().eq_ignore_ascii_case(&ticker) {
         queries.push(ticker.clone());
     }
+    let mut searches: Vec<Vec<CryptoSearchResult>> = Vec::new();
     for query in queries.into_iter().filter(|query| !query.is_empty()) {
-        let rows = match crate::services::price_api::search_crypto(&query).await {
-            Ok(rows) => rows,
+        match crate::services::price_api::search_crypto(&query).await {
+            Ok(rows) => searches.push(rows),
             Err(error) => {
                 log::warn!(
                     "[CRYPTO SYMBOL] Yahoo search failed, symbol not resolved this time: {error}"
                 );
                 return Ok(Resolved::None);
             }
-        };
-        let Some(chosen) = choose_symbol(&name, &ticker, &rows) else {
-            continue;
-        };
+        }
+    }
+    let mut searches = searches.into_iter();
+    let name_rows = searches.next().unwrap_or_default();
+    let ticker_rows = searches.next().unwrap_or_default();
+    if let Some(chosen) = choose_from_searches(&name, &ticker, name_rows, ticker_rows) {
         // A row Yahoo spells outside the D2 rule is no choice; it must not fail the refresh.
-        let Ok(symbol) = normalize_symbol(&chosen) else {
-            log::debug!("[CRYPTO SYMBOL] {ticker}: the chosen row {chosen} is not a valid symbol");
-            continue;
-        };
-        // Stored only while the holding is still unresolved: a symbol picked meanwhile wins.
-        let stored = db.with_conn(|conn| store_resolved(conn, &id, &symbol))?;
-        return Ok(match stored {
-            Some(stored) if stored == symbol => {
-                log::debug!("[CRYPTO SYMBOL] {ticker} resolved to {symbol}");
-                Resolved::Now(stored)
+        match normalize_symbol(&chosen) {
+            Ok(symbol) => {
+                // Stored only while the holding is still unresolved: a symbol picked meanwhile wins.
+                let stored = db.with_conn(|conn| store_resolved(conn, &id, &symbol))?;
+                return Ok(match stored {
+                    Some(stored) if stored == symbol => {
+                        log::debug!("[CRYPTO SYMBOL] {ticker} resolved to {symbol}");
+                        Resolved::Now(stored)
+                    }
+                    Some(stored) => Resolved::Already(stored),
+                    None => Resolved::None,
+                });
             }
-            Some(stored) => Resolved::Already(stored),
-            None => Resolved::None,
-        });
+            Err(_) => {
+                log::debug!(
+                    "[CRYPTO SYMBOL] {ticker}: the chosen row {chosen} is not a valid symbol"
+                );
+            }
+        }
     }
     log::debug!("[CRYPTO SYMBOL] {ticker} has no unique Yahoo symbol");
     Ok(Resolved::None)
@@ -483,5 +503,28 @@ mod tests {
             "a symbol picked meanwhile wins"
         );
         assert_eq!(store_resolved(&conn, "gone", "ARB11841-USD").unwrap(), None);
+    }
+
+    #[test]
+    fn an_ambiguous_name_search_is_not_settled_by_a_lone_ticker_row() {
+        let name_rows = vec![
+            row("JUP-USD", "JUP", "Jupiter"),
+            row("JUP29210-USD", "JUP", "Jupiter"),
+        ];
+        let ticker_rows = vec![row("JUP29210-USD", "JUP", "Jupiter")];
+        assert_eq!(
+            choose_from_searches("Jupiter", "JUP", name_rows, ticker_rows),
+            None
+        );
+    }
+
+    #[test]
+    fn a_coin_only_the_ticker_search_finds_is_chosen_when_it_is_unique() {
+        let name_rows = vec![row("OTHER-USD", "OTH", "Other coin")];
+        let ticker_rows = vec![row("JUP29210-USD", "JUP", "Jupiter")];
+        assert_eq!(
+            choose_from_searches("Jupiter", "JUP", name_rows, ticker_rows).as_deref(),
+            Some("JUP29210-USD")
+        );
     }
 }

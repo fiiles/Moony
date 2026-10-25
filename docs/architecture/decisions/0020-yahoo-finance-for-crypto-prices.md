@@ -37,7 +37,7 @@ history.
   one, or one added without picking a search result) is looked up by name, then by ticker. A
   symbol is stored only when exactly one coin matches; otherwise the holding stays unresolved,
   is skipped by price refreshes and history rebuilds, and the crypto page asks the user to pick
-  the listing ("Zdroj kurzu…"). The migration itself needs no network and assigns no symbols.
+  the listing ("Rate source…"). The migration itself needs no network and assigns no symbols.
 
 ## Consequences
 
@@ -48,7 +48,9 @@ history.
 - **Unresolved holdings need one pick from the user** where Yahoo lists several coins of the
   same ticker and name. Until then the last cached price is shown and the history is not
   rebuilt for that coin.
-- Crypto history older than a year now comes from the same series as the recent days; rows
-  already stored from CoinGecko are kept.
+- Crypto history older than a year now comes from the same series as the recent days. Every
+  holding whose symbol is set or resolved lazily is rebuilt from its first transaction on
+  Yahoo's daily closes, replacing the rows stored from CoinGecko; only a holding that stays
+  unresolved keeps its old rows.
 - The wire contract and the MCP tool change: `coingeckoId` becomes `yahooSymbol` (optional on
   `crypto_transactions_create`).

@@ -14,7 +14,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0004](0004-local-api-token-gated-writes.md) | Local API token-gated writes | 2026-07-07 | Superseded by 0006 |
 | [0005](0005-yahoo-finance-for-prices.md) | Yahoo Finance for stock prices | 2026-07-07 | Accepted; CoinGecko sentence superseded by 0020 |
 | [0006](0006-embedded-mcp-server.md) | Embedded MCP server over Streamable HTTP | 2026-08-12 | Accepted |
-| [0007](0007-one-write-path-ui-and-mcp.md) | One write path for UI and MCP | 2026-08-12 | Accepted; renderer refresh superseded by 0014 |
+| [0007](0007-one-write-path-ui-and-mcp.md) | One write path for UI and MCP | 2026-08-12 | Accepted; renderer refresh superseded by 0014; coingeckoId requirement superseded by 0020 |
 | [0008](0008-utc-calendar-days.md) | Calendar days are UTC-midnight epochs; periods bounded in UTC | 2026-10-02 | Accepted |
 | [0009](0009-key-derivation-parameters.md) | Versioned scrypt parameters for the password key file | 2026-10-02 | Accepted; re-wrap follow-up taken up by 0018 |
 | [0010](0010-new-identifier-and-single-schema-baseline.md) | New app identifier and a single schema baseline | 2026-10-04 | Accepted; identifier rule amended by 0015 |

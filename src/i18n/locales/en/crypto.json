@@ -58,6 +58,7 @@
     "showClosed": "Show closed positions",
     "source": "Yahoo Finance",
     "manualSource": "manual rate",
+    "noSource": "no rate source",
     "closed": "closed {{date}}",
     "realized": "{{amount}} realized",
     "noResults": {

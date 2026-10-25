@@ -64,6 +64,7 @@
     "showClosed": "Pokaż zamknięte pozycje",
     "source": "Yahoo Finance",
     "manualSource": "kurs ręczny",
+    "noSource": "brak źródła kursu",
     "closed": "zamknięta {{date}}",
     "realized": "zrealizowano {{amount}}",
     "noResults": {

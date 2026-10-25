@@ -61,6 +61,7 @@
     "showClosed": "Zobrazit uzavřené pozice",
     "source": "Yahoo Finance",
     "manualSource": "ruční kurz",
+    "noSource": "bez zdroje kurzu",
     "closed": "uzavřeno {{date}}",
     "realized": "{{amount}} realizováno",
     "noResults": {

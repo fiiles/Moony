@@ -58,6 +58,7 @@
     "showClosed": "Vis avsluttede beholdninger",
     "source": "Yahoo Finance",
     "manualSource": "manuell kurs",
+    "noSource": "mangler kurskilde",
     "closed": "avsluttet {{date}}",
     "realized": "{{amount}} realisert",
     "noResults": {

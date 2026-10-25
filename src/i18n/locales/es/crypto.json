@@ -61,6 +61,7 @@
     "showClosed": "Mostrar posiciones cerradas",
     "source": "Yahoo Finance",
     "manualSource": "cotización manual",
+    "noSource": "sin fuente de cotización",
     "closed": "cerrada el {{date}}",
     "realized": "{{amount}} realizados",
     "noResults": {

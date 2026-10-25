@@ -55,6 +55,7 @@
     "showClosed": "決済済みのポジションを表示",
     "source": "Yahoo Finance",
     "manualSource": "手動レート",
+    "noSource": "レートの取得元なし",
     "closed": "{{date}}に決済",
     "realized": "確定 {{amount}}",
     "noResults": {

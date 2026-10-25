@@ -55,6 +55,7 @@
     "showClosed": "显示已平仓持仓",
     "source": "Yahoo Finance",
     "manualSource": "手动汇率",
+    "noSource": "无汇率来源",
     "closed": "{{date}} 已平仓",
     "realized": "已实现 {{amount}}",
     "noResults": {

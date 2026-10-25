@@ -247,7 +247,9 @@ export function CryptoTable({
                             ? t('table.closed', { date: fmt.day(h.closedAt) })
                             : h.isManualPrice
                               ? t('table.manualSource')
-                              : t('table.source')}
+                              : h.yahooSymbol
+                                ? t('table.source')
+                                : t('table.noSource')}
                         </small>
                       </div>
                     </div>

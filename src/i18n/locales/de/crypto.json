@@ -58,6 +58,7 @@
     "showClosed": "Geschlossene Positionen anzeigen",
     "source": "Yahoo Finance",
     "manualSource": "manueller Kurs",
+    "noSource": "keine Kursquelle",
     "closed": "geschlossen am {{date}}",
     "realized": "{{amount}} realisiert",
     "noResults": {

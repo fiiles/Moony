@@ -24,6 +24,7 @@ import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
 import type { InvestmentTransaction } from '@shared/schema';
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PreSplitHint } from '@/components/stocks/PreSplitHint';
 import { useInvestmentTransactionMutations } from '@/hooks/use-investment-mutations';
 import { FormSection } from '@/components/ui/form-section';
 
@@ -170,6 +171,7 @@ export function EditTransactionModal({
                           <Input type="date" {...field} />
                         </FormControl>
                         <FormMessage />
+                        <PreSplitHint ticker={transaction.ticker} date={field.value} />
                       </FormItem>
                     )}
                   />

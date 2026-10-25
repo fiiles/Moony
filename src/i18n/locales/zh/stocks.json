@@ -309,7 +309,8 @@
     "menu": {
       "editPrice": "编辑价格",
       "editDividend": "编辑股息估值",
-      "editName": "编辑名称"
+      "editName": "编辑名称",
+      "recordSplit": "记录拆股"
     },
     "status": {
       "pricesUpdated": "价格更新于{{when}}",
@@ -563,12 +564,14 @@
         "willImport": "待导入 {{count}}",
         "duplicates": "重复 {{count}}",
         "skipped": "已跳过 {{count}}",
-        "errors": "错误 {{count}}"
+        "errors": "错误 {{count}}",
+        "converted": "已重新计算 {{count}}"
       },
       "feeNote": "不会导入手续费",
       "nothingToImport": "没有可导入的内容：每一行都是重复项、已跳过或有错误。",
       "statusNew": "新增",
       "statusSkipped": "已跳过",
+      "statusConverted": "已重新计算",
       "statusError": "错误",
       "statusDuplicate": "重复",
       "duplicateImportAnyway": "仍然导入",
@@ -651,6 +654,7 @@
       "duplicates": "重复",
       "skipped": "已跳过",
       "errors": "错误",
+      "converted": "因拆股重新计算",
       "newPositions": "新持仓：",
       "updatedPositions": "加入已有持仓：",
       "moreTickers_other": "另有 {{count}} 项",
@@ -698,6 +702,7 @@
     },
     "row": {
       "notATrade": "不是买入或卖出",
+      "splitRow": "拆股行——Moony 不会换算，请检查拆股前的数量",
       "zeroQuantity": "数量为零",
       "assetClass": "属于其他资产类别",
       "instrumentSkipped": "该证券已被跳过",
@@ -719,7 +724,27 @@
       "duplicateSimilar": "Moony 中已有类似的交易：同一天、数量相同，价格相差在 0.5 % 以内",
       "cannotParse": "无法读取该行"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "正在检查拆股…",
+      "unchecked": "无法核对拆股",
+      "line": "{{date}} 拆股 {{ratio}}",
+      "verdict": {
+        "unadjusted": "文件中此前的交易为拆股前单位",
+        "adjusted": "文件中此前的交易似乎已重新计算",
+        "unknown": "无法判断文件是否已重新计算"
+      },
+      "storedVerdict": {
+        "unadjusted_other": "拆股前已保存的 {{count}} 笔交易仍为拆股前单位",
+        "adjusted_other": "拆股前已保存的 {{count}} 笔交易看起来已重新计算",
+        "unknown_other": "无法判断拆股前已保存的 {{count}} 笔交易是否已重新计算"
+      },
+      "mixedUnitsWarning": "拆股前已保存的交易仍保留原始单位；导入后请在持仓详情页确认或忽略该拆股。",
+      "convert": "重新计算",
+      "convertFor": "按拆股 {{ratio}} 重新计算 {{ticker}} 的交易",
+      "applyStored": "同时重新计算已保存的交易",
+      "applyStoredFor": "按拆股 {{ratio}} 重新计算 {{ticker}} 已保存的交易"
+    }
   },
   "eyebrow": "投资组合",
   "export": "导出",
@@ -738,5 +763,60 @@
     "recordDescription": "导入“{{file}}”已没有任何交易，只会删除它的记录。",
     "recordDeleted": "导入记录已删除",
     "deleted_other": "已删除 {{count}} 笔导入的交易"
+  },
+  "splits": {
+    "toast": {
+      "applied_other": "{{ticker}}：已重新计算 {{count}} 笔交易（{{ratio}}）",
+      "reverted_other": "{{ticker}}：已撤销拆股（{{ratio}}），已还原 {{count}} 笔交易",
+      "recorded_other": "{{ticker}}：已记录拆股（{{ratio}}），已重新计算 {{count}} 笔交易",
+      "dismissed": "{{ticker}}：已忽略拆股（{{ratio}}）",
+      "deleted": "拆股记录已删除"
+    },
+    "undo": "撤销",
+    "banner": {
+      "title": "{{date}} 拆股 {{ratio}}",
+      "unadjusted_other": "拆股前的 {{count}} 笔交易似乎仍是原始单位。",
+      "adjusted_other": "拆股前的 {{count}} 笔交易似乎已重新计算。",
+      "unknown": "Moony 无法判断拆股前的交易是否已重新计算。"
+    },
+    "actions": {
+      "apply": "重新计算交易",
+      "dismiss": "已考虑在内",
+      "revert": "撤销重新计算",
+      "delete": "删除",
+      "manage": "管理拆股"
+    },
+    "dialog": {
+      "title": "{{ticker}} 的拆股",
+      "description": "Moony 发现或你记录的拆股，以及拆股前交易的处理情况。",
+      "empty": "暂无拆股。可在下方记录缺失的拆股。"
+    },
+    "columns": {
+      "date": "日期",
+      "ratio": "比例",
+      "source": "来源",
+      "status": "状态",
+      "count": "交易"
+    },
+    "status": {
+      "pending": "待处理",
+      "applied": "已应用",
+      "dismissed": "已考虑"
+    },
+    "source": {
+      "yahoo": "Yahoo Finance",
+      "manual": "手动",
+      "import": "导入"
+    },
+    "form": {
+      "title": "手动记录拆股",
+      "description": "Moony 会立即把此日之前的交易换算为当前单位。",
+      "date": "日期（除权日）",
+      "numerator": "新股数",
+      "denominator": "对应旧股数",
+      "submit": "记录并重新计算"
+    },
+    "appliedLine_other": "{{date}} 拆股 {{ratio}} · 已重新计算 {{count}} 笔交易",
+    "hint": "{{date}} 发生了 {{ratio}} 拆股；请按当前单位输入数量和价格。"
   }
 }

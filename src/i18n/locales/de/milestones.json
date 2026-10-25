@@ -10,6 +10,7 @@
     "upkeepHide": "Einklappen",
     "today": "Heute",
     "target": "Ziel",
+    "split": "Split",
     "rowMenu": "Erinnerungsoptionen: {{title}}"
   },
   "status": {
@@ -59,6 +60,8 @@
     "savings_rate_end": "Aktionszins endet",
     "watch_target_below": "Kurs {{price}} ist auf das Ziel {{target}} gefallen",
     "watch_target_above": "Kurs {{price}} hat das Ziel {{target}} erreicht",
+    "stock_split_one": "Split {{ratio}} am {{date}} · {{count}} Transaktion vor dem Split",
+    "stock_split_other": "Split {{ratio}} am {{date}} · {{count}} Transaktionen vor dem Split",
     "loan_fixation_expired": "Zinsbindung endete am {{date}} · neuen Zinssatz eintragen",
     "loan_balance_check": "Keine Restschuld eingegeben seit {{date}} · aktuelle Restschuld eingeben",
     "valuation_stale": "Keine neue Bewertung seit {{date}} · neu bewerten",
@@ -103,7 +106,7 @@
     },
     "targets": {
       "label": "Kursziele für Aktien",
-      "hint": "Wenn der Kurs das Ziel in der jeweiligen Richtung erreicht.",
+      "hint": "Wenn der Kurs das Ziel in der jeweiligen Richtung erreicht oder Moony einen Aktiensplit erkennt.",
       "mute": "Nicht an Kursziele erinnern"
     },
     "backup": {

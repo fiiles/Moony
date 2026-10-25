@@ -19,6 +19,7 @@ pub mod instruments;
 pub mod parse;
 pub mod preview;
 pub mod simulate;
+pub mod splits;
 pub mod types;
 
 pub use types::*;

@@ -123,6 +123,45 @@ pub(crate) fn setup() -> Connection {
             original_price TEXT,
             currency TEXT
         );
+        CREATE TABLE stock_investments (
+            id TEXT PRIMARY KEY,
+            ticker TEXT NOT NULL UNIQUE,
+            company_name TEXT NOT NULL DEFAULT '',
+            quantity TEXT NOT NULL DEFAULT '0',
+            currency TEXT NOT NULL DEFAULT 'USD'
+        );
+        CREATE TABLE investment_transactions (
+            id TEXT PRIMARY KEY,
+            investment_id TEXT NOT NULL,
+            type TEXT NOT NULL DEFAULT 'buy',
+            ticker TEXT NOT NULL,
+            company_name TEXT NOT NULL DEFAULT '',
+            quantity TEXT NOT NULL DEFAULT '1',
+            price_per_unit TEXT NOT NULL DEFAULT '1',
+            currency TEXT NOT NULL DEFAULT 'USD',
+            transaction_date INTEGER NOT NULL
+        );
+        CREATE TABLE stock_splits (
+            id TEXT PRIMARY KEY,
+            ticker TEXT NOT NULL,
+            effective_day INTEGER NOT NULL,
+            numerator TEXT NOT NULL,
+            denominator TEXT NOT NULL,
+            source TEXT NOT NULL DEFAULT 'yahoo',
+            status TEXT NOT NULL CHECK (status IN ('pending', 'applied', 'dismissed')),
+            detected_at INTEGER NOT NULL DEFAULT (unixepoch()),
+            resolved_at INTEGER,
+            applied_count INTEGER,
+            UNIQUE (ticker, effective_day)
+        );
+        CREATE TABLE stock_value_history (
+            id TEXT PRIMARY KEY,
+            ticker TEXT NOT NULL,
+            recorded_at INTEGER NOT NULL,
+            price TEXT NOT NULL,
+            currency TEXT NOT NULL,
+            UNIQUE(ticker, recorded_at)
+        );
         CREATE TABLE milestone_states (
             key TEXT PRIMARY KEY,
             state TEXT NOT NULL CHECK (state IN ('done', 'snoozed')),

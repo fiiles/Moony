@@ -48,7 +48,9 @@ export function AgendaRow({ m }: { m: Milestone }) {
   const day = agendaDay(m, today);
   const rel = relativeLabel(daysBetween(today, day));
   const urgent = isUrgent(m, today);
-  const target = m.kind === 'watch_target';
+  // A crossed target and a split notice are today's news: the chip reads "Today" over the kind.
+  const todayChip = m.kind === 'watch_target' || m.kind === 'stock_split';
+  const chipWord = m.kind === 'stock_split' ? t('card.split') : t('card.target');
   const remindKey = isUpkeep(m) ? 'actions.remindMonth' : 'actions.remindWeek';
 
   // Not hidden from screen readers: the sub-line leaves the date out, the chip is where it is said.
@@ -66,7 +68,7 @@ export function AgendaRow({ m }: { m: Milestone }) {
           urgent ? 'text-ink-inverse' : 'text-ink'
         )}
       >
-        {target ? t('card.today') : fmt.day(day, { day: 'numeric', month: 'numeric' })}
+        {todayChip ? t('card.today') : fmt.day(day, { day: 'numeric', month: 'numeric' })}
       </b>
       <small
         className={cn(
@@ -74,7 +76,7 @@ export function AgendaRow({ m }: { m: Milestone }) {
           urgent ? 'text-ink-inverse-2' : 'text-ink-4'
         )}
       >
-        {target ? t('card.target') : t(`relative.${rel.key}`, { count: rel.count })}
+        {todayChip ? chipWord : t(`relative.${rel.key}`, { count: rel.count })}
       </small>
     </span>
   );

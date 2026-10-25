@@ -8,6 +8,7 @@ mod accounts;
 mod bonds;
 mod insurance;
 mod loans;
+mod stock_splits;
 #[cfg(test)]
 pub(crate) mod test_support;
 mod upkeep;
@@ -113,13 +114,14 @@ pub(crate) fn money_text(value: f64) -> String {
 /// Every milestone as of `today` (UTC day), without the occurrences marked done or still
 /// snoozed and without the muted kinds, in display order.
 pub fn list_milestones(conn: &Connection, today: i64) -> Result<Vec<Milestone>> {
-    let builders: [(&str, Builder); 6] = [
+    let builders: [(&str, Builder); 7] = [
         ("insurance", insurance::build),
         ("loans", loans::build),
         ("bonds", bonds::build),
         ("accounts", accounts::build),
         ("upkeep", upkeep::build),
         ("watchlist", watchlist::build),
+        ("stock_splits", stock_splits::build),
     ];
     let mut all = Vec::new();
     for (name, build) in builders {
@@ -153,7 +155,7 @@ fn sort_key(m: &Milestone) -> (u8, u8, i64) {
     }
     let group = if m.due_day.is_some() {
         0
-    } else if m.kind == "watch_target" {
+    } else if m.kind == "watch_target" || m.kind == "stock_split" {
         1
     } else {
         2

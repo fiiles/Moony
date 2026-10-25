@@ -27,6 +27,7 @@ import type { HoldingData } from '@/utils/stocks';
 import { tradeCurrency } from '@/utils/positions';
 import { investmentsApi } from '@/lib/tauri-api';
 import { useTranslation } from 'react-i18next';
+import { PreSplitHint } from '@/components/stocks/PreSplitHint';
 import { FormSection } from '@/components/ui/form-section';
 
 const formSchema = z.object({
@@ -169,6 +170,7 @@ export function SellInvestmentModal({ investment, open, onOpenChange }: SellInve
                           <Input type="date" {...field} />
                         </FormControl>
                         <FormMessage />
+                        <PreSplitHint ticker={investment.ticker} date={field.value} />
                       </FormItem>
                     )}
                   />

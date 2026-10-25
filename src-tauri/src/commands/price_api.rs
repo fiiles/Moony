@@ -14,23 +14,41 @@ use tauri::{AppHandle, State};
 /// Queue the history rebuild a stock price refresh asks for. The tickers in
 /// `result.unit_changed` have a stored history that was valued in another unit than the quotes
 /// now are (earlier versions guessed the currency from the ticker suffix; see
-/// `quote_unit::unit_changed`), so each is rebuilt from its earliest transaction; the rebuild also
-/// re-derives the portfolio history of those days. A ticker without transactions (a watchlist
-/// ticker) has no history. Every command that runs the refresh calls this, because the refresh
-/// records the new unit and would not report the change again. Never fails: the refresh itself
-/// went through, so a problem is only logged.
-pub fn rebuild_history_for_unit_changes(
+/// `quote_unit::unit_changed`); the tickers in `result.new_splits` have a new pending split whose
+/// pre-split closes are still the unadjusted ones (spec D18). Each is rebuilt from its earliest
+/// transaction ([`rebuild_full_history`]). Every command that runs the refresh calls this,
+/// because the refresh records the new unit (and the split) and would not report it again.
+pub fn rebuild_history_after_quote_refresh(
     app: &AppHandle,
     db: &Database,
     recalc: &HistoryRecalc,
     result: &StockPriceRefreshResult,
 ) {
-    if result.unit_changed.is_empty() {
+    let tickers: Vec<String> = result
+        .unit_changed
+        .iter()
+        .chain(&result.new_splits)
+        .cloned()
+        .collect();
+    rebuild_full_history(app, db, recalc, &tickers);
+}
+
+/// Queue a rebuild of each ticker from its earliest transaction; the rebuild also re-derives the
+/// portfolio history of those days. A ticker without transactions (a watchlist ticker) has no
+/// history. Never fails: the refresh that asked for it went through, so a problem is only
+/// logged.
+fn rebuild_full_history(
+    app: &AppHandle,
+    db: &Database,
+    recalc: &HistoryRecalc,
+    tickers: &[String],
+) {
+    if tickers.is_empty() {
         return;
     }
-    match db.with_conn(|conn| history_recalc::rebuild_jobs(conn, &result.unit_changed)) {
+    match db.with_conn(|conn| history_recalc::rebuild_jobs(conn, tickers)) {
         Ok(jobs) => portfolio::schedule_history_rebuild(app, db, recalc, Job::stocks(jobs)),
-        Err(e) => log::warn!("[RECALC] Could not queue the rebuild after a quote unit change: {e}"),
+        Err(e) => log::warn!("[RECALC] Could not queue the rebuild after a stock refresh: {e}"),
     }
 }
 
@@ -88,6 +106,7 @@ pub async fn refresh_stock_prices(
             remaining_tickers: vec![],
             rate_limit_hit: false,
             unit_changed: vec![],
+            new_splits: vec![],
         });
     }
 
@@ -95,8 +114,9 @@ pub async fn refresh_stock_prices(
     let result =
         price_api::refresh_stock_prices_yahoo(&db, tickers, force_refresh.unwrap_or(false)).await?;
 
-    // Before the snapshot: it can fail, and the unit change is not reported a second time.
-    rebuild_history_for_unit_changes(&app, &db, &recalc, &result);
+    // Before the snapshot: it can fail, and neither a unit change nor a split is reported a
+    // second time.
+    rebuild_history_after_quote_refresh(&app, &db, &recalc, &result);
 
     // Update portfolio snapshot
     crate::commands::portfolio::update_todays_snapshot(&db).await?;
@@ -155,8 +175,13 @@ pub async fn search_crypto(
 
 /// Refresh dividend data from Yahoo Finance
 /// No API key required
+/// A ticker whose fetched year holds a new split is rebuilt from its first transaction (D18).
 #[tauri::command]
-pub async fn refresh_dividends(db: State<'_, Database>) -> Result<Vec<DividendResult>> {
+pub async fn refresh_dividends(
+    app: AppHandle,
+    db: State<'_, Database>,
+    recalc: State<'_, HistoryRecalc>,
+) -> Result<Vec<DividendResult>> {
     // Get all tickers from investments
     let tickers: Vec<String> = db.with_conn(|conn| {
         let mut stmt = conn.prepare("SELECT DISTINCT ticker FROM stock_investments")?;
@@ -172,7 +197,9 @@ pub async fn refresh_dividends(db: State<'_, Database>) -> Result<Vec<DividendRe
     }
 
     // Fetch dividends using Yahoo Finance (no API key needed)
-    price_api::refresh_dividends(&db, tickers).await
+    let refresh = price_api::refresh_dividends(&db, tickers).await?;
+    rebuild_full_history(&app, &db, &recalc, &refresh.new_splits);
+    Ok(refresh.results)
 }
 
 /// Search for stock tickers using Yahoo Finance

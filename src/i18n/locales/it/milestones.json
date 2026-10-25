@@ -10,6 +10,7 @@
     "upkeepHide": "Comprimi",
     "today": "Oggi",
     "target": "obiettivo",
+    "split": "split",
     "rowMenu": "Opzioni del promemoria: {{title}}"
   },
   "status": {
@@ -63,6 +64,9 @@
     "savings_rate_end": "Il tasso promozionale termina",
     "watch_target_below": "Il prezzo {{price}} è sceso all'obiettivo {{target}}",
     "watch_target_above": "Il prezzo {{price}} ha raggiunto l'obiettivo {{target}}",
+    "stock_split_one": "Split {{ratio}} il {{date}} · {{count}} operazione prima dello split",
+    "stock_split_many": "Split {{ratio}} il {{date}} · {{count}} operazioni prima dello split",
+    "stock_split_other": "Split {{ratio}} il {{date}} · {{count}} operazioni prima dello split",
     "loan_fixation_expired": "Il tasso fisso è terminato il {{date}} · inserisci il nuovo tasso",
     "loan_balance_check": "Nessun saldo inserito dal {{date}} · inserisci il saldo attuale",
     "valuation_stale": "Nessuna nuova valutazione dal {{date}} · rivalutalo",
@@ -109,7 +113,7 @@
     },
     "targets": {
       "label": "Prezzi obiettivo delle azioni",
-      "hint": "Quando il prezzo raggiunge l'obiettivo nella direzione impostata.",
+      "hint": "Quando il prezzo raggiunge l'obiettivo nella direzione impostata, o quando Moony rileva uno split azionario.",
       "mute": "Non ricordarmi i prezzi obiettivo"
     },
     "backup": {

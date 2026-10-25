@@ -27,6 +27,11 @@ import type {
   StockPreviewRow,
   StockRowMessage,
   StockRowStatus,
+  StockSplitAction,
+  StockSplitCheck,
+  StockSplitCheckSplit,
+  StockSplitOverride,
+  StockSplitVerdict,
   StockTypeValueAction,
   StockTypeValueMapping,
   StockTypeValueStat,
@@ -761,6 +766,8 @@ export interface PreviewSummary {
   skipped: number;
   errors: number;
   total: number;
+  /** Rows to be written that a split converted to post-split units (part of `willImport`). */
+  converted: number;
 }
 
 /**
@@ -776,6 +783,7 @@ export function summarizePreview(preview: Pick<StockImportPreview, 'counts'>): P
     skipped: counts.skipped,
     errors: counts.errors,
     total: counts.total,
+    converted: counts.converted,
   };
 }
 
@@ -792,7 +800,13 @@ type OverridePatch = Partial<
 
 /** An override that changes something; an empty one is dropped. */
 export function hasOverrideContent(override: StockInstrumentOverride): boolean {
-  return Boolean(override.ticker || override.name || override.currency || override.skip);
+  return Boolean(
+    override.ticker ||
+    override.name ||
+    override.currency ||
+    override.skip ||
+    (override.splits?.length ?? 0) > 0
+  );
 }
 
 /**
@@ -918,7 +932,9 @@ export function mergeAutoOverrides(
   current: readonly StockInstrumentOverride[],
   automatic: readonly StockInstrumentOverride[]
 ): StockInstrumentOverride[] {
-  const taken = new Set(current.filter(hasOverrideContent).map((o) => o.key));
+  // Split choices come from the split check, not from the user's edits: an instrument that has
+  // only those still takes what the lookup found (into the same override).
+  const taken = new Set(current.filter(hasUserChoice).map((o) => o.key));
   // Only a currency that belongs to the symbol the instrument has: one that came with another
   // symbol (a `ticker` in the same override) is that listing's.
   const currencies = new Map(
@@ -926,12 +942,160 @@ export function mergeAutoOverrides(
       .filter((o) => o.currency && !o.ticker && taken.has(o.key))
       .map((o) => [o.key, o.currency])
   );
+  const withSplitsOnly = new Set(
+    current.filter((o) => !taken.has(o.key) && hasOverrideContent(o)).map((o) => o.key)
+  );
+  const lookups = new Map(
+    automatic
+      .filter((o) => withSplitsOnly.has(o.key) && hasOverrideContent(o))
+      .map((o) => [o.key, o])
+  );
   const updated = current.map((o) => {
+    const lookup = lookups.get(o.key);
+    if (lookup && hasOverrideContent(o)) return { ...o, ...lookup, splits: o.splits };
     const currency = currencies.get(o.key);
     return currency && hasOverrideContent(o) && !o.ticker && !o.currency ? { ...o, currency } : o;
   });
-  const added = automatic.filter((o) => hasOverrideContent(o) && !taken.has(o.key));
+  const added = automatic.filter(
+    (o) => hasOverrideContent(o) && !taken.has(o.key) && !lookups.has(o.key)
+  );
   return added.length === 0 ? updated : [...updated, ...added];
+}
+
+/** An override with something the user (or a lookup) chose, split choices aside. */
+function hasUserChoice(override: StockInstrumentOverride): boolean {
+  return hasOverrideContent({ ...override, splits: undefined });
+}
+
+// ── Splits (spec D12–D14) ────────────────────────────────────────────────────
+
+/**
+ * What the import does about a split by default: convert a file whose trades before it look
+ * pre-split, keep one that looks already converted or that Moony cannot tell about.
+ */
+export function defaultSplitAction(verdict: StockSplitVerdict): StockSplitAction {
+  return verdict === 'unadjusted' ? 'convert' : 'keep';
+}
+
+/**
+ * Whether the import also rewrites the ticker's stored transactions by default: only when they
+ * look pre-split (the check judges them as the position page does; `unknown` when the split is
+ * already resolved or no stored row is dated before it, so nothing is applied then).
+ */
+export function defaultApplyStored(split: StockSplitCheckSplit): boolean {
+  return split.storedVerdict === 'unadjusted';
+}
+
+/** The split choices of one instrument's check, each with the defaults. */
+export function splitOverridesFor(check: StockSplitCheck): StockSplitOverride[] {
+  return check.splits.map((split) => ({
+    effectiveDay: split.effectiveDay,
+    numerator: split.numerator,
+    denominator: split.denominator,
+    action: defaultSplitAction(split.verdict),
+    applyStored: defaultApplyStored(split),
+  }));
+}
+
+/** `override` with `splits` in it, or without the field when there are none. */
+function withSplits(
+  override: StockInstrumentOverride,
+  splits: StockSplitOverride[]
+): StockInstrumentOverride {
+  const { splits: _previous, ...rest } = override;
+  return splits.length > 0 ? { ...rest, splits } : rest;
+}
+
+/**
+ * The overrides after a split check of the whole file: every instrument gets the splits its
+ * check reports, with the choices already made for the same day kept and the defaults for a new
+ * one. Splits the check no longer reports go, and so do those of an instrument it does not
+ * report at all (nothing of it is imported, yet an applied split would still rewrite its stored
+ * rows); an override left with nothing in it is dropped.
+ */
+export function mergeSplitOverrides(
+  current: readonly StockInstrumentOverride[],
+  checks: readonly StockSplitCheck[]
+): StockInstrumentOverride[] {
+  const byKey = new Map(checks.map((check) => [check.key, check]));
+  const splitsFor = (key: string, chosen: readonly StockSplitOverride[] = []) => {
+    const check = byKey.get(key);
+    if (!check) return [];
+    return splitOverridesFor(check).map((split) => {
+      const previous = chosen.find((c) => c.effectiveDay === split.effectiveDay);
+      return previous
+        ? { ...split, action: previous.action, applyStored: previous.applyStored }
+        : split;
+    });
+  };
+  const updated = current.flatMap((o) => {
+    const next = withSplits(o, splitsFor(o.key, o.splits));
+    return hasOverrideContent(next) ? [next] : [];
+  });
+  const known = new Set(current.map((o) => o.key));
+  const added = checks.flatMap((check) => {
+    if (known.has(check.key)) return [];
+    const splits = splitOverridesFor(check);
+    return splits.length > 0 ? [{ key: check.key, splits }] : [];
+  });
+  return [...updated, ...added];
+}
+
+/** What the user can change about one split: the file's action, the stored rows' switch. */
+export type SplitChoice = Partial<Pick<StockSplitOverride, 'action' | 'applyStored'>>;
+
+/** `overrides` with one split of one instrument changed by `choice`; unchanged when absent. */
+export function setSplitChoice(
+  overrides: readonly StockInstrumentOverride[],
+  key: string,
+  effectiveDay: number,
+  choice: SplitChoice
+): StockInstrumentOverride[] {
+  return overrides.map((o) =>
+    o.key === key && o.splits?.some((s) => s.effectiveDay === effectiveDay)
+      ? {
+          ...o,
+          splits: o.splits.map((s) => (s.effectiveDay === effectiveDay ? { ...s, ...choice } : s)),
+        }
+      : o
+  );
+}
+
+/** `overrides` with the action of one split of one instrument changed; unchanged when absent. */
+export function setSplitAction(
+  overrides: readonly StockInstrumentOverride[],
+  key: string,
+  effectiveDay: number,
+  action: StockSplitAction
+): StockInstrumentOverride[] {
+  return setSplitChoice(overrides, key, effectiveDay, { action });
+}
+
+/**
+ * Whether the stored rows of a split still need a decision: Moony holds it as pending or has no
+ * row for it, and the ticker has transactions dated before it.
+ */
+export function storedRowsUndecided(split: StockSplitCheckSplit): boolean {
+  return (
+    split.storedPreSplitCount > 0 &&
+    (split.storedStatus === 'pending' || split.storedStatus === null)
+  );
+}
+
+/** File lines the import scales to post-split units: the trades before a `convert` split. */
+export function convertedLines(
+  checks: readonly StockSplitCheck[],
+  overrides: readonly StockInstrumentOverride[]
+): Set<number> {
+  const lines = new Set<number>();
+  for (const check of checks) {
+    const chosen = overrides.find((o) => o.key === check.key)?.splits ?? [];
+    for (const split of check.splits) {
+      const action = chosen.find((c) => c.effectiveDay === split.effectiveDay)?.action;
+      if (action === 'convert') split.trades.forEach((trade) => lines.add(trade.line));
+    }
+  }
+  return lines;
 }
 
 /** How far an instrument's symbol is confirmed. */
@@ -973,6 +1137,7 @@ export type ResultMessageGroup = 'duplicates' | 'skipped' | 'errors';
 
 const SKIPPED_KEYS: ReadonlySet<string> = new Set([
   'importWizard.row.notATrade',
+  'importWizard.row.splitRow',
   'importWizard.row.zeroQuantity',
   'importWizard.row.assetClass',
   'importWizard.row.instrumentSkipped',

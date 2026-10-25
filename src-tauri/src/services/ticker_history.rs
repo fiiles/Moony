@@ -66,6 +66,10 @@ pub struct DayPlan {
 pub struct RebuildStats {
     pub upserted: usize,
     pub deleted: usize,
+    /// Set by a stock rebuild that recorded a new split although its window started after the
+    /// ticker's first transaction day (spec D18): the day the full rebuild that refreshes the
+    /// pre-split closes has to start from. The caller queues or runs it.
+    pub full_rebuild_from: Option<i64>,
 }
 
 fn floor_day(ts: i64) -> i64 {

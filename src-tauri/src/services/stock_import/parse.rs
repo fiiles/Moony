@@ -25,7 +25,7 @@ use crate::services::date_parser;
 use crate::services::quote_unit::{is_pence, pence_to_pounds};
 
 use super::adapters::xtb;
-use super::columns::{fold_value, has_fee_column};
+use super::columns::{fold_value, has_fee_column, is_split_value};
 use super::detect::{data_records, date_part, delimiter_char, is_isin};
 use super::types::{
     CurrencyMode, DirectionMode, ParsedFile, ParsedTrade, StockImportConfig, StockRowMessage,
@@ -34,6 +34,9 @@ use super::types::{
 
 /// Row messages (`stocks` namespace) and the one `common` key a row can carry.
 pub const ROW_NOT_A_TRADE: &str = "importWizard.row.notATrade";
+/// A split row is skipped like any non-trade, but named, so the user checks
+/// the quantities before it.
+pub const ROW_SPLIT: &str = "importWizard.row.splitRow";
 pub const ROW_ZERO_QUANTITY: &str = "importWizard.row.zeroQuantity";
 pub const ROW_ASSET_CLASS: &str = "importWizard.row.assetClass";
 pub const ROW_DATE_UNPARSEABLE: &str = "importWizard.row.dateUnparseable";
@@ -151,7 +154,12 @@ impl<'a> RowReader<'a> {
                 Some(TypeValueAction::Buy) => direction = Some(TradeDirection::Buy),
                 Some(TypeValueAction::Sell) => direction = Some(TradeDirection::Sell),
                 Some(TypeValueAction::Skip) | None => {
-                    return Err(skip(ROW_NOT_A_TRADE, non_empty(value)))
+                    let key = if is_split_value(value) {
+                        ROW_SPLIT
+                    } else {
+                        ROW_NOT_A_TRADE
+                    };
+                    return Err(skip(key, non_empty(value)));
                 }
             }
         }
@@ -433,6 +441,24 @@ mod tests {
     // ===================================================================
 
     #[test]
+    fn lines_wrapped_in_quotes_by_a_spreadsheet_still_parse() {
+        // Every data line quoted as one cell, inner quotes doubled, CRLF endings: what a
+        // Moony export looks like after a spreadsheet opened and saved it again.
+        let parsed = parse(
+            "\"15.01.2024;nákup;\"\"AAPL\"\";10;185,50;USD\"\r\n\
+\"20.02.2024;prodej;AAPL;5;190,25;USD\"\r\n",
+        );
+        assert!(
+            parsed.skipped.is_empty() && parsed.errors.is_empty(),
+            "{parsed:?}"
+        );
+        assert_eq!(parsed.trades.len(), 2);
+        assert_eq!(parsed.trades[0].symbol.as_deref(), Some("AAPL"));
+        assert_eq!((parsed.trades[0].line, parsed.trades[1].line), (2, 3));
+        assert_eq!(parsed.trades[1].direction, TradeDirection::Sell);
+    }
+
+    #[test]
     fn a_purchase_and_a_sale_become_trades() {
         let parsed =
             parse("15.01.2024;nákup;aapl;10;185,50;usd\n20.02.2024;prodej;AAPL;5;190,25;USD\n");
@@ -487,7 +513,7 @@ nedatum;nákup;AAPL;1;185,50;USD\n\
             [
                 note(3, "importWizard.row.notATrade", Some("dividenda")),
                 note(4, "importWizard.row.zeroQuantity", None),
-                note(12, "importWizard.row.notATrade", Some("split")),
+                note(12, "importWizard.row.splitRow", Some("split")),
             ]
         );
         assert_eq!(
@@ -810,6 +836,7 @@ nedatum;nákup;AAPL;1;185,50;USD\n\
                 name: None,
                 currency: None,
                 skip: true,
+                splits: vec![],
             },
             StockInstrumentOverride {
                 key: "symbol:AAPL".into(),
@@ -817,6 +844,7 @@ nedatum;nákup;AAPL;1;185,50;USD\n\
                 name: Some("Apple".into()),
                 currency: Some("EUR".into()),
                 skip: false,
+                splits: vec![],
             },
         ];
         let rows = "15.01.2024;nákup;msft;1;1;USD\n16.01.2024;nákup;AAPL;1;1;USD\n17.01.2024;prodej;MSFT;1;2;USD\n";

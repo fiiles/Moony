@@ -132,7 +132,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
       ]) {
         queryClient.invalidateQueries({ queryKey: [key] });
       }
-      // Positions, analyses and histories convert at the historical rates too
+      // Positions, analyses and histories convert at the historical rates too; the same call
+      // refreshes ['stock-splits'] (a rebuild can follow a split check or an import)
       void invalidateAfterPriceRefresh(queryClient);
     });
     return () => {

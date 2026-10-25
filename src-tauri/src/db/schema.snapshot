@@ -109,6 +109,9 @@ CREATE INDEX idx_stock_investment_tags_investment ON stock_investment_tags(inves
 == index idx_stock_investment_tags_tag ==
 CREATE INDEX idx_stock_investment_tags_tag ON stock_investment_tags(tag_id)
 
+== index idx_stock_splits_ticker ==
+CREATE INDEX idx_stock_splits_ticker ON stock_splits(ticker)
+
 == index idx_stock_tags_group ==
 CREATE INDEX idx_stock_tags_group ON stock_tags(group_id)
 
@@ -687,7 +690,7 @@ CREATE TABLE stock_data (
     quote_type TEXT,
     metadata_fetched_at INTEGER,
     previous_close TEXT
-, quote_currency TEXT)
+, quote_currency TEXT, splits_checked_at INTEGER)
 
 == table stock_import_batches ==
 CREATE TABLE stock_import_batches (
@@ -722,6 +725,21 @@ CREATE TABLE stock_price_overrides (
     price TEXT NOT NULL,
     currency TEXT NOT NULL DEFAULT 'CZK',
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table stock_splits ==
+CREATE TABLE stock_splits (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL,
+    effective_day INTEGER NOT NULL,          -- UTC midnight of the ex-date
+    numerator TEXT NOT NULL,                 -- integer as text, e.g. '4'
+    denominator TEXT NOT NULL,               -- integer as text, e.g. '1'
+    source TEXT NOT NULL CHECK (source IN ('yahoo', 'manual', 'import')),
+    status TEXT NOT NULL CHECK (status IN ('pending', 'applied', 'dismissed')),
+    detected_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    resolved_at INTEGER,
+    applied_count INTEGER,                   -- transactions rewritten by the last apply
+    UNIQUE (ticker, effective_day)
 )
 
 == table stock_tag_groups ==

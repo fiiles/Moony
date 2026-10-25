@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { EditOtherAssetModal } from '@/components/other-assets/EditOtherAssetModal';
-import { ValuationHistoryDialog } from '@/components/valuations/ValuationHistoryDialog';
+import { MaskedValuationHistoryDialog } from '@/mobile/components/MaskedValuationHistoryDialog';
 import { RowMenuItem } from '@/mobile/components/cashflow/RowMenu';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 
@@ -63,7 +63,7 @@ export function OtherAssetMenu({
       </DropdownMenu>
 
       <EditOtherAssetModal asset={asset} open={editOpen} onOpenChange={setEditOpen} />
-      <ValuationHistoryDialog
+      <MaskedValuationHistoryDialog
         open={historyOpen}
         onOpenChange={setHistoryOpen}
         kind="otherAsset"

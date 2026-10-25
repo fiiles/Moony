@@ -20,6 +20,7 @@ import {
   isUrgent,
   relativeLabel,
 } from '@/utils/milestones';
+import { milestonePath } from '@/mobile/lib/milestone-path';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { DateChip, DATE_CHIP_WIDTH } from './DateChip';
 import { EntityRow } from './EntityRow';
@@ -32,7 +33,8 @@ import { EntityRow } from './EntityRow';
  * always does, and a long sub-line is the part that gives way. A crossed target and a split notice
  * are today's news instead: the chip reads "Today" over the kind and there is no distance. Swipe
  * right reminds again in a week (only when that ends before the date), swipe left hides; a long
- * press opens the full menu. The source pages are not on the phone yet, so a tap does nothing.
+ * press opens the full menu. A tap opens the source page (`milestonePath`); a kind without one on
+ * the phone leaves the row inert.
  */
 export function AgendaRow({ m }: { m: Milestone }) {
   const { t } = useTranslation('milestones');
@@ -90,6 +92,7 @@ export function AgendaRow({ m }: { m: Milestone }) {
       swipeLeftLabel={t('actions.hide')}
       swipeLeftIcon={EyeOff}
       onLongPress={() => setMenuOpen(true)}
+      href={milestonePath(m) ?? undefined}
       accessory={
         <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
           {/* The menu's anchor, and its way in for a screen reader or a keyboard: hidden until focused. */}

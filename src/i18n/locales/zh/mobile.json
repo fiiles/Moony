@@ -187,10 +187,6 @@
     }
   },
   "placeholder": {
-    "detail": "详情页将在第 4 阶段推出。",
-    "form": "添加表单将在第 2b 阶段推出。",
-    "edit": "编辑功能将在第 2b 阶段推出。",
-    "delete": "删除功能将在第 2b 阶段推出。",
     "export": "导出功能稍后推出。"
   },
   "account": {
@@ -460,9 +456,7 @@
   },
   "wealth": {
     "placeholder": {
-      "classPage": "此资产类别的页面将在第 4 阶段的下一部分推出。",
-      "watchDetail": "自选股票的详情将在第 4 阶段的下一部分推出。",
-      "later": "将在第 4 阶段的下一部分推出。"
+      "classPage": "此页面目前仅在电脑上的 Moony 中提供。"
     },
     "subtitle": "投资、房产和现金",
     "sections": {
@@ -532,7 +526,6 @@
       "clearSearch": "清除搜索",
       "showAll_other": "显示全部 {{count}} 个持仓",
       "menu": {
-        "import": "导入券商对账单",
         "closed": "已平仓持仓"
       },
       "closedBadge": "已平仓",

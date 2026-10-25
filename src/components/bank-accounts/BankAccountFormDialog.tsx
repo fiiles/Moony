@@ -25,6 +25,7 @@ import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
 import { CurrencyCode, recordCurrency } from '@shared/currencies';
 import { BankAccountZoneManager } from '@/components/bank-accounts/BankAccountZoneManager';
 import { useTranslation } from 'react-i18next';
+import type { Formatters } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import { todayIsoUtc } from '@/utils/period';
 
@@ -65,6 +66,8 @@ interface BankAccountFormDialogProps {
   initialZones?: ZoneData[];
   /** Edit mode: opens the balance-record dialog (the form closes itself first). */
   onRecordBalance?: () => void;
+  /** Formats the stored balance; the phone passes its masking formatter, the desktop `fmt.money`. */
+  formatMoney?: Formatters['money'];
 }
 
 export function BankAccountFormDialog({
@@ -75,6 +78,7 @@ export function BankAccountFormDialog({
   isLoading = false,
   initialZones,
   onRecordBalance,
+  formatMoney,
 }: BankAccountFormDialogProps) {
   const { t } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
@@ -287,7 +291,9 @@ export function BankAccountFormDialog({
 
   // Edit mode: the stored balance in the account's own currency (it is not editable here).
   const storedBalance = account
-    ? fmt.money(Number(account.balance), recordCurrency(account.currency), { decimals: 0 })
+    ? (formatMoney ?? fmt.money)(Number(account.balance), recordCurrency(account.currency), {
+        decimals: 0,
+      })
     : '';
 
   return (

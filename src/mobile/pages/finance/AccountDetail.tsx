@@ -2,13 +2,15 @@ import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoute, useSearch } from 'wouter';
 import { CalendarSearch, Ellipsis, ListFilter, Pencil, Upload, Wallet } from 'lucide-react';
-import { toast } from 'sonner';
 import type {
   BankAccountWithInstitution,
   BankBalanceRecord,
   BankTransaction,
+  InsertBankAccount,
   SavingsAccountZone,
 } from '@shared/schema';
+import { recordCurrency } from '@shared/currencies';
+import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
 import { useCategories } from '@/hooks/use-categories';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { useFormat } from '@/lib/use-format';
@@ -27,6 +29,7 @@ import { utcDayFloor } from '@/utils/chart-axis';
 import type { EventCluster } from '@/utils/chart-scale';
 import { completeAccountIdentifier } from '@/utils/iban-utils';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
+import { BankAccountFormDialog } from '@/components/bank-accounts/BankAccountFormDialog';
 import { ScaledEmptyState } from '@/mobile/components/Scaled';
 import { Button } from '@/components/ui/button';
 import {
@@ -48,11 +51,13 @@ import { Segment } from '@/mobile/components/Segment';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { useAccountDetail } from '@/mobile/hooks/use-account-detail';
 import { useBack } from '@/mobile/hooks/use-back';
+import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { useDeleteDescription } from '@/mobile/hooks/use-delete-description';
 import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import { useLedger, type Ledger } from '@/mobile/hooks/use-ledger';
 import { useLedgerMutations } from '@/mobile/hooks/use-ledger-mutations';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { useRetained } from '@/mobile/hooks/use-retained';
 import { balanceLine } from '@/mobile/lib/balance-line';
 import { recentCategoryIds } from '@/mobile/lib/category-pick';
 import { cashChange } from '@/mobile/lib/finance-rows';
@@ -66,7 +71,7 @@ import {
   type LedgerState,
 } from '@/mobile/lib/ledger';
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
-import { routes } from '@/mobile/shell/routes';
+import { accountPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 import { BalanceHistorySheet } from '@/mobile/sheets/BalanceHistorySheet';
 import { CategoryPickerSheet } from '@/mobile/sheets/CategoryPickerSheet';
@@ -76,7 +81,8 @@ import { ImportHistorySheet } from '@/mobile/sheets/ImportHistorySheet';
 import { RecordBalancesSheet } from '@/mobile/sheets/RecordBalancesSheet';
 import { TransactionSheet } from '@/mobile/sheets/TransactionSheet';
 
-type SheetKind = 'record' | 'balanceHistory' | 'importHistory' | 'deleteAccount' | 'filter';
+type SheetKind =
+  'record' | 'edit' | 'balanceHistory' | 'importHistory' | 'deleteAccount' | 'filter';
 
 type RecordEvent = { id: string; t: number; type: 'mark' };
 
@@ -105,6 +111,11 @@ export default function AccountDetail() {
  * opens the transaction sheet on a tap or a swipe right and the category picker on a swipe left (the
  * sheet's Kategorie row opens the picker over it); a long press is its menu.
  * `?category=uncategorized` (the Finance row) opens the ledger on the payments without a category.
+ *
+ * `···` → Upravit is the desktop's account form, Smazat účet asks in a confirm sheet; the page owns
+ * the delete (`useDeleteAndLeave`, as the loan's): it keeps showing the account until the screen has
+ * gone back to Finance, then drops the account's own queries. The writes are the desktop's
+ * (`useBankAccountMutations`), which refresh every money flow and record the snapshot.
  */
 function AccountDetailPage({ id }: { id: string | undefined }) {
   const { t } = useTranslation('mobile');
@@ -116,7 +127,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   const back = useBack(routes.finance);
   const search = useSearch();
   const detail = useAccountDetail(id);
-  const { account, records, zones, history, historyRows, currency, historyLoaded } = detail;
+  const { records, zones, history, historyRows, historyLoaded } = detail;
   const { categories } = useCategories();
 
   const [state, setState] = useState<LedgerState>(() => ({
@@ -136,6 +147,26 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
 
   const [period, setPeriod] = useState<ChartPeriod>(DEFAULT_PERIOD);
   const [sheet, setSheet] = useState<SheetKind | null>(null);
+  const { updateAccount, deleteAccount } = useBankAccountMutations();
+  const exit = useDeleteAndLeave({
+    home: routes.finance,
+    pathOf: accountPath,
+    keysOf: (accountId) => [
+      ['bank-account', accountId],
+      ['bank-account-zones', accountId],
+      ['bank-balance-records', accountId],
+      ['bank-transactions', accountId],
+      ['import-batches', accountId],
+    ],
+    remove: (accountId) => deleteAccount.mutateAsync(accountId),
+    closeSheet: () => setSheet(null),
+  });
+  // An account being deleted stays on screen (as it was) until the screen has left: the refresh
+  // after the delete finds no account, and the confirm sheet lives under it
+  const keptAccount = useRetained(detail.account ?? null);
+  const account = exit.deleting ? keptAccount : detail.account;
+  // The kept account's own currency: once it is gone the detail falls back to the default one
+  const currency = account ? recordCurrency(account.currency) : detail.currency;
   // The row of the transaction sheet and the row of the category picker (the same one while the
   // picker is open over the sheet). They hold the row as the sheets saw it last: a write the
   // sheets make is reported through `patchTx`, since the ledger may no longer list the row once
@@ -186,7 +217,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
               </NavIconButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[220px]">
-              <DropdownMenuItem className={MENU_ITEM} onSelect={() => toast(t('placeholder.edit'))}>
+              <DropdownMenuItem className={MENU_ITEM} onSelect={() => setSheet('edit')}>
                 {t('account.menu.edit')}
               </DropdownMenuItem>
               <DropdownMenuItem className={MENU_ITEM} onSelect={() => setSheet('balanceHistory')}>
@@ -314,17 +345,36 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
             onOpenChange={closeSheet}
             batches={detail.batches}
           />
-          {/* Deleting the account stays a placeholder in 2a: the confirmation, then the note */}
+          {/* The desktop's account form; a balance is recorded in its own sheet, as on the desktop */}
+          <BankAccountFormDialog
+            open={sheet === 'edit'}
+            onOpenChange={closeSheet}
+            account={account}
+            formatMoney={moneyText}
+            initialZones={zones.map((zone) => ({
+              id: zone.id,
+              fromAmount: zone.fromAmount,
+              toAmount: zone.toAmount || '',
+              interestRate: zone.interestRate,
+            }))}
+            onSubmit={(data, formZones) => {
+              const { id: accountId, ...update } = data as InsertBankAccount & { id: string };
+              updateAccount.mutate(
+                { id: accountId, data: update, zones: formZones },
+                { onSuccess: () => setSheet(null) }
+              );
+            }}
+            isLoading={updateAccount.isPending}
+            onRecordBalance={() => setSheet('record')}
+          />
           <ConfirmSheet
             open={sheet === 'deleteAccount'}
             onOpenChange={closeSheet}
             title={tb('confirmDelete.title')}
             description={tb('confirmDelete.descriptionNamed', { name: account.name })}
-            confirmLabel={tc('buttons.delete')}
-            onConfirm={() => {
-              toast(t('placeholder.delete'));
-              setSheet(null);
-            }}
+            confirmLabel={tb('deleteAccount')}
+            isPending={deleteAccount.isPending}
+            onConfirm={() => exit.run(account.id)}
           />
           <FilterSheet
             open={sheet === 'filter'}

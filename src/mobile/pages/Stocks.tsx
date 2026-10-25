@@ -1,17 +1,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
-import {
-  Archive,
-  Download,
-  Ellipsis,
-  History,
-  Plus,
-  RefreshCw,
-  TrendingUp,
-  Upload,
-} from 'lucide-react';
-import { toast } from 'sonner';
+import { Archive, Download, Ellipsis, Plus, RefreshCw, TrendingUp } from 'lucide-react';
 import type { StockPositions, WatchedStockRow } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
@@ -70,8 +60,10 @@ const WHOLE = { decimals: 0 } as const;
  * a watch: the search is the only way to a watch detail. The numbers are the desktop's (the same
  * queries), in the report currency; every amount goes through the eye of Přehled. The list holds
  * the open positions; the closed ones are the sheet Uzavřené pozice in the `···` menu, and Export
- * there hands the transactions' CSV to the Files picker. The sort, the period and the segment are
- * remembered for the session, so a visit to a position does not reset them.
+ * there hands the transactions' CSV to the Files picker. The broker-statement import and its
+ * history are desktop-only for now: the desktop wizard is not phone-sized, and the phone's import
+ * needs a design of its own (like the bank statement's import sheet). The sort, the period and the
+ * segment are remembered for the session, so a visit to a position does not reset them.
  */
 export default function Stocks() {
   const { t } = useTranslation('mobile');
@@ -94,7 +86,6 @@ export default function Stocks() {
   const hasPositions = rows.length > 0;
 
   const open = rows.filter((row) => row.quantity > 0);
-  const later = () => toast(t('wealth.placeholder.later'));
 
   return (
     <Screen
@@ -112,14 +103,6 @@ export default function Stocks() {
               <RowMenuItem disabled={refresh.isPending} onSelect={() => refresh.mutate()}>
                 <RefreshCw strokeWidth={1.75} aria-hidden />
                 {ts('refreshPrices')}
-              </RowMenuItem>
-              <RowMenuItem onSelect={later}>
-                <Upload strokeWidth={1.75} aria-hidden />
-                {t('wealth.stocks.menu.import')}
-              </RowMenuItem>
-              <RowMenuItem onSelect={later}>
-                <History strokeWidth={1.75} aria-hidden />
-                {ts('importHistory.title')}
               </RowMenuItem>
               <RowMenuItem onSelect={() => setClosedOpen(true)}>
                 <Archive strokeWidth={1.75} aria-hidden />

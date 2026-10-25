@@ -43,7 +43,7 @@ pub struct PreparedPhoto {
 /// becomes a byte vector. The count is checked before any item is read.
 pub fn upload_bytes(body: &InvokeBody, max_len: u64) -> Result<Cow<'_, [u8]>> {
     let not_bytes =
-        || AppError::Internal("add_photo_to_batch expects the image bytes as the body".into());
+        || AppError::Internal("the upload expects the file bytes as the request body".into());
     let too_large = || AppError::Validation("validation.attachmentTooLarge".into());
     match body {
         InvokeBody::Raw(bytes) => {

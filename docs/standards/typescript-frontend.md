@@ -30,7 +30,10 @@ scattered `invoke()` calls bypass the types and rot silently (see
 - **Keys:** kebab-case array keys — `["bank-accounts"]`, `["bank-account", id]`.
 - **Defaults:** global defaults are `staleTime: Infinity, retry: false`
   (`src/lib/queryClient.ts`). Data never refetches by itself — opt into freshness
-  explicitly (per-query `staleTime`/`refetchOnMount`) when you need it.
+  explicitly (per-query `staleTime`/`refetchOnMount`) when you need it. Queries and
+  mutations run with `networkMode: 'always'` (they are local IPC, so going offline must not
+  pause them), and `refetchOnReconnect: true` is set back on so a stale query refreshes
+  when the connection returns.
 - **Mutation contract** (every write that changes money or asset state): invalidate the
   domain key(s) **plus** `["portfolio-metrics"]` **plus** `["cashflow-report"]`, then
   `await portfolioApi.recordSnapshot()` and invalidate `["portfolio-history"]`.

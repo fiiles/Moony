@@ -12,4 +12,10 @@ describe('queryClient defaults', () => {
   it('runs mutations whether or not the machine is online', () => {
     expect(queryClient.getDefaultOptions().mutations?.networkMode).toBe('always');
   });
+
+  // 'always' turns refetchOnReconnect off unless it is set; a stale query whose command reaches
+  // the network (a stock's company info) must still refresh when the connection returns.
+  it('refreshes stale queries when the connection returns', () => {
+    expect(queryClient.getDefaultOptions().queries?.refetchOnReconnect).toBe(true);
+  });
 });

@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Redirect, Route, Switch, useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/lib/protected-route';
@@ -51,6 +51,8 @@ export function MobileShell() {
   const [location] = useLocation();
   const { user, appStatus } = useAuth();
   const tab = appStatus === 'unlocked' && user ? tabForPath(location) : null;
+  // A statement shared into Moony is on its way to the import sheet: the biometric offer waits
+  const [sharedPending, setSharedPending] = useState(false);
 
   // No account on this phone (first launch, or after the account was deleted): the next one is
   // offered biometric unlock again, so the "asked" flag of the old account goes.
@@ -103,14 +105,15 @@ export function MobileShell() {
         </Route>
       </Switch>
       {tab && <TabBar active={tab} />}
-      {/* Once, after the first password unlock: "Odemykat Moony obličejem?" (spec §8.2). */}
-      <EnableBiometricsSheet />
+      {/* Once, after the first password unlock: "Odemykat Moony obličejem?" (spec §8.2). A shared
+          statement's import comes first; the offer opens once that sheet has closed. */}
+      <EnableBiometricsSheet sharedPending={sharedPending} />
       {/* Only while unlocked: it reads the milestones, which the locked database cannot answer. */}
       {appStatus === 'unlocked' && <NotificationScheduler />}
       {/* A statement shared into the app opens the import sheet after the unlock, once. It stays
           mounted through a lock (and drains only while unlocked), so a path it has taken but not
           yet shown survives every unlock. */}
-      <ReceivedFileHost />
+      <ReceivedFileHost onPendingChange={setSharedPending} />
     </ImportSheetProvider>
   );
 }

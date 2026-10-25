@@ -27,16 +27,23 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { useValuationMutations, type ValuationKind } from '@/hooks/use-valuation-mutations';
+import type { Formatters } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 
-interface ValuationHistoryDialogProps {
+export interface ValuationHistoryDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   kind: ValuationKind;
   assetId: string;
   /** Oldest first (as the API returns them). */
   valuations: readonly AssetValuation[];
+  /**
+   * Formats every amount the dialog shows (the estimates, their changes and the delete
+   * confirmation); `fmt.money` by default. The phone passes its masking formatter
+   * (`useMoneyText`), so the amounts hide with the eye of Přehled.
+   */
+  formatMoney?: Formatters['money'];
 }
 
 /**
@@ -51,14 +58,16 @@ export function ValuationHistoryDialog({
   kind,
   assetId,
   valuations,
+  formatMoney,
 }: ValuationHistoryDialogProps) {
   const { t } = useTranslation('common');
   const fmt = useFormat();
   const { remove } = useValuationMutations(kind, assetId);
   const [pending, setPending] = useState<AssetValuation | null>(null);
   const rows = useMemo(() => [...valuations].reverse(), [valuations]);
+  const format = formatMoney ?? fmt.money;
   const money = (v: number, currency: string, signed = false) =>
-    fmt.money(v, currency, { signed, decimals: 0 });
+    format(v, currency, { signed, decimals: 0 });
 
   return (
     <>

@@ -65,6 +65,29 @@ export function shouldOfferEnrolment(status: BiometricStatus | undefined, asked:
   return status !== undefined && status.available && !status.enrolled && !asked;
 }
 
+export interface EnrolmentOfferState {
+  /** The offer is due: a password unlock, and `shouldOfferEnrolment`. */
+  offered: boolean;
+  /** "Zapnout" is running (the system asks for Face ID / Touch ID). */
+  enabling: boolean;
+  /** The import sheet is open. */
+  importOpen: boolean;
+  /** A statement shared into Moony is on its way to the import sheet (`ReceivedQueue.pending`). */
+  sharedPending: boolean;
+}
+
+/**
+ * Whether the enrolment sheet is up. The import sheet and the offer never open together: after a
+ * password unlock with a shared statement waiting, the import comes first — it is what the person
+ * came for — and the offer opens once its sheet has closed. Until the drain the unlock starts has
+ * answered, a shared file may be on its way, so the offer waits for that too. Once "Zapnout" runs
+ * the sheet stays until the answer.
+ */
+export function enrolmentOfferOpen(state: EnrolmentOfferState): boolean {
+  if (state.enabling) return true;
+  return state.offered && !state.importOpen && !state.sharedPending;
+}
+
 /**
  * Whether the sheet was shown before. Storage that cannot be read counts as asked: a flag that
  * cannot be kept would bring the sheet back after every unlock.

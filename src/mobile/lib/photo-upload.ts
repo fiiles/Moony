@@ -1,5 +1,6 @@
 import type { RealEstatePhoto, RealEstatePhotoBatch } from '@shared/schema';
 import { utcDayFloor } from '@/utils/chart-axis';
+import { errorKind } from './error-kind';
 import { photoDeletion, todayBatch } from './property-detail';
 
 /** The backend commands the upload needs (`realEstateApi`'s); injected so the rules can be tested. */
@@ -13,9 +14,12 @@ export interface PhotoApi {
   deletePhotoBatch(batchId: string): Promise<void>;
 }
 
-/** What the upload reads of a picked file (a `File`). */
+/**
+ * What the upload reads of a picked file (a `File`): its size and its bytes. Not its name: a
+ * photographed contract's name says whose it is, and nothing here may log it.
+ */
 export interface PhotoSource {
-  name: string;
+  size: number;
   arrayBuffer(): Promise<ArrayBuffer>;
 }
 
@@ -68,7 +72,10 @@ export async function uploadToTodayBatch(
       await api.addPhotoToBatch(batch.id, bytes);
       saved += 1;
     } catch (error) {
-      console.error(`Photo ${file.name} could not be saved:`, error);
+      // Which photo, how big and what kind of failure: never its name, nor the error's text
+      console.error(
+        `Photo ${index + 1} of ${files.length} (${file.size} bytes) could not be saved: ${errorKind(error)}`
+      );
       failure ??= error;
     }
   }
@@ -78,7 +85,7 @@ export async function uploadToTodayBatch(
       try {
         await api.deletePhotoBatch(batch.id);
       } catch (error) {
-        console.error('The empty photo batch could not be removed:', error);
+        console.error(`The empty photo batch could not be removed: ${errorKind(error)}`);
       }
     }
     throw failure;

@@ -8,6 +8,7 @@ import {
   biometryKind,
   canUnlockWithBiometrics,
   clearEnrolmentAsked,
+  enrolmentOfferOpen,
   markEnrolmentAsked,
   shouldAutoPrompt,
   shouldOfferEnrolment,
@@ -76,6 +77,32 @@ describe('shouldOfferEnrolment', () => {
     expect(shouldOfferEnrolment(status({ enrolled: true }), false)).toBe(false);
     expect(shouldOfferEnrolment(status({ available: false }), false)).toBe(false);
     expect(shouldOfferEnrolment(undefined, false)).toBe(false);
+  });
+});
+
+describe('enrolmentOfferOpen', () => {
+  const quiet = { offered: true, enabling: false, importOpen: false, sharedPending: false };
+
+  it('opens the offer when it is due and nothing else is on the way', () => {
+    expect(enrolmentOfferOpen(quiet)).toBe(true);
+    expect(enrolmentOfferOpen({ ...quiet, offered: false })).toBe(false);
+  });
+
+  it('lets a shared statement come first: waits while one is on its way', () => {
+    // The drain after the unlock has not answered yet, or a file waits for the sheet
+    expect(enrolmentOfferOpen({ ...quiet, sharedPending: true })).toBe(false);
+  });
+
+  it('waits while the import sheet is open, and opens once it has closed', () => {
+    expect(enrolmentOfferOpen({ ...quiet, importOpen: true })).toBe(false);
+    expect(enrolmentOfferOpen({ ...quiet, importOpen: true, sharedPending: true })).toBe(false);
+    expect(enrolmentOfferOpen(quiet)).toBe(true);
+  });
+
+  it('stays up while Zapnout runs, whatever else happens', () => {
+    expect(
+      enrolmentOfferOpen({ offered: false, enabling: true, importOpen: true, sharedPending: true })
+    ).toBe(true);
   });
 });
 

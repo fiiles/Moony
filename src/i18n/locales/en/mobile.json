@@ -205,10 +205,6 @@
     }
   },
   "placeholder": {
-    "detail": "The detail comes in phase 4.",
-    "form": "The add form comes in phase 2b.",
-    "edit": "Editing comes in phase 2b.",
-    "delete": "Deleting comes in phase 2b.",
     "export": "Export comes later."
   },
   "account": {
@@ -491,9 +487,7 @@
   },
   "wealth": {
     "placeholder": {
-      "classPage": "This class page comes in the next part of phase 4.",
-      "watchDetail": "The watch detail comes in the next part of phase 4.",
-      "later": "Comes in the next part of phase 4."
+      "classPage": "For now, this page is only in Moony on your computer."
     },
     "subtitle": "Investments, property and cash",
     "sections": {
@@ -566,7 +560,6 @@
       "showAll_one": "Show all {{count}} positions",
       "showAll_other": "Show all {{count}} positions",
       "menu": {
-        "import": "Import broker statement",
         "closed": "Closed positions"
       },
       "closedBadge": "closed",

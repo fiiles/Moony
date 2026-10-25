@@ -18,7 +18,9 @@ const mutationCache = new MutationCache({
  * `networkMode: 'always'`: every query and mutation here is a local IPC call, not a network
  * request. The default ('online') pauses them all once the webview fires `offline`, so the app
  * (the phone's import sheet, Cashflow's skeletons) would hang until a reload whenever the
- * machine loses its connection.
+ * machine loses its connection. That mode also turns `refetchOnReconnect` off by default, so it
+ * is set back on: a query with a finite `staleTime` whose command reaches the network (a stock's
+ * company info) refreshes when the connection returns, as it did before.
  */
 export const queryClient = new QueryClient({
   mutationCache,
@@ -29,6 +31,7 @@ export const queryClient = new QueryClient({
       staleTime: Infinity,
       retry: false,
       networkMode: 'always',
+      refetchOnReconnect: true,
     },
     mutations: {
       retry: false,

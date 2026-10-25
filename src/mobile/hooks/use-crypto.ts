@@ -122,11 +122,11 @@ export function useCryptoPosition(id: string | undefined, period: ChartPeriod) {
 
 /**
  * Deletes the coin (the mutation contract — the domain keys, the metrics and the cashflow, then a
- * fresh snapshot and the history). The caller leaves the screen when it has succeeded and then
- * drops the coin's own trades (`CryptoMenu`). The domain keys are refetched only where nothing is
- * showing them: the detail reads the coin from the very list this invalidates, so refetching it
- * under the open screen would swap the coin for "Position not found" until the screen has left;
- * the list that mounts next finds it invalidated and refetches.
+ * fresh snapshot and the history). The page runs it (`useDeleteAndLeave`), which leaves the screen
+ * when it has succeeded and then drops the coin's own trades. The domain keys are refetched only
+ * where nothing is showing them: the detail reads the coin from the very list this invalidates, so
+ * refetching it under the open screen would swap the coin for "Position not found" until the
+ * screen has left; the list that mounts next finds it invalidated and refetches.
  */
 export function useDeleteCrypto(id: string | undefined) {
   const queryClient = useQueryClient();

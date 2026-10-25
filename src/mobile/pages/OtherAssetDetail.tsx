@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useRoute } from 'wouter';
 import { ArrowUp, Minus, Plus } from 'lucide-react';
 import { priceDecimals, recordCurrency } from '@shared/currencies';
-import type { AssetValuation, OtherAssetTransaction } from '@shared/schema';
+import type { AssetValuation, OtherAsset, OtherAssetTransaction } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import type { EventCluster } from '@/utils/chart-scale';
 import type { OtherAssetRow } from '@/utils/other-assets';
@@ -21,11 +21,12 @@ import { ClassSkeleton } from '@/mobile/components/wealth/ClassSkeleton';
 import { OtherAssetMenu } from '@/mobile/components/wealth/OtherAssetMenu';
 import { PositionLedger } from '@/mobile/components/wealth/PositionLedger';
 import { useBack } from '@/mobile/hooks/use-back';
-import { useLeaveDeleted } from '@/mobile/hooks/use-leave-deleted';
+import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useOtherAsset, useOtherAssetMutations } from '@/mobile/hooks/use-other-asset';
 import { usePositionLedger } from '@/mobile/hooks/use-position-ledger';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
+import { useRetained } from '@/mobile/hooks/use-retained';
 import { changeSinceDayOptions } from '@/mobile/lib/change';
 import { pointsChange, trendChangeBase } from '@/mobile/lib/class-trend';
 import { otherAssetTrace, trimTrace } from '@/mobile/lib/other-asset-trace';
@@ -39,6 +40,13 @@ import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { otherAssetPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
+
+/** What the screen shows of a loaded asset: the record and the row derived from it. */
+interface AssetView {
+  asset: OtherAsset;
+  row: OtherAssetRow;
+}
 
 /** A quantity of an asset is held to eight decimals, as the desktop's transactions list writes it. */
 const QUANTITY_DIGITS = 8;
@@ -56,6 +64,10 @@ type AssetTrade = OtherAssetTransaction & LedgerTx;
  * the asset's native value in its price currency (ADR 0012, ruling 6); the numbers are the
  * desktop's (`otherAssetRow`, the same queries); the buy, sell, edit, revalue and valuation-history
  * dialogs are the desktop's. A trade has no Upravit (there is no update command), only Smazat.
+ *
+ * The page owns the delete (its confirm sheet and the mutation, `useDeleteAndLeave`): the asset
+ * drops out of the list the page reads while the delete is still finishing, which would take the
+ * `···` menu away, and the page keeps showing the asset until it has left.
  */
 export default function OtherAssetDetail() {
   const { t: to } = useTranslation('otherAssets');
@@ -66,6 +78,7 @@ export default function OtherAssetDetail() {
   const back = useBack(routes.otherAssetsList);
   const [period, setPeriod] = useRemembered<ChartPeriod>('otherAsset.period', '30D');
   const [dialog, setDialog] = useState<'buy' | 'sell' | 'revalue' | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const data = useOtherAsset(params?.id);
   const { asset, row } = data;
   const trades = useMemo<AssetTrade[]>(
@@ -73,7 +86,7 @@ export default function OtherAssetDetail() {
     [data.transactions, asset?.name]
   );
   const ledger = usePositionLedger(trades);
-  const { deleteTransaction } = useOtherAssetMutations(params?.id);
+  const { deleteTransaction, remove } = useOtherAssetMutations(params?.id);
   // The dialog resets its form whenever it is handed another object, so this one is rebuilt only
   // when what it holds changes — not on every render of the page
   const price = row?.price;
@@ -94,46 +107,49 @@ export default function OtherAssetDetail() {
     [asset, price, quantity, to]
   );
 
-  // The asset is gone: back to Ostatní aktiva, its own queries dropped (see `useLeaveDeleted`)
-  const leaveDeleted = useLeaveDeleted(routes.otherAssetsList);
+  const current = useMemo<AssetView | null>(
+    () => (!data.isLoading && asset && row ? { asset, row } : null),
+    [data.isLoading, asset, row]
+  );
+  const kept = useRetained(current);
+  const exit = useDeleteAndLeave({
+    home: routes.otherAssetsList,
+    pathOf: otherAssetPath,
+    keysOf: (assetId) => [
+      ['other-asset-transactions', assetId],
+      ['other-asset-valuations', assetId],
+    ],
+    remove: () => remove.mutateAsync(),
+    closeSheet: () => setDeleteOpen(false),
+  });
+  // An asset being deleted stays on screen (as it was) until the screen has left
+  const view = exit.deleting ? kept : current;
 
   return (
     <Screen
-      title={asset?.name ?? ''}
+      title={view?.asset.name ?? ''}
       leading={<NavTextButton label={td('cards.otherAssets')} onClick={back} chevron />}
       trailing={
-        asset && (
+        view && (
           <OtherAssetMenu
-            asset={asset}
+            asset={view.asset}
             valuations={data.valuations}
-            onDeleted={() =>
-              leaveDeleted(otherAssetPath(asset.id), [
-                ['other-asset-transactions', asset.id],
-                ['other-asset-valuations', asset.id],
-              ])
-            }
+            onDelete={() => setDeleteOpen(true)}
           />
         )
       }
     >
-      {data.isLoading ? (
-        // The outline of a class page is the detail's too: the hero, the stats and a few rows
-        <ClassSkeleton />
-      ) : data.notFound || !asset || !row ? (
-        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">
-          {t('wealth.otherAssets.notFound')}
-        </p>
-      ) : (
+      {view ? (
         <>
           {/* The nav bar keeps its one title, so the quantity and the price currency are the first line */}
           <p className="mx-0.5 -mt-0.5 mb-2.5 truncate text-center text-m-caption text-ink-3">
             {[
-              `${fmt.number(row.quantity, { maximumFractionDigits: QUANTITY_DIGITS })} ${to('table.unit')}`,
-              row.priceCurrency,
+              `${fmt.number(view.row.quantity, { maximumFractionDigits: QUANTITY_DIGITS })} ${to('table.unit')}`,
+              view.row.priceCurrency,
             ].join(' · ')}
           </p>
           <AssetHero
-            row={row}
+            row={view.row}
             valuations={data.valuations}
             trades={trades}
             period={period}
@@ -147,7 +163,7 @@ export default function OtherAssetDetail() {
               label: to('actions.sell'),
               icon: Minus,
               onClick: () => setDialog('sell'),
-              disabled: row.quantity <= 0,
+              disabled: view.row.quantity <= 0,
             }}
           />
           <Button
@@ -158,7 +174,7 @@ export default function OtherAssetDetail() {
             <ArrowUp strokeWidth={1.75} aria-hidden />
             {to('actions.revalue')}
           </Button>
-          <AssetStats row={row} />
+          <AssetStats row={view.row} />
           <PositionLedger
             ledger={ledger}
             count={trades.length}
@@ -170,12 +186,12 @@ export default function OtherAssetDetail() {
             deleteTransaction={deleteTransaction}
           />
           <BuyOtherAssetModal
-            asset={asset}
+            asset={view.asset}
             open={dialog === 'buy'}
             onOpenChange={(open) => !open && setDialog(null)}
           />
           <SellOtherAssetModal
-            asset={asset}
+            asset={view.asset}
             open={dialog === 'sell'}
             onOpenChange={(open) => !open && setDialog(null)}
           />
@@ -185,7 +201,23 @@ export default function OtherAssetDetail() {
             kind="otherAsset"
             asset={revalueAsset}
           />
+          <ConfirmSheet
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            title={to('confirmDelete.title')}
+            description={to('confirmDelete.description', { name: view.asset.name })}
+            confirmLabel={to('actions.delete')}
+            isPending={remove.isPending}
+            onConfirm={() => exit.run(view.asset.id)}
+          />
         </>
+      ) : data.isLoading ? (
+        // The outline of a class page is the detail's too: the hero, the stats and a few rows
+        <ClassSkeleton />
+      ) : (
+        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">
+          {t('wealth.otherAssets.notFound')}
+        </p>
       )}
     </Screen>
   );

@@ -117,9 +117,12 @@ export function usePosition(id: string | undefined, period: ChartPeriod): Positi
 
 /**
  * The position's writes: delete (the mutation contract — the domain keys, the metrics and the
- * cashflow, then a fresh snapshot and the history), rename and follow. The caller leaves the
- * screen when a delete has succeeded and then drops the position's own queries (`PositionDetail`:
- * removing them while the screen is still up would rebuild them empty).
+ * cashflow, then a fresh snapshot and the history), rename and follow. The page runs the delete
+ * (`useDeleteAndLeave`), which leaves the screen when it has succeeded and then drops the
+ * position's own queries: removing them while the screen is still up would rebuild them empty.
+ * The domain keys are refetched only where nothing is showing them, as `useDeleteCrypto` does, so
+ * a refetch under the open screen cannot swap the position for "not found" before the screen has
+ * left; the list that mounts next finds them invalidated and refetches.
  */
 export function usePositionMutations(id: string | undefined, ticker: string | undefined) {
   const queryClient = useQueryClient();
@@ -135,7 +138,9 @@ export function usePositionMutations(id: string | undefined, ticker: string | un
   const remove = useMutation({
     mutationFn: () => investmentsApi.delete(id!),
     onSuccess: async () => {
-      for (const queryKey of DELETE_KEYS) queryClient.invalidateQueries({ queryKey });
+      for (const queryKey of DELETE_KEYS) {
+        queryClient.invalidateQueries({ queryKey, refetchType: 'inactive' });
+      }
       queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
       queryClient.invalidateQueries({ queryKey: ['cashflow-report'] });
       // The delete already succeeded; a failed snapshot must not turn it into an error.

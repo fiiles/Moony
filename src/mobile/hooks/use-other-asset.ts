@@ -182,11 +182,11 @@ export function useOtherAsset(id: string | undefined) {
  * - `create` (the add sheet, which has no asset yet: `id` is left out): the asset and, when the
  *   person gave one, its first purchase;
  * - `deleteTransaction` of the open asset;
- * - `remove` the open asset. The caller leaves the screen when it has succeeded and then drops the
- *   asset's own queries (`useLeaveDeleted`). The domain keys are refetched only where nothing is
- *   showing them: the detail reads the asset from the very list this invalidates, so refetching it
- *   under the open screen would swap the asset for "not found" until the screen has left; the
- *   list that mounts next finds it invalidated and refetches.
+ * - `remove` the open asset. The page runs it (`useDeleteAndLeave`), which leaves the screen when
+ *   it has succeeded and then drops the asset's own queries. The domain keys are refetched only
+ *   where nothing is showing them: the detail reads the asset from the very list this invalidates,
+ *   so refetching it under the open screen would swap the asset for "not found" until the screen
+ *   has left; the list that mounts next finds it invalidated and refetches.
  */
 export function useOtherAssetMutations(id?: string) {
   const queryClient = useQueryClient();

@@ -1,8 +1,8 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRoute } from 'wouter';
 import { Minus, Plus } from 'lucide-react';
-import type { CryptoTransaction } from '@shared/schema';
+import type { CryptoPositions, CryptoTransaction, TickerValueHistoryReport } from '@shared/schema';
 import { useCryptoTransactionMutations } from '@/hooks/use-crypto-mutations';
 import { useFormat } from '@/lib/use-format';
 import { monthsBetween } from '@/utils/duration';
@@ -19,13 +19,22 @@ import { PositionHeroCard } from '@/mobile/components/wealth/PositionHeroCard';
 import { PositionLedger } from '@/mobile/components/wealth/PositionLedger';
 import { PositionStats } from '@/mobile/components/wealth/PositionStats';
 import { useBack } from '@/mobile/hooks/use-back';
-import { useCryptoPosition } from '@/mobile/hooks/use-crypto';
-import { useLeaveDeleted } from '@/mobile/hooks/use-leave-deleted';
+import { useCryptoPosition, useDeleteCrypto } from '@/mobile/hooks/use-crypto';
+import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { usePositionLedger } from '@/mobile/hooks/use-position-ledger';
+import { useRetained } from '@/mobile/hooks/use-retained';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { cryptoPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
+
+/** What the screen shows of a loaded coin: the record and what is read from it. */
+interface CoinView {
+  holding: CryptoRow;
+  positions: CryptoPositions | undefined;
+  history: TickerValueHistoryReport | undefined;
+}
 
 /** A coin is held to eight decimals (a satoshi), where a share shows four. */
 const COIN_DIGITS = 8;
@@ -38,6 +47,10 @@ const COIN_DIGITS = 8;
  * no company card (a coin has no company), and a trade has no Upravit (there is no update
  * command), only Smazat. The numbers are the desktop detail's (the same queries), in the report
  * currency; the buy, sell and rate dialogs are the desktop's.
+ *
+ * The page owns the delete (its confirm sheet and the mutation, `useDeleteAndLeave`): the coin
+ * drops out of the list the page reads while the delete is still finishing, which would take the
+ * `···` menu away, and the page keeps showing the coin until it has left.
  */
 export default function CryptoDetail() {
   const { t: tcr } = useTranslation('crypto');
@@ -46,55 +59,55 @@ export default function CryptoDetail() {
   const back = useBack(routes.cryptoList);
   const [period, setPeriod] = useState<ChartPeriod>('30D');
   const [trade, setTrade] = useState<'buy' | 'sell' | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const data = useCryptoPosition(params?.id, period);
   const ledger = usePositionLedger(data.transactions);
   const { deleteTransaction } = useCryptoTransactionMutations();
-  const { holding, reportCurrency } = data;
+  const remove = useDeleteCrypto(params?.id);
+  const { holding, positions, history, reportCurrency } = data;
 
-  // The coin is gone: back to Krypto, its own trades dropped (see `useLeaveDeleted`)
-  const leaveDeleted = useLeaveDeleted(routes.cryptoList);
+  const current = useMemo<CoinView | null>(
+    () => (holding ? { holding, positions, history } : null),
+    [holding, positions, history]
+  );
+  const kept = useRetained(current);
+  const exit = useDeleteAndLeave({
+    home: routes.cryptoList,
+    pathOf: cryptoPath,
+    keysOf: (coinId) => [['crypto-transactions', coinId]],
+    remove: () => remove.mutateAsync(),
+    closeSheet: () => setDeleteOpen(false),
+  });
+  // A coin being deleted stays on screen (as it was) until the screen has left
+  const view = exit.deleting ? kept : current;
 
   return (
     <Screen
-      title={holding?.ticker ?? ''}
+      title={view?.holding.ticker ?? ''}
       leading={<NavTextButton label={td('cards.crypto')} onClick={back} chevron />}
-      trailing={
-        holding && (
-          <CryptoMenu
-            holding={holding}
-            onDeleted={() =>
-              leaveDeleted(cryptoPath(holding.id), [['crypto-transactions', holding.id]])
-            }
-          />
-        )
-      }
+      trailing={view && <CryptoMenu holding={view.holding} onDelete={() => setDeleteOpen(true)} />}
     >
-      {data.isLoading ? (
-        // The outline of a class page is the detail's too: the hero, the stats and a few rows
-        <ClassSkeleton />
-      ) : data.notFound || !holding ? (
-        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">{tcr('detail.notFound')}</p>
-      ) : (
+      {view ? (
         <>
           {/* The nav bar keeps its one title, so the name and the currency are the first line */}
           <p className="mx-0.5 -mt-0.5 mb-2.5 truncate text-center text-m-caption text-ink-3">
-            {[holding.name, holding.originalCurrency].join(' · ')}
+            {[view.holding.name, view.holding.originalCurrency].join(' · ')}
           </p>
           {/* The list's quality, shown when this coin is one of those not converted */}
           <ConversionQualityNote
             quality={
-              holding.marketValue === null || holding.totalCost === null
-                ? data.positions?.fxQuality
+              view.holding.marketValue === null || view.holding.totalCost === null
+                ? view.positions?.fxQuality
                 : undefined
             }
             currency={reportCurrency}
             className="mx-0.5 mb-3.5"
           />
           <PositionHeroCard
-            holding={holding}
-            history={data.history}
+            holding={view.holding}
+            history={view.history}
             transactions={data.transactions}
-            unit={holding.ticker}
+            unit={view.holding.ticker}
             quantityDigits={COIN_DIGITS}
             reportCurrency={reportCurrency}
             period={period}
@@ -107,14 +120,14 @@ export default function CryptoDetail() {
               label: tcr('detail.sell'),
               icon: Minus,
               onClick: () => setTrade('sell'),
-              disabled: holding.quantity <= 0,
+              disabled: view.holding.quantity <= 0,
             }}
           />
           <CoinStats
-            holding={holding}
+            holding={view.holding}
             reportCurrency={reportCurrency}
             transactions={data.transactions}
-            classValue={amountOf(data.positions?.totals.value) ?? 0}
+            classValue={amountOf(view.positions?.totals.value) ?? 0}
           />
           <PositionLedger
             ledger={ledger}
@@ -122,21 +135,38 @@ export default function CryptoDetail() {
             currency={reportCurrency}
             convertAt={data.convertAt}
             ratesReady={data.ratesReady}
-            unit={holding.ticker}
+            unit={view.holding.ticker}
             quantityDigits={COIN_DIGITS}
             deleteTransaction={deleteTransaction}
           />
           <BuyCryptoModal
             open={trade === 'buy'}
             onOpenChange={(open) => !open && setTrade(null)}
-            investment={holding}
+            investment={view.holding}
           />
           <SellCryptoModal
             open={trade === 'sell'}
             onOpenChange={(open) => !open && setTrade(null)}
-            investment={holding}
+            investment={view.holding}
+          />
+          <ConfirmSheet
+            open={deleteOpen}
+            onOpenChange={setDeleteOpen}
+            title={tcr('confirmDelete.title')}
+            description={tcr('confirmDelete.description', {
+              name: view.holding.name,
+              ticker: view.holding.ticker,
+            })}
+            confirmLabel={tcr('actions.delete')}
+            isPending={remove.isPending}
+            onConfirm={() => exit.run(view.holding.id)}
           />
         </>
+      ) : data.isLoading ? (
+        // The outline of a class page is the detail's too: the hero, the stats and a few rows
+        <ClassSkeleton />
+      ) : (
+        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">{tcr('detail.notFound')}</p>
       )}
     </Screen>
   );

@@ -736,6 +736,19 @@ const SELL_WORDS: [&str; 12] = [
     "sell", "sold", "sale", "verkauf", "prodej", "sprzedaz", "venta", "venda", "vende", "vente",
     "vendita", "verkoop",
 ];
+/// Words of a stock split (folded form; "štěpení" is "stepeni"). The Han
+/// words have no spaces around them, so they match anywhere in the value.
+const SPLIT_WORDS: [&str; 9] = [
+    "split",
+    "stepeni",
+    "aktiensplit",
+    "division",
+    "frazionamento",
+    "splitt",
+    "podzial",
+    "分割",
+    "拆股",
+];
 const COMPOUND_WORDS: [&str; 4] = ["kauf", "verkauf", "koop", "verkoop"];
 
 fn word_matches(token: &str, word: &str) -> bool {
@@ -748,6 +761,15 @@ fn has_word(tokens: &[&str], words: &[&str]) -> bool {
     tokens
         .iter()
         .any(|token| words.iter().any(|word| word_matches(token, word)))
+}
+
+/// Whether a value of the type column names a stock split. A split is not a
+/// trade, so it stays a skip; this only lets the skipped list say what it is.
+pub fn is_split_value(value: &str) -> bool {
+    let folded = fold_value(value);
+    let tokens: Vec<&str> = folded.split(' ').filter(|t| !t.is_empty()).collect();
+    let (han, words): (Vec<&str>, Vec<&str>) = SPLIT_WORDS.iter().partition(|w| !w.is_ascii());
+    has_word(&tokens, &words) || han.iter().any(|word| folded.contains(word))
 }
 
 /// What a value of the type column probably means: a purchase word → buy, a
@@ -1420,6 +1442,28 @@ mod tests {
         assert_eq!(action("CLOSE BUY"), TypeValueAction::Sell);
         assert_eq!(action("close buy 1 @ 26.280"), TypeValueAction::Sell);
         assert_eq!(action("OPEN BUY 34 @ 11.7480"), TypeValueAction::Buy);
+    }
+
+    #[test]
+    fn split_values_are_recognised() {
+        for value in [
+            "Stock split open",
+            "split",
+            "Aktiensplit",
+            "podział",
+            "Štěpení akcií",
+            "División de acciones",
+            "Frazionamento",
+            "Splitt",
+            "株式分割",
+            "拆股",
+        ] {
+            assert!(is_split_value(value), "{value}");
+            assert_eq!(suggest_type_action(value), TypeValueAction::Skip, "{value}");
+        }
+        for value in ["Buy", "Dividend", "Deposit", "Nákup", "", "Splendid"] {
+            assert!(!is_split_value(value), "{value}");
+        }
     }
 
     #[test]

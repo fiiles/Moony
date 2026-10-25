@@ -56,6 +56,7 @@ const ALL_KINDS: MilestoneKind[] = [
   'backup_stale',
   'valuation_stale',
   'watch_target',
+  'stock_split',
 ];
 
 describe('agendaDay', () => {
@@ -68,6 +69,7 @@ describe('agendaDay', () => {
     expect(agendaDay(anniversary, TODAY)).toBe(TODAY + 23 * DAY);
     expect(agendaDay({ ...anniversary, tone: 'info' }, TODAY)).toBe(TODAY + 66 * DAY);
     expect(agendaDay(m({ kind: 'watch_target' }), TODAY)).toBe(TODAY);
+    expect(agendaDay(m({ kind: 'stock_split', actionDay: TODAY - 3 * DAY }), TODAY)).toBe(TODAY);
   });
 });
 
@@ -246,6 +248,7 @@ describe('milestoneHref', () => {
     expect(milestoneHref(m({ kind: 'watch_target', sourceId: 'BRK.B' }))).toBe(
       '/stock-monitor/BRK.B'
     );
+    expect(milestoneHref(m({ kind: 'stock_split', sourceId: 'inv-1' }))).toBe('/stocks/inv-1');
   });
 });
 

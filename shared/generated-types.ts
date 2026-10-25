@@ -1194,6 +1194,11 @@ export type InsertScopedLearning = { bankAccountId: string; isCredit: boolean; p
 export type InsertStockInvestment = { ticker: string; companyName: string }
 
 /**
+ * A split the user records by hand (D11). The caller trims and uppercases `ticker`.
+ */
+export type InsertStockSplit = { ticker: string; effectiveDay: number; numerator: string; denominator: string }
+
+/**
  * Data for creating a stock tag
  */
 export type InsertStockTag = { name: string; color: string | null; groupId: string | null }
@@ -1448,7 +1453,7 @@ key: string;
  * `insurance_anniversary`, `insurance_end`, `insurance_payment`, `loan_fixation_end`,
  * `loan_fixation_expired`, `loan_payoff`, `loan_balance_check`, `bond_maturity`,
  * `bond_coupon`, `account_termination`, `savings_rate_end`, `balances_stale`,
- * `backup_stale`, `valuation_stale`, `watch_target`.
+ * `backup_stale`, `valuation_stale`, `watch_target`, `stock_split`.
  */
 kind: string; 
 /**
@@ -1460,7 +1465,8 @@ stage: string;
  */
 tone: string; 
 /**
- * Policy, loan, bond, account or property id; the ticker for targets.
+ * Policy, loan, bond, account or property id; the ticker for targets; the stock
+ * investment id for splits.
  */
 sourceId: string | null; 
 /**
@@ -1472,7 +1478,8 @@ title: string;
  */
 dueDay: number | null; 
 /**
- * Last day to act when it differs from the event (insurance notice deadline).
+ * Last day to act when it differs from the event (insurance notice deadline); the
+ * ex-date of a stock split.
  */
 actionDay: number | null; 
 /**
@@ -1488,11 +1495,11 @@ amount: string | null; currency: string | null;
  */
 referenceAmount: string | null; 
 /**
- * `below` / `above` for targets.
+ * `below` / `above` for targets; `<numerator>:<denominator>` for a stock split.
  */
 direction: string | null; 
 /**
- * Number of stale accounts.
+ * Number of stale accounts; transactions dated before a stock split.
  */
 count: number | null }
 
@@ -2201,7 +2208,11 @@ importAnywayLines?: number[] }
 /**
  * Row counts of a preview, over the whole file (TS `StockImportCounts`).
  */
-export type StockImportCounts = { total: number; willImport: number; duplicates: number; skipped: number; errors: number }
+export type StockImportCounts = { total: number; willImport: number; duplicates: number; skipped: number; errors: number; 
+/**
+ * Rows that will be imported converted to post-split units (D13).
+ */
+converted: number }
 
 /**
  * One security of the file (TS `StockImportInstrument`).
@@ -2249,6 +2260,10 @@ export type StockImportResult = {
  * `None` when nothing was imported (no batch is recorded).
  */
 batchId: string | null; imported: number; duplicates: number; skipped: number; errors: number; 
+/**
+ * Imported rows converted to post-split units (D13).
+ */
+converted: number; 
 /**
  * Tickers of positions the import created.
  */
@@ -2341,7 +2356,12 @@ currency?: string | null;
 /**
  * Exclude every trade of this instrument.
  */
-skip?: boolean }
+skip?: boolean; 
+/**
+ * Splits of the ticker inside the file's trade range (D13). Absent in configs and saved
+ * formats from before splits were known.
+ */
+splits?: StockSplitOverride[] }
 
 /**
  * What to look up on Yahoo Finance for one instrument (TS `StockInstrumentQuery`).
@@ -2543,6 +2563,166 @@ export type StockRowStatus =
  * Cannot be imported (see `message`).
  */
 "error"
+
+/**
+ * One `stock_splits` row plus what is derived on read: the number of transactions dated
+ * before the split (D6) and, for a pending split, the D7 verdict.
+ */
+export type StockSplit = { id: string; ticker: string; 
+/**
+ * UTC midnight of the ex-date.
+ */
+effectiveDay: number; 
+/**
+ * Integer as text, e.g. `"4"`.
+ */
+numerator: string; 
+/**
+ * Integer as text, e.g. `"1"`.
+ */
+denominator: string; source: StockSplitSource; status: StockSplitStatus; detectedAt: number; resolvedAt: number | null; 
+/**
+ * Transactions rewritten by the last apply.
+ */
+appliedCount: number | null; 
+/**
+ * Transactions of the ticker dated before `effective_day`, now.
+ */
+preSplitCount: number; 
+/**
+ * D7 from `stock_value_history`; `unknown` unless pending.
+ */
+verdict: StockSplitVerdict }
+
+/**
+ * What the import does with the file's trades dated before a split (TS `StockSplitAction`).
+ * The ticker's stored rows are a separate decision: `StockSplitOverride::apply_stored`.
+ */
+export type StockSplitAction = 
+/**
+ * The file is in pre-split units: its trades dated before the split are converted to
+ * today's units (`quantity × n/d`, `price × d/n`) (spec D13).
+ */
+"convert" | 
+/**
+ * The file is already in today's units: nothing is converted.
+ */
+"keep"
+
+/**
+ * What an apply or revert did: the split as it is now, how many transactions were
+ * rewritten, and the ticker's first transaction day (where the history rebuild starts).
+ */
+export type StockSplitApplyResult = { split: StockSplit; rewritten: number; earliestDay: number | null }
+
+/**
+ * The split check of one instrument of the file (TS `StockSplitCheck`, D12).
+ */
+export type StockSplitCheck = { 
+/**
+ * `StockImportInstrument.key`.
+ */
+key: string; ticker: string; 
+/**
+ * `false` when the history could not be fetched (offline, unknown symbol); `splits` is
+ * then empty.
+ */
+checked: boolean; 
+/**
+ * Oldest first.
+ */
+splits: StockSplitCheckSplit[] }
+
+/**
+ * A split Yahoo reports after an instrument's first trade (TS `StockSplitCheckSplit`, D12).
+ */
+export type StockSplitCheckSplit = { 
+/**
+ * UTC midnight of the ex-date.
+ */
+effectiveDay: number; 
+/**
+ * Integer as text, e.g. `"10"` of a 10:1 split.
+ */
+numerator: string; 
+/**
+ * Integer as text, e.g. `"1"` of a 10:1 split.
+ */
+denominator: string; 
+/**
+ * D7 over `trades`.
+ */
+verdict: StockSplitVerdict; 
+/**
+ * The will-import trades dated before the split, in file order.
+ */
+trades: StockSplitCheckTrade[]; 
+/**
+ * Status of the `stock_splits` row of `(ticker, effectiveDay)`, if any.
+ */
+storedStatus: StockSplitStatus | null; 
+/**
+ * Stored transactions of the ticker dated before the split (the D14 line).
+ */
+storedPreSplitCount: number; 
+/**
+ * D7 over those stored transactions, as the position page judges them (against
+ * `stock_value_history`, cumulative over the ticker's pending splits); `unknown` unless the
+ * split is pending or unknown to Moony and such rows exist.
+ */
+storedVerdict: StockSplitVerdict }
+
+/**
+ * One file trade dated before a split, with its D7 verdict (TS `StockSplitCheckTrade`).
+ */
+export type StockSplitCheckTrade = { 
+/**
+ * 1-based line of the file.
+ */
+line: number; verdict: StockSplitVerdict }
+
+/**
+ * A split of an instrument's ticker and what the import does about it (TS
+ * `StockSplitOverride`, spec D13). The wizard fills it from `check_stock_splits`.
+ */
+export type StockSplitOverride = { 
+/**
+ * UTC midnight of the ex-date; trades dated before it are pre-split.
+ */
+effectiveDay: number; 
+/**
+ * Integer as text, e.g. `"10"` of a 10:1 split.
+ */
+numerator: string; 
+/**
+ * Integer as text, e.g. `"1"` of a 10:1 split.
+ */
+denominator: string; 
+/**
+ * What happens to the file's trades dated before the split.
+ */
+action: StockSplitAction; 
+/**
+ * Also apply the split to the ticker's stored transactions before the import, when Moony
+ * holds it as `pending` or has no row for it (D14); independent of `action`. Absent in
+ * configs from before the stored rows had a choice of their own.
+ */
+applyStored?: boolean }
+
+/**
+ * Where a split record came from.
+ */
+export type StockSplitSource = "yahoo" | "manual" | "import"
+
+/**
+ * Where a split stands: detected and waiting, applied to the stored rows, or dismissed.
+ */
+export type StockSplitStatus = "pending" | "applied" | "dismissed"
+
+/**
+ * Whether a transaction's price is already expressed in post-split terms (D7).
+ */
+export type StockSplitVerdict = "adjusted" | "unadjusted" | "unknown"
 
 /**
  * Stock tag for categorizing investments (e.g., Growth, Value, Dividend)

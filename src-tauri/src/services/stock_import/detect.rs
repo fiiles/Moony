@@ -7,7 +7,7 @@
 
 use crate::error::{AppError, Result};
 use crate::services::csv_import::decode::{
-    csv_reader, detect_header_row_by, slice_from_line, LineIndex,
+    csv_reader, detect_header_row_by, slice_from_line, unwrap_quoted_record, LineIndex,
 };
 
 use super::columns::{suggest_stock_columns, StockRole};
@@ -81,6 +81,7 @@ pub fn data_records(
         .into_records()
         .skip(1 + skip_rows)
         .map(move |result| {
+            let result = result.map(|record| unwrap_quoted_record(record, delimiter));
             let byte = match &result {
                 Ok(record) => record.position().map(|p| p.byte() as usize),
                 Err(e) => e.position().map(|p| p.byte() as usize),

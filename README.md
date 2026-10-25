@@ -46,7 +46,9 @@ tablet app, or a budget shared by a household (one profile on one computer, no s
   never counts toward net worth. Broker CSV import reads XTB, Trading 212, Degiro and
   Interactive Brokers exports and your own table. The analysis shows time-weighted and
   money-weighted return, drawdown, each position's contribution, deposits against gain and an
-  optional comparison with S&P 500 or MSCI World.
+  optional comparison with S&P 500 or MSCI World. Stock splits are detected from Yahoo Finance
+  and wait for your confirmation before your earlier trades are converted; the broker import
+  checks the file's prices against them and converts pre-split rows on request.
 - **Crypto, bonds, other assets, real estate, loans and insurance**, with dated valuations,
   rental income, recurring costs, linked loans and policies, loan schedules and attachments.
 - **Budgets, cashflow and planning:** a cashflow report by month, quarter or year, cashflow

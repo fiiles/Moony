@@ -46,6 +46,7 @@ const GROUP_OF: Record<MilestoneKind, MilestoneGroupId> = {
   account_termination: 'accounts',
   savings_rate_end: 'accounts',
   watch_target: 'targets',
+  stock_split: 'targets',
   backup_stale: 'backup',
   balances_stale: 'balances',
   valuation_stale: 'valuations',
@@ -86,10 +87,10 @@ export function isDeadline(m: Milestone): boolean {
 
 /**
  * The day an agenda row shows: the notice deadline while it can be met, otherwise the
- * event; a crossed target is today.
+ * event; a crossed target and a stock split notice are today.
  */
 export function agendaDay(m: Milestone, today: number): number {
-  if (m.kind === 'watch_target') return today;
+  if (m.kind === 'watch_target' || m.kind === 'stock_split') return today;
   if (m.actionDay !== null && m.tone === 'action') return m.actionDay;
   return m.dueDay ?? today;
 }
@@ -102,6 +103,7 @@ export const INFO_KINDS: readonly MilestoneKind[] = [
   'insurance_payment',
   'bond_coupon',
   'loan_payoff',
+  'stock_split',
 ];
 
 /**
@@ -181,6 +183,8 @@ export function milestoneHref(m: Milestone): string {
       return '/settings/data';
     case 'watch_target':
       return `/stock-monitor/${id}`;
+    case 'stock_split':
+      return `/stocks/${id}`;
   }
 }
 

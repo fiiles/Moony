@@ -321,7 +321,8 @@
     "menu": {
       "editPrice": "Editar precio",
       "editDividend": "Editar estimación de dividendo",
-      "editName": "Editar nombre"
+      "editName": "Editar nombre",
+      "recordSplit": "Registrar split"
     },
     "status": {
       "pricesUpdated": "Precios actualizados {{when}}",
@@ -589,12 +590,14 @@
         "willImport": "Por importar {{count}}",
         "duplicates": "Duplicados {{count}}",
         "skipped": "Omitidas {{count}}",
-        "errors": "Errores {{count}}"
+        "errors": "Errores {{count}}",
+        "converted": "Recalculadas {{count}}"
       },
       "feeNote": "Las comisiones no se importan",
       "nothingToImport": "No hay nada que importar: todas las filas son duplicados, están omitidas o tienen un error.",
       "statusNew": "Nueva",
       "statusSkipped": "Omitida",
+      "statusConverted": "Recalculada",
       "statusError": "Error",
       "statusDuplicate": "Duplicada",
       "duplicateImportAnyway": "importar de todos modos",
@@ -687,6 +690,7 @@
       "duplicates": "Duplicadas",
       "skipped": "Omitidas",
       "errors": "Errores",
+      "converted": "Recalculadas por split",
       "newPositions": "Posiciones nuevas:",
       "updatedPositions": "Añadidas a existentes:",
       "moreTickers_one": "+{{count}} más",
@@ -744,6 +748,7 @@
     },
     "row": {
       "notATrade": "No es una compra ni una venta",
+      "splitRow": "Fila de split — Moony no la convierte, revise las cantidades anteriores al split",
       "zeroQuantity": "Cantidad cero",
       "assetClass": "Otra clase de activo",
       "instrumentSkipped": "El valor está omitido",
@@ -765,7 +770,33 @@
       "duplicateSimilar": "Ya hay en Moony una operación similar: mismo día y cantidad, precio dentro del 0,5 %",
       "cannotParse": "No se pudo leer la fila"
     },
-    "mcpSource": "MCP"
+    "mcpSource": "MCP",
+    "splits": {
+      "checking": "Comprobando splits…",
+      "unchecked": "No se pudieron comprobar los splits",
+      "line": "Split {{ratio}} el {{date}}",
+      "verdict": {
+        "unadjusted": "las operaciones anteriores del archivo están en unidades previas al split",
+        "adjusted": "las operaciones anteriores del archivo parecen ya recalculadas",
+        "unknown": "no se puede saber si el archivo ya está recalculado"
+      },
+      "storedVerdict": {
+        "unadjusted_one": "{{count}} operación guardada anterior está en unidades previas al split",
+        "unadjusted_many": "{{count}} operaciones guardadas anteriores están en unidades previas al split",
+        "unadjusted_other": "{{count}} operaciones guardadas anteriores están en unidades previas al split",
+        "adjusted_one": "{{count}} operación guardada anterior ya parece recalculada",
+        "adjusted_many": "{{count}} operaciones guardadas anteriores ya parecen recalculadas",
+        "adjusted_other": "{{count}} operaciones guardadas anteriores ya parecen recalculadas",
+        "unknown_one": "Moony no puede saber si {{count}} operación guardada anterior ya está recalculada",
+        "unknown_many": "Moony no puede saber si {{count}} operaciones guardadas anteriores ya están recalculadas",
+        "unknown_other": "Moony no puede saber si {{count}} operaciones guardadas anteriores ya están recalculadas"
+      },
+      "mixedUnitsWarning": "Las operaciones guardadas anteriores al split se quedan en sus unidades originales; después de la importación, confirma o descarta el split en la página de la posición.",
+      "convert": "Recalcular",
+      "convertFor": "Recalcular las operaciones de {{ticker}} por el split {{ratio}}",
+      "applyStored": "Recalcular también las operaciones guardadas",
+      "applyStoredFor": "Recalcular las operaciones guardadas de {{ticker}} por el split {{ratio}}"
+    }
   },
   "eyebrow": "Cartera",
   "export": "Exportar",
@@ -786,5 +817,72 @@
     "deleted_one": "Se eliminó {{count}} operación importada",
     "deleted_many": "Se eliminaron {{count}} operaciones importadas",
     "deleted_other": "Se eliminaron {{count}} operaciones importadas"
+  },
+  "splits": {
+    "toast": {
+      "applied_one": "{{ticker}}: {{count}} operación recalculada ({{ratio}})",
+      "applied_many": "{{ticker}}: {{count}} operaciones recalculadas ({{ratio}})",
+      "applied_other": "{{ticker}}: {{count}} operaciones recalculadas ({{ratio}})",
+      "reverted_one": "{{ticker}}: split {{ratio}} revertido, {{count}} operación restaurada",
+      "reverted_many": "{{ticker}}: split {{ratio}} revertido, {{count}} operaciones restauradas",
+      "reverted_other": "{{ticker}}: split {{ratio}} revertido, {{count}} operaciones restauradas",
+      "recorded_one": "{{ticker}}: split {{ratio}} registrado, {{count}} operación recalculada",
+      "recorded_many": "{{ticker}}: split {{ratio}} registrado, {{count}} operaciones recalculadas",
+      "recorded_other": "{{ticker}}: split {{ratio}} registrado, {{count}} operaciones recalculadas",
+      "dismissed": "{{ticker}}: split {{ratio}} descartado",
+      "deleted": "Split eliminado"
+    },
+    "undo": "Deshacer",
+    "banner": {
+      "title": "Split {{ratio}} el {{date}}",
+      "unadjusted_one": "{{count}} operación anterior al split parece estar en las unidades originales.",
+      "unadjusted_many": "{{count}} operaciones anteriores al split parecen estar en las unidades originales.",
+      "unadjusted_other": "{{count}} operaciones anteriores al split parecen estar en las unidades originales.",
+      "adjusted_one": "{{count}} operación anterior al split ya parece recalculada.",
+      "adjusted_many": "{{count}} operaciones anteriores al split ya parecen recalculadas.",
+      "adjusted_other": "{{count}} operaciones anteriores al split ya parecen recalculadas.",
+      "unknown": "Moony no puede saber si las operaciones anteriores al split ya están recalculadas."
+    },
+    "actions": {
+      "apply": "Recalcular operaciones",
+      "dismiss": "Ya está contemplado",
+      "revert": "Deshacer el recálculo",
+      "delete": "Eliminar",
+      "manage": "Gestionar splits"
+    },
+    "dialog": {
+      "title": "Splits de {{ticker}}",
+      "description": "Los splits que Moony encontró o que registraste, y qué pasó con las operaciones anteriores.",
+      "empty": "Aún no hay splits. Registra abajo uno que falte."
+    },
+    "columns": {
+      "date": "Fecha",
+      "ratio": "Proporción",
+      "source": "Origen",
+      "status": "Estado",
+      "count": "Operaciones"
+    },
+    "status": {
+      "pending": "Pendiente",
+      "applied": "Aplicado",
+      "dismissed": "Contemplado"
+    },
+    "source": {
+      "yahoo": "Yahoo Finance",
+      "manual": "Manual",
+      "import": "Importación"
+    },
+    "form": {
+      "title": "Registrar un split manualmente",
+      "description": "Moony recalcula al instante las operaciones anteriores a este día en las unidades actuales.",
+      "date": "Fecha (ex-date)",
+      "numerator": "Acciones nuevas",
+      "denominator": "Por acciones antiguas",
+      "submit": "Registrar y recalcular"
+    },
+    "appliedLine_one": "Split {{ratio}} el {{date}} · {{count}} operación recalculada",
+    "appliedLine_many": "Split {{ratio}} el {{date}} · {{count}} operaciones recalculadas",
+    "appliedLine_other": "Split {{ratio}} el {{date}} · {{count}} operaciones recalculadas",
+    "hint": "El {{date}} hubo un split {{ratio}}; introduce la cantidad y el precio en las unidades actuales."
   }
 }

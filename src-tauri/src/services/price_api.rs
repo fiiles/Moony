@@ -7,6 +7,7 @@ use crate::db::Database;
 use crate::error::{AppError, Result};
 use crate::models::stock_monitor::StockPricePoint;
 use crate::services::quote_unit::{quote_unit, unit_changed as quote_unit_changed, QuoteUnit};
+use crate::services::stock_splits::{self, DetectedSplit, StockSplitSource};
 use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use yahoo_finance_api::{YResponse, YahooError};
@@ -136,6 +137,68 @@ fn dividend_sum(response: &YResponse, unit: &QuoteUnit) -> Option<f64> {
     Some(unit.apply(sum))
 }
 
+/// The splits of a chart response as whole numbers on the exchange's calendar day (spec D2). A
+/// split `n:d` turns one old share into `n/d` new ones: AAPL 2020-08-31 is `4, 1, "4:1"` (the
+/// crate's doc comment on `Split` has it the other way round). Yahoo dates a split at the
+/// opening of the session, so the day is read in the exchange's offset (an ASX session opens at
+/// 23:00 UTC of the day before) and kept as that day's UTC midnight. An event whose parts are not
+/// positive whole numbers, or whose `splitRatio` text names another ratio, is logged and dropped.
+/// A response without a result has no splits.
+pub(crate) fn chart_splits(response: &YResponse) -> Vec<DetectedSplit> {
+    let Ok(splits) = response.splits() else {
+        return Vec::new();
+    };
+    let meta = response.metadata().ok();
+    let offset = meta.as_ref().map_or(0, |meta| i64::from(meta.gmtoffset));
+    splits
+        .iter()
+        .filter_map(|split| {
+            let parts = whole_part(split.numerator).zip(whole_part(split.denominator));
+            let Some((numerator, denominator)) =
+                parts.filter(|&(n, d)| ratio_text_agrees(&split.split_ratio, n, d))
+            else {
+                log::warn!(
+                    "[YAHOO SPLITS] Dropped a split event whose ratio is not a whole-number ratio"
+                );
+                log::debug!(
+                    "[YAHOO SPLITS] {}: {} / {} ({:?}) on {}",
+                    meta.as_ref().map_or("?", |meta| meta.symbol.as_str()),
+                    split.numerator,
+                    split.denominator,
+                    split.split_ratio,
+                    split.date
+                );
+                return None;
+            };
+            Some(DetectedSplit {
+                effective_day: (split.date + offset).div_euclid(86_400) * 86_400,
+                numerator,
+                denominator,
+            })
+        })
+        .collect()
+}
+
+/// A part of a split ratio as a whole number: finite, at least one and integral.
+fn whole_part(value: f64) -> Option<u64> {
+    (value.is_finite() && value >= 1.0 && value.fract() == 0.0 && value <= f64::from(u32::MAX))
+        .then_some(value as u64)
+}
+
+/// Whether Yahoo's `splitRatio` text (`"4:1"`) names the ratio of the parts.
+fn ratio_text_agrees(text: &str, numerator: u64, denominator: u64) -> bool {
+    let Some((n, d)) = text.split_once(':') else {
+        return false;
+    };
+    let part = |text: &str| text.trim().parse::<f64>().ok().and_then(whole_part);
+    match (part(n), part(d)) {
+        (Some(n), Some(d)) => {
+            u128::from(n) * u128::from(denominator) == u128::from(d) * u128::from(numerator)
+        }
+        _ => false,
+    }
+}
+
 /// A price figure of a Yahoo response as stored text; `None` when absent or not finite.
 fn fmt_price(unit: &QuoteUnit, quoted: Option<f64>) -> Option<String> {
     quoted
@@ -260,6 +323,14 @@ pub struct DividendResult {
     pub currency: String,
 }
 
+/// What a dividend refresh did: the yearly sums, and the tickers whose fetched year held a new
+/// pending split (spec D5) — the command that ran it queues their full history rebuild (D18).
+#[derive(Debug, Default)]
+pub struct DividendRefresh {
+    pub results: Vec<DividendResult>,
+    pub new_splits: Vec<String>,
+}
+
 #[derive(Debug, Serialize)]
 pub struct StockPriceResult {
     pub ticker: String,
@@ -278,6 +349,53 @@ pub struct StockPriceRefreshResult {
     /// that ran the refresh queues a history rebuild for them. Not part of the wire contract.
     #[serde(skip)]
     pub unit_changed: Vec<String>,
+    /// Tickers the daily split check (spec D19) found a new pending split for. The command that
+    /// ran the refresh queues their full history rebuild (D18). Not part of the wire contract.
+    #[serde(skip)]
+    pub new_splits: Vec<String>,
+}
+
+/// How often a ticker's quote refresh also asks Yahoo for its recent splits (spec D19).
+const SPLIT_CHECK_SECONDS: i64 = 86_400;
+
+/// Whether a ticker last checked for splits at `checked_at` (`None`: never) is due again.
+fn split_check_due(checked_at: Option<i64>, now: i64) -> bool {
+    checked_at.is_none_or(|checked_at| checked_at < now - SPLIT_CHECK_SECONDS)
+}
+
+/// The daily split check of one ticker (spec D19): a one-month daily chart, its splits recorded
+/// as pending (`stock_splits::record_detected`) and `stock_data.splits_checked_at` set. Returns
+/// whether a new split was recorded. Never fails the quote refresh: a failed request or write is
+/// logged and leaves the check due, so the next refresh tries again.
+async fn check_recent_splits(
+    db: &Database,
+    provider: &yahoo_finance_api::YahooConnector,
+    ticker: &str,
+    ticker_upper: &str,
+    now: i64,
+) -> bool {
+    let response = match provider.get_quote_range(ticker, "1d", "1mo").await {
+        Ok(response) => response,
+        Err(e) => {
+            log::warn!("[YAHOO SPLITS] The daily split check failed; it runs again next refresh");
+            log::debug!("[YAHOO SPLITS] {}: {}", ticker_upper, e);
+            return false;
+        }
+    };
+    let splits = chart_splits(&response);
+    let recorded = db.with_conn(|conn| {
+        let inserted =
+            stock_splits::record_detected(conn, ticker_upper, &splits, StockSplitSource::Yahoo)?;
+        conn.execute(
+            "UPDATE stock_data SET splits_checked_at = ?1 WHERE ticker = ?2",
+            rusqlite::params![now, ticker_upper],
+        )?;
+        Ok(!inserted.is_empty())
+    });
+    recorded.unwrap_or_else(|e| {
+        log::warn!("[YAHOO SPLITS] Recording the daily split check failed: {e}");
+        false
+    })
 }
 
 /// Refresh stock prices from Yahoo Finance using yahoo_finance_api crate
@@ -305,11 +423,13 @@ pub async fn refresh_stock_prices_yahoo_with_ttl(
             remaining_tickers: vec![],
             rate_limit_hit: false,
             unit_changed: vec![],
+            new_splits: vec![],
         });
     }
 
     let mut updated_prices = Vec::new();
     let mut unit_changed: Vec<String> = Vec::new();
+    let mut new_splits: Vec<String> = Vec::new();
     let mut failed_tickers: Vec<(String, String)> = Vec::new();
     let now = unix_timestamp_now();
 
@@ -378,10 +498,28 @@ pub async fn refresh_stock_prices_yahoo_with_ttl(
                     }
                     // Stored in the unit the response reports (pence become pounds), never in
                     // the one the ticker's suffix suggests.
-                    match db.with_conn(|conn| store_stock_quote(conn, &ticker_upper, &quote, now)) {
-                        Ok(stored) => {
+                    let stored = db.with_conn(|conn| {
+                        let stored = store_stock_quote(conn, &ticker_upper, &quote, now)?;
+                        // A followed ticker without transactions has no split to apply.
+                        let (checked_at, held): (Option<i64>, bool) = conn.query_row(
+                            "SELECT splits_checked_at, EXISTS(
+                                 SELECT 1 FROM investment_transactions WHERE ticker = ?1)
+                             FROM stock_data WHERE ticker = ?1",
+                            [&ticker_upper],
+                            |row| Ok((row.get(0)?, row.get(1)?)),
+                        )?;
+                        Ok((stored, held && split_check_due(checked_at, now)))
+                    });
+                    match stored {
+                        Ok((stored, split_check)) => {
                             if stored.unit_changed {
                                 unit_changed.push(ticker_upper.clone());
+                            }
+                            if split_check
+                                && check_recent_splits(db, &provider, ticker, &ticker_upper, now)
+                                    .await
+                            {
+                                new_splits.push(ticker_upper.clone());
                             }
                             updated_prices.push(StockPriceResult {
                                 ticker: ticker_upper,
@@ -419,6 +557,13 @@ pub async fn refresh_stock_prices_yahoo_with_ttl(
         );
         log::debug!("[YAHOO FINANCE] Unit changed: {:?}", unit_changed);
     }
+    if !new_splits.is_empty() {
+        log::info!(
+            "[YAHOO FINANCE] New stock split for {} tickers; their history is rebuilt",
+            new_splits.len()
+        );
+        log::debug!("[YAHOO FINANCE] New splits: {:?}", new_splits);
+    }
     if !failed_tickers.is_empty() {
         log::warn!("[YAHOO FINANCE] Failed: {} tickers", failed_tickers.len());
         for (ticker, reason) in &failed_tickers {
@@ -432,6 +577,7 @@ pub async fn refresh_stock_prices_yahoo_with_ttl(
         remaining_tickers: vec![],
         rate_limit_hit: false,
         unit_changed,
+        new_splits,
     })
 }
 
@@ -768,17 +914,17 @@ pub async fn search_crypto(
 /// Refresh dividends from Yahoo Finance
 /// Only fetches if data is older than 30 days
 /// No API key required - uses yahoo_finance_api crate
-pub async fn refresh_dividends(db: &Database, tickers: Vec<String>) -> Result<Vec<DividendResult>> {
+/// The splits in a fetched year are recorded as pending (spec D5); a failure to record them is
+/// logged and does not fail the ticker.
+pub async fn refresh_dividends(db: &Database, tickers: Vec<String>) -> Result<DividendRefresh> {
     if tickers.is_empty() {
-        return Ok(vec![]);
+        return Ok(DividendRefresh::default());
     }
 
-    let now = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .unwrap()
-        .as_secs() as i64;
+    let now = unix_timestamp_now();
 
     let mut results = Vec::new();
+    let mut new_splits: Vec<String> = Vec::new();
     let mut failed_tickers: Vec<(String, String)> = Vec::new();
 
     log::info!(
@@ -844,6 +990,16 @@ pub async fn refresh_dividends(db: &Database, tickers: Vec<String>) -> Result<Ve
 
         match provider.get_quote_history(&ticker, start, end).await {
             Ok(response) => {
+                let splits = chart_splits(&response);
+                match db.with_conn(|conn| {
+                    stock_splits::record_detected(conn, &ticker, &splits, StockSplitSource::Yahoo)
+                }) {
+                    Ok(inserted) if !inserted.is_empty() => new_splits.push(ticker.clone()),
+                    Ok(_) => {}
+                    Err(e) => {
+                        log::warn!("[YAHOO DIVIDENDS] Recording the year's splits failed: {e}")
+                    }
+                }
                 // Dividends come in the quote unit of the response (pence for GBp), so they are
                 // converted exactly like its prices.
                 let unit = unit_of(&response, &ticker);
@@ -922,9 +1078,18 @@ pub async fn refresh_dividends(db: &Database, tickers: Vec<String>) -> Result<Ve
             log::debug!("[YAHOO DIVIDENDS]   - {}: {}", ticker, reason);
         }
     }
+    if !new_splits.is_empty() {
+        log::info!(
+            "[YAHOO DIVIDENDS] New stock split for {} tickers; their history is rebuilt",
+            new_splits.len()
+        );
+    }
     log::info!("[YAHOO DIVIDENDS] ==============================");
 
-    Ok(results)
+    Ok(DividendRefresh {
+        results,
+        new_splits,
+    })
 }
 
 // ============================================================================
@@ -937,6 +1102,13 @@ pub struct HistoricalPrice {
     pub timestamp: i64,
     pub price: f64,
     pub currency: String,
+}
+
+/// The daily closes of a ticker over a window with the splits Yahoo reported in it (spec D5).
+#[derive(Debug, Clone, Default)]
+pub struct HistoricalSeries {
+    pub prices: Vec<HistoricalPrice>,
+    pub splits: Vec<DetectedSplit>,
 }
 
 /// Result of historical price backfill
@@ -1028,18 +1200,47 @@ fn historical_stock_points(
     Ok(prices)
 }
 
+/// [`historical_stock_points`] with the splits of the same response.
+fn historical_stock_series(
+    response: &YResponse,
+    ticker: &str,
+    strict: bool,
+) -> Result<HistoricalSeries> {
+    Ok(HistoricalSeries {
+        prices: historical_stock_points(response, ticker, strict)?,
+        splits: chart_splits(response),
+    })
+}
+
+/// A fetched history of one symbol that may hold nothing worth keeping.
+trait FetchedHistory {
+    fn is_blank(&self) -> bool;
+}
+
+impl FetchedHistory for Vec<HistoricalPrice> {
+    fn is_blank(&self) -> bool {
+        self.is_empty()
+    }
+}
+
+impl FetchedHistory for HistoricalSeries {
+    fn is_blank(&self) -> bool {
+        self.prices.is_empty() && self.splits.is_empty()
+    }
+}
+
 /// A caller must propagate this result before exposing the accumulated map.
 /// Best-effort callers retain successful symbols, strict callers fail the batch.
-fn collect_historical_symbol(
-    results: &mut HashMap<String, Vec<HistoricalPrice>>,
+fn collect_historical_symbol<T: FetchedHistory>(
+    results: &mut HashMap<String, T>,
     ticker: &str,
-    fetched: Result<Vec<HistoricalPrice>>,
+    fetched: Result<T>,
     strict: bool,
 ) -> Result<()> {
     match fetched {
-        Ok(prices) => {
-            if !prices.is_empty() {
-                results.insert(ticker.to_string(), prices);
+        Ok(history) => {
+            if !history.is_blank() {
+                results.insert(ticker.to_string(), history);
             }
             Ok(())
         }
@@ -1117,7 +1318,9 @@ pub async fn get_historical_stock_prices_yahoo(
     start_timestamp: i64,
     end_timestamp: i64,
 ) -> Result<HashMap<String, Vec<HistoricalPrice>>> {
-    get_historical_stock_prices_yahoo_impl(tickers, start_timestamp, end_timestamp, false).await
+    let series =
+        get_historical_stock_series_yahoo(tickers, start_timestamp, end_timestamp, false).await?;
+    Ok(series_prices(series))
 }
 
 /// Fetch every requested symbol successfully or return an error, so durable
@@ -1127,20 +1330,36 @@ pub async fn get_historical_stock_prices_yahoo_strict(
     start_timestamp: i64,
     end_timestamp: i64,
 ) -> Result<HashMap<String, Vec<HistoricalPrice>>> {
-    get_historical_stock_prices_yahoo_impl(tickers, start_timestamp, end_timestamp, true).await
+    let series =
+        get_historical_stock_series_yahoo(tickers, start_timestamp, end_timestamp, true).await?;
+    Ok(series_prices(series))
 }
 
-async fn get_historical_stock_prices_yahoo_impl(
+/// The prices of fetched series, leaving out a ticker without any.
+fn series_prices(
+    series: HashMap<String, HistoricalSeries>,
+) -> HashMap<String, Vec<HistoricalPrice>> {
+    series
+        .into_iter()
+        .filter(|(_, series)| !series.prices.is_empty())
+        .map(|(ticker, series)| (ticker, series.prices))
+        .collect()
+}
+
+/// The daily closes of each ticker with the splits Yahoo reported in the window (the history
+/// rebuild records them, spec D5). `strict` as in [`get_historical_stock_prices_yahoo_strict`];
+/// otherwise a ticker that fails is left out.
+pub async fn get_historical_stock_series_yahoo(
     tickers: &[String],
     start_timestamp: i64,
     end_timestamp: i64,
     strict: bool,
-) -> Result<HashMap<String, Vec<HistoricalPrice>>> {
+) -> Result<HashMap<String, HistoricalSeries>> {
     if tickers.is_empty() {
         return Ok(HashMap::new());
     }
 
-    let mut results: HashMap<String, Vec<HistoricalPrice>> = HashMap::new();
+    let mut results: HashMap<String, HistoricalSeries> = HashMap::new();
 
     log::info!(
         "[YAHOO HISTORICAL] Fetching historical prices for {} tickers from {} to {}",
@@ -1178,7 +1397,7 @@ async fn get_historical_stock_prices_yahoo_impl(
 
         for ticker in chunk {
             let fetched = match provider.get_quote_history(ticker, start, end).await {
-                Ok(response) => historical_stock_points(&response, ticker, strict),
+                Ok(response) => historical_stock_series(&response, ticker, strict),
                 Err(error) => Err(AppError::ExternalApi(format!(
                     "Yahoo historical request failed: {error}"
                 ))),
@@ -2579,6 +2798,7 @@ mod tests {
             remaining_tickers: vec![],
             rate_limit_hit: false,
             unit_changed: vec!["BARC.L".to_string()],
+            new_splits: vec!["AAPL".to_string()],
         };
         let json = serde_json::to_value(&result).expect("serialize");
         let mut keys: Vec<&str> = json
@@ -2921,6 +3141,127 @@ mod tests {
         assert_eq!(prices.len(), 1);
         assert_eq!(prices[0].price, 101.0);
         assert_eq!(prices[0].currency, "USD");
+    }
+
+    // ---- splits in a chart response (spec D2) ------------------------------------------
+
+    fn day(year: i32, month: u32, day: u32) -> i64 {
+        chrono::NaiveDate::from_ymd_opt(year, month, day)
+            .expect("a date")
+            .and_hms_opt(0, 0, 0)
+            .expect("midnight")
+            .and_utc()
+            .timestamp()
+    }
+
+    /// The AAPL fixture as JSON, for tests that change one field of it.
+    fn aapl_split_payload() -> serde_json::Value {
+        serde_json::from_str(include_str!("fixtures/yahoo_chart_aapl_split.json"))
+            .expect("the fixture is JSON")
+    }
+
+    /// The AAPL fixture with its one split event replaced by `split`.
+    fn with_split(split: serde_json::Value) -> YResponse {
+        let mut payload = aapl_split_payload();
+        payload["chart"]["result"][0]["events"]["splits"] = json!({ "1598880600": split });
+        YResponse::from_json(payload).expect("a valid chart response")
+    }
+
+    #[test]
+    fn chart_splits_reads_the_events_block() {
+        let response: YResponse =
+            serde_json::from_str(include_str!("fixtures/yahoo_chart_aapl_split.json"))
+                .expect("the fixture is a chart response");
+        let splits = chart_splits(&response);
+        assert_eq!(
+            splits,
+            vec![DetectedSplit {
+                effective_day: day(2020, 8, 31),
+                numerator: 4,
+                denominator: 1,
+            }]
+        );
+    }
+
+    #[test]
+    fn chart_splits_reads_a_reverse_split() {
+        let response = with_split(json!({
+            "date": 1598880600, "numerator": 1, "denominator": 10, "splitRatio": "1:10"
+        }));
+        assert_eq!(
+            chart_splits(&response),
+            vec![DetectedSplit {
+                effective_day: day(2020, 8, 31),
+                numerator: 1,
+                denominator: 10,
+            }]
+        );
+    }
+
+    #[test]
+    fn chart_splits_drops_a_disagreeing_ratio_text() {
+        for ratio in ["1:4", "4", "four:one", ""] {
+            let response = with_split(json!({
+                "date": 1598880600, "numerator": 4, "denominator": 1, "splitRatio": ratio
+            }));
+            assert_eq!(chart_splits(&response), vec![], "{ratio:?}");
+        }
+    }
+
+    #[test]
+    fn chart_splits_drops_non_integer_parts() {
+        for (numerator, denominator) in [(1.5, 1.0), (4.0, 0.0), (-4.0, 1.0)] {
+            let response = with_split(json!({
+                "date": 1598880600, "numerator": numerator, "denominator": denominator,
+                "splitRatio": format!("{numerator}:{denominator}")
+            }));
+            assert_eq!(chart_splits(&response), vec![], "{numerator}:{denominator}");
+        }
+    }
+
+    #[test]
+    fn chart_splits_date_a_split_by_the_exchanges_calendar_day() {
+        // An ASX session opens at 10:00 AEDT, 23:00 UTC of the day before.
+        let mut payload = aapl_split_payload();
+        payload["chart"]["result"][0]["meta"]["gmtoffset"] = json!(39_600);
+        let opening = day(2020, 8, 31) - 3_600;
+        payload["chart"]["result"][0]["events"]["splits"] = json!({ opening.to_string(): {
+            "date": opening, "numerator": 2, "denominator": 1, "splitRatio": "2:1"
+        } });
+        let response = YResponse::from_json(payload).expect("a valid chart response");
+        assert_eq!(chart_splits(&response)[0].effective_day, day(2020, 8, 31));
+    }
+
+    #[test]
+    fn chart_splits_of_a_response_without_events_or_result_is_empty() {
+        assert_eq!(
+            chart_splits(&chart(Some("USD"), &[100.0], &[0.5], json!({}))),
+            vec![]
+        );
+        let empty = YResponse::from_json(json!({ "chart": { "result": null, "error": null } }))
+            .expect("a response without a result");
+        assert_eq!(chart_splits(&empty), vec![]);
+    }
+
+    #[test]
+    fn the_split_check_runs_for_a_ticker_never_checked_or_checked_over_a_day_ago() {
+        let now = 1_790_000_000;
+        assert!(split_check_due(None, now));
+        assert!(split_check_due(Some(now - 86_401), now));
+        assert!(!split_check_due(Some(now - 86_400), now));
+        assert!(!split_check_due(Some(now - 60), now));
+    }
+
+    #[test]
+    fn series_carries_prices_and_splits() {
+        let response = YResponse::from_json(aapl_split_payload()).expect("the fixture");
+        for strict in [false, true] {
+            let series = historical_stock_series(&response, "AAPL", strict).expect("a series");
+            assert_eq!(series.prices.len(), 4);
+            assert_eq!(series.prices[1].price, 129.04);
+            assert_eq!(series.prices[1].currency, "USD");
+            assert_eq!(series.splits.len(), 1);
+        }
     }
 
     #[tokio::test]

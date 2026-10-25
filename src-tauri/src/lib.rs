@@ -216,6 +216,13 @@ async fn run_app() {
             commands::milestones::clear_milestone_state,
             commands::milestones::get_milestone_muted_kinds,
             commands::milestones::set_milestone_muted_kinds,
+            // Stock splits (services::stock_splits)
+            commands::stock_splits::list_stock_splits,
+            commands::stock_splits::apply_stock_split,
+            commands::stock_splits::revert_stock_split,
+            commands::stock_splits::dismiss_stock_split,
+            commands::stock_splits::record_stock_split,
+            commands::stock_splits::delete_stock_split,
             // Backup / restore / export (services::backup)
             commands::backup::create_backup,
             commands::backup::inspect_backup,
@@ -492,6 +499,7 @@ async fn run_app() {
             commands::stock_import::inspect_stock_csv,
             commands::stock_import::resolve_stock_instruments,
             commands::stock_import::preview_stock_csv_import,
+            commands::stock_import::check_stock_splits,
             commands::stock_import::import_stock_csv,
             commands::stock_import::list_stock_import_batches,
             commands::stock_import::undo_stock_import_batch,

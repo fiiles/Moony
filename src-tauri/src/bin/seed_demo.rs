@@ -493,7 +493,8 @@ fn seed_stocks(db: &Database, now: i64) {
             ("AAPL", "Apple Inc.", &[(15.0, 165.30, 310), (10.0, 195.80, 120)], 232.50),
             ("MSFT", "Microsoft Corporation", &[(8.0, 310.20, 280), (4.0, 390.50, 90)], 425.10),
             ("VOO", "Vanguard S&P 500 ETF", &[(10.0, 385.00, 400), (8.0, 445.60, 150)], 512.30),
-            ("NVDA", "NVIDIA Corporation", &[(30.0, 95.40, 200)], 178.90),
+            // Bought in pre-split units: NVDA split 10:1 on 2024-06-10, 900 days ago is before it.
+            ("NVDA", "NVIDIA Corporation", &[(3.0, 950.0, 900), (20.0, 120.0, 200)], 178.90),
         ];
 
         for (ticker, name, buys, current) in stocks {

@@ -19,7 +19,8 @@ use super::amounts::{
 };
 use super::columns::find_column;
 use super::decode::{
-    csv_reader, detect_csv_delimiter, detect_header_row, read_headers, slice_from_line, LineIndex,
+    csv_reader, detect_csv_delimiter, detect_header_row, read_headers, slice_from_line,
+    unwrap_quoted_record, LineIndex,
 };
 use super::types::{
     parse_decimal_separator, CsvDateRange, CsvImportConfig, CsvRowMessage, DeclaredBalance,
@@ -165,6 +166,7 @@ pub(super) fn data_records(
         .into_records()
         .skip(1 + skip_rows)
         .map(move |result| {
+            let result = result.map(|record| unwrap_quoted_record(record, delimiter));
             // Physical line from the byte offset (the csv crate's line counter
             // skips blank lines); the tail starts on 0-based line `header_row`.
             let byte = match &result {

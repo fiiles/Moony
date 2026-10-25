@@ -16,7 +16,8 @@ use crate::services::csv_import::CsvDateRange;
 /// parser skipped or could not read included; the counts cover the whole file.
 /// `counts.will_import` includes duplicates the user chose to import anyway
 /// (they stay `duplicate` rows), so `will_import + duplicates + skipped +
-/// errors` is `total`.
+/// errors` is `total`. `counts.converted` is the part of `will_import` converted to post-split
+/// units (D13).
 pub fn preview(
     conn: &rusqlite::Connection,
     parsed: &ParsedFile,
@@ -42,7 +43,12 @@ fn counts(parsed: &ParsedFile, simulation: &Simulation) -> StockImportCounts {
     };
     for trade in &simulation.trades {
         match &trade.outcome {
-            _ if trade.will_import() => counts.will_import += 1,
+            _ if trade.will_import() => {
+                counts.will_import += 1;
+                if trade.converted {
+                    counts.converted += 1;
+                }
+            }
             TradeOutcome::Duplicate { .. } => counts.duplicates += 1,
             TradeOutcome::Skipped(_) => counts.skipped += 1,
             TradeOutcome::Error(_) => counts.errors += 1,
@@ -140,7 +146,8 @@ mod tests {
     use super::super::simulate::{KEY_DUPLICATE, KEY_SELL_EXCEEDS_HOLDINGS};
     use super::super::types::{
         ParsedTrade, StockImportInstrument, StockInstrumentOverride, StockInstrumentStatus,
-        StockPreviewRow, StockRowMessage, StockRowStatus, TradeDirection, PREVIEW_ROWS,
+        StockPreviewRow, StockRowMessage, StockRowStatus, StockSplitAction, StockSplitOverride,
+        TradeDirection, PREVIEW_ROWS,
     };
     use super::*;
 
@@ -166,6 +173,42 @@ mod tests {
             .iter()
             .find(|i| i.key == key)
             .unwrap_or_else(|| panic!("no instrument {key}"))
+    }
+
+    #[test]
+    fn converted_counts_the_importable_rows_a_split_converted() {
+        let conn = db();
+        add_stored(&conn, "AAPL", "buy", "30", "95", day(100), None);
+        conn.execute(
+            "INSERT INTO stock_splits (id, ticker, effective_day, numerator, denominator, source, status)
+             VALUES ('s1', 'AAPL', ?1, '10', '1', 'yahoo', 'applied')",
+            [day(200)],
+        )
+        .unwrap();
+        let mut cfg = config("custom");
+        cfg.instrument_overrides = vec![StockInstrumentOverride {
+            splits: vec![StockSplitOverride {
+                effective_day: day(200),
+                numerator: "10".into(),
+                denominator: "1".into(),
+                action: StockSplitAction::Convert,
+                apply_stored: false,
+            }],
+            ..over("symbol:AAPL")
+        }];
+        let file = parsed(vec![
+            buy(2, day(100), "AAPL", 3.0, 950.0), // converted, duplicate of the stored row
+            buy(3, day(150), "AAPL", 1.0, 900.0), // converted, new
+            buy(4, day(300), "AAPL", 5.0, 120.0), // post-split, new
+        ]);
+
+        let preview = preview(&conn, &file, &cfg).unwrap();
+
+        assert_eq!(preview.counts.will_import, 2);
+        assert_eq!(preview.counts.duplicates, 1);
+        assert_eq!(preview.counts.converted, 1);
+        assert_eq!(row_of(&preview, 3).quantity.as_deref(), Some("10"));
+        assert_eq!(row_of(&preview, 3).price.as_deref(), Some("90"));
     }
 
     #[test]
@@ -360,6 +403,7 @@ mod tests {
         let mut cfg = config("degiro");
         cfg.instrument_overrides = vec![StockInstrumentOverride {
             skip: true,
+            splits: vec![],
             ..over("symbol:OPT")
         }];
         let file = parsed(vec![
@@ -405,6 +449,7 @@ mod tests {
         let mut cfg = config("custom");
         cfg.instrument_overrides = vec![StockInstrumentOverride {
             skip: true,
+            splits: vec![],
             ..over("symbol:GONE")
         }];
         let file = parsed(vec![buy(2, day(0), "MSFT", 1.0, 1.0)]);

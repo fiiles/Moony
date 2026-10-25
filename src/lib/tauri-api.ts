@@ -147,6 +147,10 @@ import type {
   StockImportPreview,
   StockImportResult,
   StockImportUndoResult,
+  StockSplit,
+  InsertStockSplit,
+  StockSplitApplyResult,
+  StockSplitCheck,
   StockInstrumentQuery,
   StockInstrumentResolution,
 } from '../../shared/schema';
@@ -1210,6 +1214,9 @@ export const stockImportApi = {
     tauriInvoke<StockInstrumentResolution[]>('resolve_stock_instruments', { queries }),
   preview: (filePath: string, config: StockImportConfig) =>
     tauriInvoke<StockImportPreview>('preview_stock_csv_import', { filePath, config }),
+  /** Yahoo splits after each instrument's first trade, with the D7 verdicts (spec D12). */
+  checkSplits: (filePath: string, config: StockImportConfig) =>
+    tauriInvoke<StockSplitCheck[]>('check_stock_splits', { filePath, config }),
   import: (filePath: string, config: StockImportConfig) =>
     tauriInvoke<StockImportResult>('import_stock_csv', { filePath, config }),
   listBatches: () => tauriInvoke<StockImportBatch[]>('list_stock_import_batches'),
@@ -1219,6 +1226,17 @@ export const stockImportApi = {
   saveFormat: (name: string, headers: string[], config: StockImportConfig) =>
     tauriInvoke<SavedStockImportFormat>('save_stock_import_format', { name, headers, config }),
   deleteFormat: (id: string) => tauriInvoke<void>('delete_stock_import_format', { id }),
+};
+
+/** Stock splits (Rust `commands/stock_splits.rs`, spec 2026-10-24-stock-splits-design.md). */
+export const stockSplitsApi = {
+  list: (ticker: string) => tauriInvoke<StockSplit[]>('list_stock_splits', { ticker }),
+  apply: (id: string) => tauriInvoke<StockSplitApplyResult>('apply_stock_split', { id }),
+  revert: (id: string) => tauriInvoke<StockSplitApplyResult>('revert_stock_split', { id }),
+  dismiss: (id: string) => tauriInvoke<StockSplit>('dismiss_stock_split', { id }),
+  record: (data: InsertStockSplit) =>
+    tauriInvoke<StockSplitApplyResult>('record_stock_split', { data }),
+  remove: (id: string) => tauriInvoke<void>('delete_stock_split', { id }),
 };
 
 export const stockTagsApi = {
@@ -1517,6 +1535,7 @@ export const api = {
   export: exportApi,
   bankAccounts: bankAccountsApi,
   stockTags: stockTagsApi,
+  stockSplits: stockSplitsApi,
   categorization: categorizationApi,
   budgeting: budgetingApi,
   milestones: milestonesApi,

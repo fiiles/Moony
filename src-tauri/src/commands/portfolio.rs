@@ -719,7 +719,7 @@ pub async fn recalculate_stock_ticker_history(
     let now = chrono::Utc::now().timestamp();
     let today_start = (now / 86400) * 86400;
 
-    history_recalc::rebuild_stock_ticker(
+    let stats = history_recalc::rebuild_stock_ticker(
         db,
         ticker,
         from_timestamp,
@@ -727,6 +727,11 @@ pub async fn recalculate_stock_ticker_history(
         find_closest_price,
     )
     .await?;
+    // The fetch found a new split: the closes before its window are unadjusted (spec D18).
+    if let Some(first) = stats.full_rebuild_from {
+        history_recalc::rebuild_stock_ticker(db, ticker, first, today_start, find_closest_price)
+            .await?;
+    }
 
     log::debug!("[RECALC] Ticker {} history recalculation complete!", ticker);
 

@@ -12,7 +12,6 @@ import { Button } from '@/components/ui/button';
 import { ChartLegend } from '@/components/charts/ChartLegend';
 import { BuyOtherAssetModal } from '@/components/other-assets/BuyOtherAssetModal';
 import { SellOtherAssetModal } from '@/components/other-assets/SellOtherAssetModal';
-import { RevalueDialog } from '@/components/valuations/RevalueDialog';
 import { ButtonPair } from '@/mobile/components/ButtonPair';
 import { Hero } from '@/mobile/components/Hero';
 import { Money } from '@/mobile/components/Money';
@@ -41,6 +40,7 @@ import { NavTextButton } from '@/mobile/shell/NavBar';
 import { otherAssetPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
+import { RevalueSheet } from '@/mobile/sheets/RevalueSheet';
 
 /** What the screen shows of a loaded asset: the record and the row derived from it. */
 interface AssetView {
@@ -62,8 +62,9 @@ type AssetTrade = OtherAssetTransaction & LedgerTx;
  * Prodat with Přecenit full-width under them, three stats and the transactions with their segment.
  * There is no company card and no market feed: the price is the person's own estimate. The hero is
  * the asset's native value in its price currency (ADR 0012, ruling 6); the numbers are the
- * desktop's (`otherAssetRow`, the same queries); the buy, sell, edit, revalue and valuation-history
- * dialogs are the desktop's. A trade has no Upravit (there is no update command), only Smazat.
+ * desktop's (`otherAssetRow`, the same queries); the buy, sell, edit and valuation-history dialogs
+ * are the desktop's, Přecenit is the phone's own sheet (`RevalueSheet`, the property's too). A
+ * trade has no Upravit (there is no update command), only Smazat.
  *
  * The page owns the delete (its confirm sheet and the mutation, `useDeleteAndLeave`): the asset
  * drops out of the list the page reads while the delete is still finishing, which would take the
@@ -77,7 +78,8 @@ export default function OtherAssetDetail() {
   const [, params] = useRoute(routes.otherAssetDetail);
   const back = useBack(routes.otherAssetsList);
   const [period, setPeriod] = useRemembered<ChartPeriod>('otherAsset.period', '30D');
-  const [dialog, setDialog] = useState<'buy' | 'sell' | 'revalue' | null>(null);
+  const [dialog, setDialog] = useState<'buy' | 'sell' | null>(null);
+  const [revalueOpen, setRevalueOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const data = useOtherAsset(params?.id);
   const { asset, row } = data;
@@ -87,26 +89,6 @@ export default function OtherAssetDetail() {
   );
   const ledger = usePositionLedger(trades);
   const { deleteTransaction, remove } = useOtherAssetMutations(params?.id);
-  // The dialog resets its form whenever it is handed another object, so this one is rebuilt only
-  // when what it holds changes — not on every render of the page
-  const price = row?.price;
-  const quantity = row?.quantity;
-  const revalueAsset = useMemo(
-    () =>
-      asset === null || price === undefined || quantity === undefined
-        ? null
-        : {
-            id: asset.id,
-            name: asset.name,
-            currentValue: price,
-            // The estimate continues in the newest valuation's currency
-            currency: recordCurrency(asset.marketPriceCurrency),
-            unit: to('table.unit'),
-            quantity,
-          },
-    [asset, price, quantity, to]
-  );
-
   const current = useMemo<AssetView | null>(
     () => (!data.isLoading && asset && row ? { asset, row } : null),
     [data.isLoading, asset, row]
@@ -169,7 +151,7 @@ export default function OtherAssetDetail() {
           <Button
             variant="secondary"
             className="mb-3.5 h-auto min-h-12 w-full whitespace-normal rounded-[10px] py-2 text-m-row [&_svg]:size-4"
-            onClick={() => setDialog('revalue')}
+            onClick={() => setRevalueOpen(true)}
           >
             <ArrowUp strokeWidth={1.75} aria-hidden />
             {to('actions.revalue')}
@@ -195,11 +177,17 @@ export default function OtherAssetDetail() {
             open={dialog === 'sell'}
             onOpenChange={(open) => !open && setDialog(null)}
           />
-          <RevalueDialog
-            open={dialog === 'revalue'}
-            onOpenChange={(open) => !open && setDialog(null)}
+          <RevalueSheet
+            open={revalueOpen}
+            onOpenChange={setRevalueOpen}
             kind="otherAsset"
-            asset={revalueAsset}
+            assetId={view.asset.id}
+            name={view.asset.name}
+            value={view.row.price}
+            // The estimate continues in the newest valuation's currency
+            currency={recordCurrency(view.asset.marketPriceCurrency)}
+            unit={to('table.unit')}
+            quantity={view.row.quantity}
           />
           <ConfirmSheet
             open={deleteOpen}

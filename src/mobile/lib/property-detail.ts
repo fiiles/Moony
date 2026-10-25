@@ -1,7 +1,6 @@
 import type { QueryKey } from '@tanstack/react-query';
 import type {
   AssetValuation,
-  InsertAssetValuation,
   InsertRealEstateOneTimeCost,
   InsurancePolicy,
   RealEstate,
@@ -27,10 +26,10 @@ import type { CostPoint } from './position-series';
 
 /**
  * The property detail's numbers as pure functions (spec §8.8 "Nemovitost"): the valuation trace,
- * the four stats, the yearly balance card, the link candidates, the revaluation form, the costs
- * with their form, and the batch a photo taken today joins. They are
- * the desktop page's rules (`pages/RealEstateDetail.tsx`) without its strings and formatting; the
- * phone screen words and masks them.
+ * the four stats, the yearly balance card, the link candidates, the costs with their form, and the
+ * batch a photo taken today joins (the revaluation form is `revalue.ts`, shared with the other
+ * asset). They are the desktop page's rules (`pages/RealEstateDetail.tsx`) without its strings and
+ * formatting; the phone screen words and masks them.
  */
 
 /** A mark on the value trace: the purchase (`buy`, ▲) or an estimate (`mark`, ○). */
@@ -364,47 +363,6 @@ export function todayIso(now: Date = new Date()): string {
 export function isoToUtcDay(iso: string): number {
   const [year, month, day] = iso.split('-').map(Number);
   return Math.floor(Date.UTC(year, month - 1, day) / 1000);
-}
-
-export interface RevalueForm {
-  /** As typed on the keypad. */
-  valueText: string;
-  /** The date field: `YYYY-MM-DD`, or empty. */
-  dateIso: string;
-  note: string;
-}
-
-export interface RevalueErrors {
-  value?: 'required' | 'invalid';
-  date?: 'required' | 'future';
-}
-
-/**
- * The revaluation the form makes (the desktop `RevalueDialog`'s rules): an amount of zero or more,
- * a day that is not in the future, an optional note. The amount goes to the backend as decimal
- * text, the day as its UTC-midnight second.
- */
-export function revalueData(
-  form: RevalueForm,
-  args: { assetId: string; currency: string; today: string }
-): { ok: true; data: InsertAssetValuation } | { ok: false; errors: RevalueErrors } {
-  const errors: RevalueErrors = {};
-  const value = parseAmountInput(form.valueText);
-  if (form.valueText.trim() === '') errors.value = 'required';
-  else if (value === null || value.startsWith('-')) errors.value = 'invalid';
-  if (form.dateIso === '') errors.date = 'required';
-  else if (form.dateIso > args.today) errors.date = 'future';
-  if (errors.value || errors.date || value === null) return { ok: false, errors };
-  return {
-    ok: true,
-    data: {
-      assetId: args.assetId,
-      value,
-      currency: args.currency,
-      valuedAt: isoToUtcDay(form.dateIso),
-      note: form.note.trim() || null,
-    },
-  };
 }
 
 /**

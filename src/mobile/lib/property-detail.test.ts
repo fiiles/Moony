@@ -34,7 +34,6 @@ import {
   propertyStatItems,
   propertyTrace,
   recurringInput,
-  revalueData,
   todayBatch,
   todayIso,
   traceSpansDays,
@@ -601,70 +600,6 @@ describe('costsMissing', () => {
 
   it('reads a blank currency as the default one', () => {
     expect(costsMissing([cost({ currency: '' })], convertAt)).toEqual([]);
-  });
-});
-
-describe('revalueData', () => {
-  const form = { valueText: '5 400 000', dateIso: '2026-10-20', note: '  odhad makléře ' };
-  const args = { assetId: 'p', currency: 'CZK', today: '2026-10-24' };
-
-  it('makes the valuation: the amount as decimal text, the day as UTC seconds, the trimmed note', () => {
-    expect(revalueData(form, args)).toEqual({
-      ok: true,
-      data: {
-        assetId: 'p',
-        value: '5400000',
-        currency: 'CZK',
-        valuedAt: day(2026, 10, 20),
-        note: 'odhad makléře',
-      },
-    });
-  });
-
-  it('reads the amount the keypad of the system language types', () => {
-    const result = revalueData({ ...form, valueText: '5400000,50' }, args);
-    expect(result).toMatchObject({ ok: true, data: { value: '5400000.50' } });
-  });
-
-  it('leaves a blank note out (null), as the desktop dialog does', () => {
-    expect(revalueData({ ...form, note: '   ' }, args)).toMatchObject({
-      ok: true,
-      data: { note: null },
-    });
-  });
-
-  it('accepts today and refuses a day in the future', () => {
-    expect(revalueData({ ...form, dateIso: '2026-10-24' }, args).ok).toBe(true);
-    expect(revalueData({ ...form, dateIso: '2026-10-25' }, args)).toEqual({
-      ok: false,
-      errors: { date: 'future' },
-    });
-  });
-
-  it('refuses a missing date, a missing amount, a text that is no number and a negative one', () => {
-    expect(revalueData({ ...form, dateIso: '' }, args)).toEqual({
-      ok: false,
-      errors: { date: 'required' },
-    });
-    expect(revalueData({ ...form, valueText: '' }, args)).toEqual({
-      ok: false,
-      errors: { value: 'required' },
-    });
-    expect(revalueData({ ...form, valueText: 'abc' }, args)).toEqual({
-      ok: false,
-      errors: { value: 'invalid' },
-    });
-    expect(revalueData({ ...form, valueText: '-5' }, args)).toEqual({
-      ok: false,
-      errors: { value: 'invalid' },
-    });
-  });
-
-  it('reports every problem at once', () => {
-    expect(revalueData({ ...form, valueText: 'x', dateIso: '' }, args)).toEqual({
-      ok: false,
-      errors: { value: 'invalid', date: 'required' },
-    });
   });
 });
 

@@ -551,26 +551,26 @@ fn seed_crypto(db: &Database, now: i64) {
         let cryptos: &[(&str, &str, &str, Buys, f64)] = &[
             (
                 "BTC",
-                "bitcoin",
+                "BTC-USD",
                 "Bitcoin",
                 &[(0.25, 38500.0, 420), (0.17, 62000.0, 160)],
                 97400.0,
             ),
             (
                 "ETH",
-                "ethereum",
+                "ETH-USD",
                 "Ethereum",
                 &[(2.5, 2250.0, 380), (1.3, 3100.0, 130)],
                 3650.0,
             ),
         ];
 
-        for (ticker, gecko, name, buys, current) in cryptos {
+        for (ticker, symbol, name, buys, current) in cryptos {
             let (first, rest) = buys.split_first().expect("at least one buy");
             let inv = crypto_investments::create_crypto_with_transaction(
                 conn,
                 ticker,
-                Some(gecko),
+                Some(symbol),
                 name,
                 Some(&InsertCryptoTransaction {
                     investment_id: None,
@@ -604,12 +604,17 @@ fn seed_crypto(db: &Database, now: i64) {
             }
 
             conn.execute(
-                "INSERT INTO crypto_prices (id, symbol, coingecko_id, price, currency, fetched_at)
-                 VALUES (?1, ?2, ?3, ?4, 'USD', ?5)",
+                "UPDATE crypto_investments SET yahoo_symbol = ?1 WHERE id = ?2",
+                params![symbol, inv.id],
+            )
+            .expect("set yahoo symbol");
+
+            conn.execute(
+                "INSERT INTO crypto_prices (id, symbol, price, currency, fetched_at)
+                 VALUES (?1, ?2, ?3, 'USD', ?4)",
                 params![
                     Uuid::new_v4().to_string(),
                     ticker,
-                    gecko,
                     format!("{current:.2}"),
                     now
                 ],

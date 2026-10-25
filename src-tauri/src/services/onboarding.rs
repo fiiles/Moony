@@ -156,8 +156,8 @@ mod tests {
     #[test]
     fn only_whitelisted_flags_can_be_set() {
         let conn = setup_test_db();
-        let err = set_flag(&conn, "api_key_coingecko", Some("x")).expect_err("must refuse");
+        let err = set_flag(&conn, "not_a_flag", Some("x")).expect_err("must refuse");
         assert!(matches!(err, AppError::Validation(_)));
-        assert_eq!(read_flag(&conn, "api_key_coingecko").expect("read"), None);
+        assert_eq!(read_flag(&conn, "not_a_flag").expect("read"), None);
     }
 }

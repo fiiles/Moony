@@ -120,9 +120,11 @@ export function usePosition(id: string | undefined, period: ChartPeriod): Positi
  * cashflow, then a fresh snapshot and the history), rename and follow. The page runs the delete
  * (`useDeleteAndLeave`), which leaves the screen when it has succeeded and then drops the
  * position's own queries: removing them while the screen is still up would rebuild them empty.
- * The domain keys are refetched only where nothing is showing them, as `useDeleteCrypto` does, so
- * a refetch under the open screen cannot swap the position for "not found" before the screen has
- * left; the list that mounts next finds them invalidated and refetches.
+ * The domain keys are refetched only where nothing is showing them (`refetchType: 'inactive'`), as
+ * `useDeleteCrypto` does, so the class list does not refetch under the open screen; the list that
+ * mounts next finds them invalidated and refetches. The position's own key
+ * (`['investment', id, …]`) is not one of them, so what keeps the screen from turning "not found"
+ * while the delete finishes is the page's retained view (`useRetained` while `exit.deleting`).
  */
 export function usePositionMutations(id: string | undefined, ticker: string | undefined) {
   const queryClient = useQueryClient();

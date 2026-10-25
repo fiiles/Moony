@@ -92,12 +92,13 @@ export function RevalueSheet({
 
   // The hint: the total the typed price makes of the units held, else the estimate it replaces. A
   // price per unit is written with its currency's own decimals, a whole property without any.
+  const perUnit = unit !== undefined;
   const total = quantity === undefined ? null : revaluedTotal(form.valueText, quantity);
   const hint =
     total === null
       ? tc('revalue.previousNote', {
           previous: moneyText(value, currency, {
-            decimals: unit === undefined ? 0 : priceDecimals(value, currency),
+            decimals: perUnit ? priceDecimals(value, currency) : 0,
           }),
         })
       : tc('revalue.totalNote', {
@@ -144,7 +145,7 @@ export function RevalueSheet({
         }}
       >
         <AmountField
-          label={unit ? tc('revalue.pricePerUnit', { unit }) : tc('revalue.marketValue')}
+          label={perUnit ? tc('revalue.pricePerUnit', { unit }) : tc('revalue.marketValue')}
           unit={currency}
           value={form.valueText}
           placeholder="0"

@@ -6,9 +6,10 @@ import { useExportTextFile } from '@/mobile/hooks/use-export-text-file';
 
 /**
  * A byte-order mark in front of the CSV, as the desktop's export writes it: Excel and Numbers
- * read a UTF-8 file without one as the system's code page and garble the accents.
+ * read a UTF-8 file without one as the system's code page and garble the accents. Written as an
+ * escape: a literal U+FEFF is invisible in the source and an editor may drop it.
  */
-const BOM = '﻿';
+export const BOM = '\uFEFF';
 
 /**
  * The run behind an "Export" menu item that saves a CSV (the class pages' and the Cashflow tab's):

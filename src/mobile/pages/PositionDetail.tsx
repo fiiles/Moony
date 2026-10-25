@@ -50,7 +50,9 @@ interface PositionView {
  *
  * The page owns the delete (its confirm sheet and the mutation, `useDeleteAndLeave`): the position
  * can drop out of what the page reads while the delete is still finishing, which would take the
- * `···` menu away, and the page keeps showing the position until it has left.
+ * `···` menu away, so the page keeps showing the position (`useRetained` while `exit.deleting`)
+ * until it has left. The delete's `refetchType: 'inactive'` does not do that: it only keeps the
+ * class list from refetching under the open screen.
  */
 export default function PositionDetail() {
   const { t } = useTranslation('mobile');

@@ -659,7 +659,9 @@
       "rowSub": "You get a new recovery key",
       "confirmHint": "The password changes only when you tap Change password. Until then your current password and key still work.",
       "backupsKeepOld": "Backups made before the change still open with the old password.",
-      "biometricsStay": "Unlocking with {{methodKey}} stays on."
+      "biometricsStay": "Unlocking with {{methodKey}} stays on.",
+      "fileTitle": "Moony recovery key — new from {{date}}",
+      "fileNote": "Valid only once the password change is finished. If you did not finish the change, the previous key stays valid."
     },
     "profile": {
       "lead": "Your name appears in the greeting on Overview.",

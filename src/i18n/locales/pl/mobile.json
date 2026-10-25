@@ -731,7 +731,9 @@
       "rowSub": "Otrzymasz nowy klucz odzyskiwania",
       "confirmHint": "Hasło zmieni się dopiero po stuknięciu Zmień hasło. Do tego czasu obowiązują obecne hasło i klucz.",
       "backupsKeepOld": "Kopie zapasowe zrobione przed zmianą nadal otwierają się starym hasłem.",
-      "biometricsStay": "Odblokowanie {{methodKey}} pozostanie włączone."
+      "biometricsStay": "Odblokowanie {{methodKey}} pozostanie włączone.",
+      "fileTitle": "Klucz odzyskiwania Moony — nowy z {{date}}",
+      "fileNote": "Obowiązuje dopiero po zakończeniu zmiany hasła. Jeśli nie zakończono zmiany, nadal obowiązuje poprzedni klucz."
     },
     "profile": {
       "lead": "Twoje imię pojawia się w powitaniu w Przeglądzie.",

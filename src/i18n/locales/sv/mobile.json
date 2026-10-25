@@ -659,7 +659,9 @@
       "rowSub": "Du får en ny återställningsnyckel",
       "confirmHint": "Lösenordet ändras först när du trycker på Ändra lösenord. Till dess gäller ditt nuvarande lösenord och din nyckel.",
       "backupsKeepOld": "Säkerhetskopior gjorda före ändringen öppnas fortfarande med det gamla lösenordet.",
-      "biometricsStay": "Upplåsning med {{methodKey}} förblir på."
+      "biometricsStay": "Upplåsning med {{methodKey}} förblir på.",
+      "fileTitle": "Moonys återställningsnyckel – ny från {{date}}",
+      "fileNote": "Gäller först när lösenordsbytet är slutfört. Om du inte slutförde bytet gäller den tidigare nyckeln fortfarande."
     },
     "profile": {
       "lead": "Ditt namn visas i hälsningen i Översikt.",

@@ -659,7 +659,9 @@
       "rowSub": "Sie erhalten einen neuen Wiederherstellungsschlüssel",
       "confirmHint": "Das Passwort ändert sich erst, wenn Sie auf „Passwort ändern“ tippen. Bis dahin gelten Ihr bisheriges Passwort und Ihr Schlüssel.",
       "backupsKeepOld": "Sicherungen von vor der Änderung öffnen sich weiterhin mit dem alten Passwort.",
-      "biometricsStay": "Entsperren mit {{methodKey}} bleibt eingeschaltet."
+      "biometricsStay": "Entsperren mit {{methodKey}} bleibt eingeschaltet.",
+      "fileTitle": "Moony-Wiederherstellungsschlüssel – neu vom {{date}}",
+      "fileNote": "Gilt erst, wenn die Passwortänderung abgeschlossen ist. Haben Sie die Änderung nicht abgeschlossen, gilt weiterhin der bisherige Schlüssel."
     },
     "profile": {
       "lead": "Ihr Name erscheint in der Begrüßung in der Übersicht.",

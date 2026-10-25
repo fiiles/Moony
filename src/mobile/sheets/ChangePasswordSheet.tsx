@@ -22,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { biometricApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
+import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import {
   pickVerificationGroups,
@@ -38,7 +39,7 @@ import {
 import { useExportTextFile } from '@/mobile/hooks/use-export-text-file';
 import { BIOMETRIC_STATUS_KEY } from '@/mobile/lib/biometrics';
 import { canConfirmChange } from '@/mobile/lib/change-password';
-import { RECOVERY_KEY_FILE, exportsOnThisDevice } from '@/mobile/lib/export-file';
+import { changedRecoveryKeyFileName, exportsOnThisDevice } from '@/mobile/lib/export-file';
 import { passwordStrength } from '@/mobile/lib/password-strength';
 import { biometryMethodKey, renderTextRef } from '@/mobile/lib/settings-summary';
 import { field48, fieldMessage, primaryButton } from '@/mobile/pages/first-run/styles';
@@ -297,7 +298,10 @@ function FormStep({
 /**
  * The new recovery key, as the first run's step shows it (`RecoveryStep`): the warning, the key
  * box, "Uložit do Souborů" where the Files picker exports, the two groups to retype, and the quiet
- * sentences under them.
+ * sentences under them. The file is not the first run's: it is named and titled by the day of this
+ * attempt (`moony-recovery-key-2026-10-25.txt`, „… nový od 25. 10. 2026“) and its note says the key
+ * holds only once the change is done, so saving it never replaces the copy of the key that stays
+ * valid when the change is abandoned, and two attempts' files never read the same.
  */
 function KeyStep({
   recoveryKey,
@@ -318,8 +322,11 @@ function KeyStep({
   const { t: ts } = useTranslation('settings');
   const { t: ta } = useTranslation('auth');
   const { t: tc } = useTranslation('common');
+  const fmt = useFormat();
   const { exportText } = useExportTextFile();
   const [saving, setSaving] = useState(false);
+  // The attempt's day: this step mounts when its key arrives
+  const [attemptedAt] = useState(() => new Date());
   const biometrics = useQuery({ queryKey: BIOMETRIC_STATUS_KEY, queryFn: biometricApi.status });
   const showMismatch = !verified && groups[0].length >= 4 && groups[1].length >= 4;
 
@@ -328,10 +335,11 @@ function KeyStep({
     setSaving(true);
     try {
       const outcome = await exportText(
-        RECOVERY_KEY_FILE,
+        changedRecoveryKeyFileName(attemptedAt),
         recoveryKeyFileContents(recoveryKey, {
-          title: ta('onboarding.recovery.fileTitle'),
-          note: t('firstRun.recoveryFileNote'),
+          title: t('settings.password.fileTitle', { date: fmt.date(attemptedAt) }),
+          // When it holds first, then what the key is for (the first run's note)
+          note: `${t('settings.password.fileNote')}\n\n${t('firstRun.recoveryFileNote')}`,
         })
       );
       if (outcome === 'saved') toast(ta('onboarding.recovery.saved'));

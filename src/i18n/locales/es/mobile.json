@@ -695,7 +695,9 @@
       "rowSub": "Recibirás una clave de recuperación nueva",
       "confirmHint": "La contraseña cambia solo cuando tocas Cambiar contraseña. Hasta entonces siguen valiendo la contraseña y la clave actuales.",
       "backupsKeepOld": "Las copias de seguridad hechas antes del cambio se siguen abriendo con la contraseña anterior.",
-      "biometricsStay": "El desbloqueo con {{methodKey}} sigue activado."
+      "biometricsStay": "El desbloqueo con {{methodKey}} sigue activado.",
+      "fileTitle": "Clave de recuperación de Moony — nueva del {{date}}",
+      "fileNote": "Solo es válida cuando termina el cambio de contraseña. Si no terminaste el cambio, sigue valiendo la clave anterior."
     },
     "profile": {
       "lead": "Tu nombre aparece en el saludo del Resumen.",

@@ -623,7 +623,9 @@
       "rowSub": "会生成新的恢复密钥",
       "confirmHint": "点按“更改密码”后才会更改密码。在此之前，当前密码和密钥仍然有效。",
       "backupsKeepOld": "更改前创建的备份仍需使用旧密码打开。",
-      "biometricsStay": "{{methodKey}}解锁将保持开启。"
+      "biometricsStay": "{{methodKey}}解锁将保持开启。",
+      "fileTitle": "Moony 恢复密钥（{{date}} 生成的新密钥）",
+      "fileNote": "完成密码更改后才生效。如果未完成更改，之前的密钥仍然有效。"
     },
     "profile": {
       "lead": "您的姓名会显示在概览的问候语中。",

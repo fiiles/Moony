@@ -695,7 +695,9 @@
       "rowSub": "Dostanete nový obnovovací klíč",
       "confirmHint": "Heslo se změní až po klepnutí na Změnit heslo. Do té doby platí současné heslo i klíč.",
       "backupsKeepOld": "Zálohy pořízené před změnou se dál otevírají starým heslem.",
-      "biometricsStay": "Odemykání {{methodKey}} zůstane zapnuté."
+      "biometricsStay": "Odemykání {{methodKey}} zůstane zapnuté.",
+      "fileTitle": "Obnovovací klíč Moony — nový od {{date}}",
+      "fileNote": "Platí až po dokončení změny hesla. Pokud jste změnu nedokončili, platí dál předchozí klíč."
     },
     "profile": {
       "lead": "Jméno se zobrazuje v pozdravu na Přehledu.",

@@ -13,6 +13,17 @@
 /** The recovery key's text file, one of the names Rust allow-lists for staging (`TEXT_EXPORT_FILE_NAMES`; the others are the class pages' CSVs, `use-class-export.ts`). */
 export const RECOVERY_KEY_FILE = 'moony-recovery-key.txt';
 
+/**
+ * The new recovery key of a password change, `moony-recovery-key-2026-10-25.txt`: the local day of
+ * the attempt (the Rust allow-list accepts exactly this shape). A change may be abandoned, so its key
+ * must never replace the first run's `RECOVERY_KEY_FILE`, which holds the key that then stays valid,
+ * nor read the same as an older attempt's.
+ */
+export function changedRecoveryKeyFileName(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `moony-recovery-key-${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}.txt`;
+}
+
 /** What an export came to: a file in a place the person chose, or nothing (the picker was cancelled). */
 export type ExportOutcome = 'saved' | 'cancelled';
 

@@ -659,7 +659,9 @@
       "rowSub": "Du får en ny gjenopprettingsnøkkel",
       "confirmHint": "Passordet endres først når du trykker på Endre passord. Til da gjelder det nåværende passordet og nøkkelen.",
       "backupsKeepOld": "Sikkerhetskopier tatt før endringen åpnes fortsatt med det gamle passordet.",
-      "biometricsStay": "Opplåsing med {{methodKey}} forblir på."
+      "biometricsStay": "Opplåsing med {{methodKey}} forblir på.",
+      "fileTitle": "Moony-gjenopprettingsnøkkel – ny fra {{date}}",
+      "fileNote": "Gjelder først når passordendringen er fullført. Hvis du ikke fullførte endringen, gjelder den forrige nøkkelen fortsatt."
     },
     "profile": {
       "lead": "Navnet ditt vises i hilsenen i Oversikt.",

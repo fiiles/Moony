@@ -58,14 +58,15 @@ pub fn unix_now() -> i64 {
 /// Whether `name` is exactly `moony-backup-YYYY-MM-DD.zip` (digits only, nothing before or after):
 /// the one name the phone stages a backup under in Documents before the Files picker exports it.
 pub fn is_export_file_name(name: &str) -> bool {
-    let Some(date) = name
-        .strip_prefix("moony-backup-")
+    name.strip_prefix("moony-backup-")
         .and_then(|rest| rest.strip_suffix(".zip"))
-    else {
-        return false;
-    };
-    date.len() == 10
-        && date.bytes().enumerate().all(|(i, b)| match i {
+        .is_some_and(is_date_stamp)
+}
+
+/// Whether `stamp` is shaped `YYYY-MM-DD` (ASCII digits and the two dashes, nothing else).
+fn is_date_stamp(stamp: &str) -> bool {
+    stamp.len() == 10
+        && stamp.bytes().enumerate().all(|(i, b)| match i {
             4 | 7 => b == b'-',
             _ => b.is_ascii_digit(),
         })
@@ -84,7 +85,8 @@ pub fn is_staged_export_path(document_dir: &Path, path: &Path) -> bool {
 /// The text files the phone may stage in Documents for the Files export: the recovery key's text
 /// and the CSV of each class page (stocks, crypto, bonds, other assets — the name stays fixed, the
 /// dated one the export command returns is only the desktop's). A fixed list, so the command that
-/// writes one can never be pointed at another file.
+/// writes one can never be pointed at another file. The one other name is the new key of a
+/// password change (`is_dated_recovery_key_file_name`).
 const TEXT_EXPORT_FILE_NAMES: [&str; 5] = [
     "moony-recovery-key.txt",
     "moony-stock-transactions.csv",
@@ -93,9 +95,19 @@ const TEXT_EXPORT_FILE_NAMES: [&str; 5] = [
     "moony-other-assets.csv",
 ];
 
-/// Whether `name` is one of the text files that may be staged (`TEXT_EXPORT_FILE_NAMES`).
+/// Whether `name` is one of the text files that may be staged (`TEXT_EXPORT_FILE_NAMES`, or the
+/// dated recovery key of a password change).
 pub fn is_text_export_file_name(name: &str) -> bool {
-    TEXT_EXPORT_FILE_NAMES.contains(&name)
+    TEXT_EXPORT_FILE_NAMES.contains(&name) || is_dated_recovery_key_file_name(name)
+}
+
+/// Whether `name` is exactly `moony-recovery-key-YYYY-MM-DD.txt`: the phone's password change saves
+/// its new key under the day of the attempt, so it never replaces the first run's file, which holds
+/// the key that stays valid when the change is not finished.
+fn is_dated_recovery_key_file_name(name: &str) -> bool {
+    name.strip_prefix("moony-recovery-key-")
+        .and_then(|rest| rest.strip_suffix(".txt"))
+        .is_some_and(is_date_stamp)
 }
 
 /// Whether `path` is a staged text export: directly inside `document_dir` (nothing normalised) and
@@ -1323,6 +1335,35 @@ mod tests {
         ] {
             assert!(!is_text_export_file_name(bad), "{bad}");
         }
+    }
+
+    /// The phone's password change saves its new key under the day of the attempt
+    /// (`moony-recovery-key-YYYY-MM-DD.txt`), so it never replaces the first run's file, which holds
+    /// the key that stays valid when the change is not finished. Exactly that shape, nothing else.
+    #[test]
+    fn a_dated_recovery_key_is_on_the_allow_list_in_exactly_that_shape() {
+        let dated = "moony-recovery-key-2026-10-25.txt";
+        assert!(is_text_export_file_name(dated));
+        for bad in [
+            "moony-recovery-key-2026-10-25.txt.zip",
+            "../moony-recovery-key-2026-10-25.txt",
+            "moony-recovery-key-20261025.txt",
+            "moony-recovery-key-2026-10-2x.txt",
+            "moony-recovery-key-2026_10_25.txt",
+            "moony-recovery-key-2026-10-25-1.txt",
+            "moony-recovery-key-.txt",
+            "Moony-recovery-key-2026-10-25.txt",
+            "moony-recovery-key-2026-10-25.TXT",
+        ] {
+            assert!(!is_text_export_file_name(bad), "{bad}");
+        }
+
+        let dir = tempfile::tempdir().expect("dir");
+        let path = write_text_export(dir.path(), dated, "key").expect("write");
+        assert!(is_staged_text_export_path(dir.path(), &path));
+        // A leftover from an interrupted export goes with the sweep, as the first run's file does
+        assert_eq!(sweep_staged_exports(dir.path()).expect("sweep"), 1);
+        assert!(!path.exists());
     }
 
     #[test]

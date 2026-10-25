@@ -5,7 +5,7 @@
   "loading": "Krypto-Portfolio wird geladen...",
   "empty": {
     "title": "Noch keine Kryptowährungen",
-    "description": "Fügen Sie Ihre erste Münze hinzu: Wir suchen sie bei CoinGecko, und der Kurs aktualisiert sich von selbst."
+    "description": "Fügen Sie Ihre erste Münze hinzu: Wir suchen sie bei Yahoo Finance, und der Kurs aktualisiert sich von selbst."
   },
   "addCrypto": "Kryptowährung hinzufügen",
   "refreshPrices": "Kurse aktualisieren",
@@ -56,8 +56,9 @@
     "return": "Rendite",
     "actions": "Aktionen",
     "showClosed": "Geschlossene Positionen anzeigen",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "manueller Kurs",
+    "noSource": "keine Kursquelle",
     "closed": "geschlossen am {{date}}",
     "realized": "{{amount}} realisiert",
     "noResults": {
@@ -78,26 +79,26 @@
     "buy": "Kaufen",
     "sell": "Verkaufen",
     "updatePrice": "Kurs manuell festlegen",
+    "changeSymbol": "Kursquelle…",
     "delete": "Position löschen"
   },
   "badges": {
     "manual": "manuell"
   },
   "tooltip": {
-    "manualPrice": "Manuell festgelegter Kurs – überschreibt CoinGecko, bis Sie ihn entfernen."
+    "manualPrice": "Manuell festgelegter Kurs – überschreibt Yahoo Finance, bis Sie ihn entfernen."
   },
   "modal": {
     "add": {
       "title": "Kryptowährung hinzufügen",
-      "description": "Suchen Sie die Münze bei CoinGecko; ihr Kurs wird dann automatisch aktualisiert.",
+      "description": "Suchen Sie die Münze bei Yahoo Finance; ihr Kurs wird dann automatisch aktualisiert.",
       "coin": "Kryptowährung",
       "ticker": "Ticker",
-      "search": "CoinGecko durchsuchen",
-      "searchHint": "Geben Sie einen Namen oder Ticker ein, um Treffer von CoinGecko zu sehen.",
-      "searching": "CoinGecko wird durchsucht…",
-      "searchError": "Suche fehlgeschlagen. Prüfen Sie Ihre Verbindung oder den CoinGecko-Schlüssel in den Einstellungen.",
+      "search": "Yahoo Finance durchsuchen",
+      "searchHint": "Geben Sie einen Namen oder Ticker ein, um Treffer zu sehen.",
+      "searching": "Yahoo Finance wird durchsucht…",
+      "searchError": "Suche fehlgeschlagen. Prüfen Sie Ihre Verbindung.",
       "noResults": "Keine passende Münze. Ticker und Name können Sie von Hand eintragen.",
-      "rank": "#{{rank}}",
       "quantity": "Menge",
       "pricePerUnit": "Preis pro Einheit",
       "purchaseDate": "Kaufdatum",
@@ -126,11 +127,18 @@
     },
     "updatePrice": {
       "title": "Manueller Kurs · {{name}}",
-      "description": "Überschreibt den CoinGecko-Kurs, bis Sie den manuellen entfernen.",
+      "description": "Überschreibt den Yahoo Finance-Kurs, bis Sie den manuellen entfernen.",
       "price": "Kurs pro 1 {{ticker}}",
       "total": "Positionswert ({{quantity}} {{ticker}})",
       "remove": "Manuellen Kurs entfernen",
       "submit": "Kurs speichern"
+    },
+    "symbol": {
+      "title": "Kursquelle für {{name}}",
+      "description": "Wählen Sie den Eintrag dieser Münze bei Yahoo Finance. Kurs und Verlauf werden daraus neu aufgebaut.",
+      "current": "Aktuell: {{symbol}}",
+      "none": "Noch kein Eintrag gewählt.",
+      "saved": "Kursquelle gespeichert"
     }
   },
   "confirmDelete": {
@@ -144,16 +152,16 @@
     "deleted": "Position gelöscht",
     "priceUpdated": "Manueller Kurs gespeichert",
     "manualPriceDeleted": "Manueller Kurs entfernt",
-    "pricesRefreshed_one": "{{count}} Kurs von CoinGecko aktualisiert",
-    "pricesRefreshed_other": "{{count}} Kurse von CoinGecko aktualisiert",
-    "pricesRefreshedDescription": "Aktuelle Kurse von CoinGecko abgerufen",
+    "pricesRefreshed_one": "{{count}} Kurs von Yahoo Finance aktualisiert",
+    "pricesRefreshed_other": "{{count}} Kurse von Yahoo Finance aktualisiert",
+    "pricesRefreshedDescription": "Aktuelle Kurse von Yahoo Finance abgerufen",
     "refreshFailed": "Kursaktualisierung fehlgeschlagen",
     "addFailed": "Die Kryptowährung konnte nicht hinzugefügt werden"
   },
   "detail": {
     "backToList": "Zurück zu Krypto",
     "notFound": "Position nicht gefunden",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "manueller Kurs",
     "quantityUnits": "{{quantity}} {{ticker}}",
     "avgBuyPrice": "Ø Einstand {{price}}",
@@ -163,6 +171,7 @@
     "sell": "Verkaufen",
     "menu": {
       "editPrice": "Kurs manuell festlegen",
+      "changeSymbol": "Kursquelle…",
       "delete": "Position löschen"
     },
     "status": {
@@ -240,10 +249,10 @@
       "description": "Damit wird die Transaktion vom Typ {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) dauerhaft gelöscht. Das lässt sich nicht rückgängig machen."
     }
   },
-  "coingeckoBanner": {
-    "title": "CoinGecko-API-Schlüssel (optional)",
-    "message": "Kurse funktionieren ohne Schlüssel. Ein kostenloser CoinGecko-Schlüssel in den Einstellungen lädt zusätzlich den Kursverlauf für die Diagramme.",
-    "goToSettings": "Einstellungen öffnen",
-    "dismiss": "Ausblenden"
+  "unpricedBanner": {
+    "title_one": "{{count}} Münze hat keine Kursquelle",
+    "title_other": "{{count}} Münzen haben keine Kursquelle",
+    "message": "Moony konnte nicht erkennen, welcher Eintrag bei Yahoo Finance zu {{tickers}} gehört. Wählen Sie ihn aus, dann folgen Kurs und Verlauf.",
+    "pick": "Eintrag auswählen"
   }
 }

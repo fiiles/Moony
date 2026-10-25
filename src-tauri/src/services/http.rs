@@ -1,11 +1,10 @@
 //! Shared outbound HTTP client.
 //!
-//! Every Moony-owned HTTP call (ECB rates, Frankfurter history, CoinGecko) goes
+//! Every Moony-owned HTTP call (ECB rates, Frankfurter history, Yahoo search) goes
 //! through [`client`]: one pooled `reqwest::Client` with a bounded timeout and an
 //! identifying `User-Agent`. A bare `reqwest::get` has NO timeout and can hang a
-//! command forever on a dead network, and CoinGecko's CloudFront edge rejects
-//! requests without a User-Agent. The Yahoo connector builds its own client
-//! (see `price_api::yahoo_connector`) with the same 15 s bound.
+//! command forever on a dead network. The Yahoo connector for chart requests builds
+//! its own client (see `price_api::yahoo_connector`) with the same 15 s bound.
 
 use std::sync::OnceLock;
 use std::time::Duration;

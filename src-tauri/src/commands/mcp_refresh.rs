@@ -147,67 +147,74 @@ async fn refresh_derived_data(db: &Database, job: &mcp_refresh::PendingRefresh) 
             }
         }
         "crypto" => {
-            // Resolve every identifier from committed data, including on restart.
+            // Read the holdings from committed data, including on restart; the refresh resolves
+            // the Yahoo symbols still missing (best effort).
             let identities = db.with_conn(mcp_refresh::crypto_identities)?;
-            let map: HashMap<String, String> = identities.iter().cloned().collect();
-            // A provider id shared by aliases needs separate quote writes; never silently drop
-            // one of the stored tickers through HashMap collection.
-            if map.len() != identities.len() {
-                for (id, ticker) in &identities {
-                    let keys = price_api::get_api_keys(db)?;
-                    let one = HashMap::from([(id.clone(), ticker.clone())]);
-                    let quotes =
-                        price_api::refresh_crypto_prices(db, keys.coingecko.as_deref(), one)
-                            .await?;
-                    if quotes.is_empty() {
-                        return Err(AppError::Internal(format!(
-                            "Crypto price refresh incomplete for {ticker}"
-                        )));
-                    }
-                }
+            let tickers: Vec<String> = identities.iter().map(|(t, _)| t.clone()).collect();
+            let result = price_api::refresh_crypto_prices_for(db, &tickers, true).await?;
+            // Completeness is judged over the holdings that have a symbol after resolution: a
+            // missing quote for one of them keeps the job pending. A holding without a symbol
+            // does not hold it: a retry cannot fix it, the symbol picker can.
+            let (priced, unresolved): (usize, Vec<String>) = db.with_conn(|conn| {
+                let priced: i64 = conn.query_row(
+                    "SELECT COUNT(*) FROM crypto_investments WHERE yahoo_symbol IS NOT NULL",
+                    [],
+                    |row| row.get(0),
+                )?;
+                let unresolved = mcp_refresh::crypto_identities(conn)?
+                    .into_iter()
+                    .filter(|(_, symbol)| symbol.is_none())
+                    .map(|(ticker, _)| ticker)
+                    .collect();
+                Ok((usize::try_from(priced).unwrap_or(0), unresolved))
+            })?;
+            if !unresolved.is_empty() {
+                log::warn!(
+                    "[MCP refresh] {} crypto holdings have no Yahoo symbol; their prices are not refreshed",
+                    unresolved.len()
+                );
+                log::debug!("[MCP refresh] Unresolved crypto holdings: {:?}", unresolved);
             }
-            let keys = price_api::get_api_keys(db)?;
-            if map.len() == identities.len() {
-                let result =
-                    price_api::refresh_crypto_prices(db, keys.coingecko.as_deref(), map).await?;
-                if result.len() < identities.len() {
-                    return Err(AppError::Internal("Crypto price refresh incomplete".into()));
-                }
+            if result.updated.len() < priced {
+                return Err(AppError::Internal("Crypto price refresh incomplete".into()));
             }
             // A job without a date is "from the first fact" (it wins over every dated write
             // queued next to it): each coin from its first transaction, the days from the
-            // first fact (`rebuild_days_async` clamps day 0).
-            let from = job.earliest_date.unwrap_or(0);
-            if from < today {
-                let tickers: Vec<String> = identities
-                    .iter()
-                    .map(|(_, ticker)| ticker.clone())
-                    .collect();
-                let firsts: HashMap<String, i64> = db
-                    .with_conn(|conn| history_recalc::crypto_rebuild_jobs(conn, &tickers))?
+            // first fact (`rebuild_days_async` clamps day 0). A coin whose symbol this refresh
+            // resolved is on a new Yahoo series, so it rebuilds from its first transaction too
+            // (spec D7) and the days follow it back.
+            let job_from = job.earliest_date.unwrap_or(0);
+            let firsts: HashMap<String, i64> = if job_from < today || !result.resolved.is_empty() {
+                db.with_conn(|conn| history_recalc::crypto_rebuild_jobs(conn, &tickers))?
                     .into_iter()
-                    .collect();
-                for ticker in &tickers {
-                    let from = match job.earliest_date {
-                        Some(from) => from,
-                        None => match firsts.get(ticker) {
-                            Some(first) => *first,
-                            None => continue,
-                        },
-                    };
-                    if from >= today {
-                        continue;
-                    }
-                    history_recalc::rebuild_crypto_ticker_strict(
-                        db,
-                        ticker,
-                        from,
-                        today,
-                        portfolio::find_closest_price,
-                    )
-                    .await?;
+                    .collect()
+            } else {
+                HashMap::new()
+            };
+            let mut days_from = job_from;
+            for ticker in &tickers {
+                let from = match job.earliest_date {
+                    Some(from) if !result.resolved.contains(ticker) => from,
+                    _ => match firsts.get(ticker) {
+                        Some(first) => *first,
+                        None => continue,
+                    },
+                };
+                if from >= today {
+                    continue;
                 }
-                history_recalc::rebuild_days_async(db, from, today).await?;
+                history_recalc::rebuild_crypto_ticker_strict(
+                    db,
+                    ticker,
+                    from,
+                    today,
+                    portfolio::find_closest_price,
+                )
+                .await?;
+                days_from = days_from.min(from);
+            }
+            if days_from < today {
+                history_recalc::rebuild_days_async(db, days_from, today).await?;
             }
         }
         // The portfolio days follow from the dated facts of accounts, real estate, loans, bonds

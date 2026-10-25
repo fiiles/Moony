@@ -150,13 +150,14 @@ The tag name decides how the release is published:
    `CHANGELOG.md` section; no section fails the run), and hands its id to the build. A re-run
    reuses the draft that already carries the tag. (Before 0.12.0 every build leg created its own
    draft, and v0.11.0 ended up split across two releases.)
-3. **`build`** runs four legs in parallel (15–30 minutes):
+3. **`build`** runs five legs in parallel (15–30 minutes):
 
    | Runner | Target | Artifacts |
    |---|---|---|
    | `macos-latest` | `aarch64-apple-darwin` | `Moony_<version>_aarch64.dmg`, updater archive |
    | `macos-15` | `x86_64-apple-darwin` | `Moony_<version>_x64.dmg`, updater archive |
-   | `ubuntu-24.04` | Linux x86_64 | `.AppImage`, `.deb`, `.rpm` |
+   | `ubuntu-24.04` | Linux x86_64 | `_amd64.AppImage`, `_amd64.deb`, `.x86_64.rpm` |
+   | `ubuntu-24.04-arm` | Linux aarch64 (native ARM runner) | `_aarch64.AppImage`, `_arm64.deb`, `.aarch64.rpm` |
    | `windows-latest` | Windows x86_64 | `Moony_<version>_x64-setup.exe` (NSIS installer) |
 
    Each leg installs Node 22 and stable Rust (Linux: the WebKitGTK build dependencies; Windows:
@@ -200,8 +201,9 @@ delete the draft under *Releases*, then the tag
    — and confirm the first-run wizard, unlock and the About version. The Mac app must open without any
    warning; expect the SmartScreen warning described in the README for as long as the Windows
    installer is unsigned.
-5. Before clicking Publish, check the draft has 15 assets, the six file names of the download
-   table in `.github/release-body.md`, and a `latest.json` with 10 platform keys:
+5. Before clicking Publish, check the draft has 21 assets, the nine file names of the download
+   table in `.github/release-body.md`, and a `latest.json` with 14 platform keys (each Linux
+   architecture adds `linux-<arch>`, `-appimage`, `-deb` and `-rpm`):
 
    ```bash
    gh release download vX.Y.Z -R fiiles/Moony -p latest.json -O - | jq '.platforms | keys'

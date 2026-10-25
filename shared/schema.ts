@@ -21,7 +21,6 @@ export interface UserProfile {
   currency: string;
   language?: string;
   excludePersonalRealEstate: boolean;
-  coingeckoModalDismissed?: boolean;
   mcpServerEnabled?: boolean;
   /** ISO 3166-1 alpha-2 (`"CZ"`), null until chosen (wizard, Settings). */
   country: string | null;
@@ -102,7 +101,8 @@ export interface InvestmentTransaction {
 export interface CryptoInvestment {
   id: string;
   ticker: string;
-  coingeckoId: string;
+  /** Yahoo Finance symbol (`BTC-USD`); null until resolved. */
+  yahooSymbol: string | null;
   name: string;
   quantity: string;
   /** Derived on read from transactions (see StockInvestment.averagePrice). */
@@ -780,7 +780,8 @@ export interface EnrichedStockInvestment {
 export interface EnrichedCryptoInvestment {
   id: string;
   ticker: string;
-  coingeckoId: string;
+  /** Yahoo Finance symbol (`BTC-USD`); null until resolved. */
+  yahooSymbol: string | null;
   name: string;
   quantity: string;
   /** Native weighted average cost, in `averagePriceCurrency`. */

@@ -10,8 +10,9 @@ use super::fx::ConversionQuality;
 pub struct CryptoInvestment {
     pub id: String,
     pub ticker: String,
-    #[serde(rename = "coingeckoId")]
-    pub coingecko_id: String,
+    /// Yahoo Finance symbol of the coin's USD pair (`BTC-USD`, `SUI20947-USD`); `null` until resolved.
+    #[serde(rename = "yahooSymbol")]
+    pub yahoo_symbol: Option<String>,
     pub name: String,
     pub quantity: String,
     #[serde(rename = "averagePrice")]
@@ -25,8 +26,9 @@ pub struct CryptoInvestment {
 pub struct EnrichedCryptoInvestment {
     pub id: String,
     pub ticker: String,
-    #[serde(rename = "coingeckoId")]
-    pub coingecko_id: String,
+    /// Yahoo Finance symbol of the coin's USD pair; `null` while the holding is unresolved.
+    #[serde(rename = "yahooSymbol")]
+    pub yahoo_symbol: Option<String>,
     pub name: String,
     pub quantity: String,
     /// Native weighted average cost (currency `averagePriceCurrency`).
@@ -82,8 +84,9 @@ pub struct CryptoPositions {
 #[derive(Debug, Clone, Deserialize, Type)]
 pub struct InsertCryptoInvestment {
     pub ticker: String,
-    #[serde(rename = "coingeckoId")]
-    pub coingecko_id: String,
+    /// Optional Yahoo Finance USD pair picked in the search; resolved later when absent.
+    #[serde(rename = "yahooSymbol", default)]
+    pub yahoo_symbol: Option<String>,
     pub name: String,
 }
 
@@ -129,8 +132,6 @@ pub struct InsertCryptoTransaction {
 pub struct CryptoPrice {
     pub id: String,
     pub symbol: String,
-    #[serde(rename = "coingeckoId")]
-    pub coingecko_id: Option<String>,
     pub price: String,
     pub currency: String,
     #[serde(rename = "fetchedAt")]
@@ -151,11 +152,11 @@ impl InsertCryptoInvestment {
             return Err(AppError::Validation("validation.tickerTooLong".into()));
         }
 
-        // CoinGecko ID validation
-        if self.coingecko_id.is_empty() {
-            return Err(AppError::Validation(
-                "validation.coingeckoIdRequired".into(),
-            ));
+        // Yahoo symbol validation (optional; the command trims and uppercases it first)
+        if let Some(symbol) = self.yahoo_symbol.as_deref().filter(|s| !s.is_empty()) {
+            if !crate::services::crypto_symbols::is_valid_symbol(symbol) {
+                return Err(AppError::Validation("validation.yahooSymbolInvalid".into()));
+            }
         }
 
         // Name validation
@@ -239,6 +240,22 @@ mod integrity_tests {
         row.quantity = "1e308".into();
         row.price_per_unit = "1e308".into();
         assert!(row.validate().is_err(), "overflowing product");
+    }
+
+    #[test]
+    fn insert_crypto_accepts_a_missing_symbol_and_rejects_a_bad_one() {
+        let coin = |symbol: Option<&str>| InsertCryptoInvestment {
+            ticker: "BTC".into(),
+            yahoo_symbol: symbol.map(str::to_string),
+            name: "Bitcoin".into(),
+        };
+        assert!(coin(None).validate().is_ok());
+        assert!(coin(Some("")).validate().is_ok());
+        assert!(coin(Some("BTC-USD")).validate().is_ok());
+        let err = coin(Some("btc"))
+            .validate()
+            .expect_err("not a Yahoo USD pair");
+        assert!(matches!(err, AppError::Validation(k) if k == "validation.yahooSymbolInvalid"));
     }
 
     #[test]

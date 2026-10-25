@@ -35,8 +35,8 @@ const DAY: i64 = SECONDS_PER_DAY;
 /// dated facts: stored history of earlier versions copied static classes from the nearest
 /// live row and valued past days with today's holdings. Version 2 repeats it: a version 1
 /// profile may hold days that a date-precise trigger left on an old remainder (a date added to
-/// a property after the rebuild), and crypto days older than CoinGecko's year now come from
-/// Yahoo instead of one stale price. Version 3 repeats it once more: loans are always the
+/// a property after the rebuild), and crypto days older than the provider's year then came
+/// from Yahoo instead of one stale price. Version 3 repeats it once more: loans are always the
 /// ledger walk now, so a profile that ran version 2 may hold days (backfill and live) that still
 /// carry a phantom loan remainder taken from a live row recorded by the old valuation model.
 /// Version 4 repeats it for stock splits: the full-range fetch of every ticker records the
@@ -62,7 +62,7 @@ pub fn stored_rebuild_version(conn: &Connection) -> Result<i64> {
 
 /// Does the finished batch of the one-time rebuild earn the version flag? The rebuild is the
 /// days re-derived from the dated facts; a ticker the provider cannot serve (a delisted symbol,
-/// a CoinGecko rate limit) is reported `failed` and logged, and a later write of that ticker or
+/// a provider rate limit) is reported `failed` and logged, and a later write of that ticker or
 /// the startup gap fill retries it, but it must not run the whole rebuild again at every start.
 pub fn rebuild_version_earned(outcome: &BatchOutcome) -> bool {
     outcome.days_ok
@@ -499,8 +499,8 @@ mod tests {
     #[test]
     fn the_rebuild_version_is_four() {
         // Version 2 repeated the one-time rebuild for profiles that ran version 1 (date-precise
-        // static triggers could leave days on an old remainder; crypto days older than
-        // CoinGecko's year had one stale price). Version 3 repeats it for loans: they are always
+        // static triggers could leave days on an old remainder; crypto days older than the
+        // provider's year had one stale price). Version 3 repeats it for loans: they are always
         // derived from their ledger, so a loan remainder taken from a live row is gone. Version 4
         // repeats it for stock splits: the full-range fetch detects past splits and stores
         // split-adjusted closes. Raise this number (and the docs that name it) only for a

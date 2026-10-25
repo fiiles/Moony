@@ -348,7 +348,6 @@ pub async fn set_mcp_server_enabled(
         currency: None,
         language: None,
         exclude_personal_real_estate: None,
-        coingecko_modal_dismissed: None,
         mcp_server_enabled: Some(enabled),
         country: None,
         insurance_notice_days: None,

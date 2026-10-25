@@ -45,7 +45,7 @@ interface UpdateCryptoPriceModalProps {
 }
 
 /**
- * Manual rate (design system §6 Modal): overrides CoinGecko until removed;
+ * Manual rate (design system §6 Modal): overrides the Yahoo Finance rate until removed;
  * the footer offers the removal on the left when an override is active.
  */
 export function UpdateCryptoPriceModal({
@@ -83,12 +83,7 @@ export function UpdateCryptoPriceModal({
   const mutation = useMutation({
     mutationFn: async (data: FormData) => {
       if (!investment) return;
-      return cryptoApi.updatePrice(
-        investment.ticker,
-        data.price,
-        data.currency,
-        investment.coingeckoId
-      );
+      return cryptoApi.updatePrice(investment.ticker, data.price, data.currency);
     },
     onSuccess: () => {
       invalidate();

@@ -4,7 +4,7 @@ Date: 2026-07-07
 
 ## Status
 
-Accepted
+Accepted; the sentence on the optional CoinGecko key is superseded by [0020](0020-yahoo-finance-for-crypto-prices.md)
 
 ## Context
 

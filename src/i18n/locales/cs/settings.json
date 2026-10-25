@@ -5,14 +5,14 @@
     "general": "Obecné",
     "security": "Zabezpečení",
     "data": "Data a zálohy",
-    "integrations": "Integrace",
+    "integrations": "AI asistent",
     "categorization": "Kategorizace",
     "account": "Účet",
     "description": {
       "general": "Profil, jazyk, měna a viditelnost položek v menu.",
       "security": "Heslo, automatické zamykání a aktualizace aplikace.",
       "data": "Kde jsou vaše data uložená a jak si uchovat jejich kopii.",
-      "integrations": "API klíče pro ceny a lokální MCP server pro AI asistenty.",
+      "integrations": "Lokální MCP server pro AI asistenty.",
       "categorization": "Balíčky pravidel, kategorie a vlastní pravidla kategorizace.",
       "account": "Smazání vašich dat z tohoto počítače."
     }
@@ -42,24 +42,6 @@
     "recoveryKeyDescription": "Vaše heslo bude změněno a bude vygenerován nový obnovovací klíč.",
     "oldKeyInvalid": "Váš starý obnovovací klíč přestane fungovat!",
     "confirmHint": "Než budete pokračovat, ujistěte se, že jste si obnovovací klíč zapsali nebo zkopírovali. Heslo se změní až po kliknutí na tlačítko výše."
-  },
-  "apiKeys": {
-    "title": "API klíče",
-    "description": "Nastavte volitelný API klíč pro získávání cen kryptoměn. Ceny akcií klíč nepotřebují.",
-    "coingecko": {
-      "label": "CoinGecko API klíč",
-      "getDemoKey": "Získat demo klíč",
-      "placeholder": "Volitelné - bezplatná verze funguje bez klíče",
-      "hint": "Používá se pro ceny a vyhledávání kryptoměn",
-      "hint2": "Bezplatná verze nedovoluje načítání historických cen"
-    },
-    "save": "Uložit API klíče",
-    "saving": "Ukládám...",
-    "saved": "API klíče uloženy",
-    "savedDescription": "Vaše API klíče byly aktualizovány.",
-    "optional": "nepovinné",
-    "show": "Zobrazit klíč",
-    "hide": "Skrýt klíč"
   },
   "currency": {
     "title": "Měna",
@@ -102,6 +84,8 @@
     "statusError": "MCP server se nepodařilo spustit: {{error}}",
     "endpoint": "Adresa endpointu",
     "token": "Přístupový token",
+    "showToken": "Zobrazit token",
+    "hideToken": "Skrýt token",
     "tokenHint": "Odesílá se jako hlavička Authorization: Bearer. Zacházejte s ním jako s heslem.",
     "regenerate": "Vygenerovat nový",
     "regenerateHint": "Vygenerování nového tokenu zneplatní všechny konfigurace klientů, které používají ten současný.",

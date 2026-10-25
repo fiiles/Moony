@@ -513,31 +513,31 @@ pub fn get_user_profile(db: &Database) -> Result<Option<UserProfile>> {
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
             "SELECT id, name, surname, email, menu_preferences, currency,
-                    language, exclude_personal_real_estate, coingecko_modal_dismissed,
+                    language, exclude_personal_real_estate,
                     mcp_server_enabled, created_at, country, insurance_notice_days, theme
              FROM user_profile LIMIT 1",
         )?;
 
         let result = stmt.query_row([], |row| {
-            let menu_prefs_json: String = row.get(4)?;
+            let menu_prefs_json: String = row.get("menu_preferences")?;
             let menu_prefs: MenuPreferences =
                 serde_json::from_str(&menu_prefs_json).unwrap_or_default();
-            let country: Option<String> = row.get(11)?;
-            let stored_notice: Option<i64> = row.get(12)?;
-            let theme: String = row.get(13)?;
+            let country: Option<String> = row.get("country")?;
+            let stored_notice: Option<i64> = row.get("insurance_notice_days")?;
+            let theme: String = row.get("theme")?;
 
             Ok(UserProfile {
-                id: row.get(0)?,
-                name: row.get(1)?,
-                surname: row.get(2)?,
-                email: row.get(3)?,
+                id: row.get("id")?,
+                name: row.get("name")?,
+                surname: row.get("surname")?,
+                email: row.get("email")?,
                 menu_preferences: menu_prefs,
-                currency: row.get(5)?,
-                language: row.get(6)?,
-                exclude_personal_real_estate: row.get::<_, i32>(7)? != 0,
-                coingecko_modal_dismissed: row.get::<_, i32>(8)? != 0,
-                mcp_server_enabled: row.get::<_, i32>(9)? != 0,
-                created_at: row.get(10)?,
+                currency: row.get("currency")?,
+                language: row.get("language")?,
+                exclude_personal_real_estate: row.get::<_, i32>("exclude_personal_real_estate")?
+                    != 0,
+                mcp_server_enabled: row.get::<_, i32>("mcp_server_enabled")? != 0,
+                created_at: row.get("created_at")?,
                 insurance_notice_days: crate::services::milestones::effective_insurance_notice_days(
                     stored_notice,
                 ),
@@ -605,11 +605,6 @@ fn apply_profile_update(conn: &rusqlite::Connection, updates: &UpdateUserProfile
     if let Some(exclude) = updates.exclude_personal_real_estate {
         set_clauses.push("exclude_personal_real_estate = ?".to_string());
         params.push(Box::new(exclude as i32));
-    }
-
-    if let Some(dismissed) = updates.coingecko_modal_dismissed {
-        set_clauses.push("coingecko_modal_dismissed = ?".to_string());
-        params.push(Box::new(dismissed as i32));
     }
 
     if let Some(enabled) = updates.mcp_server_enabled {
@@ -1400,7 +1395,6 @@ mod tests {
                 currency TEXT NOT NULL DEFAULT 'CZK',
                 exclude_personal_real_estate INTEGER NOT NULL DEFAULT 0,
                 language TEXT NOT NULL DEFAULT 'en',
-                coingecko_modal_dismissed INTEGER NOT NULL DEFAULT 0,
                 mcp_server_enabled INTEGER NOT NULL DEFAULT 0,
                 country TEXT,
                 insurance_notice_days INTEGER,
@@ -1423,7 +1417,6 @@ mod tests {
             currency: None,
             language: None,
             exclude_personal_real_estate: None,
-            coingecko_modal_dismissed: None,
             mcp_server_enabled: None,
             country: None,
             insurance_notice_days: None,

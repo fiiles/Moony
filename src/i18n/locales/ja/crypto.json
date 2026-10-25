@@ -5,7 +5,7 @@
   "loading": "暗号資産ポートフォリオを読み込んでいます...",
   "empty": {
     "title": "暗号資産はまだありません",
-    "description": "最初のコインを追加してください。CoinGecko で検索され、レートは自動で更新されます。"
+    "description": "最初のコインを追加してください。Yahoo Finance で検索され、レートは自動で更新されます。"
   },
   "addCrypto": "暗号資産を追加",
   "refreshPrices": "レートを更新",
@@ -53,8 +53,9 @@
     "return": "損益",
     "actions": "操作",
     "showClosed": "決済済みのポジションを表示",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "手動レート",
+    "noSource": "レートの取得元なし",
     "closed": "{{date}}に決済",
     "realized": "確定 {{amount}}",
     "noResults": {
@@ -73,26 +74,26 @@
     "buy": "買付",
     "sell": "売却",
     "updatePrice": "レートを手動設定",
+    "changeSymbol": "レートの取得元…",
     "delete": "ポジションを削除"
   },
   "badges": {
     "manual": "手動"
   },
   "tooltip": {
-    "manualPrice": "手動で設定したレートです。削除するまで CoinGecko のレートより優先されます。"
+    "manualPrice": "手動で設定したレートです。削除するまで Yahoo Finance のレートより優先されます。"
   },
   "modal": {
     "add": {
       "title": "暗号資産を追加",
-      "description": "CoinGecko でコインを検索します。レートはその後自動で更新されます。",
+      "description": "Yahoo Finance でコインを検索します。レートはその後自動で更新されます。",
       "coin": "暗号資産",
       "ticker": "ティッカー",
-      "search": "CoinGecko を検索",
-      "searchHint": "名称またはティッカーを入力すると、CoinGecko の候補が表示されます。",
-      "searching": "CoinGecko を検索しています…",
-      "searchError": "検索に失敗しました。接続、または設定の CoinGecko キーを確認してください。",
+      "search": "Yahoo Finance を検索",
+      "searchHint": "名称またはティッカーを入力すると、候補が表示されます。",
+      "searching": "Yahoo Finance を検索しています…",
+      "searchError": "検索に失敗しました。接続を確認してください。",
       "noResults": "一致するコインがありません。ティッカーと名称は手入力できます。",
-      "rank": "#{{rank}}",
       "quantity": "数量",
       "pricePerUnit": "単価",
       "purchaseDate": "購入日",
@@ -121,11 +122,18 @@
     },
     "updatePrice": {
       "title": "手動レート · {{name}}",
-      "description": "手動レートを削除するまで、CoinGecko のレートより優先されます。",
+      "description": "手動レートを削除するまで、Yahoo Finance のレートより優先されます。",
       "price": "1 {{ticker}} あたりのレート",
       "total": "ポジションの評価額（{{quantity}} {{ticker}}）",
       "remove": "手動レートを削除",
       "submit": "レートを保存"
+    },
+    "symbol": {
+      "title": "{{name}} のレート取得元",
+      "description": "このコインの Yahoo Finance 上の銘柄を選択してください。レートと履歴はそこから再構築されます。",
+      "current": "現在: {{symbol}}",
+      "none": "銘柄はまだ選択されていません。",
+      "saved": "レートの取得元を保存しました"
     }
   },
   "confirmDelete": {
@@ -139,15 +147,15 @@
     "deleted": "ポジションを削除しました",
     "priceUpdated": "手動レートを保存しました",
     "manualPriceDeleted": "手動レートを削除しました",
-    "pricesRefreshed_other": "CoinGecko から{{count}}件のレートを更新しました",
-    "pricesRefreshedDescription": "CoinGecko から現在のレートを取得しました",
+    "pricesRefreshed_other": "Yahoo Finance から{{count}}件のレートを更新しました",
+    "pricesRefreshedDescription": "Yahoo Finance から現在のレートを取得しました",
     "refreshFailed": "レートの更新に失敗しました",
     "addFailed": "暗号資産の追加に失敗しました"
   },
   "detail": {
     "backToList": "暗号資産に戻る",
     "notFound": "ポジションが見つかりません",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "手動レート",
     "quantityUnits": "{{quantity}} {{ticker}}",
     "avgBuyPrice": "平均取得単価 {{price}}",
@@ -157,6 +165,7 @@
     "sell": "売却",
     "menu": {
       "editPrice": "レートを手動設定",
+      "changeSymbol": "レートの取得元…",
       "delete": "ポジションを削除"
     },
     "status": {
@@ -229,10 +238,9 @@
       "description": "{{type}}の取引（{{quantity}} × {{ticker}}、{{date}}、{{amount}}）を完全に削除します。この操作は元に戻せません。"
     }
   },
-  "coingeckoBanner": {
-    "title": "CoinGecko API キー（任意）",
-    "message": "キーがなくてもレートは取得できます。設定で無料の CoinGecko キーを追加すると、グラフ用のレート履歴も読み込まれます。",
-    "goToSettings": "設定を開く",
-    "dismiss": "閉じる"
+  "unpricedBanner": {
+    "title_other": "{{count}}件のコインにレートの取得元がありません",
+    "message": "Moony は {{tickers}} が Yahoo Finance のどの銘柄か判断できませんでした。銘柄を選ぶと、レートと履歴が反映されます。",
+    "pick": "銘柄を選択"
   }
 }

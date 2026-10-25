@@ -1,6 +1,6 @@
 //! Application-wide constants
 
-/// Default currency for cryptocurrency prices (CoinGecko returns USD)
+/// Default currency for cryptocurrency prices (Yahoo Finance quotes crypto in USD)
 pub const DEFAULT_CRYPTO_CURRENCY: &str = "USD";
 
 /// Default currency for US stock prices

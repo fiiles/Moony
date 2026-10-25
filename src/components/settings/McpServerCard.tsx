@@ -227,7 +227,7 @@ export function McpServerCard() {
                 <Button
                   variant="ghost"
                   size="icon-sm"
-                  aria-label={showToken ? t('apiKeys.hide') : t('apiKeys.show')}
+                  aria-label={showToken ? t('mcpServer.hideToken') : t('mcpServer.showToken')}
                   onClick={() => setShowToken((v) => !v)}
                 >
                   {showToken ? <EyeOff /> : <Eye />}

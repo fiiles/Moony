@@ -5,14 +5,14 @@
     "general": "常规",
     "security": "安全",
     "data": "数据与备份",
-    "integrations": "集成",
+    "integrations": "AI 助手",
     "categorization": "分类",
     "account": "账户",
     "description": {
       "general": "个人资料、语言、货币，以及菜单中显示的内容。",
       "security": "密码、自动锁定和应用更新。",
       "data": "您的数据存放在哪里，以及如何保留一份副本。",
-      "integrations": "用于价格的 API 密钥，以及供 AI 助手使用的本地 MCP 服务器。",
+      "integrations": "供 AI 助手使用的本地 MCP 服务器。",
       "categorization": "规则包、类别和您自己的分类规则。",
       "account": "从这台电脑上删除您的数据。"
     }
@@ -42,24 +42,6 @@
     "recoveryKeyDescription": "您的密码将被更改，并生成新的恢复密钥。",
     "oldKeyInvalid": "您的旧恢复密钥将不再有效！",
     "confirmHint": "确认之前，请务必已记下或复制您的恢复密钥。只有在您点击上方按钮后，密码才会更改。"
-  },
-  "apiKeys": {
-    "title": "API 密钥",
-    "description": "配置获取加密货币价格时使用的可选 API 密钥。股票价格无需密钥。",
-    "coingecko": {
-      "label": "CoinGecko API 密钥",
-      "getDemoKey": "获取演示密钥",
-      "placeholder": "可选——免费套餐无需密钥也能使用",
-      "hint": "用于加密货币价格和搜索（免费套餐不支持加载历史价格）",
-      "hint2": "免费套餐不支持加载历史价格"
-    },
-    "save": "保存 API 密钥",
-    "saving": "正在保存…",
-    "saved": "API 密钥已保存",
-    "savedDescription": "您的 API 密钥已更新。",
-    "optional": "可选",
-    "show": "显示密钥",
-    "hide": "隐藏密钥"
   },
   "currency": {
     "title": "货币",
@@ -102,6 +84,8 @@
     "statusError": "MCP 服务器启动失败：{{error}}",
     "endpoint": "端点 URL",
     "token": "访问令牌",
+    "showToken": "显示令牌",
+    "hideToken": "隐藏令牌",
     "tokenHint": "以 Authorization: Bearer 请求头发送。请像对待密码一样保管它。",
     "regenerate": "重新生成",
     "regenerateHint": "重新生成会使所有使用当前令牌的客户端配置失效。",

@@ -72,7 +72,7 @@ describe('normalizeApiError', () => {
     ['Database error: no such table: foo', 'database', 'errors.database'],
     ['Authentication error: Database is locked', 'auth', 'errors.auth'],
     [
-      'External API error: CoinGecko parse error: x (body: <html>)',
+      'External API error: Yahoo parse error: x (body: <html>)',
       'externalApi',
       'errors.externalApi',
     ],

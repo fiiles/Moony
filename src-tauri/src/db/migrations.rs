@@ -89,6 +89,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("022_profile_theme", MIGRATION_022),
         ("023_stock_splits", MIGRATION_023),
         ("024_categorize_snooze", MIGRATION_024),
+        ("025_crypto_yahoo_symbol", MIGRATION_025),
     ]
 }
 
@@ -2853,6 +2854,19 @@ pub(crate) const MIGRATION_024: &str = r#"
 ALTER TABLE bank_transactions ADD COLUMN categorize_snoozed_until INTEGER;
 "#;
 
+/// 025: a crypto holding is identified by its Yahoo Finance USD pair (`BTC-USD`) instead of a
+/// CoinGecko id. `yahoo_symbol` stays NULL for every existing holding: the migration never
+/// guesses (`ARB-USD` would be the wrong coin), the symbol is resolved lazily. The cached
+/// `crypto_prices` rows survive. The dropped columns carry no index, key or foreign key, so
+/// SQLite's `DROP COLUMN` (3.35+) applies. The CoinGecko API key is wiped; nothing reads it now.
+pub(crate) const MIGRATION_025: &str = r#"
+ALTER TABLE crypto_investments ADD COLUMN yahoo_symbol TEXT;
+ALTER TABLE crypto_investments DROP COLUMN coingecko_id;
+ALTER TABLE crypto_prices DROP COLUMN coingecko_id;
+ALTER TABLE user_profile DROP COLUMN coingecko_modal_dismissed;
+DELETE FROM app_config WHERE key = 'api_key_coingecko';
+"#;
+
 #[cfg(test)]
 mod migration_012 {
     use super::*;
@@ -3997,6 +4011,101 @@ mod migration_024 {
         let queue = crate::services::categorize_queue::list(&conn, &engine, None, 1_800_000_000)
             .expect("queue");
         assert_eq!((queue.total, queue.snoozed), (0, 1));
+    }
+}
+
+#[cfg(test)]
+mod migration_025 {
+    use super::*;
+
+    /// A database as it was before `025`: every migration that comes earlier in the chain, plus a
+    /// holding, its cached price, a dismissed CoinGecko notice and the stored API key
+    /// (the `fx_reference` row comes from migration 011).
+    fn database_before_025() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "025_crypto_yahoo_symbol")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn.execute_batch(
+            "INSERT INTO crypto_investments (id, ticker, coingecko_id, name, quantity)
+             VALUES ('c1', 'BTC', 'bitcoin', 'Bitcoin', '1');
+             INSERT INTO crypto_prices (id, symbol, coingecko_id, price, currency)
+             VALUES ('p1', 'BTC', 'bitcoin', '60000', 'USD');
+             INSERT INTO user_profile (id, name, surname, email, coingecko_modal_dismissed)
+             VALUES (1, 'Alex', 'Novak', 'a@b.cz', 1);
+             INSERT INTO app_config (key, value) VALUES ('api_key_coingecko', 'cg-secret');",
+        )
+        .expect("legacy crypto rows");
+        conn
+    }
+
+    fn columns(conn: &Connection, table: &str) -> Vec<String> {
+        let mut stmt = conn
+            .prepare("SELECT name FROM pragma_table_info(?1)")
+            .expect("table info");
+        stmt.query_map([table], |r| r.get::<_, String>(0))
+            .expect("columns")
+            .map(|name| name.expect("column name"))
+            .collect()
+    }
+
+    /// `DROP COLUMN` needs SQLite 3.35 or newer; migration 025 relies on it.
+    #[test]
+    fn the_bundled_sqlite_supports_the_drop_column_of_025() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let version: String = conn
+            .query_row("SELECT sqlite_version()", [], |r| r.get(0))
+            .expect("version");
+        let parts: Vec<u32> = version
+            .split('.')
+            .map(|part| part.parse().expect("numeric version part"))
+            .collect();
+        assert!(
+            (parts[0], parts[1]) >= (3, 35),
+            "SQLite {version} lacks DROP COLUMN"
+        );
+    }
+
+    #[test]
+    fn migration_025_moves_crypto_identity_to_the_yahoo_symbol() {
+        let conn = database_before_025();
+        run_migrations(&conn).expect("migrate");
+
+        assert!(columns(&conn, "crypto_investments").contains(&"yahoo_symbol".to_string()));
+        assert!(!columns(&conn, "crypto_investments").contains(&"coingecko_id".to_string()));
+        assert!(!columns(&conn, "crypto_prices").contains(&"coingecko_id".to_string()));
+        assert!(!columns(&conn, "user_profile").contains(&"coingecko_modal_dismissed".to_string()));
+
+        let symbol: Option<String> = conn
+            .query_row(
+                "SELECT yahoo_symbol FROM crypto_investments WHERE ticker = 'BTC'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("holding");
+        assert_eq!(symbol, None, "the migration never guesses a symbol");
+        let price_rows: i64 = conn
+            .query_row("SELECT COUNT(*) FROM crypto_prices", [], |r| r.get(0))
+            .expect("prices");
+        assert_eq!(price_rows, 1, "the cached price survives");
+        let keys: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM app_config WHERE key = 'api_key_coingecko'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("keys");
+        assert_eq!(keys, 0, "the unused secret is wiped");
+        let fx: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM app_config WHERE key = 'fx_reference'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("fx");
+        assert_eq!(fx, 1, "other settings stay");
     }
 }
 

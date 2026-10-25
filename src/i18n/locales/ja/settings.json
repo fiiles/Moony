@@ -5,14 +5,14 @@
     "general": "一般",
     "security": "セキュリティ",
     "data": "データとバックアップ",
-    "integrations": "連携",
+    "integrations": "AIアシスタント",
     "categorization": "分類",
     "account": "アカウント",
     "description": {
       "general": "プロフィール、言語、通貨、メニューの表示内容。",
       "security": "パスワード、自動ロック、アプリの更新。",
       "data": "データの保存場所と、そのコピーの作成方法。",
-      "integrations": "価格取得用の API キーと、AI アシスタント向けのローカル MCP サーバー。",
+      "integrations": "AI アシスタント向けのローカル MCP サーバー。",
       "categorization": "ルールパック、カテゴリ、独自の分類ルール。",
       "account": "このコンピュータからデータを削除します。"
     }
@@ -42,24 +42,6 @@
     "recoveryKeyDescription": "パスワードが変更され、新しい復旧キーが生成されます。",
     "oldKeyInvalid": "古い復旧キーは使えなくなります。",
     "confirmHint": "確定する前に、復旧キーを書き留めるかコピーしたことを確認してください。パスワードは上のボタンをクリックした後に変更されます。"
-  },
-  "apiKeys": {
-    "title": "API キー",
-    "description": "暗号資産の価格取得に使う任意の API キーを設定します。株価にはキーは不要です。",
-    "coingecko": {
-      "label": "CoinGecko API キー",
-      "getDemoKey": "デモキーを取得",
-      "placeholder": "任意 - 無料プランならキーなしでも動作します",
-      "hint": "暗号資産の価格と検索に使用します（無料プランでは過去の価格は読み込めません）",
-      "hint2": "無料プランでは過去の価格は読み込めません"
-    },
-    "save": "API キーを保存",
-    "saving": "保存中...",
-    "saved": "API キーを保存しました",
-    "savedDescription": "API キーを更新しました。",
-    "optional": "任意",
-    "show": "キーを表示",
-    "hide": "キーを非表示"
   },
   "currency": {
     "title": "通貨",
@@ -102,6 +84,8 @@
     "statusError": "MCP サーバーを起動できませんでした：{{error}}",
     "endpoint": "エンドポイント URL",
     "token": "アクセストークン",
+    "showToken": "トークンを表示",
+    "hideToken": "トークンを非表示",
     "tokenHint": "Authorization: Bearer ヘッダーとして送信されます。パスワードと同様に扱ってください。",
     "regenerate": "再生成",
     "regenerateHint": "再生成すると、現在のトークンを使っているすべてのクライアント設定が無効になります。",

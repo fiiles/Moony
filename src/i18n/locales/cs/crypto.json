@@ -5,7 +5,7 @@
   "loading": "Načítání vašeho krypto portfolia...",
   "empty": {
     "title": "Zatím žádné kryptoměny",
-    "description": "Přidejte první minci: vyhledáme ji na CoinGecko a kurz se bude aktualizovat sám."
+    "description": "Přidejte první minci: vyhledáme ji na Yahoo Finance a kurz se bude aktualizovat sám."
   },
   "addCrypto": "Přidat kryptoměnu",
   "refreshPrices": "Obnovit kurzy",
@@ -59,8 +59,9 @@
     "return": "Výnos",
     "actions": "Akce",
     "showClosed": "Zobrazit uzavřené pozice",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "ruční kurz",
+    "noSource": "bez zdroje kurzu",
     "closed": "uzavřeno {{date}}",
     "realized": "{{amount}} realizováno",
     "noResults": {
@@ -83,26 +84,26 @@
     "buy": "Koupit",
     "sell": "Prodat",
     "updatePrice": "Zadat kurz ručně",
+    "changeSymbol": "Zdroj kurzu…",
     "delete": "Smazat pozici"
   },
   "badges": {
     "manual": "ručně"
   },
   "tooltip": {
-    "manualPrice": "Kurz zadaný ručně – přepisuje CoinGecko, dokud ho neodeberete."
+    "manualPrice": "Kurz zadaný ručně – přepisuje Yahoo Finance, dokud ho neodeberete."
   },
   "modal": {
     "add": {
       "title": "Přidat kryptoměnu",
-      "description": "Vyhledejte minci na CoinGecko, kurz se pak bude aktualizovat automaticky.",
+      "description": "Vyhledejte minci na Yahoo Finance, kurz se pak bude aktualizovat automaticky.",
       "coin": "Kryptoměna",
       "ticker": "Ticker",
-      "search": "Hledat na CoinGecko",
-      "searchHint": "Napište název nebo ticker, nabídneme shody z CoinGecko.",
-      "searching": "Hledám na CoinGecko…",
-      "searchError": "Hledání selhalo. Zkontrolujte připojení, případně klíč CoinGecko v nastavení.",
+      "search": "Hledat na Yahoo Finance",
+      "searchHint": "Napište název nebo ticker, nabídneme shody.",
+      "searching": "Hledám na Yahoo Finance…",
+      "searchError": "Hledání selhalo. Zkontrolujte připojení.",
       "noResults": "Žádná mince neodpovídá. Ticker a název můžete vyplnit ručně.",
-      "rank": "#{{rank}}",
       "quantity": "Množství",
       "pricePerUnit": "Cena za jednotku",
       "purchaseDate": "Datum nákupu",
@@ -131,11 +132,18 @@
     },
     "updatePrice": {
       "title": "Ruční kurz · {{name}}",
-      "description": "Přepíše kurz z CoinGecko, dokud ruční kurz neodeberete.",
+      "description": "Přepíše kurz z Yahoo Finance, dokud ruční kurz neodeberete.",
       "price": "Kurz za 1 {{ticker}}",
       "total": "Hodnota pozice ({{quantity}} {{ticker}})",
       "remove": "Odebrat ruční kurz",
       "submit": "Uložit kurz"
+    },
+    "symbol": {
+      "title": "Zdroj kurzu pro {{name}}",
+      "description": "Vyberte záznam této mince na Yahoo Finance. Kurz i historie se z něj znovu sestaví.",
+      "current": "Nyní: {{symbol}}",
+      "none": "Záznam zatím není vybrán.",
+      "saved": "Zdroj kurzu uložen"
     }
   },
   "confirmDelete": {
@@ -149,17 +157,17 @@
     "deleted": "Pozice smazána",
     "priceUpdated": "Ruční kurz uložen",
     "manualPriceDeleted": "Ruční kurz odebrán",
-    "pricesRefreshed_one": "Aktualizován {{count}} kurz z CoinGecko",
-    "pricesRefreshed_few": "Aktualizovány {{count}} kurzy z CoinGecko",
-    "pricesRefreshed_other": "Aktualizováno {{count}} kurzů z CoinGecko",
-    "pricesRefreshedDescription": "Aktuální kurzy načteny z CoinGecko",
+    "pricesRefreshed_one": "Aktualizován {{count}} kurz z Yahoo Finance",
+    "pricesRefreshed_few": "Aktualizovány {{count}} kurzy z Yahoo Finance",
+    "pricesRefreshed_other": "Aktualizováno {{count}} kurzů z Yahoo Finance",
+    "pricesRefreshedDescription": "Aktuální kurzy načteny z Yahoo Finance",
     "refreshFailed": "Aktualizace kurzů selhala",
     "addFailed": "Přidání kryptoměny selhalo"
   },
   "detail": {
     "backToList": "Zpět na krypto",
     "notFound": "Pozice nenalezena",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "ruční kurz",
     "quantityUnits": "{{quantity}} {{ticker}}",
     "avgBuyPrice": "průměrná nákupní cena {{price}}",
@@ -169,6 +177,7 @@
     "sell": "Prodat",
     "menu": {
       "editPrice": "Zadat kurz ručně",
+      "changeSymbol": "Zdroj kurzu…",
       "delete": "Smazat pozici"
     },
     "status": {
@@ -251,10 +260,11 @@
       "description": "Tím trvale smažete transakci typu {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Tuto akci nelze vrátit zpět."
     }
   },
-  "coingeckoBanner": {
-    "title": "Klíč CoinGecko API (volitelný)",
-    "message": "Kurzy fungují i bez klíče. Bezplatný klíč CoinGecko přidaný v nastavení načte i historii kurzů do grafů.",
-    "goToSettings": "Otevřít nastavení",
-    "dismiss": "Zavřít"
+  "unpricedBanner": {
+    "title_one": "{{count}} mince nemá zdroj kurzu",
+    "title_few": "{{count}} mince nemají zdroj kurzu",
+    "title_other": "{{count}} mincí nemá zdroj kurzu",
+    "message": "Nepodařilo se určit, který záznam na Yahoo Finance odpovídá {{tickers}}. Vyberte ho a doplní se kurz i historie.",
+    "pick": "Vybrat záznam"
   }
 }

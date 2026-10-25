@@ -373,12 +373,21 @@ export type ConversionQuality = { missingCurrencies: string[]; missingCount: num
 /**
  * Crypto investment holding
  */
-export type CryptoInvestment = { id: string; ticker: string; coingeckoId: string; name: string; quantity: string; averagePrice: string }
+export type CryptoInvestment = { id: string; ticker: string; 
+/**
+ * Yahoo Finance symbol of the coin's USD pair (`BTC-USD`, `SUI20947-USD`); `null` until resolved.
+ */
+yahooSymbol: string | null; name: string; quantity: string; averagePrice: string }
 
 /**
  * Every crypto position in `currency`, with what could not be converted.
  */
 export type CryptoPositions = { currency: string; fxQuality: ConversionQuality; items: EnrichedCryptoInvestment[]; totals: PositionTotals }
+
+/**
+ * One coin offered by the search: the Yahoo USD pair, its display ticker and a name.
+ */
+export type CryptoSearchResult = { symbol: string; ticker: string; name: string }
 
 /**
  * Crypto transaction (buy/sell)
@@ -827,7 +836,11 @@ export type EffectiveTransactionFlow = { id: string; effectiveFlowKind: FlowKind
  * Converted amounts are decimal TEXT at the report currency's minor unit and `null` when they
  * cannot be converted (the currency is then in the response's `fxQuality`).
  */
-export type EnrichedCryptoInvestment = { id: string; ticker: string; coingeckoId: string; name: string; quantity: string; 
+export type EnrichedCryptoInvestment = { id: string; ticker: string; 
+/**
+ * Yahoo Finance symbol of the coin's USD pair; `null` while the holding is unresolved.
+ */
+yahooSymbol: string | null; name: string; quantity: string; 
 /**
  * Native weighted average cost (currency `averagePriceCurrency`).
  */
@@ -1098,7 +1111,11 @@ export type InsertCashflowItem = { name: string; amount: string; currency: strin
  * accepted: they derive from the transaction record (pass an initial
  * transaction on create).
  */
-export type InsertCryptoInvestment = { ticker: string; coingeckoId: string; name: string }
+export type InsertCryptoInvestment = { ticker: string; 
+/**
+ * Optional Yahoo Finance USD pair picked in the search; resolved later when absent.
+ */
+yahooSymbol?: string | null; name: string }
 
 /**
  * Data for creating crypto transaction
@@ -2850,7 +2867,7 @@ export type UpdateTransactionCategory = { kind?: FlowKind | null; name: string |
 /**
  * Data for updating user profile (partial updates)
  */
-export type UpdateUserProfile = { name: string | null; surname: string | null; email: string | null; menuPreferences: MenuPreferences | null; currency: string | null; language: string | null; excludePersonalRealEstate: boolean | null; coingeckoModalDismissed: boolean | null; mcpServerEnabled: boolean | null; 
+export type UpdateUserProfile = { name: string | null; surname: string | null; email: string | null; menuPreferences: MenuPreferences | null; currency: string | null; language: string | null; excludePersonalRealEstate: boolean | null; mcpServerEnabled: boolean | null; 
 /**
  * `Some("")` clears the country; otherwise two ASCII letters (stored upper case).
  */
@@ -2867,7 +2884,7 @@ theme: string | null }
 /**
  * User profile stored in database
  */
-export type UserProfile = { id: number; name: string; surname: string; email: string; menuPreferences: MenuPreferences; currency: string; language: string; excludePersonalRealEstate: boolean; coingeckoModalDismissed?: boolean; mcpServerEnabled?: boolean; 
+export type UserProfile = { id: number; name: string; surname: string; email: string; menuPreferences: MenuPreferences; currency: string; language: string; excludePersonalRealEstate: boolean; mcpServerEnabled?: boolean; 
 /**
  * ISO 3166-1 alpha-2 country of the profile (`CZ`), None until set.
  */

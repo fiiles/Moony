@@ -5,14 +5,14 @@
     "general": "Allmänt",
     "security": "Säkerhet",
     "data": "Data och säkerhetskopior",
-    "integrations": "Integrationer",
+    "integrations": "AI-assistent",
     "categorization": "Kategorisering",
     "account": "Konto",
     "description": {
       "general": "Profil, språk, valuta och vad menyn visar.",
       "security": "Lösenord, autolås och appuppdateringar.",
       "data": "Var dina data finns och hur du behåller en kopia av dem.",
-      "integrations": "API-nycklar för kurser och den lokala MCP-servern för AI-assistenter.",
+      "integrations": "Den lokala MCP-servern för AI-assistenter.",
       "categorization": "Regelpaket, kategorier och dina egna kategoriseringsregler.",
       "account": "Radera dina data från den här datorn."
     }
@@ -42,24 +42,6 @@
     "recoveryKeyDescription": "Ditt lösenord kommer att ändras och en ny återställningsnyckel skapas.",
     "oldKeyInvalid": "Din gamla återställningsnyckel kommer inte längre att fungera!",
     "confirmHint": "Se till att du har skrivit ner eller kopierat din återställningsnyckel innan du bekräftar. Lösenordsändringen sker först när du klickar på knappen ovan."
-  },
-  "apiKeys": {
-    "title": "API-nycklar",
-    "description": "Konfigurera den valfria API-nyckel som används för att hämta kryptokurser. Aktiekurser kräver ingen nyckel.",
-    "coingecko": {
-      "label": "API-nyckel för CoinGecko",
-      "getDemoKey": "Hämta demonyckel",
-      "placeholder": "Valfritt – gratisnivån fungerar utan nyckel",
-      "hint": "Används för kryptokurser och sökning (gratisnivån tillåter inte hämtning av historiska kurser)",
-      "hint2": "Gratisnivån tillåter inte hämtning av historiska kurser"
-    },
-    "save": "Spara API-nycklar",
-    "saving": "Sparar...",
-    "saved": "API-nycklarna har sparats",
-    "savedDescription": "Dina API-nycklar har uppdaterats.",
-    "optional": "valfritt",
-    "show": "Visa nyckel",
-    "hide": "Dölj nyckel"
   },
   "currency": {
     "title": "Valuta",
@@ -102,6 +84,8 @@
     "statusError": "MCP-servern kunde inte startas: {{error}}",
     "endpoint": "Adress till slutpunkt",
     "token": "Åtkomsttoken",
+    "showToken": "Visa token",
+    "hideToken": "Dölj token",
     "tokenHint": "Skickas som en Authorization: Bearer-header. Behandla den som ett lösenord.",
     "regenerate": "Skapa ny",
     "regenerateHint": "Att skapa en ny token gör alla klientkonfigurationer som använder den nuvarande ogiltiga.",

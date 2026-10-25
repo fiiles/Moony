@@ -5,7 +5,7 @@
   "loading": "Laster kryptoporteføljen din...",
   "empty": {
     "title": "Ingen kryptovalutaer ennå",
-    "description": "Legg til din første mynt: vi slår den opp på CoinGecko, og kursen holder seg selv oppdatert."
+    "description": "Legg til din første mynt: vi slår den opp på Yahoo Finance, og kursen holder seg selv oppdatert."
   },
   "addCrypto": "Legg til kryptovaluta",
   "refreshPrices": "Oppdater kurser",
@@ -56,8 +56,9 @@
     "return": "Avkastning",
     "actions": "Handlinger",
     "showClosed": "Vis avsluttede beholdninger",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "manuell kurs",
+    "noSource": "mangler kurskilde",
     "closed": "avsluttet {{date}}",
     "realized": "{{amount}} realisert",
     "noResults": {
@@ -78,26 +79,26 @@
     "buy": "Kjøp",
     "sell": "Selg",
     "updatePrice": "Sett kurs manuelt",
+    "changeSymbol": "Kurskilde…",
     "delete": "Slett beholdning"
   },
   "badges": {
     "manual": "manuell"
   },
   "tooltip": {
-    "manualPrice": "Manuelt satt kurs – overstyrer CoinGecko til du fjerner den."
+    "manualPrice": "Manuelt satt kurs – overstyrer Yahoo Finance til du fjerner den."
   },
   "modal": {
     "add": {
       "title": "Legg til kryptovaluta",
-      "description": "Slå opp mynten på CoinGecko; kursen oppdateres deretter automatisk.",
+      "description": "Slå opp mynten på Yahoo Finance; kursen oppdateres deretter automatisk.",
       "coin": "Kryptovaluta",
       "ticker": "Ticker",
-      "search": "Søk på CoinGecko",
-      "searchHint": "Skriv et navn eller en ticker for å se treff fra CoinGecko.",
-      "searching": "Søker på CoinGecko…",
-      "searchError": "Søket mislyktes. Sjekk tilkoblingen eller CoinGecko-nøkkelen i Innstillinger.",
+      "search": "Søk på Yahoo Finance",
+      "searchHint": "Skriv et navn eller en ticker for å se treff.",
+      "searching": "Søker på Yahoo Finance…",
+      "searchError": "Søket mislyktes. Sjekk tilkoblingen.",
       "noResults": "Ingen mynter passer. Du kan fylle inn ticker og navn for hånd.",
-      "rank": "#{{rank}}",
       "quantity": "Antall",
       "pricePerUnit": "Pris per enhet",
       "purchaseDate": "Kjøpsdato",
@@ -126,11 +127,18 @@
     },
     "updatePrice": {
       "title": "Manuell kurs · {{name}}",
-      "description": "Overstyrer CoinGecko-kursen til du fjerner den manuelle.",
+      "description": "Overstyrer Yahoo Finance-kursen til du fjerner den manuelle.",
       "price": "Kurs per 1 {{ticker}}",
       "total": "Verdi av beholdningen ({{quantity}} {{ticker}})",
       "remove": "Fjern manuell kurs",
       "submit": "Lagre kurs"
+    },
+    "symbol": {
+      "title": "Kurskilde for {{name}}",
+      "description": "Velg oppføringen til denne mynten på Yahoo Finance. Kurs og historikk bygges opp igjen fra den.",
+      "current": "Nåværende: {{symbol}}",
+      "none": "Ingen oppføring valgt ennå.",
+      "saved": "Kurskilde lagret"
     }
   },
   "confirmDelete": {
@@ -144,16 +152,16 @@
     "deleted": "Beholdningen er slettet",
     "priceUpdated": "Manuell kurs er lagret",
     "manualPriceDeleted": "Manuell kurs er fjernet",
-    "pricesRefreshed_one": "Oppdaterte {{count}} kurs fra CoinGecko",
-    "pricesRefreshed_other": "Oppdaterte {{count}} kurser fra CoinGecko",
-    "pricesRefreshedDescription": "Gjeldende kurser hentet fra CoinGecko",
+    "pricesRefreshed_one": "Oppdaterte {{count}} kurs fra Yahoo Finance",
+    "pricesRefreshed_other": "Oppdaterte {{count}} kurser fra Yahoo Finance",
+    "pricesRefreshedDescription": "Gjeldende kurser hentet fra Yahoo Finance",
     "refreshFailed": "Oppdatering av kurser mislyktes",
     "addFailed": "Kunne ikke legge til kryptovalutaen"
   },
   "detail": {
     "backToList": "Tilbake til krypto",
     "notFound": "Beholdningen ble ikke funnet",
-    "source": "CoinGecko",
+    "source": "Yahoo Finance",
     "manualSource": "manuell kurs",
     "quantityUnits": "{{quantity}} {{ticker}}",
     "avgBuyPrice": "snittkost {{price}}",
@@ -163,6 +171,7 @@
     "sell": "Selg",
     "menu": {
       "editPrice": "Sett kurs manuelt",
+      "changeSymbol": "Kurskilde…",
       "delete": "Slett beholdning"
     },
     "status": {
@@ -240,10 +249,10 @@
       "description": "Dette sletter transaksjonen ({{type}}, {{quantity}} × {{ticker}}, {{date}}, {{amount}}) permanent. Dette kan ikke angres."
     }
   },
-  "coingeckoBanner": {
-    "title": "API-nøkkel for CoinGecko (valgfritt)",
-    "message": "Kursene fungerer uten nøkkel. En gratis CoinGecko-nøkkel lagt til i Innstillinger laster også kurshistorikk til diagrammene.",
-    "goToSettings": "Åpne Innstillinger",
-    "dismiss": "Lukk"
+  "unpricedBanner": {
+    "title_one": "{{count}} mynt mangler kurskilde",
+    "title_other": "{{count}} mynter mangler kurskilde",
+    "message": "Moony klarte ikke å avgjøre hvilken oppføring på Yahoo Finance {{tickers}} er. Velg den, så følger kurs og historikk.",
+    "pick": "Velg oppføring"
   }
 }

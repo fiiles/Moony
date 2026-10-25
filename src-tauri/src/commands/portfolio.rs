@@ -290,11 +290,13 @@ pub fn get_price_status(db: State<'_, Database>) -> Result<PriceStatus> {
 
         // Check crypto prices
         let (oldest_crypto_fetched_at, crypto_missing): (Option<i64>, i32) = {
+            // Only holdings with a Yahoo symbol count: an unresolved one cannot be refreshed and
+            // would keep the class stale forever (spec D7).
             let oldest: Option<i64> = conn
                 .query_row(
                     "SELECT MIN(cp.fetched_at) FROM crypto_investments ci
                  LEFT JOIN crypto_prices cp ON ci.ticker = cp.symbol
-                 WHERE cp.fetched_at IS NOT NULL",
+                 WHERE cp.fetched_at IS NOT NULL AND ci.yahoo_symbol IS NOT NULL",
                     [],
                     |row| row.get(0),
                 )
@@ -305,7 +307,7 @@ pub fn get_price_status(db: State<'_, Database>) -> Result<PriceStatus> {
                 .query_row(
                     "SELECT COUNT(*) FROM crypto_investments ci
                  LEFT JOIN crypto_prices cp ON ci.ticker = cp.symbol
-                 WHERE cp.symbol IS NULL",
+                 WHERE cp.symbol IS NULL AND ci.yahoo_symbol IS NOT NULL",
                     [],
                     |row| row.get(0),
                 )
@@ -612,44 +614,17 @@ pub async fn backfill_crypto_ticker_history(
         ticker
     );
 
-    // Get the coingecko_id and oldest transaction date for this ticker
-    let (coingecko_id, oldest_tx_date): (Option<String>, Option<i64>) = db.with_conn(|conn| {
-        let cg_id: Option<String> = conn
-            .query_row(
-                "SELECT coingecko_id FROM crypto_investments WHERE ticker = ?1",
-                [&ticker.to_uppercase()],
-                |row| row.get(0),
-            )
-            .ok()
-            .flatten();
-
-        let oldest: Option<i64> = conn
+    let ticker = ticker.to_uppercase();
+    let oldest_tx_date: Option<i64> = db.with_conn(|conn| {
+        Ok(conn
             .query_row(
                 "SELECT MIN(transaction_date) FROM crypto_transactions WHERE ticker = ?1",
-                [&ticker.to_uppercase()],
+                [&ticker],
                 |row| row.get(0),
             )
             .ok()
-            .flatten();
-
-        Ok((cg_id, oldest))
+            .flatten())
     })?;
-
-    match coingecko_id {
-        Some(id) if !id.is_empty() => {}
-        _ => {
-            log::debug!(
-                "[BACKFILL] No coingecko_id found for crypto {}, skipping",
-                ticker
-            );
-            return Ok(BackfillResult {
-                days_processed: 0,
-                total_days: 0,
-                completed: true,
-                message: "No CoinGecko ID configured for this crypto".to_string(),
-            });
-        }
-    }
 
     let from_timestamp = match oldest_tx_date {
         Some(date) => date,
@@ -667,10 +642,22 @@ pub async fn backfill_crypto_ticker_history(
         }
     };
 
-    // Limit to last 365 days
+    // A holding Yahoo cannot tell apart is left alone (spec D8): the symbol picker fixes it.
+    if crate::services::crypto_symbols::ensure_symbol(&db, &ticker).await?
+        == crate::services::crypto_symbols::Resolved::None
+    {
+        log::debug!("[BACKFILL] No Yahoo symbol for crypto {}, skipping", ticker);
+        return Ok(BackfillResult {
+            days_processed: 0,
+            total_days: 0,
+            completed: true,
+            message: "No Yahoo Finance symbol for this crypto".to_string(),
+        });
+    }
+
+    // The whole history in one Yahoo request: no window to cap it to.
     let now = chrono::Utc::now().timestamp();
-    let one_year_ago = now - (365 * 86400);
-    let effective_from = from_timestamp.max(one_year_ago);
+    let effective_from = from_timestamp;
 
     let from_day = (effective_from / 86400) * 86400;
     let today_start = (now / 86400) * 86400;
@@ -680,7 +667,7 @@ pub async fn backfill_crypto_ticker_history(
     // Rebuild this ticker's rows only: the queue owns the portfolio days
     history_recalc::rebuild_crypto_ticker(
         &db,
-        &ticker.to_uppercase(),
+        &ticker,
         effective_from,
         today_start,
         find_closest_price,
@@ -741,9 +728,10 @@ pub async fn recalculate_stock_ticker_history(
 /// Queue the history rebuild an MCP bulk import (or any external caller) asks for: the
 /// tickers of `asset_type` from `earliest_date`, or every portfolio day for anything else (the
 /// static classes can change every day, `history_plan::all_days`).
-/// Caller identifiers (`coingeckoId`) are hints, never the authority for persisted history:
-/// the worker reads them from `crypto_investments`. Emits `recalculation-complete` right away,
-/// mirroring the UI import flows, so the trend charts do not wait for a remount.
+/// The second element of each ticker pair is unused (it once carried a provider id): the
+/// worker reads a crypto holding's Yahoo symbol from `crypto_investments`. Emits
+/// `recalculation-complete` right away, mirroring the UI import flows, so the trend charts do
+/// not wait for a remount.
 #[tauri::command]
 pub async fn trigger_import_recalculation(
     app: AppHandle,

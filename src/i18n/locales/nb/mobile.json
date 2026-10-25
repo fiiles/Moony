@@ -726,7 +726,7 @@
       },
       "marketData": {
         "title": "Markedsdata",
-        "text": "– bare kursene på aksjene, valutaene og kryptovalutaene du følger, hentes (Yahoo Finance, CoinGecko, ESB). Appen fungerer også uten nett."
+        "text": "– bare kursene på aksjene, valutaene og kryptovalutaene du følger, hentes (Yahoo Finance, ESB). Appen fungerer også uten nett."
       }
     },
     "recoveryLead": "Den eneste veien til dataene dine hvis du glemmer passordet. Oppbevar den utenfor denne telefonen – i en passordbehandler, i Filer eller på papir.",

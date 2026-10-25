@@ -299,6 +299,7 @@ async fn run_app() {
             commands::crypto::get_all_crypto,
             commands::crypto::create_crypto,
             commands::crypto::delete_crypto,
+            commands::crypto::set_crypto_symbol,
             commands::crypto::get_crypto_transactions,
             commands::crypto::get_all_crypto_transactions,
             commands::crypto::create_crypto_transaction,
@@ -396,8 +397,6 @@ async fn run_app() {
             commands::portfolio::backfill_crypto_ticker_history,
             commands::portfolio::trigger_import_recalculation,
             // Price API commands
-            commands::price_api::get_api_keys,
-            commands::price_api::set_api_keys,
             commands::price_api::refresh_stock_prices,
             commands::price_api::refresh_crypto_prices,
             commands::price_api::search_crypto,

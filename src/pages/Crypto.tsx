@@ -31,12 +31,13 @@ import { AddCryptoModal } from '@/components/crypto/AddCryptoModal';
 import { BuyCryptoModal } from '@/components/crypto/BuyCryptoModal';
 import { SellCryptoModal } from '@/components/crypto/SellCryptoModal';
 import { UpdateCryptoPriceModal } from '@/components/crypto/UpdateCryptoPriceModal';
-import { CoinGeckoApiKeyBanner } from '@/components/crypto/CoinGeckoApiKeyBanner';
+import { CryptoSymbolDialog } from '@/components/crypto/CryptoSymbolDialog';
+import { UnpricedCoinsBanner } from '@/components/crypto/UnpricedCoinsBanner';
 import { CryptoSummary } from '@/components/crypto/CryptoSummary';
 import { CryptoTable, type CryptoTableRow } from '@/components/crypto/CryptoTable';
 import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 
-type RowModal = 'buy' | 'sell' | 'price' | 'delete' | null;
+type RowModal = 'buy' | 'sell' | 'price' | 'symbol' | 'delete' | null;
 
 export default function Crypto() {
   const { t } = useTranslation('crypto');
@@ -114,7 +115,7 @@ export default function Crypto() {
   const sellCount = (allTransactions ?? []).filter((tx) => tx.type === 'sell').length;
 
   const refreshPricesMutation = useMutation({
-    mutationFn: () => priceApi.refreshCryptoPrices(),
+    mutationFn: () => priceApi.refreshCryptoPrices(true),
     onSuccess: (result) => {
       void invalidateAfterPriceRefresh(queryClient);
       toast(t('toast.pricesRefreshed', { count: result.length }), {
@@ -272,7 +273,7 @@ export default function Crypto() {
             isLoading={refreshPricesMutation.isPending}
           />
 
-          <CoinGeckoApiKeyBanner />
+          <UnpricedCoinsBanner rows={holdings} onPick={openRowModal('symbol')} />
 
           <PortfolioTrendCard<TradeDayEvent>
             type="crypto"
@@ -302,6 +303,7 @@ export default function Crypto() {
             onBuy={openRowModal('buy')}
             onSell={openRowModal('sell')}
             onUpdatePrice={openRowModal('price')}
+            onChangeSymbol={openRowModal('symbol')}
             onDelete={openRowModal('delete')}
           />
         </>
@@ -321,6 +323,11 @@ export default function Crypto() {
       <UpdateCryptoPriceModal
         investment={selected}
         open={rowModal === 'price'}
+        onOpenChange={closeRowModal}
+      />
+      <CryptoSymbolDialog
+        investment={selected}
+        open={rowModal === 'symbol'}
         onOpenChange={closeRowModal}
       />
       <ConfirmDeleteDialog

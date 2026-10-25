@@ -10,6 +10,7 @@
     "upkeepHide": "Collapse",
     "today": "Today",
     "target": "target",
+    "split": "split",
     "rowMenu": "Reminder options: {{title}}"
   },
   "status": {
@@ -59,6 +60,8 @@
     "savings_rate_end": "Promotional rate ends",
     "watch_target_below": "Price {{price}} fell to the target {{target}}",
     "watch_target_above": "Price {{price}} reached the target {{target}}",
+    "stock_split_one": "Split {{ratio}} on {{date}} · {{count}} transaction before the split",
+    "stock_split_other": "Split {{ratio}} on {{date}} · {{count}} transactions before the split",
     "loan_fixation_expired": "Fixed rate ended {{date}} · enter the new rate",
     "loan_balance_check": "No balance entered since {{date}} · enter the current balance",
     "valuation_stale": "No new valuation since {{date}} · revalue it",
@@ -103,7 +106,7 @@
     },
     "targets": {
       "label": "Stock target prices",
-      "hint": "When the price reaches the target in its direction.",
+      "hint": "When the price reaches the target in its direction, or when Moony detects a stock split.",
       "mute": "Don't remind me about target prices"
     },
     "backup": {

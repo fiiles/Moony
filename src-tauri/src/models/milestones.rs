@@ -13,13 +13,14 @@ pub struct Milestone {
     /// `insurance_anniversary`, `insurance_end`, `insurance_payment`, `loan_fixation_end`,
     /// `loan_fixation_expired`, `loan_payoff`, `loan_balance_check`, `bond_maturity`,
     /// `bond_coupon`, `account_termination`, `savings_rate_end`, `balances_stale`,
-    /// `backup_stale`, `valuation_stale`, `watch_target`.
+    /// `backup_stale`, `valuation_stale`, `watch_target`, `stock_split`.
     pub kind: String,
     /// `now` (in the reminder window) or `soon` (within 90 days).
     pub stage: String,
     /// `action` (something to do) or `info` (nothing to do).
     pub tone: String,
-    /// Policy, loan, bond, account or property id; the ticker for targets.
+    /// Policy, loan, bond, account or property id; the ticker for targets; the stock
+    /// investment id for splits.
     #[serde(rename = "sourceId")]
     pub source_id: Option<String>,
     /// Entity name; empty for the backup and balances items.
@@ -27,7 +28,8 @@ pub struct Milestone {
     /// UTC day of the event.
     #[serde(rename = "dueDay")]
     pub due_day: Option<i64>,
-    /// Last day to act when it differs from the event (insurance notice deadline).
+    /// Last day to act when it differs from the event (insurance notice deadline); the
+    /// ex-date of a stock split.
     #[serde(rename = "actionDay")]
     pub action_day: Option<i64>,
     /// Day of the last backup, balance update, valuation or balance check.
@@ -39,9 +41,9 @@ pub struct Milestone {
     /// Current price of a crossed target.
     #[serde(rename = "referenceAmount")]
     pub reference_amount: Option<String>,
-    /// `below` / `above` for targets.
+    /// `below` / `above` for targets; `<numerator>:<denominator>` for a stock split.
     pub direction: Option<String>,
-    /// Number of stale accounts.
+    /// Number of stale accounts; transactions dated before a stock split.
     pub count: Option<i64>,
 }
 
@@ -52,7 +54,7 @@ pub const MILESTONE_STATE_SNOOZED: &str = "snoozed";
 const MAX_KEY_CHARS: usize = 256;
 
 /// Every kind the service emits; muted kinds must be one of these.
-pub const MILESTONE_KINDS: [&str; 15] = [
+pub const MILESTONE_KINDS: [&str; 16] = [
     "insurance_anniversary",
     "insurance_end",
     "insurance_payment",
@@ -68,6 +70,7 @@ pub const MILESTONE_KINDS: [&str; 15] = [
     "backup_stale",
     "valuation_stale",
     "watch_target",
+    "stock_split",
 ];
 
 /// Muted kinds ("Nepřipomínat …") must be kinds the service knows.

@@ -33,6 +33,8 @@ import type {
   StockImportUndoResult,
   StockInstrumentOverride,
   StockInstrumentResolution,
+  StockSplitAction,
+  StockSplitCheck,
 } from '@shared/schema';
 import type { InstrumentEdit } from './InstrumentEditor';
 import type { RememberFormat } from './MappingForm';
@@ -52,9 +54,11 @@ import {
   isSavedFormatSource,
   mappingFromInspection,
   mergeAutoOverrides,
+  mergeSplitOverrides,
   missingSymbolCount,
   normalizeTicker,
   rowStatusByLine,
+  setSplitChoice,
   summarizePreview,
   updateOverride,
   type MappingState,
@@ -62,6 +66,7 @@ import {
 } from './import-config';
 import { importErrorText } from './row-messages';
 import { useInstrumentResolution } from './use-instrument-resolution';
+import { useSplitChecks } from './use-split-checks';
 import { useStockImportBatches, useStockImportFormats } from './use-stock-import-data';
 import { useStockImportPreview } from './use-stock-import-preview';
 
@@ -179,6 +184,19 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
     currencyMode: mapping.currencyMode,
     onResolved: handleResolved,
   });
+  // The splits of the file's tickers (spec D12), once the instruments are settled; each check
+  // fills the split choices, keeping those already made.
+  const handleSplitsChecked = useCallback((checks: readonly StockSplitCheck[]) => {
+    setOverrides((current) => mergeSplitOverrides(current, checks));
+  }, []);
+  const splitChecks = useSplitChecks({
+    enabled: open && step === 'review',
+    ready: !resolution.isResolving && !isUpdating,
+    filePath,
+    config,
+    instruments: preview?.instruments,
+    onChecked: handleSplitsChecked,
+  });
 
   const errorContext = { t, tc, locale: getLocale() };
 
@@ -218,6 +236,7 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
       setImportAnywayLines([]);
       setOverrides([]);
       resolution.reset();
+      splitChecks.reset();
       setStep('mapping');
     } catch (e: unknown) {
       if (requestId !== inspectRequest.current) return;
@@ -287,6 +306,24 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
     setOverrides((current) => updateOverride(current, instrument.key, { skip }));
   };
 
+  const chooseSplitAction = (
+    instrument: StockImportInstrument,
+    effectiveDay: number,
+    action: StockSplitAction
+  ) => {
+    setOverrides((current) => setSplitChoice(current, instrument.key, effectiveDay, { action }));
+  };
+
+  const chooseSplitApplyStored = (
+    instrument: StockImportInstrument,
+    effectiveDay: number,
+    applyStored: boolean
+  ) => {
+    setOverrides((current) =>
+      setSplitChoice(current, instrument.key, effectiveDay, { applyStored })
+    );
+  };
+
   const editInstrument = (instrument: StockImportInstrument, edit: InstrumentEdit) => {
     const ticker = normalizeTicker(edit.ticker);
     const sameAsFile = ticker === (instrument.symbol ?? '').toUpperCase();
@@ -340,6 +377,7 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
     setImportAnywayLines([]);
     setOverrides([]);
     resolution.reset();
+    splitChecks.reset();
     setIsInspecting(false);
     setIsImporting(false);
     setResult(null);
@@ -447,7 +485,8 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
     summary.willImport > 0 &&
     preview != null &&
     missingSymbolCount(preview) === 0 &&
-    !resolution.isResolving;
+    !resolution.isResolving &&
+    !splitChecks.isChecking;
 
   const steps = STEP_IDS.map((id) => ({ id, label: t(`importWizard.steps.${id}`) }));
 
@@ -531,6 +570,11 @@ export function StockImportDialog({ open, onOpenChange }: StockImportDialogProps
                 onRetryVerification={resolution.retry}
                 onToggleSkip={toggleInstrumentSkip}
                 onEditInstrument={editInstrument}
+                splitChecks={splitChecks.checks}
+                isCheckingSplits={splitChecks.isChecking}
+                splitCheckFailed={splitChecks.error != null}
+                onSplitAction={chooseSplitAction}
+                onSplitApplyStored={chooseSplitApplyStored}
               />
             )}
 

@@ -22,6 +22,7 @@ function translator(dictionary: Record<string, string>): TFunction {
 const context = (locale = 'en-US'): RowMessageContext => ({
   t: translator({
     'importWizard.row.notATrade': 'Not a purchase or a sale',
+    'importWizard.row.splitRow': 'Split row',
     'importWizard.row.dateUnparseable': 'The date could not be read',
     'importWizard.row.currencyInvalid': 'Invalid currency',
     'importWizard.row.tickerInvalid': 'Invalid symbol',
@@ -54,6 +55,12 @@ describe('rowMessageText', () => {
     expect(rowMessageText(message('importWizard.row.notATrade', 'Deposit'), context())).toBe(
       'Not a purchase or a sale (Deposit)'
     );
+  });
+
+  it('names a split row and keeps the type value as its detail', () => {
+    expect(
+      rowMessageText(message('importWizard.row.splitRow', 'Stock split open'), context())
+    ).toBe('Split row (Stock split open)');
   });
 
   it('leaves the parentheses out when there is no detail', () => {

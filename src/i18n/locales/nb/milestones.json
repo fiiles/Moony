@@ -10,6 +10,7 @@
     "upkeepHide": "Skjul",
     "today": "I dag",
     "target": "mål",
+    "split": "splitt",
     "rowMenu": "Påminnelsesvalg: {{title}}"
   },
   "status": {
@@ -59,6 +60,8 @@
     "savings_rate_end": "Kampanjerenten utløper",
     "watch_target_below": "Kursen {{price}} falt til målet {{target}}",
     "watch_target_above": "Kursen {{price}} nådde målet {{target}}",
+    "stock_split_one": "Splitt {{ratio}} {{date}} · {{count}} transaksjon før splitten",
+    "stock_split_other": "Splitt {{ratio}} {{date}} · {{count}} transaksjoner før splitten",
     "loan_fixation_expired": "Bindingstiden for renten utløp {{date}} · legg inn den nye renten",
     "loan_balance_check": "Ingen saldo lagt inn siden {{date}} · legg inn gjeldende saldo",
     "valuation_stale": "Ingen ny verdivurdering siden {{date}} · vurder den på nytt",
@@ -103,7 +106,7 @@
     },
     "targets": {
       "label": "Målkurser for aksjer",
-      "hint": "Når kursen når målet i den angitte retningen.",
+      "hint": "Når kursen når målet i den angitte retningen, eller når Moony oppdager en aksjesplitt.",
       "mute": "Ikke påminn meg om målkurser"
     },
     "backup": {

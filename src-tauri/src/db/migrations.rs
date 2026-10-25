@@ -87,7 +87,8 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("020_bond_purchase_date", MIGRATION_020),
         ("021_encrypted_attachments", MIGRATION_021),
         ("022_profile_theme", MIGRATION_022),
-        ("023_categorize_snooze", MIGRATION_023),
+        ("023_stock_splits", MIGRATION_023),
+        ("024_categorize_snooze", MIGRATION_024),
     ]
 }
 
@@ -2821,10 +2822,34 @@ pub(crate) const MIGRATION_022: &str = r#"
 ALTER TABLE user_profile ADD COLUMN theme TEXT NOT NULL DEFAULT 'system';
 "#;
 
-/// 023: the phone's categorize queue can hold a payment back ("Bez kategorie, nechat", 30 days):
-/// `categorize_snoozed_until` is the unix second the hold ends, NULL for a payment that was never
-/// held back. Nothing on the desktop reads it.
+/// 023: stock splits. `stock_splits` holds the splits found for a ticker (Yahoo), entered by hand or
+/// carried in an import, each `pending` until the user applies or dismisses it; applying rewrites the
+/// ticker's transactions dated before the split to the post-split basis, and its value history is
+/// then rebuilt from the split-adjusted closes. `stock_data.splits_checked_at`
+/// is when the splits of a ticker were last looked up.
 pub(crate) const MIGRATION_023: &str = r#"
+CREATE TABLE IF NOT EXISTS stock_splits (
+    id TEXT PRIMARY KEY,
+    ticker TEXT NOT NULL,
+    effective_day INTEGER NOT NULL,          -- UTC midnight of the ex-date
+    numerator TEXT NOT NULL,                 -- integer as text, e.g. '4'
+    denominator TEXT NOT NULL,               -- integer as text, e.g. '1'
+    source TEXT NOT NULL CHECK (source IN ('yahoo', 'manual', 'import')),
+    status TEXT NOT NULL CHECK (status IN ('pending', 'applied', 'dismissed')),
+    detected_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    resolved_at INTEGER,
+    applied_count INTEGER,                   -- transactions rewritten by the last apply
+    UNIQUE (ticker, effective_day)
+);
+CREATE INDEX IF NOT EXISTS idx_stock_splits_ticker ON stock_splits(ticker);
+ALTER TABLE stock_data ADD COLUMN splits_checked_at INTEGER;
+"#;
+
+/// 024: the phone's categorize queue can hold a payment back ("Bez kategorie, nechat", 30 days):
+/// `categorize_snoozed_until` is the unix second the hold ends, NULL for a payment that was never
+/// held back. Nothing on the desktop reads it. (Built as 023 on the unreleased phone branch; it
+/// moved to 024 when main's 023_stock_splits reached the release line first.)
+pub(crate) const MIGRATION_024: &str = r#"
 ALTER TABLE bank_transactions ADD COLUMN categorize_snoozed_until INTEGER;
 "#;
 
@@ -3902,14 +3927,14 @@ mod migration_022 {
 }
 
 #[cfg(test)]
-mod migration_023 {
+mod migration_024 {
     use super::*;
 
-    fn database_before_023() -> Connection {
+    fn database_before_024() -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory db");
         let earlier: Vec<(&str, &str)> = all_migrations()
             .into_iter()
-            .filter(|(name, _)| *name < "023_categorize_snooze")
+            .filter(|(name, _)| *name < "024_categorize_snooze")
             .collect();
         run_chain(&conn, &earlier).expect("earlier migrations");
         conn.execute_batch(
@@ -3923,8 +3948,8 @@ mod migration_023 {
     }
 
     #[test]
-    fn migration_023_adds_a_nullable_snooze_column() {
-        let conn = database_before_023();
+    fn migration_024_adds_a_nullable_snooze_column() {
+        let conn = database_before_024();
         run_migrations(&conn).expect("migrate");
 
         let (declared, not_null, default): (String, i64, Option<String>) = conn
@@ -3942,7 +3967,7 @@ mod migration_023 {
 
     #[test]
     fn an_existing_payment_is_not_snoozed_after_the_migration() {
-        let conn = database_before_023();
+        let conn = database_before_024();
         run_migrations(&conn).expect("migrate");
 
         let (amount, snoozed): (String, Option<i64>) = conn
@@ -3958,7 +3983,7 @@ mod migration_023 {
 
     #[test]
     fn the_categorize_queue_reads_the_migrated_schema() {
-        let conn = database_before_023();
+        let conn = database_before_024();
         run_migrations(&conn).expect("migrate");
         let engine = crate::services::categorization::CategorizationEngine::new_empty();
 
@@ -3972,5 +3997,97 @@ mod migration_023 {
         let queue = crate::services::categorize_queue::list(&conn, &engine, None, 1_800_000_000)
             .expect("queue");
         assert_eq!((queue.total, queue.snoozed), (0, 1));
+    }
+}
+
+#[cfg(test)]
+mod stock_splits_tests {
+    use super::*;
+
+    /// A database as it was before `023`: every migration that comes earlier in the chain.
+    fn database_before_023() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "023_stock_splits")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn.execute(
+            "INSERT INTO stock_data (id, ticker, original_price, price_date) VALUES ('d1', 'NVDA', '100', 1)",
+            [],
+        )
+        .expect("legacy quote row");
+        conn
+    }
+
+    const INSERT_SPLIT: &str = "INSERT INTO stock_splits (id, ticker, effective_day, numerator, denominator, source, status) VALUES (?1, ?2, ?3, '10', '1', ?4, ?5)";
+
+    #[test]
+    fn migration_023_creates_stock_splits_and_the_check_column() {
+        let conn = database_before_023();
+        run_migrations(&conn).expect("migrate");
+
+        conn.execute(
+            INSERT_SPLIT,
+            ["a", "NVDA", "1718000000", "yahoo", "pending"],
+        )
+        .expect("first split");
+        assert!(
+            conn.execute(
+                INSERT_SPLIT,
+                ["b", "NVDA", "1718000000", "manual", "pending"]
+            )
+            .is_err(),
+            "UNIQUE(ticker, effective_day)"
+        );
+        conn.execute(
+            INSERT_SPLIT,
+            ["c", "NVDA", "1718086400", "import", "applied"],
+        )
+        .expect("another day of the same ticker");
+        assert!(
+            conn.execute(INSERT_SPLIT, ["d", "X", "1", "guess", "pending"])
+                .is_err(),
+            "source CHECK"
+        );
+        assert!(
+            conn.execute(INSERT_SPLIT, ["e", "X", "1", "yahoo", "gone"])
+                .is_err(),
+            "status CHECK"
+        );
+
+        let (detected_at, resolved_at, applied_count): (i64, Option<i64>, Option<i64>) = conn
+            .query_row(
+                "SELECT detected_at, resolved_at, applied_count FROM stock_splits WHERE id = 'a'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("defaults");
+        assert!(detected_at > 0, "detected_at defaults to now");
+        assert_eq!(resolved_at, None);
+        assert_eq!(applied_count, None);
+
+        let index: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_stock_splits_ticker'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("index");
+        assert_eq!(index, 1);
+
+        let checked: Option<i64> = conn
+            .query_row(
+                "SELECT splits_checked_at FROM stock_data WHERE id = 'd1'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("column exists");
+        assert_eq!(
+            checked, None,
+            "an existing quote row has never been checked"
+        );
+        conn.execute("UPDATE stock_data SET splits_checked_at = 1", [])
+            .expect("column is writable");
     }
 }

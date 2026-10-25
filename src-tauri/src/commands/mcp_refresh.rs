@@ -103,18 +103,22 @@ async fn refresh_derived_data(db: &Database, job: &mcp_refresh::PendingRefresh) 
                     chrono::Utc::now().timestamp(),
                 )
             })?;
-            price_api::refresh_dividends(db, tickers.clone()).await?;
+            let dividends = price_api::refresh_dividends(db, tickers.clone()).await?;
             let jobs = db.with_conn(|conn| history_recalc::rebuild_jobs(conn, &tickers))?;
             let mut aggregate_from = job.earliest_date;
             for (ticker, first_date) in jobs {
-                let from = if refreshed.unit_changed.contains(&ticker) {
+                // A unit change or a new split (spec D18) rewrites the whole history.
+                let from = if refreshed.unit_changed.contains(&ticker)
+                    || refreshed.new_splits.contains(&ticker)
+                    || dividends.new_splits.contains(&ticker)
+                {
                     first_date
                 } else {
                     job.earliest_date.unwrap_or(first_date).max(first_date)
                 };
                 aggregate_from = Some(aggregate_from.map_or(from, |old| old.min(from)));
                 if from < today {
-                    history_recalc::rebuild_stock_ticker_strict(
+                    let stats = history_recalc::rebuild_stock_ticker_strict(
                         db,
                         &ticker,
                         from,
@@ -122,6 +126,18 @@ async fn refresh_derived_data(db: &Database, job: &mcp_refresh::PendingRefresh) 
                         portfolio::find_closest_price,
                     )
                     .await?;
+                    // The fetch found a new split before its window: rebuild the rest too.
+                    if let Some(first) = stats.full_rebuild_from {
+                        aggregate_from = Some(aggregate_from.map_or(first, |old| old.min(first)));
+                        history_recalc::rebuild_stock_ticker_strict(
+                            db,
+                            &ticker,
+                            first,
+                            today,
+                            portfolio::find_closest_price,
+                        )
+                        .await?;
+                    }
                 }
             }
             if let Some(from) = aggregate_from {

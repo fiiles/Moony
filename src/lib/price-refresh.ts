@@ -18,9 +18,14 @@ export const PRICE_DEPENDENT_KEYS = [
   'ticker-history',
 ] as const;
 
-/** One refresh contract for every stock or crypto price refresh. */
+/**
+ * One refresh contract for every stock or crypto price refresh. The stock quote refresh also
+ * runs the daily split check, which can add split rows, so `['stock-splits']` is refreshed too.
+ */
 export function invalidateAfterPriceRefresh(client: QueryClient): Promise<void> {
   return Promise.all(
-    PRICE_DEPENDENT_KEYS.map((key) => client.invalidateQueries({ queryKey: [key] }))
+    [...PRICE_DEPENDENT_KEYS, 'stock-splits'].map((key) =>
+      client.invalidateQueries({ queryKey: [key] })
+    )
   ).then(() => undefined);
 }

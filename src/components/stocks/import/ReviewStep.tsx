@@ -21,11 +21,18 @@ import type {
   StockInstrumentOverride,
   StockInstrumentResolution,
   StockPreviewRow,
+  StockSplitAction,
+  StockSplitCheck,
 } from '@shared/schema';
 import { translateApiError } from '@/lib/translate-api-error';
 import type { InstrumentEdit } from './InstrumentEditor';
 import { InstrumentsPanel } from './InstrumentsPanel';
-import { PREVIEW_COLLAPSED_ROWS, formatDecimalText, summarizePreview } from './import-config';
+import {
+  PREVIEW_COLLAPSED_ROWS,
+  convertedLines,
+  formatDecimalText,
+  summarizePreview,
+} from './import-config';
 import { rowMessageText } from './row-messages';
 import type { LookupProgress } from './instrument-lookup';
 
@@ -50,6 +57,22 @@ interface ReviewStepProps {
   onRetryVerification: () => void;
   onToggleSkip: (instrument: StockImportInstrument, skip: boolean) => void;
   onEditInstrument: (instrument: StockImportInstrument, edit: InstrumentEdit) => void;
+  /** The split check of each instrument, by key (spec D12). */
+  splitChecks: Readonly<Record<string, StockSplitCheck>>;
+  isCheckingSplits: boolean;
+  /** The last split check failed as a whole. */
+  splitCheckFailed: boolean;
+  onSplitAction: (
+    instrument: StockImportInstrument,
+    effectiveDay: number,
+    action: StockSplitAction
+  ) => void;
+  /** Also rewrite the ticker's stored transactions before a split, or leave them (D14). */
+  onSplitApplyStored: (
+    instrument: StockImportInstrument,
+    effectiveDay: number,
+    applyStored: boolean
+  ) => void;
 }
 
 /** `symbol:AAPL` / `isin:US…` without the prefix, for a row whose ticker is not known. */
@@ -80,6 +103,11 @@ export function ReviewStep({
   onRetryVerification,
   onToggleSkip,
   onEditInstrument,
+  splitChecks,
+  isCheckingSplits,
+  splitCheckFailed,
+  onSplitAction,
+  onSplitApplyStored,
 }: ReviewStepProps) {
   const { t } = useTranslation('stocks');
   const { t: tc } = useTranslation('common');
@@ -88,6 +116,11 @@ export function ReviewStep({
   const fmt = useFormat();
   const [showAll, setShowAll] = useState(false);
   const forced = useMemo(() => new Set(importAnywayLines), [importAnywayLines]);
+  // Rows the import scales to post-split units (the preview already shows them converted).
+  const converted = useMemo(
+    () => convertedLines(Object.values(splitChecks), overrides),
+    [splitChecks, overrides]
+  );
 
   if (!ready) {
     return (
@@ -178,6 +211,9 @@ export function ReviewStep({
         <span className={cn(summary.errors > 0 && 'font-600 text-loss')}>
           {t('importWizard.review.summary.errors', { count: summary.errors })}
         </span>
+        {summary.converted > 0 && (
+          <span>{t('importWizard.review.summary.converted', { count: summary.converted })}</span>
+        )}
         {preview.dateRange && (
           <span className="text-ink-4">
             {fmt.day(preview.dateRange.from)} – {fmt.day(preview.dateRange.to)}
@@ -208,6 +244,11 @@ export function ReviewStep({
         onToggleSkip={onToggleSkip}
         onEdit={onEditInstrument}
         isUpdating={isUpdating}
+        splitChecks={splitChecks}
+        isCheckingSplits={isCheckingSplits}
+        splitCheckFailed={splitCheckFailed}
+        onSplitAction={onSplitAction}
+        onSplitApplyStored={onSplitApplyStored}
       />
 
       <section className={cn('mt-5 transition-opacity duration-fast', isUpdating && 'opacity-60')}>
@@ -281,7 +322,20 @@ export function ReviewStep({
                         {formatDecimalText(row.price, locale, 2)}
                       </TableCell>
                       <TableCell className="num">{row.currency ?? '—'}</TableCell>
-                      <TableCell>{statusCell(row)}</TableCell>
+                      <TableCell>
+                        {converted.has(row.line) &&
+                        row.status !== 'skipped' &&
+                        row.status !== 'error' ? (
+                          <span className="flex flex-wrap items-start gap-1.5">
+                            {statusCell(row)}
+                            <Badge variant="outline">
+                              {t('importWizard.review.statusConverted')}
+                            </Badge>
+                          </span>
+                        ) : (
+                          statusCell(row)
+                        )}
+                      </TableCell>
                     </TableRow>
                   );
                 })}

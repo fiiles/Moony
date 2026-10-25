@@ -2,14 +2,18 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Check } from 'lucide-react';
 import { FX_SUPPORTED_CODES, currencyName } from '@shared/currencies';
+import type { BackupInspection } from '@shared/schema';
 import { Button } from '@/components/ui/button';
 import { useFormat } from '@/lib/use-format';
+import { cn } from '@/lib/utils';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import type { FirstRunFlow } from '@/mobile/hooks/use-first-run';
+import { useRestoreBackup } from '@/mobile/hooks/use-restore-backup';
 import { CountryPickerSheet } from '@/mobile/sheets/CountryPickerSheet';
 import { CurrencyPickerSheet } from '@/mobile/sheets/CurrencyPickerSheet';
+import { RestoreBackupSheet } from '@/mobile/sheets/RestoreBackupSheet';
 import { StepHead } from './StepHead';
-import { caption, primaryButton } from './styles';
+import { caption, primaryButton, textLink } from './styles';
 
 const PRIVACY_POINTS = ['encryption', 'localOnly', 'marketData'] as const;
 
@@ -27,6 +31,17 @@ export function PrivacyStep({ flow }: { flow: FirstRunFlow }) {
   const fmt = useFormat();
   const [currencyOpen, setCurrencyOpen] = useState(false);
   const [countryOpen, setCountryOpen] = useState(false);
+  const { pickRestore, restore, restoring } = useRestoreBackup();
+  const [inspection, setInspection] = useState<BackupInspection | null>(null);
+  const chooseRestore = async () => {
+    const picked = await pickRestore();
+    if (picked) setInspection(picked);
+  };
+  // `restore` has told the person what went wrong: the sheet stays open to try again or cancel;
+  // on success the page reloads to the restored profile's lock screen
+  const confirmRestore = () => {
+    if (inspection) void restore(inspection).catch(() => undefined);
+  };
 
   return (
     <div data-testid="first-run-privacy">
@@ -67,6 +82,28 @@ export function PrivacyStep({ flow }: { flow: FirstRunFlow }) {
         {tc('buttons.continue')}
       </Button>
 
+      {/* The desktop wizard's way in for someone moving to this phone or reinstalling: the
+          restored profile replaces the first run, and its own password unlocks it */}
+      <p className={cn(caption, 'mt-5 text-center')}>{t('onboarding.welcome.restoreLead')}</p>
+      <button
+        type="button"
+        className={cn(textLink, 'mt-0')}
+        disabled={restoring}
+        onClick={() => void chooseRestore()}
+        data-testid="first-run-restore-backup"
+      >
+        {t('onboarding.welcome.restoreBackup')}
+      </button>
+
+      <RestoreBackupSheet
+        fresh
+        inspection={inspection}
+        onOpenChange={(open) => {
+          if (!open) setInspection(null);
+        }}
+        onConfirm={confirmRestore}
+        isPending={restoring}
+      />
       <CurrencyPickerSheet
         open={currencyOpen}
         onOpenChange={setCurrencyOpen}

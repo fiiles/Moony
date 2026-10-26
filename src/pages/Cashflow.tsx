@@ -15,12 +15,14 @@ import { Link } from 'wouter';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
 import { Landmark } from 'lucide-react';
-import type { CashflowActuals, CashflowGroup } from '@shared/schema';
+import type { CashflowActuals, CashflowGroup, TransactionCategory } from '@shared/schema';
 import { cashflowApi } from '@/lib/tauri-api';
 import { useCurrency } from '@/lib/currency';
 import { useFormat } from '@/lib/use-format';
 import { useShellPage } from '@/components/shell/shell-context';
 import { categoryDisplayName } from '@/utils/category-name';
+import { useCategories } from '@/hooks/use-categories';
+import { CategoryIconChip } from '@/components/common/CategoryIcon';
 import { PageHead } from '@/components/shell/PageHead';
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -43,6 +45,7 @@ import { cn } from '@/lib/utils';
 interface Row {
   group: CashflowGroup;
   label: string;
+  category: TransactionCategory | null;
   amount: number;
   share: number;
 }
@@ -60,6 +63,7 @@ export default function Cashflow() {
   const [accountIds, setAccountIds] = useState<string[] | undefined>(undefined);
   const [txTarget, setTxTarget] = useState<ReportTarget | null>(null);
   const fmt = useFormat();
+  const { categories } = useCategories();
   const period = usePeriodSelection('yearly');
   const { range, timeframe } = period;
 
@@ -110,10 +114,12 @@ export default function Cashflow() {
   // Shares use absolute movement, amounts keep their signs.
   const toRows = (groups: CashflowGroup[]): Row[] => {
     const shares = absoluteMovementShares(groups.map((g) => amount(g.amount)));
+    const byId = new Map(categories.map((c) => [c.id, c]));
     return groups
       .map((group, index) => ({
         group,
         label: groupLabel(group),
+        category: byId.get(group.key) ?? null,
         amount: amount(group.amount),
         share: shares[index],
       }))
@@ -123,17 +129,17 @@ export default function Cashflow() {
   const expenseRows = useMemo(
     () => (data ? toRows(data.expenseCategories) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, fmt.locale]
+    [data, categories, fmt.locale]
   );
   const incomeRows = useMemo(
     () => (data ? toRows(data.incomeCategories) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, fmt.locale]
+    [data, categories, fmt.locale]
   );
   const transferRows = useMemo(
     () => (data ? toRows(data.transfers) : []),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [data, fmt.locale]
+    [data, categories, fmt.locale]
   );
 
   const bars = useMemo(
@@ -194,16 +200,19 @@ export default function Cashflow() {
             onClick={() => open(row)}
           >
             <TableCell className="font-650 text-ink">
-              <button
-                type="button"
-                className="text-left focus-visible:underline"
-                onClick={(event) => {
-                  event.stopPropagation();
-                  open(row);
-                }}
-              >
-                {row.label} <small className="text-ink-4">· {row.group.count}</small>
-              </button>
+              <div className="flex items-center gap-3">
+                <CategoryIconChip category={row.category} />
+                <button
+                  type="button"
+                  className="min-w-0 text-left focus-visible:underline"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    open(row);
+                  }}
+                >
+                  {row.label} <small className="text-ink-4">· {row.group.count}</small>
+                </button>
+              </div>
             </TableCell>
             <TableCell>
               <div className="flex items-center gap-[10px]">

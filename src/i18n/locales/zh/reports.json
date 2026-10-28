@@ -481,8 +481,10 @@
     },
     "table": {
       "netMonthly": "每月净额",
+      "netQuarterly": "每季度净额",
       "netYearly": "每年净额",
       "perMonth": "每月",
+      "perQuarter": "每季度",
       "perYear": "每年",
       "auto": "自动来自{{module}}",
       "manual": "手动",
@@ -598,6 +600,7 @@
   },
   "viewType": {
     "monthly": "按月",
+    "quarterly": "按季度",
     "yearly": "按年"
   },
   "editItem": "编辑{{name}}",

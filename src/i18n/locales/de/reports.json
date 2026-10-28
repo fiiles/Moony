@@ -497,8 +497,10 @@
     },
     "table": {
       "netMonthly": "Netto pro Monat",
+      "netQuarterly": "Netto pro Quartal",
       "netYearly": "Netto pro Jahr",
       "perMonth": "monatlich",
+      "perQuarter": "vierteljährlich",
       "perYear": "jährlich",
       "auto": "automatisch aus {{module}}",
       "manual": "manuell",
@@ -621,6 +623,7 @@
   },
   "viewType": {
     "monthly": "Monatlich",
+    "quarterly": "Vierteljährlich",
     "yearly": "Jährlich"
   },
   "editItem": "{{name}} bearbeiten",

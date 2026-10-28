@@ -19,7 +19,7 @@ use super::money::{amount_json, main_currency_positions, percent_json};
 pub struct CashflowArgs {
     #[serde(rename = "viewType")]
     #[schemars(
-        description = "Whether to show monthly or yearly amounts: monthly (default) or yearly"
+        description = "Whether to show monthly, quarterly or yearly amounts: monthly (default), quarterly or yearly"
     )]
     pub view_type: Option<String>,
 }

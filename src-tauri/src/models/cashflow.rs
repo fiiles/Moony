@@ -10,7 +10,7 @@ pub struct CashflowItem {
     pub name: String,
     pub amount: String,
     pub currency: String,
-    pub frequency: String, // "monthly" or "yearly"
+    pub frequency: String, // "monthly", "quarterly" or "yearly"
     #[serde(rename = "itemType")]
     pub item_type: String, // "income" or "expense"
     #[serde(rename = "replacementSourceId")]
@@ -28,7 +28,7 @@ pub struct InsertCashflowItem {
     pub name: String,
     pub amount: String,
     pub currency: Option<String>,
-    pub frequency: String, // "monthly" or "yearly"
+    pub frequency: String, // "monthly", "quarterly" or "yearly"
     #[serde(rename = "itemType")]
     pub item_type: String, // "income" or "expense"
     #[serde(rename = "replacementSourceId")]
@@ -103,7 +103,7 @@ impl InsertCashflowItem {
         let amount = crate::services::reporting::parse_money(&self.amount)?;
         if amount <= 0.0
             || self.name.trim().is_empty()
-            || !["monthly", "yearly"].contains(&self.frequency.as_str())
+            || !["monthly", "quarterly", "yearly"].contains(&self.frequency.as_str())
             || !["income", "expense"].contains(&self.item_type.as_str())
             || self
                 .currency
@@ -185,6 +185,8 @@ mod tests {
             assert!(item.validate().is_err(), "accepted {amount}");
         }
         item.amount = "100".into();
+        item.frequency = "quarterly".into();
+        assert!(item.validate().is_ok());
         item.frequency = "weekly".into();
         assert!(item.validate().is_err());
     }
@@ -208,13 +210,13 @@ pub struct CashflowReportItem {
     pub replacement_source_id: Option<String>,
     pub id: String,
     pub name: String,
-    pub amount: String, // Amount in user's selected period (monthly or yearly)
+    pub amount: String, // Amount in user's selected period (monthly, quarterly or yearly)
     #[serde(rename = "originalAmount")]
     pub original_amount: String, // Original amount before period conversion
     #[serde(rename = "originalCurrency")]
     pub original_currency: String,
     #[serde(rename = "originalFrequency")]
-    pub original_frequency: String, // "monthly" or "yearly"
+    pub original_frequency: String, // "monthly", "quarterly" or "yearly"
     #[serde(rename = "isUserDefined")]
     pub is_user_defined: bool,
     /// False when this row or its whole category is out of the plan; `amount` is still filled.
@@ -273,7 +275,7 @@ pub struct CashflowReport {
     pub as_of: i64,
     pub estimate: bool,
     #[serde(rename = "viewType")]
-    pub view_type: String, // "monthly" or "yearly"
+    pub view_type: String, // "monthly", "quarterly" or "yearly"
     pub personal: CashflowSection,
     pub investments: CashflowSection,
     #[serde(rename = "totalIncome")]

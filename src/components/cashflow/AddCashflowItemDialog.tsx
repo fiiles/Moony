@@ -25,7 +25,12 @@ import {
 import { useTranslation } from 'react-i18next';
 import { useCurrency } from '@/lib/currency';
 import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
-import type { CashflowReport, CashflowReportItem, InsertCashflowItem } from '@shared/schema';
+import type {
+  CashflowPeriod,
+  CashflowReport,
+  CashflowReportItem,
+  InsertCashflowItem,
+} from '@shared/schema';
 
 interface AddCashflowItemDialogProps {
   open: boolean;
@@ -64,7 +69,7 @@ export default function AddCashflowItemDialog({
   const [name, setName] = useState('');
   const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState<string>(userCurrency);
-  const [frequency, setFrequency] = useState<'monthly' | 'yearly'>('monthly');
+  const [frequency, setFrequency] = useState<CashflowPeriod>('monthly');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
 
   const isEditing = !!editItem;
@@ -221,15 +226,13 @@ export default function AddCashflowItemDialog({
 
             <div className="grid gap-2">
               <Label htmlFor="frequency">{t('addItem.frequency')}</Label>
-              <Select
-                value={frequency}
-                onValueChange={(v) => setFrequency(v as 'monthly' | 'yearly')}
-              >
+              <Select value={frequency} onValueChange={(v) => setFrequency(v as CashflowPeriod)}>
                 <SelectTrigger id="frequency">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="monthly">{t('viewType.monthly')}</SelectItem>
+                  <SelectItem value="quarterly">{t('viewType.quarterly')}</SelectItem>
                   <SelectItem value="yearly">{t('viewType.yearly')}</SelectItem>
                 </SelectContent>
               </Select>

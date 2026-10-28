@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type {
   CashflowCategory,
+  CashflowPeriod,
   CashflowReport,
   CashflowReportItem,
   CashflowSection,
@@ -23,7 +24,7 @@ interface PlanSectionCardProps {
   sub: string;
   section: CashflowSection;
   report: CashflowReport;
-  viewType: 'monthly' | 'yearly';
+  viewType: CashflowPeriod;
   expanded: Set<string>;
   onToggleExpanded: (categoryKey: string) => void;
   onSetExpanded: (categoryKeys: string[], expanded: boolean) => void;
@@ -40,6 +41,12 @@ const BLOCK_DEFAULT: Record<SectionId, Record<ItemType, string>> = {
   personal: { income: 'personalIncome', expense: 'otherPersonalCosts' },
   investments: { income: 'otherInvestmentIncome', expense: 'otherInvestmentCosts' },
 };
+
+const NET_PER_PERIOD_KEY = {
+  monthly: 'planning.table.netMonthly',
+  quarterly: 'planning.table.netQuarterly',
+  yearly: 'planning.table.netYearly',
+} as const satisfies Record<CashflowPeriod, string>;
 
 const TEXT_LINK =
   'text-caption font-650 text-ink-2 underline-offset-[3px] hover:text-ink hover:underline focus-visible:outline-none focus-visible:shadow-focus';
@@ -160,7 +167,7 @@ export function PlanSectionCard({
         </div>
         <div className="text-right">
           <small className="block text-micro font-600 text-ink-4">
-            {t(viewType === 'yearly' ? 'planning.table.netYearly' : 'planning.table.netMonthly')}
+            {t(NET_PER_PERIOD_KEY[viewType])}
           </small>
           <b
             className={cn(

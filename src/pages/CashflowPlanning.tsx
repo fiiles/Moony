@@ -6,7 +6,7 @@ import { Link } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Trans, useTranslation } from 'react-i18next';
 import { Plus } from 'lucide-react';
-import type { CashflowReport, CashflowReportItem } from '@shared/schema';
+import type { CashflowPeriod, CashflowReport, CashflowReportItem } from '@shared/schema';
 import { cashflowApi } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
 import { useShellPage } from '@/components/shell/shell-context';
@@ -24,8 +24,6 @@ import { PlanSectionCard } from '@/components/cashflow/PlanSectionCard';
 import { useCashflowPlanningMutations } from '@/hooks/use-cashflow-planning-mutations';
 import { readExpanded, setKeys, toggleKey, writeExpanded } from '@/utils/plan-expansion';
 
-type ViewType = 'monthly' | 'yearly';
-
 /** `localStorage` can throw on access (blocked storage); the page then simply forgets. */
 function planStorage(): Storage | null {
   try {
@@ -40,7 +38,7 @@ function planStorage(): Storage | null {
  * personal and investment sections, every non-empty category as a collapsible
  * group with its included total, rows automatic from Úvěry / Pojištění /
  * Nemovitosti / Akcie / Dluhopisy / Bankovní účty, any row or category can be
- * left out of the plan from its "···" menu, a monthly/yearly switch and a 100 %
+ * left out of the plan from its "···" menu, a monthly/quarterly/yearly switch and a 100 %
  * flow bar instead of the Sankey.
  */
 export default function CashflowPlanning() {
@@ -48,7 +46,7 @@ export default function CashflowPlanning() {
   const { currencyCode, fxRevision } = useCurrency();
   const fmt = useFormat();
 
-  const [viewType, setViewType] = useState<ViewType>('monthly');
+  const [viewType, setViewType] = useState<CashflowPeriod>('monthly');
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [addPreset, setAddPreset] = useState<{
     category?: string;
@@ -170,6 +168,7 @@ export default function CashflowPlanning() {
             onValueChange={setViewType}
             options={[
               { value: 'monthly', label: t('viewType.monthly') },
+              { value: 'quarterly', label: t('viewType.quarterly') },
               { value: 'yearly', label: t('viewType.yearly') },
             ]}
           />

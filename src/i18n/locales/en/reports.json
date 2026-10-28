@@ -497,8 +497,10 @@
     },
     "table": {
       "netMonthly": "Net per month",
+      "netQuarterly": "Net per quarter",
       "netYearly": "Net per year",
       "perMonth": "monthly",
+      "perQuarter": "quarterly",
       "perYear": "yearly",
       "auto": "automatic from {{module}}",
       "manual": "manual",
@@ -621,6 +623,7 @@
   },
   "viewType": {
     "monthly": "Monthly",
+    "quarterly": "Quarterly",
     "yearly": "Yearly"
   },
   "editItem": "Edit {{name}}",

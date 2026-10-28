@@ -12,10 +12,10 @@ use uuid::Uuid;
 pub struct RawCashflowReportItem {
     pub id: String,
     pub name: String,
-    pub amount: f64,          // Amount in user's selected period (monthly or yearly)
+    pub amount: f64, // Amount in user's selected period (monthly, quarterly or yearly)
     pub original_amount: f64, // Original amount before period conversion
     pub original_currency: String,
-    pub original_frequency: String, // "monthly" or "yearly"
+    pub original_frequency: String, // "monthly", "quarterly" or "yearly"
     pub is_user_defined: bool,
     pub source_fx_quality: Option<crate::models::FxQuality>,
 }
@@ -46,7 +46,7 @@ pub struct RawCashflowSection {
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct RawCashflowReport {
-    pub view_type: String, // "monthly" or "yearly"
+    pub view_type: String, // "monthly", "quarterly" or "yearly"
     pub personal: RawCashflowSection,
     pub investments: RawCashflowSection,
     pub total_income: f64,
@@ -54,13 +54,21 @@ pub struct RawCashflowReport {
     pub net_cashflow: f64,
 }
 
+/// Periods per year of a planning frequency or view: monthly, quarterly or yearly.
+fn periods_per_year(period: &str) -> f64 {
+    match period {
+        "yearly" => 1.0,
+        "quarterly" => 4.0,
+        _ => 12.0,
+    }
+}
+
 /// Normalize amount to target period
 fn normalize_to_period(amount: f64, original_frequency: &str, target_period: &str) -> f64 {
-    match (original_frequency, target_period) {
-        ("yearly", "monthly") => amount / 12.0,
-        ("monthly", "yearly") => amount * 12.0,
-        _ => amount,
+    if original_frequency == target_period {
+        return amount;
     }
+    amount * periods_per_year(original_frequency) / periods_per_year(target_period)
 }
 
 /// Currency marker for an amount that has none; it never resolves, so the amount is reported
@@ -233,10 +241,10 @@ fn get_raw_report(
     view_type: &str,
     fx: &mut PlanningFx,
 ) -> Result<RawCashflowReport> {
-    let target_period = if view_type == "yearly" {
-        "yearly"
-    } else {
-        "monthly"
+    let target_period = match view_type {
+        "yearly" => "yearly",
+        "quarterly" => "quarterly",
+        _ => "monthly",
     };
 
     {
@@ -1422,6 +1430,31 @@ impl PlanningFx {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn quarterly_amounts_normalize_to_each_view() {
+        assert_eq!(normalize_to_period(300.0, "quarterly", "monthly"), 100.0);
+        assert_eq!(normalize_to_period(300.0, "quarterly", "yearly"), 1_200.0);
+        assert_eq!(normalize_to_period(300.0, "quarterly", "quarterly"), 300.0);
+        assert_eq!(normalize_to_period(100.0, "monthly", "quarterly"), 300.0);
+        assert_eq!(normalize_to_period(1_200.0, "yearly", "quarterly"), 300.0);
+    }
+
+    #[test]
+    fn quarterly_view_reports_quarterly_totals() {
+        let conn = planning_db();
+        conn.execute_batch(
+            "INSERT INTO cashflow_items(id,name,amount,currency,frequency,item_type,category,created_at,updated_at) VALUES
+             ('q','Water','300','EUR','quarterly','expense','consumptionCosts',0,0),
+             ('m','Phone','10','EUR','monthly','expense','consumptionCosts',0,0);",
+        )
+        .expect("items");
+        let quarterly = get_report_in_currency(&conn, "quarterly", "EUR").expect("quarterly");
+        assert_eq!(quarterly.view_type, "quarterly");
+        assert_eq!(quarterly.personal.total_expenses, "330.00");
+        let monthly = get_report_in_currency(&conn, "monthly", "EUR").expect("monthly");
+        assert_eq!(monthly.personal.total_expenses, "110.00");
+    }
 
     #[test]
     fn unrepresentable_aggregate_income_returns_an_error() {

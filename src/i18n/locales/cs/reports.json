@@ -513,8 +513,10 @@
     },
     "table": {
       "netMonthly": "Čisté měsíčně",
+      "netQuarterly": "Čisté kvartálně",
       "netYearly": "Čisté ročně",
       "perMonth": "měsíčně",
+      "perQuarter": "kvartálně",
       "perYear": "ročně",
       "auto": "automaticky z {{module}}",
       "manual": "ručně",
@@ -644,6 +646,7 @@
   },
   "viewType": {
     "monthly": "Měsíčně",
+    "quarterly": "Kvartálně",
     "yearly": "Ročně"
   },
   "editItem": "Upravit {{name}}",

@@ -497,8 +497,10 @@
     },
     "table": {
       "netMonthly": "Netto per måned",
+      "netQuarterly": "Netto per kvartal",
       "netYearly": "Netto per år",
       "perMonth": "månedlig",
+      "perQuarter": "kvartalsvis",
       "perYear": "årlig",
       "auto": "automatisk fra {{module}}",
       "manual": "manuell",
@@ -621,6 +623,7 @@
   },
   "viewType": {
     "monthly": "Månedlig",
+    "quarterly": "Kvartalsvis",
     "yearly": "Årlig"
   },
   "editItem": "Rediger {{name}}",

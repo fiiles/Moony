@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import type { CashflowReportItem } from '@shared/schema';
+import type { CashflowPeriod, CashflowReportItem } from '@shared/schema';
 import { Badge } from '@/components/ui/badge';
 import { useReportMoney } from '@/lib/use-report-money';
 import { cn } from '@/lib/utils';
@@ -13,12 +13,21 @@ export const PLAN_ROW_GRID =
 export const PLAN_ROW_SURFACE =
   'group/row border-b border-line-soft transition-colors duration-fast hover:bg-well focus-within:bg-well [&_[data-row-actions]]:opacity-0 [&_[data-row-actions]]:transition-opacity [&_[data-row-actions]]:duration-fast [&:hover_[data-row-actions]]:opacity-100 [&:focus-within_[data-row-actions]]:opacity-100 [&:has([data-state=open])_[data-row-actions]]:opacity-100';
 
+/** "Monthly" / "quarterly" / "yearly" label after an original amount. */
+const PER_PERIOD_KEY = {
+  monthly: 'planning.table.perMonth',
+  quarterly: 'planning.table.perQuarter',
+  yearly: 'planning.table.perYear',
+} as const satisfies Record<CashflowPeriod, string>;
+
+const isCashflowPeriod = (value: string): value is CashflowPeriod => value in PER_PERIOD_KEY;
+
 interface PlanItemRowProps {
   item: CashflowReportItem;
   isIncome: boolean;
   categoryIncluded: boolean;
   reportCurrency: string;
-  viewType: 'monthly' | 'yearly';
+  viewType: CashflowPeriod;
   /** Name of the automatic source a manual replacement stands in for. */
   replacedSourceName?: string;
   module?: PlanModuleLink;
@@ -51,20 +60,15 @@ export function PlanItemRow({
     item.originalCurrency === 'MULTI'
       ? item.originalComponents
           .map((component) => {
-            const frequency =
-              component.frequency === 'yearly'
-                ? t('planning.table.perYear')
-                : component.frequency === 'monthly'
-                  ? t('planning.table.perMonth')
-                  : '';
+            const frequency = isCashflowPeriod(component.frequency)
+              ? t(PER_PERIOD_KEY[component.frequency])
+              : '';
             return `${nativeMoney(Number(component.amount), component.currency)}${frequency ? ` · ${frequency}` : ''}`;
           })
           .join(' · ')
-      : item.originalFrequency === 'yearly'
-        ? `${nativeMoney(Number(item.originalAmount), item.originalCurrency)} · ${t('planning.table.perYear')}`
-        : viewType === 'yearly'
-          ? `${nativeMoney(Number(item.originalAmount), item.originalCurrency)} · ${t('planning.table.perMonth')}`
-          : t('planning.table.perMonth');
+      : item.originalFrequency === 'monthly' && viewType === 'monthly'
+        ? t('planning.table.perMonth')
+        : `${nativeMoney(Number(item.originalAmount), item.originalCurrency)} · ${t(PER_PERIOD_KEY[item.originalFrequency])}`;
   const origin = item.isUserDefined
     ? t('planning.table.manual')
     : t('planning.table.auto', { module: module?.label ?? '' });

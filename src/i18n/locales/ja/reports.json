@@ -481,8 +481,10 @@
     },
     "table": {
       "netMonthly": "月間の純額",
+      "netQuarterly": "四半期の純額",
       "netYearly": "年間の純額",
       "perMonth": "毎月",
+      "perQuarter": "四半期ごと",
       "perYear": "毎年",
       "auto": "{{module}}から自動",
       "manual": "手動",
@@ -598,6 +600,7 @@
   },
   "viewType": {
     "monthly": "月次",
+    "quarterly": "四半期",
     "yearly": "年次"
   },
   "editItem": "{{name}}を編集",

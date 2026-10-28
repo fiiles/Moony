@@ -64,6 +64,7 @@ import type {
   BudgetingReport,
   ReportTransaction,
   EffectiveTransactionFlow,
+  CashflowPeriod,
   CashflowReport,
   CashflowActuals,
   FxSnapshot,
@@ -865,7 +866,7 @@ export const fxApi = {
 // ============================================================================
 
 export const cashflowApi = {
-  getReport: (viewType: 'monthly' | 'yearly', reportCurrency: string) =>
+  getReport: (viewType: CashflowPeriod, reportCurrency: string) =>
     tauriInvoke<CashflowReport>('get_cashflow_report', { viewType, reportCurrency }),
 
   /** Actual flows from bank transactions for one calendar period (design system README §11). */

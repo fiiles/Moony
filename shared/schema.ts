@@ -849,11 +849,14 @@ export interface CryptoPositions {
 }
 
 // Cashflow Types
+/** How often a planned amount recurs, and the period the planning report totals over. */
+export type CashflowPeriod = 'monthly' | 'quarterly' | 'yearly';
+
 export interface InsertCashflowItem {
   name: string;
   amount: string;
   currency?: string | null;
-  frequency: 'monthly' | 'yearly';
+  frequency: CashflowPeriod;
   itemType: 'income' | 'expense';
   category: string;
   replacementSourceId?: string | null;
@@ -864,7 +867,7 @@ export interface CashflowItem {
   name: string;
   amount: string;
   currency: string;
-  frequency: 'monthly' | 'yearly';
+  frequency: CashflowPeriod;
   itemType: 'income' | 'expense';
   category: string;
   createdAt: number;
@@ -891,7 +894,7 @@ export interface CashflowReportItem {
   amount: string;
   originalAmount: string;
   originalCurrency: string;
-  originalFrequency: 'monthly' | 'yearly';
+  originalFrequency: CashflowPeriod;
   isUserDefined: boolean;
   /** False when this row or its whole category is out of the plan; `amount` is still filled. */
   included: boolean;
@@ -931,7 +934,7 @@ export interface CashflowReport {
   automaticSources: CashflowReportItem[];
   asOf: number;
   estimate: boolean;
-  viewType: 'monthly' | 'yearly';
+  viewType: CashflowPeriod;
   personal: CashflowSection;
   investments: CashflowSection;
   totalIncome: string;

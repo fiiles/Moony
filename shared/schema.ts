@@ -32,7 +32,7 @@ export interface UserProfile {
 
 // Biometric unlock on the phone (Rust `models::biometric`)
 /** Which biometry the phone offers, for the unlock button's icon and wording. */
-export type BiometryType = 'faceId' | 'touchId' | 'biometric' | 'none';
+export type BiometryType = 'faceId' | 'touchId' | 'biometric' | 'windowsHello' | 'none';
 
 /** `biometric_unlock_status`: readable while the database is still locked. */
 export interface BiometricStatus {
@@ -43,6 +43,8 @@ export interface BiometricStatus {
   biometryType: BiometryType;
   /** Why biometrics are not available, as an i18n key (`mobile:biometrics.unavailable`). */
   reason: string | null;
+  /** This platform has biometric unlock at all (`false` where the keychain plugin is not built in). */
+  supported: boolean;
 }
 
 export interface MenuPreferences {

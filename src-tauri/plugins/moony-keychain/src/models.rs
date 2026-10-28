@@ -11,6 +11,9 @@ pub enum BiometryType {
     /// Any other biometry (Optic ID, or an Android device with several sensors).
     #[serde(rename = "biometric")]
     Biometric,
+    /// Windows Hello on the desktop (face, fingerprint or PIN, whichever the person set up).
+    #[serde(rename = "windowsHello")]
+    WindowsHello,
     #[serde(rename = "none")]
     None,
 }
@@ -47,6 +50,7 @@ mod tests {
             ("faceId", BiometryType::FaceId),
             ("touchId", BiometryType::TouchId),
             ("biometric", BiometryType::Biometric),
+            ("windowsHello", BiometryType::WindowsHello),
             ("none", BiometryType::None),
         ] {
             let json = format!("\"{wire}\"");

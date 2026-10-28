@@ -16,7 +16,14 @@ import {
 } from './biometrics';
 
 function status(patch: Partial<BiometricStatus> = {}): BiometricStatus {
-  return { available: true, enrolled: false, biometryType: 'faceId', reason: null, ...patch };
+  return {
+    available: true,
+    enrolled: false,
+    biometryType: 'faceId',
+    reason: null,
+    supported: true,
+    ...patch,
+  };
 }
 
 /** A Map behind the Storage methods the helpers use. */
@@ -46,6 +53,7 @@ describe('biometryKind and biometricCopy', () => {
     expect(biometryKind('faceId')).toBe('face');
     expect(biometryKind('touchId')).toBe('touch');
     expect(biometryKind('biometric')).toBe('generic');
+    expect(biometryKind('windowsHello')).toBe('generic');
     expect(biometryKind('none')).toBe('generic');
   });
 

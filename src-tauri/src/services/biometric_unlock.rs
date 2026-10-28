@@ -106,18 +106,22 @@ pub fn write_marker(data_dir: &Path, enabled: bool) -> std::io::Result<()> {
 /// What the lock screen needs before the database is open.
 pub fn biometric_status(keychain: &impl KeychainLike, data_dir: &Path) -> BiometricStatus {
     let enrolled = read_marker(data_dir) == Marker::Enabled;
-    let (available, biometry_type) = match keychain.status() {
-        Ok(status) => (status.available, status.biometry_type),
+    // `Unsupported` means this platform has no keychain at all, which is not something the person
+    // can fix, so it carries no reason; every other failure is "supported, but not usable now".
+    let (available, biometry_type, supported) = match keychain.status() {
+        Ok(status) => (status.available, status.biometry_type, true),
+        Err(KeychainFailure::Unsupported) => (false, BiometryType::None, false),
         Err(failure) => {
             log::warn!("[BIOMETRIC] Keychain status failed: {failure:?}");
-            (false, BiometryType::None)
+            (false, BiometryType::None, true)
         }
     };
     BiometricStatus {
         available,
         enrolled,
         biometry_type,
-        reason: (!available).then(|| UNAVAILABLE_REASON.to_string()),
+        reason: (supported && !available).then(|| UNAVAILABLE_REASON.to_string()),
+        supported,
     }
 }
 
@@ -409,6 +413,7 @@ mod tests {
                 enrolled: true,
                 biometry_type: BiometryType::FaceId,
                 reason: None,
+                supported: true,
             }
         );
     }
@@ -449,6 +454,54 @@ mod tests {
         assert!(!status.available);
         assert_eq!(status.biometry_type, BiometryType::None);
         assert_eq!(status.reason.as_deref(), Some(UNAVAILABLE_REASON));
+    }
+
+    #[test]
+    fn unsupported_platform_reports_supported_false() {
+        let dir = enabled_dir();
+        let keychain = StubKeychain {
+            status: Err(KeychainFailure::Unsupported),
+            ..StubKeychain::default()
+        };
+        let status = biometric_status(&keychain, dir.path());
+        assert!(!status.supported);
+        assert!(!status.available);
+        assert!(
+            status.enrolled,
+            "the marker is read regardless of the platform"
+        );
+        assert_eq!(
+            status.reason, None,
+            "nothing to explain without the feature"
+        );
+    }
+
+    #[test]
+    fn unavailable_biometrics_are_supported_but_not_available() {
+        let dir = tempdir().expect("tempdir");
+        let keychain = StubKeychain {
+            status: Ok(KeychainStatus {
+                available: false,
+                biometry_type: BiometryType::None,
+            }),
+            ..StubKeychain::default()
+        };
+        let status = biometric_status(&keychain, dir.path());
+        assert!(status.supported);
+        assert!(!status.available);
+        assert_eq!(status.reason.as_deref(), Some(UNAVAILABLE_REASON));
+    }
+
+    #[test]
+    fn keychain_failure_other_than_unsupported_is_supported() {
+        let dir = tempdir().expect("tempdir");
+        let keychain = StubKeychain {
+            status: Err(KeychainFailure::Failed("x".into())),
+            ..StubKeychain::default()
+        };
+        let status = biometric_status(&keychain, dir.path());
+        assert!(status.supported);
+        assert!(!status.available);
     }
 
     // ---- Enable ----

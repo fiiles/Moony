@@ -17,6 +17,7 @@ export type BiometryKind = 'face' | 'touch' | 'generic';
 export function biometryKind(type: BiometryType): BiometryKind {
   if (type === 'faceId') return 'face';
   if (type === 'touchId') return 'touch';
+  // Windows Hello is desktop-only; the phone has no copy of its own for it.
   return 'generic';
 }
 

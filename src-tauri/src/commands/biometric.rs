@@ -67,6 +67,7 @@ fn biometry(kind: moony_keychain::BiometryType) -> BiometryType {
         moony_keychain::BiometryType::FaceId => BiometryType::FaceId,
         moony_keychain::BiometryType::TouchId => BiometryType::TouchId,
         moony_keychain::BiometryType::Biometric => BiometryType::Biometric,
+        moony_keychain::BiometryType::WindowsHello => BiometryType::WindowsHello,
         moony_keychain::BiometryType::None => BiometryType::None,
     }
 }

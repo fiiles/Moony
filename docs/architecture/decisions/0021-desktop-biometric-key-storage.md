@@ -60,8 +60,9 @@ Credential Locker (opens without Hello).
   a dialog offers it. The device-level key `moony-biometrics-asked` in `localStorage` is set by
   any answer and by closing the dialog, and switching the feature on always sets it, so an
   invalidation never brings the offer back; an invalidation and a restore leave the key as it was.
-  The way back is the switch in Settings → Security. The lock screen prompts once per
-  lock while the window is focused, and a button retries. A restore switches the feature off in
+  The way back is the switch in Settings → Security. The lock screen never prompts by
+  itself: the system prompt opens only from its button, so a lock leaves the app quiet (owner,
+  2026-10-28, after an automatic prompt right after locking felt wrong). A restore switches the feature off in
   Rust, because the archive carries a different master key; account deletion removes the stored
   key and clears the flag.
 - **The marker stays the source of truth.** As on the phone, a `biometric-unlock` file in the data

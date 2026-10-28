@@ -199,17 +199,3 @@ export function desktopBiometryLabel(type: BiometryType, platform = ''): Desktop
   if (platform === 'windows') return 'windowsHello';
   return 'generic';
 }
-
-/**
- * The desktop lock screen prompts by itself once per lock event, like the phone, but only for a
- * window the person is looking at: a system prompt over a background window would steal focus
- * (and on a minimized or hidden one nobody could answer it).
- */
-export function shouldAutoPromptDesktop(input: {
-  lockEvent: number;
-  lastPrompted: number | null;
-  focused: boolean;
-  enrolled: boolean;
-}): boolean {
-  return input.enrolled && input.focused && shouldAutoPrompt(input.lockEvent, input.lastPrompted);
-}

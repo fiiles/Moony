@@ -13,7 +13,6 @@ import {
   enrolmentOfferOpen,
   markEnrolmentAsked,
   shouldAutoPrompt,
-  shouldAutoPromptDesktop,
   shouldOfferEnrolment,
   wasEnrolmentAsked,
 } from './biometrics';
@@ -229,24 +228,6 @@ describe('desktopBiometryLabel', () => {
     expect(desktopBiometryLabel('none', 'linux')).toBe('generic');
     // A type the machine names wins over the platform.
     expect(desktopBiometryLabel('windowsHello', 'darwin')).toBe('windowsHello');
-  });
-});
-
-describe('shouldAutoPromptDesktop', () => {
-  const base = { lockEvent: 1_000, lastPrompted: null, focused: true, enrolled: true };
-
-  it('prompts once per lock event', () => {
-    expect(shouldAutoPromptDesktop(base)).toBe(true);
-    expect(shouldAutoPromptDesktop({ ...base, lastPrompted: 1_000 })).toBe(false);
-    expect(shouldAutoPromptDesktop({ ...base, lastPrompted: 1_000, lockEvent: 2_000 })).toBe(true);
-  });
-
-  it('never prompts a window that is not in front', () => {
-    expect(shouldAutoPromptDesktop({ ...base, focused: false })).toBe(false);
-  });
-
-  it('never prompts when biometric unlock is off', () => {
-    expect(shouldAutoPromptDesktop({ ...base, enrolled: false })).toBe(false);
   });
 });
 

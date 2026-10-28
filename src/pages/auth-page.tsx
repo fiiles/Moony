@@ -30,7 +30,6 @@ import {
   biometricFailure,
   biometricNotice,
   canUnlockWithBiometrics,
-  shouldAutoPromptDesktop,
 } from '@/lib/biometrics';
 import { isSupportedLanguage, type SupportedLanguage } from '@/i18n/index';
 import { Button } from '@/components/ui/button';
@@ -58,13 +57,6 @@ import { RestoreBackup } from '@/components/common/RestoreBackup';
 
 type Panel = 'unlock' | 'recover' | 'newKey';
 
-/**
- * The lock event (`lockMutation.submittedAt`, 0 on a cold start) the system prompt was last opened
- * for. Module-level, so a lock page that mounts again during the same lock does not prompt again,
- * even after a cancel.
- */
-let promptedLockEvent: number | null = null;
-
 function readStorage(key: string): string | null {
   try {
     return localStorage.getItem(key);
@@ -79,7 +71,6 @@ export default function AuthPage() {
     appStatus,
     unlockMutation,
     unlockWithBiometricsMutation,
-    lockMutation,
     recoverMutation,
     confirmRecoveryMutation,
     recoveryKey,
@@ -155,6 +146,8 @@ export default function AuthPage() {
 
   const { mutate: unlockWithBiometrics } = unlockWithBiometricsMutation;
   const { setFocus: focusUnlockField } = unlockForm;
+  // The system prompt opens only from the button, never by itself: locking the app must leave it
+  // locked and quiet until the person asks to unlock (owner, 2026-10-28).
   const promptBiometrics = useCallback(() => {
     setBiometricMessage(null);
     unlockWithBiometrics(t('biometric.reason'), {
@@ -178,28 +171,6 @@ export default function AuthPage() {
       },
     });
   }, [unlockWithBiometrics, t, tc, biometryLabel, focusUnlockField]);
-
-  // The prompt opens by itself once per lock event, and only while the window is in front: on a
-  // window in the background it waits for the window's next focus.
-  const lockEvent = lockMutation.submittedAt;
-  const autoPromptAllowed = biometricReady && panel === 'unlock' && !recoveryKey && !unlockPending;
-  useEffect(() => {
-    if (!autoPromptAllowed) return;
-    const promptIfDue = () => {
-      const due = shouldAutoPromptDesktop({
-        lockEvent,
-        lastPrompted: promptedLockEvent,
-        focused: document.hasFocus(),
-        enrolled: true,
-      });
-      if (!due) return;
-      promptedLockEvent = lockEvent;
-      promptBiometrics();
-    };
-    promptIfDue();
-    window.addEventListener('focus', promptIfDue);
-    return () => window.removeEventListener('focus', promptIfDue);
-  }, [autoPromptAllowed, lockEvent, promptBiometrics]);
 
   // Credential failures are shown inline under the field; the provider only toasts the rest.
   const submitUnlock = (data: z.infer<typeof unlockSchema>) => {

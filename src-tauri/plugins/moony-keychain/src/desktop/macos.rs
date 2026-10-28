@@ -110,6 +110,21 @@ fn decode(answer: &[u8]) -> Result<Vec<u8>> {
 mod tests {
     use super::*;
 
+    // The Swift side's error classification for a failed key restore (stage 0) or key agreement
+    // (stage 1), fed with synthetic errors; answers a status byte.
+    swift!(fn moony_bio_classify(stage: Int, domain: &SRString, code: Int, wrapped: Bool) -> Int);
+
+    const RESTORE: Int = 0;
+    const AGREEMENT: Int = 1;
+    const LA: &str = "com.apple.LocalAuthentication";
+    const OS_STATUS: &str = "NSOSStatusErrorDomain";
+
+    fn classify(stage: Int, domain: &str, code: Int, wrapped: bool) -> Int {
+        let domain = SRString::from(domain);
+        // SAFETY: a live swift-rs string and scalars; the answer is a scalar.
+        unsafe { moony_bio_classify(stage, &domain, code, wrapped) }
+    }
+
     #[test]
     fn decode_maps_every_status_byte() {
         assert_eq!(decode(&[0, 7, 8, 9]), Ok(vec![7, 8, 9]));
@@ -156,5 +171,55 @@ mod tests {
     #[ignore = "depends on the machine's Touch ID hardware and enrolment"]
     fn mac_status_on_this_machine() {
         println!("{:?}", MacNative.status());
+    }
+
+    #[test]
+    fn a_second_prompt_failing_at_agreement_never_reads_as_invalidated() {
+        for wrapped in [false, true] {
+            // userCancel, systemCancel, appCancel, userFallback, notInteractive → cancelled.
+            for code in [-2, -4, -9, -3, -1004] {
+                assert_eq!(classify(AGREEMENT, LA, code, wrapped), 1, "LA {code}");
+            }
+            // biometryLockout, biometryNotAvailable, biometryNotEnrolled → unavailable.
+            for code in [-8, -6, -7] {
+                assert_eq!(classify(AGREEMENT, LA, code, wrapped), 2, "LA {code}");
+            }
+            // authenticationFailed (a misread finger) and an unknown LA code → failed.
+            assert_eq!(classify(AGREEMENT, LA, -1, wrapped), 4);
+            assert_eq!(classify(AGREEMENT, LA, -10, wrapped), 4);
+            // errSecUserCanceled → cancelled.
+            assert_eq!(classify(AGREEMENT, OS_STATUS, -128, wrapped), 1);
+        }
+    }
+
+    #[test]
+    fn a_key_refusing_an_authenticated_context_is_invalidated() {
+        assert_eq!(classify(AGREEMENT, OS_STATUS, -25293, false), 3); // errSecAuthFailed
+        assert_eq!(classify(AGREEMENT, "CryptoTokenKit", -3, false), 3);
+        assert_eq!(classify(AGREEMENT, "CryptoKit.CryptoKitError", 0, true), 3);
+    }
+
+    #[test]
+    fn a_transient_restore_failure_is_failed_not_invalidated() {
+        for wrapped in [false, true] {
+            // errSecInteractionNotAllowed, errSecNotAvailable, errSecMissingEntitlement.
+            for code in [-25308, -25291, -34018] {
+                assert_eq!(
+                    classify(RESTORE, OS_STATUS, code, wrapped),
+                    4,
+                    "OSStatus {code}"
+                );
+            }
+            assert_eq!(classify(RESTORE, OS_STATUS, -128, wrapped), 1);
+            assert_eq!(classify(RESTORE, LA, -2, wrapped), 1);
+            assert_eq!(classify(RESTORE, LA, -8, wrapped), 2);
+        }
+    }
+
+    #[test]
+    fn an_unusable_key_handle_is_invalidated() {
+        assert_eq!(classify(RESTORE, "CryptoTokenKit", -3, false), 3);
+        assert_eq!(classify(RESTORE, OS_STATUS, -25300, false), 3); // errSecItemNotFound
+        assert_eq!(classify(RESTORE, "CryptoKit.CryptoKitError", 1, true), 3);
     }
 }

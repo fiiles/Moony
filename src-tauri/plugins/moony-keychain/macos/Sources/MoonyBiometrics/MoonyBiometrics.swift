@@ -179,6 +179,20 @@ public func moonyBioSelftest() -> Bool {
   }
 }
 
+/// For the Rust tests: the status code `restoreFailure` (`stage` 0) or `agreementFailure` (`stage`
+/// 1) gives an error in `domain` with `code`, bare or (`wrapped`) as the underlying error of an
+/// unrelated outer error, the way CryptoKit and CryptoTokenKit wrap them.
+@_cdecl("moony_bio_classify")
+public func moonyBioClassify(stage: Int, domain: SRString, code: Int, wrapped: Bool) -> Int {
+  var error = NSError(domain: domain.toString(), code: code)
+  if wrapped {
+    error = NSError(
+      domain: "CryptoTokenKit", code: -3, userInfo: [NSUnderlyingErrorKey: error])
+  }
+  let failure = stage == 0 ? restoreFailure(error) : agreementFailure(error)
+  return Int(failure.code.rawValue)
+}
+
 // MARK: - ECIES
 
 private func seal(_ secret: [UInt8], for recipient: Recipient) throws -> Data {
@@ -224,11 +238,14 @@ private func open(
   let recipient: Recipient
   let ephemeralPublic: P256.KeyAgreement.PublicKey
   do {
-    recipient = try restore(parsed.keyData)
     ephemeralPublic = try P256.KeyAgreement.PublicKey(x963Representation: parsed.ephemeralPublicKey)
   } catch {
-    throw BiometricsError(
-      code: .invalidated, message: "The Touch ID key is gone: \(describe(error))")
+    throw BiometricsError(code: .invalidated, message: "The blob's ephemeral key is malformed")
+  }
+  do {
+    recipient = try restore(parsed.keyData)
+  } catch {
+    throw restoreFailure(error)
   }
 
   try authorize()
@@ -237,12 +254,7 @@ private func open(
   do {
     shared = try recipient.agree(ephemeralPublic)
   } catch {
-    // A second prompt (if the system asked again) the person dismissed is still a cancel.
-    if isCancellation(error) {
-      throw BiometricsError.cancelled()
-    }
-    throw BiometricsError(
-      code: .invalidated, message: "The Touch ID key refused the unlock: \(describe(error))")
+    throw agreementFailure(error)
   }
 
   let key = wrappingKey(
@@ -350,21 +362,65 @@ private func classify(_ error: Error) -> BiometricsError {
   }
 }
 
-/// Whether a key operation failed because the person dismissed a prompt: an LAError cancel code
-/// anywhere in the error or its underlying errors (CryptoKit and CryptoTokenKit wrap them).
-private func isCancellation(_ error: Error) -> Bool {
-  let cancelCodes: Set<Int> = [
-    LAError.Code.userCancel.rawValue, LAError.Code.appCancel.rawValue,
-    LAError.Code.systemCancel.rawValue, LAError.Code.userFallback.rawValue,
+/// The Secure Enclave key could not be restored from its handle (before any prompt). Invalidated
+/// only when the handle itself is unusable; a refusal of the moment (no interaction allowed in
+/// this session, the Secure Enclave not reachable, a missing entitlement) is a failure, so the app
+/// keeps biometric unlock on and the next attempt can work.
+private func restoreFailure(_ error: Error) -> BiometricsError {
+  if let laError = laError(in: error) {
+    return classify(laError)
+  }
+  let transient: Set<Int> = [
+    Int(errSecInteractionNotAllowed), Int(errSecNotAvailable), Int(errSecMissingEntitlement),
   ]
+  if let status = osStatus(in: error), transient.contains(status) {
+    return BiometricsError(
+      code: .failed, message: "The Touch ID key cannot be used right now: \(describe(error))")
+  }
+  if osStatus(in: error) == Int(errSecUserCanceled) {
+    return .cancelled()
+  }
+  return BiometricsError(
+    code: .invalidated, message: "The Touch ID key is gone: \(describe(error))")
+}
+
+/// The key agreement failed after a successful prompt. If the Secure Enclave asked again, its
+/// LocalAuthentication answer (a cancel, a misread finger, a lockout) is classified like the first
+/// prompt's, so none of them switches biometric unlock off. Anything else means the key refused an
+/// authenticated context: the enrolment it was bound to is gone.
+private func agreementFailure(_ error: Error) -> BiometricsError {
+  if let laError = laError(in: error) {
+    return classify(laError)
+  }
+  if osStatus(in: error) == Int(errSecUserCanceled) {
+    return .cancelled()
+  }
+  return BiometricsError(
+    code: .invalidated, message: "The Touch ID key refused the unlock: \(describe(error))")
+}
+
+/// The first LocalAuthentication error in `error` or its underlying errors (CryptoKit and
+/// CryptoTokenKit wrap them).
+private func laError(in error: Error) -> LAError? {
+  return firstError(in: error) { $0.domain == LAErrorDomain }.flatMap { found in
+    LAError.Code(rawValue: found.code).map { LAError($0, userInfo: found.userInfo) }
+  }
+}
+
+/// The first OSStatus in `error` or its underlying errors.
+private func osStatus(in error: Error) -> Int? {
+  return firstError(in: error) { $0.domain == NSOSStatusErrorDomain }?.code
+}
+
+private func firstError(in error: Error, where matches: (NSError) -> Bool) -> NSError? {
   var current: NSError? = error as NSError
   while let candidate = current {
-    if candidate.domain == LAErrorDomain && cancelCodes.contains(candidate.code) {
-      return true
+    if matches(candidate) {
+      return candidate
     }
     current = candidate.userInfo[NSUnderlyingErrorKey] as? NSError
   }
-  return false
+  return nil
 }
 
 // MARK: - Helpers

@@ -82,6 +82,27 @@ export function versionInEffect(
   return found && found.amount != null ? found : null;
 }
 
+/**
+ * How many calendar months of the UTC period `start`–`end` have a limit in effect, out of all its
+ * months: a quarter or a year a limit covers only partly reads "Jen část období".
+ */
+export function limitCoverage(
+  versions: readonly BudgetGoalVersion[],
+  start: number,
+  end: number
+): { covered: number; months: number } {
+  let covered = 0;
+  let months = 0;
+  const first = new Date(start * 1000);
+  for (let index = 0; ; index++) {
+    const month = Date.UTC(first.getUTCFullYear(), first.getUTCMonth() + index, 1) / 1000;
+    if (month > end) break;
+    months++;
+    if (versionInEffect(versions, month)) covered++;
+  }
+  return { covered, months };
+}
+
 /** Versions that start after `month` (scheduled changes), oldest first. */
 export function scheduledVersions(
   versions: readonly BudgetGoalVersion[],

@@ -71,7 +71,7 @@ export function OnboardingPreview({ areas, name, netWorth, caption }: Onboarding
             <i className="block size-[7px] rounded-[2px] bg-current opacity-50" />
             {t('nav.overview')}
           </div>
-          {group(t('nav.groupMoney'), [t('nav.bankAccounts'), t('nav.budgets'), t('nav.cashflow')])}
+          {group(t('nav.groupMoney'), [t('nav.bankAccounts'), t('nav.cashflow')])}
           {group(
             t('nav.groupInvestments'),
             [t('nav.stocks'), t('nav.crypto'), t('nav.bonds')],

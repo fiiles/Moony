@@ -39,7 +39,9 @@
     "state": {
       "over": "Over med {{amount}}",
       "near": "Nær grensen",
-      "ok": "På rett spor"
+      "ok": "På rett spor",
+      "exhausted": "Grensen er brukt opp",
+      "overShort": "Over grensen"
     },
     "of": "av {{amount}}",
     "transactions_one": "{{count}} transaksjon",

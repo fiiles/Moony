@@ -143,6 +143,18 @@ for legacy rows that the conversion has not reached yet; never write new paths i
 |---|---|---|
 | The menu-owned delete on a phone detail: a `ConfirmSheet` plus the delete mutation inside the `···` menu, leaving through a per-call `onSuccess` (`src/mobile/hooks/use-leave-deleted.ts`, with `PositionMenu`, `CryptoMenu` and `OtherAssetMenu` as its users) | The menu unmounts when its record drops out of the list the page reads, the per-call callback is dropped with it, and the screen stays on the deleted record | `src/mobile/hooks/use-delete-and-leave.ts`, run by the page itself (the loan, policy, property, position, coin and other-asset details); the menu only asks (`onDelete`) |
 
+## Removed with Cashflow and budgets on one screen (do not re-add)
+
+Budgets moved into the Cashflow screen's expenses card
+(`docs/specs/2026-10-28-cashflow-with-budgets-implementation-design.md`).
+
+| Removed | Why it was removed | Use instead |
+|---|---|---|
+| `src/pages/Budgeting.tsx` (route `/reports/budgeting`, nav item `budgets`) | A second page over the same expenses; limits and spending were read in two places | `src/pages/Cashflow.tsx` with `ExpensesByCategoryCard`; the old route redirects to `/reports/cashflow` |
+| `src/components/budgeting/CategoryTransactionsDialog.tsx` | A wrapper that only fixed `flowKind: 'expense'` | `ReportTransactionsDialog` with the row's `flowKind` |
+| The Cashflow export (`ExportButton` on the page, `periodFileStem`, keys `reports.actuals.export`, `reports.actuals.expenses.budgets`) | The owner removed the export from this screen | Nothing on the desktop screen; the phone keeps its CSV through `buildCashflowCsv` |
+| The category list inside `CategoriesCard` | Now shared with the Cashflow screen | `src/components/categories/CategoryManager.tsx` (Settings card and `CategoryManagerDialog`) |
+
 ## Removed with CoinGecko (do not re-add)
 
 Crypto prices, search and history moved to Yahoo Finance and a holding stores its Yahoo symbol

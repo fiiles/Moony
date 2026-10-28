@@ -530,7 +530,6 @@
     "title": "现金流",
     "subtitleLinked": "所选时期内所有账户的实际收入和支出。您所依赖的定期项目见<link>现金流规划 →</link>",
     "transactions_other": "{{count}} 笔交易",
-    "export": "导出",
     "stats": {
       "income": "收入",
       "expenses": "支出",
@@ -543,7 +542,8 @@
       "sub": "所选时期已高亮显示。将鼠标悬停在柱子上可查看当月结余。",
       "income": "收入",
       "expenses": "支出",
-      "balance": "结余"
+      "balance": "结余",
+      "openMonth": "查看{{month}}"
     },
     "breakdown": {
       "sub": "所选时期内的合计",
@@ -555,7 +555,28 @@
     },
     "expenses": {
       "title": "按类别的支出",
-      "budgets": "设置预算"
+      "manageCategories": "管理类别",
+      "manageLimits": "管理限额",
+      "spent": "已花费",
+      "limit": "限额",
+      "usage": "使用率",
+      "remaining": "剩余",
+      "filterLabel": "筛选类别",
+      "filterAll": "全部",
+      "sortLabel": "排序类别",
+      "sortAmount": "金额",
+      "sortUsage": "使用率",
+      "sortName": "名称",
+      "shareOfExpenses": "占支出的{{percent}}",
+      "overLimit": "超出限额",
+      "partialPeriod": "仅覆盖部分时期",
+      "filteredTotal": "筛选后合计 {{amount}}",
+      "filteredCount_other": "已选 {{count}} 个类别",
+      "emptyFilter": "此筛选中没有类别。",
+      "showTransactions": "查看交易：{{name}}",
+      "editLimitFor": "编辑限额：{{name}}",
+      "setLimitFor": "设置限额：{{name}}",
+      "pace": "标记为今天，时期已过 {{percent}}"
     },
     "income": {
       "title": "按类别的收入",

@@ -34,7 +34,9 @@
     "state": {
       "over": "超出 {{amount}}",
       "near": "接近限额",
-      "ok": "正常"
+      "ok": "正常",
+      "exhausted": "限额已用完",
+      "overShort": "超出限额"
     },
     "of": "共 {{amount}}",
     "transactions_other": "{{count}} 笔交易",

@@ -6,6 +6,7 @@ import {
   budgetVersionPeriods,
   budgetEditSource,
   intervalLastMonth,
+  limitCoverage,
   isUnchangedGoalEdit,
   overwrittenPeriods,
   monthInputValue,
@@ -269,5 +270,34 @@ describe('budgetOverview', () => {
     expect(rows[0].main).toEqual({ version: v(MAR, '550'), end: JUN - 1 });
     expect(rows[0].upcoming).toEqual([]);
     expect(rows[0].history).toEqual([{ version: v(JAN, '500'), end: MAR - 1 }]);
+  });
+});
+
+describe('limitCoverage', () => {
+  const Q4_END = Date.UTC(2027, 0, 1) / 1000 - 1;
+  const NOV = Date.UTC(2026, 10, 1) / 1000;
+
+  it('covers every month of a quarter under one open limit', () => {
+    expect(limitCoverage([v(JAN, '1000')], OCT, Q4_END)).toEqual({ covered: 3, months: 3 });
+  });
+
+  it('counts a limit that ends or starts inside the quarter as partial', () => {
+    expect(limitCoverage([v(JAN, '1000'), v(NOV, null)], OCT, Q4_END)).toEqual({
+      covered: 1,
+      months: 3,
+    });
+    expect(limitCoverage([v(DEC, '1000')], OCT, Q4_END)).toEqual({ covered: 1, months: 3 });
+  });
+
+  it('counts a change of the limit inside the quarter as full coverage', () => {
+    expect(limitCoverage([v(JAN, '1000'), v(NOV, '20', 'EUR')], OCT, Q4_END)).toEqual({
+      covered: 3,
+      months: 3,
+    });
+  });
+
+  it('covers a single month or none', () => {
+    expect(limitCoverage([v(OCT, '1000')], OCT, NOV - 1)).toEqual({ covered: 1, months: 1 });
+    expect(limitCoverage([v(NOV, '1000')], OCT, NOV - 1)).toEqual({ covered: 0, months: 1 });
   });
 });

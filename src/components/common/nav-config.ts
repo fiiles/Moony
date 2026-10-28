@@ -18,7 +18,6 @@ import {
   Landmark,
   LayoutDashboard,
   LineChart,
-  PiggyBank,
   Repeat,
   Settings,
   Shield,
@@ -60,7 +59,6 @@ export const NAV_GROUPS: NavGroup[] = [
     labelKey: 'nav.groupMoney',
     items: [
       { id: 'bankAccounts', labelKey: 'nav.bankAccounts', url: '/bank-accounts', icon: Landmark },
-      { id: 'budgets', labelKey: 'nav.budgets', url: '/reports/budgeting', icon: PiggyBank },
       { id: 'cashflow', labelKey: 'nav.cashflow', url: '/reports/cashflow', icon: BarChart3 },
     ],
   },

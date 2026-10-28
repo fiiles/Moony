@@ -49,7 +49,9 @@
     "state": {
       "over": "Przekroczono o {{amount}}",
       "near": "Blisko limitu",
-      "ok": "W normie"
+      "ok": "W normie",
+      "exhausted": "Limit wyczerpany",
+      "overShort": "Ponad limit"
     },
     "of": "z {{amount}}",
     "transactions_one": "{{count}} transakcja",

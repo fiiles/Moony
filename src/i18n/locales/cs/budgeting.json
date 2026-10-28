@@ -44,7 +44,9 @@
     "state": {
       "over": "Překročeno o {{amount}}",
       "near": "Blíží se limitu",
-      "ok": "V pořádku"
+      "ok": "V pořádku",
+      "exhausted": "Limit vyčerpán",
+      "overShort": "Nad limitem"
     },
     "of": "z {{amount}}",
     "transactions_one": "{{count}} transakce",

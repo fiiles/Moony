@@ -39,7 +39,9 @@
     "state": {
       "over": "Over by {{amount}}",
       "near": "Near the limit",
-      "ok": "On track"
+      "ok": "On track",
+      "exhausted": "Limit used up",
+      "overShort": "Over the limit"
     },
     "of": "of {{amount}}",
     "transactions_one": "{{count}} transaction",

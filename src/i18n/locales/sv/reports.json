@@ -552,7 +552,6 @@
     "subtitleLinked": "Faktiska inkomster och utgifter från alla konton under den valda perioden. De återkommande poster du räknar med finns i <link>Kassaflödesplanering →</link>",
     "transactions_one": "{{count}} transaktion",
     "transactions_other": "{{count}} transaktioner",
-    "export": "Exportera",
     "stats": {
       "income": "Inkomster",
       "expenses": "Utgifter",
@@ -565,7 +564,8 @@
       "sub": "Den valda perioden är markerad. Håll muspekaren över en stapel för att se månadens saldo.",
       "income": "Inkomster",
       "expenses": "Utgifter",
-      "balance": "saldo"
+      "balance": "saldo",
+      "openMonth": "Visa {{month}}"
     },
     "breakdown": {
       "sub": "Summa över den valda perioden",
@@ -577,7 +577,29 @@
     },
     "expenses": {
       "title": "Utgifter per kategori",
-      "budgets": "Sätt budgetar"
+      "manageCategories": "Hantera kategorier",
+      "manageLimits": "Hantera gränser",
+      "spent": "Spenderat",
+      "limit": "Gräns",
+      "usage": "Förbrukning",
+      "remaining": "Kvar",
+      "filterLabel": "Filtrera kategorier",
+      "filterAll": "Alla",
+      "sortLabel": "Sortera kategorier",
+      "sortAmount": "Belopp",
+      "sortUsage": "Förbrukning",
+      "sortName": "Namn",
+      "shareOfExpenses": "{{percent}} av utgifterna",
+      "overLimit": "över gränsen",
+      "partialPeriod": "Bara en del av perioden",
+      "filteredTotal": "Filtrerad summa {{amount}}",
+      "filteredCount_one": "{{count}} kategori vald",
+      "filteredCount_other": "{{count}} kategorier valda",
+      "emptyFilter": "Inga kategorier i det här urvalet.",
+      "showTransactions": "Visa transaktioner: {{name}}",
+      "editLimitFor": "Ändra gräns: {{name}}",
+      "setLimitFor": "Sätt en gräns: {{name}}",
+      "pace": "markeringen är i dag, {{percent}} av perioden har gått"
     },
     "income": {
       "title": "Inkomster per kategori",

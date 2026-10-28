@@ -74,14 +74,6 @@ export function monthOffsetOf(day: number, now: Date = new Date()): number {
   return Math.min(0, months);
 }
 
-export function periodFileStem(timeframe: PeriodTimeframe, startDate: Date): string {
-  const year = startDate.getUTCFullYear();
-  const month = startDate.getUTCMonth();
-  if (timeframe === 'yearly') return String(year);
-  if (timeframe === 'quarterly') return `${year}-q${Math.floor(month / 3) + 1}`;
-  return `${year}-${String(month + 1).padStart(2, '0')}`;
-}
-
 /** UTC midnight (unix seconds) of an ISO `YYYY-MM-DD` date. */
 export function utcDayStart(isoDate: string): number {
   const [y, m, d] = isoDate.split('-').map(Number);

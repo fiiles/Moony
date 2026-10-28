@@ -574,7 +574,6 @@
     "transactions_one": "{{count}} transakce",
     "transactions_few": "{{count}} transakce",
     "transactions_other": "{{count}} transakcí",
-    "export": "Export",
     "stats": {
       "income": "Příjmy",
       "expenses": "Výdaje",
@@ -587,7 +586,8 @@
       "sub": "Zvolené období je zvýrazněné. Najetím na sloupec zobrazíte bilanci měsíce.",
       "income": "Příjmy",
       "expenses": "Výdaje",
-      "balance": "bilance"
+      "balance": "bilance",
+      "openMonth": "Zobrazit {{month}}"
     },
     "breakdown": {
       "sub": "Součet za zvolené období",
@@ -599,7 +599,30 @@
     },
     "expenses": {
       "title": "Výdaje podle kategorií",
-      "budgets": "Nastavit rozpočty"
+      "manageCategories": "Správa kategorií",
+      "manageLimits": "Spravovat limity",
+      "spent": "Utraceno",
+      "limit": "Limit",
+      "usage": "Čerpání",
+      "remaining": "Zbývá",
+      "filterLabel": "Filtrovat kategorie",
+      "filterAll": "Vše",
+      "sortLabel": "Seřadit kategorie",
+      "sortAmount": "Částka",
+      "sortUsage": "Čerpání",
+      "sortName": "Název",
+      "shareOfExpenses": "{{percent}} výdajů",
+      "overLimit": "nad limitem",
+      "partialPeriod": "Jen část období",
+      "filteredTotal": "Celkem za filtr {{amount}}",
+      "filteredCount_one": "{{count}} kategorie ve výběru",
+      "filteredCount_few": "{{count}} kategorie ve výběru",
+      "filteredCount_other": "{{count}} kategorií ve výběru",
+      "emptyFilter": "V tomto výběru nejsou žádné kategorie.",
+      "showTransactions": "Zobrazit transakce: {{name}}",
+      "editLimitFor": "Upravit limit: {{name}}",
+      "setLimitFor": "Nastavit limit: {{name}}",
+      "pace": "značka je dnešek, uplynulo {{percent}} období"
     },
     "income": {
       "title": "Příjmy podle kategorií",

@@ -36,7 +36,6 @@ describe('nav tree (design system §5)', () => {
     expect(urls).toEqual([
       '/',
       '/bank-accounts',
-      '/reports/budgeting',
       '/reports/cashflow',
       '/stocks',
       '/crypto',

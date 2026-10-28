@@ -118,6 +118,7 @@ mod tests {
     const AGREEMENT: Int = 1;
     const LA: &str = "com.apple.LocalAuthentication";
     const OS_STATUS: &str = "NSOSStatusErrorDomain";
+    const TOKEN: &str = "CryptoTokenKit";
 
     fn classify(stage: Int, domain: &str, code: Int, wrapped: bool) -> Int {
         let domain = SRString::from(domain);
@@ -144,18 +145,22 @@ mod tests {
 
     #[test]
     fn native_selftest_round_trips() {
+        // SAFETY: a plain call into the linked Swift package; no arguments, a scalar answer.
         assert!(unsafe { moony_bio_selftest() });
     }
 
     #[test]
     fn status_maps_codes() {
-        assert_eq!(
-            status_from_code(-1),
-            Status {
-                available: false,
-                biometry_type: BiometryType::None
-            }
-        );
+        for code in [-1, 0] {
+            assert_eq!(
+                status_from_code(code),
+                Status {
+                    available: false,
+                    biometry_type: BiometryType::None
+                },
+                "code {code}"
+            );
+        }
         assert_eq!(
             status_from_code(1),
             Status {
@@ -193,9 +198,29 @@ mod tests {
     }
 
     #[test]
+    fn a_transient_agreement_failure_is_failed_not_invalidated() {
+        for wrapped in [false, true] {
+            // errSecInteractionNotAllowed, errSecNotAvailable, errSecMissingEntitlement.
+            for code in [-25308, -25291, -34018] {
+                assert_eq!(
+                    classify(AGREEMENT, OS_STATUS, code, wrapped),
+                    4,
+                    "OSStatus {code}"
+                );
+            }
+            // TKError communicationError → failed; canceledByUser → cancelled.
+            assert_eq!(classify(AGREEMENT, TOKEN, -2, wrapped), 4);
+            assert_eq!(classify(AGREEMENT, TOKEN, -4, wrapped), 1);
+        }
+    }
+
+    #[test]
     fn a_key_refusing_an_authenticated_context_is_invalidated() {
-        assert_eq!(classify(AGREEMENT, OS_STATUS, -25293, false), 3); // errSecAuthFailed
-        assert_eq!(classify(AGREEMENT, "CryptoTokenKit", -3, false), 3);
+        for wrapped in [false, true] {
+            assert_eq!(classify(AGREEMENT, OS_STATUS, -25293, wrapped), 3); // errSecAuthFailed
+            assert_eq!(classify(AGREEMENT, OS_STATUS, -25300, wrapped), 3); // errSecItemNotFound
+            assert_eq!(classify(AGREEMENT, TOKEN, -3, wrapped), 3); // TKError corruptedData
+        }
         assert_eq!(classify(AGREEMENT, "CryptoKit.CryptoKitError", 0, true), 3);
     }
 
@@ -213,12 +238,14 @@ mod tests {
             assert_eq!(classify(RESTORE, OS_STATUS, -128, wrapped), 1);
             assert_eq!(classify(RESTORE, LA, -2, wrapped), 1);
             assert_eq!(classify(RESTORE, LA, -8, wrapped), 2);
+            assert_eq!(classify(RESTORE, TOKEN, -2, wrapped), 4);
+            assert_eq!(classify(RESTORE, TOKEN, -4, wrapped), 1);
         }
     }
 
     #[test]
     fn an_unusable_key_handle_is_invalidated() {
-        assert_eq!(classify(RESTORE, "CryptoTokenKit", -3, false), 3);
+        assert_eq!(classify(RESTORE, TOKEN, -3, false), 3);
         assert_eq!(classify(RESTORE, OS_STATUS, -25300, false), 3); // errSecItemNotFound
         assert_eq!(classify(RESTORE, "CryptoKit.CryptoKitError", 1, true), 3);
     }

@@ -21,6 +21,8 @@ use rand::Rng;
 use sha2::Sha256;
 use zeroize::Zeroizing;
 
+use crate::KeychainError;
+
 /// The first byte of every blob this module writes.
 const VERSION: u8 = 0x01;
 /// HKDF's `info`, so a key derived here is never the key of another use of the same signature.
@@ -33,8 +35,9 @@ const NONCE_AT: usize = 1 + CHALLENGE_LEN;
 const CIPHERTEXT_AT: usize = NONCE_AT + NONCE_LEN;
 const BLOB_LEN: usize = CIPHERTEXT_AT + SECRET_LEN + TAG_LEN;
 
-/// Why a blob could not be opened. Both mean the blob can never be opened with this credential,
-/// which the Windows native reports as `Invalidated`.
+/// Why a blob could not be opened. `Malformed` and `WrongKey` mean the blob can never be opened
+/// with this credential, which the Windows native reports as `Invalidated`; `KeyDerivation` says
+/// nothing about the blob and is reported as a failure.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum OpenError {
     /// Not a v1 blob of the right length.
@@ -42,6 +45,9 @@ pub enum OpenError {
     /// The signature derives another key (the Hello credential was replaced) or the blob was
     /// altered: the tag does not verify.
     WrongKey,
+    /// HKDF refused to derive the key. It cannot with the 32 bytes asked for here, but shipped
+    /// code reports rather than panics.
+    KeyDerivation,
 }
 
 /// A fresh random challenge for Hello to sign.
@@ -52,21 +58,26 @@ pub fn new_challenge() -> [u8; CHALLENGE_LEN] {
 }
 
 /// Wraps `secret` with the key `signature` (Hello's signature over `challenge`) derives.
-pub fn seal(challenge: &[u8; 32], signature: &[u8], secret: &[u8; 32]) -> Vec<u8> {
-    let cipher = cipher_for(challenge, signature);
+pub fn seal(challenge: &[u8; 32], signature: &[u8], secret: &[u8; 32]) -> crate::Result<Vec<u8>> {
+    let cipher = cipher_for(challenge, signature).ok_or_else(|| {
+        KeychainError::Failed("Windows Hello: could not derive the wrapping key".to_string())
+    })?;
     let mut nonce = [0u8; NONCE_LEN];
     rand::rng().fill_bytes(&mut nonce);
-    // AES-GCM refuses only plaintexts longer than 64 GiB; 32 bytes always encrypt.
+    // AES-GCM refuses only plaintexts longer than 64 GiB, so 32 bytes always encrypt; the error is
+    // still an error, not a panic.
     let ciphertext = cipher
         .encrypt(&Nonce::from(nonce), secret.as_slice())
-        .expect("AES-GCM encrypts 32 bytes");
+        .map_err(|_| {
+            KeychainError::Failed("Windows Hello: could not encrypt the secret".to_string())
+        })?;
 
     let mut blob = Vec::with_capacity(BLOB_LEN);
     blob.push(VERSION);
     blob.extend_from_slice(challenge);
     blob.extend_from_slice(&nonce);
     blob.extend_from_slice(&ciphertext);
-    blob
+    Ok(blob)
 }
 
 /// The challenge a v1 blob was sealed for, which Hello has to sign again to open it.
@@ -85,6 +96,7 @@ pub fn open(blob: &[u8], signature: &[u8]) -> Result<Zeroizing<[u8; 32]>, OpenEr
         .map_err(|_| OpenError::Malformed)?;
     let plaintext = Zeroizing::new(
         cipher_for(&challenge, signature)
+            .ok_or(OpenError::KeyDerivation)?
             .decrypt(&Nonce::from(nonce), &blob[CIPHERTEXT_AT..])
             .map_err(|_| OpenError::WrongKey)?,
     );
@@ -98,14 +110,14 @@ pub fn open(blob: &[u8], signature: &[u8]) -> Result<Zeroizing<[u8; 32]>, OpenEr
     Ok(secret)
 }
 
-/// The AES-256-GCM cipher keyed with HKDF-SHA256(ikm = signature, salt = challenge).
-fn cipher_for(challenge: &[u8; 32], signature: &[u8]) -> Aes256Gcm {
+/// The AES-256-GCM cipher keyed with HKDF-SHA256(ikm = signature, salt = challenge). `None` only
+/// if HKDF refuses the length, which it does for outputs longer than 255 * 32 bytes, never for 32.
+fn cipher_for(challenge: &[u8; 32], signature: &[u8]) -> Option<Aes256Gcm> {
     let mut key = Zeroizing::new([0u8; 32]);
-    // HKDF-SHA256 refuses only outputs longer than 255 * 32 bytes; 32 always expand.
     Hkdf::<Sha256>::new(Some(challenge), signature)
         .expand(INFO, key.as_mut_slice())
-        .expect("HKDF-SHA256 expands 32 bytes");
-    Aes256Gcm::new(&(*key).into())
+        .ok()?;
+    Some(Aes256Gcm::new(&(*key).into()))
 }
 
 #[cfg(test)]
@@ -121,14 +133,14 @@ mod tests {
     #[test]
     fn seal_open_round_trips() {
         let challenge = new_challenge();
-        let blob = seal(&challenge, &signature(1), &SECRET);
+        let blob = seal(&challenge, &signature(1), &SECRET).expect("seal");
         assert_eq!(blob.len(), 1 + 32 + 12 + 48);
         assert_eq!(open(&blob, &signature(1)).map(|secret| *secret), Ok(SECRET));
     }
 
     #[test]
     fn open_with_other_signature_is_wrong_key() {
-        let blob = seal(&new_challenge(), &signature(1), &SECRET);
+        let blob = seal(&new_challenge(), &signature(1), &SECRET).expect("seal");
         assert_eq!(
             open(&blob, &signature(2)).map(|_| ()),
             Err(OpenError::WrongKey)
@@ -137,7 +149,7 @@ mod tests {
 
     #[test]
     fn a_tampered_ciphertext_is_wrong_key() {
-        let mut blob = seal(&new_challenge(), &signature(1), &SECRET);
+        let mut blob = seal(&new_challenge(), &signature(1), &SECRET).expect("seal");
         let last = blob.len() - 1;
         blob[last] ^= 1;
         assert_eq!(
@@ -148,7 +160,7 @@ mod tests {
 
     #[test]
     fn open_truncated_is_malformed() {
-        let blob = seal(&new_challenge(), &signature(1), &SECRET);
+        let blob = seal(&new_challenge(), &signature(1), &SECRET).expect("seal");
         for len in [0, 1, 33, 45, blob.len() - 1] {
             assert_eq!(
                 open(&blob[..len], &signature(1)).map(|_| ()),
@@ -166,7 +178,7 @@ mod tests {
 
     #[test]
     fn open_unknown_version_is_malformed() {
-        let mut blob = seal(&new_challenge(), &signature(1), &SECRET);
+        let mut blob = seal(&new_challenge(), &signature(1), &SECRET).expect("seal");
         for version in [0x00, 0x02, 0xff] {
             blob[0] = version;
             assert_eq!(
@@ -180,7 +192,7 @@ mod tests {
     #[test]
     fn challenge_of_reads_back_the_challenge() {
         let challenge = new_challenge();
-        let blob = seal(&challenge, &signature(1), &SECRET);
+        let blob = seal(&challenge, &signature(1), &SECRET).expect("seal");
         assert_eq!(challenge_of(&blob), Some(challenge));
         assert_eq!(challenge_of(&blob[..20]), None);
         assert_eq!(challenge_of(&[]), None);
@@ -189,8 +201,8 @@ mod tests {
     #[test]
     fn two_seals_use_different_nonces() {
         let challenge = new_challenge();
-        let first = seal(&challenge, &signature(1), &SECRET);
-        let second = seal(&challenge, &signature(1), &SECRET);
+        let first = seal(&challenge, &signature(1), &SECRET).expect("seal");
+        let second = seal(&challenge, &signature(1), &SECRET).expect("seal");
         assert_ne!(first[33..45], second[33..45], "nonces");
         assert_ne!(first[45..], second[45..], "ciphertexts");
         assert_ne!(new_challenge(), new_challenge());
@@ -199,7 +211,7 @@ mod tests {
     #[test]
     fn blob_never_contains_signature_or_secret() {
         let signature = signature(1);
-        let blob = seal(&new_challenge(), &signature, &SECRET);
+        let blob = seal(&new_challenge(), &signature, &SECRET).expect("seal");
         let contains = |needle: &[u8]| blob.windows(needle.len()).any(|window| window == needle);
         assert!(!contains(&SECRET), "the secret");
         // The whole signature cannot fit in the blob; no 16-byte run of it may appear either.

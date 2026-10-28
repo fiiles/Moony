@@ -57,9 +57,11 @@ export function biometricCopy(type: BiometryType): BiometricCopy {
  * The lock screen offers "Odemknout obličejem" whenever biometric unlock is switched on, usable
  * or not: with nothing enrolled any more (or locked out) the keychain answers at once, without a
  * prompt, and the screen falls back to the password with the reason (invalidated or failed).
+ * Never where the platform has no biometric unlock at all (Linux): a marker saying "on" there has
+ * no backend to answer it.
  */
 export function canUnlockWithBiometrics(status: BiometricStatus | undefined): boolean {
-  return status !== undefined && status.enrolled;
+  return status !== undefined && status.supported && status.enrolled;
 }
 
 /** The enrolment sheet after a password unlock: usable, not yet on, and never asked before. */

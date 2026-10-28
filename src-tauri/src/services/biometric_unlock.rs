@@ -1,9 +1,11 @@
-//! Biometric unlock on the phone (spec §8.1).
+//! Biometric unlock: Face ID / fingerprint on the phones (mobile spec §8.1), Touch ID on macOS and
+//! Windows Hello on Windows (ADR 0021).
 //!
-//! The phone keeps the master key in [`SessionKey`] after every unlock; biometric unlock stores a
-//! copy in the phone keychain and reads it back from Rust only, behind [`KeychainLike`] (the app's
-//! adapter wraps the `moony-keychain` plugin; tests use a stub). The key never crosses into the
-//! webview.
+//! The app keeps the master key in [`SessionKey`] after every unlock; biometric unlock stores a
+//! copy behind biometry (the phone keychain, or on the desktop a blob file wrapped by the Secure
+//! Enclave or a Windows Hello key) and reads it back from Rust only, behind [`KeychainLike`] (the
+//! app's adapter wraps the `moony-keychain` plugin; tests use a stub). The key never crosses into
+//! the webview.
 //!
 //! Whether biometric unlock is on is a marker file next to the key files ([`MARKER_FILE`], "1"
 //! or "0"), not a row in the database: the lock screen needs it while the database is still
@@ -35,7 +37,8 @@ pub const AUTH_BIOMETRIC_CANCELLED: &str = "auth.biometricCancelled";
 pub const AUTH_BIOMETRIC_FAILED: &str = "auth.biometricFailed";
 
 /// What the keychain answered when it could not do what was asked. Mirrors the plugin's
-/// `KeychainError` (the app depends on the plugin on phones only).
+/// `KeychainError`, kept as the service's own type so the service and its tests do not depend on
+/// the plugin.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KeychainFailure {
     /// The enrolment (or the passcode) changed since the key was stored: it is gone for good.
@@ -46,7 +49,7 @@ pub enum KeychainFailure {
     Unavailable,
     /// Anything else, with the native side's message (never a secret).
     Failed(String),
-    /// Not a phone.
+    /// A platform without biometric unlock (Linux).
     Unsupported,
 }
 
@@ -57,7 +60,7 @@ pub struct KeychainStatus {
     pub biometry_type: BiometryType,
 }
 
-/// The phone keychain as the biometric service uses it. Every call may block until the native
+/// The plugin's biometry-gated store as the biometric service uses it. Every call may block until the native
 /// side (or the person, for a prompt) answers: call the service off the main thread.
 pub trait KeychainLike {
     fn status(&self) -> std::result::Result<KeychainStatus, KeychainFailure>;

@@ -78,6 +78,8 @@ describe('canUnlockWithBiometrics', () => {
     expect(canUnlockWithBiometrics(status({ enrolled: true, available: false }))).toBe(true);
     expect(canUnlockWithBiometrics(status({ enrolled: false }))).toBe(false);
     expect(canUnlockWithBiometrics(undefined)).toBe(false);
+    // Switched on where the platform has no biometric unlock (Linux): there is nothing to ask.
+    expect(canUnlockWithBiometrics(status({ enrolled: true, supported: false }))).toBe(false);
   });
 });
 

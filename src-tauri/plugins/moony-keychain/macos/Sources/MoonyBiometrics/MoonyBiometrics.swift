@@ -367,6 +367,31 @@ private func classify(_ error: Error) -> BiometricsError {
 /// this session, the Secure Enclave not reachable, a missing entitlement) is a failure, so the app
 /// keeps biometric unlock on and the next attempt can work.
 private func restoreFailure(_ error: Error) -> BiometricsError {
+  if let answer = momentaryFailure(error) {
+    return answer
+  }
+  return BiometricsError(
+    code: .invalidated, message: "The Touch ID key is gone: \(describe(error))")
+}
+
+/// The key agreement failed after a successful prompt. If the Secure Enclave asked again, its
+/// LocalAuthentication answer (a cancel, a misread finger, a lockout) is classified like the first
+/// prompt's, and a refusal of the moment is a failure as in `restoreFailure`, so none of them
+/// switches biometric unlock off. Anything else means the key refused an authenticated context:
+/// the enrolment it was bound to is gone.
+private func agreementFailure(_ error: Error) -> BiometricsError {
+  if let answer = momentaryFailure(error) {
+    return answer
+  }
+  return BiometricsError(
+    code: .invalidated, message: "The Touch ID key refused the unlock: \(describe(error))")
+}
+
+/// The answers that say nothing about the key itself, so biometric unlock stays on: a
+/// LocalAuthentication answer (classified like the prompt's), a refusal of the moment (no
+/// interaction allowed in this session, the Secure Enclave not reachable, a missing entitlement,
+/// the token not answering) and a cancel. `nil` leaves the error to the caller.
+private func momentaryFailure(_ error: Error) -> BiometricsError? {
   if let laError = laError(in: error) {
     return classify(laError)
   }
@@ -377,26 +402,16 @@ private func restoreFailure(_ error: Error) -> BiometricsError {
     return BiometricsError(
       code: .failed, message: "The Touch ID key cannot be used right now: \(describe(error))")
   }
-  if osStatus(in: error) == Int(errSecUserCanceled) {
+  if osStatus(in: error) == Int(errSecUserCanceled)
+    || hasTokenError(in: error, code: tokenCanceledByUser)
+  {
     return .cancelled()
   }
-  return BiometricsError(
-    code: .invalidated, message: "The Touch ID key is gone: \(describe(error))")
-}
-
-/// The key agreement failed after a successful prompt. If the Secure Enclave asked again, its
-/// LocalAuthentication answer (a cancel, a misread finger, a lockout) is classified like the first
-/// prompt's, so none of them switches biometric unlock off. Anything else means the key refused an
-/// authenticated context: the enrolment it was bound to is gone.
-private func agreementFailure(_ error: Error) -> BiometricsError {
-  if let laError = laError(in: error) {
-    return classify(laError)
+  if hasTokenError(in: error, code: tokenCommunicationError) {
+    return BiometricsError(
+      code: .failed, message: "The Secure Enclave did not answer: \(describe(error))")
   }
-  if osStatus(in: error) == Int(errSecUserCanceled) {
-    return .cancelled()
-  }
-  return BiometricsError(
-    code: .invalidated, message: "The Touch ID key refused the unlock: \(describe(error))")
+  return nil
 }
 
 /// The first LocalAuthentication error in `error` or its underlying errors (CryptoKit and
@@ -410,6 +425,19 @@ private func laError(in error: Error) -> LAError? {
 /// The first OSStatus in `error` or its underlying errors.
 private func osStatus(in error: Error) -> Int? {
   return firstError(in: error) { $0.domain == NSOSStatusErrorDomain }?.code
+}
+
+/// CryptoTokenKit's error domain (`TKErrorDomain`) and the two `TKError` codes that are not about
+/// the key: `canceledByUser` (-4) and `communicationError` (-2). Spelled out so the package does
+/// not link CryptoTokenKit for three constants.
+private let tokenErrorDomain = "CryptoTokenKit"
+private let tokenCanceledByUser = -4
+private let tokenCommunicationError = -2
+
+/// Whether `error` or any of its underlying errors is the CryptoTokenKit error `code`. Any, not the
+/// first: the code can sit under an outer error of the same domain.
+private func hasTokenError(in error: Error, code: Int) -> Bool {
+  return firstError(in: error) { $0.domain == tokenErrorDomain && $0.code == code } != nil
 }
 
 private func firstError(in error: Error, where matches: (NSError) -> Bool) -> NSError? {

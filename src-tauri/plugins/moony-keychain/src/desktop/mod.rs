@@ -122,7 +122,9 @@ impl<R: Runtime> Keychain<R> {
             return Ok(None);
         };
         let secret = self.native.unwrap(&blob, reason)?;
-        Ok(Some(hex::encode(*secret)))
+        // Encoded from the `Zeroizing` buffer itself: `*secret` would copy the bytes to the stack
+        // where nothing wipes them.
+        Ok(Some(hex::encode(secret.as_slice())))
     }
 
     /// Forgets the biometry-gated key and deletes the blob. Both are attempted even if the first

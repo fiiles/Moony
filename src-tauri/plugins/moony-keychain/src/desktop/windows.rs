@@ -37,9 +37,10 @@ const RAISE_FOR: Duration = Duration::from_secs(3);
 const RAISE_EVERY: Duration = Duration::from_millis(100);
 
 /// What `DeleteAsync` fails with when there is no credential to delete (`NTE_NO_KEY`,
-/// `ERROR_NOT_FOUND`).
-const NO_CREDENTIAL: [HRESULT; 2] = [
+/// `NTE_NOT_FOUND`, `ERROR_NOT_FOUND`).
+const NO_CREDENTIAL: [HRESULT; 3] = [
     HRESULT(0x8009_000D_u32 as i32),
+    HRESULT(0x8009_0011_u32 as i32),
     HRESULT(0x8007_0490_u32 as i32),
 ];
 
@@ -81,7 +82,7 @@ impl NativeBiometrics for WinNative {
 
         let challenge = hello_wrap::new_challenge();
         let signature = sign(&credential, &challenge)?;
-        Ok(hello_wrap::seal(&challenge, &signature, secret))
+        hello_wrap::seal(&challenge, &signature, secret)
     }
 
     fn unwrap(&self, blob: &[u8], _reason: &str) -> Result<Zeroizing<[u8; 32]>> {
@@ -167,6 +168,9 @@ fn check(status: KeyCredentialStatus) -> Result<()> {
 fn open_failure(error: OpenError) -> KeychainError {
     match error {
         OpenError::Malformed | OpenError::WrongKey => KeychainError::Invalidated,
+        OpenError::KeyDerivation => {
+            KeychainError::Failed("Windows Hello: could not derive the unwrap key".to_string())
+        }
     }
 }
 

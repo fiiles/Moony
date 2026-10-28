@@ -19,9 +19,10 @@
 //! On the desktop the crate compiles and registers on every platform. The desktop backend wraps
 //! the secret with a key that only the platform's biometry can use and keeps the wrapped blob in a
 //! private file in the app data directory (the same one as the database); on macOS that is Touch ID
-//! through a Secure Enclave key. Until the Windows native lands, and on Linux, every call returns
-//! [`KeychainError::Unsupported`]. The desktop webview is not granted any of the plugin's
-//! permissions: it reaches biometrics only through the app's commands.
+//! through a Secure Enclave key, on Windows it is Windows Hello through a `KeyCredentialManager`
+//! credential. On Linux every call returns [`KeychainError::Unsupported`]. The desktop webview is
+//! not granted any of the plugin's permissions: it reaches biometrics only through the app's
+//! commands.
 
 use tauri::{
     plugin::{Builder, TauriPlugin},

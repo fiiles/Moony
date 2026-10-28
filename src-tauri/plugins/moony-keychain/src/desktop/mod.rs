@@ -1,13 +1,18 @@
 //! The desktop keychain: the master key is wrapped by a platform native that only the biometry can
 //! unlock, and the wrapped blob is kept in a private file next to the database ([`blob_file`]).
 //!
-//! The platform natives plug in through [`NativeBiometrics`]: Touch ID on macOS ([`macos`]). Until
-//! the Windows backend lands (and on Linux, which has no biometric unlock), every call is
-//! [`KeychainError::Unsupported`] and the desktop keeps its password-only unlock.
+//! The platform natives plug in through [`NativeBiometrics`]: Touch ID on macOS ([`macos`]) and
+//! Windows Hello on Windows ([`windows`], wrapping with [`hello_wrap`]). On Linux, which has no
+//! biometric unlock, every call is [`KeychainError::Unsupported`] and the desktop keeps its
+//! password-only unlock.
 
 mod blob_file;
+#[cfg(any(target_os = "windows", test))]
+mod hello_wrap;
 #[cfg(target_os = "macos")]
 mod macos;
+#[cfg(target_os = "windows")]
+mod windows;
 
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
@@ -53,15 +58,17 @@ impl NativeBiometrics for UnsupportedNative {
 }
 
 /// The seam where a platform plugs in its native per `target_os`. The app identifier is passed
-/// along because the Windows native names its credential after it; the data directory is for
-/// natives that keep extra files next to the blob (the macOS one keeps none).
+/// along because the Windows native names its Hello credential after it; the data directory is for
+/// natives that keep extra files next to the blob (neither the macOS nor the Windows one does).
 fn platform_native(
-    _app_identifier: &str,
+    #[cfg_attr(not(target_os = "windows"), allow(unused_variables))] app_identifier: &str,
     _data_dir: &Path,
 ) -> Box<dyn NativeBiometrics + Send + Sync> {
     #[cfg(target_os = "macos")]
     let native = Box::new(macos::MacNative);
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(target_os = "windows")]
+    let native = Box::new(windows::WinNative::new(app_identifier));
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     let native = Box::new(UnsupportedNative);
     native
 }
@@ -70,17 +77,16 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
     app: &AppHandle<R>,
     _api: PluginApi<R, C>,
 ) -> Keychain<R> {
-    let identifier = app.config().identifier.clone();
     match app.path().app_data_dir() {
         Ok(data_dir) => {
-            let native = platform_native(&identifier, &data_dir);
-            Keychain::new(data_dir, identifier, native)
+            let native = platform_native(&app.config().identifier, &data_dir);
+            Keychain::new(data_dir, native)
         }
         Err(error) => {
             // Plugin setup must never fail the whole app over biometrics: without a data
             // directory there is nowhere to keep the blob, so biometrics are simply unsupported.
             log::warn!("biometric unlock disabled, the app data directory is unavailable: {error}");
-            Keychain::new(PathBuf::new(), identifier, Box::new(UnsupportedNative))
+            Keychain::new(PathBuf::new(), Box::new(UnsupportedNative))
         }
     }
 }
@@ -90,23 +96,14 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
 pub struct Keychain<R: Runtime> {
     /// The app data directory, the same one the database lives in.
     data_dir: PathBuf,
-    /// The app identifier. Only the Windows native (it names its credential after it) will use it,
-    /// so it is dead code on the other platforms until then.
-    #[allow(dead_code)]
-    app_identifier: String,
     native: Box<dyn NativeBiometrics + Send + Sync>,
     _runtime: PhantomData<fn() -> R>,
 }
 
 impl<R: Runtime> Keychain<R> {
-    fn new(
-        data_dir: PathBuf,
-        app_identifier: String,
-        native: Box<dyn NativeBiometrics + Send + Sync>,
-    ) -> Self {
+    fn new(data_dir: PathBuf, native: Box<dyn NativeBiometrics + Send + Sync>) -> Self {
         Self {
             data_dir,
-            app_identifier,
             native,
             _runtime: PhantomData,
         }
@@ -205,11 +202,7 @@ mod tests {
     }
 
     fn keychain(dir: &Path) -> Keychain<tauri::Wry> {
-        Keychain::new(
-            dir.to_path_buf(),
-            "test.app".to_string(),
-            Box::new(FakeNative),
-        )
+        Keychain::new(dir.to_path_buf(), Box::new(FakeNative))
     }
 
     #[test]
@@ -328,11 +321,8 @@ mod tests {
     #[test]
     fn a_keychain_on_the_unsupported_native_never_stores() {
         let dir = tempfile::tempdir().expect("tempdir");
-        let keychain = Keychain::<tauri::Wry>::new(
-            dir.path().to_path_buf(),
-            "test.app".to_string(),
-            Box::new(UnsupportedNative),
-        );
+        let keychain =
+            Keychain::<tauri::Wry>::new(dir.path().to_path_buf(), Box::new(UnsupportedNative));
         assert_eq!(
             keychain.store(KEY, SECRET_HEX, "reason"),
             Err(KeychainError::Unsupported)

@@ -1,6 +1,6 @@
 # Desktop biometric unlock (Touch ID, Windows Hello) — design
 
-Date: 2026-10-28. Status: draft for owner approval (owner questions answered).
+Date: 2026-10-28. Status: approved 2026-10-28, implemented on feat/desktop-biometric.
 
 ## Intent
 

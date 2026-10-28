@@ -214,5 +214,28 @@
     "manualCheck": "Comprobación manual"
   },
   "eyebrow": "Aplicación",
-  "status": "Base de datos cifrada · {{size}} en disco"
+  "status": "Base de datos cifrada · {{size}} en disco",
+  "biometricUnlock": {
+    "title": {
+      "touchId": "Touch ID",
+      "windowsHello": "Windows Hello",
+      "generic": "Biometría"
+    },
+    "description": "Desbloquea sin escribir la contraseña, solo en este ordenador. Tu contraseña sigue siendo la clave maestra y sigue funcionando.",
+    "label": {
+      "touchId": "Desbloquear con la huella",
+      "windowsHello": "Desbloquear con Windows Hello",
+      "generic": "Desbloquear con biometría"
+    },
+    "hint": {
+      "touchId": "Abre Moony bloqueado con solo apoyar el dedo.",
+      "windowsHello": "Abre Moony bloqueado con Windows Hello.",
+      "generic": "Abre Moony bloqueado con biometría."
+    },
+    "unavailable": {
+      "touchId": "Este Mac no tiene Touch ID o no tiene ninguna huella añadida.",
+      "windowsHello": "Windows Hello no está configurado. Configúralo en Configuración de Windows → Cuentas → Opciones de inicio de sesión.",
+      "generic": "La biometría no está disponible en este ordenador."
+    }
+  }
 }

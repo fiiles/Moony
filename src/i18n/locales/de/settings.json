@@ -211,5 +211,28 @@
     "manualCheck": "Manuelle Prüfung"
   },
   "eyebrow": "Anwendung",
-  "status": "Datenbank verschlüsselt · {{size}} auf dem Datenträger"
+  "status": "Datenbank verschlüsselt · {{size}} auf dem Datenträger",
+  "biometricUnlock": {
+    "title": {
+      "touchId": "Touch ID",
+      "windowsHello": "Windows Hello",
+      "generic": "Biometrie"
+    },
+    "description": "Entsperren ohne Passworteingabe, nur auf diesem Computer. Ihr Passwort bleibt der Hauptschlüssel und funktioniert weiterhin.",
+    "label": {
+      "touchId": "Mit Fingerabdruck entsperren",
+      "windowsHello": "Mit Windows Hello entsperren",
+      "generic": "Biometrisch entsperren"
+    },
+    "hint": {
+      "touchId": "Öffnen Sie das gesperrte Moony mit Ihrem Finger.",
+      "windowsHello": "Öffnen Sie das gesperrte Moony mit Windows Hello.",
+      "generic": "Öffnen Sie das gesperrte Moony biometrisch."
+    },
+    "unavailable": {
+      "touchId": "Dieser Mac hat kein Touch ID, oder es ist kein Fingerabdruck hinzugefügt.",
+      "windowsHello": "Windows Hello ist nicht eingerichtet. Richten Sie es unter Windows-Einstellungen → Konten → Anmeldeoptionen ein.",
+      "generic": "Auf diesem Computer ist keine Biometrie verfügbar."
+    }
+  }
 }

@@ -55,7 +55,10 @@ type AuthContextType = {
     }
   >;
   unlockMutation: UseMutationResult<UserProfile, Error, { password: string }>;
-  /** Phone only: unlock with the key stored behind biometry; the variable is the prompt text. */
+  /**
+   * Phones and the desktop (macOS, Windows): unlock with the key stored behind biometry; the
+   * variable is the prompt text.
+   */
   unlockWithBiometricsMutation: UseMutationResult<UserProfile, Error, string>;
   lockMutation: UseMutationResult<void, Error, void>;
   recoverMutation: UseMutationResult<
@@ -265,7 +268,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     onError: toastUnlockFailure,
   });
 
-  // Phone: unlock with the master key stored behind biometry (it never reaches the webview)
+  // Phones and the desktop: unlock with the master key stored behind Face ID / Touch ID /
+  // Windows Hello (it never reaches the webview); the same follow-ups as a password unlock
   const unlockWithBiometricsMutation = useMutation({
     mutationFn: (reason: string) => biometricApi.unlock(reason),
     onSuccess: finishUnlock,

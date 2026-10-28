@@ -219,6 +219,15 @@ describe('desktopBiometryLabel', () => {
     expect(desktopBiometryLabel('biometric')).toBe('generic');
     expect(desktopBiometryLabel('none')).toBe('generic');
   });
+
+  it('names the platform when the machine reports no usable biometry', () => {
+    // A Mac without a usable sensor reports `none`; its row still talks about Touch ID.
+    expect(desktopBiometryLabel('none', 'darwin')).toBe('touchId');
+    expect(desktopBiometryLabel('none', 'windows')).toBe('windowsHello');
+    expect(desktopBiometryLabel('none', 'linux')).toBe('generic');
+    // A type the machine names wins over the platform.
+    expect(desktopBiometryLabel('windowsHello', 'darwin')).toBe('windowsHello');
+  });
 });
 
 describe('shouldAutoPromptDesktop', () => {

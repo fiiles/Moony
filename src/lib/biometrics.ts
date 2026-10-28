@@ -185,9 +185,16 @@ export function biometricSettingState(status: BiometricStatus | undefined): Biom
 /** Which name the desktop's copy uses; Face ID and the rest share the generic wording. */
 export type DesktopBiometryLabel = 'touchId' | 'windowsHello' | 'generic';
 
-export function desktopBiometryLabel(type: BiometryType): DesktopBiometryLabel {
+/**
+ * `platform` is `TAURI_ENV_PLATFORM` (`darwin`, `windows`, ...). It names the method when the
+ * machine names none: a Mac without a usable sensor reports `none`, and its settings row still
+ * says why Touch ID cannot be used rather than talking about biometrics in general.
+ */
+export function desktopBiometryLabel(type: BiometryType, platform = ''): DesktopBiometryLabel {
   if (type === 'touchId') return 'touchId';
   if (type === 'windowsHello') return 'windowsHello';
+  if (platform === 'darwin') return 'touchId';
+  if (platform === 'windows') return 'windowsHello';
   return 'generic';
 }
 

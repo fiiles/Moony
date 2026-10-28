@@ -208,5 +208,28 @@
     "manualCheck": "手动检查"
   },
   "eyebrow": "应用",
-  "status": "数据库已加密 · 占用磁盘 {{size}}"
+  "status": "数据库已加密 · 占用磁盘 {{size}}",
+  "biometricUnlock": {
+    "title": {
+      "touchId": "Touch ID",
+      "windowsHello": "Windows Hello",
+      "generic": "生物识别"
+    },
+    "description": "无需输入密码即可解锁，仅限这台电脑。密码仍是主密钥，照常可用。",
+    "label": {
+      "touchId": "使用指纹解锁",
+      "windowsHello": "使用 Windows Hello 解锁",
+      "generic": "使用生物识别解锁"
+    },
+    "hint": {
+      "touchId": "将手指放在传感器上即可打开已锁定的 Moony。",
+      "windowsHello": "使用 Windows Hello 打开已锁定的 Moony。",
+      "generic": "使用生物识别打开已锁定的 Moony。"
+    },
+    "unavailable": {
+      "touchId": "这台 Mac 没有 Touch ID，或尚未添加指纹。",
+      "windowsHello": "尚未设置 Windows Hello。请在 Windows 设置 → 帐户 → 登录选项中设置。",
+      "generic": "这台电脑无法使用生物识别。"
+    }
+  }
 }

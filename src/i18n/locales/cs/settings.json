@@ -215,5 +215,28 @@
     "manualCheck": "Ruční kontrola"
   },
   "eyebrow": "Aplikace",
-  "status": "Databáze zašifrována · {{size}} na disku"
+  "status": "Databáze zašifrována · {{size}} na disku",
+  "biometricUnlock": {
+    "title": {
+      "touchId": "Touch ID",
+      "windowsHello": "Windows Hello",
+      "generic": "Biometrie"
+    },
+    "description": "Odemknutí bez psaní hesla, jen na tomto počítači. Heslo zůstává hlavním klíčem a funguje dál.",
+    "label": {
+      "touchId": "Odemykat otiskem prstu",
+      "windowsHello": "Odemykat přes Windows Hello",
+      "generic": "Odemykat biometrií"
+    },
+    "hint": {
+      "touchId": "Zamčené Moony otevřete přiložením prstu.",
+      "windowsHello": "Zamčené Moony otevřete přes Windows Hello.",
+      "generic": "Zamčené Moony otevřete biometrií."
+    },
+    "unavailable": {
+      "touchId": "Tento Mac nemá Touch ID nebo v něm není přidaný otisk.",
+      "windowsHello": "Windows Hello není nastavené. Nastavíte ho v Nastavení Windows → Účty → Možnosti přihlášení.",
+      "generic": "Na tomto počítači není biometrie k dispozici."
+    }
+  }
 }

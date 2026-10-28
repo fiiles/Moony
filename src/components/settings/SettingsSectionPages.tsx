@@ -8,6 +8,7 @@ import { MilestoneSettingsCard } from '@/components/settings/MilestoneSettingsCa
 import { MenuVisibilityCard } from '@/components/settings/MenuVisibilityCard';
 import { ChangePasswordCard } from '@/components/settings/ChangePasswordCard';
 import { AutoLockSlot } from '@/components/settings/AutoLockSlot';
+import { BiometricUnlockCard } from '@/components/settings/BiometricUnlockCard';
 import { UpdatesCard } from '@/components/settings/UpdatesCard';
 import { McpServerCard } from '@/components/settings/McpServerCard';
 import { RulePacksCard } from '@/components/settings/RulePacksCard';
@@ -34,6 +35,7 @@ export function SecuritySection() {
     <>
       <ChangePasswordCard />
       <AutoLockSlot />
+      <BiometricUnlockCard />
       <UpdatesCard />
     </>
   );

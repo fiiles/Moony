@@ -199,3 +199,17 @@ export function desktopBiometryLabel(type: BiometryType, platform = ''): Desktop
   if (platform === 'windows') return 'windowsHello';
   return 'generic';
 }
+
+/**
+ * The desktop lock screen opens the system prompt by itself only when the app has just started
+ * (no lock happened in this session: `lockMutation.submittedAt` is 0), once, and only for a window
+ * the person is looking at. After a lock, manual or idle, it stays quiet until the button is
+ * pressed (owner, 2026-10-28).
+ */
+export function shouldPromptOnLaunch(input: {
+  lockEvent: number;
+  alreadyPrompted: boolean;
+  focused: boolean;
+}): boolean {
+  return input.lockEvent === 0 && !input.alreadyPrompted && input.focused;
+}

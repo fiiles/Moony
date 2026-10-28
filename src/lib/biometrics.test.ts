@@ -14,6 +14,7 @@ import {
   markEnrolmentAsked,
   shouldAutoPrompt,
   shouldOfferEnrolment,
+  shouldPromptOnLaunch,
   wasEnrolmentAsked,
 } from './biometrics';
 
@@ -234,5 +235,22 @@ describe('desktopBiometryLabel', () => {
 describe('an invalidated key never re-offers the enrolment', () => {
   it('stays quiet once the offer was answered: the desktop clears the flag only after delete_account', () => {
     expect(shouldOfferEnrolment(status({ available: true, enrolled: false }), true)).toBe(false);
+  });
+});
+
+describe('shouldPromptOnLaunch', () => {
+  const launch = { lockEvent: 0, alreadyPrompted: false, focused: true };
+
+  it('prompts once when the app starts with the window in front', () => {
+    expect(shouldPromptOnLaunch(launch)).toBe(true);
+    expect(shouldPromptOnLaunch({ ...launch, alreadyPrompted: true })).toBe(false);
+  });
+
+  it('never prompts after a lock, manual or idle', () => {
+    expect(shouldPromptOnLaunch({ ...launch, lockEvent: 1_000 })).toBe(false);
+  });
+
+  it('waits while the window is in the background', () => {
+    expect(shouldPromptOnLaunch({ ...launch, focused: false })).toBe(false);
   });
 });

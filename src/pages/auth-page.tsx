@@ -30,6 +30,7 @@ import {
   biometricFailure,
   biometricNotice,
   canUnlockWithBiometrics,
+  shouldPromptOnLaunch,
 } from '@/lib/biometrics';
 import { isSupportedLanguage, type SupportedLanguage } from '@/i18n/index';
 import { Button } from '@/components/ui/button';
@@ -57,6 +58,12 @@ import { RestoreBackup } from '@/components/common/RestoreBackup';
 
 type Panel = 'unlock' | 'recover' | 'newKey';
 
+/**
+ * The launch prompt already opened in this run of the app. Module-level, so a lock page that
+ * mounts again before the first unlock does not prompt twice, even after a cancel.
+ */
+let launchPrompted = false;
+
 function readStorage(key: string): string | null {
   try {
     return localStorage.getItem(key);
@@ -71,6 +78,7 @@ export default function AuthPage() {
     appStatus,
     unlockMutation,
     unlockWithBiometricsMutation,
+    lockMutation,
     recoverMutation,
     confirmRecoveryMutation,
     recoveryKey,
@@ -146,8 +154,6 @@ export default function AuthPage() {
 
   const { mutate: unlockWithBiometrics } = unlockWithBiometricsMutation;
   const { setFocus: focusUnlockField } = unlockForm;
-  // The system prompt opens only from the button, never by itself: locking the app must leave it
-  // locked and quiet until the person asks to unlock (owner, 2026-10-28).
   const promptBiometrics = useCallback(() => {
     setBiometricMessage(null);
     unlockWithBiometrics(t('biometric.reason'), {
@@ -171,6 +177,29 @@ export default function AuthPage() {
       },
     });
   }, [unlockWithBiometrics, t, tc, biometryLabel, focusUnlockField]);
+
+  // The prompt opens by itself only when the app has just started, once, and only for a window in
+  // front (a background one waits for its first focus). After a lock, manual or idle, the screen
+  // stays quiet until the button is pressed (owner, 2026-10-28).
+  const lockEvent = lockMutation.submittedAt;
+  const launchPromptAllowed =
+    biometricReady && panel === 'unlock' && !recoveryKey && !unlockPending;
+  useEffect(() => {
+    if (!launchPromptAllowed) return;
+    const promptIfDue = () => {
+      const due = shouldPromptOnLaunch({
+        lockEvent,
+        alreadyPrompted: launchPrompted,
+        focused: document.hasFocus(),
+      });
+      if (!due) return;
+      launchPrompted = true;
+      promptBiometrics();
+    };
+    promptIfDue();
+    window.addEventListener('focus', promptIfDue);
+    return () => window.removeEventListener('focus', promptIfDue);
+  }, [launchPromptAllowed, lockEvent, promptBiometrics]);
 
   // Credential failures are shown inline under the field; the provider only toasts the rest.
   const submitUnlock = (data: z.infer<typeof unlockSchema>) => {

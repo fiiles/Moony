@@ -1,7 +1,8 @@
 /**
- * Biometric unlock on the phone (spec §8.1, §8.2): the pure decisions behind the lock screen's
- * Face ID / Touch ID path and the one-time "Odemykat Moony obličejem?" sheet. The commands live in
- * `biometricApi` (`src/lib/tauri-api.ts`); the master key never reaches the webview.
+ * Biometric unlock on the phone and the desktop (spec §8.1, §8.2): the pure decisions behind the
+ * lock screen's Face ID / Touch ID / Windows Hello path and the one-time enrolment offer. The
+ * commands live in `biometricApi` (`src/lib/tauri-api.ts`); the master key never reaches the
+ * webview.
  */
 import type { BiometricStatus, BiometryType } from '@shared/schema';
 
@@ -17,6 +18,7 @@ export type BiometryKind = 'face' | 'touch' | 'generic';
 export function biometryKind(type: BiometryType): BiometryKind {
   if (type === 'faceId') return 'face';
   if (type === 'touchId') return 'touch';
+  // Windows Hello is desktop-only; the phone has no copy of its own for it.
   return 'generic';
 }
 
@@ -55,9 +57,11 @@ export function biometricCopy(type: BiometryType): BiometricCopy {
  * The lock screen offers "Odemknout obličejem" whenever biometric unlock is switched on, usable
  * or not: with nothing enrolled any more (or locked out) the keychain answers at once, without a
  * prompt, and the screen falls back to the password with the reason (invalidated or failed).
+ * Never where the platform has no biometric unlock at all (Linux): a marker saying "on" there has
+ * no backend to answer it.
  */
 export function canUnlockWithBiometrics(status: BiometricStatus | undefined): boolean {
-  return status !== undefined && status.enrolled;
+  return status !== undefined && status.supported && status.enrolled;
 }
 
 /** The enrolment sheet after a password unlock: usable, not yet on, and never asked before. */
@@ -164,4 +168,48 @@ export function biometricNotice(failure: BiometricFailure, authError: boolean): 
  */
 export function shouldAutoPrompt(lockEvent: number, lastPrompted: number | null): boolean {
   return lastPrompted !== lockEvent;
+}
+
+/**
+ * The desktop's security setting: `hidden` where the platform has no biometric unlock at all
+ * (Linux, or the status has not arrived), `unavailable` when this machine has nothing usable and
+ * the unlock is off (the row explains why), `ready` otherwise. An unlock that is on stays `ready`
+ * even when biometrics stopped being usable, so the person can still switch it off.
+ */
+export type BiometricSettingState = 'hidden' | 'unavailable' | 'ready';
+
+export function biometricSettingState(status: BiometricStatus | undefined): BiometricSettingState {
+  if (status === undefined || !status.supported) return 'hidden';
+  if (!status.available && !status.enrolled) return 'unavailable';
+  return 'ready';
+}
+
+/** Which name the desktop's copy uses; Face ID and the rest share the generic wording. */
+export type DesktopBiometryLabel = 'touchId' | 'windowsHello' | 'generic';
+
+/**
+ * `platform` is `TAURI_ENV_PLATFORM` (`darwin`, `windows`, ...). It names the method when the
+ * machine names none: a Mac without a usable sensor reports `none`, and its settings row still
+ * says why Touch ID cannot be used rather than talking about biometrics in general.
+ */
+export function desktopBiometryLabel(type: BiometryType, platform = ''): DesktopBiometryLabel {
+  if (type === 'touchId') return 'touchId';
+  if (type === 'windowsHello') return 'windowsHello';
+  if (platform === 'darwin') return 'touchId';
+  if (platform === 'windows') return 'windowsHello';
+  return 'generic';
+}
+
+/**
+ * The desktop lock screen opens the system prompt by itself only when the app has just started
+ * (no lock happened in this session: `lockMutation.submittedAt` is 0), once, and only for a window
+ * the person is looking at. After a lock, manual or idle, it stays quiet until the button is
+ * pressed (owner, 2026-10-28).
+ */
+export function shouldPromptOnLaunch(input: {
+  lockEvent: number;
+  alreadyPrompted: boolean;
+  focused: boolean;
+}): boolean {
+  return input.lockEvent === 0 && !input.alreadyPrompted && input.focused;
 }

@@ -32,7 +32,7 @@ import { useBack } from '@/mobile/hooks/use-back';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useNotificationPermission } from '@/mobile/hooks/use-notification-permission';
 import { readBackgroundLockMinutes } from '@/mobile/lib/background-lock';
-import { BIOMETRIC_STATUS_KEY } from '@/mobile/lib/biometrics';
+import { BIOMETRIC_STATUS_KEY } from '@/lib/biometrics';
 import { readHideAmountsOnLaunch } from '@/mobile/lib/hide-amounts';
 import { renderTextRef, securitySummary } from '@/mobile/lib/settings-summary';
 import { NavTextButton } from '@/mobile/shell/NavBar';

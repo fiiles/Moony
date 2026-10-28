@@ -6,7 +6,7 @@ import { deviceStorage } from '@/utils/device-storage';
 import { BiometryIcon } from '@/mobile/components/BiometryIcon';
 import { useBiometricEnrolment } from '@/mobile/hooks/use-biometric-enrolment';
 import type { FirstRunFlow } from '@/mobile/hooks/use-first-run';
-import { BIOMETRIC_STATUS_KEY, biometricCopy, markEnrolmentAsked } from '@/mobile/lib/biometrics';
+import { BIOMETRIC_STATUS_KEY, biometricCopy, markEnrolmentAsked } from '@/lib/biometrics';
 import { StepHead } from './StepHead';
 import { primaryButton, textLink } from './styles';
 

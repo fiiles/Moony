@@ -214,5 +214,28 @@
     "manualCheck": "Controllo manuale"
   },
   "eyebrow": "Applicazione",
-  "status": "Database cifrato · {{size}} su disco"
+  "status": "Database cifrato · {{size}} su disco",
+  "biometricUnlock": {
+    "title": {
+      "touchId": "Touch ID",
+      "windowsHello": "Windows Hello",
+      "generic": "Biometria"
+    },
+    "description": "Sblocca senza digitare la password, solo su questo computer. La password resta la chiave principale e continua a funzionare.",
+    "label": {
+      "touchId": "Sblocca con l'impronta",
+      "windowsHello": "Sblocca con Windows Hello",
+      "generic": "Sblocca con la biometria"
+    },
+    "hint": {
+      "touchId": "Apri Moony bloccato appoggiando il dito.",
+      "windowsHello": "Apri Moony bloccato con Windows Hello.",
+      "generic": "Apri Moony bloccato con la biometria."
+    },
+    "unavailable": {
+      "touchId": "Questo Mac non ha Touch ID o non ha impronte aggiunte.",
+      "windowsHello": "Windows Hello non è configurato. Configuralo in Impostazioni di Windows → Account → Opzioni di accesso.",
+      "generic": "La biometria non è disponibile su questo computer."
+    }
+  }
 }

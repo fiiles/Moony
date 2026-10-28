@@ -181,7 +181,12 @@ enrolled: boolean; biometryType: BiometryType;
  * Why biometrics are not available, as an i18n key (`mobile:biometrics.unavailable`);
  * `None` while they are.
  */
-reason: string | null }
+reason: string | null; 
+/**
+ * This platform has biometric unlock at all. `false` where the keychain plugin is not built
+ * in (Linux), so the UI hides the setting instead of showing one that can never work.
+ */
+supported: boolean }
 
 /**
  * Which biometry the phone offers, for the unlock button's icon and wording. Mirrors the
@@ -195,7 +200,11 @@ export type BiometryType = "faceId" |
 /**
  * Any other biometry (Optic ID, or an Android device with several sensors).
  */
-"biometric" | "none"
+"biometric" | 
+/**
+ * Windows Hello on the desktop (face, fingerprint or PIN, whichever the person set up).
+ */
+"windowsHello" | "none"
 
 /**
  * Bond holding

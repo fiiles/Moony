@@ -17,9 +17,43 @@ name = "moony_keychain"
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
+# Desktop backend: the secret travels as a fixed 32-byte array that is wiped on drop, and as hex.
+zeroize = "1"
+hex = "0.4"
+log = "0.4"
+
+# macOS backend: the Swift package in `macos/` (CryptoKit, LocalAuthentication) is called through
+# swift-rs, whose build feature compiles and links it (`build.rs`).
+[target.'cfg(target_os = "macos")'.dependencies]
+swift-rs = "1.0.9"
+
+# Windows backend: Windows Hello through KeyCredentialManager (WinRT) and the window calls that
+# bring its dialog to the front (`windows`, the major version tauri pulls in, so one copy builds),
+# and the wrap in `desktop/hello_wrap.rs`, which stretches the Hello signature with HKDF-SHA256
+# into the AES-256-GCM key (the app's versions). The wrap is pure, so it is also compiled and
+# tested on every platform: the same crates are dev-dependencies below.
+[target.'cfg(target_os = "windows")'.dependencies]
+aes-gcm = "0.11"
+hkdf = "0.13"
+sha2 = { version = "0.11", default-features = false }
+rand = "0.10"
+windows = { version = "0.62", features = [
+    "Foundation",
+    "Security_Credentials",
+    "Security_Cryptography",
+    "Storage_Streams",
+    "Win32_Foundation",
+    "Win32_UI_WindowsAndMessaging",
+] }
 
 [dev-dependencies]
+aes-gcm = "0.11"
+hkdf = "0.13"
+sha2 = { version = "0.11", default-features = false }
+rand = "0.10"
 serde_json = "1"
+tempfile = "3"
 
 [build-dependencies]
 tauri-plugin = { version = "2", features = ["build"] }
+swift-rs = { version = "1.0.9", features = ["build"] }

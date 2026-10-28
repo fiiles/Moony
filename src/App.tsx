@@ -7,6 +7,7 @@ import { AppShell } from '@/components/shell/AppShell';
 import NotFound from '@/pages/not-found';
 import Dashboard from '@/pages/Dashboard';
 import AuthPage from '@/pages/auth-page';
+import { EnableBiometricsDialog } from '@/components/auth/EnableBiometricsDialog';
 import Stocks from '@/pages/Stocks';
 import StockDetail from '@/pages/StockDetail';
 import StockMonitor from '@/pages/StockMonitor';
@@ -94,6 +95,7 @@ function AppLayout() {
   return (
     <>
       <UpdateNotification />
+      <EnableBiometricsDialog />
       <AppShell>
         <Router />
       </AppShell>

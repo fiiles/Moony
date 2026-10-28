@@ -6,6 +6,24 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Touch ID and Windows Hello unlock.** On a Mac or a Windows PC you can open Moony with your
+  fingerprint instead of typing the password, at start and after auto-lock. Moony offers it once
+  after a password unlock and never asks again; the switch lives in Settings → Security. The
+  password always keeps working. The key is kept in a file that only this computer's Secure
+  Enclave (Mac) or Windows Hello can open, and it is not part of backups or exports. Windows Hello
+  also accepts your Hello PIN. A changed fingerprint set on a Mac switches Touch ID unlock off
+  until you turn it on again. Linux has no biometric unlock.
+
+### Changed
+
+- **macOS 10.15 or newer is required.** Touch ID unlock uses system features that older macOS
+  versions lack, so macOS 10.13 and 10.14 are no longer supported.
+- While Moony is unlocked on macOS and Windows, the encryption key now stays in memory for the whole
+  session (the open database already needed it there), so switching on biometric unlock does not
+  ask for the password again.
+
 ## [1.1.0] - 2026-10-25
 
 ### Added

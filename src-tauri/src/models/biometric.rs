@@ -16,6 +16,9 @@ pub enum BiometryType {
     /// Any other biometry (Optic ID, or an Android device with several sensors).
     #[serde(rename = "biometric")]
     Biometric,
+    /// Windows Hello on the desktop (face, fingerprint or PIN, whichever the person set up).
+    #[serde(rename = "windowsHello")]
+    WindowsHello,
     #[serde(rename = "none")]
     None,
 }
@@ -35,4 +38,8 @@ pub struct BiometricStatus {
     /// `None` while they are.
     #[serde(rename = "reason")]
     pub reason: Option<String>,
+    /// This platform has biometric unlock at all. `false` where the keychain plugin is not built
+    /// in (Linux), so the UI hides the setting instead of showing one that can never work.
+    #[serde(rename = "supported")]
+    pub supported: bool,
 }

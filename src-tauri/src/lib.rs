@@ -151,15 +151,18 @@ async fn run_app() {
             .plugin(tauri_plugin_process::init());
     }
 
-    // Phone-only hardware: haptic feedback, local notifications, and the keychain (biometric
-    // unlock: the DB key behind biometry; privacy screen on from launch).
+    // The keychain (biometric unlock: the DB key behind biometry) is on every platform; the phone
+    // also gets the privacy screen from launch. The desktop webview is not granted its permissions
+    // (`capabilities/default.json`): it reaches biometrics only through the app's own commands.
+    builder = builder.plugin(moony_keychain::init());
+
+    // Phone-only hardware: haptic feedback and local notifications.
     #[cfg(mobile)]
     {
         builder = builder
             .plugin(tauri_plugin_haptics::init())
             // The phone's reminder notifications (Nastavení → Oznámení) are scheduled through it.
             .plugin(tauri_plugin_notification::init())
-            .plugin(moony_keychain::init())
             // The files the system opened in Moony, until the webview asks for them (a cold start
             // from the share sheet delivers them before the webview listens).
             .manage(services::received_files::ReceivedFiles::default());
@@ -266,14 +269,10 @@ async fn run_app() {
             commands::auth::get_mcp_server_token,
             commands::auth::set_mcp_server_port,
             commands::auth::regenerate_mcp_token,
-            // Biometric unlock on the phone (services::biometric_unlock)
-            #[cfg(mobile)]
+            // Biometric unlock (services::biometric_unlock): phone and desktop
             commands::biometric::biometric_unlock_status,
-            #[cfg(mobile)]
             commands::biometric::enable_biometric_unlock,
-            #[cfg(mobile)]
             commands::biometric::disable_biometric_unlock,
-            #[cfg(mobile)]
             commands::biometric::unlock_with_biometrics,
             // Investment commands
             commands::investments::get_all_investments,

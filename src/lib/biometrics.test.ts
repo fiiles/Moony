@@ -5,18 +5,28 @@ import {
   biometricCopy,
   biometricFailure,
   biometricNotice,
+  biometricSettingState,
   biometryKind,
   canUnlockWithBiometrics,
   clearEnrolmentAsked,
+  desktopBiometryLabel,
   enrolmentOfferOpen,
   markEnrolmentAsked,
   shouldAutoPrompt,
   shouldOfferEnrolment,
+  shouldPromptOnLaunch,
   wasEnrolmentAsked,
 } from './biometrics';
 
 function status(patch: Partial<BiometricStatus> = {}): BiometricStatus {
-  return { available: true, enrolled: false, biometryType: 'faceId', reason: null, ...patch };
+  return {
+    available: true,
+    enrolled: false,
+    biometryType: 'faceId',
+    reason: null,
+    supported: true,
+    ...patch,
+  };
 }
 
 /** A Map behind the Storage methods the helpers use. */
@@ -46,6 +56,7 @@ describe('biometryKind and biometricCopy', () => {
     expect(biometryKind('faceId')).toBe('face');
     expect(biometryKind('touchId')).toBe('touch');
     expect(biometryKind('biometric')).toBe('generic');
+    expect(biometryKind('windowsHello')).toBe('generic');
     expect(biometryKind('none')).toBe('generic');
   });
 
@@ -67,6 +78,8 @@ describe('canUnlockWithBiometrics', () => {
     expect(canUnlockWithBiometrics(status({ enrolled: true, available: false }))).toBe(true);
     expect(canUnlockWithBiometrics(status({ enrolled: false }))).toBe(false);
     expect(canUnlockWithBiometrics(undefined)).toBe(false);
+    // Switched on where the platform has no biometric unlock (Linux): there is nothing to ask.
+    expect(canUnlockWithBiometrics(status({ enrolled: true, supported: false }))).toBe(false);
   });
 });
 
@@ -174,5 +187,70 @@ describe('shouldAutoPrompt', () => {
     expect(shouldAutoPrompt(2_000, 1_000)).toBe(true);
     // the first lock of a cold start has no lock submission behind it: key 0
     expect(shouldAutoPrompt(0, 0)).toBe(false);
+  });
+});
+
+describe('biometricSettingState', () => {
+  it('hides the setting without a status or on a platform without the feature', () => {
+    expect(biometricSettingState(undefined)).toBe('hidden');
+    expect(biometricSettingState(status({ supported: false }))).toBe('hidden');
+    expect(biometricSettingState(status({ supported: false, enrolled: true }))).toBe('hidden');
+  });
+
+  it('is unavailable when this machine has no usable biometrics and the unlock is off', () => {
+    expect(biometricSettingState(status({ available: false, enrolled: false }))).toBe(
+      'unavailable'
+    );
+  });
+
+  it('stays ready when it is on but no longer usable, so the person can switch it off', () => {
+    expect(biometricSettingState(status({ available: false, enrolled: true }))).toBe('ready');
+  });
+
+  it('is ready when biometrics are usable', () => {
+    expect(biometricSettingState(status())).toBe('ready');
+    expect(biometricSettingState(status({ enrolled: true }))).toBe('ready');
+  });
+});
+
+describe('desktopBiometryLabel', () => {
+  it('names Touch ID and Windows Hello, and falls back to the generic wording', () => {
+    expect(desktopBiometryLabel('touchId')).toBe('touchId');
+    expect(desktopBiometryLabel('windowsHello')).toBe('windowsHello');
+    expect(desktopBiometryLabel('faceId')).toBe('generic');
+    expect(desktopBiometryLabel('biometric')).toBe('generic');
+    expect(desktopBiometryLabel('none')).toBe('generic');
+  });
+
+  it('names the platform when the machine reports no usable biometry', () => {
+    // A Mac without a usable sensor reports `none`; its row still talks about Touch ID.
+    expect(desktopBiometryLabel('none', 'darwin')).toBe('touchId');
+    expect(desktopBiometryLabel('none', 'windows')).toBe('windowsHello');
+    expect(desktopBiometryLabel('none', 'linux')).toBe('generic');
+    // A type the machine names wins over the platform.
+    expect(desktopBiometryLabel('windowsHello', 'darwin')).toBe('windowsHello');
+  });
+});
+
+describe('an invalidated key never re-offers the enrolment', () => {
+  it('stays quiet once the offer was answered: the desktop clears the flag only after delete_account', () => {
+    expect(shouldOfferEnrolment(status({ available: true, enrolled: false }), true)).toBe(false);
+  });
+});
+
+describe('shouldPromptOnLaunch', () => {
+  const launch = { lockEvent: 0, alreadyPrompted: false, focused: true };
+
+  it('prompts once when the app starts with the window in front', () => {
+    expect(shouldPromptOnLaunch(launch)).toBe(true);
+    expect(shouldPromptOnLaunch({ ...launch, alreadyPrompted: true })).toBe(false);
+  });
+
+  it('never prompts after a lock, manual or idle', () => {
+    expect(shouldPromptOnLaunch({ ...launch, lockEvent: 1_000 })).toBe(false);
+  });
+
+  it('waits while the window is in the background', () => {
+    expect(shouldPromptOnLaunch({ ...launch, focused: false })).toBe(false);
   });
 });

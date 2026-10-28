@@ -177,23 +177,34 @@ pub async fn unlock(
 ) -> Result<UserProfile> {
     let db_path = get_db_path(&app)?;
     let profile = auth::unlock(&db, &session, db_path, &password)?;
-    // A key left in the phone keychain without the "on" marker (a reinstall) goes now.
-    #[cfg(mobile)]
+    // A key left in the keychain without the "on" marker (a reinstall) goes now.
     crate::commands::biometric::remove_leftover_key(&app).await;
+    after_unlock(&app, &db, &local_api, &profile).await;
+    Ok(profile)
+}
 
+/// What follows every unlock that opens the database, the password and the biometric one alike:
+/// the MCP server starts if the profile has it on, old plain attachment files move into the
+/// encrypted store, and the MCP refresh resumes. `confirm_recover` does not share it: it never
+/// started the MCP server, and this change leaves its behaviour alone.
+pub(crate) async fn after_unlock(
+    app: &AppHandle,
+    db: &Database,
+    local_api: &LocalApiServer,
+    profile: &UserProfile,
+) {
     // The MCP server is a desktop feature; a phone never opens a local port.
     #[cfg(desktop)]
     if profile.mcp_server_enabled && !local_api.is_running() {
-        if let Err(e) = local_api.start((*db).clone(), app.clone()).await {
+        if let Err(e) = local_api.start(db.clone(), app.clone()).await {
             log::error!("[local-api] MCP server failed to start on unlock: {}", e);
         }
     }
     #[cfg(mobile)]
-    let _ = &local_api;
+    let _ = (local_api, profile);
     // Plain attachment files from earlier versions move into the encrypted store (D4).
-    crate::commands::attachments::spawn_conversion(&app);
-    crate::commands::mcp_refresh::resume(app, (*db).clone());
-    Ok(profile)
+    crate::commands::attachments::spawn_conversion(app);
+    crate::commands::mcp_refresh::resume(app.clone(), db.clone());
 }
 
 /// Phase 1: Prepare recovery - verifies recovery key, generates new one
@@ -318,7 +329,6 @@ pub async fn delete_account(
     crate::commands::attachments::wipe_open_copies(&app);
     let deleted = auth::delete_account(&db, &session, &db_path);
     // The marker went with the account files, so the key stored for biometric unlock goes too.
-    #[cfg(mobile)]
     crate::commands::biometric::remove_leftover_key(&app).await;
     deleted
 }

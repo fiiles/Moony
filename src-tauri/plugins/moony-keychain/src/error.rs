@@ -19,7 +19,8 @@ pub enum KeychainError {
     /// Anything else, with the native side's message.
     #[error("keychain operation failed: {0}")]
     Failed(String),
-    /// The keychain exists on iOS and Android only.
+    /// No biometric store on this platform (Linux), or a phone-only call (the privacy screen,
+    /// backup exclusion) made on the desktop.
     #[error("the keychain is not supported on this platform")]
     Unsupported,
 }

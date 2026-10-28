@@ -57,7 +57,7 @@ import {
   canUnlockWithBiometrics,
   clearEnrolmentAsked,
   shouldAutoPrompt,
-} from '@/mobile/lib/biometrics';
+} from '@/lib/biometrics';
 import { whenVisible } from '@/mobile/lib/when-visible';
 import { FirstRun } from '@/mobile/pages/FirstRun';
 import { NavTextButton } from '@/mobile/shell/NavBar';

@@ -37,7 +37,7 @@ import {
   type ChangePasswordValues,
 } from '@/mobile/hooks/use-change-password';
 import { useExportTextFile } from '@/mobile/hooks/use-export-text-file';
-import { BIOMETRIC_STATUS_KEY } from '@/mobile/lib/biometrics';
+import { BIOMETRIC_STATUS_KEY } from '@/lib/biometrics';
 import { canConfirmChange } from '@/mobile/lib/change-password';
 import { changedRecoveryKeyFileName, exportsOnThisDevice } from '@/mobile/lib/export-file';
 import { passwordStrength } from '@/mobile/lib/password-strength';

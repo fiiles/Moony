@@ -217,5 +217,28 @@
     "manualCheck": "Sprawdzanie ręczne"
   },
   "eyebrow": "Aplikacja",
-  "status": "Baza danych zaszyfrowana · {{size}} na dysku"
+  "status": "Baza danych zaszyfrowana · {{size}} na dysku",
+  "biometricUnlock": {
+    "title": {
+      "touchId": "Touch ID",
+      "windowsHello": "Windows Hello",
+      "generic": "Biometria"
+    },
+    "description": "Odblokowanie bez wpisywania hasła, tylko na tym komputerze. Hasło pozostaje głównym kluczem i nadal działa.",
+    "label": {
+      "touchId": "Odblokowuj odciskiem palca",
+      "windowsHello": "Odblokowuj przez Windows Hello",
+      "generic": "Odblokowuj biometrią"
+    },
+    "hint": {
+      "touchId": "Zablokowane Moony otwiera się przyłożeniem palca.",
+      "windowsHello": "Zablokowane Moony otwiera się przez Windows Hello.",
+      "generic": "Zablokowane Moony otwiera się biometrią."
+    },
+    "unavailable": {
+      "touchId": "Ten Mac nie ma Touch ID albo nie dodano w nim odcisku palca.",
+      "windowsHello": "Windows Hello nie jest skonfigurowane. Można je skonfigurować w Ustawieniach systemu Windows → Konta → Opcje logowania.",
+      "generic": "Biometria nie jest dostępna na tym komputerze."
+    }
+  }
 }

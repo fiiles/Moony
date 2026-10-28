@@ -25,6 +25,16 @@ How the encryption key is handled:
   key derived from your **recovery key** (`recovery.enc`), both with scrypt and a shared
   `salt` file. Moony itself cannot read your data without one of the two.
 - While the app is unlocked the key lives in memory only. Locking the app closes the databases.
+- **Optional Touch ID / Windows Hello (macOS and Windows).** If you switch it on, Moony keeps a
+  third, device-bound copy of the master key so you can unlock with your fingerprint instead of
+  typing the password. On a Mac, the copy is a file (`moony.master-key.bin`) in the data folder that
+  only this Mac's Secure Enclave can open, and only after Touch ID. On Windows, it is a file that
+  only a Windows Hello signature (fingerprint, face or the Hello PIN) can open. The file is
+  useless without that gesture and on any other computer, and it is never part of a backup or the
+  data export. Switch it off in Settings → Security (this deletes the file and the key behind it)
+  or by deleting your data. The password always keeps working. Linux has no biometric unlock.
+  On macOS and Windows the key stays in memory for the whole unlocked session (the open database
+  already needs it), whether or not you switch on biometric unlock.
 - The app shows attachments only while it is unlocked; it reads them from `attachments.db` and
   never writes them to disk in readable form, except in the cases listed in the next section.
 
@@ -38,7 +48,7 @@ Be aware of these, because the "encrypted database" claim does not cover them:
 | Copies you save | Where you choose ("Save a copy…", "Download" in the photo gallery) | A readable copy, like any export. |
 | "Export all data (JSON)" | The file you choose | A plain-text JSON dump of your data (the MCP token is left out). Attachments are not part of it. Handle it like a bank statement. |
 | Attachments from 0.12 or earlier, briefly | `real_estate_photos/`, `real_estate_documents/`, `insurance_documents/` and then `attachments-converted/` in the data folder | Earlier versions kept attachments as plain files. The first unlock of a newer version moves them into `attachments.db` in the background; the originals wait in `attachments-converted/` until the next unlock checks the encrypted copies and deletes them. Plain files that no attachment uses any more (earlier versions left them behind when you deleted a property or a policy) go the same way. Copies the operating system kept (Time Machine, file-system snapshots) are not affected. Originals that sit outside the data folder (from before an identifier change) are encrypted but never deleted: Settings → Data and backups lists them so you can delete them yourself. |
-| Device settings | The operating system's WebView profile (`localStorage`) | The interface language, the theme (System, Light or Dark), auto-lock minutes, the update-check switch, which sidebar groups are open, dismissed tips, whether you have ever picked a payment's category yourself (it only decides when a tip about AI categorization is shown), whether you ticked "Don't ask again" on the one-time warning before a document opens in another app, the period, split and custom date range chosen in the stocks analysis, which cashflow-planning rows are expanded, the time the app was last locked, and your **first name** (it is shown in the greeting on the lock screen, which is displayed before the database is unlocked). No balances, amounts or account data. Delete Account clears them. |
+| Device settings | The operating system's WebView profile (`localStorage`) | The interface language, the theme (System, Light or Dark), auto-lock minutes, the update-check switch, which sidebar groups are open, dismissed tips, whether you have ever picked a payment's category yourself (it only decides when a tip about AI categorization is shown), whether you were already offered Touch ID / Windows Hello unlock (so the offer comes only once), whether you ticked "Don't ask again" on the one-time warning before a document opens in another app, the period, split and custom date range chosen in the stocks analysis, which cashflow-planning rows are expanded, the time the app was last locked, and your **first name** (it is shown in the greeting on the lock screen, which is displayed before the database is unlocked). No balances, amounts or account data. Delete Account clears them. |
 | Application logs | The log folder (account menu at the bottom of the sidebar → About → Open logs) | Meant for troubleshooting. They can contain technical details such as ticker symbols and file paths. Read them before attaching them to a public bug report. |
 
 Full-disk encryption (FileVault, BitLocker, LUKS) is the right complement to all of the above.
@@ -119,6 +129,7 @@ Inside it:
 | `moony.db` | The encrypted database |
 | `attachments.db` | Your photos and documents, encrypted with the same key |
 | `salt`, `key.enc`, `recovery.enc` | Key material. Useless without your password or recovery key — and your data is unreadable without them |
+| `moony.master-key.bin`, `biometric-unlock` | The device-bound copy of the key, only while Touch ID or Windows Hello unlock is on (it opens only with Touch ID or Windows Hello, which also accepts its PIN, on this computer), and a one-word on/off marker, which exists once you switched the unlock on and also after a restore from backup (then it says off) |
 | `real_estate_photos/`, `real_estate_documents/`, `insurance_documents/`, `attachments-converted/` | Only after an update from 0.12 or earlier, until the conversion described above is done (**not encrypted**) |
 | `moony.db.bak-<timestamp>`, `attachments.db.bak-<timestamp>` | Copies of a database that Moony makes just before applying a database migration after an update (a few of the newest copies are kept). Encrypted like the databases |
 | `pre-restore-<timestamp>/` | The data you had before a restore from backup, kept so a restore can never destroy anything |
@@ -157,6 +168,9 @@ You are the only holder of your data, so you are responsible for keeping copies:
   password. It works **only
   together with the key files** (`salt`, `recovery.enc`) in the data folder, so a backup of the
   whole folder or a Moony backup archive is part of the recovery plan.
+- **Biometric unlock is not a backup.** The Touch ID / Windows Hello copy of the key is left out
+  of backup archives and works only on the computer that made it. After a restore it is switched
+  off, and you can turn it on again in Settings → Security.
 - **There is no backdoor.** If you lose both your password and your recovery key, nobody —
   including the author — can decrypt your database **or your attached photos and documents**.
 - **Leave the identifier alone** if you build Moony yourself: the data folder is derived from it,
@@ -169,7 +183,7 @@ from the data folder:
 
 - `moony.db` and `attachments.db` with their side files and their pre-migration copies
   (`*.bak-<timestamp>`);
-- `salt`, `key.enc` and `recovery.enc`;
+- `salt`, `key.enc` and `recovery.enc`, the Touch ID / Windows Hello unlock copy (`moony.master-key.bin` and the key behind it) if you had switched it on, and its on/off marker (`biometric-unlock`) if there is one;
 - the folders of 0.12-era plain attachments (`real_estate_photos/`, `real_estate_documents/`,
   `insurance_documents/`) and `attachments-converted/`, if they are still there;
 - the temporary copies of documents opened in another app.

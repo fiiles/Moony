@@ -6,11 +6,7 @@ import { queryClient } from '@/lib/queryClient';
 import { biometricApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { deviceStorage } from '@/utils/device-storage';
-import {
-  BIOMETRIC_STATUS_KEY,
-  biometricFailure,
-  markEnrolmentAsked,
-} from '@/mobile/lib/biometrics';
+import { BIOMETRIC_STATUS_KEY, biometricFailure, markEnrolmentAsked } from '@/lib/biometrics';
 
 /**
  * Turns biometric unlock on and off (spec §8.2): the one-time "Odemykat Moony obličejem?" sheet

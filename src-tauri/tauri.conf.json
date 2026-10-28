@@ -43,6 +43,7 @@
     ],
     "resources": [],
     "macOS": {
+      "minimumSystemVersion": "10.15",
       "dmg": {
         "appPosition": {
           "x": 180,

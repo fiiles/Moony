@@ -124,3 +124,40 @@ jobs:
       - name: Rust check (iOS simulator)
         working-directory: src-tauri
         run: cargo check --target aarch64-apple-ios-sim --lib
+
+  # The Windows-only code (`cfg(target_os = "windows")`: the moony-keychain Windows Hello backend)
+  # is invisible to the Linux job. Debug builds take the frontend from `devUrl`, so like the Linux
+  # job this one needs no `dist`; SQLCipher needs OpenSSL, installed as in release.yml.
+  rust-windows:
+    name: Rust Windows Check
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@b725eda525362e7cf34af9a7243cac1e3f01a7ec # stable
+        with:
+          toolchain: stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2.9.3
+        with:
+          workspaces: src-tauri
+
+      - name: Install OpenSSL
+        run: |
+          vcpkg install openssl:x64-windows-static-md
+          echo "OPENSSL_DIR=$env:VCPKG_INSTALLATION_ROOT\installed\x64-windows-static-md" >> $env:GITHUB_ENV
+          echo "OPENSSL_STATIC=1" >> $env:GITHUB_ENV
+
+      - name: Rust clippy
+        working-directory: src-tauri
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      # The app's own test binary would die at load (no comctl32 v6 manifest for test binaries, which
+      # rfd's TaskDialogIndirect needs; follow-up), so only the plugin's tests run here.
+      - name: Rust tests (moony-keychain)
+        working-directory: src-tauri
+        run: cargo test -p moony-keychain --locked

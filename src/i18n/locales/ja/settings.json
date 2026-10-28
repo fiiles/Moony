@@ -208,5 +208,28 @@
     "manualCheck": "手動で確認"
   },
   "eyebrow": "アプリケーション",
-  "status": "データベースは暗号化済み · ディスク使用量 {{size}}"
+  "status": "データベースは暗号化済み · ディスク使用量 {{size}}",
+  "biometricUnlock": {
+    "title": {
+      "touchId": "Touch ID",
+      "windowsHello": "Windows Hello",
+      "generic": "生体認証"
+    },
+    "description": "パスワードを入力せずにロックを解除できます（このコンピュータのみ）。パスワードは引き続きマスターキーとして使えます。",
+    "label": {
+      "touchId": "指紋でロック解除",
+      "windowsHello": "Windows Helloでロック解除",
+      "generic": "生体認証でロック解除"
+    },
+    "hint": {
+      "touchId": "ロックされたMoonyを指を置くだけで開けます。",
+      "windowsHello": "ロックされたMoonyをWindows Helloで開けます。",
+      "generic": "ロックされたMoonyを生体認証で開けます。"
+    },
+    "unavailable": {
+      "touchId": "このMacにはTouch IDがないか、指紋が登録されていません。",
+      "windowsHello": "Windows Helloが設定されていません。Windowsの設定 → アカウント → サインイン オプションで設定できます。",
+      "generic": "このコンピュータでは生体認証を利用できません。"
+    }
+  }
 }

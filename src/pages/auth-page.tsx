@@ -4,6 +4,12 @@
  * error, recovery as a three-step flow inside the same card, and the
  * language as a segmented control. The first run renders the onboarding
  * wizard instead.
+ *
+ * With biometric unlock switched on (Touch ID, Windows Hello), "Odemknout otiskem" comes first and
+ * the password form stays under it as the fallback. The system prompt opens by itself once per
+ * lock, and only for a window the person is looking at (otherwise on its next focus); after a
+ * cancel it waits for the button. A key that no longer works switches the unlock off in Rust and
+ * the screen says once why; the way back is Settings, never an offer.
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
@@ -15,8 +21,17 @@ import { z } from 'zod';
 import { recoverSchema, unlockSchema } from '@shared/schema';
 import { GREETING_NAME_KEY, LOCKED_AT_KEY, useAuth } from '@/hooks/use-auth';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
+import { useBiometricStatus } from '@/hooks/use-biometric-status';
 import { useFormat } from '@/lib/use-format';
 import { isAuthApiError } from '@/lib/api-error';
+import { queryClient } from '@/lib/queryClient';
+import {
+  BIOMETRIC_STATUS_KEY,
+  biometricFailure,
+  biometricNotice,
+  canUnlockWithBiometrics,
+  shouldPromptOnLaunch,
+} from '@/lib/biometrics';
 import { isSupportedLanguage, type SupportedLanguage } from '@/i18n/index';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -38,9 +53,16 @@ import { PasswordInput } from '@/components/auth/PasswordInput';
 import { LanguageSelect } from '@/components/common/LanguageSelect';
 import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
 import { RecoverySteps } from '@/components/auth/RecoverySteps';
+import { BiometricUnlockButton } from '@/components/auth/BiometricUnlockButton';
 import { RestoreBackup } from '@/components/common/RestoreBackup';
 
 type Panel = 'unlock' | 'recover' | 'newKey';
+
+/**
+ * The launch prompt already opened in this run of the app. Module-level, so a lock page that
+ * mounts again before the first unlock does not prompt twice, even after a cancel.
+ */
+let launchPrompted = false;
 
 function readStorage(key: string): string | null {
   try {
@@ -55,6 +77,8 @@ export default function AuthPage() {
     user,
     appStatus,
     unlockMutation,
+    unlockWithBiometricsMutation,
+    lockMutation,
     recoverMutation,
     confirmRecoveryMutation,
     recoveryKey,
@@ -120,10 +144,67 @@ export default function AuthPage() {
   // page. While either runs (the KDF takes seconds), the panels stay put.
   const unlockPending = unlockMutation.isPending;
   const recoverPending = recoverMutation.isPending;
+  const biometricPending = unlockWithBiometricsMutation.isPending;
+
+  // Biometric unlock switched on: its button above the password form. The status is read while
+  // locked; the lock's `queryClient.clear()` makes every lock screen ask again.
+  const { status: biometricStatus, label: biometryLabel } = useBiometricStatus();
+  const biometricReady = appStatus === 'locked' && canUnlockWithBiometrics(biometricStatus);
+  const [biometricMessage, setBiometricMessage] = useState<string | null>(null);
+
+  const { mutate: unlockWithBiometrics } = unlockWithBiometricsMutation;
+  const { setFocus: focusUnlockField } = unlockForm;
+  const promptBiometrics = useCallback(() => {
+    setBiometricMessage(null);
+    unlockWithBiometrics(t('biometric.reason'), {
+      onError: (error) => {
+        const failure = biometricFailure(isAuthApiError(error) ? error.key : undefined);
+        // A dismissed prompt changes nothing, and nothing prompts again by itself.
+        if (failure === 'cancelled') return;
+        if (failure === 'invalidated') {
+          // Rust switched the unlock off; the screen follows and says once why. No offer comes
+          // back for it: the Settings switch is the way back.
+          setBiometricMessage(t(`biometric.invalidated.${biometryLabel}`));
+          void queryClient.invalidateQueries({ queryKey: BIOMETRIC_STATUS_KEY });
+        } else {
+          // The backend's words, or a generic line for an auth error without a key, so the
+          // password form never takes over in silence. Other errors the provider toasts.
+          const notice = biometricNotice(failure, isAuthApiError(error));
+          if (notice === 'backend') setBiometricMessage(error.message);
+          if (notice === 'generic') setBiometricMessage(tc('auth.biometricFailed'));
+        }
+        focusUnlockField('password');
+      },
+    });
+  }, [unlockWithBiometrics, t, tc, biometryLabel, focusUnlockField]);
+
+  // The prompt opens by itself only when the app has just started, once, and only for a window in
+  // front (a background one waits for its first focus). After a lock, manual or idle, the screen
+  // stays quiet until the button is pressed (owner, 2026-10-28).
+  const lockEvent = lockMutation.submittedAt;
+  const launchPromptAllowed =
+    biometricReady && panel === 'unlock' && !recoveryKey && !unlockPending;
+  useEffect(() => {
+    if (!launchPromptAllowed) return;
+    const promptIfDue = () => {
+      const due = shouldPromptOnLaunch({
+        lockEvent,
+        alreadyPrompted: launchPrompted,
+        focused: document.hasFocus(),
+      });
+      if (!due) return;
+      launchPrompted = true;
+      promptBiometrics();
+    };
+    promptIfDue();
+    window.addEventListener('focus', promptIfDue);
+    return () => window.removeEventListener('focus', promptIfDue);
+  }, [launchPromptAllowed, lockEvent, promptBiometrics]);
 
   // Credential failures are shown inline under the field; the provider only toasts the rest.
   const submitUnlock = (data: z.infer<typeof unlockSchema>) => {
-    if (unlockPending) return;
+    if (unlockPending || biometricPending) return;
+    setBiometricMessage(null);
     unlockMutation.mutate(data, {
       onError: (error) => {
         if (!isAuthApiError(error)) return;
@@ -202,6 +283,27 @@ export default function AuthPage() {
               {greetingName ? t('login.titleNamed', { name: greetingName }) : t('login.title')}
             </h1>
             <p className="mb-6 mt-2 text-body leading-[1.5] text-ink-3">{t('login.lead')}</p>
+            {biometricReady && (
+              <div className="mb-5 space-y-4">
+                <BiometricUnlockButton
+                  label={biometryLabel}
+                  pending={biometricPending}
+                  disabled={unlockPending}
+                  onClick={() => {
+                    if (!biometricPending) promptBiometrics();
+                  }}
+                />
+                <div className="flex items-center gap-3 text-micro font-500 text-ink-4">
+                  <span className="h-px flex-1 bg-line-soft" aria-hidden />
+                  {t('biometric.orPassword')}
+                  <span className="h-px flex-1 bg-line-soft" aria-hidden />
+                </div>
+              </div>
+            )}
+            {/* Outside the biometric block: after an invalidation the button goes, the reason stays. */}
+            <p role="status" className="m-0 mb-4 text-caption font-500 text-ink-2 empty:hidden">
+              {biometricMessage}
+            </p>
             <Form {...unlockForm}>
               <form
                 onSubmit={unlockForm.handleSubmit(submitUnlock)}
@@ -228,8 +330,10 @@ export default function AuthPage() {
                 />
                 <Button
                   type="submit"
+                  // One primary on the card: with biometrics on, theirs.
+                  variant={biometricReady ? 'outline' : 'default'}
                   className="h-10 w-full text-body"
-                  disabled={unlockPending}
+                  disabled={unlockPending || biometricPending}
                   loading={unlockPending}
                 >
                   {unlockPending ? t('login.unlocking') : t('login.unlock')}
@@ -255,7 +359,7 @@ export default function AuthPage() {
               <button
                 type="button"
                 onClick={() => setPanel('recover')}
-                disabled={unlockPending}
+                disabled={unlockPending || biometricPending}
                 className="font-600 text-ink-3 underline-offset-[3px] hover:text-ink hover:underline disabled:pointer-events-none disabled:opacity-50"
               >
                 {t('login.forgotPassword')}
@@ -268,7 +372,7 @@ export default function AuthPage() {
                   <button
                     type="button"
                     onClick={pick}
-                    disabled={unlockPending || busy}
+                    disabled={unlockPending || biometricPending || busy}
                     className="font-600 text-ink-3 underline-offset-[3px] hover:text-ink hover:underline disabled:pointer-events-none disabled:opacity-50"
                     data-testid="lock-restore-backup"
                   >

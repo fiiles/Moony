@@ -7,7 +7,7 @@
 import type { TFunction } from 'i18next';
 import type { BiometryType } from '@shared/schema';
 import type { BackgroundLockMinutes } from '@/mobile/lib/background-lock';
-import { biometryKind, type BiometryKind } from '@/mobile/lib/biometrics';
+import { biometryKind, type BiometryKind } from '@/lib/biometrics';
 
 /** A `mobile` namespace key with its `{{values}}`. */
 export interface TextRef {

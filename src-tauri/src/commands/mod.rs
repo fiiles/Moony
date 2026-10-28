@@ -6,8 +6,6 @@ pub mod attachments;
 pub mod auth;
 pub mod backup;
 pub mod bank_accounts;
-/// Phones only: the keychain plugin is a mobile dependency.
-#[cfg(mobile)]
 pub mod biometric;
 pub mod bonds;
 pub mod budgeting;
@@ -16,7 +14,8 @@ pub mod categories;
 pub mod categorization;
 pub mod company_info;
 pub mod crypto;
-/// Phones only: the keychain plugin is a mobile dependency.
+/// Phones only: device backups are a phone concern (on the desktop the keychain plugin's
+/// `exclude_from_backup` answers Unsupported).
 #[cfg(mobile)]
 pub(crate) mod device_backup;
 pub mod export;

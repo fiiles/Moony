@@ -211,5 +211,28 @@
     "manualCheck": "Manuell sökning"
   },
   "eyebrow": "Program",
-  "status": "Databasen är krypterad · {{size}} på disken"
+  "status": "Databasen är krypterad · {{size}} på disken",
+  "biometricUnlock": {
+    "title": {
+      "touchId": "Touch ID",
+      "windowsHello": "Windows Hello",
+      "generic": "Biometri"
+    },
+    "description": "Lås upp utan att skriva lösenordet, bara på den här datorn. Lösenordet är fortfarande huvudnyckeln och fungerar som vanligt.",
+    "label": {
+      "touchId": "Lås upp med fingeravtryck",
+      "windowsHello": "Lås upp med Windows Hello",
+      "generic": "Lås upp med biometri"
+    },
+    "hint": {
+      "touchId": "Öppna ett låst Moony genom att lägga fingret på sensorn.",
+      "windowsHello": "Öppna ett låst Moony med Windows Hello.",
+      "generic": "Öppna ett låst Moony med biometri."
+    },
+    "unavailable": {
+      "touchId": "Den här Macen har inget Touch ID, eller så har inget fingeravtryck lagts till.",
+      "windowsHello": "Windows Hello är inte konfigurerat. Konfigurera det i Windows-inställningar → Konton → Inloggningsalternativ.",
+      "generic": "Biometri är inte tillgängligt på den här datorn."
+    }
+  }
 }

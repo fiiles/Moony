@@ -211,5 +211,28 @@
     "manualCheck": "Manual check"
   },
   "eyebrow": "Application",
-  "status": "Database encrypted · {{size}} on disk"
+  "status": "Database encrypted · {{size}} on disk",
+  "biometricUnlock": {
+    "title": {
+      "touchId": "Touch ID",
+      "windowsHello": "Windows Hello",
+      "generic": "Biometrics"
+    },
+    "description": "Unlock without typing your password, on this computer only. Your password stays the master key and keeps working.",
+    "label": {
+      "touchId": "Unlock with your fingerprint",
+      "windowsHello": "Unlock with Windows Hello",
+      "generic": "Unlock with biometrics"
+    },
+    "hint": {
+      "touchId": "Open a locked Moony with a touch of your finger.",
+      "windowsHello": "Open a locked Moony with Windows Hello.",
+      "generic": "Open a locked Moony with biometrics."
+    },
+    "unavailable": {
+      "touchId": "This Mac has no Touch ID, or no fingerprint is added to it.",
+      "windowsHello": "Windows Hello is not set up. Set it up in Windows Settings → Accounts → Sign-in options.",
+      "generic": "Biometrics are not available on this computer."
+    }
+  }
 }

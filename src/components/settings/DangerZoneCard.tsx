@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
 import { authApi } from '@/lib/tauri-api';
+import { clearEnrolmentAsked } from '@/lib/biometrics';
 import { translateApiError } from '@/lib/translate-api-error';
 
 // Word the user must type before the account can be deleted (DZ-01)
@@ -37,7 +38,9 @@ export function DangerZoneCard() {
       await authApi.deleteAccount();
     },
     onSuccess: () => {
-      // UI preferences belong to the deleted account
+      // UI preferences belong to the deleted account. A new account on this machine is offered
+      // biometric unlock again: named on its own so the flag goes even if the clear ever narrows.
+      clearEnrolmentAsked(localStorage);
       localStorage.clear();
       window.location.reload();
     },

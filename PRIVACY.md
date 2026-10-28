@@ -129,7 +129,7 @@ Inside it:
 | `moony.db` | The encrypted database |
 | `attachments.db` | Your photos and documents, encrypted with the same key |
 | `salt`, `key.enc`, `recovery.enc` | Key material. Useless without your password or recovery key — and your data is unreadable without them |
-| `moony.master-key.bin`, `biometric-unlock` | Only if you switched on Touch ID or Windows Hello unlock: the device-bound copy of the key (opens only with your fingerprint on this computer) and a one-word on/off marker |
+| `moony.master-key.bin`, `biometric-unlock` | The device-bound copy of the key, only while Touch ID or Windows Hello unlock is on (it opens only with Touch ID or Windows Hello, which also accepts its PIN, on this computer), and a one-word on/off marker, which exists once you switched the unlock on and also after a restore from backup (then it says off) |
 | `real_estate_photos/`, `real_estate_documents/`, `insurance_documents/`, `attachments-converted/` | Only after an update from 0.12 or earlier, until the conversion described above is done (**not encrypted**) |
 | `moony.db.bak-<timestamp>`, `attachments.db.bak-<timestamp>` | Copies of a database that Moony makes just before applying a database migration after an update (a few of the newest copies are kept). Encrypted like the databases |
 | `pre-restore-<timestamp>/` | The data you had before a restore from backup, kept so a restore can never destroy anything |
@@ -183,7 +183,7 @@ from the data folder:
 
 - `moony.db` and `attachments.db` with their side files and their pre-migration copies
   (`*.bak-<timestamp>`);
-- `salt`, `key.enc` and `recovery.enc`, and the Touch ID / Windows Hello unlock copy (`moony.master-key.bin`, the on/off marker and the key behind them) if you had switched it on;
+- `salt`, `key.enc` and `recovery.enc`, the Touch ID / Windows Hello unlock copy (`moony.master-key.bin` and the key behind it) if you had switched it on, and its on/off marker (`biometric-unlock`) if there is one;
 - the folders of 0.12-era plain attachments (`real_estate_photos/`, `real_estate_documents/`,
   `insurance_documents/`) and `attachments-converted/`, if they are still there;
 - the temporary copies of documents opened in another app.

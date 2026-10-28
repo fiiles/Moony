@@ -52,13 +52,15 @@ Credential Locker (opens without Hello).
   holds the same key in process memory, so the added exposure is small. It is cleared on lock,
   logout, account deletion and restore. Linux keeps R22.
 - **Only a lost credential switches the feature off.** `Invalidated` (the Secure Enclave key is
-  gone or refuses to be used, the Hello credential is gone) turns biometric unlock off and removes
-  the blob. A cancelled prompt, a misread finger, a lockout or any transient error never does: the
-  password stays available and the next attempt may succeed.
+  gone or refuses to be used, the Hello credential is gone, or the blob is malformed or does not
+  open with the key it is read with) turns biometric unlock off and removes the blob. A cancelled
+  prompt, a misread finger, a lockout or any transient error never does: the password stays
+  available and the next attempt may succeed.
 - **The offer comes once.** After a password unlock where biometric unlock is available and off,
   a dialog offers it. The device-level key `moony-biometrics-asked` in `localStorage` is set by
-  any answer, by closing the dialog, by an invalidation and by a restore; nothing re-offers it
-  afterwards. The way back is the switch in Settings → Security. The lock screen prompts once per
+  any answer and by closing the dialog, and switching the feature on always sets it, so an
+  invalidation never brings the offer back; an invalidation and a restore leave the key as it was.
+  The way back is the switch in Settings → Security. The lock screen prompts once per
   lock while the window is focused, and a button retries. A restore switches the feature off in
   Rust, because the archive carries a different master key; account deletion removes the stored
   key and clears the flag.
@@ -76,6 +78,11 @@ Credential Locker (opens without Hello).
 - **A changed fingerprint set invalidates the Mac copy** (`.biometryCurrentSet`); the user types
   the password and turns the switch on again. Windows ties the key to the Hello credential, not to
   the enrolled fingers, so a changed finger set is not detected there.
+- **Removing Windows Hello does not switch the feature off at once.** Without Hello the plugin
+  cannot tell "removed" from "unusable for now" (both answer that Hello is not supported), so each
+  lock shows the "failed" notice and the password form while the feature stays on. Once Hello is
+  set up again, the old credential is gone (`OpenAsync` answers `NotFound`), which is
+  `Invalidated`: the feature switches off and the person turns it on again.
 - **Windows Hello also accepts the PIN.** Whoever knows the Hello PIN of the Windows account can
   unlock Moony. This follows from using Windows Hello as the gate.
 - **Not DPAPI-gated on Windows, not keychain-gated on macOS.** An attacker with the blob and the

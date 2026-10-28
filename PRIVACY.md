@@ -33,8 +33,8 @@ How the encryption key is handled:
   useless without that gesture and on any other computer, and it is never part of a backup or the
   data export. Switch it off in Settings → Security (this deletes the file and the key behind it)
   or by deleting your data. The password always keeps working. Linux has no biometric unlock.
-  While you use this, the key also stays in memory for the whole unlocked session, as the open
-  database already needs it.
+  On macOS and Windows the key stays in memory for the whole unlocked session (the open database
+  already needs it), whether or not you switch on biometric unlock.
 - The app shows attachments only while it is unlocked; it reads them from `attachments.db` and
   never writes them to disk in readable form, except in the cases listed in the next section.
 

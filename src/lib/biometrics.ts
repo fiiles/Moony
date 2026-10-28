@@ -1,7 +1,8 @@
 /**
- * Biometric unlock on the phone (spec §8.1, §8.2): the pure decisions behind the lock screen's
- * Face ID / Touch ID path and the one-time "Odemykat Moony obličejem?" sheet. The commands live in
- * `biometricApi` (`src/lib/tauri-api.ts`); the master key never reaches the webview.
+ * Biometric unlock on the phone and the desktop (spec §8.1, §8.2): the pure decisions behind the
+ * lock screen's Face ID / Touch ID / Windows Hello path and the one-time enrolment offer. The
+ * commands live in `biometricApi` (`src/lib/tauri-api.ts`); the master key never reaches the
+ * webview.
  */
 import type { BiometricStatus, BiometryType } from '@shared/schema';
 
@@ -165,4 +166,41 @@ export function biometricNotice(failure: BiometricFailure, authError: boolean): 
  */
 export function shouldAutoPrompt(lockEvent: number, lastPrompted: number | null): boolean {
   return lastPrompted !== lockEvent;
+}
+
+/**
+ * The desktop's security setting: `hidden` where the platform has no biometric unlock at all
+ * (Linux, or the status has not arrived), `unavailable` when this machine has nothing usable and
+ * the unlock is off (the row explains why), `ready` otherwise. An unlock that is on stays `ready`
+ * even when biometrics stopped being usable, so the person can still switch it off.
+ */
+export type BiometricSettingState = 'hidden' | 'unavailable' | 'ready';
+
+export function biometricSettingState(status: BiometricStatus | undefined): BiometricSettingState {
+  if (status === undefined || !status.supported) return 'hidden';
+  if (!status.available && !status.enrolled) return 'unavailable';
+  return 'ready';
+}
+
+/** Which name the desktop's copy uses; Face ID and the rest share the generic wording. */
+export type DesktopBiometryLabel = 'touchId' | 'windowsHello' | 'generic';
+
+export function desktopBiometryLabel(type: BiometryType): DesktopBiometryLabel {
+  if (type === 'touchId') return 'touchId';
+  if (type === 'windowsHello') return 'windowsHello';
+  return 'generic';
+}
+
+/**
+ * The desktop lock screen prompts by itself once per lock event, like the phone, but only for a
+ * window the person is looking at: a system prompt over a background window would steal focus
+ * (and on a minimized or hidden one nobody could answer it).
+ */
+export function shouldAutoPromptDesktop(input: {
+  lockEvent: number;
+  lastPrompted: number | null;
+  focused: boolean;
+  enrolled: boolean;
+}): boolean {
+  return input.enrolled && input.focused && shouldAutoPrompt(input.lockEvent, input.lastPrompted);
 }

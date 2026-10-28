@@ -5,12 +5,15 @@ import {
   biometricCopy,
   biometricFailure,
   biometricNotice,
+  biometricSettingState,
   biometryKind,
   canUnlockWithBiometrics,
   clearEnrolmentAsked,
+  desktopBiometryLabel,
   enrolmentOfferOpen,
   markEnrolmentAsked,
   shouldAutoPrompt,
+  shouldAutoPromptDesktop,
   shouldOfferEnrolment,
   wasEnrolmentAsked,
 } from './biometrics';
@@ -182,5 +185,62 @@ describe('shouldAutoPrompt', () => {
     expect(shouldAutoPrompt(2_000, 1_000)).toBe(true);
     // the first lock of a cold start has no lock submission behind it: key 0
     expect(shouldAutoPrompt(0, 0)).toBe(false);
+  });
+});
+
+describe('biometricSettingState', () => {
+  it('hides the setting without a status or on a platform without the feature', () => {
+    expect(biometricSettingState(undefined)).toBe('hidden');
+    expect(biometricSettingState(status({ supported: false }))).toBe('hidden');
+    expect(biometricSettingState(status({ supported: false, enrolled: true }))).toBe('hidden');
+  });
+
+  it('is unavailable when this machine has no usable biometrics and the unlock is off', () => {
+    expect(biometricSettingState(status({ available: false, enrolled: false }))).toBe(
+      'unavailable'
+    );
+  });
+
+  it('stays ready when it is on but no longer usable, so the person can switch it off', () => {
+    expect(biometricSettingState(status({ available: false, enrolled: true }))).toBe('ready');
+  });
+
+  it('is ready when biometrics are usable', () => {
+    expect(biometricSettingState(status())).toBe('ready');
+    expect(biometricSettingState(status({ enrolled: true }))).toBe('ready');
+  });
+});
+
+describe('desktopBiometryLabel', () => {
+  it('names Touch ID and Windows Hello, and falls back to the generic wording', () => {
+    expect(desktopBiometryLabel('touchId')).toBe('touchId');
+    expect(desktopBiometryLabel('windowsHello')).toBe('windowsHello');
+    expect(desktopBiometryLabel('faceId')).toBe('generic');
+    expect(desktopBiometryLabel('biometric')).toBe('generic');
+    expect(desktopBiometryLabel('none')).toBe('generic');
+  });
+});
+
+describe('shouldAutoPromptDesktop', () => {
+  const base = { lockEvent: 1_000, lastPrompted: null, focused: true, enrolled: true };
+
+  it('prompts once per lock event', () => {
+    expect(shouldAutoPromptDesktop(base)).toBe(true);
+    expect(shouldAutoPromptDesktop({ ...base, lastPrompted: 1_000 })).toBe(false);
+    expect(shouldAutoPromptDesktop({ ...base, lastPrompted: 1_000, lockEvent: 2_000 })).toBe(true);
+  });
+
+  it('never prompts a window that is not in front', () => {
+    expect(shouldAutoPromptDesktop({ ...base, focused: false })).toBe(false);
+  });
+
+  it('never prompts when biometric unlock is off', () => {
+    expect(shouldAutoPromptDesktop({ ...base, enrolled: false })).toBe(false);
+  });
+});
+
+describe('an invalidated key never re-offers the enrolment', () => {
+  it('stays quiet once the offer was answered: the desktop clears the flag only after delete_account', () => {
+    expect(shouldOfferEnrolment(status({ available: true, enrolled: false }), true)).toBe(false);
   });
 });

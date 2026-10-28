@@ -15,7 +15,7 @@ import {
   readBackgroundLockMinutes,
   writeBackgroundLockMinutes,
 } from '@/mobile/lib/background-lock';
-import { BIOMETRIC_STATUS_KEY, biometricCopy } from '@/mobile/lib/biometrics';
+import { BIOMETRIC_STATUS_KEY, biometricCopy } from '@/lib/biometrics';
 import { readHideAmountsOnLaunch, writeHideAmountsOnLaunch } from '@/mobile/lib/hide-amounts';
 import { biometryMethodKey, lockAfterOption, renderTextRef } from '@/mobile/lib/settings-summary';
 import { ChangePasswordSheet } from '@/mobile/sheets/ChangePasswordSheet';

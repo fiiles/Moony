@@ -15,7 +15,7 @@ import {
   markEnrolmentAsked,
   shouldOfferEnrolment,
   wasEnrolmentAsked,
-} from '@/mobile/lib/biometrics';
+} from '@/lib/biometrics';
 
 function storage(): Storage | null {
   try {

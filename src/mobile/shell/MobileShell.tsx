@@ -5,7 +5,7 @@ import { ProtectedRoute } from '@/lib/protected-route';
 import { ReceivedFileHost } from '@/mobile/components/import/ReceivedFileHost';
 import { ImportSheetProvider } from '@/mobile/hooks/use-import-sheet';
 import { useNotificationSchedule } from '@/mobile/hooks/use-notification-schedule';
-import { clearEnrolmentAsked } from '@/mobile/lib/biometrics';
+import { clearEnrolmentAsked } from '@/lib/biometrics';
 import Agenda from '@/mobile/pages/Agenda';
 import Bonds from '@/mobile/pages/Bonds';
 import Budgets from '@/mobile/pages/Budgets';

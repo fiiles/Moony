@@ -239,7 +239,7 @@ export const authApi = {
 };
 
 // ============================================================================
-// Biometric unlock API (phones only; the commands are registered under `#[cfg(mobile)]`)
+// Biometric unlock API (phones and desktop)
 // ============================================================================
 
 /**

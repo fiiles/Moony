@@ -17,7 +17,7 @@ import {
   packIdForRegion,
   regionFromLocale,
 } from '@/utils/locale-defaults';
-import { BIOMETRIC_STATUS_KEY } from '@/mobile/lib/biometrics';
+import { BIOMETRIC_STATUS_KEY } from '@/lib/biometrics';
 import { firstRunSteps, nextStep, previousStep, type FirstRunStep } from '@/mobile/lib/first-run';
 
 /** What the account form holds: the values that become the profile, and the password twice. */

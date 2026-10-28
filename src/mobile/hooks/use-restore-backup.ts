@@ -7,7 +7,7 @@ import { biometricApi, dataApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { deviceStorage } from '@/utils/device-storage';
 import { cancelAllNotifications } from '@/mobile/hooks/use-notification-schedule';
-import { BIOMETRIC_STATUS_KEY, clearEnrolmentAsked } from '@/mobile/lib/biometrics';
+import { BIOMETRIC_STATUS_KEY, clearEnrolmentAsked } from '@/lib/biometrics';
 import { dialogPathToFsPath, restoreBackupPlan } from '@/mobile/lib/export-file';
 import type { BackupInspection } from '@shared/schema';
 

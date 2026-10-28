@@ -596,7 +596,6 @@
     "transactions_few": "{{count}} transakcje",
     "transactions_many": "{{count}} transakcji",
     "transactions_other": "{{count}} transakcji",
-    "export": "Eksport",
     "stats": {
       "income": "Przychody",
       "expenses": "Wydatki",
@@ -609,7 +608,8 @@
       "sub": "Wybrany okres jest wyróżniony. Najedź na słupek, aby zobaczyć saldo miesiąca.",
       "income": "Przychody",
       "expenses": "Wydatki",
-      "balance": "saldo"
+      "balance": "saldo",
+      "openMonth": "Pokaż {{month}}"
     },
     "breakdown": {
       "sub": "Suma za wybrany okres",
@@ -621,7 +621,31 @@
     },
     "expenses": {
       "title": "Wydatki wg kategorii",
-      "budgets": "Ustaw budżety"
+      "manageCategories": "Zarządzaj kategoriami",
+      "manageLimits": "Zarządzaj limitami",
+      "spent": "Wydano",
+      "limit": "Limit",
+      "usage": "Wykorzystanie",
+      "remaining": "Pozostało",
+      "filterLabel": "Filtruj kategorie",
+      "filterAll": "Wszystkie",
+      "sortLabel": "Sortuj kategorie",
+      "sortAmount": "Kwota",
+      "sortUsage": "Wykorzystanie",
+      "sortName": "Nazwa",
+      "shareOfExpenses": "{{percent}} wydatków",
+      "overLimit": "ponad limit",
+      "partialPeriod": "Tylko część okresu",
+      "filteredTotal": "Suma po filtrze {{amount}}",
+      "filteredCount_one": "{{count}} kategoria w wyborze",
+      "filteredCount_few": "{{count}} kategorie w wyborze",
+      "filteredCount_many": "{{count}} kategorii w wyborze",
+      "filteredCount_other": "{{count}} kategorii w wyborze",
+      "emptyFilter": "Brak kategorii w tym wyborze.",
+      "showTransactions": "Pokaż transakcje: {{name}}",
+      "editLimitFor": "Edytuj limit: {{name}}",
+      "setLimitFor": "Ustaw limit: {{name}}",
+      "pace": "znacznik to dziś, minęło {{percent}} okresu"
     },
     "income": {
       "title": "Przychody wg kategorii",

@@ -44,7 +44,9 @@
     "state": {
       "over": "Excedido en {{amount}}",
       "near": "Cerca del límite",
-      "ok": "En orden"
+      "ok": "En orden",
+      "exhausted": "Límite agotado",
+      "overShort": "Por encima del límite"
     },
     "of": "de {{amount}}",
     "transactions_one": "{{count}} movimiento",

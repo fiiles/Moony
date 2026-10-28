@@ -552,7 +552,6 @@
     "subtitleLinked": "Tatsächliche Einnahmen und Ausgaben aller Konten im gewählten Zeitraum. Die wiederkehrenden Posten, mit denen Sie rechnen, stehen unter <link>Cashflow-Planung →</link>",
     "transactions_one": "{{count}} Transaktion",
     "transactions_other": "{{count}} Transaktionen",
-    "export": "Exportieren",
     "stats": {
       "income": "Einnahmen",
       "expenses": "Ausgaben",
@@ -565,7 +564,8 @@
       "sub": "Der gewählte Zeitraum ist hervorgehoben. Fahren Sie über einen Balken, um den Monatssaldo zu sehen.",
       "income": "Einnahmen",
       "expenses": "Ausgaben",
-      "balance": "Saldo"
+      "balance": "Saldo",
+      "openMonth": "{{month}} anzeigen"
     },
     "breakdown": {
       "sub": "Summe über den gewählten Zeitraum",
@@ -577,7 +577,29 @@
     },
     "expenses": {
       "title": "Ausgaben nach Kategorie",
-      "budgets": "Budgets festlegen"
+      "manageCategories": "Kategorien verwalten",
+      "manageLimits": "Limits verwalten",
+      "spent": "Ausgegeben",
+      "limit": "Limit",
+      "usage": "Auslastung",
+      "remaining": "Verbleibend",
+      "filterLabel": "Kategorien filtern",
+      "filterAll": "Alle",
+      "sortLabel": "Kategorien sortieren",
+      "sortAmount": "Betrag",
+      "sortUsage": "Auslastung",
+      "sortName": "Name",
+      "shareOfExpenses": "{{percent}} der Ausgaben",
+      "overLimit": "über dem Limit",
+      "partialPeriod": "Nur ein Teil des Zeitraums",
+      "filteredTotal": "Summe der Auswahl {{amount}}",
+      "filteredCount_one": "{{count}} Kategorie ausgewählt",
+      "filteredCount_other": "{{count}} Kategorien ausgewählt",
+      "emptyFilter": "Keine Kategorien in dieser Auswahl.",
+      "showTransactions": "Transaktionen anzeigen: {{name}}",
+      "editLimitFor": "Limit bearbeiten: {{name}}",
+      "setLimitFor": "Limit festlegen: {{name}}",
+      "pace": "die Markierung ist heute, {{percent}} des Zeitraums vorbei"
     },
     "income": {
       "title": "Einnahmen nach Kategorie",

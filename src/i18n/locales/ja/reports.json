@@ -530,7 +530,6 @@
     "title": "キャッシュフロー",
     "subtitleLinked": "選択した期間の、すべての口座の実際の収入と支出です。見込んでいる定期的な項目は<link>キャッシュフロー計画 →</link>をご覧ください。",
     "transactions_other": "{{count}}件の取引",
-    "export": "エクスポート",
     "stats": {
       "income": "収入",
       "expenses": "支出",
@@ -543,7 +542,8 @@
       "sub": "選択した期間が強調表示されます。棒にカーソルを合わせると、その月の収支が表示されます。",
       "income": "収入",
       "expenses": "支出",
-      "balance": "収支"
+      "balance": "収支",
+      "openMonth": "{{month}}を表示"
     },
     "breakdown": {
       "sub": "選択した期間の合計",
@@ -555,7 +555,28 @@
     },
     "expenses": {
       "title": "カテゴリ別の支出",
-      "budgets": "予算を設定"
+      "manageCategories": "カテゴリを管理",
+      "manageLimits": "上限を管理",
+      "spent": "支出",
+      "limit": "上限",
+      "usage": "使用率",
+      "remaining": "残り",
+      "filterLabel": "カテゴリを絞り込む",
+      "filterAll": "すべて",
+      "sortLabel": "カテゴリを並べ替え",
+      "sortAmount": "金額",
+      "sortUsage": "使用率",
+      "sortName": "名前",
+      "shareOfExpenses": "支出の{{percent}}",
+      "overLimit": "上限超過",
+      "partialPeriod": "期間の一部のみ",
+      "filteredTotal": "絞り込み後の合計 {{amount}}",
+      "filteredCount_other": "{{count}}件のカテゴリを選択中",
+      "emptyFilter": "この条件に当てはまるカテゴリはありません。",
+      "showTransactions": "取引を表示: {{name}}",
+      "editLimitFor": "上限を編集: {{name}}",
+      "setLimitFor": "上限を設定: {{name}}",
+      "pace": "目印は今日、期間の{{percent}}が経過"
     },
     "income": {
       "title": "カテゴリ別の収入",

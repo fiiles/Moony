@@ -53,7 +53,7 @@ export function gettingStartedItems(
     });
   }
   items.push(
-    { key: 'setBudget', done: progress.hasBudget, href: '/reports/budgeting', optional: true },
+    { key: 'setBudget', done: progress.hasBudget, href: '/reports/cashflow', optional: true },
     {
       key: 'makeBackup',
       done: progress.lastBackupAt !== null,

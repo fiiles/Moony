@@ -47,31 +47,64 @@ export function TimeAxis({ t0, t1, count = 5, gutter = AXIS_WIDTH, className }: 
   );
 }
 
+/** A label under a bar that also opens that bar's slot (keyboard access to `onBarClick`). */
+export interface AxisAction {
+  /** Names the action for assistive technology ("Zobrazit říjen 2026"). */
+  label: string;
+  onSelect: () => void;
+  disabled?: boolean;
+  /** The slot is the selected one. */
+  pressed?: boolean;
+}
+
 /**
  * Category axis under a bar chart: one label per bar, centred under it. `centered` keeps every
  * slot the width of its bar and never wraps a label: one wider than its slot (a month with its
  * year) spreads equally to both sides, which the bars' own labels may rely on when blanks sit
- * next to it.
+ * next to it. With `actions` every label is a button, so a chart whose bars are clickable can be
+ * driven from the keyboard too.
  */
 export function CategoryAxis({
   labels,
   gutter = AXIS_WIDTH,
   centered = false,
+  actions,
   className,
 }: {
   labels: string[];
   gutter?: number;
   centered?: boolean;
+  actions?: AxisAction[];
   className?: string;
 }) {
   return (
     <div
-      aria-hidden
+      aria-hidden={actions ? undefined : true}
       className={cn('mt-1.5 flex text-micro font-500 text-chart-axis', className)}
       style={{ paddingRight: gutter }}
     >
-      {labels.map((l, i) =>
-        centered ? (
+      {labels.map((l, i) => {
+        const action = actions?.[i];
+        if (action) {
+          return (
+            <span key={i} className="flex min-w-0 flex-1 justify-center">
+              <button
+                type="button"
+                aria-label={action.label}
+                aria-pressed={action.pressed}
+                disabled={action.disabled}
+                onClick={action.onSelect}
+                className={cn(
+                  'rounded-r1 px-0.5 hover:text-ink focus-visible:outline-none focus-visible:shadow-focus disabled:pointer-events-none aria-pressed:font-650 aria-pressed:text-ink-2',
+                  centered ? 'shrink-0 whitespace-nowrap' : 'min-w-0 text-center'
+                )}
+              >
+                {l}
+              </button>
+            </span>
+          );
+        }
+        return centered ? (
           <span key={i} className="flex min-w-0 flex-1 justify-center">
             <span className="shrink-0 whitespace-nowrap">{l}</span>
           </span>
@@ -79,8 +112,8 @@ export function CategoryAxis({
           <span key={i} className="flex-1 text-center">
             {l}
           </span>
-        )
-      )}
+        );
+      })}
     </div>
   );
 }

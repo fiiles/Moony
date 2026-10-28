@@ -39,7 +39,9 @@
     "state": {
       "over": "Över med {{amount}}",
       "near": "Nära gränsen",
-      "ok": "I linje med budget"
+      "ok": "I linje med budget",
+      "exhausted": "Gränsen är förbrukad",
+      "overShort": "Över gränsen"
     },
     "of": "av {{amount}}",
     "transactions_one": "{{count}} transaktion",

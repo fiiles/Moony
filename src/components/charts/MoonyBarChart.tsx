@@ -15,7 +15,7 @@ import { useFormat } from '@/lib/use-format';
 import { useChartTokens } from '@/theme/ThemeProvider';
 import { labelStep, niceTicks, valueDomain } from '@/utils/chart-scale';
 import { ChartTip, FloatingTip } from '@/components/charts/ChartTip';
-import { AXIS_WIDTH, CategoryAxis } from '@/components/charts/ChartAxis';
+import { AXIS_WIDTH, CategoryAxis, type AxisAction } from '@/components/charts/ChartAxis';
 import { cn } from '@/lib/utils';
 
 export interface BarGroup {
@@ -66,6 +66,8 @@ export interface MoonyBarChartProps {
   renderExtra?: (bar: BarGroup) => ReactNode;
   /** Called with the bar index when a bar (or its slot) is clicked. */
   onBarClick?: (index: number) => void;
+  /** One per bar: the axis labels become buttons doing what a click on the bar does. */
+  axisActions?: AxisAction[];
   className?: string;
 }
 
@@ -86,6 +88,7 @@ export function MoonyBarChart({
   formatTick,
   renderExtra,
   onBarClick,
+  axisActions,
   className,
 }: MoonyBarChartProps) {
   const fmt = useFormat();
@@ -220,7 +223,11 @@ export function MoonyBarChart({
           </FloatingTip>
         )}
       </div>
-      <CategoryAxis labels={axisLabels} centered={labelSpacing !== undefined} />
+      <CategoryAxis
+        labels={axisLabels}
+        centered={labelSpacing !== undefined}
+        actions={axisActions}
+      />
     </div>
   );
 }

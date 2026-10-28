@@ -574,7 +574,6 @@
     "transactions_one": "{{count}} movimiento",
     "transactions_many": "{{count}} movimientos",
     "transactions_other": "{{count}} movimientos",
-    "export": "Exportar",
     "stats": {
       "income": "Ingresos",
       "expenses": "Gastos",
@@ -587,7 +586,8 @@
       "sub": "El periodo elegido aparece resaltado. Pasa el ratón por una barra para ver el saldo del mes.",
       "income": "Ingresos",
       "expenses": "Gastos",
-      "balance": "saldo"
+      "balance": "saldo",
+      "openMonth": "Ver {{month}}"
     },
     "breakdown": {
       "sub": "Suma del periodo elegido",
@@ -599,7 +599,30 @@
     },
     "expenses": {
       "title": "Gastos por categoría",
-      "budgets": "Fijar presupuestos"
+      "manageCategories": "Gestionar categorías",
+      "manageLimits": "Gestionar límites",
+      "spent": "Gastado",
+      "limit": "Límite",
+      "usage": "Uso",
+      "remaining": "Restante",
+      "filterLabel": "Filtrar categorías",
+      "filterAll": "Todas",
+      "sortLabel": "Ordenar categorías",
+      "sortAmount": "Importe",
+      "sortUsage": "Uso",
+      "sortName": "Nombre",
+      "shareOfExpenses": "{{percent}} de los gastos",
+      "overLimit": "por encima del límite",
+      "partialPeriod": "Solo parte del periodo",
+      "filteredTotal": "Total filtrado {{amount}}",
+      "filteredCount_one": "{{count}} categoría seleccionada",
+      "filteredCount_many": "{{count}} categorías seleccionadas",
+      "filteredCount_other": "{{count}} categorías seleccionadas",
+      "emptyFilter": "No hay categorías en esta selección.",
+      "showTransactions": "Ver transacciones: {{name}}",
+      "editLimitFor": "Editar límite: {{name}}",
+      "setLimitFor": "Fijar un límite: {{name}}",
+      "pace": "la marca es hoy, ha pasado el {{percent}} del periodo"
     },
     "income": {
       "title": "Ingresos por categoría",

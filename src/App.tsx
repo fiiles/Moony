@@ -1,4 +1,4 @@
-import { Switch, Route, useLocation } from 'wouter';
+import { Switch, Route, Redirect, useLocation } from 'wouter';
 import { queryClient } from './lib/queryClient';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
@@ -28,7 +28,6 @@ import Projection from '@/pages/Projection';
 import AnnuityCalculator from '@/pages/AnnuityCalculator';
 import EstateCalculator from '@/pages/EstateCalculator';
 import StocksAnalysis from '@/pages/StocksAnalysis';
-import Budgeting from '@/pages/Budgeting';
 import BankAccounts from '@/pages/BankAccounts';
 import BankAccountDetail from '@/pages/BankAccountDetail';
 import CategorizationRules from '@/pages/CategorizationRules';
@@ -65,7 +64,10 @@ function Router() {
       {/* Design system §11: actual flows from bank transactions, and the planned items */}
       <ProtectedRoute path="/reports/cashflow" component={Cashflow} />
       <ProtectedRoute path="/reports/cashflow-planning" component={CashflowPlanning} />
-      <ProtectedRoute path="/reports/budgeting" component={Budgeting} />
+      {/* Budgets are part of Cashflow; old links land there */}
+      <Route path="/reports/budgeting">
+        <Redirect replace to="/reports/cashflow" />
+      </Route>
       <ProtectedRoute path="/reports/projection" component={Projection} />
       <ProtectedRoute path="/reports/stocks-analysis" component={StocksAnalysis} />
       <ProtectedRoute path="/calculators/annuity" component={AnnuityCalculator} />

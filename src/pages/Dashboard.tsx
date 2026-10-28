@@ -172,7 +172,7 @@ export default function Dashboard() {
                   {t('empty.addInvestment')}
                 </Button>
               )}
-              <Button variant="outline" onClick={() => setLocation('/reports/budgeting')}>
+              <Button variant="outline" onClick={() => setLocation('/reports/cashflow')}>
                 <Target />
                 {t('empty.setBudget')}
               </Button>

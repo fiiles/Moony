@@ -552,7 +552,6 @@
     "subtitleLinked": "Actual income and expenses from all accounts for the chosen period. The recurring items you count on are in <link>Cashflow planning →</link>",
     "transactions_one": "{{count}} transaction",
     "transactions_other": "{{count}} transactions",
-    "export": "Export",
     "stats": {
       "income": "Income",
       "expenses": "Expenses",
@@ -565,7 +564,8 @@
       "sub": "The chosen period is highlighted. Hover a bar to see the month balance.",
       "income": "Income",
       "expenses": "Expenses",
-      "balance": "balance"
+      "balance": "balance",
+      "openMonth": "Show {{month}}"
     },
     "breakdown": {
       "sub": "Sum over the chosen period",
@@ -577,7 +577,29 @@
     },
     "expenses": {
       "title": "Expenses by category",
-      "budgets": "Set budgets"
+      "manageCategories": "Manage categories",
+      "manageLimits": "Manage limits",
+      "spent": "Spent",
+      "limit": "Limit",
+      "usage": "Usage",
+      "remaining": "Remaining",
+      "filterLabel": "Filter categories",
+      "filterAll": "All",
+      "sortLabel": "Sort categories",
+      "sortAmount": "Amount",
+      "sortUsage": "Usage",
+      "sortName": "Name",
+      "shareOfExpenses": "{{percent}} of expenses",
+      "overLimit": "over the limit",
+      "partialPeriod": "Only part of the period",
+      "filteredTotal": "Filtered total {{amount}}",
+      "filteredCount_one": "{{count}} category selected",
+      "filteredCount_other": "{{count}} categories selected",
+      "emptyFilter": "No categories in this selection.",
+      "showTransactions": "Show transactions: {{name}}",
+      "editLimitFor": "Edit limit: {{name}}",
+      "setLimitFor": "Set a limit: {{name}}",
+      "pace": "the mark is today, {{percent}} of the period gone"
     },
     "income": {
       "title": "Income by category",

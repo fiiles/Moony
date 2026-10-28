@@ -1669,6 +1669,110 @@ mod tests {
             .any(|g| g.total_amount == "-500.00"));
     }
 
+    /// The desktop Cashflow screen joins the cashflow groups with the budgeting summaries by
+    /// category id: both reports must agree on every expense line, its count and the cash
+    /// movement, for any account scope.
+    #[test]
+    fn budgeting_and_cashflow_reports_agree_per_expense_line_and_scope() {
+        let conn = setup_test_db();
+        conn.execute_batch(
+            "INSERT INTO bank_accounts (id, name) VALUES ('acc2', 'Savings');
+             INSERT INTO transaction_categories (id, name, kind) VALUES ('cat_health', 'Health', 'expense');
+             INSERT INTO bank_transactions(id,bank_account_id,booking_date,amount,currency,category_id,tx_type,flow_kind) VALUES
+             ('g1','acc1',1790812800,'800','CZK','cat_groceries','debit',NULL),
+             ('g2','acc2',1790899200,'200','CZK','cat_groceries','debit',NULL),
+             ('gr','acc1',1790985600,'50','CZK','cat_groceries','credit',NULL),
+             ('d1','acc1',1790812800,'300','CZK','cat_dining','debit',NULL),
+             ('dr','acc1',1790899200,'400','CZK','cat_dining','credit',NULL),
+             ('u1','acc2',1790812800,'120','CZK',NULL,'debit',NULL),
+             ('i1','acc1',1790812800,'5000','CZK','cat_income','credit',NULL),
+             ('t1','acc1',1790899200,'1000','CZK',NULL,'debit','transfer'),
+             ('t2','acc2',1790899200,'1000','CZK',NULL,'credit','transfer');",
+        )
+        .unwrap();
+        upsert_goal(
+            &conn,
+            InsertBudgetGoal {
+                category_id: "cat_health".into(),
+                ..goal_input("500", OCT)
+            },
+        )
+        .unwrap();
+        let (start, end) = (OCT, NOV - 1);
+        let both = vec!["acc1".to_string(), "acc2".to_string()];
+        let first = vec!["acc1".to_string()];
+        for scope in [None, Some(both.as_slice()), Some(first.as_slice())] {
+            let budget =
+                get_report_in_currency(&conn, start, end, "monthly", scope, "CZK").unwrap();
+            let cashflow = crate::services::cashflow_actuals::get_actuals_in_currency(
+                &conn, start, end, NOW, scope, "CZK",
+            )
+            .unwrap();
+            assert_eq!(budget.total_expenses, cashflow.total_expenses);
+            assert_eq!(budget.bank_cash_movement, cashflow.bank_cash_movement);
+            for group in cashflow
+                .expense_categories
+                .iter()
+                .filter(|g| g.key != "uncategorized")
+            {
+                let summary = budget
+                    .expense_categories
+                    .iter()
+                    .find(|s| s.category_id == group.key)
+                    .unwrap_or_else(|| panic!("{} missing from budgeting", group.key));
+                assert_eq!(summary.total_amount, group.amount, "{}", group.key);
+                assert_eq!(summary.transaction_count, group.count, "{}", group.key);
+            }
+            let uncategorized = cashflow
+                .expense_categories
+                .iter()
+                .find(|g| g.key == "uncategorized");
+            assert_eq!(
+                uncategorized.map_or("0.00", |g| g.amount.as_str()),
+                budget.uncategorized_expenses
+            );
+            assert_eq!(
+                uncategorized.map_or(0, |g| g.count),
+                budget.uncategorized_expense_transaction_count
+            );
+            // A limit without spending is a budgeting line only.
+            let health = budget
+                .expense_categories
+                .iter()
+                .find(|s| s.category_id == "cat_health")
+                .unwrap();
+            assert_eq!(health.transaction_count, 0);
+            assert_eq!(health.budget_spent.as_deref(), Some("0.00"));
+            assert!(cashflow
+                .expense_categories
+                .iter()
+                .all(|g| g.key != "cat_health"));
+        }
+        // The paired transfer cancels with both accounts; one account keeps its side.
+        let all = crate::services::cashflow_actuals::get_actuals_in_currency(
+            &conn, start, end, NOW, None, "CZK",
+        )
+        .unwrap();
+        let one = crate::services::cashflow_actuals::get_actuals_in_currency(
+            &conn,
+            start,
+            end,
+            NOW,
+            Some(first.as_slice()),
+            "CZK",
+        )
+        .unwrap();
+        assert_eq!(all.total_expenses, "970.00");
+        assert_eq!(all.bank_cash_movement, "4030.00");
+        assert_eq!(one.total_expenses, "650.00");
+        assert_eq!(one.bank_cash_movement, "3350.00");
+        // A refund larger than the spending is a negative line, not a dropped one.
+        assert!(all
+            .expense_categories
+            .iter()
+            .any(|g| g.key == "cat_dining" && g.amount == "-100.00"));
+    }
+
     #[test]
     fn quarterly_limits_integrate_versions_currency_and_deleted_months() {
         let conn = setup_test_db();

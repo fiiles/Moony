@@ -34,7 +34,9 @@
     "state": {
       "over": "{{amount}}超過",
       "near": "上限に近い",
-      "ok": "順調"
+      "ok": "順調",
+      "exhausted": "上限に到達",
+      "overShort": "上限超過"
     },
     "of": "/ {{amount}}",
     "transactions_other": "{{count}}件の取引",

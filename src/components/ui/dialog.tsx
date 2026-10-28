@@ -47,38 +47,86 @@ function startedOnToast(event: { detail: { originalEvent: Event } }): boolean {
 }
 
 /**
+ * The element focused when the dialog opens. A dialog opened from a menu item gets the menu's
+ * trigger: the item leaves the page with the menu.
+ */
+function focusedOpener(): HTMLElement | null {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement)) return null;
+  const menu = active.closest('[role="menu"]');
+  const trigger = menu?.id
+    ? document.querySelector(`[aria-controls="${CSS.escape(menu.id)}"]`)
+    : null;
+  return trigger instanceof HTMLElement ? trigger : active;
+}
+
+/**
+ * Remembers the element focused when the dialog opens. It mounts with every opening (the
+ * content unmounts while closed; the `DialogContent` wrapper does not) and reads focus while
+ * rendering, before an `autoFocus` field or the dialog's focus trap moves it.
+ */
+function OpenerProbe({ target }: { target: React.MutableRefObject<HTMLElement | null> }) {
+  const [opener] = React.useState(focusedOpener);
+  React.useLayoutEffect(() => {
+    target.current = opener;
+  }, [opener, target]);
+  return null;
+}
+
+/**
  * Content padding is 23 × 27 px; DialogHeader/DialogFooter stretch to the edges.
  * A click on a toast (its "Vrátit zpět", for one) is not a click outside the modal: the
  * toast handles it and the dialog stays open.
+ * Closing returns focus to the element that opened the dialog: most dialogs are opened from
+ * state (a row button, a menu item) rather than a `DialogTrigger`, and Radix alone would then
+ * leave focus on the page body.
  */
 const DialogContent = React.forwardRef<
   React.ComponentRef<typeof DialogPrimitive.Content>,
   DialogContentProps
->(({ className, children, hideCloseButton, onPointerDownOutside, ...props }, ref) => (
-  <DialogPortal>
-    <DialogOverlay />
-    <DialogPrimitive.Content
-      ref={ref}
-      className={cn(
-        'fixed left-1/2 top-1/2 z-50 grid w-full max-w-[560px] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-hidden rounded-r5 border border-line-strong bg-paper px-[27px] py-[23px] text-ink shadow-modal data-[state=open]:animate-modal-in data-[state=closed]:animate-modal-out',
-        className
-      )}
-      onPointerDownOutside={(event) => {
-        if (startedOnToast(event)) event.preventDefault();
-        onPointerDownOutside?.(event);
-      }}
-      {...props}
-    >
-      {children}
-      {!hideCloseButton && (
-        <DialogPrimitive.Close className="absolute right-[27px] top-[25px] grid size-7 place-items-center rounded-full bg-well text-ink-3 transition-colors duration-fast hover:bg-well-2 hover:text-ink focus-visible:outline-none focus-visible:shadow-focus disabled:pointer-events-none">
-          <X className="size-[15px]" />
-          <span className="sr-only">Close</span>
-        </DialogPrimitive.Close>
-      )}
-    </DialogPrimitive.Content>
-  </DialogPortal>
-));
+>(
+  (
+    { className, children, hideCloseButton, onPointerDownOutside, onCloseAutoFocus, ...props },
+    ref
+  ) => {
+    const opener = React.useRef<HTMLElement | null>(null);
+    return (
+      <DialogPortal>
+        <DialogOverlay />
+        <DialogPrimitive.Content
+          ref={ref}
+          className={cn(
+            'fixed left-1/2 top-1/2 z-50 grid w-full max-w-[560px] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-hidden rounded-r5 border border-line-strong bg-paper px-[27px] py-[23px] text-ink shadow-modal data-[state=open]:animate-modal-in data-[state=closed]:animate-modal-out',
+            className
+          )}
+          onPointerDownOutside={(event) => {
+            if (startedOnToast(event)) event.preventDefault();
+            onPointerDownOutside?.(event);
+          }}
+          onCloseAutoFocus={(event) => {
+            onCloseAutoFocus?.(event);
+            if (event.defaultPrevented) return;
+            const element = opener.current;
+            if (element && element !== document.body && element.isConnected) {
+              event.preventDefault();
+              element.focus({ preventScroll: true });
+            }
+          }}
+          {...props}
+        >
+          <OpenerProbe target={opener} />
+          {children}
+          {!hideCloseButton && (
+            <DialogPrimitive.Close className="absolute right-[27px] top-[25px] grid size-7 place-items-center rounded-full bg-well text-ink-3 transition-colors duration-fast hover:bg-well-2 hover:text-ink focus-visible:outline-none focus-visible:shadow-focus disabled:pointer-events-none">
+              <X className="size-[15px]" />
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+          )}
+        </DialogPrimitive.Content>
+      </DialogPortal>
+    );
+  }
+);
 DialogContent.displayName = DialogPrimitive.Content.displayName;
 
 /** `.modal__head`: spans the modal width, hairline below. */

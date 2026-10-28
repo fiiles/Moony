@@ -165,8 +165,8 @@ pub fn unlock(
 }
 
 /// The part of every unlock after the master key is known (password and biometrics alike): open
-/// the database with it, read the profile, keep the key for the session on the phone (biometric
-/// unlock is switched on with it) and mark the session authenticated.
+/// the database with it, read the profile, keep the key for the session where biometric unlock exists
+/// (it is switched on with it) and mark the session authenticated.
 pub fn unlock_with_master_key(
     db: &Database,
     session: &SessionKey,
@@ -184,10 +184,11 @@ pub fn unlock_with_master_key(
 
 /// Keep the master key in the session after an unlock or the first-run setup.
 fn keep_session_key(session: &SessionKey, master_key: &[u8; 32]) {
-    // R22: only the phone needs the key after unlock (biometric enrolment).
-    #[cfg(mobile)]
+    // Owner ruling 2026-10-28: macOS and Windows keep it too (biometric enrolment needs it, so the
+    // password is not asked twice); Linux has no biometric unlock to enable, so it keeps nothing.
+    #[cfg(any(mobile, target_os = "macos", target_os = "windows"))]
     session.set(master_key);
-    #[cfg(not(mobile))]
+    #[cfg(not(any(mobile, target_os = "macos", target_os = "windows")))]
     let _ = (session, master_key);
 }
 
@@ -1320,13 +1321,54 @@ mod tests {
         assert!(session.hex().is_none(), "a failed unlock keeps no key");
     }
 
-    /// R22: the phone keeps the key after an unlock (biometric enrolment needs it), the desktop
-    /// keeps none.
+    /// A migrated database holding one profile row, closed again, for the unlock tests below.
+    fn locked_profile_db(dir: &Path, master_key: &[u8; 32]) -> PathBuf {
+        let db_path = dir.join("moony.db");
+        let db = Database::new();
+        db.create_with_key(db_path.clone(), &crypto::master_key_to_hex(master_key))
+            .expect("create db");
+        db.with_conn(|conn| {
+            conn.execute(
+                "INSERT INTO user_profile (name, surname, email) VALUES ('A', 'B', 'a@b.c')",
+                [],
+            )?;
+            Ok(())
+        })
+        .expect("profile row");
+        db.close();
+        db_path
+    }
+
+    /// Owner ruling 2026-10-28: the phone and the macOS and Windows desktops keep the master key
+    /// after an unlock (biometric enrolment needs it, so the password is not asked twice).
+    #[cfg(any(target_os = "macos", target_os = "windows"))]
     #[test]
-    fn the_session_key_is_kept_on_the_phone_only() {
+    fn desktop_unlock_keeps_the_session_key() {
+        let dir = tempdir().expect("tempdir");
+        let master_key = [7u8; 32];
+        let db_path = locked_profile_db(dir.path(), &master_key);
         let session = SessionKey::default();
-        keep_session_key(&session, &[9u8; 32]);
-        assert_eq!(session.hex().is_some(), cfg!(mobile));
+
+        unlock_with_master_key(&Database::new(), &session, db_path, &master_key).expect("unlock");
+
+        assert_eq!(
+            session.hex().as_deref().map(String::as_str),
+            Some(hex::encode(master_key).as_str())
+        );
+    }
+
+    /// Linux has no biometric unlock to enable, so the key is not kept there.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_unlock_keeps_no_session_key() {
+        let dir = tempdir().expect("tempdir");
+        let master_key = [7u8; 32];
+        let db_path = locked_profile_db(dir.path(), &master_key);
+        let session = SessionKey::default();
+
+        unlock_with_master_key(&Database::new(), &session, db_path, &master_key).expect("unlock");
+
+        assert!(session.hex().is_none());
     }
 
     /// The session key goes with the session (biometric unlock can only be switched on while

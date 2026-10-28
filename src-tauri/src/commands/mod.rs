@@ -6,8 +6,6 @@ pub mod attachments;
 pub mod auth;
 pub mod backup;
 pub mod bank_accounts;
-/// Phones only: the keychain plugin is a mobile dependency.
-#[cfg(mobile)]
 pub mod biometric;
 pub mod bonds;
 pub mod budgeting;

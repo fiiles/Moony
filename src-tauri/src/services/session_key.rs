@@ -1,10 +1,11 @@
-//! The session's master key, kept in memory while the phone is unlocked (spec §8.1).
+//! The session's master key, kept in memory while the app is unlocked (spec §8.1).
 //!
-//! After every unlock (password, recovery key, first-run setup, biometrics) the phone keeps a copy
-//! of the master key in [`SessionKey`] until the app locks again, so biometric unlock can be
-//! switched on without asking for the password a second time (`auth::keep_session_key`; the
-//! desktop never fills it, ruling R22). The key never crosses into the webview: biometric unlock
-//! (`services::biometric_unlock`) stores it in the phone keychain and reads it back from Rust only.
+//! After every unlock (password, recovery key, first-run setup, biometrics) the phone, macOS and
+//! Windows keep a copy of the master key in [`SessionKey`] until the app locks again, so biometric
+//! unlock can be switched on without asking for the password a second time
+//! (`auth::keep_session_key`; owner ruling 2026-10-28, Linux keeps none because it has nothing to
+//! enable). The key never crosses into the webview: biometric unlock (`services::biometric_unlock`)
+//! stores it in the platform keychain and reads it back from Rust only.
 
 use std::sync::{Mutex, MutexGuard, PoisonError};
 

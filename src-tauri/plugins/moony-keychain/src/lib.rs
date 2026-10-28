@@ -16,8 +16,9 @@
 //! parsed value moves into a `Zeroizing` in `services/biometric_unlock.rs`); the bridge buffers
 //! live only for the call and are freed, not wiped.
 //!
-//! On the desktop the crate compiles and every call returns [`KeychainError::Unsupported`]; the
-//! app registers the plugin under `#[cfg(mobile)]` only.
+//! On the desktop the crate compiles and registers on every platform; until the macOS and Windows
+//! backends land, every call returns [`KeychainError::Unsupported`]. The desktop webview is not
+//! granted any of the plugin's permissions: it reaches biometrics only through the app's commands.
 
 use tauri::{
     plugin::{Builder, TauriPlugin},

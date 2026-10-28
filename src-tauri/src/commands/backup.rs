@@ -173,6 +173,9 @@ pub async fn restore_backup(
     crate::services::auth::logout(&db, &session);
     crate::commands::attachments::wipe_open_copies(&app);
     backup::restore_backup(&dir, &PathBuf::from(path), &known_migrations())?;
+    // The archive carries its own master key, so the key biometric unlock holds no longer opens
+    // the profile: switch it off (the phone's frontend also does so first; twice is harmless).
+    crate::commands::biometric::switch_off(&app).await;
     // The restore may have recreated folders: keep the profile out of device backups (phone only).
     #[cfg(mobile)]
     crate::commands::device_backup::exclude_data_dir(&app).await;

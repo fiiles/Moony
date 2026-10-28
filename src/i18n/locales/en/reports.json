@@ -599,7 +599,8 @@
       "showTransactions": "Show transactions: {{name}}",
       "editLimitFor": "Edit limit: {{name}}",
       "setLimitFor": "Set a limit: {{name}}",
-      "pace": "the mark is today, {{percent}} of the period gone"
+      "pace": "the mark is today, {{percent}} of the period gone",
+      "paceMark": "Today · {{percent}} of the period gone"
     },
     "income": {
       "title": "Income by category",

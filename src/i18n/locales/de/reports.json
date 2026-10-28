@@ -599,7 +599,8 @@
       "showTransactions": "Transaktionen anzeigen: {{name}}",
       "editLimitFor": "Limit bearbeiten: {{name}}",
       "setLimitFor": "Limit festlegen: {{name}}",
-      "pace": "die Markierung ist heute, {{percent}} des Zeitraums vorbei"
+      "pace": "die Markierung ist heute, {{percent}} des Zeitraums vorbei",
+      "paceMark": "Heute · {{percent}} des Zeitraums vorbei"
     },
     "income": {
       "title": "Einnahmen nach Kategorie",

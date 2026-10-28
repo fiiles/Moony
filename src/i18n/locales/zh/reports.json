@@ -576,7 +576,8 @@
       "showTransactions": "查看交易：{{name}}",
       "editLimitFor": "编辑限额：{{name}}",
       "setLimitFor": "设置限额：{{name}}",
-      "pace": "标记为今天，时期已过 {{percent}}"
+      "pace": "标记为今天，时期已过 {{percent}}",
+      "paceMark": "今天 · 时期已过 {{percent}}"
     },
     "income": {
       "title": "按类别的收入",

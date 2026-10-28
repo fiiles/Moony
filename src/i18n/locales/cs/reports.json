@@ -622,7 +622,8 @@
       "showTransactions": "Zobrazit transakce: {{name}}",
       "editLimitFor": "Upravit limit: {{name}}",
       "setLimitFor": "Nastavit limit: {{name}}",
-      "pace": "značka je dnešek, uplynulo {{percent}} období"
+      "pace": "značka je dnešek, uplynulo {{percent}} období",
+      "paceMark": "Dnes · uplynulo {{percent}} období"
     },
     "income": {
       "title": "Příjmy podle kategorií",

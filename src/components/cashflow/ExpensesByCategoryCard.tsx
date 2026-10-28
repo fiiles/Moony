@@ -193,6 +193,11 @@ export function ExpensesByCategoryCard({
           value={limit.percentage}
           over={over}
           mark={pace}
+          markLabel={
+            pace === undefined
+              ? undefined
+              : t('actuals.expenses.paceMark', { percent: fmt.percent(pace / 100, 0) })
+          }
           className="h-[6px]"
           aria-label={`${tb(STATE_KEYS[limit.state])} · ${fmt.percent(limit.percentage / 100, 0)}`}
         />
@@ -289,10 +294,10 @@ export function ExpensesByCategoryCard({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead className="w-[32%]">{t('actuals.breakdown.category')}</TableHead>
+              <TableHead className="w-[30%]">{t('actuals.breakdown.category')}</TableHead>
               <TableHead className="text-right">{t('actuals.expenses.spent')}</TableHead>
               <TableHead className="text-right">{t('actuals.expenses.limit')}</TableHead>
-              <TableHead className="w-[22%]">{t('actuals.expenses.usage')}</TableHead>
+              <TableHead className="w-[30%]">{t('actuals.expenses.usage')}</TableHead>
               <TableHead className={cn('text-right', WIDE_ONLY)}>
                 {t('actuals.expenses.remaining')}
               </TableHead>

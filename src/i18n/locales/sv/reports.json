@@ -599,7 +599,8 @@
       "showTransactions": "Visa transaktioner: {{name}}",
       "editLimitFor": "Ändra gräns: {{name}}",
       "setLimitFor": "Sätt en gräns: {{name}}",
-      "pace": "markeringen är i dag, {{percent}} av perioden har gått"
+      "pace": "markeringen är i dag, {{percent}} av perioden har gått",
+      "paceMark": "I dag · {{percent}} av perioden har gått"
     },
     "income": {
       "title": "Inkomster per kategori",

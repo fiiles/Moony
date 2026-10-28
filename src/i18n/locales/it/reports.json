@@ -622,7 +622,8 @@
       "showTransactions": "Mostra transazioni: {{name}}",
       "editLimitFor": "Modifica limite: {{name}}",
       "setLimitFor": "Imposta un limite: {{name}}",
-      "pace": "il segno è oggi, trascorso il {{percent}} del periodo"
+      "pace": "il segno è oggi, trascorso il {{percent}} del periodo",
+      "paceMark": "Oggi · trascorso il {{percent}} del periodo"
     },
     "income": {
       "title": "Entrate per categoria",

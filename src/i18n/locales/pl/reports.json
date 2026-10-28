@@ -645,7 +645,8 @@
       "showTransactions": "Pokaż transakcje: {{name}}",
       "editLimitFor": "Edytuj limit: {{name}}",
       "setLimitFor": "Ustaw limit: {{name}}",
-      "pace": "znacznik to dziś, minęło {{percent}} okresu"
+      "pace": "znacznik to dziś, minęło {{percent}} okresu",
+      "paceMark": "Dziś · minęło {{percent}} okresu"
     },
     "income": {
       "title": "Przychody wg kategorii",

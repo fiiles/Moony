@@ -576,7 +576,8 @@
       "showTransactions": "取引を表示: {{name}}",
       "editLimitFor": "上限を編集: {{name}}",
       "setLimitFor": "上限を設定: {{name}}",
-      "pace": "目印は今日、期間の{{percent}}が経過"
+      "pace": "目印は今日、期間の{{percent}}が経過",
+      "paceMark": "今日 · 期間の{{percent}}が経過"
     },
     "income": {
       "title": "カテゴリ別の収入",

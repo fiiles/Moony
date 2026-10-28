@@ -4,4 +4,7 @@
 # Swift Package Manager and Gradle outputs
 /ios/.build
 /ios/Package.resolved
+/macos/.build
+/macos/.swiftpm
+/macos/Package.resolved
 /android/build

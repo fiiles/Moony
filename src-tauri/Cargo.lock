@@ -3035,6 +3035,7 @@ dependencies = [
  "log",
  "serde",
  "serde_json",
+ "swift-rs",
  "tauri",
  "tauri-plugin",
  "tempfile",

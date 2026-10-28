@@ -1,11 +1,13 @@
 //! The desktop keychain: the master key is wrapped by a platform native that only the biometry can
 //! unlock, and the wrapped blob is kept in a private file next to the database ([`blob_file`]).
 //!
-//! The platform natives plug in through [`NativeBiometrics`]. Until the macOS and Windows
-//! backends land (and on Linux, which has no biometric unlock), every call is
+//! The platform natives plug in through [`NativeBiometrics`]: Touch ID on macOS ([`macos`]). Until
+//! the Windows backend lands (and on Linux, which has no biometric unlock), every call is
 //! [`KeychainError::Unsupported`] and the desktop keeps its password-only unlock.
 
 mod blob_file;
+#[cfg(target_os = "macos")]
+mod macos;
 
 use std::marker::PhantomData;
 use std::path::{Path, PathBuf};
@@ -50,14 +52,18 @@ impl NativeBiometrics for UnsupportedNative {
     }
 }
 
-/// The seam where a platform plugs in its native: the macOS and Windows backends replace the body
-/// per `target_os`. The app identifier is passed along because the Windows native names its
-/// credential after it; the data directory is for natives that keep extra files next to the blob.
+/// The seam where a platform plugs in its native per `target_os`. The app identifier is passed
+/// along because the Windows native names its credential after it; the data directory is for
+/// natives that keep extra files next to the blob (the macOS one keeps none).
 fn platform_native(
     _app_identifier: &str,
     _data_dir: &Path,
 ) -> Box<dyn NativeBiometrics + Send + Sync> {
-    Box::new(UnsupportedNative)
+    #[cfg(target_os = "macos")]
+    let native = Box::new(macos::MacNative);
+    #[cfg(not(target_os = "macos"))]
+    let native = Box::new(UnsupportedNative);
+    native
 }
 
 pub fn init<R: Runtime, C: DeserializeOwned>(

@@ -16,9 +16,12 @@
 //! parsed value moves into a `Zeroizing` in `services/biometric_unlock.rs`); the bridge buffers
 //! live only for the call and are freed, not wiped.
 //!
-//! On the desktop the crate compiles and registers on every platform; until the macOS and Windows
-//! backends land, every call returns [`KeychainError::Unsupported`]. The desktop webview is not
-//! granted any of the plugin's permissions: it reaches biometrics only through the app's commands.
+//! On the desktop the crate compiles and registers on every platform. The desktop backend wraps
+//! the secret with a key that only the platform's biometry can use and keeps the wrapped blob in a
+//! private file in the app data directory (the same one as the database); until the macOS and
+//! Windows natives land, and on Linux, every call returns [`KeychainError::Unsupported`]. The
+//! desktop webview is not granted any of the plugin's permissions: it reaches biometrics only
+//! through the app's commands.
 
 use tauri::{
     plugin::{Builder, TauriPlugin},
@@ -53,7 +56,8 @@ impl<R: Runtime, T: Manager<R>> KeychainExt<R> for T {
     }
 }
 
-/// Builds the plugin. On a phone the native side starts with the privacy screen enabled.
+/// Builds the plugin. On a phone the native side starts with the privacy screen enabled; on the
+/// desktop it takes the app data directory and identifier from the app.
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new(PLUGIN_NAME)
         .setup(|app, api| {

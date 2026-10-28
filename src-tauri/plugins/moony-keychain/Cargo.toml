@@ -17,9 +17,14 @@ name = "moony_keychain"
 tauri = { version = "2", features = [] }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
+# Desktop backend: the secret travels as a fixed 32-byte array that is wiped on drop, and as hex.
+zeroize = "1"
+hex = "0.4"
+log = "0.4"
 
 [dev-dependencies]
 serde_json = "1"
+tempfile = "3"
 
 [build-dependencies]
 tauri-plugin = { version = "2", features = ["build"] }

@@ -17,7 +17,6 @@
   "overview": {
     "hideAmounts": "Hide amounts",
     "showAmounts": "Show amounts",
-    "showAll": "Show all",
     "change": {
       "30D": "over 30 days",
       "90D": "over 3 months",
@@ -130,8 +129,7 @@
     "sections": {
       "accounts": "Accounts",
       "loans": "Loans",
-      "insurance": "Insurance",
-      "cashTrend": "Cash trend"
+      "insurance": "Insurance"
     },
     "manual": "by hand",
     "statementOn": "statement {{date}}",
@@ -610,7 +608,8 @@
       "below": "Below",
       "openPosition": "Open position",
       "notesEmpty": "No notes yet. Tap Edit to add research notes — markdown works."
-    }
+    },
+    "assetsTrendLabel": "Assets trend chart"
   },
   "settings": {
     "rows": {

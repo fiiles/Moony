@@ -17,7 +17,6 @@
   "overview": {
     "hideAmounts": "Skjul beløp",
     "showAmounts": "Vis beløp",
-    "showAll": "Vis alle",
     "change": {
       "30D": "på 30 dager",
       "90D": "på 3 måneder",
@@ -130,8 +129,7 @@
     "sections": {
       "accounts": "Kontoer",
       "loans": "Lån",
-      "insurance": "Forsikringer",
-      "cashTrend": "Kontanter over tid"
+      "insurance": "Forsikringer"
     },
     "manual": "manuelt",
     "statementOn": "kontoutskrift {{date}}",
@@ -610,7 +608,8 @@
       "below": "Under",
       "openPosition": "Åpne beholdningen",
       "notesEmpty": "Ingen notater ennå. Trykk på Rediger for å legge til analysenotater — markdown fungerer."
-    }
+    },
+    "assetsTrendLabel": "Diagram over eiendeler"
   },
   "settings": {
     "rows": {

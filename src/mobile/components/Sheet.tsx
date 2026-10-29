@@ -1,6 +1,7 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { cn } from '@/lib/utils';
+import { useSheetDrag } from '@/hooks/use-sheet-drag';
 import { useSheetHistory } from '@/mobile/hooks/use-sheet-history';
 
 interface SheetProps {
@@ -34,7 +35,8 @@ function startedOnToast(event: { detail: { originalEvent: Event } }): boolean {
  * Bottom sheet (spec §10.3, design system README §13, `.m-sheet`): paper with a 17 pt top radius, a
  * 36 × 5 drag handle on `well-3`, the 20 / 650 title and one sentence, a body that scrolls and a
  * footer on `well` with a hairline above it. It covers the tab bar. It closes on a tap on the
- * scrim, on Escape, from its own buttons, and on Android back (`useSheetHistory`).
+ * scrim, on Escape, from its own buttons, on Android back (`useSheetHistory`) and when dragged
+ * down (`useSheetDrag`).
  *
  * Radix Dialog underneath (focus trap, scroll lock, `aria-modal`), portalled into `#root` so that
  * the sheet shares the box that `--m-vh` shortens while the keyboard is up: the footer stays above
@@ -52,12 +54,15 @@ export function Sheet({
   children,
 }: SheetProps) {
   useSheetHistory(open, () => onOpenChange(false));
+  const [content, setContent] = useState<HTMLDivElement | null>(null);
+  useSheetDrag(content, () => onOpenChange(false));
 
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal container={document.getElementById('root')}>
         <DialogPrimitive.Overlay className="absolute inset-0 z-40 bg-[color:var(--scrim)] duration-base data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 motion-reduce:animate-none" />
         <DialogPrimitive.Content
+          ref={setContent}
           // Without a sentence there is nothing to describe the sheet by (Radix would warn)
           {...(description ? {} : { 'aria-describedby': undefined })}
           onOpenAutoFocus={(event) => {

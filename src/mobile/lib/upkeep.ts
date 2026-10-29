@@ -26,6 +26,12 @@ export interface UpkeepRow {
   sinceDay?: number;
   /** The property a `valuation_stale` row is about: Přecenit opens it. */
   sourceId?: string;
+  /**
+   * The desktop's upkeep milestone behind the row (`balances_stale`, `backup_stale`,
+   * `valuation_stale`): the card hides or snoozes it as the desktop does. The rows the phone works
+   * out itself have none.
+   */
+  milestone?: Milestone;
 }
 
 /** What the card needs of an account (`BankAccount`, or one with its institution). */
@@ -73,7 +79,8 @@ export function buildUpkeepRows(input: UpkeepInput): UpkeepRow[] {
   const open = accounts.filter((account) => !isClosed(account, todayDay));
   const rows: UpkeepRow[] = [];
 
-  if (milestones.some((m) => m.kind === 'balances_stale')) {
+  const balances = milestones.find((m) => m.kind === 'balances_stale');
+  if (balances) {
     const stale = open
       .filter(
         (account) =>
@@ -87,6 +94,7 @@ export function buildUpkeepRows(input: UpkeepInput): UpkeepRow[] {
         kind: 'balances_stale',
         title: { key: 'upkeep.balancesStale', params: { count: stale.length } },
         accountIds: stale.map((account) => account.id),
+        milestone: balances,
       });
     }
   }
@@ -133,6 +141,7 @@ export function buildUpkeepRows(input: UpkeepInput): UpkeepRow[] {
               key: 'upkeep.backupStale',
               params: { count: Math.max(daysBetween(backup.sinceDay, todayDay), 0) },
             },
+      milestone: backup,
     });
   }
 
@@ -142,6 +151,7 @@ export function buildUpkeepRows(input: UpkeepInput): UpkeepRow[] {
       kind: 'valuation_stale',
       title: { key: 'upkeep.valuationStale', params: { name: m.title } },
       sourceId: m.sourceId ?? undefined,
+      milestone: m,
     });
   }
 

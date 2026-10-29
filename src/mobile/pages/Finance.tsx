@@ -24,7 +24,7 @@ import { useLoanMutations } from '@/hooks/use-loan-mutations';
 import { useLoanText } from '@/hooks/use-loan-text';
 import { useFormat } from '@/lib/use-format';
 import { utcDayFloor } from '@/utils/chart-axis';
-import { CHART_PERIODS, type ChartPeriod } from '@/utils/period';
+import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
 import { BankAccountFormDialog } from '@/components/bank-accounts/BankAccountFormDialog';
 import { ScaledConversionNote, ScaledEmptyState } from '@/mobile/components/Scaled';
 import { InsuranceFormDialog } from '@/components/insurance/InsuranceFormDialog';
@@ -44,11 +44,11 @@ import { RowBadge } from '@/mobile/components/RowBadge';
 import { UpcomingPremiums } from '@/mobile/components/finance/UpcomingPremiums';
 import { Hero } from '@/mobile/components/Hero';
 import { SectionHead } from '@/mobile/components/SectionHead';
-import { TrendCard } from '@/mobile/components/TrendCard';
 import { useCashTrend } from '@/mobile/hooks/use-cash-trend';
 import { useFinance, type Finance as FinanceData } from '@/mobile/hooks/use-finance';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
+import { changeSinceDayOptions, lineChange } from '@/mobile/lib/change';
 import {
   accountSub,
   accountTrail,
@@ -92,9 +92,10 @@ const nextDay = (row: FinanceData['insurance']['rows'][number]) =>
   row.nextPayment ?? Number.MAX_SAFE_INTEGER;
 
 /**
- * Finance tab root (spec §8.4, prototype frame 03): the compact total on accounts, the payments
- * without a category, then accounts, loans and policies as entity rows — each section head carries
- * its one number — and the cash trend. `+` adds an account, a loan or a policy (the desktop's
+ * Finance tab root (spec §8.4, prototype frame 03): the total on accounts with its cash trend
+ * (the hero's chart and period segment; the compact hero until there is a history to draw), the
+ * payments without a category, then accounts, loans and policies as entity rows — each section
+ * head carries its one number. `+` adds an account, a loan or a policy (the desktop's
  * dialogs); `···` sorts the accounts, filters the policies by type and shows the paid-off loans and
  * ended policies. The desktop's list pages have no phone equivalent beyond this (summary stats,
  * trajectory); its payment calendar is "Nejbližší platby" under the policies.
@@ -103,6 +104,7 @@ export default function Finance() {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
+  const fmt = useFormat();
   // Money as text (the hero sizes itself to the shown text; the trend callout, the change line and
   // the rows only render it); masked while amounts are hidden
   const moneyText = useMoneyText();
@@ -170,6 +172,18 @@ export default function Finance() {
     .join(' · ');
 
   const change = totalUnknown ? null : cashChange(totals.balance, totals.net30);
+  // The hero draws the cash trend once there is one (or a period other than the default was
+  // picked, so the segment stays to switch back); its change line then follows the chart
+  const charted = trend.points.length > 1 || period !== DEFAULT_PERIOD;
+  const trendChange = totalUnknown
+    ? null
+    : lineChange(trend.points, chartPeriodStart(period, Date.now() / 1000));
+  const trendLabel =
+    trendChange?.sinceDay != null
+      ? tc('dashboard:changeSince', {
+          date: fmt.day(trendChange.sinceDay, changeSinceDayOptions(trendChange.sinceDay)),
+        })
+      : t(`overview.change.${period}`);
   const isEmpty =
     !isLoading && accounts.length === 0 && loans.rows.length === 0 && insurance.rows.length === 0;
   const close = () => setAddKind(null);
@@ -274,25 +288,51 @@ export default function Finance() {
           />
           {accounts.length > 0 && (
             <>
-              <Hero
-                label={t('finance.total')}
-                value={totalUnknown ? null : totals.balance}
-                formatValue={money0}
-                change={
-                  change
-                    ? {
-                        ratio: change.ratio,
-                        text: t('finance.change30', {
-                          amount: moneyText(change.delta, mainCurrency, {
+              {charted ? (
+                <Hero
+                  label={t('finance.total')}
+                  value={totalUnknown ? null : totals.balance}
+                  formatValue={money0}
+                  change={
+                    trendChange
+                      ? {
+                          ratio: trendChange.ratio ?? 0,
+                          text: `${moneyText(trendChange.delta, mainCurrency, {
                             signed: true,
                             decimals: 0,
+                          })} ${trendLabel}`,
+                        }
+                      : undefined
+                  }
+                  note={totalUnknown ? undefined : t('overview.stats.noHistory')}
+                  period={period}
+                  periods={CHART_PERIODS}
+                  onPeriodChange={setPeriod}
+                  points={trend.points}
+                  zeroBaseline={period === 'All'}
+                  chartLabel={t('finance.cashTrendLabel')}
+                />
+              ) : (
+                <Hero
+                  label={t('finance.total')}
+                  value={totalUnknown ? null : totals.balance}
+                  formatValue={money0}
+                  change={
+                    change
+                      ? {
+                          ratio: change.ratio,
+                          text: t('finance.change30', {
+                            amount: moneyText(change.delta, mainCurrency, {
+                              signed: true,
+                              decimals: 0,
+                            }),
                           }),
-                        }),
-                      }
-                    : undefined
-                }
-                note={!totalUnknown && totals.net30 === 0 ? t('finance.noMovements') : undefined}
-              />
+                        }
+                      : undefined
+                  }
+                  note={!totalUnknown && totals.net30 === 0 ? t('finance.noMovements') : undefined}
+                />
+              )}
               <UncategorizedRow finance={finance} />
               <AccountsSection finance={finance} sort={sort} />
             </>
@@ -300,18 +340,6 @@ export default function Finance() {
           <LoansSection finance={finance} rows={loanRows} />
           <PoliciesSection finance={finance} rows={policyRows} />
           <UpcomingPremiums rows={policyRows} today={insurance.today} />
-          {accounts.length > 0 && (trend.points.length > 1 || period !== DEFAULT_PERIOD) && (
-            <TrendCard
-              title={t('finance.sections.cashTrend')}
-              note={t(`overview.change.${period}`)}
-              points={trend.points}
-              period={period}
-              periods={CHART_PERIODS}
-              onPeriodChange={setPeriod}
-              formatValue={money0}
-              label={t('finance.cashTrendLabel')}
-            />
-          )}
         </>
       )}
 

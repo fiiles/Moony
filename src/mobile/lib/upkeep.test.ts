@@ -296,6 +296,28 @@ describe('buildUpkeepRows', () => {
     ).toEqual([]);
   });
 
+  it('carries the milestone behind a row, so the card can hide or snooze it', () => {
+    const balances = milestone('balances_stale', { count: 1 });
+    const backup = milestone('backup_stale', { sinceDay: ago(50) });
+    const valuation = milestone('valuation_stale', { sourceId: 'p', title: 'Byt' });
+    const rows = buildUpkeepRows(
+      input({
+        milestones: [valuation, backup, balances],
+        accounts: [account('a', { balanceAsOf: ago(60) })],
+        lastImportByAccount: { a: ago(60) },
+        uncategorized: 4,
+        uncategorizedAccountIds: ['a'],
+      })
+    );
+    expect(rows.map((row) => row.milestone)).toEqual([
+      balances,
+      undefined,
+      undefined,
+      backup,
+      valuation,
+    ]);
+  });
+
   it('orders balances, payments, statements, backup, valuations', () => {
     const rows = buildUpkeepRows(
       input({

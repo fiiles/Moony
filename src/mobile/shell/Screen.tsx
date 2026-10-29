@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
 import { cn } from '@/lib/utils';
+import { useEdgeSwipeBack } from '@/mobile/hooks/use-edge-swipe-back';
 import { NavBar } from './NavBar';
 
 interface ScreenProps {
@@ -17,7 +18,8 @@ interface ScreenProps {
 
 /**
  * One phone screen (design system README §13, `.m-screen`): the nav bar over one scroll area
- * with the 16 pt gutter and room at the bottom for the fixed tab bar.
+ * with the 16 pt gutter and room at the bottom for the fixed tab bar. A screen with a back button
+ * also goes back by a swipe from the left edge (`useEdgeSwipeBack`).
  */
 export function Screen({
   title,
@@ -28,13 +30,18 @@ export function Screen({
   tabBar = true,
   children,
 }: ScreenProps) {
+  const rootRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLElement>(null);
   // The large title, or a 1 px marker at the top of a screen without one.
   const [marker, setMarker] = useState<HTMLElement | null>(null);
   const collapsed = useScrolledAway(scrollRef, marker);
+  useEdgeSwipeBack(rootRef);
 
   return (
-    <div className="flex h-full flex-col overflow-hidden bg-canvas bg-[radial-gradient(520px_320px_at_100%_0%,var(--canvas-glow),transparent_70%)] text-m-body text-ink-2">
+    <div
+      ref={rootRef}
+      className="flex h-full flex-col overflow-hidden bg-canvas bg-[radial-gradient(520px_320px_at_100%_0%,var(--canvas-glow),transparent_70%)] text-m-body text-ink-2"
+    >
       <NavBar
         title={title}
         large={large}

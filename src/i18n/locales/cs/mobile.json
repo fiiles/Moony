@@ -17,7 +17,6 @@
   "overview": {
     "hideAmounts": "Skrýt částky",
     "showAmounts": "Zobrazit částky",
-    "showAll": "Zobrazit vše",
     "change": {
       "30D": "za 30 dní",
       "90D": "za 3 měsíce",
@@ -141,8 +140,7 @@
     "sections": {
       "accounts": "Účty",
       "loans": "Úvěry",
-      "insurance": "Pojištění",
-      "cashTrend": "Vývoj hotovosti"
+      "insurance": "Pojištění"
     },
     "manual": "ručně",
     "statementOn": "výpis {{date}}",
@@ -645,7 +643,8 @@
       "below": "Pod",
       "openPosition": "Otevřít pozici",
       "notesEmpty": "Zatím žádné poznámky. Klepněte na Upravit a přidejte poznámky — markdown funguje."
-    }
+    },
+    "assetsTrendLabel": "Graf vývoje aktiv"
   },
   "settings": {
     "rows": {

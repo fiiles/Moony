@@ -357,6 +357,37 @@
     font-size: var(--m-fs-field);
   }
 
+  /* A desktop dialog shown as the phone sheet (`data-phone-sheet`, src/components/ui/dialog.tsx)
+     draws its fields as the phone's own (`.m-field__i`, AmountField, DateField): 48 pt, radius 10,
+     no system chrome, a date's value at the left — WebKit on iOS otherwise draws a date input
+     taller than a text input, with its value centred, and a select in its own style, so the fields
+     of one form did not line up. Two fields that shared a desktop row get a row each, as the phone
+     has 370 pt for them; an amount with its date (`1fr` + a fixed date width) keeps its pair. */
+  html[data-shell='mobile']
+    [data-phone-sheet]
+    :is(
+      input:not([type='checkbox'], [type='radio'], [type='range'], [type='file'], [type='color']),
+      select,
+      button[role='combobox']
+    ) {
+    height: 48px;
+    border-radius: 10px;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  html[data-shell='mobile'] [data-phone-sheet] textarea {
+    min-height: 96px;
+    border-radius: 10px;
+  }
+  html[data-shell='mobile'] [data-phone-sheet] input::-webkit-date-and-time-value {
+    text-align: left;
+  }
+  html[data-shell='mobile']
+    [data-phone-sheet]
+    :is(.grid-cols-2, .grid-cols-3, .grid-cols-\[1\.4fr_1fr\], .grid-cols-\[1fr_1\.4fr\]) {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   /* Japanese and Chinese: Inter has no CJK glyphs, so name the system faces for them
      (after Inter, which keeps Latin text and numbers), and drop the tight tracking —
      negative letter-spacing makes ideographs collide. Numbers (`.num`) keep theirs. */

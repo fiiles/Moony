@@ -17,7 +17,6 @@
   "overview": {
     "hideAmounts": "Ukryj kwoty",
     "showAmounts": "Pokaż kwoty",
-    "showAll": "Pokaż wszystkie",
     "change": {
       "30D": "w 30 dni",
       "90D": "w 3 miesiące",
@@ -152,8 +151,7 @@
     "sections": {
       "accounts": "Konta",
       "loans": "Kredyty",
-      "insurance": "Ubezpieczenia",
-      "cashTrend": "Gotówka w czasie"
+      "insurance": "Ubezpieczenia"
     },
     "manual": "ręcznie",
     "statementOn": "wyciąg z {{date}}",
@@ -680,7 +678,8 @@
       "below": "Poniżej",
       "openPosition": "Otwórz pozycję",
       "notesEmpty": "Brak notatek. Stuknij Edytuj, aby dodać notatki z analizy — markdown działa."
-    }
+    },
+    "assetsTrendLabel": "Wykres aktywów"
   },
   "settings": {
     "rows": {

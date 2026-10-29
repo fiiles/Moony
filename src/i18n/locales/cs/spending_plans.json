@@ -1,0 +1,153 @@
+{
+  "eyebrow": "Peníze",
+  "title": "Výdajové plány",
+  "subtitle": "Kolik chcete za rok dát za co a kolik už jste utratili. Platby do plánů zařazujete v seznamu plateb na účtu, kategorie zůstávají beze změny.",
+  "year": {
+    "label": "Rok",
+    "prev": "Předchozí rok",
+    "next": "Další rok"
+  },
+  "actions": {
+    "newPlan": "Nový plán",
+    "takeOver": "Převzít plány z roku {{year}}",
+    "open": "Otevřít",
+    "edit": "Upravit",
+    "close": "Uzavřít plán",
+    "reopen": "Obnovit plán",
+    "delete": "Smazat plán",
+    "menu": "Akce plánu",
+    "undo": "Vrátit zpět"
+  },
+  "status": {
+    "over": "Přečerpáno",
+    "near": "Blízko limitu",
+    "ok": "V pořádku",
+    "empty": "Bez plateb",
+    "unknown": "Chybí kurz",
+    "closed": "Uzavřený"
+  },
+  "stats": {
+    "planned": "Plánováno na rok {{year}}",
+    "plans_one": "{{count}} plán",
+    "plans_few": "{{count}} plány",
+    "plans_other": "{{count}} plánů",
+    "closed_one": "{{count}} uzavřený",
+    "closed_few": "{{count}} uzavřené",
+    "closed_other": "{{count}} uzavřených",
+    "spent": "Utraceno",
+    "spentShare": "{{percent}} plánovaného",
+    "remaining": "Zbývá v aktivních plánech",
+    "activePlans_one": "{{count}} aktivní plán",
+    "activePlans_few": "{{count}} aktivní plány",
+    "activePlans_other": "{{count}} aktivních plánů",
+    "attention": "Vyžaduje pozornost",
+    "over_one": "{{count}} přečerpaný",
+    "over_few": "{{count}} přečerpané",
+    "over_other": "{{count}} přečerpaných",
+    "allWithin": "Vše v mezích",
+    "near_one": "{{count}} plán je blízko limitu",
+    "near_few": "{{count}} plány jsou blízko limitu",
+    "near_other": "{{count}} plánů je blízko limitu",
+    "noneNear": "Žádný plán není blízko limitu"
+  },
+  "table": {
+    "title": "Plány {{year}}",
+    "subtitle": "Seřazené podle čerpání · přečerpané a skoro vyčerpané nahoře",
+    "search": "Hledat plán",
+    "segmentLabel": "Stav plánů",
+    "segment": {
+      "active": "Aktivní {{n}}",
+      "closed": "Uzavřené {{n}}",
+      "all": "Vše {{n}}"
+    },
+    "plan": "Plán",
+    "planned": "Plánováno",
+    "spent": "Utraceno",
+    "usage": "Čerpání",
+    "left": "Zbývá",
+    "status": "Stav",
+    "payments_one": "{{count}} platba · poslední {{date}}",
+    "payments_few": "{{count}} platby · poslední {{date}}",
+    "payments_other": "{{count}} plateb · poslední {{date}}",
+    "noPayments": "Zatím bez plateb",
+    "footer_one": "{{count}} plán · plánováno {{planned}} · utraceno {{spent}}",
+    "footer_few": "{{count}} plány · plánováno {{planned}} · utraceno {{spent}}",
+    "footer_other": "{{count}} plánů · plánováno {{planned}} · utraceno {{spent}}",
+    "footerNote": "Blízko limitu: utraceno {{percent}} a více",
+    "noResults": {
+      "searchTitle": "Žádný plán neodpovídá hledání",
+      "searchActive": "„{{query}}“ nenajdete mezi aktivními plány roku {{year}}.",
+      "searchClosed": "„{{query}}“ nenajdete mezi uzavřenými plány roku {{year}}.",
+      "searchAll": "„{{query}}“ nenajdete mezi plány roku {{year}}.",
+      "allClosed": "Všechny plány roku {{year}} jsou uzavřené",
+      "noClosed": "Žádné uzavřené plány",
+      "showAll": "Zobrazit všechny plány"
+    }
+  },
+  "empty": {
+    "title": "Na rok {{year}} zatím nemáte žádné plány",
+    "descriptionTakeOver": "Převezměte plány z roku {{year}} a jen upravte částky, nebo založte první plán.",
+    "description": "Založte první plán: třeba dovolenou, dárky nebo pravidelnou péči.",
+    "takeOver_one": "Převzít {{count}} plán z roku {{year}}",
+    "takeOver_few": "Převzít {{count}} plány z roku {{year}}",
+    "takeOver_other": "Převzít {{count}} plánů z roku {{year}}"
+  },
+  "delete": {
+    "title": "Smazat plán {{name}}?",
+    "withPayments_one": "{{count}} platba v něm zůstane beze změny, jen přestane patřit do plánu. Kategorie se nemění. Smazání nelze vrátit.",
+    "withPayments_few": "{{count}} platby v něm zůstanou beze změny, jen přestanou patřit do plánu. Kategorie se nemění. Smazání nelze vrátit.",
+    "withPayments_other": "{{count}} plateb v něm zůstane beze změny, jen přestanou patřit do plánu. Kategorie se nemění. Smazání nelze vrátit.",
+    "noPayments": "Plán zatím nemá žádné platby. Smazání nelze vrátit."
+  },
+  "toast": {
+    "created": "Plán {{name}} vytvořen",
+    "saved": "Změny uloženy",
+    "closed": "Plán {{name}} uzavřen. Nebude se nabízet při zařazování plateb.",
+    "reopened": "Plán {{name}} znovu otevřen",
+    "deleted": "Plán {{name}} smazán",
+    "takenOver_one": "{{count}} plán převzat z roku {{year}}",
+    "takenOver_few": "{{count}} plány převzaty z roku {{year}}",
+    "takenOver_other": "{{count}} plánů převzato z roku {{year}}"
+  },
+  "form": {
+    "newTitle": "Nový výdajový plán",
+    "newDescription": "Kolik chcete za rok dát za jednu věc. Platby do plánu přidáte v seznamu plateb na účtu.",
+    "editTitle": "Upravit plán",
+    "editDescription": "{{name}} · {{year}}",
+    "name": "Název",
+    "namePlaceholder": "Např. Dovolená Jeseníky, Fyzioterapie",
+    "amount": "Plánovaná částka",
+    "year": "Rok",
+    "fxHint": "Platby v jiné měně se do plánu převedou kurzem ECB ke dni platby.",
+    "note": "Poznámka",
+    "notePlaceholder": "Např. termín nebo co plán zahrnuje",
+    "previewName": "Název plánu",
+    "create": "Vytvořit plán",
+    "save": "Uložit změny"
+  },
+  "takeOver": {
+    "title": "Převzít plány z roku {{year}}",
+    "description": "Zkopírují se názvy a částky. Platby zůstanou v původních plánech. Předvybrané jsou plány, které nejsou uzavřené.",
+    "plan": "Plán",
+    "plannedIn": "Plánováno {{year}}",
+    "spentIn": "Utraceno {{year}}",
+    "amountFor": "Částka na {{year}}",
+    "active": "Aktivní",
+    "closed": "Uzavřený",
+    "exists": "v roce {{year}} už existuje",
+    "select": "Převzít {{name}}",
+    "summary_one": "{{count}} plán · {{amount}}",
+    "summary_few": "{{count}} plány · {{amount}}",
+    "summary_other": "{{count}} plánů · {{amount}}",
+    "nothing": "Nic nevybráno",
+    "submit_one": "Převzít {{count}} plán",
+    "submit_few": "Převzít {{count}} plány",
+    "submit_other": "Převzít {{count}} plánů",
+    "empty": "V roce {{year}} nejsou žádné plány k převzetí."
+  },
+  "detail": {
+    "back": "Výdajové plány {{year}}",
+    "eyebrow": "Výdajový plán",
+    "notFound": "Tento plán už neexistuje."
+  }
+}

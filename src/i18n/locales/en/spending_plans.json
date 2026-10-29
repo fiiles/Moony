@@ -1,0 +1,141 @@
+{
+  "eyebrow": "Money",
+  "title": "Spending plans",
+  "subtitle": "How much you want to spend on what this year, and how much you have spent. Tag payments with a plan in an account's payment list; categories stay as they are.",
+  "year": {
+    "label": "Year",
+    "prev": "Previous year",
+    "next": "Next year"
+  },
+  "actions": {
+    "newPlan": "New plan",
+    "takeOver": "Take over plans from {{year}}",
+    "open": "Open",
+    "edit": "Edit",
+    "close": "Close plan",
+    "reopen": "Reopen plan",
+    "delete": "Delete plan",
+    "menu": "Plan actions",
+    "undo": "Undo"
+  },
+  "status": {
+    "over": "Over plan",
+    "near": "Close to limit",
+    "ok": "On track",
+    "empty": "No payments",
+    "unknown": "No rate",
+    "closed": "Closed"
+  },
+  "stats": {
+    "planned": "Planned for {{year}}",
+    "plans_one": "{{count}} plan",
+    "plans_other": "{{count}} plans",
+    "closed_one": "{{count}} closed",
+    "closed_other": "{{count}} closed",
+    "spent": "Spent",
+    "spentShare": "{{percent}} of planned",
+    "remaining": "Left in active plans",
+    "activePlans_one": "{{count}} active plan",
+    "activePlans_other": "{{count}} active plans",
+    "attention": "Needs attention",
+    "over_one": "{{count}} over plan",
+    "over_other": "{{count}} over plan",
+    "allWithin": "All within limits",
+    "near_one": "{{count}} plan is close to the limit",
+    "near_other": "{{count}} plans are close to the limit",
+    "noneNear": "No plan is close to the limit"
+  },
+  "table": {
+    "title": "Plans {{year}}",
+    "subtitle": "Ordered by usage · over and nearly used up at the top",
+    "search": "Search plans",
+    "segmentLabel": "Plan state",
+    "segment": {
+      "active": "Active {{n}}",
+      "closed": "Closed {{n}}",
+      "all": "All {{n}}"
+    },
+    "plan": "Plan",
+    "planned": "Planned",
+    "spent": "Spent",
+    "usage": "Usage",
+    "left": "Left",
+    "status": "Status",
+    "payments_one": "{{count}} payment · last {{date}}",
+    "payments_other": "{{count}} payments · last {{date}}",
+    "noPayments": "No payments yet",
+    "footer_one": "{{count}} plan · planned {{planned}} · spent {{spent}}",
+    "footer_other": "{{count}} plans · planned {{planned}} · spent {{spent}}",
+    "footerNote": "Close to limit: {{percent}} or more spent",
+    "noResults": {
+      "searchTitle": "No plan matches your search",
+      "searchActive": "“{{query}}” is not among the active plans of {{year}}.",
+      "searchClosed": "“{{query}}” is not among the closed plans of {{year}}.",
+      "searchAll": "“{{query}}” is not among the plans of {{year}}.",
+      "allClosed": "All plans of {{year}} are closed",
+      "noClosed": "No closed plans",
+      "showAll": "Show all plans"
+    }
+  },
+  "empty": {
+    "title": "No plans for {{year}} yet",
+    "descriptionTakeOver": "Take over the plans from {{year}} and just adjust the amounts, or create your first plan.",
+    "description": "Create your first plan: a holiday, gifts or regular care, for example.",
+    "takeOver_one": "Take over {{count}} plan from {{year}}",
+    "takeOver_other": "Take over {{count}} plans from {{year}}"
+  },
+  "delete": {
+    "title": "Delete plan {{name}}?",
+    "withPayments_one": "The {{count}} payment in it stays unchanged; it just no longer belongs to the plan. Categories do not change. Deleting cannot be undone.",
+    "withPayments_other": "The {{count}} payments in it stay unchanged; they just no longer belong to the plan. Categories do not change. Deleting cannot be undone.",
+    "noPayments": "The plan has no payments yet. Deleting cannot be undone."
+  },
+  "toast": {
+    "created": "Plan {{name}} created",
+    "saved": "Changes saved",
+    "closed": "Plan {{name}} closed. It is no longer offered when tagging payments.",
+    "reopened": "Plan {{name}} reopened",
+    "deleted": "Plan {{name}} deleted",
+    "takenOver_one": "{{count}} plan taken over from {{year}}",
+    "takenOver_other": "{{count}} plans taken over from {{year}}"
+  },
+  "form": {
+    "newTitle": "New spending plan",
+    "newDescription": "How much you want to spend on one thing this year. You add payments to the plan in an account's payment list.",
+    "editTitle": "Edit plan",
+    "editDescription": "{{name}} · {{year}}",
+    "name": "Name",
+    "namePlaceholder": "E.g. Summer holiday, Physiotherapy",
+    "amount": "Planned amount",
+    "year": "Year",
+    "fxHint": "Payments in another currency are converted into the plan at the ECB rate of the payment day.",
+    "note": "Note",
+    "notePlaceholder": "E.g. the dates or what the plan covers",
+    "previewName": "Plan name",
+    "create": "Create plan",
+    "save": "Save changes"
+  },
+  "takeOver": {
+    "title": "Take over plans from {{year}}",
+    "description": "Names and amounts are copied. Payments stay in the original plans. Plans that are not closed are preselected.",
+    "plan": "Plan",
+    "plannedIn": "Planned {{year}}",
+    "spentIn": "Spent {{year}}",
+    "amountFor": "Amount for {{year}}",
+    "active": "Active",
+    "closed": "Closed",
+    "exists": "already exists in {{year}}",
+    "select": "Take over {{name}}",
+    "summary_one": "{{count}} plan · {{amount}}",
+    "summary_other": "{{count}} plans · {{amount}}",
+    "nothing": "Nothing selected",
+    "submit_one": "Take over {{count}} plan",
+    "submit_other": "Take over {{count}} plans",
+    "empty": "{{year}} has no plans to take over."
+  },
+  "detail": {
+    "back": "Spending plans {{year}}",
+    "eyebrow": "Spending plan",
+    "notFound": "This plan no longer exists."
+  }
+}

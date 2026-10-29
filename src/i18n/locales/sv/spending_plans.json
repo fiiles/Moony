@@ -1,0 +1,141 @@
+{
+  "eyebrow": "Pengar",
+  "title": "Utgiftsplaner",
+  "subtitle": "Hur mycket du vill lägga på vad i år och hur mycket du har lagt. Du kopplar betalningar till en plan i ett kontos betalningslista; kategorierna förblir oförändrade.",
+  "year": {
+    "label": "År",
+    "prev": "Föregående år",
+    "next": "Nästa år"
+  },
+  "actions": {
+    "newPlan": "Ny plan",
+    "takeOver": "Ta över planer från {{year}}",
+    "open": "Öppna",
+    "edit": "Redigera",
+    "close": "Stäng plan",
+    "reopen": "Öppna plan igen",
+    "delete": "Ta bort plan",
+    "menu": "Planåtgärder",
+    "undo": "Ångra"
+  },
+  "status": {
+    "over": "Överskriden",
+    "near": "Nära gränsen",
+    "ok": "I fas",
+    "empty": "Inga betalningar",
+    "unknown": "Kurs saknas",
+    "closed": "Stängd"
+  },
+  "stats": {
+    "planned": "Planerat för {{year}}",
+    "plans_one": "{{count}} plan",
+    "plans_other": "{{count}} planer",
+    "closed_one": "{{count}} stängd",
+    "closed_other": "{{count}} stängda",
+    "spent": "Lagt",
+    "spentShare": "{{percent}} av planerat",
+    "remaining": "Kvar i aktiva planer",
+    "activePlans_one": "{{count}} aktiv plan",
+    "activePlans_other": "{{count}} aktiva planer",
+    "attention": "Kräver uppmärksamhet",
+    "over_one": "{{count}} överskriden",
+    "over_other": "{{count}} överskridna",
+    "allWithin": "Allt inom gränserna",
+    "near_one": "{{count}} plan är nära gränsen",
+    "near_other": "{{count}} planer är nära gränsen",
+    "noneNear": "Ingen plan är nära gränsen"
+  },
+  "table": {
+    "title": "Planer {{year}}",
+    "subtitle": "Sorterade efter förbrukning · överskridna och nästan förbrukade överst",
+    "search": "Sök plan",
+    "segmentLabel": "Planstatus",
+    "segment": {
+      "active": "Aktiva {{n}}",
+      "closed": "Stängda {{n}}",
+      "all": "Alla {{n}}"
+    },
+    "plan": "Plan",
+    "planned": "Planerat",
+    "spent": "Lagt",
+    "usage": "Förbrukning",
+    "left": "Kvar",
+    "status": "Status",
+    "payments_one": "{{count}} betalning · senast {{date}}",
+    "payments_other": "{{count}} betalningar · senast {{date}}",
+    "noPayments": "Inga betalningar än",
+    "footer_one": "{{count}} plan · planerat {{planned}} · lagt {{spent}}",
+    "footer_other": "{{count}} planer · planerat {{planned}} · lagt {{spent}}",
+    "footerNote": "Nära gränsen: {{percent}} eller mer lagt",
+    "noResults": {
+      "searchTitle": "Ingen plan matchar sökningen",
+      "searchActive": "”{{query}}” finns inte bland de aktiva planerna för {{year}}.",
+      "searchClosed": "”{{query}}” finns inte bland de stängda planerna för {{year}}.",
+      "searchAll": "”{{query}}” finns inte bland planerna för {{year}}.",
+      "allClosed": "Alla planer för {{year}} är stängda",
+      "noClosed": "Inga stängda planer",
+      "showAll": "Visa alla planer"
+    }
+  },
+  "empty": {
+    "title": "Inga planer för {{year}} än",
+    "descriptionTakeOver": "Ta över planerna från {{year}} och justera bara beloppen, eller skapa din första plan.",
+    "description": "Skapa din första plan, till exempel för semester, presenter eller regelbunden vård.",
+    "takeOver_one": "Ta över {{count}} plan från {{year}}",
+    "takeOver_other": "Ta över {{count}} planer från {{year}}"
+  },
+  "delete": {
+    "title": "Ta bort planen {{name}}?",
+    "withPayments_one": "Den {{count}} betalningen i den förblir oförändrad, den hör bara inte längre till planen. Kategorierna ändras inte. Borttagningen kan inte ångras.",
+    "withPayments_other": "De {{count}} betalningarna i den förblir oförändrade, de hör bara inte längre till planen. Kategorierna ändras inte. Borttagningen kan inte ångras.",
+    "noPayments": "Planen har inga betalningar än. Borttagningen kan inte ångras."
+  },
+  "toast": {
+    "created": "Planen {{name}} har skapats",
+    "saved": "Ändringarna har sparats",
+    "closed": "Planen {{name}} har stängts. Den erbjuds inte längre när du kopplar betalningar.",
+    "reopened": "Planen {{name}} har öppnats igen",
+    "deleted": "Planen {{name}} har tagits bort",
+    "takenOver_one": "{{count}} plan övertagen från {{year}}",
+    "takenOver_other": "{{count}} planer övertagna från {{year}}"
+  },
+  "form": {
+    "newTitle": "Ny utgiftsplan",
+    "newDescription": "Hur mycket du vill lägga på en sak i år. Betalningar lägger du till i planen i ett kontos betalningslista.",
+    "editTitle": "Redigera plan",
+    "editDescription": "{{name}} · {{year}}",
+    "name": "Namn",
+    "namePlaceholder": "T.ex. Sommarsemester, Fysioterapi",
+    "amount": "Planerat belopp",
+    "year": "År",
+    "fxHint": "Betalningar i en annan valuta räknas om till planen med ECB-kursen för betalningsdagen.",
+    "note": "Anteckning",
+    "notePlaceholder": "T.ex. datumen eller vad planen omfattar",
+    "previewName": "Planens namn",
+    "create": "Skapa plan",
+    "save": "Spara ändringar"
+  },
+  "takeOver": {
+    "title": "Ta över planer från {{year}}",
+    "description": "Namn och belopp kopieras. Betalningarna stannar i de ursprungliga planerna. Planer som inte är stängda är förvalda.",
+    "plan": "Plan",
+    "plannedIn": "Planerat {{year}}",
+    "spentIn": "Lagt {{year}}",
+    "amountFor": "Belopp för {{year}}",
+    "active": "Aktiv",
+    "closed": "Stängd",
+    "exists": "finns redan i {{year}}",
+    "select": "Ta över {{name}}",
+    "summary_one": "{{count}} plan · {{amount}}",
+    "summary_other": "{{count}} planer · {{amount}}",
+    "nothing": "Inget valt",
+    "submit_one": "Ta över {{count}} plan",
+    "submit_other": "Ta över {{count}} planer",
+    "empty": "{{year}} har inga planer att ta över."
+  },
+  "detail": {
+    "back": "Utgiftsplaner {{year}}",
+    "eyebrow": "Utgiftsplan",
+    "notFound": "Den här planen finns inte längre."
+  }
+}

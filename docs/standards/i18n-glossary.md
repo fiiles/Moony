@@ -53,6 +53,7 @@ Brokers / IBKR, Revolut, Degiro, Fio, Air Bank, …), keyboard keys.
 | Category | Kategorie | Categoría | Categoria | Kategori | Kategoria | Kategori | カテゴリ | 类别 |
 | Categorization rules | Kategorisierungsregeln | Reglas de categorización | Regole di categorizzazione | Kategoriseringsregler | Reguły kategoryzacji | Kategoriseringsregler | 分類ルール | 分类规则 |
 | Budget | Budget | Presupuesto | Budget | Budsjett | Budżet | Budget | 予算 | 预算 |
+| Spending plan (cs výdajový plán) | Ausgabenplan | Plan de gasto | Piano di spesa | Utgiftsplan | Plan wydatków | Utgiftsplan | 支出プラン | 支出计划 |
 | Cashflow | Cashflow | Flujo de caja | Flusso di cassa | Kontantstrøm | Przepływy pieniężne | Kassaflöde | キャッシュフロー | 现金流 |
 | Income / expenses | Einnahmen / Ausgaben | Ingresos / gastos | Entrate / uscite | Inntekter / utgifter | Przychody / wydatki | Inkomster / utgifter | 収入 / 支出 | 收入 / 支出 |
 | Salary | Gehalt | Salario | Stipendio | Lønn | Wynagrodzenie | Lön | 給与 | 工资 |

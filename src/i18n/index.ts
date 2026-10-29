@@ -30,6 +30,7 @@ import enCategorization from './locales/en/categorization.json';
 import enStockMonitor from './locales/en/stockMonitor.json';
 import enMilestones from './locales/en/milestones.json';
 import enMobile from './locales/en/mobile.json';
+import enSpendingPlans from './locales/en/spending_plans.json';
 
 import {
   LANGUAGES,
@@ -64,6 +65,7 @@ export const NAMESPACES = [
   'categorization',
   'milestones',
   'mobile',
+  'spending_plans',
 ] as const;
 
 export type Namespace = (typeof NAMESPACES)[number];
@@ -89,6 +91,7 @@ const resources = {
     categorization: enCategorization,
     milestones: enMilestones,
     mobile: enMobile,
+    spending_plans: enSpendingPlans,
   },
 };
 

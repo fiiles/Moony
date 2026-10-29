@@ -1,0 +1,141 @@
+{
+  "eyebrow": "Geld",
+  "title": "Ausgabenpläne",
+  "subtitle": "Wie viel Sie dieses Jahr wofür ausgeben wollen und wie viel Sie schon ausgegeben haben. Zahlungen ordnen Sie in der Zahlungsliste eines Kontos einem Plan zu; die Kategorien bleiben unverändert.",
+  "year": {
+    "label": "Jahr",
+    "prev": "Vorheriges Jahr",
+    "next": "Nächstes Jahr"
+  },
+  "actions": {
+    "newPlan": "Neuer Plan",
+    "takeOver": "Pläne aus {{year}} übernehmen",
+    "open": "Öffnen",
+    "edit": "Bearbeiten",
+    "close": "Plan schließen",
+    "reopen": "Plan wieder öffnen",
+    "delete": "Plan löschen",
+    "menu": "Planaktionen",
+    "undo": "Rückgängig"
+  },
+  "status": {
+    "over": "Überschritten",
+    "near": "Nahe am Limit",
+    "ok": "Im Rahmen",
+    "empty": "Keine Zahlungen",
+    "unknown": "Kein Kurs",
+    "closed": "Geschlossen"
+  },
+  "stats": {
+    "planned": "Geplant für {{year}}",
+    "plans_one": "{{count}} Plan",
+    "plans_other": "{{count}} Pläne",
+    "closed_one": "{{count}} geschlossen",
+    "closed_other": "{{count}} geschlossen",
+    "spent": "Ausgegeben",
+    "spentShare": "{{percent}} des Geplanten",
+    "remaining": "Übrig in aktiven Plänen",
+    "activePlans_one": "{{count}} aktiver Plan",
+    "activePlans_other": "{{count}} aktive Pläne",
+    "attention": "Braucht Aufmerksamkeit",
+    "over_one": "{{count}} überschritten",
+    "over_other": "{{count}} überschritten",
+    "allWithin": "Alles im Rahmen",
+    "near_one": "{{count}} Plan ist nahe am Limit",
+    "near_other": "{{count}} Pläne sind nahe am Limit",
+    "noneNear": "Kein Plan ist nahe am Limit"
+  },
+  "table": {
+    "title": "Pläne {{year}}",
+    "subtitle": "Nach Ausschöpfung sortiert · überschrittene und fast ausgeschöpfte oben",
+    "search": "Plan suchen",
+    "segmentLabel": "Planstatus",
+    "segment": {
+      "active": "Aktiv {{n}}",
+      "closed": "Geschlossen {{n}}",
+      "all": "Alle {{n}}"
+    },
+    "plan": "Plan",
+    "planned": "Geplant",
+    "spent": "Ausgegeben",
+    "usage": "Ausschöpfung",
+    "left": "Übrig",
+    "status": "Status",
+    "payments_one": "{{count}} Zahlung · zuletzt {{date}}",
+    "payments_other": "{{count}} Zahlungen · zuletzt {{date}}",
+    "noPayments": "Noch keine Zahlungen",
+    "footer_one": "{{count}} Plan · geplant {{planned}} · ausgegeben {{spent}}",
+    "footer_other": "{{count}} Pläne · geplant {{planned}} · ausgegeben {{spent}}",
+    "footerNote": "Nahe am Limit: {{percent}} oder mehr ausgegeben",
+    "noResults": {
+      "searchTitle": "Kein Plan passt zur Suche",
+      "searchActive": "„{{query}}“ ist nicht unter den aktiven Plänen von {{year}}.",
+      "searchClosed": "„{{query}}“ ist nicht unter den geschlossenen Plänen von {{year}}.",
+      "searchAll": "„{{query}}“ ist nicht unter den Plänen von {{year}}.",
+      "allClosed": "Alle Pläne von {{year}} sind geschlossen",
+      "noClosed": "Keine geschlossenen Pläne",
+      "showAll": "Alle Pläne anzeigen"
+    }
+  },
+  "empty": {
+    "title": "Noch keine Pläne für {{year}}",
+    "descriptionTakeOver": "Übernehmen Sie die Pläne aus {{year}} und passen Sie nur die Beträge an, oder legen Sie Ihren ersten Plan an.",
+    "description": "Legen Sie Ihren ersten Plan an, etwa für den Urlaub, Geschenke oder regelmäßige Pflege.",
+    "takeOver_one": "{{count}} Plan aus {{year}} übernehmen",
+    "takeOver_other": "{{count}} Pläne aus {{year}} übernehmen"
+  },
+  "delete": {
+    "title": "Plan {{name}} löschen?",
+    "withPayments_one": "Die {{count}} Zahlung darin bleibt unverändert, sie gehört nur nicht mehr zum Plan. Die Kategorien ändern sich nicht. Das Löschen kann nicht rückgängig gemacht werden.",
+    "withPayments_other": "Die {{count}} Zahlungen darin bleiben unverändert, sie gehören nur nicht mehr zum Plan. Die Kategorien ändern sich nicht. Das Löschen kann nicht rückgängig gemacht werden.",
+    "noPayments": "Der Plan hat noch keine Zahlungen. Das Löschen kann nicht rückgängig gemacht werden."
+  },
+  "toast": {
+    "created": "Plan {{name}} erstellt",
+    "saved": "Änderungen gespeichert",
+    "closed": "Plan {{name}} geschlossen. Er wird beim Zuordnen von Zahlungen nicht mehr angeboten.",
+    "reopened": "Plan {{name}} wieder geöffnet",
+    "deleted": "Plan {{name}} gelöscht",
+    "takenOver_one": "{{count}} Plan aus {{year}} übernommen",
+    "takenOver_other": "{{count}} Pläne aus {{year}} übernommen"
+  },
+  "form": {
+    "newTitle": "Neuer Ausgabenplan",
+    "newDescription": "Wie viel Sie dieses Jahr für eine Sache ausgeben wollen. Zahlungen fügen Sie dem Plan in der Zahlungsliste eines Kontos hinzu.",
+    "editTitle": "Plan bearbeiten",
+    "editDescription": "{{name}} · {{year}}",
+    "name": "Name",
+    "namePlaceholder": "Z. B. Sommerurlaub, Physiotherapie",
+    "amount": "Geplanter Betrag",
+    "year": "Jahr",
+    "fxHint": "Zahlungen in einer anderen Währung werden zum EZB-Kurs des Zahlungstags in den Plan umgerechnet.",
+    "note": "Notiz",
+    "notePlaceholder": "Z. B. der Termin oder was der Plan umfasst",
+    "previewName": "Name des Plans",
+    "create": "Plan erstellen",
+    "save": "Änderungen speichern"
+  },
+  "takeOver": {
+    "title": "Pläne aus {{year}} übernehmen",
+    "description": "Namen und Beträge werden kopiert. Die Zahlungen bleiben in den ursprünglichen Plänen. Vorausgewählt sind die Pläne, die nicht geschlossen sind.",
+    "plan": "Plan",
+    "plannedIn": "Geplant {{year}}",
+    "spentIn": "Ausgegeben {{year}}",
+    "amountFor": "Betrag für {{year}}",
+    "active": "Aktiv",
+    "closed": "Geschlossen",
+    "exists": "existiert in {{year}} schon",
+    "select": "{{name}} übernehmen",
+    "summary_one": "{{count}} Plan · {{amount}}",
+    "summary_other": "{{count}} Pläne · {{amount}}",
+    "nothing": "Nichts ausgewählt",
+    "submit_one": "{{count}} Plan übernehmen",
+    "submit_other": "{{count}} Pläne übernehmen",
+    "empty": "{{year}} hat keine Pläne zum Übernehmen."
+  },
+  "detail": {
+    "back": "Ausgabenpläne {{year}}",
+    "eyebrow": "Ausgabenplan",
+    "notFound": "Diesen Plan gibt es nicht mehr."
+  }
+}

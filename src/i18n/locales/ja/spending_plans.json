@@ -1,0 +1,129 @@
+{
+  "eyebrow": "お金",
+  "title": "支出プラン",
+  "subtitle": "今年何にいくら使うつもりか、そしてもういくら使ったかを示します。支払いは口座の支払い一覧でプランに割り当てます。カテゴリは変わりません。",
+  "year": {
+    "label": "年",
+    "prev": "前年",
+    "next": "翌年"
+  },
+  "actions": {
+    "newPlan": "新しいプラン",
+    "takeOver": "{{year}}年のプランを引き継ぐ",
+    "open": "開く",
+    "edit": "編集",
+    "close": "プランを終了",
+    "reopen": "プランを再開",
+    "delete": "プランを削除",
+    "menu": "プランの操作",
+    "undo": "元に戻す"
+  },
+  "status": {
+    "over": "超過",
+    "near": "上限間近",
+    "ok": "順調",
+    "empty": "支払いなし",
+    "unknown": "レートなし",
+    "closed": "終了"
+  },
+  "stats": {
+    "planned": "{{year}}年の計画額",
+    "plans_other": "{{count}}件のプラン",
+    "closed_other": "終了 {{count}}件",
+    "spent": "支出済み",
+    "spentShare": "計画額の{{percent}}",
+    "remaining": "有効なプランの残り",
+    "activePlans_other": "有効なプラン {{count}}件",
+    "attention": "要注意",
+    "over_other": "{{count}}件が超過",
+    "allWithin": "すべて上限内",
+    "near_other": "{{count}}件のプランが上限間近です",
+    "noneNear": "上限間近のプランはありません"
+  },
+  "table": {
+    "title": "{{year}}年のプラン",
+    "subtitle": "使用率順 · 超過と残りわずかのプランが上",
+    "search": "プランを検索",
+    "segmentLabel": "プランの状態",
+    "segment": {
+      "active": "有効 {{n}}",
+      "closed": "終了 {{n}}",
+      "all": "すべて {{n}}"
+    },
+    "plan": "プラン",
+    "planned": "計画額",
+    "spent": "支出済み",
+    "usage": "使用率",
+    "left": "残り",
+    "status": "状態",
+    "payments_other": "支払い{{count}}件 · 最終 {{date}}",
+    "noPayments": "まだ支払いはありません",
+    "footer_other": "{{count}}件のプラン · 計画額 {{planned}} · 支出済み {{spent}}",
+    "footerNote": "上限間近：{{percent}}以上を支出",
+    "noResults": {
+      "searchTitle": "検索に一致するプランはありません",
+      "searchActive": "「{{query}}」は{{year}}年の有効なプランにありません。",
+      "searchClosed": "「{{query}}」は{{year}}年の終了したプランにありません。",
+      "searchAll": "「{{query}}」は{{year}}年のプランにありません。",
+      "allClosed": "{{year}}年のプランはすべて終了しています",
+      "noClosed": "終了したプランはありません",
+      "showAll": "すべてのプランを表示"
+    }
+  },
+  "empty": {
+    "title": "{{year}}年のプランはまだありません",
+    "descriptionTakeOver": "{{year}}年のプランを引き継いで金額だけ調整するか、最初のプランを作成してください。",
+    "description": "最初のプランを作成しましょう。休暇、贈り物、定期的なケアなどに。",
+    "takeOver_other": "{{year}}年のプラン{{count}}件を引き継ぐ"
+  },
+  "delete": {
+    "title": "プラン「{{name}}」を削除しますか？",
+    "withPayments_other": "含まれる支払い{{count}}件はそのまま残り、プランに属さなくなるだけです。カテゴリは変わりません。削除は元に戻せません。",
+    "noPayments": "このプランにはまだ支払いがありません。削除は元に戻せません。"
+  },
+  "toast": {
+    "created": "プラン「{{name}}」を作成しました",
+    "saved": "変更を保存しました",
+    "closed": "プラン「{{name}}」を終了しました。支払いの割り当て時には表示されなくなります。",
+    "reopened": "プラン「{{name}}」を再開しました",
+    "deleted": "プラン「{{name}}」を削除しました",
+    "takenOver_other": "{{year}}年からプランを{{count}}件引き継ぎました"
+  },
+  "form": {
+    "newTitle": "新しい支出プラン",
+    "newDescription": "今年ひとつのことにいくら使うつもりかを決めます。支払いは口座の支払い一覧でプランに追加します。",
+    "editTitle": "プランを編集",
+    "editDescription": "{{name}} · {{year}}",
+    "name": "名前",
+    "namePlaceholder": "例：夏休みの旅行、理学療法",
+    "amount": "計画額",
+    "year": "年",
+    "fxHint": "他の通貨での支払いは、支払日の ECB レートでプランの通貨に換算されます。",
+    "note": "メモ",
+    "notePlaceholder": "例：日程やプランに含まれるもの",
+    "previewName": "プラン名",
+    "create": "プランを作成",
+    "save": "変更を保存"
+  },
+  "takeOver": {
+    "title": "{{year}}年のプランを引き継ぐ",
+    "description": "名前と金額がコピーされます。支払いは元のプランに残ります。終了していないプランがあらかじめ選択されています。",
+    "plan": "プラン",
+    "plannedIn": "{{year}}年の計画額",
+    "spentIn": "{{year}}年の支出",
+    "amountFor": "{{year}}年の金額",
+    "active": "有効",
+    "closed": "終了",
+    "exists": "{{year}}年に既に存在します",
+    "select": "{{name}}を引き継ぐ",
+    "summary_other": "{{count}}件のプラン · {{amount}}",
+    "nothing": "選択なし",
+    "submit_other": "{{count}}件のプランを引き継ぐ",
+    "empty": "{{year}}年には引き継げるプランがありません。"
+  },
+  "detail": {
+    "back": "{{year}}年の支出プラン",
+    "eyebrow": "支出プラン",
+    "notFound": "このプランはもう存在しません。"
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "eyebrow": "Dinero",
+  "title": "Planes de gasto",
+  "subtitle": "Cuánto quieres gastar este año en cada cosa y cuánto llevas gastado. Asigna pagos a un plan en la lista de pagos de una cuenta; las categorías no cambian.",
+  "year": {
+    "label": "Año",
+    "prev": "Año anterior",
+    "next": "Año siguiente"
+  },
+  "actions": {
+    "newPlan": "Nuevo plan",
+    "takeOver": "Copiar planes de {{year}}",
+    "open": "Abrir",
+    "edit": "Editar",
+    "close": "Cerrar plan",
+    "reopen": "Reabrir plan",
+    "delete": "Eliminar plan",
+    "menu": "Acciones del plan",
+    "undo": "Deshacer"
+  },
+  "status": {
+    "over": "Excedido",
+    "near": "Cerca del límite",
+    "ok": "En orden",
+    "empty": "Sin pagos",
+    "unknown": "Sin tipo",
+    "closed": "Cerrado"
+  },
+  "stats": {
+    "planned": "Planificado para {{year}}",
+    "plans_one": "{{count}} plan",
+    "plans_many": "{{count}} planes",
+    "plans_other": "{{count}} planes",
+    "closed_one": "{{count}} cerrado",
+    "closed_many": "{{count}} cerrados",
+    "closed_other": "{{count}} cerrados",
+    "spent": "Gastado",
+    "spentShare": "{{percent}} de lo planificado",
+    "remaining": "Queda en planes activos",
+    "activePlans_one": "{{count}} plan activo",
+    "activePlans_many": "{{count}} planes activos",
+    "activePlans_other": "{{count}} planes activos",
+    "attention": "Requiere atención",
+    "over_one": "{{count}} excedido",
+    "over_many": "{{count}} excedidos",
+    "over_other": "{{count}} excedidos",
+    "allWithin": "Todo dentro del límite",
+    "near_one": "{{count}} plan está cerca del límite",
+    "near_many": "{{count}} planes están cerca del límite",
+    "near_other": "{{count}} planes están cerca del límite",
+    "noneNear": "Ningún plan está cerca del límite"
+  },
+  "table": {
+    "title": "Planes {{year}}",
+    "subtitle": "Ordenados por uso · excedidos y casi agotados arriba",
+    "search": "Buscar plan",
+    "segmentLabel": "Estado de los planes",
+    "segment": {
+      "active": "Activos {{n}}",
+      "closed": "Cerrados {{n}}",
+      "all": "Todos {{n}}"
+    },
+    "plan": "Plan",
+    "planned": "Planificado",
+    "spent": "Gastado",
+    "usage": "Uso",
+    "left": "Queda",
+    "status": "Estado",
+    "payments_one": "{{count}} pago · último {{date}}",
+    "payments_many": "{{count}} pagos · último {{date}}",
+    "payments_other": "{{count}} pagos · último {{date}}",
+    "noPayments": "Aún sin pagos",
+    "footer_one": "{{count}} plan · planificado {{planned}} · gastado {{spent}}",
+    "footer_many": "{{count}} planes · planificado {{planned}} · gastado {{spent}}",
+    "footer_other": "{{count}} planes · planificado {{planned}} · gastado {{spent}}",
+    "footerNote": "Cerca del límite: gastado el {{percent}} o más",
+    "noResults": {
+      "searchTitle": "Ningún plan coincide con la búsqueda",
+      "searchActive": "«{{query}}» no está entre los planes activos de {{year}}.",
+      "searchClosed": "«{{query}}» no está entre los planes cerrados de {{year}}.",
+      "searchAll": "«{{query}}» no está entre los planes de {{year}}.",
+      "allClosed": "Todos los planes de {{year}} están cerrados",
+      "noClosed": "No hay planes cerrados",
+      "showAll": "Mostrar todos los planes"
+    }
+  },
+  "empty": {
+    "title": "Aún no tienes planes para {{year}}",
+    "descriptionTakeOver": "Copia los planes de {{year}} y ajusta solo los importes, o crea tu primer plan.",
+    "description": "Crea tu primer plan: por ejemplo, las vacaciones, los regalos o un cuidado periódico.",
+    "takeOver_one": "Copiar {{count}} plan de {{year}}",
+    "takeOver_many": "Copiar {{count}} planes de {{year}}",
+    "takeOver_other": "Copiar {{count}} planes de {{year}}"
+  },
+  "delete": {
+    "title": "¿Eliminar el plan {{name}}?",
+    "withPayments_one": "El {{count}} pago que contiene no cambia; solo deja de pertenecer al plan. Las categorías no cambian. La eliminación no se puede deshacer.",
+    "withPayments_many": "Los {{count}} pagos que contiene no cambian; solo dejan de pertenecer al plan. Las categorías no cambian. La eliminación no se puede deshacer.",
+    "withPayments_other": "Los {{count}} pagos que contiene no cambian; solo dejan de pertenecer al plan. Las categorías no cambian. La eliminación no se puede deshacer.",
+    "noPayments": "El plan aún no tiene pagos. La eliminación no se puede deshacer."
+  },
+  "toast": {
+    "created": "Plan {{name}} creado",
+    "saved": "Cambios guardados",
+    "closed": "Plan {{name}} cerrado. Ya no se ofrecerá al asignar pagos.",
+    "reopened": "Plan {{name}} reabierto",
+    "deleted": "Plan {{name}} eliminado",
+    "takenOver_one": "{{count}} plan copiado de {{year}}",
+    "takenOver_many": "{{count}} planes copiados de {{year}}",
+    "takenOver_other": "{{count}} planes copiados de {{year}}"
+  },
+  "form": {
+    "newTitle": "Nuevo plan de gasto",
+    "newDescription": "Cuánto quieres gastar este año en una cosa. Los pagos se añaden al plan en la lista de pagos de una cuenta.",
+    "editTitle": "Editar plan",
+    "editDescription": "{{name}} · {{year}}",
+    "name": "Nombre",
+    "namePlaceholder": "P. ej. Vacaciones de verano, Fisioterapia",
+    "amount": "Importe planificado",
+    "year": "Año",
+    "fxHint": "Los pagos en otra moneda se convierten al plan con el tipo del BCE del día del pago.",
+    "note": "Nota",
+    "notePlaceholder": "P. ej. las fechas o lo que incluye el plan",
+    "previewName": "Nombre del plan",
+    "create": "Crear plan",
+    "save": "Guardar cambios"
+  },
+  "takeOver": {
+    "title": "Copiar planes de {{year}}",
+    "description": "Se copian los nombres y los importes. Los pagos se quedan en los planes originales. Vienen preseleccionados los planes que no están cerrados.",
+    "plan": "Plan",
+    "plannedIn": "Planificado {{year}}",
+    "spentIn": "Gastado {{year}}",
+    "amountFor": "Importe para {{year}}",
+    "active": "Activo",
+    "closed": "Cerrado",
+    "exists": "ya existe en {{year}}",
+    "select": "Copiar {{name}}",
+    "summary_one": "{{count}} plan · {{amount}}",
+    "summary_many": "{{count}} planes · {{amount}}",
+    "summary_other": "{{count}} planes · {{amount}}",
+    "nothing": "Nada seleccionado",
+    "submit_one": "Copiar {{count}} plan",
+    "submit_many": "Copiar {{count}} planes",
+    "submit_other": "Copiar {{count}} planes",
+    "empty": "{{year}} no tiene planes para copiar."
+  },
+  "detail": {
+    "back": "Planes de gasto {{year}}",
+    "eyebrow": "Plan de gasto",
+    "notFound": "Este plan ya no existe."
+  }
+}

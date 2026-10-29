@@ -1,0 +1,153 @@
+{
+  "eyebrow": "Denaro",
+  "title": "Piani di spesa",
+  "subtitle": "Quanto vuoi spendere quest’anno e per cosa, e quanto hai già speso. Assegni i pagamenti a un piano nell’elenco dei pagamenti di un conto; le categorie restano invariate.",
+  "year": {
+    "label": "Anno",
+    "prev": "Anno precedente",
+    "next": "Anno successivo"
+  },
+  "actions": {
+    "newPlan": "Nuovo piano",
+    "takeOver": "Riprendi i piani del {{year}}",
+    "open": "Apri",
+    "edit": "Modifica",
+    "close": "Chiudi piano",
+    "reopen": "Riapri piano",
+    "delete": "Elimina piano",
+    "menu": "Azioni del piano",
+    "undo": "Annulla"
+  },
+  "status": {
+    "over": "Superato",
+    "near": "Vicino al limite",
+    "ok": "In regola",
+    "empty": "Nessun pagamento",
+    "unknown": "Manca il tasso",
+    "closed": "Chiuso"
+  },
+  "stats": {
+    "planned": "Pianificato per il {{year}}",
+    "plans_one": "{{count}} piano",
+    "plans_many": "{{count}} piani",
+    "plans_other": "{{count}} piani",
+    "closed_one": "{{count}} chiuso",
+    "closed_many": "{{count}} chiusi",
+    "closed_other": "{{count}} chiusi",
+    "spent": "Speso",
+    "spentShare": "{{percent}} del pianificato",
+    "remaining": "Resta nei piani attivi",
+    "activePlans_one": "{{count}} piano attivo",
+    "activePlans_many": "{{count}} piani attivi",
+    "activePlans_other": "{{count}} piani attivi",
+    "attention": "Richiede attenzione",
+    "over_one": "{{count}} superato",
+    "over_many": "{{count}} superati",
+    "over_other": "{{count}} superati",
+    "allWithin": "Tutto nei limiti",
+    "near_one": "{{count}} piano è vicino al limite",
+    "near_many": "{{count}} piani sono vicini al limite",
+    "near_other": "{{count}} piani sono vicini al limite",
+    "noneNear": "Nessun piano è vicino al limite"
+  },
+  "table": {
+    "title": "Piani {{year}}",
+    "subtitle": "Ordinati per utilizzo · superati e quasi esauriti in alto",
+    "search": "Cerca piano",
+    "segmentLabel": "Stato dei piani",
+    "segment": {
+      "active": "Attivi {{n}}",
+      "closed": "Chiusi {{n}}",
+      "all": "Tutti {{n}}"
+    },
+    "plan": "Piano",
+    "planned": "Pianificato",
+    "spent": "Speso",
+    "usage": "Utilizzo",
+    "left": "Resta",
+    "status": "Stato",
+    "payments_one": "{{count}} pagamento · ultimo {{date}}",
+    "payments_many": "{{count}} pagamenti · ultimo {{date}}",
+    "payments_other": "{{count}} pagamenti · ultimo {{date}}",
+    "noPayments": "Ancora nessun pagamento",
+    "footer_one": "{{count}} piano · pianificato {{planned}} · speso {{spent}}",
+    "footer_many": "{{count}} piani · pianificato {{planned}} · speso {{spent}}",
+    "footer_other": "{{count}} piani · pianificato {{planned}} · speso {{spent}}",
+    "footerNote": "Vicino al limite: speso il {{percent}} o più",
+    "noResults": {
+      "searchTitle": "Nessun piano corrisponde alla ricerca",
+      "searchActive": "«{{query}}» non è tra i piani attivi del {{year}}.",
+      "searchClosed": "«{{query}}» non è tra i piani chiusi del {{year}}.",
+      "searchAll": "«{{query}}» non è tra i piani del {{year}}.",
+      "allClosed": "Tutti i piani del {{year}} sono chiusi",
+      "noClosed": "Nessun piano chiuso",
+      "showAll": "Mostra tutti i piani"
+    }
+  },
+  "empty": {
+    "title": "Ancora nessun piano per il {{year}}",
+    "descriptionTakeOver": "Riprendi i piani del {{year}} e modifica solo gli importi, oppure crea il tuo primo piano.",
+    "description": "Crea il tuo primo piano: per esempio le vacanze, i regali o una cura periodica.",
+    "takeOver_one": "Riprendi {{count}} piano del {{year}}",
+    "takeOver_many": "Riprendi {{count}} piani del {{year}}",
+    "takeOver_other": "Riprendi {{count}} piani del {{year}}"
+  },
+  "delete": {
+    "title": "Eliminare il piano {{name}}?",
+    "withPayments_one": "Il {{count}} pagamento che contiene resta invariato, smette solo di appartenere al piano. Le categorie non cambiano. L’eliminazione non si può annullare.",
+    "withPayments_many": "I {{count}} pagamenti che contiene restano invariati, smettono solo di appartenere al piano. Le categorie non cambiano. L’eliminazione non si può annullare.",
+    "withPayments_other": "I {{count}} pagamenti che contiene restano invariati, smettono solo di appartenere al piano. Le categorie non cambiano. L’eliminazione non si può annullare.",
+    "noPayments": "Il piano non ha ancora pagamenti. L’eliminazione non si può annullare."
+  },
+  "toast": {
+    "created": "Piano {{name}} creato",
+    "saved": "Modifiche salvate",
+    "closed": "Piano {{name}} chiuso. Non verrà più proposto quando assegni i pagamenti.",
+    "reopened": "Piano {{name}} riaperto",
+    "deleted": "Piano {{name}} eliminato",
+    "takenOver_one": "{{count}} piano ripreso dal {{year}}",
+    "takenOver_many": "{{count}} piani ripresi dal {{year}}",
+    "takenOver_other": "{{count}} piani ripresi dal {{year}}"
+  },
+  "form": {
+    "newTitle": "Nuovo piano di spesa",
+    "newDescription": "Quanto vuoi spendere quest’anno per una cosa. I pagamenti si aggiungono al piano nell’elenco dei pagamenti di un conto.",
+    "editTitle": "Modifica piano",
+    "editDescription": "{{name}} · {{year}}",
+    "name": "Nome",
+    "namePlaceholder": "Es. Vacanze estive, Fisioterapia",
+    "amount": "Importo pianificato",
+    "year": "Anno",
+    "fxHint": "I pagamenti in un’altra valuta vengono convertiti nel piano al tasso BCE del giorno del pagamento.",
+    "note": "Nota",
+    "notePlaceholder": "Es. le date o cosa comprende il piano",
+    "previewName": "Nome del piano",
+    "create": "Crea piano",
+    "save": "Salva modifiche"
+  },
+  "takeOver": {
+    "title": "Riprendi i piani del {{year}}",
+    "description": "Vengono copiati i nomi e gli importi. I pagamenti restano nei piani originali. Sono preselezionati i piani non chiusi.",
+    "plan": "Piano",
+    "plannedIn": "Pianificato {{year}}",
+    "spentIn": "Speso {{year}}",
+    "amountFor": "Importo per il {{year}}",
+    "active": "Attivo",
+    "closed": "Chiuso",
+    "exists": "esiste già nel {{year}}",
+    "select": "Riprendi {{name}}",
+    "summary_one": "{{count}} piano · {{amount}}",
+    "summary_many": "{{count}} piani · {{amount}}",
+    "summary_other": "{{count}} piani · {{amount}}",
+    "nothing": "Nessuna selezione",
+    "submit_one": "Riprendi {{count}} piano",
+    "submit_many": "Riprendi {{count}} piani",
+    "submit_other": "Riprendi {{count}} piani",
+    "empty": "Il {{year}} non ha piani da riprendere."
+  },
+  "detail": {
+    "back": "Piani di spesa {{year}}",
+    "eyebrow": "Piano di spesa",
+    "notFound": "Questo piano non esiste più."
+  }
+}

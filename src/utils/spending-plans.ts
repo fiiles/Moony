@@ -1,3 +1,4 @@
+import type { SpendingPlan, SpendingPlanSummary } from '@shared/schema';
 import { matchesSearch } from './holdings-search';
 
 /** A plan counts as "near" once spent reaches this share of the planned amount (and is not over). */
@@ -86,4 +87,91 @@ export function planMonthAxis(year: number, monthsWithPayments: string[]): strin
 /** Plan-name search: case- and diacritic-insensitive, every word of the query must match. */
 export function matchesPlanSearch(name: string, query: string): boolean {
   return matchesSearch(query, [name]);
+}
+
+/** Plan-name equality as the backend checks it: trimmed and Unicode lower-cased (diacritics kept). */
+export function samePlanName(a: string, b: string): boolean {
+  return a.trim().toLowerCase() === b.trim().toLowerCase();
+}
+
+/** One overview row: the summary with its numbers parsed, all in the plan currency. */
+export interface PlanRow {
+  summary: SpendingPlanSummary;
+  planned: number;
+  /** Null when no payment could be converted (never a guessed 0). */
+  spent: number | null;
+  /** spent / planned; null without a spend. */
+  ratio: number | null;
+  /** planned − spent (negative when over); null without a spend. */
+  left: number | null;
+  status: PlanStatus;
+  closed: boolean;
+}
+
+export function planRow(summary: SpendingPlanSummary): PlanRow {
+  const planned = parseFloat(summary.plan.amount) || 0;
+  const spent = summary.spent === null ? null : parseFloat(summary.spent);
+  return {
+    summary,
+    planned,
+    spent,
+    ratio: spent === null ? null : planned > 0 ? spent / planned : 0,
+    left: spent === null ? null : planned - spent,
+    status: planStatus(spent, planned, summary.paymentCount),
+    closed: summary.plan.closedAt !== null,
+  };
+}
+
+export type PlanSegment = 'active' | 'closed' | 'all';
+
+/**
+ * The overview table's rows: the segment, the name search, then the risk order (closed last,
+ * ties by name in `locale`).
+ */
+export function overviewRows(
+  rows: PlanRow[],
+  segment: PlanSegment,
+  query: string,
+  locale: string
+): PlanRow[] {
+  const shown = rows.filter(
+    (row) =>
+      (segment === 'all' || row.closed === (segment === 'closed')) &&
+      matchesPlanSearch(row.summary.plan.name, query)
+  );
+  const byName = [...shown].sort((a, b) =>
+    a.summary.plan.name.localeCompare(b.summary.plan.name, locale)
+  );
+  return sortPlansByRisk(byName, (row) => ({
+    status: row.status,
+    ratio: row.ratio ?? 0,
+    closed: row.closed,
+  }));
+}
+
+/** One plan offered for the take-over into the next year. */
+export interface TakeOverRow {
+  plan: SpendingPlan;
+  /** A plan of the same name already exists in the target year (spec C6: cannot be chosen). */
+  exists: boolean;
+  /** Preselected: open and not existing yet. */
+  selected: boolean;
+}
+
+/** The source year's plans for the take-over: open ones first, then by name in `locale`. */
+export function takeOverRows(
+  source: SpendingPlan[],
+  targetNames: string[],
+  locale: string
+): TakeOverRow[] {
+  return [...source]
+    .sort(
+      (a, b) =>
+        Number(a.closedAt !== null) - Number(b.closedAt !== null) ||
+        a.name.localeCompare(b.name, locale)
+    )
+    .map((plan) => {
+      const exists = targetNames.some((name) => samePlanName(name, plan.name));
+      return { plan, exists, selected: !exists && plan.closedAt === null };
+    });
 }

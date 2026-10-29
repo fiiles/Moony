@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   matchesPlanSearch,
+  overviewRows,
+  planRow,
+  samePlanName,
+  takeOverRows,
   planMonthAxis,
   planStatus,
   sortPlansByRisk,
@@ -108,5 +112,126 @@ describe('matchesPlanSearch', () => {
 
   it('does not match an unrelated name', () => {
     expect(matchesPlanSearch('Zahrada', 'dovo')).toBe(false);
+  });
+});
+
+function summary(
+  id: string,
+  over: Partial<{
+    name: string;
+    amount: string;
+    currency: string;
+    spent: string | null;
+    paymentCount: number;
+    closed: boolean;
+    year: number;
+  }> = {}
+) {
+  return {
+    plan: {
+      id,
+      name: over.name ?? id,
+      year: over.year ?? 2026,
+      amount: over.amount ?? '1000',
+      currency: over.currency ?? 'CZK',
+      icon: 'wallet',
+      color: '#6366F1',
+      note: null,
+      closedAt: over.closed ? 1 : null,
+      createdAt: 0,
+    },
+    spent: over.spent === undefined ? '0' : over.spent,
+    paymentCount: over.paymentCount ?? 0,
+    lastPaymentDate: null,
+    fxQuality: { missingCurrencies: [], missingCount: 0, estimated: false },
+  };
+}
+
+describe('planRow', () => {
+  it('derives status, ratio and what is left in the plan currency', () => {
+    const row = planRow(summary('a', { amount: '1000', spent: '1200', paymentCount: 3 }));
+    expect(row.status).toBe('over');
+    expect(row.ratio).toBeCloseTo(1.2);
+    expect(row.left).toBe(-200);
+    expect(row.closed).toBe(false);
+  });
+
+  it('keeps an unconvertible spend unknown, never 0', () => {
+    const row = planRow(summary('a', { spent: null, paymentCount: 2 }));
+    expect(row.status).toBe('unknown');
+    expect(row.spent).toBeNull();
+    expect(row.ratio).toBeNull();
+    expect(row.left).toBeNull();
+  });
+
+  it('marks closed plans', () => {
+    expect(planRow(summary('a', { closed: true })).closed).toBe(true);
+  });
+});
+
+describe('overviewRows', () => {
+  const rows = [
+    summary('ok', { name: 'Ok', spent: '100', paymentCount: 1 }),
+    summary('closed', { name: 'Closed', spent: '5000', paymentCount: 1, closed: true }),
+    summary('over', { name: 'Over', spent: '1100', paymentCount: 4 }),
+    summary('near', { name: 'Dovolená', spent: '950', paymentCount: 2 }),
+    summary('empty', { name: 'Empty' }),
+  ].map(planRow);
+
+  it('shows active plans by risk', () => {
+    expect(overviewRows(rows, 'active', '', 'cs').map((r) => r.summary.plan.id)).toEqual([
+      'over',
+      'near',
+      'ok',
+      'empty',
+    ]);
+  });
+
+  it('puts closed plans last in "all" and alone in "closed"', () => {
+    expect(overviewRows(rows, 'all', '', 'cs').map((r) => r.summary.plan.id)).toEqual([
+      'over',
+      'near',
+      'ok',
+      'empty',
+      'closed',
+    ]);
+    expect(overviewRows(rows, 'closed', '', 'cs').map((r) => r.summary.plan.id)).toEqual([
+      'closed',
+    ]);
+  });
+
+  it('filters by name without case or diacritics', () => {
+    expect(overviewRows(rows, 'all', 'dovo', 'cs').map((r) => r.summary.plan.id)).toEqual(['near']);
+  });
+
+  it('orders equal risk by name', () => {
+    const same = [summary('b', { name: 'Beta' }), summary('a', { name: 'Alfa' })].map(planRow);
+    expect(overviewRows(same, 'active', '', 'cs').map((r) => r.summary.plan.id)).toEqual([
+      'a',
+      'b',
+    ]);
+  });
+});
+
+describe('takeOverRows', () => {
+  it('preselects open plans whose name is free in the target year', () => {
+    const source = [
+      summary('free', { name: 'Fyzioterapie', year: 2025 }),
+      summary('closed', { name: 'Kolo', year: 2025, closed: true }),
+      summary('taken', { name: 'Dárky Vánoce ', year: 2025 }),
+    ].map((s) => s.plan);
+    const rows = takeOverRows(source, ['dárky vánoce'], 'cs');
+    expect(rows.map((r) => [r.plan.id, r.exists, r.selected])).toEqual([
+      ['taken', true, false],
+      ['free', false, true],
+      ['closed', false, false],
+    ]);
+  });
+});
+
+describe('samePlanName', () => {
+  it('compares trimmed and lower-cased like the backend', () => {
+    expect(samePlanName(' ŠKODA ', 'škoda')).toBe(true);
+    expect(samePlanName('Skoda', 'Škoda')).toBe(false);
   });
 });

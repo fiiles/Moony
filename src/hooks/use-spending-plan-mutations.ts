@@ -4,7 +4,12 @@ import { toast } from 'sonner';
 import { spendingPlansApi } from '@/lib/tauri-api';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
-import type { InsertSpendingPlan, SpendingPlan, SpendingPlanAssignment } from '@shared/schema';
+import type {
+  BankTransaction,
+  InsertSpendingPlan,
+  SpendingPlan,
+  SpendingPlanAssignment,
+} from '@shared/schema';
 
 /**
  * Keys a plan write can change. A plan and a payment's tag are labels: they change no money or
@@ -111,4 +116,53 @@ export function useSpendingPlanMutations() {
   });
 
   return { createPlan, createPlans, updatePlan, setClosed, deletePlan, setTransactionPlans };
+}
+
+/** A payment as an assignment sees it: its id and the plan it is in now. */
+export type AssignableRow = Pick<BankTransaction, 'id' | 'spendingPlanId'>;
+
+/**
+ * Tags payments with a plan (or clears their tag with `plan: null`) and toasts "n platby přidány
+ * do plánu X" / "… odebrány z plánu" with Undo, which writes each payment's previous plan back
+ * (`restore`, so a closed previous plan is allowed). Resolves to whether the write succeeded;
+ * a failure is toasted by the mutation.
+ */
+export function useAssignWithUndo() {
+  const client = useQueryClient();
+  const { t } = useTranslation('spending_plans');
+  const { t: tc } = useTranslation('common');
+  const { setTransactionPlans } = useSpendingPlanMutations();
+
+  const assign = async (
+    rows: readonly AssignableRow[],
+    plan: Pick<SpendingPlan, 'id' | 'name'> | null
+  ): Promise<boolean> => {
+    if (rows.length === 0) return false;
+    const assignments = rows.map((row) => ({ transactionId: row.id, planId: plan?.id ?? null }));
+    const previous = rows.map((row) => ({
+      transactionId: row.id,
+      planId: row.spendingPlanId,
+    }));
+    try {
+      await setTransactionPlans.mutateAsync({ assignments });
+    } catch {
+      return false;
+    }
+    // Through the API, not the mutation: the toast outlives the component that assigned
+    const undo = () =>
+      spendingPlansApi.setTransactionPlans(previous, true).then(
+        () => refreshSpendingPlans(client),
+        (error: Error) => {
+          toast.error(translateApiError(error, tc));
+        }
+      );
+    const count = rows.length;
+    toast.success(
+      plan ? t('toast.assigned', { count, name: plan.name }) : t('toast.removed', { count }),
+      { duration: 7000, action: { label: t('actions.undo'), onClick: () => void undo() } }
+    );
+    return true;
+  };
+
+  return { assign, isPending: setTransactionPlans.isPending };
 }

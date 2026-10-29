@@ -16,7 +16,12 @@
     "reopen": "Reopen plan",
     "delete": "Delete plan",
     "menu": "Plan actions",
-    "undo": "Undo"
+    "undo": "Undo",
+    "addPayments": "Add payments",
+    "removeFromPlan": "Remove from plan",
+    "moveTo": "Move to…",
+    "newPlanEllipsis": "New spending plan…",
+    "clearSelection": "Clear selection"
   },
   "status": {
     "over": "Over plan",
@@ -97,7 +102,11 @@
     "reopened": "Plan {{name}} reopened",
     "deleted": "Plan {{name}} deleted",
     "takenOver_one": "{{count}} plan taken over from {{year}}",
-    "takenOver_other": "{{count}} plans taken over from {{year}}"
+    "takenOver_other": "{{count}} plans taken over from {{year}}",
+    "assigned_one": "{{count}} payment added to plan {{name}}",
+    "assigned_other": "{{count}} payments added to plan {{name}}",
+    "removed_one": "{{count}} payment removed from the plan",
+    "removed_other": "{{count}} payments removed from the plan"
   },
   "form": {
     "newTitle": "New spending plan",
@@ -136,6 +145,109 @@
   "detail": {
     "back": "Spending plans {{year}}",
     "eyebrow": "Spending plan",
-    "notFound": "This plan no longer exists."
+    "notFound": "This plan no longer exists.",
+    "filterTitle": "This widget is narrowed by a filter",
+    "closed": {
+      "title": "The plan is closed",
+      "text": "It is not offered when tagging payments. Payments already in it still count."
+    },
+    "stats": {
+      "planned": "Planned",
+      "plannedNote": "for {{year}}",
+      "spent": "Spent",
+      "near": "Close to limit · {{percent}}",
+      "payments_one": "{{count}} payment",
+      "payments_other": "{{count}} payments",
+      "accounts_one": "{{count}} account",
+      "accounts_other": "{{count}} accounts",
+      "noPayments": "No payments yet",
+      "left": "Left",
+      "overBy": "Over by",
+      "leftNote": "up to the planned amount",
+      "overNote": "above the planned amount"
+    },
+    "chart": {
+      "title": "Spending over time",
+      "sub": "Net spend of the plan per month · click a month to narrow the widgets below the chart",
+      "subCategory": "Spend on {{category}} in this plan per month",
+      "month": "Spent in the month",
+      "cumulative": "Total since the start",
+      "planned": "Planned",
+      "plannedLine": "Planned {{amount}}",
+      "future": "Rest of the year",
+      "filterMonth": "Narrow to {{month}}"
+    },
+    "categories": {
+      "title": "Categories",
+      "sub": "Plan spend by payment category · click to narrow the chart and payments",
+      "payments_one": "{{count}} payment",
+      "payments_other": "{{count}} payments",
+      "total": "Total",
+      "totalIn": "Total · {{month}}",
+      "empty": "Once you add payments to the plan, you will see here what you spent on.",
+      "emptyMonth": "The plan has no payments in this month.",
+      "uncategorized": "No category"
+    },
+    "payments": {
+      "title": "Payments",
+      "sub": "Grouped by day · newest first",
+      "filtered_one": "{{shown}} of {{count}} payment",
+      "filtered_other": "{{shown}} of {{count}} payments",
+      "counterparty": "Counterparty",
+      "category": "Category",
+      "amount": "Amount",
+      "selectAll": "Select all shown payments",
+      "select": "Select payment {{name}}",
+      "emptyTitle": "No payment belongs to the plan yet",
+      "emptyText": "Pick payments from all accounts here, or tag them in bulk in an account's payment list.",
+      "emptyFiltered": "No payment matches the filter.",
+      "closedHint": "The plan is closed. Reopen it to add payments to it."
+    }
+  },
+  "picker": {
+    "label": "Choose a spending plan",
+    "search": "Search plans",
+    "left": "{{left}} left of {{planned}}",
+    "over": "over by {{amount}}",
+    "planned": "planned {{planned}}",
+    "noMatch": "No active plan matches “{{query}}”.",
+    "none": "No active plan yet.",
+    "closedNote": "Closed plans are not offered."
+  },
+  "selection": {
+    "count_one": "{{count}} payment selected",
+    "count_other": "{{count}} payments selected"
+  },
+  "addPayments": {
+    "title": "Add payments to plan {{name}}",
+    "description": "Payments from all accounts. The plan's year is the default; a payment from another year is under All periods. Categories stay unchanged.",
+    "search": "Search counterparty, category",
+    "account": "Account",
+    "period": "Period",
+    "allAccounts": "All accounts",
+    "wholeYear": "Whole year {{year}}",
+    "allPeriods": "All periods",
+    "onlyUnassigned": "Only payments without a plan",
+    "select": "Select",
+    "selectRow": "Select payment {{name}}",
+    "date": "Date",
+    "counterparty": "Counterparty",
+    "category": "Category",
+    "plan": "Plan",
+    "amount": "Amount",
+    "noPlan": "No plan",
+    "inPlan": "now in plan {{name}}",
+    "empty": "No payment matches the filter.",
+    "truncated_one": "Showing the first {{count}} payment, narrow your search",
+    "truncated_other": "Showing the first {{count}} payments, narrow your search",
+    "count_one": "{{count}} payment in the selection",
+    "count_other": "{{count}} payments in the selection",
+    "hidden": "payments in other plans are hidden",
+    "moving_one": "{{count}} moves from another plan",
+    "moving_other": "{{count}} move from another plan",
+    "nothing": "Nothing selected",
+    "submit_one": "Add {{count}} payment",
+    "submit_other": "Add {{count}} payments",
+    "submitNone": "Add payments"
   }
 }

@@ -16,7 +16,12 @@
     "reopen": "Öppna plan igen",
     "delete": "Ta bort plan",
     "menu": "Planåtgärder",
-    "undo": "Ångra"
+    "undo": "Ångra",
+    "addPayments": "Lägg till betalningar",
+    "removeFromPlan": "Ta bort från planen",
+    "moveTo": "Flytta till…",
+    "newPlanEllipsis": "Ny utgiftsplan…",
+    "clearSelection": "Avmarkera"
   },
   "status": {
     "over": "Överskriden",
@@ -97,7 +102,11 @@
     "reopened": "Planen {{name}} har öppnats igen",
     "deleted": "Planen {{name}} har tagits bort",
     "takenOver_one": "{{count}} plan övertagen från {{year}}",
-    "takenOver_other": "{{count}} planer övertagna från {{year}}"
+    "takenOver_other": "{{count}} planer övertagna från {{year}}",
+    "assigned_one": "{{count}} betalning har lagts till i planen {{name}}",
+    "assigned_other": "{{count}} betalningar har lagts till i planen {{name}}",
+    "removed_one": "{{count}} betalning har tagits bort från planen",
+    "removed_other": "{{count}} betalningar har tagits bort från planen"
   },
   "form": {
     "newTitle": "Ny utgiftsplan",
@@ -136,6 +145,109 @@
   "detail": {
     "back": "Utgiftsplaner {{year}}",
     "eyebrow": "Utgiftsplan",
-    "notFound": "Den här planen finns inte längre."
+    "notFound": "Den här planen finns inte längre.",
+    "filterTitle": "Den här widgeten är avgränsad av ett filter",
+    "closed": {
+      "title": "Planen är stängd",
+      "text": "Den erbjuds inte när du kopplar betalningar. Betalningar som redan finns i den räknas fortfarande."
+    },
+    "stats": {
+      "planned": "Planerat",
+      "plannedNote": "för {{year}}",
+      "spent": "Spenderat",
+      "near": "Nära gränsen · {{percent}}",
+      "payments_one": "{{count}} betalning",
+      "payments_other": "{{count}} betalningar",
+      "accounts_one": "{{count}} konto",
+      "accounts_other": "{{count}} konton",
+      "noPayments": "Inga betalningar än",
+      "left": "Kvar",
+      "overBy": "Överskridet med",
+      "leftNote": "upp till planerat belopp",
+      "overNote": "över planerat belopp"
+    },
+    "chart": {
+      "title": "Utgifter över tid",
+      "sub": "Planens nettoutgifter per månad · klicka på en månad för att avgränsa widgetarna under diagrammet",
+      "subCategory": "Utgifter för {{category}} i den här planen per månad",
+      "month": "Utgifter i månaden",
+      "cumulative": "Totalt sedan start",
+      "planned": "Planerat",
+      "plannedLine": "Planerat {{amount}}",
+      "future": "Resten av året",
+      "filterMonth": "Avgränsa till {{month}}"
+    },
+    "categories": {
+      "title": "Kategorier",
+      "sub": "Planens utgifter per betalningskategori · klicka för att avgränsa diagrammet och betalningarna",
+      "payments_one": "{{count}} betalning",
+      "payments_other": "{{count}} betalningar",
+      "total": "Totalt",
+      "totalIn": "Totalt · {{month}}",
+      "empty": "När du lägger till betalningar i planen ser du här vad du har spenderat på.",
+      "emptyMonth": "Planen har inga betalningar den här månaden.",
+      "uncategorized": "Utan kategori"
+    },
+    "payments": {
+      "title": "Betalningar",
+      "sub": "Grupperade per dag · nyaste överst",
+      "filtered_one": "{{shown}} av {{count}} betalning",
+      "filtered_other": "{{shown}} av {{count}} betalningar",
+      "counterparty": "Motpart",
+      "category": "Kategori",
+      "amount": "Belopp",
+      "selectAll": "Välj alla visade betalningar",
+      "select": "Välj betalningen {{name}}",
+      "emptyTitle": "Ingen betalning hör till planen än",
+      "emptyText": "Välj betalningar från alla konton här, eller koppla dem samlat i ett kontos betalningslista.",
+      "emptyFiltered": "Ingen betalning matchar filtret.",
+      "closedHint": "Planen är stängd. Öppna den igen för att lägga till betalningar."
+    }
+  },
+  "picker": {
+    "label": "Välj en utgiftsplan",
+    "search": "Sök planer",
+    "left": "{{left}} kvar av {{planned}}",
+    "over": "överskriden med {{amount}}",
+    "planned": "planerat {{planned}}",
+    "noMatch": "Ingen aktiv plan matchar ”{{query}}”.",
+    "none": "Ingen aktiv plan än.",
+    "closedNote": "Stängda planer erbjuds inte."
+  },
+  "selection": {
+    "count_one": "{{count}} betalning vald",
+    "count_other": "{{count}} betalningar valda"
+  },
+  "addPayments": {
+    "title": "Lägg till betalningar i planen {{name}}",
+    "description": "Betalningar från alla konton. Standard är planens år; en betalning från ett annat år finns under Alla perioder. Kategorierna ändras inte.",
+    "search": "Sök motpart, kategori",
+    "account": "Konto",
+    "period": "Period",
+    "allAccounts": "Alla konton",
+    "wholeYear": "Hela {{year}}",
+    "allPeriods": "Alla perioder",
+    "onlyUnassigned": "Bara betalningar utan plan",
+    "select": "Välj",
+    "selectRow": "Välj betalningen {{name}}",
+    "date": "Datum",
+    "counterparty": "Motpart",
+    "category": "Kategori",
+    "plan": "Plan",
+    "amount": "Belopp",
+    "noPlan": "Utan plan",
+    "inPlan": "nu i planen {{name}}",
+    "empty": "Ingen betalning matchar filtret.",
+    "truncated_one": "Visar den första betalningen ({{count}}), förfina sökningen",
+    "truncated_other": "Visar de första {{count}} betalningarna, förfina sökningen",
+    "count_one": "{{count}} betalning i urvalet",
+    "count_other": "{{count}} betalningar i urvalet",
+    "hidden": "betalningar i andra planer är dolda",
+    "moving_one": "{{count}} flyttas från en annan plan",
+    "moving_other": "{{count}} flyttas från en annan plan",
+    "nothing": "Inget valt",
+    "submit_one": "Lägg till {{count}} betalning",
+    "submit_other": "Lägg till {{count}} betalningar",
+    "submitNone": "Lägg till betalningar"
   }
 }

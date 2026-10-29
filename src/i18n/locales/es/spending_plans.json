@@ -16,7 +16,12 @@
     "reopen": "Reabrir plan",
     "delete": "Eliminar plan",
     "menu": "Acciones del plan",
-    "undo": "Deshacer"
+    "undo": "Deshacer",
+    "addPayments": "Añadir pagos",
+    "removeFromPlan": "Quitar del plan",
+    "moveTo": "Mover a…",
+    "newPlanEllipsis": "Nuevo plan de gasto…",
+    "clearSelection": "Anular selección"
   },
   "status": {
     "over": "Excedido",
@@ -107,7 +112,13 @@
     "deleted": "Plan {{name}} eliminado",
     "takenOver_one": "{{count}} plan copiado de {{year}}",
     "takenOver_many": "{{count}} planes copiados de {{year}}",
-    "takenOver_other": "{{count}} planes copiados de {{year}}"
+    "takenOver_other": "{{count}} planes copiados de {{year}}",
+    "assigned_one": "{{count}} pago añadido al plan {{name}}",
+    "assigned_many": "{{count}} pagos añadidos al plan {{name}}",
+    "assigned_other": "{{count}} pagos añadidos al plan {{name}}",
+    "removed_one": "{{count}} pago quitado del plan",
+    "removed_many": "{{count}} pagos quitados del plan",
+    "removed_other": "{{count}} pagos quitados del plan"
   },
   "form": {
     "newTitle": "Nuevo plan de gasto",
@@ -148,6 +159,118 @@
   "detail": {
     "back": "Planes de gasto {{year}}",
     "eyebrow": "Plan de gasto",
-    "notFound": "Este plan ya no existe."
+    "notFound": "Este plan ya no existe.",
+    "filterTitle": "Este widget está acotado por un filtro",
+    "closed": {
+      "title": "El plan está cerrado",
+      "text": "No se ofrece al asignar pagos. Los pagos que ya contiene siguen contando."
+    },
+    "stats": {
+      "planned": "Planificado",
+      "plannedNote": "para {{year}}",
+      "spent": "Gastado",
+      "near": "Cerca del límite · {{percent}}",
+      "payments_one": "{{count}} pago",
+      "payments_many": "{{count}} pagos",
+      "payments_other": "{{count}} pagos",
+      "accounts_one": "{{count}} cuenta",
+      "accounts_many": "{{count}} cuentas",
+      "accounts_other": "{{count}} cuentas",
+      "noPayments": "Aún sin pagos",
+      "left": "Queda",
+      "overBy": "Excedido en",
+      "leftNote": "hasta el importe planificado",
+      "overNote": "por encima del importe planificado"
+    },
+    "chart": {
+      "title": "Gasto en el tiempo",
+      "sub": "Gasto neto del plan por mes · haz clic en un mes para acotar los widgets bajo el gráfico",
+      "subCategory": "Gasto en {{category}} en este plan por mes",
+      "month": "Gasto del mes",
+      "cumulative": "Total desde el inicio",
+      "planned": "Planificado",
+      "plannedLine": "Planificado {{amount}}",
+      "future": "Resto del año",
+      "filterMonth": "Acotar a {{month}}"
+    },
+    "categories": {
+      "title": "Categorías",
+      "sub": "Gasto del plan por categoría de pago · haz clic para acotar el gráfico y los pagos",
+      "payments_one": "{{count}} pago",
+      "payments_many": "{{count}} pagos",
+      "payments_other": "{{count}} pagos",
+      "total": "Total",
+      "totalIn": "Total · {{month}}",
+      "empty": "Cuando añadas pagos al plan, verás aquí en qué has gastado.",
+      "emptyMonth": "El plan no tiene pagos en este mes.",
+      "uncategorized": "Sin categoría"
+    },
+    "payments": {
+      "title": "Pagos",
+      "sub": "Agrupados por día · los más recientes arriba",
+      "filtered_one": "{{shown}} de {{count}} pago",
+      "filtered_many": "{{shown}} de {{count}} pagos",
+      "filtered_other": "{{shown}} de {{count}} pagos",
+      "counterparty": "Contraparte",
+      "category": "Categoría",
+      "amount": "Importe",
+      "selectAll": "Seleccionar todos los pagos mostrados",
+      "select": "Seleccionar el pago {{name}}",
+      "emptyTitle": "Ningún pago pertenece aún al plan",
+      "emptyText": "Elige aquí pagos de todas las cuentas o asígnalos en bloque en la lista de pagos de una cuenta.",
+      "emptyFiltered": "Ningún pago coincide con el filtro.",
+      "closedHint": "El plan está cerrado. Reábrelo para añadirle pagos."
+    }
+  },
+  "picker": {
+    "label": "Elegir un plan de gasto",
+    "search": "Buscar planes",
+    "left": "quedan {{left}} de {{planned}}",
+    "over": "excedido en {{amount}}",
+    "planned": "planificado {{planned}}",
+    "noMatch": "Ningún plan activo coincide con «{{query}}».",
+    "none": "Aún no hay ningún plan activo.",
+    "closedNote": "Los planes cerrados no se ofrecen."
+  },
+  "selection": {
+    "count_one": "{{count}} pago seleccionado",
+    "count_many": "{{count}} pagos seleccionados",
+    "count_other": "{{count}} pagos seleccionados"
+  },
+  "addPayments": {
+    "title": "Añadir pagos al plan {{name}}",
+    "description": "Pagos de todas las cuentas. Por defecto, el año del plan; un pago de otro año está en Todos los periodos. Las categorías no cambian.",
+    "search": "Buscar contraparte, categoría",
+    "account": "Cuenta",
+    "period": "Periodo",
+    "allAccounts": "Todas las cuentas",
+    "wholeYear": "Todo {{year}}",
+    "allPeriods": "Todos los periodos",
+    "onlyUnassigned": "Solo pagos sin plan",
+    "select": "Seleccionar",
+    "selectRow": "Seleccionar el pago {{name}}",
+    "date": "Fecha",
+    "counterparty": "Contraparte",
+    "category": "Categoría",
+    "plan": "Plan",
+    "amount": "Importe",
+    "noPlan": "Sin plan",
+    "inPlan": "ahora en el plan {{name}}",
+    "empty": "Ningún pago coincide con el filtro.",
+    "truncated_one": "Se muestra el primer pago ({{count}}), afina la búsqueda",
+    "truncated_many": "Se muestran los primeros {{count}} pagos, afina la búsqueda",
+    "truncated_other": "Se muestran los primeros {{count}} pagos, afina la búsqueda",
+    "count_one": "{{count}} pago en la selección",
+    "count_many": "{{count}} pagos en la selección",
+    "count_other": "{{count}} pagos en la selección",
+    "hidden": "los pagos de otros planes están ocultos",
+    "moving_one": "{{count}} se moverá desde otro plan",
+    "moving_many": "{{count}} se moverán desde otro plan",
+    "moving_other": "{{count}} se moverán desde otro plan",
+    "nothing": "Nada seleccionado",
+    "submit_one": "Añadir {{count}} pago",
+    "submit_many": "Añadir {{count}} pagos",
+    "submit_other": "Añadir {{count}} pagos",
+    "submitNone": "Añadir pagos"
   }
 }

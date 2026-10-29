@@ -16,7 +16,12 @@
     "reopen": "Gjenåpne plan",
     "delete": "Slett plan",
     "menu": "Planhandlinger",
-    "undo": "Angre"
+    "undo": "Angre",
+    "addPayments": "Legg til betalinger",
+    "removeFromPlan": "Fjern fra planen",
+    "moveTo": "Flytt til…",
+    "newPlanEllipsis": "Ny utgiftsplan…",
+    "clearSelection": "Fjern valg"
   },
   "status": {
     "over": "Overskredet",
@@ -97,7 +102,11 @@
     "reopened": "Planen {{name}} er gjenåpnet",
     "deleted": "Planen {{name}} er slettet",
     "takenOver_one": "{{count}} plan overtatt fra {{year}}",
-    "takenOver_other": "{{count}} planer overtatt fra {{year}}"
+    "takenOver_other": "{{count}} planer overtatt fra {{year}}",
+    "assigned_one": "{{count}} betaling lagt til i planen {{name}}",
+    "assigned_other": "{{count}} betalinger lagt til i planen {{name}}",
+    "removed_one": "{{count}} betaling fjernet fra planen",
+    "removed_other": "{{count}} betalinger fjernet fra planen"
   },
   "form": {
     "newTitle": "Ny utgiftsplan",
@@ -136,6 +145,109 @@
   "detail": {
     "back": "Utgiftsplaner {{year}}",
     "eyebrow": "Utgiftsplan",
-    "notFound": "Denne planen finnes ikke lenger."
+    "notFound": "Denne planen finnes ikke lenger.",
+    "filterTitle": "Denne widgeten er avgrenset av et filter",
+    "closed": {
+      "title": "Planen er lukket",
+      "text": "Den tilbys ikke når du knytter betalinger. Betalinger som allerede er i den, telles fortsatt."
+    },
+    "stats": {
+      "planned": "Planlagt",
+      "plannedNote": "for {{year}}",
+      "spent": "Brukt",
+      "near": "Nær grensen · {{percent}}",
+      "payments_one": "{{count}} betaling",
+      "payments_other": "{{count}} betalinger",
+      "accounts_one": "{{count}} konto",
+      "accounts_other": "{{count}} kontoer",
+      "noPayments": "Ingen betalinger ennå",
+      "left": "Igjen",
+      "overBy": "Overskredet med",
+      "leftNote": "opp til planlagt beløp",
+      "overNote": "over planlagt beløp"
+    },
+    "chart": {
+      "title": "Forbruk over tid",
+      "sub": "Planens nettoforbruk per måned · klikk på en måned for å avgrense widgetene under diagrammet",
+      "subCategory": "Forbruk på {{category}} i denne planen per måned",
+      "month": "Forbruk i måneden",
+      "cumulative": "Totalt siden start",
+      "planned": "Planlagt",
+      "plannedLine": "Planlagt {{amount}}",
+      "future": "Resten av året",
+      "filterMonth": "Avgrens til {{month}}"
+    },
+    "categories": {
+      "title": "Kategorier",
+      "sub": "Planens forbruk etter betalingskategori · klikk for å avgrense diagrammet og betalingene",
+      "payments_one": "{{count}} betaling",
+      "payments_other": "{{count}} betalinger",
+      "total": "Totalt",
+      "totalIn": "Totalt · {{month}}",
+      "empty": "Når du legger til betalinger i planen, ser du her hva du har brukt penger på.",
+      "emptyMonth": "Planen har ingen betalinger denne måneden.",
+      "uncategorized": "Uten kategori"
+    },
+    "payments": {
+      "title": "Betalinger",
+      "sub": "Gruppert etter dag · nyeste øverst",
+      "filtered_one": "{{shown}} av {{count}} betaling",
+      "filtered_other": "{{shown}} av {{count}} betalinger",
+      "counterparty": "Motpart",
+      "category": "Kategori",
+      "amount": "Beløp",
+      "selectAll": "Velg alle viste betalinger",
+      "select": "Velg betalingen {{name}}",
+      "emptyTitle": "Ingen betaling hører til planen ennå",
+      "emptyText": "Velg betalinger fra alle kontoer her, eller knytt dem samlet i betalingslisten til en konto.",
+      "emptyFiltered": "Ingen betaling passer til filteret.",
+      "closedHint": "Planen er lukket. Gjenåpne den for å legge til betalinger."
+    }
+  },
+  "picker": {
+    "label": "Velg en utgiftsplan",
+    "search": "Søk i planer",
+    "left": "{{left}} igjen av {{planned}}",
+    "over": "overskredet med {{amount}}",
+    "planned": "planlagt {{planned}}",
+    "noMatch": "Ingen aktiv plan passer til «{{query}}».",
+    "none": "Ingen aktiv plan ennå.",
+    "closedNote": "Lukkede planer tilbys ikke."
+  },
+  "selection": {
+    "count_one": "{{count}} betaling valgt",
+    "count_other": "{{count}} betalinger valgt"
+  },
+  "addPayments": {
+    "title": "Legg til betalinger i planen {{name}}",
+    "description": "Betalinger fra alle kontoer. Standard er planens år; en betaling fra et annet år finner du under Alle perioder. Kategoriene endres ikke.",
+    "search": "Søk etter motpart, kategori",
+    "account": "Konto",
+    "period": "Periode",
+    "allAccounts": "Alle kontoer",
+    "wholeYear": "Hele {{year}}",
+    "allPeriods": "Alle perioder",
+    "onlyUnassigned": "Bare betalinger uten plan",
+    "select": "Velg",
+    "selectRow": "Velg betalingen {{name}}",
+    "date": "Dato",
+    "counterparty": "Motpart",
+    "category": "Kategori",
+    "plan": "Plan",
+    "amount": "Beløp",
+    "noPlan": "Uten plan",
+    "inPlan": "nå i planen {{name}}",
+    "empty": "Ingen betaling passer til filteret.",
+    "truncated_one": "Viser den første betalingen ({{count}}), avgrens søket",
+    "truncated_other": "Viser de første {{count}} betalingene, avgrens søket",
+    "count_one": "{{count}} betaling i utvalget",
+    "count_other": "{{count}} betalinger i utvalget",
+    "hidden": "betalinger i andre planer er skjult",
+    "moving_one": "{{count}} flyttes fra en annen plan",
+    "moving_other": "{{count}} flyttes fra en annen plan",
+    "nothing": "Ingenting valgt",
+    "submit_one": "Legg til {{count}} betaling",
+    "submit_other": "Legg til {{count}} betalinger",
+    "submitNone": "Legg til betalinger"
   }
 }

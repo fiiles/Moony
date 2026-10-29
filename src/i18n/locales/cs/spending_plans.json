@@ -16,7 +16,12 @@
     "reopen": "Obnovit plán",
     "delete": "Smazat plán",
     "menu": "Akce plánu",
-    "undo": "Vrátit zpět"
+    "undo": "Vrátit zpět",
+    "addPayments": "Přidat platby",
+    "removeFromPlan": "Odebrat z plánu",
+    "moveTo": "Přesunout do…",
+    "newPlanEllipsis": "Nový výdajový plán…",
+    "clearSelection": "Zrušit výběr"
   },
   "status": {
     "over": "Přečerpáno",
@@ -107,7 +112,13 @@
     "deleted": "Plán {{name}} smazán",
     "takenOver_one": "{{count}} plán převzat z roku {{year}}",
     "takenOver_few": "{{count}} plány převzaty z roku {{year}}",
-    "takenOver_other": "{{count}} plánů převzato z roku {{year}}"
+    "takenOver_other": "{{count}} plánů převzato z roku {{year}}",
+    "assigned_one": "{{count}} platba přidána do plánu {{name}}",
+    "assigned_few": "{{count}} platby přidány do plánu {{name}}",
+    "assigned_other": "{{count}} plateb přidáno do plánu {{name}}",
+    "removed_one": "{{count}} platba odebrána z plánu",
+    "removed_few": "{{count}} platby odebrány z plánu",
+    "removed_other": "{{count}} plateb odebráno z plánu"
   },
   "form": {
     "newTitle": "Nový výdajový plán",
@@ -148,6 +159,118 @@
   "detail": {
     "back": "Výdajové plány {{year}}",
     "eyebrow": "Výdajový plán",
-    "notFound": "Tento plán už neexistuje."
+    "notFound": "Tento plán už neexistuje.",
+    "filterTitle": "Tento widget je zúžený filtrem",
+    "closed": {
+      "title": "Plán je uzavřený",
+      "text": "Nenabízí se při zařazování plateb. Platby, které v něm už jsou, se dál počítají."
+    },
+    "stats": {
+      "planned": "Plánováno",
+      "plannedNote": "na rok {{year}}",
+      "spent": "Utraceno",
+      "near": "Blízko limitu · {{percent}}",
+      "payments_one": "{{count}} platba",
+      "payments_few": "{{count}} platby",
+      "payments_other": "{{count}} plateb",
+      "accounts_one": "{{count}} účet",
+      "accounts_few": "{{count}} účty",
+      "accounts_other": "{{count}} účtů",
+      "noPayments": "Zatím bez plateb",
+      "left": "Zbývá",
+      "overBy": "Přečerpáno o",
+      "leftNote": "do plánované částky",
+      "overNote": "nad plánovanou částkou"
+    },
+    "chart": {
+      "title": "Útrata v čase",
+      "sub": "Čistá útrata plánu po měsících · kliknutím na měsíc zúžíte widgety pod grafem",
+      "subCategory": "Útrata kategorie {{category}} v tomto plánu po měsících",
+      "month": "Útrata v měsíci",
+      "cumulative": "Celkem od začátku",
+      "planned": "Plánováno",
+      "plannedLine": "Plánováno {{amount}}",
+      "future": "Zbytek roku",
+      "filterMonth": "Zúžit na {{month}}"
+    },
+    "categories": {
+      "title": "Kategorie",
+      "sub": "Útrata plánu podle kategorií plateb · kliknutím zúžíte graf a platby",
+      "payments_one": "{{count}} platba",
+      "payments_few": "{{count}} platby",
+      "payments_other": "{{count}} plateb",
+      "total": "Celkem",
+      "totalIn": "Celkem · {{month}}",
+      "empty": "Až do plánu přidáte platby, uvidíte tady, za co jste utratili.",
+      "emptyMonth": "V tomto měsíci plán nemá žádné platby.",
+      "uncategorized": "Bez kategorie"
+    },
+    "payments": {
+      "title": "Platby",
+      "sub": "Seskupené podle dne · nejnovější nahoře",
+      "filtered_one": "{{shown}} z {{count}} platby",
+      "filtered_few": "{{shown}} z {{count}} plateb",
+      "filtered_other": "{{shown}} z {{count}} plateb",
+      "counterparty": "Protistrana",
+      "category": "Kategorie",
+      "amount": "Částka",
+      "selectAll": "Vybrat všechny zobrazené platby",
+      "select": "Vybrat platbu {{name}}",
+      "emptyTitle": "Do plánu zatím nepatří žádná platba",
+      "emptyText": "Vyberte platby ze všech účtů tady, nebo je hromadně zařaďte v seznamu plateb na účtu.",
+      "emptyFiltered": "Žádná platba neodpovídá filtru.",
+      "closedHint": "Plán je uzavřený. Obnovte ho, chcete-li do něj přidat platby."
+    }
+  },
+  "picker": {
+    "label": "Vybrat výdajový plán",
+    "search": "Hledat plán",
+    "left": "zbývá {{left}} z {{planned}}",
+    "over": "přečerpáno o {{amount}}",
+    "planned": "plánováno {{planned}}",
+    "noMatch": "Žádný aktivní plán neodpovídá „{{query}}“.",
+    "none": "Zatím žádný aktivní plán.",
+    "closedNote": "Uzavřené plány se nenabízejí."
+  },
+  "selection": {
+    "count_one": "Vybrána {{count}} platba",
+    "count_few": "Vybrány {{count}} platby",
+    "count_other": "Vybráno {{count}} plateb"
+  },
+  "addPayments": {
+    "title": "Přidat platby do plánu {{name}}",
+    "description": "Platby ze všech účtů. Výchozí je rok plánu, platbu z jiného roku najdete pod Všechna období. Kategorie zůstanou beze změny.",
+    "search": "Hledat protistranu, kategorii",
+    "account": "Účet",
+    "period": "Období",
+    "allAccounts": "Všechny účty",
+    "wholeYear": "Celý rok {{year}}",
+    "allPeriods": "Všechna období",
+    "onlyUnassigned": "Jen platby bez plánu",
+    "select": "Vybrat",
+    "selectRow": "Vybrat platbu {{name}}",
+    "date": "Datum",
+    "counterparty": "Protistrana",
+    "category": "Kategorie",
+    "plan": "Plán",
+    "amount": "Částka",
+    "noPlan": "Bez plánu",
+    "inPlan": "teď v plánu {{name}}",
+    "empty": "Žádná platba neodpovídá filtru.",
+    "truncated_one": "Zobrazena první {{count}} platba, upřesněte hledání",
+    "truncated_few": "Zobrazeny první {{count}} platby, upřesněte hledání",
+    "truncated_other": "Zobrazeno prvních {{count}} plateb, upřesněte hledání",
+    "count_one": "{{count}} platba ve výběru",
+    "count_few": "{{count}} platby ve výběru",
+    "count_other": "{{count}} plateb ve výběru",
+    "hidden": "platby z jiných plánů jsou skryté",
+    "moving_one": "{{count}} se přesune z jiného plánu",
+    "moving_few": "{{count}} se přesunou z jiného plánu",
+    "moving_other": "{{count}} se přesune z jiného plánu",
+    "nothing": "Nic nevybráno",
+    "submit_one": "Přidat {{count}} platbu",
+    "submit_few": "Přidat {{count}} platby",
+    "submit_other": "Přidat {{count}} plateb",
+    "submitNone": "Přidat platby"
   }
 }

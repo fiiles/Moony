@@ -1,5 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  UNCATEGORIZED_KEY,
+  categoryKey,
+  cumulativeSpend,
+  monthDate,
+  monthOfDay,
+  periodMonths,
+  periodRange,
+  planCategoryRows,
+  planMonthSpend,
+  signedTotals,
   matchesPlanSearch,
   overviewRows,
   planRow,
@@ -233,5 +243,136 @@ describe('samePlanName', () => {
   it('compares trimmed and lower-cased like the backend', () => {
     expect(samePlanName(' ŠKODA ', 'škoda')).toBe(true);
     expect(samePlanName('Skoda', 'Škoda')).toBe(false);
+  });
+});
+
+const DAY = 86400;
+/** Unix seconds of a UTC midnight. */
+const utc = (y: number, m: number, d: number) => Date.UTC(y, m - 1, d) / 1000;
+
+describe('monthOfDay', () => {
+  it('names the UTC month of a booking day', () => {
+    expect(monthOfDay(utc(2026, 7, 1))).toBe('2026-07');
+    expect(monthOfDay(utc(2026, 12, 31) + DAY - 1)).toBe('2026-12');
+  });
+});
+
+describe('monthDate', () => {
+  it('is the UTC first day of the month', () => {
+    expect(monthDate('2026-07').getTime()).toBe(utc(2026, 7, 1) * 1000);
+  });
+});
+
+describe('categoryKey', () => {
+  it('keeps a category id and gives uncategorized payments their own key', () => {
+    expect(categoryKey('cat-food')).toBe('cat-food');
+    expect(categoryKey(null)).toBe(UNCATEGORIZED_KEY);
+  });
+});
+
+const detail = {
+  months: [
+    { month: '2026-06', spent: '1200' },
+    { month: '2026-07', spent: '3000.5' },
+  ],
+  categories: [
+    { categoryId: 'lodging', spent: '2800', count: 2 },
+    { categoryId: null, spent: '1400.5', count: 3 },
+  ],
+  cells: [
+    { month: '2026-06', categoryId: 'lodging', spent: '1000', count: 1 },
+    { month: '2026-06', categoryId: null, spent: '200', count: 1 },
+    { month: '2026-07', categoryId: 'lodging', spent: '1800', count: 1 },
+    { month: '2026-07', categoryId: null, spent: '1200.5', count: 2 },
+  ],
+};
+const axis = ['2026-05', '2026-06', '2026-07', '2026-08'];
+
+describe('planMonthSpend', () => {
+  it('puts the net spend of each month on the axis, zero where nothing was spent', () => {
+    expect(planMonthSpend(detail, axis, null)).toEqual([0, 1200, 3000.5, 0]);
+  });
+
+  it("with a category sums only that category's cells", () => {
+    expect(planMonthSpend(detail, axis, 'lodging')).toEqual([0, 1000, 1800, 0]);
+    expect(planMonthSpend(detail, axis, UNCATEGORIZED_KEY)).toEqual([0, 200, 1200.5, 0]);
+  });
+});
+
+describe('cumulativeSpend', () => {
+  it('runs the total up to the last month and leaves later months empty', () => {
+    expect(cumulativeSpend([0, 1200, 3000, 500], axis, '2026-07')).toEqual([0, 1200, 4200, null]);
+  });
+
+  it('runs over the whole axis for a past year and over nothing for a future one', () => {
+    expect(cumulativeSpend([1, 2], ['2025-11', '2025-12'], '2026-10')).toEqual([1, 3]);
+    expect(cumulativeSpend([1, 2], ['2027-01', '2027-02'], '2026-10')).toEqual([null, null]);
+  });
+});
+
+describe('planCategoryRows', () => {
+  it('lists the categories of the whole plan, the largest spend first', () => {
+    expect(planCategoryRows(detail, null)).toEqual([
+      { key: 'lodging', categoryId: 'lodging', spent: 2800, count: 2 },
+      { key: UNCATEGORIZED_KEY, categoryId: null, spent: 1400.5, count: 3 },
+    ]);
+  });
+
+  it('with a month sums the cells of that month only', () => {
+    expect(planCategoryRows(detail, '2026-06')).toEqual([
+      { key: 'lodging', categoryId: 'lodging', spent: 1000, count: 1 },
+      { key: UNCATEGORIZED_KEY, categoryId: null, spent: 200, count: 1 },
+    ]);
+    expect(planCategoryRows(detail, '2026-08')).toEqual([]);
+  });
+});
+
+describe('signedTotals', () => {
+  it('sums debits as negative and credits as positive per currency, never converting', () => {
+    expect(
+      signedTotals([
+        { amount: '1200', type: 'debit', currency: 'CZK' },
+        { amount: '50.5', type: 'debit', currency: 'EUR' },
+        { amount: '200', type: 'credit', currency: 'CZK' },
+      ])
+    ).toEqual([
+      { currency: 'CZK', amount: -1000 },
+      { currency: 'EUR', amount: -50.5 },
+    ]);
+  });
+
+  it('is empty for no payments', () => {
+    expect(signedTotals([])).toEqual([]);
+  });
+});
+
+describe('periodMonths', () => {
+  it('lists the months of the year up to the current one', () => {
+    expect(periodMonths(2026, '2026-03')).toEqual(['2026-01', '2026-02', '2026-03']);
+  });
+
+  it('lists all twelve for a past year and none for a future one', () => {
+    expect(periodMonths(2025, '2026-03')).toHaveLength(12);
+    expect(periodMonths(2027, '2026-03')).toEqual([]);
+  });
+});
+
+describe('periodRange', () => {
+  it('covers the whole year up to the last second of 31 December', () => {
+    expect(periodRange(2026, 'year')).toEqual({
+      dateFrom: utc(2026, 1, 1),
+      dateTo: utc(2026, 12, 31) + DAY - 1,
+    });
+  });
+
+  it('covers one month up to the last second of its last day', () => {
+    expect(periodRange(2026, '2026-02')).toEqual({
+      dateFrom: utc(2026, 2, 1),
+      dateTo: utc(2026, 2, 28) + DAY - 1,
+    });
+  });
+
+  it('has no bounds for all periods', () => {
+    expect(periodRange(2026, 'all')).toEqual({ dateFrom: null, dateTo: null });
   });
 });

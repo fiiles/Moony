@@ -16,7 +16,12 @@
     "reopen": "Plan wieder öffnen",
     "delete": "Plan löschen",
     "menu": "Planaktionen",
-    "undo": "Rückgängig"
+    "undo": "Rückgängig",
+    "addPayments": "Zahlungen hinzufügen",
+    "removeFromPlan": "Aus dem Plan entfernen",
+    "moveTo": "Verschieben nach…",
+    "newPlanEllipsis": "Neuer Ausgabenplan…",
+    "clearSelection": "Auswahl aufheben"
   },
   "status": {
     "over": "Überschritten",
@@ -97,7 +102,11 @@
     "reopened": "Plan {{name}} wieder geöffnet",
     "deleted": "Plan {{name}} gelöscht",
     "takenOver_one": "{{count}} Plan aus {{year}} übernommen",
-    "takenOver_other": "{{count}} Pläne aus {{year}} übernommen"
+    "takenOver_other": "{{count}} Pläne aus {{year}} übernommen",
+    "assigned_one": "{{count}} Zahlung dem Plan {{name}} hinzugefügt",
+    "assigned_other": "{{count}} Zahlungen dem Plan {{name}} hinzugefügt",
+    "removed_one": "{{count}} Zahlung aus dem Plan entfernt",
+    "removed_other": "{{count}} Zahlungen aus dem Plan entfernt"
   },
   "form": {
     "newTitle": "Neuer Ausgabenplan",
@@ -136,6 +145,109 @@
   "detail": {
     "back": "Ausgabenpläne {{year}}",
     "eyebrow": "Ausgabenplan",
-    "notFound": "Diesen Plan gibt es nicht mehr."
+    "notFound": "Diesen Plan gibt es nicht mehr.",
+    "filterTitle": "Dieses Widget ist durch einen Filter eingeschränkt",
+    "closed": {
+      "title": "Der Plan ist geschlossen",
+      "text": "Er wird beim Zuordnen von Zahlungen nicht angeboten. Zahlungen, die schon darin sind, zählen weiter."
+    },
+    "stats": {
+      "planned": "Geplant",
+      "plannedNote": "für {{year}}",
+      "spent": "Ausgegeben",
+      "near": "Nahe am Limit · {{percent}}",
+      "payments_one": "{{count}} Zahlung",
+      "payments_other": "{{count}} Zahlungen",
+      "accounts_one": "{{count}} Konto",
+      "accounts_other": "{{count}} Konten",
+      "noPayments": "Noch keine Zahlungen",
+      "left": "Übrig",
+      "overBy": "Überschritten um",
+      "leftNote": "bis zum geplanten Betrag",
+      "overNote": "über dem geplanten Betrag"
+    },
+    "chart": {
+      "title": "Ausgaben im Zeitverlauf",
+      "sub": "Nettoausgaben des Plans pro Monat · ein Klick auf einen Monat schränkt die Widgets unter dem Diagramm ein",
+      "subCategory": "Ausgaben für {{category}} in diesem Plan pro Monat",
+      "month": "Ausgaben im Monat",
+      "cumulative": "Gesamt seit Beginn",
+      "planned": "Geplant",
+      "plannedLine": "Geplant {{amount}}",
+      "future": "Rest des Jahres",
+      "filterMonth": "Auf {{month}} einschränken"
+    },
+    "categories": {
+      "title": "Kategorien",
+      "sub": "Ausgaben des Plans nach Zahlungskategorie · ein Klick schränkt Diagramm und Zahlungen ein",
+      "payments_one": "{{count}} Zahlung",
+      "payments_other": "{{count}} Zahlungen",
+      "total": "Gesamt",
+      "totalIn": "Gesamt · {{month}}",
+      "empty": "Sobald Sie dem Plan Zahlungen hinzufügen, sehen Sie hier, wofür Sie ausgegeben haben.",
+      "emptyMonth": "Der Plan hat in diesem Monat keine Zahlungen.",
+      "uncategorized": "Ohne Kategorie"
+    },
+    "payments": {
+      "title": "Zahlungen",
+      "sub": "Nach Tag gruppiert · neueste oben",
+      "filtered_one": "{{shown}} von {{count}} Zahlung",
+      "filtered_other": "{{shown}} von {{count}} Zahlungen",
+      "counterparty": "Gegenpartei",
+      "category": "Kategorie",
+      "amount": "Betrag",
+      "selectAll": "Alle angezeigten Zahlungen auswählen",
+      "select": "Zahlung {{name}} auswählen",
+      "emptyTitle": "Zum Plan gehört noch keine Zahlung",
+      "emptyText": "Wählen Sie hier Zahlungen aus allen Konten aus oder ordnen Sie sie in der Zahlungsliste eines Kontos gesammelt zu.",
+      "emptyFiltered": "Keine Zahlung entspricht dem Filter.",
+      "closedHint": "Der Plan ist geschlossen. Öffnen Sie ihn wieder, um Zahlungen hinzuzufügen."
+    }
+  },
+  "picker": {
+    "label": "Ausgabenplan wählen",
+    "search": "Pläne suchen",
+    "left": "{{left}} von {{planned}} übrig",
+    "over": "um {{amount}} überschritten",
+    "planned": "geplant {{planned}}",
+    "noMatch": "Kein aktiver Plan passt zu „{{query}}“.",
+    "none": "Noch kein aktiver Plan.",
+    "closedNote": "Geschlossene Pläne werden nicht angeboten."
+  },
+  "selection": {
+    "count_one": "{{count}} Zahlung ausgewählt",
+    "count_other": "{{count}} Zahlungen ausgewählt"
+  },
+  "addPayments": {
+    "title": "Zahlungen zum Plan {{name}} hinzufügen",
+    "description": "Zahlungen aus allen Konten. Vorgegeben ist das Jahr des Plans; eine Zahlung aus einem anderen Jahr finden Sie unter Alle Zeiträume. Die Kategorien bleiben unverändert.",
+    "search": "Gegenpartei, Kategorie suchen",
+    "account": "Konto",
+    "period": "Zeitraum",
+    "allAccounts": "Alle Konten",
+    "wholeYear": "Ganzes Jahr {{year}}",
+    "allPeriods": "Alle Zeiträume",
+    "onlyUnassigned": "Nur Zahlungen ohne Plan",
+    "select": "Auswählen",
+    "selectRow": "Zahlung {{name}} auswählen",
+    "date": "Datum",
+    "counterparty": "Gegenpartei",
+    "category": "Kategorie",
+    "plan": "Plan",
+    "amount": "Betrag",
+    "noPlan": "Ohne Plan",
+    "inPlan": "jetzt im Plan {{name}}",
+    "empty": "Keine Zahlung entspricht dem Filter.",
+    "truncated_one": "Angezeigt wird die erste {{count}} Zahlung, verfeinern Sie die Suche",
+    "truncated_other": "Angezeigt werden die ersten {{count}} Zahlungen, verfeinern Sie die Suche",
+    "count_one": "{{count}} Zahlung in der Auswahl",
+    "count_other": "{{count}} Zahlungen in der Auswahl",
+    "hidden": "Zahlungen aus anderen Plänen sind ausgeblendet",
+    "moving_one": "{{count}} wird aus einem anderen Plan verschoben",
+    "moving_other": "{{count}} werden aus einem anderen Plan verschoben",
+    "nothing": "Nichts ausgewählt",
+    "submit_one": "{{count}} Zahlung hinzufügen",
+    "submit_other": "{{count}} Zahlungen hinzufügen",
+    "submitNone": "Zahlungen hinzufügen"
   }
 }

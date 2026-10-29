@@ -16,7 +16,12 @@
     "reopen": "Riapri piano",
     "delete": "Elimina piano",
     "menu": "Azioni del piano",
-    "undo": "Annulla"
+    "undo": "Annulla",
+    "addPayments": "Aggiungi pagamenti",
+    "removeFromPlan": "Rimuovi dal piano",
+    "moveTo": "Sposta in…",
+    "newPlanEllipsis": "Nuovo piano di spesa…",
+    "clearSelection": "Annulla selezione"
   },
   "status": {
     "over": "Superato",
@@ -107,7 +112,13 @@
     "deleted": "Piano {{name}} eliminato",
     "takenOver_one": "{{count}} piano ripreso dal {{year}}",
     "takenOver_many": "{{count}} piani ripresi dal {{year}}",
-    "takenOver_other": "{{count}} piani ripresi dal {{year}}"
+    "takenOver_other": "{{count}} piani ripresi dal {{year}}",
+    "assigned_one": "{{count}} pagamento aggiunto al piano {{name}}",
+    "assigned_many": "{{count}} pagamenti aggiunti al piano {{name}}",
+    "assigned_other": "{{count}} pagamenti aggiunti al piano {{name}}",
+    "removed_one": "{{count}} pagamento rimosso dal piano",
+    "removed_many": "{{count}} pagamenti rimossi dal piano",
+    "removed_other": "{{count}} pagamenti rimossi dal piano"
   },
   "form": {
     "newTitle": "Nuovo piano di spesa",
@@ -148,6 +159,118 @@
   "detail": {
     "back": "Piani di spesa {{year}}",
     "eyebrow": "Piano di spesa",
-    "notFound": "Questo piano non esiste più."
+    "notFound": "Questo piano non esiste più.",
+    "filterTitle": "Questo widget è ristretto da un filtro",
+    "closed": {
+      "title": "Il piano è chiuso",
+      "text": "Non viene proposto quando assegni i pagamenti. I pagamenti che contiene già continuano a contare."
+    },
+    "stats": {
+      "planned": "Previsto",
+      "plannedNote": "per il {{year}}",
+      "spent": "Speso",
+      "near": "Vicino al limite · {{percent}}",
+      "payments_one": "{{count}} pagamento",
+      "payments_many": "{{count}} pagamenti",
+      "payments_other": "{{count}} pagamenti",
+      "accounts_one": "{{count}} conto",
+      "accounts_many": "{{count}} conti",
+      "accounts_other": "{{count}} conti",
+      "noPayments": "Ancora nessun pagamento",
+      "left": "Restano",
+      "overBy": "Superato di",
+      "leftNote": "fino all’importo previsto",
+      "overNote": "oltre l’importo previsto"
+    },
+    "chart": {
+      "title": "Spesa nel tempo",
+      "sub": "Spesa netta del piano per mese · fai clic su un mese per restringere i widget sotto il grafico",
+      "subCategory": "Spesa per {{category}} in questo piano per mese",
+      "month": "Spesa del mese",
+      "cumulative": "Totale dall’inizio",
+      "planned": "Previsto",
+      "plannedLine": "Previsto {{amount}}",
+      "future": "Resto dell’anno",
+      "filterMonth": "Restringi a {{month}}"
+    },
+    "categories": {
+      "title": "Categorie",
+      "sub": "Spesa del piano per categoria di pagamento · fai clic per restringere grafico e pagamenti",
+      "payments_one": "{{count}} pagamento",
+      "payments_many": "{{count}} pagamenti",
+      "payments_other": "{{count}} pagamenti",
+      "total": "Totale",
+      "totalIn": "Totale · {{month}}",
+      "empty": "Quando aggiungerai pagamenti al piano, qui vedrai per cosa hai speso.",
+      "emptyMonth": "Il piano non ha pagamenti in questo mese.",
+      "uncategorized": "Senza categoria"
+    },
+    "payments": {
+      "title": "Pagamenti",
+      "sub": "Raggruppati per giorno · i più recenti in alto",
+      "filtered_one": "{{shown}} di {{count}} pagamento",
+      "filtered_many": "{{shown}} di {{count}} pagamenti",
+      "filtered_other": "{{shown}} di {{count}} pagamenti",
+      "counterparty": "Controparte",
+      "category": "Categoria",
+      "amount": "Importo",
+      "selectAll": "Seleziona tutti i pagamenti mostrati",
+      "select": "Seleziona il pagamento {{name}}",
+      "emptyTitle": "Nessun pagamento appartiene ancora al piano",
+      "emptyText": "Scegli qui i pagamenti da tutti i conti, oppure assegnali in blocco nell’elenco dei pagamenti di un conto.",
+      "emptyFiltered": "Nessun pagamento corrisponde al filtro.",
+      "closedHint": "Il piano è chiuso. Riaprilo per aggiungere pagamenti."
+    }
+  },
+  "picker": {
+    "label": "Scegli un piano di spesa",
+    "search": "Cerca piani",
+    "left": "restano {{left}} di {{planned}}",
+    "over": "superato di {{amount}}",
+    "planned": "previsti {{planned}}",
+    "noMatch": "Nessun piano attivo corrisponde a “{{query}}”.",
+    "none": "Ancora nessun piano attivo.",
+    "closedNote": "I piani chiusi non vengono proposti."
+  },
+  "selection": {
+    "count_one": "{{count}} pagamento selezionato",
+    "count_many": "{{count}} pagamenti selezionati",
+    "count_other": "{{count}} pagamenti selezionati"
+  },
+  "addPayments": {
+    "title": "Aggiungi pagamenti al piano {{name}}",
+    "description": "Pagamenti da tutti i conti. Per impostazione predefinita l’anno del piano; un pagamento di un altro anno è in Tutti i periodi. Le categorie restano invariate.",
+    "search": "Cerca controparte, categoria",
+    "account": "Conto",
+    "period": "Periodo",
+    "allAccounts": "Tutti i conti",
+    "wholeYear": "Tutto il {{year}}",
+    "allPeriods": "Tutti i periodi",
+    "onlyUnassigned": "Solo pagamenti senza piano",
+    "select": "Seleziona",
+    "selectRow": "Seleziona il pagamento {{name}}",
+    "date": "Data",
+    "counterparty": "Controparte",
+    "category": "Categoria",
+    "plan": "Piano",
+    "amount": "Importo",
+    "noPlan": "Senza piano",
+    "inPlan": "ora nel piano {{name}}",
+    "empty": "Nessun pagamento corrisponde al filtro.",
+    "truncated_one": "Mostrato il primo pagamento ({{count}}), affina la ricerca",
+    "truncated_many": "Mostrati i primi {{count}} pagamenti, affina la ricerca",
+    "truncated_other": "Mostrati i primi {{count}} pagamenti, affina la ricerca",
+    "count_one": "{{count}} pagamento nella selezione",
+    "count_many": "{{count}} pagamenti nella selezione",
+    "count_other": "{{count}} pagamenti nella selezione",
+    "hidden": "i pagamenti di altri piani sono nascosti",
+    "moving_one": "{{count}} verrà spostato da un altro piano",
+    "moving_many": "{{count}} verranno spostati da un altro piano",
+    "moving_other": "{{count}} verranno spostati da un altro piano",
+    "nothing": "Nessuna selezione",
+    "submit_one": "Aggiungi {{count}} pagamento",
+    "submit_many": "Aggiungi {{count}} pagamenti",
+    "submit_other": "Aggiungi {{count}} pagamenti",
+    "submitNone": "Aggiungi pagamenti"
   }
 }

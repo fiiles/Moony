@@ -1,4 +1,9 @@
-import type { SpendingPlan, SpendingPlanSummary } from '@shared/schema';
+import type {
+  BankTransaction,
+  SpendingPlan,
+  SpendingPlanDetail,
+  SpendingPlanSummary,
+} from '@shared/schema';
 import { matchesSearch } from './holdings-search';
 
 /** A plan counts as "near" once spent reaches this share of the planned amount (and is not over). */
@@ -174,4 +179,129 @@ export function takeOverRows(
       const exists = targetNames.some((name) => samePlanName(name, plan.name));
       return { plan, exists, selected: !exists && plan.closedAt === null };
     });
+}
+
+// ---- Plan detail (spec §9 "Detail page") -------------------------------------------------------
+
+/** "YYYY-MM" of a booking day (UTC midnight, unix seconds), as the backend buckets months. */
+export function monthOfDay(unixSeconds: number): string {
+  const date = new Date(unixSeconds * 1000);
+  return monthKey(date.getUTCFullYear(), date.getUTCMonth() + 1);
+}
+
+/** "YYYY-MM" as the UTC date of its first day, for month labels. */
+export function monthDate(month: string): Date {
+  const [y, m] = month.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, 1));
+}
+
+/** The category filter's key of payments without a category (a category id is never empty). */
+export const UNCATEGORIZED_KEY = '';
+
+/** A category id as a filter key; uncategorized payments get `UNCATEGORIZED_KEY`. */
+export function categoryKey(categoryId: string | null): string {
+  return categoryId ?? UNCATEGORIZED_KEY;
+}
+
+/**
+ * Net spend of each month on `axis`, in the plan currency (0 where nothing was spent). With a
+ * category key only that category's cells count. Display sums of backend-converted values.
+ */
+export function planMonthSpend(
+  detail: Pick<SpendingPlanDetail, 'months' | 'cells'>,
+  axis: string[],
+  category: string | null
+): number[] {
+  const byMonth = new Map<string, number>();
+  const add = (month: string, spent: string) =>
+    byMonth.set(month, (byMonth.get(month) ?? 0) + (parseFloat(spent) || 0));
+  if (category === null) {
+    for (const m of detail.months) add(m.month, m.spent);
+  } else {
+    for (const c of detail.cells) if (categoryKey(c.categoryId) === category) add(c.month, c.spent);
+  }
+  return axis.map((month) => byMonth.get(month) ?? 0);
+}
+
+/** Running total of `values` for the months up to `lastMonth`; later months are null. */
+export function cumulativeSpend(
+  values: number[],
+  axis: string[],
+  lastMonth: string
+): (number | null)[] {
+  let total = 0;
+  return axis.map((month, i) => {
+    if (month > lastMonth) return null;
+    total += values[i] ?? 0;
+    return total;
+  });
+}
+
+/** One row of the detail's Kategorie card, in the plan currency. */
+export interface PlanCategoryRow {
+  key: string;
+  categoryId: string | null;
+  spent: number;
+  count: number;
+}
+
+/**
+ * The plan's spend per category, the largest first: the whole plan, or with a month only that
+ * month's cells.
+ */
+export function planCategoryRows(
+  detail: Pick<SpendingPlanDetail, 'categories' | 'cells'>,
+  month: string | null
+): PlanCategoryRow[] {
+  const rows = new Map<string, PlanCategoryRow>();
+  const source = month === null ? detail.categories : detail.cells.filter((c) => c.month === month);
+  for (const item of source) {
+    const key = categoryKey(item.categoryId);
+    const row = rows.get(key) ?? { key, categoryId: item.categoryId, spent: 0, count: 0 };
+    row.spent += parseFloat(item.spent) || 0;
+    row.count += item.count;
+    rows.set(key, row);
+  }
+  return [...rows.values()].sort((a, b) => b.spent - a.spent);
+}
+
+/**
+ * Signed sums of payments per currency (credits plus, debits minus), in the order the currencies
+ * first appear. Native amounts are never converted on the client.
+ */
+export function signedTotals(
+  transactions: readonly Pick<BankTransaction, 'amount' | 'type' | 'currency'>[]
+): { currency: string; amount: number }[] {
+  const totals = new Map<string, number>();
+  for (const tx of transactions) {
+    const value = Math.abs(parseFloat(tx.amount) || 0);
+    const signed = tx.type === 'credit' ? value : -value;
+    totals.set(tx.currency, (totals.get(tx.currency) ?? 0) + signed);
+  }
+  return [...totals].map(([currency, amount]) => ({ currency, amount }));
+}
+
+/** The months of `year` a period select offers: up to `currentMonth`, none for a future year. */
+export function periodMonths(year: number, currentMonth: string): string[] {
+  return Array.from({ length: 12 }, (_, i) => monthKey(year, i + 1)).filter(
+    (month) => month <= currentMonth
+  );
+}
+
+/** A period of the add-payments dialog: the plan year, one "YYYY-MM" month, or everything. */
+export type PlanPeriod = 'year' | 'all' | string;
+
+/**
+ * Booking-date bounds of a period in unix seconds. `dateTo` is inclusive on the raw value, so it
+ * is the last second of the last day (booking days are UTC midnights).
+ */
+export function periodRange(
+  year: number,
+  period: PlanPeriod
+): { dateFrom: number | null; dateTo: number | null } {
+  if (period === 'all') return { dateFrom: null, dateTo: null };
+  const [y, m] = period === 'year' ? [year, null] : period.split('-').map(Number);
+  const from = m === null ? Date.UTC(y, 0, 1) : Date.UTC(y, m - 1, 1);
+  const next = m === null ? Date.UTC(y + 1, 0, 1) : Date.UTC(y, m, 1);
+  return { dateFrom: from / 1000, dateTo: next / 1000 - 1 };
 }

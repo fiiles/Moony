@@ -9,7 +9,8 @@
  *
  * With biometric unlock switched on, "Odemknout obličejem" comes first and the system prompt opens
  * by itself once per lock (once the app is visible, so a lock at the moment the app returns from
- * the background still gets a prompt that is not cancelled by the transition); "Použít heslo"
+ * the background still gets a prompt that is not cancelled by the transition), except after
+ * "Zamknout aplikaci", where only the button opens it; "Použít heslo"
  * shows the password form. A key the keychain can no longer read falls back to the password with
  * the reason under the button, never a loop.
  */
@@ -58,6 +59,7 @@ import {
   clearEnrolmentAsked,
   shouldAutoPrompt,
 } from '@/lib/biometrics';
+import { takeQuietLock } from '@/mobile/lib/quiet-lock';
 import { whenVisible } from '@/mobile/lib/when-visible';
 import { FirstRun } from '@/mobile/pages/FirstRun';
 import { NavTextButton } from '@/mobile/shell/NavBar';
@@ -254,8 +256,10 @@ function UnlockScreen({
   // The prompt opens by itself once per lock event, as soon as biometrics turn out to be on and
   // the app is visible: a prompt opened while the app is still coming back from the background
   // would be dismissed by the transition, and by the rule above nothing would prompt again.
+  // A lock from "Zamknout aplikaci" counts as prompted already: only the button opens it.
   const lockEvent = lockMutation.submittedAt;
   useEffect(() => {
+    if (takeQuietLock()) promptedLockEvent = lockEvent;
     if (!biometricReady || !shouldAutoPrompt(lockEvent, promptedLockEvent)) return;
     return whenVisible(() => {
       promptedLockEvent = lockEvent;

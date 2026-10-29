@@ -34,6 +34,7 @@ import { useNotificationPermission } from '@/mobile/hooks/use-notification-permi
 import { readBackgroundLockMinutes } from '@/mobile/lib/background-lock';
 import { BIOMETRIC_STATUS_KEY } from '@/lib/biometrics';
 import { readHideAmountsOnLaunch } from '@/mobile/lib/hide-amounts';
+import { clearQuietLock, requestQuietLock } from '@/mobile/lib/quiet-lock';
 import { renderTextRef, securitySummary } from '@/mobile/lib/settings-summary';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes, settingsPath } from '@/mobile/shell/routes';
@@ -254,7 +255,10 @@ export default function Settings() {
           icon={Lock}
           title={tc('nav.lockApp')}
           onClick={() => {
-            if (!lockMutation.isPending) lockMutation.mutate();
+            if (lockMutation.isPending) return;
+            // The lock screen stays quiet after this lock: Face ID only from its button.
+            requestQuietLock();
+            lockMutation.mutate(undefined, { onError: clearQuietLock });
           }}
         />
         <SettingsRow

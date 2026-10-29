@@ -275,8 +275,8 @@
   },
   "flow": {
     "title": "Kam jdou peníze z plánů",
-    "sub": "Útrata všech plánů roku {{year}} podle kategorií. Šrafovaná část zbývá z plánované částky.",
-    "other": "Ostatní",
+    "sub": "Útrata plánů roku {{year}}: šest největších zvlášť, ostatní dohromady. Šrafovaná část zbývá z plánované částky.",
+    "other": "Ostatní plány",
     "rest": "Zbývá v plánech",
     "badgeLeft": "{{percent}} plánu zbývá",
     "badgeOver": "Přečerpáno o {{amount}}",

@@ -2,7 +2,7 @@ import { forwardRef, type ButtonHTMLAttributes, type HTMLAttributes } from 'reac
 import { useCategoryName } from '@/hooks/use-categories';
 import { cn } from '@/lib/utils';
 import type { NamedCategory } from '@/utils/category-name';
-import { CategoryIcon } from './CategoryIcon';
+import { CategoryIconChip } from './CategoryIcon';
 
 /**
  * The pill shape shared by the ledger's plan chip and the category pill: 26 px high, fully
@@ -15,13 +15,18 @@ export const PILL =
 export const PILL_INTERACTIVE =
   'transition-[color,border-color,opacity] duration-fast hover:border-line-hover hover:text-ink focus-visible:outline-none focus-visible:border-focus focus-visible:shadow-focus';
 
-type PillCategory = NamedCategory & { icon?: string | null };
+type PillCategory = NamedCategory & { icon?: string | null; color?: string | null };
 
 function PillContent({ category }: { category: PillCategory }) {
   const categoryName = useCategoryName();
   return (
     <>
-      <CategoryIcon iconName={category.icon || 'tag'} className="size-3 shrink-0" />
+      {/* The round category chip in the plan pill's place: a plan's chip is square */}
+      <CategoryIconChip
+        category={{ icon: category.icon ?? null, color: category.color ?? null }}
+        size="sm"
+        className="-ml-[5px]"
+      />
       <span className="truncate">{categoryName(category)}</span>
     </>
   );
@@ -29,7 +34,7 @@ function PillContent({ category }: { category: PillCategory }) {
 
 /**
  * A category as a read-only pill: the same pill as the ledger's plan chip, with the category's
- * own icon in ink (no category color, spec O15) and its translated name, truncated.
+ * round icon chip in its color (neutral without one) and its translated name, truncated.
  */
 export function CategoryPill({
   category,

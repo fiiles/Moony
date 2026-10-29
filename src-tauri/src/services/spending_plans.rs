@@ -11,7 +11,8 @@ use crate::models::{
     SpendingPlanAssignment, SpendingPlanDetail, SpendingPlanSummary, SpendingPlansOverview,
 };
 use crate::models::{
-    SpendingPlanCategory, SpendingPlanCell, SpendingPlanMonth, SpendingPlanTotals,
+    SpendingPlanCategory, SpendingPlanCell, SpendingPlanMonth, SpendingPlanSpent,
+    SpendingPlanTotals,
 };
 use crate::services::bank_history::{transaction_from_row, TRANSACTION_COLUMNS};
 use crate::services::categorization::tokenizer::fold_text;
@@ -19,6 +20,7 @@ use crate::services::fx;
 use crate::services::reporting::money_in_currency;
 use chrono::{DateTime, Datelike, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
+use std::cmp::Ordering;
 use std::collections::{BTreeMap, HashMap, HashSet};
 use uuid::Uuid;
 
@@ -408,6 +410,13 @@ impl Total {
     }
 }
 
+fn plan_spent_row(s: &SpendingPlanSummary, spent: Option<f64>, report: &str) -> SpendingPlanSpent {
+    SpendingPlanSpent {
+        plan_id: s.plan.id.clone(),
+        spent: spent.map(|v| money_in_currency(v, report)),
+    }
+}
+
 /// The plans of `year` with totals in `report_currency` (converted with `quotes`).
 pub fn overview(
     conn: &Connection,
@@ -423,8 +432,9 @@ pub fn overview(
 
     let mut quality = fx::Quality::default();
     let (mut planned, mut spent, mut remaining) = (Total::new(), Total::new(), Total::new());
-    let mut categories: HashMap<Option<String>, (f64, i64)> = HashMap::new();
-    for (s, plan_quality, converted) in &summaries {
+    // (spent in the report currency for ordering, the row)
+    let mut plan_spent: Vec<(Option<f64>, SpendingPlanSpent)> = Vec::new();
+    for (s, plan_quality, _) in &summaries {
         let to_report = |amount: f64, quality: &mut fx::Quality| {
             let result = quotes.convert(amount, &s.plan.currency, &report);
             quality.track_conversion(quotes, &s.plan.currency, &report, result)
@@ -442,26 +452,29 @@ pub fn overview(
             if s.plan.closed_at.is_none() {
                 remaining.add(None);
             }
+            plan_spent.push((None, plan_spent_row(s, None, &report)));
             continue;
         };
         planned.add(Some(planned_in_report));
         let spent_native = s.spent.as_deref().and_then(|v| v.parse::<f64>().ok());
         let spent_in_report = spent_native.and_then(|v| to_report(v, &mut quality));
         spent.add(spent_in_report);
+        plan_spent.push((spent_in_report, plan_spent_row(s, spent_in_report, &report)));
         if s.plan.closed_at.is_none() {
             let left = amount
                 .zip(spent_native)
                 .and_then(|(a, v)| to_report(a - v, &mut quality));
             remaining.add(left);
         }
-        for (category_id, (sum, count)) in sum_by_category(converted) {
-            if let Some(v) = to_report(sum, &mut quality) {
-                let entry = categories.entry(category_id).or_default();
-                entry.0 += v;
-                entry.1 += count;
-            }
-        }
     }
+
+    // Largest spent first, unconvertible last; ties keep the plan order (stable sort).
+    plan_spent.sort_by(|(a, _), (b, _)| match (a, b) {
+        (Some(a), Some(b)) => b.total_cmp(a),
+        (Some(_), None) => Ordering::Less,
+        (None, Some(_)) => Ordering::Greater,
+        (None, None) => Ordering::Equal,
+    });
 
     let mut years_stmt = conn.prepare("SELECT DISTINCT year FROM spending_plans ORDER BY year")?;
     let years_with_plans = years_stmt
@@ -475,7 +488,7 @@ pub fn overview(
             spent: spent.money(&report),
             remaining_active: remaining.money(&report),
         },
-        categories: category_rows(categories, &report),
+        plan_spent: plan_spent.into_iter().map(|(_, row)| row).collect(),
         currency: report,
         fx_quality: ConversionQuality::from(&quality),
         plans: summaries.into_iter().map(|(s, _, _)| s).collect(),
@@ -1341,87 +1354,89 @@ mod tests {
         assert_eq!(o.fx_quality.missing_currencies, ["XYZ"]);
     }
 
-    fn overview_categories(o: &SpendingPlansOverview) -> Vec<(Option<&str>, &str, i64)> {
-        o.categories
+    fn overview_plan_spent(o: &SpendingPlansOverview) -> Vec<(&str, Option<&str>)> {
+        o.plan_spent
             .iter()
-            .map(|c| (c.category_id.as_deref(), c.spent.as_str(), c.count))
+            .map(|p| (p.plan_id.as_str(), p.spent.as_deref()))
             .collect()
     }
 
     #[test]
-    fn overview_categories_sum_plans_in_report_currency() {
+    fn overview_plan_spent_in_report_currency_largest_first() {
         let conn = setup_test_db();
         let czk = create_plan(&conn, &plan_in("Byt", 2026, "10000", "CZK")).unwrap();
-        let eur = create_plan(&conn, &plan_in("Dovolená", 2026, "100", "EUR")).unwrap();
-        let d = ts(2026, 2, 2);
-        let in_czk = |id, amount, cat| Pay {
-            currency: "CZK",
-            category: cat,
-            ..pay(id, Some(&czk.id), amount, d)
-        };
-        let in_eur = |id, amount, cat| Pay {
-            category: cat,
-            ..pay(id, Some(&eur.id), amount, d)
-        };
-        put(&conn, in_czk("t1", "2000", Some("food")));
-        put(&conn, in_czk("t2", "500", None));
-        put(&conn, in_eur("t3", "40", Some("food")));
-        put(&conn, in_eur("t4", "10", Some("fun")));
-        put(
-            &conn,
-            Pay {
-                status: "pending",
-                ..in_eur("t5", "999", Some("fun"))
-            },
-        );
-        let o = overview(&conn, 2026, "CZK", &czk_quotes()).unwrap();
-        // food 2000 + 40 EUR * 25; uncategorized 500; fun 10 EUR * 25; pending left out
-        assert_eq!(
-            overview_categories(&o),
-            [
-                (Some("food"), "3000.00", 2),
-                (None, "500.00", 1),
-                (Some("fun"), "250.00", 1)
-            ]
-        );
-        assert!(o.fx_quality.missing_currencies.is_empty());
-    }
-
-    #[test]
-    fn overview_categories_leave_missing_rates_out() {
-        let conn = setup_test_db();
-        let czk = create_plan(&conn, &plan_in("Byt", 2026, "10000", "CZK")).unwrap();
-        let xyz = create_plan(&conn, &plan_in("Exotika", 2026, "500", "XYZ")).unwrap();
+        let eur = create_plan(&conn, &plan_in("Dovolená", 2026, "200", "EUR")).unwrap();
+        let idle = create_plan(&conn, &plan_in("Kolo", 2026, "1000", "CZK")).unwrap();
         let d = ts(2026, 2, 2);
         rate(&conn, d, "CZK", 25.0);
         put(
             &conn,
             Pay {
                 currency: "CZK",
-                category: Some("food"),
-                ..pay("t1", Some(&czk.id), "1000", d)
+                ..pay("t1", Some(&czk.id), "2000", d)
             },
         );
-        // No rate for XYZ on its day: out of the CZK plan's spend.
+        put(&conn, pay("t2", Some(&eur.id), "100", d));
         put(
             &conn,
             Pay {
-                currency: "XYZ",
-                category: Some("food"),
-                ..pay("t2", Some(&czk.id), "5", d)
-            },
-        );
-        // No current quote for XYZ: the whole plan is out of the report.
-        put(
-            &conn,
-            Pay {
-                currency: "XYZ",
-                category: Some("fun"),
-                ..pay("t3", Some(&xyz.id), "7", d)
+                status: "pending",
+                ..pay("t3", Some(&eur.id), "999", d)
             },
         );
         let o = overview(&conn, 2026, "CZK", &czk_quotes()).unwrap();
-        assert_eq!(overview_categories(&o), [(Some("food"), "1000.00", 1)]);
+        // 100 EUR * 25 = 2500 CZK ahead of 2000 CZK; the plan without payments last; pending out
+        assert_eq!(
+            overview_plan_spent(&o),
+            [
+                (eur.id.as_str(), Some("2500.00")),
+                (czk.id.as_str(), Some("2000.00")),
+                (idle.id.as_str(), Some("0.00")),
+            ]
+        );
+        assert!(o.fx_quality.missing_currencies.is_empty());
+    }
+
+    #[test]
+    fn overview_plan_spent_none_without_a_rate() {
+        let conn = setup_test_db();
+        let xyz = create_plan(&conn, &plan_in("Exotika", 2026, "500", "XYZ")).unwrap();
+        let czk = create_plan(&conn, &plan_in("Byt", 2026, "10000", "CZK")).unwrap();
+        let foreign = create_plan(&conn, &plan_in("Zahraničí", 2026, "100", "CZK")).unwrap();
+        let d = ts(2026, 2, 2);
+        rate(&conn, d, "CZK", 25.0);
+        put(
+            &conn,
+            Pay {
+                currency: "CZK",
+                ..pay("t1", Some(&czk.id), "1000", d)
+            },
+        );
+        // No current quote for XYZ: the plan cannot be converted into the report currency.
+        put(
+            &conn,
+            Pay {
+                currency: "XYZ",
+                ..pay("t2", Some(&xyz.id), "7", d)
+            },
+        );
+        // No rate for XYZ on its day: the CZK plan's only payment cannot be converted.
+        put(
+            &conn,
+            Pay {
+                currency: "XYZ",
+                ..pay("t3", Some(&foreign.id), "5", d)
+            },
+        );
+        let o = overview(&conn, 2026, "CZK", &czk_quotes()).unwrap();
+        assert_eq!(
+            overview_plan_spent(&o),
+            [
+                (czk.id.as_str(), Some("1000.00")),
+                (xyz.id.as_str(), None),
+                (foreign.id.as_str(), None),
+            ]
+        );
         assert_eq!(o.fx_quality.missing_currencies, ["XYZ"]);
     }
 

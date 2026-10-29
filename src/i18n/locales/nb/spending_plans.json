@@ -252,8 +252,8 @@
   },
   "flow": {
     "title": "Hvor pengene i planene går",
-    "sub": "Forbruk i alle planer for {{year}} per kategori. Den skraverte delen er det som er igjen av det planlagte beløpet.",
-    "other": "Annet",
+    "sub": "Forbruk i planene for {{year}}: de seks største hver for seg, resten samlet. Den skraverte delen er det som er igjen av det planlagte beløpet.",
+    "other": "Andre planer",
     "rest": "Igjen i planene",
     "badgeLeft": "{{percent}} av planene igjen",
     "badgeOver": "Overskredet med {{amount}}",

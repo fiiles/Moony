@@ -9,14 +9,17 @@ export interface FlowSegment {
   value: number;
   /** Share of the whole bar, 0–1. */
   share: number;
+  /** A color of its own (e.g. a spending plan's); wins over the series color. */
+  color?: string;
   /** `rest` draws the hatched remainder ("Zbývá k investování"). */
   kind?: 'rest';
 }
 
 /**
  * 100 % flow bar (design system §11, replaces the Sankey): expense groups in
- * s1…s4 + Ostatní, the hatched remainder is what stays free. Hovering a
- * segment dims the others and shows its amount and share.
+ * s1…s4 + Ostatní (or each segment's own `color`), the hatched remainder is
+ * what stays free. Hovering a segment dims the others and shows its amount and
+ * share.
  */
 export function FlowBar({
   segments,
@@ -46,7 +49,7 @@ export function FlowBar({
           const color =
             s.kind === 'rest'
               ? FLOW_REST
-              : FLOW_SERIES[Math.min(colorIndex++, FLOW_SERIES.length - 1)];
+              : (s.color ?? FLOW_SERIES[Math.min(colorIndex++, FLOW_SERIES.length - 1)]);
           return (
             <i
               key={s.key}

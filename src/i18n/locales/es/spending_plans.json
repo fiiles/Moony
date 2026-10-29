@@ -275,8 +275,8 @@
   },
   "flow": {
     "title": "Adónde va el dinero de los planes",
-    "sub": "Gasto de todos los planes de {{year}} por categoría. La parte rayada es lo que queda del importe planificado.",
-    "other": "Otros",
+    "sub": "Gasto de los planes de {{year}}: los seis mayores por separado, los demás juntos. La parte rayada es lo que queda del importe planificado.",
+    "other": "Otros planes",
     "rest": "Queda en los planes",
     "badgeLeft": "Queda el {{percent}} de los planes",
     "badgeOver": "Excedido en {{amount}}",

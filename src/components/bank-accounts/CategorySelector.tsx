@@ -122,7 +122,7 @@ function getCategoryDisplay(categoryId: string | null, categories: TransactionCa
     name: category.name,
     isSystem: category.isSystem,
     iconName: category.icon || 'tag',
-    color: category.color || '#6b7280',
+    color: category.color,
   };
 }
 

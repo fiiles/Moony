@@ -3,7 +3,7 @@ import { flowColor } from '@/components/cashflow/flow-colors';
 
 /**
  * The legend under a `FlowBar`: three columns of swatch, label and "amount · %", the swatch in
- * the segment's series color (the hatch for the remainder).
+ * the segment's own color or else its series color (the hatch for the remainder).
  */
 export function FlowLegend({
   segments,
@@ -24,7 +24,9 @@ export function FlowLegend({
           <i
             aria-hidden
             className="size-2 rounded-[2px] border border-line-strong"
-            style={{ background: flowColor(i, s.kind) }}
+            style={{
+              background: s.kind === 'rest' ? flowColor(i, s.kind) : (s.color ?? flowColor(i)),
+            }}
           />
           <span>{s.label}</span>
           <b className="font-650 text-ink num">

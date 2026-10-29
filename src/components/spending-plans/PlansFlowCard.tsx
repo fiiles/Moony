@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { SpendingPlansOverview } from '@shared/schema';
 import { planFlowSegments } from '@/utils/spending-plans';
-import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { useFormat } from '@/lib/use-format';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -11,15 +10,14 @@ import { FlowLegend } from '@/components/cashflow/FlowLegend';
 import { ConversionQualityNote } from '@/components/reports/ReportQualityNote';
 
 /**
- * "Kam jdou peníze z plánů": the year's spend by category across all plans on a 100 % bar
- * (100 % = the larger of planned and spent, report currency), the hatched part what is left of
- * the planned amount. Modelled on the cashflow planning card "Kam směřují plánované příjmy".
+ * "Kam jdou peníze z plánů": the year's spend by plan on a 100 % bar (100 % = the larger of
+ * planned and spent, report currency): the six plans that spent the most in their own colors,
+ * "Ostatní plány" for the rest, the hatched part what is left of the planned amount. Modelled on
+ * the cashflow planning card "Kam směřují plánované příjmy".
  */
 export function PlansFlowCard({ overview }: { overview: SpendingPlansOverview }) {
   const { t } = useTranslation('spending_plans');
   const fmt = useFormat();
-  const { categories } = useCategories();
-  const categoryName = useCategoryName();
   const { currency, totals, fxQuality, year } = overview;
 
   const planned = totals.planned === null ? null : parseFloat(totals.planned);
@@ -29,20 +27,16 @@ export function PlansFlowCard({ overview }: { overview: SpendingPlansOverview })
 
   const segments = useMemo(() => {
     if (planned === null || spent === null) return [];
-    const byId = new Map(categories.map((c) => [c.id, c]));
+    const byId = new Map(overview.plans.map((s) => [s.plan.id, s.plan]));
+    const plans = overview.planSpent.flatMap((row) => {
+      const plan = byId.get(row.planId);
+      return plan ? [{ id: plan.id, name: plan.name, color: plan.color, spent: row.spent }] : [];
+    });
     return planFlowSegments(
-      { planned, spent, categories: overview.categories },
-      {
-        category: (id) => {
-          if (id === null) return t('detail.categories.uncategorized');
-          const found = byId.get(id);
-          return found ? categoryName(found) : '—';
-        },
-        other: t('flow.other'),
-        rest: t('flow.rest'),
-      }
+      { planned, spent, plans },
+      { other: t('flow.other'), rest: t('flow.rest') }
     );
-  }, [planned, spent, overview.categories, categories, categoryName, t]);
+  }, [planned, spent, overview.plans, overview.planSpent, t]);
 
   const known = planned !== null && spent !== null;
   const anySpent = segments.some((s) => s.kind !== 'rest');

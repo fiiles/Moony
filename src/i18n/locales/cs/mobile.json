@@ -15,8 +15,6 @@
     "reason": "Odemknout Moony"
   },
   "overview": {
-    "hideAmounts": "Skrýt částky",
-    "showAmounts": "Zobrazit částky",
     "change": {
       "30D": "za 30 dní",
       "90D": "za 3 měsíce",
@@ -60,8 +58,7 @@
       "change": "Změnit kategorii"
     },
     "limitSheet": {
-      "pick": "Vyberte kategorii, pro kterou chcete hlídat výdaje.",
-      "current": "Současný limit: {{amount}}"
+      "pick": "Vyberte kategorii, pro kterou chcete hlídat výdaje."
     },
     "budgets": {
       "ended": "ukončen",
@@ -667,7 +664,7 @@
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "žádná telemetrie",
     "security": {
-      "lead": "Odemykání, zámek na pozadí a skrývání částek na tomto telefonu.",
+      "lead": "Odemykání a zámek na pozadí na tomto telefonu.",
       "biometrics": "Odemykat {{methodKey}}",
       "methodFace": "obličejem",
       "methodTouch": "otiskem",
@@ -682,10 +679,7 @@
       "lockNow": "zámek ihned",
       "lockAfter_one": "zámek po {{count}} minutě",
       "lockAfter_few": "zámek po {{count}} minutách",
-      "lockAfter_other": "zámek po {{count}} minutách",
-      "hideOnLaunch": "Skrývat částky po spuštění",
-      "hideOnLaunchHint": "Každé spuštění začne se skrytými částkami; oko na Přehledu je zase ukáže.",
-      "hideOnLaunchShort": "částky skryté po spuštění"
+      "lockAfter_other": "zámek po {{count}} minutách"
     },
     "password": {
       "title": "Změnit heslo",

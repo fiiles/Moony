@@ -68,7 +68,7 @@ export default function Wealth() {
   const { t } = useTranslation('mobile');
   const { t: td } = useTranslation('dashboard');
   const fmt = useFormat();
-  // Every amount goes through the eye of Přehled: text where a string is needed, <Money> elsewhere
+  // Money as text where a string is needed, <Money> elsewhere
   const moneyText = useMoneyText();
   const wealth = useWealth();
   const [addKind, setAddKind] = useState<AddKind | null>(null);

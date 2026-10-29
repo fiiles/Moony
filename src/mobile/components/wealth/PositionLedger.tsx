@@ -37,8 +37,7 @@ interface PositionLedgerProps<T extends LedgerTx> {
  * "Transakce" of a position (spec §8.8, prototype frame 12): the section head with the number of
  * trades, the Vše · Nákupy · Prodeje segment and the trades newest first as rows — the first eight,
  * "Zobrazit všech N" for the rest. A row's menu offers the page's edit (when it has one) or a
- * confirm sheet for the delete, which says what goes (the desktop's sentence, the amount through
- * the eye).
+ * confirm sheet for the delete, which says what goes (the desktop's sentence).
  */
 export function PositionLedger<T extends LedgerTx>({
   ledger,

@@ -33,7 +33,7 @@ interface YearlyBalanceCardProps {
  * the cashflow on the account — the desktop's lines in its order, signs and colours
  * (`balanceRows`), costs and the principal negative, a line whose amount has no rate "—". Under
  * it the desktop's sentence: nothing to balance, what is missing, or what the property earns or
- * costs a month. Every amount goes through the eye.
+ * costs a month.
  */
 export function YearlyBalanceCard({ property, balance, currency }: YearlyBalanceCardProps) {
   const { t } = useTranslation('realEstate');

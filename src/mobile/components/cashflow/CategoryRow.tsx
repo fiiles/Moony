@@ -4,10 +4,8 @@ import type { TransactionCategory } from '@shared/schema';
 import type { MoneyOptions } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import { EntityRow } from '@/mobile/components/EntityRow';
-import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import type { CategoryRowModel } from '@/mobile/lib/cashflow-rows';
-import { maskMoney } from '@/mobile/lib/hide-amounts';
 import { CategoryChip } from './CategoryChip';
 import { ProgressBar } from './ProgressBar';
 
@@ -53,17 +51,16 @@ export function CategoryRow({
 }: CategoryRowProps) {
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
-  const { hidden } = useHideAmounts();
   const moneyText = useMoneyText();
   const { limit } = row;
   const over = limit?.state === 'over';
 
   const parts: ReactNode[] = [];
   if (limit) {
-    // The spent number is bare (the limit carries the currency): masked here, not by `fmt.money`
+    // The spent number is bare (the limit carries the currency)
     const spent = fmt.number(limit.spent, { maximumFractionDigits: 0 });
     const progress = t('cashflow.limitProgress', {
-      spent: hidden ? maskMoney(spent) : spent,
+      spent,
       limit: moneyText(limit.limit, limit.currency, WHOLE),
     });
     parts.push(over ? <span className="text-loss">{progress}</span> : progress);

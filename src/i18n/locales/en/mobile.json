@@ -15,8 +15,6 @@
     "reason": "Unlock Moony"
   },
   "overview": {
-    "hideAmounts": "Hide amounts",
-    "showAmounts": "Show amounts",
     "change": {
       "30D": "over 30 days",
       "90D": "over 3 months",
@@ -58,8 +56,7 @@
       "change": "Change category"
     },
     "limitSheet": {
-      "pick": "Choose the category whose spending you want to keep in check.",
-      "current": "Current limit: {{amount}}"
+      "pick": "Choose the category whose spending you want to keep in check."
     },
     "budgets": {
       "ended": "ended",
@@ -632,7 +629,7 @@
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "no telemetry",
     "security": {
-      "lead": "Unlocking, the lock in the background and hiding amounts on this phone.",
+      "lead": "Unlocking and the lock in the background on this phone.",
       "biometrics": "Unlock with {{methodKey}}",
       "methodFace": "your face",
       "methodTouch": "your fingerprint",
@@ -646,10 +643,7 @@
       "optionMinutes": "{{count}} min",
       "lockNow": "lock immediately",
       "lockAfter_one": "lock after {{count}} minute",
-      "lockAfter_other": "lock after {{count}} minutes",
-      "hideOnLaunch": "Hide amounts on launch",
-      "hideOnLaunchHint": "Every launch starts with amounts hidden; the eye on Overview shows them again.",
-      "hideOnLaunchShort": "amounts hidden on launch"
+      "lockAfter_other": "lock after {{count}} minutes"
     },
     "password": {
       "title": "Change password",

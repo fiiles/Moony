@@ -20,7 +20,7 @@ interface LoanAlertsProps {
  * balance left at the end date, a cut-off schedule (the desktop's `LoanWarnings`, its strings), and
  * the fixation that ends within 30 days or ended up to 60 days ago, each fixation alert with the
  * action that opens the rate-change dialog. A hand-entered balance says that it holds, in one quiet
- * note. Amounts go through the eye.
+ * note.
  */
 export function LoanAlerts({ row, schedule, today, onRecordRate }: LoanAlertsProps) {
   const { t } = useTranslation('mobile');
@@ -76,7 +76,7 @@ export function LoanAlerts({ row, schedule, today, onRecordRate }: LoanAlertsPro
     }
   };
 
-  // The desktop's valuation note, worded here: its hook formats the amount without the eye
+  // The desktop's valuation note, worded here: its hook words the amount its own way
   const manual = manualBalance(row, today);
 
   return (

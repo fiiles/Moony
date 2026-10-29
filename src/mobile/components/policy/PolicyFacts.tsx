@@ -26,7 +26,7 @@ function Wrapping({ children }: { children: ReactNode }) {
 /**
  * Číslo smlouvy: the row of the key-value card with the 44 pt copy button at its end. The button
  * has to sit outside the value cell of `KeyValueRow`, which clips what overflows it, so this row
- * is laid out the same way (`.m-kv`) by hand. The number is no amount: it is never masked.
+ * is laid out the same way (`.m-kv`) by hand. The number is no amount.
  */
 function NumberRow({ label, number }: { label: string; number: string }) {
   const { t } = useTranslation('mobile');
@@ -74,8 +74,7 @@ interface PolicyFactsProps {
 /**
  * The facts of the contract (spec §8.8 "Pojistka", prototype frame 14), first under the name: one
  * key-value card, a row per fact the policy has (`policyFacts`), the labels the desktop's contract
- * card has. The premium is an amount in the policy's own currency with its frequency — through the
- * eye; the term, the next payment, the cancellation deadline and the insured property are dates
+ * card has. The premium is an amount in the policy's own currency with its frequency; the term, the next payment, the cancellation deadline and the insured property are dates
  * and a name. The property is a row that opens it, its back button naming the policy.
  */
 export function PolicyFacts({ facts, today, from }: PolicyFactsProps) {

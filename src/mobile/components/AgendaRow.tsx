@@ -41,7 +41,7 @@ import { ROW_MENU_ITEM } from './RowMenu';
 export function AgendaRow({ m, from }: { m: Milestone; from: string }) {
   const { t } = useTranslation('milestones');
   const fmt = useFormat();
-  // The sub-line names a payment, a coupon or a maturity amount: masked with the rest
+  // The sub-line names a payment, a coupon or a maturity amount
   const subLine = useMilestoneSubLine(useMoneyText());
   // One instance for the swipes and the menu items (it keeps the muted kinds observed).
   const actions = useMilestoneActions();

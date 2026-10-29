@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { maskMoney } from './hide-amounts';
 import { signedAmountText } from './signed-amount';
 
 /** A stand-in for `fmt.money`: the amount and its currency, no separators. */
@@ -15,16 +14,6 @@ describe('signedAmountText', () => {
     );
     expect(signedAmountText(money, { type: 'debit', amount: '80', currency: 'EUR' })).toBe(
       '− 80 EUR'
-    );
-  });
-
-  it('keeps the sign when the formatter masks the number (amounts hidden)', () => {
-    const masked = (amount: number, currency: string) => maskMoney(money(amount, currency));
-    expect(signedAmountText(masked, { type: 'credit', amount: '1249.5', currency: 'CZK' })).toBe(
-      '+ •••• CZK'
-    );
-    expect(signedAmountText(masked, { type: 'debit', amount: '-1249.5', currency: 'CZK' })).toBe(
-      '− •••• CZK'
     );
   });
 

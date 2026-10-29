@@ -14,8 +14,7 @@ import { RowBadge } from '@/mobile/components/RowBadge';
  * badge after the ticker — "cíl 120 $" while it waits, "cíl dosažen" once the price has crossed
  * it — and nothing without a target. A tap opens the watch detail.
  *
- * The prices are Yahoo's public numbers, native and never converted: unlike the person's amounts
- * they stay visible while amounts are hidden (the one exception to the eye).
+ * The prices are Yahoo's public numbers, native and never converted.
  */
 export function WatchedRow({ row }: { row: WatchedStockRow }) {
   const { t } = useTranslation('mobile');

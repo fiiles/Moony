@@ -34,14 +34,13 @@ export function lockAfterOption(minutes: BackgroundLockMinutes): TextRef {
 }
 
 /**
- * Zabezpečení's sub-line on the root, as parts to join with " · ": how the phone unlocks, when it
- * locks after the app was left, and — only while it is on — that amounts start hidden.
+ * Zabezpečení's sub-line on the root, as parts to join with " · ": how the phone unlocks, and when it
+ * locks after the app was left.
  */
 export function securitySummary(input: {
   enrolled: boolean;
   biometryType: BiometryType;
   lockMinutes: BackgroundLockMinutes;
-  hideOnLaunch: boolean;
 }): TextRef[] {
   const parts: TextRef[] = [
     input.enrolled
@@ -54,7 +53,6 @@ export function securitySummary(input: {
       ? { key: 'settings.security.lockNow' }
       : { key: 'settings.security.lockAfter', params: { count: input.lockMinutes } },
   ];
-  if (input.hideOnLaunch) parts.push({ key: 'settings.security.hideOnLaunchShort' });
   return parts;
 }
 

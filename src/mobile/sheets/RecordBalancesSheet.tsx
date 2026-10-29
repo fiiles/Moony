@@ -11,10 +11,8 @@ import { Button } from '@/components/ui/button';
 import { AmountField } from '@/mobile/components/AmountField';
 import { DateField } from '@/mobile/components/DateField';
 import { Sheet } from '@/mobile/components/Sheet';
-import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import { signedAmountInput } from '@/mobile/lib/amount-input';
 import { isoToUtcDay } from '@/mobile/lib/property-detail';
-import { maskMoney } from '@/mobile/lib/hide-amounts';
 
 interface RecordBalancesSheetProps {
   open: boolean;
@@ -45,17 +43,14 @@ export function RecordBalancesSheet({
   const { t: tc } = useTranslation('common');
   const { t: tb } = useTranslation('bank_accounts');
   const fmt = useFormat();
-  const { hidden } = useHideAmounts();
-  // The last balance and its date are a hint, not an input: the amount is masked with the other
-  // amounts, the date stays. The desktop's wording ("Zůstatek … k 2. 9. 2026", or "datum
+  // The last balance and its date are a hint, not an input. The desktop's wording ("Zůstatek … k 2. 9. 2026", or "datum
   // neznámé" for a balance without a date).
   const lastBalance = (account: Pick<BankAccount, 'balance' | 'balanceAsOf' | 'currency'>) => {
     const decimals = currencyDecimals(recordCurrency(account.currency));
-    const formatted = fmt.number(Number(account.balance), {
+    const amount = fmt.number(Number(account.balance), {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     });
-    const amount = hidden ? maskMoney(formatted) : formatted;
     return account.balanceAsOf === null
       ? tb('form.currentBalanceUnknownDate', { amount })
       : tb('form.currentBalance', { amount, date: fmt.day(account.balanceAsOf) });

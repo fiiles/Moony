@@ -32,14 +32,14 @@ interface PropertyCostsProps {
 
 /**
  * "Náklady" of a property (spec §8.8 "Nemovitost"; the desktop's Náklady tab and its one-time
- * costs): the head carries what the recurring costs come to in a year in the main currency (masked,
- * "—" while a currency has no rate, left out without recurring costs); then two groups, the
+ * costs): the head carries what the recurring costs come to in a year in the main currency
+ * ("—" while a currency has no rate, left out without recurring costs); then two groups, the
  * recurring costs (the name, how often, one payment and the payments of a year) and the history
  * of one-time costs (the name, the day with its note, the amount), newest first, each with the
  * desktop's line when empty. Every cost is in its own currency, never converted. Přidat náklad
  * opens the cost sheet; a tap on a one-time cost edits it, a long press opens the row menu —
  * Upravit and Smazat for a one-time cost, Smazat for a recurring one (a tap opens its menu) — and
- * Smazat asks in a confirm sheet first. Every amount goes through the eye; days and counts stay.
+ * Smazat asks in a confirm sheet first.
  */
 export function PropertyCosts({ property, costs, balance, currency }: PropertyCostsProps) {
   const { t } = useTranslation('mobile');

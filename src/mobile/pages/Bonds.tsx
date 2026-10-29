@@ -44,7 +44,7 @@ import { Screen } from '@/mobile/shell/Screen';
  * issues, the yearly coupon, the nearest maturity), "Nejbližší kupóny a splatnosti" — what is
  * paid in the next twelve months, in each bond's own currency — and the issues as rows. The stats
  * are the desktop's own (`useBonds`), in the main currency; the rows and the dated list are native
- * (ADR 0012). Every amount goes through the eye of Přehled. A tap on an issue opens the desktop's
+ * (ADR 0012). A tap on an issue opens the desktop's
  * form (ruling 4), a long press its menu; adding is the same form from the `+`. Repaid issues sit
  * behind "Zobrazit splacené" in the `···` menu, remembered for the session.
  */

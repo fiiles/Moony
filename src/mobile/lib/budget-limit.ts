@@ -24,11 +24,6 @@ export type LimitMode =
 /** What the sheet's three fields hold. `from` and `until` are `YYYY-MM`; `until` may be `''` (no end). */
 export interface LimitFormInput {
   amountText: string;
-  /**
-   * The stored limit an edit keeps aside while the amounts are hidden (the field then starts
-   * empty, README §13): an empty field saves it, anything typed replaces it.
-   */
-  keptAmount?: string;
   from: string;
   until: string;
 }
@@ -49,19 +44,12 @@ export interface LimitFormState {
 }
 
 /**
- * Reads the form: the amount as the keypad types it (`parseAmountInput`; an empty field is the
- * kept limit when there is one), the months as the platform's month picker returns them. An end
+ * Reads the form: the amount as the keypad types it (`parseAmountInput`), the months as the platform's month picker returns them. An end
  * before the start is an error; the end is only compared with a start that is itself valid.
  */
-export function limitFormState({
-  amountText: typed,
-  keptAmount,
-  from,
-  until,
-}: LimitFormInput): LimitFormState {
+export function limitFormState({ amountText, from, until }: LimitFormInput): LimitFormState {
   const errors: LimitFormState['errors'] = {};
 
-  const amountText = typed.trim() === '' && keptAmount ? keptAmount : typed;
   let amount: number | null = null;
   if (amountText.trim() === '') {
     errors.amount = 'required';
@@ -156,22 +144,19 @@ export function limitAmountText(stored: string): string {
 /**
  * What a sheet opens with. Editing: the limit in effect in the edited month (`budgetEditSource`,
  * in its own currency), starting that month and ending where the edited interval ends (it keeps
- * its end unless the user changes it); while the amounts are hidden the field starts empty and the
- * limit waits in `keptAmount`, since a prefilled field would show what the eye hides. Adding: an
- * empty amount from the month the report shows, or this one, with no end.
+ * its end unless the user changes it). Adding: an empty amount from the month the report shows, or this one, with no end.
  */
 export function limitDefaults(
   goal: BudgetGoal | null,
   effectiveMonth: number | undefined,
-  nowMonth: number,
-  hidden = false
+  nowMonth: number
 ): LimitFormInput {
   if (goal) {
     const source = budgetEditSource(goal, effectiveMonth, nowMonth);
     const last = intervalLastMonth(goal.versions, source.month);
     const stored = limitAmountText(source.amount);
     return {
-      ...(hidden ? { amountText: '', keptAmount: stored } : { amountText: stored }),
+      amountText: stored,
       from: monthInputValue(source.month),
       until: last === null ? '' : monthInputValue(last),
     };

@@ -120,8 +120,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
-  // Money as text for the flows strip's accessible names and the flows line; masked while amounts
-  // are hidden
+  // Money as text for the flows strip's accessible names and the flows line
   const moneyText = useMoneyText();
   const back = useBack(routes.finance);
   // The page the push came from (another tab, a sheet: `backLabel`), else the parent

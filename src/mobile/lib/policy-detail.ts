@@ -7,8 +7,8 @@ import { paidSeries, type InsuranceRow, type PaidPoint } from '@/utils/insurance
 /**
  * The policy detail's numbers as pure functions (spec §8.8 "Pojistka"): the contract facts, the
  * cancellation deadline and the premiums line. They are the desktop page's rules
- * (`pages/InsuranceDetail.tsx`) without its strings and formatting; the phone screen words and
- * masks them.
+ * (`pages/InsuranceDetail.tsx`) without its strings and formatting; the phone screen words
+ * them.
  */
 
 const DAY = 86_400;

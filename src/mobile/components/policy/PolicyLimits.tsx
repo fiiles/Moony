@@ -17,7 +17,7 @@ const WHOLE = { decimals: 0 } as const;
  * its own currency — from the largest to the smallest by value in the main currency, as the
  * desktop ranks them. The sum is left out when a limit has no rate (the desktop's "—" would only
  * sit in a head that has room for one number) or there are no limits, which are one line that says
- * how to add them. Every amount goes through the eye.
+ * how to add them.
  */
 export function PolicyLimits({ row }: { row: InsuranceRow }) {
   const { t } = useTranslation('mobile');

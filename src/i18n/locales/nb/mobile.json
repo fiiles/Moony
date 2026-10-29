@@ -15,8 +15,6 @@
     "reason": "Lås opp Moony"
   },
   "overview": {
-    "hideAmounts": "Skjul beløp",
-    "showAmounts": "Vis beløp",
     "change": {
       "30D": "på 30 dager",
       "90D": "på 3 måneder",
@@ -58,8 +56,7 @@
       "change": "Endre kategori"
     },
     "limitSheet": {
-      "pick": "Velg kategorien du vil følge opp utgiftene i.",
-      "current": "Nåværende grense: {{amount}}"
+      "pick": "Velg kategorien du vil følge opp utgiftene i."
     },
     "budgets": {
       "ended": "avsluttet",
@@ -632,7 +629,7 @@
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "ingen telemetri",
     "security": {
-      "lead": "Opplåsing, lås i bakgrunnen og skjulte beløp på denne telefonen.",
+      "lead": "Opplåsing og lås i bakgrunnen på denne telefonen.",
       "biometrics": "Lås opp med {{methodKey}}",
       "methodFace": "ansiktet",
       "methodTouch": "fingeravtrykk",
@@ -646,10 +643,7 @@
       "optionMinutes": "{{count}} min",
       "lockNow": "lås straks",
       "lockAfter_one": "lås etter {{count}} minutt",
-      "lockAfter_other": "lås etter {{count}} minutter",
-      "hideOnLaunch": "Skjul beløp ved oppstart",
-      "hideOnLaunchHint": "Hver oppstart begynner med skjulte beløp; øyet i Oversikt viser dem igjen.",
-      "hideOnLaunchShort": "beløp skjult ved oppstart"
+      "lockAfter_other": "lås etter {{count}} minutter"
     },
     "password": {
       "title": "Endre passord",

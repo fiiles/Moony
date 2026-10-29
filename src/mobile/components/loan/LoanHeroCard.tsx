@@ -38,7 +38,7 @@ interface LoanHeroCardProps {
  * today (the ledger walk: a hand-entered balance holds flat), dashed after it (the plan ahead) —
  * with a mark for the drawdown, every extra payment, rate change and manual balance, and the
  * fixation, halfway and payoff milestones. A tap on a mark opens its callout; the legend sits under
- * the chart. Every amount goes through the eye.
+ * the chart.
  */
 export function LoanHeroCard({
   row,

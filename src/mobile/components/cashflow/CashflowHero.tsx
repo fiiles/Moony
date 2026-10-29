@@ -14,7 +14,7 @@ interface CashflowHeroProps {
   label: string;
   /** The period's figure; `null` when there is none (shown as "—"). */
   value: number | null;
-  /** The shown text of a value (masked while amounts are hidden); a string, so the fit can follow it. */
+  /** The shown text of a value; a string, so the fit can follow it. */
   formatValue: (value: number) => string;
   /** Green for a surplus, red for a deficit; the sign is in the value too. */
   tone: HeroTone;

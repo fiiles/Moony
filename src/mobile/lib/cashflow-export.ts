@@ -11,7 +11,7 @@ export const CASHFLOW_EXPORT_FILE = 'moony-cashflow.csv';
 /**
  * The CSV of the report on screen, as the desktop's Export writes it (`buildCashflowCsv`: the
  * twelve-month window, then the expense, income and transfer groups; the amounts are the report's
- * own decimal text, never masked) and the number it reports as saved: the months plus the groups of
+ * own decimal text) and the number it reports as saved: the months plus the groups of
  * the three sections. A period without a transaction counts 0, however many zero months its window
  * carries, so the export says there is nothing to export instead of saving a file of zeros.
  */

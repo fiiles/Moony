@@ -35,7 +35,7 @@ interface PropertyFinanceProps {
  * with its frequency, each in its own currency; a tap opens the loan or the policy (on Finance, its
  * back button naming the property), a long press
  * the row menu with Odpojit. Připojit opens a sheet of the loans or policies no property owns yet,
- * so linking never moves one from another property. Every amount goes through the eye.
+ * so linking never moves one from another property.
  */
 export function PropertyFinance({
   property,

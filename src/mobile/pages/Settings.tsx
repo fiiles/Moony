@@ -33,7 +33,6 @@ import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useNotificationPermission } from '@/mobile/hooks/use-notification-permission';
 import { readBackgroundLockMinutes } from '@/mobile/lib/background-lock';
 import { BIOMETRIC_STATUS_KEY } from '@/lib/biometrics';
-import { readHideAmountsOnLaunch } from '@/mobile/lib/hide-amounts';
 import { clearQuietLock, requestQuietLock } from '@/mobile/lib/quiet-lock';
 import { renderTextRef, securitySummary } from '@/mobile/lib/settings-summary';
 import { NavTextButton } from '@/mobile/shell/NavBar';
@@ -64,7 +63,7 @@ function useAppVersion(): string {
 /**
  * What the sheet of the main currency says above its search, as the desktop's "Jazyk a formáty"
  * card does: what the currency is used for, the current one with an example amount (money, so it
- * goes through `useMoneyText` and is masked while amounts are hidden), that entered amounts keep
+ * goes through `useMoneyText`), that entered amounts keep
  * their own currency and, in `loss`, that the current currency has no rate source.
  */
 function MainCurrencyHint() {
@@ -123,14 +122,12 @@ export default function Settings() {
 
   // Where the device settings stand now: this page mounts again on the way back from a section
   const lockMinutes = readBackgroundLockMinutes(deviceStorage());
-  const hideOnLaunch = readHideAmountsOnLaunch(deviceStorage());
   const securitySub = biometrics.isPending
     ? undefined
     : securitySummary({
         enrolled: biometrics.data?.enrolled ?? false,
         biometryType: biometrics.data?.biometryType ?? 'none',
         lockMinutes,
-        hideOnLaunch,
       })
         .map((part) => renderTextRef(t, part))
         .join(' · ');

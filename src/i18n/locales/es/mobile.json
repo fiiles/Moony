@@ -15,8 +15,6 @@
     "reason": "Desbloquear Moony"
   },
   "overview": {
-    "hideAmounts": "Ocultar importes",
-    "showAmounts": "Mostrar importes",
     "change": {
       "30D": "en 30 días",
       "90D": "en 3 meses",
@@ -60,8 +58,7 @@
       "change": "Cambiar categoría"
     },
     "limitSheet": {
-      "pick": "Elige la categoría cuyos gastos quieres controlar.",
-      "current": "Límite actual: {{amount}}"
+      "pick": "Elige la categoría cuyos gastos quieres controlar."
     },
     "budgets": {
       "ended": "finalizado",
@@ -667,7 +664,7 @@
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "sin telemetría",
     "security": {
-      "lead": "Desbloqueo, bloqueo en segundo plano y ocultar importes en este teléfono.",
+      "lead": "Desbloqueo y bloqueo en segundo plano en este teléfono.",
       "biometrics": "Desbloquear con {{methodKey}}",
       "methodFace": "la cara",
       "methodTouch": "la huella",
@@ -682,10 +679,7 @@
       "lockNow": "bloqueo inmediato",
       "lockAfter_one": "bloqueo tras {{count}} minuto",
       "lockAfter_many": "bloqueo tras {{count}} minutos",
-      "lockAfter_other": "bloqueo tras {{count}} minutos",
-      "hideOnLaunch": "Ocultar importes al abrir",
-      "hideOnLaunchHint": "Cada inicio empieza con los importes ocultos; el ojo de Resumen los vuelve a mostrar.",
-      "hideOnLaunchShort": "importes ocultos al abrir"
+      "lockAfter_other": "bloqueo tras {{count}} minutos"
     },
     "password": {
       "title": "Cambiar contraseña",

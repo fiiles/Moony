@@ -10,7 +10,6 @@ import { I18nProvider } from '@/i18n/I18nProvider';
 import { ThemeProvider, useResolvedTheme } from '@/theme/ThemeProvider';
 import { SyncProvider } from '@/hooks/SyncProvider';
 import { MobileShell } from '@/mobile/shell/MobileShell';
-import { HideAmountsProvider } from '@/mobile/hooks/use-hide-amounts';
 import { useBackgroundLock } from '@/mobile/hooks/use-background-lock';
 import { applyStatusBarStyle } from '@/mobile/lib/status-bar';
 import { useTypeScale } from '@/mobile/lib/use-type-scale';
@@ -56,7 +55,7 @@ function StatusBarStyle() {
  * around `MobileShell` (tab bar, nav bar, the four tab roots). The `ThemeProvider` is the
  * desktop's, unchanged: `theme-boot.js` stamps `data-theme` before the first paint, the provider
  * keeps it after that (the OS appearance under `system`) and shows the window once, after its
- * first stamp. The hide-amounts state sits above the shell, so every screen and sheet shares it.
+ * first stamp.
  */
 export default function MobileApp() {
   useVisibleHeight();
@@ -79,13 +78,11 @@ export default function MobileApp() {
             <CurrencyProvider>
               <SyncProvider>
                 <TooltipProvider delayDuration={200}>
-                  <HideAmountsProvider>
-                    <BackgroundLock />
-                    <StatusBarStyle />
-                    <ErrorBoundary>
-                      <MobileShell />
-                    </ErrorBoundary>
-                  </HideAmountsProvider>
+                  <BackgroundLock />
+                  <StatusBarStyle />
+                  <ErrorBoundary>
+                    <MobileShell />
+                  </ErrorBoundary>
                   <Toaster
                     position="bottom-center"
                     offset={TOAST_OFFSET}

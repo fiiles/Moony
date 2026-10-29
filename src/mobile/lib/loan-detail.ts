@@ -19,7 +19,7 @@ import type { LoanRow } from '@/utils/loans';
  * The loan detail's numbers as pure functions (spec §8.8 "Úvěr"): the chart window, the marks, the
  * stats, the alerts, the schedule per year and the extra-payment sentence. They are the desktop
  * page's rules (`pages/LoanDetail.tsx`, `LoanScheduleTable.tsx`, `LoanWhatIfCard.tsx`) without its
- * strings and formatting; the phone screen words and masks them. Every balance comes from the ledger
+ * strings and formatting; the phone screen words them. Every balance comes from the ledger
  * walk (`row.trajectory`), which holds a hand-entered balance exactly until it is changed.
  */
 

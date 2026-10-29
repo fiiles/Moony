@@ -31,7 +31,7 @@ interface ClosedPositionsSheetProps<
 /**
  * "Uzavřené pozice" from the `···` of Akcie and Krypto (spec §8.8, ruling 11): the positions that
  * hold nothing any more, the newest close first — the ticker over the name, the realized result
- * signed (through the eye, green or red; "—" when the backend could not convert it) over the day of
+ * signed (green or red; "—" when the backend could not convert it) over the day of
  * the last sell, none when no sell is known. A tap closes the sheet and opens the position, once
  * the sheet's history entry is off the stack (`leaveAfterSheet`).
  */

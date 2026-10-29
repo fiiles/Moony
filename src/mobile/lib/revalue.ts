@@ -23,11 +23,10 @@ export interface RevalueErrors {
 
 /**
  * The form of a new estimate: today's estimate (`value`, in the asset's currency; per unit for an
- * asset held by the unit) to start from, today (`YYYY-MM-DD`), no note. While the amounts are hidden
- * the field starts empty: a prefilled amount would show what the eye hides.
+ * asset held by the unit) to start from, today (`YYYY-MM-DD`), no note.
  */
-export function startRevalueForm(value: number, hidden: boolean, today: string): RevalueForm {
-  return { valueText: hidden ? '' : String(value), dateIso: today, note: '' };
+export function startRevalueForm(value: number, today: string): RevalueForm {
+  return { valueText: String(value), dateIso: today, note: '' };
 }
 
 /**

@@ -42,7 +42,7 @@ export default function PolicyDetail() {
  * first — the contract card with the full-width Upravit button under it, the limits, the
  * documents, the notes — and the cumulative-premiums line last. The numbers are the desktop
  * detail's (`useInsurance`, the linked
- * property's query) in the policy's own currency, every amount through the eye; the policy form
+ * property's query) in the policy's own currency; the policy form
  * and the end dialog are the desktop's.
  *
  * The page owns the delete (its confirm sheet and the mutation, `useDeleteAndLeave`): the policy

@@ -5,8 +5,7 @@ import { useMoneyText } from '@/mobile/hooks/use-money-text';
 
 /**
  * The sentence of the delete confirmation, as the desktop words it: what goes, named by its
- * counterparty (or description), day and signed amount in its own currency (masked while amounts
- * are hidden: the date and the counterparty still say which row it is).
+ * counterparty (or description), day and signed amount in its own currency.
  */
 export function useDeleteDescription(): (tx: BankTransaction) => string {
   const { t } = useTranslation('bank_accounts');

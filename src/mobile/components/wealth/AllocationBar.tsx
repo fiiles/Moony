@@ -12,7 +12,7 @@ interface AllocationBarProps {
   /** Label of the folded bucket for the fifth and later classes ("Ostatní"). */
   otherLabel: string;
   formatPercent: (ratio: number) => string;
-  /** Amounts for the accessible name (the legend shows the shares); masked by the caller. */
+  /** Amounts for the accessible name (the legend shows the shares). */
   formatValue: (value: number) => string;
 }
 

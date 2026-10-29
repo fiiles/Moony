@@ -34,7 +34,7 @@ const QUANTITY_DIGITS = 8;
  * currency with its line, then the assets as rows, the highest value first — what is held at
  * which price, the value and the gain against what it cost. The desktop's stats are not repeated:
  * the hero carries the value and what is invested, the rows the gains. The numbers are the
- * desktop's (`useOtherAssets`, the same queries); every amount goes through the eye of Přehled.
+ * desktop's (`useOtherAssets`, the same queries).
  * Nothing owned is the class's empty state with the button that adds the first asset, which is
  * also the `+` of the page: the phone's add sheet.
  */

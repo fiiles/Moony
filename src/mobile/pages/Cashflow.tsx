@@ -115,7 +115,7 @@ export default function Cashflow() {
   });
 
   // Export writes the report on screen, never the previous period's still shown while the next
-  // loads (the menu item is disabled then); the CSV is not masked, a file the person asked for
+  // loads (the menu item is disabled then); a file the person asked for
   const exportReport = () => {
     if (!actuals || report.isPlaceholder) return;
     const categoryById = new Map(categories.map((category) => [category.id, category]));

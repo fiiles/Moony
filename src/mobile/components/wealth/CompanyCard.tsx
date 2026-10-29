@@ -37,7 +37,7 @@ const NOTE = 'm-0 px-1 py-3 text-m-sub leading-[1.5] text-ink-3';
  * figure left out. When it reported nothing, the card says why, as the desktop does: a skeleton
  * while the data is still coming, a note for an ETF (Yahoo reports no company figures for them), a
  * note for a ticker Yahoo knows nothing about, and "could not be loaded" with a retry otherwise.
- * The prices are the stock's own, so they go through the eye like every price; the market cap is
+ * The prices are the stock's own; the market cap is
  * the company's size, not an amount of the user's.
  */
 export function CompanyCard({ name, info, stockCurrency, pending, onRetry }: CompanyCardProps) {

@@ -14,7 +14,6 @@ import { CategoryChip } from '@/mobile/components/cashflow/CategoryChip';
 import { MonthField } from '@/mobile/components/cashflow/MonthField';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { Sheet } from '@/mobile/components/Sheet';
-import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import {
   limitDefaults,
@@ -66,9 +65,7 @@ function initialCategoryId(mode: LimitMode): string | null {
  * form's logic lives in `budget-limit.ts` and `budget-goal-versions.ts`; this renders it.
  *
  * It keeps the mode it was last opened with while it slides away, and every opening starts over
- * from the defaults of that mode. While the amounts are hidden an edit's amount field starts
- * empty (a prefilled limit would show what the eye hides) and its hint says "Současný limit:
- * •••• Kč": left empty it saves the stored limit, so the months can change without retyping it.
+ * from the defaults of that mode.
  */
 export function BudgetLimitSheet({ mode, ...props }: BudgetLimitSheetProps) {
   const [shown, setShown] = useState(mode);
@@ -91,7 +88,6 @@ function LimitSheet({
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const money = useMoneyText();
-  const { hidden } = useHideAmounts();
   const categoryName = useCategoryName();
   const { currencyCode } = useCurrency();
 
@@ -105,7 +101,7 @@ function LimitSheet({
 
   const [categoryId, setCategoryId] = useState(() => initialCategoryId(mode));
   const [input, setInput] = useState<LimitFormInput>(() =>
-    limitDefaults(goal, mode.effectiveMonth, nowMonth, hidden)
+    limitDefaults(goal, mode.effectiveMonth, nowMonth)
   );
   // The first tap on save lists what the save replaces; the second saves
   const [confirming, setConfirming] = useState(false);
@@ -118,7 +114,7 @@ function LimitSheet({
     setOpenedFor(open);
     if (open) {
       setCategoryId(initialCategoryId(mode));
-      setInput(limitDefaults(goal, mode.effectiveMonth, nowMonth, hidden));
+      setInput(limitDefaults(goal, mode.effectiveMonth, nowMonth));
       setConfirming(false);
       setAmountTouched(false);
     }
@@ -234,13 +230,6 @@ function LimitSheet({
             count: observed.months,
           })
         : tb('dialog.noAverage');
-  // An edit opened while the amounts are hidden keeps the stored limit aside: the hint names it,
-  // masked (the average would be masked too, and says nothing then)
-  const kept = input.keptAmount;
-  const keptText =
-    kept === undefined ? null : money(Number(kept) || 0, editorCurrency, { decimals: 0 });
-  const amountHint =
-    keptText === null ? averageHint : t('cashflow.limitSheet.current', { amount: keptText });
 
   const amountError =
     form.errors.amount === undefined || (form.errors.amount === 'required' && !amountTouched)
@@ -340,10 +329,9 @@ function LimitSheet({
               label={tb('dialog.monthlyLimit')}
               unit={editorCurrency}
               value={input.amountText}
-              // The stored limit an empty field saves, masked
-              placeholder={keptText ?? '0'}
+              placeholder="0"
               error={amountError}
-              hint={amountHint}
+              hint={averageHint}
               onChange={(event) => edit({ amountText: event.target.value })}
               onBlur={() => setAmountTouched(true)}
             />

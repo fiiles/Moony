@@ -15,8 +15,6 @@
     "reason": "解锁 Moony"
   },
   "overview": {
-    "hideAmounts": "隐藏金额",
-    "showAmounts": "显示金额",
     "change": {
       "30D": "30 天内",
       "90D": "3 个月内",
@@ -56,8 +54,7 @@
       "change": "更改类别"
     },
     "limitSheet": {
-      "pick": "请选择要控制支出的类别。",
-      "current": "当前限额：{{amount}}"
+      "pick": "请选择要控制支出的类别。"
     },
     "budgets": {
       "ended": "已结束",
@@ -597,7 +594,7 @@
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "无遥测",
     "security": {
-      "lead": "在这部手机上设置解锁、后台锁定和隐藏金额。",
+      "lead": "在这部手机上设置解锁和后台锁定。",
       "biometrics": "使用{{methodKey}}解锁",
       "methodFace": "面容",
       "methodTouch": "指纹",
@@ -610,10 +607,7 @@
       "optionNow": "立即",
       "optionMinutes": "{{count}} 分钟",
       "lockNow": "立即锁定",
-      "lockAfter_other": "{{count}} 分钟后锁定",
-      "hideOnLaunch": "启动时隐藏金额",
-      "hideOnLaunchHint": "每次启动时金额都处于隐藏状态；概览中的眼睛图标可再次显示。",
-      "hideOnLaunchShort": "启动时隐藏金额"
+      "lockAfter_other": "{{count}} 分钟后锁定"
     },
     "password": {
       "title": "更改密码",

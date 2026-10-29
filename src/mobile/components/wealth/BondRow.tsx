@@ -31,7 +31,7 @@ interface BondRowProps {
  * An issue of the Dluhopisy list (spec §8.8): the bond icon in the chip, the name with its "do
  * roka" or "splaceno" badge over "ISIN · 10 × 1 000 Kč · 5 %" (no ISIN, no first part), the face
  * value over the maturity day or "bez splatnosti". Every amount is the bond's own (native is
- * authoritative, ADR 0012) and goes through the eye. A tap unfolds everything the row has no
+ * authoritative, ADR 0012). A tap unfolds everything the row has no
  * room for under it (`BondDetails`), with Upravit (the desktop's form); a long press opens the
  * row's menu, Upravit and Smazat.
  */
@@ -94,7 +94,7 @@ export function BondRow({ row, nextPayment, expanded, onToggle, onEdit, onDelete
  * The unfolded details of an issue: what the row leaves out or shortens — ISIN, units and the
  * nominal of one, the face value, the rate and the yearly coupon it pays, the purchase and
  * maturity days and the next payment — as label-and-value rows, then Upravit. Amounts in the
- * bond's own currency, through the eye.
+ * bond's own currency.
  */
 function BondDetails({
   row,

@@ -12,7 +12,7 @@ import { statMoneyOptions, statTone } from '@/mobile/lib/stat-money';
 /**
  * The dividends of a year as the sixth stat of a stock's position: the yearly dividend of the
  * position in the report currency with its yield on the value, "—" without one. A hook for the
- * words and the eye of Přehled; the number is the backend's (`toStockRow`).
+ * words; the number is the backend's (`toStockRow`).
  */
 // eslint-disable-next-line react-refresh/only-export-components -- the stock's sixth stat lives with the stats it completes
 export function useDividendStat(holding: StockRow, reportCurrency: string): StatItem {
@@ -54,8 +54,7 @@ interface PositionStatsProps {
  * currency, its price in the report currency and when it was fetched, what is invested; then the
  * unrealized and the realized result and `sixth` (a stock's dividends of a year, see
  * `useDividendStat`). The numbers are the backend's (`toStockRow`, `toCryptoRow`), in the report
- * currency; only the value and the price are the position's own. Every amount goes through the
- * eye of Přehled.
+ * currency; only the value and the price are the position's own.
  */
 export function PositionStats({ holding, reportCurrency, sells, sixth }: PositionStatsProps) {
   const { t } = useTranslation('mobile');

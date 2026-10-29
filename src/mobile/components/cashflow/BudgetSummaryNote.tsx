@@ -12,8 +12,7 @@ interface BudgetSummaryNoteProps {
 /**
  * The one-line budget summary under the bars (spec §8.7 item 3, README §13, `.m-note`): a quiet
  * row on `well`, radius 11, 12 / 500 `ink-2` with a 15 pt info glyph, at least 44 pt tall (the
- * text wraps instead of ending in an ellipsis). The counts are not amounts and stay visible while
- * amounts are hidden. A tap opens the budgets.
+ * text wraps instead of ending in an ellipsis). A tap opens the budgets.
  */
 export function BudgetSummaryNote({ counts, href }: BudgetSummaryNoteProps) {
   const { t } = useTranslation('mobile');

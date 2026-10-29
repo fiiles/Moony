@@ -21,7 +21,7 @@ interface HeroProps<E extends ChartEvent, P extends string> {
   label: string;
   /** Today's value; `null` when it could not be valued (shown as "—"). */
   value: number | null;
-  /** The shown text of a value (masked while amounts are hidden); a string, so the fit can follow it. */
+  /** The shown text of a value; a string, so the fit can follow it. */
   formatValue: (value: number) => string;
   /** The change line; without it `note` stands there ("zatím bez historie"). */
   change?: HeroChange;

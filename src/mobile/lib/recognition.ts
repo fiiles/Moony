@@ -17,7 +17,6 @@ import {
   usesDebitCredit,
   type MappingState,
 } from '@/components/bank-accounts/csv-import/import-config';
-import { maskMoney } from '@/mobile/lib/hide-amounts';
 
 /** The fields the recognition names, in the order it lists them. */
 export const RECOGNITION_FIELDS = [
@@ -340,12 +339,8 @@ export interface ColumnOption {
   order?: DayMonthOrder;
   /** `pair` options: which column is read as the money out (debit) and which as the money in. */
   sides?: { debit: string; credit: string };
-  /** Its cells are amounts: they are masked while amounts are hidden. */
-  money: boolean;
   apply: Partial<MappingState>;
 }
-
-const MONEY_FIELDS: ReadonlySet<RecognitionField> = new Set(['amount', 'balance']);
 
 function cellOf(inspection: CsvPreviewResult, row: readonly string[], header: string): string {
   const index = inspection.headers.indexOf(header);
@@ -385,56 +380,23 @@ const DATE_LIKE = /^\d{1,4}([./-])\d{1,2}\1\d{0,4}$/;
 
 /**
  * A cell read as a number the way banks write one: a sign or brackets, digit groups, a decimal
- * mark, a currency before or after it, `1500,-`. `marked` is whether the cell says it is an
- * amount beyond its digits (a sign, a mark, a thousands space, a currency); a plain integer
- * ("9001", "26100000001") may be an amount, an id or a symbol and says nothing. A date is no
- * number. `null` for anything that is not one.
+ * mark, a currency before or after it, `1500,-`. A date is no number. `null` for anything that is
+ * not one.
  */
-function readNumber(cell: string): { body: string; marked: boolean } | null {
-  let text = cell.trim().replace(MINUSES, '-');
-  let marked = false;
-  const strip = (pattern: RegExp) => {
-    const next = text.replace(pattern, '');
-    if (next !== text) marked = true;
-    text = next;
-  };
-  strip(/^(?:\p{Sc}|[A-Za-z]{3}(?=\s))\s*/u); // "€ 12,50", "CZK 5 000"
-  strip(/\s*(?:\p{Sc}|\p{L}{1,4}\.?)$/u); // "1 500 Kč", "12,50 €"
-  strip(/[,.]-$/); // "1500,-"
-  if (/\d[\s'’]\d{3}(?!\d)/.test(text)) marked = true; // "5 000", "1'240"
+function readNumber(cell: string): { body: string } | null {
+  const text = cell
+    .trim()
+    .replace(MINUSES, '-')
+    .replace(/^(?:\p{Sc}|[A-Za-z]{3}(?=\s))\s*/u, '') // "€ 12,50", "CZK 5 000"
+    .replace(/\s*(?:\p{Sc}|\p{L}{1,4}\.?)$/u, '') // "1 500 Kč", "12,50 €"
+    .replace(/[,.]-$/, ''); // "1500,-"
   const body = text.replace(/[\s'’]/g, '');
   if (!/^[+-]?\(?\d[\d.,]*\)?$/.test(body) || DATE_LIKE.test(body)) return null;
-  return { body, marked: marked || /^[+(-]|[.,]/.test(body) };
+  return { body };
 }
 
 const isNumericCell = (cell: string) => readNumber(cell) !== null;
 const isNonZero = (cell: string) => /[1-9]/.test(readNumber(cell)?.body ?? '');
-
-/**
- * Whether a cell says it is an amount: a number with a sign, a decimal mark, a thousands space, a
- * currency or `,-` ("−1 249,00", "5 000", "1500,-", "-1249"). A date, an account number and a
- * plain integer — which may as well be an id — do not.
- */
-export function readsAsAmount(cell: string): boolean {
-  return readNumber(cell)?.marked ?? false;
-}
-
-/**
- * A sample cell as the correction shows it while amounts are hidden: every digit of a cell of a
- * money column becomes the mask, and in any other column a cell that says it is an amount does
- * too. Text, dates and plain integers stay, so the columns can still be told apart.
- */
-export function maskedSample(cell: string, options: { money: boolean }): string {
-  return options.money || readsAsAmount(cell) ? maskMoney(cell) : cell;
-}
-
-/** A column all of whose sample cells are numbers: what an amount or a balance could be. */
-function isNumericColumn(inspection: CsvPreviewResult, header: string): boolean {
-  const cells = inspection.sampleRows
-    .map((row) => cellOf(inspection, row, header))
-    .filter((cell) => cell !== '');
-  return cells.length > 0 && cells.every(isNumericCell);
-}
 
 /**
  * Whether the import reads a cell as negative (`clean_and_parse_amount`): a minus before or after
@@ -467,47 +429,6 @@ export function amountsAllPositive(
     cells.some(isNonZero) &&
     !cells.some(readsNegative)
   );
-}
-
-/**
- * The columns whose cells are masked while amounts are hidden: what the inference took as an
- * amount, a debit, a credit or a balance, what the mapping reads as one now (the person may have
- * corrected it), the columns of a pair that looks like a debit and a credit, and every numeric
- * column — any of them may be the answer — on the question of an amount or a balance and while
- * there is no amount yet (the date question of a file missing both: an unsigned whole-number
- * amount such as "25000" says nothing of itself).
- */
-function moneyColumnsOf(
-  field: RecognitionField,
-  inspection: CsvPreviewResult,
-  headers: readonly string[],
-  inferred: InferredColumns,
-  mapping: MappingState | undefined,
-  pairs: ReadonlyArray<{ debit: string; credit: string }>
-): Set<string> {
-  const amountless = mapping ? !isFilled('amount', mapping) : !wasInferred('amount', inferred);
-  const money = new Set<string>();
-  for (const found of [inferred.amount, inferred.debit, inferred.credit, inferred.balance]) {
-    if (found !== null) money.add(found.column);
-  }
-  if (mapping) {
-    for (const name of [
-      mapping.amountColumn,
-      mapping.debitColumn,
-      mapping.creditColumn,
-      mapping.balanceColumn,
-    ]) {
-      if (name !== '') money.add(name);
-    }
-  }
-  for (const pair of pairs) {
-    money.add(pair.debit);
-    money.add(pair.credit);
-  }
-  if (MONEY_FIELDS.has(field) || amountless) {
-    for (const header of headers) if (isNumericColumn(inspection, header)) money.add(header);
-  }
-  return money;
 }
 
 /**
@@ -556,7 +477,6 @@ function columnOption(
   field: RecognitionField,
   inspection: CsvPreviewResult,
   header: string,
-  money: ReadonlySet<string>,
   inferred: InferredColumns
 ): ColumnOption {
   const base = {
@@ -564,7 +484,6 @@ function columnOption(
     kind: 'column' as const,
     label: header,
     samples: sampleCells(inspection, header),
-    money: money.has(header),
   };
   switch (field) {
     case 'date':
@@ -629,7 +548,6 @@ function orderOptions(inspection: CsvPreviewResult, header: string, guess: strin
     samples: [],
     dates: reading(format),
     order,
-    money: false,
     apply: { dateColumn: header, dateFormat: format },
   });
   return [option(guessOrder, guess), option(guessOrder === 'dmy' ? 'mdy' : 'dmy', other)];
@@ -643,18 +561,15 @@ function orderOptions(inspection: CsvPreviewResult, header: string, guess: strin
  * the day-first and month-first readings of every column whose dates read both ways (the
  * inferred one by the inference's own answer, any other by its sample cells: the app never
  * settles that order silently), for a description the columns it was inferred from together, and
- * for an optional field "nepoužít" first. `mapping` is what the import reads now: the columns it
- * takes as amounts are masked while amounts are hidden.
+ * for an optional field "nepoužít" first.
  */
 export function columnOptions(
   field: RecognitionField,
   inspection: CsvPreviewResult,
-  inferred: InferredColumns,
-  mapping?: MappingState
+  inferred: InferredColumns
 ): ColumnOption[] {
   const headers = uniqueHeaders(inspection.headers);
   const candidates = pairCandidates(inspection, headers);
-  const money = moneyColumnsOf(field, inspection, headers, inferred, mapping, candidates);
   const options: ColumnOption[] = [];
 
   if (!isRequiredField(field)) {
@@ -663,7 +578,6 @@ export function columnOptions(
       kind: 'none',
       label: '',
       samples: [],
-      money: false,
       apply: CLEAR[field as keyof typeof CLEAR],
     });
   }
@@ -691,7 +605,6 @@ export function columnOptions(
           [debit, credit],
           ([out, into]) => `${out || '—'} / ${into || '—'}`
         ),
-        money: true,
         apply: { amountColumn: '', debitColumn: debit, creditColumn: credit },
       });
     }
@@ -707,7 +620,6 @@ export function columnOptions(
         samples: sampleLines(inspection, together, (cells) =>
           cells.filter((cell) => cell !== '').join(' · ')
         ),
-        money: false,
         apply: { descriptionColumns: together },
       });
     }
@@ -727,7 +639,7 @@ export function columnOptions(
             );
     const ordered = guess ? orderOptions(inspection, header, guess) : [];
     if (ordered.length > 0) options.push(...ordered);
-    else options.push(columnOption(field, inspection, header, money, inferred));
+    else options.push(columnOption(field, inspection, header, inferred));
   }
   return options;
 }

@@ -47,8 +47,7 @@ const STEP_ORDER: readonly ShownStep[] = ['show', 'rulePack', 'balance'];
  * queue — while any are left, and the desktop's next steps as rows: show what was imported, turn
  * the suggested rule pack on (then the rules run over the account's open payments), set the
  * account's balance to the statement's. A step that was carried out stays, ticked. A CSV layout
- * the import just learned is one more quiet sentence. Every amount is masked while amounts are
- * hidden.
+ * the import just learned is one more quiet sentence.
  */
 export function DoneStep({
   result,

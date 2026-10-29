@@ -2,7 +2,9 @@
 //! are tagged to (spec 2026-10-29-spending-plans-design).
 
 use crate::error::{AppError, Result};
+use crate::models::fx::ConversionQuality;
 use crate::models::validation::finite_number;
+use crate::models::BankTransaction;
 use crate::services::fx;
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -96,4 +98,101 @@ pub struct SpendingPlanAssignment {
     pub transaction_id: String,
     #[serde(rename = "planId")]
     pub plan_id: Option<String>,
+}
+
+/// A plan with what has been spent on it, in the plan's currency.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct SpendingPlanSummary {
+    pub plan: SpendingPlan,
+    /// Booked debits minus credits in the plan currency; `None` when there are booked payments
+    /// and none could be converted, `"0.00"`-style when there are none.
+    pub spent: Option<String>,
+    /// Tagged payments, pending ones included.
+    #[serde(rename = "paymentCount")]
+    pub payment_count: i64,
+    #[serde(rename = "lastPaymentDate")]
+    pub last_payment_date: Option<i64>,
+    #[serde(rename = "fxQuality")]
+    pub fx_quality: ConversionQuality,
+}
+
+/// Sums over the plans of one year, in the report currency.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct SpendingPlanTotals {
+    pub planned: Option<String>,
+    pub spent: Option<String>,
+    #[serde(rename = "remainingActive")]
+    pub remaining_active: Option<String>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct SpendingPlansOverview {
+    pub year: i32,
+    /// Currency of `totals`.
+    pub currency: String,
+    #[serde(rename = "fxQuality")]
+    pub fx_quality: ConversionQuality,
+    pub plans: Vec<SpendingPlanSummary>,
+    pub totals: SpendingPlanTotals,
+    /// Years that have at least one plan, ascending.
+    #[serde(rename = "yearsWithPlans")]
+    pub years_with_plans: Vec<i32>,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct SpendingPlanMonth {
+    /// `YYYY-MM` of the booking day (UTC).
+    pub month: String,
+    pub spent: String,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct SpendingPlanCategory {
+    #[serde(rename = "categoryId")]
+    pub category_id: Option<String>,
+    pub spent: String,
+    pub count: i64,
+}
+
+/// One month x category bucket; the frontend sums cells for filtered views.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct SpendingPlanCell {
+    pub month: String,
+    #[serde(rename = "categoryId")]
+    pub category_id: Option<String>,
+    pub spent: String,
+    pub count: i64,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct SpendingPlanDetail {
+    pub summary: SpendingPlanSummary,
+    pub months: Vec<SpendingPlanMonth>,
+    pub categories: Vec<SpendingPlanCategory>,
+    pub cells: Vec<SpendingPlanCell>,
+    #[serde(rename = "accountCount")]
+    pub account_count: i64,
+}
+
+/// Filters for payments that could be tagged to a plan (any account).
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct PlanCandidateFilters {
+    #[serde(rename = "planId")]
+    pub plan_id: String,
+    #[serde(rename = "dateFrom")]
+    pub date_from: Option<i64>,
+    #[serde(rename = "dateTo")]
+    pub date_to: Option<i64>,
+    #[serde(rename = "accountId")]
+    pub account_id: Option<String>,
+    #[serde(rename = "onlyUnassigned")]
+    pub only_unassigned: bool,
+    pub query: Option<String>,
+    pub limit: Option<i64>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Type)]
+pub struct PlanCandidatesResult {
+    pub transactions: Vec<BankTransaction>,
+    pub truncated: bool,
 }

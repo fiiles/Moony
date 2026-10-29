@@ -399,6 +399,11 @@ pub fn overview(
         };
         // A plan that cannot be converted at all is left out of every total.
         let Some(planned_in_report) = planned_in_report else {
+            planned.add(None);
+            spent.add(None);
+            if s.plan.closed_at.is_none() {
+                remaining.add(None);
+            }
             continue;
         };
         planned.add(Some(planned_in_report));
@@ -1263,6 +1268,17 @@ mod tests {
         assert_eq!(o.totals.planned.as_deref(), Some("1000.00"));
         assert_eq!(o.totals.spent.as_deref(), Some("0.00"));
         assert_eq!(o.totals.remaining_active.as_deref(), Some("1000.00"));
+        assert_eq!(o.fx_quality.missing_currencies, ["XYZ"]);
+    }
+
+    #[test]
+    fn overview_only_unconvertible_plan_has_no_totals() {
+        let conn = setup_test_db();
+        create_plan(&conn, &plan_in("Exotika", 2026, "500", "XYZ")).unwrap();
+        let o = overview(&conn, 2026, "CZK", &czk_quotes()).unwrap();
+        assert_eq!(o.totals.planned, None);
+        assert_eq!(o.totals.spent, None);
+        assert_eq!(o.totals.remaining_active, None);
         assert_eq!(o.fx_quality.missing_currencies, ["XYZ"]);
     }
 

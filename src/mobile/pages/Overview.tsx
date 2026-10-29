@@ -4,13 +4,12 @@ import { Link, useLocation } from 'wouter';
 import {
   Bitcoin,
   Landmark,
-  Lock,
+  Settings,
   TrendingDown,
   TrendingUp,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
-import { useAuth } from '@/hooks/use-auth';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { useDatedMainConvert } from '@/hooks/use-fx';
 import { useGreeting } from '@/hooks/use-greeting';
@@ -36,8 +35,7 @@ import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { UpkeepCard } from '@/mobile/components/UpkeepCard';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { initials } from '@/mobile/lib/initials';
-import { clearQuietLock, requestQuietLock } from '@/mobile/lib/quiet-lock';
-import { NavIconButton } from '@/mobile/shell/NavBar';
+import { LockButton } from '@/mobile/shell/LockButton';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 
@@ -60,7 +58,6 @@ export default function Overview() {
   const { t } = useTranslation('mobile');
   const { t: td } = useTranslation('dashboard');
   const { t: tc } = useTranslation('common');
-  const { user, lockMutation } = useAuth();
   const fmt = useFormat();
   // Money as text (the hero and the stats size themselves to it); `<Money>` where an element will do
   const moneyText = useMoneyText();
@@ -141,39 +138,20 @@ export default function Overview() {
     ]
   );
 
-  const avatar = `${user?.name?.charAt(0) ?? ''}${user?.surname?.charAt(0) ?? ''}`.toUpperCase();
-
   return (
     <Screen
       title={greeting}
       large
       subtitle={asOf}
-      leading={
-        // Locks the whole app at once, as Nastavení's "Zamknout aplikaci" does: the lock screen
-        // stays quiet afterwards (Face ID only from its button)
-        <NavIconButton
-          aria-label={tc('nav.lockApp')}
-          onClick={() => {
-            if (lockMutation.isPending) return;
-            requestQuietLock();
-            lockMutation.mutate(undefined, { onError: clearQuietLock });
-          }}
-        >
-          <Lock strokeWidth={1.75} aria-hidden />
-        </NavIconButton>
-      }
+      leading={<LockButton />}
       trailing={
+        // Nastavení: the cog, drawn as the nav bar's icon buttons are (`NavIconButton`)
         <Link
           href={routes.settings}
           aria-label={tc('nav.settings')}
-          className="inline-flex size-11 flex-none items-center justify-center rounded-[12px] [-webkit-touch-callout:none] active:bg-well-2"
+          className="inline-flex size-11 flex-none items-center justify-center rounded-[12px] text-ink [-webkit-touch-callout:none] active:bg-well-2 [&_svg]:size-6"
         >
-          <span
-            aria-hidden
-            className="inline-flex size-8 items-center justify-center rounded-full bg-well-2 text-m-caption font-bold text-ink-2 shadow-[inset_0_0_0_1px_var(--line)]"
-          >
-            {avatar}
-          </span>
+          <Settings strokeWidth={1.75} aria-hidden />
         </Link>
       }
     >

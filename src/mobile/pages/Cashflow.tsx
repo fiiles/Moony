@@ -50,6 +50,7 @@ import { reportRowLimit } from '@/mobile/lib/budget-rows';
 import { CASHFLOW_EXPORT_FILE, cashflowCsv } from '@/mobile/lib/cashflow-export';
 import { afterHistorySettles } from '@/mobile/lib/history-settle';
 import { budgetsPath, cashflowCategoryPath, routes } from '@/mobile/shell/routes';
+import { LockButton } from '@/mobile/shell/LockButton';
 import { Screen } from '@/mobile/shell/Screen';
 import { BudgetLimitSheet, type LimitMode } from '@/mobile/sheets/BudgetLimitSheet';
 import { CashflowAccountsSheet } from '@/mobile/sheets/CashflowAccountsSheet';
@@ -159,6 +160,7 @@ export default function Cashflow() {
     <Screen
       title={t('tabs.cashflow')}
       large
+      leading={<LockButton />}
       subtitle={
         actuals && actuals.accountCount > 0
           ? t('cashflow.subtitle', { count: actuals.accountCount })

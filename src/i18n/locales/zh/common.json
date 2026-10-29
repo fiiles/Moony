@@ -577,5 +577,9 @@
       "dontAsk": "不再询问",
       "confirm": "打开"
     }
+  },
+  "filterBadge": {
+    "label": "筛选：{{labels}}",
+    "clear": "清除筛选"
   }
 }

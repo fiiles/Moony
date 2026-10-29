@@ -585,5 +585,9 @@
       "dontAsk": "Příště se neptat",
       "confirm": "Otevřít"
     }
+  },
+  "filterBadge": {
+    "label": "Filtr: {{labels}}",
+    "clear": "Zrušit filtr"
   }
 }

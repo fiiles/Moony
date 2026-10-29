@@ -466,7 +466,6 @@
       "captionNone": "Nicht aufgeteilt: Die Auswahl ist eine Zeile; ihr Beitrag bezieht sich auf die Rendite des gesamten Portfolios."
     },
     "filterBadge": {
-      "label": "Filter: {{tags}}",
       "title": "Hier zählen nur Positionen, die mit {{tags}} getaggt sind."
     }
   },

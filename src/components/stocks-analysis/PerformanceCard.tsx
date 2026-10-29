@@ -45,7 +45,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { FilterBadge } from './FilterBadge';
+import { FilterBadge } from '@/components/common/FilterBadge';
+import { tagFilterTitle } from './filter-badge-title';
 import { PerformanceBoard, type BoardKind } from './PerformanceBoard';
 import { PerformanceChart } from './PerformanceChart';
 import { Rich } from './Rich';
@@ -531,7 +532,12 @@ export function PerformanceCard({
     <HeroCard
       className="mb-[18px] pb-0 pt-[22px]"
       // The filter top right: the toolbar's two groups have no room to spare for it
-      aside={<FilterBadge tags={view.filterTags} partial />}
+      aside={
+        <FilterBadge
+          labels={view.filterTags.map((tag) => tag.name)}
+          title={tagFilterTitle(t, view.filterTags, true)}
+        />
+      }
       chart={
         <>
           {/* Toolbar */}

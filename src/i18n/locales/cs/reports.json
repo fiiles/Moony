@@ -482,7 +482,6 @@
       "captionNone": "Bez rozdělení: výběr je jeden řádek, jeho příspěvek je k výnosu celého portfolia."
     },
     "filterBadge": {
-      "label": "Filtr: {{tags}}",
       "title": "Počítají se tu jen pozice se štítky {{tags}}."
     }
   },

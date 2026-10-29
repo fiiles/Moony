@@ -585,5 +585,9 @@
       "dontAsk": "No volver a preguntar",
       "confirm": "Abrir"
     }
+  },
+  "filterBadge": {
+    "label": "Filtro: {{labels}}",
+    "clear": "Quitar filtro"
   }
 }

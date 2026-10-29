@@ -581,5 +581,9 @@
       "dontAsk": "Ikke spør igjen",
       "confirm": "Åpne"
     }
+  },
+  "filterBadge": {
+    "label": "Filter: {{labels}}",
+    "clear": "Fjern filter"
   }
 }

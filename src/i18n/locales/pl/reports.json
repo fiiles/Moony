@@ -498,7 +498,6 @@
       "captionNone": "Bez podziału: wybór to jeden wiersz; jego wkład dotyczy zwrotu całego portfela."
     },
     "filterBadge": {
-      "label": "Filtr: {{tags}}",
       "title": "Liczą się tu tylko pozycje z tagami {{tags}}."
     }
   },

@@ -581,5 +581,9 @@
       "dontAsk": "Fråga inte igen",
       "confirm": "Öppna"
     }
+  },
+  "filterBadge": {
+    "label": "Filter: {{labels}}",
+    "clear": "Rensa filter"
   }
 }

@@ -466,7 +466,6 @@
       "captionNone": "Ikke delt opp: Utvalget er én rad; bidraget gjelder avkastningen i hele porteføljen."
     },
     "filterBadge": {
-      "label": "Filter: {{tags}}",
       "title": "Her telles bare beholdninger merket med {{tags}}."
     }
   },

@@ -577,5 +577,9 @@
       "dontAsk": "今後は確認しない",
       "confirm": "開く"
     }
+  },
+  "filterBadge": {
+    "label": "フィルター: {{labels}}",
+    "clear": "フィルターを解除"
   }
 }

@@ -860,6 +860,38 @@ mod tests {
     }
 
     #[test]
+    fn promoting_a_pending_payment_keeps_its_spending_plan() {
+        let conn = setup_test_db();
+        conn.execute_batch(
+            "ALTER TABLE bank_transactions ADD COLUMN spending_plan_id TEXT;
+             INSERT INTO bank_transactions (
+                 id, bank_account_id, transaction_id, tx_type, amount, currency,
+                 booking_date, status, data_source, spending_plan_id
+             ) VALUES ('tx-p', 'acc-1', 'BANK-7', 'debit', '40', 'EUR',
+                 1767225600, 'pending', 'csv', 'plan-1');",
+        )
+        .expect("pending row tagged with a plan");
+        let booked: InsertBankTransaction = serde_json::from_value(serde_json::json!({
+            "bankAccountId": "acc-1", "transactionId": "BANK-7", "type": "debit",
+            "amount": "42", "bookingDate": 1767312000
+        }))
+        .expect("input");
+
+        promote_pending_transaction(&conn, "tx-p", &booked).expect("promote");
+
+        let (status, amount, plan): (String, String, Option<String>) = conn
+            .query_row(
+                "SELECT status, amount, spending_plan_id FROM bank_transactions WHERE id = 'tx-p'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("promoted row");
+        assert_eq!(status, "booked");
+        assert_eq!(amount, "42");
+        assert_eq!(plan.as_deref(), Some("plan-1"));
+    }
+
+    #[test]
     fn validate_rejects_nonfinite_account_zone_amounts() {
         for amount in ["NaN", "inf", "-inf", "1e999"] {
             for field in ["fromAmount", "toAmount"] {

@@ -88,10 +88,12 @@
   },
   "recordBalances": {
     "title": "记录余额",
-    "lead": "请输入每个账户的当前余额。日期为今天。",
+    "lead": "请输入每个账户截至下方日期的余额。",
     "save": "记录",
     "saved": "余额已记录",
-    "negative": "负值"
+    "negative": "负值",
+    "date": "余额日期",
+    "dateInFuture": "余额日期不能是将来"
   },
   "biometrics": {
     "titleFace": "使用面容解锁 Moony？",
@@ -474,7 +476,9 @@
       "noUpcoming": "未来一年内没有票息或到期。",
       "allRepaid": "所有债券均已兑付。在“···”菜单中开启“{{action}}”即可查看。",
       "loadFailed": "无法加载债券。",
-      "rateNote": "{{rate}} 年化 加权平均"
+      "rateNote": "{{rate}} 年化 加权平均",
+      "nextPayment": "下次付款",
+      "notGiven": "未填写"
     },
     "otherAssets": {
       "count_other": "{{count}} 项",

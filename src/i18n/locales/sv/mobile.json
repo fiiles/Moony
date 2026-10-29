@@ -96,10 +96,12 @@
   },
   "recordBalances": {
     "title": "Registrera saldon",
-    "lead": "Ange aktuellt saldo för varje konto. Datumet är i dag.",
+    "lead": "Ange saldot för varje konto per dagen nedan.",
     "save": "Registrera",
     "saved": "Saldon registrerade",
-    "negative": "Negativt värde"
+    "negative": "Negativt värde",
+    "date": "Saldo per",
+    "dateInFuture": "Ett saldo kan inte dateras framåt i tiden"
   },
   "biometrics": {
     "titleFace": "Låsa upp Moony med ansiktet?",
@@ -506,7 +508,9 @@
       "noUpcoming": "Inga kuponger eller förfall under det kommande året.",
       "allRepaid": "Alla emissioner är återbetalda. Slå på ”{{action}}” i menyn ··· för att se dem.",
       "loadFailed": "Obligationerna kunde inte läsas in.",
-      "rateNote": "{{rate}} per år, viktad"
+      "rateNote": "{{rate}} per år, viktad",
+      "nextPayment": "Nästa betalning",
+      "notGiven": "inte angivet"
     },
     "otherAssets": {
       "count_one": "{{count}} post",

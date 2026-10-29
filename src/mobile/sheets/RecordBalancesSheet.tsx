@@ -6,12 +6,14 @@ import type { BankAccount } from '@shared/schema';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useRecordBalances, type AccountBalanceRecord } from '@/hooks/use-balance-records';
 import { useFormat } from '@/lib/use-format';
-import { utcDayFloor } from '@/utils/chart-axis';
+import { todayIsoUtc } from '@/utils/period';
 import { Button } from '@/components/ui/button';
 import { AmountField } from '@/mobile/components/AmountField';
+import { DateField } from '@/mobile/components/DateField';
 import { Sheet } from '@/mobile/components/Sheet';
 import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import { signedAmountInput } from '@/mobile/lib/amount-input';
+import { isoToUtcDay } from '@/mobile/lib/property-detail';
 import { maskMoney } from '@/mobile/lib/hide-amounts';
 
 interface RecordBalancesSheetProps {
@@ -27,9 +29,10 @@ interface RecordBalancesSheetProps {
 
 /**
  * "Zaznamenat zůstatky" (spec §8.3 item 1, §10.3): one amount field per stale account, the last
- * balance and its date as its placeholder; the new one is dated today. Saving records every filled
- * field (the empty ones are skipped) through the desktop's balance write, one after the other,
- * then says it once.
+ * balance and its date as its placeholder, and the day the new balances are as of (today unless
+ * changed, never a day to come). Saving records every filled field (the empty ones are skipped)
+ * through the desktop's balance write, one after the other, then says it once; a balance already
+ * recorded on that day is replaced by the new one (the backend's rule).
  */
 export function RecordBalancesSheet({
   open,
@@ -62,6 +65,8 @@ export function RecordBalancesSheet({
   const [values, setValues] = useState<Record<string, string>>({});
   // The ± toggles: the iOS decimal pad has no minus key
   const [negatives, setNegatives] = useState<Record<string, boolean>>({});
+  const today = todayIsoUtc();
+  const [dateIso, setDateIso] = useState(today);
 
   // Every opening starts with empty fields and without the last attempt's error
   const { reset: resetRecord } = record;
@@ -74,6 +79,7 @@ export function RecordBalancesSheet({
     if (open) {
       setValues({});
       setNegatives({});
+      setDateIso(todayIsoUtc());
     }
   }
 
@@ -86,11 +92,18 @@ export function RecordBalancesSheet({
   // A filled field that is not a number blocks saving; an empty one is skipped
   const invalid = (p: (typeof parsed)[number]) => p.text.trim() !== '' && p.amount === null;
   const filled = parsed.filter((p) => p.amount !== null);
-  const canSave = filled.length > 0 && !parsed.some(invalid);
+  // An emptied picker or a day to come (some webviews let `max` through) blocks saving
+  const dateError =
+    dateIso === ''
+      ? tc('validation.required')
+      : dateIso > today
+        ? t('recordBalances.dateInFuture')
+        : undefined;
+  const canSave = filled.length > 0 && !parsed.some(invalid) && dateError === undefined;
 
   const save = () => {
     if (!canSave) return;
-    const asOf = utcDayFloor(Date.now() / 1000);
+    const asOf = isoToUtcDay(dateIso);
     const records: AccountBalanceRecord[] = filled.map(({ account, amount }) => ({
       accountId: account.id,
       data: {
@@ -98,7 +111,7 @@ export function RecordBalancesSheet({
         currency: recordCurrency(account.currency),
         asOf,
         // The first dated balance of an account that only has an undated one replaces it (the
-        // desktop dialog asks with a checkbox); typing today's balance is that consent. A balance
+        // desktop dialog asks with a checkbox); typing a dated balance is that consent. A balance
         // with no date is exactly an account without any dated record.
         confirmUnknownAsOf:
           account.balanceAsOf === null && Number(account.balance) !== 0 ? true : undefined,
@@ -168,6 +181,13 @@ export function RecordBalancesSheet({
             />
           );
         })}
+        <DateField
+          label={t('recordBalances.date')}
+          value={dateIso}
+          max={today}
+          onChange={setDateIso}
+          error={dateError}
+        />
       </form>
     </Sheet>
   );

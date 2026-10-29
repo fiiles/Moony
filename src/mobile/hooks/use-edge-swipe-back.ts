@@ -1,6 +1,7 @@
 import { useEffect, type RefObject } from 'react';
 import { releaseVelocity } from '@/lib/sheet-drag';
 import { edgeSwipeCommits, edgeSwipeDirection, edgeSwipeStarts } from '@/mobile/lib/edge-swipe';
+import { hasScreenUnder, setNavUnderlay } from '@/mobile/hooks/use-nav-stack';
 
 /** The slide out after a committed swipe, and the snap home after one let go too early. */
 const SETTLE_MS = 200;
@@ -26,7 +27,9 @@ function backButton(screen: HTMLElement): HTMLButtonElement | null {
 /**
  * Back by a swipe from the left edge (`edge-swipe.ts`) on a screen with a back button: the screen
  * follows the finger and, released far enough or flicked, slides out and presses its back button,
- * so the swipe goes exactly where the button goes. Touch events, not pointer events: the move
+ * so the swipe goes exactly where the button goes. The screen it goes back to is drawn under it
+ * from the moment the finger lands on the edge (`setNavUnderlay`, `MobileShell`), scrolled where it
+ * was left, so the swipe uncovers it rather than an empty page. Touch events, not pointer events: the move
  * listener is not passive, so a drag that has been taken for a back swipe stops the page scroll.
  * A sheet is portalled outside the screen, so it never starts one.
  */
@@ -52,6 +55,8 @@ export function useEdgeSwipeBack(ref: RefObject<HTMLElement | null>) {
       if (event.touches.length !== 1 || timer !== null) return;
       const touch = event.touches[0];
       if (!edgeSwipeStarts(touch.clientX) || !backButton(screen)) return;
+      // Drawn already while the gesture decides, so it is there when the screen starts to move
+      if (hasScreenUnder()) setNavUnderlay(true);
       drag = {
         x: touch.clientX,
         y: touch.clientY,
@@ -67,11 +72,16 @@ export function useEdgeSwipeBack(ref: RefObject<HTMLElement | null>) {
     const cancel = () => {
       const was = drag;
       drag = null;
-      if (!was?.active) return;
+      if (!was) return;
+      if (!was.active) {
+        setNavUnderlay(false);
+        return;
+      }
       place(0, true);
       later(() => {
         timer = null;
         screen.style.transition = '';
+        setNavUnderlay(false);
       });
     };
 
@@ -86,6 +96,7 @@ export function useEdgeSwipeBack(ref: RefObject<HTMLElement | null>) {
         // Not a back swipe, or the page is already scrolling (the move can no longer be held back)
         if (direction === 'none' || !event.cancelable) {
           drag = null;
+          setNavUnderlay(false);
           return;
         }
         drag.active = true;
@@ -103,7 +114,12 @@ export function useEdgeSwipeBack(ref: RefObject<HTMLElement | null>) {
       if (event.touches.length > 0) return cancel();
       const done = drag;
       drag = null;
-      if (!done?.active) return;
+      if (!done) return;
+      // A touch on the edge that never moved (a tap): nothing to uncover
+      if (!done.active) {
+        setNavUnderlay(false);
+        return;
+      }
       const width = screen.getBoundingClientRect().width;
       const velocity = releaseVelocity(done.velocity, done.lastT, event.timeStamp);
       if (edgeSwipeCommits(done.dx, velocity, width)) {
@@ -119,6 +135,7 @@ export function useEdgeSwipeBack(ref: RefObject<HTMLElement | null>) {
         later(() => {
           timer = null;
           screen.style.transition = '';
+          setNavUnderlay(false);
         });
       }
     };

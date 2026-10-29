@@ -96,10 +96,12 @@
   },
   "recordBalances": {
     "title": "Registrer saldoer",
-    "lead": "Skriv inn gjeldende saldo for hver konto. Datoen er i dag.",
+    "lead": "Skriv inn saldoen på hver konto per dagen nedenfor.",
     "save": "Registrer",
     "saved": "Saldoer registrert",
-    "negative": "Negativ verdi"
+    "negative": "Negativ verdi",
+    "date": "Saldo per",
+    "dateInFuture": "En saldo kan ikke dateres frem i tid"
   },
   "biometrics": {
     "titleFace": "Låse opp Moony med ansiktet?",
@@ -506,7 +508,9 @@
       "noUpcoming": "Ingen kuponger eller forfall det kommende året.",
       "allRepaid": "Alle emisjoner er innfridd. Slå på «{{action}}» i menyen ··· for å se dem.",
       "loadFailed": "Obligasjonene kunne ikke lastes.",
-      "rateNote": "{{rate}} p.a. vektet"
+      "rateNote": "{{rate}} p.a. vektet",
+      "nextPayment": "Neste betaling",
+      "notGiven": "ikke oppgitt"
     },
     "otherAssets": {
       "count_one": "{{count}} post",

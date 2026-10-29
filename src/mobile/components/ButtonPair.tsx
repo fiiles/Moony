@@ -26,14 +26,17 @@ export const PAIR_BUTTON =
 export function ButtonPair({
   primary,
   secondary,
+  stacked = false,
   className,
 }: {
   primary: PairButton;
   secondary: PairButton;
+  /** One full-width button above the other (the account detail, under its chart). */
+  stacked?: boolean;
   className?: string;
 }) {
   return (
-    <div className={cn('mb-3.5 grid grid-cols-2 gap-2.5', className)}>
+    <div className={cn('mb-3.5 grid gap-2.5', stacked ? 'grid-cols-1' : 'grid-cols-2', className)}>
       <Button className={PAIR_BUTTON} onClick={primary.onClick} disabled={primary.disabled}>
         <primary.icon strokeWidth={1.75} aria-hidden />
         {primary.label}

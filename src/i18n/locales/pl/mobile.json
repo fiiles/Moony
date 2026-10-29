@@ -112,10 +112,12 @@
   },
   "recordBalances": {
     "title": "Zapisz salda",
-    "lead": "Wpisz aktualne saldo każdego konta. Data to dzisiaj.",
+    "lead": "Wpisz saldo każdego konta na dzień podany poniżej.",
     "save": "Zapisz",
     "saved": "Salda zapisane",
-    "negative": "Wartość ujemna"
+    "negative": "Wartość ujemna",
+    "date": "Saldo na dzień",
+    "dateInFuture": "Saldo nie może mieć przyszłej daty"
   },
   "biometrics": {
     "titleFace": "Odblokowywać Moony twarzą?",
@@ -570,7 +572,9 @@
       "noUpcoming": "W najbliższym roku nie przypada żaden kupon ani termin wykupu.",
       "allRepaid": "Wszystkie emisje zostały wykupione. Włącz w menu ··· „{{action}}”, aby je zobaczyć.",
       "loadFailed": "Nie udało się wczytać obligacji.",
-      "rateNote": "{{rate}} rocznie, ważona"
+      "rateNote": "{{rate}} rocznie, ważona",
+      "nextPayment": "Następna płatność",
+      "notGiven": "nie podano"
     },
     "otherAssets": {
       "count_one": "{{count}} pozycja",

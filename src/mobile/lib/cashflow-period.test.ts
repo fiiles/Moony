@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   cashflowSearch,
+  latestMonthOffset,
   DEFAULT_CASHFLOW_STATE,
   isPartialPeriod,
   parseCashflowSearch,
+  periodChosen,
   selectMonth,
   type CashflowState,
 } from './cashflow-period';
@@ -110,5 +112,44 @@ describe('isPartialPeriod', () => {
 
   it('is false for a period that is over', () => {
     expect(isPartialPeriod(Date.UTC(2026, 8, 30, 23, 59, 59) / 1000, now)).toBe(false);
+  });
+});
+
+describe('periodChosen', () => {
+  it('is false for the tab opened plainly or with only accounts picked', () => {
+    expect(periodChosen('')).toBe(false);
+    expect(periodChosen('?acc=a,b')).toBe(false);
+  });
+
+  it('is true once a timeframe or an offset is in the search', () => {
+    expect(periodChosen('?o=0')).toBe(true);
+    expect(periodChosen('?o=-2')).toBe(true);
+    expect(periodChosen('?tf=yearly')).toBe(true);
+  });
+});
+
+describe('cashflowSearch with a chosen period', () => {
+  it('writes the current month as o=0, so it is not replaced by the newest month with data', () => {
+    const state: CashflowState = { timeframe: 'monthly', offset: 0, accountIds: undefined };
+    expect(cashflowSearch(state, { chosen: true })).toBe('?o=0');
+    expect(parseCashflowSearch(cashflowSearch(state, { chosen: true }))).toEqual(state);
+  });
+});
+
+describe('latestMonthOffset', () => {
+  const now = new Date('2026-10-29T10:00:00Z');
+  const month = (m: number, income = '0', expenses = '0') => ({
+    month: Date.UTC(2026, m, 1) / 1000,
+    income,
+    expenses,
+  });
+
+  it('counts back to the newest month with income or spending', () => {
+    const months = [month(6, '100'), month(7, '0', '40'), month(8), month(9)];
+    expect(latestMonthOffset(months, now)).toBe(-2);
+  });
+
+  it('is null when no month in the window has any', () => {
+    expect(latestMonthOffset([month(8), month(9, '0.00', '0.00')], now)).toBeNull();
   });
 });

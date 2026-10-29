@@ -83,6 +83,12 @@ export default function Bonds() {
 
   const rows = bondRows(bonds, today, showMatured);
   const payments = upcomingBondPayments(bonds, today);
+  // Each bond's next payment for its unfolded details (the list is by day: the first one wins)
+  const nextPayment = new Map<string, BondPayment>();
+  for (const payment of payments) {
+    if (!nextPayment.has(payment.bond.id)) nextPayment.set(payment.bond.id, payment);
+  }
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
     <Screen
@@ -146,7 +152,17 @@ export default function Bonds() {
           ) : (
             <EntityRows>
               {rows.map((row) => (
-                <BondRow key={row.bond.id} row={row} onEdit={openEdit} onDelete={setDeleting} />
+                <BondRow
+                  key={row.bond.id}
+                  row={row}
+                  nextPayment={nextPayment.get(row.bond.id)}
+                  expanded={expanded === row.bond.id}
+                  onToggle={() =>
+                    setExpanded((open) => (open === row.bond.id ? null : row.bond.id))
+                  }
+                  onEdit={openEdit}
+                  onDelete={setDeleting}
+                />
               ))}
             </EntityRows>
           )}

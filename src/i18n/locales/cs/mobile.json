@@ -104,10 +104,12 @@
   },
   "recordBalances": {
     "title": "Zaznamenat zůstatky",
-    "lead": "Zadejte aktuální zůstatek každého účtu. Datum je dnešní.",
+    "lead": "Zadejte zůstatek každého účtu ke dni uvedenému níže.",
     "save": "Zaznamenat",
     "saved": "Zůstatky zaznamenány",
-    "negative": "Záporná hodnota"
+    "negative": "Záporná hodnota",
+    "date": "Ke dni",
+    "dateInFuture": "Zůstatek nemůže být k budoucímu dni"
   },
   "biometrics": {
     "titleFace": "Odemykat Moony obličejem?",
@@ -538,7 +540,9 @@
       "noUpcoming": "V nejbližším roce nepřipadá žádný kupón ani splatnost.",
       "allRepaid": "Všechny emise jsou splacené. Zapněte v nabídce ··· „{{action}}“, abyste je viděli.",
       "loadFailed": "Dluhopisy se nepodařilo načíst.",
-      "rateNote": "{{rate}} p. a. vážený průměr"
+      "rateNote": "{{rate}} p. a. vážený průměr",
+      "nextPayment": "Další platba",
+      "notGiven": "neuvedeno"
     },
     "otherAssets": {
       "count_one": "{{count}} položka",

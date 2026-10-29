@@ -6,6 +6,7 @@ import {
   Eye,
   EyeOff,
   Landmark,
+  Lock,
   TrendingDown,
   TrendingUp,
   Wallet,
@@ -38,6 +39,7 @@ import { UpkeepCard } from '@/mobile/components/UpkeepCard';
 import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { initials } from '@/mobile/lib/initials';
+import { clearQuietLock, requestQuietLock } from '@/mobile/lib/quiet-lock';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -61,7 +63,7 @@ export default function Overview() {
   const { t } = useTranslation('mobile');
   const { t: td } = useTranslation('dashboard');
   const { t: tc } = useTranslation('common');
-  const { user } = useAuth();
+  const { user, lockMutation } = useAuth();
   const fmt = useFormat();
   const { hidden, toggle: toggleHidden } = useHideAmounts();
   // Money as text (the hero and the stats size themselves to it); `<Money>` where an element will do
@@ -151,31 +153,45 @@ export default function Overview() {
       large
       subtitle={asOf}
       leading={
-        // The one eye of the app (spec D6): the icon is the state, the name is what a tap does
+        // Locks the whole app at once, as Nastavení's "Zamknout aplikaci" does: the lock screen
+        // stays quiet afterwards (Face ID only from its button)
         <NavIconButton
-          aria-label={hidden ? t('overview.showAmounts') : t('overview.hideAmounts')}
-          onClick={toggleHidden}
+          aria-label={tc('nav.lockApp')}
+          onClick={() => {
+            if (lockMutation.isPending) return;
+            requestQuietLock();
+            lockMutation.mutate(undefined, { onError: clearQuietLock });
+          }}
         >
-          {hidden ? (
-            <EyeOff strokeWidth={1.75} aria-hidden />
-          ) : (
-            <Eye strokeWidth={1.75} aria-hidden />
-          )}
+          <Lock strokeWidth={1.75} aria-hidden />
         </NavIconButton>
       }
       trailing={
-        <Link
-          href={routes.settings}
-          aria-label={tc('nav.settings')}
-          className="inline-flex size-11 flex-none items-center justify-center rounded-[12px] [-webkit-touch-callout:none] active:bg-well-2"
-        >
-          <span
-            aria-hidden
-            className="inline-flex size-8 items-center justify-center rounded-full bg-well-2 text-m-caption font-bold text-ink-2 shadow-[inset_0_0_0_1px_var(--line)]"
+        <>
+          {/* The one eye of the app (spec D6): the icon is the state, the name is what a tap does */}
+          <NavIconButton
+            aria-label={hidden ? t('overview.showAmounts') : t('overview.hideAmounts')}
+            onClick={toggleHidden}
           >
-            {avatar}
-          </span>
-        </Link>
+            {hidden ? (
+              <EyeOff strokeWidth={1.75} aria-hidden />
+            ) : (
+              <Eye strokeWidth={1.75} aria-hidden />
+            )}
+          </NavIconButton>
+          <Link
+            href={routes.settings}
+            aria-label={tc('nav.settings')}
+            className="inline-flex size-11 flex-none items-center justify-center rounded-[12px] [-webkit-touch-callout:none] active:bg-well-2"
+          >
+            <span
+              aria-hidden
+              className="inline-flex size-8 items-center justify-center rounded-full bg-well-2 text-m-caption font-bold text-ink-2 shadow-[inset_0_0_0_1px_var(--line)]"
+            >
+              {avatar}
+            </span>
+          </Link>
+        </>
       }
     >
       {/* First on the page and only while something is due (it also asks for a first backup). Always

@@ -88,10 +88,12 @@
   },
   "recordBalances": {
     "title": "残高を記録",
-    "lead": "各口座の現在の残高を入力してください。日付は今日です。",
+    "lead": "下の日付時点での各口座の残高を入力してください。",
     "save": "記録",
     "saved": "残高を記録しました",
-    "negative": "マイナスの値"
+    "negative": "マイナスの値",
+    "date": "残高の日付",
+    "dateInFuture": "残高の日付を未来にすることはできません"
   },
   "biometrics": {
     "titleFace": "Moonyを顔認証でロック解除しますか？",
@@ -474,7 +476,9 @@
       "noUpcoming": "今後1年間にクーポンや満期はありません。",
       "allRepaid": "すべての銘柄が償還済みです。メニュー「···」の「{{action}}」をオンにすると表示されます。",
       "loadFailed": "債券を読み込めませんでした。",
-      "rateNote": "年率 {{rate}} 加重平均"
+      "rateNote": "年率 {{rate}} 加重平均",
+      "nextPayment": "次回の支払い",
+      "notGiven": "未入力"
     },
     "otherAssets": {
       "count_other": "{{count}}件",

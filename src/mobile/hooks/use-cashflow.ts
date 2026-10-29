@@ -9,6 +9,7 @@ import { getUtcPeriodRange, type UtcPeriodRange } from '@/utils/period';
 import {
   cashflowSearch,
   parseCashflowSearch,
+  periodChosen,
   type CashflowState,
 } from '@/mobile/lib/cashflow-period';
 import { routes } from '@/mobile/shell/routes';
@@ -16,15 +17,20 @@ import { routes } from '@/mobile/shell/routes';
 /**
  * The period and accounts of the Cashflow tab, kept in the URL search of its root (see
  * `CashflowState`). Writing replaces the history entry, so paging through months does not add
- * a screen to go back through.
+ * a screen to go back through. A write that changes the period pins it (`chosen`), so the tab no
+ * longer moves to the newest month with data; a period already pinned stays pinned.
  */
 export function useCashflowState(): [CashflowState, (next: CashflowState) => void] {
   const search = useSearch();
   const [, setLocation] = useLocation();
   const state = useMemo(() => parseCashflowSearch(search), [search]);
   const setState = useCallback(
-    (next: CashflowState) => setLocation(routes.cashflow + cashflowSearch(next), { replace: true }),
-    [setLocation]
+    (next: CashflowState) => {
+      const chosen =
+        periodChosen(search) || next.timeframe !== state.timeframe || next.offset !== state.offset;
+      setLocation(routes.cashflow + cashflowSearch(next, { chosen }), { replace: true });
+    },
+    [search, state, setLocation]
   );
   return [state, setState];
 }

@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
-import { Redirect, Route, Switch, useLocation } from 'wouter';
+import { useEffect, useMemo, useState } from 'react';
+import { Redirect, Route, Router, Switch, useLocation } from 'wouter';
+import { memoryLocation } from 'wouter/memory-location';
 import { useAuth } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/lib/protected-route';
 import { ReceivedFileHost } from '@/mobile/components/import/ReceivedFileHost';
 import { ImportSheetProvider } from '@/mobile/hooks/use-import-sheet';
+import { NavEntryContext, useNavStack, useNavUnderlay } from '@/mobile/hooks/use-nav-stack';
 import { useNotificationSchedule } from '@/mobile/hooks/use-notification-schedule';
 import { clearEnrolmentAsked } from '@/lib/biometrics';
 import Agenda from '@/mobile/pages/Agenda';
@@ -40,6 +42,51 @@ function NotificationScheduler() {
 }
 
 /**
+ * Every screen of the shell. Drawn twice while a swipe goes back: as the page, and under it, at
+ * the screen the swipe goes back to (`MobileShell`'s underlay, routed by a static location).
+ */
+function Routes() {
+  return (
+    <Switch>
+      {/* Lock screen and first run: outside `ProtectedRoute`, which redirects here while locked. */}
+      <Route path={routes.auth} component={Lock} />
+      <ProtectedRoute path={routes.overview} component={Overview} />
+      <ProtectedRoute path={routes.agenda} component={Agenda} />
+      <ProtectedRoute path={routes.finance} component={Finance} />
+      {/* Pushed on Finance: an account, a loan, a policy and the categorize queue. */}
+      <ProtectedRoute path={routes.accountDetail} component={AccountDetail} />
+      <ProtectedRoute path={routes.loanDetail} component={LoanDetail} />
+      <ProtectedRoute path={routes.policyDetail} component={PolicyDetail} />
+      <ProtectedRoute path={routes.uncategorized} component={CategorizeQueue} />
+      <ProtectedRoute path={routes.cashflow} component={Cashflow} />
+      <ProtectedRoute path={routes.cashflowCategory} component={CashflowCategory} />
+      <ProtectedRoute path={routes.budgets} component={Budgets} />
+      <ProtectedRoute path={routes.wealth} component={Wealth} />
+      {/* Pushed on Majetek: the Akcie class page and a position of it. */}
+      <ProtectedRoute path={routes.stocks} component={Stocks} />
+      <ProtectedRoute path={routes.positionDetail} component={PositionDetail} />
+      {/* A watched ticker, followed or not: from a Sledované row or a search result. */}
+      <ProtectedRoute path={routes.watchDetail} component={WatchDetail} />
+      {/* The Krypto class page and a coin of it. */}
+      <ProtectedRoute path={routes.cryptoList} component={Crypto} />
+      <ProtectedRoute path={routes.cryptoDetail} component={CryptoDetail} />
+      {/* The Dluhopisy class page */}
+      <ProtectedRoute path={routes.bondsList} component={Bonds} />
+      {/* The Ostatní aktiva class page and an asset of it */}
+      <ProtectedRoute path={routes.otherAssetsList} component={OtherAssets} />
+      <ProtectedRoute path={routes.otherAssetDetail} component={OtherAssetDetail} />
+      <ProtectedRoute path={routes.propertyDetail} component={PropertyDetail} />
+      {/* Nastavení and the pages pushed on it (spec §8.9) */}
+      <ProtectedRoute path={routes.settings} component={Settings} />
+      <ProtectedRoute path={routes.settingsSection} component={SettingsSection} />
+      <Route>
+        <Redirect to={routes.overview} />
+      </Route>
+    </Switch>
+  );
+}
+
+/**
  * Phone shell (spec §6): the four tab roots behind the lock, the lock screen outside it, and the
  * tab bar over the unlocked tab screens. Navigation is the browser history (wouter), so Android
  * back pops whatever was pushed. The import sheet lives above the routes (`ImportSheetProvider`),
@@ -52,6 +99,16 @@ export function MobileShell() {
   const tab = appStatus === 'unlocked' && user ? tabForPath(location) : null;
   // A statement shared into Moony is on its way to the import sheet: the biometric offer waits
   const [sharedPending, setSharedPending] = useState(false);
+  const stack = useNavStack();
+  const underlayShown = useNavUnderlay();
+  const top = stack.length - 1;
+  const underlayPath = underlayShown && top > 0 ? stack[top - 1].path : null;
+  const underlayHook = useMemo(
+    () => memoryLocation({ path: underlayPath ?? '/', static: true }).hook,
+    [underlayPath]
+  );
+  const topEntry = useMemo(() => ({ index: top, underlay: false }), [top]);
+  const underlayEntry = useMemo(() => ({ index: top - 1, underlay: true }), [top]);
 
   // No account on this phone (first launch, or after the account was deleted): the next one is
   // offered biometric unlock again, so the "asked" flag of the old account goes.
@@ -66,42 +123,22 @@ export function MobileShell() {
 
   return (
     <ImportSheetProvider>
-      <Switch>
-        {/* Lock screen and first run: outside `ProtectedRoute`, which redirects here while locked. */}
-        <Route path={routes.auth} component={Lock} />
-        <ProtectedRoute path={routes.overview} component={Overview} />
-        <ProtectedRoute path={routes.agenda} component={Agenda} />
-        <ProtectedRoute path={routes.finance} component={Finance} />
-        {/* Pushed on Finance: an account, a loan, a policy and the categorize queue. */}
-        <ProtectedRoute path={routes.accountDetail} component={AccountDetail} />
-        <ProtectedRoute path={routes.loanDetail} component={LoanDetail} />
-        <ProtectedRoute path={routes.policyDetail} component={PolicyDetail} />
-        <ProtectedRoute path={routes.uncategorized} component={CategorizeQueue} />
-        <ProtectedRoute path={routes.cashflow} component={Cashflow} />
-        <ProtectedRoute path={routes.cashflowCategory} component={CashflowCategory} />
-        <ProtectedRoute path={routes.budgets} component={Budgets} />
-        <ProtectedRoute path={routes.wealth} component={Wealth} />
-        {/* Pushed on Majetek: the Akcie class page and a position of it. */}
-        <ProtectedRoute path={routes.stocks} component={Stocks} />
-        <ProtectedRoute path={routes.positionDetail} component={PositionDetail} />
-        {/* A watched ticker, followed or not: from a Sledované row or a search result. */}
-        <ProtectedRoute path={routes.watchDetail} component={WatchDetail} />
-        {/* The Krypto class page and a coin of it. */}
-        <ProtectedRoute path={routes.cryptoList} component={Crypto} />
-        <ProtectedRoute path={routes.cryptoDetail} component={CryptoDetail} />
-        {/* The Dluhopisy class page */}
-        <ProtectedRoute path={routes.bondsList} component={Bonds} />
-        {/* The Ostatní aktiva class page and an asset of it */}
-        <ProtectedRoute path={routes.otherAssetsList} component={OtherAssets} />
-        <ProtectedRoute path={routes.otherAssetDetail} component={OtherAssetDetail} />
-        <ProtectedRoute path={routes.propertyDetail} component={PropertyDetail} />
-        {/* Nastavení and the pages pushed on it (spec §8.9) */}
-        <ProtectedRoute path={routes.settings} component={Settings} />
-        <ProtectedRoute path={routes.settingsSection} component={SettingsSection} />
-        <Route>
-          <Redirect to={routes.overview} />
-        </Route>
-      </Switch>
+      {/* The screen a swipe back goes to, under the page, while the swipe is under way: routed by a
+          static location at that screen's path, inert, scrolled where it was left */}
+      {underlayPath !== null && (
+        <div aria-hidden inert className="pointer-events-none absolute inset-0 z-0">
+          <Router hook={underlayHook}>
+            <NavEntryContext.Provider value={underlayEntry}>
+              <Routes />
+            </NavEntryContext.Provider>
+          </Router>
+        </div>
+      )}
+      <div className="relative z-[1] h-full">
+        <NavEntryContext.Provider value={topEntry}>
+          <Routes />
+        </NavEntryContext.Provider>
+      </div>
       {tab && <TabBar active={tab} />}
       {/* Once, after the first password unlock: "Odemykat Moony obličejem?" (spec §8.2). A shared
           statement's import comes first; the offer opens once that sheet has closed. */}

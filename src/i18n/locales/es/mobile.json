@@ -104,10 +104,12 @@
   },
   "recordBalances": {
     "title": "Registrar saldos",
-    "lead": "Introduce el saldo actual de cada cuenta. La fecha es la de hoy.",
+    "lead": "Introduce el saldo de cada cuenta a la fecha indicada abajo.",
     "save": "Registrar",
     "saved": "Saldos registrados",
-    "negative": "Valor negativo"
+    "negative": "Valor negativo",
+    "date": "Saldo a fecha de",
+    "dateInFuture": "Un saldo no puede tener una fecha futura"
   },
   "biometrics": {
     "titleFace": "¿Desbloquear Moony con la cara?",
@@ -538,7 +540,9 @@
       "noUpcoming": "No hay cupones ni vencimientos en el próximo año.",
       "allRepaid": "Todas las emisiones están amortizadas. Activa «{{action}}» en el menú ··· para verlas.",
       "loadFailed": "No se pudieron cargar los bonos.",
-      "rateNote": "{{rate}} anual ponderado"
+      "rateNote": "{{rate}} anual ponderado",
+      "nextPayment": "Próximo pago",
+      "notGiven": "no indicada"
     },
     "otherAssets": {
       "count_one": "{{count}} elemento",

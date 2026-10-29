@@ -1,6 +1,14 @@
-import { useEffect, useRef, useState, type ReactNode, type RefObject } from 'react';
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import { cn } from '@/lib/utils';
 import { useEdgeSwipeBack } from '@/mobile/hooks/use-edge-swipe-back';
+import { navScroll, saveNavScroll, useNavEntry } from '@/mobile/hooks/use-nav-stack';
 import { NavBar } from './NavBar';
 
 interface ScreenProps {
@@ -19,7 +27,8 @@ interface ScreenProps {
 /**
  * One phone screen (design system README §13, `.m-screen`): the nav bar over one scroll area
  * with the 16 pt gutter and room at the bottom for the fixed tab bar. A screen with a back button
- * also goes back by a swipe from the left edge (`useEdgeSwipeBack`).
+ * also goes back by a swipe from the left edge (`useEdgeSwipeBack`), and a screen comes back
+ * scrolled where it was left (`useKeptScroll`).
  */
 export function Screen({
   title,
@@ -36,6 +45,7 @@ export function Screen({
   const [marker, setMarker] = useState<HTMLElement | null>(null);
   const collapsed = useScrolledAway(scrollRef, marker);
   useEdgeSwipeBack(rootRef);
+  useKeptScroll(scrollRef);
 
   return (
     <div
@@ -75,6 +85,55 @@ export function Screen({
       </main>
     </div>
   );
+}
+
+/** How long a screen keeps moving to its kept offset while its content is still arriving. */
+const RESTORE_MS = 1500;
+
+/**
+ * Keeps the scroll offset of the screen's stack entry (`use-nav-stack.ts`) and puts it back when
+ * the screen is drawn again — after back, or under the swipe that goes back to it. Content that
+ * arrives after the first paint (a query not yet in the cache) moves it on as it grows, until the
+ * offset is reached, the finger touches the screen or 1.5 s pass. The swipe's underlay only reads.
+ */
+function useKeptScroll(scroll: RefObject<HTMLElement | null>) {
+  const entry = useNavEntry();
+  const index = entry?.index;
+  const underlay = entry?.underlay ?? false;
+
+  useLayoutEffect(() => {
+    const el = scroll.current;
+    if (!el || index === undefined) return;
+    const target = navScroll(index);
+    let settled = target <= 0;
+    const apply = () => {
+      if (settled) return;
+      el.scrollTop = target;
+      if (Math.abs(el.scrollTop - target) < 1) settled = true;
+    };
+    apply();
+    const stop = () => {
+      settled = true;
+    };
+    // Sections that arrive with their data are new nodes in the scroll area
+    const observer = new MutationObserver(apply);
+    observer.observe(el, { childList: true, subtree: true });
+    const timer = window.setTimeout(stop, RESTORE_MS);
+    el.addEventListener('touchstart', stop, { passive: true });
+    el.addEventListener('wheel', stop, { passive: true });
+
+    const save = () => {
+      if (!underlay) saveNavScroll(index, el.scrollTop);
+    };
+    el.addEventListener('scroll', save, { passive: true });
+    return () => {
+      observer.disconnect();
+      window.clearTimeout(timer);
+      el.removeEventListener('touchstart', stop);
+      el.removeEventListener('wheel', stop);
+      el.removeEventListener('scroll', save);
+    };
+  }, [scroll, index, underlay]);
 }
 
 /** True once `target` has scrolled out of the `root` scroll area. */

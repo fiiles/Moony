@@ -223,7 +223,9 @@ export function AddPaymentsDialog({ open, onOpenChange, plan }: AddPaymentsDialo
           <Table className="table-fixed border-t-0">
             <TableHeader className="sticky top-0 z-[1]">
               <TableRow>
-                <TableHead className="w-10 pl-[27px] pr-0">
+                {/* 27 px gutter + 16 px checkbox + 8 px air for the focus ring: a table-fixed
+                    column width includes its padding, so w-10 clipped the box */}
+                <TableHead className="w-[51px] pl-[27px] pr-0">
                   <span className="sr-only">{t('addPayments.select')}</span>
                 </TableHead>
                 <TableHead className="w-[76px]">{t('addPayments.date')}</TableHead>

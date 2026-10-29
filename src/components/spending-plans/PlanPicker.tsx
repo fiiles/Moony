@@ -165,7 +165,7 @@ export function PlanPicker({
               ))
             )}
           </div>
-          <p className="m-0 flex-none px-[9px] pb-1 pt-1.5 text-micro text-ink-4">
+          <p className="m-0 mt-2 flex-none px-[9px] pb-1 pt-1.5 text-micro text-ink-4">
             {t('picker.closedNote')}
           </p>
           <div className="mx-1 my-[5px] h-px flex-none bg-line-soft" />

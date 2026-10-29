@@ -50,4 +50,18 @@ describe('money flow refresh', () => {
       stop();
     }
   });
+
+  it('invalidates the spending plan views, whose sums read the ledger', async () => {
+    const cache = client();
+    const keys = [
+      ['spending-plans', 'index', 0],
+      ['spending-plans', 2026, 'CZK', 0],
+      ['spending-plan', 'plan-1', 0],
+      ['spending-plan-transactions', 'plan-1'],
+      ['spending-plan-candidates', { query: '' }],
+    ];
+    keys.forEach((key) => cache.setQueryData(key, {}));
+    await refreshMoneyFlows(cache);
+    keys.forEach((key) => expect(cache.getQueryState(key)?.isInvalidated).toBe(true));
+  });
 });

@@ -28,6 +28,11 @@ export const MONEY_FLOW_KEYS = [
   'categorization-overview',
   'recent-moves',
   'portfolio-metrics',
+  // Plan sums and the add-payments candidates read the ledger
+  'spending-plans',
+  'spending-plan',
+  'spending-plan-transactions',
+  'spending-plan-candidates',
 ] as const;
 
 /** One refresh contract for local writes and external bank events. */

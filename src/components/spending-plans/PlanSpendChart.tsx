@@ -15,7 +15,7 @@ import {
   YAxis,
 } from 'recharts';
 import { useFormat } from '@/lib/use-format';
-import { useChartTokens } from '@/theme/ThemeProvider';
+import { useChartTokens, useResolvedTheme } from '@/theme/ThemeProvider';
 import { niceTicks, valueDomain } from '@/utils/chart-scale';
 import { monthDate, planAxisLabels } from '@/utils/spending-plans';
 import { ChartTip } from '@/components/charts/ChartTip';
@@ -39,7 +39,8 @@ interface PlanSpendChartProps {
   onMonthClick: (month: string) => void;
 }
 
-const MUTED_OPACITY = 0.35;
+/** The bars of other months while one is chosen; dark paper needs more to keep them visible. */
+const MUTED_OPACITY = { light: 0.35, dark: 0.6 } as const;
 const HEIGHT = 210;
 
 /**
@@ -62,6 +63,7 @@ export function PlanSpendChart({
   const { t } = useTranslation('spending_plans');
   const fmt = useFormat();
   const tk = useChartTokens();
+  const mutedOpacity = MUTED_OPACITY[useResolvedTheme()];
 
   const data = useMemo(
     () =>
@@ -100,7 +102,8 @@ export function PlanSpendChart({
               right: AXIS_WIDTH,
             }}
           >
-            <span className="absolute right-2 top-1.5 text-micro font-600 text-ink-4">
+            {/* Below the top grid line (the chart's 18 px top margin), which would strike it */}
+            <span className="absolute right-2 top-5 text-micro font-600 text-ink-4">
               {t('detail.chart.future')}
             </span>
           </div>
@@ -158,7 +161,7 @@ export function PlanSpendChart({
                 {data.map((row) => (
                   <Cell
                     key={row.month}
-                    fillOpacity={selectedMonth && row.month !== selectedMonth ? MUTED_OPACITY : 1}
+                    fillOpacity={selectedMonth && row.month !== selectedMonth ? mutedOpacity : 1}
                   />
                 ))}
                 <LabelList

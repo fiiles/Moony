@@ -62,7 +62,9 @@ Credential Locker (opens without Hello).
   invalidation never brings the offer back; an invalidation and a restore leave the key as it was.
   The way back is the switch in Settings → Security. The lock screen prompts by itself
   only when the app starts (once, for a window in front); after a lock, manual or idle, it stays
-  quiet and the system prompt opens only from its button (owner, 2026-10-28). A restore
+  quiet and the system prompt opens only from its button (owner, 2026-10-28). The phone
+  prompts by itself at start and after a background lock, but not after "Zamknout aplikaci"
+  (`src/mobile/lib/quiet-lock.ts`; owner, 2026-10-29). A restore
   switches the feature off in Rust, because the archive carries a different master key; account
   deletion removes the stored key and clears the flag.
 - **The marker stays the source of truth.** As on the phone, a `biometric-unlock` file in the data

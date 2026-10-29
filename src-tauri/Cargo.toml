@@ -106,14 +106,14 @@ zip = { version = "9", default-features = false, features = ["deflate-flate2"] }
 # Embedded MCP server (Streamable HTTP, mounted on the axum router)
 rmcp = { version = "3.5.0", features = ["server", "macros", "transport-streamable-http-server"] }
 
+# The in-repo keychain (biometric unlock: the DB key behind biometry; the privacy screen on the
+# phone). Every platform builds it; on Linux it answers Unsupported.
+moony-keychain = { path = "plugins/moony-keychain" }
+
 # Desktop only: auto-updater and relaunch after an update
 [target.'cfg(not(any(target_os = "ios", target_os = "android")))'.dependencies]
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
-
-# The in-repo keychain (biometric unlock: the DB key behind biometry; the privacy screen on the
-# phone). Every platform builds it; on Linux it answers Unsupported.
-moony-keychain = { path = "plugins/moony-keychain" }
 
 # Mobile only: haptic feedback and local notifications (Phase 4 agenda reminders)
 [target.'cfg(any(target_os = "ios", target_os = "android"))'.dependencies]

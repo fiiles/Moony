@@ -5,7 +5,6 @@ import type { BankTransaction, TransactionCategory } from '@shared/schema';
 import { signedTotals } from '@/utils/spending-plans';
 import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
 import { utcDayFloor } from '@/utils/chart-axis';
-import { useCategoryName } from '@/hooks/use-categories';
 import { useAssignWithUndo } from '@/hooks/use-spending-plan-mutations';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
@@ -21,7 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { CategoryIcon } from '@/components/common/CategoryIcon';
+import { CategoryPill } from '@/components/common/CategoryPill';
 import { EmptyState } from '@/components/common/EmptyState';
 import { FilterBadge } from '@/components/common/FilterBadge';
 import { LedgerCounterpartyCell } from '@/components/bank-accounts/LedgerCounterpartyCell';
@@ -48,8 +47,8 @@ interface PlanPaymentsCardProps {
 
 /**
  * "Platby" (spec §9, O15): the plan's payments in the account ledger's look — grouped by day,
- * the counterparty with its round icon and "Účet · detail" under it, the category as an ink
- * icon and name, the native signed amount (credits in `gain`). Checkboxes select payments for
+ * the counterparty with its round icon and "Účet · detail" under it, the category as the
+ * plan chip's pill (its icon in ink, no color), the native signed amount (credits in `gain`). Checkboxes select payments for
  * "Přesunout do…" (another plan) or "Odebrat z plánu".
  */
 export function PlanPaymentsCard({
@@ -68,7 +67,6 @@ export function PlanPaymentsCard({
   const { t: tb } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
-  const categoryName = useCategoryName();
   const { assign, isPending } = useAssignWithUndo();
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
 
@@ -269,13 +267,7 @@ export function PlanPaymentsCard({
                         </TableCell>
                         <TableCell>
                           {category ? (
-                            <span className="flex min-w-0 items-center gap-1.5 text-caption font-550 text-ink-2">
-                              <CategoryIcon
-                                iconName={category.icon || 'tag'}
-                                className="size-3.5 shrink-0"
-                              />
-                              <span className="truncate">{categoryName(category)}</span>
-                            </span>
+                            <CategoryPill category={category} />
                           ) : (
                             <span className="block truncate text-caption text-ink-4">
                               {t('detail.categories.uncategorized')}

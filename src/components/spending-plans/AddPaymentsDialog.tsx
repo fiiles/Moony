@@ -47,7 +47,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { CategoryIcon } from '@/components/common/CategoryIcon';
+import { CategoryPill } from '@/components/common/CategoryPill';
 import { PlanChip } from '@/components/spending-plans/PlanChip';
 
 const ALL_ACCOUNTS = 'all';
@@ -291,13 +291,7 @@ export function AddPaymentsDialog({ open, onOpenChange, plan }: AddPaymentsDialo
                       </TableCell>
                       <TableCell>
                         {category ? (
-                          <span className="flex min-w-0 items-center gap-1.5 text-caption font-550 text-ink-2">
-                            <CategoryIcon
-                              iconName={category.icon || 'tag'}
-                              className="size-3.5 shrink-0"
-                            />
-                            <span className="truncate">{categoryName(category)}</span>
-                          </span>
+                          <CategoryPill category={category} />
                         ) : (
                           <span className="text-caption text-ink-4">
                             {t('detail.categories.uncategorized')}

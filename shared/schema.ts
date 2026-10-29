@@ -2867,6 +2867,11 @@ export interface SpendingPlansOverview {
   fxQuality: ConversionQuality;
   plans: SpendingPlanSummary[];
   totals: SpendingPlanTotals;
+  /**
+   * The year's spend by category across all plans, in `currency`, largest first. Plans or
+   * payments that cannot be converted are left out and counted in `fxQuality`.
+   */
+  categories: SpendingPlanCategory[];
   /** Years that have at least one plan, ascending. */
   yearsWithPlans: number[];
 }

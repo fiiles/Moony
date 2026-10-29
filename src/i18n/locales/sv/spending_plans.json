@@ -249,5 +249,14 @@
     "submit_one": "Lägg till {{count}} betalning",
     "submit_other": "Lägg till {{count}} betalningar",
     "submitNone": "Lägg till betalningar"
+  },
+  "flow": {
+    "title": "Vart pengarna i planerna går",
+    "sub": "Utgifter i alla planer för {{year}} per kategori. Den streckade delen är det som är kvar av det planerade beloppet.",
+    "other": "Övrigt",
+    "rest": "Kvar i planerna",
+    "badgeLeft": "{{percent}} av planerna kvar",
+    "badgeOver": "Överskriden med {{amount}}",
+    "none": "Inga utgifter i planerna ännu."
   }
 }

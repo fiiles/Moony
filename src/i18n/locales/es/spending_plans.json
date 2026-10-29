@@ -272,5 +272,14 @@
     "submit_many": "Añadir {{count}} pagos",
     "submit_other": "Añadir {{count}} pagos",
     "submitNone": "Añadir pagos"
+  },
+  "flow": {
+    "title": "Adónde va el dinero de los planes",
+    "sub": "Gasto de todos los planes de {{year}} por categoría. La parte rayada es lo que queda del importe planificado.",
+    "other": "Otros",
+    "rest": "Queda en los planes",
+    "badgeLeft": "Queda el {{percent}} de los planes",
+    "badgeOver": "Excedido en {{amount}}",
+    "none": "Aún no hay gastos en los planes."
   }
 }

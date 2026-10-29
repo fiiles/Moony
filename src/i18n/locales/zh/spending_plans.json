@@ -226,5 +226,14 @@
     "nothing": "未选择",
     "submit_other": "添加 {{count}} 笔付款",
     "submitNone": "添加付款"
+  },
+  "flow": {
+    "title": "计划资金的去向",
+    "sub": "{{year}} 年所有计划按类别的支出。斜线部分是计划金额的剩余。",
+    "other": "其他",
+    "rest": "计划剩余",
+    "badgeLeft": "计划剩余 {{percent}}",
+    "badgeOver": "超支 {{amount}}",
+    "none": "计划中还没有支出。"
   }
 }

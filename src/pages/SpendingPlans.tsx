@@ -13,6 +13,7 @@ import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { StatSkeleton, Stats } from '@/components/common/Stat';
 import { PlansStats } from '@/components/spending-plans/PlansStats';
+import { PlansFlowCard } from '@/components/spending-plans/PlansFlowCard';
 import { PlansTable } from '@/components/spending-plans/PlansTable';
 import { PlanFormDialog } from '@/components/spending-plans/PlanFormDialog';
 import { TakeOverDialog } from '@/components/spending-plans/TakeOverDialog';
@@ -28,7 +29,8 @@ function yearFromSearch(search: string, fallback: number): number {
 
 /**
  * Výdajové plány (spec §9 "Overview page", prototype): a year's plans — how they are doing and
- * which are over or close to their amount. Four stats, then one table ordered by risk.
+ * which are over or close to their amount. Four stats, where the money goes by category, then
+ * one table ordered by risk.
  */
 export default function SpendingPlans() {
   const { t } = useTranslation('spending_plans');
@@ -163,6 +165,7 @@ export default function SpendingPlans() {
       ) : (
         <>
           <PlansStats overview={overview} rows={rows} />
+          <PlansFlowCard overview={overview} />
           <PlansTable
             year={year}
             rows={rows}

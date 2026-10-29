@@ -20,6 +20,7 @@ import {
   sortPlansByRisk,
   planAxisLabels,
   planMonthLabel,
+  planFlowSegments,
   type PlanStatus,
 } from './spending-plans';
 import { createFormatters } from '@/lib/format';
@@ -405,5 +406,93 @@ describe('plan month labels', () => {
     expect(planMonthLabel('2026-09', 2026, cs)).toBe('září');
     expect(planMonthLabel('2025-12', 2026, cs)).toBe('prosinec 2025');
     expect(planMonthLabel('2026-09', 2026, en)).toBe('September');
+  });
+});
+
+describe('planFlowSegments', () => {
+  const labels = {
+    category: (id: string | null) => (id === null ? 'Bez kategorie' : `cat ${id}`),
+    other: 'Ostatní',
+    rest: 'Zbývá v plánech',
+  };
+  const cat = (categoryId: string | null, spent: string) => ({ categoryId, spent });
+  const brief = (segments: ReturnType<typeof planFlowSegments>) =>
+    segments.map((s) => [s.key, s.label, s.value, s.share, s.kind ?? null]);
+
+  it('shows the four largest categories, then Ostatní, then the hatched rest of the plans', () => {
+    const segments = planFlowSegments(
+      {
+        planned: 1000,
+        spent: 600,
+        categories: [
+          cat('a', '100'),
+          cat('b', '250'),
+          cat('c', '50'),
+          cat('d', '80'),
+          cat('e', '70'),
+          cat('f', '50'),
+        ],
+      },
+      labels
+    );
+    expect(brief(segments)).toEqual([
+      ['cat:b', 'cat b', 250, 0.25, null],
+      ['cat:a', 'cat a', 100, 0.1, null],
+      ['cat:d', 'cat d', 80, 0.08, null],
+      ['cat:e', 'cat e', 70, 0.07, null],
+      ['other', 'Ostatní', 100, 0.1, null],
+      ['rest', 'Zbývá v plánech', 400, 0.4, 'rest'],
+    ]);
+  });
+
+  it('has no Ostatní with four categories or fewer', () => {
+    const segments = planFlowSegments(
+      { planned: 100, spent: 30, categories: [cat('a', '20'), cat('b', '10')] },
+      labels
+    );
+    expect(segments.map((s) => s.key)).toEqual(['cat:a', 'cat:b', 'rest']);
+  });
+
+  it('measures an overspent year against the spend and leaves no rest', () => {
+    const segments = planFlowSegments(
+      { planned: 100, spent: 200, categories: [cat('a', '150'), cat('b', '50')] },
+      labels
+    );
+    expect(brief(segments)).toEqual([
+      ['cat:a', 'cat a', 150, 0.75, null],
+      ['cat:b', 'cat b', 50, 0.25, null],
+    ]);
+  });
+
+  it('leaves no rest when the plans are exactly used up', () => {
+    const segments = planFlowSegments(
+      { planned: 100, spent: 100, categories: [cat('a', '100')] },
+      labels
+    );
+    expect(segments.map((s) => s.key)).toEqual(['cat:a']);
+  });
+
+  it('names payments without a category "Bez kategorie"', () => {
+    const [segment] = planFlowSegments(
+      { planned: 100, spent: 40, categories: [cat(null, '40')] },
+      labels
+    );
+    expect([segment.key, segment.label]).toEqual(['uncategorized', 'Bez kategorie']);
+  });
+
+  it('leaves out categories with zero or negative spend', () => {
+    const segments = planFlowSegments(
+      {
+        planned: 100,
+        spent: 30,
+        categories: [cat('a', '40'), cat('b', '0'), cat('c', '-10'), cat('d', 'x')],
+      },
+      labels
+    );
+    expect(segments.map((s) => s.key)).toEqual(['cat:a', 'rest']);
+  });
+
+  it('is empty when nothing is planned or spent', () => {
+    expect(planFlowSegments({ planned: 0, spent: 0, categories: [] }, labels)).toEqual([]);
   });
 });

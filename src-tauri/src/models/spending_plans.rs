@@ -134,6 +134,10 @@ pub struct SpendingPlansOverview {
     pub fx_quality: ConversionQuality,
     pub plans: Vec<SpendingPlanSummary>,
     pub totals: SpendingPlanTotals,
+    /// The year's spend by category across all plans, in `currency`, largest first. Each plan's
+    /// per-category spend (plan currency, at the booking day) is converted with today's rate;
+    /// plans or payments that cannot be converted are left out and counted in `fx_quality`.
+    pub categories: Vec<SpendingPlanCategory>,
     /// Years that have at least one plan, ascending.
     #[serde(rename = "yearsWithPlans")]
     pub years_with_plans: Vec<i32>,

@@ -272,5 +272,14 @@
     "submit_few": "Přidat {{count}} platby",
     "submit_other": "Přidat {{count}} plateb",
     "submitNone": "Přidat platby"
+  },
+  "flow": {
+    "title": "Kam jdou peníze z plánů",
+    "sub": "Útrata všech plánů roku {{year}} podle kategorií. Šrafovaná část zbývá z plánované částky.",
+    "other": "Ostatní",
+    "rest": "Zbývá v plánech",
+    "badgeLeft": "{{percent}} plánu zbývá",
+    "badgeOver": "Přečerpáno o {{amount}}",
+    "none": "Zatím žádná útrata v plánech."
   }
 }

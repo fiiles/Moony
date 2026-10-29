@@ -110,7 +110,8 @@
     "counterpartyPlaceholder": "p. ej., Mercadona",
     "addDescription": "Añade un movimiento nuevo manualmente.",
     "counterpartyIban": "Número de cuenta / IBAN de la contraparte",
-    "delete": "Eliminar movimiento"
+    "delete": "Eliminar movimiento",
+    "spendingPlan": "Plan de gasto"
   },
   "metrics": {
     "totalBalance": "Saldo total",
@@ -636,7 +637,12 @@
     "subSorted": "Ordenados por la columna elegida · haz clic de nuevo en el encabezado para volver a las fechas",
     "footer_one": "{{count}} movimiento",
     "footer_many": "{{count}} movimientos",
-    "footer_other": "{{count}} movimientos"
+    "footer_other": "{{count}} movimientos",
+    "addToPlan": "Añadir al plan",
+    "closedPlan": "Plan cerrado",
+    "planLabel": "Plan de gasto: {{name}} ({{year}})",
+    "selectPage": "Seleccionar los pagos de esta página",
+    "selectRow": "Seleccionar el pago {{name}}"
   },
   "readiness": {
     "learningScope": "Solo para esta cuenta y este sentido, si lo activas. Coincide con la cuenta completa de la contraparte o, si no hay una cuenta fiable, con este beneficiario.",

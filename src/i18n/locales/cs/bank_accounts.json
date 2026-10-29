@@ -110,7 +110,8 @@
     "counterpartyPlaceholder": "např. Albert",
     "addDescription": "Přidejte novou transakci ručně.",
     "counterpartyIban": "Číslo účtu / IBAN protistrany",
-    "delete": "Smazat transakci"
+    "delete": "Smazat transakci",
+    "spendingPlan": "Výdajový plán"
   },
   "metrics": {
     "totalBalance": "Celkový zůstatek",
@@ -645,7 +646,12 @@
     "subSorted": "Seřazené podle sloupce · dalším kliknutím zpět podle data",
     "footer_one": "{{count}} transakce",
     "footer_few": "{{count}} transakce",
-    "footer_other": "{{count}} transakcí"
+    "footer_other": "{{count}} transakcí",
+    "addToPlan": "Přidat do plánu",
+    "closedPlan": "Uzavřený plán",
+    "planLabel": "Výdajový plán: {{name}} ({{year}})",
+    "selectPage": "Vybrat platby na této stránce",
+    "selectRow": "Vybrat platbu {{name}}"
   },
   "readiness": {
     "learningScope": "Platí pouze pro tento účet a směr. Shoduje se s úplným účtem protistrany, nebo s tímto příjemcem, pokud spolehlivý účet není k dispozici.",

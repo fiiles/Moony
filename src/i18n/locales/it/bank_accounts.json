@@ -110,7 +110,8 @@
     "counterpartyPlaceholder": "es. Esselunga",
     "addDescription": "Aggiungi un nuovo movimento a mano.",
     "counterpartyIban": "Numero di conto / IBAN della controparte",
-    "delete": "Elimina movimento"
+    "delete": "Elimina movimento",
+    "spendingPlan": "Piano di spesa"
   },
   "metrics": {
     "totalBalance": "Saldo totale",
@@ -636,7 +637,12 @@
     "subSorted": "Ordinati per la colonna scelta · clicca di nuovo sull'intestazione per tornare alle date",
     "footer_one": "{{count}} movimento",
     "footer_many": "{{count}} movimenti",
-    "footer_other": "{{count}} movimenti"
+    "footer_other": "{{count}} movimenti",
+    "addToPlan": "Aggiungi al piano",
+    "closedPlan": "Piano chiuso",
+    "planLabel": "Piano di spesa: {{name}} ({{year}})",
+    "selectPage": "Seleziona i pagamenti di questa pagina",
+    "selectRow": "Seleziona il pagamento {{name}}"
   },
   "readiness": {
     "learningScope": "Attivalo solo per questo conto e questa direzione. Corrisponde al conto completo della controparte, oppure a questo beneficiario quando non è disponibile un conto affidabile.",

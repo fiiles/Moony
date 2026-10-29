@@ -110,7 +110,8 @@
     "counterpartyPlaceholder": "e.g. Whole Foods",
     "addDescription": "Add a new transaction manually.",
     "counterpartyIban": "Counterparty account number / IBAN",
-    "delete": "Delete transaction"
+    "delete": "Delete transaction",
+    "spendingPlan": "Spending plan"
   },
   "metrics": {
     "totalBalance": "Total Balance",
@@ -614,7 +615,12 @@
     "subGrouped": "Grouped by day · newest first",
     "subSorted": "Sorted by the chosen column · click the header again to return to dates",
     "footer_one": "{{count}} transaction",
-    "footer_other": "{{count}} transactions"
+    "footer_other": "{{count}} transactions",
+    "addToPlan": "Add to plan",
+    "closedPlan": "Closed plan",
+    "planLabel": "Spending plan: {{name}} ({{year}})",
+    "selectPage": "Select the payments on this page",
+    "selectRow": "Select payment {{name}}"
   },
   "readiness": {
     "learningScope": "Opt in for this account and direction only. Matches the complete counterparty account, or this payee when no reliable account is available.",

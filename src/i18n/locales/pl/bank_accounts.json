@@ -110,7 +110,8 @@
     "counterpartyPlaceholder": "np. Biedronka",
     "addDescription": "Dodaj nową transakcję ręcznie.",
     "counterpartyIban": "Numer konta / IBAN kontrahenta",
-    "delete": "Usuń transakcję"
+    "delete": "Usuń transakcję",
+    "spendingPlan": "Plan wydatków"
   },
   "metrics": {
     "totalBalance": "Saldo łączne",
@@ -658,7 +659,12 @@
     "footer_one": "{{count}} transakcja",
     "footer_few": "{{count}} transakcje",
     "footer_many": "{{count}} transakcji",
-    "footer_other": "{{count}} transakcji"
+    "footer_other": "{{count}} transakcji",
+    "addToPlan": "Dodaj do planu",
+    "closedPlan": "Zamknięty plan",
+    "planLabel": "Plan wydatków: {{name}} ({{year}})",
+    "selectPage": "Zaznacz płatności na tej stronie",
+    "selectRow": "Zaznacz płatność {{name}}"
   },
   "readiness": {
     "learningScope": "Włącz tylko dla tego konta i kierunku. Dopasowuje pełne konto kontrahenta lub tego odbiorcę, gdy nie ma wiarygodnego konta.",

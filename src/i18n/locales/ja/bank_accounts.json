@@ -110,7 +110,8 @@
     "counterpartyPlaceholder": "例：Whole Foods",
     "addDescription": "新しい取引を手動で追加します。",
     "counterpartyIban": "取引相手の口座番号 / IBAN",
-    "delete": "取引を削除"
+    "delete": "取引を削除",
+    "spendingPlan": "支出プラン"
   },
   "metrics": {
     "totalBalance": "残高合計",
@@ -592,7 +593,12 @@
   "ledger": {
     "subGrouped": "日ごとにグループ化 · 新しい順",
     "subSorted": "選択した列で並べ替え · 見出しをもう一度クリックすると日付順に戻ります",
-    "footer_other": "{{count}}件の取引"
+    "footer_other": "{{count}}件の取引",
+    "addToPlan": "プランに追加",
+    "closedPlan": "終了したプラン",
+    "planLabel": "支出プラン：{{name}}（{{year}}）",
+    "selectPage": "このページの支払いを選択",
+    "selectRow": "支払い「{{name}}」を選択"
   },
   "readiness": {
     "learningScope": "この口座と方向のみで有効にします。取引相手の口座全体に一致し、信頼できる口座がない場合はこの支払先に一致します。",

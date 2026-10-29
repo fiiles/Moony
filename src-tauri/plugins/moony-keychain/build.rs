@@ -17,8 +17,10 @@ const COMMANDS: &[&str] = &[
 ];
 
 /// The Touch ID backend's Swift package (`macos/`, see `src/desktop/macos.rs`).
+#[cfg(target_os = "macos")]
 const MACOS_PACKAGE: &str = "MoonyBiometrics";
 /// CryptoKit's first macOS.
+#[cfg(target_os = "macos")]
 const MACOS_MIN_VERSION: &str = "10.15";
 
 fn main() {

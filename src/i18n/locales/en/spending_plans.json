@@ -249,5 +249,14 @@
     "submit_one": "Add {{count}} payment",
     "submit_other": "Add {{count}} payments",
     "submitNone": "Add payments"
+  },
+  "flow": {
+    "title": "Where the plan money goes",
+    "sub": "Spending of all {{year}} plans by category. The hatched part is what is left of the planned amount.",
+    "other": "Other",
+    "rest": "Left in plans",
+    "badgeLeft": "{{percent}} of plans left",
+    "badgeOver": "Over by {{amount}}",
+    "none": "No spending in plans yet."
   }
 }

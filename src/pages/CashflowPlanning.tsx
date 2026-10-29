@@ -18,7 +18,7 @@ import { Card } from '@/components/ui/card';
 import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { FlowBar, type FlowSegment } from '@/components/cashflow/FlowBar';
-import { flowColor } from '@/components/cashflow/flow-colors';
+import { FlowLegend } from '@/components/cashflow/FlowLegend';
 import AddCashflowItemDialog from '@/components/cashflow/AddCashflowItemDialog';
 import { PlanSectionCard } from '@/components/cashflow/PlanSectionCard';
 import { useCashflowPlanningMutations } from '@/hooks/use-cashflow-planning-mutations';
@@ -278,24 +278,11 @@ export default function CashflowPlanning() {
               formatValue={money}
               formatShare={(s) => t('planning.flow.share', { percent: fmt.percent(s, 0) })}
             />
-            <div className="grid grid-cols-3 gap-x-6 gap-y-2">
-              {flow.map((s, i) => (
-                <div
-                  key={s.key}
-                  className="grid grid-cols-[8px_1fr_auto] items-center gap-[10px] border-b border-line-soft py-1.5 text-caption text-ink-2"
-                >
-                  <i
-                    aria-hidden
-                    className="size-2 rounded-[2px] border border-line-strong"
-                    style={{ background: flowColor(i, s.kind) }}
-                  />
-                  <span>{s.label}</span>
-                  <b className="font-650 text-ink num">
-                    {money(s.value)} · {fmt.percent(s.share, 0)}
-                  </b>
-                </div>
-              ))}
-            </div>
+            <FlowLegend
+              segments={flow}
+              formatValue={money}
+              formatShare={(s) => fmt.percent(s, 0)}
+            />
           </div>
         ) : (
           <p className="relative z-[1] mt-4 text-table text-ink-3">{t('planning.flow.none')}</p>

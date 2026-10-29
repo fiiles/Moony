@@ -249,5 +249,14 @@
     "submit_one": "{{count}} Zahlung hinzufügen",
     "submit_other": "{{count}} Zahlungen hinzufügen",
     "submitNone": "Zahlungen hinzufügen"
+  },
+  "flow": {
+    "title": "Wohin das Geld der Pläne fließt",
+    "sub": "Ausgaben aller Pläne {{year}} nach Kategorie. Der schraffierte Teil ist vom geplanten Betrag übrig.",
+    "other": "Sonstige",
+    "rest": "In Plänen übrig",
+    "badgeLeft": "{{percent}} der Pläne übrig",
+    "badgeOver": "Um {{amount}} überschritten",
+    "none": "Noch keine Ausgaben in Plänen."
   }
 }

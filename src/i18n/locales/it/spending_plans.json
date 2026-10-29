@@ -272,5 +272,14 @@
     "submit_many": "Aggiungi {{count}} pagamenti",
     "submit_other": "Aggiungi {{count}} pagamenti",
     "submitNone": "Aggiungi pagamenti"
+  },
+  "flow": {
+    "title": "Dove vanno i soldi dei piani",
+    "sub": "Spesa di tutti i piani del {{year}} per categoria. La parte tratteggiata è ciò che resta dell'importo pianificato.",
+    "other": "Altro",
+    "rest": "Resta nei piani",
+    "badgeLeft": "Resta il {{percent}} dei piani",
+    "badgeOver": "Superato di {{amount}}",
+    "none": "Ancora nessuna spesa nei piani."
   }
 }

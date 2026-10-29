@@ -47,7 +47,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { CategoryIcon } from '@/components/common/CategoryIcon';
+import { CategoryPill } from '@/components/common/CategoryPill';
 import { PlanChip } from '@/components/spending-plans/PlanChip';
 
 const ALL_ACCOUNTS = 'all';
@@ -223,7 +223,9 @@ export function AddPaymentsDialog({ open, onOpenChange, plan }: AddPaymentsDialo
           <Table className="table-fixed border-t-0">
             <TableHeader className="sticky top-0 z-[1]">
               <TableRow>
-                <TableHead className="w-10 pl-[27px] pr-0">
+                {/* 27 px gutter + 16 px checkbox + 8 px air for the focus ring: a table-fixed
+                    column width includes its padding, so w-10 clipped the box */}
+                <TableHead className="w-[51px] pl-[27px] pr-0">
                   <span className="sr-only">{t('addPayments.select')}</span>
                 </TableHead>
                 <TableHead className="w-[76px]">{t('addPayments.date')}</TableHead>
@@ -289,13 +291,7 @@ export function AddPaymentsDialog({ open, onOpenChange, plan }: AddPaymentsDialo
                       </TableCell>
                       <TableCell>
                         {category ? (
-                          <span className="flex min-w-0 items-center gap-1.5 text-caption font-550 text-ink-2">
-                            <CategoryIcon
-                              iconName={category.icon || 'tag'}
-                              className="size-3.5 shrink-0"
-                            />
-                            <span className="truncate">{categoryName(category)}</span>
-                          </span>
+                          <CategoryPill category={category} />
                         ) : (
                           <span className="text-caption text-ink-4">
                             {t('detail.categories.uncategorized')}

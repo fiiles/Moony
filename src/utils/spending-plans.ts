@@ -1,6 +1,7 @@
 import type {
   BankTransaction,
   SpendingPlan,
+  SpendingPlanCategory,
   SpendingPlanDetail,
   SpendingPlanSummary,
 } from '@shared/schema';
@@ -285,6 +286,68 @@ export function planCategoryRows(
     rows.set(key, row);
   }
   return [...rows.values()].sort((a, b) => b.spent - a.spent);
+}
+
+/** A segment of the overview's 100 % bar; fits `FlowSegment` of the cashflow `FlowBar`. */
+export interface PlanFlowSegment {
+  key: string;
+  label: string;
+  value: number;
+  /** Share of the bar, 0–1. */
+  share: number;
+  kind?: 'rest';
+}
+
+/** Categories shown on their own in the overview bar; the others fold into "Ostatní". */
+const FLOW_HEAD = 4;
+
+/**
+ * "Kam jdou peníze z plánů": the year's spend by category across all plans, on a bar where
+ * 100 % is the largest of planned, spent and the positive category spend (report currency).
+ * The four categories with the largest positive spend, "Ostatní" for the rest of the positive
+ * spend, then the hatched remainder while the plans are not used up. Zero or negative
+ * categories (refunds outweighing payments) are left out; since they still lower spent, the
+ * drawn spend is the positive sum, and the remainder is planned minus the larger of the two,
+ * so the segments never add up to more than the bar.
+ */
+export function planFlowSegments(
+  input: {
+    planned: number;
+    spent: number;
+    categories: readonly Pick<SpendingPlanCategory, 'categoryId' | 'spent'>[];
+  },
+  labels: { category: (categoryId: string | null) => string; other: string; rest: string }
+): PlanFlowSegment[] {
+  const positive = input.categories
+    .map((c) => ({ categoryId: c.categoryId, value: parseFloat(c.spent) }))
+    .filter((c) => Number.isFinite(c.value) && c.value > 0)
+    .sort((a, b) => b.value - a.value);
+  const positiveSum = positive.reduce((sum, c) => sum + c.value, 0);
+  const drawn = Math.max(input.spent, positiveSum);
+  const base = Math.max(input.planned, drawn);
+  if (!(base > 0)) return [];
+  const segments: PlanFlowSegment[] = positive.slice(0, FLOW_HEAD).map((c) => ({
+    key: c.categoryId === null ? 'uncategorized' : `cat:${c.categoryId}`,
+    label: labels.category(c.categoryId),
+    value: c.value,
+    share: c.value / base,
+  }));
+  const tail = positive.slice(FLOW_HEAD);
+  if (tail.length > 0) {
+    const value = tail.reduce((sum, c) => sum + c.value, 0);
+    segments.push({ key: 'other', label: labels.other, value, share: value / base });
+  }
+  const left = input.planned - drawn;
+  if (left > 0) {
+    segments.push({
+      key: 'rest',
+      label: labels.rest,
+      value: left,
+      share: left / base,
+      kind: 'rest',
+    });
+  }
+  return segments;
 }
 
 /**

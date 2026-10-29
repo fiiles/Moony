@@ -295,5 +295,14 @@
     "submit_many": "Dodaj {{count}} płatności",
     "submit_other": "Dodaj {{count}} płatności",
     "submitNone": "Dodaj płatności"
+  },
+  "flow": {
+    "title": "Dokąd trafiają pieniądze z planów",
+    "sub": "Wydatki wszystkich planów na {{year}} wg kategorii. Zakreskowana część to, co zostało z zaplanowanej kwoty.",
+    "other": "Inne",
+    "rest": "Zostaje w planach",
+    "badgeLeft": "Zostaje {{percent}} planów",
+    "badgeOver": "Przekroczono o {{amount}}",
+    "none": "Brak wydatków w planach."
   }
 }

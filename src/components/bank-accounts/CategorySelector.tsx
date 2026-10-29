@@ -48,6 +48,7 @@ import type { ChangedRow, RecategorizationPreview, TransactionCategory } from '@
 import { useTranslation } from 'react-i18next';
 
 import { CategoryIcon } from '@/components/common/CategoryIcon';
+import { CategoryPillButton } from '@/components/common/CategoryPill';
 import { CategoryFormDialog } from '@/components/categories/CategoryFormDialog';
 import { useCategoryName } from '@/hooks/use-categories';
 import type { NamedCategory } from '@/utils/category-name';
@@ -353,15 +354,11 @@ export function CategorySelector({
         return (
           <Popover open={open} onOpenChange={setOpen}>
             <PopoverTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-xs font-medium justify-start gap-1.5 hover:bg-well"
+              {/* The same pill as the ledger's plan chip */}
+              <CategoryPillButton
+                category={{ ...currentCategory, icon: currentCategory.iconName }}
                 disabled={disabled || isSaving}
-              >
-                <CategoryIcon iconName={currentCategory.iconName} className="h-3.5 w-3.5" />
-                <span className="truncate">{categoryName(currentCategory)}</span>
-              </Button>
+              />
             </PopoverTrigger>
             <PopoverContent className={PICKER_POPOVER} align="start" collisionPadding={8}>
               <CategoryCommandList

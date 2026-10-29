@@ -5,9 +5,7 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { PlanChip } from '@/components/spending-plans/PlanChip';
 import { PlanPicker } from '@/components/spending-plans/PlanPicker';
-
-const PILL =
-  'inline-flex h-[26px] max-w-full items-center gap-1.5 rounded-[13px] border bg-paper px-[9px] text-micro font-650 transition-[color,border-color,opacity] duration-fast hover:border-line-hover hover:text-ink focus-visible:outline-none focus-visible:border-focus focus-visible:shadow-focus';
+import { PILL, PILL_INTERACTIVE } from '@/components/common/CategoryPill';
 
 interface LedgerPlanCellProps {
   transactionId: string;
@@ -46,6 +44,7 @@ export function LedgerPlanCell({ transactionId, planId, plan, loading }: LedgerP
             type="button"
             className={cn(
               PILL,
+              PILL_INTERACTIVE,
               'border-dashed border-line-strong text-ink-4 opacity-0 group-hover/row:opacity-100 group-focus-within/row:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100'
             )}
           >
@@ -64,7 +63,12 @@ export function LedgerPlanCell({ transactionId, planId, plan, loading }: LedgerP
       type="button"
       aria-label={closed ? `${label} · ${t('ledger.closedPlan')}` : label}
       title={closed ? undefined : label}
-      className={cn(PILL, 'border-line-strong', closed ? 'text-ink-3' : 'text-ink-2')}
+      className={cn(
+        PILL,
+        PILL_INTERACTIVE,
+        'border-line-strong',
+        closed ? 'text-ink-3' : 'text-ink-2'
+      )}
     >
       <PlanChip plan={plan} size="sm" className="-ml-[5px]" />
       <span className="truncate">{plan.name}</span>

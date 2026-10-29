@@ -148,7 +148,8 @@ export function TakeOverDialog({ open, onOpenChange, fromYear, toYear }: TakeOve
           <Table containerClassName="min-h-0 flex-1">
             <TableHeader>
               <TableRow>
-                <TableHead className="w-8">
+                {/* 14 px padding + 16 px checkbox + 10 px air for the focus ring */}
+                <TableHead className="w-10 pr-0">
                   <span className="sr-only">{t('takeOver.plan')}</span>
                 </TableHead>
                 <TableHead>{t('takeOver.plan')}</TableHead>

@@ -226,5 +226,14 @@
     "nothing": "選択なし",
     "submit_other": "支払い{{count}}件を追加",
     "submitNone": "支払いを追加"
+  },
+  "flow": {
+    "title": "プランのお金の使い道",
+    "sub": "{{year}}年の全プランのカテゴリ別支出。斜線部分は計画額の残りです。",
+    "other": "その他",
+    "rest": "プランの残り",
+    "badgeLeft": "プランの{{percent}}が残っています",
+    "badgeOver": "{{amount}}超過",
+    "none": "プランの支出はまだありません。"
   }
 }

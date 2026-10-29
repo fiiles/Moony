@@ -249,5 +249,14 @@
     "submit_one": "Legg til {{count}} betaling",
     "submit_other": "Legg til {{count}} betalinger",
     "submitNone": "Legg til betalinger"
+  },
+  "flow": {
+    "title": "Hvor pengene i planene går",
+    "sub": "Forbruk i alle planer for {{year}} per kategori. Den skraverte delen er det som er igjen av det planlagte beløpet.",
+    "other": "Annet",
+    "rest": "Igjen i planene",
+    "badgeLeft": "{{percent}} av planene igjen",
+    "badgeOver": "Overskredet med {{amount}}",
+    "none": "Ingen forbruk i planene ennå."
   }
 }

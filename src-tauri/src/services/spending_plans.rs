@@ -313,11 +313,12 @@ fn plans_where(
     Ok(rows.collect::<rusqlite::Result<_>>()?)
 }
 
-fn summaries(
+/// Each plan's summary, its conversion quality and its booked payments in the plan currency.
+fn summaries<'a>(
     conn: &Connection,
     plans: Vec<SpendingPlan>,
-    payments: &[Payment],
-) -> Result<Vec<(SpendingPlanSummary, fx::Quality)>> {
+    payments: &'a [Payment],
+) -> Result<Vec<(SpendingPlanSummary, fx::Quality, Vec<Converted<'a>>)>> {
     let history = history_for(conn, payments)?;
     let mut by_plan: HashMap<&str, Vec<&Payment>> = HashMap::new();
     for p in payments {
@@ -327,8 +328,7 @@ fn summaries(
         .into_iter()
         .map(|plan| {
             let own = by_plan.get(plan.id.as_str()).map_or(&[][..], Vec::as_slice);
-            let (summary, quality, _) = summarize(plan, own, &history);
-            (summary, quality)
+            summarize(plan, own, &history)
         })
         .collect())
 }
@@ -339,8 +339,44 @@ pub fn plan_index(conn: &Connection) -> Result<Vec<SpendingPlanSummary>> {
     let payments = load_payments(conn, "1 = 1", &[])?;
     Ok(summaries(conn, plans, &payments)?
         .into_iter()
-        .map(|(summary, _)| summary)
+        .map(|(summary, _, _)| summary)
         .collect())
+}
+
+/// (sum, count) per category of converted payments.
+fn sum_by_category(converted: &[Converted]) -> HashMap<Option<String>, (f64, i64)> {
+    let mut sums: HashMap<Option<String>, (f64, i64)> = HashMap::new();
+    for c in converted {
+        let entry = sums.entry(c.payment.category_id.clone()).or_default();
+        entry.0 += c.amount;
+        entry.1 += 1;
+    }
+    sums
+}
+
+/// Category rows in `currency`, largest spend first (then more payments, then by id).
+fn category_rows(
+    sums: HashMap<Option<String>, (f64, i64)>,
+    currency: &str,
+) -> Vec<SpendingPlanCategory> {
+    let mut rows: Vec<(f64, SpendingPlanCategory)> = sums
+        .into_iter()
+        .map(|(category_id, (sum, count))| {
+            let category = SpendingPlanCategory {
+                category_id,
+                spent: money_in_currency(sum, currency),
+                count,
+            };
+            (sum, category)
+        })
+        .collect();
+    rows.sort_by(|(a_sum, a), (b_sum, b)| {
+        b_sum
+            .total_cmp(a_sum)
+            .then(b.count.cmp(&a.count))
+            .then_with(|| a.category_id.cmp(&b.category_id))
+    });
+    rows.into_iter().map(|(_, c)| c).collect()
 }
 
 /// Sum of values still convertible; `None` when `attempted > 0` and nothing contributed.
@@ -387,7 +423,8 @@ pub fn overview(
 
     let mut quality = fx::Quality::default();
     let (mut planned, mut spent, mut remaining) = (Total::new(), Total::new(), Total::new());
-    for (s, plan_quality) in &summaries {
+    let mut categories: HashMap<Option<String>, (f64, i64)> = HashMap::new();
+    for (s, plan_quality, converted) in &summaries {
         let to_report = |amount: f64, quality: &mut fx::Quality| {
             let result = quotes.convert(amount, &s.plan.currency, &report);
             quality.track_conversion(quotes, &s.plan.currency, &report, result)
@@ -417,6 +454,13 @@ pub fn overview(
                 .and_then(|(a, v)| to_report(a - v, &mut quality));
             remaining.add(left);
         }
+        for (category_id, (sum, count)) in sum_by_category(converted) {
+            if let Some(v) = to_report(sum, &mut quality) {
+                let entry = categories.entry(category_id).or_default();
+                entry.0 += v;
+                entry.1 += count;
+            }
+        }
     }
 
     let mut years_stmt = conn.prepare("SELECT DISTINCT year FROM spending_plans ORDER BY year")?;
@@ -431,9 +475,10 @@ pub fn overview(
             spent: spent.money(&report),
             remaining_active: remaining.money(&report),
         },
+        categories: category_rows(categories, &report),
         currency: report,
         fx_quality: ConversionQuality::from(&quality),
-        plans: summaries.into_iter().map(|(s, _)| s).collect(),
+        plans: summaries.into_iter().map(|(s, _, _)| s).collect(),
         years_with_plans,
     })
 }
@@ -454,38 +499,18 @@ pub fn detail(conn: &Connection, id: &str) -> Result<SpendingPlanDetail> {
     let refs: Vec<&Payment> = payments.iter().collect();
     let (summary, _, converted) = summarize(plan, &refs, &history);
 
-    // (sum, count) per month, category and both.
+    // (sum, count) per month and per month x category; categories alone below.
     let mut months: BTreeMap<String, f64> = BTreeMap::new();
-    let mut categories: HashMap<Option<String>, (f64, i64)> = HashMap::new();
     let mut cells: BTreeMap<(String, Option<String>), (f64, i64)> = BTreeMap::new();
     for c in &converted {
         let month = month_key(c.payment.booking_date);
-        let category = c.payment.category_id.clone();
         *months.entry(month.clone()).or_default() += c.amount;
-        let entry = categories.entry(category.clone()).or_default();
-        entry.0 += c.amount;
-        entry.1 += 1;
-        let cell = cells.entry((month, category)).or_default();
+        let cell = cells
+            .entry((month, c.payment.category_id.clone()))
+            .or_default();
         cell.0 += c.amount;
         cell.1 += 1;
     }
-    let mut categories: Vec<(f64, SpendingPlanCategory)> = categories
-        .into_iter()
-        .map(|(category_id, (sum, count))| {
-            let category = SpendingPlanCategory {
-                category_id,
-                spent: money_in_currency(sum, &currency),
-                count,
-            };
-            (sum, category)
-        })
-        .collect();
-    categories.sort_by(|(a_sum, a), (b_sum, b)| {
-        b_sum
-            .total_cmp(a_sum)
-            .then(b.count.cmp(&a.count))
-            .then_with(|| a.category_id.cmp(&b.category_id))
-    });
 
     let accounts: HashSet<&str> = payments.iter().map(|p| p.account_id.as_str()).collect();
     Ok(SpendingPlanDetail {
@@ -497,7 +522,7 @@ pub fn detail(conn: &Connection, id: &str) -> Result<SpendingPlanDetail> {
                 spent: money_in_currency(sum, &currency),
             })
             .collect(),
-        categories: categories.into_iter().map(|(_, c)| c).collect(),
+        categories: category_rows(sum_by_category(&converted), &currency),
         cells: cells
             .into_iter()
             .map(|((month, category_id), (sum, count))| SpendingPlanCell {
@@ -1313,6 +1338,90 @@ mod tests {
         assert_eq!(o.totals.planned.as_deref(), Some("1000.00"));
         assert_eq!(o.totals.spent, None);
         assert_eq!(o.totals.remaining_active, None);
+        assert_eq!(o.fx_quality.missing_currencies, ["XYZ"]);
+    }
+
+    fn overview_categories(o: &SpendingPlansOverview) -> Vec<(Option<&str>, &str, i64)> {
+        o.categories
+            .iter()
+            .map(|c| (c.category_id.as_deref(), c.spent.as_str(), c.count))
+            .collect()
+    }
+
+    #[test]
+    fn overview_categories_sum_plans_in_report_currency() {
+        let conn = setup_test_db();
+        let czk = create_plan(&conn, &plan_in("Byt", 2026, "10000", "CZK")).unwrap();
+        let eur = create_plan(&conn, &plan_in("Dovolená", 2026, "100", "EUR")).unwrap();
+        let d = ts(2026, 2, 2);
+        let in_czk = |id, amount, cat| Pay {
+            currency: "CZK",
+            category: cat,
+            ..pay(id, Some(&czk.id), amount, d)
+        };
+        let in_eur = |id, amount, cat| Pay {
+            category: cat,
+            ..pay(id, Some(&eur.id), amount, d)
+        };
+        put(&conn, in_czk("t1", "2000", Some("food")));
+        put(&conn, in_czk("t2", "500", None));
+        put(&conn, in_eur("t3", "40", Some("food")));
+        put(&conn, in_eur("t4", "10", Some("fun")));
+        put(
+            &conn,
+            Pay {
+                status: "pending",
+                ..in_eur("t5", "999", Some("fun"))
+            },
+        );
+        let o = overview(&conn, 2026, "CZK", &czk_quotes()).unwrap();
+        // food 2000 + 40 EUR * 25; uncategorized 500; fun 10 EUR * 25; pending left out
+        assert_eq!(
+            overview_categories(&o),
+            [
+                (Some("food"), "3000.00", 2),
+                (None, "500.00", 1),
+                (Some("fun"), "250.00", 1)
+            ]
+        );
+        assert!(o.fx_quality.missing_currencies.is_empty());
+    }
+
+    #[test]
+    fn overview_categories_leave_missing_rates_out() {
+        let conn = setup_test_db();
+        let czk = create_plan(&conn, &plan_in("Byt", 2026, "10000", "CZK")).unwrap();
+        let xyz = create_plan(&conn, &plan_in("Exotika", 2026, "500", "XYZ")).unwrap();
+        let d = ts(2026, 2, 2);
+        rate(&conn, d, "CZK", 25.0);
+        put(
+            &conn,
+            Pay {
+                currency: "CZK",
+                category: Some("food"),
+                ..pay("t1", Some(&czk.id), "1000", d)
+            },
+        );
+        // No rate for XYZ on its day: out of the CZK plan's spend.
+        put(
+            &conn,
+            Pay {
+                currency: "XYZ",
+                category: Some("food"),
+                ..pay("t2", Some(&czk.id), "5", d)
+            },
+        );
+        // No current quote for XYZ: the whole plan is out of the report.
+        put(
+            &conn,
+            Pay {
+                currency: "XYZ",
+                category: Some("fun"),
+                ..pay("t3", Some(&xyz.id), "7", d)
+            },
+        );
+        let o = overview(&conn, 2026, "CZK", &czk_quotes()).unwrap();
+        assert_eq!(overview_categories(&o), [(Some("food"), "1000.00", 1)]);
         assert_eq!(o.fx_quality.missing_currencies, ["XYZ"]);
     }
 

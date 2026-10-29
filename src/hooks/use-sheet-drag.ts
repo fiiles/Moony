@@ -1,5 +1,10 @@
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import { sheetDragCommits, sheetDragDirection, sheetDragOffset } from '@/lib/sheet-drag';
+import {
+  releaseVelocity,
+  sheetDragCommits,
+  sheetDragDirection,
+  sheetDragOffset,
+} from '@/lib/sheet-drag';
 
 /** The slide away after a committed drag, and the settle back after one let go too early. */
 const SETTLE_MS = 200;
@@ -71,20 +76,29 @@ export function useSheetDrag(sheet: HTMLElement | null, onClose: () => void, ena
       };
     };
 
+    // An interrupted drag (a second finger, a cancelled touch) settles back and never closes
+    const cancel = () => {
+      const was = drag;
+      drag = null;
+      if (was?.active) place(0, true);
+    };
+
     const onMove = (event: TouchEvent) => {
       if (!drag) return;
+      if (event.touches.length > 1) return cancel();
       const touch = event.touches[0];
       const dy = touch.clientY - drag.y;
       if (!drag.active) {
         const direction = sheetDragDirection(touch.clientX - drag.x, dy);
         if (direction === null) return;
-        if (direction === 'none') {
+        // Sideways, or the page is already scrolling (the move can no longer be held back)
+        if (direction === 'none' || !event.cancelable) {
           drag = null;
           return;
         }
         drag.active = true;
       }
-      event.preventDefault();
+      if (event.cancelable) event.preventDefault();
       const elapsed = event.timeStamp - drag.lastT;
       if (elapsed > 0) drag.velocity = (touch.clientY - drag.lastY) / elapsed;
       drag.lastY = touch.clientY;
@@ -93,12 +107,14 @@ export function useSheetDrag(sheet: HTMLElement | null, onClose: () => void, ena
       place(sheetDragOffset(dy), false);
     };
 
-    const onEnd = () => {
+    const onEnd = (event: TouchEvent) => {
+      if (event.touches.length > 0) return cancel();
       const done = drag;
       drag = null;
       if (!done?.active) return;
       const height = sheet.getBoundingClientRect().height;
-      if (sheetDragCommits(done.dy, done.velocity, height)) {
+      const velocity = releaseVelocity(done.velocity, done.lastT, event.timeStamp);
+      if (sheetDragCommits(done.dy, velocity, height)) {
         place(height, true);
         timer = window.setTimeout(
           () => {
@@ -106,13 +122,11 @@ export function useSheetDrag(sheet: HTMLElement | null, onClose: () => void, ena
             // It has left already: closing must not play the slide out again from the top
             sheet.style.animation = 'none';
             close.current();
-            // A sheet that refuses to close (it is saving) comes back up
+            // A sheet that refuses to close (it is saving) comes back up. Its rise is not
+            // played again: the animation stays off while it is open.
             timer = window.setTimeout(() => {
               timer = null;
-              if (sheet.isConnected && sheet.dataset.state !== 'closed') {
-                sheet.style.animation = '';
-                place(0, true);
-              }
+              if (sheet.isConnected && sheet.dataset.state !== 'closed') place(0, true);
             }, 60);
           },
           reduced ? 0 : SETTLE_MS
@@ -125,12 +139,12 @@ export function useSheetDrag(sheet: HTMLElement | null, onClose: () => void, ena
     sheet.addEventListener('touchstart', onStart, { passive: true });
     sheet.addEventListener('touchmove', onMove, { passive: false });
     sheet.addEventListener('touchend', onEnd);
-    sheet.addEventListener('touchcancel', onEnd);
+    sheet.addEventListener('touchcancel', cancel);
     return () => {
       sheet.removeEventListener('touchstart', onStart);
       sheet.removeEventListener('touchmove', onMove);
       sheet.removeEventListener('touchend', onEnd);
-      sheet.removeEventListener('touchcancel', onEnd);
+      sheet.removeEventListener('touchcancel', cancel);
       if (timer !== null) window.clearTimeout(timer);
     };
   }, [sheet, enabled]);

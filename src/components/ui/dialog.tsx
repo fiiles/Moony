@@ -138,8 +138,9 @@ const DialogContent = React.forwardRef<
     const opener = React.useRef<HTMLElement | null>(null);
     const [sheet, setSheet] = React.useState<HTMLDivElement | null>(null);
     const closeRef = React.useRef<HTMLButtonElement>(null);
-    // A drag down closes the phone sheet as its X would (the X is hidden there)
-    useSheetDrag(sheet, () => closeRef.current?.click(), PHONE);
+    // A drag down closes the phone sheet as its X would (the X is hidden there); not while the
+    // dialog withholds its X (it is busy)
+    useSheetDrag(sheet, () => closeRef.current?.click(), PHONE && !hideCloseButton);
     const setRefs = React.useCallback(
       (node: HTMLDivElement | null) => {
         setSheet(node);
@@ -160,7 +161,7 @@ const DialogContent = React.forwardRef<
             // to 93 %, scrolling as one with its head and footer held at the edges. Last, so it
             // wins over a desktop width, height or centring the dialog asks for.
             PHONE &&
-              'absolute inset-x-0 bottom-0 left-0 top-auto w-full max-w-none translate-x-0 translate-y-0 max-h-[93%] overflow-y-auto overscroll-contain rounded-b-none rounded-t-r5 border-x-0 border-b-0 border-line px-4 pb-0 pt-0 outline-none data-[state=open]:animate-sheet-in data-[state=closed]:animate-sheet-out motion-reduce:animate-none'
+              'absolute inset-x-0 bottom-0 left-0 top-auto w-full max-w-none sm:max-w-none md:max-w-none lg:max-w-none translate-x-0 translate-y-0 max-h-[93%] overflow-y-auto overscroll-contain rounded-b-none rounded-t-r5 border-x-0 border-b-0 border-line px-4 pb-0 pt-0 outline-none data-[state=open]:animate-sheet-in data-[state=closed]:animate-sheet-out motion-reduce:animate-none'
           )}
           // `index.css` lines the desktop form up with the phone's fields inside it
           data-phone-sheet={PHONE ? '' : undefined}

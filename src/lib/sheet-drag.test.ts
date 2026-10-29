@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { sheetDragCommits, sheetDragDirection, sheetDragOffset } from './sheet-drag';
+import {
+  releaseVelocity,
+  sheetDragCommits,
+  sheetDragDirection,
+  sheetDragOffset,
+} from './sheet-drag';
 
 describe('sheetDragDirection', () => {
   it('waits until the finger has moved past the slop', () => {
@@ -41,5 +46,15 @@ describe('sheetDragCommits', () => {
 
   it('stays when the finger ends moving up again', () => {
     expect(sheetDragCommits(300, -0.3, 600)).toBe(false);
+  });
+});
+
+describe('releaseVelocity', () => {
+  it('keeps the last move velocity for a finger that lifts while moving', () => {
+    expect(releaseVelocity(0.8, 1_000, 1_030)).toBe(0.8);
+  });
+
+  it('drops it for a finger that rested before lifting', () => {
+    expect(releaseVelocity(0.8, 1_000, 1_300)).toBe(0);
   });
 });

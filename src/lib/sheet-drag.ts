@@ -36,3 +36,11 @@ export function sheetDragCommits(dy: number, velocity: number, height: number): 
   if (dy > height * COMMIT_SHARE) return true;
   return velocity >= FLICK_VELOCITY && dy >= FLICK_MIN_PX;
 }
+
+/** A finger that rested this long before lifting has no flick left. */
+const STILL_MS = 80;
+
+/** The velocity a release counts with: the last move's, or none when the finger rested since. */
+export function releaseVelocity(velocity: number, lastMoveT: number, releaseT: number): number {
+  return releaseT - lastMoveT > STILL_MS ? 0 : velocity;
+}

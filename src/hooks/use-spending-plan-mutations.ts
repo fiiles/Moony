@@ -93,6 +93,12 @@ export function useSpendingPlanMutations() {
   const deletePlan = useMutation({
     mutationFn: (plan: Pick<SpendingPlan, 'id' | 'name'>) => spendingPlansApi.remove(plan.id),
     onSuccess: async (_: void, plan) => {
+      // Dropped, not refetched: the detail stays mounted until the caller navigates away, and
+      // refetching the deleted plan would flash "Plán nenalezen" and log NotFound errors
+      for (const key of ['spending-plan', 'spending-plan-transactions']) {
+        await client.cancelQueries({ queryKey: [key, plan.id] });
+        client.removeQueries({ queryKey: [key, plan.id] });
+      }
       await refresh();
       toast.success(t('toast.deleted', { name: plan.name }));
     },

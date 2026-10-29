@@ -64,6 +64,7 @@ pub mod real_estate;
 pub mod real_estate_photos;
 pub mod received_files;
 pub mod session_key;
+pub mod spending_plans;
 pub mod statement_import;
 pub mod stock_import;
 pub mod stock_monitor;

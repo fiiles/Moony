@@ -433,6 +433,18 @@ async fn run_app() {
             commands::budgeting::get_latest_transaction_date,
             commands::budgeting::upsert_budget_goal,
             commands::budgeting::delete_budget_goal,
+            // Spending plan commands
+            commands::spending_plans::get_spending_plan_index,
+            commands::spending_plans::get_spending_plans_overview,
+            commands::spending_plans::get_spending_plan_detail,
+            commands::spending_plans::get_spending_plan_transactions,
+            commands::spending_plans::search_plan_candidate_transactions,
+            commands::spending_plans::create_spending_plan,
+            commands::spending_plans::create_spending_plans,
+            commands::spending_plans::update_spending_plan,
+            commands::spending_plans::set_spending_plan_closed,
+            commands::spending_plans::delete_spending_plan,
+            commands::spending_plans::set_transaction_spending_plans,
             // Projection commands
             commands::projection::get_projection_settings,
             commands::projection::save_projection_settings,

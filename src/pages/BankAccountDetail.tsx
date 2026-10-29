@@ -203,7 +203,7 @@ function BankAccountDetailPage() {
     }));
   const clearSelection = () => setSelection({ scope: selectionScope, ids: new Set() });
   // Every plan of every year: the ledger's plan chips (name, icon, closed)
-  const { data: planIndex } = useSpendingPlanIndex();
+  const { data: planIndex, isPending: planIndexLoading } = useSpendingPlanIndex();
   const planById = useMemo(
     () => new Map((planIndex ?? []).map((summary) => [summary.plan.id, summary.plan])),
     [planIndex]
@@ -1176,6 +1176,7 @@ function BankAccountDetailPage() {
                               transactionId={tx.id}
                               planId={tx.spendingPlanId}
                               plan={tx.spendingPlanId ? planById.get(tx.spendingPlanId) : undefined}
+                              loading={planIndexLoading}
                             />
                           </TableCell>
                           <TableCell

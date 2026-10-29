@@ -13,8 +13,10 @@ interface LedgerPlanCellProps {
   transactionId: string;
   /** The payment's plan id now. */
   planId: string | null;
-  /** That plan from the plan index; undefined while the index loads. */
+  /** That plan from the plan index; undefined while the index loads or when it failed. */
   plan: SpendingPlan | undefined;
+  /** The plan index has not answered yet. */
+  loading: boolean;
 }
 
 /**
@@ -23,10 +25,11 @@ interface LedgerPlanCellProps {
  * plan picker for the row. A closed plan's chip stays, with the tooltip "Uzavřený plán"
  * (spec C5); the picker then offers the active plans and "Odebrat z plánu".
  */
-export function LedgerPlanCell({ transactionId, planId, plan }: LedgerPlanCellProps) {
+export function LedgerPlanCell({ transactionId, planId, plan, loading }: LedgerPlanCellProps) {
   const { t } = useTranslation('bank_accounts');
 
-  if (planId !== null && !plan) {
+  // A failed index falls through to "Přidat do plánu"; its picker still offers "Odebrat z plánu"
+  if (planId !== null && !plan && loading) {
     return <span className="skeleton block h-[26px] w-24 rounded-[13px]" aria-hidden />;
   }
 

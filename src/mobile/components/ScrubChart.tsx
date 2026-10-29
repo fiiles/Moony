@@ -24,8 +24,6 @@ import { ChartTip, FloatingTip } from '@/components/charts/ChartTip';
 import { AXIS_WIDTH, TimeAxis } from '@/components/charts/ChartAxis';
 import { EventMark } from '@/components/charts/EventMarkers';
 import type { LinePoint, LineTip } from '@/components/charts/MoonyLineChart';
-import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
-import { MASK } from '@/mobile/lib/hide-amounts';
 import { selectionTick } from '@/mobile/lib/haptics';
 import type { CostPoint } from '@/mobile/lib/position-series';
 import { nearestPoint, splitProjected, stepValueAt, toPlotX, toPlotY } from '@/mobile/lib/scrub';
@@ -106,7 +104,6 @@ export function ScrubChart<E extends ChartEvent>({
   className,
 }: ScrubChartProps<E>) {
   const fmt = useFormat();
-  const { hidden } = useHideAmounts();
   const tk = useChartTokens();
   const gradientId = useId().replace(/:/g, '');
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -165,16 +162,10 @@ export function ScrubChart<E extends ChartEvent>({
     }));
   }, [events, t0, t1, plotWidth, points, step, domain, plotHeight]);
 
-  // The value axis tells the size of the line: with amounts hidden every tick is the mask (even
-  // a compact "4,2 mil." would give the magnitude away).
   const tickFormatter = useCallback(
-    (v: number) => {
-      if (hidden) return MASK;
-      return formatTick
-        ? formatTick(v)
-        : fmt.number(v, { notation: 'compact', maximumFractionDigits: 1 });
-    },
-    [fmt, formatTick, hidden]
+    (v: number) =>
+      formatTick ? formatTick(v) : fmt.number(v, { notation: 'compact', maximumFractionDigits: 1 }),
+    [fmt, formatTick]
   );
 
   // A tap anywhere outside the marks closes the callout.

@@ -74,7 +74,7 @@ const WHOLE = { decimals: 0 } as const;
  * watched) shows the same segment — without the hero, the stats and the prices line — opened on
  * Pozice, whose empty state adds the first position, while Sledované holds the search that starts
  * a watch: the search is the only way to a watch detail. The numbers are the desktop's (the same
- * queries), in the report currency; every amount goes through the eye of Přehled. The list holds
+ * queries), in the report currency; the list holds
  * the open positions; the closed ones are the sheet Uzavřené pozice in the `···` menu, and Export
  * there hands the transactions' CSV to the Files picker. Importovat CSV opens the desktop's broker
  * import wizard as it is (the same file picker, broker detection, review and split decisions), and

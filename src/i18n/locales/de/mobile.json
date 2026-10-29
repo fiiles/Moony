@@ -15,8 +15,6 @@
     "reason": "Moony entsperren"
   },
   "overview": {
-    "hideAmounts": "Beträge ausblenden",
-    "showAmounts": "Beträge einblenden",
     "change": {
       "30D": "in 30 Tagen",
       "90D": "in 3 Monaten",
@@ -58,8 +56,7 @@
       "change": "Kategorie ändern"
     },
     "limitSheet": {
-      "pick": "Wählen Sie die Kategorie, deren Ausgaben Sie im Blick behalten möchten.",
-      "current": "Aktuelles Limit: {{amount}}"
+      "pick": "Wählen Sie die Kategorie, deren Ausgaben Sie im Blick behalten möchten."
     },
     "budgets": {
       "ended": "beendet",
@@ -96,10 +93,12 @@
   },
   "recordBalances": {
     "title": "Salden erfassen",
-    "lead": "Geben Sie den aktuellen Saldo jedes Kontos ein. Das Datum ist heute.",
+    "lead": "Geben Sie den Kontostand jedes Kontos zum unten genannten Tag ein.",
     "save": "Erfassen",
     "saved": "Salden erfasst",
-    "negative": "Negativer Wert"
+    "negative": "Negativer Wert",
+    "date": "Stand am",
+    "dateInFuture": "Ein Kontostand kann nicht in der Zukunft liegen"
   },
   "biometrics": {
     "titleFace": "Moony mit dem Gesicht entsperren?",
@@ -506,7 +505,9 @@
       "noUpcoming": "Im kommenden Jahr ist kein Kupon und keine Fälligkeit fällig.",
       "allRepaid": "Alle Emissionen sind getilgt. Aktivieren Sie im Menü ··· „{{action}}“, um sie zu sehen.",
       "loadFailed": "Die Anleihen konnten nicht geladen werden.",
-      "rateNote": "{{rate}} p. a. gewichtet"
+      "rateNote": "{{rate}} p. a. gewichtet",
+      "nextPayment": "Nächste Zahlung",
+      "notGiven": "nicht angegeben"
     },
     "otherAssets": {
       "count_one": "{{count}} Posten",
@@ -628,7 +629,7 @@
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "keine Telemetrie",
     "security": {
-      "lead": "Entsperren, Sperre im Hintergrund und Ausblenden von Beträgen auf diesem Telefon.",
+      "lead": "Entsperren und Sperre im Hintergrund auf diesem Telefon.",
       "biometrics": "Mit {{methodKey}} entsperren",
       "methodFace": "dem Gesicht",
       "methodTouch": "dem Fingerabdruck",
@@ -642,10 +643,7 @@
       "optionMinutes": "{{count}} Min.",
       "lockNow": "sofort sperren",
       "lockAfter_one": "Sperre nach {{count}} Minute",
-      "lockAfter_other": "Sperre nach {{count}} Minuten",
-      "hideOnLaunch": "Beträge beim Start ausblenden",
-      "hideOnLaunchHint": "Jeder Start beginnt mit ausgeblendeten Beträgen; das Auge in der Übersicht blendet sie wieder ein.",
-      "hideOnLaunchShort": "Beträge beim Start ausgeblendet"
+      "lockAfter_other": "Sperre nach {{count}} Minuten"
     },
     "password": {
       "title": "Passwort ändern",

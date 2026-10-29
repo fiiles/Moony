@@ -71,7 +71,7 @@ function tickerOf(param: string | undefined): string {
  * its line over the phone's five periods and the target as the hero's dashed line, then Nastavit
  * cíl (or Sledovat for a ticker that is not followed yet) beside Koupit, three stats — today, the
  * target, since the stock was followed — the notes and the key data. Every price here is Yahoo's
- * public number, so it stays visible while amounts are hidden; the numbers are the desktop
+ * public number; the numbers are the desktop
  * detail's (the same queries and helpers). A ticker Yahoo knows nothing about says so instead of
  * showing a blank page, and a followed one can still be unfollowed from `···`.
  */

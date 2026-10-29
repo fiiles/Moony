@@ -11,9 +11,7 @@ import {
   dateOrderOf,
   dayMonthOrder,
   mappingFromInferred,
-  maskedSample,
   parseSampleDate,
-  readsAsAmount,
   recognitionStart,
   recognizedFields,
   selectedOption,
@@ -430,19 +428,6 @@ describe('columnOptions', () => {
       expect(list.filter((o) => o.kind === 'pair')).toHaveLength(1);
     });
 
-    it('marks every numeric column as a possible amount, and nothing that is a date or text', () => {
-      const money = (list: ReturnType<typeof columnOptions>) =>
-        list.filter((o) => o.money).map((o) => o.label);
-      // The opaque-header case: the amount hides, the date and the text stay readable
-      expect(money(options('amount'))).toEqual([
-        'Částka',
-        'Zůstatek po pohybu',
-        'Poplatek',
-        'ID operace',
-      ]);
-      expect(money(options('balance'))).toEqual(money(options('amount')));
-    });
-
     it('offers a pair the inference left out both ways round when nothing tells its sides', () => {
       const paidOut = inspection({
         headers: ['Date', 'Details', 'Paid out', 'Paid in'],
@@ -471,7 +456,6 @@ describe('columnOptions', () => {
         creditColumn: 'Paid out',
       });
       expect(rightOut.samples).toEqual(['— / 12.50', '1500.00 / —']);
-      expect(rightOut.money).toBe(true);
       // Each is its own answer
       const mapping = mappingFromInferred(inferred({ amount: null }), paidOut);
       expect(selectedOption(list, applyOption(mapping, rightOut))).toBe('pair:Paid in|Paid out');
@@ -893,146 +877,5 @@ describe('ambiguousDateFormat', () => {
     expect(ambiguousDateFormat(['1,50', '2,00'])).toBeNull();
     expect(ambiguousDateFormat(['', ' '])).toBeNull();
     expect(ambiguousDateFormat([])).toBeNull();
-  });
-});
-
-describe('masking the sample cells', () => {
-  it('says a cell is an amount when it carries a sign, a mark, a thousands space or a currency', () => {
-    for (const amount of [
-      '1\u00a0249,00',
-      '−1\u202f249,00 Kč',
-      '−1 249,00',
-      '61 200,00',
-      '-189,00',
-      '1,249.50',
-      '12.50',
-      '0,00',
-      '(12,00)',
-      '-1249',
-      '+250',
-      '5 000',
-      '1500,-',
-      '1 500,–',
-      '−1 500 Kč',
-      '1.500',
-      '€ 12,50',
-      'CZK 5 000',
-      '1500 Kč',
-    ]) {
-      expect(readsAsAmount(amount), amount).toBe(true);
-    }
-  });
-
-  it('does not say it of a date, an account, a text or an integer that may be an id', () => {
-    for (const other of [
-      '10.10.2026',
-      '10. 10. 2026',
-      '10.10.26',
-      '10.10.',
-      '2026-10-10',
-      '3/4/26',
-      '2026-10-10 12:30',
-      'Platba kartou',
-      'Mzda 09/2026',
-      '123456789/0800',
-      'CZ65 0800 0000 1920 0014 5399',
-      'CZK',
-      // A plain integer says nothing: an id, a variable symbol or a whole amount in a column of its own
-      '9001',
-      '26100000001',
-      '',
-    ]) {
-      expect(readsAsAmount(other), other).toBe(false);
-    }
-  });
-
-  it('masks the digits of a cell of an amount column, whatever it looks like', () => {
-    expect(maskedSample('2000', { money: true })).toBe('••••');
-    expect(maskedSample('26100000001', { money: true })).toBe('••••');
-    expect(maskedSample('−1 249,00 Kč', { money: true })).toBe('−•••• Kč');
-    expect(maskedSample('Platba kartou', { money: true })).toBe('Platba kartou');
-  });
-
-  it('masks in any other column what says it is an amount, and leaves dates, text and ids', () => {
-    expect(maskedSample('61 200,00', { money: false })).toBe('••••');
-    expect(maskedSample('-1249', { money: false })).toBe('-••••');
-    expect(maskedSample('5 000', { money: false })).toBe('••••');
-    expect(maskedSample('1500,-', { money: false })).toBe('••••,-');
-    expect(maskedSample('−1 500 Kč', { money: false })).toBe('−•••• Kč');
-    expect(maskedSample('1.500', { money: false })).toBe('••••');
-    expect(maskedSample('10.10.2026', { money: false })).toBe('10.10.2026');
-    expect(maskedSample('2026-10-10', { money: false })).toBe('2026-10-10');
-    expect(maskedSample('Lidl Praha 4', { money: false })).toBe('Lidl Praha 4');
-    expect(maskedSample('26100000001', { money: false })).toBe('26100000001');
-  });
-
-  it('marks the columns that hold amounts, wherever they are listed', () => {
-    const list = columnOptions('counterparty', inspection(), inferred());
-    const money = list.filter((o) => o.money).map((o) => o.label);
-    expect(money).toEqual(['Částka', 'Zůstatek po pohybu']);
-  });
-
-  it('marks the column the person corrected the amount to, and a pair that looks like one', () => {
-    const mapping = {
-      ...mappingFromInferred(inferred(), inspection()),
-      amountColumn: 'Poplatek',
-    };
-    const corrected = columnOptions('description', inspection(), inferred(), mapping);
-    expect(corrected.filter((o) => o.money).map((o) => o.label)).toEqual([
-      'Částka',
-      'Zůstatek po pohybu',
-      'Poplatek',
-    ]);
-    const paidOut = inspection({
-      headers: ['Date', 'Details', 'Paid out', 'Paid in'],
-      sampleRows: [
-        ['01/02/2026', 'Tesco', '12', ''],
-        ['02/02/2026', 'Salary', '', '1500'],
-      ],
-    });
-    const pair = columnOptions('description', paidOut, inferred({ amount: null, balance: null }));
-    expect(pair.filter((o) => o.money).map((o) => o.label)).toEqual(['Paid out', 'Paid in']);
-  });
-
-  it('masks every numeric column while the mapping has no amount yet, whole numbers too', () => {
-    // A file missing both: the date is asked first, and any number on that question may be the amount
-    const whole = inspection({
-      headers: ['Datum', 'Popis', 'Kolik', 'VS'],
-      sampleRows: [
-        ['25.02.2026', 'Nájem', '25000', '1234'],
-        ['26.02.2026', 'Mzda', '1500', '5678'],
-      ],
-    });
-    const neither = inferred({
-      date: null,
-      dateFormat: null,
-      amount: null,
-      balance: null,
-      currency: null,
-      counterpartyIban: null,
-      counterparty: null,
-      description: [],
-    });
-    const mapping = mappingFromInferred(neither, whole);
-    const dates = columnOptions('date', whole, neither, mapping);
-    expect(dates.filter((o) => o.money).map((o) => o.label)).toEqual(['Kolik', 'VS']);
-    const amount = dates.find((o) => o.label === 'Kolik');
-    expect(amount?.samples.map((cell) => maskedSample(cell, { money: amount.money }))).toEqual([
-      '••••',
-      '••••',
-    ]);
-    // Without a mapping the inference says the same: it found no amount
-    expect(
-      columnOptions('date', whole, neither)
-        .filter((o) => o.money)
-        .map((o) => o.label)
-    ).toEqual(['Kolik', 'VS']);
-    // Once the amount is answered, a whole-number column that is no amount reads as it is again
-    const answered = { ...mapping, dateColumn: 'Datum', amountColumn: 'Kolik' };
-    expect(
-      columnOptions('description', whole, neither, answered)
-        .filter((o) => o.money)
-        .map((o) => o.label)
-    ).toEqual(['Kolik']);
   });
 });

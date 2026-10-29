@@ -12,7 +12,6 @@ import { AmountField } from '@/mobile/components/AmountField';
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
 import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
-import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { parseAmountInput } from '@/mobile/lib/amount-input';
@@ -20,14 +19,6 @@ import { extraPaymentText } from '@/mobile/lib/loan-detail';
 
 /** Whole amounts: the result shows no decimals. */
 const WHOLE = { decimals: 0 } as const;
-
-/**
- * The amount an opening starts from: a round 5 % of the balance, or nothing while the amounts are
- * hidden — the suggestion is a fraction of the balance, which would show what the eye hides.
- */
-function startAmount(balance: number, hidden: boolean): string {
-  return hidden ? '' : String(suggestedExtraPayment(balance));
-}
 
 interface ExtraPaymentSheetProps {
   open: boolean;
@@ -44,12 +35,9 @@ interface ExtraPaymentSheetProps {
  * result in one sentence — the months saved and the interest saved, or the drop of the payment —
  * worked out from the plan ahead with `extraPaymentWhatIf`. Zapsat jako provedenou closes the sheet
  * and then opens the event dialog with the amount and the mode, where the day and the note are
- * chosen. A loan without a payment says so instead of a result. Every amount goes through the eye;
- * the amount typed is an input and is never masked.
+ * chosen. A loan without a payment says so instead of a result.
  *
- * Every opening starts over from the suggested amount and "Zkrátit dobu". With the amounts hidden the
- * field starts empty instead: the suggestion is a fraction of the balance (as Přecenit's field starts
- * empty rather than with the price).
+ * Every opening starts over from the suggested amount and "Zkrátit dobu".
  */
 export function ExtraPaymentSheet({
   open,
@@ -63,18 +51,17 @@ export function ExtraPaymentSheet({
   const { t: tc } = useTranslation('common');
   const moneyText = useMoneyText();
   const text = useLoanText();
-  const { hidden } = useHideAmounts();
   const balance = row.trajectory.balanceToday;
   const planPayment = row.plan.monthlyPayment;
   const money = (value: number) => moneyText(value, row.currency, WHOLE);
 
-  const [amountText, setAmountText] = useState(() => startAmount(balance, hidden));
+  const [amountText, setAmountText] = useState(() => String(suggestedExtraPayment(balance)));
   const [mode, setMode] = useState<ExtraPaymentMode>('term');
   const [openedFor, setOpenedFor] = useState(open);
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setAmountText(startAmount(balance, hidden));
+      setAmountText(String(suggestedExtraPayment(balance)));
       setMode('term');
     }
   }

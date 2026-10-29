@@ -4,7 +4,7 @@ import { useFitText } from '@/mobile/hooks/use-fit-text';
 
 export interface StatItem {
   label: string;
-  /** The shown text (masked while amounts are hidden); a string, so the fit can follow it. */
+  /** The shown text; a string, so the fit can follow it. */
   value: string;
   /** 10 / 500 line under the value (a change, "na účtech"). */
   note?: ReactNode;

@@ -20,7 +20,7 @@ interface PropertyStatsProps {
  * change against the purchase, Vlastní kapitál with the loan to value, Hrubý výnos with the yearly
  * rent and Čistý cashflow of a year — the desktop's numbers (`propertyStatItems`) in the main
  * currency, a missing rate shown as "—" (the market value alone falls back to its own currency,
- * never converted 1:1). Amounts go through the eye; percents stay.
+ * never converted 1:1).
  */
 export function PropertyStats({ row, balance, currency }: PropertyStatsProps) {
   const { t } = useTranslation('mobile');

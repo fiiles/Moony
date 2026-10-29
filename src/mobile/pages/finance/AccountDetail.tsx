@@ -120,8 +120,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
-  // Money as text for the flows strip's accessible names and the flows line; masked while amounts
-  // are hidden
+  // Money as text for the flows strip's accessible names and the flows line
   const moneyText = useMoneyText();
   const back = useBack(routes.finance);
   // The page the push came from (another tab, a sheet: `backLabel`), else the parent
@@ -205,6 +204,23 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   const hasTransactions = !historyLoaded || history.length > 0;
   const currentMonth = monthOf(today);
 
+  // Under the balance chart, one full-width button above the other; first on the page without one
+  const actions = account && (
+    <ButtonPair
+      stacked
+      primary={{
+        label: t('account.record'),
+        icon: Pencil,
+        onClick: () => setSheet('record'),
+      }}
+      secondary={{
+        label: t('account.import'),
+        icon: Upload,
+        onClick: () => openImport({ accountId: id, source: 'account', from: account.name }),
+      }}
+    />
+  );
+
   return (
     <Screen
       title={account?.name ?? ''}
@@ -250,19 +266,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
               .filter(Boolean)
               .join(' · ')}
           </p>
-          <ButtonPair
-            primary={{
-              label: t('account.record'),
-              icon: Pencil,
-              onClick: () => setSheet('record'),
-            }}
-            secondary={{
-              label: t('account.import'),
-              icon: Upload,
-              onClick: () => openImport({ accountId: id, source: 'account', from: account.name }),
-            }}
-          />
-          {showHero && (
+          {showHero ? (
             <>
               <BalanceHero
                 account={account}
@@ -274,6 +278,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
                 period={period}
                 onPeriodChange={setPeriod}
               />
+              {actions}
               <BalanceStats
                 account={account}
                 balance={balance}
@@ -283,6 +288,8 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
                 today={today}
               />
             </>
+          ) : (
+            actions
           )}
           {hasRecentRows(history, currentMonth) && (
             <section>

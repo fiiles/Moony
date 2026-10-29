@@ -17,11 +17,9 @@ import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
 import { useFieldText } from '@/mobile/components/import/field-text';
 import { ImportNote } from '@/mobile/components/import/ImportNote';
 import { PreviewRows } from '@/mobile/components/import/PreviewRows';
-import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import type { Recognition } from '@/mobile/hooks/use-recognition';
 import {
   amountsAllPositive,
-  maskedSample,
   recognizedFields,
   type ColumnOption,
   type RecognitionField,
@@ -92,7 +90,6 @@ function ColumnOptionRow({
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
   const fmt = useFormat();
-  const { hidden } = useHideAmounts();
   const text = useFieldText();
 
   // A pair names its sides: which column is read as the money out ("Výdaje: A · Příjmy: B")
@@ -104,10 +101,8 @@ function ColumnOptionRow({
         : option.kind === 'pair' && option.sides
           ? text.pairSides(option.sides)
           : option.label;
-  // Every column shows what it holds; the cells of an amount are masked while amounts are hidden
-  const shown = option.samples.map((sample) =>
-    hidden ? maskedSample(sample, { money: option.money }) : sample
-  );
+  // Every column shows what it holds
+  const shown = option.samples;
   // A date order shows its date spelled out, so that "3. dubna" and "4. března" cannot be mistaken:
   // the date comes first and the line wraps — a long header must never hide the one thing that tells them apart
   const dates = (option.dates ?? []).map((day) =>

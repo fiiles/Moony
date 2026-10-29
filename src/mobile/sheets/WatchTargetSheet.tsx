@@ -37,7 +37,7 @@ interface WatchTargetSheetProps {
  * stock's currency inside it and today's price and the 52-week high as the hint, the direction —
  * Nad · Pod, chosen for the person from the typed price until they pick one — with a sentence on
  * what Moony will remind them of, and Uložit. When a target exists, "Smazat cíl" removes it. The
- * prices are Yahoo's public numbers and stay visible while amounts are hidden; the target is a
+ * prices are Yahoo's public numbers; the target is a
  * price of that stock, not an amount of the person's. A save needs a positive number; the error
  * stands under the field once a save has been tried. Every opening starts over from the stored
  * target.

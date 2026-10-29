@@ -15,8 +15,6 @@
     "reason": "Unlock Moony"
   },
   "overview": {
-    "hideAmounts": "Hide amounts",
-    "showAmounts": "Show amounts",
     "change": {
       "30D": "over 30 days",
       "90D": "over 3 months",
@@ -58,8 +56,7 @@
       "change": "Change category"
     },
     "limitSheet": {
-      "pick": "Choose the category whose spending you want to keep in check.",
-      "current": "Current limit: {{amount}}"
+      "pick": "Choose the category whose spending you want to keep in check."
     },
     "budgets": {
       "ended": "ended",
@@ -96,10 +93,12 @@
   },
   "recordBalances": {
     "title": "Record balances",
-    "lead": "Enter the current balance of each account. The date is today.",
+    "lead": "Enter the balance of each account as of the day below.",
     "save": "Record",
     "saved": "Balances recorded",
-    "negative": "Negative value"
+    "negative": "Negative value",
+    "date": "Balance as of",
+    "dateInFuture": "A balance cannot be dated in the future"
   },
   "biometrics": {
     "titleFace": "Unlock Moony with your face?",
@@ -506,7 +505,9 @@
       "noUpcoming": "No coupon or maturity in the coming year.",
       "allRepaid": "Every issue is repaid. Turn on “{{action}}” in the ··· menu to see them.",
       "loadFailed": "Bonds could not be loaded.",
-      "rateNote": "{{rate}} p.a. weighted"
+      "rateNote": "{{rate}} p.a. weighted",
+      "nextPayment": "Next payment",
+      "notGiven": "not given"
     },
     "otherAssets": {
       "count_one": "{{count}} item",
@@ -628,7 +629,7 @@
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "no telemetry",
     "security": {
-      "lead": "Unlocking, the lock in the background and hiding amounts on this phone.",
+      "lead": "Unlocking and the lock in the background on this phone.",
       "biometrics": "Unlock with {{methodKey}}",
       "methodFace": "your face",
       "methodTouch": "your fingerprint",
@@ -642,10 +643,7 @@
       "optionMinutes": "{{count}} min",
       "lockNow": "lock immediately",
       "lockAfter_one": "lock after {{count}} minute",
-      "lockAfter_other": "lock after {{count}} minutes",
-      "hideOnLaunch": "Hide amounts on launch",
-      "hideOnLaunchHint": "Every launch starts with amounts hidden; the eye on Overview shows them again.",
-      "hideOnLaunchShort": "amounts hidden on launch"
+      "lockAfter_other": "lock after {{count}} minutes"
     },
     "password": {
       "title": "Change password",

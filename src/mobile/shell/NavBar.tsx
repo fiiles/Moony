@@ -8,7 +8,7 @@ interface NavBarProps {
   large?: boolean;
   /** Content has moved under the bar (on a tab root: past the large title). */
   collapsed: boolean;
-  /** At most one item: a back button or the hide-amounts eye. */
+  /** At most one item: a back button or the lock button. */
   leading?: ReactNode;
   /** At most two 44 pt buttons. */
   trailing?: ReactNode;

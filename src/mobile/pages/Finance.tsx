@@ -106,7 +106,7 @@ export default function Finance() {
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   // Money as text (the hero sizes itself to the shown text; the trend callout, the change line and
-  // the rows only render it); masked while amounts are hidden
+  // the rows only render it)
   const moneyText = useMoneyText();
   const finance = useFinance();
   const { accounts, totals, loans, insurance, mainCurrency, fxReady, isLoading } = finance;

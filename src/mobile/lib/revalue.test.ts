@@ -69,7 +69,7 @@ describe('revalueData', () => {
 
 describe('startRevalueForm', () => {
   it("starts from today's estimate, today and no note", () => {
-    expect(startRevalueForm(5_400_000, false, '2026-10-25')).toEqual({
+    expect(startRevalueForm(5_400_000, '2026-10-25')).toEqual({
       valueText: '5400000',
       dateIso: '2026-10-25',
       note: '',
@@ -77,19 +77,11 @@ describe('startRevalueForm', () => {
   });
 
   it('keeps the decimals of a per-unit price', () => {
-    expect(startRevalueForm(1950.5, false, '2026-10-25').valueText).toBe('1950.5');
-  });
-
-  it('starts with an empty amount while the amounts are hidden: a prefilled one would show them', () => {
-    expect(startRevalueForm(5_400_000, true, '2026-10-25')).toEqual({
-      valueText: '',
-      dateIso: '2026-10-25',
-      note: '',
-    });
+    expect(startRevalueForm(1950.5, '2026-10-25').valueText).toBe('1950.5');
   });
 
   it('writes an estimate of nothing as 0', () => {
-    expect(startRevalueForm(0, false, '2026-10-25').valueText).toBe('0');
+    expect(startRevalueForm(0, '2026-10-25').valueText).toBe('0');
   });
 });
 

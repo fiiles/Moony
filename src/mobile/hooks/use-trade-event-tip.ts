@@ -15,7 +15,7 @@ export interface TradeTip {
  * The callout of a trade mark on a holding's chart (a position's and an other asset's hero): one
  * trade reads "Nákup 5 ks za 182,40 $" over "3. 10. 2026 · celkem 912 $" (in the trade's own
  * currency, `fallbackCurrency` when it has none); a cluster of marks reads "3 transakce" over its
- * first and last day. Amounts go through the eye. `unit` is what the quantity is counted in
+ * first and last day. `unit` is what the quantity is counted in
  * ("ks"), `quantityDigits` the decimals it may show.
  */
 export function useTradeEventTip<T extends LedgerTx>(

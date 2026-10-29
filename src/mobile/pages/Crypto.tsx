@@ -40,8 +40,7 @@ import { Screen } from '@/mobile/shell/Screen';
  * the largest position), then the coins as rows with sort, search and the first eight until
  * "Zobrazit všech N". Coins pay no dividends and have no performance report, so the stats are the
  * desktop's own (`CryptoSummary`) and there is no Pozice · Sledované segment (the watchlist is
- * Yahoo's stocks). The numbers are the desktop's (the same queries), in the report currency; every
- * amount goes through the eye of Přehled. The list holds the open coins; the closed ones are the
+ * Yahoo's stocks). The numbers are the desktop's (the same queries), in the report currency. The list holds the open coins; the closed ones are the
  * sheet Uzavřené pozice in the `···` menu, and Export there hands the transactions' CSV to the
  * Files picker. The sort and the period are remembered for the session, so a visit to a coin does
  * not reset them.

@@ -30,7 +30,7 @@ interface PropertyHeroCardProps {
  * estimate to today, with ▲ for the purchase and ○ for each revaluation (a tap opens the callout
  * with its day, its note and the amount). The trace has one horizon, so the chart stands without a
  * period segment, and a trace that does not reach two days (one estimate dated today, no purchase)
- * is not drawn: the desktop's hint stands in its place. Every amount goes through the eye; the numbers are the desktop hero's.
+ * is not drawn: the desktop's hint stands in its place. The numbers are the desktop hero's.
  */
 export function PropertyHeroCard({ row, trace, currency }: PropertyHeroCardProps) {
   const { t } = useTranslation('realEstate');

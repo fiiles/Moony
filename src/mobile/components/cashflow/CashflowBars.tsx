@@ -5,9 +5,7 @@ import { useChartTokens } from '@/theme/ThemeProvider';
 import { niceTicks, valueDomain } from '@/utils/chart-scale';
 import { AXIS_WIDTH, CategoryAxis } from '@/components/charts/ChartAxis';
 import { ScaledChartLegend } from '@/mobile/components/Scaled';
-import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import type { BarDatum } from '@/mobile/lib/cashflow-rows';
-import { MASK } from '@/mobile/lib/hide-amounts';
 
 /** The chart's height (spec §10.4: bars 110 pt). */
 const HEIGHT = 110;
@@ -36,12 +34,10 @@ interface CashflowBarsProps {
  * desktop chart's rules — `s1` income and `s3` expenses, 3 px rounded tops, 2 px gap, a zero
  * baseline, horizontal grid, one right-hand value axis — at 110 pt with months outside the period
  * muted. There is no tooltip: a tap on a month (a transparent button the height of the plot, one
- * per bar; disabled for a month still to come) switches the period to it. With amounts hidden the
- * value axis shows the mask. A short month name stands under every third bar, then the legend.
+ * per bar; disabled for a month still to come) switches the period to it. A short month name stands under every third bar, then the legend.
  */
 export function CashflowBars({ bars, names, label, monthLabel, onSelectMonth }: CashflowBarsProps) {
   const fmt = useFormat();
-  const { hidden } = useHideAmounts();
   const tk = useChartTokens();
   const [incomeName, expenseName] = names;
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -71,11 +67,9 @@ export function CashflowBars({ bars, names, label, monthLabel, onSelectMonth }: 
     return { domain: range, ticks: niceTicks(range[0], range[1], 4) };
   }, [bars]);
 
-  // The value axis tells the size of the bars: with amounts hidden every tick is the mask
   const tickFormatter = useCallback(
-    (value: number) =>
-      hidden ? MASK : fmt.number(value, { notation: 'compact', maximumFractionDigits: 1 }),
-    [fmt, hidden]
+    (value: number) => fmt.number(value, { notation: 'compact', maximumFractionDigits: 1 }),
+    [fmt]
   );
 
   // The bare month ("Úno"): `fmt.month` adds the year unless it is cleared, and then Czech writes

@@ -25,7 +25,7 @@ interface UpcomingPremiumsProps {
  * "Nejbližší platby" under the policy rows (spec §8.4, §8.8): the premiums falling due in the next
  * 90 days as a dated list in place of the desktop's 12-month calendar chart — a date chip (the day
  * over its weekday), the policy's name, the insurer with the distance ("Allianz · za 73 dní") and
- * the amount in the policy's own currency (never converted, never summed; masked with the eye). The
+ * the amount in the policy's own currency (never converted, never summed). The
  * distance is in the sub-line, not in the chip: "in 2 Monaten" does not fit 54 pt, a weekday
  * always does; a long insurer is the part of the sub-line that gives way. Five rows, then "Zobrazit
  * všech N" unfolds the rest in place; a tap opens the policy. Nothing is rendered without a payment

@@ -10,7 +10,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { AddRealEstateModal } from '@/components/real-estate/AddRealEstateModal';
-import { MaskedValuationHistoryDialog } from '@/mobile/components/MaskedValuationHistoryDialog';
+import { ValuationHistoryDialog } from '@/components/valuations/ValuationHistoryDialog';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 
 interface PropertyMenuProps {
@@ -61,7 +61,7 @@ export function PropertyMenu({ property, valuations, onDelete }: PropertyMenuPro
       </DropdownMenu>
 
       <AddRealEstateModal realEstate={property} open={editOpen} onOpenChange={setEditOpen} />
-      <MaskedValuationHistoryDialog
+      <ValuationHistoryDialog
         open={historyOpen}
         onOpenChange={setHistoryOpen}
         kind="realEstate"

@@ -169,8 +169,7 @@ export function previewAmount(
 
 /**
  * A stated amount as it will be stored: the cents it has (at least two), none for a whole number
- * (the desktop's `formatBalance`, which formats outside the phone's hide-amounts switch). `money`
- * is `useMoneyText()`, so the number is masked while amounts are hidden.
+ * (the desktop's `formatBalance`). `money` is `useMoneyText()`.
  */
 export function exactMoneyText(
   money: (amount: number, currency: string, options?: { decimals?: number }) => string,

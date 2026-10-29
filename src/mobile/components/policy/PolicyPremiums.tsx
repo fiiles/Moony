@@ -23,7 +23,6 @@ interface PolicyPremiumsProps {
  * each payment, solid up to today and dashed through the next twelve (the plan). A finger on the
  * line rewrites the label and the figure to that day and says whether it was paid or is planned.
  * A policy that has not started (or has a single reading) has no line, and then no section.
- * Amounts go through the eye.
  */
 export function PolicyPremiums({ row, today }: PolicyPremiumsProps) {
   const { t } = useTranslation('mobile');

@@ -9,7 +9,6 @@ import { DateField } from '@/mobile/components/DateField';
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
 import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
-import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { usePropertyCostMutations } from '@/mobile/hooks/use-property-mutations';
 import {
@@ -38,22 +37,15 @@ const TEXT_FIELD =
 
 /**
  * The form a sheet opens with. A new cost starts as a recurring one for today; an edited cost with
- * its own values — except while the amounts are hidden, when the field starts empty (a prefilled
- * amount would show what the eye hides) and the stored amount waits beside it (`keptAmount`): it is
- * what is saved until something is typed. The stored day is kept too, so that a cost the computer
- * dated ahead can be edited without moving it.
+ * its own values. The stored day is kept, so that a cost the computer dated ahead can be edited
+ * without moving it.
  */
-function startForm(
-  property: RealEstate,
-  cost: RealEstateOneTimeCost | null,
-  hidden: boolean
-): CostForm {
+function startForm(property: RealEstate, cost: RealEstateOneTimeCost | null): CostForm {
   return {
     realEstateId: property.id,
     kind: cost ? 'oneTime' : 'recurring',
     name: cost?.name ?? '',
-    amountText: cost && !hidden ? String(Number(cost.amount) || 0) : '',
-    keptAmount: cost && hidden ? cost.amount : null,
+    amountText: cost ? String(Number(cost.amount) || 0) : '',
     frequency: 'monthly',
     dateIso: cost ? isoDateFromUtcTimestamp(cost.date) : todayIso(),
     description: cost?.description ?? '',
@@ -72,10 +64,7 @@ const FREQUENCIES: readonly CostFrequency[] = ['monthly', 'quarterly', 'yearly']
  * ahead may keep that day) and an optional note of a one-time one. Return on the name goes on to
  * the amount. The cost is written through the property's cost mutations, every write refreshing
  * what rule 7 lists, and the sheet closes once it is saved; a refusal is the mutation's own toast
- * and the sheet stays. While the amounts are hidden an edited cost's amount field starts empty and
- * shows the masked amount as its placeholder: left empty it saves the stored amount, so the name,
- * the day or the note can change without typing the amount again; the amount typed is an input and
- * is never masked.
+ * and the sheet stays.
  *
  * Every opening starts over, from the stored cost or from a recurring one.
  */
@@ -84,20 +73,19 @@ export function CostSheet({ open, onOpenChange, property, cost }: CostSheetProps
   const { t: tr } = useTranslation('realEstate');
   const { t: tc } = useTranslation('common');
   const moneyText = useMoneyText();
-  const { hidden } = useHideAmounts();
   const formId = useId();
   const amountField = useRef<HTMLInputElement>(null);
   const { addRecurring, saveOneTime } = usePropertyCostMutations(property.id);
   const currency = recordCurrency(cost ? cost.currency : property.marketPriceCurrency);
 
-  const [form, setForm] = useState(() => startForm(property, cost, hidden));
+  const [form, setForm] = useState(() => startForm(property, cost));
   // An empty field is only called missing once it has been left
   const [touched, setTouched] = useState({ name: false, amount: false });
   const [openedFor, setOpenedFor] = useState(open);
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setForm(startForm(property, cost, hidden));
+      setForm(startForm(property, cost));
       setTouched({ name: false, amount: false });
     }
   }
@@ -245,12 +233,7 @@ export function CostSheet({ open, onOpenChange, property, cost }: CostSheetProps
           label={tr('modal.cost.amount')}
           unit={currency}
           value={form.amountText}
-          // The stored amount that an empty field saves, masked while the amounts are hidden
-          placeholder={
-            form.keptAmount !== null
-              ? moneyText(Number(form.keptAmount) || 0, currency, { decimals: 0 })
-              : '0'
-          }
+          placeholder="0"
           error={amountError}
           hint={
             cost

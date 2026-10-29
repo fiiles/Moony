@@ -4,14 +4,7 @@ import { lockAfterOption, renderTextRef, securitySummary } from './settings-summ
 
 describe('securitySummary', () => {
   it('names the biometry and the lock delay', () => {
-    expect(
-      securitySummary({
-        enrolled: true,
-        biometryType: 'faceId',
-        lockMinutes: 1,
-        hideOnLaunch: false,
-      })
-    ).toEqual([
+    expect(securitySummary({ enrolled: true, biometryType: 'faceId', lockMinutes: 1 })).toEqual([
       {
         key: 'settings.security.biometricsOn',
         params: { methodKey: 'settings.security.methodFace' },
@@ -20,19 +13,16 @@ describe('securitySummary', () => {
     ]);
   });
 
-  it('says Ihned for zero minutes and adds the hide-on-launch part only when on', () => {
-    expect(
-      securitySummary({ enrolled: false, biometryType: 'none', lockMinutes: 0, hideOnLaunch: true })
-    ).toEqual([
+  it('says Ihned for zero minutes', () => {
+    expect(securitySummary({ enrolled: false, biometryType: 'none', lockMinutes: 0 })).toEqual([
       { key: 'settings.security.biometricsOff' },
       { key: 'settings.security.lockNow' },
-      { key: 'settings.security.hideOnLaunchShort' },
     ]);
   });
 
   it('picks the method wording by the kind of biometry', () => {
     const method = (biometryType: 'touchId' | 'biometric') =>
-      securitySummary({ enrolled: true, biometryType, lockMinutes: 5, hideOnLaunch: false })[0];
+      securitySummary({ enrolled: true, biometryType, lockMinutes: 5 })[0];
     expect(method('touchId').params).toEqual({ methodKey: 'settings.security.methodTouch' });
     expect(method('biometric').params).toEqual({
       methodKey: 'settings.security.methodGeneric',

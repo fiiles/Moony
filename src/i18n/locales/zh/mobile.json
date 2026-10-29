@@ -15,8 +15,6 @@
     "reason": "解锁 Moony"
   },
   "overview": {
-    "hideAmounts": "隐藏金额",
-    "showAmounts": "显示金额",
     "change": {
       "30D": "30 天内",
       "90D": "3 个月内",
@@ -56,8 +54,7 @@
       "change": "更改类别"
     },
     "limitSheet": {
-      "pick": "请选择要控制支出的类别。",
-      "current": "当前限额：{{amount}}"
+      "pick": "请选择要控制支出的类别。"
     },
     "budgets": {
       "ended": "已结束",
@@ -88,10 +85,12 @@
   },
   "recordBalances": {
     "title": "记录余额",
-    "lead": "请输入每个账户的当前余额。日期为今天。",
+    "lead": "请输入每个账户截至下方日期的余额。",
     "save": "记录",
     "saved": "余额已记录",
-    "negative": "负值"
+    "negative": "负值",
+    "date": "余额日期",
+    "dateInFuture": "余额日期不能是将来"
   },
   "biometrics": {
     "titleFace": "使用面容解锁 Moony？",
@@ -474,7 +473,9 @@
       "noUpcoming": "未来一年内没有票息或到期。",
       "allRepaid": "所有债券均已兑付。在“···”菜单中开启“{{action}}”即可查看。",
       "loadFailed": "无法加载债券。",
-      "rateNote": "{{rate}} 年化 加权平均"
+      "rateNote": "{{rate}} 年化 加权平均",
+      "nextPayment": "下次付款",
+      "notGiven": "未填写"
     },
     "otherAssets": {
       "count_other": "{{count}} 项",
@@ -593,7 +594,7 @@
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "无遥测",
     "security": {
-      "lead": "在这部手机上设置解锁、后台锁定和隐藏金额。",
+      "lead": "在这部手机上设置解锁和后台锁定。",
       "biometrics": "使用{{methodKey}}解锁",
       "methodFace": "面容",
       "methodTouch": "指纹",
@@ -606,10 +607,7 @@
       "optionNow": "立即",
       "optionMinutes": "{{count}} 分钟",
       "lockNow": "立即锁定",
-      "lockAfter_other": "{{count}} 分钟后锁定",
-      "hideOnLaunch": "启动时隐藏金额",
-      "hideOnLaunchHint": "每次启动时金额都处于隐藏状态；概览中的眼睛图标可再次显示。",
-      "hideOnLaunchShort": "启动时隐藏金额"
+      "lockAfter_other": "{{count}} 分钟后锁定"
     },
     "password": {
       "title": "更改密码",

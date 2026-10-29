@@ -24,8 +24,7 @@ interface PreviewBodyProps {
  * the statement says about itself (whose account it is, whether its balances add up), then the
  * counts, the period and the rows with the category each would get. A statement of another account
  * is imported only after the person switches to that account or says so (D9). A CSV that a format
- * the person confirmed before reads says so first, with "Změnit" to correct it. Amounts are masked
- * while hidden; counts and dates are not.
+ * the person confirmed before reads says so first, with "Změnit" to correct it.
  */
 export function PreviewBody({ flow, onPick }: PreviewBodyProps) {
   const { t } = useTranslation('mobile');

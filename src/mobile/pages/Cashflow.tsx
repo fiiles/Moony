@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation } from 'wouter';
+import { useLocation, useSearch } from 'wouter';
 import { Landmark } from 'lucide-react';
 import type { BudgetGoal, CashflowActuals } from '@shared/schema';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
@@ -31,6 +31,8 @@ import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import {
   cashflowSearch,
   isPartialPeriod,
+  latestMonthOffset,
+  periodChosen,
   selectMonth,
   type CashflowState,
 } from '@/mobile/lib/cashflow-period';
@@ -87,6 +89,21 @@ export default function Cashflow() {
   const limits = useBudgetLimitSheet(false);
   const { actuals } = report;
   const search = cashflowSearch(state);
+  const rawSearch = useSearch();
+
+  // A plain visit opens on the newest month with income or spending, not on an empty current one:
+  // once the current month's report says it has no payments, its 12-month window names the month
+  const autoOffset =
+    !periodChosen(rawSearch) &&
+    state.timeframe === 'monthly' &&
+    actuals &&
+    !report.isPlaceholder &&
+    actuals.transactionCount === 0
+      ? latestMonthOffset(actuals.months)
+      : null;
+  useEffect(() => {
+    if (autoOffset !== null && autoOffset < 0) setState({ ...state, offset: autoOffset });
+  }, [autoOffset, state, setState]);
   const accountCount = accounts.length;
   // The invitation is decided by the accounts list, never by the period's own counts (an empty
   // period reports no accounts either)
@@ -98,7 +115,7 @@ export default function Cashflow() {
   });
 
   // Export writes the report on screen, never the previous period's still shown while the next
-  // loads (the menu item is disabled then); the CSV is not masked, a file the person asked for
+  // loads (the menu item is disabled then); a file the person asked for
   const exportReport = () => {
     if (!actuals || report.isPlaceholder) return;
     const categoryById = new Map(categories.map((category) => [category.id, category]));

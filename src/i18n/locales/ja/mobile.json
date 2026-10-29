@@ -15,8 +15,6 @@
     "reason": "Moonyのロックを解除"
   },
   "overview": {
-    "hideAmounts": "金額を隠す",
-    "showAmounts": "金額を表示",
     "change": {
       "30D": "30日間",
       "90D": "3か月間",
@@ -56,8 +54,7 @@
       "change": "カテゴリを変更"
     },
     "limitSheet": {
-      "pick": "支出を管理したいカテゴリを選んでください。",
-      "current": "現在の上限：{{amount}}"
+      "pick": "支出を管理したいカテゴリを選んでください。"
     },
     "budgets": {
       "ended": "終了",
@@ -88,10 +85,12 @@
   },
   "recordBalances": {
     "title": "残高を記録",
-    "lead": "各口座の現在の残高を入力してください。日付は今日です。",
+    "lead": "下の日付時点での各口座の残高を入力してください。",
     "save": "記録",
     "saved": "残高を記録しました",
-    "negative": "マイナスの値"
+    "negative": "マイナスの値",
+    "date": "残高の日付",
+    "dateInFuture": "残高の日付を未来にすることはできません"
   },
   "biometrics": {
     "titleFace": "Moonyを顔認証でロック解除しますか？",
@@ -474,7 +473,9 @@
       "noUpcoming": "今後1年間にクーポンや満期はありません。",
       "allRepaid": "すべての銘柄が償還済みです。メニュー「···」の「{{action}}」をオンにすると表示されます。",
       "loadFailed": "債券を読み込めませんでした。",
-      "rateNote": "年率 {{rate}} 加重平均"
+      "rateNote": "年率 {{rate}} 加重平均",
+      "nextPayment": "次回の支払い",
+      "notGiven": "未入力"
     },
     "otherAssets": {
       "count_other": "{{count}}件",
@@ -593,7 +594,7 @@
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "テレメトリなし",
     "security": {
-      "lead": "このスマートフォンでのロック解除、バックグラウンドでのロック、金額の非表示を設定します。",
+      "lead": "このスマートフォンでのロック解除とバックグラウンドでのロックを設定します。",
       "biometrics": "{{methodKey}}でロック解除",
       "methodFace": "顔認証",
       "methodTouch": "指紋認証",
@@ -606,10 +607,7 @@
       "optionNow": "すぐ",
       "optionMinutes": "{{count}}分",
       "lockNow": "すぐにロック",
-      "lockAfter_other": "{{count}}分後にロック",
-      "hideOnLaunch": "起動時に金額を非表示",
-      "hideOnLaunchHint": "起動するたびに金額が非表示の状態で始まります。概要の目のアイコンで再び表示できます。",
-      "hideOnLaunchShort": "起動時に金額を非表示"
+      "lockAfter_other": "{{count}}分後にロック"
     },
     "password": {
       "title": "パスワードを変更",

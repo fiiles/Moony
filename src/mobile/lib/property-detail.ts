@@ -29,7 +29,7 @@ import type { CostPoint } from './position-series';
  * the four stats, the yearly balance card, the link candidates, the costs with their form, and the
  * batch a photo taken today joins (the revaluation form is `revalue.ts`, shared with the other
  * asset). They are the desktop page's rules (`pages/RealEstateDetail.tsx`) without its strings and
- * formatting; the phone screen words and masks them.
+ * formatting; the phone screen words them.
  */
 
 /** A mark on the value trace: the purchase (`buy`, ▲) or an estimate (`mark`, ○). */
@@ -432,8 +432,7 @@ export function photoDeletion(
 }
 
 /**
- * The costs' text: the phone's `useMoneyText()` as `money` (masked while amounts are hidden, so
- * a cost is never written in the clear) and `fmt.day` as `day`.
+ * The costs' text: the phone's `useMoneyText()` as `money` and `fmt.day` as `day`.
  */
 export type CostText = Pick<Formatters, 'money' | 'day'>;
 
@@ -525,13 +524,6 @@ export interface CostForm {
   dateIso: string;
   /** A one-time cost's note. */
   description: string;
-  /**
-   * The stored amount of an edited cost whose amount field was left empty because amounts are
-   * hidden (a prefilled field would show it): it stands in for the field until something is
-   * typed, so changing only the name, the day or the note does not need the amount again.
-   * `null` for a new cost and while the amount is shown.
-   */
-  keptAmount: string | null;
   /** The stored day (`YYYY-MM-DD`) of an edited cost, which it may keep even when it is ahead; `null` for a new cost. */
   originalDateIso: string | null;
 }
@@ -555,16 +547,6 @@ function costAmount(
 }
 
 /**
- * The amount a form stands for: what is typed, or — while the field is empty and the stored amount
- * of an edited cost is kept beside it (`keptAmount`) — that amount. Typed text is judged as typed,
- * the stored amount never covers a wrong one.
- */
-function formAmount(form: CostForm) {
-  const kept = form.amountText.trim() === '' ? form.keptAmount : null;
-  return costAmount(kept ?? form.amountText);
-}
-
-/**
  * The latest day a cost's day may be (`YYYY-MM-DD`): today — a cost is a payment that has been made,
  * and a day ahead has no rate yet — or, for an edited cost that the computer dated ahead, that day:
  * it may keep it, though not move it further out. What the date field's `max` is.
@@ -577,13 +559,13 @@ export function latestCostDay(form: Pick<CostForm, 'originalDateIso'>, today: st
 
 /**
  * What stops a cost form from being saved. A cost is a name and a positive amount (the desktop's
- * recurring dialog asks the same; `keptAmount` may stand in for the field), and a one-time cost
+ * recurring dialog asks the same), and a one-time cost
  * also the day it was paid, up to `latestCostDay`. `today` is `YYYY-MM-DD`.
  */
 export function costErrors(form: CostForm, today: string): CostErrors {
   const errors: CostErrors = {};
   if (form.name.trim() === '') errors.name = 'required';
-  const amount = formAmount(form);
+  const amount = costAmount(form.amountText);
   if ('error' in amount) errors.amount = amount.error;
   if (form.kind === 'oneTime') {
     if (form.dateIso === '') errors.date = 'required';
@@ -600,7 +582,7 @@ export function costErrors(form: CostForm, today: string): CostErrors {
  */
 export function costInput(form: CostForm, currency: string): InsertRealEstateOneTimeCost | null {
   const name = form.name.trim();
-  const amount = formAmount(form);
+  const amount = costAmount(form.amountText);
   if (name === '' || 'error' in amount || form.dateIso === '') return null;
   return {
     realEstateId: form.realEstateId,
@@ -615,7 +597,7 @@ export function costInput(form: CostForm, currency: string): InsertRealEstateOne
 /** The recurring cost a form makes, in `currency`; `null` for a form with no name or no positive amount. */
 export function recurringInput(form: CostForm, currency: string): RecurringCost | null {
   const name = form.name.trim();
-  const amount = formAmount(form);
+  const amount = costAmount(form.amountText);
   if (name === '' || 'error' in amount) return null;
   return { name, amount: Number(amount.amount), frequency: form.frequency, currency };
 }

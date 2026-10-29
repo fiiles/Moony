@@ -15,8 +15,6 @@
     "reason": "Odblokuj Moony"
   },
   "overview": {
-    "hideAmounts": "Ukryj kwoty",
-    "showAmounts": "Pokaż kwoty",
     "change": {
       "30D": "w 30 dni",
       "90D": "w 3 miesiące",
@@ -62,8 +60,7 @@
       "change": "Zmień kategorię"
     },
     "limitSheet": {
-      "pick": "Wybierz kategorię, której wydatki chcesz pilnować.",
-      "current": "Obecny limit: {{amount}}"
+      "pick": "Wybierz kategorię, której wydatki chcesz pilnować."
     },
     "budgets": {
       "ended": "zakończony",
@@ -112,10 +109,12 @@
   },
   "recordBalances": {
     "title": "Zapisz salda",
-    "lead": "Wpisz aktualne saldo każdego konta. Data to dzisiaj.",
+    "lead": "Wpisz saldo każdego konta na dzień podany poniżej.",
     "save": "Zapisz",
     "saved": "Salda zapisane",
-    "negative": "Wartość ujemna"
+    "negative": "Wartość ujemna",
+    "date": "Saldo na dzień",
+    "dateInFuture": "Saldo nie może mieć przyszłej daty"
   },
   "biometrics": {
     "titleFace": "Odblokowywać Moony twarzą?",
@@ -570,7 +569,9 @@
       "noUpcoming": "W najbliższym roku nie przypada żaden kupon ani termin wykupu.",
       "allRepaid": "Wszystkie emisje zostały wykupione. Włącz w menu ··· „{{action}}”, aby je zobaczyć.",
       "loadFailed": "Nie udało się wczytać obligacji.",
-      "rateNote": "{{rate}} rocznie, ważona"
+      "rateNote": "{{rate}} rocznie, ważona",
+      "nextPayment": "Następna płatność",
+      "notGiven": "nie podano"
     },
     "otherAssets": {
       "count_one": "{{count}} pozycja",
@@ -698,7 +699,7 @@
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "bez telemetrii",
     "security": {
-      "lead": "Odblokowywanie, blokada w tle i ukrywanie kwot na tym telefonie.",
+      "lead": "Odblokowywanie i blokada w tle na tym telefonie.",
       "biometrics": "Odblokowuj {{methodKey}}",
       "methodFace": "twarzą",
       "methodTouch": "odciskiem palca",
@@ -714,10 +715,7 @@
       "lockAfter_one": "blokada po {{count}} minucie",
       "lockAfter_few": "blokada po {{count}} minutach",
       "lockAfter_many": "blokada po {{count}} minutach",
-      "lockAfter_other": "blokada po {{count}} minuty",
-      "hideOnLaunch": "Ukrywaj kwoty po uruchomieniu",
-      "hideOnLaunchHint": "Każde uruchomienie zaczyna się z ukrytymi kwotami; oko w Przeglądzie pokazuje je ponownie.",
-      "hideOnLaunchShort": "kwoty ukryte po uruchomieniu"
+      "lockAfter_other": "blokada po {{count}} minuty"
     },
     "password": {
       "title": "Zmień hasło",

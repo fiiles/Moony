@@ -15,8 +15,6 @@
     "reason": "Lås opp Moony"
   },
   "overview": {
-    "hideAmounts": "Skjul beløp",
-    "showAmounts": "Vis beløp",
     "change": {
       "30D": "på 30 dager",
       "90D": "på 3 måneder",
@@ -58,8 +56,7 @@
       "change": "Endre kategori"
     },
     "limitSheet": {
-      "pick": "Velg kategorien du vil følge opp utgiftene i.",
-      "current": "Nåværende grense: {{amount}}"
+      "pick": "Velg kategorien du vil følge opp utgiftene i."
     },
     "budgets": {
       "ended": "avsluttet",
@@ -96,10 +93,12 @@
   },
   "recordBalances": {
     "title": "Registrer saldoer",
-    "lead": "Skriv inn gjeldende saldo for hver konto. Datoen er i dag.",
+    "lead": "Skriv inn saldoen på hver konto per dagen nedenfor.",
     "save": "Registrer",
     "saved": "Saldoer registrert",
-    "negative": "Negativ verdi"
+    "negative": "Negativ verdi",
+    "date": "Saldo per",
+    "dateInFuture": "En saldo kan ikke dateres frem i tid"
   },
   "biometrics": {
     "titleFace": "Låse opp Moony med ansiktet?",
@@ -506,7 +505,9 @@
       "noUpcoming": "Ingen kuponger eller forfall det kommende året.",
       "allRepaid": "Alle emisjoner er innfridd. Slå på «{{action}}» i menyen ··· for å se dem.",
       "loadFailed": "Obligasjonene kunne ikke lastes.",
-      "rateNote": "{{rate}} p.a. vektet"
+      "rateNote": "{{rate}} p.a. vektet",
+      "nextPayment": "Neste betaling",
+      "notGiven": "ikke oppgitt"
     },
     "otherAssets": {
       "count_one": "{{count}} post",
@@ -628,7 +629,7 @@
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "ingen telemetri",
     "security": {
-      "lead": "Opplåsing, lås i bakgrunnen og skjulte beløp på denne telefonen.",
+      "lead": "Opplåsing og lås i bakgrunnen på denne telefonen.",
       "biometrics": "Lås opp med {{methodKey}}",
       "methodFace": "ansiktet",
       "methodTouch": "fingeravtrykk",
@@ -642,10 +643,7 @@
       "optionMinutes": "{{count}} min",
       "lockNow": "lås straks",
       "lockAfter_one": "lås etter {{count}} minutt",
-      "lockAfter_other": "lås etter {{count}} minutter",
-      "hideOnLaunch": "Skjul beløp ved oppstart",
-      "hideOnLaunchHint": "Hver oppstart begynner med skjulte beløp; øyet i Oversikt viser dem igjen.",
-      "hideOnLaunchShort": "beløp skjult ved oppstart"
+      "lockAfter_other": "lås etter {{count}} minutter"
     },
     "password": {
       "title": "Endre passord",

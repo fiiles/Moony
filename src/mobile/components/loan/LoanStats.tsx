@@ -19,8 +19,7 @@ interface LoanStatsProps {
 /**
  * The four stats of the loan, two rows of two (spec §8.8 "Úvěr", prototype frame 13): Zaplacené
  * úroky, Splaceno z jistiny, Zbývá splátek and Konec fixace — the desktop's numbers and notes
- * (`LoanDetail.tsx`), the notes short enough for a half-width card. Amounts go through the eye,
- * counts, percents and months stay.
+ * (`LoanDetail.tsx`), the notes short enough for a half-width card.
  */
 export function LoanStats({ row, stats, today }: LoanStatsProps) {
   const { t } = useTranslation('mobile');

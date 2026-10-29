@@ -17,7 +17,7 @@ import { positionPath } from '@/mobile/shell/routes';
  * the 52-week range, rows without a figure left out as the company card does. When the stock is
  * also held, the last row — "V portfoliu" — opens the position, whose back button then names the
  * ticker (back returns here, not to Akcie). The 52-week low and high are
- * Yahoo's public prices like the hero's, so they stay visible while amounts are hidden (ruling
+ * Yahoo's public prices like the hero's (ruling
  * P1); the range is stacked because two prices with their currency do not fit a third of a narrow
  * phone in German.
  */

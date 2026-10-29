@@ -4,8 +4,7 @@ import type { Formatters } from '@/lib/format';
 /**
  * A movement's amount as text, signed and in its own currency: "+ 1 249 Kč" for a credit, "− 80 €"
  * for a debit (the sign comes from the type, the number is the absolute amount). Pass the phone's
- * `useMoneyText()` as `money`: while amounts are hidden the number is masked and the sign stays
- * ("+ •••• Kč"). Shared by the ledger row and the transaction sheet.
+ * `useMoneyText()` as `money`. Shared by the ledger row and the transaction sheet.
  */
 export function signedAmountText(
   money: Formatters['money'],

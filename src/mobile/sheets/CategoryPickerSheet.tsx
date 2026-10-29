@@ -258,11 +258,13 @@ function PickerBody({
       />
 
       {/* Under the list, pinned to the sheet's bottom so that the switches the tap takes as they stand
-          are in view — until the search narrows the list: with the keyboard up the list needs the room */}
+          are in view — until the search narrows the list: with the keyboard up the list needs the room.
+          It sticks 14 px lower than the body's edge (`-bottom-3.5`, the body's bottom padding), so it
+          meets the footer with no strip of the list showing between them. */}
       <div
         className={cn(
           '-mx-4 -mb-3.5 mt-2 border-t border-line bg-paper px-4 pb-1.5 pt-1',
-          !searching && 'sticky bottom-0'
+          !searching && 'sticky -bottom-3.5'
         )}
       >
         {governingRule && (

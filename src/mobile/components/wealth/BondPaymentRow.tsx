@@ -9,8 +9,7 @@ import { shortDayOptions } from '@/mobile/lib/format-day';
 /**
  * A coupon or a maturity to come, a row of "Nejbližší kupóny a splatnosti" (spec §8.8): a coin or
  * a calendar in the chip, the bond's name over "15. 3. 2027 · Kupón" (or "Splatnost"), and the
- * amount in the bond's own currency with its sign — a credit, so green — which goes through the
- * eye. A maturity's amount is the principal with the last coupon. The row is read-only: the
+ * amount in the bond's own currency with its sign — a credit, so green. A maturity's amount is the principal with the last coupon. The row is read-only: the
  * bond is edited from the issues list under it.
  */
 export function BondPaymentRow({ payment }: { payment: BondPayment }) {

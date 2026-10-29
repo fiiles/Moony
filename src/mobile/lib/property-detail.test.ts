@@ -889,7 +889,6 @@ describe('cost form', () => {
     frequency: 'monthly',
     dateIso: '2026-10-20',
     description: ' pokrývač Novák ',
-    keptAmount: null,
     originalDateIso: null,
     ...partial,
   });
@@ -924,40 +923,6 @@ describe('cost form', () => {
       expect(costInput(form({ amountText: '0' }), 'CZK')).toBeNull();
       expect(costInput(form({ amountText: '-5' }), 'CZK')).toBeNull();
       expect(costInput(form({ dateIso: '' }), 'CZK')).toBeNull();
-    });
-  });
-
-  describe('an edited cost whose amount the eye hides', () => {
-    // The field starts empty while amounts are hidden; the stored amount is kept beside it
-    const hiddenEdit = (partial: Partial<CostForm> = {}) =>
-      form({ amountText: '', keptAmount: '85300.50', ...partial });
-
-    it('sends the stored amount when the field was not touched', () => {
-      expect(costInput(hiddenEdit({ name: 'Nová kuchyně' }), 'CZK')).toEqual({
-        realEstateId: 'p',
-        name: 'Nová kuchyně',
-        description: 'pokrývač Novák',
-        amount: '85300.50',
-        currency: 'CZK',
-        date: day(2026, 10, 20),
-      });
-    });
-
-    it('sends what was typed instead, as soon as something is typed', () => {
-      expect(costInput(hiddenEdit({ amountText: '90 000' }), 'CZK')?.amount).toBe('90000');
-    });
-
-    it('does not let the stored amount hide a typed amount that is wrong', () => {
-      expect(costInput(hiddenEdit({ amountText: 'abc' }), 'CZK')).toBeNull();
-      expect(costInput(hiddenEdit({ amountText: '0' }), 'CZK')).toBeNull();
-    });
-
-    it('needs the stored amount to be a positive one as well (an amount of nothing from the computer)', () => {
-      expect(costInput(hiddenEdit({ keptAmount: '0' }), 'CZK')).toBeNull();
-    });
-
-    it('is a cost without a stored amount and without a typed one that is null, as before', () => {
-      expect(costInput(form({ amountText: '', keptAmount: null }), 'CZK')).toBeNull();
     });
   });
 
@@ -998,19 +963,6 @@ describe('cost form', () => {
       expect(costErrors(form({ dateIso: '' }), TODAY_ISO).date).toBe('required');
       expect(costErrors(form({ dateIso: '2026-10-25' }), TODAY_ISO).date).toBe('future');
       expect(costErrors(form({ dateIso: TODAY_ISO }), TODAY_ISO).date).toBeUndefined();
-    });
-
-    it('does not call the amount missing while the stored one stands in for it (hidden amounts)', () => {
-      expect(costErrors(form({ amountText: '', keptAmount: '85300.50' }), TODAY_ISO)).toEqual({});
-      expect(costErrors(form({ amountText: '', keptAmount: null }), TODAY_ISO).amount).toBe(
-        'required'
-      );
-      expect(costErrors(form({ amountText: 'x', keptAmount: '85300.50' }), TODAY_ISO).amount).toBe(
-        'invalid'
-      );
-      expect(costErrors(form({ amountText: '', keptAmount: '0' }), TODAY_ISO).amount).toBe(
-        'notPositive'
-      );
     });
 
     it('lets an edited cost keep its own day even when that day is ahead, and no later one', () => {

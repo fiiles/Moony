@@ -7,7 +7,6 @@ import { AmountField } from '@/mobile/components/AmountField';
 import { DateField } from '@/mobile/components/DateField';
 import { Sheet } from '@/mobile/components/Sheet';
 import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
-import { useHideAmounts } from '@/mobile/hooks/use-hide-amounts';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { todayIso } from '@/mobile/lib/property-detail';
 import {
@@ -40,8 +39,7 @@ interface RevalueSheetProps {
  * mutations (the domain keys, the metrics, the cashflow and a fresh snapshot) and closes the sheet
  * once it is saved; a refusal is the mutation's own toast and the sheet stays. The hint under the
  * amount is the previous estimate, or — for an asset held by the unit, once a price is typed — the
- * total it makes of the units held; both go through the eye, and with the amounts hidden the field
- * starts empty instead of with the estimate. The amount typed is an input and is never masked.
+ * total it makes of the units held.
  *
  * Every opening starts over from today's estimate and today.
  */
@@ -58,18 +56,17 @@ export function RevalueSheet({
 }: RevalueSheetProps) {
   const { t: tc } = useTranslation('common');
   const moneyText = useMoneyText();
-  const { hidden } = useHideAmounts();
   const formId = useId();
   const { add } = useValuationMutations(kind, assetId);
 
-  const [form, setForm] = useState(() => startRevalueForm(value, hidden, todayIso()));
+  const [form, setForm] = useState(() => startRevalueForm(value, todayIso()));
   // An empty amount is only called missing once the field has been left
   const [amountTouched, setAmountTouched] = useState(false);
   const [openedFor, setOpenedFor] = useState(open);
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setForm(startRevalueForm(value, hidden, todayIso()));
+      setForm(startRevalueForm(value, todayIso()));
       setAmountTouched(false);
     }
   }

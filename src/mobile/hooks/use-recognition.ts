@@ -74,9 +74,9 @@ export function useRecognition({ active, goTo, onUnreadable, onNavigate }: UseRe
   const options = useMemo(
     () =>
       view.kind === 'field' && session
-        ? columnOptions(view.field, session.csv, session.inferred, mapping ?? undefined)
+        ? columnOptions(view.field, session.csv, session.inferred)
         : [],
-    [view, session, mapping]
+    [view, session]
   );
   const chosen = options.find((option) => option.id === choice) ?? null;
   /** The mapping the open field would give: its checked option over the current one. */
@@ -122,7 +122,7 @@ export function useRecognition({ active, goTo, onUnreadable, onNavigate }: UseRe
       return 'recognize';
     }
     setView({ kind: 'field', field: step.field, start });
-    setChoice(selectedOption(columnOptions(step.field, file.csv, file.inferred, current), current));
+    setChoice(selectedOption(columnOptions(step.field, file.csv, file.inferred), current));
     return 'correct';
   };
 

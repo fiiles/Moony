@@ -22,7 +22,7 @@ export function priceOf(value: string | null): number | null {
 
 /**
  * A watched stock's price as text, in its own currency and with the decimals of a price (none from
- * 1000 up); `signed` writes the "+" of a change. Never converted and never masked: the price is
+ * 1000 up); `signed` writes the "+" of a change. Never converted: the price is
  * Yahoo's public number, not an amount of the person's (spec §8.8; the watch files are the one
  * place `fmt.money` is called directly).
  */

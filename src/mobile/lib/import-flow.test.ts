@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import type { CsvImportResult, CsvPreviewResult } from '@shared/schema';
-import { maskMoney } from './hide-amounts';
 import {
   chooseAccount,
   csvRecognizable,
@@ -248,15 +247,12 @@ describe('previewAmount', () => {
     expect(previewAmount({ amount: 'abc', currency: 'CZK' }, 'CZK')).toBeNull();
   });
 
-  it('composes with signedAmountText, which keeps the sign while amounts are hidden', () => {
+  it('composes with signedAmountText', () => {
     const money = (value: number, currency: string) => `${value} ${currency}`;
-    const masked = (value: number, currency: string) => maskMoney(money(value, currency));
     const debit = previewAmount({ amount: '-1249.5', currency: 'CZK' }, 'CZK');
     const credit = previewAmount({ amount: '800', currency: 'CZK' }, 'CZK');
     expect(signedAmountText(money, debit!)).toBe('− 1249.5 CZK');
     expect(signedAmountText(money, credit!)).toBe('+ 800 CZK');
-    expect(signedAmountText(masked, debit!)).toBe('− •••• CZK');
-    expect(signedAmountText(masked, credit!)).toBe('+ •••• CZK');
   });
 });
 

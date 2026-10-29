@@ -44,7 +44,7 @@ import { Screen } from '@/mobile/shell/Screen';
  * issues, the yearly coupon, the nearest maturity), "Nejbližší kupóny a splatnosti" — what is
  * paid in the next twelve months, in each bond's own currency — and the issues as rows. The stats
  * are the desktop's own (`useBonds`), in the main currency; the rows and the dated list are native
- * (ADR 0012). Every amount goes through the eye of Přehled. A tap on an issue opens the desktop's
+ * (ADR 0012). A tap on an issue opens the desktop's
  * form (ruling 4), a long press its menu; adding is the same form from the `+`. Repaid issues sit
  * behind "Zobrazit splacené" in the `···` menu, remembered for the session.
  */
@@ -83,6 +83,12 @@ export default function Bonds() {
 
   const rows = bondRows(bonds, today, showMatured);
   const payments = upcomingBondPayments(bonds, today);
+  // Each bond's next payment for its unfolded details (the list is by day: the first one wins)
+  const nextPayment = new Map<string, BondPayment>();
+  for (const payment of payments) {
+    if (!nextPayment.has(payment.bond.id)) nextPayment.set(payment.bond.id, payment);
+  }
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   return (
     <Screen
@@ -146,7 +152,17 @@ export default function Bonds() {
           ) : (
             <EntityRows>
               {rows.map((row) => (
-                <BondRow key={row.bond.id} row={row} onEdit={openEdit} onDelete={setDeleting} />
+                <BondRow
+                  key={row.bond.id}
+                  row={row}
+                  nextPayment={nextPayment.get(row.bond.id)}
+                  expanded={expanded === row.bond.id}
+                  onToggle={() =>
+                    setExpanded((open) => (open === row.bond.id ? null : row.bond.id))
+                  }
+                  onEdit={openEdit}
+                  onDelete={setDeleting}
+                />
               ))}
             </EntityRows>
           )}

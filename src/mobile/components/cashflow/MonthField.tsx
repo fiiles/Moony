@@ -48,7 +48,7 @@ export function MonthField({ label, value, onChange, error, action }: MonthField
         onChange={(event) => onChange(event.target.value)}
         aria-invalid={error ? true : undefined}
         aria-describedby={error ? errorId : undefined}
-        className="m-0 block h-12 w-full min-w-0 appearance-none rounded-[10px] border border-line-strong bg-paper px-3.5 text-left text-m-field text-ink num transition-[border-color,box-shadow] duration-fast focus:border-focus focus:shadow-focus focus-visible:outline-none aria-[invalid=true]:border-loss aria-[invalid=true]:focus:shadow-loss-ring [&::-webkit-date-and-time-value]:text-left"
+        className="m-0 flex h-12 w-full min-w-0 appearance-none items-center rounded-[10px] border border-line-strong bg-paper px-3.5 text-left text-m-field text-ink num transition-[border-color,box-shadow] duration-fast focus:border-focus focus:shadow-focus focus-visible:outline-none aria-[invalid=true]:border-loss aria-[invalid=true]:focus:shadow-loss-ring [&::-webkit-date-and-time-value]:text-left"
       />
       {error && (
         <p

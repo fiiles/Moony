@@ -42,8 +42,7 @@ const willWrite = (row: Pick<CsvPreviewRow, 'status'>) =>
 /**
  * The preview's rows (README §13, "Import preview rows"): the entity row of a movement — the
  * counterparty's initials (a credit's chip in `gain`), its name, "date · category" in the sub-line
- * ("Bez kategorie" as the ledger's badge) and the signed amount in its own currency, masked while
- * amounts are hidden with the sign kept. A row the import skips (a duplicate, a zero amount) is at
+ * ("Bez kategorie" as the ledger's badge) and the signed amount in its own currency. A row the import skips (a duplicate, a zero amount) is at
  * half strength with its reason as a badge, an error row says what is wrong with it; a row that
  * will be written opens the category choice on a tap. "a N dalších" counts what is not shown.
  * `sample` draws the three rows of the recognition the same way with their description in place

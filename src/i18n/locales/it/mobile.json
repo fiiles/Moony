@@ -15,8 +15,6 @@
     "reason": "Sblocca Moony"
   },
   "overview": {
-    "hideAmounts": "Nascondi importi",
-    "showAmounts": "Mostra importi",
     "change": {
       "30D": "in 30 giorni",
       "90D": "in 3 mesi",
@@ -60,8 +58,7 @@
       "change": "Cambia categoria"
     },
     "limitSheet": {
-      "pick": "Scegli la categoria di cui vuoi tenere sotto controllo le spese.",
-      "current": "Limite attuale: {{amount}}"
+      "pick": "Scegli la categoria di cui vuoi tenere sotto controllo le spese."
     },
     "budgets": {
       "ended": "terminato",
@@ -104,10 +101,12 @@
   },
   "recordBalances": {
     "title": "Registra saldi",
-    "lead": "Inserisci il saldo attuale di ogni conto. La data è oggi.",
+    "lead": "Inserisci il saldo di ogni conto alla data indicata qui sotto.",
     "save": "Registra",
     "saved": "Saldi registrati",
-    "negative": "Valore negativo"
+    "negative": "Valore negativo",
+    "date": "Saldo al",
+    "dateInFuture": "Un saldo non può avere una data futura"
   },
   "biometrics": {
     "titleFace": "Sbloccare Moony con il volto?",
@@ -538,7 +537,9 @@
       "noUpcoming": "Nel prossimo anno non sono previste cedole né scadenze.",
       "allRepaid": "Tutte le emissioni sono rimborsate. Attiva «{{action}}» nel menu ··· per vederle.",
       "loadFailed": "Impossibile caricare le obbligazioni.",
-      "rateNote": "{{rate}} annuo ponderato"
+      "rateNote": "{{rate}} annuo ponderato",
+      "nextPayment": "Prossimo pagamento",
+      "notGiven": "non indicata"
     },
     "otherAssets": {
       "count_one": "{{count}} voce",
@@ -663,7 +664,7 @@
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "nessuna telemetria",
     "security": {
-      "lead": "Sblocco, blocco in background e importi nascosti su questo telefono.",
+      "lead": "Sblocco e blocco in background su questo telefono.",
       "biometrics": "Sblocca con {{methodKey}}",
       "methodFace": "il volto",
       "methodTouch": "l'impronta",
@@ -678,10 +679,7 @@
       "lockNow": "blocco immediato",
       "lockAfter_one": "blocco dopo {{count}} minuto",
       "lockAfter_many": "blocco dopo {{count}} minuti",
-      "lockAfter_other": "blocco dopo {{count}} minuti",
-      "hideOnLaunch": "Nascondi gli importi all'avvio",
-      "hideOnLaunchHint": "Ogni avvio parte con gli importi nascosti; l'occhio in Panoramica li mostra di nuovo.",
-      "hideOnLaunchShort": "importi nascosti all'avvio"
+      "lockAfter_other": "blocco dopo {{count}} minuti"
     },
     "password": {
       "title": "Cambia password",

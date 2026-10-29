@@ -20,7 +20,7 @@ interface ChangeLineProps {
 /**
  * The change line of a row's trailing sub (README §13, `.m-change`): the badge — ▲ / ▼ and the
  * share, green or red, neutral at exactly zero, absent without a ratio — then the signed amount
- * (through `<Money>`, so the eye masks it) or `trail`. The share is never colour alone: the
+ * (through `<Money>`) or `trail`. The share is never colour alone: the
  * glyph carries the direction.
  */
 export function ChangeLine({ change, currency, options, trail, className }: ChangeLineProps) {

@@ -6,7 +6,8 @@ import { cn } from '@/lib/utils';
 
 /**
  * Buttons (design system §6, `.btn`): 36 px (32 small), radius 8, 11/650 label
- * that names the outcome. One primary per page. `danger` is text-only; the solid
+ * that names the outcome. One primary per page. `danger` is text-only, `dangerOutline` the same
+ * action as a bordered secondary button in a page head; the solid
  * `destructive` belongs inside confirm dialogs only. Loading spins the icon and
  * keeps the label.
  */
@@ -28,6 +29,9 @@ const buttonVariants = cva(
           'border-transparent text-ink-2 hover:bg-ink-hover hover:text-ink [&_svg]:text-ink-3 [&:hover_svg]:text-ink-2',
         /** Text-only red-brown: delete actions outside confirm dialogs. */
         danger: 'border-transparent text-loss hover:bg-loss-soft [&_svg]:text-loss',
+        /** Bordered red-brown: a delete-like head action next to secondary buttons. Hover as `danger`. */
+        dangerOutline:
+          'border-line-strong bg-btn-grad text-loss shadow-btn hover:border-loss-line hover:bg-none hover:bg-loss-soft hover:shadow-none active:shadow-none [&_svg]:text-loss',
         /** Solid red-brown: the confirming action of a destructive dialog. */
         destructive:
           'border-transparent bg-loss text-ink-inverse shadow-destructive hover:bg-loss-hover [&_svg]:text-ink-inverse',

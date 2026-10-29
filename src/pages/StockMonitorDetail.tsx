@@ -292,11 +292,7 @@ export default function StockMonitorDetail() {
               </Button>
             )}
             {detail.followed ? (
-              <Button
-                variant="outline"
-                className="text-loss"
-                onClick={() => setConfirmUnfollow(true)}
-              >
+              <Button variant="dangerOutline" onClick={() => setConfirmUnfollow(true)}>
                 {t('actions.unfollow')}
               </Button>
             ) : (

@@ -196,7 +196,7 @@ function PlanDetailBody({
               {closed ? <RotateCcw /> : <Lock />}
               {closed ? t('actions.reopen') : t('actions.close')}
             </Button>
-            <Button variant="danger" onClick={() => setModal('delete')}>
+            <Button variant="dangerOutline" onClick={() => setModal('delete')}>
               <Trash2 />
               {t('actions.delete')}
             </Button>

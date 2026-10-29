@@ -1,7 +1,6 @@
 import type {
   BankTransaction,
   SpendingPlan,
-  SpendingPlanCategory,
   SpendingPlanDetail,
   SpendingPlanSummary,
 } from '@shared/schema';
@@ -295,47 +294,63 @@ export interface PlanFlowSegment {
   value: number;
   /** Share of the bar, 0–1. */
   share: number;
+  /** The plan's own color; the neutral `--s-other` for "Ostatní plány"; none for the rest. */
+  color?: string;
   kind?: 'rest';
 }
 
-/** Categories shown on their own in the overview bar; the others fold into "Ostatní". */
-const FLOW_HEAD = 4;
+/** One plan as the overview bar needs it: spent in the report currency, null when unknown. */
+export interface PlanFlowInput {
+  id: string;
+  name: string;
+  color: string;
+  spent: string | null;
+}
+
+/** Plans shown on their own in the overview bar; the others fold into "Ostatní plány". */
+const FLOW_HEAD = 6;
+
+/** Color of the "Ostatní plány" segment. */
+const FLOW_OTHER_COLOR = 'var(--s-other)';
 
 /**
- * "Kam jdou peníze z plánů": the year's spend by category across all plans, on a bar where
- * 100 % is the largest of planned, spent and the positive category spend (report currency).
- * The four categories with the largest positive spend, "Ostatní" for the rest of the positive
- * spend, then the hatched remainder while the plans are not used up. Zero or negative
- * categories (refunds outweighing payments) are left out; since they still lower spent, the
- * drawn spend is the positive sum, and the remainder is planned minus the larger of the two,
- * so the segments never add up to more than the bar.
+ * "Kam jdou peníze z plánů": the year's spend by plan, on a bar where 100 % is the largest of
+ * planned, spent and the positive plan spend (report currency). The six plans with the largest
+ * positive spend in their own colors, "Ostatní plány" for the rest of the positive spend, then
+ * the hatched remainder while the plans are not used up. Plans whose spend is unknown (no rate),
+ * zero or negative (refunds outweighing payments) are left out; since a negative one still
+ * lowers spent, the drawn spend is the positive sum, and the remainder is planned minus the
+ * larger of the two, so the segments never add up to more than the bar.
  */
 export function planFlowSegments(
-  input: {
-    planned: number;
-    spent: number;
-    categories: readonly Pick<SpendingPlanCategory, 'categoryId' | 'spent'>[];
-  },
-  labels: { category: (categoryId: string | null) => string; other: string; rest: string }
+  input: { planned: number; spent: number; plans: readonly PlanFlowInput[] },
+  labels: { other: string; rest: string }
 ): PlanFlowSegment[] {
-  const positive = input.categories
-    .map((c) => ({ categoryId: c.categoryId, value: parseFloat(c.spent) }))
-    .filter((c) => Number.isFinite(c.value) && c.value > 0)
+  const positive = input.plans
+    .map((p) => ({ plan: p, value: p.spent === null ? NaN : parseFloat(p.spent) }))
+    .filter((p) => Number.isFinite(p.value) && p.value > 0)
     .sort((a, b) => b.value - a.value);
-  const positiveSum = positive.reduce((sum, c) => sum + c.value, 0);
+  const positiveSum = positive.reduce((sum, p) => sum + p.value, 0);
   const drawn = Math.max(input.spent, positiveSum);
   const base = Math.max(input.planned, drawn);
   if (!(base > 0)) return [];
-  const segments: PlanFlowSegment[] = positive.slice(0, FLOW_HEAD).map((c) => ({
-    key: c.categoryId === null ? 'uncategorized' : `cat:${c.categoryId}`,
-    label: labels.category(c.categoryId),
-    value: c.value,
-    share: c.value / base,
+  const segments: PlanFlowSegment[] = positive.slice(0, FLOW_HEAD).map(({ plan, value }) => ({
+    key: `plan:${plan.id}`,
+    label: plan.name,
+    value,
+    share: value / base,
+    color: plan.color,
   }));
   const tail = positive.slice(FLOW_HEAD);
   if (tail.length > 0) {
-    const value = tail.reduce((sum, c) => sum + c.value, 0);
-    segments.push({ key: 'other', label: labels.other, value, share: value / base });
+    const value = tail.reduce((sum, p) => sum + p.value, 0);
+    segments.push({
+      key: 'other',
+      label: labels.other,
+      value,
+      share: value / base,
+      color: FLOW_OTHER_COLOR,
+    });
   }
   const left = input.planned - drawn;
   if (left > 0) {

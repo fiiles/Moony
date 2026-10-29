@@ -240,6 +240,7 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::SpendingPlanSummary>();
     types.register::<crate::models::SpendingPlanTotals>();
     types.register::<crate::models::SpendingPlansOverview>();
+    types.register::<crate::models::SpendingPlanSpent>();
     types.register::<crate::models::SpendingPlanMonth>();
     types.register::<crate::models::SpendingPlanCategory>();
     types.register::<crate::models::SpendingPlanCell>();

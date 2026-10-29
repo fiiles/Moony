@@ -134,13 +134,22 @@ pub struct SpendingPlansOverview {
     pub fx_quality: ConversionQuality,
     pub plans: Vec<SpendingPlanSummary>,
     pub totals: SpendingPlanTotals,
-    /// The year's spend by category across all plans, in `currency`, largest first. Each plan's
-    /// per-category spend (plan currency, at the booking day) is converted with today's rate;
-    /// plans or payments that cannot be converted are left out and counted in `fx_quality`.
-    pub categories: Vec<SpendingPlanCategory>,
+    /// Each plan's spent in `currency`, largest first (`None` last). A plan that cannot be
+    /// converted has `None`; the miss is counted in `fx_quality`.
+    #[serde(rename = "planSpent")]
+    pub plan_spent: Vec<SpendingPlanSpent>,
     /// Years that have at least one plan, ascending.
     #[serde(rename = "yearsWithPlans")]
     pub years_with_plans: Vec<i32>,
+}
+
+/// One plan's spent converted into the overview's report currency.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
+pub struct SpendingPlanSpent {
+    #[serde(rename = "planId")]
+    pub plan_id: String,
+    /// Booked debits minus credits in the report currency; `None` when it cannot be converted.
+    pub spent: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]

@@ -2868,12 +2868,19 @@ export interface SpendingPlansOverview {
   plans: SpendingPlanSummary[];
   totals: SpendingPlanTotals;
   /**
-   * The year's spend by category across all plans, in `currency`, largest first. Plans or
-   * payments that cannot be converted are left out and counted in `fxQuality`.
+   * Each plan's spent in `currency`, largest first (null last). A plan that cannot be
+   * converted has null; the miss is counted in `fxQuality`.
    */
-  categories: SpendingPlanCategory[];
+  planSpent: SpendingPlanSpent[];
   /** Years that have at least one plan, ascending. */
   yearsWithPlans: number[];
+}
+
+/** One plan's spent converted into the overview's report currency. */
+export interface SpendingPlanSpent {
+  planId: string;
+  /** Booked debits minus credits in the report currency; null when it cannot be converted. */
+  spent: string | null;
 }
 
 export interface SpendingPlanMonth {
@@ -2921,7 +2928,6 @@ export interface PlanCandidatesResult {
   transactions: BankTransaction[];
   truncated: boolean;
 }
-
 
 export interface StatementBalance {
   amount: string;

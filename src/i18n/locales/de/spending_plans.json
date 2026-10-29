@@ -252,8 +252,8 @@
   },
   "flow": {
     "title": "Wohin das Geld der Pläne fließt",
-    "sub": "Ausgaben aller Pläne {{year}} nach Kategorie. Der schraffierte Teil ist vom geplanten Betrag übrig.",
-    "other": "Sonstige",
+    "sub": "Ausgaben der Pläne {{year}}: die sechs größten einzeln, die übrigen zusammen. Der schraffierte Teil ist vom geplanten Betrag übrig.",
+    "other": "Sonstige Pläne",
     "rest": "In Plänen übrig",
     "badgeLeft": "{{percent}} der Pläne übrig",
     "badgeOver": "Um {{amount}} überschritten",

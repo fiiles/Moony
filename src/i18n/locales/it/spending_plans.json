@@ -275,8 +275,8 @@
   },
   "flow": {
     "title": "Dove vanno i soldi dei piani",
-    "sub": "Spesa di tutti i piani del {{year}} per categoria. La parte tratteggiata è ciò che resta dell'importo pianificato.",
-    "other": "Altro",
+    "sub": "Spesa dei piani del {{year}}: i sei più grandi a parte, gli altri insieme. La parte tratteggiata è ciò che resta dell'importo pianificato.",
+    "other": "Altri piani",
     "rest": "Resta nei piani",
     "badgeLeft": "Resta il {{percent}} dei piani",
     "badgeOver": "Superato di {{amount}}",

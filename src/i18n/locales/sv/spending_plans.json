@@ -252,8 +252,8 @@
   },
   "flow": {
     "title": "Vart pengarna i planerna går",
-    "sub": "Utgifter i alla planer för {{year}} per kategori. Den streckade delen är det som är kvar av det planerade beloppet.",
-    "other": "Övrigt",
+    "sub": "Utgifter i planerna för {{year}}: de sex största var för sig, resten tillsammans. Den streckade delen är det som är kvar av det planerade beloppet.",
+    "other": "Övriga planer",
     "rest": "Kvar i planerna",
     "badgeLeft": "{{percent}} av planerna kvar",
     "badgeOver": "Överskriden med {{amount}}",

@@ -2023,6 +2023,15 @@ export type SpendingPlanMonth = {
 month: string; spent: string }
 
 /**
+ * One plan's spent converted into the overview's report currency.
+ */
+export type SpendingPlanSpent = { planId: string; 
+/**
+ * Booked debits minus credits in the report currency; `None` when it cannot be converted.
+ */
+spent: string | null }
+
+/**
  * A plan with what has been spent on it, in the plan's currency.
  */
 export type SpendingPlanSummary = { plan: SpendingPlan; 
@@ -2047,11 +2056,10 @@ export type SpendingPlansOverview = { year: number;
  */
 currency: string; fxQuality: ConversionQuality; plans: SpendingPlanSummary[]; totals: SpendingPlanTotals; 
 /**
- * The year's spend by category across all plans, in `currency`, largest first. Each plan's
- * per-category spend (plan currency, at the booking day) is converted with today's rate;
- * plans or payments that cannot be converted are left out and counted in `fx_quality`.
+ * Each plan's spent in `currency`, largest first (`None` last). A plan that cannot be
+ * converted has `None`; the miss is counted in `fx_quality`.
  */
-categories: SpendingPlanCategory[]; 
+planSpent: SpendingPlanSpent[]; 
 /**
  * Years that have at least one plan, ascending.
  */

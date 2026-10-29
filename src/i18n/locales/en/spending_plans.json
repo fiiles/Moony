@@ -252,8 +252,8 @@
   },
   "flow": {
     "title": "Where the plan money goes",
-    "sub": "Spending of all {{year}} plans by category. The hatched part is what is left of the planned amount.",
-    "other": "Other",
+    "sub": "Spending of the {{year}} plans: the six largest on their own, the others together. The hatched part is what is left of the planned amount.",
+    "other": "Other plans",
     "rest": "Left in plans",
     "badgeLeft": "{{percent}} of plans left",
     "badgeOver": "Over by {{amount}}",

@@ -410,96 +410,114 @@ describe('plan month labels', () => {
 });
 
 describe('planFlowSegments', () => {
-  const labels = {
-    category: (id: string | null) => (id === null ? 'Bez kategorie' : `cat ${id}`),
-    other: 'Ostatní',
-    rest: 'Zbývá v plánech',
-  };
-  const cat = (categoryId: string | null, spent: string) => ({ categoryId, spent });
+  const labels = { other: 'Ostatní plány', rest: 'Zbývá v plánech' };
+  const plan = (id: string, spent: string | null) => ({
+    id,
+    name: `plan ${id}`,
+    color: `#${id}${id}${id}`,
+    spent,
+  });
   const brief = (segments: ReturnType<typeof planFlowSegments>) =>
     segments.map((s) => [s.key, s.label, s.value, s.share, s.kind ?? null]);
 
-  it('shows the four largest categories, then Ostatní, then the hatched rest of the plans', () => {
+  it('shows the six plans with the largest spend, then Ostatní plány, then the rest', () => {
     const segments = planFlowSegments(
       {
         planned: 1000,
         spent: 600,
-        categories: [
-          cat('a', '100'),
-          cat('b', '250'),
-          cat('c', '50'),
-          cat('d', '80'),
-          cat('e', '70'),
-          cat('f', '50'),
+        plans: [
+          plan('a', '100'),
+          plan('b', '200'),
+          plan('c', '30'),
+          plan('d', '80'),
+          plan('e', '70'),
+          plan('f', '50'),
+          plan('g', '40'),
+          plan('h', '30'),
         ],
       },
       labels
     );
     expect(brief(segments)).toEqual([
-      ['cat:b', 'cat b', 250, 0.25, null],
-      ['cat:a', 'cat a', 100, 0.1, null],
-      ['cat:d', 'cat d', 80, 0.08, null],
-      ['cat:e', 'cat e', 70, 0.07, null],
-      ['other', 'Ostatní', 100, 0.1, null],
+      ['plan:b', 'plan b', 200, 0.2, null],
+      ['plan:a', 'plan a', 100, 0.1, null],
+      ['plan:d', 'plan d', 80, 0.08, null],
+      ['plan:e', 'plan e', 70, 0.07, null],
+      ['plan:f', 'plan f', 50, 0.05, null],
+      ['plan:g', 'plan g', 40, 0.04, null],
+      ['other', 'Ostatní plány', 60, 0.06, null],
       ['rest', 'Zbývá v plánech', 400, 0.4, 'rest'],
     ]);
   });
 
-  it('has no Ostatní with four categories or fewer', () => {
+  it("carries each plan's own color, a neutral one for Ostatní plány and none for the rest", () => {
     const segments = planFlowSegments(
-      { planned: 100, spent: 30, categories: [cat('a', '20'), cat('b', '10')] },
+      {
+        planned: 1000,
+        spent: 70,
+        plans: ['1', '2', '3', '4', '5', '6', '7'].map((id) => plan(id, '10')),
+      },
       labels
     );
-    expect(segments.map((s) => s.key)).toEqual(['cat:a', 'cat:b', 'rest']);
+    expect(segments.map((s) => s.color ?? null)).toEqual([
+      '#111',
+      '#222',
+      '#333',
+      '#444',
+      '#555',
+      '#666',
+      'var(--s-other)',
+      null,
+    ]);
+  });
+
+  it('has no Ostatní plány with six plans or fewer', () => {
+    const segments = planFlowSegments(
+      { planned: 100, spent: 30, plans: [plan('a', '20'), plan('b', '10')] },
+      labels
+    );
+    expect(segments.map((s) => s.key)).toEqual(['plan:a', 'plan:b', 'rest']);
   });
 
   it('measures an overspent year against the spend and leaves no rest', () => {
     const segments = planFlowSegments(
-      { planned: 100, spent: 200, categories: [cat('a', '150'), cat('b', '50')] },
+      { planned: 100, spent: 200, plans: [plan('a', '150'), plan('b', '50')] },
       labels
     );
     expect(brief(segments)).toEqual([
-      ['cat:a', 'cat a', 150, 0.75, null],
-      ['cat:b', 'cat b', 50, 0.25, null],
+      ['plan:a', 'plan a', 150, 0.75, null],
+      ['plan:b', 'plan b', 50, 0.25, null],
     ]);
   });
 
   it('leaves no rest when the plans are exactly used up', () => {
     const segments = planFlowSegments(
-      { planned: 100, spent: 100, categories: [cat('a', '100')] },
+      { planned: 100, spent: 100, plans: [plan('a', '100')] },
       labels
     );
-    expect(segments.map((s) => s.key)).toEqual(['cat:a']);
+    expect(segments.map((s) => s.key)).toEqual(['plan:a']);
   });
 
-  it('names payments without a category "Bez kategorie"', () => {
-    const [segment] = planFlowSegments(
-      { planned: 100, spent: 40, categories: [cat(null, '40')] },
-      labels
-    );
-    expect([segment.key, segment.label]).toEqual(['uncategorized', 'Bez kategorie']);
-  });
-
-  it('leaves out categories with zero or negative spend', () => {
+  it('leaves out plans whose spend is unknown, zero or negative', () => {
     const segments = planFlowSegments(
       {
         planned: 100,
         spent: 30,
-        categories: [cat('a', '40'), cat('b', '0'), cat('c', '-10'), cat('d', 'x')],
+        plans: [plan('a', '40'), plan('b', '0'), plan('c', '-10'), plan('d', null), plan('e', 'x')],
       },
       labels
     );
-    expect(segments.map((s) => s.key)).toEqual(['cat:a', 'rest']);
+    expect(segments.map((s) => s.key)).toEqual(['plan:a', 'rest']);
   });
 
-  it('never runs past 100 % when refunds outweigh a category', () => {
-    // A −20 category is left off but lowers spent: positive 50 against spent 30
+  it('never runs past 100 % when refunds outweigh a plan', () => {
+    // A −20 plan is left off but lowers spent: positive 50 against spent 30
     const segments = planFlowSegments(
-      { planned: 100, spent: 30, categories: [cat('a', '50'), cat('b', '-20')] },
+      { planned: 100, spent: 30, plans: [plan('a', '50'), plan('b', '-20')] },
       labels
     );
     expect(brief(segments)).toEqual([
-      ['cat:a', 'cat a', 50, 0.5, null],
+      ['plan:a', 'plan a', 50, 0.5, null],
       ['rest', 'Zbývá v plánech', 50, 0.5, 'rest'],
     ]);
     expect(segments.reduce((sum, s) => sum + s.share, 0)).toBeLessThanOrEqual(1);
@@ -507,13 +525,13 @@ describe('planFlowSegments', () => {
 
   it('measures against the positive spend when it is above planned and spent', () => {
     const segments = planFlowSegments(
-      { planned: 100, spent: 90, categories: [cat('a', '120'), cat('b', '-30')] },
+      { planned: 100, spent: 90, plans: [plan('a', '120'), plan('b', '-30')] },
       labels
     );
-    expect(brief(segments)).toEqual([['cat:a', 'cat a', 120, 1, null]]);
+    expect(brief(segments)).toEqual([['plan:a', 'plan a', 120, 1, null]]);
   });
 
   it('is empty when nothing is planned or spent', () => {
-    expect(planFlowSegments({ planned: 0, spent: 0, categories: [] }, labels)).toEqual([]);
+    expect(planFlowSegments({ planned: 0, spent: 0, plans: [] }, labels)).toEqual([]);
   });
 });

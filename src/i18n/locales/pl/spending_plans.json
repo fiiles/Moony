@@ -298,8 +298,8 @@
   },
   "flow": {
     "title": "Dokąd trafiają pieniądze z planów",
-    "sub": "Wydatki wszystkich planów na {{year}} wg kategorii. Zakreskowana część to, co zostało z zaplanowanej kwoty.",
-    "other": "Inne",
+    "sub": "Wydatki planów na {{year}}: sześć największych osobno, pozostałe razem. Zakreskowana część to, co zostało z zaplanowanej kwoty.",
+    "other": "Pozostałe plany",
     "rest": "Zostaje w planach",
     "badgeLeft": "Zostaje {{percent}} planów",
     "badgeOver": "Przekroczono o {{amount}}",

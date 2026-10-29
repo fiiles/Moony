@@ -56,4 +56,8 @@ tempfile = "3"
 
 [build-dependencies]
 tauri-plugin = { version = "2", features = ["build"] }
+
+# A build script runs on the host, so this cfg is the host's: only a Mac builds the macOS target.
+# Unconditional, swift-rs left unresolved Swift runtime symbols in the Windows build script's link.
+[target.'cfg(target_os = "macos")'.build-dependencies]
 swift-rs = { version = "1.0.9", features = ["build"] }

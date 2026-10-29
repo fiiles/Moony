@@ -1,5 +1,7 @@
 use std::env;
+#[cfg(target_os = "macos")]
 use std::path::PathBuf;
+#[cfg(target_os = "macos")]
 use std::process::Command;
 
 // Commands the webview may reach through the ACL; `permissions/default.toml` decides which
@@ -32,6 +34,12 @@ fn main() {
     }
 }
 
+#[cfg(not(target_os = "macos"))]
+fn link_macos_package() {
+    panic!("the macOS target builds only on a Mac host (swift-rs and the Swift toolchain)");
+}
+
+#[cfg(target_os = "macos")]
 fn link_macos_package() {
     let target_arch = env::var("CARGO_CFG_TARGET_ARCH").expect("cargo sets CARGO_CFG_TARGET_ARCH");
     if target_arch == env::consts::ARCH {
@@ -49,6 +57,7 @@ fn link_macos_package() {
 }
 
 /// `swift build` the package for `rust_arch` the way swift-rs does for the host, then link it.
+#[cfg(target_os = "macos")]
 fn build_macos_package_for(rust_arch: &str) {
     let arch = if rust_arch == "aarch64" {
         "arm64"

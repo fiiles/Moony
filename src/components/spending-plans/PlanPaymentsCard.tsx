@@ -129,16 +129,13 @@ export function PlanPaymentsCard({
           )}
         </div>
         {transactions.length > 0 && (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={closed}
-            title={closed ? t('detail.payments.closedHint') : undefined}
-            onClick={onAddPayments}
-          >
-            <ListPlus />
-            {t('actions.addPayments')}
-          </Button>
+          // A disabled button shows no hover, so the hint sits on its wrapper
+          <span title={closed ? t('detail.payments.closedHint') : undefined}>
+            <Button variant="outline" size="sm" disabled={closed} onClick={onAddPayments}>
+              <ListPlus />
+              {t('actions.addPayments')}
+            </Button>
+          </span>
         )}
       </CardHeader>
 
@@ -149,15 +146,12 @@ export function PlanPaymentsCard({
           title={t('detail.payments.emptyTitle')}
           description={t('detail.payments.emptyText')}
           action={
-            <Button
-              size="sm"
-              disabled={closed}
-              title={closed ? t('detail.payments.closedHint') : undefined}
-              onClick={onAddPayments}
-            >
-              <ListPlus />
-              {t('actions.addPayments')}
-            </Button>
+            <span title={closed ? t('detail.payments.closedHint') : undefined}>
+              <Button size="sm" disabled={closed} onClick={onAddPayments}>
+                <ListPlus />
+                {t('actions.addPayments')}
+              </Button>
+            </span>
           }
         />
       ) : (

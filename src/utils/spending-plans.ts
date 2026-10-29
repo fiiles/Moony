@@ -195,6 +195,28 @@ export function monthDate(month: string): Date {
   return new Date(Date.UTC(y, m - 1, 1));
 }
 
+/** `fmt.monthInSentence`: a UTC date with Intl options, its default year overridable. */
+type MonthFormatter = (date: Date, opts: Intl.DateTimeFormatOptions) => string;
+
+/**
+ * The month labels under "Útrata v čase": the short month of the plan year alone ("led", "Jan"),
+ * a month of another year with its two-digit year ("úno 27").
+ */
+export function planAxisLabels(axis: string[], planYear: number, format: MonthFormatter): string[] {
+  return axis.map((month) => {
+    // `year: undefined` drops the year monthInSentence adds by default
+    const short = format(monthDate(month), { month: 'short', year: undefined });
+    const year = Number(month.slice(0, 4));
+    return year === planYear ? short : `${short} ${String(year).slice(2)}`;
+  });
+}
+
+/** A month in a sentence or a filter badge: "září" in the plan year, "prosinec 2025" outside it. */
+export function planMonthLabel(month: string, planYear: number, format: MonthFormatter): string {
+  const inYear = Number(month.slice(0, 4)) === planYear;
+  return format(monthDate(month), { month: 'long', year: inYear ? undefined : 'numeric' });
+}
+
 /** The category filter's key of payments without a category (a category id is never empty). */
 export const UNCATEGORIZED_KEY = '';
 

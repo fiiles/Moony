@@ -7,10 +7,10 @@ import {
   UNCATEGORIZED_KEY,
   categoryKey,
   cumulativeSpend,
-  monthDate,
   monthOfDay,
   planCategoryRows,
   planMonthAxis,
+  planMonthLabel,
   planMonthSpend,
   planStatus,
 } from '@/utils/spending-plans';
@@ -148,13 +148,7 @@ function PlanDetailBody({
   );
 
   // "červenec"; a month outside the plan year carries its year ("prosinec 2025")
-  const monthLabel =
-    month === null
-      ? null
-      : fmt.monthInSentence(monthDate(month), {
-          month: 'long',
-          ...(Number(month.slice(0, 4)) !== plan.year ? { year: 'numeric' } : {}),
-        });
+  const monthLabel = month === null ? null : planMonthLabel(month, plan.year, fmt.monthInSentence);
   const categoryLabel = (() => {
     if (category === null) return null;
     if (category === UNCATEGORIZED_KEY) return t('detail.categories.uncategorized');

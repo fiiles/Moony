@@ -17,7 +17,7 @@ import {
 import { useFormat } from '@/lib/use-format';
 import { useChartTokens } from '@/theme/ThemeProvider';
 import { niceTicks, valueDomain } from '@/utils/chart-scale';
-import { monthDate } from '@/utils/spending-plans';
+import { monthDate, planAxisLabels } from '@/utils/spending-plans';
 import { ChartTip } from '@/components/charts/ChartTip';
 import { AXIS_WIDTH, CategoryAxis } from '@/components/charts/ChartAxis';
 
@@ -86,13 +86,7 @@ export function PlanSpendChart({
   const lastIndex = cumulative ? cumulative.map((v) => v !== null).lastIndexOf(true) : -1;
   const last = lastIndex >= 0 && cumulative ? cumulative[lastIndex] : null;
   const futureFrom = axis.findIndex((month) => month > currentMonth);
-  const labels = axis.map((month, i) => {
-    const short = fmt.month(monthDate(month), { month: 'short' });
-    const y = Number(month.slice(0, 4));
-    return y !== year && (i === 0 || month.endsWith('-01'))
-      ? `${short} ${String(y).slice(2)}`
-      : short;
-  });
+  const labels = planAxisLabels(axis, year, fmt.monthInSentence);
 
   return (
     <div>

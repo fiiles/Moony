@@ -18,8 +18,11 @@ import {
   planMonthAxis,
   planStatus,
   sortPlansByRisk,
+  planAxisLabels,
+  planMonthLabel,
   type PlanStatus,
 } from './spending-plans';
+import { createFormatters } from '@/lib/format';
 
 describe('planStatus', () => {
   it('is over when spent is above the planned amount', () => {
@@ -374,5 +377,33 @@ describe('periodRange', () => {
 
   it('has no bounds for all periods', () => {
     expect(periodRange(2026, 'all')).toEqual({ dateFrom: null, dateTo: null });
+  });
+});
+
+describe('plan month labels', () => {
+  const cs = createFormatters('cs-CZ', undefined).monthInSentence;
+  const en = createFormatters('en-US', undefined).monthInSentence;
+
+  it('writes the axis months of the plan year without the year', () => {
+    expect(planAxisLabels(['2026-01', '2026-02', '2026-12'], 2026, cs)).toEqual([
+      'led',
+      'úno',
+      'pro',
+    ]);
+    expect(planAxisLabels(['2026-01', '2026-09'], 2026, en)).toEqual(['Jan', 'Sep']);
+  });
+
+  it('adds a two-digit year to axis months outside the plan year', () => {
+    expect(planAxisLabels(['2025-12', '2026-01', '2027-02'], 2026, cs)).toEqual([
+      'pro 25',
+      'led',
+      'úno 27',
+    ]);
+  });
+
+  it('names a month of the plan year without the year and other months with it', () => {
+    expect(planMonthLabel('2026-09', 2026, cs)).toBe('září');
+    expect(planMonthLabel('2025-12', 2026, cs)).toBe('prosinec 2025');
+    expect(planMonthLabel('2026-09', 2026, en)).toBe('September');
   });
 });

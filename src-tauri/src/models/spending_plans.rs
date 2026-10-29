@@ -187,7 +187,11 @@ pub struct PlanCandidateFilters {
     pub account_id: Option<String>,
     #[serde(rename = "onlyUnassigned")]
     pub only_unassigned: bool,
+    /// Matched against counterparty, description and category name, ignoring case and diacritics.
     pub query: Option<String>,
+    /// Categories whose shown (translated) name matches `query`: their payments match it too.
+    #[serde(rename = "categoryIds")]
+    pub category_ids: Option<Vec<String>>,
     pub limit: Option<i64>,
 }
 

@@ -1632,7 +1632,15 @@ currency: string | null }
 /**
  * Filters for payments that could be tagged to a plan (any account).
  */
-export type PlanCandidateFilters = { planId: string; dateFrom: number | null; dateTo: number | null; accountId: string | null; onlyUnassigned: boolean; query: string | null; limit: number | null }
+export type PlanCandidateFilters = { planId: string; dateFrom: number | null; dateTo: number | null; accountId: string | null; onlyUnassigned: boolean; 
+/**
+ * Matched against counterparty, description and category name, ignoring case and diacritics.
+ */
+query: string | null; 
+/**
+ * Categories whose shown (translated) name matches `query`: their payments match it too.
+ */
+categoryIds: string[] | null; limit: number | null }
 
 export type PlanCandidatesResult = { transactions: BankTransaction[]; truncated: boolean }
 

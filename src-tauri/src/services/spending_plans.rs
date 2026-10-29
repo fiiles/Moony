@@ -14,6 +14,7 @@ use crate::models::{
     SpendingPlanCategory, SpendingPlanCell, SpendingPlanMonth, SpendingPlanTotals,
 };
 use crate::services::bank_history::{transaction_from_row, TRANSACTION_COLUMNS};
+use crate::services::categorization::tokenizer::fold_text;
 use crate::services::fx;
 use crate::services::reporting::money_in_currency;
 use chrono::{DateTime, Datelike, Utc};
@@ -525,7 +526,10 @@ const DEFAULT_CANDIDATE_LIMIT: i64 = 500;
 const MAX_CANDIDATE_LIMIT: i64 = 2000;
 
 /// Payments from any account that could be tagged to a plan (its own are excluded), newest
-/// first. `query` is matched in Rust because SQLite folds case for ASCII only.
+/// first. `query` is matched in Rust, folded like the categorization engine (case and
+/// diacritics: "kavarna" finds "Kavárna"), because SQLite folds case for ASCII only. A row also
+/// matches it when its category is one of `category_ids`: the dialog lists the categories whose
+/// translated name matches, as seeded ones are stored in English.
 pub fn candidate_transactions(
     conn: &Connection,
     f: &PlanCandidateFilters,
@@ -564,12 +568,18 @@ pub fn candidate_transactions(
         .as_deref()
         .map(str::trim)
         .filter(|q| !q.is_empty())
-        .map(str::to_lowercase);
+        .map(fold_text);
     let contains = |value: &Option<String>, needle: &str| {
         value
             .as_deref()
-            .is_some_and(|v| v.to_lowercase().contains(needle))
+            .is_some_and(|v| fold_text(v).contains(needle))
     };
+    let category_ids: HashSet<&str> = f
+        .category_ids
+        .iter()
+        .flatten()
+        .map(String::as_str)
+        .collect();
 
     let mut stmt = conn.prepare(&sql)?;
     let mut rows = stmt.query(rusqlite::params_from_iter(args.iter().map(|a| a.as_ref())))?;
@@ -579,7 +589,12 @@ pub fn candidate_transactions(
         let tx = transaction_from_row(row)?;
         if let Some(needle) = &needle {
             let category_name: Option<String> = row.get(26)?;
-            if !(contains(&tx.counterparty_name, needle)
+            let listed_category = tx
+                .category_id
+                .as_deref()
+                .is_some_and(|id| category_ids.contains(id));
+            if !(listed_category
+                || contains(&tx.counterparty_name, needle)
                 || contains(&tx.description, needle)
                 || contains(&category_name, needle))
             {
@@ -1332,6 +1347,7 @@ mod tests {
             account_id: None,
             only_unassigned: false,
             query: None,
+            category_ids: None,
             limit: None,
         }
     }
@@ -1409,6 +1425,56 @@ mod tests {
             };
             assert_eq!(candidate_ids(&conn, &by_query), expected, "query {q}");
         }
+    }
+
+    #[test]
+    fn candidates_query_ignores_diacritics() {
+        let conn = setup_test_db();
+        let p = create_plan(&conn, &plan("Dovolená", 2026)).unwrap();
+        put(&conn, pay("cafe", None, "1", ts(2026, 5, 1)));
+        put(&conn, pay("other", None, "1", ts(2026, 5, 2)));
+        conn.execute(
+            "UPDATE bank_transactions SET counterparty_name = 'Kavárna Slavia' WHERE id = 'cafe'",
+            [],
+        )
+        .unwrap();
+        for q in ["kavarna", "KAVARNA", "kavárna"] {
+            let f = PlanCandidateFilters {
+                query: Some(q.into()),
+                ..candidate_filters(&p.id)
+            };
+            assert_eq!(candidate_ids(&conn, &f), ["cafe"], "query {q}");
+        }
+    }
+
+    #[test]
+    fn candidates_query_matches_listed_categories() {
+        let conn = setup_test_db();
+        let p = create_plan(&conn, &plan("Dovolená", 2026)).unwrap();
+        // Seeded categories are stored in English and shown translated ("Potraviny")
+        conn.execute(
+            "INSERT INTO transaction_categories (id, name) VALUES ('groceries', 'Groceries')",
+            [],
+        )
+        .unwrap();
+        put(
+            &conn,
+            Pay {
+                category: Some("groceries"),
+                ..pay("food", None, "1", ts(2026, 5, 1))
+            },
+        );
+        put(&conn, pay("other", None, "1", ts(2026, 5, 2)));
+        let f = PlanCandidateFilters {
+            query: Some("potraviny".into()),
+            ..candidate_filters(&p.id)
+        };
+        assert!(candidate_ids(&conn, &f).is_empty());
+        let by_category = PlanCandidateFilters {
+            category_ids: Some(vec!["groceries".into()]),
+            ..f.clone()
+        };
+        assert_eq!(candidate_ids(&conn, &by_category), ["food"]);
     }
 
     #[test]

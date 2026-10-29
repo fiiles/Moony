@@ -11,6 +11,7 @@ import {
   type PlanPeriod,
 } from '@/utils/spending-plans';
 import { counterpartyLabel } from '@/utils/transaction-text';
+import { matchesSearch } from '@/utils/holdings-search';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
@@ -95,6 +96,15 @@ export function AddPaymentsDialog({ open, onOpenChange, plan }: AddPaymentsDialo
   }
 
   const search = useDebouncedValue(query.trim(), 200);
+  // Seeded categories are stored in English and shown translated: the backend cannot match
+  // "Potraviny", so the categories whose shown name matches are sent along by id
+  const categoryIds = useMemo(
+    () =>
+      search
+        ? categories.filter((c) => matchesSearch(search, [categoryName(c)])).map((c) => c.id)
+        : [],
+    [search, categories, categoryName]
+  );
   const filters = useMemo<PlanCandidateFilters>(
     () => ({
       planId: plan.id,
@@ -102,9 +112,10 @@ export function AddPaymentsDialog({ open, onOpenChange, plan }: AddPaymentsDialo
       accountId: accountId === ALL_ACCOUNTS ? null : accountId,
       onlyUnassigned,
       query: search || null,
+      categoryIds: categoryIds.length > 0 ? categoryIds : null,
       limit: null,
     }),
-    [plan.id, plan.year, period, accountId, onlyUnassigned, search]
+    [plan.id, plan.year, period, accountId, onlyUnassigned, search, categoryIds]
   );
   const candidates = usePlanCandidates(filters, open);
   const rows = candidates.data?.transactions ?? [];

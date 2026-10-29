@@ -5,14 +5,15 @@ use crate::models::bank_transactions::{
 };
 use rusqlite::Connection;
 
-/// The columns of one ledger row, in the order [`transaction_from_row`] reads them. The last one
-/// is the file name of the import the row came from, a subquery on `bank_transactions`, so the
+/// The columns of one ledger row, in the order [`transaction_from_row`] reads them. The import file name
+/// (index 24) is a subquery on `bank_transactions`, so the
 /// statement that uses this list must select `FROM bank_transactions` unaliased.
 pub(crate) const TRANSACTION_COLUMNS: &str = "id, bank_account_id, transaction_id, tx_type, amount, currency,
              description, counterparty_name, counterparty_iban, booking_date, value_date,
              category_id, merchant_category_code, remittance_info, suggested_category_id,
              status, data_source, created_at, flow_kind, counterparty_bank_code, counterparty_country, import_batch_id, import_line, row_balance,
-             (SELECT file_name FROM csv_import_batches WHERE id=bank_transactions.import_batch_id)";
+             (SELECT file_name FROM csv_import_batches WHERE id=bank_transactions.import_batch_id),
+             spending_plan_id";
 
 /// A ledger row read with [`TRANSACTION_COLUMNS`].
 pub(crate) fn transaction_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<BankTransaction> {
@@ -33,6 +34,7 @@ pub(crate) fn transaction_from_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<
         import_line: row.get(22)?,
         row_balance: row.get(23)?,
         import_file_name: row.get(24)?,
+        spending_plan_id: row.get(25)?,
         booking_date: row.get(9)?,
         value_date: row.get(10)?,
         category_id: row.get(11)?,
@@ -139,7 +141,8 @@ mod tests {
     fn db() -> Connection {
         let conn = Connection::open_in_memory().unwrap();
         conn.execute_batch("CREATE TABLE csv_import_batches(id TEXT PRIMARY KEY,file_name TEXT);
-          CREATE TABLE bank_transactions(id TEXT PRIMARY KEY,bank_account_id TEXT,transaction_id TEXT,tx_type TEXT,amount TEXT,currency TEXT,description TEXT,counterparty_name TEXT,counterparty_iban TEXT,booking_date INTEGER,value_date INTEGER,category_id TEXT,merchant_category_code TEXT,remittance_info TEXT,suggested_category_id TEXT,status TEXT,data_source TEXT,created_at INTEGER,flow_kind TEXT,counterparty_bank_code TEXT,counterparty_country TEXT,import_batch_id TEXT,import_line INTEGER,row_balance TEXT);").unwrap();
+          CREATE TABLE bank_transactions(id TEXT PRIMARY KEY,bank_account_id TEXT,transaction_id TEXT,tx_type TEXT,amount TEXT,currency TEXT,description TEXT,counterparty_name TEXT,counterparty_iban TEXT,booking_date INTEGER,value_date INTEGER,category_id TEXT,merchant_category_code TEXT,remittance_info TEXT,suggested_category_id TEXT,status TEXT,data_source TEXT,created_at INTEGER,flow_kind TEXT,counterparty_bank_code TEXT,counterparty_country TEXT,import_batch_id TEXT,import_line INTEGER,row_balance TEXT,spending_plan_id TEXT);
+          CREATE TABLE spending_plans(id TEXT PRIMARY KEY);").unwrap();
         for n in 0..1213 {
             conn.execute("INSERT INTO bank_transactions(id,bank_account_id,tx_type,amount,currency,description,booking_date,status,data_source,created_at,category_id) VALUES (?1,'a','debit',?2,'CZK','Merchant',10,'booked','manual',10,?3)",rusqlite::params![format!("t{n:04}"),n.to_string(),if n%2==0{Some("food")}else{None}]).unwrap();
         }
@@ -178,6 +181,26 @@ mod tests {
             get_transactions(&conn, "a", &filters).unwrap().transactions[0].amount,
             "1212"
         );
+    }
+    #[test]
+    fn ledger_rows_carry_spending_plan_id() {
+        let conn = db();
+        conn.execute("INSERT INTO spending_plans(id) VALUES ('plan-1')", [])
+            .unwrap();
+        conn.execute(
+            "UPDATE bank_transactions SET spending_plan_id='plan-1' WHERE id='t0000'",
+            [],
+        )
+        .unwrap();
+        let filters = TransactionFilters {
+            limit: Some(5000),
+            ..Default::default()
+        };
+        let rows = get_transactions(&conn, "a", &filters).unwrap().transactions;
+        let tagged = rows.iter().find(|t| t.id == "t0000").unwrap();
+        assert_eq!(tagged.spending_plan_id.as_deref(), Some("plan-1"));
+        let plain = rows.iter().find(|t| t.id == "t0001").unwrap();
+        assert_eq!(plain.spending_plan_id, None);
     }
     #[test]
     fn invalid_history_pagination_is_rejected() {

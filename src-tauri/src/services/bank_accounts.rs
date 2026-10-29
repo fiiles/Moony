@@ -464,6 +464,7 @@ pub fn create_transaction_with_origin(
         import_file_name: None,
         import_line: None,
         row_balance: None,
+        spending_plan_id: None,
     })
 }
 

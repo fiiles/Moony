@@ -23,6 +23,9 @@ CREATE INDEX idx_bank_transactions_category ON bank_transactions(category_id)
 == index idx_bank_transactions_date ==
 CREATE INDEX idx_bank_transactions_date ON bank_transactions(booking_date)
 
+== index idx_bank_transactions_spending_plan ==
+CREATE INDEX idx_bank_transactions_spending_plan ON bank_transactions(spending_plan_id)
+
 == index idx_batches_real_estate ==
 CREATE INDEX idx_batches_real_estate ON real_estate_photo_batches(real_estate_id)
 
@@ -102,6 +105,9 @@ CREATE INDEX idx_real_estate_documents ON real_estate_documents(real_estate_id)
 
 == index idx_real_estate_valuations_asset ==
 CREATE INDEX idx_real_estate_valuations_asset ON real_estate_valuations(real_estate_id, valued_at)
+
+== index idx_spending_plans_year ==
+CREATE INDEX idx_spending_plans_year ON spending_plans(year)
 
 == index idx_stock_investment_tags_investment ==
 CREATE INDEX idx_stock_investment_tags_investment ON stock_investment_tags(investment_id)
@@ -203,7 +209,8 @@ CREATE TABLE bank_transactions (
     import_batch_id TEXT REFERENCES csv_import_batches(id) ON DELETE CASCADE,
     categorization_source TEXT,
     suggested_category_id TEXT REFERENCES transaction_categories(id), flow_kind TEXT
-    CHECK (flow_kind IS NULL OR flow_kind IN ('income', 'expense', 'transfer', 'investment', 'financing', 'adjustment')), counterparty_bank_code TEXT, counterparty_country TEXT, import_line INTEGER, row_balance TEXT, categorize_snoozed_until INTEGER,
+    CHECK (flow_kind IS NULL OR flow_kind IN ('income', 'expense', 'transfer', 'investment', 'financing', 'adjustment')), counterparty_bank_code TEXT, counterparty_country TEXT, import_line INTEGER, row_balance TEXT, categorize_snoozed_until INTEGER, spending_plan_id TEXT
+    REFERENCES spending_plans(id) ON DELETE SET NULL,
     UNIQUE(bank_account_id, transaction_id)
 )
 
@@ -660,6 +667,21 @@ CREATE TABLE real_estate_valuations (
     valued_at INTEGER NOT NULL,
     note TEXT,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
+== table spending_plans ==
+CREATE TABLE spending_plans (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    year INTEGER NOT NULL,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    icon TEXT NOT NULL,
+    color TEXT NOT NULL,
+    note TEXT,
+    closed_at INTEGER,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 )
 
 == table stock_data ==

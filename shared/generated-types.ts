@@ -163,7 +163,7 @@ export type BankTransaction = { id: string; bankAccountId: string; transactionId
 /**
  * Category suggested by an MCP client, pending user confirmation
  */
-suggestedCategoryId: string | null; flowKind: FlowKind | null; status: string; dataSource: string; createdAt: number; importBatchId: string | null; importFileName: string | null; importLine: number | null; rowBalance: string | null }
+suggestedCategoryId: string | null; flowKind: FlowKind | null; status: string; dataSource: string; createdAt: number; importBatchId: string | null; importFileName: string | null; importLine: number | null; rowBalance: string | null; spendingPlanId: string | null }
 
 /**
  * The `biometric_unlock_status` answer, readable while the database is still locked.

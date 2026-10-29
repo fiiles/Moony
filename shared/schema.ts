@@ -1132,6 +1132,7 @@ export interface BankTransaction {
   importFileName: string | null;
   importLine: number | null;
   rowBalance: string | null;
+  spendingPlanId: string | null;
   bookingDate: number;
   valueDate: number | null;
   categoryId: string | null;

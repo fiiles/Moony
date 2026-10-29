@@ -145,6 +145,9 @@ pub struct BankTransaction {
     pub import_line: Option<i64>,
     #[serde(rename = "rowBalance")]
     pub row_balance: Option<String>,
+    // Null means no spending plan; this entity always serializes the field.
+    #[serde(rename = "spendingPlanId")]
+    pub spending_plan_id: Option<String>,
 }
 
 /// Data for creating/updating a transaction

@@ -466,7 +466,6 @@
       "captionNone": "Inte uppdelat: urvalet är en rad; bidraget avser hela portföljens avkastning."
     },
     "filterBadge": {
-      "label": "Filter: {{tags}}",
       "title": "Här räknas bara innehav märkta med {{tags}}."
     }
   },

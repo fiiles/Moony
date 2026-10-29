@@ -90,6 +90,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("023_stock_splits", MIGRATION_023),
         ("024_categorize_snooze", MIGRATION_024),
         ("025_crypto_yahoo_symbol", MIGRATION_025),
+        ("026_spending_plans", MIGRATION_026),
     ]
 }
 
@@ -2865,6 +2866,30 @@ ALTER TABLE crypto_investments DROP COLUMN coingecko_id;
 ALTER TABLE crypto_prices DROP COLUMN coingecko_id;
 ALTER TABLE user_profile DROP COLUMN coingecko_modal_dismissed;
 DELETE FROM app_config WHERE key = 'api_key_coingecko';
+"#;
+
+/// 026: spending plans (Výdajové plány). A plan is a named, yearly amount in its own currency;
+/// a ledger row joins a plan through `bank_transactions.spending_plan_id`. Deleting a plan
+/// clears the tag on its payments (the service does it explicitly; the FK action backs it up).
+pub(crate) const MIGRATION_026: &str = r#"
+CREATE TABLE spending_plans (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    year INTEGER NOT NULL,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    icon TEXT NOT NULL,
+    color TEXT NOT NULL,
+    note TEXT,
+    closed_at INTEGER,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch()),
+    updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX idx_spending_plans_year ON spending_plans(year);
+
+ALTER TABLE bank_transactions ADD COLUMN spending_plan_id TEXT
+    REFERENCES spending_plans(id) ON DELETE SET NULL;
+CREATE INDEX idx_bank_transactions_spending_plan ON bank_transactions(spending_plan_id);
 "#;
 
 #[cfg(test)]

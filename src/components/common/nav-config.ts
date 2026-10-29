@@ -11,6 +11,7 @@ import {
   Building,
   Calculator,
   ChartCandlestick,
+  ClipboardList,
   CreditCard,
   FileText,
   Gem,
@@ -60,6 +61,12 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { id: 'bankAccounts', labelKey: 'nav.bankAccounts', url: '/bank-accounts', icon: Landmark },
       { id: 'cashflow', labelKey: 'nav.cashflow', url: '/reports/cashflow', icon: BarChart3 },
+      {
+        id: 'spendingPlans',
+        labelKey: 'nav.spendingPlans',
+        url: '/spending-plans',
+        icon: ClipboardList,
+      },
     ],
   },
   {

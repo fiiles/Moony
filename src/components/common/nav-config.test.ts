@@ -37,6 +37,7 @@ describe('nav tree (design system §5)', () => {
       '/',
       '/bank-accounts',
       '/reports/cashflow',
+      '/spending-plans',
       '/stocks',
       '/crypto',
       '/bonds',

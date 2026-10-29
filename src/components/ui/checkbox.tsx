@@ -1,6 +1,6 @@
 import * as React from 'react';
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox';
-import { Check } from 'lucide-react';
+import { Check, Minus } from 'lucide-react';
 
 import { cn } from '@/lib/utils';
 
@@ -17,8 +17,10 @@ const Checkbox = React.forwardRef<
     )}
     {...props}
   >
-    <CheckboxPrimitive.Indicator className="flex items-center justify-center text-current">
-      <Check className="size-3" strokeWidth={2.5} />
+    <CheckboxPrimitive.Indicator className="group flex items-center justify-center text-current">
+      {/* The indicator carries the state: a dash for "some selected", a check otherwise */}
+      <Check className="size-3 group-data-[state=indeterminate]:hidden" strokeWidth={2.5} />
+      <Minus className="hidden size-3 group-data-[state=indeterminate]:block" strokeWidth={2.5} />
     </CheckboxPrimitive.Indicator>
   </CheckboxPrimitive.Root>
 ));

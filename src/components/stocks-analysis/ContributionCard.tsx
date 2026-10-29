@@ -11,7 +11,8 @@ import { Segmented } from '@/components/ui/segmented';
 import { Skeleton } from '@/components/ui/skeleton';
 import { barLayout, contributionRows, partItems, positionItems } from './contribution-model';
 import { ContributionOtherDialog } from './ContributionOtherDialog';
-import { FilterBadge } from './FilterBadge';
+import { FilterBadge } from '@/components/common/FilterBadge';
+import { tagFilterTitle } from './filter-badge-title';
 import { CARD_GRID, ContributionRow, ContributionTotalRow } from './ContributionRow';
 import { groupName, partName, sectorLabel, type RankedPart } from './performance-model';
 import { useHeldWhile } from './use-held-while';
@@ -178,7 +179,10 @@ export function ContributionCard({
           <div className="min-w-0 flex-1 basis-[190px]">
             <CardTitle className="flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[16px]">
               {t('stocksAnalysis.contribution.title')}
-              <FilterBadge tags={view.filterTags} />
+              <FilterBadge
+                labels={view.filterTags.map((tag) => tag.name)}
+                title={tagFilterTitle(t, view.filterTags)}
+              />
             </CardTitle>
             <CardDescription>{subtitle()}</CardDescription>
           </div>

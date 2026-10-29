@@ -163,7 +163,7 @@ export type BankTransaction = { id: string; bankAccountId: string; transactionId
 /**
  * Category suggested by an MCP client, pending user confirmation
  */
-suggestedCategoryId: string | null; flowKind: FlowKind | null; status: string; dataSource: string; createdAt: number; importBatchId: string | null; importFileName: string | null; importLine: number | null; rowBalance: string | null }
+suggestedCategoryId: string | null; flowKind: FlowKind | null; status: string; dataSource: string; createdAt: number; importBatchId: string | null; importFileName: string | null; importLine: number | null; rowBalance: string | null; spendingPlanId: string | null }
 
 /**
  * The `biometric_unlock_status` answer, readable while the database is still locked.
@@ -1212,6 +1212,8 @@ marketPriceDate: number | null; monthlyRent: string | null; monthlyRentCurrency:
  */
 export type InsertScopedLearning = { bankAccountId: string; isCredit: boolean; payee: string | null; counterpartyIban: string | null; counterpartyBankCode: string | null; counterpartyCountry: string | null; categoryId: string }
 
+export type InsertSpendingPlan = { name: string; year: number; amount: string; currency: string; icon: string; color: string; note: string | null }
+
 /**
  * Data for creating stock investment. Quantity and average price are not
  * accepted: they derive from the transaction record (pass an initial
@@ -1628,6 +1630,21 @@ investmentIds: string[];
 currency: string | null }
 
 /**
+ * Filters for payments that could be tagged to a plan (any account).
+ */
+export type PlanCandidateFilters = { planId: string; dateFrom: number | null; dateTo: number | null; accountId: string | null; onlyUnassigned: boolean; 
+/**
+ * Matched against counterparty, description and category name, ignoring case and diacritics.
+ */
+query: string | null; 
+/**
+ * Categories whose shown (translated) name matches `query`: their payments match it too.
+ */
+categoryIds: string[] | null; limit: number | null }
+
+export type PlanCandidatesResult = { transactions: BankTransaction[]; truncated: boolean }
+
+/**
  * One recorded day of the portfolio history in the response currency (converted at that
  * day's rates). Amounts are decimal TEXT, `null` when nothing in the class converted.
  */
@@ -1974,6 +1991,65 @@ export type SourceCount = {
  * `rule`, `exact_match`, `own_account`, `mcp`, `manual` (a category without a recorded source).
  */
 source: string; count: number }
+
+export type SpendingPlan = { id: string; name: string; year: number; 
+/**
+ * Planned amount in `currency` (TEXT money).
+ */
+amount: string; currency: string; icon: string; color: string; note: string | null; 
+/**
+ * Unix epoch the plan was closed; `None` while open.
+ */
+closedAt: number | null; createdAt: number }
+
+/**
+ * Tag a payment with a plan, or clear its tag (`plan_id: None`).
+ */
+export type SpendingPlanAssignment = { transactionId: string; planId: string | null }
+
+export type SpendingPlanCategory = { categoryId: string | null; spent: string; count: number }
+
+/**
+ * One month x category bucket; the frontend sums cells for filtered views.
+ */
+export type SpendingPlanCell = { month: string; categoryId: string | null; spent: string; count: number }
+
+export type SpendingPlanDetail = { summary: SpendingPlanSummary; months: SpendingPlanMonth[]; categories: SpendingPlanCategory[]; cells: SpendingPlanCell[]; accountCount: number }
+
+export type SpendingPlanMonth = { 
+/**
+ * `YYYY-MM` of the booking day (UTC).
+ */
+month: string; spent: string }
+
+/**
+ * A plan with what has been spent on it, in the plan's currency.
+ */
+export type SpendingPlanSummary = { plan: SpendingPlan; 
+/**
+ * Booked debits minus credits in the plan currency; `None` when there are booked payments
+ * and none could be converted, `"0.00"`-style when there are none.
+ */
+spent: string | null; 
+/**
+ * Tagged payments, pending ones included.
+ */
+paymentCount: number; lastPaymentDate: number | null; fxQuality: ConversionQuality }
+
+/**
+ * Sums over the plans of one year, in the report currency.
+ */
+export type SpendingPlanTotals = { planned: string | null; spent: string | null; remainingActive: string | null }
+
+export type SpendingPlansOverview = { year: number; 
+/**
+ * Currency of `totals`.
+ */
+currency: string; fxQuality: ConversionQuality; plans: SpendingPlanSummary[]; totals: SpendingPlanTotals; 
+/**
+ * Years that have at least one plan, ascending.
+ */
+yearsWithPlans: number[] }
 
 /**
  * Balance after a particular statement row, in that row's native currency.

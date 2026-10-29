@@ -18,6 +18,7 @@
     "overview": "Overview",
     "groupMoney": "Money",
     "cashflow": "Cashflow",
+    "spendingPlans": "Spending plans",
     "groupInvestments": "Investments",
     "stocks": "Stocks",
     "groupLiabilities": "Liabilities & insurance",
@@ -257,6 +258,15 @@
     "currencyLockedByRecords": "The currency cannot change while the account has balance records.",
     "learningIdentity": "Provide a reliable account identifier or a payee.",
     "paginationInvalid": "Select a valid history page.",
+    "spendingPlanNameRequired": "Enter a plan name.",
+    "spendingPlanNameTooLong": "A plan name can have at most 100 characters.",
+    "spendingPlanYearInvalid": "Choose a year between 2000 and 2100.",
+    "spendingPlanAmountInvalid": "Enter a planned amount greater than zero.",
+    "spendingPlanIconInvalid": "Choose a valid icon.",
+    "spendingPlanColorInvalid": "Choose a valid color.",
+    "spendingPlanNoteTooLong": "A note can have at most 500 characters.",
+    "spendingPlanNameTaken": "You already have a plan with this name in this year.",
+    "spendingPlanClosed": "Payments cannot be added to a closed plan.",
     "systemRule": "System rules cannot be changed.",
     "tagNameRequired": "Enter a tag name.",
     "tagNameTooLong": "A name can have at most 60 characters.",
@@ -571,5 +581,9 @@
       "dontAsk": "Don't ask again",
       "confirm": "Open"
     }
+  },
+  "filterBadge": {
+    "label": "Filter: {{labels}}",
+    "clear": "Clear filter"
   }
 }

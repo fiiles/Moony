@@ -466,7 +466,6 @@
       "captionNone": "Not split: the selection is one row; its contribution is to the whole portfolio's return."
     },
     "filterBadge": {
-      "label": "Filter: {{tags}}",
       "title": "Only positions tagged {{tags}} are counted here."
     }
   },

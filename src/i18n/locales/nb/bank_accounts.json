@@ -110,7 +110,8 @@
     "counterpartyPlaceholder": "f.eks. Rema 1000",
     "addDescription": "Legg til en ny transaksjon manuelt.",
     "counterpartyIban": "Motpartens kontonummer / IBAN",
-    "delete": "Slett transaksjon"
+    "delete": "Slett transaksjon",
+    "spendingPlan": "Utgiftsplan"
   },
   "metrics": {
     "totalBalance": "Total saldo",
@@ -614,7 +615,12 @@
     "subGrouped": "Gruppert etter dag · nyeste først",
     "subSorted": "Sortert etter den valgte kolonnen · klikk på overskriften igjen for å gå tilbake til datoer",
     "footer_one": "{{count}} transaksjon",
-    "footer_other": "{{count}} transaksjoner"
+    "footer_other": "{{count}} transaksjoner",
+    "addToPlan": "Legg til i plan",
+    "closedPlan": "Lukket plan",
+    "planLabel": "Utgiftsplan: {{name}} ({{year}})",
+    "selectPage": "Velg betalingene på denne siden",
+    "selectRow": "Velg betalingen {{name}}"
   },
   "readiness": {
     "learningScope": "Gjelder bare hvis du velger det, for denne kontoen og retningen. Treffer motpartens hele kontonummer, eller denne mottakeren når ingen pålitelig konto er tilgjengelig.",

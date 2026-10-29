@@ -193,7 +193,8 @@ mod tests {
                 counterparty_country TEXT,
                 import_line INTEGER,
                 row_balance TEXT,
-                categorize_snoozed_until INTEGER
+                categorize_snoozed_until INTEGER,
+                spending_plan_id TEXT
             );
             INSERT INTO transaction_categories (id, name) VALUES
                 ('cat_groceries', 'Groceries'), ('cat_dining', 'Dining'),

@@ -1,0 +1,230 @@
+{
+  "eyebrow": "资金",
+  "title": "支出计划",
+  "subtitle": "今年打算在哪些方面花多少钱，以及已经花了多少。在账户的付款列表中把付款归入计划；类别保持不变。",
+  "year": {
+    "label": "年份",
+    "prev": "上一年",
+    "next": "下一年"
+  },
+  "actions": {
+    "newPlan": "新建计划",
+    "takeOver": "沿用 {{year}} 年的计划",
+    "open": "打开",
+    "edit": "编辑",
+    "close": "关闭计划",
+    "reopen": "重新打开计划",
+    "delete": "删除计划",
+    "menu": "计划操作",
+    "undo": "撤销",
+    "addPayments": "添加付款",
+    "removeFromPlan": "移出计划",
+    "moveTo": "移至…",
+    "newPlanEllipsis": "新建支出计划…",
+    "clearSelection": "取消选择"
+  },
+  "status": {
+    "over": "已超支",
+    "near": "接近上限",
+    "ok": "正常",
+    "empty": "无付款",
+    "unknown": "缺少汇率",
+    "closed": "已关闭"
+  },
+  "stats": {
+    "planned": "{{year}} 年计划金额",
+    "plans_other": "{{count}} 个计划",
+    "closed_other": "{{count}} 个已关闭",
+    "spent": "已支出",
+    "spentShare": "占计划的 {{percent}}",
+    "remaining": "有效计划剩余",
+    "activePlans_other": "{{count}} 个有效计划",
+    "attention": "需要关注",
+    "over_other": "{{count}} 个已超支",
+    "allWithin": "全部在限额内",
+    "near_other": "{{count}} 个计划接近上限",
+    "noneNear": "没有计划接近上限"
+  },
+  "table": {
+    "title": "{{year}} 年计划",
+    "subtitle": "按使用率排序 · 超支和即将用完的在最上面",
+    "search": "搜索计划",
+    "segmentLabel": "计划状态",
+    "segment": {
+      "active": "有效 {{n}}",
+      "closed": "已关闭 {{n}}",
+      "all": "全部 {{n}}"
+    },
+    "plan": "计划",
+    "planned": "计划金额",
+    "spent": "已支出",
+    "usage": "使用率",
+    "left": "剩余",
+    "status": "状态",
+    "payments_other": "{{count}} 笔付款 · 最近 {{date}}",
+    "noPayments": "暂无付款",
+    "footer_other": "{{count}} 个计划 · 计划 {{planned}} · 已支出 {{spent}}",
+    "footerNote": "接近上限：已支出 {{percent}} 或以上",
+    "noResults": {
+      "searchTitle": "没有符合搜索的计划",
+      "searchActive": "{{year}} 年的有效计划中没有“{{query}}”。",
+      "searchClosed": "{{year}} 年的已关闭计划中没有“{{query}}”。",
+      "searchAll": "{{year}} 年的计划中没有“{{query}}”。",
+      "allClosed": "{{year}} 年的计划都已关闭",
+      "noClosed": "没有已关闭的计划",
+      "showAll": "显示全部计划"
+    }
+  },
+  "empty": {
+    "title": "{{year}} 年还没有计划",
+    "descriptionTakeOver": "沿用 {{year}} 年的计划，只需调整金额，或者创建第一个计划。",
+    "description": "创建第一个计划：比如度假、礼物或定期护理。",
+    "takeOver_other": "沿用 {{year}} 年的 {{count}} 个计划"
+  },
+  "delete": {
+    "title": "删除计划 {{name}}？",
+    "withPayments_other": "其中的 {{count}} 笔付款保持不变，只是不再属于该计划。类别不会改变。删除后无法撤销。",
+    "noPayments": "该计划还没有付款。删除后无法撤销。"
+  },
+  "toast": {
+    "created": "已创建计划 {{name}}",
+    "saved": "更改已保存",
+    "closed": "已关闭计划 {{name}}。归入付款时将不再提供该计划。",
+    "reopened": "已重新打开计划 {{name}}",
+    "deleted": "已删除计划 {{name}}",
+    "takenOver_other": "已从 {{year}} 年沿用 {{count}} 个计划",
+    "assigned_other": "已将 {{count}} 笔付款添加到计划 {{name}}",
+    "removed_other": "已将 {{count}} 笔付款移出计划"
+  },
+  "form": {
+    "newTitle": "新建支出计划",
+    "newDescription": "今年打算在一件事上花多少钱。在账户的付款列表中把付款加入计划。",
+    "editTitle": "编辑计划",
+    "editDescription": "{{name}} · {{year}}",
+    "name": "名称",
+    "namePlaceholder": "例如：暑假旅行、理疗",
+    "amount": "计划金额",
+    "year": "年份",
+    "fxHint": "其他货币的付款按付款当日的欧洲央行汇率换算为计划货币。",
+    "note": "备注",
+    "notePlaceholder": "例如：日期或计划包含的内容",
+    "previewName": "计划名称",
+    "create": "创建计划",
+    "save": "保存更改"
+  },
+  "takeOver": {
+    "title": "沿用 {{year}} 年的计划",
+    "description": "将复制名称和金额。付款仍留在原计划中。未关闭的计划已预先选中。",
+    "plan": "计划",
+    "plannedIn": "{{year}} 年计划",
+    "spentIn": "{{year}} 年支出",
+    "amountFor": "{{year}} 年金额",
+    "active": "有效",
+    "closed": "已关闭",
+    "exists": "{{year}} 年已存在",
+    "select": "沿用 {{name}}",
+    "summary_other": "{{count}} 个计划 · {{amount}}",
+    "nothing": "未选择",
+    "submit_other": "沿用 {{count}} 个计划",
+    "empty": "{{year}} 年没有可沿用的计划。"
+  },
+  "detail": {
+    "back": "{{year}} 年支出计划",
+    "eyebrow": "支出计划",
+    "notFound": "该计划已不存在。",
+    "filterTitle": "此组件已按筛选条件缩小范围",
+    "closed": {
+      "title": "该计划已关闭",
+      "text": "归入付款时不会提供该计划。已在其中的付款仍会计入。"
+    },
+    "stats": {
+      "planned": "计划金额",
+      "plannedNote": "{{year}} 年",
+      "spent": "已支出",
+      "near": "接近上限 · {{percent}}",
+      "payments_other": "{{count}} 笔付款",
+      "accounts_other": "{{count}} 个账户",
+      "noPayments": "暂无付款",
+      "left": "剩余",
+      "overBy": "超支",
+      "leftNote": "距计划金额",
+      "overNote": "超出计划金额"
+    },
+    "chart": {
+      "title": "支出趋势",
+      "sub": "计划每月的净支出 · 点击月份可缩小图表下方组件的范围",
+      "subCategory": "此计划中 {{category}} 的每月支出",
+      "month": "当月支出",
+      "cumulative": "累计支出",
+      "planned": "计划金额",
+      "plannedLine": "计划 {{amount}}",
+      "future": "今年剩余月份",
+      "filterMonth": "只看 {{month}}"
+    },
+    "categories": {
+      "title": "类别",
+      "sub": "按付款类别划分的计划支出 · 点击可缩小图表和付款的范围",
+      "payments_other": "{{count}} 笔付款",
+      "total": "合计",
+      "totalIn": "合计 · {{month}}",
+      "empty": "向计划添加付款后，这里会显示钱花在了哪里。",
+      "emptyMonth": "该计划本月没有付款。",
+      "uncategorized": "无类别"
+    },
+    "payments": {
+      "title": "付款",
+      "sub": "按日分组 · 最新的在上",
+      "filtered_other": "{{shown}} / {{count}} 笔付款",
+      "counterparty": "交易对方",
+      "category": "类别",
+      "amount": "金额",
+      "selectAll": "选择所有显示的付款",
+      "select": "选择付款 {{name}}",
+      "emptyTitle": "该计划还没有付款",
+      "emptyText": "在这里从所有账户中选择付款，或在账户的付款列表中批量归入。",
+      "emptyFiltered": "没有符合筛选条件的付款。",
+      "closedHint": "该计划已关闭。重新打开后才能添加付款。"
+    }
+  },
+  "picker": {
+    "label": "选择支出计划",
+    "search": "搜索计划",
+    "left": "剩余 {{left}}，共 {{planned}}",
+    "over": "超支 {{amount}}",
+    "planned": "计划 {{planned}}",
+    "noMatch": "没有与“{{query}}”匹配的活动计划。",
+    "none": "还没有活动计划。",
+    "closedNote": "已关闭的计划不会列出。"
+  },
+  "selection": {
+    "count_other": "已选择 {{count}} 笔付款"
+  },
+  "addPayments": {
+    "title": "向计划 {{name}} 添加付款",
+    "description": "来自所有账户的付款。默认为计划所在年份，其他年份的付款可在“所有期间”中找到。类别保持不变。",
+    "search": "搜索交易对方、类别",
+    "account": "账户",
+    "period": "期间",
+    "allAccounts": "所有账户",
+    "wholeYear": "{{year}} 全年",
+    "allPeriods": "所有期间",
+    "onlyUnassigned": "仅显示无计划的付款",
+    "select": "选择",
+    "selectRow": "选择付款 {{name}}",
+    "date": "日期",
+    "counterparty": "交易对方",
+    "category": "类别",
+    "plan": "计划",
+    "amount": "金额",
+    "noPlan": "无计划",
+    "inPlan": "当前在计划 {{name}} 中",
+    "empty": "没有符合筛选条件的付款。",
+    "truncated_other": "仅显示前 {{count}} 笔付款，请缩小搜索范围",
+    "count_other": "范围内共 {{count}} 笔付款",
+    "hidden": "其他计划中的付款已隐藏",
+    "moving_other": "{{count}} 笔将从其他计划移入",
+    "nothing": "未选择",
+    "submit_other": "添加 {{count}} 笔付款",
+    "submitNone": "添加付款"
+  }
+}

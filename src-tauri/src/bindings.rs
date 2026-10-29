@@ -234,6 +234,18 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::InsertBudgetGoal>();
     types.register::<crate::models::CategorySpendingSummary>();
     types.register::<crate::models::BudgetingReport>();
+    types.register::<crate::models::SpendingPlan>();
+    types.register::<crate::models::InsertSpendingPlan>();
+    types.register::<crate::models::SpendingPlanAssignment>();
+    types.register::<crate::models::SpendingPlanSummary>();
+    types.register::<crate::models::SpendingPlanTotals>();
+    types.register::<crate::models::SpendingPlansOverview>();
+    types.register::<crate::models::SpendingPlanMonth>();
+    types.register::<crate::models::SpendingPlanCategory>();
+    types.register::<crate::models::SpendingPlanCell>();
+    types.register::<crate::models::SpendingPlanDetail>();
+    types.register::<crate::models::PlanCandidateFilters>();
+    types.register::<crate::models::PlanCandidatesResult>();
     types.register::<crate::models::CashflowReportItem>();
     types.register::<crate::models::CashflowOriginalComponent>();
     types.register::<crate::models::CashflowCategory>();

@@ -17,7 +17,6 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
-  ArrowDownLeft,
   CalendarSearch,
   Ellipsis,
   History,
@@ -110,6 +109,19 @@ import { ImportHistoryDialog } from '@/components/bank-accounts/ImportHistoryDia
 import { InterestDialog } from '@/components/bank-accounts/InterestDialog';
 import { StatementImportDialog } from '@/components/bank-accounts/StatementImportDialog';
 import { CategorySelector } from '@/components/bank-accounts/CategorySelector';
+import { LedgerCounterpartyCell } from '@/components/bank-accounts/LedgerCounterpartyCell';
+import { LedgerPlanCell } from '@/components/bank-accounts/LedgerPlanCell';
+import { LedgerBulkBar } from '@/components/bank-accounts/LedgerBulkBar';
+import { Checkbox } from '@/components/ui/checkbox';
+import { useSpendingPlanIndex } from '@/hooks/use-spending-plans';
+import {
+  idsInScope,
+  pageCheckState,
+  selectedRows,
+  withPageSelected,
+  withToggled,
+  type ScopedSelection,
+} from '@/utils/ledger-selection';
 import { newRuleHref } from '@/utils/rules-link';
 
 import { cn } from '@/lib/utils';
@@ -170,6 +182,32 @@ function BankAccountDetailPage() {
   const [selectedTransaction, setSelectedTransaction] = useState<BankTransaction | null>(null);
   const [sortColumn, setSortColumn] = useState<SortColumn>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  // Rows checked for tagging with a spending plan. The selection belongs to what the ledger
+  // shows: another page, period, filter, search or sort reads as nothing selected.
+  const [selection, setSelection] = useState<ScopedSelection>({ scope: '', ids: new Set() });
+  const selectionScope = JSON.stringify([
+    dateFrom,
+    dateTo,
+    kind,
+    categoryFilter,
+    searchQuery,
+    sortColumn,
+    sortDirection,
+    ledgerPage,
+  ]);
+  const selectedIds = idsInScope(selection, selectionScope);
+  const updateSelection = (update: (ids: ReadonlySet<string>) => ReadonlySet<string>) =>
+    setSelection((prev) => ({
+      scope: selectionScope,
+      ids: update(idsInScope(prev, selectionScope)),
+    }));
+  const clearSelection = () => setSelection({ scope: selectionScope, ids: new Set() });
+  // Every plan of every year: the ledger's plan chips (name, icon, closed)
+  const { data: planIndex, isPending: planIndexLoading } = useSpendingPlanIndex();
+  const planById = useMemo(
+    () => new Map((planIndex ?? []).map((summary) => [summary.plan.id, summary.plan])),
+    [planIndex]
+  );
 
   const applyDatePreset = (preset: string) => {
     setLedgerPage(0);
@@ -725,6 +763,8 @@ function BankAccountDetailPage() {
 
   const grouped = sortColumn === 'date';
   let lastGroup = '';
+  const pageIds = filteredTransactions.map((tx) => tx.id);
+  const chosenRows = selectedRows(filteredTransactions, selectedIds);
 
   return (
     <>
@@ -959,6 +999,9 @@ function BankAccountDetailPage() {
               </div>
             </div>
 
+            {chosenRows.length > 0 && !txError && !txLoading && (
+              <LedgerBulkBar rows={chosenRows} onClear={clearSelection} />
+            )}
             {flowReadError}
             {txError ? (
               <ReportError onRetry={() => void retryTransactions()} />
@@ -1006,14 +1049,30 @@ function BankAccountDetailPage() {
               <Table className="table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <SortableTableHead {...sortProps} column="description" className="w-[27%]">
+                    <TableHead className="w-10 pr-0">
+                      <Checkbox
+                        checked={pageCheckState(pageIds, selectedIds)}
+                        aria-label={t('ledger.selectPage')}
+                        onCheckedChange={(value) =>
+                          updateSelection((ids) => withPageSelected(ids, pageIds, value === true))
+                        }
+                      />
+                    </TableHead>
+                    {/* The Detail column has no width: it gives way first on a narrow window */}
+                    <SortableTableHead {...sortProps} column="description" className="w-[24%]">
                       {t('transaction.counterparty')}
                     </SortableTableHead>
-                    <TableHead className="w-[28%]">{t('transaction.detail')}</TableHead>
-                    <SortableTableHead {...sortProps} column="category" className="w-[22%]">
+                    <TableHead>{t('transaction.detail')}</TableHead>
+                    <SortableTableHead {...sortProps} column="category" className="w-[17%]">
                       {t('transaction.category')}
                     </SortableTableHead>
-                    <SortableTableHead {...sortProps} column="amount" align="right">
+                    <TableHead className="w-[18%]">{t('transaction.spendingPlan')}</TableHead>
+                    <SortableTableHead
+                      {...sortProps}
+                      column="amount"
+                      align="right"
+                      className="w-[124px]"
+                    >
                       {t('transaction.amount')}
                     </SortableTableHead>
                     <TableHead className="w-12">
@@ -1036,52 +1095,40 @@ function BankAccountDetailPage() {
                       .filter(Boolean)
                       .join(' · ');
                     const flowKey = rowFlow(tx.id, credit, !!getEffectiveCategory(tx));
+                    const checked = selectedIds.has(tx.id);
                     return (
                       <Fragment key={tx.id}>
                         {showGroup && (
                           <TableRow className="h-auto hover:bg-transparent">
                             <TableCell
-                              colSpan={5}
+                              colSpan={7}
                               className="bg-paper px-[14px] pb-1.5 pt-[9px] text-micro font-700 uppercase tracking-[0.06em] text-ink-4"
                             >
                               {group}
                             </TableCell>
                           </TableRow>
                         )}
-                        <TableRow className="h-[52px]">
+                        <TableRow
+                          className="h-[52px]"
+                          data-state={checked ? 'selected' : undefined}
+                        >
+                          <TableCell className="pr-0">
+                            <Checkbox
+                              checked={checked}
+                              aria-label={t('ledger.selectRow', {
+                                name: counterparty.title || detail || '—',
+                              })}
+                              onCheckedChange={(value) =>
+                                updateSelection((ids) => withToggled(ids, tx.id, value === true))
+                              }
+                            />
+                          </TableCell>
                           <TableCell>
-                            <div className="flex min-w-0 items-center gap-[10px] text-ink">
-                              <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-well-2 text-ink-2">
-                                {credit ? (
-                                  <ArrowDownLeft
-                                    className="size-3.5"
-                                    strokeWidth={1.75}
-                                    aria-hidden
-                                  />
-                                ) : (
-                                  <Receipt className="size-3.5" strokeWidth={1.75} aria-hidden />
-                                )}
-                              </span>
-                              <div className="min-w-0">
-                                {counterparty.title ? (
-                                  <b
-                                    className="block truncate text-table font-650"
-                                    title={counterparty.title}
-                                  >
-                                    {counterparty.title}
-                                  </b>
-                                ) : (
-                                  <span className="text-ink-4">—</span>
-                                )}
-                                {counterparty.subtitle && (
-                                  <small
-                                    className="block truncate text-micro font-500 text-ink-4 num"
-                                    title={counterparty.subtitle}
-                                  >
-                                    {counterparty.subtitle}
-                                  </small>
-                                )}
-                              </div>
+                            <LedgerCounterpartyCell
+                              credit={credit}
+                              title={counterparty.title}
+                              subtitle={counterparty.subtitle}
+                            >
                               {tx.status === 'pending' && (
                                 <Badge className="shrink-0">{t('readiness.pending')}</Badge>
                               )}
@@ -1092,7 +1139,7 @@ function BankAccountDetailPage() {
                                     : t(`readiness.flow.${flowKey}`)}
                                 </Badge>
                               )}
-                            </div>
+                            </LedgerCounterpartyCell>
                           </TableCell>
                           <TableCell className="truncate" title={detail || undefined}>
                             {detail}
@@ -1122,6 +1169,14 @@ function BankAccountDetailPage() {
                                 )
                               }
                               compact
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <LedgerPlanCell
+                              transactionId={tx.id}
+                              planId={tx.spendingPlanId}
+                              plan={tx.spendingPlanId ? planById.get(tx.spendingPlanId) : undefined}
+                              loading={planIndexLoading}
                             />
                           </TableCell>
                           <TableCell

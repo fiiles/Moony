@@ -110,7 +110,8 @@
     "counterpartyPlaceholder": "z. B. Rewe",
     "addDescription": "Eine neue Transaktion manuell hinzufügen.",
     "counterpartyIban": "Kontonummer / IBAN der Gegenpartei",
-    "delete": "Transaktion löschen"
+    "delete": "Transaktion löschen",
+    "spendingPlan": "Ausgabenplan"
   },
   "metrics": {
     "totalBalance": "Gesamtsaldo",
@@ -614,7 +615,12 @@
     "subGrouped": "Nach Tag gruppiert · neueste zuerst",
     "subSorted": "Nach gewählter Spalte sortiert · erneut auf die Kopfzeile klicken, um zu den Daten zurückzukehren",
     "footer_one": "{{count}} Transaktion",
-    "footer_other": "{{count}} Transaktionen"
+    "footer_other": "{{count}} Transaktionen",
+    "addToPlan": "Zum Plan hinzufügen",
+    "closedPlan": "Geschlossener Plan",
+    "planLabel": "Ausgabenplan: {{name}} ({{year}})",
+    "selectPage": "Zahlungen auf dieser Seite auswählen",
+    "selectRow": "Zahlung {{name}} auswählen"
   },
   "readiness": {
     "learningScope": "Gilt nur für dieses Konto und diese Richtung. Greift bei identischem Konto der Gegenpartei oder, wenn kein verlässliches Konto vorliegt, bei diesem Empfänger.",

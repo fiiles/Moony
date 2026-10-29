@@ -32,6 +32,8 @@ import StocksAnalysis from '@/pages/StocksAnalysis';
 import BankAccounts from '@/pages/BankAccounts';
 import BankAccountDetail from '@/pages/BankAccountDetail';
 import CategorizationRules from '@/pages/CategorizationRules';
+import SpendingPlans from '@/pages/SpendingPlans';
+import SpendingPlanDetail from '@/pages/SpendingPlanDetail';
 import { AuthProvider } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/lib/protected-route';
 import { CurrencyProvider } from '@/lib/currency-provider';
@@ -65,6 +67,8 @@ function Router() {
       {/* Design system §11: actual flows from bank transactions, and the planned items */}
       <ProtectedRoute path="/reports/cashflow" component={Cashflow} />
       <ProtectedRoute path="/reports/cashflow-planning" component={CashflowPlanning} />
+      <ProtectedRoute path="/spending-plans" component={SpendingPlans} />
+      <ProtectedRoute path="/spending-plans/:id" component={SpendingPlanDetail} />
       {/* Budgets are part of Cashflow; old links land there */}
       <Route path="/reports/budgeting">
         <Redirect replace to="/reports/cashflow" />

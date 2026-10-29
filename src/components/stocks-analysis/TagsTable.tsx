@@ -17,7 +17,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { FilterBadge } from './FilterBadge';
+import { FilterBadge } from '@/components/common/FilterBadge';
+import { tagFilterTitle } from './filter-badge-title';
 import { GainChange } from './GainChange';
 import { amountOf } from './performance-model';
 import { tagGroupTotals, tagRows, type TagFigures, type TagGroupRows } from './tables-model';
@@ -149,7 +150,10 @@ export function TagsTable({
         <div>
           <CardTitle className="flex items-center gap-2.5">
             {t('stocksAnalysis.tagsTable.title')}
-            <FilterBadge tags={filterTags} />
+            <FilterBadge
+              labels={filterTags.map((tag) => tag.name)}
+              title={tagFilterTitle(t, filterTags)}
+            />
           </CardTitle>
           <CardDescription>{subtitle}</CardDescription>
         </div>

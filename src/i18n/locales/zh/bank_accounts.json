@@ -110,7 +110,8 @@
     "counterpartyPlaceholder": "例如：Whole Foods",
     "addDescription": "手动添加一笔新交易。",
     "counterpartyIban": "交易对方账号 / IBAN",
-    "delete": "删除交易"
+    "delete": "删除交易",
+    "spendingPlan": "支出计划"
   },
   "metrics": {
     "totalBalance": "总余额",
@@ -592,7 +593,12 @@
   "ledger": {
     "subGrouped": "按日分组 · 最新的在前",
     "subSorted": "按所选列排序 · 再次点击表头可回到按日期排序",
-    "footer_other": "{{count}} 笔交易"
+    "footer_other": "{{count}} 笔交易",
+    "addToPlan": "加入计划",
+    "closedPlan": "已关闭的计划",
+    "planLabel": "支出计划：{{name}}（{{year}}）",
+    "selectPage": "选择本页的付款",
+    "selectRow": "选择付款 {{name}}"
   },
   "readiness": {
     "learningScope": "仅对此账户和方向启用。匹配完整的交易对方账号；没有可靠账号时，匹配该收款方。",

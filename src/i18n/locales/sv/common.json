@@ -18,6 +18,7 @@
     "overview": "Översikt",
     "groupMoney": "Pengar",
     "cashflow": "Kassaflöde",
+    "spendingPlans": "Utgiftsplaner",
     "groupInvestments": "Investeringar",
     "stocks": "Aktier",
     "groupLiabilities": "Skulder och försäkringar",
@@ -257,6 +258,15 @@
     "currencyLockedByRecords": "Valutan kan inte ändras så länge kontot har saldoposter.",
     "learningIdentity": "Ange en tillförlitlig kontoidentifierare eller en mottagare.",
     "paginationInvalid": "Välj en giltig historiksida.",
+    "spendingPlanNameRequired": "Ange ett namn på planen.",
+    "spendingPlanNameTooLong": "Ett plannamn kan ha högst 100 tecken.",
+    "spendingPlanYearInvalid": "Välj ett år mellan 2000 och 2100.",
+    "spendingPlanAmountInvalid": "Ange ett planerat belopp större än noll.",
+    "spendingPlanIconInvalid": "Välj en giltig ikon.",
+    "spendingPlanColorInvalid": "Välj en giltig färg.",
+    "spendingPlanNoteTooLong": "En anteckning kan ha högst 500 tecken.",
+    "spendingPlanNameTaken": "Du har redan en plan med det här namnet under året.",
+    "spendingPlanClosed": "Betalningar kan inte läggas till i en avslutad plan.",
     "systemRule": "Systemregler kan inte ändras.",
     "tagNameRequired": "Ange ett namn på etiketten.",
     "tagNameTooLong": "Ett namn får vara högst 60 tecken.",
@@ -571,5 +581,9 @@
       "dontAsk": "Fråga inte igen",
       "confirm": "Öppna"
     }
+  },
+  "filterBadge": {
+    "label": "Filter: {{labels}}",
+    "clear": "Rensa filter"
   }
 }

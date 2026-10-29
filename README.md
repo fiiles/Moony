@@ -60,6 +60,10 @@ tablet app, or a budget shared by a household (one profile on one computer, no s
   ones it overlaps after a warning, and equal neighbouring limits merge. Deleting a budget removes all its
   limits, past months included; deleting one earlier limit removes exactly that interval
   without extending earlier limits into the gap.
+- **Spending plans:** a yearly budget for one purpose (a holiday, a renovation, a wedding) in its
+  own currency. Tag payments from any account to a plan from the ledger, one by one or in bulk
+  (with undo), or pick them in the plan; the plan shows spending by month and by category against
+  the planned amount, and next year's plans can be taken over from last year.
 - **Ten languages and 45 currencies.** English, Czech, German, Spanish, Italian, Norwegian
   (bokmål), Polish, Swedish, Japanese and Simplified Chinese; the languages other than English
   and Czech are machine-translated and [corrections are welcome](./CONTRIBUTING.md#translations).

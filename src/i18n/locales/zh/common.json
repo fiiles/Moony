@@ -18,6 +18,7 @@
     "overview": "概览",
     "groupMoney": "资金",
     "cashflow": "现金流",
+    "spendingPlans": "支出计划",
     "groupInvestments": "投资",
     "stocks": "股票",
     "groupLiabilities": "负债与保险",
@@ -257,6 +258,15 @@
     "currencyLockedByRecords": "账户有余额记录时，无法更改货币。",
     "learningIdentity": "请提供可靠的账户标识或收款方。",
     "paginationInvalid": "请选择有效的历史记录页。",
+    "spendingPlanNameRequired": "请输入计划名称。",
+    "spendingPlanNameTooLong": "计划名称最多 100 个字符。",
+    "spendingPlanYearInvalid": "请选择 2000 到 2100 之间的年份。",
+    "spendingPlanAmountInvalid": "请输入大于零的计划金额。",
+    "spendingPlanIconInvalid": "请选择有效的图标。",
+    "spendingPlanColorInvalid": "请选择有效的颜色。",
+    "spendingPlanNoteTooLong": "备注最多 500 个字符。",
+    "spendingPlanNameTaken": "该年份已有同名计划。",
+    "spendingPlanClosed": "无法向已关闭的计划添加付款。",
     "systemRule": "系统规则无法更改。",
     "tagNameRequired": "请输入标签名称。",
     "tagNameTooLong": "名称最多 60 个字符。",
@@ -567,5 +577,9 @@
       "dontAsk": "不再询问",
       "confirm": "打开"
     }
+  },
+  "filterBadge": {
+    "label": "筛选：{{labels}}",
+    "clear": "清除筛选"
   }
 }

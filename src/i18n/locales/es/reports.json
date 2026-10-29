@@ -482,7 +482,6 @@
       "captionNone": "Sin dividir: la selección es una sola fila; su contribución es a la rentabilidad de toda la cartera."
     },
     "filterBadge": {
-      "label": "Filtro: {{tags}}",
       "title": "Aquí solo cuentan las posiciones etiquetadas con {{tags}}."
     }
   },

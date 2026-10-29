@@ -110,7 +110,8 @@
     "counterpartyPlaceholder": "t.ex. ICA",
     "addDescription": "Lägg till en ny transaktion manuellt.",
     "counterpartyIban": "Motpartens kontonummer / IBAN",
-    "delete": "Ta bort transaktion"
+    "delete": "Ta bort transaktion",
+    "spendingPlan": "Utgiftsplan"
   },
   "metrics": {
     "totalBalance": "Totalt saldo",
@@ -614,7 +615,12 @@
     "subGrouped": "Grupperat per dag · senaste först",
     "subSorted": "Sorterat efter vald kolumn · klicka på rubriken igen för att gå tillbaka till datum",
     "footer_one": "{{count}} transaktion",
-    "footer_other": "{{count}} transaktioner"
+    "footer_other": "{{count}} transaktioner",
+    "addToPlan": "Lägg till i plan",
+    "closedPlan": "Stängd plan",
+    "planLabel": "Utgiftsplan: {{name}} ({{year}})",
+    "selectPage": "Välj betalningarna på den här sidan",
+    "selectRow": "Välj betalningen {{name}}"
   },
   "readiness": {
     "learningScope": "Gäller bara för det här kontot och den här riktningen, och bara om du väljer det. Matchar motpartens fullständiga konto, eller den här mottagaren när inget tillförlitligt konto finns.",

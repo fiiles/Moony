@@ -18,6 +18,7 @@
     "overview": "Przegląd",
     "groupMoney": "Pieniądze",
     "cashflow": "Przepływy pieniężne",
+    "spendingPlans": "Plany wydatków",
     "groupInvestments": "Inwestycje",
     "stocks": "Akcje",
     "groupLiabilities": "Zobowiązania i ubezpieczenia",
@@ -257,6 +258,15 @@
     "currencyLockedByRecords": "Waluty nie można zmienić, dopóki konto ma zapisy salda.",
     "learningIdentity": "Podaj wiarygodny identyfikator konta lub odbiorcę.",
     "paginationInvalid": "Wybierz prawidłową stronę historii.",
+    "spendingPlanNameRequired": "Wpisz nazwę planu.",
+    "spendingPlanNameTooLong": "Nazwa planu może mieć najwyżej 100 znaków.",
+    "spendingPlanYearInvalid": "Wybierz rok między 2000 a 2100.",
+    "spendingPlanAmountInvalid": "Wpisz planowaną kwotę większą od zera.",
+    "spendingPlanIconInvalid": "Wybierz prawidłową ikonę.",
+    "spendingPlanColorInvalid": "Wybierz prawidłowy kolor.",
+    "spendingPlanNoteTooLong": "Notatka może mieć najwyżej 500 znaków.",
+    "spendingPlanNameTaken": "Masz już plan o tej nazwie w tym roku.",
+    "spendingPlanClosed": "Do zamkniętego planu nie można dodawać płatności.",
     "systemRule": "Reguł systemowych nie można zmieniać.",
     "tagNameRequired": "Podaj nazwę tagu.",
     "tagNameTooLong": "Nazwa może mieć najwyżej 60 znaków.",
@@ -579,5 +589,9 @@
       "dontAsk": "Nie pytaj ponownie",
       "confirm": "Otwórz"
     }
+  },
+  "filterBadge": {
+    "label": "Filtr: {{labels}}",
+    "clear": "Wyczyść filtr"
   }
 }

@@ -33,6 +33,7 @@ pub mod real_estate;
 /// Phones only: `RunEvent::Opened` exists on iOS and Android, and the Inbox folders on iOS.
 #[cfg(mobile)]
 pub mod received_files;
+pub mod spending_plans;
 pub mod statement_import;
 pub mod stock_import;
 pub mod stock_monitor;

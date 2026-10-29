@@ -20,7 +20,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { FilterBadge } from './FilterBadge';
+import { FilterBadge } from '@/components/common/FilterBadge';
+import { tagFilterTitle } from './filter-badge-title';
 import { GainChange } from './GainChange';
 import { amountOf, sectorLabel, sumKnown } from './performance-model';
 import { holdingRows, portfolioConcentration } from './tables-model';
@@ -94,7 +95,10 @@ export function HoldingsTable({
         <div>
           <CardTitle className="flex items-center gap-2.5">
             {t('stocksAnalysis.holdings.title')}
-            <FilterBadge tags={filterTags} />
+            <FilterBadge
+              labels={filterTags.map((tag) => tag.name)}
+              title={tagFilterTitle(t, filterTags)}
+            />
           </CardTitle>
           <CardDescription>
             {t('stocksAnalysis.holdings.sub', {

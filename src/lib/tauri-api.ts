@@ -62,6 +62,14 @@ import type {
   InsertBudgetGoal,
   BudgetingTransaction,
   BudgetingReport,
+  SpendingPlan,
+  InsertSpendingPlan,
+  SpendingPlanAssignment,
+  SpendingPlanSummary,
+  SpendingPlansOverview,
+  SpendingPlanDetail,
+  PlanCandidateFilters,
+  PlanCandidatesResult,
   ReportTransaction,
   EffectiveTransactionFlow,
   CashflowPeriod,
@@ -1511,6 +1519,46 @@ export const budgetingApi = {
 };
 
 // ============================================================================
+// Spending plans API
+// ============================================================================
+
+export type {
+  SpendingPlan,
+  InsertSpendingPlan,
+  SpendingPlanAssignment,
+  SpendingPlanSummary,
+  SpendingPlanTotals,
+  SpendingPlansOverview,
+  SpendingPlanMonth,
+  SpendingPlanCategory,
+  SpendingPlanCell,
+  SpendingPlanDetail,
+  PlanCandidateFilters,
+  PlanCandidatesResult,
+} from '@shared/schema';
+
+export const spendingPlansApi = {
+  getIndex: () => tauriInvoke<SpendingPlanSummary[]>('get_spending_plan_index'),
+  getOverview: (year: number, reportCurrency: string) =>
+    tauriInvoke<SpendingPlansOverview>('get_spending_plans_overview', { year, reportCurrency }),
+  getDetail: (id: string) => tauriInvoke<SpendingPlanDetail>('get_spending_plan_detail', { id }),
+  getTransactions: (id: string) =>
+    tauriInvoke<BankTransaction[]>('get_spending_plan_transactions', { id }),
+  searchCandidates: (filters: PlanCandidateFilters) =>
+    tauriInvoke<PlanCandidatesResult>('search_plan_candidate_transactions', { filters }),
+  create: (data: InsertSpendingPlan) => tauriInvoke<SpendingPlan>('create_spending_plan', { data }),
+  createMany: (items: InsertSpendingPlan[]) =>
+    tauriInvoke<SpendingPlan[]>('create_spending_plans', { items }),
+  update: (id: string, data: InsertSpendingPlan) =>
+    tauriInvoke<SpendingPlan>('update_spending_plan', { id, data }),
+  setClosed: (id: string, closed: boolean) =>
+    tauriInvoke<SpendingPlan>('set_spending_plan_closed', { id, closed }),
+  remove: (id: string) => tauriInvoke<void>('delete_spending_plan', { id }),
+  setTransactionPlans: (assignments: SpendingPlanAssignment[], restore = false) =>
+    tauriInvoke<void>('set_transaction_spending_plans', { assignments, restore }),
+};
+
+// ============================================================================
 // Combined API export
 // ============================================================================
 
@@ -1535,6 +1583,7 @@ export const api = {
   stockSplits: stockSplitsApi,
   categorization: categorizationApi,
   budgeting: budgetingApi,
+  spendingPlans: spendingPlansApi,
   milestones: milestonesApi,
 };
 

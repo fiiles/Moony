@@ -482,7 +482,6 @@
       "captionNone": "Non suddiviso: la selezione è una sola riga; il suo contributo si riferisce al rendimento dell'intero portafoglio."
     },
     "filterBadge": {
-      "label": "Filtro: {{tags}}",
       "title": "Qui contano solo le posizioni taggate con {{tags}}."
     }
   },

@@ -1132,6 +1132,7 @@ export interface BankTransaction {
   importFileName: string | null;
   importLine: number | null;
   rowBalance: string | null;
+  spendingPlanId: string | null;
   bookingDate: number;
   valueDate: number | null;
   categoryId: string | null;
@@ -2807,6 +2808,115 @@ export interface BudgetingReport {
 }
 
 export type ReportTransaction = BudgetingTransaction;
+
+// ============================================================================
+// Spending plans
+// ============================================================================
+
+export interface SpendingPlan {
+  id: string;
+  name: string;
+  year: number;
+  /** Planned amount in `currency`. */
+  amount: string;
+  currency: string;
+  icon: string;
+  color: string;
+  note: string | null;
+  /** Unix epoch the plan was closed; null while open. */
+  closedAt: number | null;
+  createdAt: number;
+}
+
+export interface InsertSpendingPlan {
+  name: string;
+  year: number;
+  amount: string;
+  currency: string;
+  icon: string;
+  color: string;
+  note: string | null;
+}
+
+/** Tag a payment with a plan, or clear its tag (`planId: null`). */
+export interface SpendingPlanAssignment {
+  transactionId: string;
+  planId: string | null;
+}
+
+export interface SpendingPlanSummary {
+  plan: SpendingPlan;
+  /** Booked debits minus credits in the plan currency; null when none could be converted. */
+  spent: string | null;
+  /** Tagged payments, pending ones included. */
+  paymentCount: number;
+  lastPaymentDate: number | null;
+  fxQuality: ConversionQuality;
+}
+
+export interface SpendingPlanTotals {
+  planned: string | null;
+  spent: string | null;
+  remainingActive: string | null;
+}
+
+export interface SpendingPlansOverview {
+  year: number;
+  /** Currency of `totals`. */
+  currency: string;
+  fxQuality: ConversionQuality;
+  plans: SpendingPlanSummary[];
+  totals: SpendingPlanTotals;
+  /** Years that have at least one plan, ascending. */
+  yearsWithPlans: number[];
+}
+
+export interface SpendingPlanMonth {
+  /** `YYYY-MM` of the booking day (UTC). */
+  month: string;
+  spent: string;
+}
+
+export interface SpendingPlanCategory {
+  categoryId: string | null;
+  spent: string;
+  count: number;
+}
+
+/** One month x category bucket; the frontend sums cells for filtered views. */
+export interface SpendingPlanCell {
+  month: string;
+  categoryId: string | null;
+  spent: string;
+  count: number;
+}
+
+export interface SpendingPlanDetail {
+  summary: SpendingPlanSummary;
+  months: SpendingPlanMonth[];
+  categories: SpendingPlanCategory[];
+  cells: SpendingPlanCell[];
+  accountCount: number;
+}
+
+export interface PlanCandidateFilters {
+  planId: string;
+  dateFrom: number | null;
+  dateTo: number | null;
+  accountId: string | null;
+  onlyUnassigned: boolean;
+  /** Matched against counterparty, description and category name, ignoring case and diacritics. */
+  query: string | null;
+  /** Categories whose shown (translated) name matches `query`: their payments match it too. */
+  categoryIds: string[] | null;
+  limit: number | null;
+}
+
+export interface PlanCandidatesResult {
+  transactions: BankTransaction[];
+  truncated: boolean;
+}
+
 
 export interface StatementBalance {
   amount: string;

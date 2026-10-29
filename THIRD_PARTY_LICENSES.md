@@ -20,7 +20,7 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 | Ecosystem | Packages |
 | --- | ---: |
 | npm | 229 |
-| Rust | 676 |
+| Rust | 677 |
 
 ### npm — packages per licence
 
@@ -41,7 +41,7 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 
 | Licence | Packages |
 | --- | ---: |
-| MIT OR Apache-2.0 | 336 |
+| MIT OR Apache-2.0 | 337 |
 | MIT | 158 |
 | Apache-2.0 OR MIT | 66 |
 | Unicode-3.0 | 18 |
@@ -538,6 +538,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | heck | 0.5.0 | MIT OR Apache-2.0 |
 | hermit-abi | 0.5.3 | MIT OR Apache-2.0 |
 | hex | 0.4.3 | MIT OR Apache-2.0 |
+| hkdf | 0.13.0 | MIT OR Apache-2.0 |
 | hmac | 0.13.0 | MIT OR Apache-2.0 |
 | html5ever | 0.39.0 | MIT OR Apache-2.0 |
 | http | 1.5.0 | MIT OR Apache-2.0 |

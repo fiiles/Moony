@@ -6,8 +6,21 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-10-29
+
 ### Added
 
+- **Spending plans.** A yearly plan for one purpose (a holiday, a renovation, gifts) with its own
+  planned amount, currency, icon and color, under Money → Spending plans. Tag payments from any
+  account to a plan in the account ledger, one by one or several at once (with undo), or pick
+  them in the plan's "Add payments" dialog. A plan sits next to the payment's category and never
+  changes it. The overview lists every plan of the year by risk with what is spent and left, and
+  shows where the plan money goes; a plan's detail shows spending by month and by category
+  against the planned amount. Plans can be closed and reopened, and next year's plans can be
+  taken over from this year's. What is left at the end of a year is not carried over.
+- **Quarterly cashflow planning.** Cashflow planning shows quarterly totals next to monthly and
+  yearly ones, and a planned item can recur every quarter.
+- **Eight new category icons**, and one icon and color picker shared by categories and plans.
 - **Touch ID and Windows Hello unlock.** On a Mac or a Windows PC you can open Moony with your
   fingerprint instead of typing the password, at start and after auto-lock. Moony offers it once
   after a password unlock and never asks again; the switch lives in Settings → Security. The
@@ -18,11 +31,24 @@ All notable changes to Moony are documented in this file. The format follows
 
 ### Changed
 
+- **Budgets are part of Cashflow.** The separate Budgets page is gone: the "Expenses by
+  category" card in Cashflow shows each category's limit for the period with spent, usage and
+  what is left, filters for over-limit and categories without a limit, and "Manage limits" and
+  category management in its head. Old links to the Budgets page open Cashflow. The budget export
+  was removed with the page.
+- **MCP:** `cashflow_report` accepts `quarterly` as its `viewType`.
 - **macOS 10.15 or newer is required.** Touch ID unlock uses system features that older macOS
   versions lack, so macOS 10.13 and 10.14 are no longer supported.
 - While Moony is unlocked on macOS and Windows, the encryption key now stays in memory for the whole
   session (the open database already needed it there), so switching on biometric unlock does not
   ask for the password again.
+
+### Fixed
+
+- **Password change and recovery** write the new recovery key before the new password, so an
+  interruption between the two (a crash, a dead battery) can no longer leave a new password next
+  to a recovery key that opens nothing.
+- **Partly selected checkboxes** show a dash instead of a check mark.
 
 ## [1.1.0] - 2026-10-25
 
@@ -749,7 +775,8 @@ local tool). Everything below is new to the public.
 - The updater only offers versions higher than the installed one, so a machine running an
   older 1.x build from the previous private repository must install 0.9.0 by hand.
 
-[Unreleased]: https://github.com/fiiles/Moony/compare/v1.1.0...HEAD
+[Unreleased]: https://github.com/fiiles/Moony/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/fiiles/Moony/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/fiiles/Moony/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/fiiles/Moony/compare/v0.13.0...v1.0.0
 [0.13.0]: https://github.com/fiiles/Moony/compare/v0.12.2...v0.13.0

@@ -60,8 +60,8 @@ targets:
           - UIInterfaceOrientationPortraitUpsideDown
           - UIInterfaceOrientationLandscapeLeft
           - UIInterfaceOrientationLandscapeRight
-        CFBundleShortVersionString: 1.1.0
-        CFBundleVersion: "1.1.0"
+        CFBundleShortVersionString: 1.2.0
+        CFBundleVersion: "1.2.0"
     entitlements:
       path: moony_iOS/moony_iOS.entitlements
     scheme:

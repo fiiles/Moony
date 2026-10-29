@@ -205,9 +205,13 @@ export function PlanPaymentsCard({
                     }
                   />
                 </TableHead>
-                <TableHead className="w-[52%]">{t('detail.payments.counterparty')}</TableHead>
-                <TableHead>{t('detail.payments.category')}</TableHead>
-                <TableHead className="w-[24%] text-right">{t('detail.payments.amount')}</TableHead>
+                {/* The counterparty takes what is left and truncates first: at a 1080 px window
+                    the card is ~400 px, leaving it ~120 px next to a readable category */}
+                <TableHead>{t('detail.payments.counterparty')}</TableHead>
+                <TableHead className="w-[28%]">{t('detail.payments.category')}</TableHead>
+                <TableHead className="w-[124px] text-right">
+                  {t('detail.payments.amount')}
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -273,7 +277,7 @@ export function PlanPaymentsCard({
                               <span className="truncate">{categoryName(category)}</span>
                             </span>
                           ) : (
-                            <span className="text-caption text-ink-4">
+                            <span className="block truncate text-caption text-ink-4">
                               {t('detail.categories.uncategorized')}
                             </span>
                           )}

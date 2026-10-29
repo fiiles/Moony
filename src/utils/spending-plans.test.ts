@@ -492,6 +492,27 @@ describe('planFlowSegments', () => {
     expect(segments.map((s) => s.key)).toEqual(['cat:a', 'rest']);
   });
 
+  it('never runs past 100 % when refunds outweigh a category', () => {
+    // A −20 category is left off but lowers spent: positive 50 against spent 30
+    const segments = planFlowSegments(
+      { planned: 100, spent: 30, categories: [cat('a', '50'), cat('b', '-20')] },
+      labels
+    );
+    expect(brief(segments)).toEqual([
+      ['cat:a', 'cat a', 50, 0.5, null],
+      ['rest', 'Zbývá v plánech', 50, 0.5, 'rest'],
+    ]);
+    expect(segments.reduce((sum, s) => sum + s.share, 0)).toBeLessThanOrEqual(1);
+  });
+
+  it('measures against the positive spend when it is above planned and spent', () => {
+    const segments = planFlowSegments(
+      { planned: 100, spent: 90, categories: [cat('a', '120'), cat('b', '-30')] },
+      labels
+    );
+    expect(brief(segments)).toEqual([['cat:a', 'cat a', 120, 1, null]]);
+  });
+
   it('is empty when nothing is planned or spent', () => {
     expect(planFlowSegments({ planned: 0, spent: 0, categories: [] }, labels)).toEqual([]);
   });

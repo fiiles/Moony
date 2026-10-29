@@ -303,10 +303,12 @@ const FLOW_HEAD = 4;
 
 /**
  * "Kam jdou peníze z plánů": the year's spend by category across all plans, on a bar where
- * 100 % is the larger of planned and spent (report currency). The four categories with the
- * largest positive spend, "Ostatní" for the rest of the positive spend, then the hatched
- * remainder (planned − spent) while the plans are not used up. Zero or negative categories
- * (refunds outweighing payments) are left out.
+ * 100 % is the largest of planned, spent and the positive category spend (report currency).
+ * The four categories with the largest positive spend, "Ostatní" for the rest of the positive
+ * spend, then the hatched remainder while the plans are not used up. Zero or negative
+ * categories (refunds outweighing payments) are left out; since they still lower spent, the
+ * drawn spend is the positive sum, and the remainder is planned minus the larger of the two,
+ * so the segments never add up to more than the bar.
  */
 export function planFlowSegments(
   input: {
@@ -316,12 +318,14 @@ export function planFlowSegments(
   },
   labels: { category: (categoryId: string | null) => string; other: string; rest: string }
 ): PlanFlowSegment[] {
-  const base = Math.max(input.planned, input.spent);
-  if (!(base > 0)) return [];
   const positive = input.categories
     .map((c) => ({ categoryId: c.categoryId, value: parseFloat(c.spent) }))
     .filter((c) => Number.isFinite(c.value) && c.value > 0)
     .sort((a, b) => b.value - a.value);
+  const positiveSum = positive.reduce((sum, c) => sum + c.value, 0);
+  const drawn = Math.max(input.spent, positiveSum);
+  const base = Math.max(input.planned, drawn);
+  if (!(base > 0)) return [];
   const segments: PlanFlowSegment[] = positive.slice(0, FLOW_HEAD).map((c) => ({
     key: c.categoryId === null ? 'uncategorized' : `cat:${c.categoryId}`,
     label: labels.category(c.categoryId),
@@ -333,7 +337,7 @@ export function planFlowSegments(
     const value = tail.reduce((sum, c) => sum + c.value, 0);
     segments.push({ key: 'other', label: labels.other, value, share: value / base });
   }
-  const left = input.planned - input.spent;
+  const left = input.planned - drawn;
   if (left > 0) {
     segments.push({
       key: 'rest',

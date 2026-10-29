@@ -48,8 +48,8 @@ interface PlanPaymentsCardProps {
 /**
  * "Platby" (spec §9, O15): the plan's payments in the account ledger's look — grouped by day,
  * the counterparty with its round icon and "Účet · detail" under it, the category as the
- * plan chip's pill (its icon in ink, no color), the native signed amount (credits in `gain`). Checkboxes select payments for
- * "Přesunout do…" (another plan) or "Odebrat z plánu".
+ * plan chip's pill (its icon in ink, no color), the native signed amount (credits in `gain`).
+ * Checkboxes select payments for "Přesunout do…" (another plan) or "Odebrat z plánu".
  */
 export function PlanPaymentsCard({
   planId,

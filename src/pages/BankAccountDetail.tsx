@@ -17,7 +17,6 @@ import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import {
-  ArrowDownLeft,
   CalendarSearch,
   Ellipsis,
   History,
@@ -110,6 +109,7 @@ import { ImportHistoryDialog } from '@/components/bank-accounts/ImportHistoryDia
 import { InterestDialog } from '@/components/bank-accounts/InterestDialog';
 import { StatementImportDialog } from '@/components/bank-accounts/StatementImportDialog';
 import { CategorySelector } from '@/components/bank-accounts/CategorySelector';
+import { LedgerCounterpartyCell } from '@/components/bank-accounts/LedgerCounterpartyCell';
 import { newRuleHref } from '@/utils/rules-link';
 
 import { cn } from '@/lib/utils';
@@ -1050,38 +1050,11 @@ function BankAccountDetailPage() {
                         )}
                         <TableRow className="h-[52px]">
                           <TableCell>
-                            <div className="flex min-w-0 items-center gap-[10px] text-ink">
-                              <span className="grid size-[30px] shrink-0 place-items-center rounded-full bg-well-2 text-ink-2">
-                                {credit ? (
-                                  <ArrowDownLeft
-                                    className="size-3.5"
-                                    strokeWidth={1.75}
-                                    aria-hidden
-                                  />
-                                ) : (
-                                  <Receipt className="size-3.5" strokeWidth={1.75} aria-hidden />
-                                )}
-                              </span>
-                              <div className="min-w-0">
-                                {counterparty.title ? (
-                                  <b
-                                    className="block truncate text-table font-650"
-                                    title={counterparty.title}
-                                  >
-                                    {counterparty.title}
-                                  </b>
-                                ) : (
-                                  <span className="text-ink-4">—</span>
-                                )}
-                                {counterparty.subtitle && (
-                                  <small
-                                    className="block truncate text-micro font-500 text-ink-4 num"
-                                    title={counterparty.subtitle}
-                                  >
-                                    {counterparty.subtitle}
-                                  </small>
-                                )}
-                              </div>
+                            <LedgerCounterpartyCell
+                              credit={credit}
+                              title={counterparty.title}
+                              subtitle={counterparty.subtitle}
+                            >
                               {tx.status === 'pending' && (
                                 <Badge className="shrink-0">{t('readiness.pending')}</Badge>
                               )}
@@ -1092,7 +1065,7 @@ function BankAccountDetailPage() {
                                     : t(`readiness.flow.${flowKey}`)}
                                 </Badge>
                               )}
-                            </div>
+                            </LedgerCounterpartyCell>
                           </TableCell>
                           <TableCell className="truncate" title={detail || undefined}>
                             {detail}

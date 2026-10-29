@@ -164,7 +164,7 @@ export function PlanFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto">
+      <DialogContent className="flex max-h-[90vh] flex-col">
         <DialogHeader>
           <DialogTitle>{isEdit ? t('form.editTitle') : t('form.newTitle')}</DialogTitle>
           <DialogDescription>
@@ -174,123 +174,126 @@ export function PlanFormDialog({
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(submit)} className="space-y-4">
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>{t('form.name')}</FormLabel>
-                  <FormControl>
-                    <Input
-                      placeholder={t('form.namePlaceholder')}
-                      maxLength={NAME_MAX}
-                      autoFocus
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="space-y-2">
-              <div className="grid grid-cols-[1fr_96px_120px] gap-3">
-                <FormField
-                  control={form.control}
-                  name="amount"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('form.amount')}</FormLabel>
-                      <InputWrap unit={currency}>
+          <form onSubmit={form.handleSubmit(submit)} className="flex min-h-0 flex-1 flex-col gap-4">
+            {/* Only the fields scroll; the header and the footer with Vytvořit stay in view */}
+            <div className="min-h-0 flex-1 space-y-4 overflow-y-auto px-px py-1">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('form.name')}</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder={t('form.namePlaceholder')}
+                        maxLength={NAME_MAX}
+                        autoFocus
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <div className="space-y-2">
+                <div className="grid grid-cols-[1fr_96px_120px] gap-3">
+                  <FormField
+                    control={form.control}
+                    name="amount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('form.amount')}</FormLabel>
+                        <InputWrap unit={currency}>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="any"
+                              min="0"
+                              placeholder="0"
+                              className="num"
+                              {...field}
+                              value={field.value ?? ''}
+                            />
+                          </FormControl>
+                        </InputWrap>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="year"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('form.year')}</FormLabel>
+                        <Select value={field.value} onValueChange={field.onChange}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {years.map((y) => (
+                              <SelectItem key={y} value={String(y)}>
+                                {y}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="currency"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{tc('labels.currency')}</FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
-                            step="any"
-                            min="0"
-                            placeholder="0"
-                            className="num"
-                            {...field}
-                            value={field.value ?? ''}
+                          <CurrencyCombobox
+                            value={field.value}
+                            onChange={field.onChange}
+                            showName={false}
                           />
                         </FormControl>
-                      </InputWrap>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="year"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{t('form.year')}</FormLabel>
-                      <Select value={field.value} onValueChange={field.onChange}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {years.map((y) => (
-                            <SelectItem key={y} value={String(y)}>
-                              {y}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="currency"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>{tc('labels.currency')}</FormLabel>
-                      <FormControl>
-                        <CurrencyCombobox
-                          value={field.value}
-                          onChange={field.onChange}
-                          showName={false}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormDescription>{t('form.fxHint')}</FormDescription>
               </div>
-              <FormDescription>{t('form.fxHint')}</FormDescription>
+              <FormField
+                control={form.control}
+                name="note"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="flex justify-between">
+                      <span>{t('form.note')}</span>
+                      <span className="font-500 text-ink-5">{tc('labels.optional')}</span>
+                    </FormLabel>
+                    <FormControl>
+                      <Textarea
+                        rows={2}
+                        maxLength={NOTE_MAX}
+                        placeholder={t('form.notePlaceholder')}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <IconColorPicker
+                icon={icon}
+                color={color}
+                onIconChange={(value) => form.setValue('icon', value, { shouldDirty: true })}
+                onColorChange={(value) => form.setValue('color', value, { shouldDirty: true })}
+                previewLabel={name.trim() || t('form.previewName')}
+                previewShape="square"
+              />
             </div>
-            <FormField
-              control={form.control}
-              name="note"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="flex justify-between">
-                    <span>{t('form.note')}</span>
-                    <span className="font-500 text-ink-5">{tc('labels.optional')}</span>
-                  </FormLabel>
-                  <FormControl>
-                    <Textarea
-                      rows={2}
-                      maxLength={NOTE_MAX}
-                      placeholder={t('form.notePlaceholder')}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <IconColorPicker
-              icon={icon}
-              color={color}
-              onIconChange={(value) => form.setValue('icon', value, { shouldDirty: true })}
-              onColorChange={(value) => form.setValue('color', value, { shouldDirty: true })}
-              previewLabel={name.trim() || t('form.previewName')}
-              previewShape="square"
-            />
             <DialogFooter>
               <Button type="button" variant="ghost" onClick={() => onOpenChange(false)}>
                 {tc('buttons.cancel')}

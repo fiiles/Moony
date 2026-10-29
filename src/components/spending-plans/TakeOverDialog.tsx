@@ -134,7 +134,7 @@ export function TakeOverDialog({ open, onOpenChange, fromYear, toYear }: TakeOve
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] max-w-[860px] overflow-y-auto">
+      <DialogContent className="flex max-h-[90vh] max-w-[860px] flex-col">
         <DialogHeader>
           <DialogTitle>{t('takeOver.title', { year: fromYear })}</DialogTitle>
           <DialogDescription>{t('takeOver.description')}</DialogDescription>
@@ -144,7 +144,8 @@ export function TakeOverDialog({ open, onOpenChange, fromYear, toYear }: TakeOve
             {t('takeOver.empty', { year: fromYear })}
           </p>
         ) : (
-          <Table>
+          // Only the plans scroll; the header and the footer with the action stay in view
+          <Table containerClassName="min-h-0 flex-1">
             <TableHeader>
               <TableRow>
                 <TableHead className="w-8">

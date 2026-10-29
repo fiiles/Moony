@@ -10,20 +10,33 @@ export function CategoryIcon({ iconName, className }: { iconName: string; classN
   return <IconComponent className={className} />;
 }
 
-/** The category's icon in a round chip tinted with its color (neutral without a category). */
+const CHIP_SIZE = {
+  sm: { box: 'size-5 [&_svg]:size-3', square: 'rounded-[6px]' },
+  md: { box: 'size-7 [&_svg]:size-[15px]', square: 'rounded-[9px]' },
+  lg: { box: 'size-11 [&_svg]:size-[22px]', square: 'rounded-[13px]' },
+} as const;
+
+/** The category's icon in a chip tinted with its color (neutral without a category). */
 export function CategoryIconChip({
   category,
   className,
+  shape = 'round',
+  size = 'md',
 }: {
   category?: Pick<TransactionCategory, 'icon' | 'color'> | null;
   className?: string;
+  shape?: 'round' | 'square';
+  size?: 'sm' | 'md' | 'lg';
 }) {
   const color = category?.color || '#9E9E9E';
+  const dims = CHIP_SIZE[size];
   return (
     <span
       aria-hidden="true"
       className={cn(
-        'cat-chip grid size-7 shrink-0 place-items-center rounded-full [&_svg]:size-[15px]',
+        'cat-chip grid shrink-0 place-items-center',
+        dims.box,
+        shape === 'square' ? dims.square : 'rounded-full',
         className
       )}
       style={{ '--cat': color, backgroundColor: `${color}26` } as CSSProperties}

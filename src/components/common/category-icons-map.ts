@@ -36,6 +36,14 @@ import {
   Landmark,
   Shield,
   Tag,
+  Mountain,
+  TreePine,
+  TreePalm,
+  Snowflake,
+  PartyPopper,
+  BookOpen,
+  Stethoscope,
+  Tent,
   type LucideProps,
 } from 'lucide-react';
 import type { ComponentType } from 'react';
@@ -79,6 +87,14 @@ export const ICON_MAP: Record<string, ComponentType<LucideProps>> = {
   'more-horizontal': MoreHorizontal,
   landmark: Landmark,
   shield: Shield,
+  mountain: Mountain,
+  'tree-pine': TreePine,
+  'tree-palm': TreePalm,
+  snowflake: Snowflake,
+  'party-popper': PartyPopper,
+  'book-open': BookOpen,
+  stethoscope: Stethoscope,
+  tent: Tent,
   // Fallback icon, also selectable for custom categories
   tag: Tag,
 };

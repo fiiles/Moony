@@ -62,6 +62,7 @@ import { initials } from '@/mobile/lib/initials';
 import { effectiveType, policyTypes } from '@/mobile/lib/upcoming-premiums';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 import { accountPath, loanPath, policyPath } from '@/mobile/shell/routes';
+import { LockButton } from '@/mobile/shell/LockButton';
 import { Screen } from '@/mobile/shell/Screen';
 
 type AddKind = 'account' | 'loan' | 'policy';
@@ -192,6 +193,7 @@ export default function Finance() {
     <Screen
       title={t('tabs.finance')}
       large
+      leading={<LockButton />}
       subtitle={subtitle}
       trailing={
         <>

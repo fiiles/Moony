@@ -41,6 +41,7 @@ import {
 } from '@/mobile/lib/wealth-rows';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 import { propertyPath, routes } from '@/mobile/shell/routes';
+import { LockButton } from '@/mobile/shell/LockButton';
 import { Screen } from '@/mobile/shell/Screen';
 
 /** Whole amounts: Majetek shows no decimals. */
@@ -104,6 +105,7 @@ export default function Wealth() {
     <Screen
       title={t('tabs.wealth')}
       large
+      leading={<LockButton />}
       subtitle={t('wealth.subtitle')}
       trailing={
         <AddAssetMenu

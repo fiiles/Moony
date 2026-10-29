@@ -13,7 +13,9 @@ import {
 } from 'lucide-react';
 import { recordCurrency } from '@shared/currencies';
 import { useAuth } from '@/hooks/use-auth';
+import { useNetWorthOverview } from '@/hooks/use-net-worth-overview';
 import { useFormat } from '@/lib/use-format';
+import { CHART_PERIODS, type ChartPeriod } from '@/utils/period';
 import { amountOf } from '@/utils/positions';
 import { Button } from '@/components/ui/button';
 import { ScaledConversionNote, ScaledEmptyState } from '@/mobile/components/Scaled';
@@ -26,6 +28,7 @@ import { AddAssetMenu, type AddKind } from '@/mobile/components/wealth/AddAssetM
 import { AllocationBar } from '@/mobile/components/wealth/AllocationBar';
 import { ChangeLine } from '@/mobile/components/wealth/ChangeLine';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { useRemembered } from '@/mobile/hooks/use-remembered';
 import { useWealth, type WealthData } from '@/mobile/hooks/use-wealth';
 import { changeSinceDayOptions, periodChange } from '@/mobile/lib/change';
 import { shortDayOptions } from '@/mobile/lib/format-day';
@@ -55,7 +58,8 @@ const INVESTMENT_ROWS: Record<
 };
 
 /**
- * Majetek tab root (spec §8.8, prototype frame 10): the Aktiva hero with the allocation bar, then
+ * Majetek tab root (spec §8.8, prototype frame 10): the Aktiva hero with its line over the picked
+ * period (the class rows keep their 30-day change) and the allocation bar, then
  * what is owned as rows — Investice (a row per class the menu preference leaves in), Nemovitosti
  * and a last section Hotovost whose one row opens Finance — so the rows add up to the hero. Assets
  * only: loans and policies live on Finance. The trailing `+` is the typed add menu.
@@ -69,19 +73,22 @@ export default function Wealth() {
   const wealth = useWealth();
   const [addKind, setAddKind] = useState<AddKind | null>(null);
   const { overview, reportCurrency, classes, isLoading } = wealth;
-  const { display, unknown, hasHistory, oldest, shortHistoryBase } = overview;
+  const [period, setPeriod] = useRemembered<ChartPeriod>('wealth.period', '30D');
+  // The hero's own period (the rows stay on 30 days); at 30 days it is the same query as theirs
+  const hero = useNetWorthOverview(period);
+  const { display, unknown } = overview;
 
   const money = (value: number) => moneyText(value, reportCurrency, WHOLE);
 
-  // The 30-day change of the hero is fixed (no period segment on this page): "za 30 dní", or
-  // "od 3. 10." when the history is shorter than that — as Přehled says it
+  // The change over the picked period: "za 30 dní", or "od 3. 10." when the history is shorter
+  // than that — as Přehled says it
   const assetsChange =
-    hasHistory && !unknown.assets ? periodChange(display.assets, oldest?.assets) : null;
+    hero.hasHistory && !unknown.assets ? periodChange(display.assets, hero.oldest?.assets) : null;
   const changeLabel =
-    shortHistoryBase === null
-      ? t('overview.change.30D')
+    hero.shortHistoryBase === null
+      ? t(`overview.change.${period}`)
       : td('changeSince', {
-          date: fmt.day(shortHistoryBase, changeSinceDayOptions(shortHistoryBase)),
+          date: fmt.day(hero.shortHistoryBase, changeSinceDayOptions(hero.shortHistoryBase)),
         });
 
   // The bar shows the hero's total, so every class counts, also one hidden from the rows
@@ -144,6 +151,12 @@ export default function Wealth() {
                 : undefined
             }
             note={unknown.assets ? undefined : t('overview.stats.noHistory')}
+            period={period}
+            periods={CHART_PERIODS}
+            onPeriodChange={setPeriod}
+            points={hero.assetPoints}
+            zeroBaseline={period === 'All'}
+            chartLabel={t('wealth.assetsTrendLabel')}
           >
             <AllocationBar
               segments={segments}

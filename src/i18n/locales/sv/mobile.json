@@ -17,7 +17,6 @@
   "overview": {
     "hideAmounts": "Dölj belopp",
     "showAmounts": "Visa belopp",
-    "showAll": "Visa alla",
     "change": {
       "30D": "på 30 dagar",
       "90D": "på 3 månader",
@@ -130,8 +129,7 @@
     "sections": {
       "accounts": "Konton",
       "loans": "Lån",
-      "insurance": "Försäkringar",
-      "cashTrend": "Kontanter över tid"
+      "insurance": "Försäkringar"
     },
     "manual": "manuellt",
     "statementOn": "kontoutdrag {{date}}",
@@ -610,7 +608,8 @@
       "below": "Under",
       "openPosition": "Öppna innehavet",
       "notesEmpty": "Inga anteckningar ännu. Tryck på Redigera för att lägga till analysanteckningar — markdown fungerar."
-    }
+    },
+    "assetsTrendLabel": "Diagram över tillgångar"
   },
   "settings": {
     "rows": {

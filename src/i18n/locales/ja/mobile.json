@@ -17,7 +17,6 @@
   "overview": {
     "hideAmounts": "金額を隠す",
     "showAmounts": "金額を表示",
-    "showAll": "すべて表示",
     "change": {
       "30D": "30日間",
       "90D": "3か月間",
@@ -119,8 +118,7 @@
     "sections": {
       "accounts": "口座",
       "loans": "ローン",
-      "insurance": "保険",
-      "cashTrend": "現金の推移"
+      "insurance": "保険"
     },
     "manual": "手入力",
     "statementOn": "{{date}}の明細",
@@ -575,7 +573,8 @@
       "below": "下回る",
       "openPosition": "保有銘柄を開く",
       "notesEmpty": "メモはまだありません。「編集」をタップしてリサーチメモを追加してください。Markdown が使えます。"
-    }
+    },
+    "assetsTrendLabel": "資産の推移グラフ"
   },
   "settings": {
     "rows": {

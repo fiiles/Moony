@@ -17,7 +17,6 @@
   "overview": {
     "hideAmounts": "Nascondi importi",
     "showAmounts": "Mostra importi",
-    "showAll": "Mostra tutto",
     "change": {
       "30D": "in 30 giorni",
       "90D": "in 3 mesi",
@@ -141,8 +140,7 @@
     "sections": {
       "accounts": "Conti",
       "loans": "Prestiti",
-      "insurance": "Assicurazioni",
-      "cashTrend": "Liquidità nel tempo"
+      "insurance": "Assicurazioni"
     },
     "manual": "manuale",
     "statementOn": "estratto del {{date}}",
@@ -645,7 +643,8 @@
       "below": "Sotto",
       "openPosition": "Apri posizione",
       "notesEmpty": "Ancora nessuna nota. Tocca Modifica per aggiungere note di ricerca — il markdown funziona."
-    }
+    },
+    "assetsTrendLabel": "Grafico dell’andamento degli attivi"
   },
   "settings": {
     "rows": {

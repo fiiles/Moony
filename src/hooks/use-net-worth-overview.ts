@@ -198,6 +198,21 @@ export function useNetWorthOverview(period: ChartPeriod) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [convertedHistory, portfolioMetrics, unknown.netWorth]);
   const points = useMemo(() => plotted.map((d) => ({ t: d.t, value: d.netWorth })), [plotted]);
+  // The assets alone (the phone's Majetek hero): the same days, with today's live total last
+  const assetPoints = useMemo(() => {
+    const todayStart = utcDayFloor(Date.now() / 1000);
+    const days = convertedHistory.map((h) => ({ t: h.recordedAt, value: h.assets }));
+    if (unknown.assets) return days.filter((d) => utcDayFloor(d.t) !== todayStart);
+    const last = days[days.length - 1];
+    if (last && utcDayFloor(last.t) === todayStart) {
+      days[days.length - 1] = { t: last.t, value: display.assets };
+    } else {
+      days.push({ t: Math.floor(Date.now() / 1000), value: display.assets });
+    }
+    return days;
+    // display is rebuilt every render; its input is the metrics response
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [convertedHistory, portfolioMetrics, unknown.assets]);
 
   // Big steps of the plotted line, explained by the dated facts of their day. Until the facts
   // are in, nothing is marked: without them a purchase day would read as an unexplained step.
@@ -222,6 +237,7 @@ export function useNetWorthOverview(period: ChartPeriod) {
     assetsDelta,
     liabilitiesDelta,
     points,
+    assetPoints,
     jumps,
   };
 }

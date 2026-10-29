@@ -315,16 +315,13 @@ const MOVE_ICONS: Partial<Record<MoveKind, LucideIcon>> = {
  * direction is in the sub. Hidden when there is nothing yet.
  */
 function RecentMovesSection() {
-  const { t } = useTranslation('mobile');
   const { t: td } = useTranslation('dashboard');
   const { moves, isLoading } = useRecentMoves(MOVES);
   if (isLoading || moves.length === 0) return null;
   return (
     <section>
-      <SectionHead
-        title={td('moves.title')}
-        action={{ label: t('overview.showAll'), href: routes.finance }}
-      />
+      {/* No "Zobrazit vše": the moves come from accounts, trades and assets, so no one list holds them */}
+      <SectionHead title={td('moves.title')} />
       <MoveRows moves={moves} />
     </section>
   );

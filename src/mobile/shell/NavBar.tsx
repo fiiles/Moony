@@ -45,7 +45,8 @@ export function NavBar({ title, large = false, collapsed, leading, trailing }: N
 
 /**
  * A text button of the nav bar (`.m-nav__back`): 44 pt tall, the label ends with an ellipsis at
- * 120 px. With `chevron` it is the back button (chevron and the parent's name).
+ * 120 px. With `chevron` it is the back button (chevron and the parent's name), which the swipe
+ * from the left edge presses (`data-nav-back`, `useEdgeSwipeBack`).
  */
 export function NavTextButton({
   label,
@@ -63,6 +64,7 @@ export function NavTextButton({
       type="button"
       onClick={onClick}
       disabled={disabled}
+      data-nav-back={chevron || undefined}
       className={cn(
         'inline-flex h-11 min-w-0 max-w-[120px] items-center gap-0.5 rounded-[12px] text-m-row text-ink [-webkit-touch-callout:none] active:bg-well-2 disabled:pointer-events-none disabled:opacity-45',
         chevron ? 'pl-1 pr-2' : 'px-3'

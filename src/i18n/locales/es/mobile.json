@@ -17,7 +17,6 @@
   "overview": {
     "hideAmounts": "Ocultar importes",
     "showAmounts": "Mostrar importes",
-    "showAll": "Ver todo",
     "change": {
       "30D": "en 30 días",
       "90D": "en 3 meses",
@@ -141,8 +140,7 @@
     "sections": {
       "accounts": "Cuentas",
       "loans": "Préstamos",
-      "insurance": "Seguros",
-      "cashTrend": "Efectivo a lo largo del tiempo"
+      "insurance": "Seguros"
     },
     "manual": "manual",
     "statementOn": "extracto del {{date}}",
@@ -645,7 +643,8 @@
       "below": "Por debajo",
       "openPosition": "Abrir posición",
       "notesEmpty": "Aún no hay notas. Toca Editar para añadir notas de análisis — markdown funciona."
-    }
+    },
+    "assetsTrendLabel": "Gráfico de la evolución de los activos"
   },
   "settings": {
     "rows": {

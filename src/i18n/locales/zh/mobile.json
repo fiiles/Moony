@@ -17,7 +17,6 @@
   "overview": {
     "hideAmounts": "隐藏金额",
     "showAmounts": "显示金额",
-    "showAll": "显示全部",
     "change": {
       "30D": "30 天内",
       "90D": "3 个月内",
@@ -119,8 +118,7 @@
     "sections": {
       "accounts": "账户",
       "loans": "贷款",
-      "insurance": "保险",
-      "cashTrend": "现金走势"
+      "insurance": "保险"
     },
     "manual": "手动",
     "statementOn": "{{date}} 对账单",
@@ -575,7 +573,8 @@
       "below": "低于",
       "openPosition": "打开持仓",
       "notesEmpty": "还没有笔记。点按“编辑”添加研究笔记，支持 Markdown。"
-    }
+    },
+    "assetsTrendLabel": "资产走势图"
   },
   "settings": {
     "rows": {

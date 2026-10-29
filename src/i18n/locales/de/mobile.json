@@ -17,7 +17,6 @@
   "overview": {
     "hideAmounts": "Beträge ausblenden",
     "showAmounts": "Beträge einblenden",
-    "showAll": "Alle anzeigen",
     "change": {
       "30D": "in 30 Tagen",
       "90D": "in 3 Monaten",
@@ -130,8 +129,7 @@
     "sections": {
       "accounts": "Konten",
       "loans": "Kredite",
-      "insurance": "Versicherungen",
-      "cashTrend": "Bargeld im Zeitverlauf"
+      "insurance": "Versicherungen"
     },
     "manual": "manuell",
     "statementOn": "Auszug {{date}}",
@@ -610,7 +608,8 @@
       "below": "Unter",
       "openPosition": "Position öffnen",
       "notesEmpty": "Noch keine Notizen. Tippen Sie auf „Bearbeiten“, um Recherchenotizen hinzuzufügen — Markdown funktioniert."
-    }
+    },
+    "assetsTrendLabel": "Diagramm zum Vermögensverlauf"
   },
   "settings": {
     "rows": {

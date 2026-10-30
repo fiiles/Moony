@@ -351,13 +351,40 @@
       "filter": {
         "all": "Tutti",
         "buys": "Acquisti",
-        "sells": "Vendite"
+        "sells": "Vendite",
+        "dividends": "Dividendi"
       },
       "footer_one": "{{count}} evento",
       "footer_many": "{{count}} eventi",
       "footer_other": "{{count}} eventi",
       "since": "dal {{date}}",
       "rates": "Prezzi in {{currency}} al cambio del giorno dell'operazione"
+    },
+    "dividendRecords": {
+      "add": "Aggiungi dividendo",
+      "short": "Dividendo",
+      "addTitle": "Aggiungi un dividendo ricevuto",
+      "editTitle": "Modifica dividendo",
+      "description": "Un pagamento di {{ticker}}: l'importo lordo prima della ritenuta, alla data di pagamento. Il numero di azioni non cambia.",
+      "paidDate": "Data di pagamento",
+      "gross": "Importo lordo",
+      "grossHint": "Totale del pagamento, prima delle imposte",
+      "tax": "Ritenuta alla fonte",
+      "taxHint": "Facoltativo; lascia vuoto se non è stato trattenuto nulla",
+      "note": "Nota",
+      "save": "Salva dividendo",
+      "badge": "Dividendo",
+      "taxLine": "ritenuta {{tax}} · netto {{net}}",
+      "received": "Dividendi ricevuti",
+      "receivedNet": "Dividendi al netto delle imposte",
+      "added": "Dividendo registrato",
+      "updated": "Dividendo aggiornato",
+      "deleted": "Dividendo eliminato",
+      "confirmDelete": {
+        "title": "Eliminare il dividendo?",
+        "description": "Il dividendo pagato il {{date}} ({{amount}} lordo) verrà rimosso definitivamente. L'operazione non può essere annullata.",
+        "confirm": "Elimina dividendo"
+      }
     }
   },
   "importWizard": {
@@ -379,6 +406,10 @@
       "buy": "Acquisto",
       "sell": "Vendita"
     },
+    "kind": {
+      "dividend": "Dividendo",
+      "withholdingTax": "Ritenuta"
+    },
     "roles": {
       "date": "Data",
       "direction": "Direzione",
@@ -390,7 +421,10 @@
       "price": "Prezzo per azione",
       "quantityPrice": "Quantità e prezzo",
       "currency": "Valuta",
-      "externalId": "ID operazione"
+      "externalId": "ID operazione",
+      "amount": "Importo",
+      "tax": "Ritenuta",
+      "taxCurrency": "Valuta dell'imposta"
     },
     "file": {
       "sourceHeading": "Da dove proviene l'esportazione",
@@ -551,7 +585,9 @@
       "action": {
         "buy": "Acquisto",
         "sell": "Vendita",
-        "skip": "Salta"
+        "skip": "Salta",
+        "dividend": "Dividendo",
+        "withholdingTax": "Ritenuta"
       },
       "externalIdHint": "Aiuta a riconoscere i duplicati nei prossimi import.",
       "dateFormat": "Formato della data",
@@ -580,7 +616,9 @@
         "type": "colonna del tipo"
       },
       "rawData": "Anteprima dei dati CSV",
-      "rawCounts": "Colonne: {{columns}} · Righe: {{rows}}"
+      "rawCounts": "Colonne: {{columns}} · Righe: {{rows}}",
+      "dividends": "Dividendi",
+      "dividendsHint": "Facoltativo. Per le righe di dividendo: l'importo totale, un'imposta trattenuta nella stessa riga e la sua valuta. Senza colonna dell'importo si usa quantità × prezzo."
     },
     "review": {
       "incomplete": "Completa l'associazione delle colonne per vedere la verifica.",
@@ -591,7 +629,8 @@
         "duplicates": "Duplicati {{count}}",
         "skipped": "Saltati {{count}}",
         "errors": "Errori {{count}}",
-        "converted": "Ricalcolate {{count}}"
+        "converted": "Ricalcolate {{count}}",
+        "dividends": "di cui dividendi {{count}}"
       },
       "feeNote": "Le commissioni non vengono importate",
       "nothingToImport": "Niente da importare: ogni riga è un duplicato, saltata o con un errore.",
@@ -642,7 +681,8 @@
         "missingHint_other": "Inserisci un simbolo per {{count}} titoli, oppure salta.",
         "unverifiedHint_one": "{{count}} titolo non ha potuto essere verificato. Puoi comunque importarlo, ma i suoi prezzi potrebbero non aggiornarsi.",
         "unverifiedHint_many": "{{count}} titoli non hanno potuto essere verificati. Puoi comunque importarli, ma i loro prezzi potrebbero non aggiornarsi.",
-        "unverifiedHint_other": "{{count}} titoli non hanno potuto essere verificati. Puoi comunque importarli, ma i loro prezzi potrebbero non aggiornarsi."
+        "unverifiedHint_other": "{{count}} titoli non hanno potuto essere verificati. Puoi comunque importarli, ma i loro prezzi potrebbero non aggiornarsi.",
+        "dividends": "+ dividendi {{count}}"
       },
       "rows": {
         "title": "Righe",
@@ -661,7 +701,14 @@
         "showAll": "Mostra tutto",
         "showLess": "Mostra meno",
         "none": "Con queste impostazioni il file non ha righe.",
-        "truncated": "La tabella mostra al massimo {{shown}} righe; i conteggi qui sopra riguardano l'intero file."
+        "truncated": "La tabella mostra al massimo {{shown}} righe; i conteggi qui sopra riguardano l'intero file.",
+        "amount": "Importo",
+        "taxAmount": "imposta {{amount}}"
+      },
+      "unpairedTaxes": "Righe di imposta escluse: {{count}}. Per nessuna è stato trovato un dividendo dello stesso giorno e valuta, quindi non vengono scritte; i dividendi vengono importati senza quell'imposta.",
+      "cashCurrency": {
+        "title": "Valuta del conto presso il broker",
+        "hint": "Il file non indica la valuta di dividendi e imposte. Scegli la valuta del tuo conto presso il broker: gli importi sono espressi in essa."
       }
     },
     "editor": {
@@ -717,7 +764,9 @@
         "undoHint_many": "Elimina {{count}} operazioni di questo file.",
         "undoHint_other": "Elimina {{count}} operazioni di questo file.",
         "undoAction": "Annulla"
-      }
+      },
+      "dividends": "Dividendi",
+      "dividendsNote": "Di cui dividendi: {{count}}."
     },
     "undone": {
       "title": "Import annullato",
@@ -768,7 +817,16 @@
       "duplicate": "La stessa operazione è già presente in Moony",
       "duplicateById": "Un'operazione con lo stesso ID del broker è già presente in Moony",
       "duplicateSimilar": "Un'operazione simile è già presente in Moony: stesso giorno e quantità, prezzo entro lo 0,5 %",
-      "cannotParse": "Impossibile leggere la riga"
+      "cannotParse": "Impossibile leggere la riga",
+      "dividendNotPositive": "Dividendo con importo zero o negativo (storno), saltato",
+      "cashCurrencyMissing": "Il file non indica la valuta: scegli la valuta del conto presso il broker",
+      "taxCurrencyMismatch": "L'imposta è in una valuta diversa dal dividendo, non viene scritta",
+      "taxCurrencyMismatchIn": "L'imposta è in {{detail}}, non nella valuta del dividendo, non viene scritta",
+      "taxPaired": "Imposta aggiunta al dividendo",
+      "taxPairedLine": "Imposta aggiunta al dividendo della riga {{detail}}",
+      "taxUnpaired": "Ritenuta senza dividendo, non viene scritta",
+      "taxExceedsGross": "La ritenuta è superiore al dividendo",
+      "dividendWithoutPosition": "Non c'è una posizione per questo dividendo in Moony e il file non la acquista"
     },
     "mcpSource": "MCP",
     "splits": {

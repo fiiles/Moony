@@ -308,7 +308,11 @@
     "statementIndexInvalid": "Wybierz jeden z wyciągów w pliku.",
     "statementDateOrderInvalid": "Kolejność daty można wybrać tylko dla plików QIF.",
     "snoozeSelectionInvalid": "Wybierz od 1 do 1000 płatności.",
-    "snoozeDaysInvalid": "Wybierz liczbę dni od 1 do 365."
+    "snoozeDaysInvalid": "Wybierz liczbę dni od 1 do 365.",
+    "dividendGrossPositive": "Kwota brutto musi być większa od zera",
+    "dividendTaxInvalid": "Podatek u źródła musi mieścić się między zerem a kwotą brutto",
+    "dividendNoteTooLong": "Notatka może mieć najwyżej 500 znaków.",
+    "dividendWithoutPosition": "Brak pozycji dla {{ticker}}; najpierw zapisz zakup."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

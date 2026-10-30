@@ -308,7 +308,11 @@
     "statementIndexInvalid": "请选择文件中的一份账单。",
     "statementDateOrderInvalid": "只有 QIF 文件才能选择日期顺序。",
     "snoozeSelectionInvalid": "请选择 1 至 1000 笔付款。",
-    "snoozeDaysInvalid": "请选择 1 至 365 之间的天数。"
+    "snoozeDaysInvalid": "请选择 1 至 365 之间的天数。",
+    "dividendGrossPositive": "税前总额必须大于零",
+    "dividendTaxInvalid": "预扣税必须介于零和税前总额之间",
+    "dividendNoteTooLong": "备注最多 500 个字符。",
+    "dividendWithoutPosition": "{{ticker}} 没有持仓；请先记录买入。"
   },
   "auth": {
     "wrongPassword": "您输入的密码不正确，请重试。",

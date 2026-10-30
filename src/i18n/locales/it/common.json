@@ -308,7 +308,11 @@
     "statementIndexInvalid": "Scegli uno degli estratti conto presenti nel file.",
     "statementDateOrderInvalid": "L'ordine della data può essere scelto solo per i file QIF.",
     "snoozeSelectionInvalid": "Seleziona da 1 a 1000 pagamenti.",
-    "snoozeDaysInvalid": "Scegli un numero di giorni da 1 a 365."
+    "snoozeDaysInvalid": "Scegli un numero di giorni da 1 a 365.",
+    "dividendGrossPositive": "L'importo lordo deve essere maggiore di zero",
+    "dividendTaxInvalid": "La ritenuta deve essere compresa tra zero e l'importo lordo",
+    "dividendNoteTooLong": "Una nota può contenere al massimo 500 caratteri.",
+    "dividendWithoutPosition": "Non esiste una posizione per {{ticker}}; registra prima l'acquisto."
   },
   "auth": {
     "wrongPassword": "La password inserita non è corretta. Riprova.",

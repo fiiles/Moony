@@ -343,12 +343,39 @@
       "filter": {
         "all": "Alle",
         "buys": "Käufe",
-        "sells": "Verkäufe"
+        "sells": "Verkäufe",
+        "dividends": "Dividenden"
       },
       "footer_one": "{{count}} Ereignis",
       "footer_other": "{{count}} Ereignisse",
       "since": "seit {{date}}",
       "rates": "Kurse in {{currency}} zum Wechselkurs des Transaktionstags"
+    },
+    "dividendRecords": {
+      "add": "Dividende erfassen",
+      "short": "Dividende",
+      "addTitle": "Erhaltene Dividende erfassen",
+      "editTitle": "Dividende bearbeiten",
+      "description": "Eine Ausschüttung von {{ticker}}: der Bruttobetrag vor Quellensteuer am Zahltag. Die Anzahl der Aktien ändert sich nicht.",
+      "paidDate": "Zahltag",
+      "gross": "Bruttobetrag",
+      "grossHint": "Summe der Ausschüttung, vor Steuern",
+      "tax": "Quellensteuer",
+      "taxHint": "Optional; leer lassen, wenn nichts einbehalten wurde",
+      "note": "Notiz",
+      "save": "Dividende speichern",
+      "badge": "Dividende",
+      "taxLine": "Steuer {{tax}} · netto {{net}}",
+      "received": "Erhaltene Dividenden",
+      "receivedNet": "Dividenden nach Steuern",
+      "added": "Dividende erfasst",
+      "updated": "Dividende aktualisiert",
+      "deleted": "Dividende gelöscht",
+      "confirmDelete": {
+        "title": "Dividende löschen?",
+        "description": "Die am {{date}} gezahlte Dividende ({{amount}} brutto) wird endgültig entfernt. Dies kann nicht rückgängig gemacht werden.",
+        "confirm": "Dividende löschen"
+      }
     }
   },
   "importWizard": {
@@ -369,6 +396,10 @@
       "buy": "Kauf",
       "sell": "Verkauf"
     },
+    "kind": {
+      "dividend": "Dividende",
+      "withholdingTax": "Quellensteuer"
+    },
     "roles": {
       "date": "Datum",
       "direction": "Richtung",
@@ -380,7 +411,10 @@
       "price": "Kurs pro Aktie",
       "quantityPrice": "Menge und Kurs",
       "currency": "Währung",
-      "externalId": "Trade-ID"
+      "externalId": "Trade-ID",
+      "amount": "Betrag",
+      "tax": "Quellensteuer",
+      "taxCurrency": "Steuerwährung"
     },
     "file": {
       "sourceHeading": "Woher der Export stammt",
@@ -538,7 +572,9 @@
       "action": {
         "buy": "Kauf",
         "sell": "Verkauf",
-        "skip": "Überspringen"
+        "skip": "Überspringen",
+        "dividend": "Dividende",
+        "withholdingTax": "Quellensteuer"
       },
       "externalIdHint": "Hilft, Duplikate bei späteren Importen zu erkennen.",
       "dateFormat": "Datumsformat",
@@ -567,7 +603,9 @@
         "type": "Artspalte"
       },
       "rawData": "CSV-Daten in der Vorschau",
-      "rawCounts": "Spalten: {{columns}} · Zeilen: {{rows}}"
+      "rawCounts": "Spalten: {{columns}} · Zeilen: {{rows}}",
+      "dividends": "Dividenden",
+      "dividendsHint": "Optional. Für Dividendenzeilen: der Gesamtbetrag, eine in derselben Zeile einbehaltene Steuer und deren Währung. Ohne Betragsspalte wird Anzahl × Preis verwendet."
     },
     "review": {
       "incomplete": "Schließen Sie die Spaltenzuordnung ab, um die Prüfung zu sehen.",
@@ -578,7 +616,8 @@
         "duplicates": "Duplikate {{count}}",
         "skipped": "Übersprungen {{count}}",
         "errors": "Fehler {{count}}",
-        "converted": "Umgerechnet {{count}}"
+        "converted": "Umgerechnet {{count}}",
+        "dividends": "davon Dividenden {{count}}"
       },
       "feeNote": "Gebühren werden nicht importiert",
       "nothingToImport": "Nichts zu importieren: Jede Zeile ist ein Duplikat, übersprungen oder fehlerhaft.",
@@ -627,7 +666,8 @@
         "missingHint_one": "Geben Sie ein Symbol für {{count}} Wertpapier ein oder überspringen Sie es.",
         "missingHint_other": "Geben Sie ein Symbol für {{count}} Wertpapiere ein oder überspringen Sie sie.",
         "unverifiedHint_one": "{{count}} Wertpapier konnte nicht geprüft werden. Sie können es trotzdem importieren, aber seine Kurse werden womöglich nicht aktualisiert.",
-        "unverifiedHint_other": "{{count}} Wertpapiere konnten nicht geprüft werden. Sie können sie trotzdem importieren, aber ihre Kurse werden womöglich nicht aktualisiert."
+        "unverifiedHint_other": "{{count}} Wertpapiere konnten nicht geprüft werden. Sie können sie trotzdem importieren, aber ihre Kurse werden womöglich nicht aktualisiert.",
+        "dividends": "+ Dividenden {{count}}"
       },
       "rows": {
         "title": "Zeilen",
@@ -645,7 +685,14 @@
         "showAll": "Alle anzeigen",
         "showLess": "Weniger anzeigen",
         "none": "Mit diesen Einstellungen hat die Datei keine Zeilen.",
-        "truncated": "Die Tabelle zeigt höchstens {{shown}} Zeilen; die Zahlen oben beziehen sich auf die gesamte Datei."
+        "truncated": "Die Tabelle zeigt höchstens {{shown}} Zeilen; die Zahlen oben beziehen sich auf die gesamte Datei.",
+        "amount": "Betrag",
+        "taxAmount": "Steuer {{amount}}"
+      },
+      "unpairedTaxes": "Ausgelassene Steuerzeilen: {{count}}. Zu keiner wurde eine Dividende am selben Tag und in derselben Währung gefunden, daher werden sie nicht geschrieben; die Dividenden werden ohne diese Steuer importiert.",
+      "cashCurrency": {
+        "title": "Kontowährung beim Broker",
+        "hint": "Die Datei nennt keine Währung für Dividenden und Steuern. Wählen Sie die Währung Ihres Brokerkontos, die Beträge sind darin."
       }
     },
     "editor": {
@@ -697,7 +744,9 @@
         "undoHint_one": "Löscht {{count}} Trade aus dieser Datei.",
         "undoHint_other": "Löscht {{count}} Trades aus dieser Datei.",
         "undoAction": "Rückgängig"
-      }
+      },
+      "dividends": "Dividenden",
+      "dividendsNote": "Davon Dividenden: {{count}}."
     },
     "undone": {
       "title": "Import rückgängig gemacht",
@@ -745,7 +794,16 @@
       "duplicate": "Derselbe Trade ist bereits in Moony",
       "duplicateById": "Ein Trade mit derselben Broker-ID ist bereits in Moony",
       "duplicateSimilar": "Ein ähnlicher Trade ist bereits in Moony: gleicher Tag und gleiche Menge, Kurs innerhalb von 0,5 %",
-      "cannotParse": "Die Zeile konnte nicht gelesen werden"
+      "cannotParse": "Die Zeile konnte nicht gelesen werden",
+      "dividendNotPositive": "Dividende mit Betrag null oder negativ (Stornierung), übersprungen",
+      "cashCurrencyMissing": "Die Datei nennt keine Währung; wählen Sie die Kontowährung beim Broker",
+      "taxCurrencyMismatch": "Die Steuer ist in einer anderen Währung als die Dividende, wird nicht geschrieben",
+      "taxCurrencyMismatchIn": "Die Steuer ist in {{detail}}, nicht in der Währung der Dividende, wird nicht geschrieben",
+      "taxPaired": "Steuer der Dividende zugeordnet",
+      "taxPairedLine": "Steuer der Dividende in Zeile {{detail}} zugeordnet",
+      "taxUnpaired": "Quellensteuer ohne Dividende, wird nicht geschrieben",
+      "taxExceedsGross": "Die Quellensteuer ist höher als die Dividende",
+      "dividendWithoutPosition": "Für diese Dividende gibt es in Moony keine Position und die Datei kauft sie nicht"
     },
     "mcpSource": "MCP",
     "splits": {

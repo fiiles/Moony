@@ -343,12 +343,39 @@
       "filter": {
         "all": "All",
         "buys": "Buys",
-        "sells": "Sells"
+        "sells": "Sells",
+        "dividends": "Dividends"
       },
       "footer_one": "{{count}} event",
       "footer_other": "{{count}} events",
       "since": "since {{date}}",
       "rates": "Prices in {{currency}} at the rate of the transaction day"
+    },
+    "dividendRecords": {
+      "add": "Add dividend",
+      "short": "Dividend",
+      "addTitle": "Add a received dividend",
+      "editTitle": "Edit dividend",
+      "description": "One payout of {{ticker}}: the gross amount before withholding tax, on the day it was paid. The number of shares does not change.",
+      "paidDate": "Pay date",
+      "gross": "Gross amount",
+      "grossHint": "Total of the payout, before tax",
+      "tax": "Withholding tax",
+      "taxHint": "Optional; leave empty when none was withheld",
+      "note": "Note",
+      "save": "Save dividend",
+      "badge": "Dividend",
+      "taxLine": "tax {{tax}} · net {{net}}",
+      "received": "Received dividends",
+      "receivedNet": "Dividends after tax",
+      "added": "Dividend recorded",
+      "updated": "Dividend updated",
+      "deleted": "Dividend deleted",
+      "confirmDelete": {
+        "title": "Delete dividend?",
+        "description": "The dividend paid on {{date}} ({{amount}} gross) will be removed for good. This cannot be undone.",
+        "confirm": "Delete dividend"
+      }
     }
   },
   "importWizard": {
@@ -369,6 +396,10 @@
       "buy": "Buy",
       "sell": "Sell"
     },
+    "kind": {
+      "dividend": "Dividend",
+      "withholdingTax": "Withholding tax"
+    },
     "roles": {
       "date": "Date",
       "direction": "Direction",
@@ -380,7 +411,10 @@
       "price": "Price per share",
       "quantityPrice": "Quantity and price",
       "currency": "Currency",
-      "externalId": "Trade ID"
+      "externalId": "Trade ID",
+      "amount": "Amount",
+      "tax": "Withholding tax",
+      "taxCurrency": "Tax currency"
     },
     "file": {
       "sourceHeading": "Where the export is from",
@@ -538,7 +572,9 @@
       "action": {
         "buy": "Buy",
         "sell": "Sell",
-        "skip": "Skip"
+        "skip": "Skip",
+        "dividend": "Dividend",
+        "withholdingTax": "Withholding tax"
       },
       "externalIdHint": "Helps to recognise duplicates in later imports.",
       "dateFormat": "Date format",
@@ -567,7 +603,9 @@
         "type": "type column"
       },
       "rawData": "Preview CSV data",
-      "rawCounts": "Columns: {{columns}} · Rows: {{rows}}"
+      "rawCounts": "Columns: {{columns}} · Rows: {{rows}}",
+      "dividends": "Dividends",
+      "dividendsHint": "Optional. For rows read as a dividend: the total amount, a tax withheld in the same row and its currency. Without an amount column, quantity × price is used."
     },
     "review": {
       "incomplete": "Finish the column mapping to see the review.",
@@ -578,7 +616,8 @@
         "duplicates": "Duplicates {{count}}",
         "skipped": "Skipped {{count}}",
         "errors": "Errors {{count}}",
-        "converted": "Converted {{count}}"
+        "converted": "Converted {{count}}",
+        "dividends": "of which dividends {{count}}"
       },
       "feeNote": "Fees are not imported",
       "nothingToImport": "Nothing to import: every row is a duplicate, skipped or has an error.",
@@ -627,7 +666,8 @@
         "missingHint_one": "Enter a symbol for {{count}} security, or skip it.",
         "missingHint_other": "Enter a symbol for {{count}} securities, or skip them.",
         "unverifiedHint_one": "{{count}} security could not be verified. You can still import it, but its prices may not update.",
-        "unverifiedHint_other": "{{count}} securities could not be verified. You can still import them, but their prices may not update."
+        "unverifiedHint_other": "{{count}} securities could not be verified. You can still import them, but their prices may not update.",
+        "dividends": "+ dividends {{count}}"
       },
       "rows": {
         "title": "Rows",
@@ -645,7 +685,14 @@
         "showAll": "Show all",
         "showLess": "Show less",
         "none": "With these settings the file has no rows.",
-        "truncated": "The table shows at most {{shown}} rows; the counts above cover the whole file."
+        "truncated": "The table shows at most {{shown}} rows; the counts above cover the whole file.",
+        "amount": "Amount",
+        "taxAmount": "tax {{amount}}"
+      },
+      "unpairedTaxes": "Tax rows left out: {{count}}. Each has no dividend of the same day and currency, so it is not written; dividends import without that tax.",
+      "cashCurrency": {
+        "title": "Broker account currency",
+        "hint": "The file does not name a currency for dividends and taxes. Choose the currency of your broker account: its amounts are in it."
       }
     },
     "editor": {
@@ -697,7 +744,9 @@
         "undoHint_one": "Deletes {{count}} trade from this file.",
         "undoHint_other": "Deletes {{count}} trades from this file.",
         "undoAction": "Undo"
-      }
+      },
+      "dividends": "Dividends",
+      "dividendsNote": "Of which dividends: {{count}}."
     },
     "undone": {
       "title": "Import undone",
@@ -745,7 +794,16 @@
       "duplicate": "The same trade is already in Moony",
       "duplicateById": "A trade with the same broker ID is already in Moony",
       "duplicateSimilar": "A similar trade is already in Moony: same day and quantity, price within 0.5 %",
-      "cannotParse": "The row could not be read"
+      "cannotParse": "The row could not be read",
+      "dividendNotPositive": "Dividend with a zero or negative amount (a reversal), skipped",
+      "cashCurrencyMissing": "The file names no currency; choose the broker account currency",
+      "taxCurrencyMismatch": "The tax is in another currency than the dividend, not written",
+      "taxCurrencyMismatchIn": "The tax is in {{detail}}, not in the currency of the dividend, not written",
+      "taxPaired": "Tax added to the dividend",
+      "taxPairedLine": "Tax added to the dividend on line {{detail}}",
+      "taxUnpaired": "Withholding tax without a dividend, not written",
+      "taxExceedsGross": "The withholding tax is higher than the dividend",
+      "dividendWithoutPosition": "No position for this dividend in Moony and the file does not buy it"
     },
     "mcpSource": "MCP",
     "splits": {

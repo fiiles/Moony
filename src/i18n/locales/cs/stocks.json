@@ -352,13 +352,40 @@
       "filter": {
         "all": "Vše",
         "buys": "Nákupy",
-        "sells": "Prodeje"
+        "sells": "Prodeje",
+        "dividends": "Dividendy"
       },
       "footer_one": "{{count}} událost",
       "footer_few": "{{count}} události",
       "footer_other": "{{count}} událostí",
       "since": "od {{date}}",
       "rates": "Ceny v {{currency}} kurzem k datu transakce"
+    },
+    "dividendRecords": {
+      "add": "Zapsat dividendu",
+      "short": "Dividenda",
+      "addTitle": "Zapsat přijatou dividendu",
+      "editTitle": "Upravit dividendu",
+      "description": "Jedna výplata {{ticker}}: hrubá částka před srážkovou daní ke dni výplaty. Počet akcií se nemění.",
+      "paidDate": "Datum výplaty",
+      "gross": "Hrubá částka",
+      "grossHint": "Celkem za výplatu, před daní",
+      "tax": "Srážková daň",
+      "taxHint": "Nepovinné; když se nic nesrazilo, nechte prázdné",
+      "note": "Poznámka",
+      "save": "Uložit dividendu",
+      "badge": "Dividenda",
+      "taxLine": "daň {{tax}} · čistě {{net}}",
+      "received": "Přijaté dividendy",
+      "receivedNet": "Dividendy po dani",
+      "added": "Dividenda zapsána",
+      "updated": "Dividenda upravena",
+      "deleted": "Dividenda smazána",
+      "confirmDelete": {
+        "title": "Smazat dividendu?",
+        "description": "Dividenda vyplacená {{date}} ({{amount}} hrubě) bude trvale odstraněna. Akci nelze vrátit.",
+        "confirm": "Smazat dividendu"
+      }
     }
   },
   "importWizard": {
@@ -380,6 +407,10 @@
       "buy": "Nákup",
       "sell": "Prodej"
     },
+    "kind": {
+      "dividend": "Dividenda",
+      "withholdingTax": "Srážková daň"
+    },
     "roles": {
       "date": "Datum",
       "direction": "Směr",
@@ -391,7 +422,10 @@
       "price": "Cena za kus",
       "quantityPrice": "Počet a cena",
       "currency": "Měna",
-      "externalId": "ID obchodu"
+      "externalId": "ID obchodu",
+      "amount": "Částka",
+      "tax": "Srážková daň",
+      "taxCurrency": "Měna daně"
     },
     "file": {
       "sourceHeading": "Odkud je export",
@@ -552,7 +586,9 @@
       "action": {
         "buy": "Nákup",
         "sell": "Prodej",
-        "skip": "Přeskočit"
+        "skip": "Přeskočit",
+        "dividend": "Dividenda",
+        "withholdingTax": "Srážková daň"
       },
       "externalIdHint": "Pomáhá poznat duplicity při dalších importech.",
       "dateFormat": "Formát data",
@@ -581,7 +617,9 @@
         "type": "sloupec s typem"
       },
       "rawData": "Náhled dat z CSV",
-      "rawCounts": "Sloupců: {{columns}} · Řádků: {{rows}}"
+      "rawCounts": "Sloupců: {{columns}} · Řádků: {{rows}}",
+      "dividends": "Dividendy",
+      "dividendsHint": "Volitelné. Pro řádky s dividendou: celková částka, daň sražená ve stejném řádku a její měna. Bez sloupce s částkou se použije počet × cena."
     },
     "review": {
       "incomplete": "Dokončete mapování sloupců, aby se zobrazila kontrola.",
@@ -592,7 +630,8 @@
         "duplicates": "Duplicity {{count}}",
         "skipped": "Přeskočeno {{count}}",
         "errors": "Chyby {{count}}",
-        "converted": "Přepočteno {{count}}"
+        "converted": "Přepočteno {{count}}",
+        "dividends": "z toho dividend {{count}}"
       },
       "feeNote": "Poplatky se neimportují",
       "nothingToImport": "Nic k importu: všechny řádky jsou duplicity, přeskočené nebo chybné.",
@@ -643,7 +682,8 @@
         "missingHint_other": "Doplňte symbol u {{count}} cenných papírů, nebo je přeskočte.",
         "unverifiedHint_one": "{{count}} cenný papír se nepodařilo ověřit. Importovat ho můžete i tak, ceny se ale nemusí aktualizovat.",
         "unverifiedHint_few": "{{count}} cenné papíry se nepodařilo ověřit. Importovat je můžete i tak, ceny se ale nemusí aktualizovat.",
-        "unverifiedHint_other": "{{count}} cenných papírů se nepodařilo ověřit. Importovat je můžete i tak, ceny se ale nemusí aktualizovat."
+        "unverifiedHint_other": "{{count}} cenných papírů se nepodařilo ověřit. Importovat je můžete i tak, ceny se ale nemusí aktualizovat.",
+        "dividends": "+ dividendy {{count}}"
       },
       "rows": {
         "title": "Řádky",
@@ -662,7 +702,14 @@
         "showAll": "Zobrazit vše",
         "showLess": "Zobrazit méně",
         "none": "S tímto nastavením soubor neobsahuje žádné řádky.",
-        "truncated": "Tabulka ukazuje nejvýš {{shown}} řádků, počty nahoře platí pro celý soubor."
+        "truncated": "Tabulka ukazuje nejvýš {{shown}} řádků, počty nahoře platí pro celý soubor.",
+        "amount": "Částka",
+        "taxAmount": "daň {{amount}}"
+      },
+      "unpairedTaxes": "Vynechané řádky se srážkovou daní: {{count}}. K žádnému nenašel Moony dividendu ve stejný den a měně, proto se nezapíšou; dividendy se naimportují bez této daně.",
+      "cashCurrency": {
+        "title": "Měna účtu u brokera",
+        "hint": "Soubor u dividend a daní neuvádí měnu. Zvolte měnu svého účtu u brokera, částky jsou v ní."
       }
     },
     "editor": {
@@ -718,7 +765,9 @@
         "undoHint_few": "Smaže {{count}} obchody z tohoto souboru.",
         "undoHint_other": "Smaže {{count}} obchodů z tohoto souboru.",
         "undoAction": "Vrátit"
-      }
+      },
+      "dividends": "Dividendy",
+      "dividendsNote": "Z toho dividend: {{count}}."
     },
     "undone": {
       "title": "Import vrácen",
@@ -769,7 +818,16 @@
       "duplicate": "Stejný obchod už v Moony je",
       "duplicateById": "Obchod se stejným ID u brokera už v Moony je",
       "duplicateSimilar": "Podobný obchod už v Moony je: stejný den a počet kusů, cena se liší nejvýš o 0,5 %",
-      "cannotParse": "Řádek se nepodařilo přečíst"
+      "cannotParse": "Řádek se nepodařilo přečíst",
+      "dividendNotPositive": "Dividenda s nulovou nebo zápornou částkou (storno) — přeskočeno",
+      "cashCurrencyMissing": "Soubor neuvádí měnu — zvolte měnu účtu u brokera",
+      "taxCurrencyMismatch": "Daň je v jiné měně než dividenda — nezapíše se",
+      "taxCurrencyMismatchIn": "Daň je v měně {{detail}}, ne v měně dividendy — nezapíše se",
+      "taxPaired": "Daň připojena k dividendě",
+      "taxPairedLine": "Daň připojena k dividendě na řádku {{detail}}",
+      "taxUnpaired": "Srážková daň bez dividendy — nezapíše se",
+      "taxExceedsGross": "Srážková daň je vyšší než dividenda",
+      "dividendWithoutPosition": "K této dividendě nemáte v Moony pozici a soubor ji nekupuje"
     },
     "mcpSource": "MCP",
     "splits": {

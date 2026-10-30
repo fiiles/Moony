@@ -100,19 +100,20 @@ mutations so open pages refetch.
 finite tax with 0 ≤ tax ≤ gross (absent = 0); supported currency (`GBX`/`GBp` accepted and
 normalised); `paidDate` a supported UTC calendar day (`validation::utc_day`); note ≤ 500 chars.
 
-**D9. Detail page.** "Přidat dividendu" next to Buy/Sell (the secondary action group) opens a
-dialog: pay date, gross amount, withholding tax (optional), currency (defaults to the dividend
-currency of the yearly estimate, else the position currency), note. Dividend rows join the
-position's transaction list, typed "Dividenda", with their own columns rendering: amount =
-gross, a sub-line "daň X · čistě Y" when tax > 0; edit and delete in the row menu (the delete
-confirmation names the date and amount). The transaction filter gets a "Dividendy" option. The
-hero shows "Přijaté dividendy" (gross in the report currency, net beneath when any tax) when the
-position has at least one dividend. Trade-event chart markers stay buy/sell only.
+**D9. Detail page.** "Zapsat dividendu" in the page's more-actions menu and a "+ Dividenda"
+button in the transaction card's header open a dialog: pay date, currency (defaults to the
+currency of the yearly estimate, else the position's price currency), gross amount, withholding
+tax (optional), note. Dividend rows join the position's transaction list, badged "Dividenda":
+quantity "—", the price column reads "daň X · čistě Y" when tax > 0, the total is the gross
+converted at the pay day's rate (native gross when no rate); edit and delete as on trades (the
+delete confirmation names the date and gross). The transaction filter gets a "Dividendy" option.
+The "Pozice" side card lists "Přijaté dividendy" (gross in the report currency) and "Dividendy
+po dani" (net) when any tax was withheld. The Stats row keeps the yearly estimate unchanged, and
+the trade-event chart markers stay buy/sell only.
 
 **D10. Mutations** (frontend hook `use-stock-dividend-mutations.ts`): invalidate
-`['stock-dividends', investmentId]`, `['investment', id]`, `['investments']`,
-`['investment-transactions', id]`, `['portfolio-metrics']`, `['cashflow-report']`,
-`['stock-performance']`, then `recordSnapshot()` and invalidate `['portfolio-history']` (rule 7;
+`['stock-dividends']`, `['investment']`, `['investments']`, `['investment-transactions']`,
+`['stocks-analysis']`, `['stock-performance']`, `['portfolio-metrics']`, `['cashflow-report']`, then `recordSnapshot()` and invalidate `['portfolio-history']` (rule 7;
 the snapshot is unchanged in value but the rule is uniform).
 
 **D11. Import: two new type-value actions.** `TypeValueAction` gains `dividend` and

@@ -308,7 +308,11 @@
     "statementIndexInvalid": "ファイル内の明細を1つ選択してください。",
     "statementDateOrderInvalid": "日付の順序を選択できるのはQIFファイルのみです。",
     "snoozeSelectionInvalid": "1〜1000件の支払いを選択してください。",
-    "snoozeDaysInvalid": "日数は1〜365の範囲で指定してください。"
+    "snoozeDaysInvalid": "日数は1〜365の範囲で指定してください。",
+    "dividendGrossPositive": "総額は0より大きくなければなりません",
+    "dividendTaxInvalid": "源泉徴収税は0以上、総額以下でなければなりません",
+    "dividendNoteTooLong": "メモは500文字以内です。",
+    "dividendWithoutPosition": "{{ticker}} のポジションがありません。先に購入を記録してください。"
   },
   "auth": {
     "wrongPassword": "入力したパスワードが正しくありません。もう一度お試しください。",

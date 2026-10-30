@@ -308,7 +308,11 @@
     "statementIndexInvalid": "Vyberte jeden z výpisů v souboru.",
     "statementDateOrderInvalid": "Pořadí data lze zvolit jen u souborů QIF.",
     "snoozeSelectionInvalid": "Vyberte 1 až 1000 plateb.",
-    "snoozeDaysInvalid": "Zadejte počet dnů od 1 do 365."
+    "snoozeDaysInvalid": "Zadejte počet dnů od 1 do 365.",
+    "dividendGrossPositive": "Hrubá částka musí být větší než nula",
+    "dividendTaxInvalid": "Srážková daň musí být mezi nulou a hrubou částkou",
+    "dividendNoteTooLong": "Poznámka může mít nejvýše 500 znaků.",
+    "dividendWithoutPosition": "Pro {{ticker}} neexistuje pozice; nejdřív zapište nákup."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

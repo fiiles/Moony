@@ -343,12 +343,39 @@
       "filter": {
         "all": "Alla",
         "buys": "Köp",
-        "sells": "Försäljningar"
+        "sells": "Försäljningar",
+        "dividends": "Utdelningar"
       },
       "footer_one": "{{count}} händelse",
       "footer_other": "{{count}} händelser",
       "since": "sedan {{date}}",
       "rates": "Kurser i {{currency}} enligt kursen på transaktionsdagen"
+    },
+    "dividendRecords": {
+      "add": "Lägg till utdelning",
+      "short": "Utdelning",
+      "addTitle": "Lägg till mottagen utdelning",
+      "editTitle": "Redigera utdelning",
+      "description": "En utbetalning från {{ticker}}: bruttobeloppet före källskatt, på utbetalningsdagen. Antalet aktier ändras inte.",
+      "paidDate": "Utbetalningsdag",
+      "gross": "Bruttobelopp",
+      "grossHint": "Summa för utbetalningen, före skatt",
+      "tax": "Källskatt",
+      "taxHint": "Valfritt; lämna tomt om inget drogs",
+      "note": "Anteckning",
+      "save": "Spara utdelning",
+      "badge": "Utdelning",
+      "taxLine": "skatt {{tax}} · netto {{net}}",
+      "received": "Mottagna utdelningar",
+      "receivedNet": "Utdelningar efter skatt",
+      "added": "Utdelning registrerad",
+      "updated": "Utdelning uppdaterad",
+      "deleted": "Utdelning borttagen",
+      "confirmDelete": {
+        "title": "Ta bort utdelning?",
+        "description": "Utdelningen som betalades {{date}} ({{amount}} brutto) tas bort permanent. Detta kan inte ångras.",
+        "confirm": "Ta bort utdelning"
+      }
     }
   },
   "importWizard": {
@@ -369,6 +396,10 @@
       "buy": "Köp",
       "sell": "Försäljning"
     },
+    "kind": {
+      "dividend": "Utdelning",
+      "withholdingTax": "Källskatt"
+    },
     "roles": {
       "date": "Datum",
       "direction": "Riktning",
@@ -380,7 +411,10 @@
       "price": "Pris per aktie",
       "quantityPrice": "Antal och pris",
       "currency": "Valuta",
-      "externalId": "Affärs-ID"
+      "externalId": "Affärs-ID",
+      "amount": "Belopp",
+      "tax": "Källskatt",
+      "taxCurrency": "Skattevaluta"
     },
     "file": {
       "sourceHeading": "Varifrån exporten kommer",
@@ -538,7 +572,9 @@
       "action": {
         "buy": "Köp",
         "sell": "Försäljning",
-        "skip": "Hoppa över"
+        "skip": "Hoppa över",
+        "dividend": "Utdelning",
+        "withholdingTax": "Källskatt"
       },
       "externalIdHint": "Hjälper till att känna igen dubbletter vid senare importer.",
       "dateFormat": "Datumformat",
@@ -567,7 +603,9 @@
         "type": "typkolumn"
       },
       "rawData": "Förhandsgranska CSV-data",
-      "rawCounts": "Kolumner: {{columns}} · Rader: {{rows}}"
+      "rawCounts": "Kolumner: {{columns}} · Rader: {{rows}}",
+      "dividends": "Utdelningar",
+      "dividendsHint": "Valfritt. För utdelningsrader: totalbeloppet, skatt som dragits på samma rad och dess valuta. Utan beloppskolumn används antal × pris."
     },
     "review": {
       "incomplete": "Slutför kolumnkopplingen för att se granskningen.",
@@ -578,7 +616,8 @@
         "duplicates": "Dubbletter {{count}}",
         "skipped": "Överhoppade {{count}}",
         "errors": "Fel {{count}}",
-        "converted": "Omräknade {{count}}"
+        "converted": "Omräknade {{count}}",
+        "dividends": "varav utdelningar {{count}}"
       },
       "feeNote": "Avgifter importeras inte",
       "nothingToImport": "Inget att importera: varje rad är en dubblett, överhoppad eller har ett fel.",
@@ -627,7 +666,8 @@
         "missingHint_one": "Ange en symbol för {{count}} värdepapper, eller hoppa över det.",
         "missingHint_other": "Ange en symbol för {{count}} värdepapper, eller hoppa över dem.",
         "unverifiedHint_one": "{{count}} värdepapper kunde inte verifieras. Du kan ändå importera det, men dess kurser kanske inte uppdateras.",
-        "unverifiedHint_other": "{{count}} värdepapper kunde inte verifieras. Du kan ändå importera dem, men deras kurser kanske inte uppdateras."
+        "unverifiedHint_other": "{{count}} värdepapper kunde inte verifieras. Du kan ändå importera dem, men deras kurser kanske inte uppdateras.",
+        "dividends": "+ utdelningar {{count}}"
       },
       "rows": {
         "title": "Rader",
@@ -645,7 +685,14 @@
         "showAll": "Visa alla",
         "showLess": "Visa färre",
         "none": "Med de här inställningarna har filen inga rader.",
-        "truncated": "Tabellen visar högst {{shown}} rader; antalen ovan gäller hela filen."
+        "truncated": "Tabellen visar högst {{shown}} rader; antalen ovan gäller hela filen.",
+        "amount": "Belopp",
+        "taxAmount": "skatt {{amount}}"
+      },
+      "unpairedTaxes": "Utelämnade skatterader: {{count}}. För ingen hittades någon utdelning samma dag och i samma valuta, så de skrivs inte; utdelningarna importeras utan den skatten.",
+      "cashCurrency": {
+        "title": "Kontovaluta hos mäklaren",
+        "hint": "Filen anger ingen valuta för utdelningar och skatter. Välj valutan på ditt mäklarkonto, beloppen är i den."
       }
     },
     "editor": {
@@ -697,7 +744,9 @@
         "undoHint_one": "Tar bort {{count}} affär från den här filen.",
         "undoHint_other": "Tar bort {{count}} affärer från den här filen.",
         "undoAction": "Ångra"
-      }
+      },
+      "dividends": "Utdelningar",
+      "dividendsNote": "Varav utdelningar: {{count}}."
     },
     "undone": {
       "title": "Importen har ångrats",
@@ -745,7 +794,16 @@
       "duplicate": "Samma affär finns redan i Moony",
       "duplicateById": "En affär med samma mäklar-ID finns redan i Moony",
       "duplicateSimilar": "En liknande affär finns redan i Moony: samma dag och antal, pris inom 0,5 %",
-      "cannotParse": "Raden kunde inte läsas"
+      "cannotParse": "Raden kunde inte läsas",
+      "dividendNotPositive": "Utdelning med noll eller negativt belopp (återföring), hoppad över",
+      "cashCurrencyMissing": "Filen anger ingen valuta; välj kontovaluta hos mäklaren",
+      "taxCurrencyMismatch": "Skatten är i en annan valuta än utdelningen, skrivs inte",
+      "taxCurrencyMismatchIn": "Skatten är i {{detail}}, inte i utdelningens valuta, skrivs inte",
+      "taxPaired": "Skatt tillagd utdelningen",
+      "taxPairedLine": "Skatt tillagd utdelningen på rad {{detail}}",
+      "taxUnpaired": "Källskatt utan utdelning, skrivs inte",
+      "taxExceedsGross": "Källskatten är högre än utdelningen",
+      "dividendWithoutPosition": "Det finns ingen position för utdelningen i Moony och filen köper den inte"
     },
     "mcpSource": "MCP",
     "splits": {

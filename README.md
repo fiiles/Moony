@@ -42,9 +42,10 @@ tablet app, or a budget shared by a household (one profile on one computer, no s
   files, and CAMT.053, MT940, OFX/QFX and QIF statements; a preview, duplicate skipping, one-click
   undo) and an account page built around dated balance records. Categorization uses your own
   rules, rules learned from your choices and rule packs for many countries.
-- **Stocks** with prices from Yahoo Finance (or set by hand), dividends and a watchlist that
+- **Stocks** with prices from Yahoo Finance (or set by hand), a yearly dividend estimate, the
+  dividends you received (gross, withholding tax and net per payout) and a watchlist that
   never counts toward net worth. Broker CSV import reads XTB, Trading 212, Degiro and
-  Interactive Brokers exports and your own table. The analysis shows time-weighted and
+  Interactive Brokers exports and your own table, dividends and their withholding tax included. The analysis shows time-weighted and
   money-weighted return, drawdown, each position's contribution, deposits against gain and an
   optional comparison with S&P 500 or MSCI World. Stock splits are detected from Yahoo Finance
   and wait for your confirmation before your earlier trades are converted; the broker import

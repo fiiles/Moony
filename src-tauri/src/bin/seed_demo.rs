@@ -41,9 +41,10 @@
 
 use moony_lib::db::Database;
 use moony_lib::models::{
-    InsertBankAccount, InsertCryptoTransaction, InsertInvestmentTransaction, InsertUserProfile,
+    InsertBankAccount, InsertCryptoTransaction, InsertInvestmentTransaction, InsertStockDividend,
+    InsertUserProfile,
 };
-use moony_lib::services::{auth, bank_accounts, crypto_investments, investments};
+use moony_lib::services::{auth, bank_accounts, crypto_investments, investments, stock_dividends};
 use rusqlite::params;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
@@ -541,6 +542,39 @@ fn seed_stocks(db: &Database, now: i64) {
             )
             .expect("insert stock price");
         }
+
+        // Received dividends: gross totals per payout, 15 % US withholding tax on most; one
+        // credited in CZK (a broker paying in the account currency) and one without tax.
+        // (ticker, gross, tax, currency, days_ago, note)
+        type Dividend<'a> = (&'a str, &'a str, &'a str, &'a str, i64, Option<&'a str>);
+        let dividends: &[Dividend] = &[
+            ("AAPL", "3.75", "0.56", "USD", 260, None),
+            ("AAPL", "3.75", "0.56", "USD", 170, None),
+            ("AAPL", "6.25", "0.94", "USD", 80, None),
+            ("MSFT", "6.64", "1.00", "USD", 240, None),
+            ("MSFT", "152.00", "22.80", "CZK", 150, Some("Připsáno v korunách")),
+            ("VOO", "17.90", "2.69", "USD", 300, None),
+            ("VOO", "32.40", "0", "USD", 120, None),
+        ];
+        for (ticker, gross, tax, currency, days_ago, note) in dividends {
+            let investment_id: String = conn.query_row(
+                "SELECT id FROM stock_investments WHERE ticker = ?1",
+                [ticker],
+                |row| row.get(0),
+            )?;
+            stock_dividends::create(
+                conn,
+                &investment_id,
+                &InsertStockDividend {
+                    paid_date: now - days_ago * DAY,
+                    gross_amount: gross.to_string(),
+                    withholding_tax: Some(tax.to_string()),
+                    currency: currency.to_string(),
+                    note: note.map(str::to_string),
+                },
+            )
+            .expect("record dividend");
+        }
         Ok(())
     })
     .expect("seed stocks");
@@ -894,6 +928,7 @@ fn verify(db: &Database) {
             "bank_transactions",
             "stock_investments",
             "investment_transactions",
+            "investment_dividends",
             "crypto_investments",
             "crypto_transactions",
             "real_estate",

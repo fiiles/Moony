@@ -1215,17 +1215,17 @@ export type InsertScopedLearning = { bankAccountId: string; isCredit: boolean; p
 export type InsertSpendingPlan = { name: string; year: number; amount: string; currency: string; icon: string; color: string; note: string | null }
 
 /**
- * A dividend to record or the new values of one (the position comes from the command).
+ * A dividend to enter by hand, or the new values of one (the position comes from the command).
  */
 export type InsertStockDividend = { 
 /**
- * Any moment of the pay day; stored as its UTC midnight.
+ * Any moment of the ex-date; stored as its UTC midnight.
  */
-paidDate: number; grossAmount: string; 
+exDate: number; 
 /**
- * Absent or empty: no tax.
+ * The payout's gross total (before withholding tax).
  */
-withholdingTax?: string | null; 
+grossAmount: string; 
 /**
  * ISO code; `GBX`/`GBp` amounts are pence and are stored in GBP.
  */
@@ -2285,43 +2285,65 @@ dateFormatAmbiguous: boolean; decimalSeparator: string;
 hasFeeColumn: boolean }
 
 /**
- * A received dividend as stored, with its net amount.
+ * One dividend of a position.
  */
-export type StockDividend = { id: string; investmentId: string; 
+export type StockDividend = { 
 /**
- * UTC midnight of the pay date.
+ * The record's id for a manual dividend; `yahoo:<ticker>:<exDate>` for a Yahoo one.
  */
-paidDate: number; 
+id: string; investmentId: string; source: StockDividendSource; 
 /**
- * The payout's total before withholding tax, in `currency`.
+ * UTC midnight of the ex-date.
  */
-grossAmount: string; 
+exDate: number; 
 /**
- * Tax withheld from this payout, in `currency` ("0" when none).
+ * Yahoo only: the gross payout per share.
  */
-withholdingTax: string; 
+amountPerShare: string | null; 
 /**
- * `grossAmount − withholdingTax`, in `currency`.
+ * Yahoo only: the shares held at the end of the day before the ex-date.
  */
-netAmount: string; currency: string; note: string | null; createdAt: number }
+shares: string | null; 
+/**
+ * The payout's gross total in `currency`.
+ */
+grossAmount: string; currency: string; note: string | null; 
+/**
+ * A manual dividend of a ticker Yahoo has dividends for: shown, but left out of every sum
+ * (Yahoo's payouts count instead).
+ */
+superseded: boolean }
 
 /**
- * A position's dividends, newest first, with their sums in the report currency.
+ * A position's dividends, newest first, with their sum in the report currency.
  */
 export type StockDividendList = { 
 /**
- * The report currency of the totals.
+ * The report currency of the total.
  */
 currency: string; fxQuality: ConversionQuality; items: StockDividend[]; 
 /**
- * Every payout's gross converted at its pay day's rate; `null` when payouts exist but none
+ * Every counted payout converted at its ex-date's rate; `null` when payouts exist but none
  * could be converted, "0" without payouts.
  */
 totalGross: string | null; 
 /**
- * The same for the net amounts.
+ * Yahoo Finance has dividends for the ticker: they count, and none can be entered by hand.
  */
-totalNet: string | null }
+fromYahoo: boolean }
+
+/**
+ * Where a dividend comes from.
+ */
+export type StockDividendSource = 
+/**
+ * Yahoo Finance's payout per share × the shares held the day before the ex-date.
+ */
+"yahoo" | 
+/**
+ * Entered by the user.
+ */
+"manual"
 
 /**
  * One recorded import (TS `StockImportBatch`).
@@ -2377,23 +2399,7 @@ externalIdColumn?: number | null; transforms?: StockImportTransforms; instrument
 /**
  * 1-based file lines of duplicate rows to import anyway.
  */
-importAnywayLines?: number[]; 
-/**
- * The row's total amount: the gross of a dividend, the tax of a tax row (D12).
- */
-amountColumn?: number | null; 
-/**
- * A tax withheld from the dividend of the same row.
- */
-taxColumn?: number | null; 
-/**
- * The currency of `taxColumn` when it differs from the row's.
- */
-taxCurrencyColumn?: number | null; 
-/**
- * The currency of dividend and tax amounts when the file names none (XTB: the account's).
- */
-cashCurrency?: string | null }
+importAnywayLines?: number[] }
 
 /**
  * Row counts of a preview, over the whole file (TS `StockImportCounts`).
@@ -2402,16 +2408,7 @@ export type StockImportCounts = { total: number; willImport: number; duplicates:
 /**
  * Rows that will be imported converted to post-split units (D13).
  */
-converted: number; 
-/**
- * Dividend rows that will import (also counted in `willImport`).
- */
-dividends: number; 
-/**
- * Tax rows without a dividend or in another currency than it, and in-row taxes in another
- * currency than their dividend: warnings (D13).
- */
-unpairedTaxes: number }
+converted: number }
 
 /**
  * One security of the file (TS `StockImportInstrument`).
@@ -2429,10 +2426,6 @@ symbol: string | null; isin: string | null; name: string | null;
  * Currency of its trades (file or override); `None` while unknown.
  */
 currency: string | null; tradeCount: number; 
-/**
- * Dividend rows of this instrument.
- */
-dividendCount?: number; 
 /**
  * Ticker the trades will be stored under (override, else file symbol).
  */
@@ -2453,11 +2446,7 @@ rows: StockPreviewRow[]; counts: StockImportCounts;
 /**
  * Trade days of the rows that will be imported.
  */
-dateRange: CsvDateRange | null; hasFeeColumn: boolean; 
-/**
- * A dividend or tax row has no currency and the config has no `cashCurrency` (D12).
- */
-needsCashCurrency: boolean }
+dateRange: CsvDateRange | null; hasFeeColumn: boolean }
 
 /**
  * Outcome of an import (TS `StockImportResult`).
@@ -2466,15 +2455,7 @@ export type StockImportResult = {
 /**
  * `None` when nothing was imported (no batch is recorded).
  */
-batchId: string | null; 
-/**
- * Trades and dividends written.
- */
-imported: number; 
-/**
- * Dividends written (part of `imported`).
- */
-dividends: number; duplicates: number; skipped: number; errors: number; 
+batchId: string | null; imported: number; duplicates: number; skipped: number; errors: number; 
 /**
  * Imported rows converted to post-split units (D13).
  */
@@ -2521,12 +2502,7 @@ assetClassColumn?: number | null; assetClassAllowed?: string[];
  * repeats a stored trade by id only with the same quantity and price, and
  * the rows of one file are never compared by id.
  */
-brokerIdPerOrder?: boolean; 
-/**
- * The file is a cash statement whose trades come from another export (Degiro's account
- * statement): its buy and sell rows are skipped, dividends and taxes are read.
- */
-cashRowsOnly?: boolean }
+brokerIdPerOrder?: boolean }
 
 /**
  * Outcome of undoing a batch (TS `StockImportUndoResult`).
@@ -2733,10 +2709,6 @@ export type StockPositions = { currency: string; fxQuality: ConversionQuality; i
  */
 export type StockPreviewRow = { line: number; 
 /**
- * `trade` for every row that is not a dividend or a tax row.
- */
-kind: StockRowKind; 
-/**
  * UTC day (unix seconds), when the date parsed.
  */
 day: number | null; direction: TradeDirection | null; instrumentKey: string | null; 
@@ -2747,15 +2719,7 @@ ticker: string | null;
 /**
  * Decimal text, as it would be stored.
  */
-quantity: string | null; price: string | null; currency: string | null; 
-/**
- * Decimal text: the gross of a dividend row, the tax of a tax row.
- */
-amount: string | null; 
-/**
- * Decimal text: the tax paired with a dividend row.
- */
-tax: string | null; status: StockRowStatus; message: StockRowMessage | null }
+quantity: string | null; price: string | null; currency: string | null; status: StockRowStatus; message: StockRowMessage | null }
 
 /**
  * User price override
@@ -2766,11 +2730,6 @@ export type StockPriceOverride = { id: string; ticker: string; price: string; cu
  * Chart data point (transient, never persisted — f64 like HistoricalPrice)
  */
 export type StockPricePoint = { timestamp: number; price: number; currency: string }
-
-/**
- * What kind of record a file row is (TS `StockRowKind`).
- */
-export type StockRowKind = "trade" | "dividend" | "withholdingTax"
 
 /**
  * A per-row note or problem. Never English prose: `key` is an i18n key
@@ -3072,17 +3031,9 @@ export type TransactionType = "credit" | "debit"
  */
 export type TypeValueAction = "buy" | "sell" | 
 /**
- * Not a trade (deposit, fee, …): the row is skipped.
+ * Not a trade (deposit, dividend, fee, …): the row is skipped.
  */
-"skip" | 
-/**
- * A dividend payout (stored in `investment_dividends`, spec D11).
- */
-"dividend" | 
-/**
- * A tax withheld from a dividend; paired with the dividend of the same day (D13).
- */
-"withholdingTax"
+"skip"
 
 /**
  * Data for editing a category's definition. A field that is absent (`None`)

@@ -53,6 +53,7 @@ function refreshPricesInBackground(queryClient: QueryClient) {
     .then(() => {
       queryClient.invalidateQueries({ queryKey: ['investments'] });
       queryClient.invalidateQueries({ queryKey: ['dividend-summary'] });
+      queryClient.invalidateQueries({ queryKey: ['stock-dividends'] });
     })
     .catch((error: unknown) => {
       console.error('Background refresh error:', error);

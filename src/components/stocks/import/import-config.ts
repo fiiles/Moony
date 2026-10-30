@@ -213,14 +213,6 @@ export interface MappingState {
   /** `'auto'` follows what the inspection detected. */
   decimalSeparator: DecimalSetting;
   externalIdColumn: number | null;
-  /** The row's total amount: the gross of a dividend, the tax of a tax row. */
-  amountColumn: number | null;
-  /** A tax withheld from the dividend of the same row. */
-  taxColumn: number | null;
-  /** The currency of `taxColumn` when it differs from the row's. */
-  taxCurrencyColumn: number | null;
-  /** The currency of dividend and tax amounts when the file names none (the review asks). */
-  cashCurrency: string;
   /** Kept as the adapter set them (XTB comment, IBKR asset class). */
   transforms: StockImportTransforms;
 }
@@ -242,10 +234,6 @@ export const EMPTY_MAPPING: MappingState = {
   typeValues: [],
   decimalSeparator: AUTO_VALUE,
   externalIdColumn: null,
-  amountColumn: null,
-  taxColumn: null,
-  taxCurrencyColumn: null,
-  cashCurrency: '',
   transforms: {},
 };
 
@@ -317,10 +305,6 @@ export function mappingFromInspection(inspection: StockCsvInspection): MappingSt
       typeValues: (config.typeValues ?? []).map((v) => ({ ...v })),
       decimalSeparator: decimalSettingFor(config, inspection.decimalSeparator),
       externalIdColumn: config.externalIdColumn ?? null,
-      amountColumn: config.amountColumn ?? null,
-      taxColumn: config.taxColumn ?? null,
-      taxCurrencyColumn: config.taxCurrencyColumn ?? null,
-      cashCurrency: config.cashCurrency ?? '',
       transforms: { ...(config.transforms ?? {}) },
     };
   }
@@ -507,12 +491,6 @@ export function buildStockImportConfig(
           : '.'
         : mapping.decimalSeparator,
     externalIdColumn: mapping.externalIdColumn,
-    amountColumn: mapping.amountColumn,
-    taxColumn: mapping.taxColumn,
-    taxCurrencyColumn: mapping.taxCurrencyColumn,
-    cashCurrency: isCurrencyCode(mapping.cashCurrency)
-      ? mapping.cashCurrency.trim().toUpperCase()
-      : null,
     transforms: mapping.transforms,
     instrumentOverrides: (choices.instrumentOverrides ?? []).filter(hasOverrideContent),
     importAnywayLines: [...(choices.importAnywayLines ?? [])].sort((a, b) => a - b),
@@ -621,7 +599,7 @@ export function setTypeValueAction(
     : [...typeValues, { value, action }];
 }
 
-/** Some value is read as something that is imported (a trade or a dividend): without one nothing would be. */
+/** Some value is read as a buy or a sell: without one nothing would be imported. */
 export function hasTradeValue(typeValues: readonly StockTypeValueMapping[]): boolean {
   return typeValues.some((entry) => entry.action !== 'skip');
 }
@@ -638,9 +616,7 @@ export type SummaryRole =
   | 'price'
   | 'quantityPrice'
   | 'currency'
-  | 'externalId'
-  | 'amount'
-  | 'tax';
+  | 'externalId';
 
 export interface MappingSummaryItem {
   role: SummaryRole;
@@ -681,8 +657,6 @@ export function summarizeMapping(
     items.push({ role: 'currency', kind: 'fixed', value: mapping.fixedCurrency.toUpperCase() });
   } else items.push({ role: 'currency', kind: 'instrument', value: '' });
   column('externalId', mapping.externalIdColumn);
-  column('amount', mapping.amountColumn);
-  column('tax', mapping.taxColumn);
   return items;
 }
 
@@ -695,13 +669,7 @@ export function groupTypeValues(
   mapping: MappingState,
   inspection: Pick<StockCsvInspection, 'columnValues'>
 ): Record<StockTypeValueAction, string[]> {
-  const groups: Record<StockTypeValueAction, string[]> = {
-    buy: [],
-    sell: [],
-    skip: [],
-    dividend: [],
-    withholdingTax: [],
-  };
+  const groups: Record<StockTypeValueAction, string[]> = { buy: [], sell: [], skip: [] };
   if (mapping.directionMode !== 'typeColumn' || mapping.typeColumn == null) return groups;
   const stats = inspection.columnValues.find((entry) => entry.column === mapping.typeColumn);
   for (const row of typeValueRows(mapping.typeValues, stats?.values)) {
@@ -710,13 +678,10 @@ export function groupTypeValues(
   return groups;
 }
 
-/** The roles the raw preview names: the suggested ones and the dividend columns. */
-export type MappedRole = MappingRole | 'amount' | 'tax' | 'taxCurrency';
-
 /** Roles of every mapped column, for highlighting the raw preview. */
-export function mappedColumns(mapping: MappingState): Map<number, MappedRole[]> {
-  const result = new Map<number, MappedRole[]>();
-  const add = (column: number | null, role: MappedRole) => {
+export function mappedColumns(mapping: MappingState): Map<number, MappingRole[]> {
+  const result = new Map<number, MappingRole[]>();
+  const add = (column: number | null, role: MappingRole) => {
     if (column == null) return;
     result.set(column, [...(result.get(column) ?? []), role]);
   };
@@ -729,9 +694,6 @@ export function mappedColumns(mapping: MappingState): Map<number, MappedRole[]> 
   add(mapping.priceColumn, 'price');
   if (mapping.currencyMode === 'column') add(mapping.currencyColumn, 'currency');
   add(mapping.externalIdColumn, 'externalId');
-  add(mapping.amountColumn, 'amount');
-  add(mapping.taxColumn, 'tax');
-  add(mapping.taxCurrencyColumn, 'taxCurrency');
   return result;
 }
 
@@ -806,10 +768,6 @@ export interface PreviewSummary {
   total: number;
   /** Rows to be written that a split converted to post-split units (part of `willImport`). */
   converted: number;
-  /** Dividend rows to be written (part of `willImport`). */
-  dividends: number;
-  /** Tax rows left out because no dividend of their day and currency was found (a warning). */
-  unpairedTaxes: number;
 }
 
 /**
@@ -826,8 +784,6 @@ export function summarizePreview(preview: Pick<StockImportPreview, 'counts'>): P
     errors: counts.errors,
     total: counts.total,
     converted: counts.converted,
-    dividends: counts.dividends,
-    unpairedTaxes: counts.unpairedTaxes,
   };
 }
 
@@ -1185,12 +1141,6 @@ const SKIPPED_KEYS: ReadonlySet<string> = new Set([
   'importWizard.row.zeroQuantity',
   'importWizard.row.assetClass',
   'importWizard.row.instrumentSkipped',
-  'importWizard.row.dividendNotPositive',
-  'importWizard.row.dividendReversed',
-  'importWizard.row.dividendReversal',
-  'importWizard.row.taxPaired',
-  'importWizard.row.taxUnpaired',
-  'importWizard.row.taxCurrencyMismatch',
 ]);
 
 const DUPLICATE_KEY_PREFIX = 'importWizard.row.duplicate';

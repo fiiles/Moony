@@ -73,16 +73,14 @@ use std::collections::{HashMap, HashSet};
 use rusqlite::{Connection, OptionalExtension};
 
 use super::types::{
-    CurrencyMode, ParsedDividend, ParsedFile, ParsedTrade, StockImportConfig,
-    StockImportInstrument, StockInstrumentStatus, StockRowMessage, StockSplitAction,
-    StockSplitOverride, TradeDirection, SOURCE_DEGIRO,
+    CurrencyMode, ParsedFile, ParsedTrade, StockImportConfig, StockImportInstrument,
+    StockInstrumentStatus, StockRowMessage, StockSplitAction, StockSplitOverride, TradeDirection,
+    SOURCE_DEGIRO,
 };
-use crate::error::{AppError, Result};
-use crate::models::stock_dividends::{amount_text, InsertStockDividend, ValidDividend};
+use crate::error::Result;
 use crate::services::csv_import::amounts::amount_to_text;
 use crate::services::price_api;
 use crate::services::quote_unit::{is_pence, pence_to_pounds};
-use crate::services::stock_dividends::{DividendDuplicate, DividendDuplicates};
 use crate::services::stock_splits::{ratio_parts, StockSplitStatus};
 
 // Row message keys of the simulation (`StockRowMessage.key`, `stocks`
@@ -104,12 +102,6 @@ pub const KEY_CURRENCY_MISMATCH: &str = "importWizard.row.currencyMismatch";
 pub const KEY_SYMBOL_MISSING: &str = "importWizard.row.symbolMissing";
 /// The trade has no currency and none can be derived (no detail).
 pub const KEY_CURRENCY_MISSING: &str = "importWizard.row.currencyMissing";
-/// A dividend of a ticker Moony has no position of, and no accepted trade of the file creates
-/// one (detail: the ticker).
-pub const KEY_DIVIDEND_WITHOUT_POSITION: &str = "importWizard.row.dividendWithoutPosition";
-/// The dividend could not be stored for another reason (a `validation.*` key of its own
-/// replaces this one when the model names it).
-pub const KEY_DIVIDEND_INVALID: &str = "validation.stockImportRowFailed";
 /// The user excluded the instrument (no detail).
 pub const KEY_INSTRUMENT_SKIPPED: &str = "importWizard.row.instrumentSkipped";
 /// The symbol cannot be a ticker, e.g. `BRK B` (detail: the symbol).
@@ -231,69 +223,11 @@ impl SimulatedTrade {
     }
 }
 
-/// A parsed dividend with the instrument overrides applied and its outcome (spec D14).
-#[derive(Debug, Clone, PartialEq)]
-pub struct SimulatedDividend {
-    pub line: usize,
-    pub day: i64,
-    pub instrument_key: String,
-    pub ticker: Option<String>,
-    pub gross: f64,
-    pub tax: f64,
-    pub currency: String,
-    /// The broker's id as the file has it.
-    pub broker_id: Option<String>,
-    /// `<source>:<broker id>`, as stored.
-    pub external_id: Option<String>,
-    /// The validated values; `None` when the row did not get as far as the model.
-    pub valid: Option<ValidDividend>,
-    pub outcome: TradeOutcome,
-    /// A warning that rides along with an importable row (an in-row tax in another currency).
-    pub warning: Option<StockRowMessage>,
-}
-
-impl SimulatedDividend {
-    pub fn will_import(&self) -> bool {
-        matches!(
-            self.outcome,
-            TradeOutcome::New | TradeOutcome::Duplicate { forced: true, .. }
-        )
-    }
-
-    /// The row's own message: why it is a duplicate (also when imported anyway), skipped or an
-    /// error, else the warning it carries.
-    pub fn message(&self) -> Option<StockRowMessage> {
-        match &self.outcome {
-            TradeOutcome::New => self.warning.clone(),
-            TradeOutcome::Duplicate { kind, .. } => Some(StockRowMessage {
-                line: self.line,
-                key: kind.key().to_string(),
-                detail: match kind {
-                    DuplicateKind::BrokerId => self.broker_id.clone(),
-                    DuplicateKind::Identical | DuplicateKind::Similar => None,
-                },
-            }),
-            TradeOutcome::Skipped(message) | TradeOutcome::Error(message) => Some(message.clone()),
-        }
-    }
-
-    /// Why the row is not written; `None` for a row that is.
-    pub fn left_out_message(&self) -> Option<StockRowMessage> {
-        if self.will_import() {
-            None
-        } else {
-            self.message()
-        }
-    }
-}
-
 /// The whole file replayed against the database.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Simulation {
     /// One entry per `ParsedFile.trades`, in the same order.
     pub trades: Vec<SimulatedTrade>,
-    /// One entry per `ParsedFile.dividends`, in the same order; decided after the trades.
-    pub dividends: Vec<SimulatedDividend>,
     /// In order of first appearance.
     pub instruments: Vec<StockImportInstrument>,
 }
@@ -693,9 +627,6 @@ struct InstrumentPlan {
     isin: Option<String>,
     file_name: Option<String>,
     trade_count: usize,
-    dividend_count: usize,
-    /// Currency of the first dividend: what an instrument without trades shows.
-    dividend_currency: Option<String>,
     ticker: Option<String>,
     /// A symbol that cannot be a ticker (the instrument then has none).
     invalid_symbol: Option<String>,
@@ -856,217 +787,46 @@ impl Run<'_> {
     }
 }
 
-/// Why a dividend does not validate: the model's own `validation.*` key.
-fn dividend_error_key(error: &AppError) -> String {
-    match error {
-        AppError::Validation(key) if key.starts_with("validation.") => key.clone(),
-        _ => KEY_DIVIDEND_INVALID.to_string(),
-    }
-}
-
-impl Run<'_> {
-    /// Decide every dividend after the trades were replayed (spec D14): a position the file's
-    /// accepted trades create counts. Dividends are never split-converted.
-    fn decide_dividends(
-        &self,
-        conn: &Connection,
-        dividends: &[ParsedDividend],
-        instrument_of: &[usize],
-        plans: &[InstrumentPlan],
-    ) -> Result<Vec<SimulatedDividend>> {
-        let mut stored = DividendDuplicates::load(conn)?;
-        let mut seen_ids: HashSet<String> = HashSet::new();
-        let mut out = Vec::with_capacity(dividends.len());
-        for (dividend, &instrument) in dividends.iter().zip(instrument_of) {
-            let plan = &plans[instrument];
-            let broker_id = non_empty(dividend.external_id.as_deref());
-            let external_id = broker_id
-                .as_ref()
-                .map(|id| format!("{}:{}", self.config.source, id));
-            let line = dividend.line;
-            let mut simulated = SimulatedDividend {
-                line,
-                day: dividend.day,
-                instrument_key: dividend.instrument_key.clone(),
-                ticker: plan.ticker.clone(),
-                gross: dividend.gross,
-                tax: dividend.tax,
-                currency: dividend.currency.clone(),
-                broker_id,
-                external_id,
-                valid: None,
-                outcome: TradeOutcome::New,
-                warning: dividend.warning.clone(),
-            };
-            simulated.outcome = 'decide: {
-                if plan.skipped {
-                    break 'decide TradeOutcome::Skipped(message(
-                        line,
-                        KEY_INSTRUMENT_SKIPPED,
-                        None,
-                    ));
-                }
-                let Some(ticker) = plan.ticker.as_deref() else {
-                    break 'decide TradeOutcome::Error(match &plan.invalid_symbol {
-                        Some(symbol) => message(line, KEY_TICKER_INVALID, Some(symbol.clone())),
-                        None => message(line, KEY_SYMBOL_MISSING, None),
-                    });
-                };
-                let created_by_file = self
-                    .states
-                    .get(ticker)
-                    .is_some_and(|state| !state.accepted.is_empty());
-                if plan.position.is_none() && !created_by_file {
-                    break 'decide TradeOutcome::Error(message(
-                        line,
-                        KEY_DIVIDEND_WITHOUT_POSITION,
-                        Some(ticker.to_string()),
-                    ));
-                }
-                let valid = match (InsertStockDividend {
-                    paid_date: dividend.day,
-                    gross_amount: amount_text(dividend.gross),
-                    withholding_tax: Some(amount_text(dividend.tax)),
-                    currency: dividend.currency.clone(),
-                    note: None,
-                })
-                .validate()
-                {
-                    Ok(valid) => valid,
-                    Err(e) => {
-                        break 'decide TradeOutcome::Error(message(
-                            line,
-                            &dividend_error_key(&e),
-                            Some(dividend.currency.clone()),
-                        ))
-                    }
-                };
-                let position_id = plan.position.as_ref().map(|p| p.id.as_str());
-                let external = simulated.external_id.as_deref();
-                let forced = self.config.import_anyway_lines.contains(&line);
-                // One broker id is one payout, within the file too (Degiro's order id is not).
-                let repeated = self.ids_are_unique
-                    && external.is_some_and(|id| !seen_ids.insert(id.to_string()));
-                let found = if repeated {
-                    Some(DividendDuplicate::SameId)
-                } else {
-                    // What a forced row would have been, for the preview; nothing is consumed.
-                    let by_values = forced
-                        && stored.clone().check(position_id, &valid, external, false)
-                            == Some(DividendDuplicate::SameValues);
-                    match stored.check(position_id, &valid, external, forced) {
-                        Some(found) => Some(found),
-                        None if by_values => Some(DividendDuplicate::SameValues),
-                        None => None,
-                    }
-                };
-                simulated.valid = Some(valid);
-                match found {
-                    None => TradeOutcome::New,
-                    // An id cannot be forced: it is the same payout.
-                    Some(DividendDuplicate::SameId) => TradeOutcome::Duplicate {
-                        kind: DuplicateKind::BrokerId,
-                        forced: false,
-                    },
-                    Some(DividendDuplicate::SameValues) => TradeOutcome::Duplicate {
-                        kind: DuplicateKind::Identical,
-                        forced,
-                    },
-                }
-            };
-            out.push(simulated);
-        }
-        Ok(out)
-    }
-}
-
-/// The instruments of the file, in order of first appearance (trades and dividends by line), and
-/// the instrument index of every trade and every dividend.
 fn plan_instruments(
     trades: &[ParsedTrade],
-    dividends: &[ParsedDividend],
     config: &StockImportConfig,
-) -> (Vec<InstrumentPlan>, Vec<usize>, Vec<usize>) {
-    struct Sighting<'a> {
-        line: usize,
-        key: &'a str,
-        symbol: Option<&'a str>,
-        isin: Option<&'a str>,
-        name: Option<&'a str>,
-        /// Index into `trades`, or into `dividends`.
-        trade: Option<usize>,
-        dividend: Option<usize>,
-    }
-    let mut sightings: Vec<Sighting> = trades
-        .iter()
-        .enumerate()
-        .map(|(i, t)| Sighting {
-            line: t.line,
-            key: &t.instrument_key,
-            symbol: t.symbol.as_deref(),
-            isin: t.isin.as_deref(),
-            name: t.name.as_deref(),
-            trade: Some(i),
-            dividend: None,
-        })
-        .chain(dividends.iter().enumerate().map(|(i, d)| Sighting {
-            line: d.line,
-            key: &d.instrument_key,
-            symbol: d.symbol.as_deref(),
-            isin: d.isin.as_deref(),
-            name: d.name.as_deref(),
-            trade: None,
-            dividend: Some(i),
-        }))
-        .collect();
-    sightings.sort_by_key(|s| s.line);
-
+) -> (Vec<InstrumentPlan>, Vec<usize>) {
     let mut plans: Vec<InstrumentPlan> = Vec::new();
     let mut index_of: HashMap<&str, usize> = HashMap::new();
-    let mut instrument_of_trade = vec![0; trades.len()];
-    let mut instrument_of_dividend = vec![0; dividends.len()];
-    for sighting in &sightings {
-        let index = *index_of.entry(sighting.key).or_insert_with(|| {
-            plans.push(InstrumentPlan {
-                key: sighting.key.to_string(),
-                symbol: None,
-                isin: None,
-                file_name: None,
-                trade_count: 0,
-                dividend_count: 0,
-                dividend_currency: None,
-                ticker: None,
-                invalid_symbol: None,
-                skipped: false,
-                override_name: None,
-                override_currency: None,
-                position: None,
-                currency: None,
-                splits: Vec::new(),
+    let mut instrument_of_trade = Vec::with_capacity(trades.len());
+    for trade in trades {
+        let index = *index_of
+            .entry(trade.instrument_key.as_str())
+            .or_insert_with(|| {
+                plans.push(InstrumentPlan {
+                    key: trade.instrument_key.clone(),
+                    symbol: None,
+                    isin: None,
+                    file_name: None,
+                    trade_count: 0,
+                    ticker: None,
+                    invalid_symbol: None,
+                    skipped: false,
+                    override_name: None,
+                    override_currency: None,
+                    position: None,
+                    currency: None,
+                    splits: Vec::new(),
+                });
+                plans.len() - 1
             });
-            plans.len() - 1
-        });
         let plan = &mut plans[index];
-        if let Some(i) = sighting.trade {
-            plan.trade_count += 1;
-            instrument_of_trade[i] = index;
-        }
-        if let Some(i) = sighting.dividend {
-            plan.dividend_count += 1;
-            if plan.dividend_currency.is_none() {
-                plan.dividend_currency = Some(dividends[i].currency.clone());
-            }
-            instrument_of_dividend[i] = index;
-        }
+        plan.trade_count += 1;
         if plan.symbol.is_none() {
-            plan.symbol = non_empty(sighting.symbol).map(|s| s.to_uppercase());
+            plan.symbol = non_empty(trade.symbol.as_deref()).map(|s| s.to_uppercase());
         }
         if plan.isin.is_none() {
-            plan.isin = non_empty(sighting.isin).map(|s| s.to_uppercase());
+            plan.isin = non_empty(trade.isin.as_deref()).map(|s| s.to_uppercase());
         }
         if plan.file_name.is_none() {
-            plan.file_name = non_empty(sighting.name);
+            plan.file_name = non_empty(trade.name.as_deref());
         }
+        instrument_of_trade.push(index);
     }
 
     for plan in &mut plans {
@@ -1088,7 +848,7 @@ fn plan_instruments(
             None => {}
         }
     }
-    (plans, instrument_of_trade, instrument_of_dividend)
+    (plans, instrument_of_trade)
 }
 
 /// A trade's currency and its price in that currency, as they are stored.
@@ -1126,8 +886,7 @@ pub fn simulate(
     config: &StockImportConfig,
 ) -> Result<Simulation> {
     let trades = &parsed.trades;
-    let (mut plans, instrument_of_trade, instrument_of_dividend) =
-        plan_instruments(trades, &parsed.dividends, config);
+    let (mut plans, instrument_of_trade) = plan_instruments(trades, config);
 
     let mut states: HashMap<String, TickerState> = HashMap::new();
     for plan in &plans {
@@ -1234,9 +993,6 @@ pub fn simulate(
         .collect();
     decided.sort_by_key(|(i, _)| *i);
 
-    let dividends =
-        run.decide_dividends(conn, &parsed.dividends, &instrument_of_dividend, &plans)?;
-
     let simulated = trades
         .iter()
         .zip(trade_plans)
@@ -1261,7 +1017,6 @@ pub fn simulate(
     let instruments = plans.into_iter().map(into_instrument).collect();
     Ok(Simulation {
         trades: simulated,
-        dividends,
         instruments,
     })
 }
@@ -1301,7 +1056,6 @@ fn into_instrument(plan: InstrumentPlan) -> StockImportInstrument {
     } else {
         StockInstrumentStatus::New
     };
-    let trade_currency = plan.currency.clone();
     let position_currency = match (&plan.position, &plan.currency) {
         (Some(position), Some(currency)) if &position.currency != currency => {
             Some(position.currency.clone())
@@ -1316,9 +1070,8 @@ fn into_instrument(plan: InstrumentPlan) -> StockImportInstrument {
         key: plan.key,
         symbol: plan.symbol,
         isin: plan.isin,
-        currency: trade_currency.or(plan.dividend_currency),
+        currency: plan.currency,
         trade_count: plan.trade_count,
-        dividend_count: plan.dividend_count,
         ticker: plan.ticker,
         status,
         position_currency,
@@ -1381,18 +1134,6 @@ pub(crate) mod test_db {
                 investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
                 tag_id TEXT NOT NULL,
                 PRIMARY KEY (investment_id, tag_id)
-            );
-            CREATE TABLE investment_dividends (
-                id TEXT PRIMARY KEY,
-                investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
-                paid_date INTEGER NOT NULL,
-                gross_amount TEXT NOT NULL,
-                withholding_tax TEXT NOT NULL DEFAULT '0',
-                currency TEXT NOT NULL,
-                note TEXT,
-                import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL,
-                external_id TEXT,
-                created_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
             CREATE TABLE app_config (key TEXT PRIMARY KEY, value TEXT NOT NULL);
             CREATE TABLE stock_splits (
@@ -1551,72 +1292,6 @@ pub(crate) mod test_db {
         trade
     }
 
-    /// A parsed dividend of `symbol` (key `symbol:<SYMBOL>`), in USD.
-    pub fn dividend(
-        line: usize,
-        day: i64,
-        symbol: &str,
-        gross: f64,
-        tax: f64,
-    ) -> super::super::types::ParsedDividend {
-        super::super::types::ParsedDividend {
-            line,
-            day,
-            instrument_key: format!("symbol:{symbol}"),
-            symbol: Some(symbol.to_string()),
-            isin: None,
-            name: None,
-            gross,
-            tax,
-            currency: "USD".to_string(),
-            external_id: None,
-            warning: None,
-        }
-    }
-
-    /// A file of trades and dividends.
-    pub fn parsed_with(
-        trades: Vec<ParsedTrade>,
-        dividends: Vec<super::super::types::ParsedDividend>,
-    ) -> ParsedFile {
-        ParsedFile {
-            total_rows: trades.len() + dividends.len(),
-            trades,
-            dividends,
-            ..ParsedFile::default()
-        }
-    }
-
-    /// A stored dividend of `ticker`'s position.
-    pub fn add_dividend(
-        conn: &Connection,
-        ticker: &str,
-        paid: i64,
-        gross: &str,
-        external_id: Option<&str>,
-    ) {
-        let position: String = conn
-            .query_row(
-                "SELECT id FROM stock_investments WHERE ticker = ?1",
-                [ticker],
-                |r| r.get(0),
-            )
-            .unwrap_or_else(|_| add_position(conn, ticker, ticker, "USD"));
-        conn.execute(
-            "INSERT INTO investment_dividends
-                (id, investment_id, paid_date, gross_amount, withholding_tax, currency, external_id)
-             VALUES (?1, ?2, ?3, ?4, '0', 'USD', ?5)",
-            rusqlite::params![
-                format!("sd-{ticker}-{paid}-{gross}"),
-                position,
-                paid,
-                gross,
-                external_id
-            ],
-        )
-        .expect("stored dividend");
-    }
-
     pub fn parsed(trades: Vec<ParsedTrade>) -> ParsedFile {
         ParsedFile {
             total_rows: trades.len(),
@@ -1652,10 +1327,6 @@ pub(crate) mod test_db {
             transforms: StockImportTransforms::default(),
             instrument_overrides: vec![],
             import_anyway_lines: vec![],
-            amount_column: None,
-            tax_column: None,
-            tax_currency_column: None,
-            cash_currency: None,
         }
     }
 
@@ -3309,239 +2980,5 @@ mod tests {
             &cfg,
         );
         assert_eq!(sim.trades[0].outcome, duplicate(DuplicateKind::BrokerId));
-    }
-
-    // ===================================================================
-    // Dividends (spec D14)
-    // ===================================================================
-
-    fn run_with(
-        conn: &rusqlite::Connection,
-        trades: Vec<ParsedTrade>,
-        dividends: Vec<crate::services::stock_import::types::ParsedDividend>,
-        config: &StockImportConfig,
-    ) -> Simulation {
-        simulate(conn, &parsed_with(trades, dividends), config).expect("simulation")
-    }
-
-    fn dividend_outcomes(sim: &Simulation) -> Vec<TradeOutcome> {
-        sim.dividends.iter().map(|d| d.outcome.clone()).collect()
-    }
-
-    #[test]
-    fn a_dividend_of_an_existing_position_is_new() {
-        let conn = db();
-        add_position(&conn, "AAPL", "Apple", "USD");
-        let sim = run_with(
-            &conn,
-            vec![],
-            vec![dividend(2, day(5), "AAPL", 12.5, 1.5)],
-            &config("custom"),
-        );
-        assert_eq!(dividend_outcomes(&sim), [TradeOutcome::New]);
-        let d = &sim.dividends[0];
-        assert_eq!(d.ticker.as_deref(), Some("AAPL"));
-        let valid = d.valid.as_ref().expect("validated");
-        assert_eq!(
-            (valid.gross_amount.as_str(), valid.withholding_tax.as_str()),
-            ("12.5", "1.5")
-        );
-        assert!(d.will_import());
-    }
-
-    #[test]
-    fn a_dividend_needs_a_position_in_moony_or_one_the_files_trades_create() {
-        let conn = db();
-        add_position(&conn, "MSFT", "Microsoft", "USD");
-        let cfg = config("custom");
-        let sim = run_with(
-            &conn,
-            vec![buy(3, day(1), "AAPL", 1.0, 100.0)],
-            vec![
-                // Before the buy in the file, but the file's accepted buy creates the position.
-                dividend(2, day(5), "AAPL", 1.0, 0.0),
-                dividend(4, day(5), "NVDA", 1.0, 0.0),
-                dividend(5, day(5), "MSFT", 1.0, 0.0),
-            ],
-            &cfg,
-        );
-        assert_eq!(
-            dividend_outcomes(&sim),
-            [
-                TradeOutcome::New,
-                TradeOutcome::Error(message(
-                    4,
-                    "importWizard.row.dividendWithoutPosition",
-                    Some("NVDA".into())
-                )),
-                TradeOutcome::New,
-            ]
-        );
-        // A buy that is itself left out (a skipped instrument) creates nothing.
-        let mut skip = config("custom");
-        skip.instrument_overrides = vec![StockInstrumentOverride {
-            skip: false,
-            ..over("symbol:ZZZ")
-        }];
-        let sim = run_with(
-            &conn,
-            vec![sell(2, day(1), "ZZZ", 1.0, 1.0)], // sells nothing held: an error
-            vec![dividend(3, day(5), "ZZZ", 1.0, 0.0)],
-            &skip,
-        );
-        assert_eq!(
-            sim.dividends[0].outcome,
-            TradeOutcome::Error(message(
-                3,
-                "importWizard.row.dividendWithoutPosition",
-                Some("ZZZ".into())
-            ))
-        );
-    }
-
-    #[test]
-    fn a_skipped_instrument_or_a_missing_ticker_leaves_its_dividends_out() {
-        let conn = db();
-        add_position(&conn, "AAPL", "Apple", "USD");
-        let mut cfg = config("custom");
-        cfg.instrument_overrides = vec![StockInstrumentOverride {
-            skip: true,
-            ..over("symbol:AAPL")
-        }];
-        let mut by_isin = dividend(3, day(5), "X", 1.0, 0.0);
-        by_isin.instrument_key = "isin:IE00B3RBWM25".into();
-        by_isin.symbol = None;
-        by_isin.isin = Some("IE00B3RBWM25".into());
-        let sim = run_with(
-            &conn,
-            vec![],
-            vec![dividend(2, day(5), "AAPL", 1.0, 0.0), by_isin],
-            &cfg,
-        );
-        assert_eq!(
-            dividend_outcomes(&sim),
-            [
-                TradeOutcome::Skipped(message(2, KEY_INSTRUMENT_SKIPPED, None)),
-                TradeOutcome::Error(message(3, KEY_SYMBOL_MISSING, None)),
-            ]
-        );
-        // The instruments panel lists them, with their dividends counted.
-        assert_eq!(
-            sim.instruments
-                .iter()
-                .map(|i| (i.key.as_str(), i.trade_count, i.dividend_count))
-                .collect::<Vec<_>>(),
-            [("symbol:AAPL", 0, 1), ("isin:IE00B3RBWM25", 0, 1)]
-        );
-        assert_eq!(
-            sim.instruments[1].status,
-            StockInstrumentStatus::MissingSymbol
-        );
-        assert_eq!(sim.instruments[0].currency.as_deref(), Some("USD"));
-        assert_eq!(sim.instruments[0].position_currency, None);
-    }
-
-    #[test]
-    fn a_dividend_with_the_same_broker_id_is_a_duplicate_that_cannot_be_forced() {
-        let conn = db();
-        add_dividend(&conn, "AAPL", day(5), "1", Some("xtb:77"));
-        let mut with_id = dividend(2, day(9), "AAPL", 99.0, 0.0);
-        with_id.external_id = Some("77".into());
-        let mut cfg = config("xtb");
-        cfg.import_anyway_lines = vec![2];
-        let sim = run_with(&conn, vec![], vec![with_id], &cfg);
-        assert_eq!(
-            dividend_outcomes(&sim),
-            [TradeOutcome::Duplicate {
-                kind: DuplicateKind::BrokerId,
-                forced: false
-            }]
-        );
-        assert_eq!(
-            sim.dividends[0].message().map(|m| (m.key, m.detail)),
-            Some((KEY_DUPLICATE_BY_ID.to_string(), Some("77".to_string())))
-        );
-    }
-
-    #[test]
-    fn dividends_match_stored_ones_by_values_one_to_one() {
-        let conn = db();
-        add_dividend(&conn, "AAPL", day(5), "2.50", None);
-        let sim = run_with(
-            &conn,
-            vec![],
-            vec![
-                dividend(2, day(5), "AAPL", 2.5, 0.0),
-                dividend(3, day(5), "AAPL", 2.5, 0.0), // the stored row is used up
-                dividend(4, day(6), "AAPL", 2.5, 0.0), // another day
-            ],
-            &config("custom"),
-        );
-        assert_eq!(
-            dividend_outcomes(&sim),
-            [
-                TradeOutcome::Duplicate {
-                    kind: DuplicateKind::Identical,
-                    forced: false
-                },
-                TradeOutcome::New,
-                TradeOutcome::New,
-            ]
-        );
-    }
-
-    #[test]
-    fn a_value_duplicate_can_be_imported_anyway_and_stays_listed_as_a_duplicate() {
-        let conn = db();
-        add_dividend(&conn, "AAPL", day(5), "2.5", None);
-        let mut cfg = config("custom");
-        cfg.import_anyway_lines = vec![2];
-        let sim = run_with(
-            &conn,
-            vec![],
-            vec![dividend(2, day(5), "AAPL", 2.5, 0.0)],
-            &cfg,
-        );
-        assert_eq!(
-            dividend_outcomes(&sim),
-            [TradeOutcome::Duplicate {
-                kind: DuplicateKind::Identical,
-                forced: true
-            }]
-        );
-        assert!(sim.dividends[0].will_import());
-    }
-
-    #[test]
-    fn one_broker_id_twice_in_a_file_is_one_dividend() {
-        let conn = db();
-        add_position(&conn, "AAPL", "Apple", "USD");
-        let mut a = dividend(2, day(5), "AAPL", 1.0, 0.0);
-        a.external_id = Some("9".into());
-        let mut b = dividend(3, day(6), "AAPL", 2.0, 0.0);
-        b.external_id = Some("9".into());
-        let sim = run_with(&conn, vec![], vec![a, b], &config("ibkr"));
-        assert_eq!(sim.dividends[0].outcome, TradeOutcome::New);
-        assert!(matches!(
-            sim.dividends[1].outcome,
-            TradeOutcome::Duplicate {
-                kind: DuplicateKind::BrokerId,
-                forced: false
-            }
-        ));
-    }
-
-    #[test]
-    fn a_dividend_a_stored_validation_rejects_is_an_error_with_the_models_key() {
-        let conn = db();
-        add_position(&conn, "AAPL", "Apple", "USD");
-        let mut d = dividend(2, day(5), "AAPL", 1.0, 0.0);
-        d.currency = "XXX".into();
-        let sim = run_with(&conn, vec![], vec![d], &config("custom"));
-        assert!(
-            matches!(&sim.dividends[0].outcome, TradeOutcome::Error(m) if m.key == "validation.currencyUnknown"),
-            "{:?}",
-            sim.dividends[0].outcome
-        );
     }
 }

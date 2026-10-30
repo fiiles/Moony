@@ -356,26 +356,29 @@
       "short": "Dividende",
       "addTitle": "Erhaltene Dividende erfassen",
       "editTitle": "Dividende bearbeiten",
-      "description": "Eine Ausschüttung von {{ticker}}: der Bruttobetrag vor Quellensteuer am Zahltag. Die Anzahl der Aktien ändert sich nicht.",
-      "paidDate": "Zahltag",
+      "description": "Eine Ausschüttung von {{ticker}}, die Yahoo Finance nicht kennt: der Bruttobetrag vor Quellensteuer am Ex-Tag. Die Anzahl der Aktien ändert sich nicht.",
       "gross": "Bruttobetrag",
-      "grossHint": "Summe der Ausschüttung, vor Steuern",
-      "tax": "Quellensteuer",
-      "taxHint": "Optional; leer lassen, wenn nichts einbehalten wurde",
+      "grossHint": "Summe der Ausschüttung, vor Quellensteuer",
       "note": "Notiz",
       "save": "Dividende speichern",
       "badge": "Dividende",
-      "taxLine": "Steuer {{tax}} · netto {{net}}",
-      "received": "Erhaltene Dividenden",
-      "receivedNet": "Dividenden nach Steuern",
+      "received": "Erhaltene Dividenden (brutto)",
       "added": "Dividende erfasst",
       "updated": "Dividende aktualisiert",
       "deleted": "Dividende gelöscht",
       "confirmDelete": {
         "title": "Dividende löschen?",
-        "description": "Die am {{date}} gezahlte Dividende ({{amount}} brutto) wird endgültig entfernt. Dies kann nicht rückgängig gemacht werden.",
+        "description": "Die Dividende mit Ex-Tag {{date}} ({{amount}} brutto) wird endgültig entfernt. Dies kann nicht rückgängig gemacht werden.",
         "confirm": "Dividende löschen"
-      }
+      },
+      "exDate": "Ex-Tag",
+      "exDateHint": "Der erste Tag, an dem die Aktie ohne diese Dividende gehandelt wird",
+      "sourceYahoo": "Yahoo Finance",
+      "sourceManual": "Manuell",
+      "perShare": "{{amount}} je Aktie",
+      "superseded": "Durch Yahoo Finance ersetzt, nicht gezählt",
+      "yahooTitle": "Yahoo Finance kennt die Dividenden dieser Aktie",
+      "yahooBody": "Moony lädt die Dividenden von {{ticker}} von Yahoo Finance und berechnet sie aus den Aktien, die Sie am Tag vor jedem Ex-Tag hielten. Erfassen Sie eine Dividende nur dann manuell, wenn Yahoo für die Aktie keine hat."
     }
   },
   "importWizard": {
@@ -396,10 +399,6 @@
       "buy": "Kauf",
       "sell": "Verkauf"
     },
-    "kind": {
-      "dividend": "Dividende",
-      "withholdingTax": "Quellensteuer"
-    },
     "roles": {
       "date": "Datum",
       "direction": "Richtung",
@@ -411,10 +410,7 @@
       "price": "Kurs pro Aktie",
       "quantityPrice": "Menge und Kurs",
       "currency": "Währung",
-      "externalId": "Trade-ID",
-      "amount": "Betrag",
-      "tax": "Quellensteuer",
-      "taxCurrency": "Steuerwährung"
+      "externalId": "Trade-ID"
     },
     "file": {
       "sourceHeading": "Woher der Export stammt",
@@ -572,9 +568,7 @@
       "action": {
         "buy": "Kauf",
         "sell": "Verkauf",
-        "skip": "Überspringen",
-        "dividend": "Dividende",
-        "withholdingTax": "Quellensteuer"
+        "skip": "Überspringen"
       },
       "externalIdHint": "Hilft, Duplikate bei späteren Importen zu erkennen.",
       "dateFormat": "Datumsformat",
@@ -603,9 +597,7 @@
         "type": "Artspalte"
       },
       "rawData": "CSV-Daten in der Vorschau",
-      "rawCounts": "Spalten: {{columns}} · Zeilen: {{rows}}",
-      "dividends": "Dividenden",
-      "dividendsHint": "Optional. Für Dividendenzeilen: der Gesamtbetrag, eine in derselben Zeile einbehaltene Steuer und deren Währung. Ohne Betragsspalte wird Anzahl × Preis verwendet."
+      "rawCounts": "Spalten: {{columns}} · Zeilen: {{rows}}"
     },
     "review": {
       "incomplete": "Schließen Sie die Spaltenzuordnung ab, um die Prüfung zu sehen.",
@@ -616,8 +608,7 @@
         "duplicates": "Duplikate {{count}}",
         "skipped": "Übersprungen {{count}}",
         "errors": "Fehler {{count}}",
-        "converted": "Umgerechnet {{count}}",
-        "dividends": "davon Dividenden {{count}}"
+        "converted": "Umgerechnet {{count}}"
       },
       "feeNote": "Gebühren werden nicht importiert",
       "nothingToImport": "Nichts zu importieren: Jede Zeile ist ein Duplikat, übersprungen oder fehlerhaft.",
@@ -666,8 +657,7 @@
         "missingHint_one": "Geben Sie ein Symbol für {{count}} Wertpapier ein oder überspringen Sie es.",
         "missingHint_other": "Geben Sie ein Symbol für {{count}} Wertpapiere ein oder überspringen Sie sie.",
         "unverifiedHint_one": "{{count}} Wertpapier konnte nicht geprüft werden. Sie können es trotzdem importieren, aber seine Kurse werden womöglich nicht aktualisiert.",
-        "unverifiedHint_other": "{{count}} Wertpapiere konnten nicht geprüft werden. Sie können sie trotzdem importieren, aber ihre Kurse werden womöglich nicht aktualisiert.",
-        "dividends": "+ Dividenden {{count}}"
+        "unverifiedHint_other": "{{count}} Wertpapiere konnten nicht geprüft werden. Sie können sie trotzdem importieren, aber ihre Kurse werden womöglich nicht aktualisiert."
       },
       "rows": {
         "title": "Zeilen",
@@ -685,14 +675,7 @@
         "showAll": "Alle anzeigen",
         "showLess": "Weniger anzeigen",
         "none": "Mit diesen Einstellungen hat die Datei keine Zeilen.",
-        "truncated": "Die Tabelle zeigt höchstens {{shown}} Zeilen; die Zahlen oben beziehen sich auf die gesamte Datei.",
-        "amount": "Betrag",
-        "taxAmount": "Steuer {{amount}}"
-      },
-      "unpairedTaxes": "Ausgelassene Steuerzeilen: {{count}}. Zu keiner wurde eine Dividende am selben Tag und in derselben Währung gefunden, daher werden sie nicht geschrieben; die Dividenden werden ohne diese Steuer importiert.",
-      "cashCurrency": {
-        "title": "Kontowährung beim Broker",
-        "hint": "Die Datei nennt keine Währung für Dividenden und Steuern. Wählen Sie die Währung Ihres Brokerkontos, die Beträge sind darin."
+        "truncated": "Die Tabelle zeigt höchstens {{shown}} Zeilen; die Zahlen oben beziehen sich auf die gesamte Datei."
       }
     },
     "editor": {
@@ -744,9 +727,7 @@
         "undoHint_one": "Löscht {{count}} Trade aus dieser Datei.",
         "undoHint_other": "Löscht {{count}} Trades aus dieser Datei.",
         "undoAction": "Rückgängig"
-      },
-      "dividends": "Dividenden",
-      "dividendsNote": "Davon Dividenden: {{count}}."
+      }
     },
     "undone": {
       "title": "Import rückgängig gemacht",
@@ -794,20 +775,7 @@
       "duplicate": "Derselbe Trade ist bereits in Moony",
       "duplicateById": "Ein Trade mit derselben Broker-ID ist bereits in Moony",
       "duplicateSimilar": "Ein ähnlicher Trade ist bereits in Moony: gleicher Tag und gleiche Menge, Kurs innerhalb von 0,5 %",
-      "cannotParse": "Die Zeile konnte nicht gelesen werden",
-      "dividendNotPositive": "Dividende mit Betrag null oder negativ (Stornierung), übersprungen",
-      "cashCurrencyMissing": "Die Datei nennt keine Währung; wählen Sie die Kontowährung beim Broker",
-      "taxCurrencyMismatch": "Die Steuer ist in einer anderen Währung als die Dividende, wird nicht geschrieben",
-      "taxCurrencyMismatchIn": "Die Steuer ist in {{detail}}, nicht in der Währung der Dividende, wird nicht geschrieben",
-      "taxPaired": "Steuer der Dividende zugeordnet",
-      "taxPairedLine": "Steuer der Dividende in Zeile {{detail}} zugeordnet",
-      "taxUnpaired": "Quellensteuer ohne Dividende, wird nicht geschrieben",
-      "taxExceedsGross": "Die Quellensteuer ist höher als die Dividende",
-      "dividendWithoutPosition": "Für diese Dividende gibt es in Moony keine Position und die Datei kauft sie nicht",
-      "dividendReversed": "Durch die Stornierung des Brokers aufgehoben, nicht übernommen",
-      "dividendReversedLine": "Durch die Stornierung in Zeile {{detail}} aufgehoben, nicht übernommen",
-      "dividendReversal": "Stornierung einer Dividende, nicht übernommen",
-      "dividendReversalLine": "Stornierung der Dividende aus Zeile {{detail}}, nicht übernommen"
+      "cannotParse": "Die Zeile konnte nicht gelesen werden"
     },
     "mcpSource": "MCP",
     "splits": {

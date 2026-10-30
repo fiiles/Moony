@@ -310,9 +310,8 @@
     "snoozeSelectionInvalid": "Vyberte 1 až 1000 plateb.",
     "snoozeDaysInvalid": "Zadejte počet dnů od 1 do 365.",
     "dividendGrossPositive": "Hrubá částka musí být větší než nula",
-    "dividendTaxInvalid": "Srážková daň musí být mezi nulou a hrubou částkou",
     "dividendNoteTooLong": "Poznámka může mít nejvýše 500 znaků.",
-    "dividendWithoutPosition": "Pro {{ticker}} neexistuje pozice; nejdřív zapište nákup."
+    "dividendFromYahoo": "Dividendy {{ticker}} se stahují z Yahoo Finance; ruční dividendu nelze přidat."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

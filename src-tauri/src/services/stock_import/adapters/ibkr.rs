@@ -1,5 +1,4 @@
-//! Interactive Brokers: the Flex Query, Trades section (CSV), and its Cash Transactions
-//! section (dividends and their withholding tax).
+//! Interactive Brokers: the Flex Query, Trades section (CSV).
 //!
 //! The user ticks the fields; the ones that matter have stable names:
 //! `Symbol, ISIN, TradeDate, Buy/Sell, Quantity, TradePrice, CurrencyPrimary,
@@ -8,17 +7,8 @@
 //! negative quantity, the date is `yyyyMMdd` or another format chosen in the
 //! query, and options and currency pairs come in the same rows, so rows whose
 //! asset class is not `STK` are skipped.
-//!
-//! The Cash Transactions section has `Type, Amount, CurrencyPrimary, Symbol` and/or `ISIN`, a
-//! date (`Date/Time`, `DateTime`, `SettleDate` or `ReportDate`, which may carry a time as
-//! `20230522;093000` or `2023-05-22, 09:30:00`) and optionally `TransactionID`, `Description`.
-//! Its `Dividends` and `Payment In Lieu Of Dividends` rows are dividends, `Withholding Tax`
-//! rows are taxes, any other type is skipped. It is told from the Trades section by the
-//! missing `TradePrice`.
 
-use crate::services::stock_import::types::{
-    CurrencyMode, DirectionMode, StockTypeValueMapping, TypeValueAction, SOURCE_IBKR,
-};
+use crate::services::stock_import::types::{CurrencyMode, DirectionMode, SOURCE_IBKR};
 
 use super::{base_config, date_format_of, decimal_of, find_header, AdapterConfig, StockAdapter};
 
@@ -39,11 +29,6 @@ const DIRECTION: &[&str] = &["buy sell", "buysell"];
 const ASSET_CLASS: &[&str] = &["assetclass"];
 const TRADE_ID: &[&str] = &["tradeid"];
 const NAME: &[&str] = &["description"];
-
-const CASH_DATE: &[&[&str]] = &[&["date time", "datetime"], &["settledate"], &["reportdate"]];
-const CASH_TYPE: &[&str] = &["type"];
-const CASH_AMOUNT: &[&str] = &["amount"];
-const TRANSACTION_ID: &[&str] = &["transactionid"];
 
 /// The asset class of a share (and an ETF).
 const STOCK: &str = "STK";
@@ -83,91 +68,14 @@ fn columns(headers: &[String]) -> Option<Columns> {
     })
 }
 
-/// Positions of the fields of the Cash Transactions section.
-struct CashColumns {
-    date: usize,
-    kind: usize,
-    amount: usize,
-    currency: usize,
-    symbol: Option<usize>,
-    isin: Option<usize>,
-    transaction_id: Option<usize>,
-}
-
-fn cash_columns(headers: &[String]) -> Option<CashColumns> {
-    let symbol = find_header(headers, SYMBOL);
-    let isin = find_header(headers, ISIN);
-    if symbol.is_none() && isin.is_none() {
-        return None;
-    }
-    Some(CashColumns {
-        date: CASH_DATE
-            .iter()
-            .find_map(|names| find_header(headers, names))?,
-        kind: find_header(headers, CASH_TYPE)?,
-        amount: find_header(headers, CASH_AMOUNT)?,
-        currency: find_header(headers, CURRENCY)?,
-        symbol,
-        isin,
-        transaction_id: find_header(headers, TRANSACTION_ID),
-    })
-}
-
 /// A Flex Query with the trade fields: `TradeDate`, `Quantity`, `TradePrice`,
-/// `CurrencyPrimary` and a symbol or an ISIN; or with the cash fields: `Type`, `Amount`,
-/// `CurrencyPrimary`, a date and a symbol or an ISIN (and no `TradePrice`).
+/// `CurrencyPrimary` and a symbol or an ISIN.
 pub fn detect(headers: &[String], _rows: &[Vec<String>]) -> bool {
-    columns(headers).is_some() || cash_config_columns(headers).is_some()
-}
-
-/// The cash section's columns, unless the file has trade prices (then it is the Trades section).
-fn cash_config_columns(headers: &[String]) -> Option<CashColumns> {
-    if find_header(headers, PRICE).is_some() {
-        return None;
-    }
-    cash_columns(headers)
-}
-
-/// The Cash Transactions section: the amount is the total, the type column says what it is.
-fn cash_config(cols: CashColumns, rows: &[Vec<String>]) -> Option<AdapterConfig> {
-    let (date_format, date_ambiguous) = date_format_of(rows, cols.date, "%Y%m%d");
-    let mut config = base_config(SOURCE_IBKR);
-    config.date_column = cols.date;
-    config.date_format = date_format;
-    config.symbol_column = cols.symbol;
-    config.isin_column = cols.isin;
-    // Unused by cash rows; they point at the amount.
-    config.quantity_column = cols.amount;
-    config.price_column = cols.amount;
-    config.amount_column = Some(cols.amount);
-    config.currency_mode = CurrencyMode::Column;
-    config.currency_column = Some(cols.currency);
-    config.direction_mode = DirectionMode::TypeColumn;
-    config.type_column = Some(cols.kind);
-    // Every other type (interest, fees, deposits, …) stays unmapped and is skipped.
-    config.type_values = [
-        ("Dividends", TypeValueAction::Dividend),
-        ("Payment In Lieu Of Dividends", TypeValueAction::Dividend),
-        ("Withholding Tax", TypeValueAction::WithholdingTax),
-    ]
-    .into_iter()
-    .map(|(value, action)| StockTypeValueMapping {
-        value: value.to_string(),
-        action,
-    })
-    .collect();
-    config.external_id_column = cols.transaction_id;
-    config.decimal_separator = decimal_of(rows, &[cols.amount]);
-    Some(AdapterConfig {
-        config,
-        date_ambiguous,
-    })
+    columns(headers).is_some()
 }
 
 pub fn config(headers: &[String], rows: &[Vec<String>]) -> Option<AdapterConfig> {
-    let Some(cols) = columns(headers) else {
-        return cash_config(cash_config_columns(headers)?, rows);
-    };
+    let cols = columns(headers)?;
     let (date_format, date_ambiguous) = date_format_of(rows, cols.date, "%Y%m%d");
     let mut config = base_config(SOURCE_IBKR);
     config.date_column = cols.date;

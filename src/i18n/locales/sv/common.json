@@ -310,9 +310,8 @@
     "snoozeSelectionInvalid": "Välj mellan 1 och 1000 betalningar.",
     "snoozeDaysInvalid": "Välj ett antal dagar från 1 till 365.",
     "dividendGrossPositive": "Bruttobeloppet måste vara större än noll",
-    "dividendTaxInvalid": "Källskatten måste ligga mellan noll och bruttobeloppet",
     "dividendNoteTooLong": "En anteckning får ha högst 500 tecken.",
-    "dividendWithoutPosition": "Det finns ingen position för {{ticker}}; registrera köpet först."
+    "dividendFromYahoo": "Utdelningarna för {{ticker}} kommer från Yahoo Finance; en manuell utdelning kan inte läggas till."
   },
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",

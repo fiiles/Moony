@@ -1,6 +1,6 @@
-//! Received stock dividends: one record per payout of a position (spec
-//! 2026-10-30-stock-dividends-design, ADR 0022). Amounts are the payout's totals in `currency`,
-//! gross before withholding tax; the net amount is derived, never stored.
+//! Received stock dividends (spec 2026-10-30-stock-dividends-design, ADR 0022). Yahoo Finance is
+//! the source; a payout entered by hand counts only for a ticker Yahoo has no dividends for. Every
+//! amount is gross (before withholding tax), the payout's total in `currency`, on the ex-date.
 
 use serde::{Deserialize, Serialize};
 use specta::Type;
@@ -13,43 +13,58 @@ use crate::services::quote_unit::{is_pence, pence_to_pounds};
 
 const MAX_NOTE_CHARS: usize = 500;
 
-/// A received dividend as stored, with its net amount.
+/// Where a dividend comes from.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
+pub enum StockDividendSource {
+    /// Yahoo Finance's payout per share × the shares held the day before the ex-date.
+    #[serde(rename = "yahoo")]
+    Yahoo,
+    /// Entered by the user.
+    #[serde(rename = "manual")]
+    Manual,
+}
+
+/// One dividend of a position.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub struct StockDividend {
+    /// The record's id for a manual dividend; `yahoo:<ticker>:<exDate>` for a Yahoo one.
+    #[serde(rename = "id")]
     pub id: String,
     #[serde(rename = "investmentId")]
     pub investment_id: String,
-    /// UTC midnight of the pay date.
-    #[serde(rename = "paidDate")]
-    pub paid_date: i64,
-    /// The payout's total before withholding tax, in `currency`.
+    #[serde(rename = "source")]
+    pub source: StockDividendSource,
+    /// UTC midnight of the ex-date.
+    #[serde(rename = "exDate")]
+    pub ex_date: i64,
+    /// Yahoo only: the gross payout per share.
+    #[serde(rename = "amountPerShare")]
+    pub amount_per_share: Option<String>,
+    /// Yahoo only: the shares held at the end of the day before the ex-date.
+    #[serde(rename = "shares")]
+    pub shares: Option<String>,
+    /// The payout's gross total in `currency`.
     #[serde(rename = "grossAmount")]
     pub gross_amount: String,
-    /// Tax withheld from this payout, in `currency` ("0" when none).
-    #[serde(rename = "withholdingTax")]
-    pub withholding_tax: String,
-    /// `grossAmount − withholdingTax`, in `currency`.
-    #[serde(rename = "netAmount")]
-    pub net_amount: String,
     #[serde(rename = "currency")]
     pub currency: String,
     #[serde(rename = "note")]
     pub note: Option<String>,
-    #[serde(rename = "createdAt")]
-    pub created_at: i64,
+    /// A manual dividend of a ticker Yahoo has dividends for: shown, but left out of every sum
+    /// (Yahoo's payouts count instead).
+    #[serde(rename = "superseded")]
+    pub superseded: bool,
 }
 
-/// A dividend to record or the new values of one (the position comes from the command).
+/// A dividend to enter by hand, or the new values of one (the position comes from the command).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub struct InsertStockDividend {
-    /// Any moment of the pay day; stored as its UTC midnight.
-    #[serde(rename = "paidDate")]
-    pub paid_date: i64,
+    /// Any moment of the ex-date; stored as its UTC midnight.
+    #[serde(rename = "exDate")]
+    pub ex_date: i64,
+    /// The payout's gross total (before withholding tax).
     #[serde(rename = "grossAmount")]
     pub gross_amount: String,
-    /// Absent or empty: no tax.
-    #[serde(rename = "withholdingTax", default)]
-    pub withholding_tax: Option<String>,
     /// ISO code; `GBX`/`GBp` amounts are pence and are stored in GBP.
     #[serde(rename = "currency")]
     pub currency: String,
@@ -57,35 +72,32 @@ pub struct InsertStockDividend {
     pub note: Option<String>,
 }
 
-/// A validated dividend: amounts as decimal text, the day at UTC midnight, a supported currency.
+/// A validated manual dividend: the amount as decimal text, the day at UTC midnight.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ValidDividend {
-    pub paid_date: i64,
-    pub gross: f64,
-    pub tax: f64,
+    pub ex_date: i64,
     pub gross_amount: String,
-    pub withholding_tax: String,
     pub currency: String,
     pub note: Option<String>,
 }
 
-/// A position's dividends, newest first, with their sums in the report currency.
+/// A position's dividends, newest first, with their sum in the report currency.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub struct StockDividendList {
-    /// The report currency of the totals.
+    /// The report currency of the total.
     #[serde(rename = "currency")]
     pub currency: String,
     #[serde(rename = "fxQuality")]
     pub fx_quality: ConversionQuality,
     #[serde(rename = "items")]
     pub items: Vec<StockDividend>,
-    /// Every payout's gross converted at its pay day's rate; `null` when payouts exist but none
+    /// Every counted payout converted at its ex-date's rate; `null` when payouts exist but none
     /// could be converted, "0" without payouts.
     #[serde(rename = "totalGross")]
     pub total_gross: Option<String>,
-    /// The same for the net amounts.
-    #[serde(rename = "totalNet")]
-    pub total_net: Option<String>,
+    /// Yahoo Finance has dividends for the ticker: they count, and none can be entered by hand.
+    #[serde(rename = "fromYahoo")]
+    pub from_yahoo: bool,
 }
 
 fn invalid(key: &str) -> AppError {
@@ -106,28 +118,20 @@ pub fn amount_text(value: f64) -> String {
 impl InsertStockDividend {
     /// Check every field at the trust boundary and return the normalized values.
     pub fn validate(&self) -> Result<ValidDividend> {
-        let paid_date = utc_day(self.paid_date, "validation.dateInvalid")?;
+        let ex_date = utc_day(self.ex_date, "validation.dateInvalid")?;
         let mut gross = finite_number(self.gross_amount.trim(), "validation.invalidAmount")?;
         if gross <= 0.0 {
             return Err(invalid("dividendGrossPositive"));
         }
-        let mut tax = match self.withholding_tax.as_deref().map(str::trim) {
-            None | Some("") => 0.0,
-            Some(raw) => finite_number(raw, "validation.invalidAmount")?,
-        };
         let raw_currency = self.currency.trim();
         let currency = if is_pence(raw_currency) {
             gross = pence_to_pounds(gross);
-            tax = pence_to_pounds(tax);
             "GBP".to_string()
         } else {
             fx::normalize(raw_currency).ok_or_else(|| invalid("currencyInvalid"))?
         };
         if !fx::is_supported(&currency) {
             return Err(invalid("currencyUnknown"));
-        }
-        if !(0.0..=gross).contains(&tax) {
-            return Err(invalid("dividendTaxInvalid"));
         }
         let note = self
             .note
@@ -142,11 +146,8 @@ impl InsertStockDividend {
             return Err(invalid("dividendNoteTooLong"));
         }
         Ok(ValidDividend {
-            paid_date,
-            gross,
-            tax,
+            ex_date,
             gross_amount: amount_text(gross),
-            withholding_tax: amount_text(tax),
             currency,
             note,
         })
@@ -157,11 +158,10 @@ impl InsertStockDividend {
 mod tests {
     use super::*;
 
-    fn input(gross: &str, tax: Option<&str>, currency: &str) -> InsertStockDividend {
+    fn input(gross: &str, currency: &str) -> InsertStockDividend {
         InsertStockDividend {
-            paid_date: 1_767_225_600 + 3_600,
+            ex_date: 1_767_225_600 + 3_600,
             gross_amount: gross.into(),
-            withholding_tax: tax.map(str::to_string),
             currency: currency.into(),
             note: None,
         }
@@ -176,98 +176,56 @@ mod tests {
 
     #[test]
     fn a_valid_dividend_is_normalized() {
-        let valid = input(" 12.50 ", Some("1.875"), "usd")
-            .validate()
-            .expect("valid");
-        assert_eq!(
-            valid.paid_date, 1_767_225_600,
-            "UTC midnight of the pay day"
-        );
+        let valid = input(" 12.50 ", "usd").validate().expect("valid");
+        assert_eq!(valid.ex_date, 1_767_225_600, "UTC midnight of the ex-date");
         assert_eq!(valid.gross_amount, "12.5");
-        assert_eq!(valid.withholding_tax, "1.875");
         assert_eq!(valid.currency, "USD");
         assert_eq!(valid.note, None);
     }
 
     #[test]
-    fn a_missing_or_empty_tax_is_zero() {
-        assert_eq!(
-            input("3", None, "EUR").validate().unwrap().withholding_tax,
-            "0"
-        );
-        assert_eq!(
-            input("3", Some(" "), "EUR")
-                .validate()
-                .unwrap()
-                .withholding_tax,
-            "0"
-        );
-    }
-
-    #[test]
     fn the_gross_must_be_positive_and_finite() {
         assert_eq!(
-            key(input("0", None, "USD").validate()),
+            key(input("0", "USD").validate()),
             "validation.dividendGrossPositive"
         );
         assert_eq!(
-            key(input("-1", None, "USD").validate()),
+            key(input("-1", "USD").validate()),
             "validation.dividendGrossPositive"
         );
         for bad in ["NaN", "inf", "1e999", "abc"] {
             assert_eq!(
-                key(input(bad, None, "USD").validate()),
+                key(input(bad, "USD").validate()),
                 "validation.invalidAmount"
             );
         }
     }
 
     #[test]
-    fn the_tax_lies_between_zero_and_the_gross() {
-        assert!(input("10", Some("10"), "USD").validate().is_ok());
-        assert_eq!(
-            key(input("10", Some("10.01"), "USD").validate()),
-            "validation.dividendTaxInvalid"
-        );
-        assert_eq!(
-            key(input("10", Some("-1"), "USD").validate()),
-            "validation.dividendTaxInvalid"
-        );
-        assert_eq!(
-            key(input("10", Some("NaN"), "USD").validate()),
-            "validation.invalidAmount"
-        );
-    }
-
-    #[test]
     fn the_currency_must_be_one_moony_converts() {
         assert_eq!(
-            key(input("1", None, "dollar").validate()),
+            key(input("1", "dollar").validate()),
             "validation.currencyInvalid"
         );
         assert_eq!(
-            key(input("1", None, "XYZ").validate()),
+            key(input("1", "XYZ").validate()),
             "validation.currencyUnknown"
         );
     }
 
     #[test]
     fn pence_are_stored_as_pounds() {
-        let valid = input("1250", Some("125"), "GBX").validate().expect("valid");
+        let valid = input("1250", "GBX").validate().expect("valid");
         assert_eq!(
-            (valid.gross_amount.as_str(), valid.withholding_tax.as_str()),
-            ("12.5", "1.25")
+            (valid.gross_amount.as_str(), valid.currency.as_str()),
+            ("12.5", "GBP")
         );
-        assert_eq!(valid.currency, "GBP");
-        assert_eq!(
-            input("100", None, "GBp").validate().unwrap().currency,
-            "GBP"
-        );
+        assert_eq!(input("100", "GBp").validate().unwrap().currency, "GBP");
     }
 
     #[test]
     fn the_note_is_trimmed_and_bounded() {
-        let mut row = input("1", None, "USD");
+        let mut row = input("1", "USD");
         row.note = Some("  special  ".into());
         assert_eq!(row.validate().unwrap().note.as_deref(), Some("special"));
         row.note = Some("x".repeat(501));
@@ -275,9 +233,9 @@ mod tests {
     }
 
     #[test]
-    fn the_pay_date_must_be_a_calendar_day() {
-        let mut row = input("1", None, "USD");
-        row.paid_date = i64::MAX;
+    fn the_ex_date_must_be_a_calendar_day() {
+        let mut row = input("1", "USD");
+        row.ex_date = i64::MAX;
         assert_eq!(key(row.validate()), "validation.dateInvalid");
     }
 

@@ -310,9 +310,8 @@
     "snoozeSelectionInvalid": "Seleziona da 1 a 1000 pagamenti.",
     "snoozeDaysInvalid": "Scegli un numero di giorni da 1 a 365.",
     "dividendGrossPositive": "L'importo lordo deve essere maggiore di zero",
-    "dividendTaxInvalid": "La ritenuta deve essere compresa tra zero e l'importo lordo",
     "dividendNoteTooLong": "Una nota può contenere al massimo 500 caratteri.",
-    "dividendWithoutPosition": "Non esiste una posizione per {{ticker}}; registra prima l'acquisto."
+    "dividendFromYahoo": "I dividendi di {{ticker}} provengono da Yahoo Finance; non si può aggiungere un dividendo manuale."
   },
   "auth": {
     "wrongPassword": "La password inserita non è corretta. Riprova.",

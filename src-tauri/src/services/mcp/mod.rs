@@ -388,7 +388,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get full details for a specific stock investment including all its transactions and its received dividends (`dividends`: gross, tax and net per payout in their own currency), with value, cost basis and gains in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and named in `missingCurrencies`; `fxEstimated` is true when the cost basis used today's exchange rate because the rate of its day is not stored yet."
+        description = "Get full details for a specific stock investment including all its transactions and its dividends (`dividends`: gross per payout in its own currency, source yahoo or manual), with value, cost basis and gains in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and named in `missingCurrencies`; `fxEstimated` is true when the cost basis used today's exchange rate because the rate of its day is not stored yet."
     )]
     fn investment_detail(
         &self,
@@ -416,7 +416,7 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "Get received stock dividends (one record per payout), newest pay date first, optionally filtered by ticker. grossAmount is the payout's total before withholding tax, withholdingTax the tax withheld from it and netAmount = gross − tax, all in the record's own currency; paidDate is the UTC midnight of the pay date (Unix seconds). These are recorded payouts, not the yearly dividend estimate of investments_list."
+        description = "Get the dividends of the stock positions, newest ex-date first, optionally filtered by ticker. source is \"yahoo\" (Yahoo Finance's gross payout per share, amountPerShare, times the shares held at the end of the day before the ex-date, shares) or \"manual\" (entered by the user for a ticker Yahoo has no dividends for). grossAmount is the payout's total before withholding tax in the record's own currency; exDate is the UTC midnight of the ex-date (Unix seconds). A manual dividend with superseded: true belongs to a ticker Yahoo now has dividends for and counts nowhere. These are payouts, not the yearly dividend estimate of investments_list. Dividends cannot be written over MCP."
     )]
     fn stock_dividends(
         &self,
@@ -711,23 +711,6 @@ impl MoonyMcp {
         let tickers = investments::distinct_tickers(&args);
         let earliest = investments::earliest_date(&args);
         self.bulk_tool_result("stocks", &tickers, earliest, report)
-    }
-
-    #[tool(
-        description = "Record received stock dividends (designed for parsed broker statements). One row per payout: ticker of an existing stock position, paidDate (the pay date, Unix seconds), grossAmount (the payout's total BEFORE withholding tax, not per share), optional withholdingTax (0 ≤ tax ≤ gross) and the currency of both amounts. A dividend never changes the number of shares. When a broker lists the withholding tax as its own row, add it to the dividend of the same ticker and day as withholdingTax instead of sending it separately.\n\nCall this only after presenting the parsed data to the user and receiving their confirmation. Max 200 rows per call. All-or-nothing: an invalid row or a ticker without a position rejects the whole batch with per-row errors. Each successful call records an undoable import batch; pass fileName when known and externalId for the broker's payout identity. Possible duplicates (same position, pay day, gross amount and currency) are skipped and reported; importAnyway records a confirmed second payout."
-    )]
-    fn stock_dividends_create(
-        &self,
-        Parameters(args): Parameters<investments::StockDividendsCreateArgs>,
-    ) -> Result<CallToolResult, McpError> {
-        if let Err(e) = check_bulk_size(args.dividends.len()) {
-            return to_result(Err(e));
-        }
-        // A dividend changes no value or history: nothing is queued for a rebuild.
-        let report = self
-            .db
-            .with_conn_mut(|conn| investments::stock_dividends_create(conn, &args));
-        self.bulk_tool_result("stocks", &[], None, report)
     }
 
     #[tool(

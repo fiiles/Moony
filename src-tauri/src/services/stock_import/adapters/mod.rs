@@ -98,10 +98,6 @@ pub(super) fn base_config(source: &str) -> StockImportConfig {
         transforms: StockImportTransforms::default(),
         instrument_overrides: Vec::new(),
         import_anyway_lines: Vec::new(),
-        amount_column: None,
-        tax_column: None,
-        tax_currency_column: None,
-        cash_currency: None,
     }
 }
 
@@ -409,11 +405,7 @@ mod tests {
         rows: usize,
         buys: usize,
         sells: usize,
-        /// Dividend rows that read (their taxes end skipped, paired).
-        dividends: usize,
         skipped: usize,
-        /// The account currency the user names in the review step (XTB's file has none).
-        cash_currency: Option<&'static str>,
         first: Trade,
     }
 
@@ -428,9 +420,7 @@ mod tests {
                 rows: 11,
                 buys: 4,
                 sells: 2,
-                dividends: 1,
-                skipped: 4,
-                cash_currency: Some("USD"),
+                skipped: 5,
                 first: Trade {
                     line: 3,
                     day: 1704326400, // 04.01.2024
@@ -451,9 +441,7 @@ mod tests {
                 rows: 12,
                 buys: 4,
                 sells: 3,
-                dividends: 1,
-                skipped: 4,
-                cash_currency: None,
+                skipped: 5,
                 first: Trade {
                     line: 3,
                     day: 1702857600, // 2023-12-18
@@ -474,9 +462,7 @@ mod tests {
                 rows: 7,
                 buys: 5,
                 sells: 2,
-                dividends: 0,
                 skipped: 0,
-                cash_currency: None,
                 first: Trade {
                     line: 2,
                     day: 1705276800, // 15-01-2024
@@ -497,9 +483,7 @@ mod tests {
                 rows: 9,
                 buys: 4,
                 sells: 2,
-                dividends: 0,
                 skipped: 3,
-                cash_currency: None,
                 first: Trade {
                     line: 3,
                     day: 1684713600, // 20230522
@@ -520,9 +504,7 @@ mod tests {
                 rows: 7,
                 buys: 4,
                 sells: 2,
-                dividends: 1,
-                skipped: 0,
-                cash_currency: None,
+                skipped: 1,
                 first: Trade {
                     line: 2,
                     day: 1678752000, // 2023-03-14
@@ -543,9 +525,7 @@ mod tests {
                 rows: 7,
                 buys: 4,
                 sells: 2,
-                dividends: 1,
-                skipped: 0,
-                cash_currency: None,
+                skipped: 1,
                 first: Trade {
                     line: 2,
                     day: 1705276800, // 15.1.2024
@@ -592,12 +572,10 @@ mod tests {
             }
 
             // The ready configuration reads the whole file without an error.
-            let mut config = inspection
+            let config = inspection
                 .config
-                .clone()
+                .as_ref()
                 .unwrap_or_else(|| panic!("{name}: no ready config"));
-            config.cash_currency = fixture.cash_currency.map(str::to_string);
-            let config = &config;
             assert_eq!(config.source, fixture.source, "{name}");
             config.validate().unwrap_or_else(|e| panic!("{name}: {e}"));
             assert!(
@@ -609,11 +587,6 @@ mod tests {
             let back: StockImportConfig =
                 serde_json::from_str(&json).unwrap_or_else(|e| panic!("{name}: {e}"));
             assert_eq!(&back, config, "{name}");
-            assert_eq!(
-                inspection.config.as_ref().map(|c| c.source.as_str()),
-                Some(fixture.source),
-                "{name}"
-            );
 
             let parsed = parse_file(&bytes, config).unwrap_or_else(|e| panic!("{name}: {e}"));
             assert!(parsed.errors.is_empty(), "{name}: {:?}", parsed.errors);
@@ -633,14 +606,9 @@ mod tests {
             assert_eq!(buys, fixture.buys, "{name}: purchases");
             assert_eq!(parsed.trades.len() - buys, fixture.sells, "{name}: sales");
             assert_eq!(
-                parsed.dividends.len(),
-                fixture.dividends,
-                "{name}: dividends"
-            );
-            assert_eq!(
-                parsed.trades.len() + parsed.dividends.len() + parsed.skipped.len(),
+                parsed.trades.len() + parsed.skipped.len(),
                 fixture.rows,
-                "{name}: every row is a trade, a dividend or skipped"
+                "{name}: every row is a trade or skipped"
             );
 
             let want = &fixture.first;
@@ -909,234 +877,5 @@ mod tests {
         assert_eq!(symbols, ["AAPL", "AAPL", "NOTATICKER123"]);
         assert_eq!(parsed.trades[1].direction, TradeDirection::Sell);
         assert_eq!(parsed.skipped.len(), 1, "the dividend");
-    }
-
-    // ---- dividends -----------------------------------------------------------
-
-    fn inspect_text(text: &str) -> crate::services::stock_import::types::StockCsvInspection {
-        inspect(
-            text.as_bytes(),
-            "d.csv",
-            &StockCsvInspectOptions::default(),
-            &[],
-        )
-        .expect("inspect")
-    }
-
-    #[test]
-    fn trading212_dividends_are_shares_times_the_gross_per_share_with_the_tax_of_the_row() {
-        let bytes = fixture_bytes("stocks-trading212.csv");
-        let i = inspect(&bytes, "t.csv", &StockCsvInspectOptions::default(), &[]).expect("inspect");
-        let config = i.config.expect("config");
-        // `Total` is the net amount in the account currency: the amount column stays unset.
-        assert_eq!(config.amount_column, None);
-        assert_eq!(config.tax_column, Some(13));
-        assert_eq!(config.tax_currency_column, Some(14));
-        let parsed = parse_file(&bytes, &config).expect("parse");
-        assert_eq!(parsed.dividends.len(), 1);
-        let d = &parsed.dividends[0];
-        assert_eq!(
-            (
-                d.line,
-                d.day,
-                d.instrument_key.as_str(),
-                d.currency.as_str()
-            ),
-            (8, 1705276800, "isin:US0378331005", "USD")
-        );
-        assert_eq!(
-            (d.gross, d.tax),
-            (0.48, 0.07),
-            "2 shares at 0.24; tax in USD"
-        );
-        assert_eq!(parsed.unpaired_taxes, 0);
-    }
-
-    #[test]
-    fn xtb_dividends_use_the_amount_column_and_the_account_currency_the_user_names() {
-        let bytes = fixture_bytes("stocks-xtb.csv");
-        let i = inspect(&bytes, "x.csv", &StockCsvInspectOptions::default(), &[]).expect("inspect");
-        let mut config = i.config.expect("config");
-        assert_eq!(config.amount_column, Some(5));
-        assert_eq!(config.cash_currency, None);
-
-        // Without it the dividend and its tax row ask for the account currency.
-        let parsed = parse_file(&bytes, &config).expect("parse");
-        assert!(parsed.needs_cash_currency);
-        assert!(parsed.dividends.is_empty());
-        assert_eq!(parsed.errors.len(), 2);
-
-        config.cash_currency = Some("USD".into());
-        let parsed = parse_file(&bytes, &config).expect("parse");
-        assert!(!parsed.needs_cash_currency && parsed.errors.is_empty());
-        let d = &parsed.dividends[0];
-        assert_eq!(
-            (
-                d.line,
-                d.symbol.as_deref(),
-                d.gross,
-                d.tax,
-                d.currency.as_str()
-            ),
-            (6, Some("AAPL"), 0.72, 0.11, "USD")
-        );
-        assert_eq!(d.external_id.as_deref(), Some("610000005"));
-        assert!(parsed
-            .skipped
-            .iter()
-            .any(|m| m.line == 7 && m.key == "importWizard.row.taxPaired"));
-    }
-
-    const IBKR_CASH: &str = "\
-\"Symbol\",\"ISIN\",\"Date/Time\",\"Type\",\"Amount\",\"CurrencyPrimary\",\"TransactionID\",\"Description\"
-\"AAPL\",\"US0378331005\",\"20230810;093000\",\"Dividends\",\"12.00\",\"USD\",\"8001\",\"AAPL(US0378331005) CASH DIVIDEND USD 0.24 PER SHARE\"
-\"AAPL\",\"US0378331005\",\"20230810;093000\",\"Withholding Tax\",\"-1.80\",\"USD\",\"8002\",\"AAPL(US0378331005) CASH DIVIDEND USD 0.24 PER SHARE - US TAX\"
-\"AAPL\",\"US0378331005\",\"20230811;093000\",\"Payment In Lieu Of Dividends\",\"3.00\",\"USD\",\"8003\",\"PAYMENT IN LIEU\"
-\"AAPL\",\"US0378331005\",\"20230811;093000\",\"Withholding Tax\",\"0.30\",\"USD\",\"8004\",\"REVERSAL\"
-\"\",\"\",\"20230831;000000\",\"Broker Interest Received\",\"0.50\",\"USD\",\"8005\",\"USD CREDIT INT\"
-";
-
-    #[test]
-    fn an_ibkr_cash_transactions_section_is_read_for_its_dividends_and_taxes() {
-        let i = inspect_text(IBKR_CASH);
-        assert_eq!(i.detected_source.as_deref(), Some(SOURCE_IBKR));
-        let config = i.config.expect("config");
-        assert_eq!(config.source, SOURCE_IBKR);
-        assert_eq!(
-            (
-                config.date_column,
-                config.amount_column,
-                config.external_id_column
-            ),
-            (2, Some(4), Some(6))
-        );
-        assert_eq!(config.date_format, "%Y%m%d");
-        let parsed = parse_file(IBKR_CASH.as_bytes(), &config).expect("parse");
-        assert_eq!(parsed.errors, []);
-        assert_eq!(parsed.dividends.len(), 2);
-        assert_eq!(
-            (parsed.dividends[0].gross, parsed.dividends[0].tax),
-            (12.0, 1.8)
-        );
-        assert_eq!(parsed.dividends[0].day, 1691625600);
-        assert_eq!(parsed.dividends[0].external_id.as_deref(), Some("8001"));
-        // A reversal row (positive) cancels the charge of its day.
-        assert_eq!(
-            (parsed.dividends[1].gross, parsed.dividends[1].tax),
-            (3.0, 0.3)
-        );
-        assert_eq!(
-            parsed
-                .skipped
-                .iter()
-                .map(|m| (m.line, m.key.as_str()))
-                .collect::<Vec<_>>(),
-            [
-                (3, "importWizard.row.taxPaired"),
-                (5, "importWizard.row.taxPaired"),
-                (6, "importWizard.row.notATrade"),
-            ]
-        );
-        assert_eq!(parsed.total_rows, 5);
-    }
-
-    #[test]
-    fn ibkr_date_times_with_a_comma_read_and_the_trades_section_is_still_the_trades_section() {
-        let text = IBKR_CASH
-            .replace("20230810;093000", "2023-08-10, 09:30:00")
-            .replace("20230811;093000", "2023-08-11, 09:30:00")
-            .replace("20230831;000000", "2023-08-31, 00:00:00");
-        let i = inspect_text(&text);
-        let config = i.config.expect("config");
-        assert_eq!(config.date_format, "%Y-%m-%d");
-        let parsed = parse_file(text.as_bytes(), &config).expect("parse");
-        assert_eq!(parsed.errors, []);
-        assert_eq!(parsed.dividends[0].day, 1691625600);
-
-        // Settle or report dates work as well, without a time.
-        let settle = IBKR_CASH.replace("Date/Time", "SettleDate");
-        assert_eq!(
-            inspect_text(&settle).detected_source.as_deref(),
-            Some(SOURCE_IBKR)
-        );
-        // With a TradePrice it is the Trades section whatever else it has.
-        let trades = fixture_bytes("stocks-ibkr.csv");
-        let i = inspect(&trades, "i.csv", &StockCsvInspectOptions::default(), &[]).unwrap();
-        assert_eq!(i.config.expect("config").amount_column, None);
-    }
-
-    const DEGIRO_STATEMENT: &str = "\
-Date,Time,Value date,Product,ISIN,Description,FX,Change,,Balance,,Order Id
-15-03-2024,06:10,15-03-2024,APPLE INC,US0378331005,Dividend,,USD,12.00,USD,112.00,
-15-03-2024,06:10,15-03-2024,APPLE INC,US0378331005,Dividend Tax,,USD,-1.80,USD,110.20,
-14-03-2024,09:31,14-03-2024,APPLE INC,US0378331005,Koop 5 @ 170 USD,,USD,-850.00,USD,100.00,6f1c2c9a-4a8e-4d5b-9c1e-2b7a1d9e0f11
-13-03-2024,08:00,13-03-2024,,,Deposit,,EUR,500.00,EUR,950.00,
-";
-
-    #[test]
-    fn a_degiro_account_statement_is_read_for_its_dividends_only() {
-        let i = inspect_text(DEGIRO_STATEMENT);
-        assert_eq!(i.detected_source.as_deref(), Some(SOURCE_DEGIRO));
-        let config = i.config.expect("config");
-        assert!(config.transforms.cash_rows_only);
-        assert_eq!(
-            (
-                config.amount_column,
-                config.currency_column,
-                config.type_column
-            ),
-            (Some(8), Some(7), Some(5))
-        );
-        assert_eq!(config.date_format, "%d-%m-%Y");
-        let parsed = parse_file(DEGIRO_STATEMENT.as_bytes(), &config).expect("parse");
-        assert_eq!(parsed.errors, []);
-        assert_eq!(
-            parsed.trades.len(),
-            0,
-            "its trades come from the Transactions export"
-        );
-        assert_eq!(parsed.dividends.len(), 1);
-        let d = &parsed.dividends[0];
-        assert_eq!(
-            (
-                d.instrument_key.as_str(),
-                d.gross,
-                d.tax,
-                d.currency.as_str()
-            ),
-            ("isin:US0378331005", 12.0, 1.8, "USD")
-        );
-        assert_eq!(parsed.skipped.len(), 3);
-        assert_eq!(parsed.total_rows, 4);
-        // The Transactions export is still its own thing.
-        let bytes = fixture_bytes("stocks-degiro.csv");
-        let i = inspect(&bytes, "d.csv", &StockCsvInspectOptions::default(), &[]).unwrap();
-        assert!(!i.config.expect("config").transforms.cash_rows_only);
-    }
-
-    #[test]
-    fn the_moony_table_reads_dividends_in_english_and_czech() {
-        let en = "Date,Type,Ticker,Name,Quantity,Price,Currency,Amount,Withholding tax\n\
-2024-01-10,buy,AAPL,Apple,10,150,USD,,\n\
-2024-03-15,dividend,AAPL,Apple,,,USD,12.5,1.5\n";
-        let config = inspect_text(en).config.expect("config");
-        let parsed = parse_file(en.as_bytes(), &config).expect("parse");
-        assert_eq!(parsed.errors, []);
-        assert_eq!(
-            (parsed.dividends[0].gross, parsed.dividends[0].tax),
-            (12.5, 1.5)
-        );
-
-        let cs = "Datum;Typ;Symbol;Název;Počet;Cena;Měna;Částka;Srážková daň\n\
-10.01.2024;nákup;AAPL;Apple;10;150;USD;;\n\
-15.03.2024;dividenda;AAPL;Apple;;;USD;12,5;1,5\n";
-        let config = inspect_text(cs).config.expect("config");
-        assert_eq!(config.decimal_separator, ",");
-        let parsed = parse_file(cs.as_bytes(), &config).expect("parse");
-        assert_eq!(parsed.errors, []);
-        assert_eq!(
-            (parsed.dividends[0].gross, parsed.dividends[0].tax),
-            (12.5, 1.5)
-        );
     }
 }

@@ -42,6 +42,7 @@ const TAIL_TOLERANCE: i64 = 3 * DAY;
 const CURRENCY_COLUMNS: &[(&str, &str)] = &[
     ("investment_transactions", "currency"),
     ("investment_dividends", "currency"),
+    ("stock_dividend_events", "currency"),
     ("crypto_transactions", "currency"),
     ("bank_transactions", "currency"),
     ("bank_accounts", "currency"),
@@ -77,8 +78,9 @@ const CURRENCY_COLUMNS: &[(&str, &str)] = &[
 /// day. Only these decide how far back the rate history has to reach.
 const DATED_CURRENCY_FACTS: &[(&str, &str, &str)] = &[
     ("investment_transactions", "currency", "transaction_date"),
-    // A received dividend is reported at its pay day's rate
-    ("investment_dividends", "currency", "paid_date"),
+    // A received dividend is reported at its ex-date's rate
+    ("investment_dividends", "currency", "ex_date"),
+    ("stock_dividend_events", "currency", "ex_date"),
     ("crypto_transactions", "currency", "transaction_date"),
     ("bank_transactions", "currency", "booking_date"),
     // A balance record holds from its day, in its own currency (the savings of a past day)
@@ -227,6 +229,7 @@ const OPEN_POSITION: &str = "CAST(quantity AS REAL) > 0";
 const CONVERTED_CURRENCY_SOURCES: &[(&str, &str, &str, &str)] = &[
     ("investment_transactions", "currency", "", ""),
     ("investment_dividends", "currency", "", ""),
+    ("stock_dividend_events", "currency", "", ""),
     ("crypto_transactions", "currency", "", ""),
     ("bank_transactions", "currency", "", ""),
     // The savings of a past day are the newest record's amount in the record's currency

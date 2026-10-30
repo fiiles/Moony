@@ -843,44 +843,49 @@ export interface InvestmentWithDetails {
   tags: StockTag[];
 }
 
+/** Where a dividend comes from (ADR 0022): Yahoo Finance, or entered by hand. */
+export type StockDividendSource = 'yahoo' | 'manual';
+
 /**
- * A received stock dividend, one per payout (Rust `models::stock_dividends`, ADR 0022). The
- * amounts are the payout's totals in `currency`: `grossAmount` before withholding tax,
- * `netAmount` = gross − tax. `paidDate` is the UTC midnight of the pay date.
+ * A dividend of a stock position (Rust `models::stock_dividends`, ADR 0022). `grossAmount` is the
+ * payout's total before withholding tax in `currency`; `exDate` is the UTC midnight of the
+ * ex-date. A Yahoo payout is `amountPerShare` × `shares` (held at the end of the day before);
+ * a manual one has neither. A `superseded` manual dividend belongs to a ticker Yahoo has
+ * dividends for: it is shown but counts nowhere.
  */
 export interface StockDividend {
   id: string;
   investmentId: string;
-  paidDate: number;
+  source: StockDividendSource;
+  exDate: number;
+  amountPerShare: string | null;
+  shares: string | null;
   grossAmount: string;
-  withholdingTax: string;
-  netAmount: string;
   currency: string;
   note: string | null;
-  createdAt: number;
+  superseded: boolean;
 }
 
-/** A dividend to record or the new values of one; the backend validates (D8). */
+/** A dividend entered by hand, or its new values; refused when Yahoo has the ticker's dividends. */
 export interface InsertStockDividend {
-  paidDate: number;
+  exDate: number;
   grossAmount: string;
-  /** Absent or empty: no tax. */
-  withholdingTax?: string | null;
   /** ISO code; `GBX` amounts are pence and are stored in GBP. */
   currency: string;
   note?: string | null;
 }
 
 /**
- * A position's dividends, newest first. `totalGross`/`totalNet` sum every payout converted to
- * `currency` at its pay day's rate; `null` when payouts exist but none could be converted.
+ * A position's dividends, newest first. `totalGross` sums the counted payouts converted to
+ * `currency` at each ex-date's rate; `null` when payouts exist but none could be converted.
+ * `fromYahoo`: Yahoo Finance has dividends for the ticker, so none can be entered by hand.
  */
 export interface StockDividendList {
   currency: string;
   fxQuality: ConversionQuality;
   items: StockDividend[];
   totalGross: string | null;
-  totalNet: string | null;
+  fromYahoo: boolean;
 }
 
 export interface CryptoPositions {
@@ -2379,10 +2384,7 @@ export interface Milestone {
 // ============================================================================
 
 export type StockTradeDirection = 'buy' | 'sell';
-/** `dividend` / `withholdingTax`: the row is a dividend payout or a tax withheld from one (spec D11). */
-export type StockTypeValueAction = 'buy' | 'sell' | 'skip' | 'dividend' | 'withholdingTax';
-/** What kind of record a file row is; `trade` for every row that is neither of the other two. */
-export type StockRowKind = 'trade' | 'dividend' | 'withholdingTax';
+export type StockTypeValueAction = 'buy' | 'sell' | 'skip';
 export type StockCurrencyMode = 'column' | 'fixed' | 'instrument';
 export type StockDirectionMode = 'typeColumn' | 'quantitySign';
 
@@ -2401,8 +2403,6 @@ export interface StockImportTransforms {
   assetClassAllowed?: string[];
   /** Degiro: the broker's id is the order's, shared by its fills (kept by a remembered format). */
   brokerIdPerOrder?: boolean;
-  /** Degiro account statement: buy and sell rows are skipped (the trades come from the Transactions export). */
-  cashRowsOnly?: boolean;
 }
 
 export interface StockInstrumentOverride {
@@ -2468,14 +2468,6 @@ export interface StockImportConfig {
   transforms?: StockImportTransforms;
   instrumentOverrides?: StockInstrumentOverride[];
   importAnywayLines?: number[];
-  /** The row's total amount: the gross of a dividend, the tax of a tax row (spec D12). */
-  amountColumn?: number | null;
-  /** A tax withheld from the dividend of the same row. */
-  taxColumn?: number | null;
-  /** The currency of `taxColumn` when it differs from the row's. */
-  taxCurrencyColumn?: number | null;
-  /** The currency of dividend and tax amounts when the file names none (XTB: the account's). */
-  cashCurrency?: string | null;
 }
 
 export interface StockCsvInspectOptions {
@@ -2533,7 +2525,6 @@ export interface StockRowMessage {
 
 export interface StockPreviewRow {
   line: number;
-  kind: StockRowKind;
   day: number | null;
   direction: StockTradeDirection | null;
   instrumentKey: string | null;
@@ -2541,10 +2532,6 @@ export interface StockPreviewRow {
   quantity: string | null;
   price: string | null;
   currency: string | null;
-  /** Decimal text: the gross of a dividend row, the (signed) tax of a tax row. */
-  amount: string | null;
-  /** Decimal text: the tax paired with a dividend row. */
-  tax: string | null;
   status: StockRowStatus;
   message: StockRowMessage | null;
 }
@@ -2558,8 +2545,6 @@ export interface StockImportInstrument {
   name: string | null;
   currency: string | null;
   tradeCount: number;
-  /** Dividend rows of this instrument. */
-  dividendCount: number;
   ticker: string | null;
   status: StockInstrumentStatus;
   positionCurrency: string | null;
@@ -2573,10 +2558,6 @@ export interface StockImportCounts {
   errors: number;
   /** Rows that will be imported converted to post-split units (D13). */
   converted: number;
-  /** Dividend rows that will import (also counted in `willImport`). */
-  dividends: number;
-  /** Tax rows without a dividend / in another currency than it: warnings (D13). */
-  unpairedTaxes: number;
 }
 
 export interface StockImportPreview {
@@ -2585,8 +2566,6 @@ export interface StockImportPreview {
   counts: StockImportCounts;
   dateRange: CsvDateRange | null;
   hasFeeColumn: boolean;
-  /** A dividend or tax row has no currency and the config has no `cashCurrency` (D12). */
-  needsCashCurrency: boolean;
 }
 
 export interface StockInstrumentQuery {
@@ -2617,10 +2596,7 @@ export interface StockInstrumentResolution {
 
 export interface StockImportResult {
   batchId: string | null;
-  /** Trades and dividends written. */
   imported: number;
-  /** Dividends written (part of `imported`). */
-  dividends: number;
   duplicates: number;
   skipped: number;
   errors: number;

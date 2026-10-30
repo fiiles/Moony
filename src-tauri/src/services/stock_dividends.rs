@@ -1,18 +1,14 @@
 //! Received stock dividends (spec 2026-10-30-stock-dividends-design, ADR 0022).
 //!
-//! The one writer of `investment_dividends` for the detail page, the CSV import and MCP
-//! (ADR 0007). A dividend is a payout of a position: its gross total, the tax withheld from it
-//! and their currency on the pay day. It never touches `investment_transactions`, so the
-//! quantity, cost basis, gains and history of the position stay what its buys and sells make
-//! them.
+//! Yahoo Finance is the source. `stock_dividend_events` keeps a ticker's payouts per share by
+//! ex-date (`price_api` records them); a position's payout is that amount × the shares it held at
+//! the end of the day before the ex-date, derived on every read, so a backdated trade corrects
+//! it. A payout the user enters by hand (`investment_dividends`) is only for a ticker Yahoo has no
+//! dividends for: once Yahoo has any, the manual ones are shown as superseded and left out of
+//! every sum, and no new one can be entered. Every amount is gross, in its own currency.
 //!
-//! Duplicates (import and MCP): rule 1, a stored dividend with the same broker id (`external_id`)
-//! is the same payout, certainly; rule 2, a stored dividend of the same position, pay day,
-//! numeric gross and currency is possibly the same payout. Each stored dividend absorbs at most
-//! one incoming row, so a file with two equal payouts imports the second after the first was
-//! matched.
-
-use std::collections::HashMap;
+//! Nothing here touches `investment_transactions`: the quantity, cost basis, gains and history
+//! of a position stay what its buys and sells make them.
 
 use rusqlite::{Connection, OptionalExtension};
 use uuid::Uuid;
@@ -20,104 +16,282 @@ use uuid::Uuid;
 use crate::error::{AppError, Result};
 use crate::models::fx::ConversionQuality;
 use crate::models::stock_dividends::amount_text;
-use crate::models::{InsertStockDividend, StockDividend, StockDividendList, ValidDividend};
-use crate::services::dedup::canonical_amount;
+use crate::models::{
+    InsertStockDividend, StockDividend, StockDividendList, StockDividendSource, ValidDividend,
+};
 use crate::services::fx::{History, Quality, Quotes};
-use crate::services::investments::{BulkRowIssue, BulkWriteReport, NewStockImportBatch};
+use crate::services::investments::held_quantity_at;
 use crate::services::reporting::money_in_currency;
 
-const COLUMNS: &str =
-    "id, investment_id, paid_date, gross_amount, withholding_tax, currency, note, created_at";
+const DAY: i64 = 86_400;
 
-fn read_row(row: &rusqlite::Row<'_>) -> rusqlite::Result<StockDividend> {
-    let gross: String = row.get(3)?;
-    let tax: String = row.get(4)?;
-    let net = match (gross.parse::<f64>(), tax.parse::<f64>()) {
-        (Ok(g), Ok(t)) => amount_text(g - t),
-        _ => gross.clone(),
-    };
-    Ok(StockDividend {
-        id: row.get(0)?,
-        investment_id: row.get(1)?,
-        paid_date: row.get(2)?,
-        gross_amount: gross,
-        withholding_tax: tax,
-        net_amount: net,
-        currency: row.get(5)?,
-        note: row.get(6)?,
-        created_at: row.get(7)?,
+/// One per-share payout Yahoo reported for a ticker.
+#[derive(Debug, Clone, PartialEq)]
+pub struct DividendEvent {
+    /// UTC midnight of the ex-date (the exchange's calendar day).
+    pub ex_date: i64,
+    /// Per share, in `currency` (pence already converted to pounds).
+    pub amount: f64,
+    pub currency: String,
+}
+
+/// Store the events of one fetch: each `(ticker, ex_date)` is replaced by the newer answer, and
+/// the coverage says the ticker's events are known from `covered_from` on.
+pub fn record_events(
+    conn: &Connection,
+    ticker: &str,
+    events: &[DividendEvent],
+    covered_from: i64,
+    now: i64,
+) -> Result<()> {
+    let ticker = ticker.trim().to_uppercase();
+    let tx = conn.unchecked_transaction()?;
+    for event in events {
+        if !(event.amount.is_finite() && event.amount > 0.0) {
+            continue;
+        }
+        tx.execute(
+            "INSERT INTO stock_dividend_events (ticker, ex_date, amount, currency, fetched_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)
+             ON CONFLICT(ticker, ex_date) DO UPDATE SET
+               amount = excluded.amount, currency = excluded.currency,
+               fetched_at = excluded.fetched_at",
+            rusqlite::params![
+                ticker,
+                event.ex_date.div_euclid(DAY) * DAY,
+                amount_text(event.amount),
+                event.currency,
+                now
+            ],
+        )?;
+    }
+    tx.execute(
+        "INSERT INTO stock_dividend_coverage (ticker, covered_from, fetched_at)
+         VALUES (?1, ?2, ?3)
+         ON CONFLICT(ticker) DO UPDATE SET
+           covered_from = MIN(covered_from, excluded.covered_from),
+           fetched_at = excluded.fetched_at",
+        rusqlite::params![ticker, covered_from.div_euclid(DAY) * DAY, now],
+    )?;
+    tx.commit()?;
+    Ok(())
+}
+
+/// The day from which the ticker's Yahoo events must be fetched, or `None` when the stored ones
+/// are fresh enough: never fetched, fetched more than `max_age` seconds ago, or covering less
+/// than the history from `first_day` (a backdated buy).
+pub fn events_fetch_from(
+    conn: &Connection,
+    ticker: &str,
+    first_day: i64,
+    now: i64,
+    max_age: i64,
+) -> Result<Option<i64>> {
+    let first_day = first_day.div_euclid(DAY) * DAY;
+    let coverage: Option<(i64, i64)> = conn
+        .query_row(
+            "SELECT covered_from, fetched_at FROM stock_dividend_coverage WHERE ticker = ?1",
+            [ticker.trim().to_uppercase()],
+            |row| Ok((row.get(0)?, row.get(1)?)),
+        )
+        .optional()?;
+    Ok(match coverage {
+        Some((from, fetched_at)) if from <= first_day && now - fetched_at < max_age => None,
+        Some((from, _)) => Some(from.min(first_day)),
+        None => Some(first_day),
     })
 }
 
-/// One dividend by id.
+/// Whether Yahoo Finance has dividends for the ticker.
+pub fn has_yahoo_dividends(conn: &Connection, ticker: &str) -> Result<bool> {
+    Ok(conn.query_row(
+        "SELECT EXISTS(SELECT 1 FROM stock_dividend_events WHERE ticker = ?1)",
+        [ticker.trim().to_uppercase()],
+        |row| row.get(0),
+    )?)
+}
+
+fn ticker_of(conn: &Connection, investment_id: &str) -> Result<String> {
+    conn.query_row(
+        "SELECT ticker FROM stock_investments WHERE id = ?1",
+        [investment_id],
+        |row| row.get(0),
+    )
+    .optional()?
+    .ok_or_else(|| AppError::NotFound("Investment not found".into()))
+}
+
+/// The Yahoo payouts of a position: every event after its first transaction up to `today`
+/// with shares held the day before; newest first.
+fn yahoo_payouts(
+    conn: &Connection,
+    investment_id: &str,
+    ticker: &str,
+    today: i64,
+) -> Result<Vec<StockDividend>> {
+    let first_day: Option<i64> = conn.query_row(
+        "SELECT MIN(transaction_date) FROM investment_transactions WHERE investment_id = ?1",
+        [investment_id],
+        |row| row.get(0),
+    )?;
+    let Some(first_day) = first_day else {
+        return Ok(Vec::new());
+    };
+    let mut stmt = conn.prepare(
+        "SELECT ex_date, amount, currency FROM stock_dividend_events
+         WHERE ticker = ?1 AND ex_date > ?2 AND ex_date <= ?3
+         ORDER BY ex_date DESC",
+    )?;
+    let events = stmt
+        .query_map(
+            rusqlite::params![ticker, first_day.div_euclid(DAY) * DAY, today],
+            |row| {
+                Ok((
+                    row.get::<_, i64>(0)?,
+                    row.get::<_, String>(1)?,
+                    row.get::<_, String>(2)?,
+                ))
+            },
+        )?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    let mut payouts = Vec::new();
+    for (ex_date, amount, currency) in events {
+        let Ok(per_share) = amount.parse::<f64>() else {
+            continue;
+        };
+        let shares = held_quantity_at(
+            conn,
+            "investment_transactions",
+            investment_id,
+            ex_date - DAY,
+        )?;
+        if shares <= 0.0 {
+            continue;
+        }
+        payouts.push(StockDividend {
+            id: format!("yahoo:{ticker}:{ex_date}"),
+            investment_id: investment_id.to_string(),
+            source: StockDividendSource::Yahoo,
+            ex_date,
+            amount_per_share: Some(amount),
+            shares: Some(amount_text(shares)),
+            gross_amount: amount_text(per_share * shares),
+            currency,
+            note: None,
+            superseded: false,
+        });
+    }
+    Ok(payouts)
+}
+
+const MANUAL_COLUMNS: &str = "id, investment_id, ex_date, gross_amount, currency, note";
+
+fn read_manual(row: &rusqlite::Row<'_>) -> rusqlite::Result<StockDividend> {
+    Ok(StockDividend {
+        id: row.get(0)?,
+        investment_id: row.get(1)?,
+        source: StockDividendSource::Manual,
+        ex_date: row.get(2)?,
+        amount_per_share: None,
+        shares: None,
+        gross_amount: row.get(3)?,
+        currency: row.get(4)?,
+        note: row.get(5)?,
+        superseded: false,
+    })
+}
+
+fn manual_dividends(conn: &Connection, investment_id: &str) -> Result<Vec<StockDividend>> {
+    let mut stmt = conn.prepare(&format!(
+        "SELECT {MANUAL_COLUMNS} FROM investment_dividends WHERE investment_id = ?1
+         ORDER BY ex_date DESC, created_at DESC, rowid DESC"
+    ))?;
+    let rows = stmt.query_map([investment_id], read_manual)?;
+    Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+}
+
+/// One manual dividend by id.
 pub fn get(conn: &Connection, id: &str) -> Result<StockDividend> {
     conn.query_row(
-        &format!("SELECT {COLUMNS} FROM investment_dividends WHERE id = ?1"),
+        &format!("SELECT {MANUAL_COLUMNS} FROM investment_dividends WHERE id = ?1"),
         [id],
-        read_row,
+        read_manual,
     )
     .optional()?
     .ok_or_else(|| AppError::NotFound("Dividend not found".into()))
 }
 
-/// The dividends of a position, newest pay day first.
-pub fn for_investment(conn: &Connection, investment_id: &str) -> Result<Vec<StockDividend>> {
-    let mut stmt = conn.prepare(&format!(
-        "SELECT {COLUMNS} FROM investment_dividends WHERE investment_id = ?1
-         ORDER BY paid_date DESC, created_at DESC, rowid DESC"
-    ))?;
-    let rows = stmt.query_map([investment_id], read_row)?;
-    Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
-}
-
-/// Every dividend, newest pay day first, optionally of one ticker only, at most `limit`.
-pub fn all(
+/// Every dividend of a position, newest ex-date first: Yahoo's payouts when Yahoo has dividends
+/// for the ticker (the manual ones then follow as superseded), else the manual ones.
+pub fn for_investment(
     conn: &Connection,
-    ticker: Option<&str>,
-    limit: i64,
-) -> Result<Vec<(String, StockDividend)>> {
-    let sql = format!(
-        "SELECT i.ticker, {} FROM investment_dividends d
-         JOIN stock_investments i ON i.id = d.investment_id
-         WHERE ?1 IS NULL OR i.ticker = ?1
-         ORDER BY d.paid_date DESC, d.created_at DESC, d.rowid DESC LIMIT ?2",
-        COLUMNS
-            .split(", ")
-            .map(|c| format!("d.{c}"))
-            .collect::<Vec<_>>()
-            .join(", ")
-    );
-    let mut stmt = conn.prepare(&sql)?;
-    let ticker = ticker.map(str::to_uppercase);
-    let rows = stmt.query_map(rusqlite::params![ticker, limit], |row| {
-        let ticker: String = row.get(0)?;
-        let gross: String = row.get(4)?;
-        let tax: String = row.get(5)?;
-        let net = match (gross.parse::<f64>(), tax.parse::<f64>()) {
-            (Ok(g), Ok(t)) => amount_text(g - t),
-            _ => gross.clone(),
-        };
-        Ok((
-            ticker,
-            StockDividend {
-                id: row.get(1)?,
-                investment_id: row.get(2)?,
-                paid_date: row.get(3)?,
-                gross_amount: gross,
-                withholding_tax: tax,
-                net_amount: net,
-                currency: row.get(6)?,
-                note: row.get(7)?,
-                created_at: row.get(8)?,
-            },
-        ))
-    })?;
-    Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
+    investment_id: &str,
+    today: i64,
+) -> Result<(Vec<StockDividend>, bool)> {
+    let ticker = ticker_of(conn, investment_id)?;
+    let from_yahoo = has_yahoo_dividends(conn, &ticker)?;
+    let mut items = if from_yahoo {
+        yahoo_payouts(conn, investment_id, &ticker, today)?
+    } else {
+        Vec::new()
+    };
+    let mut manual = manual_dividends(conn, investment_id)?;
+    for dividend in &mut manual {
+        dividend.superseded = from_yahoo;
+    }
+    items.extend(manual);
+    items.sort_by_key(|d| std::cmp::Reverse(d.ex_date));
+    Ok((items, from_yahoo))
 }
 
-/// The dividends of a position with their gross and net sums in `report_currency`: every
-/// payout converted at its pay day's rate (ten-day walk-back; day quotes only up to `today`),
-/// else at `current` (flagged estimated), else left out and named in the quality. Never 1:1.
+/// A counted payout of a position, for reports (the GIPS return engine): never a superseded
+/// manual one.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Payout {
+    pub investment_id: String,
+    pub ticker: String,
+    pub ex_date: i64,
+    /// Gross total in `currency`.
+    pub gross: f64,
+    pub currency: String,
+    pub source: StockDividendSource,
+}
+
+/// Every counted payout of every stock position up to `today`, oldest first.
+pub fn payouts(conn: &Connection, today: i64) -> Result<Vec<Payout>> {
+    let mut stmt = conn.prepare("SELECT id, ticker FROM stock_investments")?;
+    let positions = stmt
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    let mut all = Vec::new();
+    for (investment_id, ticker) in positions {
+        let (items, _) = for_investment(conn, &investment_id, today)?;
+        all.extend(
+            items
+                .into_iter()
+                .filter(|d| !d.superseded && d.ex_date <= today)
+                .filter_map(|d| {
+                    Some(Payout {
+                        gross: d.gross_amount.parse().ok()?,
+                        investment_id: d.investment_id,
+                        ticker: ticker.clone(),
+                        ex_date: d.ex_date,
+                        currency: d.currency,
+                        source: d.source,
+                    })
+                }),
+        );
+    }
+    all.sort_by_key(|p| p.ex_date);
+    Ok(all)
+}
+
+/// The dividends of a position with the gross sum of the counted ones in `report_currency`:
+/// every payout converted at its ex-date's rate (ten-day walk-back; day quotes only up to
+/// `today`), else at `current` (flagged estimated), else left out and named in the quality.
+/// Never 1:1.
 pub fn list(
     conn: &Connection,
     investment_id: &str,
@@ -126,40 +300,37 @@ pub fn list(
     today: i64,
 ) -> Result<StockDividendList> {
     let report = report_currency.trim().to_uppercase();
-    let items = for_investment(conn, investment_id)?;
+    let (items, from_yahoo) = for_investment(conn, investment_id, today)?;
+    let counted: Vec<&StockDividend> = items.iter().filter(|d| !d.superseded).collect();
     let mut quality = Quality::default();
-    let (mut gross_sum, mut net_sum, mut converted) = (0.0, 0.0, 0usize);
+    let (mut sum, mut converted) = (0.0, 0usize);
     if let (Some(first), Some(last)) = (
-        items.iter().map(|d| d.paid_date).min(),
-        items.iter().map(|d| d.paid_date).max(),
+        counted.iter().map(|d| d.ex_date).min(),
+        counted.iter().map(|d| d.ex_date).max(),
     ) {
         let history = History::load(conn, first.min(today), last.min(today))?;
-        for item in &items {
-            let (Ok(gross), Ok(tax)) = (
-                item.gross_amount.parse::<f64>(),
-                item.withholding_tax.parse::<f64>(),
-            ) else {
+        for item in &counted {
+            let Ok(gross) = item.gross_amount.parse::<f64>() else {
                 quality.record_missing_conversion([item.currency.as_str()]);
                 continue;
             };
-            // A day without its own quotes yet (today, a future pay day) uses the current ones.
-            let rate_on_day = (item.paid_date <= today)
-                .then(|| history.convert_on(1.0, &item.currency, &report, item.paid_date))
+            // A day without its own quotes yet (today, a future day) uses the current ones.
+            let on_day = (item.ex_date <= today)
+                .then(|| history.convert_on(gross, &item.currency, &report, item.ex_date))
                 .flatten();
-            let rate = match rate_on_day {
-                Some(rate) => Some(rate),
+            let value = match on_day {
+                Some(value) => Some(value),
                 None => {
-                    let rate = current.convert(1.0, &item.currency, &report);
-                    if rate.is_some() {
+                    let value = current.convert(gross, &item.currency, &report);
+                    if value.is_some() {
                         quality.mark_estimated();
                     }
-                    rate
+                    value
                 }
             };
-            match rate {
-                Some(rate) => {
-                    gross_sum += gross * rate;
-                    net_sum += (gross - tax) * rate;
+            match value {
+                Some(value) => {
+                    sum += value;
                     converted += 1;
                 }
                 None => {
@@ -168,95 +339,67 @@ pub fn list(
             }
         }
     }
-    let total =
-        |sum: f64| (items.is_empty() || converted > 0).then(|| money_in_currency(sum, &report));
     Ok(StockDividendList {
-        total_gross: total(gross_sum),
-        total_net: total(net_sum),
+        total_gross: (counted.is_empty() || converted > 0).then(|| money_in_currency(sum, &report)),
         currency: report,
         fx_quality: ConversionQuality::from(&quality),
         items,
+        from_yahoo,
     })
 }
 
-fn investment_exists(conn: &Connection, investment_id: &str) -> Result<bool> {
-    Ok(conn.query_row(
-        "SELECT EXISTS(SELECT 1 FROM stock_investments WHERE id = ?1)",
-        [investment_id],
-        |row| row.get(0),
-    )?)
-}
-
-/// Where a written dividend came from: the import batch and the broker's id, both optional.
-#[derive(Debug, Clone, Copy, Default)]
-pub struct DividendOrigin<'a> {
-    pub import_batch_id: Option<&'a str>,
-    pub external_id: Option<&'a str>,
-}
-
-/// Write a validated dividend of an existing position.
-pub fn insert(
-    conn: &Connection,
-    investment_id: &str,
-    dividend: &ValidDividend,
-    origin: DividendOrigin<'_>,
-) -> Result<StockDividend> {
-    if !investment_exists(conn, investment_id)? {
-        return Err(AppError::NotFound("Investment not found".into()));
+fn refuse_when_yahoo_has_dividends(conn: &Connection, investment_id: &str) -> Result<()> {
+    let ticker = ticker_of(conn, investment_id)?;
+    if has_yahoo_dividends(conn, &ticker)? {
+        return Err(AppError::validation_with(
+            "validation.dividendFromYahoo",
+            serde_json::json!({ "ticker": ticker }),
+        ));
     }
-    let id = Uuid::new_v4().to_string();
-    conn.execute(
-        "INSERT INTO investment_dividends
-            (id, investment_id, paid_date, gross_amount, withholding_tax, currency, note,
-             import_batch_id, external_id)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
-        rusqlite::params![
-            id,
-            investment_id,
-            dividend.paid_date,
-            dividend.gross_amount,
-            dividend.withholding_tax,
-            dividend.currency,
-            dividend.note,
-            origin.import_batch_id,
-            origin
-                .external_id
-                .map(str::trim)
-                .filter(|external| !external.is_empty()),
-        ],
-    )?;
-    get(conn, &id)
+    Ok(())
 }
 
-/// Record a dividend the user entered (detail page).
+/// Enter a dividend by hand (detail page). Refused for a ticker Yahoo has dividends for.
 pub fn create(
     conn: &Connection,
     investment_id: &str,
     data: &InsertStockDividend,
 ) -> Result<StockDividend> {
-    let valid = data.validate()?;
-    insert(conn, investment_id, &valid, DividendOrigin::default())
+    let valid: ValidDividend = data.validate()?;
+    refuse_when_yahoo_has_dividends(conn, investment_id)?;
+    let id = Uuid::new_v4().to_string();
+    conn.execute(
+        "INSERT INTO investment_dividends (id, investment_id, ex_date, gross_amount, currency, note)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        rusqlite::params![
+            id,
+            investment_id,
+            valid.ex_date,
+            valid.gross_amount,
+            valid.currency,
+            valid.note
+        ],
+    )?;
+    get(conn, &id)
 }
 
-/// Replace the values of a dividend; its position, batch and broker id stay.
+/// Replace the values of a manual dividend. Refused once Yahoo has dividends for the ticker (the
+/// superseded record can still be deleted).
 pub fn update(conn: &Connection, id: &str, data: &InsertStockDividend) -> Result<StockDividend> {
     let valid = data.validate()?;
-    let changed = conn.execute(
-        "UPDATE investment_dividends
-         SET paid_date = ?1, gross_amount = ?2, withholding_tax = ?3, currency = ?4, note = ?5
-         WHERE id = ?6",
+    let current = get(conn, id)?;
+    refuse_when_yahoo_has_dividends(conn, &current.investment_id)?;
+    conn.execute(
+        "UPDATE investment_dividends SET ex_date = ?1, gross_amount = ?2, currency = ?3, note = ?4
+         WHERE id = ?5",
         rusqlite::params![
-            valid.paid_date,
+            valid.ex_date,
             valid.gross_amount,
-            valid.withholding_tax,
             valid.currency,
             valid.note,
             id
         ],
     )?;
-    if changed == 0 {
-        return Err(AppError::NotFound("Dividend not found".into()));
-    }
     get(conn, id)
 }
 
@@ -268,256 +411,21 @@ pub fn delete(conn: &Connection, id: &str) -> Result<()> {
     Ok(())
 }
 
-/// How an incoming dividend matches a stored one.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum DividendDuplicate {
-    /// The same broker id: the same payout (rule 1; cannot be imported anyway).
-    SameId,
-    /// The same position, pay day, numeric gross and currency (rule 2; may be imported anyway).
-    SameValues,
-}
-
-#[derive(Debug, Clone)]
-struct StoredDividend {
-    investment_id: String,
-    paid_date: i64,
-    gross: String,
-    currency: String,
-    external_id: Option<String>,
-    consumed: bool,
-}
-
-/// The stored dividends an import compares its rows with; a matched one is consumed.
-#[derive(Debug, Default, Clone)]
-pub struct DividendDuplicates {
-    stored: Vec<StoredDividend>,
-}
-
-impl DividendDuplicates {
-    pub fn load(conn: &Connection) -> Result<DividendDuplicates> {
-        let mut stmt = conn.prepare(
-            "SELECT investment_id, paid_date, gross_amount, currency, external_id
-             FROM investment_dividends ORDER BY rowid",
-        )?;
-        let stored = stmt
-            .query_map([], |row| {
-                Ok(StoredDividend {
-                    investment_id: row.get(0)?,
-                    paid_date: row.get(1)?,
-                    gross: canonical_amount(&row.get::<_, String>(2)?),
-                    currency: row.get::<_, String>(3)?.to_uppercase(),
-                    external_id: row.get(4)?,
-                    consumed: false,
-                })
-            })?
-            .collect::<rusqlite::Result<Vec<_>>>()?;
-        Ok(DividendDuplicates { stored })
-    }
-
-    /// Whether the row repeats a stored dividend; the matched dividend is consumed. An id match
-    /// wins over a value match. With `allow_values` a value match is not reported (and nothing is
-    /// consumed by it), an id match still is.
-    pub fn check(
-        &mut self,
-        investment_id: Option<&str>,
-        dividend: &ValidDividend,
-        external_id: Option<&str>,
-        allow_values: bool,
-    ) -> Option<DividendDuplicate> {
-        if let Some(external_id) = external_id.map(str::trim).filter(|id| !id.is_empty()) {
-            // A broker id names one payout: it matches even a dividend a row matched by value.
-            if let Some(stored) = self
-                .stored
-                .iter_mut()
-                .find(|s| s.external_id.as_deref() == Some(external_id))
-            {
-                stored.consumed = true;
-                return Some(DividendDuplicate::SameId);
-            }
-        }
-        if allow_values {
-            return None;
-        }
-        let investment_id = investment_id?;
-        let gross = canonical_amount(&dividend.gross_amount);
-        let stored = self.stored.iter_mut().find(|s| {
-            !s.consumed
-                && s.investment_id == investment_id
-                && s.paid_date == dividend.paid_date
-                && s.gross == gross
-                && s.currency == dividend.currency
-        })?;
-        stored.consumed = true;
-        Some(DividendDuplicate::SameValues)
-    }
-
-    /// Count a dividend written during the same write as stored, so a later row of the same
-    /// call that repeats it (its id, or its values) is a duplicate too.
-    pub fn remember(
-        &mut self,
-        investment_id: &str,
-        dividend: &ValidDividend,
-        external_id: Option<&str>,
-    ) {
-        self.stored.push(StoredDividend {
-            investment_id: investment_id.to_string(),
-            paid_date: dividend.paid_date,
-            gross: canonical_amount(&dividend.gross_amount),
-            currency: dividend.currency.clone(),
-            external_id: external_id
-                .map(str::trim)
-                .filter(|id| !id.is_empty())
-                .map(str::to_string),
-            consumed: false,
-        });
-    }
-}
-
-/// One dividend of a bulk write (MCP): the position by ticker.
-#[derive(Debug, Clone)]
-pub struct BulkDividendRow {
-    pub ticker: String,
-    pub dividend: InsertStockDividend,
-    /// `<source>:<broker id>`.
-    pub external_id: Option<String>,
-    /// Write it even when a stored dividend has the same values.
-    pub allow_duplicate: bool,
-}
-
-/// The bulk writer of dividends (MCP `stock_dividends_create`). Phase 1: every row validates
-/// and names an existing position, else nothing is written and every failure is reported.
-/// Phase 2: one savepoint; duplicates are skipped and reported; with a `batch` its row is
-/// written too (only when a dividend is written) and stamps every dividend.
-pub fn bulk_create(
-    conn: &mut Connection,
-    rows: &[BulkDividendRow],
-    batch: Option<&NewStockImportBatch>,
-) -> Result<BulkWriteReport> {
-    let mut positions: HashMap<String, String> = HashMap::new();
-    let mut valid: Vec<ValidDividend> = Vec::with_capacity(rows.len());
-    let mut errors: Vec<BulkRowIssue> = Vec::new();
-    for (index, row) in rows.iter().enumerate() {
-        let ticker = row.ticker.trim().to_uppercase();
-        let position: Option<String> = conn
-            .query_row(
-                "SELECT id FROM stock_investments WHERE ticker = ?1",
-                [&ticker],
-                |r| r.get(0),
-            )
-            .optional()?;
-        let checked = row.dividend.validate().and_then(|v| match position {
-            Some(id) => {
-                positions.insert(ticker.clone(), id);
-                Ok(v)
-            }
-            None => Err(AppError::validation_with(
-                "validation.dividendWithoutPosition",
-                serde_json::json!({ "ticker": ticker }),
-            )),
-        });
-        match checked {
-            Ok(v) => valid.push(v),
-            Err(e) => errors.push(BulkRowIssue {
-                index,
-                message: e.to_string(),
-                possible_duplicate: false,
-            }),
-        }
-    }
-    if !errors.is_empty() {
-        return Ok(BulkWriteReport {
-            errors,
-            ..BulkWriteReport::default()
-        });
-    }
-
-    let mut duplicates = DividendDuplicates::load(conn)?;
-    let tx = conn.savepoint()?;
-    let batch_id = match batch {
-        Some(batch) if !rows.is_empty() => {
-            let id = Uuid::new_v4().to_string();
-            tx.execute(
-                "INSERT INTO stock_import_batches (id, file_name, source, trade_count)
-                 VALUES (?1, ?2, ?3, 0)",
-                rusqlite::params![id, batch.file_name, batch.source],
-            )?;
-            Some(id)
-        }
-        _ => None,
-    };
-    let mut report = BulkWriteReport::default();
-    for (index, (row, dividend)) in rows.iter().zip(&valid).enumerate() {
-        let ticker = row.ticker.trim().to_uppercase();
-        let position = &positions[&ticker];
-        if let Some(kind) = duplicates.check(
-            Some(position),
-            dividend,
-            row.external_id.as_deref(),
-            row.allow_duplicate,
-        ) {
-            report.skipped_duplicates.push(BulkRowIssue {
-                index,
-                message: match kind {
-                    DividendDuplicate::SameId => "externalId already imported".into(),
-                    DividendDuplicate::SameValues => {
-                        "A dividend with the same pay date, gross amount and currency already exists"
-                            .into()
-                    }
-                },
-                possible_duplicate: kind == DividendDuplicate::SameValues,
-            });
-            continue;
-        }
-        insert(
-            &tx,
-            position,
-            dividend,
-            DividendOrigin {
-                import_batch_id: batch_id.as_deref(),
-                external_id: row.external_id.as_deref(),
-            },
-        )?;
-        duplicates.remember(position, dividend, row.external_id.as_deref());
-        report.created += 1;
-        if !report.written_tickers.contains(&ticker) {
-            report.written_tickers.push(ticker);
-        }
-    }
-    if let Some(id) = batch_id {
-        if report.created == 0 {
-            tx.execute("DELETE FROM stock_import_batches WHERE id = ?1", [&id])?;
-        } else {
-            tx.execute(
-                "UPDATE stock_import_batches SET trade_count = ?1 WHERE id = ?2",
-                rusqlite::params![report.created as i64, id],
-            )?;
-            report.batch_id = Some(id);
-        }
-    }
-    tx.commit()?;
-    Ok(report)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::services::investments::recalculate_investment_metrics;
 
-    const DAY: i64 = 86_400;
     const D1: i64 = 20_000 * DAY;
 
     fn setup_test_db() -> Connection {
         let conn = Connection::open_in_memory().expect("in-memory db");
-        conn.execute_batch(
+        conn.execute_batch(&format!(
             r#"
             PRAGMA foreign_keys = ON;
             CREATE TABLE stock_investments (
                 id TEXT PRIMARY KEY, ticker TEXT NOT NULL UNIQUE, company_name TEXT NOT NULL,
                 quantity TEXT NOT NULL, currency TEXT NOT NULL DEFAULT 'USD'
-            );
-            CREATE TABLE stock_import_batches (
-                id TEXT PRIMARY KEY, file_name TEXT NOT NULL, source TEXT NOT NULL,
-                trade_count INTEGER NOT NULL, created_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
             CREATE TABLE investment_transactions (
                 id TEXT PRIMARY KEY,
@@ -528,40 +436,51 @@ mod tests {
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 import_batch_id TEXT, external_id TEXT
             );
+            CREATE TABLE stock_dividend_events (
+                ticker TEXT NOT NULL, ex_date INTEGER NOT NULL, amount TEXT NOT NULL,
+                currency TEXT NOT NULL, fetched_at INTEGER NOT NULL, PRIMARY KEY (ticker, ex_date)
+            );
+            CREATE TABLE stock_dividend_coverage (
+                ticker TEXT PRIMARY KEY, covered_from INTEGER NOT NULL, fetched_at INTEGER NOT NULL
+            );
             CREATE TABLE investment_dividends (
                 id TEXT PRIMARY KEY,
                 investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
-                paid_date INTEGER NOT NULL,
-                gross_amount TEXT NOT NULL,
-                withholding_tax TEXT NOT NULL DEFAULT '0',
-                currency TEXT NOT NULL,
-                note TEXT,
-                import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL,
-                external_id TEXT,
-                created_at INTEGER NOT NULL DEFAULT (unixepoch())
+                ex_date INTEGER NOT NULL, gross_amount TEXT NOT NULL, currency TEXT NOT NULL,
+                note TEXT, created_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
             CREATE TABLE exchange_rate_history (
                 date INTEGER NOT NULL, currency TEXT NOT NULL, rate REAL NOT NULL
             );
             INSERT INTO stock_investments (id, ticker, company_name, quantity, currency)
-                VALUES ('inv-aapl', 'AAPL', 'Apple', '10', 'USD');
+                VALUES ('inv-aapl', 'AAPL', 'Apple', '10', 'USD'),
+                       ('inv-cez', 'CEZ.PR', 'ČEZ', '5', 'CZK');
             INSERT INTO investment_transactions
                 (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency,
                  transaction_date)
-                VALUES ('t1', 'inv-aapl', 'buy', 'AAPL', 'Apple', '10', '150', 'USD', 19000 * 86400);
+                VALUES ('t1', 'inv-aapl', 'buy', 'AAPL', 'Apple', '10', '150', 'USD', {d1}),
+                       ('t2', 'inv-cez', 'buy', 'CEZ.PR', 'ČEZ', '5', '900', 'CZK', {d1});
             "#,
-        )
+            d1 = D1
+        ))
         .expect("schema");
         conn
     }
 
-    fn input(day: i64, gross: &str, tax: Option<&str>, currency: &str) -> InsertStockDividend {
+    fn input(day: i64, gross: &str, currency: &str) -> InsertStockDividend {
         InsertStockDividend {
-            paid_date: day,
+            ex_date: day,
             gross_amount: gross.into(),
-            withholding_tax: tax.map(str::to_string),
             currency: currency.into(),
             note: None,
+        }
+    }
+
+    fn event(day: i64, amount: f64) -> DividendEvent {
+        DividendEvent {
+            ex_date: day,
+            amount,
+            currency: "USD".into(),
         }
     }
 
@@ -582,41 +501,103 @@ mod tests {
     }
 
     #[test]
-    fn create_update_and_delete_a_dividend() {
+    fn a_yahoo_payout_is_the_per_share_amount_times_the_shares_held_the_day_before() {
         let conn = setup_test_db();
-        let created = create(
-            &conn,
-            "inv-aapl",
-            &input(D1 + 600, "24", Some("3.6"), "usd"),
+        // 5 more shares bought on the ex-date itself: they get no dividend.
+        conn.execute(
+            "INSERT INTO investment_transactions
+                (id, investment_id, type, ticker, company_name, quantity, price_per_unit,
+                 currency, transaction_date)
+             VALUES ('t3', 'inv-aapl', 'buy', 'AAPL', 'Apple', '5', '160', 'USD', ?1)",
+            [D1 + 30 * DAY],
         )
         .unwrap();
-        assert_eq!(created.paid_date, D1);
-        assert_eq!(
-            (
-                created.gross_amount.as_str(),
-                created.withholding_tax.as_str(),
-                created.net_amount.as_str()
-            ),
-            ("24", "3.6", "20.4")
-        );
-        assert_eq!(created.currency, "USD");
+        record_events(
+            &conn,
+            "aapl",
+            &[
+                event(D1 - 30 * DAY, 0.24),
+                event(D1 + 30 * DAY, 0.25),
+                event(D1 + 120 * DAY, 0.26),
+            ],
+            D1,
+            D1 + 200 * DAY,
+        )
+        .unwrap();
+        let (items, from_yahoo) = for_investment(&conn, "inv-aapl", D1 + 100 * DAY).unwrap();
+        assert!(from_yahoo);
+        // Before the first buy: none; after today: none.
+        assert_eq!(items.len(), 1);
+        let payout = &items[0];
+        assert_eq!(payout.source, StockDividendSource::Yahoo);
+        assert_eq!(payout.ex_date, D1 + 30 * DAY);
+        assert_eq!(payout.shares.as_deref(), Some("10"));
+        assert_eq!(payout.amount_per_share.as_deref(), Some("0.25"));
+        assert_eq!(payout.gross_amount, "2.5");
+        assert_eq!(payout.id, format!("yahoo:AAPL:{}", D1 + 30 * DAY));
+    }
 
-        let mut changed = input(D1 + DAY, "30", None, "EUR");
-        changed.note = Some("special".into());
+    #[test]
+    fn manual_dividends_count_only_without_yahoo_dividends() {
+        let conn = setup_test_db();
+        let manual = create(&conn, "inv-aapl", &input(D1 + 10 * DAY, "3", "USD")).unwrap();
+        let (items, from_yahoo) = for_investment(&conn, "inv-aapl", D1 + 100 * DAY).unwrap();
+        assert!(!from_yahoo);
+        assert_eq!(items, vec![manual.clone()]);
+
+        record_events(&conn, "AAPL", &[event(D1 + 30 * DAY, 0.25)], D1, D1).unwrap();
+        let (items, from_yahoo) = for_investment(&conn, "inv-aapl", D1 + 100 * DAY).unwrap();
+        assert!(from_yahoo);
+        assert_eq!(items.len(), 2);
+        let superseded = items.iter().find(|d| d.id == manual.id).unwrap();
+        assert!(superseded.superseded);
+        let counted = payouts(&conn, D1 + 100 * DAY).unwrap();
+        assert_eq!(counted.len(), 1);
+        assert_eq!(counted[0].source, StockDividendSource::Yahoo);
+        assert_eq!(
+            (counted[0].ticker.as_str(), counted[0].gross),
+            ("AAPL", 2.5)
+        );
+    }
+
+    #[test]
+    fn no_manual_dividend_for_a_ticker_yahoo_has_dividends_for() {
+        let conn = setup_test_db();
+        let manual = create(&conn, "inv-aapl", &input(D1, "3", "USD")).unwrap();
+        record_events(&conn, "AAPL", &[event(D1 + 30 * DAY, 0.25)], D1, D1).unwrap();
+        let refused = |r: Result<StockDividend>| match r {
+            Err(AppError::Validation(key)) => key.starts_with("validation.dividendFromYahoo"),
+            _ => false,
+        };
+        assert!(refused(create(&conn, "inv-aapl", &input(D1, "3", "USD"))));
+        assert!(refused(update(&conn, &manual.id, &input(D1, "4", "USD"))));
+        // The superseded one can still go.
+        delete(&conn, &manual.id).unwrap();
+        // Another ticker without Yahoo dividends still takes one.
+        assert!(create(&conn, "inv-cez", &input(D1, "120", "CZK")).is_ok());
+    }
+
+    #[test]
+    fn create_update_and_delete_a_manual_dividend() {
+        let conn = setup_test_db();
+        let created = create(&conn, "inv-cez", &input(D1 + 600, "120", "czk")).unwrap();
+        assert_eq!(
+            (created.ex_date, created.gross_amount.as_str()),
+            (D1, "120")
+        );
+        assert_eq!(
+            (created.source, created.currency.as_str()),
+            (StockDividendSource::Manual, "CZK")
+        );
+        let mut changed = input(D1 + DAY, "130", "CZK");
+        changed.note = Some("mimořádná".into());
         let updated = update(&conn, &created.id, &changed).unwrap();
         assert_eq!(
-            (
-                updated.paid_date,
-                updated.gross_amount.as_str(),
-                updated.withholding_tax.as_str()
-            ),
-            (D1 + DAY, "30", "0")
+            (updated.ex_date, updated.gross_amount.as_str()),
+            (D1 + DAY, "130")
         );
-        assert_eq!(updated.note.as_deref(), Some("special"));
-        assert_eq!(updated.investment_id, "inv-aapl");
-
+        assert_eq!(updated.note.as_deref(), Some("mimořádná"));
         delete(&conn, &created.id).unwrap();
-        assert!(for_investment(&conn, "inv-aapl").unwrap().is_empty());
         assert!(matches!(
             delete(&conn, &created.id),
             Err(AppError::NotFound(_))
@@ -625,18 +606,9 @@ mod tests {
             update(&conn, "missing", &changed),
             Err(AppError::NotFound(_))
         ));
-    }
-
-    #[test]
-    fn a_dividend_needs_an_existing_position_and_valid_values() {
-        let conn = setup_test_db();
         assert!(matches!(
-            create(&conn, "missing", &input(D1, "1", None, "USD")),
+            create(&conn, "missing", &input(D1, "1", "USD")),
             Err(AppError::NotFound(_))
-        ));
-        assert!(matches!(
-            create(&conn, "inv-aapl", &input(D1, "1", Some("2"), "USD")),
-            Err(AppError::Validation(_))
         ));
     }
 
@@ -644,7 +616,8 @@ mod tests {
     #[test]
     fn a_dividend_never_changes_the_position_quantity() {
         let conn = setup_test_db();
-        create(&conn, "inv-aapl", &input(D1, "24", Some("3.6"), "USD")).unwrap();
+        create(&conn, "inv-aapl", &input(D1, "24", "USD")).unwrap();
+        record_events(&conn, "AAPL", &[event(D1 + DAY, 0.25)], D1, D1).unwrap();
         recalculate_investment_metrics(&conn, "inv-aapl").unwrap();
         assert_eq!(quantity(&conn), "10");
         let replayed = crate::services::cost_basis::replayed_quantities(
@@ -656,10 +629,10 @@ mod tests {
     }
 
     #[test]
-    fn deleting_the_position_deletes_its_dividends() {
+    fn deleting_the_position_deletes_its_manual_dividends() {
         let conn = setup_test_db();
-        create(&conn, "inv-aapl", &input(D1, "24", None, "USD")).unwrap();
-        conn.execute("DELETE FROM stock_investments WHERE id = 'inv-aapl'", [])
+        create(&conn, "inv-cez", &input(D1, "24", "CZK")).unwrap();
+        conn.execute("DELETE FROM stock_investments WHERE id = 'inv-cez'", [])
             .unwrap();
         let left: i64 = conn
             .query_row("SELECT COUNT(*) FROM investment_dividends", [], |r| {
@@ -670,17 +643,24 @@ mod tests {
     }
 
     #[test]
-    fn totals_convert_every_payout_at_its_pay_day() {
+    fn the_total_converts_every_payout_at_its_ex_date() {
         let conn = setup_test_db();
-        // 1 EUR = 25 CZK = 1.25 USD on D1 (20 CZK per USD); 1 EUR = 24 CZK = 1.2 USD on D1 + 1.
+        // 1 EUR = 25 CZK = 1.25 USD on D1 + 1 (20 CZK per USD); 24 CZK = 1.2 USD on D1 + 2.
         conn.execute_batch(&format!(
-            "INSERT INTO exchange_rate_history VALUES ({D1}, 'CZK', 25.0), ({D1}, 'USD', 1.25),
-                ({d2}, 'CZK', 24.0), ({d2}, 'USD', 1.2);",
-            d2 = D1 + DAY
+            "INSERT INTO exchange_rate_history VALUES ({a}, 'CZK', 25.0), ({a}, 'USD', 1.25),
+                ({b}, 'CZK', 24.0), ({b}, 'USD', 1.2);",
+            a = D1 + DAY,
+            b = D1 + 2 * DAY
         ))
         .unwrap();
-        create(&conn, "inv-aapl", &input(D1, "10", Some("1"), "USD")).unwrap();
-        create(&conn, "inv-aapl", &input(D1 + DAY, "100", None, "CZK")).unwrap();
+        record_events(
+            &conn,
+            "AAPL",
+            &[event(D1 + DAY, 1.0), event(D1 + 2 * DAY, 2.0)],
+            D1,
+            D1,
+        )
+        .unwrap();
         let report = list(
             &conn,
             "inv-aapl",
@@ -689,209 +669,81 @@ mod tests {
             D1 + 10 * DAY,
         )
         .unwrap();
+        assert!(report.from_yahoo);
         assert_eq!(report.items.len(), 2);
-        assert_eq!(report.items[0].paid_date, D1 + DAY, "newest first");
-        // 10 USD × 20 = 200 CZK, + 100 CZK; net: 9 × 20 + 100.
-        assert_eq!(report.total_gross.as_deref(), Some("300.00"));
-        assert_eq!(report.total_net.as_deref(), Some("280.00"));
+        assert_eq!(report.items[0].ex_date, D1 + 2 * DAY, "newest first");
+        // 10 USD × 20 + 20 USD × 20.
+        assert_eq!(report.total_gross.as_deref(), Some("600.00"));
         assert!(report.fx_quality.missing_currencies.is_empty());
         assert!(!report.fx_quality.estimated);
     }
 
     #[test]
-    fn a_day_without_quotes_uses_todays_and_says_so() {
+    fn superseded_dividends_are_left_out_of_the_total() {
         let conn = setup_test_db();
-        create(&conn, "inv-aapl", &input(D1, "10", None, "USD")).unwrap();
-        let report = list(&conn, "inv-aapl", "CZK", &eur_quotes(25.0, 1.25), D1 + DAY).unwrap();
-        assert_eq!(report.total_gross.as_deref(), Some("200.00"));
-        assert!(report.fx_quality.estimated);
-    }
-
-    #[test]
-    fn an_unconvertible_payout_is_left_out_and_named() {
-        let conn = setup_test_db();
-        create(&conn, "inv-aapl", &input(D1, "10", None, "USD")).unwrap();
-        create(&conn, "inv-aapl", &input(D1, "5", None, "GBP")).unwrap();
-        let report = list(&conn, "inv-aapl", "CZK", &eur_quotes(25.0, 1.25), D1 + DAY).unwrap();
-        assert_eq!(report.total_gross.as_deref(), Some("200.00"));
-        assert_eq!(
-            report.fx_quality.missing_currencies,
-            vec!["GBP".to_string()]
-        );
-
-        let conn = setup_test_db();
-        create(&conn, "inv-aapl", &input(D1, "5", None, "GBP")).unwrap();
-        let report = list(&conn, "inv-aapl", "CZK", &eur_quotes(25.0, 1.25), D1 + DAY).unwrap();
-        assert_eq!(report.total_gross, None, "payouts exist, none converted");
-    }
-
-    #[test]
-    fn no_dividends_sum_to_zero() {
-        let conn = setup_test_db();
-        let report = list(&conn, "inv-aapl", "usd", &Quotes::new("EUR"), D1).unwrap();
-        assert_eq!(report.currency, "USD");
-        assert_eq!(report.total_gross.as_deref(), Some("0.00"));
-    }
-
-    #[test]
-    fn duplicates_match_by_id_then_by_values_one_to_one() {
-        let conn = setup_test_db();
-        let valid = input(D1, "24.0", None, "USD").validate().unwrap();
-        insert(
+        create(&conn, "inv-aapl", &input(D1 + DAY, "100", "USD")).unwrap();
+        record_events(&conn, "AAPL", &[event(D1 + DAY, 1.0)], D1, D1).unwrap();
+        let report = list(
             &conn,
             "inv-aapl",
-            &valid,
-            DividendOrigin {
-                import_batch_id: None,
-                external_id: Some("ibkr:1"),
-            },
+            "USD",
+            &eur_quotes(25.0, 1.25),
+            D1 + 5 * DAY,
         )
         .unwrap();
-        insert(&conn, "inv-aapl", &valid, DividendOrigin::default()).unwrap();
+        assert_eq!(report.total_gross.as_deref(), Some("10.00"));
+    }
 
-        let mut dups = DividendDuplicates::load(&conn).unwrap();
-        let again = input(D1, "24", None, "USD").validate().unwrap();
-        assert_eq!(
-            dups.check(Some("inv-aapl"), &again, Some("ibkr:1"), false),
-            Some(DividendDuplicate::SameId)
-        );
-        assert_eq!(
-            dups.check(Some("inv-aapl"), &again, None, false),
-            Some(DividendDuplicate::SameValues),
-            "24 and 24.0 are the same gross"
-        );
-        assert_eq!(
-            dups.check(Some("inv-aapl"), &again, None, false),
-            None,
-            "both stored dividends are consumed"
-        );
+    #[test]
+    fn a_day_without_quotes_uses_todays_and_an_unconvertible_one_is_named() {
+        let conn = setup_test_db();
+        create(&conn, "inv-cez", &input(D1, "100", "CZK")).unwrap();
+        let report = list(&conn, "inv-cez", "USD", &eur_quotes(25.0, 1.25), D1 + DAY).unwrap();
+        assert_eq!(report.total_gross.as_deref(), Some("5.00"));
+        assert!(report.fx_quality.estimated);
 
-        let mut dups = DividendDuplicates::load(&conn).unwrap();
+        let report = list(&conn, "inv-cez", "USD", &Quotes::new("EUR"), D1 + DAY).unwrap();
+        assert_eq!(report.total_gross, None, "payouts exist, none converted");
+        assert!(!report.fx_quality.missing_currencies.is_empty());
+    }
+
+    #[test]
+    fn events_are_fetched_when_missing_stale_or_not_covering_the_first_trade() {
+        let conn = setup_test_db();
+        let now = D1 + 100 * DAY;
         assert_eq!(
-            dups.check(Some("inv-aapl"), &again, None, true),
-            None,
-            "import anyway"
+            events_fetch_from(&conn, "AAPL", D1, now, DAY).unwrap(),
+            Some(D1)
         );
-        let other_day = input(D1 + DAY, "24", None, "USD").validate().unwrap();
-        assert_eq!(dups.check(Some("inv-aapl"), &other_day, None, false), None);
-        let other_currency = input(D1, "24", None, "EUR").validate().unwrap();
+        record_events(&conn, "AAPL", &[], D1, now).unwrap();
         assert_eq!(
-            dups.check(Some("inv-aapl"), &other_currency, None, false),
+            events_fetch_from(&conn, "AAPL", D1, now + 3600, DAY).unwrap(),
             None
         );
-    }
-
-    fn bulk_row(ticker: &str, gross: &str, external_id: Option<&str>) -> BulkDividendRow {
-        BulkDividendRow {
-            ticker: ticker.into(),
-            dividend: input(D1, gross, Some("1"), "USD"),
-            external_id: external_id.map(str::to_string),
-            allow_duplicate: false,
-        }
-    }
-
-    #[test]
-    fn bulk_create_writes_a_batch_and_skips_repeats() {
-        let mut conn = setup_test_db();
-        let batch = NewStockImportBatch {
-            file_name: "dividends.csv".into(),
-            source: "mcp".into(),
-        };
-        let rows = vec![
-            bulk_row("aapl", "10", Some("mcp:a")),
-            bulk_row("AAPL", "12", None),
-        ];
-        let report = bulk_create(&mut conn, &rows, Some(&batch)).unwrap();
-        assert_eq!(report.created, 2);
-        assert!(report.errors.is_empty());
-        let batch_id = report.batch_id.expect("batch recorded");
-        let (count, stamped): (i64, i64) = conn
+        assert_eq!(
+            events_fetch_from(&conn, "AAPL", D1, now + DAY, DAY).unwrap(),
+            Some(D1)
+        );
+        // A backdated buy before the covered range.
+        assert_eq!(
+            events_fetch_from(&conn, "AAPL", D1 - 50 * DAY, now + 3600, DAY).unwrap(),
+            Some(D1 - 50 * DAY)
+        );
+        // A refetch keeps the widest range and replaces an amount.
+        record_events(&conn, "AAPL", &[event(D1 + DAY, 0.2)], D1 + 10 * DAY, now).unwrap();
+        record_events(&conn, "AAPL", &[event(D1 + DAY, 0.25)], D1 + 10 * DAY, now).unwrap();
+        let from: i64 = conn
             .query_row(
-                "SELECT (SELECT trade_count FROM stock_import_batches WHERE id = ?1),
-                        (SELECT COUNT(*) FROM investment_dividends WHERE import_batch_id = ?1)",
-                [&batch_id],
-                |r| Ok((r.get(0)?, r.get(1)?)),
+                "SELECT covered_from FROM stock_dividend_coverage",
+                [],
+                |r| r.get(0),
             )
             .unwrap();
-        assert_eq!((count, stamped), (2, 2));
-
-        let again = bulk_create(&mut conn, &rows, Some(&batch)).unwrap();
-        assert_eq!(again.created, 0);
-        assert_eq!(again.skipped_duplicates.len(), 2);
-        assert!(
-            !again.skipped_duplicates[0].possible_duplicate,
-            "same id is certain"
-        );
-        assert!(again.skipped_duplicates[1].possible_duplicate);
-        assert_eq!(again.batch_id, None, "nothing written, no batch");
-        assert_eq!(quantity(&conn), "10");
-    }
-
-    #[test]
-    fn bulk_create_skips_a_row_repeated_within_the_call() {
-        let mut conn = setup_test_db();
-        let rows = vec![
-            bulk_row("AAPL", "10", Some("mcp:a")),
-            bulk_row("AAPL", "11", Some("mcp:a")),
-            bulk_row("AAPL", "12", None),
-            bulk_row("AAPL", "12", None),
-        ];
-        let report = bulk_create(&mut conn, &rows, None).unwrap();
-        assert_eq!(report.created, 2);
-        assert_eq!(
-            report
-                .skipped_duplicates
-                .iter()
-                .map(|r| r.index)
-                .collect::<Vec<_>>(),
-            vec![1, 3]
-        );
-    }
-
-    #[test]
-    fn a_broker_id_matches_even_a_dividend_already_matched_by_value() {
-        let conn = setup_test_db();
-        let valid = input(D1, "24", None, "USD").validate().unwrap();
-        insert(
-            &conn,
-            "inv-aapl",
-            &valid,
-            DividendOrigin {
-                import_batch_id: None,
-                external_id: Some("ibkr:1"),
-            },
-        )
-        .unwrap();
-        let mut dups = DividendDuplicates::load(&conn).unwrap();
-        assert_eq!(
-            dups.check(Some("inv-aapl"), &valid, None, false),
-            Some(DividendDuplicate::SameValues)
-        );
-        assert_eq!(
-            dups.check(Some("inv-aapl"), &valid, Some("ibkr:1"), false),
-            Some(DividendDuplicate::SameId)
-        );
-    }
-
-    #[test]
-    fn bulk_create_is_all_or_nothing_on_invalid_rows() {
-        let mut conn = setup_test_db();
-        let rows = vec![
-            bulk_row("AAPL", "10", None),
-            bulk_row("MSFT", "5", None),
-            bulk_row("AAPL", "-1", None),
-        ];
-        let report = bulk_create(&mut conn, &rows, None).unwrap();
-        assert_eq!(report.created, 0);
-        assert_eq!(
-            report.errors.iter().map(|e| e.index).collect::<Vec<_>>(),
-            vec![1, 2]
-        );
-        let stored: i64 = conn
-            .query_row("SELECT COUNT(*) FROM investment_dividends", [], |r| {
-                r.get(0)
-            })
+        assert_eq!(from, D1);
+        let amount: String = conn
+            .query_row("SELECT amount FROM stock_dividend_events", [], |r| r.get(0))
             .unwrap();
-        assert_eq!(stored, 0);
+        assert_eq!(amount, "0.25");
+        assert!(!has_yahoo_dividends(&conn, "CEZ.PR").unwrap());
     }
 }

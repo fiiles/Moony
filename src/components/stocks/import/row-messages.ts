@@ -31,12 +31,6 @@ const SENTENCE_WITH_DETAIL: Readonly<Record<string, string>> = {
   'importWizard.row.currencyMismatch': 'importWizard.row.currencyMismatchPosition',
   // the detail is an ISIN cell that is none: "no symbol, and the ISIN … is not valid"
   'importWizard.row.symbolMissing': 'importWizard.row.symbolMissingIsin',
-  // the detail is the dividend's 1-based file line / the currency of the tax
-  'importWizard.row.taxPaired': 'importWizard.row.taxPairedLine',
-  'importWizard.row.taxCurrencyMismatch': 'importWizard.row.taxCurrencyMismatchIn',
-  // the detail is the line of the reversal / of the dividend it cancels
-  'importWizard.row.dividendReversed': 'importWizard.row.dividendReversedLine',
-  'importWizard.row.dividendReversal': 'importWizard.row.dividendReversalLine',
 };
 
 /** The duplicate messages the backend sends; any other `duplicate…` key reads as the first. */

@@ -102,19 +102,6 @@ describe('stocks.importWizard copy', () => {
       'duplicate',
       'duplicateById',
       'duplicateSimilar',
-      'dividendNotPositive',
-      'dividendReversed',
-      'dividendReversedLine',
-      'dividendReversal',
-      'dividendReversalLine',
-      'cashCurrencyMissing',
-      'taxCurrencyMismatch',
-      'taxCurrencyMismatchIn',
-      'taxPaired',
-      'taxPairedLine',
-      'taxUnpaired',
-      'taxExceedsGross',
-      'dividendWithoutPosition',
     ];
     for (const flat of [cs, en]) {
       for (const key of keys) expect(flat[`row.${key}`], key).toBeTruthy();
@@ -124,10 +111,6 @@ describe('stocks.importWizard copy', () => {
       expect(flat['row.sellExceedsHoldingsHeld']).toContain('{{detail}}');
       expect(flat['row.currencyMismatchPosition']).toContain('{{detail}}');
       expect(flat['row.symbolMissingIsin']).toContain('{{detail}}');
-      expect(flat['row.taxPairedLine']).toContain('{{detail}}');
-      expect(flat['row.dividendReversedLine']).toContain('{{detail}}');
-      expect(flat['row.dividendReversalLine']).toContain('{{detail}}');
-      expect(flat['row.taxCurrencyMismatchIn']).toContain('{{detail}}');
     }
   });
 

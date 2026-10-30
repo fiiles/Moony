@@ -63,14 +63,13 @@ struct Columns {
     time: usize,
     symbol: usize,
     comment: usize,
-    amount: usize,
 }
 
-/// The six columns of the export; the amount is the total of a dividend or a tax row (in the
-/// account currency, which the file never names).
+/// The six columns of the export; the amount is required (it is part of the
+/// signature) but not read.
 fn columns(headers: &[String]) -> Option<Columns> {
+    find_header(headers, AMOUNT)?;
     Some(Columns {
-        amount: find_header(headers, AMOUNT)?,
         id: find_header(headers, ID)?,
         kind: find_header(headers, TYPE)?,
         time: find_header(headers, TIME)?,
@@ -108,8 +107,6 @@ pub fn config(headers: &[String], rows: &[Vec<String>]) -> Option<AdapterConfig>
     config.currency_mode = CurrencyMode::Instrument;
     config.type_column = Some(cols.kind);
     config.external_id_column = Some(cols.id);
-    // Dividends (`DIVIDENT`) and their taxes carry no quantity: the amount is the total.
-    config.amount_column = Some(cols.amount);
     config.transforms.xtb_comment = true;
     config.transforms.xtb_symbols = true;
 

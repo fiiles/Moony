@@ -310,9 +310,8 @@
     "snoozeSelectionInvalid": "Velg fra 1 til 1000 betalinger.",
     "snoozeDaysInvalid": "Velg et antall dager fra 1 til 365.",
     "dividendGrossPositive": "Bruttobeløpet må være større enn null",
-    "dividendTaxInvalid": "Kildeskatten må være mellom null og bruttobeløpet",
     "dividendNoteTooLong": "Et notat kan ha høyst 500 tegn.",
-    "dividendWithoutPosition": "Det finnes ingen posisjon for {{ticker}}; registrer kjøpet først."
+    "dividendFromYahoo": "Utbyttene for {{ticker}} kommer fra Yahoo Finance; et manuelt utbytte kan ikke legges til."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

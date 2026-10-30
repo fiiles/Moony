@@ -327,41 +327,6 @@ export function MappingForm({
         </div>
 
         <div>
-          {h4(t('importWizard.mapping.dividends'))}
-          <div className="space-y-4">
-            <p className="m-0 text-micro font-500 text-ink-4">
-              {t('importWizard.mapping.dividendsHint')}
-            </p>
-            <ColumnSelect
-              id="stock-import-amount"
-              label={t('importWizard.roles.amount')}
-              optional
-              value={mapping.amountColumn}
-              options={options}
-              onChange={(amountColumn) => onChange({ amountColumn })}
-            />
-            <div className="grid grid-cols-2 gap-3">
-              <ColumnSelect
-                id="stock-import-tax"
-                label={t('importWizard.roles.tax')}
-                optional
-                value={mapping.taxColumn}
-                options={options}
-                onChange={(taxColumn) => onChange({ taxColumn })}
-              />
-              <ColumnSelect
-                id="stock-import-tax-currency"
-                label={t('importWizard.roles.taxCurrency')}
-                optional
-                value={mapping.taxCurrencyColumn}
-                options={options}
-                onChange={(taxCurrencyColumn) => onChange({ taxCurrencyColumn })}
-              />
-            </div>
-          </div>
-        </div>
-
-        <div>
           {h4(t('importWizard.mapping.format'))}
           <div className="grid grid-cols-2 gap-3">
             <div className="grid gap-1.5">

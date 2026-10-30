@@ -347,26 +347,29 @@
       "short": "股息",
       "addTitle": "添加已收股息",
       "editTitle": "编辑股息",
-      "description": "{{ticker}} 的一次派息：派息日扣缴税前的总额。持股数量不变。",
-      "paidDate": "派息日",
+      "description": "Yahoo Finance 没有的 {{ticker}} 的一次派息：除息日的预扣税前总额。持股数量不变。",
       "gross": "税前总额",
-      "grossHint": "本次派息总额（税前）",
-      "tax": "预扣税",
-      "taxHint": "可选；未扣税时留空",
+      "grossHint": "本次派息总额（预扣税前）",
       "note": "备注",
       "save": "保存股息",
       "badge": "股息",
-      "taxLine": "税 {{tax}} · 净额 {{net}}",
-      "received": "已收股息",
-      "receivedNet": "税后股息",
+      "received": "已收股息（税前）",
       "added": "已记录股息",
       "updated": "已更新股息",
       "deleted": "已删除股息",
       "confirmDelete": {
         "title": "删除股息？",
-        "description": "{{date}} 支付的股息（税前 {{amount}}）将被永久删除。此操作无法撤销。",
+        "description": "除息日为 {{date}} 的股息（税前 {{amount}}）将被永久删除。此操作无法撤销。",
         "confirm": "删除股息"
-      }
+      },
+      "exDate": "除息日",
+      "exDateHint": "股票不再附带此股息交易的第一天",
+      "sourceYahoo": "Yahoo Finance",
+      "sourceManual": "手动",
+      "perShare": "每股 {{amount}}",
+      "superseded": "已由 Yahoo Finance 取代，不计入",
+      "yahooTitle": "Yahoo Finance 有该股票的股息",
+      "yahooBody": "Moony 从 Yahoo Finance 获取 {{ticker}} 的股息，并按每个除息日前一天持有的股数计算。仅当 Yahoo 没有某只股票的股息时，才手动输入股息。"
     }
   },
   "importWizard": {
@@ -386,10 +389,6 @@
       "buy": "买入",
       "sell": "卖出"
     },
-    "kind": {
-      "dividend": "股息",
-      "withholdingTax": "预扣税"
-    },
     "roles": {
       "date": "日期",
       "direction": "方向",
@@ -401,10 +400,7 @@
       "price": "每股价格",
       "quantityPrice": "数量和价格",
       "currency": "货币",
-      "externalId": "交易 ID",
-      "amount": "金额",
-      "tax": "预扣税",
-      "taxCurrency": "税款币种"
+      "externalId": "交易 ID"
     },
     "file": {
       "sourceHeading": "导出文件的来源",
@@ -559,9 +555,7 @@
       "action": {
         "buy": "买入",
         "sell": "卖出",
-        "skip": "跳过",
-        "dividend": "股息",
-        "withholdingTax": "预扣税"
+        "skip": "跳过"
       },
       "externalIdHint": "有助于在之后的导入中识别重复项。",
       "dateFormat": "日期格式",
@@ -590,9 +584,7 @@
         "type": "类型列"
       },
       "rawData": "预览 CSV 数据",
-      "rawCounts": "列数：{{columns}} · 行数：{{rows}}",
-      "dividends": "股息",
-      "dividendsHint": "可选。对于股息行：总金额、同一行中预扣的税款及其币种。没有金额列时，使用数量 × 价格。"
+      "rawCounts": "列数：{{columns}} · 行数：{{rows}}"
     },
     "review": {
       "incomplete": "请先完成列映射，再查看核对结果。",
@@ -603,8 +595,7 @@
         "duplicates": "重复 {{count}}",
         "skipped": "已跳过 {{count}}",
         "errors": "错误 {{count}}",
-        "converted": "已重新计算 {{count}}",
-        "dividends": "其中股息 {{count}}"
+        "converted": "已重新计算 {{count}}"
       },
       "feeNote": "不会导入手续费",
       "nothingToImport": "没有可导入的内容：每一行都是重复项、已跳过或有错误。",
@@ -651,8 +642,7 @@
         },
         "positionCurrency": "该持仓以 {{currency}} 持有",
         "missingHint_other": "请为 {{count}} 只证券输入代码，或将其跳过。",
-        "unverifiedHint_other": "{{count}} 只证券无法核实。您仍可导入，但其价格可能不会更新。",
-        "dividends": "+ 股息 {{count}}"
+        "unverifiedHint_other": "{{count}} 只证券无法核实。您仍可导入，但其价格可能不会更新。"
       },
       "rows": {
         "title": "行",
@@ -669,14 +659,7 @@
         "showAll": "显示全部",
         "showLess": "收起",
         "none": "按这些设置，该文件没有任何行。",
-        "truncated": "表格最多显示 {{shown}} 行；上方的计数涵盖整个文件。",
-        "amount": "金额",
-        "taxAmount": "税 {{amount}}"
-      },
-      "unpairedTaxes": "已略过的税款行：{{count}}。未找到同一天、同一币种的股息，因此不会写入；股息将在不含该税款的情况下导入。",
-      "cashCurrency": {
-        "title": "券商账户币种",
-        "hint": "文件中没有注明股息和税款的币种。请选择您券商账户的币种，金额以该币种计。"
+        "truncated": "表格最多显示 {{shown}} 行；上方的计数涵盖整个文件。"
       }
     },
     "editor": {
@@ -724,9 +707,7 @@
         "undo": "撤销导入",
         "undoHint_other": "将删除该文件中的 {{count}} 笔交易。",
         "undoAction": "撤销"
-      },
-      "dividends": "股息",
-      "dividendsNote": "其中股息：{{count}}。"
+      }
     },
     "undone": {
       "title": "导入已撤销",
@@ -771,20 +752,7 @@
       "duplicate": "Moony 中已有同样的交易",
       "duplicateById": "Moony 中已有券商 ID 相同的交易",
       "duplicateSimilar": "Moony 中已有类似的交易：同一天、数量相同，价格相差在 0.5 % 以内",
-      "cannotParse": "无法读取该行",
-      "dividendNotPositive": "金额为零或负数的股息（冲销），已跳过",
-      "cashCurrencyMissing": "文件中没有币种，请选择券商账户的币种",
-      "taxCurrencyMismatch": "税款与股息币种不同，不会写入",
-      "taxCurrencyMismatchIn": "税款以{{detail}}计，与股息币种不同，不会写入",
-      "taxPaired": "税款已并入股息",
-      "taxPairedLine": "税款已并入第 {{detail}} 行的股息",
-      "taxUnpaired": "没有对应股息的预扣税，不会写入",
-      "taxExceedsGross": "预扣税高于股息",
-      "dividendWithoutPosition": "Moony 中没有该股息对应的持仓，文件中也没有买入",
-      "dividendReversed": "已被券商冲正取消，不导入",
-      "dividendReversedLine": "已被第 {{detail}} 行的冲正取消，不导入",
-      "dividendReversal": "股息冲正，不导入",
-      "dividendReversalLine": "第 {{detail}} 行股息的冲正，不导入"
+      "cannotParse": "无法读取该行"
     },
     "mcpSource": "MCP",
     "splits": {

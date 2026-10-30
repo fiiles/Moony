@@ -2,13 +2,12 @@
 //! without writing anything. The decisions come from [`simulate`], the same
 //! replay the import runs, so the preview is what the import does.
 
-use super::simulate::{simulate, SimulatedDividend, SimulatedTrade, Simulation, TradeOutcome};
+use super::simulate::{simulate, SimulatedTrade, Simulation, TradeOutcome};
 use super::types::{
-    CashRow, ParsedFile, StockImportConfig, StockImportCounts, StockImportPreview, StockPreviewRow,
-    StockRowKind, StockRowMessage, StockRowStatus, PREVIEW_ROWS,
+    ParsedFile, StockImportConfig, StockImportCounts, StockImportPreview, StockPreviewRow,
+    StockRowMessage, StockRowStatus, PREVIEW_ROWS,
 };
 use crate::error::Result;
-use crate::models::stock_dividends::amount_text;
 use crate::services::csv_import::CsvDateRange;
 
 /// Instruments, statuses and counts of an import without writing anything.
@@ -32,7 +31,6 @@ pub fn preview(
         counts: counts(parsed, &simulation),
         date_range: date_range(&simulation),
         has_fee_column: parsed.has_fee_column,
-        needs_cash_currency: parsed.needs_cash_currency,
     })
 }
 
@@ -41,21 +39,8 @@ fn counts(parsed: &ParsedFile, simulation: &Simulation) -> StockImportCounts {
         total: parsed.total_rows,
         skipped: parsed.skipped.len(),
         errors: parsed.errors.len(),
-        unpaired_taxes: parsed.unpaired_taxes,
         ..StockImportCounts::default()
     };
-    for dividend in &simulation.dividends {
-        match &dividend.outcome {
-            _ if dividend.will_import() => {
-                counts.will_import += 1;
-                counts.dividends += 1;
-            }
-            TradeOutcome::Duplicate { .. } => counts.duplicates += 1,
-            TradeOutcome::Skipped(_) => counts.skipped += 1,
-            TradeOutcome::Error(_) => counts.errors += 1,
-            TradeOutcome::New => {}
-        }
-    }
     for trade in &simulation.trades {
         match &trade.outcome {
             _ if trade.will_import() => {
@@ -79,14 +64,7 @@ fn date_range(simulation: &Simulation) -> Option<CsvDateRange> {
         .trades
         .iter()
         .filter(|trade| trade.will_import())
-        .map(|trade| trade.day)
-        .chain(
-            simulation
-                .dividends
-                .iter()
-                .filter(|dividend| dividend.will_import())
-                .map(|dividend| dividend.day),
-        );
+        .map(|trade| trade.day);
     let first = days.next()?;
     let (from, to) = days.fold((first, first), |(from, to), day| {
         (from.min(day), to.max(day))
@@ -97,7 +75,6 @@ fn date_range(simulation: &Simulation) -> Option<CsvDateRange> {
 /// A row of the file that is listed.
 enum Listed<'a> {
     Trade(&'a SimulatedTrade),
-    Dividend(&'a SimulatedDividend),
     /// A row the parser skipped or could not read.
     Parsed(&'a StockRowMessage, StockRowStatus),
 }
@@ -107,12 +84,6 @@ fn preview_rows(parsed: &ParsedFile, simulation: &Simulation) -> Vec<StockPrevie
         .trades
         .iter()
         .map(|trade| (trade.line, Listed::Trade(trade)))
-        .chain(
-            simulation
-                .dividends
-                .iter()
-                .map(|dividend| (dividend.line, Listed::Dividend(dividend))),
-        )
         .chain(
             parsed
                 .skipped
@@ -133,59 +104,25 @@ fn preview_rows(parsed: &ParsedFile, simulation: &Simulation) -> Vec<StockPrevie
         .take(PREVIEW_ROWS)
         .map(|(_, row)| match row {
             Listed::Trade(trade) => trade_row(trade),
-            Listed::Dividend(dividend) => dividend_row(dividend),
-            Listed::Parsed(message, status) => {
-                // A dividend or tax row the parser left out still says what it is.
-                let cash: Option<&CashRow> = parsed.cash_rows.get(&message.line);
-                StockPreviewRow {
-                    line: message.line,
-                    kind: cash.map_or(StockRowKind::Trade, |c| c.kind),
-                    day: cash.and_then(|c| c.day),
-                    direction: None,
-                    instrument_key: cash.and_then(|c| c.instrument_key.clone()),
-                    ticker: None,
-                    quantity: None,
-                    price: None,
-                    currency: cash.and_then(|c| c.currency.clone()),
-                    amount: cash.and_then(|c| c.amount).map(amount_text),
-                    tax: None,
-                    status,
-                    message: Some(message.clone()),
-                }
-            }
+            Listed::Parsed(message, status) => StockPreviewRow {
+                line: message.line,
+                day: None,
+                direction: None,
+                instrument_key: None,
+                ticker: None,
+                quantity: None,
+                price: None,
+                currency: None,
+                status,
+                message: Some(message.clone()),
+            },
         })
         .collect()
-}
-
-fn dividend_row(dividend: &SimulatedDividend) -> StockPreviewRow {
-    StockPreviewRow {
-        line: dividend.line,
-        kind: StockRowKind::Dividend,
-        day: Some(dividend.day),
-        direction: None,
-        instrument_key: Some(dividend.instrument_key.clone()),
-        ticker: dividend.ticker.clone(),
-        quantity: None,
-        price: None,
-        currency: Some(dividend.currency.clone()),
-        amount: Some(amount_text(dividend.gross)),
-        tax: (dividend.tax > 0.0).then(|| amount_text(dividend.tax)),
-        status: match &dividend.outcome {
-            TradeOutcome::New => StockRowStatus::New,
-            TradeOutcome::Duplicate { .. } => StockRowStatus::Duplicate,
-            TradeOutcome::Skipped(_) => StockRowStatus::Skipped,
-            TradeOutcome::Error(_) => StockRowStatus::Error,
-        },
-        message: dividend.message(),
-    }
 }
 
 fn trade_row(trade: &SimulatedTrade) -> StockPreviewRow {
     StockPreviewRow {
         line: trade.line,
-        kind: StockRowKind::Trade,
-        amount: None,
-        tax: None,
         day: Some(trade.day),
         direction: Some(trade.direction),
         instrument_key: Some(trade.instrument_key.clone()),
@@ -539,97 +476,5 @@ mod tests {
             })
             .unwrap();
         assert_eq!((positions, transactions, batches), (0, 0, 0));
-    }
-
-    #[test]
-    fn dividend_rows_carry_their_kind_amount_and_tax_and_are_counted() {
-        let conn = db();
-        add_position(&conn, "AAPL", "Apple", "USD");
-        let mut file = parsed_with(
-            vec![],
-            vec![
-                dividend(2, day(5), "AAPL", 12.5, 1.5),
-                dividend(3, day(6), "NVDA", 1.0, 0.0), // no position
-            ],
-        );
-        file.skipped = vec![
-            message(4, "importWizard.row.taxPaired", Some("2")),
-            message(5, "importWizard.row.taxUnpaired", None),
-        ];
-        file.cash_rows.insert(
-            4,
-            CashRow {
-                kind: StockRowKind::WithholdingTax,
-                day: Some(day(5)),
-                instrument_key: Some("symbol:AAPL".into()),
-                amount: Some(-1.5),
-                currency: Some("USD".into()),
-            },
-        );
-        file.unpaired_taxes = 1;
-        file.total_rows = 4;
-
-        let preview = preview(&conn, &file, &config("custom")).unwrap();
-
-        let dividend = row_of(&preview, 2);
-        assert_eq!(dividend.kind, StockRowKind::Dividend);
-        assert_eq!(dividend.status, StockRowStatus::New);
-        assert_eq!(
-            (
-                dividend.amount.as_deref(),
-                dividend.tax.as_deref(),
-                dividend.currency.as_deref(),
-                dividend.ticker.as_deref(),
-                dividend.quantity.as_deref()
-            ),
-            (Some("12.5"), Some("1.5"), Some("USD"), Some("AAPL"), None)
-        );
-        assert_eq!(row_of(&preview, 3).status, StockRowStatus::Error);
-        let tax = row_of(&preview, 4);
-        assert_eq!(
-            (tax.kind, tax.status, tax.amount.as_deref()),
-            (
-                StockRowKind::WithholdingTax,
-                StockRowStatus::Skipped,
-                Some("-1.5")
-            )
-        );
-        assert_eq!(row_of(&preview, 5).kind, StockRowKind::Trade);
-        let counts = preview.counts;
-        assert_eq!(
-            (
-                counts.total,
-                counts.will_import,
-                counts.dividends,
-                counts.skipped,
-                counts.errors,
-                counts.unpaired_taxes
-            ),
-            (4, 1, 1, 2, 1, 1)
-        );
-        assert_eq!(
-            counts.will_import + counts.duplicates + counts.skipped + counts.errors,
-            counts.total
-        );
-        assert_eq!(
-            preview.date_range.map(|r| (r.from, r.to)),
-            Some((day(5), day(5)))
-        );
-        assert!(!preview.needs_cash_currency);
-        assert_eq!(instrument(&preview, "symbol:AAPL").dividend_count, 1);
-    }
-
-    #[test]
-    fn the_cash_currency_request_is_passed_through() {
-        let conn = db();
-        let file = ParsedFile {
-            needs_cash_currency: true,
-            ..ParsedFile::default()
-        };
-        assert!(
-            preview(&conn, &file, &config("xtb"))
-                .unwrap()
-                .needs_cash_currency
-        );
     }
 }

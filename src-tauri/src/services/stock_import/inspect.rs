@@ -669,7 +669,7 @@ Dividend (Ordinary),2023-12-27 12:05:25,US56035L1044,MAIN,\"Main Street Capital\
         assert_eq!(action(c, "Deposit"), Some(TypeValueAction::Skip));
         assert_eq!(
             action(c, "Dividend (Ordinary)"),
-            Some(TypeValueAction::Dividend)
+            Some(TypeValueAction::Skip)
         );
         assert_eq!(c.type_values.len(), 4);
         assert!(c.validate().is_ok());
@@ -712,7 +712,7 @@ Dividend (Ordinary),2023-12-27 12:05:25,US56035L1044,MAIN,\"Main Street Capital\
         assert_eq!(action(c, "Stocks/ETF purchase"), Some(TypeValueAction::Buy));
         assert_eq!(action(c, "Stocks/ETF sale"), Some(TypeValueAction::Sell));
         assert_eq!(action(c, "Deposit"), Some(TypeValueAction::Skip));
-        assert_eq!(action(c, "Dividend"), Some(TypeValueAction::Dividend));
+        assert_eq!(action(c, "Dividend"), Some(TypeValueAction::Skip));
         assert_eq!(i.date_format.as_deref(), Some("%d.%m.%Y"));
         assert!(!i.date_format_ambiguous, "XTB's format is known");
         assert_eq!(i.decimal_separator, ".");
@@ -862,7 +862,7 @@ Dividend (Ordinary),2023-12-27 12:05:25,US56035L1044,MAIN,\"Main Street Capital\
         assert_eq!(c.decimal_separator, ",");
         assert_eq!(action(c, "BUY"), Some(TypeValueAction::Buy));
         assert_eq!(action(c, "Sell"), Some(TypeValueAction::Sell));
-        assert_eq!(action(c, "Dividend"), Some(TypeValueAction::Dividend));
+        assert_eq!(action(c, "Dividend"), Some(TypeValueAction::Skip));
         assert!(c.validate().is_ok());
         // Generic suggestions carry their confidence.
         assert_eq!(suggestion(&i, "date"), Some((0, 0.95)));
@@ -1174,7 +1174,7 @@ Dividend (Ordinary),2023-12-27 12:05:25,US56035L1044,MAIN,\"Main Street Capital\
             values,
             [
                 ("buy", 3, 2, TypeValueAction::Buy),
-                ("dividend", 2, 3, TypeValueAction::Dividend),
+                ("dividend", 2, 3, TypeValueAction::Skip),
                 ("sell", 1, 5, TypeValueAction::Sell),
             ]
         );

@@ -15,16 +15,68 @@ pub struct ExportResult {
     pub count: usize,
 }
 
-/// Export stock investment transactions and dividends as CSV
-/// Format matches the import format: Date, Type, Ticker, Name, Quantity, Price, Currency,
-/// Amount, Withholding tax (a dividend is a row of type `dividend` with its gross in `Amount`).
+/// Export stock investment transactions as CSV
+/// Format matches the import format: Date, Type, Ticker, Name, Quantity, Price, Currency
 #[tauri::command]
 pub fn export_stock_transactions(db: State<'_, Database>) -> Result<ExportResult> {
-    let (csv, count) = db.with_conn(crate::services::stock_import::export::stock_csv)?;
-    Ok(ExportResult {
-        csv,
-        filename: "stock_transactions.csv".to_string(),
-        count,
+    use chrono::{TimeZone, Utc};
+
+    db.with_conn(|conn| {
+        let mut stmt = conn.prepare(
+            "SELECT
+                t.type,
+                i.ticker,
+                i.company_name,
+                t.quantity,
+                t.price_per_unit,
+                t.currency,
+                t.transaction_date
+            FROM investment_transactions t
+            JOIN stock_investments i ON t.investment_id = i.id
+            ORDER BY t.transaction_date DESC",
+        )?;
+
+        let rows = stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, String>(0)?, // type
+                row.get::<_, String>(1)?, // ticker
+                row.get::<_, String>(2)?, // company_name
+                row.get::<_, String>(3)?, // quantity
+                row.get::<_, String>(4)?, // price_per_unit
+                row.get::<_, String>(5)?, // currency
+                row.get::<_, i64>(6)?,    // transaction_date
+            ))
+        })?;
+
+        let mut csv = String::from("Date,Type,Ticker,Name,Quantity,Price,Currency\n");
+        let mut count = 0;
+
+        for row in rows {
+            let (tx_type, ticker, company_name, quantity, price, currency, date_ts) = row?;
+            // Convert Unix timestamp to YYYY-MM-DD format
+            let date_str = Utc
+                .timestamp_opt(date_ts, 0)
+                .single()
+                .map(|dt| dt.format("%Y-%m-%d").to_string())
+                .unwrap_or_else(|| date_ts.to_string());
+            csv.push_str(&format!(
+                "{},{},{},\"{}\",{},{},{}\n",
+                date_str,
+                tx_type,
+                ticker,
+                escape_csv(&company_name),
+                quantity,
+                price,
+                currency
+            ));
+            count += 1;
+        }
+
+        Ok(ExportResult {
+            csv,
+            filename: "stock_transactions.csv".to_string(),
+            count,
+        })
     })
 }
 

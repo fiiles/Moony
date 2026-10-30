@@ -50,26 +50,9 @@ pub enum TypeValueAction {
     Buy,
     #[serde(rename = "sell")]
     Sell,
-    /// Not a trade (deposit, fee, …): the row is skipped.
+    /// Not a trade (deposit, dividend, fee, …): the row is skipped.
     #[serde(rename = "skip")]
     Skip,
-    /// A dividend payout (stored in `investment_dividends`, spec D11).
-    #[serde(rename = "dividend")]
-    Dividend,
-    /// A tax withheld from a dividend; paired with the dividend of the same day (D13).
-    #[serde(rename = "withholdingTax")]
-    WithholdingTax,
-}
-
-/// What kind of record a file row is (TS `StockRowKind`).
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Type)]
-pub enum StockRowKind {
-    #[serde(rename = "trade")]
-    Trade,
-    #[serde(rename = "dividend")]
-    Dividend,
-    #[serde(rename = "withholdingTax")]
-    WithholdingTax,
 }
 
 /// Where the price currency of a trade comes from.
@@ -128,10 +111,6 @@ pub struct StockImportTransforms {
     /// the rows of one file are never compared by id.
     #[serde(rename = "brokerIdPerOrder", default)]
     pub broker_id_per_order: bool,
-    /// The file is a cash statement whose trades come from another export (Degiro's account
-    /// statement): its buy and sell rows are skipped, dividends and taxes are read.
-    #[serde(rename = "cashRowsOnly", default)]
-    pub cash_rows_only: bool,
 }
 
 /// What the import does with the file's trades dated before a split (TS `StockSplitAction`).
@@ -249,18 +228,6 @@ pub struct StockImportConfig {
     /// 1-based file lines of duplicate rows to import anyway.
     #[serde(rename = "importAnywayLines", default)]
     pub import_anyway_lines: Vec<usize>,
-    /// The row's total amount: the gross of a dividend, the tax of a tax row (D12).
-    #[serde(rename = "amountColumn", default)]
-    pub amount_column: Option<usize>,
-    /// A tax withheld from the dividend of the same row.
-    #[serde(rename = "taxColumn", default)]
-    pub tax_column: Option<usize>,
-    /// The currency of `taxColumn` when it differs from the row's.
-    #[serde(rename = "taxCurrencyColumn", default)]
-    pub tax_currency_column: Option<usize>,
-    /// The currency of dividend and tax amounts when the file names none (XTB: the account's).
-    #[serde(rename = "cashCurrency", default)]
-    pub cash_currency: Option<String>,
 }
 
 fn is_currency_code(code: &str) -> bool {
@@ -301,11 +268,6 @@ impl StockImportConfig {
         }
         if self.direction_mode == DirectionMode::TypeColumn && self.type_column.is_none() {
             return invalid("stockImportTypeRequired");
-        }
-        if let Some(currency) = self.cash_currency.as_deref() {
-            if !is_currency_code(currency.trim()) {
-                return invalid("currencyInvalid");
-            }
         }
         for o in &self.instrument_overrides {
             if let Some(currency) = o.currency.as_deref() {
@@ -458,8 +420,6 @@ pub struct StockRowMessage {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Type)]
 pub struct StockPreviewRow {
     pub line: usize,
-    /// `trade` for every row that is not a dividend or a tax row.
-    pub kind: StockRowKind,
     /// UTC day (unix seconds), when the date parsed.
     pub day: Option<i64>,
     pub direction: Option<TradeDirection>,
@@ -471,10 +431,6 @@ pub struct StockPreviewRow {
     pub quantity: Option<String>,
     pub price: Option<String>,
     pub currency: Option<String>,
-    /// Decimal text: the gross of a dividend row, the tax of a tax row.
-    pub amount: Option<String>,
-    /// Decimal text: the tax paired with a dividend row.
-    pub tax: Option<String>,
     pub status: StockRowStatus,
     pub message: Option<StockRowMessage>,
 }
@@ -508,9 +464,6 @@ pub struct StockImportInstrument {
     pub currency: Option<String>,
     #[serde(rename = "tradeCount")]
     pub trade_count: usize,
-    /// Dividend rows of this instrument.
-    #[serde(rename = "dividendCount", default)]
-    pub dividend_count: usize,
     /// Ticker the trades will be stored under (override, else file symbol).
     pub ticker: Option<String>,
     pub status: StockInstrumentStatus,
@@ -530,12 +483,6 @@ pub struct StockImportCounts {
     pub errors: usize,
     /// Rows that will be imported converted to post-split units (D13).
     pub converted: usize,
-    /// Dividend rows that will import (also counted in `willImport`).
-    pub dividends: usize,
-    /// Tax rows without a dividend or in another currency than it, and in-row taxes in another
-    /// currency than their dividend: warnings (D13).
-    #[serde(rename = "unpairedTaxes")]
-    pub unpaired_taxes: usize,
 }
 
 /// Dry run of an import (TS `StockImportPreview`).
@@ -550,9 +497,6 @@ pub struct StockImportPreview {
     pub date_range: Option<CsvDateRange>,
     #[serde(rename = "hasFeeColumn")]
     pub has_fee_column: bool,
-    /// A dividend or tax row has no currency and the config has no `cashCurrency` (D12).
-    #[serde(rename = "needsCashCurrency")]
-    pub needs_cash_currency: bool,
 }
 
 /// What to look up on Yahoo Finance for one instrument (TS `StockInstrumentQuery`).
@@ -646,10 +590,7 @@ pub struct StockImportResult {
     /// `None` when nothing was imported (no batch is recorded).
     #[serde(rename = "batchId")]
     pub batch_id: Option<String>,
-    /// Trades and dividends written.
     pub imported: usize,
-    /// Dividends written (part of `imported`).
-    pub dividends: usize,
     pub duplicates: usize,
     pub skipped: usize,
     pub errors: usize,
@@ -751,59 +692,16 @@ pub struct ParsedTrade {
     pub external_id: Option<String>,
 }
 
-/// One dividend read from a file (internal). Amounts are in `currency`, pence already pounds.
-#[derive(Debug, Clone, PartialEq)]
-pub struct ParsedDividend {
-    /// 1-based file line.
-    pub line: usize,
-    /// UTC day, unix seconds (the pay day).
-    pub day: i64,
-    pub instrument_key: String,
-    pub symbol: Option<String>,
-    pub isin: Option<String>,
-    pub name: Option<String>,
-    /// Always > 0.
-    pub gross: f64,
-    /// The tax withheld (paired tax rows summed, or the row's own), 0 ≤ tax ≤ gross.
-    pub tax: f64,
-    /// Uppercase ISO code.
-    pub currency: String,
-    pub external_id: Option<String>,
-    /// A warning that rides along with an importable row (an in-row tax in another currency).
-    pub warning: Option<StockRowMessage>,
-}
-
-/// What the preview shows of a row that is a dividend or a tax row but ended up skipped or as
-/// an error (internal).
-#[derive(Debug, Clone, PartialEq)]
-pub struct CashRow {
-    pub kind: StockRowKind,
-    pub day: Option<i64>,
-    pub instrument_key: Option<String>,
-    /// Gross of a dividend, signed amount of a tax row.
-    pub amount: Option<f64>,
-    pub currency: Option<String>,
-}
-
 /// A whole file read with one config (internal).
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct ParsedFile {
     pub trades: Vec<ParsedTrade>,
-    /// Dividend rows that read (the simulation decides the rest).
-    pub dividends: Vec<ParsedDividend>,
-    /// Dividend and tax rows by line, for the rows that ended skipped or as an error.
-    pub cash_rows: std::collections::HashMap<usize, CashRow>,
-    /// Tax rows that found no dividend (or another currency), and in-row taxes in another
-    /// currency than their dividend: warnings.
-    pub unpaired_taxes: usize,
-    /// A dividend or tax row has no currency and the config names none.
-    pub needs_cash_currency: bool,
     /// Rows that are not trades (skipped) or could not be read (errors),
     /// keyed by line: `importWizard.row.*` / `validation.*`.
     pub skipped: Vec<StockRowMessage>,
     pub errors: Vec<StockRowMessage>,
     /// Data rows considered (every row ends in exactly one of trades,
-    /// dividends, skipped or errors).
+    /// skipped or errors).
     pub total_rows: usize,
     pub has_fee_column: bool,
 }
@@ -840,10 +738,6 @@ mod tests {
             transforms: StockImportTransforms::default(),
             instrument_overrides: vec![],
             import_anyway_lines: vec![],
-            amount_column: None,
-            tax_column: None,
-            tax_currency_column: None,
-            cash_currency: None,
         }
     }
 

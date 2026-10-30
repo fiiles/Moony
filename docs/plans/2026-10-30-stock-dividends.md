@@ -3,30 +3,22 @@
 Spec: `docs/specs/2026-10-30-stock-dividends-design.md`. Branch `feat/stock-dividends` in its
 own worktree, commits per task, no merge, no push.
 
-1. **Data model.** Migration `027_stock_dividends` (D2), regenerate `schema.snapshot`,
-   `docs/architecture/database.md`, ADR 0022 (own table). FX: add the table to the currency
-   lists of `services/fx_backfill.rs` (held currencies, dated facts, converted sources).
-2. **Types.** `models/stock_dividends.rs`: `StockDividend`, `InsertStockDividend` +
-   `validate()`, `StockDividendList`; register in `bindings.rs`; mirror in `shared/schema.ts`
-   (7-step procedure); regenerate `generated-types.ts`.
-3. **Service** `services/stock_dividends.rs` (TDD): list with report-currency totals, create,
-   update, delete, `bulk_create` (dedup rules 1–2, one-to-one, import anyway, batch stamp) used
-   by import and MCP. Tests: validation, CRUD, totals (day rate, estimated, missing), cascade,
-   dedup, and that a dividend leaves quantities, metrics, `replayed_quantities`, stock
-   performance quantities and split rewrites untouched.
-4. **Commands + API.** `commands/stock_dividends.rs`, register in `lib.rs`; `tauri-api.ts`
-   `stockDividendsApi`.
-5. **Detail page.** `use-stock-dividend-mutations.ts` (rule 7 + `stock-performance`),
-   `StockDividendModal` (add/edit), dividend rows in the StockDetail transaction list + filter,
-   hero total; all ten locales.
-6. **Import backend.** Types (actions, config columns, preview row kind/amount/tax,
-   `unpairedTaxes`, `dividendCount`, `needsCashCurrency`), classifier keywords, parse dividend
-   and tax rows, pairing, simulate (position rule, dedup), preview, import write + batch count,
-   undo; adapters Trading 212, XTB, IBKR cash transactions, Degiro account statement, Moony.
-   Tests per step.
-7. **Import UI.** Type-value actions, mapping of amount/tax columns, review rows for dividends
-   and tax, unpaired-tax warning, account-currency picker; locales.
-8. **Export.** Moony CSV with `Amount`, `Withholding tax` columns and dividend rows.
-9. **MCP.** `stock_dividends_create`, `stock_dividends`, dividends in `investment_detail`.
-10. **Demo seed.** A few dividends (one with tax, one in another currency).
-11. **Gates, code review, demo-profile verification** (port 1421, Alex greeting first).
+The first round (manual dividends with withholding tax, CSV import, MCP write) was built and
+then reworked after the owner's rulings of 2026-10-30 (spec header). The rework:
+
+1. **Revert the CSV dividend import** (stock import pipeline, wizard, export, `importWizard`
+   copy) to the state before this branch.
+2. **Migration 027 reshaped** (never released): `stock_dividend_events`,
+   `stock_dividend_coverage`, `investment_dividends` without tax; schema snapshot, database.md,
+   ADR 0022, FX lists in `fx_backfill.rs`.
+3. **Types and service** (TDD): `StockDividendSource`, `StockDividend`, `InsertStockDividend`,
+   `StockDividendList`; payouts from Yahoo events × shares held the day before; manual only
+   without Yahoo dividends (refused otherwise, superseded when Yahoo arrives); totals; `payouts`
+   for the return engine.
+4. **Fetch**: `price_api::refresh_dividends` records the events since the first trade (daily,
+   and when a trade predates the coverage); chart parsing tested.
+5. **MCP**: read tool with source labels; write tool removed.
+6. **UI**: source badges, Yahoo rows read-only, superseded rows, dialog with the Yahoo warning
+   and no tax field, gross total; refreshes invalidate `['stock-dividends']`; ten locales.
+7. **Demo seed** with Yahoo-shaped events.
+8. **Gates, review, demo-profile verification.**

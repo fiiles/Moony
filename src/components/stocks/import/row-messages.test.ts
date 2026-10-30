@@ -35,12 +35,6 @@ const context = (locale = 'en-US'): RowMessageContext => ({
     'importWizard.row.currencyMismatchPosition': 'Currency differs from the position ({{detail}})',
     'importWizard.row.duplicate': 'The same trade is already in Moony',
     'importWizard.row.duplicateById': 'The same broker ID is already in Moony',
-    'importWizard.row.taxPaired': 'Tax added to the dividend',
-    'importWizard.row.taxPairedLine': 'Tax added to the dividend on line {{detail}}',
-    'importWizard.row.taxUnpaired': 'Withholding tax without a dividend',
-    'importWizard.row.taxCurrencyMismatch': 'The tax is in another currency',
-    'importWizard.row.taxCurrencyMismatchIn': 'The tax is in {{detail}}, not written',
-    'importWizard.row.dividendWithoutPosition': 'No position for this dividend',
     'importWizard.result.line': 'Line {{line}}: {{message}}',
   }),
   tc: translator({ 'validation.somethingElse': 'Common sentence' }),
@@ -140,25 +134,6 @@ describe('rowMessageText', () => {
     expect(rowMessageText(message('importWizard.row.duplicateSameTrade', 'x'), context())).toBe(
       'The same trade is already in Moony'
     );
-  });
-
-  it('works the dividend line and the tax currency into the sentence of a tax row', () => {
-    expect(rowMessageText(message('importWizard.row.taxPaired', '5'), context())).toBe(
-      'Tax added to the dividend on line 5'
-    );
-    expect(rowMessageText(message('importWizard.row.taxPaired'), context())).toBe(
-      'Tax added to the dividend'
-    );
-    expect(rowMessageText(message('importWizard.row.taxCurrencyMismatch', 'EUR'), context())).toBe(
-      'The tax is in EUR, not written'
-    );
-    expect(rowMessageText(message('importWizard.row.taxCurrencyMismatch'), context())).toBe(
-      'The tax is in another currency'
-    );
-    // The ticker is not part of the sentence: it follows in parentheses.
-    expect(
-      rowMessageText(message('importWizard.row.dividendWithoutPosition', 'NVDA'), context())
-    ).toBe('No position for this dividend (NVDA)');
   });
 
   it('returns an unknown key as it is, so a missing translation stays visible', () => {

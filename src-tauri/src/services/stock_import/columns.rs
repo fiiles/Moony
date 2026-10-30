@@ -772,59 +772,19 @@ pub fn is_split_value(value: &str) -> bool {
     has_word(&tokens, &words) || han.iter().any(|word| folded.contains(word))
 }
 
-/// Stems of a withholding tax in the languages of the brokers (folded form; Han words match
-/// anywhere). Checked before the dividend words: "Dividend Tax" holds one.
-const TAX_STEMS: [&str; 12] = [
-    "withholding",
-    "quellensteuer",
-    "dividendensteuer",
-    "dividendbelasting",
-    "dividend tax",
-    "tax on dividend",
-    "srazkova dan",
-    "dan z dividend",
-    "ritenuta",
-    "podatek u zrodla",
-    "kallskatt",
-    "kildeskatt",
-];
-const TAX_HAN: [&str; 2] = ["源泉", "预扣"];
-/// Stems of a dividend (folded form): dividend, dividenda, dividende, dividendo, `divident`
-/// (XTB's own spelling), dywidenda, utdelning, utbytte, "payment in lieu of dividends".
-const DIVIDEND_STEMS: [&str; 5] = ["divid", "dywiden", "utdelning", "utbytte", "in lieu"];
-const DIVIDEND_HAN: [&str; 2] = ["配当", "股息"];
-
-fn is_withholding_tax(folded: &str) -> bool {
-    TAX_STEMS.iter().any(|stem| folded.contains(stem))
-        || TAX_HAN.iter().any(|han| folded.contains(han))
-        // "Tax" next to a dividend word in any order ("Impôt dividendes").
-        || (folded.split(' ').any(|t| t == "tax" || t == "taxe" || t == "steuer" || t == "dan" || t == "podatek" || t.starts_with("retencion") || t.starts_with("impot"))
-            && is_dividend_word(folded))
-}
-
-fn is_dividend_word(folded: &str) -> bool {
-    DIVIDEND_STEMS.iter().any(|stem| folded.contains(stem))
-        || DIVIDEND_HAN.iter().any(|han| folded.contains(han))
-}
-
-/// What a value of the type column probably means: a withholding tax word →
-/// `withholdingTax`, a purchase word → buy, a sale word → sell (XTB words a
-/// sale "CLOSE BUY"), a dividend word → dividend, everything else (deposit,
-/// withdrawal, interest, fee, conversion, split, transfer, …) is not a trade
-/// → skip.
+/// What a value of the type column probably means: a purchase word → buy, a
+/// sale word → sell (XTB words a sale "CLOSE BUY"), everything else (dividend,
+/// deposit, withdrawal, interest, fee, tax, conversion, split, transfer, …)
+/// is not a trade → skip.
 pub fn suggest_type_action(value: &str) -> TypeValueAction {
     let folded = fold_value(value);
     let tokens: Vec<&str> = folded.split(' ').filter(|t| !t.is_empty()).collect();
-    if is_withholding_tax(&folded) {
-        TypeValueAction::WithholdingTax
     // "close buy" first: it holds a purchase word and is a sale. Sale words
     // before purchase words: "verkauf" ends with "kauf".
-    } else if tokens.windows(2).any(|w| w == ["close", "buy"]) || has_word(&tokens, &SELL_WORDS) {
+    if tokens.windows(2).any(|w| w == ["close", "buy"]) || has_word(&tokens, &SELL_WORDS) {
         TypeValueAction::Sell
     } else if has_word(&tokens, &BUY_WORDS) {
         TypeValueAction::Buy
-    } else if is_dividend_word(&folded) {
-        TypeValueAction::Dividend
     } else {
         TypeValueAction::Skip
     }
@@ -1509,11 +1469,13 @@ mod tests {
     #[test]
     fn everything_else_is_skipped() {
         for value in [
+            "Dividend",
+            "Dividend (Ordinary)",
             "Deposit",
             "Withdrawal",
             "Interest on cash",
             "Free funds interests",
-            "Tax",
+            "Withholding tax",
             "Currency conversion",
             "Stock split open",
             "Transfer",
@@ -1522,9 +1484,11 @@ mod tests {
             "Profit/Loss",
             "Swap",
             "Share buyback",
+            "Dividenda",
             "Vklad",
             "Výběr",
             "Poplatek",
+            "Dividende",
             "Einzahlung",
             "Gebühr",
             "",
@@ -1532,54 +1496,6 @@ mod tests {
         ] {
             assert_eq!(action(value), TypeValueAction::Skip, "{value:?}");
         }
-    }
-
-    #[test]
-    fn dividend_words_in_the_languages_of_the_brokers() {
-        for value in [
-            "Dividend",
-            "Dividend (Ordinary)",
-            "Dividend (Dividends paid by us corporations)",
-            "DIVIDENT",
-            "Dividenda",
-            "Dividende",
-            "Dividendo",
-            "Dywidenda",
-            "Utdelning",
-            "Utbytte",
-            "Payment In Lieu Of Dividends",
-            "Dividends",
-            "配当金",
-            "股息",
-        ] {
-            assert_eq!(action(value), TypeValueAction::Dividend, "{value}");
-        }
-    }
-
-    #[test]
-    fn withholding_tax_words_win_over_the_dividend_in_them() {
-        for value in [
-            "Withholding Tax",
-            "Dividend Tax",
-            "Dividend tax (Corporate Action)",
-            "Dividendbelasting",
-            "Dividendensteuer",
-            "Quellensteuer",
-            "Srážková daň",
-            "Daň z dividendy",
-            "Retención dividendo",
-            "Ritenuta su dividendo",
-            "Impôts sur dividende",
-            "Podatek od dywidendy",
-            "Källskatt utdelning",
-            "Kildeskatt utbytte",
-            "源泉徴収税",
-            "预扣税",
-        ] {
-            assert_eq!(action(value), TypeValueAction::WithholdingTax, "{value}");
-        }
-        // A lone "tax" is not a withholding tax: it stays a skip.
-        assert_eq!(action("Tax"), TypeValueAction::Skip);
     }
 
     #[test]

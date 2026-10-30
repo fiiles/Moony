@@ -29,7 +29,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0019](0019-statement-files-share-the-import-pipeline.md) | Statement files share the bank import pipeline | 2026-10-15 | Accepted |
 | [0020](0020-yahoo-finance-for-crypto-prices.md) | Yahoo Finance for crypto prices; CoinGecko removed | 2026-10-25 | Accepted; supersedes the CoinGecko sentence of 0005 |
 | [0021](0021-desktop-biometric-key-storage.md) | Desktop biometric unlock: a device-bound copy of the master key | 2026-10-28 | Accepted; reverses ruling R22 on macOS and Windows |
-| [0022](0022-stock-dividends-in-their-own-table.md) | Stock dividends live in their own table, not as a transaction type | 2026-10-30 | Accepted |
+| [0022](0022-stock-dividends-in-their-own-table.md) | Stock dividends: Yahoo events and manual payouts in their own tables | 2026-10-30 | Accepted |
 
 ## Rules
 

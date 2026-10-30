@@ -329,14 +329,7 @@ function InstrumentRows({
         >
           {instrument.currency ?? '—'}
         </TableCell>
-        <TableCell className="text-right num">
-          {instrument.tradeCount}
-          {instrument.dividendCount > 0 && (
-            <small className="block text-micro font-500 text-ink-4">
-              {t('importWizard.review.instruments.dividends', { count: instrument.dividendCount })}
-            </small>
-          )}
-        </TableCell>
+        <TableCell className="text-right num">{instrument.tradeCount}</TableCell>
         <TableCell>
           <div className="flex flex-col items-start gap-1">
             {badge}

@@ -1,6 +1,6 @@
 //! Reading every row of a file with a configuration.
 //!
-//! Every data row ends in exactly one of `trades`, `dividends`, `skipped` (not a trade) and
+//! Every data row ends in exactly one of `trades`, `skipped` (not a trade) and
 //! `errors` (cannot be read), each with its 1-based file line and an i18n key
 //! plus the raw value it is about; blank lines are not rows. Dates are read strictly with the file's one format, numbers with
 //! the file's decimal separator (thousands separators and currency signs are
@@ -28,9 +28,8 @@ use super::adapters::xtb;
 use super::columns::{fold_value, has_fee_column, is_split_value};
 use super::detect::{data_records, date_part, delimiter_char, is_isin};
 use super::types::{
-    CashRow, CurrencyMode, DirectionMode, ParsedDividend, ParsedFile, ParsedTrade,
-    StockImportConfig, StockRowKind, StockRowMessage, StockTypeValueMapping, TradeDirection,
-    TypeValueAction,
+    CurrencyMode, DirectionMode, ParsedFile, ParsedTrade, StockImportConfig, StockRowMessage,
+    StockTypeValueMapping, TradeDirection, TypeValueAction,
 };
 
 /// Row messages (`stocks` namespace) and the one `common` key a row can carry.
@@ -48,31 +47,13 @@ pub const ROW_CURRENCY_MISSING: &str = "importWizard.row.currencyMissing";
 pub const ROW_PRICE_MISSING: &str = "importWizard.row.priceMissing";
 /// A record the csv reader could not read at all.
 pub const ROW_CANNOT_PARSE: &str = "importWizard.row.cannotParse";
-pub const ROW_DIVIDEND_NOT_POSITIVE: &str = "importWizard.row.dividendNotPositive";
-/// A positive dividend a negative row of the same instrument, day, currency and amount cancels
-/// (detail: the reversal's line); neither is written.
-pub const ROW_DIVIDEND_REVERSED: &str = "importWizard.row.dividendReversed";
-/// The negative row that cancelled a dividend (detail: the dividend's line).
-pub const ROW_DIVIDEND_REVERSAL: &str = "importWizard.row.dividendReversal";
-pub const ROW_CASH_CURRENCY_MISSING: &str = "importWizard.row.cashCurrencyMissing";
-/// A tax in another currency than its dividend: the tax is left out (a warning).
-pub const ROW_TAX_CURRENCY_MISMATCH: &str = "importWizard.row.taxCurrencyMismatch";
-/// A tax row added to the dividend of its day (detail: the dividend's line).
-pub const ROW_TAX_PAIRED: &str = "importWizard.row.taxPaired";
-/// A tax row without a dividend of its day (a warning).
-pub const ROW_TAX_UNPAIRED: &str = "importWizard.row.taxUnpaired";
-pub const ROW_TAX_EXCEEDS_GROSS: &str = "importWizard.row.taxExceedsGross";
 pub const CURRENCY_INVALID: &str = "validation.currencyInvalid";
-
-const TOLERANCE: f64 = 1e-9;
 
 /// A row that is not a trade: why, and whether it is a skip or an error.
 struct Note {
     skipped: bool,
     key: &'static str,
     detail: Option<String>,
-    /// What a dividend or tax row shows in the preview even though it is not imported.
-    cash: Option<Box<CashRow>>,
 }
 
 fn skip(key: &'static str, detail: Option<&str>) -> Note {
@@ -80,7 +61,6 @@ fn skip(key: &'static str, detail: Option<&str>) -> Note {
         skipped: true,
         key,
         detail: detail.map(str::to_string),
-        cash: None,
     }
 }
 
@@ -89,43 +69,7 @@ fn fail(key: &'static str, detail: Option<&str>) -> Note {
         skipped: false,
         key,
         detail: detail.map(str::to_string),
-        cash: None,
     }
-}
-
-impl Note {
-    fn with_cash(mut self, cash: CashRow) -> Note {
-        self.cash = Some(Box::new(cash));
-        self
-    }
-}
-
-/// What kind of row the type column says it is.
-#[derive(Clone, Copy, PartialEq)]
-enum Kind {
-    Trade,
-    Dividend,
-    Tax,
-}
-
-/// A tax row waiting to be paired with a dividend.
-#[derive(Debug, Clone)]
-struct TaxRow {
-    line: usize,
-    day: i64,
-    instrument_key: String,
-    /// As in the file (a charge is often negative, a refund positive).
-    amount: f64,
-    currency: String,
-}
-
-/// A row that read.
-enum Read {
-    Trade(ParsedTrade),
-    Dividend(ParsedDividend),
-    Tax(TaxRow),
-    /// A negative dividend row: a broker's reversal (`amount` is its absolute value).
-    Reversal(TaxRow),
 }
 
 /// `Some` unless empty.
@@ -197,39 +141,26 @@ impl<'a> RowReader<'a> {
     /// The row as a trade, or why it is not one. The order of the checks is
     /// the order a user reads a row in: what kind of row, which instrument,
     /// when, how many, at what price, in what currency.
-    fn read(&self, line: usize, record: &StringRecord) -> std::result::Result<Read, Note> {
+    fn read(&self, line: usize, record: &StringRecord) -> std::result::Result<ParsedTrade, Note> {
         let c = self.config;
         let cell = |column: usize| record.get(column).map_or("", str::trim);
         let optional = |column: Option<usize>| column.map(cell).and_then(non_empty);
 
-        // What kind of row: a trade, a dividend, a tax or none of them, by the type column. In
-        // the sign mode the type column is optional and only names dividends and taxes.
+        // What kind of row: a trade or not, by the type column.
         let mut direction = None;
-        let mut kind = Kind::Trade;
-        let type_value = optional(c.type_column).unwrap_or("");
-        let action = self.types.get(type_value);
-        match action {
-            Some(TypeValueAction::Dividend) => kind = Kind::Dividend,
-            Some(TypeValueAction::WithholdingTax) => kind = Kind::Tax,
-            _ => {}
-        }
-        if kind == Kind::Trade {
-            if c.direction_mode == DirectionMode::TypeColumn {
-                match action {
-                    Some(TypeValueAction::Buy) => direction = Some(TradeDirection::Buy),
-                    Some(TypeValueAction::Sell) => direction = Some(TradeDirection::Sell),
-                    _ => {
-                        let key = if is_split_value(type_value) {
-                            ROW_SPLIT
-                        } else {
-                            ROW_NOT_A_TRADE
-                        };
-                        return Err(skip(key, non_empty(type_value)));
-                    }
+        if c.direction_mode == DirectionMode::TypeColumn {
+            let value = optional(c.type_column).unwrap_or("");
+            match self.types.get(value) {
+                Some(TypeValueAction::Buy) => direction = Some(TradeDirection::Buy),
+                Some(TypeValueAction::Sell) => direction = Some(TradeDirection::Sell),
+                Some(TypeValueAction::Skip) | None => {
+                    let key = if is_split_value(value) {
+                        ROW_SPLIT
+                    } else {
+                        ROW_NOT_A_TRADE
+                    };
+                    return Err(skip(key, non_empty(value)));
                 }
-            }
-            if c.transforms.cash_rows_only {
-                return Err(skip(ROW_NOT_A_TRADE, non_empty(type_value)));
             }
         }
         if let Some(column) = c.transforms.asset_class_column {
@@ -259,10 +190,6 @@ impl<'a> RowReader<'a> {
         let instrument_key = match (&isin, &symbol) {
             (Some(isin), _) => format!("isin:{isin}"),
             (None, Some(symbol)) => format!("symbol:{symbol}"),
-            // A tax on something that is no security (IBKR's tax on credit interest): not ours.
-            (None, None) if kind == Kind::Tax => {
-                return Err(skip(ROW_NOT_A_TRADE, non_empty(type_value)))
-            }
             (None, None) => return Err(fail(ROW_SYMBOL_MISSING, isin_cell)),
         };
 
@@ -273,38 +200,6 @@ impl<'a> RowReader<'a> {
         else {
             return Err(fail(ROW_DATE_UNPARSEABLE, non_empty(raw_date)));
         };
-
-        if kind != Kind::Trade {
-            let cash_kind = if kind == Kind::Dividend {
-                StockRowKind::Dividend
-            } else {
-                StockRowKind::WithholdingTax
-            };
-            let who = CashWho {
-                line,
-                kind,
-                day,
-                instrument_key,
-                symbol,
-                isin,
-                name: optional(c.name_column).map(str::to_string),
-                external_id: optional(c.external_id_column).map(str::to_string),
-            };
-            let mut cash = CashRow {
-                kind: cash_kind,
-                day: Some(day),
-                instrument_key: Some(who.instrument_key.clone()),
-                amount: None,
-                currency: None,
-            };
-            return self.read_cash(record, who, &mut cash).map_err(|n| {
-                if n.cash.is_some() {
-                    n
-                } else {
-                    n.with_cash(cash)
-                }
-            });
-        }
 
         // How many: from the comment (XTB), else the column.
         let mut quantity;
@@ -374,7 +269,7 @@ impl<'a> RowReader<'a> {
             price = pence_to_pounds(price);
         }
 
-        Ok(Read::Trade(ParsedTrade {
+        Ok(ParsedTrade {
             line,
             day,
             direction,
@@ -386,297 +281,15 @@ impl<'a> RowReader<'a> {
             price,
             currency,
             external_id: optional(c.external_id_column).map(str::to_string),
-        }))
-    }
-
-    /// A number cell: `Ok(None)` when it is empty.
-    fn number(&self, raw: &str) -> std::result::Result<Option<f64>, Note> {
-        match clean_and_parse_amount(raw, self.decimal) {
-            Ok(value) => Ok(Some(value)),
-            Err(AmountError::Empty) => Ok(None),
-            Err(AmountError::Invalid) => Err(fail(ROW_NUMBER_UNPARSEABLE, non_empty(raw))),
-        }
-    }
-
-    /// The signed amount of a dividend or tax row: the amount column when it has a value, else
-    /// quantity × price (Trading 212 gives the shares and the gross per share).
-    fn cash_amount(&self, record: &StringRecord) -> std::result::Result<f64, Note> {
-        let c = self.config;
-        let cell = |column: usize| record.get(column).map_or("", str::trim);
-        if let Some(column) = c.amount_column {
-            if let Some(value) = self.number(cell(column))? {
-                return Ok(value);
-            }
-        }
-        let raw = cell(c.quantity_column);
-        let quantity = self
-            .number(raw)?
-            .ok_or_else(|| fail(ROW_NUMBER_UNPARSEABLE, None))?;
-        let raw = cell(c.price_column);
-        let price = self
-            .number(raw)?
-            .ok_or_else(|| fail(ROW_PRICE_MISSING, None))?;
-        Ok(quantity * price)
-    }
-
-    /// The currency of a dividend or tax row and whether its amounts are pence: the row's own
-    /// (column / whole file), else the config's `cashCurrency`.
-    fn cash_currency(&self, record: &StringRecord) -> std::result::Result<(String, bool), Note> {
-        let c = self.config;
-        let own = match c.currency_mode {
-            CurrencyMode::Column => c
-                .currency_column
-                .and_then(|column| record.get(column))
-                .map(str::trim)
-                .and_then(non_empty),
-            CurrencyMode::Fixed => c
-                .fixed_currency
-                .as_deref()
-                .map(str::trim)
-                .and_then(non_empty),
-            CurrencyMode::Instrument => None,
-        };
-        match own.or_else(|| {
-            c.cash_currency
-                .as_deref()
-                .map(str::trim)
-                .and_then(non_empty)
-        }) {
-            Some(raw) => read_currency(raw),
-            None => Err(fail(ROW_CASH_CURRENCY_MISSING, None)),
-        }
-    }
-
-    fn read_cash(
-        &self,
-        record: &StringRecord,
-        who: CashWho,
-        cash: &mut CashRow,
-    ) -> std::result::Result<Read, Note> {
-        let c = self.config;
-        let cell = |column: usize| record.get(column).map_or("", str::trim);
-        let mut amount = self.cash_amount(record)?;
-        cash.amount = Some(amount);
-        let (currency, pence) = self.cash_currency(record)?;
-        cash.currency = Some(currency.clone());
-        if pence {
-            amount = pence_to_pounds(amount);
-            cash.amount = Some(amount);
-        }
-        if who.kind == Kind::Tax {
-            return Ok(Read::Tax(TaxRow {
-                line: who.line,
-                day: who.day,
-                instrument_key: who.instrument_key,
-                amount,
-                currency,
-            }));
-        }
-        if amount < 0.0 {
-            return Ok(Read::Reversal(TaxRow {
-                line: who.line,
-                day: who.day,
-                instrument_key: who.instrument_key,
-                amount: -amount,
-                currency,
-            }));
-        }
-        if amount == 0.0 {
-            return Err(skip(ROW_DIVIDEND_NOT_POSITIVE, None));
-        }
-
-        // A tax withheld in the same row, in the row's currency unless the file says another.
-        let mut tax = 0.0;
-        let mut warning = None;
-        if let Some(column) = c.tax_column {
-            if let Some(value) = self.number(cell(column))? {
-                let mut value = value.abs();
-                let tax_currency = match c.tax_currency_column.map(cell).and_then(non_empty) {
-                    Some(raw) => {
-                        let (code, tax_pence) = read_currency(raw)?;
-                        if tax_pence {
-                            value = pence_to_pounds(value);
-                        }
-                        code
-                    }
-                    None => {
-                        if pence {
-                            value = pence_to_pounds(value);
-                        }
-                        currency.clone()
-                    }
-                };
-                if tax_currency != currency {
-                    if value > 0.0 {
-                        warning = Some(StockRowMessage {
-                            line: who.line,
-                            key: ROW_TAX_CURRENCY_MISMATCH.to_string(),
-                            detail: Some(tax_currency),
-                        });
-                    }
-                } else {
-                    tax = value;
-                }
-            }
-        }
-        if tax > amount + TOLERANCE * amount {
-            return Err(fail(ROW_TAX_EXCEEDS_GROSS, None));
-        }
-        Ok(Read::Dividend(ParsedDividend {
-            line: who.line,
-            day: who.day,
-            instrument_key: who.instrument_key,
-            symbol: who.symbol,
-            isin: who.isin,
-            name: who.name,
-            gross: amount,
-            tax,
-            currency,
-            external_id: who.external_id,
-            warning,
-        }))
+        })
     }
 }
 
-/// What a dividend or tax row knows about itself before its amounts are read.
-struct CashWho {
-    line: usize,
-    kind: Kind,
-    day: i64,
-    instrument_key: String,
-    symbol: Option<String>,
-    isin: Option<String>,
-    name: Option<String>,
-    external_id: Option<String>,
-}
-
-fn message(line: usize, note: &Note) -> StockRowMessage {
+fn message(line: usize, note: Note) -> StockRowMessage {
     StockRowMessage {
         line,
         key: note.key.to_string(),
-        detail: note.detail.clone(),
-    }
-}
-
-/// Pair the tax rows with the dividends of their instrument and day (spec D13): the signed
-/// amounts of a day are summed, the absolute sum is the tax of the first dividend of that day.
-/// Tax rows end skipped, a dividend whose tax exceeds it ends as an error.
-/// A broker's reversal (IBKR, Degiro: `Dividends −10` after `Dividends +10`, often followed by a
-/// re-post) cancels the first dividend of the same instrument, day, currency and amount; neither
-/// is written, and the re-post imports as the payout. A reversal without such a dividend is
-/// skipped. Runs before the taxes pair, so a tax goes to the dividend that stays.
-fn cancel_reversals(parsed: &mut ParsedFile, reversals: Vec<TaxRow>) {
-    for reversal in reversals {
-        let cash = |kind, line_amount: f64| CashRow {
-            kind,
-            day: Some(reversal.day),
-            instrument_key: Some(reversal.instrument_key.clone()),
-            amount: Some(line_amount),
-            currency: Some(reversal.currency.clone()),
-        };
-        let matched = parsed.dividends.iter().position(|d| {
-            d.instrument_key == reversal.instrument_key
-                && d.day == reversal.day
-                && d.currency == reversal.currency
-                && (d.gross - reversal.amount).abs() <= TOLERANCE * d.gross.max(1.0)
-        });
-        parsed.cash_rows.insert(
-            reversal.line,
-            cash(StockRowKind::Dividend, -reversal.amount),
-        );
-        let Some(index) = matched else {
-            parsed.skipped.push(StockRowMessage {
-                line: reversal.line,
-                key: ROW_DIVIDEND_NOT_POSITIVE.to_string(),
-                detail: None,
-            });
-            continue;
-        };
-        let dividend = parsed.dividends.remove(index);
-        if dividend.warning.is_some() {
-            parsed.unpaired_taxes -= 1;
-        }
-        parsed
-            .cash_rows
-            .insert(dividend.line, cash(StockRowKind::Dividend, dividend.gross));
-        parsed.skipped.push(StockRowMessage {
-            line: dividend.line,
-            key: ROW_DIVIDEND_REVERSED.to_string(),
-            detail: Some(reversal.line.to_string()),
-        });
-        parsed.skipped.push(StockRowMessage {
-            line: reversal.line,
-            key: ROW_DIVIDEND_REVERSAL.to_string(),
-            detail: Some(dividend.line.to_string()),
-        });
-    }
-}
-
-fn pair_taxes(parsed: &mut ParsedFile, taxes: Vec<TaxRow>) {
-    let mut first_dividend: HashMap<(String, i64), usize> = HashMap::new();
-    for (index, dividend) in parsed.dividends.iter().enumerate() {
-        first_dividend
-            .entry((dividend.instrument_key.clone(), dividend.day))
-            .or_insert(index);
-    }
-    let mut sums: HashMap<usize, f64> = HashMap::new();
-    for tax in taxes {
-        let kind_row = |tax: &TaxRow| CashRow {
-            kind: StockRowKind::WithholdingTax,
-            day: Some(tax.day),
-            instrument_key: Some(tax.instrument_key.clone()),
-            amount: Some(tax.amount),
-            currency: Some(tax.currency.clone()),
-        };
-        let (key, detail) = match first_dividend.get(&(tax.instrument_key.clone(), tax.day)) {
-            None => (ROW_TAX_UNPAIRED, None),
-            Some(&index) if parsed.dividends[index].currency != tax.currency => {
-                (ROW_TAX_CURRENCY_MISMATCH, Some(tax.currency.clone()))
-            }
-            Some(&index) => {
-                *sums.entry(index).or_insert(0.0) += tax.amount;
-                (
-                    ROW_TAX_PAIRED,
-                    Some(parsed.dividends[index].line.to_string()),
-                )
-            }
-        };
-        if key != ROW_TAX_PAIRED {
-            parsed.unpaired_taxes += 1;
-        }
-        parsed.skipped.push(StockRowMessage {
-            line: tax.line,
-            key: key.to_string(),
-            detail,
-        });
-        parsed.cash_rows.insert(tax.line, kind_row(&tax));
-    }
-    for (index, sum) in sums {
-        parsed.dividends[index].tax += sum.abs();
-    }
-    let mut exceeded = Vec::new();
-    for (index, dividend) in parsed.dividends.iter().enumerate() {
-        if dividend.tax > dividend.gross + TOLERANCE * dividend.gross {
-            exceeded.push(index);
-        }
-    }
-    for index in exceeded.into_iter().rev() {
-        let dividend = parsed.dividends.remove(index);
-        parsed.cash_rows.insert(
-            dividend.line,
-            CashRow {
-                kind: StockRowKind::Dividend,
-                day: Some(dividend.day),
-                instrument_key: Some(dividend.instrument_key),
-                amount: Some(dividend.gross),
-                currency: Some(dividend.currency),
-            },
-        );
-        parsed.errors.push(StockRowMessage {
-            line: dividend.line,
-            key: ROW_TAX_EXCEEDS_GROSS.to_string(),
-            detail: None,
-        });
+        detail: note.detail,
     }
 }
 
@@ -707,8 +320,6 @@ pub fn parse_file(bytes: &[u8], config: &StockImportConfig) -> Result<ParsedFile
         has_fee_column: has_fee_column(&headers),
         ..ParsedFile::default()
     };
-    let mut taxes: Vec<TaxRow> = Vec::new();
-    let mut reversals: Vec<TaxRow> = Vec::new();
     for (line, result) in data_records(content, delimiter, config.header_row, config.skip_rows) {
         let record = match result {
             Ok(record) => record,
@@ -717,7 +328,7 @@ pub fn parse_file(bytes: &[u8], config: &StockImportConfig) -> Result<ParsedFile
                 let detail = e.to_string();
                 parsed
                     .errors
-                    .push(message(line, &fail(ROW_CANNOT_PARSE, Some(&detail))));
+                    .push(message(line, fail(ROW_CANNOT_PARSE, Some(&detail))));
                 continue;
             }
         };
@@ -726,35 +337,11 @@ pub fn parse_file(bytes: &[u8], config: &StockImportConfig) -> Result<ParsedFile
         }
         parsed.total_rows += 1;
         match reader.read(line, &record) {
-            Ok(Read::Trade(trade)) => parsed.trades.push(trade),
-            Ok(Read::Dividend(dividend)) => {
-                if dividend.warning.is_some() {
-                    parsed.unpaired_taxes += 1;
-                }
-                parsed.dividends.push(dividend);
-            }
-            Ok(Read::Tax(tax)) => taxes.push(tax),
-            Ok(Read::Reversal(reversal)) => reversals.push(reversal),
-            Err(note) => {
-                if note.key == ROW_CASH_CURRENCY_MISSING {
-                    parsed.needs_cash_currency = true;
-                }
-                if let Some(cash) = note.cash.clone() {
-                    parsed.cash_rows.insert(line, *cash);
-                }
-                if note.skipped {
-                    parsed.skipped.push(message(line, &note));
-                } else {
-                    parsed.errors.push(message(line, &note));
-                }
-            }
+            Ok(trade) => parsed.trades.push(trade),
+            Err(note) if note.skipped => parsed.skipped.push(message(line, note)),
+            Err(note) => parsed.errors.push(message(line, note)),
         }
     }
-    cancel_reversals(&mut parsed, reversals);
-    pair_taxes(&mut parsed, taxes);
-    // Pairing adds rows out of order.
-    parsed.skipped.sort_by_key(|m| m.line);
-    parsed.errors.sort_by_key(|m| m.line);
     Ok(parsed)
 }
 
@@ -1674,402 +1261,5 @@ nedatum;nákup;AAPL;1;185,50;USD\n\
             key(parse_file(HEADER.as_bytes(), &bad)),
             "validation.csvDecimalSeparatorInvalid"
         );
-    }
-
-    // ===================================================================
-    // Dividends and withholding taxes (spec D11-D13)
-    // ===================================================================
-
-    const DIV_HEADER: &str = "Datum;Typ;Symbol;Počet;Cena;Měna;Částka;Daň;Měna daně\n";
-
-    /// The hand-made table with an amount column (6), an in-row tax (7) and its currency (8);
-    /// `dividenda` and `srážka` are the two new actions.
-    fn div_config() -> StockImportConfig {
-        let mut c = config();
-        c.type_values = vec![
-            mapping("nákup", TypeValueAction::Buy),
-            mapping("prodej", TypeValueAction::Sell),
-            mapping("dividenda", TypeValueAction::Dividend),
-            mapping("srážka", TypeValueAction::WithholdingTax),
-        ];
-        c.amount_column = Some(6);
-        c.tax_column = Some(7);
-        c.tax_currency_column = Some(8);
-        c
-    }
-
-    fn parse_div(rows: &str, config: &StockImportConfig) -> ParsedFile {
-        parse_file(format!("{DIV_HEADER}{rows}").as_bytes(), config).expect("parse")
-    }
-
-    fn only_dividend(rows: &str, config: &StockImportConfig) -> ParsedDividend {
-        let parsed = parse_div(rows, config);
-        assert_eq!(
-            (
-                parsed.dividends.len(),
-                parsed.trades.len(),
-                parsed.skipped.len(),
-                parsed.errors.len()
-            ),
-            (1, 0, 0, 0),
-            "{:?} {:?}",
-            parsed.skipped,
-            parsed.errors
-        );
-        parsed.dividends[0].clone()
-    }
-
-    #[test]
-    fn a_dividend_takes_its_gross_from_the_amount_column() {
-        let d = only_dividend("15.03.2024;Dividenda;aapl;;;USD;12,50;;\n", &div_config());
-        assert_eq!(
-            d,
-            ParsedDividend {
-                line: 2,
-                day: 1710460800,
-                instrument_key: "symbol:AAPL".into(),
-                symbol: Some("AAPL".into()),
-                isin: None,
-                name: None,
-                gross: 12.5,
-                tax: 0.0,
-                currency: "USD".into(),
-                external_id: None,
-                warning: None,
-            }
-        );
-    }
-
-    #[test]
-    fn a_dividend_without_an_amount_is_quantity_times_price() {
-        // Trading 212: shares × gross per share; the amount column is not set at all.
-        let mut c = div_config();
-        c.amount_column = None;
-        let d = only_dividend("15.03.2024;dividenda;AAPL;2;0,24;USD;;;\n", &c);
-        assert_eq!((d.gross, d.currency.as_str()), (0.48, "USD"));
-        // An empty amount cell falls back to it as well.
-        let d = only_dividend("15.03.2024;dividenda;AAPL;2;0,25;USD;;;\n", &div_config());
-        assert_eq!(d.gross, 0.5);
-    }
-
-    #[test]
-    fn a_tax_in_the_dividend_row_is_read_in_its_own_currency() {
-        let c = div_config();
-        let d = only_dividend("15.03.2024;dividenda;AAPL;;;USD;10;1,5;USD\n", &c);
-        assert_eq!((d.gross, d.tax), (10.0, 1.5));
-        // No tax currency cell: the dividend's.
-        let d = only_dividend("15.03.2024;dividenda;AAPL;;;USD;10;-1,5;\n", &c);
-        assert_eq!(d.tax, 1.5, "the absolute value");
-        // Another currency: the dividend imports without tax and carries the warning.
-        let parsed = parse_div("15.03.2024;dividenda;AAPL;;;USD;10;1,5;EUR\n", &c);
-        assert_eq!(parsed.dividends.len(), 1);
-        assert_eq!(parsed.dividends[0].tax, 0.0);
-        assert_eq!(
-            parsed.dividends[0].warning,
-            Some(note(2, "importWizard.row.taxCurrencyMismatch", Some("EUR")))
-        );
-        assert_eq!(parsed.unpaired_taxes, 1);
-        assert!(parsed.skipped.is_empty() && parsed.errors.is_empty());
-    }
-
-    #[test]
-    fn a_tax_larger_than_the_gross_makes_the_dividend_an_error() {
-        let parsed = parse_div(
-            "15.03.2024;dividenda;AAPL;;;USD;10;10,5;USD\n",
-            &div_config(),
-        );
-        assert!(parsed.dividends.is_empty());
-        assert_eq!(
-            parsed.errors,
-            [note(2, "importWizard.row.taxExceedsGross", None)]
-        );
-        // Equal is fine.
-        only_dividend("15.03.2024;dividenda;AAPL;;;USD;10;10;USD\n", &div_config());
-    }
-
-    #[test]
-    fn tax_rows_are_summed_and_paired_with_the_first_dividend_of_their_day() {
-        let parsed = parse_div(
-            "15.03.2024;dividenda;AAPL;;;USD;10;;\n\
-15.03.2024;dividenda;AAPL;;;USD;20;;\n\
-15.03.2024;srážka;AAPL;;;USD;-1,5;;\n\
-15.03.2024;srážka;AAPL;;;USD;-0,5;;\n",
-            &div_config(),
-        );
-        assert_eq!(parsed.dividends.len(), 2);
-        assert_eq!(
-            (parsed.dividends[0].tax, parsed.dividends[1].tax),
-            (2.0, 0.0)
-        );
-        assert_eq!(
-            parsed.skipped,
-            [
-                note(4, "importWizard.row.taxPaired", Some("2")),
-                note(5, "importWizard.row.taxPaired", Some("2")),
-            ]
-        );
-        assert_eq!(parsed.unpaired_taxes, 0);
-        assert_eq!(parsed.total_rows, 4);
-    }
-
-    #[test]
-    fn a_refund_row_cancels_a_charge() {
-        let parsed = parse_div(
-            "15.03.2024;srážka;AAPL;;;USD;-3;;\n\
-15.03.2024;dividenda;AAPL;;;USD;10;;\n\
-15.03.2024;srážka;AAPL;;;USD;1;;\n",
-            &div_config(),
-        );
-        // The dividend comes after the first tax row in the file: the pairing is by day.
-        assert_eq!(parsed.dividends[0].tax, 2.0);
-        assert_eq!(parsed.skipped.len(), 2);
-        assert_eq!(parsed.skipped[0].detail.as_deref(), Some("3"));
-    }
-
-    #[test]
-    fn a_tax_row_without_a_dividend_of_its_day_is_an_unpaired_warning() {
-        let parsed = parse_div(
-            "15.03.2024;dividenda;AAPL;;;USD;10;;\n\
-16.03.2024;srážka;AAPL;;;USD;-1;;\n\
-15.03.2024;srážka;MSFT;;;USD;-1;;\n",
-            &div_config(),
-        );
-        assert_eq!(parsed.dividends[0].tax, 0.0);
-        assert_eq!(
-            parsed.skipped,
-            [
-                note(3, "importWizard.row.taxUnpaired", None),
-                note(4, "importWizard.row.taxUnpaired", None),
-            ]
-        );
-        assert_eq!(parsed.unpaired_taxes, 2);
-    }
-
-    #[test]
-    fn a_tax_in_another_currency_than_its_dividend_is_a_warning_too() {
-        let parsed = parse_div(
-            "15.03.2024;dividenda;AAPL;;;USD;10;;\n\
-15.03.2024;srážka;AAPL;;;EUR;-1;;\n",
-            &div_config(),
-        );
-        assert_eq!(parsed.dividends[0].tax, 0.0);
-        assert_eq!(
-            parsed.skipped,
-            [note(3, "importWizard.row.taxCurrencyMismatch", Some("EUR"))]
-        );
-        assert_eq!(parsed.unpaired_taxes, 1);
-    }
-
-    #[test]
-    fn paired_taxes_exceeding_the_gross_make_the_dividend_an_error() {
-        let parsed = parse_div(
-            "15.03.2024;dividenda;AAPL;;;USD;10;;\n\
-15.03.2024;srážka;AAPL;;;USD;-11;;\n",
-            &div_config(),
-        );
-        assert!(parsed.dividends.is_empty());
-        assert_eq!(
-            parsed.errors,
-            [note(2, "importWizard.row.taxExceedsGross", None)]
-        );
-        assert_eq!(parsed.skipped.len(), 1);
-        assert_eq!(parsed.total_rows, 2);
-    }
-
-    #[test]
-    fn a_reversed_or_zero_dividend_is_skipped_not_an_error() {
-        let c = div_config();
-        for amount in ["-12,5", "0"] {
-            let skipped = parse_div(&format!("15.03.2024;dividenda;AAPL;;;USD;{amount};;\n"), &c);
-            assert_eq!(
-                skipped.skipped,
-                [note(2, "importWizard.row.dividendNotPositive", None)],
-                "{amount}"
-            );
-            assert!(skipped.dividends.is_empty() && skipped.errors.is_empty());
-        }
-        // The sign of quantity × price counts the same way.
-        let mut q = div_config();
-        q.amount_column = None;
-        assert_eq!(
-            parse_div("15.03.2024;dividenda;AAPL;-2;0,24;USD;;;\n", &q)
-                .skipped
-                .len(),
-            1
-        );
-    }
-
-    #[test]
-    fn a_reversal_cancels_its_dividend_and_the_repost_imports_once() {
-        // IBKR: post, reversal, re-post of one payout, with the tax charged, refunded, charged.
-        let parsed = parse_div(
-            "15.03.2024;dividenda;AAPL;;;USD;10;;\n\
-15.03.2024;dividenda;AAPL;;;USD;-10;;\n\
-15.03.2024;dividenda;AAPL;;;USD;10;;\n\
-15.03.2024;srážka;AAPL;;;USD;-1,5;;\n\
-15.03.2024;srážka;AAPL;;;USD;1,5;;\n\
-15.03.2024;srážka;AAPL;;;USD;-1,5;;\n",
-            &div_config(),
-        );
-        assert_eq!(parsed.dividends.len(), 1, "{parsed:?}");
-        assert_eq!(parsed.dividends[0].line, 4, "the re-post stays");
-        assert_eq!(
-            (parsed.dividends[0].gross, parsed.dividends[0].tax),
-            (10.0, 1.5)
-        );
-        assert!(parsed
-            .skipped
-            .contains(&note(2, "importWizard.row.dividendReversed", Some("3"))));
-        assert!(parsed
-            .skipped
-            .contains(&note(3, "importWizard.row.dividendReversal", Some("2"))));
-        assert_eq!(parsed.unpaired_taxes, 0);
-        assert_eq!(
-            parsed.dividends.len() + parsed.skipped.len() + parsed.errors.len(),
-            parsed.total_rows
-        );
-    }
-
-    #[test]
-    fn a_tax_on_no_security_is_skipped_not_an_error() {
-        let parsed = parse_div("15.03.2024;srážka;;;;USD;-0,3;;\n", &div_config());
-        assert!(parsed.errors.is_empty(), "{parsed:?}");
-        assert_eq!(
-            parsed.skipped,
-            [note(2, "importWizard.row.notATrade", Some("srážka"))]
-        );
-        assert_eq!(parsed.unpaired_taxes, 0);
-    }
-
-    #[test]
-    fn a_reversal_without_a_repost_leaves_nothing_and_its_tax_unpaired() {
-        let parsed = parse_div(
-            "15.03.2024;dividenda;AAPL;;;USD;10;;\n\
-15.03.2024;dividenda;AAPL;;;USD;-10;;\n\
-15.03.2024;dividenda;AAPL;;;USD;-4;;\n",
-            &div_config(),
-        );
-        assert!(parsed.dividends.is_empty());
-        assert!(parsed
-            .skipped
-            .contains(&note(4, "importWizard.row.dividendNotPositive", None)));
-    }
-
-    #[test]
-    fn a_dividend_without_any_currency_asks_for_the_account_currency() {
-        // XTB: no currency column, the amounts are in the account currency.
-        let mut c = div_config();
-        c.currency_mode = CurrencyMode::Instrument;
-        let parsed = parse_div("15.03.2024;dividenda;AAPL;;;;10;;\n", &c);
-        assert!(parsed.dividends.is_empty());
-        assert_eq!(
-            parsed.errors,
-            [note(2, "importWizard.row.cashCurrencyMissing", None)]
-        );
-        assert!(parsed.needs_cash_currency);
-
-        c.cash_currency = Some("czk".into());
-        let parsed = parse_div("15.03.2024;dividenda;AAPL;;;;10;;\n", &c);
-        assert_eq!(parsed.dividends[0].currency, "CZK");
-        assert!(!parsed.needs_cash_currency);
-        // An empty currency cell of a column file falls back to it too.
-        c.currency_mode = CurrencyMode::Column;
-        let parsed = parse_div("15.03.2024;dividenda;AAPL;;;;10;;\n", &c);
-        assert_eq!(parsed.dividends[0].currency, "CZK");
-    }
-
-    #[test]
-    fn pence_amounts_and_taxes_become_pounds() {
-        let parsed = parse_div("15.03.2024;dividenda;VOD;;;GBX;1250;125;\n", &div_config());
-        assert_eq!(
-            (
-                parsed.dividends[0].gross,
-                parsed.dividends[0].tax,
-                parsed.dividends[0].currency.as_str()
-            ),
-            (12.5, 1.25, "GBP")
-        );
-    }
-
-    #[test]
-    fn cash_rows_only_skips_the_trades_of_the_file() {
-        let mut c = div_config();
-        c.transforms.cash_rows_only = true;
-        let parsed = parse_div(
-            "15.01.2024;nákup;AAPL;10;185,50;USD;;;\n\
-15.03.2024;dividenda;AAPL;;;USD;10;;\n\
-20.03.2024;prodej;AAPL;5;190;USD;;;\n",
-            &c,
-        );
-        assert_eq!(parsed.trades.len(), 0);
-        assert_eq!(parsed.dividends.len(), 1);
-        assert_eq!(
-            parsed.skipped,
-            [
-                note(2, "importWizard.row.notATrade", Some("nákup")),
-                note(4, "importWizard.row.notATrade", Some("prodej")),
-            ]
-        );
-    }
-
-    #[test]
-    fn the_sign_mode_reads_dividends_through_an_optional_type_column() {
-        let mut c = div_config();
-        c.direction_mode = DirectionMode::QuantitySign;
-        let parsed = parse_div(
-            "15.01.2024;;AAPL;10;185,50;USD;;;\n\
-15.03.2024;dividenda;AAPL;;;USD;10;;\n\
-16.03.2024;nic;AAPL;-5;190;USD;;;\n",
-            &c,
-        );
-        assert_eq!(
-            parsed.trades.len(),
-            2,
-            "a value the type map does not know is a trade here"
-        );
-        assert_eq!(parsed.dividends.len(), 1);
-    }
-
-    #[test]
-    fn every_row_ends_in_exactly_one_bucket_with_dividends_too() {
-        let parsed = {
-            let mut c = div_config();
-            c.type_values.push(mapping("x", TypeValueAction::Skip));
-            parse_div(
-                "15.01.2024;nákup;AAPL;10;185,50;USD;;;\n\
-15.03.2024;dividenda;AAPL;;;USD;10;1;USD\n\
-15.03.2024;srážka;AAPL;;;USD;-2;;\n\
-16.03.2024;srážka;MSFT;;;USD;-2;;\n\
-17.03.2024;dividenda;AAPL;;;USD;-4;;\n\
-18.03.2024;dividenda;AAPL;;;USD;abc;;\n\
-19.03.2024;dividenda;AAPL;;;USD;2;5;USD\n",
-                &c,
-            )
-        };
-        assert_eq!(parsed.total_rows, 7);
-        assert_eq!(parsed.trades.len(), 1);
-        assert_eq!(
-            parsed.dividends.iter().map(|d| d.line).collect::<Vec<_>>(),
-            [3]
-        );
-        assert_eq!(
-            parsed.skipped.iter().map(|m| m.line).collect::<Vec<_>>(),
-            [4, 5, 6]
-        );
-        assert_eq!(
-            parsed.errors.iter().map(|m| m.line).collect::<Vec<_>>(),
-            [7, 8]
-        );
-        assert_eq!(
-            parsed.trades.len()
-                + parsed.dividends.len()
-                + parsed.skipped.len()
-                + parsed.errors.len(),
-            parsed.total_rows
-        );
-        // The preview can say what the left-out rows were.
-        assert_eq!(parsed.cash_rows[&5].kind, StockRowKind::WithholdingTax);
-        assert_eq!(parsed.cash_rows[&6].kind, StockRowKind::Dividend);
-        assert_eq!(parsed.unpaired_taxes, 1);
     }
 }

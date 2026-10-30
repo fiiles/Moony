@@ -575,10 +575,6 @@ export function StockImportDialog({
                 onToggleImportAnyway={toggleImportAnyway}
                 overrides={overrides}
                 currencyMode={mapping.currencyMode}
-                cashCurrency={mapping.cashCurrency}
-                onCashCurrencyChange={(cashCurrency) =>
-                  setMapping((current) => ({ ...current, cashCurrency }))
-                }
                 resolutions={resolution.resolutions}
                 progress={resolution.progress}
                 isResolving={resolution.isResolving}

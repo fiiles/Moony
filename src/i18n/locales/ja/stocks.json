@@ -347,26 +347,29 @@
       "short": "配当",
       "addTitle": "受け取った配当を追加",
       "editTitle": "配当を編集",
-      "description": "{{ticker}} の1回分の支払い：支払日の源泉徴収前の総額です。株数は変わりません。",
-      "paidDate": "支払日",
+      "description": "Yahoo Finance にない {{ticker}} の1回分の支払い：権利落ち日の源泉徴収前の総額です。株数は変わりません。",
       "gross": "総額（税引前）",
-      "grossHint": "支払い全体の金額（税引前）",
-      "tax": "源泉徴収税",
-      "taxHint": "任意。徴収されていない場合は空欄",
+      "grossHint": "支払い全体の金額（源泉徴収前）",
       "note": "メモ",
       "save": "配当を保存",
       "badge": "配当",
-      "taxLine": "税 {{tax}} · 手取り {{net}}",
-      "received": "受取配当",
-      "receivedNet": "税引後の配当",
+      "received": "受取配当（税引前）",
       "added": "配当を記録しました",
       "updated": "配当を更新しました",
       "deleted": "配当を削除しました",
       "confirmDelete": {
         "title": "配当を削除しますか？",
-        "description": "{{date}} に支払われた配当（総額 {{amount}}）は完全に削除されます。この操作は元に戻せません。",
+        "description": "権利落ち日 {{date}} の配当（総額 {{amount}}）は完全に削除されます。この操作は元に戻せません。",
         "confirm": "配当を削除"
-      }
+      },
+      "exDate": "権利落ち日",
+      "exDateHint": "この配当なしで取引される最初の日",
+      "sourceYahoo": "Yahoo Finance",
+      "sourceManual": "手動",
+      "perShare": "1株あたり {{amount}}",
+      "superseded": "Yahoo Finance に置き換え、集計対象外",
+      "yahooTitle": "この銘柄の配当は Yahoo Finance にあります",
+      "yahooBody": "Moony は {{ticker}} の配当を Yahoo Finance から取得し、各権利落ち日の前日に保有していた株数から計算します。手動で配当を入力するのは、Yahoo に配当がない銘柄だけにしてください。"
     }
   },
   "importWizard": {
@@ -386,10 +389,6 @@
       "buy": "買付",
       "sell": "売却"
     },
-    "kind": {
-      "dividend": "配当",
-      "withholdingTax": "源泉徴収税"
-    },
     "roles": {
       "date": "日付",
       "direction": "売買の区分",
@@ -401,10 +400,7 @@
       "price": "1株あたりの価格",
       "quantityPrice": "数量と価格",
       "currency": "通貨",
-      "externalId": "取引 ID",
-      "amount": "金額",
-      "tax": "源泉徴収税",
-      "taxCurrency": "税の通貨"
+      "externalId": "取引 ID"
     },
     "file": {
       "sourceHeading": "エクスポート元",
@@ -559,9 +555,7 @@
       "action": {
         "buy": "買付",
         "sell": "売却",
-        "skip": "スキップ",
-        "dividend": "配当",
-        "withholdingTax": "源泉徴収税"
+        "skip": "スキップ"
       },
       "externalIdHint": "以降のインポートで重複を認識するのに役立ちます。",
       "dateFormat": "日付の形式",
@@ -590,9 +584,7 @@
         "type": "種類の列"
       },
       "rawData": "CSV データのプレビュー",
-      "rawCounts": "列：{{columns}} · 行：{{rows}}",
-      "dividends": "配当",
-      "dividendsHint": "任意。配当の行では、合計金額、同じ行で源泉徴収された税額とその通貨を指定します。金額の列がない場合は、数量×価格を使います。"
+      "rawCounts": "列：{{columns}} · 行：{{rows}}"
     },
     "review": {
       "incomplete": "列の割り当てを完了すると、確認画面が表示されます。",
@@ -603,8 +595,7 @@
         "duplicates": "重複 {{count}}",
         "skipped": "スキップ {{count}}",
         "errors": "エラー {{count}}",
-        "converted": "再計算 {{count}}",
-        "dividends": "うち配当 {{count}}"
+        "converted": "再計算 {{count}}"
       },
       "feeNote": "手数料はインポートされません",
       "nothingToImport": "インポートするものがありません。すべての行が、重複、スキップ、またはエラーです。",
@@ -651,8 +642,7 @@
         },
         "positionCurrency": "このポジションは{{currency}}建てです",
         "missingHint_other": "{{count}}件の銘柄にシンボルを入力するか、スキップしてください。",
-        "unverifiedHint_other": "{{count}}件の銘柄を確認できませんでした。インポートは可能ですが、価格が更新されない場合があります。",
-        "dividends": "+ 配当 {{count}}"
+        "unverifiedHint_other": "{{count}}件の銘柄を確認できませんでした。インポートは可能ですが、価格が更新されない場合があります。"
       },
       "rows": {
         "title": "行",
@@ -669,14 +659,7 @@
         "showAll": "すべて表示",
         "showLess": "表示を減らす",
         "none": "この設定では、ファイルに行がありません。",
-        "truncated": "表に表示されるのは最大{{shown}}行です。上の件数はファイル全体のものです。",
-        "amount": "金額",
-        "taxAmount": "税 {{amount}}"
-      },
-      "unpairedTaxes": "除外された税の行：{{count}}件。同じ日・同じ通貨の配当が見つからなかったため書き込まれません。配当はこの税なしで取り込まれます。",
-      "cashCurrency": {
-        "title": "証券口座の通貨",
-        "hint": "ファイルには配当と税の通貨が書かれていません。証券口座の通貨を選んでください。金額はその通貨です。"
+        "truncated": "表に表示されるのは最大{{shown}}行です。上の件数はファイル全体のものです。"
       }
     },
     "editor": {
@@ -724,9 +707,7 @@
         "undo": "インポートを取り消す",
         "undoHint_other": "このファイルの{{count}}件の取引を削除します。",
         "undoAction": "取り消す"
-      },
-      "dividends": "配当",
-      "dividendsNote": "うち配当：{{count}}件。"
+      }
     },
     "undone": {
       "title": "インポートを取り消しました",
@@ -771,20 +752,7 @@
       "duplicate": "同じ取引がすでに Moony にあります",
       "duplicateById": "同じ証券会社の取引 ID の取引が、すでに Moony にあります",
       "duplicateSimilar": "似た取引がすでに Moony にあります：同じ日、同じ数量で、価格の差は0.5 %以内です",
-      "cannotParse": "この行を読み取れませんでした",
-      "dividendNotPositive": "金額が0または負の配当（取消）のためスキップしました",
-      "cashCurrencyMissing": "ファイルに通貨がありません。証券口座の通貨を選んでください",
-      "taxCurrencyMismatch": "税が配当と異なる通貨のため書き込まれません",
-      "taxCurrencyMismatchIn": "税が{{detail}}建てで、配当の通貨と異なるため書き込まれません",
-      "taxPaired": "税を配当に加えました",
-      "taxPairedLine": "税を{{detail}}行目の配当に加えました",
-      "taxUnpaired": "対応する配当のない源泉徴収税のため書き込まれません",
-      "taxExceedsGross": "源泉徴収税が配当より多くなっています",
-      "dividendWithoutPosition": "この配当に対応するポジションがMoonyになく、ファイルにも購入がありません",
-      "dividendReversed": "証券会社の取消により無効、取り込みません",
-      "dividendReversedLine": "{{detail}} 行目の取消により無効、取り込みません",
-      "dividendReversal": "配当の取消、取り込みません",
-      "dividendReversalLine": "{{detail}} 行目の配当の取消、取り込みません"
+      "cannotParse": "この行を読み取れませんでした"
     },
     "mcpSource": "MCP",
     "splits": {

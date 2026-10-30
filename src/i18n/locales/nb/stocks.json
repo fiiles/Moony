@@ -356,26 +356,29 @@
       "short": "Utbytte",
       "addTitle": "Legg til mottatt utbytte",
       "editTitle": "Rediger utbytte",
-      "description": "Én utbetaling fra {{ticker}}: bruttobeløpet før kildeskatt, på utbetalingsdagen. Antall aksjer endres ikke.",
-      "paidDate": "Utbetalingsdato",
+      "description": "Én utbetaling fra {{ticker}} som Yahoo Finance ikke har: bruttobeløpet før kildeskatt, på eks-datoen. Antall aksjer endres ikke.",
       "gross": "Bruttobeløp",
-      "grossHint": "Sum for utbetalingen, før skatt",
-      "tax": "Kildeskatt",
-      "taxHint": "Valgfritt; la stå tomt hvis ingenting ble trukket",
+      "grossHint": "Sum for utbetalingen, før kildeskatt",
       "note": "Notat",
       "save": "Lagre utbytte",
       "badge": "Utbytte",
-      "taxLine": "skatt {{tax}} · netto {{net}}",
-      "received": "Mottatt utbytte",
-      "receivedNet": "Utbytte etter skatt",
+      "received": "Mottatt utbytte (brutto)",
       "added": "Utbytte registrert",
       "updated": "Utbytte oppdatert",
       "deleted": "Utbytte slettet",
       "confirmDelete": {
         "title": "Slette utbytte?",
-        "description": "Utbyttet utbetalt {{date}} ({{amount}} brutto) fjernes for godt. Dette kan ikke angres.",
+        "description": "Utbyttet med eks-dato {{date}} ({{amount}} brutto) fjernes for godt. Dette kan ikke angres.",
         "confirm": "Slett utbytte"
-      }
+      },
+      "exDate": "Eks-dato",
+      "exDateHint": "Første dag aksjen handles uten dette utbyttet",
+      "sourceYahoo": "Yahoo Finance",
+      "sourceManual": "Manuelt",
+      "perShare": "{{amount}} per aksje",
+      "superseded": "Erstattet av Yahoo Finance, telles ikke",
+      "yahooTitle": "Yahoo Finance har utbyttene for denne aksjen",
+      "yahooBody": "Moony henter utbyttene for {{ticker}} fra Yahoo Finance og regner dem ut fra aksjene du eide dagen før hver eks-dato. Legg inn utbytte manuelt bare for en aksje Yahoo ikke har noen for."
     }
   },
   "importWizard": {
@@ -396,10 +399,6 @@
       "buy": "Kjøp",
       "sell": "Salg"
     },
-    "kind": {
-      "dividend": "Utbytte",
-      "withholdingTax": "Kildeskatt"
-    },
     "roles": {
       "date": "Dato",
       "direction": "Retning",
@@ -411,10 +410,7 @@
       "price": "Kurs per aksje",
       "quantityPrice": "Antall og kurs",
       "currency": "Valuta",
-      "externalId": "Handels-ID",
-      "amount": "Beløp",
-      "tax": "Kildeskatt",
-      "taxCurrency": "Skattevaluta"
+      "externalId": "Handels-ID"
     },
     "file": {
       "sourceHeading": "Hvor eksporten kommer fra",
@@ -572,9 +568,7 @@
       "action": {
         "buy": "Kjøp",
         "sell": "Salg",
-        "skip": "Hopp over",
-        "dividend": "Utbytte",
-        "withholdingTax": "Kildeskatt"
+        "skip": "Hopp over"
       },
       "externalIdHint": "Hjelper med å gjenkjenne duplikater i senere importer.",
       "dateFormat": "Datoformat",
@@ -603,9 +597,7 @@
         "type": "typekolonne"
       },
       "rawData": "Forhåndsvis CSV-data",
-      "rawCounts": "Kolonner: {{columns}} · Rader: {{rows}}",
-      "dividends": "Utbytte",
-      "dividendsHint": "Valgfritt. For utbyttelinjer: totalbeløpet, skatt trukket på samme linje og valutaen for den. Uten beløpskolonne brukes antall × pris."
+      "rawCounts": "Kolonner: {{columns}} · Rader: {{rows}}"
     },
     "review": {
       "incomplete": "Fullfør kolonnetilordningen for å se gjennomgangen.",
@@ -616,8 +608,7 @@
         "duplicates": "Duplikater {{count}}",
         "skipped": "Hoppet over {{count}}",
         "errors": "Feil {{count}}",
-        "converted": "Omregnet {{count}}",
-        "dividends": "herav utbytter {{count}}"
+        "converted": "Omregnet {{count}}"
       },
       "feeNote": "Gebyrer importeres ikke",
       "nothingToImport": "Ingenting å importere: hver rad er et duplikat, hoppet over eller har en feil.",
@@ -666,8 +657,7 @@
         "missingHint_one": "Skriv inn et symbol for {{count}} verdipapir, eller hopp over det.",
         "missingHint_other": "Skriv inn et symbol for {{count}} verdipapirer, eller hopp over dem.",
         "unverifiedHint_one": "{{count}} verdipapir kunne ikke bekreftes. Du kan fortsatt importere det, men kursene oppdateres kanskje ikke.",
-        "unverifiedHint_other": "{{count}} verdipapirer kunne ikke bekreftes. Du kan fortsatt importere dem, men kursene oppdateres kanskje ikke.",
-        "dividends": "+ utbytter {{count}}"
+        "unverifiedHint_other": "{{count}} verdipapirer kunne ikke bekreftes. Du kan fortsatt importere dem, men kursene oppdateres kanskje ikke."
       },
       "rows": {
         "title": "Rader",
@@ -685,14 +675,7 @@
         "showAll": "Vis alle",
         "showLess": "Vis færre",
         "none": "Med disse innstillingene har filen ingen rader.",
-        "truncated": "Tabellen viser høyst {{shown}} rader; tallene ovenfor gjelder hele filen.",
-        "amount": "Beløp",
-        "taxAmount": "skatt {{amount}}"
-      },
-      "unpairedTaxes": "Utelatte skattelinjer: {{count}}. For ingen ble det funnet utbytte samme dag og i samme valuta, så de skrives ikke; utbyttene importeres uten denne skatten.",
-      "cashCurrency": {
-        "title": "Kontovaluta hos megler",
-        "hint": "Filen oppgir ikke valuta for utbytte og skatt. Velg valutaen på meglerkontoen din, beløpene er i den."
+        "truncated": "Tabellen viser høyst {{shown}} rader; tallene ovenfor gjelder hele filen."
       }
     },
     "editor": {
@@ -744,9 +727,7 @@
         "undoHint_one": "Sletter {{count}} handel fra denne filen.",
         "undoHint_other": "Sletter {{count}} handler fra denne filen.",
         "undoAction": "Angre"
-      },
-      "dividends": "Utbytter",
-      "dividendsNote": "Herav utbytter: {{count}}."
+      }
     },
     "undone": {
       "title": "Importen er angret",
@@ -794,20 +775,7 @@
       "duplicate": "Den samme handelen finnes allerede i Moony",
       "duplicateById": "En handel med samme megler-ID finnes allerede i Moony",
       "duplicateSimilar": "En lignende handel finnes allerede i Moony: samme dag og antall, kurs innenfor 0,5 %",
-      "cannotParse": "Raden kunne ikke leses",
-      "dividendNotPositive": "Utbytte med null eller negativt beløp (reversering), hoppet over",
-      "cashCurrencyMissing": "Filen oppgir ingen valuta; velg kontovaluta hos megler",
-      "taxCurrencyMismatch": "Skatten er i en annen valuta enn utbyttet, skrives ikke",
-      "taxCurrencyMismatchIn": "Skatten er i {{detail}}, ikke i utbyttets valuta, skrives ikke",
-      "taxPaired": "Skatt lagt til utbyttet",
-      "taxPairedLine": "Skatt lagt til utbyttet på linje {{detail}}",
-      "taxUnpaired": "Kildeskatt uten utbytte, skrives ikke",
-      "taxExceedsGross": "Kildeskatten er høyere enn utbyttet",
-      "dividendWithoutPosition": "Det finnes ingen posisjon for dette utbyttet i Moony, og filen kjøper den ikke",
-      "dividendReversed": "Annullert av meglerens reversering, importeres ikke",
-      "dividendReversedLine": "Annullert av reverseringen på linje {{detail}}, importeres ikke",
-      "dividendReversal": "Reversering av et utbytte, importeres ikke",
-      "dividendReversalLine": "Reversering av utbyttet på linje {{detail}}, importeres ikke"
+      "cannotParse": "Raden kunne ikke leses"
     },
     "mcpSource": "MCP",
     "splits": {

@@ -49,24 +49,10 @@ pub fn detect_stock_header_row(content: &str, delimiter: char) -> usize {
 
 /// The date of a date cell. What follows a `;` is a time (Interactive
 /// Brokers' `20230522;093000`); a time after a space or a `T` is left to the
-/// date parser, which drops it (a time after a comma is cut here, see below).
+/// date parser, which drops it.
 pub fn date_part(cell: &str) -> &str {
     let cell = cell.trim();
-    let cell = cell.split_once(';').map_or(cell, |(date, _)| date).trim();
-    // `2023-05-22, 09:30:00` (Interactive Brokers' other date-time style): a comma between a
-    // numeric date and a time. A comma inside a date ("Jan 5, 2024") is no such cut.
-    match cell.split_once(',') {
-        Some((date, time))
-            if time.contains(':')
-                && date.starts_with(|c: char| c.is_ascii_digit())
-                && date
-                    .chars()
-                    .all(|c| c.is_ascii_digit() || matches!(c, '-' | '.' | '/' | ' ')) =>
-        {
-            date.trim()
-        }
-        _ => cell,
-    }
+    cell.split_once(';').map_or(cell, |(date, _)| date).trim()
 }
 
 /// Whether `value` has the shape of an ISIN: two letters, nine letters or

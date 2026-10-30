@@ -374,26 +374,29 @@
       "short": "Dywidenda",
       "addTitle": "Dodaj otrzymaną dywidendę",
       "editTitle": "Edytuj dywidendę",
-      "description": "Jedna wypłata {{ticker}}: kwota brutto przed podatkiem u źródła, w dniu wypłaty. Liczba akcji się nie zmienia.",
-      "paidDate": "Data wypłaty",
+      "description": "Jedna wypłata {{ticker}}, której Yahoo Finance nie zna: kwota brutto przed podatkiem u źródła, w dniu ustalenia prawa (ex-date). Liczba akcji się nie zmienia.",
       "gross": "Kwota brutto",
-      "grossHint": "Suma wypłaty przed podatkiem",
-      "tax": "Podatek u źródła",
-      "taxHint": "Opcjonalnie; zostaw puste, jeśli nic nie pobrano",
+      "grossHint": "Suma wypłaty przed podatkiem u źródła",
       "note": "Notatka",
       "save": "Zapisz dywidendę",
       "badge": "Dywidenda",
-      "taxLine": "podatek {{tax}} · netto {{net}}",
-      "received": "Otrzymane dywidendy",
-      "receivedNet": "Dywidendy po podatku",
+      "received": "Otrzymane dywidendy (brutto)",
       "added": "Dywidenda zapisana",
       "updated": "Dywidenda zaktualizowana",
       "deleted": "Dywidenda usunięta",
       "confirmDelete": {
         "title": "Usunąć dywidendę?",
-        "description": "Dywidenda wypłacona {{date}} ({{amount}} brutto) zostanie trwale usunięta. Tej operacji nie można cofnąć.",
+        "description": "Dywidenda z ex-date {{date}} ({{amount}} brutto) zostanie trwale usunięta. Tej operacji nie można cofnąć.",
         "confirm": "Usuń dywidendę"
-      }
+      },
+      "exDate": "Ex-date",
+      "exDateHint": "Pierwszy dzień, w którym akcja jest notowana bez tej dywidendy",
+      "sourceYahoo": "Yahoo Finance",
+      "sourceManual": "Ręcznie",
+      "perShare": "{{amount}} na akcję",
+      "superseded": "Zastąpione przez Yahoo Finance, nie jest liczone",
+      "yahooTitle": "Yahoo Finance ma dywidendy tej akcji",
+      "yahooBody": "Moony pobiera dywidendy {{ticker}} z Yahoo Finance i liczy je z akcji posiadanych dzień przed każdym ex-date. Wpisuj dywidendę ręcznie tylko dla akcji, dla której Yahoo żadnej nie ma."
     }
   },
   "importWizard": {
@@ -416,10 +419,6 @@
       "buy": "Zakup",
       "sell": "Sprzedaż"
     },
-    "kind": {
-      "dividend": "Dywidenda",
-      "withholdingTax": "Podatek u źródła"
-    },
     "roles": {
       "date": "Data",
       "direction": "Kierunek",
@@ -431,10 +430,7 @@
       "price": "Cena za akcję",
       "quantityPrice": "Ilość i cena",
       "currency": "Waluta",
-      "externalId": "ID transakcji",
-      "amount": "Kwota",
-      "tax": "Podatek u źródła",
-      "taxCurrency": "Waluta podatku"
+      "externalId": "ID transakcji"
     },
     "file": {
       "sourceHeading": "Skąd pochodzi eksport",
@@ -598,9 +594,7 @@
       "action": {
         "buy": "Zakup",
         "sell": "Sprzedaż",
-        "skip": "Pomiń",
-        "dividend": "Dywidenda",
-        "withholdingTax": "Podatek u źródła"
+        "skip": "Pomiń"
       },
       "externalIdHint": "Pomaga rozpoznawać duplikaty w późniejszych importach.",
       "dateFormat": "Format daty",
@@ -629,9 +623,7 @@
         "type": "kolumna typu"
       },
       "rawData": "Podgląd danych CSV",
-      "rawCounts": "Kolumny: {{columns}} · Wiersze: {{rows}}",
-      "dividends": "Dywidendy",
-      "dividendsHint": "Opcjonalne. Dla wierszy z dywidendą: łączna kwota, podatek pobrany w tym samym wierszu i jego waluta. Bez kolumny z kwotą używane jest ilość × cena."
+      "rawCounts": "Kolumny: {{columns}} · Wiersze: {{rows}}"
     },
     "review": {
       "incomplete": "Dokończ przypisanie kolumn, aby zobaczyć przegląd.",
@@ -642,8 +634,7 @@
         "duplicates": "Duplikaty: {{count}}",
         "skipped": "Pominięte: {{count}}",
         "errors": "Błędy: {{count}}",
-        "converted": "Przeliczone: {{count}}",
-        "dividends": "w tym dywidend {{count}}"
+        "converted": "Przeliczone: {{count}}"
       },
       "feeNote": "Opłaty nie są importowane",
       "nothingToImport": "Nie ma czego importować: każdy wiersz jest duplikatem, został pominięty lub ma błąd.",
@@ -696,8 +687,7 @@
         "unverifiedHint_one": "{{count}} instrumentu nie udało się zweryfikować. Nadal możesz go zaimportować, ale jego ceny mogą się nie aktualizować.",
         "unverifiedHint_few": "{{count}} instrumentów nie udało się zweryfikować. Nadal możesz je zaimportować, ale ich ceny mogą się nie aktualizować.",
         "unverifiedHint_many": "{{count}} instrumentów nie udało się zweryfikować. Nadal możesz je zaimportować, ale ich ceny mogą się nie aktualizować.",
-        "unverifiedHint_other": "{{count}} instrumentu nie udało się zweryfikować. Nadal możesz go zaimportować, ale jego ceny mogą się nie aktualizować.",
-        "dividends": "+ dywidendy {{count}}"
+        "unverifiedHint_other": "{{count}} instrumentu nie udało się zweryfikować. Nadal możesz go zaimportować, ale jego ceny mogą się nie aktualizować."
       },
       "rows": {
         "title": "Wiersze",
@@ -717,14 +707,7 @@
         "showAll": "Pokaż wszystkie",
         "showLess": "Pokaż mniej",
         "none": "Przy tych ustawieniach plik nie ma wierszy.",
-        "truncated": "Tabela pokazuje najwyżej {{shown}} wierszy; liczby powyżej obejmują cały plik.",
-        "amount": "Kwota",
-        "taxAmount": "podatek {{amount}}"
-      },
-      "unpairedTaxes": "Pominięte wiersze z podatkiem: {{count}}. Do żadnego nie znaleziono dywidendy z tego samego dnia i w tej samej walucie, więc nie zostaną zapisane; dywidendy zaimportują się bez tego podatku.",
-      "cashCurrency": {
-        "title": "Waluta konta u brokera",
-        "hint": "Plik nie podaje waluty dywidend i podatków. Wybierz walutę konta u brokera, w niej są kwoty."
+        "truncated": "Tabela pokazuje najwyżej {{shown}} wierszy; liczby powyżej obejmują cały plik."
       }
     },
     "editor": {
@@ -784,9 +767,7 @@
         "undoHint_many": "Usuwa {{count}} transakcji z tego pliku.",
         "undoHint_other": "Usuwa {{count}} transakcji z tego pliku.",
         "undoAction": "Cofnij"
-      },
-      "dividends": "Dywidendy",
-      "dividendsNote": "W tym dywidend: {{count}}."
+      }
     },
     "undone": {
       "title": "Import cofnięty",
@@ -840,20 +821,7 @@
       "duplicate": "Ta sama transakcja jest już w Moony",
       "duplicateById": "Transakcja z tym samym ID brokera jest już w Moony",
       "duplicateSimilar": "Podobna transakcja jest już w Moony: ten sam dzień i ilość, cena w granicach 0,5 %",
-      "cannotParse": "Nie udało się odczytać wiersza",
-      "dividendNotPositive": "Dywidenda z zerową lub ujemną kwotą (storno), pominięto",
-      "cashCurrencyMissing": "Plik nie podaje waluty — wybierz walutę konta u brokera",
-      "taxCurrencyMismatch": "Podatek jest w innej walucie niż dywidenda — nie zostanie zapisany",
-      "taxCurrencyMismatchIn": "Podatek jest w {{detail}}, a nie w walucie dywidendy — nie zostanie zapisany",
-      "taxPaired": "Podatek dołączony do dywidendy",
-      "taxPairedLine": "Podatek dołączony do dywidendy w wierszu {{detail}}",
-      "taxUnpaired": "Podatek u źródła bez dywidendy — nie zostanie zapisany",
-      "taxExceedsGross": "Podatek u źródła jest wyższy niż dywidenda",
-      "dividendWithoutPosition": "Brak pozycji dla tej dywidendy w Moony, a plik jej nie kupuje",
-      "dividendReversed": "Anulowane korektą brokera, nie zostanie zapisane",
-      "dividendReversedLine": "Anulowane korektą z wiersza {{detail}}, nie zostanie zapisane",
-      "dividendReversal": "Korekta dywidendy, nie zostanie zapisana",
-      "dividendReversalLine": "Korekta dywidendy z wiersza {{detail}}, nie zostanie zapisana"
+      "cannotParse": "Nie udało się odczytać wiersza"
     },
     "mcpSource": "MCP",
     "splits": {

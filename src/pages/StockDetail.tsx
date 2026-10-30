@@ -176,7 +176,7 @@ export default function StockDetail() {
   const datedFacts = useMemo(
     () => [
       ...(transactions ?? []),
-      ...dividends.map((dividend) => ({ transactionDate: dividend.paidDate })),
+      ...dividends.map((dividend) => ({ transactionDate: dividend.exDate })),
     ],
     [transactions, dividends]
   );
@@ -215,6 +215,11 @@ export default function StockDetail() {
     try {
       await priceApi.refreshStockPrices();
       await invalidateAfterPriceRefresh(queryClient);
+      // The position's Yahoo dividends come with the dividend refresh (daily per ticker).
+      void priceApi
+        .refreshDividends()
+        .then(() => queryClient.invalidateQueries({ queryKey: ['stock-dividends'] }))
+        .catch(console.error);
       // A first price creates the stock_data row the company data is stored in. Not awaited: a
       // Yahoo round trip must not keep the refresh button spinning.
       void queryClient.invalidateQueries({ queryKey: ['stock-company-info'] });
@@ -290,7 +295,7 @@ export default function StockDetail() {
         ? dividends.map((dividend) => ({
             kind: 'dividend',
             id: dividend.id,
-            date: dividend.paidDate,
+            date: dividend.exDate,
             dividend,
           }))
         : [];
@@ -310,8 +315,8 @@ export default function StockDetail() {
   );
   // Received dividends in the report currency, each at its pay day's rate (backend)
   const receivedGross = dividendList?.totalGross != null ? Number(dividendList.totalGross) : null;
-  const receivedNet = dividendList?.totalNet != null ? Number(dividendList.totalNet) : null;
-  const hasWithholding = dividends.some((dividend) => Number(dividend.withholdingTax) > 0);
+  const dividendsFromYahoo = dividendList?.fromYahoo ?? false;
+  const countedDividends = dividends.filter((dividend) => !dividend.superseded);
 
   const scrollToRow = (ids: string[]) => {
     const el = document.getElementById(`tx-${ids[0]}`);
@@ -334,7 +339,7 @@ export default function StockDetail() {
 
   const pendingDividendDescription = pendingDividendDelete
     ? t('detail.dividendRecords.confirmDelete.description', {
-        date: fmt.day(pendingDividendDelete.paidDate),
+        date: fmt.day(pendingDividendDelete.exDate),
         amount: formatAmountWithCode(
           Number(pendingDividendDelete.grossAmount),
           pendingDividendDelete.currency,
@@ -759,40 +764,61 @@ export default function StockDetail() {
                   if (entry.kind === 'dividend') {
                     const dividend = entry.dividend;
                     const gross = Number(dividend.grossAmount);
-                    const tax = Number(dividend.withholdingTax);
                     const grossInDisplay = convertAt(
                       gross,
                       dividend.currency,
                       reportCurrency,
-                      dividend.paidDate
+                      dividend.exDate
                     );
                     const unconverted = grossInDisplay === null && ratesReady;
                     const native = (amount: number) =>
                       fmt.money(amount, dividend.currency, { decimals: 2 });
+                    const isYahoo = dividend.source === 'yahoo';
+                    const perShare = Number(dividend.amountPerShare);
+                    const perShareText = fmt.money(perShare, dividend.currency, {
+                      decimals: priceDecimals(perShare, dividend.currency),
+                    });
                     return (
-                      <TableRow key={dividend.id} id={`tx-${dividend.id}`} className="h-[50px]">
-                        <TableCell>{fmt.day(dividend.paidDate)}</TableCell>
+                      <TableRow
+                        key={dividend.id}
+                        id={`tx-${dividend.id}`}
+                        className={cn('h-[50px]', dividend.superseded && 'opacity-60')}
+                      >
+                        <TableCell>{fmt.day(dividend.exDate)}</TableCell>
                         <TableCell>
-                          <Badge variant="gain">{t('detail.dividendRecords.badge')}</Badge>
+                          <div className="flex flex-wrap items-center gap-1">
+                            <Badge variant="gain">{t('detail.dividendRecords.badge')}</Badge>
+                            <Badge variant="outline">
+                              {isYahoo
+                                ? t('detail.dividendRecords.sourceYahoo')
+                                : t('detail.dividendRecords.sourceManual')}
+                            </Badge>
+                          </div>
                         </TableCell>
-                        <TableCell className="text-right text-ink-4">—</TableCell>
+                        <TableCell className="text-right num">
+                          {isYahoo && dividend.shares !== null
+                            ? `${fmt.number(Number(dividend.shares), { maximumFractionDigits: 4 })} ${t('table.unit')}`
+                            : '—'}
+                        </TableCell>
                         {hasMixedCurrencies && (
-                          <TableCell className="text-right num">{native(gross)}</TableCell>
+                          <TableCell className="text-right num">
+                            {isYahoo ? perShareText : '—'}
+                          </TableCell>
                         )}
                         <TableCell
                           className="text-right text-micro text-ink-3"
                           title={dividend.note ?? undefined}
                         >
-                          {tax > 0
-                            ? t('detail.dividendRecords.taxLine', {
-                                tax: native(tax),
-                                net: native(Number(dividend.netAmount)),
-                              })
-                            : '—'}
+                          {dividend.superseded
+                            ? t('detail.dividendRecords.superseded')
+                            : isYahoo
+                              ? t('detail.dividendRecords.perShare', { amount: perShareText })
+                              : (dividend.note ?? '—')}
                         </TableCell>
                         <TableCell
                           className={cn(
                             'text-right font-650 num',
+                            dividend.superseded && 'line-through',
                             unconverted ? 'text-loss' : 'text-ink'
                           )}
                           title={unconverted ? missingRateTitle(dividend.currency) : undefined}
@@ -802,26 +828,30 @@ export default function StockDetail() {
                             : native(gross)}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div data-row-actions className="inline-flex gap-0.5">
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => setDividendModal({ open: true, dividend })}
-                              aria-label={tc('buttons.edit')}
-                              title={tc('buttons.edit')}
-                            >
-                              <Pencil />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon-sm"
-                              onClick={() => setPendingDividendDelete(dividend)}
-                              aria-label={tc('buttons.delete')}
-                              title={tc('buttons.delete')}
-                            >
-                              <Trash2 />
-                            </Button>
-                          </div>
+                          {!isYahoo && (
+                            <div data-row-actions className="inline-flex gap-0.5">
+                              {!dividend.superseded && (
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  onClick={() => setDividendModal({ open: true, dividend })}
+                                  aria-label={tc('buttons.edit')}
+                                  title={tc('buttons.edit')}
+                                >
+                                  <Pencil />
+                                </Button>
+                              )}
+                              <Button
+                                variant="ghost"
+                                size="icon-sm"
+                                onClick={() => setPendingDividendDelete(dividend)}
+                                aria-label={tc('buttons.delete')}
+                                title={tc('buttons.delete')}
+                              >
+                                <Trash2 />
+                              </Button>
+                            </div>
+                          )}
                         </TableCell>
                       </TableRow>
                     );
@@ -970,11 +1000,8 @@ export default function StockDetail() {
                   t('detail.position.priceUpdated'),
                   fetchedAt !== null ? fmt.dateTime(fetchedAt) : undefined
                 )}
-                {dividends.length > 0 &&
+                {countedDividends.length > 0 &&
                   kv(t('detail.dividendRecords.received'), money(receivedGross))}
-                {dividends.length > 0 &&
-                  hasWithholding &&
-                  kv(t('detail.dividendRecords.receivedNet'), money(receivedNet))}
               </div>
             </CardContent>
           </Card>
@@ -1035,6 +1062,7 @@ export default function StockDetail() {
         ticker={investment.ticker}
         defaultCurrency={investment.dividendCurrency ?? stockCurrency}
         dividend={dividendModal.dividend}
+        fromYahoo={dividendsFromYahoo}
       />
       <ConfirmDeleteDialog
         open={pendingDividendDelete !== null}

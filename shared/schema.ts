@@ -843,6 +843,46 @@ export interface InvestmentWithDetails {
   tags: StockTag[];
 }
 
+/**
+ * A received stock dividend, one per payout (Rust `models::stock_dividends`, ADR 0022). The
+ * amounts are the payout's totals in `currency`: `grossAmount` before withholding tax,
+ * `netAmount` = gross − tax. `paidDate` is the UTC midnight of the pay date.
+ */
+export interface StockDividend {
+  id: string;
+  investmentId: string;
+  paidDate: number;
+  grossAmount: string;
+  withholdingTax: string;
+  netAmount: string;
+  currency: string;
+  note: string | null;
+  createdAt: number;
+}
+
+/** A dividend to record or the new values of one; the backend validates (D8). */
+export interface InsertStockDividend {
+  paidDate: number;
+  grossAmount: string;
+  /** Absent or empty: no tax. */
+  withholdingTax?: string | null;
+  /** ISO code; `GBX` amounts are pence and are stored in GBP. */
+  currency: string;
+  note?: string | null;
+}
+
+/**
+ * A position's dividends, newest first. `totalGross`/`totalNet` sum every payout converted to
+ * `currency` at its pay day's rate; `null` when payouts exist but none could be converted.
+ */
+export interface StockDividendList {
+  currency: string;
+  fxQuality: ConversionQuality;
+  items: StockDividend[];
+  totalGross: string | null;
+  totalNet: string | null;
+}
+
 export interface CryptoPositions {
   currency: string;
   fxQuality: ConversionQuality;

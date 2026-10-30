@@ -1215,6 +1215,23 @@ export type InsertScopedLearning = { bankAccountId: string; isCredit: boolean; p
 export type InsertSpendingPlan = { name: string; year: number; amount: string; currency: string; icon: string; color: string; note: string | null }
 
 /**
+ * A dividend to record or the new values of one (the position comes from the command).
+ */
+export type InsertStockDividend = { 
+/**
+ * Any moment of the pay day; stored as its UTC midnight.
+ */
+paidDate: number; grossAmount: string; 
+/**
+ * Absent or empty: no tax.
+ */
+withholdingTax?: string | null; 
+/**
+ * ISO code; `GBX`/`GBp` amounts are pence and are stored in GBP.
+ */
+currency: string; note?: string | null }
+
+/**
  * Data for creating stock investment. Quantity and average price are not
  * accepted: they derive from the transaction record (pass an initial
  * transaction on create).
@@ -2266,6 +2283,45 @@ dateFormatAmbiguous: boolean; decimalSeparator: string;
  * The file has a fee/commission column (fees are not imported).
  */
 hasFeeColumn: boolean }
+
+/**
+ * A received dividend as stored, with its net amount.
+ */
+export type StockDividend = { id: string; investmentId: string; 
+/**
+ * UTC midnight of the pay date.
+ */
+paidDate: number; 
+/**
+ * The payout's total before withholding tax, in `currency`.
+ */
+grossAmount: string; 
+/**
+ * Tax withheld from this payout, in `currency` ("0" when none).
+ */
+withholdingTax: string; 
+/**
+ * `grossAmount − withholdingTax`, in `currency`.
+ */
+netAmount: string; currency: string; note: string | null; createdAt: number }
+
+/**
+ * A position's dividends, newest first, with their sums in the report currency.
+ */
+export type StockDividendList = { 
+/**
+ * The report currency of the totals.
+ */
+currency: string; fxQuality: ConversionQuality; items: StockDividend[]; 
+/**
+ * Every payout's gross converted at its pay day's rate; `null` when payouts exist but none
+ * could be converted, "0" without payouts.
+ */
+totalGross: string | null; 
+/**
+ * The same for the net amounts.
+ */
+totalNet: string | null }
 
 /**
  * One recorded import (TS `StockImportBatch`).

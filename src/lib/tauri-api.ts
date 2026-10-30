@@ -11,6 +11,9 @@ import { toApiError } from '@/lib/api-error';
 import type { ResolvedTheme } from '@/utils/theme';
 import type {
   AssetValuation,
+  InsertStockDividend,
+  StockDividend,
+  StockDividendList,
   InsertAssetValuation,
   LoanEvent,
   InsertLoanEvent,
@@ -334,6 +337,18 @@ export const investmentsApi = {
 
   updateTransaction: (txId: string, data: Partial<InsertInvestmentTransaction>) =>
     tauriInvoke<InvestmentTransaction>('update_investment_transaction', { txId, data }),
+
+  /** Received dividends of a position, with their gross and net sums in `reportCurrency`. */
+  getDividends: (investmentId: string, reportCurrency: string) =>
+    tauriInvoke<StockDividendList>('get_stock_dividends', { investmentId, reportCurrency }),
+
+  createDividend: (investmentId: string, data: InsertStockDividend) =>
+    tauriInvoke<StockDividend>('create_stock_dividend', { investmentId, data }),
+
+  updateDividend: (id: string, data: InsertStockDividend) =>
+    tauriInvoke<StockDividend>('update_stock_dividend', { id, data }),
+
+  deleteDividend: (id: string) => tauriInvoke<void>('delete_stock_dividend', { id }),
 
   setManualPrice: (ticker: string, price: string, currency: string) =>
     tauriInvoke<void>('set_manual_price', { ticker, price, currency }),

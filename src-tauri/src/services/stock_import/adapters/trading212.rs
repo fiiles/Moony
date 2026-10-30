@@ -67,6 +67,10 @@ pub fn config(headers: &[String], rows: &[Vec<String>]) -> Option<AdapterConfig>
     config.currency_column = Some(cols.currency);
     config.type_column = Some(cols.action);
     config.external_id_column = find_header_exact(headers, "ID");
+    // A dividend's gross is shares × gross per share; the tax is in the row, in its own currency
+    // (`Total` is the net amount in the account currency and is not read).
+    config.tax_column = find_header_exact(headers, "Withholding tax");
+    config.tax_currency_column = find_header_exact(headers, "Currency (Withholding tax)");
     config.decimal_separator = decimal_of(rows, &[cols.shares, cols.price]);
     Some(AdapterConfig {
         config,

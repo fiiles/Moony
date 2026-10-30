@@ -174,6 +174,7 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::services::stock_import::StockTypeValueStat>();
     types.register::<crate::services::stock_import::StockImportPreview>();
     types.register::<crate::services::stock_import::StockPreviewRow>();
+    types.register::<crate::services::stock_import::StockRowKind>();
     types.register::<crate::services::stock_import::StockRowMessage>();
     types.register::<crate::services::stock_import::StockImportInstrument>();
     types.register::<crate::services::stock_import::StockImportCounts>();

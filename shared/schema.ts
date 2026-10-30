@@ -2379,7 +2379,10 @@ export interface Milestone {
 // ============================================================================
 
 export type StockTradeDirection = 'buy' | 'sell';
-export type StockTypeValueAction = 'buy' | 'sell' | 'skip';
+/** `dividend` / `withholdingTax`: the row is a dividend payout or a tax withheld from one (spec D11). */
+export type StockTypeValueAction = 'buy' | 'sell' | 'skip' | 'dividend' | 'withholdingTax';
+/** What kind of record a file row is; `trade` for every row that is neither of the other two. */
+export type StockRowKind = 'trade' | 'dividend' | 'withholdingTax';
 export type StockCurrencyMode = 'column' | 'fixed' | 'instrument';
 export type StockDirectionMode = 'typeColumn' | 'quantitySign';
 
@@ -2398,6 +2401,8 @@ export interface StockImportTransforms {
   assetClassAllowed?: string[];
   /** Degiro: the broker's id is the order's, shared by its fills (kept by a remembered format). */
   brokerIdPerOrder?: boolean;
+  /** Degiro account statement: buy and sell rows are skipped (the trades come from the Transactions export). */
+  cashRowsOnly?: boolean;
 }
 
 export interface StockInstrumentOverride {
@@ -2463,6 +2468,14 @@ export interface StockImportConfig {
   transforms?: StockImportTransforms;
   instrumentOverrides?: StockInstrumentOverride[];
   importAnywayLines?: number[];
+  /** The row's total amount: the gross of a dividend, the tax of a tax row (spec D12). */
+  amountColumn?: number | null;
+  /** A tax withheld from the dividend of the same row. */
+  taxColumn?: number | null;
+  /** The currency of `taxColumn` when it differs from the row's. */
+  taxCurrencyColumn?: number | null;
+  /** The currency of dividend and tax amounts when the file names none (XTB: the account's). */
+  cashCurrency?: string | null;
 }
 
 export interface StockCsvInspectOptions {
@@ -2520,6 +2533,7 @@ export interface StockRowMessage {
 
 export interface StockPreviewRow {
   line: number;
+  kind: StockRowKind;
   day: number | null;
   direction: StockTradeDirection | null;
   instrumentKey: string | null;
@@ -2527,6 +2541,10 @@ export interface StockPreviewRow {
   quantity: string | null;
   price: string | null;
   currency: string | null;
+  /** Decimal text: the gross of a dividend row, the (signed) tax of a tax row. */
+  amount: string | null;
+  /** Decimal text: the tax paired with a dividend row. */
+  tax: string | null;
   status: StockRowStatus;
   message: StockRowMessage | null;
 }
@@ -2540,6 +2558,8 @@ export interface StockImportInstrument {
   name: string | null;
   currency: string | null;
   tradeCount: number;
+  /** Dividend rows of this instrument. */
+  dividendCount: number;
   ticker: string | null;
   status: StockInstrumentStatus;
   positionCurrency: string | null;
@@ -2553,6 +2573,10 @@ export interface StockImportCounts {
   errors: number;
   /** Rows that will be imported converted to post-split units (D13). */
   converted: number;
+  /** Dividend rows that will import (also counted in `willImport`). */
+  dividends: number;
+  /** Tax rows without a dividend / in another currency than it: warnings (D13). */
+  unpairedTaxes: number;
 }
 
 export interface StockImportPreview {
@@ -2561,6 +2585,8 @@ export interface StockImportPreview {
   counts: StockImportCounts;
   dateRange: CsvDateRange | null;
   hasFeeColumn: boolean;
+  /** A dividend or tax row has no currency and the config has no `cashCurrency` (D12). */
+  needsCashCurrency: boolean;
 }
 
 export interface StockInstrumentQuery {
@@ -2591,7 +2617,10 @@ export interface StockInstrumentResolution {
 
 export interface StockImportResult {
   batchId: string | null;
+  /** Trades and dividends written. */
   imported: number;
+  /** Dividends written (part of `imported`). */
+  dividends: number;
   duplicates: number;
   skipped: number;
   errors: number;

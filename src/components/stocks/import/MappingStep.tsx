@@ -187,6 +187,8 @@ interface MappingSummaryProps {
 const GROUP_BADGES: Record<StockTypeValueAction, 'dark' | 'outline' | 'default'> = {
   buy: 'dark',
   sell: 'outline',
+  dividend: 'outline',
+  withholdingTax: 'outline',
   skip: 'default',
 };
 
@@ -204,9 +206,11 @@ function MappingSummary({
   const note = isSourceId(sourceKey)
     ? t(`importWizard.sources.${sourceKey}.note`, { defaultValue: '' })
     : '';
-  const actions: StockTypeValueAction[] = ['buy', 'sell', 'skip'];
-  // Only worth showing when some value is read as a trade; otherwise the review shows the truth.
-  const hasValues = groups.buy.length + groups.sell.length > 0;
+  const actions: StockTypeValueAction[] = ['buy', 'sell', 'dividend', 'withholdingTax', 'skip'];
+  // Only worth showing when some value is read as something imported; otherwise the review shows the truth.
+  const hasValues =
+    groups.buy.length + groups.sell.length + groups.dividend.length + groups.withholdingTax.length >
+    0;
 
   const valueText = (item: MappingSummaryItem) => {
     switch (item.kind) {

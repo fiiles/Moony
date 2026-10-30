@@ -13,6 +13,7 @@ const instrument = (key: string): StockImportInstrument => ({
   name: null,
   currency: 'USD',
   tradeCount: 1,
+  dividendCount: 0,
   ticker: key.replace('symbol:', ''),
   status: 'new',
   positionCurrency: null,

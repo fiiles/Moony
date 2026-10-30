@@ -173,6 +173,7 @@ const instrument = (overrides: Partial<StockImportInstrument> = {}): StockImport
   isin: null,
   name: null,
   currency: 'USD',
+  dividendCount: 0,
   tradeCount: 2,
   ticker: 'AAPL',
   status: 'new',
@@ -540,6 +541,10 @@ describe('buildStockImportConfig', () => {
       transforms: {},
       instrumentOverrides: [],
       importAnywayLines: [],
+      amountColumn: null,
+      taxColumn: null,
+      taxCurrencyColumn: null,
+      cashCurrency: null,
     });
   });
 
@@ -678,6 +683,8 @@ describe('type values', () => {
       buy: ['Market buy'],
       sell: ['Market sell'],
       skip: ['Deposit'],
+      dividend: [],
+      withholdingTax: [],
     });
   });
 
@@ -687,6 +694,8 @@ describe('type values', () => {
       buy: ['Market buy'],
       sell: [],
       skip: ['Market sell', 'Deposit'],
+      dividend: [],
+      withholdingTax: [],
     });
   });
 
@@ -696,6 +705,8 @@ describe('type values', () => {
       buy: ['Market buy'],
       sell: ['Market sell'],
       skip: ['Deposit'],
+      dividend: [],
+      withholdingTax: [],
     });
   });
 
@@ -704,6 +715,8 @@ describe('type values', () => {
       buy: [],
       sell: [],
       skip: [],
+      dividend: [],
+      withholdingTax: [],
     });
   });
 });
@@ -836,6 +849,8 @@ describe('summarizePreview', () => {
       skipped: 1,
       errors: 1,
       converted: 0,
+      dividends: 0,
+      unpairedTaxes: 0,
       ...counts,
     },
   });
@@ -848,8 +863,14 @@ describe('summarizePreview', () => {
       errors: 1,
       total: 10,
       converted: 0,
+      dividends: 0,
+      unpairedTaxes: 0,
     });
     expect(summarizePreview(preview({ converted: 3 })).converted).toBe(3);
+    expect(summarizePreview(preview({ dividends: 2, unpairedTaxes: 1 }))).toMatchObject({
+      dividends: 2,
+      unpairedTaxes: 1,
+    });
   });
 
   it('takes the backend at its word about duplicates imported anyway', () => {
@@ -1610,6 +1631,88 @@ describe('date formats with month names and CJK units', () => {
         '%Y年%m月%d日',
         '%Y년 %m월 %d일',
       ])
+    );
+  });
+});
+
+describe('dividends in the mapping', () => {
+  const dividendConfig = (): StockImportConfig => ({
+    ...config(),
+    amountColumn: 9,
+    taxColumn: 10,
+    taxCurrencyColumn: 11,
+    cashCurrency: 'CZK',
+  });
+
+  it('carries the amount, tax and cash currency from the detected config to the wire config', () => {
+    const state = mappingFromInspection(inspection({ config: dividendConfig() }));
+    expect(state).toMatchObject({
+      amountColumn: 9,
+      taxColumn: 10,
+      taxCurrencyColumn: 11,
+      cashCurrency: 'CZK',
+    });
+    const built = buildStockImportConfig(state, inspection());
+    expect(built).toMatchObject({
+      amountColumn: 9,
+      taxColumn: 10,
+      taxCurrencyColumn: 11,
+      cashCurrency: 'CZK',
+    });
+  });
+
+  it('leaves them empty for a file that has none and sends no cash currency until one is chosen', () => {
+    const state = mapping();
+    expect(state).toMatchObject({ amountColumn: null, taxColumn: null, cashCurrency: '' });
+    const built = buildStockImportConfig(state, inspection());
+    expect(built).toMatchObject({ amountColumn: null, cashCurrency: null });
+    const chosen = buildStockImportConfig({ ...state, cashCurrency: 'eur' }, inspection());
+    expect(chosen?.cashCurrency).toBe('EUR');
+  });
+
+  it('remembers the cash currency with a saved format', () => {
+    const built = buildStockImportConfig({ ...mapping(), cashCurrency: 'USD' }, inspection());
+    expect(built && formatConfig(built).cashCurrency).toBe('USD');
+  });
+
+  it('groups the dividend values apart from the trades and counts them as importable', () => {
+    const typeValues = [
+      { value: 'Buy', action: 'buy' as const },
+      { value: 'Dividend', action: 'dividend' as const },
+      { value: 'Withholding Tax', action: 'withholdingTax' as const },
+      { value: 'Deposit', action: 'skip' as const },
+    ];
+    const state = mapping({ directionMode: 'typeColumn', typeColumn: 1, typeValues });
+    expect(groupTypeValues(state, { columnValues: [] })).toEqual({
+      buy: ['Buy'],
+      sell: [],
+      skip: ['Deposit'],
+      dividend: ['Dividend'],
+      withholdingTax: ['Withholding Tax'],
+    });
+    expect(hasTradeValue([{ value: 'Dividend', action: 'dividend' }])).toBe(true);
+    expect(hasTradeValue([{ value: 'Deposit', action: 'skip' }])).toBe(false);
+  });
+
+  it('highlights the dividend columns in the raw data', () => {
+    const state = mapping({ amountColumn: 9, taxColumn: 10, taxCurrencyColumn: 11 });
+    const mapped = mappedColumns(state);
+    expect(mapped.get(9)).toEqual(['amount']);
+    expect(mapped.get(10)).toEqual(['tax']);
+    expect(mapped.get(11)).toEqual(['taxCurrency']);
+  });
+
+  it('files the tax and reversal rows under the skipped list of the result', () => {
+    for (const key of [
+      'importWizard.row.taxPaired',
+      'importWizard.row.taxUnpaired',
+      'importWizard.row.taxCurrencyMismatch',
+      'importWizard.row.dividendNotPositive',
+    ]) {
+      expect(classifyResultMessage({ key, line: 99 })).toBe('skipped');
+    }
+    expect(classifyResultMessage({ key: 'importWizard.row.taxExceedsGross', line: 99 })).toBe(
+      'errors'
     );
   });
 });

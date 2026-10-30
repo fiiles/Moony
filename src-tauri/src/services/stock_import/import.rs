@@ -20,10 +20,18 @@
 //! and nothing waits). Existing `applied` and `dismissed` rows stay, and so
 //! does a pending one that is not applied. Undo of the batch deletes its rows
 //! and leaves the split records.
+//!
+//! Dividends (spec D14) are written in the same SQL transaction after the trades, through
+//! `stock_dividends::insert`, stamped with the batch id; the batch row is created here when
+//! there were no trades. `trade_count` of the batch counts trades and dividends. A dividend
+//! changes no history, so it adds nothing to `earliest_day`, `updatedPositions` or the
+//! rebuild.
 
 use rusqlite::Connection;
 
-use super::simulate::{simulate, ticker_split_choices, SimulatedTrade, TradeOutcome};
+use super::simulate::{
+    simulate, ticker_split_choices, SimulatedDividend, SimulatedTrade, TradeOutcome,
+};
 use super::types::{
     ParsedFile, StockImportConfig, StockImportInstrument, StockImportResult, StockInstrumentStatus,
     StockRowMessage, StockSplitAction, StockSplitOverride,
@@ -32,6 +40,7 @@ use crate::error::{AppError, Result};
 use crate::services::investments::{
     bulk_create_stock_transactions, BulkStockRow, BulkWriteReport, NewStockImportBatch,
 };
+use crate::services::stock_dividends::{self, DividendOrigin};
 use crate::services::stock_splits::{self, StockSplitApplyResult, StockSplitStatus};
 
 /// Import the rows the preview would import, in one SQL transaction, as a
@@ -71,6 +80,13 @@ pub fn import(
         })
         .collect();
 
+    let accepted_dividends: Vec<&SimulatedDividend> = simulation
+        .dividends
+        .iter()
+        .filter(|dividend| dividend.will_import() && dividend.ticker.is_some())
+        .filter(|dividend| dividend.valid.is_some())
+        .collect();
+
     let mut messages: Vec<StockRowMessage> = parsed
         .skipped
         .iter()
@@ -82,12 +98,19 @@ pub fn import(
                 .iter()
                 .filter_map(|t| t.left_out_message()),
         )
+        .chain(
+            simulation
+                .dividends
+                .iter()
+                .filter_map(|d| d.left_out_message()),
+        )
         .collect();
     messages.sort_by_key(|m| m.line);
 
     let mut result = StockImportResult {
         batch_id: None,
         imported: 0,
+        dividends: 0,
         duplicates: 0,
         skipped: parsed.skipped.len(),
         errors: parsed.errors.len(),
@@ -105,7 +128,15 @@ pub fn import(
             TradeOutcome::New | TradeOutcome::Duplicate { forced: true, .. } => {}
         }
     }
-    if accepted.is_empty() {
+    for dividend in &simulation.dividends {
+        match &dividend.outcome {
+            TradeOutcome::Duplicate { forced: false, .. } => result.duplicates += 1,
+            TradeOutcome::Skipped(_) => result.skipped += 1,
+            TradeOutcome::Error(_) => result.errors += 1,
+            TradeOutcome::New | TradeOutcome::Duplicate { forced: true, .. } => {}
+        }
+    }
+    if accepted.is_empty() && accepted_dividends.is_empty() {
         return Ok(result);
     }
 
@@ -115,15 +146,20 @@ pub fn import(
         file_name: file_name.to_string(),
         source: config.source.clone(),
     };
-    let (report, applied) = in_savepoint(conn, |conn| {
-        // The stored rows first, while they are the only ones dated before the splits.
-        let applied = record_splits(conn, &choices)?;
-        let report = bulk_create_stock_transactions(conn, &rows, Some(&batch))?;
-        if let Some(issue) = report.errors.first() {
-            let line = accepted.get(issue.index).map_or(0, |(trade, _)| trade.line);
-            return Err(row_failure(line, &issue.message));
+    let (report, applied, dividends_written) = in_savepoint(conn, |conn| {
+        let mut applied = Vec::new();
+        let mut report = BulkWriteReport::default();
+        if !rows.is_empty() {
+            // The stored rows first, while they are the only ones dated before the splits.
+            applied = record_splits(conn, &choices)?;
+            report = bulk_create_stock_transactions(conn, &rows, Some(&batch))?;
+            if let Some(issue) = report.errors.first() {
+                let line = accepted.get(issue.index).map_or(0, |(trade, _)| trade.line);
+                return Err(row_failure(line, &issue.message));
+            }
         }
-        Ok((report, applied))
+        let written = write_dividends(conn, &accepted_dividends, &mut report, &batch)?;
+        Ok((report, applied, written))
     })?;
 
     let BulkWriteReport {
@@ -134,7 +170,8 @@ pub fn import(
         ..
     } = report;
     result.batch_id = batch_id;
-    result.imported = created;
+    result.imported = created + dividends_written;
+    result.dividends = dividends_written;
     result.converted = accepted.iter().filter(|(trade, _)| trade.converted).count();
     // A ticker whose stored rows a split rewrote changed too, imported rows or not.
     let rewritten: Vec<&StockSplitApplyResult> =
@@ -155,6 +192,62 @@ pub fn import(
         .chain(rewritten.iter().filter_map(|a| a.earliest_day))
         .min();
     Ok(result)
+}
+
+/// Write the accepted dividends after the trades, stamped with the batch (created here when the
+/// trades recorded none) and counted in its `trade_count`. Returns how many were written.
+fn write_dividends(
+    conn: &Connection,
+    dividends: &[&SimulatedDividend],
+    report: &mut BulkWriteReport,
+    batch: &NewStockImportBatch,
+) -> Result<usize> {
+    if dividends.is_empty() {
+        return Ok(0);
+    }
+    let batch_id = match &report.batch_id {
+        Some(id) => id.clone(),
+        None => {
+            let id = uuid::Uuid::new_v4().to_string();
+            conn.execute(
+                "INSERT INTO stock_import_batches (id, file_name, source, trade_count)
+                 VALUES (?1, ?2, ?3, 0)",
+                rusqlite::params![id, batch.file_name, batch.source],
+            )?;
+            report.batch_id = Some(id.clone());
+            id
+        }
+    };
+    let mut written = 0;
+    for dividend in dividends {
+        let (Some(ticker), Some(valid)) = (dividend.ticker.as_deref(), dividend.valid.as_ref())
+        else {
+            continue;
+        };
+        let investment_id: String = conn
+            .query_row(
+                "SELECT id FROM stock_investments WHERE ticker = ?1",
+                [ticker],
+                |row| row.get(0),
+            )
+            .map_err(|_| row_failure(dividend.line, "position missing"))?;
+        stock_dividends::insert(
+            conn,
+            &investment_id,
+            valid,
+            DividendOrigin {
+                import_batch_id: Some(&batch_id),
+                external_id: dividend.external_id.as_deref(),
+            },
+        )
+        .map_err(|e| row_failure(dividend.line, &e.to_string()))?;
+        written += 1;
+    }
+    conn.execute(
+        "UPDATE stock_import_batches SET trade_count = trade_count + ?1 WHERE id = ?2",
+        rusqlite::params![written as i64, batch_id],
+    )?;
+    Ok(written)
 }
 
 /// The import's error for a row the writer refused: the file line and a key.
@@ -1178,6 +1271,243 @@ mod tests {
         assert_eq!(split_row(&conn, "AAPL", day(250)), None);
         assert_eq!(count(&conn, "stock_import_batches"), 0);
         // The connection is usable again: no savepoint left open.
+        assert!(conn.is_autocommit());
+    }
+
+    // ---- dividends (spec D14) -------------------------------------------------
+
+    /// `(ticker, paid_date, gross, tax, currency, batch id, external id)`.
+    type StoredDividend = (
+        String,
+        i64,
+        String,
+        String,
+        String,
+        Option<String>,
+        Option<String>,
+    );
+
+    fn dividends_stored(conn: &Connection) -> Vec<StoredDividend> {
+        let mut stmt = conn
+            .prepare(
+                "SELECT i.ticker, d.paid_date, d.gross_amount, d.withholding_tax, d.currency,
+                        d.import_batch_id, d.external_id
+                 FROM investment_dividends d JOIN stock_investments i ON i.id = d.investment_id
+                 ORDER BY d.rowid",
+            )
+            .unwrap();
+        let rows = stmt
+            .query_map([], |r| {
+                Ok((
+                    r.get(0)?,
+                    r.get(1)?,
+                    r.get(2)?,
+                    r.get(3)?,
+                    r.get(4)?,
+                    r.get(5)?,
+                    r.get(6)?,
+                ))
+            })
+            .unwrap();
+        rows.map(|r| r.unwrap()).collect()
+    }
+
+    fn batch_count(conn: &Connection, id: &str) -> i64 {
+        conn.query_row(
+            "SELECT trade_count FROM stock_import_batches WHERE id = ?1",
+            [id],
+            |r| r.get(0),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn dividends_are_written_after_the_trades_in_the_same_batch() {
+        let mut conn = db();
+        let mut div = dividend(4, day(20), "AAPL", 12.5, 1.5);
+        div.external_id = Some("D1".into());
+        let file = parsed_with(
+            vec![buy(2, day(0), "AAPL", 10.0, 100.0)],
+            // Before the buy in the file: the position is the file's own.
+            vec![dividend(3, day(10), "AAPL", 2.0, 0.0), div],
+        );
+
+        let result = import(&mut conn, &file, &config("ibkr"), "cash.csv").unwrap();
+
+        assert_eq!((result.imported, result.dividends), (3, 2));
+        assert_eq!(result.new_positions, vec!["AAPL"]);
+        assert!(result.updated_positions.is_empty());
+        assert_eq!(result.earliest_day, Some(day(0)), "trades only");
+        let batch = result.batch_id.clone().expect("batch");
+        assert_eq!(batch_count(&conn, &batch), 3, "trades and dividends");
+        let stored_dividends = dividends_stored(&conn);
+        assert_eq!(stored_dividends.len(), 2);
+        assert_eq!(
+            stored_dividends[1],
+            (
+                "AAPL".to_string(),
+                day(20),
+                "12.5".to_string(),
+                "1.5".to_string(),
+                "USD".to_string(),
+                Some(batch.clone()),
+                Some("ibkr:D1".to_string())
+            )
+        );
+        assert!(stored_dividends
+            .iter()
+            .all(|d| d.5.as_deref() == Some(batch.as_str())));
+        // A dividend changes neither the holding nor the trades.
+        assert_eq!(position(&conn, "AAPL").unwrap().1, "10");
+        assert_eq!(count(&conn, "investment_transactions"), 1);
+    }
+
+    #[test]
+    fn a_file_of_dividends_only_records_a_batch_of_its_own() {
+        let mut conn = db();
+        add_stored(&conn, "AAPL", "buy", "10", "100", day(0), None);
+        let file = parsed_with(vec![], vec![dividend(2, day(10), "AAPL", 2.0, 0.0)]);
+
+        let result = import(&mut conn, &file, &config("custom"), "d.csv").unwrap();
+
+        assert_eq!((result.imported, result.dividends), (1, 1));
+        assert_eq!(result.earliest_day, None, "a dividend changes no history");
+        assert!(result.new_positions.is_empty() && result.updated_positions.is_empty());
+        let batch = result.batch_id.expect("a batch is recorded");
+        assert_eq!(batch_count(&conn, &batch), 1);
+        assert_eq!(count(&conn, "investment_transactions"), 1);
+        assert_eq!(
+            dividends_stored(&conn)[0].5.as_deref(),
+            Some(batch.as_str())
+        );
+        let (file_name, source): (String, String) = conn
+            .query_row(
+                "SELECT file_name, source FROM stock_import_batches WHERE id = ?1",
+                [&batch],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!((file_name.as_str(), source.as_str()), ("d.csv", "custom"));
+    }
+
+    #[test]
+    fn importing_the_same_dividends_again_writes_nothing() {
+        let mut conn = db();
+        add_position(&conn, "AAPL", "Apple", "USD");
+        let mut with_id = dividend(3, day(11), "AAPL", 3.0, 0.0);
+        with_id.external_id = Some("77".into());
+        let file = parsed_with(
+            vec![],
+            vec![dividend(2, day(10), "AAPL", 2.0, 0.0), with_id],
+        );
+        let cfg = config("xtb");
+        assert_eq!(
+            import(&mut conn, &file, &cfg, "d.csv").unwrap().dividends,
+            2
+        );
+
+        let again = import(&mut conn, &file, &cfg, "d.csv").unwrap();
+
+        assert_eq!((again.imported, again.duplicates), (0, 2));
+        assert_eq!(again.batch_id, None);
+        assert_eq!(count(&conn, "investment_dividends"), 2);
+        assert_eq!(count(&conn, "stock_import_batches"), 1);
+        assert_eq!(
+            again
+                .messages
+                .iter()
+                .map(|m| m.key.as_str())
+                .collect::<Vec<_>>(),
+            [
+                "importWizard.row.duplicate",
+                "importWizard.row.duplicateById"
+            ]
+        );
+    }
+
+    #[test]
+    fn a_forced_duplicate_dividend_is_written() {
+        let mut conn = db();
+        add_dividend(&conn, "AAPL", day(10), "2", None);
+        let mut cfg = config("custom");
+        cfg.import_anyway_lines = vec![2];
+        let file = parsed_with(vec![], vec![dividend(2, day(10), "AAPL", 2.0, 0.0)]);
+        let result = import(&mut conn, &file, &cfg, "d.csv").unwrap();
+        assert_eq!((result.imported, result.duplicates), (1, 0));
+        assert_eq!(count(&conn, "investment_dividends"), 2);
+    }
+
+    #[test]
+    fn dividends_without_a_position_are_reported_and_nothing_is_written() {
+        let mut conn = db();
+        let file = parsed_with(vec![], vec![dividend(2, day(10), "NVDA", 2.0, 0.0)]);
+        let result = import(&mut conn, &file, &config("custom"), "d.csv").unwrap();
+        assert_eq!((result.imported, result.errors), (0, 1));
+        assert_eq!(result.batch_id, None);
+        assert_eq!(
+            result.messages,
+            vec![StockRowMessage {
+                line: 2,
+                key: "importWizard.row.dividendWithoutPosition".into(),
+                detail: Some("NVDA".into())
+            }]
+        );
+        assert_eq!(count(&conn, "stock_import_batches"), 0);
+    }
+
+    #[test]
+    fn dividends_are_never_split_converted() {
+        let mut conn = db();
+        add_position(&conn, "AAPL", "Apple", "USD");
+        let mut cfg = config("custom");
+        cfg.instrument_overrides = vec![StockInstrumentOverride {
+            splits: vec![StockSplitOverride {
+                effective_day: day(100),
+                numerator: "10".into(),
+                denominator: "1".into(),
+                action: StockSplitAction::Convert,
+                apply_stored: false,
+            }],
+            ..over("symbol:AAPL")
+        }];
+        // Both dates are before the split.
+        let file = parsed_with(
+            vec![buy(2, day(5), "AAPL", 3.0, 950.0)],
+            vec![dividend(3, day(6), "AAPL", 12.5, 1.0)],
+        );
+        let result = import(&mut conn, &file, &cfg, "d.csv").unwrap();
+        assert_eq!((result.imported, result.converted), (2, 1));
+        let stored_dividends = dividends_stored(&conn);
+        assert_eq!(
+            (
+                stored_dividends[0].2.as_str(),
+                stored_dividends[0].3.as_str()
+            ),
+            ("12.5", "1")
+        );
+        let (quantity, price): (String, String) = conn
+            .query_row(
+                "SELECT quantity, price_per_unit FROM investment_transactions",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!((quantity.as_str(), price.as_str()), ("30", "95"));
+    }
+
+    #[test]
+    fn a_dividend_that_fails_to_write_rolls_the_whole_import_back() {
+        let mut conn = db();
+        let file = parsed_with(
+            vec![buy(2, day(0), "AAPL", 10.0, 100.0)],
+            vec![dividend(3, day(10), "AAPL", 2.0, 0.0)],
+        );
+        // The writer refuses the dividend: no table for it.
+        conn.execute_batch("DROP TABLE investment_dividends")
+            .unwrap();
+        assert!(import(&mut conn, &file, &config("custom"), "f.csv").is_err());
+        assert_eq!(count(&conn, "investment_transactions"), 0);
+        assert_eq!(count(&conn, "stock_import_batches"), 0);
         assert!(conn.is_autocommit());
     }
 }

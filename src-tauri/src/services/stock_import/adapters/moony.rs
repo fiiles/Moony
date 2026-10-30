@@ -27,6 +27,8 @@ const QUANTITY: &[&str] = &["quantity", "pocet", "pocet kusu"];
 const PRICE: &[&str] = &["price", "cena", "cena za kus"];
 const CURRENCY: &[&str] = &["currency", "mena"];
 const ISIN: &[&str] = &["isin"];
+const AMOUNT: &[&str] = &["amount", "castka"];
+const TAX: &[&str] = &["withholding tax", "srazkova dan"];
 
 /// Positions of the columns the adapter reads.
 struct Columns {
@@ -38,6 +40,8 @@ struct Columns {
     currency: usize,
     name: Option<usize>,
     isin: Option<usize>,
+    amount: Option<usize>,
+    tax: Option<usize>,
 }
 
 /// Six required columns; the name and an ISIN are optional, anything else is
@@ -52,6 +56,8 @@ fn columns(headers: &[String]) -> Option<Columns> {
         currency: find_header(headers, CURRENCY)?,
         name: find_header(headers, NAME),
         isin: find_header(headers, ISIN),
+        amount: find_header(headers, AMOUNT),
+        tax: find_header(headers, TAX),
     })
 }
 
@@ -75,7 +81,14 @@ pub fn config(headers: &[String], rows: &[Vec<String>]) -> Option<AdapterConfig>
     config.currency_mode = CurrencyMode::Column;
     config.currency_column = Some(cols.currency);
     config.type_column = Some(cols.kind);
-    config.decimal_separator = decimal_of(rows, &[cols.quantity, cols.price]);
+    // A dividend row: the total and the tax withheld in the optional trailing columns.
+    config.amount_column = cols.amount;
+    config.tax_column = cols.tax;
+    let numbers: Vec<usize> = [Some(cols.quantity), Some(cols.price), cols.amount, cols.tax]
+        .into_iter()
+        .flatten()
+        .collect();
+    config.decimal_separator = decimal_of(rows, &numbers);
     Some(AdapterConfig {
         config,
         date_ambiguous,

@@ -277,7 +277,7 @@ pub enum DividendDuplicate {
     SameValues,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct StoredDividend {
     investment_id: String,
     paid_date: i64,
@@ -288,7 +288,7 @@ struct StoredDividend {
 }
 
 /// The stored dividends an import compares its rows with; a matched one is consumed.
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct DividendDuplicates {
     stored: Vec<StoredDividend>,
 }

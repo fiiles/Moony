@@ -5,16 +5,23 @@
 //! fees,,Total,,Order ID`: the headers are translated with the UI language but
 //! the layout is not, and the currency of an amount sits in the unnamed column
 //! after it. Sells have a negative quantity; some locales write decimal commas
-//! and quote the numbers. There is no ticker, only the ISIN. (The account
-//! statement is a different file.)
+//! and quote the numbers. There is no ticker, only the ISIN.
+//!
+//! The Account statement is a different file, read for its dividends only (its trades come
+//! from the Transactions export): `Date,Time,Value date,Product,ISIN,Description,FX,Change,,
+//! Balance,,Order Id`, the currency of an amount in the unnamed column after `Change`.
 //!
 //! The export is detected by its structure, not by header words: at least 17
 //! columns, `ISIN` at index 3, an unnamed column right after the price,
-//! ISIN-shaped values and `dd-MM-yyyy` dates in the rows.
+//! ISIN-shaped values and `dd-MM-yyyy` dates in the rows. The statement is told by at least 12
+//! columns, `ISIN` at index 4 and unnamed cells at 8 and 10.
 
 use crate::services::csv_import::columns::normalize_header;
+use crate::services::stock_import::columns::suggest_type_action;
 use crate::services::stock_import::detect::is_isin;
-use crate::services::stock_import::types::{CurrencyMode, DirectionMode, SOURCE_DEGIRO};
+use crate::services::stock_import::types::{
+    CurrencyMode, DirectionMode, StockTypeValueMapping, TypeValueAction, SOURCE_DEGIRO,
+};
 
 use super::{base_config, decimal_of, AdapterConfig, StockAdapter};
 
@@ -32,6 +39,91 @@ const QUANTITY_COLUMN: usize = 6;
 const PRICE_COLUMN: usize = 7;
 /// The unnamed column after the price holds its currency.
 const CURRENCY_COLUMN: usize = PRICE_COLUMN + 1;
+
+// The Account statement.
+const STATEMENT_MIN_COLUMNS: usize = 12;
+const STATEMENT_NAME_COLUMN: usize = 3;
+const STATEMENT_ISIN_COLUMN: usize = 4;
+const STATEMENT_TYPE_COLUMN: usize = 5;
+const STATEMENT_CURRENCY_COLUMN: usize = 7;
+const STATEMENT_AMOUNT_COLUMN: usize = 8;
+/// What the Description of a dividend and of its tax say in the languages of the UI; the many
+/// distinct descriptions of the trade lines would overflow what the inspection tracks.
+const STATEMENT_DESCRIPTIONS: [&str; 15] = [
+    "Dividend",
+    "Dividend Tax",
+    "Dividendbelasting",
+    "Dividendensteuer",
+    "Dividende",
+    "Dividenda",
+    "Daň z dividendy",
+    "Dividendo",
+    "Retención de dividendos",
+    "Ritenuta sui dividendi",
+    "Impôts sur dividende",
+    "Dywidenda",
+    "Podatek od dywidendy",
+    "Utdelning",
+    "Utbytte",
+];
+
+/// The shape of the Account statement's header row.
+fn has_statement_structure(headers: &[String]) -> bool {
+    headers.len() >= STATEMENT_MIN_COLUMNS
+        && normalize_header(&headers[STATEMENT_ISIN_COLUMN]) == "isin"
+        && headers[STATEMENT_AMOUNT_COLUMN].trim().is_empty()
+        && headers[STATEMENT_AMOUNT_COLUMN + 2].trim().is_empty()
+}
+
+/// The statement's rows: ISINs where the ISIN is when there is one (cash movements have none)
+/// and Degiro's dates.
+fn statement_rows_fit(rows: &[Vec<String>]) -> bool {
+    let cells = |column: usize| -> Vec<&str> {
+        rows.iter()
+            .filter_map(|row| row.get(column))
+            .map(|cell| cell.trim())
+            .filter(|cell| !cell.is_empty())
+            .collect()
+    };
+    cells(STATEMENT_ISIN_COLUMN).iter().all(|v| is_isin(v))
+        && cells(DATE_COLUMN).iter().all(|d| is_dd_mm_yyyy(d))
+}
+
+fn statement_config(headers: &[String], rows: &[Vec<String>]) -> Option<AdapterConfig> {
+    if !has_statement_structure(headers) {
+        return None;
+    }
+    let mut config = base_config(SOURCE_DEGIRO);
+    config.date_column = DATE_COLUMN;
+    config.date_format = "%d-%m-%Y".to_string();
+    config.name_column = Some(STATEMENT_NAME_COLUMN);
+    config.isin_column = Some(STATEMENT_ISIN_COLUMN);
+    // The amount is the total of a dividend or tax row; quantity and price are unused.
+    config.quantity_column = STATEMENT_AMOUNT_COLUMN;
+    config.price_column = STATEMENT_AMOUNT_COLUMN;
+    config.amount_column = Some(STATEMENT_AMOUNT_COLUMN);
+    config.currency_mode = CurrencyMode::Column;
+    config.currency_column = Some(STATEMENT_CURRENCY_COLUMN);
+    config.direction_mode = DirectionMode::TypeColumn;
+    config.type_column = Some(STATEMENT_TYPE_COLUMN);
+    config.type_values = STATEMENT_DESCRIPTIONS
+        .iter()
+        .filter_map(|value| {
+            let action = suggest_type_action(value);
+            (action != TypeValueAction::Skip).then(|| StockTypeValueMapping {
+                value: value.to_string(),
+                action,
+            })
+        })
+        .collect();
+    // Its buy and sell lines are skipped: the trades come from the Transactions export.
+    config.transforms.cash_rows_only = true;
+    config.decimal_separator = decimal_of(rows, &[STATEMENT_AMOUNT_COLUMN]);
+    Some(AdapterConfig {
+        config,
+        date_ambiguous: false,
+    })
+}
 
 /// The shape of the header row.
 fn has_structure(headers: &[String]) -> bool {
@@ -74,12 +166,13 @@ fn rows_fit(rows: &[Vec<String>]) -> bool {
 }
 
 pub fn detect(headers: &[String], rows: &[Vec<String>]) -> bool {
-    has_structure(headers) && rows_fit(rows)
+    (has_structure(headers) && rows_fit(rows))
+        || (has_statement_structure(headers) && statement_rows_fit(rows))
 }
 
 pub fn config(headers: &[String], rows: &[Vec<String>]) -> Option<AdapterConfig> {
     if !has_structure(headers) {
-        return None;
+        return statement_config(headers, rows);
     }
     let mut config = base_config(SOURCE_DEGIRO);
     config.date_column = DATE_COLUMN;

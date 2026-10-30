@@ -1,5 +1,11 @@
 import { useTranslation } from 'react-i18next';
-import { Segmented } from '@/components/ui/segmented';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import type { StockTypeValueAction } from '@shared/schema';
 import type { TypeValueRow } from './import-config';
@@ -15,11 +21,17 @@ interface TypeValuesTableProps {
   commentDecidesDirection?: boolean;
 }
 
-const ACTIONS: readonly StockTypeValueAction[] = ['buy', 'sell', 'skip'];
+const ACTIONS: readonly StockTypeValueAction[] = [
+  'buy',
+  'sell',
+  'dividend',
+  'withholdingTax',
+  'skip',
+];
 
 /**
- * What each value of the type column means: a buy, a sell, or not a trade
- * (deposits, dividends, fees … are skipped). Suggested from keywords in several
+ * What each value of the type column means: a buy, a sell, a dividend, a tax
+ * withheld from a dividend, or none of them (deposits, fees … are skipped). Suggested from keywords in several
  * languages; where the file was counted, the count and the first line help to
  * judge a value like "Other".
  */
@@ -40,11 +52,6 @@ export function TypeValuesTable({
   }
 
   const counted = rows.some((row) => row.count != null);
-  const options = ACTIONS.map((action) => ({
-    value: action,
-    label: t(`importWizard.mapping.action.${action}`),
-  }));
-
   return (
     <div>
       <div className="overflow-hidden rounded-r2 border border-line">
@@ -87,12 +94,23 @@ export function TypeValuesTable({
                     </>
                   )}
                   <td className="px-3 py-1.5">
-                    <Segmented
+                    <Select
                       value={row.action}
-                      onValueChange={(next) => onChange(row.entryValue, next)}
-                      options={options}
-                      aria-label={row.value}
-                    />
+                      onValueChange={(next) =>
+                        onChange(row.entryValue, next as StockTypeValueAction)
+                      }
+                    >
+                      <SelectTrigger className="h-8 w-[170px]" aria-label={row.value}>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ACTIONS.map((action) => (
+                          <SelectItem key={action} value={action}>
+                            {t(`importWizard.mapping.action.${action}`)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </td>
                 </tr>
               ))}

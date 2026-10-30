@@ -22,6 +22,7 @@ pub fn list_batches(conn: &rusqlite::Connection) -> Result<Vec<StockImportBatch>
     let mut stmt = conn.prepare(
         "SELECT b.id, b.file_name, b.source, b.trade_count, b.created_at,
                 (SELECT COUNT(*) FROM investment_transactions t WHERE t.import_batch_id = b.id)
+                + (SELECT COUNT(*) FROM investment_dividends d WHERE d.import_batch_id = b.id)
          FROM stock_import_batches b
          ORDER BY b.created_at DESC, b.rowid DESC",
     )?;
@@ -82,14 +83,22 @@ pub fn undo_batch(
         (positions, earliest)
     };
 
-    let removed = tx.execute(
+    let removed_trades = tx.execute(
         "DELETE FROM investment_transactions WHERE import_batch_id = ?1",
         [batch_id],
     )?;
+    // The batch's dividends go too; they touch no history, so their positions are not listed.
+    let removed_dividends = tx.execute(
+        "DELETE FROM investment_dividends WHERE import_batch_id = ?1",
+        [batch_id],
+    )?;
+    let removed = removed_trades + removed_dividends;
 
     let mut tickers: Vec<String> = Vec::new();
     let mut removed_positions: Vec<String> = Vec::new();
     for (ticker, position) in positions {
+        // A position left without trades goes, its other dividends with it (as when its last
+        // trade is deleted by hand): a trade-less position would keep a stale quantity.
         let remaining: i64 = tx.query_row(
             "SELECT COUNT(*) FROM investment_transactions WHERE investment_id = ?1",
             [&position],
@@ -417,5 +426,84 @@ mod tests {
         assert_eq!(count(&conn, "stock_import_batches"), 2);
         assert_eq!(quantity(&conn, "AAPL").as_deref(), Some("2"));
         assert_eq!(quantity(&conn, "MSFT").as_deref(), Some("1"));
+    }
+
+    // ---- dividends ---------------------------------------------------------------
+
+    fn dividend_count(conn: &Connection) -> i64 {
+        count(conn, "investment_dividends")
+    }
+
+    #[test]
+    fn undo_deletes_the_batchs_dividends_too_and_counts_them() {
+        let mut conn = db();
+        add_stored(&conn, "AAPL", "buy", "10", "100", day(0), None);
+        let file = parsed_with(
+            vec![buy(2, day(1), "AAPL", 1.0, 100.0)],
+            vec![
+                dividend(3, day(5), "AAPL", 2.0, 0.0),
+                dividend(4, day(6), "AAPL", 3.0, 0.0),
+            ],
+        );
+        let result = import(&mut conn, &file, &config("custom"), "f.csv").unwrap();
+        let batch = result.batch_id.expect("batch");
+        // One dividend of the position that is not the batch's.
+        add_dividend(&conn, "AAPL", day(7), "9", None);
+        assert_eq!(dividend_count(&conn), 3);
+        let listed = list_batches(&conn).unwrap();
+        assert_eq!((listed[0].trade_count, listed[0].remaining_count), (3, 3));
+
+        // The user deleted one dividend since.
+        conn.execute(
+            "DELETE FROM investment_dividends WHERE gross_amount = '3'",
+            [],
+        )
+        .unwrap();
+        assert_eq!(list_batches(&conn).unwrap()[0].remaining_count, 2);
+
+        let undone = undo_batch(&mut conn, &batch).unwrap();
+
+        assert_eq!(undone.removed, 2, "the trade and the remaining dividend");
+        assert_eq!(dividend_count(&conn), 1, "the foreign dividend stays");
+        assert_eq!(count(&conn, "stock_import_batches"), 0);
+        assert_eq!(quantity(&conn, "AAPL").as_deref(), Some("10"));
+    }
+
+    #[test]
+    fn undoing_a_dividend_only_batch_touches_no_position_or_history() {
+        let mut conn = db();
+        add_stored(&conn, "AAPL", "buy", "10", "100", day(0), None);
+        let file = parsed_with(vec![], vec![dividend(2, day(5), "AAPL", 2.0, 0.0)]);
+        let batch = import(&mut conn, &file, &config("custom"), "f.csv")
+            .unwrap()
+            .batch_id
+            .expect("batch");
+
+        let undone = undo_batch(&mut conn, &batch).unwrap();
+
+        assert_eq!(undone.removed, 1);
+        assert!(undone.tickers.is_empty() && undone.removed_positions.is_empty());
+        assert_eq!(undone.earliest_day, None);
+        assert_eq!(dividend_count(&conn), 0);
+        assert_eq!(count(&conn, "investment_transactions"), 1);
+    }
+
+    #[test]
+    fn a_position_left_without_trades_goes_with_its_other_dividends() {
+        let mut conn = db();
+        let result = import(
+            &mut conn,
+            &parsed(vec![buy(2, day(0), "AAPL", 10.0, 100.0)]),
+            &config("custom"),
+            "f.csv",
+        )
+        .unwrap();
+        add_dividend(&conn, "AAPL", day(5), "2", None);
+
+        let undone = undo_batch(&mut conn, &result.batch_id.unwrap()).unwrap();
+
+        assert_eq!(undone.removed_positions, vec!["AAPL".to_string()]);
+        assert_eq!(dividend_count(&conn), 0);
+        assert_eq!(count(&conn, "stock_investments"), 0);
     }
 }

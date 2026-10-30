@@ -11,14 +11,14 @@ import {
 } from '@/components/ui/table';
 import { cn } from '@/lib/utils';
 import type { StockCsvInspection } from '@shared/schema';
-import type { ColumnOption, MappingRole } from './import-config';
+import type { ColumnOption, MappedRole } from './import-config';
 
 interface RawDataPreviewProps {
   inspection: Pick<StockCsvInspection, 'headers' | 'sampleRows' | 'rowCount'>;
   /** Names of the columns (blank headers already labelled). */
   options: readonly ColumnOption[];
   /** The columns the mapping reads, with what each is read as. */
-  mapped: ReadonlyMap<number, readonly MappingRole[]>;
+  mapped: ReadonlyMap<number, readonly MappedRole[]>;
 }
 
 /**

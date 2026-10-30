@@ -183,6 +183,7 @@ export function ResultStep({
   }
 
   const imported = result.imported > 0;
+  const tileCount = 4 + (result.dividends > 0 ? 1 : 0) + (result.converted > 0 ? 1 : 0);
   const rows: NextStepRow[] = [
     {
       id: 'show',
@@ -250,16 +251,29 @@ export function ResultStep({
               : t('importWizard.result.summaryCount', { count: result.imported })}
         </p>
 
+        {result.dividends > 0 && (
+          <p className="mb-0 mt-1 text-caption text-ink-3">
+            {t('importWizard.result.dividendsNote', { count: result.dividends })}
+          </p>
+        )}
+
         <div
           className={cn(
             'my-4 grid gap-2.5',
-            result.converted > 0 ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'
+            tileCount >= 6
+              ? 'grid-cols-2 sm:grid-cols-6'
+              : tileCount === 5
+                ? 'grid-cols-2 sm:grid-cols-5'
+                : 'grid-cols-2 sm:grid-cols-4'
           )}
         >
           <Tile value={result.imported} label={t('importWizard.result.imported')} />
           <Tile value={result.duplicates} label={t('importWizard.result.duplicates')} />
           <Tile value={result.skipped} label={t('importWizard.result.skipped')} />
           <Tile value={result.errors} label={t('importWizard.result.errors')} tone="loss" />
+          {result.dividends > 0 && (
+            <Tile value={result.dividends} label={t('importWizard.result.dividends')} />
+          )}
           {result.converted > 0 && (
             <Tile value={result.converted} label={t('importWizard.result.converted')} />
           )}

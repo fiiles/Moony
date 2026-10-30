@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { CircleAlert, RefreshCw } from 'lucide-react';
+import { CircleAlert, RefreshCw, TriangleAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
 import {
   Table,
   TableBody,
@@ -31,6 +33,7 @@ import {
   PREVIEW_COLLAPSED_ROWS,
   convertedLines,
   formatDecimalText,
+  isCurrencyCode,
   summarizePreview,
 } from './import-config';
 import { rowMessageText } from './row-messages';
@@ -49,6 +52,9 @@ interface ReviewStepProps {
   overrides: readonly StockInstrumentOverride[];
   /** Where the currency of the trades comes from (the mapping's currency mode). */
   currencyMode: StockCurrencyMode;
+  /** The currency of dividend and tax amounts the file names none for (`''` until chosen). */
+  cashCurrency: string;
+  onCashCurrencyChange: (currency: string) => void;
   resolutions: Readonly<Record<string, StockInstrumentResolution>>;
   progress: LookupProgress;
   isResolving: boolean;
@@ -96,6 +102,8 @@ export function ReviewStep({
   onToggleImportAnyway,
   overrides,
   currencyMode,
+  cashCurrency,
+  onCashCurrencyChange,
   resolutions,
   progress,
   isResolving,
@@ -214,6 +222,9 @@ export function ReviewStep({
         {summary.converted > 0 && (
           <span>{t('importWizard.review.summary.converted', { count: summary.converted })}</span>
         )}
+        {summary.dividends > 0 && (
+          <span>{t('importWizard.review.summary.dividends', { count: summary.dividends })}</span>
+        )}
         {preview.dateRange && (
           <span className="text-ink-4">
             {fmt.day(preview.dateRange.from)} – {fmt.day(preview.dateRange.to)}
@@ -225,6 +236,30 @@ export function ReviewStep({
           </span>
         )}
       </div>
+
+      {preview.needsCashCurrency && (
+        <div className="mb-4 rounded-r3 border border-line px-3.5 py-3">
+          <Label htmlFor="stock-import-cash-currency" className="font-650 text-ink">
+            {t('importWizard.review.cashCurrency.title')}
+          </Label>
+          <p className="mb-2 mt-1 text-micro font-500 text-ink-4">
+            {t('importWizard.review.cashCurrency.hint')}
+          </p>
+          <CurrencyCombobox
+            id="stock-import-cash-currency"
+            value={isCurrencyCode(cashCurrency) ? cashCurrency : ''}
+            onChange={onCashCurrencyChange}
+            aria-label={t('importWizard.review.cashCurrency.title')}
+          />
+        </div>
+      )}
+
+      {summary.unpairedTaxes > 0 && (
+        <p className="mb-4 mt-0 flex items-start gap-2 rounded-r3 bg-well px-3.5 py-3 text-caption font-500 text-ink-2">
+          <TriangleAlert className="mt-px size-3.5 shrink-0 text-ink-3" aria-hidden />
+          {t('importWizard.review.unpairedTaxes', { count: summary.unpairedTaxes })}
+        </p>
+      )}
 
       {summary.willImport === 0 && (
         <p className="mb-4 mt-0 text-caption font-600 text-ink-3">
@@ -276,6 +311,9 @@ export function ReviewStep({
                   <TableHead className="text-right">
                     {t('importWizard.review.rows.price')}
                   </TableHead>
+                  <TableHead className="text-right">
+                    {t('importWizard.review.rows.amount')}
+                  </TableHead>
                   <TableHead className="w-[64px]">
                     {t('importWizard.review.rows.currency')}
                   </TableHead>
@@ -299,7 +337,9 @@ export function ReviewStep({
                         {row.day != null ? fmt.day(row.day) : '—'}
                       </TableCell>
                       <TableCell>
-                        {row.direction ? (
+                        {row.kind !== 'trade' ? (
+                          <Badge variant="outline">{t(`importWizard.kind.${row.kind}`)}</Badge>
+                        ) : row.direction ? (
                           <Badge variant={row.direction === 'sell' ? 'outline' : 'dark'}>
                             {t(`importWizard.direction.${row.direction}`)}
                           </Badge>
@@ -320,6 +360,16 @@ export function ReviewStep({
                       </TableCell>
                       <TableCell className="whitespace-nowrap text-right num">
                         {formatDecimalText(row.price, locale, 2)}
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap text-right num">
+                        {formatDecimalText(row.amount, locale, 2)}
+                        {row.tax != null && (
+                          <small className="block text-micro font-500 text-ink-4">
+                            {t('importWizard.review.rows.taxAmount', {
+                              amount: formatDecimalText(row.tax, locale, 2),
+                            })}
+                          </small>
+                        )}
                       </TableCell>
                       <TableCell className="num">{row.currency ?? '—'}</TableCell>
                       <TableCell>

@@ -12,6 +12,7 @@ pub mod adapters;
 pub mod batches;
 pub mod columns;
 pub mod detect;
+pub mod export;
 pub mod formats;
 pub mod import;
 pub mod inspect;

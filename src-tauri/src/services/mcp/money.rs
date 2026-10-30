@@ -93,6 +93,9 @@ pub fn add_position_fields(
     row["unrealizedGain"] = field(|i| i.unrealized_gain);
     row["unrealizedGainPct"] = percent_json(item.and_then(|i| i.unrealized_gain_percent));
     row["realizedGain"] = field(|i| i.realized_gain);
+    if item.is_some_and(|i| i.dividends_received.is_some()) {
+        row["dividendsReceived"] = field(|i| i.dividends_received);
+    }
     if item.is_some_and(|i| i.dividend_per_share.is_some() || i.yearly_dividend.is_some()) {
         row["annualDividend"] = field(|i| i.yearly_dividend);
     }

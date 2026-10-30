@@ -379,7 +379,8 @@
       "superseded": "Durch Yahoo Finance ersetzt, nicht gezählt",
       "yahooTitle": "Yahoo Finance kennt die Dividenden dieser Aktie",
       "yahooBody": "Moony lädt die Dividenden von {{ticker}} von Yahoo Finance und berechnet sie aus den Aktien, die Sie am Tag vor jedem Ex-Tag hielten. Erfassen Sie eine Dividende nur dann manuell, wenn Yahoo für die Aktie keine hat."
-    }
+    },
+    "realizedDividends": "davon Dividenden {{amount}}"
   },
   "importWizard": {
     "title": "Trades aus CSV importieren",

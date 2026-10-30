@@ -379,7 +379,8 @@
       "superseded": "Replaced by Yahoo Finance, not counted",
       "yahooTitle": "Yahoo Finance has the dividends of this stock",
       "yahooBody": "Moony fetches the dividends of {{ticker}} from Yahoo Finance and counts them from the shares you held the day before each ex-date. Enter a dividend by hand only for a stock Yahoo has none for."
-    }
+    },
+    "realizedDividends": "incl. dividends {{amount}}"
   },
   "importWizard": {
     "title": "Import trades from CSV",

@@ -389,7 +389,8 @@
       "superseded": "Nahrazeno daty z Yahoo Finance, nezapočítává se",
       "yahooTitle": "Dividendy této akcie má Yahoo Finance",
       "yahooBody": "Moony dividendy {{ticker}} stahuje z Yahoo Finance a počítá je z akcií, které jste drželi den před každým ex-date. Ručně zadávejte dividendu jen u akcie, pro kterou Yahoo žádné nemá."
-    }
+    },
+    "realizedDividends": "z toho dividendy {{amount}}"
   },
   "importWizard": {
     "title": "Import obchodů z CSV",

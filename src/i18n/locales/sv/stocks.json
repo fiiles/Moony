@@ -379,7 +379,8 @@
       "superseded": "Ersatt av Yahoo Finance, räknas inte",
       "yahooTitle": "Yahoo Finance har utdelningarna för denna aktie",
       "yahooBody": "Moony hämtar utdelningarna för {{ticker}} från Yahoo Finance och räknar fram dem från aktierna du ägde dagen före varje x-dag. Lägg in en utdelning manuellt bara för en aktie som Yahoo inte har några för."
-    }
+    },
+    "realizedDividends": "varav utdelningar {{amount}}"
   },
   "importWizard": {
     "title": "Importera affärer från CSV",

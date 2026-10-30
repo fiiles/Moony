@@ -15,6 +15,7 @@ was built and shown to the owner on 2026-10-30, who then ruled (in chat, same da
    it).
 6. A manual dividend for a ticker Yahoo has dividends for is refused, not only warned about.
 7. MCP may read dividends but not write them.
+8. The sum of a position's dividends is part of its realized return (later the same day).
 
 This spec describes the design after those rulings. The plan is
 `docs/plans/2026-10-30-stock-dividends.md`; ADR 0022 records the storage decision.
@@ -93,6 +94,12 @@ and `['portfolio-history']` (rule 7). Trades and imports also invalidate `['stoc
 **D11. No CSV import, no MCP write.** The stock CSV import keeps skipping dividend rows. MCP has
 a read tool `stock_dividends` (source, ex-date, per share, shares, gross, superseded) and
 `investment_detail` lists the position's dividends.
+
+**D13. Realized return.** A stock position's `realizedGain` (positions service, so the list, the
+totals, the detail page, MCP and the phone agree) is the sale gain plus the gross dividends it
+received up to today, each at its ex-date's rate; `dividendsReceived` carries that part on the
+wire and the detail page's "Realizovaný výnos" notes "z toho dividendy X". Dividends that exist
+but cannot be converted leave the realized return unknown (`null`) and name their currency.
 
 **D12. Demo profile.** The seed stores Yahoo-shaped events for its four tickers.
 

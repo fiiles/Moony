@@ -379,6 +379,15 @@ mod tests {
                 yearly_dividend_sum TEXT,
                 currency TEXT
             );
+            CREATE TABLE stock_dividend_events (
+                ticker TEXT NOT NULL, ex_date INTEGER NOT NULL, amount TEXT NOT NULL,
+                currency TEXT NOT NULL, fetched_at INTEGER NOT NULL, PRIMARY KEY (ticker, ex_date)
+            );
+            CREATE TABLE investment_dividends (
+                id TEXT PRIMARY KEY, investment_id TEXT NOT NULL, ex_date INTEGER NOT NULL,
+                gross_amount TEXT NOT NULL, currency TEXT NOT NULL, note TEXT,
+                created_at INTEGER NOT NULL DEFAULT 0
+            );
             CREATE TABLE stock_tags (
                 id TEXT PRIMARY KEY,
                 name TEXT NOT NULL,

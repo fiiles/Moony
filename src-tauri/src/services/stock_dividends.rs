@@ -288,19 +288,17 @@ pub fn payouts(conn: &Connection, today: i64) -> Result<Vec<Payout>> {
     Ok(all)
 }
 
-/// The dividends of a position with the gross sum of the counted ones in `report_currency`:
-/// every payout converted at its ex-date's rate (ten-day walk-back; day quotes only up to
-/// `today`), else at `current` (flagged estimated), else left out and named in the quality.
-/// Never 1:1.
-pub fn list(
+/// The gross sum of the counted dividends (never a superseded one) in `report_currency`: every
+/// payout converted at its ex-date's rate (ten-day walk-back; day quotes only up to `today`),
+/// else at `current` (flagged estimated), else left out and named in the quality. Never 1:1.
+/// `None` when payouts exist but none could be converted; 0 without payouts.
+fn sum_counted(
     conn: &Connection,
-    investment_id: &str,
-    report_currency: &str,
+    items: &[StockDividend],
+    report: &str,
     current: &Quotes,
     today: i64,
-) -> Result<StockDividendList> {
-    let report = report_currency.trim().to_uppercase();
-    let (items, from_yahoo) = for_investment(conn, investment_id, today)?;
+) -> Result<(Option<f64>, Quality)> {
     let counted: Vec<&StockDividend> = items.iter().filter(|d| !d.superseded).collect();
     let mut quality = Quality::default();
     let (mut sum, mut converted) = (0.0, 0usize);
@@ -316,12 +314,12 @@ pub fn list(
             };
             // A day without its own quotes yet (today, a future day) uses the current ones.
             let on_day = (item.ex_date <= today)
-                .then(|| history.convert_on(gross, &item.currency, &report, item.ex_date))
+                .then(|| history.convert_on(gross, &item.currency, report, item.ex_date))
                 .flatten();
             let value = match on_day {
                 Some(value) => Some(value),
                 None => {
-                    let value = current.convert(gross, &item.currency, &report);
+                    let value = current.convert(gross, &item.currency, report);
                     if value.is_some() {
                         quality.mark_estimated();
                     }
@@ -334,13 +332,49 @@ pub fn list(
                     converted += 1;
                 }
                 None => {
-                    quality.track_conversion(current, &item.currency, &report, None);
+                    quality.track_conversion(current, &item.currency, report, None);
                 }
             }
         }
     }
+    Ok((
+        (counted.is_empty() || converted > 0).then_some(sum),
+        quality,
+    ))
+}
+
+/// The gross dividends a position received up to `today` in `report_currency` (see
+/// [`sum_counted`]): the dividend part of its realized return.
+pub fn received(
+    conn: &Connection,
+    investment_id: &str,
+    report_currency: &str,
+    current: &Quotes,
+    today: i64,
+) -> Result<(Option<f64>, Quality)> {
+    let (items, _) = for_investment(conn, investment_id, today)?;
+    sum_counted(
+        conn,
+        &items,
+        &report_currency.trim().to_uppercase(),
+        current,
+        today,
+    )
+}
+
+/// The dividends of a position with the gross sum of the counted ones in `report_currency`.
+pub fn list(
+    conn: &Connection,
+    investment_id: &str,
+    report_currency: &str,
+    current: &Quotes,
+    today: i64,
+) -> Result<StockDividendList> {
+    let report = report_currency.trim().to_uppercase();
+    let (items, from_yahoo) = for_investment(conn, investment_id, today)?;
+    let (sum, quality) = sum_counted(conn, &items, &report, current, today)?;
     Ok(StockDividendList {
-        total_gross: (counted.is_empty() || converted > 0).then(|| money_in_currency(sum, &report)),
+        total_gross: sum.map(|sum| money_in_currency(sum, &report)),
         currency: report,
         fx_quality: ConversionQuality::from(&quality),
         items,

@@ -772,7 +772,13 @@ export interface EnrichedStockInvestment {
   costBasis: string | null;
   unrealizedGain: string | null;
   unrealizedGainPercent: number | null;
+  /** Sell proceeds minus the released cost, plus `dividendsReceived`. */
   realizedGain: string | null;
+  /**
+   * Gross dividends received up to today, each at its ex-date's rate (part of `realizedGain`);
+   * null when payouts exist but none could be converted.
+   */
+  dividendsReceived: string | null;
   /** Yearly dividend per share in `dividendCurrency`; null without dividend data. */
   dividendPerShare: string | null;
   /** Yearly dividend of the whole position in the report currency. */

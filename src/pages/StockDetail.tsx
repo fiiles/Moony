@@ -35,7 +35,7 @@ import { useStockSplits } from '@/hooks/use-stock-splits';
 import { useShellPage } from '@/components/shell/shell-context';
 import { cn } from '@/lib/utils';
 import { formatAmountWithCode } from '@/utils/format-amount';
-import { costPerUnit, toStockRow } from '@/utils/positions';
+import { amountOf, costPerUnit, toStockRow } from '@/utils/positions';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { formatMarketCap } from '@/utils/stock-monitor';
 import { ratioText as splitRatioText } from '@/utils/stock-splits';
@@ -243,7 +243,9 @@ export default function StockDetail() {
   const averageCost = costPerUnit(totalInvested, quantity);
   const unrealized = holdingData?.gainLoss ?? null;
   const unrealizedPct = (holdingData?.gainLossPercent ?? 0) / 100;
+  // Includes the gross dividends received (backend); the note names their part.
   const realized = holdingData?.realizedGain ?? null;
+  const dividendsReceived = amountOf(investment?.dividendsReceived);
   const yearlyDividend = holdingData?.yearlyDividend ?? null;
   const dividendYieldPct =
     yearlyDividend !== null && currentValue !== null && currentValue > 0
@@ -662,7 +664,14 @@ export default function StockDetail() {
           value={money(realized, { signed: true })}
           tone={tone(realized)}
           noteTone="neutral"
-          note={sells.length > 0 ? t('detail.sells', { count: sells.length }) : t('detail.noSells')}
+          note={[
+            sells.length > 0 ? t('detail.sells', { count: sells.length }) : t('detail.noSells'),
+            dividendsReceived !== null && dividendsReceived > 0
+              ? t('detail.realizedDividends', { amount: money(dividendsReceived) })
+              : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         />
         <Stat
           label={t('detail.dividends')}

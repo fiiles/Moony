@@ -379,7 +379,8 @@
       "superseded": "Erstattet av Yahoo Finance, telles ikke",
       "yahooTitle": "Yahoo Finance har utbyttene for denne aksjen",
       "yahooBody": "Moony henter utbyttene for {{ticker}} fra Yahoo Finance og regner dem ut fra aksjene du eide dagen før hver eks-dato. Legg inn utbytte manuelt bare for en aksje Yahoo ikke har noen for."
-    }
+    },
+    "realizedDividends": "herav utbytte {{amount}}"
   },
   "importWizard": {
     "title": "Importer handler fra CSV",

@@ -388,7 +388,8 @@
       "superseded": "Sostituito da Yahoo Finance, non conteggiato",
       "yahooTitle": "Yahoo Finance ha i dividendi di questa azione",
       "yahooBody": "Moony scarica i dividendi di {{ticker}} da Yahoo Finance e li calcola dalle azioni che detenevi il giorno prima di ogni data ex-dividendo. Inserisci un dividendo a mano solo per un'azione di cui Yahoo non ne ha."
-    }
+    },
+    "realizedDividends": "di cui dividendi {{amount}}"
   },
   "importWizard": {
     "title": "Importa operazioni da CSV",

@@ -370,7 +370,8 @@
       "superseded": "已由 Yahoo Finance 取代，不计入",
       "yahooTitle": "Yahoo Finance 有该股票的股息",
       "yahooBody": "Moony 从 Yahoo Finance 获取 {{ticker}} 的股息，并按每个除息日前一天持有的股数计算。仅当 Yahoo 没有某只股票的股息时，才手动输入股息。"
-    }
+    },
+    "realizedDividends": "其中股息 {{amount}}"
   },
   "importWizard": {
     "title": "从 CSV 导入交易",

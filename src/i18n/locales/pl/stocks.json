@@ -279,7 +279,7 @@
     },
     "confirmDelete": {
       "title": "Usunąć pozycję?",
-      "description": "{{name}} ({{ticker}}) i wszystkie jej transakcje zostaną usunięte na zawsze. Tej operacji nie można cofnąć."
+      "description": "{{name}} ({{ticker}}) i wszystkie jej transakcje oraz dywidendy zostaną usunięte na zawsze. Tej operacji nie można cofnąć."
     },
     "confirmDeleteTransaction": {
       "title": "Usunąć transakcję?",
@@ -849,7 +849,11 @@
       "taxPairedLine": "Podatek dołączony do dywidendy w wierszu {{detail}}",
       "taxUnpaired": "Podatek u źródła bez dywidendy — nie zostanie zapisany",
       "taxExceedsGross": "Podatek u źródła jest wyższy niż dywidenda",
-      "dividendWithoutPosition": "Brak pozycji dla tej dywidendy w Moony, a plik jej nie kupuje"
+      "dividendWithoutPosition": "Brak pozycji dla tej dywidendy w Moony, a plik jej nie kupuje",
+      "dividendReversed": "Anulowane korektą brokera, nie zostanie zapisane",
+      "dividendReversedLine": "Anulowane korektą z wiersza {{detail}}, nie zostanie zapisane",
+      "dividendReversal": "Korekta dywidendy, nie zostanie zapisana",
+      "dividendReversalLine": "Korekta dywidendy z wiersza {{detail}}, nie zostanie zapisana"
     },
     "mcpSource": "MCP",
     "splits": {

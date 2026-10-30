@@ -271,7 +271,7 @@
     },
     "confirmDelete": {
       "title": "Delete position?",
-      "description": "{{name}} ({{ticker}}) and all its transactions will be removed for good. This cannot be undone."
+      "description": "{{name}} ({{ticker}}) and all its transactions and dividends will be removed for good. This cannot be undone."
     },
     "confirmDeleteTransaction": {
       "title": "Delete transaction?",
@@ -803,7 +803,11 @@
       "taxPairedLine": "Tax added to the dividend on line {{detail}}",
       "taxUnpaired": "Withholding tax without a dividend, not written",
       "taxExceedsGross": "The withholding tax is higher than the dividend",
-      "dividendWithoutPosition": "No position for this dividend in Moony and the file does not buy it"
+      "dividendWithoutPosition": "No position for this dividend in Moony and the file does not buy it",
+      "dividendReversed": "Cancelled by the broker's reversal, not written",
+      "dividendReversedLine": "Cancelled by the reversal on line {{detail}}, not written",
+      "dividendReversal": "Reversal of a dividend, not written",
+      "dividendReversalLine": "Reversal of the dividend on line {{detail}}, not written"
     },
     "mcpSource": "MCP",
     "splits": {

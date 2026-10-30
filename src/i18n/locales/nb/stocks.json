@@ -271,7 +271,7 @@
     },
     "confirmDelete": {
       "title": "Slette beholdningen?",
-      "description": "{{name}} ({{ticker}}) og alle transaksjonene fjernes for godt. Dette kan ikke angres."
+      "description": "{{name}} ({{ticker}}) og alle transaksjonene og utbyttene fjernes for godt. Dette kan ikke angres."
     },
     "confirmDeleteTransaction": {
       "title": "Slette transaksjonen?",
@@ -803,7 +803,11 @@
       "taxPairedLine": "Skatt lagt til utbyttet på linje {{detail}}",
       "taxUnpaired": "Kildeskatt uten utbytte, skrives ikke",
       "taxExceedsGross": "Kildeskatten er høyere enn utbyttet",
-      "dividendWithoutPosition": "Det finnes ingen posisjon for dette utbyttet i Moony, og filen kjøper den ikke"
+      "dividendWithoutPosition": "Det finnes ingen posisjon for dette utbyttet i Moony, og filen kjøper den ikke",
+      "dividendReversed": "Annullert av meglerens reversering, importeres ikke",
+      "dividendReversedLine": "Annullert av reverseringen på linje {{detail}}, importeres ikke",
+      "dividendReversal": "Reversering av et utbytte, importeres ikke",
+      "dividendReversalLine": "Reversering av utbyttet på linje {{detail}}, importeres ikke"
     },
     "mcpSource": "MCP",
     "splits": {

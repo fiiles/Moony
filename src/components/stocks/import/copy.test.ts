@@ -103,6 +103,10 @@ describe('stocks.importWizard copy', () => {
       'duplicateById',
       'duplicateSimilar',
       'dividendNotPositive',
+      'dividendReversed',
+      'dividendReversedLine',
+      'dividendReversal',
+      'dividendReversalLine',
       'cashCurrencyMissing',
       'taxCurrencyMismatch',
       'taxCurrencyMismatchIn',
@@ -121,6 +125,8 @@ describe('stocks.importWizard copy', () => {
       expect(flat['row.currencyMismatchPosition']).toContain('{{detail}}');
       expect(flat['row.symbolMissingIsin']).toContain('{{detail}}');
       expect(flat['row.taxPairedLine']).toContain('{{detail}}');
+      expect(flat['row.dividendReversedLine']).toContain('{{detail}}');
+      expect(flat['row.dividendReversalLine']).toContain('{{detail}}');
       expect(flat['row.taxCurrencyMismatchIn']).toContain('{{detail}}');
     }
   });

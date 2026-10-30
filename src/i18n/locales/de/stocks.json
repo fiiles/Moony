@@ -271,7 +271,7 @@
     },
     "confirmDelete": {
       "title": "Position löschen?",
-      "description": "{{name}} ({{ticker}}) und alle zugehörigen Transaktionen werden endgültig entfernt. Das lässt sich nicht rückgängig machen."
+      "description": "{{name}} ({{ticker}}) und alle zugehörigen Transaktionen und Dividenden werden endgültig entfernt. Das lässt sich nicht rückgängig machen."
     },
     "confirmDeleteTransaction": {
       "title": "Transaktion löschen?",
@@ -803,7 +803,11 @@
       "taxPairedLine": "Steuer der Dividende in Zeile {{detail}} zugeordnet",
       "taxUnpaired": "Quellensteuer ohne Dividende, wird nicht geschrieben",
       "taxExceedsGross": "Die Quellensteuer ist höher als die Dividende",
-      "dividendWithoutPosition": "Für diese Dividende gibt es in Moony keine Position und die Datei kauft sie nicht"
+      "dividendWithoutPosition": "Für diese Dividende gibt es in Moony keine Position und die Datei kauft sie nicht",
+      "dividendReversed": "Durch die Stornierung des Brokers aufgehoben, nicht übernommen",
+      "dividendReversedLine": "Durch die Stornierung in Zeile {{detail}} aufgehoben, nicht übernommen",
+      "dividendReversal": "Stornierung einer Dividende, nicht übernommen",
+      "dividendReversalLine": "Stornierung der Dividende aus Zeile {{detail}}, nicht übernommen"
     },
     "mcpSource": "MCP",
     "splits": {

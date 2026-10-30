@@ -280,7 +280,7 @@
     },
     "confirmDelete": {
       "title": "Smazat pozici?",
-      "description": "{{name}} ({{ticker}}) a všechny její transakce budou trvale odstraněny. Tuto akci nelze vrátit zpět."
+      "description": "{{name}} ({{ticker}}) a všechny její transakce a dividendy budou trvale odstraněny. Tuto akci nelze vrátit zpět."
     },
     "confirmDeleteTransaction": {
       "title": "Smazat transakci?",
@@ -827,7 +827,11 @@
       "taxPairedLine": "Daň připojena k dividendě na řádku {{detail}}",
       "taxUnpaired": "Srážková daň bez dividendy — nezapíše se",
       "taxExceedsGross": "Srážková daň je vyšší než dividenda",
-      "dividendWithoutPosition": "K této dividendě nemáte v Moony pozici a soubor ji nekupuje"
+      "dividendWithoutPosition": "K této dividendě nemáte v Moony pozici a soubor ji nekupuje",
+      "dividendReversed": "Zrušeno stornem brokera — nezapíše se",
+      "dividendReversedLine": "Zrušeno stornem na řádku {{detail}} — nezapíše se",
+      "dividendReversal": "Storno dividendy — nezapíše se",
+      "dividendReversalLine": "Storno dividendy z řádku {{detail}} — nezapíše se"
     },
     "mcpSource": "MCP",
     "splits": {

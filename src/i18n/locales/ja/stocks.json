@@ -267,7 +267,7 @@
     },
     "confirmDelete": {
       "title": "ポジションを削除しますか？",
-      "description": "{{name}}（{{ticker}}）とそのすべての取引が完全に削除されます。この操作は元に戻せません。"
+      "description": "{{name}}（{{ticker}}）とそのすべての取引と配当が完全に削除されます。この操作は元に戻せません。"
     },
     "confirmDeleteTransaction": {
       "title": "取引を削除しますか？",
@@ -780,7 +780,11 @@
       "taxPairedLine": "税を{{detail}}行目の配当に加えました",
       "taxUnpaired": "対応する配当のない源泉徴収税のため書き込まれません",
       "taxExceedsGross": "源泉徴収税が配当より多くなっています",
-      "dividendWithoutPosition": "この配当に対応するポジションがMoonyになく、ファイルにも購入がありません"
+      "dividendWithoutPosition": "この配当に対応するポジションがMoonyになく、ファイルにも購入がありません",
+      "dividendReversed": "証券会社の取消により無効、取り込みません",
+      "dividendReversedLine": "{{detail}} 行目の取消により無効、取り込みません",
+      "dividendReversal": "配当の取消、取り込みません",
+      "dividendReversalLine": "{{detail}} 行目の配当の取消、取り込みません"
     },
     "mcpSource": "MCP",
     "splits": {

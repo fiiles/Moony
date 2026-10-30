@@ -275,7 +275,7 @@
     },
     "confirmDelete": {
       "title": "¿Eliminar la posición?",
-      "description": "{{name}} ({{ticker}}) y todos sus movimientos se eliminarán definitivamente. Esta acción no se puede deshacer."
+      "description": "{{name}} ({{ticker}}) y todos sus movimientos y dividendos se eliminarán definitivamente. Esta acción no se puede deshacer."
     },
     "confirmDeleteTransaction": {
       "title": "¿Eliminar el movimiento?",
@@ -826,7 +826,11 @@
       "taxPairedLine": "Impuesto añadido al dividendo de la línea {{detail}}",
       "taxUnpaired": "Retención sin dividendo, no se guarda",
       "taxExceedsGross": "La retención es mayor que el dividendo",
-      "dividendWithoutPosition": "No hay posición para este dividendo en Moony y el archivo no la compra"
+      "dividendWithoutPosition": "No hay posición para este dividendo en Moony y el archivo no la compra",
+      "dividendReversed": "Anulado por la reversión del bróker, no se importa",
+      "dividendReversedLine": "Anulado por la reversión de la línea {{detail}}, no se importa",
+      "dividendReversal": "Reversión de un dividendo, no se importa",
+      "dividendReversalLine": "Reversión del dividendo de la línea {{detail}}, no se importa"
     },
     "mcpSource": "MCP",
     "splits": {

@@ -267,7 +267,7 @@
     },
     "confirmDelete": {
       "title": "删除持仓？",
-      "description": "{{name}}（{{ticker}}）及其所有交易将被永久删除，此操作无法撤销。"
+      "description": "{{name}}（{{ticker}}）及其所有交易和股息将被永久删除，此操作无法撤销。"
     },
     "confirmDeleteTransaction": {
       "title": "删除交易？",
@@ -780,7 +780,11 @@
       "taxPairedLine": "税款已并入第 {{detail}} 行的股息",
       "taxUnpaired": "没有对应股息的预扣税，不会写入",
       "taxExceedsGross": "预扣税高于股息",
-      "dividendWithoutPosition": "Moony 中没有该股息对应的持仓，文件中也没有买入"
+      "dividendWithoutPosition": "Moony 中没有该股息对应的持仓，文件中也没有买入",
+      "dividendReversed": "已被券商冲正取消，不导入",
+      "dividendReversedLine": "已被第 {{detail}} 行的冲正取消，不导入",
+      "dividendReversal": "股息冲正，不导入",
+      "dividendReversalLine": "第 {{detail}} 行股息的冲正，不导入"
     },
     "mcpSource": "MCP",
     "splits": {

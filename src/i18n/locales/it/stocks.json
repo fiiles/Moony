@@ -275,7 +275,7 @@
     },
     "confirmDelete": {
       "title": "Eliminare la posizione?",
-      "description": "{{name}} ({{ticker}}) e tutte le sue operazioni verranno rimosse definitivamente. L'operazione non si può annullare."
+      "description": "{{name}} ({{ticker}}) e tutte le sue operazioni e i suoi dividendi verranno rimossi definitivamente. L'operazione non si può annullare."
     },
     "confirmDeleteTransaction": {
       "title": "Eliminare l'operazione?",
@@ -826,7 +826,11 @@
       "taxPairedLine": "Imposta aggiunta al dividendo della riga {{detail}}",
       "taxUnpaired": "Ritenuta senza dividendo, non viene scritta",
       "taxExceedsGross": "La ritenuta è superiore al dividendo",
-      "dividendWithoutPosition": "Non c'è una posizione per questo dividendo in Moony e il file non la acquista"
+      "dividendWithoutPosition": "Non c'è una posizione per questo dividendo in Moony e il file non la acquista",
+      "dividendReversed": "Annullato dallo storno del broker, non importato",
+      "dividendReversedLine": "Annullato dallo storno alla riga {{detail}}, non importato",
+      "dividendReversal": "Storno di un dividendo, non importato",
+      "dividendReversalLine": "Storno del dividendo della riga {{detail}}, non importato"
     },
     "mcpSource": "MCP",
     "splits": {

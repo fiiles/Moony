@@ -144,8 +144,7 @@ preview counts it in `unpairedTaxes`, and the review step shows a warning banner
 row is listed as skipped with `importWizard.row.taxPaired` (detail = the dividend's line). An
 in-row tax (`taxColumn`) in another currency than the dividend is the same warning on that row
 and the dividend is imported without tax. A tax larger than its gross makes the dividend row an
-error (`importWizard.row.taxExceedsGross`). A dividend amount ≤ 0 (a broker reversal) is skipped
-(`importWizard.row.dividendNotPositive`).
+error (`importWizard.row.taxExceedsGross`). A negative dividend row (a broker reversal) cancels the first dividend of the same instrument, day, currency and amount; both are listed as skipped (`importWizard.row.dividendReversed` / `dividendReversal`, detail = the other line) and a re-post imports as the payout. A reversal without such a dividend, or a zero amount, is skipped (`importWizard.row.dividendNotPositive`). A tax row with no instrument (a tax on interest) is not a dividend tax and is skipped.
 
 **D14. Import: decisions per dividend row** (after the trades' simulation, so a position the
 file's own buys create counts): skipped instrument → skipped; no ticker → error; no position in

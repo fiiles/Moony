@@ -325,10 +325,11 @@ impl DividendDuplicates {
         allow_values: bool,
     ) -> Option<DividendDuplicate> {
         if let Some(external_id) = external_id.map(str::trim).filter(|id| !id.is_empty()) {
+            // A broker id names one payout: it matches even a dividend a row matched by value.
             if let Some(stored) = self
                 .stored
                 .iter_mut()
-                .find(|s| !s.consumed && s.external_id.as_deref() == Some(external_id))
+                .find(|s| s.external_id.as_deref() == Some(external_id))
             {
                 stored.consumed = true;
                 return Some(DividendDuplicate::SameId);
@@ -348,6 +349,27 @@ impl DividendDuplicates {
         })?;
         stored.consumed = true;
         Some(DividendDuplicate::SameValues)
+    }
+
+    /// Count a dividend written during the same write as stored, so a later row of the same
+    /// call that repeats it (its id, or its values) is a duplicate too.
+    pub fn remember(
+        &mut self,
+        investment_id: &str,
+        dividend: &ValidDividend,
+        external_id: Option<&str>,
+    ) {
+        self.stored.push(StoredDividend {
+            investment_id: investment_id.to_string(),
+            paid_date: dividend.paid_date,
+            gross: canonical_amount(&dividend.gross_amount),
+            currency: dividend.currency.clone(),
+            external_id: external_id
+                .map(str::trim)
+                .filter(|id| !id.is_empty())
+                .map(str::to_string),
+            consumed: false,
+        });
     }
 }
 
@@ -455,6 +477,7 @@ pub fn bulk_create(
                 external_id: row.external_id.as_deref(),
             },
         )?;
+        duplicates.remember(position, dividend, row.external_id.as_deref());
         report.created += 1;
         if !report.written_tickers.contains(&ticker) {
             report.written_tickers.push(ticker);
@@ -802,6 +825,52 @@ mod tests {
         assert!(again.skipped_duplicates[1].possible_duplicate);
         assert_eq!(again.batch_id, None, "nothing written, no batch");
         assert_eq!(quantity(&conn), "10");
+    }
+
+    #[test]
+    fn bulk_create_skips_a_row_repeated_within_the_call() {
+        let mut conn = setup_test_db();
+        let rows = vec![
+            bulk_row("AAPL", "10", Some("mcp:a")),
+            bulk_row("AAPL", "11", Some("mcp:a")),
+            bulk_row("AAPL", "12", None),
+            bulk_row("AAPL", "12", None),
+        ];
+        let report = bulk_create(&mut conn, &rows, None).unwrap();
+        assert_eq!(report.created, 2);
+        assert_eq!(
+            report
+                .skipped_duplicates
+                .iter()
+                .map(|r| r.index)
+                .collect::<Vec<_>>(),
+            vec![1, 3]
+        );
+    }
+
+    #[test]
+    fn a_broker_id_matches_even_a_dividend_already_matched_by_value() {
+        let conn = setup_test_db();
+        let valid = input(D1, "24", None, "USD").validate().unwrap();
+        insert(
+            &conn,
+            "inv-aapl",
+            &valid,
+            DividendOrigin {
+                import_batch_id: None,
+                external_id: Some("ibkr:1"),
+            },
+        )
+        .unwrap();
+        let mut dups = DividendDuplicates::load(&conn).unwrap();
+        assert_eq!(
+            dups.check(Some("inv-aapl"), &valid, None, false),
+            Some(DividendDuplicate::SameValues)
+        );
+        assert_eq!(
+            dups.check(Some("inv-aapl"), &valid, Some("ibkr:1"), false),
+            Some(DividendDuplicate::SameId)
+        );
     }
 
     #[test]

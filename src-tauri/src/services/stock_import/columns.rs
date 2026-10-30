@@ -774,7 +774,7 @@ pub fn is_split_value(value: &str) -> bool {
 
 /// Stems of a withholding tax in the languages of the brokers (folded form; Han words match
 /// anywhere). Checked before the dividend words: "Dividend Tax" holds one.
-const TAX_STEMS: [&str; 13] = [
+const TAX_STEMS: [&str; 12] = [
     "withholding",
     "quellensteuer",
     "dividendensteuer",
@@ -783,9 +783,8 @@ const TAX_STEMS: [&str; 13] = [
     "tax on dividend",
     "srazkova dan",
     "dan z dividend",
-    "retencion",
     "ritenuta",
-    "podatek",
+    "podatek u zrodla",
     "kallskatt",
     "kildeskatt",
 ];
@@ -799,7 +798,7 @@ fn is_withholding_tax(folded: &str) -> bool {
     TAX_STEMS.iter().any(|stem| folded.contains(stem))
         || TAX_HAN.iter().any(|han| folded.contains(han))
         // "Tax" next to a dividend word in any order ("Impôt dividendes").
-        || (folded.split(' ').any(|t| t == "tax" || t == "taxe" || t == "steuer" || t == "dan" || t.starts_with("impot"))
+        || (folded.split(' ').any(|t| t == "tax" || t == "taxe" || t == "steuer" || t == "dan" || t == "podatek" || t.starts_with("retencion") || t.starts_with("impot"))
             && is_dividend_word(folded))
 }
 

@@ -271,7 +271,7 @@
     },
     "confirmDelete": {
       "title": "Ta bort innehavet?",
-      "description": "{{name}} ({{ticker}}) och alla dess transaktioner tas bort för gott. Det går inte att ångra."
+      "description": "{{name}} ({{ticker}}) och alla dess transaktioner och utdelningar tas bort för gott. Det går inte att ångra."
     },
     "confirmDeleteTransaction": {
       "title": "Ta bort transaktionen?",
@@ -803,7 +803,11 @@
       "taxPairedLine": "Skatt tillagd utdelningen på rad {{detail}}",
       "taxUnpaired": "Källskatt utan utdelning, skrivs inte",
       "taxExceedsGross": "Källskatten är högre än utdelningen",
-      "dividendWithoutPosition": "Det finns ingen position för utdelningen i Moony och filen köper den inte"
+      "dividendWithoutPosition": "Det finns ingen position för utdelningen i Moony och filen köper den inte",
+      "dividendReversed": "Annullerad av mäklarens återföring, importeras inte",
+      "dividendReversedLine": "Annullerad av återföringen på rad {{detail}}, importeras inte",
+      "dividendReversal": "Återföring av en utdelning, importeras inte",
+      "dividendReversalLine": "Återföring av utdelningen på rad {{detail}}, importeras inte"
     },
     "mcpSource": "MCP",
     "splits": {

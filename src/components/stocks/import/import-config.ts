@@ -1186,6 +1186,8 @@ const SKIPPED_KEYS: ReadonlySet<string> = new Set([
   'importWizard.row.assetClass',
   'importWizard.row.instrumentSkipped',
   'importWizard.row.dividendNotPositive',
+  'importWizard.row.dividendReversed',
+  'importWizard.row.dividendReversal',
   'importWizard.row.taxPaired',
   'importWizard.row.taxUnpaired',
   'importWizard.row.taxCurrencyMismatch',

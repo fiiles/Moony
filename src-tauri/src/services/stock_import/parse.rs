@@ -49,6 +49,11 @@ pub const ROW_PRICE_MISSING: &str = "importWizard.row.priceMissing";
 /// A record the csv reader could not read at all.
 pub const ROW_CANNOT_PARSE: &str = "importWizard.row.cannotParse";
 pub const ROW_DIVIDEND_NOT_POSITIVE: &str = "importWizard.row.dividendNotPositive";
+/// A positive dividend a negative row of the same instrument, day, currency and amount cancels
+/// (detail: the reversal's line); neither is written.
+pub const ROW_DIVIDEND_REVERSED: &str = "importWizard.row.dividendReversed";
+/// The negative row that cancelled a dividend (detail: the dividend's line).
+pub const ROW_DIVIDEND_REVERSAL: &str = "importWizard.row.dividendReversal";
 pub const ROW_CASH_CURRENCY_MISSING: &str = "importWizard.row.cashCurrencyMissing";
 /// A tax in another currency than its dividend: the tax is left out (a warning).
 pub const ROW_TAX_CURRENCY_MISMATCH: &str = "importWizard.row.taxCurrencyMismatch";
@@ -119,6 +124,8 @@ enum Read {
     Trade(ParsedTrade),
     Dividend(ParsedDividend),
     Tax(TaxRow),
+    /// A negative dividend row: a broker's reversal (`amount` is its absolute value).
+    Reversal(TaxRow),
 }
 
 /// `Some` unless empty.
@@ -252,6 +259,10 @@ impl<'a> RowReader<'a> {
         let instrument_key = match (&isin, &symbol) {
             (Some(isin), _) => format!("isin:{isin}"),
             (None, Some(symbol)) => format!("symbol:{symbol}"),
+            // A tax on something that is no security (IBKR's tax on credit interest): not ours.
+            (None, None) if kind == Kind::Tax => {
+                return Err(skip(ROW_NOT_A_TRADE, non_empty(type_value)))
+            }
             (None, None) => return Err(fail(ROW_SYMBOL_MISSING, isin_cell)),
         };
 
@@ -461,7 +472,16 @@ impl<'a> RowReader<'a> {
                 currency,
             }));
         }
-        if amount <= 0.0 {
+        if amount < 0.0 {
+            return Ok(Read::Reversal(TaxRow {
+                line: who.line,
+                day: who.day,
+                instrument_key: who.instrument_key,
+                amount: -amount,
+                currency,
+            }));
+        }
+        if amount == 0.0 {
             return Err(skip(ROW_DIVIDEND_NOT_POSITIVE, None));
         }
 
@@ -541,6 +561,57 @@ fn message(line: usize, note: &Note) -> StockRowMessage {
 /// Pair the tax rows with the dividends of their instrument and day (spec D13): the signed
 /// amounts of a day are summed, the absolute sum is the tax of the first dividend of that day.
 /// Tax rows end skipped, a dividend whose tax exceeds it ends as an error.
+/// A broker's reversal (IBKR, Degiro: `Dividends −10` after `Dividends +10`, often followed by a
+/// re-post) cancels the first dividend of the same instrument, day, currency and amount; neither
+/// is written, and the re-post imports as the payout. A reversal without such a dividend is
+/// skipped. Runs before the taxes pair, so a tax goes to the dividend that stays.
+fn cancel_reversals(parsed: &mut ParsedFile, reversals: Vec<TaxRow>) {
+    for reversal in reversals {
+        let cash = |kind, line_amount: f64| CashRow {
+            kind,
+            day: Some(reversal.day),
+            instrument_key: Some(reversal.instrument_key.clone()),
+            amount: Some(line_amount),
+            currency: Some(reversal.currency.clone()),
+        };
+        let matched = parsed.dividends.iter().position(|d| {
+            d.instrument_key == reversal.instrument_key
+                && d.day == reversal.day
+                && d.currency == reversal.currency
+                && (d.gross - reversal.amount).abs() <= TOLERANCE * d.gross.max(1.0)
+        });
+        parsed.cash_rows.insert(
+            reversal.line,
+            cash(StockRowKind::Dividend, -reversal.amount),
+        );
+        let Some(index) = matched else {
+            parsed.skipped.push(StockRowMessage {
+                line: reversal.line,
+                key: ROW_DIVIDEND_NOT_POSITIVE.to_string(),
+                detail: None,
+            });
+            continue;
+        };
+        let dividend = parsed.dividends.remove(index);
+        if dividend.warning.is_some() {
+            parsed.unpaired_taxes -= 1;
+        }
+        parsed
+            .cash_rows
+            .insert(dividend.line, cash(StockRowKind::Dividend, dividend.gross));
+        parsed.skipped.push(StockRowMessage {
+            line: dividend.line,
+            key: ROW_DIVIDEND_REVERSED.to_string(),
+            detail: Some(reversal.line.to_string()),
+        });
+        parsed.skipped.push(StockRowMessage {
+            line: reversal.line,
+            key: ROW_DIVIDEND_REVERSAL.to_string(),
+            detail: Some(dividend.line.to_string()),
+        });
+    }
+}
+
 fn pair_taxes(parsed: &mut ParsedFile, taxes: Vec<TaxRow>) {
     let mut first_dividend: HashMap<(String, i64), usize> = HashMap::new();
     for (index, dividend) in parsed.dividends.iter().enumerate() {
@@ -637,6 +708,7 @@ pub fn parse_file(bytes: &[u8], config: &StockImportConfig) -> Result<ParsedFile
         ..ParsedFile::default()
     };
     let mut taxes: Vec<TaxRow> = Vec::new();
+    let mut reversals: Vec<TaxRow> = Vec::new();
     for (line, result) in data_records(content, delimiter, config.header_row, config.skip_rows) {
         let record = match result {
             Ok(record) => record,
@@ -662,6 +734,7 @@ pub fn parse_file(bytes: &[u8], config: &StockImportConfig) -> Result<ParsedFile
                 parsed.dividends.push(dividend);
             }
             Ok(Read::Tax(tax)) => taxes.push(tax),
+            Ok(Read::Reversal(reversal)) => reversals.push(reversal),
             Err(note) => {
                 if note.key == ROW_CASH_CURRENCY_MISSING {
                     parsed.needs_cash_currency = true;
@@ -677,6 +750,7 @@ pub fn parse_file(bytes: &[u8], config: &StockImportConfig) -> Result<ParsedFile
             }
         }
     }
+    cancel_reversals(&mut parsed, reversals);
     pair_taxes(&mut parsed, taxes);
     // Pairing adds rows out of order.
     parsed.skipped.sort_by_key(|m| m.line);
@@ -1823,6 +1897,62 @@ nedatum;nákup;AAPL;1;185,50;USD\n\
                 .len(),
             1
         );
+    }
+
+    #[test]
+    fn a_reversal_cancels_its_dividend_and_the_repost_imports_once() {
+        // IBKR: post, reversal, re-post of one payout, with the tax charged, refunded, charged.
+        let parsed = parse_div(
+            "15.03.2024;dividenda;AAPL;;;USD;10;;\n\
+15.03.2024;dividenda;AAPL;;;USD;-10;;\n\
+15.03.2024;dividenda;AAPL;;;USD;10;;\n\
+15.03.2024;srážka;AAPL;;;USD;-1,5;;\n\
+15.03.2024;srážka;AAPL;;;USD;1,5;;\n\
+15.03.2024;srážka;AAPL;;;USD;-1,5;;\n",
+            &div_config(),
+        );
+        assert_eq!(parsed.dividends.len(), 1, "{parsed:?}");
+        assert_eq!(parsed.dividends[0].line, 4, "the re-post stays");
+        assert_eq!(
+            (parsed.dividends[0].gross, parsed.dividends[0].tax),
+            (10.0, 1.5)
+        );
+        assert!(parsed
+            .skipped
+            .contains(&note(2, "importWizard.row.dividendReversed", Some("3"))));
+        assert!(parsed
+            .skipped
+            .contains(&note(3, "importWizard.row.dividendReversal", Some("2"))));
+        assert_eq!(parsed.unpaired_taxes, 0);
+        assert_eq!(
+            parsed.dividends.len() + parsed.skipped.len() + parsed.errors.len(),
+            parsed.total_rows
+        );
+    }
+
+    #[test]
+    fn a_tax_on_no_security_is_skipped_not_an_error() {
+        let parsed = parse_div("15.03.2024;srážka;;;;USD;-0,3;;\n", &div_config());
+        assert!(parsed.errors.is_empty(), "{parsed:?}");
+        assert_eq!(
+            parsed.skipped,
+            [note(2, "importWizard.row.notATrade", Some("srážka"))]
+        );
+        assert_eq!(parsed.unpaired_taxes, 0);
+    }
+
+    #[test]
+    fn a_reversal_without_a_repost_leaves_nothing_and_its_tax_unpaired() {
+        let parsed = parse_div(
+            "15.03.2024;dividenda;AAPL;;;USD;10;;\n\
+15.03.2024;dividenda;AAPL;;;USD;-10;;\n\
+15.03.2024;dividenda;AAPL;;;USD;-4;;\n",
+            &div_config(),
+        );
+        assert!(parsed.dividends.is_empty());
+        assert!(parsed
+            .skipped
+            .contains(&note(4, "importWizard.row.dividendNotPositive", None)));
     }
 
     #[test]

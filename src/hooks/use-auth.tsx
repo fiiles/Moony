@@ -233,6 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .then(() => {
         queryClient.invalidateQueries({ queryKey: ['investments'] });
         queryClient.invalidateQueries({ queryKey: ['dividend-summary'] });
+        queryClient.invalidateQueries({ queryKey: ['stock-dividends'] });
       })
       .catch(console.error);
     // Crypto prices (Yahoo Finance)

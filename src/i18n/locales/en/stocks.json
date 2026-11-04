@@ -271,7 +271,7 @@
     },
     "confirmDelete": {
       "title": "Delete position?",
-      "description": "{{name}} ({{ticker}}) and all its transactions will be removed for good. This cannot be undone."
+      "description": "{{name}} ({{ticker}}) and all its transactions and dividends will be removed for good. This cannot be undone."
     },
     "confirmDeleteTransaction": {
       "title": "Delete transaction?",
@@ -343,13 +343,44 @@
       "filter": {
         "all": "All",
         "buys": "Buys",
-        "sells": "Sells"
+        "sells": "Sells",
+        "dividends": "Dividends"
       },
       "footer_one": "{{count}} event",
       "footer_other": "{{count}} events",
       "since": "since {{date}}",
       "rates": "Prices in {{currency}} at the rate of the transaction day"
-    }
+    },
+    "dividendRecords": {
+      "add": "Add dividend",
+      "short": "Dividend",
+      "addTitle": "Add a received dividend",
+      "editTitle": "Edit dividend",
+      "description": "One payout of {{ticker}} that Yahoo Finance does not have: the gross amount before withholding tax, on the ex-date. The number of shares does not change.",
+      "gross": "Gross amount",
+      "grossHint": "Total of the payout, before withholding tax",
+      "note": "Note",
+      "save": "Save dividend",
+      "badge": "Dividend",
+      "received": "Dividends received (gross)",
+      "added": "Dividend recorded",
+      "updated": "Dividend updated",
+      "deleted": "Dividend deleted",
+      "confirmDelete": {
+        "title": "Delete dividend?",
+        "description": "The dividend with ex-date {{date}} ({{amount}} gross) will be removed for good. This cannot be undone.",
+        "confirm": "Delete dividend"
+      },
+      "exDate": "Ex-date",
+      "exDateHint": "The first day the share trades without this dividend",
+      "sourceYahoo": "Yahoo Finance",
+      "sourceManual": "Manual",
+      "perShare": "{{amount}} per share",
+      "superseded": "Replaced by Yahoo Finance, not counted",
+      "yahooTitle": "Yahoo Finance has the dividends of this stock",
+      "yahooBody": "Moony fetches the dividends of {{ticker}} from Yahoo Finance and counts them from the shares you held the day before each ex-date. Enter a dividend by hand only for a stock Yahoo has none for."
+    },
+    "realizedDividends": "incl. dividends {{amount}}"
   },
   "importWizard": {
     "title": "Import trades from CSV",

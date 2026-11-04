@@ -91,6 +91,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("024_categorize_snooze", MIGRATION_024),
         ("025_crypto_yahoo_symbol", MIGRATION_025),
         ("026_spending_plans", MIGRATION_026),
+        ("027_stock_dividends", MIGRATION_027),
     ]
 }
 
@@ -2890,6 +2891,40 @@ CREATE INDEX idx_spending_plans_year ON spending_plans(year);
 ALTER TABLE bank_transactions ADD COLUMN spending_plan_id TEXT
     REFERENCES spending_plans(id) ON DELETE SET NULL;
 CREATE INDEX idx_bank_transactions_spending_plan ON bank_transactions(spending_plan_id);
+"#;
+
+/// 027: received stock dividends (spec 2026-10-30-stock-dividends-design, ADR 0022). Yahoo
+/// Finance is the source: `stock_dividend_events` keeps its payouts per share by ex-date, and a
+/// position's payout is derived from the shares it held the day before (never stored, so a
+/// backdated trade corrects it). `stock_dividend_coverage` records from which day a ticker's
+/// events were fetched. `investment_dividends` holds the payouts a user enters by hand, only for
+/// tickers Yahoo has no dividends for: gross totals, never per share, on the ex-date. Neither is
+/// a third `investment_transactions.type`: every reader of that table counts "not a buy" as a
+/// sell.
+pub(crate) const MIGRATION_027: &str = r#"
+CREATE TABLE stock_dividend_events (
+    ticker TEXT NOT NULL,
+    ex_date INTEGER NOT NULL,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    fetched_at INTEGER NOT NULL,
+    PRIMARY KEY (ticker, ex_date)
+);
+CREATE TABLE stock_dividend_coverage (
+    ticker TEXT PRIMARY KEY,
+    covered_from INTEGER NOT NULL,
+    fetched_at INTEGER NOT NULL
+);
+CREATE TABLE investment_dividends (
+    id TEXT PRIMARY KEY,
+    investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
+    ex_date INTEGER NOT NULL,
+    gross_amount TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    note TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+);
+CREATE INDEX idx_investment_dividends_investment ON investment_dividends(investment_id);
 "#;
 
 #[cfg(test)]

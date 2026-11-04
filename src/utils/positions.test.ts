@@ -34,6 +34,7 @@ function stock(overrides: Partial<EnrichedStockInvestment> = {}): EnrichedStockI
     unrealizedGain: '136.36',
     unrealizedGainPercent: 13.636,
     realizedGain: '0.00',
+    dividendsReceived: '0.00',
     dividendPerShare: '1',
     yearlyDividend: '11.36',
     ...overrides,

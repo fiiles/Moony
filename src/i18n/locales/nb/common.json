@@ -308,7 +308,10 @@
     "statementIndexInvalid": "Velg en av kontoutskriftene i filen.",
     "statementDateOrderInvalid": "Datorekkefølgen kan bare velges for QIF-filer.",
     "snoozeSelectionInvalid": "Velg fra 1 til 1000 betalinger.",
-    "snoozeDaysInvalid": "Velg et antall dager fra 1 til 365."
+    "snoozeDaysInvalid": "Velg et antall dager fra 1 til 365.",
+    "dividendGrossPositive": "Bruttobeløpet må være større enn null",
+    "dividendNoteTooLong": "Et notat kan ha høyst 500 tegn.",
+    "dividendFromYahoo": "Utbyttene for {{ticker}} kommer fra Yahoo Finance; et manuelt utbytte kan ikke legges til."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

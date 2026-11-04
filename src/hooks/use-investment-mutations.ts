@@ -14,6 +14,7 @@ export const STOCK_TRANSACTION_KEYS = [
   ['investments'],
   ['investment'],
   ['investment-transactions'],
+  ['stock-dividends'],
   ['transactions'],
   ['all-stock-transactions'],
   ['dividend-summary'],

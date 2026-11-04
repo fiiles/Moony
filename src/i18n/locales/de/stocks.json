@@ -271,7 +271,7 @@
     },
     "confirmDelete": {
       "title": "Position löschen?",
-      "description": "{{name}} ({{ticker}}) und alle zugehörigen Transaktionen werden endgültig entfernt. Das lässt sich nicht rückgängig machen."
+      "description": "{{name}} ({{ticker}}) und alle zugehörigen Transaktionen und Dividenden werden endgültig entfernt. Das lässt sich nicht rückgängig machen."
     },
     "confirmDeleteTransaction": {
       "title": "Transaktion löschen?",
@@ -343,13 +343,44 @@
       "filter": {
         "all": "Alle",
         "buys": "Käufe",
-        "sells": "Verkäufe"
+        "sells": "Verkäufe",
+        "dividends": "Dividenden"
       },
       "footer_one": "{{count}} Ereignis",
       "footer_other": "{{count}} Ereignisse",
       "since": "seit {{date}}",
       "rates": "Kurse in {{currency}} zum Wechselkurs des Transaktionstags"
-    }
+    },
+    "dividendRecords": {
+      "add": "Dividende erfassen",
+      "short": "Dividende",
+      "addTitle": "Erhaltene Dividende erfassen",
+      "editTitle": "Dividende bearbeiten",
+      "description": "Eine Ausschüttung von {{ticker}}, die Yahoo Finance nicht kennt: der Bruttobetrag vor Quellensteuer am Ex-Tag. Die Anzahl der Aktien ändert sich nicht.",
+      "gross": "Bruttobetrag",
+      "grossHint": "Summe der Ausschüttung, vor Quellensteuer",
+      "note": "Notiz",
+      "save": "Dividende speichern",
+      "badge": "Dividende",
+      "received": "Erhaltene Dividenden (brutto)",
+      "added": "Dividende erfasst",
+      "updated": "Dividende aktualisiert",
+      "deleted": "Dividende gelöscht",
+      "confirmDelete": {
+        "title": "Dividende löschen?",
+        "description": "Die Dividende mit Ex-Tag {{date}} ({{amount}} brutto) wird endgültig entfernt. Dies kann nicht rückgängig gemacht werden.",
+        "confirm": "Dividende löschen"
+      },
+      "exDate": "Ex-Tag",
+      "exDateHint": "Der erste Tag, an dem die Aktie ohne diese Dividende gehandelt wird",
+      "sourceYahoo": "Yahoo Finance",
+      "sourceManual": "Manuell",
+      "perShare": "{{amount}} je Aktie",
+      "superseded": "Durch Yahoo Finance ersetzt, nicht gezählt",
+      "yahooTitle": "Yahoo Finance kennt die Dividenden dieser Aktie",
+      "yahooBody": "Moony lädt die Dividenden von {{ticker}} von Yahoo Finance und berechnet sie aus den Aktien, die Sie am Tag vor jedem Ex-Tag hielten. Erfassen Sie eine Dividende nur dann manuell, wenn Yahoo für die Aktie keine hat."
+    },
+    "realizedDividends": "davon Dividenden {{amount}}"
   },
   "importWizard": {
     "title": "Trades aus CSV importieren",

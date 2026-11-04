@@ -144,6 +144,14 @@ pub fn investment_detail(conn: &Connection, id: &str) -> Result<Value> {
                 result
             };
             obj["transactions"] = Value::Array(txs);
+            obj["dividends"] = serde_json::to_value(
+                crate::services::stock_dividends::for_investment(
+                    conn,
+                    &id,
+                    chrono::Utc::now().timestamp(),
+                )?
+                .0,
+            )?;
             Ok(obj)
         }
     }
@@ -201,6 +209,48 @@ pub fn stock_transactions(conn: &Connection, ticker: Option<String>, limit: i64)
         result
     };
     Ok(Value::Array(rows))
+}
+
+#[derive(Debug, Deserialize, schemars::JsonSchema)]
+pub struct StockDividendsArgs {
+    #[schemars(description = "Filter by ticker symbol (e.g. AAPL)")]
+    pub ticker: Option<String>,
+    #[schemars(description = "Max records to return (default 200, max 1000)")]
+    pub limit: Option<i64>,
+}
+
+/// Every dividend of the stock positions, newest ex-date first, optionally of one ticker only,
+/// at most `limit`: Yahoo's payouts (per share × shares held) and the manual ones, each with its
+/// source; a superseded manual one is listed with `superseded: true` and counts nowhere.
+pub fn stock_dividends(conn: &Connection, ticker: Option<&str>, limit: i64) -> Result<Value> {
+    let today = chrono::Utc::now().timestamp();
+    let wanted = ticker.map(|t| t.trim().to_uppercase());
+    let mut stmt = conn.prepare("SELECT id, ticker FROM stock_investments ORDER BY ticker")?;
+    let positions = stmt
+        .query_map([], |row| {
+            Ok((row.get::<_, String>(0)?, row.get::<_, String>(1)?))
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+    let mut rows: Vec<(i64, Value)> = Vec::new();
+    for (id, position_ticker) in positions {
+        if wanted.as_deref().is_some_and(|t| t != position_ticker) {
+            continue;
+        }
+        let (items, _) = crate::services::stock_dividends::for_investment(conn, &id, today)?;
+        for item in items {
+            let ex_date = item.ex_date;
+            let mut value = serde_json::to_value(item)?;
+            value["ticker"] = Value::String(position_ticker.clone());
+            rows.push((ex_date, value));
+        }
+    }
+    rows.sort_by_key(|row| std::cmp::Reverse(row.0));
+    Ok(Value::Array(
+        rows.into_iter()
+            .take(usize::try_from(limit).unwrap_or(0))
+            .map(|(_, value)| value)
+            .collect(),
+    ))
 }
 
 pub fn stock_value_history(
@@ -386,6 +436,8 @@ mod bulk_tests {
                 created_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
 
+            CREATE TABLE investment_dividends (id TEXT PRIMARY KEY, investment_id TEXT NOT NULL, ex_date INTEGER NOT NULL, gross_amount TEXT NOT NULL, currency TEXT NOT NULL, note TEXT, created_at INTEGER NOT NULL DEFAULT 0);
+            CREATE TABLE stock_dividend_events (ticker TEXT NOT NULL, ex_date INTEGER NOT NULL, amount TEXT NOT NULL, currency TEXT NOT NULL, fetched_at INTEGER NOT NULL, PRIMARY KEY (ticker, ex_date));
             CREATE TABLE investment_transactions (
                 id TEXT PRIMARY KEY,
                 investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
@@ -957,6 +1009,8 @@ mod value_history_tests {
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 currency TEXT NOT NULL DEFAULT 'CZK'
             );
+            CREATE TABLE investment_dividends (id TEXT PRIMARY KEY, investment_id TEXT NOT NULL, ex_date INTEGER NOT NULL, gross_amount TEXT NOT NULL, currency TEXT NOT NULL, note TEXT, created_at INTEGER NOT NULL DEFAULT 0);
+            CREATE TABLE stock_dividend_events (ticker TEXT NOT NULL, ex_date INTEGER NOT NULL, amount TEXT NOT NULL, currency TEXT NOT NULL, fetched_at INTEGER NOT NULL, PRIMARY KEY (ticker, ex_date));
             CREATE TABLE investment_transactions (
                 id TEXT PRIMARY KEY,
                 investment_id TEXT NOT NULL,
@@ -1096,6 +1150,8 @@ mod list_missing_currency_tests {
             CREATE TABLE stock_price_overrides (ticker TEXT PRIMARY KEY, price TEXT, currency TEXT, updated_at INTEGER);
             CREATE TABLE dividend_data (ticker TEXT PRIMARY KEY, yearly_dividend_sum TEXT, currency TEXT);
             CREATE TABLE dividend_overrides (ticker TEXT PRIMARY KEY, yearly_dividend_sum TEXT, currency TEXT);
+            CREATE TABLE investment_dividends (id TEXT PRIMARY KEY, investment_id TEXT NOT NULL, ex_date INTEGER NOT NULL, gross_amount TEXT NOT NULL, currency TEXT NOT NULL, note TEXT, created_at INTEGER NOT NULL DEFAULT 0);
+            CREATE TABLE stock_dividend_events (ticker TEXT NOT NULL, ex_date INTEGER NOT NULL, amount TEXT NOT NULL, currency TEXT NOT NULL, fetched_at INTEGER NOT NULL, PRIMARY KEY (ticker, ex_date));
             CREATE TABLE investment_transactions (id TEXT PRIMARY KEY, investment_id TEXT, type TEXT, ticker TEXT, company_name TEXT, quantity TEXT, price_per_unit TEXT, currency TEXT, transaction_date INTEGER, created_at INTEGER NOT NULL DEFAULT 0);
             CREATE TABLE exchange_rate_history (date INTEGER NOT NULL, currency TEXT NOT NULL, rate REAL NOT NULL, PRIMARY KEY (date, currency));
             CREATE TABLE user_profile (id INTEGER PRIMARY KEY AUTOINCREMENT, currency TEXT NOT NULL);
@@ -1222,5 +1278,73 @@ mod list_missing_currency_tests {
         assert_eq!(result["investments"][0]["fxEstimated"], true);
         assert_eq!(result["fxEstimated"], true);
         assert_eq!(result["missingCurrencies"], serde_json::json!([]));
+    }
+}
+
+#[cfg(test)]
+mod dividend_tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    fn setup() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            r#"
+            CREATE TABLE stock_investments (
+                id TEXT PRIMARY KEY, ticker TEXT NOT NULL UNIQUE, company_name TEXT NOT NULL,
+                quantity TEXT NOT NULL, currency TEXT NOT NULL DEFAULT 'USD'
+            );
+            CREATE TABLE investment_transactions (
+                id TEXT PRIMARY KEY, investment_id TEXT NOT NULL, type TEXT NOT NULL,
+                ticker TEXT NOT NULL, company_name TEXT NOT NULL, quantity TEXT NOT NULL,
+                price_per_unit TEXT NOT NULL, currency TEXT NOT NULL,
+                transaction_date INTEGER NOT NULL, created_at INTEGER NOT NULL DEFAULT 0
+            );
+            CREATE TABLE stock_dividend_events (
+                ticker TEXT NOT NULL, ex_date INTEGER NOT NULL, amount TEXT NOT NULL,
+                currency TEXT NOT NULL, fetched_at INTEGER NOT NULL, PRIMARY KEY (ticker, ex_date)
+            );
+            CREATE TABLE investment_dividends (
+                id TEXT PRIMARY KEY, investment_id TEXT NOT NULL, ex_date INTEGER NOT NULL,
+                gross_amount TEXT NOT NULL, currency TEXT NOT NULL, note TEXT,
+                created_at INTEGER NOT NULL DEFAULT 0
+            );
+            INSERT INTO stock_investments (id, ticker, company_name, quantity)
+                VALUES ('inv-aapl', 'AAPL', 'Apple', '10'), ('inv-cez', 'CEZ.PR', 'ČEZ', '5');
+            INSERT INTO investment_transactions
+                (id, investment_id, type, ticker, company_name, quantity, price_per_unit,
+                 currency, transaction_date)
+                VALUES ('t1', 'inv-aapl', 'buy', 'AAPL', 'Apple', '10', '150', 'USD', 1700000000),
+                       ('t2', 'inv-cez', 'buy', 'CEZ.PR', 'ČEZ', '5', '900', 'CZK', 1700000000);
+            INSERT INTO stock_dividend_events VALUES ('AAPL', 1710000000, '0.24', 'USD', 0);
+            INSERT INTO investment_dividends (id, investment_id, ex_date, gross_amount, currency)
+                VALUES ('m1', 'inv-cez', 1720000000, '120', 'CZK');
+            "#,
+        )
+        .expect("schema");
+        conn
+    }
+
+    #[test]
+    fn dividends_are_listed_with_their_source_newest_first() {
+        let conn = setup();
+        let all = stock_dividends(&conn, None, 10).unwrap();
+        let all = all.as_array().unwrap();
+        assert_eq!(all.len(), 2);
+        assert_eq!(all[0]["ticker"], "CEZ.PR");
+        assert_eq!(all[0]["source"], "manual");
+        assert_eq!(all[1]["source"], "yahoo");
+        assert_eq!(all[1]["grossAmount"], "2.4");
+        assert_eq!(all[1]["shares"], "10");
+        let aapl = stock_dividends(&conn, Some("aapl"), 10).unwrap();
+        assert_eq!(aapl.as_array().unwrap().len(), 1);
+        assert_eq!(
+            stock_dividends(&conn, None, 1)
+                .unwrap()
+                .as_array()
+                .unwrap()
+                .len(),
+            1
+        );
     }
 }

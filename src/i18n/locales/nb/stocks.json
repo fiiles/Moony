@@ -271,7 +271,7 @@
     },
     "confirmDelete": {
       "title": "Slette beholdningen?",
-      "description": "{{name}} ({{ticker}}) og alle transaksjonene fjernes for godt. Dette kan ikke angres."
+      "description": "{{name}} ({{ticker}}) og alle transaksjonene og utbyttene fjernes for godt. Dette kan ikke angres."
     },
     "confirmDeleteTransaction": {
       "title": "Slette transaksjonen?",
@@ -343,13 +343,44 @@
       "filter": {
         "all": "Alle",
         "buys": "Kjøp",
-        "sells": "Salg"
+        "sells": "Salg",
+        "dividends": "Utbytte"
       },
       "footer_one": "{{count}} hendelse",
       "footer_other": "{{count}} hendelser",
       "since": "siden {{date}}",
       "rates": "Kurser i {{currency}} etter kursen på transaksjonsdagen"
-    }
+    },
+    "dividendRecords": {
+      "add": "Legg til utbytte",
+      "short": "Utbytte",
+      "addTitle": "Legg til mottatt utbytte",
+      "editTitle": "Rediger utbytte",
+      "description": "Én utbetaling fra {{ticker}} som Yahoo Finance ikke har: bruttobeløpet før kildeskatt, på eks-datoen. Antall aksjer endres ikke.",
+      "gross": "Bruttobeløp",
+      "grossHint": "Sum for utbetalingen, før kildeskatt",
+      "note": "Notat",
+      "save": "Lagre utbytte",
+      "badge": "Utbytte",
+      "received": "Mottatt utbytte (brutto)",
+      "added": "Utbytte registrert",
+      "updated": "Utbytte oppdatert",
+      "deleted": "Utbytte slettet",
+      "confirmDelete": {
+        "title": "Slette utbytte?",
+        "description": "Utbyttet med eks-dato {{date}} ({{amount}} brutto) fjernes for godt. Dette kan ikke angres.",
+        "confirm": "Slett utbytte"
+      },
+      "exDate": "Eks-dato",
+      "exDateHint": "Første dag aksjen handles uten dette utbyttet",
+      "sourceYahoo": "Yahoo Finance",
+      "sourceManual": "Manuelt",
+      "perShare": "{{amount}} per aksje",
+      "superseded": "Erstattet av Yahoo Finance, telles ikke",
+      "yahooTitle": "Yahoo Finance har utbyttene for denne aksjen",
+      "yahooBody": "Moony henter utbyttene for {{ticker}} fra Yahoo Finance og regner dem ut fra aksjene du eide dagen før hver eks-dato. Legg inn utbytte manuelt bare for en aksje Yahoo ikke har noen for."
+    },
+    "realizedDividends": "herav utbytte {{amount}}"
   },
   "importWizard": {
     "title": "Importer handler fra CSV",

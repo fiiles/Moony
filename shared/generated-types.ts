@@ -908,7 +908,16 @@ dividendCurrency: string | null; isManualDividend: boolean;
 /**
  * Current price in its own currency; `null` when unpriced.
  */
-price: string | null; priceCurrency: string | null; value: string | null; costBasis: string | null; unrealizedGain: string | null; unrealizedGainPercent: number | null; realizedGain: string | null; 
+price: string | null; priceCurrency: string | null; value: string | null; costBasis: string | null; unrealizedGain: string | null; unrealizedGainPercent: number | null; 
+/**
+ * Sell proceeds minus the released cost, plus `dividendsReceived`.
+ */
+realizedGain: string | null; 
+/**
+ * Gross dividends received up to today, each at its ex-date's rate (part of
+ * `realizedGain`); `null` when payouts exist but none could be converted.
+ */
+dividendsReceived: string | null; 
 /**
  * Yearly dividend per share in `dividendCurrency`; `null` without dividend data.
  */
@@ -1213,6 +1222,23 @@ marketPriceDate: number | null; monthlyRent: string | null; monthlyRentCurrency:
 export type InsertScopedLearning = { bankAccountId: string; isCredit: boolean; payee: string | null; counterpartyIban: string | null; counterpartyBankCode: string | null; counterpartyCountry: string | null; categoryId: string }
 
 export type InsertSpendingPlan = { name: string; year: number; amount: string; currency: string; icon: string; color: string; note: string | null }
+
+/**
+ * A dividend to enter by hand, or the new values of one (the position comes from the command).
+ */
+export type InsertStockDividend = { 
+/**
+ * Any moment of the ex-date; stored as its UTC midnight.
+ */
+exDate: number; 
+/**
+ * The payout's gross total (before withholding tax).
+ */
+grossAmount: string; 
+/**
+ * ISO code; `GBX`/`GBp` amounts are pence and are stored in GBP.
+ */
+currency: string; note?: string | null }
 
 /**
  * Data for creating stock investment. Quantity and average price are not
@@ -2266,6 +2292,67 @@ dateFormatAmbiguous: boolean; decimalSeparator: string;
  * The file has a fee/commission column (fees are not imported).
  */
 hasFeeColumn: boolean }
+
+/**
+ * One dividend of a position.
+ */
+export type StockDividend = { 
+/**
+ * The record's id for a manual dividend; `yahoo:<ticker>:<exDate>` for a Yahoo one.
+ */
+id: string; investmentId: string; source: StockDividendSource; 
+/**
+ * UTC midnight of the ex-date.
+ */
+exDate: number; 
+/**
+ * Yahoo only: the gross payout per share.
+ */
+amountPerShare: string | null; 
+/**
+ * Yahoo only: the shares held at the end of the day before the ex-date.
+ */
+shares: string | null; 
+/**
+ * The payout's gross total in `currency`.
+ */
+grossAmount: string; currency: string; note: string | null; 
+/**
+ * A manual dividend of a ticker Yahoo has dividends for: shown, but left out of every sum
+ * (Yahoo's payouts count instead).
+ */
+superseded: boolean }
+
+/**
+ * A position's dividends, newest first, with their sum in the report currency.
+ */
+export type StockDividendList = { 
+/**
+ * The report currency of the total.
+ */
+currency: string; fxQuality: ConversionQuality; items: StockDividend[]; 
+/**
+ * Every counted payout converted at its ex-date's rate; `null` when payouts exist but none
+ * could be converted, "0" without payouts.
+ */
+totalGross: string | null; 
+/**
+ * Yahoo Finance has dividends for the ticker: they count, and none can be entered by hand.
+ */
+fromYahoo: boolean }
+
+/**
+ * Where a dividend comes from.
+ */
+export type StockDividendSource = 
+/**
+ * Yahoo Finance's payout per share × the shares held the day before the ex-date.
+ */
+"yahoo" | 
+/**
+ * Entered by the user.
+ */
+"manual"
 
 /**
  * One recorded import (TS `StockImportBatch`).

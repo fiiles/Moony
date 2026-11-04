@@ -9,6 +9,7 @@ use crate::error::{AppError, Result};
 use crate::models::stock_monitor::StockPricePoint;
 use crate::services::crypto_symbols::{self, CryptoSearchResult, Resolved};
 use crate::services::quote_unit::{quote_unit, unit_changed as quote_unit_changed, QuoteUnit};
+use crate::services::stock_dividends::{self, DividendEvent};
 use crate::services::stock_splits::{self, DetectedSplit, StockSplitSource};
 use rusqlite::OptionalExtension;
 use serde::Serialize;
@@ -138,6 +139,73 @@ fn dividend_sum(response: &YResponse, unit: &QuoteUnit) -> Option<f64> {
     let dividends = response.dividends().ok()?;
     let sum = dividends.iter().fold(0.0, |sum, d| sum + d.amount);
     Some(unit.apply(sum))
+}
+
+/// The dividends of a chart response, one per ex-date, per share in the stored unit (pence are
+/// converted to pounds like the prices). Yahoo dates an ex-date at the session's opening, so the
+/// day is read in the exchange's offset, as for splits. A non-positive or non-finite amount is
+/// dropped; a response without a result has none.
+pub(crate) fn chart_dividends(response: &YResponse, unit: &QuoteUnit) -> Vec<DividendEvent> {
+    let Ok(dividends) = response.dividends() else {
+        return Vec::new();
+    };
+    let offset = response
+        .metadata()
+        .ok()
+        .map_or(0, |meta| i64::from(meta.gmtoffset));
+    dividends
+        .iter()
+        .filter(|d| d.amount.is_finite() && d.amount > 0.0)
+        .map(|d| DividendEvent {
+            ex_date: (d.date + offset).div_euclid(86_400) * 86_400,
+            amount: unit.apply(d.amount),
+            currency: unit.currency.clone(),
+        })
+        .collect()
+}
+
+/// Fetch the ticker's dividends from Yahoo since its first transaction when the stored ones are
+/// missing, older than a day or start after a backdated buy (spec D17), and record them with the
+/// splits of the same response. Returns whether a new split was recorded. A ticker without
+/// transactions is skipped.
+async fn refresh_dividend_events(
+    db: &Database,
+    provider: &yahoo_finance_api::YahooConnector,
+    ticker: &str,
+    now: i64,
+) -> Result<bool> {
+    let from = db.with_conn(|conn| {
+        let first: Option<i64> = conn.query_row(
+            "SELECT MIN(t.transaction_date) FROM investment_transactions t
+             JOIN stock_investments i ON i.id = t.investment_id WHERE i.ticker = ?1",
+            [ticker],
+            |row| row.get(0),
+        )?;
+        match first {
+            Some(first) => stock_dividends::events_fetch_from(conn, ticker, first, now, 86_400),
+            None => Ok(None),
+        }
+    })?;
+    let Some(from) = from else {
+        return Ok(false);
+    };
+    let start = time::OffsetDateTime::from_unix_timestamp(from)
+        .map_err(|e| AppError::ExternalApi(format!("Invalid dividend range: {e}")))?;
+    let end = time::OffsetDateTime::from_unix_timestamp(now)
+        .map_err(|e| AppError::ExternalApi(format!("Invalid dividend range: {e}")))?;
+    let response = provider
+        .get_quote_history(ticker, start, end)
+        .await
+        .map_err(|e| AppError::ExternalApi(format!("Yahoo dividend history failed: {e}")))?;
+    let unit = unit_of(&response, ticker);
+    let events = chart_dividends(&response, &unit);
+    let splits = chart_splits(&response);
+    db.with_conn(|conn| {
+        stock_dividends::record_events(conn, ticker, &events, from, now)?;
+        let inserted =
+            stock_splits::record_detected(conn, ticker, &splits, StockSplitSource::Yahoo)?;
+        Ok(!inserted.is_empty())
+    })
 }
 
 /// The splits of a chart response as whole numbers on the exchange's calendar day (spec D2). A
@@ -991,6 +1059,14 @@ pub async fn refresh_dividends(db: &Database, tickers: Vec<String>) -> Result<Di
         .map_err(|e| AppError::ExternalApi(format!("Yahoo connector failed: {}", e)))?;
 
     for ticker in tickers {
+        // Every dividend since the first trade, for the payouts of the position (daily); a
+        // failure leaves the stored ones and is retried on the next refresh.
+        match refresh_dividend_events(db, &provider, &ticker, now).await {
+            Ok(true) => new_splits.push(ticker.clone()),
+            Ok(false) => {}
+            Err(e) => log::warn!("[YAHOO DIVIDENDS] Dividend history of {ticker} failed: {e}"),
+        }
+
         // Check if we need to refresh (data older than 30 days)
         let should_fetch = db.with_conn(|conn| {
             let last_fetched: Option<i64> = conn
@@ -2081,6 +2157,21 @@ mod tests {
         assert_eq!(
             (points[0].price, points[0].currency.as_str()),
             (832.99, "USD")
+        );
+    }
+
+    #[test]
+    fn dividend_events_are_per_share_in_the_stored_unit_on_the_exchange_day() {
+        // 5.6p paid on a London ex-date stamped at 08:00 local (07:00 UTC, offset +1 h).
+        let response = chart(Some("GBp"), &[443.65], &[5.6, 5.9, -1.0], json!({}));
+        let events = chart_dividends(&response, &unit_of(&response, "BARC.L"));
+        assert_eq!(events.len(), 2, "the negative amount is dropped");
+        assert!((events[0].amount - 0.056).abs() < 1e-9, "{events:?}");
+        assert_eq!(events[0].currency, "GBP");
+        assert_eq!(events[0].ex_date % 86_400, 0);
+        assert_eq!(
+            events[0].ex_date,
+            (1_780_000_000_i64 + 3_600).div_euclid(86_400) * 86_400
         );
     }
 

@@ -280,7 +280,7 @@
     },
     "confirmDelete": {
       "title": "Smazat pozici?",
-      "description": "{{name}} ({{ticker}}) a všechny její transakce budou trvale odstraněny. Tuto akci nelze vrátit zpět."
+      "description": "{{name}} ({{ticker}}) a všechny její transakce a dividendy budou trvale odstraněny. Tuto akci nelze vrátit zpět."
     },
     "confirmDeleteTransaction": {
       "title": "Smazat transakci?",
@@ -352,14 +352,45 @@
       "filter": {
         "all": "Vše",
         "buys": "Nákupy",
-        "sells": "Prodeje"
+        "sells": "Prodeje",
+        "dividends": "Dividendy"
       },
       "footer_one": "{{count}} událost",
       "footer_few": "{{count}} události",
       "footer_other": "{{count}} událostí",
       "since": "od {{date}}",
       "rates": "Ceny v {{currency}} kurzem k datu transakce"
-    }
+    },
+    "dividendRecords": {
+      "add": "Zapsat dividendu",
+      "short": "Dividenda",
+      "addTitle": "Zapsat přijatou dividendu",
+      "editTitle": "Upravit dividendu",
+      "description": "Jedna výplata {{ticker}}, kterou Yahoo Finance nezná: hrubá částka před srážkovou daní k ex-date. Počet akcií se nemění.",
+      "gross": "Hrubá částka",
+      "grossHint": "Celkem za výplatu, před srážkovou daní",
+      "note": "Poznámka",
+      "save": "Uložit dividendu",
+      "badge": "Dividenda",
+      "received": "Přijaté dividendy (hrubě)",
+      "added": "Dividenda zapsána",
+      "updated": "Dividenda upravena",
+      "deleted": "Dividenda smazána",
+      "confirmDelete": {
+        "title": "Smazat dividendu?",
+        "description": "Dividenda s ex-date {{date}} ({{amount}} hrubě) bude trvale odstraněna. Akci nelze vrátit.",
+        "confirm": "Smazat dividendu"
+      },
+      "exDate": "Ex-date",
+      "exDateHint": "První den, kdy se akcie obchoduje bez této dividendy",
+      "sourceYahoo": "Yahoo Finance",
+      "sourceManual": "Ruční",
+      "perShare": "{{amount}} na akcii",
+      "superseded": "Nahrazeno daty z Yahoo Finance, nezapočítává se",
+      "yahooTitle": "Dividendy této akcie má Yahoo Finance",
+      "yahooBody": "Moony dividendy {{ticker}} stahuje z Yahoo Finance a počítá je z akcií, které jste drželi den před každým ex-date. Ručně zadávejte dividendu jen u akcie, pro kterou Yahoo žádné nemá."
+    },
+    "realizedDividends": "z toho dividendy {{amount}}"
   },
   "importWizard": {
     "title": "Import obchodů z CSV",

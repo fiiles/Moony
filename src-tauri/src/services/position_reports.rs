@@ -118,6 +118,7 @@ fn enrich_stock(
         unrealized_gain: money(item.unrealized_gain, currency),
         unrealized_gain_percent: item.unrealized_gain_percent,
         realized_gain: money(item.realized_gain, currency),
+        dividends_received: money(item.dividends_received, currency),
         dividend_per_share: item.dividend_per_share.map(|d| d.to_string()),
         yearly_dividend: money(item.yearly_dividend, currency),
     })
@@ -356,6 +357,15 @@ mod tests {
                 currency TEXT NOT NULL DEFAULT 'CZK',
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
+            CREATE TABLE stock_dividend_events (
+                ticker TEXT NOT NULL, ex_date INTEGER NOT NULL, amount TEXT NOT NULL,
+                currency TEXT NOT NULL, fetched_at INTEGER NOT NULL, PRIMARY KEY (ticker, ex_date)
+            );
+            CREATE TABLE investment_dividends (
+                id TEXT PRIMARY KEY, investment_id TEXT NOT NULL, ex_date INTEGER NOT NULL,
+                gross_amount TEXT NOT NULL, currency TEXT NOT NULL, note TEXT,
+                created_at INTEGER NOT NULL DEFAULT 0
+            );
             CREATE TABLE exchange_rate_history (
                 date INTEGER NOT NULL,
                 currency TEXT NOT NULL,
@@ -439,6 +449,7 @@ mod tests {
             unrealized_gain: value.zip(cost).map(|(v, c)| v - c),
             unrealized_gain_percent: None,
             realized_gain: Some(0.0),
+            dividends_received: Some(0.0),
             dividend_per_share: None,
             dividend_currency: None,
             yearly_dividend: Some(dividend),

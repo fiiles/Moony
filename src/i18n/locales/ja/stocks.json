@@ -267,7 +267,7 @@
     },
     "confirmDelete": {
       "title": "ポジションを削除しますか？",
-      "description": "{{name}}（{{ticker}}）とそのすべての取引が完全に削除されます。この操作は元に戻せません。"
+      "description": "{{name}}（{{ticker}}）とそのすべての取引と配当が完全に削除されます。この操作は元に戻せません。"
     },
     "confirmDeleteTransaction": {
       "title": "取引を削除しますか？",
@@ -335,12 +335,43 @@
       "filter": {
         "all": "すべて",
         "buys": "買付",
-        "sells": "売却"
+        "sells": "売却",
+        "dividends": "配当"
       },
       "footer_other": "{{count}}件のイベント",
       "since": "{{date}}から",
       "rates": "{{currency}}建ての価格は取引日のレートによる"
-    }
+    },
+    "dividendRecords": {
+      "add": "配当を追加",
+      "short": "配当",
+      "addTitle": "受け取った配当を追加",
+      "editTitle": "配当を編集",
+      "description": "Yahoo Finance にない {{ticker}} の1回分の支払い：権利落ち日の源泉徴収前の総額です。株数は変わりません。",
+      "gross": "総額（税引前）",
+      "grossHint": "支払い全体の金額（源泉徴収前）",
+      "note": "メモ",
+      "save": "配当を保存",
+      "badge": "配当",
+      "received": "受取配当（税引前）",
+      "added": "配当を記録しました",
+      "updated": "配当を更新しました",
+      "deleted": "配当を削除しました",
+      "confirmDelete": {
+        "title": "配当を削除しますか？",
+        "description": "権利落ち日 {{date}} の配当（総額 {{amount}}）は完全に削除されます。この操作は元に戻せません。",
+        "confirm": "配当を削除"
+      },
+      "exDate": "権利落ち日",
+      "exDateHint": "この配当なしで取引される最初の日",
+      "sourceYahoo": "Yahoo Finance",
+      "sourceManual": "手動",
+      "perShare": "1株あたり {{amount}}",
+      "superseded": "Yahoo Finance に置き換え、集計対象外",
+      "yahooTitle": "この銘柄の配当は Yahoo Finance にあります",
+      "yahooBody": "Moony は {{ticker}} の配当を Yahoo Finance から取得し、各権利落ち日の前日に保有していた株数から計算します。手動で配当を入力するのは、Yahoo に配当がない銘柄だけにしてください。"
+    },
+    "realizedDividends": "うち配当 {{amount}}"
   },
   "importWizard": {
     "title": "CSV から取引をインポート",

@@ -175,6 +175,7 @@ export function AddInvestmentModal({ open, onOpenChange, initial }: AddInvestmen
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ['investments'] });
           queryClient.invalidateQueries({ queryKey: ['dividend-summary'] });
+          queryClient.invalidateQueries({ queryKey: ['stock-dividends'] });
         })
         .catch(console.error);
     },

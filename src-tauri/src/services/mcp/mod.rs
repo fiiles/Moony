@@ -381,14 +381,14 @@ impl MoonyMcp {
     }
 
     #[tool(
-        description = "List all stock investments with ticker, company name, quantity, native average purchase price and current market price, plus value, cost basis, unrealized and realized gain and annual dividend in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary's totalValue sums the known values, totalCostBasis the known costs, totalUnrealizedGain only the positions whose value and cost are both known, totalRealizedGain the known realized gains and annualDividends the dividends of positions with a known value. A summary total is null (not 0) when positions hold amounts for it but none of them could be converted. A gain percentage uses only the cost of positions whose value and cost are both known. `fxEstimated` (per row and for the response) is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
+        description = "List all stock investments with ticker, company name, quantity, native average purchase price and current market price, plus value, cost basis, unrealized gain, realized gain (sale gains plus the gross dividends received, the latter also as `dividendsReceived`) and annual dividend in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and their currencies are listed in `missingCurrencies`; the summary's totalValue sums the known values, totalCostBasis the known costs, totalUnrealizedGain only the positions whose value and cost are both known, totalRealizedGain the known realized gains and annualDividends the dividends of positions with a known value. A summary total is null (not 0) when positions hold amounts for it but none of them could be converted. A gain percentage uses only the cost of positions whose value and cost are both known. `fxEstimated` (per row and for the response) is true when some cost basis used today's exchange rate because the rate of its day is not stored yet."
     )]
     fn investments_list(&self) -> Result<CallToolResult, McpError> {
         to_result(self.db.with_conn(investments::investments_list))
     }
 
     #[tool(
-        description = "Get full details for a specific stock investment including all its transactions, with value, cost basis and gains in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and named in `missingCurrencies`; `fxEstimated` is true when the cost basis used today's exchange rate because the rate of its day is not stored yet."
+        description = "Get full details for a specific stock investment including all its transactions and its dividends (`dividends`: gross per payout in its own currency, source yahoo or manual), with value, cost basis and gains in the user's main currency (`mainCurrency`). Amounts that cannot be converted are null and named in `missingCurrencies`; `fxEstimated` is true when the cost basis used today's exchange rate because the rate of its day is not stored yet."
     )]
     fn investment_detail(
         &self,
@@ -411,6 +411,21 @@ impl MoonyMcp {
         to_result(
             self.db.with_conn(|conn| {
                 investments::stock_transactions(conn, args.ticker.clone(), limit)
+            }),
+        )
+    }
+
+    #[tool(
+        description = "Get the dividends of the stock positions, newest ex-date first, optionally filtered by ticker. source is \"yahoo\" (Yahoo Finance's gross payout per share, amountPerShare, times the shares held at the end of the day before the ex-date, shares) or \"manual\" (entered by the user for a ticker Yahoo has no dividends for). grossAmount is the payout's total before withholding tax in the record's own currency; exDate is the UTC midnight of the ex-date (Unix seconds). A manual dividend with superseded: true belongs to a ticker Yahoo now has dividends for and counts nowhere. These are payouts, not the yearly dividend estimate of investments_list. Dividends cannot be written over MCP."
+    )]
+    fn stock_dividends(
+        &self,
+        Parameters(args): Parameters<investments::StockDividendsArgs>,
+    ) -> Result<CallToolResult, McpError> {
+        let limit = args.limit.unwrap_or(200).clamp(1, 1000);
+        to_result(
+            self.db.with_conn(|conn| {
+                investments::stock_dividends(conn, args.ticker.as_deref(), limit)
             }),
         )
     }

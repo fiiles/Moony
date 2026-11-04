@@ -308,7 +308,10 @@
     "statementIndexInvalid": "Wählen Sie einen der Kontoauszüge in der Datei.",
     "statementDateOrderInvalid": "Eine Datumsreihenfolge kann nur für QIF-Dateien gewählt werden.",
     "snoozeSelectionInvalid": "Wählen Sie 1 bis 1000 Zahlungen aus.",
-    "snoozeDaysInvalid": "Geben Sie eine Anzahl von 1 bis 365 Tagen an."
+    "snoozeDaysInvalid": "Geben Sie eine Anzahl von 1 bis 365 Tagen an.",
+    "dividendGrossPositive": "Der Bruttobetrag muss größer als null sein",
+    "dividendNoteTooLong": "Eine Notiz darf höchstens 500 Zeichen haben.",
+    "dividendFromYahoo": "Die Dividenden von {{ticker}} kommen von Yahoo Finance; eine manuelle Dividende kann nicht hinzugefügt werden."
   },
   "auth": {
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",

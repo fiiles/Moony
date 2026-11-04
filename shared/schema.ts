@@ -772,7 +772,13 @@ export interface EnrichedStockInvestment {
   costBasis: string | null;
   unrealizedGain: string | null;
   unrealizedGainPercent: number | null;
+  /** Sell proceeds minus the released cost, plus `dividendsReceived`. */
   realizedGain: string | null;
+  /**
+   * Gross dividends received up to today, each at its ex-date's rate (part of `realizedGain`);
+   * null when payouts exist but none could be converted.
+   */
+  dividendsReceived: string | null;
   /** Yearly dividend per share in `dividendCurrency`; null without dividend data. */
   dividendPerShare: string | null;
   /** Yearly dividend of the whole position in the report currency. */
@@ -841,6 +847,51 @@ export interface InvestmentWithDetails {
   investment: EnrichedStockInvestment;
   transactions: InvestmentTransaction[];
   tags: StockTag[];
+}
+
+/** Where a dividend comes from (ADR 0022): Yahoo Finance, or entered by hand. */
+export type StockDividendSource = 'yahoo' | 'manual';
+
+/**
+ * A dividend of a stock position (Rust `models::stock_dividends`, ADR 0022). `grossAmount` is the
+ * payout's total before withholding tax in `currency`; `exDate` is the UTC midnight of the
+ * ex-date. A Yahoo payout is `amountPerShare` × `shares` (held at the end of the day before);
+ * a manual one has neither. A `superseded` manual dividend belongs to a ticker Yahoo has
+ * dividends for: it is shown but counts nowhere.
+ */
+export interface StockDividend {
+  id: string;
+  investmentId: string;
+  source: StockDividendSource;
+  exDate: number;
+  amountPerShare: string | null;
+  shares: string | null;
+  grossAmount: string;
+  currency: string;
+  note: string | null;
+  superseded: boolean;
+}
+
+/** A dividend entered by hand, or its new values; refused when Yahoo has the ticker's dividends. */
+export interface InsertStockDividend {
+  exDate: number;
+  grossAmount: string;
+  /** ISO code; `GBX` amounts are pence and are stored in GBP. */
+  currency: string;
+  note?: string | null;
+}
+
+/**
+ * A position's dividends, newest first. `totalGross` sums the counted payouts converted to
+ * `currency` at each ex-date's rate; `null` when payouts exist but none could be converted.
+ * `fromYahoo`: Yahoo Finance has dividends for the ticker, so none can be entered by hand.
+ */
+export interface StockDividendList {
+  currency: string;
+  fxQuality: ConversionQuality;
+  items: StockDividend[];
+  totalGross: string | null;
+  fromYahoo: boolean;
 }
 
 export interface CryptoPositions {

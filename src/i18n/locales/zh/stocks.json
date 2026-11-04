@@ -267,7 +267,7 @@
     },
     "confirmDelete": {
       "title": "删除持仓？",
-      "description": "{{name}}（{{ticker}}）及其所有交易将被永久删除，此操作无法撤销。"
+      "description": "{{name}}（{{ticker}}）及其所有交易和股息将被永久删除，此操作无法撤销。"
     },
     "confirmDeleteTransaction": {
       "title": "删除交易？",
@@ -335,12 +335,43 @@
       "filter": {
         "all": "全部",
         "buys": "买入",
-        "sells": "卖出"
+        "sells": "卖出",
+        "dividends": "股息"
       },
       "footer_other": "{{count}} 个事件",
       "since": "自 {{date}} 起",
       "rates": "价格以 {{currency}} 计，采用交易当日的汇率"
-    }
+    },
+    "dividendRecords": {
+      "add": "添加股息",
+      "short": "股息",
+      "addTitle": "添加已收股息",
+      "editTitle": "编辑股息",
+      "description": "Yahoo Finance 没有的 {{ticker}} 的一次派息：除息日的预扣税前总额。持股数量不变。",
+      "gross": "税前总额",
+      "grossHint": "本次派息总额（预扣税前）",
+      "note": "备注",
+      "save": "保存股息",
+      "badge": "股息",
+      "received": "已收股息（税前）",
+      "added": "已记录股息",
+      "updated": "已更新股息",
+      "deleted": "已删除股息",
+      "confirmDelete": {
+        "title": "删除股息？",
+        "description": "除息日为 {{date}} 的股息（税前 {{amount}}）将被永久删除。此操作无法撤销。",
+        "confirm": "删除股息"
+      },
+      "exDate": "除息日",
+      "exDateHint": "股票不再附带此股息交易的第一天",
+      "sourceYahoo": "Yahoo Finance",
+      "sourceManual": "手动",
+      "perShare": "每股 {{amount}}",
+      "superseded": "已由 Yahoo Finance 取代，不计入",
+      "yahooTitle": "Yahoo Finance 有该股票的股息",
+      "yahooBody": "Moony 从 Yahoo Finance 获取 {{ticker}} 的股息，并按每个除息日前一天持有的股数计算。仅当 Yahoo 没有某只股票的股息时，才手动输入股息。"
+    },
+    "realizedDividends": "其中股息 {{amount}}"
   },
   "importWizard": {
     "title": "从 CSV 导入交易",

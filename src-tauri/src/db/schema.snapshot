@@ -62,6 +62,9 @@ CREATE INDEX idx_erh_currency_date ON exchange_rate_history(currency, date)
 == index idx_insurance_documents ==
 CREATE INDEX idx_insurance_documents ON insurance_documents(insurance_id)
 
+== index idx_investment_dividends_investment ==
+CREATE INDEX idx_investment_dividends_investment ON investment_dividends(investment_id)
+
 == index idx_investment_transactions_batch ==
 CREATE INDEX idx_investment_transactions_batch ON investment_transactions(import_batch_id)
 
@@ -432,6 +435,17 @@ CREATE TABLE insurance_policies (
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
 )
 
+== table investment_dividends ==
+CREATE TABLE investment_dividends (
+    id TEXT PRIMARY KEY,
+    investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
+    ex_date INTEGER NOT NULL,
+    gross_amount TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    note TEXT,
+    created_at INTEGER NOT NULL DEFAULT (unixepoch())
+)
+
 == table investment_transactions ==
 CREATE TABLE investment_transactions (
     id TEXT PRIMARY KEY,
@@ -711,6 +725,23 @@ CREATE TABLE stock_data (
     metadata_fetched_at INTEGER,
     previous_close TEXT
 , quote_currency TEXT, splits_checked_at INTEGER)
+
+== table stock_dividend_coverage ==
+CREATE TABLE stock_dividend_coverage (
+    ticker TEXT PRIMARY KEY,
+    covered_from INTEGER NOT NULL,
+    fetched_at INTEGER NOT NULL
+)
+
+== table stock_dividend_events ==
+CREATE TABLE stock_dividend_events (
+    ticker TEXT NOT NULL,
+    ex_date INTEGER NOT NULL,
+    amount TEXT NOT NULL,
+    currency TEXT NOT NULL,
+    fetched_at INTEGER NOT NULL,
+    PRIMARY KEY (ticker, ex_date)
+)
 
 == table stock_import_batches ==
 CREATE TABLE stock_import_batches (

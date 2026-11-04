@@ -275,7 +275,7 @@
     },
     "confirmDelete": {
       "title": "Eliminare la posizione?",
-      "description": "{{name}} ({{ticker}}) e tutte le sue operazioni verranno rimosse definitivamente. L'operazione non si può annullare."
+      "description": "{{name}} ({{ticker}}) e tutte le sue operazioni e i suoi dividendi verranno rimossi definitivamente. L'operazione non si può annullare."
     },
     "confirmDeleteTransaction": {
       "title": "Eliminare l'operazione?",
@@ -351,14 +351,45 @@
       "filter": {
         "all": "Tutti",
         "buys": "Acquisti",
-        "sells": "Vendite"
+        "sells": "Vendite",
+        "dividends": "Dividendi"
       },
       "footer_one": "{{count}} evento",
       "footer_many": "{{count}} eventi",
       "footer_other": "{{count}} eventi",
       "since": "dal {{date}}",
       "rates": "Prezzi in {{currency}} al cambio del giorno dell'operazione"
-    }
+    },
+    "dividendRecords": {
+      "add": "Aggiungi dividendo",
+      "short": "Dividendo",
+      "addTitle": "Aggiungi un dividendo ricevuto",
+      "editTitle": "Modifica dividendo",
+      "description": "Un pagamento di {{ticker}} che Yahoo Finance non ha: l'importo lordo prima della ritenuta, alla data ex-dividendo. Il numero di azioni non cambia.",
+      "gross": "Importo lordo",
+      "grossHint": "Totale del pagamento, prima della ritenuta",
+      "note": "Nota",
+      "save": "Salva dividendo",
+      "badge": "Dividendo",
+      "received": "Dividendi ricevuti (lordi)",
+      "added": "Dividendo registrato",
+      "updated": "Dividendo aggiornato",
+      "deleted": "Dividendo eliminato",
+      "confirmDelete": {
+        "title": "Eliminare il dividendo?",
+        "description": "Il dividendo con data ex-dividendo {{date}} ({{amount}} lordo) verrà rimosso definitivamente. L'operazione non può essere annullata.",
+        "confirm": "Elimina dividendo"
+      },
+      "exDate": "Data ex-dividendo",
+      "exDateHint": "Il primo giorno in cui l'azione si scambia senza questo dividendo",
+      "sourceYahoo": "Yahoo Finance",
+      "sourceManual": "Manuale",
+      "perShare": "{{amount}} per azione",
+      "superseded": "Sostituito da Yahoo Finance, non conteggiato",
+      "yahooTitle": "Yahoo Finance ha i dividendi di questa azione",
+      "yahooBody": "Moony scarica i dividendi di {{ticker}} da Yahoo Finance e li calcola dalle azioni che detenevi il giorno prima di ogni data ex-dividendo. Inserisci un dividendo a mano solo per un'azione di cui Yahoo non ne ha."
+    },
+    "realizedDividends": "di cui dividendi {{amount}}"
   },
   "importWizard": {
     "title": "Importa operazioni da CSV",

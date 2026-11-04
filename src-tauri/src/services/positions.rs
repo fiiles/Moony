@@ -18,6 +18,7 @@ use crate::services::parsing::parse_money;
 pub use crate::services::pricing::AssetKind;
 use crate::services::pricing::{self, ResolvedPrice};
 use crate::services::reporting::normalize_currency;
+use crate::services::stock_dividends;
 
 /// One position valued in the report currency.
 #[derive(Debug, Clone, PartialEq)]
@@ -42,8 +43,13 @@ pub struct PositionValue {
     pub unrealized_gain: Option<f64>,
     /// `unrealized_gain / cost_basis * 100`; 0 for a zero cost basis.
     pub unrealized_gain_percent: Option<f64>,
-    /// Report currency: sell proceeds at the sell day minus the released average cost.
+    /// Report currency: sell proceeds at the sell day minus the released average cost, plus
+    /// the gross dividends received (stocks; `dividends_received`).
     pub realized_gain: Option<f64>,
+    /// Report currency: the gross dividends a stock position received up to today, each at its
+    /// ex-date's rate (`stock_dividends::received`); part of `realized_gain`. `None` for crypto
+    /// or when payouts exist but none could be converted.
+    pub dividends_received: Option<f64>,
     /// Native yearly dividend per share; `None` without dividend data (and for crypto).
     pub dividend_per_share: Option<f64>,
     pub dividend_currency: Option<String>,
@@ -297,7 +303,17 @@ pub fn value_positions_with_quotes(
             AssetKind::Crypto => None,
         };
         let cost = costs.get(&holding.id);
-        let item = value_position(holding, cost, price, dividend, quotes, &currency);
+        let received = match kind {
+            AssetKind::Stock => Some(stock_dividends::received(
+                conn,
+                &holding.id,
+                &currency,
+                quotes,
+                today,
+            )?),
+            AssetKind::Crypto => None,
+        };
+        let item = value_position(holding, cost, price, dividend, received, quotes, &currency);
         quality.merge(&item.quality);
         items.push(item);
     }
@@ -399,10 +415,17 @@ fn value_position(
     cost: Option<&PositionCostBasis>,
     price: Option<ResolvedPrice>,
     dividend: Option<Option<ResolvedDividend>>,
+    received: Option<(Option<f64>, Quality)>,
     quotes: &Quotes,
     report_currency: &str,
 ) -> PositionValue {
     let mut quality = cost.map(|c| c.quality.clone()).unwrap_or_default();
+    // Stocks: `Some(sum)`, `sum` being `None` when payouts could not be converted. Crypto: `None`.
+    let dividends = received.map(|(sum, received_quality)| {
+        quality.merge(&received_quality);
+        sum
+    });
+    let dividends_received = dividends.flatten();
     let mut converter = CurrentConverter {
         quotes,
         target: report_currency,
@@ -417,7 +440,13 @@ fn value_position(
     // position without transactions cost and realized nothing.
     let unknown_cost = || (quantity == 0.0).then_some(0.0);
     let cost_basis = cost.map_or_else(unknown_cost, PositionCostBasis::cost_basis_in_target);
-    let realized_gain = cost.map_or_else(unknown_cost, |c| c.realized_gain_target);
+    // Received dividends are realized income: a position that only paid dividends realized
+    // them; one whose dividends could not be converted has no known realized return.
+    let sold = cost.map_or_else(unknown_cost, |c| c.realized_gain_target);
+    let realized_gain = match dividends {
+        None => sold,
+        Some(paid) => sold.zip(paid).map(|(sold, paid)| sold + paid),
+    };
     let unrealized_gain = value.zip(cost_basis).map(|(v, c)| v - c);
     let unrealized_gain_percent =
         unrealized_gain
@@ -450,6 +479,7 @@ fn value_position(
         unrealized_gain,
         unrealized_gain_percent,
         realized_gain,
+        dividends_received,
         dividend_per_share,
         dividend_currency,
         yearly_dividend,
@@ -515,6 +545,18 @@ mod tests {
                 yearly_dividend_sum TEXT NOT NULL,
                 currency TEXT NOT NULL DEFAULT 'CZK',
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+            );
+            CREATE TABLE stock_dividend_events (
+                ticker TEXT NOT NULL, ex_date INTEGER NOT NULL, amount TEXT NOT NULL,
+                currency TEXT NOT NULL, fetched_at INTEGER NOT NULL, PRIMARY KEY (ticker, ex_date)
+            );
+            CREATE TABLE stock_dividend_coverage (
+                ticker TEXT PRIMARY KEY, covered_from INTEGER NOT NULL, fetched_at INTEGER NOT NULL
+            );
+            CREATE TABLE investment_dividends (
+                id TEXT PRIMARY KEY, investment_id TEXT NOT NULL, ex_date INTEGER NOT NULL,
+                gross_amount TEXT NOT NULL, currency TEXT NOT NULL, note TEXT,
+                created_at INTEGER NOT NULL DEFAULT 0
             );
             CREATE TABLE exchange_rate_history (
                 date INTEGER NOT NULL,
@@ -669,6 +711,72 @@ mod tests {
         let p = value_positions(&conn, AssetKind::Stock, "CZK", 20_000 * DAY).expect("positions");
         // released cost 5*100*20 = 10000 CZK, proceeds 5*100*25 = 12500 CZK
         assert_close(p.items[0].realized_gain.expect("realized"), 2500.0);
+    }
+
+    #[test]
+    fn received_dividends_are_part_of_the_realized_gain() {
+        let conn = setup();
+        let (d1, d2, d3) = (19_000 * DAY, 19_100 * DAY, 19_050 * DAY);
+        seed_rates(&conn, d1, &[("CZK", 25.0), ("USD", 1.25)]);
+        seed_rates(&conn, d2, &[("CZK", 25.0), ("USD", 1.0)]);
+        seed_rates(&conn, d3, &[("CZK", 25.0), ("USD", 1.25)]);
+        seed_stock(
+            &conn,
+            "s1",
+            "AAPL",
+            "USD",
+            &[("buy", 10.0, 100.0, d1), ("sell", 5.0, 100.0, d2)],
+            100.0,
+        );
+        // 0.5 USD per share on 10 shares at 20 CZK per USD: 100 CZK.
+        stock_dividends::record_events(
+            &conn,
+            "AAPL",
+            &[stock_dividends::DividendEvent {
+                ex_date: d3,
+                amount: 0.5,
+                currency: "USD".into(),
+            }],
+            d1,
+            d1,
+        )
+        .unwrap();
+        set_current_eur(&[("CZK", 25.0), ("USD", 1.0)]);
+        let p = value_positions(&conn, AssetKind::Stock, "CZK", 20_000 * DAY).expect("positions");
+        assert_close(p.items[0].dividends_received.expect("dividends"), 100.0);
+        // 2500 CZK from the sale plus the dividend.
+        assert_close(p.items[0].realized_gain.expect("realized"), 2600.0);
+        assert_close(totals(&p.items).realized_gain.expect("total"), 2600.0);
+    }
+
+    #[test]
+    fn a_dividend_that_cannot_be_converted_leaves_the_realized_gain_unknown() {
+        let conn = setup();
+        seed_stock(
+            &conn,
+            "s1",
+            "AAPL",
+            "USD",
+            &[("buy", 10.0, 100.0, 19_000 * DAY)],
+            100.0,
+        );
+        stock_dividends::record_events(
+            &conn,
+            "AAPL",
+            &[stock_dividends::DividendEvent {
+                ex_date: 19_010 * DAY,
+                amount: 0.5,
+                currency: "KWD".into(),
+            }],
+            19_000 * DAY,
+            19_000 * DAY,
+        )
+        .unwrap();
+        set_current_eur(&[("CZK", 25.0), ("USD", 1.0)]);
+        let p = value_positions(&conn, AssetKind::Stock, "CZK", 20_000 * DAY).expect("positions");
+        assert_eq!(p.items[0].dividends_received, None);
+        assert_eq!(p.items[0].realized_gain, None);
+        assert!(p.quality.missing_currencies().contains(&"KWD".to_string()));
     }
 
     #[test]

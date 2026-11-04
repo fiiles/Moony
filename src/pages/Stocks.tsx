@@ -113,7 +113,11 @@ export default function Stocks() {
   const refreshPricesMutation = useMutation({
     mutationFn: async () => {
       const pricesResult = await priceApi.refreshStockPrices(true);
-      priceApi.refreshDividends().catch(console.error);
+      // The dividends of the held positions arrive with this refresh (daily per ticker).
+      priceApi
+        .refreshDividends()
+        .then(() => queryClient.invalidateQueries({ queryKey: ['stock-dividends'] }))
+        .catch(console.error);
       return pricesResult;
     },
     onSuccess: (result) => {

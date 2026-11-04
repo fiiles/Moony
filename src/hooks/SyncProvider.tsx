@@ -152,6 +152,7 @@ export function SyncProvider({ children }: { children: ReactNode }) {
         ['investments'],
         ['investment'],
         ['investment-transactions'],
+        ['stock-dividends'],
         ['transactions'],
         ['all-stock-transactions'],
         ['dividend-summary'],

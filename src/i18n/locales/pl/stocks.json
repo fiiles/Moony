@@ -279,7 +279,7 @@
     },
     "confirmDelete": {
       "title": "Usunąć pozycję?",
-      "description": "{{name}} ({{ticker}}) i wszystkie jej transakcje zostaną usunięte na zawsze. Tej operacji nie można cofnąć."
+      "description": "{{name}} ({{ticker}}) i wszystkie jej transakcje oraz dywidendy zostaną usunięte na zawsze. Tej operacji nie można cofnąć."
     },
     "confirmDeleteTransaction": {
       "title": "Usunąć transakcję?",
@@ -359,7 +359,8 @@
       "filter": {
         "all": "Wszystkie",
         "buys": "Zakupy",
-        "sells": "Sprzedaże"
+        "sells": "Sprzedaże",
+        "dividends": "Dywidendy"
       },
       "footer_one": "{{count}} zdarzenie",
       "footer_few": "{{count}} zdarzenia",
@@ -367,7 +368,37 @@
       "footer_other": "{{count}} zdarzenia",
       "since": "od {{date}}",
       "rates": "Ceny w {{currency}} po kursie z dnia transakcji"
-    }
+    },
+    "dividendRecords": {
+      "add": "Dodaj dywidendę",
+      "short": "Dywidenda",
+      "addTitle": "Dodaj otrzymaną dywidendę",
+      "editTitle": "Edytuj dywidendę",
+      "description": "Jedna wypłata {{ticker}}, której Yahoo Finance nie zna: kwota brutto przed podatkiem u źródła, w dniu ustalenia prawa (ex-date). Liczba akcji się nie zmienia.",
+      "gross": "Kwota brutto",
+      "grossHint": "Suma wypłaty przed podatkiem u źródła",
+      "note": "Notatka",
+      "save": "Zapisz dywidendę",
+      "badge": "Dywidenda",
+      "received": "Otrzymane dywidendy (brutto)",
+      "added": "Dywidenda zapisana",
+      "updated": "Dywidenda zaktualizowana",
+      "deleted": "Dywidenda usunięta",
+      "confirmDelete": {
+        "title": "Usunąć dywidendę?",
+        "description": "Dywidenda z ex-date {{date}} ({{amount}} brutto) zostanie trwale usunięta. Tej operacji nie można cofnąć.",
+        "confirm": "Usuń dywidendę"
+      },
+      "exDate": "Ex-date",
+      "exDateHint": "Pierwszy dzień, w którym akcja jest notowana bez tej dywidendy",
+      "sourceYahoo": "Yahoo Finance",
+      "sourceManual": "Ręcznie",
+      "perShare": "{{amount}} na akcję",
+      "superseded": "Zastąpione przez Yahoo Finance, nie jest liczone",
+      "yahooTitle": "Yahoo Finance ma dywidendy tej akcji",
+      "yahooBody": "Moony pobiera dywidendy {{ticker}} z Yahoo Finance i liczy je z akcji posiadanych dzień przed każdym ex-date. Wpisuj dywidendę ręcznie tylko dla akcji, dla której Yahoo żadnej nie ma."
+    },
+    "realizedDividends": "w tym dywidendy {{amount}}"
   },
   "importWizard": {
     "title": "Importuj transakcje z CSV",

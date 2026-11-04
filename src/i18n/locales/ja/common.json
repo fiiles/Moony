@@ -308,7 +308,10 @@
     "statementIndexInvalid": "ファイル内の明細を1つ選択してください。",
     "statementDateOrderInvalid": "日付の順序を選択できるのはQIFファイルのみです。",
     "snoozeSelectionInvalid": "1〜1000件の支払いを選択してください。",
-    "snoozeDaysInvalid": "日数は1〜365の範囲で指定してください。"
+    "snoozeDaysInvalid": "日数は1〜365の範囲で指定してください。",
+    "dividendGrossPositive": "総額は0より大きくなければなりません",
+    "dividendNoteTooLong": "メモは500文字以内です。",
+    "dividendFromYahoo": "{{ticker}} の配当は Yahoo Finance から取得されるため、手動の配当は追加できません。"
   },
   "auth": {
     "wrongPassword": "入力したパスワードが正しくありません。もう一度お試しください。",

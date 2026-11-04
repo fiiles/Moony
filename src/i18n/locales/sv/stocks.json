@@ -271,7 +271,7 @@
     },
     "confirmDelete": {
       "title": "Ta bort innehavet?",
-      "description": "{{name}} ({{ticker}}) och alla dess transaktioner tas bort för gott. Det går inte att ångra."
+      "description": "{{name}} ({{ticker}}) och alla dess transaktioner och utdelningar tas bort för gott. Det går inte att ångra."
     },
     "confirmDeleteTransaction": {
       "title": "Ta bort transaktionen?",
@@ -343,13 +343,44 @@
       "filter": {
         "all": "Alla",
         "buys": "Köp",
-        "sells": "Försäljningar"
+        "sells": "Försäljningar",
+        "dividends": "Utdelningar"
       },
       "footer_one": "{{count}} händelse",
       "footer_other": "{{count}} händelser",
       "since": "sedan {{date}}",
       "rates": "Kurser i {{currency}} enligt kursen på transaktionsdagen"
-    }
+    },
+    "dividendRecords": {
+      "add": "Lägg till utdelning",
+      "short": "Utdelning",
+      "addTitle": "Lägg till mottagen utdelning",
+      "editTitle": "Redigera utdelning",
+      "description": "En utbetalning från {{ticker}} som Yahoo Finance inte har: bruttobeloppet före källskatt, på x-dagen. Antalet aktier ändras inte.",
+      "gross": "Bruttobelopp",
+      "grossHint": "Summa för utbetalningen, före källskatt",
+      "note": "Anteckning",
+      "save": "Spara utdelning",
+      "badge": "Utdelning",
+      "received": "Mottagna utdelningar (brutto)",
+      "added": "Utdelning registrerad",
+      "updated": "Utdelning uppdaterad",
+      "deleted": "Utdelning borttagen",
+      "confirmDelete": {
+        "title": "Ta bort utdelning?",
+        "description": "Utdelningen med x-dag {{date}} ({{amount}} brutto) tas bort permanent. Detta kan inte ångras.",
+        "confirm": "Ta bort utdelning"
+      },
+      "exDate": "X-dag",
+      "exDateHint": "Första dagen aktien handlas utan denna utdelning",
+      "sourceYahoo": "Yahoo Finance",
+      "sourceManual": "Manuell",
+      "perShare": "{{amount}} per aktie",
+      "superseded": "Ersatt av Yahoo Finance, räknas inte",
+      "yahooTitle": "Yahoo Finance har utdelningarna för denna aktie",
+      "yahooBody": "Moony hämtar utdelningarna för {{ticker}} från Yahoo Finance och räknar fram dem från aktierna du ägde dagen före varje x-dag. Lägg in en utdelning manuellt bara för en aktie som Yahoo inte har några för."
+    },
+    "realizedDividends": "varav utdelningar {{amount}}"
   },
   "importWizard": {
     "title": "Importera affärer från CSV",

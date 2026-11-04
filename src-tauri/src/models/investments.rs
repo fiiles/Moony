@@ -68,8 +68,13 @@ pub struct EnrichedStockInvestment {
     pub unrealized_gain: Option<String>,
     #[serde(rename = "unrealizedGainPercent")]
     pub unrealized_gain_percent: Option<f64>,
+    /// Sell proceeds minus the released cost, plus `dividendsReceived`.
     #[serde(rename = "realizedGain")]
     pub realized_gain: Option<String>,
+    /// Gross dividends received up to today, each at its ex-date's rate (part of
+    /// `realizedGain`); `null` when payouts exist but none could be converted.
+    #[serde(rename = "dividendsReceived")]
+    pub dividends_received: Option<String>,
     /// Yearly dividend per share in `dividendCurrency`; `null` without dividend data.
     #[serde(rename = "dividendPerShare")]
     pub dividend_per_share: Option<String>,

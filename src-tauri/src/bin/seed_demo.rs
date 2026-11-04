@@ -43,7 +43,7 @@ use moony_lib::db::Database;
 use moony_lib::models::{
     InsertBankAccount, InsertCryptoTransaction, InsertInvestmentTransaction, InsertUserProfile,
 };
-use moony_lib::services::{auth, bank_accounts, crypto_investments, investments};
+use moony_lib::services::{auth, bank_accounts, crypto_investments, investments, stock_dividends};
 use rusqlite::params;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
@@ -541,6 +541,34 @@ fn seed_stocks(db: &Database, now: i64) {
             )
             .expect("insert stock price");
         }
+
+        // Dividends as Yahoo Finance reports them: gross per share on the ex-date. The payouts
+        // follow from the shares held the day before; the fetch the app makes later replaces
+        // these with Yahoo's own figures. (ticker, per share, days_ago)
+        let dividends: &[(&str, f64, i64)] = &[
+            ("AAPL", 0.25, 260),
+            ("AAPL", 0.25, 170),
+            ("AAPL", 0.26, 80),
+            ("MSFT", 0.83, 240),
+            ("MSFT", 0.83, 150),
+            ("MSFT", 0.91, 60),
+            ("VOO", 1.79, 300),
+            ("VOO", 1.80, 120),
+            ("NVDA", 0.01, 100),
+        ];
+        for ticker in ["AAPL", "MSFT", "VOO", "NVDA"] {
+            let events: Vec<stock_dividends::DividendEvent> = dividends
+                .iter()
+                .filter(|(t, _, _)| *t == ticker)
+                .map(|(_, amount, days_ago)| stock_dividends::DividendEvent {
+                    ex_date: now - days_ago * DAY,
+                    amount: *amount,
+                    currency: "USD".into(),
+                })
+                .collect();
+            stock_dividends::record_events(conn, ticker, &events, now - 1000 * DAY, now)
+                .expect("record dividends");
+        }
         Ok(())
     })
     .expect("seed stocks");
@@ -894,6 +922,7 @@ fn verify(db: &Database) {
             "bank_transactions",
             "stock_investments",
             "investment_transactions",
+            "stock_dividend_events",
             "crypto_investments",
             "crypto_transactions",
             "real_estate",

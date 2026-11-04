@@ -84,9 +84,9 @@
       "price": "Price",
       "target": "Target price",
       "watchStart": "Watch start",
-      "buys": "Purchases"
+      "trades": "Buys and sells"
     },
-    "showBuysHint": "Show on the line when and at what price you bought",
+    "showTradesHint": "Show on the line when and at what price you bought and sold",
     "watchStartTarget": "target {{price}}",
     "stats": {
       "exchangeNote": "on {{exchange}}",

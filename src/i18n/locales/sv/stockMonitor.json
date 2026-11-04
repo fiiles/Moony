@@ -84,9 +84,9 @@
       "price": "Kurs",
       "target": "Målkurs",
       "watchStart": "Bevakningsstart",
-      "buys": "Köp"
+      "trades": "Köp och försäljningar"
     },
-    "showBuysHint": "Visa på linjen när och till vilket pris du köpte",
+    "showTradesHint": "Visa på linjen när och till vilket pris du köpte och sålde",
     "watchStartTarget": "mål {{price}}",
     "stats": {
       "exchangeNote": "på {{exchange}}",

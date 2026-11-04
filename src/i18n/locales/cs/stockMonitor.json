@@ -85,9 +85,9 @@
       "price": "Cena",
       "target": "Cílová cena",
       "watchStart": "Začátek sledování",
-      "buys": "Nákupy"
+      "trades": "Nákupy a prodeje"
     },
-    "showBuysHint": "Ukázat na křivce, kdy a za kolik jste nakupovali",
+    "showTradesHint": "Ukázat na křivce, kdy a za kolik jste nakupovali a prodávali",
     "watchStartTarget": "cíl {{price}}",
     "stats": {
       "exchangeNote": "na burze {{exchange}}",

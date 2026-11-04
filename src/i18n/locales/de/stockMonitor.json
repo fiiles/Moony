@@ -84,9 +84,9 @@
       "price": "Kurs",
       "target": "Kursziel",
       "watchStart": "Beobachtungsbeginn",
-      "buys": "Käufe"
+      "trades": "Käufe und Verkäufe"
     },
-    "showBuysHint": "Im Verlauf zeigen, wann und zu welchem Kurs Sie gekauft haben",
+    "showTradesHint": "Im Verlauf zeigen, wann und zu welchem Kurs Sie gekauft und verkauft haben",
     "watchStartTarget": "Ziel {{price}}",
     "stats": {
       "exchangeNote": "an der {{exchange}}",

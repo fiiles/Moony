@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   firstTradeDay,
-  purchaseEvents,
+  positionTradeEvents,
   tickerSummary,
   tradeDayEvents,
   type TradeLike,
@@ -232,7 +232,7 @@ describe('tickerSummary', () => {
   });
 });
 
-describe('purchaseEvents', () => {
+describe('positionTradeEvents', () => {
   const tx = (id: string, type: string, transactionDate: number) => ({
     id,
     type,
@@ -242,23 +242,30 @@ describe('purchaseEvents', () => {
     transactionDate,
   });
 
-  it('marks every purchase at its own moment, oldest first', () => {
-    const events = purchaseEvents([tx('b', 'buy', D3 + 3600), tx('a', 'buy', D1 + 600)]);
+  it('marks every trade at its own moment, oldest first', () => {
+    const events = positionTradeEvents([tx('b', 'buy', D3 + 3600), tx('a', 'buy', D1 + 600)]);
     expect(events.map((e) => [e.id, e.t, e.type])).toEqual([
       ['a', D1 + 600, 'buy'],
       ['b', D3 + 3600, 'buy'],
     ]);
   });
 
-  it('keeps two purchases on one day apart and carries the transaction', () => {
-    const events = purchaseEvents([tx('a', 'buy', D2), tx('b', 'buy', D2 + 60)]);
+  it('keeps two trades on one day apart and carries the transaction', () => {
+    const events = positionTradeEvents([tx('a', 'buy', D2), tx('b', 'buy', D2 + 60)]);
     expect(events).toHaveLength(2);
     expect(events[0].tx.pricePerUnit).toBe('150.5');
   });
 
-  it('leaves sells out', () => {
-    expect(purchaseEvents([tx('s', 'sell', D2), tx('a', 'buy', D1)]).map((e) => e.id)).toEqual([
-      'a',
+  it('marks sells as sells and anything else as a buy', () => {
+    const events = positionTradeEvents([
+      tx('s', 'sell', D2),
+      tx('a', 'buy', D1),
+      tx('o', 'transfer', D3),
+    ]);
+    expect(events.map((e) => [e.id, e.type])).toEqual([
+      ['a', 'buy'],
+      ['s', 'sell'],
+      ['o', 'buy'],
     ]);
   });
 });

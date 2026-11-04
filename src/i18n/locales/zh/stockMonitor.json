@@ -82,8 +82,10 @@
     "legend": {
       "price": "价格",
       "target": "目标价",
-      "watchStart": "开始关注"
+      "watchStart": "开始关注",
+      "buys": "买入"
     },
+    "showBuysHint": "在走势线上显示您何时以何价格买入",
     "watchStartTarget": "目标价 {{price}}",
     "stats": {
       "exchangeNote": "在 {{exchange}}",

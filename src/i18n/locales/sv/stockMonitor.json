@@ -83,8 +83,10 @@
     "legend": {
       "price": "Kurs",
       "target": "Målkurs",
-      "watchStart": "Bevakningsstart"
+      "watchStart": "Bevakningsstart",
+      "buys": "Köp"
     },
+    "showBuysHint": "Visa på linjen när och till vilket pris du köpte",
     "watchStartTarget": "mål {{price}}",
     "stats": {
       "exchangeNote": "på {{exchange}}",

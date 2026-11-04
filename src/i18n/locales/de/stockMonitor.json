@@ -83,8 +83,10 @@
     "legend": {
       "price": "Kurs",
       "target": "Kursziel",
-      "watchStart": "Beobachtungsbeginn"
+      "watchStart": "Beobachtungsbeginn",
+      "buys": "Käufe"
     },
+    "showBuysHint": "Im Verlauf zeigen, wann und zu welchem Kurs Sie gekauft haben",
     "watchStartTarget": "Ziel {{price}}",
     "stats": {
       "exchangeNote": "an der {{exchange}}",

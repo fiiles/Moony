@@ -82,8 +82,10 @@
     "legend": {
       "price": "価格",
       "target": "目標価格",
-      "watchStart": "ウォッチ開始"
+      "watchStart": "ウォッチ開始",
+      "buys": "購入"
     },
+    "showBuysHint": "いつ、いくらで購入したかをチャート上に表示",
     "watchStartTarget": "目標 {{price}}",
     "stats": {
       "exchangeNote": "{{exchange}}上場",

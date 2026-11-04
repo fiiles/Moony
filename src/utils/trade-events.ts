@@ -1,6 +1,7 @@
 /**
  * Buy and sell marks for the aggregate trend of the stocks and crypto lists
- * (design system §9: an aggregate line folds a day's trades into one mark).
+ * (design system §9: an aggregate line folds a day's trades into one mark),
+ * and the purchase marks a watched stock's price line can show.
  * Pure, no DOM and no locale: the pages format the tooltips.
  */
 
@@ -81,4 +82,37 @@ export function firstTradeDay(trades: readonly { transactionDate: number }[]): n
 export function tickerSummary(tickers: readonly string[], max = 4): string {
   if (tickers.length <= max) return tickers.join(', ');
   return `${tickers.slice(0, max).join(', ')} +${tickers.length - max}`;
+}
+
+/** A purchase of one position, as its price-chart mark needs it. */
+export interface PurchaseLike {
+  id: string;
+  type: string;
+  quantity: string;
+  pricePerUnit: string;
+  /** Currency of `pricePerUnit`. */
+  currency: string;
+  /** Unix seconds. */
+  transactionDate: number;
+}
+
+/** One ▲ per purchase, on the moment it was made (unlike the list trends, nothing folds). */
+export interface PurchaseEvent<T extends PurchaseLike = PurchaseLike> extends ChartEvent {
+  type: 'buy';
+  tx: T;
+}
+
+/**
+ * Purchase marks for a single stock's price line (the watchlist detail): every
+ * transaction that is not a sell, oldest first, so the user sees at which
+ * prices of the curve they bought. The chart itself keeps only those in view
+ * and clusters them when there are too many.
+ */
+export function purchaseEvents<T extends PurchaseLike>(
+  transactions: readonly T[]
+): PurchaseEvent<T>[] {
+  return transactions
+    .filter((tx) => tx.type !== 'sell')
+    .map((tx) => ({ id: tx.id, t: tx.transactionDate, type: 'buy' as const, tx }))
+    .sort((a, b) => a.t - b.t);
 }

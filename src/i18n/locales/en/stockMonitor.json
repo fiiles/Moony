@@ -83,8 +83,10 @@
     "legend": {
       "price": "Price",
       "target": "Target price",
-      "watchStart": "Watch start"
+      "watchStart": "Watch start",
+      "buys": "Purchases"
     },
+    "showBuysHint": "Show on the line when and at what price you bought",
     "watchStartTarget": "target {{price}}",
     "stats": {
       "exchangeNote": "on {{exchange}}",

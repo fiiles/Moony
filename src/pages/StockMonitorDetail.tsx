@@ -1,8 +1,11 @@
 import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Link, useRoute } from 'wouter';
 import { Trans, useTranslation } from 'react-i18next';
 import { Eye, Plus, RefreshCw } from 'lucide-react';
-import { currencyDecimals } from '@shared/currencies';
+import { currencyDecimals, priceDecimals, type CurrencyCode } from '@shared/currencies';
+import type { InvestmentTransaction } from '@shared/schema';
+import { investmentsApi } from '@/lib/tauri-api';
 import { exchangeName } from '@/utils/exchange-names';
 import { useFormat } from '@/lib/use-format';
 import { useCurrency } from '@/lib/currency';
@@ -21,16 +24,18 @@ import {
   type ChartPeriod,
 } from '@/utils/stock-monitor';
 import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
+import { purchaseEvents, type PurchaseEvent } from '@/utils/trade-events';
 import { BackLink, PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { Segmented } from '@/components/ui/segmented';
+import { Chip } from '@/components/ui/chip';
 import { Card, CardHeader, CardTitle } from '@/components/ui/card';
 import { HeroCard, HeroValue } from '@/components/common/HeroCard';
 import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { MoonyLineChart } from '@/components/charts/MoonyLineChart';
-import { ChartLegend } from '@/components/charts/ChartLegend';
+import { ChartLegend, EventSwatch } from '@/components/charts/ChartLegend';
 import { AXIS_WIDTH } from '@/components/charts/ChartAxis';
 import { StockNotesCard } from '@/components/stock-monitor/StockNotesCard';
 import { RangeWithLabels } from '@/components/stock-monitor/RangeBar';
@@ -42,6 +47,28 @@ import { AddInvestmentModal } from '@/components/stocks/AddInvestmentModal';
 import { cn } from '@/lib/utils';
 
 const DAY = 86_400;
+
+/** The watch-start ring and, when switched on, the purchases of the held position. */
+type MonitorEvent = ChartEvent | PurchaseEvent<InvestmentTransaction>;
+
+const SHOW_BUYS_KEY = 'moony.stockMonitor.showBuys';
+
+/** `localStorage` can throw on access (blocked storage); the switch then starts off and forgets. */
+function readShowBuys(): boolean {
+  try {
+    return window.localStorage.getItem(SHOW_BUYS_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
+function writeShowBuys(on: boolean) {
+  try {
+    window.localStorage.setItem(SHOW_BUYS_KEY, on ? '1' : '0');
+  } catch {
+    // Remembering the switch is a convenience only.
+  }
+}
 
 /** Chart range that surely contains the day the stock was followed. */
 function periodCovering(followedAt: number): ChartPeriod {
@@ -62,6 +89,7 @@ function periodCovering(followedAt: number): ChartPeriod {
 export default function StockMonitorDetail() {
   const { t } = useTranslation('stockMonitor');
   const { t: tc } = useTranslation('common');
+  const { t: ts } = useTranslation('stocks');
   const fmt = useFormat();
   const locale = fmt.locale;
   const { currencyCode } = useCurrency();
@@ -81,6 +109,12 @@ export default function StockMonitorDetail() {
   const [target, setTarget] = useState<TargetPriceTarget | null>(null);
   const [confirmUnfollow, setConfirmUnfollow] = useState(false);
   const [buyOpen, setBuyOpen] = useState(false);
+  const [showBuys, setShowBuys] = useState(readShowBuys);
+  const toggleShowBuys = () =>
+    setShowBuys((on) => {
+      writeShowBuys(!on);
+      return !on;
+    });
 
   const { data: range = [], isLoading: rangeLoading } = useStockPriceRange(ticker, period);
   const followedAt = detail?.followedAt ?? null;
@@ -136,6 +170,19 @@ export default function StockMonitorDetail() {
         ? [{ id: 'watch-start', t: followedAt, type: 'expense' }]
         : [],
     [followedAt, points]
+  );
+
+  // Same query as the position page, so its mutations refresh these marks too.
+  const heldId = detail?.heldInvestmentId ?? null;
+  const { data: transactions } = useQuery<InvestmentTransaction[]>({
+    queryKey: ['investment-transactions', heldId],
+    queryFn: () => investmentsApi.getTransactions(heldId!),
+    enabled: !!heldId,
+  });
+  const buyEvents = useMemo(() => purchaseEvents(transactions ?? []), [transactions]);
+  const chartEvents = useMemo<MonitorEvent[]>(
+    () => (showBuys ? [...watchEvents, ...buyEvents] : watchEvents),
+    [showBuys, watchEvents, buyEvents]
   );
 
   const priceAt = (series: { timestamp: number; price: number }[], at: number) => {
@@ -216,6 +263,45 @@ export default function StockMonitorDetail() {
     : 0;
   const sinceChange =
     watchPrice !== null && isFinite(current) ? changeFromReference(current, watchPrice) : null;
+
+  const eventTip = (cluster: EventCluster<MonitorEvent>) => {
+    if (cluster.events.length > 1) {
+      const first = cluster.events[0].t;
+      const last = cluster.events[cluster.events.length - 1].t;
+      return {
+        title: ts('detail.events.cluster', { count: cluster.events.length }),
+        lines: [first === last ? fmt.day(first) : `${fmt.day(first)} – ${fmt.day(last)}`],
+      };
+    }
+    const event = cluster.events[0];
+    if ('tx' in event) {
+      const { tx } = event;
+      const qty = Number(tx.quantity) || 0;
+      const paid = Number(tx.pricePerUnit) || 0;
+      const cur = (tx.currency || currency || currencyCode) as CurrencyCode;
+      return {
+        title: ts('detail.events.buy', {
+          quantity: `${fmt.number(qty, { maximumFractionDigits: 4 })} ${ts('table.unit')}`,
+          price: fmt.money(paid, cur, { decimals: priceDecimals(paid, cur) }),
+        }),
+        lines: [
+          `${fmt.day(tx.transactionDate)} · ${ts('detail.events.total', { amount: fmt.money(qty * paid, cur) })}`,
+        ],
+      };
+    }
+    return {
+      title: t('detail.legend.watchStart'),
+      lines: [
+        [
+          fmt.day(cluster.t),
+          watchPrice !== null ? price(watchPrice) : null,
+          hasTarget ? t('detail.watchStartTarget', { price: price(targetValue) }) : null,
+        ]
+          .filter(Boolean)
+          .join(' · '),
+      ],
+    };
+  };
 
   const kv: { label: string; value: string | null }[] = [
     { label: t('detail.kv.previousClose'), value: isFinite(prevClose) ? price(prevClose) : null },
@@ -343,25 +429,12 @@ export default function StockMonitorDetail() {
                       }
                     : undefined
                 }
-                events={watchEvents}
+                events={chartEvents}
                 renderTip={(p) => ({
                   title: price(p.value),
                   lines: [intraday ? fmt.dateTime(p.t) : fmt.day(p.t)],
                 })}
-                renderEventTip={(cluster: EventCluster) => ({
-                  title: t('detail.legend.watchStart'),
-                  lines: [
-                    [
-                      fmt.day(cluster.t),
-                      watchPrice !== null ? price(watchPrice) : null,
-                      hasTarget
-                        ? t('detail.watchStartTarget', { price: price(targetValue) })
-                        : null,
-                    ]
-                      .filter(Boolean)
-                      .join(' · '),
-                  ],
-                })}
+                renderEventTip={eventTip}
               />
             )}
             {intraday && intradayLabels.length > 0 && (
@@ -376,22 +449,41 @@ export default function StockMonitorDetail() {
               </div>
             )}
             <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-              <ChartLegend
-                items={[
-                  { label: t('detail.legend.price'), swatch: { kind: 'line' } },
-                  ...(hasTarget
-                    ? [
-                        {
-                          label: t('detail.legend.target'),
-                          swatch: { kind: 'dash' as const, color: 'var(--gain)' },
-                        },
-                      ]
-                    : []),
-                  ...(watchEvents.length > 0
-                    ? [{ label: t('detail.legend.watchStart'), swatch: { kind: 'ring' as const } }]
-                    : []),
-                ]}
-              />
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                <ChartLegend
+                  items={[
+                    { label: t('detail.legend.price'), swatch: { kind: 'line' } },
+                    ...(hasTarget
+                      ? [
+                          {
+                            label: t('detail.legend.target'),
+                            swatch: { kind: 'dash' as const, color: 'var(--gain)' },
+                          },
+                        ]
+                      : []),
+                    ...(watchEvents.length > 0
+                      ? [
+                          {
+                            label: t('detail.legend.watchStart'),
+                            swatch: { kind: 'ring' as const },
+                          },
+                        ]
+                      : []),
+                  ]}
+                />
+                {buyEvents.length > 0 && (
+                  <Chip
+                    className="mt-3 [&_polygon]:fill-current"
+                    active={showBuys}
+                    onClick={toggleShowBuys}
+                    leading={<EventSwatch type="buy" />}
+                    title={t('detail.showBuysHint')}
+                    data-testid="toggle-buys"
+                  >
+                    {t('detail.legend.buys')}
+                  </Chip>
+                )}
+              </div>
               {periodStart !== undefined && periodChange && (
                 <span className="mt-[14px] text-micro font-500 text-ink-4 num">
                   {t('detail.periodStart', {

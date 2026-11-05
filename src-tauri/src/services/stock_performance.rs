@@ -11,7 +11,8 @@
 //!   `+(quantity × price + fee)` for a buy and `-(quantity × price - fee)` for a sell, in the
 //!   trade's own currency. A trade is valued at its own price, not at the day's close, so the
 //!   move between the trade and the close is that day's return, and a fee lowers it;
-//! - `D_p(s)` is the gross dividend with ex-date `s` (none are loaded yet, so it is 0);
+//! - `D_p(s)` is the gross dividend with ex-date `s`, from `stock_dividends::payouts` (Yahoo
+//!   events or manual payouts, converted at the ex-date);
 //! - money comes in at the start of the day and leaves at its end:
 //!   `base_p(s) = V_p(s-1) + max(F_p(s), 0)` and
 //!   `gain_p(s) = V_p(s) - V_p(s-1) - F_p(s) + D_p(s)`. A sell does not lower the base, so a
@@ -41,8 +42,21 @@
 //! a row, and the ticker is named in `unpricedTickers`.
 //!
 //! A holding any of whose conversions fails drops out of that day only (its `base` and `gain`
-//! are unknown) and is counted in `fxQuality`; the other holdings keep chaining. The
-//! money-weighted return is the cumulative modified Dietz return of the portfolio value.
+//! are unknown) and is counted in `fxQuality`; the other holdings keep chaining.
+//!
+//! The money-weighted return is the IRR of the investor's cash flows from the first day: `-V_0`
+//! on the first day, `-F + D` on each later day (a dividend is cash returned) and `+V_end` on
+//! the day asked for, time in calendar days / 365. Its bracket, `(-99.99 %, +10 000 %)`, applies
+//! to the rate that is displayed (see `irr_exponent`): the period rate for a period of at most
+//! 365 days, the annual rate for a longer one. Every emitted date carries the period rate
+//! (`mwr`) and the annual rate (`mwrAnnual`); `mwr` is null for an unknown value or when no
+//! solution exists, `mwrAnnual` also when the annual rate of a short period leaves the bracket.
+//! The annualisation rule follows the same cut: a period of up to 365 days is shown as its
+//! period rate, a longer one as the annual rate.
+//!
+//! The report has two quality notes: `unpricedTickers` (tickers priced by their own trades for
+//! lack of any price row) and `dividendGapTickers` (tickers whose dividends are unknown, so the
+//! return is understated).
 //!
 //! The optional comparison line is a market index fetched on demand (`benchmark_series`): its
 //! daily closes are carried over non-trading days, converted at each day's rate and rebased to

@@ -925,7 +925,7 @@ fn fee_in(
         return Ok(Some(amount));
     }
     match history.convert_on(amount, own, currency, trade.day) {
-        // A fee is money: cents are enough, and a float tail would end up in the stored text.
+        // A fee is money: six decimals cover any currency, and a float tail would end up in the stored text.
         Some(converted) => Ok(Some((converted * 1e6).round() / 1e6)),
         None => Err(own.to_string()),
     }

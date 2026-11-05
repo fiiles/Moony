@@ -129,11 +129,11 @@ pub struct StockPerformance {
     #[serde(rename = "dividends")]
     pub dividends: Vec<String>,
     /// Money-weighted return (IRR) from the first date to each date as a period rate, in percent;
-    /// `None` when it has no solution or the value is unknown.
+    /// null when the portfolio value is unknown on that date or the IRR has no solution.
     #[serde(rename = "mwr")]
     pub mwr: Vec<Option<f64>>,
-    /// The same IRR as an annual rate, in percent; `None` when it lies outside the bracket
-    /// (a period of up to a year may annualise far beyond it).
+    /// The same IRR as an annual rate, in percent; null when it lies outside the bracket
+    /// (a period of up to a year may annualise far beyond it), or when `mwr` is null.
     #[serde(rename = "mwrAnnual")]
     pub mwr_annual: Vec<Option<f64>>,
     #[serde(rename = "series")]

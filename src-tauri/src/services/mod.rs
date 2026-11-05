@@ -67,6 +67,7 @@ pub mod session_key;
 pub mod spending_plans;
 pub mod statement_import;
 pub mod stock_dividends;
+pub mod stock_export;
 pub mod stock_import;
 pub mod stock_monitor;
 pub mod stock_performance;

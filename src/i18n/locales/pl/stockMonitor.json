@@ -86,9 +86,9 @@
       "price": "Cena",
       "target": "Cena docelowa",
       "watchStart": "Początek obserwacji",
-      "buys": "Zakupy"
+      "trades": "Zakupy i sprzedaże"
     },
-    "showBuysHint": "Pokaż na wykresie daty i ceny zakupów",
+    "showTradesHint": "Pokaż na wykresie daty i ceny zakupów i sprzedaży",
     "watchStartTarget": "cel {{price}}",
     "stats": {
       "exchangeNote": "na {{exchange}}",

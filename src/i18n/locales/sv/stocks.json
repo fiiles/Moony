@@ -410,7 +410,9 @@
       "price": "Pris per aktie",
       "quantityPrice": "Antal och pris",
       "currency": "Valuta",
-      "externalId": "Affärs-ID"
+      "externalId": "Affärs-ID",
+      "fee": "Avgift",
+      "feeCurrency": "Avgiftens valuta"
     },
     "file": {
       "sourceHeading": "Varifrån exporten kommer",
@@ -571,6 +573,8 @@
         "skip": "Hoppa över"
       },
       "externalIdHint": "Hjälper till att känna igen dubbletter vid senare importer.",
+      "feeHint": "Importeras som avgift för affären; tecknet spelar ingen roll.",
+      "feeCurrencyHint": "Utan den är avgiften i affärens valuta.",
       "dateFormat": "Datumformat",
       "dateFormatChoose": "Välj ett format",
       "dateFormatAmbiguous": "Ordningen på dag, månad och år kan inte avgöras i den här filen, så det är en gissning. Kontrollera datumen i förhandsgranskningen nedan eller välj format själv.",
@@ -772,6 +776,7 @@
       "sellExceedsHoldingsHeld": "Försäljningen överstiger innehavet den dagen ({{detail}} innehas)",
       "currencyMismatch": "Valutan skiljer sig från innehavets",
       "currencyMismatchPosition": "Valutan skiljer sig från innehavets ({{detail}})",
+      "feeRateMissing": "Ingen växelkurs för avgiftens valuta den dagen",
       "duplicate": "Samma affär finns redan i Moony",
       "duplicateById": "En affär med samma mäklar-ID finns redan i Moony",
       "duplicateSimilar": "En liknande affär finns redan i Moony: samma dag och antal, pris inom 0,5 %",

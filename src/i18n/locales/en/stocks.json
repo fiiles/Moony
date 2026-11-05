@@ -410,7 +410,9 @@
       "price": "Price per share",
       "quantityPrice": "Quantity and price",
       "currency": "Currency",
-      "externalId": "Trade ID"
+      "externalId": "Trade ID",
+      "fee": "Fee",
+      "feeCurrency": "Fee currency"
     },
     "file": {
       "sourceHeading": "Where the export is from",
@@ -571,6 +573,8 @@
         "skip": "Skip"
       },
       "externalIdHint": "Helps to recognise duplicates in later imports.",
+      "feeHint": "Imported as the trade's fee; the sign does not matter.",
+      "feeCurrencyHint": "Without it, the fee is in the trade's currency.",
       "dateFormat": "Date format",
       "dateFormatChoose": "Choose a format",
       "dateFormatAmbiguous": "The order of day, month and year cannot be told apart in this file, so it is a guess. Check the dates in the preview below or pick the format yourself.",
@@ -772,6 +776,7 @@
       "sellExceedsHoldingsHeld": "The sale exceeds the holding on that day ({{detail}} held)",
       "currencyMismatch": "The currency differs from the position's",
       "currencyMismatchPosition": "The currency differs from the position's ({{detail}})",
+      "feeRateMissing": "No exchange rate for the fee's currency on that day",
       "duplicate": "The same trade is already in Moony",
       "duplicateById": "A trade with the same broker ID is already in Moony",
       "duplicateSimilar": "A similar trade is already in Moony: same day and quantity, price within 0.5 %",

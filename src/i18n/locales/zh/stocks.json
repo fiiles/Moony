@@ -400,7 +400,9 @@
       "price": "每股价格",
       "quantityPrice": "数量和价格",
       "currency": "货币",
-      "externalId": "交易 ID"
+      "externalId": "交易 ID",
+      "fee": "手续费",
+      "feeCurrency": "手续费货币"
     },
     "file": {
       "sourceHeading": "导出文件的来源",
@@ -558,6 +560,8 @@
         "skip": "跳过"
       },
       "externalIdHint": "有助于在之后的导入中识别重复项。",
+      "feeHint": "作为该笔交易的手续费导入；正负号无关紧要。",
+      "feeCurrencyHint": "未指定时，手续费使用交易货币。",
       "dateFormat": "日期格式",
       "dateFormatChoose": "选择格式",
       "dateFormatAmbiguous": "此文件中无法区分日、月、年的顺序，因此只是推测。请检查下方预览中的日期，或自行选择格式。",
@@ -749,6 +753,7 @@
       "sellExceedsHoldingsHeld": "卖出数量超过了当天的持有数量（持有 {{detail}}）",
       "currencyMismatch": "货币与该持仓的不同",
       "currencyMismatchPosition": "货币与该持仓的不同（{{detail}}）",
+      "feeRateMissing": "当天没有该手续费货币的汇率",
       "duplicate": "Moony 中已有同样的交易",
       "duplicateById": "Moony 中已有券商 ID 相同的交易",
       "duplicateSimilar": "Moony 中已有类似的交易：同一天、数量相同，价格相差在 0.5 % 以内",

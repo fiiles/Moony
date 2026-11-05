@@ -95,6 +95,8 @@ pub(super) fn base_config(source: &str) -> StockImportConfig {
         type_values: Vec::new(),
         decimal_separator: ".".to_string(),
         external_id_column: None,
+        fee_column: None,
+        fee_currency_column: None,
         transforms: StockImportTransforms::default(),
         instrument_overrides: Vec::new(),
         import_anyway_lines: Vec::new(),

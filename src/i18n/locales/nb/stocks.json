@@ -410,7 +410,9 @@
       "price": "Kurs per aksje",
       "quantityPrice": "Antall og kurs",
       "currency": "Valuta",
-      "externalId": "Handels-ID"
+      "externalId": "Handels-ID",
+      "fee": "Gebyr",
+      "feeCurrency": "Gebyrvaluta"
     },
     "file": {
       "sourceHeading": "Hvor eksporten kommer fra",
@@ -571,6 +573,8 @@
         "skip": "Hopp over"
       },
       "externalIdHint": "Hjelper med å gjenkjenne duplikater i senere importer.",
+      "feeHint": "Importeres som gebyr på handelen; fortegnet spiller ingen rolle.",
+      "feeCurrencyHint": "Uten den er gebyret i handelens valuta.",
       "dateFormat": "Datoformat",
       "dateFormatChoose": "Velg et format",
       "dateFormatAmbiguous": "Rekkefølgen på dag, måned og år kan ikke skilles fra hverandre i denne filen, så det er et gjett. Sjekk datoene i forhåndsvisningen nedenfor eller velg formatet selv.",
@@ -772,6 +776,7 @@
       "sellExceedsHoldingsHeld": "Salget overstiger beholdningen den dagen ({{detail}} holdt)",
       "currencyMismatch": "Valutaen avviker fra beholdningens",
       "currencyMismatchPosition": "Valutaen avviker fra beholdningens ({{detail}})",
+      "feeRateMissing": "Ingen valutakurs for gebyrets valuta den dagen",
       "duplicate": "Den samme handelen finnes allerede i Moony",
       "duplicateById": "En handel med samme megler-ID finnes allerede i Moony",
       "duplicateSimilar": "En lignende handel finnes allerede i Moony: samme dag og antall, kurs innenfor 0,5 %",

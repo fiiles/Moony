@@ -420,7 +420,9 @@
       "price": "Precio por acción",
       "quantityPrice": "Cantidad y precio",
       "currency": "Moneda",
-      "externalId": "ID de la operación"
+      "externalId": "ID de la operación",
+      "fee": "Comisión",
+      "feeCurrency": "Moneda de la comisión"
     },
     "file": {
       "sourceHeading": "De dónde viene la exportación",
@@ -584,6 +586,8 @@
         "skip": "Omitir"
       },
       "externalIdHint": "Ayuda a reconocer duplicados en importaciones posteriores.",
+      "feeHint": "Se importa como comisión de la operación; el signo no importa.",
+      "feeCurrencyHint": "Sin ella, la comisión está en la moneda de la operación.",
       "dateFormat": "Formato de fecha",
       "dateFormatChoose": "Elige un formato",
       "dateFormatAmbiguous": "En este archivo no se puede distinguir el orden de día, mes y año, así que es una suposición. Revisa las fechas en la vista previa de abajo o elige tú el formato.",
@@ -795,6 +799,7 @@
       "sellExceedsHoldingsHeld": "La venta supera la posición de ese día ({{detail}} en cartera)",
       "currencyMismatch": "La moneda difiere de la de la posición",
       "currencyMismatchPosition": "La moneda difiere de la de la posición ({{detail}})",
+      "feeRateMissing": "No hay tipo de cambio para la moneda de la comisión ese día",
       "duplicate": "La misma operación ya está en Moony",
       "duplicateById": "Ya hay en Moony una operación con el mismo ID del bróker",
       "duplicateSimilar": "Ya hay en Moony una operación similar: mismo día y cantidad, precio dentro del 0,5 %",

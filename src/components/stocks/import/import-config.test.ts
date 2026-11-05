@@ -315,6 +315,28 @@ describe('mappingFromInspection', () => {
     expect(m.typeValues).toEqual(config().typeValues);
   });
 
+  it('takes the fee columns of a config and of the suggestions', () => {
+    const fromConfig = mappingFromInspection(
+      inspection({ config: config({ feeColumn: 17, feeCurrencyColumn: 18 }) })
+    );
+    expect(fromConfig).toMatchObject({ feeColumn: 17, feeCurrencyColumn: 18 });
+    // A saved format from before fees were imported has neither.
+    expect(mappingFromInspection(inspection({ config: config() }))).toMatchObject({
+      feeColumn: null,
+      feeCurrencyColumn: null,
+    });
+    const suggested = mappingFromInspection(
+      inspection({
+        config: null,
+        suggestions: [
+          { role: 'fee', column: 6, confidence: 0.95 },
+          { role: 'feeCurrency', column: 7, confidence: 0.85 },
+        ],
+      })
+    );
+    expect(suggested).toMatchObject({ feeColumn: 6, feeCurrencyColumn: 7 });
+  });
+
   it('copies the type values instead of sharing them with the inspection', () => {
     const insp = inspection({ config: config() });
     const m = mappingFromInspection(insp);
@@ -537,10 +559,25 @@ describe('buildStockImportConfig', () => {
       typeValues: config().typeValues,
       decimalSeparator: ',',
       externalIdColumn: 8,
+      feeColumn: null,
+      feeCurrencyColumn: null,
       transforms: {},
       instrumentOverrides: [],
       importAnywayLines: [],
     });
+  });
+
+  it('carries the fee column and its currency into the config, the currency only with a fee', () => {
+    const withFee = buildStockImportConfig(
+      mapping({ feeColumn: 17, feeCurrencyColumn: 18 }),
+      settings
+    );
+    expect(withFee).toMatchObject({ feeColumn: 17, feeCurrencyColumn: 18 });
+    const orphan = buildStockImportConfig(
+      mapping({ feeColumn: null, feeCurrencyColumn: 18 }),
+      settings
+    );
+    expect(orphan).toMatchObject({ feeColumn: null, feeCurrencyColumn: null });
   });
 
   it('returns null while the mapping is incomplete', () => {

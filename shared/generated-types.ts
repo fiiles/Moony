@@ -2297,7 +2297,7 @@ dateFormat: string | null;
  */
 dateFormatAmbiguous: boolean; decimalSeparator: string; 
 /**
- * The file has a fee/commission column (fees are not imported).
+ * The file has a fee/commission column that the mapping does not import.
  */
 hasFeeColumn: boolean }
 
@@ -2412,7 +2412,16 @@ decimalSeparator: string;
 /**
  * The broker's own transaction id (duplicate rule 1).
  */
-externalIdColumn?: number | null; transforms?: StockImportTransforms; instrumentOverrides?: StockInstrumentOverride[]; 
+externalIdColumn?: number | null; 
+/**
+ * The trading fee of the trade (any sign; stored as a positive amount). Absent in saved
+ * formats from before fees were imported.
+ */
+feeColumn?: number | null; 
+/**
+ * The currency of the fee; without it the fee is in the trade's currency.
+ */
+feeCurrencyColumn?: number | null; transforms?: StockImportTransforms; instrumentOverrides?: StockInstrumentOverride[]; 
 /**
  * 1-based file lines of duplicate rows to import anyway.
  */

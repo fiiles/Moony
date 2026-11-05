@@ -98,6 +98,15 @@ pub fn config(headers: &[String], rows: &[Vec<String>]) -> Option<AdapterConfig>
     // ...and is shared by the fills of the order.
     config.transforms.broker_id_per_order = true;
     config.decimal_separator = decimal_of(rows, &[QUANTITY_COLUMN, PRICE_COLUMN]);
+    // The fees sit before the total, each amount followed by its currency
+    // (`fees, <ccy>, Total, <ccy>, Order ID`), however many columns come before.
+    if let Some(order_id) = config.external_id_column.filter(|&c| c >= 4) {
+        let fee = order_id - 4;
+        if headers[fee + 1].trim().is_empty() {
+            config.fee_column = Some(fee);
+            config.fee_currency_column = Some(fee + 1);
+        }
+    }
     Some(AdapterConfig {
         config,
         date_ambiguous: false,
@@ -118,6 +127,20 @@ mod tests {
             .expect("degiro")
             .config;
         assert!(config.transforms.broker_id_per_order);
+    }
+
+    #[test]
+    fn degiro_maps_its_fee_and_fee_currency_columns() {
+        let c = config(&headers(&DEGIRO_HEADERS), &sample_rows())
+            .expect("degiro")
+            .config;
+        assert_eq!((c.fee_column, c.fee_currency_column), (Some(14), Some(15)));
+        // The AutoFX column in front moves everything by one; the fee is the one before the total.
+        let c = config(&headers(&DEGIRO_AUTOFX_HEADERS), &[])
+            .expect("degiro")
+            .config;
+        assert_eq!((c.fee_column, c.fee_currency_column), (Some(15), Some(16)));
+        assert_eq!(c.external_id_column, Some(19));
     }
 
     /// A purchase and a sale (negative quantity), decimal commas as in the

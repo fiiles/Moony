@@ -430,7 +430,9 @@
       "price": "Cena za akcję",
       "quantityPrice": "Ilość i cena",
       "currency": "Waluta",
-      "externalId": "ID transakcji"
+      "externalId": "ID transakcji",
+      "fee": "Opłata",
+      "feeCurrency": "Waluta opłaty"
     },
     "file": {
       "sourceHeading": "Skąd pochodzi eksport",
@@ -597,6 +599,8 @@
         "skip": "Pomiń"
       },
       "externalIdHint": "Pomaga rozpoznawać duplikaty w późniejszych importach.",
+      "feeHint": "Importowana jako opłata transakcji; znak nie ma znaczenia.",
+      "feeCurrencyHint": "Bez niej opłata jest w walucie transakcji.",
       "dateFormat": "Format daty",
       "dateFormatChoose": "Wybierz format",
       "dateFormatAmbiguous": "W tym pliku nie da się rozróżnić kolejności dnia, miesiąca i roku, więc to tylko domysł. Sprawdź daty w podglądzie poniżej lub wybierz format samodzielnie.",
@@ -818,6 +822,7 @@
       "sellExceedsHoldingsHeld": "Sprzedaż przekracza stan posiadania w tym dniu (posiadane: {{detail}})",
       "currencyMismatch": "Waluta różni się od waluty pozycji",
       "currencyMismatchPosition": "Waluta różni się od waluty pozycji ({{detail}})",
+      "feeRateMissing": "Brak kursu waluty opłaty z tego dnia",
       "duplicate": "Ta sama transakcja jest już w Moony",
       "duplicateById": "Transakcja z tym samym ID brokera jest już w Moony",
       "duplicateSimilar": "Podobna transakcja jest już w Moony: ten sam dzień i ilość, cena w granicach 0,5 %",

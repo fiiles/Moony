@@ -400,7 +400,9 @@
       "price": "1株あたりの価格",
       "quantityPrice": "数量と価格",
       "currency": "通貨",
-      "externalId": "取引 ID"
+      "externalId": "取引 ID",
+      "fee": "手数料",
+      "feeCurrency": "手数料の通貨"
     },
     "file": {
       "sourceHeading": "エクスポート元",
@@ -558,6 +560,8 @@
         "skip": "スキップ"
       },
       "externalIdHint": "以降のインポートで重複を認識するのに役立ちます。",
+      "feeHint": "取引の手数料としてインポートされます。符号は問いません。",
+      "feeCurrencyHint": "指定しない場合、手数料は取引の通貨です。",
       "dateFormat": "日付の形式",
       "dateFormatChoose": "形式を選択",
       "dateFormatAmbiguous": "このファイルでは年月日の順序を判別できないため、推測です。下のプレビューで日付を確認するか、形式を自分で選択してください。",
@@ -749,6 +753,7 @@
       "sellExceedsHoldingsHeld": "売却数量がその日の保有数量を超えています（保有 {{detail}}）",
       "currencyMismatch": "ポジションの通貨と異なります",
       "currencyMismatchPosition": "ポジションの通貨と異なります（{{detail}}）",
+      "feeRateMissing": "その日の手数料の通貨の為替レートがありません",
       "duplicate": "同じ取引がすでに Moony にあります",
       "duplicateById": "同じ証券会社の取引 ID の取引が、すでに Moony にあります",
       "duplicateSimilar": "似た取引がすでに Moony にあります：同じ日、同じ数量で、価格の差は0.5 %以内です",

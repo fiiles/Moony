@@ -221,6 +221,13 @@ pub struct StockImportConfig {
     /// The broker's own transaction id (duplicate rule 1).
     #[serde(rename = "externalIdColumn", default)]
     pub external_id_column: Option<usize>,
+    /// The trading fee of the trade (any sign; stored as a positive amount). Absent in saved
+    /// formats from before fees were imported.
+    #[serde(rename = "feeColumn", default)]
+    pub fee_column: Option<usize>,
+    /// The currency of the fee; without it the fee is in the trade's currency.
+    #[serde(rename = "feeCurrencyColumn", default)]
+    pub fee_currency_column: Option<usize>,
     #[serde(default)]
     pub transforms: StockImportTransforms,
     #[serde(rename = "instrumentOverrides", default)]
@@ -384,7 +391,7 @@ pub struct StockCsvInspection {
     pub date_format_ambiguous: bool,
     #[serde(rename = "decimalSeparator")]
     pub decimal_separator: String,
-    /// The file has a fee/commission column (fees are not imported).
+    /// The file has a fee/commission column that the mapping does not import.
     #[serde(rename = "hasFeeColumn")]
     pub has_fee_column: bool,
 }
@@ -690,6 +697,11 @@ pub struct ParsedTrade {
     /// Uppercase ISO code; `None` with `CurrencyMode::Instrument`.
     pub currency: Option<String>,
     pub external_id: Option<String>,
+    /// The trading fee: always > 0, in `fee_currency` or, without one, in the trade's currency
+    /// (pence already converted to pounds). `None` for no fee (empty or zero cell).
+    pub fee: Option<f64>,
+    /// Uppercase ISO code of a fee in a currency of its own.
+    pub fee_currency: Option<String>,
 }
 
 /// A whole file read with one config (internal).
@@ -703,6 +715,7 @@ pub struct ParsedFile {
     /// Data rows considered (every row ends in exactly one of trades,
     /// skipped or errors).
     pub total_rows: usize,
+    /// The file has a fee column the config does not import.
     pub has_fee_column: bool,
 }
 
@@ -735,6 +748,8 @@ mod tests {
             }],
             decimal_separator: ",".into(),
             external_id_column: None,
+            fee_column: None,
+            fee_currency_column: None,
             transforms: StockImportTransforms::default(),
             instrument_overrides: vec![],
             import_anyway_lines: vec![],
@@ -746,6 +761,29 @@ mod tests {
             Err(AppError::Validation(k)) => k,
             other => format!("{other:?}"),
         }
+    }
+
+    #[test]
+    fn a_saved_format_without_fee_fields_still_loads() {
+        let mut json = serde_json::to_value(config()).unwrap();
+        let fields = json.as_object_mut().unwrap();
+        fields.remove("feeColumn");
+        fields.remove("feeCurrencyColumn");
+        let loaded: StockImportConfig = serde_json::from_value(json).unwrap();
+        assert_eq!(
+            (loaded.fee_column, loaded.fee_currency_column),
+            (None, None)
+        );
+
+        let mut with = config();
+        with.fee_column = Some(7);
+        with.fee_currency_column = Some(8);
+        let json = serde_json::to_string(&with).unwrap();
+        assert!(json.contains("\"feeColumn\":7") && json.contains("\"feeCurrencyColumn\":8"));
+        assert_eq!(
+            serde_json::from_str::<StockImportConfig>(&json).unwrap(),
+            with
+        );
     }
 
     #[test]

@@ -410,7 +410,9 @@
       "price": "Kurs pro Aktie",
       "quantityPrice": "Menge und Kurs",
       "currency": "Währung",
-      "externalId": "Trade-ID"
+      "externalId": "Trade-ID",
+      "fee": "Gebühr",
+      "feeCurrency": "Gebührenwährung"
     },
     "file": {
       "sourceHeading": "Woher der Export stammt",
@@ -571,6 +573,8 @@
         "skip": "Überspringen"
       },
       "externalIdHint": "Hilft, Duplikate bei späteren Importen zu erkennen.",
+      "feeHint": "Wird als Gebühr der Transaktion importiert; das Vorzeichen spielt keine Rolle.",
+      "feeCurrencyHint": "Ohne sie ist die Gebühr in der Handelswährung.",
       "dateFormat": "Datumsformat",
       "dateFormatChoose": "Format wählen",
       "dateFormatAmbiguous": "Die Reihenfolge von Tag, Monat und Jahr lässt sich in dieser Datei nicht eindeutig bestimmen, es ist also eine Vermutung. Prüfen Sie die Daten in der Vorschau unten oder wählen Sie das Format selbst.",
@@ -772,6 +776,7 @@
       "sellExceedsHoldingsHeld": "Der Verkauf übersteigt den Bestand an diesem Tag ({{detail}} gehalten)",
       "currencyMismatch": "Die Währung weicht von der der Position ab",
       "currencyMismatchPosition": "Die Währung weicht von der der Position ab ({{detail}})",
+      "feeRateMissing": "Für die Währung der Gebühr gibt es an diesem Tag keinen Wechselkurs",
       "duplicate": "Derselbe Trade ist bereits in Moony",
       "duplicateById": "Ein Trade mit derselben Broker-ID ist bereits in Moony",
       "duplicateSimilar": "Ein ähnlicher Trade ist bereits in Moony: gleicher Tag und gleiche Menge, Kurs innerhalb von 0,5 %",

@@ -79,6 +79,7 @@ use super::types::{
 };
 use crate::error::Result;
 use crate::services::csv_import::amounts::amount_to_text;
+use crate::services::fx::History;
 use crate::services::price_api;
 use crate::services::quote_unit::{is_pence, pence_to_pounds};
 use crate::services::stock_splits::{ratio_parts, StockSplitStatus};
@@ -102,6 +103,9 @@ pub const KEY_CURRENCY_MISMATCH: &str = "importWizard.row.currencyMismatch";
 pub const KEY_SYMBOL_MISSING: &str = "importWizard.row.symbolMissing";
 /// The trade has no currency and none can be derived (no detail).
 pub const KEY_CURRENCY_MISSING: &str = "importWizard.row.currencyMissing";
+/// The fee is in another currency than the trade and no exchange rate is known for its day
+/// (detail: the fee's currency).
+pub const KEY_FEE_RATE_MISSING: &str = "importWizard.row.feeRateMissing";
 /// The user excluded the instrument (no detail).
 pub const KEY_INSTRUMENT_SKIPPED: &str = "importWizard.row.instrumentSkipped";
 /// The symbol cannot be a ticker, e.g. `BRK B` (detail: the symbol).
@@ -172,6 +176,8 @@ pub struct SimulatedTrade {
     pub broker_id: Option<String>,
     /// `<source>:<broker id>`, as stored.
     pub external_id: Option<String>,
+    /// The trading fee as it would be stored: positive, in `currency`.
+    pub fee: Option<f64>,
     pub outcome: TradeOutcome,
     /// Quantity and price were converted to post-split units (a `convert` split after its day).
     pub converted: bool,
@@ -220,6 +226,11 @@ impl SimulatedTrade {
     /// The price as it would be stored.
     pub fn price_text(&self) -> String {
         amount_to_text(self.price)
+    }
+
+    /// The fee as it would be stored; `None` without one.
+    pub fn fee_text(&self) -> Option<String> {
+        self.fee.map(amount_to_text)
     }
 }
 
@@ -648,6 +659,10 @@ struct TradePlan {
     currency: Option<String>,
     /// The price as it is stored, in `currency` (pence converted).
     price: f64,
+    /// The fee in `currency`, converted at the trade's day.
+    fee: Option<f64>,
+    /// The fee's currency when it could not be converted.
+    fee_rate_missing: Option<String>,
     broker_id: Option<String>,
     external_id: Option<String>,
     company_name: Option<String>,
@@ -763,6 +778,10 @@ impl Run<'_> {
             }
         }
 
+        if let Some(code) = &plan.fee_rate_missing {
+            return TradeOutcome::Error(message(line, KEY_FEE_RATE_MISSING, Some(code.clone())));
+        }
+
         if trade.direction == TradeDirection::Sell {
             let held = state.held_at(trade.day);
             if trade.quantity > held + 1e-9 * held.max(trade.quantity).max(1.0) {
@@ -851,15 +870,16 @@ fn plan_instruments(
     (plans, instrument_of_trade)
 }
 
-/// A trade's currency and its price in that currency, as they are stored.
+/// A trade's currency and its price in that currency, as they are stored, and whether the
+/// listing's pence were converted (a fee without a currency of its own is in pence too).
 fn priced(
     trade: &ParsedTrade,
     plan: &InstrumentPlan,
     config: &StockImportConfig,
-) -> (Option<String>, f64) {
+) -> (Option<String>, f64, bool) {
     // What the file states is a fact: an override must not relabel prices it does not convert.
     if let Some(own) = trade.currency.as_deref().and_then(normalized_currency) {
-        return (Some(own), trade.price);
+        return (Some(own), trade.price, false);
     }
     let listing = plan.override_currency.clone().or_else(|| {
         (config.currency_mode == CurrencyMode::Instrument)
@@ -872,9 +892,42 @@ fn priced(
     });
     match listing {
         // The prices follow the exchange's quote unit: pence, stored as pounds.
-        Some(code) if is_pence(&code) => (Some("GBP".to_string()), pence_to_pounds(trade.price)),
-        Some(code) => (normalized_currency(&code), trade.price),
-        None => (None, trade.price),
+        Some(code) if is_pence(&code) => {
+            (Some("GBP".to_string()), pence_to_pounds(trade.price), true)
+        }
+        Some(code) => (normalized_currency(&code), trade.price, false),
+        None => (None, trade.price, false),
+    }
+}
+
+/// The fee in the trade's currency: as the file has it, or converted at the trade's day. `Err`
+/// carries the fee's currency when no rate is known (never 1:1).
+fn fee_in(
+    trade: &ParsedTrade,
+    currency: Option<&str>,
+    listing_pence: bool,
+    history: &History,
+) -> std::result::Result<Option<f64>, String> {
+    let Some(amount) = trade.fee else {
+        return Ok(None);
+    };
+    let Some(own) = trade.fee_currency.as_deref() else {
+        return Ok(Some(if listing_pence {
+            pence_to_pounds(amount)
+        } else {
+            amount
+        }));
+    };
+    let Some(currency) = currency else {
+        return Ok(Some(amount));
+    };
+    if own.eq_ignore_ascii_case(currency) {
+        return Ok(Some(amount));
+    }
+    match history.convert_on(amount, own, currency, trade.day) {
+        // A fee is money: cents are enough, and a float tail would end up in the stored text.
+        Some(converted) => Ok(Some((converted * 1e6).round() / 1e6)),
+        None => Err(own.to_string()),
     }
 }
 
@@ -918,6 +971,16 @@ pub fn simulate(
         .unzip();
     let trades = &converted_trades;
 
+    // The rates of the days of the fees that are in another currency than their trade's.
+    let fee_days = trades
+        .iter()
+        .filter(|t| t.fee.is_some() && t.fee_currency.is_some())
+        .map(|t| t.day);
+    let history = match (fee_days.clone().min(), fee_days.max()) {
+        (Some(first), Some(last)) => History::load(conn, first, last)?,
+        _ => History::default(),
+    };
+
     // Per-trade facts: ticker, currency, stored broker id, name.
     let trade_plans: Vec<TradePlan> = trades
         .iter()
@@ -925,13 +988,20 @@ pub fn simulate(
         .zip(converted)
         .map(|((trade, &instrument), converted)| {
             let plan = &plans[instrument];
-            let (currency, price) = priced(trade, plan, config);
+            let (currency, price, listing_pence) = priced(trade, plan, config);
+            let (fee, fee_rate_missing) =
+                match fee_in(trade, currency.as_deref(), listing_pence, &history) {
+                    Ok(fee) => (fee, None),
+                    Err(code) => (None, Some(code)),
+                };
             let broker_id = non_empty(trade.external_id.as_deref());
             TradePlan {
                 instrument,
                 ticker: plan.ticker.clone(),
                 currency,
                 price,
+                fee,
+                fee_rate_missing,
                 external_id: broker_id
                     .as_ref()
                     .map(|id| format!("{}:{}", config.source, id)),
@@ -1009,6 +1079,7 @@ pub fn simulate(
             currency: plan.currency,
             broker_id: plan.broker_id,
             external_id: plan.external_id,
+            fee: plan.fee,
             outcome,
             converted: plan.converted,
         })
@@ -1172,6 +1243,12 @@ pub(crate) mod test_db {
                 target_price TEXT,
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
+            CREATE TABLE exchange_rate_history (
+                date INTEGER NOT NULL,
+                currency TEXT NOT NULL,
+                rate REAL NOT NULL,
+                PRIMARY KEY (date, currency)
+            );
             CREATE TABLE dividend_overrides (
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL UNIQUE,
@@ -1261,6 +1338,8 @@ pub(crate) mod test_db {
             price,
             currency: Some(currency.to_string()),
             external_id: None,
+            fee: None,
+            fee_currency: None,
         }
     }
 
@@ -1325,6 +1404,8 @@ pub(crate) mod test_db {
             type_values: vec![],
             decimal_separator: ".".into(),
             external_id_column: None,
+            fee_column: None,
+            fee_currency_column: None,
             transforms: StockImportTransforms::default(),
             instrument_overrides: vec![],
             import_anyway_lines: vec![],
@@ -2751,6 +2832,98 @@ mod tests {
             "a day any instrument converts or applies is converted or applied"
         );
         assert!(ticker_split_choices(std::iter::empty()).is_empty());
+    }
+
+    fn with_fee(mut trade: ParsedTrade, fee: f64, currency: Option<&str>) -> ParsedTrade {
+        trade.fee = Some(fee);
+        trade.fee_currency = currency.map(str::to_string);
+        trade
+    }
+
+    fn rate(conn: &Connection, day: i64, currency: &str, per_eur: f64) {
+        conn.execute(
+            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, ?2, ?3)",
+            rusqlite::params![day, currency, per_eur],
+        )
+        .expect("rate");
+    }
+
+    #[test]
+    fn a_fee_in_the_trade_currency_is_kept_as_it_is() {
+        let conn = db();
+        let sim = run(
+            &conn,
+            vec![
+                with_fee(buy(2, day(0), "AAPL", 1.0, 100.0), 1.25, None),
+                with_fee(buy(3, day(1), "AAPL", 1.0, 100.0), 2.0, Some("USD")),
+                buy(4, day(2), "AAPL", 1.0, 100.0),
+            ],
+            &config("custom"),
+        );
+        assert_eq!(
+            sim.trades.iter().map(|t| t.fee_text()).collect::<Vec<_>>(),
+            vec![Some("1.25".to_string()), Some("2".to_string()), None]
+        );
+    }
+
+    #[test]
+    fn a_fee_in_another_currency_is_converted_at_the_trade_date() {
+        let conn = db();
+        // 1 EUR = 1.25 USD on day 0, 1.5 USD a day later.
+        rate(&conn, day(0), "USD", 1.25);
+        rate(&conn, day(1), "USD", 1.5);
+        let sim = run(
+            &conn,
+            vec![
+                with_fee(buy(2, day(0), "AAPL", 1.0, 100.0), 2.0, Some("EUR")),
+                with_fee(buy(3, day(1), "AAPL", 1.0, 100.0), 2.0, Some("EUR")),
+            ],
+            &config("custom"),
+        );
+        assert_eq!(outcomes(&sim), vec![TradeOutcome::New, TradeOutcome::New]);
+        assert_eq!(sim.trades[0].fee_text().as_deref(), Some("2.5"));
+        assert_eq!(sim.trades[1].fee_text().as_deref(), Some("3"));
+    }
+
+    #[test]
+    fn a_fee_without_a_rate_is_a_row_error_never_one_to_one() {
+        let conn = db();
+        let sim = run(
+            &conn,
+            vec![
+                with_fee(buy(2, day(0), "AAPL", 1.0, 100.0), 2.0, Some("EUR")),
+                buy(3, day(1), "AAPL", 1.0, 100.0),
+            ],
+            &config("custom"),
+        );
+        assert_eq!(
+            error_key(&sim.trades[0].outcome),
+            (KEY_FEE_RATE_MISSING, Some("EUR"))
+        );
+        assert_eq!(sim.trades[0].fee, None);
+        assert_eq!(sim.trades[1].outcome, TradeOutcome::New);
+    }
+
+    #[test]
+    fn a_fee_in_pence_of_the_listing_becomes_pounds() {
+        let conn = db();
+        let mut cfg = config("custom");
+        cfg.currency_mode = CurrencyMode::Instrument;
+        cfg.instrument_overrides = vec![StockInstrumentOverride {
+            currency: Some("GBX".into()),
+            ..over("symbol:AAPL")
+        }];
+        let sim = run(
+            &conn,
+            vec![with_fee(
+                unpriced(buy(2, day(0), "AAPL", 1.0, 1000.0)),
+                150.0,
+                None,
+            )],
+            &cfg,
+        );
+        assert_eq!(sim.trades[0].currency.as_deref(), Some("GBP"));
+        assert_eq!(sim.trades[0].fee_text().as_deref(), Some("1.5"));
     }
 
     #[test]

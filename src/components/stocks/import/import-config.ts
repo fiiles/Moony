@@ -213,6 +213,9 @@ export interface MappingState {
   /** `'auto'` follows what the inspection detected. */
   decimalSeparator: DecimalSetting;
   externalIdColumn: number | null;
+  /** The trading fee; its currency column applies only with it (none: the trade's currency). */
+  feeColumn: number | null;
+  feeCurrencyColumn: number | null;
   /** Kept as the adapter set them (XTB comment, IBKR asset class). */
   transforms: StockImportTransforms;
 }
@@ -234,6 +237,8 @@ export const EMPTY_MAPPING: MappingState = {
   typeValues: [],
   decimalSeparator: AUTO_VALUE,
   externalIdColumn: null,
+  feeColumn: null,
+  feeCurrencyColumn: null,
   transforms: {},
 };
 
@@ -248,6 +253,8 @@ export const ROLE_FIELDS = {
   price: 'priceColumn',
   currency: 'currencyColumn',
   externalId: 'externalIdColumn',
+  fee: 'feeColumn',
+  feeCurrency: 'feeCurrencyColumn',
 } as const satisfies Record<string, keyof MappingState>;
 
 export type MappingRole = keyof typeof ROLE_FIELDS;
@@ -305,6 +312,8 @@ export function mappingFromInspection(inspection: StockCsvInspection): MappingSt
       typeValues: (config.typeValues ?? []).map((v) => ({ ...v })),
       decimalSeparator: decimalSettingFor(config, inspection.decimalSeparator),
       externalIdColumn: config.externalIdColumn ?? null,
+      feeColumn: config.feeColumn ?? null,
+      feeCurrencyColumn: config.feeColumn != null ? (config.feeCurrencyColumn ?? null) : null,
       transforms: { ...(config.transforms ?? {}) },
     };
   }
@@ -327,6 +336,8 @@ export function mappingFromInspection(inspection: StockCsvInspection): MappingSt
     typeColumn,
     typeValues: typeValuesForColumn(inspection, typeColumn),
     externalIdColumn: column('externalId'),
+    feeColumn: column('fee'),
+    feeCurrencyColumn: column('fee') != null ? column('feeCurrency') : null,
   };
 }
 
@@ -491,6 +502,8 @@ export function buildStockImportConfig(
           : '.'
         : mapping.decimalSeparator,
     externalIdColumn: mapping.externalIdColumn,
+    feeColumn: mapping.feeColumn,
+    feeCurrencyColumn: mapping.feeColumn != null ? mapping.feeCurrencyColumn : null,
     transforms: mapping.transforms,
     instrumentOverrides: (choices.instrumentOverrides ?? []).filter(hasOverrideContent),
     importAnywayLines: [...(choices.importAnywayLines ?? [])].sort((a, b) => a - b),
@@ -616,7 +629,9 @@ export type SummaryRole =
   | 'price'
   | 'quantityPrice'
   | 'currency'
-  | 'externalId';
+  | 'externalId'
+  | 'fee'
+  | 'feeCurrency';
 
 export interface MappingSummaryItem {
   role: SummaryRole;
@@ -657,6 +672,8 @@ export function summarizeMapping(
     items.push({ role: 'currency', kind: 'fixed', value: mapping.fixedCurrency.toUpperCase() });
   } else items.push({ role: 'currency', kind: 'instrument', value: '' });
   column('externalId', mapping.externalIdColumn);
+  column('fee', mapping.feeColumn);
+  if (mapping.feeColumn != null) column('feeCurrency', mapping.feeCurrencyColumn);
   return items;
 }
 
@@ -694,6 +711,8 @@ export function mappedColumns(mapping: MappingState): Map<number, MappingRole[]>
   add(mapping.priceColumn, 'price');
   if (mapping.currencyMode === 'column') add(mapping.currencyColumn, 'currency');
   add(mapping.externalIdColumn, 'externalId');
+  add(mapping.feeColumn, 'fee');
+  if (mapping.feeColumn != null) add(mapping.feeCurrencyColumn, 'feeCurrency');
   return result;
 }
 

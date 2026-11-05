@@ -64,7 +64,7 @@ pub fn import(
                     price_per_unit: trade.price_text(),
                     currency: trade.currency.clone()?,
                     transaction_date: trade.day,
-                    fee: None,
+                    fee: trade.fee_text(),
                     external_id: trade.external_id.clone(),
                     allow_duplicate: true,
                 },
@@ -557,6 +557,44 @@ mod tests {
             "the writer's own exact-text check stays out of it"
         );
         assert_eq!(position(&conn, "AAPL").unwrap().1, "10");
+    }
+
+    fn stored_fees(conn: &Connection) -> Vec<Option<String>> {
+        let mut stmt = conn
+            .prepare("SELECT fee FROM investment_transactions ORDER BY rowid")
+            .unwrap();
+        let rows = stmt.query_map([], |r| r.get(0)).unwrap();
+        rows.map(|r| r.unwrap()).collect()
+    }
+
+    #[test]
+    fn the_fee_of_a_row_is_stored_with_the_transaction() {
+        let mut conn = db();
+        conn.execute(
+            "INSERT INTO exchange_rate_history (date, currency, rate) VALUES (?1, 'USD', 1.25)",
+            [day(0)],
+        )
+        .unwrap();
+        let mut plain = buy(2, day(0), "AAPL", 1.0, 100.0);
+        plain.fee = Some(1.25);
+        let mut foreign = buy(3, day(0), "AAPL", 2.0, 100.0);
+        foreign.fee = Some(2.0);
+        foreign.fee_currency = Some("EUR".into());
+        let none = buy(4, day(0), "AAPL", 3.0, 100.0);
+
+        let result = import(
+            &mut conn,
+            &file(vec![plain, foreign, none]),
+            &config("custom"),
+            "f.csv",
+        )
+        .unwrap();
+
+        assert_eq!(result.imported, 3);
+        assert_eq!(
+            stored_fees(&conn),
+            vec![Some("1.25".to_string()), Some("2.5".to_string()), None]
+        );
     }
 
     fn isin_trade() -> ParsedTrade {

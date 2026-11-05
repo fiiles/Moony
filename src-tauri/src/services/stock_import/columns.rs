@@ -711,8 +711,42 @@ pub fn column_for(suggestions: &[StockColumnSuggestion], role: StockRole) -> Opt
         .map(|s| s.column)
 }
 
-/// The file has a fee or commission column (fees are not imported; the
-/// preview says so).
+/// `StockColumnSuggestion.role` of the fee's currency column (not a header-matched role: it is
+/// found from the fee column, see [`fee_currency_column`]).
+pub const FEE_CURRENCY_ROLE: &str = "feeCurrency";
+
+/// Words of "currency" in the languages of the headers (lowercase).
+const CURRENCY_WORDS: &[&str] = &[
+    "currency", "mena", "měna", "währung", "wahrung", "moneda", "divisa", "valuta", "waluta",
+    "devise", "通貨", "币种", "货币",
+];
+
+/// The column that holds the currency of the fee in `fee`: the one right after it when its
+/// header is empty (Degiro) or names the currency of that fee ("Currency (Currency conversion
+/// fee)"), or says only "Currency" when that is not the column of the trade's currency
+/// (`trade_currency`) ("Commission, CommCurrency").
+pub fn fee_currency_column(
+    headers: &[String],
+    fee: usize,
+    trade_currency: Option<usize>,
+) -> Option<usize> {
+    let next = fee + 1;
+    let raw = headers.get(next)?.trim().to_lowercase();
+    if raw.is_empty() {
+        return Some(next);
+    }
+    if !CURRENCY_WORDS.iter().any(|word| raw.contains(word)) {
+        return None;
+    }
+    let fee_header = headers.get(fee)?.trim().to_lowercase();
+    match raw.split_once('(') {
+        Some((_, inside)) => inside.contains(fee_header.as_str()).then_some(next),
+        None => (trade_currency != Some(next)).then_some(next),
+    }
+}
+
+/// The file has a fee or commission column (the preview says so when the mapping leaves it
+/// out).
 pub fn has_fee_column(headers: &[String]) -> bool {
     column_for(&suggest_stock_columns(headers), StockRole::Fee).is_some()
 }

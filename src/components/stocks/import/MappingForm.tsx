@@ -323,6 +323,30 @@ export function MappingForm({
               confidence={confidence('externalId')}
               hint={t('importWizard.mapping.externalIdHint')}
             />
+            <ColumnSelect
+              id="stock-import-fee"
+              label={t('importWizard.roles.fee')}
+              optional
+              value={mapping.feeColumn}
+              options={options}
+              onChange={(feeColumn) =>
+                onChange(feeColumn == null ? { feeColumn, feeCurrencyColumn: null } : { feeColumn })
+              }
+              confidence={confidence('fee')}
+              hint={t('importWizard.mapping.feeHint')}
+            />
+            {mapping.feeColumn != null && (
+              <ColumnSelect
+                id="stock-import-fee-currency"
+                label={t('importWizard.roles.feeCurrency')}
+                optional
+                value={mapping.feeCurrencyColumn}
+                options={options}
+                onChange={(feeCurrencyColumn) => onChange({ feeCurrencyColumn })}
+                confidence={confidence('feeCurrency')}
+                hint={t('importWizard.mapping.feeCurrencyHint')}
+              />
+            )}
           </div>
         </div>
 

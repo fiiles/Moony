@@ -18,7 +18,8 @@ use super::adapters::{
     self, base_config, decimal_of, detect_column_date, AdapterConfig, StockAdapter,
 };
 use super::columns::{
-    column_for, fold_value, suggest_stock_columns, suggest_type_action, StockRole,
+    column_for, fee_currency_column, fold_value, suggest_stock_columns, suggest_type_action,
+    StockRole, FEE_CURRENCY_ROLE,
 };
 use super::detect::{data_records, delimiter_char, detect_stock_header_row};
 use super::types::{
@@ -308,6 +309,7 @@ fn generic_config(
     walk: &Walk,
     layout: &Layout,
     date: &DateGuess,
+    headers: &[String],
 ) -> Option<StockImportConfig> {
     let column = |role| column_for(suggestions, role);
     let date_column = column(StockRole::Date)?;
@@ -340,6 +342,10 @@ fn generic_config(
     }
     config.external_id_column =
         column(StockRole::ExternalId).filter(|&c| is_broker_id(&walk.rows, c));
+    config.fee_column = column(StockRole::Fee);
+    config.fee_currency_column = config
+        .fee_column
+        .and_then(|fee| fee_currency_column(headers, fee, Some(currency_column)));
     config.decimal_separator = decimal_of(&walk.rows, &[quantity_column, price_column]);
     config.type_values = complete_type_values(&config, walk);
     Some(config)
@@ -364,6 +370,7 @@ fn config_roles(config: &StockImportConfig) -> Vec<(StockRole, usize)> {
             .external_id_column
             .map(|c| (StockRole::ExternalId, c)),
     );
+    roles.extend(config.fee_column.map(|c| (StockRole::Fee, c)));
     roles
 }
 
@@ -510,10 +517,31 @@ pub fn inspect(
             (Some(config), adapter.date_ambiguous, suggestions)
         }
         Basis::Generic => {
-            let config = generic_config(&generic, &walk, &layout, &date_guess);
+            let config = generic_config(&generic, &walk, &layout, &date_guess, &headers);
             (config, date_guess.ambiguous, generic.clone())
         }
     };
+
+    // The currency of the fee goes with the fee column.
+    let mut suggestions = suggestions;
+    let fee_currency = match &config {
+        Some(config) if config.fee_column.is_some() => {
+            config.fee_currency_column.map(|column| (column, 1.0))
+        }
+        _ => column_for(&suggestions, StockRole::Fee)
+            .and_then(|fee| {
+                let currency = column_for(&suggestions, StockRole::Currency);
+                fee_currency_column(&headers, fee, currency)
+            })
+            .map(|column| (column, 0.85)),
+    };
+    if let Some((column, confidence)) = fee_currency {
+        suggestions.push(StockColumnSuggestion {
+            role: FEE_CURRENCY_ROLE.to_string(),
+            column,
+            confidence,
+        });
+    }
 
     let date_format = match &config {
         Some(config) => Some(config.date_format.clone()),
@@ -696,8 +724,9 @@ Dividend (Ordinary),2023-12-27 12:05:25,US56035L1044,MAIN,\"Main Street Capital\
         ] {
             assert_eq!(suggestion(&i, role), Some((column, 1.0)), "{role}");
         }
-        // The fee is no part of the preset: the generic guess fills in.
-        assert_eq!(suggestion(&i, "fee"), Some((17, 0.85)));
+        // The preset has the conversion fee and its currency.
+        assert_eq!(suggestion(&i, "fee"), Some((17, 1.0)));
+        assert_eq!(suggestion(&i, "feeCurrency"), Some((18, 1.0)));
     }
 
     #[test]
@@ -1319,6 +1348,25 @@ Dividend (Ordinary),2023-12-27 12:05:25,US56035L1044,MAIN,\"Main Street Capital\
         let t212 = run(TRADING212_FILE.lines().next().unwrap_or(""));
         assert_eq!(t212.detected_source.as_deref(), Some("trading212"));
         assert_eq!(config_of(&t212).date_format, "%Y-%m-%d");
+    }
+
+    #[test]
+    fn a_custom_file_gets_its_fee_and_the_fee_currency_suggested() {
+        let i = run("Datum;Typ;Symbol;Počet;Cena;Měna;Poplatek;Měna poplatku\n15.01.2025;nákup;AAPL;1;10,5;USD;1;EUR\n");
+        let config = i.config.clone().expect("config");
+        assert_eq!(
+            (config.fee_column, config.fee_currency_column),
+            (Some(6), Some(7))
+        );
+        assert_eq!(suggestion(&i, "feeCurrency").map(|s| s.0), Some(7));
+        // The trade's own currency column right after the fee is not the fee's.
+        let i =
+            run("Datum;Typ;Symbol;Počet;Cena;Poplatek;Měna\n15.01.2025;nákup;AAPL;1;10,5;1;USD\n");
+        let config = i.config.clone().expect("config");
+        assert_eq!(
+            (config.fee_column, config.fee_currency_column),
+            (Some(5), None)
+        );
     }
 
     #[test]

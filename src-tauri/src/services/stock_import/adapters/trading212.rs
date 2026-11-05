@@ -68,6 +68,10 @@ pub fn config(headers: &[String], rows: &[Vec<String>]) -> Option<AdapterConfig>
     config.type_column = Some(cols.action);
     config.external_id_column = find_header_exact(headers, "ID");
     config.decimal_separator = decimal_of(rows, &[cols.shares, cols.price]);
+    // The currency conversion fee, in its own currency.
+    config.fee_column = find_header_exact(headers, "Currency conversion fee");
+    config.fee_currency_column = find_header_exact(headers, "Currency (Currency conversion fee)")
+        .filter(|_| config.fee_column.is_some());
     Some(AdapterConfig {
         config,
         date_ambiguous,
@@ -219,6 +223,19 @@ mod tests {
         data[1][1] = "17.12.2023 11:45:06".into();
         let adapter = config(&h, &data).expect("config");
         assert_eq!(adapter.config.date_format, "%d.%m.%Y");
+    }
+
+    #[test]
+    fn trading212_maps_the_conversion_fee() {
+        let c = config(&headers(&TRADING212_HEADERS), &sample_rows())
+            .expect("config")
+            .config;
+        assert_eq!((c.fee_column, c.fee_currency_column), (Some(17), Some(18)));
+        // A file without the fee columns maps none.
+        let mut h = headers(&TRADING212_HEADERS);
+        h.truncate(17);
+        let c = config(&h, &[]).expect("config").config;
+        assert_eq!((c.fee_column, c.fee_currency_column), (None, None));
     }
 
     #[test]

@@ -269,6 +269,35 @@ impl<'a> RowReader<'a> {
             price = pence_to_pounds(price);
         }
 
+        // The fee: a positive amount, empty or zero for none. Its own currency when the file
+        // has one; otherwise it is in the trade's currency, and in pence when the price is.
+        let mut fee = None;
+        let mut fee_currency = None;
+        if let Some(column) = c.fee_column {
+            let raw = cell(column);
+            match clean_and_parse_amount(raw, self.decimal) {
+                Ok(value) if value != 0.0 => fee = Some(value.abs()),
+                Ok(_) | Err(AmountError::Empty) => {}
+                Err(AmountError::Invalid) => {
+                    return Err(fail(ROW_NUMBER_UNPARSEABLE, non_empty(raw)))
+                }
+            }
+            if let Some(amount) = fee {
+                let own = optional(c.fee_currency_column);
+                let (code, fee_pence) = match own {
+                    Some(raw) => {
+                        let (code, pence) = read_currency(raw)?;
+                        (Some(code), pence)
+                    }
+                    None => (None, pence),
+                };
+                if fee_pence {
+                    fee = Some(pence_to_pounds(amount));
+                }
+                fee_currency = code;
+            }
+        }
+
         Ok(ParsedTrade {
             line,
             day,
@@ -281,6 +310,8 @@ impl<'a> RowReader<'a> {
             price,
             currency,
             external_id: optional(c.external_id_column).map(str::to_string),
+            fee,
+            fee_currency,
         })
     }
 }
@@ -317,7 +348,7 @@ pub fn parse_file(bytes: &[u8], config: &StockImportConfig) -> Result<ParsedFile
 
     let reader = RowReader::new(config, decimal);
     let mut parsed = ParsedFile {
-        has_fee_column: has_fee_column(&headers),
+        has_fee_column: config.fee_column.is_none() && has_fee_column(&headers),
         ..ParsedFile::default()
     };
     for (line, result) in data_records(content, delimiter, config.header_row, config.skip_rows) {
@@ -478,6 +509,8 @@ mod tests {
                 price: 185.5,
                 currency: Some("USD".into()),
                 external_id: None,
+                fee: None,
+                fee_currency: None,
             }
         );
         assert_eq!(parsed.trades[1].line, 3);
@@ -965,6 +998,84 @@ nedatum;nákup;AAPL;1;185,50;USD\n\
         assert_eq!(
             only_trade("15.01.2024;nákup;AAPL;1;1;USD;\n", &c).external_id,
             None
+        );
+    }
+
+    /// `Datum;Typ;Symbol;Počet;Cena;Měna;Poplatek;Měna poplatku`.
+    fn fee_config() -> StockImportConfig {
+        let mut c = config();
+        c.fee_column = Some(6);
+        c
+    }
+
+    #[test]
+    fn a_fee_column_is_imported_as_a_positive_fee() {
+        let c = fee_config();
+        let t = only_trade("15.01.2024;nákup;AAPL;1;10;USD;-1,25\n", &c);
+        assert_eq!((t.fee, t.fee_currency), (Some(1.25), None));
+        let t = only_trade("15.01.2024;nákup;AAPL;1;10;USD;1,25\n", &c);
+        assert_eq!(t.fee, Some(1.25));
+        // No fee: an empty or a zero cell.
+        for cell in ["", "0", "0,00"] {
+            let t = only_trade(&format!("15.01.2024;nákup;AAPL;1;10;USD;{cell}\n"), &c);
+            assert_eq!(t.fee, None, "{cell:?}");
+        }
+        // Without a fee column nothing is read.
+        assert_eq!(
+            only_trade("15.01.2024;nákup;AAPL;1;10;USD;1,25\n", &config()).fee,
+            None
+        );
+        // A cell that is no number is an error, not a missing fee.
+        assert_eq!(
+            only_error("15.01.2024;nákup;AAPL;1;10;USD;abc\n", &c).key,
+            ROW_NUMBER_UNPARSEABLE
+        );
+    }
+
+    #[test]
+    fn a_fee_without_its_own_currency_is_in_the_trade_currency() {
+        let mut c = fee_config();
+        c.fee_currency_column = Some(7);
+        let t = only_trade("15.01.2024;nákup;AAPL;1;10;USD;1,25;\n", &c);
+        assert_eq!((t.fee, t.fee_currency), (Some(1.25), None));
+        let t = only_trade("15.01.2024;nákup;AAPL;1;10;USD;1,25;eur\n", &c);
+        assert_eq!(
+            (t.fee, t.fee_currency.as_deref()),
+            (Some(1.25), Some("EUR"))
+        );
+        assert_eq!(
+            only_error("15.01.2024;nákup;AAPL;1;10;USD;1,25;euro\n", &c).key,
+            CURRENCY_INVALID
+        );
+    }
+
+    #[test]
+    fn a_fee_in_pence_becomes_pounds() {
+        let mut c = fee_config();
+        c.fee_currency_column = Some(7);
+        // Its own currency says pence.
+        let t = only_trade("15.01.2024;nákup;VOD.L;1;68;GBP;150;GBX\n", &c);
+        assert_eq!((t.fee, t.fee_currency.as_deref()), (Some(1.5), Some("GBP")));
+        // The price is in pence and the fee has no currency of its own: pence too.
+        let t = only_trade("15.01.2024;nákup;VOD.L;1;68;GBX;150;\n", &c);
+        assert_eq!((t.price, t.fee, t.fee_currency), (0.68, Some(1.5), None));
+        // A fee of its own currency in pounds stays.
+        let t = only_trade("15.01.2024;nákup;VOD.L;1;68;GBX;1,5;GBP\n", &c);
+        assert_eq!(t.fee, Some(1.5));
+    }
+
+    #[test]
+    fn a_fee_column_that_is_mapped_is_not_reported_as_left_out() {
+        let file = "Datum;Typ;Symbol;Počet;Cena;Měna;Poplatek\n15.01.2024;nákup;AAPL;1;1;USD;1\n";
+        assert!(
+            parse_file(file.as_bytes(), &config())
+                .unwrap()
+                .has_fee_column
+        );
+        assert!(
+            !parse_file(file.as_bytes(), &fee_config())
+                .unwrap()
+                .has_fee_column
         );
     }
 

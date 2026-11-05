@@ -6,8 +6,12 @@
 //! order and any mix of the two, `Name` optional. The type words are
 //! buy/sell/nákup/prodej/koupě (case and diacritics do not matter). Spreadsheets
 //! save such a file in any locale: any delimiter, encoding and decimal mark,
-//! dates `dd.MM.yyyy`, `d.M.yyyy` or `yyyy-MM-dd`.
+//! dates `dd.MM.yyyy`, `d.M.yyyy` or `yyyy-MM-dd`. A fee column (`Poplatek`,
+//! `Fee`, …) with an optional currency column after it is imported too.
 
+use crate::services::stock_import::columns::{
+    column_for, fee_currency_column, suggest_stock_columns, StockRole,
+};
 use crate::services::stock_import::types::{CurrencyMode, SOURCE_MOONY};
 
 use super::{base_config, date_format_of, decimal_of, find_header, AdapterConfig, StockAdapter};
@@ -76,6 +80,11 @@ pub fn config(headers: &[String], rows: &[Vec<String>]) -> Option<AdapterConfig>
     config.currency_column = Some(cols.currency);
     config.type_column = Some(cols.kind);
     config.decimal_separator = decimal_of(rows, &[cols.quantity, cols.price]);
+    // The export has no fee; a hand-made table may (a column the fee words name).
+    config.fee_column = column_for(&suggest_stock_columns(headers), StockRole::Fee);
+    config.fee_currency_column = config
+        .fee_column
+        .and_then(|fee| fee_currency_column(headers, fee, Some(cols.currency)));
     Some(AdapterConfig {
         config,
         date_ambiguous,

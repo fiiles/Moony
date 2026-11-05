@@ -2491,6 +2491,10 @@ export interface StockImportConfig {
   typeValues?: StockTypeValueMapping[];
   decimalSeparator: string;
   externalIdColumn?: number | null;
+  /** The trading fee column (any sign; stored as a positive amount); absent in older formats. */
+  feeColumn?: number | null;
+  /** Currency of the fee; without it the fee is in the trade's currency. */
+  feeCurrencyColumn?: number | null;
   transforms?: StockImportTransforms;
   instrumentOverrides?: StockInstrumentOverride[];
   importAnywayLines?: number[];

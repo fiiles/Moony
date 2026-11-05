@@ -795,14 +795,7 @@ export default function StockDetail() {
                       >
                         <TableCell>{fmt.day(dividend.exDate)}</TableCell>
                         <TableCell>
-                          <div className="flex flex-wrap items-center gap-1">
-                            <Badge variant="gain">{t('detail.dividendRecords.badge')}</Badge>
-                            <Badge variant="outline">
-                              {isYahoo
-                                ? t('detail.dividendRecords.sourceYahoo')
-                                : t('detail.dividendRecords.sourceManual')}
-                            </Badge>
-                          </div>
+                          <Badge variant="gain">{t('detail.dividendRecords.badge')}</Badge>
                         </TableCell>
                         <TableCell className="text-right num">
                           {isYahoo && dividend.shares !== null
@@ -836,8 +829,14 @@ export default function StockDetail() {
                             ? fmt.money(grossInDisplay, reportCurrency, { decimals: 0 })
                             : native(gross)}
                         </TableCell>
+                        {/* A Yahoo dividend cannot be edited: its source sits where a manual
+                            one has its actions, which already say it was entered by hand. */}
                         <TableCell className="text-right">
-                          {!isYahoo && (
+                          {isYahoo ? (
+                            <Badge variant="outline" className="whitespace-nowrap">
+                              {t('detail.dividendRecords.sourceYahoo')}
+                            </Badge>
+                          ) : (
                             <div data-row-actions className="inline-flex gap-0.5">
                               {!dividend.superseded && (
                                 <Button

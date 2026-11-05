@@ -364,7 +364,6 @@
       "exDate": "権利落ち日",
       "exDateHint": "この配当なしで取引される最初の日",
       "sourceYahoo": "Yahoo Finance",
-      "sourceManual": "手動",
       "perShare": "1株あたり {{amount}}",
       "superseded": "Yahoo Finance に置き換え、集計対象外",
       "yahooTitle": "この銘柄の配当は Yahoo Finance にあります",

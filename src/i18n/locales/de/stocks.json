@@ -373,7 +373,6 @@
       "exDate": "Ex-Tag",
       "exDateHint": "Der erste Tag, an dem die Aktie ohne diese Dividende gehandelt wird",
       "sourceYahoo": "Yahoo Finance",
-      "sourceManual": "Manuell",
       "perShare": "{{amount}} je Aktie",
       "superseded": "Durch Yahoo Finance ersetzt, nicht gezählt",
       "yahooTitle": "Yahoo Finance kennt die Dividenden dieser Aktie",

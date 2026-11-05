@@ -1,7 +1,7 @@
 /**
  * Buy and sell marks for the aggregate trend of the stocks and crypto lists
  * (design system §9: an aggregate line folds a day's trades into one mark),
- * and the purchase marks a watched stock's price line can show.
+ * and the trade marks a watched stock's price line can show.
  * Pure, no DOM and no locale: the pages format the tooltips.
  */
 
@@ -84,8 +84,8 @@ export function tickerSummary(tickers: readonly string[], max = 4): string {
   return `${tickers.slice(0, max).join(', ')} +${tickers.length - max}`;
 }
 
-/** A purchase of one position, as its price-chart mark needs it. */
-export interface PurchaseLike {
+/** A buy or sell of one position, as its price-chart mark needs it. */
+export interface PositionTradeLike {
   id: string;
   type: string;
   quantity: string;
@@ -96,23 +96,29 @@ export interface PurchaseLike {
   transactionDate: number;
 }
 
-/** One ▲ per purchase, on the moment it was made (unlike the list trends, nothing folds). */
-export interface PurchaseEvent<T extends PurchaseLike = PurchaseLike> extends ChartEvent {
-  type: 'buy';
+/** One ▲ or ▽ per trade, on the moment it was made (unlike the list trends, nothing folds). */
+export interface PositionTradeEvent<
+  T extends PositionTradeLike = PositionTradeLike,
+> extends ChartEvent {
+  type: 'buy' | 'sell';
   tx: T;
 }
 
 /**
- * Purchase marks for a single stock's price line (the watchlist detail): every
- * transaction that is not a sell, oldest first, so the user sees at which
- * prices of the curve they bought. The chart itself keeps only those in view
- * and clusters them when there are too many.
+ * Trade marks for a single stock's price line (the watchlist detail): every
+ * transaction, oldest first, so the user sees at which prices of the curve
+ * they bought and sold; anything that is not a sell counts as a buy. The chart
+ * itself keeps only those in view and clusters them when there are too many.
  */
-export function purchaseEvents<T extends PurchaseLike>(
+export function positionTradeEvents<T extends PositionTradeLike>(
   transactions: readonly T[]
-): PurchaseEvent<T>[] {
+): PositionTradeEvent<T>[] {
   return transactions
-    .filter((tx) => tx.type !== 'sell')
-    .map((tx) => ({ id: tx.id, t: tx.transactionDate, type: 'buy' as const, tx }))
+    .map((tx) => ({
+      id: tx.id,
+      t: tx.transactionDate,
+      type: tx.type === 'sell' ? ('sell' as const) : ('buy' as const),
+      tx,
+    }))
     .sort((a, b) => a.t - b.t);
 }

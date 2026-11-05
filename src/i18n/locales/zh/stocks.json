@@ -364,7 +364,6 @@
       "exDate": "除息日",
       "exDateHint": "股票不再附带此股息交易的第一天",
       "sourceYahoo": "Yahoo Finance",
-      "sourceManual": "手动",
       "perShare": "每股 {{amount}}",
       "superseded": "已由 Yahoo Finance 取代，不计入",
       "yahooTitle": "Yahoo Finance 有该股票的股息",

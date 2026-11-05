@@ -383,7 +383,6 @@
       "exDate": "Ex-date",
       "exDateHint": "První den, kdy se akcie obchoduje bez této dividendy",
       "sourceYahoo": "Yahoo Finance",
-      "sourceManual": "Ruční",
       "perShare": "{{amount}} na akcii",
       "superseded": "Nahrazeno daty z Yahoo Finance, nezapočítává se",
       "yahooTitle": "Dividendy této akcie má Yahoo Finance",

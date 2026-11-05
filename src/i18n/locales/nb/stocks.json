@@ -373,7 +373,6 @@
       "exDate": "Eks-dato",
       "exDateHint": "Første dag aksjen handles uten dette utbyttet",
       "sourceYahoo": "Yahoo Finance",
-      "sourceManual": "Manuelt",
       "perShare": "{{amount}} per aksje",
       "superseded": "Erstattet av Yahoo Finance, telles ikke",
       "yahooTitle": "Yahoo Finance har utbyttene for denne aksjen",

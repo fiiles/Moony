@@ -83,9 +83,9 @@
       "price": "价格",
       "target": "目标价",
       "watchStart": "开始关注",
-      "buys": "买入"
+      "trades": "买入与卖出"
     },
-    "showBuysHint": "在走势线上显示您何时以何价格买入",
+    "showTradesHint": "在走势线上显示您何时以何价格买入和卖出",
     "watchStartTarget": "目标价 {{price}}",
     "stats": {
       "exchangeNote": "在 {{exchange}}",

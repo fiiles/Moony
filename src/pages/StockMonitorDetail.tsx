@@ -24,7 +24,7 @@ import {
   type ChartPeriod,
 } from '@/utils/stock-monitor';
 import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
-import { purchaseEvents, type PurchaseEvent } from '@/utils/trade-events';
+import { positionTradeEvents, type PositionTradeEvent } from '@/utils/trade-events';
 import { BackLink, PageHead } from '@/components/shell/PageHead';
 import { Button } from '@/components/ui/button';
 import { Segmented } from '@/components/ui/segmented';
@@ -35,7 +35,7 @@ import { Stat, StatSkeleton, Stats } from '@/components/common/Stat';
 import { EmptyState } from '@/components/common/EmptyState';
 import { ConfirmDeleteDialog } from '@/components/common/ConfirmDeleteDialog';
 import { MoonyLineChart } from '@/components/charts/MoonyLineChart';
-import { ChartLegend, EventSwatch } from '@/components/charts/ChartLegend';
+import { ChartLegend } from '@/components/charts/ChartLegend';
 import { AXIS_WIDTH } from '@/components/charts/ChartAxis';
 import { StockNotesCard } from '@/components/stock-monitor/StockNotesCard';
 import { RangeWithLabels } from '@/components/stock-monitor/RangeBar';
@@ -48,26 +48,48 @@ import { cn } from '@/lib/utils';
 
 const DAY = 86_400;
 
-/** The watch-start ring and, when switched on, the purchases of the held position. */
-type MonitorEvent = ChartEvent | PurchaseEvent<InvestmentTransaction>;
+/** The watch-start ring and, when switched on, the buys and sells of the held position. */
+type MonitorEvent = ChartEvent | PositionTradeEvent<InvestmentTransaction>;
 
-const SHOW_BUYS_KEY = 'moony.stockMonitor.showBuys';
+const SHOW_TRADES_KEY = 'moony.stockMonitor.showTrades';
 
 /** `localStorage` can throw on access (blocked storage); the switch then starts off and forgets. */
-function readShowBuys(): boolean {
+function readShowTrades(): boolean {
   try {
-    return window.localStorage.getItem(SHOW_BUYS_KEY) === '1';
+    return window.localStorage.getItem(SHOW_TRADES_KEY) === '1';
   } catch {
     return false;
   }
 }
 
-function writeShowBuys(on: boolean) {
+function writeShowTrades(on: boolean) {
   try {
-    window.localStorage.setItem(SHOW_BUYS_KEY, on ? '1' : '0');
+    window.localStorage.setItem(SHOW_TRADES_KEY, on ? '1' : '0');
   } catch {
     // Remembering the switch is a convenience only.
   }
+}
+
+/**
+ * ▲ buy and ▽ sell for the chip that switches the trade marks on; drawn in the
+ * chip's text color so they stay legible on its light and dark material.
+ */
+function TradeGlyphs() {
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-hidden>
+      <svg viewBox="0 0 10 10">
+        <polygon points="5,0 10,10 0,10" fill="currentColor" />
+      </svg>
+      <svg viewBox="0 0 10 10">
+        <polygon
+          points="0.75,0.75 9.25,0.75 5,9.25"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+      </svg>
+    </span>
+  );
 }
 
 /** Chart range that surely contains the day the stock was followed. */
@@ -109,10 +131,10 @@ export default function StockMonitorDetail() {
   const [target, setTarget] = useState<TargetPriceTarget | null>(null);
   const [confirmUnfollow, setConfirmUnfollow] = useState(false);
   const [buyOpen, setBuyOpen] = useState(false);
-  const [showBuys, setShowBuys] = useState(readShowBuys);
-  const toggleShowBuys = () =>
-    setShowBuys((on) => {
-      writeShowBuys(!on);
+  const [showTrades, setShowTrades] = useState(readShowTrades);
+  const toggleShowTrades = () =>
+    setShowTrades((on) => {
+      writeShowTrades(!on);
       return !on;
     });
 
@@ -179,10 +201,10 @@ export default function StockMonitorDetail() {
     queryFn: () => investmentsApi.getTransactions(heldId!),
     enabled: !!heldId,
   });
-  const buyEvents = useMemo(() => purchaseEvents(transactions ?? []), [transactions]);
+  const tradeEvents = useMemo(() => positionTradeEvents(transactions ?? []), [transactions]);
   const chartEvents = useMemo<MonitorEvent[]>(
-    () => (showBuys ? [...watchEvents, ...buyEvents] : watchEvents),
-    [showBuys, watchEvents, buyEvents]
+    () => (showTrades ? [...watchEvents, ...tradeEvents] : watchEvents),
+    [showTrades, watchEvents, tradeEvents]
   );
 
   const priceAt = (series: { timestamp: number; price: number }[], at: number) => {
@@ -280,7 +302,7 @@ export default function StockMonitorDetail() {
       const paid = Number(tx.pricePerUnit) || 0;
       const cur = (tx.currency || currency || currencyCode) as CurrencyCode;
       return {
-        title: ts('detail.events.buy', {
+        title: ts(tx.type === 'sell' ? 'detail.events.sell' : 'detail.events.buy', {
           quantity: `${fmt.number(qty, { maximumFractionDigits: 4 })} ${ts('table.unit')}`,
           price: fmt.money(paid, cur, { decimals: priceDecimals(paid, cur) }),
         }),
@@ -471,16 +493,16 @@ export default function StockMonitorDetail() {
                       : []),
                   ]}
                 />
-                {buyEvents.length > 0 && (
+                {tradeEvents.length > 0 && (
                   <Chip
-                    className="mt-3 [&_polygon]:fill-current"
-                    active={showBuys}
-                    onClick={toggleShowBuys}
-                    leading={<EventSwatch type="buy" />}
-                    title={t('detail.showBuysHint')}
-                    data-testid="toggle-buys"
+                    className="mt-3"
+                    active={showTrades}
+                    onClick={toggleShowTrades}
+                    leading={<TradeGlyphs />}
+                    title={t('detail.showTradesHint')}
+                    data-testid="toggle-trades"
                   >
-                    {t('detail.legend.buys')}
+                    {t('detail.legend.trades')}
                   </Chip>
                 )}
               </div>

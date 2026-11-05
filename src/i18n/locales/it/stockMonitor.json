@@ -85,9 +85,9 @@
       "price": "Prezzo",
       "target": "Prezzo obiettivo",
       "watchStart": "Inizio osservazione",
-      "buys": "Acquisti"
+      "trades": "Acquisti e vendite"
     },
-    "showBuysHint": "Mostra sulla linea quando e a che prezzo hai acquistato",
+    "showTradesHint": "Mostra sulla linea quando e a che prezzo hai acquistato e venduto",
     "watchStartTarget": "obiettivo {{price}}",
     "stats": {
       "exchangeNote": "su {{exchange}}",

@@ -29,9 +29,12 @@ can be compared across periods. The owner asked for the method of the GIPS stand
   positions, with no cash: money leaving a sleeve is a sale, money entering is a buy.
 - **Money-weighted return.** The IRR `r` with `-V_0 + sum(-F_k + D_k) (1 + r)^{-t_k} +
   V_end (1 + r)^{-T} = 0`, time in calendar days / 365. Newton from 10 % (in `ln(1 + r)`), bisection
-  on `(-99.99 %, +10 000 %)` as the fallback; no sign change or no root in the bracket is
-  `null`, shown as "-". The wire carries the period rate `(1 + r)^T - 1` (`mwr`) and the annual
-  rate (`mwrAnnual`) per emitted date.
+  as the fallback. The bracket `(-99.99 %, +10 000 %)` applies to the rate that is displayed: the
+  period rate `(1 + r)^T - 1` for a period of at most 365 days, the annual rate for a longer one;
+  no sign change or no root in the bracket is `null`, shown as "-". The wire carries the period
+  rate (`mwr`) and the annual rate (`mwrAnnual`) per emitted date; for a short period the annual
+  rate is `null` alone when it falls outside the bracket (a +10 % move in five days annualises
+  far beyond it), so such a period still shows its period rate.
 - **Annualisation.** A period up to 365 days shows the period rate, a longer one the annual rate
   (the same rule for the TWR). The two are not mixed in one comparison.
 - **Price fallback.** A ticker without any price row is priced by its own trades (each trade's
@@ -43,8 +46,8 @@ can be compared across periods. The owner asked for the method of the GIPS stand
 
 - The hero figures agree with what a GIPS-minded reader computes by hand, and survive sales,
   fees and dividends.
-- An IRR over a few days annualises to an absurd or out-of-bracket rate; the page shows the
-  period rate there and a "-" when no rate exists, instead of a misleading number.
+- An IRR over a few days annualises to an absurd rate; the page shows the period rate there
+  (`mwrAnnual` is `null`), and a "-" only when no rate exists, instead of a misleading number.
 - Every report recomputes the IRR at up to 400 emitted dates, each over its own flows; the cost
   is bounded by that cap and measured in milliseconds.
 - Missing dividends (a ticker Yahoo has not covered) understate the return; they are listed in

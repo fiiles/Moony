@@ -546,6 +546,7 @@
       "yieldNote": "Rendite {{percent}}",
       "twrYtd": "Rendite dieses Jahr",
       "twrNote": "TWR · MWR {{mwr}}",
+      "twrOnlyNote": "TWR",
       "twrNoHistory": "noch kein Verlauf",
       "positionsTab": "Positionen · {{count}}",
       "watchedTab": "Beobachtet · {{count}}",

@@ -546,6 +546,7 @@
       "yieldNote": "avkastning {{percent}}",
       "twrYtd": "Avkastning i år",
       "twrNote": "TWR · MWR {{mwr}}",
+      "twrOnlyNote": "TWR",
       "twrNoHistory": "ingen historikk ennå",
       "positionsTab": "Beholdninger · {{count}}",
       "watchedTab": "Fulgte · {{count}}",

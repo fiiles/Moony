@@ -513,6 +513,7 @@
       "yieldNote": "收益率 {{percent}}",
       "twrYtd": "今年收益",
       "twrNote": "TWR · MWR {{mwr}}",
+      "twrOnlyNote": "TWR",
       "twrNoHistory": "暂无历史",
       "positionsTab": "持仓 · {{count}}",
       "watchedTab": "关注 · {{count}}",

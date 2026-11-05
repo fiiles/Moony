@@ -612,6 +612,7 @@
       "yieldNote": "stopa dywidendy {{percent}}",
       "twrYtd": "Zwrot w tym roku",
       "twrNote": "TWR · MWR {{mwr}}",
+      "twrOnlyNote": "TWR",
       "twrNoHistory": "jeszcze brak historii",
       "positionsTab": "Pozycje · {{count}}",
       "watchedTab": "Obserwowane · {{count}}",

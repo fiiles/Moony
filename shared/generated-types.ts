@@ -2699,7 +2699,8 @@ dividends: string[];
  */
 mwr: (number | null)[]; 
 /**
- * The same IRR as an annual rate, in percent.
+ * The same IRR as an annual rate, in percent; `None` when it lies outside the bracket
+ * (a period of up to a year may annualise far beyond it).
  */
 mwrAnnual: (number | null)[]; series: PerformanceSeries[]; 
 /**

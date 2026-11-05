@@ -132,7 +132,8 @@ pub struct StockPerformance {
     /// `None` when it has no solution or the value is unknown.
     #[serde(rename = "mwr")]
     pub mwr: Vec<Option<f64>>,
-    /// The same IRR as an annual rate, in percent.
+    /// The same IRR as an annual rate, in percent; `None` when it lies outside the bracket
+    /// (a period of up to a year may annualise far beyond it).
     #[serde(rename = "mwrAnnual")]
     pub mwr_annual: Vec<Option<f64>>,
     #[serde(rename = "series")]

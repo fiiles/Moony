@@ -2086,7 +2086,7 @@ export interface StockPerformance {
   dividends: string[];
   /** Money-weighted return (IRR) from the first date to each date as a period rate, in percent; null when it has no solution. */
   mwr: (number | null)[];
-  /** The same IRR as an annual rate, in percent. */
+  /** The same IRR as an annual rate, in percent; null when it lies outside the bracket (short periods may annualise far beyond it). */
   mwrAnnual: (number | null)[];
   series: PerformanceSeries[];
   /**

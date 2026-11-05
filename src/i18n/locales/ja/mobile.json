@@ -513,6 +513,7 @@
       "yieldNote": "利回り {{percent}}",
       "twrYtd": "今年のリターン",
       "twrNote": "TWR · MWR {{mwr}}",
+      "twrOnlyNote": "TWR",
       "twrNoHistory": "履歴はまだありません",
       "positionsTab": "ポジション · {{count}}",
       "watchedTab": "ウォッチ中 · {{count}}",

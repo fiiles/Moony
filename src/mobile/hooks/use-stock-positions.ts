@@ -96,6 +96,7 @@ export function useRefreshStockPrices() {
  * earned, whatever was bought or sold) and the money-weighted one (what the invested money
  * earned), in percent, from the last day of the performance report. Both are `null` while it
  * loads and while it has fewer than two days: a year that has just begun has no return yet.
+ * `mwr` is also `null` when the IRR has no solution.
  */
 export function useTwrThisYear(enabled: boolean): {
   twr: number | null;

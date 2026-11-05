@@ -399,9 +399,11 @@ function PortfolioStats({
       // has fewer than two days (or failed)
       note:
         twr !== null
-          ? t('wealth.stocks.twrNote', {
-              mwr: fmt.percent((mwr ?? 0) / 100, 1, { signed: true }),
-            })
+          ? mwr === null
+            ? t('wealth.stocks.twrOnlyNote')
+            : t('wealth.stocks.twrNote', {
+                mwr: fmt.percent(mwr / 100, 1, { signed: true }),
+              })
           : twrLoading
             ? undefined
             : t('wealth.stocks.twrNoHistory'),

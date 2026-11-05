@@ -410,6 +410,7 @@ describe('figuresAt', () => {
       annual: false,
       twrAnnual: null,
       mwr: 12,
+      mwrAnnual: null,
       mwrGap: 2,
       change: 500,
       deposits: 200,
@@ -424,31 +425,46 @@ describe('figuresAt', () => {
     });
   });
 
-  it('compares the annual money-weighted rate with the annualised TWR over two years', () => {
+  it('shows the period rates over two years, with the yearly rates of both beside them', () => {
     const long = {
       ...performance,
       dates: ['2022-01-01', '2023-01-01', '2024-01-01'],
       portfolio: [0, 4, 21],
+      mwr: [0, 5, 25.44],
       mwrAnnual: [0, 5, 12],
     };
     const f = figuresAt(long, 2);
-    expect(f).toMatchObject({ twr: 21, annual: true, mwr: 12 });
+    expect(f).toMatchObject({ twr: 21, annual: true, mwr: 25.44, mwrAnnual: 12 });
     expect(f?.twrAnnual).toBeCloseTo(10, 10);
-    expect(f?.mwrGap).toBeCloseTo(2, 10);
+    // The gap compares the two period figures shown large
+    expect(f?.mwrGap).toBeCloseTo(4.44, 10);
     // At a hovered date the period is the first date to that date: 365 days is not annualised
-    expect(figuresAt(long, 1)).toMatchObject({ annual: false, twrAnnual: null, mwr: 5, mwrGap: 1 });
+    expect(figuresAt(long, 1)).toMatchObject({
+      annual: false,
+      twrAnnual: null,
+      mwr: 5,
+      mwrAnnual: null,
+      mwrGap: 1,
+    });
   });
 
-  it('has no money-weighted return nor gap when the chosen rate is null', () => {
+  it('has no money-weighted return nor gap when the period rate is null', () => {
     expect(figuresAt({ ...performance, mwr: [0, 5, null] }, 2)).toMatchObject({
       mwr: null,
       mwrGap: null,
     });
     const long = { ...performance, dates: ['2022-01-01', '2023-01-01', '2024-01-01'] };
-    expect(figuresAt({ ...long, mwrAnnual: [0, 5, null] }, 2)).toMatchObject({
+    expect(figuresAt({ ...long, mwr: [0, 5, null], mwrAnnual: [0, 5, null] }, 2)).toMatchObject({
       annual: true,
       mwr: null,
+      mwrAnnual: null,
       mwrGap: null,
+    });
+    // A yearly rate outside the bracket hides the yearly line only
+    expect(figuresAt({ ...long, mwrAnnual: [0, 5, null] }, 2)).toMatchObject({
+      mwr: 12,
+      mwrAnnual: null,
+      mwrGap: 2,
     });
   });
 

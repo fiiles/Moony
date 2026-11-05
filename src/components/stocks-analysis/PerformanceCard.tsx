@@ -5,6 +5,7 @@ import type { StockPerformance, StockTag } from '@shared/schema';
 import { useStockBenchmark } from '@/hooks/use-stock-performance';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
+import { MetricExplainButton, type ExplainedMetric } from './MetricExplainDialog';
 import {
   PERIOD_PRESETS,
   dayFromIso,
@@ -116,6 +117,7 @@ function HeroFigure({
   tone,
   large = false,
   stale,
+  explain,
   children,
 }: {
   label: string;
@@ -123,11 +125,16 @@ function HeroFigure({
   tone: Tone;
   large?: boolean;
   stale: boolean;
+  /** The metric whose explanation the ⓘ beside the label opens. */
+  explain?: ExplainedMetric;
   children?: ReactNode;
 }) {
   return (
     <div className={cn('min-w-0 transition-opacity duration-base', stale && 'opacity-50')}>
-      <div className="text-table font-600 text-ink-3">{label}</div>
+      <div className="flex items-center gap-1 text-table font-600 text-ink-3">
+        {label}
+        {explain && <MetricExplainButton metric={explain} />}
+      </div>
       <b
         className={cn(
           'block num',
@@ -344,6 +351,18 @@ export function PerformanceCard({
   const percent = (value: number, digits = 1) => fmt.percent(value / 100, digits, { signed: true });
   const points = (value: number, signed = true) => formatPoints(fmt.number, value, pp, { signed });
   const bold = (text: string) => <b className="font-650 text-ink-2">{text}</b>;
+  /** The yearly rate under a hero figure, shown only for a period longer than a year. */
+  const yearly = (rate: number | null | undefined): ReactNode =>
+    rate != null && (
+      <div className="mb-1 text-table font-650 text-ink-3">
+        <Rich
+          text={t('stocksAnalysis.performance.annualRate', { value: slot('value') })}
+          slots={{
+            value: <span className={toneClass[toneOf(rate)] || 'text-ink-2'}>{percent(rate)}</span>,
+          }}
+        />
+      </div>
+    );
 
   const delta = (): ReactNode => {
     if (!figures) return null;
@@ -797,37 +816,23 @@ export function PerformanceCard({
         value={figures ? percent(figures.twr) : '—'}
         tone={toneOf(figures?.twr)}
         large
+        explain="twr"
         stale={stale || indexStale}
       >
-        {figures?.twrAnnual != null && (
-          <div className="mb-1 text-table font-650 text-ink-3">
-            <Rich
-              text={t('stocksAnalysis.performance.twrAnnual', { value: slot('value') })}
-              slots={{
-                value: (
-                  <span className={toneClass[toneOf(figures.twrAnnual)] || 'text-ink-2'}>
-                    {percent(figures.twrAnnual)}
-                  </span>
-                ),
-              }}
-            />
-          </div>
-        )}
+        {yearly(figures?.twrAnnual)}
         <div className="flex min-h-[18px] flex-wrap items-baseline gap-x-1.5 gap-y-1 text-table font-650">
           {delta()}
         </div>
         {hasChart && <div className="mt-[5px] text-micro font-500 text-ink-4">{when()}</div>}
       </HeroFigure>
       <HeroFigure
-        label={t(
-          figures?.annual
-            ? 'stocksAnalysis.performance.mwrLabelAnnual'
-            : 'stocksAnalysis.performance.mwrLabelPeriod'
-        )}
+        label={t('stocksAnalysis.performance.mwrLabel')}
         value={figures?.mwr != null ? percent(figures.mwr) : '—'}
         tone={toneOf(figures?.mwr)}
         stale={stale}
+        explain="mwr"
       >
+        {yearly(figures?.mwrAnnual)}
         <div className="text-micro font-500 leading-[1.65] text-ink-4 min-[1360px]:whitespace-nowrap">
           {t('stocksAnalysis.performance.mwrNote')}
           <br />

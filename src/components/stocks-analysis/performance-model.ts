@@ -341,12 +341,11 @@ export interface Figures {
   annual: boolean;
   /** The time-weighted return as a yearly rate, percent; `null` unless `annual`. */
   twrAnnual: number | null;
-  /**
-   * Money-weighted return in percent: the yearly rate when `annual`, else the rate for the span;
-   * `null` when it has no solution.
-   */
+  /** Money-weighted return over the span, percent; `null` when it has no solution. */
   mwr: number | null;
-  /** `mwr` minus the time-weighted return on the same basis, percentage points. */
+  /** The money-weighted return as a yearly rate, percent; `null` unless `annual` (or no solution). */
+  mwrAnnual: number | null;
+  /** `mwr` minus the cumulative time-weighted return, percentage points (both for the span). */
   mwrGap: number | null;
   /** Change of value since the first date; `null` when a value is not convertible. */
   change: number | null;
@@ -374,7 +373,8 @@ export function figuresAt(
   const days = periodDays(performance.dates[0] ?? '', performance.dates[index] ?? '');
   const annual = annualizes(days);
   const twrAnnual = annual ? annualized(twr, days) : null;
-  const mwr = (annual ? performance.mwrAnnual[index] : performance.mwr[index]) ?? null;
+  const mwr = performance.mwr[index] ?? null;
+  const mwrAnnual = annual ? (performance.mwrAnnual[index] ?? null) : null;
   const start = amountOf(performance.values[0]);
   const now = amountOf(performance.values[index]);
   const deposits = amountOf(performance.netFlows[index]);
@@ -384,7 +384,8 @@ export function figuresAt(
     annual,
     twrAnnual,
     mwr,
-    mwrGap: mwr !== null ? mwr - (twrAnnual ?? twr) : null,
+    mwrAnnual,
+    mwrGap: mwr !== null ? mwr - twr : null,
     change,
     deposits,
     market: change !== null && deposits !== null ? change - deposits : null,

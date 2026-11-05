@@ -2694,10 +2694,14 @@ netFlows: string[];
  */
 dividends: string[]; 
 /**
- * Money-weighted return from the first date to each date (modified Dietz, cumulative),
- * in percent.
+ * Money-weighted return (IRR) from the first date to each date as a period rate, in percent;
+ * `None` when it has no solution or the value is unknown.
  */
-mwr: number[]; series: PerformanceSeries[]; 
+mwr: (number | null)[]; 
+/**
+ * The same IRR as an annual rate, in percent.
+ */
+mwrAnnual: (number | null)[]; series: PerformanceSeries[]; 
 /**
  * Every position of the period: held at the end of any day of the range or traded in it,
  * including positions sold since.

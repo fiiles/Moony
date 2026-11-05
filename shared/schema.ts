@@ -2084,8 +2084,10 @@ export interface StockPerformance {
   netFlows: string[];
   /** Gross dividends (ex-dates) cumulated since the first date, decimal TEXT; not part of netFlows. */
   dividends: string[];
-  /** Money-weighted return from the first date to each date (modified Dietz, cumulative), in percent. */
-  mwr: number[];
+  /** Money-weighted return (IRR) from the first date to each date as a period rate, in percent; null when it has no solution. */
+  mwr: (number | null)[];
+  /** The same IRR as an annual rate, in percent. */
+  mwrAnnual: (number | null)[];
   series: PerformanceSeries[];
   /**
    * Every position of the period: held at the end of any day of the range or traded in it,

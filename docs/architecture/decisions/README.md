@@ -30,6 +30,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0020](0020-yahoo-finance-for-crypto-prices.md) | Yahoo Finance for crypto prices; CoinGecko removed | 2026-10-25 | Accepted; supersedes the CoinGecko sentence of 0005 |
 | [0021](0021-desktop-biometric-key-storage.md) | Desktop biometric unlock: a device-bound copy of the master key | 2026-10-28 | Accepted; reverses ruling R22 on macOS and Windows |
 | [0022](0022-stock-dividends-in-their-own-table.md) | Stock dividends: Yahoo events and manual payouts in their own tables | 2026-10-30 | Accepted |
+| [0023](0023-stock-performance-follows-gips.md) | Stock performance follows GIPS: daily time-weighted return and IRR | 2026-11-05 | Accepted |
 
 ## Rules
 
@@ -37,7 +38,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
   different. To change a decision, write a **new ADR** with the next number
   that links back to the one it supersedes. The only edit ever made to an old
   ADR is flipping its `## Status` to `Superseded by [NNNN](NNNN-....md)`.
-- Numbering is sequential and zero-padded; the next free number is `0023`.
+- Numbering is sequential and zero-padded; the next free number is `0024`.
 - Filename: `NNNN-short-kebab-title.md`. Add every new ADR to the index table
   above.
 - Keep each ADR to one page or less.

@@ -128,10 +128,13 @@ pub struct StockPerformance {
     /// that left the portfolio, so `netFlows` does not contain them.
     #[serde(rename = "dividends")]
     pub dividends: Vec<String>,
-    /// Money-weighted return from the first date to each date (modified Dietz, cumulative),
-    /// in percent.
+    /// Money-weighted return (IRR) from the first date to each date as a period rate, in percent;
+    /// `None` when it has no solution or the value is unknown.
     #[serde(rename = "mwr")]
-    pub mwr: Vec<f64>,
+    pub mwr: Vec<Option<f64>>,
+    /// The same IRR as an annual rate, in percent.
+    #[serde(rename = "mwrAnnual")]
+    pub mwr_annual: Vec<Option<f64>>,
     #[serde(rename = "series")]
     pub series: Vec<PerformanceSeries>,
     /// Every position of the period: held at the end of any day of the range or traded in it,

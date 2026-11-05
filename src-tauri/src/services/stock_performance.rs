@@ -69,6 +69,9 @@ use crate::services::stock_dividends::{self, Payout};
 const MAX_POINTS: usize = 400;
 /// A base, quantity or flow at or below this is zero.
 const EPSILON: f64 = 1e-9;
+/// The bracket of the money-weighted return's annual rate: -99.99 % to +10 000 %.
+const IRR_LOW: f64 = -0.9999;
+const IRR_HIGH: f64 = 100.0;
 
 /// Convert a Unix timestamp to a "YYYY-MM-DD" date string (UTC).
 fn ts_to_date_str(ts: i64) -> String {
@@ -660,31 +663,101 @@ fn period_gain(daily: &Daily, members: &[usize]) -> f64 {
         .sum()
 }
 
-/// Money-weighted return from the first day to each day (modified Dietz, cumulative, percent):
-/// `(V_k - V_0 - F_k) / (V_0 + sum_j F_j * (k - j + 1) / k)` where `F_k` is the flow cumulated
-/// to `k` and the flow of day `j` counts for the `k - j + 1` days it was invested. Running sums
-/// keep it linear: `sum_j F_j * (k - j + 1) = (k + 1) * sum F - sum F_j * j`. 0 when the
-/// denominator is not positive; a day whose value is unknown repeats the previous figure.
-fn money_weighted(values: &[Option<f64>], flows: &[f64]) -> Vec<f64> {
-    let v0 = values[0].unwrap_or(0.0);
-    let (mut sum_f, mut sum_fj) = (0.0, 0.0);
-    let mut out = vec![0.0];
-    for k in 1..values.len() {
-        let steps = k as f64;
-        sum_f += flows[k];
-        sum_fj += flows[k] * steps;
-        let Some(v) = values[k] else {
-            out.push(out[k - 1]);
-            continue;
-        };
-        let denominator = v0 + ((steps + 1.0) * sum_f - sum_fj) / steps;
-        out.push(if denominator > EPSILON {
-            (v - v0 - sum_f) / denominator * 100.0
-        } else {
-            0.0
-        });
+/// `sum a_i * exp(-t_i * x)` over `(years, amount)` cash flows, where `x = ln(1 + r)`. Working in
+/// `x` keeps the function smooth for the short periods whose flows are a few days apart.
+fn npv(cash_flows: &[(f64, f64)], x: f64) -> f64 {
+    cash_flows
+        .iter()
+        .map(|&(years, amount)| amount * (-years * x).exp())
+        .sum()
+}
+
+/// The annual rate (a fraction) at which the cash flows `(years_from_t0, amount)` net to zero:
+/// the money-weighted return. Newton from 10 %, then bisection on the bracket
+/// `(-99.99 %, +10 000 %)`. `None` without both an inflow and an outflow, or when the bracket
+/// has no sign change.
+fn irr(cash_flows: &[(f64, f64)]) -> Option<f64> {
+    let has = |sign: f64| cash_flows.iter().any(|&(_, a)| a * sign > 0.0);
+    if !has(1.0) || !has(-1.0) {
+        return None;
     }
-    out
+    let (low, high) = ((1.0 + IRR_LOW).ln(), (1.0 + IRR_HIGH).ln());
+    let mut x = 1.1_f64.ln();
+    for _ in 0..50 {
+        let value = npv(cash_flows, x);
+        let slope: f64 = cash_flows
+            .iter()
+            .map(|&(years, amount)| -years * amount * (-years * x).exp())
+            .sum();
+        if !value.is_finite() || !slope.is_finite() || slope.abs() < 1e-15 {
+            break;
+        }
+        let next = x - value / slope;
+        if !(low..=high).contains(&next) {
+            break;
+        }
+        if (next - x).abs() < 1e-13 {
+            return Some(next.exp() - 1.0);
+        }
+        x = next;
+    }
+    let (mut low, mut high) = (low, high);
+    let mut at_low = npv(cash_flows, low);
+    let at_high = npv(cash_flows, high);
+    if !at_low.is_finite() || !at_high.is_finite() || at_low * at_high > 0.0 {
+        return None;
+    }
+    for _ in 0..200 {
+        let mid = (low + high) / 2.0;
+        let at_mid = npv(cash_flows, mid);
+        if at_mid * at_low > 0.0 {
+            low = mid;
+            at_low = at_mid;
+        } else {
+            high = mid;
+        }
+        if high - low < 1e-13 {
+            break;
+        }
+    }
+    Some(((low + high) / 2.0).exp() - 1.0)
+}
+
+/// Money-weighted return at the emitted day `end` (index into `days`): `(period, annual)` in
+/// percent. The investor's cash flows from the base day: `-V_0` on day 0, `-F_k + D_k` on each
+/// later day up to `end`, `+V_end` on `end`; time is calendar days / 365. Day 0 is 0; an
+/// unknown value, or no solution, gives `None`.
+fn money_weighted_at(
+    days: &[i64],
+    values: &[Option<f64>],
+    flows: &[f64],
+    dividends: &[f64],
+    end: usize,
+) -> (Option<f64>, Option<f64>) {
+    if end == 0 {
+        return (Some(0.0), Some(0.0));
+    }
+    let Some(v_end) = values[end] else {
+        return (None, None);
+    };
+    let years = |k: usize| ((days[k] - days[0]) / DAY) as f64 / 365.0;
+    let mut cash_flows = vec![(0.0, -values[0].unwrap_or(0.0))];
+    for k in 1..=end {
+        let amount = -flows[k] + dividends[k];
+        if amount.abs() > EPSILON {
+            cash_flows.push((years(k), amount));
+        }
+    }
+    cash_flows.push((years(end), v_end));
+    cash_flows.retain(|&(_, amount)| amount != 0.0);
+    let Some(rate) = irr(&cash_flows) else {
+        return (None, None);
+    };
+    let period = (1.0 + rate).powf(years(end)) - 1.0;
+    if !period.is_finite() {
+        return (None, None);
+    }
+    (Some(period * 100.0), Some(rate * 100.0))
 }
 
 /// The days to emit out of `count`: the first, every n-th and the last, at most `MAX_POINTS` in
@@ -845,7 +918,13 @@ fn stock_performance_at(
             .sum::<f64>();
         cumulative_dividends.push(paid);
     }
-    let mwr = money_weighted(&values, &flows);
+    let daily_dividends: Vec<f64> = (0..days.len())
+        .map(|k| universe.iter().filter_map(|&p| daily.dividend[k][p]).sum())
+        .collect();
+    let (mwr, mwr_annual): (Vec<_>, Vec<_>) = indices
+        .iter()
+        .map(|&k| money_weighted_at(&days, &values, &flows, &daily_dividends, k))
+        .unzip();
 
     let index_of: HashMap<&str, usize> = universe
         .iter()
@@ -935,7 +1014,8 @@ fn stock_performance_at(
             .iter()
             .map(|&k| money_in_currency(cumulative_dividends[k], &currency))
             .collect(),
-        mwr: sample(&mwr, &indices),
+        mwr,
+        mwr_annual,
         series,
         positions: performances,
         unpriced_tickers,
@@ -1388,6 +1468,74 @@ mod tests {
         values.last().expect("a last point")
     }
 
+    fn mwr_at(report: &StockPerformance, index: usize) -> f64 {
+        report.mwr[index].expect("a money-weighted return")
+    }
+
+    #[test]
+    fn irr_of_a_single_deposit_that_grows_ten_percent_in_a_year() {
+        let rate = irr(&[(0.0, -1000.0), (1.0, 1100.0)]);
+        close(rate.expect("a solution"), 0.10, 1e-9);
+    }
+
+    #[test]
+    fn irr_matches_a_textbook_case() {
+        let flows = [(0.0, -1000.0), (0.5, -500.0), (1.0, 1700.0)];
+        let rate = irr(&flows).expect("a solution");
+        close(npv(&flows, (1.0 + rate).ln()), 0.0, 1e-6);
+        assert!(rate > 0.0 && rate < 1.0);
+    }
+
+    #[test]
+    fn irr_without_a_sign_change_is_none() {
+        assert_eq!(irr(&[(0.0, -1000.0), (0.5, -200.0)]), None);
+        // a wiped-out portfolio: money in, nothing out
+        assert_eq!(irr(&[(0.0, -1000.0)]), None);
+        assert_eq!(irr(&[]), None);
+    }
+
+    #[test]
+    fn irr_falls_back_to_bisection_for_steep_cases() {
+        // loses 99 % in a year: far from the Newton start
+        let flows = [(0.0, -1000.0), (1.0, 10.0)];
+        let rate = irr(&flows).expect("a solution");
+        close(npv(&flows, (1.0 + rate).ln()), 0.0, 1e-6);
+        assert!(rate < -0.99);
+    }
+
+    #[test]
+    fn mwr_is_the_period_rate_and_mwr_annual_the_yearly_one() {
+        let conn = setup_db();
+        // 10 shares at 100 for two years, then 121
+        let rows: Vec<(f64, f64)> = (0..=730)
+            .map(|i| (10.0, if i == 730 { 121.0 } else { 100.0 }))
+            .collect();
+        seed(&conn, "aapl", "AAPL", "10", "CZK", &rows);
+
+        let report = perf(&conn, day(0), day(730), vec![]);
+
+        close(mwr_at(&report, report.mwr.len() - 1), 21.0, 1e-6);
+        close(last(&report.mwr_annual).expect("annual"), 10.0, 1e-6);
+    }
+
+    #[test]
+    fn a_wiped_out_portfolio_has_no_mwr() {
+        let conn = setup_db();
+        seed(
+            &conn,
+            "aapl",
+            "AAPL",
+            "10",
+            "CZK",
+            &[(10.0, 100.0), (10.0, 0.0)],
+        );
+
+        let report = perf(&conn, day(0), day(1), vec![]);
+
+        assert_eq!(report.mwr, [Some(0.0), None]);
+        assert_eq!(report.mwr_annual, [Some(0.0), None]);
+    }
+
     #[test]
     fn portfolio_twr_matches_value_ratio_without_flows() {
         let conn = setup_db();
@@ -1425,7 +1573,7 @@ mod tests {
 
         close(*last(&report.portfolio), 0.0, 1e-9);
         assert_eq!(last(&report.net_flows), "1000.00");
-        close(*last(&report.mwr), 0.0, 1e-9);
+        close(mwr_at(&report, 1), 0.0, 1e-9);
         assert_eq!(last(&report.values), &Some("2000.00".to_string()));
     }
 
@@ -1590,27 +1738,37 @@ mod tests {
     #[test]
     fn mwr_falls_below_twr_when_money_arrives_before_a_drop() {
         let conn = setup_db();
-        // day 0: 10 @ 100; day 1: 10 @ 120 (+20 %); day 2: 90 bought at 120 (100 shares, no
-        // price move); day 3: 100 @ 96 (-20 %)
-        seed(
-            &conn,
-            "aapl",
-            "AAPL",
-            "100",
-            "CZK",
-            &[(10.0, 100.0), (10.0, 120.0), (100.0, 120.0), (100.0, 96.0)],
-        );
+        // 10 @ 100 (+20 % on day 100), 90 more bought at 120 on day 200 (no price move), then
+        // 100 @ 96 from day 300 (-20 %)
+        let rows: Vec<(f64, f64)> = (0..360)
+            .map(|i| {
+                let quantity = if i < 200 { 10.0 } else { 100.0 };
+                let price = match i {
+                    0..=99 => 100.0,
+                    100..=299 => 120.0,
+                    _ => 96.0,
+                };
+                (quantity, price)
+            })
+            .collect();
+        seed(&conn, "aapl", "AAPL", "100", "CZK", &rows);
 
-        let report = perf(&conn, day(0), day(3), vec![]);
+        let report = perf(&conn, day(0), day(359), vec![]);
 
         // TWR = 1.2 * 1.0 * 0.8 - 1
         close(*last(&report.portfolio), -4.0, 1e-9);
-        // V0 = 1000, F = 90 * 120 = 10800 on day 2 (held for 2 of the 3 days), V3 = 9600
-        let expected = (9600.0 - 1000.0 - 10_800.0) / (1000.0 + 10_800.0 * 2.0 / 3.0) * 100.0;
-        close(*last(&report.mwr), expected, 1e-9);
-        close(*last(&report.mwr), -26.83, 0.01);
-        assert!(last(&report.mwr) < last(&report.portfolio));
-        assert_eq!(report.mwr[0], 0.0);
+        // investor view: -1000 on day 0, -10800 on day 200, +9600 on day 359
+        let flows = [
+            (0.0, -1000.0),
+            (200.0 / 365.0, -10_800.0),
+            (359.0 / 365.0, 9600.0),
+        ];
+        let rate = irr(&flows).expect("a solution");
+        close(npv(&flows, (1.0 + rate).ln()), 0.0, 1e-6);
+        let period = ((1.0 + rate).powf(359.0 / 365.0) - 1.0) * 100.0;
+        close(mwr_at(&report, 359), period, 1e-9);
+        assert!(mwr_at(&report, 359) < *last(&report.portfolio));
+        assert_eq!(report.mwr[0], Some(0.0));
         assert_eq!(last(&report.net_flows), "10800.00");
     }
 
@@ -1721,6 +1879,7 @@ mod tests {
         assert_eq!(report.values.len(), n);
         assert_eq!(report.net_flows.len(), n);
         assert_eq!(report.mwr.len(), n);
+        assert_eq!(report.mwr_annual.len(), n);
         assert_eq!(report.series[0].twr.len(), n);
         assert_eq!(
             report.series[0].contribution.as_ref().map(Vec::len),
@@ -1763,7 +1922,11 @@ mod tests {
             close(*last(&until.portfolio), report.portfolio[i], 1e-9);
             assert_eq!(last(&until.values), &report.values[i], "values {i}");
             assert_eq!(last(&until.net_flows), &report.net_flows[i], "netFlows {i}");
-            close(*last(&until.mwr), report.mwr[i], 1e-9);
+            close(
+                last(&until.mwr).expect("mwr"),
+                report.mwr[i].expect("mwr"),
+                1e-9,
+            );
             close(*last(&until.series[0].twr), report.series[0].twr[i], 1e-9);
             close(
                 *last(until.series[0].contribution.as_ref().expect("contribution")),
@@ -1908,7 +2071,7 @@ mod tests {
         // no price moved: no return of any kind, and the change of value is the deposit
         for k in 0..=10 {
             close(report.portfolio[k], 0.0, 1e-9);
-            close(report.mwr[k], 0.0, 1e-9);
+            close(mwr_at(&report, k), 0.0, 1e-9);
             close(report.series[0].twr[k], 0.0, 1e-9);
         }
         let change = value_of(last(&report.values)) - value_of(&report.values[0]);
@@ -1922,7 +2085,7 @@ mod tests {
         assert!(inner.net_flows.iter().all(|flow| flow == "0.00"));
         for k in 0..inner.dates.len() {
             close(inner.portfolio[k], 0.0, 1e-9);
-            close(inner.mwr[k], 0.0, 1e-9);
+            close(mwr_at(&inner, k), 0.0, 1e-9);
         }
         let late = inner
             .positions
@@ -2015,7 +2178,7 @@ mod tests {
             assert_eq!(report.net_flows[k], "200.00", "day {k}");
         }
         for k in 0..=8 {
-            close(report.mwr[k], 0.0, 1e-9);
+            close(mwr_at(&report, k), 0.0, 1e-9);
         }
     }
 
@@ -2382,7 +2545,8 @@ mod tests {
         let figures = report
             .portfolio
             .iter()
-            .chain(&report.mwr)
+            .chain(report.mwr.iter().flatten())
+            .chain(report.mwr_annual.iter().flatten())
             .chain(&report.series[0].twr)
             .chain(report.series[0].contribution.iter().flatten())
             .chain(
@@ -2590,7 +2754,8 @@ mod tests {
         assert_eq!(report.portfolio, [0.0]);
         assert_eq!(report.values, [None]);
         assert_eq!(report.net_flows, ["0.00"]);
-        assert_eq!(report.mwr, [0.0]);
+        assert_eq!(report.mwr, [Some(0.0)]);
+        assert_eq!(report.mwr_annual, [Some(0.0)]);
         assert!(report.positions.is_empty());
         assert_eq!(report.series[0].twr, [0.0]);
     }

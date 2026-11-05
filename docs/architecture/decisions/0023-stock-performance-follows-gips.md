@@ -55,4 +55,8 @@ can be compared across periods. The owner asked for the method of the GIPS stand
   is bounded by that cap and measured in milliseconds.
 - Missing dividends (a ticker Yahoo has not covered) understate the return; they are listed in
   `dividendGapTickers` rather than hidden.
+- A trade valued at its own price makes a wrong legacy price or currency (pence recorded as
+  pounds, a CZK price labelled USD) a large false gain or loss on its day; a trade more than
+  50 % away from that day's close, compared in the close's currency, is listed in
+  `suspectTradeTickers` (added 2026-11-05).
 - The engine stays the one place the method lives; the only caller of the performance service is `commands/investments.rs`.

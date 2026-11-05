@@ -441,7 +441,8 @@
       "today": "I dag",
       "empty": "Ingen data for den valgte perioden ennå.",
       "unpriced": "Ingen markedspris, verdsatt til handelskurser: {{tickers}}",
-      "dividendGap": "Utbytte er ikke lastet ennå: {{tickers}}"
+      "dividendGap": "Utbytte er ikke lastet ennå: {{tickers}}",
+      "suspectTrade": "Handelskursen avviker mye fra dagens markedspris, avkastningen kan være forvrengt: {{tickers}}"
     },
     "board": {
       "return": "Avkastning i perioden",

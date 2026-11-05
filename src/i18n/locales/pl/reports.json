@@ -471,7 +471,8 @@
       "today": "Dziś",
       "empty": "Brak danych za wybrany okres.",
       "unpriced": "Brak ceny rynkowej, wycenione po cenach transakcji: {{tickers}}",
-      "dividendGap": "Dywidendy nie zostały jeszcze wczytane: {{tickers}}"
+      "dividendGap": "Dywidendy nie zostały jeszcze wczytane: {{tickers}}",
+      "suspectTrade": "Cena transakcji znacznie odbiega od ceny rynkowej z tego dnia, stopa zwrotu może być zniekształcona: {{tickers}}"
     },
     "board": {
       "return": "Zwrot za okres",

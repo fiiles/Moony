@@ -150,6 +150,11 @@ pub struct StockPerformance {
     /// not covered the range yet (sorted, unique).
     #[serde(rename = "dividendGapTickers")]
     pub dividend_gap_tickers: Vec<String>,
+    /// Tickers of the period's positions with a trade in the range whose price is more than
+    /// 50 % away from that day's close, compared in the close's currency: a wrong legacy price
+    /// or currency books a false gain or loss on the trade day (sorted, unique).
+    #[serde(rename = "suspectTradeTickers")]
+    pub suspect_trade_tickers: Vec<String>,
 }
 
 /// Daily returns of a market index (or any Yahoo ticker) over the period, for the comparison

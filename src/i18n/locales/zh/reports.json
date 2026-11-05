@@ -426,7 +426,8 @@
       "today": "今天",
       "empty": "所选时期暂无数据。",
       "unpriced": "无市场价格，按交易价格估值：{{tickers}}",
-      "dividendGap": "股息尚未加载：{{tickers}}"
+      "dividendGap": "股息尚未加载：{{tickers}}",
+      "suspectTrade": "交易价格与当日市场价格相差很大，收益率可能失真：{{tickers}}"
     },
     "board": {
       "return": "时期收益率",

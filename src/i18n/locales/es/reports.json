@@ -456,7 +456,8 @@
       "today": "Hoy",
       "empty": "Aún no hay datos del periodo elegido.",
       "unpriced": "Sin precio de mercado, valorado a precios de las operaciones: {{tickers}}",
-      "dividendGap": "Dividendos aún no cargados: {{tickers}}"
+      "dividendGap": "Dividendos aún no cargados: {{tickers}}",
+      "suspectTrade": "El precio de la operación difiere mucho del precio de mercado de ese día, la rentabilidad puede estar distorsionada: {{tickers}}"
     },
     "board": {
       "return": "Rentabilidad del periodo",

@@ -144,20 +144,23 @@ function HeroFigure({
 
 /**
  * The quality notes of the stock positions, in the style of `ConversionQualityNote`: tickers
- * valued at their trade prices for want of a market price, and tickers whose dividends have not
- * been loaded for the whole period. Nothing when both lists are empty.
+ * valued at their trade prices for want of a market price, tickers whose dividends have not been
+ * loaded for the whole period, and tickers with a trade priced far from that day's close (a
+ * wrong legacy price or currency distorts the return). Nothing when every list is empty.
  */
 function StockQualityNote({
   unpriced,
   dividendGap,
+  suspectTrade,
   className,
 }: {
   unpriced: readonly string[];
   dividendGap: readonly string[];
+  suspectTrade: readonly string[];
   className?: string;
 }) {
   const { t } = useTranslation('reports');
-  if (unpriced.length === 0 && dividendGap.length === 0) return null;
+  if (unpriced.length === 0 && dividendGap.length === 0 && suspectTrade.length === 0) return null;
   return (
     <div className={cn('space-y-1 text-micro text-ink-4', className)} role="note">
       {unpriced.length > 0 && (
@@ -165,6 +168,9 @@ function StockQualityNote({
       )}
       {dividendGap.length > 0 && (
         <p>{t('stocksAnalysis.performance.dividendGap', { tickers: dividendGap.join(', ') })}</p>
+      )}
+      {suspectTrade.length > 0 && (
+        <p>{t('stocksAnalysis.performance.suspectTrade', { tickers: suspectTrade.join(', ') })}</p>
       )}
     </div>
   );
@@ -766,6 +772,7 @@ export function PerformanceCard({
             <StockQualityNote
               unpriced={data.unpricedTickers}
               dividendGap={data.dividendGapTickers}
+              suspectTrade={data.suspectTradeTickers}
               className="mt-1"
             />
             <PerformanceBoard

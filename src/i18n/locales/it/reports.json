@@ -456,7 +456,8 @@
       "today": "Oggi",
       "empty": "Ancora nessun dato per il periodo scelto.",
       "unpriced": "Senza prezzo di mercato, valutato ai prezzi delle operazioni: {{tickers}}",
-      "dividendGap": "Dividendi non ancora caricati: {{tickers}}"
+      "dividendGap": "Dividendi non ancora caricati: {{tickers}}",
+      "suspectTrade": "Il prezzo dell'operazione si discosta molto dal prezzo di mercato del giorno, il rendimento può essere falsato: {{tickers}}"
     },
     "board": {
       "return": "Rendimento del periodo",

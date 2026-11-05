@@ -441,7 +441,8 @@
       "today": "I dag",
       "empty": "Ingen data för den valda perioden ännu.",
       "unpriced": "Inget marknadspris, värderat till affärernas kurser: {{tickers}}",
-      "dividendGap": "Utdelningar har inte laddats än: {{tickers}}"
+      "dividendGap": "Utdelningar har inte laddats än: {{tickers}}",
+      "suspectTrade": "Affärens kurs avviker kraftigt från dagens marknadspris, avkastningen kan vara missvisande: {{tickers}}"
     },
     "board": {
       "return": "Avkastning under perioden",

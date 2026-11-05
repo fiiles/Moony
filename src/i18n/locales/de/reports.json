@@ -441,7 +441,8 @@
       "today": "Heute",
       "empty": "Für den gewählten Zeitraum liegen noch keine Daten vor.",
       "unpriced": "Kein Marktpreis, zu Transaktionspreisen bewertet: {{tickers}}",
-      "dividendGap": "Dividenden noch nicht geladen: {{tickers}}"
+      "dividendGap": "Dividenden noch nicht geladen: {{tickers}}",
+      "suspectTrade": "Transaktionspreis weicht stark vom Marktpreis des Tages ab, die Rendite kann verzerrt sein: {{tickers}}"
     },
     "board": {
       "return": "Rendite im Zeitraum",

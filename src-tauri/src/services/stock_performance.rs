@@ -54,9 +54,11 @@
 //! The annualisation rule follows the same cut: a period of up to 365 days is shown as its
 //! period rate, a longer one as the annual rate.
 //!
-//! The report has two quality notes: `unpricedTickers` (tickers priced by their own trades for
-//! lack of any price row) and `dividendGapTickers` (tickers whose dividends are unknown, so the
-//! return is understated).
+//! The report has three quality notes: `unpricedTickers` (tickers priced by their own trades for
+//! lack of any price row), `dividendGapTickers` (tickers whose dividends are unknown, so the
+//! return is understated) and `suspectTradeTickers` (tickers with a trade in the range more than
+//! 50 % away from that day's close, in the close's currency: since a trade is valued at its own
+//! price, a wrong legacy price or currency books a false gain or loss on its day).
 //!
 //! The optional comparison line is a market index fetched on demand (`benchmark_series`): its
 //! daily closes are carried over non-trading days, converted at each day's rate and rebased to
@@ -86,6 +88,14 @@ const EPSILON: f64 = 1e-9;
 /// The bracket of the money-weighted return's annual rate: -99.99 % to +10 000 %.
 const IRR_LOW: f64 = -0.9999;
 const IRR_HIGH: f64 = 100.0;
+/// How far a trade price may be from that day's close, as a fraction of the close, before the
+/// trade is named in `suspectTradeTickers`. A real fill rarely lands 50 % from the day's close,
+/// while the legacy errors it is meant to catch are far beyond it: pence recorded as pounds is
+/// a factor of 100, a CZK price labelled USD a factor of about 20.
+const SUSPECT_TRADE_DEVIATION: f64 = 0.5;
+/// The oldest price row that still stands for a trade day's close: a week covers weekends and
+/// holidays without comparing against a price from another month.
+const MAX_CLOSE_AGE: i64 = 7 * DAY;
 
 /// Convert a Unix timestamp to a "YYYY-MM-DD" date string (UTC).
 fn ts_to_date_str(ts: i64) -> String {
@@ -1031,6 +1041,18 @@ fn stock_performance_at(
         from_ts,
     )?;
 
+    let suspect_trade_tickers = suspect_trades(
+        universe
+            .iter()
+            .map(|&p| positions[p].ticker.as_str())
+            .filter(|ticker| !unpriced.contains(ticker)),
+        &trades,
+        &history,
+        &fx_history,
+        from_ts,
+        to_ts,
+    );
+
     Ok(StockPerformance {
         dates: indices.iter().map(|&k| ts_to_date_str(days[k])).collect(),
         portfolio: sample(&chain(&daily, &universe), &indices),
@@ -1052,9 +1074,47 @@ fn stock_performance_at(
         positions: performances,
         unpriced_tickers,
         dividend_gap_tickers,
+        suspect_trade_tickers,
         fx_quality: ConversionQuality::from(&quality),
         currency,
     })
+}
+
+/// The tickers with a trade counted in the range (after the base day `from_ts`, up to `to_ts`)
+/// whose price is more than [`SUSPECT_TRADE_DEVIATION`] away from that day's close (sorted,
+/// unique). The close is the last price row at or before the day the trade counts on, the one
+/// the engine values the position with, when it is at most [`MAX_CLOSE_AGE`] old; the trade
+/// price is converted into the close's currency on that day. A trade without such a close or
+/// without a rate is not judged, and neither is a ticker priced by its own trades.
+fn suspect_trades<'a>(
+    tickers: impl Iterator<Item = &'a str>,
+    trades: &Trades,
+    history: &HashMap<String, Vec<DayHolding>>,
+    fx_history: &History,
+    from_ts: i64,
+    to_ts: i64,
+) -> Vec<String> {
+    let mut suspects: Vec<String> = tickers
+        .filter(|ticker| {
+            trades.between(ticker, from_ts, to_ts).iter().any(|trade| {
+                let day = first_day_counting(trade.day);
+                let Some(close) = lookup_ticker_at(history, ticker, day)
+                    .filter(|row| day - row.ts <= MAX_CLOSE_AGE && row.price > EPSILON)
+                else {
+                    return false;
+                };
+                fx_history
+                    .convert_on(trade.price, &trade.currency, &close.currency, day)
+                    .is_some_and(|price| {
+                        (price / close.price - 1.0).abs() > SUSPECT_TRADE_DEVIATION
+                    })
+            })
+        })
+        .map(str::to_string)
+        .collect();
+    suspects.sort();
+    suspects.dedup();
+    suspects
 }
 
 /// The tickers whose dividends may be incomplete over the range: no coverage row, or coverage
@@ -2663,6 +2723,141 @@ mod tests {
             position(&report, "np").end_value.as_deref(),
             Some("1200.00")
         );
+    }
+
+    /// A position of `ticker` with a flat close of 100 in `currency` on days 0 to 2.
+    fn seed_flat_close(conn: &Connection, id: &str, ticker: &str, currency: &str) {
+        insert_investment(conn, id, ticker, "20");
+        insert_tx(conn, ticker, 0, 10.0, 100.0, currency, None);
+        insert_row(conn, ticker, 0, 10.0, 100.0, currency);
+        insert_row(conn, ticker, 1, 20.0, 100.0, currency);
+        insert_row(conn, ticker, 2, 20.0, 100.0, currency);
+    }
+
+    #[test]
+    fn a_trade_far_from_the_close_is_named() {
+        let conn = setup_db();
+        // a pence price recorded as pounds: 10 more bought on day 1 at 10 000 against a close of
+        // 100; a sane buy of the other position at 105 is not named
+        seed_flat_close(&conn, "p", "PENCE", "CZK");
+        insert_tx(&conn, "PENCE", 1, 10.0, 10_000.0, "CZK", None);
+        seed_flat_close(&conn, "s", "SANE", "CZK");
+        insert_tx(&conn, "SANE", 1, 10.0, 105.0, "CZK", None);
+
+        let report = perf(&conn, day(0), day(2), vec![]);
+
+        assert_eq!(report.suspect_trade_tickers, ["PENCE"]);
+    }
+
+    #[test]
+    fn a_trade_is_suspect_beyond_half_the_close_either_way() {
+        for (price, suspect) in [
+            (149.0, false),
+            (151.0, true),
+            (51.0, false),
+            (49.0, true),
+            (0.0, true),
+        ] {
+            let conn = setup_db();
+            seed_flat_close(&conn, "x", "X", "CZK");
+            insert_tx(&conn, "X", 1, 10.0, price, "CZK", None);
+
+            let report = perf(&conn, day(0), day(2), vec![]);
+
+            assert_eq!(
+                report.suspect_trade_tickers.len(),
+                usize::from(suspect),
+                "a buy at {price} against a close of 100"
+            );
+        }
+    }
+
+    #[test]
+    fn a_trade_in_another_currency_is_compared_after_conversion() {
+        // the close is 100 USD and 1 USD costs 20 CZK: a buy at 2000 CZK is the close, a buy at
+        // 100 CZK (a dollar price labelled CZK) is a twentieth of it
+        for (price, suspect) in [(2000.0, false), (100.0, true)] {
+            let conn = setup_db();
+            seed_flat_close(&conn, "u", "USDCO", "USD");
+            insert_tx(&conn, "USDCO", 1, 10.0, price, "CZK", None);
+            for at in 0..=2 {
+                add_usd_czk(&conn, day(at), 20.0);
+            }
+
+            let report = perf(&conn, day(0), day(2), vec![]);
+
+            assert_eq!(
+                report.suspect_trade_tickers.len(),
+                usize::from(suspect),
+                "a buy at {price} CZK against a close of 100 USD"
+            );
+        }
+    }
+
+    #[test]
+    fn a_trade_without_a_rate_to_the_close_is_not_judged() {
+        let conn = setup_db();
+        // no rate at all: 100 CZK against 100 USD cannot be compared, so it is not named
+        seed_flat_close(&conn, "u", "USDCO", "USD");
+        insert_tx(&conn, "USDCO", 1, 10.0, 100.0, "CZK", None);
+
+        let report = perf(&conn, day(0), day(2), vec![]);
+
+        assert!(report.suspect_trade_tickers.is_empty());
+    }
+
+    #[test]
+    fn a_sell_out_is_compared_with_the_last_close() {
+        let conn = setup_db();
+        // sold out at 10 on day 2, which has no row since nothing is held at its close
+        insert_investment(&conn, "x", "X", "0");
+        insert_tx(&conn, "X", 0, 10.0, 100.0, "CZK", None);
+        insert_row(&conn, "X", 0, 10.0, 100.0, "CZK");
+        insert_row(&conn, "X", 1, 10.0, 100.0, "CZK");
+        insert_tx(&conn, "X", 2, -10.0, 10.0, "CZK", None);
+
+        let report = perf(&conn, day(0), day(2), vec![]);
+
+        assert_eq!(report.suspect_trade_tickers, ["X"]);
+    }
+
+    #[test]
+    fn only_the_trades_inside_the_range_are_judged() {
+        let conn = setup_db();
+        // a wrong price on the base day is inside its closing value, and one after the range
+        // does not move it either
+        seed_flat_close(&conn, "x", "X", "CZK");
+        insert_tx(&conn, "X", 1, 10.0, 10_000.0, "CZK", None);
+        insert_row(&conn, "X", 3, 30.0, 100.0, "CZK");
+        insert_tx(&conn, "X", 3, 10.0, 10_000.0, "CZK", None);
+
+        assert!(perf(&conn, day(1), day(2), vec![])
+            .suspect_trade_tickers
+            .is_empty());
+        assert_eq!(
+            perf(&conn, day(0), day(2), vec![]).suspect_trade_tickers,
+            ["X"]
+        );
+    }
+
+    #[test]
+    fn a_trade_without_a_recent_close_is_not_judged() {
+        let conn = setup_db();
+        // no row within a week before the buy on day 9 (the last is day 0, the next day 12),
+        // and a ticker without any row is priced by its own trades
+        insert_investment(&conn, "x", "X", "20");
+        insert_tx(&conn, "X", 0, 10.0, 100.0, "CZK", None);
+        insert_row(&conn, "X", 0, 10.0, 100.0, "CZK");
+        insert_tx(&conn, "X", 9, 10.0, 300.0, "CZK", None);
+        insert_row(&conn, "X", 12, 20.0, 300.0, "CZK");
+        insert_investment(&conn, "np", "NOPX", "20");
+        insert_tx(&conn, "NOPX", 0, 10.0, 50.0, "CZK", None);
+        insert_tx(&conn, "NOPX", 2, 10.0, 500.0, "CZK", None);
+
+        let report = perf(&conn, day(0), day(12), vec![]);
+
+        assert!(report.suspect_trade_tickers.is_empty());
+        assert_eq!(report.unpriced_tickers, ["NOPX"]);
     }
 
     /// 15:00 UTC, the time of day some legacy transactions carry.

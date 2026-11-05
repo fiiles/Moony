@@ -441,7 +441,8 @@
       "today": "Today",
       "empty": "No data for the chosen period yet.",
       "unpriced": "No market price, valued at trade prices: {{tickers}}",
-      "dividendGap": "Dividends not loaded yet: {{tickers}}"
+      "dividendGap": "Dividends not loaded yet: {{tickers}}",
+      "suspectTrade": "Trade price far from the market price that day, the return may be distorted: {{tickers}}"
     },
     "board": {
       "return": "Period return",

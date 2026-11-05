@@ -2726,7 +2726,13 @@ unpricedTickers: string[];
  * Tickers of the period's positions whose dividends may be incomplete: the Yahoo fetch has
  * not covered the range yet (sorted, unique).
  */
-dividendGapTickers: string[] }
+dividendGapTickers: string[]; 
+/**
+ * Tickers of the period's positions with a trade in the range whose price is more than
+ * 50 % away from that day's close, compared in the close's currency: a wrong legacy price
+ * or currency books a false gain or loss on the trade day (sorted, unique).
+ */
+suspectTradeTickers: string[] }
 
 /**
  * Request of the performance report: the period, the currency and the series to chart.

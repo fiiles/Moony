@@ -456,7 +456,8 @@
       "today": "Dnes",
       "empty": "Pro zvolené období zatím nejsou data.",
       "unpriced": "Bez tržní ceny, oceněno cenami obchodů: {{tickers}}",
-      "dividendGap": "Dividendy se ještě nenačetly: {{tickers}}"
+      "dividendGap": "Dividendy se ještě nenačetly: {{tickers}}",
+      "suspectTrade": "Cena obchodu se výrazně liší od tržní ceny toho dne, výnos může být zkreslený: {{tickers}}"
     },
     "board": {
       "return": "Výnos za období",

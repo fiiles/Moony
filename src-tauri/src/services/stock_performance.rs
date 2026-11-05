@@ -314,7 +314,9 @@ impl Trades {
         &trades[start..end]
     }
 
-    /// The first and the last trade day over every ticker.
+    /// The days of the grid the trades fall on, over every ticker: from the midnight starting the
+    /// day of the first trade to the first day that counts the last one. A legacy trade is not
+    /// always at midnight; one at 15:00 counts from the next day (`Quantities::at`, `between`).
     fn span(&self) -> Option<(i64, i64)> {
         let first = self
             .by_ticker
@@ -326,7 +328,7 @@ impl Trades {
             .values()
             .filter_map(|t| t.last())
             .map(|t| t.day);
-        Some((first.min()?, last.max()?))
+        Some((day_start(first.min()?), first_day_counting(last.max()?)))
     }
 }
 
@@ -413,7 +415,7 @@ impl Quantities {
 }
 
 /// The prices of the `tickers` that have no recorded price at all, from their own trades: each
-/// trade's price on its day and, while the position is still held after its last trade, that
+/// trade's price on its day (from the midnight starting it, as a recorded row) and, while the position is still held after its last trade, that
 /// price again on `today` so the range reaches today as it does for a recorded ticker.
 fn trade_prices(
     trades: &Trades,
@@ -429,7 +431,7 @@ fn trade_prices(
         let mut points: Vec<DayHolding> = own
             .iter()
             .map(|trade| DayHolding {
-                ts: trade.day,
+                ts: day_start(trade.day),
                 price: trade.price,
                 currency: trade.currency.clone(),
             })
@@ -735,7 +737,8 @@ pub fn stock_performance(
     history.extend(fallback);
     let (from_ts, to_ts) = match span {
         Some((earliest, latest)) => {
-            let from_ts = request.from_ts.max(earliest);
+            // the grid runs on midnights, whatever time a legacy trade carries
+            let from_ts = request.from_ts.max(day_start(earliest));
             (from_ts, request.to_ts.min(latest).max(from_ts))
         }
         None => (request.from_ts, request.from_ts),
@@ -893,6 +896,16 @@ pub fn validate_benchmark_ticker(ticker: &str) -> Result<String> {
 /// The start of the UTC day `ts` falls on.
 fn day_start(ts: i64) -> i64 {
     ts.div_euclid(DAY) * DAY
+}
+
+/// The first midnight at or after `ts`: the first day of the grid that counts a trade at `ts`.
+fn first_day_counting(ts: i64) -> i64 {
+    let start = day_start(ts);
+    if start == ts {
+        ts
+    } else {
+        start + DAY
+    }
 }
 
 /// The closes that can be used (finite and positive), oldest first.
@@ -1080,6 +1093,19 @@ mod tests {
         currency: &str,
         fee: Option<f64>,
     ) {
+        insert_tx_at(conn, ticker, day(at), quantity, price, currency, fee);
+    }
+
+    /// `insert_tx` at the raw timestamp `ts` (a legacy transaction need not be at midnight).
+    fn insert_tx_at(
+        conn: &Connection,
+        ticker: &str,
+        ts: i64,
+        quantity: f64,
+        price: f64,
+        currency: &str,
+        fee: Option<f64>,
+    ) {
         conn.execute(
             "INSERT INTO investment_transactions
                 (id, investment_id, type, ticker, quantity, price_per_unit, currency,
@@ -1093,7 +1119,7 @@ mod tests {
                 quantity.abs().to_string(),
                 price.to_string(),
                 currency,
-                day(at),
+                ts,
                 fee.map(|fee| fee.to_string())
             ],
         )
@@ -2123,6 +2149,47 @@ mod tests {
             position(&report, "np").end_value.as_deref(),
             Some("1200.00")
         );
+    }
+
+    /// 15:00 UTC, the time of day some legacy transactions carry.
+    const AFTERNOON: i64 = 15 * 3600;
+
+    #[test]
+    fn a_sell_out_in_the_afternoon_counts_on_the_next_day() {
+        let conn = setup_db();
+        // 10 shares held at 100 from day 0, all sold at 95 on day 1 at 15:00: the last event, so
+        // the sale counts on day 2, as the quantities count it
+        insert_investment(&conn, "x", "X", "0");
+        insert_tx(&conn, "X", 0, 10.0, 100.0, "CZK", None);
+        insert_row(&conn, "X", 0, 10.0, 100.0, "CZK");
+        insert_row(&conn, "X", 1, 10.0, 100.0, "CZK");
+        insert_tx_at(&conn, "X", day(1) + AFTERNOON, -10.0, 95.0, "CZK", None);
+
+        let report = perf(&conn, day(0), day(5), vec![]);
+
+        assert_eq!(report.dates, [day(0), day(1), day(2)].map(ts_to_date_str));
+        assert_eq!(report.net_flows, ["0.00", "0.00", "-950.00"]);
+        assert_eq!(last(&report.values), &Some("0.00".to_string()));
+        close(day_return(&report, 2), -5.0, 1e-9);
+        assert_eq!(position(&report, "x").gain, "-50.00");
+    }
+
+    #[test]
+    fn a_first_trade_in_the_afternoon_keeps_the_days_on_midnight() {
+        let conn = setup_db();
+        // no value history: bought 10 at 50 on day 0 at 15:00, held since
+        insert_investment(&conn, "np", "NOPX", "10");
+        insert_tx_at(&conn, "NOPX", day(0) + AFTERNOON, 10.0, 50.0, "CZK", None);
+
+        let report = perf(&conn, day(-3), day(3), vec![]);
+
+        // the range starts on the midnight of the first trade, which counts from day 1
+        assert_eq!(report.dates, [0, 1, 2, 3].map(|i| ts_to_date_str(day(i))));
+        assert_eq!(report.values[0], Some("0.00".to_string()));
+        assert_eq!(report.net_flows[1], "500.00");
+        assert_eq!(last(&report.values), &Some("500.00".to_string()));
+        assert!(report.portfolio.iter().all(|twr| twr.abs() < 1e-9));
+        assert_eq!(report.unpriced_tickers, ["NOPX"]);
     }
 
     #[test]

@@ -11,12 +11,12 @@ use crate::error::{AppError, Result};
 /// Most series one request may ask for.
 const MAX_SERIES: usize = 256;
 
-/// One line of the performance chart: a set of held positions.
+/// One line of the performance chart: a set of positions.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct PerformanceSeriesSpec {
     /// Caller-chosen identifier, echoed in the response; unique within a request.
     pub key: String,
-    /// The positions of the series. Ids of positions that are not held are ignored.
+    /// The positions of the series. Ids of positions outside the period are ignored.
     #[serde(rename = "investmentIds")]
     pub investment_ids: Vec<String>,
     /// Compute this series in another currency (the native return of a currency group); it then
@@ -79,7 +79,7 @@ pub struct PerformanceSeries {
     pub gain: Option<String>,
 }
 
-/// One held position over the whole period.
+/// One position of the period over the whole period.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct PositionPerformance {
     #[serde(rename = "investmentId")]
@@ -102,8 +102,8 @@ pub struct PositionPerformance {
     pub gain: String,
 }
 
-/// Performance of the held positions in `currency`: the whole portfolio, the requested series
-/// and every position, all on the same `dates`.
+/// Performance of the stock positions of the period in `currency`: the whole portfolio, the
+/// requested series and every position, all on the same `dates`.
 #[derive(Debug, Clone, Serialize, Deserialize, Type)]
 pub struct StockPerformance {
     /// The report currency.
@@ -118,7 +118,7 @@ pub struct StockPerformance {
     /// Cumulative time-weighted return of the whole portfolio in percent per date (first 0).
     #[serde(rename = "portfolio")]
     pub portfolio: Vec<f64>,
-    /// Portfolio value per date (decimal TEXT); `null` when no held position converts that day.
+    /// Portfolio value per date (decimal TEXT); `null` when no position converts that day.
     #[serde(rename = "values")]
     pub values: Vec<Option<String>>,
     /// Net deposits (buys minus sells) cumulated since the first date, decimal TEXT.
@@ -130,8 +130,14 @@ pub struct StockPerformance {
     pub mwr: Vec<f64>,
     #[serde(rename = "series")]
     pub series: Vec<PerformanceSeries>,
+    /// Every position of the period: held at the end of any day of the range or traded in it,
+    /// including positions sold since.
     #[serde(rename = "positions")]
     pub positions: Vec<PositionPerformance>,
+    /// Tickers of the period's positions without any market price, valued at their own trade
+    /// prices instead (sorted, unique).
+    #[serde(rename = "unpricedTickers")]
+    pub unpriced_tickers: Vec<String>,
 }
 
 /// Daily returns of a market index (or any Yahoo ticker) over the period, for the comparison

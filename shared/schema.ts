@@ -2010,11 +2010,11 @@ export interface InsertStockTag {
   groupId?: string | null;
 }
 
-/** One line of the performance chart: a set of held positions. */
+/** One line of the performance chart: a set of positions. */
 export interface PerformanceSeriesSpec {
   /** Caller-chosen identifier, echoed in the response; unique within a request. */
   key: string;
-  /** The positions of the series. Ids of positions that are not held are ignored. */
+  /** The positions of the series. Ids of positions outside the period are ignored. */
   investmentIds: string[];
   /**
    * Compute this series in another currency (the native return of a currency group); it then
@@ -2051,7 +2051,7 @@ export interface PerformanceSeries {
   gain: string | null;
 }
 
-/** One held position over the whole period. */
+/** One position of the period over the whole period. */
 export interface PositionPerformance {
   investmentId: string;
   /** Time-weighted return of the position over the period, in percent. */
@@ -2067,8 +2067,8 @@ export interface PositionPerformance {
 }
 
 /**
- * Performance of the held positions in `currency`: the whole portfolio, the requested series and
- * every position, all on the same `dates`.
+ * Performance of the stock positions of the period in `currency`: the whole portfolio, the
+ * requested series and every position, all on the same `dates`.
  */
 export interface StockPerformance {
   /** The report currency. */
@@ -2078,14 +2078,23 @@ export interface StockPerformance {
   dates: string[];
   /** Cumulative time-weighted return of the whole portfolio in percent per date (first 0). */
   portfolio: number[];
-  /** Portfolio value per date (decimal TEXT); null when no held position converts that day. */
+  /** Portfolio value per date (decimal TEXT); null when no position converts that day. */
   values: (string | null)[];
   /** Net deposits (buys minus sells) cumulated since the first date, decimal TEXT. */
   netFlows: string[];
   /** Money-weighted return from the first date to each date (modified Dietz, cumulative), in percent. */
   mwr: number[];
   series: PerformanceSeries[];
+  /**
+   * Every position of the period: held at the end of any day of the range or traded in it,
+   * including positions sold since.
+   */
   positions: PositionPerformance[];
+  /**
+   * Tickers of the period's positions without any market price, valued at their own trade prices
+   * instead (sorted, unique).
+   */
+  unpricedTickers: string[];
 }
 
 /**

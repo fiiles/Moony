@@ -1,28 +1,44 @@
-//! Performance of the held stock positions over a period, for the stocks analysis page.
+//! Performance of the stock positions over a period, for the stocks analysis page, computed the
+//! way the Global Investment Performance Standards (GIPS) compute it.
 //!
-//! A daily engine chain-links the time-weighted return over every held position at once. For
-//! each position `p` and day `s` of the range, in the
-//! report currency (values and flows converted at their own day):
+//! A daily engine chain-links the time-weighted return over every position of the period at
+//! once. For each position `p` and day `s` of the range, in the report currency (values, flows
+//! and dividends converted at their own day):
 //!
-//! - `base_p(s) = V_p(s-1) + F_p(s)` and `gain_p(s) = V_p(s) - V_p(s-1) - F_p(s)`, where `V` is
-//!   the value and `F` the flow (quantity change times the day's native price);
-//! - the quantity of a day comes from the transactions (the running buys minus sells dated at or
-//!   before the day, as `ticker_history` plans the rows), the native price and its currency from
-//!   the last `stock_value_history` row at or before the day. A day without a position has no
-//!   row (a rebuild deletes it), so the quantity must not be read from the last row: it would
-//!   carry the old quantity through the gap and book a re-buy as a sale. A sell-out is priced
-//!   with the last row before it. Prices before the first recorded day are filled backwards
-//!   from it: a position whose transactions start before its first row is valued flat at that
-//!   first price until real prices exist, so its buy is a deposit and its first row does not
-//!   bring a whole value in without a flow. Only a position with no row at all has an unknown
-//!   value, and then the holding drops out of that day like a failed conversion (without a
-//!   counted miss: no conversion was attempted);
+//! - `V_p(s)` is the value at the close: the shares held at the end of `s` times the last known
+//!   native price at or before `s`;
+//! - `F_p(s)` is the external flow: the sum over the trades of `p` dated `s` of
+//!   `+(quantity × price + fee)` for a buy and `-(quantity × price - fee)` for a sell, in the
+//!   trade's own currency. A trade is valued at its own price, not at the day's close, so the
+//!   move between the trade and the close is that day's return, and a fee lowers it;
+//! - `D_p(s)` is the gross dividend with ex-date `s` (none are loaded yet, so it is 0);
+//! - money comes in at the start of the day and leaves at its end:
+//!   `base_p(s) = V_p(s-1) + max(F_p(s), 0)` and
+//!   `gain_p(s) = V_p(s) - V_p(s-1) - F_p(s) + D_p(s)`. A sell does not lower the base, so a
+//!   sell-out day returns against the previous value rather than against a base near zero; a
+//!   buy and a sell of one position on one day net out before the `max`. The base day has no
+//!   flow: its trades are inside its closing value;
 //! - a set `S` of positions chains `R_S(s) = sum_S gain / sum_S base`, so its time-weighted
-//!   return is `prod (1 + R_S) - 1`; the whole portfolio is the set of every held position;
+//!   return is `prod (1 + R_S) - 1`; the whole portfolio is the set of every position;
 //! - the contribution of `S` to the portfolio return is
 //!   `C_S(t) = sum_{s <= t} G(s-1) * sum_S gain(s) / sum_all base(s)`, with `G` the portfolio
-//!   growth. The contributions of a partition of the held positions add up exactly to the
-//!   portfolio TWR, because the portfolio's own step is `G(s-1) * sum_all gain / sum_all base`.
+//!   growth. The contributions of a partition of the positions add up exactly to the portfolio
+//!   TWR, because the portfolio's own step is `G(s-1) * sum_all gain / sum_all base`.
+//!
+//! The positions of a period are every stock position held at the end of any day of the range
+//! (the base day included) or with a flow on any later day, including positions sold since or
+//! within the range: leaving sold positions out would be survivorship bias. The range is clamped
+//! to the days anything was recorded, held or traded.
+//!
+//! The shares held on a day come from the transactions (the running buys minus sells dated at or
+//! before the day, as `ticker_history` plans the rows), never from the value rows: a day without
+//! a position has no row (a rebuild deletes it), so the last row would carry the old quantity
+//! through the gap. The native price and its currency come from the last `stock_value_history`
+//! row at or before the day; prices before the first row are filled backwards from it, so a
+//! position bought before its first row is valued flat at that first price until real prices
+//! exist. A ticker without any row at all (delisted, unknown to the price source) is priced by
+//! its own trades instead: each trade's price is a known price on its day, carried forward like
+//! a row, and the ticker is named in `unpricedTickers`.
 //!
 //! A holding any of whose conversions fails drops out of that day only (its `base` and `gain`
 //! are unknown) and is counted in `fxQuality`; the other holdings keep chaining. The
@@ -50,7 +66,7 @@ use crate::services::reporting::{money_in_currency, normalize_currency};
 
 /// Most dates a report emits, the first and the last day included.
 const MAX_POINTS: usize = 400;
-/// A base or quantity at or below this is zero.
+/// A base, quantity or flow at or below this is zero.
 const EPSILON: f64 = 1e-9;
 
 /// Convert a Unix timestamp to a "YYYY-MM-DD" date string (UTC).
@@ -60,8 +76,9 @@ fn ts_to_date_str(ts: i64) -> String {
         .unwrap_or_default()
 }
 
-/// One recorded day of a ticker's value history: the native price and its currency. The
-/// quantity of a day comes from the transactions (`Quantities`), not from the row.
+/// One known price of a ticker: a recorded day of its value history (or, for a ticker without
+/// any, one of its trades). The quantity of a day comes from the transactions (`Quantities`),
+/// not from the row.
 #[derive(Debug, Clone)]
 struct DayHolding {
     ts: i64,
@@ -89,7 +106,7 @@ fn lookup_ticker_at<'a>(
 /// position's first row, which fills the days before it backwards. When no row is at or before
 /// a day of the range, the ticker has none before the range either (the load keeps the last row
 /// before it), so its first loaded row is the first it has ever recorded, or the one
-/// `load_first_prices` added from beyond the range. `None` only for a ticker without any row.
+/// `load_first_prices` added from beyond the range. `None` only for a ticker without any price.
 fn price_on<'a>(
     history: &'a HashMap<String, Vec<DayHolding>>,
     ticker: &str,
@@ -166,7 +183,7 @@ fn load_day_holdings(
 /// Adds the first recorded row of every ticker `history` has no row for, which is the backward
 /// fill of a ticker whose recorded prices all start after the range (`price_on`). A ticker that
 /// has rows in or before the range already has its first row in `history`; one without any row
-/// stays unpriced.
+/// stays out of it.
 fn load_first_prices(
     conn: &Connection,
     tickers: &[String],
@@ -205,36 +222,18 @@ fn load_first_prices(
     Ok(())
 }
 
-/// The day quotes a report of `from_ts..=to_ts` converts with: the requested range limited to
-/// the span of `stock_value_history` (a transient absurd range loads nothing extra), plus the
-/// day before it, which is the base of the first day's return.
-fn load_fx_history(conn: &rusqlite::Connection, from_ts: i64, to_ts: i64) -> Result<History> {
-    let (first, last): (Option<i64>, Option<i64>) = conn.query_row(
-        "SELECT MIN(recorded_at), MAX(recorded_at) FROM stock_value_history",
-        [],
-        |row| Ok((row.get(0)?, row.get(1)?)),
-    )?;
-    let (Some(first), Some(last)) = (first, last) else {
-        return Ok(History::default());
-    };
-    let start = from_ts.max(first) - 86400;
-    let end = to_ts.min(last);
-    History::load(conn, start, end.max(start))
-}
-
-/// A held stock position.
-struct Held {
+/// A stock position.
+struct Position {
     id: String,
     ticker: String,
 }
 
-/// Every position still held (quantity > 0), ordered by ticker.
-fn held_positions(conn: &Connection) -> Result<Vec<Held>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, ticker FROM stock_investments WHERE CAST(quantity AS REAL) > 0 ORDER BY ticker",
-    )?;
+/// Every stock position, held or sold, ordered by ticker. A position stays while it has
+/// transactions, so a sold one is still here with quantity 0.
+fn all_positions(conn: &Connection) -> Result<Vec<Position>> {
+    let mut stmt = conn.prepare("SELECT id, ticker FROM stock_investments ORDER BY ticker")?;
     let rows = stmt.query_map([], |row| {
-        Ok(Held {
+        Ok(Position {
             id: row.get(0)?,
             ticker: row.get(1)?,
         })
@@ -242,17 +241,131 @@ fn held_positions(conn: &Connection) -> Result<Vec<Held>> {
     Ok(rows.collect::<rusqlite::Result<Vec<_>>>()?)
 }
 
+/// One buy or sell.
+#[derive(Debug, Clone)]
+struct Trade {
+    day: i64,
+    /// Shares bought (positive) or sold (negative).
+    quantity: f64,
+    /// The price per share, in `currency`.
+    price: f64,
+    /// The external flow in `currency`: `+(quantity × price + fee)` for a buy,
+    /// `-(quantity × price - fee)` for a sell.
+    cash: f64,
+    currency: String,
+}
+
+/// The trades of each ticker, ascending by day.
+struct Trades {
+    by_ticker: HashMap<String, Vec<Trade>>,
+}
+
+impl Trades {
+    /// Every transaction of `tickers`, in one query. `CAST(.. AS REAL)` keeps SQLite's leniency
+    /// about malformed number text, as `ticker_history` does; a missing fee is 0.
+    fn load(conn: &Connection, tickers: &[String]) -> Result<Self> {
+        let mut by_ticker: HashMap<String, Vec<Trade>> = HashMap::new();
+        if tickers.is_empty() {
+            return Ok(Self { by_ticker });
+        }
+        let placeholders = vec!["?"; tickers.len()].join(", ");
+        let mut stmt = conn.prepare(&format!(
+            "SELECT ticker, transaction_date, type = 'buy', CAST(quantity AS REAL),
+                    CAST(price_per_unit AS REAL), COALESCE(CAST(fee AS REAL), 0.0), currency
+             FROM investment_transactions
+             WHERE ticker IN ({placeholders})
+             ORDER BY ticker, transaction_date, rowid"
+        ))?;
+        let rows = stmt.query_map(params_from_iter(tickers), |row| {
+            let is_buy: bool = row.get(2)?;
+            let quantity: f64 = row.get(3)?;
+            let price: f64 = row.get(4)?;
+            let fee: f64 = row.get(5)?;
+            let amount = quantity * price;
+            Ok((
+                row.get::<_, String>(0)?,
+                Trade {
+                    day: row.get(1)?,
+                    quantity: if is_buy { quantity } else { -quantity },
+                    price,
+                    cash: if is_buy {
+                        amount + fee
+                    } else {
+                        -(amount - fee)
+                    },
+                    currency: row.get(6)?,
+                },
+            ))
+        })?;
+        for row in rows {
+            let (ticker, trade) = row?;
+            by_ticker.entry(ticker).or_default().push(trade);
+        }
+        Ok(Self { by_ticker })
+    }
+
+    /// The trades of `ticker` dated after `after` and at or before `day`.
+    fn between(&self, ticker: &str, after: i64, day: i64) -> &[Trade] {
+        let Some(trades) = self.by_ticker.get(ticker) else {
+            return &[];
+        };
+        let start = trades.partition_point(|trade| trade.day <= after);
+        let end = trades.partition_point(|trade| trade.day <= day);
+        &trades[start..end]
+    }
+
+    /// The first and the last trade day over every ticker.
+    fn span(&self) -> Option<(i64, i64)> {
+        let first = self
+            .by_ticker
+            .values()
+            .filter_map(|t| t.first())
+            .map(|t| t.day);
+        let last = self
+            .by_ticker
+            .values()
+            .filter_map(|t| t.last())
+            .map(|t| t.day);
+        Some((first.min()?, last.max()?))
+    }
+}
+
+/// The gross dividends of each ticker by ex-date. None are loaded yet: every day pays 0.
+struct Dividends;
+
+impl Dividends {
+    /// The gross dividends of `ticker` with an ex-date after `after` and at or before `day`, in
+    /// the report currency; `None` when a conversion failed.
+    fn on(&self, _ticker: &str, _after: i64, _day: i64) -> Option<f64> {
+        Some(0.0)
+    }
+}
+
+/// Everything the daily engine reads, loaded once per report.
+struct Inputs<'a> {
+    /// The known native prices per ticker, ascending by day.
+    history: &'a HashMap<String, Vec<DayHolding>>,
+    quantities: &'a Quantities,
+    trades: &'a Trades,
+    dividends: &'a Dividends,
+}
+
 /// Daily moves of positions in one currency. Index 0 is the base day.
 struct Daily {
     days: Vec<i64>,
-    /// `[k][p]`: `V_p(k-1) + F_p(k)` for `k >= 1`; `None` when a conversion failed that day.
+    /// `[k][p]`: the shares held at the end of day `k`.
+    quantity: Vec<Vec<f64>>,
+    /// `[k][p]`: `V_p(k-1) + max(F_p(k), 0)` for `k >= 1`; `None` when a conversion failed that
+    /// day.
     base: Vec<Vec<Option<f64>>>,
-    /// `[k][p]`: `V_p(k) - V_p(k-1) - F_p(k)`.
+    /// `[k][p]`: `V_p(k) - V_p(k-1) - F_p(k) + D_p(k)`.
     gain: Vec<Vec<Option<f64>>>,
     /// `[k][p]`: `V_p(k)`, `k >= 0`.
     value: Vec<Vec<Option<f64>>>,
-    /// `[k][p]`: `F_p(k)`.
+    /// `[k][p]`: `F_p(k)`; 0 on the base day.
     flow: Vec<Vec<Option<f64>>>,
+    /// `[k][p]`: `D_p(k)`; 0 on the base day.
+    dividend: Vec<Vec<Option<f64>>>,
 }
 
 /// The shares of each ticker held on a day, from the transactions: the running sum of buys minus
@@ -265,36 +378,23 @@ struct Quantities {
 }
 
 impl Quantities {
-    /// Every transaction of `tickers`, in one query. `CAST(.. AS REAL)` keeps SQLite's leniency
-    /// about malformed quantity text, as `ticker_history` does.
-    fn load(conn: &Connection, tickers: &[String]) -> Result<Self> {
-        let mut steps: HashMap<String, Vec<(i64, f64)>> = HashMap::new();
-        if tickers.is_empty() {
-            return Ok(Self { steps });
-        }
-        let placeholders = vec!["?"; tickers.len()].join(", ");
-        let mut stmt = conn.prepare(&format!(
-            "SELECT ticker, transaction_date,
-                    CASE WHEN type = 'buy' THEN CAST(quantity AS REAL)
-                         ELSE -CAST(quantity AS REAL) END
-             FROM investment_transactions
-             WHERE ticker IN ({placeholders})
-             ORDER BY ticker, transaction_date"
-        ))?;
-        let rows = stmt.query_map(params_from_iter(tickers), |row| {
-            Ok((
-                row.get::<_, String>(0)?,
-                row.get::<_, i64>(1)?,
-                row.get::<_, f64>(2)?,
-            ))
-        })?;
-        for row in rows {
-            let (ticker, date, change) = row?;
-            let running = steps.entry(ticker).or_default();
-            let position = running.last().map_or(0.0, |&(_, position)| position);
-            running.push((date, position + change));
-        }
-        Ok(Self { steps })
+    fn from_trades(trades: &Trades) -> Self {
+        let steps = trades
+            .by_ticker
+            .iter()
+            .map(|(ticker, trades)| {
+                let mut position = 0.0;
+                let running = trades
+                    .iter()
+                    .map(|trade| {
+                        position += trade.quantity;
+                        (trade.day, position)
+                    })
+                    .collect();
+                (ticker.clone(), running)
+            })
+            .collect();
+        Self { steps }
     }
 
     /// The shares of `ticker` held on `day` (midnight UTC); 0 when nothing is held.
@@ -312,9 +412,41 @@ impl Quantities {
     }
 }
 
+/// The prices of the `tickers` that have no recorded price at all, from their own trades: each
+/// trade's price on its day and, while the position is still held after its last trade, that
+/// price again on `today` so the range reaches today as it does for a recorded ticker.
+fn trade_prices(
+    trades: &Trades,
+    quantities: &Quantities,
+    tickers: &[&str],
+    today: i64,
+) -> HashMap<String, Vec<DayHolding>> {
+    let mut prices = HashMap::new();
+    for &ticker in tickers {
+        let Some(own) = trades.by_ticker.get(ticker) else {
+            continue;
+        };
+        let mut points: Vec<DayHolding> = own
+            .iter()
+            .map(|trade| DayHolding {
+                ts: trade.day,
+                price: trade.price,
+                currency: trade.currency.clone(),
+            })
+            .collect();
+        if let Some(last) = points.last().cloned() {
+            if last.ts < today && quantities.at(ticker, i64::MAX) > EPSILON {
+                points.push(DayHolding { ts: today, ..last });
+            }
+        }
+        prices.insert(ticker.to_string(), points);
+    }
+    prices
+}
+
 /// The value of `quantity` shares priced with `price` (the last row at or before `at`),
 /// converted at `at`. No shares are worth nothing and need neither a price nor a rate; shares
-/// without any price row have an unknown value (`None`, no conversion was attempted).
+/// without any price have an unknown value (`None`, no conversion was attempted).
 fn value_at(
     fx: &ReportFx<'_>,
     quantity: f64,
@@ -330,29 +462,32 @@ fn value_at(
         .convert_on_tracked(quality, quantity * h.price, &h.currency, fx.currency, at)
 }
 
-/// The cash flow of a day: the change of the quantity priced with the day's own native price
-/// (a sold-out day has no row, so it is the last row before it) and converted at that day.
-/// `None` when the price is unknown or the conversion failed.
-fn flow_at(
-    fx: &ReportFx<'_>,
-    delta: f64,
-    price: Option<&DayHolding>,
-    day: i64,
-    quality: &mut Quality,
-) -> Option<f64> {
-    if delta.abs() <= EPSILON {
-        return Some(0.0);
+/// The external flow of `trades` (one day's) in the report currency: the cash of each trade
+/// currency summed and converted at `day`. `None` when a conversion failed; no trades are 0.
+fn flow_of(fx: &ReportFx<'_>, trades: &[Trade], day: i64, quality: &mut Quality) -> Option<f64> {
+    let mut by_currency: Vec<(&str, f64)> = Vec::new();
+    for trade in trades {
+        match by_currency
+            .iter_mut()
+            .find(|(currency, _)| *currency == trade.currency)
+        {
+            Some((_, cash)) => *cash += trade.cash,
+            None => by_currency.push((&trade.currency, trade.cash)),
+        }
     }
-    let h = price?;
-    fx.history
-        .convert_on_tracked(quality, delta * h.price, &h.currency, fx.currency, day)
+    by_currency
+        .into_iter()
+        .map(|(currency, cash)| {
+            fx.history
+                .convert_on_tracked(quality, cash, currency, fx.currency, day)
+        })
+        .sum()
 }
 
 /// The daily moves of `tickers` on `days` (consecutive days, the first is the base), converted
 /// into `fx.currency`. Every value is converted once, as it was when it was "today".
 fn build_daily(
-    history: &HashMap<String, Vec<DayHolding>>,
-    quantities: &Quantities,
+    inputs: &Inputs<'_>,
     tickers: &[&str],
     days: &[i64],
     fx: &ReportFx<'_>,
@@ -361,35 +496,52 @@ fn build_daily(
     let grid = || vec![vec![None; tickers.len()]; days.len()];
     let mut daily = Daily {
         days: days.to_vec(),
+        quantity: vec![vec![0.0; tickers.len()]; days.len()],
         base: grid(),
         gain: grid(),
         value: grid(),
         flow: grid(),
+        dividend: grid(),
     };
     for (p, ticker) in tickers.iter().enumerate() {
-        let mut prev_quantity = 0.0;
         let mut prev_value: Option<f64> = None;
         for (k, &day) in days.iter().enumerate() {
-            let quantity = quantities.at(ticker, day);
-            let price = price_on(history, ticker, day);
+            let quantity = inputs.quantities.at(ticker, day);
+            daily.quantity[k][p] = quantity;
+            let price = price_on(inputs.history, ticker, day);
             let value = value_at(fx, quantity, price, day, quality);
             daily.value[k][p] = value;
             if k == 0 {
                 daily.flow[k][p] = Some(0.0);
+                daily.dividend[k][p] = Some(0.0);
             } else if let (Some(v), Some(v_prev)) = (value, prev_value) {
                 // A holding that cannot be converted drops out of this day only; the miss is
                 // already recorded.
-                if let Some(flow) = flow_at(fx, quantity - prev_quantity, price, day, quality) {
+                let after = days[k - 1];
+                let trades = inputs.trades.between(ticker, after, day);
+                let flow = flow_of(fx, trades, day, quality);
+                let dividend = inputs.dividends.on(ticker, after, day);
+                if let (Some(flow), Some(dividend)) = (flow, dividend) {
                     daily.flow[k][p] = Some(flow);
-                    daily.base[k][p] = Some(v_prev + flow);
-                    daily.gain[k][p] = Some(v - v_prev - flow);
+                    daily.dividend[k][p] = Some(dividend);
+                    // money in at the start of the day, money out at its end
+                    daily.base[k][p] = Some(v_prev + flow.max(0.0));
+                    daily.gain[k][p] = Some(v - v_prev - flow + dividend);
                 }
             }
-            prev_quantity = quantity;
             prev_value = value;
         }
     }
     daily
+}
+
+/// Whether position `p` belongs to the period: it holds shares at the end of any day (the base
+/// day included), or has a flow or a dividend on any later day (a day trade holds nothing at a
+/// close).
+fn in_universe(daily: &Daily, p: usize) -> bool {
+    let moved = |cell: Option<f64>| cell.is_some_and(|amount| amount.abs() > EPSILON);
+    daily.quantity.iter().any(|day| day[p] > EPSILON)
+        || (1..daily.days.len()).any(|k| moved(daily.flow[k][p]) || moved(daily.dividend[k][p]))
 }
 
 /// The cumulative time-weighted return in percent of `members` over the days (first 0): their
@@ -505,8 +657,8 @@ fn sample(values: &[f64], indices: &[usize]) -> Vec<f64> {
     indices.iter().map(|&k| values[k]).collect()
 }
 
-/// The held positions a series covers (indexes into the held list, ascending, unique); ids of
-/// positions that are not held are ignored.
+/// The positions a series covers (indexes into the position list, ascending, unique); ids of
+/// positions outside the period's universe are ignored.
 fn members_of(spec: &PerformanceSeriesSpec, index_of: &HashMap<&str, usize>) -> Vec<usize> {
     let mut members: Vec<usize> = spec
         .investment_ids
@@ -518,7 +670,7 @@ fn members_of(spec: &PerformanceSeriesSpec, index_of: &HashMap<&str, usize>) -> 
     members
 }
 
-/// First and last recorded day over every holding history.
+/// First and last known day over every price history.
 fn history_span(history: &HashMap<String, Vec<DayHolding>>) -> Option<(i64, i64)> {
     let earliest = history
         .values()
@@ -529,6 +681,14 @@ fn history_span(history: &HashMap<String, Vec<DayHolding>>) -> Option<(i64, i64)
         .filter_map(|rows| rows.last().map(|entry| entry.ts))
         .max()?;
     Some((earliest, latest))
+}
+
+/// The smallest span covering every given span; `None` without any.
+fn union_span(spans: impl IntoIterator<Item = Option<(i64, i64)>>) -> Option<(i64, i64)> {
+    spans
+        .into_iter()
+        .flatten()
+        .reduce(|(a0, a1), (b0, b1)| (a0.min(b0), a1.max(b1)))
 }
 
 /// The consecutive days from `from_ts` to `to_ts`, at least the first.
@@ -542,61 +702,77 @@ fn day_range(from_ts: i64, to_ts: i64) -> Vec<i64> {
     days
 }
 
-/// The performance of the held positions from `request.from_ts` to `request.to_ts` in the
-/// report currency: the whole portfolio, every requested series and every position.
+/// The performance of the stock positions of the period from `request.from_ts` to
+/// `request.to_ts` in the report currency: the whole portfolio, every requested series and every
+/// position, sold ones included.
 ///
-/// The range is clamped to the recorded history, because nothing exists to chain-link before
-/// the first known row or after the last one, and a transient absurd range (typing a year in a
-/// date input) must not run for millions of iterations while holding the DB lock. The caller
-/// validates the request (`StockPerformanceRequest::validate`).
+/// The range is clamped to the days anything was recorded or traded, because nothing exists to
+/// chain-link before the first of them or after the last one, and a transient absurd range
+/// (typing a year in a date input) must not run for millions of iterations while holding the DB
+/// lock. The caller validates the request (`StockPerformanceRequest::validate`).
 pub fn stock_performance(
     conn: &Connection,
     request: &StockPerformanceRequest,
 ) -> Result<StockPerformance> {
     let currency = normalize_currency(&request.report_currency)?;
-    let held = held_positions(conn)?;
-    let tickers: Vec<String> = held.iter().map(|h| h.ticker.clone()).collect();
+    let positions = all_positions(conn)?;
+    let tickers: Vec<String> = positions.iter().map(|p| p.ticker.clone()).collect();
+    let trades = Trades::load(conn, &tickers)?;
+    let quantities = Quantities::from_trades(&trades);
     let mut history = load_day_holdings(conn, &tickers, request.from_ts, request.to_ts)?;
-    let (from_ts, to_ts) = match history_span(&history) {
+    let recorded = history_span(&history);
+    // after the span: a first row beyond the range only prices, it does not widen the range
+    load_first_prices(conn, &tickers, &mut history)?;
+    // a ticker still without a price has no row at all: its trades price it
+    let unpriced: Vec<&str> = tickers
+        .iter()
+        .map(String::as_str)
+        .filter(|ticker| !history.contains_key(*ticker))
+        .collect();
+    let today = day_start(chrono::Utc::now().timestamp());
+    let fallback = trade_prices(&trades, &quantities, &unpriced, today);
+    let span = union_span([recorded, history_span(&fallback), trades.span()]);
+    history.extend(fallback);
+    let (from_ts, to_ts) = match span {
         Some((earliest, latest)) => {
             let from_ts = request.from_ts.max(earliest);
             (from_ts, request.to_ts.min(latest).max(from_ts))
         }
         None => (request.from_ts, request.from_ts),
     };
-    // after the span: a first row beyond the range only prices, it does not widen the range
-    load_first_prices(conn, &tickers, &mut history)?;
     let days = day_range(from_ts, to_ts);
-    let fx_history = load_fx_history(conn, from_ts, to_ts)?;
+    // the day before the range is the base of its first day's return
+    let fx_history = History::load(conn, from_ts - DAY, to_ts)?;
     let fx = ReportFx {
         currency: &currency,
         history: &fx_history,
     };
     let mut quality = Quality::default();
 
-    let quantities = Quantities::load(conn, &tickers)?;
+    let inputs = Inputs {
+        history: &history,
+        quantities: &quantities,
+        trades: &trades,
+        dividends: &Dividends,
+    };
     let ticker_refs: Vec<&str> = tickers.iter().map(String::as_str).collect();
-    let daily = build_daily(
-        &history,
-        &quantities,
-        &ticker_refs,
-        &days,
-        &fx,
-        &mut quality,
-    );
-    let all: Vec<usize> = (0..held.len()).collect();
-    let weights = Weights::of_portfolio(&daily, &all);
+    let daily = build_daily(&inputs, &ticker_refs, &days, &fx, &mut quality);
+    // the positions of the period; the others hold nothing and move nothing in it
+    let universe: Vec<usize> = (0..positions.len())
+        .filter(|&p| in_universe(&daily, p))
+        .collect();
+    let weights = Weights::of_portfolio(&daily, &universe);
     let indices = emitted_indices(days.len());
 
     // Whole-portfolio value, deposits and money-weighted return
     let values: Vec<Option<f64>> = (0..days.len())
         .map(|k| {
-            let known: Vec<f64> = daily.value[k].iter().flatten().copied().collect();
+            let known: Vec<f64> = universe.iter().filter_map(|&p| daily.value[k][p]).collect();
             (!known.is_empty()).then(|| known.iter().sum())
         })
         .collect();
     let flows: Vec<f64> = (0..days.len())
-        .map(|k| daily.flow[k].iter().flatten().sum())
+        .map(|k| universe.iter().filter_map(|&p| daily.flow[k][p]).sum())
         .collect();
     let mut net_flows = Vec::with_capacity(days.len());
     let mut cumulative = 0.0;
@@ -606,10 +782,9 @@ pub fn stock_performance(
     }
     let mwr = money_weighted(&values, &flows);
 
-    let index_of: HashMap<&str, usize> = held
+    let index_of: HashMap<&str, usize> = universe
         .iter()
-        .enumerate()
-        .map(|(p, h)| (h.id.as_str(), p))
+        .map(|&p| (positions[p].id.as_str(), p))
         .collect();
     let mut series = Vec::with_capacity(request.series.len());
     for spec in &request.series {
@@ -621,20 +796,16 @@ pub fn stock_performance(
         let (twr, contribution, gain) = match native {
             // The native return of a currency group: its own positions in their currency
             Some(code) if code != currency => {
-                let member_tickers: Vec<&str> =
-                    members.iter().map(|&p| held[p].ticker.as_str()).collect();
+                let member_tickers: Vec<&str> = members
+                    .iter()
+                    .map(|&p| positions[p].ticker.as_str())
+                    .collect();
                 let native_fx = ReportFx {
                     currency: &code,
                     history: &fx_history,
                 };
-                let native_daily = build_daily(
-                    &history,
-                    &quantities,
-                    &member_tickers,
-                    &days,
-                    &native_fx,
-                    &mut quality,
-                );
+                let native_daily =
+                    build_daily(&inputs, &member_tickers, &days, &native_fx, &mut quality);
                 let local: Vec<usize> = (0..member_tickers.len()).collect();
                 (chain(&native_daily, &local), None, None)
             }
@@ -654,11 +825,10 @@ pub fn stock_performance(
     }
 
     let last = days.len() - 1;
-    let positions = held
+    let performances = universe
         .iter()
-        .enumerate()
-        .map(|(p, h)| PositionPerformance {
-            investment_id: h.id.clone(),
+        .map(|&p| PositionPerformance {
+            investment_id: positions[p].id.clone(),
             twr: chain(&daily, &[p]).last().copied().unwrap_or(0.0),
             contribution: contribution(&daily, &weights, &[p])
                 .last()
@@ -669,10 +839,18 @@ pub fn stock_performance(
             gain: money_in_currency(period_gain(&daily, &[p]), &currency),
         })
         .collect();
+    let mut unpriced_tickers: Vec<String> = universe
+        .iter()
+        .map(|&p| &positions[p].ticker)
+        .filter(|ticker| unpriced.contains(&ticker.as_str()))
+        .cloned()
+        .collect();
+    unpriced_tickers.sort();
+    unpriced_tickers.dedup();
 
     Ok(StockPerformance {
         dates: indices.iter().map(|&k| ts_to_date_str(days[k])).collect(),
-        portfolio: sample(&chain(&daily, &all), &indices),
+        portfolio: sample(&chain(&daily, &universe), &indices),
         values: indices
             .iter()
             .map(|&k| values[k].map(|v| money_in_currency(v, &currency)))
@@ -683,7 +861,8 @@ pub fn stock_performance(
             .collect(),
         mwr: sample(&mwr, &indices),
         series,
-        positions,
+        positions: performances,
+        unpriced_tickers,
         fx_quality: ConversionQuality::from(&quality),
         currency,
     })
@@ -838,10 +1017,14 @@ mod tests {
             );
             CREATE TABLE investment_transactions (
                 id TEXT PRIMARY KEY,
+                investment_id TEXT NOT NULL,
                 type TEXT NOT NULL,
                 ticker TEXT NOT NULL,
                 quantity TEXT NOT NULL,
-                transaction_date INTEGER NOT NULL
+                price_per_unit TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                transaction_date INTEGER NOT NULL,
+                fee TEXT
             );
             CREATE TABLE exchange_rate_history (
                 date INTEGER NOT NULL,
@@ -886,17 +1069,32 @@ mod tests {
         .expect("history row");
     }
 
-    /// A buy (`quantity > 0`) or a sell (`quantity < 0`) of `quantity` shares on `day(at)`.
-    fn insert_tx(conn: &Connection, ticker: &str, at: i64, quantity: f64) {
+    /// A buy (`quantity > 0`) or a sell (`quantity < 0`) of `quantity` shares of the position of
+    /// `ticker` on `day(at)` at `price` per share in `currency`, with an optional `fee`.
+    fn insert_tx(
+        conn: &Connection,
+        ticker: &str,
+        at: i64,
+        quantity: f64,
+        price: f64,
+        currency: &str,
+        fee: Option<f64>,
+    ) {
         conn.execute(
-            "INSERT INTO investment_transactions (id, type, ticker, quantity, transaction_date)
-             VALUES (?1, ?2, ?3, ?4, ?5)",
+            "INSERT INTO investment_transactions
+                (id, investment_id, type, ticker, quantity, price_per_unit, currency,
+                 transaction_date, fee)
+             VALUES (?1, (SELECT id FROM stock_investments WHERE ticker = ?3), ?2, ?3, ?4, ?5,
+                     ?6, ?7, ?8)",
             rusqlite::params![
                 uuid::Uuid::new_v4().to_string(),
                 if quantity > 0.0 { "buy" } else { "sell" },
                 ticker,
                 quantity.abs().to_string(),
-                day(at)
+                price.to_string(),
+                currency,
+                day(at),
+                fee.map(|fee| fee.to_string())
             ],
         )
         .expect("transaction");
@@ -904,7 +1102,7 @@ mod tests {
 
     /// A position `id` of `ticker` whose recorded days are `rows[i] = (quantity, price)` on
     /// `day(i)`, with the transactions those quantities imply (a buy or sell on the day the
-    /// quantity changes). `held` is the stored quantity (0 closes the position).
+    /// quantity changes, at that day's price and currency). `held` is the stored quantity.
     fn seed(
         conn: &Connection,
         id: &str,
@@ -919,7 +1117,15 @@ mod tests {
             let at = i as i64;
             insert_row(conn, ticker, at, *quantity, *price, currency);
             if (quantity - previous).abs() > 1e-9 {
-                insert_tx(conn, ticker, at, quantity - previous);
+                insert_tx(
+                    conn,
+                    ticker,
+                    at,
+                    quantity - previous,
+                    *price,
+                    currency,
+                    None,
+                );
             }
             previous = *quantity;
         }
@@ -1022,7 +1228,8 @@ mod tests {
     }
 
     /// Cumulative chain-linked return in percent of positions given as per-day
-    /// `(quantity, price)` rows, computed independently of the engine.
+    /// `(quantity, price)` rows, traded at the day's price, computed independently of the
+    /// engine (money in at the start of the day, money out at its end).
     fn hand_twr(positions: &[&[(f64, f64)]]) -> Vec<f64> {
         let days = positions[0].len();
         let mut factor = 1.0;
@@ -1032,7 +1239,7 @@ mod tests {
             for rows in positions {
                 let ((q0, p0), (q1, p1)) = (rows[k - 1], rows[k]);
                 let flow = (q1 - q0) * p1;
-                base += q0 * p0 + flow;
+                base += q0 * p0 + flow.max(0.0);
                 gain += q1 * p1 - q0 * p0 - flow;
             }
             factor *= 1.0 + gain / base;
@@ -1392,9 +1599,9 @@ mod tests {
         insert_investment(&conn, "aapl", "AAPL", "5");
         // buy 10 on day 1, sell them on day 10, buy 5 on day 20; the history has no row for
         // the days the position is not held (10..=19)
-        insert_tx(&conn, "AAPL", 1, 10.0);
-        insert_tx(&conn, "AAPL", 10, -10.0);
-        insert_tx(&conn, "AAPL", 20, 5.0);
+        insert_tx(&conn, "AAPL", 1, 10.0, 100.0, "CZK", None);
+        insert_tx(&conn, "AAPL", 10, -10.0, 100.0, "CZK", None);
+        insert_tx(&conn, "AAPL", 20, 5.0, 130.0, "CZK", None);
         for at in 1..=9 {
             insert_row(&conn, "AAPL", at, 10.0, 100.0, "CZK");
         }
@@ -1410,7 +1617,7 @@ mod tests {
             close(*twr, 0.0, 1e-9);
             close(report.series[0].twr[i], 0.0, 1e-9);
         }
-        // the sale at day 9's price (-1000 on day 10) and the rebuy at 130 (+650 on day 20)
+        // the sale at 100 (-1000 on day 10) and the rebuy at 130 (+650 on day 20)
         assert_eq!(last(&report.net_flows), "-350.00");
         assert_eq!(report.net_flows[8], "0.00");
         assert_eq!(report.net_flows[9], "-1000.00");
@@ -1436,9 +1643,9 @@ mod tests {
         let conn = setup_db();
         insert_investment(&conn, "aapl", "AAPL", "3");
         // two buys on the same day and a partial sell: 4 + 2 - 3 shares from day 2 on
-        insert_tx(&conn, "AAPL", 0, 4.0);
-        insert_tx(&conn, "AAPL", 0, 2.0);
-        insert_tx(&conn, "AAPL", 2, -3.0);
+        insert_tx(&conn, "AAPL", 0, 4.0, 100.0, "CZK", None);
+        insert_tx(&conn, "AAPL", 0, 2.0, 100.0, "CZK", None);
+        insert_tx(&conn, "AAPL", 2, -3.0, 110.0, "CZK", None);
         // the rows keep a stale quantity of 6; only their price counts
         for (at, price) in [(0, 100.0), (1, 110.0), (2, 110.0), (3, 110.0)] {
             insert_row(&conn, "AAPL", at, 6.0, price, "CZK");
@@ -1478,7 +1685,7 @@ mod tests {
         seed_czk(&conn, "anchor", "ANCH", 5.0, &[20.0; 11]);
         // 10 shares bought on day 1, but their prices are recorded only from day 5 to day 10
         insert_investment(&conn, "late", "LATE", "10");
-        insert_tx(&conn, "LATE", 1, 10.0);
+        insert_tx(&conn, "LATE", 1, 10.0, 100.0, "CZK", None);
         for at in 5..=10 {
             insert_row(&conn, "LATE", at, 10.0, 100.0, "CZK");
         }
@@ -1532,9 +1739,9 @@ mod tests {
             100.0, 102.0, 101.0, 105.0, 108.0, 107.0, 110.0, 112.0, 111.0, 115.0, 120.0,
         ];
         seed_czk(&conn, "a", "AAA", 10.0, &a_prices);
-        // B: 4 shares bought on day 3, priced only from day 7 on (constantly 50)
+        // B: 4 shares bought on day 3 at 50, priced only from day 7 on (constantly 50)
         insert_investment(&conn, "b", "BBB", "4");
-        insert_tx(&conn, "BBB", 3, 4.0);
+        insert_tx(&conn, "BBB", 3, 4.0, 50.0, "CZK", None);
         for at in 7..=10 {
             insert_row(&conn, "BBB", at, 4.0, 50.0, "CZK");
         }
@@ -1589,9 +1796,9 @@ mod tests {
     fn a_position_priced_only_after_the_range_is_valued_at_its_first_price() {
         let conn = setup_db();
         seed_czk(&conn, "a", "AAA", 10.0, &[100.0; 11]);
-        // B is bought on day 3 and first priced on day 10, after the range ends
+        // B is bought on day 3 at 50 and first priced on day 10, after the range ends
         insert_investment(&conn, "b", "BBB", "4");
-        insert_tx(&conn, "BBB", 3, 4.0);
+        insert_tx(&conn, "BBB", 3, 4.0, 50.0, "CZK", None);
         insert_row(&conn, "BBB", 10, 4.0, 50.0, "CZK");
 
         let report = perf(&conn, day(0), day(8), vec![]);
@@ -1669,24 +1876,92 @@ mod tests {
         assert!(report.portfolio.iter().any(|twr| twr.abs() > 0.1));
     }
 
+    /// The return of day `k` alone in percent, from the cumulative portfolio return.
+    fn day_return(report: &StockPerformance, k: usize) -> f64 {
+        ((1.0 + report.portfolio[k] / 100.0) / (1.0 + report.portfolio[k - 1] / 100.0) - 1.0)
+            * 100.0
+    }
+
+    fn position<'a>(report: &'a StockPerformance, id: &str) -> &'a PositionPerformance {
+        report
+            .positions
+            .iter()
+            .find(|p| p.investment_id == id)
+            .expect("position")
+    }
+
     #[test]
-    fn closed_positions_and_unknown_ids_are_ignored() {
+    fn a_position_sold_out_inside_the_range_still_contributes() {
         let conn = setup_db();
-        seed_czk(&conn, "held", "HELD", 10.0, &[100.0, 110.0]);
-        // sold out: stored quantity 0, so it never counts however its history moves
-        seed(
+        seed_czk(
             &conn,
-            "sold",
-            "SOLD",
-            "0",
-            "CZK",
-            &[(10.0, 100.0), (10.0, 300.0)],
+            "held",
+            "HELD",
+            10.0,
+            &[100.0, 102.0, 101.0, 105.0, 104.0, 108.0],
         );
+        // SOLD: 10 shares from day 0, recorded while held (days 0..=2), sold on day 3 at 95;
+        // its stored quantity is 0
+        insert_investment(&conn, "sold", "SOLD", "0");
+        insert_tx(&conn, "SOLD", 0, 10.0, 100.0, "CZK", None);
+        for (at, price) in [(0, 100.0), (1, 90.0), (2, 92.0)] {
+            insert_row(&conn, "SOLD", at, 10.0, price, "CZK");
+        }
+        insert_tx(&conn, "SOLD", 3, -10.0, 95.0, "CZK", None);
 
         let report = perf(
             &conn,
             day(0),
-            day(1),
+            day(5),
+            vec![series("held", &["held"]), series("sold", &["sold"])],
+        );
+
+        assert_eq!(report.dates.len(), 6);
+        assert_eq!(report.positions.len(), 2);
+        let sold = position(&report, "sold");
+        assert_eq!(sold.start_value.as_deref(), Some("1000.00"));
+        assert_eq!(sold.end_value.as_deref(), Some("0.00"));
+        // 1000 in, 950 out
+        assert_eq!(sold.gain, "-50.00");
+        assert!(sold.contribution < 0.0);
+        // the sale is money out at its own price
+        assert_eq!(report.net_flows[3], "-950.00");
+        // the contributions of both positions sum to the portfolio return
+        let sum: f64 = report.positions.iter().map(|p| p.contribution).sum();
+        close(sum, *last(&report.portfolio), 1e-9);
+        let a = report.series[0].contribution.as_ref().expect("held");
+        let b = report.series[1].contribution.as_ref().expect("sold");
+        for k in 0..report.dates.len() {
+            close(a[k] + b[k], report.portfolio[k], 1e-9);
+        }
+        // the sale day: SOLD was worth 920 and sold for 950, HELD went 1010 -> 1050
+        close(
+            day_return(&report, 3),
+            (30.0 + 40.0) / (920.0 + 1010.0) * 100.0,
+            1e-9,
+        );
+    }
+
+    #[test]
+    fn a_position_sold_before_the_range_is_not_in_it() {
+        let conn = setup_db();
+        seed_czk(
+            &conn,
+            "held",
+            "HELD",
+            10.0,
+            &[100.0, 100.0, 100.0, 100.0, 105.0, 110.0],
+        );
+        // SOLD was held on day 0 only and sold on day 1
+        insert_investment(&conn, "sold", "SOLD", "0");
+        insert_tx(&conn, "SOLD", 0, 10.0, 100.0, "CZK", None);
+        insert_row(&conn, "SOLD", 0, 10.0, 100.0, "CZK");
+        insert_tx(&conn, "SOLD", 1, -10.0, 300.0, "CZK", None);
+
+        let report = perf(
+            &conn,
+            day(3),
+            day(5),
             vec![
                 series("mixed", &["held", "sold", "nope"]),
                 series("none", &["sold"]),
@@ -1696,10 +1971,212 @@ mod tests {
         assert_eq!(report.positions.len(), 1);
         assert_eq!(report.positions[0].investment_id, "held");
         close(*last(&report.portfolio), 10.0, 1e-9);
+        // an id outside the period (or unknown) is ignored
         close(*last(&report.series[0].twr), 10.0, 1e-9);
-        // a series without a held position is flat
-        assert_eq!(report.series[1].twr, [0.0, 0.0]);
-        assert_eq!(report.series[1].contribution, Some(vec![0.0, 0.0]));
+        // a series without a position of the period is flat
+        assert_eq!(report.series[1].twr, [0.0, 0.0, 0.0]);
+        assert_eq!(report.series[1].contribution, Some(vec![0.0, 0.0, 0.0]));
+        assert!(report.unpriced_tickers.is_empty());
+    }
+
+    #[test]
+    fn a_buy_above_the_close_is_that_days_loss() {
+        let conn = setup_db();
+        insert_investment(&conn, "x", "X", "10");
+        // the price is known from day 0; 10 shares are bought on day 1 at 105, closing at 100
+        insert_row(&conn, "X", 0, 0.0, 100.0, "CZK");
+        insert_row(&conn, "X", 1, 10.0, 100.0, "CZK");
+        insert_tx(&conn, "X", 1, 10.0, 105.0, "CZK", None);
+
+        let report = perf(&conn, day(0), day(1), vec![]);
+
+        assert_eq!(report.net_flows, ["0.00", "1050.00"]);
+        close(
+            day_return(&report, 1),
+            (1000.0 / 1050.0 - 1.0) * 100.0,
+            1e-9,
+        );
+        close(day_return(&report, 1), -4.7619, 1e-4);
+        assert_eq!(position(&report, "x").gain, "-50.00");
+    }
+
+    #[test]
+    fn a_sell_below_the_close_is_that_days_loss_and_a_sane_return() {
+        let conn = setup_db();
+        // 10 shares held at 100 on day 0, all sold on day 1 at 95 (no row on the sell-out day)
+        insert_investment(&conn, "x", "X", "0");
+        insert_tx(&conn, "X", 0, 10.0, 100.0, "CZK", None);
+        insert_row(&conn, "X", 0, 10.0, 100.0, "CZK");
+        insert_tx(&conn, "X", 1, -10.0, 95.0, "CZK", None);
+
+        let report = perf(&conn, day(0), day(1), vec![]);
+
+        // the base is the previous value (1000), not the value less the proceeds
+        assert_eq!(report.dates, [day(0), day(1)].map(ts_to_date_str));
+        assert_eq!(report.net_flows, ["0.00", "-950.00"]);
+        assert_eq!(last(&report.values), &Some("0.00".to_string()));
+        close(day_return(&report, 1), -5.0, 1e-9);
+        let x = position(&report, "x");
+        assert_eq!(x.end_value.as_deref(), Some("0.00"));
+        close(x.twr, -5.0, 1e-9);
+    }
+
+    #[test]
+    fn a_fee_lowers_the_return() {
+        let conn = setup_db();
+        // bought on day 1 at 100 with a fee of 10, sold on day 2 at 100 with a fee of 10
+        insert_investment(&conn, "x", "X", "0");
+        insert_row(&conn, "X", 0, 0.0, 100.0, "CZK");
+        insert_row(&conn, "X", 1, 10.0, 100.0, "CZK");
+        insert_tx(&conn, "X", 1, 10.0, 100.0, "CZK", Some(10.0));
+        insert_tx(&conn, "X", 2, -10.0, 100.0, "CZK", Some(10.0));
+
+        let report = perf(&conn, day(0), day(2), vec![]);
+
+        assert_eq!(report.net_flows, ["0.00", "1010.00", "20.00"]);
+        close(
+            day_return(&report, 1),
+            (1000.0 / 1010.0 - 1.0) * 100.0,
+            1e-9,
+        );
+        close(day_return(&report, 2), -1.0, 1e-9);
+        assert_eq!(position(&report, "x").gain, "-20.00");
+    }
+
+    #[test]
+    fn a_day_trade_counts_in_the_portfolio() {
+        let conn = setup_db();
+        seed_czk(&conn, "held", "HELD", 10.0, &[100.0, 100.0, 100.0]);
+        // DAY: bought 10 at 100 and sold 10 at 110 on day 2; never held at a close, no rows
+        insert_investment(&conn, "day", "DAY", "0");
+        insert_tx(&conn, "DAY", 2, 10.0, 100.0, "CZK", None);
+        insert_tx(&conn, "DAY", 2, -10.0, 110.0, "CZK", None);
+
+        let report = perf(&conn, day(0), day(2), vec![series("day", &["day"])]);
+
+        // the profit of 100 is that day's gain over HELD's 1000
+        close(day_return(&report, 2), 10.0, 1e-9);
+        assert_eq!(position(&report, "day").gain, "100.00");
+        assert_eq!(report.positions.len(), 2);
+        assert_eq!(last(&report.net_flows), "-100.00");
+        let sum: f64 = report.positions.iter().map(|p| p.contribution).sum();
+        close(sum, *last(&report.portfolio), 1e-9);
+        let figures = report
+            .portfolio
+            .iter()
+            .chain(&report.mwr)
+            .chain(&report.series[0].twr)
+            .chain(report.series[0].contribution.iter().flatten())
+            .chain(
+                report
+                    .positions
+                    .iter()
+                    .flat_map(|p| [&p.twr, &p.contribution]),
+            );
+        for figure in figures {
+            assert!(figure.is_finite(), "{figure}");
+        }
+    }
+
+    #[test]
+    fn a_fee_larger_than_the_proceeds_is_money_in() {
+        let conn = setup_db();
+        seed_czk(&conn, "held", "HELD", 10.0, &[100.0, 100.0]);
+        // 1 share worth 1 sold at 1 with a fee of 5: the sale costs 4
+        insert_investment(&conn, "tiny", "TINY", "0");
+        insert_tx(&conn, "TINY", 0, 1.0, 1.0, "CZK", None);
+        insert_row(&conn, "TINY", 0, 1.0, 1.0, "CZK");
+        insert_tx(&conn, "TINY", 1, -1.0, 1.0, "CZK", Some(5.0));
+
+        let report = perf(&conn, day(0), day(1), vec![]);
+
+        // money in at the start of the day: base 1000 + 1 + 4, gain 0 - 1 - 4
+        assert_eq!(last(&report.net_flows), "4.00");
+        close(day_return(&report, 1), -5.0 / 1005.0 * 100.0, 1e-9);
+        assert!(report.portfolio.iter().all(|twr| twr.is_finite()));
+        let tiny = position(&report, "tiny");
+        assert!(tiny.twr.is_finite());
+        assert_eq!(tiny.gain, "-5.00");
+    }
+
+    #[test]
+    fn a_ticker_without_prices_is_valued_at_its_trade_prices() {
+        let conn = setup_db();
+        // no value history at all: bought 10 at 50 on day 0 and 10 at 60 on day 2
+        insert_investment(&conn, "np", "NOPX", "20");
+        insert_tx(&conn, "NOPX", 0, 10.0, 50.0, "CZK", None);
+        insert_tx(&conn, "NOPX", 2, 10.0, 60.0, "CZK", None);
+
+        let report = perf(&conn, day(0), day(4), vec![]);
+
+        // the last trade price carries forward while the position is held
+        assert_eq!(report.dates.len(), 5);
+        assert_eq!(
+            report.values,
+            [500.0, 500.0, 1200.0, 1200.0, 1200.0].map(|v| Some(money_in_currency(v, "CZK")))
+        );
+        assert_eq!(report.net_flows[2], "600.00");
+        // the second buy revalues the first 10 shares at 60
+        close(day_return(&report, 2), 100.0 / 1100.0 * 100.0, 1e-9);
+        assert_eq!(report.unpriced_tickers, ["NOPX"]);
+        assert_eq!(
+            position(&report, "np").end_value.as_deref(),
+            Some("1200.00")
+        );
+    }
+
+    #[test]
+    fn a_split_between_two_trades_changes_nothing() {
+        // the same history twice: bought 10 at 100, 10 more at 110 on day 2; the second one has a
+        // 2:1 split rewritten into current units (20 at 50, rows at half the price, 20 at 55)
+        let report_of = |factor: f64| {
+            let conn = setup_db();
+            insert_investment(&conn, "s", "SPL", &(20.0 * factor).to_string());
+            insert_tx(&conn, "SPL", 0, 10.0 * factor, 100.0 / factor, "CZK", None);
+            for (at, price, held) in [
+                (0, 100.0, 10.0),
+                (1, 105.0, 10.0),
+                (2, 110.0, 20.0),
+                (3, 112.0, 20.0),
+            ] {
+                insert_row(&conn, "SPL", at, held * factor, price / factor, "CZK");
+            }
+            insert_tx(&conn, "SPL", 2, 10.0 * factor, 110.0 / factor, "CZK", None);
+            perf(&conn, day(0), day(3), vec![])
+        };
+
+        let unsplit = report_of(1.0);
+        let split = report_of(2.0);
+
+        assert_eq!(split.net_flows, unsplit.net_flows);
+        assert_eq!(split.net_flows[2], "1100.00");
+        assert_eq!(split.values, unsplit.values);
+        for (a, b) in split.portfolio.iter().zip(&unsplit.portfolio) {
+            close(*a, *b, 1e-9);
+        }
+        close(*last(&split.portfolio), *last(&unsplit.portfolio), 1e-9);
+    }
+
+    #[test]
+    fn the_boeing_case_keeps_its_full_contribution() {
+        let conn = setup_db();
+        // A alone from day 0, falling 55 % by day 4; B, twenty times larger, bought on day 5, flat
+        let a: Vec<(f64, f64)> = [100.0, 80.0, 60.0, 50.0, 45.0, 45.0, 45.0, 45.0]
+            .iter()
+            .map(|price| (10.0, *price))
+            .collect();
+        seed(&conn, "a", "AAA", "10", "CZK", &a);
+        insert_investment(&conn, "b", "BBB", "100");
+        insert_tx(&conn, "BBB", 5, 100.0, 100.0, "CZK", None);
+        for at in 5..=7 {
+            insert_row(&conn, "BBB", at, 100.0, 100.0, "CZK");
+        }
+
+        let report = perf(&conn, day(0), day(7), vec![]);
+
+        close(*last(&report.portfolio), -55.0, 1e-9);
+        close(position(&report, "a").contribution, -55.0, 1e-9);
+        close(position(&report, "b").contribution, 0.0, 1e-9);
     }
 
     #[test]
@@ -1740,25 +2217,23 @@ mod tests {
     }
 
     #[test]
-    fn without_held_positions_the_report_is_one_flat_point() {
+    fn without_positions_in_the_period_the_report_is_one_flat_point() {
         let conn = setup_db();
-        seed(
-            &conn,
-            "sold",
-            "SOLD",
-            "0",
-            "CZK",
-            &[(10.0, 100.0), (10.0, 300.0)],
-        );
+        // held on day 0 and sold on day 1, long before the period
+        insert_investment(&conn, "sold", "SOLD", "0");
+        insert_tx(&conn, "SOLD", 0, 10.0, 100.0, "CZK", None);
+        insert_row(&conn, "SOLD", 0, 10.0, 100.0, "CZK");
+        insert_tx(&conn, "SOLD", 1, -10.0, 300.0, "CZK", None);
 
-        let report = perf(&conn, day(0), day(1), vec![series("a", &["sold"])]);
+        let report = perf(&conn, day(5), day(6), vec![series("a", &["sold"])]);
 
-        assert_eq!(report.dates, [ts_to_date_str(day(0))]);
+        assert_eq!(report.dates, [ts_to_date_str(day(5))]);
         assert_eq!(report.portfolio, [0.0]);
         assert_eq!(report.values, [None]);
         assert_eq!(report.net_flows, ["0.00"]);
         assert_eq!(report.mwr, [0.0]);
         assert!(report.positions.is_empty());
+        assert_eq!(report.series[0].twr, [0.0]);
     }
 
     #[test]

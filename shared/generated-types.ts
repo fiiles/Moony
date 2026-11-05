@@ -1646,7 +1646,7 @@ contribution: number[] | null;
 gain: string | null }
 
 /**
- * One line of the performance chart: a set of held positions.
+ * One line of the performance chart: a set of positions.
  */
 export type PerformanceSeriesSpec = { 
 /**
@@ -1654,7 +1654,7 @@ export type PerformanceSeriesSpec = {
  */
 key: string; 
 /**
- * The positions of the series. Ids of positions that are not held are ignored.
+ * The positions of the series. Ids of positions outside the period are ignored.
  */
 investmentIds: string[]; 
 /**
@@ -1737,7 +1737,7 @@ realEstateByCurrency: Partial<{ [key in string]: number }>; loansByCurrency: Par
 export type PortfolioProjection = { currency: string; fxQuality: ConversionQuality; horizonYears: number; viewType: string; timeline: ProjectionTimelinePoint[]; projectedNetWorth: string; totalContributions: string; totalGrowth: string; calculatedDefaults: CalculatedDefaults }
 
 /**
- * One held position over the whole period.
+ * One position of the period over the whole period.
  */
 export type PositionPerformance = { investmentId: string; 
 /**
@@ -2663,8 +2663,8 @@ trailingDividendYield: string | null; exchange: string | null; priceFetchedAt: n
 followedAt: number | null }
 
 /**
- * Performance of the held positions in `currency`: the whole portfolio, the requested series
- * and every position, all on the same `dates`.
+ * Performance of the stock positions of the period in `currency`: the whole portfolio, the
+ * requested series and every position, all on the same `dates`.
  */
 export type StockPerformance = { 
 /**
@@ -2681,7 +2681,7 @@ dates: string[];
  */
 portfolio: number[]; 
 /**
- * Portfolio value per date (decimal TEXT); `null` when no held position converts that day.
+ * Portfolio value per date (decimal TEXT); `null` when no position converts that day.
  */
 values: (string | null)[]; 
 /**
@@ -2692,7 +2692,17 @@ netFlows: string[];
  * Money-weighted return from the first date to each date (modified Dietz, cumulative),
  * in percent.
  */
-mwr: number[]; series: PerformanceSeries[]; positions: PositionPerformance[] }
+mwr: number[]; series: PerformanceSeries[]; 
+/**
+ * Every position of the period: held at the end of any day of the range or traded in it,
+ * including positions sold since.
+ */
+positions: PositionPerformance[]; 
+/**
+ * Tickers of the period's positions without any market price, valued at their own trade
+ * prices instead (sorted, unique).
+ */
+unpricedTickers: string[] }
 
 /**
  * Request of the performance report: the period, the currency and the series to chart.

@@ -140,6 +140,8 @@
     "currencyUnknown": "Neznámý kód měny (použijte kód ISO 4217, např. USD nebo EUR)",
     "invalidQuantity": "Neplatné množství",
     "invalidPrice": "Neplatná cena",
+    "feeInvalid": "Neplatný poplatek",
+    "feeNegative": "Poplatek nesmí být záporný",
     "flowKindInvalid": "Neplatný druh finančního toku",
     "invalidAmount": "Neplatná částka",
     "transactionTypeInvalid": "Vyberte nákup nebo prodej",

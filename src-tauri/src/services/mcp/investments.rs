@@ -121,7 +121,7 @@ pub fn investment_detail(conn: &Connection, id: &str) -> Result<Value> {
             let txs: Vec<Value> = {
                 let mut s = conn.prepare(
                     "SELECT id, type, ticker, company_name, quantity, price_per_unit,
-                            currency, transaction_date, created_at
+                            currency, transaction_date, created_at, fee
                      FROM investment_transactions WHERE investment_id = ?
                      ORDER BY transaction_date DESC, created_at DESC, rowid DESC",
                 )?;
@@ -137,6 +137,7 @@ pub fn investment_detail(conn: &Connection, id: &str) -> Result<Value> {
                             "currency": row.get::<_, String>(6)?,
                             "transactionDate": row.get::<_, i64>(7)?,
                             "createdAt": row.get::<_, i64>(8)?,
+                            "fee": row.get::<_, Option<String>>(9)?,
                         }))
                     })?
                     .filter_map(|r| r.ok())
@@ -160,11 +161,11 @@ pub fn investment_detail(conn: &Connection, id: &str) -> Result<Value> {
 pub fn stock_transactions(conn: &Connection, ticker: Option<String>, limit: i64) -> Result<Value> {
     let sql = if ticker.is_some() {
         "SELECT id, investment_id, type, ticker, company_name, quantity,
-            price_per_unit, currency, transaction_date, created_at
+            price_per_unit, currency, transaction_date, created_at, fee
      FROM investment_transactions WHERE ticker = ? ORDER BY transaction_date DESC, created_at DESC, rowid DESC LIMIT ?"
     } else {
         "SELECT id, investment_id, type, ticker, company_name, quantity,
-            price_per_unit, currency, transaction_date, created_at
+            price_per_unit, currency, transaction_date, created_at, fee
      FROM investment_transactions ORDER BY transaction_date DESC, created_at DESC, rowid DESC LIMIT ?"
     };
     let rows: Vec<Value> = if let Some(ref t) = ticker {
@@ -182,6 +183,7 @@ pub fn stock_transactions(conn: &Connection, ticker: Option<String>, limit: i64)
                     "currency": row.get::<_, String>(7)?,
                     "transactionDate": row.get::<_, i64>(8)?,
                     "createdAt": row.get::<_, i64>(9)?,
+                    "fee": row.get::<_, Option<String>>(10)?,
                 }))
             })?
             .filter_map(|r| r.ok())
@@ -202,6 +204,7 @@ pub fn stock_transactions(conn: &Connection, ticker: Option<String>, limit: i64)
                     "currency": row.get::<_, String>(7)?,
                     "transactionDate": row.get::<_, i64>(8)?,
                     "createdAt": row.get::<_, i64>(9)?,
+                    "fee": row.get::<_, Option<String>>(10)?,
                 }))
             })?
             .filter_map(|r| r.ok())
@@ -304,6 +307,9 @@ pub struct StockTransactionRow {
         description = "Import a genuine identical fill even when its values match an existing transaction"
     )]
     pub import_anyway: bool,
+    #[serde(default)]
+    #[schemars(description = "Trading fee in the transaction currency, optional")]
+    pub fee: Option<String>,
 }
 
 #[derive(Debug, Deserialize, schemars::JsonSchema)]
@@ -339,6 +345,7 @@ pub fn stock_transactions_create(
             price_per_unit: row.price_per_unit.clone(),
             currency: row.currency.clone(),
             transaction_date: row.transaction_date,
+            fee: row.fee.clone(),
             external_id: row
                 .external_id
                 .as_deref()
@@ -450,7 +457,8 @@ mod bulk_tests {
                 transaction_date INTEGER NOT NULL,
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL,
-                external_id TEXT
+                external_id TEXT,
+                fee TEXT
             );
             "#,
         )
@@ -476,6 +484,7 @@ mod bulk_tests {
             transaction_date: date,
             external_id: None,
             import_anyway: false,
+            fee: None,
         }
     }
 
@@ -518,6 +527,32 @@ mod bulk_tests {
             r.get(0)
         })
         .unwrap()
+    }
+
+    #[test]
+    fn mcp_stock_transactions_create_stores_the_fee() {
+        let mut conn = setup_test_db();
+        let mut with_fee = row("aapl", "buy", "1", "100", "USD", 1_700_000_000);
+        with_fee.fee = Some("1.25".into());
+        let args = StockTransactionsCreateArgs {
+            file_name: None,
+            transactions: vec![
+                with_fee,
+                row("msft", "buy", "1", "300", "USD", 1_700_000_000),
+            ],
+        };
+        let report = stock_transactions_create(&mut conn, &args).unwrap();
+        assert_eq!(report.created, 2, "{report:?}");
+        let fee = |ticker: &str| -> Option<String> {
+            conn.query_row(
+                "SELECT fee FROM investment_transactions WHERE ticker = ?1",
+                [ticker],
+                |r| r.get(0),
+            )
+            .unwrap()
+        };
+        assert_eq!(fee("AAPL").as_deref(), Some("1.25"));
+        assert_eq!(fee("MSFT"), None);
     }
 
     #[test]
@@ -1152,7 +1187,7 @@ mod list_missing_currency_tests {
             CREATE TABLE dividend_overrides (ticker TEXT PRIMARY KEY, yearly_dividend_sum TEXT, currency TEXT);
             CREATE TABLE investment_dividends (id TEXT PRIMARY KEY, investment_id TEXT NOT NULL, ex_date INTEGER NOT NULL, gross_amount TEXT NOT NULL, currency TEXT NOT NULL, note TEXT, created_at INTEGER NOT NULL DEFAULT 0);
             CREATE TABLE stock_dividend_events (ticker TEXT NOT NULL, ex_date INTEGER NOT NULL, amount TEXT NOT NULL, currency TEXT NOT NULL, fetched_at INTEGER NOT NULL, PRIMARY KEY (ticker, ex_date));
-            CREATE TABLE investment_transactions (id TEXT PRIMARY KEY, investment_id TEXT, type TEXT, ticker TEXT, company_name TEXT, quantity TEXT, price_per_unit TEXT, currency TEXT, transaction_date INTEGER, created_at INTEGER NOT NULL DEFAULT 0);
+            CREATE TABLE investment_transactions (id TEXT PRIMARY KEY, investment_id TEXT, type TEXT, ticker TEXT, company_name TEXT, quantity TEXT, price_per_unit TEXT, currency TEXT, transaction_date INTEGER, created_at INTEGER NOT NULL DEFAULT 0, fee TEXT);
             CREATE TABLE exchange_rate_history (date INTEGER NOT NULL, currency TEXT NOT NULL, rate REAL NOT NULL, PRIMARY KEY (date, currency));
             CREATE TABLE user_profile (id INTEGER PRIMARY KEY AUTOINCREMENT, currency TEXT NOT NULL);
             "#,
@@ -1298,7 +1333,8 @@ mod dividend_tests {
                 id TEXT PRIMARY KEY, investment_id TEXT NOT NULL, type TEXT NOT NULL,
                 ticker TEXT NOT NULL, company_name TEXT NOT NULL, quantity TEXT NOT NULL,
                 price_per_unit TEXT NOT NULL, currency TEXT NOT NULL,
-                transaction_date INTEGER NOT NULL, created_at INTEGER NOT NULL DEFAULT 0
+                transaction_date INTEGER NOT NULL, created_at INTEGER NOT NULL DEFAULT 0,
+                fee TEXT
             );
             CREATE TABLE stock_dividend_events (
                 ticker TEXT NOT NULL, ex_date INTEGER NOT NULL, amount TEXT NOT NULL,

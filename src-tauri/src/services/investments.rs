@@ -172,10 +172,17 @@ pub fn update_transaction(
     let date = crate::models::validation::utc_day(data.transaction_date, "validation.dateInvalid")?;
     conn.execute("UPDATE investment_transactions SET type=?2,quantity=?3,price_per_unit=?4,currency=?5,transaction_date=?6 WHERE id=?1",
         rusqlite::params![tx_id,data.tx_type.to_ascii_lowercase(),dedup::canonical_amount(&data.quantity),dedup::canonical_amount(&data.price_per_unit),data.currency.to_ascii_uppercase(),date])?;
+    // An update that omits the fee keeps the stored one; an empty fee clears it.
+    if data.fee.is_some() {
+        conn.execute(
+            "UPDATE investment_transactions SET fee=?2 WHERE id=?1",
+            rusqlite::params![tx_id, data.normalized_fee()?],
+        )?;
+    }
     ensure_valid_holdings_history(conn, "investment_transactions", &investment_id)?;
     recalculate_investment_metrics(conn, &investment_id)?;
-    let result = conn.query_row("SELECT id,investment_id,type,ticker,company_name,quantity,price_per_unit,currency,transaction_date,created_at FROM investment_transactions WHERE id=?1", [tx_id], |r| Ok(InvestmentTransaction {
-        id:r.get(0)?,investment_id:r.get(1)?,tx_type:r.get(2)?,ticker:r.get(3)?,company_name:r.get(4)?,quantity:r.get(5)?,price_per_unit:r.get(6)?,currency:r.get(7)?,transaction_date:r.get(8)?,created_at:r.get(9)?,
+    let result = conn.query_row("SELECT id,investment_id,type,ticker,company_name,quantity,price_per_unit,currency,transaction_date,created_at,fee FROM investment_transactions WHERE id=?1", [tx_id], |r| Ok(InvestmentTransaction {
+        id:r.get(0)?,investment_id:r.get(1)?,tx_type:r.get(2)?,ticker:r.get(3)?,company_name:r.get(4)?,quantity:r.get(5)?,price_per_unit:r.get(6)?,currency:r.get(7)?,transaction_date:r.get(8)?,created_at:r.get(9)?,fee:r.get(10)?,
     }))?;
     transaction.commit()?;
     Ok((result, old_date))
@@ -205,8 +212,13 @@ pub fn create_transaction_internal(
     price_per_unit: &str,
     currency: &str,
     transaction_date: i64,
+    fee: Option<&str>,
     origin: TransactionOrigin<'_>,
 ) -> Result<InvestmentTransaction> {
+    let fee = fee
+        .map(str::trim)
+        .filter(|f| !f.is_empty())
+        .map(dedup::canonical_amount);
     let quantity = dedup::canonical_amount(quantity);
     let price_per_unit = dedup::canonical_amount(price_per_unit);
     let tx_type = tx_type.to_ascii_lowercase();
@@ -218,8 +230,8 @@ pub fn create_transaction_internal(
 
     conn.execute(
         "INSERT INTO investment_transactions
-         (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at, import_batch_id, external_id)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+         (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at, import_batch_id, external_id, fee)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
         rusqlite::params![
             tx_id,
             investment_id,
@@ -233,6 +245,7 @@ pub fn create_transaction_internal(
             now,
             origin.import_batch_id,
             origin.external_id,
+            fee,
         ],
     )?;
 
@@ -247,6 +260,7 @@ pub fn create_transaction_internal(
         currency: currency_upper,
         transaction_date,
         created_at: now,
+        fee,
     })
 }
 
@@ -402,6 +416,7 @@ pub fn import_single_transaction_with_origin(
         price_per_unit,
         currency,
         transaction_date,
+        None,
         origin,
         true,
     )
@@ -418,6 +433,7 @@ fn import_stock_row(
     price_per_unit: &str,
     currency: &str,
     transaction_date: i64,
+    fee: Option<&str>,
     origin: TransactionOrigin<'_>,
     validate_holdings: bool,
 ) -> Result<ImportedTransaction> {
@@ -430,6 +446,7 @@ fn import_stock_row(
         price_per_unit: price_per_unit.into(),
         currency: currency.into(),
         transaction_date,
+        fee: fee.map(Into::into),
     }
     .validate()?;
     let ticker_upper = ticker.to_uppercase();
@@ -511,6 +528,7 @@ fn import_stock_row(
         price_per_unit,
         currency,
         transaction_date,
+        fee,
         origin,
     )?;
 
@@ -549,6 +567,8 @@ pub struct BulkStockRow {
     pub currency: String,
     /// Unix seconds (UTC midnight of the trade day for imports).
     pub transaction_date: i64,
+    /// Optional trading fee in `currency`; blank means none.
+    pub fee: Option<String>,
     /// `<source>:<the broker's own transaction id>` of a CSV import row.
     pub external_id: Option<String>,
     /// Write the row even when an identical transaction exists. The CSV import
@@ -604,6 +624,7 @@ fn validate_bulk_row(row: &BulkStockRow) -> Result<()> {
         price_per_unit: row.price_per_unit.clone(),
         currency: row.currency.clone(),
         transaction_date: row.transaction_date,
+        fee: row.fee.clone(),
     }
     .validate()
 }
@@ -797,6 +818,7 @@ pub fn bulk_create_stock_transactions(
             &row.price_per_unit,
             &row.currency,
             row.transaction_date,
+            row.fee.as_deref(),
             TransactionOrigin {
                 import_batch_id: batch_id.as_deref(),
                 external_id,
@@ -961,6 +983,7 @@ pub fn add_transaction_to_investment(
         &data.price_per_unit,
         &data.currency,
         data.transaction_date,
+        data.fee.as_deref(),
         TransactionOrigin::default(),
     )?;
 
@@ -1215,7 +1238,8 @@ mod tests {
                 transaction_date INTEGER NOT NULL,
                 created_at INTEGER NOT NULL,
                 import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL,
-                external_id TEXT
+                external_id TEXT,
+                fee TEXT
             );
             "#,
         )
@@ -1233,6 +1257,7 @@ mod tests {
             price_per_unit: "100".to_string(),
             currency: "USD".to_string(),
             transaction_date: date,
+            fee: None,
         }
     }
 
@@ -1886,6 +1911,36 @@ mod tests {
         assert_eq!(currency, "USD");
     }
 
+    fn stored_fee(conn: &rusqlite::Connection, id: &str) -> Option<String> {
+        conn.query_row(
+            "SELECT fee FROM investment_transactions WHERE id=?1",
+            [id],
+            |r| r.get(0),
+        )
+        .unwrap()
+    }
+
+    #[test]
+    fn update_transaction_keeps_the_fee_when_the_update_omits_it() {
+        let conn = setup_test_db();
+        let id = get_or_create_investment(&conn, "AAPL", "Apple", "USD").unwrap();
+        let mut data = tx(&id, "buy", "10", 1_700_000_000);
+        data.fee = Some("3".into());
+        let buy = add_transaction_to_investment(&conn, &id, &data).unwrap();
+        assert_eq!(buy.fee.as_deref(), Some("3"));
+
+        let mut edit = tx(&id, "buy", "11", 1_700_000_000);
+        edit.fee = None;
+        let (edited, _) = update_transaction(&conn, &buy.id, &edit).unwrap();
+        assert_eq!(edited.fee.as_deref(), Some("3"));
+        assert_eq!(stored_fee(&conn, &buy.id).as_deref(), Some("3"));
+
+        edit.fee = Some("".into());
+        let (edited, _) = update_transaction(&conn, &buy.id, &edit).unwrap();
+        assert_eq!(edited.fee, None);
+        assert_eq!(stored_fee(&conn, &buy.id), None);
+    }
+
     #[test]
     fn stock_edit_returns_the_original_history_start_and_persists_canonical_values() {
         let conn = setup_test_db();
@@ -1930,6 +1985,7 @@ mod bulk_writer_tests {
             price_per_unit: price.to_string(),
             currency: "USD".to_string(),
             transaction_date: date,
+            fee: None,
             external_id: None,
             allow_duplicate: false,
         }
@@ -1956,6 +2012,26 @@ mod bulk_writer_tests {
             .unwrap();
         let rows = stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?))).unwrap();
         rows.map(|r| r.unwrap()).collect()
+    }
+
+    #[test]
+    fn bulk_rows_store_their_fee() {
+        let mut conn = setup_test_db();
+        let mut a = bulk_row("aapl", "buy", "10", "100", D0);
+        a.fee = Some("0.99".into());
+        let b = bulk_row("msft", "buy", "1", "300", D0);
+        let report = bulk_create_stock_transactions(&mut conn, &[a, b], None).unwrap();
+        assert_eq!(report.created, 2, "{report:?}");
+        let fee = |ticker: &str| -> Option<String> {
+            conn.query_row(
+                "SELECT fee FROM investment_transactions WHERE ticker=?1",
+                [ticker],
+                |r| r.get(0),
+            )
+            .unwrap()
+        };
+        assert_eq!(fee("AAPL").as_deref(), Some("0.99"));
+        assert_eq!(fee("MSFT"), None);
     }
 
     #[test]

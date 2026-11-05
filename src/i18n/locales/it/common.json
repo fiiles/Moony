@@ -140,6 +140,8 @@
     "currencyUnknown": "Codice valuta sconosciuto (usa un codice ISO 4217 come USD o EUR)",
     "invalidQuantity": "Quantità non valida",
     "invalidPrice": "Prezzo non valido",
+    "feeInvalid": "Commissione non valida",
+    "feeNegative": "La commissione non può essere negativa",
     "flowKindInvalid": "Tipo di flusso finanziario non valido",
     "invalidAmount": "Importo non valido",
     "transactionTypeInvalid": "Scegli Acquisto o Vendita",

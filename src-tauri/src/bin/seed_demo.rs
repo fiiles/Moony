@@ -512,6 +512,7 @@ fn seed_stocks(db: &Database, now: i64) {
                     price_per_unit: first.1.to_string(),
                     currency: "USD".into(),
                     transaction_date: now - first.2 * DAY,
+                    fee: None,
                 }),
             )
             .expect("create investment");
@@ -529,6 +530,7 @@ fn seed_stocks(db: &Database, now: i64) {
                         price_per_unit: price.to_string(),
                         currency: "USD".into(),
                         transaction_date: now - days_ago * DAY,
+                        fee: None,
                     },
                 )
                 .expect("add investment transaction");

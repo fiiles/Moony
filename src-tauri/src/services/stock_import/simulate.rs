@@ -1128,7 +1128,8 @@ pub(crate) mod test_db {
                 transaction_date INTEGER NOT NULL,
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL,
-                external_id TEXT
+                external_id TEXT,
+                fee TEXT
             );
             CREATE TABLE stock_investment_tags (
                 investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,

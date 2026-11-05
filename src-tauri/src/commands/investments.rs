@@ -57,7 +57,7 @@ pub async fn get_investment_with_details(
         // Get transactions
         let mut stmt = conn.prepare(
             "SELECT id, investment_id, type, ticker, company_name, quantity, price_per_unit,
-                    currency, transaction_date, created_at
+                    currency, transaction_date, created_at, fee
              FROM investment_transactions WHERE investment_id = ?1
              ORDER BY transaction_date DESC, created_at DESC, rowid DESC",
         )?;
@@ -75,6 +75,7 @@ pub async fn get_investment_with_details(
                     currency: row.get(7)?,
                     transaction_date: row.get(8)?,
                     created_at: row.get(9)?,
+                    fee: row.get(10)?,
                 })
             })?
             .filter_map(|r| r.ok())
@@ -275,7 +276,7 @@ pub async fn get_investment_transactions(
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
             "SELECT id, investment_id, type, ticker, company_name, quantity, price_per_unit,
-                    currency, transaction_date, created_at
+                    currency, transaction_date, created_at, fee
              FROM investment_transactions WHERE investment_id = ?1
              ORDER BY transaction_date DESC, created_at DESC, rowid DESC",
         )?;
@@ -293,6 +294,7 @@ pub async fn get_investment_transactions(
                     currency: row.get(7)?,
                     transaction_date: row.get(8)?,
                     created_at: row.get(9)?,
+                    fee: row.get(10)?,
                 })
             })?
             .filter_map(|r| r.ok())
@@ -310,7 +312,7 @@ pub async fn get_all_stock_transactions(
     db.with_conn(|conn| {
         let mut stmt = conn.prepare(
             "SELECT id, investment_id, type, ticker, company_name, quantity, price_per_unit,
-                    currency, transaction_date, created_at
+                    currency, transaction_date, created_at, fee
              FROM investment_transactions
              ORDER BY transaction_date DESC, created_at DESC, rowid DESC",
         )?;
@@ -328,6 +330,7 @@ pub async fn get_all_stock_transactions(
                     currency: row.get(7)?,
                     transaction_date: row.get(8)?,
                     created_at: row.get(9)?,
+                    fee: row.get(10)?,
                 })
             })?
             .filter_map(|r| r.ok())

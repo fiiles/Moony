@@ -1148,7 +1148,11 @@ export type InsertInsurancePolicy = { type: string; provider: string; policyName
 /**
  * Data for creating transaction
  */
-export type InsertInvestmentTransaction = { investmentId: string | null; type: string; ticker: string; companyName: string; quantity: string; pricePerUnit: string; currency: string; transactionDate: number }
+export type InsertInvestmentTransaction = { investmentId: string | null; type: string; ticker: string; companyName: string; quantity: string; pricePerUnit: string; currency: string; transactionDate: number; 
+/**
+ * Optional trading fee in `currency`; empty text means none.
+ */
+fee?: string | null }
 
 /**
  * What `save_learned_csv_format` takes (TS `InsertLearnedCsvFormat`); `validate()` is in
@@ -1313,7 +1317,11 @@ export type IntegrityReport = { ok: boolean; messages: string[] }
 /**
  * Investment transaction (buy/sell)
  */
-export type InvestmentTransaction = { id: string; investmentId: string; type: string; ticker: string; companyName: string; quantity: string; pricePerUnit: string; currency: string; transactionDate: number; createdAt: number }
+export type InvestmentTransaction = { id: string; investmentId: string; type: string; ticker: string; companyName: string; quantity: string; pricePerUnit: string; currency: string; transactionDate: number; createdAt: number; 
+/**
+ * Trading fee in the transaction's currency; `None` when none was recorded.
+ */
+fee: string | null }
 
 /**
  * A stock position with its transactions and tags (one IPC call for the detail page).

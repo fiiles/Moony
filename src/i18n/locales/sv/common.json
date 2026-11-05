@@ -140,6 +140,8 @@
     "currencyUnknown": "Okänd valutakod (använd en ISO 4217-kod som USD eller EUR)",
     "invalidQuantity": "Ogiltigt antal",
     "invalidPrice": "Ogiltigt pris",
+    "feeInvalid": "Ogiltig avgift",
+    "feeNegative": "Avgiften kan inte vara negativ",
     "flowKindInvalid": "Ogiltig typ av ekonomiskt flöde",
     "invalidAmount": "Ogiltigt belopp",
     "transactionTypeInvalid": "Välj Köp eller Sälj",

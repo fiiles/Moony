@@ -458,7 +458,7 @@ CREATE TABLE investment_transactions (
     currency TEXT NOT NULL,
     transaction_date INTEGER NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
-, import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL, external_id TEXT)
+, import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL, external_id TEXT, fee TEXT)
 
 == table learned_payees ==
 CREATE TABLE learned_payees (

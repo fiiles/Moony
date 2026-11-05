@@ -92,6 +92,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("025_crypto_yahoo_symbol", MIGRATION_025),
         ("026_spending_plans", MIGRATION_026),
         ("027_stock_dividends", MIGRATION_027),
+        ("028_transaction_fee", MIGRATION_028),
     ]
 }
 
@@ -2020,6 +2021,7 @@ mod stock_import_batch_tests {
                 price_per_unit: "300".into(),
                 currency: "USD".into(),
                 transaction_date: day(-10),
+                fee: None,
                 external_id: None,
                 allow_duplicate: false,
             }],
@@ -2926,6 +2928,47 @@ CREATE TABLE investment_dividends (
 );
 CREATE INDEX idx_investment_dividends_investment ON investment_dividends(investment_id);
 "#;
+
+/// 028: an optional trading fee on a stock transaction (spec 2026-10-30-gips-stock-performance-design).
+/// Money as TEXT in the transaction's own currency (which is its position's currency); `NULL`
+/// means no fee was recorded. Existing rows stay `NULL`.
+pub(crate) const MIGRATION_028: &str = r#"
+ALTER TABLE investment_transactions ADD COLUMN fee TEXT;
+"#;
+
+#[cfg(test)]
+mod migration_028 {
+    use super::*;
+
+    #[test]
+    fn a_transaction_keeps_its_fee_and_older_rows_have_none() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_chain(&conn, &all_migrations()).expect("full chain");
+        conn.execute_batch(
+            "INSERT INTO stock_investments (id, ticker, company_name, quantity, currency)
+             VALUES ('s1', 'AAPL', 'Apple', '2', 'USD');
+             INSERT INTO investment_transactions
+               (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency,
+                transaction_date, fee)
+             VALUES ('t1', 's1', 'buy', 'AAPL', 'Apple', '1', '100', 'USD', 1700000000, '1.50');
+             INSERT INTO investment_transactions
+               (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency,
+                transaction_date)
+             VALUES ('t2', 's1', 'buy', 'AAPL', 'Apple', '1', '100', 'USD', 1700086400);",
+        )
+        .expect("rows");
+        let fee = |id: &str| -> Option<String> {
+            conn.query_row(
+                "SELECT fee FROM investment_transactions WHERE id = ?1",
+                [id],
+                |r| r.get(0),
+            )
+            .expect("fee")
+        };
+        assert_eq!(fee("t1").as_deref(), Some("1.50"));
+        assert_eq!(fee("t2"), None);
+    }
+}
 
 #[cfg(test)]
 mod migration_012 {

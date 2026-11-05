@@ -97,6 +97,7 @@ export interface InvestmentTransaction {
   currency: string;
   transactionDate: number;
   createdAt: number;
+  fee: string | null;
 }
 
 // Crypto
@@ -723,6 +724,7 @@ export const insertInvestmentTransactionSchema = z.object({
   pricePerUnit: z.string(),
   currency: z.string(),
   transactionDate: z.number(),
+  fee: z.string().optional(),
 });
 export type InsertInvestmentTransaction = z.infer<typeof insertInvestmentTransactionSchema>;
 

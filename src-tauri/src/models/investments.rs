@@ -173,6 +173,9 @@ pub struct InvestmentTransaction {
     pub transaction_date: i64,
     #[serde(rename = "createdAt")]
     pub created_at: i64,
+    /// Trading fee in the transaction's currency; `None` when none was recorded.
+    #[serde(rename = "fee")]
+    pub fee: Option<String>,
 }
 
 /// Data for creating transaction
@@ -191,6 +194,9 @@ pub struct InsertInvestmentTransaction {
     pub currency: String,
     #[serde(rename = "transactionDate")]
     pub transaction_date: i64,
+    /// Optional trading fee in `currency`; empty text means none.
+    #[serde(default, rename = "fee")]
+    pub fee: Option<String>,
 }
 
 /// Stock data cache (price + Yahoo Finance metadata)
@@ -379,7 +385,21 @@ impl InsertInvestmentTransaction {
             return Err(AppError::Validation("validation.currencyInvalid".into()));
         }
 
+        self.normalized_fee()?;
         Ok(())
+    }
+
+    /// The fee as canonical amount text: `None` for a missing or blank fee, an error for a
+    /// non-number (`validation.feeInvalid`) or a negative one (`validation.feeNegative`).
+    pub fn normalized_fee(&self) -> Result<Option<String>> {
+        let Some(fee) = self.fee.as_deref().map(str::trim).filter(|f| !f.is_empty()) else {
+            return Ok(None);
+        };
+        let value = super::validation::finite_number(fee, "validation.feeInvalid")?;
+        if value < 0.0 {
+            return Err(AppError::Validation("validation.feeNegative".into()));
+        }
+        Ok(Some(crate::services::dedup::canonical_amount(fee)))
     }
 }
 
@@ -412,5 +432,30 @@ mod integrity_tests {
         let mut row = transaction();
         row.transaction_date = i64::MAX;
         assert!(row.validate().is_err());
+    }
+
+    #[test]
+    fn the_fee_is_optional_non_negative_and_canonical() {
+        let mut row = transaction();
+        row.fee = Some("2.5".into());
+        assert!(row.validate().is_ok());
+        assert_eq!(row.normalized_fee().unwrap().as_deref(), Some("2.5"));
+        row.fee = Some("".into());
+        assert!(row.validate().is_ok());
+        assert_eq!(row.normalized_fee().unwrap(), None);
+        row.fee = None;
+        assert_eq!(row.normalized_fee().unwrap(), None);
+        row.fee = Some("0".into());
+        assert_eq!(row.normalized_fee().unwrap().as_deref(), Some("0"));
+        row.fee = Some("-1".into());
+        assert!(matches!(
+            row.validate(),
+            Err(AppError::Validation(k)) if k == "validation.feeNegative"
+        ));
+        row.fee = Some("abc".into());
+        assert!(matches!(
+            row.validate(),
+            Err(AppError::Validation(k)) if k == "validation.feeInvalid"
+        ));
     }
 }

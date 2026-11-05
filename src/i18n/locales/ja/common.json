@@ -140,6 +140,8 @@
     "currencyUnknown": "不明な通貨コードです（USD や EUR など、ISO 4217 のコードを使用してください）",
     "invalidQuantity": "数量が正しくありません",
     "invalidPrice": "価格が正しくありません",
+    "feeInvalid": "手数料が正しくありません",
+    "feeNegative": "手数料はマイナスにできません",
     "flowKindInvalid": "資金フローの種類が正しくありません",
     "invalidAmount": "金額が正しくありません",
     "transactionTypeInvalid": "買付か売却を選択してください",

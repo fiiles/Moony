@@ -64,6 +64,7 @@ pub fn import(
                     price_per_unit: trade.price_text(),
                     currency: trade.currency.clone()?,
                     transaction_date: trade.day,
+                    fee: None,
                     external_id: trade.external_id.clone(),
                     allow_duplicate: true,
                 },

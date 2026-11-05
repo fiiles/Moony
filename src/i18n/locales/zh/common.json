@@ -140,6 +140,8 @@
     "currencyUnknown": "未知的货币代码（请使用 ISO 4217 代码，如 USD 或 EUR）",
     "invalidQuantity": "数量无效",
     "invalidPrice": "价格无效",
+    "feeInvalid": "手续费无效",
+    "feeNegative": "手续费不能为负数",
     "flowKindInvalid": "资金流类型无效",
     "invalidAmount": "金额无效",
     "transactionTypeInvalid": "请选择买入或卖出",

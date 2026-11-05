@@ -140,6 +140,8 @@
     "currencyUnknown": "Ukjent valutakode (bruk en ISO 4217-kode som USD eller EUR)",
     "invalidQuantity": "Ugyldig antall",
     "invalidPrice": "Ugyldig kurs",
+    "feeInvalid": "Ugyldig gebyr",
+    "feeNegative": "Gebyret kan ikke være negativt",
     "flowKindInvalid": "Ugyldig type finansiell strøm",
     "invalidAmount": "Ugyldig beløp",
     "transactionTypeInvalid": "Velg Kjøp eller Salg",

@@ -140,6 +140,8 @@
     "currencyUnknown": "Unbekannter Währungscode (verwenden Sie einen ISO-4217-Code wie USD oder EUR)",
     "invalidQuantity": "Ungültige Menge",
     "invalidPrice": "Ungültiger Kurs",
+    "feeInvalid": "Ungültige Gebühr",
+    "feeNegative": "Die Gebühr darf nicht negativ sein",
     "flowKindInvalid": "Ungültige Art des Finanzflusses",
     "invalidAmount": "Ungültiger Betrag",
     "transactionTypeInvalid": "Wählen Sie Kauf oder Verkauf",

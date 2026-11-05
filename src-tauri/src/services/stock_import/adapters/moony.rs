@@ -80,7 +80,8 @@ pub fn config(headers: &[String], rows: &[Vec<String>]) -> Option<AdapterConfig>
     config.currency_column = Some(cols.currency);
     config.type_column = Some(cols.kind);
     config.decimal_separator = decimal_of(rows, &[cols.quantity, cols.price]);
-    // The export has no fee; a hand-made table may (a column the fee words name).
+    // The export carries a trailing `Fee` column, and a hand-made table may name one with any
+    // of the fee words, so the column is found by those words.
     config.fee_column = column_for(&suggest_stock_columns(headers), StockRole::Fee);
     config.fee_currency_column = config
         .fee_column

@@ -5,10 +5,11 @@ import { useCurrency } from '@/lib/currency';
 import { sameIndexLine, type IndexLineId } from '@/utils/stock-performance';
 
 /**
- * Performance of the held positions for one page state (period, report currency, the series to
- * chart), as `get_stock_performance` returns it. The rate revision is part of the key, so the
- * returns refetch when the rates change; investment mutations, price refreshes and tag edits
- * invalidate the `['stock-performance']` prefix. Pass `null` while there is nothing to request.
+ * Performance of the stock positions of the period, sold ones included, for one page state
+ * (period, report currency, the series to chart), as `get_stock_performance` returns it. The
+ * rate revision is part of the key, so the returns refetch when the rates change; investment
+ * mutations, price refreshes and tag edits invalidate the `['stock-performance']` prefix. Pass
+ * `null` while there is nothing to request.
  *
  * The previous response stays in `data` while the next one loads (`isPlaceholderData`), so the
  * chart and the board do not blink when the period or the selection changes.

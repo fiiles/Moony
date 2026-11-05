@@ -14,7 +14,7 @@ import { useCurrency } from '@/lib/currency';
 import { useStockPerformance } from '@/hooks/use-stock-performance';
 import {
   chosenTagIds,
-  heldPositions,
+  periodPositions,
   positionTotals,
   selectPositions,
   toAnalysisPosition,
@@ -77,9 +77,10 @@ const NO_GROUPS: StockTagGroup[] = [];
  * line and the deposits card stay whole-portfolio. This component only holds the state and wires
  * the data.
  *
- * The analysis is of the held positions: sold-out ones (quantity 0) are in the report but not in
- * the performance engine, so they are left out of everything on the page except the two tag
- * dialogs, whose move conflicts the backend counts over every position.
+ * Every position of the period is listed: those held now and those the performance response
+ * counts in the period, sold ones included (their value today is 0). The request is built from
+ * every position of the report, so it never waits on its own response; the backend ignores the
+ * positions outside the period. The two tag dialogs see every position.
  */
 export default function StocksAnalysis() {
   const { t } = useTranslation('reports');
@@ -112,9 +113,8 @@ export default function StocksAnalysis() {
   });
   // Amounts in the report currency of the response (ADR 0011); null = not convertible
   const reportCurrency = analysis?.currency ?? currencyCode;
-  // Every position of the report (the tag dialogs) and the held ones (the analysis)
+  // Every position of the report: the tag dialogs and the performance request
   const allStocks = useMemo(() => (analysis?.items ?? []).map(toAnalysisPosition), [analysis]);
-  const stocks = useMemo(() => heldPositions(allStocks), [allStocks]);
 
   // Tag groups for the filters; ungrouped tags form a row of their own
   const filterGroups = useMemo<ScopeGroup[]>(() => {
@@ -143,8 +143,6 @@ export default function StocksAnalysis() {
     () => chosenIds.flatMap((id) => tags.filter((tag) => tag.id === id)),
     [chosenIds, tags]
   );
-  const selected = useMemo(() => selectPositions(stocks, chosenIds), [stocks, chosenIds]);
-  const selectedValue = selected.reduce((sum, x) => sum + (x.currentValue ?? 0), 0);
 
   // --- performance -----------------------------------------------------------------------------
 
@@ -161,13 +159,13 @@ export default function StocksAnalysis() {
 
   const lite = useMemo<PositionLite[]>(
     () =>
-      stocks.map((s) => ({
+      allStocks.map((s) => ({
         id: s.id,
         sector: s.sector,
         currency: positionCurrency(s),
         tags: s.tags,
       })),
-    [stocks]
+    [allStocks]
   );
   const selectedLite = useMemo(() => selectPositions(lite, chosenIds), [lite, chosenIds]);
 
@@ -189,7 +187,21 @@ export default function StocksAnalysis() {
     }),
     [range, currencyCode, selectedLite, tags, group, filterActive]
   );
-  const performance = useStockPerformance(stocks.length > 0 ? request : null);
+  const performance = useStockPerformance(allStocks.length > 0 ? request : null);
+
+  // The positions listed: held now or in the period (while the first response loads, held now)
+  const periodIds = useMemo(
+    () =>
+      performance.data ? new Set(performance.data.positions.map((p) => p.investmentId)) : undefined,
+    [performance.data]
+  );
+  const stocks = useMemo(() => periodPositions(allStocks, periodIds), [allStocks, periodIds]);
+  const selected = useMemo(() => selectPositions(stocks, chosenIds), [stocks, chosenIds]);
+  const selectedValue = selected.reduce((sum, x) => sum + (x.currentValue ?? 0), 0);
+  const shownLite = useMemo(() => {
+    const ids = new Set(stocks.map((s) => s.id));
+    return selectedLite.filter((p) => ids.has(p.id));
+  }, [stocks, selectedLite]);
 
   // Values as of the end of the period: today's analysis values when it ends today, else the
   // values of its last day from the performance response
@@ -216,8 +228,8 @@ export default function StocksAnalysis() {
   // The parts of the chosen group in the selection, by value, the first four drawn. "Nerozdělovat"
   // has none, or with a filter the selection as one part.
   const parts = useMemo(
-    () => (group ? rankParts(splitParts(selectedLite, group, tags, filterActive), endValueOf) : []),
-    [group, selectedLite, tags, filterActive, endValueOf]
+    () => (group ? rankParts(splitParts(shownLite, group, tags, filterActive), endValueOf) : []),
+    [group, shownLite, tags, filterActive, endValueOf]
   );
 
   /** Commit a period (and the last custom range): remember it, and learn the first day from "Vše". */
@@ -299,7 +311,7 @@ export default function StocksAnalysis() {
             <Tag />
             {t('stocksAnalysis.actions.manage')}
           </Button>
-          <Button onClick={() => openAssign([])} disabled={stocks.length === 0}>
+          <Button onClick={() => openAssign([])} disabled={allStocks.length === 0}>
             <Plus />
             {t('stocksAnalysis.actions.assign')}
           </Button>
@@ -338,7 +350,7 @@ export default function StocksAnalysis() {
     );
   }
 
-  if (stocks.length === 0) {
+  if (allStocks.length === 0) {
     return (
       <>
         {head}

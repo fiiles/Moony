@@ -6,12 +6,15 @@ import reportsEn from '@/i18n/locales/en/reports.json';
 import {
   MAX_DRAWN,
   amountOf,
+  annualized,
+  annualizes,
   buildRows,
   chartLines,
   figuresAt,
   fxEffect,
   groupName,
   partName,
+  periodDays,
   rankParts,
   rankedAt,
   sectorLabel,
@@ -368,24 +371,85 @@ describe('rankedAt', () => {
   });
 });
 
+describe('periodDays, annualizes and annualized', () => {
+  it('counts calendar days between two ISO days', () => {
+    expect(periodDays('2024-01-01', '2024-01-01')).toBe(0);
+    expect(periodDays('2024-01-01', '2025-01-01')).toBe(366);
+    expect(periodDays('2023-01-01', '2024-01-01')).toBe(365);
+    expect(periodDays('2024-01-01', 'nonsense')).toBe(0);
+  });
+
+  it('annualizes only a period longer than a year', () => {
+    expect(annualizes(365)).toBe(false);
+    expect(annualizes(366)).toBe(true);
+    expect(annualizes(0)).toBe(false);
+  });
+
+  it('turns a cumulative return into a yearly one', () => {
+    expect(annualized(21, 730)).toBeCloseTo(10, 10);
+    expect(annualized(0, 1000)).toBe(0);
+    expect(annualized(-19, 730)).toBeCloseTo(-10, 10);
+    expect(annualized(-100, 730)).toBe(-100);
+  });
+});
+
 describe('figuresAt', () => {
   const performance = {
+    dates: ['2024-01-01', '2024-03-01', '2024-07-19'],
     portfolio: [0, 4, 10],
     mwr: [0, 5, 12],
+    mwrAnnual: [0, 40, 25],
     values: ['1000', '1200', '1500'],
     netFlows: ['0', '100', '200'],
+    dividends: ['0', '0', '30.5'],
   };
 
-  it('reads the portfolio return, the money-weighted return and the change of value', () => {
+  it('reads the period figures over a period of a year or less (200 days)', () => {
     expect(figuresAt(performance, 2)).toEqual({
       twr: 10,
+      annual: false,
+      twrAnnual: null,
       mwr: 12,
       mwrGap: 2,
       change: 500,
       deposits: 200,
       market: 300,
+      dividends: 30.5,
     });
-    expect(figuresAt(performance, 0)).toMatchObject({ twr: 0, change: 0, market: 0 });
+    expect(figuresAt(performance, 0)).toMatchObject({
+      twr: 0,
+      change: 0,
+      market: 0,
+      dividends: 0,
+    });
+  });
+
+  it('compares the annual money-weighted rate with the annualised TWR over two years', () => {
+    const long = {
+      ...performance,
+      dates: ['2022-01-01', '2023-01-01', '2024-01-01'],
+      portfolio: [0, 4, 21],
+      mwrAnnual: [0, 5, 12],
+    };
+    const f = figuresAt(long, 2);
+    expect(f).toMatchObject({ twr: 21, annual: true, mwr: 12 });
+    expect(f?.twrAnnual).toBeCloseTo(10, 10);
+    expect(f?.mwrGap).toBeCloseTo(2, 10);
+    // At a hovered date the period is the first date to that date: 365 days is not annualised
+    expect(figuresAt(long, 1)).toMatchObject({ annual: false, twrAnnual: null, mwr: 5, mwrGap: 1 });
+  });
+
+  it('has no money-weighted return nor gap when the chosen rate is null', () => {
+    expect(figuresAt({ ...performance, mwr: [0, 5, null] }, 2)).toMatchObject({
+      mwr: null,
+      mwrGap: null,
+    });
+    const long = { ...performance, dates: ['2022-01-01', '2023-01-01', '2024-01-01'] };
+    expect(figuresAt({ ...long, mwrAnnual: [0, 5, null] }, 2)).toMatchObject({
+      annual: true,
+      mwr: null,
+      mwrGap: null,
+    });
   });
 
   it('has no change when a value is not convertible', () => {

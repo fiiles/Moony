@@ -373,6 +373,7 @@
     },
     "performance": {
       "twrLabel": "時間加重収益率 · ポートフォリオ全体",
+      "twrAnnual": "年率 {{value}}",
       "bestWorst": "最良と最悪",
       "bestWorstSelection": "選択内の最良と最悪",
       "onlyPart": "選択内で唯一の区分",
@@ -384,13 +385,15 @@
       "fromTo": "{{from}}から{{to}}まで",
       "fromAt": "{{from}}から{{at}}まで",
       "positions_other": "{{count}}件のポジション",
-      "mwrLabel": "金額加重収益率",
+      "mwrLabelAnnual": "金額加重収益率 · 年率",
+      "mwrLabelPeriod": "金額加重収益率 · 期間",
       "mwrNote": "投資したタイミングを反映",
       "mwrSame": "時間加重と同じ",
       "mwrGap": "時間加重との差 {{gap}}",
       "changeLabel": "評価額の変化",
       "netDeposits": "純投資額 {{amount}}",
       "market": "ポートフォリオの値上がり {{amount}}",
+      "dividends": "支払われた配当 {{amount}}",
       "splitBy": "分割基準",
       "splitByTitle": "選択したポジションの分け方：各区分がグラフの線1本、表の1行になります",
       "from": "開始",
@@ -421,7 +424,9 @@
       "dragTip": "{{days}}日間 · 離すと期間を設定します",
       "portfolio": "ポートフォリオ全体",
       "today": "今日",
-      "empty": "選択した期間のデータはまだありません。"
+      "empty": "選択した期間のデータはまだありません。",
+      "unpriced": "市場価格なし、取引価格で評価：{{tickers}}",
+      "dividendGap": "配当はまだ読み込まれていません：{{tickers}}"
     },
     "board": {
       "return": "期間収益率",

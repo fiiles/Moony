@@ -11,15 +11,22 @@ export const FILTER_ALL = 'all';
 
 /**
  * Whether a position is still held. The analysis report lists every position of the account,
- * sold-out ones (quantity 0) included, while the performance engine covers only held positions.
+ * sold-out ones (quantity 0) included.
  */
 export function isHeld(position: { quantity: string }): boolean {
   return Number(position.quantity) > 0;
 }
 
-/** The held positions in their order: what the whole analysis page shows (see `isHeld`). */
-export function heldPositions<T extends { quantity: string }>(positions: readonly T[]): T[] {
-  return positions.filter(isHeld);
+/**
+ * The positions the page lists for a period, in their order: those held now and those the
+ * performance response counts in the period (`periodIds`, sold ones included). While the response
+ * is not there yet (`undefined`), the held ones.
+ */
+export function periodPositions<T extends { id: string; quantity: string }>(
+  positions: readonly T[],
+  periodIds: ReadonlySet<string> | undefined
+): T[] {
+  return positions.filter((position) => isHeld(position) || periodIds?.has(position.id) === true);
 }
 
 /** One row of chips: a group of tags of which one can be chosen. */

@@ -29,7 +29,10 @@ import { holdingRows, portfolioConcentration } from './tables-model';
 const HEAD_WRAP = '[&_th]:whitespace-normal [&_th]:leading-[1.2]';
 
 interface HoldingsTableProps {
-  /** Every held position (the concentration is of the whole portfolio) and the selected ones. */
+  /**
+   * Every position of the period, sold ones included (the concentration is of the whole
+   * portfolio), and the selected ones.
+   */
   stocks: readonly AnalysisPosition[];
   selected: readonly AnalysisPosition[];
   /** Value of a position as of the end of the period; of the whole portfolio. */

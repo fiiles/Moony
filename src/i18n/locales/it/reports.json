@@ -401,6 +401,7 @@
     },
     "performance": {
       "twrLabel": "Rendimento ponderato per il tempo · intero portafoglio",
+      "twrAnnual": "{{value}} annuo",
       "bestWorst": "migliore e peggiore",
       "bestWorstSelection": "migliore e peggiore nella selezione",
       "onlyPart": "unica parte della selezione",
@@ -414,13 +415,15 @@
       "positions_one": "{{count}} posizione",
       "positions_many": "{{count}} posizioni",
       "positions_other": "{{count}} posizioni",
-      "mwrLabel": "Rendimento ponderato per il denaro",
+      "mwrLabelAnnual": "Rendimento ponderato per il denaro · annuo",
+      "mwrLabelPeriod": "Rendimento ponderato per il denaro · nel periodo",
       "mwrNote": "tiene conto di quando hai investito",
       "mwrSame": "uguale a quello ponderato per il tempo",
       "mwrGap": "{{gap}} rispetto a quello ponderato per il tempo",
       "changeLabel": "Variazione di valore",
       "netDeposits": "versamenti netti {{amount}}",
       "market": "rivalutazione del portafoglio {{amount}}",
+      "dividends": "dividendi pagati {{amount}}",
       "splitBy": "Suddividi per",
       "splitByTitle": "Come vengono suddivise le posizioni selezionate: ogni parte è una linea nel grafico e una riga nella tabella",
       "from": "Da",
@@ -451,7 +454,9 @@
       "dragTip": "{{days}} giorni · rilascia per impostare il periodo",
       "portfolio": "Intero portafoglio",
       "today": "Oggi",
-      "empty": "Ancora nessun dato per il periodo scelto."
+      "empty": "Ancora nessun dato per il periodo scelto.",
+      "unpriced": "Senza prezzo di mercato, valutato ai prezzi delle operazioni: {{tickers}}",
+      "dividendGap": "Dividendi non ancora caricati: {{tickers}}"
     },
     "board": {
       "return": "Rendimento del periodo",

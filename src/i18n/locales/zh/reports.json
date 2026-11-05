@@ -373,6 +373,7 @@
     },
     "performance": {
       "twrLabel": "时间加权收益率 · 整个投资组合",
+      "twrAnnual": "年化 {{value}}",
       "bestWorst": "最好与最差",
       "bestWorstSelection": "所选中最好与最差",
       "onlyPart": "所选中的唯一部分",
@@ -384,13 +385,15 @@
       "fromTo": "自 {{from}} 至 {{to}}",
       "fromAt": "自 {{from}} 至 {{at}}",
       "positions_other": "{{count}} 个持仓",
-      "mwrLabel": "资金加权收益率",
+      "mwrLabelAnnual": "资金加权收益率 · 年化",
+      "mwrLabelPeriod": "资金加权收益率 · 期间",
       "mwrNote": "考虑了您投入的时间",
       "mwrSame": "与时间加权相同",
       "mwrGap": "与时间加权相差 {{gap}}",
       "changeLabel": "价值变化",
       "netDeposits": "净投入 {{amount}}",
       "market": "投资组合增值 {{amount}}",
+      "dividends": "已派发股息 {{amount}}",
       "splitBy": "拆分依据",
       "splitByTitle": "所选持仓的拆分方式：每个部分对应图表中的一条线和表格中的一行",
       "from": "从",
@@ -421,7 +424,9 @@
       "dragTip": "{{days}} 天 · 松开即可设定时期",
       "portfolio": "整个投资组合",
       "today": "今天",
-      "empty": "所选时期暂无数据。"
+      "empty": "所选时期暂无数据。",
+      "unpriced": "无市场价格，按交易价格估值：{{tickers}}",
+      "dividendGap": "股息尚未加载：{{tickers}}"
     },
     "board": {
       "return": "时期收益率",

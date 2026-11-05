@@ -387,6 +387,7 @@
     },
     "performance": {
       "twrLabel": "Time-weighted return · whole portfolio",
+      "twrAnnual": "{{value}} a year",
       "bestWorst": "best and worst",
       "bestWorstSelection": "best and worst in the selection",
       "onlyPart": "the only part of the selection",
@@ -399,13 +400,15 @@
       "fromAt": "from {{from}} to {{at}}",
       "positions_one": "{{count}} position",
       "positions_other": "{{count}} positions",
-      "mwrLabel": "Money-weighted return",
+      "mwrLabelAnnual": "Money-weighted return · a year",
+      "mwrLabelPeriod": "Money-weighted return · for the period",
       "mwrNote": "accounts for when you invested",
       "mwrSame": "same as time-weighted",
       "mwrGap": "{{gap}} against time-weighted",
       "changeLabel": "Change in value",
       "netDeposits": "net deposits {{amount}}",
       "market": "portfolio gain {{amount}}",
+      "dividends": "dividends paid {{amount}}",
       "splitBy": "Split by",
       "splitByTitle": "How the selected positions are split: each part is one line in the chart and one row in the table",
       "from": "From",
@@ -436,7 +439,9 @@
       "dragTip": "{{days}} days · release to set the period",
       "portfolio": "Whole portfolio",
       "today": "Today",
-      "empty": "No data for the chosen period yet."
+      "empty": "No data for the chosen period yet.",
+      "unpriced": "No market price, valued at trade prices: {{tickers}}",
+      "dividendGap": "Dividends not loaded yet: {{tickers}}"
     },
     "board": {
       "return": "Period return",

@@ -4,10 +4,10 @@ import {
   FILTER_ALL,
   changedPositions,
   chosenTagIds,
-  heldPositions,
   initialActiveId,
   isHeld,
   moveConflicts,
+  periodPositions,
   pickGroupTag,
   selectPositions,
   tagTotals,
@@ -53,7 +53,7 @@ describe('chosenTagIds', () => {
   });
 });
 
-describe('isHeld / heldPositions', () => {
+describe('isHeld / periodPositions', () => {
   it('holds a position with a positive quantity, whole or fractional', () => {
     expect(isHeld({ quantity: '10' })).toBe(true);
     expect(isHeld({ quantity: '0.00000001' })).toBe(true);
@@ -67,20 +67,27 @@ describe('isHeld / heldPositions', () => {
     expect(isHeld({ quantity: 'n/a' })).toBe(false);
   });
 
-  it('keeps the held positions in order and does not touch the input', () => {
-    const all = [
-      { id: 'a', quantity: '5' },
-      { id: 'closed', quantity: '0' },
-      { id: 'b', quantity: '1.5' },
-    ];
-    const held = heldPositions(all);
-    expect(held.map((p) => p.id)).toEqual(['a', 'b']);
-    expect(all).toHaveLength(3);
-    expect(held).not.toBe(all);
+  const all = [
+    { id: 'a', quantity: '5' },
+    { id: 'sold-in-period', quantity: '0' },
+    { id: 'b', quantity: '1.5' },
+    { id: 'sold-before', quantity: '0' },
+  ];
+
+  it('keeps the held positions in order while the period is not known yet', () => {
+    const shown = periodPositions(all, undefined);
+    expect(shown.map((p) => p.id)).toEqual(['a', 'b']);
+    expect(all).toHaveLength(4);
+    expect(shown).not.toBe(all);
   });
 
-  it('is empty when every position is sold out', () => {
-    expect(heldPositions([{ quantity: '0' }, { quantity: '0.0' }])).toEqual([]);
+  it('adds the sold positions of the period, in order', () => {
+    const shown = periodPositions(all, new Set(['sold-in-period', 'a']));
+    expect(shown.map((p) => p.id)).toEqual(['a', 'sold-in-period', 'b']);
+  });
+
+  it('is empty when every position is sold out and none is in the period', () => {
+    expect(periodPositions([{ id: 'x', quantity: '0' }], new Set<string>())).toEqual([]);
   });
 });
 

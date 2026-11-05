@@ -387,6 +387,7 @@
     },
     "performance": {
       "twrLabel": "Zeitgewichtete Rendite · gesamtes Portfolio",
+      "twrAnnual": "{{value}} pro Jahr",
       "bestWorst": "beste und schlechteste",
       "bestWorstSelection": "beste und schlechteste in der Auswahl",
       "onlyPart": "einziger Teil der Auswahl",
@@ -399,13 +400,15 @@
       "fromAt": "vom {{from}} bis {{at}}",
       "positions_one": "{{count}} Position",
       "positions_other": "{{count}} Positionen",
-      "mwrLabel": "Geldgewichtete Rendite",
+      "mwrLabelAnnual": "Geldgewichtete Rendite · pro Jahr",
+      "mwrLabelPeriod": "Geldgewichtete Rendite · im Zeitraum",
       "mwrNote": "berücksichtigt, wann Sie investiert haben",
       "mwrSame": "wie zeitgewichtet",
       "mwrGap": "{{gap}} gegenüber zeitgewichtet",
       "changeLabel": "Wertänderung",
       "netDeposits": "Nettoeinzahlungen {{amount}}",
       "market": "Wertzuwachs des Portfolios {{amount}}",
+      "dividends": "ausgezahlte Dividenden {{amount}}",
       "splitBy": "Aufteilen nach",
       "splitByTitle": "Wie die ausgewählten Positionen aufgeteilt werden: Jeder Teil ist eine Linie im Diagramm und eine Zeile in der Tabelle",
       "from": "Von",
@@ -436,7 +439,9 @@
       "dragTip": "{{days}} Tage · loslassen, um den Zeitraum zu setzen",
       "portfolio": "Gesamtes Portfolio",
       "today": "Heute",
-      "empty": "Für den gewählten Zeitraum liegen noch keine Daten vor."
+      "empty": "Für den gewählten Zeitraum liegen noch keine Daten vor.",
+      "unpriced": "Kein Marktpreis, zu Transaktionspreisen bewertet: {{tickers}}",
+      "dividendGap": "Dividenden noch nicht geladen: {{tickers}}"
     },
     "board": {
       "return": "Rendite im Zeitraum",

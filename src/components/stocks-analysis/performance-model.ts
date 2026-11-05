@@ -1,6 +1,13 @@
 import type { TFunction } from 'i18next';
 import type { PerformanceSeries, StockPerformance, StockTag } from '@shared/schema';
-import { SELECTION_KEY, drawdown, type CompareGroup, type Part } from '@/utils/stock-performance';
+import {
+  DAY,
+  SELECTION_KEY,
+  dayFromIso,
+  drawdown,
+  type CompareGroup,
+  type Part,
+} from '@/utils/stock-performance';
 import type { PerformanceLine } from './PerformanceChart';
 
 /** The chart draws at most this many parts; the rest are listed in the board only. */
@@ -304,41 +311,84 @@ export function rankedAt(
   return out.sort((a, b) => b.twr - a.twr);
 }
 
-/** The three hero figures at one point of the period. */
+/** Calendar days from one `YYYY-MM-DD` to another; 0 when either is unreadable. */
+export function periodDays(from: string, to: string): number {
+  const start = dayFromIso(from);
+  const end = dayFromIso(to);
+  return start !== null && end !== null ? Math.round((end - start) / DAY) : 0;
+}
+
+/** A period longer than a year is shown with yearly rates as well (GIPS: never annualise less). */
+export function annualizes(days: number): boolean {
+  return days > 365;
+}
+
+/**
+ * A cumulative return in percent over `days` as a yearly rate in percent:
+ * `(1 + c)^(365 / days) − 1`. A loss of everything stays −100 %.
+ */
+export function annualized(cumulativePct: number, days: number): number {
+  const growth = 1 + cumulativePct / 100;
+  if (growth <= 0) return -100;
+  return (growth ** (365 / days) - 1) * 100;
+}
+
+/** The hero figures at one point of the period. */
 export interface Figures {
-  /** Time-weighted return of the whole portfolio, percent. */
+  /** Cumulative time-weighted return of the whole portfolio, percent. */
   twr: number;
-  /** Money-weighted return, percent. */
-  mwr: number;
-  /** `mwr − twr` in percentage points. */
-  mwrGap: number;
+  /** The span from the first date to this point is longer than a year: rates are yearly. */
+  annual: boolean;
+  /** The time-weighted return as a yearly rate, percent; `null` unless `annual`. */
+  twrAnnual: number | null;
+  /**
+   * Money-weighted return in percent: the yearly rate when `annual`, else the rate for the span;
+   * `null` when it has no solution.
+   */
+  mwr: number | null;
+  /** `mwr` minus the time-weighted return on the same basis, percentage points. */
+  mwrGap: number | null;
   /** Change of value since the first date; `null` when a value is not convertible. */
   change: number | null;
   /** Net deposits since the first date. */
   deposits: number | null;
   /** Market effect: the change that is not a deposit. */
   market: number | null;
+  /** Gross dividends paid since the first date (they left the portfolio, so not in `change`). */
+  dividends: number;
 }
 
-/** The figures at point `index`, or `null` when the response has no such point. */
+/**
+ * The figures at point `index`, or `null` when the response has no such point. The span is the
+ * first date to that point, so a hovered day reads the figures of its own span.
+ */
 export function figuresAt(
-  performance: Pick<StockPerformance, 'portfolio' | 'mwr' | 'values' | 'netFlows'>,
+  performance: Pick<
+    StockPerformance,
+    'dates' | 'portfolio' | 'mwr' | 'mwrAnnual' | 'values' | 'netFlows' | 'dividends'
+  >,
   index: number
 ): Figures | null {
   const twr = performance.portfolio[index];
   if (twr === undefined) return null;
-  const mwr = performance.mwr[index] ?? 0;
+  const days = periodDays(performance.dates[0] ?? '', performance.dates[index] ?? '');
+  const annual = annualizes(days);
+  const twrAnnual = annual ? annualized(twr, days) : null;
+  const mwr = (annual ? performance.mwrAnnual[index] : performance.mwr[index]) ?? null;
   const start = amountOf(performance.values[0]);
   const now = amountOf(performance.values[index]);
   const deposits = amountOf(performance.netFlows[index]);
   const change = start !== null && now !== null ? now - start : null;
   return {
     twr,
+    annual,
+    twrAnnual,
     mwr,
-    mwrGap: mwr - twr,
+    mwrGap: mwr !== null ? mwr - (twrAnnual ?? twr) : null,
     change,
     deposits,
     market: change !== null && deposits !== null ? change - deposits : null,
+    dividends: amountOf(performance.dividends[index]) ?? 0,
   };
 }
 

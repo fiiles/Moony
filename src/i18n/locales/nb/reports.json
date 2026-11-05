@@ -387,6 +387,7 @@
     },
     "performance": {
       "twrLabel": "Tidsvektet avkastning · hele porteføljen",
+      "twrAnnual": "{{value}} per år",
       "bestWorst": "best og dårligst",
       "bestWorstSelection": "best og dårligst i utvalget",
       "onlyPart": "eneste del av utvalget",
@@ -399,13 +400,15 @@
       "fromAt": "fra {{from}} til {{at}}",
       "positions_one": "{{count}} beholdning",
       "positions_other": "{{count}} beholdninger",
-      "mwrLabel": "Pengevektet avkastning",
+      "mwrLabelAnnual": "Pengevektet avkastning · per år",
+      "mwrLabelPeriod": "Pengevektet avkastning · for perioden",
       "mwrNote": "tar hensyn til når du investerte",
       "mwrSame": "samme som tidsvektet",
       "mwrGap": "{{gap}} mot tidsvektet",
       "changeLabel": "Verdiendring",
       "netDeposits": "nettoinnskudd {{amount}}",
       "market": "verdiøkning i porteføljen {{amount}}",
+      "dividends": "utbetalt utbytte {{amount}}",
       "splitBy": "Del opp etter",
       "splitByTitle": "Hvordan de valgte beholdningene deles opp: hver del er én linje i diagrammet og én rad i tabellen",
       "from": "Fra",
@@ -436,7 +439,9 @@
       "dragTip": "{{days}} dager · slipp for å sette perioden",
       "portfolio": "Hele porteføljen",
       "today": "I dag",
-      "empty": "Ingen data for den valgte perioden ennå."
+      "empty": "Ingen data for den valgte perioden ennå.",
+      "unpriced": "Ingen markedspris, verdsatt til handelskurser: {{tickers}}",
+      "dividendGap": "Utbytte er ikke lastet ennå: {{tickers}}"
     },
     "board": {
       "return": "Avkastning i perioden",

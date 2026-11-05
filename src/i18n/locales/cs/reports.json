@@ -401,6 +401,7 @@
     },
     "performance": {
       "twrLabel": "Časově vážený výnos · celé portfolio",
+      "twrAnnual": "ročně {{value}}",
       "bestWorst": "nejlepší a nejhorší",
       "bestWorstSelection": "nejlepší a nejhorší ve výběru",
       "onlyPart": "jediná část výběru",
@@ -414,13 +415,15 @@
       "positions_one": "{{count}} pozice",
       "positions_few": "{{count}} pozice",
       "positions_other": "{{count}} pozic",
-      "mwrLabel": "Peněžně vážený výnos",
+      "mwrLabelAnnual": "Peněžně vážený výnos · ročně",
+      "mwrLabelPeriod": "Peněžně vážený výnos · za období",
       "mwrNote": "zohledňuje, kdy jste vkládali",
       "mwrSame": "stejně jako časově vážený",
       "mwrGap": "{{gap}} proti časově váženému",
       "changeLabel": "Změna hodnoty",
       "netDeposits": "čisté vklady {{amount}}",
       "market": "zhodnocení portfolia {{amount}}",
+      "dividends": "vyplacené dividendy {{amount}}",
       "splitBy": "Rozdělit podle",
       "splitByTitle": "Na jaké části se vybrané pozice rozdělí: každá část je jedna čára v grafu a jeden řádek v tabulce",
       "from": "Od",
@@ -451,7 +454,9 @@
       "dragTip": "{{days}} dní · pusťte myš a období se nastaví",
       "portfolio": "Celé portfolio",
       "today": "Dnes",
-      "empty": "Pro zvolené období zatím nejsou data."
+      "empty": "Pro zvolené období zatím nejsou data.",
+      "unpriced": "Bez tržní ceny, oceněno cenami obchodů: {{tickers}}",
+      "dividendGap": "Dividendy se ještě nenačetly: {{tickers}}"
     },
     "board": {
       "return": "Výnos za období",

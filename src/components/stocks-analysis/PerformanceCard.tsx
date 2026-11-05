@@ -95,7 +95,7 @@ export interface PerformanceCardProps {
    * split": none, or the selection while a filter is on.
    */
   parts: readonly RankedPart[];
-  /** Held positions: the hero figures count the whole portfolio. */
+  /** Positions of the period, sold ones included: the hero figures count the whole portfolio. */
   positionCount: number;
   filterActive: boolean;
   /** The tags the filter chose, for the badge in the toolbar (the hero stays whole-portfolio). */
@@ -138,6 +138,34 @@ function HeroFigure({
         {value}
       </b>
       {children}
+    </div>
+  );
+}
+
+/**
+ * The quality notes of the stock positions, in the style of `ConversionQualityNote`: tickers
+ * valued at their trade prices for want of a market price, and tickers whose dividends have not
+ * been loaded for the whole period. Nothing when both lists are empty.
+ */
+function StockQualityNote({
+  unpriced,
+  dividendGap,
+  className,
+}: {
+  unpriced: readonly string[];
+  dividendGap: readonly string[];
+  className?: string;
+}) {
+  const { t } = useTranslation('reports');
+  if (unpriced.length === 0 && dividendGap.length === 0) return null;
+  return (
+    <div className={cn('space-y-1 text-micro text-ink-4', className)} role="note">
+      {unpriced.length > 0 && (
+        <p>{t('stocksAnalysis.performance.unpriced', { tickers: unpriced.join(', ') })}</p>
+      )}
+      {dividendGap.length > 0 && (
+        <p>{t('stocksAnalysis.performance.dividendGap', { tickers: dividendGap.join(', ') })}</p>
+      )}
     </div>
   );
 }
@@ -735,6 +763,11 @@ export function PerformanceCard({
               </p>
             )}
             <ConversionQualityNote quality={data.fxQuality} currency={currency} className="mt-2" />
+            <StockQualityNote
+              unpriced={data.unpricedTickers}
+              dividendGap={data.dividendGapTickers}
+              className="mt-1"
+            />
             <PerformanceBoard
               rows={view.rows}
               groupLabel={view.groupLabel}
@@ -759,21 +792,39 @@ export function PerformanceCard({
         large
         stale={stale || indexStale}
       >
+        {figures?.twrAnnual != null && (
+          <div className="mb-1 text-table font-650 text-ink-3">
+            <Rich
+              text={t('stocksAnalysis.performance.twrAnnual', { value: slot('value') })}
+              slots={{
+                value: (
+                  <span className={toneClass[toneOf(figures.twrAnnual)] || 'text-ink-2'}>
+                    {percent(figures.twrAnnual)}
+                  </span>
+                ),
+              }}
+            />
+          </div>
+        )}
         <div className="flex min-h-[18px] flex-wrap items-baseline gap-x-1.5 gap-y-1 text-table font-650">
           {delta()}
         </div>
         {hasChart && <div className="mt-[5px] text-micro font-500 text-ink-4">{when()}</div>}
       </HeroFigure>
       <HeroFigure
-        label={t('stocksAnalysis.performance.mwrLabel')}
-        value={figures ? percent(figures.mwr) : '—'}
+        label={t(
+          figures?.annual
+            ? 'stocksAnalysis.performance.mwrLabelAnnual'
+            : 'stocksAnalysis.performance.mwrLabelPeriod'
+        )}
+        value={figures?.mwr != null ? percent(figures.mwr) : '—'}
         tone={toneOf(figures?.mwr)}
         stale={stale}
       >
         <div className="text-micro font-500 leading-[1.65] text-ink-4 min-[1360px]:whitespace-nowrap">
           {t('stocksAnalysis.performance.mwrNote')}
           <br />
-          {figures &&
+          {figures?.mwrGap != null &&
             (toneOf(figures.mwrGap) === 'flat' ? (
               t('stocksAnalysis.performance.mwrSame')
             ) : (
@@ -790,19 +841,32 @@ export function PerformanceCard({
         tone={toneOf(figures?.change, 0)}
         stale={stale}
       >
-        {figures && figures.deposits !== null && figures.market !== null && (
-          <div className="text-micro font-500 leading-[1.65] text-ink-4 min-[1360px]:whitespace-nowrap">
-            <Rich
-              text={t('stocksAnalysis.performance.netDeposits', { amount: slot('amount') })}
-              slots={{ amount: bold(money(figures.deposits, true)) }}
-            />
-            <br />
-            <Rich
-              text={t('stocksAnalysis.performance.market', { amount: slot('amount') })}
-              slots={{ amount: bold(money(figures.market, true)) }}
-            />
-          </div>
-        )}
+        {figures &&
+          ((figures.deposits !== null && figures.market !== null) || figures.dividends !== 0) && (
+            <div className="text-micro font-500 leading-[1.65] text-ink-4 min-[1360px]:whitespace-nowrap">
+              {figures.deposits !== null && figures.market !== null && (
+                <>
+                  <Rich
+                    text={t('stocksAnalysis.performance.netDeposits', { amount: slot('amount') })}
+                    slots={{ amount: bold(money(figures.deposits, true)) }}
+                  />
+                  <br />
+                  <Rich
+                    text={t('stocksAnalysis.performance.market', { amount: slot('amount') })}
+                    slots={{ amount: bold(money(figures.market, true)) }}
+                  />
+                </>
+              )}
+              {figures.dividends !== 0 && (
+                <div>
+                  <Rich
+                    text={t('stocksAnalysis.performance.dividends', { amount: slot('amount') })}
+                    slots={{ amount: bold(money(figures.dividends, false)) }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
       </HeroFigure>
     </HeroCard>
   );

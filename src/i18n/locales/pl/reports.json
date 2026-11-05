@@ -415,6 +415,7 @@
     },
     "performance": {
       "twrLabel": "Stopa zwrotu ważona czasem · cały portfel",
+      "twrAnnual": "{{value}} rocznie",
       "bestWorst": "najlepsza i najgorsza",
       "bestWorstSelection": "najlepsza i najgorsza w wyborze",
       "onlyPart": "jedyna część wyboru",
@@ -429,13 +430,15 @@
       "positions_few": "{{count}} pozycje",
       "positions_many": "{{count}} pozycji",
       "positions_other": "{{count}} pozycji",
-      "mwrLabel": "Stopa zwrotu ważona pieniądzem",
+      "mwrLabelAnnual": "Stopa zwrotu ważona pieniądzem · rocznie",
+      "mwrLabelPeriod": "Stopa zwrotu ważona pieniądzem · za okres",
       "mwrNote": "uwzględnia termin wpłat",
       "mwrSame": "tak samo jak ważona czasem",
       "mwrGap": "{{gap}} względem ważonej czasem",
       "changeLabel": "Zmiana wartości",
       "netDeposits": "wpłaty netto {{amount}}",
       "market": "wzrost wartości portfela {{amount}}",
+      "dividends": "wypłacone dywidendy {{amount}}",
       "splitBy": "Podziel wg",
       "splitByTitle": "Jak dzielone są wybrane pozycje: każda część to jedna linia na wykresie i jeden wiersz w tabeli",
       "from": "Od",
@@ -466,7 +469,9 @@
       "dragTip": "{{days}} dni · puść, aby ustawić okres",
       "portfolio": "Cały portfel",
       "today": "Dziś",
-      "empty": "Brak danych za wybrany okres."
+      "empty": "Brak danych za wybrany okres.",
+      "unpriced": "Brak ceny rynkowej, wycenione po cenach transakcji: {{tickers}}",
+      "dividendGap": "Dywidendy nie zostały jeszcze wczytane: {{tickers}}"
     },
     "board": {
       "return": "Zwrot za okres",

@@ -105,16 +105,14 @@
       "title": "Dokup akcje",
       "quantity": "Ilość",
       "price": "Cena za akcję",
-      "date": "Data zakupu",
-      "fee": "Opłata transakcyjna"
+      "date": "Data zakupu"
     },
     "sell": {
       "title": "Sprzedaj akcje",
       "quantityToSell": "Ilość do sprzedaży",
       "availableQuantity": "Dostępne: {{quantity}} akcji",
       "price": "Cena sprzedaży za akcję",
-      "date": "Data sprzedaży",
-      "fee": "Opłata transakcyjna"
+      "date": "Data sprzedaży"
     },
     "updatePrice": {
       "title": "Zmień cenę ręcznie",
@@ -179,7 +177,8 @@
       "description": "Zmień szczegóły tej transakcji.",
       "transactionDetails": "Szczegóły transakcji",
       "submit": "Zapisz transakcję"
-    }
+    },
+    "fee": "Opłata (opcjonalna)"
   },
   "toast": {
     "added": "Inwestycja dodana",

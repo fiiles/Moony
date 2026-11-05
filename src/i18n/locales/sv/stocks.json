@@ -101,16 +101,14 @@
       "title": "Köp fler aktier",
       "quantity": "Antal",
       "price": "Pris per aktie",
-      "date": "Köpdatum",
-      "fee": "Transaktionsavgift"
+      "date": "Köpdatum"
     },
     "sell": {
       "title": "Sälj aktier",
       "quantityToSell": "Antal att sälja",
       "availableQuantity": "Tillgängligt: {{quantity}} aktier",
       "price": "Försäljningspris per aktie",
-      "date": "Försäljningsdatum",
-      "fee": "Transaktionsavgift"
+      "date": "Försäljningsdatum"
     },
     "updatePrice": {
       "title": "Uppdatera kurs manuellt",
@@ -175,7 +173,8 @@
       "description": "Ändra uppgifterna för den här transaktionen.",
       "transactionDetails": "Transaktionsuppgifter",
       "submit": "Uppdatera transaktion"
-    }
+    },
+    "fee": "Avgift (valfritt)"
   },
   "toast": {
     "added": "Investeringen har lagts till",

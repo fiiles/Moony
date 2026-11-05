@@ -24,16 +24,14 @@ export const STOCK_TRANSACTION_KEYS = [
 ] as const;
 
 /**
- * Edit / delete a single stock transaction. Follows the mutation contract:
- * domain keys + portfolio-metrics + cashflow-report, then a fresh snapshot and
- * portfolio-history (reference: use-bank-account-mutations.ts).
+ * The refresh every stock-transaction write runs on success: domain keys +
+ * portfolio-metrics + cashflow-report, then a fresh snapshot and portfolio-history
+ * (reference: use-bank-account-mutations.ts).
  */
-export function useInvestmentTransactionMutations() {
+export function useRefreshAfterStockTransaction() {
   const queryClient = useQueryClient();
-  const { t } = useTranslation('stocks');
-  const { t: tc } = useTranslation('common');
 
-  const refreshAfterChange = async () => {
+  return async () => {
     for (const queryKey of STOCK_TRANSACTION_KEYS) {
       queryClient.invalidateQueries({ queryKey });
     }
@@ -47,6 +45,13 @@ export function useInvestmentTransactionMutations() {
       console.error('Failed to record portfolio snapshot:', error);
     }
   };
+}
+
+/** Edit / delete a single stock transaction. */
+export function useInvestmentTransactionMutations() {
+  const { t } = useTranslation('stocks');
+  const { t: tc } = useTranslation('common');
+  const refreshAfterChange = useRefreshAfterStockTransaction();
 
   const updateTransaction = useMutation({
     mutationFn: ({ txId, data }: { txId: string; data: Partial<InsertInvestmentTransaction> }) =>

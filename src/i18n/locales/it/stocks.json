@@ -103,16 +103,14 @@
       "title": "Acquista altre azioni",
       "quantity": "Quantità",
       "price": "Prezzo per azione",
-      "date": "Data di acquisto",
-      "fee": "Commissione"
+      "date": "Data di acquisto"
     },
     "sell": {
       "title": "Vendi azioni",
       "quantityToSell": "Quantità da vendere",
       "availableQuantity": "Disponibili: {{quantity}} azioni",
       "price": "Prezzo di vendita per azione",
-      "date": "Data di vendita",
-      "fee": "Commissione"
+      "date": "Data di vendita"
     },
     "updatePrice": {
       "title": "Aggiorna prezzo a mano",
@@ -177,7 +175,8 @@
       "description": "Modifica i dettagli di questa operazione.",
       "transactionDetails": "Dettagli dell'operazione",
       "submit": "Aggiorna operazione"
-    }
+    },
+    "fee": "Commissione (facoltativa)"
   },
   "toast": {
     "added": "Investimento aggiunto",

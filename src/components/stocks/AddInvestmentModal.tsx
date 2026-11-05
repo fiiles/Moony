@@ -4,10 +4,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useRefreshAfterStockTransaction } from '@/hooks/use-investment-mutations';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Loader2, Search } from 'lucide-react';
-import { requiredNumber } from '@/utils/form-schemas';
+import { requiredNumber, optionalFee, feeForCreate } from '@/utils/form-schemas';
 import { investmentsApi, priceApi, type StockSearchResult } from '@/lib/tauri-api';
 import { useDebouncedValue } from '@/hooks/use-debounced-value';
 import { exchangeName, resolveTickerCurrency } from '@/utils/exchange-names';
@@ -39,6 +40,7 @@ const formSchema = z.object({
   quantity: requiredNumber('validation.quantityRequired').positive('validation.quantityPositive'),
   pricePerUnit: requiredNumber('validation.priceRequired').positive('validation.pricePositive'),
   currency: currencyCodeSchema,
+  fee: optionalFee(),
   date: z.string().optional(), // Input type="date" returns string
 });
 
@@ -65,6 +67,7 @@ export function AddInvestmentModal({ open, onOpenChange, initial }: AddInvestmen
   const { t } = useTranslation('stocks');
   const { t: tc } = useTranslation('common');
   const queryClient = useQueryClient();
+  const refreshAfterChange = useRefreshAfterStockTransaction();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -74,6 +77,7 @@ export function AddInvestmentModal({ open, onOpenChange, initial }: AddInvestmen
       quantity: 0,
       pricePerUnit: 0,
       currency: 'USD',
+      fee: '',
       date: new Date().toISOString().split('T')[0],
     },
   });
@@ -87,6 +91,7 @@ export function AddInvestmentModal({ open, onOpenChange, initial }: AddInvestmen
       quantity: 0,
       pricePerUnit: 0,
       currency: (initial.currency as CurrencyCode | null) ?? 'USD',
+      fee: '',
       date: new Date().toISOString().split('T')[0],
     });
   }, [open, initial, form]);
@@ -151,6 +156,7 @@ export function AddInvestmentModal({ open, onOpenChange, initial }: AddInvestmen
         quantity: values.quantity.toString(),
         pricePerUnit: values.pricePerUnit.toString(),
         currency: values.currency,
+        fee: feeForCreate(values.fee),
         transactionDate: values.date
           ? Math.floor(new Date(values.date).getTime() / 1000)
           : Math.floor(Date.now() / 1000),
@@ -158,9 +164,7 @@ export function AddInvestmentModal({ open, onOpenChange, initial }: AddInvestmen
       return investmentsApi.create(investmentData, initialTransaction);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['investments'] });
-      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-      queryClient.invalidateQueries({ queryKey: ['all-stock-transactions'] });
+      void refreshAfterChange();
       onOpenChange(false);
       form.reset();
       toast(t('toast.added'));
@@ -373,6 +377,21 @@ export function AddInvestmentModal({ open, onOpenChange, initial }: AddInvestmen
                 )}
               />
             </div>
+            <FormField
+              control={form.control}
+              name="fee"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('modal.fee')}</FormLabel>
+                  <InputWrap unit={currency}>
+                    <FormControl>
+                      <Input type="number" step="any" min="0" placeholder="0.00" {...field} />
+                    </FormControl>
+                  </InputWrap>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
           </form>
         </Form>
         <DialogFooter>

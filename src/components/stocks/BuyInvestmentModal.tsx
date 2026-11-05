@@ -1,8 +1,9 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { requiredNumber } from '@/utils/form-schemas';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { requiredNumber, optionalFee, feeForCreate } from '@/utils/form-schemas';
+import { useMutation } from '@tanstack/react-query';
+import { useRefreshAfterStockTransaction } from '@/hooks/use-investment-mutations';
 import {
   Dialog,
   DialogContent,
@@ -19,7 +20,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { Input, InputWrap } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { currencyCodeSchema, type CurrencyCode } from '@shared/currencies';
 import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
@@ -34,6 +35,7 @@ const formSchema = z.object({
   quantity: requiredNumber('validation.quantityRequired').positive('validation.quantityPositive'),
   pricePerUnit: requiredNumber('validation.priceRequired').positive('validation.pricePositive'),
   currency: currencyCodeSchema,
+  fee: optionalFee(),
   date: z.string().optional(),
 });
 
@@ -46,7 +48,7 @@ interface BuyInvestmentModalProps {
 export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvestmentModalProps) {
   const { t } = useTranslation('stocks');
   const { t: tc } = useTranslation('common');
-  const queryClient = useQueryClient();
+  const refreshAfterChange = useRefreshAfterStockTransaction();
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -54,6 +56,7 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
       quantity: 0,
       pricePerUnit: 0,
       currency: 'USD',
+      fee: '',
       date: new Date().toISOString().split('T')[0],
     },
   });
@@ -79,6 +82,7 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
         quantity: values.quantity.toString(),
         pricePerUnit: values.pricePerUnit.toString(),
         currency: values.currency,
+        fee: feeForCreate(values.fee),
         transactionDate: values.date
           ? Math.floor(new Date(values.date).getTime() / 1000)
           : Math.floor(Date.now() / 1000),
@@ -86,16 +90,14 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
 
       return investmentsApi.createTransaction(investment.id, txData);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['investments'] });
-      queryClient.invalidateQueries({ queryKey: ['investment', investment?.id] });
-      queryClient.invalidateQueries({ queryKey: ['investment-transactions', investment?.id] });
-      queryClient.invalidateQueries({ queryKey: ['portfolio-metrics'] });
-      queryClient.invalidateQueries({ queryKey: ['all-stock-transactions'] });
+    onSuccess: async () => {
       onOpenChange(false);
       form.reset();
+      await refreshAfterChange();
     },
   });
+
+  const currency = form.watch('currency');
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     buyMutation.mutate(values);
@@ -164,6 +166,21 @@ export function BuyInvestmentModal({ investment, open, onOpenChange }: BuyInvest
                 )}
               />
             </div>
+            <FormField
+              control={form.control}
+              name="fee"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{t('modal.fee')}</FormLabel>
+                  <InputWrap unit={currency}>
+                    <FormControl>
+                      <Input type="number" step="any" min="0" placeholder="0.00" {...field} />
+                    </FormControl>
+                  </InputWrap>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="date"

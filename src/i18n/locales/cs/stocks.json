@@ -103,16 +103,14 @@
       "title": "Dokoupit akcie",
       "quantity": "Množství",
       "price": "Cena za akcii",
-      "date": "Datum nákupu",
-      "fee": "Transakční poplatek"
+      "date": "Datum nákupu"
     },
     "sell": {
       "title": "Prodat akcie",
       "quantityToSell": "Množství k prodeji",
       "availableQuantity": "Dostupné: {{quantity}} akcií",
       "price": "Prodejní cena za akcii",
-      "date": "Datum prodeje",
-      "fee": "Transakční poplatek"
+      "date": "Datum prodeje"
     },
     "updatePrice": {
       "title": "Ručně aktualizovat cenu",
@@ -177,7 +175,8 @@
       "description": "Upravte údaje této transakce.",
       "transactionDetails": "Detaily transakce",
       "submit": "Upravit transakci"
-    }
+    },
+    "fee": "Poplatek (nepovinné)"
   },
   "toast": {
     "added": "Investice přidána",

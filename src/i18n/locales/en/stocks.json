@@ -101,16 +101,14 @@
       "title": "Buy More Shares",
       "quantity": "Quantity",
       "price": "Price per Share",
-      "date": "Purchase Date",
-      "fee": "Transaction Fee"
+      "date": "Purchase Date"
     },
     "sell": {
       "title": "Sell Shares",
       "quantityToSell": "Quantity to Sell",
       "availableQuantity": "Available: {{quantity}} shares",
       "price": "Sale Price per Share",
-      "date": "Sale Date",
-      "fee": "Transaction Fee"
+      "date": "Sale Date"
     },
     "updatePrice": {
       "title": "Update Price Manually",
@@ -175,7 +173,8 @@
       "description": "Modify the details of this transaction.",
       "transactionDetails": "Transaction Details",
       "submit": "Update Transaction"
-    }
+    },
+    "fee": "Fee (optional)"
   },
   "toast": {
     "added": "Investment added",

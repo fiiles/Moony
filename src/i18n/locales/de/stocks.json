@@ -101,16 +101,14 @@
       "title": "Aktien zukaufen",
       "quantity": "Menge",
       "price": "Kurs pro Aktie",
-      "date": "Kaufdatum",
-      "fee": "Transaktionsgebühr"
+      "date": "Kaufdatum"
     },
     "sell": {
       "title": "Aktien verkaufen",
       "quantityToSell": "Zu verkaufende Menge",
       "availableQuantity": "Verfügbar: {{quantity}} Aktien",
       "price": "Verkaufskurs pro Aktie",
-      "date": "Verkaufsdatum",
-      "fee": "Transaktionsgebühr"
+      "date": "Verkaufsdatum"
     },
     "updatePrice": {
       "title": "Kurs manuell aktualisieren",
@@ -175,7 +173,8 @@
       "description": "Details dieser Transaktion ändern.",
       "transactionDetails": "Transaktionsdetails",
       "submit": "Transaktion aktualisieren"
-    }
+    },
+    "fee": "Gebühr (optional)"
   },
   "toast": {
     "added": "Geldanlage hinzugefügt",

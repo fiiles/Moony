@@ -1,7 +1,7 @@
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { requiredNumber } from '@/utils/form-schemas';
+import { requiredNumber, optionalFee, feeForUpdate } from '@/utils/form-schemas';
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
+import { Input, InputWrap } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { currencyCodeSchema } from '@shared/currencies';
 import { CurrencyCombobox } from '@/components/common/CurrencyCombobox';
@@ -32,6 +32,7 @@ const formSchema = z.object({
   quantity: requiredNumber('validation.quantityRequired').positive('validation.quantityPositive'),
   pricePerUnit: requiredNumber('validation.priceRequired').positive('validation.pricePositive'),
   currency: currencyCodeSchema,
+  fee: optionalFee(),
   date: z.string().min(1, 'validation.dateRequired'),
 });
 
@@ -61,6 +62,7 @@ export function EditTransactionModal({
       quantity: 0,
       pricePerUnit: 0,
       currency: 'USD',
+      fee: '',
       date: new Date().toISOString().split('T')[0],
     },
   });
@@ -72,10 +74,13 @@ export function EditTransactionModal({
         quantity: parseFloat(transaction.quantity),
         pricePerUnit: parseFloat(transaction.pricePerUnit),
         currency: transaction.currency as z.infer<typeof formSchema>['currency'],
+        fee: transaction.fee ?? '',
         date: toDateInputValue(transaction.transactionDate),
       });
     }
   }, [transaction, form]);
+
+  const currency = form.watch('currency');
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     if (!transaction) return;
@@ -97,6 +102,8 @@ export function EditTransactionModal({
           quantity: values.quantity.toString(),
           pricePerUnit: values.pricePerUnit.toString(),
           currency: values.currency,
+          // "" clears the stored fee; leaving it out would keep it
+          fee: feeForUpdate(values.fee),
           transactionDate,
         },
       },
@@ -147,6 +154,21 @@ export function EditTransactionModal({
                     )}
                   />
                 </div>
+                <FormField
+                  control={form.control}
+                  name="fee"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>{t('modal.fee')}</FormLabel>
+                      <InputWrap unit={currency}>
+                        <FormControl>
+                          <Input type="number" step="any" min="0" placeholder="0.00" {...field} />
+                        </FormControl>
+                      </InputWrap>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
                 <div className="grid grid-cols-2 gap-4">
                   <FormField
                     control={form.control}

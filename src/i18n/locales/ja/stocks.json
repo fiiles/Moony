@@ -99,16 +99,14 @@
       "title": "買い増し",
       "quantity": "数量",
       "price": "1株あたりの価格",
-      "date": "購入日",
-      "fee": "取引手数料"
+      "date": "購入日"
     },
     "sell": {
       "title": "株式を売却",
       "quantityToSell": "売却数量",
       "availableQuantity": "保有数量：{{quantity}}株",
       "price": "1株あたりの売却価格",
-      "date": "売却日",
-      "fee": "取引手数料"
+      "date": "売却日"
     },
     "updatePrice": {
       "title": "価格を手動で更新",
@@ -173,7 +171,8 @@
       "description": "この取引の詳細を変更します。",
       "transactionDetails": "取引の詳細",
       "submit": "取引を更新"
-    }
+    },
+    "fee": "手数料(任意)"
   },
   "toast": {
     "added": "投資を追加しました",

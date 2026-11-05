@@ -101,16 +101,14 @@
       "title": "Kjøp flere aksjer",
       "quantity": "Antall",
       "price": "Kurs per aksje",
-      "date": "Kjøpsdato",
-      "fee": "Transaksjonsgebyr"
+      "date": "Kjøpsdato"
     },
     "sell": {
       "title": "Selg aksjer",
       "quantityToSell": "Antall som skal selges",
       "availableQuantity": "Tilgjengelig: {{quantity}} aksjer",
       "price": "Salgskurs per aksje",
-      "date": "Salgsdato",
-      "fee": "Transaksjonsgebyr"
+      "date": "Salgsdato"
     },
     "updatePrice": {
       "title": "Oppdater kurs manuelt",
@@ -175,7 +173,8 @@
       "description": "Endre detaljene for denne transaksjonen.",
       "transactionDetails": "Transaksjonsdetaljer",
       "submit": "Oppdater transaksjon"
-    }
+    },
+    "fee": "Gebyr (valgfritt)"
   },
   "toast": {
     "added": "Investeringen er lagt til",

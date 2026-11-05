@@ -99,16 +99,14 @@
       "title": "继续买入",
       "quantity": "数量",
       "price": "每股价格",
-      "date": "买入日期",
-      "fee": "交易手续费"
+      "date": "买入日期"
     },
     "sell": {
       "title": "卖出股票",
       "quantityToSell": "卖出数量",
       "availableQuantity": "可用：{{quantity}} 股",
       "price": "每股卖出价",
-      "date": "卖出日期",
-      "fee": "交易手续费"
+      "date": "卖出日期"
     },
     "updatePrice": {
       "title": "手动更新价格",
@@ -173,7 +171,8 @@
       "description": "修改此交易的详情。",
       "transactionDetails": "交易详情",
       "submit": "更新交易"
-    }
+    },
+    "fee": "手续费(可选)"
   },
   "toast": {
     "added": "投资已添加",

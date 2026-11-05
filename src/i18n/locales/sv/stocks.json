@@ -374,7 +374,6 @@
       "exDate": "X-dag",
       "exDateHint": "Första dagen aktien handlas utan denna utdelning",
       "sourceYahoo": "Yahoo Finance",
-      "sourceManual": "Manuell",
       "perShare": "{{amount}} per aktie",
       "superseded": "Ersatt av Yahoo Finance, räknas inte",
       "yahooTitle": "Yahoo Finance har utdelningarna för denna aktie",

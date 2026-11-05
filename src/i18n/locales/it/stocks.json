@@ -383,7 +383,6 @@
       "exDate": "Data ex-dividendo",
       "exDateHint": "Il primo giorno in cui l'azione si scambia senza questo dividendo",
       "sourceYahoo": "Yahoo Finance",
-      "sourceManual": "Manuale",
       "perShare": "{{amount}} per azione",
       "superseded": "Sostituito da Yahoo Finance, non conteggiato",
       "yahooTitle": "Yahoo Finance ha i dividendi di questa azione",

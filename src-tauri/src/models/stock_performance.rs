@@ -124,6 +124,10 @@ pub struct StockPerformance {
     /// Net deposits (buys minus sells) cumulated since the first date, decimal TEXT.
     #[serde(rename = "netFlows")]
     pub net_flows: Vec<String>,
+    /// Gross dividends (ex-dates) cumulated since the first date, decimal TEXT; they are return
+    /// that left the portfolio, so `netFlows` does not contain them.
+    #[serde(rename = "dividends")]
+    pub dividends: Vec<String>,
     /// Money-weighted return from the first date to each date (modified Dietz, cumulative),
     /// in percent.
     #[serde(rename = "mwr")]
@@ -138,6 +142,10 @@ pub struct StockPerformance {
     /// prices instead (sorted, unique).
     #[serde(rename = "unpricedTickers")]
     pub unpriced_tickers: Vec<String>,
+    /// Tickers of the period's positions whose dividends may be incomplete: the Yahoo fetch has
+    /// not covered the range yet (sorted, unique).
+    #[serde(rename = "dividendGapTickers")]
+    pub dividend_gap_tickers: Vec<String>,
 }
 
 /// Daily returns of a market index (or any Yahoo ticker) over the period, for the comparison

@@ -2082,6 +2082,8 @@ export interface StockPerformance {
   values: (string | null)[];
   /** Net deposits (buys minus sells) cumulated since the first date, decimal TEXT. */
   netFlows: string[];
+  /** Gross dividends (ex-dates) cumulated since the first date, decimal TEXT; not part of netFlows. */
+  dividends: string[];
   /** Money-weighted return from the first date to each date (modified Dietz, cumulative), in percent. */
   mwr: number[];
   series: PerformanceSeries[];
@@ -2095,6 +2097,11 @@ export interface StockPerformance {
    * instead (sorted, unique).
    */
   unpricedTickers: string[];
+  /**
+   * Tickers of the period's positions whose dividends may be incomplete: the Yahoo fetch has not
+   * covered the range yet (sorted, unique).
+   */
+  dividendGapTickers: string[];
 }
 
 /**

@@ -52,7 +52,7 @@ use std::collections::HashMap;
 
 use chrono::DateTime;
 use rusqlite::types::Value;
-use rusqlite::{params_from_iter, Connection};
+use rusqlite::{params_from_iter, Connection, OptionalExtension};
 
 use crate::error::{AppError, Result};
 use crate::models::fx::ConversionQuality;
@@ -63,6 +63,7 @@ use crate::models::{
 use crate::services::fx::{History, Quality, DAY};
 use crate::services::price_api::HistoricalPrice;
 use crate::services::reporting::{money_in_currency, normalize_currency};
+use crate::services::stock_dividends::{self, Payout};
 
 /// Most dates a report emits, the first and the last day included.
 const MAX_POINTS: usize = 400;
@@ -332,14 +333,56 @@ impl Trades {
     }
 }
 
-/// The gross dividends of each ticker by ex-date. None are loaded yet: every day pays 0.
-struct Dividends;
+/// The counted gross dividends of each ticker, ascending by ex-date: `(ex_date, gross, currency)`
+/// in the payout's own currency (`stock_dividends::payouts`, the one rule for which count).
+struct Dividends {
+    by_ticker: HashMap<String, Vec<(i64, f64, String)>>,
+}
 
 impl Dividends {
+    /// Group the payouts (ascending by ex-date) by ticker.
+    fn from_payouts(payouts: Vec<Payout>) -> Self {
+        let mut by_ticker: HashMap<String, Vec<(i64, f64, String)>> = HashMap::new();
+        for payout in payouts {
+            by_ticker.entry(payout.ticker).or_default().push((
+                payout.ex_date,
+                payout.gross,
+                payout.currency,
+            ));
+        }
+        Self { by_ticker }
+    }
+
     /// The gross dividends of `ticker` with an ex-date after `after` and at or before `day`, in
-    /// the report currency; `None` when a conversion failed.
-    fn on(&self, _ticker: &str, _after: i64, _day: i64) -> Option<f64> {
-        Some(0.0)
+    /// the report currency (each currency's sum converted at `day`, the ex-date of a one-day
+    /// step); `None` when a conversion failed, recorded in `quality`.
+    fn on(
+        &self,
+        fx: &ReportFx<'_>,
+        ticker: &str,
+        after: i64,
+        day: i64,
+        quality: &mut Quality,
+    ) -> Option<f64> {
+        let Some(own) = self.by_ticker.get(ticker) else {
+            return Some(0.0);
+        };
+        let start = own.partition_point(|&(ex_date, _, _)| ex_date <= after);
+        let end = own.partition_point(|&(ex_date, _, _)| ex_date <= day);
+        let mut by_currency: Vec<(&str, f64)> = Vec::new();
+        for (_, gross, currency) in &own[start..end] {
+            match by_currency.iter_mut().find(|(code, _)| code == currency) {
+                Some((_, sum)) => *sum += gross,
+                None => by_currency.push((currency, *gross)),
+            }
+        }
+        by_currency
+            .into_iter()
+            .map(|(currency, sum)| {
+                fx.history
+                    .convert_on_tracked(quality, sum, currency, fx.currency, day)
+            })
+            .sum()
     }
 }
 
@@ -522,7 +565,7 @@ fn build_daily(
                 let after = days[k - 1];
                 let trades = inputs.trades.between(ticker, after, day);
                 let flow = flow_of(fx, trades, day, quality);
-                let dividend = inputs.dividends.on(ticker, after, day);
+                let dividend = inputs.dividends.on(fx, ticker, after, day, quality);
                 if let (Some(flow), Some(dividend)) = (flow, dividend) {
                     daily.flow[k][p] = Some(flow);
                     daily.dividend[k][p] = Some(dividend);
@@ -716,6 +759,16 @@ pub fn stock_performance(
     conn: &Connection,
     request: &StockPerformanceRequest,
 ) -> Result<StockPerformance> {
+    stock_performance_at(conn, request, day_start(chrono::Utc::now().timestamp()))
+}
+
+/// [`stock_performance`] as of the day `today` (UTC midnight): the day payouts are counted up to
+/// and a still-held unpriced ticker is carried to.
+fn stock_performance_at(
+    conn: &Connection,
+    request: &StockPerformanceRequest,
+    today: i64,
+) -> Result<StockPerformance> {
     let currency = normalize_currency(&request.report_currency)?;
     let positions = all_positions(conn)?;
     let tickers: Vec<String> = positions.iter().map(|p| p.ticker.clone()).collect();
@@ -731,7 +784,6 @@ pub fn stock_performance(
         .map(String::as_str)
         .filter(|ticker| !history.contains_key(*ticker))
         .collect();
-    let today = day_start(chrono::Utc::now().timestamp());
     let fallback = trade_prices(&trades, &quantities, &unpriced, today);
     let span = union_span([recorded, history_span(&fallback), trades.span()]);
     history.extend(fallback);
@@ -751,12 +803,13 @@ pub fn stock_performance(
         history: &fx_history,
     };
     let mut quality = Quality::default();
+    let dividends = Dividends::from_payouts(stock_dividends::payouts(conn, today)?);
 
     let inputs = Inputs {
         history: &history,
         quantities: &quantities,
         trades: &trades,
-        dividends: &Dividends,
+        dividends: &dividends,
     };
     let ticker_refs: Vec<&str> = tickers.iter().map(String::as_str).collect();
     let daily = build_daily(&inputs, &ticker_refs, &days, &fx, &mut quality);
@@ -782,6 +835,15 @@ pub fn stock_performance(
     for flow in &flows {
         cumulative += flow;
         net_flows.push(cumulative);
+    }
+    let mut cumulative_dividends = Vec::with_capacity(days.len());
+    let mut paid = 0.0;
+    for k in 0..days.len() {
+        paid += universe
+            .iter()
+            .filter_map(|&p| daily.dividend[k][p])
+            .sum::<f64>();
+        cumulative_dividends.push(paid);
     }
     let mwr = money_weighted(&values, &flows);
 
@@ -851,6 +913,13 @@ pub fn stock_performance(
     unpriced_tickers.sort();
     unpriced_tickers.dedup();
 
+    let dividend_gap_tickers = dividend_gaps(
+        conn,
+        universe.iter().map(|&p| positions[p].ticker.as_str()),
+        &trades,
+        from_ts,
+    )?;
+
     Ok(StockPerformance {
         dates: indices.iter().map(|&k| ts_to_date_str(days[k])).collect(),
         portfolio: sample(&chain(&daily, &universe), &indices),
@@ -862,13 +931,50 @@ pub fn stock_performance(
             .iter()
             .map(|&k| money_in_currency(net_flows[k], &currency))
             .collect(),
+        dividends: indices
+            .iter()
+            .map(|&k| money_in_currency(cumulative_dividends[k], &currency))
+            .collect(),
         mwr: sample(&mwr, &indices),
         series,
         positions: performances,
         unpriced_tickers,
+        dividend_gap_tickers,
         fx_quality: ConversionQuality::from(&quality),
         currency,
     })
+}
+
+/// The tickers whose dividends may be incomplete over the range: no coverage row, or coverage
+/// starting later than the later of the range start and the ticker's first trade day (sorted,
+/// unique).
+fn dividend_gaps<'a>(
+    conn: &Connection,
+    tickers: impl Iterator<Item = &'a str>,
+    trades: &Trades,
+    from_ts: i64,
+) -> Result<Vec<String>> {
+    let mut gaps = Vec::new();
+    for ticker in tickers {
+        let covered_from: Option<i64> = conn
+            .query_row(
+                "SELECT covered_from FROM stock_dividend_coverage WHERE ticker = ?1",
+                [ticker],
+                |row| row.get(0),
+            )
+            .optional()?;
+        let first_trade = trades
+            .by_ticker
+            .get(ticker)
+            .and_then(|own| own.first())
+            .map_or(from_ts, |trade| day_start(trade.day));
+        if covered_from.is_none_or(|from| from > from_ts.max(first_trade)) {
+            gaps.push(ticker.to_string());
+        }
+    }
+    gaps.sort();
+    gaps.dedup();
+    Ok(gaps)
 }
 
 /// Longest ticker a benchmark may have.
@@ -1044,6 +1150,28 @@ mod tests {
                 currency TEXT NOT NULL,
                 rate REAL NOT NULL,
                 PRIMARY KEY (date, currency)
+            );
+            CREATE TABLE stock_dividend_events (
+                ticker TEXT NOT NULL,
+                ex_date INTEGER NOT NULL,
+                amount TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                fetched_at INTEGER NOT NULL,
+                PRIMARY KEY (ticker, ex_date)
+            );
+            CREATE TABLE stock_dividend_coverage (
+                ticker TEXT PRIMARY KEY,
+                covered_from INTEGER NOT NULL,
+                fetched_at INTEGER NOT NULL
+            );
+            CREATE TABLE investment_dividends (
+                id TEXT PRIMARY KEY,
+                investment_id TEXT NOT NULL,
+                ex_date INTEGER NOT NULL,
+                gross_amount TEXT NOT NULL,
+                currency TEXT NOT NULL,
+                note TEXT,
+                created_at INTEGER NOT NULL DEFAULT 0
             );",
         )
         .expect("schema");
@@ -1182,6 +1310,53 @@ mod tests {
         }
     }
 
+    /// The day the tests run on: after every day they seed.
+    fn test_today() -> i64 {
+        day(40)
+    }
+
+    /// A Yahoo dividend event of `per_share` on `day(at)`.
+    fn insert_dividend_event(
+        conn: &Connection,
+        ticker: &str,
+        at: i64,
+        per_share: f64,
+        currency: &str,
+    ) {
+        conn.execute(
+            "INSERT INTO stock_dividend_events (ticker, ex_date, amount, currency, fetched_at)
+             VALUES (?1, ?2, ?3, ?4, 0)",
+            rusqlite::params![ticker, day(at), per_share.to_string(), currency],
+        )
+        .expect("event");
+    }
+
+    /// The ticker's dividends are known from `day(from)` on.
+    fn cover(conn: &Connection, ticker: &str, from: i64) {
+        conn.execute(
+            "INSERT INTO stock_dividend_coverage (ticker, covered_from, fetched_at)
+             VALUES (?1, ?2, 0)",
+            rusqlite::params![ticker, day(from)],
+        )
+        .expect("coverage");
+    }
+
+    /// A manual dividend of `gross` on `day(at)` for position `id`.
+    fn insert_manual_dividend(conn: &Connection, id: &str, at: i64, gross: f64, currency: &str) {
+        conn.execute(
+            "INSERT INTO investment_dividends (id, investment_id, ex_date, gross_amount, currency)
+             VALUES (?1, ?2, ?3, ?4, ?5)",
+            rusqlite::params![
+                uuid::Uuid::new_v4().to_string(),
+                id,
+                day(at),
+                gross.to_string(),
+                currency
+            ],
+        )
+        .expect("manual dividend");
+    }
+
     /// The report from `from` to `to` in CZK.
     fn perf(
         conn: &Connection,
@@ -1189,7 +1364,7 @@ mod tests {
         to: i64,
         series: Vec<PerformanceSeriesSpec>,
     ) -> StockPerformance {
-        stock_performance(
+        stock_performance_at(
             conn,
             &StockPerformanceRequest {
                 from_ts: from,
@@ -1197,6 +1372,7 @@ mod tests {
                 report_currency: "CZK".to_string(),
                 series,
             },
+            test_today(),
         )
         .expect("performance")
     }
@@ -1914,6 +2090,122 @@ mod tests {
             .iter()
             .find(|p| p.investment_id == id)
             .expect("position")
+    }
+
+    #[test]
+    fn a_dividend_is_gross_gain_on_its_ex_date() {
+        // 10 USD shares at a flat 100 USD (1 USD = 20 CZK), 2 USD per share on day 3
+        let conn = setup_db();
+        seed(&conn, "us", "US", "10", "USD", &[(10.0, 100.0); 6]);
+        for at in 0..6 {
+            add_usd_czk(&conn, day(at), 20.0);
+        }
+        insert_dividend_event(&conn, "US", 3, 2.0, "USD");
+        cover(&conn, "US", 0);
+
+        let report = perf(&conn, day(0), day(5), vec![]);
+
+        close(day_return(&report, 3), 2.0, 1e-9);
+        for k in [1, 2, 4, 5] {
+            close(day_return(&report, k), 0.0, 1e-9);
+        }
+        let paid: Vec<f64> = report.dividends.iter().map(|d| number(d)).collect();
+        assert_eq!(paid, vec![0.0, 0.0, 0.0, 400.0, 400.0, 400.0]);
+        // the dividend is not a deposit
+        assert!(report
+            .net_flows
+            .iter()
+            .skip(1)
+            .all(|n| *n == report.net_flows[1]));
+        close(number(&report.net_flows[1]), 0.0, 1e-9);
+        close(position(&report, "us").twr, 2.0, 1e-9);
+        close(number(&position(&report, "us").gain), 400.0, 1e-9);
+    }
+
+    #[test]
+    fn a_dividend_is_paid_on_the_shares_held_the_day_before() {
+        // 10 shares from day 0, 10 more bought on the ex-date (day 3)
+        let conn = setup_db();
+        let mut rows = vec![(10.0, 100.0); 3];
+        rows.extend([(20.0, 100.0); 3]);
+        seed(&conn, "a", "AAA", "20", "CZK", &rows);
+        insert_dividend_event(&conn, "AAA", 3, 2.0, "CZK");
+        cover(&conn, "AAA", 0);
+
+        let report = perf(&conn, day(0), day(5), vec![]);
+
+        assert_eq!(number(last(&report.dividends)), 20.0);
+    }
+
+    #[test]
+    fn a_manual_dividend_counts_where_yahoo_has_none() {
+        let conn = setup_db();
+        seed_czk(&conn, "a", "AAA", 10.0, &[100.0; 6]);
+        insert_manual_dividend(&conn, "a", 3, 15.0, "CZK");
+
+        let report = perf(&conn, day(0), day(5), vec![]);
+        assert_eq!(number(last(&report.dividends)), 15.0);
+        // the day's gain is the 15 CZK on a 1 000 CZK position
+        close(day_return(&report, 3), 1.5, 1e-9);
+
+        // once Yahoo has an event for the ticker, the manual row is superseded
+        insert_dividend_event(&conn, "AAA", 4, 1.0, "CZK");
+        let report = perf(&conn, day(0), day(5), vec![]);
+        assert_eq!(number(last(&report.dividends)), 10.0);
+        close(day_return(&report, 3), 0.0, 1e-9);
+    }
+
+    #[test]
+    fn a_failed_dividend_conversion_drops_the_day() {
+        // US pays in USD on day 3, but USD is not quoted at all; CZ keeps chaining
+        let conn = setup_db();
+        seed(&conn, "us", "US", "10", "CZK", &[(10.0, 100.0); 6]);
+        seed_czk(
+            &conn,
+            "cz",
+            "CZ",
+            10.0,
+            &[100.0, 101.0, 102.0, 103.0, 104.0, 105.0],
+        );
+        insert_dividend_event(&conn, "US", 3, 2.0, "USD");
+        add_usd_czk(&conn, day(0), 20.0);
+        conn.execute(
+            "DELETE FROM exchange_rate_history WHERE currency = 'USD'",
+            [],
+        )
+        .expect("no USD");
+
+        let report = perf(&conn, day(0), day(5), vec![]);
+
+        assert!(report.fx_quality.missing_count > 0);
+        assert!(report
+            .fx_quality
+            .missing_currencies
+            .contains(&"USD".to_string()));
+        // day 3: US drops out, so the portfolio's day is CZ's alone (103 / 102 - 1)
+        close(day_return(&report, 3), (103.0 / 102.0 - 1.0) * 100.0, 1e-9);
+        // other days still chain over both
+        close(
+            day_return(&report, 4),
+            (1040.0 + 1000.0) / (1030.0 + 1000.0) * 100.0 - 100.0,
+            1e-9,
+        );
+        assert_eq!(number(last(&report.dividends)), 0.0);
+    }
+
+    #[test]
+    fn a_ticker_without_coverage_is_named() {
+        let conn = setup_db();
+        seed_czk(&conn, "a", "AAA", 10.0, &[100.0; 6]);
+        seed_czk(&conn, "b", "BBB", 10.0, &[100.0; 6]);
+        seed_czk(&conn, "c", "CCC", 10.0, &[100.0; 6]);
+        // AAA: no coverage row; BBB: covered from before the range; CCC: covered only later
+        cover(&conn, "BBB", -5);
+        cover(&conn, "CCC", 2);
+
+        let report = perf(&conn, day(0), day(5), vec![]);
+
+        assert_eq!(report.dividend_gap_tickers, vec!["AAA", "CCC"]);
     }
 
     #[test]

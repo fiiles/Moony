@@ -2689,6 +2689,11 @@ values: (string | null)[];
  */
 netFlows: string[]; 
 /**
+ * Gross dividends (ex-dates) cumulated since the first date, decimal TEXT; they are return
+ * that left the portfolio, so `netFlows` does not contain them.
+ */
+dividends: string[]; 
+/**
  * Money-weighted return from the first date to each date (modified Dietz, cumulative),
  * in percent.
  */
@@ -2702,7 +2707,12 @@ positions: PositionPerformance[];
  * Tickers of the period's positions without any market price, valued at their own trade
  * prices instead (sorted, unique).
  */
-unpricedTickers: string[] }
+unpricedTickers: string[]; 
+/**
+ * Tickers of the period's positions whose dividends may be incomplete: the Yahoo fetch has
+ * not covered the range yet (sorted, unique).
+ */
+dividendGapTickers: string[] }
 
 /**
  * Request of the performance report: the period, the currency and the series to chart.

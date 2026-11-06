@@ -709,6 +709,32 @@
       "investments": "Anlagen",
       "realEstate": "Immobilien",
       "liabilities": "Verbindlichkeiten"
+    },
+    "categorization": {
+      "lead": "Was die App selbst zuordnet: Regelpakete nach Land, Ihre eigenen Regeln und die Empfänger, die sie aus Ihren Korrekturen gelernt hat.",
+      "packs": "Regelpakete",
+      "custom": "Eigene Regeln",
+      "learned": "Gelernte Empfänger",
+      "packsEmpty": "Keine Regelpakete.",
+      "customEmpty": "Noch keine eigenen Regeln. Sie legen sie am Computer an.",
+      "learnedEmpty": "Noch nichts gelernt. Die App lernt aus Ihren manuellen Zuordnungen.",
+      "noMatching": "Nichts passt zur Suche",
+      "clearSearch": "Suche löschen",
+      "openPack": "Regeln von {{name}}",
+      "packSwitch": "Paket {{name}}",
+      "ruleSwitch": "Regel {{name}}",
+      "ruleLine": "→ {{category}} · {{n}}× in {{days}} Tagen",
+      "turnOn": "Einschalten",
+      "turnOff": "Ausschalten",
+      "deletedAccount": "gelöschtes Konto",
+      "scopedNoDirection": "Nur Konto {{account}}",
+      "summaryPacks_one": "{{count}} Paket",
+      "summaryPacks_other": "{{count}} Pakete",
+      "summaryRules_one": "{{count}} eigene Regel",
+      "summaryRules_other": "{{count}} eigene Regeln",
+      "summaryPayees_one": "{{count}} Empfänger",
+      "summaryPayees_other": "{{count}} Empfänger",
+      "summaryNone": "Nichts gelernt"
     }
   },
   "backup": {

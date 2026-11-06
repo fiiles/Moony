@@ -709,6 +709,32 @@
       "investments": "Investments",
       "realEstate": "Real estate",
       "liabilities": "Liabilities"
+    },
+    "categorization": {
+      "lead": "What the app files by itself: packs of rules by country, your own rules and the payees it learned from your corrections.",
+      "packs": "Rule packs",
+      "custom": "Your own rules",
+      "learned": "Learned payees",
+      "packsEmpty": "No rule packs.",
+      "customEmpty": "No own rules yet. You create them on the computer.",
+      "learnedEmpty": "Nothing learned yet. The app learns from your manual categorizations.",
+      "noMatching": "Nothing matches the search",
+      "clearSearch": "Clear search",
+      "openPack": "Rules of {{name}}",
+      "packSwitch": "Pack {{name}}",
+      "ruleSwitch": "Rule {{name}}",
+      "ruleLine": "→ {{category}} · {{n}}× in {{days}} days",
+      "turnOn": "Turn on",
+      "turnOff": "Turn off",
+      "deletedAccount": "deleted account",
+      "scopedNoDirection": "Only account {{account}}",
+      "summaryPacks_one": "{{count}} pack",
+      "summaryPacks_other": "{{count}} packs",
+      "summaryRules_one": "{{count}} own rule",
+      "summaryRules_other": "{{count}} own rules",
+      "summaryPayees_one": "{{count}} payee",
+      "summaryPayees_other": "{{count}} payees",
+      "summaryNone": "Nothing learned"
     }
   },
   "backup": {

@@ -672,6 +672,29 @@
       "investments": "投资",
       "realEstate": "房产",
       "liabilities": "负债"
+    },
+    "categorization": {
+      "lead": "应用自动归类的内容:按国家划分的规则包、您自己的规则,以及从您的修正中学到的收款方。",
+      "packs": "规则包",
+      "custom": "自有规则",
+      "learned": "已学习的收款方",
+      "packsEmpty": "没有规则包。",
+      "customEmpty": "还没有自有规则。请在电脑上创建。",
+      "learnedEmpty": "还没有学到任何内容。应用会从您的手动分类中学习。",
+      "noMatching": "没有与搜索匹配的内容",
+      "clearSearch": "清除搜索",
+      "openPack": "{{name}}的规则",
+      "packSwitch": "规则包 {{name}}",
+      "ruleSwitch": "规则 {{name}}",
+      "ruleLine": "→ {{category}} · {{days}} 天内 {{n}} 次",
+      "turnOn": "开启",
+      "turnOff": "关闭",
+      "deletedAccount": "已删除的账户",
+      "scopedNoDirection": "仅限账户 {{account}}",
+      "summaryPacks_other": "{{count}} 个规则包",
+      "summaryRules_other": "{{count}} 条自有规则",
+      "summaryPayees_other": "{{count}} 个收款方",
+      "summaryNone": "没有学到任何内容"
     }
   },
   "backup": {

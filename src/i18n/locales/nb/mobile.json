@@ -709,6 +709,32 @@
       "investments": "Investeringer",
       "realEstate": "Eiendom",
       "liabilities": "Forpliktelser"
+    },
+    "categorization": {
+      "lead": "Det appen kategoriserer selv: regelpakker per land, dine egne regler og mottakerne den har lært av rettelsene dine.",
+      "packs": "Regelpakker",
+      "custom": "Egne regler",
+      "learned": "Lærte mottakere",
+      "packsEmpty": "Ingen regelpakker.",
+      "customEmpty": "Ingen egne regler ennå. Du oppretter dem på datamaskinen.",
+      "learnedEmpty": "Ingenting lært ennå. Appen lærer av de manuelle kategoriseringene dine.",
+      "noMatching": "Ingenting samsvarer med søket",
+      "clearSearch": "Tøm søk",
+      "openPack": "Reglene i {{name}}",
+      "packSwitch": "Pakke {{name}}",
+      "ruleSwitch": "Regel {{name}}",
+      "ruleLine": "→ {{category}} · {{n}}× på {{days}} dager",
+      "turnOn": "Slå på",
+      "turnOff": "Slå av",
+      "deletedAccount": "slettet konto",
+      "scopedNoDirection": "Bare konto {{account}}",
+      "summaryPacks_one": "{{count}} pakke",
+      "summaryPacks_other": "{{count}} pakker",
+      "summaryRules_one": "{{count}} egen regel",
+      "summaryRules_other": "{{count}} egne regler",
+      "summaryPayees_one": "{{count}} mottaker",
+      "summaryPayees_other": "{{count}} mottakere",
+      "summaryNone": "Ingenting lært"
     }
   },
   "backup": {

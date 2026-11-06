@@ -672,6 +672,29 @@
       "investments": "投資",
       "realEstate": "不動産",
       "liabilities": "負債"
+    },
+    "categorization": {
+      "lead": "アプリが自動で分類するもの:国別のルールパック、独自ルール、修正から学習した取引先。",
+      "packs": "ルールパック",
+      "custom": "独自ルール",
+      "learned": "学習した取引先",
+      "packsEmpty": "ルールパックはありません。",
+      "customEmpty": "独自ルールはまだありません。パソコンで作成します。",
+      "learnedEmpty": "まだ学習していません。手動での分類から学習します。",
+      "noMatching": "検索に一致するものはありません",
+      "clearSearch": "検索をクリア",
+      "openPack": "{{name}}のルール",
+      "packSwitch": "パック {{name}}",
+      "ruleSwitch": "ルール {{name}}",
+      "ruleLine": "→ {{category}} · {{days}}日間で{{n}}回",
+      "turnOn": "オンにする",
+      "turnOff": "オフにする",
+      "deletedAccount": "削除された口座",
+      "scopedNoDirection": "口座 {{account}} のみ",
+      "summaryPacks_other": "{{count}}個のパック",
+      "summaryRules_other": "{{count}}件の独自ルール",
+      "summaryPayees_other": "{{count}}件の取引先",
+      "summaryNone": "学習したものはありません"
     }
   },
   "backup": {

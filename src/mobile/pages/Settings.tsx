@@ -33,13 +33,18 @@ import { MILESTONE_GROUP_IDS, kindsOf } from '@/utils/milestones';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
 import { useBack } from '@/mobile/hooks/use-back';
+import { useCategorizationRules } from '@/mobile/hooks/use-categorization-rules';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useNotificationPermission } from '@/mobile/hooks/use-notification-permission';
 import { readBackgroundLockMinutes } from '@/mobile/lib/background-lock';
 import { BIOMETRIC_STATUS_KEY } from '@/lib/biometrics';
 import { clearQuietLock, requestQuietLock } from '@/mobile/lib/quiet-lock';
 import { areasFromPreferences } from '@/mobile/lib/tracked-areas';
-import { renderTextRef, securitySummary } from '@/mobile/lib/settings-summary';
+import {
+  categorizationSummary,
+  renderTextRef,
+  securitySummary,
+} from '@/mobile/lib/settings-summary';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes, settingsPath } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -162,6 +167,17 @@ export default function Settings() {
     : undefined;
 
   const { categories } = useCategories();
+  const rules = useCategorizationRules();
+  const categorizationSub =
+    rules.packs.data && rules.custom.data && rules.learned.data
+      ? categorizationSummary({
+          packs: rules.packs.data.filter((p) => p.enabled).length,
+          rules: rules.custom.data.filter((r) => !r.isSystem).length,
+          payees: rules.learned.data.length,
+        })
+          .map((part) => renderTextRef(t, part))
+          .join(' · ')
+      : undefined;
 
   // "Vše", or the groups that are shown
   const areas = areasFromPreferences(user?.menuPreferences);
@@ -275,6 +291,7 @@ export default function Settings() {
         <SettingsRow
           icon={Tag}
           title={t('settings.rows.categorization')}
+          sub={categorizationSub}
           href={settingsPath('categorization')}
         />
         <SettingsRow

@@ -709,6 +709,32 @@
       "investments": "Investeringar",
       "realEstate": "Fastigheter",
       "liabilities": "Skulder"
+    },
+    "categorization": {
+      "lead": "Det appen kategoriserar själv: regelpaket per land, dina egna regler och de mottagare den lärt sig av dina rättelser.",
+      "packs": "Regelpaket",
+      "custom": "Egna regler",
+      "learned": "Inlärda mottagare",
+      "packsEmpty": "Inga regelpaket.",
+      "customEmpty": "Inga egna regler än. Du skapar dem på datorn.",
+      "learnedEmpty": "Inget inlärt än. Appen lär sig av dina manuella kategoriseringar.",
+      "noMatching": "Inget matchar sökningen",
+      "clearSearch": "Rensa sökning",
+      "openPack": "Reglerna i {{name}}",
+      "packSwitch": "Paket {{name}}",
+      "ruleSwitch": "Regel {{name}}",
+      "ruleLine": "→ {{category}} · {{n}}× på {{days}} dagar",
+      "turnOn": "Slå på",
+      "turnOff": "Slå av",
+      "deletedAccount": "raderat konto",
+      "scopedNoDirection": "Endast konto {{account}}",
+      "summaryPacks_one": "{{count}} paket",
+      "summaryPacks_other": "{{count}} paket",
+      "summaryRules_one": "{{count}} egen regel",
+      "summaryRules_other": "{{count}} egna regler",
+      "summaryPayees_one": "{{count}} mottagare",
+      "summaryPayees_other": "{{count}} mottagare",
+      "summaryNone": "Inget inlärt"
     }
   },
   "backup": {

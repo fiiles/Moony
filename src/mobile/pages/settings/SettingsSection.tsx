@@ -1,6 +1,7 @@
 import { Redirect, useParams } from 'wouter';
 import { isSettingsSection, routes } from '@/mobile/shell/routes';
 import CategoriesSection from './CategoriesSection';
+import CategorizationSection from './CategorizationSection';
 import BackupSection from './BackupSection';
 import ImportSection from './ImportSection';
 import NotificationsSection from './NotificationsSection';
@@ -32,10 +33,9 @@ export default function SettingsSection() {
       return <BackupSection />;
     case 'categories':
       return <CategoriesSection />;
+    case 'categorization':
+      return <CategorizationSection />;
     case 'import':
       return <ImportSection />;
-    // Kategorizace lands with its own page; until then it goes back to Nastavení
-    default:
-      return <Redirect to={routes.settings} />;
   }
 }

@@ -1,6 +1,7 @@
 //! The sync registry: which tables and columns are captured, merged, recomputed or kept local.
 //! Capture, journal, merge and snapshot all read it.
 
+pub mod keys;
 pub mod schema;
 mod tables;
 

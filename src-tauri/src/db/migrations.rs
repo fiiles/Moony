@@ -97,6 +97,14 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
     ]
 }
 
+/// SQL of the migration called `name`, if this build knows it.
+pub fn migration_sql(name: &str) -> Option<&'static str> {
+    all_migrations()
+        .into_iter()
+        .find(|(known, _)| *known == name)
+        .map(|(_, sql)| sql)
+}
+
 /// Names of every migration this build knows, in application order.
 pub fn known_migration_names() -> Vec<&'static str> {
     all_migrations().into_iter().map(|(name, _)| name).collect()

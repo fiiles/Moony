@@ -326,6 +326,18 @@ fn one_tag_per_group_keeps_the_newest_assignment() {
     assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_outbox"), 0);
 }
 
+fn event_ids(conn: &Connection) -> Vec<String> {
+    let mut stmt = conn
+        .prepare("SELECT id FROM loan_events ORDER BY id")
+        .unwrap();
+    stmt.query_map([], |r| r.get(0))
+        .unwrap()
+        .map(|r| r.unwrap())
+        .collect()
+}
+
+/// The newest record has the higher id and the older `created_at`, so neither "lowest id wins"
+/// nor the anchor mirror's own order would keep it.
 #[test]
 fn one_balance_check_per_day_keeps_the_newest() {
     let conn = enabled();
@@ -334,27 +346,20 @@ fn one_balance_check_per_day_keeps_the_newest() {
         &format!(
             "INSERT INTO loans (id, name, principal) VALUES ('l1', 'Car', '100000'); \
              INSERT INTO loan_events (id, loan_id, kind, event_day, amount, created_at) \
-               VALUES ('e-z', 'l1', 'balance_check', {DAY}, '100', 2); \
+               VALUES ('e-a', 'l1', 'balance_check', {DAY}, '100', 2); \
              INSERT INTO loan_events (id, loan_id, kind, event_day, amount, created_at) \
-               VALUES ('e-a', 'l1', 'balance_check', {DAY}, '200', 1); \
+               VALUES ('e-z', 'l1', 'balance_check', {DAY}, '200', 1); \
              UPDATE loans SET balance_anchor_amount = '100', balance_anchor_date = {DAY}; \
              DELETE FROM sync_outbox;"
         ),
     );
-    let winner = row_clock(&conn, "loan_events", "e-a").unwrap();
+    let winner = row_clock(&conn, "loan_events", "e-z").unwrap();
+    assert!(winner > row_clock(&conn, "loan_events", "e-a").unwrap());
     let mut touched = Touched::default();
-    touched.row("loan_events", "e-a");
+    touched.row("loan_events", "e-z");
 
     after_merge(&conn, &touched, NOW).expect("after_merge");
-    let mut stmt = conn
-        .prepare("SELECT id FROM loan_events ORDER BY id")
-        .unwrap();
-    let ids: Vec<String> = stmt
-        .query_map([], |r| r.get(0))
-        .unwrap()
-        .map(|r| r.unwrap())
-        .collect();
-    assert_eq!(ids, vec!["e-a".to_string()]);
+    assert_eq!(event_ids(&conn), vec!["e-z".to_string()]);
     assert_eq!(
         text(
             &conn,
@@ -365,11 +370,49 @@ fn one_balance_check_per_day_keeps_the_newest() {
     assert_eq!(
         count(
             &conn,
-            "SELECT hlc FROM sync_clock WHERE tbl = 'loan_events' AND pk = 'e-z' AND col = '-'"
+            "SELECT hlc FROM sync_clock WHERE tbl = 'loan_events' AND pk = 'e-a' AND col = '-'"
         ),
         winner.hlc as i64
     );
     assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_outbox"), 0);
+}
+
+/// Equal row clocks: the lowest id stays, whatever order the rows were written in.
+#[test]
+fn one_balance_check_per_day_ties_keep_the_lowest_id() {
+    let conn = enabled();
+    merged(
+        &conn,
+        &format!(
+            "INSERT INTO loans (id, name, principal) VALUES ('l1', 'Car', '100000'); \
+             INSERT INTO loan_events (id, loan_id, kind, event_day, amount, created_at) \
+               VALUES ('e-z', 'l1', 'balance_check', {DAY}, '200', 2); \
+             INSERT INTO loan_events (id, loan_id, kind, event_day, amount, created_at) \
+               VALUES ('e-b', 'l1', 'balance_check', {DAY}, '100', 1); \
+             INSERT INTO sync_clock (tbl, pk, col, hlc, device) VALUES \
+               ('loan_events', 'e-z', '*', 500, x'09090909090909090909090909090909'), \
+               ('loan_events', 'e-b', '*', 500, x'09090909090909090909090909090909');"
+        ),
+    );
+    let mut touched = Touched::default();
+    touched.row("loan_events", "e-z");
+
+    after_merge(&conn, &touched, NOW).expect("after_merge");
+    assert_eq!(event_ids(&conn), vec!["e-b".to_string()]);
+    assert_eq!(
+        text(
+            &conn,
+            "SELECT balance_anchor_amount FROM loans WHERE id = 'l1'"
+        ),
+        "100"
+    );
+    assert_eq!(
+        count(
+            &conn,
+            "SELECT hlc FROM sync_clock WHERE tbl = 'loan_events' AND pk = 'e-z' AND col = '-'"
+        ),
+        500
+    );
 }
 
 #[test]
@@ -516,6 +559,37 @@ fn an_unreadable_split_skips_its_ticker_and_warns() {
     assert_eq!(report.warnings.len(), 1, "{:?}", report.warnings);
     assert!(report.warnings[0].contains("AAPL"), "{:?}", report.warnings);
     assert_eq!(units(&conn, "t1"), ("10".into(), "100".into(), None));
+    assert_eq!(
+        units(&conn, "t2"),
+        ("20".into(), "50".into(), Some(r#"["sp-ok"]"#.into()))
+    );
+}
+
+/// Task 7 obligation (b), the reachable case: a merged `split_basis` that is not JSON is
+/// reported by `stock_splits` as a database error, so without the pre-check it would abort the
+/// whole merge. It must fail only its ticker.
+#[test]
+fn an_unreadable_split_basis_skips_its_ticker_and_warns() {
+    let conn = enabled();
+    stock(&conn, "s1", "AAPL", "10");
+    stock_tx(&conn, "t1", "s1", "AAPL", "buy", "10", DAY);
+    merged(
+        &conn,
+        "UPDATE investment_transactions SET split_basis = 'not-json' WHERE id = 't1'",
+    );
+    split(&conn, "sp-a", "AAPL", "2", "applied");
+    stock(&conn, "s2", "MSFT", "10");
+    stock_tx(&conn, "t2", "s2", "MSFT", "buy", "10", DAY);
+    split(&conn, "sp-ok", "MSFT", "2", "applied");
+    let touched = ticker_touched(&["AAPL", "MSFT"]);
+
+    let report = after_merge(&conn, &touched, NOW).expect("after_merge");
+    assert_eq!(report.warnings.len(), 1, "{:?}", report.warnings);
+    assert!(report.warnings[0].contains("AAPL"), "{:?}", report.warnings);
+    assert_eq!(
+        units(&conn, "t1"),
+        ("10".into(), "100".into(), Some("not-json".into()))
+    );
     assert_eq!(
         units(&conn, "t2"),
         ("20".into(), "50".into(), Some(r#"["sp-ok"]"#.into()))

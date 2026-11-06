@@ -189,8 +189,10 @@ fn strings(conn: &Connection, sql: &str) -> Result<Vec<String>> {
 }
 
 /// Deletes, in every Synced table, the rows whose key has a tombstone (`'-'`) and no row clock
-/// (`'*'`) at least as new: a migration seed brought back a row a device deleted (§14). Runs
-/// before capture is installed, so no trigger records the deletes. Returns how many went.
+/// (`'*'`) at least as new: a migration seed brought back a row a device deleted (§14). Driven
+/// from the tombstones (the `sync_clock` key range of the table), so the cost follows the number
+/// of tombstones, not the size of the table. Runs before capture is installed, so no trigger
+/// records the deletes. Returns how many went.
 pub fn delete_revived_seeds(conn: &Connection) -> Result<usize> {
     let mut deleted = 0;
     for spec in registry::synced_tables() {
@@ -198,15 +200,22 @@ pub fn delete_revived_seeds(conn: &Connection) -> Result<usize> {
             continue;
         }
         let pk = schema::primary_key(conn, spec.name)?;
-        if pk.is_empty() {
-            continue;
-        }
-        let key = capture::triggers::pk_expr(spec, &pk, "t");
+        let (columns, keys) = match pk.as_slice() {
+            [] => continue,
+            [column] => (column.clone(), "d.pk".to_string()),
+            columns => (
+                format!("({})", columns.join(", ")),
+                (0..columns.len())
+                    .map(|i| format!("json_extract(d.pk, '$[{i}]')"))
+                    .collect::<Vec<_>>()
+                    .join(", "),
+            ),
+        };
         deleted += conn.execute(
             &format!(
-                "DELETE FROM main.{table} AS t WHERE EXISTS (
-                   SELECT 1 FROM sync_clock d
-                   WHERE d.tbl = ?1 AND d.pk = {key} AND d.col = '-'
+                "DELETE FROM main.{table} WHERE {columns} IN (
+                   SELECT {keys} FROM sync_clock d
+                   WHERE d.tbl = ?1 AND d.col = '-'
                      AND NOT EXISTS (
                        SELECT 1 FROM sync_clock s
                        WHERE s.tbl = d.tbl AND s.pk = d.pk AND s.col = '*'

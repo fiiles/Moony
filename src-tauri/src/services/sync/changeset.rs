@@ -11,7 +11,7 @@ use serde_json::{json, Map, Value as Json};
 
 use crate::error::{AppError, Result};
 use crate::services::sync::hlc::{Clock, DeviceId};
-use crate::services::sync::registry::{self, KeyShape, TableSpec};
+use crate::services::sync::registry::{self, KeyShape, TableClass, TableSpec};
 
 pub const CHANGESET_VERSION: u32 = 1;
 
@@ -230,7 +230,7 @@ fn value_from(v: &Json) -> Result<SqlValue> {
         Json::String(t) => Ok(SqlValue::Text(t.clone())),
         Json::Number(n) => match n.as_i64() {
             Some(i) => Ok(SqlValue::Integer(i)),
-            None if n.is_f64() => Ok(SqlValue::Real(n.as_f64().ok_or_else(invalid)?)),
+            // Synced tables never send REAL (§9.1).
             None => Err(invalid()),
         },
         Json::Object(o) if o.len() == 1 => {
@@ -244,18 +244,24 @@ fn value_from(v: &Json) -> Result<SqlValue> {
 pub fn decode_row(value: &Json, devs: &[DeviceId]) -> Result<RowChange> {
     let o = value.as_object().ok_or_else(invalid)?;
     let table = o.get("t").and_then(Json::as_str).ok_or_else(invalid)?;
-    let key = match o.get("k").ok_or_else(invalid)? {
-        Json::String(text) => match registry::spec(table).map(|s| s.key) {
-            Some(KeyShape::Singleton(constant)) if text == constant => RowKey::Singleton,
-            Some(KeyShape::Singleton(_)) => return Err(invalid()),
-            _ => RowKey::Single(text.clone()),
-        },
-        Json::Array(parts) => RowKey::Composite(
-            parts
-                .iter()
-                .map(|p| p.as_str().map(str::to_string).ok_or_else(invalid))
-                .collect::<Result<_>>()?,
-        ),
+    let spec = registry::spec(table)
+        .filter(|s| s.class == TableClass::Synced)
+        .ok_or_else(invalid)?;
+    let key = match (o.get("k").ok_or_else(invalid)?, spec.key) {
+        (Json::String(text), KeyShape::Singleton(constant)) if text == constant => {
+            RowKey::Singleton
+        }
+        (Json::String(text), KeyShape::Primary) if registry::key_arity(table) == 1 => {
+            RowKey::Single(text.clone())
+        }
+        (Json::Array(parts), KeyShape::Primary) if parts.len() == registry::key_arity(table) => {
+            RowKey::Composite(
+                parts
+                    .iter()
+                    .map(|p| p.as_str().map(str::to_string).ok_or_else(invalid))
+                    .collect::<Result<_>>()?,
+            )
+        }
         _ => return Err(invalid()),
     };
     let generation = clock_from(o.get("g").ok_or_else(invalid)?, devs)?;
@@ -283,6 +289,9 @@ pub fn decode_row(value: &Json, devs: &[DeviceId]) -> Result<RowChange> {
         for (name, entry) in p.as_object().ok_or_else(invalid)? {
             parents.insert(name.clone(), clock_from(entry, devs)?);
         }
+    }
+    if insert && columns.is_empty() {
+        return Err(invalid());
     }
     Ok(RowChange {
         table: table.to_string(),
@@ -566,9 +575,6 @@ mod tests {
             .insert("n".into(), (SqlValue::Integer(-7), clock(5, 1)));
         cs.rows[0]
             .columns
-            .insert("r".into(), (SqlValue::Real(1.5), clock(5, 1)));
-        cs.rows[0]
-            .columns
             .insert("z".into(), (SqlValue::Null, clock(5, 1)));
         let v: Json = serde_json::from_slice(&to_json(&cs)).unwrap();
         assert_eq!(
@@ -576,7 +582,6 @@ mod tests {
             serde_json::json!({"b": "AAH+/w=="})
         );
         assert_eq!(v["rows"][0]["c"]["n"][0], -7);
-        assert_eq!(v["rows"][0]["c"]["r"][0], 1.5);
         assert!(v["rows"][0]["c"]["z"][0].is_null());
         assert_eq!(from_json(&to_json(&cs)).unwrap(), cs);
     }
@@ -705,5 +710,126 @@ mod tests {
         assert_eq!(max_hlc(&cs), 1_900_000_000_000_000);
         cs.rows.clear();
         assert_eq!(max_hlc(&cs), 0);
+    }
+
+    #[test]
+    fn extreme_and_awkward_values_round_trip() {
+        let mut cs = spec_example();
+        let c = clock(9, 1);
+        for (name, v) in [
+            ("min", SqlValue::Integer(i64::MIN)),
+            ("max", SqlValue::Integer(i64::MAX)),
+            ("empty", SqlValue::Blob(vec![])),
+            ("quotes", SqlValue::Text("a\"b'c\\d\n".into())),
+            (
+                "unicode",
+                SqlValue::Text("Žluťoučký kůň 日本 \u{1F600}".into()),
+            ),
+        ] {
+            cs.rows[0].columns.insert(name.into(), (v, c));
+        }
+        assert_eq!(from_json(&to_json(&cs)).unwrap(), cs);
+    }
+
+    #[test]
+    fn malformed_rows_are_errors_not_panics() {
+        let devs = [dev(1)];
+        let cases = [
+            ("unknown table", r#"{"t":"nope","k":"x","g":[1,0]}"#),
+            (
+                "non-synced table",
+                r#"{"t":"stock_value_history","k":"x","g":[1,0]}"#,
+            ),
+            ("table not a string", r#"{"t":5,"k":"x","g":[1,0]}"#),
+            (
+                "array key on primary table",
+                r#"{"t":"bonds","k":["a","b"],"g":[1,0]}"#,
+            ),
+            (
+                "array key on singleton",
+                r#"{"t":"user_profile","k":["profile"],"g":[1,0]}"#,
+            ),
+            (
+                "wrong singleton key",
+                r#"{"t":"user_profile","k":"other","g":[1,0]}"#,
+            ),
+            (
+                "string key on composite table",
+                r#"{"t":"stock_investment_tags","k":"x","g":[1,0]}"#,
+            ),
+            (
+                "short composite",
+                r#"{"t":"stock_investment_tags","k":["a"],"g":[1,0]}"#,
+            ),
+            (
+                "long composite",
+                r#"{"t":"stock_investment_tags","k":["a","b","c"],"g":[1,0]}"#,
+            ),
+            (
+                "non-string part",
+                r#"{"t":"stock_investment_tags","k":["a",1],"g":[1,0]}"#,
+            ),
+            ("k is a number", r#"{"t":"bonds","k":7,"g":[1,0]}"#),
+            (
+                "ins without c",
+                r#"{"t":"bonds","k":"x","g":[1,0],"ins":true}"#,
+            ),
+            (
+                "ins with empty c",
+                r#"{"t":"bonds","k":"x","g":[1,0],"ins":true,"c":{}}"#,
+            ),
+            (
+                "ins not a bool",
+                r#"{"t":"bonds","k":"x","g":[1,0],"ins":1}"#,
+            ),
+            (
+                "REAL value",
+                r#"{"t":"bonds","k":"x","g":[1,0],"c":{"a":[1.5,1,0]}}"#,
+            ),
+            (
+                "bad blob base64",
+                r#"{"t":"bonds","k":"x","g":[1,0],"c":{"a":[{"b":"!!"},1,0]}}"#,
+            ),
+            (
+                "blob object without b",
+                r#"{"t":"bonds","k":"x","g":[1,0],"c":{"a":[{"x":"AA=="},1,0]}}"#,
+            ),
+            ("c is an array", r#"{"t":"bonds","k":"x","g":[1,0],"c":[]}"#),
+            (
+                "c entry not an array",
+                r#"{"t":"bonds","k":"x","g":[1,0],"c":{"a":5}}"#,
+            ),
+            (
+                "c entry wrong length",
+                r#"{"t":"bonds","k":"x","g":[1,0],"c":{"a":["v",1]}}"#,
+            ),
+            ("clock too short", r#"{"t":"bonds","k":"x","g":[1]}"#),
+            ("clock too long", r#"{"t":"bonds","k":"x","g":[1,0,0]}"#),
+            ("clock not an array", r#"{"t":"bonds","k":"x","g":1}"#),
+            (
+                "p entry wrong length",
+                r#"{"t":"bonds","k":"x","g":[1,0],"p":{"a":[1]}}"#,
+            ),
+            ("missing g", r#"{"t":"bonds","k":"x"}"#),
+            ("row not an object", r#"[]"#),
+        ];
+        for (name, row) in cases {
+            let value: Json = serde_json::from_str(row).unwrap();
+            assert!(
+                matches!(decode_row(&value, &devs), Err(AppError::Validation(m)) if m == "validation.syncChangesetInvalid"),
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_row_deleted_and_recreated_carries_both_ins_and_del() {
+        let devs = [dev(1)];
+        let row: Json = serde_json::from_str(
+            r#"{"t":"bonds","k":"x","g":[1,0],"ins":true,"del":[2,0],"c":{"name":["n",1,0]}}"#,
+        )
+        .unwrap();
+        let decoded = decode_row(&row, &devs).unwrap();
+        assert!(decoded.insert && decoded.deleted.is_some());
     }
 }

@@ -64,6 +64,15 @@ pub fn spec(table: &str) -> Option<&'static TableSpec> {
     tables().iter().find(|t| t.name == table)
 }
 
+/// Number of primary-key columns of a synced table: 2 for the three link tables, else 1. Pinned
+/// against `schema::primary_key` by a test, so a new composite key cannot slip through.
+pub fn key_arity(table: &str) -> usize {
+    match table {
+        "stock_investment_tags" | "real_estate_loans" | "real_estate_insurances" => 2,
+        _ => 1,
+    }
+}
+
 pub fn synced_tables() -> impl Iterator<Item = &'static TableSpec> {
     tables().iter().filter(|t| t.class == TableClass::Synced)
 }

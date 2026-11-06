@@ -509,3 +509,16 @@ fn the_exact_column_groups_are_pinned() {
         assert_eq!(got, exp, "{} groups", t.name);
     }
 }
+
+#[test]
+fn key_arity_matches_the_primary_key_of_every_synced_table() {
+    let conn = migrated();
+    for t in synced_tables() {
+        assert_eq!(
+            key_arity(t.name),
+            schema::primary_key(&conn, t.name).unwrap().len(),
+            "{}",
+            t.name
+        );
+    }
+}

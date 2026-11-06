@@ -24,7 +24,8 @@ use crate::services::sync::registry::{
 const RENAMED_COLUMN: &str = "name";
 
 /// The full live row, a tombstone-only change, or `None` when the key has neither a row nor a
-/// tombstone.
+/// tombstone. One-off reads only: it builds a `Reader`, which reads the foreign keys of every
+/// synced table; reuse one `Reader` to read many rows.
 pub fn read_row(conn: &Connection, table: &str, pk: &str) -> Result<Option<RowChange>> {
     Reader::new(conn)?.read(table, pk)
 }
@@ -39,8 +40,9 @@ struct Shape {
     filter: String,
 }
 
-/// Reads row changes with each table's shape and the foreign keys looked up once.
-pub(super) struct Reader<'c> {
+/// Reads row changes with each table's shape and the foreign keys looked up once, so one reader
+/// serves any number of rows of one connection.
+pub struct Reader<'c> {
     conn: &'c Connection,
     /// child table → (FK column, parent table).
     fks: HashMap<String, Vec<(String, String)>>,
@@ -48,7 +50,7 @@ pub(super) struct Reader<'c> {
 }
 
 impl<'c> Reader<'c> {
-    pub(super) fn new(conn: &'c Connection) -> Result<Self> {
+    pub fn new(conn: &'c Connection) -> Result<Self> {
         let mut fks: HashMap<String, Vec<(String, String)>> = HashMap::new();
         for fk in foreign_keys(conn)? {
             fks.entry(fk.child)
@@ -140,7 +142,8 @@ impl<'c> Reader<'c> {
             .is_some())
     }
 
-    pub(super) fn read(&self, table: &str, pk: &str) -> Result<Option<RowChange>> {
+    /// What `read_row` returns, for one key of a Synced table (an error for any other table).
+    pub fn read(&self, table: &str, pk: &str) -> Result<Option<RowChange>> {
         let shape = self.shape(table)?;
         let Some((key, params)) = Self::key(&shape, pk)? else {
             return Ok(None);
@@ -269,6 +272,38 @@ impl<'c> Reader<'c> {
             parents.insert(column.clone(), generation);
         }
         Ok(parents)
+    }
+}
+
+impl Reader<'_> {
+    /// `(parent table, parent key)` of every FK value the change carries (in `c` or in `k`).
+    pub(super) fn parent_keys(&self, row: &RowChange) -> Result<Vec<(String, String)>> {
+        let Some(fks) = self.fks.get(&row.table) else {
+            return Ok(Vec::new());
+        };
+        let shape = self.shape(&row.table)?;
+        let key_parts: Vec<&str> = match &row.key {
+            RowKey::Singleton => Vec::new(),
+            RowKey::Single(text) => vec![text.as_str()],
+            RowKey::Composite(parts) => parts.iter().map(String::as_str).collect(),
+        };
+        let mut out = Vec::new();
+        for (column, parent) in fks.iter().filter(|(c, _)| row.parents.contains_key(c)) {
+            let value = match row.columns.get(column) {
+                Some((SqlValue::Text(text), _)) => Some(text.clone()),
+                Some((SqlValue::Integer(i), _)) => Some(i.to_string()),
+                Some(_) => None,
+                None => shape.selected[..shape.key_len]
+                    .iter()
+                    .position(|k| k == column)
+                    .and_then(|i| key_parts.get(i))
+                    .map(|part| part.to_string()),
+            };
+            if let Some(value) = value {
+                out.push((parent.clone(), value));
+            }
+        }
+        Ok(out)
     }
 }
 

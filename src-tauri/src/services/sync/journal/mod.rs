@@ -13,7 +13,7 @@
 mod cut;
 mod read;
 
-pub use read::read_row;
+pub use read::{read_row, Reader};
 
 use std::cmp::Reverse;
 
@@ -22,8 +22,9 @@ use rusqlite::{params, Connection, Transaction};
 use crate::error::{AppError, Result};
 use crate::services::sync::changeset::{max_hlc, Changeset};
 use crate::services::sync::registry::keys::{fk_depth, schema_number};
+use crate::services::sync::registry::{self, TableClass};
 use crate::services::sync::state;
-use read::Reader;
+use cut::ReadRow;
 
 /// Largest padded deflated envelope (60 KiB; the relay accepts 64 KiB per op).
 pub const ENVELOPE_BUDGET: usize = 61_440;
@@ -59,7 +60,7 @@ pub fn build_next(tx: &Transaction<'_>) -> Result<(Option<Built>, Vec<Refused>)>
     let sync = state::load(conn)?
         .ok_or_else(|| AppError::Internal("sync journal: sync is not set up".into()))?;
     let reader = Reader::new(conn)?;
-    let queue = ordered_queue(conn, &reader)?;
+    let (queue, not_synced) = ordered_queue(conn, &reader)?;
     let envelope = Changeset {
         schema: schema_number(),
         barrier: sync.barrier,
@@ -68,10 +69,16 @@ pub fn build_next(tx: &Transaction<'_>) -> Result<(Option<Built>, Vec<Refused>)>
         prev: sync.last_hash,
         rows: Vec::new(),
     };
-    let cut = cut::cut(envelope, &queue, |q| reader.read(&q.table, &q.pk))?;
+    let cut = cut::cut(envelope, &queue, |q| {
+        let Some(row) = reader.read(&q.table, &q.pk)? else {
+            return Ok(None);
+        };
+        let parents = reader.parent_keys(&row)?;
+        Ok(Some(ReadRow { row, parents }))
+    })?;
 
     let mut delete = conn.prepare_cached("DELETE FROM sync_outbox WHERE tbl = ?1 AND pk = ?2")?;
-    for (table, pk) in &cut.consumed {
+    for (table, pk) in cut.consumed.iter().chain(&not_synced) {
         delete.execute([table, pk])?;
     }
     let built = (!cut.changeset.rows.is_empty()).then(|| Built {
@@ -104,9 +111,14 @@ pub fn record_sealed(tx: &Transaction<'_>, built: &Built, hash: [u8; 32]) -> Res
     Ok(())
 }
 
+/// The outbox in sending order, and the keys of tables that are not Synced (any more).
+type OrderedQueue = (Vec<Queued>, Vec<(String, String)>);
+
 /// The outbox in sending order: live rows by `(fk_depth, category depth, queued_at, tbl, pk)`,
-/// then tombstone-only keys by `(fk_depth DESC, queued_at, tbl, pk)`.
-fn ordered_queue(conn: &Connection, reader: &Reader<'_>) -> Result<Vec<Queued>> {
+/// then tombstone-only keys by `(fk_depth DESC, queued_at, tbl, pk)`. Keys of tables that are not
+/// Synced (a later release reclassified the table) come back separately: nothing to send, and one
+/// warning, instead of an error that would stop every later call.
+fn ordered_queue(conn: &Connection, reader: &Reader<'_>) -> Result<OrderedQueue> {
     let depth = fk_depth(conn)?;
     let depth_of = |table: &str| depth.get(table).copied().unwrap_or(0);
     let queued: Vec<Queued> = conn
@@ -122,8 +134,11 @@ fn ordered_queue(conn: &Connection, reader: &Reader<'_>) -> Result<Vec<Queued>> 
 
     let mut live = Vec::new();
     let mut gone = Vec::new();
+    let mut not_synced = Vec::new();
     for q in queued {
-        if reader.exists(&q.table, &q.pk)? {
+        if !registry::spec(&q.table).is_some_and(|s| s.class == TableClass::Synced) {
+            not_synced.push((q.table, q.pk));
+        } else if reader.exists(&q.table, &q.pk)? {
             // Categories reference categories: within their FK depth, a parent goes first.
             let within = if q.table == "transaction_categories" {
                 category_depth(conn, &q.pk)?
@@ -141,11 +156,22 @@ fn ordered_queue(conn: &Connection, reader: &Reader<'_>) -> Result<Vec<Queued>> 
     gone.sort_by(|(a, qa), (b, qb)| {
         (a, qa.queued_at, &qa.table, &qa.pk).cmp(&(b, qb.queued_at, &qb.table, &qb.pk))
     });
-    Ok(live
+    if !not_synced.is_empty() {
+        let mut tables: Vec<&str> = not_synced.iter().map(|(t, _)| t.as_str()).collect();
+        tables.sort_unstable();
+        tables.dedup();
+        log::warn!(
+            "[SYNC] Dropping {} queued key(s) of tables that do not sync: {}",
+            not_synced.len(),
+            tables.join(", ")
+        );
+    }
+    let queue = live
         .into_iter()
         .map(|(_, q)| q)
         .chain(gone.into_iter().map(|(_, q)| q))
-        .collect())
+        .collect();
+    Ok((queue, not_synced))
 }
 
 /// Number of ancestors of a live category (a cycle stops at 32).

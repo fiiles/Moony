@@ -137,3 +137,7 @@ opt-level = 3
 opt-level = 3
 [profile.dev.package.sha2]
 opt-level = 3
+# The sync journal deflates every envelope it measures (flate2's Rust backend); unoptimised,
+# deflate dominates the 5,000-row journal test.
+[profile.dev.package.miniz_oxide]
+opt-level = 3

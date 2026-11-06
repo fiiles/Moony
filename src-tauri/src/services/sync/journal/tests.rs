@@ -706,3 +706,120 @@ fn a_queued_key_with_neither_row_nor_clock_is_dropped_from_the_outbox() {
     assert_eq!((built, refused), (None, Vec::new()));
     assert_eq!(outbox(&conn), Vec::<(String, String)>::new());
 }
+
+#[test]
+fn queued_keys_of_tables_that_do_not_sync_are_dropped_not_fatal() {
+    let mut conn = enabled();
+    exec(
+        &conn,
+        "INSERT INTO sync_outbox (tbl, pk, queued_at) VALUES \
+           ('exchange_rates', 'EUR', 1), ('no_such_table', 'x', 2)",
+    );
+    plan(&conn, "p1");
+
+    let (built, refused) = round(&mut conn);
+
+    assert_eq!(keys(&built.unwrap()), vec![key("spending_plans", "p1")]);
+    assert_eq!(refused, Vec::new());
+    assert_eq!(outbox(&conn), Vec::<(String, String)>::new());
+}
+
+#[test]
+fn a_refused_row_holds_back_the_rows_that_reference_it() {
+    let mut conn = enabled();
+    // No service caps a position's company name, so SQL can make the parent itself too large.
+    conn.execute(
+        "INSERT INTO stock_investments (id, ticker, company_name, quantity, currency) \
+         VALUES ('s1', 'AAA', ?1, '0', 'USD')",
+        [noise(300 * 1024, 41)],
+    )
+    .unwrap();
+    exec(
+        &conn,
+        "INSERT INTO investment_transactions (id, investment_id, type, ticker, company_name, \
+           quantity, price_per_unit, currency, transaction_date) VALUES \
+           ('it-1', 's1', 'buy', 'AAA', 'A Co', '1', '10', 'USD', 1767225600); \
+         INSERT INTO stock_tags (id, name) VALUES ('t1', 'Growth'); \
+         INSERT INTO stock_investment_tags (investment_id, tag_id) VALUES ('s1', 't1');",
+    );
+    plan(&conn, "p1");
+
+    let (built, refused) = round(&mut conn);
+
+    assert_eq!(
+        refused
+            .iter()
+            .map(|r| (r.table.as_str(), r.pk.as_str()))
+            .collect::<Vec<_>>(),
+        vec![("stock_investments", "s1")]
+    );
+    assert_eq!(
+        keys(&built.unwrap()),
+        vec![key("spending_plans", "p1"), key("stock_tags", "t1")]
+    );
+    assert_eq!(
+        outbox(&conn),
+        vec![
+            key("investment_transactions", "it-1"),
+            key("stock_investment_tags", r#"["s1","t1"]"#),
+            key("stock_investments", "s1"),
+        ]
+    );
+    let (built, refused_again) = round(&mut conn);
+    assert_eq!((built, refused_again), (None, refused));
+}
+
+#[test]
+fn a_composite_link_row_carries_its_key_parents_and_cascaded_tombstone() {
+    let mut conn = enabled();
+    exec(
+        &conn,
+        "INSERT INTO stock_investments (id, ticker, company_name, quantity, currency) \
+           VALUES ('s1', 'AAA', 'A Co', '0', 'USD'); \
+         INSERT INTO stock_tags (id, name) VALUES ('t1', 'Growth'); \
+         INSERT INTO stock_investment_tags (investment_id, tag_id) VALUES ('s1', 't1');",
+    );
+    let link_pk = r#"["s1","t1"]"#;
+
+    let rows = rows_by_key(&drain(&mut conn));
+
+    let link = &rows[&key("stock_investment_tags", link_pk)];
+    assert_eq!(link.key, RowKey::Composite(vec!["s1".into(), "t1".into()]));
+    assert!(link.insert);
+    let generation = clock(&conn, "stock_investment_tags", link_pk, "*").unwrap();
+    assert_eq!(
+        link.columns.keys().map(String::as_str).collect::<Vec<_>>(),
+        vec!["created_at"]
+    );
+    assert_eq!(link.columns["created_at"].1, generation);
+    assert_eq!(
+        link.parents,
+        BTreeMap::from([
+            (
+                "investment_id".to_string(),
+                clock(&conn, "stock_investments", "s1", "*").unwrap()
+            ),
+            (
+                "tag_id".to_string(),
+                clock(&conn, "stock_tags", "t1", "*").unwrap()
+            ),
+        ])
+    );
+
+    exec(&conn, "DELETE FROM stock_tags WHERE id = 't1'");
+    let built = drain(&mut conn);
+
+    assert_eq!(built.len(), 1);
+    assert_eq!(
+        keys(&built[0]),
+        vec![
+            key("stock_investment_tags", link_pk),
+            key("stock_tags", "t1")
+        ]
+    );
+    assert!(built[0]
+        .changeset
+        .rows
+        .iter()
+        .all(|r| !r.insert && r.deleted.is_some()));
+}

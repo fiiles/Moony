@@ -10,6 +10,7 @@ use crate::models::{
     CategoryUsage, InsertTransactionCategory, TransactionCategory, UpdateTransactionCategory,
 };
 use crate::services::bank_accounts::category_exists;
+use crate::services::sync::repair::renames;
 use rusqlite::{params, Connection, OptionalExtension};
 use uuid::Uuid;
 
@@ -105,6 +106,7 @@ pub fn create_category(
             data.kind.unwrap_or_default().to_string(),
         ],
     )?;
+    renames::after_local_write(conn, "transaction_categories", "")?;
     get_category(conn, &id)
 }
 
@@ -134,6 +136,7 @@ pub fn update_category(
         "UPDATE transaction_categories SET name = ?1, icon = ?2, color = ?3, kind = ?5 WHERE id = ?4",
         params![name, icon, color, id, data.kind.unwrap_or(existing.kind).to_string()],
     )?;
+    renames::after_local_write(conn, "transaction_categories", "")?;
     get_category(conn, id)
 }
 
@@ -247,6 +250,7 @@ pub fn delete_category(conn: &Connection, id: &str, reassign_to: Option<&str>) -
         [id],
     )?;
     tx.execute("DELETE FROM transaction_categories WHERE id = ?1", [id])?;
+    renames::after_local_write(&tx, "transaction_categories", "")?;
     tx.commit()?;
     Ok(())
 }

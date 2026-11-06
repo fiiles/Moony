@@ -695,7 +695,10 @@
       "remindersSub": "{{on}} z {{total}} grup",
       "import": "Import",
       "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
-      "deleteSub": "po wpisaniu słowa potwierdzenia"
+      "deleteSub": "po wpisaniu słowa potwierdzenia",
+      "tracking": "Co śledzić",
+      "categories": "Kategorie",
+      "categorization": "Kategoryzacja"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "bez telemetrii",
@@ -768,6 +771,14 @@
       "confirmLabel": "Aby potwierdzić, wpisz {{word}}",
       "confirm": "Usuń dane",
       "failed": "Nie udało się usunąć"
+    },
+    "tracking": {
+      "lead": "Wybierz, co chcesz śledzić w Moony.",
+      "hideOnly": "Ukryte obszary są tylko niewyświetlane; dane zostają.",
+      "all": "Wszystko",
+      "investments": "Inwestycje",
+      "realEstate": "Nieruchomości",
+      "liabilities": "Zobowiązania"
     }
   },
   "backup": {

@@ -7,10 +7,13 @@ import {
   Bell,
   CalendarClock,
   Coins,
+  Eye,
   FileText,
   Globe,
   Lock,
   SunMoon,
+  Tag,
+  Tags,
   Trash2,
   Upload,
   User,
@@ -34,6 +37,7 @@ import { useNotificationPermission } from '@/mobile/hooks/use-notification-permi
 import { readBackgroundLockMinutes } from '@/mobile/lib/background-lock';
 import { BIOMETRIC_STATUS_KEY } from '@/lib/biometrics';
 import { clearQuietLock, requestQuietLock } from '@/mobile/lib/quiet-lock';
+import { areasFromPreferences } from '@/mobile/lib/tracked-areas';
 import { renderTextRef, securitySummary } from '@/mobile/lib/settings-summary';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes, settingsPath } from '@/mobile/shell/routes';
@@ -156,6 +160,16 @@ export default function Settings() {
       })
     : undefined;
 
+  // "Vše", or the groups that are shown
+  const areas = areasFromPreferences(user?.menuPreferences);
+  const shownAreas = [
+    areas.investments && t('settings.tracking.investments'),
+    areas.realEstate && t('settings.tracking.realEstate'),
+    areas.liabilities && t('settings.tracking.liabilities'),
+  ].filter(Boolean);
+  const trackingSub =
+    shownAreas.length === 3 ? t('settings.tracking.all') : shownAreas.join(', ') || undefined;
+
   // The same letters as the avatar on Přehled
   const avatar = `${user?.name?.charAt(0) ?? ''}${user?.surname?.charAt(0) ?? ''}`.toUpperCase();
   const fullName = [user?.name, user?.surname].filter(Boolean).join(' ');
@@ -209,6 +223,12 @@ export default function Settings() {
           sub={ts(`appearance.${preference}`)}
           onClick={() => setSheet('appearance')}
         />
+        <SettingsRow
+          icon={Eye}
+          title={t('settings.rows.tracking')}
+          sub={trackingSub}
+          href={settingsPath('tracking')}
+        />
       </EntityRows>
 
       <EntityRows>
@@ -239,6 +259,16 @@ export default function Settings() {
       </EntityRows>
 
       <EntityRows>
+        <SettingsRow
+          icon={Tags}
+          title={t('settings.rows.categories')}
+          href={settingsPath('categories')}
+        />
+        <SettingsRow
+          icon={Tag}
+          title={t('settings.rows.categorization')}
+          href={settingsPath('categorization')}
+        />
         <SettingsRow
           icon={FileText}
           title={t('settings.rows.import')}

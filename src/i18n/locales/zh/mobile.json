@@ -590,7 +590,10 @@
       "remindersSub": "已开启 {{on}}/{{total}} 组",
       "import": "导入",
       "importSub": "CSV、CAMT.053、MT940、OFX、QIF",
-      "deleteSub": "输入确认词后执行"
+      "deleteSub": "输入确认词后执行",
+      "tracking": "跟踪内容",
+      "categories": "类别",
+      "categorization": "自动分类"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "无遥测",
@@ -660,6 +663,14 @@
       "confirmLabel": "请输入 {{word}} 以确认",
       "confirm": "删除数据",
       "failed": "删除失败"
+    },
+    "tracking": {
+      "lead": "选择要在 Moony 中跟踪的内容。",
+      "hideOnly": "隐藏的领域只是不再显示,数据仍会保留。",
+      "all": "全部",
+      "investments": "投资",
+      "realEstate": "房产",
+      "liabilities": "负债"
     }
   },
   "backup": {

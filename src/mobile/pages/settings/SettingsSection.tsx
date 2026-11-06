@@ -6,6 +6,7 @@ import NotificationsSection from './NotificationsSection';
 import ProfileSection from './ProfileSection';
 import RemindersSection from './RemindersSection';
 import SecuritySection from './SecuritySection';
+import TrackingSection from './TrackingSection';
 
 /**
  * A page pushed on Nastavení (`/settings/:section`, spec §8.9): the route's section picks the page,
@@ -18,6 +19,8 @@ export default function SettingsSection() {
   switch (section) {
     case 'profile':
       return <ProfileSection />;
+    case 'tracking':
+      return <TrackingSection />;
     case 'security':
       return <SecuritySection />;
     case 'reminders':
@@ -28,5 +31,8 @@ export default function SettingsSection() {
       return <BackupSection />;
     case 'import':
       return <ImportSection />;
+    // Kategorie and Kategorizace land with their own pages; until then they go back to Nastavení
+    default:
+      return <Redirect to={routes.settings} />;
   }
 }

@@ -660,7 +660,10 @@
       "remindersSub": "{{on}} z {{total}} skupin",
       "import": "Import",
       "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
-      "deleteSub": "po potvrzení napsáním slova"
+      "deleteSub": "po potvrzení napsáním slova",
+      "tracking": "Co sledovat",
+      "categories": "Kategorie",
+      "categorization": "Kategorizace"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "žádná telemetrie",
@@ -732,6 +735,14 @@
       "confirmLabel": "Pro potvrzení napište {{word}}",
       "confirm": "Smazat data",
       "failed": "Smazání selhalo"
+    },
+    "tracking": {
+      "lead": "Vyberte, co chcete v Moony sledovat.",
+      "hideOnly": "Skryté oblasti se jen nezobrazují, data zůstávají.",
+      "all": "Vše",
+      "investments": "Investice",
+      "realEstate": "Nemovitosti",
+      "liabilities": "Závazky"
     }
   },
   "backup": {

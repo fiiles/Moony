@@ -625,7 +625,10 @@
       "remindersSub": "{{on}} av {{total}} grupper",
       "import": "Import",
       "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
-      "deleteSub": "efter att du skrivit ett bekräftelseord"
+      "deleteSub": "efter att du skrivit ett bekräftelseord",
+      "tracking": "Vad som följs",
+      "categories": "Kategorier",
+      "categorization": "Kategorisering"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "ingen telemetri",
@@ -696,6 +699,14 @@
       "confirmLabel": "Skriv {{word}} för att bekräfta",
       "confirm": "Radera data",
       "failed": "Raderingen misslyckades"
+    },
+    "tracking": {
+      "lead": "Välj vad du vill följa i Moony.",
+      "hideOnly": "Dolda områden visas bara inte; data finns kvar.",
+      "all": "Allt",
+      "investments": "Investeringar",
+      "realEstate": "Fastigheter",
+      "liabilities": "Skulder"
     }
   },
   "backup": {

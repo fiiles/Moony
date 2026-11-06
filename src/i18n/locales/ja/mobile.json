@@ -590,7 +590,10 @@
       "remindersSub": "{{total}}グループ中{{on}}グループ",
       "import": "インポート",
       "importSub": "CSV、CAMT.053、MT940、OFX、QIF",
-      "deleteSub": "確認の単語を入力して実行"
+      "deleteSub": "確認の単語を入力して実行",
+      "tracking": "追跡する項目",
+      "categories": "カテゴリ",
+      "categorization": "自動分類"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "テレメトリなし",
@@ -660,6 +663,14 @@
       "confirmLabel": "確認のため {{word}} と入力してください",
       "confirm": "データを削除",
       "failed": "削除に失敗しました"
+    },
+    "tracking": {
+      "lead": "Moonyで追跡したい項目を選びます。",
+      "hideOnly": "非表示にした項目は表示されないだけで、データは残ります。",
+      "all": "すべて",
+      "investments": "投資",
+      "realEstate": "不動産",
+      "liabilities": "負債"
     }
   },
   "backup": {

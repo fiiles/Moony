@@ -19,6 +19,7 @@ import {
 import { toast } from 'sonner';
 import type { BankAccountWithInstitution, InsertBankAccount } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
+import { useAuth } from '@/hooks/use-auth';
 import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
 import { useLoanMutations } from '@/hooks/use-loan-mutations';
 import { useLoanText } from '@/hooks/use-loan-text';
@@ -110,6 +111,10 @@ export default function Finance() {
   // the rows only render it)
   const moneyText = useMoneyText();
   const finance = useFinance();
+  // Loans and policies the person does not track are hidden (the pages stay reachable by path)
+  const { user } = useAuth();
+  const showLoans = user?.menuPreferences?.loans ?? true;
+  const showInsurance = user?.menuPreferences?.insurance ?? true;
   const { accounts, totals, loans, insurance, mainCurrency, fxReady, isLoading } = finance;
 
   // How the tab was left is kept for the session (a visit to an account remounts it); the add
@@ -134,14 +139,14 @@ export default function Finance() {
 
   const loanRows = useMemo(
     () =>
-      loans.rows
+      (showLoans ? loans.rows : [])
         .filter((row) => showMatured || !row.matured)
         .sort((a, b) => (b.converted?.outstanding ?? -1) - (a.converted?.outstanding ?? -1)),
-    [loans.rows, showMatured]
+    [loans.rows, showLoans, showMatured]
   );
   const shownPolicies = useMemo(
-    () => insurance.rows.filter((row) => showEnded || !row.ended),
-    [insurance.rows, showEnded]
+    () => (showInsurance ? insurance.rows : []).filter((row) => showEnded || !row.ended),
+    [insurance.rows, showInsurance, showEnded]
   );
   // The type filter offers the types of the policies shown; a remembered type that has gone is none
   const types = useMemo(() => policyTypes(shownPolicies), [shownPolicies]);
@@ -158,8 +163,8 @@ export default function Finance() {
   const missing = [
     ...new Set([
       ...totals.missing,
-      ...loans.metrics.missing,
-      ...insurance.metrics.missing,
+      ...(showLoans ? loans.metrics.missing : []),
+      ...(showInsurance ? insurance.metrics.missing : []),
       ...trend.missing,
     ]),
   ];
@@ -186,7 +191,10 @@ export default function Finance() {
         })
       : t(`overview.change.${period}`);
   const isEmpty =
-    !isLoading && accounts.length === 0 && loans.rows.length === 0 && insurance.rows.length === 0;
+    !isLoading &&
+    accounts.length === 0 &&
+    (!showLoans || loans.rows.length === 0) &&
+    (!showInsurance || insurance.rows.length === 0);
   const close = () => setAddKind(null);
 
   return (
@@ -207,10 +215,16 @@ export default function Finance() {
               <RowMenuItem onSelect={() => setAddKind('account')}>
                 {t('finance.add.account')}
               </RowMenuItem>
-              <RowMenuItem onSelect={() => setAddKind('loan')}>{t('finance.add.loan')}</RowMenuItem>
-              <RowMenuItem onSelect={() => setAddKind('policy')}>
-                {t('finance.add.policy')}
-              </RowMenuItem>
+              {showLoans && (
+                <RowMenuItem onSelect={() => setAddKind('loan')}>
+                  {t('finance.add.loan')}
+                </RowMenuItem>
+              )}
+              {showInsurance && (
+                <RowMenuItem onSelect={() => setAddKind('policy')}>
+                  {t('finance.add.policy')}
+                </RowMenuItem>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
@@ -247,12 +261,16 @@ export default function Finance() {
                   <DropdownMenuSeparator />
                 </>
               )}
-              <RowMenuCheckboxItem checked={showMatured} onCheckedChange={setShowMatured}>
-                {t('finance.menu.showMatured')}
-              </RowMenuCheckboxItem>
-              <RowMenuCheckboxItem checked={showEnded} onCheckedChange={setShowEnded}>
-                {t('finance.menu.showEnded')}
-              </RowMenuCheckboxItem>
+              {showLoans && (
+                <RowMenuCheckboxItem checked={showMatured} onCheckedChange={setShowMatured}>
+                  {t('finance.menu.showMatured')}
+                </RowMenuCheckboxItem>
+              )}
+              {showInsurance && (
+                <RowMenuCheckboxItem checked={showEnded} onCheckedChange={setShowEnded}>
+                  {t('finance.menu.showEnded')}
+                </RowMenuCheckboxItem>
+              )}
               <DropdownMenuSeparator />
               <RowMenuItem onSelect={() => toast(t('placeholder.export'))}>
                 {t('finance.menu.export')}

@@ -625,7 +625,10 @@
       "remindersSub": "{{on}} von {{total}} Gruppen",
       "import": "Import",
       "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
-      "deleteSub": "nach Eingabe eines Bestätigungsworts"
+      "deleteSub": "nach Eingabe eines Bestätigungsworts",
+      "tracking": "Was verfolgen",
+      "categories": "Kategorien",
+      "categorization": "Kategorisierung"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "keine Telemetrie",
@@ -696,6 +699,14 @@
       "confirmLabel": "Geben Sie zur Bestätigung {{word}} ein",
       "confirm": "Daten löschen",
       "failed": "Löschen fehlgeschlagen"
+    },
+    "tracking": {
+      "lead": "Wählen Sie, was Sie in Moony verfolgen möchten.",
+      "hideOnly": "Ausgeblendete Bereiche werden nur nicht angezeigt, die Daten bleiben erhalten.",
+      "all": "Alles",
+      "investments": "Anlagen",
+      "realEstate": "Immobilien",
+      "liabilities": "Verbindlichkeiten"
     }
   },
   "backup": {

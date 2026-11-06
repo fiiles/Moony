@@ -697,14 +697,16 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
    footer stays above the keyboard and the body scrolls. The first field is not focused on opening. */
 .m-scrim { position: fixed; inset: 0; z-index: 40; background: var(--scrim); }
 .m-sheet {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; display: flex; flex-direction: column; max-height: 93%;
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; display: flex; flex-direction: column;
+  /* Never under the status bar or the Dynamic Island: capped at the screen less the top safe area and 10 px. */
+  max-height: min(93%, calc(100% - var(--safe-top) - 10px));
   border-radius: var(--r-5) var(--r-5) 0 0; background: var(--paper); box-shadow: var(--sh-modal);
 }
-.m-sheet--full { max-height: 95%; }
+.m-sheet--full { max-height: min(95%, calc(100% - var(--safe-top) - 10px)); }
 /* A sheet whose body is one box that scrolls itself (the document viewer; `Sheet`'s `fill`): the sheet is as tall as it may be
    and its body a column that does not scroll, so its one child (`flex: 1 1 auto; min-height: 0`) fills it and is the only scroller. */
-.m-sheet--fill { height: 93%; }
-.m-sheet--full.m-sheet--fill { height: 95%; }
+.m-sheet--fill { height: min(93%, calc(100% - var(--safe-top) - 10px)); }
+.m-sheet--full.m-sheet--fill { height: min(95%, calc(100% - var(--safe-top) - 10px)); }
 .m-sheet--fill .m-sheet__body { display: flex; flex-direction: column; overflow: hidden; }
 .m-sheet__handle { flex: none; width: 36px; height: 5px; margin: 8px auto 0; border-radius: 3px; background: var(--well-3); }
 .m-sheet__head { flex: none; padding: 12px 20px 4px; }

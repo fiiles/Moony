@@ -4,6 +4,7 @@ import { X } from 'lucide-react';
 
 import { useSheetDrag } from '@/hooks/use-sheet-drag';
 import { isMobileShell } from '@/lib/platform';
+import { sheetHeightClass } from '@/lib/sheet-height';
 import { cn } from '@/lib/utils';
 
 /**
@@ -158,10 +159,11 @@ const DialogContent = React.forwardRef<
             'fixed left-1/2 top-1/2 z-50 grid w-full max-w-[560px] -translate-x-1/2 -translate-y-1/2 gap-4 overflow-hidden rounded-r5 border border-line-strong bg-paper px-[27px] py-[23px] text-ink shadow-modal data-[state=open]:animate-modal-in data-[state=closed]:animate-modal-out',
             className,
             // The phone sheet (`Sheet`): pinned to the bottom of `#root`, as tall as its content up
-            // to 93 %, scrolling as one with its head and footer held at the edges. Last, so it
+            // to 93 % (and always below the top safe area), scrolling as one with its head and footer held at the edges. Last, so it
             // wins over a desktop width, height or centring the dialog asks for.
             PHONE &&
-              'absolute inset-x-0 bottom-0 left-0 top-auto w-full max-w-none sm:max-w-none md:max-w-none lg:max-w-none translate-x-0 translate-y-0 max-h-[93%] overflow-y-auto overscroll-contain rounded-b-none rounded-t-r5 border-x-0 border-b-0 border-line px-4 pb-0 pt-0 outline-none data-[state=open]:animate-sheet-in data-[state=closed]:animate-sheet-out motion-reduce:animate-none'
+              'absolute inset-x-0 bottom-0 left-0 top-auto w-full max-w-none sm:max-w-none md:max-w-none lg:max-w-none translate-x-0 translate-y-0 overflow-y-auto overscroll-contain rounded-b-none rounded-t-r5 border-x-0 border-b-0 border-line px-4 pb-0 pt-0 outline-none data-[state=open]:animate-sheet-in data-[state=closed]:animate-sheet-out motion-reduce:animate-none',
+            PHONE && sheetHeightClass({})
           )}
           // `index.css` lines the desktop form up with the phone's fields inside it
           data-phone-sheet={PHONE ? '' : undefined}

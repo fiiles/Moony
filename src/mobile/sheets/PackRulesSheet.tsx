@@ -28,7 +28,7 @@ export function PackRulesSheet({ pack, onClose }: PackRulesSheetProps) {
     setShown(pack);
     setQuery('');
   }
-  const { data: rules = [], isLoading, isError, refetch } = usePackRules(pack?.packId ?? null);
+  const { data: rules = [], isLoading, isError, refetch } = usePackRules(shown?.packId ?? null);
   const { setPackRuleDisabled } = useCategorizationMutations();
 
   const filtered = useMemo(() => {

@@ -187,7 +187,9 @@ export default function Settings() {
     areas.liabilities && t('settings.tracking.liabilities'),
   ].filter(Boolean);
   const trackingSub =
-    shownAreas.length === 3 ? t('settings.tracking.all') : shownAreas.join(', ') || undefined;
+    shownAreas.length === 3
+      ? t('settings.tracking.all')
+      : shownAreas.join(', ') || t('settings.tracking.none');
 
   // The same letters as the avatar on Přehled
   const avatar = `${user?.name?.charAt(0) ?? ''}${user?.surname?.charAt(0) ?? ''}`.toUpperCase();

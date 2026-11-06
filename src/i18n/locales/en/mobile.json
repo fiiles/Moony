@@ -708,7 +708,8 @@
       "all": "All",
       "investments": "Investments",
       "realEstate": "Real estate",
-      "liabilities": "Liabilities"
+      "liabilities": "Liabilities",
+      "none": "None"
     },
     "categorization": {
       "lead": "What the app files by itself: packs of rules by country, your own rules and the payees it learned from your corrections.",
@@ -734,7 +735,20 @@
       "summaryRules_other": "{{count}} own rules",
       "summaryPayees_one": "{{count}} payee",
       "summaryPayees_other": "{{count}} payees",
-      "summaryNone": "Nothing learned"
+      "summaryNone": "Nothing learned",
+      "otherPacks": "Other countries",
+      "otherPacksRow": "Other countries · {{count}}",
+      "searchCountry": "Search a country"
+    },
+    "categories": {
+      "usageTransactions_one": "{{count}} transaction",
+      "usageTransactions_other": "{{count}} transactions",
+      "usageRules_one": "{{count}} rule",
+      "usageRules_other": "{{count}} rules",
+      "usagePayees_one": "{{count}} learned payee",
+      "usagePayees_other": "{{count}} learned payees",
+      "usageBudgets_one": "{{count}} budget",
+      "usageBudgets_other": "{{count}} budgets"
     }
   },
   "backup": {

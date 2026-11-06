@@ -4,6 +4,7 @@
  * and the reassign requirement are the desktop `CategoryManager`'s.
  */
 import type { CategoryUsage, FlowKind, TransactionCategory } from '@shared/schema';
+import type { TextRef } from '@/mobile/lib/settings-summary';
 
 export interface CategoryRow {
   category: TransactionCategory;
@@ -17,6 +18,22 @@ const KIND_ORDER: readonly FlowKind[] = ['expense', 'income', 'transfer'];
 /** Everything that references a category: what a delete would have to move. */
 export function usageTotal(usage: Omit<CategoryUsage, 'categoryId'>): number {
   return usage.transactions + usage.rules + usage.learnedPayees + usage.budgetGoals;
+}
+
+/**
+ * The usage line of a category row, as parts to join with " · ": only the counts above zero, each
+ * with its plural noun ("16 transakcí", "1 rozpočet"); no parts for an unused category.
+ */
+export function usageParts(usage: Omit<CategoryUsage, 'categoryId'>): TextRef[] {
+  const parts: TextRef[] = [];
+  const add = (key: string, count: number) => {
+    if (count > 0) parts.push({ key: `settings.categories.${key}`, params: { count } });
+  };
+  add('usageTransactions', usage.transactions);
+  add('usageRules', usage.rules);
+  add('usagePayees', usage.learnedPayees);
+  add('usageBudgets', usage.budgetGoals);
+  return parts;
 }
 
 /** One group per kind that has categories, in the kind order; in a group the categories keep their order. */

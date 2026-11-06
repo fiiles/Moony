@@ -6,7 +6,9 @@ import {
   learnedPayeeScope,
   learnedPayeeTitle,
   nextEnabledPacks,
+  learnedSearchShown,
   sortPacks,
+  splitPacks,
 } from './categorization-rows';
 
 const pack = (packId: string, enabled: boolean): RulePackInfo => ({
@@ -144,5 +146,33 @@ describe('learnedPayeeScope', () => {
     expect(learnedPayeeScope(learned({ isCredit: null }), names)).toMatchObject({
       direction: null,
     });
+  });
+});
+
+describe('splitPacks', () => {
+  it('keeps the enabled packs inline and the rest for the other-countries sheet', () => {
+    const { enabled, other } = splitPacks([
+      pack('global', true),
+      pack('cz', false),
+      pack('de', true),
+    ]);
+    expect(enabled.map((p) => p.packId)).toEqual(['global', 'de']);
+    expect(other.map((p) => p.packId)).toEqual(['cz']);
+  });
+  it('leaves the inline part empty when no pack is enabled', () => {
+    const { enabled, other } = splitPacks([pack('cz', false)]);
+    expect(enabled).toEqual([]);
+    expect(other).toHaveLength(1);
+  });
+});
+
+describe('learnedSearchShown', () => {
+  it('shows the field above the threshold', () => {
+    expect(learnedSearchShown(16, '', 15)).toBe(true);
+    expect(learnedSearchShown(15, '', 15)).toBe(false);
+  });
+  it('keeps the field while a query is typed, so the filter can always be cleared', () => {
+    expect(learnedSearchShown(15, 'lidl', 15)).toBe(true);
+    expect(learnedSearchShown(3, '  ', 15)).toBe(false);
   });
 });

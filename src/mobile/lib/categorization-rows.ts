@@ -80,3 +80,19 @@ export function learnedPayeeScope(
     direction: entry.isCredit === null ? null : entry.isCredit ? 'incoming' : 'outgoing',
   };
 }
+
+/** The packs that are on (shown inline, with their switch) and the others (behind "Další země"). */
+export function splitPacks(packs: readonly RulePackInfo[]): {
+  enabled: RulePackInfo[];
+  other: RulePackInfo[];
+} {
+  return { enabled: packs.filter((p) => p.enabled), other: packs.filter((p) => !p.enabled) };
+}
+
+/**
+ * Whether the learned-payee search field is shown: from `threshold` entries on, and always while
+ * a query is typed — a filter the user cannot see must never be left on.
+ */
+export function learnedSearchShown(total: number, query: string, threshold: number): boolean {
+  return total > threshold || query.trim() !== '';
+}

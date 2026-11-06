@@ -42,7 +42,12 @@ export function LearnedPayeeRow({ entry, category, accountName, onForget }: Lear
     <EntityRow
       chip={<CategoryChip category={category} />}
       title={title}
-      sub={[original, categoryLabel, scopeLine].filter(Boolean).join(' · ')}
+      sub={`${scopeLine} · ${categoryLabel}`}
+      below={
+        original ? (
+          <p className="m-0 truncate pb-2 pl-[62px] pr-3.5 text-m-caption text-ink-4">{original}</p>
+        ) : undefined
+      }
       onSwipeLeft={onForget}
       swipeLeftLabel={t('learnedTab.forget')}
       swipeLeftIcon={X}

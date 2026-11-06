@@ -671,7 +671,8 @@
       "all": "全部",
       "investments": "投资",
       "realEstate": "房产",
-      "liabilities": "负债"
+      "liabilities": "负债",
+      "none": "无"
     },
     "categorization": {
       "lead": "应用自动归类的内容:按国家划分的规则包、您自己的规则,以及从您的修正中学到的收款方。",
@@ -694,7 +695,16 @@
       "summaryPacks_other": "{{count}} 个规则包",
       "summaryRules_other": "{{count}} 条自有规则",
       "summaryPayees_other": "{{count}} 个收款方",
-      "summaryNone": "没有学到任何内容"
+      "summaryNone": "没有学到任何内容",
+      "otherPacks": "其他国家",
+      "otherPacksRow": "其他国家 · {{count}}",
+      "searchCountry": "搜索国家"
+    },
+    "categories": {
+      "usageTransactions_other": "{{count}} 笔交易",
+      "usageRules_other": "{{count}} 条规则",
+      "usagePayees_other": "{{count}} 个已学习的收款方",
+      "usageBudgets_other": "{{count}} 项预算"
     }
   },
   "backup": {

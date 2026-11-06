@@ -741,11 +741,12 @@
     },
     "tracking": {
       "lead": "Scegli cosa vuoi seguire in Moony.",
-      "hideOnly": "Le aree nascoste non vengono solo mostrate; i dati restano.",
+      "hideOnly": "Le aree nascoste vengono solo nascoste, i dati restano.",
       "all": "Tutto",
       "investments": "Investimenti",
       "realEstate": "Immobili",
-      "liabilities": "Passività"
+      "liabilities": "Passività",
+      "none": "Niente"
     },
     "categorization": {
       "lead": "Ciò che l'app classifica da sola: pacchetti di regole per paese, le sue regole personali e i beneficiari imparati dalle sue correzioni.",
@@ -774,7 +775,24 @@
       "summaryPayees_one": "{{count}} beneficiario",
       "summaryPayees_many": "{{count}} beneficiari",
       "summaryPayees_other": "{{count}} beneficiari",
-      "summaryNone": "Nulla di imparato"
+      "summaryNone": "Nulla di imparato",
+      "otherPacks": "Altri paesi",
+      "otherPacksRow": "Altri paesi · {{count}}",
+      "searchCountry": "Cerca un paese"
+    },
+    "categories": {
+      "usageTransactions_one": "{{count}} transazione",
+      "usageTransactions_many": "{{count}} transazioni",
+      "usageTransactions_other": "{{count}} transazioni",
+      "usageRules_one": "{{count}} regola",
+      "usageRules_many": "{{count}} regole",
+      "usageRules_other": "{{count}} regole",
+      "usagePayees_one": "{{count}} beneficiario appreso",
+      "usagePayees_many": "{{count}} beneficiari appresi",
+      "usagePayees_other": "{{count}} beneficiari appresi",
+      "usageBudgets_one": "{{count}} budget",
+      "usageBudgets_many": "{{count}} budget",
+      "usageBudgets_other": "{{count}} budget"
     }
   },
   "backup": {

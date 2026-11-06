@@ -782,7 +782,8 @@
       "all": "Wszystko",
       "investments": "Inwestycje",
       "realEstate": "Nieruchomości",
-      "liabilities": "Zobowiązania"
+      "liabilities": "Zobowiązania",
+      "none": "Nic"
     },
     "categorization": {
       "lead": "Co aplikacja kategoryzuje sama: pakiety reguł według kraju, twoje własne reguły i odbiorcy, których nauczyła się z twoich poprawek.",
@@ -811,10 +812,31 @@
       "summaryRules_many": "{{count}} własnych reguł",
       "summaryRules_other": "{{count}} własnej reguły",
       "summaryPayees_one": "{{count}} odbiorca",
-      "summaryPayees_few": "{{count}} odbiorców",
+      "summaryPayees_few": "{{count}} odbiorcy",
       "summaryPayees_many": "{{count}} odbiorców",
       "summaryPayees_other": "{{count}} odbiorcy",
-      "summaryNone": "Nic się nie nauczyła"
+      "summaryNone": "Nic się nie nauczyła",
+      "otherPacks": "Inne kraje",
+      "otherPacksRow": "Inne kraje · {{count}}",
+      "searchCountry": "Szukaj kraju"
+    },
+    "categories": {
+      "usageTransactions_one": "{{count}} transakcja",
+      "usageTransactions_few": "{{count}} transakcje",
+      "usageTransactions_many": "{{count}} transakcji",
+      "usageTransactions_other": "{{count}} transakcji",
+      "usageRules_one": "{{count}} reguła",
+      "usageRules_few": "{{count}} reguły",
+      "usageRules_many": "{{count}} reguł",
+      "usageRules_other": "{{count}} reguły",
+      "usagePayees_one": "{{count}} nauczony odbiorca",
+      "usagePayees_few": "{{count}} nauczeni odbiorcy",
+      "usagePayees_many": "{{count}} nauczonych odbiorców",
+      "usagePayees_other": "{{count}} nauczonego odbiorcy",
+      "usageBudgets_one": "{{count}} budżet",
+      "usageBudgets_few": "{{count}} budżety",
+      "usageBudgets_many": "{{count}} budżetów",
+      "usageBudgets_other": "{{count}} budżetu"
     }
   },
   "backup": {

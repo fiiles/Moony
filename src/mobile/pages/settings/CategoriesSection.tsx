@@ -10,10 +10,11 @@ import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
 import { ScaledReportError } from '@/mobile/components/Scaled';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { SectionPage } from '@/mobile/components/SectionPage';
+import { renderTextRef } from '@/mobile/lib/settings-summary';
 import {
   categoryRowActions,
   groupCategories,
-  usageTotal,
+  usageParts,
   type CategoryRow,
 } from '@/mobile/lib/category-rows';
 import { NavIconButton } from '@/mobile/shell/NavBar';
@@ -28,7 +29,12 @@ import { CategoryDeleteSheet } from '@/mobile/sheets/CategoryDeleteSheet';
 export default function CategoriesSection() {
   const { t } = useTranslation('bank_accounts');
   const { categories, isLoading, isError, refetch } = useCategories();
-  const { usage, isLoading: usageLoading } = useCategoryUsage();
+  const {
+    usage,
+    isLoading: usageLoading,
+    isError: usageError,
+    refetch: refetchUsage,
+  } = useCategoryUsage();
   const [creating, setCreating] = useState(false);
   const [editing, setEditing] = useState<TransactionCategory | null>(null);
   const [deleting, setDeleting] = useState<CategoryRow | null>(null);
@@ -43,8 +49,16 @@ export default function CategoriesSection() {
     });
 
   let body: ReactNode;
-  if (isError) {
-    body = <ScaledReportError onRetry={() => void refetch()} />;
+  // Without the usage every category would read as unused, so a failed usage query is an error too
+  if (isError || usageError) {
+    body = (
+      <ScaledReportError
+        onRetry={() => {
+          if (isError) void refetch();
+          if (usageError) void refetchUsage();
+        }}
+      />
+    );
   } else if (isLoading || usageLoading) {
     body = <CategoriesSkeleton />;
   } else {
@@ -56,7 +70,6 @@ export default function CategoriesSection() {
             <CategoryItem
               key={row.category.id}
               row={row}
-              describeUsage={describeUsage}
               onEdit={() => setEditing(row.category)}
               onDelete={() => setDeleting(row)}
             />
@@ -106,13 +119,12 @@ export default function CategoriesSection() {
 
 interface CategoryItemProps {
   row: CategoryRow;
-  describeUsage: (usage: Omit<CategoryUsage, 'categoryId'>) => string;
   onEdit: () => void;
   onDelete: () => void;
 }
 
 /** One category: chip, name, usage line and the built-in label; the row's gestures as the budgets'. */
-function CategoryItem({ row, describeUsage, onEdit, onDelete }: CategoryItemProps) {
+function CategoryItem({ row, onEdit, onDelete }: CategoryItemProps) {
   const { t } = useTranslation('bank_accounts');
   const { t: tm } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
@@ -121,13 +133,11 @@ function CategoryItem({ row, describeUsage, onEdit, onDelete }: CategoryItemProp
   const actions = categoryRowActions(row);
   const name = categoryName(row.category);
 
-  // The transaction count when there are any, else whatever else holds the category
+  // What holds the category, the non-zero parts only ("16 transakcí · 1 rozpočet")
   const usageLine = row.usage
-    ? row.usage.transactions > 0
-      ? t('categoryManagement.transactionsCount', { n: row.usage.transactions })
-      : usageTotal(row.usage) > 0
-        ? describeUsage(row.usage)
-        : undefined
+    ? usageParts(row.usage)
+        .map((part) => renderTextRef(tm, part))
+        .join(' · ') || undefined
     : undefined;
 
   return (

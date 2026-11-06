@@ -708,7 +708,8 @@
       "all": "Allt",
       "investments": "Investeringar",
       "realEstate": "Fastigheter",
-      "liabilities": "Skulder"
+      "liabilities": "Skulder",
+      "none": "Ingenting"
     },
     "categorization": {
       "lead": "Det appen kategoriserar själv: regelpaket per land, dina egna regler och de mottagare den lärt sig av dina rättelser.",
@@ -734,7 +735,20 @@
       "summaryRules_other": "{{count}} egna regler",
       "summaryPayees_one": "{{count}} mottagare",
       "summaryPayees_other": "{{count}} mottagare",
-      "summaryNone": "Inget inlärt"
+      "summaryNone": "Inget inlärt",
+      "otherPacks": "Andra länder",
+      "otherPacksRow": "Andra länder · {{count}}",
+      "searchCountry": "Sök land"
+    },
+    "categories": {
+      "usageTransactions_one": "{{count}} transaktion",
+      "usageTransactions_other": "{{count}} transaktioner",
+      "usageRules_one": "{{count}} regel",
+      "usageRules_other": "{{count}} regler",
+      "usagePayees_one": "{{count}} inlärd mottagare",
+      "usagePayees_other": "{{count}} inlärda mottagare",
+      "usageBudgets_one": "{{count}} budget",
+      "usageBudgets_other": "{{count}} budgetar"
     }
   },
   "backup": {

@@ -7,7 +7,7 @@ import { useLanguage } from '@/i18n/I18nProvider';
 import { CustomRuleRow } from '@/mobile/components/categorization/CustomRuleRow';
 import { LearnedPayeeRow } from '@/mobile/components/categorization/LearnedPayeeRow';
 import { PackRow } from '@/mobile/components/categorization/PackRow';
-import { EntityRows } from '@/mobile/components/EntityRow';
+import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { ScaledReportError } from '@/mobile/components/Scaled';
 import { SearchField } from '@/mobile/components/SearchField';
 import { SectionHead } from '@/mobile/components/SectionHead';
@@ -17,8 +17,9 @@ import {
   useCategorizationRules,
   usePackLabel,
 } from '@/mobile/hooks/use-categorization-rules';
-import { sortPacks } from '@/mobile/lib/categorization-rows';
+import { learnedSearchShown, sortPacks, splitPacks } from '@/mobile/lib/categorization-rows';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
+import { OtherPacksSheet } from '@/mobile/sheets/OtherPacksSheet';
 import { PackRulesSheet } from '@/mobile/sheets/PackRulesSheet';
 import { filterLearnedRules, ALL_CATEGORIES } from '@/utils/learned-rules';
 
@@ -53,6 +54,7 @@ export default function CategorizationSection() {
   const { accounts } = useBankAccounts();
   const mutations = useCategorizationMutations();
   const [openPack, setOpenPack] = useState<string | null>(null);
+  const [otherOpen, setOtherOpen] = useState(false);
   const [pending, setPending] = useState<Pending | null>(null);
   const [shownPending, setShownPending] = useState<Pending | null>(null);
   const [query, setQuery] = useState('');
@@ -64,6 +66,12 @@ export default function CategorizationSection() {
     () => sortPacks(packs.data ?? [], (p) => packLabel(p.packId, p.country), language),
     [packs.data, packLabel, language]
   );
+  const { enabled: enabledPacks, other: otherPacks } = useMemo(
+    () => splitPacks(sortedPacks),
+    [sortedPacks]
+  );
+  const togglePack = (packId: string, enabled: boolean) =>
+    mutations.setPackEnabled.mutate({ packs: packs.data ?? [], packId, enabled });
   const learnedRules = useMemo(() => learned.data ?? [], [learned.data]);
   const shownLearned = useMemo(
     () =>
@@ -118,23 +126,27 @@ export default function CategorizationSection() {
         packs,
         sortedPacks.length === 0,
         t('settings.categorization.packsEmpty'),
-        () =>
-          sortedPacks.map((pack) => (
-            <PackRow
-              key={pack.packId}
-              pack={pack}
-              label={packLabel(pack.packId, pack.country)}
-              disabled={mutations.setPackEnabled.isPending}
-              onToggle={(enabled) =>
-                mutations.setPackEnabled.mutate({
-                  packs: packs.data ?? [],
-                  packId: pack.packId,
-                  enabled,
-                })
-              }
-              onOpen={() => setOpenPack(pack.packId)}
-            />
-          ))
+        () => (
+          <>
+            {enabledPacks.map((pack) => (
+              <PackRow
+                key={pack.packId}
+                pack={pack}
+                label={packLabel(pack.packId, pack.country)}
+                disabled={mutations.setPackEnabled.isPending}
+                onToggle={(enabled) => togglePack(pack.packId, enabled)}
+                onOpen={() => setOpenPack(pack.packId)}
+              />
+            ))}
+            {otherPacks.length > 0 && (
+              <EntityRow
+                title={t('settings.categorization.otherPacksRow', { count: otherPacks.length })}
+                onClick={() => setOtherOpen(true)}
+                chevron
+              />
+            )}
+          </>
+        )
       )}
       {section(
         t('settings.categorization.custom'),
@@ -175,7 +187,7 @@ export default function CategorizationSection() {
               />
             ))
           ),
-        learnedRules.length > SEARCH_FROM ? (
+        learnedSearchShown(learnedRules.length, query, SEARCH_FROM) ? (
           <SearchField
             value={query}
             onChange={setQuery}
@@ -185,6 +197,15 @@ export default function CategorizationSection() {
         ) : undefined
       )}
 
+      <OtherPacksSheet
+        open={otherOpen}
+        onClose={() => setOtherOpen(false)}
+        packs={otherPacks}
+        label={(pack) => packLabel(pack.packId, pack.country)}
+        disabled={mutations.setPackEnabled.isPending}
+        onToggle={(pack, enabled) => togglePack(pack.packId, enabled)}
+        onOpenPack={setOpenPack}
+      />
       <PackRulesSheet
         pack={
           openedPack

@@ -708,7 +708,8 @@
       "all": "Alles",
       "investments": "Anlagen",
       "realEstate": "Immobilien",
-      "liabilities": "Verbindlichkeiten"
+      "liabilities": "Verbindlichkeiten",
+      "none": "Nichts"
     },
     "categorization": {
       "lead": "Was die App selbst zuordnet: Regelpakete nach Land, Ihre eigenen Regeln und die Empfänger, die sie aus Ihren Korrekturen gelernt hat.",
@@ -734,7 +735,20 @@
       "summaryRules_other": "{{count}} eigene Regeln",
       "summaryPayees_one": "{{count}} Empfänger",
       "summaryPayees_other": "{{count}} Empfänger",
-      "summaryNone": "Nichts gelernt"
+      "summaryNone": "Nichts gelernt",
+      "otherPacks": "Weitere Länder",
+      "otherPacksRow": "Weitere Länder · {{count}}",
+      "searchCountry": "Land suchen"
+    },
+    "categories": {
+      "usageTransactions_one": "{{count}} Transaktion",
+      "usageTransactions_other": "{{count}} Transaktionen",
+      "usageRules_one": "{{count}} Regel",
+      "usageRules_other": "{{count}} Regeln",
+      "usagePayees_one": "{{count}} gelernter Empfänger",
+      "usagePayees_other": "{{count}} gelernte Empfänger",
+      "usageBudgets_one": "{{count}} Budget",
+      "usageBudgets_other": "{{count}} Budgets"
     }
   },
   "backup": {

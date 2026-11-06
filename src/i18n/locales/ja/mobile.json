@@ -671,7 +671,8 @@
       "all": "すべて",
       "investments": "投資",
       "realEstate": "不動産",
-      "liabilities": "負債"
+      "liabilities": "負債",
+      "none": "なし"
     },
     "categorization": {
       "lead": "アプリが自動で分類するもの:国別のルールパック、独自ルール、修正から学習した取引先。",
@@ -694,7 +695,16 @@
       "summaryPacks_other": "{{count}}個のパック",
       "summaryRules_other": "{{count}}件の独自ルール",
       "summaryPayees_other": "{{count}}件の取引先",
-      "summaryNone": "学習したものはありません"
+      "summaryNone": "学習したものはありません",
+      "otherPacks": "その他の国",
+      "otherPacksRow": "その他の国 · {{count}}",
+      "searchCountry": "国を検索"
+    },
+    "categories": {
+      "usageTransactions_other": "{{count}}件の取引",
+      "usageRules_other": "{{count}}件のルール",
+      "usagePayees_other": "{{count}}件の学習済み取引先",
+      "usageBudgets_other": "{{count}}件の予算"
     }
   },
   "backup": {

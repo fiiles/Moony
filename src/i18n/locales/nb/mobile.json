@@ -708,7 +708,8 @@
       "all": "Alt",
       "investments": "Investeringer",
       "realEstate": "Eiendom",
-      "liabilities": "Forpliktelser"
+      "liabilities": "Forpliktelser",
+      "none": "Ingenting"
     },
     "categorization": {
       "lead": "Det appen kategoriserer selv: regelpakker per land, dine egne regler og mottakerne den har lært av rettelsene dine.",
@@ -734,7 +735,20 @@
       "summaryRules_other": "{{count}} egne regler",
       "summaryPayees_one": "{{count}} mottaker",
       "summaryPayees_other": "{{count}} mottakere",
-      "summaryNone": "Ingenting lært"
+      "summaryNone": "Ingenting lært",
+      "otherPacks": "Andre land",
+      "otherPacksRow": "Andre land · {{count}}",
+      "searchCountry": "Søk etter land"
+    },
+    "categories": {
+      "usageTransactions_one": "{{count}} transaksjon",
+      "usageTransactions_other": "{{count}} transaksjoner",
+      "usageRules_one": "{{count}} regel",
+      "usageRules_other": "{{count}} regler",
+      "usagePayees_one": "{{count}} innlært mottaker",
+      "usagePayees_other": "{{count}} innlærte mottakere",
+      "usageBudgets_one": "{{count}} budsjett",
+      "usageBudgets_other": "{{count}} budsjetter"
     }
   },
   "backup": {

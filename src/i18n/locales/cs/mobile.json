@@ -746,7 +746,8 @@
       "all": "Vše",
       "investments": "Investice",
       "realEstate": "Nemovitosti",
-      "liabilities": "Závazky"
+      "liabilities": "Závazky",
+      "none": "Nic"
     },
     "categorization": {
       "lead": "Co se zařadí samo: balíčky pravidel podle zemí, vaše vlastní pravidla a příjemci, které se aplikace naučila z vašich oprav.",
@@ -778,7 +779,28 @@
       "summaryPayees_few": "{{count}} příjemci",
       "summaryPayees_many": "{{count}} příjemce",
       "summaryPayees_other": "{{count}} příjemců",
-      "summaryNone": "Nic naučeného"
+      "summaryNone": "Nic naučeného",
+      "otherPacks": "Další země",
+      "otherPacksRow": "Další země · {{count}}",
+      "searchCountry": "Hledat zemi"
+    },
+    "categories": {
+      "usageTransactions_one": "{{count}} transakce",
+      "usageTransactions_few": "{{count}} transakce",
+      "usageTransactions_many": "{{count}} transakce",
+      "usageTransactions_other": "{{count}} transakcí",
+      "usageRules_one": "{{count}} pravidlo",
+      "usageRules_few": "{{count}} pravidla",
+      "usageRules_many": "{{count}} pravidla",
+      "usageRules_other": "{{count}} pravidel",
+      "usagePayees_one": "{{count}} naučený příjemce",
+      "usagePayees_few": "{{count}} naučení příjemci",
+      "usagePayees_many": "{{count}} naučeného příjemce",
+      "usagePayees_other": "{{count}} naučených příjemců",
+      "usageBudgets_one": "{{count}} rozpočet",
+      "usageBudgets_few": "{{count}} rozpočty",
+      "usageBudgets_many": "{{count}} rozpočtu",
+      "usageBudgets_other": "{{count}} rozpočtů"
     }
   },
   "backup": {

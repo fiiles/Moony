@@ -13,7 +13,7 @@ import { canConfirmDelete, reassignTargets, type CategoryRow } from '@/mobile/li
 interface CategoryDeleteSheetProps {
   /** The category to delete; `null` closes the sheet (it keeps the last one while it slides away). */
   row: CategoryRow | null;
-  /** The usage worded for the sentence ("Transakce: 3, pravidla: 1, …"). */
+  /** The usage worded for the sentence ("Transakce: 3, pravidla: 1, …"); kept in full, as the desktop words it. */
   usageText: string;
   onClose: () => void;
 }
@@ -33,10 +33,14 @@ export function CategoryDeleteSheet({ row, usageText, onClose }: CategoryDeleteS
   const [shown, setShown] = useState(row);
   const [reassignTo, setReassignTo] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
-  if (row !== null && row !== shown) {
+  const [wasOpen, setWasOpen] = useState(row !== null);
+  // Every opening starts clean: a pick made before "Zrušit" must not survive into the next one
+  if (row !== null && (row !== shown || !wasOpen)) {
     setShown(row);
     setReassignTo(null);
+    setPicking(false);
   }
+  if (wasOpen !== (row !== null)) setWasOpen(row !== null);
 
   const targets = shown ? reassignTargets(categories, shown.category) : [];
   const target: TransactionCategory | undefined = targets.find((c) => c.id === reassignTo);

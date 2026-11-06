@@ -5,6 +5,7 @@ import {
   categoryRowActions,
   groupCategories,
   reassignTargets,
+  usageParts,
   usageTotal,
   type CategoryRow,
 } from './category-rows';
@@ -105,5 +106,27 @@ describe('categoryRowActions', () => {
   it('offers delete for a custom one', () => {
     const row: CategoryRow = { category: cat('c', 'expense'), usage: null, inUse: false };
     expect(categoryRowActions(row).delete).toBe(true);
+  });
+});
+
+describe('usageParts', () => {
+  it('lists only the non-zero counts, in the order of the usage line', () => {
+    expect(
+      usageParts(use('x', { transactions: 16, rules: 0, learnedPayees: 0, budgetGoals: 1 }))
+    ).toEqual([
+      { key: 'settings.categories.usageTransactions', params: { count: 16 } },
+      { key: 'settings.categories.usageBudgets', params: { count: 1 } },
+    ]);
+  });
+  it('names a category with only rules by its rules', () => {
+    expect(usageParts(use('x', { rules: 2 }))).toEqual([
+      { key: 'settings.categories.usageRules', params: { count: 2 } },
+    ]);
+    expect(usageParts(use('x', { learnedPayees: 1 }))).toEqual([
+      { key: 'settings.categories.usagePayees', params: { count: 1 } },
+    ]);
+  });
+  it('says nothing for an unused category', () => {
+    expect(usageParts(use('x'))).toEqual([]);
   });
 });

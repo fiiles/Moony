@@ -745,7 +745,8 @@
       "all": "Todo",
       "investments": "Inversiones",
       "realEstate": "Inmuebles",
-      "liabilities": "Pasivos"
+      "liabilities": "Pasivos",
+      "none": "Nada"
     },
     "categorization": {
       "lead": "Lo que la app clasifica sola: paquetes de reglas por país, sus reglas propias y los beneficiarios que aprendió de sus correcciones.",
@@ -774,7 +775,24 @@
       "summaryPayees_one": "{{count}} beneficiario",
       "summaryPayees_many": "{{count}} beneficiarios",
       "summaryPayees_other": "{{count}} beneficiarios",
-      "summaryNone": "Nada aprendido"
+      "summaryNone": "Nada aprendido",
+      "otherPacks": "Otros países",
+      "otherPacksRow": "Otros países · {{count}}",
+      "searchCountry": "Buscar país"
+    },
+    "categories": {
+      "usageTransactions_one": "{{count}} transacción",
+      "usageTransactions_many": "{{count}} transacciones",
+      "usageTransactions_other": "{{count}} transacciones",
+      "usageRules_one": "{{count}} regla",
+      "usageRules_many": "{{count}} reglas",
+      "usageRules_other": "{{count}} reglas",
+      "usagePayees_one": "{{count}} beneficiario aprendido",
+      "usagePayees_many": "{{count}} beneficiarios aprendidos",
+      "usagePayees_other": "{{count}} beneficiarios aprendidos",
+      "usageBudgets_one": "{{count}} presupuesto",
+      "usageBudgets_many": "{{count}} presupuestos",
+      "usageBudgets_other": "{{count}} presupuestos"
     }
   },
   "backup": {

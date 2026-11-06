@@ -831,5 +831,31 @@
       "body": "Takhle vypadá připomínka z Moony.",
       "sent": "Přijde za 10 sekund"
     }
+  },
+  "plans": {
+    "card": {
+      "title": "Výdajové plány {{year}}",
+      "over_one": "{{count}} nad plánem",
+      "over_few": "{{count}} nad plánem",
+      "over_other": "{{count}} nad plánem",
+      "near_one": "{{count}} blízko plánu",
+      "near_few": "{{count}} blízko plánu",
+      "near_other": "{{count}} blízko plánu"
+    },
+    "spent": "Utraceno {{spent}} z {{planned}} na rok {{year}}",
+    "row": {
+      "spent": "Utraceno {{spent}} z {{planned}}",
+      "left": "zbývá {{amount}}",
+      "over": "přes o {{amount}}"
+    },
+    "takeOver": {
+      "title_one": "Převzít {{count}} plán z roku {{year}}?",
+      "title_few": "Převzít {{count}} plány z roku {{year}}?",
+      "title_other": "Převzít {{count}} plánů z roku {{year}}?"
+    },
+    "sections": {
+      "active": "Aktivní plány",
+      "closed": "Uzavřené"
+    }
   }
 }

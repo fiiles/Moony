@@ -795,5 +795,28 @@
       "body": "Så här ser en påminnelse från Moony ut.",
       "sent": "Kommer om 10 sekunder"
     }
+  },
+  "plans": {
+    "card": {
+      "title": "Utgiftsplaner {{year}}",
+      "over_one": "{{count}} över planen",
+      "over_other": "{{count}} över planen",
+      "near_one": "{{count}} nära planen",
+      "near_other": "{{count}} nära planen"
+    },
+    "spent": "Spenderat {{spent}} av {{planned}} för {{year}}",
+    "row": {
+      "spent": "Spenderat {{spent}} av {{planned}}",
+      "left": "{{amount}} kvar",
+      "over": "över med {{amount}}"
+    },
+    "takeOver": {
+      "title_one": "Ta över {{count}} plan från {{year}}?",
+      "title_other": "Ta över {{count}} planer från {{year}}?"
+    },
+    "sections": {
+      "active": "Aktiva planer",
+      "closed": "Avslutade"
+    }
   }
 }

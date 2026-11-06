@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
-import { Download, Ellipsis, Landmark, PiggyBank } from 'lucide-react';
+import { ClipboardList, Download, Ellipsis, Landmark, PiggyBank } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { NavIconButton } from '@/mobile/shell/NavBar';
+import { plansPath } from '@/mobile/shell/routes';
 
 interface CashflowMenuProps {
   /** "Účty (3)": the accounts the report covers, already worded. */
@@ -23,7 +24,7 @@ interface CashflowMenuProps {
 }
 
 /**
- * The `···` of the Cashflow tab (spec §8.7): the account scope (Účty), Spravovat rozpočty, and,
+ * The `···` of the Cashflow tab (spec §8.7): the account scope (Účty), Spravovat rozpočty, Výdajové plány, and,
  * under a separator, Export (the shown period's CSV to the Files picker, as the class pages'
  * `···` do). Items are 44 pt tall with an 18 pt icon (`RowMenuItem`); the trigger is the nav bar's
  * 44 pt icon button.
@@ -37,6 +38,7 @@ export function CashflowMenu({
 }: CashflowMenuProps) {
   const { t: tb } = useTranslation('budgeting');
   const { t: tc } = useTranslation('common');
+  const { t: tp } = useTranslation('spending_plans');
   const [, setLocation] = useLocation();
   return (
     <DropdownMenu>
@@ -53,6 +55,10 @@ export function CashflowMenu({
         <RowMenuItem onSelect={() => setLocation(budgetsHref)}>
           <PiggyBank strokeWidth={1.75} aria-hidden />
           {tb('manage.title')}
+        </RowMenuItem>
+        <RowMenuItem onSelect={() => setLocation(plansPath())}>
+          <ClipboardList strokeWidth={1.75} aria-hidden />
+          {tp('title')}
         </RowMenuItem>
         <DropdownMenuSeparator />
         <RowMenuItem disabled={exportDisabled} onSelect={onExport}>

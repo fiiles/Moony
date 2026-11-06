@@ -759,5 +759,25 @@
       "body": "Moonyのリマインドはこのように表示されます。",
       "sent": "10秒後に届きます"
     }
+  },
+  "plans": {
+    "card": {
+      "title": "支出プラン {{year}}",
+      "over_other": "予算超過 {{count}}件",
+      "near_other": "予算間近 {{count}}件"
+    },
+    "spent": "{{year}}年 {{planned}}のうち{{spent}}を使用",
+    "row": {
+      "spent": "{{planned}}のうち{{spent}}を使用",
+      "left": "残り{{amount}}",
+      "over": "{{amount}}超過"
+    },
+    "takeOver": {
+      "title_other": "{{year}}年のプラン{{count}}件を引き継ぎますか?"
+    },
+    "sections": {
+      "active": "進行中のプラン",
+      "closed": "終了"
+    }
   }
 }

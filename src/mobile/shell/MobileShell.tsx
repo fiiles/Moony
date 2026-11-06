@@ -13,6 +13,8 @@ import Bonds from '@/mobile/pages/Bonds';
 import Budgets from '@/mobile/pages/Budgets';
 import Cashflow from '@/mobile/pages/Cashflow';
 import CashflowCategory from '@/mobile/pages/CashflowCategory';
+import PlanDetail from '@/mobile/pages/PlanDetail';
+import Plans from '@/mobile/pages/Plans';
 import Crypto from '@/mobile/pages/Crypto';
 import CryptoDetail from '@/mobile/pages/CryptoDetail';
 import Finance from '@/mobile/pages/Finance';
@@ -61,6 +63,9 @@ function Routes() {
       <ProtectedRoute path={routes.cashflow} component={Cashflow} />
       <ProtectedRoute path={routes.cashflowCategory} component={CashflowCategory} />
       <ProtectedRoute path={routes.budgets} component={Budgets} />
+      {/* Výdajové plány: the year's list and one plan, pushed on Cashflow. */}
+      <ProtectedRoute path={routes.plans} component={Plans} />
+      <ProtectedRoute path={routes.planDetail} component={PlanDetail} />
       <ProtectedRoute path={routes.wealth} component={Wealth} />
       {/* Pushed on Majetek: the Akcie class page and a position of it. */}
       <ProtectedRoute path={routes.stocks} component={Stocks} />

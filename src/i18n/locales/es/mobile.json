@@ -831,5 +831,31 @@
       "body": "Así se ve un recordatorio de Moony.",
       "sent": "Llegará en 10 segundos"
     }
+  },
+  "plans": {
+    "card": {
+      "title": "Planes de gasto {{year}}",
+      "over_one": "{{count}} por encima del plan",
+      "over_many": "{{count}} por encima del plan",
+      "over_other": "{{count}} por encima del plan",
+      "near_one": "{{count}} cerca del plan",
+      "near_many": "{{count}} cerca del plan",
+      "near_other": "{{count}} cerca del plan"
+    },
+    "spent": "Gastado {{spent}} de {{planned}} en {{year}}",
+    "row": {
+      "spent": "Gastado {{spent}} de {{planned}}",
+      "left": "quedan {{amount}}",
+      "over": "excedido en {{amount}}"
+    },
+    "takeOver": {
+      "title_one": "¿Traspasar {{count}} plan de {{year}}?",
+      "title_many": "¿Traspasar {{count}} planes de {{year}}?",
+      "title_other": "¿Traspasar {{count}} planes de {{year}}?"
+    },
+    "sections": {
+      "active": "Planes activos",
+      "closed": "Cerrados"
+    }
   }
 }

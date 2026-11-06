@@ -831,5 +831,31 @@
       "body": "Ecco come appare un promemoria di Moony.",
       "sent": "Arriva tra 10 secondi"
     }
+  },
+  "plans": {
+    "card": {
+      "title": "Piani di spesa {{year}}",
+      "over_one": "{{count}} oltre il piano",
+      "over_many": "{{count}} oltre il piano",
+      "over_other": "{{count}} oltre il piano",
+      "near_one": "{{count}} vicino al piano",
+      "near_many": "{{count}} vicino al piano",
+      "near_other": "{{count}} vicino al piano"
+    },
+    "spent": "Speso {{spent}} di {{planned}} per il {{year}}",
+    "row": {
+      "spent": "Speso {{spent}} di {{planned}}",
+      "left": "restano {{amount}}",
+      "over": "oltre di {{amount}}"
+    },
+    "takeOver": {
+      "title_one": "Riprendere {{count}} piano dal {{year}}?",
+      "title_many": "Riprendere {{count}} piani dal {{year}}?",
+      "title_other": "Riprendere {{count}} piani dal {{year}}?"
+    },
+    "sections": {
+      "active": "Piani attivi",
+      "closed": "Chiusi"
+    }
   }
 }

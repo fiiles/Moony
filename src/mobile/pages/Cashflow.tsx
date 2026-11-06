@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useSearch } from 'wouter';
 import { Landmark } from 'lucide-react';
 import type { BudgetGoal, CashflowActuals } from '@shared/schema';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
+import { useSpendingPlansOverview } from '@/hooks/use-spending-plans';
 import type { MoneyOptions } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
@@ -15,6 +16,7 @@ import { CashflowBars } from '@/mobile/components/cashflow/CashflowBars';
 import { CashflowHero } from '@/mobile/components/cashflow/CashflowHero';
 import { CashflowMenu } from '@/mobile/components/cashflow/CashflowMenu';
 import { CategoryRow } from '@/mobile/components/cashflow/CategoryRow';
+import { PlansCard } from '@/mobile/components/plans/PlansCard';
 import { ExpenseCategoryRow } from '@/mobile/components/cashflow/ExpenseCategoryRow';
 import { PeriodBar } from '@/mobile/components/cashflow/PeriodBar';
 import { EntityRows } from '@/mobile/components/EntityRow';
@@ -47,9 +49,10 @@ import {
   type CategoryRowModel,
 } from '@/mobile/lib/cashflow-rows';
 import { reportRowLimit } from '@/mobile/lib/budget-rows';
+import { plansCardSummary } from '@/mobile/lib/plan-rows';
 import { CASHFLOW_EXPORT_FILE, cashflowCsv } from '@/mobile/lib/cashflow-export';
 import { afterHistorySettles } from '@/mobile/lib/history-settle';
-import { budgetsPath, cashflowCategoryPath, routes } from '@/mobile/shell/routes';
+import { budgetsPath, cashflowCategoryPath, plansPath, routes } from '@/mobile/shell/routes';
 import { LockButton } from '@/mobile/shell/LockButton';
 import { Screen } from '@/mobile/shell/Screen';
 import { BudgetLimitSheet, type LimitMode } from '@/mobile/sheets/BudgetLimitSheet';
@@ -90,6 +93,13 @@ export default function Cashflow() {
   const limits = useBudgetLimitSheet(false);
   const { actuals } = report;
   const search = cashflowSearch(state);
+  // The plans card is about the current calendar year, whatever period the report shows (M3)
+  const planYear = new Date().getFullYear();
+  const { data: plansOverview } = useSpendingPlansOverview(planYear);
+  const plans = useMemo(
+    () => (plansOverview?.year === planYear ? plansCardSummary(plansOverview) : null),
+    [plansOverview, planYear]
+  );
   const rawSearch = useSearch();
 
   // A plain visit opens on the newest month with income or spending, not on an empty current one:
@@ -204,6 +214,7 @@ export default function Cashflow() {
             state={state}
             onSelectMonth={(month) => setState({ ...state, ...selectMonth(month) })}
             search={search}
+            plansCard={plans && <PlansCard summary={plans} href={plansPath(plans.year)} />}
             goals={limits.history}
             onLimit={limits.openLimit}
           />
@@ -230,6 +241,8 @@ interface ReportBodyProps {
   state: CashflowState;
   onSelectMonth: (month: number) => void;
   search: string;
+  /** The spending plans card (the current year), when it has plans; after the bars and the note. */
+  plansCard: ReactNode;
   /** Every stored budget with its versions (the edit sheet starts from one). */
   goals: readonly BudgetGoal[];
   /** Open the limit sheet (an expense row's menu). */
@@ -243,6 +256,7 @@ function ReportBody({
   state,
   onSelectMonth,
   search,
+  plansCard,
   goals,
   onLimit,
 }: ReportBodyProps) {
@@ -301,6 +315,7 @@ function ReportBody({
     return (
       <>
         {bars.some((bar) => bar.income !== 0 || bar.expenses !== 0) && barsCard}
+        {plansCard}
         <ScaledEmptyState
           bare
           icon={<Landmark />}
@@ -392,6 +407,7 @@ function ReportBody({
       {state.timeframe === 'monthly' && counts && (
         <BudgetSummaryNote counts={counts} href={budgetsPath(search)} />
       )}
+      {plansCard}
       <section>
         <SectionHead title={tr('actuals.expenses.title')} note={money(totalExpenses)} />
         <EntityRows>{rows(expenseRows, true, true)}</EntityRows>

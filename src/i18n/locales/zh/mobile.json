@@ -759,5 +759,25 @@
       "body": "Moony 的提醒就是这样显示的。",
       "sent": "10 秒后送达"
     }
+  },
+  "plans": {
+    "card": {
+      "title": "支出计划 {{year}}",
+      "over_other": "{{count}} 项超出计划",
+      "near_other": "{{count}} 项接近计划"
+    },
+    "spent": "{{year}} 年计划 {{planned}},已花 {{spent}}",
+    "row": {
+      "spent": "计划 {{planned}},已花 {{spent}}",
+      "left": "剩余 {{amount}}",
+      "over": "超出 {{amount}}"
+    },
+    "takeOver": {
+      "title_other": "沿用 {{year}} 年的 {{count}} 项计划?"
+    },
+    "sections": {
+      "active": "进行中的计划",
+      "closed": "已关闭"
+    }
   }
 }

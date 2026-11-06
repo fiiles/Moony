@@ -590,7 +590,7 @@ fn the_hlc_starts_above_every_stored_clock() {
 #[test]
 fn observing_a_remote_clock_moves_the_hlc_and_flags_a_far_future_one() {
     let conn = installed();
-    let near = pack(now_ms() + 1_000, 3);
+    let near = pack(now_ms() + 60_000, 3);
     assert!(matches!(observe(&conn, near).unwrap(), Observation::Ok));
     assert_eq!(tick(&conn).unwrap(), near + 1);
 

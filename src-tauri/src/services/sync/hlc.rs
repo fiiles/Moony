@@ -1,13 +1,13 @@
 //! Hybrid logical clock: `hlc = (ms << 16) | counter`, compared together with the device id.
 
 use crate::error::{AppError, Result};
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine;
 use rand::Rng;
 
 /// A device's identity: 16 random bytes, compared as bytes.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct DeviceId(pub [u8; 16]);
-
-const B64_ALPHABET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
 impl DeviceId {
     pub const ZERO: Self = DeviceId([0; 16]);
@@ -33,44 +33,18 @@ impl DeviceId {
 
     /// base64url without padding (16 bytes -> 22 characters).
     pub fn to_b64(&self) -> String {
-        let mut out = String::with_capacity(22);
-        for chunk in self.0.chunks(3) {
-            let mut n = 0u32;
-            for (i, b) in chunk.iter().enumerate() {
-                n |= (*b as u32) << (16 - 8 * i);
-            }
-            for i in 0..=chunk.len() {
-                out.push(B64_ALPHABET[((n >> (18 - 6 * i)) & 63) as usize] as char);
-            }
-        }
-        out
+        URL_SAFE_NO_PAD.encode(self.0)
     }
 
+    /// Strict: exactly 22 characters, no padding, canonical trailing bits.
     pub fn from_b64(s: &str) -> Result<Self> {
         let bad = || AppError::Internal("invalid device id base64url".to_string());
         if s.len() != 22 {
             return Err(bad());
         }
-        let mut bytes = [0u8; 16];
-        let mut acc = 0u32;
-        let mut bits = 0;
-        let mut at = 0;
-        for c in s.bytes() {
-            let v = B64_ALPHABET.iter().position(|a| *a == c).ok_or_else(bad)? as u32;
-            acc = (acc << 6) | v;
-            bits += 6;
-            if bits >= 8 {
-                bits -= 8;
-                bytes[at] = (acc >> bits) as u8;
-                at += 1;
-                acc &= (1 << bits) - 1;
-            }
-        }
-        // 22 chars carry 132 bits; the 4 leftover bits must be zero (canonical form).
-        if at != 16 || acc != 0 {
-            return Err(bad());
-        }
-        Ok(DeviceId(bytes))
+        let bytes = URL_SAFE_NO_PAD.decode(s).map_err(|_| bad())?;
+        let arr: [u8; 16] = bytes.try_into().map_err(|_| bad())?;
+        Ok(DeviceId(arr))
     }
 }
 
@@ -93,6 +67,9 @@ pub const FUTURE_WARNING_MS: u64 = 86_400_000;
 /// Cap of the ms part so a packed clock stays a positive i64.
 pub const MAX_MS: u64 = (1 << 47) - 1;
 
+/// The highest clock a device can issue; anything above is clamped to it.
+const MAX_CLOCK: u64 = (MAX_MS << 16) | u16::MAX as u64;
+
 pub fn pack(ms: u64, counter: u16) -> u64 {
     (ms << 16) | counter as u64
 }
@@ -113,7 +90,9 @@ pub enum Observation {
 
 impl HlcState {
     pub fn new(last: u64) -> Self {
-        Self { last }
+        Self {
+            last: last.min(MAX_CLOCK),
+        }
     }
 
     pub fn last(&self) -> u64 {
@@ -142,6 +121,7 @@ impl HlcState {
 
     /// Take a remote clock into account.
     pub fn observe(&mut self, remote: u64, now_ms: u64) -> Observation {
+        let remote = remote.min(MAX_CLOCK);
         self.last = self.last.max(remote);
         let remote_ms = unpack(remote).0;
         match remote_ms.checked_sub(now_ms) {
@@ -284,5 +264,30 @@ mod tests {
         assert!(DeviceId::from_hex("00").is_err());
         assert!(DeviceId::from_b64("AAAA").is_err());
         assert!(DeviceId::from_b64("-__-AAECAwQFBgcICQoLDA==").is_err());
+    }
+
+    #[test]
+    fn device_id_base64_is_strict() {
+        // 21 and 23 characters, padding, a non-alphabet character, non-canonical trailing bits
+        assert!(DeviceId::from_b64("-__-AAECAwQFBgcICQoLD").is_err());
+        assert!(DeviceId::from_b64("-__-AAECAwQFBgcICQoLDAA").is_err());
+        assert!(DeviceId::from_b64("-__-AAECAwQFBgcICQoLD=").is_err());
+        assert!(DeviceId::from_b64("+__-AAECAwQFBgcICQoLDA").is_err());
+        assert!(DeviceId::from_b64("-__-AAECAwQFBgcICQoLDB").is_err());
+        assert!(DeviceId::from_b64("-__-AAECAwQFBgcICQoLDA").is_ok());
+    }
+
+    #[test]
+    fn a_clock_above_the_cap_cannot_make_next_go_backwards() {
+        let cap = pack(MAX_MS, u16::MAX);
+        let s = HlcState::new(u64::MAX);
+        assert_eq!(s.last(), cap);
+        let mut s = HlcState::new(0);
+        s.observe(i64::MAX as u64, 0);
+        let last = s.last();
+        assert_eq!(last, cap);
+        assert!(s.next(1_000) >= last);
+        s.observe(u64::MAX, 0);
+        assert_eq!(s.last(), cap);
     }
 }

@@ -55,6 +55,8 @@ chrono = { version = "0.4", features = ["serde"] }
 
 # Cryptography - compatible with Node.js crypto
 hex = "0.4"
+base64 = "0.23"
+flate2 = "1"
 rand = "0.10"
 scrypt = "0.12"      # For scrypt key derivation (matches Node.js)
 aes-gcm = "0.11"     # For AES-256-GCM encryption (matches Node.js)

@@ -2,6 +2,7 @@
 //! trigger capture installed at unlock.
 
 pub mod capture;
+pub mod changeset;
 pub mod hlc;
 pub mod natural_id;
 pub mod registry;

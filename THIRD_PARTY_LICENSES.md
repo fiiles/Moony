@@ -19,21 +19,21 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 
 | Ecosystem | Packages |
 | --- | ---: |
-| npm | 229 |
-| Rust | 677 |
+| npm | 228 |
+| Rust | 665 |
 
 ### npm — packages per licence
 
 | Licence | Packages |
 | --- | ---: |
-| MIT | 201 |
+| MIT | 200 |
 | ISC | 13 |
 | MIT OR Apache-2.0 | 7 |
 | Apache-2.0 | 2 |
 | 0BSD | 1 |
 | Apache-2.0 OR MIT | 1 |
 | BSD-3-Clause | 1 |
-| MIT AND ISC | 1 |
+| MIT AND ISC AND BSD-3-Clause | 1 |
 | OFL-1.1 | 1 |
 | Unlicense | 1 |
 
@@ -41,9 +41,9 @@ components not covered by the package managers: SQLCipher (BSD-3-Clause, compile
 
 | Licence | Packages |
 | --- | ---: |
-| MIT OR Apache-2.0 | 337 |
-| MIT | 158 |
-| Apache-2.0 OR MIT | 66 |
+| MIT OR Apache-2.0 | 324 |
+| MIT | 157 |
+| Apache-2.0 OR MIT | 68 |
 | Unicode-3.0 | 18 |
 | Zlib OR Apache-2.0 OR MIT | 18 |
 | Unlicense OR MIT | 14 |
@@ -96,15 +96,15 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 
 | Package | Version | Licence |
 | --- | --- | --- |
-| @babel/runtime | 7.29.10 | MIT |
+| @babel/runtime | 7.29.13 | MIT |
 | @floating-ui/core | 1.8.0 | MIT |
 | @floating-ui/dom | 1.8.0 | MIT |
 | @floating-ui/react-dom | 2.1.9 | MIT |
 | @floating-ui/utils | 0.2.12 | MIT |
 | @fontsource-variable/inter | 5.3.0 | OFL-1.1 |
 | @hookform/resolvers | 5.9.2 | MIT |
-| @napi-rs/canvas | 1.0.11 | MIT |
-| @napi-rs/canvas-darwin-arm64 | 1.0.11 | MIT |
+| @napi-rs/canvas | 1.1.0 | MIT |
+| @napi-rs/canvas-darwin-arm64 | 1.1.0 | MIT |
 | @radix-ui/number | 1.1.3 | MIT |
 | @radix-ui/primitive | 1.2.0 | MIT |
 | @radix-ui/react-alert-dialog | 1.2.1 | MIT |
@@ -150,19 +150,19 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | @radix-ui/react-use-size | 1.1.5 | MIT |
 | @radix-ui/react-visually-hidden | 1.2.13 | MIT |
 | @radix-ui/rect | 1.1.3 | MIT |
-| @reduxjs/toolkit | 2.13.0 | MIT |
+| @reduxjs/toolkit | 2.14.0 | MIT |
 | @standard-schema/spec | 1.1.0 | MIT |
 | @standard-schema/utils | 0.3.0 | MIT |
-| @tanstack/query-core | 5.104.4 | MIT |
-| @tanstack/react-query | 5.104.4 | MIT |
+| @tanstack/query-core | 5.106.1 | MIT |
+| @tanstack/react-query | 5.106.1 | MIT |
 | @tauri-apps/api | 2.12.4 | Apache-2.0 OR MIT |
-| @tauri-apps/plugin-dialog | 2.8.3 | MIT OR Apache-2.0 |
+| @tauri-apps/plugin-dialog | 2.8.4 | MIT OR Apache-2.0 |
 | @tauri-apps/plugin-fs | 2.7.1 | MIT OR Apache-2.0 |
 | @tauri-apps/plugin-haptics | 2.4.2 | MIT OR Apache-2.0 |
-| @tauri-apps/plugin-notification | 2.7.0 | MIT OR Apache-2.0 |
+| @tauri-apps/plugin-notification | 2.8.0 | MIT OR Apache-2.0 |
 | @tauri-apps/plugin-opener | 2.7.2 | MIT OR Apache-2.0 |
 | @tauri-apps/plugin-process | 2.4.0 | MIT OR Apache-2.0 |
-| @tauri-apps/plugin-updater | 2.14.0 | MIT OR Apache-2.0 |
+| @tauri-apps/plugin-updater | 2.14.1 | MIT OR Apache-2.0 |
 | @types/d3-array | 3.2.2 | MIT |
 | @types/d3-color | 3.1.3 | MIT |
 | @types/d3-ease | 3.0.2 | MIT |
@@ -173,7 +173,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | @types/d3-time | 3.0.4 | MIT |
 | @types/d3-timer | 3.0.2 | MIT |
 | @types/debug | 4.1.13 | MIT |
-| @types/estree | 1.0.9 | MIT |
+| @types/estree | 1.0.10 | MIT |
 | @types/estree-jsx | 1.0.5 | MIT |
 | @types/hast | 3.0.5 | MIT |
 | @types/mdast | 4.0.4 | MIT |
@@ -193,37 +193,37 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | clsx | 2.1.1 | MIT |
 | cmdk | 1.1.1 | MIT |
 | comma-separated-tokens | 2.0.3 | MIT |
-| d3-array | 3.2.4 | ISC |
-| d3-color | 3.1.0 | ISC |
-| d3-ease | 3.0.1 | BSD-3-Clause |
-| d3-format | 3.1.2 | ISC |
-| d3-interpolate | 3.0.1 | ISC |
-| d3-path | 3.1.0 | ISC |
-| d3-scale | 4.0.2 | ISC |
-| d3-shape | 3.2.0 | ISC |
-| d3-time | 3.1.0 | ISC |
-| d3-time-format | 4.1.0 | ISC |
-| d3-timer | 3.0.1 | ISC |
+| d3-array | 3.2.5 | ISC |
+| d3-color | 3.1.1 | ISC |
+| d3-ease | 3.0.2 | BSD-3-Clause |
+| d3-format | 3.1.3 | ISC |
+| d3-interpolate | 3.0.2 | ISC |
+| d3-path | 3.1.1 | ISC |
+| d3-scale | 4.0.3 | ISC |
+| d3-shape | 3.2.1 | ISC |
+| d3-time | 3.1.1 | ISC |
+| d3-time-format | 4.1.1 | ISC |
+| d3-timer | 3.0.2 | ISC |
 | debug | 4.4.3 | MIT |
 | decimal.js-light | 2.5.1 | MIT |
 | decode-named-character-reference | 1.3.0 | MIT |
 | dequal | 2.0.3 | MIT |
 | detect-node-es | 1.1.0 | MIT |
 | devlop | 1.1.0 | MIT |
-| es-toolkit | 1.52.0 | MIT |
+| es-toolkit | 1.53.2 | MIT |
 | escape-string-regexp | 5.0.0 | MIT |
 | estree-util-is-identifier-name | 3.0.0 | MIT |
 | eventemitter3 | 5.0.4 | MIT |
 | extend | 3.0.2 | MIT |
 | get-nonce | 1.0.1 | MIT |
-| hast-util-to-jsx-runtime | 2.3.6 | MIT |
+| hast-util-to-jsx-runtime | 2.3.7 | MIT |
 | hast-util-whitespace | 3.0.0 | MIT |
 | html-parse-stringify | 4.0.1 | MIT |
 | html-url-attributes | 3.0.1 | MIT |
-| i18next | 26.5.2 | MIT |
-| i18next-browser-languagedetector | 8.2.1 | MIT |
-| immer | 11.1.21 | MIT |
-| inline-style-parser | 0.2.7 | MIT |
+| i18next | 26.7.2 | MIT |
+| i18next-browser-languagedetector | 8.3.0 | MIT |
+| immer | 11.2.9 | MIT |
+| inline-style-parser | 0.2.9 | MIT |
 | internmap | 2.0.3 | ISC |
 | is-alphabetical | 2.0.1 | MIT |
 | is-alphanumerical | 2.0.1 | MIT |
@@ -231,22 +231,22 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | is-hexadecimal | 2.0.1 | MIT |
 | is-plain-obj | 4.1.0 | MIT |
 | longest-streak | 3.1.0 | MIT |
-| lucide-react | 1.59.0 | ISC |
-| markdown-table | 3.0.4 | MIT |
-| mdast-util-find-and-replace | 3.0.3 | MIT |
+| lucide-react | 1.70.0 | ISC |
+| markdown-table | 3.1.0 | MIT |
+| mdast-util-find-and-replace | 3.0.4 | MIT |
 | mdast-util-from-markdown | 2.1.0 | MIT |
 | mdast-util-gfm | 3.1.0 | MIT |
-| mdast-util-gfm-autolink-literal | 2.0.1 | MIT |
+| mdast-util-gfm-autolink-literal | 2.1.0 | MIT |
 | mdast-util-gfm-footnote | 2.1.0 | MIT |
 | mdast-util-gfm-strikethrough | 2.0.1 | MIT |
-| mdast-util-gfm-table | 2.0.0 | MIT |
-| mdast-util-gfm-task-list-item | 2.0.0 | MIT |
+| mdast-util-gfm-table | 2.0.1 | MIT |
+| mdast-util-gfm-task-list-item | 2.0.1 | MIT |
 | mdast-util-mdx-expression | 2.0.1 | MIT |
-| mdast-util-mdx-jsx | 3.2.0 | MIT |
+| mdast-util-mdx-jsx | 3.2.1 | MIT |
 | mdast-util-mdxjs-esm | 2.0.1 | MIT |
 | mdast-util-phrasing | 4.1.0 | MIT |
 | mdast-util-to-hast | 13.2.1 | MIT |
-| mdast-util-to-markdown | 2.2.0 | MIT |
+| mdast-util-to-markdown | 2.2.3 | MIT |
 | mdast-util-to-string | 4.0.0 | MIT |
 | micromark | 4.0.3 | MIT |
 | micromark-core-commonmark | 2.0.4 | MIT |
@@ -283,10 +283,10 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | property-information | 7.2.0 | MIT |
 | react | 19.3.1 | MIT |
 | react-dom | 19.3.1 | MIT |
-| react-hook-form | 7.90.0 | MIT |
-| react-i18next | 17.1.0 | MIT |
+| react-hook-form | 7.91.0 | MIT |
+| react-i18next | 17.1.13 | MIT |
 | react-markdown | 10.1.0 | MIT |
-| react-redux | 9.3.0 | MIT |
+| react-redux | 9.3.1 | MIT |
 | react-remove-scroll | 2.7.2 | MIT |
 | react-remove-scroll-bar | 2.3.8 | MIT |
 | react-style-singleton | 2.2.3 | MIT |
@@ -303,25 +303,24 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | sonner | 2.0.8 | MIT |
 | space-separated-tokens | 2.0.2 | MIT |
 | stringify-entities | 4.0.4 | MIT |
-| style-to-js | 1.1.21 | MIT |
-| style-to-object | 1.0.14 | MIT |
+| style-to-object | 2.0.2 | MIT |
 | tailwind-merge | 3.7.0 | MIT |
 | tiny-invariant | 1.3.3 | MIT |
 | trim-lines | 3.0.1 | MIT |
 | trough | 2.2.0 | MIT |
-| tslib | 2.8.1 | 0BSD |
+| tslib | 2.9.1 | 0BSD |
 | unified | 11.0.5 | MIT |
 | unist-util-is | 6.0.1 | MIT |
 | unist-util-position | 5.0.0 | MIT |
 | unist-util-stringify-position | 4.0.0 | MIT |
-| unist-util-visit | 5.1.0 | MIT |
-| unist-util-visit-parents | 6.0.2 | MIT |
+| unist-util-visit | 5.2.0 | MIT |
+| unist-util-visit-parents | 6.1.0 | MIT |
 | use-callback-ref | 1.3.3 | MIT |
 | use-sidecar | 1.1.3 | MIT |
 | use-sync-external-store | 1.7.0 | MIT |
 | vfile | 6.0.3 | MIT |
 | vfile-message | 4.0.3 | MIT |
-| victory-vendor | 37.3.6 | MIT AND ISC |
+| victory-vendor | 37.4.1 | MIT AND ISC AND BSD-3-Clause |
 | wouter | 3.13.0 | Unlicense |
 | zod | 4.6.7 | MIT |
 | zwitch | 2.0.4 | MIT |
@@ -332,7 +331,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | --- | --- | --- |
 | adler2 | 2.0.1 | 0BSD OR MIT OR Apache-2.0 |
 | aead | 0.6.1 | MIT OR Apache-2.0 |
-| aes | 0.9.3 | MIT OR Apache-2.0 |
+| aes | 0.9.4 | MIT OR Apache-2.0 |
 | aes-gcm | 0.11.1 | Apache-2.0 OR MIT |
 | aho-corasick | 1.1.5 | Unlicense OR MIT |
 | aligned | 0.4.3 | MIT OR Apache-2.0 |
@@ -349,9 +348,9 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | as-slice | 0.2.1 | MIT OR Apache-2.0 |
 | async-broadcast | 0.7.2 | MIT OR Apache-2.0 |
 | async-channel | 2.5.0 | Apache-2.0 OR MIT |
-| async-executor | 1.14.0 | Apache-2.0 OR MIT |
+| async-executor | 1.14.1 | Apache-2.0 OR MIT |
 | async-io | 2.6.0 | Apache-2.0 OR MIT |
-| async-lock | 3.4.2 | Apache-2.0 OR MIT |
+| async-lock | 3.5.0 | Apache-2.0 OR MIT |
 | async-process | 2.5.0 | Apache-2.0 OR MIT |
 | async-recursion | 1.2.0 | MIT OR Apache-2.0 |
 | async-signal | 0.2.14 | Apache-2.0 OR MIT |
@@ -364,12 +363,11 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | av-scenechange | 0.14.1 | MIT |
 | av1-grain | 0.2.5 | BSD-2-Clause |
 | avif-serialize | 0.8.9 | BSD-3-Clause |
-| aws-lc-rs | 1.18.2 | ISC AND (Apache-2.0 OR ISC) |
-| aws-lc-sys | 0.46.0 | ISC AND (Apache-2.0 OR ISC) AND Apache-2.0 AND MIT AND BSD-3-Clause AND (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0) |
+| aws-lc-rs | 1.19.0 | ISC AND (Apache-2.0 OR ISC) |
+| aws-lc-sys | 0.47.0 | ISC AND (Apache-2.0 OR ISC) AND Apache-2.0 AND MIT AND BSD-3-Clause AND (Apache-2.0 OR ISC OR MIT) AND (Apache-2.0 OR ISC OR MIT-0) |
 | axum | 0.8.9 | MIT |
 | axum-core | 0.5.6 | MIT |
 | base64 | 0.21.7 | MIT OR Apache-2.0 |
-| base64 | 0.22.1 | MIT OR Apache-2.0 |
 | base64 | 0.23.1 | MIT OR Apache-2.0 |
 | bit_field | 0.10.3 | Apache-2.0 OR MIT |
 | bit-set | 0.8.0 | Apache-2.0 OR MIT |
@@ -381,8 +379,8 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | block-buffer | 0.12.1 | MIT OR Apache-2.0 |
 | block2 | 0.6.2 | MIT |
 | blocking | 1.7.0 | Apache-2.0 OR MIT |
-| brotli | 9.0.0 | BSD-3-Clause AND MIT |
-| brotli-decompressor | 6.0.1 | BSD-3-Clause OR MIT |
+| brotli | 9.1.1 | BSD-3-Clause AND MIT |
+| brotli-decompressor | 6.3.0 | BSD-3-Clause OR MIT |
 | bs58 | 0.5.1 | MIT OR Apache-2.0 |
 | built | 0.8.1 | MIT |
 | bumpalo | 3.20.3 | MIT OR Apache-2.0 |
@@ -396,7 +394,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | cargo_metadata | 0.19.2 | MIT |
 | cargo_toml | 1.0.1 | Apache-2.0 OR MIT |
 | cargo-platform | 0.1.9 | MIT OR Apache-2.0 |
-| cc | 1.8.0 | MIT OR Apache-2.0 |
+| cc | 1.11.1 | MIT OR Apache-2.0 |
 | cesu8 | 1.1.0 | Apache-2.0 OR MIT |
 | cfb | 0.14.0 | MIT |
 | cfg_aliases | 0.2.2 | MIT |
@@ -410,6 +408,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | color_quant | 1.1.0 | MIT |
 | combine | 4.6.9 | MIT |
 | concurrent-queue | 2.5.0 | Apache-2.0 OR MIT |
+| const-oid | 0.10.2 | Apache-2.0 OR MIT |
 | cookie | 0.18.2 | MIT OR Apache-2.0 |
 | cookie_store | 0.22.1 | MIT OR Apache-2.0 |
 | core_detect | 1.0.0 | MIT OR Apache-2.0 |
@@ -421,7 +420,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | cpubits | 0.1.1 | MIT OR Apache-2.0 |
 | cpufeatures | 0.2.17 | MIT OR Apache-2.0 |
 | cpufeatures | 0.3.1 | MIT OR Apache-2.0 |
-| crc32fast | 1.5.2 | MIT OR Apache-2.0 |
+| crc32fast | 1.5.4 | MIT OR Apache-2.0 |
 | crossbeam-channel | 0.5.17 | MIT OR Apache-2.0 |
 | crossbeam-deque | 0.8.8 | MIT OR Apache-2.0 |
 | crossbeam-epoch | 0.9.21 | MIT OR Apache-2.0 |
@@ -435,7 +434,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | csv-core | 0.1.13 | Unlicense OR MIT |
 | ctor | 1.0.13 | Apache-2.0 OR MIT |
 | ctr | 0.10.1 | MIT OR Apache-2.0 |
-| ctutils | 0.4.5 | Apache-2.0 OR MIT |
+| ctutils | 0.4.8 | Apache-2.0 OR MIT |
 | darling | 0.24.1 | MIT |
 | darling_core | 0.24.1 | MIT |
 | darling_macro | 0.24.1 | MIT |
@@ -444,7 +443,6 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | defmt-macros | 1.2.0 | MIT OR Apache-2.0 |
 | defmt-parser | 1.1.0 | MIT OR Apache-2.0 |
 | deranged | 0.5.9 | MIT OR Apache-2.0 |
-| derive_arbitrary | 1.5.0 | MIT OR Apache-2.0 |
 | derive_more | 2.1.1 | MIT |
 | derive_more-impl | 2.1.1 | MIT |
 | digest | 0.10.7 | MIT OR Apache-2.0 |
@@ -465,7 +463,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | either | 1.19.0 | MIT OR Apache-2.0 |
 | embed_plist | 1.2.2 | MIT OR Apache-2.0 |
 | embed-resource | 3.0.12 | MIT |
-| encoding_rs | 0.8.42 | (Apache-2.0 OR MIT) AND BSD-3-Clause |
+| encoding_rs | 0.8.44 | (Apache-2.0 OR MIT) AND BSD-3-Clause |
 | endi | 1.1.1 | MIT |
 | enumflags2 | 0.7.12 | MIT OR Apache-2.0 |
 | enumflags2_derive | 0.7.12 | MIT OR Apache-2.0 |
@@ -473,7 +471,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | equator | 0.4.2 | MIT |
 | equator-macro | 0.4.2 | MIT |
 | equivalent | 1.0.3 | Apache-2.0 OR MIT |
-| erased-serde | 0.4.10 | MIT OR Apache-2.0 |
+| erased-serde | 0.4.11 | MIT OR Apache-2.0 |
 | errno | 0.3.14 | MIT OR Apache-2.0 |
 | event-listener | 5.4.2 | Apache-2.0 OR MIT |
 | event-listener-strategy | 0.5.4 | Apache-2.0 OR MIT |
@@ -486,8 +484,8 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | fern | 0.7.1 | MIT |
 | field-offset | 0.3.6 | MIT OR Apache-2.0 |
 | filetime | 0.2.29 | MIT OR Apache-2.0 |
-| find-msvc-tools | 0.1.14 | MIT OR Apache-2.0 |
-| flate2 | 1.1.10 | MIT OR Apache-2.0 |
+| find-msvc-tools | 0.1.15 | MIT OR Apache-2.0 |
+| flate2 | 1.1.11 | MIT OR Apache-2.0 |
 | fnv | 1.0.7 | Apache-2.0 OR MIT |
 | foldhash | 0.2.0 | Zlib |
 | foreign-types | 0.5.0 | MIT OR Apache-2.0 |
@@ -552,14 +550,14 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | hyper-util | 0.1.21 | MIT |
 | iana-time-zone | 0.1.65 | MIT OR Apache-2.0 |
 | iana-time-zone-haiku | 0.1.2 | MIT OR Apache-2.0 |
-| ico | 0.5.0 | MIT |
-| icu_collections | 2.3.0 | Unicode-3.0 |
-| icu_locale_core | 2.3.0 | Unicode-3.0 |
-| icu_normalizer | 2.3.0 | Unicode-3.0 |
-| icu_normalizer_data | 2.3.0 | Unicode-3.0 |
-| icu_properties | 2.3.0 | Unicode-3.0 |
-| icu_properties_data | 2.3.0 | Unicode-3.0 |
-| icu_provider | 2.3.1 | Unicode-3.0 |
+| ico | 0.6.0 | MIT |
+| icu_collections | 2.4.0 | Unicode-3.0 |
+| icu_locale_core | 2.4.0 | Unicode-3.0 |
+| icu_normalizer | 2.4.0 | Unicode-3.0 |
+| icu_normalizer_data | 2.4.0 | Unicode-3.0 |
+| icu_properties | 2.4.0 | Unicode-3.0 |
+| icu_properties_data | 2.4.0 | Unicode-3.0 |
+| icu_provider | 2.4.0 | Unicode-3.0 |
 | ident_case | 1.0.1 | MIT OR Apache-2.0 |
 | idna | 1.1.0 | MIT OR Apache-2.0 |
 | idna_adapter | 1.2.2 | Apache-2.0 OR MIT |
@@ -570,7 +568,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | indexmap | 2.14.2 | Apache-2.0 OR MIT |
 | infer | 0.22.0 | MIT |
 | Inflector | 0.11.4 | BSD-2-Clause |
-| inout | 0.2.4 | MIT OR Apache-2.0 |
+| inout | 0.2.5 | MIT OR Apache-2.0 |
 | interpolate_name | 0.2.4 | MIT |
 | ipnet | 2.12.2 | MIT OR Apache-2.0 |
 | is-docker | 0.2.0 | MIT |
@@ -579,9 +577,9 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | itoa | 1.0.18 | MIT OR Apache-2.0 |
 | javascriptcore-rs | 1.1.2 | MIT |
 | javascriptcore-rs-sys | 1.1.1 | MIT |
-| jiff | 0.2.38 | Unlicense OR MIT |
-| jiff-core | 0.1.1 | Unlicense OR MIT |
-| jiff-static | 0.2.38 | Unlicense OR MIT |
+| jiff | 0.2.39 | Unlicense OR MIT |
+| jiff-core | 0.1.2 | Unlicense OR MIT |
+| jiff-static | 0.2.39 | Unlicense OR MIT |
 | jiff-tzdb | 0.1.9 | Unlicense OR MIT |
 | jiff-tzdb-platform | 0.1.3 | Unlicense OR MIT |
 | jni | 0.21.1 | MIT OR Apache-2.0 |
@@ -591,7 +589,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | jni-sys | 0.4.1 | MIT OR Apache-2.0 |
 | jni-sys-macros | 0.4.1 | MIT OR Apache-2.0 |
 | jobserver | 0.1.35 | MIT OR Apache-2.0 |
-| js-sys | 0.3.106 | MIT OR Apache-2.0 |
+| js-sys | 0.3.107 | MIT OR Apache-2.0 |
 | json-patch | 4.2.0 | MIT OR Apache-2.0 |
 | jsonptr | 0.7.1 | MIT OR Apache-2.0 |
 | keyboard-types | 0.8.3 | MIT OR Apache-2.0 |
@@ -610,7 +608,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | litemap | 0.8.3 | Unicode-3.0 |
 | litrs | 1.0.1 | MIT OR Apache-2.0 |
 | lock_api | 0.4.14 | MIT OR Apache-2.0 |
-| log | 0.4.34 | MIT OR Apache-2.0 |
+| log | 0.4.35 | MIT OR Apache-2.0 |
 | loop9 | 0.1.5 | MIT |
 | lru-slab | 0.1.3 | MIT OR Apache-2.0 OR Zlib |
 | mac-notification-sys | 0.6.15 | MIT OR Apache-2.0 |
@@ -619,7 +617,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | maybe-rayon | 0.1.1 | MIT |
 | memchr | 2.8.3 | Unlicense OR MIT |
 | memoffset | 0.9.1 | MIT |
-| mime | 0.3.17 | MIT OR Apache-2.0 |
+| mime | 0.3.18 | MIT OR Apache-2.0 |
 | minisign-verify | 0.3.0 | MIT |
 | miniz_oxide | 0.8.9 | MIT OR Zlib OR Apache-2.0 |
 | miniz_oxide | 0.9.1 | MIT OR Zlib OR Apache-2.0 |
@@ -665,8 +663,8 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | objc2-user-notifications | 0.3.2 | Zlib OR Apache-2.0 OR MIT |
 | objc2-web-kit | 0.3.2 | Zlib OR Apache-2.0 OR MIT |
 | once_cell | 1.21.4 | MIT OR Apache-2.0 |
-| open | 5.4.4 | MIT |
-| openssl-probe | 0.2.1 | MIT OR Apache-2.0 |
+| open | 5.4.5 | MIT |
+| openssl-probe | 0.2.2 | MIT OR Apache-2.0 |
 | option-ext | 0.2.0 | MPL-2.0 |
 | ordered-stream | 0.2.0 | MIT OR Apache-2.0 |
 | osakit | 0.3.1 | MIT OR Apache-2.0 |
@@ -688,8 +686,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | pin-project-lite | 0.2.17 | Apache-2.0 OR MIT |
 | piper | 0.2.5 | MIT OR Apache-2.0 |
 | pkg-config | 0.3.34 | MIT OR Apache-2.0 |
-| plist | 1.10.1 | MIT |
-| png | 0.17.16 | MIT OR Apache-2.0 |
+| plist | 1.10.3 | MIT |
 | png | 0.18.1 | MIT OR Apache-2.0 |
 | polling | 3.11.0 | Apache-2.0 OR MIT |
 | polyval | 0.7.3 | Apache-2.0 OR MIT |
@@ -742,16 +739,16 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | regex-automata | 0.4.18 | MIT OR Apache-2.0 |
 | regex-syntax | 0.8.11 | MIT OR Apache-2.0 |
 | reqwest | 0.13.5 | MIT OR Apache-2.0 |
-| rfd | 0.16.0 | MIT |
+| rfd | 0.17.2 | MIT |
 | rgb | 0.8.53 | MIT |
 | ring | 0.17.14 | Apache-2.0 AND ISC |
-| rmcp | 3.5.1 | Apache-2.0 |
-| rmcp-macros | 3.5.1 | Apache-2.0 |
+| rmcp | 3.9.0 | Apache-2.0 |
+| rmcp-macros | 3.9.0 | Apache-2.0 |
 | rsqlite-vfs | 0.1.1 | MIT |
 | rusqlite | 0.40.2 | MIT |
 | rustc_version | 0.4.1 | MIT OR Apache-2.0 |
 | rustc-hash | 2.1.3 | Apache-2.0 OR MIT |
-| rustix | 1.1.5 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
+| rustix | 1.1.6 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 | rustls | 0.23.46 | Apache-2.0 OR ISC OR MIT |
 | rustls-native-certs | 0.8.5 | Apache-2.0 OR ISC OR MIT |
 | rustls-pki-types | 1.15.1 | MIT OR Apache-2.0 |
@@ -783,7 +780,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | serde_path_to_error | 0.1.20 | MIT OR Apache-2.0 |
 | serde_repr | 0.1.21 | MIT OR Apache-2.0 |
 | serde_spanned | 0.6.9 | MIT OR Apache-2.0 |
-| serde_spanned | 1.1.2 | MIT OR Apache-2.0 |
+| serde_spanned | 1.1.3 | MIT OR Apache-2.0 |
 | serde_urlencoded | 0.7.1 | MIT OR Apache-2.0 |
 | serde_with | 3.24.0 | MIT OR Apache-2.0 |
 | serde_with_macros | 3.24.0 | MIT OR Apache-2.0 |
@@ -801,7 +798,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | simdutf8 | 0.1.5 | MIT OR Apache-2.0 |
 | siphasher | 1.0.4 | MIT OR Apache-2.0 |
 | slab | 0.4.12 | MIT |
-| smallvec | 1.16.3 | MIT OR Apache-2.0 |
+| smallvec | 1.16.4 | MIT OR Apache-2.0 |
 | socket2 | 0.6.5 | MIT OR Apache-2.0 |
 | softbuffer | 0.4.8 | MIT OR Apache-2.0 |
 | soup3 | 0.5.0 | MIT |
@@ -827,27 +824,27 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | system-configuration | 0.7.0 | MIT OR Apache-2.0 |
 | system-configuration-sys | 0.6.0 | MIT OR Apache-2.0 |
 | system-deps | 6.2.2 | MIT OR Apache-2.0 |
-| tao | 0.37.1 | Apache-2.0 |
+| tao | 0.37.2 | Apache-2.0 |
 | tao-macros | 0.1.4 | MIT OR Apache-2.0 |
 | tar | 0.4.46 | MIT OR Apache-2.0 |
 | target-lexicon | 0.12.16 | Apache-2.0 WITH LLVM-exception |
-| tauri | 2.12.4 | Apache-2.0 OR MIT |
-| tauri-build | 2.7.3 | Apache-2.0 OR MIT |
-| tauri-codegen | 2.7.3 | Apache-2.0 OR MIT |
-| tauri-macros | 2.7.3 | Apache-2.0 OR MIT |
+| tauri | 2.12.5 | Apache-2.0 OR MIT |
+| tauri-build | 2.7.4 | Apache-2.0 OR MIT |
+| tauri-codegen | 2.7.4 | Apache-2.0 OR MIT |
+| tauri-macros | 2.7.4 | Apache-2.0 OR MIT |
 | tauri-plugin | 2.7.2 | Apache-2.0 OR MIT |
-| tauri-plugin-dialog | 2.8.3 | Apache-2.0 OR MIT |
+| tauri-plugin-dialog | 2.8.4 | Apache-2.0 OR MIT |
 | tauri-plugin-fs | 2.7.1 | Apache-2.0 OR MIT |
 | tauri-plugin-haptics | 2.4.2 | Apache-2.0 OR MIT |
 | tauri-plugin-log | 2.10.1 | Apache-2.0 OR MIT |
-| tauri-plugin-notification | 2.7.0 | Apache-2.0 OR MIT |
+| tauri-plugin-notification | 2.8.0 | Apache-2.0 OR MIT |
 | tauri-plugin-opener | 2.7.2 | Apache-2.0 OR MIT |
 | tauri-plugin-process | 2.4.0 | Apache-2.0 OR MIT |
-| tauri-plugin-updater | 2.14.0 | Apache-2.0 OR MIT |
+| tauri-plugin-updater | 2.14.1 | Apache-2.0 OR MIT |
 | tauri-runtime | 2.12.2 | Apache-2.0 OR MIT |
-| tauri-runtime-wry | 2.12.2 | Apache-2.0 OR MIT |
+| tauri-runtime-wry | 2.12.3 | Apache-2.0 OR MIT |
 | tauri-utils | 2.10.2 | Apache-2.0 OR MIT |
-| tauri-winres | 0.3.6 | MIT |
+| tauri-winres | 0.3.7 | MIT |
 | tauri-winrt-notification | 0.8.1 | MIT OR Apache-2.0 |
 | tempfile | 3.27.0 | MIT OR Apache-2.0 |
 | tendril | 0.5.1 | MIT OR Apache-2.0 |
@@ -859,22 +856,22 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | time | 0.3.55 | MIT OR Apache-2.0 |
 | time-core | 0.1.9 | MIT OR Apache-2.0 |
 | time-macros | 0.2.32 | MIT OR Apache-2.0 |
-| tinystr | 0.8.4 | Unicode-3.0 |
+| tinystr | 0.8.5 | Unicode-3.0 |
 | tinyvec | 1.13.3 | Zlib OR Apache-2.0 OR MIT |
-| tokio | 1.53.3 | MIT |
+| tokio | 1.54.1 | MIT |
 | tokio-macros | 2.7.2 | MIT |
 | tokio-rustls | 0.26.6 | MIT OR Apache-2.0 |
 | tokio-stream | 0.1.19 | MIT |
 | tokio-util | 0.7.20 | MIT |
 | toml | 0.8.2 | MIT OR Apache-2.0 |
-| toml | 1.1.8+spec-1.1.0 | MIT OR Apache-2.0 |
+| toml | 1.2.1+spec-1.1.0 | MIT OR Apache-2.0 |
 | toml_datetime | 0.6.3 | MIT OR Apache-2.0 |
-| toml_datetime | 1.1.2+spec-1.1.0 | MIT OR Apache-2.0 |
+| toml_datetime | 1.1.3+spec-1.1.0 | MIT OR Apache-2.0 |
 | toml_edit | 0.19.15 | MIT OR Apache-2.0 |
 | toml_edit | 0.20.2 | MIT OR Apache-2.0 |
-| toml_edit | 0.25.17+spec-1.1.0 | MIT OR Apache-2.0 |
+| toml_edit | 0.25.19+spec-1.1.0 | MIT OR Apache-2.0 |
 | toml_parser | 1.1.5+spec-1.1.0 | MIT OR Apache-2.0 |
-| toml_writer | 1.1.3+spec-1.1.0 | MIT OR Apache-2.0 |
+| toml_writer | 1.2.0+spec-1.1.0 | MIT OR Apache-2.0 |
 | tower | 0.5.3 | MIT |
 | tower-http | 0.6.11 | MIT |
 | tower-layer | 0.3.3 | MIT |
@@ -884,7 +881,7 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | tracing-core | 0.1.36 | MIT |
 | tray-icon | 0.25.1 | MIT OR Apache-2.0 |
 | try-lock | 0.2.5 | MIT |
-| typed-path | 0.12.3 | MIT OR Apache-2.0 |
+| typed-path | 0.13.0 | MIT OR Apache-2.0 |
 | typeid | 1.0.3 | MIT OR Apache-2.0 |
 | typenum | 1.20.1 | MIT OR Apache-2.0 |
 | uds_windows | 1.2.1 | MIT |
@@ -896,8 +893,9 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | url | 2.5.8 | MIT OR Apache-2.0 |
 | urlencoding | 2.1.3 | MIT |
 | urlpattern | 0.6.0 | MIT |
-| utf8_iter | 1.0.4 | Apache-2.0 OR MIT |
-| uuid | 1.28.0 | Apache-2.0 OR MIT |
+| utf_types | 1.0.0 | Apache-2.0 OR MIT |
+| utf8_iter | 1.1.0 | Apache-2.0 OR MIT |
+| uuid | 1.29.0 | Apache-2.0 OR MIT |
 | v_frame | 0.3.9 | BSD-2-Clause |
 | vcpkg | 0.2.15 | MIT OR Apache-2.0 |
 | version_check | 0.9.5 | MIT OR Apache-2.0 |
@@ -908,14 +906,14 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | want | 0.3.2 | MIT |
 | wasi | 0.11.1+wasi-snapshot-preview1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 | wasip2 | 1.0.4+wasi-0.2.12 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
-| wasm-bindgen | 0.2.129 | MIT OR Apache-2.0 |
-| wasm-bindgen-futures | 0.4.79 | MIT OR Apache-2.0 |
-| wasm-bindgen-macro | 0.2.129 | MIT OR Apache-2.0 |
-| wasm-bindgen-macro-support | 0.2.129 | MIT OR Apache-2.0 |
-| wasm-bindgen-shared | 0.2.129 | MIT OR Apache-2.0 |
+| wasm-bindgen | 0.2.130 | MIT OR Apache-2.0 |
+| wasm-bindgen-futures | 0.4.80 | MIT OR Apache-2.0 |
+| wasm-bindgen-macro | 0.2.130 | MIT OR Apache-2.0 |
+| wasm-bindgen-macro-support | 0.2.130 | MIT OR Apache-2.0 |
+| wasm-bindgen-shared | 0.2.130 | MIT OR Apache-2.0 |
 | wasm-streams | 0.5.0 | MIT OR Apache-2.0 |
 | web_atoms | 0.2.6 | MIT OR Apache-2.0 |
-| web-sys | 0.3.106 | MIT OR Apache-2.0 |
+| web-sys | 0.3.107 | MIT OR Apache-2.0 |
 | web-time | 1.1.0 | MIT OR Apache-2.0 |
 | webkit2gtk | 2.0.2 | MIT |
 | webkit2gtk-sys | 2.0.2 | MIT |
@@ -932,27 +930,19 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | windows | 0.62.2 | MIT OR Apache-2.0 |
 | windows_aarch64_gnullvm | 0.42.2 | MIT OR Apache-2.0 |
 | windows_aarch64_gnullvm | 0.52.6 | MIT OR Apache-2.0 |
-| windows_aarch64_gnullvm | 0.53.1 | MIT OR Apache-2.0 |
 | windows_aarch64_msvc | 0.42.2 | MIT OR Apache-2.0 |
 | windows_aarch64_msvc | 0.52.6 | MIT OR Apache-2.0 |
-| windows_aarch64_msvc | 0.53.1 | MIT OR Apache-2.0 |
 | windows_i686_gnu | 0.42.2 | MIT OR Apache-2.0 |
 | windows_i686_gnu | 0.52.6 | MIT OR Apache-2.0 |
-| windows_i686_gnu | 0.53.1 | MIT OR Apache-2.0 |
 | windows_i686_gnullvm | 0.52.6 | MIT OR Apache-2.0 |
-| windows_i686_gnullvm | 0.53.1 | MIT OR Apache-2.0 |
 | windows_i686_msvc | 0.42.2 | MIT OR Apache-2.0 |
 | windows_i686_msvc | 0.52.6 | MIT OR Apache-2.0 |
-| windows_i686_msvc | 0.53.1 | MIT OR Apache-2.0 |
 | windows_x86_64_gnu | 0.42.2 | MIT OR Apache-2.0 |
 | windows_x86_64_gnu | 0.52.6 | MIT OR Apache-2.0 |
-| windows_x86_64_gnu | 0.53.1 | MIT OR Apache-2.0 |
 | windows_x86_64_gnullvm | 0.42.2 | MIT OR Apache-2.0 |
 | windows_x86_64_gnullvm | 0.52.6 | MIT OR Apache-2.0 |
-| windows_x86_64_gnullvm | 0.53.1 | MIT OR Apache-2.0 |
 | windows_x86_64_msvc | 0.42.2 | MIT OR Apache-2.0 |
 | windows_x86_64_msvc | 0.52.6 | MIT OR Apache-2.0 |
-| windows_x86_64_msvc | 0.53.1 | MIT OR Apache-2.0 |
 | windows-collections | 0.3.2 | MIT OR Apache-2.0 |
 | windows-core | 0.62.2 | MIT OR Apache-2.0 |
 | windows-future | 0.3.2 | MIT OR Apache-2.0 |
@@ -965,40 +955,37 @@ Entries without a declared licence, or where no alternative is a plainly permiss
 | windows-strings | 0.5.1 | MIT OR Apache-2.0 |
 | windows-sys | 0.45.0 | MIT OR Apache-2.0 |
 | windows-sys | 0.52.0 | MIT OR Apache-2.0 |
-| windows-sys | 0.60.2 | MIT OR Apache-2.0 |
 | windows-sys | 0.61.2 | MIT OR Apache-2.0 |
 | windows-targets | 0.42.2 | MIT OR Apache-2.0 |
 | windows-targets | 0.52.6 | MIT OR Apache-2.0 |
-| windows-targets | 0.53.5 | MIT OR Apache-2.0 |
 | windows-threading | 0.2.1 | MIT OR Apache-2.0 |
 | windows-version | 0.1.7 | MIT OR Apache-2.0 |
 | winnow | 0.5.40 | MIT |
-| winnow | 1.0.4 | MIT |
+| winnow | 1.0.5 | MIT |
 | winreg | 0.56.0 | MIT |
 | wit-bindgen | 0.57.1 | Apache-2.0 WITH LLVM-exception OR Apache-2.0 OR MIT |
 | writeable | 0.6.4 | Unicode-3.0 |
-| wry | 0.57.0 | Apache-2.0 OR MIT |
+| wry | 0.57.1 | Apache-2.0 OR MIT |
 | x11 | 2.21.0 | MIT |
 | x11-dl | 2.21.0 | MIT |
-| xattr | 1.6.1 | MIT OR Apache-2.0 |
+| xattr | 1.7.0 | MIT OR Apache-2.0 |
 | y4m | 0.8.0 | MIT |
 | yahoo_finance_api | 5.0.0 | MIT OR Apache-2.0 |
-| yoke | 0.8.3 | Unicode-3.0 |
+| yoke | 0.8.4 | Unicode-3.0 |
 | yoke-derive | 0.8.4 | Unicode-3.0 |
 | zbus | 5.19.0 | MIT |
 | zbus_macros | 5.19.0 | MIT |
 | zbus_names | 4.3.5 | MIT |
-| zcheapstr | 1.1.0 | MIT |
+| zcheapstr | 1.2.0 | MIT |
 | zerocopy | 0.8.63 | BSD-2-Clause OR Apache-2.0 OR MIT |
 | zerocopy-derive | 0.8.63 | BSD-2-Clause OR Apache-2.0 OR MIT |
 | zerofrom | 0.1.8 | Unicode-3.0 |
 | zerofrom-derive | 0.1.8 | Unicode-3.0 |
 | zeroize | 1.9.1 | Apache-2.0 OR MIT |
 | zerotrie | 0.2.5 | Unicode-3.0 |
-| zerovec | 0.11.8 | Unicode-3.0 |
-| zerovec-derive | 0.11.6 | Unicode-3.0 |
-| zip | 4.6.1 | MIT |
-| zip | 9.0.5 | MIT |
+| zerovec | 0.11.9 | Unicode-3.0 |
+| zerovec-derive | 0.11.7 | Unicode-3.0 |
+| zip | 9.4.1 | MIT |
 | zlib-rs | 0.6.8 | Zlib |
 | zmij | 1.0.23 | MIT |
 | zune-core | 0.5.3 | MIT OR Apache-2.0 OR Zlib |

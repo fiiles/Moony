@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Redirect, Route, Router, Switch, useLocation } from 'wouter';
+import { Redirect, Route, Router, Switch, useLocation, useSearch } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 import { useAuth } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/lib/protected-route';
@@ -14,7 +14,6 @@ import Budgets from '@/mobile/pages/Budgets';
 import Cashflow from '@/mobile/pages/Cashflow';
 import CashflowCategory from '@/mobile/pages/CashflowCategory';
 import PlanDetail from '@/mobile/pages/PlanDetail';
-import Plans from '@/mobile/pages/Plans';
 import Crypto from '@/mobile/pages/Crypto';
 import CryptoDetail from '@/mobile/pages/CryptoDetail';
 import Finance from '@/mobile/pages/Finance';
@@ -34,7 +33,7 @@ import Stocks from '@/mobile/pages/Stocks';
 import Wealth from '@/mobile/pages/Wealth';
 import WatchDetail from '@/mobile/pages/WatchDetail';
 import { EnableBiometricsSheet } from '@/mobile/sheets/EnableBiometricsSheet';
-import { routes, tabForPath } from './routes';
+import { plansPath, routes, tabForPath } from './routes';
 import { TabBar } from './TabBar';
 
 /** Plans the local notifications (spec §8.9) and draws nothing. */
@@ -47,6 +46,14 @@ function NotificationScheduler() {
  * Every screen of the shell. Drawn twice while a swipe goes back: as the page, and under it, at
  * the screen the swipe goes back to (`MobileShell`'s underlay, routed by a static location).
  */
+/** The old plans list path: its year moves to the plans view of the Cashflow root. */
+function PlansRedirect() {
+  const search = useSearch();
+  const year = new URLSearchParams(search).get('year');
+  const parsed = year === null ? NaN : Number(year);
+  return <Redirect to={plansPath(Number.isInteger(parsed) ? parsed : undefined)} replace />;
+}
+
 function Routes() {
   return (
     <Switch>
@@ -63,8 +70,8 @@ function Routes() {
       <ProtectedRoute path={routes.cashflow} component={Cashflow} />
       <ProtectedRoute path={routes.cashflowCategory} component={CashflowCategory} />
       <ProtectedRoute path={routes.budgets} component={Budgets} />
-      {/* Výdajové plány: the year's list and one plan, pushed on Cashflow. */}
-      <ProtectedRoute path={routes.plans} component={Plans} />
+      {/* Výdajové plány: the list is a view of the Cashflow root, a plan is pushed on it. */}
+      <ProtectedRoute path={routes.plans} component={PlansRedirect} />
       <ProtectedRoute path={routes.planDetail} component={PlanDetail} />
       <ProtectedRoute path={routes.wealth} component={Wealth} />
       {/* Pushed on Majetek: the Akcie class page and a position of it. */}

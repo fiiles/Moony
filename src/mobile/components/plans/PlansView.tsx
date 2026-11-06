@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useLocation, useSearch } from 'wouter';
+import { useLocation } from 'wouter';
 import { ClipboardList, Copy, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import type { SpendingPlan } from '@shared/schema';
-import { planRow, yearFromSearch, type PlanRow } from '@/utils/spending-plans';
+import { planRow, type PlanRow } from '@/utils/spending-plans';
 import { useSpendingPlanMutations } from '@/hooks/use-spending-plan-mutations';
 import { useSpendingPlansOverview } from '@/hooks/use-spending-plans';
 import { useFormat } from '@/lib/use-format';
@@ -22,15 +22,14 @@ import {
 } from '@/mobile/components/Scaled';
 import { SearchField } from '@/mobile/components/SearchField';
 import { SectionHead } from '@/mobile/components/SectionHead';
-import { useBack } from '@/mobile/hooks/use-back';
 import {
   plansCardSummary,
   planListSections,
   SEARCH_FROM,
   takeOverInserts,
 } from '@/mobile/lib/plan-rows';
-import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
-import { planPath, plansPath, routes } from '@/mobile/shell/routes';
+import { NavIconButton } from '@/mobile/shell/NavBar';
+import { planPath } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { PlanFormSheet } from '@/mobile/sheets/PlanFormSheet';
@@ -38,23 +37,31 @@ import { PlanFormSheet } from '@/mobile/sheets/PlanFormSheet';
 const NEW_PLAN_BUTTON =
   'h-auto min-h-12 whitespace-normal rounded-[10px] px-5 py-2 text-center text-m-row';
 
+interface PlansViewProps {
+  /** The year shown (`?year=`, the current one by default). */
+  year: number;
+  /** A step of the year bar; the owner writes it to the URL. */
+  onYearChange: (year: number) => void;
+  /** The Cashflow | Výdajové plány switch, drawn under the large title. */
+  switcher: ReactNode;
+  leading?: ReactNode;
+}
+
 /**
- * Výdajové plány (spec M4–M7, pushed on the Cashflow tab): a year's plans — the hero with what is
- * left in the active plans and the year's spend, then the active plans in the risk order and the
- * closed ones dimmed below. `+` adds a plan (its detail opens), a long press on a row opens its
- * menu. An empty year offers the take-over of last year's open plans and "Nový plán". The year
- * lives in `?year=`, so the way back from a plan returns to it.
+ * Výdajové plány (spec M4–M7) as the second view of the Cashflow tab root: a year's plans — the
+ * hero with what is left in the active plans and the year's spend, then the active plans in the
+ * risk order and the closed ones dimmed below. `+` adds a plan (its detail opens), a long press on
+ * a row opens its menu. An empty year offers the take-over of last year's open plans and "Nový
+ * plán". It draws the whole screen (nav bar, switch, sheets); the year lives in the URL, so the
+ * way back from a plan returns to it.
  */
-export default function Plans() {
+export function PlansView({ year, onYearChange, switcher, leading }: PlansViewProps) {
   const { t } = useTranslation('mobile');
   const { t: tp } = useTranslation('spending_plans');
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const [, setLocation] = useLocation();
-  const search = useSearch();
-  const back = useBack(routes.cashflow);
   const currentYear = new Date().getFullYear();
-  const year = yearFromSearch(search, currentYear);
   const { data, isLoading, isError, refetch } = useSpendingPlansOverview(year);
   const { setClosed, deletePlan, createPlans } = useSpendingPlanMutations();
   const [query, setQuery] = useState('');
@@ -94,7 +101,7 @@ export default function Plans() {
 
   const setYear = (next: number) => {
     setQuery('');
-    setLocation(plansPath(next), { replace: true });
+    onYearChange(next);
   };
   const newPlan = () => {
     setFormPlan(null);
@@ -223,14 +230,16 @@ export default function Plans() {
 
   return (
     <Screen
-      title={tp('title')}
-      leading={<NavTextButton chevron label={t('tabs.cashflow')} onClick={back} />}
+      title={t('tabs.cashflow')}
+      large
+      leading={leading}
       trailing={
         <NavIconButton aria-label={tp('actions.newPlan')} onClick={newPlan}>
           <Plus strokeWidth={1.75} aria-hidden />
         </NavIconButton>
       }
     >
+      {switcher}
       <YearBar year={year} minYear={minYear} maxYear={maxYear} onStep={setYear} />
       {body}
       <PlanFormSheet

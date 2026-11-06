@@ -230,11 +230,6 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
       title={t('tabs.cashflow')}
       large
       leading={<LockButton />}
-      subtitle={
-        actuals && actuals.accountCount > 0
-          ? t('cashflow.subtitle', { count: actuals.accountCount })
-          : undefined
-      }
       trailing={
         <CashflowMenu
           accountsLabel={tr('readiness.accounts', {
@@ -248,6 +243,12 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
       }
     >
       {switcher}
+      {/* Under the switch, not in the title block: the switch keeps its place in both views */}
+      {actuals && actuals.accountCount > 0 && (
+        <p className="mx-0.5 mb-3.5 mt-0 text-m-lead text-ink-3">
+          {t('cashflow.subtitle', { count: actuals.accountCount })}
+        </p>
+      )}
       <PeriodBar
         timeframe={state.timeframe}
         offset={state.offset}

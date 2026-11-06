@@ -1,9 +1,10 @@
 //! Device sync engine (phase 1): the registry, the hybrid logical clock, `sync_state` and the
-//! trigger capture installed at unlock.
+//! trigger capture installed at unlock, and the journal that turns the outbox into changesets.
 
 pub mod capture;
 pub mod changeset;
 pub mod hlc;
+pub mod journal;
 pub mod natural_id;
 pub mod registry;
 pub mod state;

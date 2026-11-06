@@ -210,7 +210,12 @@ delete the draft under *Releases*, then the tag
    ```
 6. Click **Publish release**. Only a published, non-pre-release release is served by
    `…/releases/latest/download/latest.json`.
-7. Once an older version exists, install it on a machine, open Moony, let it check for updates
+7. **Update the website right away** (every published release, never skipped): in the site
+   repository `fiiles/moony-site` run `npm run content:sync` (download links, changelog, privacy
+   and security snapshots of the newest release; it refuses a release that lacks an installer),
+   update the hand-written English and Czech copy for what the release added or changed, then
+   `npm test && npm run build`, commit and push. Cloudflare deploys moonyfinance.com from `main`.
+8. Once an older version exists, install it on a machine, open Moony, let it check for updates
    and run the update end to end (download, signature verification, restart).
 
 ## Code signing and notarization

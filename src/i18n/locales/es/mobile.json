@@ -384,7 +384,9 @@
     },
     "status": "Estado",
     "booked": "Contabilizado",
-    "currency": "Moneda"
+    "currency": "Moneda",
+    "plan": "Plan de gastos",
+    "noPlan": "Sin plan"
   },
   "picker": {
     "title": "Categoría",
@@ -891,6 +893,41 @@
       "title": "Notificación de prueba",
       "body": "Así se ve un recordatorio de Moony.",
       "sent": "Llegará en 10 segundos"
+    }
+  },
+  "plans": {
+    "card": {
+      "title": "Planes de gasto {{year}}",
+      "over_one": "{{count}} por encima del plan",
+      "over_many": "{{count}} por encima del plan",
+      "over_other": "{{count}} por encima del plan",
+      "near_one": "{{count}} cerca del plan",
+      "near_many": "{{count}} cerca del plan",
+      "near_other": "{{count}} cerca del plan"
+    },
+    "spent": "Gastado {{spent}} de {{planned}} en {{year}}",
+    "row": {
+      "spent": "Gastado {{spent}} de {{planned}}",
+      "left": "quedan {{amount}}",
+      "over": "excedido en {{amount}}"
+    },
+    "takeOver": {
+      "title_one": "¿Traspasar {{count}} plan de {{year}}?",
+      "title_many": "¿Traspasar {{count}} planes de {{year}}?",
+      "title_other": "¿Traspasar {{count}} planes de {{year}}?",
+      "description": "Se copian el nombre, el importe, la moneda y el aspecto de cada plan abierto. Los pagos se quedan en los planes originales; los planes cerrados no se trasladan."
+    },
+    "sections": {
+      "active": "Planes activos",
+      "closed": "Cerrados"
+    },
+    "detail": {
+      "back": "Planes {{year}}",
+      "months": "Gasto por mes",
+      "paymentsEmpty": "Añade pagos desde el detalle de un pago (Plan de gasto) o en el ordenador."
+    },
+    "form": {
+      "newDescription": "Cuánto quieres gastar en un año en una sola cosa. Añades pagos al plan desde el detalle del pago."
     }
   }
 }

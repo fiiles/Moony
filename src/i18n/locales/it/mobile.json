@@ -384,7 +384,9 @@
     },
     "status": "Stato",
     "booked": "Contabilizzato",
-    "currency": "Valuta"
+    "currency": "Valuta",
+    "plan": "Piano di spesa",
+    "noPlan": "Nessun piano"
   },
   "picker": {
     "title": "Categoria",
@@ -891,6 +893,41 @@
       "title": "Notifica di prova",
       "body": "Ecco come appare un promemoria di Moony.",
       "sent": "Arriva tra 10 secondi"
+    }
+  },
+  "plans": {
+    "card": {
+      "title": "Piani di spesa {{year}}",
+      "over_one": "{{count}} oltre il piano",
+      "over_many": "{{count}} oltre il piano",
+      "over_other": "{{count}} oltre il piano",
+      "near_one": "{{count}} vicino al piano",
+      "near_many": "{{count}} vicino al piano",
+      "near_other": "{{count}} vicino al piano"
+    },
+    "spent": "Speso {{spent}} di {{planned}} per il {{year}}",
+    "row": {
+      "spent": "Speso {{spent}} di {{planned}}",
+      "left": "restano {{amount}}",
+      "over": "superato di {{amount}}"
+    },
+    "takeOver": {
+      "title_one": "Riprendere {{count}} piano dal {{year}}?",
+      "title_many": "Riprendere {{count}} piani dal {{year}}?",
+      "title_other": "Riprendere {{count}} piani dal {{year}}?",
+      "description": "Vengono copiati nome, importo, valuta e aspetto di ogni piano aperto. I pagamenti restano nei piani originali; i piani chiusi non vengono ripresi."
+    },
+    "sections": {
+      "active": "Piani attivi",
+      "closed": "Chiusi"
+    },
+    "detail": {
+      "back": "Piani {{year}}",
+      "months": "Spesa per mese",
+      "paymentsEmpty": "Aggiungi i pagamenti dal dettaglio di un pagamento (Piano di spesa) o dal computer."
+    },
+    "form": {
+      "newDescription": "Quanto vuoi spendere in un anno per una singola cosa. Aggiungi i pagamenti al piano dal dettaglio del pagamento."
     }
   }
 }

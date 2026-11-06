@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useLocation, useSearch } from 'wouter';
 import { ChevronLeft, ChevronRight, ClipboardList, Copy, Plus } from 'lucide-react';
 import type { SpendingPlan } from '@shared/schema';
-import { planRow, type PlanRow } from '@/utils/spending-plans';
+import { planRow, yearFromSearch, type PlanRow } from '@/utils/spending-plans';
 import { useSpendingPlansOverview } from '@/hooks/use-spending-plans';
 import { useSpendingPlanMutations } from '@/hooks/use-spending-plan-mutations';
 import { PageHead } from '@/components/shell/PageHead';
@@ -20,12 +20,6 @@ import { TakeOverDialog } from '@/components/spending-plans/TakeOverDialog';
 import { ReportError } from '@/components/reports/ReportQualityNote';
 
 type Modal = 'new' | 'edit' | 'delete' | 'takeOver' | null;
-
-/** The year in `?year=` (kept in the URL so the way back from a plan returns to it). */
-function yearFromSearch(search: string, fallback: number): number {
-  const value = Number(new URLSearchParams(search).get('year'));
-  return Number.isInteger(value) && value >= 2000 && value <= 2100 ? value : fallback;
-}
 
 /**
  * Výdajové plány (spec §9 "Overview page", prototype): a year's plans — how they are doing and

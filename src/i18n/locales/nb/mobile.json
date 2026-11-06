@@ -358,7 +358,9 @@
     },
     "status": "Status",
     "booked": "Bokført",
-    "currency": "Valuta"
+    "currency": "Valuta",
+    "plan": "Utgiftsplan",
+    "noPlan": "Ingen plan"
   },
   "picker": {
     "title": "Kategori",
@@ -847,6 +849,38 @@
       "title": "Testvarsel",
       "body": "Slik ser en påminnelse fra Moony ut.",
       "sent": "Kommer om 10 sekunder"
+    }
+  },
+  "plans": {
+    "card": {
+      "title": "Utgiftsplaner {{year}}",
+      "over_one": "{{count}} over planen",
+      "over_other": "{{count}} over planen",
+      "near_one": "{{count}} nær planen",
+      "near_other": "{{count}} nær planen"
+    },
+    "spent": "Brukt {{spent}} av {{planned}} for {{year}}",
+    "row": {
+      "spent": "Brukt {{spent}} av {{planned}}",
+      "left": "{{amount}} igjen",
+      "over": "overskredet med {{amount}}"
+    },
+    "takeOver": {
+      "title_one": "Overta {{count}} plan fra {{year}}?",
+      "title_other": "Overta {{count}} planer fra {{year}}?",
+      "description": "Navn, beløp, valuta og utseende for hver åpne plan kopieres. Betalingene blir værende i de opprinnelige planene; lukkede planer tas ikke med."
+    },
+    "sections": {
+      "active": "Aktive planer",
+      "closed": "Avsluttet"
+    },
+    "detail": {
+      "back": "Planer {{year}}",
+      "months": "Forbruk per måned",
+      "paymentsEmpty": "Legg til betalinger fra detaljene til en betaling (Utgiftsplan) eller på datamaskinen."
+    },
+    "form": {
+      "newDescription": "Hvor mye du vil bruke på én ting i løpet av et år. Du legger betalinger til i planen fra betalingsdetaljene."
     }
   }
 }

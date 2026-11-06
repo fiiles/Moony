@@ -23,7 +23,7 @@ interface CashflowMenuProps {
 }
 
 /**
- * The `···` of the Cashflow tab (spec §8.7): the account scope (Účty), Spravovat rozpočty, and,
+ * The `···` of the Cashflow tab (spec §8.7): the account scope (Účty), Spravovat rozpočty and,
  * under a separator, Export (the shown period's CSV to the Files picker, as the class pages'
  * `···` do). Items are 44 pt tall with an 18 pt icon (`RowMenuItem`); the trigger is the nav bar's
  * 44 pt icon button.

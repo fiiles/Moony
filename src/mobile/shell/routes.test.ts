@@ -8,6 +8,8 @@ import {
   isSettingsSection,
   loanPath,
   otherAssetPath,
+  planPath,
+  plansPath,
   policyPath,
   positionPath,
   propertyPath,
@@ -34,6 +36,8 @@ describe('tabForPath', () => {
     expect(tabForPath(policyPath('7f3a'))).toBe('finance');
     expect(tabForPath(routes.uncategorized)).toBe('finance');
     expect(tabForPath('/cashflow/budgets')).toBe('cashflow');
+    expect(tabForPath(routes.plans)).toBe('cashflow');
+    expect(tabForPath(planPath('p1'))).toBe('cashflow');
     expect(tabForPath('/cashflow/category/expense/cat_x')).toBe('cashflow');
   });
 
@@ -137,5 +141,18 @@ describe('settings sections', () => {
     expect(isSettingsSection('appearance')).toBe(false);
     expect(isSettingsSection('')).toBe(false);
     expect(isSettingsSection('Security')).toBe(false);
+  });
+});
+
+describe('spending plan paths', () => {
+  it('builds the plans view of the Cashflow root with an optional year', () => {
+    expect(plansPath()).toBe('/cashflow?view=plans');
+    expect(plansPath(2026)).toBe('/cashflow?view=plans&year=2026');
+    expect(routes.plans).toBe('/cashflow/plans');
+  });
+
+  it('builds the detail path from the id', () => {
+    expect(planPath('p1')).toBe('/cashflow/plans/p1');
+    expect(routes.planDetail).toBe('/cashflow/plans/:id');
   });
 });

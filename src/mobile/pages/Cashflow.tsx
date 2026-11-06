@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useSearch } from 'wouter';
 import { Landmark } from 'lucide-react';
 import type { BudgetGoal, CashflowActuals } from '@shared/schema';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
+import { useSpendingPlansOverview } from '@/hooks/use-spending-plans';
+import { yearFromSearch } from '@/utils/spending-plans';
 import type { MoneyOptions } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
@@ -15,12 +17,16 @@ import { CashflowBars } from '@/mobile/components/cashflow/CashflowBars';
 import { CashflowHero } from '@/mobile/components/cashflow/CashflowHero';
 import { CashflowMenu } from '@/mobile/components/cashflow/CashflowMenu';
 import { CategoryRow } from '@/mobile/components/cashflow/CategoryRow';
+import { PlansCard } from '@/mobile/components/plans/PlansCard';
+import { PlansView } from '@/mobile/components/plans/PlansView';
+import { UnderlineTabs } from '@/mobile/components/UnderlineTabs';
 import { ExpenseCategoryRow } from '@/mobile/components/cashflow/ExpenseCategoryRow';
 import { PeriodBar } from '@/mobile/components/cashflow/PeriodBar';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { StatRow } from '@/mobile/components/StatRow';
 import { useBudgetLimitSheet } from '@/mobile/hooks/use-budget-limit-sheet';
+import { useRemembered } from '@/mobile/hooks/use-remembered';
 import { useCsvExport } from '@/mobile/hooks/use-csv-export';
 import {
   useCashflowReport,
@@ -47,9 +53,11 @@ import {
   type CategoryRowModel,
 } from '@/mobile/lib/cashflow-rows';
 import { reportRowLimit } from '@/mobile/lib/budget-rows';
+import { cashflowViewSearch, viewFromSearch, type CashflowView } from '@/mobile/lib/cashflow-view';
+import { plansCardSummary } from '@/mobile/lib/plan-rows';
 import { CASHFLOW_EXPORT_FILE, cashflowCsv } from '@/mobile/lib/cashflow-export';
 import { afterHistorySettles } from '@/mobile/lib/history-settle';
-import { budgetsPath, cashflowCategoryPath, routes } from '@/mobile/shell/routes';
+import { budgetsPath, cashflowCategoryPath, plansPath, routes } from '@/mobile/shell/routes';
 import { LockButton } from '@/mobile/shell/LockButton';
 import { Screen } from '@/mobile/shell/Screen';
 import { BudgetLimitSheet, type LimitMode } from '@/mobile/sheets/BudgetLimitSheet';
@@ -75,6 +83,60 @@ const amount = (value: string | null): number => Number(value) || 0;
  */
 export default function Cashflow() {
   const { t } = useTranslation('mobile');
+  const { t: tp } = useTranslation('spending_plans');
+  const search = useSearch();
+  const [, setLocation] = useLocation();
+  const [remembered, setRemembered] = useRemembered<CashflowView>('cashflow.view', 'report');
+  const urlView = viewFromSearch(search);
+  // The URL decides; a visit that names no view (the tab tapped again) reopens the last one
+  const view = urlView ?? remembered;
+  const year = yearFromSearch(search, new Date().getFullYear());
+
+  useEffect(() => {
+    if (urlView) {
+      if (urlView !== remembered) setRemembered(urlView);
+    } else if (remembered === 'plans') {
+      // Writes the view into the URL, so a plan's detail and the way back return to it
+      setLocation(routes.cashflow + cashflowViewSearch(search, 'plans'), { replace: true });
+    }
+  }, [urlView, remembered, search, setRemembered, setLocation]);
+
+  const switchView = (next: CashflowView) => {
+    if (next === view) return;
+    setRemembered(next);
+    setLocation(routes.cashflow + cashflowViewSearch(search, next), { replace: true });
+  };
+  const switcher = (
+    <UnderlineTabs
+      value={view}
+      onChange={switchView}
+      label={t('tabs.cashflow')}
+      options={[
+        { value: 'report', label: t('tabs.cashflow') },
+        { value: 'plans', label: tp('title') },
+      ]}
+    />
+  );
+
+  return view === 'plans' ? (
+    <PlansView
+      year={year}
+      onYearChange={(next) =>
+        setLocation(routes.cashflow + cashflowViewSearch(search, 'plans', next), {
+          replace: true,
+        })
+      }
+      switcher={switcher}
+      leading={<LockButton />}
+    />
+  ) : (
+    <CashflowReportView switcher={switcher} />
+  );
+}
+
+/** The report view: the period bar and the report of the selected period. */
+function CashflowReportView({ switcher }: { switcher: ReactNode }) {
+  const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('reports');
   const fmt = useFormat();
   const { categories } = useCategories();
@@ -90,6 +152,13 @@ export default function Cashflow() {
   const limits = useBudgetLimitSheet(false);
   const { actuals } = report;
   const search = cashflowSearch(state);
+  // The plans card is about the current calendar year, whatever period the report shows (M3)
+  const planYear = new Date().getFullYear();
+  const { data: plansOverview } = useSpendingPlansOverview(planYear);
+  const plans = useMemo(
+    () => (plansOverview?.year === planYear ? plansCardSummary(plansOverview) : null),
+    [plansOverview, planYear]
+  );
   const rawSearch = useSearch();
 
   // A plain visit opens on the newest month with income or spending, not on an empty current one:
@@ -161,11 +230,6 @@ export default function Cashflow() {
       title={t('tabs.cashflow')}
       large
       leading={<LockButton />}
-      subtitle={
-        actuals && actuals.accountCount > 0
-          ? t('cashflow.subtitle', { count: actuals.accountCount })
-          : undefined
-      }
       trailing={
         <CashflowMenu
           accountsLabel={tr('readiness.accounts', {
@@ -178,6 +242,13 @@ export default function Cashflow() {
         />
       }
     >
+      {switcher}
+      {/* Under the switch, not in the title block: the switch keeps its place in both views */}
+      {actuals && actuals.accountCount > 0 && (
+        <p className="mx-0.5 mb-3.5 mt-0 text-m-lead text-ink-3">
+          {t('cashflow.subtitle', { count: actuals.accountCount })}
+        </p>
+      )}
       <PeriodBar
         timeframe={state.timeframe}
         offset={state.offset}
@@ -204,6 +275,7 @@ export default function Cashflow() {
             state={state}
             onSelectMonth={(month) => setState({ ...state, ...selectMonth(month) })}
             search={search}
+            plansCard={plans && <PlansCard summary={plans} href={plansPath(plans.year)} />}
             goals={limits.history}
             onLimit={limits.openLimit}
           />
@@ -230,6 +302,8 @@ interface ReportBodyProps {
   state: CashflowState;
   onSelectMonth: (month: number) => void;
   search: string;
+  /** The spending plans card (the current year), when it has plans; after the bars and the note. */
+  plansCard: ReactNode;
   /** Every stored budget with its versions (the edit sheet starts from one). */
   goals: readonly BudgetGoal[];
   /** Open the limit sheet (an expense row's menu). */
@@ -243,6 +317,7 @@ function ReportBody({
   state,
   onSelectMonth,
   search,
+  plansCard,
   goals,
   onLimit,
 }: ReportBodyProps) {
@@ -301,6 +376,7 @@ function ReportBody({
     return (
       <>
         {bars.some((bar) => bar.income !== 0 || bar.expenses !== 0) && barsCard}
+        {plansCard}
         <ScaledEmptyState
           bare
           icon={<Landmark />}
@@ -392,6 +468,7 @@ function ReportBody({
       {state.timeframe === 'monthly' && counts && (
         <BudgetSummaryNote counts={counts} href={budgetsPath(search)} />
       )}
+      {plansCard}
       <section>
         <SectionHead title={tr('actuals.expenses.title')} note={money(totalExpenses)} />
         <EntityRows>{rows(expenseRows, true, true)}</EntityRows>

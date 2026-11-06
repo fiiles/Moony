@@ -33,7 +33,7 @@ export function TakeOverSheet({
       open={open}
       onOpenChange={onOpenChange}
       title={t('plans.takeOver.title', { count, year: fromYear })}
-      description={tp('takeOver.description')}
+      description={t('plans.takeOver.description')}
       footer={
         <>
           <Button

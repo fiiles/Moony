@@ -775,7 +775,8 @@
       "over": "{{amount}}超過"
     },
     "takeOver": {
-      "title_other": "{{year}}年のプラン{{count}}件を引き継ぎますか?"
+      "title_other": "{{year}}年のプラン{{count}}件を引き継ぎますか?",
+      "description": "開いているプランの名前・金額・通貨・見た目がコピーされます。支払いは元のプランに残り、終了したプランは引き継がれません。"
     },
     "sections": {
       "active": "進行中のプラン",

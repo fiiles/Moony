@@ -814,7 +814,8 @@
     },
     "takeOver": {
       "title_one": "Overta {{count}} plan fra {{year}}?",
-      "title_other": "Overta {{count}} planer fra {{year}}?"
+      "title_other": "Overta {{count}} planer fra {{year}}?",
+      "description": "Navn, beløp, valuta og utseende for hver åpne plan kopieres. Betalingene blir værende i de opprinnelige planene; lukkede planer tas ikke med."
     },
     "sections": {
       "active": "Aktive planer",

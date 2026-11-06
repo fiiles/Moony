@@ -814,7 +814,8 @@
     },
     "takeOver": {
       "title_one": "Take over {{count}} plan from {{year}}?",
-      "title_other": "Take over {{count}} plans from {{year}}?"
+      "title_other": "Take over {{count}} plans from {{year}}?",
+      "description": "Each open plan's name, amount, currency and look are copied. Payments stay in the original plans; closed plans are not taken over."
     },
     "sections": {
       "active": "Active plans",

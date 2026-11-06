@@ -853,7 +853,8 @@
     "takeOver": {
       "title_one": "Riprendere {{count}} piano dal {{year}}?",
       "title_many": "Riprendere {{count}} piani dal {{year}}?",
-      "title_other": "Riprendere {{count}} piani dal {{year}}?"
+      "title_other": "Riprendere {{count}} piani dal {{year}}?",
+      "description": "Vengono copiati nome, importo, valuta e aspetto di ogni piano aperto. I pagamenti restano nei piani originali; i piani chiusi non vengono ripresi."
     },
     "sections": {
       "active": "Piani attivi",

@@ -853,7 +853,8 @@
     "takeOver": {
       "title_one": "Převzít {{count}} plán z roku {{year}}?",
       "title_few": "Převzít {{count}} plány z roku {{year}}?",
-      "title_other": "Převzít {{count}} plánů z roku {{year}}?"
+      "title_other": "Převzít {{count}} plánů z roku {{year}}?",
+      "description": "Zkopíruje se název, částka, měna a vzhled každého otevřeného plánu. Platby zůstanou v původních plánech, uzavřené plány se nepřevezmou."
     },
     "sections": {
       "active": "Aktivní plány",

@@ -814,7 +814,8 @@
     },
     "takeOver": {
       "title_one": "{{count}} Plan aus {{year}} übernehmen?",
-      "title_other": "{{count}} Pläne aus {{year}} übernehmen?"
+      "title_other": "{{count}} Pläne aus {{year}} übernehmen?",
+      "description": "Name, Betrag, Währung und Aussehen jedes offenen Plans werden übernommen. Zahlungen bleiben in den ursprünglichen Plänen; geschlossene Pläne werden nicht übernommen."
     },
     "sections": {
       "active": "Aktive Pläne",

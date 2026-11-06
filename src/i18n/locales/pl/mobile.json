@@ -892,7 +892,8 @@
       "title_one": "Przenieść {{count}} plan z {{year}}?",
       "title_few": "Przenieść {{count}} plany z {{year}}?",
       "title_many": "Przenieść {{count}} planów z {{year}}?",
-      "title_other": "Przenieść {{count}} planu z {{year}}?"
+      "title_other": "Przenieść {{count}} planu z {{year}}?",
+      "description": "Kopiowane są nazwa, kwota, waluta i wygląd każdego otwartego planu. Płatności zostają w pierwotnych planach; zamknięte plany nie są przenoszone."
     },
     "sections": {
       "active": "Aktywne plany",

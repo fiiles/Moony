@@ -663,6 +663,10 @@
       "deleteSub": "po potvrzení napsáním slova",
       "tracking": "Co sledovat",
       "categories": "Kategorie",
+      "categoriesSub_one": "{{count}} kategorie",
+      "categoriesSub_few": "{{count}} kategorie",
+      "categoriesSub_many": "{{count}} kategorie",
+      "categoriesSub_other": "{{count}} kategorií",
       "categorization": "Kategorizace"
     },
     "version": "Moony {{version}} · {{privacy}}",

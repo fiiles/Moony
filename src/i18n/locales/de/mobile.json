@@ -628,6 +628,8 @@
       "deleteSub": "nach Eingabe eines Bestätigungsworts",
       "tracking": "Was verfolgen",
       "categories": "Kategorien",
+      "categoriesSub_one": "{{count}} Kategorie",
+      "categoriesSub_other": "{{count}} Kategorien",
       "categorization": "Kategorisierung"
     },
     "version": "Moony {{version}} · {{privacy}}",

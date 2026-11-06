@@ -9,6 +9,8 @@ interface SectionPageProps {
   title: string;
   /** The one sentence under the nav bar, saying what the page is for. */
   lead?: string;
+  /** The nav bar's trailing button (a page's `+`). */
+  trailing?: ReactNode;
   children?: ReactNode;
 }
 
@@ -16,7 +18,7 @@ interface SectionPageProps {
  * A page pushed on Nastavení (`/settings/:section`): the screen without the tab bar and a back
  * button to Nastavení, the lead as the first line of the body.
  */
-export function SectionPage({ title, lead, children }: SectionPageProps) {
+export function SectionPage({ title, lead, trailing, children }: SectionPageProps) {
   const { t: tc } = useTranslation('common');
   const back = useBack(routes.settings);
   // The page the push came from (another tab, a sheet: `backLabel`), else the parent
@@ -25,6 +27,7 @@ export function SectionPage({ title, lead, children }: SectionPageProps) {
     <Screen
       title={title}
       tabBar={false}
+      trailing={trailing}
       leading={<NavTextButton label={backText} onClick={back} chevron />}
     >
       {lead && <p className="mx-0.5 mb-3.5 mt-1 text-m-lead text-ink-3">{lead}</p>}

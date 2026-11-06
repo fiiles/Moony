@@ -698,6 +698,10 @@
       "deleteSub": "po wpisaniu słowa potwierdzenia",
       "tracking": "Co śledzić",
       "categories": "Kategorie",
+      "categoriesSub_one": "{{count}} kategoria",
+      "categoriesSub_few": "{{count}} kategorie",
+      "categoriesSub_many": "{{count}} kategorii",
+      "categoriesSub_other": "{{count}} kategorii",
       "categorization": "Kategoryzacja"
     },
     "version": "Moony {{version}} · {{privacy}}",

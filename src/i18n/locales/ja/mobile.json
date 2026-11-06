@@ -593,6 +593,7 @@
       "deleteSub": "確認の単語を入力して実行",
       "tracking": "追跡する項目",
       "categories": "カテゴリ",
+      "categoriesSub_other": "{{count}}件のカテゴリ",
       "categorization": "自動分類"
     },
     "version": "Moony {{version}} · {{privacy}}",

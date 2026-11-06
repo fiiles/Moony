@@ -593,6 +593,7 @@
       "deleteSub": "输入确认词后执行",
       "tracking": "跟踪内容",
       "categories": "类别",
+      "categoriesSub_other": "{{count}} 个类别",
       "categorization": "自动分类"
     },
     "version": "Moony {{version}} · {{privacy}}",

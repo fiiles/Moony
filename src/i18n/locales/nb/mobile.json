@@ -628,6 +628,8 @@
       "deleteSub": "etter at du har skrevet et bekreftelsesord",
       "tracking": "Hva skal følges",
       "categories": "Kategorier",
+      "categoriesSub_one": "{{count}} kategori",
+      "categoriesSub_other": "{{count}} kategorier",
       "categorization": "Kategorisering"
     },
     "version": "Moony {{version}} · {{privacy}}",

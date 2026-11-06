@@ -19,6 +19,7 @@ import {
   User,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { useCategories } from '@/hooks/use-categories';
 import { useMilestoneMutedKinds } from '@/hooks/use-milestones';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
 import { languageInfo } from '@/i18n/languages';
@@ -160,6 +161,8 @@ export default function Settings() {
       })
     : undefined;
 
+  const { categories } = useCategories();
+
   // "Vše", or the groups that are shown
   const areas = areasFromPreferences(user?.menuPreferences);
   const shownAreas = [
@@ -262,6 +265,11 @@ export default function Settings() {
         <SettingsRow
           icon={Tags}
           title={t('settings.rows.categories')}
+          sub={
+            categories.length > 0
+              ? t('settings.rows.categoriesSub', { count: categories.length })
+              : undefined
+          }
           href={settingsPath('categories')}
         />
         <SettingsRow

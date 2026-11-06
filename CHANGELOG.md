@@ -6,6 +6,43 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-06
+
+### Added
+
+- **Stock dividends.** Moony loads the dividends of your stocks from Yahoo Finance and counts each
+  payout as the dividend per share times the shares you held the day before its ex-date, gross
+  (before any withholding tax). A position's page lists its dividends with their source. You can
+  record a dividend by hand only for a ticker Yahoo Finance has no dividends for.
+- **Trading fees.** Buy, sell, add and edit forms have an optional fee, and the stock import maps
+  a fee column (and a fee currency column; Degiro and Trading 212 are pre-filled). A fee in
+  another currency is converted at the trade date.
+- **Explanations of both returns.** An info button next to the time-weighted and the
+  money-weighted return shows a short summary on hover and, on click, what the figure shows, how
+  it is computed and what to keep in mind.
+- **Your trades on the watched stock's chart.** On a Stock Monitor detail, the "Buys and sells"
+  chip draws each buy (▲) and sell (▽) of the position on the price line at its date, with
+  quantity, price and total in the tooltip.
+- **MCP:** a new `stock_dividends` tool lists the dividends of your positions, and
+  `investment_detail` includes the position's dividends.
+
+### Changed
+
+- **Stock performance follows the GIPS method.** The time-weighted return now counts positions
+  you have sold for the days you held them, values each trade at its own price plus fee instead of
+  the day's close, and includes gross dividends. Sold positions appear in the analysis with a
+  value of 0.
+- **The money-weighted return is an IRR.** It shows the rate for the chosen period, with the
+  yearly rate under it for a period longer than a year (the same way as the time-weighted return),
+  and the gap between the two compares the same basis.
+- **The change of value** on the analysis page gains a "dividends paid" line.
+- **Realized gain** of a stock position now includes the gross dividends it has received, in
+  the app and in the MCP tools.
+- **Quality notes** under the performance figures name tickers valued at trade prices (no
+  market price), tickers whose dividends are not loaded yet, and tickers with a trade priced more
+  than 50 % away from that day's close (often a price in pence recorded as pounds, or in the wrong
+  currency), which can distort the return.
+
 ## [1.2.0] - 2026-10-29
 
 ### Added
@@ -775,7 +812,8 @@ local tool). Everything below is new to the public.
 - The updater only offers versions higher than the installed one, so a machine running an
   older 1.x build from the previous private repository must install 0.9.0 by hand.
 
-[Unreleased]: https://github.com/fiiles/Moony/compare/v1.2.0...HEAD
+[Unreleased]: https://github.com/fiiles/Moony/compare/v1.3.0...HEAD
+[1.3.0]: https://github.com/fiiles/Moony/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/fiiles/Moony/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/fiiles/Moony/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/fiiles/Moony/compare/v0.13.0...v1.0.0

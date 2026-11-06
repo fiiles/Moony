@@ -321,6 +321,8 @@ pub enum LedgerEventKind {
 /// One loan event, already parsed. Money is in the loan currency.
 #[derive(Debug, Clone, PartialEq)]
 pub struct LedgerEvent {
+    /// Event id: the last tie-breaker of the walk order.
+    pub id: String,
     /// UTC day of the event.
     pub day: i64,
     /// Orders events that share a day (unix seconds).
@@ -383,10 +385,10 @@ impl LedgerState {
     }
 }
 
-/// Events by (day, created_at), the order the walk applies them in.
+/// Events by (day, created_at, id), the order the walk applies them in.
 fn ordered_events(ledger: &LoanLedger) -> Vec<&LedgerEvent> {
     let mut events: Vec<&LedgerEvent> = ledger.events.iter().collect();
-    events.sort_by_key(|event| (day_floor(event.day), event.created_at));
+    events.sort_by_key(|event| (day_floor(event.day), event.created_at, event.id.clone()));
     events
 }
 
@@ -912,6 +914,10 @@ mod tests {
 
     fn ledger_event_from_fixture(e: &Value) -> LedgerEvent {
         LedgerEvent {
+            id: e["id"].as_str().map_or_else(
+                || format!("{:020}", e["createdAt"].as_i64().unwrap()),
+                str::to_string,
+            ),
             day: day(e["day"].as_str().unwrap()),
             created_at: e["createdAt"].as_i64().unwrap(),
             kind: match e["kind"].as_str().unwrap() {
@@ -1018,6 +1024,7 @@ mod tests {
 
     fn event(day_iso: &str, created_at: i64, kind: LedgerEventKind) -> LedgerEvent {
         LedgerEvent {
+            id: format!("e{created_at}"),
             day: day(day_iso),
             created_at,
             kind,

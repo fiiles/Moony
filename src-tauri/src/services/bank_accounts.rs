@@ -571,7 +571,7 @@ pub fn set_transaction_flow(
 
 /// Mirror the newest dated record into `bank_accounts.balance` / `balance_as_of`;
 /// without any record the account goes back to `'0'` / unknown date.
-fn refresh_balance_columns(conn: &rusqlite::Connection, account_id: &str) -> Result<()> {
+pub fn refresh_balance_columns(conn: &rusqlite::Connection, account_id: &str) -> Result<()> {
     let newest: Option<(String, i64)> = conn
         .query_row(
             "SELECT amount, as_of FROM bank_balance_records

@@ -144,8 +144,6 @@ pub fn delete_goal_intervals(conn: &Connection, intervals: &[BudgetGoalInterval]
         interval.validate()?;
     }
     let now = chrono::Utc::now().timestamp();
-    let now_month = crate::services::reporting::month_start(now)
-        .ok_or_else(|| AppError::Validation("validation.effectiveMonthInvalid".into()))?;
     let tx = conn.unchecked_transaction()?;
     let mut selected = std::collections::HashSet::new();
     let mut affected = std::collections::HashSet::new();
@@ -176,20 +174,52 @@ pub fn delete_goal_intervals(conn: &Connection, intervals: &[BudgetGoalInterval]
     }
     for (category, timeframe) in affected {
         merge_equal_neighbours(&tx, category, timeframe)?;
-        let versions = goal_versions(&tx, category, timeframe)?;
-        if let Some(version) = displayed_version(&versions, now_month) {
-            tx.execute(
+        rebuild_goal_row(&tx, category, timeframe, now)?;
+    }
+    tx.commit()?;
+    Ok(())
+}
+
+/// Make the `budget_goals` row of a budget mirror its versions at `now`: it exists exactly
+/// when a version is displayed (in effect now, else the first scheduled one); it is created
+/// with a new id, updated to that version's amount and currency, or deleted.
+pub fn rebuild_goal_row(
+    conn: &Connection,
+    category_id: &str,
+    timeframe: &str,
+    now: i64,
+) -> Result<()> {
+    let now_month = crate::services::reporting::month_start(now)
+        .ok_or_else(|| AppError::Validation("validation.effectiveMonthInvalid".into()))?;
+    let versions = goal_versions(conn, category_id, timeframe)?;
+    match displayed_version(&versions, now_month) {
+        Some(version) => {
+            let updated = conn.execute(
                 "UPDATE budget_goals SET amount=?1, currency=?2, updated_at=?3 WHERE category_id=?4 AND timeframe=?5",
-                params![version.amount, version.currency, now, category, timeframe],
+                params![version.amount, version.currency, now, category_id, timeframe],
             )?;
-        } else {
-            tx.execute(
+            if updated == 0 {
+                conn.execute(
+                    "INSERT INTO budget_goals (id, category_id, timeframe, amount, currency, created_at, updated_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)",
+                    params![
+                        Uuid::new_v4().to_string(),
+                        category_id,
+                        timeframe,
+                        version.amount,
+                        version.currency,
+                        now
+                    ],
+                )?;
+            }
+        }
+        None => {
+            conn.execute(
                 "DELETE FROM budget_goals WHERE category_id=?1 AND timeframe=?2",
-                params![category, timeframe],
+                params![category_id, timeframe],
             )?;
         }
     }
-    tx.commit()?;
     Ok(())
 }
 
@@ -203,7 +233,7 @@ pub fn get_goals_by_timeframe(conn: &Connection, timeframe: &str) -> Result<Vec<
 
 /// Drop every version that repeats the limit before it (a removal with no
 /// limit before it included), so equal neighbours read as one interval.
-fn merge_equal_neighbours(conn: &Connection, category_id: &str, timeframe: &str) -> Result<()> {
+pub fn merge_equal_neighbours(conn: &Connection, category_id: &str, timeframe: &str) -> Result<()> {
     let mut before: Option<(f64, String)> = None;
     for version in goal_versions(conn, category_id, timeframe)? {
         let limit = match &version.amount {
@@ -345,10 +375,7 @@ pub fn upsert_goal_at(
         goal_row,
     )?;
     let result = with_versions(conn, base, now)?;
-    conn.execute(
-        "UPDATE budget_goals SET amount = ?1, currency = ?2, updated_at = ?3 WHERE id = ?4",
-        params![result.amount, result.currency, now, id],
-    )?;
+    rebuild_goal_row(conn, &data.category_id, &data.timeframe, now)?;
     let result = BudgetGoal {
         updated_at: now,
         ..result
@@ -2294,5 +2321,66 @@ mod tests {
         assert_eq!(report.total_income, "500.00");
         assert_eq!(report.total_expenses, "0.00");
         assert_eq!(report.net_balance, "500.00");
+    }
+
+    fn goal_row_count(conn: &Connection) -> i64 {
+        conn.query_row("SELECT COUNT(*) FROM budget_goals WHERE category_id='cat_groceries' AND timeframe='monthly'", [], |r| r.get(0)).unwrap()
+    }
+
+    #[test]
+    fn rebuild_goal_row_follows_the_displayed_version() {
+        const JAN: i64 = 1_704_067_200;
+        const FEB: i64 = 1_706_745_600;
+        const MAR: i64 = 1_709_251_200;
+        const APR: i64 = 1_711_929_600;
+        let conn = setup_test_db();
+        conn.execute_batch(&format!(
+            "INSERT INTO budget_goal_versions VALUES ('v1','cat_groceries','monthly',{JAN},'100','CZK',1);
+             INSERT INTO budget_goal_versions VALUES ('v2','cat_groceries','monthly',{MAR},NULL,'CZK',1);"
+        ))
+        .unwrap();
+        rebuild_goal_row(&conn, "cat_groceries", "monthly", FEB + 100).unwrap();
+        let row: (String, String) = conn
+            .query_row(
+                "SELECT amount, currency FROM budget_goals WHERE category_id='cat_groceries'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(row, ("100".to_string(), "CZK".to_string()));
+        conn.execute(
+            "UPDATE budget_goal_versions SET amount='150' WHERE id='v1'",
+            [],
+        )
+        .unwrap();
+        rebuild_goal_row(&conn, "cat_groceries", "monthly", FEB + 100).unwrap();
+        let amount: String = conn
+            .query_row(
+                "SELECT amount FROM budget_goals WHERE category_id='cat_groceries'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(amount, "150");
+        assert_eq!(goal_row_count(&conn), 1);
+        rebuild_goal_row(&conn, "cat_groceries", "monthly", APR + 100).unwrap();
+        assert_eq!(goal_row_count(&conn), 0);
+        // Only a scheduled future version: the row exists and shows it.
+        conn.execute("DELETE FROM budget_goal_versions", [])
+            .unwrap();
+        conn.execute(
+            "INSERT INTO budget_goal_versions VALUES ('v3','cat_groceries','monthly',?1,'70','EUR',1)",
+            [APR],
+        )
+        .unwrap();
+        rebuild_goal_row(&conn, "cat_groceries", "monthly", FEB + 100).unwrap();
+        let row: (String, String) = conn
+            .query_row(
+                "SELECT amount, currency FROM budget_goals WHERE category_id='cat_groceries'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(row, ("70".to_string(), "EUR".to_string()));
     }
 }

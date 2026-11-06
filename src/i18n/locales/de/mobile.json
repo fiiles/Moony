@@ -808,7 +808,7 @@
     "row": {
       "spent": "Ausgegeben {{spent}} von {{planned}}",
       "left": "noch {{amount}}",
-      "over": "um {{amount}} überzogen"
+      "over": "um {{amount}} überschritten"
     },
     "takeOver": {
       "title_one": "{{count}} Plan aus {{year}} übernehmen?",
@@ -817,6 +817,11 @@
     "sections": {
       "active": "Aktive Pläne",
       "closed": "Abgeschlossen"
+    },
+    "detail": {
+      "back": "Pläne {{year}}",
+      "months": "Ausgaben nach Monat",
+      "paymentsEmpty": "Zahlungen fügen Sie in den Details einer Zahlung (Ausgabenplan) oder am Computer hinzu."
     }
   }
 }

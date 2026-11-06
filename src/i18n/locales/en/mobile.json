@@ -808,7 +808,7 @@
     "row": {
       "spent": "Spent {{spent}} of {{planned}}",
       "left": "{{amount}} left",
-      "over": "over by {{amount}}"
+      "over": "overspent by {{amount}}"
     },
     "takeOver": {
       "title_one": "Take over {{count}} plan from {{year}}?",
@@ -817,6 +817,11 @@
     "sections": {
       "active": "Active plans",
       "closed": "Closed"
+    },
+    "detail": {
+      "back": "Plans {{year}}",
+      "months": "Spending by month",
+      "paymentsEmpty": "Add payments from a payment’s details (Spending plan) or on your computer."
     }
   }
 }

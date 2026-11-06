@@ -808,7 +808,7 @@
     "row": {
       "spent": "Brukt {{spent}} av {{planned}}",
       "left": "{{amount}} igjen",
-      "over": "over med {{amount}}"
+      "over": "overskredet med {{amount}}"
     },
     "takeOver": {
       "title_one": "Overta {{count}} plan fra {{year}}?",
@@ -817,6 +817,11 @@
     "sections": {
       "active": "Aktive planer",
       "closed": "Avsluttet"
+    },
+    "detail": {
+      "back": "Planer {{year}}",
+      "months": "Forbruk per måned",
+      "paymentsEmpty": "Legg til betalinger fra detaljene til en betaling (Utgiftsplan) eller på datamaskinen."
     }
   }
 }

@@ -778,6 +778,11 @@
     "sections": {
       "active": "進行中のプラン",
       "closed": "終了"
+    },
+    "detail": {
+      "back": "{{year}}年のプラン",
+      "months": "月別の支出",
+      "paymentsEmpty": "支払いは、支払いの詳細（支出プラン）またはパソコンで追加できます。"
     }
   }
 }

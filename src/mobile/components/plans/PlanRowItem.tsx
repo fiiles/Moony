@@ -19,7 +19,7 @@ interface PlanRowItemProps {
 
 /**
  * One plan of the list (spec M5): the square plan chip, the name, "Utraceno X z Y" in the plan
- * currency and the usage bar; the value is "zbývá X", or "přes o X" in `loss`, a status word under
+ * currency and the usage bar; the value is "zbývá X", or "přečerpáno o X" in `loss`, a status word under
  * it ("Nad plánem", "Blízko plánu", "Uzavřený"). A spend that could not be converted shows "—",
  * never 0. A tap opens the plan; there are no swipe actions, so a plan is never deleted by a
  * stray swipe. The long press's menu: Upravit, Uzavřít / Obnovit plán, Smazat plán.

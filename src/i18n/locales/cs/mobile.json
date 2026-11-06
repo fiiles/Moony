@@ -846,7 +846,7 @@
     "row": {
       "spent": "Utraceno {{spent}} z {{planned}}",
       "left": "zbývá {{amount}}",
-      "over": "přes o {{amount}}"
+      "over": "přečerpáno o {{amount}}"
     },
     "takeOver": {
       "title_one": "Převzít {{count}} plán z roku {{year}}?",
@@ -856,6 +856,11 @@
     "sections": {
       "active": "Aktivní plány",
       "closed": "Uzavřené"
+    },
+    "detail": {
+      "back": "Plány {{year}}",
+      "months": "Útrata po měsících",
+      "paymentsEmpty": "Platby přidáte v detailu platby (Výdajový plán) nebo na počítači."
     }
   }
 }

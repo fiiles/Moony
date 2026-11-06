@@ -895,6 +895,11 @@
     "sections": {
       "active": "Aktywne plany",
       "closed": "Zamknięte"
+    },
+    "detail": {
+      "back": "Plany {{year}}",
+      "months": "Wydatki według miesięcy",
+      "paymentsEmpty": "Płatności dodasz w szczegółach płatności (Plan wydatków) lub na komputerze."
     }
   }
 }

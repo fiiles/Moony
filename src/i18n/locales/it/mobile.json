@@ -846,7 +846,7 @@
     "row": {
       "spent": "Speso {{spent}} di {{planned}}",
       "left": "restano {{amount}}",
-      "over": "oltre di {{amount}}"
+      "over": "superato di {{amount}}"
     },
     "takeOver": {
       "title_one": "Riprendere {{count}} piano dal {{year}}?",
@@ -856,6 +856,11 @@
     "sections": {
       "active": "Piani attivi",
       "closed": "Chiusi"
+    },
+    "detail": {
+      "back": "Piani {{year}}",
+      "months": "Spesa per mese",
+      "paymentsEmpty": "Aggiungi i pagamenti dal dettaglio di un pagamento (Piano di spesa) o dal computer."
     }
   }
 }

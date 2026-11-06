@@ -856,6 +856,11 @@
     "sections": {
       "active": "Planes activos",
       "closed": "Cerrados"
+    },
+    "detail": {
+      "back": "Planes {{year}}",
+      "months": "Gasto por mes",
+      "paymentsEmpty": "Añade pagos desde el detalle de un pago (Plan de gasto) o en el ordenador."
     }
   }
 }

@@ -770,7 +770,7 @@
     "row": {
       "spent": "计划 {{planned}},已花 {{spent}}",
       "left": "剩余 {{amount}}",
-      "over": "超出 {{amount}}"
+      "over": "超支 {{amount}}"
     },
     "takeOver": {
       "title_other": "沿用 {{year}} 年的 {{count}} 项计划?"
@@ -778,6 +778,11 @@
     "sections": {
       "active": "进行中的计划",
       "closed": "已关闭"
+    },
+    "detail": {
+      "back": "{{year}} 年计划",
+      "months": "按月支出",
+      "paymentsEmpty": "可在付款详情（支出计划）中或在电脑上添加付款。"
     }
   }
 }

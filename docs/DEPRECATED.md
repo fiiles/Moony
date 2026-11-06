@@ -169,6 +169,17 @@ Crypto prices, search and history moved to Yahoo Finance and a holding stores it
 | `get_historical_crypto_prices_coingecko*`, `coingecko_history_start`, the 1.5 s pause between coins | CoinGecko's 365-day, rate-limited history | One Yahoo chart request per ticker for the whole range (`get_historical_stock_prices_yahoo` / `_strict`) |
 | `merge_crypto_price_series`, `get_historical_crypto_prices_yahoo`, `yahoo_crypto_symbol` | Stitched CoinGecko's year to Yahoo's older days and derived `<TICKER>-USD` from the ticker, which is the wrong coin for some tickers (`ARB`, `TON`) and missing for others (`SUI`, `PEPE`) | The symbol stored on the holding; never build a Yahoo crypto symbol from a ticker |
 
+## Retired with device sync (do not re-add)
+
+Devices merge their rows by column (`docs/specs/2026-11-06-device-sync-client-design.md`), so a
+rewrite may not guess from a timestamp what a row already includes, and a write may not delete and
+re-insert a row.
+
+| Removed | Why it was removed | Use instead |
+|---|---|---|
+| Choosing the rows a split apply or revert rescales by date: `transaction_date < effective_day` / `updated_at < effective_day` in `stock_splits::rewrite_pre_split_rows` | A row added or edited on another device before it saw the apply was never rescaled, a revert also undid rows that never had the split, and an apply on one device with a dismiss on another left the status and the units disagreeing | `split_basis` decides (D27): `stock_splits::reconcile_ticker` scales each row to match the split statuses, and every write stamps the basis with `stock_splits::basis_for_day` |
+| `INSERT OR REPLACE` anywhere outside `src/bin` (the one in applied migration 011 stays) | It deletes the old row and inserts a new one: `ON DELETE` cascades fire and sync captures a delete plus an insert, losing the clocks of the columns the write did not touch | `INSERT … ON CONFLICT(…) DO UPDATE SET …` (or `DO NOTHING`); `services::sync::probe` fails on any new use |
+
 ## Deprecated type sources
 
 | Path | Why deprecated | Use instead |

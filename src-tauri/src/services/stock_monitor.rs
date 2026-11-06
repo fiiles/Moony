@@ -8,6 +8,7 @@ use crate::models::stock_monitor::{
     validate_target_direction, validate_target_price, InsertWatchedStock, StockMonitorDetail,
     WatchedStock, WatchedStockRow, TARGET_ABOVE, TARGET_BELOW,
 };
+use crate::services::stock_splits::basis_for_day;
 use crate::services::sync::natural_id::natural_id;
 use rusqlite::{Connection, OptionalExtension};
 
@@ -100,10 +101,14 @@ pub fn set_target_price(
             }
         }),
     };
+    // The target is entered in today's units (sync spec D27).
+    let now = chrono::Utc::now().timestamp();
+    let basis = basis_for_day(conn, &ticker, now)?;
     let n = conn.execute(
-        "UPDATE watched_stocks SET target_price = ?1, target_direction = ?2, updated_at = unixepoch()
+        "UPDATE watched_stocks
+         SET target_price = ?1, target_direction = ?2, updated_at = ?4, split_basis = ?5
          WHERE ticker = ?3",
-        rusqlite::params![normalized, direction, ticker],
+        rusqlite::params![normalized, direction, ticker, now, basis],
     )?;
     if n == 0 {
         return Err(AppError::NotFound(format!("watched stock {ticker}")));
@@ -333,7 +338,21 @@ mod tests {
                 target_direction TEXT,
                 notes TEXT NOT NULL DEFAULT '',
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                split_basis TEXT
+            );
+            CREATE TABLE stock_splits (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                effective_day INTEGER NOT NULL,
+                numerator TEXT NOT NULL,
+                denominator TEXT NOT NULL,
+                source TEXT NOT NULL,
+                status TEXT NOT NULL,
+                detected_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                resolved_at INTEGER,
+                applied_count INTEGER,
+                UNIQUE (ticker, effective_day)
             );
             CREATE TABLE stock_data (
                 id TEXT PRIMARY KEY,

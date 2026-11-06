@@ -1,9 +1,11 @@
 //! Manual price and dividend overrides. Each ticker (or crypto symbol) has one override row,
 //! whose ID is derived from the ticker so two devices that set the same override offline
-//! create the same row.
+//! create the same row. A stock row's `split_basis` (sync spec D27) is stamped at `now`: the
+//! value is entered in today's units.
 
 use crate::error::Result;
 use crate::models::{DividendOverride, StockPriceOverride};
+use crate::services::stock_splits::basis_for_day;
 use crate::services::sync::natural_id::natural_id;
 use rusqlite::Connection;
 
@@ -18,10 +20,18 @@ pub fn upsert_stock_price(
     let ticker = ticker.to_uppercase();
     let id = natural_id("stock_price_overrides", &[&ticker]);
     conn.execute(
-        "INSERT INTO stock_price_overrides (id, ticker, price, currency, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5)
-         ON CONFLICT(ticker) DO UPDATE SET price = ?3, currency = ?4, updated_at = ?5",
-        rusqlite::params![id, ticker, price, currency, now],
+        "INSERT INTO stock_price_overrides (id, ticker, price, currency, updated_at, split_basis)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+         ON CONFLICT(ticker) DO UPDATE
+             SET price = ?3, currency = ?4, updated_at = ?5, split_basis = ?6",
+        rusqlite::params![
+            id,
+            ticker,
+            price,
+            currency,
+            now,
+            basis_for_day(conn, &ticker, now)?
+        ],
     )?;
     Ok(StockPriceOverride {
         id,
@@ -43,10 +53,19 @@ pub fn upsert_dividend(
     let ticker = ticker.to_uppercase();
     let id = natural_id("dividend_overrides", &[&ticker]);
     conn.execute(
-        "INSERT INTO dividend_overrides (id, ticker, yearly_dividend_sum, currency, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5)
-         ON CONFLICT(ticker) DO UPDATE SET yearly_dividend_sum = ?3, currency = ?4, updated_at = ?5",
-        rusqlite::params![id, ticker, amount, currency, now],
+        "INSERT INTO dividend_overrides
+             (id, ticker, yearly_dividend_sum, currency, updated_at, split_basis)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+         ON CONFLICT(ticker) DO UPDATE
+             SET yearly_dividend_sum = ?3, currency = ?4, updated_at = ?5, split_basis = ?6",
+        rusqlite::params![
+            id,
+            ticker,
+            amount,
+            currency,
+            now,
+            basis_for_day(conn, &ticker, now)?
+        ],
     )?;
     Ok(DividendOverride {
         id,

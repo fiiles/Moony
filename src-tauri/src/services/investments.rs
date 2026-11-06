@@ -7,6 +7,7 @@
 use crate::error::{AppError, Result};
 use crate::models::{InsertInvestmentTransaction, InvestmentTransaction, StockInvestment};
 use crate::services::dedup;
+use crate::services::stock_splits;
 use crate::services::sync::natural_id::natural_id;
 use rusqlite::OptionalExtension;
 use std::collections::BTreeMap;
@@ -151,11 +152,11 @@ pub fn update_transaction(
     data.validate()?;
     let transaction = conn.unchecked_transaction()?;
     let conn = &transaction;
-    let (investment_id, old_date): (String, i64) = conn
+    let (investment_id, ticker, old_date): (String, String, i64) = conn
         .query_row(
-            "SELECT investment_id,transaction_date FROM investment_transactions WHERE id=?1",
+            "SELECT investment_id,ticker,transaction_date FROM investment_transactions WHERE id=?1",
             [tx_id],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
         )
         .optional()?
         .ok_or_else(|| AppError::NotFound("Transaction not found".into()))?;
@@ -171,8 +172,10 @@ pub fn update_transaction(
         ));
     }
     let date = crate::models::validation::utc_day(data.transaction_date, "validation.dateInvalid")?;
-    conn.execute("UPDATE investment_transactions SET type=?2,quantity=?3,price_per_unit=?4,currency=?5,transaction_date=?6 WHERE id=?1",
-        rusqlite::params![tx_id,data.tx_type.to_ascii_lowercase(),dedup::canonical_amount(&data.quantity),dedup::canonical_amount(&data.price_per_unit),data.currency.to_ascii_uppercase(),date])?;
+    // The edited values are in today's units (D20), like a new transaction's.
+    let basis = stock_splits::basis_for_day(conn, &ticker, date)?;
+    conn.execute("UPDATE investment_transactions SET type=?2,quantity=?3,price_per_unit=?4,currency=?5,transaction_date=?6,split_basis=?7 WHERE id=?1",
+        rusqlite::params![tx_id,data.tx_type.to_ascii_lowercase(),dedup::canonical_amount(&data.quantity),dedup::canonical_amount(&data.price_per_unit),data.currency.to_ascii_uppercase(),date,basis])?;
     // An update that omits the fee keeps the stored one; an empty fee clears it.
     if data.fee.is_some() {
         conn.execute(
@@ -228,11 +231,13 @@ pub fn create_transaction_internal(
     let currency_upper = currency.to_uppercase();
     let transaction_date =
         crate::models::validation::utc_day(transaction_date, "validation.dateInvalid")?;
+    // Entered in today's units (D20): it already includes every applied split after its day.
+    let split_basis = stock_splits::basis_for_day(conn, ticker, transaction_date)?;
 
     conn.execute(
         "INSERT INTO investment_transactions
-         (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at, import_batch_id, external_id, fee)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+         (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at, import_batch_id, external_id, fee, split_basis)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)",
         rusqlite::params![
             tx_id,
             investment_id,
@@ -247,6 +252,7 @@ pub fn create_transaction_internal(
             origin.import_batch_id,
             origin.external_id,
             fee,
+            split_basis,
         ],
     )?;
 
@@ -1240,7 +1246,21 @@ mod tests {
                 created_at INTEGER NOT NULL,
                 import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL,
                 external_id TEXT,
-                fee TEXT
+                fee TEXT,
+                split_basis TEXT
+            );
+            CREATE TABLE stock_splits (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                effective_day INTEGER NOT NULL,
+                numerator TEXT NOT NULL,
+                denominator TEXT NOT NULL,
+                source TEXT NOT NULL,
+                status TEXT NOT NULL,
+                detected_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                resolved_at INTEGER,
+                applied_count INTEGER,
+                UNIQUE (ticker, effective_day)
             );
             "#,
         )

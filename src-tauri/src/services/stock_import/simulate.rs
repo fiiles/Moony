@@ -1200,7 +1200,8 @@ pub(crate) mod test_db {
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL,
                 external_id TEXT,
-                fee TEXT
+                fee TEXT,
+                split_basis TEXT
             );
             CREATE TABLE stock_investment_tags (
                 investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
@@ -1235,13 +1236,15 @@ pub(crate) mod test_db {
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL UNIQUE,
                 price TEXT NOT NULL,
-                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                split_basis TEXT
             );
             CREATE TABLE watched_stocks (
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL UNIQUE,
                 target_price TEXT,
-                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                split_basis TEXT
             );
             CREATE TABLE exchange_rate_history (
                 date INTEGER NOT NULL,
@@ -1253,7 +1256,8 @@ pub(crate) mod test_db {
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL UNIQUE,
                 yearly_dividend_sum TEXT NOT NULL,
-                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                split_basis TEXT
             );
             CREATE TABLE dividend_data (
                 id TEXT PRIMARY KEY,

@@ -358,7 +358,9 @@
     },
     "status": "Status",
     "booked": "Gebucht",
-    "currency": "Währung"
+    "currency": "Währung",
+    "plan": "Ausgabenplan",
+    "noPlan": "Kein Plan"
   },
   "picker": {
     "title": "Kategorie",
@@ -822,6 +824,9 @@
       "back": "Pläne {{year}}",
       "months": "Ausgaben nach Monat",
       "paymentsEmpty": "Zahlungen fügen Sie in den Details einer Zahlung (Ausgabenplan) oder am Computer hinzu."
+    },
+    "form": {
+      "newDescription": "Wie viel Sie dieses Jahr für eine Sache ausgeben möchten. Zahlungen fügen Sie dem Plan in den Zahlungsdetails hinzu."
     }
   }
 }

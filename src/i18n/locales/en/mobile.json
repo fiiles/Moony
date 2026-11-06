@@ -358,7 +358,9 @@
     },
     "status": "Status",
     "booked": "Booked",
-    "currency": "Currency"
+    "currency": "Currency",
+    "plan": "Spending plan",
+    "noPlan": "No plan"
   },
   "picker": {
     "title": "Category",
@@ -822,6 +824,9 @@
       "back": "Plans {{year}}",
       "months": "Spending by month",
       "paymentsEmpty": "Add payments from a payment’s details (Spending plan) or on your computer."
+    },
+    "form": {
+      "newDescription": "How much you want to spend on one thing this year. You add payments to the plan in a payment’s details."
     }
   }
 }

@@ -384,7 +384,9 @@
     },
     "status": "Stato",
     "booked": "Contabilizzato",
-    "currency": "Valuta"
+    "currency": "Valuta",
+    "plan": "Piano di spesa",
+    "noPlan": "Nessun piano"
   },
   "picker": {
     "title": "Categoria",
@@ -861,6 +863,9 @@
       "back": "Piani {{year}}",
       "months": "Spesa per mese",
       "paymentsEmpty": "Aggiungi i pagamenti dal dettaglio di un pagamento (Piano di spesa) o dal computer."
+    },
+    "form": {
+      "newDescription": "Quanto vuoi spendere quest’anno per una singola cosa. Aggiungi i pagamenti al piano dal dettaglio del pagamento."
     }
   }
 }

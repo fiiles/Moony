@@ -358,7 +358,9 @@
     },
     "status": "Status",
     "booked": "Bokförd",
-    "currency": "Valuta"
+    "currency": "Valuta",
+    "plan": "Utgiftsplan",
+    "noPlan": "Ingen plan"
   },
   "picker": {
     "title": "Kategori",
@@ -822,6 +824,9 @@
       "back": "Planer {{year}}",
       "months": "Utgifter per månad",
       "paymentsEmpty": "Lägg till betalningar i en betalnings detaljer (Utgiftsplan) eller på datorn."
+    },
+    "form": {
+      "newDescription": "Hur mycket du vill spendera på en sak i år. Du lägger till betalningar i planen i betalningens detaljer."
     }
   }
 }

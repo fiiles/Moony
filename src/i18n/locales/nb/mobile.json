@@ -358,7 +358,9 @@
     },
     "status": "Status",
     "booked": "Bokført",
-    "currency": "Valuta"
+    "currency": "Valuta",
+    "plan": "Utgiftsplan",
+    "noPlan": "Ingen plan"
   },
   "picker": {
     "title": "Kategori",
@@ -822,6 +824,9 @@
       "back": "Planer {{year}}",
       "months": "Forbruk per måned",
       "paymentsEmpty": "Legg til betalinger fra detaljene til en betaling (Utgiftsplan) eller på datamaskinen."
+    },
+    "form": {
+      "newDescription": "Hvor mye du vil bruke på én ting i år. Du legger betalinger til i planen fra betalingsdetaljene."
     }
   }
 }

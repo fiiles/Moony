@@ -117,6 +117,7 @@ export function PlanFormSheet({
   const { t } = useTranslation('spending_plans');
   const { t: tb } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
+  const { t: tm } = useTranslation('mobile');
   const fmt = useFormat();
   const { currencyCode } = useCurrency();
   const { createPlan, updatePlan } = useSpendingPlanMutations();
@@ -195,7 +196,7 @@ export function PlanFormSheet({
         description={
           plan
             ? t('form.editDescription', { name: plan.name, year: plan.year })
-            : t('form.newDescription')
+            : tm('plans.form.newDescription')
         }
         full
         footer={

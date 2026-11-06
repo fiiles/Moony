@@ -8,6 +8,7 @@ import type {
 import { UNCATEGORIZED_KEY, planRow } from '@/utils/spending-plans';
 import {
   SEARCH_FROM,
+  bookingYear,
   filterPlanPayments,
   pickerGroups,
   planListSections,
@@ -213,5 +214,12 @@ describe('takeOverInserts', () => {
 describe('yearChoices', () => {
   it('is the year with its neighbours', () => {
     expect(yearChoices(2026)).toEqual([2025, 2026, 2027]);
+  });
+});
+
+describe('bookingYear', () => {
+  it('reads the UTC year of a booking day', () => {
+    expect(bookingYear(day(2026, 1, 1))).toBe(2026);
+    expect(bookingYear(day(2025, 12, 31))).toBe(2025);
   });
 });

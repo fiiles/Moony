@@ -332,7 +332,9 @@
     },
     "status": "状态",
     "booked": "已入账",
-    "currency": "货币"
+    "currency": "货币",
+    "plan": "支出计划",
+    "noPlan": "无计划"
   },
   "picker": {
     "title": "类别",
@@ -783,6 +785,9 @@
       "back": "{{year}} 年计划",
       "months": "按月支出",
       "paymentsEmpty": "可在付款详情（支出计划）中或在电脑上添加付款。"
+    },
+    "form": {
+      "newDescription": "今年打算在某一项上花多少钱。在付款详情中将付款加入计划。"
     }
   }
 }

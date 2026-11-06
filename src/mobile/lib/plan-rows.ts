@@ -72,6 +72,11 @@ export function planListSections(
   };
 }
 
+/** The year of a booking day (UTC midnight, unix seconds), as the backend buckets plan years. */
+export function bookingYear(unixSeconds: number): number {
+  return new Date(unixSeconds * 1000).getUTCFullYear();
+}
+
 /**
  * The plan picker's groups: open plans only, the payment's booking year first, then the other
  * years newest first; names sorted in `locale`, filtered by the name search. Empty groups are

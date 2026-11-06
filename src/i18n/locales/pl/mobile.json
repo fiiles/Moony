@@ -410,7 +410,9 @@
     },
     "status": "Status",
     "booked": "Zaksięgowana",
-    "currency": "Waluta"
+    "currency": "Waluta",
+    "plan": "Plan wydatków",
+    "noPlan": "Bez planu"
   },
   "picker": {
     "title": "Kategoria",
@@ -900,6 +902,9 @@
       "back": "Plany {{year}}",
       "months": "Wydatki według miesięcy",
       "paymentsEmpty": "Płatności dodasz w szczegółach płatności (Plan wydatków) lub na komputerze."
+    },
+    "form": {
+      "newDescription": "Ile chcesz wydać w tym roku na jedną rzecz. Płatności dodajesz do planu w szczegółach płatności."
     }
   }
 }

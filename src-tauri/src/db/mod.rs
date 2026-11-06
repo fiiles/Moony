@@ -5,7 +5,7 @@
 pub mod files_schema;
 mod migrations;
 
-pub use migrations::{applied_migration_names, known_migration_names};
+pub use migrations::{applied_migration_names, known_migration_names, run_migrations};
 
 use crate::error::{AppError, Result};
 use rusqlite::Connection;

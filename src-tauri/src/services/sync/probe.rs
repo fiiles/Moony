@@ -231,6 +231,49 @@ fn rust_files(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
     }
 }
 
+/// The file without its test code: every `#[cfg(test)]` followed by `mod name { ... }` (brace
+/// matched) or `mod name;` is removed, and everything else is kept, so production code that sits
+/// after a test module (the migration SQL constants) is still scanned.
+fn production_text(text: &str) -> String {
+    let marker = regex::Regex::new(r"#\[cfg\(test\)\]\s*mod\s+\w+\s*([;{])").unwrap();
+    let mut out = String::new();
+    let mut rest = text;
+    while let Some(caps) = marker.captures(rest) {
+        let whole = caps.get(0).unwrap();
+        out.push_str(&rest[..whole.start()]);
+        rest = &rest[whole.end()..];
+        if &caps[1] == "{" {
+            let mut depth = 1usize;
+            let mut end = rest.len();
+            for (i, c) in rest.char_indices() {
+                match c {
+                    '{' => depth += 1,
+                    '}' => {
+                        depth -= 1;
+                        if depth == 0 {
+                            end = i + 1;
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            rest = &rest[end..];
+        }
+    }
+    out.push_str(rest);
+    out
+}
+
+#[test]
+fn the_lint_strips_test_modules_but_keeps_later_production_code() {
+    let text = "const A: &str = \"x\";\n#[cfg(test)]\nmod dry_run;\n#[cfg(test)]\nmod t { fn f() { \"REPLACE INTO a\"; } }\nconst B: &str = \"INSERT OR REPLACE INTO b\";";
+    let out = production_text(text);
+    assert!(out.contains("const A"));
+    assert!(out.contains("INSERT OR REPLACE INTO b"));
+    assert!(!out.contains("REPLACE INTO a"));
+}
+
 #[test]
 fn no_source_file_uses_insert_or_replace() {
     let re = regex::Regex::new(r"(?is)\b(INSERT\s+OR\s+REPLACE|REPLACE\s+INTO)\b").unwrap();
@@ -246,8 +289,17 @@ fn no_source_file_uses_insert_or_replace() {
             continue;
         }
         let text = std::fs::read_to_string(&file).unwrap();
-        let production = text.split("#[cfg(test)]").next().unwrap();
-        if re.is_match(production) {
+        let mut production = production_text(&text);
+        if rel.ends_with("db/migrations.rs") {
+            // Migration 011 (applied, append-only) holds the one legacy REPLACE. Migrations run
+            // before the capture triggers exist, so it is harmless; any other use still fails.
+            production = production.replacen(
+                "INSERT OR REPLACE INTO app_config (key, value) VALUES ('fx_reference', 'EUR');",
+                "",
+                1,
+            );
+        }
+        if re.is_match(&production) {
             hits.push(file.display().to_string());
         }
     }

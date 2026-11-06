@@ -133,6 +133,12 @@ CREATE INDEX idx_stock_value_history_ticker ON stock_value_history(ticker)
 == index idx_stock_value_history_ticker_date ==
 CREATE INDEX idx_stock_value_history_ticker_date ON stock_value_history(ticker, recorded_at)
 
+== index idx_sync_clock_device_hlc ==
+CREATE INDEX idx_sync_clock_device_hlc ON sync_clock(device, hlc)
+
+== index idx_sync_outbox_queued ==
+CREATE INDEX idx_sync_outbox_queued ON sync_outbox(queued_at)
+
 == table app_config ==
 CREATE TABLE app_config (
     key TEXT PRIMARY KEY,
@@ -371,7 +377,7 @@ CREATE TABLE dividend_overrides (
     yearly_dividend_sum TEXT NOT NULL,
     currency TEXT NOT NULL DEFAULT 'CZK',
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-)
+, split_basis TEXT)
 
 == table exchange_rate_history ==
 CREATE TABLE exchange_rate_history (
@@ -458,7 +464,7 @@ CREATE TABLE investment_transactions (
     currency TEXT NOT NULL,
     transaction_date INTEGER NOT NULL,
     created_at INTEGER NOT NULL DEFAULT (unixepoch())
-, import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL, external_id TEXT, fee TEXT)
+, import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL, external_id TEXT, fee TEXT, split_basis TEXT)
 
 == table learned_payees ==
 CREATE TABLE learned_payees (
@@ -776,7 +782,7 @@ CREATE TABLE stock_price_overrides (
     price TEXT NOT NULL,
     currency TEXT NOT NULL DEFAULT 'CZK',
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-)
+, split_basis TEXT)
 
 == table stock_splits ==
 CREATE TABLE stock_splits (
@@ -822,6 +828,46 @@ CREATE TABLE stock_value_history (
     UNIQUE(ticker, recorded_at)
 )
 
+== table sync_clock ==
+CREATE TABLE sync_clock (tbl TEXT NOT NULL, pk TEXT NOT NULL, col TEXT NOT NULL,
+    hlc INTEGER NOT NULL, device BLOB NOT NULL, PRIMARY KEY (tbl, pk, col)) WITHOUT ROWID
+
+== table sync_devices ==
+CREATE TABLE sync_devices (id TEXT PRIMARY KEY, public_key TEXT, name TEXT NOT NULL,
+    platform TEXT NOT NULL, app_version TEXT NOT NULL, joined_at INTEGER NOT NULL,
+    removed INTEGER NOT NULL DEFAULT 0 CHECK (removed IN (0, 1)))
+
+== table sync_heads ==
+CREATE TABLE sync_heads (device BLOB PRIMARY KEY, seq INTEGER NOT NULL, hash BLOB NOT NULL,
+    quarantined INTEGER NOT NULL DEFAULT 0) WITHOUT ROWID
+
+== table sync_outbox ==
+CREATE TABLE sync_outbox (tbl TEXT NOT NULL, pk TEXT NOT NULL, queued_at INTEGER NOT NULL,
+    PRIMARY KEY (tbl, pk)) WITHOUT ROWID
+
+== table sync_own_log ==
+CREATE TABLE sync_own_log (seq INTEGER PRIMARY KEY, hash BLOB NOT NULL, max_hlc INTEGER NOT NULL)
+
+== table sync_renamed ==
+CREATE TABLE sync_renamed (tbl TEXT NOT NULL, pk TEXT NOT NULL, typed TEXT NOT NULL,
+    assigned TEXT NOT NULL, PRIMARY KEY (tbl, pk)) WITHOUT ROWID
+
+== table sync_state ==
+CREATE TABLE sync_state (
+    id INTEGER PRIMARY KEY CHECK (id = 1),
+    enabled INTEGER NOT NULL DEFAULT 0 CHECK (enabled IN (0, 1)),
+    relay_url TEXT, account_number TEXT, vault_id TEXT, key_epoch INTEGER, vault_keys TEXT,
+    device_id BLOB NOT NULL, device_secret_key BLOB,
+    next_seq INTEGER NOT NULL DEFAULT 1, last_hash BLOB,
+    cursor INTEGER NOT NULL DEFAULT 0, snapshot_seq INTEGER,
+    snapshot_hlc INTEGER NOT NULL DEFAULT 0,
+    barrier INTEGER NOT NULL DEFAULT 0, schema_seen INTEGER NOT NULL DEFAULT 0,
+    last_error TEXT, last_error_at INTEGER, last_success_at INTEGER
+)
+
+== table sync_unsent ==
+CREATE TABLE sync_unsent (seq INTEGER PRIMARY KEY, envelope BLOB NOT NULL)
+
 == table transaction_categories ==
 CREATE TABLE transaction_categories (
     id TEXT PRIMARY KEY,
@@ -859,7 +905,7 @@ CREATE TABLE watched_stocks (
     notes TEXT NOT NULL DEFAULT '',
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-, target_direction TEXT CHECK (target_direction IN ('below', 'above')))
+, target_direction TEXT CHECK (target_direction IN ('below', 'above')), split_basis TEXT)
 
 == data transaction_categories ==
 cat_dining | Dining & Restaurants | utensils | #FF9800 | NULL | 2 | 1 | expense

@@ -13,11 +13,11 @@ use crate::services::history_recalc::{HistoryRecalc, Job};
 use crate::services::investments as investment_service;
 use crate::services::position_reports;
 use crate::services::price_api;
+use crate::services::price_overrides as price_override_service;
 use crate::services::pricing::AssetKind;
 use crate::services::stock_performance;
 use crate::services::ticker_history;
 use tauri::{AppHandle, Emitter, State};
-use uuid::Uuid;
 
 /// Days of closes fetched before a benchmark's first day: its base is the last close on or
 /// before it, which on a Monday is Friday's (a long weekend plus a holiday is a handful of days).
@@ -465,42 +465,15 @@ pub async fn set_manual_price(
     price: String,
     currency: String,
 ) -> Result<StockPriceOverride> {
-    let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
-    let ticker = ticker.to_uppercase();
-
-    let id_clone = id.clone();
-    let ticker_clone = ticker.clone();
-    let price_clone = price.clone();
-    let currency_clone = currency.clone();
-
-    db.with_conn(move |conn| {
-        conn.execute(
-            "INSERT INTO stock_price_overrides (id, ticker, price, currency, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5)
-             ON CONFLICT(ticker) DO UPDATE SET price = ?3, currency = ?4, updated_at = ?5",
-            rusqlite::params![id, ticker, price, currency, now],
-        )?;
-
-        Ok(StockPriceOverride {
-            id,
-            ticker,
-            price,
-            currency,
-            updated_at: now,
-        })
+    let saved = db.with_conn(|conn| {
+        price_override_service::upsert_stock_price(conn, &ticker, &price, &currency, now)
     })?;
 
     // Update portfolio snapshot
     crate::commands::portfolio::update_todays_snapshot(&db).await?;
 
-    Ok(StockPriceOverride {
-        id: id_clone,
-        ticker: ticker_clone,
-        price: price_clone,
-        currency: currency_clone,
-        updated_at: now,
-    })
+    Ok(saved)
 }
 
 /// Delete manual price override
@@ -523,25 +496,9 @@ pub async fn set_manual_dividend(
     amount: String,
     currency: String,
 ) -> Result<DividendOverride> {
-    let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
-    let ticker = ticker.to_uppercase();
-
     db.with_conn(|conn| {
-        conn.execute(
-            "INSERT INTO dividend_overrides (id, ticker, yearly_dividend_sum, currency, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5)
-             ON CONFLICT(ticker) DO UPDATE SET yearly_dividend_sum = ?3, currency = ?4, updated_at = ?5",
-            rusqlite::params![id, ticker, amount, currency, now],
-        )?;
-
-        Ok(DividendOverride {
-            id,
-            ticker,
-            yearly_dividend_sum: amount,
-            currency,
-            updated_at: now,
-        })
+        price_override_service::upsert_dividend(conn, &ticker, &amount, &currency, now)
     })
 }
 

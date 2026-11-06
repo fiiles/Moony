@@ -6,6 +6,7 @@
 
 use crate::error::Result;
 use crate::models::{CryptoInvestment, CryptoTransaction, InsertCryptoTransaction};
+use crate::services::sync::natural_id::natural_id;
 use rusqlite::OptionalExtension;
 use uuid::Uuid;
 
@@ -181,7 +182,7 @@ pub fn get_or_create_crypto(
             Ok(HoldingLookup { id, symbol_set_now })
         }
         None => {
-            let id = Uuid::new_v4().to_string();
+            let id = natural_id("crypto_investments", &[&ticker_upper]);
 
             conn.execute(
                 "INSERT INTO crypto_investments (id, ticker, yahoo_symbol, name, quantity)
@@ -1107,6 +1108,16 @@ mod tests {
                 "validation.yahooSymbolConflict".to_string(),
                 serde_json::json!({ "ticker": "BTC" })
             )
+        );
+    }
+
+    #[test]
+    fn a_crypto_holding_id_follows_its_ticker() {
+        let conn = setup_test_db();
+        let holding = get_or_create_crypto(&conn, "btc", None, "Bitcoin").expect("create");
+        assert_eq!(
+            holding.id,
+            crate::services::sync::natural_id::natural_id("crypto_investments", &["BTC"])
         );
     }
 }

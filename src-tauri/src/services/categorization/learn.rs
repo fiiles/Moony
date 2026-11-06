@@ -14,8 +14,8 @@
 
 use std::collections::HashMap;
 
+use crate::services::sync::natural_id::natural_id;
 use rusqlite::{params, Connection};
-use uuid::Uuid;
 
 use super::apply::SOURCE_EXACT_MATCH;
 use super::recategorize;
@@ -163,7 +163,7 @@ pub fn learn_payee(
         "INSERT INTO learned_payees (id, normalized_payee, original_payee, counterparty_iban, category_id, updated_at)
          VALUES (?1, ?2, ?3, ?4, ?5, unixepoch())",
         params![
-            Uuid::new_v4().to_string(),
+            uuid::Uuid::new_v4().to_string(),
             key,
             payee,
             iban,
@@ -223,7 +223,17 @@ pub fn learn_scoped_and_apply(
     }
     let transaction = conn.unchecked_transaction()?;
     transaction.execute("DELETE FROM learned_payees WHERE bank_account_id=?1 AND is_credit=?2 AND normalized_payee IS ?3 AND counterparty_iban IS ?4", params![data.bank_account_id,data.is_credit,payee,identity])?;
-    transaction.execute("INSERT INTO learned_payees(id,normalized_payee,original_payee,counterparty_iban,category_id,bank_account_id,is_credit) VALUES (?1,?2,?3,?4,?5,?6,?7)",params![Uuid::new_v4().to_string(),payee,if identity.is_some() { None } else { data.payee.as_deref() },identity,data.category_id,data.bank_account_id,data.is_credit])?;
+    // The same tuple the scoped unique index reads: re-learning a scope re-creates the same ID.
+    let id = natural_id(
+        "learned_payees",
+        &[
+            payee.as_deref().unwrap_or(""),
+            identity.as_deref().unwrap_or(""),
+            &data.bank_account_id,
+            if data.is_credit { "1" } else { "0" },
+        ],
+    );
+    transaction.execute("INSERT INTO learned_payees(id,normalized_payee,original_payee,counterparty_iban,category_id,bank_account_id,is_credit) VALUES (?1,?2,?3,?4,?5,?6,?7)",params![id,payee,if identity.is_some() { None } else { data.payee.as_deref() },identity,data.category_id,data.bank_account_id,data.is_credit])?;
     let changed = if apply_history {
         let scope = LearnedPayeeRow {
             id: String::new(),
@@ -1100,5 +1110,50 @@ mod tests {
             .unwrap();
         assert_eq!(iban, "DE89370400440532013000");
         assert_eq!(category, "cat_savings");
+    }
+
+    #[test]
+    fn re_learning_a_scope_reuses_the_natural_id() {
+        let conn = setup_test_db();
+        conn.execute_batch(
+            "DROP INDEX idx_learned_payees_composite;
+             CREATE TABLE bank_accounts(id TEXT PRIMARY KEY); INSERT INTO bank_accounts VALUES ('acc-1');
+             INSERT INTO transaction_categories VALUES ('cat_a'),('cat_b');",
+        )
+        .unwrap();
+        let engine = CategorizationEngine::new_empty();
+        let learn = |category: &str| {
+            let data = crate::models::categorization::InsertScopedLearning {
+                bank_account_id: "acc-1".into(),
+                is_credit: false,
+                payee: Some("Albert".into()),
+                counterparty_iban: None,
+                counterparty_bank_code: None,
+                counterparty_country: None,
+                category_id: category.into(),
+            };
+            learn_scoped_and_apply(&conn, &engine, &data, false).unwrap();
+        };
+        let stored = || -> (String, String, String) {
+            conn.query_row(
+                "SELECT id, normalized_payee, category_id FROM learned_payees",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .unwrap()
+        };
+        learn("cat_a");
+        let (first_id, payee, _) = stored();
+        assert_eq!(
+            first_id,
+            crate::services::sync::natural_id::natural_id(
+                "learned_payees",
+                &[payee.as_str(), "", "acc-1", "0"]
+            )
+        );
+        learn("cat_b");
+        let (second_id, _, category) = stored();
+        assert_eq!(second_id, first_id);
+        assert_eq!(category, "cat_b");
     }
 }

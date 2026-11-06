@@ -7,6 +7,7 @@
 use crate::error::{AppError, Result};
 use crate::models::{InsertInvestmentTransaction, InvestmentTransaction, StockInvestment};
 use crate::services::dedup;
+use crate::services::sync::natural_id::natural_id;
 use rusqlite::OptionalExtension;
 use std::collections::BTreeMap;
 use uuid::Uuid;
@@ -287,7 +288,7 @@ pub fn get_or_create_investment(
     match existing {
         Some(id) => Ok(id),
         None => {
-            let id = Uuid::new_v4().to_string();
+            let id = natural_id("stock_investments", &[&ticker_upper]);
             let currency_upper = currency.to_uppercase();
 
             conn.execute(
@@ -496,7 +497,7 @@ fn import_stock_row(
             id
         }
         None => {
-            let id = Uuid::new_v4().to_string();
+            let id = natural_id("stock_investments", &[&ticker_upper]);
             conn.execute(
                 "INSERT INTO stock_investments (id, ticker, company_name, quantity, currency)
                  VALUES (?1, ?2, ?3, '0', ?4)",
@@ -2361,5 +2362,33 @@ mod bulk_writer_tests {
         )
         .is_err());
         assert_eq!(count(&conn, "investment_transactions"), 2);
+    }
+
+    #[test]
+    fn two_profiles_buying_the_same_ticker_create_the_same_position_id() {
+        let expected =
+            crate::services::sync::natural_id::natural_id("stock_investments", &["AAPL"]);
+        let first = setup_test_db();
+        let second = setup_test_db();
+        assert_eq!(
+            get_or_create_investment(&first, "aapl", "Apple Inc.", "USD").expect("create"),
+            expected
+        );
+        import_single_transaction_with_origin(
+            &second,
+            "aapl",
+            "Apple Inc.",
+            "buy",
+            "1",
+            "100",
+            "USD",
+            1_700_000_000,
+            TransactionOrigin::default(),
+        )
+        .expect("import");
+        let id: String = second
+            .query_row("SELECT id FROM stock_investments", [], |r| r.get(0))
+            .expect("row");
+        assert_eq!(id, expected);
     }
 }

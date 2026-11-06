@@ -8,6 +8,7 @@ use crate::models::stock_monitor::{
     validate_target_direction, validate_target_price, InsertWatchedStock, StockMonitorDetail,
     WatchedStock, WatchedStockRow, TARGET_ABOVE, TARGET_BELOW,
 };
+use crate::services::sync::natural_id::natural_id;
 use rusqlite::{Connection, OptionalExtension};
 
 /// Notes size cap (spec D7)
@@ -21,7 +22,7 @@ pub fn follow_stock(conn: &Connection, data: &InsertWatchedStock) -> Result<Watc
     // Database::with_conn mutex serializing callers (UNIQUE on ticker).
     conn.execute(
         "INSERT OR IGNORE INTO watched_stocks (id, ticker) VALUES (?1, ?2)",
-        rusqlite::params![uuid::Uuid::new_v4().to_string(), ticker],
+        rusqlite::params![natural_id("watched_stocks", &[&ticker]), ticker],
     )?;
     get_watched(conn, &ticker)?
         .ok_or_else(|| AppError::Internal("watched stock missing after insert".to_string()))
@@ -721,6 +722,16 @@ mod tests {
             .unwrap_err();
         assert!(
             matches!(err, AppError::Validation(ref k) if k == "validation.targetDirectionInvalid")
+        );
+    }
+
+    #[test]
+    fn following_a_ticker_uses_its_natural_id() {
+        let conn = setup_test_db();
+        let watched = follow(&conn, "aapl");
+        assert_eq!(
+            watched.id,
+            crate::services::sync::natural_id::natural_id("watched_stocks", &["AAPL"])
         );
     }
 }

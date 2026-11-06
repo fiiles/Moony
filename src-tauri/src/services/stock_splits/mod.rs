@@ -15,8 +15,8 @@ pub use types::{
     StockSplitSource, StockSplitStatus, StockSplitVerdict,
 };
 
+use crate::services::sync::natural_id::natural_id;
 use rusqlite::{params, Connection, OptionalExtension, Params};
-use uuid::Uuid;
 
 use crate::error::{AppError, Result};
 use crate::services::investments::{ensure_valid_holdings_history, recalculate_investment_metrics};
@@ -90,7 +90,7 @@ pub fn insert_from_import(
         return Err(not_pending());
     }
     let (n, d) = ratio_parts(&split.numerator, &split.denominator)?;
-    let id = Uuid::new_v4().to_string();
+    let id = natural_id("stock_splits", &[ticker, &split.effective_day.to_string()]);
     let detected_at = now();
     let resolved_at = (status == StockSplitStatus::Dismissed).then_some(detected_at);
     conn.execute(
@@ -131,7 +131,7 @@ pub fn record_detected(
         if pre_split_count(conn, ticker, day)? == 0 {
             continue;
         }
-        let id = Uuid::new_v4().to_string();
+        let id = natural_id("stock_splits", &[ticker, &day.to_string()]);
         let changed = conn.execute(
             "INSERT INTO stock_splits
                  (id, ticker, effective_day, numerator, denominator, source, status, detected_at)
@@ -227,7 +227,10 @@ pub fn record_manual(conn: &Connection, data: &InsertStockSplit) -> Result<Stock
                 id
             }
             None => {
-                let id = Uuid::new_v4().to_string();
+                let id = natural_id(
+                    "stock_splits",
+                    &[&data.ticker, &data.effective_day.to_string()],
+                );
                 conn.execute(
                     "INSERT INTO stock_splits
                          (id, ticker, effective_day, numerator, denominator, source, status,
@@ -1451,5 +1454,51 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM stock_splits", [], |r| r.get(0))
             .unwrap();
         assert_eq!(none, 0);
+    }
+
+    #[test]
+    fn a_detected_split_id_follows_ticker_and_day() {
+        let natural = crate::services::sync::natural_id::natural_id;
+        let conn = setup_test_db();
+        tx(&conn, "NVDA", "buy", "3", "950", day(100));
+        let rows =
+            record_detected(&conn, "NVDA", &[split(150, 10, 1)], StockSplitSource::Yahoo).unwrap();
+        let expected = natural("stock_splits", &["NVDA", &day(150).to_string()]);
+        assert_eq!(rows.len(), 1, "the split is relevant to NVDA");
+        assert_eq!(rows[0].id, expected);
+
+        let imported = insert_from_import(
+            &conn,
+            "NVDA",
+            &import_split(day(160), "2", "1"),
+            StockSplitStatus::Dismissed,
+        )
+        .unwrap();
+        assert_eq!(
+            imported.id,
+            natural("stock_splits", &["NVDA", &day(160).to_string()])
+        );
+
+        record_manual(
+            &conn,
+            &InsertStockSplit {
+                ticker: "NVDA".into(),
+                effective_day: day(170),
+                numerator: "3".into(),
+                denominator: "1".into(),
+            },
+        )
+        .unwrap();
+        let id: String = conn
+            .query_row(
+                "SELECT id FROM stock_splits WHERE effective_day = ?1",
+                [day(170)],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(
+            id,
+            natural("stock_splits", &["NVDA", &day(170).to_string()])
+        );
     }
 }

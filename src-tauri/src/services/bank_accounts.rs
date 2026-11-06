@@ -7,6 +7,7 @@
 use crate::error::{AppError, Result};
 use crate::models::bank_accounts::{BankBalanceRecord, InsertBalanceRecord};
 use crate::models::{BankAccount, BankTransaction, InsertBankAccount, InsertBankTransaction};
+use crate::services::sync::natural_id::natural_id;
 use rusqlite::{params, OptionalExtension};
 use uuid::Uuid;
 
@@ -371,7 +372,6 @@ pub fn create_transaction_with_origin(
         }
     }
 
-    let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let booking_date =
         crate::models::validation::utc_day(data.booking_date, "validation.bookingDateInvalid")?;
@@ -389,6 +389,12 @@ pub fn create_transaction_with_origin(
         .map(str::trim)
         .filter(|id| !id.is_empty())
         .map(str::to_string);
+    // A bank-assigned id makes the row's ID derivable, so two devices importing the same
+    // payment offline create the same row; without one the row is unique to this device.
+    let id = match transaction_id.as_deref() {
+        Some(bank_id) => natural_id("bank_transactions", &[&data.bank_account_id, bank_id]),
+        None => Uuid::new_v4().to_string(),
+    };
     let tx_type = data.tx_type.to_lowercase();
     let status = data
         .status
@@ -1494,5 +1500,39 @@ mod tests {
         // Same currency (any case) still passes
         edit.currency = Some("eur".into());
         assert!(update_account(&conn, "acc-1", &edit).is_ok());
+    }
+
+    #[test]
+    fn a_bank_transaction_with_a_bank_id_gets_the_natural_id_and_one_without_a_random_one() {
+        let conn = setup_test_db();
+        let make = |transaction_id: Option<&str>| crate::models::InsertBankTransaction {
+            flow_kind: None,
+            bank_account_id: "acc-1".into(),
+            transaction_id: transaction_id.map(str::to_string),
+            tx_type: "debit".into(),
+            amount: "10".into(),
+            currency: None,
+            description: None,
+            counterparty_name: None,
+            counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
+            booking_date: 1700000000,
+            value_date: None,
+            category_id: None,
+            status: None,
+        };
+        let with_id = create_transaction(&conn, &make(Some(" bank-77 "))).unwrap();
+        assert_eq!(
+            with_id.id,
+            crate::services::sync::natural_id::natural_id(
+                "bank_transactions",
+                &["acc-1", "bank-77"]
+            )
+        );
+        let first = create_transaction(&conn, &make(None)).unwrap();
+        let second = create_transaction(&conn, &make(None)).unwrap();
+        assert_ne!(first.id, second.id);
+        assert!(uuid::Uuid::parse_str(&first.id).is_ok());
     }
 }

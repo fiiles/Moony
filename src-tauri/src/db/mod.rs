@@ -92,6 +92,10 @@ impl Database {
 
         attach_attachments_store(&conn, &path);
 
+        // Device sync: capture triggers for a sync-enabled profile, installed before the
+        // self-heals below so what they write is captured too. One SELECT otherwise; never fails.
+        crate::services::sync::on_open(&conn);
+
         // Load exchange rates from database for offline use
         if let Err(e) = crate::services::currency::load_rates_from_db(&conn) {
             log::warn!("[DB] Warning: Failed to load exchange rates: {}", e);
@@ -516,6 +520,84 @@ mod tests {
         db.close();
         db.open_with_key(path, &key).expect("second open");
         assert_eq!(counts(&db), (1, 0), "a later open changes nothing");
+    }
+
+    #[test]
+    fn opening_a_sync_enabled_profile_installs_capture_before_the_self_heals() {
+        use crate::services::sync::{capture, hlc::DeviceId, state};
+        const DAY: i64 = 86_400;
+        let dir = tempfile::tempdir().expect("tempdir");
+        let path = dir.path().join("moony.db");
+        let key = crate::services::crypto::master_key_to_hex(&[9; 32]);
+        let db = Database::new();
+        db.create_with_key(path.clone(), &key).expect("create");
+        let start = 1_700_000_000 / DAY * DAY;
+        let day = start + 366 * DAY;
+        db.with_conn(|conn| {
+            // a position with one transaction and a stale quantity
+            conn.execute_batch(
+                "INSERT INTO stock_investments (id, ticker, company_name, quantity) \
+                   VALUES ('inv', 'AAPL', 'Apple', '99'); \
+                 INSERT INTO investment_transactions (id, investment_id, type, ticker, company_name, \
+                   quantity, price_per_unit, currency, transaction_date) \
+                   VALUES ('tx', 'inv', 'buy', 'AAPL', 'Apple', '5', '100', 'USD', 0);",
+            )?;
+            // a legacy anchor the second self-heal turns into a balance_check event
+            conn.execute(
+                "INSERT INTO loans (id, name, principal, interest_rate, monthly_payment, start_date)
+                 VALUES ('l', 'Mortgage', '1000000', '0', '10000', ?1)",
+                [start],
+            )?;
+            conn.execute(
+                "INSERT INTO loan_events (id, loan_id, kind, event_day, amount, created_at)
+                 VALUES ('e', 'l', 'extra_payment', ?1, '100000', 10)",
+                [day],
+            )?;
+            conn.execute(
+                "INSERT INTO loan_legacy_anchors (loan_id, amount, day) VALUES ('l', '700000', ?1)",
+                [day],
+            )?;
+            state::enable(conn, DeviceId([7; 16]))
+        })
+        .expect("seed and enable");
+        db.close();
+
+        db.open_with_key(path, &key).expect("open");
+
+        db.with_conn(|conn| {
+            assert!(capture::is_installed(conn)?);
+            let quantity: String = conn.query_row(
+                "SELECT quantity FROM stock_investments WHERE id = 'inv'",
+                [],
+                |r| r.get(0),
+            )?;
+            assert_eq!(quantity, "5", "the self-heal ran");
+            let position_clocks: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM sync_clock WHERE tbl = 'stock_investments'",
+                [],
+                |r| r.get(0),
+            )?;
+            assert_eq!(position_clocks, 0, "a recomputed quantity is not captured");
+            let queued_position: i64 = conn.query_row(
+                "SELECT COUNT(*) FROM sync_outbox WHERE tbl = 'stock_investments'",
+                [],
+                |r| r.get(0),
+            )?;
+            assert_eq!(queued_position, 0);
+            // Installed before the reconcile: the event it wrote was captured and queued.
+            let check: String = conn.query_row(
+                "SELECT id FROM loan_events WHERE kind = 'balance_check'",
+                [],
+                |r| r.get(0),
+            )?;
+            let queued_events: Vec<String> = conn
+                .prepare("SELECT pk FROM sync_outbox WHERE tbl = 'loan_events'")?
+                .query_map([], |r| r.get(0))?
+                .collect::<std::result::Result<_, _>>()?;
+            assert_eq!(queued_events, vec![check]);
+            Ok(())
+        })
+        .expect("checks");
     }
 
     #[test]

@@ -156,6 +156,12 @@ jobs:
         working-directory: src-tauri
         run: cargo clippy --workspace --all-targets -- -D warnings
 
+      # clippy never links. Building the library links moony_lib.dll against the static OpenSSL,
+      # which is where the v1.3.0 release build failed (system libraries, see src-tauri/build.rs).
+      - name: Link the app library
+        working-directory: src-tauri
+        run: cargo build --lib --locked
+
       # The app's own test binary would die at load (no comctl32 v6 manifest for test binaries, which
       # rfd's TaskDialogIndirect needs; follow-up), so only the plugin's tests run here.
       - name: Rust tests (moony-keychain)

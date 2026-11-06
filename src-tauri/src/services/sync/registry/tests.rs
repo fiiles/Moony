@@ -196,23 +196,315 @@ fn the_four_recalculated_updated_at_columns_are_local() {
 #[test]
 fn loan_terms_and_previous_terms_are_synced() {
     // Spec corrections 3 and 4: only the balance anchor is recomputed on loans.
-    let conn = migrated();
-    let mut checked = 0;
-    for c in columns_of(&conn, "loans") {
-        if c.name.starts_with("previous_") || c.name.contains("payment") || c.name.contains("rate")
-        {
-            assert_eq!(
-                column_class("loans", &c.name),
-                ColumnClass::Synced,
-                "{}",
-                c.name
-            );
-            checked += 1;
-        }
+    for (t, c) in [
+        ("loans", "interest_rate"),
+        ("loans", "monthly_payment"),
+        ("loan_events", "previous_rate"),
+        ("loan_events", "previous_monthly_payment"),
+    ] {
+        assert_eq!(column_class(t, c), ColumnClass::Synced, "{t}.{c}");
     }
-    assert!(checked >= 2, "expected loan terms columns, found {checked}");
     assert_eq!(
         column_class("loans", "balance_anchor_amount"),
         ColumnClass::Recomputed
     );
+}
+
+fn want<'a>(m: &[(&str, &[&'a str])], table: &str) -> Vec<&'a str> {
+    m.iter()
+        .find(|(n, _)| *n == table)
+        .map(|(_, c)| sorted(c))
+        .unwrap_or_default()
+}
+
+fn names_of(class: TableClass) -> Vec<&'static str> {
+    let mut v: Vec<_> = tables()
+        .iter()
+        .filter(|t| t.class == class)
+        .map(|t| t.name)
+        .collect();
+    v.sort_unstable();
+    v
+}
+
+fn sorted<'a>(list: &[&'a str]) -> Vec<&'a str> {
+    let mut v = list.to_vec();
+    v.sort_unstable();
+    v
+}
+
+#[test]
+fn the_exact_tables_of_each_class_are_pinned() {
+    let synced = [
+        "bank_accounts",
+        "bank_account_zones",
+        "bank_balance_records",
+        "bank_transactions",
+        "csv_import_batches",
+        "institutions",
+        "transaction_categories",
+        "categorization_rules",
+        "learned_payees",
+        "budget_goal_versions",
+        "spending_plans",
+        "stock_investments",
+        "investment_transactions",
+        "investment_dividends",
+        "stock_import_batches",
+        "stock_splits",
+        "watched_stocks",
+        "stock_price_overrides",
+        "dividend_overrides",
+        "stock_tags",
+        "stock_tag_groups",
+        "stock_investment_tags",
+        "crypto_investments",
+        "crypto_transactions",
+        "crypto_price_overrides",
+        "bonds",
+        "loans",
+        "loan_events",
+        "real_estate",
+        "real_estate_one_time_costs",
+        "real_estate_valuations",
+        "real_estate_loans",
+        "real_estate_insurances",
+        "insurance_policies",
+        "other_assets",
+        "other_asset_transactions",
+        "other_asset_valuations",
+        "cashflow_items",
+        "cashflow_plan_exclusions",
+        "projection_settings",
+        "milestone_states",
+        "user_profile",
+        "app_config",
+        "sync_devices",
+    ];
+    let seed = [
+        "portfolio_metrics_history",
+        "stock_value_history",
+        "crypto_value_history",
+        "exchange_rates",
+        "exchange_rate_history",
+        "stock_data",
+        "crypto_prices",
+        "dividend_data",
+        "stock_dividend_events",
+        "stock_dividend_coverage",
+    ];
+    let derived = ["budget_goals"];
+    let local = [
+        "_migrations",
+        "attachment_leftovers",
+        "loan_legacy_anchors",
+        "mcp_pending_refresh",
+        "real_estate_photo_batches",
+        "real_estate_photos",
+        "real_estate_documents",
+        "insurance_documents",
+        "sync_state",
+        "sync_clock",
+        "sync_outbox",
+        "sync_heads",
+        "sync_own_log",
+        "sync_unsent",
+        "sync_renamed",
+    ];
+    assert_eq!(names_of(TableClass::Synced), sorted(&synced));
+    assert_eq!(names_of(TableClass::Seed), sorted(&seed));
+    assert_eq!(names_of(TableClass::Derived), sorted(&derived));
+    assert_eq!(names_of(TableClass::Local), sorted(&local));
+}
+
+#[test]
+fn user_profile_local_columns_are_pinned() {
+    assert_eq!(
+        sorted(spec("user_profile").unwrap().local),
+        sorted(&[
+            "id",
+            "language",
+            "theme",
+            "menu_preferences",
+            "mcp_server_enabled",
+            "mcp_server_token",
+            "mcp_server_port",
+            "created_at",
+        ])
+    );
+}
+
+#[test]
+fn local_recomputed_and_recomputed_or_typed_sets_are_pinned() {
+    let local: &[(&str, &[&str])] = &[
+        (
+            "user_profile",
+            &[
+                "id",
+                "language",
+                "theme",
+                "menu_preferences",
+                "mcp_server_enabled",
+                "mcp_server_token",
+                "mcp_server_port",
+                "created_at",
+            ],
+        ),
+        ("bank_accounts", &["updated_at"]),
+        ("loans", &["updated_at"]),
+        ("real_estate", &["updated_at", "photos"]),
+        ("other_assets", &["updated_at"]),
+    ];
+    let recomputed: &[(&str, &[&str])] =
+        &[("loans", &["balance_anchor_amount", "balance_anchor_date"])];
+    let rot: &[(&str, &[(&[&str], &str, &str)])] = &[
+        (
+            "bank_accounts",
+            &[(
+                &["balance", "balance_as_of"],
+                "bank_balance_records",
+                "bank_account_id",
+            )],
+        ),
+        (
+            "real_estate",
+            &[(
+                &["market_price", "market_price_currency"],
+                "real_estate_valuations",
+                "real_estate_id",
+            )],
+        ),
+        (
+            "other_assets",
+            &[
+                (&["market_price"], "other_asset_valuations", "asset_id"),
+                (
+                    &["quantity", "average_purchase_price"],
+                    "other_asset_transactions",
+                    "asset_id",
+                ),
+            ],
+        ),
+        (
+            "stock_investments",
+            &[(&["quantity"], "investment_transactions", "investment_id")],
+        ),
+        (
+            "crypto_investments",
+            &[(
+                &["quantity", "currency"],
+                "crypto_transactions",
+                "investment_id",
+            )],
+        ),
+    ];
+    for t in tables() {
+        assert_eq!(sorted(t.local), want(local, t.name), "{} local", t.name);
+        assert_eq!(
+            sorted(t.recomputed),
+            want(recomputed, t.name),
+            "{} recomputed",
+            t.name
+        );
+        let got: Vec<(Vec<&str>, &str, &str)> = t
+            .recomputed_or_typed
+            .iter()
+            .map(|(c, s)| (c.to_vec(), s.table, s.fk))
+            .collect();
+        let exp: Vec<(Vec<&str>, &str, &str)> = rot
+            .iter()
+            .find(|(n, _)| *n == t.name)
+            .map(|(_, l)| l.iter().map(|(c, tb, fk)| (c.to_vec(), *tb, *fk)).collect())
+            .unwrap_or_default();
+        assert_eq!(got, exp, "{} recomputed_or_typed", t.name);
+        assert!(t.write_once.is_empty() || t.name == "sync_devices");
+        assert!(t.monotonic.is_empty() || t.name == "stock_splits");
+    }
+    assert_eq!(spec("sync_devices").unwrap().write_once, &["public_key"]);
+    assert_eq!(spec("stock_splits").unwrap().monotonic, &["status"]);
+}
+
+#[test]
+fn the_exact_column_groups_are_pinned() {
+    let amount = &[&["amount", "currency"][..]][..];
+    let expected: &[(&str, &[&[&str]])] = &[
+        ("bank_balance_records", amount),
+        ("bank_transactions", amount),
+        ("budget_goal_versions", amount),
+        ("spending_plans", amount),
+        ("cashflow_items", amount),
+        ("real_estate_one_time_costs", amount),
+        ("crypto_price_overrides", &[&["price", "currency"]]),
+        (
+            "crypto_transactions",
+            &[&["quantity", "price_per_unit", "currency"]],
+        ),
+        (
+            "other_asset_transactions",
+            &[&["quantity", "price_per_unit", "currency"]],
+        ),
+        (
+            "investment_transactions",
+            &[&[
+                "quantity",
+                "price_per_unit",
+                "fee",
+                "currency",
+                "split_basis",
+            ]],
+        ),
+        (
+            "stock_price_overrides",
+            &[&["price", "currency", "split_basis"]],
+        ),
+        (
+            "dividend_overrides",
+            &[&["yearly_dividend_sum", "currency", "split_basis"]],
+        ),
+        (
+            "watched_stocks",
+            &[&["target_price", "target_direction", "split_basis"]],
+        ),
+        ("investment_dividends", &[&["gross_amount", "currency"]]),
+        ("real_estate_valuations", &[&["value", "currency"]]),
+        ("other_asset_valuations", &[&["value", "currency"]]),
+        (
+            "real_estate",
+            &[
+                &["purchase_price", "purchase_price_currency"],
+                &["monthly_rent", "monthly_rent_currency"],
+                &["market_price", "market_price_currency"],
+            ],
+        ),
+        (
+            "insurance_policies",
+            &[
+                &["one_time_payment", "one_time_payment_currency"],
+                &["regular_payment", "regular_payment_currency"],
+            ],
+        ),
+        ("loans", &[&["principal", "currency"]]),
+        ("bonds", &[&["coupon_value", "currency"]]),
+        (
+            "projection_settings",
+            &[&["monthly_contribution", "contribution_currency"]],
+        ),
+        // recomputed-or-typed lists are groups too
+        ("bank_accounts", &[&["balance", "balance_as_of"]]),
+        (
+            "other_assets",
+            &[&["market_price"], &["quantity", "average_purchase_price"]],
+        ),
+        ("stock_investments", &[&["quantity"]]),
+        ("crypto_investments", &[&["quantity", "currency"]]),
+    ];
+    for t in tables() {
+        let got: Vec<Vec<&str>> = t.groups.iter().map(|g| g.to_vec()).collect();
+        let exp: Vec<Vec<&str>> = expected
+            .iter()
+            .find(|(n, _)| *n == t.name)
+            .map(|(_, g)| g.iter().map(|x| x.to_vec()).collect())
+            .unwrap_or_default();
+        assert_eq!(got, exp, "{} groups", t.name);
+    }
 }

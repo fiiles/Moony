@@ -827,7 +827,7 @@
       "paymentsEmpty": "Lägg till betalningar i en betalnings detaljer (Utgiftsplan) eller på datorn."
     },
     "form": {
-      "newDescription": "Hur mycket du vill spendera på en sak i år. Du lägger till betalningar i planen i betalningens detaljer."
+      "newDescription": "Hur mycket du vill spendera på en sak under ett år. Du lägger till betalningar i planen i betalningens detaljer."
     }
   }
 }

@@ -7,9 +7,10 @@ import type { PlanCandidateFilters } from '@shared/schema';
  * Every plan of every year with its spend (plan currency), for the plan pickers. Spent is
  * converted at the payments' days, so a rate refresh refetches it (`fxRevision`).
  */
-export function useSpendingPlanIndex() {
+export function useSpendingPlanIndex(enabled = true) {
   const { fxRevision } = useCurrency();
   return useQuery({
+    enabled,
     queryKey: ['spending-plans', 'index', fxRevision],
     queryFn: () => spendingPlansApi.getIndex(),
   });

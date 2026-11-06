@@ -22,7 +22,7 @@ import {
 import { utcDayFloor } from '@/utils/chart-axis';
 import { useBankTransactionMutations } from '@/hooks/use-bank-account-mutations';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
-import { useSpendingPlanMutations } from '@/hooks/use-spending-plan-mutations';
+import { SPENDING_PLAN_KEYS, useSpendingPlanMutations } from '@/hooks/use-spending-plan-mutations';
 import { useSpendingPlanDetail, useSpendingPlanTransactions } from '@/hooks/use-spending-plans';
 import { cashflowApi, spendingPlansApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
@@ -68,14 +68,6 @@ const CARD =
 const WHOLE = { decimals: 0 } as const;
 /** A month name under every third bar (the Cashflow bars' rule). */
 const LABEL_EVERY = 3;
-/** The plan's own query keys a delete leaves stale elsewhere (refetched where they show next). */
-const PLAN_KEYS = [
-  'spending-plans',
-  'spending-plan',
-  'spending-plan-transactions',
-  'spending-plan-candidates',
-  'bank-transactions',
-] as const;
 
 /**
  * A spending plan's detail (spec M8–M10, M14, `/cashflow/plans/:id`): the plan's name in the nav
@@ -104,7 +96,7 @@ export default function PlanDetail() {
   const removePlan = useMutation({
     mutationFn: (plan: Pick<SpendingPlan, 'id' | 'name'>) => spendingPlansApi.remove(plan.id),
     onSuccess: (_: void, plan) => {
-      for (const key of PLAN_KEYS) {
+      for (const key of SPENDING_PLAN_KEYS) {
         void queryClient.invalidateQueries({ queryKey: [key], refetchType: 'inactive' });
       }
       toast.success(tp('toast.deleted', { name: plan.name }));
@@ -266,8 +258,17 @@ function PlanDetailBody({ detail, onReopen }: PlanDetailBodyProps) {
   const all = useMemo(() => transactions.data ?? [], [transactions.data]);
   const shown = useMemo(() => filterPlanPayments(all, month, category), [all, month, category]);
   const groups = useMemo(() => groupByDay(shown), [shown]);
+  // The sheets' rows (the same one while the picker is open over the transaction sheet)
+  const [openTx, setOpenTx] = useState<BankTransaction | null>(null);
+  const [pickFor, setPickFor] = useState<BankTransaction | null>(null);
   // The rows' meanings (a refund badge, a transfer chip, the sheet's "Automaticky" line)
-  const ids = useMemo(() => all.map((tx) => tx.id), [all]);
+  // The open payment stays in the ids after an untagging drops it from the list, so its sheet
+  // keeps its "Automaticky" line
+  const openTxId = openTx?.id ?? null;
+  const ids = useMemo(() => {
+    const planIds = all.map((tx) => tx.id);
+    return openTxId === null || planIds.includes(openTxId) ? planIds : [...planIds, openTxId];
+  }, [all, openTxId]);
   const flows = useQuery({
     queryKey: ['effective-transaction-flows', ids],
     queryFn: () => cashflowApi.getEffectiveFlows(ids),
@@ -279,10 +280,7 @@ function PlanDetailBody({ detail, onReopen }: PlanDetailBodyProps) {
     [flows.data]
   );
 
-  // The sheets' rows (the same one while the picker is open over the transaction sheet); a write
-  // they make is reported through `patchTx`, since a filtered list may no longer show the row
-  const [openTx, setOpenTx] = useState<BankTransaction | null>(null);
-  const [pickFor, setPickFor] = useState<BankTransaction | null>(null);
+  // A write the sheets make is reported through `patchTx`, since a filtered list may no longer show the row
   const patchTx = (txId: string, patch: Partial<BankTransaction>) => {
     const apply = (tx: BankTransaction | null) => (tx?.id === txId ? { ...tx, ...patch } : tx);
     setOpenTx(apply);

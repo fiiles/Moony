@@ -4,7 +4,7 @@ import { useLocation, useSearch } from 'wouter';
 import { ClipboardList, Copy, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import type { SpendingPlan } from '@shared/schema';
-import { planRow, type PlanRow } from '@/utils/spending-plans';
+import { planRow, yearFromSearch, type PlanRow } from '@/utils/spending-plans';
 import { useSpendingPlanMutations } from '@/hooks/use-spending-plan-mutations';
 import { useSpendingPlansOverview } from '@/hooks/use-spending-plans';
 import { useFormat } from '@/lib/use-format';
@@ -34,12 +34,6 @@ import { planPath, plansPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { PlanFormSheet } from '@/mobile/sheets/PlanFormSheet';
-
-/** The year in `?year=` (the desktop's rule: a whole year in 2000–2100, else the current one). */
-function yearFromSearch(search: string, fallback: number): number {
-  const value = Number(new URLSearchParams(search).get('year'));
-  return Number.isInteger(value) && value >= 2000 && value <= 2100 ? value : fallback;
-}
 
 const NEW_PLAN_BUTTON =
   'h-auto min-h-12 whitespace-normal rounded-[10px] px-5 py-2 text-center text-m-row';

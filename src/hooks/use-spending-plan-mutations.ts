@@ -17,7 +17,7 @@ import type {
  * `docs/standards/typescript-frontend.md` rule 3 (`portfolio-metrics`, `cashflow-report`,
  * `recordSnapshot()`, `portfolio-history`) does not apply here.
  */
-const SPENDING_PLAN_KEYS = [
+export const SPENDING_PLAN_KEYS = [
   'spending-plans',
   'spending-plan',
   'spending-plan-transactions',
@@ -131,7 +131,7 @@ export type AssignableRow = Pick<BankTransaction, 'id' | 'spendingPlanId'>;
  * Tags payments with a plan (or clears their tag with `plan: null`) and toasts "n platby přidány
  * do plánu X" / "… odebrány z plánu" with Undo, which writes each payment's previous plan back
  * (`restore`, so a closed previous plan is allowed). Resolves to whether the write succeeded;
- * a failure is toasted by the mutation.
+ * a failure is toasted by the mutation. `onUndone` runs once the Undo has been written.
  */
 export function useAssignWithUndo() {
   const client = useQueryClient();
@@ -141,7 +141,8 @@ export function useAssignWithUndo() {
 
   const assign = async (
     rows: readonly AssignableRow[],
-    plan: Pick<SpendingPlan, 'id' | 'name'> | null
+    plan: Pick<SpendingPlan, 'id' | 'name'> | null,
+    onUndone?: () => void
   ): Promise<boolean> => {
     if (rows.length === 0) return false;
     const assignments = rows.map((row) => ({ transactionId: row.id, planId: plan?.id ?? null }));
@@ -157,7 +158,10 @@ export function useAssignWithUndo() {
     // Through the API, not the mutation: the toast outlives the component that assigned
     const undo = () =>
       spendingPlansApi.setTransactionPlans(previous, true).then(
-        () => refreshSpendingPlans(client),
+        async () => {
+          await refreshSpendingPlans(client);
+          onUndone?.();
+        },
         (error: Error) => {
           toast.error(translateApiError(error, tc));
         }

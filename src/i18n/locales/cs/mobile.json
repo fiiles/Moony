@@ -866,7 +866,7 @@
       "paymentsEmpty": "Platby přidáte v detailu platby (Výdajový plán) nebo na počítači."
     },
     "form": {
-      "newDescription": "Kolik chcete letos utratit za jednu věc. Platby do plánu přidáte v detailu platby."
+      "newDescription": "Kolik chcete za rok utratit za jednu věc. Platby do plánu přidáte v detailu platby."
     }
   }
 }

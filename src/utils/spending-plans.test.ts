@@ -21,6 +21,7 @@ import {
   planAxisLabels,
   planMonthLabel,
   planFlowSegments,
+  yearFromSearch,
   type PlanStatus,
 } from './spending-plans';
 import { createFormatters } from '@/lib/format';
@@ -533,5 +534,19 @@ describe('planFlowSegments', () => {
 
   it('is empty when nothing is planned or spent', () => {
     expect(planFlowSegments({ planned: 0, spent: 0, plans: [] }, labels)).toEqual([]);
+  });
+});
+
+describe('yearFromSearch', () => {
+  it('reads a whole year in range', () => {
+    expect(yearFromSearch('?year=2024', 2030)).toBe(2024);
+  });
+
+  it('falls back on a missing, non-integer or out-of-range year', () => {
+    expect(yearFromSearch('', 2030)).toBe(2030);
+    expect(yearFromSearch('?year=abc', 2030)).toBe(2030);
+    expect(yearFromSearch('?year=2024.5', 2030)).toBe(2030);
+    expect(yearFromSearch('?year=1999', 2030)).toBe(2030);
+    expect(yearFromSearch('?year=2101', 2030)).toBe(2030);
   });
 });

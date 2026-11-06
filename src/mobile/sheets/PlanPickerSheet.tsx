@@ -92,7 +92,9 @@ function PickerBody({
       onClose();
       return;
     }
-    if (await assign([tx], plan)) {
+    const previous = tx.spendingPlanId;
+    // The toast's Undo gives the payment its plan back, so the caller's copy has to follow
+    if (await assign([tx], plan, () => onAssigned?.(previous))) {
       onAssigned?.(plan?.id ?? null);
       onClose();
     }

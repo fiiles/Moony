@@ -866,7 +866,7 @@
       "paymentsEmpty": "Aggiungi i pagamenti dal dettaglio di un pagamento (Piano di spesa) o dal computer."
     },
     "form": {
-      "newDescription": "Quanto vuoi spendere quest’anno per una singola cosa. Aggiungi i pagamenti al piano dal dettaglio del pagamento."
+      "newDescription": "Quanto vuoi spendere in un anno per una singola cosa. Aggiungi i pagamenti al piano dal dettaglio del pagamento."
     }
   }
 }

@@ -827,7 +827,7 @@
       "paymentsEmpty": "Zahlungen fügen Sie in den Details einer Zahlung (Ausgabenplan) oder am Computer hinzu."
     },
     "form": {
-      "newDescription": "Wie viel Sie dieses Jahr für eine Sache ausgeben möchten. Zahlungen fügen Sie dem Plan in den Zahlungsdetails hinzu."
+      "newDescription": "Wie viel Sie in einem Jahr für eine Sache ausgeben möchten. Zahlungen fügen Sie dem Plan in den Zahlungsdetails hinzu."
     }
   }
 }

@@ -827,7 +827,7 @@
       "paymentsEmpty": "Legg til betalinger fra detaljene til en betaling (Utgiftsplan) eller på datamaskinen."
     },
     "form": {
-      "newDescription": "Hvor mye du vil bruke på én ting i år. Du legger betalinger til i planen fra betalingsdetaljene."
+      "newDescription": "Hvor mye du vil bruke på én ting i løpet av et år. Du legger betalinger til i planen fra betalingsdetaljene."
     }
   }
 }

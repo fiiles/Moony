@@ -75,7 +75,7 @@ export function TransactionSheet({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [planOpen, setPlanOpen] = useState(false);
-  const planIndex = useSpendingPlanIndex();
+  const planIndex = useSpendingPlanIndex(open);
   const detailsId = useId();
 
   if (!shown) return null;
@@ -92,6 +92,14 @@ export function TransactionSheet({
   const note = details.filter((text) => text !== title);
   const auto = shown.flowKind === null;
   const plan = planIndex.data?.find((s) => s.plan.id === shown.spendingPlanId)?.plan;
+  // A tagged payment whose plan is not known (yet) is not "Bez plánu"
+  const planText = plan
+    ? plan.name
+    : shown.spendingPlanId === null
+      ? t('transaction.noPlan')
+      : planIndex.isLoading
+        ? '…'
+        : '—';
 
   const flowOptions = FLOW_CHOICES.map((choice) => ({
     value: choice,
@@ -169,10 +177,10 @@ export function TransactionSheet({
                   <span className="truncate">{plan.name}</span>
                 </span>
               ) : (
-                t('transaction.noPlan')
+                planText
               )
             }
-            ariaLabel={`${t('transaction.plan')}, ${plan ? plan.name : t('transaction.noPlan')}`}
+            ariaLabel={`${t('transaction.plan')}, ${planText}`}
             onClick={() => setPlanOpen(true)}
           />
           <KeyValueRow

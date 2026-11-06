@@ -866,7 +866,7 @@
       "paymentsEmpty": "Añade pagos desde el detalle de un pago (Plan de gasto) o en el ordenador."
     },
     "form": {
-      "newDescription": "Cuánto quieres gastar este año en una sola cosa. Añades pagos al plan desde el detalle del pago."
+      "newDescription": "Cuánto quieres gastar en un año en una sola cosa. Añades pagos al plan desde el detalle del pago."
     }
   }
 }

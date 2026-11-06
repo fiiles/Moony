@@ -20,6 +20,10 @@ export const routes = {
   cashflowCategory: '/cashflow/category/:flow/:key',
   /** The budgets of the period, pushed on Cashflow. */
   budgets: '/cashflow/budgets',
+  /** The year's spending plans (Výdajové plány), pushed on Cashflow; `?year=N` picks the year. */
+  plans: '/cashflow/plans',
+  /** One spending plan (`:id` is the plan's id). */
+  planDetail: '/cashflow/plans/:id',
   wealth: '/wealth',
   /**
    * Pushed on Majetek: the class pages (Akcie, Krypto, Dluhopisy, Ostatní aktiva) and their
@@ -47,6 +51,11 @@ export const routes = {
 export const accountPath = (id: string) => `/finance/accounts/${id}`;
 export const loanPath = (id: string) => `/finance/loans/${id}`;
 export const policyPath = (id: string) => `/finance/policies/${id}`;
+
+/** The plans list; without a year the page opens on the current one. */
+export const plansPath = (year?: number) =>
+  year === undefined ? routes.plans : `${routes.plans}?year=${year}`;
+export const planPath = (id: string) => `${routes.plans}/${id}`;
 
 /** Paths of the details pushed on Majetek, for a `Link` or `setLocation`. */
 export const positionPath = (id: string) => `/wealth/stocks/${id}`;

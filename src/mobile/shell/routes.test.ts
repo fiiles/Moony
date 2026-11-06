@@ -131,9 +131,10 @@ describe('settings sections', () => {
 });
 
 describe('spending plan paths', () => {
-  it('builds the list path with an optional year', () => {
-    expect(plansPath()).toBe('/cashflow/plans');
-    expect(plansPath(2026)).toBe('/cashflow/plans?year=2026');
+  it('builds the plans view of the Cashflow root with an optional year', () => {
+    expect(plansPath()).toBe('/cashflow?view=plans');
+    expect(plansPath(2026)).toBe('/cashflow?view=plans&year=2026');
+    expect(routes.plans).toBe('/cashflow/plans');
   });
 
   it('builds the detail path from the id', () => {

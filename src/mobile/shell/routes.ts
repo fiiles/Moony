@@ -20,7 +20,10 @@ export const routes = {
   cashflowCategory: '/cashflow/category/:flow/:key',
   /** The budgets of the period, pushed on Cashflow. */
   budgets: '/cashflow/budgets',
-  /** The year's spending plans (Výdajové plány), pushed on Cashflow; `?year=N` picks the year. */
+  /**
+   * The old path of the plans list: it redirects to the plans view of the Cashflow root
+   * (`plansPath`). Its detail still lives under it.
+   */
   plans: '/cashflow/plans',
   /** One spending plan (`:id` is the plan's id). */
   planDetail: '/cashflow/plans/:id',
@@ -52,9 +55,14 @@ export const accountPath = (id: string) => `/finance/accounts/${id}`;
 export const loanPath = (id: string) => `/finance/loans/${id}`;
 export const policyPath = (id: string) => `/finance/policies/${id}`;
 
-/** The plans list; without a year the page opens on the current one. */
+/**
+ * The plans view of the Cashflow root (`?view=plans`); without a year it opens on the current one.
+ * It carries no period: the Cashflow tab keeps its own while the plans are shown.
+ */
 export const plansPath = (year?: number) =>
-  year === undefined ? routes.plans : `${routes.plans}?year=${year}`;
+  year === undefined
+    ? `${routes.cashflow}?view=plans`
+    : `${routes.cashflow}?view=plans&year=${year}`;
 export const planPath = (id: string) => `${routes.plans}/${id}`;
 
 /** Paths of the details pushed on Majetek, for a `Link` or `setLocation`. */

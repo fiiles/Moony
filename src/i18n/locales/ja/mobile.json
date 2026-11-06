@@ -332,7 +332,9 @@
     },
     "status": "状態",
     "booked": "確定",
-    "currency": "通貨"
+    "currency": "通貨",
+    "plan": "支出プラン",
+    "noPlan": "プランなし"
   },
   "picker": {
     "title": "カテゴリ",
@@ -758,6 +760,35 @@
       "title": "テスト通知",
       "body": "Moonyのリマインドはこのように表示されます。",
       "sent": "10秒後に届きます"
+    }
+  },
+  "plans": {
+    "card": {
+      "title": "支出プラン {{year}}",
+      "over_other": "予算超過 {{count}}件",
+      "near_other": "予算間近 {{count}}件"
+    },
+    "spent": "{{year}}年 {{planned}}のうち{{spent}}を使用",
+    "row": {
+      "spent": "{{planned}}のうち{{spent}}を使用",
+      "left": "残り{{amount}}",
+      "over": "{{amount}}超過"
+    },
+    "takeOver": {
+      "title_other": "{{year}}年のプラン{{count}}件を引き継ぎますか?",
+      "description": "開いているプランの名前・金額・通貨・見た目がコピーされます。支払いは元のプランに残り、終了したプランは引き継がれません。"
+    },
+    "sections": {
+      "active": "進行中のプラン",
+      "closed": "終了"
+    },
+    "detail": {
+      "back": "{{year}}年のプラン",
+      "months": "月別の支出",
+      "paymentsEmpty": "支払いは、支払いの詳細（支出プラン）またはパソコンで追加できます。"
+    },
+    "form": {
+      "newDescription": "1年間に1つの項目に使いたい金額です。支払いのプランへの追加は、支払いの詳細から行います。"
     }
   }
 }

@@ -6,6 +6,16 @@ All notable changes to Moony are documented in this file. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- **Spending plans on the phone.** The Cashflow tab shows a card with what is left in this year's
+  plans and which ones run over, and opens the list of plans for any year. Each plan has a detail
+  with what is left, spend per month, spend per category and its payments. From a payment's
+  detail you can tag it with a plan or take it out. You can create, edit, close or reopen and
+  delete plans, and take over last year's open plans into an empty year. Tagging several payments
+  at once, adding payments from other accounts to a plan and choosing which plans to take over
+  stay on the desktop.
+
 ## [1.3.0] - 2026-11-06
 
 ### Added

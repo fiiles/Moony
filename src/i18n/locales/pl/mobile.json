@@ -410,7 +410,9 @@
     },
     "status": "Status",
     "booked": "Zaksięgowana",
-    "currency": "Waluta"
+    "currency": "Waluta",
+    "plan": "Plan wydatków",
+    "noPlan": "Bez planu"
   },
   "picker": {
     "title": "Kategoria",
@@ -866,6 +868,44 @@
       "title": "Powiadomienie testowe",
       "body": "Tak wygląda przypomnienie z Moony.",
       "sent": "Przyjdzie za 10 sekund"
+    }
+  },
+  "plans": {
+    "card": {
+      "title": "Plany wydatków {{year}}",
+      "over_one": "{{count}} powyżej planu",
+      "over_few": "{{count}} powyżej planu",
+      "over_many": "{{count}} powyżej planu",
+      "over_other": "{{count}} powyżej planu",
+      "near_one": "{{count}} blisko planu",
+      "near_few": "{{count}} blisko planu",
+      "near_many": "{{count}} blisko planu",
+      "near_other": "{{count}} blisko planu"
+    },
+    "spent": "Wydano {{spent}} z {{planned}} na {{year}}",
+    "row": {
+      "spent": "Wydano {{spent}} z {{planned}}",
+      "left": "zostało {{amount}}",
+      "over": "przekroczono o {{amount}}"
+    },
+    "takeOver": {
+      "title_one": "Przenieść {{count}} plan z {{year}}?",
+      "title_few": "Przenieść {{count}} plany z {{year}}?",
+      "title_many": "Przenieść {{count}} planów z {{year}}?",
+      "title_other": "Przenieść {{count}} planu z {{year}}?",
+      "description": "Kopiowane są nazwa, kwota, waluta i wygląd każdego otwartego planu. Płatności zostają w pierwotnych planach; zamknięte plany nie są przenoszone."
+    },
+    "sections": {
+      "active": "Aktywne plany",
+      "closed": "Zamknięte"
+    },
+    "detail": {
+      "back": "Plany {{year}}",
+      "months": "Wydatki według miesięcy",
+      "paymentsEmpty": "Płatności dodasz w szczegółach płatności (Plan wydatków) lub na komputerze."
+    },
+    "form": {
+      "newDescription": "Ile chcesz wydać w ciągu roku na jedną rzecz. Płatności dodajesz do planu w szczegółach płatności."
     }
   }
 }

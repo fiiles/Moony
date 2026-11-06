@@ -384,7 +384,9 @@
     },
     "status": "Stav",
     "booked": "Zaúčtováno",
-    "currency": "Měna"
+    "currency": "Měna",
+    "plan": "Výdajový plán",
+    "noPlan": "Bez plánu"
   },
   "picker": {
     "title": "Kategorie",
@@ -830,6 +832,41 @@
       "title": "Zkušební oznámení",
       "body": "Takhle vypadá připomínka z Moony.",
       "sent": "Přijde za 10 sekund"
+    }
+  },
+  "plans": {
+    "card": {
+      "title": "Výdajové plány {{year}}",
+      "over_one": "{{count}} nad plánem",
+      "over_few": "{{count}} nad plánem",
+      "over_other": "{{count}} nad plánem",
+      "near_one": "{{count}} blízko plánu",
+      "near_few": "{{count}} blízko plánu",
+      "near_other": "{{count}} blízko plánu"
+    },
+    "spent": "Utraceno {{spent}} z {{planned}} na rok {{year}}",
+    "row": {
+      "spent": "Utraceno {{spent}} z {{planned}}",
+      "left": "zbývá {{amount}}",
+      "over": "přečerpáno o {{amount}}"
+    },
+    "takeOver": {
+      "title_one": "Převzít {{count}} plán z roku {{year}}?",
+      "title_few": "Převzít {{count}} plány z roku {{year}}?",
+      "title_other": "Převzít {{count}} plánů z roku {{year}}?",
+      "description": "Zkopíruje se název, částka, měna a vzhled každého otevřeného plánu. Platby zůstanou v původních plánech, uzavřené plány se nepřevezmou."
+    },
+    "sections": {
+      "active": "Aktivní plány",
+      "closed": "Uzavřené"
+    },
+    "detail": {
+      "back": "Plány {{year}}",
+      "months": "Útrata po měsících",
+      "paymentsEmpty": "Platby přidáte v detailu platby (Výdajový plán) nebo na počítači."
+    },
+    "form": {
+      "newDescription": "Kolik chcete za rok utratit za jednu věc. Platby do plánu přidáte v detailu platby."
     }
   }
 }

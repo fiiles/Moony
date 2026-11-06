@@ -405,3 +405,9 @@ export function periodRange(
   const next = m === null ? Date.UTC(y + 1, 0, 1) : Date.UTC(y, m, 1);
   return { dateFrom: from / 1000, dateTo: next / 1000 - 1 };
 }
+
+/** The year in `?year=` (a whole year in 2000–2100, else the fallback). */
+export function yearFromSearch(search: string, fallback: number): number {
+  const value = Number(new URLSearchParams(search).get('year'));
+  return Number.isInteger(value) && value >= 2000 && value <= 2100 ? value : fallback;
+}

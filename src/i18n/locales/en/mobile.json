@@ -358,7 +358,9 @@
     },
     "status": "Status",
     "booked": "Booked",
-    "currency": "Currency"
+    "currency": "Currency",
+    "plan": "Spending plan",
+    "noPlan": "No plan"
   },
   "picker": {
     "title": "Category",
@@ -794,6 +796,38 @@
       "title": "Test notification",
       "body": "This is what a Moony reminder looks like.",
       "sent": "Arrives in 10 seconds"
+    }
+  },
+  "plans": {
+    "card": {
+      "title": "Spending plans {{year}}",
+      "over_one": "{{count}} over plan",
+      "over_other": "{{count}} over plan",
+      "near_one": "{{count}} near plan",
+      "near_other": "{{count}} near plan"
+    },
+    "spent": "Spent {{spent}} of {{planned}} for {{year}}",
+    "row": {
+      "spent": "Spent {{spent}} of {{planned}}",
+      "left": "{{amount}} left",
+      "over": "overspent by {{amount}}"
+    },
+    "takeOver": {
+      "title_one": "Take over {{count}} plan from {{year}}?",
+      "title_other": "Take over {{count}} plans from {{year}}?",
+      "description": "Each open plan's name, amount, currency and look are copied. Payments stay in the original plans; closed plans are not taken over."
+    },
+    "sections": {
+      "active": "Active plans",
+      "closed": "Closed"
+    },
+    "detail": {
+      "back": "Plans {{year}}",
+      "months": "Spending by month",
+      "paymentsEmpty": "Add payments from a payment’s details (Spending plan) or on your computer."
+    },
+    "form": {
+      "newDescription": "How much you want to spend on one thing in a year. You add payments to the plan in a payment’s details."
     }
   }
 }

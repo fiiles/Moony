@@ -93,6 +93,8 @@ interface EntityRowProps {
   from?: string;
   /** … or an action. Without either the row is not interactive. */
   onClick?: () => void;
+  /** With `onClick`, a row that toggles (a filter): its pressed state (`aria-pressed`). */
+  pressed?: boolean;
   /** Disclosure chevron; shown only on a row without a trailing value (README §13). */
   chevron?: boolean;
   onSwipeLeft?: () => void;
@@ -135,6 +137,7 @@ export function EntityRow({
   href,
   from,
   onClick,
+  pressed,
   chevron = false,
   onSwipeLeft,
   swipeLeftLabel,
@@ -230,6 +233,7 @@ export function EntityRow({
         <button
           type="button"
           onClick={onClick}
+          aria-pressed={pressed}
           className={rowClass}
           style={rowStyle}
           {...gestureProps}

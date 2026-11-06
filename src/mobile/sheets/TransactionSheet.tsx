@@ -8,6 +8,8 @@ import type {
   TransactionCategory,
 } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
+import { useSpendingPlanIndex } from '@/hooks/use-spending-plans';
+import { PlanChip } from '@/components/spending-plans/PlanChip';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
@@ -23,6 +25,7 @@ import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRetained } from '@/mobile/hooks/use-retained';
 import { signedAmountText } from '@/mobile/lib/signed-amount';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
+import { PlanPickerSheet } from '@/mobile/sheets/PlanPickerSheet';
 
 interface TransactionSheetProps {
   /** The row to show; `null` while the sheet is closed (it keeps the last one while it slides away). */
@@ -71,6 +74,8 @@ export function TransactionSheet({
   const shown = useRetained(tx);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [expanded, setExpanded] = useState(false);
+  const [planOpen, setPlanOpen] = useState(false);
+  const planIndex = useSpendingPlanIndex(open);
   const detailsId = useId();
 
   if (!shown) return null;
@@ -86,6 +91,15 @@ export function TransactionSheet({
   const title = label.title ?? details[0] ?? tb('transaction.counterparty');
   const note = details.filter((text) => text !== title);
   const auto = shown.flowKind === null;
+  const plan = planIndex.data?.find((s) => s.plan.id === shown.spendingPlanId)?.plan;
+  // A tagged payment whose plan is not known (yet) is not "Bez plánu"
+  const planText = plan
+    ? plan.name
+    : shown.spendingPlanId === null
+      ? t('transaction.noPlan')
+      : planIndex.isLoading
+        ? '…'
+        : '—';
 
   const flowOptions = FLOW_CHOICES.map((choice) => ({
     value: choice,
@@ -155,6 +169,21 @@ export function TransactionSheet({
             onClick={onPickCategory}
           />
           <KeyValueRow
+            label={t('transaction.plan')}
+            value={
+              plan ? (
+                <span className="inline-flex max-w-full items-center justify-end gap-2">
+                  <PlanChip plan={plan} size="sm" />
+                  <span className="truncate">{plan.name}</span>
+                </span>
+              ) : (
+                planText
+              )
+            }
+            ariaLabel={`${t('transaction.plan')}, ${planText}`}
+            onClick={() => setPlanOpen(true)}
+          />
+          <KeyValueRow
             stack
             label={t('transaction.flow')}
             value={
@@ -195,6 +224,12 @@ export function TransactionSheet({
           </div>
         )}
       </Sheet>
+      <PlanPickerSheet
+        tx={shown}
+        open={planOpen}
+        onOpenChange={setPlanOpen}
+        onAssigned={(spendingPlanId) => onChange?.({ spendingPlanId })}
+      />
       <ConfirmSheet
         open={confirmOpen}
         onOpenChange={setConfirmOpen}

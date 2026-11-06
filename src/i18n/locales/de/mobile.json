@@ -358,7 +358,9 @@
     },
     "status": "Status",
     "booked": "Gebucht",
-    "currency": "Währung"
+    "currency": "Währung",
+    "plan": "Ausgabenplan",
+    "noPlan": "Kein Plan"
   },
   "picker": {
     "title": "Kategorie",
@@ -794,6 +796,38 @@
       "title": "Testbenachrichtigung",
       "body": "So sieht eine Erinnerung von Moony aus.",
       "sent": "Kommt in 10 Sekunden"
+    }
+  },
+  "plans": {
+    "card": {
+      "title": "Ausgabenpläne {{year}}",
+      "over_one": "{{count}} über Plan",
+      "over_other": "{{count}} über Plan",
+      "near_one": "{{count}} nahe am Plan",
+      "near_other": "{{count}} nahe am Plan"
+    },
+    "spent": "Ausgegeben {{spent}} von {{planned}} für {{year}}",
+    "row": {
+      "spent": "Ausgegeben {{spent}} von {{planned}}",
+      "left": "noch {{amount}}",
+      "over": "um {{amount}} überschritten"
+    },
+    "takeOver": {
+      "title_one": "{{count}} Plan aus {{year}} übernehmen?",
+      "title_other": "{{count}} Pläne aus {{year}} übernehmen?",
+      "description": "Name, Betrag, Währung und Aussehen jedes offenen Plans werden übernommen. Zahlungen bleiben in den ursprünglichen Plänen; geschlossene Pläne werden nicht übernommen."
+    },
+    "sections": {
+      "active": "Aktive Pläne",
+      "closed": "Abgeschlossen"
+    },
+    "detail": {
+      "back": "Pläne {{year}}",
+      "months": "Ausgaben nach Monat",
+      "paymentsEmpty": "Zahlungen fügen Sie in den Details einer Zahlung (Ausgabenplan) oder am Computer hinzu."
+    },
+    "form": {
+      "newDescription": "Wie viel Sie in einem Jahr für eine Sache ausgeben möchten. Zahlungen fügen Sie dem Plan in den Zahlungsdetails hinzu."
     }
   }
 }

@@ -20,15 +20,17 @@ interface CashflowHeroProps {
   tone: HeroTone;
   /** The line under the number ("míra úspor 24 %"); the line keeps its height without one. */
   note?: ReactNode;
+  /** A progress bar under the note (a spending plan's usage); none on the Cashflow tab. */
+  bar?: ReactNode;
 }
 
 /**
  * The Cashflow hero (spec §8.7 item 1, README §13, `.m-card--hero`): the hero card of Přehled
  * without the period segment and the chart — label, the display number in the colour of its sign
- * and one note line. A long number shrinks to fit (floor `m-fs-title`), as the hero's does; the
+ * and one note line (a spending plan adds its usage bar under it). A long number shrinks to fit (floor `m-fs-title`), as the hero's does; the
  * decorative circle is at 60 %.
  */
-export function CashflowHero({ label, value, formatValue, tone, note }: CashflowHeroProps) {
+export function CashflowHero({ label, value, formatValue, tone, note, bar }: CashflowHeroProps) {
   const shownValue = value === null ? '—' : formatValue(value);
   const heroRef = useRef<HTMLElement>(null);
   const fit = useFitText(heroRef, shownValue);
@@ -57,6 +59,7 @@ export function CashflowHero({ label, value, formatValue, tone, note }: Cashflow
       <div className="flex min-h-5 min-w-0 items-center whitespace-nowrap text-m-sub text-ink-3">
         {note && <span className="min-w-0 truncate">{note}</span>}
       </div>
+      {bar && <div className="mb-1 mt-2">{bar}</div>}
     </section>
   );
 }

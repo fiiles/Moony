@@ -358,7 +358,9 @@
     },
     "status": "Status",
     "booked": "Bokförd",
-    "currency": "Valuta"
+    "currency": "Valuta",
+    "plan": "Utgiftsplan",
+    "noPlan": "Ingen plan"
   },
   "picker": {
     "title": "Kategori",
@@ -794,6 +796,38 @@
       "title": "Testavisering",
       "body": "Så här ser en påminnelse från Moony ut.",
       "sent": "Kommer om 10 sekunder"
+    }
+  },
+  "plans": {
+    "card": {
+      "title": "Utgiftsplaner {{year}}",
+      "over_one": "{{count}} över planen",
+      "over_other": "{{count}} över planen",
+      "near_one": "{{count}} nära planen",
+      "near_other": "{{count}} nära planen"
+    },
+    "spent": "Spenderat {{spent}} av {{planned}} för {{year}}",
+    "row": {
+      "spent": "Spenderat {{spent}} av {{planned}}",
+      "left": "{{amount}} kvar",
+      "over": "överskriden med {{amount}}"
+    },
+    "takeOver": {
+      "title_one": "Ta över {{count}} plan från {{year}}?",
+      "title_other": "Ta över {{count}} planer från {{year}}?",
+      "description": "Namn, belopp, valuta och utseende för varje öppen plan kopieras. Betalningarna stannar i de ursprungliga planerna; stängda planer tas inte med."
+    },
+    "sections": {
+      "active": "Aktiva planer",
+      "closed": "Avslutade"
+    },
+    "detail": {
+      "back": "Planer {{year}}",
+      "months": "Utgifter per månad",
+      "paymentsEmpty": "Lägg till betalningar i en betalnings detaljer (Utgiftsplan) eller på datorn."
+    },
+    "form": {
+      "newDescription": "Hur mycket du vill spendera på en sak under ett år. Du lägger till betalningar i planen i betalningens detaljer."
     }
   }
 }

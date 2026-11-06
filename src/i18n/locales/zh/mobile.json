@@ -332,7 +332,9 @@
     },
     "status": "状态",
     "booked": "已入账",
-    "currency": "货币"
+    "currency": "货币",
+    "plan": "支出计划",
+    "noPlan": "无计划"
   },
   "picker": {
     "title": "类别",
@@ -758,6 +760,35 @@
       "title": "测试通知",
       "body": "Moony 的提醒就是这样显示的。",
       "sent": "10 秒后送达"
+    }
+  },
+  "plans": {
+    "card": {
+      "title": "支出计划 {{year}}",
+      "over_other": "{{count}} 项超出计划",
+      "near_other": "{{count}} 项接近计划"
+    },
+    "spent": "{{year}} 年计划 {{planned}},已花 {{spent}}",
+    "row": {
+      "spent": "计划 {{planned}},已花 {{spent}}",
+      "left": "剩余 {{amount}}",
+      "over": "超支 {{amount}}"
+    },
+    "takeOver": {
+      "title_other": "沿用 {{year}} 年的 {{count}} 项计划?",
+      "description": "将复制每个未关闭计划的名称、金额、货币和外观。付款保留在原计划中，已关闭的计划不会被沿用。"
+    },
+    "sections": {
+      "active": "进行中的计划",
+      "closed": "已关闭"
+    },
+    "detail": {
+      "back": "{{year}} 年计划",
+      "months": "按月支出",
+      "paymentsEmpty": "可在付款详情（支出计划）中或在电脑上添加付款。"
+    },
+    "form": {
+      "newDescription": "一年中打算在某一项上花多少钱。在付款详情中将付款加入计划。"
     }
   }
 }

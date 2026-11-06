@@ -522,3 +522,15 @@ fn key_arity_matches_the_primary_key_of_every_synced_table() {
         );
     }
 }
+
+#[test]
+fn key_only_tables_match_the_schema() {
+    let conn = migrated();
+    for t in synced_tables() {
+        let all_key = schema::columns(&conn, t.name)
+            .unwrap()
+            .iter()
+            .all(|c| c.pk_position > 0);
+        assert_eq!(is_key_only(t.name), all_key, "{}", t.name);
+    }
+}

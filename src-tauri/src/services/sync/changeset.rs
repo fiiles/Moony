@@ -290,7 +290,7 @@ pub fn decode_row(value: &Json, devs: &[DeviceId]) -> Result<RowChange> {
             parents.insert(name.clone(), clock_from(entry, devs)?);
         }
     }
-    if insert && columns.is_empty() {
+    if insert && columns.is_empty() && !registry::is_key_only(table) {
         return Err(invalid());
     }
     Ok(RowChange {
@@ -820,6 +820,23 @@ mod tests {
                 "{name}"
             );
         }
+    }
+
+    #[test]
+    fn a_key_only_table_insert_round_trips_without_columns() {
+        let row = RowChange {
+            table: "real_estate_loans".into(),
+            key: RowKey::Composite(vec!["re-1".into(), "loan-1".into()]),
+            generation: clock(7, 1),
+            insert: true,
+            deleted: None,
+            columns: BTreeMap::new(),
+            parents: BTreeMap::new(),
+        };
+        let mut devs = DevTable::new();
+        let v = encode_row(&row, &mut devs);
+        assert!(v.get("c").is_none());
+        assert_eq!(decode_row(&v, &devs.into_vec()).unwrap(), row);
     }
 
     #[test]

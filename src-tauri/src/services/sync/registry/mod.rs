@@ -73,6 +73,12 @@ pub fn key_arity(table: &str) -> usize {
     }
 }
 
+/// Synced tables whose columns are all key columns (link tables): an insert carries no `c`.
+/// Pinned against `schema::columns` by a test.
+pub fn is_key_only(table: &str) -> bool {
+    matches!(table, "real_estate_loans" | "real_estate_insurances")
+}
+
 pub fn synced_tables() -> impl Iterator<Item = &'static TableSpec> {
     tables().iter().filter(|t| t.class == TableClass::Synced)
 }

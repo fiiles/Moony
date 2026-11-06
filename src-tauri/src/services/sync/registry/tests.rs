@@ -357,7 +357,8 @@ fn local_recomputed_and_recomputed_or_typed_sets_are_pinned() {
     ];
     let recomputed: &[(&str, &[&str])] =
         &[("loans", &["balance_anchor_amount", "balance_anchor_date"])];
-    let rot: &[(&str, &[(&[&str], &str, &str)])] = &[
+    type Source<'a> = (&'a [&'a str], &'a str, &'a str);
+    let rot: &[(&str, &[Source])] = &[
         (
             "bank_accounts",
             &[(

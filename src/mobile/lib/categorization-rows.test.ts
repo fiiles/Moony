@@ -97,9 +97,9 @@ describe('customRuleInput', () => {
 });
 
 describe('learnedPayeeTitle', () => {
-  it('prefers the original payee, then the normalized one', () => {
-    expect(learnedPayeeTitle(learned())).toBe('LIDL PRAHA 4');
-    expect(learnedPayeeTitle(learned({ originalPayee: null }))).toBe('lidl');
+  it('prefers the normalized payee, then the original one (as the desktop)', () => {
+    expect(learnedPayeeTitle(learned())).toBe('lidl');
+    expect(learnedPayeeTitle(learned({ normalizedPayee: null }))).toBe('LIDL PRAHA 4');
   });
   it('shows the formatted IBAN of an IBAN-only entry', () => {
     const entry = learned({

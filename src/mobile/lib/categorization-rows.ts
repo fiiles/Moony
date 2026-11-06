@@ -54,10 +54,10 @@ export function customRuleInput(rule: CustomRule, isActive: boolean): CustomRule
   };
 }
 
-/** What names a learned rule: the payee as it was written, else the normalized one, else the IBAN. */
+/** What names a learned rule, as the desktop's row: the normalized payee, else the original one, else the IBAN. */
 export function learnedPayeeTitle(entry: LearnedPayeeEntry): string {
   return (
-    entry.originalPayee || entry.normalizedPayee || formatIbanDisplay(entry.counterpartyIban) || '—'
+    entry.normalizedPayee || entry.originalPayee || formatIbanDisplay(entry.counterpartyIban) || '—'
   );
 }
 

@@ -33,13 +33,16 @@ export function LearnedPayeeRow({ entry, category, accountName, onForget }: Lear
       ? t('scopedLearning', { account, direction: t(scope.direction) })
       : tm('settings.categorization.scopedNoDirection', { account });
   }
+  // The payee as the bank wrote it, when it differs from the title (the desktop's second line)
+  const original =
+    entry.originalPayee && entry.originalPayee !== title ? entry.originalPayee : null;
   const categoryLabel = category ? categoryName(category) : entry.categoryId;
 
   return (
     <EntityRow
       chip={<CategoryChip category={category} />}
       title={title}
-      sub={`${categoryLabel} · ${scopeLine}`}
+      sub={[original, categoryLabel, scopeLine].filter(Boolean).join(' · ')}
       onSwipeLeft={onForget}
       swipeLeftLabel={t('learnedTab.forget')}
       swipeLeftIcon={X}

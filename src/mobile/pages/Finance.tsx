@@ -117,9 +117,18 @@ export default function Finance() {
   const showLoans = user?.menuPreferences?.loans ?? true;
   const showInsurance = user?.menuPreferences?.insurance ?? true;
   const { accounts, totals, loans, insurance, mainCurrency, fxReady, isLoading } = finance;
-  // Nothing to show is a failed load, not an empty Finance: without the accounts, or with nothing
-  // else read (audit C6). A part that failed beside accounts is said above them.
-  const blocked = finance.isError || (finance.partError && accounts.length === 0);
+  // Nothing to show is a failed load, not an empty Finance: every section shown failed to load
+  // (audit C6). A part that failed beside what could be read is said above it.
+  const { failed } = finance;
+  const blocked =
+    failed.accounts && (!showLoans || failed.loans) && (!showInsurance || failed.insurance);
+  // A shown part that failed beside what could be read (a hidden section does not count)
+  const partError =
+    !blocked &&
+    (failed.accounts ||
+      (showLoans && failed.loans) ||
+      (showInsurance && failed.insurance) ||
+      failed.queue);
 
   // How the tab was left is kept for the session (a visit to an account remounts it); the add
   // dialog is not, so it does not reopen on return
@@ -197,6 +206,7 @@ export default function Finance() {
   const isEmpty =
     !isLoading &&
     !blocked &&
+    !partError &&
     accounts.length === 0 &&
     (!showLoans || loans.rows.length === 0) &&
     (!showInsurance || insurance.rows.length === 0);
@@ -308,7 +318,7 @@ export default function Finance() {
         />
       ) : (
         <>
-          {finance.partError && <LoadError message={t('loadError.finance')} />}
+          {partError && <LoadError message={t('loadError.finance')} />}
           {/* Amounts left out of the totals for want of a rate (never counted as 0 or 1:1) */}
           <ScaledConversionNote
             quality={{ missingCurrencies: missing }}

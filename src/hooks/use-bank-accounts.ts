@@ -6,7 +6,7 @@ export function useBankAccounts() {
   const {
     data: accounts = [],
     isLoading,
-    isError,
+    isLoadingError: loadFailed,
     refetch,
   } = useQuery({
     queryKey: ['bank-accounts'],
@@ -18,8 +18,11 @@ export function useBankAccounts() {
   return {
     accounts,
     isLoading,
-    /** The list could not be read (the phone tells that from having no accounts). */
-    isError,
+    /**
+     * The list could not be read and there is no earlier answer (the phone tells that from having
+     * no accounts); a failed refetch behind a list already shown does not set it.
+     */
+    loadFailed,
     refetch,
   };
 }

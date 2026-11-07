@@ -56,7 +56,6 @@
       "pick": "Velg kategorien du vil følge opp utgiftene i."
     },
     "budgets": {
-      "ended": "avsluttet",
       "averageNote": "⌀ siste 6 måneder"
     },
     "showMore_one": "Vis {{count}} transaksjon til",

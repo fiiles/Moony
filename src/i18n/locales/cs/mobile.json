@@ -58,7 +58,6 @@
       "pick": "Vyberte kategorii, pro kterou chcete hlídat výdaje."
     },
     "budgets": {
-      "ended": "ukončen",
       "averageNote": "⌀ za posledních 6 měsíců"
     },
     "showMore_one": "Zobrazit další {{count}} transakci",

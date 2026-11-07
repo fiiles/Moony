@@ -54,7 +54,6 @@
       "pick": "支出を管理したいカテゴリを選んでください。"
     },
     "budgets": {
-      "ended": "終了",
       "averageNote": "直近6か月の平均"
     },
     "showMore_other": "さらに{{count}}件の取引を表示",

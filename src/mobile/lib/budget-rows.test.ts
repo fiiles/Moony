@@ -105,6 +105,27 @@ describe('budgetRows', () => {
     expect(row.upcoming.map((v) => v.amount)).toEqual(['3500']);
   });
 
+  it('carries the earlier limits, newest first, as the desktop dialog lists them', () => {
+    const [row] = budgetRows(
+      [
+        goal('cat_b', [
+          version(month(2025, 0), '2000'),
+          version(month(2025, 3), null),
+          version(month(2025, 6), '2500'),
+          version(month(2026, 0), '3000'),
+        ]),
+      ],
+      NOW,
+      nameOf,
+      'en'
+    );
+    // The gap without a limit is no interval
+    expect(row.history.map((period) => [period.version.amount, period.end])).toEqual([
+      ['2500', month(2026, 0) - 1],
+      ['2000', month(2025, 3) - 1],
+    ]);
+  });
+
   it('lets an interval be deleted only when there is another limit than the one shown', () => {
     const rows = budgetRows(
       [

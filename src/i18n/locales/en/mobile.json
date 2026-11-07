@@ -56,7 +56,6 @@
       "pick": "Choose the category whose spending you want to keep in check."
     },
     "budgets": {
-      "ended": "ended",
       "averageNote": "⌀ over the last 6 months"
     },
     "showMore_one": "Show {{count}} more transaction",

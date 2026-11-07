@@ -58,7 +58,6 @@
       "pick": "Scegli la categoria di cui vuoi tenere sotto controllo le spese."
     },
     "budgets": {
-      "ended": "terminato",
       "averageNote": "⌀ degli ultimi 6 mesi"
     },
     "showMore_one": "Mostra altro {{count}} movimento",

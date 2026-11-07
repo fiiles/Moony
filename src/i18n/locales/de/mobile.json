@@ -56,7 +56,6 @@
       "pick": "Wählen Sie die Kategorie, deren Ausgaben Sie im Blick behalten möchten."
     },
     "budgets": {
-      "ended": "beendet",
       "averageNote": "⌀ der letzten 6 Monate"
     },
     "showMore_one": "{{count}} weitere Transaktion anzeigen",

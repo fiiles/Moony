@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
-import { useRoute, useSearch } from 'wouter';
+import { useLocation, useRoute, useSearch } from 'wouter';
 import { CalendarSearch, Ellipsis, ListFilter, Pencil, Upload, Wallet } from 'lucide-react';
 import type {
   BankAccountWithInstitution,
@@ -70,6 +70,7 @@ import { hasUncategorized, showsInterest } from '@/mobile/lib/account-menu';
 import { balanceLine } from '@/mobile/lib/balance-line';
 import { recentCategoryIds } from '@/mobile/lib/category-pick';
 import { cashChange } from '@/mobile/lib/finance-rows';
+import { transactionFromSearch } from '@/mobile/lib/move-path';
 import {
   activeFilterCount,
   dayLabel,
@@ -124,7 +125,8 @@ export default function AccountDetail() {
  * filter sheet, rows grouped by day under sticky heads, loaded page by page as it scrolls. A row
  * opens the transaction sheet on a tap or a swipe right and the category picker on a swipe left (the
  * sheet's Kategorie row opens the picker over it); a long press is its menu.
- * `?category=uncategorized` (the Finance row) opens the ledger on the payments without a category.
+ * `?category=uncategorized` (the Finance row) opens the ledger on the payments without a category;
+ * `?tx=<id>` (Přehled's "Poslední pohyby") opens that payment's sheet.
  *
  * `···` → Upravit is the desktop's account form; Úročení (accounts with zones or a rate, as on the
  * desktop) is the desktop's interest dialog; Automatická kategorizace runs the rules over the
@@ -190,6 +192,20 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   // sheets make is reported through `patchTx`, since the ledger may no longer list the row once
   // it has a category (the uncategorized filter) and then cannot say what it became.
   const [openTx, setOpenTx] = useState<BankTransaction | null>(null);
+  // `?tx=<id>` (a "Poslední pohyby" row on Přehled) opens that payment's sheet once the history
+  // has it; the query is then dropped, so the way back here does not open it again
+  const [, setLocation] = useLocation();
+  const linkedTx = transactionFromSearch(search);
+  const [handledTx, setHandledTx] = useState<string | null>(null);
+  // Done during render, as the ledger preset of the desktop's account page: React re-renders at once
+  if (linkedTx !== null && historyLoaded && handledTx !== linkedTx) {
+    setHandledTx(linkedTx);
+    const tx = history.find((row) => row.id === linkedTx);
+    if (tx) setOpenTx(tx);
+  }
+  useEffect(() => {
+    if (id && linkedTx !== null && historyLoaded) setLocation(accountPath(id), { replace: true });
+  }, [id, linkedTx, historyLoaded, setLocation]);
   const [pickFor, setPickFor] = useState<BankTransaction | null>(null);
   const patchTx = (txId: string, patch: Partial<BankTransaction>) => {
     const apply = (tx: BankTransaction | null) => (tx?.id === txId ? { ...tx, ...patch } : tx);

@@ -36,6 +36,7 @@ import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { UpkeepCard } from '@/mobile/components/UpkeepCard';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { initials } from '@/mobile/lib/initials';
+import { movePath } from '@/mobile/lib/move-path';
 import { LockButton } from '@/mobile/shell/LockButton';
 import { addAccountPath } from '@/mobile/lib/getting-started';
 import { routes } from '@/mobile/shell/routes';
@@ -292,7 +293,8 @@ const MOVE_ICONS: Partial<Record<MoveKind, LucideIcon>> = {
  * Poslední pohyby (spec §8.3 item 6): five entity rows — initials of the counterparty (an icon
  * for a trade), "Dnes · účet · kategorie", the amount in the main currency at its day's rate. Only
  * a bank credit is green with a plus; a debit carries a minus; trades are neutral amounts whose
- * direction is in the sub. Hidden when there is nothing yet.
+ * direction is in the sub. A tap opens the payment in its account (its sheet open) or the trade's
+ * position. Hidden when there is nothing yet.
  */
 function RecentMovesSection() {
   const { t: td } = useTranslation('dashboard');
@@ -309,6 +311,7 @@ function RecentMovesSection() {
 
 function MoveRows({ moves }: { moves: RecentMove[] }) {
   const { t } = useTranslation('dashboard');
+  const { t: tm } = useTranslation('mobile');
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const { categories } = useCategories();
@@ -361,6 +364,9 @@ function MoveRows({ moves }: { moves: RecentMove[] }) {
               />
             }
             valueTone={move.kind === 'bankIn' ? 'gain' : undefined}
+            // A payment opens in its account with its sheet, a trade on its position (C11)
+            href={movePath(move) ?? undefined}
+            from={tm('tabs.overview')}
           />
         );
       })}

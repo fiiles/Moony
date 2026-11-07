@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { createLockReturn } from './lock-return';
+import { describe, expect, it, vi } from 'vitest';
+import { createLockReturn, createReturnWalk } from './lock-return';
 
 describe('createLockReturn', () => {
   it('remembers the screen and how far back it is: the lock entry and the open sheets', () => {
@@ -33,5 +33,28 @@ describe('createLockReturn', () => {
     store.locked('/wealth', 0);
     store.clear();
     expect(store.take()).toBeNull();
+  });
+});
+
+describe('createReturnWalk', () => {
+  it('runs at once what asks while no walk is under way', () => {
+    const walk = createReturnWalk();
+    const run = vi.fn();
+    walk.whenDone(run);
+    expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it('holds what asks during the walk until it ends, in order, then tells the listeners', () => {
+    const walk = createReturnWalk();
+    const order: string[] = [];
+    walk.subscribe(() => order.push(walk.active() ? 'began' : 'ended'));
+    walk.begin();
+    walk.whenDone(() => order.push('a'));
+    walk.whenDone(() => order.push('b'));
+    expect(order).toEqual(['began']);
+    walk.end();
+    expect(order).toEqual(['began', 'a', 'b', 'ended']);
+    walk.end();
+    expect(order).toHaveLength(4);
   });
 });

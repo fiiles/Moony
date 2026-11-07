@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { createReturnWalk } from './lock-return';
 import { createSheetHistory, type HistoryPort } from './sheet-history';
 
 /**
  * A session history that behaves like the browser's: `go` is queued and takes effect later (then
  * the `popstate` arrives), a user's back takes effect at once.
  */
-function setup() {
+function setup(options: Parameters<typeof createSheetHistory>[1] = {}) {
   const entries: unknown[] = [null];
   let index = 0;
   let queued: number | null = null;
@@ -22,7 +23,7 @@ function setup() {
       queued = delta;
     },
   };
-  const sheets = createSheetHistory(port);
+  const sheets = createSheetHistory(port, options);
   return {
     sheets,
     /** Entries above the one the app started on. */
@@ -154,5 +155,48 @@ describe('createSheetHistory', () => {
     await tick();
     settle();
     expect(sheets.size()).toBe(1);
+  });
+
+  describe('while the walk back after an unlock is under way', () => {
+    it('pushes a sheet opened meanwhile only once the walk has landed', () => {
+      const walk = createReturnWalk();
+      const { sheets, depth, back, navigate } = setup({ walk });
+      navigate(); // the lock page over the screen to return to
+      walk.begin();
+      const closed: string[] = [];
+      sheets.open(() => void closed.push('offer'));
+      expect(depth()).toBe(1);
+      // The walk lands on the screen; its popstate closes no sheet
+      back();
+      expect(closed).toEqual([]);
+      expect(depth()).toBe(0);
+      walk.end();
+      // The offer's entry now sits over the screen the walk landed on
+      expect(depth()).toBe(1);
+      expect(sheets.size()).toBe(1);
+    });
+
+    it('never pushes a sheet that closed before the walk landed', async () => {
+      const walk = createReturnWalk();
+      const { sheets, depth } = setup({ walk });
+      walk.begin();
+      const release = sheets.open(() => {});
+      release();
+      await tick();
+      walk.end();
+      expect(depth()).toBe(0);
+      expect(sheets.size()).toBe(0);
+    });
+  });
+
+  it('tells its listener when the sheets it holds change', async () => {
+    let changes = 0;
+    const { sheets, settle } = setup({ onChange: () => changes++ });
+    const release = sheets.open(() => {});
+    expect(changes).toBe(1);
+    release();
+    await tick();
+    settle();
+    expect(changes).toBe(2);
   });
 });

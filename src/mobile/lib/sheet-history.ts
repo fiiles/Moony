@@ -31,6 +31,23 @@ export interface SheetHistory {
   size(): number;
 }
 
+/** What the stack needs of the walk back after an unlock (`ReturnWalk`, `lock-return.ts`). */
+export interface WalkPort {
+  active(): boolean;
+  whenDone(run: () => void): void;
+}
+
+export interface SheetHistoryOptions {
+  /**
+   * While the walk back after an unlock is under way, a sheet that opens waits to push its entry
+   * until the walk has landed (the walk counts the entries it goes back over), and the walk's
+   * `popstate` closes no sheet.
+   */
+  walk?: WalkPort;
+  /** Called whenever the sheets held change (one opened, one taken off). */
+  onChange?: () => void;
+}
+
 /** Key of the history state that marks the entry a sheet pushed. */
 const MARK = 'moonySheet';
 
@@ -38,6 +55,8 @@ interface Entry {
   token: string;
   /** Closes the sheet on back; `null` once the sheet has closed (the entry waits to be removed). */
   close: SheetClose | null;
+  /** Its history entry has been pushed (it waits while the walk back after an unlock runs). */
+  pushed: boolean;
 }
 
 function markOf(state: unknown): unknown {
@@ -46,7 +65,11 @@ function markOf(state: unknown): unknown {
     : undefined;
 }
 
-export function createSheetHistory(history: HistoryPort): SheetHistory {
+export function createSheetHistory(
+  history: HistoryPort,
+  options: SheetHistoryOptions = {}
+): SheetHistory {
+  const { walk, onChange } = options;
   /** One per pushed entry, oldest first. */
   const entries: Entry[] = [];
   let counter = 0;
@@ -62,13 +85,16 @@ export function createSheetHistory(history: HistoryPort): SheetHistory {
    */
   const flush = () => {
     flushScheduled = false;
+    const removed = entries.length > 0 && entries[entries.length - 1].close === null;
     let newest: Entry | undefined;
     let steps = 0;
     while (entries.length > 0 && entries[entries.length - 1].close === null) {
-      newest ??= entries[entries.length - 1];
-      entries.pop();
+      const entry = entries.pop() as Entry;
+      if (!entry.pushed) continue;
+      newest ??= entry;
       steps++;
     }
+    if (removed) onChange?.();
     if (newest && markOf(history.state) === newest.token) {
       ownSteps++;
       history.go(-steps);
@@ -86,13 +112,21 @@ export function createSheetHistory(history: HistoryPort): SheetHistory {
     const current = history.state;
     const state = current !== null && typeof current === 'object' ? current : {};
     history.pushState({ ...state, [MARK]: entry.token }, '');
+    entry.pushed = true;
+  };
+
+  /** Pushes, in order, the entries of the open sheets that waited for the walk. */
+  const pushWaiting = () => {
+    for (const entry of entries) if (!entry.pushed && entry.close !== null) push(entry);
   };
 
   return {
     open(close) {
-      const entry: Entry = { token: String(++counter), close };
+      const entry: Entry = { token: String(++counter), close, pushed: false };
       entries.push(entry);
-      push(entry);
+      if (walk?.active()) walk.whenDone(pushWaiting);
+      else push(entry);
+      onChange?.();
       return () => {
         entry.close = null;
         scheduleFlush();
@@ -100,6 +134,8 @@ export function createSheetHistory(history: HistoryPort): SheetHistory {
     },
 
     popstate() {
+      // The walk back after an unlock: no sheet's entry was taken
+      if (walk?.active()) return;
       if (ownSteps > 0) {
         ownSteps--;
         return;
@@ -112,6 +148,7 @@ export function createSheetHistory(history: HistoryPort): SheetHistory {
         push(entry);
         return;
       }
+      if (entry) onChange?.();
       scheduleFlush();
     },
 

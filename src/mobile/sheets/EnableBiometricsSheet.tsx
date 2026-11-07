@@ -16,6 +16,7 @@ import {
   shouldOfferEnrolment,
   wasEnrolmentAsked,
 } from '@/lib/biometrics';
+import { useReturnWalkActive } from '@/mobile/hooks/use-sheet-history';
 
 function storage(): Storage | null {
   try {
@@ -72,9 +73,12 @@ export function EnableBiometricsSheet({ sharedPending = false }: { sharedPending
 
   const type = status.data?.biometryType ?? 'none';
   const copy = biometricCopy(type);
-  // Stays up while "Zapnout" runs, then the answer closes it; waits for a shared file's import.
+  // Stays up while "Zapnout" runs, then the answer closes it; waits for a shared file's import
+  // and for the walk back to the screen the lock covered (its landing would close the offer)
+  const returning = useReturnWalkActive();
   const open =
     passwordUnlocked &&
+    !returning &&
     enrolmentOfferOpen({
       offered: shouldOfferEnrolment(status.data, asked),
       enabling: enable.isPending,

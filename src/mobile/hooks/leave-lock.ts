@@ -1,9 +1,11 @@
-import { lockReturn } from '@/mobile/lib/lock-return';
+import { lockReturn, returnWalk } from '@/mobile/lib/lock-return';
 import { notificationTarget } from '@/mobile/lib/notification-target';
 import { routes } from '@/mobile/shell/routes';
 
 /** How long to wait for the walk back before the lock page is replaced instead. */
 const FALLBACK_MS = 2000;
+/** How long after that fallback a late landing of the walk is still undone. */
+const LATE_MS = 10_000;
 
 type Navigate = (path: string, options?: { replace?: boolean }) => void;
 
@@ -30,15 +32,35 @@ export function leaveLock(navigate: Navigate): void {
     return;
   }
   let done = false;
-  const arrive = () => {
+  const arrive = (event?: Event) => {
     if (done) return;
     done = true;
     window.removeEventListener('popstate', arrive);
     window.clearTimeout(timer);
     if (window.location.pathname === routes.auth) navigate(back.path, { replace: true });
     if (target) navigate(target);
+    // The walk is over once its popstate has been handled everywhere (the sheet history's own
+    // listener may come after this one): the sheets that waited push their entries then
+    window.setTimeout(() => returnWalk.end(), 0);
+    if (!event) undoLateLanding(back.depth);
   };
   window.addEventListener('popstate', arrive);
   const timer = window.setTimeout(arrive, FALLBACK_MS);
+  returnWalk.begin();
   window.history.go(-back.depth);
+}
+
+/**
+ * The walk did not land in time and the lock page was replaced with the screen instead; should the
+ * walk still land later, it would take the person `depth` screens back. The entries it went back
+ * over are still ahead in the history, so the same steps forward undo it.
+ */
+function undoLateLanding(depth: number): void {
+  const late = () => {
+    window.removeEventListener('popstate', late);
+    window.clearTimeout(stop);
+    window.history.go(depth);
+  };
+  window.addEventListener('popstate', late);
+  const stop = window.setTimeout(() => window.removeEventListener('popstate', late), LATE_MS);
 }

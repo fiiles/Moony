@@ -46,3 +46,55 @@ export function createLockReturn(): LockReturnStore {
 
 /** The app's one record (`MobileShell` writes it, `Lock` reads it). */
 export const lockReturn = createLockReturn();
+
+/**
+ * The walk back after an unlock, while it is under way (`leaveLock`): from its `history.go` until
+ * it has landed and its `popstate` has been handled everywhere. Whatever would touch the history
+ * meanwhile waits for it — a sheet opening on the first unlocked render (the Face ID offer, a
+ * shared statement's import) would otherwise push its entry first, the walk would land one short
+ * and its `popstate` would close that sheet.
+ */
+export interface ReturnWalk {
+  active(): boolean;
+  begin(): void;
+  /** The walk has landed: what waited runs, then the listeners hear it. */
+  end(): void;
+  /** Runs `run` once the walk has landed (at once when none is under way). */
+  whenDone(run: () => void): void;
+  subscribe(listener: () => void): () => void;
+}
+
+export function createReturnWalk(): ReturnWalk {
+  let active = false;
+  let waiting: (() => void)[] = [];
+  let listeners: (() => void)[] = [];
+  return {
+    active: () => active,
+    begin() {
+      if (active) return;
+      active = true;
+      listeners.forEach((listener) => listener());
+    },
+    end() {
+      if (!active) return;
+      active = false;
+      const run = waiting;
+      waiting = [];
+      run.forEach((task) => task());
+      listeners.forEach((listener) => listener());
+    },
+    whenDone(run) {
+      if (active) waiting.push(run);
+      else run();
+    },
+    subscribe(listener) {
+      listeners = [...listeners, listener];
+      return () => {
+        listeners = listeners.filter((l) => l !== listener);
+      };
+    },
+  };
+}
+
+/** The app's one walk (`leaveLock` drives it; the sheet history and the shell's sheets wait for it). */
+export const returnWalk = createReturnWalk();

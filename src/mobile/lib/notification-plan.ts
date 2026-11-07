@@ -12,6 +12,8 @@ import type { Milestone, MilestoneKind } from '@shared/schema';
 import { isDeadline } from '@/utils/milestones';
 import type { NotificationPrefs } from '@/mobile/lib/notification-prefs';
 import type { TextRef } from '@/mobile/lib/settings-summary';
+import { milestonePath } from '@/mobile/lib/milestone-path';
+import { routes, settingsPath } from '@/mobile/shell/routes';
 
 /** The hour (local) every reminder is due at. */
 export const NOTIFY_HOUR = 9;
@@ -44,6 +46,12 @@ export interface PlannedNotification {
   at: LocalTime;
   title: TextRef;
   body: TextRef;
+  /**
+   * The screen a tap opens (spec §6 "notifications open the target directly"): a deadline's
+   * record (`milestonePath`, else Co vás čeká), Přehled for the monthly upkeep (its Údržba card
+   * holds every due action), Nastavení → Záloha for the backup.
+   */
+  path: string;
 }
 
 /** The date's local components. */
@@ -138,6 +146,11 @@ export interface NotificationPlanInput {
   milestones: readonly Milestone[];
   mutedKinds: readonly MilestoneKind[];
   prefs: NotificationPrefs;
+  /**
+   * Whether a backup can be made on this device (`exportsOnThisDevice`); without it no backup
+   * reminder is planned, as it would lead to a button that cannot work. Default true.
+   */
+  canBackup?: boolean;
 }
 
 /**
@@ -148,10 +161,11 @@ export interface NotificationPlanInput {
  * - one monthly upkeep reminder on the chosen day, while "Měsíční údržba" is on;
  * - one backup reminder tomorrow, while "Záloha" is on and the backup milestone says the last
  *   backup is stale (or there is none) and is not muted.
- * Whatever is not after `now` is left out: the plugin refuses a time that has passed.
+ * Whatever is not after `now` is left out: the plugin refuses a time that has passed. Each item
+ * says the screen its tap opens (`path`).
  */
 export function buildNotificationPlan(input: NotificationPlanInput): PlannedNotification[] {
-  const { now, milestones, mutedKinds, prefs } = input;
+  const { now, milestones, mutedKinds, prefs, canBackup = true } = input;
   const items: PlannedNotification[] = [];
 
   if (prefs.deadlines) {
@@ -160,6 +174,7 @@ export function buildNotificationPlan(input: NotificationPlanInput): PlannedNoti
       if (day === null || !isDeadline(m) || mutedKinds.includes(m.kind)) continue;
       const title: TextRef = { key: 'notifications.deadline.title', params: { title: m.title } };
       const whatKey = `notifications.deadline.kind.${m.kind}`;
+      const path = milestonePath(m) ?? routes.agenda;
       items.push(
         {
           id: notificationId('deadline14', m.key),
@@ -167,6 +182,7 @@ export function buildNotificationPlan(input: NotificationPlanInput): PlannedNoti
           at: utcDayToLocalTime(day - 14 * DAY, NOTIFY_HOUR),
           title,
           body: { key: 'notifications.deadline.in14', params: { whatKey } },
+          path,
         },
         {
           id: notificationId('deadline1', m.key),
@@ -174,6 +190,7 @@ export function buildNotificationPlan(input: NotificationPlanInput): PlannedNoti
           at: utcDayToLocalTime(day - DAY, NOTIFY_HOUR),
           title,
           body: { key: 'notifications.deadline.tomorrow', params: { whatKey } },
+          path,
         }
       );
     }
@@ -186,11 +203,12 @@ export function buildNotificationPlan(input: NotificationPlanInput): PlannedNoti
       at: nextUpkeepDate(now, prefs.upkeepDay),
       title: { key: 'notifications.upkeep.title' },
       body: { key: 'notifications.upkeep.body' },
+      path: routes.overview,
     });
   }
 
   const staleBackup = milestones.find((m) => m.kind === 'backup_stale');
-  if (prefs.backup && staleBackup && !mutedKinds.includes('backup_stale')) {
+  if (canBackup && prefs.backup && staleBackup && !mutedKinds.includes('backup_stale')) {
     items.push({
       id: notificationId('backup', 'backup'),
       kind: 'backup',
@@ -202,6 +220,7 @@ export function buildNotificationPlan(input: NotificationPlanInput): PlannedNoti
             ? 'notifications.backup.never'
             : 'notifications.backup.stale',
       },
+      path: settingsPath('backup'),
     });
   }
 

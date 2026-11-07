@@ -128,3 +128,40 @@ every conversion happens at read time into a declared currency.
 **Why:** the audit found three conversion regimes and five aggregators that valued the same
 position differently and treated unknown currencies as CZK; one service with explicit `None`
 makes a wrong number impossible to produce silently.
+
+## 11. Rewrites relative to stored values name their sync behaviour
+
+A feature that rewrites rows relative to their stored values (scaling, re-numbering, moving amounts
+between rows) must state its sync behaviour in its spec: either plain last-writer-wins per column
+is correct, or it records what it applied in the row (like `split_basis`) and adds a deterministic
+repair in `services/sync/repair/`. Repairs are pure functions of the merged rows: never of arrival
+order, the device or the time; order every selection by primary key.
+
+- Canonical: split units. The values as entered (`entry_*`, `entry_basis`, `entry_at`) sync; the
+  current units and `split_basis` are derived from them by `stock_splits::reconcile_ticker`, which
+  apply, revert, dismiss and the sync repair all run (ADR 0024).
+- Anti-example (do not copy): rewriting the stored values in place by each split's ratio
+  (`docs/DEPRECATED.md`, "Retired with device sync").
+
+**Why:** devices merge rows column by column (spec
+`docs/specs/2026-11-06-device-sync-client-design.md` §7.2). A rewrite of "what is there" on one
+device and an offline edit on another end differently depending on the order they meet.
+
+## 12. Sync registry: recomputed columns and migration seeds
+
+- **A new recomputed column is registered** in `services/sync/registry/tables.rs` with its class:
+  `recomputed` (every device derives it from synced rows) or `recomputed_or_typed` (derived while
+  source rows exist, typed otherwise, with its source table), plus `local` for device-only values.
+  An unregistered column syncs as a plain value, and a value one device recalculates then travels
+  as an edit and fights the same recalculation on the others. The recalculation that writes it
+  breaks ties by `id`, never by `rowid` (rowids differ per device).
+- **A migration after 029 that seeds synced rows** uses deterministic IDs (a fixed seed ID or a
+  UUIDv5, never `randomblob()` / `uuid()`; the registry test
+  `migrations_after_029_insert_synced_rows_only_with_deterministic_ids` fails otherwise) **and
+  fixed values for every synced column, timestamps included** (`created_at` as a literal, not
+  `unixepoch()`). Migrations run on every device separately and are never captured, so a seed that
+  differs per device diverges silently and permanently.
+- **Every migration gets a class** in `registry::keys::MIGRATION_CLASSES` (additive or barrier;
+  `docs/playbooks/add-db-migration.md` step 8).
+
+**Why:** ADR 0024; the registry is what capture, the journal, the merge and snapshots read.

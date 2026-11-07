@@ -584,6 +584,8 @@
       "asset": "Aktivum"
     },
     "noRate": "bez kurzu pro {{currency}}",
+    "sincePurchase": "od nákupu",
+    "gainSincePurchase": "zisk/ztráta od nákupu",
     "stocks": {
       "back": "Akcie",
       "pricesAt": "ceny {{time}}",
@@ -957,5 +959,19 @@
   },
   "gettingStarted": {
     "makeBackupHint": "Jeden šifrovaný soubor se vším, v Nastavení → Záloha a přenos."
+  },
+  "sheet": {
+    "discard": {
+      "title": "Zahodit změny?",
+      "description": "Co jste vyplnili, se neuloží.",
+      "keep": "Pokračovat v úpravách",
+      "confirm": "Zahodit"
+    }
+  },
+  "loadError": {
+    "overview": "Přehled se nepodařilo načíst.",
+    "finance": "Finance se nepodařilo načíst.",
+    "wealth": "Majetek se nepodařilo načíst.",
+    "detail": "Údaje se nepodařilo načíst."
   }
 }

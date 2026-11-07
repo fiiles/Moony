@@ -514,6 +514,8 @@
       "asset": "資産"
     },
     "noRate": "{{currency}}の為替レートなし",
+    "sincePurchase": "購入以来",
+    "gainSincePurchase": "購入以来の損益",
     "stocks": {
       "back": "株式",
       "pricesAt": "価格 {{time}}",
@@ -851,5 +853,19 @@
   },
   "gettingStarted": {
     "makeBackupHint": "すべてを含む暗号化ファイル 1 つ。設定 → バックアップと移行 から。"
+  },
+  "sheet": {
+    "discard": {
+      "title": "変更を破棄しますか？",
+      "description": "入力した内容は保存されません。",
+      "keep": "編集を続ける",
+      "confirm": "破棄"
+    }
+  },
+  "loadError": {
+    "overview": "概要を読み込めませんでした。",
+    "finance": "財務を読み込めませんでした。",
+    "wealth": "資産を読み込めませんでした。",
+    "detail": "データを読み込めませんでした。"
   }
 }

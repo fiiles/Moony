@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useFormat } from '@/lib/use-format';
+import { changeDirection } from '@/utils/change';
 import type { PropertyRow, YearlyBalance } from '@/utils/real-estate';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -33,6 +34,8 @@ export function PropertyStats({ row, balance, currency }: PropertyStatsProps) {
 
   const { value, equity, yield: gross, cashflow } = items;
   const appreciation = value.appreciation;
+  // The direction of the share as it is written (one decimal), as the desktop's badge
+  const direction = changeDirection(appreciation, 1);
   const valueStat: StatItem = {
     label: tc('labels.value'),
     value:
@@ -40,11 +43,17 @@ export function PropertyStats({ row, balance, currency }: PropertyStatsProps) {
         ? money(value.amount)
         : money(value.native.amount, value.native.currency),
     note:
-      appreciation === null
-        ? undefined
-        : `${appreciation > 0 ? '▲ ' : appreciation < 0 ? '▼ ' : ''}${tr('detail.vsPurchasePct', {
-            percent: fmt.percent(Math.abs(appreciation), 1),
-          })}`,
+      appreciation === null ? undefined : (
+        <>
+          {direction !== 'flat' && (
+            <>
+              <span aria-hidden>{direction === 'up' ? '▲ ' : '▼ '}</span>
+              <span className="sr-only">{direction === 'up' ? '+' : '−'}</span>
+            </>
+          )}
+          {tr('detail.vsPurchasePct', { percent: fmt.percent(Math.abs(appreciation), 1) })}
+        </>
+      ),
   };
 
   const equityStat: StatItem = {

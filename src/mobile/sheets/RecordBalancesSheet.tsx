@@ -12,6 +12,7 @@ import { AmountField } from '@/mobile/components/AmountField';
 import { DateField } from '@/mobile/components/DateField';
 import { Sheet } from '@/mobile/components/Sheet';
 import { signedAmountInput } from '@/mobile/lib/amount-input';
+import { formChanged } from '@/mobile/lib/form-dirty';
 import { isoToUtcDay } from '@/mobile/lib/property-detail';
 
 interface RecordBalancesSheetProps {
@@ -124,6 +125,18 @@ export function RecordBalancesSheet({
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
+      // A typed balance, a ± switched on or another day: the sheet asks before a stray tap drops them
+      dirty={
+        !record.isPending &&
+        formChanged(
+          { values: {}, negatives: [], date: today },
+          {
+            values,
+            negatives: Object.keys(negatives).filter((id) => negatives[id]),
+            date: dateIso,
+          }
+        )
+      }
       title={title ?? t('recordBalances.title')}
       description={description ?? t('recordBalances.lead')}
       footer={

@@ -9,16 +9,20 @@ import type {
   StockPosition,
   TickerValueHistoryReport,
 } from '@shared/schema';
+import { useStockSplits } from '@/hooks/use-stock-splits';
 import { useStockDividendMutations } from '@/hooks/use-stock-dividend-mutations';
 import { useInvestmentTransactionMutations } from '@/hooks/use-investment-mutations';
 import type { ChartPeriod } from '@/utils/period';
 import { amountOf, type StockRow } from '@/utils/positions';
+import { MissingOrFailed } from '@/mobile/components/LoadError';
 import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { BuyInvestmentModal } from '@/components/stocks/BuyInvestmentModal';
 import { EditTransactionModal } from '@/components/stocks/EditTransactionModal';
 import { SellInvestmentModal } from '@/components/stocks/SellInvestmentModal';
+import { StockSplitsDialog } from '@/components/stocks/StockSplitsDialog';
 import { ButtonPair } from '@/mobile/components/ButtonPair';
 import { SectionHead } from '@/mobile/components/SectionHead';
+import { AppliedSplits } from '@/mobile/components/wealth/AppliedSplits';
 import { CompanyCard } from '@/mobile/components/wealth/CompanyCard';
 import { PositionHeroCard } from '@/mobile/components/wealth/PositionHeroCard';
 import { PositionLedger } from '@/mobile/components/wealth/PositionLedger';
@@ -73,6 +77,7 @@ export default function PositionDetail() {
     dividend: StockDividend | null;
   }>({ open: false, dividend: null });
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [splitsOpen, setSplitsOpen] = useState(false);
   const { remove } = usePositionMutations(params?.id);
   const exit = useDeleteAndLeave({
     home: routes.stocks,
@@ -88,6 +93,7 @@ export default function PositionDetail() {
   // event would otherwise refetch the deleted id (`usePosition`'s `live`)
   const data = usePosition(params?.id, period, !exit.deleting);
   const ledger = usePositionLedger(data.transactions, data.dividends);
+  const { data: splits = [] } = useStockSplits(data.holding?.ticker, !exit.deleting);
   const { deleteTransaction } = useInvestmentTransactionMutations();
   const { deleteDividend } = useStockDividendMutations();
   const { holding, position, history, companyInfo, companyPending, reportCurrency } = data;
@@ -110,6 +116,7 @@ export default function PositionDetail() {
             holding={view.holding}
             onDelete={() => setDeleteOpen(true)}
             onAddDividend={() => setDividendSheet({ open: true, dividend: null })}
+            onSplits={() => setSplitsOpen(true)}
           />
         )
       }
@@ -166,6 +173,13 @@ export default function PositionDetail() {
             deleteDividend={deleteDividend}
             onEditDividend={(dividend) => setDividendSheet({ open: true, dividend })}
           />
+          <AppliedSplits splits={splits} onManage={() => setSplitsOpen(true)} />
+          <StockSplitsDialog
+            open={splitsOpen}
+            onOpenChange={setSplitsOpen}
+            ticker={view.holding.ticker}
+            splits={splits}
+          />
           <DividendSheet
             open={dividendSheet.open}
             // The dividend stays while the sheet slides away (it would flash empty otherwise)
@@ -217,7 +231,7 @@ export default function PositionDetail() {
       ) : data.isLoading ? (
         <PositionSkeleton />
       ) : (
-        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">{ts('detail.notFound')}</p>
+        <MissingOrFailed>{ts('detail.notFound')}</MissingOrFailed>
       )}
     </Screen>
   );

@@ -16,11 +16,11 @@
   },
   "overview": {
     "change": {
-      "30D": "in 30 Tagen",
-      "90D": "in 3 Monaten",
+      "30D": "letzte 30 Tage",
+      "90D": "letzte 3 Monate",
       "YTD": "dieses Jahr",
-      "1Y": "in einem Jahr",
-      "5Y": "in 5 Jahren",
+      "1Y": "letztes Jahr",
+      "5Y": "letzte 5 Jahre",
       "All": "seit dem ersten Eintrag"
     },
     "stats": {
@@ -120,7 +120,7 @@
     "policies_one": "{{count}} Police",
     "policies_other": "{{count}} Policen",
     "total": "Gesamt auf Konten",
-    "change30": "{{amount}} in 30 Tagen",
+    "change30": "{{amount}} in den letzten 30 Tagen",
     "noMovements": "keine Bewegungen in 30 Tagen",
     "uncategorized": "Nicht kategorisierte Zahlungen",
     "sections": {
@@ -146,7 +146,7 @@
       "sort": "Sortierung",
       "sortBalance": "Nach Saldo",
       "sortName": "Nach Name",
-      "sortChange": "Nach Änderung in 30 Tagen",
+      "sortChange": "Nach Änderung der letzten 30 Tage",
       "sortLast": "Nach letzter Bewegung",
       "showMatured": "Getilgte Kredite anzeigen",
       "showEnded": "Beendete Policen anzeigen",
@@ -549,6 +549,8 @@
       "asset": "Vermögenswert"
     },
     "noRate": "kein Wechselkurs für {{currency}}",
+    "sincePurchase": "seit Kauf",
+    "gainSincePurchase": "Gewinn/Verlust seit Kauf",
     "stocks": {
       "back": "Aktien",
       "pricesAt": "Kurse {{time}}",
@@ -900,5 +902,19 @@
   },
   "gettingStarted": {
     "makeBackupHint": "Eine verschlüsselte Datei mit allem, unter Einstellungen → Sicherung und Übertragung."
+  },
+  "sheet": {
+    "discard": {
+      "title": "Änderungen verwerfen?",
+      "description": "Ihre Eingaben werden nicht gespeichert.",
+      "keep": "Weiter bearbeiten",
+      "confirm": "Verwerfen"
+    }
+  },
+  "loadError": {
+    "overview": "Die Übersicht konnte nicht geladen werden.",
+    "finance": "Die Finanzen konnten nicht geladen werden.",
+    "wealth": "Das Vermögen konnte nicht geladen werden.",
+    "detail": "Die Angaben konnten nicht geladen werden."
   }
 }

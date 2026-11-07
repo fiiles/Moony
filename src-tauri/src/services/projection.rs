@@ -21,6 +21,7 @@ use crate::services::projection_math::{
     contribution_future_value, parse_rate_setting, projection_date,
 };
 use crate::services::reporting::{money_in_currency, normalize_currency};
+use crate::services::sync::natural_id::natural_id;
 
 /// All stored projection settings.
 pub fn list_settings(conn: &Connection) -> Result<Vec<ProjectionSettings>> {
@@ -56,11 +57,8 @@ pub fn save_settings(conn: &Connection, settings: Vec<ProjectionSettings>) -> Re
     let now = Utc::now().timestamp();
     let tx = conn.unchecked_transaction()?;
     for s in settings {
-        let id = if s.id.is_empty() {
-            uuid::Uuid::new_v4().to_string()
-        } else {
-            s.id
-        };
+        // The ID follows the asset type; a client-supplied one is ignored for new rows.
+        let id = natural_id("projection_settings", &[&s.asset_type]);
         // validate() accepted it, so normalisation always yields a code
         let currency = fx::normalize(&s.contribution_currency).unwrap_or(s.contribution_currency);
         tx.execute(
@@ -1796,5 +1794,27 @@ mod tests {
             assert!(matches!(result, Err(crate::error::AppError::Validation(_))));
         }
         assert!(list_settings(&conn).expect("list").is_empty());
+    }
+
+    #[test]
+    fn a_new_projection_setting_id_follows_its_asset_type() {
+        let conn = save_db();
+        let mut supplied = setting("savings", "100", "EUR");
+        supplied.id = "client-made-id".into();
+        save_settings(&conn, vec![supplied, setting("bonds", "1", "EUR")]).expect("save");
+        let id_of = |asset: &str| -> String {
+            conn.query_row(
+                "SELECT id FROM projection_settings WHERE asset_type = ?1",
+                [asset],
+                |r| r.get(0),
+            )
+            .expect("row")
+        };
+        let natural = crate::services::sync::natural_id::natural_id;
+        assert_eq!(
+            id_of("savings"),
+            natural("projection_settings", &["savings"])
+        );
+        assert_eq!(id_of("bonds"), natural("projection_settings", &["bonds"]));
     }
 }

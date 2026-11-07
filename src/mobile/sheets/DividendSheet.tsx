@@ -9,6 +9,7 @@ import { DateField } from '@/mobile/components/DateField';
 import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
 import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { Sheet } from '@/mobile/components/Sheet';
+import { formChanged } from '@/mobile/lib/form-dirty';
 import {
   dividendErrors,
   dividendForm,
@@ -61,12 +62,16 @@ export function DividendSheet({
 
   const locale = useTranslation().i18n.language;
   const [form, setForm] = useState(() => dividendForm(dividend, todayIso(), locale));
+  // What the form opened with: a sheet that differs from it asks before it closes
+  const [formStart, setFormStart] = useState(form);
   const [attempted, setAttempted] = useState(false);
   const [openedFor, setOpenedFor] = useState(open);
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setForm(dividendForm(dividend, todayIso(), locale));
+      const fresh = dividendForm(dividend, todayIso(), locale);
+      setForm(fresh);
+      setFormStart(fresh);
       setAttempted(false);
     }
   }
@@ -124,6 +129,7 @@ export function DividendSheet({
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
+      dirty={!pending && formChanged(formStart, form)}
       title={
         dividend ? ts('detail.dividendRecords.editTitle') : ts('detail.dividendRecords.addTitle')
       }

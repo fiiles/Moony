@@ -619,6 +619,8 @@
       "asset": "Aktywo"
     },
     "noRate": "brak kursu wymiany dla {{currency}}",
+    "sincePurchase": "od zakupu",
+    "gainSincePurchase": "zysk/strata od zakupu",
     "stocks": {
       "back": "Akcje",
       "pricesAt": "ceny {{time}}",
@@ -998,5 +1000,19 @@
   },
   "gettingStarted": {
     "makeBackupHint": "Jeden zaszyfrowany plik ze wszystkim, w Ustawienia → Kopia zapasowa i przenoszenie."
+  },
+  "sheet": {
+    "discard": {
+      "title": "Odrzucić zmiany?",
+      "description": "To, co zostało wpisane, nie zostanie zapisane.",
+      "keep": "Kontynuuj edycję",
+      "confirm": "Odrzuć"
+    }
+  },
+  "loadError": {
+    "overview": "Nie udało się wczytać przeglądu.",
+    "finance": "Nie udało się wczytać finansów.",
+    "wealth": "Nie udało się wczytać majątku.",
+    "detail": "Nie udało się wczytać danych."
   }
 }

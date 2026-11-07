@@ -7,15 +7,16 @@ import type { RealEstate } from '@shared/schema';
 import { useCurrency } from '@/lib/currency';
 import type { PropertyRow, YearlyBalance } from '@/utils/real-estate';
 import { Button } from '@/components/ui/button';
+import { MissingOrFailed } from '@/mobile/components/LoadError';
 import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { DocumentsSection } from '@/mobile/components/documents/DocumentsSection';
 import { PropertyCosts } from '@/mobile/components/property/PropertyCosts';
 import { PropertyFinance } from '@/mobile/components/property/PropertyFinance';
 import { PropertyGallery } from '@/mobile/components/property/PropertyGallery';
 import { PropertyHeroCard } from '@/mobile/components/property/PropertyHeroCard';
+import { PropertyNotes } from '@/mobile/components/property/PropertyNotes';
 import { PropertyMenu } from '@/mobile/components/property/PropertyMenu';
 import { PropertyStats } from '@/mobile/components/property/PropertyStats';
-import { SectionHead } from '@/mobile/components/SectionHead';
 import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { useProperty, type PropertyData } from '@/mobile/hooks/use-property';
@@ -50,10 +51,10 @@ export default function PropertyDetail() {
  * Historie přecenění, Smazat nemovitost), the address and the "Investiční · pronajato" line, the
  * value with its trace and the change against the purchase, four stats, the primary **Přecenit**,
  * Finance (the linked loans and policies with Připojit, the yearly balance), Náklady, Galerie,
- * Dokumenty (each its own component) and the notes. The numbers are the desktop detail's
- * (`useProperty`, the pure rules in `property-detail.ts`) in the main currency, a missing rate
- * shown as "—" and named in the note under the line; the property form and the list of estimates
- * are the desktop's dialogs.
+ * Dokumenty (each its own component) and the notes, which are edited in place (`PropertyNotes`).
+ * The numbers are the desktop detail's (`useProperty`, the pure rules in `property-detail.ts`) in
+ * the main currency, a missing rate shown as "—" and named in the note under the line; the
+ * property form and the list of estimates are the desktop's dialogs.
  *
  * The page owns the delete (its confirm sheet and the mutation, `useDeleteAndLeave`): the property
  * drops out of the cache while the delete is still finishing, which takes the `···` menu away, and
@@ -110,7 +111,7 @@ function PropertyDetailPage({ id }: { id: string | undefined }) {
       ) : data.isLoading ? (
         <PropertySkeleton />
       ) : (
-        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">{t('property.notFound')}</p>
+        <MissingOrFailed>{t('property.notFound')}</MissingOrFailed>
       )}
 
       {view && (
@@ -201,17 +202,7 @@ function PropertyBody({ view, currency, onRevalue }: PropertyBodyProps) {
         fileTypes={DOCUMENT_TYPES}
         typeLabel={(type) => tr(`documents.types.${type}`)}
       />
-      <SectionHead title={tr('detail.tabs.notes')} />
-      {/* Read here; written in Upravit, where the desktop keeps them */}
-      {property.notes ? (
-        <div className="mb-3.5 rounded-r4 border border-line bg-[linear-gradient(180deg,var(--paper),var(--paper-2))] px-4 py-3.5 shadow-e1">
-          <p className="m-0 whitespace-pre-wrap break-words text-m-body text-ink-2">
-            {property.notes}
-          </p>
-        </div>
-      ) : (
-        <p className="mx-0.5 mb-3.5 text-m-sub text-ink-3">{tr('detail.noNotes')}</p>
-      )}
+      <PropertyNotes property={property} />
     </>
   );
 }

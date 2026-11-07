@@ -17,6 +17,8 @@ import {
   scheduleDateString,
   type LocalTime,
 } from '@/mobile/lib/notification-plan';
+import { exportsOnThisDevice } from '@/mobile/lib/export-file';
+import { notificationPaths } from '@/mobile/lib/notification-target';
 import { renderTextRef } from '@/mobile/lib/settings-summary';
 
 /**
@@ -37,18 +39,21 @@ function schedulesOnThisDevice(): boolean {
  * schedule's date as local digits with a literal `Z` (`scheduleDateString`), which its `Schedule.at`
  * helper cannot express: it takes a `Date`, whose JSON is UTC. The plugin does not wait for the
  * system (`sendNotification` returns at once), so a refusal such as a time that has passed does not
- * come back here; the plan leaves those out.
+ * come back here; the plan leaves those out. `path`, the screen a tap opens, rides in `extra`,
+ * which the plugin hands back on a tap (on iOS through the vendored patch).
  */
 export function scheduleNotification(item: {
   id: number;
   title: string;
   body: string;
   at: LocalTime;
+  path?: string;
 }): void {
   sendNotification({
     id: item.id,
     title: item.title,
     body: item.body,
+    ...(item.path ? { extra: { path: item.path } } : {}),
     schedule: {
       at: { date: scheduleDateString(item.at), repeating: false, allowWhileIdle: false },
     } as unknown as Schedule,
@@ -62,6 +67,7 @@ export function scheduleNotification(item: {
  * at its next unlock. A plugin that refuses changes nothing for the caller, which reloads next.
  */
 export async function cancelAllNotifications(): Promise<void> {
+  notificationPaths.clear();
   if (!schedulesOnThisDevice()) return;
   try {
     await cancelAll();
@@ -99,7 +105,12 @@ export function useNotificationSchedule(): void {
       milestones,
       mutedKinds,
       prefs,
+      canBackup: exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? ''),
     });
+    // The screens a tap opens, by id: the fallback when a tap reports no `extra` (the unpatched
+    // iOS plugin did not). Kept through a lock, when a tap must still find its screen after it.
+    notificationPaths.clear();
+    for (const item of plan) notificationPaths.set(item.id, item.path);
     const signature = `${i18n.language}#${planSignature(plan)}`;
     if (scheduled.current === signature) return;
     scheduled.current = null;
@@ -116,6 +127,7 @@ export function useNotificationSchedule(): void {
             title: renderTextRef(t, item.title),
             body: renderTextRef(t, item.body),
             at: item.at,
+            path: item.path,
           });
         }
         scheduled.current = signature;

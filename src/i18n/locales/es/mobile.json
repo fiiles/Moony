@@ -584,6 +584,8 @@
       "asset": "Activo"
     },
     "noRate": "sin tipo de cambio para {{currency}}",
+    "sincePurchase": "desde la compra",
+    "gainSincePurchase": "ganancia/pérdida desde la compra",
     "stocks": {
       "back": "Acciones",
       "pricesAt": "precios {{time}}",
@@ -949,5 +951,19 @@
   },
   "gettingStarted": {
     "makeBackupHint": "Un archivo cifrado con todo, en Ajustes → Copia de seguridad y traslado."
+  },
+  "sheet": {
+    "discard": {
+      "title": "¿Descartar los cambios?",
+      "description": "Lo que ha rellenado no se guardará.",
+      "keep": "Seguir editando",
+      "confirm": "Descartar"
+    }
+  },
+  "loadError": {
+    "overview": "No se pudo cargar el resumen.",
+    "finance": "No se pudieron cargar las finanzas.",
+    "wealth": "No se pudo cargar el patrimonio.",
+    "detail": "No se pudieron cargar los datos."
   }
 }

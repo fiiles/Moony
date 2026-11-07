@@ -7,6 +7,8 @@
 use crate::error::{AppError, Result};
 use crate::models::{InsertInvestmentTransaction, InvestmentTransaction, StockInvestment};
 use crate::services::dedup;
+use crate::services::stock_splits;
+use crate::services::sync::natural_id::natural_id;
 use rusqlite::OptionalExtension;
 use std::collections::BTreeMap;
 use uuid::Uuid;
@@ -37,8 +39,15 @@ pub fn recalculate_investment_metrics(
         [investment_id],
         |r| r.get(0),
     )?;
-    // Transaction-less legacy positions retain their manually recorded quantity.
+    // Transaction-less positions retain their manually recorded quantity: the typed one a
+    // transaction's quantity overwrote comes back (ruling T18b).
     if !has_transactions {
+        crate::services::sync::repair::typed::restore(
+            conn,
+            "stock_investments",
+            investment_id,
+            "investment_transactions",
+        )?;
         return Ok(());
     }
     let total_qty = exact_held_quantity(conn, "investment_transactions", investment_id)?;
@@ -150,11 +159,11 @@ pub fn update_transaction(
     data.validate()?;
     let transaction = conn.unchecked_transaction()?;
     let conn = &transaction;
-    let (investment_id, old_date): (String, i64) = conn
+    let (investment_id, ticker, old_date): (String, String, i64) = conn
         .query_row(
-            "SELECT investment_id,transaction_date FROM investment_transactions WHERE id=?1",
+            "SELECT investment_id,ticker,transaction_date FROM investment_transactions WHERE id=?1",
             [tx_id],
-            |r| Ok((r.get(0)?, r.get(1)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
         )
         .optional()?
         .ok_or_else(|| AppError::NotFound("Transaction not found".into()))?;
@@ -170,8 +179,49 @@ pub fn update_transaction(
         ));
     }
     let date = crate::models::validation::utc_day(data.transaction_date, "validation.dateInvalid")?;
-    conn.execute("UPDATE investment_transactions SET type=?2,quantity=?3,price_per_unit=?4,currency=?5,transaction_date=?6 WHERE id=?1",
-        rusqlite::params![tx_id,data.tx_type.to_ascii_lowercase(),dedup::canonical_amount(&data.quantity),dedup::canonical_amount(&data.price_per_unit),data.currency.to_ascii_uppercase(),date])?;
+    // The edited values are in today's units (D20), like a new transaction's: they become the
+    // entry values, on the applied splits after the date (ruling T18c). An edit that leaves the
+    // type, quantity and price as they are shown, on the same splits (a fee-only or date-only
+    // edit), keeps the entry values: the shown units may be rounded, and the entry derives
+    // exactly these units again.
+    let basis = stock_splits::basis_for_day(conn, &ticker, date)?;
+    let tx_type = data.tx_type.to_ascii_lowercase();
+    let quantity = dedup::canonical_amount(&data.quantity);
+    let price = dedup::canonical_amount(&data.price_per_unit);
+    let shown: (String, String, String, Option<String>) = conn.query_row(
+        "SELECT lower(type), quantity, price_per_unit, split_basis
+         FROM investment_transactions WHERE id = ?1",
+        [tx_id],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+    )?;
+    let entry = if shown
+        == (
+            tx_type.clone(),
+            quantity.clone(),
+            price.clone(),
+            basis.clone(),
+        ) {
+        ""
+    } else {
+        ", entry_quantity = ?3, entry_price_per_unit = ?4, entry_basis = ?7"
+    };
+    conn.execute(
+        &format!(
+            "UPDATE investment_transactions
+             SET type = ?2, quantity = ?3, price_per_unit = ?4, currency = ?5,
+                 transaction_date = ?6, split_basis = ?7{entry}
+             WHERE id = ?1"
+        ),
+        rusqlite::params![
+            tx_id,
+            tx_type,
+            quantity,
+            price,
+            data.currency.to_ascii_uppercase(),
+            date,
+            basis
+        ],
+    )?;
     // An update that omits the fee keeps the stored one; an empty fee clears it.
     if data.fee.is_some() {
         conn.execute(
@@ -227,11 +277,15 @@ pub fn create_transaction_internal(
     let currency_upper = currency.to_uppercase();
     let transaction_date =
         crate::models::validation::utc_day(transaction_date, "validation.dateInvalid")?;
+    // Entered in today's units (D20): the entry values, which include every applied split
+    // after the day (ruling T18c); the current values equal them.
+    let split_basis = stock_splits::basis_for_day(conn, ticker, transaction_date)?;
 
     conn.execute(
         "INSERT INTO investment_transactions
-         (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at, import_batch_id, external_id, fee)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
+         (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency, transaction_date, created_at, import_batch_id, external_id, fee, split_basis,
+          entry_quantity, entry_price_per_unit, entry_basis)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?6, ?7, ?14)",
         rusqlite::params![
             tx_id,
             investment_id,
@@ -246,6 +300,7 @@ pub fn create_transaction_internal(
             origin.import_batch_id,
             origin.external_id,
             fee,
+            split_basis,
         ],
     )?;
 
@@ -287,7 +342,7 @@ pub fn get_or_create_investment(
     match existing {
         Some(id) => Ok(id),
         None => {
-            let id = Uuid::new_v4().to_string();
+            let id = natural_id("stock_investments", &[&ticker_upper]);
             let currency_upper = currency.to_uppercase();
 
             conn.execute(
@@ -496,7 +551,7 @@ fn import_stock_row(
             id
         }
         None => {
-            let id = Uuid::new_v4().to_string();
+            let id = natural_id("stock_investments", &[&ticker_upper]);
             conn.execute(
                 "INSERT INTO stock_investments (id, ticker, company_name, quantity, currency)
                  VALUES (?1, ?2, ?3, '0', ?4)",
@@ -1239,7 +1294,24 @@ mod tests {
                 created_at INTEGER NOT NULL,
                 import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL,
                 external_id TEXT,
-                fee TEXT
+                fee TEXT,
+                split_basis TEXT,
+                entry_quantity TEXT,
+                entry_price_per_unit TEXT,
+                entry_basis TEXT
+            );
+            CREATE TABLE stock_splits (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                effective_day INTEGER NOT NULL,
+                numerator TEXT NOT NULL,
+                denominator TEXT NOT NULL,
+                source TEXT NOT NULL,
+                status TEXT NOT NULL,
+                detected_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                resolved_at INTEGER,
+                applied_count INTEGER,
+                UNIQUE (ticker, effective_day)
             );
             "#,
         )
@@ -2361,5 +2433,33 @@ mod bulk_writer_tests {
         )
         .is_err());
         assert_eq!(count(&conn, "investment_transactions"), 2);
+    }
+
+    #[test]
+    fn two_profiles_buying_the_same_ticker_create_the_same_position_id() {
+        let expected =
+            crate::services::sync::natural_id::natural_id("stock_investments", &["AAPL"]);
+        let first = setup_test_db();
+        let second = setup_test_db();
+        assert_eq!(
+            get_or_create_investment(&first, "aapl", "Apple Inc.", "USD").expect("create"),
+            expected
+        );
+        import_single_transaction_with_origin(
+            &second,
+            "aapl",
+            "Apple Inc.",
+            "buy",
+            "1",
+            "100",
+            "USD",
+            1_700_000_000,
+            TransactionOrigin::default(),
+        )
+        .expect("import");
+        let id: String = second
+            .query_row("SELECT id FROM stock_investments", [], |r| r.get(0))
+            .expect("row");
+        assert_eq!(id, expected);
     }
 }

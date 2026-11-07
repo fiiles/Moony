@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Archive, Bitcoin, Download, Ellipsis, Plus, RefreshCw } from 'lucide-react';
+import { Archive, Bitcoin, CircleHelp, Download, Ellipsis, Plus, RefreshCw } from 'lucide-react';
 import type { CryptoPositions } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
-import { amountOf, totalOf, type CryptoRow } from '@/utils/positions';
+import { amountOf, totalOf, unpricedOpenCoins, type CryptoRow } from '@/utils/positions';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -12,6 +12,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { AddCryptoModal } from '@/components/crypto/AddCryptoModal';
+import { CryptoSymbolDialog } from '@/components/crypto/CryptoSymbolDialog';
+import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { ClassEmpty } from '@/mobile/components/wealth/ClassEmpty';
@@ -59,9 +61,12 @@ export default function Crypto() {
   // they do not reopen on return.
   const [addOpen, setAddOpen] = useState(false);
   const [closedOpen, setClosedOpen] = useState(false);
+  // The coin whose Yahoo listing the banner's action picks (the first unpriced one)
+  const [pickRow, setPickRow] = useState<CryptoRow | null>(null);
   const hasPositions = rows.length > 0;
 
   const open = rows.filter((row) => row.quantity > 0);
+  const unpriced = unpricedOpenCoins(rows);
 
   return (
     <Screen
@@ -131,6 +136,18 @@ export default function Crypto() {
             currency={reportCurrency}
             sells={trades.filter((tx) => tx.type === 'sell').length}
           />
+          {/* The desktop's banner: coins Moony could not match to a Yahoo listing have no rate */}
+          {unpriced.length > 0 && (
+            <InlineAlert
+              icon={CircleHelp}
+              title={tcr('unpricedBanner.title', { count: unpriced.length })}
+              action={{ label: tcr('unpricedBanner.pick'), onClick: () => setPickRow(unpriced[0]) }}
+            >
+              {tcr('unpricedBanner.message', {
+                tickers: unpriced.map((row) => row.ticker).join(', '),
+              })}
+            </InlineAlert>
+          )}
           <PositionList
             rows={rows}
             hrefOf={(row) => cryptoPath(row.id)}
@@ -141,6 +158,11 @@ export default function Crypto() {
         </>
       )}
       <AddCryptoModal open={addOpen} onOpenChange={setAddOpen} />
+      <CryptoSymbolDialog
+        open={pickRow !== null}
+        onOpenChange={(next) => !next && setPickRow(null)}
+        investment={pickRow}
+      />
       <ClosedPositionsSheet
         open={closedOpen}
         onOpenChange={setClosedOpen}

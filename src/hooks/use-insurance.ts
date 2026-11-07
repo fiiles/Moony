@@ -24,9 +24,18 @@ export function useInsurance(): {
   rows: InsuranceRow[];
   metrics: InsuranceMetrics;
   isLoading: boolean;
+  /**
+   * The list could not be read and there is no earlier answer (the phone tells that from having no
+   * policies); a failed refetch behind a list already shown does not set it.
+   */
+  loadFailed: boolean;
   today: number;
 } {
-  const { data: policies = [], isLoading } = useQuery<InsurancePolicy[]>({
+  const {
+    data: policies = [],
+    isLoading,
+    isLoadingError: loadFailed,
+  } = useQuery<InsurancePolicy[]>({
     queryKey: ['insurance'],
     queryFn: () => insuranceApi.getAll(),
   });
@@ -37,7 +46,7 @@ export function useInsurance(): {
     [policies, today, convert]
   );
   const metrics = useMemo(() => insuranceMetrics(rows, today), [rows, today]);
-  return { policies, rows, metrics, isLoading, today };
+  return { policies, rows, metrics, isLoading, loadFailed, today };
 }
 
 /**

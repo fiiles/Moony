@@ -26,6 +26,15 @@ describe('firstRunSteps', () => {
   });
 });
 
+describe('firstRunSteps without backups', () => {
+  it('leaves the backup step out where a backup cannot be made (Android for now)', () => {
+    const steps = firstRunSteps({ biometryAvailable: true, canBackup: false });
+    expect(steps).not.toContain('backup');
+    expect(steps.at(-1)).toBe('biometrics');
+    expect(nextStep(steps, 'biometrics')).toBeNull();
+  });
+});
+
 describe('nextStep and previousStep', () => {
   it('walks forward and back; no way back once the database exists', () => {
     const steps = firstRunSteps({ biometryAvailable: true });

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 import {
@@ -6,6 +6,7 @@ import {
   Download,
   Ellipsis,
   History,
+  Info,
   Plus,
   RefreshCw,
   TrendingUp,
@@ -30,6 +31,7 @@ import { StockImportHistoryDialog } from '@/components/stocks/StockImportHistory
 import { StockImportDialog } from '@/components/stocks/import/StockImportDialog';
 import { useStockImportBatches } from '@/components/stocks/import/use-stock-import-data';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
+import { InlineAlert } from '@/mobile/components/InlineAlert';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SearchField } from '@/mobile/components/SearchField';
 import { Segment } from '@/mobile/components/Segment';
@@ -354,7 +356,7 @@ function PortfolioStats({
   const { t: ts } = useTranslation('stocks');
   const fmt = useFormat();
   const moneyText = useMoneyText();
-  const { twr, mwr, isLoading: twrLoading } = useTwrThisYear(positions !== undefined);
+  const { twr, mwr, notes, isLoading: twrLoading } = useTwrThisYear(positions !== undefined);
 
   const totals = positions?.totals;
   const value = totalOf(totals?.value);
@@ -409,7 +411,22 @@ function PortfolioStats({
             : t('wealth.stocks.twrNoHistory'),
     },
   ];
-  return <StatRow stats={stats} />;
+  return (
+    <>
+      <StatRow stats={stats} />
+      {/* The desktop's quality notes: the number is not to be read as exact when they say so */}
+      {twr !== null && notes.length > 0 && (
+        <InlineAlert icon={Info}>
+          {notes.map((note, index) => (
+            <Fragment key={note.key}>
+              {index > 0 && <br />}
+              {t(note.key, note.values)}
+            </Fragment>
+          ))}
+        </InlineAlert>
+      )}
+    </>
+  );
 }
 
 /** Nothing owned: the empty state of the class, with the button that adds the first position. */

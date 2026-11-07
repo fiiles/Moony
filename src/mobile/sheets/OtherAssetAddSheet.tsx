@@ -13,6 +13,7 @@ import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { PickGroup, PickRow } from '@/mobile/components/PickRow';
 import { Sheet } from '@/mobile/components/Sheet';
 import { useOtherAssetMutations } from '@/mobile/hooks/use-other-asset';
+import { formChanged } from '@/mobile/lib/form-dirty';
 import {
   YIELD_TYPES,
   otherAssetFormState,
@@ -69,6 +70,8 @@ export function OtherAssetAddSheet({ open, onOpenChange }: OtherAssetAddSheetPro
   const foldId = useId();
 
   const [input, setInput] = useState(() => emptyForm(currencyCode));
+  // What the form opened with: a sheet that differs from it asks before it closes
+  const [formStart, setFormStart] = useState(input);
   const [expanded, setExpanded] = useState(false);
   const [attempted, setAttempted] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
@@ -78,7 +81,9 @@ export function OtherAssetAddSheet({ open, onOpenChange }: OtherAssetAddSheetPro
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setInput(emptyForm(currencyCode));
+      const fresh = emptyForm(currencyCode);
+      setInput(fresh);
+      setFormStart(fresh);
       setExpanded(false);
       setAttempted(false);
     }
@@ -123,6 +128,7 @@ export function OtherAssetAddSheet({ open, onOpenChange }: OtherAssetAddSheetPro
       <Sheet
         open={open}
         onOpenChange={onOpenChange}
+        dirty={!create.isPending && formChanged(formStart, input)}
         title={to('modal.add.title')}
         description={to('modal.add.description')}
         full

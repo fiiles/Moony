@@ -67,6 +67,11 @@ export interface UpkeepInput {
   uncategorized: number;
   /** The accounts holding them (the card names the account when there is one). */
   uncategorizedAccountIds?: readonly string[];
+  /**
+   * Whether a backup can be made on this device (`exportsOnThisDevice`); without it there is no
+   * backup row, which would lead to a button that cannot work (audit C7). Default true.
+   */
+  canBackup?: boolean;
 }
 
 /** A closed account no longer asks for anything (as in the backend's milestones). */
@@ -161,7 +166,7 @@ export function buildUpkeepRows(input: UpkeepInput): UpkeepRow[] {
   }
 
   const backup = milestones.find((m) => m.kind === 'backup_stale');
-  if (backup) {
+  if (backup && input.canBackup !== false) {
     rows.push({
       id: 'backup_stale',
       kind: 'backup_stale',

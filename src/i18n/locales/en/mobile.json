@@ -549,6 +549,8 @@
       "asset": "Asset"
     },
     "noRate": "no rate for {{currency}}",
+    "sincePurchase": "since purchase",
+    "gainSincePurchase": "gain/loss since purchase",
     "stocks": {
       "back": "Stocks",
       "pricesAt": "prices {{time}}",
@@ -900,5 +902,19 @@
   },
   "gettingStarted": {
     "makeBackupHint": "One encrypted file with everything, in Settings → Backup and transfer."
+  },
+  "sheet": {
+    "discard": {
+      "title": "Discard changes?",
+      "description": "What you have filled in will not be saved.",
+      "keep": "Keep editing",
+      "confirm": "Discard"
+    }
+  },
+  "loadError": {
+    "overview": "The overview could not be loaded.",
+    "finance": "Finance could not be loaded.",
+    "wealth": "Wealth could not be loaded.",
+    "detail": "The details could not be loaded."
   }
 }

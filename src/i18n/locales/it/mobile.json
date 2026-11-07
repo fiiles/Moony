@@ -584,6 +584,8 @@
       "asset": "Bene"
     },
     "noRate": "nessun tasso di cambio per {{currency}}",
+    "sincePurchase": "dal acquisto",
+    "gainSincePurchase": "utile/perdita dal acquisto",
     "stocks": {
       "back": "Azioni",
       "pricesAt": "prezzi {{time}}",
@@ -949,5 +951,19 @@
   },
   "gettingStarted": {
     "makeBackupHint": "Un file cifrato con tutto, in Impostazioni → Backup e trasferimento."
+  },
+  "sheet": {
+    "discard": {
+      "title": "Scartare le modifiche?",
+      "description": "Quanto inserito non verrà salvato.",
+      "keep": "Continua a modificare",
+      "confirm": "Scarta"
+    }
+  },
+  "loadError": {
+    "overview": "Impossibile caricare la panoramica.",
+    "finance": "Impossibile caricare le finanze.",
+    "wealth": "Impossibile caricare il patrimonio.",
+    "detail": "Impossibile caricare i dati."
   }
 }

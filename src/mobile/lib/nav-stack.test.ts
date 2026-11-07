@@ -44,4 +44,24 @@ describe('navReduce', () => {
     const before = stack('/finance', '/finance/accounts/a');
     expect(navReduce(before, { type: 'pop', path: '/finance/accounts/a' })).toBe(before);
   });
+
+  it('drops every screen above a pop with a known target that lands where it was meant to', () => {
+    const before: NavEntry[] = [
+      { path: '/cashflow', scroll: 0 },
+      { path: '/finance', scroll: 420 },
+      { path: '/finance/accounts/a', scroll: 80 },
+      { path: '/finance/accounts/a?tx=1', scroll: 0 },
+    ];
+    expect(navReduce(before, { type: 'pop', path: '/finance', to: 1 })).toEqual([
+      { path: '/cashflow', scroll: 0 },
+      { path: '/finance', scroll: 420 },
+    ]);
+  });
+
+  it('reads a targeted pop that landed elsewhere as an ordinary pop', () => {
+    const before = stack('/finance', '/finance/accounts/a', '/finance/loans/l');
+    expect(navReduce(before, { type: 'pop', path: '/finance/accounts/a', to: 0 })).toEqual(
+      stack('/finance', '/finance/accounts/a')
+    );
+  });
 });

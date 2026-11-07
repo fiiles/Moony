@@ -8,6 +8,8 @@ use crate::models::stock_monitor::{
     validate_target_direction, validate_target_price, InsertWatchedStock, StockMonitorDetail,
     WatchedStock, WatchedStockRow, TARGET_ABOVE, TARGET_BELOW,
 };
+use crate::services::stock_splits::basis_for_day;
+use crate::services::sync::natural_id::natural_id;
 use rusqlite::{Connection, OptionalExtension};
 
 /// Notes size cap (spec D7)
@@ -21,7 +23,7 @@ pub fn follow_stock(conn: &Connection, data: &InsertWatchedStock) -> Result<Watc
     // Database::with_conn mutex serializing callers (UNIQUE on ticker).
     conn.execute(
         "INSERT OR IGNORE INTO watched_stocks (id, ticker) VALUES (?1, ?2)",
-        rusqlite::params![uuid::Uuid::new_v4().to_string(), ticker],
+        rusqlite::params![natural_id("watched_stocks", &[&ticker]), ticker],
     )?;
     get_watched(conn, &ticker)?
         .ok_or_else(|| AppError::Internal("watched stock missing after insert".to_string()))
@@ -99,10 +101,15 @@ pub fn set_target_price(
             }
         }),
     };
+    // The target is entered in today's units: it is also the entry value (ruling T18c).
+    let now = chrono::Utc::now().timestamp();
+    let basis = basis_for_day(conn, &ticker, now)?;
     let n = conn.execute(
-        "UPDATE watched_stocks SET target_price = ?1, target_direction = ?2, updated_at = unixepoch()
+        "UPDATE watched_stocks
+         SET target_price = ?1, target_direction = ?2, updated_at = ?4, split_basis = ?5,
+             entry_target_price = ?1, entry_basis = ?5, entry_at = ?4
          WHERE ticker = ?3",
-        rusqlite::params![normalized, direction, ticker],
+        rusqlite::params![normalized, direction, ticker, now, basis],
     )?;
     if n == 0 {
         return Err(AppError::NotFound(format!("watched stock {ticker}")));
@@ -332,7 +339,24 @@ mod tests {
                 target_direction TEXT,
                 notes TEXT NOT NULL DEFAULT '',
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                split_basis TEXT,
+                entry_target_price TEXT,
+                entry_basis TEXT,
+                entry_at INTEGER
+            );
+            CREATE TABLE stock_splits (
+                id TEXT PRIMARY KEY,
+                ticker TEXT NOT NULL,
+                effective_day INTEGER NOT NULL,
+                numerator TEXT NOT NULL,
+                denominator TEXT NOT NULL,
+                source TEXT NOT NULL,
+                status TEXT NOT NULL,
+                detected_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                resolved_at INTEGER,
+                applied_count INTEGER,
+                UNIQUE (ticker, effective_day)
             );
             CREATE TABLE stock_data (
                 id TEXT PRIMARY KEY,
@@ -721,6 +745,16 @@ mod tests {
             .unwrap_err();
         assert!(
             matches!(err, AppError::Validation(ref k) if k == "validation.targetDirectionInvalid")
+        );
+    }
+
+    #[test]
+    fn following_a_ticker_uses_its_natural_id() {
+        let conn = setup_test_db();
+        let watched = follow(&conn, "aapl");
+        assert_eq!(
+            watched.id,
+            crate::services::sync::natural_id::natural_id("watched_stocks", &["AAPL"])
         );
     }
 }

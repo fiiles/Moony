@@ -6,6 +6,7 @@ import {
   cashflowCategoryPath,
   cryptoPath,
   isSettingsSection,
+  isShellPath,
   loanPath,
   otherAssetPath,
   planPath,
@@ -154,5 +155,28 @@ describe('spending plan paths', () => {
   it('builds the detail path from the id', () => {
     expect(planPath('p1')).toBe('/cashflow/plans/p1');
     expect(routes.planDetail).toBe('/cashflow/plans/:id');
+  });
+});
+
+describe('isShellPath', () => {
+  it('takes the paths of the tabs, their details and Nastavení', () => {
+    expect(isShellPath('/')).toBe(true);
+    expect(isShellPath('/agenda')).toBe(true);
+    expect(isShellPath('/finance/uncategorized')).toBe(true);
+    expect(isShellPath('/cashflow?view=plans')).toBe(true);
+    expect(isShellPath(settingsPath('backup'))).toBe(true);
+    expect(isShellPath('/settings')).toBe(true);
+  });
+
+  it('refuses the lock, unknown pages, other origins and anything not a path', () => {
+    expect(isShellPath(routes.auth)).toBe(false);
+    expect(isShellPath('/nowhere')).toBe(false);
+    expect(isShellPath('/settings/unknown')).toBe(false);
+    expect(isShellPath('//evil.example/finance')).toBe(false);
+    expect(isShellPath('https://evil.example/')).toBe(false);
+    expect(isShellPath('finance')).toBe(false);
+    expect(isShellPath('')).toBe(false);
+    expect(isShellPath(null)).toBe(false);
+    expect(isShellPath(42)).toBe(false);
   });
 });

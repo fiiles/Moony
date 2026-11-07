@@ -14,19 +14,21 @@
  * shows the password form. A key the keychain can no longer read falls back to the password with
  * the reason under the button, never a loop.
  */
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { useLocation } from 'wouter';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useQuery } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import { Lock as LockIcon, RefreshCw } from 'lucide-react';
+import { toast } from 'sonner';
+import { Download, Lock as LockIcon, RefreshCw } from 'lucide-react';
 import { z } from 'zod';
-import { recoverSchema, unlockSchema } from '@shared/schema';
+import { recoverSchema, unlockSchema, type BackupInspection } from '@shared/schema';
 import { GREETING_NAME_KEY, LOCKED_AT_KEY, useAuth } from '@/hooks/use-auth';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
 import { useFormat } from '@/lib/use-format';
 import { isAuthApiError } from '@/lib/api-error';
+import { translateApiError } from '@/lib/translate-api-error';
 import { queryClient } from '@/lib/queryClient';
 import { biometricApi } from '@/lib/tauri-api';
 import { cn } from '@/lib/utils';
@@ -49,6 +51,7 @@ import { OnboardingWelcome } from '@/components/auth/OnboardingWelcome';
 import { PasswordInput } from '@/components/auth/PasswordInput';
 import { RecoveryKeyBox } from '@/components/auth/RecoveryKeyBox';
 import { RecoverySteps } from '@/components/auth/RecoverySteps';
+import { recoveryKeyFileContents } from '@/utils/recovery-key-check';
 import { BiometryIcon } from '@/mobile/components/BiometryIcon';
 import {
   BIOMETRIC_STATUS_KEY,
@@ -59,9 +62,14 @@ import {
   clearEnrolmentAsked,
   shouldAutoPrompt,
 } from '@/lib/biometrics';
+import { leaveLock } from '@/mobile/hooks/leave-lock';
+import { useExportTextFile } from '@/mobile/hooks/use-export-text-file';
+import { useRestoreBackup } from '@/mobile/hooks/use-restore-backup';
+import { changedRecoveryKeyFileName, exportsOnThisDevice } from '@/mobile/lib/export-file';
 import { takeQuietLock } from '@/mobile/lib/quiet-lock';
 import { whenVisible } from '@/mobile/lib/when-visible';
 import { FirstRun } from '@/mobile/pages/FirstRun';
+import { RestoreBackupSheet } from '@/mobile/sheets/RestoreBackupSheet';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -141,11 +149,14 @@ export default function Lock() {
     }
   };
 
+  // Leaves once, back to the screen the lock covered (or a tapped notification's), never before a
+  // successful unlock: `leaveLock` reads what the shell recorded when the app locked.
+  const left = useRef(false);
   useEffect(() => {
     // Only leave once unlocked AND neither the wizard nor a new recovery key is still showing.
-    if (user && appStatus === 'unlocked' && !recoveryKey && !wizardActive) {
-      setLocation(routes.overview);
-    }
+    if (left.current || !user || appStatus !== 'unlocked' || recoveryKey || wizardActive) return;
+    left.current = true;
+    leaveLock(setLocation);
   }, [user, appStatus, setLocation, recoveryKey, wizardActive]);
 
   if (wizardActive) {
@@ -279,6 +290,18 @@ function UnlockScreen({
     });
   };
 
+  // "Obnovit ze zálohy…": the archive is read, confirmed, and replaces this profile; the app then
+  // reloads to the lock of the restored one. `restore` has said what went wrong: the sheet stays.
+  const { pickRestore, restore, restoring } = useRestoreBackup();
+  const [inspection, setInspection] = useState<BackupInspection | null>(null);
+  const chooseRestore = async () => {
+    const picked = await pickRestore();
+    if (picked) setInspection(picked);
+  };
+  const confirmRestore = () => {
+    if (inspection) void restore(inspection).catch(() => undefined);
+  };
+
   const greetingName = readStorage(GREETING_NAME_KEY);
   const lockedAt = Number(readStorage(LOCKED_AT_KEY)) || null;
   const lockedToday =
@@ -403,6 +426,26 @@ function UnlockScreen({
               >
                 {t('login.forgotPassword')}
               </button>
+              {/* The desktop lock's "Máte zálohu? Obnovit ze zálohy…": the restored profile
+                  replaces this one, and its own password unlocks it */}
+              <p className="m-0 mt-3 text-m-sub text-ink-3">{t('login.restoreLead')}</p>
+              <button
+                type="button"
+                onClick={() => void chooseRestore()}
+                disabled={pending || biometricPending || restoring}
+                className={cn(textLink, 'mt-0')}
+                data-testid="lock-restore-backup"
+              >
+                {t('login.restoreBackup')}
+              </button>
+              <RestoreBackupSheet
+                inspection={inspection}
+                onOpenChange={(open) => {
+                  if (!open) setInspection(null);
+                }}
+                onConfirm={confirmRestore}
+                isPending={restoring}
+              />
             </>
           )}
         </div>
@@ -551,6 +594,36 @@ function NewKeyScreen({ recoveryKey, onDone }: { recoveryKey: string; onDone: ()
   const { t: tm } = useTranslation('mobile');
   const [keySaved, setKeySaved] = useState(false);
   const pending = confirmRecoveryMutation.isPending;
+  const fmt = useFormat();
+  const { exportText } = useExportTextFile();
+  const [saving, setSaving] = useState(false);
+  // The day the key was made: this screen mounts when it arrives
+  const [madeAt] = useState(() => new Date());
+
+  /**
+   * "Uložit do Souborů", as the first run and "Změnit heslo" offer it: the new key replaces the old
+   * one, so the file is named and titled as the changed key of "Změnit heslo".
+   */
+  const saveToFiles = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const outcome = await exportText(
+        changedRecoveryKeyFileName(madeAt),
+        recoveryKeyFileContents(recoveryKey, {
+          title: tm('settings.password.fileTitle', { date: fmt.date(madeAt) }),
+          note: `${tm('settings.password.fileNote')}\n\n${tm('firstRun.recoveryFileNote')}`,
+        })
+      );
+      if (outcome === 'saved') toast(t('onboarding.recovery.saved'));
+    } catch (error) {
+      toast.error(tc('status.error'), {
+        description: translateApiError(error instanceof Error ? error : String(error), tc),
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const leave = () => {
     clearRecoveryKey();
@@ -568,6 +641,20 @@ function NewKeyScreen({ recoveryKey, onDone }: { recoveryKey: string; onDone: ()
         <RecoverySteps current={3} />
         <p className="mb-5 mt-0 text-m-body text-ink-3">{t('recover.newKeyLead')}</p>
         <RecoveryKeyBox recoveryKey={recoveryKey} touch />
+        {/* Where the Files picker does not export (not iOS) the key is copied; no button that only apologises */}
+        {exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? '') && (
+          <Button
+            type="button"
+            variant="secondary"
+            className={cn(primaryButton, 'mt-3 [&_svg]:size-[18px]')}
+            loading={saving}
+            disabled={saving || pending}
+            onClick={() => void saveToFiles()}
+          >
+            <Download aria-hidden />
+            {tm('firstRun.saveToFiles')}
+          </Button>
+        )}
         {/* The whole row is the label, 44 pt tall at least, so one line of text is still easy to hit. */}
         <label className="my-3 flex min-h-11 cursor-pointer items-center gap-3 py-1 text-m-body text-ink-2">
           <Checkbox

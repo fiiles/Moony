@@ -514,6 +514,8 @@
       "asset": "资产"
     },
     "noRate": "无 {{currency}} 汇率",
+    "sincePurchase": "自购入以来",
+    "gainSincePurchase": "自购入以来的盈亏",
     "stocks": {
       "back": "股票",
       "pricesAt": "价格 {{time}}",
@@ -851,5 +853,19 @@
   },
   "gettingStarted": {
     "makeBackupHint": "一个包含全部内容的加密文件，在 设置 → 备份与迁移 中。"
+  },
+  "sheet": {
+    "discard": {
+      "title": "放弃更改？",
+      "description": "已填写的内容不会保存。",
+      "keep": "继续编辑",
+      "confirm": "放弃"
+    }
+  },
+  "loadError": {
+    "overview": "无法加载概览。",
+    "finance": "无法加载财务。",
+    "wealth": "无法加载资产。",
+    "detail": "无法加载数据。"
   }
 }

@@ -12,6 +12,7 @@ import { TEXT_FIELD } from '@/mobile/components/field-styles';
 import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
+import { formChanged } from '@/mobile/lib/form-dirty';
 import {
   emptyManualTxForm,
   manualTxErrors,
@@ -64,13 +65,17 @@ export function AddTransactionSheet({
   const { createTransaction } = useBankTransactionMutations();
 
   const [form, setForm] = useState(() => emptyManualTxForm(todayIso()));
+  // What the form opened with: a sheet that differs from it asks before it closes
+  const [formStart, setFormStart] = useState(form);
   const [attempted, setAttempted] = useState(false);
   const [choosing, setChoosing] = useState(false);
   const [openedFor, setOpenedFor] = useState(open);
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setForm(emptyManualTxForm(todayIso()));
+      const fresh = emptyManualTxForm(todayIso());
+      setForm(fresh);
+      setFormStart(fresh);
       setAttempted(false);
       setChoosing(false);
     }
@@ -171,6 +176,7 @@ export function AddTransactionSheet({
       <Sheet
         open={open}
         onOpenChange={onOpenChange}
+        dirty={!pending && formChanged(formStart, form)}
         title={tb('transaction.add')}
         fill
         full

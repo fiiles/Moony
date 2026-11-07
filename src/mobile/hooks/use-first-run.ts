@@ -19,6 +19,7 @@ import {
 } from '@/utils/locale-defaults';
 import { BIOMETRIC_STATUS_KEY } from '@/lib/biometrics';
 import { preferencesWithAreas, type TrackedAreas } from '@/mobile/lib/tracked-areas';
+import { exportsOnThisDevice } from '@/mobile/lib/export-file';
 import { firstRunSteps, nextStep, previousStep, type FirstRunStep } from '@/mobile/lib/first-run';
 
 /** What the account form holds: the values that become the profile, and the password twice. */
@@ -97,14 +98,21 @@ export function useFirstRun({
   // that cannot be read (the desktop shell, a browser tab) is no biometry: the six-step list.
   const biometry = useQuery({ queryKey: BIOMETRIC_STATUS_KEY, queryFn: biometricApi.status });
   const biometryAvailable = biometry.data?.available ?? false;
-  const steps = useMemo(() => firstRunSteps({ biometryAvailable }), [biometryAvailable]);
+  // Where a backup cannot be made (not iOS yet) the run ends without the "Záloha" step (audit C7)
+  const canBackup = exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? '');
+  const steps = useMemo(
+    () => firstRunSteps({ biometryAvailable, canBackup }),
+    [biometryAvailable, canBackup]
+  );
 
   // The keys are prepared: the recovery key is shown
   if (recoveryKey && step === 'account') setStep('recovery');
 
+  /** The next step, or the end of the run after the last one (`finish`). */
   const moveOn = (from: FirstRunStep) => {
     const next = nextStep(steps, from);
     if (next) setStep(next);
+    else void finish();
   };
 
   // ---------------- Soukromí → Účet ----------------

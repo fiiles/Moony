@@ -3,6 +3,7 @@ import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { X } from 'lucide-react';
 
 import { useSheetDrag } from '@/hooks/use-sheet-drag';
+import { usePhoneDialogBusy, withPhoneHistory } from '@/components/ui/phone-dialog-history';
 import { isMobileShell } from '@/lib/platform';
 import { sheetHeightClass } from '@/lib/sheet-height';
 import { cn } from '@/lib/utils';
@@ -18,10 +19,11 @@ import { cn } from '@/lib/utils';
  * the phone's `Sheet`): the same drag handle, title, scrolling body and footer
  * on `well`, closed by the scrim, Escape, its buttons or a drag down, and no
  * field is focused on opening (the keyboard would cover the sheet before it
- * has been read).
+ * has been read). Android back closes it as it closes the phone's own sheets
+ * (`withPhoneHistory`), unless it is busy.
  */
 const PHONE = isMobileShell(import.meta.env);
-const Dialog = DialogPrimitive.Root;
+const Dialog = PHONE ? withPhoneHistory(DialogPrimitive.Root) : DialogPrimitive.Root;
 
 const DialogTrigger = DialogPrimitive.Trigger;
 
@@ -140,8 +142,9 @@ const DialogContent = React.forwardRef<
     const [sheet, setSheet] = React.useState<HTMLDivElement | null>(null);
     const closeRef = React.useRef<HTMLButtonElement>(null);
     // A drag down closes the phone sheet as its X would (the X is hidden there); not while the
-    // dialog withholds its X (it is busy)
+    // dialog withholds its X (it is busy). Back does not close it then either.
     useSheetDrag(sheet, () => closeRef.current?.click(), PHONE && !hideCloseButton);
+    usePhoneDialogBusy(PHONE && hideCloseButton === true);
     const setRefs = React.useCallback(
       (node: HTMLDivElement | null) => {
         setSheet(node);

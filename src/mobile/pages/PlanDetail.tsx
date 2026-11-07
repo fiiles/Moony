@@ -33,6 +33,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { MissingOrFailed } from '@/mobile/components/LoadError';
 import { CashflowHero } from '@/mobile/components/cashflow/CashflowHero';
 import { CategoryChip } from '@/mobile/components/cashflow/CategoryChip';
 import { ProgressBar } from '@/mobile/components/cashflow/ProgressBar';
@@ -194,7 +195,8 @@ export default function PlanDetail() {
           />
         </>
       ) : detail.isError ? (
-        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">{tp('detail.notFound')}</p>
+        // The backend's "not found" is the plan gone; any other failure is said with a retry
+        <MissingOrFailed>{tp('detail.notFound')}</MissingOrFailed>
       ) : (
         <DetailSkeleton />
       )}

@@ -4,6 +4,7 @@ import { listen } from '@tauri-apps/api/event';
 import { useAuth } from '@/hooks/use-auth';
 import { RECEIVED_FILES_EVENT, receivedFilesApi } from '@/lib/tauri-api';
 import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
+import { useReturnWalkActive } from '@/mobile/hooks/use-sheet-history';
 import { errorKind } from '@/mobile/lib/error-kind';
 import { createReceivedQueue, createSerialDrain } from '@/mobile/lib/received-queue';
 
@@ -41,6 +42,8 @@ export function ReceivedFileHost({
   const { openImport, open } = useImportSheet();
   const { t: tc } = useTranslation('common');
   const unlocked = appStatus === 'unlocked';
+  // The walk back to the screen the lock covered: its landing must not meet the import sheet
+  const returning = useReturnWalkActive();
 
   const openImportRef = useRef(openImport);
   const onPendingRef = useRef(onPendingChange);
@@ -73,8 +76,9 @@ export function ReceivedFileHost({
     return { queue, drain, report };
   });
 
-  // The sheet is taken while one is open and while the app is locked (a lock closes the sheet)
-  const taken = open || !unlocked;
+  // The sheet is taken while one is open, while the app is locked (a lock closes the sheet) and
+  // while the unlock walks back to the screen the lock covered
+  const taken = open || !unlocked || returning;
   useEffect(() => {
     if (taken) queue.sheetOpened();
     else queue.sheetClosed();

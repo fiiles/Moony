@@ -17,6 +17,7 @@ import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles'
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
+import { formChanged } from '@/mobile/lib/form-dirty';
 import { amountInputText, parseAmountInput } from '@/mobile/lib/amount-input';
 import { yearChoices } from '@/mobile/lib/plan-rows';
 import { CurrencyPickerSheet } from '@/mobile/sheets/CurrencyPickerSheet';
@@ -128,6 +129,8 @@ export function PlanFormSheet({
 
   const locale = useTranslation().i18n.language;
   const [input, setInput] = useState(() => initialForm(plan, defaultYear, currencyCode, locale));
+  // What the form opened with: a sheet that differs from it asks before it closes
+  const [formStart, setFormStart] = useState(input);
   const [attempted, setAttempted] = useState(false);
   const [nameTaken, setNameTaken] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
@@ -137,7 +140,9 @@ export function PlanFormSheet({
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setInput(initialForm(plan, defaultYear, currencyCode, locale));
+      const fresh = initialForm(plan, defaultYear, currencyCode, locale);
+      setInput(fresh);
+      setFormStart(fresh);
       setAttempted(false);
       setNameTaken(false);
     }
@@ -194,6 +199,7 @@ export function PlanFormSheet({
       <Sheet
         open={open}
         onOpenChange={onOpenChange}
+        dirty={!isPending && formChanged(formStart, input)}
         title={isEdit ? t('form.editTitle') : t('form.newTitle')}
         description={
           plan

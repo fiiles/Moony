@@ -549,6 +549,8 @@
       "asset": "Tillgång"
     },
     "noRate": "ingen växelkurs för {{currency}}",
+    "sincePurchase": "sedan köp",
+    "gainSincePurchase": "vinst/förlust sedan köp",
     "stocks": {
       "back": "Aktier",
       "pricesAt": "kurser {{time}}",
@@ -900,5 +902,19 @@
   },
   "gettingStarted": {
     "makeBackupHint": "En krypterad fil med allt, under Inställningar → Säkerhetskopia och överföring."
+  },
+  "sheet": {
+    "discard": {
+      "title": "Slänga ändringarna?",
+      "description": "Det du har fyllt i sparas inte.",
+      "keep": "Fortsätt redigera",
+      "confirm": "Släng"
+    }
+  },
+  "loadError": {
+    "overview": "Översikten kunde inte läsas in.",
+    "finance": "Ekonomin kunde inte läsas in.",
+    "wealth": "Förmögenheten kunde inte läsas in.",
+    "detail": "Uppgifterna kunde inte läsas in."
   }
 }

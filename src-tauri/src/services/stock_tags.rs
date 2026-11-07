@@ -6,6 +6,7 @@
 
 use crate::error::{AppError, Result};
 use crate::models::{InsertStockTag, InsertStockTagGroup, StockTag, StockTagGroup};
+use crate::services::sync::repair::renames;
 use rusqlite::{params, Connection, OptionalExtension};
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
@@ -51,13 +52,14 @@ pub fn create_group(conn: &Connection, data: InsertStockTagGroup) -> Result<Stoc
         "INSERT INTO stock_tag_groups (id, name, description, created_at) VALUES (?1, ?2, ?3, ?4)",
         params![id, name, data.description, now],
     )?;
+    renames::after_local_write(conn, "stock_tag_groups", "")?;
 
-    Ok(StockTagGroup {
-        id,
-        name,
-        description: data.description,
-        created_at: now,
-    })
+    conn.query_row(
+        "SELECT id, name, description, created_at FROM stock_tag_groups WHERE id = ?1",
+        [&id],
+        group_row,
+    )
+    .map_err(AppError::from)
 }
 
 /// Rename or re-describe a tag group; `NotFound` for an unknown id.
@@ -74,6 +76,7 @@ pub fn update_group(
     if changes == 0 {
         return Err(AppError::NotFound("Stock tag group not found".into()));
     }
+    renames::after_local_write(conn, "stock_tag_groups", "")?;
 
     conn.query_row(
         "SELECT id, name, description, created_at FROM stock_tag_groups WHERE id = ?1",
@@ -89,6 +92,7 @@ pub fn delete_group(conn: &Connection, id: &str) -> Result<()> {
     if changes == 0 {
         return Err(AppError::NotFound("Stock tag group not found".into()));
     }
+    renames::after_local_write(conn, "stock_tag_groups", "")?;
     Ok(())
 }
 
@@ -114,14 +118,14 @@ pub fn create_tag(conn: &Connection, data: InsertStockTag) -> Result<StockTag> {
         "INSERT INTO stock_tags (id, name, color, group_id, created_at) VALUES (?1, ?2, ?3, ?4, ?5)",
         params![id, name, data.color, data.group_id, now],
     )?;
+    renames::after_local_write(conn, "stock_tags", "")?;
 
-    Ok(StockTag {
-        id,
-        name,
-        color: data.color,
-        group_id: data.group_id,
-        created_at: now,
-    })
+    conn.query_row(
+        "SELECT id, name, color, group_id, created_at FROM stock_tags WHERE id = ?1",
+        [&id],
+        tag_row,
+    )
+    .map_err(AppError::from)
 }
 
 /// Rename, recolour or regroup a tag; `NotFound` for an unknown id. Moving the tag into another
@@ -157,6 +161,7 @@ pub fn update_tag(conn: &Connection, id: &str, data: InsertStockTag) -> Result<S
         "UPDATE stock_tags SET name = ?1, color = ?2, group_id = ?3 WHERE id = ?4",
         params![data.name.trim(), data.color, data.group_id, id],
     )?;
+    renames::after_local_write(conn, "stock_tags", "")?;
 
     conn.query_row(
         "SELECT id, name, color, group_id, created_at FROM stock_tags WHERE id = ?1",
@@ -172,6 +177,7 @@ pub fn delete_tag(conn: &Connection, id: &str) -> Result<()> {
     if changes == 0 {
         return Err(AppError::NotFound("Stock tag not found".into()));
     }
+    renames::after_local_write(conn, "stock_tags", "")?;
     Ok(())
 }
 

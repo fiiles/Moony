@@ -18,6 +18,7 @@ import { useFormat } from '@/lib/use-format';
 import { CHART_PERIODS, type ChartPeriod } from '@/utils/period';
 import { amountOf } from '@/utils/positions';
 import { Button } from '@/components/ui/button';
+import { LoadError } from '@/mobile/components/LoadError';
 import { ScaledConversionNote, ScaledEmptyState } from '@/mobile/components/Scaled';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
 import { RowBadge } from '@/mobile/components/RowBadge';
@@ -121,6 +122,9 @@ export default function Wealth() {
     >
       {isLoading ? (
         <WealthSkeleton />
+      ) : overview.metricsError ? (
+        // A failed load is not "no assets yet" (audit C6)
+        <LoadError message={t('loadError.wealth')} />
       ) : overview.isEmptyPortfolio ? (
         <EmptyWealth />
       ) : (
@@ -231,8 +235,9 @@ function InvestmentSection({
 
     // Held, but nothing converted: "—", and no change that would be measured against nothing
     const shown = state === 'unknown' ? '—' : money(value);
+    // Said on the row: the position rows one screen down show the gain since purchase
     const changeLine = change ? (
-      <ChangeLine change={change} currency={reportCurrency} />
+      <ChangeLine change={change} currency={reportCurrency} trail={t('overview.change.30D')} />
     ) : undefined;
     let sub: string;
     let valueSub: ReactNode;
@@ -395,8 +400,16 @@ function CashSection({ wealth }: { wealth: WealthData }) {
           title={t('wealth.cash.title')}
           sub={t('upkeep.accounts', { count: cash.accounts })}
           value={shown}
-          // Badge and amount like the other rows: "za 30 dní" is said once, in the hero
-          valueSub={change ? <ChangeLine change={change} currency={reportCurrency} /> : undefined}
+          // The same 30 days as the investment rows, said on the row
+          valueSub={
+            change ? (
+              <ChangeLine
+                change={change}
+                currency={reportCurrency}
+                trail={t('overview.change.30D')}
+              />
+            ) : undefined
+          }
           href={routes.finance}
         />
       </EntityRows>

@@ -1,12 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { Redirect, Route, Router, Switch, useLocation, useSearch } from 'wouter';
 import { memoryLocation } from 'wouter/memory-location';
 import { useAuth } from '@/hooks/use-auth';
 import { ProtectedRoute } from '@/lib/protected-route';
 import { ReceivedFileHost } from '@/mobile/components/import/ReceivedFileHost';
+import { NotificationTargetHost } from '@/mobile/components/NotificationTargetHost';
 import { ImportSheetProvider } from '@/mobile/hooks/use-import-sheet';
 import { NavEntryContext, useNavStack, useNavUnderlay } from '@/mobile/hooks/use-nav-stack';
 import { useNotificationSchedule } from '@/mobile/hooks/use-notification-schedule';
+import { sheetEntryCount } from '@/mobile/hooks/use-sheet-history';
+import { clearTabMemory, useTabMemory } from '@/mobile/hooks/use-tab-memory';
+import { lockReturn } from '@/mobile/lib/lock-return';
+import { notificationTarget } from '@/mobile/lib/notification-target';
 import { clearEnrolmentAsked } from '@/lib/biometrics';
 import Agenda from '@/mobile/pages/Agenda';
 import Bonds from '@/mobile/pages/Bonds';
@@ -103,12 +108,18 @@ function Routes() {
  * tab bar over the unlocked tab screens. Navigation is the browser history (wouter), so Android
  * back pops whatever was pushed. The import sheet lives above the routes (`ImportSheetProvider`),
  * so every entry point can open it and it outlives the screen that did; `ReceivedFileHost` feeds
- * it the statements the system opened in Moony.
+ * it the statements the system opened in Moony, `NotificationTargetHost` the screens of tapped
+ * notifications.
+ *
+ * The shell keeps the place: each tab's screens (`useTabMemory`) and, when the app locks, the
+ * screen the lock covers (`lockReturn`), to which the unlock returns (`leaveLock`).
  */
 export function MobileShell() {
   const [location] = useLocation();
+  const search = useSearch();
   const { user, appStatus } = useAuth();
-  const tab = appStatus === 'unlocked' && user ? tabForPath(location) : null;
+  const unlocked = appStatus === 'unlocked' && !!user;
+  const tab = unlocked ? tabForPath(location) : null;
   // A statement shared into Moony is on its way to the import sheet: the biometric offer waits
   const [sharedPending, setSharedPending] = useState(false);
   const stack = useNavStack();
@@ -121,11 +132,40 @@ export function MobileShell() {
   );
   const topEntry = useMemo(() => ({ index: top, underlay: false }), [top]);
   const underlayEntry = useMemo(() => ({ index: top - 1, underlay: true }), [top]);
+  useTabMemory(stack);
+
+  // The moment the app locks: the screen it was showing (this render's location, before the
+  // protected route's redirect to the lock lands) and the sheets open on it, whose history entries
+  // outlive them. Read in a layout effect, after the redirect's push and before the sheets'
+  // passive cleanups take their entries off the count.
+  const here = search ? `${location}?${search}` : location;
+  const wasUnlocked = useRef(unlocked);
+  useLayoutEffect(() => {
+    if (wasUnlocked.current && !unlocked) lockReturn.locked(here, sheetEntryCount());
+    wasUnlocked.current = unlocked;
+  });
+
+  // Toasts sit above the tab bar only while there is one (`MobileApp`'s offset, `index.css`)
+  useLayoutEffect(() => {
+    const root = document.documentElement;
+    if (tab) root.dataset.tabbar = '';
+    else delete root.dataset.tabbar;
+  }, [tab]);
+  useEffect(
+    () => () => {
+      delete document.documentElement.dataset.tabbar;
+    },
+    []
+  );
 
   // No account on this phone (first launch, or after the account was deleted): the next one is
   // offered biometric unlock again, so the "asked" flag of the old account goes.
   useEffect(() => {
     if (appStatus !== 'needs_setup') return;
+    // Nothing of the old account's places is left to return to, nor a tapped notification of it
+    lockReturn.clear();
+    clearTabMemory();
+    notificationTarget.take();
     try {
       clearEnrolmentAsked(localStorage);
     } catch {
@@ -161,6 +201,8 @@ export function MobileShell() {
           mounted through a lock (and drains only while unlocked), so a path it has taken but not
           yet shown survives every unlock. */}
       <ReceivedFileHost onPendingChange={setSharedPending} />
+      {/* A tapped notification's screen: at once while unlocked, after the unlock otherwise */}
+      <NotificationTargetHost />
     </ImportSheetProvider>
   );
 }

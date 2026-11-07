@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '@/hooks/use-auth';
@@ -16,6 +17,8 @@ import {
   shouldOfferEnrolment,
   wasEnrolmentAsked,
 } from '@/lib/biometrics';
+import { useReturnWalkActive } from '@/mobile/hooks/use-sheet-history';
+import { routes } from '@/mobile/shell/routes';
 
 function storage(): Storage | null {
   try {
@@ -73,8 +76,14 @@ export function EnableBiometricsSheet({ sharedPending = false }: { sharedPending
   const type = status.data?.biometryType ?? 'none';
   const copy = biometricCopy(type);
   // Stays up while "Zapnout" runs, then the answer closes it; waits for a shared file's import.
+  // Never over the lock page (the unlock leaves it a commit later) nor during the walk back to the
+  // screen the lock covered (its landing would close the offer).
+  const returning = useReturnWalkActive();
+  const [location] = useLocation();
   const open =
+    location !== routes.auth &&
     passwordUnlocked &&
+    !returning &&
     enrolmentOfferOpen({
       offered: shouldOfferEnrolment(status.data, asked),
       enabling: enable.isPending,

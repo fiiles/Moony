@@ -125,6 +125,8 @@ describe('buildNotificationPlan: deadlines', () => {
           key: 'notifications.deadline.in14',
           params: { whatKey: 'notifications.deadline.kind.insurance_anniversary' },
         },
+        // No policy behind the milestone: the full "Co vás čeká"
+        path: '/agenda',
       },
       {
         id: notificationId('deadline1', m.key),
@@ -135,7 +137,21 @@ describe('buildNotificationPlan: deadlines', () => {
           key: 'notifications.deadline.tomorrow',
           params: { whatKey: 'notifications.deadline.kind.insurance_anniversary' },
         },
+        // No policy behind the milestone: the full "Co vás čeká"
+        path: '/agenda',
       },
+    ]);
+  });
+
+  it('opens the record a deadline is about', () => {
+    const m = milestone('insurance_anniversary', {
+      key: 'insurance_anniversary:policy-1:2027',
+      sourceId: 'policy-1',
+      actionDay: utcDay(2026, 11, 15),
+    });
+    expect(plan({ milestones: [m] }).map((item) => item.path)).toEqual([
+      '/finance/policies/policy-1',
+      '/finance/policies/policy-1',
     ]);
   });
 
@@ -252,6 +268,7 @@ describe('buildNotificationPlan: monthly upkeep', () => {
         at: at(2026, 10, 20, 9, 0),
         title: { key: 'notifications.upkeep.title' },
         body: { key: 'notifications.upkeep.body' },
+        path: '/',
       },
     ]);
     expect(plan({ prefs: { ...prefs, upkeep: false } })).toEqual([]);
@@ -272,6 +289,7 @@ describe('buildNotificationPlan: backup', () => {
         at: at(2026, 10, 18, 9, 0),
         title: { key: 'notifications.backup.title' },
         body: { key: 'notifications.backup.stale' },
+        path: '/settings/backup',
       },
     ]);
     // No backup_stale milestone: the backup is fresh
@@ -280,6 +298,18 @@ describe('buildNotificationPlan: backup', () => {
     expect(plan({ milestones: [m], mutedKinds: ['backup_stale'], prefs: BACKUP_ONLY })).toEqual([]);
     // Switched off in Oznámení
     expect(plan({ milestones: [m], prefs: { ...BACKUP_ONLY, backup: false } })).toEqual([]);
+  });
+
+  it('plans no backup reminder where a backup cannot be made (Android for now)', () => {
+    expect(
+      buildNotificationPlan({
+        now: NOW,
+        milestones: [stale()],
+        mutedKinds: [],
+        prefs: BACKUP_ONLY,
+        canBackup: false,
+      })
+    ).toEqual([]);
   });
 
   it('says there is no backup at all when the milestone has no last day', () => {

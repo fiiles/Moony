@@ -12,6 +12,7 @@ import type { InsuranceRow } from '@/utils/insurance';
 import { Button } from '@/components/ui/button';
 import { EndPolicyDialog } from '@/components/insurance/EndPolicyDialog';
 import { InsuranceFormDialog } from '@/components/insurance/InsuranceFormDialog';
+import { MissingOrFailed } from '@/mobile/components/LoadError';
 import { DocumentsSection } from '@/mobile/components/documents/DocumentsSection';
 import { PolicyFacts } from '@/mobile/components/policy/PolicyFacts';
 import { PolicyLimits } from '@/mobile/components/policy/PolicyLimits';
@@ -120,7 +121,7 @@ function PolicyDetailPage({ id }: { id: string | undefined }) {
       ) : loading ? (
         <PolicySkeleton />
       ) : (
-        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">{ti('detail.notFound')}</p>
+        <MissingOrFailed>{ti('detail.notFound')}</MissingOrFailed>
       )}
 
       {row && (

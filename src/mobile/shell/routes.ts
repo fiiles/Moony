@@ -134,3 +134,19 @@ export function tabForPath(path: string): TabId | null {
   );
   return tab ?? null;
 }
+
+/**
+ * Whether `value` is a path of the shell a screen can be opened at: a tab, a screen pushed on one,
+ * Nastavení or one of its sections. Not the lock, an unknown page or anything with an origin. A
+ * notification's target is checked with it before the app goes there.
+ */
+export function isShellPath(value: unknown): value is string {
+  if (typeof value !== 'string' || !value.startsWith('/') || value.startsWith('//')) return false;
+  const cut = value.search(/[?#]/);
+  const path = cut === -1 ? value : value.slice(0, cut);
+  if (path === routes.settings) return true;
+  if (path.startsWith(`${routes.settings}/`)) {
+    return isSettingsSection(path.slice(routes.settings.length + 1));
+  }
+  return tabForPath(path) !== null;
+}

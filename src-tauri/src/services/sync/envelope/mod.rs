@@ -25,6 +25,8 @@ use zeroize::Zeroizing;
 
 use crate::error::{AppError, Result};
 
+pub mod stream;
+
 pub const MAGIC: [u8; 4] = *b"MNY1";
 pub const OPS_INFO: &[u8] = b"moony sync ops v1";
 pub const TOKEN_INFO: &[u8] = b"moony sync token v1";
@@ -67,7 +69,7 @@ pub fn hkdf32(ikm: &[u8; 32], salt: &[u8], info: &[u8]) -> Zeroizing<[u8; 32]> {
 /// The bearer token the relay knows the vault by: base64url-no-pad of
 /// HKDF(vault_key[epoch], vault_id, "moony sync token v1"), 43 characters.
 pub fn vault_token(vault_key: &[u8; 32], vault_id: &[u8; 16]) -> String {
-    URL_SAFE_NO_PAD.encode(*hkdf32(vault_key, vault_id, TOKEN_INFO))
+    URL_SAFE_NO_PAD.encode(hkdf32(vault_key, vault_id, TOKEN_INFO).as_slice())
 }
 
 /// Raw deflate (flate2's default level) zero-padded to a multiple of `PAD`, at least `PAD`; the

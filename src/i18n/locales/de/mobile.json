@@ -168,7 +168,8 @@
       "showAll_one": "Alle {{count}} anzeigen",
       "showAll_other": "Alle {{count}} anzeigen"
     },
-    "cashTrendLabel": "Diagramm zum Bargeldverlauf"
+    "cashTrendLabel": "Diagramm zum Bargeldverlauf",
+    "loanPayment": "Kreditrate"
   },
   "queue": {
     "source": {

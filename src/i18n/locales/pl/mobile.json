@@ -198,7 +198,8 @@
       "showAll_many": "Pokaż wszystkie {{count}}",
       "showAll_other": "Pokaż wszystkie {{count}}"
     },
-    "cashTrendLabel": "Wykres gotówki"
+    "cashTrendLabel": "Wykres gotówki",
+    "loanPayment": "Rata kredytu"
   },
   "queue": {
     "source": {

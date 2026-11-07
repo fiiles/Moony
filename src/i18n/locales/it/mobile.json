@@ -183,7 +183,8 @@
       "showAll_many": "Mostra tutti ({{count}})",
       "showAll_other": "Mostra tutti ({{count}})"
     },
-    "cashTrendLabel": "Grafico della liquidità"
+    "cashTrendLabel": "Grafico della liquidità",
+    "loanPayment": "Rata del prestito"
   },
   "queue": {
     "source": {

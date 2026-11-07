@@ -183,7 +183,8 @@
       "showAll_many": "Mostrar todos ({{count}})",
       "showAll_other": "Mostrar todos ({{count}})"
     },
-    "cashTrendLabel": "Gráfico del efectivo"
+    "cashTrendLabel": "Gráfico del efectivo",
+    "loanPayment": "Cuota del préstamo"
   },
   "queue": {
     "source": {

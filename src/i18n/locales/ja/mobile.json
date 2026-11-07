@@ -153,7 +153,8 @@
       "upcomingNote_other": "{{count}}日間",
       "showAll_other": "{{count}}件をすべて表示"
     },
-    "cashTrendLabel": "現金の推移グラフ"
+    "cashTrendLabel": "現金の推移グラフ",
+    "loanPayment": "ローン返済"
   },
   "queue": {
     "source": {

@@ -3,13 +3,20 @@ import { useTranslation } from 'react-i18next';
 import { useFormat } from '@/lib/use-format';
 import { daysBetween, relativeLabel } from '@/utils/milestones';
 import type { InsuranceRow } from '@/utils/insurance';
+import type { LoanRow } from '@/utils/loans';
 import { DateChip, DATE_CHIP_WIDTH } from '@/mobile/components/DateChip';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { MoreRow } from '@/mobile/components/wealth/MoreRow';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
-import { UPCOMING_DAYS, upcomingPremiums } from '@/mobile/lib/upcoming-premiums';
-import { policyPath } from '@/mobile/shell/routes';
+import {
+  UPCOMING_DAYS,
+  upcomingLoanPayments,
+  upcomingPremiums,
+} from '@/mobile/lib/upcoming-premiums';
+import { loanPath, policyPath } from '@/mobile/shell/routes';
+
+const NO_LOANS: readonly LoanRow[] = [];
 
 /** Payments shown before the rest folds behind "Zobrazit všech N". */
 const SHOWN = 5;
@@ -17,13 +24,15 @@ const SHOWN = 5;
 interface UpcomingPremiumsProps {
   /** The policies the list reads: the Finance tab's rows after the type filter. */
   rows: readonly InsuranceRow[];
+  /** The loans the list reads: the Finance tab's loan rows (C11: the heading promises every payment). */
+  loans?: readonly LoanRow[];
   /** The UTC day the distances count from (`useInsurance().today`). */
   today: number;
 }
 
 /**
- * "Nejbližší platby" under the policy rows (spec §8.4, §8.8): the premiums falling due in the next
- * 90 days as a dated list in place of the desktop's 12-month calendar chart — a date chip (the day
+ * "Nejbližší platby" under the policy rows (spec §8.4, §8.8): the premiums and the loan payments
+ * ("Splátka úvěru" in the sub-line, C11) falling due in the next 90 days as a dated list in place of the desktop's 12-month calendar chart — a date chip (the day
  * over its weekday), the policy's name, the insurer with the distance ("Allianz · za 73 dní") and
  * the amount in the policy's own currency (never converted, never summed). The
  * distance is in the sub-line, not in the chip: "in 2 Monaten" does not fit 54 pt, a weekday
@@ -31,12 +40,38 @@ interface UpcomingPremiumsProps {
  * všech N" unfolds the rest in place; a tap opens the policy. Nothing is rendered without a payment
  * ahead (every policy ended, or only one-time premiums).
  */
-export function UpcomingPremiums({ rows, today }: UpcomingPremiumsProps) {
+export function UpcomingPremiums({ rows, loans = NO_LOANS, today }: UpcomingPremiumsProps) {
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const [expanded, setExpanded] = useState(false);
-  const payments = useMemo(() => upcomingPremiums(rows, today), [rows, today]);
+  const loanSub = t('finance.loanPayment');
+  // Premiums and loan payments in one dated list, nearest first (a stable merge: premiums first
+  // within a day, each part already in its own order)
+  const payments = useMemo(
+    () =>
+      [
+        ...upcomingPremiums(rows, today).map((p) => ({
+          key: `p:${p.policyId}:${p.day}`,
+          name: p.name,
+          provider: p.provider,
+          day: p.day,
+          amount: p.amount,
+          currency: p.currency,
+          href: policyPath(p.policyId),
+        })),
+        ...upcomingLoanPayments(loans, today).map((p) => ({
+          key: `l:${p.loanId}:${p.day}`,
+          name: p.name,
+          provider: loanSub,
+          day: p.day,
+          amount: p.amount,
+          currency: p.currency,
+          href: loanPath(p.loanId),
+        })),
+      ].sort((a, b) => a.day - b.day),
+    [rows, loans, today, loanSub]
+  );
   if (payments.length === 0) return null;
 
   const shown = expanded ? payments : payments.slice(0, SHOWN);
@@ -52,7 +87,7 @@ export function UpcomingPremiums({ rows, today }: UpcomingPremiumsProps) {
           const when = t(`milestones:relative.${distance.key}`, { count: distance.count });
           return (
             <EntityRow
-              key={`${payment.policyId}:${payment.day}`}
+              key={payment.key}
               chip={
                 <DateChip day={payment.day} caption={fmt.day(payment.day, { weekday: 'short' })} />
               }
@@ -70,7 +105,7 @@ export function UpcomingPremiums({ rows, today }: UpcomingPremiumsProps) {
                 </span>
               }
               value={moneyText(payment.amount, payment.currency, { decimals: 0 })}
-              href={policyPath(payment.policyId)}
+              href={payment.href}
             />
           );
         })}

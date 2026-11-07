@@ -168,7 +168,8 @@
       "showAll_one": "Visa {{count}}",
       "showAll_other": "Visa alla {{count}}"
     },
-    "cashTrendLabel": "Diagram över kontanter"
+    "cashTrendLabel": "Diagram över kontanter",
+    "loanPayment": "Låneavbetalning"
   },
   "queue": {
     "source": {

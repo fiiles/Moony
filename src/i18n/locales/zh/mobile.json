@@ -153,7 +153,8 @@
       "upcomingNote_other": "{{count}} 天",
       "showAll_other": "显示全部 {{count}} 笔"
     },
-    "cashTrendLabel": "现金走势图"
+    "cashTrendLabel": "现金走势图",
+    "loanPayment": "贷款还款"
   },
   "queue": {
     "source": {

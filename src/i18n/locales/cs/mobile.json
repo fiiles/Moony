@@ -183,7 +183,8 @@
       "showAll_few": "Zobrazit všechny {{count}}",
       "showAll_other": "Zobrazit všech {{count}}"
     },
-    "cashTrendLabel": "Graf vývoje hotovosti"
+    "cashTrendLabel": "Graf vývoje hotovosti",
+    "loanPayment": "Splátka úvěru"
   },
   "queue": {
     "source": {

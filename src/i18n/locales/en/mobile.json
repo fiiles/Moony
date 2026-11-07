@@ -168,7 +168,8 @@
       "showAll_one": "Show all {{count}}",
       "showAll_other": "Show all {{count}}"
     },
-    "cashTrendLabel": "Cash trend chart"
+    "cashTrendLabel": "Cash trend chart",
+    "loanPayment": "Loan payment"
   },
   "queue": {
     "source": {

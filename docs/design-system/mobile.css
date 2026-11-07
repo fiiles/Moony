@@ -321,6 +321,20 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
 .m-swipe__panel--start { left: 0; }
 .m-swipe__panel--end { right: 0; }
 .m-swipe__panel svg { width: 18px; height: 18px; stroke-width: 1.75; }
+/* A delete (README §13, Gestures): the panel is loss, and the swipe only opens the confirm sheet. */
+.m-swipe__panel--danger { background: var(--loss); }
+/* The visible `···` of a row whose menu holds an action nothing else on the screen offers: 44 px at
+   the row's end, outside the part that slides (it rides with it); the row keeps 48 px for it and shows
+   no chevron. A row whose tap opens everything its menu holds keeps the trigger for screen readers only. */
+.m-row--more { padding-right: 48px; }
+.m-row--more > .m-row__chev { display: none; }
+.m-row__more {
+  position: absolute; top: 50%; right: 4px; z-index: 3; display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; margin-top: -22px; border: 0; border-radius: 12px; background: none; color: var(--ink-4);
+  -webkit-touch-callout: none;
+}
+.m-row__more:active { background: var(--well); }
+.m-row__more svg { width: 20px; height: 20px; stroke-width: 1.75; }
 
 /* ===== Badge (desktop rules at the phone's sub size) ===== */
 .m-badge {
@@ -1251,6 +1265,8 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
 .m-queue__cap { margin: 0 4px; color: var(--ink-3); font-size: var(--m-fs-caption); font-weight: var(--m-fw-caption); line-height: 1.35; }
 .m-queue__item.is-done, .m-queue__item.is-done > .m-row,
 .m-queue__item.is-left, .m-queue__item.is-left > .m-row { background: var(--well); }
+/* The `···` belongs to the 60 px row, not to the pill row under it */
+.m-queue__item > .m-row__more { top: 30px; }
 
 /* The pill row: 36 px pills (radius 18, 12 / 600) 8 px apart under the row, wrapping when the category's name is long;
    each hit area reaches 44 px (`.m-pill::after`) and the pills of a wrapped line touch exactly. A plain pill

@@ -392,7 +392,7 @@
 
   <section class="part">
     <h2>Spravovat rozpočty</h2>
-    <p>Pushnutá stránka záložky Cashflow (navigační lišta se zpět a <code>+</code>, jedna věta, sekce Budgets): řádek rozpočtu má v hodnotě limit, v podřádku platnost a změny, které přijdou (<code>Ab Januar 2026 · Ab Dezember 2026: 9 500 Kč</code>; co se nevejde, skončí výpustkou), a pod hodnotou „Geplant“ u naplánovaného nebo „beendet“ u skončeného; skončený řádek je na 50 % (<code>.m-row--muted</code>). Pod tím „Ausgaben ohne Limit“ s průměrem za šest dokončených měsíců: řádek sám se neklepe, jeho jedinou akcí je malé tlačítko s 44 pt zásahovou plochou (<code>.m-row--act</code>). Dlouhý stisk řádku rozpočtu otevírá menu, přejetí doprava upravuje limit a doleva maže celý rozpočet (řádky se přejetím chovají jako na Přehledu).</p>
+    <p>Pushnutá stránka záložky Cashflow (navigační lišta se zpět a <code>+</code>, jedna věta, sekce Budgets): řádek rozpočtu má v hodnotě limit, v podřádku platnost a změny, které přijdou (<code>Ab Januar 2026 · Ab Dezember 2026: 9 500 Kč</code>; co se nevejde, skončí výpustkou), a pod hodnotou „Geplant“ u naplánovaného nebo „beendet“ u skončeného; skončený řádek je na 50 % (<code>.m-row--muted</code>). Pod tím „Ausgaben ohne Limit“ s průměrem za šest dokončených měsíců: řádek sám se neklepe, jeho jedinou akcí je malé tlačítko s 44 pt zásahovou plochou (<code>.m-row--act</code>). Dlouhý stisk řádku rozpočtu nebo jeho viditelné <code>···</code> (<code>.m-row__more</code>, Löschen jinde na řádku není) otevírá menu, přejetí doprava upravuje limit a doleva otevře potvrzení smazání celého rozpočtu; panel mazání je v <code>loss</code> (<code>.m-swipe__panel--danger</code>, druhý řádek je tak ukázaný). Pravidlo gest je v README §13, Gestures.</p>
     <div class="phones" id="budgets"></div>
   </section>
 
@@ -1214,21 +1214,24 @@ Fondsvorschuss 2&nbsp;000 Kč monatlich.</p></div>
         <svg class="m-hero__chart demo-chart" data-chart></svg>
       </div>
       <div class="m-stats">
-        <div class="m-stat"><div class="m-stat__l">Vermögenswerte</div><div class="m-stat__v">6,78 Mio.</div><div class="m-stat__n">+ 92&nbsp;100 Kč</div></div>
+        <div class="m-stat"><div class="m-stat__l">Gesamtvermögen</div><div class="m-stat__v">6,78 Mio.</div><div class="m-stat__n">+ 92&nbsp;100 Kč</div></div>
         <div class="m-stat"><div class="m-stat__l">Verbindlichkeiten</div><div class="m-stat__v">2,59 Mio.</div><div class="m-stat__n">− 5&nbsp;680 Kč</div></div>
-        <div class="m-stat"><div class="m-stat__l">Verfügbares Geld</div><div class="m-stat__v">214&nbsp;380</div><div class="m-stat__n">auf Konten</div></div>
+        <div class="m-stat"><div class="m-stat__l">Freies Geld</div><div class="m-stat__v">214&nbsp;380</div><div class="m-stat__n">auf Bankkonten</div></div>
       </div>
       <div class="m-sec"><span class="m-sec__t">Was ansteht</span><span class="m-sec__a">Alle anzeigen (4)</span></div>
       <div class="m-rows">
         <div class="m-swipe" style="--m-row-inset: calc(26px + 54px * var(--m-text-k))">
-          <div class="m-row m-row--date"><span class="m-dchip m-dchip--soon"><b>20. 10.</b><small>Di.</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Hypothek Lipová</span></span><span class="m-row__line"><span class="m-row__s m-row__s--split"><span>Zinsbindung endet · Česká spořitelna</span><span>&nbsp;· in 4 Tagen</span></span></span></span></div>
+          <div class="m-row m-row--date m-row--more"><span class="m-dchip m-dchip--soon"><b>20. 10.</b><small>Di.</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Hypothek Lipová</span></span><span class="m-row__line"><span class="m-row__s m-row__s--split"><span>Zinsbindung endet · Česká spořitelna</span><span>&nbsp;· in 4 Tagen</span></span></span></span></div>
+          <button class="m-row__more" type="button" aria-label="Aktionen: Hypothek Lipová" data-icon="ellipsis" data-size="20"></button>
         </div>
         <div class="m-swipe" style="--m-row-inset: calc(26px + 54px * var(--m-text-k))">
           <span class="m-swipe__panel m-swipe__panel--start" aria-hidden="true"><span data-icon="clock" data-size="18"></span>In einer Woche erinnern</span>
-          <div class="m-row m-row--date" style="transform: translateX(98px)"><span class="m-dchip"><b>4. 11.</b><small>Mi.</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Lebensversicherung</span></span><span class="m-row__line"><span class="m-row__s m-row__s--split"><span>Kündigungsfrist · Kooperativa</span><span>&nbsp;· in 19 Tagen</span></span></span></span></div>
+          <div class="m-row m-row--date m-row--more" style="transform: translateX(98px)"><span class="m-dchip"><b>4. 11.</b><small>Mi.</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Lebensversicherung</span></span><span class="m-row__line"><span class="m-row__s m-row__s--split"><span>Kündigungsfrist · Kooperativa</span><span>&nbsp;· in 19 Tagen</span></span></span></span></div>
+          <button class="m-row__more" type="button" aria-label="Aktionen: Lebensversicherung" data-icon="ellipsis" data-size="20" style="transform: translateX(98px)"></button>
         </div>
         <div class="m-swipe" style="--m-row-inset: calc(26px + 54px * var(--m-text-k))">
-          <div class="m-row m-row--date"><span class="m-dchip"><b>15. 11.</b><small>So.</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Revolut Sparkonto</span></span><span class="m-row__line"><span class="m-row__s m-row__s--split"><span>Aktionszins endet</span><span>&nbsp;· in 30 Tagen</span></span></span></span></div>
+          <div class="m-row m-row--date m-row--more"><span class="m-dchip"><b>15. 11.</b><small>So.</small></span><span class="m-row__main"><span class="m-row__line"><span class="m-row__t">Revolut Sparkonto</span></span><span class="m-row__line"><span class="m-row__s m-row__s--split"><span>Aktionszins endet</span><span>&nbsp;· in 30 Tagen</span></span></span></span></div>
+          <button class="m-row__more" type="button" aria-label="Aktionen: Revolut Sparkonto" data-icon="ellipsis" data-size="20"></button>
         </div>
       </div>
       <div class="m-sec"><span class="m-sec__t">Vermögensverteilung</span><span class="m-sec__a">Vermögen →</span></div>
@@ -2335,8 +2338,11 @@ Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
     return '<' + tag + (tag === "button" ? ' type="button"' : "") + ' class="m-pill' + (tone ? " m-pill--" + tone : "") + '">' + icon + text + small + '</' + tag + '>';
   }
   function queueItem(o) {
-    var r = row(o.chip, o.title, o.sub, o.value, "", { gain: o.gain, chip: o.gain ? "m-row__chip--gain" : "" });
-    return '<div class="m-swipe m-queue__item' + (o.state ? " is-" + o.state : "") + '">' + r +
+    var r = row(o.chip, o.title, o.sub, o.value, "", { gain: o.gain, chip: o.gain ? "m-row__chip--gain" : "" })
+      .replace('class="m-row', 'class="m-row m-row--more');
+    /* The visible `···` (Details and "Überspringen" are in its menu; README §13, Gestures) */
+    var more = '<button class="m-row__more" type="button" aria-label="Aktionen: ' + o.title + '" data-icon="ellipsis" data-size="20"></button>';
+    return '<div class="m-swipe m-queue__item' + (o.state ? " is-" + o.state : "") + '">' + r + more +
       '<div class="m-pillrow">' + o.pills + '</div>' + (o.more || "") + '</div>';
   }
   var QUEUE_MORE = '<div class="m-queue__more"><label class="m-switchrow"><span class="m-switchrow__main"><span class="m-switchrow__t">Auch 3 weitere Zahlungen von Lidl Praha 4 kategorisiert</span><span class="m-switchrow__s">Gleiche Gegenpartei und Richtung auf diesem Konto</span></span><span class="m-switchrow__sw" role="switch" aria-checked="true"></span></label></div>';
@@ -2626,10 +2632,15 @@ Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
      come in the sub-line, "Geplant" / "beendet" under the value (an ended row at half strength); the rows of
      spending without a limit carry the small button instead of a value and are no tap target themselves. */
   function chipOf(o) { return '<div class="m-row__chip m-row__chip--cat" style="--cat: ' + o.color + '; background: color-mix(in srgb, ' + o.color + ' 15%, transparent)" data-icon="' + o.icon + '" data-size="16"></div>'; }
+  /* Each budget row is in its swipe box with its visible `···` (Löschen is nowhere else: the tap edits the
+     limit); a `swiped` row shows the delete panel in `loss` (README §13, Gestures), the `···` riding along. */
   function budgetRow(o) {
-    return '<a class="m-row' + (o.muted ? " m-row--muted" : "") + '" href="#">' + chipOf(o) +
+    var slide = o.swiped ? ' style="transform: translateX(-98px)"' : "";
+    var panel = o.swiped ? '<span class="m-swipe__panel m-swipe__panel--end m-swipe__panel--danger" aria-hidden="true"><span data-icon="trash-2" data-size="18"></span>Löschen</span>' : "";
+    return '<div class="m-swipe">' + panel + '<a class="m-row m-row--more' + (o.muted ? " m-row--muted" : "") + '" href="#"' + slide + '>' + chipOf(o) +
       '<div class="m-row__main"><div class="m-row__line"><span class="m-row__t">' + o.title + '</span><span class="m-row__v">' + o.value + '</span></div>' +
-      '<div class="m-row__line"><span class="m-row__s">' + o.sub + '</span>' + (o.vs ? '<span class="m-row__vs">' + o.vs + '</span>' : "") + '</div></div></a>';
+      '<div class="m-row__line"><span class="m-row__s">' + o.sub + '</span>' + (o.vs ? '<span class="m-row__vs">' + o.vs + '</span>' : "") + '</div></div></a>' +
+      '<button class="m-row__more" type="button" aria-label="Aktionen: ' + o.title + '" data-icon="ellipsis" data-size="20"' + slide + '></button></div>';
   }
   function freeRow(o) {
     return '<div class="m-row m-row--act">' + chipOf(o) +
@@ -2640,7 +2651,7 @@ Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
   var BUDGETS = {
     limits: [
       budgetRow({ icon: "shopping-cart", color: "var(--s2)", title: "Lebensmittel", sub: "Ab Januar 2026 · Ab Dezember 2026: 9&nbsp;500 Kč · Ab März 2027: 10&nbsp;000 Kč", value: "9&nbsp;000 Kč" }),
-      budgetRow({ icon: "utensils", color: "var(--s4)", title: "Restaurants &amp; Gastronomie", sub: "Ab März 2026", value: "4&nbsp;000 Kč" }),
+      budgetRow({ icon: "utensils", color: "var(--s4)", title: "Restaurants &amp; Gastronomie", sub: "Ab März 2026", value: "4&nbsp;000 Kč", swiped: true }),
       budgetRow({ icon: "house", color: "var(--s1)", title: "Haushalt", sub: "Ab November 2026", value: "2&nbsp;500 Kč", vs: "Geplant" }),
       budgetRow({ icon: "repeat", color: "var(--s3)", title: "Abonnements", sub: "Januar 2026 – Juni 2026", value: "800 Kč", vs: "beendet", muted: true })
     ],

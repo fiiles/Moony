@@ -34,7 +34,7 @@ pub fn recalculate_asset_totals(conn: &rusqlite::Connection, asset_id: &str) -> 
         "validation.invalidPrice",
     )?;
     let mut stmt = conn.prepare(
-        "SELECT type, quantity, price_per_unit, currency, transaction_date FROM other_asset_transactions WHERE asset_id = ?1",
+        "SELECT type, quantity, price_per_unit, currency, transaction_date FROM other_asset_transactions WHERE asset_id = ?1 ORDER BY id",
     )?;
     let rows = stmt
         .query_map([asset_id], |row| {

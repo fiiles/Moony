@@ -6,6 +6,8 @@
 pub mod capture;
 pub mod chain;
 pub mod changeset;
+#[cfg(test)]
+mod convergence;
 pub mod hlc;
 pub mod journal;
 pub mod merge;

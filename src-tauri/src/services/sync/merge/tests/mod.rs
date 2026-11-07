@@ -10,7 +10,6 @@ mod unique_interleavings;
 
 use std::collections::BTreeMap;
 
-use rusqlite::types::Value;
 use rusqlite::Connection;
 use sha2::{Digest, Sha256};
 
@@ -18,14 +17,14 @@ use super::*;
 use crate::services::sync::capture;
 use crate::services::sync::changeset::{to_json, Changeset, RowChange, RowKey, SqlValue};
 use crate::services::sync::hlc::{Clock, DeviceId};
-use crate::services::sync::journal::{build_next, record_sealed, Reader};
+use crate::services::sync::journal::{build_next, record_sealed};
 use crate::services::sync::natural_id::natural_id;
-use crate::services::sync::registry::keys::{foreign_keys, schema_number, OnDelete, OrphanRule};
-use crate::services::sync::registry::{
-    column_class, schema, synced_tables, ColumnClass, APP_CONFIG_SYNCED_KEYS,
-};
+use crate::services::sync::registry::keys::schema_number;
+use crate::services::sync::registry::{schema, synced_tables};
 use crate::services::sync::state;
-use crate::services::sync::test_support::migrated;
+use crate::services::sync::test_support::{
+    assert_converged, clock_dump, dump, migrated, tombstones,
+};
 
 const A: DeviceId = DeviceId([1; 16]);
 const B: DeviceId = DeviceId([2; 16]);
@@ -245,99 +244,6 @@ fn clocks(conn: &Connection, table: &str, pk: &str) -> BTreeMap<String, Clock> {
     .collect()
 }
 
-fn clock_dump(conn: &Connection) -> Vec<(String, String, String, i64, Vec<u8>)> {
-    let mut stmt = conn
-        .prepare("SELECT tbl, pk, col, hlc, device FROM sync_clock ORDER BY tbl, pk, col")
-        .expect("prepare");
-    stmt.query_map([], |r| {
-        Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?))
-    })
-    .expect("query")
-    .map(|r| r.expect("row"))
-    .collect()
-}
-
-/// Every clock of every live row (its `'*'` and column clocks), which must be identical on every
-/// device. A dead row's `'*'` and column clocks may differ by device, and nothing reads them.
-/// Tombstones are compared by `assert_tombstones_agree`.
-fn clock_dump_live(conn: &Connection) -> Vec<(String, String, String, i64, Vec<u8>)> {
-    let reader = Reader::new(conn).expect("reader");
-    clock_dump(conn)
-        .into_iter()
-        .filter(|(tbl, pk, col, _, _)| {
-            col != "-"
-                && reader
-                    .read(tbl, pk)
-                    .expect("read row")
-                    .is_some_and(|row| row.insert)
-        })
-        .collect()
-}
-
-/// Every tombstone `'-'`, by key.
-fn tombstones(conn: &Connection) -> BTreeMap<(String, String), (i64, Vec<u8>)> {
-    clock_dump(conn)
-        .into_iter()
-        .filter(|(_, _, col, _, _)| col == "-")
-        .map(|(tbl, pk, _, hlc, device)| ((tbl, pk), (hlc, device)))
-        .collect()
-}
-
-/// The tombstone invariant of `merge/mod.rs`: the same keys are tombstoned on both devices with
-/// the same clock, except where a cascade raised a key above the author's own earlier tombstone.
-/// There the higher value must equal, on the device holding it, the tombstone of some row of a
-/// table the key's table cascades from (CASCADE, or a NO ACTION drop-child rule, which the merge
-/// stamps the same way). Without the dead child's row the exact parent key is unknown, so this
-/// is the documented tolerance: any row of a cascade-parent table with exactly that tombstone.
-fn assert_tombstones_agree(x: &Connection, y: &Connection) {
-    let fks = foreign_keys(x).expect("foreign keys");
-    let (tx, ty) = (tombstones(x), tombstones(y));
-    assert_eq!(
-        tx.keys().collect::<Vec<_>>(),
-        ty.keys().collect::<Vec<_>>(),
-        "the tombstoned keys differ"
-    );
-    for (key, ours) in &tx {
-        let theirs = &ty[key];
-        if ours == theirs {
-            continue;
-        }
-        let (high, holder) = if ours > theirs {
-            (ours, &tx)
-        } else {
-            (theirs, &ty)
-        };
-        let parents: Vec<&str> = fks
-            .iter()
-            .filter(|f| {
-                f.child == key.0
-                    && matches!(
-                        f.on_delete,
-                        OnDelete::Cascade | OnDelete::NoAction(OrphanRule::DropChild)
-                    )
-            })
-            .map(|f| f.parent.as_str())
-            .collect();
-        assert!(
-            holder
-                .iter()
-                .any(|((table, _), clock)| parents.contains(&table.as_str()) && clock == high),
-            "the tombstone of {key:?} differs ({ours:?} vs {theirs:?}) and the higher one is no \
-             cascade parent's tombstone"
-        );
-    }
-}
-
-/// The synced rows, the live rows' clocks and the tombstones agree on every device.
-fn assert_converged(devices: &[&Connection]) {
-    let (first, rest) = devices.split_first().expect("a device");
-    for conn in rest {
-        assert_eq!(dump(conn), dump(first));
-        assert_eq!(clock_dump_live(conn), clock_dump_live(first));
-        assert_tombstones_agree(conn, first);
-    }
-}
-
 fn heads(conn: &Connection) -> Vec<(Vec<u8>, i64, Vec<u8>)> {
     let mut stmt = conn
         .prepare("SELECT device, seq, hash FROM sync_heads ORDER BY device")
@@ -346,55 +252,6 @@ fn heads(conn: &Connection) -> Vec<(Vec<u8>, i64, Vec<u8>)> {
         .expect("query")
         .map(|r| r.expect("row"))
         .collect()
-}
-
-/// Every synced row of every synced table (Local columns left out, `app_config` limited to the
-/// keys that sync), in a stable order: what must be identical on every device.
-fn dump(conn: &Connection) -> Vec<(String, Vec<String>)> {
-    let mut out = Vec::new();
-    for spec in synced_tables() {
-        let columns: Vec<String> = schema::columns(conn, spec.name)
-            .expect("columns")
-            .into_iter()
-            .map(|c| c.name)
-            .filter(|c| column_class(spec.name, c) != ColumnClass::Local)
-            .collect();
-        let list = columns
-            .iter()
-            .map(|c| format!("\"{c}\""))
-            .collect::<Vec<_>>()
-            .join(", ");
-        let filter = if spec.name == "app_config" {
-            format!(
-                "WHERE key IN ({})",
-                APP_CONFIG_SYNCED_KEYS
-                    .iter()
-                    .map(|k| format!("'{k}'"))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )
-        } else {
-            String::new()
-        };
-        let order = (1..=columns.len())
-            .map(|i| i.to_string())
-            .collect::<Vec<_>>()
-            .join(", ");
-        let sql = format!("SELECT {list} FROM {} {filter} ORDER BY {order}", spec.name);
-        let mut stmt = conn.prepare(&sql).expect("prepare dump");
-        let rows: Vec<String> = stmt
-            .query_map([], |r| {
-                Ok((0..columns.len())
-                    .map(|i| format!("{:?}", r.get::<_, Value>(i).expect("value")))
-                    .collect::<Vec<_>>()
-                    .join(" | "))
-            })
-            .expect("query")
-            .map(|r| r.expect("row"))
-            .collect();
-        out.push((spec.name.to_string(), rows));
-    }
-    out
 }
 
 /// Applies `rows` one by one with `apply_row` in merge mode inside a transaction, and returns

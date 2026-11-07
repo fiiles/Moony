@@ -2,24 +2,24 @@
 //! seal into `sync_unsent`, the same op IDs after a crash or a lost answer, the relay's batch
 //! limits, its refusals as sync error classes, a refused row, and the barrier marker.
 
-use std::time::Instant;
-
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine as _;
+use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 use super::*;
 use crate::services::sync::engine::pull::pull_all;
 use crate::services::sync::engine::push::{
     acknowledge_pushed, next_push_batch, next_push_batch_with, push_all, seal_batch, PushReport,
-    PUSH_MAX_OPS,
+    SealReport, PUSH_MAX_OPS, SEAL_BATCH, SEAL_PER_HOLD,
 };
 use crate::services::sync::error::{SyncError, SyncResult, TooLarge, Transient};
+use crate::services::sync::journal::Refused;
 use crate::services::sync::keys::VaultAuth;
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::{
     AccountStatus, CheckoutPlan, PullPage, PushReceipt, RelayError, RelayResult, SnapshotBlob,
     VaultInfo,
 };
+use crate::services::sync::test_support::noise;
 
 async fn push_a(vault: &Vault) -> SyncResult<PushReport> {
     push_all(&vault.relay, &vault.a, &vault.creds).await
@@ -54,39 +54,79 @@ fn barrier(conn: &Connection) -> u32 {
     state::load(conn).expect("state").expect("row").barrier
 }
 
-/// Base64 text of `len` characters from a seeded generator (splitmix64): incompressible beyond
-/// base64's own 6 bits per character.
-fn noise(len: usize, seed: u64) -> String {
-    let mut state = seed;
-    let mut bytes = Vec::with_capacity(len);
-    while bytes.len() < len {
-        state = state.wrapping_add(0x9E37_79B9_7F4A_7C15);
-        let mut z = state;
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-        z ^= z >> 31;
-        bytes.extend_from_slice(&z.to_le_bytes());
+/// `seal_batch` on `device`, which the caller must not hold locked.
+fn seal(vault: &Vault, device: &TestConn) -> SealReport {
+    seal_batch(device, &vault.creds).expect("seal")
+}
+
+/// A `ConnAccess` that records each lock hold: how long it took and how many envelopes were
+/// waiting in `sync_unsent` when it ended.
+#[derive(Clone)]
+struct Holds {
+    inner: TestConn,
+    holds: Arc<Mutex<Vec<(Duration, i64)>>>,
+}
+
+impl Holds {
+    fn new(inner: TestConn) -> Self {
+        Self {
+            inner,
+            holds: Arc::default(),
+        }
     }
-    let mut out = STANDARD.encode(&bytes);
-    out.truncate(len);
-    out
+
+    fn holds(&self) -> Vec<(Duration, i64)> {
+        self.holds.lock().expect("holds").clone()
+    }
+
+    /// Envelopes each hold added to `sync_unsent`.
+    fn sealed_per_hold(&self) -> Vec<i64> {
+        let mut before = 0;
+        self.holds()
+            .into_iter()
+            .map(|(_, waiting)| {
+                let added = waiting - before;
+                before = waiting;
+                added
+            })
+            .collect()
+    }
+}
+
+impl ConnAccess for Holds {
+    fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
+        self.inner.with_conn(|conn| {
+            let started = Instant::now();
+            let out = f(conn);
+            let took = started.elapsed();
+            let waiting = count(conn, "SELECT COUNT(*) FROM sync_unsent");
+            self.holds.lock().expect("holds").push((took, waiting));
+            out
+        })
+    }
 }
 
 #[tokio::test]
 async fn sealing_stores_envelopes_and_clears_the_outbox_in_one_transaction() {
     let vault = vault().await;
-    let a = vault.a.lock();
-    // 400 institutions with ~1 KiB of incompressible notes each: more than one 60 KiB envelope.
-    for i in 0..400 {
-        a.execute(
-            "INSERT INTO institutions (id, name) VALUES (?1, ?2)",
-            params![format!("i{i:03}"), noise(1024, i)],
-        )
-        .expect("institution");
+    {
+        let a = vault.a.lock();
+        // 400 institutions with ~1 KiB of incompressible notes each: more than one 60 KiB
+        // envelope.
+        for i in 0..400 {
+            a.execute(
+                "INSERT INTO institutions (id, name) VALUES (?1, ?2)",
+                params![format!("i{i:03}"), noise(1024, i)],
+            )
+            .expect("institution");
+        }
+        // Past a barrier not marked yet: any sealed envelope marks it.
+        exec(&a, "UPDATE sync_state SET barrier = barrier + 1");
     }
 
-    let report = seal_batch(&a, &vault.creds).expect("seal");
+    let report = seal(&vault, &vault.a);
 
+    let a = vault.a.lock();
     let n = report.sealed;
     assert!(n > 1, "the outbox needs more than one envelope: {n}");
     assert!(!report.marker && report.refused.is_empty());
@@ -133,17 +173,17 @@ async fn a_crash_before_the_push_resends_the_same_op_ids() {
         let a = vault.a.lock();
         institution(&a, "a1");
         institution(&a, "a2");
-        assert_eq!(seal_batch(&a, &vault.creds).expect("seal").sealed, 1);
-        unsent(&a)
+        drop(a);
+        assert_eq!(seal(&vault, &vault.a).sealed, 1);
+        unsent(&vault.a.lock())
     };
     // The process dies before the push. The next round seals nothing new: the envelopes are
     // already waiting, and a later edit waits behind them.
     {
-        let a = vault.a.lock();
-        institution(&a, "a3");
-        let again = seal_batch(&a, &vault.creds).expect("seal again");
+        institution(&vault.a.lock(), "a3");
+        let again = seal(&vault, &vault.a);
         assert_eq!((again.sealed, again.marker), (0, false));
-        assert_eq!(unsent(&a), sealed);
+        assert_eq!(unsent(&vault.a.lock()), sealed);
     }
     // A push that never reaches the relay leaves them waiting too.
     vault
@@ -276,10 +316,9 @@ async fn push_batches_respect_the_relay_limits() {
 
 /// One institution written on `A` and sealed into `sync_unsent`; the rows waiting after that.
 fn sealed_one(vault: &Vault) -> Vec<(i64, String)> {
-    let a = vault.a.lock();
-    institution(&a, "a1");
-    assert_eq!(seal_batch(&a, &vault.creds).expect("seal").sealed, 1);
-    unsent(&a)
+    institution(&vault.a.lock(), "a1");
+    assert_eq!(seal(vault, &vault.a).sealed, 1);
+    unsent(&vault.a.lock())
 }
 
 #[tokio::test]
@@ -324,6 +363,20 @@ async fn quota_and_rotated_tokens_stop_pushing() {
     assert!(
         matches!(rotated, Err(SyncError::Unauthorized)),
         "{rotated:?}"
+    );
+    assert_eq!(unsent(&vault.a.lock()), sealed);
+
+    // 413 body_too_large: the push body was over the relay's limit.
+    vault
+        .relay
+        .fail_next(Route::Push, RelayError::BadRequest("body_too_large".into()));
+    let too_large = push_a(&vault).await;
+    assert!(
+        matches!(
+            too_large,
+            Err(SyncError::Refused(RelayError::BadRequest(ref code))) if code == "body_too_large"
+        ),
+        "{too_large:?}"
     );
     assert_eq!(unsent(&vault.a.lock()), sealed);
     assert!(vault.relay.ops().is_empty());
@@ -397,11 +450,12 @@ async fn a_fresh_device_with_nothing_queued_seals_no_marker() {
             "{name}"
         );
         assert_eq!(marker_barrier(&conn), sync.barrier, "{name}");
+        drop(conn);
 
-        let report = seal_batch(&conn, &vault.creds).expect("seal");
+        let report = seal(&vault, device);
 
         assert_eq!((report.sealed, report.marker), (0, false), "{name}");
-        assert!(unsent(&conn).is_empty(), "{name}");
+        assert!(unsent(&device.lock()).is_empty(), "{name}");
     }
 }
 
@@ -410,19 +464,22 @@ async fn a_fresh_device_with_nothing_queued_seals_no_marker() {
 async fn a_device_past_a_new_barrier_with_nothing_to_send_pushes_one_marker() {
     let vault = vault().await;
     {
-        let a = vault.a.lock();
         // A device that turned sync on at its barrier starts marked: nothing to send is nothing
         // pushed.
-        assert_eq!(marker_barrier(&a), barrier(&a));
-        let idle = seal_batch(&a, &vault.creds).expect("seal");
+        {
+            let a = vault.a.lock();
+            assert_eq!(marker_barrier(&a), barrier(&a));
+        }
+        let idle = seal(&vault, &vault.a);
         assert_eq!((idle.sealed, idle.marker), (0, false));
         // Past a new barrier whose marker this device already met: no marker of its own.
         exec(
-            &a,
+            &vault.a.lock(),
             "UPDATE sync_state SET barrier = barrier + 1, barrier_seq = 7",
         );
-        let met = seal_batch(&a, &vault.creds).expect("seal");
+        let met = seal(&vault, &vault.a);
         assert_eq!((met.sealed, met.marker), (0, false));
+        let a = vault.a.lock();
         assert!(unsent(&a).is_empty());
         exec(&a, "UPDATE sync_state SET barrier_seq = NULL");
     }
@@ -533,6 +590,100 @@ async fn acknowledging_removes_only_the_named_envelopes() {
     assert_eq!(unsent(&a), vec![before[1].clone()]);
 }
 
+/// A large drain releases the profile between holds of at most `SEAL_PER_HOLD` envelopes, each
+/// hold committed on its own, and stops at `SEAL_BATCH` envelopes per batch.
+#[tokio::test]
+async fn a_large_drain_takes_several_lock_holds() {
+    let vault = vault().await;
+    {
+        let a = vault.a.lock();
+        // 70 rows of 40 KiB incompressible notes: one row per 60 KiB envelope.
+        for i in 0..70u64 {
+            a.execute(
+                "INSERT INTO institutions (id, name) VALUES (?1, ?2)",
+                params![format!("i{i:02}"), noise(40 * 1024, i)],
+            )
+            .expect("institution");
+        }
+    }
+    let db = Holds::new(vault.a.clone());
+
+    let report = seal_batch(&db, &vault.creds).expect("seal");
+
+    assert_eq!(report.sealed, SEAL_BATCH);
+    assert_eq!(
+        db.sealed_per_hold(),
+        vec![SEAL_PER_HOLD as i64; SEAL_BATCH / SEAL_PER_HOLD],
+        "every hold seals at most {SEAL_PER_HOLD} envelopes"
+    );
+    let a = vault.a.lock();
+    assert_eq!(count(&a, "SELECT COUNT(*) FROM sync_outbox"), 6);
+    assert_eq!(
+        unsent(&a).iter().map(|(seq, _)| *seq).collect::<Vec<_>>(),
+        (1..=SEAL_BATCH as i64).collect::<Vec<_>>()
+    );
+    drop(a);
+
+    // The rest waits for the next batch, which starts only once these left.
+    acknowledge_pushed(
+        &vault.a.lock(),
+        &(1..=SEAL_BATCH as u64).collect::<Vec<_>>(),
+    )
+    .expect("acknowledge");
+    let before = db.holds().len();
+    let rest = seal_batch(&db, &vault.creds).expect("seal the rest");
+    assert_eq!(rest.sealed, 6);
+    let waiting: Vec<i64> = db.holds()[before..].iter().map(|(_, w)| *w).collect();
+    assert_eq!(waiting, vec![4, 6], "a hold of four, then the last two");
+}
+
+/// P1 allows a push after a pull that did not acknowledge anything (`NewerSchema`, `Held`): the
+/// lost push is simply sent again, and the relay keeps each op once.
+#[tokio::test]
+async fn a_lost_answer_pushed_again_without_a_pull_stores_each_op_once() {
+    let vault = vault().await;
+    {
+        let a = vault.a.lock();
+        institution(&a, "a1");
+        institution(&a, "a2");
+    }
+    vault.relay.lose_next_push_answer();
+    assert!(matches!(
+        push_a(&vault).await,
+        Err(SyncError::Transient(Transient::Offline))
+    ));
+    let sealed = unsent(&vault.a.lock());
+    assert_eq!(sealed.len(), 1);
+
+    let again = push_a(&vault).await.expect("push again");
+
+    assert_eq!(again.pushed, 1, "the same envelope, acknowledged this time");
+    assert_eq!(relay_ids(&vault.relay), ids(&sealed), "each op once");
+    assert!(unsent(&vault.a.lock()).is_empty());
+}
+
+/// Row keys never reach a `{:?}` log: a refused row shows its table and size only.
+#[test]
+fn a_seal_report_debug_leaves_row_keys_out() {
+    let report = SealReport {
+        sealed: 2,
+        marker: false,
+        refused: vec![Refused {
+            table: "watched_stocks".into(),
+            pk: "secret-key-w1".into(),
+            bytes: 300_000,
+        }],
+    };
+
+    let shown = format!("{report:?}");
+
+    assert!(!shown.contains("secret-key-w1"), "{shown}");
+    assert!(
+        shown.contains("watched_stocks") && shown.contains("300000"),
+        "{shown}"
+    );
+}
+
 #[test]
 #[ignore = "a measurement: run in release with --ignored --nocapture"]
 fn draining_a_50000_row_outbox() {
@@ -556,19 +707,30 @@ fn draining_a_50000_row_outbox() {
         tx.commit().expect("commit");
     }
 
+    let db = Holds::new(TestConn::new(conn));
     let started = Instant::now();
     let mut envelopes = 0;
     loop {
-        let report = seal_batch(&conn, &creds).expect("seal");
+        let report = seal_batch(&db, &creds).expect("seal");
         if report.sealed == 0 {
             break;
         }
         envelopes += report.sealed;
         // As if pushed and acknowledged.
-        exec(&conn, "DELETE FROM sync_unsent");
+        exec(&db.inner.lock(), "DELETE FROM sync_unsent");
     }
+    let total = started.elapsed();
+    let holds = db.holds();
+    let longest = holds
+        .iter()
+        .map(|(took, _)| *took)
+        .max()
+        .unwrap_or_default();
     println!(
-        "draining 50,000 queued rows: {envelopes} envelopes in {:.2} s",
-        started.elapsed().as_secs_f64()
+        "draining 50,000 queued rows: {envelopes} envelopes in {:.2} s, {} lock holds, \
+         longest hold {:.3} s",
+        total.as_secs_f64(),
+        holds.len(),
+        longest.as_secs_f64()
     );
 }

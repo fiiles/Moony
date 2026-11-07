@@ -380,15 +380,17 @@ fn vault_secrets(conn: &Connection) -> Result<Option<(VaultId, VaultKeys)>> {
 
 /// Binds the row to `vault_id` with `keys`. Binding another vault than the stored one forgets the
 /// bookkeeping that belongs to the old vault: its relay positions (the barrier marker and a
-/// below-barrier miss; a stale miss would otherwise force a restore in the new vault) and the
-/// barrier a marker was sealed for (the new vault needs its own marker).
+/// below-barrier miss; a stale miss would otherwise force a restore in the new vault). The device
+/// starts in the new vault at its current barrier, so that barrier counts as marked
+/// (`marker_barrier = barrier`, as `state::note_starting_barrier`): binding before or after
+/// `state::enable` / `snapshot::join` leaves the same mark.
 fn write_vault_secrets(conn: &Connection, vault_id: &VaultId, keys: &VaultKeys) -> Result<()> {
     let json = keys.to_json();
     conn.execute(
         "UPDATE sync_state SET \
            missed_below_barrier = CASE WHEN vault_id IS ?1 THEN missed_below_barrier END, \
            barrier_seq = CASE WHEN vault_id IS ?1 THEN barrier_seq END, \
-           marker_barrier = CASE WHEN vault_id IS ?1 THEN marker_barrier ELSE 0 END, \
+           marker_barrier = CASE WHEN vault_id IS ?1 THEN marker_barrier ELSE barrier END, \
            vault_id = ?1, key_epoch = ?2, vault_keys = ?3 WHERE id = 1",
         params![vault_id.to_b64(), keys.current_epoch(), json.as_str()],
     )?;
@@ -685,25 +687,38 @@ mod tests {
         save_credentials(&conn, &two_epochs()).unwrap();
         state::note_missed_below_barrier(&conn, 7).unwrap();
         state::set_barrier_seq(&conn, Some(5)).unwrap();
-        state::note_sealed_at_barrier(&conn, 25).unwrap();
+        // A marker sealed for an older barrier than the row's.
+        conn.execute("UPDATE sync_state SET marker_barrier = 3", [])
+            .unwrap();
+        let barrier = state::load(&conn).unwrap().expect("row").barrier;
+        assert_eq!(barrier, barrier_number());
 
         // The same vault again keeps them.
         save_credentials(&conn, &two_epochs()).unwrap();
-        assert_eq!(marks(&conn), (Some(7), Some(5), 25));
+        assert_eq!(marks(&conn), (Some(7), Some(5), 3));
 
-        // Joining another vault forgets them.
+        // Joining another vault forgets the positions; the device starts there at its barrier.
         let mut other = two_epochs();
         other.vault_id = VaultId([0x33; 16]);
         save_credentials(&conn, &other).unwrap();
-        assert_eq!(marks(&conn), (None, None, 0));
+        assert_eq!(marks(&conn), (None, None, barrier));
 
         // So does a first device's new vault.
         let first = migrated();
         save_account(&first, RELAY, ACCOUNT).unwrap();
         state::note_missed_below_barrier(&first, 9).unwrap();
-        state::note_sealed_at_barrier(&first, 25).unwrap();
+        first
+            .execute("UPDATE sync_state SET marker_barrier = 3", [])
+            .unwrap();
         ensure_vault_secrets(&first).unwrap();
-        assert_eq!(marks(&first), (None, None, 0));
+        assert_eq!(marks(&first), (None, None, barrier_number()));
+
+        // Binding after turning sync on leaves the mark turning it on records.
+        let late = migrated();
+        state::enable(&late, DeviceId([9; 16])).unwrap();
+        assert_eq!(marks(&late).2, barrier_number());
+        save_credentials(&late, &other).unwrap();
+        assert_eq!(marks(&late).2, barrier_number());
     }
 
     #[test]

@@ -1,7 +1,5 @@
 use std::collections::BTreeMap;
 
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine;
 use rusqlite::Connection;
 use sha2::{Digest, Sha256};
 
@@ -17,7 +15,7 @@ use crate::services::sync::changeset::{
 use crate::services::sync::hlc::{Clock, DeviceId};
 use crate::services::sync::registry::keys::schema_number;
 use crate::services::sync::state;
-use crate::services::sync::test_support::migrated;
+use crate::services::sync::test_support::{migrated, noise};
 use crate::services::{bank_accounts, csv_import, investments, stock_monitor};
 
 const DEVICE: DeviceId = DeviceId([7; 16]);
@@ -149,24 +147,6 @@ fn account(conn: &Connection, id: &str) {
         [id],
     )
     .expect("insert account");
-}
-
-/// Base64 text of `len` characters from a seeded generator (splitmix64): incompressible beyond
-/// base64's own 6 bits per character.
-fn noise(len: usize, seed: u64) -> String {
-    let mut state = seed;
-    let mut bytes = Vec::with_capacity(len);
-    while bytes.len() < len {
-        state = state.wrapping_add(0x9E37_79B9_7F4A_7C15);
-        let mut z = state;
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-        z ^= z >> 31;
-        bytes.extend_from_slice(&z.to_le_bytes());
-    }
-    let mut out = STANDARD.encode(&bytes);
-    out.truncate(len);
-    out
 }
 
 const PLAN_COLUMNS: [&str; 10] = [

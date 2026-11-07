@@ -143,8 +143,8 @@ pub fn ensure_row(conn: &Connection, device: DeviceId) -> Result<()> {
 /// Turns sync on for the first device of a vault, in the order of ruling R4: the row, then capture
 /// on this connection, then the effective rule-pack keys, so those two keys are clocked and queued.
 /// A device that starts at its barrier needs no barrier marker, so its barrier counts as marked
-/// (`note_starting_barrier`). Call it after the vault's credentials are bound: binding another
-/// vault forgets the mark (`keys::save_credentials`).
+/// (`note_starting_barrier`). Binding a vault (`keys::save_credentials`) before or after leaves
+/// the same mark.
 pub fn enable(conn: &Connection, device: DeviceId) -> Result<()> {
     in_savepoint(conn, "sync_enable", || {
         ensure_row(conn, device)?;

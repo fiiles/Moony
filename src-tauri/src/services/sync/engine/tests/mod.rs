@@ -88,8 +88,8 @@ pub async fn vault() -> Vault {
         .await
         .expect("vault"));
 
-    // The credentials are bound first, as setup and pairing do: binding a vault forgets the
-    // barrier mark that turning sync on and joining record.
+    // The credentials are bound first, as setup and pairing do (either order leaves the device
+    // marked at its barrier).
     let a = migrated();
     keys::save_credentials(&a, &creds).expect("credentials A");
     state::enable(&a, A).expect("enable A");

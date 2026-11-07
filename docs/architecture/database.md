@@ -78,7 +78,7 @@ grouping below follows the domain map in `docs/architecture/overview.md`.
   adds `bank_transactions.spending_plan_id`, the plan a payment belongs to (nullable FK, `ON DELETE SET NULL`).
 - `027_stock_dividends` creates `stock_dividend_events` and `stock_dividend_coverage` (Yahoo Finance dividends per share) and `investment_dividends` (manual payouts; ADR 0022).
 - `028_transaction_fee` adds `investment_transactions.fee` (TEXT, nullable): the optional trading fee in the transaction's currency; not part of a transaction's duplicate identity.
-- `029_device_sync` adds the device-sync bookkeeping tables (`sync_state`, `sync_clock`, `sync_outbox`, `sync_heads`, `sync_own_log`, `sync_unsent`, `sync_renamed`, all Local) and the synced `sync_devices` table, plus `split_basis` on `investment_transactions`, `stock_price_overrides`, `watched_stocks` and `dividend_overrides`, backfilled from the applied splits that took effect after each row (transaction date / `updated_at`).
+- `029_device_sync` adds the device-sync bookkeeping tables (`sync_state`, `sync_clock`, `sync_outbox`, `sync_heads`, `sync_own_log`, `sync_unsent`, `sync_typed`, all Local) and the synced `sync_devices` table, plus `split_basis` on `investment_transactions`, `stock_price_overrides`, `watched_stocks` and `dividend_overrides`, backfilled from the applied splits that took effect after each row (transaction date / `updated_at`).
 - To add one: define `const MIGRATION_0NN: &str = r#"..."#;` (next free
   number) and append a `("0NN_short_name", MIGRATION_0NN)` entry to the `Vec`
   returned by `all_migrations()`. Numbers are zero-padded, sequential, never
@@ -311,7 +311,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | `sync_heads` | Local. Newest verified message per author device | `device` BLOB PK; `seq`, `hash`; `quarantined` (per-author quarantine) |
 | `sync_own_log` | Local. This device's own hash chain | `seq` PK; `hash`; `max_hlc` |
 | `sync_unsent` | Local. Own envelopes built but not yet delivered | `seq` PK; `envelope` BLOB |
-| `sync_renamed` | Local. Repair-renamed rows | `PRIMARY KEY (tbl, pk)`; `typed` (name the user typed), `assigned` (name the repair gave) |
+| `sync_typed` | Local. Columns a repair shows differently from what was typed: renamed names (`col = 'name'`), cleared `cashflow_items.replacement_source_id` links | `PRIMARY KEY (tbl, pk, col)` WITHOUT ROWID; `typed` (the value the user typed, what syncs), `assigned` (the value the repair shows; NULL for a cleared link) |
 | `sync_devices` | Synced. Devices of the vault | `id` TEXT PK (device ID, 32 lowercase hex characters); `public_key`; `name`, `platform`, `app_version`, `joined_at`; `removed` CHECK (0/1) |
 
 ## The attachments store (`attachments.db`)

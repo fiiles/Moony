@@ -1,13 +1,18 @@
 //! Repairs after a merge (spec §7.1 steps 1–3, §7.2, §7.4, §14): the recalculations of every
 //! touched parent (`mirrors`), the invariants the database does not enforce (`invariants`), the
-//! rename rule (`renames`), the history work per domain, and the migration seeds that must not
-//! revive deleted rows.
+//! rename rule (`renames`), the unlink rule (`links`), the history work per domain, and the
+//! migration seeds that must not revive deleted rows.
+//!
+//! Rename and unlink are derived (ruling U3, U4): the value a person typed is what syncs, kept in
+//! the Local table `sync_typed` while a repair shows another value, and the stored column is a
+//! pure function of the typed values of its scope.
 //!
 //! Everything here runs in `repair` mode, so nothing is captured: every device computes the same
 //! result from the same merged rows. A repair is a function of the merged rows only — every
 //! selection is ordered by primary key, never by arrival order, device or time.
 
 pub mod invariants;
+pub mod links;
 pub mod mirrors;
 pub mod renames;
 
@@ -226,6 +231,60 @@ pub fn delete_revived_seeds(conn: &Connection) -> Result<usize> {
         )?;
     }
     Ok(deleted)
+}
+
+/// The columns of `table` a repair may show differently from what was typed (U3, U4): the name of
+/// a rename scope, `cashflow_items.replacement_source_id`.
+pub fn shadowed_columns(table: &str) -> Vec<&'static str> {
+    renames::RENAME_SCOPES
+        .iter()
+        .filter(|scope| scope.table == table)
+        .map(|scope| scope.name_column)
+        .chain(
+            links::LINKS
+                .iter()
+                .filter(|(t, _)| *t == table)
+                .map(|(_, column)| *column),
+        )
+        .collect()
+}
+
+/// Records that `col` of row `pk` shows `shown` while `typed` was typed (`sync_typed`); no entry
+/// when they are the same or nothing (NULL) was typed.
+pub(crate) fn set_typed(
+    conn: &Connection,
+    table: &str,
+    pk: &str,
+    col: &str,
+    typed: Option<&str>,
+    shown: Option<&str>,
+) -> Result<()> {
+    match typed {
+        Some(typed) if Some(typed) != shown => {
+            conn.prepare_cached(
+                "INSERT INTO sync_typed (tbl, pk, col, typed, assigned) VALUES (?1, ?2, ?3, ?4, ?5)
+                 ON CONFLICT(tbl, pk, col) DO UPDATE SET typed = excluded.typed,
+                   assigned = excluded.assigned",
+            )?
+            .execute(params![table, pk, col, typed, shown])?;
+        }
+        _ => {
+            conn.prepare_cached("DELETE FROM sync_typed WHERE tbl = ?1 AND pk = ?2 AND col = ?3")?
+                .execute(params![table, pk, col])?;
+        }
+    }
+    Ok(())
+}
+
+/// Drops the `sync_typed` entries of `table.col` whose row is gone.
+pub(crate) fn forget_deleted(conn: &Connection, table: &str, col: &str) -> Result<()> {
+    conn.execute(
+        &format!(
+            "DELETE FROM sync_typed WHERE tbl = ?1 AND col = ?2 AND pk NOT IN (SELECT id FROM {table})"
+        ),
+        [table, col],
+    )?;
+    Ok(())
 }
 
 /// Records a tombstone `'-'` at `clock` for a row a repair deleted, the way the deleting device

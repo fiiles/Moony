@@ -2984,8 +2984,8 @@ mod migration_028 {
 /// `sync_clock` holds one hybrid-logical-clock stamp per synced column, `sync_outbox` the rows
 /// waiting to be sent, `sync_heads` the newest verified message per author (`quarantined` is
 /// the per-author quarantine), `sync_own_log` / `sync_unsent` this device's own hash chain and
-/// unsent envelopes, `sync_renamed` the typed name of a repair-renamed row and the name the
-/// repair assigned. `sync_devices.id` is the device ID as 32 lowercase hex characters.
+/// unsent envelopes, `sync_typed` the value a person typed in a column a repair shows
+/// differently (a renamed name, a cleared link) and the value the repair assigned. `sync_devices.id` is the device ID as 32 lowercase hex characters.
 /// `split_basis` records which applied splits a quantity or price is already expressed in:
 /// a JSON array of split IDs sorted ascending, `NULL` when none. The backfill is the meaning
 /// the rewrite gave today's data: a transaction is on the basis of every applied split of its
@@ -3013,8 +3013,8 @@ CREATE TABLE sync_heads (device BLOB PRIMARY KEY, seq INTEGER NOT NULL, hash BLO
     quarantined INTEGER NOT NULL DEFAULT 0) WITHOUT ROWID;
 CREATE TABLE sync_own_log (seq INTEGER PRIMARY KEY, hash BLOB NOT NULL, max_hlc INTEGER NOT NULL);
 CREATE TABLE sync_unsent (seq INTEGER PRIMARY KEY, envelope BLOB NOT NULL);
-CREATE TABLE sync_renamed (tbl TEXT NOT NULL, pk TEXT NOT NULL, typed TEXT NOT NULL,
-    assigned TEXT NOT NULL, PRIMARY KEY (tbl, pk)) WITHOUT ROWID;
+CREATE TABLE sync_typed (tbl TEXT NOT NULL, pk TEXT NOT NULL, col TEXT NOT NULL,
+    typed TEXT NOT NULL, assigned TEXT, PRIMARY KEY (tbl, pk, col)) WITHOUT ROWID;
 CREATE TABLE sync_devices (id TEXT PRIMARY KEY, public_key TEXT, name TEXT NOT NULL,
     platform TEXT NOT NULL, app_version TEXT NOT NULL, joined_at INTEGER NOT NULL,
     removed INTEGER NOT NULL DEFAULT 0 CHECK (removed IN (0, 1)));
@@ -3065,7 +3065,7 @@ mod migration_029 {
         "sync_heads",
         "sync_own_log",
         "sync_unsent",
-        "sync_renamed",
+        "sync_typed",
         "sync_devices",
     ];
 

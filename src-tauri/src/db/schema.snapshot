@@ -848,10 +848,6 @@ CREATE TABLE sync_outbox (tbl TEXT NOT NULL, pk TEXT NOT NULL, queued_at INTEGER
 == table sync_own_log ==
 CREATE TABLE sync_own_log (seq INTEGER PRIMARY KEY, hash BLOB NOT NULL, max_hlc INTEGER NOT NULL)
 
-== table sync_renamed ==
-CREATE TABLE sync_renamed (tbl TEXT NOT NULL, pk TEXT NOT NULL, typed TEXT NOT NULL,
-    assigned TEXT NOT NULL, PRIMARY KEY (tbl, pk)) WITHOUT ROWID
-
 == table sync_state ==
 CREATE TABLE sync_state (
     id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -864,6 +860,10 @@ CREATE TABLE sync_state (
     barrier INTEGER NOT NULL DEFAULT 0, schema_seen INTEGER NOT NULL DEFAULT 0,
     last_error TEXT, last_error_at INTEGER, last_success_at INTEGER
 )
+
+== table sync_typed ==
+CREATE TABLE sync_typed (tbl TEXT NOT NULL, pk TEXT NOT NULL, col TEXT NOT NULL,
+    typed TEXT NOT NULL, assigned TEXT, PRIMARY KEY (tbl, pk, col)) WITHOUT ROWID
 
 == table sync_unsent ==
 CREATE TABLE sync_unsent (seq INTEGER PRIMARY KEY, envelope BLOB NOT NULL)

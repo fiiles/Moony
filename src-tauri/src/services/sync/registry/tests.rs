@@ -309,7 +309,7 @@ fn the_exact_tables_of_each_class_are_pinned() {
         "sync_heads",
         "sync_own_log",
         "sync_unsent",
-        "sync_renamed",
+        "sync_typed",
     ];
     assert_eq!(names_of(TableClass::Synced), sorted(&synced));
     assert_eq!(names_of(TableClass::Seed), sorted(&seed));

@@ -1,8 +1,9 @@
 //! The rename rule (spec §7.3, §7.4, R9): among rows of one scope whose names fold to the same
 //! key, the lowest ID keeps its typed name and every other one gets " (2)", " (3)"…. The ONE
 //! rename function: the merge's unique-key rule, the repairs after a merge and a local write all
-//! call it. `sync_renamed` remembers the name a person typed while a repair shows another, so a
-//! rename that frees the name gives the typed one back.
+//! call it. `sync_typed` (with `col` the name column) remembers the name a person typed while a
+//! repair shows another, so a rename that frees the name gives the typed one back, and the
+//! journal sends the typed name (U4).
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -99,7 +100,7 @@ pub fn assign_names(rows: &[(String, String)], fold: fn(&str) -> String) -> Vec<
 }
 
 /// Re-applies the rename rule to one scope (`scope_value` is ignored for a whole-table scope).
-/// The typed name of a row is its `sync_renamed.typed` while the stored name is still the one a
+/// The typed name of a row is its `sync_typed.typed` while the stored name is still the one a
 /// repair assigned, else the stored name (a person or a merge wrote it since). Changed names are
 /// written in `repair` mode in two passes — every changing row first to a placeholder, then to
 /// its final name — so the binary UNIQUE index of tags never trips. Returns how many names
@@ -121,10 +122,10 @@ pub fn recompute_scope(conn: &Connection, scope: &RenameScope, scope_value: &str
         };
         rows.collect::<std::result::Result<_, _>>()?
     };
-    let entries: BTreeMap<String, (String, String)> = {
+    let entries: BTreeMap<String, (String, Option<String>)> = {
         let mut stmt =
-            conn.prepare("SELECT pk, typed, assigned FROM sync_renamed WHERE tbl = ?1")?;
-        let rows = stmt.query_map([table], |r| {
+            conn.prepare("SELECT pk, typed, assigned FROM sync_typed WHERE tbl = ?1 AND col = ?2")?;
+        let rows = stmt.query_map([table, name], |r| {
             Ok((r.get::<_, String>(0)?, (r.get(1)?, r.get(2)?)))
         })?;
         rows.collect::<std::result::Result<_, _>>()?
@@ -132,7 +133,7 @@ pub fn recompute_scope(conn: &Connection, scope: &RenameScope, scope_value: &str
     let typed: Vec<(String, String)> = stored
         .iter()
         .map(|(pk, current)| match entries.get(pk) {
-            Some((typed, assigned)) if assigned == current => (pk.clone(), typed.clone()),
+            Some((typed, Some(assigned))) if assigned == current => (pk.clone(), typed.clone()),
             _ => (pk.clone(), current.clone()),
         })
         .collect();
@@ -155,25 +156,10 @@ pub fn recompute_scope(conn: &Connection, scope: &RenameScope, scope_value: &str
         Ok(())
     })?;
 
-    for ((pk, typed), (_, name)) in typed.iter().zip(&assigned) {
-        if typed == name {
-            conn.execute(
-                "DELETE FROM sync_renamed WHERE tbl = ?1 AND pk = ?2",
-                params![table, pk],
-            )?;
-        } else {
-            conn.execute(
-                "INSERT INTO sync_renamed (tbl, pk, typed, assigned) VALUES (?1, ?2, ?3, ?4)
-                 ON CONFLICT(tbl, pk) DO UPDATE SET typed = excluded.typed,
-                   assigned = excluded.assigned",
-                params![table, pk, typed, name],
-            )?;
-        }
+    for ((pk, typed), (_, assigned_name)) in typed.iter().zip(&assigned) {
+        super::set_typed(conn, table, pk, name, Some(typed), Some(assigned_name))?;
     }
-    conn.execute(
-        &format!("DELETE FROM sync_renamed WHERE tbl = ?1 AND pk NOT IN (SELECT id FROM {table})"),
-        [table],
-    )?;
+    super::forget_deleted(conn, table, name)?;
     Ok(changes.len())
 }
 
@@ -231,7 +217,7 @@ mod tests {
 
     fn renamed(conn: &Connection) -> Vec<(String, String, String, String)> {
         let mut stmt = conn
-            .prepare("SELECT tbl, pk, typed, assigned FROM sync_renamed ORDER BY tbl, pk")
+            .prepare("SELECT tbl, pk, typed, assigned FROM sync_typed WHERE col = 'name' ORDER BY tbl, pk")
             .expect("prepare");
         stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))
             .expect("query")
@@ -284,8 +270,8 @@ mod tests {
         )
         .expect("insert");
         conn.execute(
-            "INSERT INTO sync_renamed (tbl, pk, typed, assigned) \
-             VALUES ('stock_tags', ?1, 'G', char(31) || ?1)",
+            "INSERT INTO sync_typed (tbl, pk, col, typed, assigned) \
+             VALUES ('stock_tags', ?1, 'name', 'G', char(31) || ?1)",
             [pk],
         )
         .expect("renamed");
@@ -325,8 +311,8 @@ mod tests {
         let conn = enabled();
         conn.execute_batch(
             "INSERT INTO stock_tags (id, name) VALUES ('a', 'G'), ('b', 'G (2)'); \
-             INSERT INTO sync_renamed (tbl, pk, typed, assigned) \
-               VALUES ('stock_tags', 'b', 'G', 'G (2)');",
+             INSERT INTO sync_typed (tbl, pk, col, typed, assigned) \
+               VALUES ('stock_tags', 'b', 'name', 'G', 'G (2)');",
         )
         .expect("seed");
         stock_tags::update_tag(

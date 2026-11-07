@@ -7,16 +7,16 @@ use rusqlite::Connection;
 use super::{schema, spec, TableClass};
 use crate::error::{AppError, Result};
 
-/// How two devices' rows that collide on a unique index are reconciled.
+/// How two devices' rows that collide on a unique index are reconciled (§7.3, rulings U1–U3).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum UniqueRule {
-    /// The key is part of the row identity, so the colliding rows share one id.
+    /// The creating services derive the id from the key, so the colliding rows share one id.
+    /// Another id on the same key (unreachable by construction after D22) is kept-newest by the
+    /// key clock, with a warning (`merge::unique`).
     SameId,
-    /// Keep the row whose key clock is newest, drop the other.
-    KeepNewest,
-    /// Keep both rows, renaming the loser.
+    /// Keep both rows; every one but the lowest id shows a numbered name (derived, `sync_typed`).
     Rename,
-    /// Keep both rows, clearing the link that collides.
+    /// Keep both rows; every one but the lowest id shows no link (derived, `sync_typed`).
     Unlink,
 }
 
@@ -26,7 +26,7 @@ pub struct UniqueSpec {
     /// The index's column or expression list.
     pub exprs: &'static [&'static str],
     pub partial: Option<&'static str>,
-    /// The plain columns `exprs` read (the key clock of keep-newest).
+    /// The plain columns `exprs` read (the key clock of the keep-newest fallback).
     pub key_columns: &'static [&'static str],
     pub rule: UniqueRule,
 }
@@ -83,12 +83,12 @@ static UNIQUE_RULES: &[UniqueSpec] = &[
     unique(
         "bank_balance_records",
         &["bank_account_id", "as_of"],
-        UniqueRule::KeepNewest,
+        UniqueRule::SameId,
     ),
     unique(
         "budget_goal_versions",
         &["category_id", "timeframe", "effective_month"],
-        UniqueRule::KeepNewest,
+        UniqueRule::SameId,
     ),
     unique("stock_tags", &["name"], UniqueRule::Rename),
     unique("stock_tag_groups", &["name"], UniqueRule::Rename),
@@ -400,6 +400,32 @@ mod tests {
             );
             assert!(spec(u.table).is_some_and(|s| s.class == TableClass::Synced));
         }
+    }
+
+    #[test]
+    fn every_unique_index_has_its_ruled_outcome() {
+        let rules: Vec<(&str, UniqueRule)> =
+            unique_rules().iter().map(|u| (u.table, u.rule)).collect();
+        assert_eq!(
+            rules,
+            vec![
+                ("stock_investments", UniqueRule::SameId),
+                ("crypto_investments", UniqueRule::SameId),
+                ("watched_stocks", UniqueRule::SameId),
+                ("stock_price_overrides", UniqueRule::SameId),
+                ("dividend_overrides", UniqueRule::SameId),
+                ("crypto_price_overrides", UniqueRule::SameId),
+                ("stock_splits", UniqueRule::SameId),
+                ("projection_settings", UniqueRule::SameId),
+                ("bank_transactions", UniqueRule::SameId),
+                ("learned_payees", UniqueRule::SameId),
+                ("bank_balance_records", UniqueRule::SameId),
+                ("budget_goal_versions", UniqueRule::SameId),
+                ("stock_tags", UniqueRule::Rename),
+                ("stock_tag_groups", UniqueRule::Rename),
+                ("cashflow_items", UniqueRule::Unlink),
+            ]
+        );
     }
 
     #[test]

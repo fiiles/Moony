@@ -19,7 +19,7 @@
 //!
 //! The local row is read before every write, so `Touched` gets the old and the new values (R12).
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::rc::Rc;
 
 use rusqlite::types::Value;
@@ -38,7 +38,9 @@ use crate::services::sync::registry::{
     self, column_class, schema, ColumnClass, KeyShape, TableClass, TableSpec,
     APP_CONFIG_SYNCED_KEYS,
 };
-use crate::services::sync::repair::{domain_of, renames::RENAME_SCOPES, Touched};
+use crate::services::sync::repair::{
+    domain_of, renames::RENAME_SCOPES, set_typed, shadowed_columns, Touched,
+};
 
 /// The row clock (the generation).
 pub(super) const ROW: &str = "*";
@@ -57,16 +59,31 @@ pub struct MergeCtx {
     pub touched: Touched,
     pub report: ApplyReport,
     pub(super) shapes: Shapes,
-    /// Rename scopes a unique-key rename left a placeholder name in, `(table, scope value)`;
-    /// recomputed right after the row is written (`unique::finish`).
-    pub(super) renames: Vec<(&'static str, String)>,
+    /// Rename and unlink scopes a unique-key outcome wrote a stand-in value in,
+    /// `(table, scope value)`; recomputed right after the row is written (`unique::finish`).
+    pub(super) rescopes: Vec<(&'static str, String)>,
+    /// While set, a row that collides on a unique key is deferred instead of resolved (U2).
+    pub(super) defer: bool,
+}
+
+impl MergeCtx {
+    /// Queues one rename or unlink scope for `unique::finish`.
+    pub(super) fn recompute(&mut self, table: &'static str, scope_value: String) {
+        if !self.rescopes.contains(&(table, scope_value.clone())) {
+            self.rescopes.push((table, scope_value));
+        }
+    }
 }
 
 #[derive(Debug)]
 pub enum RowResult {
     Applied,
-    /// The insert did not land (its delete epoch ended, or its parent's did).
+    /// The insert did not land (its delete epoch ended, or its parent's did, or it lost its
+    /// unique key).
     Dropped,
+    /// The row collides on a unique key while `MergeCtx::defer` is set; nothing of it was written
+    /// except a carried tombstone, so applying it again later is safe (U2).
+    Deferred,
     Stop(StopReason),
 }
 
@@ -128,19 +145,23 @@ pub fn apply_row(conn: &Connection, change: &RowChange, ctx: &mut MergeCtx) -> R
             RowResult::Applied
         });
     }
+    let typed;
     match (live, merged) {
         (None, _) => {
+            typed = shadowed(&table, &columns);
             if unique::has_rules(table.spec.name) {
                 let resolution =
                     unique::resolve(conn, table.spec.name, &pk, &columns, change.generation, ctx)?;
                 columns = match resolution {
                     Resolution::Write(columns) => columns,
                     Resolution::Drop => return Ok(RowResult::Dropped),
+                    Resolution::Defer => return Ok(RowResult::Deferred),
                 };
             }
             insert_row(conn, ctx, &table, change, &pk, &columns)?
         }
         (Some(old), Some(mut merged)) => {
+            typed = shadowed(&table, &merged.writes);
             if merged
                 .writes
                 .keys()
@@ -157,6 +178,7 @@ pub fn apply_row(conn: &Connection, change: &RowChange, ctx: &mut MergeCtx) -> R
                         }
                     }
                     Resolution::Drop => return Ok(RowResult::Dropped),
+                    Resolution::Defer => return Ok(RowResult::Deferred),
                 }
             }
             update_row(conn, ctx, &table, change, &pk, merged, &clocks, old)?
@@ -168,8 +190,86 @@ pub fn apply_row(conn: &Connection, change: &RowChange, ctx: &mut MergeCtx) -> R
             )))
         }
     }
+    record_typed(conn, &table, &change.key, &pk, &typed)?;
     unique::finish(conn, ctx)?;
     Ok(RowResult::Applied)
+}
+
+/// Whether the insert `change` references, through a foreign key (a carried value or a key
+/// part), a row in `held` (`(table, pk text)`).
+pub(super) fn references(
+    conn: &Connection,
+    ctx: &mut MergeCtx,
+    change: &RowChange,
+    held: &BTreeSet<(String, String)>,
+) -> Result<bool> {
+    if held.is_empty() {
+        return Ok(false);
+    }
+    let table = ctx.shapes.table(conn, &change.table)?;
+    let graph = ctx.shapes.graph(conn)?;
+    let key_parts = table.key_params(&change.key)?;
+    for fk in graph.of_child(table.spec.name) {
+        let value = match change.columns.get(&fk.column) {
+            Some((value, _)) => key_text(value),
+            None => table
+                .key
+                .iter()
+                .position(|k| *k == fk.column)
+                .and_then(|i| key_parts.get(i).cloned()),
+        };
+        if let Some(value) = value {
+            if held.contains(&(fk.parent.clone(), value)) {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
+/// The written columns a repair may show differently (`repair::shadowed_columns`), with the value
+/// the change carries: the typed value (U4).
+fn shadowed(table: &Table, written: &Columns) -> Vec<(&'static str, SqlValue)> {
+    shadowed_columns(table.spec.name)
+        .into_iter()
+        .filter_map(|column| Some((column, written.get(column)?.0.clone())))
+        .collect()
+}
+
+/// Records, after the write, what each shadowed column was typed as against what it now holds
+/// (`sync_typed`), so the scope's recompute and the journal see the typed value. A write that
+/// landed as typed clears an older entry.
+fn record_typed(
+    conn: &Connection,
+    table: &Table,
+    key: &RowKey,
+    pk: &str,
+    typed: &[(&'static str, SqlValue)],
+) -> Result<()> {
+    if typed.is_empty() {
+        return Ok(());
+    }
+    let Some(stored) = table.read(conn, key)? else {
+        return Ok(());
+    };
+    for (column, value) in typed {
+        set_typed(
+            conn,
+            table.spec.name,
+            pk,
+            column,
+            text_of(value),
+            stored.get(*column).and_then(text_of),
+        )?;
+    }
+    Ok(())
+}
+
+fn text_of(value: &SqlValue) -> Option<&str> {
+    match value {
+        SqlValue::Text(text) => Some(text),
+        _ => None,
+    }
 }
 
 /// Every clocked column of a live row as it will be once `writes` land: the written value and

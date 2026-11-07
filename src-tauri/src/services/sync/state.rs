@@ -105,7 +105,7 @@ pub fn disable(conn: &Connection) -> Result<()> {
         conn.execute_batch(
             "DELETE FROM sync_state; DELETE FROM sync_clock; DELETE FROM sync_outbox; \
              DELETE FROM sync_heads; DELETE FROM sync_own_log; DELETE FROM sync_unsent; \
-             DELETE FROM sync_renamed;",
+             DELETE FROM sync_typed;",
         )?;
         Ok(())
     })
@@ -254,7 +254,7 @@ mod tests {
              INSERT INTO sync_heads (device, seq, hash) VALUES (x'09', 1, x'00'); \
              INSERT INTO sync_own_log (seq, hash, max_hlc) VALUES (1, x'00', 1); \
              INSERT INTO sync_unsent (seq, envelope) VALUES (1, x'00'); \
-             INSERT INTO sync_renamed (tbl, pk, typed, assigned) VALUES ('stock_tags', 't', 'A', 'A (2)');",
+             INSERT INTO sync_typed (tbl, pk, col, typed, assigned) VALUES ('stock_tags', 't', 'name', 'A', 'A (2)');",
         )
         .unwrap();
         assert!(count(&conn, "SELECT COUNT(*) FROM sync_clock") > 0);
@@ -270,7 +270,7 @@ mod tests {
             "sync_heads",
             "sync_own_log",
             "sync_unsent",
-            "sync_renamed",
+            "sync_typed",
         ] {
             assert_eq!(
                 count(&conn, &format!("SELECT COUNT(*) FROM {table}")),

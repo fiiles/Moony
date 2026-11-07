@@ -333,8 +333,10 @@ pub fn upsert_goal_at(
         }
     };
 
+    // The id comes from the key (§7.3 U1); a month already set is updated in place, whatever its
+    // id (a legacy one stays).
     conn.execute("INSERT INTO budget_goal_versions(id,category_id,timeframe,effective_month,amount,currency,created_at) VALUES (?1,?2,?3,?4,?5,?6,?7) ON CONFLICT(category_id,timeframe,effective_month) DO UPDATE SET amount=excluded.amount,currency=excluded.currency,created_at=excluded.created_at",
-        params![Uuid::new_v4().to_string(),data.category_id,data.timeframe,effective,data.amount,currency,now])?;
+        params![version_id(&data.category_id, &data.timeframe, effective),data.category_id,data.timeframe,effective,data.amount,currency,now])?;
 
     if let Some(after) = after_range {
         // The range replaces every change inside it. Unless a change is already
@@ -348,7 +350,7 @@ pub fn upsert_goal_at(
             let before = versions.iter().rev().find(|v| v.effective_month <= after);
             conn.execute("INSERT INTO budget_goal_versions(id,category_id,timeframe,effective_month,amount,currency,created_at) VALUES (?1,?2,?3,?4,?5,?6,?7)",
                 params![
-                    Uuid::new_v4().to_string(),
+                    version_id(&data.category_id, &data.timeframe, after),
                     data.category_id,
                     data.timeframe,
                     after,
@@ -382,6 +384,15 @@ pub fn upsert_goal_at(
     };
     tx.commit()?;
     Ok(result)
+}
+
+/// The id of the budget version of `category_id`/`timeframe` starting `effective_month` (§7.3 U1).
+/// A key edit is a delete and an insert under the new key's id.
+pub fn version_id(category_id: &str, timeframe: &str, effective_month: i64) -> String {
+    crate::services::sync::natural_id::natural_id(
+        "budget_goal_versions",
+        &[category_id, timeframe, &effective_month.to_string()],
+    )
 }
 
 /// Delete a category's budget completely: every limit version, past ones
@@ -947,6 +958,46 @@ mod tests {
             .into_iter()
             .map(|v| (v.effective_month, v.amount))
             .collect()
+    }
+
+    #[test]
+    fn a_budget_version_gets_its_keys_natural_id_and_a_legacy_row_keeps_its_id() {
+        let conn = setup_test_db();
+        conn.execute(
+            "INSERT INTO budget_goal_versions VALUES ('legacy','cat_groceries','monthly',?1,'90','CZK',1)",
+            [JAN],
+        )
+        .unwrap();
+        upsert_goal_at(&conn, goal_input("100", JAN), NOW).unwrap();
+        upsert_goal_at(&conn, range_input("200", DEC, DEC), NOW).unwrap();
+
+        let mut stmt = conn
+            .prepare("SELECT id, effective_month, amount FROM budget_goal_versions ORDER BY effective_month")
+            .unwrap();
+        let rows: Vec<(String, i64, Option<String>)> = stmt
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
+        let natural = |m: i64| {
+            crate::services::sync::natural_id::natural_id(
+                "budget_goal_versions",
+                &["cat_groceries", "monthly", &m.to_string()],
+            )
+        };
+        assert_eq!(
+            rows,
+            vec![
+                ("legacy".to_string(), JAN, Some("100".to_string())),
+                (natural(DEC), DEC, Some("200".to_string())),
+                (
+                    natural(month(2027, 1)),
+                    month(2027, 1),
+                    Some("100".to_string())
+                ),
+            ]
+        );
+        assert_eq!(version_id("cat_groceries", "monthly", DEC), natural(DEC));
     }
 
     #[test]

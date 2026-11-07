@@ -473,7 +473,7 @@ pub(super) static TABLES: &[TableSpec] = &[
         ..BASE
     },
     TableSpec {
-        name: "sync_renamed",
+        name: "sync_typed",
         class: TableClass::Local,
         ..BASE
     },

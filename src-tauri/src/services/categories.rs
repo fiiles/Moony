@@ -226,10 +226,7 @@ pub fn delete_category(conn: &Connection, id: &str, reassign_to: Option<&str>) -
             params![id, target],
         )?;
         tx.execute("DELETE FROM budget_goal_versions WHERE category_id=?1 AND EXISTS(SELECT 1 FROM budget_goal_versions target WHERE target.category_id=?2 AND target.timeframe=budget_goal_versions.timeframe AND target.effective_month=budget_goal_versions.effective_month)",params![id,target])?;
-        tx.execute(
-            "UPDATE budget_goal_versions SET category_id=?2 WHERE category_id=?1",
-            params![id, target],
-        )?;
+        move_budget_versions(&tx, id, target)?;
         tx.execute(
             "DELETE FROM budget_goals
              WHERE category_id = ?1
@@ -252,6 +249,37 @@ pub fn delete_category(conn: &Connection, id: &str, reassign_to: Option<&str>) -
     tx.execute("DELETE FROM transaction_categories WHERE id = ?1", [id])?;
     renames::after_local_write(&tx, "transaction_categories", "")?;
     tx.commit()?;
+    Ok(())
+}
+
+/// Moves every budget version of `from` to `to`: a key edit, so each one is re-created under its
+/// new key's id (§7.3 U1) with its values carried over, and the old row is deleted. The versions
+/// that would collide with one of `to` were deleted before.
+fn move_budget_versions(conn: &Connection, from: &str, to: &str) -> Result<()> {
+    let versions: Vec<(String, String, i64)> = {
+        let mut stmt = conn.prepare(
+            "SELECT id, timeframe, effective_month FROM budget_goal_versions
+             WHERE category_id = ?1 ORDER BY id",
+        )?;
+        let rows = stmt
+            .query_map([from], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+            .collect::<std::result::Result<_, _>>()?;
+        rows
+    };
+    for (old_id, timeframe, month) in versions {
+        conn.execute(
+            "INSERT INTO budget_goal_versions
+               (id, category_id, timeframe, effective_month, amount, currency, created_at)
+             SELECT ?1, ?2, timeframe, effective_month, amount, currency, created_at
+             FROM budget_goal_versions WHERE id = ?3",
+            params![
+                crate::services::budgeting::version_id(to, &timeframe, month),
+                to,
+                old_id
+            ],
+        )?;
+        conn.execute("DELETE FROM budget_goal_versions WHERE id = ?1", [&old_id])?;
+    }
     Ok(())
 }
 
@@ -337,14 +365,35 @@ mod tests {
         conn.execute("INSERT INTO budget_goal_versions VALUES ('h','custom-pets','monthly',1704067200,'1200','CZK',1704067200)",[]).unwrap();
         assert!(delete_category(&conn, "custom-pets", None).is_err());
         delete_category(&conn, "custom-pets", Some("custom-kids")).unwrap();
-        let category: String = conn
+        // A key edit re-creates the version under its new key's id, values carried over (U1).
+        let moved: (String, String, i64, String, String, i64) = conn
             .query_row(
-                "SELECT category_id FROM budget_goal_versions WHERE id='h'",
+                "SELECT id, category_id, effective_month, amount, currency, created_at
+                 FROM budget_goal_versions",
                 [],
-                |r| r.get(0),
+                |r| {
+                    Ok((
+                        r.get(0)?,
+                        r.get(1)?,
+                        r.get(2)?,
+                        r.get(3)?,
+                        r.get(4)?,
+                        r.get(5)?,
+                    ))
+                },
             )
             .unwrap();
-        assert_eq!(category, "custom-kids");
+        assert_eq!(
+            moved,
+            (
+                crate::services::budgeting::version_id("custom-kids", "monthly", 1704067200),
+                "custom-kids".to_string(),
+                1704067200,
+                "1200".to_string(),
+                "CZK".to_string(),
+                1704067200
+            )
+        );
     }
     #[test]
     fn category_role_round_trips_and_name_only_edits_preserve_it() {

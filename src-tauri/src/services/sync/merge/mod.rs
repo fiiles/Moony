@@ -29,7 +29,7 @@ mod unique;
 
 pub use row::{apply_row, MergeCtx, RowResult};
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
 use rusqlite::{params, Connection};
 
@@ -102,8 +102,9 @@ pub fn apply_changeset(
 }
 
 /// Merges `rows` in the given order inside the CALLER's transaction (also used by the snapshot
-/// restore): every clock is observed first, then each row goes through `apply_row`; the first
-/// stop returns `Stopped` (the caller rolls back). Then the repairs of everything touched run, and
+/// restore): every clock is observed first, then each row goes through `apply_row` (`apply_all`:
+/// a row colliding on a unique key waits for the rest of the changeset, U2); the first stop
+/// returns `Stopped` (the caller rolls back). Then the repairs of everything touched run, and
 /// their warnings and history domains join the report.
 pub fn merge_rows(conn: &Connection, rows: &[RowChange], now: i64) -> Result<Outcome> {
     if conn.is_autocommit() {
@@ -119,16 +120,7 @@ pub fn merge_rows(conn: &Connection, rows: &[RowChange], now: i64) -> Result<Out
     conn.execute_batch("PRAGMA defer_foreign_keys = ON")?;
     let mut ctx = MergeCtx::default();
     observe_clocks(conn, rows, &mut ctx.report)?;
-    let stopped = capture::with_mode(conn, Mode::Merge, || {
-        for change in rows {
-            match apply_row(conn, change, &mut ctx)? {
-                RowResult::Applied => ctx.report.applied += 1,
-                RowResult::Dropped => ctx.report.dropped += 1,
-                RowResult::Stop(reason) => return Ok(Some(reason)),
-            }
-        }
-        Ok(None)
-    })?;
+    let stopped = capture::with_mode(conn, Mode::Merge, || apply_all(conn, rows, &mut ctx))?;
     if let Some(reason) = stopped {
         return Ok(Outcome::Stopped(reason));
     }
@@ -136,6 +128,63 @@ pub fn merge_rows(conn: &Connection, rows: &[RowChange], now: i64) -> Result<Out
     ctx.report.warnings.extend(repairs.warnings);
     ctx.report.domains = repairs.domains;
     Ok(Outcome::Applied(ctx.report))
+}
+
+/// Applies `rows` in order (U2). A live row that collides on a unique key is deferred, with every
+/// later insert of the changeset that references a deferred row through a foreign key
+/// (transitively); deferred rows are retried in their order after the rest, again and again while
+/// a pass applies something. A collision can be transient — the rival moves away or is deleted
+/// later in the same changeset, as it did on the author before this row landed — so only what
+/// still collides after that is a real conflict: the last pass resolves it by its rule. The
+/// changeset's tombstones keep their place (a tombstones-first order would break moves).
+fn apply_all(
+    conn: &Connection,
+    rows: &[RowChange],
+    ctx: &mut MergeCtx,
+) -> Result<Option<StopReason>> {
+    let mut pending: Vec<&RowChange> = rows.iter().collect();
+    let mut defer = true;
+    while !pending.is_empty() {
+        ctx.defer = defer;
+        let mut held: BTreeSet<(String, String)> = BTreeSet::new();
+        let mut later = Vec::new();
+        let mut progress = false;
+        for change in pending {
+            let key = (change.table.clone(), change.key.to_pk_text());
+            if defer && change.insert && row::references(conn, ctx, change, &held)? {
+                held.insert(key);
+                later.push(change);
+                continue;
+            }
+            match apply_row(conn, change, ctx)? {
+                RowResult::Applied => {
+                    ctx.report.applied += 1;
+                    progress = true;
+                }
+                RowResult::Dropped => {
+                    ctx.report.dropped += 1;
+                    progress = true;
+                }
+                RowResult::Deferred if defer => {
+                    held.insert(key);
+                    later.push(change);
+                }
+                RowResult::Deferred => {
+                    return Err(AppError::Internal(format!(
+                        "sync merge: {} {} was deferred in the last pass",
+                        key.0, key.1
+                    )))
+                }
+                RowResult::Stop(reason) => return Ok(Some(reason)),
+            }
+        }
+        if !progress {
+            defer = false;
+        }
+        pending = later;
+    }
+    ctx.defer = false;
+    Ok(None)
 }
 
 /// Moves the connection's clock past every clock the rows carry. The newest clock of each author

@@ -6,6 +6,7 @@ mod epochs;
 mod parents;
 mod special;
 mod unique;
+mod unique_interleavings;
 
 use std::collections::BTreeMap;
 
@@ -407,7 +408,7 @@ fn merge_ctx(conn: &Connection, rows: &[RowChange]) -> MergeCtx {
         for change in rows {
             match apply_row(&tx, change, &mut ctx)? {
                 RowResult::Stop(reason) => panic!("stopped: {reason:?}"),
-                RowResult::Applied | RowResult::Dropped => {}
+                RowResult::Applied | RowResult::Dropped | RowResult::Deferred => {}
             }
         }
         Ok(())

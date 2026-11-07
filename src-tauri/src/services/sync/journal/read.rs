@@ -19,9 +19,7 @@ use crate::services::sync::registry::{
     self, column_class, schema, ColumnClass, KeyShape, TableClass, TableSpec,
     APP_CONFIG_SYNCED_KEYS,
 };
-
-/// The column a repair rename rewrites (`sync_renamed`, correction 17).
-const RENAMED_COLUMN: &str = "name";
+use crate::services::sync::repair::shadowed_columns;
 
 /// The full live row, a tombstone-only change, or `None` when the key has neither a row nor a
 /// tombstone. One-off reads only: it builds a `Reader`, which reads the foreign keys of every
@@ -191,14 +189,13 @@ impl<'c> Reader<'c> {
             .map(String::as_str)
             .zip(values.into_iter().map(SqlValue::from))
             .collect();
-        let typed_name = self.typed_name(shape.spec.name, pk)?;
+        let typed_values = self.typed_values(shape.spec.name, pk)?;
         let mut columns = BTreeMap::new();
         for (name, value) in &row[shape.key_len..] {
             let clock = clocks.get(*name).copied().unwrap_or(generation);
-            let value = match (&typed_name, value) {
-                (Some((typed, assigned)), SqlValue::Text(stored))
-                    if *name == RENAMED_COLUMN && stored == assigned =>
-                {
+            // A column a repair shows differently travels with the value typed (U4).
+            let value = match typed_values.get(*name) {
+                Some((typed, assigned)) if shown_is(value, assigned.as_deref()) => {
                     SqlValue::Text(typed.clone())
                 }
                 _ => value.clone(),
@@ -235,13 +232,24 @@ impl<'c> Reader<'c> {
             .collect()
     }
 
-    /// `(typed, assigned)` of a repair-renamed row.
-    fn typed_name(&self, table: &str, pk: &str) -> Result<Option<(String, String)>> {
-        Ok(self
+    /// column → `(typed, assigned)` of the row's columns a repair shows differently
+    /// (`sync_typed`: a renamed name, a cleared link).
+    fn typed_values(
+        &self,
+        table: &str,
+        pk: &str,
+    ) -> Result<HashMap<String, (String, Option<String>)>> {
+        if shadowed_columns(table).is_empty() {
+            return Ok(HashMap::new());
+        }
+        let rows = self
             .conn
-            .prepare_cached("SELECT typed, assigned FROM sync_renamed WHERE tbl = ?1 AND pk = ?2")?
-            .query_row([table, pk], |r| Ok((r.get(0)?, r.get(1)?)))
-            .optional()?)
+            .prepare_cached(
+                "SELECT col, typed, assigned FROM sync_typed WHERE tbl = ?1 AND pk = ?2",
+            )?
+            .query_map([table, pk], |r| Ok((r.get(0)?, (r.get(1)?, r.get(2)?))))?
+            .collect::<std::result::Result<_, _>>()?;
+        Ok(rows)
     }
 
     /// The parent's generation (`'*'`, else ZERO) for every FK column of the row holding a value,
@@ -321,4 +329,14 @@ fn clock_from(hlc: i64, device: Vec<u8>) -> Result<Clock> {
 
 fn quoted(identifier: &str) -> String {
     format!("\"{}\"", identifier.replace('"', "\"\""))
+}
+
+/// Whether the stored `value` is still the one a repair assigned (`None`: a cleared link). A
+/// stored value that differs was written since and is the typed one itself.
+fn shown_is(value: &SqlValue, assigned: Option<&str>) -> bool {
+    match (value, assigned) {
+        (SqlValue::Null, None) => true,
+        (SqlValue::Text(stored), Some(assigned)) => stored == assigned,
+        _ => false,
+    }
 }

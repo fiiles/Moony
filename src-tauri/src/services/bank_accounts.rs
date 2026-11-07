@@ -143,7 +143,7 @@ pub fn create_account(
             "INSERT INTO bank_balance_records
                 (id, bank_account_id, amount, currency, as_of, source, source_batch_id, recorded_at)
              VALUES (?1, ?2, ?3, ?4, ?5, 'manual', NULL, ?6)",
-            params![Uuid::new_v4().to_string(), id, balance, currency, day, now],
+            params![balance_record_id(&id, day), id, balance, currency, day, now],
         )?;
     }
     tx.commit()?;
@@ -637,6 +637,8 @@ pub fn record_balance(
     } else {
         "manual"
     };
+    // The id comes from the key (§7.3 U1), so two devices recording the same day create the same
+    // row; a day already recorded is updated in place, whatever its id (a legacy one stays).
     tx.execute(
         "INSERT INTO bank_balance_records
             (id, bank_account_id, amount, currency, as_of, source, source_batch_id, recorded_at)
@@ -645,7 +647,7 @@ pub fn record_balance(
             amount = excluded.amount, currency = excluded.currency, source = excluded.source,
             source_batch_id = excluded.source_batch_id, recorded_at = unixepoch()",
         params![
-            Uuid::new_v4().to_string(),
+            balance_record_id(account_id, data.as_of),
             account_id,
             data.amount,
             existing.currency,
@@ -658,6 +660,12 @@ pub fn record_balance(
     let account = get_account_by_id(&tx, account_id)?;
     tx.commit()?;
     Ok(account)
+}
+
+/// The id of an account's balance record of `as_of` (§7.3 U1). There is no key edit: a record
+/// is replaced on its day or deleted.
+pub fn balance_record_id(account_id: &str, as_of: i64) -> String {
+    natural_id("bank_balance_records", &[account_id, &as_of.to_string()])
 }
 
 /// Every dated balance of the account, newest first.
@@ -1356,6 +1364,44 @@ mod tests {
         let list = list_balance_records(&conn, "acc-1").unwrap();
         assert_eq!(list.len(), 1);
         assert_eq!(list[0].amount, "101");
+    }
+
+    #[test]
+    fn a_balance_record_gets_its_days_natural_id_and_a_legacy_row_keeps_its_id() {
+        let conn = setup_test_db();
+        record_balance(&conn, "acc-1", &record("100", D2)).unwrap();
+        conn.execute(
+            "INSERT INTO bank_balance_records (id, bank_account_id, amount, currency, as_of) \
+             VALUES ('legacy', 'acc-1', '50', 'EUR', ?1)",
+            [D1],
+        )
+        .unwrap();
+        record_balance(&conn, "acc-1", &record("55", D1)).unwrap();
+        record_balance(&conn, "acc-1", &record("101", D2)).unwrap();
+
+        let mut stmt = conn
+            .prepare("SELECT id, as_of, amount FROM bank_balance_records ORDER BY as_of")
+            .unwrap();
+        let rows: Vec<(String, i64, String)> = stmt
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
+        assert_eq!(
+            rows,
+            vec![
+                ("legacy".to_string(), D1, "55".to_string()),
+                (
+                    crate::services::sync::natural_id::natural_id(
+                        "bank_balance_records",
+                        &["acc-1", &D2.to_string()]
+                    ),
+                    D2,
+                    "101".to_string()
+                ),
+            ]
+        );
+        assert_eq!(balance_record_id("acc-1", D2), rows[1].0);
     }
 
     #[test]

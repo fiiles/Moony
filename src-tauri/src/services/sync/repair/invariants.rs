@@ -6,13 +6,18 @@ use std::collections::BTreeMap;
 
 use rusqlite::Connection;
 
-use super::{renames, row_clock, tombstone_local, Touched};
+use super::{links, renames, row_clock, tombstone_local, Touched};
 use crate::db::files_schema;
 use crate::error::Result;
 use crate::services::{attachment_store, loan_events};
 
 /// Tables whose touched rows can break a rule below (`full` marks them all).
-pub(crate) const TABLES: [&str; 3] = ["stock_investment_tags", "stock_tags", "loan_events"];
+pub(crate) const TABLES: [&str; 4] = [
+    "stock_investment_tags",
+    "stock_tags",
+    "loan_events",
+    "cashflow_items",
+];
 
 /// Tables whose lost rows can leave attachment blobs nothing references.
 pub(crate) const ATTACHMENT_OWNERS: [&str; 5] = [
@@ -32,6 +37,9 @@ pub fn run(conn: &Connection, touched: &Touched, now: i64) -> Result<()> {
     }
     for (table, scope_value) in &touched.rename_scopes {
         renames::recompute_scope(conn, renames::scope_of(table)?, scope_value)?;
+    }
+    if touched.touches_any(&["cashflow_items"]) {
+        links::recompute(conn)?;
     }
     if ATTACHMENT_OWNERS
         .iter()

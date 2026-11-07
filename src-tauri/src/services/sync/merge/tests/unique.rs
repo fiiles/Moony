@@ -1,49 +1,73 @@
-//! Unique keys (§7.3, D15, corrections 15 and 17): same ID, keep newest by the key clock, rename,
-//! unlink. The merge writes the outcome directly, so no changeset trips a UNIQUE constraint.
+//! Unique keys (§7.3, D15, corrections 15 and 17, rulings U1–U4): same ID (with the keep-newest
+//! fallback by the key clock), rename, unlink. The merge writes the outcome directly, so no
+//! changeset trips a UNIQUE constraint. Interleavings and transient collisions:
+//! `unique_interleavings`.
 
 use super::*;
+use crate::models::bank_accounts::InsertBalanceRecord;
+use crate::models::budgeting::InsertBudgetGoal;
 use crate::services::{bank_accounts, budgeting, investments};
 
-const DAY: i64 = 1_767_225_600; // 2026-01-01
+pub(super) const DAY: i64 = 1_767_225_600; // 2026-01-01
 const MONTH_1: i64 = 1_767_225_600; // 2026-01
 const MONTH_2: i64 = 1_769_904_000; // 2026-02
 
-/// Device A creates the parents the conflicting rows need (account `acc`, category `cat`, cash
-/// flow item `src`) and every other device receives them.
-fn shared_parents(a: &Connection, others: &[&Connection]) {
+/// Device A creates the parents the conflicting rows need (account `acc`, category `cat`) and
+/// every other device receives them.
+pub(super) fn shared_parents(a: &Connection, others: &[&Connection]) {
     account(a, "acc");
     category(a, "cat");
-    cashflow_item(a, "src", None);
     let base = send(a);
     for conn in others {
         apply(conn, &base);
     }
 }
 
-/// A balance record of `acc` on `DAY`, with the account's mirror refreshed as the service does.
-fn balance(conn: &Connection, id: &str, amount: &str) {
+/// `acc`'s balance on `day` through the service (natural id, U1).
+pub(super) fn balance(conn: &Connection, day: i64, amount: &str) {
+    bank_accounts::record_balance(
+        conn,
+        "acc",
+        &InsertBalanceRecord {
+            amount: amount.into(),
+            currency: "CZK".into(),
+            as_of: day,
+            confirm_unknown_as_of: true,
+            source_batch_id: None,
+        },
+    )
+    .expect("record balance");
+}
+
+/// A balance record with a random id, as created before U1, the mirror refreshed.
+pub(super) fn legacy_balance(conn: &Connection, id: &str, day: i64, amount: &str) {
     conn.execute(
         "INSERT INTO bank_balance_records (id, bank_account_id, amount, currency, as_of, recorded_at) \
          VALUES (?1, 'acc', ?2, 'CZK', ?3, 100)",
-        rusqlite::params![id, amount, DAY],
+        rusqlite::params![id, amount, day],
     )
     .expect("insert balance record");
     bank_accounts::refresh_balance_columns(conn, "acc").expect("refresh balance");
 }
 
-/// A version of `cat`'s monthly budget from `MONTH_1`, with `budget_goals` rebuilt as the service
-/// does.
-fn version(conn: &Connection, id: &str, amount: &str) {
-    conn.execute(
-        "INSERT INTO budget_goal_versions (id, category_id, timeframe, effective_month, amount, \
-           currency, created_at) VALUES (?1, 'cat', 'monthly', ?2, ?3, 'CZK', 100)",
-        rusqlite::params![id, MONTH_1, amount],
+/// `cat`'s monthly limit from `MONTH_1` through the service (natural id, U1).
+pub(super) fn version(conn: &Connection, amount: &str) {
+    budgeting::upsert_goal_at(
+        conn,
+        InsertBudgetGoal {
+            category_id: "cat".into(),
+            timeframe: "monthly".into(),
+            amount: amount.into(),
+            currency: Some("CZK".into()),
+            effective_month: Some(MONTH_1),
+            effective_until: None,
+        },
+        NOW,
     )
-    .expect("insert budget version");
-    budgeting::rebuild_goal_row(conn, "cat", "monthly", NOW).expect("rebuild goal");
+    .expect("upsert goal");
 }
 
-fn tag(conn: &Connection, id: &str, name: &str) {
+pub(super) fn tag(conn: &Connection, id: &str, name: &str) {
     conn.execute(
         "INSERT INTO stock_tags (id, name, created_at) VALUES (?1, ?2, 100)",
         [id, name],
@@ -51,7 +75,7 @@ fn tag(conn: &Connection, id: &str, name: &str) {
     .expect("insert tag");
 }
 
-fn tag_group(conn: &Connection, id: &str, name: &str) {
+pub(super) fn tag_group(conn: &Connection, id: &str, name: &str) {
     conn.execute(
         "INSERT INTO stock_tag_groups (id, name, created_at) VALUES (?1, ?2, 100)",
         [id, name],
@@ -59,7 +83,7 @@ fn tag_group(conn: &Connection, id: &str, name: &str) {
     .expect("insert tag group");
 }
 
-fn cashflow_item(conn: &Connection, id: &str, replaces: Option<&str>) {
+pub(super) fn cashflow_item(conn: &Connection, id: &str, replaces: Option<&str>) {
     conn.execute(
         "INSERT INTO cashflow_items (id, name, amount, currency, frequency, item_type, created_at, \
            updated_at, replacement_source_id) \
@@ -79,7 +103,7 @@ fn learned(conn: &Connection, id: &str) {
     .expect("insert learned payee");
 }
 
-fn listed(conn: &Connection, sql: &str) -> Vec<String> {
+pub(super) fn listed(conn: &Connection, sql: &str) -> Vec<String> {
     let mut stmt = conn.prepare(sql).expect(sql);
     stmt.query_map([], |r| r.get::<_, String>(0))
         .expect(sql)
@@ -87,15 +111,24 @@ fn listed(conn: &Connection, sql: &str) -> Vec<String> {
         .collect()
 }
 
-fn renamed(conn: &Connection) -> Vec<String> {
+/// Every `sync_typed` entry as `"tbl pk col typed -> assigned"` (`-` for a cleared link).
+pub(super) fn typed(conn: &Connection) -> Vec<String> {
     listed(
         conn,
-        "SELECT tbl || ' ' || pk || ' ' || typed || ' -> ' || assigned FROM sync_renamed \
-         ORDER BY tbl, pk",
+        "SELECT tbl || ' ' || pk || ' ' || col || ' ' || typed || ' -> ' \
+           || COALESCE(assigned, '-') FROM sync_typed ORDER BY tbl, pk, col",
     )
 }
 
-fn warnings(reports: &[ApplyReport]) -> Vec<String> {
+/// `"id link"` of every cash-flow item (`-` for none).
+pub(super) fn item_links(conn: &Connection) -> Vec<String> {
+    listed(
+        conn,
+        "SELECT id || ' ' || COALESCE(replacement_source_id, '-') FROM cashflow_items ORDER BY id",
+    )
+}
+
+pub(super) fn warnings(reports: &[ApplyReport]) -> Vec<String> {
     reports.iter().flat_map(|r| r.warnings.clone()).collect()
 }
 
@@ -144,39 +177,39 @@ fn same_id_two_devices_buying_aapl_offline_share_one_position() {
 }
 
 #[test]
-fn keep_newest_balance_record_of_the_same_day() {
+fn balance_records_of_the_same_day_share_one_id() {
     let a = device(A);
     let b = device(B);
     shared_parents(&a, &[&b]);
-    balance(&a, "rec-a", "100.00");
+    balance(&a, DAY, "100.00");
     later(&b, &a);
-    balance(&b, "rec-b", "200.00");
-    let newer = clocks(&b, "bank_balance_records", "rec-b")["*"];
+    balance(&b, DAY, "200.00");
     let from_a = send(&a);
     let from_b = send(&b);
 
     let on_a = apply(&a, &from_b);
     let on_b = apply(&b, &from_a);
 
-    assert_eq!((on_a[0].applied, on_a[0].dropped), (1, 0));
-    assert_eq!((on_b[0].applied, on_b[0].dropped), (0, 1));
+    let id = bank_accounts::balance_record_id("acc", DAY);
     for conn in [&a, &b] {
         assert_eq!(
             listed(conn, "SELECT id || ' ' || amount FROM bank_balance_records"),
-            vec!["rec-b 200.00"]
+            vec![format!("{id} 200.00")]
         );
-        assert_eq!(clocks(conn, "bank_balance_records", "rec-a")["-"], newer);
         assert_eq!(
             value(conn, "SELECT balance FROM bank_accounts WHERE id = 'acc'").as_deref(),
             Some("200.00")
         );
+        assert!(tombstones(conn).is_empty());
     }
+    assert!(warnings(&on_a).is_empty() && warnings(&on_b).is_empty());
     assert_converged(&[&a, &b]);
 }
 
-/// V1 (generation 10) moved onto (cat, monthly, month 2) by an update at 50; V2 created there at
-/// 30 and its amount edited at 70. V1's key clock is 50, V2's is 30 (an edit of another column
-/// does not make a row win its key): V1 stays on both devices.
+/// The SameId fallback for two ids on one key (legacy ids, unreachable after U1 and D22). V1
+/// (generation 10) moved onto (cat, monthly, month 2) by an update at 50; V2 created there at 30
+/// and its amount edited at 70, in separate changesets. V1's key clock is 50, V2's is 30 (an edit
+/// of another column does not make a row win its key): V1 stays on both devices, with a warning.
 #[test]
 fn keep_newest_uses_the_clock_that_put_the_row_on_its_key() {
     let at = |hlc: u64, device: DeviceId| clock(hlc << 16, device);
@@ -228,8 +261,8 @@ fn keep_newest_uses_the_clock_that_put_the_row_on_its_key() {
 
     let x = device(D);
     let y = device(D);
-    apply(&x, &vec![base.clone(), from_a.clone(), from_b.clone()]);
-    apply(&y, &vec![base, from_b, from_a]);
+    let on_x = apply(&x, &vec![base.clone(), from_a.clone(), from_b.clone()]);
+    let on_y = apply(&y, &vec![base, from_b, from_a]);
 
     for conn in [&x, &y] {
         assert_eq!(
@@ -241,30 +274,35 @@ fn keep_newest_uses_the_clock_that_put_the_row_on_its_key() {
         );
         assert_eq!(clocks(conn, "budget_goal_versions", "v2")["-"], at(50, A));
     }
+    for reports in [&on_x, &on_y] {
+        let warnings = warnings(reports);
+        assert_eq!(warnings.len(), 1, "{warnings:?}");
+        assert!(warnings[0].contains("budget_goal_versions"), "{warnings:?}");
+    }
     assert_converged(&[&x, &y]);
 }
 
 #[test]
-fn keep_newest_budget_version_of_the_same_month() {
+fn budget_versions_of_the_same_month_share_one_id() {
     let a = device(A);
     let b = device(B);
     shared_parents(&a, &[&b]);
-    version(&a, "ver-b", "100.00");
+    version(&a, "100.00");
     later(&b, &a);
-    version(&b, "ver-a", "300.00");
-    let newer = clocks(&b, "budget_goal_versions", "ver-a")["*"];
+    version(&b, "300.00");
     let from_a = send(&a);
     let from_b = send(&b);
 
     apply(&a, &from_b);
     apply(&b, &from_a);
 
+    let id = budgeting::version_id("cat", "monthly", MONTH_1);
     for conn in [&a, &b] {
         assert_eq!(
             listed(conn, "SELECT id || ' ' || amount FROM budget_goal_versions"),
-            vec!["ver-a 300.00"]
+            vec![format!("{id} 300.00")]
         );
-        assert_eq!(clocks(conn, "budget_goal_versions", "ver-b")["-"], newer);
+        assert!(tombstones(conn).is_empty());
         assert_eq!(
             value(
                 conn,
@@ -295,7 +333,10 @@ fn rename_tags_with_the_same_name_by_id() {
             listed(conn, "SELECT id || ' ' || name FROM stock_tags ORDER BY id"),
             vec!["tag-a Growth", "tag-b Growth (2)"]
         );
-        assert_eq!(renamed(conn), vec!["stock_tags tag-b Growth -> Growth (2)"]);
+        assert_eq!(
+            typed(conn),
+            vec!["stock_tags tag-b name Growth -> Growth (2)"]
+        );
     }
     assert_converged(&[&a, &b]);
 }
@@ -328,8 +369,8 @@ fn rename_tag_groups_also_on_a_rename_update() {
             vec!["grp-a Region", "grp-b Region (2)"]
         );
         assert_eq!(
-            renamed(conn),
-            vec!["stock_tag_groups grp-b Region -> Region (2)"]
+            typed(conn),
+            vec!["stock_tag_groups grp-b name Region -> Region (2)"]
         );
     }
     assert_converged(&[&a, &b]);
@@ -339,10 +380,9 @@ fn rename_tag_groups_also_on_a_rename_update() {
 fn unlink_two_items_replacing_the_same_source() {
     let a = device(A);
     let b = device(B);
-    shared_parents(&a, &[&b]);
-    cashflow_item(&a, "item-b", Some("src"));
+    cashflow_item(&a, "item-b", Some("loan-1"));
     later(&b, &a);
-    cashflow_item(&b, "item-a", Some("src"));
+    cashflow_item(&b, "item-a", Some("loan-1"));
     let from_a = send(&a);
     let from_b = send(&b);
 
@@ -350,13 +390,10 @@ fn unlink_two_items_replacing_the_same_source() {
     apply(&b, &from_a);
 
     for conn in [&a, &b] {
+        assert_eq!(item_links(conn), vec!["item-a loan-1", "item-b -"]);
         assert_eq!(
-            listed(
-                conn,
-                "SELECT id || ' ' || COALESCE(replacement_source_id, '-') FROM cashflow_items \
-                 ORDER BY id"
-            ),
-            vec!["item-a src", "item-b -", "src -"]
+            typed(conn),
+            vec!["cashflow_items item-b replacement_source_id loan-1 -> -"]
         );
     }
     assert_converged(&[&a, &b]);
@@ -405,15 +442,15 @@ fn every_outcome_is_the_same_in_both_orders() {
     let c = device(C);
     let d = device(D);
     shared_parents(&a, &[&b, &c, &d]);
-    balance(&a, "rec-a", "100.00");
-    version(&a, "ver-a", "100.00");
+    balance(&a, DAY, "100.00");
+    version(&a, "100.00");
     tag(&a, "tag-a", "Value");
-    cashflow_item(&a, "item-a", Some("src"));
+    cashflow_item(&a, "item-a", Some("loan-1"));
     later(&b, &a);
-    balance(&b, "rec-b", "200.00");
-    version(&b, "ver-b", "200.00");
+    balance(&b, DAY, "200.00");
+    version(&b, "200.00");
     tag(&b, "tag-b", "Value");
-    cashflow_item(&b, "item-b", Some("src"));
+    cashflow_item(&b, "item-b", Some("loan-1"));
     let from_a = send(&a);
     let from_b = send(&b);
 
@@ -426,25 +463,18 @@ fn every_outcome_is_the_same_in_both_orders() {
 
     for conn in [&a, &b, &c, &d] {
         assert_eq!(
-            listed(conn, "SELECT id FROM bank_balance_records"),
-            vec!["rec-b"]
+            listed(conn, "SELECT amount FROM bank_balance_records"),
+            vec!["200.00"]
         );
         assert_eq!(
-            listed(conn, "SELECT id FROM budget_goal_versions"),
-            vec!["ver-b"]
+            listed(conn, "SELECT amount FROM budget_goal_versions"),
+            vec!["200.00"]
         );
         assert_eq!(
             listed(conn, "SELECT id || ' ' || name FROM stock_tags ORDER BY id"),
             vec!["tag-a Value", "tag-b Value (2)"]
         );
-        assert_eq!(
-            listed(
-                conn,
-                "SELECT id || ' ' || COALESCE(replacement_source_id, '-') FROM cashflow_items \
-                 ORDER BY id"
-            ),
-            vec!["item-a src", "item-b -", "src -"]
-        );
+        assert_eq!(item_links(conn), vec!["item-a loan-1", "item-b -"]);
     }
     assert_converged(&[&a, &b, &c, &d]);
 }

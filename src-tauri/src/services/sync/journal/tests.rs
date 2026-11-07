@@ -395,9 +395,9 @@ fn a_repair_renamed_row_travels_with_its_typed_name() {
     exec(
         &conn,
         "INSERT INTO stock_tags (id, name) VALUES ('tag-a', 'Growth (2)'), ('tag-b', 'Value'); \
-         INSERT INTO sync_renamed (tbl, pk, typed, assigned) VALUES \
-           ('stock_tags', 'tag-a', 'Growth', 'Growth (2)'), \
-           ('stock_tags', 'tag-b', 'Dividend', 'Dividend (2)');",
+         INSERT INTO sync_typed (tbl, pk, col, typed, assigned) VALUES \
+           ('stock_tags', 'tag-a', 'name', 'Growth', 'Growth (2)'), \
+           ('stock_tags', 'tag-b', 'name', 'Dividend', 'Dividend (2)');",
     );
 
     let rows = rows_by_key(&drain(&mut conn));
@@ -412,6 +412,31 @@ fn a_repair_renamed_row_travels_with_its_typed_name() {
         rows[&key("stock_tags", "tag-b")].columns["name"].0,
         text("Value")
     );
+}
+
+#[test]
+fn a_repair_cleared_link_travels_with_its_typed_link() {
+    let mut conn = enabled();
+    exec(
+        &conn,
+        "INSERT INTO cashflow_items (id, name, amount, frequency, item_type, replacement_source_id) \
+           VALUES ('src', 'S', '1', 'monthly', 'expense', NULL), \
+                  ('item-a', 'A', '1', 'monthly', 'expense', 'src'), \
+                  ('item-b', 'B', '1', 'monthly', 'expense', NULL); \
+         INSERT INTO sync_typed (tbl, pk, col, typed, assigned) VALUES \
+           ('cashflow_items', 'item-b', 'replacement_source_id', 'src', NULL);",
+    );
+
+    let rows = rows_by_key(&drain(&mut conn));
+
+    let column = |pk: &str| {
+        rows[&key("cashflow_items", pk)].columns["replacement_source_id"]
+            .0
+            .clone()
+    };
+    assert_eq!(column("item-a"), text("src"));
+    assert_eq!(column("item-b"), text("src"));
+    assert_eq!(column("src"), SqlValue::Null);
 }
 
 #[test]

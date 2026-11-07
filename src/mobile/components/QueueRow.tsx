@@ -3,9 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { Banknote, Check, Clock, Ellipsis, Info, Tag } from 'lucide-react';
 import type { CategorizeQueueRow, TransactionCategory } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
-import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
-import { utcDayFloor } from '@/utils/chart-axis';
 import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
 import {
   DropdownMenu,
@@ -15,6 +13,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { useTransactionDay } from '@/mobile/hooks/use-transaction-day';
 import { SNOOZE_DAYS, suggestionLabelKey, type RowState } from '@/mobile/lib/categorize-queue';
 import { initials } from '@/mobile/lib/initials';
 import { signedAmountText } from '@/mobile/lib/signed-amount';
@@ -108,7 +107,7 @@ export function QueueRow({
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
-  const fmt = useFormat();
+  const dayText = useTransactionDay();
   const moneyText = useMoneyText();
   const categoryName = useCategoryName();
   const [menuOpen, setMenuOpen] = useState(false);
@@ -119,15 +118,7 @@ export function QueueRow({
   const title = counterpartyLabel(tx).title ?? details[0] ?? tb('transaction.counterparty');
   const detail = details.filter((text) => text !== title).join(' · ');
 
-  const today = utcDayFloor(Date.now() / 1000);
-  const day = utcDayFloor(tx.bookingDate);
-  const dayText =
-    day === today
-      ? tc('time.today')
-      : day === today - 86400
-        ? tc('time.yesterday')
-        : fmt.day(tx.bookingDate, { day: 'numeric', month: 'numeric' });
-  const sub = [dayText, detail].filter(Boolean).join(' · ');
+  const sub = [dayText(tx.bookingDate), detail].filter(Boolean).join(' · ');
 
   const open = state === 'open';
 

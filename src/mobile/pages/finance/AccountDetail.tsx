@@ -65,6 +65,7 @@ import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import { useUndoImport } from '@/mobile/hooks/use-undo-import';
 import { useLedger, type Ledger } from '@/mobile/hooks/use-ledger';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { useTransactionDay } from '@/mobile/hooks/use-transaction-day';
 import { useRetained } from '@/mobile/hooks/use-retained';
 import { hasUncategorized, showsInterest } from '@/mobile/lib/account-menu';
 import { balanceLine } from '@/mobile/lib/balance-line';
@@ -73,7 +74,6 @@ import { cashChange } from '@/mobile/lib/finance-rows';
 import { transactionFromSearch } from '@/mobile/lib/move-path';
 import {
   activeFilterCount,
-  dayLabel,
   DEFAULT_LEDGER,
   groupByDay,
   periodForMonth,
@@ -372,25 +372,29 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
           ) : (
             actions
           )}
-          {hasRecentRows(history, currentMonth) && (
-            <section>
-              <FlowsSection
-                historyRows={historyRows}
-                currentMonth={currentMonth}
-                selected={state.month ?? newestMonthWithRows(historyRows)}
-                onSelect={selectMonth}
-                money0={money0}
-                signed0={signed0}
-                foreignMissing={detail.foreignMissing}
-              />
-            </section>
+          {/* Toky holds its place while the history loads, so the ledger does not jump down (C11) */}
+          {!historyLoaded ? (
+            <FlowsSkeleton />
+          ) : (
+            hasRecentRows(history, currentMonth) && (
+              <section>
+                <FlowsSection
+                  historyRows={historyRows}
+                  currentMonth={currentMonth}
+                  selected={state.month ?? newestMonthWithRows(historyRows)}
+                  onSelect={selectMonth}
+                  money0={money0}
+                  signed0={signed0}
+                  foreignMissing={detail.foreignMissing}
+                />
+              </section>
+            )
           )}
           {hasTransactions ? (
             <LedgerSection
               ledger={ledger}
               state={state}
               onStateChange={setState}
-              today={today}
               categories={categories}
               onFilter={() => setSheet('filter')}
               onOpen={setOpenTx}
@@ -770,6 +774,20 @@ function FlowsSection({
   );
 }
 
+/** Toky while the history loads: its head and a card of the strip's height in outline. */
+function FlowsSkeleton() {
+  const { t } = useTranslation('mobile');
+  return (
+    <section aria-busy="true">
+      <SectionHead title={t('account.flows.title')} />
+      <div aria-hidden className={`${CARD} px-4 pb-3 pt-3`}>
+        <div className="skeleton h-[140px] w-full" />
+        <div className="skeleton mt-2 h-3 w-3/5" />
+      </div>
+    </section>
+  );
+}
+
 /** The nearest ancestor that scrolls (the screen's body): the root of the ledger's scroll observer. */
 function scrollParent(element: HTMLElement): HTMLElement | null {
   for (let node = element.parentElement; node; node = node.parentElement) {
@@ -784,7 +802,6 @@ function LedgerSection({
   ledger,
   state,
   onStateChange,
-  today,
   categories,
   onFilter,
   onOpen,
@@ -794,7 +811,6 @@ function LedgerSection({
   ledger: Ledger;
   state: LedgerState;
   onStateChange: (update: (state: LedgerState) => LedgerState) => void;
-  today: number;
   categories: ReturnType<typeof useCategories>['categories'];
   onFilter: () => void;
   onOpen: (tx: BankTransaction) => void;
@@ -803,7 +819,6 @@ function LedgerSection({
 }) {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
-  const fmt = useFormat();
   const filters = activeFilterCount(state);
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   const groups = useMemo(() => groupByDay(ledger.rows), [ledger.rows]);
@@ -825,15 +840,8 @@ function LedgerSection({
     return () => observer.disconnect();
   }, [sentinel, hasMore, isFetching, loadMore]);
 
-  const dayText = (day: number) => {
-    const label = dayLabel(day, today);
-    if ('key' in label) return tc(`time.${label.key}`);
-    return fmt.day(label.date, {
-      day: 'numeric',
-      month: 'short',
-      year: label.withYear ? 'numeric' : undefined,
-    });
-  };
+  // The heads word a day as every list of payments does (C11)
+  const dayText = useTransactionDay();
   const kinds: { value: LedgerKind; label: string }[] = [
     { value: 'all', label: t('account.ledger.all') },
     { value: 'in', label: t('account.ledger.in') },

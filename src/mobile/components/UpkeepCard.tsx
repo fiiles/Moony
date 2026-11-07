@@ -91,9 +91,9 @@ function targetOf(row: UpkeepRow): string {
 
 /**
  * Údržba (spec §8.3 item 1, prototype frame 02 and note 2): an action card on `well`, first on
- * Přehled, present only while something is due. Folded, as the desktop folds "Údržba dat" under
- * its agenda: the head (a button: title, count, chevron) and one line naming what is due; a tap
- * unfolds one row per item — a 34 pt icon, the title, a sub-line and the verb as a small button
+ * Přehled, present only while something is due. Unfolded at first (the desktop folds "Údržba dat"
+ * under its agenda, but here every row carries its verb): the head (a button: title, count,
+ * chevron) folds it to one line naming what is due; unfolded it has one row per item — a 34 pt icon, the title, a sub-line and the verb as a small button
  * (the first row's is primary, the rest secondary), and the "···" of its menu: on a row that
  * stands for a desktop milestone the desktop's (hide, remind in a month, stop reminding), on the
  * phone's own statement and uncategorized rows hide and remind in a month, kept on this device. Folded or not is kept
@@ -105,7 +105,9 @@ export function UpkeepCard() {
   const { t } = useTranslation(['mobile', 'milestones']);
   const { rows, accounts, lastImportByAccount } = useUpkeep();
   const { openImport } = useImportSheet();
-  const [open, setOpen] = useRemembered('overview.upkeepOpen', false);
+  // Unfolded at first (C11): every row has a verb, and folded each was a tap further away. The
+  // person's fold is kept for the app session
+  const [open, setOpen] = useRemembered('overview.upkeepOpen', true);
   const listId = useId();
   // The accounts are frozen at opening: saving removes them from the card while the sheet closes.
   const [sheet, setSheet] = useState<{ open: boolean; accountIds: string[] }>({

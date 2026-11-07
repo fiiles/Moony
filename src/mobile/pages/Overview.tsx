@@ -24,7 +24,11 @@ import { splitMilestones } from '@/utils/milestones';
 import { CHART_PERIODS, type ChartPeriod } from '@/utils/period';
 import { Button } from '@/components/ui/button';
 import { ConvertedMoney } from '@/components/common/ConvertedMoney';
-import { ScaledConversionNote, ScaledEmptyState } from '@/mobile/components/Scaled';
+import {
+  ScaledChartLegend,
+  ScaledConversionNote,
+  ScaledEmptyState,
+} from '@/mobile/components/Scaled';
 import { AgendaRow } from '@/mobile/components/AgendaRow';
 import { AllocationRing } from '@/mobile/components/AllocationRing';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
@@ -35,6 +39,7 @@ import { SectionHead } from '@/mobile/components/SectionHead';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { UpkeepCard } from '@/mobile/components/UpkeepCard';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { useTransactionDay } from '@/mobile/hooks/use-transaction-day';
 import { initials } from '@/mobile/lib/initials';
 import { movePath } from '@/mobile/lib/move-path';
 import { LockButton } from '@/mobile/shell/LockButton';
@@ -199,7 +204,14 @@ export default function Overview() {
             events={overview.jumps}
             renderEventTip={jumpTip}
             chartLabel={td('charts.netWorthTrend')}
-          />
+          >
+            {/* The rings on the line name themselves, as under the desktop's chart (C11) */}
+            {overview.jumps.length > 0 && overview.points.length > 1 && (
+              <ScaledChartLegend
+                items={[{ label: td('jumps.legend'), swatch: { kind: 'event', type: 'mark' } }]}
+              />
+            )}
+          </Hero>
           <StatRow stats={stats} />
           <AgendaSection />
           <AllocationSection
@@ -312,21 +324,15 @@ function RecentMovesSection() {
 function MoveRows({ moves }: { moves: RecentMove[] }) {
   const { t } = useTranslation('dashboard');
   const { t: tm } = useTranslation('mobile');
-  const fmt = useFormat();
   const moneyText = useMoneyText();
   const { categories } = useCategories();
   const categoryName = useCategoryName();
-  const today = utcDayFloor(Date.now() / 1000);
   const first = Math.min(...moves.map((m) => m.date));
   const { ready, convertAt } = useDatedMainConvert(first);
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
-  const dayLabel = (date: number) => {
-    const day = utcDayFloor(date);
-    if (day === today) return t('common:time.today');
-    if (day === today - 86400) return t('common:time.yesterday');
-    return fmt.day(date, { day: 'numeric', month: 'numeric' });
-  };
+  // A payment's day as every list of payments words it (C11)
+  const dayLabel = useTransactionDay();
 
   return (
     <EntityRows>

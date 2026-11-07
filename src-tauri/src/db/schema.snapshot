@@ -864,7 +864,7 @@ CREATE TABLE sync_state (
 
 == table sync_typed ==
 CREATE TABLE sync_typed (tbl TEXT NOT NULL, pk TEXT NOT NULL, col TEXT NOT NULL,
-    typed TEXT NOT NULL, assigned TEXT, PRIMARY KEY (tbl, pk, col)) WITHOUT ROWID
+    typed, assigned, PRIMARY KEY (tbl, pk, col)) WITHOUT ROWID
 
 == table sync_unsent ==
 CREATE TABLE sync_unsent (seq INTEGER PRIMARY KEY, envelope BLOB NOT NULL)

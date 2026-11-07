@@ -5,6 +5,7 @@ mod basics;
 mod epochs;
 mod parents;
 mod special;
+mod typed;
 mod unique;
 mod unique_interleavings;
 

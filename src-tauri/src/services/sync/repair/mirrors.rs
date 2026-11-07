@@ -10,7 +10,7 @@ use std::collections::BTreeSet;
 
 use rusqlite::{params, Connection, OptionalExtension};
 
-use super::{attempt, RepairReport, Touched};
+use super::{attempt, typed, RepairReport, Touched};
 use crate::error::{AppError, Result};
 use crate::services::stock_splits::{self, ratio_parts, StockSplitStatus};
 use crate::services::valuations::{self, ValuationKind};
@@ -69,6 +69,9 @@ pub fn run(
     now: i64,
     report: &mut RepairReport,
 ) -> Result<()> {
+    // Owners whose source rows are all gone show their typed values again (ruling T18b).
+    typed::restore_sourceless(conn, touched)?;
+
     for id in with_rows(
         conn,
         touched,

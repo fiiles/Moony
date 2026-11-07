@@ -228,7 +228,10 @@ pub const OTHER_ASSET_PRICES: &str = "SELECT a.id AS asset_id,
 /// purchase average, so a valuation in another currency does not change it
 /// (`OTHER_ASSET_PRICES` pairs the price with the valuation's currency).
 pub fn sync_parent_price(conn: &Connection, kind: ValuationKind, asset_id: &str) -> Result<()> {
+    // Without valuations the market price is typed: the typed value a valuation overwrote comes
+    // back (ruling T18b).
     let Some(latest) = latest_valuation(conn, kind, asset_id)? else {
+        crate::services::sync::repair::typed::restore(conn, kind.parent(), asset_id, kind.table())?;
         return Ok(());
     };
     let now = chrono::Utc::now().timestamp();

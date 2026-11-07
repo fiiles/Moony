@@ -193,11 +193,10 @@ impl<'c> Reader<'c> {
         let mut columns = BTreeMap::new();
         for (name, value) in &row[shape.key_len..] {
             let clock = clocks.get(*name).copied().unwrap_or(generation);
-            // A column a repair shows differently travels with the value typed (U4).
+            // A column a repair shows differently travels with the value typed (U4, T18b): the
+            // entry holds while the stored value is still the one assigned over it.
             let value = match typed_values.get(*name) {
-                Some((typed, assigned)) if shown_is(value, assigned.as_deref()) => {
-                    SqlValue::Text(typed.clone())
-                }
+                Some((typed, assigned)) if value == assigned => typed.clone(),
                 _ => value.clone(),
             };
             columns.insert(name.to_string(), (value, clock));
@@ -232,14 +231,12 @@ impl<'c> Reader<'c> {
             .collect()
     }
 
-    /// column → `(typed, assigned)` of the row's columns a repair shows differently
-    /// (`sync_typed`: a renamed name, a cleared link).
-    fn typed_values(
-        &self,
-        table: &str,
-        pk: &str,
-    ) -> Result<HashMap<String, (String, Option<String>)>> {
-        if shadowed_columns(table).is_empty() {
+    /// column → `(typed, assigned)` of the row's columns shown differently from their typed
+    /// value (`sync_typed`: a renamed name, a cleared link, a recomputed-or-typed value computed
+    /// from source rows).
+    fn typed_values(&self, table: &str, pk: &str) -> Result<HashMap<String, (SqlValue, SqlValue)>> {
+        let has_rot = registry::spec(table).is_some_and(|s| !s.recomputed_or_typed.is_empty());
+        if shadowed_columns(table).is_empty() && !has_rot {
             return Ok(HashMap::new());
         }
         let rows = self
@@ -247,7 +244,15 @@ impl<'c> Reader<'c> {
             .prepare_cached(
                 "SELECT col, typed, assigned FROM sync_typed WHERE tbl = ?1 AND pk = ?2",
             )?
-            .query_map([table, pk], |r| Ok((r.get(0)?, (r.get(1)?, r.get(2)?))))?
+            .query_map([table, pk], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    (
+                        SqlValue::from(r.get::<_, Value>(1)?),
+                        SqlValue::from(r.get::<_, Value>(2)?),
+                    ),
+                ))
+            })?
             .collect::<std::result::Result<_, _>>()?;
         Ok(rows)
     }
@@ -329,14 +334,4 @@ fn clock_from(hlc: i64, device: Vec<u8>) -> Result<Clock> {
 
 fn quoted(identifier: &str) -> String {
     format!("\"{}\"", identifier.replace('"', "\"\""))
-}
-
-/// Whether the stored `value` is still the one a repair assigned (`None`: a cleared link). A
-/// stored value that differs was written since and is the typed one itself.
-fn shown_is(value: &SqlValue, assigned: Option<&str>) -> bool {
-    match (value, assigned) {
-        (SqlValue::Null, None) => true,
-        (SqlValue::Text(stored), Some(assigned)) => stored == assigned,
-        _ => false,
-    }
 }

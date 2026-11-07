@@ -39,8 +39,15 @@ pub fn recalculate_investment_metrics(
         [investment_id],
         |r| r.get(0),
     )?;
-    // Transaction-less legacy positions retain their manually recorded quantity.
+    // Transaction-less positions retain their manually recorded quantity: the typed one a
+    // transaction's quantity overwrote comes back (ruling T18b).
     if !has_transactions {
+        crate::services::sync::repair::typed::restore(
+            conn,
+            "stock_investments",
+            investment_id,
+            "investment_transactions",
+        )?;
         return Ok(());
     }
     let total_qty = exact_held_quantity(conn, "investment_transactions", investment_id)?;

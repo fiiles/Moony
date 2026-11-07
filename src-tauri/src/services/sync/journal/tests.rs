@@ -313,7 +313,9 @@ fn full_rows_carry_typed_values_and_derived_values_alike() {
     assert_eq!(column_names(typed), stock_columns);
     assert_eq!(column_names(derived), stock_columns);
     assert_eq!(typed.columns["quantity"].0, text("7"));
-    assert_eq!(derived.columns["quantity"].0, text("5"));
+    // The derived quantity travels as its typed value, the one its transactions overwrote
+    // (ruling T18b); a receiver derives 5 from the same transactions.
+    assert_eq!(derived.columns["quantity"].0, text("0"));
     // bank_accounts: `updated_at` is Local, the recomputed-or-typed balance travels.
     let bank = &rows[&key("bank_accounts", "acc")];
     assert!(!bank.columns.contains_key("updated_at"));

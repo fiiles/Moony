@@ -170,6 +170,24 @@ fn installed_triggers_cover_every_synced_table_and_nothing_else() {
             expected.push((format!("sync_{t}_{k}"), t.to_string()));
         }
     }
+    // The shadow triggers of the recomputed-or-typed columns (ruling T18b).
+    for (t, columns) in [
+        ("bank_accounts", &["balance", "balance_as_of"][..]),
+        ("stock_investments", &["quantity"][..]),
+        ("crypto_investments", &["quantity", "currency"][..]),
+        (
+            "real_estate",
+            &["market_price", "market_price_currency"][..],
+        ),
+        (
+            "other_assets",
+            &["market_price", "quantity", "average_purchase_price"][..],
+        ),
+    ] {
+        for column in columns.iter().chain(&["del"]) {
+            expected.push((format!("sync_{t}_typed_{column}"), t.to_string()));
+        }
+    }
     expected.sort();
     assert_eq!(actual, expected);
     assert!(is_installed(&conn).unwrap());

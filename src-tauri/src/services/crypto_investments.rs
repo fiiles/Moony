@@ -29,7 +29,15 @@ pub fn recalculate_crypto_metrics(conn: &rusqlite::Connection, investment_id: &s
         "SELECT currency FROM crypto_transactions WHERE investment_id=?1 ORDER BY transaction_date,created_at,id LIMIT 1",
         [investment_id],|r|r.get(0),
     ).optional()?;
+    // Without transactions the quantity and currency are typed: the typed values a
+    // transaction overwrote come back (ruling T18b).
     let Some(native_currency) = native_currency else {
+        crate::services::sync::repair::typed::restore(
+            conn,
+            "crypto_investments",
+            investment_id,
+            "crypto_transactions",
+        )?;
         return Ok(());
     };
     let total_qty = crate::services::investments::exact_held_quantity(

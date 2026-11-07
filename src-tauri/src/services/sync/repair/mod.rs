@@ -5,7 +5,8 @@
 //!
 //! Rename and unlink are derived (ruling U3, U4): the value a person typed is what syncs, kept in
 //! the Local table `sync_typed` while a repair shows another value, and the stored column is a
-//! pure function of the typed values of its scope.
+//! pure function of the typed values of its scope. Recomputed-or-typed columns use the same table
+//! for the typed value their computed one hides (ruling T18b, `typed`).
 //!
 //! Everything here runs in `repair` mode, so nothing is captured: every device computes the same
 //! result from the same merged rows. A repair is a function of the merged rows only — every
@@ -15,6 +16,7 @@ pub mod invariants;
 pub mod links;
 pub mod mirrors;
 pub mod renames;
+pub mod typed;
 
 use std::collections::{BTreeMap, BTreeSet};
 

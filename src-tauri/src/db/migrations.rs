@@ -2985,7 +2985,8 @@ mod migration_028 {
 /// waiting to be sent, `sync_heads` the newest verified message per author (`quarantined` is
 /// the per-author quarantine), `sync_own_log` / `sync_unsent` this device's own hash chain and
 /// unsent envelopes, `sync_typed` the value a person typed in a column a repair shows
-/// differently (a renamed name, a cleared link) and the value the repair assigned. `sync_devices.id` is the device ID as 32 lowercase hex characters.
+/// differently (a renamed name, a cleared link, a recomputed-or-typed value computed from source
+/// rows) and the value the repair assigned; both untyped, so a number or NULL keeps its type. `sync_devices.id` is the device ID as 32 lowercase hex characters.
 /// Split units (ruling T18c): each split-scaled row keeps the values as they were entered
 /// (`entry_*`) and `entry_basis`, the applied splits those values already include; these sync.
 /// The current-unit columns (`quantity`/`price_per_unit`, `price`, `target_price`,
@@ -3019,7 +3020,7 @@ CREATE TABLE sync_own_log (seq INTEGER PRIMARY KEY, hash BLOB NOT NULL, min_hlc 
     max_hlc INTEGER NOT NULL);
 CREATE TABLE sync_unsent (seq INTEGER PRIMARY KEY, envelope BLOB NOT NULL);
 CREATE TABLE sync_typed (tbl TEXT NOT NULL, pk TEXT NOT NULL, col TEXT NOT NULL,
-    typed TEXT NOT NULL, assigned TEXT, PRIMARY KEY (tbl, pk, col)) WITHOUT ROWID;
+    typed, assigned, PRIMARY KEY (tbl, pk, col)) WITHOUT ROWID;
 CREATE TABLE sync_devices (id TEXT PRIMARY KEY, public_key TEXT, name TEXT NOT NULL,
     platform TEXT NOT NULL, app_version TEXT NOT NULL, joined_at INTEGER NOT NULL,
     removed INTEGER NOT NULL DEFAULT 0 CHECK (removed IN (0, 1)));

@@ -15,6 +15,16 @@ use uuid::Uuid;
 pub fn recalculate_asset_totals(conn: &rusqlite::Connection, asset_id: &str) -> Result<()> {
     use crate::models::validation::finite_number;
     use crate::services::fx;
+    // Without transactions the quantity and average price are typed: the typed values a
+    // transaction overwrote come back (ruling T18b); without them the totals read zero as before.
+    if crate::services::sync::repair::typed::restore(
+        conn,
+        "other_assets",
+        asset_id,
+        "other_asset_transactions",
+    )? {
+        return Ok(());
+    }
     let exact_quantity = crate::services::investments::exact_held_quantity(
         conn,
         "other_asset_transactions",

@@ -1,7 +1,8 @@
 //! SQL of the capture triggers (spec §6.1): `TEMP` triggers per Synced table (`_ins`, `_bdel` and
 //! `_del`, `_upd` when the table has a captured column, `_pk` unless it is a singleton), generated
 //! from the registry and `PRAGMA table_info` of the migrated schema, so they always match the
-//! columns that exist.
+//! columns that exist. Tables with recomputed-or-typed columns also get the shadow triggers of
+//! ruling T18b (`typed_triggers`).
 //!
 //! Every trigger reads the connection's mode from `temp.sync_mode` and clocks from the
 //! connection functions `sync_hlc_tick()` / `sync_hlc_now()` that `capture::install` registers.
@@ -215,6 +216,74 @@ fn table_triggers(conn: &Connection, spec: &TableSpec, device: &str) -> Result<V
         table.queue(&old_key, LOCAL),
     ));
 
+    out.extend(typed_triggers(spec, &pk)?);
+    Ok(out)
+}
+
+/// The shadow triggers of the recomputed-or-typed columns (ruling T18b). Such a column's typed
+/// value is its last-writer-wins value: what a captured local write (made without source rows)
+/// or a merge wrote. While source rows exist the stored value is computed instead, and the typed
+/// one waits in `sync_typed` (`typed`, with `assigned` the value computed over it), which the
+/// journal sends in place of the stored value. One trigger per column, in every mode:
+///
+/// - a recomputation (local or repair mode, source rows exist) that changes the value records
+///   the typed value it overwrites — the entry's `typed` while the old value is still the one
+///   assigned, else the old value itself — against the new one;
+/// - a merge write, or any write without source rows (a captured typed write, or the restore of
+///   the typed value when the last source went), leaves the stored value typed: no entry;
+/// - an entry whose typed and assigned values are equal is dropped.
+///
+/// One more trigger forgets the entries of a deleted row.
+fn typed_triggers(spec: &TableSpec, pk: &[String]) -> Result<Vec<String>> {
+    if spec.recomputed_or_typed.is_empty() {
+        return Ok(Vec::new());
+    }
+    let t = spec.name;
+    let [id] = pk else {
+        return Err(AppError::Internal(format!(
+            "sync capture: {t} has recomputed-or-typed columns but no single key"
+        )));
+    };
+    let mut out = Vec::new();
+    let mut all = Vec::new();
+    for (columns, source) in spec.recomputed_or_typed {
+        let sources = format!(
+            "EXISTS (SELECT 1 FROM main.{} WHERE {} = NEW.{id})",
+            source.table, source.fk
+        );
+        for column in *columns {
+            all.push(text(column));
+            let entry = format!(
+                "FROM sync_typed s WHERE s.tbl = {} AND s.pk = NEW.{id} AND s.col = {}",
+                text(t),
+                text(column)
+            );
+            out.push(format!(
+                "CREATE TEMP TRIGGER sync_{t}_typed_{column} AFTER UPDATE OF \"{column}\" ON main.{t} \
+                 BEGIN \
+                 INSERT INTO sync_typed (tbl, pk, col, typed, assigned) \
+                   SELECT {tbl}, NEW.{id}, {col}, \
+                     CASE WHEN EXISTS (SELECT 1 {entry} AND s.assigned IS OLD.\"{column}\") \
+                       THEN (SELECT s.typed {entry}) ELSE OLD.\"{column}\" END, \
+                     NEW.\"{column}\" \
+                   WHERE {MODE} IN ('local', 'repair') AND OLD.\"{column}\" IS NOT NEW.\"{column}\" \
+                     AND {sources} \
+                   ON CONFLICT(tbl, pk, col) DO UPDATE SET typed = excluded.typed, \
+                     assigned = excluded.assigned; \
+                 DELETE FROM sync_typed WHERE tbl = {tbl} AND pk = NEW.{id} AND col = {col} \
+                   AND (typed IS assigned OR {MODE} = 'merge' OR NOT {sources}); \
+                 END;",
+                tbl = text(t),
+                col = text(column),
+            ));
+        }
+    }
+    out.push(format!(
+        "CREATE TEMP TRIGGER sync_{t}_typed_del AFTER DELETE ON main.{t} BEGIN \
+         DELETE FROM sync_typed WHERE tbl = {} AND pk = OLD.{id} AND col IN ({}); END;",
+        text(t),
+        all.join(", ")
+    ));
     Ok(out)
 }
 

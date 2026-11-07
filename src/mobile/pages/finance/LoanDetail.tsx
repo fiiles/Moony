@@ -11,6 +11,7 @@ import type { ExtraPaymentMode } from '@/utils/loan-trajectory';
 import type { LoanRow } from '@/utils/loans';
 import { Button } from '@/components/ui/button';
 import { LoanEventDialog } from '@/components/loans/LoanEventDialog';
+import { MissingOrFailed } from '@/mobile/components/LoadError';
 import { LoanAlerts } from '@/mobile/components/loan/LoanAlerts';
 import { LoanEvents } from '@/mobile/components/loan/LoanEvents';
 import { LoanHeroCard } from '@/mobile/components/loan/LoanHeroCard';
@@ -139,7 +140,7 @@ function LoanDetailPage({ id }: { id: string | undefined }) {
       ) : loading ? (
         <LoanSkeleton />
       ) : (
-        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">{tl('detail.notFound')}</p>
+        <MissingOrFailed>{tl('detail.notFound')}</MissingOrFailed>
       )}
 
       {view && (

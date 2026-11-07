@@ -18,11 +18,17 @@ export function useLoans(): {
   loans: LoanRow['loan'][];
   rows: LoanRow[];
   isLoading: boolean;
+  /** The list could not be read (the phone tells that from having no loans). */
+  isError: boolean;
   metrics: LoanMetrics;
   today: number;
   convert: ConvertFn;
 } {
-  const { data: loans = [], isLoading } = useQuery({
+  const {
+    data: loans = [],
+    isLoading,
+    isError,
+  } = useQuery({
     queryKey: ['loans'],
     queryFn: () => loansApi.getAll(),
     refetchOnMount: 'always',
@@ -34,7 +40,7 @@ export function useLoans(): {
     [loans, today, convert]
   );
   const metrics = useMemo(() => loanMetrics(rows, today), [rows, today]);
-  return { loans, rows, isLoading, metrics, today, convert };
+  return { loans, rows, isLoading, isError, metrics, today, convert };
 }
 
 /** Repayment schedule and totals of one loan as of today (loan detail page). */

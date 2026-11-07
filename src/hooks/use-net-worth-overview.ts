@@ -50,7 +50,11 @@ export function useNetWorthOverview(period: ChartPeriod) {
     data: portfolioMetrics,
     isLoading: metricsLoading,
     isFetching: metricsFetching,
+    isError: metricsFailed,
   } = usePortfolioMetrics();
+  // The totals could not be read and none were before: neither the numbers nor the empty state
+  // can be shown (the phone says so, with a retry)
+  const metricsError = metricsFailed && portfolioMetrics === undefined;
 
   // Everything below is in the report currency the backend valued it in (ADR 0011)
   const reportCurrency = portfolioMetrics?.currency ?? currencyCode;
@@ -229,6 +233,7 @@ export function useNetWorthOverview(period: ChartPeriod) {
     unknown,
     isCheckingPortfolio,
     isEmptyPortfolio,
+    metricsError,
     oldest,
     shortHistoryBase,
     hasHistory,

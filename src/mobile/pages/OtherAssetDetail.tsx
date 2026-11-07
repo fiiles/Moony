@@ -8,6 +8,7 @@ import { useFormat } from '@/lib/use-format';
 import type { OtherAssetRow } from '@/utils/other-assets';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
 import { Button } from '@/components/ui/button';
+import { MissingOrFailed } from '@/mobile/components/LoadError';
 import { ScaledChartLegend } from '@/mobile/components/Scaled';
 import { BuyOtherAssetModal } from '@/components/other-assets/BuyOtherAssetModal';
 import { SellOtherAssetModal } from '@/components/other-assets/SellOtherAssetModal';
@@ -198,9 +199,7 @@ export default function OtherAssetDetail() {
         // The outline of a class page is the detail's too: the hero, the stats and a few rows
         <ClassSkeleton />
       ) : (
-        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">
-          {t('wealth.otherAssets.notFound')}
-        </p>
+        <MissingOrFailed>{t('wealth.otherAssets.notFound')}</MissingOrFailed>
       )}
     </Screen>
   );

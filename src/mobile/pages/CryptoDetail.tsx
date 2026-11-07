@@ -8,6 +8,7 @@ import { useFormat } from '@/lib/use-format';
 import { monthsBetween } from '@/utils/duration';
 import type { ChartPeriod } from '@/utils/period';
 import { amountOf, type CryptoRow } from '@/utils/positions';
+import { MissingOrFailed } from '@/mobile/components/LoadError';
 import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { BuyCryptoModal } from '@/components/crypto/BuyCryptoModal';
 import { SellCryptoModal } from '@/components/crypto/SellCryptoModal';
@@ -168,7 +169,7 @@ export default function CryptoDetail() {
         // The outline of a class page is the detail's too: the hero, the stats and a few rows
         <ClassSkeleton />
       ) : (
-        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">{tcr('detail.notFound')}</p>
+        <MissingOrFailed>{tcr('detail.notFound')}</MissingOrFailed>
       )}
     </Screen>
   );

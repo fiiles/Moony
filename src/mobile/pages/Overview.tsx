@@ -24,6 +24,7 @@ import { splitMilestones } from '@/utils/milestones';
 import { CHART_PERIODS, type ChartPeriod } from '@/utils/period';
 import { Button } from '@/components/ui/button';
 import { ConvertedMoney } from '@/components/common/ConvertedMoney';
+import { LoadError } from '@/mobile/components/LoadError';
 import { ScaledConversionNote, ScaledEmptyState } from '@/mobile/components/Scaled';
 import { AgendaRow } from '@/mobile/components/AgendaRow';
 import { AllocationRing } from '@/mobile/components/AllocationRing';
@@ -161,6 +162,9 @@ export default function Overview() {
       <UpkeepCard />
       {overview.isCheckingPortfolio ? (
         <OverviewSkeleton />
+      ) : overview.metricsError ? (
+        // A failed load is neither a new profile nor a net worth of 0 (audit C6)
+        <LoadError message={t('loadError.overview')} />
       ) : overview.isEmptyPortfolio ? (
         <EmptyOverview />
       ) : (

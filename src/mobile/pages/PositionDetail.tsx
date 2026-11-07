@@ -13,6 +13,7 @@ import { useStockDividendMutations } from '@/hooks/use-stock-dividend-mutations'
 import { useInvestmentTransactionMutations } from '@/hooks/use-investment-mutations';
 import type { ChartPeriod } from '@/utils/period';
 import { amountOf, type StockRow } from '@/utils/positions';
+import { MissingOrFailed } from '@/mobile/components/LoadError';
 import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { BuyInvestmentModal } from '@/components/stocks/BuyInvestmentModal';
 import { EditTransactionModal } from '@/components/stocks/EditTransactionModal';
@@ -217,7 +218,7 @@ export default function PositionDetail() {
       ) : data.isLoading ? (
         <PositionSkeleton />
       ) : (
-        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">{ts('detail.notFound')}</p>
+        <MissingOrFailed>{ts('detail.notFound')}</MissingOrFailed>
       )}
     </Screen>
   );

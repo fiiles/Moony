@@ -32,6 +32,13 @@ export interface Finance {
   convert: ConvertFn;
   /** The first load is not complete yet (a skeleton, not an empty state); later refetches do not set it. */
   isLoading: boolean;
+  /**
+   * The accounts could not be read: the page says so with a retry rather than "no accounts yet"
+   * (audit C6).
+   */
+  isError: boolean;
+  /** The loans, the policies or the queue could not be read: said above what could be. */
+  partError: boolean;
 }
 
 /**
@@ -44,7 +51,7 @@ export interface Finance {
  * do not trickle in and push it down.
  */
 export function useFinance(): Finance {
-  const { accounts, isLoading: accountsLoading } = useBankAccounts();
+  const { accounts, isLoading: accountsLoading, isError: accountsError } = useBankAccounts();
   const { currencyCode, fxReady } = useCurrency();
   const convert = useMainConvert();
   const activity = useBankAccountActivity(accounts);
@@ -95,5 +102,7 @@ export function useFinance(): Finance {
     fxReady,
     convert,
     isLoading,
+    isError: accountsError,
+    partError: loans.isError || insurance.isError || queueQuery.isError,
   };
 }

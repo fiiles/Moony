@@ -18,6 +18,7 @@ import { useFormat } from '@/lib/use-format';
 import { CHART_PERIODS, type ChartPeriod } from '@/utils/period';
 import { amountOf } from '@/utils/positions';
 import { Button } from '@/components/ui/button';
+import { LoadError } from '@/mobile/components/LoadError';
 import { ScaledConversionNote, ScaledEmptyState } from '@/mobile/components/Scaled';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
 import { RowBadge } from '@/mobile/components/RowBadge';
@@ -121,6 +122,9 @@ export default function Wealth() {
     >
       {isLoading ? (
         <WealthSkeleton />
+      ) : overview.metricsError ? (
+        // A failed load is not "no assets yet" (audit C6)
+        <LoadError message={t('loadError.wealth')} />
       ) : overview.isEmptyPortfolio ? (
         <EmptyWealth />
       ) : (

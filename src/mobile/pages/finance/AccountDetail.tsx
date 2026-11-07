@@ -34,6 +34,7 @@ import type { EventCluster } from '@/utils/chart-scale';
 import { completeAccountIdentifier } from '@/utils/iban-utils';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
 import { BankAccountFormDialog } from '@/components/bank-accounts/BankAccountFormDialog';
+import { MissingOrFailed } from '@/mobile/components/LoadError';
 import { ScaledEmptyState } from '@/mobile/components/Scaled';
 import { Button } from '@/components/ui/button';
 import {
@@ -289,7 +290,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
       {detail.isLoading ? (
         <DetailSkeleton />
       ) : !account ? (
-        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">{tb('detail.notFound')}</p>
+        <MissingOrFailed>{tb('detail.notFound')}</MissingOrFailed>
       ) : (
         <>
           {/* "Fio · CZK · 2100123456/2010": the nav bar has no room for a second line */}

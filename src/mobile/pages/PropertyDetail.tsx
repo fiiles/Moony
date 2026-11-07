@@ -7,6 +7,7 @@ import type { RealEstate } from '@shared/schema';
 import { useCurrency } from '@/lib/currency';
 import type { PropertyRow, YearlyBalance } from '@/utils/real-estate';
 import { Button } from '@/components/ui/button';
+import { MissingOrFailed } from '@/mobile/components/LoadError';
 import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { DocumentsSection } from '@/mobile/components/documents/DocumentsSection';
 import { PropertyCosts } from '@/mobile/components/property/PropertyCosts';
@@ -110,7 +111,7 @@ function PropertyDetailPage({ id }: { id: string | undefined }) {
       ) : data.isLoading ? (
         <PropertySkeleton />
       ) : (
-        <p className="mx-0.5 mt-8 text-center text-m-body text-ink-3">{t('property.notFound')}</p>
+        <MissingOrFailed>{t('property.notFound')}</MissingOrFailed>
       )}
 
       {view && (

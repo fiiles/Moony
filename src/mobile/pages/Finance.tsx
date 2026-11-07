@@ -27,6 +27,7 @@ import { useFormat } from '@/lib/use-format';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
 import { BankAccountFormDialog } from '@/components/bank-accounts/BankAccountFormDialog';
+import { LoadError } from '@/mobile/components/LoadError';
 import { ScaledConversionNote, ScaledEmptyState } from '@/mobile/components/Scaled';
 import { InsuranceFormDialog } from '@/components/insurance/InsuranceFormDialog';
 import { LoanFormDialog } from '@/components/loans/LoanFormDialog';
@@ -116,6 +117,9 @@ export default function Finance() {
   const showLoans = user?.menuPreferences?.loans ?? true;
   const showInsurance = user?.menuPreferences?.insurance ?? true;
   const { accounts, totals, loans, insurance, mainCurrency, fxReady, isLoading } = finance;
+  // Nothing to show is a failed load, not an empty Finance: without the accounts, or with nothing
+  // else read (audit C6). A part that failed beside accounts is said above them.
+  const blocked = finance.isError || (finance.partError && accounts.length === 0);
 
   // How the tab was left is kept for the session (a visit to an account remounts it); the add
   // dialog is not, so it does not reopen on return
@@ -192,6 +196,7 @@ export default function Finance() {
       : t(`overview.change.${period}`);
   const isEmpty =
     !isLoading &&
+    !blocked &&
     accounts.length === 0 &&
     (!showLoans || loans.rows.length === 0) &&
     (!showInsurance || insurance.rows.length === 0);
@@ -282,6 +287,9 @@ export default function Finance() {
     >
       {isLoading ? (
         <FinanceSkeleton />
+      ) : blocked ? (
+        // A failed load is not "no accounts yet" with an add button (audit C6)
+        <LoadError message={t('loadError.finance')} />
       ) : isEmpty ? (
         <ScaledEmptyState
           icon={<Landmark />}
@@ -300,6 +308,7 @@ export default function Finance() {
         />
       ) : (
         <>
+          {finance.partError && <LoadError message={t('loadError.finance')} />}
           {/* Amounts left out of the totals for want of a rate (never counted as 0 or 1:1) */}
           <ScaledConversionNote
             quality={{ missingCurrencies: missing }}

@@ -167,4 +167,38 @@ mod tests {
             "replace these with a validation.* key (AppError::validation_with for values):\n{offenders:#?}"
         );
     }
+
+    /// Ruling P13: every `validation.sync*` key the backend can emit has an English translation
+    /// (`src/i18n/locales.test.ts` then holds the other nine locales to English).
+    #[test]
+    fn every_sync_validation_key_has_an_english_translation() {
+        let key = regex::Regex::new(r"validation\.(sync[A-Za-z]+)").expect("regex");
+        let manifest = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
+        let this_file = manifest.join("src").join("error.rs");
+        let mut files = Vec::new();
+        rust_files(&manifest.join("src"), &mut files);
+        let mut keys = std::collections::BTreeSet::new();
+        for file in files.into_iter().filter(|f| *f != this_file) {
+            let source = std::fs::read_to_string(&file).expect("read source");
+            keys.extend(key.captures_iter(&source).map(|c| c[1].to_string()));
+        }
+        assert!(
+            keys.contains("syncDeviceNameInvalid") && keys.contains("syncChangesetInvalid"),
+            "the scan finds the sync keys: {keys:?}"
+        );
+
+        let english: serde_json::Value = serde_json::from_str(
+            &std::fs::read_to_string(manifest.join("../src/i18n/locales/en/common.json"))
+                .expect("read en/common.json"),
+        )
+        .expect("en/common.json is JSON");
+        let missing: Vec<&String> = keys
+            .iter()
+            .filter(|k| !english["validation"][k.as_str()].is_string())
+            .collect();
+        assert!(
+            missing.is_empty(),
+            "add these to the validation block of every locale's common.json: {missing:?}"
+        );
+    }
 }

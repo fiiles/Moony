@@ -313,7 +313,13 @@
     "snoozeDaysInvalid": "Scegli un numero di giorni da 1 a 365.",
     "dividendGrossPositive": "L'importo lordo deve essere maggiore di zero",
     "dividendNoteTooLong": "Una nota può contenere al massimo 500 caratteri.",
-    "dividendFromYahoo": "I dividendi di {{ticker}} provengono da Yahoo Finance; non si può aggiungere un dividendo manuale."
+    "dividendFromYahoo": "I dividendi di {{ticker}} provengono da Yahoo Finance; non si può aggiungere un dividendo manuale.",
+    "syncChangesetInvalid": "Le modifiche ricevute da un altro dispositivo sono danneggiate e non è stato possibile leggerle.",
+    "syncSnapshotBelowBarrier": "La copia sincronizzata dei tuoi dati è precedente all'ultimo aggiornamento di Moony e non può essere usata. Un dispositivo con la versione più recente deve caricarne una nuova.",
+    "syncSnapshotInvalid": "La copia sincronizzata dei tuoi dati è danneggiata e non è stato possibile ripristinarla.",
+    "syncSnapshotNewerSchema": "La copia sincronizzata dei tuoi dati proviene da una versione più recente di Moony. Aggiorna prima Moony su questo dispositivo.",
+    "syncSnapshotPending": "Su questo dispositivo ci sono ancora modifiche in attesa di invio. Riprova dopo la prossima sincronizzazione.",
+    "syncDeviceNameInvalid": "Il nome del dispositivo deve avere da 1 a 60 caratteri."
   },
   "auth": {
     "wrongPassword": "La password inserita non è corretta. Riprova.",

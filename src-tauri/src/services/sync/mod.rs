@@ -1,16 +1,19 @@
 //! Device sync engine (phase 1): the registry, the hybrid logical clock, `sync_state` and the
 //! trigger capture installed at unlock, the journal that turns the outbox into changesets, and
 //! the merge of other devices' changes with the repairs after it, and the chain bookkeeping that
-//! judges every pulled envelope, and the snapshots a joining or lagging device restores.
+//! judges every pulled envelope, and the snapshots a joining or lagging device restores. Phase 2
+//! adds the vault's credentials and this device's key pair and `sync_devices` row.
 
 pub mod capture;
 pub mod chain;
 pub mod changeset;
 #[cfg(test)]
 mod convergence;
+pub mod devices;
 pub mod envelope;
 pub mod hlc;
 pub mod journal;
+pub mod keys;
 pub mod merge;
 pub mod natural_id;
 pub mod registry;

@@ -313,7 +313,13 @@
     "snoozeDaysInvalid": "Velg et antall dager fra 1 til 365.",
     "dividendGrossPositive": "Bruttobeløpet må være større enn null",
     "dividendNoteTooLong": "Et notat kan ha høyst 500 tegn.",
-    "dividendFromYahoo": "Utbyttene for {{ticker}} kommer fra Yahoo Finance; et manuelt utbytte kan ikke legges til."
+    "dividendFromYahoo": "Utbyttene for {{ticker}} kommer fra Yahoo Finance; et manuelt utbytte kan ikke legges til.",
+    "syncChangesetInvalid": "Endringer mottatt fra en annen enhet er skadet og kunne ikke leses.",
+    "syncSnapshotBelowBarrier": "Den synkroniserte kopien av dataene dine er eldre enn siste Moony-oppdatering og kan ikke brukes. En enhet med nyeste versjon må laste opp en ny.",
+    "syncSnapshotInvalid": "Den synkroniserte kopien av dataene dine er skadet og kunne ikke gjenopprettes.",
+    "syncSnapshotNewerSchema": "Den synkroniserte kopien av dataene dine kommer fra en nyere versjon av Moony. Oppdater Moony på denne enheten først.",
+    "syncSnapshotPending": "Denne enheten har fortsatt endringer som venter på å bli sendt. Prøv igjen etter neste synkronisering.",
+    "syncDeviceNameInvalid": "Et enhetsnavn må ha 1 til 60 tegn."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

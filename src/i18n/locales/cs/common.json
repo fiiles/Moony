@@ -313,7 +313,13 @@
     "snoozeDaysInvalid": "Zadejte počet dnů od 1 do 365.",
     "dividendGrossPositive": "Hrubá částka musí být větší než nula",
     "dividendNoteTooLong": "Poznámka může mít nejvýše 500 znaků.",
-    "dividendFromYahoo": "Dividendy {{ticker}} se stahují z Yahoo Finance; ruční dividendu nelze přidat."
+    "dividendFromYahoo": "Dividendy {{ticker}} se stahují z Yahoo Finance; ruční dividendu nelze přidat.",
+    "syncChangesetInvalid": "Změny přijaté z jiného zařízení jsou poškozené a nelze je načíst.",
+    "syncSnapshotBelowBarrier": "Synchronizovaná kopie vašich dat vznikla před poslední aktualizací Moony a nelze ji použít. Zařízení s nejnovější verzí musí nahrát novou.",
+    "syncSnapshotInvalid": "Synchronizovaná kopie vašich dat je poškozená a nelze ji obnovit.",
+    "syncSnapshotNewerSchema": "Synchronizovaná kopie vašich dat pochází z novější verze Moony. Nejdříve na tomto zařízení aktualizujte Moony.",
+    "syncSnapshotPending": "Na tomto zařízení ještě čekají změny na odeslání. Zkuste to znovu po další synchronizaci.",
+    "syncDeviceNameInvalid": "Název zařízení musí mít 1 až 60 znaků."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

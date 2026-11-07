@@ -313,7 +313,13 @@
     "snoozeDaysInvalid": "Choose a number of days from 1 to 365.",
     "dividendGrossPositive": "The gross amount must be greater than zero",
     "dividendNoteTooLong": "A note can have at most 500 characters.",
-    "dividendFromYahoo": "Dividends of {{ticker}} come from Yahoo Finance; a manual dividend cannot be added."
+    "dividendFromYahoo": "Dividends of {{ticker}} come from Yahoo Finance; a manual dividend cannot be added.",
+    "syncChangesetInvalid": "Changes received from another device are damaged and could not be read.",
+    "syncSnapshotBelowBarrier": "The synced copy of your data was made before the latest Moony update and cannot be used. A device with the latest version needs to upload a new one.",
+    "syncSnapshotInvalid": "The synced copy of your data is damaged and could not be restored.",
+    "syncSnapshotNewerSchema": "The synced copy of your data comes from a newer version of Moony. Update Moony on this device first.",
+    "syncSnapshotPending": "This device still has changes waiting to be sent. Try again after the next sync.",
+    "syncDeviceNameInvalid": "A device name must have 1 to 60 characters."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

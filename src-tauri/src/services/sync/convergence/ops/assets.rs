@@ -1,18 +1,23 @@
-//! Asset operations: loans and their events, real estate, valuations, other assets, bonds.
+//! Asset operations: loans and their events, real estate with its one-time costs and
+//! valuations, insurance policies, other assets and their trades, bonds.
+
+use std::path::Path;
 
 use rand::rngs::StdRng;
 use rand::RngExt;
 use rusqlite::Connection;
 
-use super::{currency, day, money, no_target, now, one_of, pick, run, OpFn, Outcome};
+use super::{by_content, currency, day, money, no_target, now, one_of, pick, run, OpFn, Res};
+use crate::error::Result;
 use crate::models::bonds::InsertBond;
+use crate::models::insurance::InsertInsurancePolicy;
 use crate::models::loan_events::InsertLoanEvent;
 use crate::models::loans::InsertLoan;
 use crate::models::other_assets::{InsertOtherAsset, InsertOtherAssetTransaction};
-use crate::models::real_estate::InsertRealEstate;
+use crate::models::real_estate::{InsertRealEstate, InsertRealEstateOneTimeCost};
 use crate::models::valuations::InsertAssetValuation;
 use crate::services::valuations::{self, ValuationKind};
-use crate::services::{bonds, loan_events, loans, other_assets, real_estate};
+use crate::services::{bonds, insurance, loan_events, loans, other_assets, real_estate};
 
 pub(super) const OPS: &[(&str, OpFn)] = &[
     ("loans::create_loan", create_loan),
@@ -21,8 +26,14 @@ pub(super) const OPS: &[(&str, OpFn)] = &[
     ("loan_events::delete_event", delete_event),
     ("real_estate::create_property", create_property),
     ("real_estate::update_property", update_property),
+    ("real_estate::delete_property", delete_property),
+    ("real_estate::create_one_time_cost", create_cost),
+    ("real_estate::update_one_time_cost", update_cost),
     ("valuations::add_valuation", add_valuation),
     ("valuations::delete_valuation", delete_valuation),
+    ("insurance::create_policy", create_policy),
+    ("insurance::update_policy", update_policy),
+    ("insurance::delete_policy", delete_policy),
     ("other_assets::create_asset", create_asset),
     ("other_assets::create_asset_transaction", asset_trade),
     ("bonds::create_bond", create_bond),
@@ -30,10 +41,40 @@ pub(super) const OPS: &[(&str, OpFn)] = &[
     ("bonds::delete_bond", delete_bond),
 ];
 
-const LOANS: &str = "SELECT id FROM loans ORDER BY rowid";
-const PROPERTIES: &str = "SELECT id FROM real_estate ORDER BY rowid";
-const OTHER_ASSETS: &str = "SELECT id FROM other_assets ORDER BY rowid";
-const BONDS: &str = "SELECT id FROM bonds ORDER BY rowid";
+fn loans() -> String {
+    by_content("loans", "t.id", "", "t.name, t.principal, t.currency")
+}
+
+fn properties() -> String {
+    by_content(
+        "real_estate",
+        "t.id",
+        "",
+        "t.name, t.purchase_date, t.purchase_price",
+    )
+}
+
+fn other_assets() -> String {
+    by_content("other_assets", "t.id", "", "t.name, t.currency")
+}
+
+fn bonds() -> String {
+    by_content(
+        "bonds",
+        "t.id",
+        "",
+        "t.name, t.coupon_value, t.purchase_date",
+    )
+}
+
+fn policies() -> String {
+    by_content(
+        "insurance_policies",
+        "t.id",
+        "",
+        "t.policy_name, t.provider, t.start_date",
+    )
+}
 
 fn loan_data(rng: &mut StdRng) -> InsertLoan {
     InsertLoan {
@@ -54,7 +95,7 @@ fn loan_data(rng: &mut StdRng) -> InsertLoan {
     }
 }
 
-fn create_loan(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
+fn create_loan(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
     let data = loan_data(rng);
     run(format!("{:?} {}", data.name, data.principal), || {
         data.validate()?;
@@ -62,8 +103,8 @@ fn create_loan(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     })
 }
 
-fn update_loan(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some(id) = pick(conn, rng, LOANS) else {
+fn update_loan(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some(id) = pick(conn, rng, &loans())? else {
         return no_target();
     };
     let data = loan_data(rng);
@@ -76,8 +117,8 @@ fn update_loan(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     )
 }
 
-fn add_event(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some(loan) = pick(conn, rng, LOANS) else {
+fn add_event(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some(loan) = pick(conn, rng, &loans())? else {
         return no_target();
     };
     let kind = one_of(rng, &["extra_payment", "rate_change", "balance_check"]);
@@ -98,8 +139,14 @@ fn add_event(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     })
 }
 
-fn delete_event(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some(id) = pick(conn, rng, "SELECT id FROM loan_events ORDER BY rowid") else {
+fn delete_event(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let sql = by_content(
+        "loan_events",
+        "t.id",
+        "",
+        "t.event_day, t.kind, t.amount, t.rate",
+    );
+    let Some(id) = pick(conn, rng, &sql)? else {
         return no_target();
     };
     run(id.clone(), || {
@@ -127,7 +174,7 @@ fn property_data(rng: &mut StdRng) -> InsertRealEstate {
     }
 }
 
-fn create_property(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
+fn create_property(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
     let data = property_data(rng);
     run(format!("{:?} {:?}", data.name, data.market_price), || {
         data.validate()?;
@@ -135,8 +182,8 @@ fn create_property(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     })
 }
 
-fn update_property(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some(id) = pick(conn, rng, PROPERTIES) else {
+fn update_property(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some(id) = pick(conn, rng, &properties())? else {
         return no_target();
     };
     let data = property_data(rng);
@@ -149,16 +196,65 @@ fn update_property(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     )
 }
 
-fn valuation_target(conn: &Connection, rng: &mut StdRng) -> Option<(ValuationKind, String)> {
-    if rng.random_bool(0.5) {
-        pick(conn, rng, PROPERTIES).map(|id| (ValuationKind::RealEstate, id))
-    } else {
-        pick(conn, rng, OTHER_ASSETS).map(|id| (ValuationKind::OtherAsset, id))
+/// Deleting a property takes its costs, valuations and links with it.
+fn delete_property(conn: &mut Connection, rng: &mut StdRng, dir: &Path) -> Res {
+    let Some(id) = pick(conn, rng, &properties())? else {
+        return no_target();
+    };
+    run(id.clone(), || real_estate::delete_property(conn, dir, &id))
+}
+
+fn cost_data(rng: &mut StdRng, property: &str) -> InsertRealEstateOneTimeCost {
+    InsertRealEstateOneTimeCost {
+        real_estate_id: property.to_string(),
+        name: one_of(rng, &["Roof", "Kitchen"]).to_string(),
+        description: None,
+        amount: format!("{}000", rng.random_range(5..90)),
+        currency: Some(currency(rng).to_string()),
+        date: day(rng),
     }
 }
 
-fn add_valuation(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some((kind, asset)) = valuation_target(conn, rng) else {
+fn create_cost(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some(property) = pick(conn, rng, &properties())? else {
+        return no_target();
+    };
+    let data = cost_data(rng, &property);
+    run(
+        format!("{property} {:?} {}", data.name, data.amount),
+        || real_estate::create_one_time_cost(conn, data.clone()).map(drop),
+    )
+}
+
+fn update_cost(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let sql = by_content(
+        "real_estate_one_time_costs",
+        "t.id, t.real_estate_id",
+        "",
+        "t.date, t.name, t.amount",
+    );
+    let Some((id, property)) = super::pick2(conn, rng, &sql)? else {
+        return no_target();
+    };
+    let data = cost_data(rng, &property);
+    run(format!("{id} -> {:?} {}", data.name, data.amount), || {
+        real_estate::update_one_time_cost(conn, &id, data.clone()).map(drop)
+    })
+}
+
+fn valuation_target(
+    conn: &Connection,
+    rng: &mut StdRng,
+) -> Result<Option<(ValuationKind, String)>> {
+    Ok(if rng.random_bool(0.5) {
+        pick(conn, rng, &properties())?.map(|id| (ValuationKind::RealEstate, id))
+    } else {
+        pick(conn, rng, &other_assets())?.map(|id| (ValuationKind::OtherAsset, id))
+    })
+}
+
+fn add_valuation(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some((kind, asset)) = valuation_target(conn, rng)? else {
         return no_target();
     };
     let data = InsertAssetValuation {
@@ -177,20 +273,21 @@ fn add_valuation(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     )
 }
 
-fn delete_valuation(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
+fn delete_valuation(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let content = "t.valued_at, t.value, t.currency";
     let target = if rng.random_bool(0.5) {
         pick(
             conn,
             rng,
-            "SELECT id FROM real_estate_valuations ORDER BY rowid",
-        )
+            &by_content("real_estate_valuations", "t.id", "", content),
+        )?
         .map(|id| (ValuationKind::RealEstate, id))
     } else {
         pick(
             conn,
             rng,
-            "SELECT id FROM other_asset_valuations ORDER BY rowid",
-        )
+            &by_content("other_asset_valuations", "t.id", "", content),
+        )?
         .map(|id| (ValuationKind::OtherAsset, id))
     };
     let Some((kind, id)) = target else {
@@ -199,6 +296,54 @@ fn delete_valuation(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     run(format!("{kind:?} {id}"), || {
         valuations::delete_valuation(conn, kind, &id).map(drop)
     })
+}
+
+fn policy_data(rng: &mut StdRng) -> InsertInsurancePolicy {
+    InsertInsurancePolicy {
+        policy_type: one_of(rng, &["life", "property", "travel"]).to_string(),
+        provider: one_of(rng, &["Allianz", "Kooperativa"]).to_string(),
+        policy_name: one_of(rng, &["Home", "Life", "Trip"]).to_string(),
+        policy_number: None,
+        start_date: day(rng),
+        end_date: rng.random_bool(0.5).then(|| day(rng) + 400 * super::DAY),
+        payment_frequency: one_of(rng, &["monthly", "annually"]).to_string(),
+        one_time_payment: None,
+        one_time_payment_currency: None,
+        regular_payment: Some(format!("{}00", rng.random_range(1..30))),
+        regular_payment_currency: Some(currency(rng).to_string()),
+        limits: None,
+        notes: None,
+        status: None,
+    }
+}
+
+fn create_policy(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let data = policy_data(rng);
+    run(
+        format!(
+            "{:?} {:?} {}",
+            data.policy_name, data.provider, data.start_date
+        ),
+        || insurance::create_policy(conn, &data).map(drop),
+    )
+}
+
+fn update_policy(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some(id) = pick(conn, rng, &policies())? else {
+        return no_target();
+    };
+    let data = policy_data(rng);
+    run(
+        format!("{id} -> {:?} {:?}", data.policy_name, data.regular_payment),
+        || insurance::update_policy(conn, &id, &data).map(drop),
+    )
+}
+
+fn delete_policy(conn: &mut Connection, rng: &mut StdRng, dir: &Path) -> Res {
+    let Some(id) = pick(conn, rng, &policies())? else {
+        return no_target();
+    };
+    run(id.clone(), || insurance::delete_policy(conn, dir, &id))
 }
 
 fn asset_trade_data(
@@ -216,7 +361,7 @@ fn asset_trade_data(
     }
 }
 
-fn create_asset(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
+fn create_asset(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
     let data = InsertOtherAsset {
         name: one_of(rng, &["Gold", "Watch", "Wine"]).to_string(),
         quantity: Some(rng.random_range(1..5).to_string()),
@@ -241,8 +386,8 @@ fn create_asset(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     )
 }
 
-fn asset_trade(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some(asset) = pick(conn, rng, OTHER_ASSETS) else {
+fn asset_trade(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some(asset) = pick(conn, rng, &other_assets())? else {
         return no_target();
     };
     let side = one_of(rng, &["buy", "buy", "sell"]);
@@ -269,7 +414,7 @@ fn bond_data(rng: &mut StdRng) -> InsertBond {
     }
 }
 
-fn create_bond(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
+fn create_bond(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
     let data = bond_data(rng);
     run(format!("{:?} {}", data.name, data.coupon_value), || {
         data.validate()?;
@@ -277,8 +422,8 @@ fn create_bond(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     })
 }
 
-fn update_bond(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some(id) = pick(conn, rng, BONDS) else {
+fn update_bond(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some(id) = pick(conn, rng, &bonds())? else {
         return no_target();
     };
     let data = bond_data(rng);
@@ -291,8 +436,8 @@ fn update_bond(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     )
 }
 
-fn delete_bond(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some(id) = pick(conn, rng, BONDS) else {
+fn delete_bond(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some(id) = pick(conn, rng, &bonds())? else {
         return no_target();
     };
     run(id.clone(), || bonds::delete_bond(conn, &id))

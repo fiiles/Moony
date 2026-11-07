@@ -8,7 +8,9 @@ use rusqlite::Connection;
 
 use super::journal::Reader;
 use super::registry::keys::{foreign_keys, OnDelete, OrphanRule};
-use super::registry::{column_class, schema, synced_tables, ColumnClass, APP_CONFIG_SYNCED_KEYS};
+use super::registry::{
+    column_class, schema, synced_tables, tables, ColumnClass, TableClass, APP_CONFIG_SYNCED_KEYS,
+};
 use super::repair::shadowed_columns;
 
 /// In-memory connection with foreign keys on and the real migrations applied.
@@ -24,15 +26,22 @@ pub(crate) fn migrated() -> Connection {
 pub(crate) type ClockRow = (String, String, String, i64, Vec<u8>);
 
 /// Every synced row of every synced table (Local columns left out, `app_config` limited to the
-/// keys that sync), in a stable order: what must be identical on every device.
+/// keys that sync), then every Derived table's rows without their device-local key and stamps
+/// (`id`, `created_at`, `updated_at`: a rebuild mints them), in a stable order: what must be
+/// identical on every device.
 pub(crate) fn dump(conn: &Connection) -> Vec<(String, Vec<String>)> {
     let mut out = Vec::new();
-    for spec in synced_tables() {
+    let derived = tables().iter().filter(|t| t.class == TableClass::Derived);
+    for spec in synced_tables().chain(derived) {
         let columns: Vec<String> = schema::columns(conn, spec.name)
             .expect("columns")
             .into_iter()
             .map(|c| c.name)
             .filter(|c| column_class(spec.name, c) != ColumnClass::Local)
+            .filter(|c| {
+                spec.class != TableClass::Derived
+                    || !["id", "created_at", "updated_at"].contains(&c.as_str())
+            })
             .collect();
         let list = columns
             .iter()
@@ -269,7 +278,14 @@ fn first_key_difference<T: Ord + Clone + std::fmt::Debug>(
         return None;
     }
     let (sa, sb): (BTreeSet<&T>, BTreeSet<&T>) = (ours.iter().collect(), theirs.iter().collect());
-    let first = sa.symmetric_difference(&sb).map(|t| key_of(t)).min()?;
+    let Some(first) = sa.symmetric_difference(&sb).map(|t| key_of(t)).min() else {
+        // The same entries, in another order or count.
+        return Some(format!(
+            "the same entries differ in order or count: device 0 has {} entries, the other {}",
+            ours.len(),
+            theirs.len()
+        ));
+    };
     let of = |list: &[T]| -> Vec<T> {
         list.iter()
             .filter(|t| key_of(t) == first)

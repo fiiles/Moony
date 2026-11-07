@@ -1,18 +1,24 @@
-//! Bank operations: accounts, payments, balance records, categories, learned payees.
+//! Bank operations: accounts, payments, balance records, statement imports and their batches,
+//! categories, learned payees and learned CSV formats, and the synced profile columns.
+
+use std::path::Path;
 
 use rand::rngs::StdRng;
 use rand::RngExt;
 use rusqlite::Connection;
 
-use super::{currency, day, money, no_target, one_of, pick, pick2, run, OpFn, Outcome};
+use super::{by_content, currency, day, money, no_target, one_of, pick, pick2, run, OpFn, Res};
 use crate::models::bank_accounts::{InsertBalanceRecord, InsertBankAccount};
 use crate::models::bank_transactions::{
     InsertBankTransaction, InsertTransactionCategory, UpdateTransactionCategory,
 };
 use crate::models::categorization::InsertScopedLearning;
+use crate::models::user::UpdateUserProfile;
 use crate::services::categorization::engine::CategorizationEngine;
 use crate::services::categorization::learn;
-use crate::services::{bank_accounts, categories};
+use crate::services::csv_import::types::{InsertLearnedCsvFormat, LearnedCsvMapping};
+use crate::services::csv_import::{self, learned, CsvImportConfig};
+use crate::services::{auth, bank_accounts, categories};
 
 pub(super) const OPS: &[(&str, OpFn)] = &[
     ("bank_accounts::create_account", create_account),
@@ -25,17 +31,37 @@ pub(super) const OPS: &[(&str, OpFn)] = &[
         "bank_accounts::delete_balance_record",
         delete_balance_record,
     ),
+    ("csv_import::import_transactions", import_statement),
+    ("csv_import::delete_import_batch", delete_import_batch),
+    ("csv_import::learned::save_format", learn_csv_format),
     ("categories::create_category", create_category),
     ("categories::update_category", update_category),
     ("categories::delete_category", delete_category),
     ("categorization::learn::learn_scoped", learn_scoped),
+    ("auth::apply_profile_update", update_profile),
 ];
 
 const ACCOUNT_NAMES: [&str; 4] = ["Main", "Savings", "Travel", "Joint"];
 const CATEGORY_NAMES: [&str; 6] = ["Food", "Travel", "Rent", "Fun", "Gifts", "Groceries"];
 const PAYEES: [&str; 4] = ["Albert", "Lidl", "Shell", "Landlord"];
-const ACCOUNTS: &str = "SELECT id FROM bank_accounts ORDER BY rowid";
-const CATEGORIES: &str = "SELECT id FROM transaction_categories ORDER BY rowid";
+
+fn accounts(select: &str) -> String {
+    by_content(
+        "bank_accounts",
+        select,
+        "",
+        "t.name, t.currency, t.account_type, t.interest_rate",
+    )
+}
+
+fn categories() -> String {
+    by_content(
+        "transaction_categories",
+        "t.id",
+        "",
+        "t.name, t.icon, t.color",
+    )
+}
 
 fn account_data(rng: &mut StdRng, currency: &str) -> InsertBankAccount {
     InsertBankAccount {
@@ -55,7 +81,7 @@ fn account_data(rng: &mut StdRng, currency: &str) -> InsertBankAccount {
     }
 }
 
-fn create_account(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
+fn create_account(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
     let account_currency = currency(rng);
     let data = account_data(rng, account_currency);
     run(format!("{:?} {:?}", data.name, data.currency), || {
@@ -64,8 +90,8 @@ fn create_account(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     })
 }
 
-fn update_account(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some(id) = pick(conn, rng, ACCOUNTS) else {
+fn update_account(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some(id) = pick(conn, rng, &accounts("t.id"))? else {
         return no_target();
     };
     let account_currency = currency(rng);
@@ -79,23 +105,19 @@ fn update_account(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     )
 }
 
-fn delete_account(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some(id) = pick(conn, rng, ACCOUNTS) else {
+fn delete_account(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some(id) = pick(conn, rng, &accounts("t.id"))? else {
         return no_target();
     };
     run(id.clone(), || bank_accounts::delete_account(conn, &id))
 }
 
-fn create_transaction(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some((account, account_currency)) = pick2(
-        conn,
-        rng,
-        "SELECT id, currency FROM bank_accounts ORDER BY rowid",
-    ) else {
+fn create_transaction(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some((account, account_currency)) = pick2(conn, rng, &accounts("t.id, t.currency"))? else {
         return no_target();
     };
     let category = if rng.random_bool(0.5) {
-        pick(conn, rng, CATEGORIES)
+        pick(conn, rng, &categories())?
     } else {
         None
     };
@@ -126,12 +148,21 @@ fn create_transaction(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) 
     )
 }
 
-fn set_category(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some(tx) = pick(conn, rng, "SELECT id FROM bank_transactions ORDER BY rowid") else {
+fn transactions() -> String {
+    by_content(
+        "bank_transactions",
+        "t.id",
+        "",
+        "t.booking_date, t.amount, t.tx_type, t.description",
+    )
+}
+
+fn set_category(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some(tx) = pick(conn, rng, &transactions())? else {
         return no_target();
     };
     let category = if rng.random_bool(0.8) {
-        pick(conn, rng, CATEGORIES)
+        pick(conn, rng, &categories())?
     } else {
         None
     };
@@ -140,12 +171,8 @@ fn set_category(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     })
 }
 
-fn record_balance(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some((account, account_currency)) = pick2(
-        conn,
-        rng,
-        "SELECT id, currency FROM bank_accounts ORDER BY rowid",
-    ) else {
+fn record_balance(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some((account, account_currency)) = pick2(conn, rng, &accounts("t.id, t.currency"))? else {
         return no_target();
     };
     let data = InsertBalanceRecord {
@@ -164,12 +191,14 @@ fn record_balance(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     )
 }
 
-fn delete_balance_record(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some(id) = pick(
-        conn,
-        rng,
-        "SELECT id FROM bank_balance_records ORDER BY rowid",
-    ) else {
+fn delete_balance_record(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let sql = by_content(
+        "bank_balance_records",
+        "t.id",
+        "",
+        "t.as_of, t.amount, t.currency",
+    );
+    let Some(id) = pick(conn, rng, &sql)? else {
         return no_target();
     };
     run(id.clone(), || {
@@ -177,9 +206,93 @@ fn delete_balance_record(conn: &Connection, rng: &mut StdRng) -> (String, Outcom
     })
 }
 
-fn create_category(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
+/// A small statement (one to three payments) imported through the real CSV path, which writes
+/// its `csv_import_batches` row.
+fn import_statement(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some(account) = pick(conn, rng, &accounts("t.id"))? else {
+        return no_target();
+    };
+    let mut content = String::from("Date,Amount,Description\n");
+    for _ in 0..rng.random_range(1..=3) {
+        let date = chrono::DateTime::from_timestamp(day(rng), 0)
+            .map(|d| d.format("%Y-%m-%d").to_string())
+            .unwrap_or_default();
+        let sign = one_of(rng, &["-", ""]);
+        content.push_str(&format!(
+            "{date},{sign}{},{}\n",
+            money(rng),
+            one_of(rng, &PAYEES)
+        ));
+    }
+    let file = format!("statement-{}.csv", rng.random_range(1..4));
+    let config = CsvImportConfig {
+        delimiter: ",".into(),
+        date_column: "Date".into(),
+        date_format: "%Y-%m-%d".into(),
+        amount_column: Some("Amount".into()),
+        description_columns: Some(vec!["Description".into()]),
+        ..CsvImportConfig::default()
+    };
+    run(format!("{account} {file} {content:?}"), || {
+        csv_import::import_transactions(conn, &account, &file, &content, &config, None).map(drop)
+    })
+}
+
+fn delete_import_batch(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let sql = by_content(
+        "csv_import_batches",
+        "t.id",
+        "",
+        "t.file_name, t.date_from, t.date_to, t.imported_count",
+    );
+    let Some(id) = pick(conn, rng, &sql)? else {
+        return no_target();
+    };
+    run(id.clone(), || {
+        csv_import::delete_import_batch(conn, &id).map(drop)
+    })
+}
+
+fn learn_csv_format(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let (name, headers) = one_of(
+        rng,
+        &[
+            ("Banka A", ["Datum", "Částka", "Poznámka"]),
+            ("Banka B", ["Datum", "Částka", "Popis"]),
+        ],
+    );
+    let data = InsertLearnedCsvFormat {
+        name: name.to_string(),
+        headers: headers.iter().map(|h| h.to_string()).collect(),
+        delimiter: ";".into(),
+        encoding: "UTF-8".into(),
+        header_row: 0,
+        mapping: LearnedCsvMapping {
+            date_column: "Datum".into(),
+            date_format: one_of(rng, &["%d.%m.%Y", "%Y-%m-%d"]).to_string(),
+            amount_column: Some("Částka".into()),
+            debit_column: None,
+            credit_column: None,
+            balance_column: None,
+            transaction_id_column: None,
+            description_columns: vec![headers[2].to_string()],
+            counterparty_column: None,
+            counterparty_iban_column: None,
+            counterparty_bank_code_column: None,
+            counterparty_country_column: None,
+            currency_column: None,
+            decimal_separator: ",".into(),
+        },
+        account_id: None,
+    };
+    run(format!("{name:?} {}", data.mapping.date_format), || {
+        learned::save_format(conn, &data).map(drop)
+    })
+}
+
+fn create_category(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
     let parent = if rng.random_bool(0.3) {
-        pick(conn, rng, CATEGORIES)
+        pick(conn, rng, &categories())?
     } else {
         None
     };
@@ -197,8 +310,8 @@ fn create_category(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     })
 }
 
-fn update_category(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some(id) = pick(conn, rng, CATEGORIES) else {
+fn update_category(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let Some(id) = pick(conn, rng, &categories())? else {
         return no_target();
     };
     let data = UpdateTransactionCategory {
@@ -213,12 +326,19 @@ fn update_category(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     })
 }
 
-fn delete_category(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let Some(id) = pick(conn, rng, CATEGORIES) else {
+/// The screen offers deleting the categories a person made; the system ones are refused.
+fn delete_category(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let own = by_content(
+        "transaction_categories",
+        "t.id",
+        "WHERE t.is_system = 0",
+        "t.name, t.icon, t.color",
+    );
+    let Some(id) = pick(conn, rng, &own)? else {
         return no_target();
     };
     let reassign = if rng.random_bool(0.5) {
-        pick(conn, rng, CATEGORIES).filter(|other| *other != id)
+        pick(conn, rng, &categories())?.filter(|other| *other != id)
     } else {
         None
     };
@@ -227,9 +347,11 @@ fn delete_category(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
     })
 }
 
-fn learn_scoped(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
-    let (Some(account), Some(category)) = (pick(conn, rng, ACCOUNTS), pick(conn, rng, CATEGORIES))
-    else {
+fn learn_scoped(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let (Some(account), Some(category)) = (
+        pick(conn, rng, &accounts("t.id"))?,
+        pick(conn, rng, &categories())?,
+    ) else {
         return no_target();
     };
     let data = InsertScopedLearning {
@@ -248,4 +370,28 @@ fn learn_scoped(conn: &Connection, rng: &mut StdRng) -> (String, Outcome) {
         ),
         || learn::learn_scoped(conn, &CategorizationEngine::new_empty(), &data),
     )
+}
+
+/// The synced profile columns (the Local ones, language, theme and menu, are left alone).
+fn update_profile(conn: &mut Connection, rng: &mut StdRng, _: &Path) -> Res {
+    let data = UpdateUserProfile {
+        name: rng
+            .random_bool(0.5)
+            .then(|| one_of(rng, &["Alex", "Sam"]).to_string()),
+        surname: rng.random_bool(0.3).then(|| "Novák".to_string()),
+        email: None,
+        menu_preferences: None,
+        currency: rng.random_bool(0.4).then(|| currency(rng).to_string()),
+        language: None,
+        exclude_personal_real_estate: rng.random_bool(0.3).then(|| rng.random_bool(0.5)),
+        mcp_server_enabled: None,
+        country: rng
+            .random_bool(0.3)
+            .then(|| one_of(rng, &["CZ", "DE"]).to_string()),
+        insurance_notice_days: rng.random_bool(0.3).then(|| one_of(rng, &[30_i64, 43, 60])),
+        theme: None,
+    };
+    run(format!("{data:?}"), || {
+        auth::apply_profile_update(conn, &data)
+    })
 }

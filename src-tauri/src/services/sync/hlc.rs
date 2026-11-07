@@ -132,10 +132,46 @@ impl HlcState {
 }
 
 pub fn now_ms() -> u64 {
+    #[cfg(test)]
+    if let Some(ms) = fake_clock::read() {
+        return ms;
+    }
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map(|d| d.as_millis() as u64)
         .unwrap_or(0)
+}
+
+/// A fake wall clock for tests (the convergence harness), per thread: while it runs, `now_ms`
+/// returns its value, which only the test moves on (`advance`). The clock's counter orders the
+/// clocks issued within one millisecond, so a seed replays the same clocks and the same
+/// last-writer outcomes however many clocks a step issues. Production always reads `SystemTime`.
+#[cfg(test)]
+pub(crate) mod fake_clock {
+    use std::cell::Cell;
+
+    thread_local! {
+        static NOW_MS: Cell<Option<u64>> = const { Cell::new(None) };
+    }
+
+    /// Starts (or restarts) the fake clock of this thread at `start_ms`.
+    pub(crate) fn start(start_ms: u64) {
+        NOW_MS.with(|now| now.set(Some(start_ms)));
+    }
+
+    /// Moves the running fake clock of this thread on by `ms`.
+    pub(crate) fn advance(ms: u64) {
+        NOW_MS.with(|now| now.set(now.get().map(|t| t + ms)));
+    }
+
+    /// Back to the system clock on this thread.
+    pub(crate) fn stop() {
+        NOW_MS.with(|now| now.set(None));
+    }
+
+    pub(super) fn read() -> Option<u64> {
+        NOW_MS.with(Cell::get)
+    }
 }
 
 #[cfg(test)]

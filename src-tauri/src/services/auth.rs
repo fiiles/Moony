@@ -563,7 +563,10 @@ pub fn update_user_profile(db: &Database, updates: UpdateUserProfile) -> Result<
 }
 
 /// Validate and write a partial profile update (the main currency is stored normalised).
-fn apply_profile_update(conn: &rusqlite::Connection, updates: &UpdateUserProfile) -> Result<()> {
+pub(crate) fn apply_profile_update(
+    conn: &rusqlite::Connection,
+    updates: &UpdateUserProfile,
+) -> Result<()> {
     updates.validate()?;
     let mut set_clauses = Vec::new();
     let mut params: Vec<Box<dyn rusqlite::ToSql>> = Vec::new();

@@ -37,6 +37,9 @@ pub const ATTACHMENT_DIRS: [&str; 3] = crate::services::attachments::LEGACY_DIRS
 /// Tables that are never part of the JSON export: migration bookkeeping,
 /// app-local configuration (API keys) and SQLite's own sequence table.
 const EXPORT_DENYLIST: [&str; 3] = ["_migrations", "app_config", "sqlite_sequence"];
+/// Prefix of every device-sync bookkeeping table. None of them is exported: `sync_state` holds
+/// the vault keys, this device's private key and the account number.
+const EXPORT_SYNC_PREFIX: &str = "sync_";
 /// Columns stripped from every exported row.
 const EXPORT_COLUMN_DENYLIST: [&str; 1] = ["mcp_server_token"];
 
@@ -642,7 +645,9 @@ pub fn export_all_data(conn: &Connection, dest: &Path, app_version: &str) -> Res
         let rows = stmt.query_map([], |row| row.get::<_, String>(0))?;
         rows.filter_map(|r| r.ok())
             .filter(|name| {
-                !name.starts_with("sqlite_") && !EXPORT_DENYLIST.contains(&name.as_str())
+                !name.starts_with("sqlite_")
+                    && !name.starts_with(EXPORT_SYNC_PREFIX)
+                    && !EXPORT_DENYLIST.contains(&name.as_str())
             })
             .collect()
     };
@@ -1002,6 +1007,59 @@ mod tests {
             .expect("dir")
             .filter_map(|e| e.ok())
             .all(|e| !e.file_name().to_string_lossy().starts_with("pre-restore-")));
+    }
+
+    #[test]
+    fn export_skips_every_sync_table() {
+        use crate::services::sync::{hlc::DeviceId, state, test_support::migrated};
+
+        let conn = migrated();
+        state::enable(&conn, DeviceId([7; 16])).expect("enable sync");
+        conn.execute_batch(
+            "UPDATE sync_state SET account_number = 'ACCT-1234-5678', vault_id = 'VAULT-ID-XYZ', \
+                 vault_keys = 'VAULT-KEYS-SECRET', device_secret_key = X'DEADBEEFCAFE0001';
+             INSERT INTO sync_heads (device, seq, hash) VALUES (X'AA11BB22CC33DD44AA11BB22CC33DD44', 5, X'0102030405060708');
+             INSERT INTO sync_own_log (seq, hash, min_hlc, max_hlc) VALUES (1, X'0A0B0C0D0E0F0102', 11, 22);
+             INSERT INTO sync_unsent (seq, envelope) VALUES (1, X'FEEDFACE12345678');
+             INSERT INTO sync_typed (tbl, pk, col, typed) VALUES ('t', 'pk', 'col', 'TYPED-DISTINCT-VALUE');
+             INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at)
+                 VALUES ('0707070707070707070707070707070b', 'PUBKEY-DISTINCT', 'DEVICE-NAME-DISTINCT', 'mac', '9.9.9', 1);",
+        )
+        .expect("sync rows");
+        let sync_tables: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name LIKE 'sync\\_%' ESCAPE '\\'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("count");
+        assert_eq!(sync_tables, 8);
+
+        let dir = tempfile::tempdir().expect("dir");
+        let dest = dir.path().join("export.json");
+        export_all_data(&conn, &dest, "1.0.0").expect("export");
+
+        let raw = fs::read_to_string(&dest).expect("read");
+        let doc: serde_json::Value = serde_json::from_str(&raw).expect("json");
+        let tables = doc["tables"].as_object().expect("tables");
+        let leaked: Vec<&String> = tables.keys().filter(|k| k.starts_with("sync_")).collect();
+        assert!(leaked.is_empty(), "sync tables exported: {leaked:?}");
+        assert!(tables.contains_key("bank_accounts"));
+        assert!(tables.contains_key("user_profile"));
+        for secret in [
+            "ACCT-1234-5678",
+            "VAULT-ID-XYZ",
+            "VAULT-KEYS-SECRET",
+            "deadbeefcafe0001",
+            "DEADBEEFCAFE0001",
+            "TYPED-DISTINCT-VALUE",
+            "PUBKEY-DISTINCT",
+            "DEVICE-NAME-DISTINCT",
+            "feedface12345678",
+            "sync_state",
+        ] {
+            assert!(!raw.contains(secret), "export leaks {secret}");
+        }
     }
 
     #[test]

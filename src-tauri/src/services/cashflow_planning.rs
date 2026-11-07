@@ -4,6 +4,7 @@ use crate::models::frequency::annualize;
 use crate::models::CashflowReport;
 use crate::models::{CashflowItem, InsertCashflowItem, SetCashflowPlanInclusion};
 use crate::services::interest_tiers;
+use crate::services::sync::repair::links;
 use std::collections::{HashMap, HashSet};
 use uuid::Uuid;
 /// Individual item in a cashflow category
@@ -968,6 +969,7 @@ pub fn create_cashflow_item(
                 data.replacement_source_id,
             ],
         )?;
+        links::after_local_write(conn)?;
 
         Ok(CashflowItem {
             id,
@@ -1018,6 +1020,8 @@ pub fn update_cashflow_item(
         if updated == 0 {
             return Err(AppError::NotFound(format!("Cashflow item {id} not found")));
         }
+        // Moving or clearing this link may give another item its typed link back.
+        links::after_local_write(conn)?;
         let item = conn.query_row(
             "SELECT id, name, amount, currency, frequency, item_type, category, created_at, updated_at,replacement_source_id
              FROM cashflow_items WHERE id = ?1",
@@ -1052,6 +1056,7 @@ pub fn delete_cashflow_item(conn: &rusqlite::Connection, id: String) -> Result<(
             "DELETE FROM cashflow_plan_exclusions WHERE key = ?1",
             [format!("item:{id}")],
         )?;
+        links::after_local_write(conn)?;
         Ok(())
     }
 }

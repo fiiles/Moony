@@ -39,7 +39,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 
 # Database with SQLCipher encryption
-rusqlite = { version = "0.40", features = ["bundled-sqlcipher", "blob"] }
+rusqlite = { version = "0.40", features = ["bundled-sqlcipher", "blob", "functions"] }
 
 # Async runtime
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net", "sync"] }
@@ -48,13 +48,15 @@ tokio = { version = "1", features = ["rt-multi-thread", "macros", "time", "net",
 reqwest = { version = "0.13", features = ["json"] }
 
 # UUID generation
-uuid = { version = "1", features = ["v4", "serde"] }
+uuid = { version = "1", features = ["v4", "v5", "serde"] }
 
 # Date/time handling
 chrono = { version = "0.4", features = ["serde"] }
 
 # Cryptography - compatible with Node.js crypto
 hex = "0.4"
+base64 = "0.23"
+flate2 = "1"
 rand = "0.10"
 scrypt = "0.12"      # For scrypt key derivation (matches Node.js)
 aes-gcm = "0.11"     # For AES-256-GCM encryption (matches Node.js)
@@ -134,4 +136,8 @@ opt-level = 3
 [profile.dev.package.pbkdf2]
 opt-level = 3
 [profile.dev.package.sha2]
+opt-level = 3
+# The sync journal deflates every envelope it measures (flate2's Rust backend); unoptimised,
+# deflate dominates the 5,000-row journal test.
+[profile.dev.package.miniz_oxide]
 opt-level = 3

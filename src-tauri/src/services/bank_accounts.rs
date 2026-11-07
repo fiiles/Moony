@@ -7,6 +7,8 @@
 use crate::error::{AppError, Result};
 use crate::models::bank_accounts::{BankBalanceRecord, InsertBalanceRecord};
 use crate::models::{BankAccount, BankTransaction, InsertBankAccount, InsertBankTransaction};
+use crate::services::sync::natural_id::natural_id;
+use crate::services::sync::repair::typed;
 use rusqlite::{params, OptionalExtension};
 use uuid::Uuid;
 
@@ -142,7 +144,7 @@ pub fn create_account(
             "INSERT INTO bank_balance_records
                 (id, bank_account_id, amount, currency, as_of, source, source_batch_id, recorded_at)
              VALUES (?1, ?2, ?3, ?4, ?5, 'manual', NULL, ?6)",
-            params![Uuid::new_v4().to_string(), id, balance, currency, day, now],
+            params![balance_record_id(&id, day), id, balance, currency, day, now],
         )?;
     }
     tx.commit()?;
@@ -371,7 +373,6 @@ pub fn create_transaction_with_origin(
         }
     }
 
-    let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
     let booking_date =
         crate::models::validation::utc_day(data.booking_date, "validation.bookingDateInvalid")?;
@@ -389,6 +390,12 @@ pub fn create_transaction_with_origin(
         .map(str::trim)
         .filter(|id| !id.is_empty())
         .map(str::to_string);
+    // A bank-assigned id makes the row's ID derivable, so two devices importing the same
+    // payment offline create the same row; without one the row is unique to this device.
+    let id = match transaction_id.as_deref() {
+        Some(bank_id) => natural_id("bank_transactions", &[&data.bank_account_id, bank_id]),
+        None => Uuid::new_v4().to_string(),
+    };
     let tx_type = data.tx_type.to_lowercase();
     let status = data
         .status
@@ -565,7 +572,7 @@ pub fn set_transaction_flow(
 
 /// Mirror the newest dated record into `bank_accounts.balance` / `balance_as_of`;
 /// without any record the account goes back to `'0'` / unknown date.
-fn refresh_balance_columns(conn: &rusqlite::Connection, account_id: &str) -> Result<()> {
+pub fn refresh_balance_columns(conn: &rusqlite::Connection, account_id: &str) -> Result<()> {
     let newest: Option<(String, i64)> = conn
         .query_row(
             "SELECT amount, as_of FROM bank_balance_records
@@ -579,6 +586,10 @@ fn refresh_balance_columns(conn: &rusqlite::Connection, account_id: &str) -> Res
             "UPDATE bank_accounts SET balance = ?1, balance_as_of = ?2, updated_at = unixepoch() WHERE id = ?3",
             params![amount, day, account_id],
         )?,
+        // Without records the balance is typed (ruling T18b): with sync, the typed value a
+        // record overwrote comes back, else the stored one stays; without sync it is zero, as
+        // before.
+        None if typed::restore(conn, "bank_accounts", account_id, "bank_balance_records")? => 0,
         None => conn.execute(
             "UPDATE bank_accounts SET balance = '0', balance_as_of = NULL, updated_at = unixepoch() WHERE id = ?1",
             [account_id],
@@ -631,6 +642,8 @@ pub fn record_balance(
     } else {
         "manual"
     };
+    // The id comes from the key (§7.3 U1), so two devices recording the same day create the same
+    // row; a day already recorded is updated in place, whatever its id (a legacy one stays).
     tx.execute(
         "INSERT INTO bank_balance_records
             (id, bank_account_id, amount, currency, as_of, source, source_batch_id, recorded_at)
@@ -639,7 +652,7 @@ pub fn record_balance(
             amount = excluded.amount, currency = excluded.currency, source = excluded.source,
             source_batch_id = excluded.source_batch_id, recorded_at = unixepoch()",
         params![
-            Uuid::new_v4().to_string(),
+            balance_record_id(account_id, data.as_of),
             account_id,
             data.amount,
             existing.currency,
@@ -652,6 +665,12 @@ pub fn record_balance(
     let account = get_account_by_id(&tx, account_id)?;
     tx.commit()?;
     Ok(account)
+}
+
+/// The id of an account's balance record of `as_of` (§7.3 U1). There is no key edit: a record
+/// is replaced on its day or deleted.
+pub fn balance_record_id(account_id: &str, as_of: i64) -> String {
+    natural_id("bank_balance_records", &[account_id, &as_of.to_string()])
 }
 
 /// Every dated balance of the account, newest first.
@@ -1353,6 +1372,44 @@ mod tests {
     }
 
     #[test]
+    fn a_balance_record_gets_its_days_natural_id_and_a_legacy_row_keeps_its_id() {
+        let conn = setup_test_db();
+        record_balance(&conn, "acc-1", &record("100", D2)).unwrap();
+        conn.execute(
+            "INSERT INTO bank_balance_records (id, bank_account_id, amount, currency, as_of) \
+             VALUES ('legacy', 'acc-1', '50', 'EUR', ?1)",
+            [D1],
+        )
+        .unwrap();
+        record_balance(&conn, "acc-1", &record("55", D1)).unwrap();
+        record_balance(&conn, "acc-1", &record("101", D2)).unwrap();
+
+        let mut stmt = conn
+            .prepare("SELECT id, as_of, amount FROM bank_balance_records ORDER BY as_of")
+            .unwrap();
+        let rows: Vec<(String, i64, String)> = stmt
+            .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+            .unwrap()
+            .map(|r| r.unwrap())
+            .collect();
+        assert_eq!(
+            rows,
+            vec![
+                ("legacy".to_string(), D1, "55".to_string()),
+                (
+                    crate::services::sync::natural_id::natural_id(
+                        "bank_balance_records",
+                        &["acc-1", &D2.to_string()]
+                    ),
+                    D2,
+                    "101".to_string()
+                ),
+            ]
+        );
+        assert_eq!(balance_record_id("acc-1", D2), rows[1].0);
+    }
+
+    #[test]
     fn record_balance_rejects_wrong_currency_future_day_and_foreign_batch() {
         let conn = setup_test_db();
         let mut data = record("100", D2);
@@ -1494,5 +1551,39 @@ mod tests {
         // Same currency (any case) still passes
         edit.currency = Some("eur".into());
         assert!(update_account(&conn, "acc-1", &edit).is_ok());
+    }
+
+    #[test]
+    fn a_bank_transaction_with_a_bank_id_gets_the_natural_id_and_one_without_a_random_one() {
+        let conn = setup_test_db();
+        let make = |transaction_id: Option<&str>| crate::models::InsertBankTransaction {
+            flow_kind: None,
+            bank_account_id: "acc-1".into(),
+            transaction_id: transaction_id.map(str::to_string),
+            tx_type: "debit".into(),
+            amount: "10".into(),
+            currency: None,
+            description: None,
+            counterparty_name: None,
+            counterparty_iban: None,
+            counterparty_bank_code: None,
+            counterparty_country: None,
+            booking_date: 1700000000,
+            value_date: None,
+            category_id: None,
+            status: None,
+        };
+        let with_id = create_transaction(&conn, &make(Some(" bank-77 "))).unwrap();
+        assert_eq!(
+            with_id.id,
+            crate::services::sync::natural_id::natural_id(
+                "bank_transactions",
+                &["acc-1", "bank-77"]
+            )
+        );
+        let first = create_transaction(&conn, &make(None)).unwrap();
+        let second = create_transaction(&conn, &make(None)).unwrap();
+        assert_ne!(first.id, second.id);
+        assert!(uuid::Uuid::parse_str(&first.id).is_ok());
     }
 }

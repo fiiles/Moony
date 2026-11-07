@@ -34,6 +34,22 @@ is the execution checklist only.
 7. **Update the docs in the same commit.** Add/amend the table's row in the catalog
    in `docs/architecture/database.md` (new table → new row; changed columns → amend
    "Notable columns / constraints").
+8. **Classify it for device sync** (ADR 0024, `docs/standards/rust-backend.md` §12). Add
+   `("0NN_short_name", A)` or `B` to `MIGRATION_CLASSES` in
+   `src-tauri/src/services/sync/registry/keys.rs`: **additive** (new tables, new nullable
+   columns, new seeds; older devices keep applying newer envelopes) or **barrier** (rewrites the
+   meaning of synced values, as 011 did for rates; a device that crosses it re-queues its own
+   changes since the newest snapshot, and envelopes written below it are not applied). The
+   `every_migration_has_a_class_and_no_class_is_stale` test fails without one. A new table also
+   gets its class in `services/sync/registry/tables.rs`
+   (`every_table_of_the_migrated_schema_has_a_class` fails otherwise), and a new recomputed or
+   device-local column of a synced table is listed there too.
+9. **Seed synced rows deterministically.** A migration that inserts rows into a synced table uses
+   a fixed seed ID or a UUIDv5, never `randomblob()` / `uuid()` (enforced by
+   `migrations_after_029_insert_synced_rows_only_with_deterministic_ids`), and a fixed literal
+   for every synced column, timestamps included (`created_at`, not `unixepoch()`). Every device
+   runs the migration on its own and nothing is captured, so any value that differs per device
+   stays different.
 
 ## Verify
 

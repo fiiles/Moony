@@ -274,6 +274,17 @@ pub fn read_config(conn: &rusqlite::Connection) -> AppResult<(Vec<String>, HashS
     Ok((enabled, disabled))
 }
 
+/// Write the effective configuration (`read_config`) into both keys explicitly. Turning sync on
+/// calls it, so the default that follows the per-device UI language stops deciding and every
+/// device categorises the same way (spec §5.2).
+pub fn persist_effective(conn: &rusqlite::Connection) -> AppResult<()> {
+    let (enabled, disabled) = read_config(conn)?;
+    write_json_array(conn, ENABLED_KEY, &enabled)?;
+    let mut disabled: Vec<String> = disabled.into_iter().collect();
+    disabled.sort();
+    write_json_array(conn, DISABLED_RULES_KEY, &disabled)
+}
+
 /// Persist the enabled pack ids (unknown ids are dropped; `global` and the
 /// order of `available_packs` are not enforced — an empty list is legal).
 pub fn write_enabled(conn: &rusqlite::Connection, pack_ids: &[String]) -> AppResult<()> {
@@ -440,6 +451,26 @@ mod tests {
         write_enabled(&conn, &["global".into(), "de".into(), "atlantis".into()]).unwrap();
         let (enabled, _) = read_config(&conn).unwrap();
         assert_eq!(enabled, vec!["global".to_string(), "de".to_string()]);
+    }
+
+    #[test]
+    fn persist_effective_writes_the_language_default_and_keeps_explicit_choices() {
+        let conn = setup_config_db("cs");
+        write_rule_disabled(&conn, "cz/lidl", true).unwrap();
+        write_rule_disabled(&conn, "cz/albert", true).unwrap();
+        persist_effective(&conn).unwrap();
+        conn.execute("UPDATE user_profile SET language = 'en'", [])
+            .unwrap();
+        let raw = |key: &str| -> String {
+            conn.query_row("SELECT value FROM app_config WHERE key = ?1", [key], |r| {
+                r.get(0)
+            })
+            .unwrap()
+        };
+        assert_eq!(raw(ENABLED_KEY), r#"["global","cz"]"#);
+        assert_eq!(raw(DISABLED_RULES_KEY), r#"["cz/albert","cz/lidl"]"#);
+        let (enabled, _) = read_config(&conn).unwrap();
+        assert_eq!(enabled, vec!["global".to_string(), "cz".to_string()]);
     }
 
     #[test]

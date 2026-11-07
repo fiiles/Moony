@@ -5,6 +5,7 @@
 
 mod pull;
 mod push;
+mod snapshots;
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};

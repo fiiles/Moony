@@ -530,12 +530,4 @@ fn the_header_carries_the_dumpers_pending_miss() {
     let (pending, _) = snapshot(&a, 9);
     assert_eq!(header_missed(&pending), Some(7));
     assert!(String::from_utf8_lossy(&pending).contains(r#""missedBelowBarrier":7"#));
-    // A restore never adopts another device's miss.
-    assert_eq!(
-        state::load(&joined(&pending))
-            .expect("load")
-            .expect("row")
-            .missed_below_barrier,
-        None
-    );
 }

@@ -1,9 +1,11 @@
 //! The sync engine (spec §9.4): the steps of a sync round against the relay. Every step reads or
 //! writes the profile under the connection lock and releases it before any network call
-//! (`ConnAccess`). `pull` brings other devices' envelopes in; `push` seals and sends this device's.
+//! (`ConnAccess`). `pull` brings other devices' envelopes in; `push` seals and sends this device's;
+//! `snapshots` uploads this device's snapshot and restores the vault's.
 
 pub mod pull;
 pub mod push;
+pub mod snapshots;
 
 use rusqlite::Connection;
 
@@ -65,7 +67,7 @@ pub struct PullReport {
     pub rejoined: bool,
     /// Envelopes held for a quarantined author.
     pub held: usize,
-    /// The profile was restored from a snapshot (the engine's `410` handling, Task 11).
+    /// The profile was restored from a snapshot (`snapshots::restore_after_410`).
     pub restored: bool,
     /// The relay's head is past the last envelope it served: it withholds a trailing envelope (or
     /// served none), so this device is behind. Shown in diagnostics; not an error, and the cursor
@@ -100,6 +102,14 @@ impl PullReport {
             self.end(),
             PullEnd::Done | PullEnd::Held | PullEnd::Stopped(PullStop::NewerSchema)
         )
+    }
+
+    /// Whether the round may dump and upload a snapshot after this pull (rulings P4, P14): only
+    /// after a pull that ended done. Unlike `may_push`, held envelopes and a newer schema rule it
+    /// out too: the snapshot's sequence is the cursor this device applied, and a restorer skips
+    /// everything up to it.
+    pub fn may_snapshot(&self) -> bool {
+        self.done()
     }
 }
 

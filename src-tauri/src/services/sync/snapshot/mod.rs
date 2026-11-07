@@ -54,12 +54,11 @@ pub struct DumpStats {
     pub max_hlc: u64,
 }
 
-/// Writes the snapshot of this profile at relay sequence `seq` (the cursor applied, §8):
-/// `devs`, `header` (with the barrier marker's relay sequence when this device has seen it, and its
-/// pending below-barrier miss, if any), the
-/// synced rows (live rows parents first, then tombstone-only keys children first), the Seed rows,
-/// `end`. Call with exclusive use of the connection (the engine holds the session mutex for the
-/// whole dump).
+/// Writes the snapshot of this profile at relay sequence `seq` (the cursor applied, §8, rulings
+/// P4 and P14): `devs`, `header` (with the barrier marker's relay sequence when this device has
+/// seen it, and its pending below-barrier miss, if any), the synced rows (live rows parents
+/// first, then tombstone-only keys children first), the Seed rows, `end`. Call with exclusive use
+/// of the connection (the engine holds the session mutex for the whole dump).
 ///
 /// Only a profile with nothing waiting to go out may be dumped: an empty `sync_unsent` (§8) and,
 /// by ruling T18e, an empty `sync_outbox`. A snapshot carrying rows its source has not pushed
@@ -193,7 +192,9 @@ pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Resu
         match merge::merge_rows(conn, &snapshot.rows, now)? {
             Outcome::Applied(applied) => report.warnings.extend(applied.warnings),
             Outcome::Stopped(reason) => {
-                log::warn!("[SYNC] A snapshot did not merge: {reason:?}");
+                // The reason names a row key: only at `debug`.
+                log::debug!("[SYNC] A snapshot did not merge: {reason:?}");
+                log::warn!("[SYNC] A snapshot did not merge");
                 return Err(invalid());
             }
         }
@@ -278,7 +279,8 @@ fn admissible(conn: &Connection, snapshot: &Snapshot) -> Result<SyncState> {
 }
 
 /// Seeds, heads (with their quarantine), the cursor and snapshot bookkeeping, the barrier
-/// marker and a healed below-barrier miss, shared by both restores. Replacing sets them; merging never moves them back.
+/// marker and the below-barrier miss, shared by both restores. Replacing sets them; merging never
+/// moves them back.
 fn finish(
     conn: &Connection,
     snapshot: &Snapshot,
@@ -320,8 +322,19 @@ fn finish(
     if replacing || sync.barrier_seq.is_none() {
         state::set_barrier_seq(conn, marker)?;
     }
-    // A snapshot dumped past every below-barrier envelope this device skipped carries their rows
-    // (ruling T8-2).
+    // The miss (rulings T8-2, T8-6, T8-7). Replacing restarts this device at the snapshot's
+    // cursor, so its miss is the dumper's: the rows of what the dumper skipped are missing here
+    // too, and anything this device skipped itself it meets again above the new cursor.
+    if replacing {
+        state::clear_missed_below_barrier(conn)?;
+        if let Some(missed) = snapshot.missed_below_barrier {
+            state::note_missed_below_barrier(conn, missed)?;
+        }
+        return Ok(());
+    }
+    // Merging heals this device's miss only with a snapshot from a clean dumper (no pending miss
+    // of its own, so it applied what this device skipped), dumped at this device's barrier or
+    // later and at or past every skipped position (T8-6).
     if chain::snapshot_heals_missed(
         sync,
         snapshot.barrier,
@@ -329,6 +342,11 @@ fn finish(
         snapshot.missed_below_barrier,
     ) {
         state::clear_missed_below_barrier(conn)?;
+    }
+    // A dumper's own miss above this device's cursor is now this device's too: the cursor moves
+    // past that envelope and the snapshot lacks its rows (T8-7). The newest miss is kept.
+    if let Some(missed) = snapshot.missed_below_barrier.filter(|m| sync.cursor < *m) {
+        state::note_missed_below_barrier(conn, missed)?;
     }
     Ok(())
 }

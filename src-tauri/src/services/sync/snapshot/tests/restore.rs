@@ -627,3 +627,54 @@ fn a_snapshot_from_a_dumper_with_a_pending_miss_does_not_heal() {
     );
     assert!(!has_ds_row(&b));
 }
+
+/// A dumps at relay sequence 9 with a pending miss at 7 (ruling T8-7: the restorer cannot get
+/// the skipped rows from this snapshot either).
+fn dumped_with_a_miss() -> Vec<u8> {
+    let a = device(A);
+    state::note_missed_below_barrier(&a, 7).expect("miss");
+    snapshot(&a, 9).0
+}
+
+#[test]
+fn a_replace_takes_the_dumpers_miss_as_its_own() {
+    let pending = dumped_with_a_miss();
+    assert_eq!(
+        missed(&joined(&pending)),
+        Some(7),
+        "a joiner adopts the miss"
+    );
+
+    // A replace also drops a miss of the device's own: the cursor restarts at the snapshot's.
+    let b = device(B);
+    state::note_missed_below_barrier(&b, 12).expect("own miss");
+    restore_replace(&b, &mut &pending[..], NOW).expect("replace");
+    assert_eq!(missed(&b), Some(7));
+    let (clean, _) = snapshot(&device(C), 9);
+    restore_replace(&b, &mut &clean[..], NOW).expect("replace");
+    assert_eq!(missed(&b), None);
+}
+
+#[test]
+fn a_merge_records_the_dumpers_miss_past_the_local_cursor() {
+    let pending = dumped_with_a_miss();
+    let at = |cursor: i64, own: Option<u64>| {
+        let conn = device(B);
+        conn.execute("UPDATE sync_state SET cursor = ?1", [cursor])
+            .expect("cursor");
+        if let Some(own) = own {
+            state::note_missed_below_barrier(&conn, own).expect("own miss");
+        }
+        restore_merge(&conn, &mut &pending[..], NOW).expect("merge");
+        missed(&conn)
+    };
+    // Below the miss: the cursor jumps to 9 past an envelope the snapshot lacks.
+    assert_eq!(at(3, None), Some(7));
+    assert_eq!(at(6, None), Some(7));
+    // At or past it: this device dealt with that envelope itself.
+    assert_eq!(at(7, None), None);
+    assert_eq!(at(8, None), None);
+    // The newest miss is kept.
+    assert_eq!(at(3, Some(10)), Some(10));
+    assert_eq!(at(3, Some(5)), Some(7));
+}

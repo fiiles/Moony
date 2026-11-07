@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bandage,
@@ -20,7 +20,7 @@ import {
   Upload,
   type LucideIcon,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { useLocation, useSearch } from 'wouter';
 import type { BankAccountWithInstitution, InsertBankAccount } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
 import { useAuth } from '@/hooks/use-auth';
@@ -51,6 +51,8 @@ import { UpcomingPremiums } from '@/mobile/components/finance/UpcomingPremiums';
 import { Hero } from '@/mobile/components/Hero';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { useCashTrend } from '@/mobile/hooks/use-cash-trend';
+import { useRefetchShown } from '@/mobile/hooks/use-refetch-shown';
+import { useClassExport } from '@/mobile/hooks/use-class-export';
 import { useFinance, type Finance as FinanceData } from '@/mobile/hooks/use-finance';
 import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -66,10 +68,11 @@ import {
 } from '@/mobile/lib/finance-rows';
 import { queuePath } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
+import { opensAddAccount } from '@/mobile/lib/getting-started';
 import { initials } from '@/mobile/lib/initials';
 import { effectiveType, policyTypes } from '@/mobile/lib/upcoming-premiums';
 import { NavIconButton } from '@/mobile/shell/NavBar';
-import { accountPath, loanPath, policyPath } from '@/mobile/shell/routes';
+import { accountPath, loanPath, policyPath, routes } from '@/mobile/shell/routes';
 import { LockButton } from '@/mobile/shell/LockButton';
 import { Screen } from '@/mobile/shell/Screen';
 
@@ -118,6 +121,10 @@ export default function Finance() {
   // the rows only render it)
   const moneyText = useMoneyText();
   const finance = useFinance();
+  // A pull from the top reads again what Finance shows (spec §8.8)
+  const refetchShown = useRefetchShown();
+  const search = useSearch();
+  const [, setLocation] = useLocation();
   // Loans and policies the person does not track are hidden (the pages stay reachable by path)
   const { user } = useAuth();
   const showLoans = user?.menuPreferences?.loans ?? true;
@@ -143,7 +150,18 @@ export default function Finance() {
   const [showEnded, setShowEnded] = useRemembered('finance.showEnded', false);
   const [policyType, setPolicyType] = useRemembered('finance.policyType', 'all');
   const [period, setPeriod] = useRemembered<ChartPeriod>('finance.period', DEFAULT_PERIOD);
-  const [addKind, setAddKind] = useState<AddKind | null>(null);
+  // `?add=account` (the empty Přehled's first action) opens the account form at once; the query
+  // is dropped so that coming back to the tab does not open it again
+  const [addKind, setAddKind] = useState<AddKind | null>(() =>
+    opensAddAccount(search) ? 'account' : null
+  );
+  useEffect(() => {
+    if (new URLSearchParams(search).has('add')) {
+      setLocation(routes.finance, { replace: true, state: window.history.state });
+    }
+  }, [search, setLocation]);
+  const loansExport = useClassExport('loans');
+  const policiesExport = useClassExport('insurance');
   const { createAccount } = useBankAccountMutations();
   const { createMutation: createLoan } = useLoanMutations();
 
@@ -220,6 +238,7 @@ export default function Finance() {
 
   return (
     <Screen
+      onRefresh={refetchShown}
       title={t('tabs.finance')}
       large
       leading={<LockButton />}
@@ -292,10 +311,29 @@ export default function Finance() {
                   {t('finance.menu.showEnded')}
                 </RowMenuCheckboxItem>
               )}
-              <DropdownMenuSeparator />
-              <RowMenuItem onSelect={() => toast(t('placeholder.export'))}>
-                {t('finance.menu.export')}
-              </RowMenuItem>
+              {(showLoans || showInsurance) && (
+                <>
+                  <DropdownMenuSeparator />
+                  {/* The desktop list pages' CSV exports (accounts have none there either) */}
+                  <DropdownMenuLabel>{t('finance.menu.export')}</DropdownMenuLabel>
+                  {showLoans && (
+                    <RowMenuItem
+                      disabled={loansExport.isPending}
+                      onSelect={() => void loansExport.exportCsv()}
+                    >
+                      {t('finance.menu.exportLoans')}
+                    </RowMenuItem>
+                  )}
+                  {showInsurance && (
+                    <RowMenuItem
+                      disabled={policiesExport.isPending}
+                      onSelect={() => void policiesExport.exportCsv()}
+                    >
+                      {t('finance.menu.exportPolicies')}
+                    </RowMenuItem>
+                  )}
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </>
@@ -384,7 +422,12 @@ export default function Finance() {
           )}
           <LoansSection finance={finance} rows={loanRows} />
           <PoliciesSection finance={finance} rows={policyRows} />
-          <UpcomingPremiums rows={policyRows} today={insurance.today} />
+          {/* A policy type picked in `···` narrows the list to those policies: no loan payments */}
+          <UpcomingPremiums
+            rows={policyRows}
+            loans={typeFilter === 'all' ? loanRows : undefined}
+            today={insurance.today}
+          />
         </>
       )}
 

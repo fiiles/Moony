@@ -18,7 +18,8 @@
     "stats": {
       "unchanged": "bez zmian",
       "noHistory": "brak historii"
-    }
+    },
+    "emptyDescription": "Dodaj konto lub inwestycję, a Moony zbuduje z nich twój przegląd, wykresy i trendy. Wszystko zostaje na tym telefonie."
   },
   "cashflow": {
     "subtitle_one": "Rzeczywiste przychody i wydatki z {{count}} konta",
@@ -42,7 +43,6 @@
       "pick": "Wybierz kategorię, której wydatki chcesz pilnować."
     },
     "budgets": {
-      "ended": "zakończony",
       "averageNote": "⌀ z ostatnich 6 miesięcy"
     },
     "showMore_one": "Pokaż kolejną {{count}} transakcję",
@@ -83,7 +83,9 @@
       "categorize": "Przypisz",
       "import": "Importuj",
       "backup": "Zrób kopię",
-      "revalue": "Przeszacuj"
+      "revalue": "Przeszacuj",
+      "enterBalance": "Podaj saldo",
+      "enterRate": "Uzupełnij stopę"
     }
   },
   "recordBalances": {
@@ -156,7 +158,9 @@
       "sortLast": "Według ostatniego ruchu",
       "showMatured": "Pokaż spłacone kredyty",
       "showEnded": "Pokaż zakończone polisy",
-      "export": "Eksport"
+      "export": "Eksport",
+      "exportLoans": "Kredyty (CSV)",
+      "exportPolicies": "Polisy (CSV)"
     },
     "add": {
       "title": "Dodaj",
@@ -176,7 +180,8 @@
       "showAll_many": "Pokaż wszystkie {{count}}",
       "showAll_other": "Pokaż wszystkie {{count}}"
     },
-    "cashTrendLabel": "Wykres gotówki"
+    "cashTrendLabel": "Wykres gotówki",
+    "loanPayment": "Rata kredytu"
   },
   "queue": {
     "source": {
@@ -211,10 +216,16 @@
       "snoozed_few": "{{count}} pominięte płatności wrócą później.",
       "snoozed_many": "{{count}} pominiętych płatności wróci później.",
       "snoozed_other": "{{count}} pominiętych płatności wróci później."
-    }
-  },
-  "placeholder": {
-    "export": "Eksport pojawi się później."
+    },
+    "heldBack_one": "{{count}} płatność pominięta",
+    "heldBack_few": "{{count}} płatności pominięte",
+    "heldBack_many": "{{count}} płatności pominiętych",
+    "heldBack_other": "{{count}} płatności pominiętych",
+    "unsnoozed_one": "{{count}} płatność wróciła do kolejki",
+    "unsnoozed_few": "{{count}} płatności wróciły do kolejki",
+    "unsnoozed_many": "{{count}} płatności wróciło do kolejki",
+    "unsnoozed_other": "{{count}} płatności wróciło do kolejki",
+    "unsnooze": "Przywróć do kolejki"
   },
   "account": {
     "record": "Zapisz saldo",
@@ -267,7 +278,8 @@
     },
     "importHistory": {
       "menu": "Opcje importu"
-    }
+    },
+    "autoCategorizeAllDone": "Wszystkie płatności na tym koncie mają już kategorię."
   },
   "loan": {
     "nextPayment": "Następna rata {{amount}} · {{date}}",
@@ -610,7 +622,8 @@
       "loadFailed": "Nie udało się wczytać pozycji.",
       "target": "cel {{price}}",
       "targetReached": "cel osiągnięty",
-      "dayChange": "dziś"
+      "dayChange": "dziś",
+      "realizedShort": "zrealizowano {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} krypto",
@@ -813,7 +826,8 @@
       "usageBudgets_few": "{{count}} budżety",
       "usageBudgets_many": "{{count}} budżetów",
       "usageBudgets_other": "{{count}} budżetu"
-    }
+    },
+    "remindersLead": "Wybierz, o czym przypominają Aktualizacja danych i „Co cię czeka” w Przeglądzie; powiadomienia działają według tej samej listy. Wyłączony rodzaj nie pojawi się nigdzie, także na komputerze. Kiedy przychodzą powiadomienia, ustawisz w Powiadomieniach."
   },
   "backup": {
     "lead": "Kopia zapasowa to jeden zaszyfrowany plik: baza danych, klucze i załączniki. Otworzy go tylko twoje hasło.",
@@ -826,7 +840,8 @@
     "restoreTitle": "Przywracanie i przenoszenie",
     "restoreLead": "Przywróć kopię zapasową z tego telefonu albo przenieś profil z Moony na komputerze: wybierz plik kopii i po przywróceniu odblokuj hasłem, które obowiązywało w chwili jej utworzenia.",
     "restoreConfirmDescription": "Kopia z {{date}} (Moony {{version}}, załączników: {{attachments}}, {{size}}) zastąpi dane na tym telefonie. Jeśli chcesz zachować obecne dane, najpierw zrób ich kopię zapasową. Po zakończeniu Moony się zablokuje; odblokuj je hasłem używanym w chwili tworzenia kopii.",
-    "osBackupNote": "Profil nie jest zapisywany w kopii zapasowej samego telefonu (iCloud ani komputer). Jedyną kopią poza telefonem jest kopia zapasowa Moony, którą zapiszesz samodzielnie."
+    "osBackupNote": "Profil nie jest zapisywany w kopii zapasowej samego telefonu (iCloud ani komputer). Jedyną kopią poza telefonem jest kopia zapasowa Moony, którą zapiszesz samodzielnie.",
+    "exportSummary": "Tabele: {{tables}}, wiersze: {{rows}}."
   },
   "firstRun": {
     "privacyLead": "Moony przechowuje wszystko w zaszyfrowanej bazie danych na tym telefonie. Bez chmury, bez konta u nas.",
@@ -951,6 +966,9 @@
       "newDescription": "Ile chcesz wydać w ciągu roku na jedną rzecz. Płatności dodajesz do planu w szczegółach płatności."
     }
   },
+  "gettingStarted": {
+    "makeBackupHint": "Jeden zaszyfrowany plik ze wszystkim, w Ustawienia → Kopia zapasowa i przenoszenie."
+  },
   "sheet": {
     "discard": {
       "title": "Odrzucić zmiany?",
@@ -964,5 +982,8 @@
     "finance": "Nie udało się wczytać finansów.",
     "wealth": "Nie udało się wczytać majątku.",
     "detail": "Nie udało się wczytać danych."
+  },
+  "pull": {
+    "refreshing": "Odświeżanie…"
   }
 }

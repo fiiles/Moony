@@ -14,8 +14,6 @@ import { getCompleteBankHistory } from '@/lib/bank-history';
 import { useCurrency } from '@/lib/currency';
 import { cashflowApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
-import { useFormat } from '@/lib/use-format';
-import { utcDayFloor } from '@/utils/chart-axis';
 import { applyBulkChanges, restoreBulkChanges } from '@/utils/report-drilldown';
 import { Button } from '@/components/ui/button';
 import { ScaledReportError } from '@/mobile/components/Scaled';
@@ -25,6 +23,7 @@ import {
 } from '@/mobile/components/cashflow/DrilldownRow';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { usePeriodLabel } from '@/mobile/hooks/use-cashflow';
+import { useTransactionDay } from '@/mobile/hooks/use-transaction-day';
 import { useBack } from '@/mobile/hooks/use-back';
 import { useRecentCategoryIds } from '@/mobile/hooks/use-categorize-queue';
 import { useRetained } from '@/mobile/hooks/use-retained';
@@ -90,7 +89,6 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('reports');
   const { t: tc } = useTranslation('common');
-  const fmt = useFormat();
   const queryClient = useQueryClient();
   const { currencyCode, fxRevision } = useCurrency();
   const { categories } = useCategories();
@@ -183,13 +181,8 @@ function CategoryDrilldown({ flowKind, categoryKey, search }: CategoryDrilldownP
     [rows, changes, categoryKey, flowRule]
   );
 
-  const today = utcDayFloor(Date.now() / 1000);
-  const dayLabel = (date: number) => {
-    const day = utcDayFloor(date);
-    if (day === today) return tc('time.today');
-    if (day === today - 86400) return tc('time.yesterday');
-    return fmt.day(date, { day: 'numeric', month: 'numeric' });
-  };
+  // A payment's day as every list of payments words it (C11)
+  const dayLabel = useTransactionDay();
   const visible = drilldownRows(rows.slice(0, limit), changes, categoryKey, dayLabel, flowRule);
 
   const title = categoryTitle(

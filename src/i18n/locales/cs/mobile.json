@@ -18,7 +18,8 @@
     "stats": {
       "unchanged": "beze změny",
       "noHistory": "bez historie"
-    }
+    },
+    "emptyDescription": "Přidejte účet nebo investici a Moony z nich sestaví přehled, grafy a vývoj. Všechna data zůstávají v tomto telefonu."
   },
   "cashflow": {
     "subtitle_one": "Skutečné příjmy a výdaje z {{count}} účtu",
@@ -41,7 +42,6 @@
       "pick": "Vyberte kategorii, pro kterou chcete hlídat výdaje."
     },
     "budgets": {
-      "ended": "ukončen",
       "averageNote": "⌀ za posledních 6 měsíců"
     },
     "showMore_one": "Zobrazit další {{count}} transakci",
@@ -76,7 +76,9 @@
       "categorize": "Zařadit",
       "import": "Importovat",
       "backup": "Zálohovat",
-      "revalue": "Přecenit"
+      "revalue": "Přecenit",
+      "enterBalance": "Zadat zůstatek",
+      "enterRate": "Doplnit sazbu"
     }
   },
   "recordBalances": {
@@ -144,7 +146,9 @@
       "sortLast": "Podle posledního pohybu",
       "showMatured": "Zobrazit splacené úvěry",
       "showEnded": "Zobrazit ukončené pojistky",
-      "export": "Export"
+      "export": "Export",
+      "exportLoans": "Úvěry (CSV)",
+      "exportPolicies": "Pojistky (CSV)"
     },
     "add": {
       "title": "Přidat",
@@ -162,7 +166,8 @@
       "showAll_few": "Zobrazit všechny {{count}}",
       "showAll_other": "Zobrazit všech {{count}}"
     },
-    "cashTrendLabel": "Graf vývoje hotovosti"
+    "cashTrendLabel": "Graf vývoje hotovosti",
+    "loanPayment": "Splátka úvěru"
   },
   "queue": {
     "source": {
@@ -194,10 +199,14 @@
       "snoozed_one": "{{count}} odložená platba se sem později vrátí.",
       "snoozed_few": "{{count}} odložené platby se sem později vrátí.",
       "snoozed_other": "{{count}} odložených plateb se sem později vrátí."
-    }
-  },
-  "placeholder": {
-    "export": "Export přijde později."
+    },
+    "heldBack_one": "{{count}} platba odložena",
+    "heldBack_few": "{{count}} platby odloženy",
+    "heldBack_other": "{{count}} plateb odloženo",
+    "unsnoozed_one": "{{count}} platba je zpět ve frontě",
+    "unsnoozed_few": "{{count}} platby jsou zpět ve frontě",
+    "unsnoozed_other": "{{count}} plateb je zpět ve frontě",
+    "unsnooze": "Vrátit do fronty"
   },
   "account": {
     "record": "Zaznamenat zůstatek",
@@ -250,7 +259,8 @@
     },
     "importHistory": {
       "menu": "Nabídka importu"
-    }
+    },
+    "autoCategorizeAllDone": "Všechny platby tohoto účtu už mají kategorii."
   },
   "loan": {
     "nextPayment": "Příští splátka {{amount}} · {{date}}",
@@ -578,7 +588,8 @@
       "loadFailed": "Pozice se nepodařilo načíst.",
       "target": "cíl {{price}}",
       "targetReached": "cíl dosažen",
-      "dayChange": "dnes"
+      "dayChange": "dnes",
+      "realizedShort": "realizováno {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} z krypta",
@@ -779,7 +790,8 @@
       "usageBudgets_few": "{{count}} rozpočty",
       "usageBudgets_many": "{{count}} rozpočtu",
       "usageBudgets_other": "{{count}} rozpočtů"
-    }
+    },
+    "remindersLead": "Vyberte, co vám připomíná Údržba a „Co vás čeká“ na Přehledu; oznámení se řídí stejným seznamem. Vypnutý druh se nezobrazí nikde, ani na počítači. Kdy oznámení chodí, nastavíte v Oznámeních."
   },
   "backup": {
     "lead": "Záloha je šifrovaný soubor: databáze, klíče a přílohy. Otevře ji jen vaše heslo.",
@@ -792,7 +804,8 @@
     "restoreTitle": "Obnovení a přenos",
     "restoreLead": "Obnovte zálohu z tohoto telefonu, nebo přeneste profil z Moony na počítači: vyberte soubor zálohy a po obnovení odemkněte heslem, které platilo při jejím vytvoření.",
     "restoreConfirmDescription": "Záloha z {{date}} (Moony {{version}}, {{attachments}} příloh, {{size}}) nahradí data v tomto telefonu. Chcete-li současná data zachovat, nejdřív je zálohujte. Moony se poté zamkne; odemkněte ho heslem, které platilo v době vytvoření zálohy.",
-    "osBackupNote": "Profil se neukládá do zálohy telefonu (iCloud ani počítač). Jedinou kopií mimo telefon je záloha Moony, kterou si sami uložíte."
+    "osBackupNote": "Profil se neukládá do zálohy telefonu (iCloud ani počítač). Jedinou kopií mimo telefon je záloha Moony, kterou si sami uložíte.",
+    "exportSummary": "{{tables}} tabulek, {{rows}} řádků."
   },
   "firstRun": {
     "privacyLead": "Moony ukládá vše do šifrované databáze v tomto telefonu. Žádný cloud, žádný účet u nás.",
@@ -914,6 +927,9 @@
       "newDescription": "Kolik chcete za rok utratit za jednu věc. Platby do plánu přidáte v detailu platby."
     }
   },
+  "gettingStarted": {
+    "makeBackupHint": "Jeden šifrovaný soubor se vším, v Nastavení → Záloha a přenos."
+  },
   "sheet": {
     "discard": {
       "title": "Zahodit změny?",
@@ -927,5 +943,8 @@
     "finance": "Finance se nepodařilo načíst.",
     "wealth": "Majetek se nepodařilo načíst.",
     "detail": "Údaje se nepodařilo načíst."
+  },
+  "pull": {
+    "refreshing": "Aktualizuji…"
   }
 }

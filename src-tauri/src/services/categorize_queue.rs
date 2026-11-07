@@ -10,7 +10,7 @@ use std::collections::HashSet;
 
 use rusqlite::{params, Connection};
 
-use crate::error::Result;
+use crate::error::{AppError, Result};
 use crate::models::bank_transactions::BankTransaction;
 use crate::models::categorization::{
     CategorizeQueue, CategorizeQueueRow, CategorySuggestion, SuggestionSource,
@@ -107,6 +107,62 @@ pub fn snooze(conn: &Connection, ids: &[String], until: i64) -> Result<usize> {
     }
     tx.commit()?;
     Ok(held)
+}
+
+/// The most payments one call that names them may put back into the queue (the snooze's limit).
+const UNSNOOZE_MAX_TRANSACTIONS: usize = 1000;
+
+/// Check the payments an unsnooze names: none (every held-back payment of the scope), or one to
+/// [`UNSNOOZE_MAX_TRANSACTIONS`] ids, none of them blank.
+pub fn validate_unsnooze(ids: Option<&[String]>) -> Result<()> {
+    match ids {
+        Some(ids)
+            if ids.is_empty()
+                || ids.len() > UNSNOOZE_MAX_TRANSACTIONS
+                || ids.iter().any(|id| id.trim().is_empty()) =>
+        {
+            Err(AppError::Validation(
+                "validation.snoozeSelectionInvalid".into(),
+            ))
+        }
+        _ => Ok(()),
+    }
+}
+
+/// Put held-back payments back into the queue ("Vrátit" after "Nechat", and "Vrátit do fronty"):
+/// the ones among `ids`, or — with no ids — every uncategorized payment of `account_id` (all
+/// accounts for `None`) whose snooze is still running at `now`. A snooze that has already run out
+/// is cleared as well when named. Returns how many payments were held back and now wait again.
+pub fn unsnooze(
+    conn: &Connection,
+    ids: Option<&[String]>,
+    account_id: Option<&str>,
+    now: i64,
+) -> Result<usize> {
+    let tx = conn.unchecked_transaction()?;
+    let released = match ids {
+        Some(ids) => {
+            let mut stmt = tx.prepare(
+                "UPDATE bank_transactions SET categorize_snoozed_until = NULL
+                 WHERE id = ?1 AND category_id IS NULL AND categorize_snoozed_until IS NOT NULL",
+            )?;
+            let mut seen = HashSet::new();
+            let mut released = 0;
+            for id in ids.iter().filter(|id| seen.insert(id.as_str())) {
+                released += stmt.execute(params![id])?;
+            }
+            released
+        }
+        None => tx.execute(
+            &format!(
+                "UPDATE bank_transactions SET categorize_snoozed_until = NULL
+                 WHERE {UNCATEGORIZED} AND categorize_snoozed_until > ?2"
+            ),
+            params![account_id, now],
+        )?,
+    };
+    tx.commit()?;
+    Ok(released)
 }
 
 /// Every category that exists, to drop a suggestion whose category was deleted.
@@ -620,6 +676,77 @@ mod tests {
         let queue = list(&conn, &engine(), None, NOW).expect("queue");
         assert_eq!(ids(&queue), ["untouched"]);
         assert_eq!(queue.snoozed, 2);
+    }
+
+    #[test]
+    fn unsnooze_puts_the_named_payments_back() {
+        let conn = setup_test_db();
+        tx("a").snoozed_until(NOW + DAY).insert(&conn);
+        tx("b").snoozed_until(NOW + DAY).insert(&conn);
+        tx("done")
+            .categorized("cat_groceries")
+            .snoozed_until(NOW + DAY)
+            .insert(&conn);
+
+        let named = vec!["a".to_string(), "a".to_string(), "done".to_string()];
+        assert_eq!(
+            unsnooze(&conn, Some(&named), None, NOW).expect("unsnooze"),
+            1
+        );
+
+        assert_eq!(pending_snooze(&conn, "a"), None);
+        assert_eq!(pending_snooze(&conn, "b"), Some(NOW + DAY));
+        // A categorized payment is no longer the queue's business
+        assert_eq!(pending_snooze(&conn, "done"), Some(NOW + DAY));
+        let queue = list(&conn, &engine(), None, NOW).expect("queue");
+        assert_eq!(ids(&queue), ["a"]);
+        assert_eq!(queue.snoozed, 1);
+    }
+
+    #[test]
+    fn unsnooze_without_ids_brings_back_one_account_or_all() {
+        let conn = setup_test_db();
+        tx("a1")
+            .account("acc-1")
+            .snoozed_until(NOW + DAY)
+            .insert(&conn);
+        tx("a2")
+            .account("acc-2")
+            .snoozed_until(NOW + DAY)
+            .insert(&conn);
+        tx("over")
+            .account("acc-2")
+            .snoozed_until(NOW - DAY)
+            .insert(&conn);
+        tx("pending")
+            .account("acc-2")
+            .pending()
+            .snoozed_until(NOW + DAY)
+            .insert(&conn);
+
+        assert_eq!(unsnooze(&conn, None, Some("acc-1"), NOW).expect("one"), 1);
+        assert_eq!(pending_snooze(&conn, "a1"), None);
+        assert_eq!(pending_snooze(&conn, "a2"), Some(NOW + DAY));
+
+        // Every account: only running snoozes of booked payments count
+        assert_eq!(unsnooze(&conn, None, None, NOW).expect("all"), 1);
+        assert_eq!(pending_snooze(&conn, "a2"), None);
+        assert_eq!(pending_snooze(&conn, "over"), Some(NOW - DAY));
+        assert_eq!(pending_snooze(&conn, "pending"), Some(NOW + DAY));
+    }
+
+    #[test]
+    fn unsnooze_rejects_an_empty_or_blank_selection() {
+        assert!(validate_unsnooze(None).is_ok());
+        assert!(validate_unsnooze(Some(&["a".to_string()])).is_ok());
+        for bad in [vec![], vec![" ".to_string()], vec!["a".to_string(); 1001]] {
+            match validate_unsnooze(Some(&bad)) {
+                Err(AppError::Validation(key)) => {
+                    assert_eq!(key, "validation.snoozeSelectionInvalid")
+                }
+                other => panic!("expected a validation error, got {other:?}"),
+            }
+        }
     }
 
     #[test]

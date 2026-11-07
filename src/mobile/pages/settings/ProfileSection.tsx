@@ -1,3 +1,4 @@
+import { useMemo, useState } from 'react';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -14,7 +15,10 @@ import {
 import { Input } from '@/components/ui/input';
 import { useAuth } from '@/hooks/use-auth';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
+import { RULE_PACK_COUNTRY_IDS, countryOptionsFromPacks } from '@/utils/locale-defaults';
+import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { SectionPage } from '@/mobile/components/SectionPage';
+import { CountryPickerSheet } from '@/mobile/sheets/CountryPickerSheet';
 
 /**
  * The desktop `ProfileCard`'s keys and messages, except that the e-mail stays optional as it is in
@@ -35,14 +39,32 @@ const primaryButton =
 const fieldMessage = 'text-left text-m-sub';
 
 /**
- * Nastavení → Profil (spec §8.9): name, surname and e-mail as on the desktop's profile card. The
- * main currency is not here: it is a row of Nastavení next to the language (Jazyk a měna).
+ * Nastavení → Profil (spec §8.9): name, surname and e-mail as on the desktop's profile card, then
+ * the country (the desktop card's select): it puts the person's banks first in the import and picks
+ * the statements' file encoding. The country is saved as soon as it is picked (a picker sheet, as
+ * the language's), and alone: a name or e-mail edit never rewrites it. The main currency is not
+ * here: it is a row of Nastavení next to the language (Jazyk a měna).
  */
 export default function ProfileSection() {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
+  const { t: ts, i18n } = useTranslation('settings');
   const { user } = useAuth();
   const { updateProfile } = useSettingsMutations();
+  const [countryOpen, setCountryOpen] = useState(false);
+  const country = user?.country ? user.country.toLowerCase() : null;
+  const countryName = useMemo(
+    () =>
+      countryOptionsFromPacks([...RULE_PACK_COUNTRY_IDS], i18n.language).find(
+        (option) => option.packId === country
+      )?.name ?? null,
+    [country, i18n.language]
+  );
+  // '' clears the country, as on the desktop
+  const pickCountry = (picked: string | null) => {
+    const chosen = picked === null ? '' : picked.toUpperCase();
+    if (chosen !== (user?.country ?? '')) updateProfile.mutate({ country: chosen });
+  };
 
   const form = useForm<ProfileData>({
     resolver: zodResolver(profileSchema),
@@ -128,6 +150,23 @@ export default function ProfileSection() {
           </Button>
         </form>
       </Form>
+
+      <div className="mt-6 rounded-r4 border border-line bg-paper px-3 pb-2.5 shadow-e1">
+        <KeyValueRow
+          label={ts('profile.country')}
+          value={countryName ?? ts('profile.countryNone')}
+          onClick={() => {
+            if (!updateProfile.isPending) setCountryOpen(true);
+          }}
+        />
+        <p className="m-0 text-m-sub text-ink-4">{ts('profile.countryHint')}</p>
+      </div>
+      <CountryPickerSheet
+        open={countryOpen}
+        onOpenChange={setCountryOpen}
+        value={country}
+        onPick={pickCountry}
+      />
     </SectionPage>
   );
 }

@@ -18,7 +18,8 @@
     "stats": {
       "unchanged": "unchanged",
       "noHistory": "no history yet"
-    }
+    },
+    "emptyDescription": "Add an account or an investment and Moony builds your overview, charts and trends from it. Everything stays on this phone."
   },
   "cashflow": {
     "subtitle_one": "Actual income and expenses from {{count}} account",
@@ -40,7 +41,6 @@
       "pick": "Choose the category whose spending you want to keep in check."
     },
     "budgets": {
-      "ended": "ended",
       "averageNote": "⌀ over the last 6 months"
     },
     "showMore_one": "Show {{count}} more transaction",
@@ -69,7 +69,9 @@
       "categorize": "Categorize",
       "import": "Import",
       "backup": "Back up",
-      "revalue": "Revalue"
+      "revalue": "Revalue",
+      "enterBalance": "Enter balance",
+      "enterRate": "Add rate"
     }
   },
   "recordBalances": {
@@ -132,7 +134,9 @@
       "sortLast": "By last movement",
       "showMatured": "Show paid-off loans",
       "showEnded": "Show ended policies",
-      "export": "Export"
+      "export": "Export",
+      "exportLoans": "Loans (CSV)",
+      "exportPolicies": "Policies (CSV)"
     },
     "add": {
       "title": "Add",
@@ -148,7 +152,8 @@
       "showAll_one": "Show all {{count}}",
       "showAll_other": "Show all {{count}}"
     },
-    "cashTrendLabel": "Cash trend chart"
+    "cashTrendLabel": "Cash trend chart",
+    "loanPayment": "Loan payment"
   },
   "queue": {
     "source": {
@@ -177,10 +182,12 @@
       "hint": "New payments will appear here after the next import.",
       "snoozed_one": "{{count}} payment you skipped will come back later.",
       "snoozed_other": "{{count}} payments you skipped will come back later."
-    }
-  },
-  "placeholder": {
-    "export": "Export comes later."
+    },
+    "heldBack_one": "{{count}} payment skipped",
+    "heldBack_other": "{{count}} payments skipped",
+    "unsnoozed_one": "{{count}} payment is back in the queue",
+    "unsnoozed_other": "{{count}} payments are back in the queue",
+    "unsnooze": "Back to the queue"
   },
   "account": {
     "record": "Record balance",
@@ -233,7 +240,8 @@
     },
     "importHistory": {
       "menu": "Import options"
-    }
+    },
+    "autoCategorizeAllDone": "Every payment on this account already has a category."
   },
   "loan": {
     "nextPayment": "Next payment {{amount}} · {{date}}",
@@ -546,7 +554,8 @@
       "loadFailed": "Positions could not be loaded.",
       "target": "target {{price}}",
       "targetReached": "target reached",
-      "dayChange": "today"
+      "dayChange": "today",
+      "realizedShort": "realized {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} of crypto",
@@ -729,7 +738,8 @@
       "usagePayees_other": "{{count}} learned payees",
       "usageBudgets_one": "{{count}} budget",
       "usageBudgets_other": "{{count}} budgets"
-    }
+    },
+    "remindersLead": "Choose what Data upkeep and “What's coming up” on Overview remind you of; notifications follow the same list. A kind you switch off is hidden everywhere, on your computer too. When notifications arrive is set in Notifications."
   },
   "backup": {
     "lead": "A backup is one encrypted file: the database, the keys and the attachments. Only your password opens it.",
@@ -742,7 +752,8 @@
     "restoreTitle": "Restore and transfer",
     "restoreLead": "Restore a backup from this phone, or transfer a profile from Moony on the computer: choose the backup file and, after the restore, unlock with the password that was in use when it was created.",
     "restoreConfirmDescription": "The backup from {{date}} (Moony {{version}}, {{attachments}} attachments, {{size}}) replaces the data on this phone. Back up first if you want to keep the current data. Moony then locks; unlock it with the password that was in use when the backup was made.",
-    "osBackupNote": "The profile is not saved in the phone's own backup (iCloud or a computer). The Moony backup you save yourself is the only copy outside this phone."
+    "osBackupNote": "The profile is not saved in the phone's own backup (iCloud or a computer). The Moony backup you save yourself is the only copy outside this phone.",
+    "exportSummary": "{{tables}} tables, {{rows}} rows."
   },
   "firstRun": {
     "privacyLead": "Moony stores everything in an encrypted database on this phone. No cloud, no account with us.",
@@ -861,6 +872,9 @@
       "newDescription": "How much you want to spend on one thing in a year. You add payments to the plan in a payment’s details."
     }
   },
+  "gettingStarted": {
+    "makeBackupHint": "One encrypted file with everything, in Settings → Backup and transfer."
+  },
   "sheet": {
     "discard": {
       "title": "Discard changes?",
@@ -874,5 +888,8 @@
     "finance": "Finance could not be loaded.",
     "wealth": "Wealth could not be loaded.",
     "detail": "The details could not be loaded."
+  },
+  "pull": {
+    "refreshing": "Refreshing…"
   }
 }

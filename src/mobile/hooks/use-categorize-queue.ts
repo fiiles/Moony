@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -49,19 +49,63 @@ export function useQueueSnapshot(
 /**
  * "Nechat": holds payments back from the queue for 30 days. It writes no ledger fact (no
  * category, no amount), so only the queue's own entries are refreshed — not the whole money-flow
- * set — and the count on Údržba and Finance follows. There is no undo: the snooze has no
- * inverse command.
+ * set — and the count on Údržba and Finance follows. Its toast offers "Vrátit", which puts the
+ * same payments back (`unsnooze_categorization`) and then calls `onUndone` with them, so the page
+ * can open their rows again.
  */
-export function useSnoozeCategorization() {
+export function useSnoozeCategorization(onUndone?: (transactionIds: string[]) => void) {
+  const queryClient = useQueryClient();
+  const { t } = useTranslation('mobile');
+  const { t: tm } = useTranslation('milestones');
+  const { t: tc } = useTranslation('common');
+  const unsnooze = useUnsnoozeCategorization({ quiet: true });
+  // The toast outlives a render: it reads the newest callback
+  const undone = useRef(onUndone);
+  useEffect(() => {
+    undone.current = onUndone;
+  });
+  return useMutation({
+    mutationFn: (transactionIds: string[]) =>
+      categorizationApi.snoozeCategorization(transactionIds, SNOOZE_DAYS),
+    onSuccess: async (_held, transactionIds) => {
+      await queryClient.invalidateQueries({ queryKey: CATEGORIZE_QUEUE_KEY });
+      toast(t('queue.snoozed', { days: SNOOZE_DAYS }), {
+        action: {
+          label: tm('actions.undo'),
+          onClick: () =>
+            unsnooze.mutate(
+              { transactionIds },
+              { onSuccess: () => undone.current?.(transactionIds) }
+            ),
+        },
+      });
+    },
+    onError: (error: Error) => {
+      toast.error(tc('status.error'), { description: translateApiError(error, tc) });
+    },
+  });
+}
+
+/**
+ * Puts held-back payments back into the queue: the named ones, or every running snooze of one
+ * account (or of all, without `accountId`) — "Vrátit do fronty". The queue's entries refresh; a
+ * toast says how many came back unless `quiet` (the "Vrátit" of a single "Nechat").
+ */
+export function useUnsnoozeCategorization({ quiet = false }: { quiet?: boolean } = {}) {
   const queryClient = useQueryClient();
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
   return useMutation({
-    mutationFn: (transactionIds: string[]) =>
-      categorizationApi.snoozeCategorization(transactionIds, SNOOZE_DAYS),
-    onSuccess: async () => {
+    mutationFn: ({
+      transactionIds,
+      accountId,
+    }: {
+      transactionIds?: string[];
+      accountId?: string;
+    }) => categorizationApi.unsnoozeCategorization(transactionIds, accountId),
+    onSuccess: async (count) => {
       await queryClient.invalidateQueries({ queryKey: CATEGORIZE_QUEUE_KEY });
-      toast(t('queue.snoozed', { days: SNOOZE_DAYS }));
+      if (!quiet) toast(t('queue.unsnoozed', { count }));
     },
     onError: (error: Error) => {
       toast.error(tc('status.error'), { description: translateApiError(error, tc) });

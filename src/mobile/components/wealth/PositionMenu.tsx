@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Coins, Ellipsis, Eye, Pencil, Receipt, Split, Tag, Trash2 } from 'lucide-react';
+import { Coins, Ellipsis, Eye, Pencil, Receipt, RefreshCw, Split, Tag, Trash2 } from 'lucide-react';
 import { useWatchedStocks } from '@/hooks/use-stock-monitor';
 import type { StockRow } from '@/utils/positions';
 import {
@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
+import { useRefreshStockPrices } from '@/mobile/hooks/use-stock-positions';
 import { ManualDividendModal } from '@/components/stocks/ManualDividendModal';
 import { ManualPriceModal } from '@/components/stocks/ManualPriceModal';
 import { usePositionMutations } from '@/mobile/hooks/use-position';
@@ -43,6 +44,8 @@ export function PositionMenu({
   const { t: ts } = useTranslation('stocks');
   const { t: tc } = useTranslation('common');
   const { rename, follow } = usePositionMutations(holding.id, holding.ticker);
+  // Akcie's "Aktualizovat ceny", here too (spec §8.8, C11): the detail reads the same prices
+  const refresh = useRefreshStockPrices();
   const { data: watched = [] } = useWatchedStocks();
   const [priceOpen, setPriceOpen] = useState(false);
   const [dividendOpen, setDividendOpen] = useState(false);
@@ -61,6 +64,10 @@ export function PositionMenu({
           </NavIconButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[240px]">
+          <RowMenuItem disabled={refresh.isPending} onSelect={() => refresh.mutate()}>
+            <RefreshCw strokeWidth={1.75} aria-hidden />
+            {ts('refreshPrices')}
+          </RowMenuItem>
           <RowMenuItem onSelect={onAddDividend}>
             <Coins strokeWidth={1.75} aria-hidden />
             {ts('detail.dividendRecords.add')}

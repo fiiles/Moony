@@ -131,6 +131,10 @@ export default function Budgets() {
                   // No month: the sheet opens on the current one (the first scheduled limit for a
                   // scheduled budget), so a save changes the limit from now on, never the past
                   onEdit={() => limits.openLimit({ kind: 'edit', goal: row.goal })}
+                  // An earlier limit is edited from its own month, as the desktop dialog does
+                  onEditFrom={(effectiveMonth) =>
+                    limits.openLimit({ kind: 'edit', goal: row.goal, effectiveMonth })
+                  }
                   onDelete={setPendingDelete}
                 />
               ))}
@@ -191,17 +195,21 @@ interface BudgetItemProps {
   category: TransactionCategory | null;
   /** Open the limit sheet on this budget. */
   onEdit: () => void;
+  /** Open the limit sheet on this budget from an earlier interval's month. */
+  onEditFrom: (effectiveMonth: number) => void;
   /** Ask to delete the whole budget or the interval shown. */
   onDelete: (pending: PendingDelete) => void;
 }
 
 /**
  * One budget as an entity row: category chip and name, the limit as its value, the validity and
- * the changes to come in the sub-line, "Naplánováno" or "ukončen" under the value. An ended
- * budget is dimmed. Tap and swipe right edit; swipe left (a `loss` panel) and the menu (a long
- * press or its visible `···`) delete, through the delete sheet.
+ * the changes to come in the sub-line, "Naplánováno" under the value of one that starts later. A
+ * budget whose limit ran out is dimmed and listed last, as on the desktop, with no label of its own
+ * (there is no ended state: it simply has no limit now). Tap and swipe right edit; swipe left (a
+ * `loss` panel) and the menu (a long press or its visible `···`) delete, through the delete sheet.
+ * Its earlier limits follow as quiet rows (`EarlierLimitItem`).
  */
-function BudgetItem({ row, category, onEdit, onDelete }: BudgetItemProps) {
+function BudgetItem({ row, category, onEdit, onEditFrom, onDelete }: BudgetItemProps) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('budgeting');
   const { t: tc } = useTranslation('common');
@@ -253,47 +261,127 @@ function BudgetItem({ row, category, onEdit, onDelete }: BudgetItemProps) {
     });
 
   return (
+    <>
+      <EntityRow
+        chip={<CategoryChip category={category} />}
+        title={row.name}
+        sub={sub}
+        value={limitText(main.version.amount, main.version.currency)}
+        valueSub={status === 'scheduled' ? tb('manage.scheduled') : undefined}
+        muted={status === 'ended'}
+        onClick={onEdit}
+        onSwipeRight={onEdit}
+        swipeRightLabel={tb('actions.editLimit')}
+        swipeRightIcon={Pencil}
+        onSwipeLeft={deleteBudget}
+        swipeLeftLabel={tc('buttons.delete')}
+        swipeLeftIcon={Trash2}
+        swipeLeftDestructive
+        menu={{
+          label: t('cashflow.rowMenu', { title: row.name }),
+          // Smazat is nowhere else: the row's tap edits the limit
+          shown: true,
+          children: (
+            <>
+              <RowMenuItem onSelect={onEdit}>
+                <Pencil aria-hidden strokeWidth={1.75} />
+                {tb('actions.editLimit')}
+              </RowMenuItem>
+              {row.canDeleteInterval && (
+                <RowMenuItem variant="danger" onSelect={deleteInterval}>
+                  <Trash2 aria-hidden strokeWidth={1.75} />
+                  {tb('manage.deleteInterval')}
+                </RowMenuItem>
+              )}
+              <RowMenuItem variant="danger" onSelect={deleteBudget}>
+                <Trash2 aria-hidden strokeWidth={1.75} />
+                {tb('manage.delete')}
+              </RowMenuItem>
+            </>
+          ),
+        }}
+      />
+      {row.history.map((period) => (
+        <EarlierLimitItem
+          key={period.version.effectiveMonth}
+          name={row.name}
+          validity={validity(period, false)}
+          limit={limitText(period.version.amount, period.version.currency)}
+          canDelete={row.canDeleteInterval}
+          onEdit={() => onEditFrom(period.version.effectiveMonth)}
+          onDelete={() =>
+            onDelete({
+              kind: 'interval',
+              interval: {
+                categoryId: row.categoryId,
+                timeframe: row.goal.timeframe,
+                effectiveMonth: period.version.effectiveMonth,
+              },
+              name: row.name,
+              amount: moneyText(Number(period.version.amount), period.version.currency),
+              period: validity(period, false),
+            })
+          }
+        />
+      ))}
+    </>
+  );
+}
+
+interface EarlierLimitItemProps {
+  /** The budget's category name (the menu's accessible name). */
+  name: string;
+  validity: string;
+  limit: string;
+  canDelete: boolean;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+/**
+ * An earlier limit of a budget (the desktop dialog's "Dřívější limit" row): dimmed, indented to the
+ * budget's name, its validity in the sub-line and its limit as the value. A tap and the menu edit
+ * the limit from that month; the menu and a swipe to the left delete just this interval.
+ */
+function EarlierLimitItem({
+  name,
+  validity,
+  limit,
+  canDelete,
+  onEdit,
+  onDelete,
+}: EarlierLimitItemProps) {
+  const { t } = useTranslation('mobile');
+  const { t: tb } = useTranslation('budgeting');
+  const title = tb('manage.earlierLimit');
+  return (
     <EntityRow
-      chip={<CategoryChip category={category} />}
-      title={row.name}
-      sub={sub}
-      value={limitText(main.version.amount, main.version.currency)}
-      valueSub={
-        status === 'scheduled'
-          ? tb('manage.scheduled')
-          : status === 'ended'
-            ? t('cashflow.budgets.ended')
-            : undefined
-      }
-      muted={status === 'ended'}
+      chip={<span aria-hidden className="size-9 flex-none" />}
+      title={title}
+      sub={validity}
+      value={limit}
+      muted
       onClick={onEdit}
-      onSwipeRight={onEdit}
-      swipeRightLabel={tb('actions.editLimit')}
-      swipeRightIcon={Pencil}
-      onSwipeLeft={deleteBudget}
-      swipeLeftLabel={tc('buttons.delete')}
+      onSwipeLeft={canDelete ? onDelete : undefined}
+      swipeLeftLabel={tb('manage.deleteInterval')}
       swipeLeftIcon={Trash2}
       swipeLeftDestructive
       menu={{
-        label: t('cashflow.rowMenu', { title: row.name }),
+        label: t('cashflow.rowMenu', { title: `${name} · ${title} · ${validity}` }),
         // Smazat is nowhere else: the row's tap edits the limit
-        shown: true,
+        shown: canDelete,
         children: (
           <>
             <RowMenuItem onSelect={onEdit}>
               <Pencil aria-hidden strokeWidth={1.75} />
               {tb('actions.editLimit')}
             </RowMenuItem>
-            {row.canDeleteInterval && (
-              <RowMenuItem variant="danger" onSelect={deleteInterval}>
+            {canDelete && (
+              <RowMenuItem variant="danger" onSelect={onDelete}>
                 <Trash2 aria-hidden strokeWidth={1.75} />
                 {tb('manage.deleteInterval')}
               </RowMenuItem>
             )}
-            <RowMenuItem variant="danger" onSelect={deleteBudget}>
-              <Trash2 aria-hidden strokeWidth={1.75} />
-              {tb('manage.delete')}
-            </RowMenuItem>
           </>
         ),
       }}

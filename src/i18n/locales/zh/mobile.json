@@ -18,7 +18,8 @@
     "stats": {
       "unchanged": "无变化",
       "noHistory": "暂无历史"
-    }
+    },
+    "emptyDescription": "添加账户或投资后，Moony 会据此生成您的概览、图表和趋势。所有内容都保存在这部手机上。"
   },
   "cashflow": {
     "subtitle_other": "来自 {{count}} 个账户的实际收入和支出",
@@ -39,7 +40,6 @@
       "pick": "请选择要控制支出的类别。"
     },
     "budgets": {
-      "ended": "已结束",
       "averageNote": "⌀ 近 6 个月"
     },
     "showMore_other": "再显示 {{count}} 笔交易",
@@ -62,7 +62,9 @@
       "categorize": "分类",
       "import": "导入",
       "backup": "备份",
-      "revalue": "重新估值"
+      "revalue": "重新估值",
+      "enterBalance": "输入余额",
+      "enterRate": "补充利率"
     }
   },
   "recordBalances": {
@@ -120,7 +122,9 @@
       "sortLast": "按最近流水",
       "showMatured": "显示已还清的贷款",
       "showEnded": "显示已终止的保单",
-      "export": "导出"
+      "export": "导出",
+      "exportLoans": "贷款（CSV）",
+      "exportPolicies": "保单（CSV）"
     },
     "add": {
       "title": "添加",
@@ -134,7 +138,8 @@
       "upcomingNote_other": "{{count}} 天",
       "showAll_other": "显示全部 {{count}} 笔"
     },
-    "cashTrendLabel": "现金走势图"
+    "cashTrendLabel": "现金走势图",
+    "loanPayment": "贷款还款"
   },
   "queue": {
     "source": {
@@ -160,10 +165,10 @@
       "title": "已全部分类",
       "hint": "下次导入后，新的付款会显示在这里。",
       "snoozed_other": "已跳过的 {{count}} 笔付款稍后会回到这里。"
-    }
-  },
-  "placeholder": {
-    "export": "导出功能稍后推出。"
+    },
+    "heldBack_other": "已跳过 {{count}} 笔付款",
+    "unsnoozed_other": "{{count}} 笔付款已放回队列",
+    "unsnooze": "放回队列"
   },
   "account": {
     "record": "记录余额",
@@ -216,7 +221,8 @@
     },
     "importHistory": {
       "menu": "导入选项"
-    }
+    },
+    "autoCategorizeAllDone": "此账户的所有付款都已有类别。"
   },
   "loan": {
     "nextPayment": "下次还款 {{amount}} · {{date}}",
@@ -514,7 +520,8 @@
       "loadFailed": "无法加载持仓。",
       "target": "目标价 {{price}}",
       "targetReached": "已达目标价",
-      "dayChange": "今日"
+      "dayChange": "今日",
+      "realizedShort": "已实现 {{amount}}"
     },
     "crypto": {
       "largestNote": "占加密货币 {{share}}",
@@ -687,7 +694,8 @@
       "usageRules_other": "{{count}} 条规则",
       "usagePayees_other": "{{count}} 个已学习的收款方",
       "usageBudgets_other": "{{count}} 项预算"
-    }
+    },
+    "remindersLead": "选择概览中的“数据维护”和“即将到来”提醒您哪些内容；通知遵循同一列表。关闭的类型在任何地方都不会显示，电脑上也一样。通知何时送达请在“通知”中设置。"
   },
   "backup": {
     "lead": "备份是一个加密文件：包含数据库、密钥和附件。只有您的密码才能打开。",
@@ -700,7 +708,8 @@
     "restoreTitle": "恢复与迁移",
     "restoreLead": "恢复这部手机上的备份，或从电脑上的 Moony 迁移个人资料：选择备份文件，恢复后请使用创建备份时的密码解锁。",
     "restoreConfirmDescription": "创建于 {{date}} 的备份（Moony {{version}}，{{attachments}} 个附件，{{size}}）将替换这部手机上的数据。如需保留当前数据，请先备份。之后 Moony 会锁定；请使用创建该备份时的密码解锁。",
-    "osBackupNote": "个人资料不会保存到手机自身的备份中（iCloud 或电脑）。您自己保存的 Moony 备份是手机之外的唯一副本。"
+    "osBackupNote": "个人资料不会保存到手机自身的备份中（iCloud 或电脑）。您自己保存的 Moony 备份是手机之外的唯一副本。",
+    "exportSummary": "{{tables}} 个表，{{rows}} 行。"
   },
   "firstRun": {
     "privacyLead": "Moony 将所有内容存放在这部手机上的加密数据库中。没有云端，也无需在我们这里注册账户。",
@@ -816,6 +825,9 @@
       "newDescription": "一年中打算在某一项上花多少钱。在付款详情中将付款加入计划。"
     }
   },
+  "gettingStarted": {
+    "makeBackupHint": "一个包含全部内容的加密文件，在 设置 → 备份与迁移 中。"
+  },
   "sheet": {
     "discard": {
       "title": "放弃更改？",
@@ -829,5 +841,8 @@
     "finance": "无法加载财务。",
     "wealth": "无法加载资产。",
     "detail": "无法加载数据。"
+  },
+  "pull": {
+    "refreshing": "正在刷新…"
   }
 }

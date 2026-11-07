@@ -52,7 +52,8 @@ const FLOW_CHOICES: readonly FlowChoice[] = ['auto', 'income', 'expense', 'trans
  * The transaction sheet (spec §8.4, README §13): the amount, the counterparty, the date, the
  * category (a row that opens the picker over this sheet), the meaning of the movement (Automaticky
  * or one of the roles, with what the automatic meaning comes to), the note, and the technical
- * details folded under "Podrobnosti". Smazat asks first in a confirm sheet.
+ * details folded under "Podrobnosti", then Smazat as a text danger action, which asks first in a
+ * confirm sheet. Changes save as they are made; the footer's one button closes.
  */
 export function TransactionSheet({
   tx,
@@ -136,21 +137,14 @@ export function TransactionSheet({
         title={title}
         description={fmt.day(shown.bookingDate, { day: 'numeric', month: 'long', year: 'numeric' })}
         footer={
-          <>
-            <Button
-              variant="ghost"
-              className="h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] px-[18px] text-m-row text-loss"
-              onClick={() => setConfirmOpen(true)}
-            >
-              {tb('transaction.delete')}
-            </Button>
-            <Button
-              className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
-              onClick={close}
-            >
-              {t('common:buttons.close')}
-            </Button>
-          </>
+          // Every change is saved as it is made: the footer only closes. The delete is a text
+          // action at the end of the sheet (spec §8.4), not where other sheets put Zrušit (C11)
+          <Button
+            className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
+            onClick={close}
+          >
+            {t('common:buttons.close')}
+          </Button>
         }
       >
         <Amount tx={shown} />
@@ -223,6 +217,13 @@ export function TransactionSheet({
               ))}
           </div>
         )}
+        <button
+          type="button"
+          onClick={() => setConfirmOpen(true)}
+          className="mt-2 flex min-h-11 w-full items-center px-1 py-2 text-left text-m-body font-semibold text-loss [-webkit-touch-callout:none] active:bg-well focus-visible:outline-none focus-visible:shadow-focus"
+        >
+          {tb('transaction.delete')}
+        </button>
       </Sheet>
       <PlanPickerSheet
         tx={shown}

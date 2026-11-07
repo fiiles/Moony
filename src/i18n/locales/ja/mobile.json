@@ -18,7 +18,8 @@
     "stats": {
       "unchanged": "変化なし",
       "noHistory": "履歴なし"
-    }
+    },
+    "emptyDescription": "口座または投資を追加すると、Moony が概要、グラフ、推移を作成します。すべてのデータはこのスマートフォン内に保存されます。"
   },
   "cashflow": {
     "subtitle_other": "{{count}}口座の実際の収入と支出",
@@ -39,7 +40,6 @@
       "pick": "支出を管理したいカテゴリを選んでください。"
     },
     "budgets": {
-      "ended": "終了",
       "averageNote": "直近6か月の平均"
     },
     "showMore_other": "さらに{{count}}件の取引を表示",
@@ -62,7 +62,9 @@
       "categorize": "分類",
       "import": "取り込む",
       "backup": "バックアップ",
-      "revalue": "再評価"
+      "revalue": "再評価",
+      "enterBalance": "残高を入力",
+      "enterRate": "金利を入力"
     }
   },
   "recordBalances": {
@@ -120,7 +122,9 @@
       "sortLast": "最終入出金順",
       "showMatured": "完済したローンを表示",
       "showEnded": "終了した保険を表示",
-      "export": "エクスポート"
+      "export": "エクスポート",
+      "exportLoans": "ローン（CSV）",
+      "exportPolicies": "保険（CSV）"
     },
     "add": {
       "title": "追加",
@@ -134,7 +138,8 @@
       "upcomingNote_other": "{{count}}日間",
       "showAll_other": "{{count}}件をすべて表示"
     },
-    "cashTrendLabel": "現金の推移グラフ"
+    "cashTrendLabel": "現金の推移グラフ",
+    "loanPayment": "ローン返済"
   },
   "queue": {
     "source": {
@@ -160,10 +165,10 @@
       "title": "すべて分類済み",
       "hint": "次回のインポート後、新しい支払いがここに表示されます。",
       "snoozed_other": "スキップした支払い{{count}}件は、後でここに戻ります。"
-    }
-  },
-  "placeholder": {
-    "export": "エクスポートは後日提供します。"
+    },
+    "heldBack_other": "{{count}}件をスキップ中",
+    "unsnoozed_other": "{{count}}件の支払いがキューに戻りました",
+    "unsnooze": "キューに戻す"
   },
   "account": {
     "record": "残高を記録",
@@ -216,7 +221,8 @@
     },
     "importHistory": {
       "menu": "インポートのオプション"
-    }
+    },
+    "autoCategorizeAllDone": "この口座のすべての支払いにはすでにカテゴリがあります。"
   },
   "loan": {
     "nextPayment": "次回の返済 {{amount}} · {{date}}",
@@ -514,7 +520,8 @@
       "loadFailed": "ポジションを読み込めませんでした。",
       "target": "目標 {{price}}",
       "targetReached": "目標に到達",
-      "dayChange": "本日"
+      "dayChange": "本日",
+      "realizedShort": "確定 {{amount}}"
     },
     "crypto": {
       "largestNote": "暗号資産の{{share}}",
@@ -687,7 +694,8 @@
       "usageRules_other": "{{count}}件のルール",
       "usagePayees_other": "{{count}}件の学習済み取引先",
       "usageBudgets_other": "{{count}}件の予算"
-    }
+    },
+    "remindersLead": "概要の「データの更新」と「今後の予定」で知らせる内容を選びます。通知も同じ一覧に従います。オフにした種類はどこにも表示されません（パソコンでも）。通知が届くタイミングは「通知」で設定します。"
   },
   "backup": {
     "lead": "バックアップは暗号化された1つのファイルで、データベース、キー、添付ファイルが入っています。開けるのはあなたのパスワードだけです。",
@@ -700,7 +708,8 @@
     "restoreTitle": "復元と移行",
     "restoreLead": "このスマートフォンのバックアップを復元するか、パソコンのMoonyからプロフィールを移行します。バックアップファイルを選び、復元後は作成時に使っていたパスワードでロックを解除してください。",
     "restoreConfirmDescription": "{{date}}のバックアップ（Moony {{version}}、添付ファイル {{attachments}}件、{{size}}）で、このスマートフォンのデータが置き換えられます。現在のデータを残したい場合は、先にバックアップを作成してください。復元後、Moony はロックされます。バックアップ作成時に使っていたパスワードでロックを解除してください。",
-    "osBackupNote": "プロフィールは、スマートフォン自体のバックアップ（iCloud またはパソコン）には保存されません。スマートフォンの外にある唯一のコピーは、ご自身で保存した Moony のバックアップです。"
+    "osBackupNote": "プロフィールは、スマートフォン自体のバックアップ（iCloud またはパソコン）には保存されません。スマートフォンの外にある唯一のコピーは、ご自身で保存した Moony のバックアップです。",
+    "exportSummary": "{{tables}} 個のテーブル、{{rows}} 行。"
   },
   "firstRun": {
     "privacyLead": "Moony はすべてをこのスマートフォン上の暗号化データベースに保存します。クラウドも、当社のアカウントも不要です。",
@@ -816,6 +825,9 @@
       "newDescription": "1年間に1つの項目に使いたい金額です。支払いのプランへの追加は、支払いの詳細から行います。"
     }
   },
+  "gettingStarted": {
+    "makeBackupHint": "すべてを1つにまとめた暗号化ファイル。設定 → バックアップと移行 で作成します。"
+  },
   "sheet": {
     "discard": {
       "title": "変更を破棄しますか？",
@@ -829,5 +841,8 @@
     "finance": "財務を読み込めませんでした。",
     "wealth": "資産を読み込めませんでした。",
     "detail": "データを読み込めませんでした。"
+  },
+  "pull": {
+    "refreshing": "更新中…"
   }
 }

@@ -18,7 +18,8 @@
     "stats": {
       "unchanged": "sin cambios",
       "noHistory": "sin historial"
-    }
+    },
+    "emptyDescription": "Añade una cuenta o una inversión y Moony construirá a partir de ella tu resumen, gráficos y tendencias. Todo se queda en este teléfono."
   },
   "cashflow": {
     "subtitle_one": "Ingresos y gastos reales de {{count}} cuenta",
@@ -41,7 +42,6 @@
       "pick": "Elige la categoría cuyos gastos quieres controlar."
     },
     "budgets": {
-      "ended": "finalizado",
       "averageNote": "⌀ de los últimos 6 meses"
     },
     "showMore_one": "Mostrar {{count}} movimiento más",
@@ -76,7 +76,9 @@
       "categorize": "Clasificar",
       "import": "Importar",
       "backup": "Hacer copia",
-      "revalue": "Revalorar"
+      "revalue": "Revalorar",
+      "enterBalance": "Indicar saldo",
+      "enterRate": "Añadir tipo"
     }
   },
   "recordBalances": {
@@ -144,7 +146,9 @@
       "sortLast": "Por último movimiento",
       "showMatured": "Mostrar préstamos liquidados",
       "showEnded": "Mostrar pólizas finalizadas",
-      "export": "Exportar"
+      "export": "Exportar",
+      "exportLoans": "Préstamos (CSV)",
+      "exportPolicies": "Pólizas (CSV)"
     },
     "add": {
       "title": "Añadir",
@@ -162,7 +166,8 @@
       "showAll_many": "Mostrar todos ({{count}})",
       "showAll_other": "Mostrar todos ({{count}})"
     },
-    "cashTrendLabel": "Gráfico del efectivo"
+    "cashTrendLabel": "Gráfico del efectivo",
+    "loanPayment": "Cuota del préstamo"
   },
   "queue": {
     "source": {
@@ -194,10 +199,14 @@
       "snoozed_one": "{{count}} pago omitido volverá más adelante.",
       "snoozed_many": "{{count}} pagos omitidos volverán más adelante.",
       "snoozed_other": "{{count}} pagos omitidos volverán más adelante."
-    }
-  },
-  "placeholder": {
-    "export": "La exportación llega más adelante."
+    },
+    "heldBack_one": "{{count}} pago omitido",
+    "heldBack_many": "{{count}} pagos omitidos",
+    "heldBack_other": "{{count}} pagos omitidos",
+    "unsnoozed_one": "{{count}} pago ha vuelto a la cola",
+    "unsnoozed_many": "{{count}} pagos han vuelto a la cola",
+    "unsnoozed_other": "{{count}} pagos han vuelto a la cola",
+    "unsnooze": "Devolver a la cola"
   },
   "account": {
     "record": "Registrar saldo",
@@ -250,7 +259,8 @@
     },
     "importHistory": {
       "menu": "Opciones de la importación"
-    }
+    },
+    "autoCategorizeAllDone": "Todos los pagos de esta cuenta ya tienen categoría."
   },
   "loan": {
     "nextPayment": "Próxima cuota {{amount}} · {{date}}",
@@ -578,7 +588,8 @@
       "loadFailed": "No se pudieron cargar las posiciones.",
       "target": "objetivo {{price}}",
       "targetReached": "objetivo alcanzado",
-      "dayChange": "hoy"
+      "dayChange": "hoy",
+      "realizedShort": "realizado {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} de cripto",
@@ -771,7 +782,8 @@
       "usageBudgets_one": "{{count}} presupuesto",
       "usageBudgets_many": "{{count}} presupuestos",
       "usageBudgets_other": "{{count}} presupuestos"
-    }
+    },
+    "remindersLead": "Elige qué te recuerdan Mantenimiento de datos y «Próximas fechas» en Resumen; las notificaciones siguen la misma lista. Un tipo que desactives no aparece en ningún sitio, tampoco en el ordenador. Cuándo llegan las notificaciones se ajusta en Notificaciones."
   },
   "backup": {
     "lead": "Una copia de seguridad es un archivo cifrado: la base de datos, las claves y los adjuntos. Solo la abre tu contraseña.",
@@ -784,7 +796,8 @@
     "restoreTitle": "Restauración y traslado",
     "restoreLead": "Restaura una copia de seguridad de este teléfono o traslada un perfil desde Moony en el ordenador: elige el archivo de la copia y, tras restaurarla, desbloquea con la contraseña que estaba en uso cuando se creó.",
     "restoreConfirmDescription": "La copia del {{date}} (Moony {{version}}, {{attachments}} adjuntos, {{size}}) sustituye los datos de este teléfono. Haz antes una copia si quieres conservar los datos actuales. Después Moony se bloqueará; desbloquéalo con la contraseña que se usaba cuando se creó la copia.",
-    "osBackupNote": "El perfil no se guarda en la copia de seguridad del propio teléfono (iCloud u ordenador). La copia de seguridad de Moony que guardes tú es la única copia fuera del teléfono."
+    "osBackupNote": "El perfil no se guarda en la copia de seguridad del propio teléfono (iCloud u ordenador). La copia de seguridad de Moony que guardes tú es la única copia fuera del teléfono.",
+    "exportSummary": "{{tables}} tablas, {{rows}} filas."
   },
   "firstRun": {
     "privacyLead": "Moony guarda todo en una base de datos cifrada en este teléfono. Sin nube y sin cuenta con nosotros.",
@@ -906,6 +919,9 @@
       "newDescription": "Cuánto quieres gastar en un año en una sola cosa. Añades pagos al plan desde el detalle del pago."
     }
   },
+  "gettingStarted": {
+    "makeBackupHint": "Un archivo cifrado con todo, en Ajustes → Copia de seguridad y traslado."
+  },
   "sheet": {
     "discard": {
       "title": "¿Descartar los cambios?",
@@ -919,5 +935,8 @@
     "finance": "No se pudieron cargar las finanzas.",
     "wealth": "No se pudo cargar el patrimonio.",
     "detail": "No se pudieron cargar los datos."
+  },
+  "pull": {
+    "refreshing": "Actualizando…"
   }
 }

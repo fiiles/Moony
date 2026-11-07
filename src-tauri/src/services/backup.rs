@@ -85,18 +85,27 @@ pub fn is_staged_export_path(document_dir: &Path, path: &Path) -> bool {
             .is_some_and(is_export_file_name)
 }
 
+/// The JSON of every user-data table (Nastavení → Záloha a přenos, `export_all_data`) as the phone
+/// stages it for the Files export: a fixed name, like the CSVs.
+pub const DATA_EXPORT_FILE_NAME: &str = "moony-export.json";
+
 /// The text files the phone may stage in Documents for the Files export: the recovery key's text,
 /// the CSV of each class page (stocks, crypto, bonds, other assets — the name stays fixed, the
-/// dated one the export command returns is only the desktop's) and the Cashflow tab's report. A
-/// fixed list, so the command that writes one can never be pointed at another file. The one other
-/// name is the new key of a password change (`is_dated_recovery_key_file_name`).
-const TEXT_EXPORT_FILE_NAMES: [&str; 6] = [
+/// dated one the export command returns is only the desktop's) and of Finance's loans and policies,
+/// the Cashflow tab's report and the
+/// JSON of all data (`DATA_EXPORT_FILE_NAME`). A fixed list, so the command that writes one can
+/// never be pointed at another file. The one other name is the new key of a password change
+/// (`is_dated_recovery_key_file_name`).
+const TEXT_EXPORT_FILE_NAMES: [&str; 9] = [
     "moony-recovery-key.txt",
     "moony-stock-transactions.csv",
     "moony-crypto-transactions.csv",
     "moony-bonds.csv",
     "moony-other-assets.csv",
+    "moony-loans.csv",
+    "moony-insurance-policies.csv",
     "moony-cashflow.csv",
+    DATA_EXPORT_FILE_NAME,
 ];
 
 /// Whether `name` is one of the text files that may be staged (`TEXT_EXPORT_FILE_NAMES`, or the
@@ -1401,7 +1410,11 @@ mod tests {
     fn text_export_file_name_is_on_the_allow_list_only() {
         // The recovery key's text and the Cashflow tab's CSV (`cashflow-export.ts`; the class
         // pages' names have their own test below)
-        for good in ["moony-recovery-key.txt", "moony-cashflow.csv"] {
+        for good in [
+            "moony-recovery-key.txt",
+            "moony-cashflow.csv",
+            "moony-export.json",
+        ] {
             assert!(is_text_export_file_name(good), "{good}");
         }
         for bad in [
@@ -1472,12 +1485,14 @@ mod tests {
 
     #[test]
     fn the_class_pages_csv_exports_are_on_the_allow_list() {
-        // The names the phone's class pages stage (`use-class-export.ts`), one per class
+        // The names the phone's class pages and Finance stage (`use-class-export.ts`), one per page
         for good in [
             "moony-stock-transactions.csv",
             "moony-crypto-transactions.csv",
             "moony-bonds.csv",
             "moony-other-assets.csv",
+            "moony-loans.csv",
+            "moony-insurance-policies.csv",
         ] {
             assert!(is_text_export_file_name(good), "{good}");
         }

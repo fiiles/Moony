@@ -36,6 +36,8 @@ export interface AccountDetailData {
   isLoading: boolean;
   /** The complete history has loaded (the flows strip and the "no data" state wait for it). */
   historyLoaded: boolean;
+  /** The complete history is still on its way (not failed): Toky keeps its place meanwhile. */
+  historyPending: boolean;
 }
 
 /**
@@ -54,7 +56,11 @@ export function useAccountDetail(accountId: string | undefined): AccountDetailDa
     enabled: !!accountId && !!account?.hasZoneDesignation,
   });
 
-  const { data: historyResult, isSuccess: historyLoaded } = useQuery({
+  const {
+    data: historyResult,
+    isSuccess: historyLoaded,
+    isPending: historyPending,
+  } = useQuery({
     queryKey: ['bank-transactions', accountId, 'history'],
     queryFn: () => (accountId ? getCompleteBankHistory(accountId) : null),
     enabled: !!accountId,
@@ -109,5 +115,6 @@ export function useAccountDetail(accountId: string | undefined): AccountDetailDa
     currency,
     isLoading,
     historyLoaded,
+    historyPending,
   };
 }

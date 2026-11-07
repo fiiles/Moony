@@ -1,5 +1,11 @@
-import { dayFloor } from '@shared/calculations/loan-amortization';
+import {
+  amortizationSchedule,
+  dayFloor,
+  loanAnchor,
+  paymentsDueThrough,
+} from '@shared/calculations/loan-amortization';
 import { isEnded, paymentDays, type InsuranceRow } from '@/utils/insurance';
+import type { LoanRow } from '@/utils/loans';
 
 const DAY = 86_400;
 
@@ -52,6 +58,53 @@ export function upcomingPremiums(
   }
   return out.sort(
     (a, b) => a.day - b.day || a.name.localeCompare(b.name) || a.policyId.localeCompare(b.policyId)
+  );
+}
+
+/** One loan payment falling due, in the loan's currency. */
+export interface UpcomingLoanPayment {
+  loanId: string;
+  name: string;
+  /** The due day (UTC midnight, unix seconds). */
+  day: number;
+  /** The scheduled payment (the last one may be smaller): never converted. */
+  amount: number;
+  currency: string;
+}
+
+/**
+ * The scheduled payments of the running loans that fall due from `today` (a payment due today is
+ * in) to `days` days after it, nearest first and by loan name within a day: the plan ahead of
+ * today (`row.plan`, the desktop's schedule from today's balance), so a manual balance and the
+ * events are in it. Paid-off loans, loans without a payment and those whose plan has ended have
+ * none. Amounts are the loan's own, as the premiums' are.
+ */
+export function upcomingLoanPayments(
+  rows: readonly LoanRow[],
+  today: number,
+  days = UPCOMING_DAYS
+): UpcomingLoanPayment[] {
+  const from = dayFloor(today);
+  const to = from + days * DAY;
+  const out: UpcomingLoanPayment[] = [];
+  for (const row of rows) {
+    if (row.matured) continue;
+    // The schedule runs from the plan's anchor (the loan's start for an estimated balance): it is
+    // walked as far as the window's last payment, then cut to the window
+    const maxRows = paymentsDueThrough(loanAnchor(row.plan).day, to) + 1;
+    for (const step of amortizationSchedule(row.plan, maxRows).rows) {
+      if (step.dueDay < from || step.dueDay > to || step.payment <= 0) continue;
+      out.push({
+        loanId: row.loan.id,
+        name: row.loan.name,
+        day: step.dueDay,
+        amount: step.payment,
+        currency: row.currency,
+      });
+    }
+  }
+  return out.sort(
+    (a, b) => a.day - b.day || a.name.localeCompare(b.name) || a.loanId.localeCompare(b.loanId)
   );
 }
 

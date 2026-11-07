@@ -18,7 +18,8 @@
     "stats": {
       "unchanged": "invariato",
       "noHistory": "nessuno storico"
-    }
+    },
+    "emptyDescription": "Aggiungi un conto o un investimento e Moony costruisce da lì panoramica, grafici e andamenti. Tutto resta su questo telefono."
   },
   "cashflow": {
     "subtitle_one": "Entrate e uscite effettive da {{count}} conto",
@@ -41,7 +42,6 @@
       "pick": "Scegli la categoria di cui vuoi tenere sotto controllo le spese."
     },
     "budgets": {
-      "ended": "terminato",
       "averageNote": "⌀ degli ultimi 6 mesi"
     },
     "showMore_one": "Mostra altro {{count}} movimento",
@@ -76,7 +76,9 @@
       "categorize": "Classifica",
       "import": "Importa",
       "backup": "Fai backup",
-      "revalue": "Rivaluta"
+      "revalue": "Rivaluta",
+      "enterBalance": "Inserisci saldo",
+      "enterRate": "Aggiungi tasso"
     }
   },
   "recordBalances": {
@@ -144,7 +146,9 @@
       "sortLast": "Per ultimo movimento",
       "showMatured": "Mostra prestiti estinti",
       "showEnded": "Mostra polizze concluse",
-      "export": "Esporta"
+      "export": "Esporta",
+      "exportLoans": "Prestiti (CSV)",
+      "exportPolicies": "Polizze (CSV)"
     },
     "add": {
       "title": "Aggiungi",
@@ -162,7 +166,8 @@
       "showAll_many": "Mostra tutti ({{count}})",
       "showAll_other": "Mostra tutti ({{count}})"
     },
-    "cashTrendLabel": "Grafico della liquidità"
+    "cashTrendLabel": "Grafico della liquidità",
+    "loanPayment": "Rata del prestito"
   },
   "queue": {
     "source": {
@@ -194,10 +199,14 @@
       "snoozed_one": "{{count}} pagamento saltato tornerà più avanti.",
       "snoozed_many": "{{count}} pagamenti saltati torneranno più avanti.",
       "snoozed_other": "{{count}} pagamenti saltati torneranno più avanti."
-    }
-  },
-  "placeholder": {
-    "export": "L'esportazione arriva più avanti."
+    },
+    "heldBack_one": "{{count}} pagamento saltato",
+    "heldBack_many": "{{count}} pagamenti saltati",
+    "heldBack_other": "{{count}} pagamenti saltati",
+    "unsnoozed_one": "{{count}} pagamento è di nuovo in coda",
+    "unsnoozed_many": "{{count}} pagamenti sono di nuovo in coda",
+    "unsnoozed_other": "{{count}} pagamenti sono di nuovo in coda",
+    "unsnooze": "Riporta in coda"
   },
   "account": {
     "record": "Registra saldo",
@@ -250,7 +259,8 @@
     },
     "importHistory": {
       "menu": "Opzioni dell’importazione"
-    }
+    },
+    "autoCategorizeAllDone": "Tutti i pagamenti di questo conto hanno già una categoria."
   },
   "loan": {
     "nextPayment": "Prossima rata {{amount}} · {{date}}",
@@ -578,7 +588,8 @@
       "loadFailed": "Impossibile caricare le posizioni.",
       "target": "obiettivo {{price}}",
       "targetReached": "obiettivo raggiunto",
-      "dayChange": "oggi"
+      "dayChange": "oggi",
+      "realizedShort": "realizzati {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} delle cripto",
@@ -771,7 +782,8 @@
       "usageBudgets_one": "{{count}} budget",
       "usageBudgets_many": "{{count}} budget",
       "usageBudgets_other": "{{count}} budget"
-    }
+    },
+    "remindersLead": "Scegli cosa ti ricordano Aggiornamento dati e «Cosa ti aspetta» nella Panoramica; le notifiche seguono lo stesso elenco. Un tipo disattivato non compare da nessuna parte, nemmeno sul computer. Quando arrivano le notifiche si imposta in Notifiche."
   },
   "backup": {
     "lead": "Un backup è un unico file cifrato: database, chiavi e allegati. Lo apre solo la tua password.",
@@ -784,7 +796,8 @@
     "restoreTitle": "Ripristino e trasferimento",
     "restoreLead": "Ripristina un backup di questo telefono oppure trasferisci un profilo da Moony sul computer: scegli il file del backup e, dopo il ripristino, sblocca con la password in uso quando è stato creato.",
     "restoreConfirmDescription": "Il backup del {{date}} (Moony {{version}}, {{attachments}} allegati, {{size}}) sostituisce i dati su questo telefono. Se vuoi conservare i dati attuali, fai prima un backup. In seguito Moony si bloccherà; sbloccalo con la password in uso quando il backup è stato creato.",
-    "osBackupNote": "Il profilo non viene salvato nel backup del telefono (iCloud o computer). Il backup di Moony che salvi tu è l'unica copia fuori dal telefono."
+    "osBackupNote": "Il profilo non viene salvato nel backup del telefono (iCloud o computer). Il backup di Moony che salvi tu è l'unica copia fuori dal telefono.",
+    "exportSummary": "{{tables}} tabelle, {{rows}} righe."
   },
   "firstRun": {
     "privacyLead": "Moony conserva tutto in un database cifrato su questo telefono. Nessun cloud, nessun account presso di noi.",
@@ -906,6 +919,9 @@
       "newDescription": "Quanto vuoi spendere in un anno per una singola cosa. Aggiungi i pagamenti al piano dal dettaglio del pagamento."
     }
   },
+  "gettingStarted": {
+    "makeBackupHint": "Un file cifrato con tutto, in Impostazioni → Backup e trasferimento."
+  },
   "sheet": {
     "discard": {
       "title": "Scartare le modifiche?",
@@ -919,5 +935,8 @@
     "finance": "Impossibile caricare le finanze.",
     "wealth": "Impossibile caricare il patrimonio.",
     "detail": "Impossibile caricare i dati."
+  },
+  "pull": {
+    "refreshing": "Aggiornamento…"
   }
 }

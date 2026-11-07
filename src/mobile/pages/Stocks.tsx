@@ -128,6 +128,8 @@ export default function Stocks() {
 
   return (
     <Screen
+      // A pull from the top refreshes the prices, as `···` › Aktualizovat ceny does (spec §8.8)
+      onRefresh={() => refresh.mutateAsync()}
       title={ts('title')}
       leading={<NavTextButton label={t('tabs.wealth')} onClick={back} chevron />}
       trailing={
@@ -373,18 +375,27 @@ function PortfolioStats({
       label: (unrealized ?? 0) >= 0 ? ts('summary.unrealizedGain') : ts('summary.unrealizedLoss'),
       value: unrealized === null ? '—' : statMoney(unrealized, true),
       tone: statTone(unrealized),
-      note: [
-        unrealized !== null &&
-          totals !== undefined &&
-          fmt.percent(totals.unrealizedGainPercent / 100, 1, { signed: true }),
-        realized !== null &&
-          realized !== 0 &&
-          ts('summary.realizedNote', {
-            amount: moneyText(realized, currency, { signed: true, ...WHOLE }),
-          }),
-      ]
-        .filter(Boolean)
-        .join(' · '),
+      // Two short lines, each its own: the percent, then what the sells realized. Joined on one
+      // line the realized part ran onto a third line at 360–390 pt and was cut; its amount is
+      // compact and its word the phone's short one, so it holds one line
+      note: (
+        <>
+          {unrealized !== null &&
+            totals !== undefined &&
+            fmt.percent(totals.unrealizedGainPercent / 100, 1, { signed: true })}
+          {unrealized !== null && totals !== undefined && realized !== null && realized !== 0 && (
+            <br />
+          )}
+          {realized !== null &&
+            realized !== 0 &&
+            t('wealth.stocks.realizedShort', {
+              amount: moneyText(realized, currency, {
+                signed: true,
+                ...(Math.abs(realized) >= 10_000 ? { compact: true, decimals: 0 } : WHOLE),
+              }),
+            })}
+        </>
+      ),
     },
     {
       label: ts('summary.estimatedDividend'),

@@ -6,6 +6,7 @@ import { ProtectedRoute } from '@/lib/protected-route';
 import { ReceivedFileHost } from '@/mobile/components/import/ReceivedFileHost';
 import { NotificationTargetHost } from '@/mobile/components/NotificationTargetHost';
 import { ImportSheetProvider } from '@/mobile/hooks/use-import-sheet';
+import { clearUpkeepDismissals } from '@/mobile/hooks/use-upkeep-dismissals';
 import { NavEntryContext, useNavStack, useNavUnderlay } from '@/mobile/hooks/use-nav-stack';
 import { useNotificationSchedule } from '@/mobile/hooks/use-notification-schedule';
 import { sheetEntryCount } from '@/mobile/hooks/use-sheet-history';
@@ -166,6 +167,7 @@ export function MobileShell() {
     lockReturn.clear();
     clearTabMemory();
     notificationTarget.take();
+    clearUpkeepDismissals();
     try {
       clearEnrolmentAsked(localStorage);
     } catch {

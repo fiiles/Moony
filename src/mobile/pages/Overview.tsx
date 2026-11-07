@@ -24,19 +24,28 @@ import { splitMilestones } from '@/utils/milestones';
 import { CHART_PERIODS, type ChartPeriod } from '@/utils/period';
 import { Button } from '@/components/ui/button';
 import { ConvertedMoney } from '@/components/common/ConvertedMoney';
+import {
+  ScaledChartLegend,
+  ScaledConversionNote,
+  ScaledEmptyState,
+} from '@/mobile/components/Scaled';
 import { LoadError } from '@/mobile/components/LoadError';
-import { ScaledConversionNote, ScaledEmptyState } from '@/mobile/components/Scaled';
 import { AgendaRow } from '@/mobile/components/AgendaRow';
 import { AllocationRing } from '@/mobile/components/AllocationRing';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
+import { GettingStartedCard } from '@/mobile/components/GettingStartedCard';
 import { Hero } from '@/mobile/components/Hero';
 import { Money } from '@/mobile/components/Money';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { UpkeepCard } from '@/mobile/components/UpkeepCard';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { useRefetchShown } from '@/mobile/hooks/use-refetch-shown';
+import { useTransactionDay } from '@/mobile/hooks/use-transaction-day';
 import { initials } from '@/mobile/lib/initials';
+import { movePath } from '@/mobile/lib/move-path';
 import { LockButton } from '@/mobile/shell/LockButton';
+import { addAccountPath } from '@/mobile/lib/getting-started';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 
@@ -63,6 +72,8 @@ export default function Overview() {
   // Money as text (the hero and the stats size themselves to it); `<Money>` where an element will do
   const moneyText = useMoneyText();
   const [period, setPeriod] = useState<ChartPeriod>('30D');
+  // A pull from the top reads again what Přehled shows (spec §8.8)
+  const refetchShown = useRefetchShown();
 
   const greeting = useGreeting();
   const asOf = td('asOf', {
@@ -141,6 +152,7 @@ export default function Overview() {
 
   return (
     <Screen
+      onRefresh={refetchShown}
       title={greeting}
       large
       subtitle={asOf}
@@ -200,7 +212,14 @@ export default function Overview() {
             events={overview.jumps}
             renderEventTip={jumpTip}
             chartLabel={td('charts.netWorthTrend')}
-          />
+          >
+            {/* The rings on the line name themselves, as under the desktop's chart (C11) */}
+            {overview.jumps.length > 0 && overview.points.length > 1 && (
+              <ScaledChartLegend
+                items={[{ label: td('jumps.legend'), swatch: { kind: 'event', type: 'mark' } }]}
+              />
+            )}
+          </Hero>
           <StatRow stats={stats} />
           <AgendaSection />
           <AllocationSection
@@ -212,6 +231,7 @@ export default function Overview() {
             formatValue={money}
           />
           <RecentMovesSection />
+          <GettingStartedCard />
         </>
       )}
     </Screen>
@@ -293,7 +313,8 @@ const MOVE_ICONS: Partial<Record<MoveKind, LucideIcon>> = {
  * Poslední pohyby (spec §8.3 item 6): five entity rows — initials of the counterparty (an icon
  * for a trade), "Dnes · účet · kategorie", the amount in the main currency at its day's rate. Only
  * a bank credit is green with a plus; a debit carries a minus; trades are neutral amounts whose
- * direction is in the sub. Hidden when there is nothing yet.
+ * direction is in the sub. A tap opens the payment in its account (its sheet open) or the trade's
+ * position. Hidden when there is nothing yet.
  */
 function RecentMovesSection() {
   const { t: td } = useTranslation('dashboard');
@@ -310,21 +331,16 @@ function RecentMovesSection() {
 
 function MoveRows({ moves }: { moves: RecentMove[] }) {
   const { t } = useTranslation('dashboard');
-  const fmt = useFormat();
+  const { t: tm } = useTranslation('mobile');
   const moneyText = useMoneyText();
   const { categories } = useCategories();
   const categoryName = useCategoryName();
-  const today = utcDayFloor(Date.now() / 1000);
   const first = Math.min(...moves.map((m) => m.date));
   const { ready, convertAt } = useDatedMainConvert(first);
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
 
-  const dayLabel = (date: number) => {
-    const day = utcDayFloor(date);
-    if (day === today) return t('common:time.today');
-    if (day === today - 86400) return t('common:time.yesterday');
-    return fmt.day(date, { day: 'numeric', month: 'numeric' });
-  };
+  // A payment's day as every list of payments words it (C11)
+  const dayLabel = useTransactionDay();
 
   return (
     <EntityRows>
@@ -362,6 +378,9 @@ function MoveRows({ moves }: { moves: RecentMove[] }) {
               />
             }
             valueTone={move.kind === 'bankIn' ? 'gain' : undefined}
+            // A payment opens in its account with its sheet, a trade on its position (C11)
+            href={movePath(move) ?? undefined}
+            from={tm('tabs.overview')}
           />
         );
       })}
@@ -369,26 +388,34 @@ function MoveRows({ moves }: { moves: RecentMove[] }) {
   );
 }
 
-/** A brand-new profile: the desktop's empty state with its first action (spec §8.3). */
+/**
+ * A brand-new profile: the desktop's empty state with its first action, which opens the account
+ * form on Finance at once (`?add=account`), and the Začínáme checklist under it (spec §8.3).
+ */
 function EmptyOverview() {
   const { t } = useTranslation('dashboard');
+  const { t: tm } = useTranslation('mobile');
   const [, setLocation] = useLocation();
   return (
-    <ScaledEmptyState
-      icon={<Wallet />}
-      title={t('empty.title')}
-      description={t('empty.description')}
-      className="px-5 py-10"
-      action={
-        <Button
-          className="h-auto min-h-12 w-full whitespace-normal rounded-[10px] py-3 text-m-row"
-          onClick={() => setLocation(routes.finance)}
-        >
-          <Landmark aria-hidden />
-          {t('empty.addAccount')}
-        </Button>
-      }
-    />
+    <>
+      <ScaledEmptyState
+        icon={<Wallet />}
+        title={t('empty.title')}
+        // The desktop's sentence says "on this computer"
+        description={tm('overview.emptyDescription')}
+        className="px-5 py-10"
+        action={
+          <Button
+            className="h-auto min-h-12 w-full whitespace-normal rounded-[10px] py-3 text-m-row"
+            onClick={() => setLocation(addAccountPath)}
+          >
+            <Landmark aria-hidden />
+            {t('empty.addAccount')}
+          </Button>
+        }
+      />
+      <GettingStartedCard />
+    </>
   );
 }
 

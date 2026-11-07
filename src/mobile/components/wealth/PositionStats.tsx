@@ -133,16 +133,13 @@ export function PositionStats({
       label: ts('detail.realized'),
       value: realizedGain === null ? '—' : statMoney(realizedGain, reportCurrency, true),
       tone: statTone(realizedGain),
-      // The desktop's two parts, the dividends first: a third of the row holds two short lines,
-      // and "zatím žádný prodej" says nothing once the dividends explain the whole value.
+      // The desktop's two parts, the dividends first. A third of the row holds two short lines at
+      // 360–390 pt and "z toho dividendy 1 234 Kč" already takes both, so with dividends the sells
+      // count is left out rather than cut (the ledger's Prodeje filter lists them); "zatím žádný
+      // prodej" says nothing once the dividends explain the whole value.
       note:
         dividendsReceived !== null && dividendsReceived > 0
-          ? [
-              ts('detail.realizedDividends', { amount: statMoney(dividendsReceived) }),
-              sells > 0 ? ts('detail.sells', { count: sells }) : null,
-            ]
-              .filter(Boolean)
-              .join(' · ')
+          ? ts('detail.realizedDividends', { amount: statMoney(dividendsReceived) })
           : sells > 0
             ? ts('detail.sells', { count: sells })
             : ts('detail.noSells'),

@@ -1,6 +1,6 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useRoute } from 'wouter';
+import { useLocation, useRoute, useSearch } from 'wouter';
 import type { LoanEvent, LoanEventKind, LoanSchedule as LoanScheduleData } from '@shared/schema';
 import { useLoanEvents } from '@/hooks/use-loan-events';
 import { useLoanMutations } from '@/hooks/use-loan-mutations';
@@ -23,6 +23,7 @@ import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { useRetained } from '@/mobile/hooks/use-retained';
 import { useRowIntent } from '@/mobile/hooks/use-row-intent';
 import { loanDetailStats, type LoanHorizon } from '@/mobile/lib/loan-detail';
+import { loanEventFromSearch } from '@/mobile/lib/loan-event-param';
 import { loanPath, routes } from '@/mobile/shell/routes';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { Screen } from '@/mobile/shell/Screen';
@@ -78,7 +79,20 @@ function LoanDetailPage({ id }: { id: string | undefined }) {
 
   const [horizon, setHorizon] = useState<LoanHorizon>('5');
   const [extraOpen, setExtraOpen] = useState(false);
-  const [eventDialog, setEventDialog] = useState<EventDialogState | null>(null);
+  // `?event=balance_check|rate_change` (Údržba's verbs) opens the event dialog at once; the query
+  // is dropped so that the way back to the loan does not open it again
+  const search = useSearch();
+  const [, setLocation] = useLocation();
+  const [eventDialog, setEventDialog] = useState<EventDialogState | null>(() => {
+    const kind = loanEventFromSearch(search);
+    return kind ? { kind } : null;
+  });
+  useEffect(() => {
+    // The entry's state (the back label of a push from Přehled) stays with it
+    if (id && loanEventFromSearch(search)) {
+      setLocation(loanPath(id), { replace: true, state: window.history.state });
+    }
+  }, [id, search, setLocation]);
   const [deleteOpen, setDeleteOpen] = useState(false);
 
   const row = rows.find((r) => r.loan.id === id);

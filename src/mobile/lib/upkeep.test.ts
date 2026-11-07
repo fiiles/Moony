@@ -195,6 +195,13 @@ describe('buildUpkeepRows', () => {
       ).toEqual(['statement_due']);
     });
 
+    it('still asks when a balance was recorded by hand after the import (Skrýt puts it away)', () => {
+      const manual = account('a', { balanceAsOf: ago(10) });
+      expect(
+        kinds(buildUpkeepRows(input({ accounts: [manual], lastImportByAccount: { a: ago(50) } })))
+      ).toEqual(['statement_due']);
+    });
+
     it('an account with imports newer than 35 days produces no row', () => {
       expect(
         buildUpkeepRows(input({ accounts: [account('a')], lastImportByAccount: { a: ago(10) } }))
@@ -212,8 +219,9 @@ describe('buildUpkeepRows', () => {
       const rows = buildUpkeepRows(
         input({
           accounts: [
-            account('a', { institution: { name: 'UniCredit' } }),
-            account('b', { name: 'Spořicí účet' }),
+            account('a', { institution: { name: 'UniCredit' }, balanceAsOf: ago(38) }),
+            // The balance comes from the statement itself, so the account is not kept by hand
+            account('b', { name: 'Spořicí účet', balanceAsOf: ago(70) }),
           ],
           lastImportByAccount: { a: ago(38), b: ago(70) },
         })
@@ -293,11 +301,7 @@ describe('buildUpkeepRows', () => {
     expect(
       buildUpkeepRows(
         input({
-          milestones: [
-            milestone('insurance_end'),
-            milestone('loan_balance_check'),
-            milestone('loan_fixation_expired'),
-          ],
+          milestones: [milestone('insurance_end'), milestone('watch_target')],
         })
       )
     ).toEqual([]);
@@ -348,6 +352,44 @@ describe('buildUpkeepRows', () => {
     ]);
   });
 
+  describe('loan checks (B3)', () => {
+    it('makes one row per loan milestone, after the valuations, titled as on the desktop', () => {
+      const rows = buildUpkeepRows(
+        input({
+          milestones: [
+            milestone('loan_fixation_expired', { key: 'fx:l2', sourceId: 'l2', title: 'Auto' }),
+            milestone('valuation_stale', { sourceId: 'p', title: 'Byt' }),
+            milestone('loan_balance_check', { key: 'bc:l1', sourceId: 'l1', title: 'Hypotéka' }),
+          ],
+        })
+      );
+      expect(rows.map((r) => [r.kind, r.sourceId, r.title.key, r.title.params])).toEqual([
+        ['valuation_stale', 'p', 'upkeep.valuationStale', { name: 'Byt' }],
+        [
+          'loan_fixation_expired',
+          'l2',
+          'milestones:short.loan_fixation_expired',
+          { title: 'Auto' },
+        ],
+        ['loan_balance_check', 'l1', 'milestones:short.loan_balance_check', { title: 'Hypotéka' }],
+      ]);
+      // The desktop's milestone menu (hide, snooze, mute) comes with them
+      expect(rows.slice(1).every((r) => r.milestone !== undefined)).toBe(true);
+    });
+
+    it('keys a loan row by its loan, or by the milestone without one', () => {
+      const rows = buildUpkeepRows(
+        input({
+          milestones: [
+            milestone('loan_balance_check', { key: 'bc:x', sourceId: null, title: 'X' }),
+            milestone('loan_balance_check', { key: 'bc:l1', sourceId: 'l1', title: 'Y' }),
+          ],
+        })
+      );
+      expect(rows.map((r) => r.id)).toEqual(['loan_balance_check:bc:x', 'loan_balance_check:l1']);
+    });
+  });
+
   it('gives every row its own stable id', () => {
     const rows = buildUpkeepRows(
       input({
@@ -355,11 +397,12 @@ describe('buildUpkeepRows', () => {
           milestone('valuation_stale', { sourceId: 'p1', title: 'A' }),
           milestone('valuation_stale', { sourceId: 'p2', title: 'B' }),
         ],
-        accounts: [account('a'), account('b')],
+        accounts: [account('a', { balanceAsOf: ago(60) }), account('b', { balanceAsOf: ago(60) })],
         lastImportByAccount: { a: ago(60), b: ago(60) },
       })
     );
     const ids = rows.map((r) => r.id);
+    expect(ids.filter((id) => id.startsWith('statement_due:'))).toHaveLength(2);
     expect(new Set(ids).size).toBe(ids.length);
   });
 });

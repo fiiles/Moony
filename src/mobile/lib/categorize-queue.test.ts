@@ -15,6 +15,7 @@ import {
   suggestionLabelKey,
   withBatch,
   withPick,
+  withoutLeft,
   type LocalOutcome,
 } from './categorize-queue';
 
@@ -368,5 +369,28 @@ describe('queuePath', () => {
 describe('SNOOZE_DAYS', () => {
   it('is the 30 days of the spec', () => {
     expect(SNOOZE_DAYS).toBe(30);
+  });
+});
+
+describe('withoutLeft', () => {
+  const local = new Map<string, LocalOutcome>([
+    ['a', { kind: 'left' }],
+    ['b', { kind: 'left' }],
+    ['c', { kind: 'categorized', categoryId: 'food', batch: [] }],
+  ]);
+
+  it('opens the named rows that were put off, and only those', () => {
+    expect([...withoutLeft(local, ['a', 'c']).keys()]).toEqual(['b', 'c']);
+  });
+
+  it('opens every row put off without ids, keeping the categorized ones', () => {
+    expect([...withoutLeft(local).keys()]).toEqual(['c']);
+  });
+
+  it('returns the same map when nothing was put off', () => {
+    const none = new Map<string, LocalOutcome>([
+      ['c', { kind: 'categorized', categoryId: 'x', batch: [] }],
+    ]);
+    expect(withoutLeft(none)).toBe(none);
   });
 });

@@ -31,6 +31,7 @@ import { AddAssetMenu, type AddKind } from '@/mobile/components/wealth/AddAssetM
 import { AllocationBar } from '@/mobile/components/wealth/AllocationBar';
 import { ChangeLine } from '@/mobile/components/wealth/ChangeLine';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { useRefetchShown } from '@/mobile/hooks/use-refetch-shown';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
 import { useOpenWithIntent } from '@/mobile/hooks/use-row-intent';
 import { useWealth, type WealthData } from '@/mobile/hooks/use-wealth';
@@ -76,6 +77,8 @@ export default function Wealth() {
   // Money as text where a string is needed, <Money> elsewhere
   const moneyText = useMoneyText();
   const wealth = useWealth();
+  // A pull from the top reads again what Majetek shows (spec §8.8)
+  const refetchShown = useRefetchShown();
   const [addKind, setAddKind] = useState<AddKind | null>(null);
   const { overview, reportCurrency, classes, isLoading } = wealth;
   const [period, setPeriod] = useRemembered<ChartPeriod>('wealth.period', '30D');
@@ -107,6 +110,7 @@ export default function Wealth() {
 
   return (
     <Screen
+      onRefresh={refetchShown}
       title={t('tabs.wealth')}
       large
       leading={<LockButton />}

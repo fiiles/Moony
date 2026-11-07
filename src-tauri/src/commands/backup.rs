@@ -152,6 +152,28 @@ pub async fn discard_text_export(app: AppHandle, path: String) -> Result<()> {
     backup::remove_staged_file(&path)
 }
 
+/// Phones only. Write the JSON of every user-data table (`export_all_data`) to
+/// `Documents/moony-export.json` for the Files export to pick up; an existing file is replaced. The
+/// file is plain: it is kept out of a device backup while it waits, and the frontend removes it
+/// with `discard_text_export` whatever the person chose (the name is on the text allow-list, so the
+/// sweep of an interrupted export removes it too). The summary's `path` is the staged file.
+#[cfg(mobile)]
+#[tauri::command]
+pub async fn stage_data_export(app: AppHandle, db: State<'_, Database>) -> Result<ExportSummary> {
+    let dest = documents_dir(&app)?.join(backup::DATA_EXPORT_FILE_NAME);
+    let summary = match db.with_conn(|conn| backup::export_all_data(conn, &dest, APP_VERSION)) {
+        Ok(summary) => summary,
+        Err(e) => {
+            if let Err(removal) = backup::remove_staged_file(&dest) {
+                log::warn!("[BACKUP] Could not remove the partial data export: {removal}");
+            }
+            return Err(e);
+        }
+    };
+    crate::commands::device_backup::exclude_staged_file(&app, &dest).await;
+    Ok(summary)
+}
+
 /// Validate an archive and return its manifest for the confirmation dialog.
 #[tauri::command]
 pub async fn inspect_backup(path: String) -> Result<BackupInspection> {

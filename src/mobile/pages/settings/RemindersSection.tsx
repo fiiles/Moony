@@ -21,7 +21,9 @@ const FIELD_CARD = 'mb-3.5 rounded-r4 border border-line bg-paper px-4 py-3 shad
  * Nastavení → Připomínky (spec §8.9): the desktop's "Overview reminders" — one switch per group of
  * reminders, then the insurance notice in days. The switches are the milestone mute list, which
  * the desktop shares: a group turned off here is off on Přehled, in the agenda and in the
- * notifications, and on the computer too. Wording from `milestones`, as on the desktop card.
+ * notifications, and on the computer too. Wording from `milestones`, as on the desktop card, except
+ * the lead: the desktop's names its top bar, which the phone has not, and says nothing of the
+ * notifications this list also drives (C9).
  */
 export default function RemindersSection() {
   const { t } = useTranslation('mobile');
@@ -53,7 +55,7 @@ export default function RemindersSection() {
   };
 
   return (
-    <SectionPage title={t('settings.rows.reminders')} lead={tm('settings.description')}>
+    <SectionPage title={t('settings.rows.reminders')} lead={t('settings.remindersLead')}>
       <div className={CARD}>
         {MILESTONE_GROUP_IDS.map((group) => (
           <SwitchRow

@@ -18,7 +18,8 @@
     "stats": {
       "unchanged": "unverändert",
       "noHistory": "kein Verlauf"
-    }
+    },
+    "emptyDescription": "Fügen Sie ein Konto oder eine Geldanlage hinzu, und Moony erstellt daraus Ihre Übersicht, Diagramme und Trends. Alles bleibt auf diesem Telefon."
   },
   "cashflow": {
     "subtitle_one": "Tatsächliche Einnahmen und Ausgaben von {{count}} Konto",
@@ -40,7 +41,6 @@
       "pick": "Wählen Sie die Kategorie, deren Ausgaben Sie im Blick behalten möchten."
     },
     "budgets": {
-      "ended": "beendet",
       "averageNote": "⌀ der letzten 6 Monate"
     },
     "showMore_one": "{{count}} weitere Transaktion anzeigen",
@@ -69,7 +69,9 @@
       "categorize": "Zuordnen",
       "import": "Importieren",
       "backup": "Sichern",
-      "revalue": "Neu bewerten"
+      "revalue": "Neu bewerten",
+      "enterBalance": "Saldo eingeben",
+      "enterRate": "Zins eintragen"
     }
   },
   "recordBalances": {
@@ -132,7 +134,9 @@
       "sortLast": "Nach letzter Bewegung",
       "showMatured": "Getilgte Kredite anzeigen",
       "showEnded": "Beendete Policen anzeigen",
-      "export": "Exportieren"
+      "export": "Exportieren",
+      "exportLoans": "Kredite (CSV)",
+      "exportPolicies": "Versicherungen (CSV)"
     },
     "add": {
       "title": "Hinzufügen",
@@ -148,7 +152,8 @@
       "showAll_one": "Alle {{count}} anzeigen",
       "showAll_other": "Alle {{count}} anzeigen"
     },
-    "cashTrendLabel": "Diagramm zum Bargeldverlauf"
+    "cashTrendLabel": "Diagramm zum Bargeldverlauf",
+    "loanPayment": "Kreditrate"
   },
   "queue": {
     "source": {
@@ -177,10 +182,12 @@
       "hint": "Neue Zahlungen erscheinen hier nach dem nächsten Import.",
       "snoozed_one": "{{count}} übersprungene Zahlung kommt später zurück.",
       "snoozed_other": "{{count}} übersprungene Zahlungen kommen später zurück."
-    }
-  },
-  "placeholder": {
-    "export": "Der Export kommt später."
+    },
+    "heldBack_one": "{{count}} Zahlung übersprungen",
+    "heldBack_other": "{{count}} Zahlungen übersprungen",
+    "unsnoozed_one": "{{count}} Zahlung ist wieder in der Liste",
+    "unsnoozed_other": "{{count}} Zahlungen sind wieder in der Liste",
+    "unsnooze": "Zurück in die Liste"
   },
   "account": {
     "record": "Kontostand erfassen",
@@ -233,7 +240,8 @@
     },
     "importHistory": {
       "menu": "Importoptionen"
-    }
+    },
+    "autoCategorizeAllDone": "Alle Zahlungen dieses Kontos haben bereits eine Kategorie."
   },
   "loan": {
     "nextPayment": "Nächste Rate {{amount}} · {{date}}",
@@ -546,7 +554,8 @@
       "loadFailed": "Die Positionen konnten nicht geladen werden.",
       "target": "Ziel {{price}}",
       "targetReached": "Ziel erreicht",
-      "dayChange": "heute"
+      "dayChange": "heute",
+      "realizedShort": "realisiert {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} der Kryptos",
@@ -729,7 +738,8 @@
       "usagePayees_other": "{{count}} gelernte Empfänger",
       "usageBudgets_one": "{{count}} Budget",
       "usageBudgets_other": "{{count}} Budgets"
-    }
+    },
+    "remindersLead": "Wählen Sie, woran die Datenpflege und „Was ansteht“ in der Übersicht erinnern; die Benachrichtigungen folgen derselben Liste. Eine ausgeschaltete Art erscheint nirgends, auch nicht am Computer. Wann Benachrichtigungen kommen, legen Sie unter Benachrichtigungen fest."
   },
   "backup": {
     "lead": "Eine Sicherung ist eine verschlüsselte Datei: Datenbank, Schlüssel und Anhänge. Nur Ihr Passwort öffnet sie.",
@@ -742,7 +752,8 @@
     "restoreTitle": "Wiederherstellung und Übertragung",
     "restoreLead": "Stellen Sie eine Sicherung von diesem Telefon wieder her oder übertragen Sie ein Profil aus Moony auf dem Computer: Wählen Sie die Sicherungsdatei aus und entsperren Sie nach der Wiederherstellung mit dem Passwort, das bei ihrer Erstellung galt.",
     "restoreConfirmDescription": "Die Sicherung vom {{date}} (Moony {{version}}, {{attachments}} Anhänge, {{size}}) ersetzt die Daten auf diesem Telefon. Sichern Sie zuerst, wenn Sie die aktuellen Daten behalten möchten. Danach sperrt sich Moony; entsperren Sie es mit dem Passwort, das beim Erstellen der Sicherung galt.",
-    "osBackupNote": "Das Profil wird nicht in der Sicherung des Telefons (iCloud oder Computer) gespeichert. Die Moony-Sicherung, die Sie selbst speichern, ist die einzige Kopie außerhalb des Telefons."
+    "osBackupNote": "Das Profil wird nicht in der Sicherung des Telefons (iCloud oder Computer) gespeichert. Die Moony-Sicherung, die Sie selbst speichern, ist die einzige Kopie außerhalb des Telefons.",
+    "exportSummary": "{{tables}} Tabellen, {{rows}} Zeilen."
   },
   "firstRun": {
     "privacyLead": "Moony speichert alles in einer verschlüsselten Datenbank auf diesem Telefon. Keine Cloud, kein Konto bei uns.",
@@ -861,6 +872,9 @@
       "newDescription": "Wie viel Sie in einem Jahr für eine Sache ausgeben möchten. Zahlungen fügen Sie dem Plan in den Zahlungsdetails hinzu."
     }
   },
+  "gettingStarted": {
+    "makeBackupHint": "Eine verschlüsselte Datei mit allem, unter Einstellungen → Sicherung und Übertragung."
+  },
   "sheet": {
     "discard": {
       "title": "Änderungen verwerfen?",
@@ -874,5 +888,8 @@
     "finance": "Die Finanzen konnten nicht geladen werden.",
     "wealth": "Das Vermögen konnte nicht geladen werden.",
     "detail": "Die Angaben konnten nicht geladen werden."
+  },
+  "pull": {
+    "refreshing": "Wird aktualisiert…"
   }
 }

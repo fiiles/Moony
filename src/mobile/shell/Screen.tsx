@@ -6,8 +6,11 @@ import {
   type ReactNode,
   type RefObject,
 } from 'react';
+import { useTranslation } from 'react-i18next';
+import { LoaderCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useEdgeSwipeBack } from '@/mobile/hooks/use-edge-swipe-back';
+import { PULL_INDICATOR_PX, usePullToRefresh } from '@/mobile/hooks/use-pull-to-refresh';
 import { navScroll, saveNavScroll, useNavEntry } from '@/mobile/hooks/use-nav-stack';
 import { SCROLL_TOP_EVENT } from '@/mobile/hooks/use-tab-memory';
 import { NavBar } from './NavBar';
@@ -22,6 +25,11 @@ interface ScreenProps {
   trailing?: ReactNode;
   /** False on screens outside the tabs (the lock's recovery): no room is kept for the tab bar. */
   tabBar?: boolean;
+  /**
+   * Pull to refresh (spec §8.8): what a pull from the top does — refetch what the screen shows, or
+   * refresh prices. The spinner stays until its promise settles. Without it the screen does not pull.
+   */
+  onRefresh?: () => Promise<unknown> | unknown;
   children?: ReactNode;
 }
 
@@ -30,7 +38,9 @@ interface ScreenProps {
  * with the 16 pt gutter and room at the bottom for the fixed tab bar. A screen with a back button
  * also goes back by a swipe from the left edge (`useEdgeSwipeBack`), and a screen comes back
  * scrolled where it was left (`useKeptScroll`). A tap on the tab a root belongs to scrolls it to
- * its top (`SCROLL_TOP_EVENT`).
+ * its top (`SCROLL_TOP_EVENT`). A screen given `onRefresh` refreshes by a pull from its top
+ * (`usePullToRefresh`), with the indicator in the room the content leaves and a live region that
+ * says it is refreshing.
  */
 export function Screen({
   title,
@@ -39,10 +49,20 @@ export function Screen({
   leading,
   trailing,
   tabBar = true,
+  onRefresh,
   children,
 }: ScreenProps) {
+  const { t } = useTranslation('mobile');
   const rootRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLElement>(null);
+  const indicatorRef = useRef<HTMLDivElement>(null);
+  const underlay = useNavEntry()?.underlay ?? false;
+  const refreshing = usePullToRefresh({
+    scroll: scrollRef,
+    indicator: indicatorRef,
+    onRefresh,
+    enabled: !underlay,
+  });
   // The large title, or a 1 px marker at the top of a screen without one.
   const [marker, setMarker] = useState<HTMLElement | null>(null);
   const collapsed = useScrolledAway(scrollRef, marker);
@@ -61,30 +81,48 @@ export function Screen({
         leading={leading}
         trailing={trailing}
       />
-      <main
-        ref={scrollRef}
-        className={cn(
-          'min-h-0 flex-1 overflow-y-auto overscroll-contain px-4',
-          tabBar
-            ? 'pb-[calc(var(--m-tabbar-h)+var(--safe-bottom)+24px)]'
-            : 'pb-[calc(var(--safe-bottom)+24px)]'
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {onRefresh && (
+          <>
+            {/* Rides in the room the pulled content leaves; turns with the pull, spins while it runs */}
+            <div
+              ref={indicatorRef}
+              aria-hidden
+              className="pointer-events-none absolute left-1/2 top-0 -ml-[14px] flex items-center justify-center text-ink-3 opacity-0 data-[refreshing=true]:[&>svg]:animate-spin motion-reduce:data-[refreshing=true]:[&>svg]:animate-none"
+              style={{ width: PULL_INDICATOR_PX, height: PULL_INDICATOR_PX }}
+            >
+              <LoaderCircle className="size-[22px]" strokeWidth={2} />
+            </div>
+            <span role="status" className="sr-only">
+              {refreshing ? t('pull.refreshing') : ''}
+            </span>
+          </>
         )}
-      >
-        {large ? (
-          <h1
-            ref={setMarker}
-            className="mx-0.5 mb-[3px] mt-1.5 hyphens-auto break-words text-m-title-lg text-ink"
-          >
-            {title}
-          </h1>
-        ) : (
-          <div ref={setMarker} aria-hidden className="h-px" />
-        )}
-        {large && subtitle && (
-          <p className="mx-0.5 mb-3.5 mt-0 text-m-lead text-ink-3">{subtitle}</p>
-        )}
-        {children}
-      </main>
+        <main
+          ref={scrollRef}
+          className={cn(
+            'min-h-0 flex-1 overflow-y-auto overscroll-contain px-4',
+            tabBar
+              ? 'pb-[calc(var(--m-tabbar-h)+var(--safe-bottom)+24px)]'
+              : 'pb-[calc(var(--safe-bottom)+24px)]'
+          )}
+        >
+          {large ? (
+            <h1
+              ref={setMarker}
+              className="mx-0.5 mb-[3px] mt-1.5 hyphens-auto break-words text-m-title-lg text-ink"
+            >
+              {title}
+            </h1>
+          ) : (
+            <div ref={setMarker} aria-hidden className="h-px" />
+          )}
+          {large && subtitle && (
+            <p className="mx-0.5 mb-3.5 mt-0 text-m-lead text-ink-3">{subtitle}</p>
+          )}
+          {children}
+        </main>
+      </div>
     </div>
   );
 }

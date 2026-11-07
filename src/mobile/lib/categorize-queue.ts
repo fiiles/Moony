@@ -129,6 +129,22 @@ export function withBatch(
 }
 
 /**
+ * The page's outcomes without the "Nechat" ones — of `ids`, or every one: the payments are back in
+ * the queue ("Vrátit" on a Nechat's toast, "Vrátit do fronty"), so their rows open again.
+ */
+export function withoutLeft(
+  local: ReadonlyMap<string, LocalOutcome>,
+  ids?: readonly string[]
+): ReadonlyMap<string, LocalOutcome> {
+  const only = ids ? new Set(ids) : null;
+  const next = new Map(local);
+  for (const [id, outcome] of local) {
+    if (outcome.kind === 'left' && (only === null || only.has(id))) next.delete(id);
+  }
+  return next.size === local.size ? local : next;
+}
+
+/**
  * The category each done row ended with, as far as this page knows: the pick of a row, and the
  * same category for the rows its remembered pick took along. A batch still holds a row picked
  * here only when it came after that pick (`withPick` and `withBatch` let go of the rows a newer

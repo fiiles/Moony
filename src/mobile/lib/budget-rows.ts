@@ -27,6 +27,8 @@ export interface BudgetRow {
   main: BudgetLimitPeriod;
   /** Changes after `main` starts (a null amount ends the limit); empty for an ended budget. */
   upcoming: BudgetGoalVersion[];
+  /** Earlier intervals with a limit, newest first (the desktop dialog's "Dřívější limit" rows). */
+  history: BudgetLimitPeriod[];
   /** Another limit than the one shown exists, so deleting an interval is not deleting the budget. */
   canDeleteInterval: boolean;
 }
@@ -51,6 +53,7 @@ export function budgetRows(
     status: row.status,
     main: row.main,
     upcoming: row.upcoming,
+    history: row.history,
     canDeleteInterval:
       row.history.length + row.upcoming.filter((version) => version.amount != null).length > 0,
   }));

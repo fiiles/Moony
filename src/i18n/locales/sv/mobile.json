@@ -18,7 +18,8 @@
     "stats": {
       "unchanged": "oförändrat",
       "noHistory": "ingen historik"
-    }
+    },
+    "emptyDescription": "Lägg till ett konto eller en investering så bygger Moony din översikt, dina diagram och trender utifrån det. Allt stannar på den här telefonen."
   },
   "cashflow": {
     "subtitle_one": "Faktiska inkomster och utgifter från {{count}} konto",
@@ -40,7 +41,6 @@
       "pick": "Välj den kategori vars utgifter du vill hålla koll på."
     },
     "budgets": {
-      "ended": "avslutad",
       "averageNote": "⌀ senaste 6 månaderna"
     },
     "showMore_one": "Visa {{count}} transaktion till",
@@ -69,7 +69,9 @@
       "categorize": "Kategorisera",
       "import": "Importera",
       "backup": "Säkerhetskopiera",
-      "revalue": "Värdera om"
+      "revalue": "Värdera om",
+      "enterBalance": "Ange saldo",
+      "enterRate": "Lägg in ränta"
     }
   },
   "recordBalances": {
@@ -132,7 +134,9 @@
       "sortLast": "Efter senaste rörelse",
       "showMatured": "Visa betalda lån",
       "showEnded": "Visa avslutade försäkringar",
-      "export": "Exportera"
+      "export": "Exportera",
+      "exportLoans": "Lån (CSV)",
+      "exportPolicies": "Försäkringar (CSV)"
     },
     "add": {
       "title": "Lägg till",
@@ -148,7 +152,8 @@
       "showAll_one": "Visa {{count}}",
       "showAll_other": "Visa alla {{count}}"
     },
-    "cashTrendLabel": "Diagram över kontanter"
+    "cashTrendLabel": "Diagram över kontanter",
+    "loanPayment": "Låneavbetalning"
   },
   "queue": {
     "source": {
@@ -177,10 +182,12 @@
       "hint": "Nya betalningar visas här efter nästa import.",
       "snoozed_one": "{{count}} överhoppad betalning kommer tillbaka senare.",
       "snoozed_other": "{{count}} överhoppade betalningar kommer tillbaka senare."
-    }
-  },
-  "placeholder": {
-    "export": "Export kommer senare."
+    },
+    "heldBack_one": "{{count}} betalning överhoppad",
+    "heldBack_other": "{{count}} betalningar överhoppade",
+    "unsnoozed_one": "{{count}} betalning är tillbaka i kön",
+    "unsnoozed_other": "{{count}} betalningar är tillbaka i kön",
+    "unsnooze": "Tillbaka till kön"
   },
   "account": {
     "record": "Registrera saldo",
@@ -233,7 +240,8 @@
     },
     "importHistory": {
       "menu": "Importalternativ"
-    }
+    },
+    "autoCategorizeAllDone": "Alla betalningar på det här kontot har redan en kategori."
   },
   "loan": {
     "nextPayment": "Nästa betalning {{amount}} · {{date}}",
@@ -546,7 +554,8 @@
       "loadFailed": "Innehaven kunde inte läsas in.",
       "target": "mål {{price}}",
       "targetReached": "målet nått",
-      "dayChange": "i dag"
+      "dayChange": "i dag",
+      "realizedShort": "realiserat {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} av krypto",
@@ -729,7 +738,8 @@
       "usagePayees_other": "{{count}} inlärda mottagare",
       "usageBudgets_one": "{{count}} budget",
       "usageBudgets_other": "{{count}} budgetar"
-    }
+    },
+    "remindersLead": "Välj vad Dataunderhåll och ”Vad som väntar” i Översikt påminner dig om; aviseringarna följer samma lista. En typ du stänger av visas ingenstans, inte heller på datorn. När aviseringar kommer ställer du in under Aviseringar."
   },
   "backup": {
     "lead": "En säkerhetskopia är en krypterad fil: databasen, nycklarna och bilagorna. Bara ditt lösenord öppnar den.",
@@ -742,7 +752,8 @@
     "restoreTitle": "Återställning och överföring",
     "restoreLead": "Återställ en säkerhetskopia från den här telefonen eller överför en profil från Moony på datorn: välj säkerhetskopians fil och lås upp efter återställningen med det lösenord som gällde när den skapades.",
     "restoreConfirmDescription": "Säkerhetskopian från {{date}} (Moony {{version}}, {{attachments}} bilagor, {{size}}) ersätter data på den här telefonen. Säkerhetskopiera först om du vill behålla dina nuvarande data. Moony låses därefter; lås upp med det lösenord som gällde när säkerhetskopian skapades.",
-    "osBackupNote": "Profilen sparas inte i telefonens egen säkerhetskopia (iCloud eller dator). Moony-säkerhetskopian som du själv sparar är den enda kopian utanför telefonen."
+    "osBackupNote": "Profilen sparas inte i telefonens egen säkerhetskopia (iCloud eller dator). Moony-säkerhetskopian som du själv sparar är den enda kopian utanför telefonen.",
+    "exportSummary": "{{tables}} tabeller, {{rows}} rader."
   },
   "firstRun": {
     "privacyLead": "Moony lagrar allt i en krypterad databas på den här telefonen. Inget moln, inget konto hos oss.",
@@ -861,6 +872,9 @@
       "newDescription": "Hur mycket du vill spendera på en sak under ett år. Du lägger till betalningar i planen i betalningens detaljer."
     }
   },
+  "gettingStarted": {
+    "makeBackupHint": "En krypterad fil med allt, under Inställningar → Säkerhetskopia och överföring."
+  },
   "sheet": {
     "discard": {
       "title": "Slänga ändringarna?",
@@ -874,5 +888,8 @@
     "finance": "Ekonomin kunde inte läsas in.",
     "wealth": "Förmögenheten kunde inte läsas in.",
     "detail": "Uppgifterna kunde inte läsas in."
+  },
+  "pull": {
+    "refreshing": "Uppdaterar…"
   }
 }

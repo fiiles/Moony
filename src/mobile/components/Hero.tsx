@@ -105,7 +105,7 @@ export function Hero<E extends ChartEvent, P extends string = ChartPeriod>({
   const up = direction === 'up';
   const down = direction === 'down';
   // A long net worth shrinks to fit (floor `m-fs-title`) instead of ending in an ellipsis. The
-  // fit follows the shown text, not the number: hiding the amounts changes the text alone.
+  // fit follows the shown text (a scrubbed day's value, or "—"), not the number.
   const heroRef = useRef<HTMLElement>(null);
   const fit = useFitText(heroRef, shownValue);
 

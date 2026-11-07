@@ -14,7 +14,7 @@
 //! Account removes both (`auth::remove_account_files`), and so does [`forget_binding`].
 
 use std::fs;
-use std::io;
+use std::io::{self, Read};
 use std::path::Path;
 
 use rusqlite::Connection;
@@ -23,6 +23,7 @@ use subtle::ConstantTimeEq;
 use zeroize::Zeroizing;
 
 use super::hlc::DeviceId;
+use super::snapshot::{self, RestoreReport};
 use super::state;
 use crate::error::{AppError, Result};
 use crate::services::crypto;
@@ -81,9 +82,12 @@ pub enum RejoinReason {
     BindingMismatch,
 }
 
-/// Leaves the restore marker next to the profile (empty, flushed to disk).
+/// Leaves the restore marker next to the profile: the empty file is flushed to disk, and then so
+/// is the folder, so the marker survives a power cut right after a restore.
 pub fn write_rejoin_marker(data_dir: &Path) -> io::Result<()> {
-    fs::File::create(data_dir.join(REJOIN_MARKER))?.sync_all()
+    let marker = data_dir.join(REJOIN_MARKER);
+    fs::File::create(&marker)?.sync_all()?;
+    crypto::sync_parent_dir(&marker)
 }
 
 /// Removes the restore marker; a missing one is fine.
@@ -97,7 +101,9 @@ pub fn clear_rejoin_marker(data_dir: &Path) -> io::Result<()> {
 /// a profile that never synced) is just cleared. With sync on: the marker asks for a re-join;
 /// otherwise a binding written on this profile (`binding_written`) must be present, open on this
 /// machine and equal `SHA-256(BINDING_LABEL ‖ device_id)` (compared in constant time). A platform
-/// without a binding never asks, and a native failure is logged once and lets the start go on.
+/// without a binding never writes one, so it asks only for a binding written on another OS (the
+/// folder moved here); after that re-join `binding_written` stays 0 and it never asks again. A
+/// native failure is logged once and lets the start go on.
 pub fn startup_check(
     conn: &Connection,
     data_dir: &Path,
@@ -133,10 +139,11 @@ pub fn startup_check(
                 Ok(StartupCheck::Rejoin(RejoinReason::BindingMismatch))
             }
         }
-        Err(BindingFailure::NotThisDevice) => {
+        // `binding_written = 1` and nothing here can open it: the folder moved from an OS that
+        // binds.
+        Err(BindingFailure::NotThisDevice | BindingFailure::Unsupported) => {
             Ok(StartupCheck::Rejoin(RejoinReason::BindingMismatch))
         }
-        Err(BindingFailure::Unsupported) => Ok(StartupCheck::Fine),
         Err(BindingFailure::Failed(reason)) => {
             log::warn!("[SYNC] The device binding could not be checked at this start: {reason}");
             Ok(StartupCheck::Fine)
@@ -171,6 +178,40 @@ pub fn write_binding(conn: &Connection, data_dir: &Path, native: &dyn BindingNat
     state::set_binding_written(conn, true)
 }
 
+/// Turns sync on for the first device of a vault (`state::enable`), then clears a restore marker
+/// a restored never-synced backup left behind. `startup_check` runs only for an enabled profile
+/// (G5), so without this the first unlock after setup would re-join a device that has nothing to
+/// re-join from. Setup (Task 16) calls this, not `state::enable`.
+///
+/// The marker goes only once sync is on, so a failed setup keeps it. A marker that cannot be
+/// removed is logged and left: at worst the next unlock re-joins under another fresh ID.
+pub fn enable(conn: &Connection, data_dir: &Path, device: DeviceId) -> Result<()> {
+    state::enable(conn, device)?;
+    clear_marker_after_start(data_dir);
+    Ok(())
+}
+
+/// Joins the vault from a snapshot (`snapshot::join`), then clears a restore marker, as
+/// [`enable`] does: the joiner has just taken a fresh device ID, so a marker left from an earlier
+/// restore has nothing to re-join. Joining (Task 15) calls this, not `snapshot::join`.
+pub fn join(
+    conn: &Connection,
+    data_dir: &Path,
+    device: DeviceId,
+    input: &mut impl Read,
+    now: i64,
+) -> Result<RestoreReport> {
+    let report = snapshot::join(conn, device, input, now)?;
+    clear_marker_after_start(data_dir);
+    Ok(report)
+}
+
+fn clear_marker_after_start(data_dir: &Path) {
+    if let Err(e) = clear_rejoin_marker(data_dir) {
+        log::warn!("[SYNC] Could not clear the restore marker after turning sync on: {e}");
+    }
+}
+
 /// Removes the binding file (and a staging copy an interrupted write left behind) and the restore
 /// marker; missing ones are fine.
 pub fn forget_binding(data_dir: &Path) -> Result<()> {
@@ -201,6 +242,7 @@ fn remove_if_present(path: &Path) -> io::Result<()> {
 mod tests {
     use super::*;
     use crate::services::sync::chain::rejoin_device_id;
+    use crate::services::sync::engine::pull::rejoin_as_new_device;
     use crate::services::sync::test_support::migrated;
 
     /// Seals by XOR with a per-instance "machine" byte and tags the blob with it; another
@@ -380,12 +422,106 @@ mod tests {
             StartupCheck::Fine
         );
 
-        // A profile bound on a supported machine, opened where nothing can open the binding.
-        write_binding(&conn, dir.path(), &FakeNative { machine: 7 }).expect("binding");
+        // A stray file does not count while nothing was written here.
+        fs::write(dir.path().join("sync-binding.bin"), [7u8; 33]).expect("stray file");
         assert_eq!(
             startup_check(&conn, dir.path(), &NoBinding).expect("check"),
             StartupCheck::Fine
         );
+    }
+
+    #[test]
+    fn a_binding_from_an_os_that_binds_asks_an_unsupported_platform_for_a_rejoin() {
+        let conn = synced();
+        let dir = tempfile::tempdir().expect("dir");
+        // Bound on a supported machine; the folder moved to one where nothing can open it.
+        write_binding(&conn, dir.path(), &FakeNative { machine: 7 }).expect("binding");
+        assert!(binding_written(&conn));
+
+        assert_eq!(
+            startup_check(&conn, dir.path(), &NoBinding).expect("check"),
+            StartupCheck::Rejoin(RejoinReason::BindingMismatch)
+        );
+    }
+
+    /// The Linux no-loop property: a profile bound elsewhere re-joins once, and then never again.
+    #[test]
+    fn an_unsupported_platform_rejoins_once_and_then_is_fine() {
+        let conn = synced();
+        let dir = tempfile::tempdir().expect("dir");
+        write_binding(&conn, dir.path(), &FakeNative { machine: 7 }).expect("binding");
+        fs::remove_file(dir.path().join("sync-binding.bin")).expect("the file did not come along");
+
+        assert_eq!(
+            startup_check(&conn, dir.path(), &NoBinding).expect("check"),
+            StartupCheck::Rejoin(RejoinReason::BindingMismatch)
+        );
+        rejoin_as_new_device(&conn, None, 1_800_000_000).expect("re-join");
+        let device = state::load(&conn).expect("load").expect("row").device;
+        assert!(device > DEVICE, "the re-join took an ID above the old one");
+        write_binding(&conn, dir.path(), &NoBinding).expect("nothing to write");
+
+        assert!(!binding_written(&conn));
+        assert_eq!(
+            startup_check(&conn, dir.path(), &NoBinding).expect("check"),
+            StartupCheck::Fine
+        );
+        assert_eq!(
+            startup_check(&conn, dir.path(), &NoBinding).expect("check"),
+            StartupCheck::Fine,
+            "and at every start after it"
+        );
+    }
+
+    #[test]
+    fn turning_sync_on_clears_a_marker_from_a_never_synced_backup() {
+        let conn = migrated();
+        let dir = tempfile::tempdir().expect("dir");
+        write_rejoin_marker(dir.path()).expect("marker");
+
+        enable(&conn, dir.path(), DEVICE).expect("enable");
+
+        assert!(!dir.path().join("sync-rejoin.marker").exists());
+        assert!(state::load(&conn).expect("load").expect("row").enabled);
+        assert_eq!(
+            startup_check(&conn, dir.path(), &FakeNative { machine: 7 }).expect("check"),
+            StartupCheck::Fine,
+            "the first unlock after setup does not re-join"
+        );
+    }
+
+    #[test]
+    fn joining_from_a_snapshot_clears_a_marker() {
+        let source = synced();
+        let mut bytes = Vec::new();
+        snapshot::dump(&source, 1, &mut bytes).expect("dump");
+        let joiner = migrated();
+        let dir = tempfile::tempdir().expect("dir");
+        write_rejoin_marker(dir.path()).expect("marker");
+
+        let joined = DeviceId([0x22; 16]);
+        join(&joiner, dir.path(), joined, &mut &bytes[..], 1_800_000_000).expect("join");
+
+        assert!(!dir.path().join("sync-rejoin.marker").exists());
+        assert_eq!(
+            state::load(&joiner).expect("load").expect("row").device,
+            joined
+        );
+        assert_eq!(
+            startup_check(&joiner, dir.path(), &FakeNative { machine: 7 }).expect("check"),
+            StartupCheck::Fine
+        );
+    }
+
+    #[test]
+    fn a_failed_join_keeps_the_marker() {
+        let joiner = migrated();
+        let dir = tempfile::tempdir().expect("dir");
+        write_rejoin_marker(dir.path()).expect("marker");
+
+        join(&joiner, dir.path(), DEVICE, &mut &b"not a snapshot"[..], 1).expect_err("refused");
+
+        assert!(dir.path().join("sync-rejoin.marker").exists());
     }
 
     #[test]

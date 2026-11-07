@@ -420,14 +420,14 @@ pub(crate) fn replace_secret_file(path: &Path, data: &[u8]) -> std::io::Result<(
     // The new file is in place from here on, so a caller must not see an error (a password
     // change would then report failure with the new password already active).
     if let Err(e) = sync_parent_dir(path) {
-        log::warn!("[AUTH] Could not flush the data folder after replacing a key file: {e}");
+        log::warn!("[FS] Could not flush the data folder after replacing a secret file: {e}");
     }
     Ok(())
 }
 
 /// Flush a folder's entries (the rename that just happened in it) to disk. `std` offers no
 /// directory handle on Windows, where the rename replaces the target in one step.
-fn sync_parent_dir(path: &Path) -> std::io::Result<()> {
+pub(crate) fn sync_parent_dir(path: &Path) -> std::io::Result<()> {
     #[cfg(unix)]
     {
         match path.parent() {

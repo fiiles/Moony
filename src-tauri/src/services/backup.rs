@@ -539,6 +539,21 @@ pub fn restore_backup(
     archive_path: &Path,
     known_migrations: &[&str],
 ) -> Result<PathBuf> {
+    restore_backup_with(
+        data_dir,
+        archive_path,
+        known_migrations,
+        crate::services::sync::binding::write_rejoin_marker,
+    )
+}
+
+/// [`restore_backup`] with the marker write passed in, so a test can make it fail.
+fn restore_backup_with(
+    data_dir: &Path,
+    archive_path: &Path,
+    known_migrations: &[&str],
+    write_marker: impl FnOnce(&Path) -> io::Result<()>,
+) -> Result<PathBuf> {
     let inspection = inspect_backup(archive_path, known_migrations)?;
     if inspection.newer_than_app {
         return Err(AppError::Validation("validation.backupNewerThanApp".into()));
@@ -567,8 +582,11 @@ pub fn restore_backup(
     // 3. The restored database opens only with the archive's key, so this cannot edit its
     //    `sync_state`: a marker tells the next unlock to re-join under a new device ID (spec
     //    §11.4). Every restore leaves it; the unlock clears it when the profile has no sync. A
-    //    restore the marker would not follow is rolled back.
-    if let Err(e) = crate::services::sync::binding::write_rejoin_marker(data_dir) {
+    //    restore the marker would not follow is rolled back, and a marker the failed write may
+    //    have created (the file exists, the flush failed) goes too, so it never outlives the
+    //    restore it belongs to.
+    if let Err(e) = write_marker(data_dir) {
+        let _ = crate::services::sync::binding::clear_rejoin_marker(data_dir);
         rollback(data_dir, &pre_restore);
         return Err(io_err("Failed to write the restore marker", e));
     }
@@ -966,6 +984,42 @@ mod tests {
         let dst = tempfile::tempdir().expect("dst");
         assert!(restore_backup(dst.path(), &archive, &KNOWN).is_err());
         assert!(!dst.path().join("sync-rejoin.marker").exists());
+    }
+
+    #[test]
+    fn a_marker_write_that_fails_after_creating_the_file_rolls_the_restore_back() {
+        let src = tempfile::tempdir().expect("src");
+        let conn = seed_account(src.path());
+        let archive = src.path().join("out.zip");
+        create_backup(&conn, src.path(), &archive, "1.0.0").expect("backup");
+
+        let dst = tempfile::tempdir().expect("dst");
+        fs::write(dst.path().join("salt"), b"OLD-SALT").expect("old salt");
+
+        let error = restore_backup_with(dst.path(), &archive, &KNOWN, |dir| {
+            fs::write(dir.join("sync-rejoin.marker"), b"").expect("marker created");
+            Err(io::Error::other("flush failed"))
+        })
+        .expect_err("the restore fails");
+
+        assert!(
+            error
+                .to_string()
+                .contains("Failed to write the restore marker"),
+            "{error}"
+        );
+        assert!(!dst.path().join("sync-rejoin.marker").exists());
+        assert_eq!(
+            fs::read(dst.path().join("salt")).expect("salt"),
+            b"OLD-SALT",
+            "the previous account is back"
+        );
+        assert!(!dst.path().join("key.enc").exists());
+        let leftovers: Vec<String> = fs::read_dir(dst.path())
+            .expect("dir")
+            .map(|e| e.expect("entry").file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(leftovers, vec!["salt"], "no pre-restore folder is left");
     }
 
     fn write_zip(path: &Path, entries: &[(&str, &[u8])]) {

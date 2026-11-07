@@ -146,7 +146,7 @@ pub fn ensure_row(conn: &Connection, device: DeviceId) -> Result<()> {
 /// on this connection, then the effective rule-pack keys, so those two keys are clocked and queued.
 /// A device that starts at its barrier needs no barrier marker, so its barrier counts as marked
 /// (`note_starting_barrier`). Binding a vault (`keys::save_credentials`) before or after leaves
-/// the same mark.
+/// the same mark. Setup goes through `binding::enable`, which clears a stale restore marker first.
 pub fn enable(conn: &Connection, device: DeviceId) -> Result<()> {
     in_savepoint(conn, "sync_enable", || {
         ensure_row(conn, device)?;

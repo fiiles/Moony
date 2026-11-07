@@ -137,7 +137,8 @@ pub struct RestoreReport {
 /// the restore by replace (nothing is clocked or queued), then capture, whose clock starts above
 /// every restored clock. The rule packs are not rewritten: they come from the vault. The joiner
 /// starts at its barrier, so it needs no barrier marker (`state::note_starting_barrier`). One
-/// savepoint: a refused or broken stream leaves the profile as it was.
+/// savepoint: a refused or broken stream leaves the profile as it was. Joining goes through
+/// `binding::join`, which clears a stale restore marker first.
 pub fn join(
     conn: &Connection,
     device: DeviceId,

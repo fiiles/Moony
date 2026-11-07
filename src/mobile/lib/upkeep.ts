@@ -1,7 +1,10 @@
 import type { BankAccount, Milestone } from '@shared/schema';
 import { daysBetween } from '@/utils/milestones';
 
-/** A balance nobody recorded for longer than this is stale (the backend's own `STALE_BALANCE_DAYS`). */
+/**
+ * A balance nobody recorded for longer than this is stale: the backend's own `STALE_BALANCE_DAYS`
+ * (`services/milestones/accounts.rs`), which `upkeep-backend-pin.test.ts` keeps this copy equal to.
+ */
 export const STALE_BALANCE_DAYS = 30;
 /** An account whose newest import is older than this is due for the next statement. */
 export const STATEMENT_DUE_DAYS = 35;

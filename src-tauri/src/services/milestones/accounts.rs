@@ -10,6 +10,8 @@ use crate::services::loan_amortization::day_floor;
 
 const TERMINATION_LEAD_DAYS: i64 = 28;
 const RATE_END_LEAD_DAYS: i64 = 14;
+/// The phone's Údržba lists the stale accounts by this rule too (`src/mobile/lib/upkeep.ts`); a test
+/// there pins its copy to this value.
 const STALE_BALANCE_DAYS: i64 = 30;
 
 struct AccountRow {

@@ -202,7 +202,7 @@ function PropertyBody({ view, currency, onRevalue }: PropertyBodyProps) {
         typeLabel={(type) => tr(`documents.types.${type}`)}
       />
       <SectionHead title={tr('detail.tabs.notes')} />
-      {/* Read here; written in Upravit, where the desktop keeps them */}
+      {/* Read here and written in Upravit; the desktop also edits them in place (RED-06, audit A14) */}
       {property.notes ? (
         <div className="mb-3.5 rounded-r4 border border-line bg-[linear-gradient(180deg,var(--paper),var(--paper-2))] px-4 py-3.5 shadow-e1">
           <p className="m-0 whitespace-pre-wrap break-words text-m-body text-ink-2">

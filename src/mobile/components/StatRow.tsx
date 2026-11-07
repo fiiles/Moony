@@ -31,7 +31,7 @@ const CONTAINER_SIZE = `clamp(${STAT_FLOOR}, 19.7cqi, var(--m-fs-stat))`;
  */
 export function StatRow({ stats }: { stats: StatItem[] }) {
   const rowRef = useRef<HTMLDivElement>(null);
-  // The fit follows the shown values: hiding the amounts changes the text, not the numbers.
+  // The fit follows the shown values' text (a "—" is narrower than an amount).
   const fit = useFitText(rowRef, stats.map((stat) => stat.value).join('\n'));
 
   return (

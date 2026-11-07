@@ -416,7 +416,12 @@ export default function Finance() {
           )}
           <LoansSection finance={finance} rows={loanRows} />
           <PoliciesSection finance={finance} rows={policyRows} />
-          <UpcomingPremiums rows={policyRows} loans={loanRows} today={insurance.today} />
+          {/* A policy type picked in `···` narrows the list to those policies: no loan payments */}
+          <UpcomingPremiums
+            rows={policyRows}
+            loans={typeFilter === 'all' ? loanRows : undefined}
+            today={insurance.today}
+          />
         </>
       )}
 

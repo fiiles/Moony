@@ -43,6 +43,7 @@ import {
   rowState,
   withBatch,
   withPick,
+  withoutLeft,
   type LocalOutcome,
 } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
@@ -86,13 +87,7 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
   // its refresh settles, and it is what remembers a row's category once the row has left the answer.
   const [local, setLocal] = useState<ReadonlyMap<string, LocalOutcome>>(new Map());
   // "Vrátit" on the toast of a "Nechat" opens its rows again
-  const snooze = useSnoozeCategorization((ids) =>
-    setLocal((current) => {
-      const next = new Map(current);
-      for (const id of ids) if (next.get(id)?.kind === 'left') next.delete(id);
-      return next;
-    })
-  );
+  const snooze = useSnoozeCategorization((ids) => setLocal((current) => withoutLeft(current, ids)));
   const unsnooze = useUnsnoozeCategorization();
   const snapshot = useQueueSnapshot(queue.data, !queue.isFetching, local);
   // Payments deleted in the details sheet: not "done", simply gone
@@ -322,7 +317,13 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
                 type="button"
                 className="relative font-semibold text-ink underline-offset-2 after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] disabled:opacity-45"
                 disabled={unsnooze.isPending}
-                onClick={() => unsnooze.mutate({ accountId })}
+                onClick={() =>
+                  unsnooze.mutate(
+                    { accountId },
+                    // Every row put off here opens again, as the per-row Vrátit does
+                    { onSuccess: () => setLocal((current) => withoutLeft(current)) }
+                  )
+                }
               >
                 {t('queue.unsnooze')}
               </button>

@@ -195,19 +195,10 @@ describe('buildUpkeepRows', () => {
       ).toEqual(['statement_due']);
     });
 
-    it('asks no statement of an account kept by hand since its last import (B4)', () => {
-      // Recorded by hand 40 days after the import, when the statement was long due
+    it('still asks when a balance was recorded by hand after the import (Skrýt puts it away)', () => {
       const manual = account('a', { balanceAsOf: ago(10) });
       expect(
-        buildUpkeepRows(input({ accounts: [manual], lastImportByAccount: { a: ago(50) } }))
-      ).toEqual([]);
-    });
-
-    it('still asks when the balance by hand was recorded within the cycle', () => {
-      // 30 days after the import: the balances reminder, not a switch to keeping it by hand
-      const within = account('a', { balanceAsOf: ago(20) });
-      expect(
-        kinds(buildUpkeepRows(input({ accounts: [within], lastImportByAccount: { a: ago(50) } })))
+        kinds(buildUpkeepRows(input({ accounts: [manual], lastImportByAccount: { a: ago(50) } })))
       ).toEqual(['statement_due']);
     });
 

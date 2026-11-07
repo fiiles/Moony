@@ -54,24 +54,24 @@ export function DataTools() {
     }
     setBusy('export');
     let staged: string | null = null;
+    let saved: { tables: number; rows: number } | null = null;
     try {
       const summary = await dataApi.stageDataExport();
       staged = summary.path;
       // `null` is a cancelled picker: nothing to say
       const target = await save({ defaultPath: DATA_EXPORT_FILE });
-      if (target !== null) {
-        toast(t('data.exportSaved'), {
-          description: tm('backup.exportSummary', {
-            tables: summary.tableCount,
-            rows: summary.rowCount,
-          }),
-        });
-      }
+      if (target !== null) saved = { tables: summary.tableCount, rows: summary.rowCount };
+    } catch (error) {
+      showError(error);
+    }
+    // The JSON is plain: it never stays in Documents. The export counts as saved only once the
+    // staged copy is gone; a failed removal is said as the error instead.
+    try {
+      if (staged !== null) await dataApi.discardTextExport(staged);
+      if (saved) toast(t('data.exportSaved'), { description: tm('backup.exportSummary', saved) });
     } catch (error) {
       showError(error);
     } finally {
-      // The JSON is plain: it never stays in Documents. A failed removal is said as an error.
-      if (staged !== null) await dataApi.discardTextExport(staged).catch(showError);
       setBusy(null);
     }
   };

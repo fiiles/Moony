@@ -39,6 +39,13 @@ describe('phoneGettingStartedItems', () => {
   });
 });
 
+describe('phoneGettingStartedItems on a device that cannot back up', () => {
+  it('has no backup step', () => {
+    const keys = phoneGettingStartedItems(progress, undefined, false).map((i) => i.key);
+    expect(keys).toEqual(['importStatement', 'addInvestment', 'setBudget']);
+  });
+});
+
 describe('opensAddAccount', () => {
   it("opens the account form for the empty Přehled's path only", () => {
     expect(opensAddAccount(addAccountPath.slice(addAccountPath.indexOf('?')))).toBe(true);

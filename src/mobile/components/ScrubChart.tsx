@@ -24,6 +24,7 @@ import { useTickFormatter } from '@/components/charts/use-tick-formatter';
 import { EventMark } from '@/components/charts/EventMarkers';
 import type { LinePoint, LineTip } from '@/components/charts/MoonyLineChart';
 import { selectionTick } from '@/mobile/lib/haptics';
+import { PULL_START_EVENT } from '@/mobile/lib/pull-refresh';
 import type { CostPoint } from '@/mobile/lib/position-series';
 import { nearestPoint, splitProjected, stepValueAt, toPlotX, toPlotY } from '@/mobile/lib/scrub';
 
@@ -198,6 +199,20 @@ export function ScrubChart<E extends ChartEvent>({
     setActive(null);
     onScrub(null);
   };
+
+  // A drag that became a pull to refresh takes the touch moves and no pointercancel follows: the
+  // scrub that started on the same finger ends here (`PULL_START_EVENT`)
+  const endScrubRef = useRef(endScrub);
+  useEffect(() => {
+    endScrubRef.current = endScrub;
+  });
+  useEffect(() => {
+    const onPull = () => {
+      if (gesture.current) endScrubRef.current();
+    };
+    window.addEventListener(PULL_START_EVENT, onPull);
+    return () => window.removeEventListener(PULL_START_EVENT, onPull);
+  }, []);
 
   const beginScrub = (event: PointerEvent<HTMLDivElement>, g: Gesture) => {
     g.scrubbing = true;

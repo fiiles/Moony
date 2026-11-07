@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/use-auth';
 import { onboardingApi } from '@/lib/tauri-api';
 import { cn } from '@/lib/utils';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
+import { exportsOnThisDevice } from '@/mobile/lib/export-file';
 import { phoneGettingStartedItems } from '@/mobile/lib/getting-started';
 
 /** The progress the desktop card, Nastavení and the backup read: one cache entry. */
@@ -28,7 +29,11 @@ export function GettingStartedCard() {
   });
 
   if (!progress || progress.checklistDismissed) return null;
-  const items = phoneGettingStartedItems(progress, user?.menuPreferences);
+  const items = phoneGettingStartedItems(
+    progress,
+    user?.menuPreferences,
+    exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? '')
+  );
   if (items.every((item) => item.done)) return null;
   const doneCount = items.filter((item) => item.done).length;
 

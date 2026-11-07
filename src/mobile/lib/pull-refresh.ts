@@ -8,6 +8,12 @@
  * `usePullToRefresh`. Distances in px, positive downwards.
  */
 
+/**
+ * Sent on `window` when a drag becomes a pull: a gesture that started on the same finger (the
+ * hero chart's scrub) ends, since the pull now takes the touch moves and no pointercancel follows.
+ */
+export const PULL_START_EVENT = 'moony:pull-start';
+
 /** Movement before the gesture decides whether it is a pull. */
 export const PULL_SLOP_PX = 8;
 /** The damped distance a release must reach to refresh. */
@@ -57,8 +63,8 @@ export const PULL_IDLE: PullState = { kind: 'idle' };
 
 /**
  * The next state of the gesture. A refresh in progress ignores new touches until it is `done`; a
- * pull pushed back above its start lets the content go back to 0 but stays a pull (the finger may
- * come down again); a release while armed refreshes.
+ * pull pushed back to or above its start is let go (`ignored`), so the same drag scrolls the
+ * content; a release while armed refreshes.
  */
 export function pullReducer(state: PullState, event: PullEvent): PullState {
   switch (event.type) {
@@ -72,7 +78,10 @@ export function pullReducer(state: PullState, event: PullEvent): PullState {
         if (direction === 'none') return { kind: 'ignored' };
         return pulling(state.x, state.y, event.y - state.y);
       }
-      if (state.kind === 'pulling') return pulling(state.x, state.y, event.y - state.y);
+      if (state.kind === 'pulling') {
+        const dy = event.y - state.y;
+        return dy <= 0 ? { kind: 'ignored' } : pulling(state.x, state.y, dy);
+      }
       return state;
     }
     case 'end':
@@ -89,6 +98,15 @@ function pulling(x: number, y: number, dy: number): PullState {
 }
 
 /** How far the content sits down in `state` (the indicator's room). */
+/**
+ * Whether a move while the drag is still undecided must be kept from the WebView: a downward move
+ * at the top would otherwise start WKWebView's own rubber band, which then owns the gesture. The
+ * slop still tells a sideways drag apart; only the scroll is held back meanwhile.
+ */
+export function holdsUndecidedMove(state: PullState, y: number): boolean {
+  return state.kind === 'tracking' && y > state.y;
+}
+
 export function pullOffset(state: PullState): number {
   if (state.kind === 'pulling') return state.distance;
   if (state.kind === 'refreshing') return PULL_HOLD_PX;

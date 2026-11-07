@@ -656,7 +656,7 @@
       "target": "cel {{price}}",
       "targetReached": "cel osiągnięty",
       "dayChange": "dziś",
-      "realizedShort": "zreal. {{amount}}"
+      "realizedShort": "zrealizowano {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} krypto",
@@ -861,7 +861,7 @@
       "usageBudgets_many": "{{count}} budżetów",
       "usageBudgets_other": "{{count}} budżetu"
     },
-    "remindersLead": "O czym przypominają Aktualizacja danych i „Co cię czeka” w Przeglądzie i o czym informują powiadomienia. Wyłączony rodzaj nie pojawi się nigdzie, także na komputerze. Kiedy przychodzą powiadomienia, ustawisz w Powiadomieniach."
+    "remindersLead": "Wybierz, o czym przypominają Aktualizacja danych i „Co cię czeka” w Przeglądzie; powiadomienia działają według tej samej listy. Wyłączony rodzaj nie pojawi się nigdzie, także na komputerze. Kiedy przychodzą powiadomienia, ustawisz w Powiadomieniach."
   },
   "backup": {
     "lead": "Kopia zapasowa to jeden zaszyfrowany plik: baza danych, klucze i załączniki. Otworzy go tylko twoje hasło.",

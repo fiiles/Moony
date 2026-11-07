@@ -3,6 +3,8 @@ import { selectionTick } from '@/mobile/lib/haptics';
 import { edgeSwipeStarts } from '@/mobile/lib/edge-swipe';
 import {
   PULL_IDLE,
+  PULL_START_EVENT,
+  holdsUndecidedMove,
   pullOffset,
   pullProgress,
   pullReducer,
@@ -93,8 +95,17 @@ export function usePullToRefresh({ scroll, indicator, onRefresh, enabled }: Pull
     const onMove = (event: TouchEvent) => {
       const touch = event.touches[0];
       if (!touch || (state.kind !== 'tracking' && state.kind !== 'pulling')) return;
+      // A downward move at the top before the drag has decided: the WebView must not take it into
+      // its own rubber band, or it owns the gesture from then on
+      if (holdsUndecidedMove(state, touch.clientY) && event.cancelable) event.preventDefault();
+      const before = state.kind;
       dispatch({ type: 'move', x: touch.clientX, y: touch.clientY });
-      if (state.kind !== 'pulling') return;
+      if (state.kind !== 'pulling') {
+        // Back above its start: the pull lets go and the same drag scrolls the content
+        if (before === 'pulling') paint(true);
+        return;
+      }
+      if (before === 'tracking') window.dispatchEvent(new Event(PULL_START_EVENT));
       if (event.cancelable) event.preventDefault();
       if (state.armed && !armed) selectionTick();
       armed = state.armed;

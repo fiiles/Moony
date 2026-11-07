@@ -584,7 +584,7 @@
       "target": "mål {{price}}",
       "targetReached": "målet nått",
       "dayChange": "i dag",
-      "realizedShort": "real. {{amount}}"
+      "realizedShort": "realiserat {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} av krypto",
@@ -769,7 +769,7 @@
       "usageBudgets_one": "{{count}} budget",
       "usageBudgets_other": "{{count}} budgetar"
     },
-    "remindersLead": "Vad Dataunderhåll och ”Vad som väntar” i Översikt påminner om, och vad aviseringarna meddelar. En avstängd typ visas ingenstans, inte heller på datorn. När aviseringar kommer ställer du in under Aviseringar."
+    "remindersLead": "Välj vad Dataunderhåll och ”Vad som väntar” i Översikt påminner dig om; aviseringarna följer samma lista. En typ du stänger av visas ingenstans, inte heller på datorn. När aviseringar kommer ställer du in under Aviseringar."
   },
   "backup": {
     "lead": "En säkerhetskopia är en krypterad fil: databasen, nycklarna och bilagorna. Bara ditt lösenord öppnar den.",

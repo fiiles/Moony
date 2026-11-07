@@ -137,6 +137,22 @@ export function withBatch(
  * expansion turned off): they hold what they held before — their own pick, else nothing, and the
  * queue lists them again.
  */
+/**
+ * The page's outcomes without the "Nechat" ones — of `ids`, or every one: the payments are back in
+ * the queue ("Vrátit" on a Nechat's toast, "Vrátit do fronty"), so their rows open again.
+ */
+export function withoutLeft(
+  local: ReadonlyMap<string, LocalOutcome>,
+  ids?: readonly string[]
+): ReadonlyMap<string, LocalOutcome> {
+  const only = ids ? new Set(ids) : null;
+  const next = new Map(local);
+  for (const [id, outcome] of local) {
+    if (outcome.kind === 'left' && (only === null || only.has(id))) next.delete(id);
+  }
+  return next.size === local.size ? local : next;
+}
+
 export function doneCategories(
   local: ReadonlyMap<string, LocalOutcome>,
   restored: ReadonlySet<string> = new Set()

@@ -584,7 +584,7 @@
       "target": "target {{price}}",
       "targetReached": "target reached",
       "dayChange": "today",
-      "realizedShort": "real. {{amount}}"
+      "realizedShort": "realized {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} of crypto",
@@ -769,7 +769,7 @@
       "usageBudgets_one": "{{count}} budget",
       "usageBudgets_other": "{{count}} budgets"
     },
-    "remindersLead": "What Data upkeep and “What's coming up” on Overview remind you of, and what the notifications announce. A kind switched off shows nowhere, on the computer neither. When notifications arrive is set in Notifications."
+    "remindersLead": "Choose what Data upkeep and “What's coming up” on Overview remind you of; notifications follow the same list. A kind you switch off is hidden everywhere, on your computer too. When notifications arrive is set in Notifications."
   },
   "backup": {
     "lead": "A backup is one encrypted file: the database, the keys and the attachments. Only your password opens it.",

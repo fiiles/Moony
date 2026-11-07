@@ -584,7 +584,7 @@
       "target": "Ziel {{price}}",
       "targetReached": "Ziel erreicht",
       "dayChange": "heute",
-      "realizedShort": "real. {{amount}}"
+      "realizedShort": "realisiert {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} der Kryptos",
@@ -769,7 +769,7 @@
       "usageBudgets_one": "{{count}} Budget",
       "usageBudgets_other": "{{count}} Budgets"
     },
-    "remindersLead": "Woran die Datenpflege und „Was ansteht“ in der Übersicht erinnern und was die Benachrichtigungen melden. Abgeschaltete Arten erscheinen nirgends, auch nicht am Computer. Wann Benachrichtigungen kommen, legen Sie unter Benachrichtigungen fest."
+    "remindersLead": "Wählen Sie, woran die Datenpflege und „Was ansteht“ in der Übersicht erinnern; die Benachrichtigungen folgen derselben Liste. Eine ausgeschaltete Art erscheint nirgends, auch nicht am Computer. Wann Benachrichtigungen kommen, legen Sie unter Benachrichtigungen fest."
   },
   "backup": {
     "lead": "Eine Sicherung ist eine verschlüsselte Datei: Datenbank, Schlüssel und Anhänge. Nur Ihr Passwort öffnet sie.",

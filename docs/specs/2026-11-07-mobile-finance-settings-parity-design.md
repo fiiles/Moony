@@ -29,15 +29,23 @@ loan reminders), shows rows that cannot be put away (Údržba's statement and un
    and sub-line, the milestone menu, and a verb that opens the loan with its event dialog
    (`/finance/loans/:id?event=balance_check|rate_change`).
 6. **B4** the phone-only rows (`statement_due`, `uncategorized`) get a `···` with Skrýt and Připomenout
-   za měsíc, kept on the device; an account whose newest balance was recorded by hand after its last
-   import is kept manually and gets no statement row.
+   za měsíc, kept on the device (cleared when the profile goes or a backup replaces it). A statement
+   row hidden with Skrýt stays hidden until the account's next import, which covers an account kept
+   by hand after one import.
 7. **B6** one set of "Nezařazené" for every count (the queue's), "Nechat" gets a "Vrátit" toast and the
    queue page a line "N odloženo · Vrátit do fronty" (new backend `unsnooze_categorization`).
 8. **C9** the Připomínky lead in phone words that also names the notifications.
 9. **C11** recent moves open their record; "Nejbližší platby" include loan payments; the jump marks on
    Přehled's chart get the desktop legend; one transaction-day formatter; Toky keeps its place while
-   loading; Údržba starts unfolded; TransactionSheet's footer is Zavřít + Hotovo with the delete as a
-   text action in the body; the position detail gets "Aktualizovat ceny" in `···`.
+   loading; Údržba starts unfolded; TransactionSheet's footer is one Hotovo button (every change in
+   the sheet saves as it is made, so a second closing button would say the same thing) and its
+   delete is a text danger action at the end of the body, where it no longer sits in the slot other
+   sheets give Zrušit; the position detail gets "Aktualizovat ceny" in `···`; pull to refresh (spec
+   §8.8) on Přehled, Finance, Majetek (read again what they show from the local database, not the
+   network searches), Akcie, Krypto and the position detail (refresh prices). `Screen` takes it as
+   an opt-in `onRefresh`; the gesture is a tested state machine (`pull-refresh.ts`) that ignores a
+   scrolled screen, sideways drags, a second finger, the back swipe's edge and the swipe underlay,
+   holds the WebView's own bounce back and ends a chart scrub the pull takes over.
 10. **E** Finance `···` › Export writes the desktop's loans and policies CSV; Rozpočty lose the
     "ukončen" label and list the earlier limit intervals; the stale comments go; `STALE_BALANCE_DAYS`
     is pinned to the Rust constant by a test.
@@ -46,8 +54,6 @@ loan reminders), shows rows that cannot be put away (Údržba's statement and un
 
 - Error states, lock return, tab memory, dirty sheets, notification targets, Android backup (the
   navigation/resilience branch). Charts and wealth beyond the one `···` item (the wealth branch).
-- Pull-to-refresh: it needs a gesture in the shared `Screen` (shell area); the price refresh is in the
-  menu instead. Listed as not done.
 - A bank-transactions CSV: the desktop has none either.
 
 ## Design
@@ -86,9 +92,9 @@ given ids, or for every uncategorized payment of one account or all accounts.
 - **(call)** B4: phone-local dismissals (device storage, not the backend's `milestone_states`): the
   rows are the phone's own and the desktop never shows them, so a state on the computer would mean
   nothing there. Cost: a second phone would show the row again.
-- **(call)** B4: a manual balance newer than the last import means "kept by hand" and suppresses the
-  statement row. Cost: someone who records a balance between statements loses the reminder until the
-  next import is 35 days old again — acceptable, the monthly notification still asks.
+- **(reviewer's ruling)** B4: no "kept by hand" heuristic. An account kept by hand after one
+  import is handled by Skrýt on its statement row, keyed to that import. Cost: one tap per such
+  account.
 - **(call)** B6: the ledger's "Nezařazené" filter stays "every payment without a category" (it is the
   desktop's filter and also shows pending and put-off rows, with their badges); every *count* uses the
   queue's set, and the queue page names how many are put off with a way to bring them back. Cost: the

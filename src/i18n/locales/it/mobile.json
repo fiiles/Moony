@@ -620,7 +620,7 @@
       "target": "obiettivo {{price}}",
       "targetReached": "obiettivo raggiunto",
       "dayChange": "oggi",
-      "realizedShort": "real. {{amount}}"
+      "realizedShort": "realizzati {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} delle cripto",
@@ -815,7 +815,7 @@
       "usageBudgets_many": "{{count}} budget",
       "usageBudgets_other": "{{count}} budget"
     },
-    "remindersLead": "Ciò che ricordano Aggiornamento dati e «Cosa ti aspetta» nella Panoramica e ciò che annunciano le notifiche. Un tipo disattivato non compare da nessuna parte, nemmeno sul computer. Quando arrivano le notifiche si imposta in Notifiche."
+    "remindersLead": "Scegli cosa ti ricordano Aggiornamento dati e «Cosa ti aspetta» nella Panoramica; le notifiche seguono lo stesso elenco. Un tipo disattivato non compare da nessuna parte, nemmeno sul computer. Quando arrivano le notifiche si imposta in Notifiche."
   },
   "backup": {
     "lead": "Un backup è un unico file cifrato: database, chiavi e allegati. Lo apre solo la tua password.",

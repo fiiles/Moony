@@ -620,7 +620,7 @@
       "target": "cíl {{price}}",
       "targetReached": "cíl dosažen",
       "dayChange": "dnes",
-      "realizedShort": "realiz. {{amount}}"
+      "realizedShort": "realizováno {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} z krypta",
@@ -823,7 +823,7 @@
       "usageBudgets_many": "{{count}} rozpočtu",
       "usageBudgets_other": "{{count}} rozpočtů"
     },
-    "remindersLead": "Co připomíná Údržba a „Co vás čeká“ na Přehledu a o čem dávají vědět oznámení. Vypnuté druhy se nezobrazí nikde, ani na počítači. Kdy oznámení chodí, nastavíte v Oznámeních."
+    "remindersLead": "Vyberte, co vám připomíná Údržba a „Co vás čeká“ na Přehledu; oznámení se řídí stejným seznamem. Vypnutý druh se nezobrazí nikde, ani na počítači. Kdy oznámení chodí, nastavíte v Oznámeních."
   },
   "backup": {
     "lead": "Záloha je šifrovaný soubor: databáze, klíče a přílohy. Otevře ji jen vaše heslo.",

@@ -1,5 +1,5 @@
 import { useCallback, useSyncExternalStore } from 'react';
-import { readSetting, writeSetting } from '@/utils/device-storage';
+import { deviceStorage, readSetting, writeSetting } from '@/utils/device-storage';
 import { utcDayFloor } from '@/utils/chart-axis';
 import {
   parseDismissals,
@@ -41,4 +41,18 @@ export function useUpkeepDismissals(): {
     for (const listener of listeners) listener();
   }, []);
   return { dismissals, setDismissals };
+}
+
+/**
+ * Forgets what was put away on this device: the rows name accounts and imports of a profile that
+ * is gone (no profile on the phone any more, or a backup restored over it).
+ */
+export function clearUpkeepDismissals(): void {
+  try {
+    deviceStorage()?.removeItem(STORAGE_KEY);
+  } catch {
+    // Storage that cannot be reached kept nothing either
+  }
+  cached = null;
+  for (const listener of listeners) listener();
 }

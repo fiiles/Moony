@@ -4,6 +4,7 @@ import {
   PULL_IDLE,
   PULL_MAX_PX,
   PULL_TRIGGER_PX,
+  holdsUndecidedMove,
   pullDirection,
   pullDistance,
   pullOffset,
@@ -60,7 +61,12 @@ describe('pullReducer', () => {
   it('disarms when the finger goes back up before release', () => {
     const back = run([start(), move(20), move(200), move(30)]);
     expect(back).toMatchObject({ kind: 'pulling', armed: false });
-    expect(run([start(), move(20), move(-50)])).toMatchObject({ kind: 'pulling', distance: 0 });
+  });
+
+  it('lets go once the finger is back above its start, so the drag can scroll', () => {
+    expect(run([start(), move(20), move(-50)])).toEqual({ kind: 'ignored' });
+    expect(run([start(), move(20), move(0), move(200)])).toEqual({ kind: 'ignored' });
+    expect(run([start(), move(20), move(-50), { type: 'end' }])).toEqual(PULL_IDLE);
   });
 
   it('ignores a screen scrolled down, a scroll up and a sideways drag', () => {
@@ -74,6 +80,16 @@ describe('pullReducer', () => {
   it('keeps refreshing through new touches until done', () => {
     const refreshing: PullState = { kind: 'refreshing' };
     expect(run([start(), move(200), { type: 'end' }], refreshing)).toEqual(refreshing);
+  });
+});
+
+describe('holdsUndecidedMove', () => {
+  it('holds a downward move back while the drag is undecided, and nothing else', () => {
+    const tracking = run([start()]);
+    expect(holdsUndecidedMove(tracking, 203)).toBe(true);
+    expect(holdsUndecidedMove(tracking, 197)).toBe(false);
+    expect(holdsUndecidedMove(PULL_IDLE, 250)).toBe(false);
+    expect(holdsUndecidedMove(run([start(), move(20)]), 250)).toBe(false);
   });
 });
 

@@ -85,19 +85,6 @@ function balanceDay(account: UpkeepAccount): number {
 }
 
 /**
- * Whether an imported account is now kept by hand (B4): its balance was recorded after the next
- * statement was already due (more than `STATEMENT_DUE_DAYS` after the last import). Such an account
- * asks for no statement; a balance recorded within the cycle does not count, and the next import
- * makes it a statement account again.
- */
-function keptByHand(account: UpkeepAccount, lastImport: number): boolean {
-  return (
-    account.balanceAsOf !== null &&
-    daysBetween(lastImport, account.balanceAsOf) > STATEMENT_DUE_DAYS
-  );
-}
-
-/**
  * The rows of the Údržba card on Přehled (spec §8.3 item 1), in the order they are shown: stale
  * balances, uncategorized payments, statements, backup, valuations, then the loans' fixations and
  * balance checks. The card is absent when there are none.
@@ -145,9 +132,7 @@ export function buildUpkeepRows(input: UpkeepInput): UpkeepRow[] {
   const due = open
     .flatMap((account) => {
       const last = lastImportByAccount[account.id];
-      return last != null &&
-        daysBetween(last, todayDay) > STATEMENT_DUE_DAYS &&
-        !keptByHand(account, last)
+      return last != null && daysBetween(last, todayDay) > STATEMENT_DUE_DAYS
         ? [{ account, last }]
         : [];
     })

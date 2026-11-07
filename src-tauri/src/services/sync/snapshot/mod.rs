@@ -55,7 +55,8 @@ pub struct DumpStats {
 }
 
 /// Writes the snapshot of this profile at relay sequence `seq` (the cursor applied, §8):
-/// `devs`, `header` (with the barrier marker's relay sequence when this device has seen it), the
+/// `devs`, `header` (with the barrier marker's relay sequence when this device has seen it, and its
+/// pending below-barrier miss, if any), the
 /// synced rows (live rows parents first, then tombstone-only keys children first), the Seed rows,
 /// `end`. Call with exclusive use of the connection (the engine holds the session mutex for the
 /// whole dump).
@@ -90,6 +91,7 @@ pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpSta
         seq,
         heads: heads_of(conn, &sync)?,
         barrier_seq: sync.barrier_seq,
+        missed_below_barrier: sync.missed_below_barrier,
     };
 
     // The `devs` record goes first but is known only once every row is encoded.
@@ -318,7 +320,12 @@ fn finish(
     }
     // A snapshot dumped past every below-barrier envelope this device skipped carries their rows
     // (ruling T8-2).
-    if chain::snapshot_heals_missed(sync, snapshot.barrier, snapshot.seq) {
+    if chain::snapshot_heals_missed(
+        sync,
+        snapshot.barrier,
+        snapshot.seq,
+        snapshot.missed_below_barrier,
+    ) {
         state::clear_missed_below_barrier(conn)?;
     }
     Ok(())

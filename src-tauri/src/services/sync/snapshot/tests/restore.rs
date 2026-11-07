@@ -536,17 +536,15 @@ fn restore_by_merge_never_moves_the_bookkeeping_back() {
     );
 }
 
-#[test]
-fn a_crossed_device_skips_a_lagging_envelope_until_a_healing_snapshot() {
-    use crate::services::sync::chain::{skip_below_barrier, snapshot_heals_missed};
-    let missed = |conn: &Connection| {
-        state::load(conn)
-            .expect("load")
-            .expect("row")
-            .missed_below_barrier
-    };
-    // D has not updated (barrier 19) and writes; A applies it while still below the barrier,
-    // then crosses.
+fn missed(conn: &Connection) -> Option<u64> {
+    state::load(conn)
+        .expect("load")
+        .expect("row")
+        .missed_below_barrier
+}
+
+/// D has not updated (barrier 19) and writes `institutions` row `id`; relay sequence 3.
+fn lagging_envelope() -> (Sent, EnvelopeMeta) {
     let d = device(D);
     exec(&d, "UPDATE sync_state SET barrier = 19");
     exec(
@@ -555,36 +553,77 @@ fn a_crossed_device_skips_a_lagging_envelope_until_a_healing_snapshot() {
     );
     let from_d = send(&d);
     assert_eq!(from_d[0].0.barrier, 19);
+    let meta = EnvelopeMeta::of(&from_d[0].0, from_d[0].1, 3);
+    (from_d, meta)
+}
+
+/// Device `id` crossed at unlock with a stale cursor (no marker yet): D's envelope is below its
+/// barrier, so it is skipped, never applied raw, and the miss is recorded.
+fn crossed_and_skipped(id: DeviceId, meta: &EnvelopeMeta) -> Connection {
+    let conn = device(id);
+    assert_eq!(judge(&conn, meta).expect("judge"), Verdict::BelowBarrier);
+    crate::services::sync::chain::skip_below_barrier(&conn, meta).expect("skip");
+    assert_eq!(missed(&conn), Some(3));
+    conn
+}
+
+fn has_ds_row(conn: &Connection) -> bool {
+    count(conn, "SELECT COUNT(*) FROM institutions WHERE id = 'id'") == 1
+}
+
+#[test]
+fn a_crossed_device_skips_a_lagging_envelope_until_a_healing_snapshot() {
+    use crate::services::sync::chain::{may_upload_snapshot, snapshot_heals_missed};
+    let (from_d, meta) = lagging_envelope();
+    // A dumps once before it has D's envelope (relay 2), then applies it while still below the
+    // barrier, then crosses.
     let a = device(A);
+    let (early, _) = snapshot(&a, 2);
     exec(&a, "UPDATE sync_state SET barrier = 19");
     apply(&a, &from_d);
     exec(&a, "UPDATE sync_state SET barrier = 25");
-    // B crossed at unlock with a stale cursor: no marker yet, and D's envelope (relay 3) is
-    // below its barrier. It is skipped, never applied raw.
-    let b = device(B);
-    let meta = EnvelopeMeta::of(&from_d[0].0, from_d[0].1, 3);
-    assert_eq!(judge(&b, &meta).expect("judge"), Verdict::BelowBarrier);
-    skip_below_barrier(&b, &meta).expect("skip");
-    assert_eq!(missed(&b), Some(3));
-    assert_eq!(
-        count(&b, "SELECT COUNT(*) FROM institutions WHERE id = 'id'"),
-        0
-    );
+    assert!(may_upload_snapshot(
+        &state::load(&a).expect("load").expect("row")
+    ));
+    let b = crossed_and_skipped(B, &meta);
+    assert!(!has_ds_row(&b));
 
     // A snapshot dumped before the skipped position does not heal it.
-    let (early, _) = snapshot(&a, 2);
     let sync = state::load(&b).expect("load").expect("row");
-    assert!(!snapshot_heals_missed(&sync, 25, 2));
+    assert!(!snapshot_heals_missed(&sync, 25, 2, None));
     restore_merge(&b, &mut &early[..], NOW).expect("merge");
     assert_eq!(missed(&b), Some(3));
+    assert!(!has_ds_row(&b));
 
-    // One at the barrier and past it does, and the restore clears the miss.
+    // A clean one at the barrier and past it does, and the restore clears the miss.
     let (healing, _) = snapshot(&a, 5);
-    assert!(snapshot_heals_missed(&sync, 25, 5));
+    assert!(snapshot_heals_missed(&sync, 25, 5, None));
     restore_merge(&b, &mut &healing[..], NOW).expect("merge");
     assert_eq!(missed(&b), None);
     assert_eq!(
         value(&b, "SELECT name FROM institutions WHERE id = 'id'"),
         Some("From D".to_string())
     );
+}
+
+#[test]
+fn a_snapshot_from_a_dumper_with_a_pending_miss_does_not_heal() {
+    use crate::services::sync::chain::may_upload_snapshot;
+    let (_, meta) = lagging_envelope();
+    // C crossed early and skipped D's envelope too; its snapshot lacks D's row.
+    let c = crossed_and_skipped(C, &meta);
+    assert!(!may_upload_snapshot(
+        &state::load(&c).expect("load").expect("row")
+    ));
+    let (from_c, _) = snapshot(&c, 6);
+    let b = crossed_and_skipped(B, &meta);
+
+    restore_merge(&b, &mut &from_c[..], NOW).expect("merge");
+
+    assert_eq!(
+        missed(&b),
+        Some(3),
+        "the mark stays until a clean dumper heals it"
+    );
+    assert!(!has_ds_row(&b));
 }

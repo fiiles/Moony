@@ -197,6 +197,7 @@ fn heads_and_cursor_come_from_the_header() {
         seq,
         heads: header_heads,
         barrier_seq,
+        missed_below_barrier,
     } = header
     else {
         unreachable!();
@@ -211,6 +212,7 @@ fn heads_and_cursor_come_from_the_header() {
     );
     assert_eq!(seq, 7);
     assert_eq!(barrier_seq, None, "A never saw a barrier marker");
+    assert_eq!(missed_below_barrier, None, "A skipped nothing");
     assert_eq!(
         header_heads,
         vec![
@@ -503,4 +505,37 @@ fn snapshot_header_carries_the_marker_to_a_joiner() {
     let merged = device(C);
     restore_merge(&merged, &mut &other_barrier[..], NOW).expect("merge");
     assert_eq!(barrier_seq(&merged), None);
+}
+
+#[test]
+fn the_header_carries_the_dumpers_pending_miss() {
+    let header_missed = |bytes: &[u8]| {
+        records(bytes)
+            .into_iter()
+            .find_map(|r| match r {
+                Record::Header {
+                    missed_below_barrier,
+                    ..
+                } => Some(missed_below_barrier),
+                _ => None,
+            })
+            .expect("header")
+    };
+    let a = device(A);
+    let (clean, _) = snapshot(&a, 4);
+    assert_eq!(header_missed(&clean), None);
+    assert!(!String::from_utf8_lossy(&clean).contains("missedBelowBarrier"));
+
+    state::note_missed_below_barrier(&a, 7).expect("miss");
+    let (pending, _) = snapshot(&a, 9);
+    assert_eq!(header_missed(&pending), Some(7));
+    assert!(String::from_utf8_lossy(&pending).contains(r#""missedBelowBarrier":7"#));
+    // A restore never adopts another device's miss.
+    assert_eq!(
+        state::load(&joined(&pending))
+            .expect("load")
+            .expect("row")
+            .missed_below_barrier,
+        None
+    );
 }

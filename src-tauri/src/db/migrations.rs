@@ -3407,7 +3407,8 @@ mod migration_029 {
 }
 
 /// 030: the sync engine's bookkeeping on the `sync_state` row (all Local). `barrier_seq` is the
-/// relay sequence at which this device crossed a barrier (NULL when none is pending);
+/// relay sequence of the barrier marker, the earliest envelope at or above this device's barrier
+/// (NULL until one is seen);
 /// `marker_barrier` the newest barrier this device has sealed a marker for;
 /// `capture_broken_at` / `vault_gone_at` the pauses (change capture could not be installed, the
 /// relay no longer knows the vault); `pulled_bytes` the envelope bytes pulled since the vault

@@ -63,19 +63,35 @@ pub fn note_barrier_marker(conn: &Connection, meta: &EnvelopeMeta) -> Result<boo
     Ok(true)
 }
 
-/// Whether a snapshot whose header says `header_barrier` and relay sequence `header_seq` heals
-/// what this device missed by skipping below-barrier envelopes (ruling T8-2): it was dumped at
-/// this device's barrier or later, by a device that had dealt with every skipped position.
+/// Whether a snapshot heals what this device missed by skipping below-barrier envelopes (rulings
+/// T8-2, T8-6): its header says it was dumped at this device's barrier or later (`header_barrier`),
+/// at relay sequence `header_seq` at or past every skipped position, by a device with no pending
+/// miss of its own (`header_missed` is `None`), which therefore applied what this one skipped.
 /// `false` when nothing is missed.
 ///
 /// The engine (Tasks 11 and 13) restores by merge from the relay's newest snapshot once this
 /// holds; `snapshot::restore_merge` then clears `missed_below_barrier`. Every device that crosses a
 /// barrier uploads a snapshot at its first clean round after crossing (forced, outside the upload
-/// policy), so such a snapshot appears. Known limit (ADR 0025): an envelope that no device applied
-/// before crossing stays missed by the devices that crossed early.
-pub fn snapshot_heals_missed(sync: &SyncState, header_barrier: u32, header_seq: u64) -> bool {
-    sync.missed_below_barrier
-        .is_some_and(|missed| header_barrier >= sync.barrier && header_seq >= missed)
+/// policy, but never against `may_upload_snapshot`), so such a snapshot appears. Known limit
+/// (ADR 0025): an envelope that no device applied before crossing stays missed by the devices
+/// that crossed early.
+pub fn snapshot_heals_missed(
+    sync: &SyncState,
+    header_barrier: u32,
+    header_seq: u64,
+    header_missed: Option<u64>,
+) -> bool {
+    sync.missed_below_barrier.is_some_and(|missed| {
+        header_missed.is_none() && header_barrier >= sync.barrier && header_seq >= missed
+    })
+}
+
+/// Whether this device may upload a snapshot (ruling T8-6): never while it has skipped a
+/// below-barrier envelope it has not healed, since its snapshot lacks that envelope's rows. The
+/// engine's upload policy checks it before every upload, the forced one after a barrier crossing
+/// included.
+pub fn may_upload_snapshot(sync: &SyncState) -> bool {
+    sync.missed_below_barrier.is_none()
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

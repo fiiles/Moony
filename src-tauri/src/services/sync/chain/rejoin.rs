@@ -60,7 +60,7 @@ pub struct RejoinReport {
     pub old_device: DeviceId,
     /// Keys that joined the outbox (keys already queued stay as they are).
     pub queued: usize,
-    /// Column clocks of the old ID moved to the new ID with a fresh clock.
+    /// Column clocks of the old ID moved to the new ID, their hlc kept.
     pub restamped: usize,
 }
 

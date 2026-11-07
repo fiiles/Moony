@@ -425,23 +425,39 @@ fn the_marker_is_the_smallest_position_noted_in_any_order() {
 }
 
 #[test]
-fn a_snapshot_heals_a_miss_only_at_the_barrier_and_past_the_missed_position() {
+fn a_snapshot_heals_a_miss_only_from_a_clean_dumper_at_the_barrier_and_past_the_miss() {
     let conn = profile();
     conn.execute_batch("UPDATE sync_state SET barrier = 25")
         .unwrap();
     let sync = state::load(&conn).unwrap().expect("row");
-    assert!(!snapshot_heals_missed(&sync, 25, 100), "nothing missed");
+    assert!(
+        !snapshot_heals_missed(&sync, 25, 100, None),
+        "nothing missed"
+    );
+    assert!(may_upload_snapshot(&sync));
 
     state::note_missed_below_barrier(&conn, 7).unwrap();
     let sync = state::load(&conn).unwrap().expect("row");
-    assert!(snapshot_heals_missed(&sync, 25, 7));
-    assert!(snapshot_heals_missed(&sync, 26, 30));
     assert!(
-        !snapshot_heals_missed(&sync, 25, 6),
+        !may_upload_snapshot(&sync),
+        "a device with a miss never uploads"
+    );
+    assert!(snapshot_heals_missed(&sync, 25, 7, None));
+    assert!(snapshot_heals_missed(&sync, 26, 30, None));
+    assert!(
+        !snapshot_heals_missed(&sync, 25, 30, Some(7)),
+        "the dumper skipped it too"
+    );
+    assert!(
+        !snapshot_heals_missed(&sync, 25, 30, Some(12)),
+        "the dumper has a miss of its own"
+    );
+    assert!(
+        !snapshot_heals_missed(&sync, 25, 6, None),
         "dumped before the miss"
     );
     assert!(
-        !snapshot_heals_missed(&sync, 19, 30),
+        !snapshot_heals_missed(&sync, 19, 30, None),
         "dumped below the barrier"
     );
 }

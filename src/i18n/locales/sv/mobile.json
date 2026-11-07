@@ -765,7 +765,8 @@
       "usagePayees_other": "{{count}} inlärda mottagare",
       "usageBudgets_one": "{{count}} budget",
       "usageBudgets_other": "{{count}} budgetar"
-    }
+    },
+    "remindersLead": "Vad Dataunderhåll och ”Vad som väntar” i Översikt påminner om, och vad aviseringarna meddelar. En avstängd typ visas ingenstans, inte heller på datorn. När aviseringar kommer ställer du in under Aviseringar."
   },
   "backup": {
     "lead": "En säkerhetskopia är en krypterad fil: databasen, nycklarna och bilagorna. Bara ditt lösenord öppnar den.",

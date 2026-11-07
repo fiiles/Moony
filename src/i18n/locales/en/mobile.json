@@ -765,7 +765,8 @@
       "usagePayees_other": "{{count}} learned payees",
       "usageBudgets_one": "{{count}} budget",
       "usageBudgets_other": "{{count}} budgets"
-    }
+    },
+    "remindersLead": "What Data upkeep and “What's coming up” on Overview remind you of, and what the notifications announce. A kind switched off shows nowhere, on the computer neither. When notifications arrive is set in Notifications."
   },
   "backup": {
     "lead": "A backup is one encrypted file: the database, the keys and the attachments. Only your password opens it.",

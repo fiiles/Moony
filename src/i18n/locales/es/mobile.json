@@ -811,7 +811,8 @@
       "usageBudgets_one": "{{count}} presupuesto",
       "usageBudgets_many": "{{count}} presupuestos",
       "usageBudgets_other": "{{count}} presupuestos"
-    }
+    },
+    "remindersLead": "Lo que recuerdan Mantenimiento de datos y «Próximas fechas» en Resumen, y lo que anuncian las notificaciones. Un tipo desactivado no aparece en ningún sitio, tampoco en el ordenador. Cuándo llegan las notificaciones se ajusta en Notificaciones."
   },
   "backup": {
     "lead": "Una copia de seguridad es un archivo cifrado: la base de datos, las claves y los adjuntos. Solo la abre tu contraseña.",

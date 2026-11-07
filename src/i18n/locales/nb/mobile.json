@@ -765,7 +765,8 @@
       "usagePayees_other": "{{count}} innlærte mottakere",
       "usageBudgets_one": "{{count}} budsjett",
       "usageBudgets_other": "{{count}} budsjetter"
-    }
+    },
+    "remindersLead": "Hva Datavedlikehold og «Det som kommer» på Oversikt minner om, og hva varslene melder. En type som er slått av, vises ingen steder, heller ikke på datamaskinen. Når varslene kommer, stiller du inn under Varsler."
   },
   "backup": {
     "lead": "En sikkerhetskopi er én kryptert fil: databasen, nøklene og vedleggene. Bare passordet ditt åpner den.",

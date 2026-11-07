@@ -765,7 +765,8 @@
       "usagePayees_other": "{{count}} gelernte Empfänger",
       "usageBudgets_one": "{{count}} Budget",
       "usageBudgets_other": "{{count}} Budgets"
-    }
+    },
+    "remindersLead": "Woran die Datenpflege und „Was ansteht“ in der Übersicht erinnern und was die Benachrichtigungen melden. Abgeschaltete Arten erscheinen nirgends, auch nicht am Computer. Wann Benachrichtigungen kommen, legen Sie unter Benachrichtigungen fest."
   },
   "backup": {
     "lead": "Eine Sicherung ist eine verschlüsselte Datei: Datenbank, Schlüssel und Anhänge. Nur Ihr Passwort öffnet sie.",

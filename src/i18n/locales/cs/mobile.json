@@ -819,7 +819,8 @@
       "usageBudgets_few": "{{count}} rozpočty",
       "usageBudgets_many": "{{count}} rozpočtu",
       "usageBudgets_other": "{{count}} rozpočtů"
-    }
+    },
+    "remindersLead": "Co připomíná Údržba a „Co vás čeká“ na Přehledu a o čem dávají vědět oznámení. Vypnuté druhy se nezobrazí nikde, ani na počítači. Kdy oznámení chodí, nastavíte v Oznámeních."
   },
   "backup": {
     "lead": "Záloha je šifrovaný soubor: databáze, klíče a přílohy. Otevře ji jen vaše heslo.",

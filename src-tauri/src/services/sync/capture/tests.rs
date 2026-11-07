@@ -707,3 +707,51 @@ fn a_failed_delete_leaves_no_cascade_clock_behind() {
     assert!(clock_of(&conn, "institutions", "i1", "-").unwrap() > before);
     assert_eq!(clock_of(&conn, "transaction_categories", "k", "-"), None);
 }
+
+/// A multi-row delete ticks once per outermost row: each batch's cascaded payments carry that
+/// batch's own tombstone.
+#[test]
+fn a_multi_row_delete_stamps_each_cascade_with_its_own_row_clock() {
+    let conn = installed();
+    exec(
+        &conn,
+        "INSERT INTO bank_accounts (id, name) VALUES ('a1', 'Acc'); \
+         INSERT INTO csv_import_batches (id, bank_account_id, file_name) VALUES \
+           ('c1', 'a1', 'one.csv'), ('c2', 'a1', 'two.csv'); \
+         INSERT INTO bank_transactions (id, bank_account_id, tx_type, amount, currency, booking_date, import_batch_id) VALUES \
+           ('t1', 'a1', 'debit', '1', 'CZK', 0, 'c1'), ('t2', 'a1', 'debit', '2', 'CZK', 0, 'c2');",
+    );
+
+    exec(
+        &conn,
+        "DELETE FROM csv_import_batches WHERE id IN ('c1', 'c2')",
+    );
+
+    let first = clock_of(&conn, "csv_import_batches", "c1", "-").unwrap();
+    let second = clock_of(&conn, "csv_import_batches", "c2", "-").unwrap();
+    assert_ne!(first, second);
+    assert_eq!(clock_of(&conn, "bank_transactions", "t1", "-"), Some(first));
+    assert_eq!(
+        clock_of(&conn, "bank_transactions", "t2", "-"),
+        Some(second)
+    );
+    assert_eq!(
+        count(
+            &conn,
+            "SELECT COUNT(*) FROM sync_mode WHERE local_hlc IS NOT NULL"
+        ),
+        0
+    );
+}
+
+/// A cascade clock left set outside a delete is a bug; `with_mode` says so loudly in debug.
+#[test]
+#[should_panic(expected = "local cascade clock")]
+fn with_mode_refuses_a_leaked_local_cascade_clock() {
+    let conn = installed();
+    exec(
+        &conn,
+        "UPDATE sync_mode SET local_hlc = 1, local_owner = 'x'",
+    );
+    let _ = with_mode(&conn, Mode::Repair, || Ok(()));
+}

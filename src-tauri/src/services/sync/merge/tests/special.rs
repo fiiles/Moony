@@ -347,3 +347,22 @@ fn merge_rows_refuses_to_run_outside_a_transaction() {
     assert!(err.to_string().contains("transaction"), "{err}");
     assert_eq!(count(&b, "SELECT COUNT(*) FROM spending_plans"), 0);
 }
+
+/// The tombstone tolerance of `assert_converged` is narrow: a `'-'` that differs without a
+/// cascade parent holding the higher value still fails.
+#[test]
+#[should_panic(expected = "no cascade parent's tombstone")]
+fn tombstones_that_differ_without_a_cascade_parent_do_not_converge() {
+    let a = device(A);
+    let b = device(B);
+    plan(&a, "p1", 2026);
+    apply(&b, &send(&a));
+    exec(&a, "DELETE FROM spending_plans WHERE id = 'p1'");
+    apply(&b, &send(&a));
+    exec(
+        &b,
+        "UPDATE sync_clock SET hlc = hlc + 1 WHERE tbl = 'spending_plans' AND pk = 'p1' AND col = '-'",
+    );
+
+    assert_converged(&[&a, &b]);
+}

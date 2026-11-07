@@ -4,11 +4,21 @@
 //!
 //! Every device must end with identical synced tables whatever order the changesets arrive in.
 //!
-//! Invariant: a dead row's `'*'` (and any column clock it left behind) is meaningless. Dead rows
-//! keep different `'*'` values on different devices (cascades, NO ACTION drops, a row created
-//! and deleted before it was sent), so no merge, journal or repair decision may read it: only a
-//! live row's clocks and every key's tombstone `'-'` must agree across devices. A re-insert sets
-//! `'*' = g`, never `max` with a dead incarnation.
+//! Invariants across devices:
+//!
+//! - The synced rows and every live row's clocks (`'*'` and column clocks) are identical.
+//! - A dead row's `'*'` (and any column clock it left behind) is meaningless: dead rows keep
+//!   different `'*'` values on different devices (cascades, NO ACTION drops, a row created and
+//!   deleted before it was sent), so no merge, journal or repair decision may read it. A
+//!   re-insert sets `'*' = g`, never `max` with a dead incarnation.
+//! - Every key's tombstone `'-'` is identical, except that a cascade may raise a key's `'-'` above
+//!   the author's own earlier explicit tombstone: the author deletes a child at t0, then deletes
+//!   and re-creates its parent at t1 in the same changeset, and receivers cascade the child at t1
+//!   before the child's own t0 arrives. No outcome depends on the difference: a later change for
+//!   that key inside [t0, t1) either carries a generation below t0 (full rows keep their original
+//!   generation), so every device drops it, or references the old parent epoch, so every device
+//!   cascades it at t1, which raises the author's `'-'` to t1 as well.
+//!
 //! The row algorithm lives in `row`, the per-column rules in `columns`, the foreign-key rules in
 //! `parents`.
 

@@ -217,3 +217,61 @@ fn a_recreated_row_takes_its_own_generation_not_the_dead_one() {
     }
     assert_converged(&[&a, &b]);
 }
+
+/// F1b: a child deleted on its own (`old-2`, `'-' = t0`) before its parent is deleted (t1) and
+/// re-created in the same changeset. Receivers apply the re-created parent first and cascade
+/// `old-2` at t1; the author keeps t0. The data converges, and the tombstones differ only as the
+/// invariant allows (`assert_converged`). A later full row of `old-2` whose edit falls inside
+/// [t0, t1) still carries its original generation, so every device drops it.
+#[test]
+fn a_child_deleted_before_its_recreated_parent_converges() {
+    let a = device(A);
+    let b = device(B);
+    let c = device(C);
+    stock(&a, "Apple");
+    stock_tx(&a, "old-1", "5");
+    stock_tx(&a, "old-2", "3");
+    let base = send(&a);
+    for conn in [&b, &c] {
+        apply(conn, &base);
+    }
+    exec(&a, "DELETE FROM investment_transactions WHERE id = 'old-2'");
+    exec(&a, "DELETE FROM stock_investments");
+    stock(&a, "Apple Inc");
+    stock_tx(&a, "new-1", "2");
+    let from_a = send(&a);
+    let stock_id = natural_id("stock_investments", &["AAPL"]);
+    let t0 = clocks(&a, "investment_transactions", "old-2")["-"];
+    let t1 = clocks(&a, "stock_investments", &stock_id)["-"];
+    assert!(t0 < t1);
+
+    apply(&b, &from_a);
+    apply(&c, &from_a);
+
+    assert_eq!(clocks(&b, "investment_transactions", "old-2")["-"], t1);
+    assert_converged(&[&a, &b, &c]);
+
+    // A third device's edit of `old-2` inside [t0, t1), sent as a full row with its original
+    // generation and the old parent generation.
+    let mut late = rows_of(&base)
+        .into_iter()
+        .find(|r| r.key == RowKey::Single("old-2".into()))
+        .expect("old-2 travelled");
+    let inside = clock(t0.hlc, D);
+    assert!(t0 < inside && inside < t1);
+    set(&mut late, "company_name", text("Apple (D)"), inside);
+    let late = vec![changeset(D, 1, vec![late])];
+
+    for conn in [&a, &b, &c] {
+        let reports = apply(conn, &late);
+        assert_eq!((reports[0].applied, reports[0].dropped), (0, 1));
+        assert_eq!(
+            count(
+                conn,
+                "SELECT COUNT(*) FROM investment_transactions WHERE id = 'old-2'"
+            ),
+            0
+        );
+    }
+    assert_converged(&[&a, &b, &c]);
+}

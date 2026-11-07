@@ -18,7 +18,7 @@ use crate::services::sync::changeset::{to_json, Changeset, RowChange, RowKey, Sq
 use crate::services::sync::hlc::{Clock, DeviceId};
 use crate::services::sync::journal::{build_next, record_sealed, Reader};
 use crate::services::sync::natural_id::natural_id;
-use crate::services::sync::registry::keys::schema_number;
+use crate::services::sync::registry::keys::{foreign_keys, schema_number, OnDelete, OrphanRule};
 use crate::services::sync::registry::{
     column_class, schema, synced_tables, ColumnClass, APP_CONFIG_SYNCED_KEYS,
 };
@@ -255,15 +255,16 @@ fn clock_dump(conn: &Connection) -> Vec<(String, String, String, i64, Vec<u8>)> 
     .collect()
 }
 
-/// `sync_clock` limited to what must agree across devices: every entry of a live row, and every
-/// tombstone. A dead row's `'*'` and column clocks may differ by device and nothing reads them.
+/// Every clock of every live row (its `'*'` and column clocks), which must be identical on every
+/// device. A dead row's `'*'` and column clocks may differ by device, and nothing reads them.
+/// Tombstones are compared by `assert_tombstones_agree`.
 fn clock_dump_live(conn: &Connection) -> Vec<(String, String, String, i64, Vec<u8>)> {
     let reader = Reader::new(conn).expect("reader");
     clock_dump(conn)
         .into_iter()
         .filter(|(tbl, pk, col, _, _)| {
-            col == "-"
-                || reader
+            col != "-"
+                && reader
                     .read(tbl, pk)
                     .expect("read row")
                     .is_some_and(|row| row.insert)
@@ -271,12 +272,67 @@ fn clock_dump_live(conn: &Connection) -> Vec<(String, String, String, i64, Vec<u
         .collect()
 }
 
-/// Both the synced rows and the clocks that matter are identical on every device.
+/// Every tombstone `'-'`, by key.
+fn tombstones(conn: &Connection) -> BTreeMap<(String, String), (i64, Vec<u8>)> {
+    clock_dump(conn)
+        .into_iter()
+        .filter(|(_, _, col, _, _)| col == "-")
+        .map(|(tbl, pk, _, hlc, device)| ((tbl, pk), (hlc, device)))
+        .collect()
+}
+
+/// The tombstone invariant of `merge/mod.rs`: the same keys are tombstoned on both devices with
+/// the same clock, except where a cascade raised a key above the author's own earlier tombstone.
+/// There the higher value must equal, on the device holding it, the tombstone of some row of a
+/// table the key's table cascades from (CASCADE, or a NO ACTION drop-child rule, which the merge
+/// stamps the same way). Without the dead child's row the exact parent key is unknown, so this
+/// is the documented tolerance: any row of a cascade-parent table with exactly that tombstone.
+fn assert_tombstones_agree(x: &Connection, y: &Connection) {
+    let fks = foreign_keys(x).expect("foreign keys");
+    let (tx, ty) = (tombstones(x), tombstones(y));
+    assert_eq!(
+        tx.keys().collect::<Vec<_>>(),
+        ty.keys().collect::<Vec<_>>(),
+        "the tombstoned keys differ"
+    );
+    for (key, ours) in &tx {
+        let theirs = &ty[key];
+        if ours == theirs {
+            continue;
+        }
+        let (high, holder) = if ours > theirs {
+            (ours, &tx)
+        } else {
+            (theirs, &ty)
+        };
+        let parents: Vec<&str> = fks
+            .iter()
+            .filter(|f| {
+                f.child == key.0
+                    && matches!(
+                        f.on_delete,
+                        OnDelete::Cascade | OnDelete::NoAction(OrphanRule::DropChild)
+                    )
+            })
+            .map(|f| f.parent.as_str())
+            .collect();
+        assert!(
+            holder
+                .iter()
+                .any(|((table, _), clock)| parents.contains(&table.as_str()) && clock == high),
+            "the tombstone of {key:?} differs ({ours:?} vs {theirs:?}) and the higher one is no \
+             cascade parent's tombstone"
+        );
+    }
+}
+
+/// The synced rows, the live rows' clocks and the tombstones agree on every device.
 fn assert_converged(devices: &[&Connection]) {
     let (first, rest) = devices.split_first().expect("a device");
     for conn in rest {
         assert_eq!(dump(conn), dump(first));
         assert_eq!(clock_dump_live(conn), clock_dump_live(first));
+        assert_tombstones_agree(conn, first);
     }
 }
 

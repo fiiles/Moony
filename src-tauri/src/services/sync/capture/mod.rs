@@ -122,6 +122,7 @@ pub fn with_mode<T>(conn: &Connection, mode: Mode, f: impl FnOnce() -> Result<T>
     if !is_installed(conn)? {
         return f();
     }
+    debug_assert_no_local_cascade(conn);
     let (previous, cascade_hlc, cascade_device): (String, Option<i64>, Option<Vec<u8>>) = conn
         .query_row(
             "SELECT mode, cascade_hlc, cascade_device FROM temp.sync_mode",
@@ -134,6 +135,7 @@ pub fn with_mode<T>(conn: &Connection, mode: Mode, f: impl FnOnce() -> Result<T>
         "UPDATE temp.sync_mode SET mode = ?1, cascade_hlc = ?2, cascade_device = ?3",
         params![previous, cascade_hlc, cascade_device],
     );
+    debug_assert_no_local_cascade(conn);
     match (result, restored) {
         (Ok(value), Ok(_)) => Ok(value),
         (Ok(_), Err(e)) => Err(e.into()),
@@ -141,6 +143,22 @@ pub fn with_mode<T>(conn: &Connection, mode: Mode, f: impl FnOnce() -> Result<T>
         (Err(e), Err(restore)) => {
             log::warn!("[SYNC] Could not restore the capture mode after an error: {restore}");
             Err(e)
+        }
+    }
+}
+
+/// A local delete's cascade clock (`local_hlc`) lives only while its delete statement runs; one
+/// still set between statements would stamp the next unrelated delete with an old clock. Loud in
+/// debug builds, free in release.
+fn debug_assert_no_local_cascade(conn: &Connection) {
+    if cfg!(debug_assertions) {
+        if let Ok(leaked) = conn.query_row("SELECT local_hlc FROM temp.sync_mode", [], |r| {
+            r.get::<_, Option<i64>>(0)
+        }) {
+            debug_assert!(
+                leaked.is_none(),
+                "sync capture: a local cascade clock leaked outside its delete ({leaked:?})"
+            );
         }
     }
 }

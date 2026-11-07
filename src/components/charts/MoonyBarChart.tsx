@@ -11,11 +11,11 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useFormat } from '@/lib/use-format';
 import { useChartTokens } from '@/theme/ThemeProvider';
 import { labelStep, niceTicks, valueDomain } from '@/utils/chart-scale';
 import { ChartTip, FloatingTip } from '@/components/charts/ChartTip';
-import { AXIS_WIDTH, CategoryAxis, type AxisAction } from '@/components/charts/ChartAxis';
+import { CategoryAxis, type AxisAction } from '@/components/charts/ChartAxis';
+import { useTickFormatter } from '@/components/charts/use-tick-formatter';
 import { cn } from '@/lib/utils';
 
 export interface BarGroup {
@@ -91,7 +91,6 @@ export function MoonyBarChart({
   axisActions,
   className,
 }: MoonyBarChartProps) {
-  const fmt = useFormat();
   const tk = useChartTokens();
   const [hoverMark, setHoverMark] = useState<{ m: BarMark; x: number; y: number } | null>(null);
   const [width, setWidth] = useState(0);
@@ -101,9 +100,8 @@ export function MoonyBarChart({
     return valueDomain(values, { zeroBaseline: true, headroomAbove: 0.08 });
   }, [bars, stacked]);
   const ticks = useMemo(() => niceTicks(domain[0], domain[1], 4), [domain]);
-  const tickFormatter =
-    formatTick ?? ((v: number) => fmt.number(v, { notation: 'compact', maximumFractionDigits: 1 }));
-  const step = labelSpacing ? labelStep(bars.length, width - AXIS_WIDTH, labelSpacing) : 1;
+  const { tickFormatter, axisWidth } = useTickFormatter(ticks, formatTick);
+  const step = labelSpacing ? labelStep(bars.length, width - axisWidth, labelSpacing) : 1;
   const axisLabels = bars.map((b, i) => (i % step === 0 ? (b.axisLabel ?? b.label) : ''));
 
   const chart = (
@@ -129,7 +127,7 @@ export function MoonyBarChart({
         <XAxis dataKey="label" hide />
         <YAxis
           orientation="right"
-          width={AXIS_WIDTH}
+          width={axisWidth}
           domain={domain}
           ticks={ticks}
           axisLine={false}
@@ -225,6 +223,7 @@ export function MoonyBarChart({
       </div>
       <CategoryAxis
         labels={axisLabels}
+        gutter={axisWidth}
         centered={labelSpacing !== undefined}
         actions={axisActions}
       />

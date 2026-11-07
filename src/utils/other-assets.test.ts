@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { OtherAsset } from '@shared/schema';
-import { otherAssetRow, otherAssetsSummary } from './other-assets';
+import { latestValuationDay, otherAssetRow, otherAssetsSummary } from './other-assets';
 
 const DAY = 86_400;
 /** Today: 1 EUR = 25 CZK; no rate for KWD. */
@@ -154,5 +154,21 @@ describe('otherAssetRow', () => {
     expect(s.gainCost).toBe(156_000);
     expect(s.missing).toEqual(['KWD']);
     expect(s.missingCost).toEqual(['KWD']);
+  });
+});
+
+describe('latestValuationDay', () => {
+  it('is null without a valuation', () => {
+    expect(latestValuationDay([])).toBeNull();
+  });
+
+  it('takes the newest day whatever the order, not the last entered', () => {
+    expect(
+      latestValuationDay([
+        { valuedAt: 300, createdAt: 1 },
+        { valuedAt: 100, createdAt: 9 },
+        { valuedAt: 200, createdAt: 5 },
+      ])
+    ).toBe(300);
   });
 });

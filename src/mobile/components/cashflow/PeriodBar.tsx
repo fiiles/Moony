@@ -1,6 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import type { PeriodTimeframe } from '@/utils/period';
+import { cn } from '@/lib/utils';
 import { Segment } from '@/mobile/components/Segment';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 
@@ -15,15 +16,27 @@ interface PeriodBarProps {
   onTimeframeChange: (timeframe: PeriodTimeframe) => void;
   /** -1 steps to the previous period, 1 to the next. */
   onStep: (delta: -1 | 1) => void;
+  /**
+   * The period is not decided yet (the tab waits for the month of the newest transaction): the
+   * label keeps its place but is not shown, and the stepper waits too.
+   */
+  pending?: boolean;
 }
 
 /**
  * Period bar of the Cashflow tab (spec §8.7, README §13, `.m-period`): the full-width 36 pt
  * Měsíc · Čtvrtletí · Rok segment (the shared `Segment`, the hero's) and under it the stepper
  * (`.m-stepper`) ‹ Říjen 2026 ›: two 44 pt icon buttons around the label, "next" disabled at the
- * current period.
+ * current period. While `pending`, the label is hidden and the steppers are off.
  */
-export function PeriodBar({ timeframe, offset, label, onTimeframeChange, onStep }: PeriodBarProps) {
+export function PeriodBar({
+  timeframe,
+  offset,
+  label,
+  onTimeframeChange,
+  onStep,
+  pending = false,
+}: PeriodBarProps) {
   const { t } = useTranslation('common');
   return (
     <div className="mb-1.5 mt-1">
@@ -35,18 +48,27 @@ export function PeriodBar({ timeframe, offset, label, onTimeframeChange, onStep 
         className="w-full"
       />
       <div className="mt-0.5 grid grid-cols-[44px_minmax(0,1fr)_44px] items-center">
-        <NavIconButton aria-label={t(`periods.prev.${timeframe}`)} onClick={() => onStep(-1)}>
+        <NavIconButton
+          aria-label={t(`periods.prev.${timeframe}`)}
+          disabled={pending}
+          onClick={() => onStep(-1)}
+          className="disabled:pointer-events-none disabled:opacity-45"
+        >
           <ChevronLeft strokeWidth={1.75} aria-hidden />
         </NavIconButton>
         <span
           aria-live="polite"
-          className="min-w-0 truncate text-center text-m-row font-650 text-ink num"
+          aria-hidden={pending || undefined}
+          className={cn(
+            'min-w-0 truncate text-center text-m-row font-650 text-ink num',
+            pending && 'invisible'
+          )}
         >
           {label}
         </span>
         <NavIconButton
           aria-label={t(`periods.next.${timeframe}`)}
-          disabled={offset >= 0}
+          disabled={pending || offset >= 0}
           onClick={() => onStep(1)}
           className="disabled:pointer-events-none disabled:opacity-45"
         >

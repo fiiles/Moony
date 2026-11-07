@@ -12,7 +12,7 @@ import {
   monthStartFromInput,
 } from '@/utils/budget-goal-versions';
 import { getUtcPeriodRange } from '@/utils/period';
-import { parseAmountInput } from './amount-input';
+import { amountInputText, parseAmountInput } from './amount-input';
 
 /** What the limit sheet is opened for. */
 export type LimitMode =
@@ -149,12 +149,13 @@ export function limitAmountText(stored: string): string {
 export function limitDefaults(
   goal: BudgetGoal | null,
   effectiveMonth: number | undefined,
-  nowMonth: number
+  nowMonth: number,
+  locale = 'en'
 ): LimitFormInput {
   if (goal) {
     const source = budgetEditSource(goal, effectiveMonth, nowMonth);
     const last = intervalLastMonth(goal.versions, source.month);
-    const stored = limitAmountText(source.amount);
+    const stored = amountInputText(limitAmountText(source.amount), locale);
     return {
       amountText: stored,
       from: monthInputValue(source.month),

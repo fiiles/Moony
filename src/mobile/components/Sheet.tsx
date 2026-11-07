@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import * as DialogPrimitive from '@radix-ui/react-dialog';
 import { cn } from '@/lib/utils';
+import { sheetHeightClass } from '@/lib/sheet-height';
 import { useSheetDrag } from '@/hooks/use-sheet-drag';
 import { useSheetHistory } from '@/mobile/hooks/use-sheet-history';
 
@@ -12,7 +13,7 @@ interface SheetProps {
   description?: string;
   /** The footer's buttons: the ghost "Zrušit" first, the primary action last (it takes the rest of the row). */
   footer: ReactNode;
-  /** A tall sheet (pickers): 95 % of the screen instead of 93 %. */
+  /** A tall sheet (pickers): 95 % of the screen instead of 93 %, always below the top safe area. */
   full?: boolean;
   /**
    * The body is one box that fills the sheet and scrolls itself (the document viewer,
@@ -75,7 +76,7 @@ export function Sheet({
           }}
           className={cn(
             'absolute inset-x-0 bottom-0 z-[41] flex flex-col rounded-t-r5 bg-paper text-ink-2 shadow-modal outline-none data-[state=open]:animate-sheet-in data-[state=closed]:animate-sheet-out motion-reduce:animate-none',
-            fill ? (full ? 'h-[95%]' : 'h-[93%]') : full ? 'max-h-[95%]' : 'max-h-[93%]'
+            sheetHeightClass({ fill, full })
           )}
         >
           <div aria-hidden className="mx-auto mt-2 h-[5px] w-9 flex-none rounded-[3px] bg-well-3" />

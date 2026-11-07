@@ -23,6 +23,7 @@ interface PositionRowProps {
  * return, never one measured against nothing. Closed positions are not listed here (`positionRows`).
  */
 export function PositionRow({ row, name, href, currency }: PositionRowProps) {
+  const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
   const moneyText = useMoneyText();
   const { marketValue, gainLoss, gainLossPercent } = row;
@@ -46,6 +47,8 @@ export function PositionRow({ row, name, href, currency }: PositionRowProps) {
               ratio: gainLossPercent === null ? null : gainLossPercent / 100,
             }}
             currency={currency}
+            // The caption of the list says it once; the row says it to VoiceOver
+            srLabel={t('wealth.sincePurchase')}
           />
         ) : undefined
       }

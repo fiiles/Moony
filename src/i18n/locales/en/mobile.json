@@ -34,14 +34,11 @@
   "cashflow": {
     "subtitle_one": "Actual income and expenses from {{count}} account",
     "subtitle_other": "Actual income and expenses from {{count}} accounts",
+    "subtitleAll": "Actual income and expenses from all accounts",
     "moves_one": "{{count}} transaction",
     "moves_other": "{{count}} transactions",
     "shareOfExpenses": "{{share}} of expenses",
     "shareOfIncome": "{{share}} of income",
-    "limitProgress": "{{spent}} / {{limit}}",
-    "near": "near the limit",
-    "overLimit": "over the limit",
-    "budgetSummary": "Budgets: {{ok}} within limit · {{over}} over limit · {{near}} near the limit",
     "partial": "This period has not ended yet; the numbers will fill in with the next statement.",
     "empty": {
       "title": "No transactions yet",
@@ -211,6 +208,9 @@
       "importHistory": "Import history",
       "delete": "Delete account"
     },
+    "addTx": {
+      "noCategorySub": "You can categorize it later"
+    },
     "stats": {
       "changeThisYear": "Change this year",
       "avgPerMonth": "Average per month",
@@ -251,6 +251,9 @@
       "details": "Details",
       "category": "Category",
       "delete": "Delete"
+    },
+    "importHistory": {
+      "menu": "Import options"
     }
   },
   "loan": {
@@ -539,6 +542,8 @@
       "asset": "Asset"
     },
     "noRate": "no rate for {{currency}}",
+    "sincePurchase": "since purchase",
+    "gainSincePurchase": "gain/loss since purchase",
     "stocks": {
       "back": "Stocks",
       "pricesAt": "prices {{time}}",
@@ -596,6 +601,9 @@
         "showAll_other": "Show all {{count}}",
         "menu": "Transaction menu"
       },
+      "dividend": {
+        "menu": "Dividend options"
+      },
       "follow": "Watch",
       "following": "Watching",
       "followed": "Added to the watchlist",
@@ -627,7 +635,12 @@
       "remindersSub": "{{on}} of {{total}} groups",
       "import": "Import",
       "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
-      "deleteSub": "after typing a confirmation word"
+      "deleteSub": "after typing a confirmation word",
+      "tracking": "What to track",
+      "categories": "Categories",
+      "categoriesSub_one": "{{count}} category",
+      "categoriesSub_other": "{{count}} categories",
+      "categorization": "Categorization"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "no telemetry",
@@ -698,6 +711,54 @@
       "confirmLabel": "Type {{word}} to confirm",
       "confirm": "Delete data",
       "failed": "Deletion failed"
+    },
+    "tracking": {
+      "lead": "Choose what you want to track in Moony.",
+      "hideOnly": "Hidden areas are only not shown; the data stays.",
+      "all": "All",
+      "investments": "Investments",
+      "realEstate": "Real estate",
+      "liabilities": "Liabilities",
+      "none": "None"
+    },
+    "categorization": {
+      "lead": "What the app files by itself: packs of rules by country, your own rules and the payees it learned from your corrections.",
+      "packs": "Rule packs",
+      "custom": "Your own rules",
+      "learned": "Learned payees",
+      "packsEmpty": "No rule packs.",
+      "customEmpty": "No own rules yet. You create them on the computer.",
+      "learnedEmpty": "Nothing learned yet. The app learns from your manual categorizations.",
+      "noMatching": "Nothing matches the search",
+      "clearSearch": "Clear search",
+      "openPack": "Rules of {{name}}",
+      "packSwitch": "Pack {{name}}",
+      "ruleSwitch": "Rule {{name}}",
+      "ruleLine": "→ {{category}} · {{n}}× in {{days}} days",
+      "turnOn": "Turn on",
+      "turnOff": "Turn off",
+      "deletedAccount": "deleted account",
+      "scopedNoDirection": "Only account {{account}}",
+      "summaryPacks_one": "{{count}} pack",
+      "summaryPacks_other": "{{count}} packs",
+      "summaryRules_one": "{{count}} own rule",
+      "summaryRules_other": "{{count}} own rules",
+      "summaryPayees_one": "{{count}} payee",
+      "summaryPayees_other": "{{count}} payees",
+      "summaryNone": "Nothing learned",
+      "otherPacks": "Other countries",
+      "otherPacksRow": "Other countries · {{count}}",
+      "searchCountry": "Search a country"
+    },
+    "categories": {
+      "usageTransactions_one": "{{count}} transaction",
+      "usageTransactions_other": "{{count}} transactions",
+      "usageRules_one": "{{count}} rule",
+      "usageRules_other": "{{count}} rules",
+      "usagePayees_one": "{{count}} learned payee",
+      "usagePayees_other": "{{count}} learned payees",
+      "usageBudgets_one": "{{count}} budget",
+      "usageBudgets_other": "{{count}} budgets"
     }
   },
   "backup": {

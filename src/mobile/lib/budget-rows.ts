@@ -11,6 +11,7 @@ import {
   type BudgetLimitPeriod,
   type BudgetOverviewStatus,
 } from '@/utils/budget-goal-versions';
+import { storedLimitGoal, type ExpenseRow } from '@/utils/cashflow-budget-rows';
 import type { LimitAverage, LimitMode } from './budget-limit';
 
 /** One budget of the list: the limit that stands for it and what changes after it. */
@@ -105,32 +106,38 @@ export function unbudgetedRows(
   return rows.sort((a, b) => b.average - a.average);
 }
 
+/** The limit action of an expense row on the Cashflow report. */
+export interface RowLimitAction {
+  /** The period has a limit for the row: the action shows the limit and edits it. */
+  hasLimit: boolean;
+  /** What the limit sheet opens on; `null` while the stored limits are not known (shown disabled). */
+  mode: LimitMode | null;
+}
+
 /**
- * What the limit item of an expense row's menu on the Cashflow report does (ruling R15, the
- * desktop Budgets table's "Upravit limit" / "Nastavit limit"). `periodGoal` is the budget the
- * report found for the category in the shown period (`budgetGoal` of its summary — a historical
- * copy without the versions); the sheet edits the stored goal of the same timeframe from
- * `goals`, starting at the month the report shows. Without a budget in the period the item adds
- * one from that month. `mode` is `null` while the item cannot act: the period's budgets are not
- * known (`budgetsKnown` false: the budgeting report is loading or failed, so a missing
- * `periodGoal` proves nothing), or the period has a budget but the stored goals have not loaded.
+ * The limit action of an expense row (the desktop Cashflow's `openLimit`): the category's stored
+ * budget — even one whose limit ended or starts later — is edited from the month the report shows
+ * (the sheet then lists what a save replaces); a category that never had one gets a new limit
+ * from that month. `periodGoal` is the report's copy without versions, used only when the stored
+ * goal is missing. A row without a limit whose category cannot get one (uncategorized, an income
+ * or transfer category: `canHaveLimit` false) has no action. While the stored limits load or
+ * failed (`limitsReady` false) the action is there but cannot act: add and edit cannot be told
+ * apart yet.
  */
-export function reportRowLimit(
-  categoryId: string,
-  periodGoal: BudgetGoal | null | undefined,
+export function rowLimitAction(
+  row: Pick<ExpenseRow, 'key' | 'periodGoal' | 'hasLimit'>,
+  canHaveLimit: boolean,
   goals: readonly BudgetGoal[],
   periodStart: number,
-  budgetsKnown: boolean
-): { hasLimit: boolean; mode: LimitMode | null } {
-  if (!budgetsKnown) return { hasLimit: false, mode: null };
-  if (!periodGoal) {
-    return { hasLimit: false, mode: { kind: 'add', categoryId, effectiveMonth: periodStart } };
-  }
-  const stored = goals.find(
-    (goal) => goal.categoryId === categoryId && goal.timeframe === periodGoal.timeframe
-  );
+  limitsReady: boolean
+): RowLimitAction | null {
+  if (!row.hasLimit && !canHaveLimit) return null;
+  if (!limitsReady) return { hasLimit: row.hasLimit, mode: null };
+  const goal = storedLimitGoal(row, goals) ?? row.periodGoal;
   return {
-    hasLimit: true,
-    mode: stored ? { kind: 'edit', goal: stored, effectiveMonth: periodStart } : null,
+    hasLimit: row.hasLimit,
+    mode: goal
+      ? { kind: 'edit', goal, effectiveMonth: periodStart }
+      : { kind: 'add', categoryId: row.key, effectiveMonth: periodStart },
   };
 }

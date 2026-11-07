@@ -4,6 +4,7 @@ import { useRoute, useSearch } from 'wouter';
 import { CalendarSearch, Ellipsis, ListFilter, Pencil, Upload, Wallet } from 'lucide-react';
 import type {
   BankAccountWithInstitution,
+  CsvImportBatch,
   BankBalanceRecord,
   BankTransaction,
   InsertBankAccount,
@@ -56,7 +57,9 @@ import { useAccountDetail } from '@/mobile/hooks/use-account-detail';
 import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { useDeleteDescription } from '@/mobile/hooks/use-delete-description';
+import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
 import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
+import { useUndoImport } from '@/mobile/hooks/use-undo-import';
 import { useLedger, type Ledger } from '@/mobile/hooks/use-ledger';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRetained } from '@/mobile/hooks/use-retained';
@@ -75,6 +78,7 @@ import {
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
 import { accountPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { AddTransactionSheet } from '@/mobile/sheets/AddTransactionSheet';
 import { BalanceHistorySheet } from '@/mobile/sheets/BalanceHistorySheet';
 import { CategoryPickerSheet } from '@/mobile/sheets/CategoryPickerSheet';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
@@ -84,7 +88,13 @@ import { RecordBalancesSheet } from '@/mobile/sheets/RecordBalancesSheet';
 import { TransactionSheet } from '@/mobile/sheets/TransactionSheet';
 
 type SheetKind =
-  'record' | 'edit' | 'balanceHistory' | 'importHistory' | 'deleteAccount' | 'filter';
+  | 'record'
+  | 'edit'
+  | 'addTransaction'
+  | 'balanceHistory'
+  | 'importHistory'
+  | 'deleteAccount'
+  | 'filter';
 
 type RecordEvent = { id: string; t: number; type: 'mark' };
 
@@ -120,6 +130,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
   const { t: tc } = useTranslation('common');
+  const fmt = useFormat();
   // Money as text for the flows strip's accessible names and the flows line
   const moneyText = useMoneyText();
   const back = useBack(routes.finance);
@@ -185,6 +196,28 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   const [pendingDelete, setPendingDelete] = useState<BankTransaction | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const closeSheet = (open: boolean) => !open && setSheet(null);
+  // The import to take back is kept until the next opening sets another, so the title, label and
+  // sentence do not change while the sheet slides away; `undoOpen` alone opens and closes it
+  const [pendingUndo, setPendingUndo] = useState<CsvImportBatch | null>(null);
+  const [undoOpen, setUndoOpen] = useState(false);
+  const undo = useUndoImport();
+  const undoLabel = tb(
+    pendingUndo?.linkedCount ? 'readiness.deleteImported' : 'readiness.deleteRecord'
+  );
+  const undoDescription = [
+    tb('readiness.deleteBatchDescription', {
+      count: pendingUndo?.linkedCount ?? 0,
+      file: pendingUndo?.fileName,
+      period: pendingUndo?.dateRange?.from
+        ? `${fmt.day(pendingUndo.dateRange.from)} – ${fmt.day(pendingUndo.dateRange.to ?? pendingUndo.dateRange.from)}`
+        : tb('readiness.unknownDate'),
+    }),
+    pendingUndo?.promotedCount
+      ? tb('readiness.deleteBatchPromoted', { count: pendingUndo.promotedCount })
+      : null,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const today = utcDayFloor(Date.now() / 1000);
   const money0 = (value: number) => moneyText(value, currency, { decimals: 0 });
@@ -235,6 +268,9 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[220px]">
               <RowMenuItem onSelect={() => setSheet('edit')}>{t('account.menu.edit')}</RowMenuItem>
+              <RowMenuItem onSelect={() => setSheet('addTransaction')}>
+                {tb('transaction.add')}
+              </RowMenuItem>
               <RowMenuItem onSelect={() => setSheet('balanceHistory')}>
                 {t('account.menu.balanceHistory')}
               </RowMenuItem>
@@ -336,6 +372,13 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
             accountIds={[account.id]}
             title={t('account.record')}
           />
+          <AddTransactionSheet
+            open={sheet === 'addTransaction'}
+            onOpenChange={closeSheet}
+            accountId={account.id}
+            currency={currency}
+            categories={categories}
+          />
           <BalanceHistorySheet
             open={sheet === 'balanceHistory'}
             onOpenChange={closeSheet}
@@ -346,6 +389,27 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
             open={sheet === 'importHistory'}
             onOpenChange={closeSheet}
             batches={detail.batches}
+            onUndo={(batch) =>
+              // The confirm sheet opens once the history sheet has gone, as the desktop's dialog does
+              leaveAfterSheet(
+                () => setSheet(null),
+                () => {
+                  setPendingUndo(batch);
+                  setUndoOpen(true);
+                }
+              )
+            }
+          />
+          <ConfirmSheet
+            open={undoOpen}
+            onOpenChange={setUndoOpen}
+            title={undoLabel}
+            description={undoDescription}
+            confirmLabel={undoLabel}
+            isPending={undo.isPending}
+            onConfirm={() =>
+              pendingUndo && undo.mutate(pendingUndo.id, { onSuccess: () => setUndoOpen(false) })
+            }
           />
           {/* The desktop's account form; a balance is recorded in its own sheet, as on the desktop */}
           <BankAccountFormDialog

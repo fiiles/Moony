@@ -22,6 +22,15 @@ export function useDividendStat(holding: StockRow, reportCurrency: string): Stat
 
   const { marketValue, yearlyDividend } = holding;
   const dividend = yearlyDividend !== null && yearlyDividend > 0 ? yearlyDividend : null;
+  const percentNote =
+    dividend === null
+      ? ts('detail.noDividend')
+      : ts('detail.dividendNote', {
+          percent: fmt.percent(
+            marketValue !== null && marketValue > 0 ? dividend / marketValue : 0,
+            1
+          ),
+        });
   return {
     label: ts('detail.dividends'),
     value:
@@ -29,14 +38,9 @@ export function useDividendStat(holding: StockRow, reportCurrency: string): Stat
         ? '—'
         : moneyText(dividend, reportCurrency, { ...statMoneyOptions(dividend), signed: false }),
     note:
-      dividend === null
-        ? ts('detail.noDividend')
-        : ts('detail.dividendNote', {
-            percent: fmt.percent(
-              marketValue !== null && marketValue > 0 ? dividend / marketValue : 0,
-              1
-            ),
-          }),
+      dividend !== null && holding.isManualDividend
+        ? `${percentNote} · ${ts('detail.manual')}`
+        : percentNote,
   };
 }
 
@@ -47,6 +51,8 @@ interface PositionStatsProps {
   sells: number;
   /** The last stat of the second row: a stock's dividends, a coin's holding time. */
   sixth: StatItem;
+  /** What the position has received in dividends, in the report currency (a stock's; counted in the realized result). */
+  dividendsReceived?: number | null;
 }
 
 /**
@@ -56,7 +62,13 @@ interface PositionStatsProps {
  * `useDividendStat`). The numbers are the backend's (`toStockRow`, `toCryptoRow`), in the report
  * currency; only the value and the price are the position's own.
  */
-export function PositionStats({ holding, reportCurrency, sells, sixth }: PositionStatsProps) {
+export function PositionStats({
+  holding,
+  reportCurrency,
+  sells,
+  sixth,
+  dividendsReceived = null,
+}: PositionStatsProps) {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
   const fmt = useFormat();
@@ -121,7 +133,19 @@ export function PositionStats({ holding, reportCurrency, sells, sixth }: Positio
       label: ts('detail.realized'),
       value: realizedGain === null ? '—' : statMoney(realizedGain, reportCurrency, true),
       tone: statTone(realizedGain),
-      note: sells > 0 ? ts('detail.sells', { count: sells }) : ts('detail.noSells'),
+      // The desktop's two parts, the dividends first: a third of the row holds two short lines,
+      // and "zatím žádný prodej" says nothing once the dividends explain the whole value.
+      note:
+        dividendsReceived !== null && dividendsReceived > 0
+          ? [
+              ts('detail.realizedDividends', { amount: statMoney(dividendsReceived) }),
+              sells > 0 ? ts('detail.sells', { count: sells }) : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')
+          : sells > 0
+            ? ts('detail.sells', { count: sells })
+            : ts('detail.noSells'),
     },
     sixth,
   ];

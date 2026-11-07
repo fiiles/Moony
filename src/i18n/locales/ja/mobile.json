@@ -33,13 +33,10 @@
   },
   "cashflow": {
     "subtitle_other": "{{count}}口座の実際の収入と支出",
+    "subtitleAll": "すべての口座の実際の収入と支出",
     "moves_other": "{{count}}件の取引",
     "shareOfExpenses": "支出の{{share}}",
     "shareOfIncome": "収入の{{share}}",
-    "limitProgress": "{{spent}} / {{limit}}",
-    "near": "上限に近い",
-    "overLimit": "上限超過",
-    "budgetSummary": "予算: 上限内 {{ok}} · 超過 {{over}} · 上限に近い {{near}}",
     "partial": "この期間はまだ終わっていません。次の明細で数値が補完されます。",
     "empty": {
       "title": "取引はまだありません",
@@ -193,6 +190,9 @@
       "importHistory": "インポート履歴",
       "delete": "口座を削除"
     },
+    "addTx": {
+      "noCategorySub": "あとで分類できます"
+    },
     "stats": {
       "changeThisYear": "今年の増減",
       "avgPerMonth": "月平均",
@@ -232,6 +232,9 @@
       "details": "詳細",
       "category": "カテゴリ",
       "delete": "削除"
+    },
+    "importHistory": {
+      "menu": "インポートのオプション"
     }
   },
   "loan": {
@@ -506,6 +509,8 @@
       "asset": "資産"
     },
     "noRate": "{{currency}}の為替レートなし",
+    "sincePurchase": "購入以来",
+    "gainSincePurchase": "購入以来の損益",
     "stocks": {
       "back": "株式",
       "pricesAt": "価格 {{time}}",
@@ -561,6 +566,9 @@
         "showAll_other": "{{count}} 件をすべて表示",
         "menu": "取引メニュー"
       },
+      "dividend": {
+        "menu": "配当メニュー"
+      },
       "follow": "フォロー",
       "following": "フォロー中",
       "followed": "ウォッチリストに追加しました",
@@ -592,7 +600,11 @@
       "remindersSub": "{{total}}グループ中{{on}}グループ",
       "import": "インポート",
       "importSub": "CSV、CAMT.053、MT940、OFX、QIF",
-      "deleteSub": "確認の単語を入力して実行"
+      "deleteSub": "確認の単語を入力して実行",
+      "tracking": "追跡する項目",
+      "categories": "カテゴリ",
+      "categoriesSub_other": "{{count}}件のカテゴリ",
+      "categorization": "自動分類"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "テレメトリなし",
@@ -662,6 +674,47 @@
       "confirmLabel": "確認のため {{word}} と入力してください",
       "confirm": "データを削除",
       "failed": "削除に失敗しました"
+    },
+    "tracking": {
+      "lead": "Moonyで追跡したい項目を選びます。",
+      "hideOnly": "非表示にした項目は表示されないだけで、データは残ります。",
+      "all": "すべて",
+      "investments": "投資",
+      "realEstate": "不動産",
+      "liabilities": "負債",
+      "none": "なし"
+    },
+    "categorization": {
+      "lead": "アプリが自動で分類するもの:国別のルールパック、独自ルール、修正から学習した取引先。",
+      "packs": "ルールパック",
+      "custom": "独自ルール",
+      "learned": "学習した取引先",
+      "packsEmpty": "ルールパックはありません。",
+      "customEmpty": "独自ルールはまだありません。パソコンで作成します。",
+      "learnedEmpty": "まだ学習していません。手動での分類から学習します。",
+      "noMatching": "検索に一致するものはありません",
+      "clearSearch": "検索をクリア",
+      "openPack": "{{name}}のルール",
+      "packSwitch": "パック {{name}}",
+      "ruleSwitch": "ルール {{name}}",
+      "ruleLine": "→ {{category}} · {{days}}日間で{{n}}回",
+      "turnOn": "オンにする",
+      "turnOff": "オフにする",
+      "deletedAccount": "削除された口座",
+      "scopedNoDirection": "口座 {{account}} のみ",
+      "summaryPacks_other": "{{count}}個のパック",
+      "summaryRules_other": "{{count}}件の独自ルール",
+      "summaryPayees_other": "{{count}}件の取引先",
+      "summaryNone": "学習したものはありません",
+      "otherPacks": "その他の国",
+      "otherPacksRow": "その他の国 · {{count}}",
+      "searchCountry": "国を検索"
+    },
+    "categories": {
+      "usageTransactions_other": "{{count}}件の取引",
+      "usageRules_other": "{{count}}件のルール",
+      "usagePayees_other": "{{count}}件の学習済み取引先",
+      "usageBudgets_other": "{{count}}件の予算"
     }
   },
   "backup": {

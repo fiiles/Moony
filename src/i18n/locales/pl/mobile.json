@@ -36,16 +36,13 @@
     "subtitle_few": "Rzeczywiste przychody i wydatki z {{count}} kont",
     "subtitle_many": "Rzeczywiste przychody i wydatki z {{count}} kont",
     "subtitle_other": "Rzeczywiste przychody i wydatki z {{count}} konta",
+    "subtitleAll": "Rzeczywiste przychody i wydatki ze wszystkich kont",
     "moves_one": "{{count}} transakcja",
     "moves_few": "{{count}} transakcje",
     "moves_many": "{{count}} transakcji",
     "moves_other": "{{count}} transakcji",
     "shareOfExpenses": "{{share}} wydatków",
     "shareOfIncome": "{{share}} przychodów",
-    "limitProgress": "{{spent}} / {{limit}}",
-    "near": "blisko limitu",
-    "overLimit": "powyżej limitu",
-    "budgetSummary": "Budżety: {{ok}} w limicie · {{over}} powyżej limitu · {{near}} blisko limitu",
     "partial": "Okres jeszcze się nie skończył; liczby uzupełnią się wraz z następnym wyciągiem.",
     "empty": {
       "title": "Jeszcze brak transakcji",
@@ -247,6 +244,9 @@
       "importHistory": "Historia importów",
       "delete": "Usuń konto"
     },
+    "addTx": {
+      "noCategorySub": "Przypiszesz ją później"
+    },
     "stats": {
       "changeThisYear": "Zmiana w tym roku",
       "avgPerMonth": "Średnio miesięcznie",
@@ -289,6 +289,9 @@
       "details": "Szczegóły",
       "category": "Kategoria",
       "delete": "Usuń"
+    },
+    "importHistory": {
+      "menu": "Opcje importu"
     }
   },
   "loan": {
@@ -605,6 +608,8 @@
       "asset": "Aktywo"
     },
     "noRate": "brak kursu wymiany dla {{currency}}",
+    "sincePurchase": "od zakupu",
+    "gainSincePurchase": "zysk/strata od zakupu",
     "stocks": {
       "back": "Akcje",
       "pricesAt": "ceny {{time}}",
@@ -666,6 +671,9 @@
         "showAll_other": "Pokaż wszystkie {{count}}",
         "menu": "Menu transakcji"
       },
+      "dividend": {
+        "menu": "Menu dywidendy"
+      },
       "follow": "Obserwuj",
       "following": "Obserwowana",
       "followed": "Dodano do obserwowanych",
@@ -697,7 +705,14 @@
       "remindersSub": "{{on}} z {{total}} grup",
       "import": "Import",
       "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
-      "deleteSub": "po wpisaniu słowa potwierdzenia"
+      "deleteSub": "po wpisaniu słowa potwierdzenia",
+      "tracking": "Co śledzić",
+      "categories": "Kategorie",
+      "categoriesSub_one": "{{count}} kategoria",
+      "categoriesSub_few": "{{count}} kategorie",
+      "categoriesSub_many": "{{count}} kategorii",
+      "categoriesSub_other": "{{count}} kategorii",
+      "categorization": "Kategoryzacja"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "bez telemetrii",
@@ -770,6 +785,68 @@
       "confirmLabel": "Aby potwierdzić, wpisz {{word}}",
       "confirm": "Usuń dane",
       "failed": "Nie udało się usunąć"
+    },
+    "tracking": {
+      "lead": "Wybierz, co chcesz śledzić w Moony.",
+      "hideOnly": "Ukryte obszary są tylko niewyświetlane; dane zostają.",
+      "all": "Wszystko",
+      "investments": "Inwestycje",
+      "realEstate": "Nieruchomości",
+      "liabilities": "Zobowiązania",
+      "none": "Nic"
+    },
+    "categorization": {
+      "lead": "Co aplikacja kategoryzuje sama: pakiety reguł według kraju, twoje własne reguły i odbiorcy, których nauczyła się z twoich poprawek.",
+      "packs": "Pakiety reguł",
+      "custom": "Własne reguły",
+      "learned": "Poznani odbiorcy",
+      "packsEmpty": "Brak pakietów reguł.",
+      "customEmpty": "Nie ma jeszcze własnych reguł. Tworzysz je na komputerze.",
+      "learnedEmpty": "Nic jeszcze się nie nauczyła. Aplikacja uczy się z twoich ręcznych kategoryzacji.",
+      "noMatching": "Nic nie pasuje do wyszukiwania",
+      "clearSearch": "Wyczyść wyszukiwanie",
+      "openPack": "Reguły pakietu {{name}}",
+      "packSwitch": "Pakiet {{name}}",
+      "ruleSwitch": "Reguła {{name}}",
+      "ruleLine": "→ {{category}} · {{n}}× w {{days}} dni",
+      "turnOn": "Włącz",
+      "turnOff": "Wyłącz",
+      "deletedAccount": "usunięte konto",
+      "scopedNoDirection": "Tylko konto {{account}}",
+      "summaryPacks_one": "{{count}} pakiet",
+      "summaryPacks_few": "{{count}} pakiety",
+      "summaryPacks_many": "{{count}} pakietów",
+      "summaryPacks_other": "{{count}} pakietu",
+      "summaryRules_one": "{{count}} własna reguła",
+      "summaryRules_few": "{{count}} własne reguły",
+      "summaryRules_many": "{{count}} własnych reguł",
+      "summaryRules_other": "{{count}} własnej reguły",
+      "summaryPayees_one": "{{count}} odbiorca",
+      "summaryPayees_few": "{{count}} odbiorcy",
+      "summaryPayees_many": "{{count}} odbiorców",
+      "summaryPayees_other": "{{count}} odbiorcy",
+      "summaryNone": "Nic się nie nauczyła",
+      "otherPacks": "Inne kraje",
+      "otherPacksRow": "Inne kraje · {{count}}",
+      "searchCountry": "Szukaj kraju"
+    },
+    "categories": {
+      "usageTransactions_one": "{{count}} transakcja",
+      "usageTransactions_few": "{{count}} transakcje",
+      "usageTransactions_many": "{{count}} transakcji",
+      "usageTransactions_other": "{{count}} transakcji",
+      "usageRules_one": "{{count}} reguła",
+      "usageRules_few": "{{count}} reguły",
+      "usageRules_many": "{{count}} reguł",
+      "usageRules_other": "{{count}} reguły",
+      "usagePayees_one": "{{count}} nauczony odbiorca",
+      "usagePayees_few": "{{count}} nauczeni odbiorcy",
+      "usagePayees_many": "{{count}} nauczonych odbiorców",
+      "usagePayees_other": "{{count}} nauczonego odbiorcy",
+      "usageBudgets_one": "{{count}} budżet",
+      "usageBudgets_few": "{{count}} budżety",
+      "usageBudgets_many": "{{count}} budżetów",
+      "usageBudgets_other": "{{count}} budżetu"
     }
   },
   "backup": {

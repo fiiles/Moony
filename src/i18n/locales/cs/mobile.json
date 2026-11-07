@@ -35,15 +35,12 @@
     "subtitle_one": "Skutečné příjmy a výdaje z {{count}} účtu",
     "subtitle_few": "Skutečné příjmy a výdaje ze {{count}} účtů",
     "subtitle_other": "Skutečné příjmy a výdaje z {{count}} účtů",
+    "subtitleAll": "Skutečné příjmy a výdaje ze všech účtů",
     "moves_one": "{{count}} pohyb",
     "moves_few": "{{count}} pohyby",
     "moves_other": "{{count}} pohybů",
     "shareOfExpenses": "{{share}} výdajů",
     "shareOfIncome": "{{share}} příjmů",
-    "limitProgress": "{{spent}} / {{limit}}",
-    "near": "blíží se limitu",
-    "overLimit": "nad limitem",
-    "budgetSummary": "Rozpočty: {{ok}} v mezích · {{over}} nad limitem · {{near}} blíží se limitu",
     "partial": "Období ještě neskončilo, čísla se doplní s dalším výpisem.",
     "empty": {
       "title": "Zatím žádné transakce",
@@ -229,6 +226,9 @@
       "importHistory": "Historie importů",
       "delete": "Smazat účet"
     },
+    "addTx": {
+      "noCategorySub": "Zařadíte ji později"
+    },
     "stats": {
       "changeThisYear": "Změna letos",
       "avgPerMonth": "Průměrně za měsíc",
@@ -270,6 +270,9 @@
       "details": "Podrobnosti",
       "category": "Kategorie",
       "delete": "Smazat"
+    },
+    "importHistory": {
+      "menu": "Nabídka importu"
     }
   },
   "loan": {
@@ -572,6 +575,8 @@
       "asset": "Aktivum"
     },
     "noRate": "bez kurzu pro {{currency}}",
+    "sincePurchase": "od nákupu",
+    "gainSincePurchase": "zisk/ztráta od nákupu",
     "stocks": {
       "back": "Akcie",
       "pricesAt": "ceny {{time}}",
@@ -631,6 +636,9 @@
         "showAll_other": "Zobrazit všech {{count}}",
         "menu": "Nabídka transakce"
       },
+      "dividend": {
+        "menu": "Nabídka dividendy"
+      },
       "follow": "Sledovat",
       "following": "Sledováno",
       "followed": "Přidáno do sledovaných",
@@ -662,7 +670,14 @@
       "remindersSub": "{{on}} z {{total}} skupin",
       "import": "Import",
       "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
-      "deleteSub": "po potvrzení napsáním slova"
+      "deleteSub": "po potvrzení napsáním slova",
+      "tracking": "Co sledovat",
+      "categories": "Kategorie",
+      "categoriesSub_one": "{{count}} kategorie",
+      "categoriesSub_few": "{{count}} kategorie",
+      "categoriesSub_many": "{{count}} kategorie",
+      "categoriesSub_other": "{{count}} kategorií",
+      "categorization": "Kategorizace"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "žádná telemetrie",
@@ -734,6 +749,68 @@
       "confirmLabel": "Pro potvrzení napište {{word}}",
       "confirm": "Smazat data",
       "failed": "Smazání selhalo"
+    },
+    "tracking": {
+      "lead": "Vyberte, co chcete v Moony sledovat.",
+      "hideOnly": "Skryté oblasti se jen nezobrazují, data zůstávají.",
+      "all": "Vše",
+      "investments": "Investice",
+      "realEstate": "Nemovitosti",
+      "liabilities": "Závazky",
+      "none": "Nic"
+    },
+    "categorization": {
+      "lead": "Co se zařadí samo: balíčky pravidel podle zemí, vaše vlastní pravidla a příjemci, které se aplikace naučila z vašich oprav.",
+      "packs": "Balíčky pravidel",
+      "custom": "Vlastní pravidla",
+      "learned": "Naučení příjemci",
+      "packsEmpty": "Žádné balíčky pravidel.",
+      "customEmpty": "Zatím žádná vlastní pravidla. Zakládáte je v počítači.",
+      "learnedEmpty": "Zatím nic naučeného. Aplikace se učí z vašich ručních zařazení.",
+      "noMatching": "Hledání nic nenašlo",
+      "clearSearch": "Smazat hledání",
+      "openPack": "Pravidla balíčku {{name}}",
+      "packSwitch": "Balíček {{name}}",
+      "ruleSwitch": "Pravidlo {{name}}",
+      "ruleLine": "→ {{category}} · {{n}}× za {{days}} dní",
+      "turnOn": "Zapnout",
+      "turnOff": "Vypnout",
+      "deletedAccount": "smazaný účet",
+      "scopedNoDirection": "Pouze účet {{account}}",
+      "summaryPacks_one": "{{count}} balíček",
+      "summaryPacks_few": "{{count}} balíčky",
+      "summaryPacks_many": "{{count}} balíčku",
+      "summaryPacks_other": "{{count}} balíčků",
+      "summaryRules_one": "{{count}} vlastní pravidlo",
+      "summaryRules_few": "{{count}} vlastní pravidla",
+      "summaryRules_many": "{{count}} vlastního pravidla",
+      "summaryRules_other": "{{count}} vlastních pravidel",
+      "summaryPayees_one": "{{count}} příjemce",
+      "summaryPayees_few": "{{count}} příjemci",
+      "summaryPayees_many": "{{count}} příjemce",
+      "summaryPayees_other": "{{count}} příjemců",
+      "summaryNone": "Nic naučeného",
+      "otherPacks": "Další země",
+      "otherPacksRow": "Další země · {{count}}",
+      "searchCountry": "Hledat zemi"
+    },
+    "categories": {
+      "usageTransactions_one": "{{count}} transakce",
+      "usageTransactions_few": "{{count}} transakce",
+      "usageTransactions_many": "{{count}} transakce",
+      "usageTransactions_other": "{{count}} transakcí",
+      "usageRules_one": "{{count}} pravidlo",
+      "usageRules_few": "{{count}} pravidla",
+      "usageRules_many": "{{count}} pravidla",
+      "usageRules_other": "{{count}} pravidel",
+      "usagePayees_one": "{{count}} naučený příjemce",
+      "usagePayees_few": "{{count}} naučení příjemci",
+      "usagePayees_many": "{{count}} naučeného příjemce",
+      "usagePayees_other": "{{count}} naučených příjemců",
+      "usageBudgets_one": "{{count}} rozpočet",
+      "usageBudgets_few": "{{count}} rozpočty",
+      "usageBudgets_many": "{{count}} rozpočtu",
+      "usageBudgets_other": "{{count}} rozpočtů"
     }
   },
   "backup": {

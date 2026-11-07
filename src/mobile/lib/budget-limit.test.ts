@@ -266,4 +266,9 @@ describe('limitDefaults', () => {
       until: '',
     });
   });
+
+  it('writes the stored limit with the locale decimal separator', () => {
+    const limit = goal([{ effectiveMonth: MAR, amount: '1250.50', currency: 'CZK' }]);
+    expect(limitDefaults(limit, undefined, OCT, 'cs').amountText).toBe('1250,5');
+  });
 });

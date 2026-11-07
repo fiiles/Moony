@@ -34,14 +34,11 @@
   "cashflow": {
     "subtitle_one": "Faktiska inkomster och utgifter från {{count}} konto",
     "subtitle_other": "Faktiska inkomster och utgifter från {{count}} konton",
+    "subtitleAll": "Faktiska inkomster och utgifter från alla konton",
     "moves_one": "{{count}} transaktion",
     "moves_other": "{{count}} transaktioner",
     "shareOfExpenses": "{{share}} av utgifterna",
     "shareOfIncome": "{{share}} av inkomsterna",
-    "limitProgress": "{{spent}} / {{limit}}",
-    "near": "nära gränsen",
-    "overLimit": "över gränsen",
-    "budgetSummary": "Budgetar: {{ok}} inom gränsen · {{over}} över gränsen · {{near}} nära gränsen",
     "partial": "Perioden har inte tagit slut än; siffrorna fylls i med nästa kontoutdrag.",
     "empty": {
       "title": "Inga transaktioner än",
@@ -211,6 +208,9 @@
       "importHistory": "Importhistorik",
       "delete": "Ta bort konto"
     },
+    "addTx": {
+      "noCategorySub": "Du kan kategorisera den senare"
+    },
     "stats": {
       "changeThisYear": "Förändring i år",
       "avgPerMonth": "Genomsnitt per månad",
@@ -251,6 +251,9 @@
       "details": "Detaljer",
       "category": "Kategori",
       "delete": "Ta bort"
+    },
+    "importHistory": {
+      "menu": "Importalternativ"
     }
   },
   "loan": {
@@ -539,6 +542,8 @@
       "asset": "Tillgång"
     },
     "noRate": "ingen växelkurs för {{currency}}",
+    "sincePurchase": "sedan köp",
+    "gainSincePurchase": "vinst/förlust sedan köp",
     "stocks": {
       "back": "Aktier",
       "pricesAt": "kurser {{time}}",
@@ -596,6 +601,9 @@
         "showAll_other": "Visa alla {{count}}",
         "menu": "Transaktionsmeny"
       },
+      "dividend": {
+        "menu": "Utdelningsmeny"
+      },
       "follow": "Bevaka",
       "following": "Bevakas",
       "followed": "Tillagd i bevakningslistan",
@@ -627,7 +635,12 @@
       "remindersSub": "{{on}} av {{total}} grupper",
       "import": "Import",
       "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
-      "deleteSub": "efter att du skrivit ett bekräftelseord"
+      "deleteSub": "efter att du skrivit ett bekräftelseord",
+      "tracking": "Vad som följs",
+      "categories": "Kategorier",
+      "categoriesSub_one": "{{count}} kategori",
+      "categoriesSub_other": "{{count}} kategorier",
+      "categorization": "Kategorisering"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "ingen telemetri",
@@ -698,6 +711,54 @@
       "confirmLabel": "Skriv {{word}} för att bekräfta",
       "confirm": "Radera data",
       "failed": "Raderingen misslyckades"
+    },
+    "tracking": {
+      "lead": "Välj vad du vill följa i Moony.",
+      "hideOnly": "Dolda områden visas bara inte; data finns kvar.",
+      "all": "Allt",
+      "investments": "Investeringar",
+      "realEstate": "Fastigheter",
+      "liabilities": "Skulder",
+      "none": "Ingenting"
+    },
+    "categorization": {
+      "lead": "Det appen kategoriserar själv: regelpaket per land, dina egna regler och de mottagare den lärt sig av dina rättelser.",
+      "packs": "Regelpaket",
+      "custom": "Egna regler",
+      "learned": "Inlärda mottagare",
+      "packsEmpty": "Inga regelpaket.",
+      "customEmpty": "Inga egna regler än. Du skapar dem på datorn.",
+      "learnedEmpty": "Inget inlärt än. Appen lär sig av dina manuella kategoriseringar.",
+      "noMatching": "Inget matchar sökningen",
+      "clearSearch": "Rensa sökning",
+      "openPack": "Reglerna i {{name}}",
+      "packSwitch": "Paket {{name}}",
+      "ruleSwitch": "Regel {{name}}",
+      "ruleLine": "→ {{category}} · {{n}}× på {{days}} dagar",
+      "turnOn": "Slå på",
+      "turnOff": "Slå av",
+      "deletedAccount": "raderat konto",
+      "scopedNoDirection": "Endast konto {{account}}",
+      "summaryPacks_one": "{{count}} paket",
+      "summaryPacks_other": "{{count}} paket",
+      "summaryRules_one": "{{count}} egen regel",
+      "summaryRules_other": "{{count}} egna regler",
+      "summaryPayees_one": "{{count}} mottagare",
+      "summaryPayees_other": "{{count}} mottagare",
+      "summaryNone": "Inget inlärt",
+      "otherPacks": "Andra länder",
+      "otherPacksRow": "Andra länder · {{count}}",
+      "searchCountry": "Sök land"
+    },
+    "categories": {
+      "usageTransactions_one": "{{count}} transaktion",
+      "usageTransactions_other": "{{count}} transaktioner",
+      "usageRules_one": "{{count}} regel",
+      "usageRules_other": "{{count}} regler",
+      "usagePayees_one": "{{count}} inlärd mottagare",
+      "usagePayees_other": "{{count}} inlärda mottagare",
+      "usageBudgets_one": "{{count}} budget",
+      "usageBudgets_other": "{{count}} budgetar"
     }
   },
   "backup": {

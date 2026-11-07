@@ -76,10 +76,13 @@ export const propertyPath = (id: string) => `/wealth/real-estate/${id}`;
 /** The pushed pages of Nastavení, in root order. */
 export const SETTINGS_SECTIONS = [
   'profile',
+  'tracking',
   'security',
   'reminders',
   'notifications',
   'backup',
+  'categories',
+  'categorization',
   'import',
 ] as const;
 

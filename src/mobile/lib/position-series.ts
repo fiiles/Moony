@@ -1,4 +1,4 @@
-import type { TickerValueHistoryReport } from '@shared/schema';
+import type { StockDividend, TickerValueHistoryReport } from '@shared/schema';
 import type { LinePoint } from '@/components/charts/MoonyLineChart';
 import { utcDayFloor } from '@/utils/chart-axis';
 import type { ChartEvent } from '@/utils/chart-scale';
@@ -31,7 +31,12 @@ export interface PositionEvent<T extends LedgerTx = LedgerTx> extends ChartEvent
   tx: T;
 }
 
-export type TxFilter = 'all' | 'buy' | 'sell';
+export type LedgerFilter = 'all' | 'buy' | 'sell' | 'dividend';
+
+/** A row of the ledger: a trade or, for a stock, a received dividend (dated by its ex-date). */
+export type LedgerEntry<T extends LedgerTx = LedgerTx> =
+  | { kind: 'trade'; id: string; date: number; tx: T }
+  | { kind: 'dividend'; id: string; date: number; dividend: StockDividend };
 
 /**
  * The line of a position (`PositionHero`'s `points` as a pure function): the recorded days with
@@ -78,13 +83,32 @@ export function positionEvents<T extends LedgerTx>(transactions: readonly T[]): 
   }));
 }
 
-/** The ledger as the page lists it: newest first, all of it or only the buys or the sells. */
-export function filterTransactions<T extends Pick<LedgerTx, 'type' | 'transactionDate'>>(
+/**
+ * The ledger as the page lists it: the trades and the received dividends merged, newest first.
+ * Stable for the same day (trades before dividends, each in its input order, as the desktop does).
+ * Buys and sells drop the dividends, the dividend filter drops the trades.
+ */
+export function ledgerEntries<T extends LedgerTx>(
   transactions: readonly T[],
-  filter: TxFilter
-): T[] {
-  const rows = [...transactions].sort((a, b) => b.transactionDate - a.transactionDate);
-  return filter === 'all' ? rows : rows.filter((tx) => tx.type === filter);
+  dividends: readonly StockDividend[],
+  filter: LedgerFilter
+): LedgerEntry<T>[] {
+  const trades: LedgerEntry<T>[] =
+    filter === 'dividend'
+      ? []
+      : transactions
+          .filter((tx) => filter === 'all' || tx.type === filter)
+          .map((tx) => ({ kind: 'trade', id: tx.id, date: tx.transactionDate, tx }));
+  const paid: LedgerEntry<T>[] =
+    filter === 'all' || filter === 'dividend'
+      ? dividends.map((dividend) => ({
+          kind: 'dividend',
+          id: dividend.id,
+          date: dividend.exDate,
+          dividend,
+        }))
+      : [];
+  return [...trades, ...paid].sort((a, b) => b.date - a.date);
 }
 
 /** What a trade moved in its own currency: quantity × price per unit; 0 for a figure that is not a number. */
@@ -102,14 +126,15 @@ export function ytdRange(nowSec: number): { fromTs: number; toTs: number } {
  * them when the current one leaves it out) and whether the list must unfold because the fold hides
  * it. A row that is not in the ledger at all changes nothing.
  */
-export function revealRow<T extends Pick<LedgerTx, 'id' | 'type' | 'transactionDate'>>(
+export function revealRow<T extends LedgerTx>(
   transactions: readonly T[],
-  filter: TxFilter,
+  dividends: readonly StockDividend[],
+  filter: LedgerFilter,
   id: string,
   fold = ROWS_FOLD
-): { filter: TxFilter; expand: boolean } {
-  const indexIn = (by: TxFilter) =>
-    filterTransactions(transactions, by).findIndex((tx) => tx.id === id);
+): { filter: LedgerFilter; expand: boolean } {
+  const indexIn = (by: LedgerFilter) =>
+    ledgerEntries(transactions, dividends, by).findIndex((entry) => entry.id === id);
   const next = indexIn(filter) >= 0 || indexIn('all') < 0 ? filter : 'all';
   return { filter: next, expand: indexIn(next) >= fold };
 }

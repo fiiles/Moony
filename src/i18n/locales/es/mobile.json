@@ -35,15 +35,12 @@
     "subtitle_one": "Ingresos y gastos reales de {{count}} cuenta",
     "subtitle_many": "Ingresos y gastos reales de {{count}} cuentas",
     "subtitle_other": "Ingresos y gastos reales de {{count}} cuentas",
+    "subtitleAll": "Ingresos y gastos reales de todas las cuentas",
     "moves_one": "{{count}} movimiento",
     "moves_many": "{{count}} movimientos",
     "moves_other": "{{count}} movimientos",
     "shareOfExpenses": "{{share}} de los gastos",
     "shareOfIncome": "{{share}} de los ingresos",
-    "limitProgress": "{{spent}} / {{limit}}",
-    "near": "cerca del límite",
-    "overLimit": "por encima del límite",
-    "budgetSummary": "Presupuestos: {{ok}} dentro del límite · {{over}} por encima del límite · {{near}} cerca del límite",
     "partial": "El periodo aún no ha terminado; las cifras se completarán con el próximo extracto.",
     "empty": {
       "title": "Aún no hay movimientos",
@@ -229,6 +226,9 @@
       "importHistory": "Historial de importaciones",
       "delete": "Eliminar cuenta"
     },
+    "addTx": {
+      "noCategorySub": "Puedes categorizarla más tarde"
+    },
     "stats": {
       "changeThisYear": "Variación este año",
       "avgPerMonth": "Media mensual",
@@ -270,6 +270,9 @@
       "details": "Detalles",
       "category": "Categoría",
       "delete": "Eliminar"
+    },
+    "importHistory": {
+      "menu": "Opciones de la importación"
     }
   },
   "loan": {
@@ -572,6 +575,8 @@
       "asset": "Activo"
     },
     "noRate": "sin tipo de cambio para {{currency}}",
+    "sincePurchase": "desde la compra",
+    "gainSincePurchase": "ganancia/pérdida desde la compra",
     "stocks": {
       "back": "Acciones",
       "pricesAt": "precios {{time}}",
@@ -631,6 +636,9 @@
         "showAll_other": "Mostrar todas ({{count}})",
         "menu": "Menú del movimiento"
       },
+      "dividend": {
+        "menu": "Menú del dividendo"
+      },
       "follow": "Seguir",
       "following": "Siguiendo",
       "followed": "Añadida a la lista de seguimiento",
@@ -662,7 +670,13 @@
       "remindersSub": "{{on}} de {{total}} grupos",
       "import": "Importar",
       "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
-      "deleteSub": "tras escribir una palabra de confirmación"
+      "deleteSub": "tras escribir una palabra de confirmación",
+      "tracking": "Qué seguir",
+      "categories": "Categorías",
+      "categoriesSub_one": "{{count}} categoría",
+      "categoriesSub_many": "{{count}} categorías",
+      "categoriesSub_other": "{{count}} categorías",
+      "categorization": "Categorización"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "sin telemetría",
@@ -734,6 +748,61 @@
       "confirmLabel": "Escribe {{word}} para confirmar",
       "confirm": "Eliminar datos",
       "failed": "No se pudo eliminar"
+    },
+    "tracking": {
+      "lead": "Elige qué quieres seguir en Moony.",
+      "hideOnly": "Las áreas ocultas solo se dejan de mostrar; los datos se conservan.",
+      "all": "Todo",
+      "investments": "Inversiones",
+      "realEstate": "Inmuebles",
+      "liabilities": "Pasivos",
+      "none": "Nada"
+    },
+    "categorization": {
+      "lead": "Lo que la app clasifica sola: paquetes de reglas por país, sus reglas propias y los beneficiarios que aprendió de sus correcciones.",
+      "packs": "Paquetes de reglas",
+      "custom": "Reglas propias",
+      "learned": "Beneficiarios aprendidos",
+      "packsEmpty": "No hay paquetes de reglas.",
+      "customEmpty": "Aún no hay reglas propias. Se crean en el ordenador.",
+      "learnedEmpty": "Aún no ha aprendido nada. La app aprende de sus clasificaciones manuales.",
+      "noMatching": "Nada coincide con la búsqueda",
+      "clearSearch": "Borrar búsqueda",
+      "openPack": "Reglas de {{name}}",
+      "packSwitch": "Paquete {{name}}",
+      "ruleSwitch": "Regla {{name}}",
+      "ruleLine": "→ {{category}} · {{n}}× en {{days}} días",
+      "turnOn": "Activar",
+      "turnOff": "Desactivar",
+      "deletedAccount": "cuenta eliminada",
+      "scopedNoDirection": "Solo la cuenta {{account}}",
+      "summaryPacks_one": "{{count}} paquete",
+      "summaryPacks_many": "{{count}} paquetes",
+      "summaryPacks_other": "{{count}} paquetes",
+      "summaryRules_one": "{{count}} regla propia",
+      "summaryRules_many": "{{count}} reglas propias",
+      "summaryRules_other": "{{count}} reglas propias",
+      "summaryPayees_one": "{{count}} beneficiario",
+      "summaryPayees_many": "{{count}} beneficiarios",
+      "summaryPayees_other": "{{count}} beneficiarios",
+      "summaryNone": "Nada aprendido",
+      "otherPacks": "Otros países",
+      "otherPacksRow": "Otros países · {{count}}",
+      "searchCountry": "Buscar país"
+    },
+    "categories": {
+      "usageTransactions_one": "{{count}} transacción",
+      "usageTransactions_many": "{{count}} transacciones",
+      "usageTransactions_other": "{{count}} transacciones",
+      "usageRules_one": "{{count}} regla",
+      "usageRules_many": "{{count}} reglas",
+      "usageRules_other": "{{count}} reglas",
+      "usagePayees_one": "{{count}} beneficiario aprendido",
+      "usagePayees_many": "{{count}} beneficiarios aprendidos",
+      "usagePayees_other": "{{count}} beneficiarios aprendidos",
+      "usageBudgets_one": "{{count}} presupuesto",
+      "usageBudgets_many": "{{count}} presupuestos",
+      "usageBudgets_other": "{{count}} presupuestos"
     }
   },
   "backup": {

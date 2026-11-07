@@ -1,6 +1,11 @@
 import type { TFunction } from 'i18next';
 import { describe, expect, it } from 'vitest';
-import { lockAfterOption, renderTextRef, securitySummary } from './settings-summary';
+import {
+  categorizationSummary,
+  lockAfterOption,
+  renderTextRef,
+  securitySummary,
+} from './settings-summary';
 
 describe('securitySummary', () => {
   it('names the biometry and the lock delay', () => {
@@ -77,5 +82,20 @@ describe('renderTextRef', () => {
     ).toBe(
       '«notifications.deadline.in14|whatKey=«notifications.deadline.kind.loan_fixation_end»,title=Key»'
     );
+  });
+});
+
+describe('categorizationSummary', () => {
+  it('lists the parts that are not zero', () => {
+    expect(categorizationSummary({ packs: 2, rules: 0, payees: 14 })).toEqual([
+      { key: 'settings.categorization.summaryPacks', params: { count: 2 } },
+      { key: 'settings.categorization.summaryPayees', params: { count: 14 } },
+    ]);
+  });
+
+  it('says that nothing is learned when all are zero', () => {
+    expect(categorizationSummary({ packs: 0, rules: 0, payees: 0 })).toEqual([
+      { key: 'settings.categorization.summaryNone' },
+    ]);
   });
 });

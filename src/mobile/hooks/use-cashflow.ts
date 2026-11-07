@@ -1,10 +1,11 @@
 import { useCallback, useMemo } from 'react';
 import { keepPreviousData, useQuery } from '@tanstack/react-query';
 import { useLocation, useSearch } from 'wouter';
-import type { BudgetingReport, CashflowActuals, CategorySpendingSummary } from '@shared/schema';
+import type { BudgetingReport, CashflowActuals } from '@shared/schema';
 import { useCurrency } from '@/lib/currency';
 import { budgetingApi, cashflowApi } from '@/lib/tauri-api';
 import { useFormat } from '@/lib/use-format';
+import { expenseRows, type ExpenseRow } from '@/utils/cashflow-budget-rows';
 import { getUtcPeriodRange, type UtcPeriodRange } from '@/utils/period';
 import {
   cashflowSearch,
@@ -18,16 +19,23 @@ import { routes } from '@/mobile/shell/routes';
  * The period and accounts of the Cashflow tab, kept in the URL search of its root (see
  * `CashflowState`). Writing replaces the history entry, so paging through months does not add
  * a screen to go back through. A write that changes the period pins it (`chosen`), so the tab no
- * longer moves to the newest month with data; a period already pinned stays pinned.
+ * longer moves to the month of the newest transaction; a period already pinned stays pinned, and
+ * `pin` pins the one written even when it is the current month (the opening period).
  */
-export function useCashflowState(): [CashflowState, (next: CashflowState) => void] {
+export function useCashflowState(): [
+  CashflowState,
+  (next: CashflowState, options?: { pin?: boolean }) => void,
+] {
   const search = useSearch();
   const [, setLocation] = useLocation();
   const state = useMemo(() => parseCashflowSearch(search), [search]);
   const setState = useCallback(
-    (next: CashflowState) => {
+    (next: CashflowState, { pin = false }: { pin?: boolean } = {}) => {
       const chosen =
-        periodChosen(search) || next.timeframe !== state.timeframe || next.offset !== state.offset;
+        pin ||
+        periodChosen(search) ||
+        next.timeframe !== state.timeframe ||
+        next.offset !== state.offset;
       setLocation(routes.cashflow + cashflowSearch(next, { chosen }), { replace: true });
     },
     [search, state, setLocation]
@@ -61,53 +69,48 @@ export interface CashflowReport {
   /** "Říjen 2026", "Q4 2026" or "2026". */
   periodLabel: string;
   actuals: CashflowActuals | undefined;
-  /** The budgets of the period; they only add the limits to the rows, so the screen does not wait for them. */
+  /** The budgets of the same period, accounts and currency (fetched with the actuals, never apart). */
   budgeting: BudgetingReport | undefined;
-  /** The expense budget summaries by category id. */
-  budgetByCategory: ReadonlyMap<string, CategorySpendingSummary>;
+  /** The desktop's expense rows: the cashflow groups joined with the period's limits. */
+  expenses: ExpenseRow[];
   /** The currency the report amounts are in: the report's own, else the profile currency. */
   reportCurrency: string;
-  /** The actuals are loading for the first time (there is nothing to show yet). */
+  /** The report is loading for the first time (there is nothing to show yet). */
   isLoading: boolean;
-  /** The actuals or the budgets shown are those of the previous period, while the selected one loads. */
+  /** The report shown is the previous period's, while the selected one loads. */
   isPlaceholder: boolean;
-  /** The actuals failed to load. */
+  /** The report (actuals or budgets) failed to load. */
   isError: boolean;
   refetch: () => void;
 }
 
-const NO_BUDGETS: ReadonlyMap<string, CategorySpendingSummary> = new Map();
+/** Both reports of one period, account scope and report currency, fetched as one. */
+interface Overview {
+  actuals: CashflowActuals;
+  budgeting: BudgetingReport;
+}
+
+const NO_ROWS: ExpenseRow[] = [];
 
 /**
- * The actuals and the budgets of the selected period. The query keys are the desktop's
- * (`src/pages/Cashflow.tsx`, `src/pages/Budgeting.tsx`), so a money write that refreshes
- * `['cashflow-report']` and `['budgeting-report']` refreshes the phone too, and the same
- * period is one cache entry on both.
+ * The actuals and the budgets of the selected period as ONE query, keyed exactly like the desktop
+ * Cashflow's (`src/pages/Cashflow.tsx`): the expense rows never join a report of the new period or
+ * accounts with one of the old, loading, placeholder, error and retry are one state, a money write
+ * that refreshes `['cashflow-report']` refreshes it, and the same period is one cache entry on both
+ * shells. `enabled` false holds it back while the opening period is not decided.
  */
-export function useCashflowReport(state: CashflowState): CashflowReport {
+export function useCashflowReport(
+  state: CashflowState,
+  { enabled = true }: { enabled?: boolean } = {}
+): CashflowReport {
   const { currencyCode, fxRevision } = useCurrency();
   const { timeframe, accountIds } = state;
   const { range, periodLabel } = usePeriodLabel(state);
 
-  const actualsQuery = useQuery<CashflowActuals>({
+  const query = useQuery<Overview>({
     queryKey: [
       'cashflow-report',
-      'actuals',
-      range.start,
-      range.end,
-      accountIds,
-      currencyCode,
-      fxRevision,
-    ],
-    queryFn: () => cashflowApi.getActuals(range.start, range.end, accountIds, currencyCode),
-    staleTime: 0,
-    refetchOnMount: 'always',
-    placeholderData: keepPreviousData,
-  });
-
-  const budgetingQuery = useQuery<BudgetingReport>({
-    queryKey: [
-      'budgeting-report',
+      'overview',
       range.start,
       range.end,
       timeframe,
@@ -115,41 +118,39 @@ export function useCashflowReport(state: CashflowState): CashflowReport {
       currencyCode,
       fxRevision,
     ],
-    queryFn: () =>
-      budgetingApi.getReport(range.start, range.end, timeframe, accountIds, currencyCode),
-    // Like the actuals: the limits stay on the rows while the next period loads, so both dim
-    // and swap together
+    queryFn: async () => {
+      const [actuals, budgeting] = await Promise.all([
+        cashflowApi.getActuals(range.start, range.end, accountIds, currencyCode),
+        budgetingApi.getReport(range.start, range.end, timeframe, accountIds, currencyCode),
+      ]);
+      return { actuals, budgeting };
+    },
+    enabled,
+    staleTime: 0,
+    refetchOnMount: 'always',
     placeholderData: keepPreviousData,
   });
 
-  const actuals = actualsQuery.data;
-  const budgeting = budgetingQuery.data;
-
-  const budgetByCategory = useMemo(
+  const { data, refetch: refetchQuery } = query;
+  const expenses = useMemo(
     () =>
-      budgeting
-        ? new Map(budgeting.expenseCategories.map((summary) => [summary.categoryId, summary]))
-        : NO_BUDGETS,
-    [budgeting]
+      data
+        ? expenseRows(data.actuals.expenseCategories, data.budgeting.expenseCategories)
+        : NO_ROWS,
+    [data]
   );
-
-  const { refetch: refetchActuals } = actualsQuery;
-  const { refetch: refetchBudgeting } = budgetingQuery;
-  const refetch = useCallback(() => {
-    void refetchActuals();
-    void refetchBudgeting();
-  }, [refetchActuals, refetchBudgeting]);
+  const refetch = useCallback(() => void refetchQuery(), [refetchQuery]);
 
   return {
     range,
     periodLabel,
-    actuals,
-    budgeting,
-    budgetByCategory,
-    reportCurrency: actuals?.reportCurrency ?? currencyCode,
-    isLoading: actualsQuery.isLoading,
-    isPlaceholder: actualsQuery.isPlaceholderData || budgetingQuery.isPlaceholderData,
-    isError: actualsQuery.isError,
+    actuals: data?.actuals,
+    budgeting: data?.budgeting,
+    expenses,
+    reportCurrency: data?.actuals.reportCurrency ?? currencyCode,
+    isLoading: query.isLoading,
+    isPlaceholder: query.isPlaceholderData,
+    isError: query.isError,
     refetch,
   };
 }

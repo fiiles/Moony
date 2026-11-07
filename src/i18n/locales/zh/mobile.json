@@ -33,13 +33,10 @@
   },
   "cashflow": {
     "subtitle_other": "来自 {{count}} 个账户的实际收入和支出",
+    "subtitleAll": "所有账户的实际收入和支出",
     "moves_other": "{{count}} 笔交易",
     "shareOfExpenses": "占支出的 {{share}}",
     "shareOfIncome": "占收入的 {{share}}",
-    "limitProgress": "{{spent}} / {{limit}}",
-    "near": "接近限额",
-    "overLimit": "超出限额",
-    "budgetSummary": "预算：{{ok}} 个在限额内 · {{over}} 个超限额 · {{near}} 个接近限额",
     "partial": "本期尚未结束，数据将随下一份对账单补全。",
     "empty": {
       "title": "还没有交易",
@@ -193,6 +190,9 @@
       "importHistory": "导入历史",
       "delete": "删除账户"
     },
+    "addTx": {
+      "noCategorySub": "您可以稍后再分类"
+    },
     "stats": {
       "changeThisYear": "今年变动",
       "avgPerMonth": "月均",
@@ -232,6 +232,9 @@
       "details": "详情",
       "category": "类别",
       "delete": "删除"
+    },
+    "importHistory": {
+      "menu": "导入选项"
     }
   },
   "loan": {
@@ -506,6 +509,8 @@
       "asset": "资产"
     },
     "noRate": "无 {{currency}} 汇率",
+    "sincePurchase": "自购入以来",
+    "gainSincePurchase": "自购入以来的盈亏",
     "stocks": {
       "back": "股票",
       "pricesAt": "价格 {{time}}",
@@ -561,6 +566,9 @@
         "showAll_other": "显示全部 {{count}} 条",
         "menu": "交易菜单"
       },
+      "dividend": {
+        "menu": "股息菜单"
+      },
       "follow": "关注",
       "following": "已关注",
       "followed": "已添加到自选列表",
@@ -592,7 +600,11 @@
       "remindersSub": "已开启 {{on}}/{{total}} 组",
       "import": "导入",
       "importSub": "CSV、CAMT.053、MT940、OFX、QIF",
-      "deleteSub": "输入确认词后执行"
+      "deleteSub": "输入确认词后执行",
+      "tracking": "跟踪内容",
+      "categories": "类别",
+      "categoriesSub_other": "{{count}} 个类别",
+      "categorization": "自动分类"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "无遥测",
@@ -662,6 +674,47 @@
       "confirmLabel": "请输入 {{word}} 以确认",
       "confirm": "删除数据",
       "failed": "删除失败"
+    },
+    "tracking": {
+      "lead": "选择要在 Moony 中跟踪的内容。",
+      "hideOnly": "隐藏的领域只是不再显示,数据仍会保留。",
+      "all": "全部",
+      "investments": "投资",
+      "realEstate": "房产",
+      "liabilities": "负债",
+      "none": "无"
+    },
+    "categorization": {
+      "lead": "应用自动归类的内容:按国家划分的规则包、您自己的规则,以及从您的修正中学到的收款方。",
+      "packs": "规则包",
+      "custom": "自有规则",
+      "learned": "已学习的收款方",
+      "packsEmpty": "没有规则包。",
+      "customEmpty": "还没有自有规则。请在电脑上创建。",
+      "learnedEmpty": "还没有学到任何内容。应用会从您的手动分类中学习。",
+      "noMatching": "没有与搜索匹配的内容",
+      "clearSearch": "清除搜索",
+      "openPack": "{{name}}的规则",
+      "packSwitch": "规则包 {{name}}",
+      "ruleSwitch": "规则 {{name}}",
+      "ruleLine": "→ {{category}} · {{days}} 天内 {{n}} 次",
+      "turnOn": "开启",
+      "turnOff": "关闭",
+      "deletedAccount": "已删除的账户",
+      "scopedNoDirection": "仅限账户 {{account}}",
+      "summaryPacks_other": "{{count}} 个规则包",
+      "summaryRules_other": "{{count}} 条自有规则",
+      "summaryPayees_other": "{{count}} 个收款方",
+      "summaryNone": "没有学到任何内容",
+      "otherPacks": "其他国家",
+      "otherPacksRow": "其他国家 · {{count}}",
+      "searchCountry": "搜索国家"
+    },
+    "categories": {
+      "usageTransactions_other": "{{count}} 笔交易",
+      "usageRules_other": "{{count}} 条规则",
+      "usagePayees_other": "{{count}} 个已学习的收款方",
+      "usageBudgets_other": "{{count}} 项预算"
     }
   },
   "backup": {

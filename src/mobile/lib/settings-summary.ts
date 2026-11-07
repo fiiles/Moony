@@ -70,3 +70,25 @@ export function renderTextRef(t: TFunction, ref: TextRef): string {
   }
   return t(ref.key, params);
 }
+
+/**
+ * Kategorizace's sub-line on the root, as parts to join with " · ": the enabled packs, the own
+ * rules and the learned payees, each only when there is one; "Nic naučeného" when none is.
+ */
+export function categorizationSummary(counts: {
+  packs: number;
+  rules: number;
+  payees: number;
+}): TextRef[] {
+  const parts: TextRef[] = [];
+  if (counts.packs > 0) {
+    parts.push({ key: 'settings.categorization.summaryPacks', params: { count: counts.packs } });
+  }
+  if (counts.rules > 0) {
+    parts.push({ key: 'settings.categorization.summaryRules', params: { count: counts.rules } });
+  }
+  if (counts.payees > 0) {
+    parts.push({ key: 'settings.categorization.summaryPayees', params: { count: counts.payees } });
+  }
+  return parts.length > 0 ? parts : [{ key: 'settings.categorization.summaryNone' }];
+}

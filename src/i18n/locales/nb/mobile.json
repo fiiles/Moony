@@ -34,14 +34,11 @@
   "cashflow": {
     "subtitle_one": "Faktiske inntekter og utgifter fra {{count}} konto",
     "subtitle_other": "Faktiske inntekter og utgifter fra {{count}} kontoer",
+    "subtitleAll": "Faktiske inntekter og utgifter fra alle kontoer",
     "moves_one": "{{count}} transaksjon",
     "moves_other": "{{count}} transaksjoner",
     "shareOfExpenses": "{{share}} av utgiftene",
     "shareOfIncome": "{{share}} av inntektene",
-    "limitProgress": "{{spent}} / {{limit}}",
-    "near": "nær grensen",
-    "overLimit": "over grensen",
-    "budgetSummary": "Budsjetter: {{ok}} innenfor grensen · {{over}} over grensen · {{near}} nær grensen",
     "partial": "Perioden er ikke over ennå; tallene fylles ut med neste kontoutskrift.",
     "empty": {
       "title": "Ingen transaksjoner ennå",
@@ -211,6 +208,9 @@
       "importHistory": "Importhistorikk",
       "delete": "Slett konto"
     },
+    "addTx": {
+      "noCategorySub": "Du kan kategorisere den senere"
+    },
     "stats": {
       "changeThisYear": "Endring i år",
       "avgPerMonth": "Gjennomsnitt per måned",
@@ -251,6 +251,9 @@
       "details": "Detaljer",
       "category": "Kategori",
       "delete": "Slett"
+    },
+    "importHistory": {
+      "menu": "Importvalg"
     }
   },
   "loan": {
@@ -539,6 +542,8 @@
       "asset": "Eiendel"
     },
     "noRate": "ingen valutakurs for {{currency}}",
+    "sincePurchase": "siden kjøp",
+    "gainSincePurchase": "gevinst/tap siden kjøp",
     "stocks": {
       "back": "Aksjer",
       "pricesAt": "kurser {{time}}",
@@ -596,6 +601,9 @@
         "showAll_other": "Vis alle {{count}}",
         "menu": "Transaksjonsmeny"
       },
+      "dividend": {
+        "menu": "Utbyttemeny"
+      },
       "follow": "Følg",
       "following": "Følger",
       "followed": "Lagt til i følgelisten",
@@ -627,7 +635,12 @@
       "remindersSub": "{{on}} av {{total}} grupper",
       "import": "Import",
       "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
-      "deleteSub": "etter at du har skrevet et bekreftelsesord"
+      "deleteSub": "etter at du har skrevet et bekreftelsesord",
+      "tracking": "Hva skal følges",
+      "categories": "Kategorier",
+      "categoriesSub_one": "{{count}} kategori",
+      "categoriesSub_other": "{{count}} kategorier",
+      "categorization": "Kategorisering"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "ingen telemetri",
@@ -698,6 +711,54 @@
       "confirmLabel": "Skriv {{word}} for å bekrefte",
       "confirm": "Slett data",
       "failed": "Slettingen mislyktes"
+    },
+    "tracking": {
+      "lead": "Velg hva du vil følge i Moony.",
+      "hideOnly": "Skjulte områder vises bare ikke; dataene blir værende.",
+      "all": "Alt",
+      "investments": "Investeringer",
+      "realEstate": "Eiendom",
+      "liabilities": "Forpliktelser",
+      "none": "Ingenting"
+    },
+    "categorization": {
+      "lead": "Det appen kategoriserer selv: regelpakker per land, dine egne regler og mottakerne den har lært av rettelsene dine.",
+      "packs": "Regelpakker",
+      "custom": "Egne regler",
+      "learned": "Lærte mottakere",
+      "packsEmpty": "Ingen regelpakker.",
+      "customEmpty": "Ingen egne regler ennå. Du oppretter dem på datamaskinen.",
+      "learnedEmpty": "Ingenting lært ennå. Appen lærer av de manuelle kategoriseringene dine.",
+      "noMatching": "Ingenting samsvarer med søket",
+      "clearSearch": "Tøm søk",
+      "openPack": "Reglene i {{name}}",
+      "packSwitch": "Pakke {{name}}",
+      "ruleSwitch": "Regel {{name}}",
+      "ruleLine": "→ {{category}} · {{n}}× på {{days}} dager",
+      "turnOn": "Slå på",
+      "turnOff": "Slå av",
+      "deletedAccount": "slettet konto",
+      "scopedNoDirection": "Bare konto {{account}}",
+      "summaryPacks_one": "{{count}} pakke",
+      "summaryPacks_other": "{{count}} pakker",
+      "summaryRules_one": "{{count}} egen regel",
+      "summaryRules_other": "{{count}} egne regler",
+      "summaryPayees_one": "{{count}} mottaker",
+      "summaryPayees_other": "{{count}} mottakere",
+      "summaryNone": "Ingenting lært",
+      "otherPacks": "Andre land",
+      "otherPacksRow": "Andre land · {{count}}",
+      "searchCountry": "Søk etter land"
+    },
+    "categories": {
+      "usageTransactions_one": "{{count}} transaksjon",
+      "usageTransactions_other": "{{count}} transaksjoner",
+      "usageRules_one": "{{count}} regel",
+      "usageRules_other": "{{count}} regler",
+      "usagePayees_one": "{{count}} innlært mottaker",
+      "usagePayees_other": "{{count}} innlærte mottakere",
+      "usageBudgets_one": "{{count}} budsjett",
+      "usageBudgets_other": "{{count}} budsjetter"
     }
   },
   "backup": {

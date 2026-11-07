@@ -1,11 +1,14 @@
 import { Redirect, useParams } from 'wouter';
 import { isSettingsSection, routes } from '@/mobile/shell/routes';
+import CategoriesSection from './CategoriesSection';
+import CategorizationSection from './CategorizationSection';
 import BackupSection from './BackupSection';
 import ImportSection from './ImportSection';
 import NotificationsSection from './NotificationsSection';
 import ProfileSection from './ProfileSection';
 import RemindersSection from './RemindersSection';
 import SecuritySection from './SecuritySection';
+import TrackingSection from './TrackingSection';
 
 /**
  * A page pushed on Nastavení (`/settings/:section`, spec §8.9): the route's section picks the page,
@@ -18,6 +21,8 @@ export default function SettingsSection() {
   switch (section) {
     case 'profile':
       return <ProfileSection />;
+    case 'tracking':
+      return <TrackingSection />;
     case 'security':
       return <SecuritySection />;
     case 'reminders':
@@ -26,6 +31,10 @@ export default function SettingsSection() {
       return <NotificationsSection />;
     case 'backup':
       return <BackupSection />;
+    case 'categories':
+      return <CategoriesSection />;
+    case 'categorization':
+      return <CategorizationSection />;
     case 'import':
       return <ImportSection />;
   }

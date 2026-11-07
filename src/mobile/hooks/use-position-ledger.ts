@@ -1,39 +1,49 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { foldRows } from '@/mobile/lib/position-rows';
+import type { StockDividend } from '@shared/schema';
 import {
-  filterTransactions,
+  ledgerEntries,
   revealRow,
+  type LedgerFilter,
   type LedgerTx,
-  type TxFilter,
 } from '@/mobile/lib/position-series';
 
 /** How long a row stays tinted before it fades back (the fade itself is the row's 1.2 s transition). */
 const HOT_MS = 150;
 
+/** A stable default, so a ledger without dividends does not recompute its rows every render. */
+const NO_DIVIDENDS: readonly StockDividend[] = [];
+
 /**
- * The position's ledger as the detail lists it, a stock's trades or a coin's: the filter, the fold
+ * The position's ledger as the detail lists it, a stock's trades and received dividends, or a coin's trades: the filter, the fold
  * ("Zobrazit všech N") and the flash a tap on a chart mark sends to the rows it stands for. The
  * flash reveals the first row (the filter that holds it, the unfolded list), scrolls it to the
  * middle of the screen, tints it and lets the tint go 150 ms later, so the row's own transition
  * fades it back.
  */
-export function usePositionLedger<T extends LedgerTx>(transactions: readonly T[]) {
-  const [filter, setFilter] = useState<TxFilter>('all');
+export function usePositionLedger<T extends LedgerTx>(
+  transactions: readonly T[],
+  dividends: readonly StockDividend[] = NO_DIVIDENDS
+) {
+  const [filter, setFilter] = useState<LedgerFilter>('all');
   const [expanded, setExpanded] = useState(false);
   const [hot, setHot] = useState<readonly string[]>([]);
 
-  const rows = useMemo(() => filterTransactions(transactions, filter), [transactions, filter]);
+  const rows = useMemo(
+    () => ledgerEntries(transactions, dividends, filter),
+    [transactions, dividends, filter]
+  );
   const { shown, hidden } = foldRows(rows, expanded);
 
   const flash = useCallback(
     (ids: readonly string[]) => {
       if (ids.length === 0) return;
-      const reveal = revealRow(transactions, filter, ids[0]);
+      const reveal = revealRow(transactions, dividends, filter, ids[0]);
       setFilter(reveal.filter);
       if (reveal.expand) setExpanded(true);
       setHot(ids);
     },
-    [transactions, filter]
+    [transactions, dividends, filter]
   );
 
   // After the commit, so a row the flash has just revealed is in the page to be scrolled to

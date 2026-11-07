@@ -100,8 +100,9 @@ function LimitSheet({
   const editorCurrency = editSource?.currency ?? currencyCode;
 
   const [categoryId, setCategoryId] = useState(() => initialCategoryId(mode));
+  const locale = useTranslation().i18n.language;
   const [input, setInput] = useState<LimitFormInput>(() =>
-    limitDefaults(goal, mode.effectiveMonth, nowMonth)
+    limitDefaults(goal, mode.effectiveMonth, nowMonth, locale)
   );
   // The first tap on save lists what the save replaces; the second saves
   const [confirming, setConfirming] = useState(false);
@@ -114,7 +115,7 @@ function LimitSheet({
     setOpenedFor(open);
     if (open) {
       setCategoryId(initialCategoryId(mode));
-      setInput(limitDefaults(goal, mode.effectiveMonth, nowMonth));
+      setInput(limitDefaults(goal, mode.effectiveMonth, nowMonth, locale));
       setConfirming(false);
       setAmountTouched(false);
     }

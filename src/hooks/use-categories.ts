@@ -21,12 +21,17 @@ export function useCategories() {
 
 /** How many rows reference each category (what a delete would have to move). */
 export function useCategoryUsage() {
-  const { data: usage = [], isLoading } = useQuery({
+  const {
+    data: usage = [],
+    isLoading,
+    isError,
+    refetch,
+  } = useQuery({
     queryKey: ['transaction-category-usage'],
     queryFn: () => bankAccountsApi.getCategoryUsage(),
   });
 
-  return { usage, isLoading };
+  return { usage, isLoading, isError, refetch };
 }
 
 /**

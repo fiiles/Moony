@@ -5,18 +5,23 @@ import { Minus, Plus } from 'lucide-react';
 import type {
   InvestmentTransaction,
   StockCompanyInfo,
+  StockDividend,
   StockPosition,
   TickerValueHistoryReport,
 } from '@shared/schema';
+import { useStockSplits } from '@/hooks/use-stock-splits';
+import { useStockDividendMutations } from '@/hooks/use-stock-dividend-mutations';
 import { useInvestmentTransactionMutations } from '@/hooks/use-investment-mutations';
 import type { ChartPeriod } from '@/utils/period';
-import type { StockRow } from '@/utils/positions';
+import { amountOf, type StockRow } from '@/utils/positions';
 import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { BuyInvestmentModal } from '@/components/stocks/BuyInvestmentModal';
 import { EditTransactionModal } from '@/components/stocks/EditTransactionModal';
 import { SellInvestmentModal } from '@/components/stocks/SellInvestmentModal';
+import { StockSplitsDialog } from '@/components/stocks/StockSplitsDialog';
 import { ButtonPair } from '@/mobile/components/ButtonPair';
 import { SectionHead } from '@/mobile/components/SectionHead';
+import { AppliedSplits } from '@/mobile/components/wealth/AppliedSplits';
 import { CompanyCard } from '@/mobile/components/wealth/CompanyCard';
 import { PositionHeroCard } from '@/mobile/components/wealth/PositionHeroCard';
 import { PositionLedger } from '@/mobile/components/wealth/PositionLedger';
@@ -32,6 +37,7 @@ import { NavTextButton } from '@/mobile/shell/NavBar';
 import { positionPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
+import { DividendSheet } from '@/mobile/sheets/DividendSheet';
 
 /** What the screen shows of a loaded position: the record and what is read from it. */
 interface PositionView {
@@ -65,7 +71,12 @@ export default function PositionDetail() {
   const [period, setPeriod] = useState<ChartPeriod>('30D');
   const [trade, setTrade] = useState<'buy' | 'sell' | null>(null);
   const [editing, setEditing] = useState<InvestmentTransaction | null>(null);
+  const [dividendSheet, setDividendSheet] = useState<{
+    open: boolean;
+    dividend: StockDividend | null;
+  }>({ open: false, dividend: null });
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [splitsOpen, setSplitsOpen] = useState(false);
   const { remove } = usePositionMutations(params?.id);
   const exit = useDeleteAndLeave({
     home: routes.stocks,
@@ -80,8 +91,10 @@ export default function PositionDetail() {
   // While the delete runs nothing the page reads is fetched again: the backend's recalculation
   // event would otherwise refetch the deleted id (`usePosition`'s `live`)
   const data = usePosition(params?.id, period, !exit.deleting);
-  const ledger = usePositionLedger(data.transactions);
+  const ledger = usePositionLedger(data.transactions, data.dividends);
+  const { data: splits = [] } = useStockSplits(data.holding?.ticker, !exit.deleting);
   const { deleteTransaction } = useInvestmentTransactionMutations();
+  const { deleteDividend } = useStockDividendMutations();
   const { holding, position, history, companyInfo, companyPending, reportCurrency } = data;
 
   const current = useMemo<PositionView | null>(
@@ -97,7 +110,14 @@ export default function PositionDetail() {
       title={view?.holding.ticker ?? ''}
       leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
-        view && <PositionMenu holding={view.holding} onDelete={() => setDeleteOpen(true)} />
+        view && (
+          <PositionMenu
+            holding={view.holding}
+            onDelete={() => setDeleteOpen(true)}
+            onAddDividend={() => setDividendSheet({ open: true, dividend: null })}
+            onSplits={() => setSplitsOpen(true)}
+          />
+        )
       }
     >
       {view ? (
@@ -137,6 +157,7 @@ export default function PositionDetail() {
             holding={view.holding}
             reportCurrency={reportCurrency}
             sells={data.transactions.filter((tx) => tx.type === 'sell').length}
+            dividendsReceived={amountOf(view.position?.investment.dividendsReceived)}
           />
           <PositionLedger
             ledger={ledger}
@@ -147,6 +168,26 @@ export default function PositionDetail() {
             unit={ts('table.unit')}
             deleteTransaction={deleteTransaction}
             onEdit={setEditing}
+            dividends={data.dividends}
+            deleteDividend={deleteDividend}
+            onEditDividend={(dividend) => setDividendSheet({ open: true, dividend })}
+          />
+          <AppliedSplits splits={splits} onManage={() => setSplitsOpen(true)} />
+          <StockSplitsDialog
+            open={splitsOpen}
+            onOpenChange={setSplitsOpen}
+            ticker={view.holding.ticker}
+            splits={splits}
+          />
+          <DividendSheet
+            open={dividendSheet.open}
+            // The dividend stays while the sheet slides away (it would flash empty otherwise)
+            onOpenChange={(open) => setDividendSheet((s) => ({ ...s, open }))}
+            investmentId={view.holding.id}
+            ticker={view.holding.ticker}
+            currency={data.dividendCurrency}
+            dividend={dividendSheet.dividend}
+            fromYahoo={data.dividendsFromYahoo}
           />
           <EditTransactionModal
             transaction={editing}
@@ -200,14 +241,22 @@ function StockStats({
   holding,
   reportCurrency,
   sells,
+  dividendsReceived,
 }: {
   holding: StockRow;
   reportCurrency: string;
   sells: number;
+  dividendsReceived: number | null;
 }) {
   const sixth = useDividendStat(holding, reportCurrency);
   return (
-    <PositionStats holding={holding} reportCurrency={reportCurrency} sells={sells} sixth={sixth} />
+    <PositionStats
+      holding={holding}
+      reportCurrency={reportCurrency}
+      sells={sells}
+      sixth={sixth}
+      dividendsReceived={dividendsReceived}
+    />
   );
 }
 

@@ -5,6 +5,8 @@ import { toast } from 'sonner';
 import type {
   InvestmentTransaction,
   StockCompanyInfo,
+  StockDividend,
+  StockDividendList,
   StockPosition,
   TickerValueHistoryReport,
 } from '@shared/schema';
@@ -41,6 +43,12 @@ export interface PositionData {
   /** Converts a trade at the rates of its own day; `null` without a rate and until `ratesReady`. */
   convertAt: (amount: number, from: string, to: string, timestamp: number) => number | null;
   ratesReady: boolean;
+  /** The received dividends, newest first (the backend's list, in the report currency's terms). */
+  dividends: StockDividend[];
+  /** Yahoo has the ticker's dividends: none can be entered by hand. */
+  dividendsFromYahoo: boolean;
+  /** The currency a manual dividend is entered in by default. */
+  dividendCurrency: string;
   /** The value and cost line of `period`, each day converted into the report currency. */
   history: TickerValueHistoryReport | undefined;
   /** What Yahoo reported about the company (the stored record shows at once, the fresh one replaces it). */
@@ -88,8 +96,22 @@ export function usePosition(
     enabled: !!id && live,
   });
   const transactions = useMemo(() => transactionData ?? [], [transactionData]);
-  // Each trade converts at the rates of its own day; the hero takes everything from the backend.
-  const { ready: ratesReady, convertAt } = useTransactionFx(transactionData);
+  const { data: dividendList } = useQuery<StockDividendList>({
+    queryKey: ['stock-dividends', id, currencyCode, fxRevision],
+    queryFn: () => investmentsApi.getDividends(id!, currencyCode),
+    enabled: !!id && live,
+  });
+  const dividends = useMemo(() => dividendList?.items ?? [], [dividendList]);
+  // Each trade and each dividend (at its ex-date, which can precede the first trade) converts at
+  // the rates of its own day; the hero takes everything from the backend.
+  const datedFacts = useMemo(
+    () => [
+      ...(transactionData ?? []),
+      ...dividends.map((dividend) => ({ transactionDate: dividend.exDate })),
+    ],
+    [transactionData, dividends]
+  );
+  const { ready: ratesReady, convertAt } = useTransactionFx(datedFacts);
 
   const history = useTickerHistory('stock', ticker, period, live);
 
@@ -116,6 +138,9 @@ export function usePosition(
     transactions,
     convertAt,
     ratesReady,
+    dividends,
+    dividendsFromYahoo: dividendList?.fromYahoo ?? false,
+    dividendCurrency: holding?.dividendCurrency ?? holding?.originalCurrency ?? currencyCode,
     history,
     companyInfo: freshCompanyInfo.data ?? storedCompanyInfo.data,
     companyPending: freshCompanyInfo.isPending || freshCompanyInfo.isFetching,

@@ -152,3 +152,24 @@ export function otherAssetsSummary(rows: readonly OtherAssetRow[]): OtherAssetsS
   }
   return { ...totals, missing: missing.missing, missingCost: missingCost.missing };
 }
+
+/**
+ * The day of the newest valuation (by the day it applies to, then by when it was entered: the
+ * order `OTHER_ASSET_PRICES` picks today's price in), `null` without one. A buy or a sell moves
+ * the asset's `updatedAt`, a valuation is what dates the price.
+ */
+export function latestValuationDay(
+  valuations: readonly { valuedAt: number; createdAt: number }[]
+): number | null {
+  let newest: { valuedAt: number; createdAt: number } | null = null;
+  for (const valuation of valuations) {
+    if (
+      newest === null ||
+      valuation.valuedAt > newest.valuedAt ||
+      (valuation.valuedAt === newest.valuedAt && valuation.createdAt >= newest.createdAt)
+    ) {
+      newest = valuation;
+    }
+  }
+  return newest === null ? null : newest.valuedAt;
+}

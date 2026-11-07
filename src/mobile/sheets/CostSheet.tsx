@@ -1,11 +1,13 @@
 import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { amountInputText } from '@/mobile/lib/amount-input';
 import type { RealEstate, RealEstateOneTimeCost } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
 import { Button } from '@/components/ui/button';
 import { isoDateFromUtcTimestamp } from '@/utils/period';
 import { AmountField } from '@/mobile/components/AmountField';
 import { DateField } from '@/mobile/components/DateField';
+import { TEXT_FIELD } from '@/mobile/components/field-styles';
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
 import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
@@ -31,21 +33,21 @@ interface CostSheetProps {
   cost: RealEstateOneTimeCost | null;
 }
 
-/** The classes of a plain text field of a sheet (the name, the note): 48 pt, the field role. */
-const TEXT_FIELD =
-  'h-12 w-full rounded-[10px] border border-line-strong bg-paper px-3.5 text-m-field text-ink transition-[border-color,box-shadow] duration-fast placeholder:text-ink-5 focus:border-focus focus:shadow-focus focus-visible:outline-none aria-[invalid=true]:border-loss aria-[invalid=true]:focus:shadow-loss-ring';
-
 /**
  * The form a sheet opens with. A new cost starts as a recurring one for today; an edited cost with
  * its own values. The stored day is kept, so that a cost the computer dated ahead can be edited
  * without moving it.
  */
-function startForm(property: RealEstate, cost: RealEstateOneTimeCost | null): CostForm {
+function startForm(
+  property: RealEstate,
+  cost: RealEstateOneTimeCost | null,
+  locale: string
+): CostForm {
   return {
     realEstateId: property.id,
     kind: cost ? 'oneTime' : 'recurring',
     name: cost?.name ?? '',
-    amountText: cost ? String(Number(cost.amount) || 0) : '',
+    amountText: cost ? amountInputText(Number(cost.amount) || 0, locale) : '',
     frequency: 'monthly',
     dateIso: cost ? isoDateFromUtcTimestamp(cost.date) : todayIso(),
     description: cost?.description ?? '',
@@ -78,14 +80,15 @@ export function CostSheet({ open, onOpenChange, property, cost }: CostSheetProps
   const { addRecurring, saveOneTime } = usePropertyCostMutations(property.id);
   const currency = recordCurrency(cost ? cost.currency : property.marketPriceCurrency);
 
-  const [form, setForm] = useState(() => startForm(property, cost));
+  const locale = useTranslation().i18n.language;
+  const [form, setForm] = useState(() => startForm(property, cost, locale));
   // An empty field is only called missing once it has been left
   const [touched, setTouched] = useState({ name: false, amount: false });
   const [openedFor, setOpenedFor] = useState(open);
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setForm(startForm(property, cost));
+      setForm(startForm(property, cost, locale));
       setTouched({ name: false, amount: false });
     }
   }

@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import type { z } from 'zod';
 import type { CurrencyCode } from '@shared/currencies';
-import type { MenuPreferences, setupSchema } from '@shared/schema';
+import type { setupSchema } from '@shared/schema';
 import { useAuth } from '@/hooks/use-auth';
 import { useBankAccountMutations } from '@/hooks/use-bank-account-mutations';
 import { authApi, biometricApi, categorizationApi, onboardingApi } from '@/lib/tauri-api';
@@ -18,17 +18,14 @@ import {
   regionFromLocale,
 } from '@/utils/locale-defaults';
 import { BIOMETRIC_STATUS_KEY } from '@/lib/biometrics';
+import { preferencesWithAreas, type TrackedAreas } from '@/mobile/lib/tracked-areas';
 import { firstRunSteps, nextStep, previousStep, type FirstRunStep } from '@/mobile/lib/first-run';
 
 /** What the account form holds: the values that become the profile, and the password twice. */
 export type SetupFormValues = z.infer<typeof setupSchema>;
 
 /** The areas the person can leave out; "Účty a cashflow" is always on. */
-export interface FirstRunAreas {
-  investments: boolean;
-  realEstate: boolean;
-  liabilities: boolean;
-}
+export type FirstRunAreas = TrackedAreas;
 
 /** What the first account is made of: a name, a typed balance (decimal text, or '' for none) and a currency. */
 export interface FirstAccountInput {
@@ -158,15 +155,7 @@ export function useFirstRun({
     if (savingAreas) return;
     setSavingAreas(true);
     try {
-      const menuPreferences: MenuPreferences = {
-        investments: areas.investments,
-        bonds: areas.investments,
-        crypto: areas.investments,
-        otherAssets: true,
-        realEstate: areas.realEstate,
-        loans: areas.liabilities,
-        insurance: areas.liabilities,
-      };
+      const menuPreferences = preferencesWithAreas(null, areas);
       const profile = await authApi.updateProfile({
         menuPreferences,
         ...(country !== null ? { country: country.toUpperCase() } : {}),

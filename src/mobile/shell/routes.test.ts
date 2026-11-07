@@ -122,6 +122,20 @@ describe('settings sections', () => {
     }
   });
 
+  it('lists the sections in root order', () => {
+    expect([...SETTINGS_SECTIONS]).toEqual([
+      'profile',
+      'tracking',
+      'security',
+      'reminders',
+      'notifications',
+      'backup',
+      'categories',
+      'categorization',
+      'import',
+    ]);
+  });
+
   it('knows its sections and nothing else', () => {
     for (const section of SETTINGS_SECTIONS) expect(isSettingsSection(section)).toBe(true);
     expect(isSettingsSection('appearance')).toBe(false);

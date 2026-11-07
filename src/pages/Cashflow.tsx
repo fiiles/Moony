@@ -8,8 +8,13 @@ import {
 import { useReportMoney } from '@/lib/use-report-money';
 import { usePeriodSelection } from '@/hooks/use-period-selection';
 import { absoluteMovementShares } from '@/utils/money-flows';
-import { expenseRows, type ExpenseRow } from '@/utils/cashflow-budget-rows';
-import { budgetOverview, currentMonthStart, limitCoverage } from '@/utils/budget-goal-versions';
+import {
+  expenseRows,
+  isPartialLimit,
+  storedLimitGoal,
+  type ExpenseRow,
+} from '@/utils/cashflow-budget-rows';
+import { budgetOverview, currentMonthStart } from '@/utils/budget-goal-versions';
 import { periodPace } from '@/utils/budget-pace';
 import { monthOffsetOf, type PeriodTimeframe } from '@/utils/period';
 import { useCallback, useMemo, useState, type ReactNode } from 'react';
@@ -236,10 +241,7 @@ export default function Cashflow() {
   );
 
   const nowMonth = currentMonthStart();
-  const storedGoal = (row: ExpenseRow): BudgetGoal | null =>
-    history?.find(
-      (g) => g.categoryId === row.key && g.timeframe === (row.periodGoal?.timeframe ?? 'monthly')
-    ) ?? null;
+  const storedGoal = (row: ExpenseRow): BudgetGoal | null => storedLimitGoal(row, history ?? []);
 
   // A category is budgeted while a limit is in effect or scheduled. A stored goal alone is not
   // enough: it outlives a limit that has run out.
@@ -259,10 +261,7 @@ export default function Cashflow() {
   const limitNote = (row: ExpenseRow): LimitNote | null => {
     const goal = storedGoal(row);
     if (!goal) return null;
-    const coverage = limitCoverage(goal.versions, range.start, range.end);
-    return {
-      partial: coverage.covered > 0 && coverage.covered < coverage.months,
-    };
+    return { partial: isPartialLimit(goal, range.start, range.end) };
   };
 
   // From a row the limit starts in the month shown. A category that ever had a limit is edited

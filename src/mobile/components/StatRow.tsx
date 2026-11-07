@@ -24,9 +24,10 @@ const CONTAINER_SIZE = `clamp(${STAT_FLOOR}, 19.7cqi, var(--m-fs-stat))`;
 
 /**
  * Stat row (spec §10.3, README §13, `.m-stats`): three (or two, or one) stats, label 11 (may wrap,
- * hyphenated), value 17, note 10; the values sit on one line across the row. A value never wraps:
- * the contract's container rule shrinks it with a narrow card, and a value longer than its card
- * shrinks the whole row to fit (every stat in a row shares one size, floor `STAT_FLOOR`).
+ * hyphenated), value 17, note 10 (up to two lines); the values sit on one line across the row.
+ * A value never wraps: the contract's container rule shrinks it with a narrow card, and a value
+ * longer than its card shrinks the whole row to fit (every stat in a row shares one size, floor
+ * `STAT_FLOOR`).
  */
 export function StatRow({ stats }: { stats: StatItem[] }) {
   const rowRef = useRef<HTMLDivElement>(null);
@@ -65,7 +66,9 @@ export function StatRow({ stats }: { stats: StatItem[] }) {
             <span>{stat.value}</span>
           </span>
           {stat.note !== undefined && stat.note !== null && (
-            <span className="mt-[3px] truncate text-m-note text-ink-4">{stat.note}</span>
+            <span className="mt-[3px] line-clamp-2 break-words text-m-note text-ink-4">
+              {stat.note}
+            </span>
           )}
         </div>
       ))}

@@ -7,15 +7,19 @@ import {
   Bell,
   CalendarClock,
   Coins,
+  Eye,
   FileText,
   Globe,
   Lock,
   SunMoon,
+  Tag,
+  Tags,
   Trash2,
   Upload,
   User,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/use-auth';
+import { useCategories } from '@/hooks/use-categories';
 import { useMilestoneMutedKinds } from '@/hooks/use-milestones';
 import { useSettingsMutations } from '@/hooks/use-settings-mutations';
 import { languageInfo } from '@/i18n/languages';
@@ -29,12 +33,18 @@ import { MILESTONE_GROUP_IDS, kindsOf } from '@/utils/milestones';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SettingsRow } from '@/mobile/components/SettingsRow';
 import { useBack } from '@/mobile/hooks/use-back';
+import { useCategorizationRules } from '@/mobile/hooks/use-categorization-rules';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useNotificationPermission } from '@/mobile/hooks/use-notification-permission';
 import { readBackgroundLockMinutes } from '@/mobile/lib/background-lock';
 import { BIOMETRIC_STATUS_KEY } from '@/lib/biometrics';
 import { clearQuietLock, requestQuietLock } from '@/mobile/lib/quiet-lock';
-import { renderTextRef, securitySummary } from '@/mobile/lib/settings-summary';
+import { areasFromPreferences } from '@/mobile/lib/tracked-areas';
+import {
+  categorizationSummary,
+  renderTextRef,
+  securitySummary,
+} from '@/mobile/lib/settings-summary';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { routes, settingsPath } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -156,6 +166,31 @@ export default function Settings() {
       })
     : undefined;
 
+  const { categories } = useCategories();
+  const rules = useCategorizationRules();
+  const categorizationSub =
+    rules.packs.data && rules.custom.data && rules.learned.data
+      ? categorizationSummary({
+          packs: rules.packs.data.filter((p) => p.enabled).length,
+          rules: rules.custom.data.filter((r) => !r.isSystem).length,
+          payees: rules.learned.data.length,
+        })
+          .map((part) => renderTextRef(t, part))
+          .join(' · ')
+      : undefined;
+
+  // "Vše", or the groups that are shown
+  const areas = areasFromPreferences(user?.menuPreferences);
+  const shownAreas = [
+    areas.investments && t('settings.tracking.investments'),
+    areas.realEstate && t('settings.tracking.realEstate'),
+    areas.liabilities && t('settings.tracking.liabilities'),
+  ].filter(Boolean);
+  const trackingSub =
+    shownAreas.length === 3
+      ? t('settings.tracking.all')
+      : shownAreas.join(', ') || t('settings.tracking.none');
+
   // The same letters as the avatar on Přehled
   const avatar = `${user?.name?.charAt(0) ?? ''}${user?.surname?.charAt(0) ?? ''}`.toUpperCase();
   const fullName = [user?.name, user?.surname].filter(Boolean).join(' ');
@@ -209,6 +244,12 @@ export default function Settings() {
           sub={ts(`appearance.${preference}`)}
           onClick={() => setSheet('appearance')}
         />
+        <SettingsRow
+          icon={Eye}
+          title={t('settings.rows.tracking')}
+          sub={trackingSub}
+          href={settingsPath('tracking')}
+        />
       </EntityRows>
 
       <EntityRows>
@@ -239,6 +280,22 @@ export default function Settings() {
       </EntityRows>
 
       <EntityRows>
+        <SettingsRow
+          icon={Tags}
+          title={t('settings.rows.categories')}
+          sub={
+            categories.length > 0
+              ? t('settings.rows.categoriesSub', { count: categories.length })
+              : undefined
+          }
+          href={settingsPath('categories')}
+        />
+        <SettingsRow
+          icon={Tag}
+          title={t('settings.rows.categorization')}
+          sub={categorizationSub}
+          href={settingsPath('categorization')}
+        />
         <SettingsRow
           icon={FileText}
           title={t('settings.rows.import')}

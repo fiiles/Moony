@@ -16,11 +16,11 @@
   },
   "overview": {
     "change": {
-      "30D": "in 30 Tagen",
-      "90D": "in 3 Monaten",
+      "30D": "letzte 30 Tage",
+      "90D": "letzte 3 Monate",
       "YTD": "dieses Jahr",
-      "1Y": "in einem Jahr",
-      "5Y": "in 5 Jahren",
+      "1Y": "letztes Jahr",
+      "5Y": "letzte 5 Jahre",
       "All": "seit dem ersten Eintrag"
     },
     "stats": {
@@ -34,14 +34,11 @@
   "cashflow": {
     "subtitle_one": "Tatsächliche Einnahmen und Ausgaben von {{count}} Konto",
     "subtitle_other": "Tatsächliche Einnahmen und Ausgaben von {{count}} Konten",
+    "subtitleAll": "Tatsächliche Einnahmen und Ausgaben aller Konten",
     "moves_one": "{{count}} Transaktion",
     "moves_other": "{{count}} Transaktionen",
     "shareOfExpenses": "{{share}} der Ausgaben",
     "shareOfIncome": "{{share}} der Einnahmen",
-    "limitProgress": "{{spent}} / {{limit}}",
-    "near": "nahe am Limit",
-    "overLimit": "über dem Limit",
-    "budgetSummary": "Budgets: {{ok}} im Rahmen · {{over}} über dem Limit · {{near}} nahe am Limit",
     "partial": "Der Zeitraum ist noch nicht zu Ende, die Zahlen vervollständigen sich mit dem nächsten Auszug.",
     "empty": {
       "title": "Noch keine Transaktionen",
@@ -122,7 +119,7 @@
     "policies_one": "{{count}} Police",
     "policies_other": "{{count}} Policen",
     "total": "Gesamt auf Konten",
-    "change30": "{{amount}} in 30 Tagen",
+    "change30": "{{amount}} in den letzten 30 Tagen",
     "noMovements": "keine Bewegungen in 30 Tagen",
     "uncategorized": "Nicht kategorisierte Zahlungen",
     "sections": {
@@ -148,7 +145,7 @@
       "sort": "Sortierung",
       "sortBalance": "Nach Saldo",
       "sortName": "Nach Name",
-      "sortChange": "Nach Änderung in 30 Tagen",
+      "sortChange": "Nach Änderung der letzten 30 Tage",
       "sortLast": "Nach letzter Bewegung",
       "showMatured": "Getilgte Kredite anzeigen",
       "showEnded": "Beendete Policen anzeigen",
@@ -211,6 +208,9 @@
       "importHistory": "Importverlauf",
       "delete": "Konto löschen"
     },
+    "addTx": {
+      "noCategorySub": "Du kannst sie später zuordnen"
+    },
     "stats": {
       "changeThisYear": "Änderung in diesem Jahr",
       "avgPerMonth": "Durchschnitt pro Monat",
@@ -251,6 +251,9 @@
       "details": "Details",
       "category": "Kategorie",
       "delete": "Löschen"
+    },
+    "importHistory": {
+      "menu": "Importoptionen"
     }
   },
   "loan": {
@@ -539,6 +542,8 @@
       "asset": "Vermögenswert"
     },
     "noRate": "kein Wechselkurs für {{currency}}",
+    "sincePurchase": "seit Kauf",
+    "gainSincePurchase": "Gewinn/Verlust seit Kauf",
     "stocks": {
       "back": "Aktien",
       "pricesAt": "Kurse {{time}}",
@@ -596,6 +601,9 @@
         "showAll_other": "Alle {{count}} anzeigen",
         "menu": "Transaktionsmenü"
       },
+      "dividend": {
+        "menu": "Dividendenmenü"
+      },
       "follow": "Beobachten",
       "following": "Beobachtet",
       "followed": "Zur Beobachtungsliste hinzugefügt",
@@ -627,7 +635,12 @@
       "remindersSub": "{{on}} von {{total}} Gruppen",
       "import": "Import",
       "importSub": "CSV, CAMT.053, MT940, OFX, QIF",
-      "deleteSub": "nach Eingabe eines Bestätigungsworts"
+      "deleteSub": "nach Eingabe eines Bestätigungsworts",
+      "tracking": "Was verfolgen",
+      "categories": "Kategorien",
+      "categoriesSub_one": "{{count}} Kategorie",
+      "categoriesSub_other": "{{count}} Kategorien",
+      "categorization": "Kategorisierung"
     },
     "version": "Moony {{version}} · {{privacy}}",
     "noTelemetry": "keine Telemetrie",
@@ -698,6 +711,54 @@
       "confirmLabel": "Geben Sie zur Bestätigung {{word}} ein",
       "confirm": "Daten löschen",
       "failed": "Löschen fehlgeschlagen"
+    },
+    "tracking": {
+      "lead": "Wählen Sie, was Sie in Moony verfolgen möchten.",
+      "hideOnly": "Ausgeblendete Bereiche werden nur nicht angezeigt, die Daten bleiben erhalten.",
+      "all": "Alles",
+      "investments": "Anlagen",
+      "realEstate": "Immobilien",
+      "liabilities": "Verbindlichkeiten",
+      "none": "Nichts"
+    },
+    "categorization": {
+      "lead": "Was die App selbst zuordnet: Regelpakete nach Land, Ihre eigenen Regeln und die Empfänger, die sie aus Ihren Korrekturen gelernt hat.",
+      "packs": "Regelpakete",
+      "custom": "Eigene Regeln",
+      "learned": "Gelernte Empfänger",
+      "packsEmpty": "Keine Regelpakete.",
+      "customEmpty": "Noch keine eigenen Regeln. Sie legen sie am Computer an.",
+      "learnedEmpty": "Noch nichts gelernt. Die App lernt aus Ihren manuellen Zuordnungen.",
+      "noMatching": "Nichts passt zur Suche",
+      "clearSearch": "Suche löschen",
+      "openPack": "Regeln von {{name}}",
+      "packSwitch": "Paket {{name}}",
+      "ruleSwitch": "Regel {{name}}",
+      "ruleLine": "→ {{category}} · {{n}}× in {{days}} Tagen",
+      "turnOn": "Einschalten",
+      "turnOff": "Ausschalten",
+      "deletedAccount": "gelöschtes Konto",
+      "scopedNoDirection": "Nur Konto {{account}}",
+      "summaryPacks_one": "{{count}} Paket",
+      "summaryPacks_other": "{{count}} Pakete",
+      "summaryRules_one": "{{count}} eigene Regel",
+      "summaryRules_other": "{{count}} eigene Regeln",
+      "summaryPayees_one": "{{count}} Empfänger",
+      "summaryPayees_other": "{{count}} Empfänger",
+      "summaryNone": "Nichts gelernt",
+      "otherPacks": "Weitere Länder",
+      "otherPacksRow": "Weitere Länder · {{count}}",
+      "searchCountry": "Land suchen"
+    },
+    "categories": {
+      "usageTransactions_one": "{{count}} Transaktion",
+      "usageTransactions_other": "{{count}} Transaktionen",
+      "usageRules_one": "{{count}} Regel",
+      "usageRules_other": "{{count}} Regeln",
+      "usagePayees_one": "{{count}} gelernter Empfänger",
+      "usagePayees_other": "{{count}} gelernte Empfänger",
+      "usageBudgets_one": "{{count}} Budget",
+      "usageBudgets_other": "{{count}} Budgets"
     }
   },
   "backup": {

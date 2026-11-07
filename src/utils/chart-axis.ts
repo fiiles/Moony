@@ -39,3 +39,25 @@ export function dayLabelOptions(period: string): Intl.DateTimeFormatOptions {
 export function utcDayFloor(unixSeconds: number): number {
   return Math.floor(unixSeconds / 86400) * 86400;
 }
+
+/**
+ * Labels for the value ticks of an axis, none repeated: a compact number with one decimal prints
+ * the ticks "11,2 mil." and "11,2 mil." for 11,21 and 11,24 million (the steps of `niceTicks` are
+ * rounder than the domain's offset, not than the label). `format(value, digits)` writes a value
+ * with at most `digits` decimals; the fewest digits (from 1) that tell every tick apart are used
+ * for the whole axis, so the labels stay alike, up to `maxDigits` (then the last try stands:
+ * equal labels for ticks that close are the formatter's own limit).
+ */
+export function distinctTickLabels(
+  ticks: readonly number[],
+  format: (value: number, digits: number) => string,
+  maxDigits = 3
+): Map<number, string> {
+  const values = [...new Set(ticks)];
+  let labels = new Map<number, string>();
+  for (let digits = 1; digits <= maxDigits; digits++) {
+    labels = new Map(values.map((value) => [value, format(value, digits)]));
+    if (new Set(labels.values()).size === values.length) break;
+  }
+  return labels;
+}

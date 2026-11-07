@@ -1,3 +1,4 @@
+import { useTickFormatter } from './use-tick-formatter';
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   Bar,
@@ -11,7 +12,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useFormat } from '@/lib/use-format';
 import { useChartTokens } from '@/theme/ThemeProvider';
 import { labelStep, niceTicks, valueDomain } from '@/utils/chart-scale';
 import { ChartTip, FloatingTip } from '@/components/charts/ChartTip';
@@ -91,7 +91,6 @@ export function MoonyBarChart({
   axisActions,
   className,
 }: MoonyBarChartProps) {
-  const fmt = useFormat();
   const tk = useChartTokens();
   const [hoverMark, setHoverMark] = useState<{ m: BarMark; x: number; y: number } | null>(null);
   const [width, setWidth] = useState(0);
@@ -101,8 +100,7 @@ export function MoonyBarChart({
     return valueDomain(values, { zeroBaseline: true, headroomAbove: 0.08 });
   }, [bars, stacked]);
   const ticks = useMemo(() => niceTicks(domain[0], domain[1], 4), [domain]);
-  const tickFormatter =
-    formatTick ?? ((v: number) => fmt.number(v, { notation: 'compact', maximumFractionDigits: 1 }));
+  const tickFormatter = useTickFormatter(ticks, formatTick);
   const step = labelSpacing ? labelStep(bars.length, width - AXIS_WIDTH, labelSpacing) : 1;
   const axisLabels = bars.map((b, i) => (i % step === 0 ? (b.axisLabel ?? b.label) : ''));
 

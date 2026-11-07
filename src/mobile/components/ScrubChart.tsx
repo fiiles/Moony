@@ -1,5 +1,4 @@
 import {
-  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -8,8 +7,8 @@ import {
   useState,
   type PointerEvent,
 } from 'react';
+import { useTickFormatter } from '@/components/charts/use-tick-formatter';
 import { Area, CartesianGrid, ComposedChart, Line, ReferenceDot, XAxis, YAxis } from 'recharts';
-import { useFormat } from '@/lib/use-format';
 import { useChartTokens } from '@/theme/ThemeProvider';
 import { cn } from '@/lib/utils';
 import {
@@ -103,7 +102,6 @@ export function ScrubChart<E extends ChartEvent>({
   label,
   className,
 }: ScrubChartProps<E>) {
-  const fmt = useFormat();
   const tk = useChartTokens();
   const gradientId = useId().replace(/:/g, '');
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -162,11 +160,7 @@ export function ScrubChart<E extends ChartEvent>({
     }));
   }, [events, t0, t1, plotWidth, points, step, domain, plotHeight]);
 
-  const tickFormatter = useCallback(
-    (v: number) =>
-      formatTick ? formatTick(v) : fmt.number(v, { notation: 'compact', maximumFractionDigits: 1 }),
-    [fmt, formatTick]
-  );
+  const tickFormatter = useTickFormatter(ticks, formatTick);
 
   // A tap anywhere outside the marks closes the callout.
   useEffect(() => {

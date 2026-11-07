@@ -1,3 +1,4 @@
+import { useTickFormatter } from './use-tick-formatter';
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   Area,
@@ -11,7 +12,6 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
-import { useFormat } from '@/lib/use-format';
 import { useChartTokens } from '@/theme/ThemeProvider';
 import { niceTicks, valueDomain } from '@/utils/chart-scale';
 import { ChartTip, FloatingTip } from '@/components/charts/ChartTip';
@@ -66,7 +66,6 @@ export function MoonyBandChart({
   milestones = [],
   className,
 }: MoonyBandChartProps) {
-  const fmt = useFormat();
   const tk = useChartTokens();
   const [hoverMilestone, setHoverMilestone] = useState<{
     m: BandMilestone;
@@ -89,8 +88,7 @@ export function MoonyBandChart({
     [points]
   );
   const ticks = useMemo(() => niceTicks(domain[0], domain[1], 4), [domain]);
-  const tickFormatter =
-    formatTick ?? ((v: number) => fmt.number(v, { notation: 'compact', maximumFractionDigits: 1 }));
+  const tickFormatter = useTickFormatter(ticks, formatTick);
   const x0 = points[0]?.x ?? 0;
   const x1 = points[points.length - 1]?.x ?? x0;
   const last = points[points.length - 1];

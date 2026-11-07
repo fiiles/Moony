@@ -1,3 +1,4 @@
+import { useTickFormatter } from './use-tick-formatter';
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import {
   Area,
@@ -182,8 +183,7 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
     [clusters, data, step]
   );
 
-  const tickFormatter =
-    formatTick ?? ((v: number) => fmt.number(v, { notation: 'compact', maximumFractionDigits: 1 }));
+  const tickFormatter = useTickFormatter(ticks, formatTick);
   // The end ring sits on the last actual reading ("Dnes" when the rest is a plan).
   const last = [...data].reverse().find((p) => p.actual !== undefined);
 

@@ -14,11 +14,10 @@
 //! only after a pull that ended done (`PullReport::may_snapshot`), and the dump itself refuses a
 //! profile with anything in `sync_outbox` or `sync_unsent`.
 
-use std::io::{self, Read, Write};
+use std::io::{self, Write};
 
-use flate2::read::DeflateDecoder;
 use flate2::write::DeflateEncoder;
-use flate2::Compression;
+use flate2::{Compression, Decompress, FlushDecompress, Status};
 use rusqlite::Connection;
 use zeroize::Zeroizing;
 
@@ -50,6 +49,9 @@ pub const MAX_SNAPSHOT_PLAIN: usize = 512 * 1024 * 1024;
 /// The fixed `last_error` of a restore that stopped; the reason is logged only at `debug` (it may
 /// name a row).
 const RESTORE_STOPPED: &str = "snapshot restore stopped";
+
+/// The key of a snapshot written by a newer schema than this build knows.
+const NEWER_SCHEMA: &str = "validation.syncSnapshotNewerSchema";
 
 /// A dump, sealed for relay sequence `seq`.
 pub struct SealedSnapshot {
@@ -126,7 +128,11 @@ pub(crate) fn dump_sealed_capped(
 /// is opened, opened as the STREAM object of `blob.seq` (a snapshot served under another sequence
 /// does not authenticate), inflated up to `MAX_SNAPSHOT_PLAIN`, and its header must name the same
 /// sequence. Too large → `TooLarge(Body)`; anything else wrong → `validation.syncSnapshotInvalid`.
-pub fn open_sealed(creds: &Credentials, blob: &SnapshotBlob) -> SyncResult<Vec<u8>> {
+///
+/// The decrypted bytes are wiped when dropped, the deflated ones here and the record stream by the
+/// caller (`Zeroizing`). What a restore parses out of the stream (`snapshot::restore_merge`) is
+/// not: it ends up in the profile anyway.
+pub fn open_sealed(creds: &Credentials, blob: &SnapshotBlob) -> SyncResult<Zeroizing<Vec<u8>>> {
     open_sealed_capped(creds, blob, MAX_SNAPSHOT_PLAIN)
 }
 
@@ -135,7 +141,22 @@ pub(crate) fn open_sealed_capped(
     creds: &Credentials,
     blob: &SnapshotBlob,
     max_plain: usize,
-) -> SyncResult<Vec<u8>> {
+) -> SyncResult<Zeroizing<Vec<u8>>> {
+    let deflated = decrypt(creds, blob)?;
+    inflated(&deflated, blob.seq, max_plain)
+}
+
+/// `open_sealed` taking the download by value: its sealed bytes are dropped as soon as they are
+/// decrypted, before the inflate, so a 100 MiB download is not held next to its record stream.
+fn open_owned(creds: &Credentials, blob: SnapshotBlob) -> SyncResult<Zeroizing<Vec<u8>>> {
+    let seq = blob.seq;
+    let deflated = decrypt(creds, &blob)?;
+    drop(blob);
+    inflated(&deflated, seq, MAX_SNAPSHOT_PLAIN)
+}
+
+/// The size check and `open_stream`: the raw deflate stream.
+fn decrypt(creds: &Credentials, blob: &SnapshotBlob) -> SyncResult<Zeroizing<Vec<u8>>> {
     if blob.bytes.len() > MAX_SNAPSHOT_BYTES {
         log::warn!(
             "[SYNC] The vault's snapshot is {} bytes, over the limit",
@@ -143,33 +164,72 @@ pub(crate) fn open_sealed_capped(
         );
         return Err(SyncError::TooLarge(TooLarge::Body));
     }
-    let deflated = Zeroizing::new(
-        open_stream(
-            |epoch| creds.keys.get(epoch),
-            &creds.vault_id.0,
-            &snapshot_object_id(blob.seq),
-            &blob.bytes,
-        )
-        .map_err(|error| {
-            log::warn!("[SYNC] The vault's snapshot does not open: {error}");
-            invalid_snapshot()
-        })?,
-    );
-    let mut plain = Vec::new();
-    DeflateDecoder::new(&deflated[..])
-        .take(max_plain as u64 + 1)
-        .read_to_end(&mut plain)
-        .map_err(|_| {
-            log::warn!("[SYNC] The vault's snapshot does not inflate");
-            invalid_snapshot()
-        })?;
+    let deflated = open_stream(
+        |epoch| creds.keys.get(epoch),
+        &creds.vault_id.0,
+        &snapshot_object_id(blob.seq),
+        &blob.bytes,
+    )
+    .map_err(|error| {
+        log::warn!("[SYNC] The vault's snapshot does not open: {error}");
+        invalid_snapshot()
+    })?;
+    Ok(Zeroizing::new(deflated))
+}
+
+/// The inflate (capped at `max_plain`) and the header's sequence check against `seq`.
+fn inflated(deflated: &[u8], seq: u64, max_plain: usize) -> SyncResult<Zeroizing<Vec<u8>>> {
+    let plain = inflate_capped(deflated, max_plain)?;
+    if header_of(&plain)?.seq != seq {
+        log::warn!("[SYNC] The vault's snapshot names another sequence than it is stored under");
+        return Err(invalid_snapshot());
+    }
+    Ok(plain)
+}
+
+/// Inflates a raw deflate stream into a buffer that is wiped when dropped, `TooLarge(Body)` past
+/// `max_plain` bytes. The buffer grows by copying into a new one and wiping the old (a `Vec`'s own
+/// reallocation would leave copies behind); a stream that does not inflate, or ends before its
+/// final block, is `validation.syncSnapshotInvalid`.
+pub(crate) fn inflate_capped(deflated: &[u8], max_plain: usize) -> SyncResult<Zeroizing<Vec<u8>>> {
+    // One byte over the cap tells "at the cap" from "over it".
+    let limit = max_plain.saturating_add(1);
+    let mut inflater = Decompress::new(false);
+    let mut plain = Zeroizing::new(Vec::with_capacity(
+        deflated.len().saturating_mul(4).clamp(1, limit),
+    ));
+    loop {
+        if plain.len() == plain.capacity() {
+            if plain.len() >= limit {
+                break;
+            }
+            let mut grown = Zeroizing::new(Vec::with_capacity(
+                plain.capacity().saturating_mul(2).min(limit),
+            ));
+            grown.extend_from_slice(&plain);
+            plain = grown;
+        }
+        let consumed = usize::try_from(inflater.total_in()).map_err(|_| invalid_snapshot())?;
+        let written = inflater.total_out();
+        let status = inflater
+            .decompress_vec(&deflated[consumed..], &mut plain, FlushDecompress::None)
+            .map_err(|_| {
+                log::warn!("[SYNC] The vault's snapshot does not inflate");
+                invalid_snapshot()
+            })?;
+        if status == Status::StreamEnd {
+            break;
+        }
+        let stalled = inflater.total_in() as usize == consumed && inflater.total_out() == written;
+        if stalled && plain.len() < plain.capacity() {
+            // Input exhausted with room to write: the stream ends without its final block.
+            log::warn!("[SYNC] The vault's snapshot is cut short");
+            return Err(invalid_snapshot());
+        }
+    }
     if plain.len() > max_plain {
         log::warn!("[SYNC] The vault's snapshot inflates past the limit");
         return Err(SyncError::TooLarge(TooLarge::Body));
-    }
-    if header_of(&plain)?.seq != blob.seq {
-        log::warn!("[SYNC] The vault's snapshot names another sequence than it is stored under");
-        return Err(invalid_snapshot());
     }
     Ok(plain)
 }
@@ -189,15 +249,15 @@ pub enum Due {
     At(i64),
 }
 
-/// The upload policy's memory, per engine and in memory only (a restart starts it over).
+/// The upload policy's memory, per engine and in memory only (a restart starts it over). A
+/// snapshot found too large is remembered in `sync_state` instead (`snapshot_too_large_at`), so a
+/// restart does not dump it again.
 #[derive(Debug, Clone, Default)]
 pub struct SnapshotPolicy {
     /// When `decide` last saw the vault's info.
     pub checked_at: Option<i64>,
     /// When a due upload goes (after the random delay).
     pub scheduled_at: Option<i64>,
-    /// A snapshot too large to upload: no upload, forced or not, before this time.
-    pub refused_until: Option<i64>,
     /// The newest snapshot a heal fetched that did not heal (or did not restore): not fetched
     /// again until the vault has a newer one.
     pub examined_seq: Option<u64>,
@@ -247,20 +307,16 @@ impl SnapshotPolicy {
             Due::At(at)
         }
     }
-
-    /// The snapshot is too large: no upload until a day from now.
-    fn refuse(&mut self, now: i64) {
-        self.scheduled_at = None;
-        self.refused_until = Some(now + SNAPSHOT_MIN_INTERVAL);
-    }
 }
 
 /// Restores after `410 snapshot_required` (§8): fetches the vault's newest snapshot, opens it off
 /// the runtime without the lock, then restores it by merge under the lock (the cursor becomes
 /// `MAX(cursor, S)`, the outbox stays and is pushed afterwards). A restore that stops (a merge
-/// stop, a snapshot below this device's barrier, …) writes `"snapshot restore stopped"` to
-/// `last_error` and returns `validation.syncSnapshotInvalid`; a snapshot that does not open writes
-/// nothing.
+/// stop, a snapshot below this device's barrier or from a newer schema) writes
+/// `"snapshot restore stopped"` to `last_error` and returns `validation.syncSnapshotNewerSchema`
+/// for a newer schema (the person updates the app), `validation.syncSnapshotInvalid` otherwise. A
+/// local failure (`AppError::Database`, `Internal`, …) is returned as it is, noted nowhere, so the
+/// round backs off. A snapshot that does not open writes nothing.
 pub async fn restore_after_410<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -270,9 +326,10 @@ pub async fn restore_after_410<R: Relay, D: ConnAccess>(
     let blob = relay.get_snapshot(&creds.auth()).await?;
     let plain = open_off_thread(creds, blob).await?;
     let db = db.clone();
-    off_thread(move || db.with_conn(|conn| restore_or_note(conn, &plain, now)))
-        .await?
-        .ok_or_else(invalid_snapshot)
+    match off_thread(move || db.with_conn(|conn| restore_or_note(conn, &plain, now))).await? {
+        Restore::Done(report) => Ok(report),
+        Restore::Stopped(key) => Err(stopped(key)),
+    }
 }
 
 /// Heals a below-barrier miss (rulings T8-2, T8-6): when this device has `missed_below_barrier`
@@ -280,8 +337,10 @@ pub async fn restore_after_410<R: Relay, D: ConnAccess>(
 /// snapshot and, when it heals the miss (`chain::snapshot_heals_missed` on its header: a clean
 /// dumper, at this device's barrier or later), restores it by merge, which clears the mark. A
 /// snapshot that does not heal is not restored, and not fetched again
-/// (`SnapshotPolicy::examined_seq`) until the vault has a newer one. A restore that stops is
-/// noted as `restore_after_410` notes it. `None` when nothing was restored.
+/// (`SnapshotPolicy::examined_seq`) until the vault has a newer one; neither is a snapshot whose
+/// restore stopped or that does not open (both are verdicts on its bytes). A transient or local
+/// failure leaves `examined_seq` alone, so the next round tries again. A restore that stops is
+/// noted and returned as `restore_after_410` does. `None` when nothing was restored.
 pub async fn heal_missed<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -301,7 +360,15 @@ pub async fn heal_missed<R: Relay, D: ConnAccess>(
     }
     let blob = relay.get_snapshot(&creds.auth()).await?;
     let seq = blob.seq;
-    let plain = open_off_thread(creds, blob).await?;
+    let plain = match open_off_thread(creds, blob).await {
+        Ok(plain) => plain,
+        Err(error) => {
+            if is_verdict(&error) {
+                policy.examined_seq = Some(seq);
+            }
+            return Err(error);
+        }
+    };
     let header = header_of(&plain)?;
     let db = db.clone();
     let outcome = off_thread(move || {
@@ -311,8 +378,8 @@ pub async fn heal_missed<R: Relay, D: ConnAccess>(
                 return Ok(Heal::NotHealing);
             }
             Ok(match restore_or_note(conn, &plain, now)? {
-                Some(report) => Heal::Restored(report),
-                None => Heal::Stopped,
+                Restore::Done(report) => Heal::Restored(report),
+                Restore::Stopped(key) => Heal::Stopped(key),
             })
         })
     })
@@ -327,9 +394,9 @@ pub async fn heal_missed<R: Relay, D: ConnAccess>(
             policy.examined_seq = Some(seq);
             Ok(None)
         }
-        Heal::Stopped => {
+        Heal::Stopped(key) => {
             policy.examined_seq = Some(seq);
-            Err(invalid_snapshot())
+            Err(stopped(key))
         }
     }
 }
@@ -367,7 +434,7 @@ pub async fn maybe_upload<R: Relay, D: ConnAccess>(
 /// The pulled bytes are counted from the vault's newest snapshot (`rebase_pulled_bytes`). Nothing
 /// is uploaded while `sync_outbox` or `sync_unsent` holds anything, by a device with a pending
 /// below-barrier miss (`chain::may_upload_snapshot`, ruling T8-6: the forced upload included), or
-/// within a day of a snapshot found too large. With `force` (the first clean round after
+/// within a day of a snapshot found too large (`snapshot_too_large_at`). With `force` (the first clean round after
 /// crossing a barrier, ruling T8-2) the upload is due now; otherwise `SnapshotPolicy::decide`
 /// says when.
 ///
@@ -398,7 +465,10 @@ pub async fn maybe_upload_with<R: Relay, D: ConnAccess>(
     let Some(marks) = marks else {
         return Ok(false);
     };
-    if policy.refused_until.is_some_and(|until| now < until) {
+    if marks
+        .snapshot_too_large_at
+        .is_some_and(|at| now - at < SNAPSHOT_MIN_INTERVAL)
+    {
         return Ok(false);
     }
     if !force && policy.decide(info, &marks, now, jitter) != Due::Now {
@@ -424,8 +494,7 @@ pub async fn maybe_upload_with<R: Relay, D: ConnAccess>(
         Dumped::NotReady => return Ok(false),
         Dumped::TooLarge => {
             log::warn!("[SYNC] This profile's snapshot is over the upload limit");
-            policy.refuse(now);
-            return Err(SyncError::TooLarge(TooLarge::Snapshot));
+            return Err(too_large(db, policy, now));
         }
         Dumped::Sealed(sealed) => sealed,
     };
@@ -438,19 +507,29 @@ pub async fn maybe_upload_with<R: Relay, D: ConnAccess>(
             policy.scheduled_at = None;
             return Ok(false);
         }
-        Err(error) => {
-            let error = SyncError::from(error);
-            if matches!(error, SyncError::TooLarge(TooLarge::Snapshot)) {
-                log::warn!("[SYNC] The relay refused this profile's snapshot as too large");
-                policy.refuse(now);
-            }
-            return Err(error);
+        Err(RelayError::SnapshotTooLarge) => {
+            log::warn!("[SYNC] The relay refused this profile's snapshot as too large");
+            return Err(too_large(db, policy, now));
         }
+        // Any other answer keeps the schedule, so the next round dumps and uploads again. That
+        // is bounded by the round's back-off on the transient classes (`SyncError::backs_off`)
+        // and by the round stopping on the others; it never loops within a round.
+        Err(error) => return Err(error.into()),
     }
     db.with_conn(|conn| state::record_snapshot_uploaded(conn, seq, stats.max_hlc, now))?;
     policy.scheduled_at = None;
     log::info!("[SYNC] Uploaded a snapshot at relay sequence {seq}");
     Ok(true)
+}
+
+/// The snapshot is too large: noted in `sync_state` (no upload for a day, across restarts) and the
+/// schedule dropped. A failure to note it is returned instead.
+fn too_large<D: ConnAccess>(db: &D, policy: &mut SnapshotPolicy, now: i64) -> SyncError {
+    policy.scheduled_at = None;
+    match db.with_conn(|conn| state::record_snapshot_too_large(conn, now)) {
+        Ok(()) => SyncError::TooLarge(TooLarge::Snapshot),
+        Err(error) => error.into(),
+    }
 }
 
 enum Dumped {
@@ -462,7 +541,15 @@ enum Dumped {
 enum Heal {
     NotHealing,
     Restored(RestoreReport),
-    Stopped,
+    /// The restore stopped with this validation key (`restore_or_note`).
+    Stopped(String),
+}
+
+/// What `restore_or_note` did.
+enum Restore {
+    Done(RestoreReport),
+    /// Stopped on the snapshot: the `validation.*` key the restore answered.
+    Stopped(String),
 }
 
 /// Nothing waits to go out and no below-barrier miss is pending.
@@ -475,18 +562,40 @@ fn ready_to_dump(conn: &Connection) -> Result<bool> {
     Ok(pending == 0 && chain::may_upload_snapshot(&loaded(conn)?))
 }
 
-/// Restores `plain` by merge; when the restore stops, logs why at `debug`, notes the fixed text
-/// in `last_error` and returns `None`.
-fn restore_or_note(conn: &Connection, plain: &[u8], now: i64) -> Result<Option<RestoreReport>> {
+/// Restores `plain` by merge. A restore that stops on the snapshot (a validation answer: a merge
+/// stop, a stream that does not parse, a snapshot below the barrier or from a newer schema) is
+/// logged at `debug`, noted with the fixed text in `last_error` and returned as `Stopped`; any
+/// other error (the database, an internal failure) is returned as it is.
+fn restore_or_note(conn: &Connection, plain: &[u8], now: i64) -> Result<Restore> {
     match restore_sealed(conn, plain, now) {
-        Ok(report) => Ok(Some(report)),
-        Err(error) => {
-            log::debug!("[SYNC] A snapshot restore stopped: {error}");
+        Ok(report) => Ok(Restore::Done(report)),
+        Err(AppError::Validation(key)) => {
+            log::debug!("[SYNC] A snapshot restore stopped: {key}");
             log::warn!("[SYNC] A snapshot restore stopped");
             state::record_error(conn, RESTORE_STOPPED)?;
-            Ok(None)
+            Ok(Restore::Stopped(key))
         }
+        Err(error) => Err(error),
     }
+}
+
+/// The error a stopped restore returns: a newer schema says so (the person updates the app);
+/// every other stop is one key, a damaged snapshot (phase 1 note L142).
+fn stopped(key: String) -> SyncError {
+    if key == NEWER_SCHEMA {
+        SyncError::Local(AppError::Validation(key))
+    } else {
+        invalid_snapshot()
+    }
+}
+
+/// Whether an open failure is a verdict on the snapshot's bytes (they do not open, or are too
+/// large), not a passing failure.
+fn is_verdict(error: &SyncError) -> bool {
+    matches!(
+        error,
+        SyncError::Local(AppError::Validation(_)) | SyncError::TooLarge(TooLarge::Body)
+    )
 }
 
 /// What a heal reads from a snapshot's header.
@@ -519,10 +628,14 @@ fn header_of(plain: &[u8]) -> SyncResult<Header> {
     }
 }
 
-/// Opens `blob` on a blocking thread, without the connection lock.
-async fn open_off_thread(creds: &Credentials, blob: SnapshotBlob) -> SyncResult<Vec<u8>> {
+/// Opens `blob` on a blocking thread, without the connection lock; its sealed bytes are dropped
+/// once decrypted (`open_owned`).
+async fn open_off_thread(
+    creds: &Credentials,
+    blob: SnapshotBlob,
+) -> SyncResult<Zeroizing<Vec<u8>>> {
     let creds = creds.clone();
-    off_thread(move || open_sealed(&creds, &blob)).await
+    off_thread(move || open_owned(&creds, blob)).await
 }
 
 /// Runs `f` on tokio's blocking pool (a dump, an open or a restore can take seconds).

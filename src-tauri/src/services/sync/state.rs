@@ -36,6 +36,8 @@ pub struct EngineMarks {
     pub pulled_bytes: u64,
     pub pulled_bytes_base: u64,
     pub snapshot_uploaded_at: Option<i64>,
+    /// When this device last found its snapshot too large to upload (migration 032).
+    pub snapshot_too_large_at: Option<i64>,
     pub binding_written: bool,
     pub last_success_at: Option<i64>,
     pub last_error: Option<String>,
@@ -206,14 +208,15 @@ pub fn marks(conn: &Connection) -> Result<Option<EngineMarks>> {
         i64,
         i64,
         Option<i64>,
+        Option<i64>,
         bool,
         Option<i64>,
         Option<String>,
     )> = conn
         .query_row(
             "SELECT marker_barrier, capture_broken_at, vault_gone_at, pulled_bytes, \
-                    pulled_bytes_base, snapshot_uploaded_at, binding_written, last_success_at, \
-                    last_error \
+                    pulled_bytes_base, snapshot_uploaded_at, snapshot_too_large_at, \
+                    binding_written, last_success_at, last_error \
              FROM sync_state WHERE id = 1",
             [],
             |r| {
@@ -227,6 +230,7 @@ pub fn marks(conn: &Connection) -> Result<Option<EngineMarks>> {
                     r.get(6)?,
                     r.get(7)?,
                     r.get(8)?,
+                    r.get(9)?,
                 ))
             },
         )
@@ -239,6 +243,7 @@ pub fn marks(conn: &Connection) -> Result<Option<EngineMarks>> {
             pulled_bytes,
             pulled_bytes_base,
             snapshot_uploaded_at,
+            snapshot_too_large_at,
             binding_written,
             last_success_at,
             last_error,
@@ -250,6 +255,7 @@ pub fn marks(conn: &Connection) -> Result<Option<EngineMarks>> {
                 pulled_bytes: unsigned(pulled_bytes, "pulled_bytes")?,
                 pulled_bytes_base: unsigned(pulled_bytes_base, "pulled_bytes_base")?,
                 snapshot_uploaded_at,
+                snapshot_too_large_at,
                 binding_written,
                 last_success_at,
                 last_error,
@@ -353,17 +359,27 @@ pub fn note_sealed_at_barrier(conn: &Connection, barrier: u32) -> Result<()> {
     Ok(())
 }
 
-/// This device uploaded a snapshot covering relay sequence `seq` and clocks up to `max_hlc`.
+/// This device uploaded a snapshot covering relay sequence `seq` and clocks up to `max_hlc`; a
+/// snapshot found too large earlier no longer holds uploads back.
 pub fn record_snapshot_uploaded(conn: &Connection, seq: u64, max_hlc: u64, at: i64) -> Result<()> {
     conn.execute(
         "UPDATE sync_state SET snapshot_seq = MAX(COALESCE(snapshot_seq, 0), ?1), \
            snapshot_hlc = MAX(snapshot_hlc, ?2), snapshot_uploaded_at = ?3, \
-           pulled_bytes = 0, pulled_bytes_base = ?1 WHERE id = 1",
+           snapshot_too_large_at = NULL, pulled_bytes = 0, pulled_bytes_base = ?1 WHERE id = 1",
         params![
             signed(seq, "snapshot_seq")?,
             signed(max_hlc, "snapshot_hlc")?,
             at
         ],
+    )?;
+    Ok(())
+}
+
+/// This device found its snapshot too large to upload at `at` (its own limit or the relay's).
+pub fn record_snapshot_too_large(conn: &Connection, at: i64) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET snapshot_too_large_at = ?1 WHERE id = 1",
+        [at],
     )?;
     Ok(())
 }
@@ -402,7 +418,8 @@ pub fn reset_chain(conn: &Connection) -> Result<()> {
 pub fn reset_engine_marks(conn: &Connection) -> Result<()> {
     conn.execute(
         "UPDATE sync_state SET vault_gone_at = NULL, capture_broken_at = NULL, \
-           snapshot_uploaded_at = NULL, pulled_bytes = 0, pulled_bytes_base = 0, \
+           snapshot_uploaded_at = NULL, snapshot_too_large_at = NULL, pulled_bytes = 0, \
+           pulled_bytes_base = 0, \
            binding_written = 0 WHERE id = 1",
         [],
     )?;
@@ -664,6 +681,21 @@ mod tests {
         let m = marks(&conn).unwrap().unwrap();
         assert_eq!(m.snapshot_uploaded_at, Some(1_800_000_100));
         assert_eq!(m.pulled_bytes_base, 20);
+    }
+
+    #[test]
+    fn a_too_large_snapshot_is_remembered_until_an_upload_or_a_reset() {
+        let conn = migrated();
+        row_with_hash(&conn);
+        let too_large = |c: &Connection| marks(c).unwrap().unwrap().snapshot_too_large_at;
+        assert_eq!(too_large(&conn), None);
+        record_snapshot_too_large(&conn, 1_800_000_000).unwrap();
+        assert_eq!(too_large(&conn), Some(1_800_000_000));
+        record_snapshot_uploaded(&conn, 3, 3, 1_800_090_000).unwrap();
+        assert_eq!(too_large(&conn), None, "an upload clears it");
+        record_snapshot_too_large(&conn, 1_800_100_000).unwrap();
+        reset_engine_marks(&conn).unwrap();
+        assert_eq!(too_large(&conn), None, "another vault binding clears it");
     }
 
     #[test]

@@ -96,6 +96,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("029_device_sync", MIGRATION_029),
         ("030_sync_engine", MIGRATION_030),
         ("031_sync_missed_below_barrier", MIGRATION_031),
+        ("032_sync_snapshot_too_large", MIGRATION_032),
     ]
 }
 
@@ -3397,11 +3398,11 @@ mod migration_029 {
     }
 
     #[test]
-    fn the_chain_now_has_31_migrations() {
-        assert_eq!(known_migration_names().len(), 31);
+    fn the_chain_now_has_32_migrations() {
+        assert_eq!(known_migration_names().len(), 32);
         assert_eq!(
             known_migration_names().last(),
-            Some(&"031_sync_missed_below_barrier")
+            Some(&"032_sync_snapshot_too_large")
         );
     }
 }
@@ -3431,6 +3432,36 @@ ALTER TABLE sync_state ADD COLUMN binding_written INTEGER NOT NULL DEFAULT 0 CHE
 pub(crate) const MIGRATION_031: &str = r#"
 ALTER TABLE sync_state ADD COLUMN missed_below_barrier INTEGER;
 "#;
+
+/// 032: `sync_state.snapshot_too_large_at` (Local): when this device last found its snapshot too
+/// large to upload (its own size limit or the relay's `413 snapshot_too_large`); NULL otherwise.
+/// No upload is tried for a day after it, across restarts, so an over-limit profile is not dumped
+/// under the profile lock on every launch. An upload or another vault binding clears it.
+pub(crate) const MIGRATION_032: &str = r#"
+ALTER TABLE sync_state ADD COLUMN snapshot_too_large_at INTEGER;
+"#;
+
+#[cfg(test)]
+mod migration_032 {
+    use super::*;
+
+    #[test]
+    fn sync_state_gains_snapshot_too_large_at_unset() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_chain(&conn, &all_migrations()).expect("full chain");
+        conn.execute(
+            "INSERT INTO sync_state (id, device_id) VALUES (1, x'00')",
+            [],
+        )
+        .expect("row");
+        let at: Option<i64> = conn
+            .query_row("SELECT snapshot_too_large_at FROM sync_state", [], |r| {
+                r.get(0)
+            })
+            .expect("column");
+        assert_eq!(at, None);
+    }
+}
 
 #[cfg(test)]
 mod migration_031 {

@@ -10,13 +10,13 @@ use super::*;
 use crate::services::sync::engine::pull::pull_all;
 use crate::services::sync::engine::push::push_all;
 use crate::services::sync::engine::snapshots::{
-    dump_sealed, dump_sealed_capped, heal_missed, maybe_upload, maybe_upload_with, open_sealed,
-    open_sealed_capped, restore_after_410, Due, SnapshotPolicy, MAX_SNAPSHOT_BYTES,
+    dump_sealed, dump_sealed_capped, heal_missed, inflate_capped, maybe_upload, maybe_upload_with,
+    open_sealed, open_sealed_capped, restore_after_410, Due, SnapshotPolicy, MAX_SNAPSHOT_BYTES,
     MAX_SNAPSHOT_PLAIN, SNAPSHOT_BYTES, SNAPSHOT_ENVELOPES, SNAPSHOT_MIN_INTERVAL,
 };
 use crate::services::sync::engine::{PullReport, PullStop};
 use crate::services::sync::envelope::stream::{snapshot_object_id, StreamSealer};
-use crate::services::sync::error::{SyncError, SyncResult, TooLarge};
+use crate::services::sync::error::{SyncError, SyncResult, TooLarge, Transient};
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::{RelayError, SnapshotBlob, VaultInfo};
 use crate::services::sync::state::EngineMarks;
@@ -43,6 +43,7 @@ fn marks(pulled_bytes: u64, snapshot_uploaded_at: Option<i64>) -> EngineMarks {
         pulled_bytes,
         pulled_bytes_base: 0,
         snapshot_uploaded_at,
+        snapshot_too_large_at: None,
         binding_written: false,
         last_success_at: None,
         last_error: None,
@@ -129,6 +130,51 @@ fn missed(conn: &Connection) -> Option<u64> {
         .expect("state")
         .expect("row")
         .missed_below_barrier
+}
+
+/// `plain` (a record stream), raw-deflated and sealed for relay sequence `seq`.
+fn seal_plain(creds: &Credentials, seq: u64, plain: &[u8]) -> Vec<u8> {
+    let mut deflate = DeflateEncoder::new(
+        StreamSealer::new(
+            creds.keys.current_epoch(),
+            creds.keys.current(),
+            &creds.vault_id.0,
+            &snapshot_object_id(seq),
+        ),
+        Compression::default(),
+    );
+    deflate.write_all(plain).expect("deflate");
+    deflate.finish().expect("deflate").finish().expect("seal")
+}
+
+/// `conn`'s dump at `seq` with the header's schema number replaced by `schema`, sealed.
+fn sealed_with_schema(creds: &Credentials, conn: &Connection, seq: u64, schema: u32) -> Vec<u8> {
+    let plain = plain_dump(conn, seq);
+    let from = format!("\"schema\":{}", schema_number()).into_bytes();
+    let to = format!("\"schema\":{schema}").into_bytes();
+    assert_eq!(from.len(), to.len(), "the record lengths stay");
+    let at: Vec<usize> = plain
+        .windows(from.len())
+        .enumerate()
+        .filter(|(_, w)| *w == from.as_slice())
+        .map(|(i, _)| i)
+        .collect();
+    assert_eq!(at.len(), 1, "only the header names the schema");
+    let mut patched = plain;
+    patched[at[0]..at[0] + to.len()].copy_from_slice(&to);
+    seal_plain(creds, seq, &patched)
+}
+
+/// `sync_rows` without the `sync_state` row (where a stopped restore notes `last_error`).
+fn rows_but_state(conn: &Connection) -> Vec<String> {
+    sync_rows(conn)
+        .into_iter()
+        .filter(|line| !line.starts_with("SELECT * FROM sync_state"))
+        .collect()
+}
+
+fn has_key(error: &SyncError, expected: &str) -> bool {
+    matches!(error, SyncError::Local(AppError::Validation(key)) if key == expected)
 }
 
 fn invalid_snapshot(error: &SyncError) -> bool {
@@ -337,7 +383,7 @@ async fn the_snapshot_is_dumped_at_the_applied_cursor() {
         .await
         .expect("snapshot");
     let plain = open_sealed(&vault.creds, &blob).expect("open");
-    assert_eq!(plain, plain_dump(&vault.a.lock(), 1));
+    assert_eq!(*plain, plain_dump(&vault.a.lock(), 1));
     let a = vault.a.lock();
     let marks = state::marks(&a).expect("marks").expect("row");
     assert_eq!(marks.snapshot_uploaded_at, Some(NOW));
@@ -443,29 +489,45 @@ async fn an_oversized_snapshot_is_not_uploaded() {
     assert!(matches!(error, SyncError::TooLarge(TooLarge::Snapshot)));
     assert_eq!(vault.relay.snapshot_seq(), None);
     assert_eq!(puts(&vault.relay), 0, "nothing was sent");
-    // No retry until the next day, forced or not.
+    let too_large_at = |vault: &Vault| {
+        state::marks(&vault.a.lock())
+            .expect("marks")
+            .expect("row")
+            .snapshot_too_large_at
+    };
+    assert_eq!(too_large_at(&vault), Some(NOW));
+    // No retry until the next day, forced or not, also after a restart (a fresh policy). The
+    // dump itself is skipped: under the same 1 KiB limit it would be too large again.
     for force in [false, true] {
-        assert!(!upload(
-            &vault,
+        let mut restarted = SnapshotPolicy::default();
+        let skipped = maybe_upload_with(
+            &vault.relay,
             &vault.a,
-            &mut policy,
+            &vault.creds,
+            &mut restarted,
+            &info,
             NOW + SNAPSHOT_MIN_INTERVAL - 1,
-            force
+            0,
+            force,
+            1024,
         )
         .await
-        .expect("upload"));
+        .expect("skipped, not too large again");
+        assert!(!skipped);
     }
     assert_eq!(puts(&vault.relay), 0);
+    let mut restarted = SnapshotPolicy::default();
     assert!(upload(
         &vault,
         &vault.a,
-        &mut policy,
+        &mut restarted,
         NOW + SNAPSHOT_MIN_INTERVAL,
         false
     )
     .await
     .expect("upload"));
     assert_eq!(vault.relay.snapshot_seq(), Some(0));
+    assert_eq!(too_large_at(&vault), None, "the upload clears the mark");
 }
 
 #[tokio::test]
@@ -481,7 +543,8 @@ async fn a_snapshot_the_relay_finds_too_large_waits_a_day() {
         .expect_err("too large");
 
     assert!(matches!(error, SyncError::TooLarge(TooLarge::Snapshot)));
-    assert!(!upload(&vault, &vault.a, &mut policy, NOW + HOUR, true)
+    let mut restarted = SnapshotPolicy::default();
+    assert!(!upload(&vault, &vault.a, &mut restarted, NOW + HOUR, true)
         .await
         .expect("upload"));
     assert_eq!(puts(&vault.relay), 1);
@@ -510,7 +573,7 @@ async fn a_sealed_dump_opens_to_the_same_record_stream() {
         seq: sealed.seq,
         bytes: sealed.bytes.clone(),
     };
-    assert_eq!(open_sealed(&vault.creds, &blob).expect("open"), plain);
+    assert_eq!(*open_sealed(&vault.creds, &blob).expect("open"), plain);
     assert!(a.is_autocommit(), "the dump's transaction is closed");
 }
 
@@ -539,18 +602,7 @@ async fn a_snapshot_served_under_another_sequence_fails() {
     assert_eq!(sync_rows(&vault.b.lock()), before, "nothing written");
 
     // Sealed for 6 but dumped at 5: the header names another sequence.
-    let a = vault.a.lock();
-    let mut deflate = DeflateEncoder::new(
-        StreamSealer::new(
-            vault.creds.keys.current_epoch(),
-            vault.creds.keys.current(),
-            &vault.creds.vault_id.0,
-            &snapshot_object_id(6),
-        ),
-        Compression::default(),
-    );
-    deflate.write_all(&plain_dump(&a, 5)).expect("deflate");
-    let bytes = deflate.finish().expect("deflate").finish().expect("seal");
+    let bytes = seal_plain(&vault.creds, 6, &plain_dump(&vault.a.lock(), 5));
     let error = open_sealed(&vault.creds, &SnapshotBlob { seq: 6, bytes }).expect_err("header");
     assert!(invalid_snapshot(&error), "{error:?}");
 }
@@ -618,6 +670,30 @@ async fn an_inflated_snapshot_is_bounded() {
         open_sealed_capped(&vault.creds, &blob, plain_len - 1),
         Err(SyncError::TooLarge(TooLarge::Body))
     ));
+}
+
+#[test]
+fn inflating_grows_its_buffer_up_to_the_cap() {
+    // 1 MiB of zeros deflates to about a kilobyte: the buffer grows many times.
+    const MIB: usize = 1024 * 1024;
+    let mut deflate = DeflateEncoder::new(Vec::new(), Compression::default());
+    deflate.write_all(&vec![0u8; MIB]).expect("deflate");
+    let deflated = deflate.finish().expect("deflate");
+    assert!(deflated.len() * 4 < MIB);
+
+    assert_eq!(
+        *inflate_capped(&deflated, MIB).expect("inflate"),
+        vec![0u8; MIB]
+    );
+    assert!(matches!(
+        inflate_capped(&deflated, MIB - 1),
+        Err(SyncError::TooLarge(TooLarge::Body))
+    ));
+    let cut = inflate_capped(&deflated[..deflated.len() / 2], MIB);
+    assert!(
+        matches!(&cut, Err(error) if invalid_snapshot(error)),
+        "a stream cut short does not inflate"
+    );
 }
 
 // --- Restores -----------------------------------------------------------------------------------
@@ -699,6 +775,61 @@ async fn a_restore_that_stops_is_noted_with_a_fixed_text() {
 }
 
 #[tokio::test]
+async fn a_newer_schema_snapshot_says_so_on_the_410_path() {
+    let vault = vault().await;
+    write_push_pull(&vault, &vault.a, "a1").await;
+    let bytes = sealed_with_schema(&vault.creds, &vault.a.lock(), 1, schema_number() + 1);
+    vault
+        .relay
+        .put_snapshot(&vault.creds.auth(), 1, bytes)
+        .await
+        .expect("upload");
+    let before = rows_but_state(&vault.b.lock());
+
+    let error = restore_after_410(&vault.relay, &vault.b, &vault.creds, NOW)
+        .await
+        .expect_err("newer schema");
+
+    assert!(
+        has_key(&error, "validation.syncSnapshotNewerSchema"),
+        "{error:?}"
+    );
+    let b = vault.b.lock();
+    assert_eq!(rows_but_state(&b), before, "nothing restored");
+    assert_eq!(cursor(&b), 0);
+    assert_eq!(last_error(&b).as_deref(), Some("snapshot restore stopped"));
+}
+
+#[tokio::test]
+async fn a_local_failure_during_a_restore_is_passed_through() {
+    let vault = vault().await;
+    write_push_pull(&vault, &vault.a, "a1").await;
+    let mut policy = SnapshotPolicy::default();
+    assert!(upload(&vault, &vault.a, &mut policy, NOW, false)
+        .await
+        .expect("upload"));
+    // The restore's insert fails in SQLite (as on a full disk); `last_error` could still be written.
+    exec(
+        &vault.b.lock(),
+        "CREATE TEMP TRIGGER fail_insert BEFORE INSERT ON main.institutions \
+         BEGIN SELECT RAISE(ABORT, 'disk I/O error'); END",
+    );
+
+    let error = restore_after_410(&vault.relay, &vault.b, &vault.creds, NOW)
+        .await
+        .expect_err("insert fails");
+
+    assert!(
+        matches!(&error, SyncError::Local(AppError::Database(_))),
+        "a database error is not a damaged snapshot: {error:?}"
+    );
+    assert!(error.backs_off());
+    let b = vault.b.lock();
+    assert!(!has_institution(&b, "a1"));
+    assert_eq!(last_error(&b), None, "not noted as a stopped restore");
+}
+
+#[tokio::test]
 async fn a_pending_miss_heals_from_a_clean_snapshot_by_merge() {
     let vault = vault().await;
     write_push_pull(&vault, &vault.a, "a1").await;
@@ -724,10 +855,28 @@ async fn a_pending_miss_heals_from_a_clean_snapshot_by_merge() {
     assert!(none.is_none());
     assert_eq!(gets(&vault.relay), 0);
 
-    // A's clean snapshot at 1 heals it.
+    // A's clean snapshot at 1 heals it, once the relay answers.
     assert!(upload(&vault, &vault.a, &mut policy, NOW, false)
         .await
         .expect("upload"));
+    vault
+        .relay
+        .fail_next(Route::GetSnapshot, RelayError::Server(503));
+    let failed = heal_missed(
+        &vault.relay,
+        &vault.b,
+        &vault.creds,
+        &mut policy,
+        &vault_info(&vault).await,
+        NOW,
+    )
+    .await
+    .expect_err("transient");
+    assert!(matches!(failed, SyncError::Transient(Transient::Relay)));
+    assert_eq!(
+        policy.examined_seq, None,
+        "a transient failure is no verdict"
+    );
     let healed = heal_missed(
         &vault.relay,
         &vault.b,
@@ -743,7 +892,7 @@ async fn a_pending_miss_heals_from_a_clean_snapshot_by_merge() {
     let b = vault.b.lock();
     assert!(has_institution(&b, "a1"));
     assert_eq!(missed(&b), None);
-    assert_eq!(gets(&vault.relay), 1);
+    assert_eq!(gets(&vault.relay), 2);
 }
 
 #[tokio::test]
@@ -787,4 +936,91 @@ async fn a_snapshot_that_does_not_heal_is_not_restored_or_fetched_again() {
     assert_eq!(gets(&vault.relay), 1, "the same snapshot is examined once");
     assert_eq!(sync_rows(&vault.b.lock()), before, "nothing restored");
     assert_eq!(missed(&vault.b.lock()), Some(1));
+}
+
+#[tokio::test]
+async fn a_heal_from_a_newer_schema_snapshot_says_so() {
+    let vault = vault().await;
+    write_push_pull(&vault, &vault.a, "a1").await;
+    let bytes = sealed_with_schema(&vault.creds, &vault.a.lock(), 1, schema_number() + 1);
+    vault
+        .relay
+        .put_snapshot(&vault.creds.auth(), 1, bytes)
+        .await
+        .expect("upload");
+    {
+        let b = vault.b.lock();
+        state::note_missed_below_barrier(&b, 1).expect("miss");
+        state::set_cursor(&b, 1).expect("cursor");
+    }
+    let info = vault_info(&vault).await;
+    let mut policy = SnapshotPolicy::default();
+
+    let error = heal_missed(
+        &vault.relay,
+        &vault.b,
+        &vault.creds,
+        &mut policy,
+        &info,
+        NOW,
+    )
+    .await
+    .expect_err("newer schema");
+
+    assert!(
+        has_key(&error, "validation.syncSnapshotNewerSchema"),
+        "{error:?}"
+    );
+    assert_eq!(
+        policy.examined_seq,
+        Some(1),
+        "a validation stop is a verdict"
+    );
+    let b = vault.b.lock();
+    assert!(!has_institution(&b, "a1"));
+    assert_eq!(missed(&b), Some(1));
+}
+
+#[tokio::test]
+async fn a_snapshot_that_does_not_open_is_not_fetched_again() {
+    let vault = vault().await;
+    opaque_ops(&vault, 2).await;
+    vault
+        .relay
+        .put_snapshot(&vault.creds.auth(), 2, vec![7; 100])
+        .await
+        .expect("damaged upload");
+    {
+        let b = vault.b.lock();
+        state::note_missed_below_barrier(&b, 1).expect("miss");
+        state::set_cursor(&b, 1).expect("cursor");
+    }
+    let info = vault_info(&vault).await;
+    let mut policy = SnapshotPolicy::default();
+
+    let error = heal_missed(
+        &vault.relay,
+        &vault.b,
+        &vault.creds,
+        &mut policy,
+        &info,
+        NOW,
+    )
+    .await
+    .expect_err("does not open");
+    assert!(invalid_snapshot(&error), "{error:?}");
+    assert_eq!(policy.examined_seq, Some(2));
+    let again = heal_missed(
+        &vault.relay,
+        &vault.b,
+        &vault.creds,
+        &mut policy,
+        &info,
+        NOW,
+    )
+    .await
+    .expect("not fetched again");
+
+    assert!(again.is_none());
+    assert_eq!(gets(&vault.relay), 1);
 }

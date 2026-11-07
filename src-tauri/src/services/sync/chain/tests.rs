@@ -568,7 +568,7 @@ fn crossing_a_barrier_requeues_own_rows_newer_than_the_snapshot() {
     );
     let sync = state::load(&conn).unwrap().expect("row");
     assert_eq!(sync.barrier, 25);
-    assert_eq!(sync.schema_seen, 31);
+    assert_eq!(sync.schema_seen, 32);
     assert_eq!(sync.barrier, barrier_number());
     assert_eq!(sync.schema_seen, schema_number());
     assert!(capture::is_installed(&conn).unwrap());
@@ -587,5 +587,5 @@ fn an_open_that_crosses_no_barrier_queues_nothing() {
     crate::services::sync::on_open(&conn);
 
     assert!(outbox(&conn).is_empty());
-    assert_eq!(state::load(&conn).unwrap().expect("row").schema_seen, 31);
+    assert_eq!(state::load(&conn).unwrap().expect("row").schema_seen, 32);
 }

@@ -322,7 +322,7 @@
     "syncSnapshotPending": "このデバイスにはまだ送信待ちの変更があります。次回の同期後にもう一度お試しください。",
     "syncDeviceNameInvalid": "デバイス名は1〜60文字で入力してください。",
     "syncRelayUnreachable": "Moony は同期サーバーに接続できません。インターネット接続を確認してください。同期は再試行されます。",
-    "syncRelayError": "同期サーバーから予期しない応答がありました。同期は後で再試行されます。",
+    "syncRelayError": "同期サーバーはリクエストを完了できませんでした。",
     "syncRateLimited": "同期サーバーが混み合っています。同期はまもなく再試行されます。",
     "syncPaymentRequired": "同期のサブスクリプションが有効ではありません。同期を続けるには更新してください。",
     "syncVaultLimitReached": "この同期アカウントは、同期できるプロファイル数の上限に達しています。",

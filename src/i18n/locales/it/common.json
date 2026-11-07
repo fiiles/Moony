@@ -322,7 +322,7 @@
     "syncSnapshotPending": "Su questo dispositivo ci sono ancora modifiche in attesa di invio. Riprova dopo la prossima sincronizzazione.",
     "syncDeviceNameInvalid": "Il nome del dispositivo deve avere da 1 a 60 caratteri.",
     "syncRelayUnreachable": "Moony non riesce a raggiungere il server di sincronizzazione. Controlla la connessione a internet; la sincronizzazione riproverà.",
-    "syncRelayError": "Il server di sincronizzazione ha dato una risposta inattesa. La sincronizzazione riproverà più tardi.",
+    "syncRelayError": "Il server di sincronizzazione non è riuscito a completare la richiesta.",
     "syncRateLimited": "Il server di sincronizzazione è occupato. La sincronizzazione riproverà tra poco.",
     "syncPaymentRequired": "Il tuo abbonamento alla sincronizzazione non è attivo. Rinnovalo per continuare a sincronizzare.",
     "syncVaultLimitReached": "Questo account di sincronizzazione ha già il numero massimo di profili sincronizzati.",

@@ -322,7 +322,7 @@
     "syncSnapshotPending": "Den här enheten har fortfarande ändringar som väntar på att skickas. Försök igen efter nästa synkronisering.",
     "syncDeviceNameInvalid": "Ett enhetsnamn måste ha 1 till 60 tecken.",
     "syncRelayUnreachable": "Moony når inte synkroniseringsservern. Kontrollera internetanslutningen; synkroniseringen försöker igen.",
-    "syncRelayError": "Synkroniseringsservern gav ett oväntat svar. Synkroniseringen försöker igen senare.",
+    "syncRelayError": "Synkroniseringsservern kunde inte slutföra begäran.",
     "syncRateLimited": "Synkroniseringsservern är upptagen. Synkroniseringen försöker igen om en stund.",
     "syncPaymentRequired": "Din synkroniseringsprenumeration är inte aktiv. Förnya den för att fortsätta synkronisera.",
     "syncVaultLimitReached": "Det här synkroniseringskontot har redan det högsta antalet synkroniserade profiler.",

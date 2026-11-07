@@ -322,7 +322,7 @@
     "syncSnapshotPending": "Na tomto zařízení ještě čekají změny na odeslání. Zkuste to znovu po další synchronizaci.",
     "syncDeviceNameInvalid": "Název zařízení musí mít 1 až 60 znaků.",
     "syncRelayUnreachable": "Moony se nemůže spojit se synchronizačním serverem. Zkontrolujte připojení k internetu; synchronizace to zkusí znovu.",
-    "syncRelayError": "Synchronizační server odpověděl neočekávaně. Synchronizace to zkusí znovu později.",
+    "syncRelayError": "Synchronizační server nemohl požadavek dokončit.",
     "syncRateLimited": "Synchronizační server je přetížený. Synchronizace to za chvíli zkusí znovu.",
     "syncPaymentRequired": "Vaše předplatné synchronizace není aktivní. Obnovte ho, aby synchronizace pokračovala.",
     "syncVaultLimitReached": "Tento synchronizační účet už má nejvyšší povolený počet synchronizovaných profilů.",

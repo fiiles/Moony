@@ -399,7 +399,7 @@ static SECRET_FILE_WRITES: Mutex<()> = Mutex::new(());
 /// (owner-only), is flushed to disk and renamed over `path`, then the folder is flushed so the
 /// rename survives a power cut. A crash at any point leaves either the old or the new file, never
 /// a truncated one. On an error `path` is untouched and the staging file is removed.
-fn replace_secret_file(path: &Path, data: &[u8]) -> std::io::Result<()> {
+pub(crate) fn replace_secret_file(path: &Path, data: &[u8]) -> std::io::Result<()> {
     use std::io::Write;
 
     // A panic while holding the lock leaves no state behind worth refusing to write over.

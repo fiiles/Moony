@@ -669,9 +669,9 @@ pub fn delete_account(db: &Database, session: &SessionKey, db_path: &Path) -> Re
 }
 
 /// Remove the files of an account from its data folder: both databases with their side files and
-/// pre-migration copies, the key files, the plain attachment folders of earlier versions and the
-/// conversion's quarantine. Anything else in the folder is left alone. Returns what could not be
-/// removed.
+/// pre-migration copies, the key files, the sync binding and restore marker, the plain attachment
+/// folders of earlier versions and the conversion's quarantine. Anything else in the folder is
+/// left alone. Returns what could not be removed, named within the folder.
 pub fn remove_account_files(data_dir: &Path) -> Vec<String> {
     let mut failures: Vec<String> = Vec::new();
     let mut remove = |path: PathBuf| {
@@ -683,7 +683,10 @@ pub fn remove_account_files(data_dir: &Path) -> Vec<String> {
             return;
         };
         if let Err(e) = result {
-            failures.push(format!("{}: {e}", path.display()));
+            // Named within the data folder: the folder's own path (the user's home) stays out
+            // of the error.
+            let name = path.strip_prefix(data_dir).unwrap_or(&path);
+            failures.push(format!("{}: {e}", name.display()));
         }
     };
 
@@ -694,10 +697,18 @@ pub fn remove_account_files(data_dir: &Path) -> Vec<String> {
         crypto::staging_path(&key_path),
         crypto::staging_path(&recovery_path),
     ];
+    // The sync binding with its staging copy, and the restore marker (ruling P8).
+    let binding = data_dir.join(crate::services::sync::binding::BINDING_FILE);
+    let sync_files = [
+        crypto::staging_path(&binding),
+        binding,
+        data_dir.join(crate::services::sync::binding::REJOIN_MARKER),
+    ];
     for path in [salt_path, key_path, recovery_path]
         .into_iter()
         .chain(staging)
         .chain([data_dir.join(biometric_unlock::MARKER_FILE)])
+        .chain(sync_files)
     {
         remove(path);
     }
@@ -1765,5 +1776,59 @@ mod tests {
             .collect();
         left.sort();
         assert_eq!(left, vec!["Backup", "unrelated.txt"]);
+    }
+
+    #[test]
+    fn removing_account_files_takes_the_sync_files_too() {
+        let dir = tempdir().expect("tempdir");
+        let d = dir.path();
+        for name in [
+            "sync-binding.bin",
+            "sync-binding.bin.tmp",
+            "sync-rejoin.marker",
+            "unrelated.txt",
+        ] {
+            fs::write(d.join(name), b"x").expect("file");
+        }
+
+        assert!(remove_account_files(d).is_empty());
+
+        let left: Vec<String> = fs::read_dir(d)
+            .expect("dir")
+            .map(|e| e.expect("entry").file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(left, vec!["unrelated.txt"]);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_file_that_cannot_be_removed_is_named_without_the_folder() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempdir().expect("tempdir");
+        let d = dir.path();
+        // A non-empty folder under a file's name: `remove_file` fails on it.
+        fs::create_dir_all(d.join("sync-rejoin.marker/inner")).expect("dir");
+        fs::set_permissions(
+            d.join("sync-rejoin.marker"),
+            fs::Permissions::from_mode(0o500),
+        )
+        .expect("read-only dir");
+
+        let failures = remove_account_files(d);
+
+        fs::set_permissions(
+            d.join("sync-rejoin.marker"),
+            fs::Permissions::from_mode(0o700),
+        )
+        .expect("restore permissions");
+        assert_eq!(failures.len(), 1, "{failures:?}");
+        assert!(
+            failures[0].starts_with("sync-rejoin.marker: "),
+            "{failures:?}"
+        );
+        assert!(
+            !failures[0].contains(&*d.to_string_lossy()),
+            "no data folder path in {failures:?}"
+        );
     }
 }

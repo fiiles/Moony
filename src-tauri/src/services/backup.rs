@@ -564,11 +564,21 @@ pub fn restore_backup(
         return Err(e);
     }
 
+    // 3. The restored database opens only with the archive's key, so this cannot edit its
+    //    `sync_state`: a marker tells the next unlock to re-join under a new device ID (spec
+    //    §11.4). Every restore leaves it; the unlock clears it when the profile has no sync. A
+    //    restore the marker would not follow is rolled back.
+    if let Err(e) = crate::services::sync::binding::write_rejoin_marker(data_dir) {
+        rollback(data_dir, &pre_restore);
+        return Err(io_err("Failed to write the restore marker", e));
+    }
+
     Ok(pre_restore)
 }
 
 /// Everything restore replaces: the key files, both databases with their side files, the
-/// legacy attachment folders and the conversion's quarantine.
+/// legacy attachment folders and the conversion's quarantine. Not the sync binding and restore
+/// marker (`services::sync::binding`): they belong to this machine and must survive a restore.
 fn managed_names() -> Vec<&'static str> {
     let mut names: Vec<&'static str> = KEY_FILES.to_vec();
     names.extend(["moony.db-wal", "moony.db-shm", "moony.db-journal"]);
@@ -915,6 +925,47 @@ mod tests {
             b"old"
         );
         assert!(!dst.path().join("insurance_documents/old.pdf").exists());
+    }
+
+    #[test]
+    fn restore_backup_leaves_a_rejoin_marker() {
+        let src = tempfile::tempdir().expect("src");
+        let conn = seed_account(src.path());
+        let archive = src.path().join("out.zip");
+        create_backup(&conn, src.path(), &archive, "1.0.0").expect("backup");
+
+        let dst = tempfile::tempdir().expect("dst");
+        fs::write(dst.path().join("sync-binding.bin"), b"sealed").expect("binding");
+
+        let pre = restore_backup(dst.path(), &archive, &KNOWN).expect("restore");
+
+        assert!(
+            dst.path().join("sync-rejoin.marker").is_file(),
+            "the next unlock decides whether the restored profile re-joins"
+        );
+        assert_eq!(
+            fs::read(dst.path().join("sync-binding.bin")).expect("binding stays"),
+            b"sealed",
+            "the binding is not replaced by a restore"
+        );
+        assert!(!pre.join("sync-binding.bin").exists());
+        assert!(!archive_names(&archive)
+            .iter()
+            .any(|name| name.starts_with("sync-")));
+    }
+
+    #[test]
+    fn a_failed_restore_leaves_no_rejoin_marker() {
+        let src = tempfile::tempdir().expect("src");
+        let archive = src.path().join("bad.zip");
+        write_zip(
+            &archive,
+            &[(MANIFEST_NAME, &manifest_json(&KNOWN)), ("../escape", b"x")],
+        );
+
+        let dst = tempfile::tempdir().expect("dst");
+        assert!(restore_backup(dst.path(), &archive, &KNOWN).is_err());
+        assert!(!dst.path().join("sync-rejoin.marker").exists());
     }
 
     fn write_zip(path: &Path, entries: &[(&str, &[u8])]) {

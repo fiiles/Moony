@@ -4,8 +4,10 @@ import {
   expenseRows,
   filterCounts,
   filterRows,
+  isPartialLimit,
   limitState,
   sortRows,
+  storedLimitGoal,
   type ExpenseRow,
 } from './cashflow-budget-rows';
 
@@ -299,5 +301,64 @@ describe('filters and sorting', () => {
     const before = rows.map((row) => row.key);
     sortRows(rows, 'name', label, 'cs');
     expect(rows.map((row) => row.key)).toEqual(before);
+  });
+});
+
+const MONTH = (year: number, month: number) => Date.UTC(year, month - 1, 1) / 1000;
+
+describe('storedLimitGoal', () => {
+  const monthly = goal('cat_a');
+  const quarterly: BudgetGoal = { ...goal('cat_a', '3000'), id: 'q', timeframe: 'quarterly' };
+  const other = goal('cat_b');
+
+  it("finds the stored goal of the row's category in the timeframe of the period's goal", () => {
+    expect(storedLimitGoal({ key: 'cat_a', periodGoal: quarterly }, [monthly, quarterly])).toBe(
+      quarterly
+    );
+  });
+
+  it('takes the monthly goal when the period has none (an ended or scheduled limit)', () => {
+    expect(storedLimitGoal({ key: 'cat_a', periodGoal: null }, [other, quarterly, monthly])).toBe(
+      monthly
+    );
+  });
+
+  it('is null without a stored goal of the category', () => {
+    expect(storedLimitGoal({ key: 'cat_c', periodGoal: null }, [monthly, other])).toBeNull();
+    expect(storedLimitGoal({ key: 'cat_a', periodGoal: null }, [])).toBeNull();
+  });
+});
+
+describe('isPartialLimit', () => {
+  const q4 = { start: MONTH(2026, 10), end: MONTH(2027, 1) - 1 };
+  const withVersions = (versions: BudgetGoal['versions']): BudgetGoal => ({
+    ...goal('cat_a'),
+    versions,
+  });
+
+  it('is true when the limit covers some months of the period but not all', () => {
+    const goalFromNov = withVersions([
+      { effectiveMonth: MONTH(2026, 11), amount: '1000', currency: 'CZK' },
+    ]);
+    expect(isPartialLimit(goalFromNov, q4.start, q4.end)).toBe(true);
+  });
+
+  it('is false when the limit covers the whole period', () => {
+    const always = withVersions([
+      { effectiveMonth: MONTH(2026, 1), amount: '1000', currency: 'CZK' },
+    ]);
+    expect(isPartialLimit(always, q4.start, q4.end)).toBe(false);
+  });
+
+  it('is false when the limit covers none of it, and for a single month', () => {
+    const ended = withVersions([
+      { effectiveMonth: MONTH(2026, 1), amount: '1000', currency: 'CZK' },
+      { effectiveMonth: MONTH(2026, 9), amount: null, currency: 'CZK' },
+    ]);
+    expect(isPartialLimit(ended, q4.start, q4.end)).toBe(false);
+    const fromOct = withVersions([
+      { effectiveMonth: MONTH(2026, 10), amount: '1000', currency: 'CZK' },
+    ]);
+    expect(isPartialLimit(fromOct, MONTH(2026, 10), MONTH(2026, 11) - 1)).toBe(false);
   });
 });

@@ -56,8 +56,24 @@ pub struct DumpStats {
 /// Writes the snapshot of this profile at relay sequence `seq` (the cursor applied, §8):
 /// `devs`, `header`, the synced rows (live rows parents first, then tombstone-only keys children
 /// first), the Seed rows, `end`.
+///
+/// Only a profile with nothing waiting to go out may be dumped: an empty `sync_unsent` (§8) and,
+/// by ruling T18e, an empty `sync_outbox`. A snapshot carrying rows its source has not pushed
+/// lets a device that restored it push children of those rows ahead of the source's own push,
+/// and every other device then stops on the missing parent. The engine pushes and pulls before
+/// dumping; otherwise `validation.syncSnapshotPending`, and nothing is written.
 pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpStats> {
     let sync = loaded(conn)?;
+    let pending: i64 = conn.query_row(
+        "SELECT (SELECT COUNT(*) FROM sync_outbox) + (SELECT COUNT(*) FROM sync_unsent)",
+        [],
+        |r| r.get(0),
+    )?;
+    if pending > 0 {
+        return Err(AppError::Validation(
+            "validation.syncSnapshotPending".into(),
+        ));
+    }
     let rows = synced_rows(conn)?;
     let seeds = seed_rows(conn)?;
     let stats = DumpStats {

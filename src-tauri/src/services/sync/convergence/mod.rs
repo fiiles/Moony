@@ -347,8 +347,18 @@ impl Vault {
         self.fail("the devices still push after six exchanges");
     }
 
-    /// The snapshot of device `from` as it stands (unpushed edits included).
-    fn snapshot_of(&self, from: usize) -> Vec<u8> {
+    /// The snapshot of device `from`, taken as the engine takes it (§8, ruling T18e): the device
+    /// pushes its outbox, pulls the relay in relay order, and only then dumps, so the snapshot
+    /// never carries a row the relay does not have yet.
+    fn snapshot_of(&mut self, from: usize) -> Vec<u8> {
+        self.push(from);
+        let all: Vec<usize> = (0..self.relay.len()).collect();
+        let end = self.pull(from, &all);
+        if end != PullEnd::Done {
+            self.fail(&format!(
+                "device {from} could not pull the relay before its snapshot: {end:?}"
+            ));
+        }
         fake_clock::advance(STEP_MS);
         let mut stream = Vec::new();
         let seq = self.relay.len() as u64;

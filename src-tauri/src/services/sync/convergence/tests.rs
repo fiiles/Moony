@@ -13,7 +13,9 @@ use rand::{RngExt, SeedableRng};
 use rusqlite::Connection;
 
 use super::*;
+use crate::models::categorization::InsertScopedLearning;
 use crate::models::investments::InsertInvestmentTransaction;
+use crate::services::categorization::{engine::CategorizationEngine, learn};
 use crate::services::investments;
 use crate::services::sync::capture::{self, Mode};
 use crate::services::sync::test_support::{clock_dump_live, dump};
@@ -286,6 +288,23 @@ fn random_operations_converge_under_any_relay_order() {
     assert!(never.is_empty(), "never succeeded: {never:?}\n{stats:#?}");
 }
 
+/// Every author's head on `conn` (`sync_heads`): the newest sequence applied or covered.
+fn heads_of(conn: &Connection) -> BTreeMap<DeviceId, u64> {
+    let mut stmt = conn
+        .prepare("SELECT device, seq FROM sync_heads")
+        .expect("prepare heads");
+    stmt.query_map([], |r| Ok((r.get::<_, Vec<u8>>(0)?, r.get::<_, i64>(1)?)))
+        .expect("query heads")
+        .map(|r| {
+            let (device, seq) = r.expect("head");
+            (
+                DeviceId(device.try_into().expect("16-byte device")),
+                seq as u64,
+            )
+        })
+        .collect()
+}
+
 /// Device `d` gets the other authors' envelopes one author at a time (`flip` reverses the
 /// author order), with one envelope withheld: the pull stops on the gap (or earlier, on a
 /// parent of the author still to come). Then, after an edit made while behind, the rest
@@ -302,20 +321,24 @@ fn adversarial_pull(vault: &mut Vault, d: usize, flip: bool, rngs: &mut Rngs) ->
         groups.reverse();
     }
     // Withhold one envelope not applied yet that has a later one of its author (and every
-    // replay of it).
+    // replay of it). An envelope at or below the device's head of its author (a joiner's
+    // snapshot covers it) is only a replay there, so withholding it opens no gap.
     let relay = &vault.relay;
     let applied: &BTreeSet<(DeviceId, u64)> = &vault.devices[d]
         .processed
         .iter()
         .map(|&i| (relay[i].0.device, relay[i].0.seq))
         .collect();
+    let heads = &heads_of(&vault.devices[d].conn);
     let candidates: Vec<usize> = groups
         .iter()
         .flat_map(|g| {
             let last_seq = g.last().map(|&i| relay[i].0.seq);
             g.iter().copied().filter(move |&i| {
                 let cs = &relay[i].0;
-                Some(cs.seq) != last_seq && !applied.contains(&(cs.device, cs.seq))
+                Some(cs.seq) != last_seq
+                    && !applied.contains(&(cs.device, cs.seq))
+                    && heads.get(&cs.device).is_none_or(|&head| cs.seq > head)
             })
         })
         .collect();
@@ -404,8 +427,8 @@ fn devices_joining_and_restoring_mid_run_converge() {
         let mut vault = vault(format!("join and restore mid-run, seed {seed}"));
         for round in 0..ROUNDS {
             if round == 2 {
-                // A fourth device joins from whichever device it pairs with, unpushed edits
-                // included, and then works like the others.
+                // A fourth device joins from whichever device it pairs with (which pushes and
+                // pulls first, ruling T18e), and then works like the others.
                 let from = rngs.schedule.random_range(0..vault.devices.len());
                 vault.join_device(from);
             }
@@ -598,5 +621,65 @@ fn the_harness_detects_a_removed_tombstone() {
         "DELETE FROM sync_clock WHERE col = '-' \
          AND (tbl, pk) = (SELECT tbl, pk FROM sync_clock WHERE col = '-' ORDER BY tbl, pk LIMIT 1)",
     );
+    vault.assert_converged();
+}
+
+/// T18e: a snapshot must not hand out rows its source has not pushed. Device 0 creates an
+/// account and keeps it unpushed; device 1 restores by merge from device 0 and learns a payee on
+/// that account; both push. Every device must still apply the relay in its own order: the dump
+/// path pushes the source first, so the account is on the relay before the payee.
+#[test]
+fn a_snapshot_never_hands_out_rows_its_source_has_not_pushed() {
+    let mut rngs = Rngs::new(1);
+    let mut vault = synced_vault("T18e unpushed rows in a snapshot", |_, _| {});
+    let accounts = |vault: &Vault, d: usize| -> BTreeSet<String> {
+        let conn = &vault.devices[d].conn;
+        let mut stmt = conn
+            .prepare("SELECT id FROM bank_accounts")
+            .expect("prepare");
+        stmt.query_map([], |r| r.get(0))
+            .expect("query")
+            .map(|r| r.expect("row"))
+            .collect()
+    };
+    let before = accounts(&vault, 0);
+    vault.run_op(0, "bank_accounts::create_account", &mut rngs.target);
+    let account = accounts(&vault, 0)
+        .difference(&before)
+        .next()
+        .cloned()
+        .expect("a new account");
+
+    vault.restore_by_merge(1, 0);
+    let category: String = vault.devices[1]
+        .conn
+        .query_row(
+            "SELECT id FROM transaction_categories ORDER BY id LIMIT 1",
+            [],
+            |r| r.get(0),
+        )
+        .expect("a category");
+    let learning = InsertScopedLearning {
+        bank_account_id: account,
+        is_credit: false,
+        payee: Some("Albert".into()),
+        counterparty_iban: None,
+        counterparty_bank_code: None,
+        counterparty_country: None,
+        category_id: category,
+    };
+    learn::learn_scoped(
+        &vault.devices[1].conn,
+        &CategorizationEngine::new_empty(),
+        &learning,
+    )
+    .expect("learn");
+    vault.push(1);
+    vault.push(0);
+
+    let all: Vec<usize> = (0..vault.relay.len()).collect();
+    let end = vault.pull(2, &all);
+    assert_eq!(end, PullEnd::Done, "{}", vault.trace.join("\n"));
+    vault.sync_all(&mut rngs.schedule);
     vault.assert_converged();
 }

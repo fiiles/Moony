@@ -97,7 +97,9 @@ fn apply(conn: &Connection, sent: &Sent) {
     }
 }
 
+/// Pushes everything `conn` has queued (a dump needs an empty outbox, ruling T18e), then dumps.
 fn snapshot(conn: &Connection, seq: u64) -> (Vec<u8>, DumpStats) {
+    send(conn);
     let mut out = Vec::new();
     let stats = dump(conn, seq, &mut out).expect("dump");
     (out, stats)

@@ -378,3 +378,35 @@ fn malformed_streams_are_errors_not_panics() {
         assert!(state::load(&b).expect("load").is_none());
     }
 }
+
+#[test]
+fn a_dump_refuses_while_rows_wait_to_be_pushed() {
+    let pending = |conn: &Connection| {
+        let mut out = Vec::new();
+        let error = dump(conn, 1, &mut out).expect_err("refused");
+        assert!(
+            matches!(&error, AppError::Validation(key) if key == "validation.syncSnapshotPending"),
+            "{error:?}"
+        );
+        assert!(out.is_empty(), "nothing is written");
+    };
+    let a = device(A);
+    exec(
+        &a,
+        "INSERT INTO institutions (id, name) VALUES ('i1', 'Unpushed')",
+    );
+    pending(&a);
+
+    send(&a);
+    exec(
+        &a,
+        "INSERT INTO sync_unsent (seq, envelope) VALUES (1, x'00')",
+    );
+    pending(&a);
+
+    exec(&a, "DELETE FROM sync_unsent");
+    let mut out = Vec::new();
+    let stats = dump(&a, 1, &mut out).expect("dump");
+    assert!(stats.rows > 0);
+    assert!(!out.is_empty());
+}

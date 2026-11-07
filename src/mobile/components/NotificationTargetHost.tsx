@@ -2,6 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { onAction } from '@tauri-apps/plugin-notification';
 import { useLocation } from 'wouter';
 import { useAuth } from '@/hooks/use-auth';
+import { useAnySheetOpen } from '@/mobile/hooks/use-sheet-history';
 import { notificationPaths, notificationTarget, tapTarget } from '@/mobile/lib/notification-target';
 import { routes } from '@/mobile/shell/routes';
 
@@ -16,7 +17,8 @@ const hearsTaps = () => {
  * the shell and kept through a lock, like `ReceivedFileHost`.
  *
  * A tap (`onAction`, `actionId` "tap") puts its target in `notificationTarget`. While the app is
- * unlocked and not on the lock page the host opens it at once, over the screen shown. While locked
+ * unlocked and not on the lock page the host opens it over the screen shown, once no sheet is open
+ * (leaving the screen would drop a sheet's input without its "Zahodit změny?"). While locked
  * it waits: the lock page takes it after a successful unlock (`leaveLock`), so nothing opens
  * behind the lock. Where the listener cannot be registered (a desktop shell, a plugin without the
  * event) the app opens as it would without the tap; a tap that starts the app from cold is not
@@ -27,6 +29,8 @@ export function NotificationTargetHost() {
   const [location, setLocation] = useLocation();
   const pending = useSyncExternalStore(notificationTarget.subscribe, notificationTarget.peek);
   const unlocked = appStatus === 'unlocked' && !!user;
+  // An open sheet keeps what was typed in it: the target waits until the sheet has closed
+  const sheetOpen = useAnySheetOpen();
 
   useEffect(() => {
     if (!hearsTaps()) return;
@@ -50,10 +54,10 @@ export function NotificationTargetHost() {
   }, []);
 
   useEffect(() => {
-    if (pending === null || !unlocked || location === routes.auth) return;
+    if (pending === null || !unlocked || sheetOpen || location === routes.auth) return;
     const path = notificationTarget.take();
     if (path) setLocation(path);
-  }, [pending, unlocked, location, setLocation]);
+  }, [pending, unlocked, sheetOpen, location, setLocation]);
 
   return null;
 }

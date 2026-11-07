@@ -4,17 +4,17 @@ import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 import { isMobileShell } from '@/lib/platform';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
-import { withPhoneHistory } from '@/components/ui/phone-dialog-history';
+import { usePhoneDialogBusy, withPhoneHistory } from '@/components/ui/phone-dialog-history';
 
 /**
  * Confirm dialog (design system §6, `.modal--sm`): 440 px. Title with a
  * question mark, text that says exactly what disappears and that it cannot be
  * undone, solid red-brown action named with a verb ("Smazat pozici").
- * In the phone shell Android back closes it, as it closes a sheet (`withPhoneHistory`).
+ * In the phone shell Android back closes it, as it closes a sheet (`withPhoneHistory`), except
+ * while its "Zrušit" is disabled (its action is running).
  */
-const AlertDialog = isMobileShell(import.meta.env)
-  ? withPhoneHistory(AlertDialogPrimitive.Root)
-  : AlertDialogPrimitive.Root;
+const PHONE = isMobileShell(import.meta.env);
+const AlertDialog = PHONE ? withPhoneHistory(AlertDialogPrimitive.Root) : AlertDialogPrimitive.Root;
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
 
@@ -109,13 +109,17 @@ AlertDialogAction.displayName = AlertDialogPrimitive.Action.displayName;
 const AlertDialogCancel = React.forwardRef<
   React.ComponentRef<typeof AlertDialogPrimitive.Cancel>,
   React.ComponentPropsWithoutRef<typeof AlertDialogPrimitive.Cancel>
->(({ className, ...props }, ref) => (
-  <AlertDialogPrimitive.Cancel
-    ref={ref}
-    className={cn(buttonVariants({ variant: 'ghost' }), className)}
-    {...props}
-  />
-));
+>(({ className, ...props }, ref) => {
+  // Back is the phone's "Zrušit": while this one is disabled (the action runs), back is refused too
+  usePhoneDialogBusy(PHONE && props.disabled === true);
+  return (
+    <AlertDialogPrimitive.Cancel
+      ref={ref}
+      className={cn(buttonVariants({ variant: 'ghost' }), className)}
+      {...props}
+    />
+  );
+});
 AlertDialogCancel.displayName = AlertDialogPrimitive.Cancel.displayName;
 
 export {

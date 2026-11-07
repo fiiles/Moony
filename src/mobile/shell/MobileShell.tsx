@@ -11,6 +11,7 @@ import { useNotificationSchedule } from '@/mobile/hooks/use-notification-schedul
 import { sheetEntryCount } from '@/mobile/hooks/use-sheet-history';
 import { clearTabMemory, useTabMemory } from '@/mobile/hooks/use-tab-memory';
 import { lockReturn } from '@/mobile/lib/lock-return';
+import { notificationTarget } from '@/mobile/lib/notification-target';
 import { clearEnrolmentAsked } from '@/lib/biometrics';
 import Agenda from '@/mobile/pages/Agenda';
 import Bonds from '@/mobile/pages/Bonds';
@@ -161,9 +162,10 @@ export function MobileShell() {
   // offered biometric unlock again, so the "asked" flag of the old account goes.
   useEffect(() => {
     if (appStatus !== 'needs_setup') return;
-    // Nothing of the old account's places is left to return to
+    // Nothing of the old account's places is left to return to, nor a tapped notification of it
     lockReturn.clear();
     clearTabMemory();
+    notificationTarget.take();
     try {
       clearEnrolmentAsked(localStorage);
     } catch {

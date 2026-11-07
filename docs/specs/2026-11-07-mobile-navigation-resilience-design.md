@@ -54,6 +54,11 @@ The phone loses the person's place and work in ordinary use, and hides failures:
   unlocked. When the app locks on a shell path, it records `{ path, depth }`, where `depth` is 1
   (the `/auth` entry the redirect pushes) plus the sheet history entries open at that moment.
   Their sheets unmount with the screen, but their entries stay in the history.
+- While the walk runs (`returnWalk`, from its `history.go` until its `popstate` has been handled
+  everywhere), nothing else touches the history: a sheet that opens meanwhile pushes its entry
+  once the walk has landed, the walk's `popstate` closes no sheet, and the Face ID offer and the
+  shared-statement import wait. A walk that lands after the fallback is undone by the same steps
+  forward.
 - After a successful unlock, `Lock` takes the record and goes back `depth` entries. The history and
   the nav stack are then exactly as they were before the lock: the screen comes back with its kept
   scroll and its back label. If no `popstate` arrives, or the walk lands on `/auth` again, `Lock`
@@ -161,6 +166,11 @@ The phone loses the person's place and work in ordinary use, and hides failures:
   confirmations are excluded. Cost: other sheets still close silently.
 - **(call) The notification target replaces the lock entry.** Back from it goes to the screen
   before the lock. Cost: none found.
+- **(call) A detail's "not found" test is screen-wide.** `MissingOrFailed` shows the error when any
+  active query of the screen failed without data (other than the backend's `notFound`), not only
+  the detail's own queries: their keys differ per hook and are not exposed. Cost if wrong: a
+  shell-level query failing at the same moment turns a real "not found" into an error with a
+  retry, the safer misreport.
 - **(call) The restore link lives on the password view of the lock,** under "Zapomenuté heslo?", as
   on the desktop. The biometric view reaches it through "Použít heslo". Cost: one tap more with
   Face ID on.

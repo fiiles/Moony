@@ -125,9 +125,17 @@ export function RecordBalancesSheet({
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
-      // A typed balance or another day: the sheet asks before a stray tap drops them
+      // A typed balance, a ± switched on or another day: the sheet asks before a stray tap drops them
       dirty={
-        !record.isPending && formChanged({ values: {}, date: today }, { values, date: dateIso })
+        !record.isPending &&
+        formChanged(
+          { values: {}, negatives: [], date: today },
+          {
+            values,
+            negatives: Object.keys(negatives).filter((id) => negatives[id]),
+            date: dateIso,
+          }
+        )
       }
       title={title ?? t('recordBalances.title')}
       description={description ?? t('recordBalances.lead')}

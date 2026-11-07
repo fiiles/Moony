@@ -1,5 +1,5 @@
 //! Engine tests: a vault on a `FakeRelay` with device `A` (sync turned on) and device `B` (joined
-//! from `A`'s plaintext snapshot), sharing one set of credentials, each behind a `TestConn` the
+//! from `A`'s plaintext snapshot), sharing one set of credentials bound before either starts, each behind a `TestConn` the
 //! engine locks one step at a time. Envelopes are sealed as the push seals them (`seal_from`) or
 //! forged from hand-made changesets (`forge`), and reach the relay through `push`.
 
@@ -88,16 +88,18 @@ pub async fn vault() -> Vault {
         .await
         .expect("vault"));
 
+    // The credentials are bound first, as setup and pairing do: binding a vault forgets the
+    // barrier mark that turning sync on and joining record.
     let a = migrated();
+    keys::save_credentials(&a, &creds).expect("credentials A");
     state::enable(&a, A).expect("enable A");
     exec(&a, "DELETE FROM sync_outbox");
-    keys::save_credentials(&a, &creds).expect("credentials A");
     let mut stream = Vec::new();
     snapshot::dump(&a, 0, &mut stream).expect("dump A");
 
     let b = migrated();
-    snapshot::join(&b, B, &mut stream.as_slice(), NOW).expect("join B");
     keys::save_credentials(&b, &creds).expect("credentials B");
+    snapshot::join(&b, B, &mut stream.as_slice(), NOW).expect("join B");
 
     Vault {
         relay,

@@ -142,12 +142,27 @@ pub fn ensure_row(conn: &Connection, device: DeviceId) -> Result<()> {
 
 /// Turns sync on for the first device of a vault, in the order of ruling R4: the row, then capture
 /// on this connection, then the effective rule-pack keys, so those two keys are clocked and queued.
+/// A device that starts at its barrier needs no barrier marker, so its barrier counts as marked
+/// (`note_starting_barrier`). Call it after the vault's credentials are bound: binding another
+/// vault forgets the mark (`keys::save_credentials`).
 pub fn enable(conn: &Connection, device: DeviceId) -> Result<()> {
     in_savepoint(conn, "sync_enable", || {
         ensure_row(conn, device)?;
         capture::install(conn, device)?;
-        packs::persist_effective(conn)
+        packs::persist_effective(conn)?;
+        note_starting_barrier(conn)
     })
+}
+
+/// A device that starts syncing at its barrier (turned on, or joined from a snapshot) has nothing
+/// to mark for it: its barrier counts as marked (`marker_barrier`), so the push seals no empty
+/// marker. Only a device that crosses a barrier later needs one.
+pub fn note_starting_barrier(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET marker_barrier = MAX(marker_barrier, barrier) WHERE id = 1",
+        [],
+    )?;
+    Ok(())
 }
 
 /// Turns sync off on this device (§11.6, local part): capture goes, and so does every sync row.

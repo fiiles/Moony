@@ -29,8 +29,9 @@ pub enum PullStop {
     /// An envelope of an author is missing (the relay dropped it).
     Gap,
     /// A malformed chain link, a changeset that does not parse, or a pull page outside the
-    /// relay contract (a sequence not above `after` or not increasing, a head below the page's
-    /// last sequence, an empty page that says there is more).
+    /// relay contract: more envelopes than the limit, a sequence not above `after` or not
+    /// increasing, a head below the page's last sequence or below `after` (the head never goes
+    /// back), an empty page that says there is more.
     Invalid,
     /// An envelope that does not open: a failed authentication, or an epoch this device has no
     /// key for (never read as a rekey: the epoch is not authenticated).
@@ -48,6 +49,8 @@ pub enum PullEnd {
     Done,
     /// Every envelope was dealt with except a quarantined author's, which are held.
     Held,
+    /// The pull reached its page limit before the relay's head; the next round goes on.
+    Unfinished,
     /// The pull stopped on an envelope (or a page) and went no further.
     Stopped(PullStop),
 }
@@ -68,17 +71,21 @@ pub struct PullReport {
     /// served none), so this device is behind. Shown in diagnostics; not an error, and the cursor
     /// never moves to the head.
     pub behind: bool,
+    /// The pull reached its page limit (`pull::MAX_PULL_PAGES`) before the relay's head.
+    pub unfinished: bool,
 }
 
 impl PullReport {
     /// The pull reached the relay's end with nothing stopped or held (P23).
     pub fn done(&self) -> bool {
-        self.stop.is_none() && self.held == 0
+        self.end() == PullEnd::Done
     }
 
+    /// A stop comes first, then an unfinished pull, then held envelopes.
     pub fn end(&self) -> PullEnd {
         match &self.stop {
             Some(stop) => PullEnd::Stopped(stop.clone()),
+            None if self.unfinished => PullEnd::Unfinished,
             None if self.held > 0 => PullEnd::Held,
             None => PullEnd::Done,
         }
@@ -86,7 +93,8 @@ impl PullReport {
 
     /// Whether the round may push after this pull (ruling P1): the pull ended done, with only a
     /// quarantined author's envelopes held, or stopped only on a newer schema (an older device
-    /// keeps pushing, spec §14).
+    /// keeps pushing, spec §14). An unfinished pull does not push: a device that is behind
+    /// catches up before adding more (§9.4).
     pub fn may_push(&self) -> bool {
         matches!(
             self.end(),

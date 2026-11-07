@@ -22,6 +22,9 @@ use crate::services::sync::state;
 /// Envelopes per pull page.
 pub const PULL_PAGE: u32 = 500;
 
+/// Pages one pull fetches at most (100,000 envelopes); the rest is left to the next round.
+pub const MAX_PULL_PAGES: usize = 200;
+
 /// The name a re-joined device gets when the old ID had no `sync_devices` row.
 const DEFAULT_DEVICE_NAME: &str = "Moony";
 
@@ -133,14 +136,22 @@ fn act(
     Ok(Some(step))
 }
 
-/// Pulls from the persisted cursor until the relay has no more or an envelope stops the pull.
-/// Each page is fetched without the connection lock and checked against the relay contract
-/// before any of its envelopes is handled, each envelope under its own lock. The persisted cursor
-/// moves over consecutive envelopes that were dealt with (`Advance`, `Rejoined`); after the first
-/// `Hold` it stays before that envelope while later ones are still handled (other authors keep
-/// syncing). A stop ends the pull with the cursor before the stopping envelope, and so does a page
-/// outside the contract (`Invalid`). Every envelope taken adds its size to `pulled_bytes`; a
-/// stopping one is not taken (the next pull fetches it again).
+/// Pulls from the persisted cursor until the relay has no more, an envelope stops the pull, or the
+/// pull reaches its bounds. Each page is fetched without the connection lock and checked against
+/// the relay contract before any of its envelopes is handled, each envelope under its own lock.
+/// The persisted cursor moves over consecutive envelopes that were dealt with (`Advance`,
+/// `Rejoined`); after the first `Hold` it stays before that envelope while later ones are still
+/// handled (other authors keep syncing). A stop ends the pull with the cursor before the stopping
+/// envelope, and so does a page outside the contract (`Invalid`).
+///
+/// Relay positions are not authenticated, so one pull is bounded: it ends once it has handled
+/// everything up to the head the first page reported (later envelopes are left to the next
+/// round, as if they had arrived after the pull), and in any case after `MAX_PULL_PAGES` pages
+/// (`unfinished`: a relay that keeps reporting a higher head, or a backlog that large).
+///
+/// An envelope's size counts towards `pulled_bytes` once, when the persisted cursor moves past
+/// it: an envelope fetched again (held behind a quarantined author, or after a stop) is not
+/// counted again.
 ///
 /// When the relay's head is past the last envelope it served, the report says `behind`; the
 /// cursor never moves to the head.
@@ -153,6 +164,17 @@ pub async fn pull_all<R: Relay, D: ConnAccess>(
     creds: &Credentials,
     now: i64,
 ) -> SyncResult<PullReport> {
+    pull_pages(relay, db, creds, now, MAX_PULL_PAGES).await
+}
+
+/// `pull_all` with at most `max_pages` pages.
+pub(crate) async fn pull_pages<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    now: i64,
+    max_pages: usize,
+) -> SyncResult<PullReport> {
     let mut after = db.with_conn(|conn| {
         state::load(conn)?
             .map(|sync| sync.cursor)
@@ -161,22 +183,21 @@ pub async fn pull_all<R: Relay, D: ConnAccess>(
     let auth = creds.auth();
     let mut report = PullReport::default();
     let mut holding = false;
-    loop {
+    let mut first_head = None;
+    for _ in 0..max_pages {
         let page = relay.pull(&auth, after, PULL_PAGE).await?;
-        if let Err(reason) = check_page(&page, after) {
+        if let Err(reason) = check_page(&page, after, PULL_PAGE) {
             log::warn!("[SYNC] The relay served a page outside its contract: {reason}");
             report.stop = Some(PullStop::Invalid);
             return Ok(report);
         }
+        let target = *first_head.get_or_insert(page.head);
         for op in &page.ops {
             let step = db.with_conn(|conn| {
                 let step = handle_op(conn, creds, op, now, &mut report)?;
-                if matches!(step, OpStep::Stop(_)) {
-                    return Ok(step);
-                }
-                state::add_pulled_bytes(conn, op.ct.len() as u64)?;
-                if !holding && step != OpStep::Hold {
+                if !holding && matches!(step, OpStep::Advance | OpStep::Rejoined) {
                     state::set_cursor(conn, op.seq)?;
+                    state::add_pulled_bytes(conn, op.ct.len() as u64)?;
                 }
                 Ok(step)
             })?;
@@ -203,13 +224,23 @@ pub async fn pull_all<R: Relay, D: ConnAccess>(
             }
             return Ok(report);
         }
+        if after >= target {
+            return Ok(report);
+        }
     }
+    log::warn!("[SYNC] A pull ended after {max_pages} pages, before the relay's head");
+    report.unfinished = true;
+    Ok(report)
 }
 
-/// The relay contract for a page fetched after `after`: every sequence above `after` and strictly
-/// increasing, the head at or above the last one, and no empty page that says there is more
-/// (it would be fetched again forever).
-fn check_page(page: &PullPage, after: u64) -> std::result::Result<(), &'static str> {
+/// The relay contract for a page fetched after `after` with `limit`: at most `limit` envelopes,
+/// every sequence above `after` and strictly increasing, the head at or above the last sequence
+/// and never below `after` (an empty page included: the relay's head never goes back), and no
+/// empty page that says there is more (it would be fetched again forever).
+fn check_page(page: &PullPage, after: u64, limit: u32) -> std::result::Result<(), &'static str> {
+    if page.ops.len() > limit as usize {
+        return Err("more envelopes than the limit");
+    }
     let mut last = after;
     for op in &page.ops {
         if op.seq <= last {
@@ -218,7 +249,7 @@ fn check_page(page: &PullPage, after: u64) -> std::result::Result<(), &'static s
         last = op.seq;
     }
     if page.head < last {
-        return Err("the head is below the page");
+        return Err("the head is below the page or the cursor");
     }
     if page.more && page.ops.is_empty() {
         return Err("an empty page says there is more");

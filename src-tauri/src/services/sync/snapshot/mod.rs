@@ -136,7 +136,8 @@ pub struct RestoreReport {
 
 /// A device joins the vault from a snapshot, in the order of ruling R4: its `sync_state` row,
 /// the restore by replace (nothing is clocked or queued), then capture, whose clock starts above
-/// every restored clock. The rule packs are not rewritten: they come from the vault. One
+/// every restored clock. The rule packs are not rewritten: they come from the vault. The joiner
+/// starts at its barrier, so it needs no barrier marker (`state::note_starting_barrier`). One
 /// savepoint: a refused or broken stream leaves the profile as it was.
 pub fn join(
     conn: &Connection,
@@ -149,6 +150,7 @@ pub fn join(
         state::ensure_row(conn, device)?;
         let report = replace(conn, snapshot, now)?;
         capture::install(conn, device)?;
+        state::note_starting_barrier(conn)?;
         Ok(report)
     })
 }

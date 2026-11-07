@@ -6,14 +6,14 @@ use std::sync::atomic::Ordering;
 use super::*;
 use crate::services::sync::capture;
 use crate::services::sync::devices;
-use crate::services::sync::engine::pull::pull_all;
+use crate::services::sync::engine::pull::{pull_all, pull_pages, PULL_PAGE};
 use crate::services::sync::engine::{PullEnd, PullReport, PullStop};
 use crate::services::sync::error::SyncError;
 use crate::services::sync::keys::VaultAuth;
 use crate::services::sync::relay::fake::Route;
 use crate::services::sync::relay::{
-    AccountStatus, CheckoutPlan, PullPage, PushReceipt, RelayError, RelayResult, SnapshotBlob,
-    VaultInfo,
+    AccountStatus, CheckoutPlan, PullPage, PulledOp, PushReceipt, RelayError, RelayResult,
+    SnapshotBlob, VaultInfo,
 };
 
 async fn pull(vault: &Vault, device: &TestConn) -> PullReport {
@@ -578,16 +578,17 @@ async fn a_withheld_trailing_envelope_leaves_the_cursor_and_reports_behind() {
     assert_eq!(cursor(&vault.a.lock()), 1);
 }
 
-/// Rewrites a pull page.
-type Mangle = fn(PullPage) -> PullPage;
+/// Rewrites the pull page fetched after the given sequence.
+type Mangle = fn(u64, PullPage) -> PullPage;
 
-/// A relay that serves `FakeRelay`'s pull pages through `mangle`. A pull makes no other call.
+/// A relay that serves `FakeRelay`'s pull pages through `mangle` (given the `after` of the call).
+/// A pull makes no other call.
 struct Mangled<F> {
     inner: FakeRelay,
     mangle: F,
 }
 
-impl<F: Fn(PullPage) -> PullPage + Send + Sync> Relay for Mangled<F> {
+impl<F: Fn(u64, PullPage) -> PullPage + Send + Sync> Relay for Mangled<F> {
     async fn create_account(&self) -> RelayResult<String> {
         unreachable!("not a pull call")
     }
@@ -608,7 +609,7 @@ impl<F: Fn(PullPage) -> PullPage + Send + Sync> Relay for Mangled<F> {
     }
     async fn pull(&self, vault: &VaultAuth, after: u64, limit: u32) -> RelayResult<PullPage> {
         let page = self.inner.pull(vault, after, limit).await?;
-        Ok((self.mangle)(page))
+        Ok((self.mangle)(after, page))
     }
     async fn put_snapshot(&self, _: &VaultAuth, _: u64, _: Vec<u8>) -> RelayResult<()> {
         unreachable!("not a pull call")
@@ -630,25 +631,36 @@ async fn a_page_outside_the_relay_contract_stops_as_invalid_without_moving_the_c
     push(&vault.relay, &vault.creds, &[b1, b2]).await;
     let before = sync_rows(&vault.a.lock());
     let mangles: Vec<(&str, Mangle)> = vec![
-        ("out of order", |mut p| {
+        ("out of order", |_, mut p| {
             p.ops.reverse();
             p
         }),
-        ("repeated", |mut p| {
+        ("repeated", |_, mut p| {
             p.ops[1].seq = p.ops[0].seq;
             p
         }),
-        ("not above after", |mut p| {
+        ("not above after", |_, mut p| {
             p.ops[0].seq = 0;
             p
         }),
-        ("head below the page", |mut p| {
+        ("head below the page", |_, mut p| {
             p.head = 1;
             p
         }),
-        ("empty with more", |mut p| {
+        ("empty with more", |_, mut p| {
             p.ops.clear();
             p.more = true;
+            p
+        }),
+        ("more than the limit", |_, mut p| {
+            let first = p.ops[0].clone();
+            p.ops = (1..=PULL_PAGE as u64 + 1)
+                .map(|seq| PulledOp {
+                    seq,
+                    ..first.clone()
+                })
+                .collect();
+            p.head = PULL_PAGE as u64 + 1;
             p
         }),
     ];
@@ -677,7 +689,19 @@ fn the_report_says_how_the_pull_ended_and_whether_the_round_may_push() {
         held,
         ..PullReport::default()
     };
+    let unfinished = |stop: Option<PullStop>, held: usize| PullReport {
+        unfinished: true,
+        ..report(stop, held)
+    };
     let cases = [
+        (unfinished(None, 0), PullEnd::Unfinished, false, false),
+        (unfinished(None, 3), PullEnd::Unfinished, false, false),
+        (
+            unfinished(Some(PullStop::NewerSchema), 0),
+            PullEnd::Stopped(PullStop::NewerSchema),
+            false,
+            true,
+        ),
         (report(None, 0), PullEnd::Done, true, true),
         (report(None, 2), PullEnd::Held, false, true),
         (
@@ -721,5 +745,128 @@ fn the_report_says_how_the_pull_ended_and_whether_the_round_may_push() {
         assert_eq!(report.end(), end, "{report:?}");
         assert_eq!(report.done(), done, "{report:?}");
         assert_eq!(report.may_push(), may_push, "{report:?}");
+    }
+}
+
+/// `count` copies of `ct` at the positions after `after`, with `more` set, the head where `head`
+/// puts it: a relay that re-serves one valid envelope forever.
+fn replays(ct: Vec<u8>, count: u64, head: fn(u64) -> u64) -> impl Fn(u64, PullPage) -> PullPage {
+    move |after, _| PullPage {
+        ops: (after + 1..=after + count)
+            .map(|seq| PulledOp {
+                seq,
+                id: op_id(&ct),
+                ct: ct.clone(),
+            })
+            .collect(),
+        head: head(after + count),
+        more: true,
+    }
+}
+
+fn pulls(relay: &FakeRelay) -> usize {
+    relay
+        .calls()
+        .into_iter()
+        .filter(|r| *r == Route::Pull)
+        .count()
+}
+
+/// Relay positions are not authenticated: a relay can re-serve one envelope at every position
+/// with `more` set (item 1). The pull ends at the head its first page reported.
+#[tokio::test]
+async fn endless_replays_end_the_pull_at_the_first_pages_head() {
+    let vault = vault().await;
+    let b1 = write_and_seal(&vault, &vault.b, "b1");
+    let relay = Mangled {
+        inner: vault.relay.clone(),
+        mangle: replays(b1, PULL_PAGE as u64, |last| last),
+    };
+
+    let report = pull_all(&relay, &vault.a, &vault.creds, NOW)
+        .await
+        .expect("pull");
+
+    assert_eq!(report.applied, 1, "every copy after the first is a replay");
+    assert_eq!(report.end(), PullEnd::Done);
+    assert_eq!(pulls(&vault.relay), 1);
+    assert_eq!(cursor(&vault.a.lock()), PULL_PAGE as u64);
+}
+
+/// A relay that also keeps raising its head is cut off by the page limit; the pull is unfinished
+/// and the round does not push.
+#[tokio::test]
+async fn a_relay_that_keeps_raising_its_head_leaves_the_pull_unfinished() {
+    let vault = vault().await;
+    let b1 = write_and_seal(&vault, &vault.b, "b1");
+    let relay = Mangled {
+        inner: vault.relay.clone(),
+        mangle: replays(b1, PULL_PAGE as u64, |_| u64::MAX),
+    };
+
+    let report = pull_pages(&relay, &vault.a, &vault.creds, NOW, 3)
+        .await
+        .expect("pull");
+
+    assert!(report.unfinished);
+    assert_eq!(report.end(), PullEnd::Unfinished);
+    assert!(!report.done() && !report.may_push());
+    assert_eq!((report.applied, report.stop), (1, None));
+    assert_eq!(pulls(&vault.relay), 3);
+    assert_eq!(cursor(&vault.a.lock()), 3 * PULL_PAGE as u64);
+}
+
+/// The relay's head never goes back (item 2): after a pull to sequence 2, an empty page with head
+/// 0 is outside the contract.
+#[tokio::test]
+async fn a_head_below_the_cursor_is_invalid() {
+    let vault = vault().await;
+    let b1 = write_and_seal(&vault, &vault.b, "b1");
+    let b2 = write_and_seal(&vault, &vault.b, "b2");
+    push(&vault.relay, &vault.creds, &[b1, b2]).await;
+    assert!(pull(&vault, &vault.a).await.done());
+    assert_eq!(cursor(&vault.a.lock()), 2);
+    let before = sync_rows(&vault.a.lock());
+    let relay = Mangled {
+        inner: vault.relay.clone(),
+        mangle: |_, mut p: PullPage| {
+            assert!(p.ops.is_empty() && !p.more);
+            p.head = 0;
+            p
+        },
+    };
+
+    let report = pull_all(&relay, &vault.a, &vault.creds, NOW)
+        .await
+        .expect("pull");
+
+    assert_eq!(report.stop, Some(PullStop::Invalid));
+    assert_eq!(sync_rows(&vault.a.lock()), before);
+}
+
+/// An envelope fetched again counts its bytes once (item 3): while C is quarantined, every pull
+/// fetches C's held envelopes and B's envelope behind them again.
+#[tokio::test]
+async fn an_envelope_fetched_again_counts_its_bytes_once() {
+    let vault = vault().await;
+    let c1 = forge(&vault.creds, &changeset(C, 1, None, vec![]));
+    let c2 = forge(&vault.creds, &changeset(C, 2, Some([9; 32]), vec![]));
+    let b1 = write_and_seal(&vault, &vault.b, "b1");
+    push(&vault.relay, &vault.creds, &[c1.clone(), c2, b1]).await;
+    let pulled = |conn: &Connection| {
+        state::marks(conn)
+            .expect("marks")
+            .expect("row")
+            .pulled_bytes
+    };
+
+    for _ in 0..3 {
+        let report = pull(&vault, &vault.a).await;
+        assert_eq!(report.end(), PullEnd::Held);
+        assert_eq!(
+            pulled(&vault.a.lock()),
+            c1.len() as u64,
+            "only what the cursor moved past counts"
+        );
     }
 }

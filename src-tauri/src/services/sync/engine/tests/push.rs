@@ -381,14 +381,39 @@ async fn an_oversized_row_is_refused_and_the_loop_still_ends() {
     assert_eq!(vault.relay.ops().len(), 1);
 }
 
+/// A device that turned sync on or joined starts at its barrier: it has no barrier to mark, so an
+/// idle first push seals nothing, although it has not met a marker (`barrier_seq` unknown).
+#[tokio::test]
+async fn a_fresh_device_with_nothing_queued_seals_no_marker() {
+    let vault = vault().await;
+    for (name, device) in [("A", &vault.a), ("B", &vault.b)] {
+        let conn = device.lock();
+        let sync = state::load(&conn).expect("state").expect("row");
+        assert!(sync.barrier > 0, "{name}: the build has a barrier");
+        assert_eq!(sync.barrier_seq, None, "{name}: no marker met");
+        assert_eq!(
+            count(&conn, "SELECT COUNT(*) FROM sync_outbox"),
+            0,
+            "{name}"
+        );
+        assert_eq!(marker_barrier(&conn), sync.barrier, "{name}");
+
+        let report = seal_batch(&conn, &vault.creds).expect("seal");
+
+        assert_eq!((report.sealed, report.marker), (0, false), "{name}");
+        assert!(unsent(&conn).is_empty(), "{name}");
+    }
+}
+
+/// The case the marker is for: a device that crossed a barrier after it started.
 #[tokio::test]
 async fn a_device_past_a_new_barrier_with_nothing_to_send_pushes_one_marker() {
     let vault = vault().await;
     {
         let a = vault.a.lock();
-        let current = barrier(&a);
-        state::note_sealed_at_barrier(&a, current).expect("marked");
-        // Already marked at its barrier: nothing to send is nothing pushed.
+        // A device that turned sync on at its barrier starts marked: nothing to send is nothing
+        // pushed.
+        assert_eq!(marker_barrier(&a), barrier(&a));
         let idle = seal_batch(&a, &vault.creds).expect("seal");
         assert_eq!((idle.sealed, idle.marker), (0, false));
         // Past a new barrier whose marker this device already met: no marker of its own.

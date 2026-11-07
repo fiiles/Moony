@@ -25,6 +25,9 @@ pub enum Mode {
     /// An ordinary write: clocked and queued.
     Local,
     /// The engine applies remote changes: only cascaded tombstones are recorded, nothing is queued.
+    /// Every DELETE in this mode RAISEs unless `set_cascade_clock` was called first: the deleted
+    /// row and every row its FK cascades reach are tombstoned at that clock (the parent's
+    /// tombstone, D13). The merge sets it before each of its deletes (`merge::parents::delete_row`).
     Merge,
     /// Recalculations and repairs after a merge: nothing is recorded.
     Repair,

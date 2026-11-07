@@ -95,6 +95,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("028_transaction_fee", MIGRATION_028),
         ("029_device_sync", MIGRATION_029),
         ("030_sync_engine", MIGRATION_030),
+        ("031_sync_missed_below_barrier", MIGRATION_031),
     ]
 }
 
@@ -3396,9 +3397,12 @@ mod migration_029 {
     }
 
     #[test]
-    fn the_chain_now_has_30_migrations() {
-        assert_eq!(known_migration_names().len(), 30);
-        assert_eq!(known_migration_names().last(), Some(&"030_sync_engine"));
+    fn the_chain_now_has_31_migrations() {
+        assert_eq!(known_migration_names().len(), 31);
+        assert_eq!(
+            known_migration_names().last(),
+            Some(&"031_sync_missed_below_barrier")
+        );
     }
 }
 
@@ -3419,6 +3423,35 @@ ALTER TABLE sync_state ADD COLUMN pulled_bytes_base INTEGER NOT NULL DEFAULT 0;
 ALTER TABLE sync_state ADD COLUMN snapshot_uploaded_at INTEGER;
 ALTER TABLE sync_state ADD COLUMN binding_written INTEGER NOT NULL DEFAULT 0 CHECK (binding_written IN (0, 1));
 "#;
+
+/// 031: `sync_state.missed_below_barrier` (Local): the newest relay sequence at which this device
+/// skipped an envelope written below its barrier (NULL when nothing is missed). A snapshot at that
+/// barrier or later and at that sequence or later heals it (Task 8 review ruling T8-2).
+pub(crate) const MIGRATION_031: &str = r#"
+ALTER TABLE sync_state ADD COLUMN missed_below_barrier INTEGER;
+"#;
+
+#[cfg(test)]
+mod migration_031 {
+    use super::*;
+
+    #[test]
+    fn sync_state_gains_missed_below_barrier_unset() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_chain(&conn, &all_migrations()).expect("full chain");
+        conn.execute(
+            "INSERT INTO sync_state (id, device_id) VALUES (1, x'00')",
+            [],
+        )
+        .expect("row");
+        let missed: Option<i64> = conn
+            .query_row("SELECT missed_below_barrier FROM sync_state", [], |r| {
+                r.get(0)
+            })
+            .expect("column");
+        assert_eq!(missed, None);
+    }
+}
 
 #[cfg(test)]
 mod migration_030 {

@@ -45,17 +45,37 @@ impl EnvelopeMeta {
     }
 }
 
-/// Records the barrier marker (§14): the first envelope in relay order written at or above the
+/// Records the barrier marker (§14): the envelope earliest in relay order written at or above the
 /// barrier this device is past. Called before `judge` on every envelope that decrypts, whatever its
-/// verdict: a position in relay order is the same for every device, so every device finds the same
-/// marker. `true` when `meta` became the marker (`sync_state.barrier_seq` = its position).
+/// verdict: a position in relay order is the same for every device, and the smallest one wins
+/// (ruling T8-5), so every device finds the same marker in whatever order it notes positions.
+/// `true` when `meta` became the marker (`sync_state.barrier_seq` = its position).
+///
+/// The marker tells a device below the barrier where to stop; a device past the barrier skips
+/// every envelope written below it wherever it lies (`judge`, ruling T8-2).
 pub fn note_barrier_marker(conn: &Connection, meta: &EnvelopeMeta) -> Result<bool> {
     let sync = loaded(conn)?;
-    if sync.barrier == 0 || sync.barrier_seq.is_some() || meta.barrier < sync.barrier {
+    let earlier = sync.barrier_seq.is_none_or(|m| meta.position < m);
+    if sync.barrier == 0 || meta.barrier < sync.barrier || !earlier {
         return Ok(false);
     }
     state::set_barrier_seq(conn, Some(meta.position))?;
     Ok(true)
+}
+
+/// Whether a snapshot whose header says `header_barrier` and relay sequence `header_seq` heals
+/// what this device missed by skipping below-barrier envelopes (ruling T8-2): it was dumped at
+/// this device's barrier or later, by a device that had dealt with every skipped position.
+/// `false` when nothing is missed.
+///
+/// The engine (Tasks 11 and 13) restores by merge from the relay's newest snapshot once this
+/// holds; `snapshot::restore_merge` then clears `missed_below_barrier`. Every device that crosses a
+/// barrier uploads a snapshot at its first clean round after crossing (forced, outside the upload
+/// policy), so such a snapshot appears. Known limit (ADR 0025): an envelope that no device applied
+/// before crossing stays missed by the devices that crossed early.
+pub fn snapshot_heals_missed(sync: &SyncState, header_barrier: u32, header_seq: u64) -> bool {
+    sync.missed_below_barrier
+        .is_some_and(|missed| header_barrier >= sync.barrier && header_seq >= missed)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -77,8 +97,8 @@ pub enum Verdict {
     Gap,
     /// Written by a newer schema than this build knows: stop pulling, keep pushing.
     NewerSchema,
-    /// Written below the barrier this device is past and placed after the barrier marker in relay
-    /// order: not applied, the head moves (`skip_below_barrier`).
+    /// Written below the barrier this device is past: not applied, the head moves and the miss is
+    /// recorded (`skip_below_barrier`), wherever the relay placed it (ruling T8-2).
     BelowBarrier,
     /// The chain link itself is malformed (`seq` 0, a first envelope with a `prev`, a later one
     /// without): stop.
@@ -112,11 +132,11 @@ pub fn judge(conn: &Connection, meta: &EnvelopeMeta) -> Result<Verdict> {
     if head.as_ref().is_some_and(|h| h.quarantined) {
         return Ok(Verdict::Held);
     }
-    // Below the barrier is skipped only when the relay placed it after the marker: a lagging
-    // device may push below the barrier before it pulls the marker, and that envelope still
-    // applies, on every device alike (§14).
+    // Below the barrier is never applied, even before the marker (ruling T8-2): a device that
+    // crossed with a stale cursor would apply it raw while the others skip it. The skip is
+    // recorded and healed by a snapshot (`snapshot_heals_missed`).
     let next = || {
-        if meta.barrier < sync.barrier && sync.barrier_seq.is_some_and(|m| meta.position > m) {
+        if meta.barrier < sync.barrier {
             Verdict::BelowBarrier
         } else {
             Verdict::Apply
@@ -157,9 +177,13 @@ pub fn quarantine(conn: &Connection, device: DeviceId) -> Result<()> {
     Ok(())
 }
 
-/// Moves the author's head past an envelope written below the barrier, without applying it.
+/// Moves the author's head past an envelope written below the barrier, without applying it, and
+/// records its relay position as missed (`state::note_missed_below_barrier`, the newest kept).
 pub fn skip_below_barrier(conn: &Connection, meta: &EnvelopeMeta) -> Result<()> {
-    set_head(conn, meta.device, meta.seq, meta.hash)
+    in_savepoint(conn, "sync_skip_below_barrier", || {
+        set_head(conn, meta.device, meta.seq, meta.hash)?;
+        state::note_missed_below_barrier(conn, meta.position)
+    })
 }
 
 /// At unlock (§14): when this build is past a barrier the profile was last opened below, the rows
@@ -402,8 +426,8 @@ mod tests {
         assert!(queued_at("t1") < queued_at("acc"));
     }
 
-    /// Everything queued, sealed as the journal seals it: each envelope's rows, in order.
-    pub(super) fn sealed_rows(conn: &Connection) -> Vec<Vec<RowChange>> {
+    /// Everything queued, sealed as the journal seals it (the hash is `h(seq)`), in order.
+    pub(super) fn sealed_changesets(conn: &Connection) -> Vec<(Changeset, [u8; 32])> {
         let mut out = Vec::new();
         loop {
             let tx = conn.unchecked_transaction().unwrap();
@@ -412,10 +436,19 @@ mod tests {
             let Some(built) = built else {
                 return out;
             };
-            record_sealed(&tx, &built, h(built.changeset.seq as u8)).unwrap();
+            let hash = h(built.changeset.seq as u8);
+            record_sealed(&tx, &built, hash).unwrap();
             tx.commit().unwrap();
-            out.push(built.changeset.rows);
+            out.push((built.changeset, hash));
         }
+    }
+
+    /// `sealed_changesets`, each envelope's rows only.
+    pub(super) fn sealed_rows(conn: &Connection) -> Vec<Vec<RowChange>> {
+        sealed_changesets(conn)
+            .into_iter()
+            .map(|(cs, _)| cs.rows)
+            .collect()
     }
 
     /// `acc` goes out before `t1` (by envelope, then by place in it), and `t1`'s `"p"` carries
@@ -593,17 +626,24 @@ mod tests {
     }
 
     #[test]
-    fn below_barrier_envelope_before_the_marker_is_applied() {
+    fn below_barrier_envelope_before_the_marker_is_skipped_and_missed() {
+        // A device that crossed at unlock with a stale cursor has no marker yet (ruling T8-2).
         let conn = profile();
         conn.execute_batch("UPDATE sync_state SET barrier = 25")
             .unwrap();
-        // No marker seen yet: a lagging device's envelope still applies.
         let lagging = placed(meta(A, 1, None, 1), 19, 5);
-        assert_eq!(judge(&conn, &lagging).unwrap(), Verdict::Apply);
-        // The marker lands at relay sequence 6; the envelope at 5 sits before it.
+        assert_eq!(judge(&conn, &lagging).unwrap(), Verdict::BelowBarrier);
+
+        skip_below_barrier(&conn, &lagging).unwrap();
+
+        let sync = state::load(&conn).unwrap().expect("row");
+        assert_eq!(sync.missed_below_barrier, Some(5));
+        assert_eq!(sync.barrier_seq, None);
+        assert_eq!(heads(&conn), vec![(A.0.to_vec(), 1, h(1).to_vec(), false)]);
+        // Placed before a marker noted later, it is still not applied.
         assert!(note_barrier_marker(&conn, &placed(meta(B, 1, None, 11), 25, 6)).unwrap());
-        assert_eq!(barrier_seq(&conn), Some(6));
-        assert_eq!(judge(&conn, &lagging).unwrap(), Verdict::Apply);
+        let next = placed(meta(A, 2, Some(1), 2), 19, 4);
+        assert_eq!(judge(&conn, &next).unwrap(), Verdict::BelowBarrier);
     }
 
     #[test]
@@ -620,9 +660,45 @@ mod tests {
         assert_eq!(heads(&conn), vec![(A.0.to_vec(), 1, h(1).to_vec(), false)]);
         let next = placed(meta(A, 2, Some(1), 2), 25, 8);
         assert_eq!(judge(&conn, &next).unwrap(), Verdict::Apply);
-        assert_eq!(
-            judge(&conn, &placed(next.clone(), 24, 8)).unwrap(),
-            Verdict::BelowBarrier
+        let below = placed(next.clone(), 24, 9);
+        assert_eq!(judge(&conn, &below).unwrap(), Verdict::BelowBarrier);
+        skip_below_barrier(&conn, &below).unwrap();
+        // The newest skipped position is kept.
+        let sync = state::load(&conn).unwrap().expect("row");
+        assert_eq!(sync.missed_below_barrier, Some(9));
+    }
+
+    #[test]
+    fn the_marker_is_the_smallest_position_noted_in_any_order() {
+        let conn = profile();
+        conn.execute_batch("UPDATE sync_state SET barrier = 25")
+            .unwrap();
+        assert!(note_barrier_marker(&conn, &placed(meta(B, 2, Some(11), 12), 25, 9)).unwrap());
+        assert!(note_barrier_marker(&conn, &placed(meta(B, 1, None, 11), 25, 4)).unwrap());
+        assert!(!note_barrier_marker(&conn, &placed(meta(A, 1, None, 1), 25, 6)).unwrap());
+        assert!(!note_barrier_marker(&conn, &placed(meta(A, 2, Some(1), 2), 19, 2)).unwrap());
+        assert_eq!(barrier_seq(&conn), Some(4));
+    }
+
+    #[test]
+    fn a_snapshot_heals_a_miss_only_at_the_barrier_and_past_the_missed_position() {
+        let conn = profile();
+        conn.execute_batch("UPDATE sync_state SET barrier = 25")
+            .unwrap();
+        let sync = state::load(&conn).unwrap().expect("row");
+        assert!(!snapshot_heals_missed(&sync, 25, 100), "nothing missed");
+
+        state::note_missed_below_barrier(&conn, 7).unwrap();
+        let sync = state::load(&conn).unwrap().expect("row");
+        assert!(snapshot_heals_missed(&sync, 25, 7));
+        assert!(snapshot_heals_missed(&sync, 26, 30));
+        assert!(
+            !snapshot_heals_missed(&sync, 25, 6),
+            "dumped before the miss"
+        );
+        assert!(
+            !snapshot_heals_missed(&sync, 19, 30),
+            "dumped below the barrier"
         );
     }
 
@@ -736,7 +812,7 @@ mod tests {
         );
         let sync = state::load(&conn).unwrap().expect("row");
         assert_eq!(sync.barrier, 25);
-        assert_eq!(sync.schema_seen, 30);
+        assert_eq!(sync.schema_seen, 31);
         assert_eq!(sync.barrier, barrier_number());
         assert_eq!(sync.schema_seen, schema_number());
         assert!(capture::is_installed(&conn).unwrap());
@@ -757,6 +833,6 @@ mod tests {
         crate::services::sync::on_open(&conn);
 
         assert!(outbox(&conn).is_empty());
-        assert_eq!(state::load(&conn).unwrap().expect("row").schema_seen, 30);
+        assert_eq!(state::load(&conn).unwrap().expect("row").schema_seen, 31);
     }
 }

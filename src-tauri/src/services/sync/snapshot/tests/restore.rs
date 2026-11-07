@@ -535,3 +535,56 @@ fn restore_by_merge_never_moves_the_bookkeeping_back() {
         "the header's C head (seq 1) does not move the newer local head back"
     );
 }
+
+#[test]
+fn a_crossed_device_skips_a_lagging_envelope_until_a_healing_snapshot() {
+    use crate::services::sync::chain::{skip_below_barrier, snapshot_heals_missed};
+    let missed = |conn: &Connection| {
+        state::load(conn)
+            .expect("load")
+            .expect("row")
+            .missed_below_barrier
+    };
+    // D has not updated (barrier 19) and writes; A applies it while still below the barrier,
+    // then crosses.
+    let d = device(D);
+    exec(&d, "UPDATE sync_state SET barrier = 19");
+    exec(
+        &d,
+        "INSERT INTO institutions (id, name) VALUES ('id', 'From D')",
+    );
+    let from_d = send(&d);
+    assert_eq!(from_d[0].0.barrier, 19);
+    let a = device(A);
+    exec(&a, "UPDATE sync_state SET barrier = 19");
+    apply(&a, &from_d);
+    exec(&a, "UPDATE sync_state SET barrier = 25");
+    // B crossed at unlock with a stale cursor: no marker yet, and D's envelope (relay 3) is
+    // below its barrier. It is skipped, never applied raw.
+    let b = device(B);
+    let meta = EnvelopeMeta::of(&from_d[0].0, from_d[0].1, 3);
+    assert_eq!(judge(&b, &meta).expect("judge"), Verdict::BelowBarrier);
+    skip_below_barrier(&b, &meta).expect("skip");
+    assert_eq!(missed(&b), Some(3));
+    assert_eq!(
+        count(&b, "SELECT COUNT(*) FROM institutions WHERE id = 'id'"),
+        0
+    );
+
+    // A snapshot dumped before the skipped position does not heal it.
+    let (early, _) = snapshot(&a, 2);
+    let sync = state::load(&b).expect("load").expect("row");
+    assert!(!snapshot_heals_missed(&sync, 25, 2));
+    restore_merge(&b, &mut &early[..], NOW).expect("merge");
+    assert_eq!(missed(&b), Some(3));
+
+    // One at the barrier and past it does, and the restore clears the miss.
+    let (healing, _) = snapshot(&a, 5);
+    assert!(snapshot_heals_missed(&sync, 25, 5));
+    restore_merge(&b, &mut &healing[..], NOW).expect("merge");
+    assert_eq!(missed(&b), None);
+    assert_eq!(
+        value(&b, "SELECT name FROM institutions WHERE id = 'id'"),
+        Some("From D".to_string())
+    );
+}

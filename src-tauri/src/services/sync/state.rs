@@ -21,6 +21,9 @@ pub struct SyncState {
     pub barrier: u32,
     pub schema_seen: u32,
     pub barrier_seq: Option<u64>,
+    /// The newest relay sequence at which this device skipped an envelope written below its
+    /// barrier (migration 031); `None` when nothing is missed.
+    pub missed_below_barrier: Option<u64>,
 }
 
 /// The engine's own bookkeeping on the `sync_state` row (migration 030), apart from the chain
@@ -48,13 +51,15 @@ type RawState = (
     i64,
     i64,
     Option<i64>,
+    Option<i64>,
 );
 
 /// The row, or `None` for a profile that never turned sync on. One `SELECT` (G5).
 pub fn load(conn: &Connection) -> Result<Option<SyncState>> {
     let raw: Option<RawState> = conn
         .query_row(
-            "SELECT enabled, device_id, next_seq, last_hash, cursor, snapshot_hlc, barrier, schema_seen, barrier_seq \
+            "SELECT enabled, device_id, next_seq, last_hash, cursor, snapshot_hlc, barrier, schema_seen, barrier_seq, \
+               missed_below_barrier \
              FROM sync_state WHERE id = 1",
             [],
             |r| {
@@ -68,6 +73,7 @@ pub fn load(conn: &Connection) -> Result<Option<SyncState>> {
                     r.get(6)?,
                     r.get(7)?,
                     r.get(8)?,
+                    r.get(9)?,
                 ))
             },
         )
@@ -82,6 +88,7 @@ pub fn load(conn: &Connection) -> Result<Option<SyncState>> {
         barrier,
         schema_seen,
         barrier_seq,
+        missed_below_barrier,
     )) = raw
     else {
         return Ok(None);
@@ -106,6 +113,9 @@ pub fn load(conn: &Connection) -> Result<Option<SyncState>> {
         schema_seen: unsigned(schema_seen, "schema_seen")?,
         barrier_seq: barrier_seq
             .map(|v| unsigned(v, "barrier_seq"))
+            .transpose()?,
+        missed_below_barrier: missed_below_barrier
+            .map(|v| unsigned(v, "missed_below_barrier"))
             .transpose()?,
     }))
 }
@@ -296,6 +306,26 @@ pub fn rebase_pulled_bytes(conn: &Connection, vault_snapshot_seq: u64) -> Result
 pub fn set_barrier_seq(conn: &Connection, seq: Option<u64>) -> Result<()> {
     let seq = seq.map(|s| signed(s, "barrier_seq")).transpose()?;
     conn.execute("UPDATE sync_state SET barrier_seq = ?1 WHERE id = 1", [seq])?;
+    Ok(())
+}
+
+/// This device skipped an envelope written below its barrier at relay sequence `position`
+/// (ruling T8-2); the newest such position is kept.
+pub fn note_missed_below_barrier(conn: &Connection, position: u64) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET missed_below_barrier = MAX(COALESCE(missed_below_barrier, 0), ?1) \
+         WHERE id = 1",
+        [signed(position, "missed_below_barrier")?],
+    )?;
+    Ok(())
+}
+
+/// A snapshot that covers every skipped below-barrier envelope was restored.
+pub fn clear_missed_below_barrier(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET missed_below_barrier = NULL WHERE id = 1",
+        [],
+    )?;
     Ok(())
 }
 
@@ -699,6 +729,20 @@ mod tests {
         assert_eq!(load(&conn).unwrap().unwrap().barrier_seq, Some(8));
         set_barrier_seq(&conn, None).unwrap();
         assert_eq!(load(&conn).unwrap().unwrap().barrier_seq, None);
+    }
+
+    #[test]
+    fn the_newest_missed_below_barrier_position_is_kept_until_cleared() {
+        let conn = migrated();
+        row_with_hash(&conn);
+        assert_eq!(load(&conn).unwrap().unwrap().missed_below_barrier, None);
+        note_missed_below_barrier(&conn, 7).unwrap();
+        note_missed_below_barrier(&conn, 4).unwrap();
+        assert_eq!(load(&conn).unwrap().unwrap().missed_below_barrier, Some(7));
+        note_missed_below_barrier(&conn, 9).unwrap();
+        assert_eq!(load(&conn).unwrap().unwrap().missed_below_barrier, Some(9));
+        clear_missed_below_barrier(&conn).unwrap();
+        assert_eq!(load(&conn).unwrap().unwrap().missed_below_barrier, None);
     }
 
     #[test]

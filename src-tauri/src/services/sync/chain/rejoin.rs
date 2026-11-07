@@ -86,21 +86,23 @@ fn own_log(conn: &Connection) -> Result<Vec<OwnEntry>> {
 /// acknowledged (no longer in `sync_unsent`), up to the first one that is not, and below the
 /// trigger's sequence (an own envelope at or above it may be the losing side of a fork). Its newest
 /// entry becomes the old ID's head, so the old self's later envelopes (the trigger included) apply
-/// like any other device's. When the prefix is empty and the trigger is not the old ID's first
-/// envelope, the trigger's `prev` names the old ID's envelope before it, which this device has
-/// already passed in relay order: `(trigger.seq − 1, trigger.prev)` becomes the head, so the
-/// trigger applies instead of waiting for a gap that never fills.
+/// like any other device's. When the prefix ends below `trigger.seq − 1` (it may be empty), the
+/// trigger's `prev` names the old ID's envelope before it, which this device has already passed in
+/// relay order (a snapshot cursor jump can pass envelopes it never acknowledged):
+/// `(trigger.seq − 1, trigger.prev)` becomes the head, so the trigger applies instead of waiting
+/// for a gap that never fills (ruling T8-3).
 ///
 /// Every own clock at or above
 /// `W = min(max_hlc of the prefix, min_hlc of every own envelope outside it)` is queued again:
 /// `max_hlc` is not monotonic in `seq`, and an envelope outside the prefix may carry clocks below
-/// the prefix's newest. Re-queuing too much is harmless; too little loses edits.
+/// the prefix's newest. When the own log holds no entry `(trigger.seq − 1, trigger.prev)`, the
+/// relay's chain up to the trigger is not known to be this device's, and `W` drops to the oldest
+/// `min_hlc` of the whole log. Re-queuing too much is harmless; too little loses edits.
 ///
 /// Then the device continues as `new_device` with a fresh chain (its own log and unsent envelopes
 /// go), capture is reinstalled for the new ID when it was installed, and the old ID's column
-/// clocks from `W` on are re-stamped under the new ID (`restamp_own_columns`): a rolled-back copy
-/// could otherwise reissue an old `(hlc, device)` with another value. Row clocks and tombstones
-/// keep their old ID.
+/// clocks from `W` on move to the new ID with their hlc kept (`restamp_own_columns`, ruling
+/// T8-1). Row clocks and tombstones keep their old ID.
 pub fn rejoin(
     conn: &Connection,
     new_device: DeviceId,
@@ -120,16 +122,30 @@ pub fn rejoin(
         let (confirmed, outside) = log.split_at(prefix);
         let prefix_max = confirmed.iter().map(|e| e.max_hlc).max().unwrap_or(0);
         let outside_min = outside.iter().map(|e| e.min_hlc).min().unwrap_or(u64::MAX);
-        let watermark = prefix_max.min(outside_min);
-        match (confirmed.last(), trigger) {
-            (Some(last), _) => set_head(conn, old, last.seq, last.hash)?,
-            (None, Some(t)) if t.seq > 1 => {
-                let prev = t.prev.ok_or_else(|| {
+        let mut watermark = prefix_max.min(outside_min);
+        // The old ID's envelope just before the trigger, as the trigger names it.
+        let before_trigger = match trigger {
+            Some(t) if t.seq > 1 => Some((
+                t.seq - 1,
+                t.prev.ok_or_else(|| {
                     AppError::Internal(format!("sync chain: re-join trigger {} has no prev", t.seq))
-                })?;
-                set_head(conn, old, t.seq - 1, prev)?;
+                })?,
+            )),
+            _ => None,
+        };
+        if let Some((seq, hash)) = before_trigger {
+            if !log.iter().any(|e| e.seq == seq && e.hash == hash) {
+                let oldest = log.iter().map(|e| e.min_hlc).min().unwrap_or(watermark);
+                watermark = watermark.min(oldest);
             }
-            (None, _) => {}
+        }
+        let head = match (confirmed.last(), before_trigger) {
+            (Some(last), Some(named)) if last.seq < named.0 => Some(named),
+            (Some(last), _) => Some((last.seq, last.hash)),
+            (None, named) => named,
+        };
+        if let Some((seq, hash)) = head {
+            set_head(conn, old, seq, hash)?;
         }
         let queued = requeue_own_from(conn, old, watermark)?;
         conn.execute(
@@ -137,14 +153,10 @@ pub fn rejoin(
             [new_device.0.to_vec()],
         )?;
         conn.execute_batch("DELETE FROM sync_own_log; DELETE FROM sync_unsent;")?;
-        // The re-stamp needs the clock, which capture provides: installed for it alone when
-        // capture is off.
-        let installed = capture::is_installed(conn)?;
-        capture::install(conn, new_device)?;
-        let restamped = restamp_own_columns(conn, old, new_device, watermark)?;
-        if !installed {
-            capture::uninstall(conn)?;
+        if capture::is_installed(conn)? {
+            capture::install(conn, new_device)?;
         }
+        let restamped = restamp_own_columns(conn, old, new_device, watermark)?;
         Ok(RejoinReport {
             old_device: old,
             queued,
@@ -153,10 +165,12 @@ pub fn rejoin(
     })
 }
 
-/// Moves every column clock of `old` at `from_hlc` or newer to `new` with a fresh clock
-/// (`capture::tick`, so capture must be installed): one tick per key, so the columns of one row
-/// (and so every column group) keep one clock. Row clocks (`'*'`) and tombstones (`'-'`) stay
-/// as they are. Returns how many column clocks moved.
+/// Moves every column clock of `old` at `from_hlc` or newer to `new`, keeping its hlc (ruling
+/// T8-1): `(hlc, old)` becomes `(hlc, new)`. A rolled-back copy and the original can both have
+/// issued `(hlc, old)` with different values; after the move the two differ by device and every
+/// device orders them alike. Keeping the hlc means a re-sent edit never beats a later edit of
+/// another device. The columns of a row (and so every column group) move together. Row clocks
+/// (`'*'`) and tombstones (`'-'`) stay as they are. Returns how many column clocks moved.
 pub fn restamp_own_columns(
     conn: &Connection,
     old: DeviceId,
@@ -165,26 +179,11 @@ pub fn restamp_own_columns(
 ) -> Result<usize> {
     let from = i64::try_from(from_hlc)
         .map_err(|_| AppError::Internal(format!("sync chain: clock {from_hlc} is out of range")))?;
-    let keys: Vec<(String, String)> = conn
-        .prepare(
-            "SELECT DISTINCT tbl, pk FROM sync_clock \
-             WHERE device = ?1 AND hlc >= ?2 AND col NOT IN ('*', '-') ORDER BY tbl, pk",
-        )?
-        .query_map(params![old.0.to_vec(), from], |r| {
-            Ok((r.get(0)?, r.get(1)?))
-        })?
-        .collect::<std::result::Result<_, _>>()?;
-    let mut moved = 0;
-    for (tbl, pk) in keys {
-        let hlc = i64::try_from(capture::tick(conn)?)
-            .map_err(|_| AppError::Internal("sync chain: clock out of range".into()))?;
-        moved += conn.execute(
-            "UPDATE sync_clock SET hlc = ?1, device = ?2 \
-             WHERE tbl = ?3 AND pk = ?4 AND device = ?5 AND hlc >= ?6 AND col NOT IN ('*', '-')",
-            params![hlc, new.0.to_vec(), tbl, pk, old.0.to_vec(), from],
-        )?;
-    }
-    Ok(moved)
+    Ok(conn.execute(
+        "UPDATE sync_clock SET device = ?1 \
+         WHERE device = ?2 AND hlc >= ?3 AND col NOT IN ('*', '-')",
+        params![new.0.to_vec(), old.0.to_vec(), from],
+    )?)
 }
 
 #[cfg(test)]
@@ -192,6 +191,9 @@ mod tests {
     use super::*;
     use crate::services::sync::chain::tests::*;
     use crate::services::sync::chain::{judge, Verdict};
+    use crate::services::sync::changeset::SqlValue;
+    use crate::services::sync::hlc::Clock;
+    use crate::services::sync::merge::apply_changeset;
     use crate::services::sync::state;
     use crate::services::sync::test_support::migrated;
 
@@ -378,10 +380,6 @@ mod tests {
         (hlc, DeviceId(device.try_into().expect("16 bytes")))
     }
 
-    fn newest_clock(conn: &Connection) -> i64 {
-        count(conn, "SELECT MAX(hlc) FROM sync_clock")
-    }
-
     #[test]
     fn rejoin_with_an_empty_prefix_takes_the_trigger_prev_as_the_old_head() {
         let conn = profile();
@@ -409,7 +407,6 @@ mod tests {
         clock(&conn, "theirs", "name", 410, A);
         // W = 200: i250's name (270) is re-stamped, i150's (160) is not.
         sealed(&conn, 1, 1, 90, 200, false);
-        let before = newest_clock(&conn);
 
         let report = rejoin(&conn, NEW, None).unwrap();
 
@@ -421,9 +418,7 @@ mod tests {
                 restamped: 1,
             }
         );
-        let (hlc, device) = clock_of(&conn, "i250", "name");
-        assert_eq!(device, NEW);
-        assert!(hlc > before, "{hlc} > {before}");
+        assert_eq!(clock_of(&conn, "i250", "name"), (270, NEW));
         assert_eq!(clock_of(&conn, "i150", "name"), (160, ME));
         assert_eq!(clock_of(&conn, "theirs", "name"), (410, A));
         assert!(!capture::is_installed(&conn).unwrap(), "capture stays off");
@@ -452,7 +447,7 @@ mod tests {
     }
 
     #[test]
-    fn restamped_columns_of_one_row_share_one_clock() {
+    fn restamped_columns_keep_their_hlc_under_the_new_device() {
         let conn = profile();
         clock(&conn, "r", "*", 100, ME);
         clock(&conn, "r", "name", 260, ME);
@@ -461,20 +456,132 @@ mod tests {
         clock(&conn, "s", "name", 270, ME);
         clock(&conn, "theirs", "*", 400, A);
         sealed(&conn, 1, 1, 90, 200, false);
-        let before = newest_clock(&conn);
 
         let report = rejoin(&conn, NEW, None).unwrap();
 
         assert_eq!(report.restamped, 3);
-        let r_name = clock_of(&conn, "r", "name");
-        let r_website = clock_of(&conn, "r", "website");
-        let s_name = clock_of(&conn, "s", "name");
-        assert_eq!(r_name, r_website);
-        assert_ne!(r_name.0, s_name.0);
-        for (hlc, device) in [r_name, r_website, s_name] {
-            assert_eq!(device, NEW);
-            assert!(hlc > before, "{hlc} > {before}");
+        assert_eq!(clock_of(&conn, "r", "name"), (260, NEW));
+        assert_eq!(clock_of(&conn, "r", "website"), (280, NEW));
+        assert_eq!(clock_of(&conn, "s", "name"), (270, NEW));
+        assert_eq!(clock_of(&conn, "r", "*"), (100, ME));
+        assert_eq!(clock_of(&conn, "s", "*"), (110, ME));
+        assert_eq!(clock_of(&conn, "theirs", "*"), (400, A));
+    }
+
+    #[test]
+    fn a_remote_edit_newer_than_the_own_clock_still_wins_after_a_rejoin() {
+        let x = migrated();
+        state::enable(&x, ME).unwrap();
+        x.execute_batch(
+            "DELETE FROM sync_outbox; DELETE FROM sync_clock; \
+             INSERT INTO institutions (id, name) VALUES ('i1', 'Bank'); \
+             UPDATE institutions SET name = 'From X' WHERE id = 'i1';",
+        )
+        .unwrap();
+        let from_x = sealed_changesets(&x);
+        let z = migrated();
+        state::enable(&z, A).unwrap();
+        z.execute_batch("DELETE FROM sync_outbox; DELETE FROM sync_clock;")
+            .unwrap();
+        for (cs, hash) in &from_x {
+            apply_changeset(&z, cs, *hash, 0).unwrap();
         }
+        // Z renames after X's edit and before X re-joins.
+        z.execute_batch("UPDATE institutions SET name = 'From Z' WHERE id = 'i1'")
+            .unwrap();
+        let from_z = sealed_changesets(&z);
+        let (own_hlc, _) = clock_of(&x, "i1", "name");
+        let (remote_hlc, _) = clock_of(&z, "i1", "name");
+        assert!(own_hlc < remote_hlc);
+
+        let report = rejoin(&x, NEW, None).unwrap();
+        assert_eq!(report.restamped, 1);
+        assert_eq!(clock_of(&x, "i1", "name"), (own_hlc, NEW));
+        // X re-sends its edit, with its hlc, before it hears of Z's.
+        let resent = sealed_changesets(&x);
+        assert_eq!(
+            resent[0].0.rows[0].columns["name"],
+            (
+                SqlValue::Text("From X".into()),
+                Clock {
+                    hlc: own_hlc as u64,
+                    device: NEW
+                }
+            )
+        );
+        for (cs, hash) in &resent {
+            apply_changeset(&z, cs, *hash, 0).unwrap();
+        }
+        for (cs, hash) in &from_z {
+            apply_changeset(&x, cs, *hash, 0).unwrap();
+        }
+
+        for conn in [&x, &z] {
+            let name: String = conn
+                .query_row("SELECT name FROM institutions WHERE id = 'i1'", [], |r| {
+                    r.get(0)
+                })
+                .unwrap();
+            assert_eq!(name, "From Z");
+            assert_eq!(clock_of(conn, "i1", "name"), (remote_hlc, A));
+        }
+    }
+
+    #[test]
+    fn rejoin_after_a_snapshot_cursor_jump_takes_the_trigger_prev_as_the_old_head() {
+        // Seq 2 and 3 reached the relay, but a restore by merge moved the cursor past them before
+        // they were acknowledged; the clone's seq 4 follows the relay's seq 3.
+        let conn = profile();
+        own_clocks(&conn);
+        sealed(&conn, 1, 1, 90, 100, false);
+        sealed(&conn, 2, 2, 150, 200, true);
+        sealed(&conn, 3, 3, 250, 300, true);
+        let trigger = meta(ME, 4, Some(3), 4);
+
+        let report = rejoin(&conn, NEW, Some(&trigger)).unwrap();
+
+        assert_eq!(heads(&conn), vec![(ME.0.to_vec(), 3, h(3).to_vec(), false)]);
+        assert_eq!(judge(&conn, &trigger).unwrap(), Verdict::Apply);
+        // W = min(100, 150): the own log holds (3, h3), so it is not lowered.
+        assert_eq!(report.queued, 4);
+        assert_eq!(
+            outbox(&conn),
+            vec![
+                queued("dead", 360),
+                queued("i150", 150),
+                queued("i250", 250),
+                queued("i350", 350)
+            ]
+        );
+    }
+
+    #[test]
+    fn rejoin_lowers_the_watermark_when_the_trigger_prev_is_not_in_the_own_log() {
+        let conn = profile();
+        own_clocks(&conn);
+        // Without the lowering W = min(300, 340) = 300 would queue only i350 and dead.
+        sealed(&conn, 1, 1, 90, 300, false);
+        sealed(&conn, 2, 2, 340, 360, true);
+        // The relay's seq 2 is another copy's (hash 22), not this one's.
+        let trigger = meta(ME, 3, Some(22), 3);
+
+        let report = rejoin(&conn, NEW, Some(&trigger)).unwrap();
+
+        assert_eq!(report.queued, 4);
+        assert_eq!(
+            outbox(&conn),
+            vec![
+                queued("dead", 360),
+                queued("i150", 150),
+                queued("i250", 250),
+                queued("i350", 350)
+            ]
+        );
+        assert_eq!(
+            heads(&conn),
+            vec![(ME.0.to_vec(), 2, h(22).to_vec(), false)]
+        );
+        assert_eq!(judge(&conn, &trigger).unwrap(), Verdict::Apply);
     }
 
     #[test]

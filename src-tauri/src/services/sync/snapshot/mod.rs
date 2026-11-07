@@ -29,6 +29,7 @@ use rusqlite::types::Value;
 use rusqlite::{params, params_from_iter, Connection, OptionalExtension};
 
 use super::capture::{self, triggers::pk_expr, Mode, CLOCK_UPSERT};
+use super::chain;
 use super::changeset::{DevTable, RowChange, RowKey, SqlValue};
 use super::hlc::{Clock, DeviceId, Observation};
 use super::in_savepoint;
@@ -272,8 +273,8 @@ fn admissible(conn: &Connection, snapshot: &Snapshot) -> Result<SyncState> {
     Ok(sync)
 }
 
-/// Seeds, heads (with their quarantine), the cursor and snapshot bookkeeping and the barrier
-/// marker, shared by both restores. Replacing sets them; merging never moves them back.
+/// Seeds, heads (with their quarantine), the cursor and snapshot bookkeeping, the barrier
+/// marker and a healed below-barrier miss, shared by both restores. Replacing sets them; merging never moves them back.
 fn finish(
     conn: &Connection,
     snapshot: &Snapshot,
@@ -314,6 +315,11 @@ fn finish(
         .filter(|_| snapshot.barrier == sync.barrier);
     if replacing || sync.barrier_seq.is_none() {
         state::set_barrier_seq(conn, marker)?;
+    }
+    // A snapshot dumped past every below-barrier envelope this device skipped carries their rows
+    // (ruling T8-2).
+    if chain::snapshot_heals_missed(sync, snapshot.barrier, snapshot.seq) {
+        state::clear_missed_below_barrier(conn)?;
     }
     Ok(())
 }

@@ -195,6 +195,22 @@ describe('buildUpkeepRows', () => {
       ).toEqual(['statement_due']);
     });
 
+    it('asks no statement of an account kept by hand since its last import (B4)', () => {
+      // Recorded by hand 40 days after the import, when the statement was long due
+      const manual = account('a', { balanceAsOf: ago(10) });
+      expect(
+        buildUpkeepRows(input({ accounts: [manual], lastImportByAccount: { a: ago(50) } }))
+      ).toEqual([]);
+    });
+
+    it('still asks when the balance by hand was recorded within the cycle', () => {
+      // 30 days after the import: the balances reminder, not a switch to keeping it by hand
+      const within = account('a', { balanceAsOf: ago(20) });
+      expect(
+        kinds(buildUpkeepRows(input({ accounts: [within], lastImportByAccount: { a: ago(50) } })))
+      ).toEqual(['statement_due']);
+    });
+
     it('an account with imports newer than 35 days produces no row', () => {
       expect(
         buildUpkeepRows(input({ accounts: [account('a')], lastImportByAccount: { a: ago(10) } }))
@@ -212,8 +228,9 @@ describe('buildUpkeepRows', () => {
       const rows = buildUpkeepRows(
         input({
           accounts: [
-            account('a', { institution: { name: 'UniCredit' } }),
-            account('b', { name: 'Spořicí účet' }),
+            account('a', { institution: { name: 'UniCredit' }, balanceAsOf: ago(38) }),
+            // The balance comes from the statement itself, so the account is not kept by hand
+            account('b', { name: 'Spořicí účet', balanceAsOf: ago(70) }),
           ],
           lastImportByAccount: { a: ago(38), b: ago(70) },
         })
@@ -382,11 +399,12 @@ describe('buildUpkeepRows', () => {
           milestone('valuation_stale', { sourceId: 'p1', title: 'A' }),
           milestone('valuation_stale', { sourceId: 'p2', title: 'B' }),
         ],
-        accounts: [account('a'), account('b')],
+        accounts: [account('a', { balanceAsOf: ago(60) }), account('b', { balanceAsOf: ago(60) })],
         lastImportByAccount: { a: ago(60), b: ago(60) },
       })
     );
     const ids = rows.map((r) => r.id);
+    expect(ids.filter((id) => id.startsWith('statement_due:'))).toHaveLength(2);
     expect(new Set(ids).size).toBe(ids.length);
   });
 });

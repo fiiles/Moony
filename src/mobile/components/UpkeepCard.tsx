@@ -1,10 +1,13 @@
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { Link } from 'wouter';
 import {
   ChevronDown,
+  Clock,
   Download,
   Ellipsis,
+  EyeOff,
   FileCheck,
   House,
   Landmark,
@@ -19,20 +22,24 @@ import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useMilestoneActions } from '@/hooks/use-milestone-mutations';
 import { useMilestoneSubLine } from '@/hooks/use-milestone-sub-line';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
+import { utcDayFloor } from '@/utils/chart-axis';
 import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
 import { useUpkeep } from '@/mobile/hooks/use-upkeep';
+import { useUpkeepDismissals } from '@/mobile/hooks/use-upkeep-dismissals';
 import { backState } from '@/mobile/lib/back-label';
 import { queuePath } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import { loanEventPath } from '@/mobile/lib/loan-event-param';
 import type { UpkeepKind, UpkeepRow } from '@/mobile/lib/upkeep';
+import { dismissKey, hideRow, restoreRow, snoozeRow } from '@/mobile/lib/upkeep-dismissals';
 import { propertyPath, routes, settingsPath } from '@/mobile/shell/routes';
 import { RecordBalancesSheet } from '@/mobile/sheets/RecordBalancesSheet';
 import { ROW_MENU_ITEM } from './RowMenu';
@@ -87,8 +94,9 @@ function targetOf(row: UpkeepRow): string {
  * Přehled, present only while something is due. Folded, as the desktop folds "Údržba dat" under
  * its agenda: the head (a button: title, count, chevron) and one line naming what is due; a tap
  * unfolds one row per item — a 34 pt icon, the title, a sub-line and the verb as a small button
- * (the first row's is primary, the rest secondary), and on a row that stands for a desktop
- * milestone the "···" of its menu (hide, remind in a month, stop reminding). Folded or not is kept
+ * (the first row's is primary, the rest secondary), and the "···" of its menu: on a row that
+ * stands for a desktop milestone the desktop's (hide, remind in a month, stop reminding), on the
+ * phone's own statement and uncategorized rows hide and remind in a month, kept on this device. Folded or not is kept
  * for the app session. The card leaves when the last row is done; the record-balances sheet it
  * opens is kept apart from it, because saving removes the row that opened the sheet while the
  * sheet is still sliding away.
@@ -270,7 +278,7 @@ function UpkeepItem({
     <li
       className={cn(
         'grid items-center gap-3 border-t border-line-soft py-2.5 first:border-t-0',
-        row.milestone
+        row.milestone || dismissKey(row) !== null
           ? 'grid-cols-[34px_minmax(0,1fr)_auto_auto]'
           : 'grid-cols-[34px_minmax(0,1fr)_auto]'
       )}
@@ -291,8 +299,62 @@ function UpkeepItem({
         {sub && <div className="mt-px truncate text-m-sub text-ink-4">{sub}</div>}
       </div>
       {action}
-      {row.milestone && <UpkeepMenu m={row.milestone} title={title} />}
+      {row.milestone ? (
+        <UpkeepMenu m={row.milestone} title={title} />
+      ) : (
+        dismissKey(row) !== null && <PhoneRowMenu row={row} title={title} />
+      )}
     </li>
+  );
+}
+
+/** The 32 pt `···` of a row (44 pt to tap). */
+const MENU_TRIGGER =
+  "relative -ml-1.5 inline-flex size-8 items-center justify-center rounded-[9px] text-ink-3 [-webkit-touch-callout:none] after:absolute after:-inset-1.5 after:content-[''] active:bg-well-2 data-[state=open]:text-ink";
+
+/**
+ * "···" of a row the phone works out itself (B4: "Je čas na výpis z …", "Nezařazené"): Skrýt and
+ * Připomenout za měsíc in the desktop milestone menu's words, kept on this device
+ * (`useUpkeepDismissals`), each with a "Vrátit" toast. A hidden statement row comes back with the
+ * account's next import, a hidden "Nezařazené" once more payments wait than now.
+ */
+function PhoneRowMenu({ row, title }: { row: UpkeepRow; title: string }) {
+  const { t } = useTranslation('milestones');
+  const { setDismissals } = useUpkeepDismissals();
+  const undo = {
+    label: t('actions.undo'),
+    onClick: () => setDismissals((d) => restoreRow(d, row)),
+  };
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" aria-label={t('card.rowMenu', { title })} className={MENU_TRIGGER}>
+          <Ellipsis aria-hidden className="size-5" strokeWidth={1.75} />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="min-w-[220px]">
+        <DropdownMenuItem
+          className={ROW_MENU_ITEM}
+          onSelect={() => {
+            setDismissals((d) => hideRow(d, row));
+            toast(t('toast.hidden'), { action: undo });
+          }}
+        >
+          <EyeOff />
+          {t('actions.hide')}
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className={ROW_MENU_ITEM}
+          onSelect={() => {
+            setDismissals((d) => snoozeRow(d, row, utcDayFloor(Date.now() / 1000)));
+            toast(t('toast.snoozedMonth'), { action: undo });
+          }}
+        >
+          <Clock />
+          {t('actions.remindMonth')}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -307,11 +369,7 @@ function UpkeepMenu({ m, title }: { m: Milestone; title: string }) {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          aria-label={t('card.rowMenu', { title })}
-          className="relative -ml-1.5 inline-flex size-8 items-center justify-center rounded-[9px] text-ink-3 [-webkit-touch-callout:none] after:absolute after:-inset-1.5 after:content-[''] active:bg-well-2 data-[state=open]:text-ink"
-        >
+        <button type="button" aria-label={t('card.rowMenu', { title })} className={MENU_TRIGGER}>
           <Ellipsis aria-hidden className="size-5" strokeWidth={1.75} />
         </button>
       </DropdownMenuTrigger>

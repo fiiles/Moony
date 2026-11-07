@@ -93,7 +93,9 @@
       "categorize": "Classifica",
       "import": "Importa",
       "backup": "Fai backup",
-      "revalue": "Rivaluta"
+      "revalue": "Rivaluta",
+      "enterBalance": "Inserisci saldo",
+      "enterRate": "Aggiungi tasso"
     }
   },
   "recordBalances": {

@@ -77,7 +77,9 @@
       "categorize": "分類",
       "import": "取り込む",
       "backup": "バックアップ",
-      "revalue": "再評価"
+      "revalue": "再評価",
+      "enterBalance": "残高を入力",
+      "enterRate": "金利を入力"
     }
   },
   "recordBalances": {

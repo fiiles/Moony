@@ -5,8 +5,10 @@ import {
   ChevronDown,
   Download,
   Ellipsis,
+  FileCheck,
   House,
   Landmark,
+  Percent,
   Tag,
   Upload,
   type LucideIcon,
@@ -20,6 +22,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useMilestoneActions } from '@/hooks/use-milestone-mutations';
+import { useMilestoneSubLine } from '@/hooks/use-milestone-sub-line';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
@@ -28,6 +31,7 @@ import { useUpkeep } from '@/mobile/hooks/use-upkeep';
 import { backState } from '@/mobile/lib/back-label';
 import { queuePath } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
+import { loanEventPath } from '@/mobile/lib/loan-event-param';
 import type { UpkeepKind, UpkeepRow } from '@/mobile/lib/upkeep';
 import { propertyPath, routes, settingsPath } from '@/mobile/shell/routes';
 import { RecordBalancesSheet } from '@/mobile/sheets/RecordBalancesSheet';
@@ -39,6 +43,9 @@ const ICONS: Record<UpkeepKind, LucideIcon> = {
   statement_due: Upload,
   backup_stale: Download,
   valuation_stale: House,
+  // The desktop's upkeep icons (`MilestoneRows`)
+  loan_balance_check: FileCheck,
+  loan_fixation_expired: Percent,
 };
 
 const VERBS: Record<UpkeepKind, string> = {
@@ -47,12 +54,15 @@ const VERBS: Record<UpkeepKind, string> = {
   statement_due: 'upkeep.actions.import',
   backup_stale: 'upkeep.actions.backup',
   valuation_stale: 'upkeep.actions.revalue',
+  loan_balance_check: 'upkeep.actions.enterBalance',
+  loan_fixation_expired: 'upkeep.actions.enterRate',
 };
 
 /**
  * Where a verb that leads to a screen leads. Zálohovat opens Záloha a přenos, Přecenit the
  * property (its detail has the Přecenit button; the Majetek tab, which lists the properties, for a
- * row that does not name one); Zařadit opens the categorize queue (`queuePath`: of one account when
+ * row that does not name one), the loan verbs the loan with its event dialog open (Finance for a
+ * row without a loan); Zařadit opens the categorize queue (`queuePath`: of one account when
  * exactly one holds the payments). Each screen's back button then names Přehled (`backState`), as
  * back returns here. Zaznamenat and Importovat open sheets instead (`UpkeepItem`).
  */
@@ -62,6 +72,10 @@ function targetOf(row: UpkeepRow): string {
       return queuePath(row.accountIds ?? []);
     case 'valuation_stale':
       return row.sourceId ? propertyPath(row.sourceId) : routes.wealth;
+    case 'loan_balance_check':
+      return row.sourceId ? loanEventPath(row.sourceId, 'balance_check') : routes.finance;
+    case 'loan_fixation_expired':
+      return row.sourceId ? loanEventPath(row.sourceId, 'rate_change') : routes.finance;
     default:
       // `backup_stale`: the other two kinds open a sheet and never ask
       return settingsPath('backup');
@@ -80,7 +94,7 @@ function targetOf(row: UpkeepRow): string {
  * sheet is still sliding away.
  */
 export function UpkeepCard() {
-  const { t } = useTranslation('mobile');
+  const { t } = useTranslation(['mobile', 'milestones']);
   const { rows, accounts, lastImportByAccount } = useUpkeep();
   const { openImport } = useImportSheet();
   const [open, setOpen] = useRemembered('overview.upkeepOpen', false);
@@ -173,8 +187,9 @@ function UpkeepItem({
   onRecord,
   onImport,
 }: UpkeepItemProps) {
-  const { t } = useTranslation('mobile');
+  const { t } = useTranslation(['mobile', 'milestones']);
   const fmt = useFormat();
+  const subLine = useMilestoneSubLine();
   const titleId = useId();
   const Icon = ICONS[row.kind];
   const byId = useMemo(() => new Map(accounts.map((a) => [a.id, a])), [accounts]);
@@ -205,6 +220,11 @@ function UpkeepItem({
         row.sinceDay !== undefined
           ? t('upkeep.lastImport', { date: shortDay(row.sinceDay) })
           : null;
+      break;
+    case 'loan_balance_check':
+    case 'loan_fixation_expired':
+      // The desktop's upkeep row: the loan's name over its sub-line
+      sub = row.milestone ? subLine(row.milestone) : null;
       break;
     default:
       sub = null;
@@ -239,7 +259,12 @@ function UpkeepItem({
     );
   }
 
-  const title = t(row.title.key, row.title.params);
+  // A loan row names the loan and says what is due under it; the folded line keeps the short title
+  const title =
+    (row.kind === 'loan_balance_check' || row.kind === 'loan_fixation_expired') &&
+    row.milestone?.title
+      ? row.milestone.title
+      : t(row.title.key, row.title.params);
 
   return (
     <li

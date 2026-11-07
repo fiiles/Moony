@@ -85,7 +85,9 @@
       "categorize": "Zuordnen",
       "import": "Importieren",
       "backup": "Sichern",
-      "revalue": "Neu bewerten"
+      "revalue": "Neu bewerten",
+      "enterBalance": "Saldo eingeben",
+      "enterRate": "Zins eintragen"
     }
   },
   "recordBalances": {

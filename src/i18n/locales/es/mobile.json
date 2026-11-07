@@ -93,7 +93,9 @@
       "categorize": "Clasificar",
       "import": "Importar",
       "backup": "Hacer copia",
-      "revalue": "Revalorar"
+      "revalue": "Revalorar",
+      "enterBalance": "Indicar saldo",
+      "enterRate": "Añadir tipo"
     }
   },
   "recordBalances": {

@@ -286,11 +286,7 @@ describe('buildUpkeepRows', () => {
     expect(
       buildUpkeepRows(
         input({
-          milestones: [
-            milestone('insurance_end'),
-            milestone('loan_balance_check'),
-            milestone('loan_fixation_expired'),
-          ],
+          milestones: [milestone('insurance_end'), milestone('watch_target')],
         })
       )
     ).toEqual([]);
@@ -339,6 +335,44 @@ describe('buildUpkeepRows', () => {
       'backup_stale',
       'valuation_stale',
     ]);
+  });
+
+  describe('loan checks (B3)', () => {
+    it('makes one row per loan milestone, after the valuations, titled as on the desktop', () => {
+      const rows = buildUpkeepRows(
+        input({
+          milestones: [
+            milestone('loan_fixation_expired', { key: 'fx:l2', sourceId: 'l2', title: 'Auto' }),
+            milestone('valuation_stale', { sourceId: 'p', title: 'Byt' }),
+            milestone('loan_balance_check', { key: 'bc:l1', sourceId: 'l1', title: 'Hypotéka' }),
+          ],
+        })
+      );
+      expect(rows.map((r) => [r.kind, r.sourceId, r.title.key, r.title.params])).toEqual([
+        ['valuation_stale', 'p', 'upkeep.valuationStale', { name: 'Byt' }],
+        [
+          'loan_fixation_expired',
+          'l2',
+          'milestones:short.loan_fixation_expired',
+          { title: 'Auto' },
+        ],
+        ['loan_balance_check', 'l1', 'milestones:short.loan_balance_check', { title: 'Hypotéka' }],
+      ]);
+      // The desktop's milestone menu (hide, snooze, mute) comes with them
+      expect(rows.slice(1).every((r) => r.milestone !== undefined)).toBe(true);
+    });
+
+    it('keys a loan row by its loan, or by the milestone without one', () => {
+      const rows = buildUpkeepRows(
+        input({
+          milestones: [
+            milestone('loan_balance_check', { key: 'bc:x', sourceId: null, title: 'X' }),
+            milestone('loan_balance_check', { key: 'bc:l1', sourceId: 'l1', title: 'Y' }),
+          ],
+        })
+      );
+      expect(rows.map((r) => r.id)).toEqual(['loan_balance_check:bc:x', 'loan_balance_check:l1']);
+    });
   });
 
   it('gives every row its own stable id', () => {

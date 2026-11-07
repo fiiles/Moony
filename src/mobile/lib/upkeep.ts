@@ -7,9 +7,21 @@ export const STALE_BALANCE_DAYS = 30;
 export const STATEMENT_DUE_DAYS = 35;
 
 export type UpkeepKind =
-  'balances_stale' | 'uncategorized' | 'statement_due' | 'backup_stale' | 'valuation_stale';
+  | 'balances_stale'
+  | 'uncategorized'
+  | 'statement_due'
+  | 'backup_stale'
+  | 'valuation_stale'
+  | 'loan_balance_check'
+  | 'loan_fixation_expired';
 
-/** An i18n key of the `mobile` namespace and its values; a plural `count` picks the form. */
+/** The loan reminders of the desktop's upkeep (`UPKEEP_KINDS`): one row per loan. */
+const LOAN_KINDS = ['loan_fixation_expired', 'loan_balance_check'] as const;
+
+/**
+ * An i18n key of the `mobile` namespace (or another one named with its prefix, `milestones:…`) and
+ * its values; a plural `count` picks the form.
+ */
 export interface UpkeepTitle {
   key: string;
   params: Record<string, string | number>;
@@ -24,12 +36,12 @@ export interface UpkeepRow {
   accountIds?: string[];
   /** UTC day shown in the sub-line of a `statement_due` row: the account's last import. */
   sinceDay?: number;
-  /** The property a `valuation_stale` row is about: Přecenit opens it. */
+  /** The property a `valuation_stale` row is about (Přecenit opens it), the loan of a loan row. */
   sourceId?: string;
   /**
    * The desktop's upkeep milestone behind the row (`balances_stale`, `backup_stale`,
-   * `valuation_stale`): the card hides or snoozes it as the desktop does. The rows the phone works
-   * out itself have none.
+   * `valuation_stale` and the loan checks): the card hides or snoozes it as the desktop does. The
+   * rows the phone works out itself have none.
    */
   milestone?: Milestone;
 }
@@ -66,10 +78,11 @@ function balanceDay(account: UpkeepAccount): number {
 
 /**
  * The rows of the Údržba card on Přehled (spec §8.3 item 1), in the order they are shown: stale
- * balances, uncategorized payments, statements, backup, valuations. The card is absent when there
- * are none.
+ * balances, uncategorized payments, statements, backup, valuations, then the loans' fixations and
+ * balance checks. The card is absent when there are none.
  *
- * `balances_stale`, `backup_stale` and `valuation_stale` are the desktop's upkeep milestones, so a
+ * `balances_stale`, `backup_stale`, `valuation_stale` and the two loan checks are the desktop's
+ * upkeep milestones (`UPKEEP_KINDS`), so a
  * reminder snoozed or muted there stays off the card; the milestone only counts the stale
  * accounts, so they are listed here by the backend's rule (not kept out of the balance, not
  * closed, dated more than 30 days ago). `statement_due` and `uncategorized` are computed here.
@@ -153,6 +166,20 @@ export function buildUpkeepRows(input: UpkeepInput): UpkeepRow[] {
       sourceId: m.sourceId ?? undefined,
       milestone: m,
     });
+  }
+
+  // The loans' upkeep (B3): the balance to enter and the rate to fill in after a fixation ran out,
+  // titled with the desktop's folded-line wording ("Hypotéka zadat aktuální zůstatek")
+  for (const kind of LOAN_KINDS) {
+    for (const m of milestones.filter((m) => m.kind === kind)) {
+      rows.push({
+        id: `${kind}:${m.sourceId ?? m.key}`,
+        kind,
+        title: { key: `milestones:short.${kind}`, params: { title: m.title } },
+        sourceId: m.sourceId ?? undefined,
+        milestone: m,
+      });
+    }
   }
 
   return rows;

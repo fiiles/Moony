@@ -101,7 +101,9 @@
       "categorize": "Przypisz",
       "import": "Importuj",
       "backup": "Zrób kopię",
-      "revalue": "Przeszacuj"
+      "revalue": "Przeszacuj",
+      "enterBalance": "Podaj saldo",
+      "enterRate": "Uzupełnij stopę"
     }
   },
   "recordBalances": {

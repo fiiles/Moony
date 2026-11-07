@@ -93,7 +93,9 @@
       "categorize": "Zařadit",
       "import": "Importovat",
       "backup": "Zálohovat",
-      "revalue": "Přecenit"
+      "revalue": "Přecenit",
+      "enterBalance": "Zadat zůstatek",
+      "enterRate": "Doplnit sazbu"
     }
   },
   "recordBalances": {

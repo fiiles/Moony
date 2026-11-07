@@ -85,7 +85,9 @@
       "categorize": "Kategorisera",
       "import": "Importera",
       "backup": "Säkerhetskopiera",
-      "revalue": "Värdera om"
+      "revalue": "Värdera om",
+      "enterBalance": "Ange saldo",
+      "enterRate": "Lägg in ränta"
     }
   },
   "recordBalances": {

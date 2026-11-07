@@ -85,7 +85,9 @@
       "categorize": "Categorize",
       "import": "Import",
       "backup": "Back up",
-      "revalue": "Revalue"
+      "revalue": "Revalue",
+      "enterBalance": "Enter balance",
+      "enterRate": "Add rate"
     }
   },
   "recordBalances": {

@@ -85,7 +85,9 @@
       "categorize": "Kategoriser",
       "import": "Importer",
       "backup": "Ta kopi",
-      "revalue": "Vurder på nytt"
+      "revalue": "Vurder på nytt",
+      "enterBalance": "Angi saldo",
+      "enterRate": "Legg inn rente"
     }
   },
   "recordBalances": {

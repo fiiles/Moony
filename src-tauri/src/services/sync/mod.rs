@@ -1,8 +1,10 @@
 //! Device sync engine (phase 1): the registry, the hybrid logical clock, `sync_state` and the
 //! trigger capture installed at unlock, the journal that turns the outbox into changesets, and
-//! the merge of other devices' changes and the repairs after it.
+//! the merge of other devices' changes with the repairs after it, and the chain bookkeeping that
+//! judges every pulled envelope.
 
 pub mod capture;
+pub mod chain;
 pub mod changeset;
 pub mod hlc;
 pub mod journal;
@@ -40,11 +42,15 @@ fn open_capture(conn: &Connection) -> Result<()> {
     if !sync.enabled {
         return Ok(());
     }
-    state::note_schema_seen(conn)?;
     let revived = repair::delete_revived_seeds(conn)?;
     if revived > 0 {
         log::info!("[SYNC] Deleted {revived} seeded rows that another device had deleted");
     }
+    let requeued = chain::cross_barrier(conn, &sync)?;
+    if requeued > 0 {
+        log::info!("[SYNC] Crossed a barrier: queued {requeued} own rows again");
+    }
+    state::note_schema_seen(conn)?;
     capture::install(conn, sync.device)
 }
 

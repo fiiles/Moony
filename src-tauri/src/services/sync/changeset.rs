@@ -2,7 +2,7 @@
 //! reader, because HLCs exceed 2^53 and a JavaScript `JSON.parse` would round them. The row-level
 //! `encode_row`/`decode_row` are public so snapshots reuse them.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap, HashMap, HashSet};
 use std::io::Write;
 
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
@@ -361,6 +361,10 @@ pub fn from_json(bytes: &[u8]) -> Result<Changeset> {
         .iter()
         .map(|d| DeviceId::from_b64(d.as_str().ok_or_else(invalid)?).map_err(|_| invalid()))
         .collect::<Result<Vec<_>>>()?;
+    // The author is always `devs[0]`, and every device appears once (§9.3: a chain violation).
+    if devs.first() != Some(&device) || devs.iter().collect::<HashSet<_>>().len() != devs.len() {
+        return Err(invalid());
+    }
     let rows = o
         .get("rows")
         .and_then(Json::as_array)
@@ -671,8 +675,28 @@ mod tests {
     }
 
     #[test]
+    fn devs_must_start_with_the_author_and_hold_no_duplicates() {
+        let rows = r#"[{"t":"bonds","k":"x","g":[1,1]}]"#;
+        let list = |ds: &[DeviceId]| {
+            let quoted: Vec<String> = ds.iter().map(|d| format!(r#""{}""#, d.to_b64())).collect();
+            format!("[{}]", quoted.join(","))
+        };
+        assert!(from_json(base(rows, &list(&[dev(1), dev(2)])).as_bytes()).is_ok());
+        assert!(invalid(from_json(
+            base(rows, &list(&[dev(2), dev(1)])).as_bytes()
+        )));
+        assert!(invalid(from_json(
+            base(rows, &list(&[dev(1), dev(1)])).as_bytes()
+        )));
+        assert!(invalid(from_json(
+            base(rows, &list(&[dev(1), dev(2), dev(2)])).as_bytes()
+        )));
+        assert!(invalid(from_json(base("[]", "[]").as_bytes())));
+    }
+
+    #[test]
     fn a_version_other_than_1_is_rejected() {
-        let ok = base("[]", "[]");
+        let ok = base("[]", &format!(r#"["{}"]"#, dev(1).to_b64()));
         assert!(from_json(ok.as_bytes()).is_ok());
         assert!(invalid(from_json(
             ok.replace(r#""v":1"#, r#""v":2"#).as_bytes()

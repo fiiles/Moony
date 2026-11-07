@@ -670,7 +670,6 @@
       "custom": "独自ルール",
       "learned": "学習した取引先",
       "packsEmpty": "ルールパックはありません。",
-      "customEmpty": "独自ルールはまだありません。パソコンで作成します。",
       "learnedEmpty": "まだ学習していません。手動での分類から学習します。",
       "noMatching": "検索に一致するものはありません",
       "openPack": "{{name}}のルール",

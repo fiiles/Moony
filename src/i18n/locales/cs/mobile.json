@@ -745,7 +745,6 @@
       "custom": "Vlastní pravidla",
       "learned": "Naučení příjemci",
       "packsEmpty": "Žádné balíčky pravidel.",
-      "customEmpty": "Zatím žádná vlastní pravidla. Zakládáte je v počítači.",
       "learnedEmpty": "Zatím nic naučeného. Aplikace se učí z vašich ručních zařazení.",
       "noMatching": "Hledání nic nenašlo",
       "openPack": "Pravidla balíčku {{name}}",

@@ -1,6 +1,8 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Plus } from 'lucide-react';
 import type { CustomRule, LearnedPayeeEntry } from '@shared/schema';
+import RuleEditDialog from '@/components/categorization/RuleEditDialog';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { useLanguage } from '@/i18n/I18nProvider';
@@ -21,6 +23,7 @@ import { learnedSearchShown, sortPacks, splitPacks } from '@/mobile/lib/categori
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { OtherPacksSheet } from '@/mobile/sheets/OtherPacksSheet';
 import { PackRulesSheet } from '@/mobile/sheets/PackRulesSheet';
+import { NavIconButton } from '@/mobile/shell/NavBar';
 import { filterLearnedRules, ALL_CATEGORIES } from '@/utils/learned-rules';
 
 /** From this many learned payees on, the list gets a search field. */
@@ -39,9 +42,10 @@ function ListSkeleton() {
 
 /**
  * Nastavení → Kategorizace: what the app files by itself — the rule packs of the countries (on
- * or off, one rule at a time), the own rules (on or off, deleted) and the payees it learned from
- * the corrections ("Zapomenout"). The phone creates and edits no rule; the desktop does. Same
- * queries and writes as the desktop's rules page and its Balíčky card, so both share one cache.
+ * or off, one rule at a time), the own rules (added with the `+`, edited, on or off, deleted) and
+ * the payees it learned from the corrections ("Zapomenout"). Adding and editing open the desktop's
+ * rule editor as it is. Same queries and writes as the desktop's rules page and its Balíčky card,
+ * so both share one cache.
  */
 export default function CategorizationSection() {
   const { t } = useTranslation('mobile');
@@ -58,6 +62,8 @@ export default function CategorizationSection() {
   const [pending, setPending] = useState<Pending | null>(null);
   const [shownPending, setShownPending] = useState<Pending | null>(null);
   const [query, setQuery] = useState('');
+  /** The rule editor: closed, a new rule (`null`) or the rule being edited. */
+  const [editing, setEditing] = useState<{ rule: CustomRule | null } | null>(null);
   if (pending !== null && pending !== shownPending) setShownPending(pending);
 
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
@@ -120,7 +126,18 @@ export default function CategorizationSection() {
   );
 
   return (
-    <SectionPage title={t('settings.rows.categorization')} lead={t('settings.categorization.lead')}>
+    <SectionPage
+      title={t('settings.rows.categorization')}
+      lead={t('settings.categorization.lead')}
+      trailing={
+        <NavIconButton
+          aria-label={tc('customRules.addRule')}
+          onClick={() => setEditing({ rule: null })}
+        >
+          <Plus strokeWidth={1.75} aria-hidden />
+        </NavIconButton>
+      }
+    >
       {section(
         t('settings.categorization.packs'),
         packs,
@@ -152,7 +169,7 @@ export default function CategorizationSection() {
         t('settings.categorization.custom'),
         custom,
         (custom.data ?? []).length === 0,
-        t('settings.categorization.customEmpty'),
+        tc('customRules.noRulesDescription'),
         () =>
           (custom.data ?? []).map((rule) => (
             <CustomRuleRow
@@ -162,6 +179,7 @@ export default function CategorizationSection() {
               hit={hits.get(rule.id)}
               busy={mutations.setCustomRuleActive.isPending}
               onToggle={(isActive) => mutations.setCustomRuleActive.mutate({ rule, isActive })}
+              onEdit={() => setEditing({ rule })}
               onDelete={() => setPending({ kind: 'custom', rule })}
             />
           ))
@@ -218,6 +236,17 @@ export default function CategorizationSection() {
         }
         onClose={() => setOpenPack(null)}
       />
+      {editing && (
+        <RuleEditDialog
+          key={editing.rule?.id ?? 'new'}
+          open
+          onOpenChange={(open) => {
+            if (!open) setEditing(null);
+          }}
+          rule={editing.rule}
+          categories={categories}
+        />
+      )}
       <ConfirmSheet
         open={pending !== null}
         onOpenChange={(open) => {

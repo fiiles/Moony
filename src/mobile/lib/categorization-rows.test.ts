@@ -75,11 +75,15 @@ describe('nextEnabledPacks', () => {
 });
 
 describe('customRuleActions', () => {
-  it('offers neither toggle nor delete on a system rule', () => {
-    expect(customRuleActions(rule({ isSystem: true }))).toEqual({ toggle: false, delete: false });
+  it('offers no toggle, edit or delete on a system rule', () => {
+    expect(customRuleActions(rule({ isSystem: true }))).toEqual({
+      toggle: false,
+      edit: false,
+      delete: false,
+    });
   });
-  it('offers both on the own rules', () => {
-    expect(customRuleActions(rule())).toEqual({ toggle: true, delete: true });
+  it('offers all three on the own rules', () => {
+    expect(customRuleActions(rule())).toEqual({ toggle: true, edit: true, delete: true });
   });
 });
 

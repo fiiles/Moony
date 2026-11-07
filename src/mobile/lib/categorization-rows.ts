@@ -32,12 +32,13 @@ export function nextEnabledPacks(
     : ids.filter((id) => id !== packId);
 }
 
-/** A system rule can be neither switched nor deleted (the desktop disables both). */
+/** A system rule can be neither switched, edited nor deleted (the desktop disables all three). */
 export function customRuleActions(rule: Pick<CustomRule, 'isSystem'>): {
   toggle: boolean;
+  edit: boolean;
   delete: boolean;
 } {
-  return { toggle: !rule.isSystem, delete: !rule.isSystem };
+  return { toggle: !rule.isSystem, edit: !rule.isSystem, delete: !rule.isSystem };
 }
 
 /** The update the switch sends: every field of the rule as it is, with `isActive` changed. */

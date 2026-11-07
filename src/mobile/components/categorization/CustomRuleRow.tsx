@@ -1,5 +1,5 @@
 import { useTranslation } from 'react-i18next';
-import { Power, Trash2 } from 'lucide-react';
+import { Pencil, Power, Trash2 } from 'lucide-react';
 import type { CustomRule, RuleHitCount, TransactionCategory } from '@shared/schema';
 import { Switch } from '@/components/ui/switch';
 import { useCategoryName } from '@/hooks/use-categories';
@@ -17,14 +17,17 @@ interface CustomRuleRowProps {
   /** A rule write is in flight: the switch waits. */
   busy: boolean;
   onToggle: (isActive: boolean) => void;
+  /** Opens the desktop's rule editor on this rule. */
+  onEdit: () => void;
   onDelete: () => void;
 }
 
 /**
  * One own rule: its name (or pattern), "→ category · N× za 90 dní" and an `isActive` switch.
- * Swipe left and the long press's menu switch and delete; a system rule has the badge, a switch
- * that cannot be moved and a menu that only says why it cannot go. The row has no tap action of
- * its own (the switch is a button, which cannot sit in the row's).
+ * The `···` / long press menu edits, switches and deletes; swipe left deletes. A system rule has
+ * the badge, a switch that cannot be moved and a menu that only says why it cannot change. The row
+ * has no tap action of its own (the switch is a button, which cannot sit in the row's), so
+ * "Upravit pravidlo" leads the menu.
  */
 export function CustomRuleRow({
   rule,
@@ -32,6 +35,7 @@ export function CustomRuleRow({
   hit,
   busy,
   onToggle,
+  onEdit,
   onDelete,
 }: CustomRuleRowProps) {
   const { t } = useTranslation('categorization');
@@ -82,10 +86,16 @@ export function CustomRuleRow({
       swipeLeftDestructive
       menu={{
         label: tm('cashflow.rowMenu', { title }),
-        // Smazat is nowhere else on the row
+        // Upravit and Smazat are nowhere else on the row
         shown: true,
         children: (
           <>
+            {actions.edit && (
+              <RowMenuItem onSelect={onEdit}>
+                <Pencil aria-hidden strokeWidth={1.75} />
+                {t('customRules.editRule')}
+              </RowMenuItem>
+            )}
             {actions.toggle && (
               <RowMenuItem disabled={busy} onSelect={() => onToggle(!rule.isActive)}>
                 <Power aria-hidden strokeWidth={1.75} />

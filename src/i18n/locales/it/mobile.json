@@ -744,7 +744,6 @@
       "custom": "Regole personali",
       "learned": "Beneficiari imparati",
       "packsEmpty": "Nessun pacchetto di regole.",
-      "customEmpty": "Ancora nessuna regola personale. Si creano sul computer.",
       "learnedEmpty": "Ancora nulla di imparato. L'app impara dalle sue categorizzazioni manuali.",
       "noMatching": "Nessun risultato per la ricerca",
       "openPack": "Regole di {{name}}",

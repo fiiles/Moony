@@ -781,7 +781,6 @@
       "custom": "Własne reguły",
       "learned": "Poznani odbiorcy",
       "packsEmpty": "Brak pakietów reguł.",
-      "customEmpty": "Nie ma jeszcze własnych reguł. Tworzysz je na komputerze.",
       "learnedEmpty": "Nic jeszcze się nie nauczyła. Aplikacja uczy się z twoich ręcznych kategoryzacji.",
       "noMatching": "Nic nie pasuje do wyszukiwania",
       "openPack": "Reguły pakietu {{name}}",

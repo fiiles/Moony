@@ -707,7 +707,6 @@
       "custom": "Egna regler",
       "learned": "Inlärda mottagare",
       "packsEmpty": "Inga regelpaket.",
-      "customEmpty": "Inga egna regler än. Du skapar dem på datorn.",
       "learnedEmpty": "Inget inlärt än. Appen lär sig av dina manuella kategoriseringar.",
       "noMatching": "Inget matchar sökningen",
       "openPack": "Reglerna i {{name}}",

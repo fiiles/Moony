@@ -26,8 +26,10 @@ Goals
   overview".
 
 Non-goals
-- A rule editor (pattern, match type, priority) — spec §7: "a regex editor does not belong on a
-  phone". Rules keep coming from payments.
+- ~~A rule editor (pattern, match type, priority) — spec §7: "a regex editor does not belong on a
+  phone". Rules keep coming from payments.~~ **Reversed 2026-11-07 by the owner** (the desktop is the
+  reference): the page's nav `+` adds a rule and the row menu's "Upravit pravidlo" edits one, both in
+  the desktop's `RuleEditDialog` as it is. System rules stay read-only.
 - Changing a learned payee's category from Settings, the history preview/apply flow
   ("Zařadit i staré platby"). The payment picker already retargets a rule.
 - Bulk forget, rule hit charts, the categorization overview stats of the desktop page.

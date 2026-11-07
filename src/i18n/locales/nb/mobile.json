@@ -707,7 +707,6 @@
       "custom": "Egne regler",
       "learned": "Lærte mottakere",
       "packsEmpty": "Ingen regelpakker.",
-      "customEmpty": "Ingen egne regler ennå. Du oppretter dem på datamaskinen.",
       "learnedEmpty": "Ingenting lært ennå. Appen lærer av de manuelle kategoriseringene dine.",
       "noMatching": "Ingenting samsvarer med søket",
       "openPack": "Reglene i {{name}}",

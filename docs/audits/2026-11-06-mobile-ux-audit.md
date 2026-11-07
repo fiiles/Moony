@@ -273,5 +273,6 @@ Opačný směr, kde se desktop změnil a spec telefonu se nedotkla:
 Mimo pořadí, také 2026-11-07:
 - ✅ A9–A11, A13–A15, B7, B8, B10, B12 (`docs/specs/2026-11-07-mobile-wealth-parity-design.md`).
 - ✅ A6–A8, A12, B3, B4, B6, C9, zbytek C11 včetně pull-to-refresh, E (`docs/specs/2026-11-07-mobile-finance-settings-parity-design.md`).
+- ✅ Přidání a úprava vlastního pravidla v Nastavení → Kategorizace (`+` v liště, „Upravit pravidlo“ v menu řádku, desktopový editor). Non-goal ze specifikace kategorizace zrušil vlastník.
 
 Zbývá jen ověřit na zařízení: seznam „Ověřit na zařízení“ výše a kroky v reportech jednotlivých větví.

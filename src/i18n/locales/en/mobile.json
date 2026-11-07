@@ -707,7 +707,6 @@
       "custom": "Your own rules",
       "learned": "Learned payees",
       "packsEmpty": "No rule packs.",
-      "customEmpty": "No own rules yet. You create them on the computer.",
       "learnedEmpty": "Nothing learned yet. The app learns from your manual categorizations.",
       "noMatching": "Nothing matches the search",
       "openPack": "Rules of {{name}}",

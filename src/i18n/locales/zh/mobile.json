@@ -670,7 +670,6 @@
       "custom": "自有规则",
       "learned": "已学习的收款方",
       "packsEmpty": "没有规则包。",
-      "customEmpty": "还没有自有规则。请在电脑上创建。",
       "learnedEmpty": "还没有学到任何内容。应用会从您的手动分类中学习。",
       "noMatching": "没有与搜索匹配的内容",
       "openPack": "{{name}}的规则",

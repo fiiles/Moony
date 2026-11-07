@@ -707,7 +707,6 @@
       "custom": "Eigene Regeln",
       "learned": "Gelernte Empfänger",
       "packsEmpty": "Keine Regelpakete.",
-      "customEmpty": "Noch keine eigenen Regeln. Sie legen sie am Computer an.",
       "learnedEmpty": "Noch nichts gelernt. Die App lernt aus Ihren manuellen Zuordnungen.",
       "noMatching": "Nichts passt zur Suche",
       "openPack": "Regeln von {{name}}",

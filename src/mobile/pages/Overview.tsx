@@ -40,6 +40,7 @@ import { SectionHead } from '@/mobile/components/SectionHead';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { UpkeepCard } from '@/mobile/components/UpkeepCard';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { useRefetchShown } from '@/mobile/hooks/use-refetch-shown';
 import { useTransactionDay } from '@/mobile/hooks/use-transaction-day';
 import { initials } from '@/mobile/lib/initials';
 import { movePath } from '@/mobile/lib/move-path';
@@ -71,6 +72,8 @@ export default function Overview() {
   // Money as text (the hero and the stats size themselves to it); `<Money>` where an element will do
   const moneyText = useMoneyText();
   const [period, setPeriod] = useState<ChartPeriod>('30D');
+  // A pull from the top reads again what Přehled shows (spec §8.8)
+  const refetchShown = useRefetchShown();
 
   const greeting = useGreeting();
   const asOf = td('asOf', {
@@ -149,6 +152,7 @@ export default function Overview() {
 
   return (
     <Screen
+      onRefresh={refetchShown}
       title={greeting}
       large
       subtitle={asOf}

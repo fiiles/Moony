@@ -47,6 +47,7 @@ import { UpcomingPremiums } from '@/mobile/components/finance/UpcomingPremiums';
 import { Hero } from '@/mobile/components/Hero';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { useCashTrend } from '@/mobile/hooks/use-cash-trend';
+import { useRefetchShown } from '@/mobile/hooks/use-refetch-shown';
 import { useClassExport } from '@/mobile/hooks/use-class-export';
 import { useFinance, type Finance as FinanceData } from '@/mobile/hooks/use-finance';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -114,6 +115,8 @@ export default function Finance() {
   // the rows only render it)
   const moneyText = useMoneyText();
   const finance = useFinance();
+  // A pull from the top reads again what Finance shows (spec §8.8)
+  const refetchShown = useRefetchShown();
   const search = useSearch();
   const [, setLocation] = useLocation();
   // Loans and policies the person does not track are hidden (the pages stay reachable by path)
@@ -229,6 +232,7 @@ export default function Finance() {
 
   return (
     <Screen
+      onRefresh={refetchShown}
       title={t('tabs.finance')}
       large
       leading={<LockButton />}

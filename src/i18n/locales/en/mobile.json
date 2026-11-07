@@ -916,5 +916,8 @@
     "finance": "Finance could not be loaded.",
     "wealth": "Wealth could not be loaded.",
     "detail": "The details could not be loaded."
+  },
+  "pull": {
+    "refreshing": "Refreshing…"
   }
 }

@@ -965,5 +965,8 @@
     "finance": "No se pudieron cargar las finanzas.",
     "wealth": "No se pudo cargar el patrimonio.",
     "detail": "No se pudieron cargar los datos."
+  },
+  "pull": {
+    "refreshing": "Actualizando…"
   }
 }

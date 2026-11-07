@@ -916,5 +916,8 @@
     "finance": "Die Finanzen konnten nicht geladen werden.",
     "wealth": "Das Vermögen konnte nicht geladen werden.",
     "detail": "Die Angaben konnten nicht geladen werden."
+  },
+  "pull": {
+    "refreshing": "Wird aktualisiert…"
   }
 }

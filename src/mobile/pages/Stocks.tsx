@@ -128,6 +128,8 @@ export default function Stocks() {
 
   return (
     <Screen
+      // A pull from the top refreshes the prices, as `···` › Aktualizovat ceny does (spec §8.8)
+      onRefresh={() => refresh.mutateAsync()}
       title={ts('title')}
       leading={<NavTextButton label={t('tabs.wealth')} onClick={back} chevron />}
       trailing={

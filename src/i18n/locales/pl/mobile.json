@@ -1014,5 +1014,8 @@
     "finance": "Nie udało się wczytać finansów.",
     "wealth": "Nie udało się wczytać majątku.",
     "detail": "Nie udało się wczytać danych."
+  },
+  "pull": {
+    "refreshing": "Odświeżanie…"
   }
 }

@@ -916,5 +916,8 @@
     "finance": "Ekonomin kunde inte läsas in.",
     "wealth": "Förmögenheten kunde inte läsas in.",
     "detail": "Uppgifterna kunde inte läsas in."
+  },
+  "pull": {
+    "refreshing": "Uppdaterar…"
   }
 }

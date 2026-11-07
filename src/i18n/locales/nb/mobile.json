@@ -916,5 +916,8 @@
     "finance": "Økonomien kunne ikke lastes.",
     "wealth": "Formuen kunne ikke lastes.",
     "detail": "Opplysningene kunne ikke lastes."
+  },
+  "pull": {
+    "refreshing": "Oppdaterer…"
   }
 }

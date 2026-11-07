@@ -32,6 +32,7 @@ import { SplitAlerts } from '@/mobile/components/wealth/SplitAlerts';
 import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { usePosition, usePositionMutations } from '@/mobile/hooks/use-position';
+import { useRefreshStockPrices } from '@/mobile/hooks/use-stock-positions';
 import { usePositionLedger } from '@/mobile/hooks/use-position-ledger';
 import { useRetained } from '@/mobile/hooks/use-retained';
 import { NavTextButton } from '@/mobile/shell/NavBar';
@@ -79,6 +80,7 @@ export default function PositionDetail() {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [splitsOpen, setSplitsOpen] = useState(false);
   const { remove } = usePositionMutations(params?.id);
+  const refreshPrices = useRefreshStockPrices();
   const exit = useDeleteAndLeave({
     home: routes.stocks,
     pathOf: positionPath,
@@ -108,6 +110,8 @@ export default function PositionDetail() {
 
   return (
     <Screen
+      // A pull from the top refreshes the prices (spec §8.8), as `···` › Aktualizovat ceny does
+      onRefresh={() => refreshPrices.mutateAsync()}
       title={view?.holding.ticker ?? ''}
       leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={

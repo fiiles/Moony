@@ -867,5 +867,8 @@
     "finance": "无法加载财务。",
     "wealth": "无法加载资产。",
     "detail": "无法加载数据。"
+  },
+  "pull": {
+    "refreshing": "正在刷新…"
   }
 }

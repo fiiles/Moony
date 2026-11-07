@@ -973,5 +973,8 @@
     "finance": "Finance se nepodařilo načíst.",
     "wealth": "Majetek se nepodařilo načíst.",
     "detail": "Údaje se nepodařilo načíst."
+  },
+  "pull": {
+    "refreshing": "Aktualizuji…"
   }
 }

@@ -395,6 +395,9 @@ pub fn add_event(conn: &Connection, data: &InsertLoanEvent, today: i64) -> Resul
                 rusqlite::params![now, loan.id],
             )?;
         }
+        // A backdated event changes the terms in force for every later carrier; the merge
+        // repair derives the same chain, so the author stores what receivers derive.
+        rebuild_terms_chain(&tx, &loan.id)?;
         sync_current_terms(
             &tx,
             &loan.id,
@@ -402,7 +405,13 @@ pub fn add_event(conn: &Connection, data: &InsertLoanEvent, today: i64) -> Resul
             monthly_payment.is_some(),
             now,
         )?;
+        let stored = list_events(&tx, &loan.id)?
+            .into_iter()
+            .find(|e| e.id == id)
+            .ok_or_else(|| AppError::NotFound("Loan event not found".into()))?;
         LoanEvent {
+            previous_rate: stored.previous_rate,
+            previous_monthly_payment: stored.previous_monthly_payment,
             id,
             loan_id: loan.id.clone(),
             kind: data.kind.clone(),
@@ -410,8 +419,6 @@ pub fn add_event(conn: &Connection, data: &InsertLoanEvent, today: i64) -> Resul
             amount,
             rate,
             monthly_payment,
-            previous_rate,
-            previous_monthly_payment,
             note,
             created_at: now,
         }
@@ -490,6 +497,7 @@ pub fn delete_event(conn: &Connection, id: &str) -> Result<i64> {
         }
     }
     tx.execute("DELETE FROM loan_events WHERE id = ?1", [id])?;
+    rebuild_terms_chain(&tx, &event.loan_id)?;
     if event.kind == "balance_check" {
         refresh_anchor_mirror(&tx, &event.loan_id, now)?;
     }
@@ -1140,6 +1148,74 @@ mod tests {
         );
         assert_eq!(previous_of(&conn, "b"), (None, Some("200".to_string())));
         assert_eq!(previous_of(&conn, "c"), (Some("5".to_string()), None));
+    }
+
+    fn rate_change_with_payment(day: i64, rate: &str, payment: &str) -> InsertLoanEvent {
+        let mut data = rate_change(day, rate);
+        data.monthly_payment = Some(payment.into());
+        data
+    }
+
+    #[test]
+    fn a_backdated_rate_change_rechains_the_later_carrier() {
+        let conn = setup_test_db();
+        let late = add_event(
+            &conn,
+            &rate_change_with_payment(YEAR_ON + 60 * DAY, "5.8", "13700"),
+            YEAR_ON + 90 * DAY,
+        )
+        .unwrap();
+        assert_eq!(
+            previous_of(&conn, &late.id),
+            (Some("0".to_string()), Some("10000".to_string()))
+        );
+        add_event(
+            &conn,
+            &rate_change_with_payment(YEAR_ON + 10 * DAY, "5.2", "6300"),
+            YEAR_ON + 90 * DAY,
+        )
+        .unwrap();
+        assert_eq!(
+            previous_of(&conn, &late.id),
+            (Some("5.2".to_string()), Some("6300".to_string()))
+        );
+    }
+
+    #[test]
+    fn deleting_a_middle_carrier_rechains_the_next_one() {
+        let conn = setup_test_db();
+        let today = YEAR_ON + 200 * DAY;
+        let a = add_event(
+            &conn,
+            &rate_change_with_payment(YEAR_ON + 10 * DAY, "4", "9000"),
+            today,
+        )
+        .unwrap();
+        let b = add_event(
+            &conn,
+            &rate_change_with_payment(YEAR_ON + 20 * DAY, "5", "8000"),
+            today,
+        )
+        .unwrap();
+        let c = add_event(
+            &conn,
+            &rate_change_with_payment(YEAR_ON + 30 * DAY, "6", "7000"),
+            today,
+        )
+        .unwrap();
+        assert_eq!(
+            previous_of(&conn, &c.id),
+            (Some("5".to_string()), Some("8000".to_string()))
+        );
+        delete_event(&conn, &b.id).unwrap();
+        assert_eq!(
+            previous_of(&conn, &c.id),
+            (Some("4".to_string()), Some("9000".to_string()))
+        );
+        assert_eq!(
+            previous_of(&conn, &a.id),
+            (Some("0".to_string()), Some("10000".to_string()))
+        );
     }
 
     #[test]

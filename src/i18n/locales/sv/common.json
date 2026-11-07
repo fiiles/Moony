@@ -320,7 +320,19 @@
     "syncSnapshotInvalid": "Den synkroniserade kopian av dina data är skadad och kunde inte återställas.",
     "syncSnapshotNewerSchema": "Den synkroniserade kopian av dina data kommer från en nyare version av Moony. Uppdatera Moony på den här enheten först.",
     "syncSnapshotPending": "Den här enheten har fortfarande ändringar som väntar på att skickas. Försök igen efter nästa synkronisering.",
-    "syncDeviceNameInvalid": "Ett enhetsnamn måste ha 1 till 60 tecken."
+    "syncDeviceNameInvalid": "Ett enhetsnamn måste ha 1 till 60 tecken.",
+    "syncRelayUnreachable": "Moony når inte synkroniseringsservern. Kontrollera internetanslutningen; synkroniseringen försöker igen.",
+    "syncRelayError": "Synkroniseringsservern gav ett oväntat svar. Synkroniseringen försöker igen senare.",
+    "syncRateLimited": "Synkroniseringsservern är upptagen. Synkroniseringen försöker igen om en stund.",
+    "syncPaymentRequired": "Din synkroniseringsprenumeration är inte aktiv. Förnya den för att fortsätta synkronisera.",
+    "syncVaultLimitReached": "Det här synkroniseringskontot har redan det högsta antalet synkroniserade profiler.",
+    "syncAccountNotFound": "Synkroniseringsservern känner inte till det här kontonumret.",
+    "syncVaultNotFound": "Synkroniserade data hittades inte på synkroniseringsservern. De kan ha raderats.",
+    "syncCheckoutUnavailable": "Betalning är inte tillgänglig just nu. Försök igen senare.",
+    "syncSnapshotTooLarge": "Dina data är för stora för att laddas upp som en synkroniserad kopia.",
+    "syncQuotaExceeded": "Synkroniseringslagringen för den här profilen är full.",
+    "syncKeyRotated": "Den här enheten har inte längre åtkomst till synkroniserade data. En annan enhet kan ha tagit bort den.",
+    "syncRelayUrlInvalid": "Adressen till synkroniseringsservern är ogiltig."
   },
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",

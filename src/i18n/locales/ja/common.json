@@ -320,7 +320,19 @@
     "syncSnapshotInvalid": "同期されたデータのコピーが破損しているため、復元できませんでした。",
     "syncSnapshotNewerSchema": "同期されたデータのコピーは新しいバージョンの Moony で作成されています。先にこのデバイスの Moony を更新してください。",
     "syncSnapshotPending": "このデバイスにはまだ送信待ちの変更があります。次回の同期後にもう一度お試しください。",
-    "syncDeviceNameInvalid": "デバイス名は1〜60文字で入力してください。"
+    "syncDeviceNameInvalid": "デバイス名は1〜60文字で入力してください。",
+    "syncRelayUnreachable": "Moony は同期サーバーに接続できません。インターネット接続を確認してください。同期は再試行されます。",
+    "syncRelayError": "同期サーバーから予期しない応答がありました。同期は後で再試行されます。",
+    "syncRateLimited": "同期サーバーが混み合っています。同期はまもなく再試行されます。",
+    "syncPaymentRequired": "同期のサブスクリプションが有効ではありません。同期を続けるには更新してください。",
+    "syncVaultLimitReached": "この同期アカウントは、同期できるプロファイル数の上限に達しています。",
+    "syncAccountNotFound": "同期サーバーはこのアカウント番号を認識していません。",
+    "syncVaultNotFound": "同期サーバーに同期データが見つかりません。削除された可能性があります。",
+    "syncCheckoutUnavailable": "現在お支払いを利用できません。後でもう一度お試しください。",
+    "syncSnapshotTooLarge": "データが大きすぎるため、同期コピーとしてアップロードできません。",
+    "syncQuotaExceeded": "このプロファイルの同期ストレージがいっぱいです。",
+    "syncKeyRotated": "このデバイスは同期データにアクセスできなくなりました。別のデバイスによって削除された可能性があります。",
+    "syncRelayUrlInvalid": "同期サーバーのアドレスが無効です。"
   },
   "auth": {
     "wrongPassword": "入力したパスワードが正しくありません。もう一度お試しください。",

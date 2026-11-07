@@ -320,7 +320,19 @@
     "syncSnapshotInvalid": "The synced copy of your data is damaged and could not be restored.",
     "syncSnapshotNewerSchema": "The synced copy of your data comes from a newer version of Moony. Update Moony on this device first.",
     "syncSnapshotPending": "This device still has changes waiting to be sent. Try again after the next sync.",
-    "syncDeviceNameInvalid": "A device name must have 1 to 60 characters."
+    "syncDeviceNameInvalid": "A device name must have 1 to 60 characters.",
+    "syncRelayUnreachable": "Moony can't reach the sync server. Check your internet connection; sync will try again.",
+    "syncRelayError": "The sync server gave an unexpected answer. Sync will try again later.",
+    "syncRateLimited": "The sync server is busy. Sync will try again in a moment.",
+    "syncPaymentRequired": "Your sync subscription is not active. Renew it to keep syncing.",
+    "syncVaultLimitReached": "This sync account already has the maximum number of synced profiles.",
+    "syncAccountNotFound": "The sync server does not know this account number.",
+    "syncVaultNotFound": "The synced data was not found on the sync server. It may have been deleted.",
+    "syncCheckoutUnavailable": "Payment is not available right now. Try again later.",
+    "syncSnapshotTooLarge": "Your data is too large to upload as a synced copy.",
+    "syncQuotaExceeded": "The sync storage for this profile is full.",
+    "syncKeyRotated": "This device no longer has access to the synced data. Another device may have removed it.",
+    "syncRelayUrlInvalid": "The sync server address is not valid."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

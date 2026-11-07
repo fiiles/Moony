@@ -320,7 +320,19 @@
     "syncSnapshotInvalid": "Zsynchronizowana kopia twoich danych jest uszkodzona i nie udało się jej przywrócić.",
     "syncSnapshotNewerSchema": "Zsynchronizowana kopia twoich danych pochodzi z nowszej wersji Moony. Najpierw zaktualizuj Moony na tym urządzeniu.",
     "syncSnapshotPending": "Na tym urządzeniu wciąż czekają zmiany do wysłania. Spróbuj ponownie po następnej synchronizacji.",
-    "syncDeviceNameInvalid": "Nazwa urządzenia musi mieć od 1 do 60 znaków."
+    "syncDeviceNameInvalid": "Nazwa urządzenia musi mieć od 1 do 60 znaków.",
+    "syncRelayUnreachable": "Moony nie może połączyć się z serwerem synchronizacji. Sprawdź połączenie z internetem; synchronizacja spróbuje ponownie.",
+    "syncRelayError": "Serwer synchronizacji udzielił nieoczekiwanej odpowiedzi. Synchronizacja spróbuje ponownie później.",
+    "syncRateLimited": "Serwer synchronizacji jest zajęty. Synchronizacja spróbuje ponownie za chwilę.",
+    "syncPaymentRequired": "Twoja subskrypcja synchronizacji nie jest aktywna. Odnów ją, aby dalej synchronizować.",
+    "syncVaultLimitReached": "To konto synchronizacji ma już maksymalną liczbę synchronizowanych profili.",
+    "syncAccountNotFound": "Serwer synchronizacji nie zna tego numeru konta.",
+    "syncVaultNotFound": "Nie znaleziono zsynchronizowanych danych na serwerze synchronizacji. Mogły zostać usunięte.",
+    "syncCheckoutUnavailable": "Płatność jest teraz niedostępna. Spróbuj ponownie później.",
+    "syncSnapshotTooLarge": "Twoje dane są zbyt duże, aby przesłać je jako kopię synchronizowaną.",
+    "syncQuotaExceeded": "Miejsce na synchronizację tego profilu jest pełne.",
+    "syncKeyRotated": "To urządzenie nie ma już dostępu do zsynchronizowanych danych. Mogło zostać usunięte przez inne urządzenie.",
+    "syncRelayUrlInvalid": "Adres serwera synchronizacji jest nieprawidłowy."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

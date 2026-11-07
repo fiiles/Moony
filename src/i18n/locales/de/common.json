@@ -320,7 +320,19 @@
     "syncSnapshotInvalid": "Die synchronisierte Kopie Ihrer Daten ist beschädigt und konnte nicht wiederhergestellt werden.",
     "syncSnapshotNewerSchema": "Die synchronisierte Kopie Ihrer Daten stammt aus einer neueren Moony-Version. Aktualisieren Sie zuerst Moony auf diesem Gerät.",
     "syncSnapshotPending": "Auf diesem Gerät warten noch Änderungen darauf, gesendet zu werden. Versuchen Sie es nach der nächsten Synchronisierung erneut.",
-    "syncDeviceNameInvalid": "Ein Gerätename muss 1 bis 60 Zeichen haben."
+    "syncDeviceNameInvalid": "Ein Gerätename muss 1 bis 60 Zeichen haben.",
+    "syncRelayUnreachable": "Moony kann den Sync-Server nicht erreichen. Prüfen Sie Ihre Internetverbindung; die Synchronisierung versucht es erneut.",
+    "syncRelayError": "Der Sync-Server hat unerwartet geantwortet. Die Synchronisierung versucht es später erneut.",
+    "syncRateLimited": "Der Sync-Server ist ausgelastet. Die Synchronisierung versucht es gleich erneut.",
+    "syncPaymentRequired": "Ihr Sync-Abonnement ist nicht aktiv. Verlängern Sie es, um weiter zu synchronisieren.",
+    "syncVaultLimitReached": "Dieses Sync-Konto hat bereits die maximale Anzahl synchronisierter Profile.",
+    "syncAccountNotFound": "Der Sync-Server kennt diese Kontonummer nicht.",
+    "syncVaultNotFound": "Die synchronisierten Daten wurden auf dem Sync-Server nicht gefunden. Sie wurden möglicherweise gelöscht.",
+    "syncCheckoutUnavailable": "Die Zahlung ist gerade nicht verfügbar. Versuchen Sie es später erneut.",
+    "syncSnapshotTooLarge": "Ihre Daten sind zu groß, um als synchronisierte Kopie hochgeladen zu werden.",
+    "syncQuotaExceeded": "Der Sync-Speicher für dieses Profil ist voll.",
+    "syncKeyRotated": "Dieses Gerät hat keinen Zugriff mehr auf die synchronisierten Daten. Möglicherweise hat ein anderes Gerät es entfernt.",
+    "syncRelayUrlInvalid": "Die Adresse des Sync-Servers ist ungültig."
   },
   "auth": {
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",

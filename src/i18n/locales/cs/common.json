@@ -320,7 +320,19 @@
     "syncSnapshotInvalid": "Synchronizovaná kopie vašich dat je poškozená a nelze ji obnovit.",
     "syncSnapshotNewerSchema": "Synchronizovaná kopie vašich dat pochází z novější verze Moony. Nejdříve na tomto zařízení aktualizujte Moony.",
     "syncSnapshotPending": "Na tomto zařízení ještě čekají změny na odeslání. Zkuste to znovu po další synchronizaci.",
-    "syncDeviceNameInvalid": "Název zařízení musí mít 1 až 60 znaků."
+    "syncDeviceNameInvalid": "Název zařízení musí mít 1 až 60 znaků.",
+    "syncRelayUnreachable": "Moony se nemůže spojit se synchronizačním serverem. Zkontrolujte připojení k internetu; synchronizace to zkusí znovu.",
+    "syncRelayError": "Synchronizační server odpověděl neočekávaně. Synchronizace to zkusí znovu později.",
+    "syncRateLimited": "Synchronizační server je přetížený. Synchronizace to za chvíli zkusí znovu.",
+    "syncPaymentRequired": "Vaše předplatné synchronizace není aktivní. Obnovte ho, aby synchronizace pokračovala.",
+    "syncVaultLimitReached": "Tento synchronizační účet už má nejvyšší povolený počet synchronizovaných profilů.",
+    "syncAccountNotFound": "Synchronizační server toto číslo účtu nezná.",
+    "syncVaultNotFound": "Synchronizovaná data se na synchronizačním serveru nenašla. Možná byla smazána.",
+    "syncCheckoutUnavailable": "Platba teď není dostupná. Zkuste to později.",
+    "syncSnapshotTooLarge": "Vaše data jsou příliš velká na nahrání synchronizované kopie.",
+    "syncQuotaExceeded": "Úložiště synchronizace pro tento profil je plné.",
+    "syncKeyRotated": "Toto zařízení už nemá přístup k synchronizovaným datům. Možná ho odebralo jiné zařízení.",
+    "syncRelayUrlInvalid": "Adresa synchronizačního serveru není platná."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

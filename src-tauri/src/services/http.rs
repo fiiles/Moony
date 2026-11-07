@@ -4,12 +4,14 @@
 //! through [`client`]: one pooled `reqwest::Client` with a bounded timeout and an
 //! identifying `User-Agent`. A bare `reqwest::get` has NO timeout and can hang a
 //! command forever on a dead network. The Yahoo connector for chart requests builds
-//! its own client (see `price_api::yahoo_connector`) with the same 15 s bound.
+//! its own client (see `price_api::yahoo_connector`) with the same 15 s bound. The sync
+//! relay client uses [`no_redirect_client`]: the same bounds, but a redirect is handed
+//! back as the 3xx answer, never followed, so its credentials stay with the relay.
 
 use std::sync::OnceLock;
 use std::time::Duration;
 
-use reqwest::Client;
+use reqwest::{redirect, Client};
 
 /// Upper bound for connecting and for a whole request/response round trip.
 pub const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
@@ -18,11 +20,14 @@ pub const REQUEST_TIMEOUT: Duration = Duration::from_secs(15);
 pub const USER_AGENT: &str = concat!("Moony/", env!("CARGO_PKG_VERSION"));
 
 fn build_client(timeout: Duration) -> reqwest::Result<Client> {
+    client_builder(timeout).build()
+}
+
+fn client_builder(timeout: Duration) -> reqwest::ClientBuilder {
     Client::builder()
         .user_agent(USER_AGENT)
         .connect_timeout(timeout)
         .timeout(timeout)
-        .build()
 }
 
 /// The process-wide client. Cloning a `Client` is cheap, but sharing the one
@@ -31,6 +36,18 @@ pub fn client() -> &'static Client {
     static CLIENT: OnceLock<Client> = OnceLock::new();
     CLIENT.get_or_init(|| {
         build_client(REQUEST_TIMEOUT)
+            .expect("HTTP client with default TLS configuration must build")
+    })
+}
+
+/// The client of the sync relay: [`client`]'s user agent and timeouts, but redirects are
+/// never followed (ruling P7). A 3xx comes back as the response itself.
+pub fn no_redirect_client() -> &'static Client {
+    static CLIENT: OnceLock<Client> = OnceLock::new();
+    CLIENT.get_or_init(|| {
+        client_builder(REQUEST_TIMEOUT)
+            .redirect(redirect::Policy::none())
+            .build()
             .expect("HTTP client with default TLS configuration must build")
     })
 }
@@ -55,6 +72,12 @@ mod tests {
     #[test]
     fn client_is_a_singleton() {
         assert!(std::ptr::eq(client(), client()));
+    }
+
+    #[test]
+    fn the_no_redirect_client_is_its_own_singleton() {
+        assert!(std::ptr::eq(no_redirect_client(), no_redirect_client()));
+        assert!(!std::ptr::eq(no_redirect_client(), client()));
     }
 
     /// Accepts one connection, returns the raw request head it received.

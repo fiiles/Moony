@@ -320,7 +320,19 @@
     "syncSnapshotInvalid": "您数据的同步副本已损坏，无法恢复。",
     "syncSnapshotNewerSchema": "您数据的同步副本来自更新版本的 Moony。请先在此设备上更新 Moony。",
     "syncSnapshotPending": "此设备仍有等待发送的更改。请在下次同步后重试。",
-    "syncDeviceNameInvalid": "设备名称必须为 1 到 60 个字符。"
+    "syncDeviceNameInvalid": "设备名称必须为 1 到 60 个字符。",
+    "syncRelayUnreachable": "Moony 无法连接到同步服务器。请检查网络连接；同步将自动重试。",
+    "syncRelayError": "同步服务器返回了意外的响应。同步将在稍后重试。",
+    "syncRateLimited": "同步服务器繁忙。同步将在片刻后重试。",
+    "syncPaymentRequired": "您的同步订阅未激活。请续订以继续同步。",
+    "syncVaultLimitReached": "此同步账户的已同步配置文件数量已达上限。",
+    "syncAccountNotFound": "同步服务器无法识别此账户号码。",
+    "syncVaultNotFound": "在同步服务器上找不到同步数据，可能已被删除。",
+    "syncCheckoutUnavailable": "目前无法付款。请稍后再试。",
+    "syncSnapshotTooLarge": "您的数据过大，无法作为同步副本上传。",
+    "syncQuotaExceeded": "此配置文件的同步存储空间已满。",
+    "syncKeyRotated": "此设备已无法访问同步数据，可能已被其他设备移除。",
+    "syncRelayUrlInvalid": "同步服务器地址无效。"
   },
   "auth": {
     "wrongPassword": "您输入的密码不正确，请重试。",

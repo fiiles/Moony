@@ -583,7 +583,8 @@
       "loadFailed": "Innehaven kunde inte läsas in.",
       "target": "mål {{price}}",
       "targetReached": "målet nått",
-      "dayChange": "i dag"
+      "dayChange": "i dag",
+      "realizedShort": "real. {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} av krypto",

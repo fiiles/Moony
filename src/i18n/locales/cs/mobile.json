@@ -619,7 +619,8 @@
       "loadFailed": "Pozice se nepodařilo načíst.",
       "target": "cíl {{price}}",
       "targetReached": "cíl dosažen",
-      "dayChange": "dnes"
+      "dayChange": "dnes",
+      "realizedShort": "realiz. {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} z krypta",

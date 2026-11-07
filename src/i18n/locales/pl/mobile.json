@@ -655,7 +655,8 @@
       "loadFailed": "Nie udało się wczytać pozycji.",
       "target": "cel {{price}}",
       "targetReached": "cel osiągnięty",
-      "dayChange": "dziś"
+      "dayChange": "dziś",
+      "realizedShort": "zreal. {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} krypto",

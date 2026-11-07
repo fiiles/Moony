@@ -547,7 +547,8 @@
       "loadFailed": "无法加载持仓。",
       "target": "目标价 {{price}}",
       "targetReached": "已达目标价",
-      "dayChange": "今日"
+      "dayChange": "今日",
+      "realizedShort": "已实现 {{amount}}"
     },
     "crypto": {
       "largestNote": "占加密货币 {{share}}",

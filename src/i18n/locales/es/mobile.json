@@ -619,7 +619,8 @@
       "loadFailed": "No se pudieron cargar las posiciones.",
       "target": "objetivo {{price}}",
       "targetReached": "objetivo alcanzado",
-      "dayChange": "hoy"
+      "dayChange": "hoy",
+      "realizedShort": "real. {{amount}}"
     },
     "crypto": {
       "largestNote": "{{share}} de cripto",

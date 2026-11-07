@@ -547,7 +547,8 @@
       "loadFailed": "ポジションを読み込めませんでした。",
       "target": "目標 {{price}}",
       "targetReached": "目標に到達",
-      "dayChange": "本日"
+      "dayChange": "本日",
+      "realizedShort": "確定 {{amount}}"
     },
     "crypto": {
       "largestNote": "暗号資産の{{share}}",

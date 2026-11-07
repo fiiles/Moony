@@ -14,6 +14,7 @@
 //! wall-clock stamps still differ from run to run.
 
 mod ops;
+mod scenarios;
 mod split_seeds;
 mod tests;
 
@@ -183,35 +184,40 @@ impl Vault {
         ));
     }
 
-    /// Seals everything device `d` has queued, one envelope per transaction (`build_next`,
-    /// hash, `record_sealed`, commit), and appends each to the relay as it decodes off the wire.
+    /// Seals everything device `d` has queued, one envelope per transaction (`push_one`).
     /// Returns how many envelopes went out.
     pub fn push(&mut self, d: usize) -> usize {
         fake_clock::advance(STEP_MS);
-        let what = format!("push d{d}");
         let mut sent = 0;
-        loop {
-            let built = self.check(&what, seal_next(&self.devices[d].conn));
-            let Some((changeset, bytes, hash)) = built else {
-                break;
-            };
-            let wire = self.check(&what, from_json(&bytes));
-            if wire != changeset {
-                self.fail(&format!(
-                    "device {d}: envelope {} changed on the wire",
-                    changeset.seq
-                ));
-            }
-            self.trace.push(format!(
-                "push d{d} seq {} ({} rows) -> relay {}",
-                wire.seq,
-                wire.rows.len(),
-                self.relay.len()
-            ));
-            self.relay.push((wire, hash));
+        while self.push_one(d) {
             sent += 1;
         }
         sent
+    }
+
+    /// Seals device `d`'s next envelope (`build_next`, hash, `record_sealed`, commit) and appends
+    /// it to the relay as it decodes off the wire. `false` when nothing is queued.
+    pub fn push_one(&mut self, d: usize) -> bool {
+        let what = format!("push d{d}");
+        let built = self.check(&what, seal_next(&self.devices[d].conn));
+        let Some((changeset, bytes, hash)) = built else {
+            return false;
+        };
+        let wire = self.check(&what, from_json(&bytes));
+        if wire != changeset {
+            self.fail(&format!(
+                "device {d}: envelope {} changed on the wire",
+                changeset.seq
+            ));
+        }
+        self.trace.push(format!(
+            "push d{d} seq {} ({} rows) -> relay {}",
+            wire.seq,
+            wire.rows.len(),
+            self.relay.len()
+        ));
+        self.relay.push((wire, hash));
+        true
     }
 
     /// Offers device `d` the relay entries of `order` it has not dealt with, judging each (R13).
@@ -409,13 +415,20 @@ impl Vault {
     /// Every device dealt with every envelope, nothing is held or re-joined, nothing waits in
     /// an outbox, and every synced table is equal on every device.
     pub fn assert_converged(&self) {
+        self.assert_converged_after_rejoins(&[]);
+    }
+
+    /// `assert_converged`, where the devices of `rejoined` (a clone or a rolled-back copy the
+    /// test made) must have re-joined under a new ID and every other device kept its own.
+    pub fn assert_converged_after_rejoins(&self, rejoined: &[usize]) {
         for (d, device) in self.devices.iter().enumerate() {
             if device.processed.len() != self.relay.len() {
                 self.fail(&format!("device {d} did not deal with every envelope"));
             }
-            if !device.held.is_empty() || device.id != device_id(d) {
+            let rejoined_as_expected = (device.id == device_id(d)) != rejoined.contains(&d);
+            if !device.held.is_empty() || !rejoined_as_expected {
                 self.fail(&format!(
-                    "device {d} held {:?} or re-joined as {:?} on an honest relay",
+                    "device {d} held {:?} or re-joined unexpectedly (now {:?}) on an honest relay",
                     device.held, device.id
                 ));
             }

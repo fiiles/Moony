@@ -94,12 +94,24 @@ fn status(conn: &Connection, split: &str) -> String {
     .expect("split row")
 }
 
+/// `(hlc, device)` of the split's `status` column clock on `conn`.
+fn status_clock(conn: &Connection, split: &str) -> (i64, Vec<u8>) {
+    conn.query_row(
+        "SELECT hlc, device FROM sync_clock \
+         WHERE tbl = 'stock_splits' AND pk = ?1 AND col = 'status'",
+        [split],
+        |r| Ok((r.get(0)?, r.get(1)?)),
+    )
+    .expect("status clock")
+}
+
 fn pair(quantity: &str, price: &str) -> (String, String) {
     (quantity.to_string(), price.to_string())
 }
 
 /// Seed 1044: a 3:1 apply followed by a revert used to leave `1044.36500001`; and an apply on
-/// device 0 racing a dismiss on device 1 must end on the values the merged status derives.
+/// device 0 racing a dismiss on device 1 must end on the status with the newer clock and the
+/// values it derives.
 #[test]
 fn seed_1044_a_3_to_1_apply_and_revert_round_trip_and_converge() {
     let mut rngs = Rngs::new(1044);
@@ -120,11 +132,26 @@ fn seed_1044_a_3_to_1_apply_and_revert_round_trip_and_converge() {
 
     // Device 0 applies while device 1, which has not seen it, dismisses.
     stock_splits::apply(&vault.devices[0].conn, &split).expect("apply on d0");
+    let applied = status_clock(&vault.devices[0].conn, &split);
     stock_splits::dismiss(&vault.devices[1].conn, &split).expect("dismiss on d1");
+    let dismissed = status_clock(&vault.devices[1].conn, &split);
     vault.sync_all(&mut rngs.schedule);
     vault.assert_converged();
 
+    // The status with the newer clock wins on every device.
     let merged = status(&vault.devices[0].conn, &split);
+    let newer = if applied > dismissed {
+        "applied"
+    } else {
+        "dismissed"
+    };
+    assert_eq!(
+        merged, newer,
+        "applied at {applied:?}, dismissed at {dismissed:?}"
+    );
+    for d in 0..vault.devices.len() {
+        assert_eq!(status(&vault.devices[d].conn, &split), newer, "device {d}");
+    }
     let expected = if merged == "applied" {
         pair("21", "348.12166667")
     } else {

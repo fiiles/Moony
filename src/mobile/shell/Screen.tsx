@@ -9,6 +9,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useEdgeSwipeBack } from '@/mobile/hooks/use-edge-swipe-back';
 import { navScroll, saveNavScroll, useNavEntry } from '@/mobile/hooks/use-nav-stack';
+import { SCROLL_TOP_EVENT } from '@/mobile/hooks/use-tab-memory';
 import { NavBar } from './NavBar';
 
 interface ScreenProps {
@@ -28,7 +29,8 @@ interface ScreenProps {
  * One phone screen (design system README §13, `.m-screen`): the nav bar over one scroll area
  * with the 16 pt gutter and room at the bottom for the fixed tab bar. A screen with a back button
  * also goes back by a swipe from the left edge (`useEdgeSwipeBack`), and a screen comes back
- * scrolled where it was left (`useKeptScroll`).
+ * scrolled where it was left (`useKeptScroll`). A tap on the tab a root belongs to scrolls it to
+ * its top (`SCROLL_TOP_EVENT`).
  */
 export function Screen({
   title,
@@ -126,7 +128,17 @@ function useKeptScroll(scroll: RefObject<HTMLElement | null>) {
       if (!underlay) saveNavScroll(index, el.scrollTop);
     };
     el.addEventListener('scroll', save, { passive: true });
+
+    // A tap on the tab shown, at its root: back to the top (the swipe's underlay stays put)
+    const toTop = () => {
+      if (underlay) return;
+      settled = true;
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      el.scrollTo({ top: 0, behavior: reduced ? 'auto' : 'smooth' });
+    };
+    window.addEventListener(SCROLL_TOP_EVENT, toTop);
     return () => {
+      window.removeEventListener(SCROLL_TOP_EVENT, toTop);
       observer.disconnect();
       window.clearTimeout(timer);
       el.removeEventListener('touchstart', stop);

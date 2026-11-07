@@ -12,6 +12,8 @@ const here = () => `${window.location.pathname}${window.location.search}`;
 
 let stack: readonly NavEntry[] = [{ path: here(), scroll: 0 }];
 let underlay = false;
+/** The screen a `popNavTo` is going back to, until its `popstate` arrives. */
+let expectedPop: { index: number; path: string } | null = null;
 let listeners: (() => void)[] = [];
 const emit = () => listeners.forEach((listener) => listener());
 
@@ -23,7 +25,13 @@ const subscribe = (listener: () => void) => {
 };
 
 const onHistory = (type: NavEvent['type']) => () => {
-  const next = navReduce(stack, { type, path: here() });
+  const path = here();
+  const event: NavEvent = { type, path };
+  if (type === 'pop' && expectedPop) {
+    if (expectedPop.path === path) event.to = expectedPop.index;
+    expectedPop = null;
+  }
+  const next = navReduce(stack, event);
   // Any move ends a swipe's underlay: the screen it showed is now the page itself, or gone
   if (next === stack && !underlay) return;
   stack = next;
@@ -52,6 +60,35 @@ export function setNavUnderlay(shown: boolean): void {
   if (underlay === shown) return;
   underlay = shown;
   emit();
+}
+
+/** The stack as it stands, outside React (the tab bar reads it when tapped). */
+export function navStack(): readonly NavEntry[] {
+  return stack;
+}
+
+/**
+ * Goes back to the screen at `index` in one step (`history.go`), so the stack drops every screen
+ * above it at once (`navReduce`'s targeted pop). Nothing happens for the top or a screen not held.
+ */
+export function popNavTo(index: number): void {
+  const target = stack[index];
+  const steps = stack.length - 1 - index;
+  if (!target || steps <= 0) return;
+  expectedPop = { index, path: target.path };
+  window.history.go(-steps);
+}
+
+/**
+ * Pushes `entries` one after another (a tab's remembered screens, `tab-memory.ts`) and gives
+ * each new screen the scroll it had, so every one of them comes back where it was left.
+ */
+export function pushNavTrail(entries: readonly NavEntry[], navigate: (path: string) => void): void {
+  for (const entry of entries) {
+    navigate(entry.path);
+    const top = stack.length - 1;
+    if (stack[top]?.path === entry.path) saveNavScroll(top, entry.scroll);
+  }
 }
 
 /** True when there is a screen under the top one to draw. */

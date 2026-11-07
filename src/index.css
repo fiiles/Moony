@@ -337,6 +337,16 @@
     touch-action: manipulation;
   }
 
+  /* How far the toasts sit above the bottom safe area besides their 12 px: the tab bar's height
+     while the shell shows the bar (`MobileShell` sets `data-tabbar`), nothing on the screens
+     without it (the lock, Nastavení, a sheet-only flow). */
+  html[data-shell='mobile'] {
+    --m-toast-lift: 0px;
+  }
+  html[data-shell='mobile'][data-tabbar] {
+    --m-toast-lift: var(--m-tabbar-h);
+  }
+
   /* The shell floor for text fields. iOS zooms the page into a focused field drawn under 16 px,
      and the viewport is no longer locked to scale 1 (so Dynamic Type can show the page, README §13),
      which makes that zoom stick. The phone's own fields are `text-m-field` (= --m-fs-field, never

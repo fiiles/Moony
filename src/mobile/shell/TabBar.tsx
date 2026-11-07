@@ -2,6 +2,7 @@ import { Briefcase, ChartColumn, Landmark, LayoutDashboard, type LucideIcon } fr
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'wouter';
 import { cn } from '@/lib/utils';
+import { tapTab } from '@/mobile/hooks/use-tab-memory';
 import { routes, TABS, type TabId } from './routes';
 
 const TAB_ICONS: Record<TabId, LucideIcon> = {
@@ -19,12 +20,14 @@ interface TabBarProps {
  * Tab bar (spec §6 and §10.3, design system README §13, `.m-tabbar`): paper with a hairline on
  * top, 56 pt above the bottom safe area, Lucide 24 (stroke 1.75) and a 10 / 600 label; colour alone
  * marks the active tab (ink, the rest ink-4).
- * Switching tabs goes through the history, so Android back walks back through it.
+ * Switching tabs goes through the history, so Android back walks back through it. Each tab comes
+ * back where it was left; a tap on the tab shown goes back to its root, or scrolls the root to
+ * its top (`tapTab`, audit C3).
  */
 export function TabBar({ active }: TabBarProps) {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
-  const [location] = useLocation();
+  const [, setLocation] = useLocation();
 
   return (
     <nav
@@ -39,9 +42,10 @@ export function TabBar({ active }: TabBarProps) {
             key={tab}
             href={routes[tab]}
             aria-current={isActive ? 'page' : undefined}
-            // Tapping the tab you are on, at its root, adds no history entry.
+            // The link names the tab's root; the tap goes where the tab was left
             onClick={(event) => {
-              if (location === routes[tab]) event.preventDefault();
+              event.preventDefault();
+              tapTab(tab, (path) => setLocation(path));
             }}
             className={cn(
               'flex min-w-0 flex-col items-center gap-[3px] text-micro tracking-[-0.005em] [-webkit-touch-callout:none]',

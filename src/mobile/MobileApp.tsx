@@ -17,11 +17,12 @@ import { useVisibleHeight } from '@/mobile/lib/use-visible-height';
 
 /**
  * Toasts sit above the tab bar (spec §10.3), centred between the 16 pt gutters: 12 pt over the
- * bar and the bottom safe area, so a toast's "Vrátit" is never under the bar. Sonner reads
- * `mobileOffset` below 600 px and `offset` above it (a phone app run in a wide window).
+ * bar and the bottom safe area, so a toast's "Vrátit" is never under the bar; on a screen without
+ * the bar, 12 pt over the safe area (`--m-toast-lift`, `index.css`). Sonner reads `mobileOffset`
+ * below 600 px and `offset` above it (a phone app run in a wide window).
  */
 const TOAST_OFFSET = {
-  bottom: 'calc(var(--m-tabbar-h) + var(--safe-bottom) + 12px)',
+  bottom: 'calc(var(--m-toast-lift, 0px) + var(--safe-bottom) + 12px)',
   left: 16,
   right: 16,
 };

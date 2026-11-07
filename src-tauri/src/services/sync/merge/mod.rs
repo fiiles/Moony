@@ -151,7 +151,7 @@ pub(crate) fn apply_all(
         let mut later = Vec::new();
         let mut progress = false;
         for change in pending {
-            let key = (change.table.clone(), change.key.to_pk_text());
+            let key = (change.table.clone(), change.key.to_pk_text()?);
             if defer && change.insert && row::references(conn, ctx, change, &held)? {
                 held.insert(key);
                 later.push(change);

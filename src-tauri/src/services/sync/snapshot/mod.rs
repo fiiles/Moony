@@ -380,7 +380,7 @@ fn overwrite_singleton(conn: &Connection, row: &RowChange) -> Result<bool> {
             params_from_iter(values),
         )?;
     }
-    let pk = row.key.to_pk_text();
+    let pk = row.key.to_pk_text()?;
     let clocks = std::iter::once(("*", Some(row.generation)))
         .chain(std::iter::once(("-", row.deleted)))
         .chain(

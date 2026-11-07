@@ -984,9 +984,16 @@ built. The text above is kept as it was approved. A section marked "(superseded,
 text that no longer matches the build; the rest of that section still stands. Where they differ,
 the code and ADR 0024 win.
 
-- **§5.2 Column classes.** Three mirrors are recomputed-or-typed, not recomputed:
-  `bank_accounts.balance`/`balance_as_of`, `real_estate.market_price`/`market_price_currency` and
-  `other_assets.market_price` (each keeps a typed value when it has no source rows).
+- **§5.2 Column classes.** These columns are recomputed-or-typed, not recomputed: each is computed
+  from its source rows while any exist and keeps a typed value when it has none
+  (`registry/tables.rs`):
+  - `bank_accounts.balance`/`balance_as_of`, from `bank_balance_records`;
+  - `stock_investments.quantity`, from `investment_transactions`;
+  - `crypto_investments.quantity`/`currency`, from `crypto_transactions`;
+  - `real_estate.market_price`/`market_price_currency`, from `real_estate_valuations`;
+  - `other_assets.market_price`, from `other_asset_valuations`;
+  - `other_assets.quantity`/`average_purchase_price`, from `other_asset_transactions`.
+
   `loans.interest_rate`/`monthly_payment` are plain Synced. `loan_events.previous_rate`/
   `previous_monthly_payment` are Synced, and `loan_events::rebuild_terms_chain` re-derives every
   later carrier, after a merge and in every local write that adds or removes an event. Exactly
@@ -1039,8 +1046,10 @@ the code and ADR 0024 win.
   tables also have `entry_at`. The current units and `split_basis` are Recomputed:
   `stock_splits::reconcile_ticker` derives them in one scaling with one rounding, so the result
   does not depend on the path. A side row is affected by a split according to `entry_at`, never
-  `updated_at`. A split named in any `entry_basis` cannot be deleted or given a new ratio. A basis
-  ID with no `stock_splits` row stays and scales nothing. ADR 0024.
+  `updated_at`. Deleting a reverted manual split, or recording it again with another ratio, first
+  re-bases the rows whose `entry_basis` names it (entry values scaled back by the old ratio, the
+  ID removed, as a local entry write), so fixing a wrong manual split works as it did before.
+  A basis ID with no `stock_splits` row stays and scales nothing. ADR 0024.
 - **§7.3 and §7.4 Unique keys and invariants (rulings U1–U4).**
   - The "keep newest" tables became Same ID. `bank_balance_records` and `budget_goal_versions`
     take natural IDs from their keys, and moving a version to another key deletes it and
@@ -1079,6 +1088,17 @@ the code and ADR 0024 win.
   `envelope`, `blobs`, `pairing`, `relay` and `engine` belong to later phases.
 - **§16a Oversized rows.** The journal refuses a row over 180 KiB; capture cannot, because it
   cannot measure the deflated size. The row stays in the outbox.
+- **Deliberate user-visible changes with sync off (release notes).** Phase 1 changes a few
+  results for people who never turn sync on:
+  - a watch target (and a price or dividend override) is rescaled by a split according to when
+    the value was entered (`entry_at`), so editing the notes no longer changes it;
+  - reverting a split returns exactly the values as entered (no `…00000001` drift), and applying
+    two splits rounds once;
+  - a budget range that lies only in the past no longer shows as the current limit;
+  - a back-dated interest-rate change re-chains the "previous" terms of every later change;
+  - recalculations that met two rows in the same second now break the tie by `id`;
+  - fixing a wrong manual split (revert, then record it again at another ratio or delete it)
+    works as before.
 - **§18 Performance.** The capture overhead on a 5,000-row statement import was measured at about
   350%: 31.9 ms rose to 143.7 ms in a release build in memory, and to about 315% with a WAL file
   (`capture_overhead_on_a_5000_row_statement_import`, `#[ignore]`). The target was under 20%. The

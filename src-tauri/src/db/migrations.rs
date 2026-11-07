@@ -3046,32 +3046,24 @@ ALTER TABLE dividend_overrides ADD COLUMN entry_basis TEXT;
 ALTER TABLE dividend_overrides ADD COLUMN entry_at INTEGER;
 
 UPDATE investment_transactions SET split_basis = (
-    SELECT json_group_array(id) FROM (
-        SELECT s.id FROM stock_splits s
-        WHERE s.ticker = investment_transactions.ticker AND s.status = 'applied'
-          AND s.effective_day > investment_transactions.transaction_date
-        ORDER BY s.id));
+    SELECT json_group_array(s.id ORDER BY s.id) FROM stock_splits s
+    WHERE s.ticker = investment_transactions.ticker AND s.status = 'applied'
+      AND s.effective_day > investment_transactions.transaction_date);
 UPDATE investment_transactions SET split_basis = NULL WHERE split_basis = '[]';
 UPDATE stock_price_overrides SET split_basis = (
-    SELECT json_group_array(id) FROM (
-        SELECT s.id FROM stock_splits s
-        WHERE s.ticker = stock_price_overrides.ticker AND s.status = 'applied'
-          AND s.effective_day > stock_price_overrides.updated_at
-        ORDER BY s.id));
+    SELECT json_group_array(s.id ORDER BY s.id) FROM stock_splits s
+    WHERE s.ticker = stock_price_overrides.ticker AND s.status = 'applied'
+      AND s.effective_day > stock_price_overrides.updated_at);
 UPDATE stock_price_overrides SET split_basis = NULL WHERE split_basis = '[]';
 UPDATE watched_stocks SET split_basis = (
-    SELECT json_group_array(id) FROM (
-        SELECT s.id FROM stock_splits s
-        WHERE s.ticker = watched_stocks.ticker AND s.status = 'applied'
-          AND s.effective_day > watched_stocks.updated_at
-        ORDER BY s.id));
+    SELECT json_group_array(s.id ORDER BY s.id) FROM stock_splits s
+    WHERE s.ticker = watched_stocks.ticker AND s.status = 'applied'
+      AND s.effective_day > watched_stocks.updated_at);
 UPDATE watched_stocks SET split_basis = NULL WHERE split_basis = '[]';
 UPDATE dividend_overrides SET split_basis = (
-    SELECT json_group_array(id) FROM (
-        SELECT s.id FROM stock_splits s
-        WHERE s.ticker = dividend_overrides.ticker AND s.status = 'applied'
-          AND s.effective_day > dividend_overrides.updated_at
-        ORDER BY s.id));
+    SELECT json_group_array(s.id ORDER BY s.id) FROM stock_splits s
+    WHERE s.ticker = dividend_overrides.ticker AND s.status = 'applied'
+      AND s.effective_day > dividend_overrides.updated_at);
 UPDATE dividend_overrides SET split_basis = NULL WHERE split_basis = '[]';
 
 UPDATE investment_transactions SET entry_quantity = quantity,
@@ -3286,6 +3278,120 @@ mod migration_029 {
         assert_eq!(report.rows, 0, "{report:?}");
         assert!(report.per_split.is_empty(), "{report:?}");
         assert_eq!(snapshot(&conn), before);
+    }
+
+    /// A profile from before 029 with a manual 4:1 split applied (its trades already rewritten
+    /// into today's units by the old apply), migrated: the backfill names the split in their
+    /// entry basis.
+    fn upgraded_with_an_applied_manual_split() -> Connection {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "029_device_sync")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        conn.execute_batch(
+            "INSERT INTO stock_investments (id, ticker, company_name, quantity, currency) VALUES
+               ('p1', 'TSLA', 'Tesla', '40', 'USD');
+             INSERT INTO investment_transactions
+               (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency,
+                transaction_date)
+             VALUES ('buy', 'p1', 'buy', 'TSLA', 'Tesla', '60', '41.325', 'USD', 864000),
+                    ('sell', 'p1', 'sell', 'TSLA', 'Tesla', '20', '45', 'USD', 950400);
+             INSERT INTO stock_splits (id, ticker, effective_day, numerator, denominator, source,
+                 status, resolved_at, applied_count)
+               VALUES ('s', 'TSLA', 1728000, '4', '1', 'manual', 'applied', 1, 2);",
+        )
+        .expect("rows");
+        run_migrations(&conn).expect("migrate");
+        let named: String = conn
+            .query_row(
+                "SELECT entry_basis FROM investment_transactions WHERE id = 'buy'",
+                [],
+                |r| r.get(0),
+            )
+            .expect("basis");
+        assert_eq!(named, r#"["s"]"#, "the backfill names the split");
+        conn
+    }
+
+    fn units(conn: &Connection) -> Vec<(String, String)> {
+        let mut stmt = conn
+            .prepare("SELECT quantity, price_per_unit FROM investment_transactions ORDER BY id")
+            .expect("prepare");
+        stmt.query_map([], |r| Ok((r.get(0)?, r.get(1)?)))
+            .expect("query")
+            .map(|r| r.expect("row"))
+            .collect()
+    }
+
+    fn pairs(list: &[(&str, &str)]) -> Vec<(String, String)> {
+        list.iter()
+            .map(|(q, p)| (q.to_string(), p.to_string()))
+            .collect()
+    }
+
+    /// The final fix wave (G5): fixing a wrong manual split recorded before the upgrade works as
+    /// it did: revert, then record it again at another ratio.
+    #[test]
+    fn an_upgraded_manual_split_is_re_recorded_at_another_ratio() {
+        use crate::services::stock_splits;
+        let conn = upgraded_with_an_applied_manual_split();
+        stock_splits::revert(&conn, "s").expect("revert");
+        assert_eq!(units(&conn), pairs(&[("15", "165.3"), ("5", "180")]));
+        let fixed = stock_splits::record_manual(
+            &conn,
+            &stock_splits::InsertStockSplit {
+                ticker: "TSLA".into(),
+                effective_day: 1_728_000,
+                numerator: "2".into(),
+                denominator: "1".into(),
+            },
+        )
+        .expect("record again");
+        assert_eq!(fixed.split.status, stock_splits::StockSplitStatus::Applied);
+        assert_eq!(units(&conn), pairs(&[("30", "82.65"), ("10", "90")]));
+    }
+
+    /// The final fix wave (G5): a wrong manual split recorded before the upgrade can be deleted
+    /// after a revert, and the trades show their pre-split values.
+    #[test]
+    fn an_upgraded_manual_split_is_deleted_after_a_revert() {
+        use crate::services::stock_splits;
+        let conn = upgraded_with_an_applied_manual_split();
+        stock_splits::revert(&conn, "s").expect("revert");
+        stock_splits::delete_manual(&conn, "s").expect("delete");
+        assert_eq!(units(&conn), pairs(&[("15", "165.3"), ("5", "180")]));
+        let left: i64 = conn
+            .query_row("SELECT COUNT(*) FROM stock_splits", [], |r| r.get(0))
+            .expect("count");
+        assert_eq!(left, 0);
+    }
+
+    /// The split-basis backfill orders inside the aggregate (`json_group_array(… ORDER BY …)`),
+    /// which needs SQLite 3.44 or newer; the bundled SQLCipher must provide it.
+    #[test]
+    fn the_bundled_sqlite_orders_inside_aggregates() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let version: String = conn
+            .query_row("SELECT sqlite_version()", [], |r| r.get(0))
+            .expect("version");
+        let parts: Vec<u32> = version
+            .split('.')
+            .map(|p| p.parse().expect("number"))
+            .collect();
+        assert!(
+            parts[..2] >= [3, 44][..],
+            "SQLite {version} is older than 3.44"
+        );
+        let ordered: String = conn
+            .query_row(
+                "SELECT json_group_array(v ORDER BY v) FROM (SELECT 'b' AS v UNION ALL SELECT 'a')",
+                [],
+                |r| r.get(0),
+            )
+            .expect("ordered aggregate");
+        assert_eq!(ordered, r#"["a","b"]"#);
     }
 
     #[test]

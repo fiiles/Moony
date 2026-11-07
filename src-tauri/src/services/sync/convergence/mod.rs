@@ -472,7 +472,7 @@ fn seal_next(conn: &Connection) -> Result<Option<Sealed>> {
         tx.commit()?;
         return Ok(None);
     };
-    let bytes = to_json(&built.changeset);
+    let bytes = to_json(&built.changeset)?;
     let hash: [u8; 32] = Sha256::digest(&bytes).into();
     record_sealed(&tx, &built, hash)?;
     tx.commit()?;

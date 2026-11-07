@@ -219,7 +219,6 @@
     "stockSplitNotPending": "Questo frazionamento è già stato gestito.",
     "stockSplitNotApplied": "Questo frazionamento non è stato applicato.",
     "stockSplitNotDeletable": "Questo frazionamento non può essere eliminato.",
-    "stockSplitRatioLocked": "Il rapporto di questo frazionamento non può essere modificato: alcune transazioni sono state inserite mentre era applicato.",
     "stockSplitOversold": "Dopo la conversione, le vendite supererebbero le azioni detenute.",
     "csvEmptyFile": "Il file è vuoto o non ha una riga di intestazione.",
     "csvColumnsNotFound": "Le colonne selezionate non sono state trovate nel file. Controlla la riga di intestazione e l'associazione delle colonne.",

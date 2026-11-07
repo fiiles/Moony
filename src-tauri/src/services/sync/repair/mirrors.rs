@@ -12,7 +12,9 @@ use rusqlite::{params, Connection, OptionalExtension};
 
 use super::{attempt, typed, RepairReport, Touched};
 use crate::error::{AppError, Result};
-use crate::services::stock_splits::{self, ratio_parts, StockSplitStatus};
+use crate::services::stock_splits::{
+    self, ratio_parts, SplitScaled, StockSplitStatus, SPLIT_SCALED,
+};
 use crate::services::valuations::{self, ValuationKind};
 use crate::services::{
     bank_accounts, budgeting, crypto_investments, dedup, investments, loan_events, other_assets,
@@ -44,24 +46,6 @@ const OTHER_ASSETS: Positions = Positions {
     owner: "asset_id",
     recalculate: other_assets::recalculate_asset_totals,
 };
-
-/// The tables whose current units are derived from entry values (D27, ruling T18c):
-/// `(table, [(current column, entry column)])`.
-const BASIS_TABLES: [(&str, &[(&str, &str)]); 4] = [
-    (
-        "investment_transactions",
-        &[
-            ("quantity", "entry_quantity"),
-            ("price_per_unit", "entry_price_per_unit"),
-        ],
-    ),
-    ("stock_price_overrides", &[("price", "entry_price")]),
-    ("watched_stocks", &[("target_price", "entry_target_price")]),
-    (
-        "dividend_overrides",
-        &[("yearly_dividend_sum", "entry_yearly_dividend_sum")],
-    ),
-];
 
 pub fn run(
     conn: &Connection,
@@ -195,6 +179,28 @@ fn recalculate_position(
     Ok(())
 }
 
+/// Recomputes every stock position holding `ticker` exactly as the merge repair does, with its
+/// fallback for a history that sells more than it holds; returns the warnings. Local writes
+/// whose receivers recompute the positions in their repair (a split dismiss or delete) run
+/// this, so the author stores what every receiver computes.
+pub(crate) fn recalculate_stock_positions(conn: &Connection, ticker: &str) -> Result<Vec<String>> {
+    let ids = {
+        let mut stmt = conn.prepare(
+            "SELECT DISTINCT investment_id FROM investment_transactions WHERE ticker = ?1
+             ORDER BY investment_id",
+        )?;
+        let ids = stmt
+            .query_map([ticker], |r| r.get::<_, String>(0))?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        ids
+    };
+    let mut report = RepairReport::default();
+    for id in ids {
+        recalculate_position(conn, &mut report, &STOCKS, &id)?;
+    }
+    Ok(report.warnings)
+}
+
 fn is_oversold(error: &AppError) -> bool {
     matches!(error, AppError::Validation(key)
         if key == "validation.sellExceedsHoldings" || key == "validation.stockSplitOversold")
@@ -220,8 +226,8 @@ fn reconcile(
         |r| r.get(0),
     )?;
     let mut to_derive = 0_i64;
-    for (table, pairs) in BASIS_TABLES {
-        let differs = pairs
+    for SplitScaled { table, columns, .. } in SPLIT_SCALED {
+        let differs = columns
             .iter()
             .map(|(current, entry)| format!(" OR {current} IS NOT {entry}"))
             .collect::<String>();
@@ -286,7 +292,12 @@ fn unreadable_split_data(conn: &Connection, ticker: &str) -> Result<Option<Strin
             return Ok(Some(format!("split {id}: {error}")));
         }
     }
-    for (table, pairs) in BASIS_TABLES {
+    for SplitScaled {
+        table,
+        columns,
+        optional,
+    } in SPLIT_SCALED
+    {
         let mut stmt = conn.prepare(&format!(
             "SELECT id, entry_basis FROM {table}
              WHERE ticker = ?1 AND entry_basis IS NOT NULL ORDER BY id"
@@ -302,10 +313,10 @@ fn unreadable_split_data(conn: &Connection, ticker: &str) -> Result<Option<Strin
             }
         }
         // A watch without a target has neither value; every other row has its entry value.
-        if table == "watched_stocks" {
+        if optional {
             continue;
         }
-        for (_, entry) in pairs.iter() {
+        for (_, entry) in columns.iter() {
             let missing: Option<String> = conn
                 .query_row(
                     &format!(

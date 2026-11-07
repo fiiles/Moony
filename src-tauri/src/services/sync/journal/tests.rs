@@ -67,7 +67,7 @@ fn outbox(conn: &Connection) -> Vec<(String, String)> {
 }
 
 fn hash_of(cs: &Changeset) -> [u8; 32] {
-    let digest = Sha256::digest(to_json(cs));
+    let digest = Sha256::digest(to_json(cs).unwrap());
     let mut out = [0u8; 32];
     out.copy_from_slice(&digest);
     out
@@ -108,7 +108,7 @@ fn rows_by_key(built: &[Built]) -> BTreeMap<(String, String), RowChange> {
     built
         .iter()
         .flat_map(|b| b.changeset.rows.iter())
-        .map(|r| ((r.table.clone(), r.key.to_pk_text()), r.clone()))
+        .map(|r| ((r.table.clone(), r.key.to_pk_text().unwrap()), r.clone()))
         .collect()
 }
 
@@ -117,7 +117,7 @@ fn keys(built: &Built) -> Vec<(String, String)> {
         .changeset
         .rows
         .iter()
-        .map(|r| (r.table.clone(), r.key.to_pk_text()))
+        .map(|r| (r.table.clone(), r.key.to_pk_text().unwrap()))
         .collect()
 }
 
@@ -282,7 +282,8 @@ fn a_row_that_never_had_a_clock_travels_with_the_zero_clock() {
             assert_eq!(*column_clock, Clock::ZERO, "{name}");
         }
     }
-    let json: serde_json::Value = serde_json::from_slice(&to_json(&built[0].changeset)).unwrap();
+    let json: serde_json::Value =
+        serde_json::from_slice(&to_json(&built[0].changeset).unwrap()).unwrap();
     assert_eq!(
         json["devs"],
         serde_json::json!([DEVICE.to_b64(), DeviceId::ZERO.to_b64()])
@@ -352,7 +353,7 @@ fn a_deleted_and_recreated_row_carries_del_and_ins() {
 
     let row = only_row(&mut conn);
 
-    let pk = row.key.to_pk_text();
+    let pk = row.key.to_pk_text().unwrap();
     let tombstone = clock(&conn, "learned_payees", &pk, "-").unwrap();
     let generation = clock(&conn, "learned_payees", &pk, "*").unwrap();
     assert_eq!(row.table, "learned_payees");
@@ -567,7 +568,7 @@ fn a_5000_row_import_is_cut_into_envelopes_under_60_kib_with_batch_first() {
 
     assert!(built.len() > 1, "{} envelope(s)", built.len());
     for (i, b) in built.iter().enumerate() {
-        let len = padded_deflated_len(&to_json(&b.changeset));
+        let len = padded_deflated_len(&to_json(&b.changeset).unwrap()).unwrap();
         assert!(len <= ENVELOPE_BUDGET, "envelope {i}: {len}");
         assert_eq!(b.changeset.seq, i as u64 + 1);
     }
@@ -599,7 +600,7 @@ fn the_largest_allowed_row_travels_alone() {
 
     assert_eq!(built.len(), 1);
     assert_eq!(keys(&built[0]), vec![key("watched_stocks", "w1")]);
-    let len = padded_deflated_len(&to_json(&built[0].changeset));
+    let len = padded_deflated_len(&to_json(&built[0].changeset).unwrap()).unwrap();
     assert!(
         len > ENVELOPE_BUDGET && len <= SINGLE_ROW_LIMIT,
         "padded length {len}"

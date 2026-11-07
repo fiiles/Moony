@@ -219,7 +219,6 @@
     "stockSplitNotPending": "Este split ya se ha resuelto.",
     "stockSplitNotApplied": "Este split no se ha aplicado.",
     "stockSplitNotDeletable": "Este split no se puede eliminar.",
-    "stockSplitRatioLocked": "La proporción de este split no se puede cambiar: se registraron transacciones mientras estaba aplicado.",
     "stockSplitOversold": "Tras la conversión, las ventas superarían las acciones en cartera.",
     "csvEmptyFile": "El archivo está vacío o no tiene fila de encabezado.",
     "csvColumnsNotFound": "No se han encontrado en el archivo las columnas seleccionadas. Revisa la fila de encabezado y la asignación de columnas.",

@@ -65,7 +65,7 @@ fn device(id: DeviceId) -> Connection {
 }
 
 fn hash_of(cs: &Changeset) -> [u8; 32] {
-    let digest = Sha256::digest(to_json(cs));
+    let digest = Sha256::digest(to_json(cs).unwrap());
     let mut out = [0u8; 32];
     out.copy_from_slice(&digest);
     out

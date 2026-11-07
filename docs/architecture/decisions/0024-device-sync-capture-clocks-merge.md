@@ -71,9 +71,9 @@ found the cases below; every rule here exists because a seed diverged without it
   counts as typed.
 - **Split units derive from entry values.** `entry_*`, `entry_basis` (split IDs included when
   entered) and, on the three side tables, `entry_at` are synced; current units and `split_basis`
-  are Recomputed by `stock_splits::reconcile_ticker` in one scaling with one rounding. A split named
-  in any `entry_basis` cannot be deleted (`validation.stockSplitNotDeletable`) or re-rated
-  (`validation.stockSplitRatioLocked`).
+  are Recomputed by `stock_splits::reconcile_ticker` in one scaling with one rounding. Deleting a
+  reverted manual split or recording it again at another ratio first re-bases the rows whose
+  `entry_basis` names it (scaled back by the old ratio, the ID removed, a local entry write).
 - **Repairs** run in `repair` mode after every changeset, through the same service code a local
   write runs, as pure functions of the merged rows (ordered by primary key); a failing
   recalculation falls back deterministically instead of failing the merge.

@@ -219,7 +219,6 @@
     "stockSplitNotPending": "Split už byl zpracován.",
     "stockSplitNotApplied": "Split nebyl aplikován.",
     "stockSplitNotDeletable": "Tento split nelze smazat.",
-    "stockSplitRatioLocked": "Poměr tohoto splitu nelze změnit: transakce byly zadány, když byl split aplikován.",
     "stockSplitOversold": "Po přepočtu by prodeje převýšily držené kusy.",
     "csvEmptyFile": "Soubor je prázdný nebo neobsahuje řádek záhlaví.",
     "csvColumnsNotFound": "Vybrané sloupce nebyly v souboru nalezeny. Zkontrolujte řádek záhlaví a mapování sloupců.",

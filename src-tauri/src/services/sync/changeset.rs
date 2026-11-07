@@ -68,14 +68,13 @@ fn invalid() -> AppError {
 impl RowKey {
     /// The text stored in the journal and outbox. A composite key is the compact JSON array
     /// SQLite's `json_array` writes (identical for the ASCII ids the tables use).
-    pub fn to_pk_text(&self) -> String {
-        match self {
+    pub fn to_pk_text(&self) -> Result<String> {
+        Ok(match self {
             RowKey::Single(text) => text.clone(),
-            RowKey::Composite(parts) => {
-                serde_json::to_string(parts).expect("a string array always serializes")
-            }
+            RowKey::Composite(parts) => serde_json::to_string(parts)
+                .map_err(|e| AppError::Internal(format!("sync changeset: a composite key: {e}")))?,
             RowKey::Singleton => SINGLETON_KEY.to_string(),
-        }
+        })
     }
 
     pub fn from_pk_text(spec: &TableSpec, pk: &str) -> Result<Self> {
@@ -315,7 +314,7 @@ pub fn decode_row(value: &Json, devs: &[DeviceId]) -> Result<RowChange> {
     })
 }
 
-pub fn to_json(cs: &Changeset) -> Vec<u8> {
+pub fn to_json(cs: &Changeset) -> Result<Vec<u8>> {
     let mut devs = DevTable::new();
     devs.index(cs.device);
     let rows: Vec<Json> = cs.rows.iter().map(|r| encode_row(r, &mut devs)).collect();
@@ -333,7 +332,8 @@ pub fn to_json(cs: &Changeset) -> Vec<u8> {
     let devs: Vec<String> = devs.into_vec().iter().map(DeviceId::to_b64).collect();
     out.insert("devs".into(), json!(devs));
     out.insert("rows".into(), Json::Array(rows));
-    serde_json::to_vec(&Json::Object(out)).expect("a JSON value always serializes")
+    serde_json::to_vec(&Json::Object(out))
+        .map_err(|e| AppError::Internal(format!("sync changeset: serializing: {e}")))
 }
 
 pub fn from_json(bytes: &[u8]) -> Result<Changeset> {
@@ -395,14 +395,13 @@ pub fn from_json(bytes: &[u8]) -> Result<Changeset> {
 
 /// The size of the raw-deflated JSON rounded up to a multiple of 1024 (the padded plaintext
 /// length the envelope hides the true size behind).
-pub fn padded_deflated_len(json: &[u8]) -> usize {
+pub fn padded_deflated_len(json: &[u8]) -> Result<usize> {
     let mut encoder =
         flate2::write::DeflateEncoder::new(Vec::new(), flate2::Compression::default());
-    encoder
-        .write_all(json)
-        .expect("writing to a Vec never fails");
-    let deflated = encoder.finish().expect("finishing a Vec never fails");
-    deflated.len().div_ceil(1024).max(1) * 1024
+    let deflate = |e: std::io::Error| AppError::Internal(format!("sync changeset: deflate: {e}"));
+    encoder.write_all(json).map_err(deflate)?;
+    let deflated = encoder.finish().map_err(deflate)?;
+    Ok(deflated.len().div_ceil(1024).max(1) * 1024)
 }
 
 /// The highest HLC carried by any clock in the changeset (0 when it has none).
@@ -503,12 +502,12 @@ mod tests {
     #[test]
     fn the_spec_example_round_trips() {
         let cs = spec_example();
-        assert_eq!(from_json(&to_json(&cs)).unwrap(), cs);
+        assert_eq!(from_json(&to_json(&cs).unwrap()).unwrap(), cs);
     }
 
     #[test]
     fn the_json_uses_the_spec_field_names() {
-        let v: Json = serde_json::from_slice(&to_json(&spec_example())).unwrap();
+        let v: Json = serde_json::from_slice(&to_json(&spec_example()).unwrap()).unwrap();
         assert_eq!(v["v"], 1);
         assert_eq!(v["schema"], 29);
         assert_eq!(v["seq"], 418);
@@ -542,10 +541,10 @@ mod tests {
         cs.seq = 1;
         cs.prev = None;
         cs.barrier = 3;
-        let v: Json = serde_json::from_slice(&to_json(&cs)).unwrap();
+        let v: Json = serde_json::from_slice(&to_json(&cs).unwrap()).unwrap();
         assert!(v.get("prev").is_none());
         assert_eq!(v["barrier"], 3);
-        assert_eq!(from_json(&to_json(&cs)).unwrap(), cs);
+        assert_eq!(from_json(&to_json(&cs).unwrap()).unwrap(), cs);
     }
 
     #[test]
@@ -578,7 +577,7 @@ mod tests {
     fn the_zero_clock_travels_with_the_zero_device() {
         let mut cs = spec_example();
         cs.rows[1].generation = Clock::ZERO;
-        let v: Json = serde_json::from_slice(&to_json(&cs)).unwrap();
+        let v: Json = serde_json::from_slice(&to_json(&cs).unwrap()).unwrap();
         let devs: Vec<String> = v["devs"]
             .as_array()
             .unwrap()
@@ -586,7 +585,7 @@ mod tests {
             .map(|d| d.as_str().unwrap().to_string())
             .collect();
         assert!(devs.contains(&DeviceId::ZERO.to_b64()));
-        assert_eq!(from_json(&to_json(&cs)).unwrap(), cs);
+        assert_eq!(from_json(&to_json(&cs).unwrap()).unwrap(), cs);
     }
 
     #[test]
@@ -602,14 +601,14 @@ mod tests {
         cs.rows[0]
             .columns
             .insert("z".into(), (SqlValue::Null, clock(5, 1)));
-        let v: Json = serde_json::from_slice(&to_json(&cs)).unwrap();
+        let v: Json = serde_json::from_slice(&to_json(&cs).unwrap()).unwrap();
         assert_eq!(
             v["rows"][0]["c"]["blob"][0],
             serde_json::json!({"b": "AAH+/w=="})
         );
         assert_eq!(v["rows"][0]["c"]["n"][0], -7);
         assert!(v["rows"][0]["c"]["z"][0].is_null());
-        assert_eq!(from_json(&to_json(&cs)).unwrap(), cs);
+        assert_eq!(from_json(&to_json(&cs).unwrap()).unwrap(), cs);
     }
 
     #[test]
@@ -631,7 +630,9 @@ mod tests {
     fn a_composite_key_text_matches_sqlite_json_array() {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
         assert_eq!(
-            RowKey::Composite(vec!["inv-1".into(), "tag-1".into()]).to_pk_text(),
+            RowKey::Composite(vec!["inv-1".into(), "tag-1".into()])
+                .to_pk_text()
+                .unwrap(),
             conn.query_row("SELECT json_array('inv-1','tag-1')", [], |r| r
                 .get::<_, String>(0))
                 .unwrap()
@@ -643,8 +644,8 @@ mod tests {
         let plain = registry::spec("bank_transactions").unwrap();
         let tags = registry::spec("stock_investment_tags").unwrap();
         let profile = registry::spec("user_profile").unwrap();
-        assert_eq!(RowKey::Single("abc".into()).to_pk_text(), "abc");
-        assert_eq!(RowKey::Singleton.to_pk_text(), "profile");
+        assert_eq!(RowKey::Single("abc".into()).to_pk_text().unwrap(), "abc");
+        assert_eq!(RowKey::Singleton.to_pk_text().unwrap(), "profile");
         assert_eq!(
             RowKey::from_pk_text(plain, "abc").unwrap(),
             RowKey::Single("abc".into())
@@ -730,9 +731,12 @@ mod tests {
 
     #[test]
     fn padded_length_is_a_multiple_of_1024() {
-        assert_eq!(padded_deflated_len(b""), 1024);
-        assert_eq!(padded_deflated_len(&to_json(&spec_example())), 1024);
-        assert_eq!(padded_deflated_len(&vec![b'a'; 100_000]), 1024);
+        assert_eq!(padded_deflated_len(b"").unwrap(), 1024);
+        assert_eq!(
+            padded_deflated_len(&to_json(&spec_example()).unwrap()).unwrap(),
+            1024
+        );
+        assert_eq!(padded_deflated_len(&vec![b'a'; 100_000]).unwrap(), 1024);
         // xorshift bytes do not compress, so 5000 of them deflate to a few bytes over 5000
         let mut x = 0x2545_f491_4f6c_dd1du64;
         let noise: Vec<u8> = (0..5000)
@@ -743,7 +747,7 @@ mod tests {
                 (x >> 24) as u8
             })
             .collect();
-        assert_eq!(padded_deflated_len(&noise), 5120);
+        assert_eq!(padded_deflated_len(&noise).unwrap(), 5120);
     }
 
     #[test]
@@ -783,7 +787,7 @@ mod tests {
         ] {
             cs.rows[0].columns.insert(name.into(), (v, c));
         }
-        assert_eq!(from_json(&to_json(&cs)).unwrap(), cs);
+        assert_eq!(from_json(&to_json(&cs).unwrap()).unwrap(), cs);
     }
 
     #[test]

@@ -91,7 +91,7 @@ pub enum RowResult {
 /// Applies one row change. The caller has set `merge` mode and deferred the FK checks.
 pub fn apply_row(conn: &Connection, change: &RowChange, ctx: &mut MergeCtx) -> Result<RowResult> {
     let table = ctx.shapes.table(conn, &change.table)?;
-    let pk = change.key.to_pk_text();
+    let pk = change.key.to_pk_text()?;
     if table.spec.name == "app_config" && !APP_CONFIG_SYNCED_KEYS.contains(&pk.as_str()) {
         return Ok(RowResult::Dropped);
     }
@@ -668,7 +668,7 @@ impl Table {
             KeyShape::Singleton(constant) => constant.to_string(),
             KeyShape::Primary if self.key.len() == 1 => part(&self.key[0])?,
             KeyShape::Primary => {
-                RowKey::Composite(self.key.iter().map(part).collect::<Result<_>>()?).to_pk_text()
+                RowKey::Composite(self.key.iter().map(part).collect::<Result<_>>()?).to_pk_text()?
             }
         })
     }

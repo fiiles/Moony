@@ -248,3 +248,128 @@ fn seed_2175_an_offline_edit_during_a_revert_converges() {
     vault.assert_converged();
     assert_eq!(current(&vault, joined, &trade), expected);
 }
+
+/// A manual 4:1 split of TSLA, applied before the upgrade, as migration 029's backfill leaves
+/// it: the stored trades are in today's units and their entry basis names the split. Returns
+/// the split id.
+fn upgraded_tsla_split(conn: &Connection) -> String {
+    let split = crate::services::sync::natural_id::natural_id(
+        "stock_splits",
+        &["TSLA", &SPLIT_DAY.to_string()],
+    );
+    let basis = format!(r#"["{split}"]"#);
+    conn.execute_batch(&format!(
+        "INSERT INTO stock_investments (id, ticker, company_name, quantity, currency)
+           VALUES ('inv-tsla', 'TSLA', 'Tesla', '40', 'USD');
+         INSERT INTO stock_splits (id, ticker, effective_day, numerator, denominator, source,
+             status, resolved_at, applied_count)
+           VALUES ('{split}', 'TSLA', {SPLIT_DAY}, '4', '1', 'manual', 'applied', 1, 2);
+         INSERT INTO investment_transactions (id, investment_id, type, ticker, company_name,
+             quantity, price_per_unit, currency, transaction_date, created_at, entry_quantity,
+             entry_price_per_unit, entry_basis, split_basis)
+           VALUES ('tsla-buy', 'inv-tsla', 'buy', 'TSLA', 'Tesla', '60', '41.325', 'USD',
+                   {TRADE_DAY}, 0, '60', '41.325', '{basis}', '{basis}'),
+                  ('tsla-sell', 'inv-tsla', 'sell', 'TSLA', 'Tesla', '20', '45', 'USD',
+                   {TRADE_DAY} + 86400, 0, '20', '45', '{basis}', '{basis}');"
+    ))
+    .expect("the upgraded split");
+    split
+}
+
+fn tsla(vault: &Vault, d: usize) -> Vec<(String, String)> {
+    ["tsla-buy", "tsla-sell"]
+        .iter()
+        .map(|id| current(vault, d, id))
+        .collect()
+}
+
+fn tsla_held(vault: &Vault, d: usize) -> String {
+    vault.devices[d]
+        .conn
+        .query_row(
+            "SELECT quantity FROM stock_investments WHERE ticker = 'TSLA'",
+            [],
+            |r| r.get(0),
+        )
+        .expect("position")
+}
+
+fn manual(numerator: &str) -> stock_splits::InsertStockSplit {
+    stock_splits::InsertStockSplit {
+        ticker: "TSLA".into(),
+        effective_day: SPLIT_DAY,
+        numerator: numerator.into(),
+        denominator: "1".into(),
+    }
+}
+
+/// The final fix wave: a wrong manual split recorded before the upgrade is fixed as before.
+/// Device 0 reverts it, device 1 records it again at 2:1; every device ends on the trades
+/// at 2:1 of what was originally entered.
+#[test]
+fn a_wrong_manual_split_from_before_the_upgrade_is_re_recorded_at_another_ratio() {
+    let mut rngs = Rngs::new(29);
+    let mut split = None;
+    let mut vault = Vault::new("upgraded split re-recorded", 2, |conn, _| {
+        split = Some(upgraded_tsla_split(conn));
+    });
+    let split = split.expect("seeded");
+
+    stock_splits::revert(&vault.devices[0].conn, &split).expect("revert on d0");
+    assert_eq!(tsla(&vault, 0), vec![pair("15", "165.3"), pair("5", "180")]);
+    vault.sync_all(&mut rngs.schedule);
+    stock_splits::record_manual(&vault.devices[1].conn, &manual("2")).expect("record on d1");
+    vault.sync_all(&mut rngs.schedule);
+    vault.assert_converged();
+
+    for d in 0..vault.devices.len() {
+        assert_eq!(
+            tsla(&vault, d),
+            vec![pair("30", "82.65"), pair("10", "90")],
+            "device {d}"
+        );
+        assert_eq!(tsla_held(&vault, d), "20", "device {d}");
+        assert_eq!(status(&vault.devices[d].conn, &split), "applied");
+    }
+}
+
+/// The final fix wave: a wrong manual split recorded before the upgrade can be deleted after a
+/// revert, as before. Device 0 reverts, device 1 deletes; every device shows the trades at
+/// their pre-split values and no row names the split any more.
+#[test]
+fn a_wrong_manual_split_from_before_the_upgrade_is_deleted_after_a_revert() {
+    let mut rngs = Rngs::new(31);
+    let mut split = None;
+    let mut vault = Vault::new("upgraded split deleted", 2, |conn, _| {
+        split = Some(upgraded_tsla_split(conn));
+    });
+    let split = split.expect("seeded");
+
+    stock_splits::revert(&vault.devices[0].conn, &split).expect("revert on d0");
+    vault.sync_all(&mut rngs.schedule);
+    stock_splits::delete_manual(&vault.devices[1].conn, &split).expect("delete on d1");
+    vault.sync_all(&mut rngs.schedule);
+    vault.assert_converged();
+
+    for d in 0..vault.devices.len() {
+        let conn = &vault.devices[d].conn;
+        assert_eq!(
+            tsla(&vault, d),
+            vec![pair("15", "165.3"), pair("5", "180")],
+            "device {d}"
+        );
+        assert_eq!(tsla_held(&vault, d), "10", "device {d}");
+        let named: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM investment_transactions WHERE entry_basis IS NOT NULL",
+                [],
+                |r| r.get(0),
+            )
+            .expect("count");
+        assert_eq!(named, 0, "device {d}");
+        let splits: i64 = conn
+            .query_row("SELECT COUNT(*) FROM stock_splits", [], |r| r.get(0))
+            .expect("count");
+        assert_eq!(splits, 0, "device {d}");
+    }
+}

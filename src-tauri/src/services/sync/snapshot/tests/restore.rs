@@ -28,7 +28,7 @@ fn a_dump_restored_by_replace_reproduces_every_synced_table_and_clock() {
     let order: Vec<String> = rows(&records(&bytes))
         .iter()
         .filter(|r| r.table == "transaction_categories" && r.insert)
-        .map(|r| r.key.to_pk_text())
+        .map(|r| r.key.to_pk_text().unwrap())
         .filter(|pk| pk == "z-parent" || pk == "a-child")
         .collect();
     assert_eq!(

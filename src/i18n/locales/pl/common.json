@@ -219,7 +219,6 @@
     "stockSplitNotPending": "Ten podział został już rozpatrzony.",
     "stockSplitNotApplied": "Ten podział nie został zastosowany.",
     "stockSplitNotDeletable": "Tego podziału nie można usunąć.",
-    "stockSplitRatioLocked": "Nie można zmienić współczynnika tego podziału: transakcje zostały wprowadzone, gdy był zastosowany.",
     "stockSplitOversold": "Po przeliczeniu sprzedaż przekroczyłaby posiadane akcje.",
     "csvEmptyFile": "Plik jest pusty lub nie ma wiersza nagłówka.",
     "csvColumnsNotFound": "Nie znaleziono wybranych kolumn w pliku. Sprawdź wiersz nagłówka i przypisanie kolumn.",

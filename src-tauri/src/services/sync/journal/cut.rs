@@ -39,7 +39,7 @@ pub(super) fn cut<'q>(
     queue: impl IntoIterator<Item = &'q Queued>,
     mut read: impl FnMut(&Queued) -> Result<Option<ReadRow>>,
 ) -> Result<Cut> {
-    let mut filling = Filling::new(envelope);
+    let mut filling = Filling::new(envelope)?;
     let mut nothing_to_send = Vec::new();
     // Refused keys and the rows held back because they reference one, transitively.
     let mut held: HashSet<(String, String)> = HashSet::new();
@@ -56,7 +56,7 @@ pub(super) fn cut<'q>(
         }
         filling.push(row, key);
         if filling.raw >= filling.next_measure {
-            closed = filling.settle();
+            closed = filling.settle()?;
             // Only the first row of an envelope is ever refused (with rows before it, the
             // envelope closes before it instead), and such a row crosses the first checkpoint
             // on its own (over 180 KiB deflated is far more than `MIN_MEASURE_STEP` raw), so no
@@ -73,7 +73,7 @@ pub(super) fn cut<'q>(
         }
     }
     if !closed && filling.fits < filling.changeset.rows.len() {
-        filling.settle();
+        filling.settle()?;
     }
     let mut consumed = filling.keys;
     consumed.extend(nothing_to_send);
@@ -98,16 +98,16 @@ struct Filling {
 }
 
 impl Filling {
-    fn new(changeset: Changeset) -> Self {
-        let raw = to_json(&changeset).len();
-        Self {
+    fn new(changeset: Changeset) -> Result<Self> {
+        let raw = to_json(&changeset)?.len();
+        Ok(Self {
             changeset,
             keys: Vec::new(),
             fits: 0,
             raw,
             next_measure: raw + MIN_MEASURE_STEP,
             refused: Vec::new(),
-        }
+        })
     }
 
     fn push(&mut self, row: RowChange, key: (String, String)) {
@@ -118,9 +118,9 @@ impl Filling {
     }
 
     /// Padded deflated size of the envelope cut to its first `n` rows.
-    fn measure(&mut self, n: usize) -> usize {
+    fn measure(&mut self, n: usize) -> Result<usize> {
         let rest = self.changeset.rows.split_off(n);
-        let len = padded_deflated_len(&to_json(&self.changeset));
+        let len = to_json(&self.changeset).and_then(|json| padded_deflated_len(&json));
         self.changeset.rows.extend(rest);
         len
     }
@@ -141,25 +141,25 @@ impl Filling {
 
     /// Measures the envelope. Returns `true` when it is closed (cut to the rows that fit, or to
     /// one row allowed to travel alone); `false` when every row so far fits.
-    fn settle(&mut self) -> bool {
+    fn settle(&mut self) -> Result<bool> {
         loop {
             let len = self.changeset.rows.len();
             if len == 0 {
                 self.fits = 0;
                 self.next_measure = self.raw + MIN_MEASURE_STEP;
-                return false;
+                return Ok(false);
             }
-            let measured = self.measure(len);
+            let measured = self.measure(len)?;
             if measured <= ENVELOPE_BUDGET {
                 self.fits = len;
                 self.schedule(measured);
-                return false;
+                return Ok(false);
             }
             // The longest prefix that fits: `lo` fits, `hi` does not.
             let (mut lo, mut hi) = (self.fits, len);
             while hi - lo > 1 {
                 let mid = lo + (hi - lo) / 2;
-                if self.measure(mid) <= ENVELOPE_BUDGET {
+                if self.measure(mid)? <= ENVELOPE_BUDGET {
                     lo = mid;
                 } else {
                     hi = mid;
@@ -167,13 +167,13 @@ impl Filling {
             }
             if lo > 0 {
                 self.truncate(lo);
-                return true;
+                return Ok(true);
             }
             // The first row alone is over the budget.
-            let alone = self.measure(1);
+            let alone = self.measure(1)?;
             if alone <= SINGLE_ROW_LIMIT {
                 self.truncate(1);
-                return true;
+                return Ok(true);
             }
             self.changeset.rows.remove(0);
             let (table, pk) = self.keys.remove(0);
@@ -186,7 +186,7 @@ impl Filling {
                 pk,
                 bytes: alone,
             });
-            self.raw = to_json(&self.changeset).len();
+            self.raw = to_json(&self.changeset)?.len();
             self.fits = 0;
         }
     }

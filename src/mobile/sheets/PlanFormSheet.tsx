@@ -17,7 +17,7 @@ import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles'
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
-import { parseAmountInput } from '@/mobile/lib/amount-input';
+import { amountInputText, parseAmountInput } from '@/mobile/lib/amount-input';
 import { yearChoices } from '@/mobile/lib/plan-rows';
 import { CurrencyPickerSheet } from '@/mobile/sheets/CurrencyPickerSheet';
 
@@ -54,13 +54,14 @@ type FieldError = 'nameRequired' | 'nameTooLong' | 'amountInvalid' | 'noteTooLon
 function initialForm(
   plan: SpendingPlan | null,
   defaultYear: number,
-  currencyCode: string
+  currencyCode: string,
+  locale: string
 ): FormInput {
   if (plan) {
     const amount = parseFloat(plan.amount);
     return {
       name: plan.name,
-      amountText: Number.isFinite(amount) ? String(amount) : '',
+      amountText: Number.isFinite(amount) ? amountInputText(amount, locale) : '',
       currency: plan.currency,
       year: plan.year,
       icon: plan.icon || DEFAULT_ICON,
@@ -125,7 +126,8 @@ export function PlanFormSheet({
   const isEdit = plan !== null;
   const isPending = createPlan.isPending || updatePlan.isPending;
 
-  const [input, setInput] = useState(() => initialForm(plan, defaultYear, currencyCode));
+  const locale = useTranslation().i18n.language;
+  const [input, setInput] = useState(() => initialForm(plan, defaultYear, currencyCode, locale));
   const [attempted, setAttempted] = useState(false);
   const [nameTaken, setNameTaken] = useState(false);
   const [currencyOpen, setCurrencyOpen] = useState(false);
@@ -135,7 +137,7 @@ export function PlanFormSheet({
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setInput(initialForm(plan, defaultYear, currencyCode));
+      setInput(initialForm(plan, defaultYear, currencyCode, locale));
       setAttempted(false);
       setNameTaken(false);
     }

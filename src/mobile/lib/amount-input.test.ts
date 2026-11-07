@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { parseAmountInput, signedAmountInput } from './amount-input';
+import {
+  amountInputText,
+  decimalTextToDot,
+  parseAmountInput,
+  signedAmountInput,
+} from './amount-input';
 
 describe('parseAmountInput', () => {
   it('reads plain numbers', () => {
@@ -75,5 +80,52 @@ describe('signedAmountInput', () => {
     expect(signedAmountInput('', true)).toBeNull();
     expect(signedAmountInput('abc', true)).toBeNull();
     expect(signedAmountInput('12ab', false)).toBeNull();
+  });
+});
+
+describe('amountInputText', () => {
+  it('writes the locale decimal separator without grouping', () => {
+    expect(amountInputText(95300.5, 'cs')).toBe('95300,5');
+    expect(amountInputText('95300.50', 'cs')).toBe('95300,50');
+    expect(amountInputText(95300.5, 'en')).toBe('95300.5');
+    expect(amountInputText(-12.25, 'de')).toBe('-12,25');
+  });
+
+  it('removes float noise and keeps integers plain', () => {
+    expect(amountInputText(0.1 + 0.2, 'cs')).toBe('0,3');
+    expect(amountInputText(1000000, 'cs')).toBe('1000000');
+    expect(amountInputText(0, 'en')).toBe('0');
+  });
+
+  it('leaves empty and non-decimal text alone', () => {
+    expect(amountInputText('', 'cs')).toBe('');
+    expect(amountInputText(Number.NaN, 'cs')).toBe('');
+    expect(amountInputText('1e-7', 'cs')).toBe('1e-7');
+  });
+
+  it('round-trips through parseAmountInput', () => {
+    for (const locale of ['cs', 'en', 'de', 'ja']) {
+      expect(parseAmountInput(amountInputText(1234.56, locale))).toBe('1234.56');
+    }
+  });
+});
+
+describe('decimalTextToDot', () => {
+  it('turns a comma or a grouped entry into the dot text', () => {
+    expect(decimalTextToDot('1,5')).toBe('1.5');
+    expect(decimalTextToDot('1 234,5')).toBe('1234.5');
+    expect(decimalTextToDot('1.234,56')).toBe('1234.56');
+    expect(decimalTextToDot('12.5')).toBe('12.5');
+    expect(decimalTextToDot('')).toBe('');
+  });
+
+  it('keeps a half-typed entry going', () => {
+    expect(decimalTextToDot('1,')).toBe('1.');
+    expect(decimalTextToDot('-')).toBe('-');
+    expect(decimalTextToDot(',')).toBe('.');
+  });
+
+  it('leaves other text for the schema to reject', () => {
+    expect(decimalTextToDot('abc')).toBe('abc');
   });
 });

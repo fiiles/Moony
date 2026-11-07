@@ -59,14 +59,15 @@ export function RevalueSheet({
   const formId = useId();
   const { add } = useValuationMutations(kind, assetId);
 
-  const [form, setForm] = useState(() => startRevalueForm(value, todayIso()));
+  const locale = useTranslation().i18n.language;
+  const [form, setForm] = useState(() => startRevalueForm(value, todayIso(), locale));
   // An empty amount is only called missing once the field has been left
   const [amountTouched, setAmountTouched] = useState(false);
   const [openedFor, setOpenedFor] = useState(open);
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setForm(startRevalueForm(value, todayIso()));
+      setForm(startRevalueForm(value, todayIso(), locale));
       setAmountTouched(false);
     }
   }

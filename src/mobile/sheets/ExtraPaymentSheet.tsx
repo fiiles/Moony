@@ -14,7 +14,7 @@ import { Sheet } from '@/mobile/components/Sheet';
 import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
 import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
-import { parseAmountInput } from '@/mobile/lib/amount-input';
+import { amountInputText, parseAmountInput } from '@/mobile/lib/amount-input';
 import { extraPaymentText } from '@/mobile/lib/loan-detail';
 
 /** Whole amounts: the result shows no decimals. */
@@ -55,13 +55,16 @@ export function ExtraPaymentSheet({
   const planPayment = row.plan.monthlyPayment;
   const money = (value: number) => moneyText(value, row.currency, WHOLE);
 
-  const [amountText, setAmountText] = useState(() => String(suggestedExtraPayment(balance)));
+  const locale = useTranslation().i18n.language;
+  const [amountText, setAmountText] = useState(() =>
+    amountInputText(suggestedExtraPayment(balance), locale)
+  );
   const [mode, setMode] = useState<ExtraPaymentMode>('term');
   const [openedFor, setOpenedFor] = useState(open);
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setAmountText(String(suggestedExtraPayment(balance)));
+      setAmountText(amountInputText(suggestedExtraPayment(balance), locale));
       setMode('term');
     }
   }

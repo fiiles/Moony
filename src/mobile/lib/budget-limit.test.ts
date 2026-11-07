@@ -267,3 +267,10 @@ describe('limitDefaults', () => {
     });
   });
 });
+
+describe('limitDefaults amount text', () => {
+  it('uses the locale decimal separator for a stored limit', async () => {
+    const { amountInputText } = await import('./amount-input');
+    expect(amountInputText(limitAmountText('1250.50'), 'cs')).toBe('1250,5');
+  });
+});

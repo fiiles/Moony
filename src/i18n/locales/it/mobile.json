@@ -214,7 +214,14 @@
       "snoozed_one": "{{count}} pagamento saltato tornerà più avanti.",
       "snoozed_many": "{{count}} pagamenti saltati torneranno più avanti.",
       "snoozed_other": "{{count}} pagamenti saltati torneranno più avanti."
-    }
+    },
+    "heldBack_one": "{{count}} pagamento saltato",
+    "heldBack_many": "{{count}} pagamenti saltati",
+    "heldBack_other": "{{count}} pagamenti saltati",
+    "unsnoozed_one": "{{count}} pagamento è di nuovo in coda",
+    "unsnoozed_many": "{{count}} pagamenti sono di nuovo in coda",
+    "unsnoozed_other": "{{count}} pagamenti sono di nuovo in coda",
+    "unsnooze": "Riporta in coda"
   },
   "placeholder": {
     "export": "L'esportazione arriva più avanti."

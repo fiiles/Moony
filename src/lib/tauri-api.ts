@@ -1363,6 +1363,15 @@ export const categorizationApi = {
   /** Hold uncategorized payments back from the queue for `days` days (1–365). Returns how many were held back. */
   snoozeCategorization: (transactionIds: string[], days: number) =>
     tauriInvoke<number>('snooze_categorization', { input: { transactionIds, days } }),
+  /**
+   * Put held-back payments back into the queue: the named ones, or (no ids) every running snooze of
+   * `accountId`, or of every account. Resolves with how many wait again.
+   */
+  unsnoozeCategorization: (transactionIds?: string[], accountId?: string) =>
+    tauriInvoke<number>('unsnooze_categorization', {
+      transactionIds: transactionIds ?? null,
+      accountId: accountId ?? null,
+    }),
 
   // Forget a learned payee combination
   forget: (payee: string | null, counterpartyIban: string | null) =>

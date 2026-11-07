@@ -196,7 +196,12 @@
       "hint": "New payments will appear here after the next import.",
       "snoozed_one": "{{count}} payment you skipped will come back later.",
       "snoozed_other": "{{count}} payments you skipped will come back later."
-    }
+    },
+    "heldBack_one": "{{count}} payment skipped",
+    "heldBack_other": "{{count}} payments skipped",
+    "unsnoozed_one": "{{count}} payment is back in the queue",
+    "unsnoozed_other": "{{count}} payments are back in the queue",
+    "unsnooze": "Back to the queue"
   },
   "placeholder": {
     "export": "Export comes later."

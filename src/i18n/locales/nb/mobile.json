@@ -196,7 +196,12 @@
       "hint": "Nye betalinger vises her etter neste import.",
       "snoozed_one": "{{count}} betaling du hoppet over, kommer tilbake senere.",
       "snoozed_other": "{{count}} betalinger du hoppet over, kommer tilbake senere."
-    }
+    },
+    "heldBack_one": "{{count}} betaling hoppet over",
+    "heldBack_other": "{{count}} betalinger hoppet over",
+    "unsnoozed_one": "{{count}} betaling er tilbake i køen",
+    "unsnoozed_other": "{{count}} betalinger er tilbake i køen",
+    "unsnooze": "Tilbake i køen"
   },
   "placeholder": {
     "export": "Eksport kommer senere."

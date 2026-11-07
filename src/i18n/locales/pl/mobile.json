@@ -232,7 +232,16 @@
       "snoozed_few": "{{count}} pominięte płatności wrócą później.",
       "snoozed_many": "{{count}} pominiętych płatności wróci później.",
       "snoozed_other": "{{count}} pominiętych płatności wróci później."
-    }
+    },
+    "heldBack_one": "{{count}} płatność pominięta",
+    "heldBack_few": "{{count}} płatności pominięte",
+    "heldBack_many": "{{count}} płatności pominiętych",
+    "heldBack_other": "{{count}} płatności pominiętych",
+    "unsnoozed_one": "{{count}} płatność wróciła do kolejki",
+    "unsnoozed_few": "{{count}} płatności wróciły do kolejki",
+    "unsnoozed_many": "{{count}} płatności wróciło do kolejki",
+    "unsnoozed_other": "{{count}} płatności wróciło do kolejki",
+    "unsnooze": "Przywróć do kolejki"
   },
   "placeholder": {
     "export": "Eksport pojawi się później."

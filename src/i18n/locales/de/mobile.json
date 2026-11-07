@@ -196,7 +196,12 @@
       "hint": "Neue Zahlungen erscheinen hier nach dem nächsten Import.",
       "snoozed_one": "{{count}} übersprungene Zahlung kommt später zurück.",
       "snoozed_other": "{{count}} übersprungene Zahlungen kommen später zurück."
-    }
+    },
+    "heldBack_one": "{{count}} Zahlung übersprungen",
+    "heldBack_other": "{{count}} Zahlungen übersprungen",
+    "unsnoozed_one": "{{count}} Zahlung ist wieder in der Liste",
+    "unsnoozed_other": "{{count}} Zahlungen sind wieder in der Liste",
+    "unsnooze": "Zurück in die Liste"
   },
   "placeholder": {
     "export": "Der Export kommt später."

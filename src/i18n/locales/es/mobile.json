@@ -214,7 +214,14 @@
       "snoozed_one": "{{count}} pago omitido volverá más adelante.",
       "snoozed_many": "{{count}} pagos omitidos volverán más adelante.",
       "snoozed_other": "{{count}} pagos omitidos volverán más adelante."
-    }
+    },
+    "heldBack_one": "{{count}} pago omitido",
+    "heldBack_many": "{{count}} pagos omitidos",
+    "heldBack_other": "{{count}} pagos omitidos",
+    "unsnoozed_one": "{{count}} pago ha vuelto a la cola",
+    "unsnoozed_many": "{{count}} pagos han vuelto a la cola",
+    "unsnoozed_other": "{{count}} pagos han vuelto a la cola",
+    "unsnooze": "Devolver a la cola"
   },
   "placeholder": {
     "export": "La exportación llega más adelante."

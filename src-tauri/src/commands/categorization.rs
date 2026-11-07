@@ -580,6 +580,22 @@ pub async fn snooze_categorization(
     db.with_conn(|conn| categorize_queue::snooze(conn, &input.transaction_ids, until))
 }
 
+/// Put held-back payments back into the queue: the named ones (the "Vrátit" of a "Nechat"), or
+/// every running snooze of one account or of all accounts ("Vrátit do fronty"). Returns how many
+/// payments wait again.
+#[tauri::command]
+pub async fn unsnooze_categorization(
+    db: State<'_, Database>,
+    transaction_ids: Option<Vec<String>>,
+    account_id: Option<String>,
+) -> crate::error::Result<usize> {
+    categorize_queue::validate_unsnooze(transaction_ids.as_deref())?;
+    let now = chrono::Utc::now().timestamp();
+    db.with_conn(|conn| {
+        categorize_queue::unsnooze(conn, transaction_ids.as_deref(), account_id.as_deref(), now)
+    })
+}
+
 // ==================== Custom Rules Management ====================
 
 /// Custom rule entry from database

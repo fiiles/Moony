@@ -196,7 +196,12 @@
       "hint": "Nya betalningar visas här efter nästa import.",
       "snoozed_one": "{{count}} överhoppad betalning kommer tillbaka senare.",
       "snoozed_other": "{{count}} överhoppade betalningar kommer tillbaka senare."
-    }
+    },
+    "heldBack_one": "{{count}} betalning överhoppad",
+    "heldBack_other": "{{count}} betalningar överhoppade",
+    "unsnoozed_one": "{{count}} betalning är tillbaka i kön",
+    "unsnoozed_other": "{{count}} betalningar är tillbaka i kön",
+    "unsnooze": "Tillbaka till kön"
   },
   "placeholder": {
     "export": "Export kommer senare."

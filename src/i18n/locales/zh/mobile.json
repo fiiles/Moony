@@ -178,7 +178,10 @@
       "title": "已全部分类",
       "hint": "下次导入后，新的付款会显示在这里。",
       "snoozed_other": "已跳过的 {{count}} 笔付款稍后会回到这里。"
-    }
+    },
+    "heldBack_other": "已跳过 {{count}} 笔付款",
+    "unsnoozed_other": "{{count}} 笔付款已放回队列",
+    "unsnooze": "放回队列"
   },
   "placeholder": {
     "export": "导出功能稍后推出。"

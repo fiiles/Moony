@@ -570,6 +570,7 @@ async fn run_app() {
             commands::categorization::restore_transaction_categories,
             commands::categorization::get_categorize_queue,
             commands::categorization::snooze_categorization,
+            commands::categorization::unsnooze_categorization,
             commands::categorization::get_custom_rules,
             commands::categorization::create_custom_rule,
             commands::categorization::update_custom_rule,

@@ -27,6 +27,7 @@ import {
   useRecentCategoryIds,
   useRestoreCategories,
   useSnoozeCategorization,
+  useUnsnoozeCategorization,
 } from '@/mobile/hooks/use-categorize-queue';
 import { useLedgerMutations } from '@/mobile/hooks/use-ledger-mutations';
 import { useRetained } from '@/mobile/hooks/use-retained';
@@ -78,13 +79,21 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
   const { categories, isLoading: categoriesLoading } = useCategories();
   const { accounts } = useBankAccounts();
   const { acceptSuggestion } = useLedgerMutations({ quiet: true });
-  const snooze = useSnoozeCategorization();
   const restoreCategories = useRestoreCategories();
 
   const queue = useCategorizeQueue(accountId);
   // What this page did to a row. It counts before the backend's answer, which lags a write until
   // its refresh settles, and it is what remembers a row's category once the row has left the answer.
   const [local, setLocal] = useState<ReadonlyMap<string, LocalOutcome>>(new Map());
+  // "Vrátit" on the toast of a "Nechat" opens its rows again
+  const snooze = useSnoozeCategorization((ids) =>
+    setLocal((current) => {
+      const next = new Map(current);
+      for (const id of ids) if (next.get(id)?.kind === 'left') next.delete(id);
+      return next;
+    })
+  );
+  const unsnooze = useUnsnoozeCategorization();
   const snapshot = useQueueSnapshot(queue.data, !queue.isFetching, local);
   // Payments deleted in the details sheet: not "done", simply gone
   const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
@@ -304,6 +313,20 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
                 </span>
               </div>
             </>
+          )}
+          {/* B6: what "Nechat" put off is counted and can come back at once */}
+          {queue.data && queue.data.snoozed > 0 && (
+            <p className="mx-0.5 mb-3 mt-0 flex flex-wrap items-baseline gap-x-2 text-m-sub text-ink-3">
+              <span>{t('queue.heldBack', { count: queue.data.snoozed })}</span>
+              <button
+                type="button"
+                className="relative font-semibold text-ink underline-offset-2 after:absolute after:-inset-x-1 after:-inset-y-3 after:content-[''] disabled:opacity-45"
+                disabled={unsnooze.isPending}
+                onClick={() => unsnooze.mutate({ accountId })}
+              >
+                {t('queue.unsnooze')}
+              </button>
+            </p>
           )}
           {(!finished || offered) && (
             <EntityRows>

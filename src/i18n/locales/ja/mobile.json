@@ -178,7 +178,10 @@
       "title": "すべて分類済み",
       "hint": "次回のインポート後、新しい支払いがここに表示されます。",
       "snoozed_other": "スキップした支払い{{count}}件は、後でここに戻ります。"
-    }
+    },
+    "heldBack_other": "{{count}}件をスキップ中",
+    "unsnoozed_other": "{{count}}件の支払いがキューに戻りました",
+    "unsnooze": "キューに戻す"
   },
   "placeholder": {
     "export": "エクスポートは後日提供します。"

@@ -214,7 +214,14 @@
       "snoozed_one": "{{count}} odložená platba se sem později vrátí.",
       "snoozed_few": "{{count}} odložené platby se sem později vrátí.",
       "snoozed_other": "{{count}} odložených plateb se sem později vrátí."
-    }
+    },
+    "heldBack_one": "{{count}} platba odložena",
+    "heldBack_few": "{{count}} platby odloženy",
+    "heldBack_other": "{{count}} plateb odloženo",
+    "unsnoozed_one": "{{count}} platba je zpět ve frontě",
+    "unsnoozed_few": "{{count}} platby jsou zpět ve frontě",
+    "unsnoozed_other": "{{count}} plateb je zpět ve frontě",
+    "unsnooze": "Vrátit do fronty"
   },
   "placeholder": {
     "export": "Export přijde později."

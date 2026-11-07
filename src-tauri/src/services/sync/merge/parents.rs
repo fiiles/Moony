@@ -58,7 +58,8 @@ pub(super) enum Parents {
     Stop(StopReason),
 }
 
-/// Checks every non-NULL foreign key value the change carries (a column, or a part of its key)
+/// Checks every non-NULL foreign key value in `columns` (the values that will be in the row: all
+/// carried ones for a fresh row, the winning ones for a merged row) and every key part
 /// against the parent's row clock `PL` and tombstone `PD`, given `pg`, the parent generation the
 /// author saw (`change.parents`, ZERO when absent):
 /// `PD` present and `pg < PD` → the key's rule (SET NULL rules clear the column in `columns`,
@@ -104,7 +105,7 @@ pub(super) fn check(
             continue;
         }
         let generation = clocks.get(ROW).copied().unwrap_or(Clock::ZERO);
-        if seen <= generation && parent_exists(conn, fk, &value)? {
+        if parent_exists(conn, fk, &value)? && seen <= generation {
             continue;
         }
         return Ok(Parents::Stop(StopReason::MissingParent {

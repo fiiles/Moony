@@ -11,6 +11,9 @@
 //! 4. a row that is not live is inserted with `'*' = g` and explicit clocks for the columns whose
 //!    clock differs; a live row merges per column (`columns::merge`), `'*'` becomes `max(L, g)`.
 //!
+//! For a live row the column merge runs before the parent check, which then sees only the FK
+//! values that won (C1).
+//!
 //! The local row is read before every write, so `Touched` gets the old and the new values (R12).
 
 use std::collections::{BTreeMap, HashMap};
@@ -76,8 +79,24 @@ pub fn apply_row(conn: &Connection, change: &RowChange, ctx: &mut MergeCtx) -> R
     let epoch_end = clocks.get(TOMBSTONE).copied().max(change.deleted);
     let mut insert = change.insert && epoch_end.is_none_or(|x| change.generation >= x);
     let mut dropped = change.insert && !insert;
+    // The row the insert lands in: a fresh one when the row is not live or the change's own
+    // tombstone deletes it first, else the live row, merged per column.
+    let fresh = live.is_none() || change.deleted.is_some_and(|at| at > generation);
+    let mut merged = None;
     if insert {
-        match parents::check(conn, ctx, &table, change, &pk, &mut columns)? {
+        // Parent rules apply only to the FK values that end up in the row (C1): every carried
+        // value of a fresh row, only the winning values of a merged one (key parts always). A
+        // stale reference that loses the column merge must not delete or clear anything.
+        let verdict = match live.as_ref().filter(|_| !fresh) {
+            None => parents::check(conn, ctx, &table, change, &pk, &mut columns)?,
+            Some(old) => {
+                let mut m = columns::merge(&table, change, &columns, old, &clocks, generation, &pk);
+                let verdict = parents::check(conn, ctx, &table, change, &pk, &mut m.writes)?;
+                merged = Some(m);
+                verdict
+            }
+        };
+        match verdict {
             Parents::Ok => {}
             Parents::Tombstone(at) => {
                 insert = false;
@@ -102,15 +121,23 @@ pub fn apply_row(conn: &Connection, change: &RowChange, ctx: &mut MergeCtx) -> R
             RowResult::Applied
         });
     }
-    match live {
-        None => insert_row(conn, ctx, &table, change, &pk, &columns, generation)?,
-        Some(old) => update_row(conn, ctx, &table, change, &pk, &columns, &clocks, old)?,
+    match (live, merged) {
+        (None, _) => insert_row(conn, ctx, &table, change, &pk, &columns)?,
+        (Some(old), Some(merged)) => {
+            update_row(conn, ctx, &table, change, &pk, merged, &clocks, old)?
+        }
+        (Some(_), None) => {
+            return Err(AppError::Internal(format!(
+                "sync merge: {} {pk} is live but was not merged",
+                table.spec.name
+            )))
+        }
     }
     Ok(RowResult::Applied)
 }
 
-/// The row is not live: every carried column goes in; leftover column clocks of an older epoch
-/// go first.
+/// The row is not live: every carried column goes in with `'*' = g`. The `'*'` and column clocks
+/// a dead incarnation left behind are meaningless (I1) and are replaced.
 fn insert_row(
     conn: &Connection,
     ctx: &mut MergeCtx,
@@ -118,7 +145,6 @@ fn insert_row(
     change: &RowChange,
     pk: &str,
     columns: &Columns,
-    local_generation: Clock,
 ) -> Result<()> {
     conn.prepare_cached(
         "DELETE FROM sync_clock WHERE tbl = ?1 AND pk = ?2 AND col NOT IN ('*', '-')",
@@ -153,7 +179,7 @@ fn insert_row(
     };
     conn.execute(&sql, params_from_iter(values))?;
 
-    let star = local_generation.max(change.generation);
+    let star = change.generation;
     set_clock(conn, table.spec.name, pk, ROW, nonzero(star))?;
     for (name, (value, clock)) in columns {
         let weak = columns::is_weak_incoming(table.spec.name, name, value, *clock, change);
@@ -166,9 +192,9 @@ fn insert_row(
     Ok(())
 }
 
-/// The row is live: every carried column merges against its local clock (its column clock, else
-/// `L`), `'*'` becomes `max(L, g)`, and then every column's explicit clock follows from its
-/// resulting clock against the new `'*'`.
+/// The row is live and `merged` holds what the incoming columns won against their local clocks
+/// (a column clock, else `L`): those are written, `'*'` becomes `max(L, g)`, and then every
+/// column's explicit clock follows from its resulting clock against the new `'*'`.
 #[allow(clippy::too_many_arguments)]
 fn update_row(
     conn: &Connection,
@@ -176,12 +202,11 @@ fn update_row(
     table: &Table,
     change: &RowChange,
     pk: &str,
-    columns: &Columns,
+    merged: columns::Merged,
     clocks: &HashMap<String, Clock>,
     old: RowImage,
 ) -> Result<()> {
     let generation = clocks.get(ROW).copied().unwrap_or(Clock::ZERO);
-    let merged = columns::merge(table, change, columns, &old, clocks, generation, pk);
     ctx.report.warnings.extend(merged.warnings);
     if !merged.writes.is_empty() {
         let (filter, mut values) = table.filter(&change.key)?;

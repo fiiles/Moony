@@ -16,7 +16,7 @@ use super::*;
 use crate::services::sync::capture;
 use crate::services::sync::changeset::{to_json, Changeset, RowChange, RowKey, SqlValue};
 use crate::services::sync::hlc::{Clock, DeviceId};
-use crate::services::sync::journal::{build_next, record_sealed};
+use crate::services::sync::journal::{build_next, record_sealed, Reader};
 use crate::services::sync::natural_id::natural_id;
 use crate::services::sync::registry::keys::schema_number;
 use crate::services::sync::registry::{
@@ -33,7 +33,7 @@ const NOW: i64 = 1_772_323_200; // 2026-03-01
 
 type Sent = Vec<(Changeset, [u8; 32])>;
 
-/// A sync-enabled profile of device `id` with an empty outbox. The migration seeds' timestamps
+/// A sync-enabled profile of device `id` with an empty outbox and no clocks. The migration seeds' timestamps
 /// are pinned first: profiles migrated in different seconds would differ before any sync (a real
 /// second device starts from the vault's snapshot instead).
 fn device(id: DeviceId) -> Connection {
@@ -49,7 +49,9 @@ fn device(id: DeviceId) -> Connection {
         }
     }
     state::enable(&conn, id).expect("enable");
-    exec(&conn, "DELETE FROM sync_outbox");
+    // Enabling clocks and queues the two rule-pack keys; the tests never send them, so their
+    // device-specific clocks are dropped too.
+    exec(&conn, "DELETE FROM sync_outbox; DELETE FROM sync_clock;");
     conn
 }
 
@@ -251,6 +253,31 @@ fn clock_dump(conn: &Connection) -> Vec<(String, String, String, i64, Vec<u8>)> 
     .expect("query")
     .map(|r| r.expect("row"))
     .collect()
+}
+
+/// `sync_clock` limited to what must agree across devices: every entry of a live row, and every
+/// tombstone. A dead row's `'*'` and column clocks may differ by device and nothing reads them.
+fn clock_dump_live(conn: &Connection) -> Vec<(String, String, String, i64, Vec<u8>)> {
+    let reader = Reader::new(conn).expect("reader");
+    clock_dump(conn)
+        .into_iter()
+        .filter(|(tbl, pk, col, _, _)| {
+            col == "-"
+                || reader
+                    .read(tbl, pk)
+                    .expect("read row")
+                    .is_some_and(|row| row.insert)
+        })
+        .collect()
+}
+
+/// Both the synced rows and the clocks that matter are identical on every device.
+fn assert_converged(devices: &[&Connection]) {
+    let (first, rest) = devices.split_first().expect("a device");
+    for conn in rest {
+        assert_eq!(dump(conn), dump(first));
+        assert_eq!(clock_dump_live(conn), clock_dump_live(first));
+    }
 }
 
 fn heads(conn: &Connection) -> Vec<(Vec<u8>, i64, Vec<u8>)> {

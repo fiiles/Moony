@@ -29,7 +29,7 @@ fn cascade_child_added_offline_follows_the_parent_tombstone() {
         assert_eq!(count(conn, "SELECT COUNT(*) FROM bank_transactions"), 0);
         assert_eq!(clocks(conn, "bank_transactions", "t1")["-"], tombstone);
     }
-    assert_eq!(dump(&a), dump(&b));
+    assert_converged(&[&a, &b]);
 }
 
 #[test]
@@ -62,7 +62,7 @@ fn set_null_child_added_offline_loses_the_reference() {
             1
         );
     }
-    assert_eq!(dump(&a), dump(&b));
+    assert_converged(&[&a, &b]);
 }
 
 #[test]
@@ -102,7 +102,7 @@ fn no_action_orphan_nullable_category_is_cleared() {
         );
         assert_eq!(fk_violations(conn), 0);
     }
-    assert_eq!(dump(&a), dump(&b));
+    assert_converged(&[&a, &b]);
 }
 
 #[test]
@@ -137,7 +137,7 @@ fn no_action_orphan_required_rule_is_dropped() {
         assert_eq!(clocks(conn, "categorization_rules", "r1")["-"], tombstone);
         assert_eq!(fk_violations(conn), 0);
     }
-    assert_eq!(dump(&a), dump(&b));
+    assert_converged(&[&a, &b]);
 }
 
 #[test]
@@ -227,4 +227,59 @@ fn missing_parent_without_tombstone_stops_and_rolls_back() {
     );
     assert_eq!((dump(&b), clock_dump(&b)), before);
     assert!(heads(&b).is_empty());
+}
+
+/// C1: a stale reference that loses the column merge must not apply its parent's rule. B moves
+/// r1 from k1 to k2 and deletes k1; A concurrently edits r1, so A's full row still carries
+/// `category_id = k1`. r1 must survive on every device, whatever the order, and a replay of the
+/// old changeset must not kill it either.
+#[test]
+fn a_stale_reference_that_loses_the_merge_never_drops_the_row() {
+    let a = device(A);
+    let b = device(B);
+    let c = device(C);
+    let d = device(D);
+    category(&a, "k1");
+    category(&a, "k2");
+    exec(
+        &a,
+        "INSERT INTO categorization_rules (id, name, rule_type, pattern, category_id) \
+         VALUES ('r1', 'Coffee', 'contains', 'coffee', 'k1')",
+    );
+    let base = send(&a);
+    for conn in [&b, &c, &d] {
+        apply(conn, &base);
+    }
+    exec(
+        &b,
+        "UPDATE categorization_rules SET category_id = 'k2' WHERE id = 'r1'; \
+         DELETE FROM transaction_categories WHERE id = 'k1';",
+    );
+    exec(
+        &a,
+        "UPDATE categorization_rules SET pattern = 'tea' WHERE id = 'r1'",
+    );
+    let from_a = send(&a);
+    let from_b = send(&b);
+
+    apply(&a, &from_b);
+    apply(&b, &from_a);
+    apply(&c, &from_b);
+    apply(&c, &from_a);
+    apply(&d, &from_a);
+    apply(&d, &from_b);
+    apply(&c, &base);
+
+    for conn in [&a, &b, &c, &d] {
+        assert_eq!(
+            value(
+                conn,
+                "SELECT category_id || ' ' || pattern FROM categorization_rules WHERE id = 'r1'"
+            )
+            .as_deref(),
+            Some("k2 tea")
+        );
+        assert_eq!(fk_violations(conn), 0);
+    }
+    assert_converged(&[&a, &b, &c, &d]);
 }

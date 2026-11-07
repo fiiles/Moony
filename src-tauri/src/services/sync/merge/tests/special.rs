@@ -52,7 +52,7 @@ fn a_detection_insert_never_undoes_an_applied_split() {
         let clocks = clocks(conn, "stock_splits", &split_id());
         assert_eq!(clocks["*"], generation_b);
         assert_eq!(clocks["status"], applied);
-        assert_eq!(dump(conn), dump(&a));
+        assert_converged(&[conn, &a]);
     }
 }
 
@@ -95,7 +95,7 @@ fn a_revert_reaches_the_other_devices() {
 
     assert_eq!(status(&b).as_deref(), Some("pending"));
     assert_eq!(clocks(&b, "stock_splits", &split_id())["status"], reverted);
-    assert_eq!(dump(&a), dump(&b));
+    assert_converged(&[&a, &b]);
 }
 
 fn device_row(conn: &Connection, key: &str, name: &str) {
@@ -131,7 +131,7 @@ fn the_older_public_key_of_a_device_wins_in_both_orders() {
             value(conn, "SELECT public_key || ' ' || name FROM sync_devices").as_deref(),
             Some("KA Phone B")
         );
-        assert_eq!(dump(conn), dump(&a));
+        assert_converged(&[conn, &a]);
         assert_eq!(
             clocks(conn, "sync_devices", "dev-x"),
             clocks(&a, "sync_devices", "dev-x")
@@ -211,7 +211,7 @@ fn applying_a_changeset_twice_changes_nothing() {
     assert!(again
         .iter()
         .all(|r| r.domains.is_empty() && r.warnings.is_empty()));
-    assert_eq!(dump(&a), dump(&b));
+    assert_converged(&[&a, &b]);
 }
 
 #[test]
@@ -333,4 +333,17 @@ fn rename_scopes_name_deleted_rows_and_both_years() {
         ]
     );
     assert!(ctx.touched.deleted.contains("spending_plans"));
+}
+
+#[test]
+fn merge_rows_refuses_to_run_outside_a_transaction() {
+    let a = device(A);
+    let b = device(B);
+    plan(&a, "p1", 2026);
+    let rows = rows_of(&send(&a));
+
+    let err = merge_rows(&b, &rows, NOW).expect_err("autocommit is refused");
+
+    assert!(err.to_string().contains("transaction"), "{err}");
+    assert_eq!(count(&b, "SELECT COUNT(*) FROM spending_plans"), 0);
 }

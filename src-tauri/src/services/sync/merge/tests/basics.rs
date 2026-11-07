@@ -16,7 +16,7 @@ fn an_insert_is_created_with_its_clocks_and_triggers_queue_nothing() {
 
     assert_eq!(reports.len(), 1);
     assert_eq!((reports[0].applied, reports[0].dropped), (1, 0));
-    assert_eq!(dump(&b), dump(&a));
+    assert_converged(&[&b, &a]);
     let on_a = clocks(&a, "spending_plans", "p1");
     let on_b = clocks(&b, "spending_plans", "p1");
     assert_eq!(on_b, on_a);
@@ -63,7 +63,7 @@ fn a_newer_column_clock_wins_and_an_older_one_is_dropped() {
         assert_eq!(c["note"].device, B);
         assert_eq!(c["icon"].device, A);
     }
-    assert_eq!(dump(&a), dump(&b));
+    assert_converged(&[&a, &b]);
     assert_eq!(
         clocks(&a, "spending_plans", "p1"),
         clocks(&b, "spending_plans", "p1")
@@ -96,7 +96,7 @@ fn equal_hlcs_tie_break_by_device() {
             clock(2_000 << 16, B)
         );
     }
-    assert_eq!(dump(&c), dump(&d));
+    assert_converged(&[&c, &d]);
 }
 
 #[test]
@@ -132,7 +132,7 @@ fn a_group_is_taken_whole_from_the_newer_side() {
         assert_eq!(clocks["amount"], clock(1_500 << 16, B));
         assert_eq!(clocks["currency"], clock(3_000 << 16, B));
     }
-    assert_eq!(dump(&c), dump(&d));
+    assert_converged(&[&c, &d]);
 }
 
 #[test]
@@ -157,7 +157,7 @@ fn concurrent_creation_of_same_natural_id_merges_per_column() {
     let id = watched_id();
     let generation_b = from_b[0].0.rows[0].generation;
     for conn in [&a, &b, &c, &d] {
-        assert_eq!(dump(conn), dump(&a));
+        assert_converged(&[conn, &a]);
         assert_eq!(
             value(
                 conn,
@@ -206,7 +206,7 @@ fn the_stored_generation_is_the_larger_and_unchanged_columns_keep_their_clocks()
             Some("A later 200")
         );
     }
-    assert_eq!(dump(&a), dump(&b));
+    assert_converged(&[&a, &b]);
 }
 
 #[test]

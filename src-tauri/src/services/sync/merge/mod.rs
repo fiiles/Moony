@@ -3,6 +3,12 @@
 //! of everything the merge touched.
 //!
 //! Every device must end with identical synced tables whatever order the changesets arrive in.
+//!
+//! Invariant: a dead row's `'*'` (and any column clock it left behind) is meaningless. Dead rows
+//! keep different `'*'` values on different devices (cascades, NO ACTION drops, a row created
+//! and deleted before it was sent), so no merge, journal or repair decision may read it: only a
+//! live row's clocks and every key's tombstone `'-'` must agree across devices. A re-insert sets
+//! `'*' = g`, never `max` with a dead incarnation.
 //! The row algorithm lives in `row`, the per-column rules in `columns`, the foreign-key rules in
 //! `parents`.
 
@@ -89,6 +95,11 @@ pub fn apply_changeset(
 /// stop returns `Stopped` (the caller rolls back). Then the repairs of everything touched run, and
 /// their warnings and history domains join the report.
 pub fn merge_rows(conn: &Connection, rows: &[RowChange], now: i64) -> Result<Outcome> {
+    if conn.is_autocommit() {
+        return Err(AppError::Internal(
+            "sync merge: merge_rows must run inside a transaction".into(),
+        ));
+    }
     if !capture::is_installed(conn)? {
         return Err(AppError::Internal(
             "sync merge: capture is not installed on this connection".into(),

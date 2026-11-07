@@ -28,7 +28,7 @@ fn d13_a_tombstone_beats_a_later_edit_of_the_same_generation() {
         assert_eq!(count(conn, "SELECT COUNT(*) FROM spending_plans"), 0);
         assert_eq!(clocks(conn, "spending_plans", "p1")["-"], tombstone);
     }
-    assert_eq!(dump(&a), dump(&b));
+    assert_converged(&[&a, &b]);
 }
 
 #[test]
@@ -59,7 +59,7 @@ fn d13_an_insert_newer_than_the_tombstone_recreates_the_row() {
             Some("again 150")
         );
         assert_eq!(clocks(conn, "watched_stocks", &id), on_a);
-        assert_eq!(dump(conn), dump(&a));
+        assert_converged(&[conn, &a]);
     }
 }
 
@@ -86,7 +86,7 @@ fn an_edit_of_an_ended_epoch_is_dropped() {
             Some("new epoch")
         );
     }
-    assert_eq!(dump(&a), dump(&b));
+    assert_converged(&[&a, &b]);
     let id = watched_id();
     assert_eq!(
         clocks(&a, "watched_stocks", &id),
@@ -157,8 +157,22 @@ fn delete_and_recreate_with_a_concurrent_child_converges_in_both_orders() {
     apply(&d, &from_a);
 
     let tombstone = clocks(&a, "stock_investments", &stock_id)["-"];
+    // OPEN FINDING (task-13 fix report, F1), awaiting a ruling: on the author, the local cascade
+    // ticks `old-1`'s tombstone just before AAPL's; receivers apply the re-created AAPL row (live
+    // section) first, cascade `old-1` at AAPL's tombstone, and the author's lower `old-1`
+    // tombstone cannot lower it. Every other live clock and tombstone must agree.
+    let author_cascade = |conn: &Connection| {
+        clock_dump_live(conn)
+            .into_iter()
+            .filter(|(tbl, pk, col, _, _)| {
+                (tbl.as_str(), pk.as_str(), col.as_str())
+                    != ("investment_transactions", "old-1", "-")
+            })
+            .collect::<Vec<_>>()
+    };
     for conn in [&a, &b, &c, &d] {
         assert_eq!(dump(conn), dump(&a));
+        assert_eq!(author_cascade(conn), author_cascade(&a));
         assert_eq!(
             value(conn, "SELECT company_name FROM stock_investments").as_deref(),
             Some("Apple Inc")
@@ -173,4 +187,47 @@ fn delete_and_recreate_with_a_concurrent_child_converges_in_both_orders() {
         );
         assert_eq!(clocks(conn, "investment_transactions", "c")["-"], tombstone);
     }
+}
+
+fn tag(conn: &Connection) {
+    conn.execute(
+        "INSERT INTO stock_investment_tags (investment_id, tag_id, created_at) VALUES (?1, 'tag-1', 100)",
+        [natural_id("stock_investments", &["AAPL"])],
+    )
+    .expect("insert tag link");
+}
+
+/// I1: an insert into a dead key stores `'*' = g`, not the larger `'*'` of the dead incarnation.
+/// A deletes AAPL (PD), re-creates and re-tags it (g'), then untags it (Δ2). B, offline and with
+/// a later clock, tags the old AAPL (L_K > Δ2); the delete cascades B's link at PD, leaving its
+/// `'*' = L_K` behind. A's re-tag must then land at g', so the untag Δ2 > g' removes it.
+#[test]
+fn a_recreated_row_takes_its_own_generation_not_the_dead_one() {
+    let a = device(A);
+    let b = device(B);
+    stock(&a, "Apple");
+    exec(
+        &a,
+        "INSERT INTO stock_tags (id, name, created_at) VALUES ('tag-1', 'Growth', 100)",
+    );
+    apply(&b, &send(&a));
+    exec(&a, "DELETE FROM stock_investments");
+    stock(&a, "Apple");
+    tag(&a);
+    let recreated = send(&a);
+    exec(&a, "DELETE FROM stock_investment_tags");
+    let untagged = send(&a);
+    later(&b, &a);
+    tag(&b);
+    let from_b = send(&b);
+
+    apply(&a, &from_b);
+    apply(&b, &recreated);
+    apply(&b, &untagged);
+
+    for conn in [&a, &b] {
+        assert_eq!(count(conn, "SELECT COUNT(*) FROM stock_investment_tags"), 0);
+        assert_eq!(count(conn, "SELECT COUNT(*) FROM stock_investments"), 1);
+    }
+    assert_converged(&[&a, &b]);
 }

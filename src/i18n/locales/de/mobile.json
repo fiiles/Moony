@@ -254,7 +254,8 @@
     },
     "importHistory": {
       "menu": "Importoptionen"
-    }
+    },
+    "autoCategorizeAllDone": "Alle Zahlungen dieses Kontos haben bereits eine Kategorie."
   },
   "loan": {
     "nextPayment": "Nächste Rate {{amount}} · {{date}}",

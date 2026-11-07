@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { toast } from 'sonner';
 import { useRoute, useSearch } from 'wouter';
 import { CalendarSearch, Ellipsis, ListFilter, Pencil, Upload, Wallet } from 'lucide-react';
 import type {
@@ -34,6 +35,7 @@ import type { EventCluster } from '@/utils/chart-scale';
 import { completeAccountIdentifier } from '@/utils/iban-utils';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
 import { BankAccountFormDialog } from '@/components/bank-accounts/BankAccountFormDialog';
+import { InterestDialog } from '@/components/bank-accounts/InterestDialog';
 import { ScaledEmptyState } from '@/mobile/components/Scaled';
 import { Button } from '@/components/ui/button';
 import {
@@ -54,6 +56,7 @@ import { SectionHead } from '@/mobile/components/SectionHead';
 import { Segment } from '@/mobile/components/Segment';
 import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { useAccountDetail } from '@/mobile/hooks/use-account-detail';
+import { useAutoCategorize } from '@/mobile/hooks/use-auto-categorize';
 import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { useDeleteDescription } from '@/mobile/hooks/use-delete-description';
@@ -63,6 +66,7 @@ import { useUndoImport } from '@/mobile/hooks/use-undo-import';
 import { useLedger, type Ledger } from '@/mobile/hooks/use-ledger';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRetained } from '@/mobile/hooks/use-retained';
+import { hasUncategorized, showsInterest } from '@/mobile/lib/account-menu';
 import { balanceLine } from '@/mobile/lib/balance-line';
 import { recentCategoryIds } from '@/mobile/lib/category-pick';
 import { cashChange } from '@/mobile/lib/finance-rows';
@@ -94,6 +98,7 @@ type SheetKind =
   | 'balanceHistory'
   | 'importHistory'
   | 'deleteAccount'
+  | 'interest'
   | 'filter';
 
 type RecordEvent = { id: string; t: number; type: 'mark' };
@@ -121,7 +126,9 @@ export default function AccountDetail() {
  * sheet's Kategorie row opens the picker over it); a long press is its menu.
  * `?category=uncategorized` (the Finance row) opens the ledger on the payments without a category.
  *
- * `···` → Upravit is the desktop's account form, Smazat účet asks in a confirm sheet; the page owns
+ * `···` → Upravit is the desktop's account form; Úročení (accounts with zones or a rate, as on the
+ * desktop) is the desktop's interest dialog; Automatická kategorizace runs the rules over the
+ * account's payments without a category (`useAutoCategorize`); Smazat účet asks in a confirm sheet; the page owns
  * the delete (`useDeleteAndLeave`, as the loan's): it keeps showing the account until the screen has
  * gone back to Finance, then drops the account's own queries. The writes are the desktop's
  * (`useBankAccountMutations`), which refresh every money flow and record the snapshot.
@@ -219,6 +226,20 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
     .filter(Boolean)
     .join(' ');
 
+  // "Automatická kategorizace" (the desktop's batch run over the account's payments without a
+  // category); one run at a time
+  const autoCategorize = useAutoCategorize();
+  const [categorizing, setCategorizing] = useState(false);
+  const runAutoCategorize = () => {
+    if (!id || categorizing) return;
+    if (historyLoaded && !hasUncategorized(history)) {
+      toast(t('account.autoCategorizeAllDone'));
+      return;
+    }
+    setCategorizing(true);
+    void autoCategorize(id).finally(() => setCategorizing(false));
+  };
+
   const today = utcDayFloor(Date.now() / 1000);
   const money0 = (value: number) => moneyText(value, currency, { decimals: 0 });
   const signed0 = (value: number) => moneyText(value, currency, { signed: true, decimals: 0 });
@@ -276,6 +297,14 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
               </RowMenuItem>
               <RowMenuItem onSelect={() => setSheet('importHistory')}>
                 {t('account.menu.importHistory')}
+              </RowMenuItem>
+              {showsInterest(account) && (
+                <RowMenuItem onSelect={() => setSheet('interest')}>
+                  {tb('menu.interest')}
+                </RowMenuItem>
+              )}
+              <RowMenuItem disabled={categorizing} onSelect={runAutoCategorize}>
+                {tb('categorization.autoCategorize')}
               </RowMenuItem>
               <DropdownMenuSeparator />
               <RowMenuItem variant="danger" onSelect={() => setSheet('deleteAccount')}>
@@ -400,6 +429,15 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
                 }
               )
             }
+          />
+          {/* The desktop's dialog, which the phone shell draws as a sheet */}
+          <InterestDialog
+            open={sheet === 'interest'}
+            onOpenChange={closeSheet}
+            account={account}
+            zones={zones}
+            balance={balance}
+            currency={currency}
           />
           <ConfirmSheet
             open={undoOpen}

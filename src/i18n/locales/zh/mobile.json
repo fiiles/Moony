@@ -235,7 +235,8 @@
     },
     "importHistory": {
       "menu": "导入选项"
-    }
+    },
+    "autoCategorizeAllDone": "此账户的所有付款都已有类别。"
   },
   "loan": {
     "nextPayment": "下次还款 {{amount}} · {{date}}",

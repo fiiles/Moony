@@ -292,7 +292,8 @@
     },
     "importHistory": {
       "menu": "Opcje importu"
-    }
+    },
+    "autoCategorizeAllDone": "Wszystkie płatności na tym koncie mają już kategorię."
   },
   "loan": {
     "nextPayment": "Następna rata {{amount}} · {{date}}",

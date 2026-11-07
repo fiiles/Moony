@@ -273,7 +273,8 @@
     },
     "importHistory": {
       "menu": "Nabídka importu"
-    }
+    },
+    "autoCategorizeAllDone": "Všechny platby tohoto účtu už mají kategorii."
   },
   "loan": {
     "nextPayment": "Příští splátka {{amount}} · {{date}}",

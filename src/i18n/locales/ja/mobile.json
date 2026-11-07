@@ -235,7 +235,8 @@
     },
     "importHistory": {
       "menu": "インポートのオプション"
-    }
+    },
+    "autoCategorizeAllDone": "この口座のすべての支払いにはすでにカテゴリがあります。"
   },
   "loan": {
     "nextPayment": "次回の返済 {{amount}} · {{date}}",

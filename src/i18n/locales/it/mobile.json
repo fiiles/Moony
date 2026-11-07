@@ -273,7 +273,8 @@
     },
     "importHistory": {
       "menu": "Opzioni dell’importazione"
-    }
+    },
+    "autoCategorizeAllDone": "Tutti i pagamenti di questo conto hanno già una categoria."
   },
   "loan": {
     "nextPayment": "Prossima rata {{amount}} · {{date}}",

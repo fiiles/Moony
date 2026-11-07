@@ -254,7 +254,8 @@
     },
     "importHistory": {
       "menu": "Importalternativ"
-    }
+    },
+    "autoCategorizeAllDone": "Alla betalningar på det här kontot har redan en kategori."
   },
   "loan": {
     "nextPayment": "Nästa betalning {{amount}} · {{date}}",

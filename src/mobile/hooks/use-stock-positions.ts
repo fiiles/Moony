@@ -7,6 +7,7 @@ import { useTransactionFx } from '@/hooks/use-fx';
 import { useCurrency } from '@/lib/currency';
 import { invalidateAfterPriceRefresh } from '@/lib/price-refresh';
 import { investmentsApi, priceApi } from '@/lib/tauri-api';
+import { performanceNotes, type PerformanceNote } from '@/mobile/lib/performance-notes';
 import { useStockPerformance } from '@/hooks/use-stock-performance';
 import { toStockRow } from '@/utils/positions';
 import { ytdRange } from '@/mobile/lib/position-series';
@@ -112,6 +113,8 @@ export function useRefreshStockPrices() {
 export function useTwrThisYear(enabled: boolean): {
   twr: number | null;
   mwr: number | null;
+  /** The quality notes of the report (`performanceNotes`), empty while it loads. */
+  notes: PerformanceNote[];
   isLoading: boolean;
 } {
   const { currencyCode } = useCurrency();
@@ -126,10 +129,12 @@ export function useTwrThisYear(enabled: boolean): {
       : null
   );
   const { data } = performance;
+  const notes = data === undefined ? [] : performanceNotes(data, currencyCode);
   if (data === undefined || data.dates.length < 2) {
-    return { twr: null, mwr: null, isLoading: performance.isLoading };
+    return { twr: null, mwr: null, notes, isLoading: performance.isLoading };
   }
   return {
+    notes,
     twr: data.portfolio[data.portfolio.length - 1] ?? null,
     mwr: data.mwr[data.mwr.length - 1] ?? null,
     isLoading: performance.isLoading,

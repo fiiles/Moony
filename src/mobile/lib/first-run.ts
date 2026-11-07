@@ -20,9 +20,19 @@ export type FirstRunStep = (typeof FIRST_RUN_STEPS)[number];
 /** The position of a step in the full order, which the shorter lists keep. */
 const position = (step: FirstRunStep) => FIRST_RUN_STEPS.indexOf(step);
 
-/** The steps this phone goes through: "Biometrie" is left out where biometry cannot be used. */
-export function firstRunSteps(input: { biometryAvailable: boolean }): FirstRunStep[] {
-  return FIRST_RUN_STEPS.filter((step) => step !== 'biometrics' || input.biometryAvailable);
+/**
+ * The steps this phone goes through: "Biometrie" is left out where biometry cannot be used, and
+ * "Záloha" where a backup cannot be made (`canBackup` false: Android for now, audit C7).
+ */
+export function firstRunSteps(input: {
+  biometryAvailable: boolean;
+  canBackup?: boolean;
+}): FirstRunStep[] {
+  return FIRST_RUN_STEPS.filter(
+    (step) =>
+      (step !== 'biometrics' || input.biometryAvailable) &&
+      (step !== 'backup' || input.canBackup !== false)
+  );
 }
 
 /**

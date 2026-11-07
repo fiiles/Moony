@@ -251,6 +251,13 @@ describe('buildUpkeepRows', () => {
       const rows = buildUpkeepRows(input({ milestones: [milestone('backup_stale')] }));
       expect(rows[0].title).toEqual({ key: 'upkeep.backupNever', params: {} });
     });
+
+    it('is left out where a backup cannot be made (Android for now)', () => {
+      const rows = buildUpkeepRows(
+        input({ milestones: [milestone('backup_stale')], canBackup: false })
+      );
+      expect(rows).toEqual([]);
+    });
   });
 
   describe('valuation_stale', () => {

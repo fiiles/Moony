@@ -1,9 +1,9 @@
 import { useMemo, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useTranslation } from 'react-i18next';
 import { useRoute } from 'wouter';
 import { Ellipsis, Eye, EyeOff, Plus, RefreshCw, Target } from 'lucide-react';
-import type { StockMonitorDetail, StockPricePoint } from '@shared/schema';
+import type { InvestmentTransaction, StockMonitorDetail, StockPricePoint } from '@shared/schema';
 import {
   useStockMonitorDetail,
   useStockPriceRange,
@@ -11,9 +11,12 @@ import {
 } from '@/hooks/use-stock-monitor';
 import { useStockMonitorMutations } from '@/hooks/use-stock-monitor-mutations';
 import { useFormat } from '@/lib/use-format';
+import { investmentsApi } from '@/lib/tauri-api';
 import { exchangeName } from '@/utils/exchange-names';
 import { CHART_PERIODS, chartPeriodStart, type ChartPeriod } from '@/utils/period';
 import { changeFromReference, dayChange, targetDistance } from '@/utils/stock-monitor';
+import { positionTradeEvents } from '@/utils/trade-events';
+import { Chip } from '@/components/ui/chip';
 import { ScaledChartLegend, ScaledEmptyState } from '@/mobile/components/Scaled';
 import {
   DropdownMenu,
@@ -29,6 +32,7 @@ import { StatRow, type StatItem } from '@/mobile/components/StatRow';
 import { ClassSkeleton } from '@/mobile/components/wealth/ClassSkeleton';
 import { WatchKeyData } from '@/mobile/components/wealth/WatchKeyData';
 import { WatchNotes } from '@/mobile/components/wealth/WatchNotes';
+import { useTradeEventTip } from '@/mobile/hooks/use-trade-event-tip';
 import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
@@ -54,6 +58,7 @@ import { Screen } from '@/mobile/shell/Screen';
 
 /** A series that is not there yet: one array, so a memo over it does not run on every render. */
 const NO_POINTS: StockPricePoint[] = [];
+const NO_TRANSACTIONS: InvestmentTransaction[] = [];
 
 /** The ticker of the path: escaped by `watchPath`, and never a reason to crash on a path that is not. */
 function tickerOf(param: string | undefined): string {
@@ -63,6 +68,28 @@ function tickerOf(param: string | undefined): string {
   } catch {
     return param;
   }
+}
+
+/**
+ * ▲ buy and ▽ sell for the chip that switches the trade marks on, in the chip's own text color
+ * (the desktop's `TradeGlyphs`).
+ */
+function TradeGlyphs() {
+  return (
+    <span className="inline-flex items-center gap-0.5" aria-hidden>
+      <svg viewBox="0 0 10 10">
+        <polygon points="5,0 10,10 0,10" fill="currentColor" />
+      </svg>
+      <svg viewBox="0 0 10 10">
+        <polygon
+          points="0.75,0.75 9.25,0.75 5,9.25"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+        />
+      </svg>
+    </span>
+  );
 }
 
 /**
@@ -92,6 +119,8 @@ export default function WatchDetail() {
   const [targetOpen, setTargetOpen] = useState(false);
   const [buyOpen, setBuyOpen] = useState(false);
   const [confirmUnfollow, setConfirmUnfollow] = useState(false);
+  // The desktop's "Nákupy a prodeje" chip: the buys and sells of the held position on the line
+  const [showTrades, setShowTrades] = useRemembered<boolean>('watch.showTrades', false);
   // One clock for the page: the range and its cut do not move while it is open
   const [nowSec] = useState(() => Math.floor(Date.now() / 1000));
 
@@ -108,6 +137,24 @@ export default function WatchDetail() {
     followedAt !== null ? ticker : undefined,
     followedAt !== null ? watchSincePeriod(followedAt, nowSec) : range
   );
+
+  // Same query as the position page, so its mutations refresh these marks too
+  const heldId = detail?.heldInvestmentId ?? null;
+  const { data: heldTransactions } = useQuery<InvestmentTransaction[]>({
+    queryKey: ['investment-transactions', heldId],
+    queryFn: () => investmentsApi.getTransactions(heldId!),
+    enabled: !!heldId,
+  });
+  // Marks before the horizon would pile up on the left edge
+  const periodStart = chartPeriodStart(period, nowSec);
+  const tradeEvents = useMemo(
+    () =>
+      positionTradeEvents(heldTransactions ?? NO_TRANSACTIONS).filter(
+        (event) => periodStart === undefined || event.t >= periodStart
+      ),
+    [heldTransactions, periodStart]
+  );
+  const eventTip = useTradeEventTip(ts('table.unit'), 4, detail?.currency ?? '');
 
   const currency = detail?.currency ?? null;
   const current = priceOf(detail?.currentPrice ?? null);
@@ -250,6 +297,8 @@ export default function WatchDetail() {
           points={points}
           cost={hasTarget}
           zeroBaseline={period === 'All'}
+          events={showTrades ? tradeEvents : undefined}
+          renderEventTip={eventTip}
           chartLabel={`${detail.ticker} · ${tm('detail.price')}`}
         >
           {points.length > 1 && (
@@ -259,8 +308,31 @@ export default function WatchDetail() {
                 ...(hasTarget
                   ? [{ label: tm('detail.legend.target'), swatch: { kind: 'dash' as const } }]
                   : []),
+                ...(showTrades && tradeEvents.length > 0
+                  ? [
+                      {
+                        label: ts('detail.legend.buy'),
+                        swatch: { kind: 'event' as const, type: 'buy' as const },
+                      },
+                      {
+                        label: ts('detail.legend.sell'),
+                        swatch: { kind: 'event' as const, type: 'sell' as const },
+                      },
+                    ]
+                  : []),
               ]}
             />
+          )}
+          {points.length > 1 && heldTransactions !== undefined && heldTransactions.length > 0 && (
+            <Chip
+              className="relative mt-2 after:absolute after:-inset-2.5 after:content-['']"
+              active={showTrades}
+              onClick={() => setShowTrades(!showTrades)}
+              leading={<TradeGlyphs />}
+              title={tm('detail.showTradesHint')}
+            >
+              {tm('detail.legend.trades')}
+            </Chip>
           )}
         </Hero>
         <ButtonPair

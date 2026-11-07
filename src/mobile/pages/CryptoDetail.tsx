@@ -24,6 +24,7 @@ import { useCryptoPosition, useDeleteCrypto } from '@/mobile/hooks/use-crypto';
 import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { usePositionLedger } from '@/mobile/hooks/use-position-ledger';
 import { useRetained } from '@/mobile/hooks/use-retained';
+import { useRowIntent } from '@/mobile/hooks/use-row-intent';
 import { shortDayOptions } from '@/mobile/lib/format-day';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { cryptoPath, routes } from '@/mobile/shell/routes';
@@ -83,6 +84,16 @@ export default function CryptoDetail() {
   const kept = useRetained(current);
   // A coin being deleted stays on screen (as it was) until the screen has left
   const view = exit.deleting ? kept : current;
+  // A coin row's menu (README §13, Gestures) opens the trade dialog here
+  useRowIntent(
+    {
+      buy: () => setTrade('buy'),
+      sell: () => {
+        if (view && view.holding.quantity > 0) setTrade('sell');
+      },
+    },
+    !!view
+  );
 
   return (
     <Screen

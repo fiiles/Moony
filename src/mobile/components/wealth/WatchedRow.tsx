@@ -1,8 +1,11 @@
 import { useTranslation } from 'react-i18next';
+import { Plus, Target } from 'lucide-react';
 import type { WatchedStockRow } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { dayChange } from '@/utils/stock-monitor';
 import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
+import { useOpenWithIntent } from '@/mobile/hooks/use-row-intent';
 import { priceOf, watchPriceText, watchTargetState } from '@/mobile/lib/watch-detail';
 import { watchPath } from '@/mobile/shell/routes';
 import { ChangeLine } from './ChangeLine';
@@ -12,13 +15,18 @@ import { RowBadge } from '@/mobile/components/RowBadge';
  * A watched stock (spec §8.8, prototype frame 11): the ticker with its name, the price in the
  * stock's own currency and the change since yesterday's close ("▲ 1,2 % dnes"). The target is a
  * badge after the ticker — "cíl 120 $" while it waits, "cíl dosažen" once the price has crossed
- * it — and nothing without a target. A tap opens the watch detail.
+ * it — and nothing without a target. A tap opens the watch detail; the long press's menu opens it
+ * with the target sheet or the buy dialog (README §13, Gestures).
  *
  * The prices are Yahoo's public numbers, native and never converted.
  */
 export function WatchedRow({ row }: { row: WatchedStockRow }) {
   const { t } = useTranslation('mobile');
+  const { t: tm } = useTranslation('stockMonitor');
+  const { t: tc } = useTranslation('common');
   const fmt = useFormat();
+  const openWith = useOpenWithIntent();
+  const path = watchPath(row.ticker);
   const currency = row.currency ?? '';
 
   const current = priceOf(row.currentPrice);
@@ -52,7 +60,22 @@ export function WatchedRow({ row }: { row: WatchedStockRow }) {
           />
         ) : undefined
       }
-      href={watchPath(row.ticker)}
+      href={path}
+      menu={{
+        label: `${tc('labels.actions')}: ${row.ticker}`,
+        children: (
+          <>
+            <RowMenuItem onSelect={() => openWith(path, 'target')}>
+              <Target strokeWidth={1.75} aria-hidden />
+              {tm(target === null ? 'actions.setTarget' : 'actions.editTarget')}
+            </RowMenuItem>
+            <RowMenuItem onSelect={() => openWith(path, 'buy')}>
+              <Plus strokeWidth={1.75} aria-hidden />
+              {tc('buttons.buy')}
+            </RowMenuItem>
+          </>
+        ),
+      }}
     />
   );
 }

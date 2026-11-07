@@ -27,6 +27,7 @@ import { usePositionLedger } from '@/mobile/hooks/use-position-ledger';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
 import { useRetained } from '@/mobile/hooks/use-retained';
 import { useTradeEventTip } from '@/mobile/hooks/use-trade-event-tip';
+import { useRowIntent } from '@/mobile/hooks/use-row-intent';
 import { changeSinceDayOptions } from '@/mobile/lib/change';
 import { pointsChange, trendChangeBase } from '@/mobile/lib/class-trend';
 import { otherAssetTrace, trimTrace } from '@/mobile/lib/other-asset-trace';
@@ -102,6 +103,17 @@ export default function OtherAssetDetail() {
   });
   // An asset being deleted stays on screen (as it was) until the screen has left
   const view = exit.deleting ? kept : current;
+  // An asset row's menu (README §13, Gestures) opens the trade dialog or the revaluation here
+  useRowIntent(
+    {
+      buy: () => setDialog('buy'),
+      sell: () => {
+        if (view && view.row.quantity > 0) setDialog('sell');
+      },
+      revalue: () => setRevalueOpen(true),
+    },
+    !!view
+  );
 
   return (
     <Screen

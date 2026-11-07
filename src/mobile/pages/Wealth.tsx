@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  ArrowUp,
   Bitcoin,
   Briefcase,
   FileText,
@@ -22,6 +23,7 @@ import { LoadError } from '@/mobile/components/LoadError';
 import { ScaledConversionNote, ScaledEmptyState } from '@/mobile/components/Scaled';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
 import { RowBadge } from '@/mobile/components/RowBadge';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { Hero } from '@/mobile/components/Hero';
 import { Money } from '@/mobile/components/Money';
 import { SectionHead } from '@/mobile/components/SectionHead';
@@ -30,6 +32,7 @@ import { AllocationBar } from '@/mobile/components/wealth/AllocationBar';
 import { ChangeLine } from '@/mobile/components/wealth/ChangeLine';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
+import { useOpenWithIntent } from '@/mobile/hooks/use-row-intent';
 import { useWealth, type WealthData } from '@/mobile/hooks/use-wealth';
 import { changeSinceDayOptions, periodChange } from '@/mobile/lib/change';
 import { shortDayOptions } from '@/mobile/lib/format-day';
@@ -303,8 +306,10 @@ function InvestmentSection({
 /** Nemovitosti: a row per property at its own market price; the number is the converted total. */
 function PropertySection({ wealth }: { wealth: WealthData }) {
   const { t } = useTranslation('mobile');
+  const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const moneyText = useMoneyText();
+  const openWith = useOpenWithIntent();
   const { user } = useAuth();
   const { reportCurrency, classes, properties } = wealth;
   if (!(user?.menuPreferences?.realEstate ?? true) || properties.length === 0) return null;
@@ -371,6 +376,16 @@ function PropertySection({ wealth }: { wealth: WealthData }) {
                 ) : undefined
               }
               href={propertyPath(property.id)}
+              // The property's revaluation, opened on the property (README §13, Gestures)
+              menu={{
+                label: `${tc('labels.actions')}: ${property.name}`,
+                children: (
+                  <RowMenuItem onSelect={() => openWith(propertyPath(property.id), 'revalue')}>
+                    <ArrowUp strokeWidth={1.75} aria-hidden />
+                    {t('realEstate:actions.revalue')}
+                  </RowMenuItem>
+                ),
+              }}
             />
           );
         })}

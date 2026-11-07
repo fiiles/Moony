@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Download, Ellipsis, Gem, Plus } from 'lucide-react';
+import { ArrowUp, Download, Ellipsis, Gem, Minus, Plus } from 'lucide-react';
 import { priceDecimals } from '@shared/currencies';
 import { useFormat } from '@/lib/use-format';
 import type { OtherAssetRow } from '@/utils/other-assets';
@@ -21,6 +21,7 @@ import { useBack } from '@/mobile/hooks/use-back';
 import { useClassExport } from '@/mobile/hooks/use-class-export';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useOtherAssets, useValuedDays } from '@/mobile/hooks/use-other-asset';
+import { useOpenWithIntent } from '@/mobile/hooks/use-row-intent';
 import { OtherAssetAddSheet } from '@/mobile/sheets/OtherAssetAddSheet';
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
 import { otherAssetPath, routes } from '@/mobile/shell/routes';
@@ -134,11 +135,15 @@ export default function OtherAssets() {
  * An asset of the list (spec §8.8): the gem in the chip, the name over "12 × 1 850 Kč" — what is
  * held at its own price in its own currency, or the day of its newest valuation when nothing is held —
  * the value in the report currency over the gain against the purchase cost. A value that could not
- * be converted is "—" with no gain; an asset that cost nothing has no gain to measure either.
+ * be converted is "—" with no gain; an asset that cost nothing has no gain to measure either. The
+ * long press's menu opens the asset with Koupit, Prodat or Přecenit (README §13, Gestures).
  */
 function AssetRow({ row, currency }: { row: OtherAssetRow; currency: string }) {
   const { t } = useTranslation('mobile');
+  const { t: to } = useTranslation('otherAssets');
+  const { t: tc } = useTranslation('common');
   const fmt = useFormat();
+  const openWith = useOpenWithIntent();
   const moneyText = useMoneyText();
   const { asset, quantity, price, priceCurrency, value, cost, gain, gainPct } = row;
   // Only a row with nothing held says when it was valued: the others show what is held
@@ -169,6 +174,27 @@ function AssetRow({ row, currency }: { row: OtherAssetRow; currency: string }) {
         ) : undefined
       }
       href={otherAssetPath(asset.id)}
+      menu={{
+        label: `${tc('labels.actions')}: ${asset.name}`,
+        children: (
+          <>
+            <RowMenuItem onSelect={() => openWith(otherAssetPath(asset.id), 'buy')}>
+              <Plus strokeWidth={1.75} aria-hidden />
+              {to('actions.buy')}
+            </RowMenuItem>
+            {quantity > 0 && (
+              <RowMenuItem onSelect={() => openWith(otherAssetPath(asset.id), 'sell')}>
+                <Minus strokeWidth={1.75} aria-hidden />
+                {to('actions.sell')}
+              </RowMenuItem>
+            )}
+            <RowMenuItem onSelect={() => openWith(otherAssetPath(asset.id), 'revalue')}>
+              <ArrowUp strokeWidth={1.75} aria-hidden />
+              {to('actions.revalue')}
+            </RowMenuItem>
+          </>
+        ),
+      }}
     />
   );
 }

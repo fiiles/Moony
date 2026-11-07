@@ -23,6 +23,7 @@ import { useProperty, type PropertyData } from '@/mobile/hooks/use-property';
 import { usePropertyMutations } from '@/mobile/hooks/use-property-mutations';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRetained } from '@/mobile/hooks/use-retained';
+import { useRowIntent } from '@/mobile/hooks/use-row-intent';
 import { monthlyRent, propertyOwnKeys } from '@/mobile/lib/property-detail';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { propertyPath, routes } from '@/mobile/shell/routes';
@@ -91,6 +92,8 @@ function PropertyDetailPage({ id }: { id: string | undefined }) {
   });
   // A property being deleted stays on screen (as it was) until the screen has left
   const view = exit.deleting ? kept : current;
+  // A property row's menu (README §13, Gestures) opens the revaluation here
+  useRowIntent({ revalue: () => setRevalueOpen(true) }, !!view);
 
   return (
     <Screen

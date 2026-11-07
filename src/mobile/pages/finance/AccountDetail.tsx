@@ -64,6 +64,7 @@ import { useUndoImport } from '@/mobile/hooks/use-undo-import';
 import { useLedger, type Ledger } from '@/mobile/hooks/use-ledger';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRetained } from '@/mobile/hooks/use-retained';
+import { useRowIntent } from '@/mobile/hooks/use-row-intent';
 import { balanceLine } from '@/mobile/lib/balance-line';
 import { recentCategoryIds } from '@/mobile/lib/category-pick';
 import { cashChange } from '@/mobile/lib/finance-rows';
@@ -177,6 +178,11 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   // after the delete finds no account, and the confirm sheet lives under it
   const keptAccount = useRetained(detail.account ?? null);
   const account = exit.deleting ? keptAccount : detail.account;
+  // An account row's menu (README §13, Gestures) opens the balance or the new transaction here
+  useRowIntent(
+    { record: () => setSheet('record'), addTransaction: () => setSheet('addTransaction') },
+    !!account
+  );
   // The kept account's own currency: once it is gone the detail falls back to the default one
   const currency = account ? recordCurrency(account.currency) : detail.currency;
   // The row of the transaction sheet and the row of the category picker (the same one while the

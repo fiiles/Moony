@@ -22,6 +22,7 @@ import { SectionHead } from '@/mobile/components/SectionHead';
 import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { useRetained } from '@/mobile/hooks/use-retained';
+import { useRowIntent } from '@/mobile/hooks/use-row-intent';
 import { policyFacts } from '@/mobile/lib/policy-detail';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { policyPath, routes } from '@/mobile/shell/routes';
@@ -94,6 +95,16 @@ function PolicyDetailPage({ id }: { id: string | undefined }) {
   const row = exit.deleting ? kept : current;
   const policy = row?.policy;
   const loading = isLoading || !fxReady;
+  // A policy row's menu (README §13, Gestures) opens the form or the end dialog here
+  useRowIntent(
+    {
+      edit: () => setEditOpen(true),
+      end: () => {
+        if (row && !row.ended) setEndOpen(true);
+      },
+    },
+    !!row
+  );
 
   return (
     <Screen

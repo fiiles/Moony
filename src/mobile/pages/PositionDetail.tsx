@@ -34,6 +34,7 @@ import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { usePosition, usePositionMutations } from '@/mobile/hooks/use-position';
 import { usePositionLedger } from '@/mobile/hooks/use-position-ledger';
 import { useRetained } from '@/mobile/hooks/use-retained';
+import { useRowIntent } from '@/mobile/hooks/use-row-intent';
 import { NavTextButton } from '@/mobile/shell/NavBar';
 import { positionPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
@@ -105,6 +106,16 @@ export default function PositionDetail() {
   const kept = useRetained(current);
   // A position being deleted stays on screen (as it was) until the screen has left
   const view = exit.deleting ? kept : current;
+  // A position row's menu (README §13, Gestures) opens the trade dialog here
+  useRowIntent(
+    {
+      buy: () => setTrade('buy'),
+      sell: () => {
+        if (view && view.holding.quantity > 0) setTrade('sell');
+      },
+    },
+    !!view
+  );
 
   return (
     <Screen

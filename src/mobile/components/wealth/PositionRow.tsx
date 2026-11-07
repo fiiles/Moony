@@ -1,6 +1,9 @@
 import { useTranslation } from 'react-i18next';
+import { Minus, Plus } from 'lucide-react';
 import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { useOpenWithIntent } from '@/mobile/hooks/use-row-intent';
 import type { PositionRowBase } from '@/utils/positions';
 import { ChangeLine } from './ChangeLine';
 import { RowBadge } from '@/mobile/components/RowBadge';
@@ -19,13 +22,16 @@ interface PositionRowProps {
  * A position of a class list, Akcie or Krypto (spec §8.8, prototype frame 11): the first two
  * letters of the ticker in the chip (no logo fetch: it would tell the network what is held), the
  * ticker with its "ručně" badge over the name, the value in the report currency over the return
- * with its amount. A tap opens the position. A value that could not be converted is "—" with no
+ * with its amount. A tap opens the position; the long press's menu opens it with Koupit or Prodat
+ * (README §13, Gestures). A value that could not be converted is "—" with no
  * return, never one measured against nothing. Closed positions are not listed here (`positionRows`).
  */
 export function PositionRow({ row, name, href, currency }: PositionRowProps) {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
+  const { t: tc } = useTranslation('common');
   const moneyText = useMoneyText();
+  const openWith = useOpenWithIntent();
   const { marketValue, gainLoss, gainLossPercent } = row;
 
   return (
@@ -53,6 +59,23 @@ export function PositionRow({ row, name, href, currency }: PositionRowProps) {
         ) : undefined
       }
       href={href}
+      menu={{
+        label: `${tc('labels.actions')}: ${row.ticker}`,
+        children: (
+          <>
+            <RowMenuItem onSelect={() => openWith(href, 'buy')}>
+              <Plus strokeWidth={1.75} aria-hidden />
+              {tc('buttons.buy')}
+            </RowMenuItem>
+            {row.quantity > 0 && (
+              <RowMenuItem onSelect={() => openWith(href, 'sell')}>
+                <Minus strokeWidth={1.75} aria-hidden />
+                {tc('buttons.sell')}
+              </RowMenuItem>
+            )}
+          </>
+        ),
+      }}
     />
   );
 }

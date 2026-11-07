@@ -36,6 +36,7 @@ import { useTradeEventTip } from '@/mobile/hooks/use-trade-event-tip';
 import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { leaveAfterSheet } from '@/mobile/hooks/use-leave-after-sheet';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
+import { useRowIntent } from '@/mobile/hooks/use-row-intent';
 import { changeSinceDayOptions } from '@/mobile/lib/change';
 import { trendChangeBase } from '@/mobile/lib/class-trend';
 import { shortDayOptions } from '@/mobile/lib/format-day';
@@ -170,6 +171,16 @@ export default function WatchDetail() {
     detail?.followed ??
     watched?.some((row) => row.ticker.toUpperCase() === ticker.toUpperCase()) ??
     false;
+  // A watched row's menu (README §13, Gestures) opens the target sheet or the buy dialog here
+  useRowIntent(
+    {
+      target: () => {
+        if (followed) setTargetOpen(true);
+      },
+      buy: () => setBuyOpen(true),
+    },
+    !!detail
+  );
   const name = detail?.longName ?? detail?.shortName ?? detail?.ticker ?? ticker;
   const detailTicker = detail?.ticker;
   // The dialog resets its form whenever it is handed another object, so this one is rebuilt only

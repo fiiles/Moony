@@ -21,6 +21,7 @@ import { LoanStats } from '@/mobile/components/loan/LoanStats';
 import { useBack, useBackLabel } from '@/mobile/hooks/use-back';
 import { useDeleteAndLeave } from '@/mobile/hooks/use-delete-and-leave';
 import { useRetained } from '@/mobile/hooks/use-retained';
+import { useRowIntent } from '@/mobile/hooks/use-row-intent';
 import { loanDetailStats, type LoanHorizon } from '@/mobile/lib/loan-detail';
 import { loanPath, routes } from '@/mobile/shell/routes';
 import { NavTextButton } from '@/mobile/shell/NavBar';
@@ -100,6 +101,14 @@ function LoanDetailPage({ id }: { id: string | undefined }) {
   const view = exit.deleting ? kept : current;
   const loan = view?.row.loan;
   const loading = loansLoading || (row !== undefined && scheduleLoading);
+  // A loan row's menu (README §13, Gestures) opens the event dialog here
+  useRowIntent(
+    {
+      balanceCheck: () => setEventDialog({ kind: 'balance_check' }),
+      rateChange: () => setEventDialog({ kind: 'rate_change' }),
+    },
+    !!view
+  );
 
   return (
     <Screen

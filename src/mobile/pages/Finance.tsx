@@ -8,12 +8,16 @@ import {
   Heart,
   House,
   Landmark,
+  Lock,
+  Pencil,
   Plane,
   Plus,
+  Repeat,
   Scale,
   Shield,
   Stethoscope,
   Tag,
+  Upload,
   type LucideIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -48,7 +52,9 @@ import { Hero } from '@/mobile/components/Hero';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { useCashTrend } from '@/mobile/hooks/use-cash-trend';
 import { useFinance, type Finance as FinanceData } from '@/mobile/hooks/use-finance';
+import { useImportSheet } from '@/mobile/hooks/use-import-sheet';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { useOpenWithIntent } from '@/mobile/hooks/use-row-intent';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
 import { changeSinceDayOptions, lineChange } from '@/mobile/lib/change';
 import {
@@ -450,6 +456,9 @@ function UncategorizedRow({ finance }: { finance: FinanceData }) {
 function AccountsSection({ finance, sort }: { finance: FinanceData; sort: AccountSort }) {
   const { t } = useTranslation('mobile');
   const { t: tb } = useTranslation('bank_accounts');
+  const { t: tc } = useTranslation('common');
+  const openWith = useOpenWithIntent();
+  const { openImport } = useImportSheet();
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const { accounts, activity, lastImportByAccount, mainCurrency, convert } = finance;
@@ -532,6 +541,28 @@ function AccountsSection({ finance, sort }: { finance: FinanceData; sort: Accoun
         value={moneyText(balance, sub.currency, { decimals: 0 })}
         valueSub={valueSub}
         href={accountPath(account.id)}
+        // The account's two buttons and its new transaction, opened on the account (README §13)
+        menu={{
+          label: `${tc('labels.actions')}: ${account.name}`,
+          children: (
+            <>
+              <RowMenuItem onSelect={() => openWith(accountPath(account.id), 'record')}>
+                <Pencil strokeWidth={1.75} aria-hidden />
+                {t('account.record')}
+              </RowMenuItem>
+              <RowMenuItem
+                onSelect={() => openImport({ accountId: account.id, source: 'account' })}
+              >
+                <Upload strokeWidth={1.75} aria-hidden />
+                {t('account.import')}
+              </RowMenuItem>
+              <RowMenuItem onSelect={() => openWith(accountPath(account.id), 'addTransaction')}>
+                <Plus strokeWidth={1.75} aria-hidden />
+                {tb('transaction.add')}
+              </RowMenuItem>
+            </>
+          ),
+        }}
       />
     );
   };
@@ -553,9 +584,11 @@ function LoansSection({
   rows: FinanceData['loans']['rows'];
 }) {
   const { t } = useTranslation('mobile');
+  const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const { monthYear } = useLoanText();
+  const openWith = useOpenWithIntent();
   if (rows.length === 0) return null;
   const { loans, mainCurrency } = finance;
 
@@ -598,6 +631,22 @@ function LoansSection({
                   })
             }
             href={loanPath(row.loan.id)}
+            // The loan's event dialogs, opened on the loan (README §13)
+            menu={{
+              label: `${tc('labels.actions')}: ${row.loan.name}`,
+              children: (
+                <>
+                  <RowMenuItem onSelect={() => openWith(loanPath(row.loan.id), 'balanceCheck')}>
+                    <Scale strokeWidth={1.75} aria-hidden />
+                    {t('loans:actions.balanceCheck')}
+                  </RowMenuItem>
+                  <RowMenuItem onSelect={() => openWith(loanPath(row.loan.id), 'rateChange')}>
+                    <Repeat strokeWidth={1.75} aria-hidden />
+                    {t('loans:actions.rateChange')}
+                  </RowMenuItem>
+                </>
+              ),
+            }}
           />
         ))}
       </EntityRows>
@@ -616,6 +665,8 @@ function PoliciesSection({
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
   const moneyText = useMoneyText();
+  const { t: tc } = useTranslation('common');
+  const openWith = useOpenWithIntent();
   if (rows.length === 0) return null;
   const { insurance, mainCurrency } = finance;
 
@@ -659,6 +710,24 @@ function PoliciesSection({
                     : undefined
               }
               href={policyPath(row.policy.id)}
+              // The policy's form and its end, opened on the policy (README §13)
+              menu={{
+                label: `${tc('labels.actions')}: ${row.policy.policyName}`,
+                children: (
+                  <>
+                    <RowMenuItem onSelect={() => openWith(policyPath(row.policy.id), 'edit')}>
+                      <Pencil strokeWidth={1.75} aria-hidden />
+                      {t('insurance:form.editTitle')}
+                    </RowMenuItem>
+                    {!row.ended && (
+                      <RowMenuItem onSelect={() => openWith(policyPath(row.policy.id), 'end')}>
+                        <Lock strokeWidth={1.75} aria-hidden />
+                        {t('insurance:actions.end')}
+                      </RowMenuItem>
+                    )}
+                  </>
+                ),
+              }}
             />
           );
         })}

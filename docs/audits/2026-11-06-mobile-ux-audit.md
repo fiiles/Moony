@@ -263,8 +263,8 @@ Opačný směr, kde se desktop změnil a spec telefonu se nedotkla:
 
 ## Navržené pořadí práce
 
-1. **Kategorizace v Nastavení (B1, A5).** Bez ní uživatel jen s telefonem nemůže opravit chybu, kterou mu telefon sám naučil.
-2. **Ruční transakce a vrácení importu (A1, A2), dividendy (A3).** Uzavře se tím slib specifikace i jediný rozpor v číslech, viditelný hned v detailu pozice.
+1. ✅ *Hotovo 2026-11-06.* **Kategorizace v Nastavení (B1, A5).** Bez ní uživatel jen s telefonem nemůže opravit chybu, kterou mu telefon sám naučil.
+2. ✅ *Hotovo 2026-11-07* (`docs/specs/2026-11-07-mobile-transactions-dividends-design.md`). **Ruční transakce a vrácení importu (A1, A2), dividendy (A3).** Uzavře se tím slib specifikace i jediný rozpor v číslech, viditelný hned v detailu pozice.
 3. **Cashflow na desktopové `expenseRows` a `limitState` a jeden dotaz (B2, B5, A16).**
 4. **Navigace a odolnost:** návrat po odemčení a paměť záložek (C3), chybové stavy (C6), ochrana rozepsaného sheetu a Android zpět (C5), cíle oznámení (C4).
 5. **Formuláře záznamu událostí na telefonní pole (C1).** Nejdřív ověřit dopad na zařízení.

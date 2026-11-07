@@ -14,8 +14,8 @@ interface CategoryRowProps {
   category: TransactionCategory | null;
   /** The row's amount, already worded in the report currency (signed for transfers). */
   value: string;
-  /** The category's transactions in the period. */
-  href: string;
+  /** The category's transactions in the period; none while the previous period is still shown. */
+  href: string | undefined;
   /** The share bar under the sub-line (income); transfers have none. */
   withBar: boolean;
 }

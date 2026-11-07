@@ -154,11 +154,12 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
     enabled: !chosen,
     staleTime: Infinity,
   });
-  const latest = latestQuery.isError
-    ? null
-    : latestQuery.isSuccess && !(latestQuery.isFetching && latestQuery.isStale)
+  const latest =
+    latestQuery.data !== undefined && !(latestQuery.isFetching && latestQuery.isStale)
       ? latestQuery.data
-      : undefined;
+      : latestQuery.isError
+        ? null
+        : undefined;
   const opening = useMemo(() => openingState(state, chosen, latest), [state, chosen, latest]);
   const current = opening ?? state;
   // Written into the URL once, so a later refetch never moves it and the pushed pages return to it
@@ -438,7 +439,9 @@ function ReportBody({
             title={categoryTitle(row.key, row.flowKind, category, row.name, titleLabels)}
             category={category}
             value={format(row.amount)}
-            href={cashflowCategoryPath(row.flowKind, row.key, search)}
+            href={
+              report.isPlaceholder ? undefined : cashflowCategoryPath(row.flowKind, row.key, search)
+            }
             withBar={withBar}
           />
         );

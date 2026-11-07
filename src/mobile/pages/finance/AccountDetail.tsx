@@ -382,6 +382,7 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
           <BalanceHistorySheet
             open={sheet === 'balanceHistory'}
             onOpenChange={closeSheet}
+            accountId={account.id}
             records={records}
             currency={currency}
           />

@@ -86,7 +86,10 @@ function LoanDetailPage({ id }: { id: string | undefined }) {
     return kind ? { kind } : null;
   });
   useEffect(() => {
-    if (id && loanEventFromSearch(search)) setLocation(loanPath(id), { replace: true });
+    // The entry's state (the back label of a push from Přehled) stays with it
+    if (id && loanEventFromSearch(search)) {
+      setLocation(loanPath(id), { replace: true, state: window.history.state });
+    }
   }, [id, search, setLocation]);
   const [deleteOpen, setDeleteOpen] = useState(false);
 

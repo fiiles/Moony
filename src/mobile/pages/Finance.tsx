@@ -134,7 +134,9 @@ export default function Finance() {
     opensAddAccount(search) ? 'account' : null
   );
   useEffect(() => {
-    if (new URLSearchParams(search).has('add')) setLocation(routes.finance, { replace: true });
+    if (new URLSearchParams(search).has('add')) {
+      setLocation(routes.finance, { replace: true, state: window.history.state });
+    }
   }, [search, setLocation]);
   const loansExport = useClassExport('loans');
   const policiesExport = useClassExport('insurance');

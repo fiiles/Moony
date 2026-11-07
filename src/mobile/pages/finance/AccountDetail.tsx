@@ -204,7 +204,10 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
     if (tx) setOpenTx(tx);
   }
   useEffect(() => {
-    if (id && linkedTx !== null && historyLoaded) setLocation(accountPath(id), { replace: true });
+    // The entry's state (the back label of a push from Přehled) stays with it
+    if (id && linkedTx !== null && historyLoaded) {
+      setLocation(accountPath(id), { replace: true, state: window.history.state });
+    }
   }, [id, linkedTx, historyLoaded, setLocation]);
   const [pickFor, setPickFor] = useState<BankTransaction | null>(null);
   const patchTx = (txId: string, patch: Partial<BankTransaction>) => {

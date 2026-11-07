@@ -93,11 +93,12 @@ function targetOf(row: UpkeepRow): string {
  * Údržba (spec §8.3 item 1, prototype frame 02 and note 2): an action card on `well`, first on
  * Přehled, present only while something is due. Unfolded at first (the desktop folds "Údržba dat"
  * under its agenda, but here every row carries its verb): the head (a button: title, count,
- * chevron) folds it to one line naming what is due; unfolded it has one row per item — a 34 pt icon, the title, a sub-line and the verb as a small button
- * (the first row's is primary, the rest secondary), and the "···" of its menu: on a row that
- * stands for a desktop milestone the desktop's (hide, remind in a month, stop reminding), on the
- * phone's own statement and uncategorized rows hide and remind in a month, kept on this device. Folded or not is kept
- * for the app session. The card leaves when the last row is done; the record-balances sheet it
+ * chevron) folds it to one line naming what is due; unfolded it has one row per item — a 34 pt
+ * icon, the title, a sub-line and the verb as a small button (the first row's is primary, the
+ * rest secondary), and the "···" of its menu: on a row that stands for a desktop milestone the
+ * desktop's (hide, remind in a month, stop reminding), on the phone's own statement and
+ * uncategorized rows hide and remind in a month, kept on this device. Folded or not is kept for
+ * the app session. The card leaves when the last row is done; the record-balances sheet it
  * opens is kept apart from it, because saving removes the row that opened the sheet while the
  * sheet is still sliding away.
  */

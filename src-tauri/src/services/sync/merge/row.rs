@@ -10,6 +10,9 @@
 //!    becomes the newest tombstone;
 //! 4. a row that is not live is inserted with `'*' = g` and explicit clocks for the columns whose
 //!    clock differs; a live row merges per column (`columns::merge`), `'*'` becomes `max(L, g)`.
+//!    Before the INSERT, and before an UPDATE that writes a column of a unique key,
+//!    `unique::resolve` decides what the row may write (§7.3), so no write trips a UNIQUE
+//!    constraint.
 //!
 //! For a live row the column merge runs before the parent check, which then sees only the FK
 //! values that won (C1).
@@ -24,6 +27,7 @@ use rusqlite::{params, params_from_iter, Connection, OptionalExtension};
 
 use super::columns;
 use super::parents::{self, Graph, Parents};
+use super::unique::{self, Resolution};
 use super::{ApplyReport, StopReason};
 use crate::error::{AppError, Result};
 use crate::services::sync::capture::CLOCK_UPSERT;
@@ -53,6 +57,9 @@ pub struct MergeCtx {
     pub touched: Touched,
     pub report: ApplyReport,
     pub(super) shapes: Shapes,
+    /// Rename scopes a unique-key rename left a placeholder name in, `(table, scope value)`;
+    /// recomputed right after the row is written (`unique::finish`).
+    pub(super) renames: Vec<(&'static str, String)>,
 }
 
 #[derive(Debug)]
@@ -122,8 +129,36 @@ pub fn apply_row(conn: &Connection, change: &RowChange, ctx: &mut MergeCtx) -> R
         });
     }
     match (live, merged) {
-        (None, _) => insert_row(conn, ctx, &table, change, &pk, &columns)?,
-        (Some(old), Some(merged)) => {
+        (None, _) => {
+            if unique::has_rules(table.spec.name) {
+                let resolution =
+                    unique::resolve(conn, table.spec.name, &pk, &columns, change.generation, ctx)?;
+                columns = match resolution {
+                    Resolution::Write(columns) => columns,
+                    Resolution::Drop => return Ok(RowResult::Dropped),
+                };
+            }
+            insert_row(conn, ctx, &table, change, &pk, &columns)?
+        }
+        (Some(old), Some(mut merged)) => {
+            if merged
+                .writes
+                .keys()
+                .any(|column| unique::guards(table.spec.name, column))
+            {
+                let star = generation.max(change.generation);
+                let before = resulting(&table, &old, &clocks, generation, &merged.writes);
+                match unique::resolve(conn, table.spec.name, &pk, &before, star, ctx)? {
+                    Resolution::Write(after) => {
+                        for (column, entry) in after {
+                            if before.get(&column) != Some(&entry) {
+                                merged.writes.insert(column, entry);
+                            }
+                        }
+                    }
+                    Resolution::Drop => return Ok(RowResult::Dropped),
+                }
+            }
             update_row(conn, ctx, &table, change, &pk, merged, &clocks, old)?
         }
         (Some(_), None) => {
@@ -133,7 +168,31 @@ pub fn apply_row(conn: &Connection, change: &RowChange, ctx: &mut MergeCtx) -> R
             )))
         }
     }
+    unique::finish(conn, ctx)?;
     Ok(RowResult::Applied)
+}
+
+/// Every clocked column of a live row as it will be once `writes` land: the written value and
+/// clock, else the local value with its column clock (the row clock `generation` without one).
+fn resulting(
+    table: &Table,
+    old: &RowImage,
+    clocks: &HashMap<String, Clock>,
+    generation: Clock,
+    writes: &Columns,
+) -> Columns {
+    table
+        .clocked()
+        .filter_map(|name| {
+            let entry = writes.get(name).cloned().or_else(|| {
+                old.get(name).map(|value| {
+                    let clock = clocks.get(name).copied().unwrap_or(generation);
+                    (value.clone(), clock)
+                })
+            })?;
+            Some((name.to_string(), entry))
+        })
+        .collect()
 }
 
 /// The row is not live: every carried column goes in with `'*' = g`. The `'*'` and column clocks
@@ -447,9 +506,24 @@ impl Table {
         column: &str,
         value: &str,
     ) -> Result<Vec<(String, RowImage)>> {
+        self.select_matching(
+            conn,
+            &format!("{} = ?1", quoted(column)),
+            vec![Value::Text(value.to_string())],
+        )
+    }
+
+    /// The rows matching the SQL `condition` (its parameters `params`), as `(pk text, image)` in
+    /// key order.
+    pub fn select_matching(
+        &self,
+        conn: &Connection,
+        condition: &str,
+        params: Vec<Value>,
+    ) -> Result<Vec<(String, RowImage)>> {
         let images = conn
-            .prepare_cached(&format!("{} WHERE {} = ?1", self.select(), quoted(column)))?
-            .query_map([value], |r| self.image(r))?
+            .prepare_cached(&format!("{} WHERE {condition}", self.select()))?
+            .query_map(params_from_iter(params), |r| self.image(r))?
             .collect::<std::result::Result<Vec<_>, _>>()?;
         let mut rows = images
             .into_iter()

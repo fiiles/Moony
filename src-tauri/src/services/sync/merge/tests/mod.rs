@@ -5,6 +5,7 @@ mod basics;
 mod epochs;
 mod parents;
 mod special;
+mod unique;
 
 use std::collections::BTreeMap;
 

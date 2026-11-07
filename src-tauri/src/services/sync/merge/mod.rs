@@ -20,11 +20,12 @@
 //!   cascades it at t1, which raises the author's `'-'` to t1 as well.
 //!
 //! The row algorithm lives in `row`, the per-column rules in `columns`, the foreign-key rules in
-//! `parents`.
+//! `parents`, the unique-key outcomes in `unique`.
 
 mod columns;
 mod parents;
 mod row;
+mod unique;
 
 pub use row::{apply_row, MergeCtx, RowResult};
 

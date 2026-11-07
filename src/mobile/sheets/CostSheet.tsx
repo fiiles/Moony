@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { isoDateFromUtcTimestamp } from '@/utils/period';
 import { AmountField } from '@/mobile/components/AmountField';
 import { DateField } from '@/mobile/components/DateField';
+import { TEXT_FIELD } from '@/mobile/components/field-styles';
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
 import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
@@ -30,10 +31,6 @@ interface CostSheetProps {
   /** The one-time cost being edited; none adds a new cost. Set together with `open`. */
   cost: RealEstateOneTimeCost | null;
 }
-
-/** The classes of a plain text field of a sheet (the name, the note): 48 pt, the field role. */
-const TEXT_FIELD =
-  'h-12 w-full rounded-[10px] border border-line-strong bg-paper px-3.5 text-m-field text-ink transition-[border-color,box-shadow] duration-fast placeholder:text-ink-5 focus:border-focus focus:shadow-focus focus-visible:outline-none aria-[invalid=true]:border-loss aria-[invalid=true]:focus:shadow-loss-ring';
 
 /**
  * The form a sheet opens with. A new cost starts as a recurring one for today; an edited cost with

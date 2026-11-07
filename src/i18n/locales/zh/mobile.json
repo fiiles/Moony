@@ -193,6 +193,9 @@
       "importHistory": "导入历史",
       "delete": "删除账户"
     },
+    "addTx": {
+      "noCategorySub": "您可以稍后再分类"
+    },
     "stats": {
       "changeThisYear": "今年变动",
       "avgPerMonth": "月均",

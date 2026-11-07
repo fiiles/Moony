@@ -18,13 +18,18 @@ interface CategoryChoiceSheetProps {
   value: string | null;
   /** The choice; `null` takes the choice back. Nothing is saved and nothing is learned here. */
   onChoose: (categoryId: string | null) => void;
+  /** The first row's label when no choice does not mean "the rules decide" ("Bez kategorie"). */
+  noneLabel?: string;
+  /** The first row's second line, with `noneLabel`. */
+  noneSub?: string;
 }
 
 /**
  * A plain choice of a category (README §13): the search, "Podle pravidel" first (the way back from
  * a choice), then the categories with a check on the chosen one; a tap chooses and closes. Unlike
  * the category picker it writes nothing and learns nothing — the import preview keeps the choice
- * until the import is written (a stacked sheet over the import sheet).
+ * until the import is written (a stacked sheet over the import sheet). "Přidat transakci" uses it
+ * too, with `noneLabel`: a manual entry runs no rules, so its first row is "Bez kategorie".
  */
 export function CategoryChoiceSheet({
   open,
@@ -32,6 +37,8 @@ export function CategoryChoiceSheet({
   categories,
   value,
   onChoose,
+  noneLabel,
+  noneSub,
 }: CategoryChoiceSheetProps) {
   const { t: tc } = useTranslation('common');
   const { t } = useTranslation('mobile');
@@ -77,8 +84,8 @@ export function CategoryChoiceSheet({
         <PickGroup title={t('import.choice.title')}>
           <PickRow
             icon={<NeutralChip icon={<Tag />} />}
-            label={t('import.choice.byRules')}
-            sub={t('import.choice.byRulesSub')}
+            label={noneLabel ?? t('import.choice.byRules')}
+            sub={noneLabel ? noneSub : t('import.choice.byRulesSub')}
             checked={value === null}
             onSelect={() => choose(null)}
           />

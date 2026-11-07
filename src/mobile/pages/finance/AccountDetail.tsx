@@ -75,6 +75,7 @@ import {
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
 import { accountPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
+import { AddTransactionSheet } from '@/mobile/sheets/AddTransactionSheet';
 import { BalanceHistorySheet } from '@/mobile/sheets/BalanceHistorySheet';
 import { CategoryPickerSheet } from '@/mobile/sheets/CategoryPickerSheet';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
@@ -84,7 +85,13 @@ import { RecordBalancesSheet } from '@/mobile/sheets/RecordBalancesSheet';
 import { TransactionSheet } from '@/mobile/sheets/TransactionSheet';
 
 type SheetKind =
-  'record' | 'edit' | 'balanceHistory' | 'importHistory' | 'deleteAccount' | 'filter';
+  | 'record'
+  | 'edit'
+  | 'addTransaction'
+  | 'balanceHistory'
+  | 'importHistory'
+  | 'deleteAccount'
+  | 'filter';
 
 type RecordEvent = { id: string; t: number; type: 'mark' };
 
@@ -235,6 +242,9 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="min-w-[220px]">
               <RowMenuItem onSelect={() => setSheet('edit')}>{t('account.menu.edit')}</RowMenuItem>
+              <RowMenuItem onSelect={() => setSheet('addTransaction')}>
+                {tb('transaction.add')}
+              </RowMenuItem>
               <RowMenuItem onSelect={() => setSheet('balanceHistory')}>
                 {t('account.menu.balanceHistory')}
               </RowMenuItem>
@@ -335,6 +345,13 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
             onOpenChange={closeSheet}
             accountIds={[account.id]}
             title={t('account.record')}
+          />
+          <AddTransactionSheet
+            open={sheet === 'addTransaction'}
+            onOpenChange={closeSheet}
+            accountId={account.id}
+            currency={currency}
+            categories={categories}
           />
           <BalanceHistorySheet
             open={sheet === 'balanceHistory'}

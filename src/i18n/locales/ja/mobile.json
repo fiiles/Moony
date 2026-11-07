@@ -193,6 +193,9 @@
       "importHistory": "インポート履歴",
       "delete": "口座を削除"
     },
+    "addTx": {
+      "noCategorySub": "あとで分類できます"
+    },
     "stats": {
       "changeThisYear": "今年の増減",
       "avgPerMonth": "月平均",

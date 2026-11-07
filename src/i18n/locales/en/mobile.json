@@ -211,6 +211,9 @@
       "importHistory": "Import history",
       "delete": "Delete account"
     },
+    "addTx": {
+      "noCategorySub": "You can categorize it later"
+    },
     "stats": {
       "changeThisYear": "Change this year",
       "avgPerMonth": "Average per month",

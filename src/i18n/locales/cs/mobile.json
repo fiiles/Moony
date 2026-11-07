@@ -229,6 +229,9 @@
       "importHistory": "Historie importů",
       "delete": "Smazat účet"
     },
+    "addTx": {
+      "noCategorySub": "Zařadíte ji později"
+    },
     "stats": {
       "changeThisYear": "Změna letos",
       "avgPerMonth": "Průměrně za měsíc",

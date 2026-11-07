@@ -211,6 +211,9 @@
       "importHistory": "Importhistorikk",
       "delete": "Slett konto"
     },
+    "addTx": {
+      "noCategorySub": "Du kan kategorisere den senere"
+    },
     "stats": {
       "changeThisYear": "Endring i år",
       "avgPerMonth": "Gjennomsnitt per måned",

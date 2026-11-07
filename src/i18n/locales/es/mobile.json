@@ -229,6 +229,9 @@
       "importHistory": "Historial de importaciones",
       "delete": "Eliminar cuenta"
     },
+    "addTx": {
+      "noCategorySub": "Puedes categorizarla más tarde"
+    },
     "stats": {
       "changeThisYear": "Variación este año",
       "avgPerMonth": "Media mensual",

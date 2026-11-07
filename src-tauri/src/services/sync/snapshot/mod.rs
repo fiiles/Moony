@@ -54,8 +54,10 @@ pub struct DumpStats {
 }
 
 /// Writes the snapshot of this profile at relay sequence `seq` (the cursor applied, §8):
-/// `devs`, `header`, the synced rows (live rows parents first, then tombstone-only keys children
-/// first), the Seed rows, `end`.
+/// `devs`, `header` (with the barrier marker's relay sequence when this device has seen it), the
+/// synced rows (live rows parents first, then tombstone-only keys children first), the Seed rows,
+/// `end`. Call with exclusive use of the connection (the engine holds the session mutex for the
+/// whole dump).
 ///
 /// Only a profile with nothing waiting to go out may be dumped: an empty `sync_unsent` (§8) and,
 /// by ruling T18e, an empty `sync_outbox`. A snapshot carrying rows its source has not pushed
@@ -86,6 +88,7 @@ pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpSta
         barrier: sync.barrier,
         seq,
         heads: heads_of(conn, &sync)?,
+        barrier_seq: sync.barrier_seq,
     };
 
     // The `devs` record goes first but is known only once every row is encoded.
@@ -269,8 +272,8 @@ fn admissible(conn: &Connection, snapshot: &Snapshot) -> Result<SyncState> {
     Ok(sync)
 }
 
-/// Seeds, heads (with their quarantine) and the cursor and snapshot bookkeeping, shared by both
-/// restores. Replacing sets them; merging never moves them back.
+/// Seeds, heads (with their quarantine), the cursor and snapshot bookkeeping and the barrier
+/// marker, shared by both restores. Replacing sets them; merging never moves them back.
 fn finish(
     conn: &Connection,
     snapshot: &Snapshot,
@@ -304,6 +307,14 @@ fn finish(
            snapshot_hlc = MAX(snapshot_hlc, ?2) WHERE id = 1"
     };
     conn.execute(sql, params![sql_int(snapshot.seq)?, sql_int(max_hlc)?])?;
+    // The marker is a place in relay order, the same on every device, but only for the barrier
+    // it marks. Replacing adopts it (or none); merging keeps a marker already found here.
+    let marker = snapshot
+        .barrier_seq
+        .filter(|_| snapshot.barrier == sync.barrier);
+    if replacing || sync.barrier_seq.is_none() {
+        state::set_barrier_seq(conn, marker)?;
+    }
     Ok(())
 }
 

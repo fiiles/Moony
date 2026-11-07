@@ -196,6 +196,7 @@ fn heads_and_cursor_come_from_the_header() {
         barrier,
         seq,
         heads: header_heads,
+        barrier_seq,
     } = header
     else {
         unreachable!();
@@ -209,6 +210,7 @@ fn heads_and_cursor_come_from_the_header() {
         state::load(&a).expect("load").expect("row").barrier
     );
     assert_eq!(seq, 7);
+    assert_eq!(barrier_seq, None, "A never saw a barrier marker");
     assert_eq!(
         header_heads,
         vec![
@@ -450,4 +452,55 @@ fn a_dump_refuses_while_rows_wait_to_be_pushed() {
     let stats = dump(&a, 1, &mut out).expect("dump");
     assert!(stats.rows > 0);
     assert!(!out.is_empty());
+}
+
+#[test]
+fn snapshot_header_carries_the_marker_to_a_joiner() {
+    let barrier_seq =
+        |conn: &Connection| state::load(conn).expect("load").expect("row").barrier_seq;
+    let header_seq = |bytes: &[u8]| {
+        records(bytes)
+            .into_iter()
+            .find_map(|r| match r {
+                Record::Header { barrier_seq, .. } => Some(barrier_seq),
+                _ => None,
+            })
+            .expect("header")
+    };
+    let a = device(A);
+    let (without, _) = snapshot(&a, 4);
+    assert_eq!(header_seq(&without), None);
+    assert!(!String::from_utf8_lossy(&without).contains("barrierSeq"));
+
+    state::set_barrier_seq(&a, Some(5)).expect("marker");
+    let (bytes, _) = snapshot(&a, 9);
+    assert_eq!(header_seq(&bytes), Some(5));
+    assert!(String::from_utf8_lossy(&bytes).contains(r#""barrierSeq":5"#));
+
+    // Replace adopts it.
+    assert_eq!(barrier_seq(&joined(&bytes)), Some(5));
+    // Merge keeps a local one, and takes the header's when it has none.
+    let kept = device(C);
+    state::set_barrier_seq(&kept, Some(3)).expect("local marker");
+    restore_merge(&kept, &mut &bytes[..], NOW).expect("merge");
+    assert_eq!(barrier_seq(&kept), Some(3));
+    let taken = device(D);
+    restore_merge(&taken, &mut &bytes[..], NOW).expect("merge");
+    assert_eq!(barrier_seq(&taken), Some(5));
+
+    // A marker of another barrier than this device's is not adopted, and replace drops the old.
+    let higher = device(A);
+    exec(
+        &higher,
+        "UPDATE sync_state SET barrier = barrier + 1, barrier_seq = 5",
+    );
+    let (other_barrier, _) = snapshot(&higher, 9);
+    assert_eq!(header_seq(&other_barrier), Some(5));
+    let replaced = device(B);
+    state::set_barrier_seq(&replaced, Some(3)).expect("local marker");
+    restore_replace(&replaced, &mut &other_barrier[..], NOW).expect("replace");
+    assert_eq!(barrier_seq(&replaced), None);
+    let merged = device(C);
+    restore_merge(&merged, &mut &other_barrier[..], NOW).expect("merge");
+    assert_eq!(barrier_seq(&merged), None);
 }

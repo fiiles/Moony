@@ -1,6 +1,7 @@
 //! Chain bookkeeping (spec §9.3, §11.4, §14): the verdict on every pulled envelope, from its
 //! author's chain head (`sync_heads`) or, for this device's own ID, from `sync_own_log`; the
-//! re-join after a clone or rollback; and the re-queue when this device crosses a barrier.
+//! barrier marker found by relay order; and the re-queue when this device crosses a barrier.
+//! The re-join after a clone or rollback lives in `rejoin`.
 
 mod rejoin;
 
@@ -25,10 +26,13 @@ pub struct EnvelopeMeta {
     pub hash: [u8; 32],
     pub schema: u32,
     pub barrier: u32,
+    /// The relay's sequence of the op that carried the envelope: its place in relay order, the
+    /// same on every device.
+    pub position: u64,
 }
 
 impl EnvelopeMeta {
-    pub fn of(cs: &Changeset, hash: [u8; 32]) -> Self {
+    pub fn of(cs: &Changeset, hash: [u8; 32], position: u64) -> Self {
         Self {
             device: cs.device,
             seq: cs.seq,
@@ -36,8 +40,22 @@ impl EnvelopeMeta {
             hash,
             schema: cs.schema,
             barrier: cs.barrier,
+            position,
         }
     }
+}
+
+/// Records the barrier marker (§14): the first envelope in relay order written at or above the
+/// barrier this device is past. Called before `judge` on every envelope that decrypts, whatever its
+/// verdict: a position in relay order is the same for every device, so every device finds the same
+/// marker. `true` when `meta` became the marker (`sync_state.barrier_seq` = its position).
+pub fn note_barrier_marker(conn: &Connection, meta: &EnvelopeMeta) -> Result<bool> {
+    let sync = loaded(conn)?;
+    if sync.barrier == 0 || sync.barrier_seq.is_some() || meta.barrier < sync.barrier {
+        return Ok(false);
+    }
+    state::set_barrier_seq(conn, Some(meta.position))?;
+    Ok(true)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -59,8 +77,8 @@ pub enum Verdict {
     Gap,
     /// Written by a newer schema than this build knows: stop pulling, keep pushing.
     NewerSchema,
-    /// Written below the barrier this device is past: not applied, the head moves
-    /// (`skip_below_barrier`).
+    /// Written below the barrier this device is past and placed after the barrier marker in relay
+    /// order: not applied, the head moves (`skip_below_barrier`).
     BelowBarrier,
     /// The chain link itself is malformed (`seq` 0, a first envelope with a `prev`, a later one
     /// without): stop.
@@ -94,8 +112,11 @@ pub fn judge(conn: &Connection, meta: &EnvelopeMeta) -> Result<Verdict> {
     if head.as_ref().is_some_and(|h| h.quarantined) {
         return Ok(Verdict::Held);
     }
+    // Below the barrier is skipped only when the relay placed it after the marker: a lagging
+    // device may push below the barrier before it pulls the marker, and that envelope still
+    // applies, on every device alike (§14).
     let next = || {
-        if meta.barrier < sync.barrier {
+        if meta.barrier < sync.barrier && sync.barrier_seq.is_some_and(|m| meta.position > m) {
             Verdict::BelowBarrier
         } else {
             Verdict::Apply
@@ -143,7 +164,8 @@ pub fn skip_below_barrier(conn: &Connection, meta: &EnvelopeMeta) -> Result<()> 
 
 /// At unlock (§14): when this build is past a barrier the profile was last opened below, the rows
 /// this device changed after the newest snapshot it restored or uploaded are queued again (in
-/// the new format), and the barrier is recorded. Returns how many keys were queued.
+/// the new format), and the barrier is recorded; the old barrier's marker is forgotten, so
+/// `note_barrier_marker` looks for the new one. Returns how many keys were queued.
 pub fn cross_barrier(conn: &Connection, sync: &SyncState) -> Result<usize> {
     let barrier = barrier_number();
     if sync.schema_seen >= barrier {
@@ -213,6 +235,9 @@ fn unsigned(value: i64, column: &str) -> Result<u64> {
 mod tests {
     use super::*;
     use crate::services::sync::capture;
+    use crate::services::sync::changeset::RowChange;
+    use crate::services::sync::hlc::Clock;
+    use crate::services::sync::journal::{build_next, record_sealed};
     use crate::services::sync::test_support::migrated;
 
     pub(super) const ME: DeviceId = DeviceId([7; 16]);
@@ -239,6 +264,7 @@ mod tests {
             hash: h(hash),
             schema: schema_number(),
             barrier: barrier_number(),
+            position: seq,
         }
     }
 
@@ -322,6 +348,111 @@ mod tests {
         clock(conn, "dead", "-", 360, ME);
         clock(conn, "theirs", "*", 400, A);
         conn.execute_batch("DELETE FROM sync_outbox").unwrap();
+    }
+
+    /// `meta` written at `barrier` and placed at relay sequence `position`.
+    pub(super) fn placed(mut meta: EnvelopeMeta, barrier: u32, position: u64) -> EnvelopeMeta {
+        meta.barrier = barrier;
+        meta.position = position;
+        meta
+    }
+
+    pub(super) fn barrier_seq(conn: &Connection) -> Option<u64> {
+        state::load(conn).unwrap().expect("row").barrier_seq
+    }
+
+    /// Through capture: bank account `acc`, then its transaction `t1`, then `acc` renamed, so
+    /// the account's own clocks after its creation are newer than the transaction's. The outbox
+    /// is emptied (as if everything had gone out). Returns the account's creation clock.
+    pub(super) fn account_then_transaction(conn: &Connection) -> u64 {
+        conn.execute_batch(
+            "DELETE FROM sync_outbox; DELETE FROM sync_clock; \
+             INSERT INTO bank_accounts (id, name, currency, balance) \
+               VALUES ('acc', 'Main', 'CZK', '125.00');",
+        )
+        .unwrap();
+        let created: i64 = conn
+            .query_row(
+                "SELECT hlc FROM sync_clock WHERE tbl = 'bank_accounts' AND pk = 'acc' AND col = '*'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        conn.execute_batch(
+            "INSERT INTO bank_transactions (id, bank_account_id, tx_type, amount, currency, \
+               booking_date) VALUES ('t1', 'acc', 'debit', '-5.00', 'CZK', 1767225600); \
+             UPDATE bank_accounts SET name = 'Renamed' WHERE id = 'acc'; \
+             DELETE FROM sync_outbox;",
+        )
+        .unwrap();
+        created as u64
+    }
+
+    /// The re-queue put the transaction ahead of its account by `queued_at`: only the journal's
+    /// parent-first order keeps the account first.
+    pub(super) fn assert_child_queued_first(conn: &Connection) {
+        let queued_at = |pk: &str| -> i64 {
+            conn.query_row(
+                "SELECT queued_at FROM sync_outbox WHERE pk = ?1",
+                [pk],
+                |r| r.get(0),
+            )
+            .expect(pk)
+        };
+        assert!(queued_at("t1") < queued_at("acc"));
+    }
+
+    /// Everything queued, sealed as the journal seals it: each envelope's rows, in order.
+    pub(super) fn sealed_rows(conn: &Connection) -> Vec<Vec<RowChange>> {
+        let mut out = Vec::new();
+        loop {
+            let tx = conn.unchecked_transaction().unwrap();
+            let (built, refused) = build_next(&tx).unwrap();
+            assert!(refused.is_empty(), "{refused:?}");
+            let Some(built) = built else {
+                return out;
+            };
+            record_sealed(&tx, &built, h(built.changeset.seq as u8)).unwrap();
+            tx.commit().unwrap();
+            out.push(built.changeset.rows);
+        }
+    }
+
+    /// `acc` goes out before `t1` (by envelope, then by place in it), and `t1`'s `"p"` carries
+    /// the account's current generation.
+    pub(super) fn assert_parent_first(conn: &Connection, sent: &[Vec<RowChange>]) {
+        let place = |pk: &str| {
+            sent.iter()
+                .enumerate()
+                .find_map(|(e, rows)| {
+                    rows.iter()
+                        .position(|r| r.key.to_pk_text().unwrap() == pk)
+                        .map(|i| (e, i))
+                })
+                .expect(pk)
+        };
+        assert!(
+            place("acc") < place("t1"),
+            "{:?} {:?}",
+            place("acc"),
+            place("t1")
+        );
+        let (e, i) = place("t1");
+        let generation: (i64, Vec<u8>) = conn
+            .query_row(
+                "SELECT hlc, device FROM sync_clock \
+                 WHERE tbl = 'bank_accounts' AND pk = 'acc' AND col = '*'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap();
+        assert_eq!(
+            sent[e][i].parents["bank_account_id"],
+            Clock {
+                hlc: generation.0 as u64,
+                device: DeviceId(generation.1.try_into().unwrap()),
+            }
+        );
     }
 
     #[test]
@@ -462,22 +593,96 @@ mod tests {
     }
 
     #[test]
-    fn an_envelope_below_the_barrier_is_skipped_and_the_head_moves() {
+    fn below_barrier_envelope_before_the_marker_is_applied() {
         let conn = profile();
         conn.execute_batch("UPDATE sync_state SET barrier = 25")
             .unwrap();
-        let mut old = meta(A, 1, None, 1);
-        old.barrier = 19;
+        // No marker seen yet: a lagging device's envelope still applies.
+        let lagging = placed(meta(A, 1, None, 1), 19, 5);
+        assert_eq!(judge(&conn, &lagging).unwrap(), Verdict::Apply);
+        // The marker lands at relay sequence 6; the envelope at 5 sits before it.
+        assert!(note_barrier_marker(&conn, &placed(meta(B, 1, None, 11), 25, 6)).unwrap());
+        assert_eq!(barrier_seq(&conn), Some(6));
+        assert_eq!(judge(&conn, &lagging).unwrap(), Verdict::Apply);
+    }
+
+    #[test]
+    fn below_barrier_envelope_after_the_marker_is_skipped() {
+        let conn = profile();
+        conn.execute_batch("UPDATE sync_state SET barrier = 25")
+            .unwrap();
+        assert!(note_barrier_marker(&conn, &placed(meta(B, 1, None, 11), 25, 6)).unwrap());
+        let old = placed(meta(A, 1, None, 1), 19, 7);
         assert_eq!(judge(&conn, &old).unwrap(), Verdict::BelowBarrier);
 
         skip_below_barrier(&conn, &old).unwrap();
 
         assert_eq!(heads(&conn), vec![(A.0.to_vec(), 1, h(1).to_vec(), false)]);
-        let mut next = meta(A, 2, Some(1), 2);
-        next.barrier = 25;
+        let next = placed(meta(A, 2, Some(1), 2), 25, 8);
         assert_eq!(judge(&conn, &next).unwrap(), Verdict::Apply);
-        next.barrier = 24;
-        assert_eq!(judge(&conn, &next).unwrap(), Verdict::BelowBarrier);
+        assert_eq!(
+            judge(&conn, &placed(next.clone(), 24, 8)).unwrap(),
+            Verdict::BelowBarrier
+        );
+    }
+
+    #[test]
+    fn the_first_envelope_at_or_above_the_barrier_is_the_marker() {
+        let conn = profile();
+        conn.execute_batch("UPDATE sync_state SET barrier = 25")
+            .unwrap();
+        // Below the barrier: not the marker.
+        assert!(!note_barrier_marker(&conn, &placed(meta(A, 1, None, 1), 19, 3)).unwrap());
+        assert_eq!(barrier_seq(&conn), None);
+        // The first at the barrier is; later ones (even above it) never move it.
+        assert!(note_barrier_marker(&conn, &placed(meta(B, 1, None, 11), 25, 4)).unwrap());
+        assert!(!note_barrier_marker(&conn, &placed(meta(B, 2, Some(11), 12), 25, 5)).unwrap());
+        assert!(!note_barrier_marker(&conn, &placed(meta(A, 2, Some(1), 2), 30, 9)).unwrap());
+        assert_eq!(barrier_seq(&conn), Some(4));
+        assert!(heads(&conn).is_empty(), "noting a marker moves no head");
+
+        // A profile that never crossed a barrier has no marker to find.
+        let none = profile();
+        none.execute_batch("UPDATE sync_state SET barrier = 0")
+            .unwrap();
+        assert!(!note_barrier_marker(&none, &placed(meta(A, 1, None, 1), 25, 1)).unwrap());
+        assert_eq!(barrier_seq(&none), None);
+    }
+
+    #[test]
+    fn crossing_a_barrier_forgets_the_old_marker() {
+        let conn = migrated();
+        state::enable(&conn, ME).unwrap();
+        conn.execute_batch(
+            "UPDATE sync_state SET schema_seen = 24, barrier = 19, barrier_seq = 12",
+        )
+        .unwrap();
+
+        crate::services::sync::on_open(&conn);
+
+        let sync = state::load(&conn).unwrap().expect("row");
+        assert_eq!(sync.barrier, 25);
+        assert_eq!(sync.barrier_seq, None);
+        // The new barrier's marker is the next envelope at or above 25.
+        assert!(note_barrier_marker(&conn, &placed(meta(A, 1, None, 1), 25, 40)).unwrap());
+        assert_eq!(barrier_seq(&conn), Some(40));
+    }
+
+    #[test]
+    fn barrier_requeue_ships_parents_before_children() {
+        let conn = migrated();
+        state::enable(&conn, ME).unwrap();
+        let created = account_then_transaction(&conn);
+        conn.execute(
+            "UPDATE sync_state SET snapshot_hlc = ?1, schema_seen = 24, barrier = 19",
+            [created as i64],
+        )
+        .unwrap();
+
+        crate::services::sync::on_open(&conn);
+
+        assert_child_queued_first(&conn);
+        assert_parent_first(&conn, &sealed_rows(&conn));
     }
 
     #[test]

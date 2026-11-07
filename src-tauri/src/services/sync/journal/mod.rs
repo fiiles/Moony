@@ -20,13 +20,15 @@ use std::cmp::Reverse;
 use rusqlite::{params, Connection, Transaction};
 
 use crate::error::{AppError, Result};
+use crate::services::sync::capture;
 use crate::services::sync::changeset::{max_hlc, min_author_hlc, Changeset};
 use crate::services::sync::registry::keys::{fk_depth, schema_number};
 use crate::services::sync::registry::{self, TableClass};
 use crate::services::sync::state;
 use cut::ReadRow;
 
-/// Largest padded deflated envelope (60 KiB; the relay accepts 64 KiB per op).
+/// Largest padded deflated envelope: the relay accepts 192 KiB per op; 60 KiB keeps ordinary
+/// envelopes small.
 pub const ENVELOPE_BUDGET: usize = 61_440;
 /// Largest padded deflated single row (180 KiB); a larger row is refused.
 pub const SINGLE_ROW_LIMIT: usize = 184_320;
@@ -89,6 +91,29 @@ pub fn build_next(tx: &Transaction<'_>) -> Result<(Option<Built>, Vec<Refused>)>
         changeset: cut.changeset,
     });
     Ok((built, cut.refused))
+}
+
+/// The barrier marker (§14): this device's next envelope with no rows, written at its barrier,
+/// whose clock (`min_hlc` = `max_hlc`) is a fresh tick, so a re-join's watermark stays exact. The
+/// outbox is left alone. The caller seals and records it like any envelope, at most once per
+/// barrier (ruling P5: `state::note_sealed_at_barrier`). Needs capture installed (the clock).
+pub fn build_marker(tx: &Transaction<'_>) -> Result<Built> {
+    let conn: &Connection = tx;
+    let sync = state::load(conn)?
+        .ok_or_else(|| AppError::Internal("sync journal: sync is not set up".into()))?;
+    let hlc = capture::tick(conn)?;
+    Ok(Built {
+        changeset: Changeset {
+            schema: schema_number(),
+            barrier: sync.barrier,
+            device: sync.device,
+            seq: sync.next_seq,
+            prev: sync.last_hash,
+            rows: Vec::new(),
+        },
+        min_hlc: hlc,
+        max_hlc: hlc,
+    })
 }
 
 /// Records the sealed envelope in the same transaction: `sync_own_log` gains `(seq, hash,

@@ -744,7 +744,11 @@ fn clone_detection_from_an_own_id_envelope() {
     let clone = &vault.devices[3].conn;
     assert_eq!(count(clone, "SELECT COUNT(*) FROM sync_unsent"), 0);
     assert_eq!(
-        judge(clone, &EnvelopeMeta::of(&cs, hash)).expect("judge"),
+        judge(
+            clone,
+            &EnvelopeMeta::of(&cs, hash, vault.relay.len() as u64)
+        )
+        .expect("judge"),
         Verdict::Clone
     );
     pull_all(&mut vault, 3);

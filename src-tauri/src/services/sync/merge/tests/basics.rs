@@ -234,3 +234,28 @@ fn an_unknown_column_from_a_newer_schema_is_ignored() {
         ["*", "note"]
     );
 }
+
+#[test]
+fn applying_a_marker_moves_the_head_and_changes_no_row() {
+    let a = device(A);
+    let b = device(B);
+    plan(&a, "p1", 2026);
+    let first = send(&a);
+    apply(&b, &first);
+    let rows = dump(&b);
+    let clocks = clock_dump(&b);
+
+    let tx = a.unchecked_transaction().expect("transaction");
+    let marker = crate::services::sync::journal::build_marker(&tx).expect("marker");
+    let hash = hash_of(&marker.changeset);
+    record_sealed(&tx, &marker, hash).expect("record_sealed");
+    tx.commit().expect("commit");
+
+    let reports = apply(&b, &vec![(marker.changeset.clone(), hash)]);
+
+    assert_eq!(reports, vec![ApplyReport::default()]);
+    assert_eq!(heads(&b), vec![(A.0.to_vec(), 2, hash.to_vec())]);
+    assert_eq!(dump(&b), rows);
+    assert_eq!(clock_dump(&b), clocks);
+    assert_eq!(count(&b, "SELECT COUNT(*) FROM sync_outbox"), 0);
+}

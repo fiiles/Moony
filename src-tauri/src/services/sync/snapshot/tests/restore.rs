@@ -187,7 +187,8 @@ fn a_device_joined_from_a_snapshot_applies_the_dumpers_next_envelope() {
     );
     let second = send(&a);
     assert_eq!(second[0].0.seq, 2);
-    let meta = EnvelopeMeta::of(&second[0].0, second[0].1);
+    // The snapshot was taken at relay sequence 1; this envelope is the relay's second op.
+    let meta = EnvelopeMeta::of(&second[0].0, second[0].1, 2);
     assert_eq!(judge(&b, &meta).expect("judge"), Verdict::Apply);
     apply(&b, &second);
     assert_eq!(table_dump(&b), table_dump(&a));
@@ -479,7 +480,8 @@ fn a_quarantined_author_stays_held_after_a_restore() {
         })
         .expect("header");
     assert!(header_heads.iter().any(|h| h.device == C && h.quarantined));
-    let meta = EnvelopeMeta::of(&second[0].0, second[0].1);
+    // The snapshot was taken at relay sequence 2; the fork's envelope comes after it.
+    let meta = EnvelopeMeta::of(&second[0].0, second[0].1, 3);
     let quarantined =
         "SELECT quarantined FROM sync_heads WHERE device = x'03030303030303030303030303030303'";
 

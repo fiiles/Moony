@@ -1,8 +1,9 @@
 //! Push (spec §9.4): this device's changes leave in two steps that never share a lock with the
 //! network. First the outbox becomes sealed envelopes in `sync_unsent`, each recorded in the own
 //! log as the chain moves on in the same transaction that removes the outbox rows it consumed
-//! (ruling R11); a few envelopes per lock hold, so a large first drain never freezes the profile. Then the waiting envelopes go to the relay in sequence order, in batches within
-//! its limits, and each batch the relay answered is deleted. A crash anywhere pushes the same
+//! (ruling R11); one envelope per lock hold, so a large first drain never freezes the profile.
+//! Then the waiting envelopes go to the relay in sequence order, in batches within its limits, and
+//! each batch the relay answered is deleted. A crash anywhere pushes the same
 //! envelopes again: the op ID makes that a no-op on the relay, and this device's chain never
 //! forks. A push whose answer was lost is acknowledged by the next pull (`OwnAcknowledged`).
 
@@ -24,9 +25,10 @@ use crate::services::sync::state;
 
 /// Envelopes sealed per `seal_batch`.
 pub const SEAL_BATCH: usize = 64;
-/// Envelopes sealed per lock hold (one transaction each). Every envelope reads the whole outbox,
-/// so a first drain of a large one would otherwise hold the profile for seconds.
-pub const SEAL_PER_HOLD: usize = 4;
+/// Envelopes sealed per lock hold (one transaction each). Every envelope reads the whole outbox
+/// (about 0.12 s for 50,000 queued rows in release), so a first drain of a large one would
+/// otherwise hold the profile for seconds.
+pub const SEAL_PER_HOLD: usize = 1;
 /// Ops per push (the relay accepts 500).
 pub const PUSH_MAX_OPS: usize = 100;
 /// Base64 bytes of the envelopes in one push (the relay accepts a 4 MiB body).
@@ -217,7 +219,7 @@ pub struct PushReport {
     pub refused: usize,
 }
 
-/// Seals and pushes until nothing is left to send: seal (locked a few envelopes at a time) → next
+/// Seals and pushes until nothing is left to send: seal (locked one envelope at a time) → next
 /// batch (locked) → push
 /// (unlocked) → acknowledge (locked). A refused row stays in the outbox and never keeps the loop
 /// going. The first error ends it, returned as its `SyncError` class (`402` → `Lapsed`, `413` →

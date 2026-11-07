@@ -610,11 +610,12 @@ async fn a_large_drain_takes_several_lock_holds() {
 
     let report = seal_batch(&db, &vault.creds).expect("seal");
 
-    assert_eq!(report.sealed, SEAL_BATCH);
+    assert_eq!((SEAL_BATCH, SEAL_PER_HOLD), (64, 1));
+    assert_eq!(report.sealed, 64);
     assert_eq!(
         db.sealed_per_hold(),
-        vec![SEAL_PER_HOLD as i64; SEAL_BATCH / SEAL_PER_HOLD],
-        "every hold seals at most {SEAL_PER_HOLD} envelopes"
+        vec![1; 64],
+        "64 envelopes in 64 holds of one"
     );
     let a = vault.a.lock();
     assert_eq!(count(&a, "SELECT COUNT(*) FROM sync_outbox"), 6);
@@ -634,7 +635,11 @@ async fn a_large_drain_takes_several_lock_holds() {
     let rest = seal_batch(&db, &vault.creds).expect("seal the rest");
     assert_eq!(rest.sealed, 6);
     let waiting: Vec<i64> = db.holds()[before..].iter().map(|(_, w)| *w).collect();
-    assert_eq!(waiting, vec![4, 6], "a hold of four, then the last two");
+    assert_eq!(
+        waiting,
+        vec![1, 2, 3, 4, 5, 6, 6],
+        "one envelope per hold, then a hold that finds the outbox spent"
+    );
 }
 
 /// P1 allows a push after a pull that did not acknowledge anything (`NewerSchema`, `Held`): the

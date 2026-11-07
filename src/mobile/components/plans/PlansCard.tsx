@@ -16,7 +16,7 @@ interface PlansCardProps {
  * The spending plans card of the Cashflow root (spec M3, M17): a card like the bars card, with a
  * small square plan glyph, "Výdajové plány 2026", what is left in the active plans, the whole
  * year's spend as a bar and a line, and how many active plans are over or near their amount. It
- * is a card with a heading, never the budget note's quiet line. A total that could not be
+ * is a card with a heading, never a note's quiet line. A total that could not be
  * converted shows "—" and no bar.
  */
 export function PlansCard({ summary, href }: PlansCardProps) {

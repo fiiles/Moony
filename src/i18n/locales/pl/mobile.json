@@ -36,16 +36,13 @@
     "subtitle_few": "Rzeczywiste przychody i wydatki z {{count}} kont",
     "subtitle_many": "Rzeczywiste przychody i wydatki z {{count}} kont",
     "subtitle_other": "Rzeczywiste przychody i wydatki z {{count}} konta",
+    "subtitleAll": "Rzeczywiste przychody i wydatki ze wszystkich kont",
     "moves_one": "{{count}} transakcja",
     "moves_few": "{{count}} transakcje",
     "moves_many": "{{count}} transakcji",
     "moves_other": "{{count}} transakcji",
     "shareOfExpenses": "{{share}} wydatków",
     "shareOfIncome": "{{share}} przychodów",
-    "limitProgress": "{{spent}} / {{limit}}",
-    "near": "blisko limitu",
-    "overLimit": "powyżej limitu",
-    "budgetSummary": "Budżety: {{ok}} w limicie · {{over}} powyżej limitu · {{near}} blisko limitu",
     "partial": "Okres jeszcze się nie skończył; liczby uzupełnią się wraz z następnym wyciągiem.",
     "empty": {
       "title": "Jeszcze brak transakcji",
@@ -611,6 +608,8 @@
       "asset": "Aktywo"
     },
     "noRate": "brak kursu wymiany dla {{currency}}",
+    "sincePurchase": "od zakupu",
+    "gainSincePurchase": "zysk/strata od zakupu",
     "stocks": {
       "back": "Akcje",
       "pricesAt": "ceny {{time}}",

@@ -420,16 +420,37 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
 }
 
 /* A row with a bar: the category rows of the report carry a third line, 6 px under the sub-line, in
-   the main column, so the row is never `--single` and measures about 69 px. The sub-line puts what
-   matters first and the count last, so an ellipsis drops the count: the share ("41 % der Ausgaben")
-   or a limit's progress ("10 420 / 9 000 Kč", `.is-loss` when exceeded), the state word ("nahe am
-   Limit", "über dem Limit"), then "23 Transaktionen". The amount of a limit that is exceeded turns
-   `loss` too. The category chip keeps the user's hue: the tint is the chip's
-   inline background (the colour at 15 % over paper, hex alpha 26), its glyph is `--cat`, and the
-   dark theme lifts the glyph 30 % towards ink. */
+   the main column, so the row is never `--single` and measures about 69 px. The sub-line puts the
+   share first and the count last, so an ellipsis drops the count ("41 % der Ausgaben · 4
+   Transaktionen"). An expense row with a limit has the usage bar (`s1`, `loss` when over, a 2 px
+   `ink-3` tick for today in a running period) and, under the row and outside its link, the limit
+   line `.m-row__limit`: the desktop's state word and usage, what remains or how far over (`.is-loss`),
+   then the limit as a 44 px text button with a dotted underline that edits it. A row without a limit
+   keeps the share bar (`s3`); only the "Ohne Limit" filter gives it the line "Ohne Limit · Limit
+   festlegen". The spent amount never turns red (the desktop's rule: the state line carries it). The
+   category chip keeps the user's hue: the tint is the chip's inline background (the colour at 15 %
+   over paper, hex alpha 26), its glyph is `--cat`, and the dark theme lifts the glyph 30 % towards
+   ink. */
 .m-row--bar { min-height: 68px; }
 .m-row__bar { display: block; margin-top: 6px; }
-.m-row__v--loss, .m-row__s .is-loss { color: var(--loss); }
+.m-row__v--loss, .m-row__s .is-loss, .m-row__limit .is-loss { color: var(--loss); }
+.m-row__limit {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px;
+  margin-top: -8px; padding: 0 14px 2px 62px; color: var(--ink-3);
+  font-size: var(--m-fs-caption); font-weight: 600; line-height: 1.35; font-variant-numeric: tabular-nums;
+}
+.m-row__limit p { margin: 0; min-width: 0; padding: 4px 0; }
+.m-row__limit button {
+  flex: none; min-height: 44px; padding: 0; border: 0; background: none; color: var(--ink); white-space: nowrap;
+  font: inherit; font-size: var(--m-fs-sub); font-weight: 600;
+  text-decoration: underline dotted var(--line-strong); text-underline-offset: 3px; -webkit-touch-callout: none;
+}
+.m-pbar { position: relative; }
+.m-pbar > b { position: absolute; top: 0; bottom: 0; width: 2px; transform: translateX(-50%); background: var(--ink-3); }
+/* The filter of the expense rows and the sort pill: the pill wraps under the segment when both do
+   not fit (360 px, German, large text); without any limit the segment is not shown. */
+.m-filterbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; margin-bottom: 10px; }
+.m-filterbar > .m-seg { flex: 1 1 auto; }
 .m-row__chip--cat { color: var(--cat); }
 :root[data-theme="dark"] .m-row__chip--cat { color: color-mix(in oklab, var(--cat) 70%, var(--ink)); }
 
@@ -442,7 +463,7 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
 .m-pbar--over > i { background: var(--loss); }
 
 /* Note: a quiet line on `well` (radius 11, at least 44 px) with an info glyph, 12 / 500 `ink-2`; a
-   link when it leads somewhere (the budget summary under the bars). The text wraps. */
+   link when it leads somewhere. The text wraps. */
 .m-note {
   display: flex; align-items: center; gap: 8px; min-height: 44px; margin-bottom: 14px; padding: 8px 12px;
   border-radius: 11px; background: var(--well); color: var(--ink-2); text-decoration: none; -webkit-touch-callout: none;

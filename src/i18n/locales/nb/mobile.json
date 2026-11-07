@@ -34,14 +34,11 @@
   "cashflow": {
     "subtitle_one": "Faktiske inntekter og utgifter fra {{count}} konto",
     "subtitle_other": "Faktiske inntekter og utgifter fra {{count}} kontoer",
+    "subtitleAll": "Faktiske inntekter og utgifter fra alle kontoer",
     "moves_one": "{{count}} transaksjon",
     "moves_other": "{{count}} transaksjoner",
     "shareOfExpenses": "{{share}} av utgiftene",
     "shareOfIncome": "{{share}} av inntektene",
-    "limitProgress": "{{spent}} / {{limit}}",
-    "near": "nær grensen",
-    "overLimit": "over grensen",
-    "budgetSummary": "Budsjetter: {{ok}} innenfor grensen · {{over}} over grensen · {{near}} nær grensen",
     "partial": "Perioden er ikke over ennå; tallene fylles ut med neste kontoutskrift.",
     "empty": {
       "title": "Ingen transaksjoner ennå",
@@ -545,6 +542,8 @@
       "asset": "Eiendel"
     },
     "noRate": "ingen valutakurs for {{currency}}",
+    "sincePurchase": "siden kjøp",
+    "gainSincePurchase": "gevinst/tap siden kjøp",
     "stocks": {
       "back": "Aksjer",
       "pricesAt": "kurser {{time}}",

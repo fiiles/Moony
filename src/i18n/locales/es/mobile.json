@@ -35,15 +35,12 @@
     "subtitle_one": "Ingresos y gastos reales de {{count}} cuenta",
     "subtitle_many": "Ingresos y gastos reales de {{count}} cuentas",
     "subtitle_other": "Ingresos y gastos reales de {{count}} cuentas",
+    "subtitleAll": "Ingresos y gastos reales de todas las cuentas",
     "moves_one": "{{count}} movimiento",
     "moves_many": "{{count}} movimientos",
     "moves_other": "{{count}} movimientos",
     "shareOfExpenses": "{{share}} de los gastos",
     "shareOfIncome": "{{share}} de los ingresos",
-    "limitProgress": "{{spent}} / {{limit}}",
-    "near": "cerca del límite",
-    "overLimit": "por encima del límite",
-    "budgetSummary": "Presupuestos: {{ok}} dentro del límite · {{over}} por encima del límite · {{near}} cerca del límite",
     "partial": "El periodo aún no ha terminado; las cifras se completarán con el próximo extracto.",
     "empty": {
       "title": "Aún no hay movimientos",
@@ -578,6 +575,8 @@
       "asset": "Activo"
     },
     "noRate": "sin tipo de cambio para {{currency}}",
+    "sincePurchase": "desde la compra",
+    "gainSincePurchase": "ganancia/pérdida desde la compra",
     "stocks": {
       "back": "Acciones",
       "pricesAt": "precios {{time}}",

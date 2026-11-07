@@ -1,5 +1,4 @@
 import {
-  useCallback,
   useEffect,
   useId,
   useLayoutEffect,
@@ -9,7 +8,6 @@ import {
   type PointerEvent,
 } from 'react';
 import { Area, CartesianGrid, ComposedChart, Line, ReferenceDot, XAxis, YAxis } from 'recharts';
-import { useFormat } from '@/lib/use-format';
 import { useChartTokens } from '@/theme/ThemeProvider';
 import { cn } from '@/lib/utils';
 import {
@@ -21,7 +19,8 @@ import {
   type EventCluster,
 } from '@/utils/chart-scale';
 import { ChartTip, FloatingTip } from '@/components/charts/ChartTip';
-import { AXIS_WIDTH, TimeAxis } from '@/components/charts/ChartAxis';
+import { TimeAxis } from '@/components/charts/ChartAxis';
+import { useTickFormatter } from '@/components/charts/use-tick-formatter';
 import { EventMark } from '@/components/charts/EventMarkers';
 import type { LinePoint, LineTip } from '@/components/charts/MoonyLineChart';
 import { selectionTick } from '@/mobile/lib/haptics';
@@ -103,7 +102,6 @@ export function ScrubChart<E extends ChartEvent>({
   label,
   className,
 }: ScrubChartProps<E>) {
-  const fmt = useFormat();
   const tk = useChartTokens();
   const gradientId = useId().replace(/:/g, '');
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -124,7 +122,6 @@ export function ScrubChart<E extends ChartEvent>({
 
   const t0 = points[0]?.t ?? 0;
   const t1 = points[points.length - 1]?.t ?? t0;
-  const plotWidth = Math.max(0, width - AXIS_WIDTH);
   const plotHeight = height - MARGIN.top - MARGIN.bottom;
 
   const domain = useMemo(
@@ -135,6 +132,9 @@ export function ScrubChart<E extends ChartEvent>({
       ),
     [points, cost, zeroBaseline]
   );
+  const ticks = useMemo(() => niceTicks(domain[0], domain[1], 4), [domain]);
+  const { tickFormatter, axisWidth } = useTickFormatter(ticks, formatTick);
+  const plotWidth = Math.max(0, width - axisWidth);
   // The line as drawn: the solid part up to `projectedFrom`, the dashed plan from it (the scrub and
   // the marks keep to `points`, whose values are the same)
   const rows = useMemo(() => splitProjected(points, projectedFrom), [points, projectedFrom]);
@@ -142,7 +142,6 @@ export function ScrubChart<E extends ChartEvent>({
   // A refetch can shorten the series under a finger; a new period remounts the chart (`key`).
   const point = active === null ? null : (points[active] ?? null);
   const pointX = point ? toPlotX(point.t, t0, t1, plotWidth) : 0;
-  const ticks = useMemo(() => niceTicks(domain[0], domain[1], 4), [domain]);
   const xs = useMemo(
     () => points.map((p) => ({ x: toPlotX(p.t, t0, t1, plotWidth) })),
     [points, t0, t1, plotWidth]
@@ -161,12 +160,6 @@ export function ScrubChart<E extends ChartEvent>({
       ),
     }));
   }, [events, t0, t1, plotWidth, points, step, domain, plotHeight]);
-
-  const tickFormatter = useCallback(
-    (v: number) =>
-      formatTick ? formatTick(v) : fmt.number(v, { notation: 'compact', maximumFractionDigits: 1 }),
-    [fmt, formatTick]
-  );
 
   // A tap anywhere outside the marks closes the callout.
   useEffect(() => {
@@ -259,7 +252,7 @@ export function ScrubChart<E extends ChartEvent>({
         <XAxis dataKey="t" type="number" domain={[t0, t1]} hide allowDataOverflow scale="linear" />
         <YAxis
           orientation="right"
-          width={AXIS_WIDTH}
+          width={axisWidth}
           domain={domain}
           ticks={ticks}
           axisLine={false}
@@ -329,6 +322,7 @@ export function ScrubChart<E extends ChartEvent>({
     );
   }, [
     width,
+    axisWidth,
     height,
     points,
     rows,
@@ -419,7 +413,7 @@ export function ScrubChart<E extends ChartEvent>({
           </FloatingTip>
         )}
       </div>
-      {chart && <TimeAxis t0={t0} t1={t1} count={4} />}
+      {chart && <TimeAxis t0={t0} t1={t1} count={4} gutter={axisWidth} />}
     </div>
   );
 }

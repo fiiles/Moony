@@ -15,6 +15,7 @@ import { otherAssetsApi, portfolioApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
 import { compareKnown } from '@/utils/positions';
 import {
+  latestValuationDay,
   otherAssetRow,
   otherAssetsSummary,
   type OtherAssetBuy,
@@ -61,6 +62,29 @@ function combineTransactions(
     data: results.map((result) => result.data),
     loaded: results.every((result) => !result.isLoading),
   };
+}
+
+/**
+ * The day each asset was last valued: the newest valuation's day (the one that dates today's
+ * price), the asset's `updatedAt` for one that has none (or until its valuations arrive). A buy or
+ * a sell moves `updatedAt` without touching the price, so it is not "oceněno". The valuation
+ * queries are the detail's (`['other-asset-valuations', id]`); `enabled` false reads none.
+ */
+export function useValuedDays(assets: readonly OtherAsset[], enabled = true): Map<string, number> {
+  return useQueries({
+    queries: assets.map((asset) => ({
+      queryKey: ['other-asset-valuations', asset.id],
+      queryFn: () => otherAssetsApi.getValuations(asset.id),
+      enabled,
+    })),
+    combine: (results) =>
+      new Map(
+        assets.map((asset, i) => [
+          asset.id,
+          latestValuationDay(results[i]?.data ?? []) ?? asset.updatedAt,
+        ])
+      ),
+  });
 }
 
 /**

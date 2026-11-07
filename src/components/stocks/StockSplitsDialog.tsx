@@ -32,6 +32,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { useFormat } from '@/lib/use-format';
+import { isMobileShell } from '@/lib/platform';
 import { useStockSplitMutations } from '@/hooks/use-stock-split-mutations';
 import { isoDayToUnix, ratioText } from '@/utils/stock-splits';
 
@@ -60,6 +61,8 @@ const formSchema = z
   });
 
 type FormValues = z.infer<typeof formSchema>;
+
+const PHONE = isMobileShell(import.meta.env);
 
 const EMPTY_FORM: FormValues = { date: '', numerator: '', denominator: '' };
 
@@ -186,7 +189,9 @@ export function StockSplitsDialog({ open, onOpenChange, ticker, splits }: StockS
         </DialogHeader>
 
         {rows.length > 0 && (
-          <div className="-mx-[27px]">
+          // The table scrolls inside its own box; the phone sheet pads 16, the desktop dialog 27,
+          // so the box must not stick out of the sheet
+          <div className={PHONE ? '-mx-4' : '-mx-[27px]'}>
             <Table containerClassName="max-h-[300px] overflow-y-auto">
               {/* The head's hairline is an inset shadow on the cells: a collapsed border would scroll away with the rows. */}
               <TableHeader className="sticky top-0 z-[1] bg-well [&_th]:shadow-[inset_0_-1px_0_var(--line)] [&_tr]:border-b-0">

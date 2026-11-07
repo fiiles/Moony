@@ -10,6 +10,7 @@ import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles'
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
 import { limitAmountText } from '@/mobile/lib/budget-limit';
+import { amountInputText } from '@/mobile/lib/amount-input';
 import {
   priceOf,
   watchPriceText,
@@ -59,7 +60,10 @@ export function WatchTargetSheet({
   const { targetPriceMutation } = useStockMonitorMutations();
   const formId = useId();
 
-  const [draft, setDraft] = useState(() => (targetPrice ? limitAmountText(targetPrice) : ''));
+  const locale = useTranslation().i18n.language;
+  const draftText = () =>
+    targetPrice ? amountInputText(limitAmountText(targetPrice), locale) : '';
+  const [draft, setDraft] = useState(draftText);
   const [chosen, setChosen] = useState<TargetDirection | null>(null);
   const [attempted, setAttempted] = useState(false);
 
@@ -68,7 +72,7 @@ export function WatchTargetSheet({
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setDraft(targetPrice ? limitAmountText(targetPrice) : '');
+      setDraft(draftText());
       setChosen(null);
       setAttempted(false);
     }

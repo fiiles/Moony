@@ -366,5 +366,48 @@ function AssetStats({ row }: { row: OtherAssetRow }) {
           : undefined,
     },
   ];
-  return <StatRow stats={stats} />;
+  return (
+    <>
+      <StatRow stats={stats} />
+      <YieldStat row={row} />
+    </>
+  );
+}
+
+/**
+ * The yearly yield of the asset (the desktop's "Ročně" column): the amount a year in the yield's
+ * own currency with the type that gives it ("5 % z hodnoty"); nothing for an asset that yields
+ * nothing. One stat on its own row: a fourth beside the three would not fit.
+ */
+function YieldStat({ row }: { row: OtherAssetRow }) {
+  const { t: to } = useTranslation('otherAssets');
+  const fmt = useFormat();
+  const moneyText = useMoneyText();
+  const { asset, yieldNative, yieldCurrency } = row;
+  if (yieldNative <= 0) return null;
+
+  const value = fmt.number(parseFloat(asset.yieldValue || '0') || 0, { maximumFractionDigits: 2 });
+  const type =
+    asset.yieldType === 'fixed'
+      ? to('table.yieldFixed')
+      : asset.yieldType === 'percent_purchase'
+        ? to('table.yieldPercentPurchase', { value })
+        : asset.yieldType === 'percent_market'
+          ? to('table.yieldPercentMarket', { value })
+          : undefined;
+  return (
+    <StatRow
+      stats={[
+        {
+          label: to('summary.yearlyYield'),
+          value: moneyText(yieldNative, yieldCurrency, {
+            ...statMoneyOptions(yieldNative),
+            signed: true,
+          }),
+          tone: 'gain',
+          note: type,
+        },
+      ]}
+    />
+  );
 }

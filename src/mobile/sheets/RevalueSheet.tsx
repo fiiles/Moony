@@ -60,7 +60,8 @@ export function RevalueSheet({
   const formId = useId();
   const { add } = useValuationMutations(kind, assetId);
 
-  const [form, setForm] = useState(() => startRevalueForm(value, todayIso()));
+  const locale = useTranslation().i18n.language;
+  const [form, setForm] = useState(() => startRevalueForm(value, todayIso(), locale));
   // What the form opened with: a sheet that differs from it asks before it closes
   const [formStart, setFormStart] = useState(form);
   // An empty amount is only called missing once the field has been left
@@ -69,7 +70,7 @@ export function RevalueSheet({
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      const fresh = startRevalueForm(value, todayIso());
+      const fresh = startRevalueForm(value, todayIso(), locale);
       setForm(fresh);
       setFormStart(fresh);
       setAmountTouched(false);

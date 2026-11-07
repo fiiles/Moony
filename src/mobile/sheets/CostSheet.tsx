@@ -1,5 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { amountInputText } from '@/mobile/lib/amount-input';
 import type { RealEstate, RealEstateOneTimeCost } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
 import { Button } from '@/components/ui/button';
@@ -38,12 +39,16 @@ interface CostSheetProps {
  * its own values. The stored day is kept, so that a cost the computer dated ahead can be edited
  * without moving it.
  */
-function startForm(property: RealEstate, cost: RealEstateOneTimeCost | null): CostForm {
+function startForm(
+  property: RealEstate,
+  cost: RealEstateOneTimeCost | null,
+  locale: string
+): CostForm {
   return {
     realEstateId: property.id,
     kind: cost ? 'oneTime' : 'recurring',
     name: cost?.name ?? '',
-    amountText: cost ? String(Number(cost.amount) || 0) : '',
+    amountText: cost ? amountInputText(Number(cost.amount) || 0, locale) : '',
     frequency: 'monthly',
     dateIso: cost ? isoDateFromUtcTimestamp(cost.date) : todayIso(),
     description: cost?.description ?? '',
@@ -76,7 +81,8 @@ export function CostSheet({ open, onOpenChange, property, cost }: CostSheetProps
   const { addRecurring, saveOneTime } = usePropertyCostMutations(property.id);
   const currency = recordCurrency(cost ? cost.currency : property.marketPriceCurrency);
 
-  const [form, setForm] = useState(() => startForm(property, cost));
+  const locale = useTranslation().i18n.language;
+  const [form, setForm] = useState(() => startForm(property, cost, locale));
   // What the form opened with: a sheet that differs from it asks before it closes
   const [formStart, setFormStart] = useState(form);
   // An empty field is only called missing once it has been left
@@ -85,7 +91,7 @@ export function CostSheet({ open, onOpenChange, property, cost }: CostSheetProps
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      const fresh = startForm(property, cost);
+      const fresh = startForm(property, cost, locale);
       setForm(fresh);
       setFormStart(fresh);
       setTouched({ name: false, amount: false });

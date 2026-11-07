@@ -34,14 +34,11 @@
   "cashflow": {
     "subtitle_one": "Faktiska inkomster och utgifter från {{count}} konto",
     "subtitle_other": "Faktiska inkomster och utgifter från {{count}} konton",
+    "subtitleAll": "Faktiska inkomster och utgifter från alla konton",
     "moves_one": "{{count}} transaktion",
     "moves_other": "{{count}} transaktioner",
     "shareOfExpenses": "{{share}} av utgifterna",
     "shareOfIncome": "{{share}} av inkomsterna",
-    "limitProgress": "{{spent}} / {{limit}}",
-    "near": "nära gränsen",
-    "overLimit": "över gränsen",
-    "budgetSummary": "Budgetar: {{ok}} inom gränsen · {{over}} över gränsen · {{near}} nära gränsen",
     "partial": "Perioden har inte tagit slut än; siffrorna fylls i med nästa kontoutdrag.",
     "empty": {
       "title": "Inga transaktioner än",
@@ -545,6 +542,8 @@
       "asset": "Tillgång"
     },
     "noRate": "ingen växelkurs för {{currency}}",
+    "sincePurchase": "sedan köp",
+    "gainSincePurchase": "vinst/förlust sedan köp",
     "stocks": {
       "back": "Aktier",
       "pricesAt": "kurser {{time}}",

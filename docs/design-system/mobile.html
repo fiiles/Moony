@@ -248,7 +248,7 @@
 
   <section class="part">
     <h2>Cashflow na třech šířkách</h2>
-    <p>Kořen záložky Cashflow: lišta období (segment a stepper, „další“ je u aktuálního měsíce vypnuté), hero Ersparnis bez grafu, dvě statistiky, dvanáct měsíců pruhů (statický obrázek grafu; měsíce mimo období jsou na 35 %), poznámka s rozpočty a kategorie jako řádky s třetím řádkem — ukazatelem podílu (<code>s3</code>), využití limitu (<code>s1</code>) nebo překročeného limitu (<code>loss</code>). Převody jsou řádek bez ukazatele.</p>
+    <p>Kořen záložky Cashflow: lišta období (segment a stepper, „další“ je u aktuálního měsíce vypnuté), hero Ersparnis bez grafu, dvě statistiky, dvanáct měsíců pruhů (statický obrázek grafu; měsíce mimo období jsou na 35 %), hlava výdajů s akcí „Limits verwalten“, filtr Alle · Über dem Limit · Ohne Limit s počty a vedle něj (nebo pod ním, když se nevejdou) tlačítko řazení, a kategorie jako řádky s třetím řádkem — ukazatelem podílu (<code>s3</code>), využití limitu (<code>s1</code>) nebo překročeného limitu (<code>loss</code>) se značkou dneška. Řádek s limitem má pod sebou řádek limitu (<code>.m-row__limit</code>): stav a čerpání, zbývá nebo o kolik je limit překročen, a limit jako textové tlačítko 44 pt; kategorie s limitem bez útraty má řádek taky. Utracená částka nikdy nezčervená. Pod řádky součet a věta o vyhodnocení limitů. Převody jsou řádek bez ukazatele se znaménkem.</p>
     <div class="phones" id="cashflow"></div>
   </section>
 
@@ -1377,9 +1377,13 @@ Fondsvorschuss 2&nbsp;000 Kč monatlich.</p></div>
         <div class="demo-axis" aria-hidden="true"><span>Nov</span><span></span><span></span><span>Feb</span><span></span><span></span><span>Mai</span><span></span><span></span><span>Aug</span><span></span><span></span></div>
         <div class="demo-legend"><span><i style="background: var(--s1)"></i>Einnahmen</span><span><i style="background: var(--s3)"></i>Ausgaben</span></div>
       </div>
-      <a class="m-note" href="#" data-icon="info" data-size="15"><span>Budgets: 5 im Rahmen · 1 über dem Limit · 2 nahe am Limit</span></a>
-      <div class="m-sec"><h2 class="m-sec__t">Ausgaben nach Kategorie</h2><span class="m-sec__n">44&nbsp;380 Kč</span></div>
+      <div class="m-sec"><h2 class="m-sec__t">Ausgaben nach Kategorie</h2><a class="m-sec__a" href="#">Limits verwalten</a></div>
+      <div class="m-filterbar">
+        <div class="m-seg"><button class="m-seg__btn is-active" type="button">Alle 4</button><button class="m-seg__btn" type="button">Über dem Limit 1</button><button class="m-seg__btn" type="button">Ohne Limit 1</button></div>
+        <button class="m-sortpill" type="button" aria-label="Kategorien sortieren: Betrag"><span>Betrag</span><span data-icon="chevron-down" data-size="14"></span></button>
+      </div>
       <div class="m-rows" data-cat="expenses"></div>
+      <p class="m-title-sub" style="margin: -6px 2px 14px; font-size: var(--m-fs-caption)">Summe 44&nbsp;380,00 Kč<br>Limits ausgewertet für Oktober 2026 · die Markierung ist heute, 74 % des Zeitraums vergangen</p>
       <div class="m-sec"><h2 class="m-sec__t">Geldanlagen, Sparen und Umbuchungen</h2></div>
       <div class="m-rows" data-cat="transfers"></div>
     </main>
@@ -2660,23 +2664,28 @@ Starkes **Servicegeschäft** mit hohen Margen. Nachkaufen unter `165 $`.
   });
 
   /* Category rows: the chip in the category's hue (the tokens stand in for the user's colours), the
-     sub-line with what matters first and the count last (an ellipsis drops the count), the third line
-     with the progress bar (limit state: nothing, "near", "over"), a row without a bar for the transfer. */
+     sub-line with the share first and the count last (an ellipsis drops the count), the third line
+     with the progress bar (the share, a limit's usage or an exceeded limit, with today's tick), the
+     limit line under a row with a limit, a row without a bar for the transfer. */
   function catRow(o) {
     var chip = '<div class="m-row__chip m-row__chip--cat" style="--cat: ' + o.color + '; background: color-mix(in srgb, ' + o.color + ' 15%, transparent)" data-icon="' + o.icon + '" data-size="16"></div>';
-    var bar = o.bar ? '<span class="m-row__bar"><span class="m-pbar' + (o.bar[0] ? " m-pbar--" + o.bar[0] : "") + '"><i style="width:' + o.bar[1] + '%"></i></span></span>' : "";
-    return '<a class="m-row' + (o.bar ? " m-row--bar" : "") + '" href="#">' + chip +
-      '<div class="m-row__main"><div class="m-row__line"><span class="m-row__t">' + o.title + '</span><span class="m-row__v' + (o.loss ? " m-row__v--loss" : "") + '">' + o.value + '</span></div>' +
+    var mark = o.mark ? '<b style="left:' + o.mark + '%"></b>' : "";
+    var bar = o.bar ? '<span class="m-row__bar"><span class="m-pbar' + (o.bar[0] ? " m-pbar--" + o.bar[0] : "") + '"><i style="width:' + o.bar[1] + '%"></i>' + mark + '</span></span>' : "";
+    var limit = o.limit ? '<div class="m-row__limit"><p>' + o.limit[0] + '</p><button type="button">' + o.limit[1] + '</button></div>' : "";
+    var row = '<a class="m-row' + (o.bar ? " m-row--bar" : "") + '" href="#">' + chip +
+      '<div class="m-row__main"><div class="m-row__line"><span class="m-row__t">' + o.title + '</span><span class="m-row__v">' + o.value + '</span></div>' +
       '<div class="m-row__line"><span class="m-row__s">' + o.sub + '</span></div>' + bar + '</div></a>';
+    return limit ? '<div>' + row + limit + '</div>' : row;
   }
   var CATS = {
     expenses: [
-      catRow({ icon: "house", color: "var(--s1)", title: "Wohnen", sub: "41 % der Ausgaben · 4 Transaktionen", value: "18&nbsp;400 Kč", bar: ["share", 41] }),
-      catRow({ icon: "shopping-cart", color: "var(--s2)", title: "Lebensmittel", sub: '<span class="is-loss">10&nbsp;420 / 9&nbsp;000 Kč</span> · über dem Limit · 23 Transaktionen', value: "10&nbsp;420 Kč", loss: true, bar: ["over", 100] }),
-      catRow({ icon: "utensils", color: "var(--s4)", title: "Restaurants &amp; Gastronomie", sub: "3&nbsp;560 / 4&nbsp;000 Kč · nahe am Limit · 11 Transaktionen", value: "3&nbsp;560 Kč", bar: ["", 89] })
+      catRow({ icon: "house", color: "var(--s1)", title: "Wohnen", sub: "41 % der Ausgaben · 4 Transaktionen", value: "18&nbsp;400,00 Kč", bar: ["share", 41] }),
+      catRow({ icon: "shopping-cart", color: "var(--s2)", title: "Lebensmittel", sub: "23 % der Ausgaben · 23 Transaktionen", value: "10&nbsp;420,00 Kč", bar: ["over", 100], mark: 74, limit: ['<span class="is-loss">↑ Über dem Limit 116 %</span> · <span class="is-loss">−1&nbsp;420,00 Kč über dem Limit</span>', "9&nbsp;000,00 Kč"] }),
+      catRow({ icon: "utensils", color: "var(--s4)", title: "Restaurants &amp; Gastronomie", sub: "8 % der Ausgaben · 11 Transaktionen", value: "3&nbsp;560,00 Kč", bar: ["", 89], mark: 74, limit: ["Nahe am Limit 89 % · Verbleibend 440,00 Kč", "4&nbsp;000,00 Kč"] }),
+      catRow({ icon: "tag", color: "var(--s3)", title: "Kleidung", sub: "0 % der Ausgaben · 0 Transaktionen", value: "0,00 Kč", bar: ["", 0], mark: 74, limit: ["Im Rahmen 0 % · Verbleibend 1&nbsp;500,00 Kč · Nur ein Teil des Zeitraums", "1&nbsp;500,00 Kč"] })
     ],
     transfers: [
-      catRow({ icon: "trending-up", color: "var(--s3)", title: "Geldanlagen", sub: "3 Transaktionen", value: "33&nbsp;120 Kč" })
+      catRow({ icon: "trending-up", color: "var(--s3)", title: "Geldanlagen", sub: "3 Transaktionen", value: "− 33&nbsp;120,00 Kč" })
     ]
   };
   document.querySelectorAll("[data-cat]").forEach(function (el) {

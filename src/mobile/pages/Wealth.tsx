@@ -235,8 +235,9 @@ function InvestmentSection({
 
     // Held, but nothing converted: "—", and no change that would be measured against nothing
     const shown = state === 'unknown' ? '—' : money(value);
+    // Said on the row: the position rows one screen down show the gain since purchase
     const changeLine = change ? (
-      <ChangeLine change={change} currency={reportCurrency} />
+      <ChangeLine change={change} currency={reportCurrency} trail={t('overview.change.30D')} />
     ) : undefined;
     let sub: string;
     let valueSub: ReactNode;
@@ -399,8 +400,16 @@ function CashSection({ wealth }: { wealth: WealthData }) {
           title={t('wealth.cash.title')}
           sub={t('upkeep.accounts', { count: cash.accounts })}
           value={shown}
-          // Badge and amount like the other rows: "za 30 dní" is said once, in the hero
-          valueSub={change ? <ChangeLine change={change} currency={reportCurrency} /> : undefined}
+          // The same 30 days as the investment rows, said on the row
+          valueSub={
+            change ? (
+              <ChangeLine
+                change={change}
+                currency={reportCurrency}
+                trail={t('overview.change.30D')}
+              />
+            ) : undefined
+          }
           href={routes.finance}
         />
       </EntityRows>

@@ -10,6 +10,7 @@ import { useCurrency } from '@/lib/currency';
 import { cryptoApi, otherAssetsApi, realEstateApi } from '@/lib/tauri-api';
 import { toCryptoRow } from '@/utils/positions';
 import { tickerSummary } from '@/utils/trade-events';
+import { useValuedDays } from '@/mobile/hooks/use-other-asset';
 import { useStockPositions } from '@/mobile/hooks/use-stock-positions';
 import { periodChange, type PeriodChange } from '@/mobile/lib/change';
 import {
@@ -123,8 +124,10 @@ export function useWealth(): WealthData {
 
   const openStocks = stockRows.filter((row) => row.quantity > 0);
   const openCrypto = cryptoRows.filter((row) => row.quantity > 0);
-  const newestUpdate = otherAssets.reduce<number | null>(
-    (newest, asset) => (newest === null || asset.updatedAt > newest ? asset.updatedAt : newest),
+  // The newest day any asset was valued (not touched: a buy moves `updatedAt`, not the price)
+  const valuedDays = useValuedDays(otherAssets);
+  const newestUpdate = [...valuedDays.values()].reduce<number | null>(
+    (newest, day) => (newest === null || day > newest ? day : newest),
     null
   );
 

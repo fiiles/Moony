@@ -60,7 +60,8 @@ export function DividendSheet({
   const opening = useRef(0);
   const { createDividend, updateDividend } = useStockDividendMutations();
 
-  const [form, setForm] = useState(() => dividendForm(dividend, todayIso()));
+  const locale = useTranslation().i18n.language;
+  const [form, setForm] = useState(() => dividendForm(dividend, todayIso(), locale));
   // What the form opened with: a sheet that differs from it asks before it closes
   const [formStart, setFormStart] = useState(form);
   const [attempted, setAttempted] = useState(false);
@@ -68,7 +69,7 @@ export function DividendSheet({
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      const fresh = dividendForm(dividend, todayIso());
+      const fresh = dividendForm(dividend, todayIso(), locale);
       setForm(fresh);
       setFormStart(fresh);
       setAttempted(false);

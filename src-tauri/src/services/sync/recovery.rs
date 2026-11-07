@@ -4,10 +4,12 @@
 //! written big-endian as Crockford base32 with one zero padding bit (77 characters), then a
 //! 3-character checksum: 15 bits of `SHA-256("moony recovery code v1" ‖ vault_id ‖ key)`.
 //!
-//! The checksum guards against typos (a random one slips through with probability 1/32768) and
-//! is NOT an authenticator: it proves nothing about who made the code. The code and the QR
-//! payload are secrets (ruling P16): they live in `Zeroizing` buffers, nothing here derives
-//! `Debug`, and no error carries the input.
+//! The checksum guards against typos and is NOT an authenticator: it proves nothing about who
+//! made the code. Detection is probabilistic: about 1 typo in 32,768 passes the checksum (a code
+//! with such a typo then fails to decrypt anything, which is a clear error). The code and the QR
+//! payload are secrets (ruling P16): they live in `Zeroizing` buffers, and no error carries the
+//! input. A `Zeroizing<String>` forwards `Debug` to its content, so callers must never format
+//! the returned code or payload; the decoded key comes back in the redacting `RecoveryKey`.
 
 use qrcode::render::svg;
 use qrcode::{EcLevel, QrCode};
@@ -26,6 +28,21 @@ const PAYLOAD_CHARS: usize = 77;
 const LABEL: &[u8] = b"moony recovery code v1";
 const GROUP: usize = 5;
 const QR_MIN_SIDE: u32 = 240;
+
+/// The vault key decoded from a recovery code. Wiped on drop; `Debug` prints `<redacted>`.
+pub struct RecoveryKey(Zeroizing<[u8; 32]>);
+
+impl RecoveryKey {
+    pub fn expose(&self) -> &[u8; 32] {
+        &self.0
+    }
+}
+
+impl std::fmt::Debug for RecoveryKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("RecoveryKey(<redacted>)")
+    }
+}
 
 fn invalid() -> AppError {
     AppError::Validation("validation.syncRecoveryCodeInvalid".into())
@@ -81,13 +98,13 @@ pub fn format_recovery_code(code: &str) -> Zeroizing<String> {
     out
 }
 
-/// Reads a typed or scanned code. Case, `-` and whitespace are ignored; `I` and `L` read as `1`,
+/// Reads a typed or scanned code. Case, whitespace, `-` and the dashes U+2010 to U+2015 are ignored; `I` and `L` read as `1`,
 /// `O` as `0`. Needs exactly 80 characters, a zero padding bit and a matching checksum, else
 /// `validation.syncRecoveryCodeInvalid` (the input is never put into the error).
-pub fn decode_recovery_code(input: &str) -> Result<(VaultId, Zeroizing<[u8; 32]>)> {
+pub fn decode_recovery_code(input: &str) -> Result<(VaultId, RecoveryKey)> {
     let mut values = Zeroizing::new(Vec::with_capacity(RECOVERY_CODE_LEN));
     for c in input.chars() {
-        if c == '-' || c.is_whitespace() {
+        if c == '-' || ('\u{2010}'..='\u{2015}').contains(&c) || c.is_whitespace() {
             continue;
         }
         let c = match c.to_ascii_uppercase() {
@@ -129,7 +146,7 @@ pub fn decode_recovery_code(input: &str) -> Result<(VaultId, Zeroizing<[u8; 32]>
     id.copy_from_slice(&payload[..16]);
     let mut key = Zeroizing::new([0u8; 32]);
     key.copy_from_slice(&payload[16..]);
-    Ok((VaultId(id), key))
+    Ok((VaultId(id), RecoveryKey(key)))
 }
 
 /// What the Recovery Kit's QR encodes: `moony-recover:1:{account}:{code}`.
@@ -188,7 +205,7 @@ mod tests {
         for (v, (id, key)) in [(V1, v1()), (V2, v2())] {
             let (got_id, got_key) = decode_recovery_code(v).unwrap();
             assert_eq!(got_id, id);
-            assert_eq!(*got_key, key);
+            assert_eq!(*got_key.expose(), key);
         }
     }
 
@@ -202,7 +219,7 @@ mod tests {
             V2[30..].to_lowercase()
         );
         let (got_id, got_key) = decode_recovery_code(&messy).unwrap();
-        assert_eq!((got_id, *got_key), (id, key));
+        assert_eq!((got_id, *got_key.expose()), (id, key));
         // V2 starts with "000G40R40M30E2091…": spell its zeros as O and o, its ones as I and l.
         let confusable = V2
             .replacen('0', "O", 2)
@@ -215,7 +232,7 @@ mod tests {
     }
 
     #[test]
-    fn every_single_substitution_of_the_frozen_vectors_is_rejected() {
+    fn every_single_substitution_of_the_two_frozen_vectors_is_rejected() {
         for vector in [V1, V2] {
             let code: Vec<u8> = vector.bytes().filter(|b| *b != b'-').collect();
             assert_eq!(code.len(), RECOVERY_CODE_LEN);
@@ -232,6 +249,41 @@ mod tests {
             }
             assert_eq!(rejected, 2_480);
         }
+    }
+
+    #[test]
+    fn every_adjacent_transposition_of_the_frozen_vectors_is_rejected() {
+        for vector in [V1, V2] {
+            let code: Vec<u8> = vector.bytes().filter(|b| *b != b'-').collect();
+            let mut tried = 0;
+            for pos in 0..RECOVERY_CODE_LEN - 1 {
+                if code[pos] == code[pos + 1] {
+                    continue;
+                }
+                let mut swapped = code.clone();
+                swapped.swap(pos, pos + 1);
+                tried += 1;
+                let text = String::from_utf8(swapped).unwrap();
+                assert!(
+                    decode_recovery_code(&text).is_err(),
+                    "a transposition at {pos} passed the checksum"
+                );
+            }
+            assert!(tried > 0);
+        }
+    }
+
+    #[test]
+    fn typographic_dashes_are_skipped_like_a_hyphen() {
+        for dash in [
+            '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}', '\u{2015}',
+        ] {
+            let typed = format_recovery_code(V2).replace('-', &dash.to_string());
+            assert!(decode_recovery_code(&typed).is_ok(), "{dash:?}");
+        }
+        let (id, _) = v2();
+        let typed = format!("{}\u{2013}{}", &V2[..40], &V2[40..]);
+        assert_eq!(decode_recovery_code(&typed).unwrap().0, id);
     }
 
     #[test]
@@ -270,6 +322,17 @@ mod tests {
         let svg = qr_svg(&payload).unwrap();
         assert!(svg.starts_with("<?xml") || svg.starts_with("<svg"));
         assert!(svg.contains("</svg>"));
+        // The code is drawn as modules, never written out as text.
+        assert!(!svg.contains("moony-recover"));
+        assert!(!svg.contains("1234-5678"));
+        for window in V2.as_bytes().windows(8) {
+            assert!(!svg.contains(std::str::from_utf8(window).unwrap()));
+        }
+        let side = |attr: &str| -> u32 {
+            let tail = svg.split(&format!("{attr}=\"")).nth(1).unwrap();
+            tail.split('"').next().unwrap().parse().unwrap()
+        };
+        assert!(side("width") >= 240 && side("height") >= 240);
     }
 
     #[test]
@@ -278,5 +341,7 @@ mod tests {
         assert_eq!(format!("{id:?}"), "VaultId(<redacted>)");
         let err = decode_recovery_code(&format!("{}!", &V2[..79])).unwrap_err();
         assert!(!format!("{err:?}{err}").contains(&V2[..20]));
+        let (_, key) = decode_recovery_code(V2).unwrap();
+        assert_eq!(format!("{key:?}"), "RecoveryKey(<redacted>)");
     }
 }

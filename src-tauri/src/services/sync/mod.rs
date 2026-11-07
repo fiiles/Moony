@@ -8,6 +8,7 @@ pub mod chain;
 pub mod changeset;
 #[cfg(test)]
 mod convergence;
+pub mod envelope;
 pub mod hlc;
 pub mod journal;
 pub mod merge;

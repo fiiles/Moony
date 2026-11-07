@@ -265,7 +265,13 @@ Opačný směr, kde se desktop změnil a spec telefonu se nedotkla:
 
 1. ✅ *Hotovo 2026-11-06.* **Kategorizace v Nastavení (B1, A5).** Bez ní uživatel jen s telefonem nemůže opravit chybu, kterou mu telefon sám naučil.
 2. ✅ *Hotovo 2026-11-07* (`docs/specs/2026-11-07-mobile-transactions-dividends-design.md`). **Ruční transakce a vrácení importu (A1, A2), dividendy (A3).** Uzavře se tím slib specifikace i jediný rozpor v číslech, viditelný hned v detailu pozice.
-3. **Cashflow na desktopové `expenseRows` a `limitState` a jeden dotaz (B2, B5, A16).**
-4. **Navigace a odolnost:** návrat po odemčení a paměť záložek (C3), chybové stavy (C6), ochrana rozepsaného sheetu a Android zpět (C5), cíle oznámení (C4).
-5. **Formuláře záznamu událostí na telefonní pole (C1).** Nejdřív ověřit dopad na zařízení.
-6. **Sjednocení gest (C2) a terminologie (D).** Jeden průchod texty a jedno pravidlo pro swipe.
+3. ✅ *Hotovo 2026-11-07* (`docs/specs/2026-11-07-mobile-cashflow-parity-design.md`, i B9, B11, C10). **Cashflow na desktopové `expenseRows` a `limitState` a jeden dotaz (B2, B5, A16).**
+4. ✅ *Hotovo 2026-11-07* (`docs/specs/2026-11-07-mobile-navigation-resilience-design.md`, i C7, C8, část C11; záplata notifikačního pluginu pro iOS). **Navigace a odolnost:** návrat po odemčení a paměť záložek (C3), chybové stavy (C6), ochrana rozepsaného sheetu a Android zpět (C5), cíle oznámení (C4).
+5. ✅ *Hotovo 2026-11-07* (`docs/specs/2026-11-07-mobile-dialog-fields-design.md`). **Formuláře záznamu událostí na telefonní pole (C1).** Nejdřív ověřit dopad na zařízení.
+6. ✅ *Hotovo 2026-11-07* (`docs/specs/2026-11-07-mobile-gestures-terminology-design.md`). **Sjednocení gest (C2) a terminologie (D).** Jeden průchod texty a jedno pravidlo pro swipe.
+
+Mimo pořadí, také 2026-11-07:
+- ✅ A9–A11, A13–A15, B7, B8, B10, B12 (`docs/specs/2026-11-07-mobile-wealth-parity-design.md`).
+- ✅ A6–A8, A12, B3, B4, B6, C9, zbytek C11 včetně pull-to-refresh, E (`docs/specs/2026-11-07-mobile-finance-settings-parity-design.md`).
+
+Zbývá jen ověřit na zařízení: seznam „Ověřit na zařízení“ výše a kroky v reportech jednotlivých větví.

@@ -16,6 +16,7 @@ pub mod journal;
 pub mod keys;
 pub mod merge;
 pub mod natural_id;
+pub mod recovery;
 pub mod registry;
 pub mod repair;
 pub mod snapshot;

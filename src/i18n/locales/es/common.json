@@ -125,6 +125,7 @@
     "currentPasswordRequired": "La contraseña actual es obligatoria",
     "passwordMinLength": "La contraseña debe tener al menos 8 caracteres",
     "recoveryKeyRequired": "La clave de recuperación es obligatoria",
+    "syncRecoveryCodeInvalid": "Este código de recuperación no es válido. Comprueba que has introducido los 80 caracteres; las mayúsculas, los espacios y los guiones no importan.",
     "tickerRequired": "El ticker es obligatorio",
     "companyNameRequired": "El nombre de la empresa es obligatorio",
     "quantityRequired": "La cantidad es obligatoria",

@@ -125,6 +125,7 @@
     "currentPasswordRequired": "現在のパスワードを入力してください",
     "passwordMinLength": "パスワードは8文字以上にしてください",
     "recoveryKeyRequired": "復旧キーを入力してください",
+    "syncRecoveryCodeInvalid": "この復旧コードは無効です。80文字すべてを入力したか確認してください。大文字・小文字、スペース、ハイフンは区別されません。",
     "tickerRequired": "ティッカーを入力してください",
     "companyNameRequired": "会社名を入力してください",
     "quantityRequired": "数量を入力してください",

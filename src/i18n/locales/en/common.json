@@ -125,6 +125,7 @@
     "currentPasswordRequired": "Current password is required",
     "passwordMinLength": "Password must be at least 8 characters",
     "recoveryKeyRequired": "Recovery key is required",
+    "syncRecoveryCodeInvalid": "This recovery code is not valid. Check that you entered all 80 characters - capitalization, spaces and dashes don't matter.",
     "tickerRequired": "Ticker is required",
     "companyNameRequired": "Company name is required",
     "quantityRequired": "Quantity is required",

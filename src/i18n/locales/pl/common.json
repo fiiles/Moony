@@ -125,6 +125,7 @@
     "currentPasswordRequired": "Obecne hasło jest wymagane",
     "passwordMinLength": "Hasło musi mieć co najmniej 8 znaków",
     "recoveryKeyRequired": "Klucz odzyskiwania jest wymagany",
+    "syncRecoveryCodeInvalid": "Ten kod odzyskiwania jest nieprawidłowy. Sprawdź, czy wpisano wszystkie 80 znaków – wielkość liter, spacje i myślniki nie mają znaczenia.",
     "tickerRequired": "Ticker jest wymagany",
     "companyNameRequired": "Nazwa firmy jest wymagana",
     "quantityRequired": "Ilość jest wymagana",

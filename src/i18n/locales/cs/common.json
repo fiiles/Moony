@@ -125,6 +125,7 @@
     "currentPasswordRequired": "Současné heslo je povinné",
     "passwordMinLength": "Heslo musí mít alespoň 8 znaků",
     "recoveryKeyRequired": "Obnovovací klíč je povinný",
+    "syncRecoveryCodeInvalid": "Tento obnovovací kód není platný. Zkontrolujte, že jste zadali všech 80 znaků – na velikosti písmen, mezerách a pomlčkách nezáleží.",
     "tickerRequired": "Symbol je povinný",
     "companyNameRequired": "Název společnosti je povinný",
     "quantityRequired": "Množství je povinné",

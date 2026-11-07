@@ -125,6 +125,7 @@
     "currentPasswordRequired": "请输入当前密码",
     "passwordMinLength": "密码至少需要 8 个字符",
     "recoveryKeyRequired": "请输入恢复密钥",
+    "syncRecoveryCodeInvalid": "此恢复码无效。请检查是否输入了全部 80 个字符——大小写、空格和连字符均不影响。",
     "tickerRequired": "请输入代码",
     "companyNameRequired": "请输入公司名称",
     "quantityRequired": "请输入数量",

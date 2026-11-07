@@ -125,6 +125,7 @@
     "currentPasswordRequired": "Nåværende passord er påkrevd",
     "passwordMinLength": "Passordet må ha minst 8 tegn",
     "recoveryKeyRequired": "Gjenopprettingsnøkkel er påkrevd",
+    "syncRecoveryCodeInvalid": "Denne gjenopprettingskoden er ugyldig. Sjekk at du har skrevet inn alle 80 tegnene – store og små bokstaver, mellomrom og bindestreker spiller ingen rolle.",
     "tickerRequired": "Ticker er påkrevd",
     "companyNameRequired": "Selskapsnavn er påkrevd",
     "quantityRequired": "Antall er påkrevd",

@@ -125,6 +125,7 @@
     "currentPasswordRequired": "Nuvarande lösenord krävs",
     "passwordMinLength": "Lösenordet måste vara minst 8 tecken",
     "recoveryKeyRequired": "Återställningsnyckel krävs",
+    "syncRecoveryCodeInvalid": "Den här återställningskoden är ogiltig. Kontrollera att du har skrivit in alla 80 tecken – versaler, mellanslag och bindestreck spelar ingen roll.",
     "tickerRequired": "Ticker krävs",
     "companyNameRequired": "Företagsnamn krävs",
     "quantityRequired": "Antal krävs",

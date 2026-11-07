@@ -378,10 +378,16 @@ fn vault_secrets(conn: &Connection) -> Result<Option<(VaultId, VaultKeys)>> {
     }
 }
 
+/// Binds the row to `vault_id` with `keys`. Binding another vault than the stored one forgets the
+/// bookkeeping that names the old vault's relay positions (the barrier marker and a below-barrier
+/// miss): a stale miss would otherwise force a restore in the new vault.
 fn write_vault_secrets(conn: &Connection, vault_id: &VaultId, keys: &VaultKeys) -> Result<()> {
     let json = keys.to_json();
     conn.execute(
-        "UPDATE sync_state SET vault_id = ?1, key_epoch = ?2, vault_keys = ?3 WHERE id = 1",
+        "UPDATE sync_state SET \
+           missed_below_barrier = CASE WHEN vault_id IS ?1 THEN missed_below_barrier END, \
+           barrier_seq = CASE WHEN vault_id IS ?1 THEN barrier_seq END, \
+           vault_id = ?1, key_epoch = ?2, vault_keys = ?3 WHERE id = 1",
         params![vault_id.to_b64(), keys.current_epoch(), json.as_str()],
     )?;
     Ok(())
@@ -664,6 +670,35 @@ mod tests {
         let kept = state::load(&conn).unwrap().expect("row");
         assert_eq!(kept.device, DeviceId([7; 16]), "the device stays");
         assert!(kept.enabled, "the enabled flag stays");
+    }
+
+    #[test]
+    fn binding_another_vault_forgets_the_old_vaults_relay_positions() {
+        let marks = |conn: &Connection| {
+            let row = state::load(conn).unwrap().expect("row");
+            (row.missed_below_barrier, row.barrier_seq)
+        };
+        let conn = migrated();
+        save_credentials(&conn, &two_epochs()).unwrap();
+        state::note_missed_below_barrier(&conn, 7).unwrap();
+        state::set_barrier_seq(&conn, Some(5)).unwrap();
+
+        // The same vault again keeps them.
+        save_credentials(&conn, &two_epochs()).unwrap();
+        assert_eq!(marks(&conn), (Some(7), Some(5)));
+
+        // Joining another vault forgets them.
+        let mut other = two_epochs();
+        other.vault_id = VaultId([0x33; 16]);
+        save_credentials(&conn, &other).unwrap();
+        assert_eq!(marks(&conn), (None, None));
+
+        // So does a first device's new vault.
+        let first = migrated();
+        save_account(&first, RELAY, ACCOUNT).unwrap();
+        state::note_missed_below_barrier(&first, 9).unwrap();
+        ensure_vault_secrets(&first).unwrap();
+        assert_eq!(marks(&first), (None, None));
     }
 
     #[test]

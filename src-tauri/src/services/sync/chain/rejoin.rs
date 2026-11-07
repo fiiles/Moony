@@ -1,6 +1,7 @@
 //! Re-join after a clone or rollback (§11.4) and the re-queues of this device's own rows that it
 //! and a barrier crossing need.
 
+use rand::{Rng, RngExt};
 use rusqlite::{params, Connection};
 
 use super::{loaded, set_head, unsigned, EnvelopeMeta};
@@ -30,6 +31,26 @@ fn requeue_own_from(conn: &Connection, device: DeviceId, from_hlc: u64) -> Resul
          ON CONFLICT DO NOTHING",
         params![device.0.to_vec(), from],
     )?)
+}
+
+/// A device ID for a re-join of `old`, drawn uniformly from the IDs above it (T8-1 addendum).
+/// The new ID must sort above the old one: a re-stamped column clock `(h, new)` then beats the
+/// `(h, old)` the relay may still carry on every device, so the clocks converge. An error only
+/// when `old` is the largest ID.
+pub fn rejoin_device_id(old: DeviceId) -> Result<DeviceId> {
+    id_above(old, &mut rand::rng())
+}
+
+fn id_above(old: DeviceId, rng: &mut impl Rng) -> Result<DeviceId> {
+    let floor = u128::from_be_bytes(old.0);
+    if floor == u128::MAX {
+        return Err(AppError::Internal(
+            "sync chain: no device ID sorts above the largest one".into(),
+        ));
+    }
+    Ok(DeviceId(
+        rng.random_range(floor + 1..=u128::MAX).to_be_bytes(),
+    ))
 }
 
 /// What a re-join did.
@@ -99,6 +120,9 @@ fn own_log(conn: &Connection) -> Result<Vec<OwnEntry>> {
 /// relay's chain up to the trigger is not known to be this device's, and `W` drops to the oldest
 /// `min_hlc` of the whole log. Re-queuing too much is harmless; too little loses edits.
 ///
+/// `new_device` must sort above the current ID (draw it with `rejoin_device_id`), or the re-join
+/// is refused before anything is written.
+///
 /// Then the device continues as `new_device` with a fresh chain (its own log and unsent envelopes
 /// go), capture is reinstalled for the new ID when it was installed, and the old ID's column
 /// clocks from `W` on move to the new ID with their hlc kept (`restamp_own_columns`, ruling
@@ -110,6 +134,13 @@ pub fn rejoin(
 ) -> Result<RejoinReport> {
     in_savepoint(conn, "sync_rejoin", || {
         let old = loaded(conn)?.device;
+        if new_device <= old {
+            return Err(AppError::Internal(format!(
+                "sync chain: the re-join device {} must sort above {} (rejoin_device_id)",
+                new_device.to_hex(),
+                old.to_hex()
+            )));
+        }
         let log = own_log(conn)?;
         let mut prefix = 0;
         for (i, entry) in log.iter().enumerate() {
@@ -597,5 +628,77 @@ mod tests {
         assert_eq!(report.queued, 2);
         assert_child_queued_first(&conn);
         assert_parent_first(&conn, &sealed_rows(&conn));
+    }
+
+    #[test]
+    fn rejoin_refuses_a_new_id_that_does_not_sort_above_the_old_one() {
+        let conn = profile();
+        own_clocks(&conn);
+        sealed(&conn, 1, 1, 90, 200, false);
+
+        for lower in [DeviceId([3; 16]), ME] {
+            assert!(rejoin(&conn, lower, None).is_err());
+        }
+
+        let sync = state::load(&conn).unwrap().expect("row");
+        assert_eq!(sync.device, ME);
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_own_log"), 1);
+        assert!(outbox(&conn).is_empty());
+        assert!(heads(&conn).is_empty());
+        assert_eq!(clock_of(&conn, "i250", "name"), (270, ME));
+    }
+
+    #[test]
+    fn a_rejoin_device_id_always_sorts_above_the_old_one() {
+        let mut rng = <rand::rngs::StdRng as rand::SeedableRng>::seed_from_u64(8);
+        let mut near_max = [0xFF; 16];
+        near_max[15] = 0xFE;
+        for old in [DeviceId::ZERO, ME, DeviceId([0xF0; 16]), DeviceId(near_max)] {
+            for _ in 0..1_000 {
+                assert!(id_above(old, &mut rng).unwrap() > old);
+            }
+        }
+        assert_eq!(
+            id_above(DeviceId(near_max), &mut rng).unwrap(),
+            DeviceId([0xFF; 16])
+        );
+        assert!(id_above(DeviceId([0xFF; 16]), &mut rng).is_err());
+        for _ in 0..1_000 {
+            assert!(rejoin_device_id(ME).unwrap() > ME);
+        }
+        assert!(rejoin_device_id(DeviceId([0xFF; 16])).is_err());
+    }
+
+    #[test]
+    fn restamped_clocks_converge_when_a_random_id_would_have_sorted_below() {
+        // Most random IDs sort below this one; the re-join draws one above it.
+        let old = DeviceId([0xF0; 16]);
+        let x = migrated();
+        state::enable(&x, old).unwrap();
+        x.execute_batch(
+            "DELETE FROM sync_outbox; DELETE FROM sync_clock; \
+             INSERT INTO institutions (id, name) VALUES ('i1', 'Bank'); \
+             UPDATE institutions SET name = 'From X' WHERE id = 'i1';",
+        )
+        .unwrap();
+        let from_x = sealed_changesets(&x);
+        let y = migrated();
+        state::enable(&y, A).unwrap();
+        y.execute_batch("DELETE FROM sync_outbox; DELETE FROM sync_clock;")
+            .unwrap();
+        for (cs, hash) in &from_x {
+            apply_changeset(&y, cs, *hash, 0).unwrap();
+        }
+        let (h, _) = clock_of(&x, "i1", "name");
+        assert_eq!(clock_of(&y, "i1", "name"), (h, old));
+
+        let new = rejoin_device_id(old).unwrap();
+        assert_eq!(rejoin(&x, new, None).unwrap().restamped, 1);
+        for (cs, hash) in &sealed_changesets(&x) {
+            apply_changeset(&y, cs, *hash, 0).unwrap();
+        }
+
+        assert_eq!(clock_of(&x, "i1", "name"), (h, new));
+        assert_eq!(clock_of(&y, "i1", "name"), (h, new));
     }
 }

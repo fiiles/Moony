@@ -213,11 +213,16 @@ fn balance_records_of_the_same_day_share_one_id() {
 #[test]
 fn keep_newest_uses_the_clock_that_put_the_row_on_its_key() {
     let at = |hlc: u64, device: DeviceId| clock(hlc << 16, device);
+    // `created_at` pinned: its default is the wall clock, which differs by a second between the
+    // two devices when the test runs across a second boundary.
     let cat = row(
         "transaction_categories",
         "cat",
         at(5, C),
-        &[("name", text("Food"))],
+        &[
+            ("name", text("Food")),
+            ("created_at", SqlValue::Integer(100)),
+        ],
     );
     let v1 = |month: i64| {
         row(

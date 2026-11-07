@@ -259,6 +259,8 @@ impl Vault {
                         self.check(&what, chain::acknowledge_own(conn, cs.seq));
                     }
                     Verdict::Clone => {
+                        // Fixed for replay, and above every ID the vault uses, as
+                        // `chain::rejoin_device_id` would draw it.
                         let new = DeviceId([0xC1 + self.clones; 16]);
                         self.check(&what, chain::rejoin(conn, new, Some(&meta)));
                         self.clones += 1;

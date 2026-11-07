@@ -2,7 +2,8 @@
 //! trigger capture installed at unlock, the journal that turns the outbox into changesets, and
 //! the merge of other devices' changes with the repairs after it, and the chain bookkeeping that
 //! judges every pulled envelope, and the snapshots a joining or lagging device restores. Phase 2
-//! adds the vault's credentials and this device's key pair and `sync_devices` row.
+//! adds the vault's credentials and this device's key pair and `sync_devices` row, and the
+//! engine that pulls from the relay.
 
 pub mod capture;
 pub mod chain;
@@ -10,6 +11,7 @@ pub mod changeset;
 #[cfg(test)]
 mod convergence;
 pub mod devices;
+pub mod engine;
 pub mod envelope;
 pub mod error;
 pub mod hlc;

@@ -43,10 +43,11 @@ interface ExpensesSectionProps {
 
 /**
  * "Výdaje podle kategorií" of the phone Cashflow — the desktop's `ExpensesByCategoryCard` on the
- * phone: the head with "Spravovat limity", the filter (Vše / Nad limitem / Bez limitu, counted over
- * all rows) with the sort pill beside it, the rows, and the footer — the total and the evaluation
- * note, or with a filter on the filtered total and how many categories it shows. Filter and sort
- * only change this list.
+ * phone: the head with "Spravovat limity" (Spravovat rozpočty, where "Výdaje bez limitu" sets new
+ * limits), the filter (Vše / Nad limitem / Bez limitu, counted over all rows; hidden while no row
+ * has a limit) with the sort pill beside it or wrapped under it, the rows ("Bez limitu" offers
+ * "Nastavit limit" on each), and the footer — the total and the evaluation note, or with a filter
+ * on the filtered total and how many categories it shows. Filter and sort only change this list.
  */
 export function ExpensesSection({
   rows,
@@ -71,9 +72,12 @@ export function ExpensesSection({
   const [sort, setSort] = useState<ExpenseSort>('amount');
 
   const counts = useMemo(() => filterCounts(rows), [rows]);
+  // Without any limit every row is "Bez limitu": the filter has nothing to tell apart
+  const filterShown = counts.none < counts.all;
+  const activeFilter: ExpenseFilter = filterShown ? filter : 'all';
   const shown = useMemo(
-    () => sortRows(filterRows(rows, filter), sort, title, fmt.locale),
-    [rows, filter, sort, title, fmt.locale]
+    () => sortRows(filterRows(rows, activeFilter), sort, title, fmt.locale),
+    [rows, activeFilter, sort, title, fmt.locale]
   );
   const shownTotal = shown.reduce((sum, row) => sum + row.amount, 0);
   const withCount = (text: string, count: number) => (
@@ -89,18 +93,21 @@ export function ExpensesSection({
         action={{ label: tr('actuals.expenses.manageLimits'), href: manageHref }}
       />
       {rows.length > 0 && (
-        <div className="mb-2.5 flex items-center gap-2">
-          <Segment
-            className="min-w-0 flex-auto"
-            value={filter}
-            onChange={setFilter}
-            label={tr('actuals.expenses.filterLabel')}
-            options={[
-              { value: 'all', label: withCount(tr('actuals.expenses.filterAll'), counts.all) },
-              { value: 'over', label: withCount(tb('table.state.overShort'), counts.over) },
-              { value: 'none', label: withCount(tb('noBudget'), counts.none) },
-            ]}
-          />
+        // The pill wraps under the filter when both do not fit (360 pt, German, large text)
+        <div className="mb-2.5 flex flex-wrap items-center justify-end gap-2">
+          {filterShown && (
+            <Segment
+              className="flex-auto"
+              value={filter}
+              onChange={setFilter}
+              label={tr('actuals.expenses.filterLabel')}
+              options={[
+                { value: 'all', label: withCount(tr('actuals.expenses.filterAll'), counts.all) },
+                { value: 'over', label: withCount(tb('table.state.overShort'), counts.over) },
+                { value: 'none', label: withCount(tb('noBudget'), counts.none) },
+              ]}
+            />
+          )}
           <SortPill
             value={sort}
             onChange={setSort}
@@ -131,6 +138,7 @@ export function ExpensesSection({
               partial={partial(row)}
               pace={pace}
               action={action(row)}
+              offerSetLimit={activeFilter === 'none'}
               busy={busy}
               onLimit={onLimit}
             />
@@ -139,7 +147,7 @@ export function ExpensesSection({
       </EntityRows>
       <SectionFoot
         lines={
-          filter === 'all'
+          activeFilter === 'all'
             ? [tr('actuals.breakdown.total', { amount: money(total) }), evaluationNote]
             : [
                 tr('actuals.expenses.filteredTotal', { amount: money(shownTotal) }),

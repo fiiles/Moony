@@ -40,6 +40,11 @@ interface ExpenseCategoryRowProps {
   pace?: number;
   /** "Nastavit limit" or the limit that edits it; `null` for a row that cannot have a limit. */
   action: RowLimitAction | null;
+  /**
+   * The list is filtered to "Bez limitu": a row without a limit shows the compact "Nastavit limit"
+   * line. Elsewhere it is reached through Spravovat limity and the long press.
+   */
+  offerSetLimit: boolean;
   /** The row still belongs to the previous period, while the next loads: nothing opens. */
   busy: boolean;
   onLimit: (mode: LimitMode) => void;
@@ -48,13 +53,14 @@ interface ExpenseCategoryRowProps {
 /**
  * An expense category of the Cashflow report (the desktop's `ExpensesByCategoryCard` row, spec
  * `2026-11-07-mobile-cashflow-parity-design.md`): chip, name, what was spent in the report currency
- * ("—" when no payment could be converted) and "47 % výdajů · 3 transakce"; with a limit that can be
- * evaluated, the usage bar (red when over, the pace tick in a running period). Under the row, outside
- * its tap target, the limit line: the state word and the usage, what remains (or how far over) in the
- * limit's own currency, "Jen část období" — or "Čerpání nelze vyhodnotit", or "Bez limitu" — and a
- * visible 44 pt button: the limit amount (edits it) or "Nastavit limit". The long press keeps its
- * menu, "Zobrazit transakce" and the same limit action. Colour is never the only signal: the state
- * is worded and "over" has its arrow.
+ * ("—" when no payment could be converted; never red, as on the desktop) and "47 % výdajů · 3
+ * transakce". A row with a limit has the usage bar (red when over, the pace tick in a running
+ * period) and, under the row and outside its tap target, the limit line: the state word and the
+ * usage, what remains (or how far over) in the limit's own currency, "Jen část období" — or
+ * "Čerpání nelze vyhodnotit" — and the limit amount as a 44 pt button that edits it. A row without
+ * a limit has the share bar; only in the "Bez limitu" filter (`offerSetLimit`) does it get the line
+ * "Bez limitu · Nastavit limit". The long press keeps its menu, "Zobrazit transakce" and the same
+ * limit action. Colour is never the only signal: the state is worded and "over" has its arrow.
  */
 export function ExpenseCategoryRow({
   row,
@@ -66,6 +72,7 @@ export function ExpenseCategoryRow({
   partial,
   pace,
   action,
+  offerSetLimit,
   busy,
   onLimit,
 }: ExpenseCategoryRowProps) {
@@ -128,7 +135,7 @@ export function ExpenseCategoryRow({
       : tb('actions.editLimit')
     : tb('actions.setLimit');
 
-  const limitLine = (row.hasLimit || action) && (
+  const limitLine = (row.hasLimit || (offerSetLimit && action)) && (
     <div className="-mt-2 flex min-h-11 items-center justify-between gap-3 pb-0.5 pl-[62px] pr-3.5">
       <p className="m-0 min-w-0 py-1 text-m-caption font-semibold leading-[1.35] text-ink-3 num">
         {parts.map((part, index) => (
@@ -167,7 +174,6 @@ export function ExpenseCategoryRow({
       title={title}
       sub={sub}
       value={value}
-      valueTone={over ? 'loss' : undefined}
       bar={
         limit && evaluated ? (
           <ProgressBar
@@ -175,6 +181,8 @@ export function ExpenseCategoryRow({
             tone={over ? 'over' : 'limit'}
             mark={pace}
           />
+        ) : !row.hasLimit ? (
+          <ProgressBar value={row.share} tone="share" />
         ) : undefined
       }
       href={canOpen ? href : undefined}

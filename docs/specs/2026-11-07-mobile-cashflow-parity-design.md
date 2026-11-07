@@ -74,26 +74,32 @@ as it is. Otherwise, `latest` is `undefined` while the newest transaction date i
 tab shows the skeleton and the report query waits), `null` when there is none or the lookup failed
 (the current month), else that day's month, never a future one. The page writes the result into the
 URL once (`o=`), so later refetches never move it. The phone observer has `staleTime: Infinity`:
-a cached date is used at once, an invalidated one (after a money write) is waited for.
-`latestMonthOffset` goes.
+a cached date is used at once, an invalidated one (after a money write) is waited for. Until the
+month is known the body is the skeleton and the period label is hidden (its place kept), with the
+stepper off, so no other month flashes first. `latestMonthOffset` goes.
 
 ### Rows
 
 - **Expenses** (`ExpenseCategoryRow`, rewritten on `EntityRow`): chip, name, spent in the report
-  currency at minor units ("—" with "Kurz není k dispozici" when `amountUnavailable`), sub-line
-  "47 % výdajů · 3 transakce". With an evaluable limit, the bar is the usage (red when over) with the
-  pace mark in a current period. Under the row (`below`, not part of the tap target) one line:
-  - left: the state word ("↑ Nad limitem", "Limit vyčerpán", "Blíží se limitu", "V pořádku") and
-    the percentage, then "Zbývá 240 Kč" or "−206 Kč nad limitem" in the budget's currency, then "Jen
-    část období" when the limit covers only some months; or "Čerpání nelze vyhodnotit"; or "Bez
-    limitu";
-  - right: a 44 pt text button — the limit amount (dotted underline, "Upravit limit: X"), or
-    "Nastavit limit" ("Nastavit limit: X"); disabled while the stored limits load or the next period
-    loads.
-  The long press keeps its menu (Zobrazit transakce, Upravit / Nastavit limit). A limit-only row (no
-  transactions) is not a link.
-- **Filter and sort** above the rows: the phone `Segment` with the desktop's three filters and counts,
-  and a `SortPill` (Částka / Čerpání / Název) beside it.
+  currency at minor units ("—" with "Kurz není k dispozici" when `amountUnavailable`; never red, as
+  on the desktop), sub-line "47 % výdajů · 3 transakce".
+  - A row **with a limit** has the usage bar (red when over) with the pace mark in a current period,
+    and under the row (`below`, not part of the tap target) the limit line: the state word ("↑ Nad
+    limitem", "Limit vyčerpán", "Blíží se limitu", "V pořádku") and the percentage, then "Zbývá 240
+    Kč" or "−206 Kč nad limitem" in the budget's currency, then "Jen část období" when the limit
+    covers only some months (or "Čerpání nelze vyhodnotit"); on the right the limit amount as a 44 pt
+    text button with a dotted underline ("Upravit limit: X"), disabled while the stored limits load
+    or the next period loads.
+  - A row **without a limit** keeps the share bar (`s3`, like income). "Nastavit limit" is visible
+    through the section head's "Spravovat limity" (Spravovat rozpočty, whose "Výdaje bez limitu"
+    section sets new limits) and, while the filter is "Bez limitu", as a compact line "Bez limitu ·
+    Nastavit limit" under each row.
+  - The long press keeps its menu (Zobrazit transakce, Upravit / Nastavit limit). A limit-only row
+    (no transactions) is not a link.
+- **Filter and sort** above the rows: the phone `Segment` with the desktop's three filters and counts
+  (hidden while no row has a limit: every row would be "Bez limitu"), and a `SortPill` (Částka /
+  Čerpání / Název) beside it; the row wraps, so the pill drops under the filter when both do not fit
+  (360 pt, German or Polish, large text).
 - **Footer** under the expense rows: "Celkem X" and "Limity vyhodnocené za říjen 2026 · značka je
   dnešek, uplynulo 23 % období"; with a filter on, "Celkem za filtr X" and "N kategorií ve výběru".
 - **Income** rows unchanged in shape (share bar); footer "Nezařazené kredity se počítají jako příjem".
@@ -129,22 +135,30 @@ existing `cashflow.subtitle` with that number; the menu's "Účty (N)" uses the 
 
 - **(call) The budget summary note goes.** The desktop dropped it (merge spec §1), C10 asks for the
   filter instead. Cost if wrong: one component to restore from history.
-- **(call) Expense rows lose the share bar; the bar is limit usage only**, as in the desktop table
-  (share is text). A profile without limits sees no bars on expenses. Cost: a visual cue some liked.
+- **(call, review ruling) The limit line only on rows with a limit.** A row without one keeps the
+  share bar; "Nastavit limit" is offered through "Spravovat limity" and, in the "Bez limitu" filter,
+  on each row. A per-row "Bez limitu · Nastavit limit" everywhere was noise for profiles that do not
+  budget. Cost: setting a first limit from the report takes the filter or the head action.
 - **(call) The limit line sits under the row (`below`)**, not in the row, so the button is not
-  nested in the link and keeps 44 pt. Cost: every expense-category row is one line taller.
-- **(call) Rows that can never have a limit (Nezařazeno, a non-expense category) have no limit line**;
-  the desktop prints "—" and "Bez limitu". Cost: such a row does not say "Bez limitu" even though the
-  filter "Bez limitu" lists it.
-- **(call) Sort is a `SortPill` beside the filter**, not a second segment (two segments do not fit
-  at 360). Cost: one more tap to change the sort.
+  nested in the link and keeps 44 pt. Cost: a budgeted row is one line taller.
+- **(call) Rows that can never have a limit (Nezařazeno, a non-expense category) have no limit line**,
+  even in the "Bez limitu" filter; the desktop prints "—". Cost: none beyond the missing dash.
+- **(call) The filter is hidden while no row has a limit**; the sort pill stays. Cost: a profile
+  without limits does not learn about the filter until it sets one.
+- **(call) Sort is a `SortPill` beside the filter, wrapping under it when they do not fit**, not a
+  second segment. Cost: one more tap to change the sort.
+- **(call) The spent amount is never red**, as in the desktop's Utraceno cell; the state line says
+  "over" in words, colour and the arrow.
 - **(call) Count words follow the desktop ("transakce")** on this screen's rows (D lists "pohyby" vs
   "transakce"; `cashflow.moves` stays for the Budgets page).
 - **(call) Transfers section is always shown**, with "V tomto období nic" when empty, because its
   footer carries the cash movement. Cost: one more section in a quiet month.
-- **(call) The phone uses a cached newest-transaction date at once** (`staleTime: Infinity`; an
-  invalidation still waits). The desktop always waits for the refetch on mount. Cost: none known;
-  every money write invalidates the key.
+- **(call) The newest-transaction date is read with `staleTime: Infinity`.** The desktop's observer
+  has the default `staleTime: 0` but only waits while that refetch is in flight on its first mount;
+  in practice both use a cached date and wait only while an invalidation (a money write) refetches.
+  Cost: none known; every money write invalidates the key.
+- **(call) The limit actions wait for the stored limits' data** (`history !== undefined`, the
+  desktop's `history != null`), so a failed background refetch does not switch them off.
 - **(call) The CSV export stays** in `···` (F leaves it to the owner).
 - **(call) "Součet za zvolené období" (the desktop card description) is not repeated** on the phone:
   the period bar is right above.

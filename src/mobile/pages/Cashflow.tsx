@@ -266,12 +266,13 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
         timeframe={current.timeframe}
         offset={current.offset}
         label={report.periodLabel}
+        pending={opening === null}
         onTimeframeChange={(timeframe) => setState({ ...current, timeframe, offset: 0 })}
         onStep={(delta) => setState({ ...current, offset: Math.min(0, current.offset + delta) })}
       />
       {body === 'error' ? (
         <ScaledReportError onRetry={report.refetch} />
-      ) : body === 'skeleton' || !actuals ? (
+      ) : body === 'skeleton' || !actuals || opening === null ? (
         <CashflowSkeleton />
       ) : body === 'noAccounts' ? (
         <EmptyCashflow />
@@ -293,7 +294,7 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
             search={search}
             plansCard={plans && <PlansCard summary={plans} href={plansPath(plans.year)} />}
             goals={limits.history}
-            limitsReady={limits.historyQuery.isSuccess}
+            limitsReady={limits.historyQuery.data !== undefined}
             onLimit={limits.openLimit}
           />
         </div>

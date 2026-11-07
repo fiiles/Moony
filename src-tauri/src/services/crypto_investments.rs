@@ -6,6 +6,7 @@
 
 use crate::error::Result;
 use crate::models::{CryptoInvestment, CryptoTransaction, InsertCryptoTransaction};
+use crate::services::sync::natural_id::natural_id;
 use rusqlite::OptionalExtension;
 use uuid::Uuid;
 
@@ -14,23 +15,29 @@ use uuid::Uuid;
 /// NOTE: Average price is calculated in the investment's native currency (from first transaction)
 /// Transactions in other currencies are converted to the native currency before averaging
 ///
-/// Ordered by `transaction_date, created_at, rowid`. The first two columns can
+/// Ordered by `transaction_date, created_at, id`. The first two columns can
 /// tie within one bulk import (second-granularity `created_at` stamps every
 /// row in a batch identically), and the result is order-sensitive: a same-date
 /// sell processed before its buy hits the `total_qty > 0` guard and skips the
 /// cost-basis reduction, and — for crypto specifically — a tie can also flip
-/// which row is `txs[0]`, changing the derived `native_currency`. `rowid ASC`
+/// which row is `txs[0]`, changing the derived `native_currency`. `id ASC`
 /// breaks the tie deterministically instead of leaving it to SQLite's
-/// unspecified sort order for equal keys. `crypto_transactions` is an ordinary
-/// rowid table, and rowid == insertion order == the bulk importer's
-/// buys-before-sells order, so this pins today's observed behavior with zero
-/// change for existing data.
+/// unspecified sort order for equal keys. It is the same on every device
+/// (rowids differ per device after a merge), unlike `rowid`.
 pub fn recalculate_crypto_metrics(conn: &rusqlite::Connection, investment_id: &str) -> Result<()> {
     let native_currency:Option<String>=conn.query_row(
-        "SELECT currency FROM crypto_transactions WHERE investment_id=?1 ORDER BY transaction_date,created_at,rowid LIMIT 1",
+        "SELECT currency FROM crypto_transactions WHERE investment_id=?1 ORDER BY transaction_date,created_at,id LIMIT 1",
         [investment_id],|r|r.get(0),
     ).optional()?;
+    // Without transactions the quantity and currency are typed: the typed values a
+    // transaction overwrote come back (ruling T18b).
     let Some(native_currency) = native_currency else {
+        crate::services::sync::repair::typed::restore(
+            conn,
+            "crypto_investments",
+            investment_id,
+            "crypto_transactions",
+        )?;
         return Ok(());
     };
     let total_qty = crate::services::investments::exact_held_quantity(
@@ -181,7 +188,7 @@ pub fn get_or_create_crypto(
             Ok(HoldingLookup { id, symbol_set_now })
         }
         None => {
-            let id = Uuid::new_v4().to_string();
+            let id = natural_id("crypto_investments", &[&ticker_upper]);
 
             conn.execute(
                 "INSERT INTO crypto_investments (id, ticker, yahoo_symbol, name, quantity)
@@ -1108,5 +1115,45 @@ mod tests {
                 serde_json::json!({ "ticker": "BTC" })
             )
         );
+    }
+
+    #[test]
+    fn a_crypto_holding_id_follows_its_ticker() {
+        let conn = setup_test_db();
+        let holding = get_or_create_crypto(&conn, "btc", None, "Bitcoin").expect("create");
+        assert_eq!(
+            holding.id,
+            crate::services::sync::natural_id::natural_id("crypto_investments", &["BTC"])
+        );
+    }
+    #[test]
+    fn the_crypto_currency_tie_is_broken_by_id() {
+        let currency_after = |order: [(&str, &str); 2]| {
+            let conn = setup_test_db();
+            conn.execute(
+                "INSERT INTO crypto_investments (id, ticker, name, quantity, currency)
+                 VALUES ('btc-1', 'BTC', 'Bitcoin', '0', 'CZK')",
+                [],
+            )
+            .unwrap();
+            for (id, currency) in order {
+                conn.execute(
+                    "INSERT INTO crypto_transactions
+                     (id, investment_id, type, ticker, name, quantity, price_per_unit, currency, transaction_date, created_at)
+                     VALUES (?1, 'btc-1', 'buy', 'BTC', 'Bitcoin', '1', '100', ?2, 1700000000, 5)",
+                    rusqlite::params![id, currency],
+                )
+                .unwrap();
+            }
+            recalculate_crypto_metrics(&conn, "btc-1").unwrap();
+            conn.query_row(
+                "SELECT currency FROM crypto_investments WHERE id='btc-1'",
+                [],
+                |r| r.get::<_, String>(0),
+            )
+            .unwrap()
+        };
+        assert_eq!(currency_after([("a", "USD"), ("b", "EUR")]), "USD");
+        assert_eq!(currency_after([("b", "EUR"), ("a", "USD")]), "USD");
     }
 }

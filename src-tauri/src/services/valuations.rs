@@ -166,7 +166,7 @@ pub fn latest_valuation(
     asset_id: &str,
 ) -> Result<Option<AssetValuation>> {
     let sql = format!(
-        "SELECT {cols} FROM {table} WHERE {fk} = ?1 ORDER BY valued_at DESC, created_at DESC LIMIT 1",
+        "SELECT {cols} FROM {table} WHERE {fk} = ?1 ORDER BY valued_at DESC, created_at DESC, id DESC LIMIT 1",
         cols = columns(kind),
         table = kind.table(),
         fk = kind.fk()
@@ -210,7 +210,7 @@ pub fn value_at_day(
 
 /// Today's price per unit of every other asset, as `(asset_id, price, currency)` rows to join
 /// on `other_assets.id`: the newest valuation in its own currency (by day, then by creation,
-/// the order the history picks in), else the stored market price in the asset's currency.
+/// then by id: the order the history picks in), else the stored market price in the asset's currency.
 /// `sync_parent_price` mirrors only the value, so every reader of today's price goes through
 /// this instead of `market_price` and `currency`.
 pub const OTHER_ASSET_PRICES: &str = "SELECT a.id AS asset_id,
@@ -219,7 +219,7 @@ pub const OTHER_ASSET_PRICES: &str = "SELECT a.id AS asset_id,
      FROM other_assets a
      LEFT JOIN (SELECT asset_id, value, currency,
                        ROW_NUMBER() OVER (PARTITION BY asset_id
-                           ORDER BY valued_at DESC, created_at DESC, rowid DESC) AS age
+                           ORDER BY valued_at DESC, created_at DESC, id DESC) AS age
                 FROM other_asset_valuations) v
        ON v.asset_id = a.id AND v.age = 1";
 
@@ -227,8 +227,11 @@ pub const OTHER_ASSET_PRICES: &str = "SELECT a.id AS asset_id,
 /// assets only the price moves: their single currency column also prices the
 /// purchase average, so a valuation in another currency does not change it
 /// (`OTHER_ASSET_PRICES` pairs the price with the valuation's currency).
-fn sync_parent_price(conn: &Connection, kind: ValuationKind, asset_id: &str) -> Result<()> {
+pub fn sync_parent_price(conn: &Connection, kind: ValuationKind, asset_id: &str) -> Result<()> {
+    // Without valuations the market price is typed: the typed value a valuation overwrote comes
+    // back (ruling T18b).
     let Some(latest) = latest_valuation(conn, kind, asset_id)? else {
+        crate::services::sync::repair::typed::restore(conn, kind.parent(), asset_id, kind.table())?;
         return Ok(());
     };
     let now = chrono::Utc::now().timestamp();
@@ -906,5 +909,40 @@ mod tests {
             })
             .unwrap();
         assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn mirrors_break_ties_by_id_not_insertion_order() {
+        let price_after = |order: [(&str, &str); 2]| {
+            let conn = setup_test_db();
+            for (id, value) in order {
+                conn.execute(
+                    "INSERT INTO other_asset_valuations (id, asset_id, value, currency, valued_at, created_at)
+                     VALUES (?1, 'oa1', ?2, 'CZK', 1000, 5)",
+                    rusqlite::params![id, value],
+                )
+                .unwrap();
+            }
+            sync_parent_price(&conn, ValuationKind::OtherAsset, "oa1").unwrap();
+            let parent: String = conn
+                .query_row(
+                    "SELECT market_price FROM other_assets WHERE id='oa1'",
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            let view: String = conn
+                .query_row(
+                    &format!("SELECT price FROM ({OTHER_ASSET_PRICES}) WHERE asset_id='oa1'"),
+                    [],
+                    |r| r.get(0),
+                )
+                .unwrap();
+            (parent, view)
+        };
+        let ab = price_after([("a", "111"), ("b", "222")]);
+        let ba = price_after([("b", "222"), ("a", "111")]);
+        assert_eq!(ab, ("222".to_string(), "222".to_string()));
+        assert_eq!(ba, ab);
     }
 }

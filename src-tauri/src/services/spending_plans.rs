@@ -18,6 +18,7 @@ use crate::services::bank_history::{transaction_from_row, TRANSACTION_COLUMNS};
 use crate::services::categorization::tokenizer::fold_text;
 use crate::services::fx;
 use crate::services::reporting::money_in_currency;
+use crate::services::sync::repair::renames;
 use chrono::{DateTime, Datelike, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
 use std::cmp::Ordering;
@@ -85,6 +86,7 @@ fn insert_plan(conn: &Connection, data: &InsertSpendingPlan) -> Result<SpendingP
             data.note
         ],
     )?;
+    renames::after_local_write(conn, "spending_plans", &data.year.to_string())?;
     get_plan(conn, &id)
 }
 
@@ -115,7 +117,7 @@ pub fn get_plan(conn: &Connection, id: &str) -> Result<SpendingPlan> {
 
 pub fn update_plan(conn: &Connection, id: &str, data: &InsertSpendingPlan) -> Result<SpendingPlan> {
     let data = data.validate()?;
-    get_plan(conn, id)?;
+    let before = get_plan(conn, id)?;
     ensure_name_free(conn, data.year, &data.name, Some(id))?;
     conn.execute(
         "UPDATE spending_plans SET name = ?2, year = ?3, amount = ?4, currency = ?5, icon = ?6,
@@ -131,6 +133,10 @@ pub fn update_plan(conn: &Connection, id: &str, data: &InsertSpendingPlan) -> Re
             data.note
         ],
     )?;
+    renames::after_local_write(conn, "spending_plans", &data.year.to_string())?;
+    if before.year != data.year {
+        renames::after_local_write(conn, "spending_plans", &before.year.to_string())?;
+    }
     get_plan(conn, id)
 }
 
@@ -147,13 +153,14 @@ pub fn set_plan_closed(conn: &Connection, id: &str, closed: bool) -> Result<Spen
 
 /// Delete a plan; its payments stay, untagged.
 pub fn delete_plan(conn: &Connection, id: &str) -> Result<()> {
-    get_plan(conn, id)?;
+    let plan = get_plan(conn, id)?;
     let tx = conn.unchecked_transaction()?;
     tx.execute(
         "UPDATE bank_transactions SET spending_plan_id = NULL WHERE spending_plan_id = ?1",
         [id],
     )?;
     tx.execute("DELETE FROM spending_plans WHERE id = ?1", [id])?;
+    renames::after_local_write(&tx, "spending_plans", &plan.year.to_string())?;
     tx.commit()?;
     Ok(())
 }

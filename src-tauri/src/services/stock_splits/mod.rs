@@ -3,8 +3,12 @@
 //! A `stock_splits` row records one split of a ticker (D4). Detection stores the relevant ones
 //! as `pending` (D5, D6); applying a split rewrites the transactions dated before its ex-date
 //! into today's share units together with the ticker's per-share side data (D1, D3, D10), and
-//! reverting does the same with the ratio turned round. Every function takes `&Connection`;
-//! the commands call them inside `db.with_conn`.
+//! reverting does the same with the ratio turned round. The rows keep the values as they were
+//! entered and the applied splits those include (`entry_*`, `entry_basis`); the current units
+//! and `split_basis` are derived from them by one function, [`reconcile_ticker`], which apply,
+//! revert, dismiss and the sync repair all run (sync spec D27, ruling T18c), so the result never
+//! depends on the order of the operations. Every function takes `&Connection`; the commands call
+//! them inside `db.with_conn`.
 
 pub mod classify;
 pub mod scale;
@@ -15,14 +19,15 @@ pub use types::{
     StockSplitSource, StockSplitStatus, StockSplitVerdict,
 };
 
+use crate::services::sync::natural_id::natural_id;
 use rusqlite::{params, Connection, OptionalExtension, Params};
-use uuid::Uuid;
+use std::collections::{BTreeMap, BTreeSet};
 
 use crate::error::{AppError, Result};
 use crate::services::investments::{ensure_valid_holdings_history, recalculate_investment_metrics};
 use crate::services::stock_import::types::StockSplitOverride;
 use classify::{classify_cumulative, verdict_of};
-use scale::{scale_amount, Rounding};
+use scale::{scale_ratio, Rounding, MAX_FACTOR};
 use types::ratio_is_valid;
 
 const DAY_SECONDS: i64 = 86_400;
@@ -30,12 +35,50 @@ const DAY_SECONDS: i64 = 86_400;
 const COLUMNS: &str = "id, ticker, effective_day, numerator, denominator, source, status, \
                        detected_at, resolved_at, applied_count";
 
-/// Per-share side data of a ticker, scaled with its transactions: `(table, column)`.
-const SIDE_DATA: [(&str, &str); 3] = [
-    ("stock_price_overrides", "price"),
-    ("watched_stocks", "target_price"),
-    ("dividend_overrides", "yearly_dividend_sum"),
+/// A table whose values are split-scaled (D27, ruling T18c): its current-unit columns, each
+/// with the entry column it is derived from.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct SplitScaled {
+    pub table: &'static str,
+    /// `(current column, entry column)`.
+    pub columns: &'static [(&'static str, &'static str)],
+    /// Whether a row may have no value at all (a watch without a target).
+    pub optional: bool,
+}
+
+/// Every split-scaled table: the transactions first (dated by `transaction_date`), then the
+/// per-share side data (dated by `entry_at`). The one list the derivation, the entry-basis
+/// rewrite and the sync repair read.
+pub(crate) const SPLIT_SCALED: [SplitScaled; 4] = [
+    SplitScaled {
+        table: "investment_transactions",
+        columns: &[
+            ("quantity", "entry_quantity"),
+            ("price_per_unit", "entry_price_per_unit"),
+        ],
+        optional: false,
+    },
+    SplitScaled {
+        table: "stock_price_overrides",
+        columns: &[("price", "entry_price")],
+        optional: false,
+    },
+    SplitScaled {
+        table: "watched_stocks",
+        columns: &[("target_price", "entry_target_price")],
+        optional: true,
+    },
+    SplitScaled {
+        table: "dividend_overrides",
+        columns: &[("yearly_dividend_sum", "entry_yearly_dividend_sum")],
+        optional: false,
+    },
 ];
+
+/// The per-share side data of [`SPLIT_SCALED`]: one value column each.
+fn side_data() -> &'static [SplitScaled] {
+    &SPLIT_SCALED[1..]
+}
 
 /// The ticker's splits that still have transactions dated before them (D6), newest first,
 /// with the D7 verdict for the pending ones.
@@ -90,7 +133,7 @@ pub fn insert_from_import(
         return Err(not_pending());
     }
     let (n, d) = ratio_parts(&split.numerator, &split.denominator)?;
-    let id = Uuid::new_v4().to_string();
+    let id = natural_id("stock_splits", &[ticker, &split.effective_day.to_string()]);
     let detected_at = now();
     let resolved_at = (status == StockSplitStatus::Dismissed).then_some(detected_at);
     conn.execute(
@@ -131,7 +174,7 @@ pub fn record_detected(
         if pre_split_count(conn, ticker, day)? == 0 {
             continue;
         }
-        let id = Uuid::new_v4().to_string();
+        let id = natural_id("stock_splits", &[ticker, &day.to_string()]);
         let changed = conn.execute(
             "INSERT INTO stock_splits
                  (id, ticker, effective_day, numerator, denominator, source, status, detected_at)
@@ -155,15 +198,17 @@ pub fn record_detected(
 }
 
 /// Applies a pending or dismissed split (D10; a dismissed one means the user changed their
-/// mind): rewrites the pre-split transactions and side data, marks it `applied`, and
-/// recomputes the positions. An applied split is refused (`validation.stockSplitNotPending`);
+/// mind): marks it `applied` and runs [`reconcile_ticker`], which derives the pre-split
+/// transactions and side data in today's units from their entry values and recomputes the
+/// positions. An applied split is refused (`validation.stockSplitNotPending`);
 /// a history that would sell more than it holds aborts everything with
 /// `validation.stockSplitOversold`.
 pub fn apply(conn: &Connection, id: &str) -> Result<StockSplitApplyResult> {
     in_savepoint(conn, || apply_in(conn, id))
 }
 
-/// Undoes an applied split (D10 with the ratio turned round) and sets it back to `pending`.
+/// Undoes an applied split (D10 with the ratio turned round): sets it back to `pending` and runs
+/// [`reconcile_ticker`], which derives every row from its entry values without the split.
 /// Errors: `validation.stockSplitNotApplied`, `validation.stockSplitOversold`.
 pub fn revert(conn: &Connection, id: &str) -> Result<StockSplitApplyResult> {
     in_savepoint(conn, || {
@@ -173,50 +218,65 @@ pub fn revert(conn: &Connection, id: &str) -> Result<StockSplitApplyResult> {
                 "validation.stockSplitNotApplied".into(),
             ));
         }
-        let (n, d) = ratio_parts(&split.numerator, &split.denominator)?;
-        let rewritten = rewrite_pre_split_rows(conn, &split.ticker, split.effective_day, d, n)?;
         conn.execute(
             "UPDATE stock_splits SET status = 'pending', resolved_at = NULL, applied_count = NULL
              WHERE id = ?1",
             [id],
         )?;
-        refresh_positions(conn, &split.ticker)?;
+        let rewritten = reconcile_ticker(conn, &split.ticker)?.rewritten(id);
         apply_result(conn, id, &split.ticker, rewritten)
     })
 }
 
-/// Marks a pending split as already reflected in the data; nothing else changes.
+/// Marks a pending split as already reflected in the data and re-derives the ticker's rows
+/// ([`rederive_leniently`]). The status change makes every receiver derive the ticker's rows
+/// and recompute its positions in its merge repair, so the author does the same and stores
+/// exactly what the receivers derive (spec §7.1: a merge reruns the code a local write runs).
+/// A pending split is in no current value, so normally nothing changes; a history that already
+/// sells more than it holds never blocks a dismiss (the position gets the repair's fallback).
 /// Errors: `validation.stockSplitNotPending`.
 pub fn dismiss(conn: &Connection, id: &str) -> Result<StockSplit> {
-    let split = get(conn, id)?;
-    if split.status != StockSplitStatus::Pending {
-        return Err(not_pending());
-    }
-    conn.execute(
-        "UPDATE stock_splits SET status = 'dismissed', resolved_at = ?2 WHERE id = ?1",
-        params![id, now()],
-    )?;
-    get(conn, id)
+    in_savepoint(conn, || {
+        let split = get(conn, id)?;
+        if split.status != StockSplitStatus::Pending {
+            return Err(not_pending());
+        }
+        conn.execute(
+            "UPDATE stock_splits SET status = 'dismissed', resolved_at = ?2 WHERE id = ?1",
+            params![id, now()],
+        )?;
+        rederive_leniently(conn, &split.ticker)?;
+        get(conn, id)
+    })
 }
 
 /// Records a split by hand and applies it at once (D11). A row already on record for the
 /// same `(ticker, day)` is reused: a pending or dismissed one takes the entered ratio and is
 /// applied, keeping its source; an applied one is refused (`validation.stockSplitNotPending`).
+/// A new ratio first takes the split out of every entry basis that names it
+/// ([`rebase_entries_without`], with the old ratio), so those rows get the new ratio like every
+/// other row: fixing a wrong manual split (revert, record again) gives what it gave before the
+/// entry values existed.
 pub fn record_manual(conn: &Connection, data: &InsertStockSplit) -> Result<StockSplitApplyResult> {
     data.validate()?;
     let (n, d) = ratio_parts(&data.numerator, &data.denominator)?;
     in_savepoint(conn, || {
-        let existing: Option<(String, String)> = conn
+        let existing: Option<(String, String, String, String)> = conn
             .query_row(
-                "SELECT id, status FROM stock_splits WHERE ticker = ?1 AND effective_day = ?2",
+                "SELECT id, status, numerator, denominator FROM stock_splits
+                 WHERE ticker = ?1 AND effective_day = ?2",
                 params![data.ticker, data.effective_day],
-                |r| Ok((r.get(0)?, r.get(1)?)),
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
             )
             .optional()?;
         let id = match existing {
-            Some((id, status)) => {
+            Some((id, status, numerator, denominator)) => {
                 if StockSplitStatus::parse(&status)? == StockSplitStatus::Applied {
                     return Err(not_pending());
+                }
+                let old = ratio_parts(&numerator, &denominator)?;
+                if old != (n, d) {
+                    rebase_entries_without(conn, &data.ticker, &id, old)?;
                 }
                 conn.execute(
                     "UPDATE stock_splits
@@ -227,7 +287,10 @@ pub fn record_manual(conn: &Connection, data: &InsertStockSplit) -> Result<Stock
                 id
             }
             None => {
-                let id = Uuid::new_v4().to_string();
+                let id = natural_id(
+                    "stock_splits",
+                    &[&data.ticker, &data.effective_day.to_string()],
+                );
                 conn.execute(
                     "INSERT INTO stock_splits
                          (id, ticker, effective_day, numerator, denominator, source, status,
@@ -249,7 +312,11 @@ pub fn record_manual(conn: &Connection, data: &InsertStockSplit) -> Result<Stock
     })
 }
 
-/// Deletes a manual split that is not applied. Errors: `validation.stockSplitNotDeletable`.
+/// Deletes a manual split that is not applied. The rows whose `entry_basis` names it (values
+/// entered while it was applied) are first re-based without it ([`rebase_entries_without`]),
+/// so they keep the units they show now, scaled back, as after a revert before the entry
+/// values existed; then the ticker is re-derived ([`rederive_leniently`]).
+/// Errors: `validation.stockSplitNotDeletable`.
 pub fn delete_manual(conn: &Connection, id: &str) -> Result<()> {
     let split = get(conn, id)?;
     if split.source != StockSplitSource::Manual || split.status == StockSplitStatus::Applied {
@@ -257,8 +324,13 @@ pub fn delete_manual(conn: &Connection, id: &str) -> Result<()> {
             "validation.stockSplitNotDeletable".into(),
         ));
     }
-    conn.execute("DELETE FROM stock_splits WHERE id = ?1", [id])?;
-    Ok(())
+    let ratio = ratio_parts(&split.numerator, &split.denominator)?;
+    in_savepoint(conn, || {
+        rebase_entries_without(conn, &split.ticker, id, ratio)?;
+        conn.execute("DELETE FROM stock_splits WHERE id = ?1", [id])?;
+        rederive_leniently(conn, &split.ticker)?;
+        Ok(())
+    })
 }
 
 /// Applied splits of the ticker dated after `day`, oldest first: a transaction entered for
@@ -273,74 +345,444 @@ pub fn applied_before(conn: &Connection, ticker: &str, day: i64) -> Result<Vec<S
     Ok(splits)
 }
 
-/// The D1/D3 rewrite: every transaction of `ticker` dated before `effective_day` gets
-/// `quantity × mul / div` (buys half-up, sells down) and `price × div / mul` (half-up); the
-/// side data older than `effective_day` is scaled by `div / mul` without touching its
-/// `updated_at`, and the ticker's `dividend_data` cache row is dropped. Returns the number of
-/// transactions rewritten. Apply passes `(n, d)`, revert `(d, n)`.
-pub(crate) fn rewrite_pre_split_rows(
-    conn: &Connection,
-    ticker: &str,
+/// What [`reconcile_ticker`] changed: per split ID, the transactions whose current values gained
+/// or lost that split, and the rows whose current values or `split_basis` it rewrote across the
+/// four tables.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct ReconcileReport {
+    pub per_split: BTreeMap<String, i64>,
+    pub rows: i64,
+}
+
+impl ReconcileReport {
+    /// Transactions whose current values gained or lost the split `id`.
+    fn rewritten(&self, id: &str) -> i64 {
+        self.per_split.get(id).copied().unwrap_or(0)
+    }
+}
+
+/// One split of the ticker as [`reconcile_ticker`] reads it.
+struct BasisSplit {
     effective_day: i64,
-    mul: u64,
-    div: u64,
-) -> Result<i64> {
-    let rows = {
+    numerator: u64,
+    denominator: u64,
+    applied: bool,
+}
+
+/// The canonical basis of a row of `ticker` written at `day`: the IDs of the ticker's applied
+/// splits with `effective_day > day` as a JSON array sorted ascending, `None` when there are
+/// none. A write in today's units stores it as `entry_basis` (and `split_basis`): a transaction
+/// with its date (D20), a price, dividend or watch row with the time it is written.
+pub fn basis_for_day(conn: &Connection, ticker: &str, day: i64) -> Result<Option<String>> {
+    let mut stmt = conn.prepare(
+        "SELECT id FROM stock_splits
+         WHERE ticker = ?1 AND status = 'applied' AND effective_day > ?2",
+    )?;
+    let ids = stmt
+        .query_map(params![ticker, day], |r| r.get::<_, String>(0))?
+        .collect::<std::result::Result<BTreeSet<_>, _>>()?;
+    encode_basis(&ids)
+}
+
+/// Derives the current units of every row of `ticker` in `investment_transactions` and the
+/// side tables of [`SPLIT_SCALED`] from its entry values (ruling T18c). Apply, revert, dismiss and the sync
+/// repair all run it; the result depends only on the rows' entry values, dates and the split
+/// statuses, never on the path that led there, so running it again changes nothing.
+///
+/// Per row: the target basis is every `applied` split that is in `entry_basis` or affects the
+/// row (a transaction when `transaction_date < effective_day`, a side row when
+/// `entry_at < effective_day`: when its value was entered, never `updated_at`, which a notes
+/// edit moves; a side row without `entry_at` was never entered and no split affects it by
+/// time). The current values are the entry values scaled once: by the
+/// ratio of each target split missing from `entry_basis`, and back by the ratio of each split in
+/// `entry_basis` that is no longer applied, with one D3 rounding (quantities of buys half-up, of
+/// sells down, prices half-up). An ID in `entry_basis` without a `stock_splits` row scales
+/// nothing (its ratio is unknown). `split_basis` becomes the target basis. Then the ticker's
+/// `dividend_data` cache row is dropped and its positions are recomputed; a history that would
+/// sell more than it holds fails with `validation.stockSplitOversold` and nothing is written.
+pub fn reconcile_ticker(conn: &Connection, ticker: &str) -> Result<ReconcileReport> {
+    in_savepoint(conn, || {
+        let report = derive_in(conn, ticker)?;
+        refresh_positions(conn, ticker)?;
+        Ok(report)
+    })
+}
+
+/// [`reconcile_ticker`] without recomputing the positions: the derived rows and the dropped
+/// `dividend_data` row only. The sync repair runs this and recomputes the positions itself,
+/// with its fallback for a merged history that sells more than it holds, so the derived units
+/// never depend on whether the positions check passes.
+pub fn derive_ticker(conn: &Connection, ticker: &str) -> Result<ReconcileReport> {
+    in_savepoint(conn, || derive_in(conn, ticker))
+}
+
+fn derive_in(conn: &Connection, ticker: &str) -> Result<ReconcileReport> {
+    let splits = ticker_splits(conn, ticker)?;
+    let mut report = ReconcileReport::default();
+
+    let transactions = {
         let mut stmt = conn.prepare(
-            "SELECT id, type, quantity, price_per_unit FROM investment_transactions
-             WHERE ticker = ?1 AND transaction_date < ?2 ORDER BY rowid",
+            "SELECT id, type, transaction_date, entry_quantity, entry_price_per_unit, entry_basis,
+                    quantity, price_per_unit, split_basis
+             FROM investment_transactions WHERE ticker = ?1 ORDER BY id",
         )?;
         let rows = stmt
-            .query_map(params![ticker, effective_day], |r| {
+            .query_map([ticker], |r| {
                 Ok((
-                    r.get::<_, String>(0)?,
-                    r.get::<_, String>(1)?,
-                    r.get::<_, String>(2)?,
-                    r.get::<_, String>(3)?,
+                    (
+                        r.get::<_, String>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, i64>(2)?,
+                    ),
+                    (
+                        r.get::<_, Option<String>>(3)?,
+                        r.get::<_, Option<String>>(4)?,
+                        r.get::<_, Option<String>>(5)?,
+                    ),
+                    (
+                        r.get::<_, String>(6)?,
+                        r.get::<_, String>(7)?,
+                        r.get::<_, Option<String>>(8)?,
+                    ),
                 ))
             })?
             .collect::<std::result::Result<Vec<_>, _>>()?;
         rows
     };
-    for (id, kind, quantity, price) in &rows {
+    for ((id, kind, date), (entry_quantity, entry_price, entry_basis), stored) in transactions {
+        let (Some(entry_quantity), Some(entry_price)) = (entry_quantity, entry_price) else {
+            return Err(no_entry("investment_transactions", &id));
+        };
+        let entry_basis = decode_basis(entry_basis.as_deref())?;
+        let derived = derive(&splits, &entry_basis, |day| date < day)?;
         let rounding = if kind.eq_ignore_ascii_case("sell") {
             Rounding::Down
         } else {
             Rounding::HalfUp
         };
+        let quantity = derived.scale(&entry_quantity, rounding)?;
+        let price = derived.scale_inverse(&entry_price)?;
+        let split_basis = encode_basis(&derived.target)?;
+        let (stored_quantity, stored_price, stored_basis) = stored;
+        if (&quantity, &price, &split_basis) == (&stored_quantity, &stored_price, &stored_basis) {
+            continue;
+        }
+        let before = decode_basis(stored_basis.as_deref()).unwrap_or_default();
+        for split in before.symmetric_difference(&derived.target) {
+            *report.per_split.entry(split.clone()).or_default() += 1;
+        }
         conn.execute(
-            "UPDATE investment_transactions SET quantity = ?2, price_per_unit = ?3 WHERE id = ?1",
-            params![
-                id,
-                scale_amount(quantity, mul, div, rounding)?,
-                scale_amount(price, div, mul, Rounding::HalfUp)?,
-            ],
+            "UPDATE investment_transactions
+             SET quantity = ?2, price_per_unit = ?3, split_basis = ?4 WHERE id = ?1",
+            params![id, quantity, price, split_basis],
         )?;
+        report.rows += 1;
     }
 
-    for (table, column) in SIDE_DATA {
-        let values = {
+    for side in side_data() {
+        let (table, [(column, entry_column)]) = (side.table, side.columns) else {
+            return Err(AppError::Internal(format!(
+                "{} must have one split-scaled column",
+                side.table
+            )));
+        };
+        let side_rows = {
             let mut stmt = conn.prepare(&format!(
-                "SELECT id, {column} FROM {table}
-                 WHERE ticker = ?1 AND updated_at < ?2 AND {column} IS NOT NULL"
+                "SELECT id, entry_at, {entry_column}, entry_basis, {column}, split_basis
+                 FROM {table} WHERE ticker = ?1 ORDER BY id"
             ))?;
-            let values = stmt
-                .query_map(params![ticker, effective_day], |r| {
-                    Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?))
+            let rows = stmt
+                .query_map([ticker], |r| {
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, Option<i64>>(1)?,
+                        r.get::<_, Option<String>>(2)?,
+                        r.get::<_, Option<String>>(3)?,
+                        (
+                            r.get::<_, Option<String>>(4)?,
+                            r.get::<_, Option<String>>(5)?,
+                        ),
+                    ))
                 })?
                 .collect::<std::result::Result<Vec<_>, _>>()?;
-            values
+            rows
         };
-        for (id, value) in values {
+        for (id, entry_at, entry, entry_basis, stored) in side_rows {
+            // A watch without a target has no entry value (and no current one); an override
+            // always has its value.
+            if entry.is_none() && !side.optional {
+                return Err(no_entry(table, &id));
+            }
+            let entry_basis = decode_basis(entry_basis.as_deref())?;
+            let derived = derive(&splits, &entry_basis, |day| {
+                entry_at.is_some_and(|at| at < day)
+            })?;
+            let value = entry
+                .map(|value| derived.scale_inverse(&value))
+                .transpose()?;
+            let split_basis = encode_basis(&derived.target)?;
+            if (&value, &split_basis) == (&stored.0, &stored.1) {
+                continue;
+            }
             conn.execute(
-                &format!("UPDATE {table} SET {column} = ?2 WHERE id = ?1"),
-                params![id, scale_amount(&value, div, mul, Rounding::HalfUp)?],
+                &format!("UPDATE {table} SET {column} = ?2, split_basis = ?3 WHERE id = ?1"),
+                params![id, value, split_basis],
             )?;
+            report.rows += 1;
         }
     }
-    conn.execute("DELETE FROM dividend_data WHERE ticker = ?1", [ticker])?;
 
-    Ok(rows.len() as i64)
+    conn.execute("DELETE FROM dividend_data WHERE ticker = ?1", [ticker])?;
+    Ok(report)
+}
+
+/// The ticker's splits by id.
+fn ticker_splits(conn: &Connection, ticker: &str) -> Result<BTreeMap<String, BasisSplit>> {
+    let rows = {
+        let mut stmt = conn.prepare(
+            "SELECT id, effective_day, numerator, denominator, status FROM stock_splits
+             WHERE ticker = ?1 ORDER BY id",
+        )?;
+        let rows = stmt
+            .query_map([ticker], |r| {
+                Ok((
+                    r.get::<_, String>(0)?,
+                    r.get::<_, i64>(1)?,
+                    r.get::<_, String>(2)?,
+                    r.get::<_, String>(3)?,
+                    r.get::<_, String>(4)?,
+                ))
+            })?
+            .collect::<std::result::Result<Vec<_>, _>>()?;
+        rows
+    };
+    rows.into_iter()
+        .map(|(id, effective_day, numerator, denominator, status)| {
+            let (numerator, denominator) = ratio_parts(&numerator, &denominator)?;
+            let split = BasisSplit {
+                effective_day,
+                numerator,
+                denominator,
+                applied: StockSplitStatus::parse(&status)? == StockSplitStatus::Applied,
+            };
+            Ok((id, split))
+        })
+        .collect()
+}
+
+/// A row's target basis and the factor from its entry values to its current quantity:
+/// `quantity × mul / div`; a per-share value takes the inverse.
+struct Derived {
+    target: BTreeSet<String>,
+    mul: u128,
+    div: u128,
+}
+
+impl Derived {
+    /// The current quantity of an entry quantity: unchanged when the factor is one.
+    fn scale(&self, entry: &str, rounding: Rounding) -> Result<String> {
+        if self.mul == self.div {
+            return Ok(entry.to_string());
+        }
+        scale_ratio(entry, self.mul, self.div, rounding)
+    }
+
+    /// The current per-share value (a price, target or dividend) of an entry value, half-up.
+    fn scale_inverse(&self, entry: &str) -> Result<String> {
+        if self.mul == self.div {
+            return Ok(entry.to_string());
+        }
+        scale_ratio(entry, self.div, self.mul, Rounding::HalfUp)
+    }
+}
+
+/// The target basis of a row whose entry values include `entry_basis` (see [`reconcile_ticker`];
+/// `affects` says whether a split of that `effective_day` applies to the row), and the combined
+/// quantity factor from the entry to the target, reduced.
+fn derive(
+    splits: &BTreeMap<String, BasisSplit>,
+    entry_basis: &BTreeSet<String>,
+    affects: impl Fn(i64) -> bool,
+) -> Result<Derived> {
+    let mut derived = Derived {
+        target: BTreeSet::new(),
+        mul: 1,
+        div: 1,
+    };
+    let too_large = || AppError::Validation("validation.stockSplitRatioInvalid".into());
+    for (id, split) in splits {
+        let in_entry = entry_basis.contains(id);
+        let (mul, div) = if split.applied && (in_entry || affects(split.effective_day)) {
+            derived.target.insert(id.clone());
+            if in_entry {
+                continue;
+            }
+            (split.numerator, split.denominator)
+        } else if in_entry {
+            (split.denominator, split.numerator)
+        } else {
+            continue;
+        };
+        let mul = derived
+            .mul
+            .checked_mul(u128::from(mul))
+            .ok_or_else(too_large)?;
+        let div = derived
+            .div
+            .checked_mul(u128::from(div))
+            .ok_or_else(too_large)?;
+        let common = gcd(mul, div);
+        (derived.mul, derived.div) = (mul / common, div / common);
+        if derived.mul > MAX_FACTOR || derived.div > MAX_FACTOR {
+            return Err(too_large());
+        }
+    }
+    Ok(derived)
+}
+
+fn gcd(mut a: u128, mut b: u128) -> u128 {
+    while b != 0 {
+        (a, b) = (b, a % b);
+    }
+    a
+}
+
+/// Takes the split `id` (not applied, ratio `(numerator, denominator)`) out of every
+/// `entry_basis` of `ticker` that names it: the entry values are scaled back by its ratio (the
+/// D3 roundings: quantities of buys half-up, of sells down, per-share values half-up) and the id
+/// leaves the basis. A local entry write, so capture sends it when sync is on; `entry_at`
+/// stays, so the split still affects the row by date if it is applied again. Returns the rows
+/// re-based.
+fn rebase_entries_without(
+    conn: &Connection,
+    ticker: &str,
+    id: &str,
+    (numerator, denominator): (u64, u64),
+) -> Result<i64> {
+    let (numerator, denominator) = (u128::from(numerator), u128::from(denominator));
+    let mut rebased = 0;
+    for scaled in SPLIT_SCALED {
+        let entries = scaled
+            .columns
+            .iter()
+            .map(|(_, entry)| *entry)
+            .collect::<Vec<_>>();
+        let is_transaction = scaled.table == "investment_transactions";
+        let kind = if is_transaction { "t.type" } else { "NULL" };
+        let rows = {
+            let mut stmt = conn.prepare(&format!(
+                "SELECT t.id, t.entry_basis, {kind}, t.{}
+                 FROM {table} t, json_each(t.entry_basis) e
+                 WHERE t.ticker = ?1 AND t.entry_basis IS NOT NULL AND e.value = ?2
+                 ORDER BY t.id",
+                entries.join(", t."),
+                table = scaled.table,
+            ))?;
+            let rows = stmt
+                .query_map(params![ticker, id], |r| {
+                    let values = (0..entries.len())
+                        .map(|i| r.get::<_, Option<String>>(3 + i))
+                        .collect::<std::result::Result<Vec<_>, _>>()?;
+                    Ok((
+                        r.get::<_, String>(0)?,
+                        r.get::<_, String>(1)?,
+                        r.get::<_, Option<String>>(2)?,
+                        values,
+                    ))
+                })?
+                .collect::<std::result::Result<Vec<_>, _>>()?;
+            rows
+        };
+        for (row, basis, kind, values) in rows {
+            let mut basis = decode_basis(Some(&basis))?;
+            basis.remove(id);
+            let quantity_rounding = if kind.is_some_and(|k| k.eq_ignore_ascii_case("sell")) {
+                Rounding::Down
+            } else {
+                Rounding::HalfUp
+            };
+            let mut scaled_back = Vec::with_capacity(values.len());
+            for (column, value) in entries.iter().zip(values) {
+                let value = match value {
+                    None if scaled.optional => None,
+                    None => return Err(no_entry(scaled.table, &row)),
+                    // A quantity loses the split's factor; a per-share value gets it back.
+                    Some(value) if *column == "entry_quantity" => Some(scale_ratio(
+                        &value,
+                        denominator,
+                        numerator,
+                        quantity_rounding,
+                    )?),
+                    Some(value) => Some(scale_ratio(
+                        &value,
+                        numerator,
+                        denominator,
+                        Rounding::HalfUp,
+                    )?),
+                };
+                scaled_back.push(value);
+            }
+            let sets = entries
+                .iter()
+                .enumerate()
+                .map(|(i, column)| format!("{column} = ?{}", i + 3))
+                .collect::<Vec<_>>()
+                .join(", ");
+            let mut values: Vec<rusqlite::types::Value> = vec![
+                row.into(),
+                encode_basis(&basis)?.map_or(rusqlite::types::Value::Null, Into::into),
+            ];
+            values.extend(
+                scaled_back
+                    .into_iter()
+                    .map(|v| v.map_or(rusqlite::types::Value::Null, Into::into)),
+            );
+            conn.execute(
+                &format!(
+                    "UPDATE {} SET entry_basis = ?2, {sets} WHERE id = ?1",
+                    scaled.table
+                ),
+                rusqlite::params_from_iter(values),
+            )?;
+            rebased += 1;
+        }
+    }
+    Ok(rebased)
+}
+
+/// Re-derives `ticker` ([`derive_ticker`]'s rows) and recomputes its stock positions as the
+/// sync merge repair does, so a history that already sells more than it holds gets the
+/// repair's unchecked quantity (logged) instead of failing the write: what the author stores
+/// is what every receiver derives from the same rows.
+fn rederive_leniently(conn: &Connection, ticker: &str) -> Result<ReconcileReport> {
+    let report = derive_in(conn, ticker)?;
+    for warning in
+        crate::services::sync::repair::mirrors::recalculate_stock_positions(conn, ticker)?
+    {
+        log::warn!("[STOCK SPLITS] {warning}");
+    }
+    Ok(report)
+}
+
+fn no_entry(table: &str, id: &str) -> AppError {
+    AppError::Database(format!("{table} {id} has no entry value"))
+}
+
+/// A JSON array of the IDs in ascending order, `None` for none (the canonical form).
+fn encode_basis(ids: &BTreeSet<String>) -> Result<Option<String>> {
+    if ids.is_empty() {
+        return Ok(None);
+    }
+    Ok(Some(serde_json::to_string(ids)?))
+}
+
+fn decode_basis(text: Option<&str>) -> Result<BTreeSet<String>> {
+    let Some(text) = text else {
+        return Ok(BTreeSet::new());
+    };
+    serde_json::from_str::<Vec<String>>(text)
+        .map(|ids| ids.into_iter().collect())
+        .map_err(|e| AppError::Database(format!("invalid split basis {text}: {e}")))
 }
 
 /// [`apply`] without its savepoint, for callers that hold one.
@@ -349,14 +791,16 @@ fn apply_in(conn: &Connection, id: &str) -> Result<StockSplitApplyResult> {
     if split.status == StockSplitStatus::Applied {
         return Err(not_pending());
     }
-    let (n, d) = ratio_parts(&split.numerator, &split.denominator)?;
-    let rewritten = rewrite_pre_split_rows(conn, &split.ticker, split.effective_day, n, d)?;
+    ratio_parts(&split.numerator, &split.denominator)?;
     conn.execute(
-        "UPDATE stock_splits SET status = 'applied', resolved_at = ?2, applied_count = ?3
-         WHERE id = ?1",
-        params![id, now(), rewritten],
+        "UPDATE stock_splits SET status = 'applied', resolved_at = ?2 WHERE id = ?1",
+        params![id, now()],
     )?;
-    refresh_positions(conn, &split.ticker)?;
+    let rewritten = reconcile_ticker(conn, &split.ticker)?.rewritten(id);
+    conn.execute(
+        "UPDATE stock_splits SET applied_count = ?2 WHERE id = ?1",
+        params![id, rewritten],
+    )?;
     apply_result(conn, id, &split.ticker, rewritten)
 }
 
@@ -404,20 +848,11 @@ fn apply_result(
     })
 }
 
-/// Runs `work` inside `SAVEPOINT split_apply`, rolled back when it fails. Savepoints nest, so
-/// this composes with an outer transaction.
+/// Runs `work` inside `SAVEPOINT split_apply` (the shared savepoint helper, which also rolls
+/// back when the release itself fails). Savepoints nest, so this composes with an outer
+/// transaction.
 fn in_savepoint<T>(conn: &Connection, work: impl FnOnce() -> Result<T>) -> Result<T> {
-    conn.execute_batch("SAVEPOINT split_apply")?;
-    match work() {
-        Ok(value) => {
-            conn.execute_batch("RELEASE split_apply")?;
-            Ok(value)
-        }
-        Err(error) => {
-            conn.execute_batch("ROLLBACK TO split_apply; RELEASE split_apply")?;
-            Err(error)
-        }
-    }
+    crate::services::sync::in_savepoint(conn, "split_apply", work)
 }
 
 /// `stock_splits` rows matching `filter`, newest first, with the derived fields filled in.
@@ -636,7 +1071,11 @@ mod tests {
                 transaction_date INTEGER NOT NULL,
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 import_batch_id TEXT,
-                external_id TEXT
+                external_id TEXT,
+                split_basis TEXT,
+                entry_quantity TEXT,
+                entry_price_per_unit TEXT,
+                entry_basis TEXT
             );
             CREATE TABLE stock_splits (
                 id TEXT PRIMARY KEY,
@@ -666,7 +1105,11 @@ mod tests {
                 ticker TEXT NOT NULL UNIQUE,
                 price TEXT NOT NULL,
                 currency TEXT NOT NULL DEFAULT 'CZK',
-                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                split_basis TEXT,
+                entry_price TEXT,
+                entry_basis TEXT,
+                entry_at INTEGER
             );
             CREATE TABLE watched_stocks (
                 id TEXT PRIMARY KEY,
@@ -674,14 +1117,22 @@ mod tests {
                 target_price TEXT,
                 notes TEXT NOT NULL DEFAULT '',
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()),
-                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                split_basis TEXT,
+                entry_target_price TEXT,
+                entry_basis TEXT,
+                entry_at INTEGER
             );
             CREATE TABLE dividend_overrides (
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL UNIQUE,
                 yearly_dividend_sum TEXT NOT NULL,
                 currency TEXT NOT NULL DEFAULT 'CZK',
-                updated_at INTEGER NOT NULL DEFAULT (unixepoch())
+                updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
+                split_basis TEXT,
+                entry_yearly_dividend_sum TEXT,
+                entry_basis TEXT,
+                entry_at INTEGER
             );
             CREATE TABLE dividend_data (
                 id TEXT PRIMARY KEY,
@@ -691,6 +1142,28 @@ mod tests {
                 last_fetched_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 created_at INTEGER NOT NULL DEFAULT (unixepoch())
             );
+            -- A row written straight to the table was entered in today's units (ruling T18c).
+            CREATE TRIGGER entered_tx AFTER INSERT ON investment_transactions
+                WHEN NEW.entry_quantity IS NULL BEGIN
+                UPDATE investment_transactions SET entry_quantity = NEW.quantity,
+                    entry_price_per_unit = NEW.price_per_unit, entry_basis = NEW.split_basis
+                    WHERE id = NEW.id;
+            END;
+            CREATE TRIGGER entered_price AFTER INSERT ON stock_price_overrides
+                WHEN NEW.entry_price IS NULL BEGIN
+                UPDATE stock_price_overrides SET entry_price = NEW.price,
+                    entry_basis = NEW.split_basis, entry_at = NEW.updated_at WHERE id = NEW.id;
+            END;
+            CREATE TRIGGER entered_target AFTER INSERT ON watched_stocks
+                WHEN NEW.entry_target_price IS NULL BEGIN
+                UPDATE watched_stocks SET entry_target_price = NEW.target_price,
+                    entry_basis = NEW.split_basis, entry_at = NEW.updated_at WHERE id = NEW.id;
+            END;
+            CREATE TRIGGER entered_dividend AFTER INSERT ON dividend_overrides
+                WHEN NEW.entry_yearly_dividend_sum IS NULL BEGIN
+                UPDATE dividend_overrides SET entry_yearly_dividend_sum = NEW.yearly_dividend_sum,
+                    entry_basis = NEW.split_basis, entry_at = NEW.updated_at WHERE id = NEW.id;
+            END;
             "#,
         )
         .expect("schema");
@@ -1451,5 +1924,626 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM stock_splits", [], |r| r.get(0))
             .unwrap();
         assert_eq!(none, 0);
+    }
+
+    #[test]
+    fn a_detected_split_id_follows_ticker_and_day() {
+        let natural = crate::services::sync::natural_id::natural_id;
+        let conn = setup_test_db();
+        tx(&conn, "NVDA", "buy", "3", "950", day(100));
+        let rows =
+            record_detected(&conn, "NVDA", &[split(150, 10, 1)], StockSplitSource::Yahoo).unwrap();
+        let expected = natural("stock_splits", &["NVDA", &day(150).to_string()]);
+        assert_eq!(rows.len(), 1, "the split is relevant to NVDA");
+        assert_eq!(rows[0].id, expected);
+
+        let imported = insert_from_import(
+            &conn,
+            "NVDA",
+            &import_split(day(160), "2", "1"),
+            StockSplitStatus::Dismissed,
+        )
+        .unwrap();
+        assert_eq!(
+            imported.id,
+            natural("stock_splits", &["NVDA", &day(160).to_string()])
+        );
+
+        record_manual(
+            &conn,
+            &InsertStockSplit {
+                ticker: "NVDA".into(),
+                effective_day: day(170),
+                numerator: "3".into(),
+                denominator: "1".into(),
+            },
+        )
+        .unwrap();
+        let id: String = conn
+            .query_row(
+                "SELECT id FROM stock_splits WHERE effective_day = ?1",
+                [day(170)],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(
+            id,
+            natural("stock_splits", &["NVDA", &day(170).to_string()])
+        );
+    }
+}
+
+/// Split units on the real schema (D27, ruling T18c): apply, revert, reconcile derive the
+/// current values and `split_basis` from the entry values the writes store.
+#[cfg(test)]
+mod split_basis_tests {
+    use super::*;
+    use crate::models::InsertInvestmentTransaction;
+    use crate::services::investments::{
+        create_transaction_internal, update_transaction, TransactionOrigin,
+    };
+    use crate::services::sync::test_support::migrated;
+    use crate::services::{price_overrides, stock_monitor};
+    use std::collections::BTreeMap;
+
+    const DAY: i64 = 86_400;
+
+    /// UTC midnight `n` days after 2022-01-08 (a plausible trading history).
+    fn day(n: i64) -> i64 {
+        (19_000 + n) * DAY
+    }
+
+    fn position(conn: &Connection) {
+        conn.execute(
+            "INSERT OR IGNORE INTO stock_investments (id, ticker, company_name, quantity, currency)
+             VALUES ('inv-AAPL', 'AAPL', 'Apple', '0', 'USD')",
+            [],
+        )
+        .expect("position");
+    }
+
+    /// A transaction written straight to the table with the given basis (what a merge produces).
+    fn raw_tx(conn: &Connection, kind: &str, qty: &str, price: &str, on: i64) -> String {
+        position(conn);
+        let id = uuid::Uuid::new_v4().to_string();
+        conn.execute(
+            "INSERT INTO investment_transactions
+             (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency,
+              transaction_date, entry_quantity, entry_price_per_unit)
+             VALUES (?1, 'inv-AAPL', ?2, 'AAPL', 'Apple', ?3, ?4, 'USD', ?5, ?3, ?4)",
+            params![id, kind, qty, price, on],
+        )
+        .expect("transaction");
+        id
+    }
+
+    /// A transaction written by the service, as the app writes one.
+    fn new_tx(conn: &Connection, qty: &str, price: &str, on: i64) -> String {
+        position(conn);
+        create_transaction_internal(
+            conn,
+            "inv-AAPL",
+            "AAPL",
+            "Apple",
+            "buy",
+            qty,
+            price,
+            "USD",
+            on,
+            None,
+            TransactionOrigin::default(),
+        )
+        .expect("create")
+        .id
+    }
+
+    fn split_row(conn: &Connection, on: i64, n: u64, d: u64, status: &str) -> String {
+        let id = natural_id("stock_splits", &["AAPL", &on.to_string()]);
+        conn.execute(
+            "INSERT INTO stock_splits
+                 (id, ticker, effective_day, numerator, denominator, source, status)
+             VALUES (?1, 'AAPL', ?2, ?3, ?4, 'manual', ?5)",
+            params![id, on, n.to_string(), d.to_string(), status],
+        )
+        .expect("split");
+        id
+    }
+
+    fn tx_values(conn: &Connection, id: &str) -> (String, String) {
+        conn.query_row(
+            "SELECT quantity, price_per_unit FROM investment_transactions WHERE id = ?1",
+            [id],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .expect("transaction row")
+    }
+
+    fn pair(quantity: &str, price: &str) -> (String, String) {
+        (quantity.to_string(), price.to_string())
+    }
+
+    fn basis(conn: &Connection, table: &str, id: &str) -> Option<String> {
+        conn.query_row(
+            &format!("SELECT split_basis FROM {table} WHERE id = ?1"),
+            [id],
+            |r| r.get(0),
+        )
+        .expect("basis")
+    }
+
+    fn side_value(conn: &Connection, table: &str, column: &str, id: &str) -> Option<String> {
+        conn.query_row(
+            &format!("SELECT {column} FROM {table} WHERE id = ?1"),
+            [id],
+            |r| r.get(0),
+        )
+        .expect("side row")
+    }
+
+    fn held(conn: &Connection) -> String {
+        conn.query_row(
+            "SELECT quantity FROM stock_investments WHERE ticker = 'AAPL'",
+            [],
+            |r| r.get(0),
+        )
+        .expect("position quantity")
+    }
+
+    fn one(id: &str) -> Option<String> {
+        Some(format!(r#"["{id}"]"#))
+    }
+
+    #[test]
+    fn apply_records_the_split_in_the_basis_of_every_rewritten_row() {
+        let conn = migrated();
+        let pre = raw_tx(&conn, "buy", "15", "165.3", day(100));
+        let post = raw_tx(&conn, "buy", "4", "50", day(300));
+        let s = split_row(&conn, day(200), 4, 1, "pending");
+        conn.execute_batch(&format!(
+            "INSERT INTO stock_price_overrides
+                 (id, ticker, price, currency, updated_at, entry_price, entry_at)
+                 VALUES ('o1', 'AAPL', '170', 'USD', {new}, '170', {new});
+             INSERT INTO watched_stocks
+                 (id, ticker, target_price, updated_at, entry_target_price, entry_at)
+                 VALUES ('w1', 'AAPL', '180', {old}, '180', {old});
+             INSERT INTO dividend_overrides
+                 (id, ticker, yearly_dividend_sum, currency, updated_at,
+                  entry_yearly_dividend_sum, entry_at)
+                 VALUES ('d1', 'AAPL', '0.92', 'USD', {old}, '0.92', {old});",
+            old = day(150),
+            new = day(250),
+        ))
+        .unwrap();
+
+        let r = apply(&conn, &s).unwrap();
+
+        assert_eq!(r.rewritten, 1);
+        assert_eq!(r.split.applied_count, Some(1));
+        assert_eq!(tx_values(&conn, &pre), pair("60", "41.325"));
+        assert_eq!(basis(&conn, "investment_transactions", &pre), one(&s));
+        assert_eq!(tx_values(&conn, &post), pair("4", "50"));
+        assert_eq!(basis(&conn, "investment_transactions", &post), None);
+        assert_eq!(
+            side_value(&conn, "watched_stocks", "target_price", "w1"),
+            Some("45".into())
+        );
+        assert_eq!(basis(&conn, "watched_stocks", "w1"), one(&s));
+        assert_eq!(
+            side_value(&conn, "dividend_overrides", "yearly_dividend_sum", "d1"),
+            Some("0.23".into())
+        );
+        assert_eq!(basis(&conn, "dividend_overrides", "d1"), one(&s));
+        assert_eq!(
+            side_value(&conn, "stock_price_overrides", "price", "o1"),
+            Some("170".into()),
+            "set after the ex-date: already in today's units"
+        );
+        assert_eq!(basis(&conn, "stock_price_overrides", "o1"), None);
+        assert_eq!(held(&conn), "64");
+    }
+
+    #[test]
+    fn revert_scales_back_exactly_the_rows_that_carry_the_split() {
+        let conn = migrated();
+        let pre = raw_tx(&conn, "buy", "15", "165.3", day(100));
+        let s = split_row(&conn, day(200), 4, 1, "pending");
+        conn.execute(
+            "INSERT INTO dividend_overrides
+                 (id, ticker, yearly_dividend_sum, currency, updated_at,
+                  entry_yearly_dividend_sum, entry_at)
+             VALUES ('d1', 'AAPL', '0.92', 'USD', ?1, '0.92', ?1)",
+            [day(150)],
+        )
+        .unwrap();
+        apply(&conn, &s).unwrap();
+
+        // Entered after the apply, in today's units, for a day before the split.
+        let added = new_tx(&conn, "8", "40", day(150));
+        assert_eq!(basis(&conn, "investment_transactions", &added), one(&s));
+        // Edited after the apply: today's units, no basis.
+        price_overrides::upsert_stock_price(&conn, "AAPL", "42", "USD", day(250)).unwrap();
+        let override_id = natural_id("stock_price_overrides", &["AAPL"]);
+        // A row that claims an old date but carries no basis is not the split's to undo.
+        conn.execute(
+            "INSERT INTO watched_stocks
+                 (id, ticker, target_price, updated_at, entry_target_price, entry_at)
+             VALUES ('w1', 'AAPL', '30', ?1, '30', ?1)",
+            [day(150)],
+        )
+        .unwrap();
+
+        let r = revert(&conn, &s).unwrap();
+
+        assert_eq!(r.rewritten, 2);
+        assert_eq!(r.split.status, StockSplitStatus::Pending);
+        assert_eq!(tx_values(&conn, &pre), pair("15", "165.3"));
+        assert_eq!(basis(&conn, "investment_transactions", &pre), None);
+        assert_eq!(tx_values(&conn, &added), pair("2", "160"));
+        assert_eq!(basis(&conn, "investment_transactions", &added), None);
+        assert_eq!(
+            side_value(&conn, "dividend_overrides", "yearly_dividend_sum", "d1"),
+            Some("0.92".into())
+        );
+        assert_eq!(basis(&conn, "dividend_overrides", "d1"), None);
+        assert_eq!(
+            side_value(&conn, "stock_price_overrides", "price", &override_id),
+            Some("42".into())
+        );
+        assert_eq!(basis(&conn, "stock_price_overrides", &override_id), None);
+        assert_eq!(
+            side_value(&conn, "watched_stocks", "target_price", "w1"),
+            Some("30".into())
+        );
+        assert_eq!(basis(&conn, "watched_stocks", "w1"), None);
+        assert_eq!(held(&conn), "17");
+    }
+
+    #[test]
+    fn reconcile_scales_a_pre_split_row_that_missed_the_apply() {
+        let conn = migrated();
+        let pre = raw_tx(&conn, "buy", "15", "165.3", day(100));
+        let s = split_row(&conn, day(200), 4, 1, "pending");
+        apply(&conn, &s).unwrap();
+        let missed = raw_tx(&conn, "buy", "3", "160", day(120));
+        assert_eq!(basis(&conn, "investment_transactions", &missed), None);
+
+        let report = reconcile_ticker(&conn, "AAPL").unwrap();
+
+        assert_eq!(report.per_split, BTreeMap::from([(s.clone(), 1)]));
+        assert_eq!(report.rows, 1);
+        assert_eq!(tx_values(&conn, &missed), pair("12", "40"));
+        assert_eq!(basis(&conn, "investment_transactions", &missed), one(&s));
+        assert_eq!(tx_values(&conn, &pre), pair("60", "41.325"));
+        assert_eq!(basis(&conn, "investment_transactions", &pre), one(&s));
+        assert_eq!(held(&conn), "72");
+    }
+
+    #[test]
+    fn reconcile_removes_a_split_that_is_no_longer_applied() {
+        let conn = migrated();
+        let pre = raw_tx(&conn, "buy", "15", "165.3", day(100));
+        let s = split_row(&conn, day(200), 4, 1, "pending");
+        conn.execute(
+            "INSERT INTO dividend_overrides
+                 (id, ticker, yearly_dividend_sum, currency, updated_at,
+                  entry_yearly_dividend_sum, entry_at)
+             VALUES ('d1', 'AAPL', '0.92', 'USD', ?1, '0.92', ?1)",
+            [day(150)],
+        )
+        .unwrap();
+        apply(&conn, &s).unwrap();
+        conn.execute(
+            "UPDATE stock_splits SET status = 'dismissed' WHERE id = ?1",
+            [&s],
+        )
+        .unwrap();
+
+        let report = reconcile_ticker(&conn, "AAPL").unwrap();
+
+        assert_eq!(report.per_split, BTreeMap::from([(s.clone(), 1)]));
+        assert_eq!(report.rows, 2);
+        assert_eq!(tx_values(&conn, &pre), pair("15", "165.3"));
+        assert_eq!(basis(&conn, "investment_transactions", &pre), None);
+        assert_eq!(
+            side_value(&conn, "dividend_overrides", "yearly_dividend_sum", "d1"),
+            Some("0.92".into())
+        );
+        assert_eq!(basis(&conn, "dividend_overrides", "d1"), None);
+        assert_eq!(held(&conn), "15");
+    }
+
+    #[test]
+    fn reconcile_is_idempotent() {
+        let conn = migrated();
+        let early = raw_tx(&conn, "buy", "7", "10", day(100));
+        let between = raw_tx(&conn, "buy", "5", "4", day(250));
+        let a = split_row(&conn, day(200), 3, 1, "applied");
+        let b = split_row(&conn, day(300), 1, 2, "applied");
+        let mut both = [a.clone(), b.clone()];
+        both.sort();
+
+        let first = reconcile_ticker(&conn, "AAPL").unwrap();
+        assert_eq!(
+            first.per_split,
+            BTreeMap::from([(a.clone(), 1), (b.clone(), 2)])
+        );
+        assert_eq!(first.rows, 2);
+        // 3:1 and 1:2 in one step from the entry (ruling T18c): 7 × 3/2, 10 × 2/3 rounded once
+        // (the old rewrite rounded 10 / 3 first and gave 6.66666666).
+        assert_eq!(tx_values(&conn, &early), pair("10.5", "6.66666667"));
+        assert_eq!(
+            basis(&conn, "investment_transactions", &early),
+            Some(format!(r#"["{}","{}"]"#, both[0], both[1]))
+        );
+        assert_eq!(tx_values(&conn, &between), pair("2.5", "8"));
+        assert_eq!(basis(&conn, "investment_transactions", &between), one(&b));
+        assert_eq!(held(&conn), "13");
+
+        let second = reconcile_ticker(&conn, "AAPL").unwrap();
+        assert_eq!(second.per_split, BTreeMap::new());
+        assert_eq!(second.rows, 0);
+        assert_eq!(tx_values(&conn, &early), pair("10.5", "6.66666667"));
+        assert_eq!(tx_values(&conn, &between), pair("2.5", "8"));
+        assert_eq!(held(&conn), "13");
+    }
+
+    /// Ruling T18c: apply → revert → apply ends on the values derived from the entry, whatever
+    /// the rounding of the ratio; the entry itself never changes.
+    #[test]
+    fn apply_revert_apply_returns_the_values_derived_from_the_entry() {
+        let conn = migrated();
+        let buy = raw_tx(&conn, "buy", "7", "1044.365", day(100));
+        let sell = raw_tx(&conn, "sell", "2", "395.23", day(110));
+        let s = split_row(&conn, day(200), 1, 3, "pending");
+        let entry = |id: &str| -> (String, String, Option<String>) {
+            conn.query_row(
+                "SELECT entry_quantity, entry_price_per_unit, entry_basis
+                 FROM investment_transactions WHERE id = ?1",
+                [id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("entry")
+        };
+
+        for _ in 0..3 {
+            apply(&conn, &s).unwrap();
+            assert_eq!(tx_values(&conn, &buy), pair("2.33333333", "3133.095"));
+            assert_eq!(tx_values(&conn, &sell), pair("0.66666666", "1185.69"));
+            revert(&conn, &s).unwrap();
+            assert_eq!(tx_values(&conn, &buy), pair("7", "1044.365"));
+            assert_eq!(tx_values(&conn, &sell), pair("2", "395.23"));
+        }
+        assert_eq!(entry(&buy), ("7".into(), "1044.365".into(), None));
+        assert_eq!(entry(&sell), ("2".into(), "395.23".into(), None));
+    }
+
+    /// `(entry_quantity, entry_price_per_unit, entry_basis)` of a transaction.
+    fn entry(conn: &Connection, id: &str) -> (String, String, Option<String>) {
+        conn.query_row(
+            "SELECT entry_quantity, entry_price_per_unit, entry_basis
+             FROM investment_transactions WHERE id = ?1",
+            [id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+        )
+        .expect("entry")
+    }
+
+    fn manual(on: i64, numerator: &str) -> InsertStockSplit {
+        InsertStockSplit {
+            ticker: "AAPL".into(),
+            effective_day: on,
+            numerator: numerator.into(),
+            denominator: "1".into(),
+        }
+    }
+
+    fn validation_key(err: AppError) -> String {
+        match err {
+            AppError::Validation(key) => key,
+            other => panic!("expected a validation error, got {other:?}"),
+        }
+    }
+
+    /// The final fix wave: a split named in an entry basis can still be fixed as before the
+    /// entry values existed. Re-recording a reverted manual split with another ratio first
+    /// re-bases the rows that name it (entry scaled back by the old ratio, the id out of the
+    /// basis), so the new ratio applies to them like to every other row; the same ratio
+    /// re-applies exactly.
+    #[test]
+    fn a_split_named_in_an_entry_basis_takes_a_new_ratio_like_every_row() {
+        let conn = migrated();
+        let old = raw_tx(&conn, "buy", "15", "165.3", day(100));
+        let s = record_manual(&conn, &manual(day(200), "3"))
+            .unwrap()
+            .split
+            .id;
+        let added = new_tx(&conn, "10", "100", day(150));
+        assert_eq!(basis(&conn, "investment_transactions", &added), one(&s));
+
+        // The same ratio: the entered values come back exactly.
+        revert(&conn, &s).unwrap();
+        record_manual(&conn, &manual(day(200), "3")).unwrap();
+        assert_eq!(tx_values(&conn, &added), pair("10", "100"));
+        assert_eq!(entry(&conn, &added), ("10".into(), "100".into(), one(&s)));
+
+        // Another ratio: every row as if it had been entered before the split.
+        revert(&conn, &s).unwrap();
+        assert_eq!(tx_values(&conn, &added), pair("3.33333333", "300"));
+        let r = record_manual(&conn, &manual(day(200), "2")).unwrap();
+        assert_eq!(r.split.status, StockSplitStatus::Applied);
+        assert_eq!(r.split.numerator, "2");
+        assert_eq!(
+            entry(&conn, &added),
+            ("3.33333333".into(), "300".into(), None)
+        );
+        assert_eq!(tx_values(&conn, &added), pair("6.66666666", "150"));
+        assert_eq!(basis(&conn, "investment_transactions", &added), one(&s));
+        assert_eq!(tx_values(&conn, &old), pair("30", "82.65"));
+    }
+
+    /// The final fix wave: deleting a reverted manual split that an entry basis names re-bases
+    /// those rows first, so they keep the units a revert showed (as before the entry values
+    /// existed), and nothing names the deleted id any more.
+    #[test]
+    fn deleting_a_split_named_in_an_entry_basis_keeps_the_reverted_units() {
+        let conn = migrated();
+        let old = raw_tx(&conn, "buy", "15", "165.3", day(100));
+        let s = record_manual(&conn, &manual(day(200), "3"))
+            .unwrap()
+            .split
+            .id;
+        let added = new_tx(&conn, "10", "100", day(150));
+        let err = delete_manual(&conn, &s).unwrap_err();
+        assert_eq!(
+            validation_key(err),
+            "validation.stockSplitNotDeletable",
+            "an applied split is reverted first"
+        );
+        revert(&conn, &s).unwrap();
+
+        delete_manual(&conn, &s).unwrap();
+        assert!(matches!(get(&conn, &s), Err(AppError::NotFound(_))));
+        assert_eq!(
+            entry(&conn, &added),
+            ("3.33333333".into(), "300".into(), None)
+        );
+        assert_eq!(tx_values(&conn, &added), pair("3.33333333", "300"));
+        assert_eq!(basis(&conn, "investment_transactions", &added), None);
+        assert_eq!(tx_values(&conn, &old), pair("15", "165.3"));
+    }
+
+    /// The final fix wave: a dismiss never fails on a history that already sells more than it
+    /// holds (legacy or imported data); the position gets the repair's unchecked quantity.
+    #[test]
+    fn a_dismiss_never_fails_on_an_oversold_history() {
+        let conn = migrated();
+        raw_tx(&conn, "buy", "1", "40", day(100));
+        raw_tx(&conn, "sell", "2", "40", day(150));
+        let s = split_row(&conn, day(200), 4, 1, "pending");
+
+        let dismissed = dismiss(&conn, &s).unwrap();
+        assert_eq!(dismissed.status, StockSplitStatus::Dismissed);
+        assert_eq!(held(&conn), "0");
+    }
+
+    /// Ruling T18c fix 1: an edit that leaves quantity and price as they are shown (a fee-only
+    /// or date-only edit) keeps the entry values, so the rounded current values never become
+    /// the entry; an edit of the units replaces them.
+    #[test]
+    fn an_edit_that_keeps_the_shown_units_keeps_the_entry() {
+        let conn = migrated();
+        let buy = raw_tx(&conn, "buy", "7", "1044.365", day(100));
+        let s = split_row(&conn, day(200), 1, 3, "pending");
+        apply(&conn, &s).unwrap();
+        assert_eq!(tx_values(&conn, &buy), pair("2.33333333", "3133.095"));
+        let entry = |id: &str| -> (String, String, Option<String>) {
+            conn.query_row(
+                "SELECT entry_quantity, entry_price_per_unit, entry_basis
+                 FROM investment_transactions WHERE id = ?1",
+                [id],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("entry")
+        };
+        let edit = |quantity: &str, on: i64, fee: Option<&str>| InsertInvestmentTransaction {
+            investment_id: Some("inv-AAPL".into()),
+            tx_type: "buy".into(),
+            ticker: "AAPL".into(),
+            company_name: "Apple".into(),
+            quantity: quantity.into(),
+            price_per_unit: "3133.095".into(),
+            currency: "USD".into(),
+            transaction_date: on,
+            fee: fee.map(Into::into),
+        };
+
+        update_transaction(&conn, &buy, &edit("2.33333333", day(100), Some("1.5"))).unwrap();
+        update_transaction(&conn, &buy, &edit("2.33333333", day(120), None)).unwrap();
+        assert_eq!(entry(&buy), ("7".into(), "1044.365".into(), None));
+        assert_eq!(tx_values(&conn, &buy), pair("2.33333333", "3133.095"));
+        revert(&conn, &s).unwrap();
+        assert_eq!(tx_values(&conn, &buy), pair("7", "1044.365"));
+
+        apply(&conn, &s).unwrap();
+        update_transaction(&conn, &buy, &edit("3", day(120), None)).unwrap();
+        assert_eq!(entry(&buy), ("3".into(), "3133.095".into(), one(&s)));
+    }
+
+    /// A trade entered while a split is applied keeps that split in its entry basis; reverting
+    /// the split derives the trade without it, and applying again gives back exactly what was
+    /// entered.
+    #[test]
+    fn an_entry_made_under_an_applied_split_round_trips_through_a_revert() {
+        let conn = migrated();
+        raw_tx(&conn, "buy", "15", "165.3", day(100));
+        let s = split_row(&conn, day(200), 3, 1, "pending");
+        apply(&conn, &s).unwrap();
+        let added = new_tx(&conn, "10", "100", day(150));
+
+        revert(&conn, &s).unwrap();
+        assert_eq!(tx_values(&conn, &added), pair("3.33333333", "300"));
+        assert_eq!(basis(&conn, "investment_transactions", &added), None);
+        apply(&conn, &s).unwrap();
+        assert_eq!(tx_values(&conn, &added), pair("10", "100"));
+        assert_eq!(basis(&conn, "investment_transactions", &added), one(&s));
+    }
+
+    #[test]
+    fn a_new_transaction_dated_before_an_applied_split_carries_it() {
+        let conn = migrated();
+        let s = split_row(&conn, day(200), 4, 1, "pending");
+        apply(&conn, &s).unwrap();
+
+        let id = new_tx(&conn, "8", "40", day(150));
+        assert_eq!(
+            basis(&conn, "investment_transactions", &id),
+            Some(format!(r#"["{s}"]"#))
+        );
+        let later = new_tx(&conn, "2", "45", day(250));
+        assert_eq!(basis(&conn, "investment_transactions", &later), None);
+
+        let edit = |on: i64| InsertInvestmentTransaction {
+            investment_id: Some("inv-AAPL".into()),
+            tx_type: "buy".into(),
+            ticker: "AAPL".into(),
+            company_name: "Apple".into(),
+            quantity: "2".into(),
+            price_per_unit: "45".into(),
+            currency: "USD".into(),
+            transaction_date: on,
+            fee: None,
+        };
+        update_transaction(&conn, &later, &edit(day(120))).unwrap();
+        assert_eq!(basis(&conn, "investment_transactions", &later), one(&s));
+        update_transaction(&conn, &later, &edit(day(260))).unwrap();
+        assert_eq!(basis(&conn, "investment_transactions", &later), None);
+    }
+
+    #[test]
+    fn an_override_set_after_the_split_carries_no_basis() {
+        let conn = migrated();
+        let s = split_row(&conn, day(200), 4, 1, "pending");
+        apply(&conn, &s).unwrap();
+
+        let price =
+            price_overrides::upsert_stock_price(&conn, "AAPL", "42", "USD", day(300)).unwrap();
+        assert_eq!(basis(&conn, "stock_price_overrides", &price.id), None);
+        let dividend =
+            price_overrides::upsert_dividend(&conn, "AAPL", "0.25", "USD", day(300)).unwrap();
+        assert_eq!(basis(&conn, "dividend_overrides", &dividend.id), None);
+        let watched = stock_monitor::follow_stock(
+            &conn,
+            &crate::models::stock_monitor::InsertWatchedStock {
+                ticker: "AAPL".into(),
+            },
+        )
+        .unwrap();
+        stock_monitor::set_target_price(&conn, "AAPL", Some("50".into()), Some("above".into()))
+            .unwrap();
+        assert_eq!(basis(&conn, "watched_stocks", &watched.id), None);
+
+        // The basis follows the write's own stamp: one dated before the split carries it.
+        price_overrides::upsert_dividend(&conn, "AAPL", "1", "USD", day(150)).unwrap();
+        assert_eq!(basis(&conn, "dividend_overrides", &dividend.id), one(&s));
     }
 }

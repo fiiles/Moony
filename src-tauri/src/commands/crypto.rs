@@ -14,7 +14,6 @@ use crate::services::price_api;
 use crate::services::pricing::AssetKind;
 use crate::services::ticker_history;
 use tauri::{AppHandle, Emitter, State};
-use uuid::Uuid;
 
 /// Every crypto position in `report_currency` (positions service, one quote snapshot).
 #[tauri::command]
@@ -345,18 +344,10 @@ pub async fn update_crypto_price(
     price: String,
     currency: String,
 ) -> Result<()> {
-    let id = Uuid::new_v4().to_string();
     let now = chrono::Utc::now().timestamp();
-    let symbol_upper = symbol.to_uppercase();
 
     db.with_conn(|conn| {
-        conn.execute(
-            "INSERT INTO crypto_price_overrides (id, symbol, price, currency, updated_at)
-             VALUES (?1, ?2, ?3, ?4, ?5)
-             ON CONFLICT(symbol) DO UPDATE SET price = ?3, currency = ?4, updated_at = ?5",
-            rusqlite::params![id, symbol_upper, price, currency, now],
-        )?;
-        Ok(())
+        crate::services::price_overrides::upsert_crypto_price(conn, &symbol, &price, &currency, now)
     })?;
 
     // Update portfolio snapshot

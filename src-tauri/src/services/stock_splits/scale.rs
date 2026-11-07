@@ -20,8 +20,18 @@ pub enum Rounding {
 ///
 /// Errors: `validation.amountInvalid` for non-numeric or negative text, `div == 0`, `mul == 0`.
 pub fn scale_amount(text: &str, mul: u64, div: u64, rounding: Rounding) -> Result<String> {
+    scale_ratio(text, u128::from(mul), u128::from(div), rounding)
+}
+
+/// Largest factor [`scale_ratio`] accepts: the long multiplication and division stay in `u128`.
+pub const MAX_FACTOR: u128 = 10_u128.pow(36);
+
+/// [`scale_amount`] with a factor of several splits combined: `text × mul / div`, one rounding.
+///
+/// Errors: as [`scale_amount`], and for `mul` or `div` above [`MAX_FACTOR`].
+pub fn scale_ratio(text: &str, mul: u128, div: u128, rounding: Rounding) -> Result<String> {
     let invalid = || AppError::Validation("validation.amountInvalid".into());
-    if mul == 0 || div == 0 || !is_unsigned_decimal(text) {
+    if mul == 0 || div == 0 || mul > MAX_FACTOR || div > MAX_FACTOR || !is_unsigned_decimal(text) {
         return Err(invalid());
     }
     let canonical = canonical_amount(text);
@@ -85,12 +95,12 @@ fn is_unsigned_decimal(text: &str) -> bool {
         && digits(exponent)
 }
 
-/// Long multiplication of a digit string by a small factor.
-fn multiply(digits: &[u8], factor: u64) -> Vec<u8> {
+/// Long multiplication of a digit string by a factor up to [`MAX_FACTOR`].
+fn multiply(digits: &[u8], factor: u128) -> Vec<u8> {
     let mut out = Vec::with_capacity(digits.len() + 20);
     let mut carry: u128 = 0;
     for &digit in digits.iter().rev() {
-        let product = u128::from(digit) * u128::from(factor) + carry;
+        let product = u128::from(digit) * factor + carry;
         out.push((product % 10) as u8);
         carry = product / 10;
     }
@@ -102,9 +112,9 @@ fn multiply(digits: &[u8], factor: u64) -> Vec<u8> {
     out
 }
 
-/// Long division of `digits` followed by `extra_zeros` zeros by `divisor`, truncated.
-fn divide(digits: &[u8], extra_zeros: usize, divisor: u64) -> Vec<u8> {
-    let divisor = u128::from(divisor);
+/// Long division of `digits` followed by `extra_zeros` zeros by `divisor` (up to
+/// [`MAX_FACTOR`]), truncated.
+fn divide(digits: &[u8], extra_zeros: usize, divisor: u128) -> Vec<u8> {
     let mut remainder: u128 = 0;
     digits
         .iter()
@@ -210,6 +220,22 @@ mod tests {
         assert_eq!(scale_amount("1e3", 2, 1, Rounding::HalfUp).unwrap(), "2000");
         assert_eq!(scale_amount(".5", 3, 1, Rounding::HalfUp).unwrap(), "1.5");
         assert_eq!(scale_amount("0", 3, 7, Rounding::HalfUp).unwrap(), "0");
+    }
+
+    #[test]
+    fn combined_factors_round_once() {
+        // 10 × 2/3 in one step, not (10 / 3, rounded) × 2.
+        assert_eq!(
+            scale_ratio("10", 2, 3, Rounding::HalfUp).unwrap(),
+            "6.66666667"
+        );
+        let big = 1_000_000_u128.pow(4);
+        assert_eq!(
+            scale_ratio("2", big, big / 2, Rounding::HalfUp).unwrap(),
+            "4"
+        );
+        assert!(scale_ratio("1", MAX_FACTOR + 1, 1, Rounding::HalfUp).is_err());
+        assert!(scale_ratio("1", 1, MAX_FACTOR + 1, Rounding::HalfUp).is_err());
     }
 
     #[test]

@@ -15,6 +15,24 @@ use uuid::Uuid;
 pub fn recalculate_asset_totals(conn: &rusqlite::Connection, asset_id: &str) -> Result<()> {
     use crate::models::validation::finite_number;
     use crate::services::fx;
+    // Without transactions the quantity and average price are typed (ruling T18b): with sync,
+    // the typed values a transaction overwrote come back, else the stored ones stay; without
+    // sync the totals read zero as before.
+    let has_transactions: bool = conn.query_row(
+        "SELECT EXISTS (SELECT 1 FROM other_asset_transactions WHERE asset_id = ?1)",
+        [asset_id],
+        |r| r.get(0),
+    )?;
+    if !has_transactions
+        && crate::services::sync::repair::typed::restore(
+            conn,
+            "other_assets",
+            asset_id,
+            "other_asset_transactions",
+        )?
+    {
+        return Ok(());
+    }
     let exact_quantity = crate::services::investments::exact_held_quantity(
         conn,
         "other_asset_transactions",
@@ -34,7 +52,7 @@ pub fn recalculate_asset_totals(conn: &rusqlite::Connection, asset_id: &str) -> 
         "validation.invalidPrice",
     )?;
     let mut stmt = conn.prepare(
-        "SELECT type, quantity, price_per_unit, currency, transaction_date FROM other_asset_transactions WHERE asset_id = ?1",
+        "SELECT type, quantity, price_per_unit, currency, transaction_date FROM other_asset_transactions WHERE asset_id = ?1 ORDER BY id",
     )?;
     let rows = stmt
         .query_map([asset_id], |row| {

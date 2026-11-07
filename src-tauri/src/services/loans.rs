@@ -90,6 +90,7 @@ fn ledger_event(event: &LoanEvent) -> Result<LedgerEvent> {
         }
     };
     Ok(LedgerEvent {
+        id: event.id.clone(),
         day: day_floor(event.event_day),
         created_at: event.created_at,
         kind,

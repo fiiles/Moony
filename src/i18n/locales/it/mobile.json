@@ -29,7 +29,8 @@
       "freeCashNote": "sui conti",
       "unchanged": "invariato",
       "noHistory": "nessuno storico"
-    }
+    },
+    "emptyDescription": "Aggiungi un conto o un investimento e Moony costruisce da lì panoramica, grafici e andamenti. Tutto resta su questo telefono."
   },
   "cashflow": {
     "subtitle_one": "Entrate e uscite effettive da {{count}} conto",

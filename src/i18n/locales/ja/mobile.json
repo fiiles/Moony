@@ -29,7 +29,8 @@
       "freeCashNote": "口座内",
       "unchanged": "変化なし",
       "noHistory": "履歴なし"
-    }
+    },
+    "emptyDescription": "口座または投資を追加すると、Moony が概要、グラフ、推移を作成します。すべてのデータはこのスマートフォン内に保存されます。"
   },
   "cashflow": {
     "subtitle_other": "{{count}}口座の実際の収入と支出",

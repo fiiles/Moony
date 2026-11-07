@@ -29,7 +29,8 @@
       "freeCashNote": "på konton",
       "unchanged": "oförändrat",
       "noHistory": "ingen historik"
-    }
+    },
+    "emptyDescription": "Lägg till ett konto eller en investering så bygger Moony din översikt, dina diagram och trender utifrån det. Allt stannar på den här telefonen."
   },
   "cashflow": {
     "subtitle_one": "Faktiska inkomster och utgifter från {{count}} konto",

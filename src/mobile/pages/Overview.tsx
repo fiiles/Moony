@@ -394,13 +394,15 @@ function MoveRows({ moves }: { moves: RecentMove[] }) {
  */
 function EmptyOverview() {
   const { t } = useTranslation('dashboard');
+  const { t: tm } = useTranslation('mobile');
   const [, setLocation] = useLocation();
   return (
     <>
       <ScaledEmptyState
         icon={<Wallet />}
         title={t('empty.title')}
-        description={t('empty.description')}
+        // The desktop's sentence says "on this computer"
+        description={tm('overview.emptyDescription')}
         className="px-5 py-10"
         action={
           <Button

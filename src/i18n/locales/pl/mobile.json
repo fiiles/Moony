@@ -29,7 +29,8 @@
       "freeCashNote": "na kontach",
       "unchanged": "bez zmian",
       "noHistory": "brak historii"
-    }
+    },
+    "emptyDescription": "Dodaj konto lub inwestycję, a Moony zbuduje z nich twój przegląd, wykresy i trendy. Wszystko zostaje na tym telefonie."
   },
   "cashflow": {
     "subtitle_one": "Rzeczywiste przychody i wydatki z {{count}} konta",

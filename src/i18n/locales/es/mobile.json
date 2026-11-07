@@ -29,7 +29,8 @@
       "freeCashNote": "en cuentas",
       "unchanged": "sin cambios",
       "noHistory": "sin historial"
-    }
+    },
+    "emptyDescription": "Añade una cuenta o una inversión y Moony construirá a partir de ella tu resumen, gráficos y tendencias. Todo se queda en este teléfono."
   },
   "cashflow": {
     "subtitle_one": "Ingresos y gastos reales de {{count}} cuenta",

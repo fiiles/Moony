@@ -29,7 +29,8 @@
       "freeCashNote": "on accounts",
       "unchanged": "unchanged",
       "noHistory": "no history yet"
-    }
+    },
+    "emptyDescription": "Add an account or an investment and Moony builds your overview, charts and trends from it. Everything stays on this phone."
   },
   "cashflow": {
     "subtitle_one": "Actual income and expenses from {{count}} account",

@@ -29,7 +29,8 @@
       "freeCashNote": "auf Konten",
       "unchanged": "unverändert",
       "noHistory": "kein Verlauf"
-    }
+    },
+    "emptyDescription": "Fügen Sie ein Konto oder eine Geldanlage hinzu, und Moony erstellt daraus Ihre Übersicht, Diagramme und Trends. Alles bleibt auf diesem Telefon."
   },
   "cashflow": {
     "subtitle_one": "Tatsächliche Einnahmen und Ausgaben von {{count}} Konto",

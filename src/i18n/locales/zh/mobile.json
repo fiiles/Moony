@@ -29,7 +29,8 @@
       "freeCashNote": "账户中",
       "unchanged": "无变化",
       "noHistory": "暂无历史"
-    }
+    },
+    "emptyDescription": "添加账户或投资后，Moony 会据此生成您的概览、图表和趋势。所有内容都保存在这部手机上。"
   },
   "cashflow": {
     "subtitle_other": "来自 {{count}} 个账户的实际收入和支出",

@@ -29,7 +29,8 @@
       "freeCashNote": "na účtech",
       "unchanged": "beze změny",
       "noHistory": "bez historie"
-    }
+    },
+    "emptyDescription": "Přidejte účet nebo investici a Moony z nich sestaví přehled, grafy a vývoj. Všechna data zůstávají v tomto telefonu."
   },
   "cashflow": {
     "subtitle_one": "Skutečné příjmy a výdaje z {{count}} účtu",

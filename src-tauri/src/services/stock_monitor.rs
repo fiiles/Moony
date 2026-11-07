@@ -101,12 +101,13 @@ pub fn set_target_price(
             }
         }),
     };
-    // The target is entered in today's units (sync spec D27).
+    // The target is entered in today's units: it is also the entry value (ruling T18c).
     let now = chrono::Utc::now().timestamp();
     let basis = basis_for_day(conn, &ticker, now)?;
     let n = conn.execute(
         "UPDATE watched_stocks
-         SET target_price = ?1, target_direction = ?2, updated_at = ?4, split_basis = ?5
+         SET target_price = ?1, target_direction = ?2, updated_at = ?4, split_basis = ?5,
+             entry_target_price = ?1, entry_basis = ?5
          WHERE ticker = ?3",
         rusqlite::params![normalized, direction, ticker, now, basis],
     )?;
@@ -339,7 +340,9 @@ mod tests {
                 notes TEXT NOT NULL DEFAULT '',
                 created_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-                split_basis TEXT
+                split_basis TEXT,
+                entry_target_price TEXT,
+                entry_basis TEXT
             );
             CREATE TABLE stock_splits (
                 id TEXT PRIMARY KEY,

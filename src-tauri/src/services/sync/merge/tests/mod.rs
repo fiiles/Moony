@@ -200,8 +200,9 @@ fn watched_id() -> String {
 
 fn watch(conn: &Connection, notes: &str, target: Option<&str>) {
     conn.execute(
-        "INSERT INTO watched_stocks (id, ticker, target_price, notes, created_at, updated_at) \
-         VALUES (?1, 'AAPL', ?2, ?3, 100, 100)",
+        "INSERT INTO watched_stocks (id, ticker, target_price, entry_target_price, notes, \
+           created_at, updated_at) \
+         VALUES (?1, 'AAPL', ?2, ?2, ?3, 100, 100)",
         rusqlite::params![watched_id(), target, notes],
     )
     .expect("insert watched stock");

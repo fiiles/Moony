@@ -2986,11 +2986,15 @@ mod migration_028 {
 /// the per-author quarantine), `sync_own_log` / `sync_unsent` this device's own hash chain and
 /// unsent envelopes, `sync_typed` the value a person typed in a column a repair shows
 /// differently (a renamed name, a cleared link) and the value the repair assigned. `sync_devices.id` is the device ID as 32 lowercase hex characters.
-/// `split_basis` records which applied splits a quantity or price is already expressed in:
-/// a JSON array of split IDs sorted ascending, `NULL` when none. The backfill is the meaning
-/// the rewrite gave today's data: a transaction is on the basis of every applied split of its
-/// ticker that took effect after its date; a price/dividend/watch row of every applied split
-/// that took effect after it was last updated.
+/// Split units (ruling T18c): each split-scaled row keeps the values as they were entered
+/// (`entry_*`) and `entry_basis`, the applied splits those values already include; these sync.
+/// The current-unit columns (`quantity`/`price_per_unit`, `price`, `target_price`,
+/// `yearly_dividend_sum`) and `split_basis`, the applied splits the current values include, are
+/// derived from them on every device (`stock_splits::reconcile_ticker`). Both bases are JSON
+/// arrays of split IDs sorted ascending, `NULL` when none. The backfill takes today's values as
+/// entered: `split_basis` is the meaning the rewrite gave them (a transaction includes every
+/// applied split of its ticker that took effect after its date, a price/dividend/watch row every
+/// applied split that took effect after it was last updated), and `entry_basis` is the same.
 pub(crate) const MIGRATION_029: &str = r#"
 CREATE TABLE sync_state (
     id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -3021,9 +3025,18 @@ CREATE TABLE sync_devices (id TEXT PRIMARY KEY, public_key TEXT, name TEXT NOT N
     removed INTEGER NOT NULL DEFAULT 0 CHECK (removed IN (0, 1)));
 
 ALTER TABLE investment_transactions ADD COLUMN split_basis TEXT;
+ALTER TABLE investment_transactions ADD COLUMN entry_quantity TEXT;
+ALTER TABLE investment_transactions ADD COLUMN entry_price_per_unit TEXT;
+ALTER TABLE investment_transactions ADD COLUMN entry_basis TEXT;
 ALTER TABLE stock_price_overrides ADD COLUMN split_basis TEXT;
+ALTER TABLE stock_price_overrides ADD COLUMN entry_price TEXT;
+ALTER TABLE stock_price_overrides ADD COLUMN entry_basis TEXT;
 ALTER TABLE watched_stocks ADD COLUMN split_basis TEXT;
+ALTER TABLE watched_stocks ADD COLUMN entry_target_price TEXT;
+ALTER TABLE watched_stocks ADD COLUMN entry_basis TEXT;
 ALTER TABLE dividend_overrides ADD COLUMN split_basis TEXT;
+ALTER TABLE dividend_overrides ADD COLUMN entry_yearly_dividend_sum TEXT;
+ALTER TABLE dividend_overrides ADD COLUMN entry_basis TEXT;
 
 UPDATE investment_transactions SET split_basis = (
     SELECT json_group_array(id) FROM (
@@ -3053,6 +3066,13 @@ UPDATE dividend_overrides SET split_basis = (
           AND s.effective_day > dividend_overrides.updated_at
         ORDER BY s.id));
 UPDATE dividend_overrides SET split_basis = NULL WHERE split_basis = '[]';
+
+UPDATE investment_transactions SET entry_quantity = quantity,
+    entry_price_per_unit = price_per_unit, entry_basis = split_basis;
+UPDATE stock_price_overrides SET entry_price = price, entry_basis = split_basis;
+UPDATE watched_stocks SET entry_target_price = target_price, entry_basis = split_basis;
+UPDATE dividend_overrides SET entry_yearly_dividend_sum = yearly_dividend_sum,
+    entry_basis = split_basis;
 "#;
 
 #[cfg(test)]
@@ -3145,6 +3165,36 @@ mod migration_029 {
         );
         assert_eq!(basis("watched_stocks", "w1"), None);
         assert_eq!(basis("dividend_overrides", "v1"), Some(r#"["e"]"#.into()));
+
+        // Today's values are the entry values, entered on the same basis (ruling T18c).
+        let entry = |sql: &str| -> (Option<String>, Option<String>) {
+            conn.query_row(sql, [], |r| Ok((r.get(0)?, r.get(1)?)))
+                .expect("entry")
+        };
+        let t10: (String, String, Option<String>) = conn
+            .query_row(
+                "SELECT entry_quantity, entry_price_per_unit, entry_basis
+                 FROM investment_transactions WHERE id = 't-day10'",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            )
+            .expect("t-day10");
+        assert_eq!(t10, ("1".into(), "1".into(), Some(r#"["a","b"]"#.into())));
+        assert_eq!(
+            entry("SELECT entry_price, entry_basis FROM stock_price_overrides WHERE id = 'o1'"),
+            (Some("1".into()), Some(r#"["a","b"]"#.into()))
+        );
+        assert_eq!(
+            entry("SELECT entry_target_price, entry_basis FROM watched_stocks WHERE id = 'w1'"),
+            (None, None)
+        );
+        assert_eq!(
+            entry(
+                "SELECT entry_yearly_dividend_sum, entry_basis FROM dividend_overrides
+                 WHERE id = 'v1'"
+            ),
+            (Some("1".into()), Some(r#"["e"]"#.into()))
+        );
     }
 
     #[test]

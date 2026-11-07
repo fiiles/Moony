@@ -355,8 +355,20 @@ fn local_recomputed_and_recomputed_or_typed_sets_are_pinned() {
         ("real_estate", &["updated_at", "photos"]),
         ("other_assets", &["updated_at"]),
     ];
-    let recomputed: &[(&str, &[&str])] =
-        &[("loans", &["balance_anchor_amount", "balance_anchor_date"])];
+    let recomputed: &[(&str, &[&str])] = &[
+        ("loans", &["balance_anchor_amount", "balance_anchor_date"]),
+        // Ruling T18c: current split units are derived from the entry values.
+        (
+            "investment_transactions",
+            &["price_per_unit", "quantity", "split_basis"],
+        ),
+        ("stock_price_overrides", &["price", "split_basis"]),
+        ("watched_stocks", &["split_basis", "target_price"]),
+        (
+            "dividend_overrides",
+            &["split_basis", "yearly_dividend_sum"],
+        ),
+    ];
     type Source<'a> = (&'a [&'a str], &'a str, &'a str);
     let rot: &[(&str, &[Source])] = &[
         (
@@ -447,24 +459,24 @@ fn the_exact_column_groups_are_pinned() {
         (
             "investment_transactions",
             &[&[
-                "quantity",
-                "price_per_unit",
+                "entry_quantity",
+                "entry_price_per_unit",
                 "fee",
                 "currency",
-                "split_basis",
+                "entry_basis",
             ]],
         ),
         (
             "stock_price_overrides",
-            &[&["price", "currency", "split_basis"]],
+            &[&["entry_price", "currency", "entry_basis"]],
         ),
         (
             "dividend_overrides",
-            &[&["yearly_dividend_sum", "currency", "split_basis"]],
+            &[&["entry_yearly_dividend_sum", "currency", "entry_basis"]],
         ),
         (
             "watched_stocks",
-            &[&["target_price", "target_direction", "split_basis"]],
+            &[&["entry_target_price", "target_direction", "entry_basis"]],
         ),
         ("investment_dividends", &[&["gross_amount", "currency"]]),
         ("real_estate_valuations", &[&["value", "currency"]]),

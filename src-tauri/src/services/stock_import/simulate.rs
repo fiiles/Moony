@@ -1201,7 +1201,10 @@ pub(crate) mod test_db {
                 import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL,
                 external_id TEXT,
                 fee TEXT,
-                split_basis TEXT
+                split_basis TEXT,
+                entry_quantity TEXT,
+                entry_price_per_unit TEXT,
+                entry_basis TEXT
             );
             CREATE TABLE stock_investment_tags (
                 investment_id TEXT NOT NULL REFERENCES stock_investments(id) ON DELETE CASCADE,
@@ -1237,14 +1240,18 @@ pub(crate) mod test_db {
                 ticker TEXT NOT NULL UNIQUE,
                 price TEXT NOT NULL,
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-                split_basis TEXT
+                split_basis TEXT,
+                entry_price TEXT,
+                entry_basis TEXT
             );
             CREATE TABLE watched_stocks (
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL UNIQUE,
                 target_price TEXT,
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-                split_basis TEXT
+                split_basis TEXT,
+                entry_target_price TEXT,
+                entry_basis TEXT
             );
             CREATE TABLE exchange_rate_history (
                 date INTEGER NOT NULL,
@@ -1257,12 +1264,36 @@ pub(crate) mod test_db {
                 ticker TEXT NOT NULL UNIQUE,
                 yearly_dividend_sum TEXT NOT NULL,
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
-                split_basis TEXT
+                split_basis TEXT,
+                entry_yearly_dividend_sum TEXT,
+                entry_basis TEXT
             );
             CREATE TABLE dividend_data (
                 id TEXT PRIMARY KEY,
                 ticker TEXT NOT NULL UNIQUE
             );
+            -- A row written straight to the table was entered in today's units (ruling T18c).
+            CREATE TRIGGER entered_tx AFTER INSERT ON investment_transactions
+                WHEN NEW.entry_quantity IS NULL BEGIN
+                UPDATE investment_transactions SET entry_quantity = NEW.quantity,
+                    entry_price_per_unit = NEW.price_per_unit, entry_basis = NEW.split_basis
+                    WHERE id = NEW.id;
+            END;
+            CREATE TRIGGER entered_price AFTER INSERT ON stock_price_overrides
+                WHEN NEW.entry_price IS NULL BEGIN
+                UPDATE stock_price_overrides SET entry_price = NEW.price,
+                    entry_basis = NEW.split_basis WHERE id = NEW.id;
+            END;
+            CREATE TRIGGER entered_target AFTER INSERT ON watched_stocks
+                WHEN NEW.entry_target_price IS NULL BEGIN
+                UPDATE watched_stocks SET entry_target_price = NEW.target_price,
+                    entry_basis = NEW.split_basis WHERE id = NEW.id;
+            END;
+            CREATE TRIGGER entered_dividend AFTER INSERT ON dividend_overrides
+                WHEN NEW.entry_yearly_dividend_sum IS NULL BEGIN
+                UPDATE dividend_overrides SET entry_yearly_dividend_sum = NEW.yearly_dividend_sum,
+                    entry_basis = NEW.split_basis WHERE id = NEW.id;
+            END;
             "#,
         )
         .expect("schema");

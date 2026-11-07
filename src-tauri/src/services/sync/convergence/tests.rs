@@ -75,13 +75,13 @@ const SEED_OPS: [&str; 39] = [
 
 /// The two rngs of a run: the schedule (operation kinds, devices, pushes, pulls, orders) and the
 /// targets and arguments of the operations.
-struct Rngs {
-    schedule: StdRng,
-    target: StdRng,
+pub(super) struct Rngs {
+    pub(super) schedule: StdRng,
+    pub(super) target: StdRng,
 }
 
 impl Rngs {
-    fn new(seed: u64) -> Self {
+    pub(super) fn new(seed: u64) -> Self {
         Rngs {
             schedule: StdRng::seed_from_u64(seed),
             target: StdRng::seed_from_u64(seed ^ 0x007A_86E7_5EED),
@@ -564,7 +564,7 @@ fn a_seed_replays_its_operations_and_outcomes() {
 }
 
 /// A vault of three devices that exchanged everything, after `setup` on device 0.
-fn synced_vault(label: &str, setup: impl FnOnce(&mut Vault, &mut Rngs)) -> Vault {
+pub(super) fn synced_vault(label: &str, setup: impl FnOnce(&mut Vault, &mut Rngs)) -> Vault {
     let mut rngs = Rngs::new(1);
     let mut vault = vault(label.into());
     setup(&mut vault, &mut rngs);

@@ -108,12 +108,14 @@ pub(super) static TABLES: &[TableSpec] = &[
     TableSpec {
         name: "investment_transactions",
         class: TableClass::Synced,
+        // Ruling T18c: the entry values and their basis sync; the current units are derived.
+        recomputed: &["quantity", "price_per_unit", "split_basis"],
         groups: &[&[
-            "quantity",
-            "price_per_unit",
+            "entry_quantity",
+            "entry_price_per_unit",
             "fee",
             "currency",
-            "split_basis",
+            "entry_basis",
         ]],
         ..BASE
     },
@@ -137,19 +139,22 @@ pub(super) static TABLES: &[TableSpec] = &[
     TableSpec {
         name: "watched_stocks",
         class: TableClass::Synced,
-        groups: &[&["target_price", "target_direction", "split_basis"]],
+        recomputed: &["target_price", "split_basis"],
+        groups: &[&["entry_target_price", "target_direction", "entry_basis"]],
         ..BASE
     },
     TableSpec {
         name: "stock_price_overrides",
         class: TableClass::Synced,
-        groups: &[&["price", "currency", "split_basis"]],
+        recomputed: &["price", "split_basis"],
+        groups: &[&["entry_price", "currency", "entry_basis"]],
         ..BASE
     },
     TableSpec {
         name: "dividend_overrides",
         class: TableClass::Synced,
-        groups: &[&["yearly_dividend_sum", "currency", "split_basis"]],
+        recomputed: &["yearly_dividend_sum", "split_basis"],
+        groups: &[&["entry_yearly_dividend_sum", "currency", "entry_basis"]],
         ..BASE
     },
     TableSpec {

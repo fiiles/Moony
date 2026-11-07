@@ -14,6 +14,7 @@
 //! wall-clock stamps still differ from run to run.
 
 mod ops;
+mod split_seeds;
 mod tests;
 
 use std::collections::{BTreeMap, BTreeSet, VecDeque};

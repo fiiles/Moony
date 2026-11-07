@@ -80,9 +80,10 @@ fn stock_tx(
         conn,
         &format!(
             "INSERT INTO investment_transactions (id, investment_id, type, ticker, company_name, \
-               quantity, price_per_unit, currency, transaction_date) \
+               quantity, price_per_unit, currency, transaction_date, entry_quantity, \
+               entry_price_per_unit) \
              VALUES ('{id}', '{owner}', '{kind}', '{ticker}', '{ticker} Inc', '{qty}', '100', \
-               'USD', {day})"
+               'USD', {day}, '{qty}', '100')"
         ),
     );
 }
@@ -112,8 +113,9 @@ fn oversold_merged_history_commits_with_the_unchecked_quantity() {
     assert_eq!(second, first);
 }
 
-/// An oversold ticker with an applied split: the reconcile cannot commit, the units stay as they
-/// are, and the position gets the unchecked quantity with one warning, not two.
+/// An oversold ticker with an applied split: the units are still derived from the entry values
+/// (ruling T18c: they must not depend on whether the holdings check passes), and the position
+/// gets the unchecked quantity with one warning, not two.
 #[test]
 fn an_oversold_ticker_with_splits_warns_once() {
     let conn = enabled();
@@ -134,7 +136,14 @@ fn an_oversold_ticker_with_splits_warns_once() {
         ),
         "0"
     );
-    assert_eq!(units(&conn, "t1"), ("15".into(), "100".into(), None));
+    assert_eq!(
+        units(&conn, "t1"),
+        ("30".into(), "50".into(), Some(r#"["sp1"]"#.into()))
+    );
+    assert_eq!(
+        units(&conn, "t2"),
+        ("20".into(), "50".into(), Some(r#"["sp1"]"#.into()))
+    );
 }
 
 #[test]
@@ -514,16 +523,17 @@ fn split_units_follow_the_merged_status() {
     );
 }
 
-/// Task 7 obligation (a): a basis naming a split that has no row (deleted on one device while
-/// another applied it) is tolerated: no error, no loop, the unknown ID stays.
+/// Task 7 obligation (a): an entry basis naming a split that has no row (deleted on one device
+/// while another applied it) is tolerated: no error, no loop; the unknown ID scales nothing and
+/// is not part of the derived `split_basis` (ruling T18c).
 #[test]
-fn a_split_basis_naming_a_missing_split_is_left_alone() {
+fn an_entry_basis_naming_a_missing_split_is_left_alone() {
     let conn = enabled();
     stock(&conn, "s1", "AAPL", "10");
     stock_tx(&conn, "t1", "s1", "AAPL", "buy", "10", DAY);
     merged(
         &conn,
-        r#"UPDATE investment_transactions SET split_basis = '["ghost"]' WHERE id = 't1'"#,
+        r#"UPDATE investment_transactions SET entry_basis = '["ghost"]' WHERE id = 't1'"#,
     );
     split(&conn, "sp1", "AAPL", "2", "applied");
     let touched = ticker_touched(&["AAPL"]);
@@ -533,7 +543,7 @@ fn a_split_basis_naming_a_missing_split_is_left_alone() {
     let expected = (
         "20".to_string(),
         "50".to_string(),
-        Some(r#"["ghost","sp1"]"#.to_string()),
+        Some(r#"["sp1"]"#.to_string()),
     );
     assert_eq!(units(&conn, "t1"), expected);
 
@@ -565,17 +575,17 @@ fn an_unreadable_split_skips_its_ticker_and_warns() {
     );
 }
 
-/// Task 7 obligation (b), the reachable case: a merged `split_basis` that is not JSON is
+/// Task 7 obligation (b), the reachable case: a merged `entry_basis` that is not JSON is
 /// reported by `stock_splits` as a database error, so without the pre-check it would abort the
 /// whole merge. It must fail only its ticker.
 #[test]
-fn an_unreadable_split_basis_skips_its_ticker_and_warns() {
+fn an_unreadable_entry_basis_skips_its_ticker_and_warns() {
     let conn = enabled();
     stock(&conn, "s1", "AAPL", "10");
     stock_tx(&conn, "t1", "s1", "AAPL", "buy", "10", DAY);
     merged(
         &conn,
-        "UPDATE investment_transactions SET split_basis = 'not-json' WHERE id = 't1'",
+        "UPDATE investment_transactions SET entry_basis = 'not-json' WHERE id = 't1'",
     );
     split(&conn, "sp-a", "AAPL", "2", "applied");
     stock(&conn, "s2", "MSFT", "10");
@@ -586,10 +596,7 @@ fn an_unreadable_split_basis_skips_its_ticker_and_warns() {
     let report = after_merge(&conn, &touched, NOW).expect("after_merge");
     assert_eq!(report.warnings.len(), 1, "{:?}", report.warnings);
     assert!(report.warnings[0].contains("AAPL"), "{:?}", report.warnings);
-    assert_eq!(
-        units(&conn, "t1"),
-        ("10".into(), "100".into(), Some("not-json".into()))
-    );
+    assert_eq!(units(&conn, "t1"), ("10".into(), "100".into(), None));
     assert_eq!(
         units(&conn, "t2"),
         ("20".into(), "50".into(), Some(r#"["sp-ok"]"#.into()))

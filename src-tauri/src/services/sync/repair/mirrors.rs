@@ -8,7 +8,7 @@
 
 use std::collections::BTreeSet;
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, OptionalExtension};
 
 use super::{attempt, RepairReport, Touched};
 use crate::error::{AppError, Result};
@@ -45,12 +45,22 @@ const OTHER_ASSETS: Positions = Positions {
     recalculate: other_assets::recalculate_asset_totals,
 };
 
-/// The tables carrying a `split_basis` (D27).
-const BASIS_TABLES: [&str; 4] = [
-    "investment_transactions",
-    "stock_price_overrides",
-    "watched_stocks",
-    "dividend_overrides",
+/// The tables whose current units are derived from entry values (D27, ruling T18c):
+/// `(table, [(current column, entry column)])`.
+const BASIS_TABLES: [(&str, &[(&str, &str)]); 4] = [
+    (
+        "investment_transactions",
+        &[
+            ("quantity", "entry_quantity"),
+            ("price_per_unit", "entry_price_per_unit"),
+        ],
+    ),
+    ("stock_price_overrides", &[("price", "entry_price")]),
+    ("watched_stocks", &[("target_price", "entry_target_price")]),
+    (
+        "dividend_overrides",
+        &[("yearly_dividend_sum", "entry_yearly_dividend_sum")],
+    ),
 ];
 
 pub fn run(
@@ -187,11 +197,14 @@ fn is_oversold(error: &AppError) -> bool {
         if key == "validation.sellExceedsHoldings" || key == "validation.stockSplitOversold")
 }
 
-/// Makes the ticker's rows match its merged split statuses (§7.2). A ticker with no split and no
-/// row carrying a basis has nothing to reconcile. A split row the reconcile cannot read (ratio,
-/// status) or a basis that is not a JSON list skips the ticker with a warning. An oversold history
-/// leaves the units as they are and sends the ticker's positions to the quantity fallback, which
-/// warns once per position.
+/// Derives the ticker's current units from the merged entry values and split statuses (§7.2,
+/// ruling T18c). A ticker with no split, no basis and every current value equal to its entry
+/// value has nothing to derive. A split row the reconcile cannot read (ratio, status), a basis
+/// that is not a JSON list or a missing entry value skips the ticker with a warning. The
+/// derivation (`stock_splits::derive_ticker`) does not check the holdings: the ticker's
+/// positions are recomputed afterwards with the other touched positions, where a merged history
+/// that sells more than it holds gets the quantity fallback (one warning per position). So the
+/// derived units are the same on every device whether or not the history oversells.
 fn reconcile(
     conn: &Connection,
     report: &mut RepairReport,
@@ -203,15 +216,22 @@ fn reconcile(
         [ticker],
         |r| r.get(0),
     )?;
-    let mut with_basis = 0_i64;
-    for table in BASIS_TABLES {
-        with_basis += conn.query_row(
-            &format!("SELECT COUNT(*) FROM {table} WHERE ticker = ?1 AND split_basis IS NOT NULL"),
+    let mut to_derive = 0_i64;
+    for (table, pairs) in BASIS_TABLES {
+        let differs = pairs
+            .iter()
+            .map(|(current, entry)| format!(" OR {current} IS NOT {entry}"))
+            .collect::<String>();
+        to_derive += conn.query_row(
+            &format!(
+                "SELECT COUNT(*) FROM {table} WHERE ticker = ?1
+                 AND (split_basis IS NOT NULL OR entry_basis IS NOT NULL{differs})"
+            ),
             [ticker],
             |r| r.get::<_, i64>(0),
         )?;
     }
-    if splits == 0 && with_basis == 0 {
+    if splits == 0 && to_derive == 0 {
         return Ok(());
     }
     if let Some(problem) = unreadable_split_data(conn, ticker)? {
@@ -221,10 +241,9 @@ fn reconcile(
         return Ok(());
     }
     match attempt(conn, || {
-        stock_splits::reconcile_ticker(conn, ticker).map(|_| ())
+        stock_splits::derive_ticker(conn, ticker).map(|_| ())
     })? {
-        Ok(()) => {}
-        Err(error) if is_oversold(&error) => {
+        Ok(()) => {
             let mut stmt = conn.prepare(
                 "SELECT DISTINCT investment_id FROM investment_transactions WHERE ticker = ?1",
             )?;
@@ -241,7 +260,8 @@ fn reconcile(
 }
 
 /// The first reason `reconcile_ticker` could not read the ticker's data, if any: a split whose
-/// ratio or status does not parse, or a `split_basis` that is not a JSON list of IDs.
+/// ratio or status does not parse, an `entry_basis` that is not a JSON list of IDs, or a row
+/// without its entry value.
 fn unreadable_split_data(conn: &Connection, ticker: &str) -> Result<Option<String>> {
     let splits: Vec<(String, String, String, String)> = {
         let mut stmt = conn.prepare(
@@ -263,10 +283,10 @@ fn unreadable_split_data(conn: &Connection, ticker: &str) -> Result<Option<Strin
             return Ok(Some(format!("split {id}: {error}")));
         }
     }
-    for table in BASIS_TABLES {
+    for (table, pairs) in BASIS_TABLES {
         let mut stmt = conn.prepare(&format!(
-            "SELECT id, split_basis FROM {table}
-             WHERE ticker = ?1 AND split_basis IS NOT NULL ORDER BY id"
+            "SELECT id, entry_basis FROM {table}
+             WHERE ticker = ?1 AND entry_basis IS NOT NULL ORDER BY id"
         ))?;
         let rows = stmt
             .query_map([ticker], |r| {
@@ -275,7 +295,27 @@ fn unreadable_split_data(conn: &Connection, ticker: &str) -> Result<Option<Strin
             .collect::<std::result::Result<Vec<_>, _>>()?;
         for (id, basis) in rows {
             if serde_json::from_str::<Vec<String>>(&basis).is_err() {
-                return Ok(Some(format!("{table} {id}: invalid split_basis {basis}")));
+                return Ok(Some(format!("{table} {id}: invalid entry_basis {basis}")));
+            }
+        }
+        // A watch without a target has neither value; every other row has its entry value.
+        if table == "watched_stocks" {
+            continue;
+        }
+        for (_, entry) in pairs.iter() {
+            let missing: Option<String> = conn
+                .query_row(
+                    &format!(
+                        "SELECT id FROM {table}
+                         WHERE ticker = ?1 AND {entry} IS NULL
+                         ORDER BY id LIMIT 1"
+                    ),
+                    [ticker],
+                    |r| r.get(0),
+                )
+                .optional()?;
+            if let Some(id) = missing {
+                return Ok(Some(format!("{table} {id}: no {entry}")));
             }
         }
     }

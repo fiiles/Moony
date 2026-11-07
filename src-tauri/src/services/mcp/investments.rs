@@ -459,7 +459,10 @@ mod bulk_tests {
                 import_batch_id TEXT REFERENCES stock_import_batches(id) ON DELETE SET NULL,
                 external_id TEXT,
                 fee TEXT,
-                split_basis TEXT
+                split_basis TEXT,
+                entry_quantity TEXT,
+                entry_price_per_unit TEXT,
+                entry_basis TEXT
             );
             CREATE TABLE stock_splits (
                 id TEXT PRIMARY KEY,

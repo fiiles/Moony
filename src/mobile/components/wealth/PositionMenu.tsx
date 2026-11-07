@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Coins, Ellipsis, Eye, Pencil, Receipt, Tag, Trash2 } from 'lucide-react';
+import { Coins, Ellipsis, Eye, Pencil, Receipt, Split, Tag, Trash2 } from 'lucide-react';
 import { useWatchedStocks } from '@/hooks/use-stock-monitor';
 import type { StockRow } from '@/utils/positions';
 import {
@@ -18,7 +18,7 @@ import { NavIconButton } from '@/mobile/shell/NavBar';
 
 /**
  * The `···` of a position (spec §8.8): Zapsat dividendu asks the page for its sheet
- * (`onAddDividend`), Upravit cenu and Odhad dividendy open the desktop's dialogs, Upravit název a
+ * (`onAddDividend`), Zapsat split for the splits dialog (`onSplits`), Upravit cenu and Odhad dividendy open the desktop's dialogs, Upravit název a
  * sheet, Sledovat adds the ticker to the watched ones (it says "Sledováno" and waits when it
  * already is), Smazat pozici asks the page to confirm and delete (`onDelete`). The delete is the
  * page's, not this menu's: the menu goes away as soon as the position drops out of what the page
@@ -29,10 +29,13 @@ export function PositionMenu({
   holding,
   onDelete,
   onAddDividend,
+  onSplits,
 }: {
   holding: StockRow;
   /** Zapsat dividendu: the page owns the sheet (it also opens it to edit a row's dividend). */
   onAddDividend: () => void;
+  /** Zapsat split: the page owns the splits dialog (the applied splits open it too). */
+  onSplits: () => void;
   /** Smazat pozici: the screen asks in its confirm sheet and deletes (`useDeleteAndLeave`). */
   onDelete: () => void;
 }) {
@@ -78,6 +81,10 @@ export function PositionMenu({
           <RowMenuItem disabled={following || follow.isPending} onSelect={() => follow.mutate()}>
             <Eye strokeWidth={1.75} aria-hidden />
             {following ? t('wealth.position.following') : t('wealth.position.follow')}
+          </RowMenuItem>
+          <RowMenuItem onSelect={onSplits}>
+            <Split strokeWidth={1.75} aria-hidden />
+            {ts('detail.menu.recordSplit')}
           </RowMenuItem>
           <DropdownMenuSeparator />
           <RowMenuItem variant="danger" onSelect={onDelete}>

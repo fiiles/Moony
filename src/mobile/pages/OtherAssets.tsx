@@ -20,7 +20,7 @@ import { LoadFailed } from '@/mobile/components/wealth/LoadFailed';
 import { useBack } from '@/mobile/hooks/use-back';
 import { useClassExport } from '@/mobile/hooks/use-class-export';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
-import { useOtherAssets } from '@/mobile/hooks/use-other-asset';
+import { useOtherAssets, useValuedDays } from '@/mobile/hooks/use-other-asset';
 import { OtherAssetAddSheet } from '@/mobile/sheets/OtherAssetAddSheet';
 import { NavIconButton, NavTextButton } from '@/mobile/shell/NavBar';
 import { otherAssetPath, routes } from '@/mobile/shell/routes';
@@ -128,7 +128,7 @@ export default function OtherAssets() {
 
 /**
  * An asset of the list (spec §8.8): the gem in the chip, the name over "12 × 1 850 Kč" — what is
- * held at its own price in its own currency, or the day it was last valued when nothing is held —
+ * held at its own price in its own currency, or the day of its newest valuation when nothing is held —
  * the value in the report currency over the gain against the purchase cost. A value that could not
  * be converted is "—" with no gain; an asset that cost nothing has no gain to measure either.
  */
@@ -137,11 +137,13 @@ function AssetRow({ row, currency }: { row: OtherAssetRow; currency: string }) {
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const { asset, quantity, price, priceCurrency, value, cost, gain, gainPct } = row;
+  // Only a row with nothing held says when it was valued: the others show what is held
+  const valued = useValuedDays(quantity > 0 ? [] : [asset]).get(asset.id) ?? asset.updatedAt;
 
   const sub =
     quantity > 0
       ? `${fmt.number(quantity, { maximumFractionDigits: QUANTITY_DIGITS })} × ${moneyText(price, priceCurrency, { decimals: priceDecimals(price, priceCurrency) })}`
-      : t('wealth.otherAssets.valuedOn', { date: fmt.day(asset.updatedAt) });
+      : t('wealth.otherAssets.valuedOn', { date: fmt.day(valued) });
 
   return (
     <EntityRow
@@ -155,7 +157,11 @@ function AssetRow({ row, currency }: { row: OtherAssetRow; currency: string }) {
       value={value === null ? '—' : moneyText(value, currency, { decimals: 0 })}
       valueSub={
         value !== null && gain !== null && cost !== null && cost > 0 ? (
-          <ChangeLine change={{ delta: gain, ratio: gainPct }} currency={currency} />
+          <ChangeLine
+            change={{ delta: gain, ratio: gainPct }}
+            currency={currency}
+            trail={t('wealth.stocks.sincePurchase')}
+          />
         ) : undefined
       }
       href={otherAssetPath(asset.id)}

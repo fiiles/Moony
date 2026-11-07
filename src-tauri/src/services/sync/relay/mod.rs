@@ -9,6 +9,8 @@ use serde::Deserialize;
 
 use super::keys::VaultAuth;
 
+#[cfg(test)]
+pub mod fake;
 pub mod http;
 
 /// The subscription a checkout is for; `"monthly"` / `"yearly"` on the wire.

@@ -104,10 +104,11 @@ a cached date is used at once, an invalidated one (after a money write) is waite
 
 ### Limit action (`budget-rows.ts`, pure)
 
-`rowLimitMode(row, goals, periodStart, limitsReady, isExpenseCategory)` — the desktop's `openLimit`:
-`null` for a row that cannot have a limit; `undefined`-free otherwise: the stored goal of the same
-timeframe (or the period's copy) is edited from the shown month, any other expense category gets a
-new limit from that month. Not ready (limits loading) → the action is shown disabled.
+`rowLimitAction(row, canHaveLimit, goals, periodStart, limitsReady)` — the desktop's `openLimit`:
+`null` for a row without a limit that cannot get one; otherwise the category's stored goal of the
+same timeframe — even one whose limit ended or starts later — (or the period's copy) is edited from
+the shown month, any other expense category gets a new limit from that month. Not ready (limits
+loading or failed) → the action is shown disabled.
 `storedLimitGoal` and `isPartialLimit` move into `src/utils/cashflow-budget-rows.ts`; the desktop page
 calls them instead of its inline copies (same logic).
 

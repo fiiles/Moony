@@ -11,9 +11,9 @@ Spec: `docs/specs/2026-11-07-mobile-cashflow-parity-design.md`.
 
 ## Task 2 — phone pure logic (TDD)
 
-- `src/mobile/lib/budget-rows.ts`: `rowLimitMode(row, goals, periodStart, opts)` replaces
-  `reportRowLimit` (tests rewritten): edit the stored goal, else the period copy, else add; `null`
-  for a row that cannot have a limit; `ready: false` → disabled.
+- `src/mobile/lib/budget-rows.ts`: `rowLimitAction(row, canHaveLimit, goals, periodStart,
+  limitsReady)` replaces `reportRowLimit` (tests rewritten): edit the stored goal, else the period
+  copy, else add; `null` for a row that cannot have a limit; not ready → disabled.
 - `src/mobile/lib/cashflow-period.ts`: `openingState(state, chosen, latest, now)`; drop
   `latestMonthOffset` (tests).
 - `src/mobile/lib/cashflow-rows.ts`: drop `RowLimit`, the budgets argument of `categoryRows`,

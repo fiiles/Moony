@@ -9,9 +9,10 @@ use std::fmt;
 
 use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine;
-use rand::Rng;
+use rand::rngs::SysRng;
+use rand::TryRng;
 use rusqlite::{params, Connection, OptionalExtension};
-use serde::de::{self, Deserialize, Deserializer, Visitor};
+use serde::de::{self, Deserialize, Deserializer, MapAccess, Visitor};
 use x25519_dalek::{PublicKey, StaticSecret};
 use zeroize::{Zeroize, Zeroizing};
 
@@ -21,15 +22,24 @@ use super::in_savepoint;
 use super::registry::keys::{barrier_number, schema_number};
 use crate::error::{AppError, Result};
 
+/// Fills `buf` from the operating system's random source (not a user-space generator): vault
+/// keys, vault IDs and the device's X25519 secret come from here.
+fn os_random(buf: &mut [u8]) -> Result<()> {
+    SysRng
+        .try_fill_bytes(buf)
+        .map_err(|e| AppError::Internal(format!("sync: the system random source failed: {e}")))
+}
+
 /// The vault's routing ID: 16 random bytes, stored and sent as base64url without padding.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct VaultId(pub [u8; 16]);
 
 impl VaultId {
-    pub fn random() -> Self {
+    /// 16 bytes from the operating system's random source.
+    pub fn random() -> Result<Self> {
         let mut bytes = [0u8; 16];
-        rand::rng().fill_bytes(&mut bytes);
-        VaultId(bytes)
+        os_random(&mut bytes)?;
+        Ok(VaultId(bytes))
     }
 
     pub fn to_b64(&self) -> String {
@@ -58,14 +68,14 @@ pub struct VaultKeys {
 }
 
 impl VaultKeys {
-    /// A new vault's single key, epoch 0.
-    pub fn new_random() -> Self {
+    /// A new vault's single key, epoch 0, from the operating system's random source.
+    pub fn new_random() -> Result<Self> {
         let mut key = Zeroizing::new([0u8; 32]);
-        rand::rng().fill_bytes(&mut key[..]);
-        VaultKeys {
+        os_random(&mut key[..])?;
+        Ok(VaultKeys {
             current: 0,
             keys: BTreeMap::from([(0, key)]),
-        }
+        })
     }
 
     /// Takes the keys over and wipes the caller's copies. The current epoch must have a key.
@@ -123,11 +133,14 @@ impl VaultKeys {
     fn from_json(current: u32, json: &str) -> Result<Self> {
         let corrupt = || AppError::Internal("sync_state.vault_keys is not valid".into());
         // The serde error may quote the value, so it is dropped.
-        let parsed: BTreeMap<String, SecretString> =
-            serde_json::from_str(json).map_err(|_| corrupt())?;
+        let entries: Entries = serde_json::from_str(json).map_err(|_| corrupt())?;
         let mut keys = BTreeMap::new();
-        for (epoch, encoded) in parsed {
-            let epoch: u32 = epoch.parse().map_err(|_| corrupt())?;
+        for (name, encoded) in entries.0 {
+            // Only the spelling `to_json` writes: no "01", "+1" or " 1".
+            let epoch: u32 = name.parse().map_err(|_| corrupt())?;
+            if epoch.to_string() != name {
+                return Err(corrupt());
+            }
             let decoded = Zeroizing::new(
                 URL_SAFE_NO_PAD
                     .decode(encoded.0.as_bytes())
@@ -138,6 +151,7 @@ impl VaultKeys {
             }
             let mut key = Zeroizing::new([0u8; 32]);
             key.copy_from_slice(&decoded);
+            // A repeated member is refused, not resolved to the last one.
             if keys.insert(epoch, key).is_some() {
                 return Err(corrupt());
             }
@@ -152,6 +166,33 @@ impl fmt::Debug for VaultKeys {
             .field("current", &self.current)
             .field("keys", &format_args!("<redacted>"))
             .finish()
+    }
+}
+
+/// The members of the key JSON object in document order, repeated names included (a
+/// `BTreeMap` would silently keep the last one).
+struct Entries(Vec<(String, SecretString)>);
+
+impl<'de> Deserialize<'de> for Entries {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {
+        struct EntriesVisitor;
+        impl<'de> Visitor<'de> for EntriesVisitor {
+            type Value = Entries;
+            fn expecting(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                f.write_str("an object of epochs")
+            }
+            fn visit_map<A: MapAccess<'de>>(
+                self,
+                mut map: A,
+            ) -> std::result::Result<Entries, A::Error> {
+                let mut entries = Vec::new();
+                while let Some(entry) = map.next_entry::<String, SecretString>()? {
+                    entries.push(entry);
+                }
+                Ok(Entries(entries))
+            }
+        }
+        deserializer.deserialize_map(EntriesVisitor)
     }
 }
 
@@ -200,12 +241,31 @@ pub struct Credentials {
 impl fmt::Debug for Credentials {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Credentials")
-            .field("relay_url", &self.relay_url)
+            .field("relay_url", &format_args!("{}", origin_of(&self.relay_url)))
             .field("account", &format_args!("<redacted>"))
             .field("vault_id", &self.vault_id)
             .field("keys", &self.keys)
             .finish()
     }
+}
+
+/// `scheme://host` of `url`, without user info, port, path, query or fragment (ruling P16: a URL
+/// in a log shows no more than its origin).
+fn origin_of(url: &str) -> String {
+    let Some((scheme, rest)) = url.split_once("://") else {
+        return "<redacted>".into();
+    };
+    let authority = rest.split(['/', '?', '#']).next().unwrap_or_default();
+    let host_port = authority.rsplit('@').next().unwrap_or_default();
+    let host = match host_port.strip_prefix('[') {
+        Some(v6) => v6
+            .split(']')
+            .next()
+            .map(|h| format!("[{h}]"))
+            .unwrap_or_default(),
+        None => host_port.split(':').next().unwrap_or_default().to_string(),
+    };
+    format!("{scheme}://{host}")
 }
 
 impl Credentials {
@@ -228,11 +288,16 @@ fn not_set_up() -> AppError {
 }
 
 /// Creates the `sync_state` row, sync off, with a random device ID and today's schema and
-/// barrier (as `state::ensure_row` would), unless it exists.
+/// barrier (as `state::ensure_row` would). A row that is still off is brought up to this build:
+/// nothing crosses a barrier for it while it is off (`open_capture` skips it), so a build with a
+/// higher barrier would otherwise leave it admitting snapshots from below that barrier. An
+/// enabled row is left alone.
 fn ensure_disabled_row(conn: &Connection) -> Result<()> {
     conn.execute(
         "INSERT INTO sync_state (id, enabled, device_id, schema_seen, barrier) \
-         VALUES (1, 0, ?1, ?2, ?3) ON CONFLICT(id) DO NOTHING",
+         VALUES (1, 0, ?1, ?2, ?3) \
+         ON CONFLICT(id) DO UPDATE SET schema_seen = excluded.schema_seen, \
+           barrier = MAX(barrier, excluded.barrier) WHERE enabled = 0",
         params![
             DeviceId::random().0.to_vec(),
             schema_number(),
@@ -281,7 +346,7 @@ pub fn ensure_vault_secrets(conn: &Connection) -> Result<(VaultId, VaultKeys)> {
         if let Some(secrets) = vault_secrets(conn)? {
             return Ok(secrets);
         }
-        let secrets = (VaultId::random(), VaultKeys::new_random());
+        let secrets = (VaultId::random()?, VaultKeys::new_random()?);
         write_vault_secrets(conn, &secrets.0, &secrets.1)?;
         Ok(secrets)
     })
@@ -348,8 +413,36 @@ pub fn credentials(conn: &Connection) -> Result<Option<Credentials>> {
     }))
 }
 
-/// This device's X25519 public key, generating the key pair the first time.
+/// This device's X25519 public key, generating the key pair the first time. The write only
+/// fills an empty column and the answer is read back, so two callers agree on one pair.
 pub fn ensure_device_keypair(conn: &Connection) -> Result<[u8; 32]> {
+    if let Some(public) = stored_public_key(conn)? {
+        return Ok(public);
+    }
+    let secret = random_secret()?;
+    conn.execute(
+        "UPDATE sync_state SET device_secret_key = ?1 WHERE id = 1 AND device_secret_key IS NULL",
+        [secret.as_bytes().as_slice()],
+    )?;
+    stored_public_key(conn)?.ok_or_else(not_set_up)
+}
+
+/// Replaces this device's key pair (a re-join) and returns the new public key.
+pub fn new_device_keypair(conn: &Connection) -> Result<[u8; 32]> {
+    let secret = random_secret()?;
+    let changed = conn.execute(
+        "UPDATE sync_state SET device_secret_key = ?1 WHERE id = 1",
+        [secret.as_bytes().as_slice()],
+    )?;
+    if changed == 0 {
+        return Err(not_set_up());
+    }
+    Ok(PublicKey::from(&secret).to_bytes())
+}
+
+/// The public key of the stored secret: `None` while the column is empty, an error without the
+/// row.
+fn stored_public_key(conn: &Connection) -> Result<Option<[u8; 32]>> {
     let stored: Option<Option<Vec<u8>>> = conn
         .query_row(
             "SELECT device_secret_key FROM sync_state WHERE id = 1",
@@ -357,10 +450,11 @@ pub fn ensure_device_keypair(conn: &Connection) -> Result<[u8; 32]> {
             |r| r.get(0),
         )
         .optional()?;
-    match stored {
-        None => Err(not_set_up()),
-        Some(None) => new_device_keypair(conn),
-        Some(Some(bytes)) => {
+    let Some(stored) = stored else {
+        return Err(not_set_up());
+    };
+    stored
+        .map(|bytes| {
             let bytes = Zeroizing::new(bytes);
             if bytes.len() != 32 {
                 return Err(AppError::Internal(
@@ -370,23 +464,15 @@ pub fn ensure_device_keypair(conn: &Connection) -> Result<[u8; 32]> {
             let mut secret = Zeroizing::new([0u8; 32]);
             secret.copy_from_slice(&bytes);
             Ok(public_key_of(&secret))
-        }
-    }
+        })
+        .transpose()
 }
 
-/// Replaces this device's key pair (a re-join) and returns the new public key.
-pub fn new_device_keypair(conn: &Connection) -> Result<[u8; 32]> {
+/// A new X25519 secret from the operating system's random source (wiped when it drops).
+fn random_secret() -> Result<StaticSecret> {
     let mut bytes = Zeroizing::new([0u8; 32]);
-    rand::rng().fill_bytes(&mut bytes[..]);
-    let secret = StaticSecret::from(*bytes);
-    let changed = conn.execute(
-        "UPDATE sync_state SET device_secret_key = ?1 WHERE id = 1",
-        [secret.as_bytes().as_slice()],
-    )?;
-    if changed == 0 {
-        return Err(not_set_up());
-    }
-    Ok(PublicKey::from(&secret).to_bytes())
+    os_random(&mut bytes[..])?;
+    Ok(StaticSecret::from(*bytes))
 }
 
 /// The X25519 public key of `secret` (the secret is wiped when the `StaticSecret` drops).
@@ -453,6 +539,45 @@ mod tests {
     }
 
     #[test]
+    fn a_disabled_row_is_brought_up_to_this_builds_barrier() {
+        let conn = migrated();
+        save_account(&conn, RELAY, ACCOUNT).unwrap();
+        // The account was saved by an older build.
+        conn.execute(
+            "UPDATE sync_state SET barrier = ?1, schema_seen = 1",
+            [barrier_number() - 1],
+        )
+        .unwrap();
+
+        save_account(&conn, RELAY, ACCOUNT).unwrap();
+
+        let row = state::load(&conn).unwrap().expect("row");
+        assert_eq!(row.barrier, barrier_number());
+        assert_eq!(row.schema_seen, schema_number());
+        assert!(!row.enabled);
+
+        conn.execute("UPDATE sync_state SET barrier = 1", [])
+            .unwrap();
+        save_credentials(&conn, &two_epochs()).unwrap();
+        assert_eq!(
+            state::load(&conn).unwrap().expect("row").barrier,
+            barrier_number(),
+            "the join path refreshes it too"
+        );
+
+        state::ensure_row(&conn, row.device).unwrap();
+        conn.execute("UPDATE sync_state SET barrier = 1, schema_seen = 2", [])
+            .unwrap();
+        save_account(&conn, RELAY, ACCOUNT).unwrap();
+        let enabled = state::load(&conn).unwrap().expect("row");
+        assert_eq!(
+            (enabled.barrier, enabled.schema_seen),
+            (1, 2),
+            "an enabled row is left to cross_barrier"
+        );
+    }
+
+    #[test]
     fn a_disabled_row_installs_no_capture_and_queues_nothing() {
         let conn = migrated();
         save_account(&conn, RELAY, ACCOUNT).unwrap();
@@ -474,6 +599,15 @@ mod tests {
         let marks = state::marks(&conn).unwrap().expect("row");
         assert_eq!(marks.capture_broken_at, None);
         assert_eq!(marks.last_error, None);
+    }
+
+    #[test]
+    fn random_secrets_come_from_the_os_and_differ() {
+        let a = VaultKeys::new_random().unwrap();
+        let b = VaultKeys::new_random().unwrap();
+        assert_ne!(a.current(), b.current());
+        assert_ne!(a.current(), &[0u8; 32]);
+        assert_ne!(VaultId::random().unwrap(), VaultId::random().unwrap());
     }
 
     #[test]
@@ -566,15 +700,28 @@ mod tests {
             VaultKeys::from_parts(3, BTreeMap::from([(0, [0x01; 32])])).is_err(),
             "the current epoch needs a key"
         );
+        const K: &str = "AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE";
+        conn.execute(
+            "UPDATE sync_state SET vault_keys = ?1",
+            [format!(r#"{{"2":"{K}"}}"#)],
+        )
+        .unwrap();
+        assert!(credentials(&conn).is_ok(), "the canonical spelling reads");
         for broken in [
-            r#"{"0":"AQEB"}"#,
-            r#"{"x":"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE"}"#,
-            r#"{"1":"AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE"}"#,
-            "not json",
+            r#"{"0":"AQEB"}"#.to_string(),
+            format!(r#"{{"x":"{K}"}}"#),
+            format!(r#"{{"1":"{K}"}}"#),
+            format!(r#"{{"02":"{K}"}}"#),
+            format!(r#"{{"+2":"{K}"}}"#),
+            format!(r#"{{" 2":"{K}"}}"#),
+            format!(r#"{{"2":"{K}","2":"{K}"}}"#),
+            format!(r#"{{"2":"{K}","1":"{K}","2":"AgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgI"}}"#),
+            "not json".to_string(),
         ] {
-            conn.execute("UPDATE sync_state SET vault_keys = ?1", [broken])
+            conn.execute("UPDATE sync_state SET vault_keys = ?1", [&broken])
                 .unwrap();
-            assert!(credentials(&conn).is_err(), "{broken}");
+            let error = credentials(&conn).expect_err(&broken).to_string();
+            assert!(!error.contains(K), "the error never quotes a key: {error}");
         }
     }
 
@@ -613,8 +760,20 @@ mod tests {
         };
         let token = creds.token();
         let auth = creds.auth();
+        let creds = Credentials {
+            relay_url: "https://user:pw@relay.example.org:8443/v1/hidden-path?q=1#f".into(),
+            ..creds
+        };
+        let shown = format!("{creds:?}");
+        assert!(
+            shown.contains(r#"relay_url: https://relay.example.org,"#),
+            "{shown}"
+        );
+        for part in ["user", "pw", "8443", "hidden-path", "q=1"] {
+            assert!(!shown.contains(part), "{shown} shows {part}");
+        }
         let outputs = [
-            format!("{creds:?}"),
+            shown,
             format!("{:?}", creds.vault_id),
             format!("{:?}", creds.keys),
             format!("{auth:?}"),
@@ -639,6 +798,21 @@ mod tests {
     }
 
     #[test]
+    fn the_relay_origin_keeps_only_scheme_and_host() {
+        assert_eq!(
+            origin_of("https://relay.example.org"),
+            "https://relay.example.org"
+        );
+        assert_eq!(
+            origin_of("https://relay.example.org/"),
+            "https://relay.example.org"
+        );
+        assert_eq!(origin_of("http://[::1]:8787/v1"), "http://[::1]");
+        assert_eq!(origin_of("https://a@b.example?x"), "https://b.example");
+        assert_eq!(origin_of("relay.example.org/path"), "<redacted>");
+    }
+
+    #[test]
     fn device_keypair_is_stable_until_renewed() {
         let conn = migrated();
         assert!(ensure_device_keypair(&conn).is_err(), "no row, no key pair");
@@ -655,6 +829,20 @@ mod tests {
         let renewed = new_device_keypair(&conn).unwrap();
         assert_ne!(renewed, first);
         assert_eq!(ensure_device_keypair(&conn).unwrap(), renewed);
+
+        // A pair another caller stored first is the one returned (RFC 7748 §6.1, Alice).
+        conn.execute(
+            "UPDATE sync_state SET device_secret_key = ?1",
+            [
+                hex::decode("77076d0a7318a57d3c16c17251b26645df4c2f87ebc0992ab177fba51db92c2a")
+                    .unwrap(),
+            ],
+        )
+        .unwrap();
+        assert_eq!(
+            hex::encode(ensure_device_keypair(&conn).unwrap()),
+            "8520f0098930a754748b7ddcb43ef75a0dbf3a0d26381af4eba4a98eaa9b4e6a"
+        );
     }
 
     #[test]

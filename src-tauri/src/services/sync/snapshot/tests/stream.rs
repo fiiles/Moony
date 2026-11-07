@@ -326,6 +326,47 @@ fn a_snapshot_from_below_a_crossed_barrier_is_refused() {
     assert!(state::load(&fresh).expect("load").is_none());
 }
 
+/// An account saved by an older build leaves a disabled row with that build's barrier; joining
+/// on a build with a higher barrier still refuses a snapshot from below it.
+#[test]
+fn joining_from_a_stale_disabled_row_refuses_a_snapshot_below_the_barrier() {
+    use crate::services::sync::keys;
+    use crate::services::sync::registry::keys::barrier_number;
+
+    let a = rich_dumper();
+    let (bytes, _) = snapshot(&a, 1);
+    let mut stale = records(&bytes);
+    let Some(Record::Header { barrier, .. }) = stale.get_mut(1) else {
+        panic!("header second");
+    };
+    *barrier = barrier_number() - 1;
+    let stale = stream_of(&stale);
+    let old_build_row = || {
+        let conn = migrated();
+        keys::save_account(&conn, "https://relay.example.org", "4417938205561273")
+            .expect("account");
+        exec(&conn, "UPDATE sync_state SET barrier = barrier - 1");
+        conn
+    };
+
+    let b = old_build_row();
+    let error = join(&b, B, &mut &stale[..], NOW).expect_err("refused");
+    assert!(
+        matches!(&error, AppError::Validation(key) if key == "validation.syncSnapshotBelowBarrier"),
+        "{error:?}"
+    );
+    let row = state::load(&b).expect("load").expect("row");
+    assert!(!row.enabled, "the refused join changed nothing");
+    assert_eq!(row.barrier, barrier_number() - 1);
+
+    let c = old_build_row();
+    join(&c, C, &mut &bytes[..], NOW).expect("a snapshot at this build's barrier joins");
+    assert_eq!(
+        state::load(&c).expect("load").expect("row").barrier,
+        barrier_number()
+    );
+}
+
 #[test]
 fn malformed_streams_are_errors_not_panics() {
     let invalid = |result: Result<Option<Record>>| {

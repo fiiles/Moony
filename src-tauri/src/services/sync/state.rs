@@ -117,10 +117,14 @@ fn unsigned<T: TryFrom<i64>>(value: i64, column: &str) -> Result<T> {
 
 /// Creates the row (enabled, this device, today's schema and barrier) or, when it exists, turns it
 /// on for `device`. Never touches the cursor, the snapshot columns, `next_seq` or `last_hash` (E3).
+/// A disabled row (an account saved before setup) has crossed no barrier while it was off
+/// (`open_capture` skips it), so turning it on raises its barrier to this build's; an enabled row
+/// keeps its own, which `chain::cross_barrier` raises at the next open.
 pub fn ensure_row(conn: &Connection, device: DeviceId) -> Result<()> {
     conn.execute(
         "INSERT INTO sync_state (id, enabled, device_id, schema_seen, barrier) VALUES (1, 1, ?1, ?2, ?3) \
-         ON CONFLICT(id) DO UPDATE SET enabled = 1, device_id = excluded.device_id",
+         ON CONFLICT(id) DO UPDATE SET enabled = 1, device_id = excluded.device_id, \
+           barrier = CASE WHEN enabled = 0 THEN MAX(barrier, excluded.barrier) ELSE barrier END",
         params![device.0.to_vec(), schema_number(), barrier_number()],
     )?;
     Ok(())
@@ -472,9 +476,23 @@ mod tests {
         assert_eq!(kept.next_seq, 5);
         assert_eq!(kept.last_hash, Some([0xab; 32]));
         assert_eq!(kept.schema_seen, 2);
-        assert_eq!(kept.barrier, 1);
+        assert!(barrier_number() > 1);
+        assert_eq!(
+            kept.barrier,
+            barrier_number(),
+            "turning a disabled row on raises its barrier to this build's"
+        );
         assert_eq!(count(&conn, "SELECT snapshot_seq FROM sync_state"), 3);
         assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_state"), 1);
+
+        conn.execute("UPDATE sync_state SET barrier = 1", [])
+            .unwrap();
+        ensure_row(&conn, DEVICE).unwrap();
+        assert_eq!(
+            load(&conn).unwrap().expect("row").barrier,
+            1,
+            "an enabled row keeps its barrier until cross_barrier raises it"
+        );
     }
 
     #[test]

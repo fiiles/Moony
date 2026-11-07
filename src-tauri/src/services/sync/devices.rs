@@ -40,8 +40,9 @@ pub fn validate_device_name(name: &str) -> Result<()> {
 }
 
 /// Writes this device's row: created with `public_key` and `joined_at = now` the first time,
-/// afterwards only the (trimmed) name, platform and app version change. The public key is never
-/// rewritten here, as the merge never takes a change to it.
+/// afterwards the (trimmed) name, platform and app version change, and the public key only fills
+/// an empty column: the merge's write-once rule (NULL may take a value once, a value never
+/// changes).
 pub fn record_this_device(
     conn: &Connection,
     name: &str,
@@ -56,7 +57,8 @@ pub fn record_this_device(
         "INSERT INTO sync_devices (id, public_key, name, platform, app_version, joined_at) \
          VALUES (?1, ?2, ?3, ?4, ?5, ?6) \
          ON CONFLICT(id) DO UPDATE SET name = excluded.name, platform = excluded.platform, \
-           app_version = excluded.app_version",
+           app_version = excluded.app_version, \
+           public_key = COALESCE(sync_devices.public_key, excluded.public_key)",
         params![
             device.to_hex(),
             URL_SAFE_NO_PAD.encode(public_key),
@@ -177,6 +179,20 @@ mod tests {
             Some(("Work Mac".to_string(), platform().to_string()))
         );
         assert_eq!(device_row(&conn, DeviceId([9; 16])).unwrap(), None);
+
+        conn.execute_batch("UPDATE sync_devices SET public_key = NULL")
+            .unwrap();
+        record_this_device(&conn, "Work Mac", &[0x03; 32], 1_950_000_000).unwrap();
+        assert_eq!(
+            row(&conn).1.as_deref(),
+            Some("AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM"),
+            "an empty public key takes a value once"
+        );
+        record_this_device(&conn, "Work Mac", &[0x02; 32], 1_960_000_000).unwrap();
+        assert_eq!(
+            row(&conn).1.as_deref(),
+            Some("AwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwM")
+        );
     }
 
     #[test]

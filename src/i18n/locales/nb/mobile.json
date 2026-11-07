@@ -151,7 +151,9 @@
       "sortLast": "Etter siste bevegelse",
       "showMatured": "Vis nedbetalte lån",
       "showEnded": "Vis avsluttede forsikringer",
-      "export": "Eksporter"
+      "export": "Eksporter",
+      "exportLoans": "Lån (CSV)",
+      "exportPolicies": "Forsikringer (CSV)"
     },
     "add": {
       "title": "Legg til",
@@ -202,9 +204,6 @@
     "unsnoozed_one": "{{count}} betaling er tilbake i køen",
     "unsnoozed_other": "{{count}} betalinger er tilbake i køen",
     "unsnooze": "Tilbake i køen"
-  },
-  "placeholder": {
-    "export": "Eksport kommer senere."
   },
   "account": {
     "record": "Registrer saldo",

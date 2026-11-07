@@ -16,7 +16,6 @@ import {
   Tag,
   type LucideIcon,
 } from 'lucide-react';
-import { toast } from 'sonner';
 import { useLocation, useSearch } from 'wouter';
 import type { BankAccountWithInstitution, InsertBankAccount } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
@@ -47,6 +46,7 @@ import { UpcomingPremiums } from '@/mobile/components/finance/UpcomingPremiums';
 import { Hero } from '@/mobile/components/Hero';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { useCashTrend } from '@/mobile/hooks/use-cash-trend';
+import { useClassExport } from '@/mobile/hooks/use-class-export';
 import { useFinance, type Finance as FinanceData } from '@/mobile/hooks/use-finance';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { useRemembered } from '@/mobile/hooks/use-remembered';
@@ -136,6 +136,8 @@ export default function Finance() {
   useEffect(() => {
     if (new URLSearchParams(search).has('add')) setLocation(routes.finance, { replace: true });
   }, [search, setLocation]);
+  const loansExport = useClassExport('loans');
+  const policiesExport = useClassExport('insurance');
   const { createAccount } = useBankAccountMutations();
   const { createMutation: createLoan } = useLoanMutations();
 
@@ -282,10 +284,29 @@ export default function Finance() {
                   {t('finance.menu.showEnded')}
                 </RowMenuCheckboxItem>
               )}
-              <DropdownMenuSeparator />
-              <RowMenuItem onSelect={() => toast(t('placeholder.export'))}>
-                {t('finance.menu.export')}
-              </RowMenuItem>
+              {(showLoans || showInsurance) && (
+                <>
+                  <DropdownMenuSeparator />
+                  {/* The desktop list pages' CSV exports (accounts have none there either) */}
+                  <DropdownMenuLabel>{t('finance.menu.export')}</DropdownMenuLabel>
+                  {showLoans && (
+                    <RowMenuItem
+                      disabled={loansExport.isPending}
+                      onSelect={() => void loansExport.exportCsv()}
+                    >
+                      {t('finance.menu.exportLoans')}
+                    </RowMenuItem>
+                  )}
+                  {showInsurance && (
+                    <RowMenuItem
+                      disabled={policiesExport.isPending}
+                      onSelect={() => void policiesExport.exportCsv()}
+                    >
+                      {t('finance.menu.exportPolicies')}
+                    </RowMenuItem>
+                  )}
+                </>
+              )}
             </DropdownMenuContent>
           </DropdownMenu>
         </>

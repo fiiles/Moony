@@ -151,7 +151,9 @@
       "sortLast": "Nach letzter Bewegung",
       "showMatured": "Getilgte Kredite anzeigen",
       "showEnded": "Beendete Policen anzeigen",
-      "export": "Exportieren"
+      "export": "Exportieren",
+      "exportLoans": "Kredite (CSV)",
+      "exportPolicies": "Versicherungen (CSV)"
     },
     "add": {
       "title": "Hinzufügen",
@@ -202,9 +204,6 @@
     "unsnoozed_one": "{{count}} Zahlung ist wieder in der Liste",
     "unsnoozed_other": "{{count}} Zahlungen sind wieder in der Liste",
     "unsnooze": "Zurück in die Liste"
-  },
-  "placeholder": {
-    "export": "Der Export kommt später."
   },
   "account": {
     "record": "Kontostand erfassen",

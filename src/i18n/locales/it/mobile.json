@@ -164,7 +164,9 @@
       "sortLast": "Per ultimo movimento",
       "showMatured": "Mostra prestiti estinti",
       "showEnded": "Mostra polizze concluse",
-      "export": "Esporta"
+      "export": "Esporta",
+      "exportLoans": "Prestiti (CSV)",
+      "exportPolicies": "Polizze (CSV)"
     },
     "add": {
       "title": "Aggiungi",
@@ -222,9 +224,6 @@
     "unsnoozed_many": "{{count}} pagamenti sono di nuovo in coda",
     "unsnoozed_other": "{{count}} pagamenti sono di nuovo in coda",
     "unsnooze": "Riporta in coda"
-  },
-  "placeholder": {
-    "export": "L'esportazione arriva più avanti."
   },
   "account": {
     "record": "Registra saldo",

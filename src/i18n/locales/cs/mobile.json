@@ -164,7 +164,9 @@
       "sortLast": "Podle posledního pohybu",
       "showMatured": "Zobrazit splacené úvěry",
       "showEnded": "Zobrazit ukončené pojistky",
-      "export": "Export"
+      "export": "Export",
+      "exportLoans": "Úvěry (CSV)",
+      "exportPolicies": "Pojistky (CSV)"
     },
     "add": {
       "title": "Přidat",
@@ -222,9 +224,6 @@
     "unsnoozed_few": "{{count}} platby jsou zpět ve frontě",
     "unsnoozed_other": "{{count}} plateb je zpět ve frontě",
     "unsnooze": "Vrátit do fronty"
-  },
-  "placeholder": {
-    "export": "Export přijde později."
   },
   "account": {
     "record": "Zaznamenat zůstatek",

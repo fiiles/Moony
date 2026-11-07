@@ -177,7 +177,9 @@
       "sortLast": "Według ostatniego ruchu",
       "showMatured": "Pokaż spłacone kredyty",
       "showEnded": "Pokaż zakończone polisy",
-      "export": "Eksport"
+      "export": "Eksport",
+      "exportLoans": "Kredyty (CSV)",
+      "exportPolicies": "Polisy (CSV)"
     },
     "add": {
       "title": "Dodaj",
@@ -242,9 +244,6 @@
     "unsnoozed_many": "{{count}} płatności wróciło do kolejki",
     "unsnoozed_other": "{{count}} płatności wróciło do kolejki",
     "unsnooze": "Przywróć do kolejki"
-  },
-  "placeholder": {
-    "export": "Eksport pojawi się później."
   },
   "account": {
     "record": "Zapisz saldo",

@@ -151,7 +151,9 @@
       "sortLast": "By last movement",
       "showMatured": "Show paid-off loans",
       "showEnded": "Show ended policies",
-      "export": "Export"
+      "export": "Export",
+      "exportLoans": "Loans (CSV)",
+      "exportPolicies": "Policies (CSV)"
     },
     "add": {
       "title": "Add",
@@ -202,9 +204,6 @@
     "unsnoozed_one": "{{count}} payment is back in the queue",
     "unsnoozed_other": "{{count}} payments are back in the queue",
     "unsnooze": "Back to the queue"
-  },
-  "placeholder": {
-    "export": "Export comes later."
   },
   "account": {
     "record": "Record balance",

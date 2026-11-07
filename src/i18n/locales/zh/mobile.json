@@ -138,7 +138,9 @@
       "sortLast": "按最近流水",
       "showMatured": "显示已还清的贷款",
       "showEnded": "显示已终止的保单",
-      "export": "导出"
+      "export": "导出",
+      "exportLoans": "贷款（CSV）",
+      "exportPolicies": "保单（CSV）"
     },
     "add": {
       "title": "添加",
@@ -182,9 +184,6 @@
     "heldBack_other": "已跳过 {{count}} 笔付款",
     "unsnoozed_other": "{{count}} 笔付款已放回队列",
     "unsnooze": "放回队列"
-  },
-  "placeholder": {
-    "export": "导出功能稍后推出。"
   },
   "account": {
     "record": "记录余额",

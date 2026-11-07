@@ -151,7 +151,9 @@
       "sortLast": "Efter senaste rörelse",
       "showMatured": "Visa betalda lån",
       "showEnded": "Visa avslutade försäkringar",
-      "export": "Exportera"
+      "export": "Exportera",
+      "exportLoans": "Lån (CSV)",
+      "exportPolicies": "Försäkringar (CSV)"
     },
     "add": {
       "title": "Lägg till",
@@ -202,9 +204,6 @@
     "unsnoozed_one": "{{count}} betalning är tillbaka i kön",
     "unsnoozed_other": "{{count}} betalningar är tillbaka i kön",
     "unsnooze": "Tillbaka till kön"
-  },
-  "placeholder": {
-    "export": "Export kommer senare."
   },
   "account": {
     "record": "Registrera saldo",

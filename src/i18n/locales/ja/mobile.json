@@ -138,7 +138,9 @@
       "sortLast": "最終入出金順",
       "showMatured": "完済したローンを表示",
       "showEnded": "終了した保険を表示",
-      "export": "エクスポート"
+      "export": "エクスポート",
+      "exportLoans": "ローン（CSV）",
+      "exportPolicies": "保険（CSV）"
     },
     "add": {
       "title": "追加",
@@ -182,9 +184,6 @@
     "heldBack_other": "{{count}}件をスキップ中",
     "unsnoozed_other": "{{count}}件の支払いがキューに戻りました",
     "unsnooze": "キューに戻す"
-  },
-  "placeholder": {
-    "export": "エクスポートは後日提供します。"
   },
   "account": {
     "record": "残高を記録",

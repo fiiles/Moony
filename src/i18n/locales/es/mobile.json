@@ -164,7 +164,9 @@
       "sortLast": "Por último movimiento",
       "showMatured": "Mostrar préstamos liquidados",
       "showEnded": "Mostrar pólizas finalizadas",
-      "export": "Exportar"
+      "export": "Exportar",
+      "exportLoans": "Préstamos (CSV)",
+      "exportPolicies": "Pólizas (CSV)"
     },
     "add": {
       "title": "Añadir",
@@ -222,9 +224,6 @@
     "unsnoozed_many": "{{count}} pagos han vuelto a la cola",
     "unsnoozed_other": "{{count}} pagos han vuelto a la cola",
     "unsnooze": "Devolver a la cola"
-  },
-  "placeholder": {
-    "export": "La exportación llega más adelante."
   },
   "account": {
     "record": "Registrar saldo",

@@ -1,58 +1,212 @@
-import { useState, type ComponentProps } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 import { List, Pencil, Plus } from 'lucide-react';
-import { CategoryRow } from './CategoryRow';
+import type { TransactionCategory } from '@shared/schema';
+import type { ExpenseRow, LimitState } from '@/utils/cashflow-budget-rows';
+import { useFormat } from '@/lib/use-format';
+import { cn } from '@/lib/utils';
+import { EntityRow } from '@/mobile/components/EntityRow';
 import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
+import type { LimitMode } from '@/mobile/lib/budget-limit';
+import type { RowLimitAction } from '@/mobile/lib/budget-rows';
+import { CategoryChip } from './CategoryChip';
+import { ProgressBar } from './ProgressBar';
 
-interface ExpenseCategoryRowProps extends Omit<
-  ComponentProps<typeof CategoryRow>,
-  'onLongPress' | 'accessory'
-> {
-  /** The category has a budget in the period: its item reads "Upravit limit", else "Nastavit limit". */
-  hasLimit: boolean;
-  /** Open the limit sheet for the category; `null` while it cannot be (the budget's goal is not loaded yet). */
-  onLimit: (() => void) | null;
+/** The desktop's words for each limit state (`ExpensesByCategoryCard`). */
+const STATE_KEYS: Record<LimitState, string> = {
+  over: 'table.state.overShort',
+  exhausted: 'table.state.exhausted',
+  near: 'table.state.near',
+  ok: 'table.state.ok',
+  unavailable: 'readiness.usageUnavailable',
+};
+
+interface ExpenseCategoryRowProps {
+  row: ExpenseRow;
+  /** The translated name ("Potraviny", "Nezařazeno"). */
+  title: string;
+  /** The category's icon and hue; `null` for the uncategorized group. */
+  category: TransactionCategory | null;
+  /** A report amount at the currency's minor units; a net refund reads with its minus sign. */
+  money: (amount: number) => string;
+  /** An amount in its own currency (the limit's), at its minor units. */
+  native: (amount: number, currency: string, opts?: { signed?: boolean }) => string;
+  /** The category's transactions in the period; `undefined` when it has none (a limit alone). */
+  href: string | undefined;
+  /** The limit covers only some months of the quarter or year ("Jen část období"). */
+  partial: boolean;
+  /** How far a running period has got, 0–1: the pace tick on the usage bar. */
+  pace?: number;
+  /** "Nastavit limit" or the limit that edits it; `null` for a row that cannot have a limit. */
+  action: RowLimitAction | null;
+  /** The row still belongs to the previous period, while the next loads: nothing opens. */
+  busy: boolean;
+  onLimit: (mode: LimitMode) => void;
 }
 
 /**
- * An expense category of the Cashflow report with the long press's menu (the desktop Budgets
- * table's row menu, ruling R15): "Zobrazit transakce" (the drilldown the tap opens, off when the
- * row has no payments) and "Upravit limit" / "Nastavit limit". It has no swipes: the report row has
- * no natural action to slide. The `···` trigger is the row's `accessory` for keyboard and screen
- * reader (`RowMenu`).
+ * An expense category of the Cashflow report (the desktop's `ExpensesByCategoryCard` row, spec
+ * `2026-11-07-mobile-cashflow-parity-design.md`): chip, name, what was spent in the report currency
+ * ("—" when no payment could be converted) and "47 % výdajů · 3 transakce"; with a limit that can be
+ * evaluated, the usage bar (red when over, the pace tick in a running period). Under the row, outside
+ * its tap target, the limit line: the state word and the usage, what remains (or how far over) in the
+ * limit's own currency, "Jen část období" — or "Čerpání nelze vyhodnotit", or "Bez limitu" — and a
+ * visible 44 pt button: the limit amount (edits it) or "Nastavit limit". The long press keeps its
+ * menu, "Zobrazit transakce" and the same limit action. Colour is never the only signal: the state
+ * is worded and "over" has its arrow.
  */
-export function ExpenseCategoryRow({ hasLimit, onLimit, ...rowProps }: ExpenseCategoryRowProps) {
-  const { t } = useTranslation('mobile');
+export function ExpenseCategoryRow({
+  row,
+  title,
+  category,
+  money,
+  native,
+  href,
+  partial,
+  pace,
+  action,
+  busy,
+  onLimit,
+}: ExpenseCategoryRowProps) {
+  const { t: tr } = useTranslation('reports');
   const { t: tb } = useTranslation('budgeting');
+  const { t } = useTranslation('mobile');
+  const fmt = useFormat();
   const [, setLocation] = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const { title, href, row } = rowProps;
+  const { limit } = row;
+  const evaluated = limit && limit.state !== 'unavailable' && limit.percentage !== null;
+  const over = limit?.state === 'over';
+  const canOpen = !busy && href !== undefined;
+  const limitMode = busy ? null : (action?.mode ?? null);
+
+  const sub = `${tr('actuals.expenses.shareOfExpenses', { percent: fmt.percent(row.share, 0) })} · ${tr(
+    'actuals.transactions',
+    { count: row.count }
+  )}`;
+  const fxUnavailable = tr('readiness.fxUnavailable');
+  const value = row.amountUnavailable ? (
+    <span title={fxUnavailable}>
+      —<span className="sr-only">{fxUnavailable}</span>
+    </span>
+  ) : (
+    money(row.amount)
+  );
+
+  // The limit line's sentence, its parts joined by " · "
+  const parts: ReactNode[] = [];
+  if (limit && evaluated) {
+    parts.push(
+      <span className={over ? 'text-loss' : undefined}>
+        {over && <span aria-hidden>↑ </span>}
+        {tb(STATE_KEYS[limit.state])} {fmt.percent((limit.percentage ?? 0) / 100, 0)}
+      </span>
+    );
+    if (limit.remaining !== null && limit.currency) {
+      parts.push(
+        limit.remaining < 0 ? (
+          <span className="text-loss">
+            {native(limit.remaining, limit.currency, { signed: true })}{' '}
+            {tr('actuals.expenses.overLimit')}
+          </span>
+        ) : (
+          `${tr('actuals.expenses.remaining')} ${native(limit.remaining, limit.currency)}`
+        )
+      );
+    }
+  } else if (limit) {
+    parts.push(tb(STATE_KEYS.unavailable));
+  } else {
+    parts.push(tb('noBudget'));
+  }
+  if (limit && partial) parts.push(tr('actuals.expenses.partialPeriod'));
+
+  const limitLabel = action?.hasLimit
+    ? limit?.limit != null && limit.currency
+      ? native(limit.limit, limit.currency)
+      : tb('actions.editLimit')
+    : tb('actions.setLimit');
+
+  const limitLine = (row.hasLimit || action) && (
+    <div className="-mt-2 flex min-h-11 items-center justify-between gap-3 pb-0.5 pl-[62px] pr-3.5">
+      <p className="m-0 min-w-0 py-1 text-m-caption font-semibold leading-[1.35] text-ink-3 num">
+        {parts.map((part, index) => (
+          <Fragment key={index}>
+            {index > 0 && ' · '}
+            {part}
+          </Fragment>
+        ))}
+      </p>
+      {action && (
+        <button
+          type="button"
+          disabled={limitMode === null}
+          aria-label={tr(
+            action.hasLimit ? 'actuals.expenses.editLimitFor' : 'actuals.expenses.setLimitFor',
+            { name: title }
+          )}
+          onClick={() => limitMode && onLimit(limitMode)}
+          className={cn(
+            'inline-flex min-h-11 flex-none items-center whitespace-nowrap text-m-sub font-semibold text-ink [-webkit-touch-callout:none] active:text-ink-3 disabled:opacity-45',
+            action.hasLimit &&
+              'underline decoration-line-strong decoration-dotted underline-offset-[3px] num'
+          )}
+        >
+          {limitLabel}
+        </button>
+      )}
+    </div>
+  );
+
+  const hasMenu = !busy && (href !== undefined || action !== null);
 
   return (
-    <CategoryRow
-      {...rowProps}
-      onLongPress={() => setMenuOpen(true)}
-      accessory={
-        <RowMenu
-          open={menuOpen}
-          onOpenChange={setMenuOpen}
-          label={t('cashflow.rowMenu', { title })}
-        >
-          <RowMenuItem disabled={row.count === 0} onSelect={() => setLocation(href)}>
-            <List aria-hidden strokeWidth={1.75} />
-            {tb('actions.showTransactions')}
-          </RowMenuItem>
-          <RowMenuItem disabled={onLimit === null} onSelect={() => onLimit?.()}>
-            {hasLimit ? (
-              <Pencil aria-hidden strokeWidth={1.75} />
-            ) : (
-              <Plus aria-hidden strokeWidth={1.75} />
-            )}
-            {tb(hasLimit ? 'actions.editLimit' : 'actions.setLimit')}
-          </RowMenuItem>
-        </RowMenu>
+    <EntityRow
+      chip={<CategoryChip category={category} />}
+      title={title}
+      sub={sub}
+      value={value}
+      valueTone={over ? 'loss' : undefined}
+      bar={
+        limit && evaluated ? (
+          <ProgressBar
+            value={(limit.percentage ?? 0) / 100}
+            tone={over ? 'over' : 'limit'}
+            mark={pace}
+          />
+        ) : undefined
       }
+      href={canOpen ? href : undefined}
+      onLongPress={hasMenu ? () => setMenuOpen(true) : undefined}
+      accessory={
+        hasMenu ? (
+          <RowMenu
+            open={menuOpen}
+            onOpenChange={setMenuOpen}
+            label={t('cashflow.rowMenu', { title })}
+          >
+            <RowMenuItem disabled={!canOpen} onSelect={() => href && setLocation(href)}>
+              <List aria-hidden strokeWidth={1.75} />
+              {tb('actions.showTransactions')}
+            </RowMenuItem>
+            {action && (
+              <RowMenuItem
+                disabled={limitMode === null}
+                onSelect={() => limitMode && onLimit(limitMode)}
+              >
+                {action.hasLimit ? (
+                  <Pencil aria-hidden strokeWidth={1.75} />
+                ) : (
+                  <Plus aria-hidden strokeWidth={1.75} />
+                )}
+                {tb(action.hasLimit ? 'actions.editLimit' : 'actions.setLimit')}
+              </RowMenuItem>
+            )}
+          </RowMenu>
+        ) : undefined
+      }
+      below={limitLine || undefined}
     />
   );
 }

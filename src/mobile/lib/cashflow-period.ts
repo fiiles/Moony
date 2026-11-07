@@ -1,5 +1,3 @@
-import type { CashflowMonth } from '@shared/schema';
-import { amountOf } from '@/utils/positions';
 import { monthOffsetOf, type PeriodTimeframe } from '@/utils/period';
 
 /**
@@ -48,7 +46,7 @@ export function parseCashflowSearch(search: string): CashflowState {
  * the default. `parseCashflowSearch(cashflowSearch(state))` is the state again (an empty account
  * list reads back as `undefined`, which means the same: all accounts). A period the person picked
  * (`chosen`) always writes its offset, the current month as `o=0`: without one the tab opens on
- * the newest month with data (`periodChosen`, `latestMonthOffset`).
+ * the month of the newest transaction (`periodChosen`, `openingState`).
  */
 export function cashflowSearch(state: CashflowState, { chosen = false } = {}): string {
   const params = new URLSearchParams();
@@ -81,8 +79,8 @@ export function isPartialPeriod(periodEnd: number, nowSeconds: number): boolean 
 
 /**
  * True when the search names a period (a timeframe or an offset): the person picked it, or the
- * tab was opened on the newest month with data already. A plain tab (or one with only accounts
- * picked) has none yet.
+ * tab was opened on the month of the newest transaction already. A plain tab (or one with only
+ * accounts picked) has none yet.
  */
 export function periodChosen(search: string): boolean {
   const params = new URLSearchParams(search);
@@ -90,19 +88,20 @@ export function periodChosen(search: string): boolean {
 }
 
 /**
- * The offset back from now of the newest month in the report's chart window (`months`, oldest
- * first) that holds income or spending; `null` when none does. The tab opens there instead of on
- * an empty current month.
+ * The period the tab opens on (the desktop's rule): a search that names a period (`chosen`, see
+ * `periodChosen`) is used as it is; a plain visit opens on the month of the newest booked
+ * transaction (`latest`, unix seconds), however old, never on a future one, and on the current
+ * month when there is none or the lookup failed (`null`). `undefined` means the date is not known
+ * yet: the result is `null` and the tab waits, so it never shows an empty month first.
  */
-export function latestMonthOffset(
-  months: readonly CashflowMonth[],
+export function openingState(
+  state: CashflowState,
+  chosen: boolean,
+  latest: number | null | undefined,
   now: Date = new Date()
-): number | null {
-  for (let i = months.length - 1; i >= 0; i -= 1) {
-    const { month, income, expenses } = months[i];
-    if ((amountOf(income) ?? 0) !== 0 || (amountOf(expenses) ?? 0) !== 0) {
-      return monthOffsetOf(month, now);
-    }
-  }
-  return null;
+): CashflowState | null {
+  if (chosen) return state;
+  if (latest === undefined) return null;
+  const offset = latest === null ? 0 : monthOffsetOf(latest, now);
+  return offset === state.offset ? state : { ...state, offset };
 }

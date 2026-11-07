@@ -1,27 +1,12 @@
 import type {
+  BankAccount,
   CashflowActuals,
   CashflowGroup,
   CashflowMonth,
-  CategorySpendingSummary,
   FlowKind,
 } from '@shared/schema';
 import type { NamedCategory } from '@/utils/category-name';
 import { absoluteMovementShares } from '@/utils/money-flows';
-import { summarizeBudgetStatus } from '@/utils/report-currencies';
-
-/** How much of its budget limit a category has used. */
-export interface RowLimit {
-  /** Spent against the limit, in the currency of the limit (not the report currency). */
-  spent: number;
-  /** The limit for the period, in the currency of the limit. */
-  limit: number;
-  /** The currency of the limit (`budgetCurrency`). */
-  currency: string;
-  /** `spent / limit` in per cent, as the backend works it out. */
-  percentage: number;
-  /** Over 100 % is `over`, from 85 % `near`, else `ok` (the thresholds of `summarizeBudgetStatus`). */
-  state: 'ok' | 'near' | 'over';
-}
 
 export interface CategoryRowModel {
   /** Category id, or `uncategorized`. */
@@ -35,10 +20,7 @@ export interface CategoryRowModel {
   count: number;
   /** Share of the movement of the listed groups, 0–1. */
   share: number;
-  limit: RowLimit | null;
 }
-
-const NO_TARGET = '';
 
 /** The `key` of the group of payments that have no category. */
 export const UNCATEGORIZED = 'uncategorized';
@@ -69,38 +51,12 @@ export function categoryTitle(
   return labels.categoryName(category ?? { id: key, name, isSystem: key.startsWith('cat_') });
 }
 
-function rowLimit(summary: CategorySpendingSummary | undefined): RowLimit | null {
-  if (
-    !summary ||
-    summary.budgetGoal == null ||
-    !summary.budgetCurrency ||
-    summary.budgetSpent == null ||
-    summary.budgetLimitNative == null ||
-    summary.budgetPercentage == null ||
-    !Number.isFinite(summary.budgetPercentage)
-  ) {
-    return null;
-  }
-  const status = summarizeBudgetStatus([summary], NO_TARGET);
-  return {
-    spent: Number(summary.budgetSpent),
-    limit: Number(summary.budgetLimitNative),
-    currency: summary.budgetCurrency,
-    percentage: summary.budgetPercentage,
-    state: status.over > 0 ? 'over' : status.near > 0 ? 'near' : 'ok',
-  };
-}
-
 /**
- * The rows of one breakdown (expenses, income or transfers), in the order of the groups (the
- * backend sorts them largest first). A group with no transactions and no amount is left out; the
- * shares are over what is left. The budget summary of the same category (`budgets` is keyed by
- * category id) supplies the limit, when it has an evaluable one.
+ * The rows of the income or the transfer breakdown, in the order of the groups (the backend sorts
+ * them largest first). A group with no transactions and no amount is left out; the shares are over
+ * what is left. The expense rows are the desktop's (`expenseRows` of `@/utils/cashflow-budget-rows`).
  */
-export function categoryRows(
-  groups: readonly CashflowGroup[],
-  budgets?: ReadonlyMap<string, CategorySpendingSummary>
-): CategoryRowModel[] {
+export function categoryRows(groups: readonly CashflowGroup[]): CategoryRowModel[] {
   const kept = groups
     .map((group) => ({ group, amount: Number(group.amount) || 0 }))
     .filter(({ group, amount }) => group.count > 0 || amount !== 0);
@@ -112,28 +68,7 @@ export function categoryRows(
     amount,
     count: group.count,
     share: shares[index],
-    limit: rowLimit(budgets?.get(group.key)),
   }));
-}
-
-export interface BudgetCounts {
-  ok: number;
-  near: number;
-  over: number;
-}
-
-/**
- * How many budgets are within their limit, near it and over it, for the note on the Cashflow tab.
- * Only categories with a budget goal count, and only those whose limit can be evaluated; `null`
- * when there are none, so the note stays away.
- */
-export function budgetCounts(summaries: readonly CategorySpendingSummary[]): BudgetCounts | null {
-  const status = summarizeBudgetStatus(
-    summaries.filter((summary) => summary.budgetGoal != null),
-    NO_TARGET
-  );
-  if (status.onTrack + status.near + status.over === 0) return null;
-  return { ok: status.onTrack, near: status.near, over: status.over };
 }
 
 /** One month of the chart: both bars, dimmed when the month is outside the selected period. */
@@ -174,23 +109,43 @@ export type BodyKind = 'skeleton' | 'error' | 'noAccounts' | 'emptyPeriod' | 're
  * Which body the Cashflow tab shows. The invitation to add an account is for a profile with no
  * account at all (`accountTotal`, from the accounts list): the report's own `accountCount` is the
  * accounts among the period's transactions, so it is 0 for every empty period and says nothing
- * about the profile. A period with no transactions (any month before the first import, an idle
- * account's scope) keeps the bars and says so (`emptyPeriod`). A failed load is the error only
- * while there is nothing to show; the skeleton waits for both the actuals and the accounts.
+ * about the profile. A period is empty only with no transaction and no limit (the desktop's rule:
+ * limits alone keep the report, `hasLimits`); an empty one keeps the bars and says so
+ * (`emptyPeriod`). A failed load is the error only while there is nothing to show; the skeleton
+ * waits for both the report and the accounts.
  */
 export function bodyKind({
   accountsLoaded,
   accountTotal,
   actuals,
   isError,
+  hasLimits,
 }: {
   accountsLoaded: boolean;
   accountTotal: number;
   actuals: CashflowActuals | undefined;
   isError: boolean;
+  hasLimits: boolean;
 }): BodyKind {
   if (!actuals && isError) return 'error';
   if (!actuals || !accountsLoaded) return 'skeleton';
   if (accountTotal === 0) return 'noAccounts';
-  return actuals.transactionCount === 0 ? 'emptyPeriod' : 'report';
+  return actuals.transactionCount === 0 && !hasLimits ? 'emptyPeriod' : 'report';
+}
+
+/**
+ * The account scope of the report as its filter states it: `null` for all accounts (no choice, or
+ * every account chosen), else how many of the chosen accounts exist — never the number of accounts
+ * that happen to have payments in the period. While the accounts are not loaded the choice counts
+ * as it is.
+ */
+export function accountScope(
+  accountIds: readonly string[] | undefined,
+  accounts: readonly Pick<BankAccount, 'id'>[]
+): number | null {
+  if (!accountIds) return null;
+  if (accounts.length === 0) return accountIds.length;
+  const known = new Set(accounts.map((account) => account.id));
+  const chosen = new Set(accountIds.filter((id) => known.has(id))).size;
+  return chosen === known.size ? null : chosen;
 }

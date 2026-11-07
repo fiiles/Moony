@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { BudgetGoal, BudgetGoalVersion } from '@shared/schema';
-import { budgetedCategoryIds, budgetRows, reportRowLimit, unbudgetedRows } from './budget-rows';
+import { budgetedCategoryIds, budgetRows, rowLimitAction, unbudgetedRows } from './budget-rows';
 
 const month = (year: number, index: number) => Date.UTC(year, index, 1) / 1000;
 /** October 2026, the month the tests run in. */
@@ -215,49 +215,75 @@ describe('unbudgetedRows', () => {
   });
 });
 
-describe('reportRowLimit', () => {
+describe('rowLimitAction', () => {
   const stored = goal('cat_a', [version(month(2026, 0), '3000'), version(month(2026, 11), '3500')]);
   const periodStart = month(2026, 9);
+  /** A report row: `periodGoal` is the report's copy of the goal (no versions). */
+  const row = (periodGoal: BudgetGoal | null, key = 'cat_a') => ({
+    key,
+    periodGoal,
+    hasLimit: periodGoal !== null,
+  });
 
   it('edits the stored budget from the month the report shows when the period has one', () => {
-    // The report's own copy of the goal carries no versions: the stored one does
-    const inPeriod = goal('cat_a', []);
-    expect(reportRowLimit('cat_a', inPeriod, [ACTIVE, stored], periodStart, true)).toEqual({
+    expect(
+      rowLimitAction(row(goal('cat_a', [])), true, [ACTIVE, stored], periodStart, true)
+    ).toEqual({
       hasLimit: true,
       mode: { kind: 'edit', goal: stored, effectiveMonth: periodStart },
     });
   });
 
-  it('adds a limit for the category from the month the report shows when the period has none', () => {
-    expect(reportRowLimit('cat_a', null, [stored], periodStart, true)).toEqual({
+  it('edits a budget whose limit ended or starts later, as the desktop does', () => {
+    expect(rowLimitAction(row(null), true, [stored], periodStart, true)).toEqual({
+      hasLimit: false,
+      mode: { kind: 'edit', goal: stored, effectiveMonth: periodStart },
+    });
+  });
+
+  it('adds a limit from the month the report shows for a category that never had one', () => {
+    expect(rowLimitAction(row(null), true, [ACTIVE], periodStart, true)).toEqual({
       hasLimit: false,
       mode: { kind: 'add', categoryId: 'cat_a', effectiveMonth: periodStart },
     });
-    expect(reportRowLimit('cat_a', undefined, [], periodStart, true).hasLimit).toBe(false);
   });
 
-  it('knows there is a budget but cannot edit it while the stored goals are missing', () => {
-    expect(reportRowLimit('cat_a', goal('cat_a', []), [], periodStart, true)).toEqual({
-      hasLimit: true,
-      mode: null,
+  it("falls back to the period's copy when the stored goal is missing", () => {
+    const inPeriod = goal('cat_a', []);
+    expect(rowLimitAction(row(inPeriod), true, [], periodStart, true)?.mode).toEqual({
+      kind: 'edit',
+      goal: inPeriod,
+      effectiveMonth: periodStart,
     });
   });
 
   it('matches the stored budget by timeframe as well as category', () => {
     const quarterly = goal('cat_a', [version(month(2026, 0), '9000')], { timeframe: 'quarterly' });
     const inPeriod = goal('cat_a', [], { timeframe: 'quarterly' });
-    expect(reportRowLimit('cat_a', inPeriod, [stored, quarterly], periodStart, true).mode).toEqual({
-      kind: 'edit',
-      goal: quarterly,
-      effectiveMonth: periodStart,
+    expect(
+      rowLimitAction(row(inPeriod), true, [stored, quarterly], periodStart, true)?.mode
+    ).toEqual({ kind: 'edit', goal: quarterly, effectiveMonth: periodStart });
+  });
+
+  it('has an action but cannot act while the stored limits are not known', () => {
+    expect(rowLimitAction(row(null), true, [], periodStart, false)).toEqual({
+      hasLimit: false,
+      mode: null,
+    });
+    expect(rowLimitAction(row(goal('cat_a', [])), true, [], periodStart, false)).toEqual({
+      hasLimit: true,
+      mode: null,
     });
   });
 
-  it("cannot act while the period's budgets are not known (loading or failed): no limit is guessed", () => {
-    // Without the budgeting report "no budget in the period" would only mean "not known yet"
-    expect(reportRowLimit('cat_a', undefined, [stored], periodStart, false).mode).toBeNull();
-    expect(
-      reportRowLimit('cat_a', goal('cat_a', []), [stored], periodStart, false).mode
-    ).toBeNull();
+  it('has no action for a row that cannot have a limit (uncategorized, a non-expense category)', () => {
+    expect(rowLimitAction(row(null, 'uncategorized'), false, [], periodStart, true)).toBeNull();
+  });
+
+  it('keeps the action of a row that has a limit even when its category cannot get a new one', () => {
+    expect(rowLimitAction(row(goal('cat_a', [])), false, [stored], periodStart, true)).toEqual({
+      hasLimit: true,
+      mode: { kind: 'edit', goal: stored, effectiveMonth: periodStart },
+    });
   });
 });

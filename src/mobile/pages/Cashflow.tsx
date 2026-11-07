@@ -1,26 +1,30 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useQuery } from '@tanstack/react-query';
 import { useLocation, useSearch } from 'wouter';
 import { Landmark } from 'lucide-react';
 import type { BudgetGoal, CashflowActuals } from '@shared/schema';
 import { useBankAccounts } from '@/hooks/use-bank-accounts';
 import { useCategories, useCategoryName } from '@/hooks/use-categories';
 import { useSpendingPlansOverview } from '@/hooks/use-spending-plans';
+import { budgetingApi } from '@/lib/tauri-api';
+import { useReportMoney } from '@/lib/use-report-money';
+import { periodPace } from '@/utils/budget-pace';
+import { isPartialLimit, storedLimitGoal, type ExpenseRow } from '@/utils/cashflow-budget-rows';
 import { yearFromSearch } from '@/utils/spending-plans';
-import type { MoneyOptions } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { ScaledEmptyState, ScaledReportError, ScaledReportNote } from '@/mobile/components/Scaled';
-import { BudgetSummaryNote } from '@/mobile/components/cashflow/BudgetSummaryNote';
 import { CashflowBars } from '@/mobile/components/cashflow/CashflowBars';
 import { CashflowHero } from '@/mobile/components/cashflow/CashflowHero';
 import { CashflowMenu } from '@/mobile/components/cashflow/CashflowMenu';
 import { CategoryRow } from '@/mobile/components/cashflow/CategoryRow';
+import { ExpensesSection } from '@/mobile/components/cashflow/ExpensesSection';
+import { SectionFoot } from '@/mobile/components/cashflow/SectionFoot';
 import { PlansCard } from '@/mobile/components/plans/PlansCard';
 import { PlansView } from '@/mobile/components/plans/PlansView';
 import { UnderlineTabs } from '@/mobile/components/UnderlineTabs';
-import { ExpenseCategoryRow } from '@/mobile/components/cashflow/ExpenseCategoryRow';
 import { PeriodBar } from '@/mobile/components/cashflow/PeriodBar';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
@@ -33,26 +37,25 @@ import {
   useCashflowState,
   type CashflowReport,
 } from '@/mobile/hooks/use-cashflow';
-import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import {
   cashflowSearch,
   isPartialPeriod,
-  latestMonthOffset,
+  openingState,
   periodChosen,
   selectMonth,
   type CashflowState,
 } from '@/mobile/lib/cashflow-period';
 import {
+  accountScope,
   barsFor,
   bodyKind,
-  budgetCounts,
   categoryRows,
   categoryTitle,
   savingsRate,
-  UNCATEGORIZED,
   type CategoryRowModel,
 } from '@/mobile/lib/cashflow-rows';
-import { reportRowLimit } from '@/mobile/lib/budget-rows';
+import { rowLimitAction } from '@/mobile/lib/budget-rows';
+import type { LimitMode } from '@/mobile/lib/budget-limit';
 import { cashflowViewSearch, viewFromSearch, type CashflowView } from '@/mobile/lib/cashflow-view';
 import { plansCardSummary } from '@/mobile/lib/plan-rows';
 import { CASHFLOW_EXPORT_FILE, cashflowCsv } from '@/mobile/lib/cashflow-export';
@@ -60,12 +63,8 @@ import { afterHistorySettles } from '@/mobile/lib/history-settle';
 import { budgetsPath, cashflowCategoryPath, plansPath, routes } from '@/mobile/shell/routes';
 import { LockButton } from '@/mobile/shell/LockButton';
 import { Screen } from '@/mobile/shell/Screen';
-import { BudgetLimitSheet, type LimitMode } from '@/mobile/sheets/BudgetLimitSheet';
+import { BudgetLimitSheet } from '@/mobile/sheets/BudgetLimitSheet';
 import { CashflowAccountsSheet } from '@/mobile/sheets/CashflowAccountsSheet';
-
-/** Whole amounts, and whole amounts with their sign ("+ 3 120 Kč"). */
-const WHOLE: MoneyOptions = { decimals: 0 };
-const SIGNED_WHOLE: MoneyOptions = { signed: true, decimals: 0 };
 
 /** The card the bars sit in (`.m-card`). */
 const CARD =
@@ -75,11 +74,12 @@ const CARD =
 const amount = (value: string | null): number => Number(value) || 0;
 
 /**
- * Cashflow tab root (spec §8.7, prototype frame 09): the period bar, then the report of the
- * selected month, quarter or year — the savings hero, income and expenses, the twelve-month bars
- * (a tap on a month opens it), the budget summary line, and the expense, income and transfer
- * categories as rows, each with its share or limit bar. The period and the account scope live in
- * the route's query string (`useCashflowState`), so the pages pushed on this tab return to them.
+ * Cashflow tab root (spec §8.7, prototype frame 09; the desktop Cashflow is the reference, spec
+ * `2026-11-07-mobile-cashflow-parity-design.md`): the period bar, then the report of the selected
+ * month, quarter or year — the savings hero, income and expenses, the twelve-month bars (a tap on
+ * a month opens it), the expense categories with their limits, income and transfers. The period
+ * and the account scope live in the route's query string (`useCashflowState`), so the pages pushed
+ * on this tab return to them.
  */
 export default function Cashflow() {
   const { t } = useTranslation('mobile');
@@ -142,7 +142,31 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
   const { categories } = useCategories();
   const categoryName = useCategoryName();
   const [state, setState] = useCashflowState();
-  const report = useCashflowReport(state);
+  const rawSearch = useSearch();
+  const chosen = periodChosen(rawSearch);
+
+  // A plain visit opens on the month of the newest transaction (the desktop's rule), decided before
+  // the report is fetched: no empty current month first, and the data may be older than the chart.
+  // A cached date is used at once; one a money write invalidated is waited for.
+  const latestQuery = useQuery({
+    queryKey: ['budgeting-latest-transaction'],
+    queryFn: () => budgetingApi.getLatestTransactionDate(),
+    enabled: !chosen,
+    staleTime: Infinity,
+  });
+  const latest = latestQuery.isError
+    ? null
+    : latestQuery.isSuccess && !(latestQuery.isFetching && latestQuery.isStale)
+      ? latestQuery.data
+      : undefined;
+  const opening = useMemo(() => openingState(state, chosen, latest), [state, chosen, latest]);
+  const current = opening ?? state;
+  // Written into the URL once, so a later refetch never moves it and the pushed pages return to it
+  useEffect(() => {
+    if (!chosen && opening) setState(opening, { pin: true });
+  }, [chosen, opening, setState]);
+
+  const report = useCashflowReport(current, { enabled: opening !== null });
   const { run: runExport, isPending: exporting } = useCsvExport();
   const { accounts, isLoading: accountsLoading } = useBankAccounts();
   const [accountsOpen, setAccountsOpen] = useState(false);
@@ -151,7 +175,7 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
   // The six-month report behind the sheet's hint is only fetched once the sheet opens
   const limits = useBudgetLimitSheet(false);
   const { actuals } = report;
-  const search = cashflowSearch(state);
+  const search = cashflowSearch(current);
   // The plans card is about the current calendar year, whatever period the report shows (M3)
   const planYear = new Date().getFullYear();
   const { data: plansOverview } = useSpendingPlansOverview(planYear);
@@ -159,22 +183,11 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
     () => (plansOverview?.year === planYear ? plansCardSummary(plansOverview) : null),
     [plansOverview, planYear]
   );
-  const rawSearch = useSearch();
 
-  // A plain visit opens on the newest month with income or spending, not on an empty current one:
-  // once the current month's report says it has no payments, its 12-month window names the month
-  const autoOffset =
-    !periodChosen(rawSearch) &&
-    state.timeframe === 'monthly' &&
-    actuals &&
-    !report.isPlaceholder &&
-    actuals.transactionCount === 0
-      ? latestMonthOffset(actuals.months)
-      : null;
-  useEffect(() => {
-    if (autoOffset !== null && autoOffset < 0) setState({ ...state, offset: autoOffset });
-  }, [autoOffset, state, setState]);
   const accountCount = accounts.length;
+  // The scope as the filter states it (B5): all accounts, or how many are chosen — never the
+  // number of accounts that happen to have payments in the period
+  const scope = accountScope(current.accountIds, accounts);
   // The invitation is decided by the accounts list, never by the period's own counts (an empty
   // period reports no accounts either)
   const body = bodyKind({
@@ -182,6 +195,7 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
     accountTotal: accountCount,
     actuals,
     isError: report.isError,
+    hasLimits: report.expenses.some((row) => row.hasLimit),
   });
 
   // Export writes the report on screen, never the previous period's still shown while the next
@@ -218,12 +232,12 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
     if (accountsOpen || pendingScope === null) return;
     return afterHistorySettles(window, () => {
       setState({
-        ...state,
+        ...current,
         accountIds: pendingScope.length === accountCount ? undefined : pendingScope,
       });
       setPendingScope(null);
     });
-  }, [accountsOpen, pendingScope, accountCount, state, setState]);
+  }, [accountsOpen, pendingScope, accountCount, current, setState]);
 
   return (
     <Screen
@@ -232,9 +246,7 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
       leading={<LockButton />}
       trailing={
         <CashflowMenu
-          accountsLabel={tr('readiness.accounts', {
-            count: state.accountIds?.length ?? accountCount,
-          })}
+          accountsLabel={tr('readiness.accounts', { count: scope ?? accountCount })}
           onAccounts={() => setAccountsOpen(true)}
           budgetsHref={budgetsPath(search)}
           exportDisabled={exporting || report.isPlaceholder || !actuals}
@@ -244,17 +256,17 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
     >
       {switcher}
       {/* Under the switch, not in the title block: the switch keeps its place in both views */}
-      {actuals && actuals.accountCount > 0 && (
+      {!accountsLoading && accountCount > 0 && (
         <p className="mx-0.5 mb-3.5 mt-0 text-m-lead text-ink-3">
-          {t('cashflow.subtitle', { count: actuals.accountCount })}
+          {scope === null ? t('cashflow.subtitleAll') : t('cashflow.subtitle', { count: scope })}
         </p>
       )}
       <PeriodBar
-        timeframe={state.timeframe}
-        offset={state.offset}
+        timeframe={current.timeframe}
+        offset={current.offset}
         label={report.periodLabel}
-        onTimeframeChange={(timeframe) => setState({ ...state, timeframe, offset: 0 })}
-        onStep={(delta) => setState({ ...state, offset: Math.min(0, state.offset + delta) })}
+        onTimeframeChange={(timeframe) => setState({ ...current, timeframe, offset: 0 })}
+        onStep={(delta) => setState({ ...current, offset: Math.min(0, current.offset + delta) })}
       />
       {body === 'error' ? (
         <ScaledReportError onRetry={report.refetch} />
@@ -269,14 +281,18 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
           aria-busy={report.isPlaceholder}
         >
           {report.isError && <ScaledReportError onRetry={report.refetch} />}
+          {limits.historyQuery.isError && (
+            <ScaledReportError onRetry={() => void limits.historyQuery.refetch()} />
+          )}
           <ReportBody
             actuals={actuals}
             report={report}
-            state={state}
-            onSelectMonth={(month) => setState({ ...state, ...selectMonth(month) })}
+            timeframe={current.timeframe}
+            onSelectMonth={(month) => setState({ ...current, ...selectMonth(month) })}
             search={search}
             plansCard={plans && <PlansCard summary={plans} href={plansPath(plans.year)} />}
             goals={limits.history}
+            limitsReady={limits.historyQuery.isSuccess}
             onLimit={limits.openLimit}
           />
         </div>
@@ -285,7 +301,7 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
         open={accountsOpen}
         onOpenChange={setAccountsOpen}
         accounts={accounts}
-        value={state.accountIds}
+        value={current.accountIds}
         onDone={(ids) => {
           setPendingScope(ids);
           setAccountsOpen(false);
@@ -299,66 +315,84 @@ function CashflowReportView({ switcher }: { switcher: ReactNode }) {
 interface ReportBodyProps {
   actuals: CashflowActuals;
   report: CashflowReport;
-  state: CashflowState;
+  timeframe: CashflowState['timeframe'];
   onSelectMonth: (month: number) => void;
   search: string;
-  /** The spending plans card (the current year), when it has plans; after the bars and the note. */
+  /** The spending plans card (the current year), when it has plans; after the bars. */
   plansCard: ReactNode;
-  /** Every stored budget with its versions (the edit sheet starts from one). */
+  /** Every stored budget with its versions (the limit sheet edits one; the notes read them). */
   goals: readonly BudgetGoal[];
-  /** Open the limit sheet (an expense row's menu). */
+  /** The stored budgets have loaded, so a limit action knows whether to add or edit. */
+  limitsReady: boolean;
+  /** Open the limit sheet (an expense row's limit button or menu). */
   onLimit: (mode: LimitMode) => void;
 }
 
-/** The report of a period that has transactions (or, with none, its bars and an empty line). */
+/**
+ * The report of a period that has transactions or limits (or, with neither, its bars and an empty
+ * line). Report amounts are at the currency's minor units, as on the desktop (`useReportMoney`), so
+ * the rows add up to the totals.
+ */
 function ReportBody({
   actuals,
   report,
-  state,
+  timeframe,
   onSelectMonth,
   search,
   plansCard,
   goals,
+  limitsReady,
   onLimit,
 }: ReportBodyProps) {
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('reports');
+  const { t: tb } = useTranslation('budgeting');
   const fmt = useFormat();
-  const moneyText = useMoneyText();
   const { categories } = useCategories();
   const categoryName = useCategoryName();
-  const { reportCurrency, range, budgeting, budgetByCategory } = report;
+  const { range, expenses, periodLabel } = report;
+  const { money, signedMoney, nativeMoney } = useReportMoney(actuals.reportCurrency);
+  // A net refund reads "− 100 Kč" with the minus sign of the signed amounts
+  const lineMoney = (value: number) => (value < 0 ? signedMoney(value) : money(value));
 
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   const bars = useMemo(
     () => barsFor(actuals.months, actuals.periodStart, actuals.periodEnd),
     [actuals]
   );
-  const counts = useMemo(() => budgetCounts(budgeting?.expenseCategories ?? []), [budgeting]);
-  // The budgets' summaries are the expense categories': income and transfers get no limits
-  const expenseRows = useMemo(
-    () => categoryRows(actuals.expenseCategories, budgetByCategory),
-    [actuals, budgetByCategory]
-  );
   const incomeRows = useMemo(() => categoryRows(actuals.incomeCategories), [actuals]);
   const transferRows = useMemo(() => categoryRows(actuals.transfers), [actuals]);
 
-  const titleLabels = {
-    categoryName,
-    uncategorized: tr('actuals.uncategorized'),
-    uncategorizedTransfers: tr('actuals.uncategorizedTransfers'),
-  };
+  const titleLabels = useMemo(
+    () => ({
+      categoryName,
+      uncategorized: tr('actuals.uncategorized'),
+      uncategorizedTransfers: tr('actuals.uncategorizedTransfers'),
+    }),
+    [categoryName, tr]
+  );
+  const expenseTitle = useCallback(
+    (row: ExpenseRow) =>
+      categoryTitle(row.key, 'expense', categoryById.get(row.key) ?? null, row.name, titleLabels),
+    [categoryById, titleLabels]
+  );
 
   const totalIncome = amount(actuals.totalIncome);
   const totalExpenses = amount(actuals.totalExpenses);
   const net = amount(actuals.netBalance);
   const rate = savingsRate(totalIncome, net);
-  const money = (value: number) => moneyText(value, reportCurrency, WHOLE);
   // The average per month counts only with two or more completed months, as on the desktop
   const perMonth = (average: string | null) =>
     average !== null && actuals.averageCompletedMonths.length >= 2
       ? tr('actuals.stats.perMonth', { amount: money(amount(average)) })
       : undefined;
+  const pace = periodPace(actuals.periodStart, actuals.periodEnd);
+  const evaluated = tb('settings.evaluationNote', {
+    period: timeframe === 'monthly' ? fmt.monthInSentence(range.startDate) : periodLabel,
+  });
+  const evaluationNote = pace.isCurrent
+    ? `${evaluated} · ${tr('actuals.expenses.pace', { percent: fmt.percent(pace.elapsed, 0) })}`
+    : evaluated;
 
   const barsCard = (
     <div className={CARD}>
@@ -372,7 +406,8 @@ function ReportBody({
     </div>
   );
 
-  if (actuals.transactionCount === 0) {
+  // Limits alone keep the report: only a period without transactions and limits is empty
+  if (actuals.transactionCount === 0 && !expenses.some((row) => row.hasLimit)) {
     return (
       <>
         {bars.some((bar) => bar.income !== 0 || bar.expenses !== 0) && barsCard}
@@ -388,8 +423,7 @@ function ReportBody({
     );
   }
 
-  // The expense rows carry the long press's menu (the limit sheet, the drilldown)
-  const rows = (list: CategoryRowModel[], withBar: boolean, withMenu = false) =>
+  const rows = (list: CategoryRowModel[], format: (value: number) => string, withBar: boolean) =>
     list.length === 0 ? (
       <li className="list-none px-3.5 py-4 text-m-sub text-ink-4">
         {tr('actuals.breakdown.empty')}
@@ -397,39 +431,15 @@ function ReportBody({
     ) : (
       list.map((row) => {
         const category = categoryById.get(row.key) ?? null;
-        const title = categoryTitle(row.key, row.flowKind, category, row.name, titleLabels);
-        const href = cashflowCategoryPath(row.flowKind, row.key, search);
-        if (!withMenu || row.key === UNCATEGORIZED) {
-          return (
-            <CategoryRow
-              key={row.key}
-              row={row}
-              title={title}
-              category={category}
-              reportCurrency={reportCurrency}
-              href={href}
-              withBar={withBar}
-            />
-          );
-        }
-        const { hasLimit, mode } = reportRowLimit(
-          row.key,
-          budgetByCategory.get(row.key)?.budgetGoal,
-          goals,
-          range.start,
-          report.budgeting !== undefined
-        );
         return (
-          <ExpenseCategoryRow
+          <CategoryRow
             key={row.key}
             row={row}
-            title={title}
+            title={categoryTitle(row.key, row.flowKind, category, row.name, titleLabels)}
             category={category}
-            reportCurrency={reportCurrency}
-            href={href}
+            value={format(row.amount)}
+            href={cashflowCategoryPath(row.flowKind, row.key, search)}
             withBar={withBar}
-            hasLimit={hasLimit}
-            onLimit={mode && (() => onLimit(mode))}
           />
         );
       })
@@ -444,7 +454,7 @@ function ReportBody({
       <CashflowHero
         label={tr('actuals.stats.savings')}
         value={net}
-        formatValue={(value) => moneyText(value, reportCurrency, SIGNED_WHOLE)}
+        formatValue={signedMoney}
         tone={net > 0 ? 'gain' : net < 0 ? 'loss' : 'neutral'}
         note={
           rate !== null ? tr('actuals.stats.savingsRate', { rate: fmt.percent(rate, 0) }) : null
@@ -465,24 +475,53 @@ function ReportBody({
         ]}
       />
       {barsCard}
-      {state.timeframe === 'monthly' && counts && (
-        <BudgetSummaryNote counts={counts} href={budgetsPath(search)} />
-      )}
       {plansCard}
-      <section>
-        <SectionHead title={tr('actuals.expenses.title')} note={money(totalExpenses)} />
-        <EntityRows>{rows(expenseRows, true, true)}</EntityRows>
-      </section>
+      <ExpensesSection
+        rows={expenses}
+        total={totalExpenses}
+        title={expenseTitle}
+        category={(row) => categoryById.get(row.key) ?? null}
+        href={(row) =>
+          row.count > 0 ? cashflowCategoryPath('expense', row.key, search) : undefined
+        }
+        action={(row) =>
+          rowLimitAction(
+            row,
+            categoryById.get(row.key)?.kind === 'expense',
+            goals,
+            range.start,
+            limitsReady
+          )
+        }
+        partial={(row) => {
+          const goal = row.hasLimit ? storedLimitGoal(row, goals) : null;
+          return goal !== null && isPartialLimit(goal, range.start, range.end);
+        }}
+        money={lineMoney}
+        native={nativeMoney}
+        evaluationNote={evaluationNote}
+        pace={pace.isCurrent ? pace.elapsed : undefined}
+        manageHref={budgetsPath(search)}
+        busy={report.isPlaceholder}
+        onLimit={onLimit}
+      />
       <section>
         <SectionHead title={tr('actuals.income.title')} note={money(totalIncome)} />
-        <EntityRows>{rows(incomeRows, true)}</EntityRows>
+        <EntityRows>{rows(incomeRows, lineMoney, true)}</EntityRows>
+        <SectionFoot lines={[tr('actuals.income.note')]} />
       </section>
-      {transferRows.length > 0 && (
-        <section>
-          <SectionHead title={tr('actuals.transfers.title')} />
-          <EntityRows>{rows(transferRows, false)}</EntityRows>
-        </section>
-      )}
+      <section>
+        <SectionHead title={tr('actuals.transfers.title')} />
+        <EntityRows>{rows(transferRows, signedMoney, false)}</EntityRows>
+        <SectionFoot
+          lines={[
+            tr('actuals.transfers.sub'),
+            tr('actuals.transfers.movement', {
+              amount: signedMoney(amount(actuals.bankCashMovement)),
+            }),
+          ]}
+        />
+      </section>
     </>
   );
 }

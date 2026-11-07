@@ -938,5 +938,19 @@
     "form": {
       "newDescription": "Quanto vuoi spendere in un anno per una singola cosa. Aggiungi i pagamenti al piano dal dettaglio del pagamento."
     }
+  },
+  "sheet": {
+    "discard": {
+      "title": "Scartare le modifiche?",
+      "description": "Quanto inserito non verrà salvato.",
+      "keep": "Continua a modificare",
+      "confirm": "Scarta"
+    }
+  },
+  "loadError": {
+    "overview": "Impossibile caricare la panoramica.",
+    "finance": "Impossibile caricare le finanze.",
+    "wealth": "Impossibile caricare il patrimonio.",
+    "detail": "Impossibile caricare i dati."
   }
 }

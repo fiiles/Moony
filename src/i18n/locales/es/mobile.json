@@ -938,5 +938,19 @@
     "form": {
       "newDescription": "Cuánto quieres gastar en un año en una sola cosa. Añades pagos al plan desde el detalle del pago."
     }
+  },
+  "sheet": {
+    "discard": {
+      "title": "¿Descartar los cambios?",
+      "description": "Lo que ha rellenado no se guardará.",
+      "keep": "Seguir editando",
+      "confirm": "Descartar"
+    }
+  },
+  "loadError": {
+    "overview": "No se pudo cargar el resumen.",
+    "finance": "No se pudieron cargar las finanzas.",
+    "wealth": "No se pudo cargar el patrimonio.",
+    "detail": "No se pudieron cargar los datos."
   }
 }

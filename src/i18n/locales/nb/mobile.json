@@ -891,5 +891,19 @@
     "form": {
       "newDescription": "Hvor mye du vil bruke på én ting i løpet av et år. Du legger betalinger til i planen fra betalingsdetaljene."
     }
+  },
+  "sheet": {
+    "discard": {
+      "title": "Forkaste endringene?",
+      "description": "Det du har fylt inn, blir ikke lagret.",
+      "keep": "Fortsett å redigere",
+      "confirm": "Forkast"
+    }
+  },
+  "loadError": {
+    "overview": "Oversikten kunne ikke lastes.",
+    "finance": "Økonomien kunne ikke lastes.",
+    "wealth": "Formuen kunne ikke lastes.",
+    "detail": "Opplysningene kunne ikke lastes."
   }
 }

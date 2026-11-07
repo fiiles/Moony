@@ -891,5 +891,19 @@
     "form": {
       "newDescription": "How much you want to spend on one thing in a year. You add payments to the plan in a payment’s details."
     }
+  },
+  "sheet": {
+    "discard": {
+      "title": "Discard changes?",
+      "description": "What you have filled in will not be saved.",
+      "keep": "Keep editing",
+      "confirm": "Discard"
+    }
+  },
+  "loadError": {
+    "overview": "The overview could not be loaded.",
+    "finance": "Finance could not be loaded.",
+    "wealth": "Wealth could not be loaded.",
+    "detail": "The details could not be loaded."
   }
 }

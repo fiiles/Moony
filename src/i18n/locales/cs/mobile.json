@@ -946,5 +946,19 @@
     "form": {
       "newDescription": "Kolik chcete za rok utratit za jednu věc. Platby do plánu přidáte v detailu platby."
     }
+  },
+  "sheet": {
+    "discard": {
+      "title": "Zahodit změny?",
+      "description": "Co jste vyplnili, se neuloží.",
+      "keep": "Pokračovat v úpravách",
+      "confirm": "Zahodit"
+    }
+  },
+  "loadError": {
+    "overview": "Přehled se nepodařilo načíst.",
+    "finance": "Finance se nepodařilo načíst.",
+    "wealth": "Majetek se nepodařilo načíst.",
+    "detail": "Údaje se nepodařilo načíst."
   }
 }

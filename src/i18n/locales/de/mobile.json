@@ -891,5 +891,19 @@
     "form": {
       "newDescription": "Wie viel Sie in einem Jahr für eine Sache ausgeben möchten. Zahlungen fügen Sie dem Plan in den Zahlungsdetails hinzu."
     }
+  },
+  "sheet": {
+    "discard": {
+      "title": "Änderungen verwerfen?",
+      "description": "Ihre Eingaben werden nicht gespeichert.",
+      "keep": "Weiter bearbeiten",
+      "confirm": "Verwerfen"
+    }
+  },
+  "loadError": {
+    "overview": "Die Übersicht konnte nicht geladen werden.",
+    "finance": "Die Finanzen konnten nicht geladen werden.",
+    "wealth": "Das Vermögen konnte nicht geladen werden.",
+    "detail": "Die Angaben konnten nicht geladen werden."
   }
 }

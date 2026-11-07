@@ -12,6 +12,7 @@ import { Sheet } from '@/mobile/components/Sheet';
 import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { usePropertyCostMutations } from '@/mobile/hooks/use-property-mutations';
+import { formChanged } from '@/mobile/lib/form-dirty';
 import {
   costErrors,
   costInput,
@@ -76,13 +77,17 @@ export function CostSheet({ open, onOpenChange, property, cost }: CostSheetProps
   const currency = recordCurrency(cost ? cost.currency : property.marketPriceCurrency);
 
   const [form, setForm] = useState(() => startForm(property, cost));
+  // What the form opened with: a sheet that differs from it asks before it closes
+  const [formStart, setFormStart] = useState(form);
   // An empty field is only called missing once it has been left
   const [touched, setTouched] = useState({ name: false, amount: false });
   const [openedFor, setOpenedFor] = useState(open);
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setForm(startForm(property, cost));
+      const fresh = startForm(property, cost);
+      setForm(fresh);
+      setFormStart(fresh);
       setTouched({ name: false, amount: false });
     }
   }
@@ -131,6 +136,7 @@ export function CostSheet({ open, onOpenChange, property, cost }: CostSheetProps
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
+      dirty={!pending && formChanged(formStart, form)}
       title={editing ? tr('modal.cost.editTitle') : tr('modal.cost.addCost')}
       description={
         editing

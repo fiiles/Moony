@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { createSheetHistory, type SheetHistory } from '@/mobile/lib/sheet-history';
+import { createSheetHistory, type SheetClose, type SheetHistory } from '@/mobile/lib/sheet-history';
 
 let shared: SheetHistory | undefined;
 
@@ -20,9 +20,10 @@ function sheetHistory(): SheetHistory {
  * picker opens over the transaction sheet — so back closes the newest one only. When a sheet
  * closes by any other means (the scrim, Zrušit, a save), its entry is taken off again so that
  * back still goes where it would have gone, and the sheets beneath it stay open
- * (`createSheetHistory`).
+ * (`createSheetHistory`). `close` may refuse with `false` (a sheet with unsaved input asks first):
+ * the sheet then keeps an entry.
  */
-export function useSheetHistory(open: boolean, close: () => void): void {
+export function useSheetHistory(open: boolean, close: SheetClose): void {
   const closeRef = useRef(close);
   useEffect(() => {
     closeRef.current = close;
@@ -32,4 +33,9 @@ export function useSheetHistory(open: boolean, close: () => void): void {
     if (!open) return;
     return sheetHistory().open(() => closeRef.current());
   }, [open]);
+}
+
+/** How many history entries the sheets hold now (the lock walks back over them, `lock-return.ts`). */
+export function sheetEntryCount(): number {
+  return shared?.size() ?? 0;
 }

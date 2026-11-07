@@ -1,15 +1,20 @@
 import * as React from 'react';
 import * as AlertDialogPrimitive from '@radix-ui/react-alert-dialog';
 
+import { isMobileShell } from '@/lib/platform';
 import { cn } from '@/lib/utils';
 import { buttonVariants } from '@/components/ui/button';
+import { withPhoneHistory } from '@/components/ui/phone-dialog-history';
 
 /**
  * Confirm dialog (design system §6, `.modal--sm`): 440 px. Title with a
  * question mark, text that says exactly what disappears and that it cannot be
  * undone, solid red-brown action named with a verb ("Smazat pozici").
+ * In the phone shell Android back closes it, as it closes a sheet (`withPhoneHistory`).
  */
-const AlertDialog = AlertDialogPrimitive.Root;
+const AlertDialog = isMobileShell(import.meta.env)
+  ? withPhoneHistory(AlertDialogPrimitive.Root)
+  : AlertDialogPrimitive.Root;
 
 const AlertDialogTrigger = AlertDialogPrimitive.Trigger;
 

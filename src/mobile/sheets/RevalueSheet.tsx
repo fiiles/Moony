@@ -8,6 +8,7 @@ import { DateField } from '@/mobile/components/DateField';
 import { Sheet } from '@/mobile/components/Sheet';
 import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
+import { formChanged } from '@/mobile/lib/form-dirty';
 import { todayIso } from '@/mobile/lib/property-detail';
 import {
   revaluedTotal,
@@ -60,13 +61,17 @@ export function RevalueSheet({
   const { add } = useValuationMutations(kind, assetId);
 
   const [form, setForm] = useState(() => startRevalueForm(value, todayIso()));
+  // What the form opened with: a sheet that differs from it asks before it closes
+  const [formStart, setFormStart] = useState(form);
   // An empty amount is only called missing once the field has been left
   const [amountTouched, setAmountTouched] = useState(false);
   const [openedFor, setOpenedFor] = useState(open);
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setForm(startRevalueForm(value, todayIso()));
+      const fresh = startRevalueForm(value, todayIso());
+      setForm(fresh);
+      setFormStart(fresh);
       setAmountTouched(false);
     }
   }
@@ -114,6 +119,7 @@ export function RevalueSheet({
     <Sheet
       open={open}
       onOpenChange={onOpenChange}
+      dirty={!add.isPending && formChanged(formStart, form)}
       title={tc('revalue.title', { name })}
       description={tc('revalue.description')}
       footer={

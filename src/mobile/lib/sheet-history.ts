@@ -13,14 +13,22 @@ export interface HistoryPort {
   go(delta: number): void;
 }
 
+/**
+ * Closes a sheet on back. A sheet may refuse (`false`: it asks first whether to drop what was
+ * typed); it then keeps owning an entry, pushed again, so the next back asks again.
+ */
+export type SheetClose = () => boolean | void;
+
 export interface SheetHistory {
   /**
    * A sheet opens and takes an entry. The returned function says the sheet has closed (however it
    * did); the entry is then taken off the history unless back has already done so.
    */
-  open(close: () => void): () => void;
+  open(close: SheetClose): () => void;
   /** A `popstate`: the newest sheet closes — unless it is only the echo of the stack's own step. */
   popstate(): void;
+  /** How many entries the sheets hold in the history now (the open ones and those not yet taken off). */
+  size(): number;
 }
 
 /** Key of the history state that marks the entry a sheet pushed. */
@@ -29,7 +37,7 @@ const MARK = 'moonySheet';
 interface Entry {
   token: string;
   /** Closes the sheet on back; `null` once the sheet has closed (the entry waits to be removed). */
-  close: (() => void) | null;
+  close: SheetClose | null;
 }
 
 function markOf(state: unknown): unknown {
@@ -73,13 +81,18 @@ export function createSheetHistory(history: HistoryPort): SheetHistory {
     queueMicrotask(flush);
   };
 
+  /** Pushes the history entry of `entry`, over whatever entry is current. */
+  const push = (entry: Entry) => {
+    const current = history.state;
+    const state = current !== null && typeof current === 'object' ? current : {};
+    history.pushState({ ...state, [MARK]: entry.token }, '');
+  };
+
   return {
     open(close) {
       const entry: Entry = { token: String(++counter), close };
       entries.push(entry);
-      const current = history.state;
-      const state = current !== null && typeof current === 'object' ? current : {};
-      history.pushState({ ...state, [MARK]: entry.token }, '');
+      push(entry);
       return () => {
         entry.close = null;
         scheduleFlush();
@@ -92,8 +105,18 @@ export function createSheetHistory(history: HistoryPort): SheetHistory {
         return;
       }
       // Back took the newest entry; the sheet's own release then clears any closed one beneath
-      entries.pop()?.close?.();
+      const entry = entries.pop();
+      if (entry?.close && entry.close() === false) {
+        // The sheet stays open (it asks first): it owns an entry again
+        entries.push(entry);
+        push(entry);
+        return;
+      }
       scheduleFlush();
+    },
+
+    size() {
+      return entries.length;
     },
   };
 }

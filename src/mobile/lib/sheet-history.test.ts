@@ -60,8 +60,8 @@ describe('createSheetHistory', () => {
   it('closes only the newest sheet on back and leaves the one beneath its entry', async () => {
     const { sheets, depth, back, settle } = setup();
     const closed: string[] = [];
-    sheets.open(() => closed.push('below'));
-    const releaseTop = sheets.open(() => closed.push('top'));
+    sheets.open(() => void closed.push('below'));
+    const releaseTop = sheets.open(() => void closed.push('top'));
     back();
     expect(closed).toEqual(['top']);
     releaseTop(); // the sheet has closed itself in answer
@@ -74,8 +74,8 @@ describe('createSheetHistory', () => {
   it('takes the entry off when the newest sheet closes by other means, without closing the one beneath', async () => {
     const { sheets, depth, settle } = setup();
     const closed: string[] = [];
-    sheets.open(() => closed.push('below'));
-    const releaseTop = sheets.open(() => closed.push('top'));
+    sheets.open(() => void closed.push('below'));
+    const releaseTop = sheets.open(() => void closed.push('top'));
     releaseTop();
     await tick();
     settle(); // the popstate of our own step
@@ -122,5 +122,37 @@ describe('createSheetHistory', () => {
   it('ignores back when no sheet is open', () => {
     const { back } = setup();
     expect(() => back()).not.toThrow();
+  });
+
+  it('keeps a sheet that refuses to close on back, with an entry again', async () => {
+    const { sheets, depth, back, settle } = setup();
+    let asked = 0;
+    const release = sheets.open(() => {
+      asked++;
+      return false;
+    });
+    back();
+    expect(asked).toBe(1);
+    expect(depth()).toBe(1);
+    // A second back asks again: the sheet still owns an entry
+    back();
+    expect(asked).toBe(2);
+    expect(depth()).toBe(1);
+    release();
+    await tick();
+    settle();
+    expect(depth()).toBe(0);
+  });
+
+  it('counts the entries of the open sheets', async () => {
+    const { sheets, settle } = setup();
+    expect(sheets.size()).toBe(0);
+    sheets.open(() => {});
+    const release = sheets.open(() => {});
+    expect(sheets.size()).toBe(2);
+    release();
+    await tick();
+    settle();
+    expect(sheets.size()).toBe(1);
   });
 });

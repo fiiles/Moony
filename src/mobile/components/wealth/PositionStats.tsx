@@ -133,14 +133,19 @@ export function PositionStats({
       label: ts('detail.realized'),
       value: realizedGain === null ? '—' : statMoney(realizedGain, reportCurrency, true),
       tone: statTone(realizedGain),
-      note: [
-        sells > 0 ? ts('detail.sells', { count: sells }) : ts('detail.noSells'),
+      // The desktop's two parts, the dividends first: a third of the row holds two short lines,
+      // and "zatím žádný prodej" says nothing once the dividends explain the whole value.
+      note:
         dividendsReceived !== null && dividendsReceived > 0
-          ? ts('detail.realizedDividends', { amount: statMoney(dividendsReceived) })
-          : null,
-      ]
-        .filter(Boolean)
-        .join(' · '),
+          ? [
+              ts('detail.realizedDividends', { amount: statMoney(dividendsReceived) }),
+              sells > 0 ? ts('detail.sells', { count: sells }) : null,
+            ]
+              .filter(Boolean)
+              .join(' · ')
+          : sells > 0
+            ? ts('detail.sells', { count: sells })
+            : ts('detail.noSells'),
     },
     sixth,
   ];

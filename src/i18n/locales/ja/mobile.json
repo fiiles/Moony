@@ -235,6 +235,9 @@
       "details": "詳細",
       "category": "カテゴリ",
       "delete": "削除"
+    },
+    "importHistory": {
+      "menu": "インポートのオプション"
     }
   },
   "loan": {

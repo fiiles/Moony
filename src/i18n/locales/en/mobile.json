@@ -254,6 +254,9 @@
       "details": "Details",
       "category": "Category",
       "delete": "Delete"
+    },
+    "importHistory": {
+      "menu": "Import options"
     }
   },
   "loan": {

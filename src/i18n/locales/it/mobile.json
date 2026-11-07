@@ -273,6 +273,9 @@
       "details": "Dettagli",
       "category": "Categoria",
       "delete": "Elimina"
+    },
+    "importHistory": {
+      "menu": "Opzioni dell’importazione"
     }
   },
   "loan": {

@@ -254,6 +254,9 @@
       "details": "Detaljer",
       "category": "Kategori",
       "delete": "Slett"
+    },
+    "importHistory": {
+      "menu": "Importvalg"
     }
   },
   "loan": {

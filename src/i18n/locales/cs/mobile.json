@@ -273,6 +273,9 @@
       "details": "Podrobnosti",
       "category": "Kategorie",
       "delete": "Smazat"
+    },
+    "importHistory": {
+      "menu": "Nabídka importu"
     }
   },
   "loan": {

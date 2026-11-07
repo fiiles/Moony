@@ -235,6 +235,9 @@
       "details": "详情",
       "category": "类别",
       "delete": "删除"
+    },
+    "importHistory": {
+      "menu": "导入选项"
     }
   },
   "loan": {

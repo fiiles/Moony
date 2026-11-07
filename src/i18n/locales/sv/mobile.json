@@ -254,6 +254,9 @@
       "details": "Detaljer",
       "category": "Kategori",
       "delete": "Ta bort"
+    },
+    "importHistory": {
+      "menu": "Importalternativ"
     }
   },
   "loan": {

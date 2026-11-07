@@ -268,10 +268,20 @@ fn random_run(seed: u64) -> Vault {
     vault
 }
 
+/// The fewest seeds over which the operation-coverage net is asserted, besides the fixed set: a
+/// short exploration list (16 seeds) cannot reach every operation, while 100 consecutive seeds
+/// do (the 600-seed explorations reach all of them).
+const COVERAGE_MIN_SEEDS: usize = 100;
+
 #[test]
 fn random_operations_converge_under_any_relay_order() {
     let runs = every_seed(random_run);
-    // The net only holds if every operation landed somewhere.
+    // The net only holds if every operation landed somewhere: asserted over the fixed seeds and
+    // over explorations of at least `COVERAGE_MIN_SEEDS` seeds.
+    let seeds = seeds();
+    if seeds != SEEDS && seeds.len() < COVERAGE_MIN_SEEDS {
+        return;
+    }
     let mut stats: BTreeMap<&'static str, [usize; 3]> = BTreeMap::new();
     for vault in &runs {
         for (name, counts) in &vault.stats {

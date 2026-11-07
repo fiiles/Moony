@@ -11,12 +11,16 @@ use rusqlite::{params, Connection};
 use super::Touched;
 use crate::error::{AppError, Result};
 use crate::services::sync::capture;
-use crate::services::sync::registry;
+use crate::services::sync::registry::{self, schema};
 
 /// When row `pk` of `table` has no `source` rows left, puts the typed value back into every
 /// column of `table` derived from `source` that holds a computed value over a typed one
-/// (`sync_typed`), and forgets a stale entry. Returns whether a column was written; the callers
-/// fall back to their own value (a service's default) when not. Nothing happens without capture.
+/// (`sync_typed`), and forgets a stale entry. A column without an entry already holds its typed
+/// value — the value at sync start counts as typed, as in the triggers — and keeps it.
+///
+/// Returns whether the columns now hold their typed values (capture installed, no `source` rows
+/// left): the caller then writes nothing of its own. Without capture it returns false and the
+/// caller keeps its pre-sync behaviour, a zero fallback included (G5).
 pub fn restore(conn: &Connection, table: &str, pk: &str, source: &str) -> Result<bool> {
     if !capture::is_installed(conn)? {
         return Ok(false);
@@ -43,25 +47,31 @@ pub fn restore(conn: &Connection, table: &str, pk: &str, source: &str) -> Result
     if has_rows {
         return Ok(false);
     }
-    let mut wrote = false;
+    let key = match schema::primary_key(conn, table)?.as_slice() {
+        [key] => key.clone(),
+        _ => {
+            return Err(AppError::Internal(format!(
+                "sync typed: {table} has recomputed-or-typed columns but no single key"
+            )))
+        }
+    };
     for column in *columns {
-        let changed = conn.execute(
+        conn.execute(
             &format!(
                 "UPDATE main.{table} SET \"{column}\" = (
                    SELECT typed FROM sync_typed WHERE tbl = ?2 AND pk = ?1 AND col = ?3)
-                 WHERE id = ?1 AND EXISTS (
+                 WHERE \"{key}\" = ?1 AND EXISTS (
                    SELECT 1 FROM sync_typed WHERE tbl = ?2 AND pk = ?1 AND col = ?3
                      AND assigned IS main.{table}.\"{column}\")"
             ),
             params![pk, table, column],
         )?;
-        wrote |= changed > 0;
         conn.execute(
             "DELETE FROM sync_typed WHERE tbl = ?2 AND pk = ?1 AND col = ?3",
             params![pk, table, column],
         )?;
     }
-    Ok(wrote)
+    Ok(true)
 }
 
 /// After a merge: every touched owner row whose source rows are all gone gets its typed values

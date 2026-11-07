@@ -586,8 +586,9 @@ pub fn refresh_balance_columns(conn: &rusqlite::Connection, account_id: &str) ->
             "UPDATE bank_accounts SET balance = ?1, balance_as_of = ?2, updated_at = unixepoch() WHERE id = ?3",
             params![amount, day, account_id],
         )?,
-        // Without records the balance is typed (ruling T18b): the typed value a record
-        // overwrote comes back; without one the balance is zero, as before sync.
+        // Without records the balance is typed (ruling T18b): with sync, the typed value a
+        // record overwrote comes back, else the stored one stays; without sync it is zero, as
+        // before.
         None if typed::restore(conn, "bank_accounts", account_id, "bank_balance_records")? => 0,
         None => conn.execute(
             "UPDATE bank_accounts SET balance = '0', balance_as_of = NULL, updated_at = unixepoch() WHERE id = ?1",

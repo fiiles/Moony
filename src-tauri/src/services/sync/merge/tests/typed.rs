@@ -3,10 +3,11 @@
 //! on the wire, and comes back on every device when the last source row goes.
 
 use super::*;
+use crate::models::other_assets::InsertOtherAssetTransaction;
 use crate::models::valuations::InsertAssetValuation;
 use crate::services::sync::capture::Mode;
 use crate::services::valuations::{self, ValuationKind};
-use crate::services::{bank_accounts, crypto_investments, investments};
+use crate::services::{bank_accounts, crypto_investments, investments, other_assets};
 
 const DAY: i64 = 1_767_225_600; // 2026-01-01
 
@@ -104,26 +105,25 @@ fn repro_a_two_devices_each_delete_one_of_the_last_two_buys() {
     assert_converged(&[&a, &b, &c]);
 }
 
-/// Repro B of the Task 18 report, deterministic. The account and its one record predate sync
-/// (no clocks, no entries). C deletes the record: no typed value is held, so the balance falls to
-/// 0 as before sync, captured. B relays C's balance with an edit of its own; A sees B's
-/// changeset before C's and keeps its record a while: the computed balance hides the typed 0,
-/// which comes back when the record goes.
+/// Repro B of the Task 18 report, deterministic. The account (typed 125.00) got its one record
+/// with sync on, so the computed 3259.46 hides the typed balance. C deletes the record: the typed
+/// balance comes back, captured. B relays C's balance with an edit of its own; A sees B's
+/// changeset before C's and keeps its record a while: the computed balance hides the relayed
+/// typed one, which comes back when the record goes.
 #[test]
 fn repro_b_a_relayed_balance_arrives_before_the_record_tombstone() {
     let (a, b, c) = (device(A), device(B), device(C));
-    for conn in [&a, &b, &c] {
-        capture::with_mode(conn, Mode::Repair, || {
-            conn.execute_batch(
-                "INSERT INTO bank_accounts (id, name, currency, balance, balance_as_of) \
-                   VALUES ('acc', 'Main', 'CZK', '3259.46', 1767225600); \
-                 INSERT INTO bank_balance_records (id, bank_account_id, amount, currency, as_of, \
-                   recorded_at) VALUES ('rec', 'acc', '3259.46', 'CZK', 1767225600, 100);",
-            )?;
-            Ok(())
-        })
-        .expect("pre-sync rows");
-    }
+    account(&a, "acc");
+    exec(
+        &a,
+        "INSERT INTO bank_balance_records (id, bank_account_id, amount, currency, as_of, \
+           recorded_at) VALUES ('rec', 'acc', '3259.46', 'CZK', 1767225600, 100)",
+    );
+    bank_accounts::refresh_balance_columns(&a, "acc").expect("refresh");
+    let base = send(&a);
+    apply(&b, &base);
+    apply(&c, &base);
+    later(&c, &a);
     bank_accounts::delete_balance_record(&c, "rec").expect("delete record");
     let relay_0 = send(&c);
     apply(&b, &relay_0);
@@ -138,7 +138,7 @@ fn repro_b_a_relayed_balance_arrives_before_the_record_tombstone() {
     assert_eq!(
         entries(&a),
         vec![
-            "bank_accounts acc balance '0' -> '3259.46'".to_string(),
+            "bank_accounts acc balance '125.00' -> '3259.46'".to_string(),
             "bank_accounts acc balance_as_of NULL -> 1767225600".to_string(),
         ]
     );
@@ -152,8 +152,87 @@ fn repro_b_a_relayed_balance_arrives_before_the_record_tombstone() {
                 "SELECT balance || ' ' || COALESCE(balance_as_of, '-') FROM bank_accounts"
             )
             .as_deref(),
-            Some("0 -")
+            Some("125.00 -")
         );
+        assert!(entries(conn).is_empty());
+    }
+    assert_converged(&[&a, &b, &c]);
+}
+
+/// The account and its records predate sync (no clocks, no entries).
+fn pre_sync_account(conn: &Connection) {
+    capture::with_mode(conn, Mode::Repair, || {
+        conn.execute_batch(
+            "INSERT INTO bank_accounts (id, name, currency, balance, balance_as_of) \
+               VALUES ('acc', 'Main', 'CZK', '3000.00', 1767312000); \
+             INSERT INTO bank_balance_records (id, bank_account_id, amount, currency, as_of, \
+               recorded_at) VALUES \
+               ('r1', 'acc', '3000.00', 'CZK', 1767312000, 100), \
+               ('r2', 'acc', '2000.00', 'CZK', 1767225600, 100);",
+        )?;
+        Ok(())
+    })
+    .expect("pre-sync rows");
+}
+
+fn balance(conn: &Connection) -> Option<String> {
+    value(
+        conn,
+        "SELECT balance || ' ' || COALESCE(balance_as_of, '-') FROM bank_accounts",
+    )
+}
+
+/// The Task 18b review's case: with records from before sync the value at sync start is the
+/// typed one, whatever order the records go in (newest first restores it from the entry; oldest
+/// first never overwrote it and keeps it).
+#[test]
+fn pre_sync_records_deleted_in_either_order_leave_the_same_balance() {
+    let (x, y) = (device(A), device(B));
+    pre_sync_account(&x);
+    pre_sync_account(&y);
+
+    bank_accounts::delete_balance_record(&x, "r1").expect("delete r1");
+    assert_eq!(balance(&x).as_deref(), Some("2000.00 1767225600"));
+    bank_accounts::delete_balance_record(&x, "r2").expect("delete r2");
+    bank_accounts::delete_balance_record(&y, "r2").expect("delete r2");
+    bank_accounts::delete_balance_record(&y, "r1").expect("delete r1");
+
+    for conn in [&x, &y] {
+        assert_eq!(balance(conn).as_deref(), Some("3000.00 1767312000"));
+        assert!(entries(conn).is_empty());
+    }
+    let (from_x, from_y) = (send(&x), send(&y));
+    apply(&x, &from_y);
+    apply(&y, &from_x);
+    assert_converged(&[&x, &y]);
+}
+
+/// Repro B's sequence with rows from before sync: C's delete keeps the stored balance (the value
+/// at sync start is typed), so nothing about the balance travels and every device keeps it.
+#[test]
+fn repro_b_with_rows_from_before_sync_keeps_the_stored_balance() {
+    let (a, b, c) = (device(A), device(B), device(C));
+    for conn in [&a, &b, &c] {
+        pre_sync_account(conn);
+        exec(conn, "DELETE FROM bank_balance_records WHERE id = 'r2'");
+        exec(conn, "DELETE FROM sync_clock; DELETE FROM sync_outbox;");
+    }
+    bank_accounts::delete_balance_record(&c, "r1").expect("delete record");
+    let relay_0 = send(&c);
+    apply(&b, &relay_0);
+    later(&b, &c);
+    exec(
+        &b,
+        "UPDATE bank_accounts SET interest_rate = '1.5' WHERE id = 'acc'",
+    );
+    let relay_1 = send(&b);
+
+    apply(&a, &relay_1);
+    apply(&a, &relay_0);
+    apply(&c, &relay_1);
+
+    for conn in [&a, &b, &c] {
+        assert_eq!(balance(conn).as_deref(), Some("3000.00 1767312000"));
         assert!(entries(conn).is_empty());
     }
     assert_converged(&[&a, &b, &c]);
@@ -383,4 +462,154 @@ fn without_sync_the_local_behaviour_is_unchanged() {
         ),
         0
     );
+}
+
+/// One device, sync on: a balance with a typed value under its record gets it back when the
+/// record goes locally, as a captured typed write.
+#[test]
+fn a_local_last_record_delete_restores_the_typed_balance() {
+    let conn = device(A);
+    account(&conn, "acc");
+    exec(
+        &conn,
+        "INSERT INTO bank_balance_records (id, bank_account_id, amount, currency, as_of, \
+           recorded_at) VALUES ('rec', 'acc', '3000.00', 'CZK', 1767225600, 100)",
+    );
+    bank_accounts::refresh_balance_columns(&conn, "acc").expect("refresh");
+    assert_eq!(entries(&conn).len(), 2);
+
+    bank_accounts::delete_balance_record(&conn, "rec").expect("delete record");
+
+    assert_eq!(balance(&conn).as_deref(), Some("125.00 -"));
+    assert!(entries(&conn).is_empty());
+    let sent = rows_of(&send(&conn));
+    let account_row = sent
+        .iter()
+        .find(|r| r.table == "bank_accounts")
+        .expect("the restored balance is captured");
+    assert_eq!(account_row.columns["balance"].0, text("125.00"));
+    assert_eq!(account_row.columns["balance_as_of"].0, SqlValue::Null);
+}
+
+/// One device, sync on: an other asset's price gets its typed value back when its last
+/// valuation goes locally; one from before sync (no entry) keeps the stored price.
+#[test]
+fn a_local_last_valuation_delete_restores_the_typed_price_or_keeps_a_pre_sync_one() {
+    let conn = device(A);
+    exec(
+        &conn,
+        "INSERT INTO other_assets (id, name, quantity, market_price, currency, created_at) \
+         VALUES ('wine', 'Wine', '7', '2304.23', 'EUR', 100)",
+    );
+    let valuation = add_valuation(&conn, ValuationKind::OtherAsset, "wine", "26000", DAY);
+    valuations::delete_valuation(&conn, ValuationKind::OtherAsset, &valuation).expect("delete");
+    assert_eq!(
+        value(&conn, "SELECT market_price FROM other_assets").as_deref(),
+        Some("2304.23")
+    );
+    assert!(entries(&conn).is_empty());
+
+    capture::with_mode(&conn, Mode::Repair, || {
+        conn.execute_batch(
+            "INSERT INTO other_assets (id, name, quantity, market_price, currency, created_at) \
+               VALUES ('watch', 'Watch', '1', '9000', 'EUR', 100); \
+             INSERT INTO other_asset_valuations (id, asset_id, value, currency, valued_at, \
+               created_at) VALUES ('v-old', 'watch', '9000', 'EUR', 1767225600, 100);",
+        )?;
+        Ok(())
+    })
+    .expect("pre-sync asset");
+    valuations::delete_valuation(&conn, ValuationKind::OtherAsset, "v-old").expect("delete");
+    assert_eq!(
+        value(
+            &conn,
+            "SELECT market_price FROM other_assets WHERE id = 'watch'"
+        )
+        .as_deref(),
+        Some("9000")
+    );
+    assert!(entries(&conn).is_empty());
+}
+
+/// One device, sync on: deleting a crypto position's last trade deletes the position (the
+/// service's own rule), and its shadow entries go with it.
+#[test]
+fn a_local_last_crypto_trade_delete_removes_the_position_and_its_entries() {
+    let conn = device(A);
+    exec(
+        &conn,
+        "INSERT INTO crypto_investments (id, ticker, name, quantity, currency) \
+           VALUES ('btc', 'BTC', 'Bitcoin', '0.5', 'CZK'); \
+         INSERT INTO crypto_transactions (id, investment_id, type, ticker, name, quantity, \
+           price_per_unit, currency, transaction_date, created_at) VALUES \
+           ('t1', 'btc', 'buy', 'BTC', 'Bitcoin', '1', '50000', 'EUR', 1767225600, 100);",
+    );
+    crypto_investments::recalculate_crypto_metrics(&conn, "btc").expect("recalculate");
+    assert_eq!(
+        entries(&conn),
+        vec![
+            "crypto_investments btc currency 'CZK' -> 'EUR'".to_string(),
+            "crypto_investments btc quantity '0.5' -> '1'".to_string(),
+        ]
+    );
+
+    crypto_investments::delete_transaction(&conn, "t1").expect("delete t1");
+
+    assert_eq!(count(&conn, "SELECT COUNT(*) FROM crypto_investments"), 0);
+    assert!(entries(&conn).is_empty());
+}
+
+/// A typed edit on A (no transactions yet, so it is captured) while B adds the asset's first
+/// transaction: everyone shows B's computed quantity over A's typed one, which waits in the
+/// shadow on every device.
+#[test]
+fn a_typed_edit_concurrent_with_the_first_source_converges() {
+    let (a, b) = (device(A), device(B));
+    exec(
+        &a,
+        "INSERT INTO other_assets (id, name, quantity, market_price, currency, \
+           average_purchase_price, created_at) VALUES ('gold', 'Gold', '2', '100', 'EUR', '90', 100)",
+    );
+    apply(&b, &send(&a));
+    exec(
+        &a,
+        "UPDATE other_assets SET quantity = '5' WHERE id = 'gold'",
+    );
+    later(&b, &a);
+    other_assets::create_asset_transaction(
+        &b,
+        "gold",
+        &InsertOtherAssetTransaction {
+            asset_id: Some("gold".into()),
+            tx_type: "buy".into(),
+            quantity: "3".into(),
+            price_per_unit: "95".into(),
+            currency: "EUR".into(),
+            transaction_date: DAY,
+        },
+    )
+    .expect("first transaction");
+    let (from_a, from_b) = (send(&a), send(&b));
+
+    apply(&a, &from_b);
+    apply(&b, &from_a);
+
+    for conn in [&a, &b] {
+        assert_eq!(
+            value(
+                conn,
+                "SELECT quantity || ' ' || average_purchase_price FROM other_assets"
+            )
+            .as_deref(),
+            Some("3 95")
+        );
+        assert_eq!(
+            entries(conn),
+            vec![
+                "other_assets gold average_purchase_price '90' -> '95'".to_string(),
+                "other_assets gold quantity '5' -> '3'".to_string(),
+            ]
+        );
+    }
+    assert_converged(&[&a, &b]);
 }

@@ -1,5 +1,6 @@
 import { useId, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { amountInputText } from '@/mobile/lib/amount-input';
 import type { RealEstate, RealEstateOneTimeCost } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
 import { Button } from '@/components/ui/button';
@@ -37,12 +38,16 @@ interface CostSheetProps {
  * its own values. The stored day is kept, so that a cost the computer dated ahead can be edited
  * without moving it.
  */
-function startForm(property: RealEstate, cost: RealEstateOneTimeCost | null): CostForm {
+function startForm(
+  property: RealEstate,
+  cost: RealEstateOneTimeCost | null,
+  locale: string
+): CostForm {
   return {
     realEstateId: property.id,
     kind: cost ? 'oneTime' : 'recurring',
     name: cost?.name ?? '',
-    amountText: cost ? String(Number(cost.amount) || 0) : '',
+    amountText: cost ? amountInputText(Number(cost.amount) || 0, locale) : '',
     frequency: 'monthly',
     dateIso: cost ? isoDateFromUtcTimestamp(cost.date) : todayIso(),
     description: cost?.description ?? '',
@@ -75,14 +80,15 @@ export function CostSheet({ open, onOpenChange, property, cost }: CostSheetProps
   const { addRecurring, saveOneTime } = usePropertyCostMutations(property.id);
   const currency = recordCurrency(cost ? cost.currency : property.marketPriceCurrency);
 
-  const [form, setForm] = useState(() => startForm(property, cost));
+  const locale = useTranslation().i18n.language;
+  const [form, setForm] = useState(() => startForm(property, cost, locale));
   // An empty field is only called missing once it has been left
   const [touched, setTouched] = useState({ name: false, amount: false });
   const [openedFor, setOpenedFor] = useState(open);
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setForm(startForm(property, cost));
+      setForm(startForm(property, cost, locale));
       setTouched({ name: false, amount: false });
     }
   }

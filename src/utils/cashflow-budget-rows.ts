@@ -8,6 +8,7 @@
 import { isoMinorUnits } from '@shared/currencies';
 import type { BudgetGoal, CashflowGroup, CategorySpendingSummary } from '@shared/schema';
 import { absoluteMovementShares } from '@/utils/money-flows';
+import { limitCoverage } from '@/utils/budget-goal-versions';
 
 /** Over the limit, used exactly, from 85 %, below that, or not evaluable. */
 export type LimitState = 'over' | 'exhausted' | 'near' | 'ok' | 'unavailable';
@@ -152,6 +153,28 @@ export function expenseRows(
       limit: periodGoal && budget ? limitState(budget) : null,
     };
   });
+}
+
+/**
+ * The stored budget (with its versions) a row's limit action edits and its limit note reads: the
+ * category's goal of the period goal's timeframe, monthly when the period has none (a limit that
+ * ended or starts later). Null when the category never had one.
+ */
+export function storedLimitGoal(
+  row: Pick<ExpenseRow, 'key' | 'periodGoal'>,
+  history: readonly BudgetGoal[]
+): BudgetGoal | null {
+  const timeframe = row.periodGoal?.timeframe ?? 'monthly';
+  return history.find((g) => g.categoryId === row.key && g.timeframe === timeframe) ?? null;
+}
+
+/**
+ * "Jen část období": the stored limit is in effect in some months of the period `start`–`end`
+ * (UTC seconds, `end` inclusive) but not in all of them.
+ */
+export function isPartialLimit(goal: BudgetGoal, start: number, end: number): boolean {
+  const coverage = limitCoverage(goal.versions, start, end);
+  return coverage.covered > 0 && coverage.covered < coverage.months;
 }
 
 /** How many rows each filter shows, over the whole overview. */

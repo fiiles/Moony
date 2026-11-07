@@ -382,6 +382,7 @@ export function BankAccountFormDialog({
                     id="balance"
                     type="number"
                     step="0.01"
+                    signed
                     value={balance}
                     onChange={(e) => setBalance(e.target.value)}
                     placeholder="0"

@@ -135,8 +135,8 @@ export function ManualDividendModal({ open, onOpenChange, investment }: ManualDi
                         step="any"
                         placeholder="0"
                         {...field}
-                        onBlur={(e) => {
-                          const value = parseFloat(e.target.value);
+                        onBlur={() => {
+                          const value = parseFloat(String(field.value));
                           if (!isNaN(value)) {
                             field.onChange(String(value));
                           }

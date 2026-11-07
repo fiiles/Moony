@@ -1,15 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import type {
-  BudgetGoal,
-  CashflowActuals,
-  CashflowGroup,
-  CashflowMonth,
-  CategorySpendingSummary,
-} from '@shared/schema';
+import type { BankAccount, CashflowActuals, CashflowGroup, CashflowMonth } from '@shared/schema';
 import {
+  accountScope,
   barsFor,
   bodyKind,
-  budgetCounts,
   categoryRows,
   categoryTitle,
   savingsRate,
@@ -18,44 +12,6 @@ import {
 
 function group(patch: Partial<CashflowGroup> & Pick<CashflowGroup, 'key'>): CashflowGroup {
   return { name: '', flowKind: 'expense', amount: '0', count: 0, ...patch };
-}
-
-const GOAL: BudgetGoal = {
-  id: 'goal',
-  categoryId: 'cat_groceries',
-  timeframe: 'monthly',
-  amount: '8000',
-  currency: 'CZK',
-  createdAt: 0,
-  updatedAt: 0,
-  effectiveMonth: null,
-  versions: [],
-};
-
-function summary(
-  categoryId: string,
-  patch: Partial<CategorySpendingSummary> = {}
-): CategorySpendingSummary {
-  return {
-    budgetCurrency: 'CZK',
-    budgetSpent: '7820',
-    budgetLimitNative: '8000',
-    budgetLimit: '8000',
-    budgetLimitFxQuality: null,
-    categoryId,
-    categoryName: categoryId,
-    categoryIcon: null,
-    categoryColor: null,
-    totalAmount: '7820',
-    transactionCount: 4,
-    budgetGoal: { ...GOAL, categoryId },
-    budgetPercentage: 97.75,
-    ...patch,
-  };
-}
-
-function budgetMap(...summaries: CategorySpendingSummary[]) {
-  return new Map(summaries.map((s) => [s.categoryId, s]));
 }
 
 describe('categoryRows', () => {
@@ -70,7 +26,6 @@ describe('categoryRows', () => {
     expect(rows.map((row) => row.key)).toEqual(['cat_housing', 'cat_energy']);
     expect(rows[0].share).toBeCloseTo(12500 / 14400);
     expect(rows[1].share).toBeCloseTo(1900 / 14400);
-    expect(rows.every((row) => row.limit === null)).toBe(true);
   });
 
   it('keeps the order, the name, the kind, the amount and the count of each group', () => {
@@ -98,106 +53,6 @@ describe('categoryRows', () => {
   it('gives no shares to a list that moves nothing', () => {
     const rows = categoryRows([group({ key: 'cat_net', amount: '0', count: 2 })]);
     expect(rows[0].share).toBe(0);
-  });
-
-  describe('with budgets', () => {
-    const groceries = group({ key: 'cat_groceries', amount: '7820', count: 12 });
-
-    it('reads a limit that is 97.75 % spent as near', () => {
-      const [row] = categoryRows([groceries], budgetMap(summary('cat_groceries')));
-      expect(row.limit).toEqual({
-        spent: 7820,
-        limit: 8000,
-        currency: 'CZK',
-        percentage: 97.75,
-        state: 'near',
-      });
-    });
-
-    it('reads a limit that is exceeded as over', () => {
-      const [row] = categoryRows(
-        [groceries],
-        budgetMap(summary('cat_groceries', { budgetPercentage: 115.3 }))
-      );
-      expect(row.limit?.state).toBe('over');
-    });
-
-    it('changes state at 85 % (near) and above 100 % (over)', () => {
-      const state = (percentage: number) =>
-        categoryRows(
-          [groceries],
-          budgetMap(summary('cat_groceries', { budgetPercentage: percentage }))
-        )[0].limit?.state;
-      expect(state(40)).toBe('ok');
-      expect(state(84.99)).toBe('ok');
-      expect(state(85)).toBe('near');
-      expect(state(100)).toBe('near');
-      expect(state(100.01)).toBe('over');
-    });
-
-    it('keeps the native numbers of a limit in another currency next to the report-currency amount', () => {
-      const [row] = categoryRows(
-        [groceries],
-        budgetMap(
-          summary('cat_groceries', {
-            budgetCurrency: 'EUR',
-            budgetSpent: '290',
-            budgetLimitNative: '300',
-            budgetPercentage: 96.7,
-          })
-        )
-      );
-      expect(row.amount).toBe(7820);
-      expect(row.limit).toMatchObject({ currency: 'EUR', spent: 290, limit: 300 });
-    });
-
-    it('has no limit when the summary cannot be evaluated', () => {
-      const unavailable = [
-        summary('cat_groceries', { budgetLimitNative: null }),
-        summary('cat_groceries', { budgetSpent: null }),
-        summary('cat_groceries', { budgetCurrency: null }),
-        summary('cat_groceries', { budgetPercentage: null }),
-        summary('cat_groceries', { budgetPercentage: Number.NaN }),
-        summary('cat_groceries', { budgetPercentage: Number.POSITIVE_INFINITY }),
-        summary('cat_groceries', { budgetGoal: null }),
-      ];
-      for (const one of unavailable) {
-        expect(categoryRows([groceries], budgetMap(one))[0].limit).toBeNull();
-      }
-    });
-
-    it('has no limit for a category without a summary', () => {
-      const [row] = categoryRows([groceries], budgetMap(summary('cat_other')));
-      expect(row.limit).toBeNull();
-    });
-  });
-});
-
-describe('budgetCounts', () => {
-  it('is null without summaries', () => {
-    expect(budgetCounts([])).toBeNull();
-  });
-
-  it('is null when no summary has a budget goal', () => {
-    expect(
-      budgetCounts([summary('a', { budgetGoal: null }), summary('b', { budgetGoal: null })])
-    ).toBeNull();
-  });
-
-  it('is null when no goal can be evaluated', () => {
-    expect(budgetCounts([summary('a', { budgetLimitNative: null })])).toBeNull();
-  });
-
-  it('counts the goals by state and leaves out the unavailable and the goalless', () => {
-    expect(
-      budgetCounts([
-        summary('ok', { budgetPercentage: 40 }),
-        summary('near', { budgetPercentage: 90 }),
-        summary('over', { budgetPercentage: 130 }),
-        summary('unavailable', { budgetLimitNative: null }),
-        summary('goalless', { budgetGoal: null, budgetPercentage: 150 }),
-      ])
-    ).toEqual({ ok: 1, near: 1, over: 1 });
   });
 });
 
@@ -305,7 +160,7 @@ describe('bodyKind', () => {
       ...patch,
     };
   }
-  const loaded = { accountsLoaded: true, accountTotal: 2, isError: false };
+  const loaded = { accountsLoaded: true, accountTotal: 2, isError: false, hasLimits: false };
 
   it('is the skeleton while the actuals are not there yet', () => {
     expect(bodyKind({ ...loaded, actuals: undefined })).toBe('skeleton');
@@ -318,6 +173,7 @@ describe('bodyKind', () => {
         accountsLoaded: false,
         accountTotal: 0,
         isError: false,
+        hasLimits: false,
         actuals: actuals({ transactionCount: 0, accountCount: 0 }),
       })
     ).toBe('skeleton');
@@ -326,7 +182,13 @@ describe('bodyKind', () => {
   it('is the error when the actuals failed and there are none to show', () => {
     expect(bodyKind({ ...loaded, isError: true, actuals: undefined })).toBe('error');
     expect(
-      bodyKind({ accountsLoaded: false, accountTotal: 0, isError: true, actuals: undefined })
+      bodyKind({
+        accountsLoaded: false,
+        accountTotal: 0,
+        isError: true,
+        hasLimits: false,
+        actuals: undefined,
+      })
     ).toBe('error');
   });
 
@@ -340,6 +202,7 @@ describe('bodyKind', () => {
         accountsLoaded: true,
         accountTotal: 0,
         isError: false,
+        hasLimits: false,
         actuals: actuals({ transactionCount: 0, accountCount: 0 }),
       })
     ).toBe('noAccounts');
@@ -357,5 +220,36 @@ describe('bodyKind', () => {
 
   it('is the report for a period with transactions', () => {
     expect(bodyKind({ ...loaded, actuals: actuals() })).toBe('report');
+  });
+
+  it('keeps the report for a period with limits but no transactions (the desktop rule)', () => {
+    expect(
+      bodyKind({ ...loaded, hasLimits: true, actuals: actuals({ transactionCount: 0 }) })
+    ).toBe('report');
+  });
+});
+
+describe('accountScope', () => {
+  const accounts = [{ id: 'a' }, { id: 'b' }, { id: 'c' }] as BankAccount[];
+
+  it('is all accounts without a choice', () => {
+    expect(accountScope(undefined, accounts)).toBeNull();
+  });
+
+  it('counts the chosen accounts, not the ones with payments in the period', () => {
+    expect(accountScope(['a'], accounts)).toBe(1);
+    expect(accountScope(['a', 'c'], accounts)).toBe(2);
+  });
+
+  it('is all accounts when every account is chosen', () => {
+    expect(accountScope(['c', 'b', 'a'], accounts)).toBeNull();
+  });
+
+  it('leaves out a chosen account that no longer exists', () => {
+    expect(accountScope(['a', 'gone'], accounts)).toBe(1);
+  });
+
+  it('counts the choice as it is while the accounts are not loaded', () => {
+    expect(accountScope(['a', 'b'], [])).toBe(2);
   });
 });

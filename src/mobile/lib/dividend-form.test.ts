@@ -74,3 +74,12 @@ describe('dividendInput', () => {
     expect(dividendInput(blank, 'USD')).toBeNull();
   });
 });
+
+describe('dividendForm in a comma locale', () => {
+  it('prefills the gross with the locale decimal separator, which parseAmountInput reads back', () => {
+    const stored = { exDate: 0, grossAmount: '12.50', note: null } as unknown as StockDividend;
+    const form = dividendForm(stored, '2026-11-01', 'cs');
+    expect(form.amountText).toBe('12,5');
+    expect(parseAmountInput(form.amountText)).toBe('12.5');
+  });
+});

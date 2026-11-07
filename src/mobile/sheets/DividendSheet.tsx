@@ -59,13 +59,14 @@ export function DividendSheet({
   const opening = useRef(0);
   const { createDividend, updateDividend } = useStockDividendMutations();
 
-  const [form, setForm] = useState(() => dividendForm(dividend, todayIso()));
+  const locale = useTranslation().i18n.language;
+  const [form, setForm] = useState(() => dividendForm(dividend, todayIso(), locale));
   const [attempted, setAttempted] = useState(false);
   const [openedFor, setOpenedFor] = useState(open);
   if (open !== openedFor) {
     setOpenedFor(open);
     if (open) {
-      setForm(dividendForm(dividend, todayIso()));
+      setForm(dividendForm(dividend, todayIso(), locale));
       setAttempted(false);
     }
   }

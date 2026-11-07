@@ -34,14 +34,11 @@
   "cashflow": {
     "subtitle_one": "Tatsächliche Einnahmen und Ausgaben von {{count}} Konto",
     "subtitle_other": "Tatsächliche Einnahmen und Ausgaben von {{count}} Konten",
+    "subtitleAll": "Tatsächliche Einnahmen und Ausgaben aller Konten",
     "moves_one": "{{count}} Transaktion",
     "moves_other": "{{count}} Transaktionen",
     "shareOfExpenses": "{{share}} der Ausgaben",
     "shareOfIncome": "{{share}} der Einnahmen",
-    "limitProgress": "{{spent}} / {{limit}}",
-    "near": "nahe am Limit",
-    "overLimit": "über dem Limit",
-    "budgetSummary": "Budgets: {{ok}} im Rahmen · {{over}} über dem Limit · {{near}} nahe am Limit",
     "partial": "Der Zeitraum ist noch nicht zu Ende, die Zahlen vervollständigen sich mit dem nächsten Auszug.",
     "empty": {
       "title": "Noch keine Transaktionen",

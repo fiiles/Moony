@@ -101,3 +101,9 @@ describe('revaluedTotal', () => {
     expect(revaluedTotal('-1', 2)).toBeNull();
   });
 });
+
+describe('startRevalueForm in a comma locale', () => {
+  it('prefills with the locale decimal separator', () => {
+    expect(startRevalueForm(1950.5, '2026-10-25', 'cs').valueText).toBe('1950,5');
+  });
+});

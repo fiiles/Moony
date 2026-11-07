@@ -34,14 +34,11 @@
   "cashflow": {
     "subtitle_one": "Actual income and expenses from {{count}} account",
     "subtitle_other": "Actual income and expenses from {{count}} accounts",
+    "subtitleAll": "Actual income and expenses from all accounts",
     "moves_one": "{{count}} transaction",
     "moves_other": "{{count}} transactions",
     "shareOfExpenses": "{{share}} of expenses",
     "shareOfIncome": "{{share}} of income",
-    "limitProgress": "{{spent}} / {{limit}}",
-    "near": "near the limit",
-    "overLimit": "over the limit",
-    "budgetSummary": "Budgets: {{ok}} within limit · {{over}} over limit · {{near}} near the limit",
     "partial": "This period has not ended yet; the numbers will fill in with the next statement.",
     "empty": {
       "title": "No transactions yet",

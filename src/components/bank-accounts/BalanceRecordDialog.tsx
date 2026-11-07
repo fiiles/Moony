@@ -100,6 +100,7 @@ export function BalanceRecordDialog({
                 type="number"
                 step="0.01"
                 inputMode="decimal"
+                signed
                 value={amount}
                 placeholder={t('recordDialog.amountPlaceholder')}
                 onChange={(e) => setAmount(e.target.value)}

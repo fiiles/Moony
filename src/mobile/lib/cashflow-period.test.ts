@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   cashflowSearch,
-  latestMonthOffset,
   DEFAULT_CASHFLOW_STATE,
   isPartialPeriod,
+  openingState,
   parseCashflowSearch,
   periodChosen,
   selectMonth,
@@ -136,20 +136,32 @@ describe('cashflowSearch with a chosen period', () => {
   });
 });
 
-describe('latestMonthOffset', () => {
+describe('openingState', () => {
   const now = new Date('2026-10-29T10:00:00Z');
-  const month = (m: number, income = '0', expenses = '0') => ({
-    month: Date.UTC(2026, m, 1) / 1000,
-    income,
-    expenses,
+  const plain: CashflowState = { timeframe: 'monthly', offset: 0, accountIds: ['a'] };
+  const day = (year: number, month: number, date = 14) => Date.UTC(year, month - 1, date) / 1000;
+
+  it('keeps a period the search names, whatever the newest transaction', () => {
+    const picked: CashflowState = { timeframe: 'quarterly', offset: -1, accountIds: undefined };
+    expect(openingState(picked, true, undefined, now)).toBe(picked);
+    expect(openingState(picked, true, day(2026, 3), now)).toBe(picked);
   });
 
-  it('counts back to the newest month with income or spending', () => {
-    const months = [month(6, '100'), month(7, '0', '40'), month(8), month(9)];
-    expect(latestMonthOffset(months, now)).toBe(-2);
+  it('waits while the newest transaction date is not known', () => {
+    expect(openingState(plain, false, undefined, now)).toBeNull();
   });
 
-  it('is null when no month in the window has any', () => {
-    expect(latestMonthOffset([month(8), month(9, '0.00', '0.00')], now)).toBeNull();
+  it('opens on the month of the newest transaction, keeping the accounts', () => {
+    expect(openingState(plain, false, day(2026, 8), now)).toEqual({ ...plain, offset: -2 });
+  });
+
+  it('reaches back further than the twelve-month chart', () => {
+    expect(openingState(plain, false, day(2024, 5), now)).toEqual({ ...plain, offset: -29 });
+  });
+
+  it('opens on the current month without transactions, after a failed lookup, or for a future day', () => {
+    expect(openingState(plain, false, null, now)).toEqual(plain);
+    expect(openingState(plain, false, day(2026, 10, 2), now)).toEqual(plain);
+    expect(openingState(plain, false, day(2027, 1), now)).toEqual(plain);
   });
 });

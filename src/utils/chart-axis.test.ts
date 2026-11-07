@@ -3,7 +3,6 @@ import {
   MAX_AXIS_TICKS,
   dayLabelOptions,
   distinctTickLabels,
-  estimateLabelWidth,
   evenTicks,
   tickGutter,
   utcDayFloor,
@@ -81,20 +80,31 @@ describe('distinctTickLabels', () => {
 });
 
 describe('tickGutter', () => {
+  const nbsp = '\u00a0';
+
   it('keeps the standard width for labels that fit today', () => {
-    expect(tickGutter(['0', '5,6 mil.', '11,2 mil.'], 54)).toBe(54);
-    expect(tickGutter(['250 tis.', '1,5 mld.'], 54)).toBe(54);
+    expect(tickGutter([`11,2${nbsp}mil.`], 54)).toBe(54);
+    expect(tickGutter([`250${nbsp}tis.`], 54)).toBe(54);
+    expect(tickGutter([`1,5${nbsp}mld.`], 54)).toBe(54);
+  });
+
+  // The measured widths of the label plus the 16 px between plot and label must fit the gutter
+  it.each([
+    [`11,24${nbsp}mil.`, 43.5],
+    [`11,24${nbsp}Mio.`, 47.3],
+    [`\u221211,24${nbsp}mill.`, 52.7],
+    [`-11,24${nbsp}mil.`, 48.1],
+    [`11,24${nbsp}Mln`, 44.2],
+    [`112,4${nbsp}mil.`, 43.7],
+    [`1,12${nbsp}mld.`, 39.9],
+  ])('holds %s (%s px)', (label, measured) => {
+    expect(tickGutter([label], 54) - 16).toBeGreaterThanOrEqual(measured);
   });
 
   it('widens for the extra decimal', () => {
-    expect(tickGutter(['11,24 mil.'], 54)).toBeGreaterThan(54);
-    expect(tickGutter(['11,24 Mio.'], 54)).toBeGreaterThan(tickGutter(['11,24 mil.'], 54));
-  });
-
-  it('grows with the widest label of a long locale', () => {
-    expect(tickGutter(['−11,24 mill.'], 54)).toBeGreaterThanOrEqual(
-      Math.ceil(estimateLabelWidth('−11,24 mill.')) + 14
-    );
+    expect(tickGutter([`11,24${nbsp}mil.`], 54)).toBeGreaterThanOrEqual(60);
+    expect(tickGutter([`11,24${nbsp}Mio.`], 54)).toBeGreaterThanOrEqual(64);
+    expect(tickGutter([`\u221211,24${nbsp}mill.`], 54)).toBeGreaterThanOrEqual(69);
   });
 
   it('is the minimum without labels', () => {

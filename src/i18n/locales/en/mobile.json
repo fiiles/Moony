@@ -546,7 +546,7 @@
     },
     "noRate": "no rate for {{currency}}",
     "sincePurchase": "since purchase",
-    "gainSincePurchase": "gain since purchase",
+    "gainSincePurchase": "gain/loss since purchase",
     "stocks": {
       "back": "Stocks",
       "pricesAt": "prices {{time}}",

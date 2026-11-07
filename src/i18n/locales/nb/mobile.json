@@ -546,7 +546,7 @@
     },
     "noRate": "ingen valutakurs for {{currency}}",
     "sincePurchase": "siden kjøp",
-    "gainSincePurchase": "gevinst siden kjøp",
+    "gainSincePurchase": "gevinst/tap siden kjøp",
     "stocks": {
       "back": "Aksjer",
       "pricesAt": "kurser {{time}}",

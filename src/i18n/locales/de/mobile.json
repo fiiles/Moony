@@ -16,11 +16,11 @@
   },
   "overview": {
     "change": {
-      "30D": "in den letzten 30 Tagen",
-      "90D": "in den letzten 3 Monaten",
+      "30D": "letzte 30 Tage",
+      "90D": "letzte 3 Monate",
       "YTD": "dieses Jahr",
-      "1Y": "im letzten Jahr",
-      "5Y": "in den letzten 5 Jahren",
+      "1Y": "letztes Jahr",
+      "5Y": "letzte 5 Jahre",
       "All": "seit dem ersten Eintrag"
     },
     "stats": {
@@ -546,7 +546,7 @@
     },
     "noRate": "kein Wechselkurs für {{currency}}",
     "sincePurchase": "seit Kauf",
-    "gainSincePurchase": "Gewinn seit Kauf",
+    "gainSincePurchase": "Gewinn/Verlust seit Kauf",
     "stocks": {
       "back": "Aktien",
       "pricesAt": "Kurse {{time}}",

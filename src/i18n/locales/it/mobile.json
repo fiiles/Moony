@@ -579,7 +579,7 @@
     },
     "noRate": "nessun tasso di cambio per {{currency}}",
     "sincePurchase": "dal acquisto",
-    "gainSincePurchase": "guadagno dal acquisto",
+    "gainSincePurchase": "utile/perdita dal acquisto",
     "stocks": {
       "back": "Azioni",
       "pricesAt": "prezzi {{time}}",

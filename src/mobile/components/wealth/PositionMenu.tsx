@@ -19,8 +19,8 @@ import { NavIconButton } from '@/mobile/shell/NavBar';
 /**
  * The `···` of a position (spec §8.8): Zapsat dividendu asks the page for its sheet
  * (`onAddDividend`), Zapsat split for the splits dialog (`onSplits`), Upravit cenu and Odhad
- * dividendy open the desktop's dialogs, Upravit název a sheet, Sledovat adds the ticker to the watched ones (it says "Sledováno" and waits when it
- * already is), Smazat pozici asks the page to confirm and delete (`onDelete`). The delete is the
+ * dividendy open the desktop's dialogs, Upravit název a sheet, Sledovat adds the ticker to the
+ * watched ones (it says "Sledováno" and waits when it already is), Smazat pozici asks the page to confirm and delete (`onDelete`). The delete is the
  * page's, not this menu's: the menu goes away as soon as the position drops out of what the page
  * reads, taking its callbacks with it. The other items are wired here with their dialogs, so the
  * page only places the button.

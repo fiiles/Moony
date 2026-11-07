@@ -612,7 +612,7 @@
     },
     "noRate": "brak kursu wymiany dla {{currency}}",
     "sincePurchase": "od zakupu",
-    "gainSincePurchase": "zysk od zakupu",
+    "gainSincePurchase": "zysk/strata od zakupu",
     "stocks": {
       "back": "Akcje",
       "pricesAt": "ceny {{time}}",

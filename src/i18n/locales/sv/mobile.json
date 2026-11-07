@@ -546,7 +546,7 @@
     },
     "noRate": "ingen växelkurs för {{currency}}",
     "sincePurchase": "sedan köp",
-    "gainSincePurchase": "vinst sedan köp",
+    "gainSincePurchase": "vinst/förlust sedan köp",
     "stocks": {
       "back": "Aktier",
       "pricesAt": "kurser {{time}}",

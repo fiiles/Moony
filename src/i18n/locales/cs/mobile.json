@@ -579,7 +579,7 @@
     },
     "noRate": "bez kurzu pro {{currency}}",
     "sincePurchase": "od nákupu",
-    "gainSincePurchase": "zisk od nákupu",
+    "gainSincePurchase": "zisk/ztráta od nákupu",
     "stocks": {
       "back": "Akcie",
       "pricesAt": "ceny {{time}}",

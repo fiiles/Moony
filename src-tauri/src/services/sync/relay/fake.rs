@@ -71,6 +71,8 @@ struct FakeState {
     next_account: u64,
     failures: HashMap<usize, VecDeque<RelayError>>,
     lose_push_answer: bool,
+    /// Test override of the per-vault op byte quota.
+    op_quota: Option<u64>,
     calls: Vec<Route>,
     push_sizes: Vec<(usize, usize)>,
 }
@@ -154,6 +156,11 @@ impl FakeRelay {
         self.set_paid_until(account, paid_until);
     }
 
+    /// Lowers the per-vault op byte quota (the real one is 256 MiB), so a test can reach it.
+    pub fn set_op_quota(&self, bytes: u64) {
+        self.lock().op_quota = Some(bytes);
+    }
+
     /// An exact `paid_until` (unix seconds), for tests of the read grace.
     pub fn set_paid_until(&self, account: &str, paid_until: i64) {
         self.lock()
@@ -166,6 +173,8 @@ impl FakeRelay {
     /// Prunes the ops the relay's housekeeping would drop: the floor rises to `floor`, but never
     /// past the newest snapshot (nothing is pruned while there is none). Pruned op IDs are
     /// forgotten.
+    ///
+    /// Acts on every vault the fake holds (tests use one).
     pub fn prune_to(&self, floor: u64) {
         let mut state = self.lock();
         for vault in state.vaults.values_mut() {
@@ -182,6 +191,8 @@ impl FakeRelay {
 
     /// A dishonest relay: the op stays in the log (and counts towards `head`), but pulls never
     /// return it.
+    ///
+    /// Single-vault helper: `seq` is looked up in every vault the fake holds (tests use one).
     pub fn drop_op(&self, seq: u64) {
         let mut state = self.lock();
         for vault in state.vaults.values_mut() {
@@ -193,6 +204,8 @@ impl FakeRelay {
 
     /// A dishonest relay: serves op `seq` again under a new sequence number (the same ID and
     /// ciphertext at `head + 1`).
+    ///
+    /// Single-vault helper: `seq` is looked up in every vault the fake holds (tests use one).
     pub fn replay_op(&self, seq: u64) {
         let mut state = self.lock();
         for vault in state.vaults.values_mut() {
@@ -209,6 +222,8 @@ impl FakeRelay {
     }
 
     /// The ops the relay holds, in sequence order, except the ones it was told to drop.
+    ///
+    /// Single-vault helper: the ops of every vault the fake holds, merged by `seq` (tests use one).
     pub fn ops(&self) -> Vec<PulledOp> {
         let state = self.lock();
         let mut ops: Vec<PulledOp> = state
@@ -232,6 +247,8 @@ impl FakeRelay {
     }
 
     /// The newest snapshot's sequence number, if any.
+    ///
+    /// Single-vault helper: the first snapshot found in any vault (tests use one).
     pub fn snapshot_seq(&self) -> Option<u64> {
         self.lock()
             .vaults
@@ -443,7 +460,7 @@ impl Relay for FakeRelay {
             }
             let stored = state.authorize(vault, Access::Write)?;
             let incoming: u64 = ops.iter().map(|op| op.ct.len() as u64).sum();
-            if stored.bytes + incoming > MAX_VAULT_OP_BYTES {
+            if stored.bytes + incoming > state.op_quota.unwrap_or(MAX_VAULT_OP_BYTES) {
                 return Err(RelayError::QuotaExceeded);
             }
             let lose_answer = std::mem::take(&mut state.lose_push_answer);
@@ -492,27 +509,28 @@ impl Relay for FakeRelay {
                 return Err(RelayError::SnapshotRequired);
             }
             // The page is cut like the relay's (limit, then ~4 MiB of ciphertext, always at
-            // least one op); an op the relay was told to drop is cut out afterwards, so the
-            // page still advances past it.
+            // least one op) but counts only the ops the relay still serves: a dropped op leaves
+            // a gap in the sequence numbers, never an empty page with `more` set.
             let mut page = Vec::new();
             let mut bytes = 0usize;
-            for op in stored.ops.iter().filter(|op| op.seq > after) {
+            let mut served = stored
+                .ops
+                .iter()
+                .filter(|op| op.seq > after && !stored.dropped.contains(&op.seq))
+                .peekable();
+            while let Some(op) = served.peek() {
                 if page.len() >= limit || (!page.is_empty() && bytes + op.ct.len() > MAX_PULL_BYTES)
                 {
                     break;
                 }
                 bytes += op.ct.len();
-                page.push(op);
+                page.push((*op).clone());
+                served.next();
             }
-            let last = page.last().map_or(after.max(stored.floor), |op| op.seq);
             Ok(PullPage {
-                ops: page
-                    .into_iter()
-                    .filter(|op| !stored.dropped.contains(&op.seq))
-                    .cloned()
-                    .collect(),
+                ops: page,
                 head: stored.head,
-                more: last < stored.head,
+                more: served.peek().is_some(),
             })
         })();
         async move { result }
@@ -578,240 +596,4 @@ impl Relay for FakeRelay {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use zeroize::Zeroizing;
-
-    const VAULT_ID: &str = "AAECAwQFBgcICQoLDA0ODw";
-    const TOKEN: &str = "dG9rZW4tdG9rZW4tdG9rZW4tdG9rZW4tdG9rZW4tdG9";
-
-    fn auth() -> VaultAuth {
-        VaultAuth {
-            vault_id: VAULT_ID.into(),
-            token: Zeroizing::new(TOKEN.into()),
-        }
-    }
-
-    fn op(id: &str, len: usize) -> OutgoingOp {
-        OutgoingOp {
-            id: id.into(),
-            ct: vec![7; len],
-        }
-    }
-
-    /// A paid account with one vault.
-    async fn relay_with_vault() -> (FakeRelay, String) {
-        let relay = FakeRelay::new();
-        let account = relay.create_account().await.expect("account");
-        relay.set_paid(&account, true);
-        assert!(relay.create_vault(&account, &auth()).await.expect("vault"));
-        (relay, account)
-    }
-
-    #[tokio::test]
-    async fn duplicate_op_ids_are_stored_once() {
-        let (relay, _) = relay_with_vault().await;
-        let first = relay
-            .push(&auth(), &[op("a", 10), op("b", 10)])
-            .await
-            .expect("push");
-        assert_eq!(
-            first,
-            PushReceipt {
-                head: 2,
-                accepted: 2
-            }
-        );
-        let again = relay
-            .push(&auth(), &[op("b", 10), op("c", 10), op("a", 10)])
-            .await
-            .expect("push");
-        assert_eq!(
-            again,
-            PushReceipt {
-                head: 3,
-                accepted: 1
-            }
-        );
-        let ids: Vec<(u64, String)> = relay.ops().into_iter().map(|o| (o.seq, o.id)).collect();
-        assert_eq!(ids, vec![(1, "a".into()), (2, "b".into()), (3, "c".into())]);
-        let page = relay.pull(&auth(), 0, 500).await.expect("pull");
-        assert_eq!((page.ops.len(), page.head, page.more), (3, 3, false));
-    }
-
-    #[tokio::test]
-    async fn pulls_below_the_floor_require_a_snapshot() {
-        let (relay, _) = relay_with_vault().await;
-        let ops: Vec<_> = (0..5).map(|i| op(&format!("op{i}"), 4)).collect();
-        relay.push(&auth(), &ops).await.expect("push");
-        // Nothing to prune to before a snapshot exists.
-        relay.prune_to(3);
-        assert_eq!(relay.pull(&auth(), 0, 10).await.expect("pull").ops.len(), 5);
-
-        relay
-            .put_snapshot(&auth(), 2, vec![1; 8])
-            .await
-            .expect("snapshot");
-        // The floor never passes the snapshot: 4 becomes 2.
-        relay.prune_to(4);
-        let info = relay.vault_info(&auth()).await.expect("info");
-        assert_eq!(
-            (info.head, info.floor, info.snapshot_seq, info.bytes),
-            (5, 2, Some(2), 12)
-        );
-        assert_eq!(
-            relay.pull(&auth(), 1, 10).await.expect_err("below floor"),
-            RelayError::SnapshotRequired
-        );
-        let page = relay.pull(&auth(), 2, 10).await.expect("at the floor");
-        let seqs: Vec<u64> = page.ops.iter().map(|o| o.seq).collect();
-        assert_eq!((seqs, page.head, page.more), (vec![3, 4, 5], 5, false));
-        // A pruned op's ID is forgotten, as on the relay.
-        let receipt = relay.push(&auth(), &[op("op0", 4)]).await.expect("push");
-        assert_eq!((receipt.head, receipt.accepted), (6, 1));
-    }
-
-    #[tokio::test]
-    async fn writes_need_payment_and_reads_do_not() {
-        let (relay, account) = relay_with_vault().await;
-        relay.push(&auth(), &[op("a", 3)]).await.expect("push");
-        relay.set_paid(&account, false);
-
-        assert_eq!(
-            relay.push(&auth(), &[op("b", 3)]).await.expect_err("push"),
-            RelayError::PaymentRequired
-        );
-        assert_eq!(
-            relay
-                .put_snapshot(&auth(), 1, vec![1])
-                .await
-                .expect_err("snapshot"),
-            RelayError::PaymentRequired
-        );
-        assert_eq!(relay.pull(&auth(), 0, 10).await.expect("pull").ops.len(), 1);
-        assert_eq!(relay.vault_info(&auth()).await.expect("info").head, 1);
-        let status = relay.account_status(&account).await.expect("status");
-        assert!(!status.active);
-        // Past the 30-day read grace even reads stop.
-        relay.set_paid_until(&account, now() - 31 * 86_400);
-        assert_eq!(
-            relay.pull(&auth(), 0, 10).await.expect_err("pull"),
-            RelayError::PaymentRequired
-        );
-        // Deleting the vault never needs a subscription.
-        relay.delete_vault(&auth()).await.expect("delete");
-        // An unpaid account cannot open a vault.
-        let other = relay.create_account().await.expect("account");
-        assert_eq!(
-            relay
-                .create_vault(&other, &auth())
-                .await
-                .expect_err("vault"),
-            RelayError::PaymentRequired
-        );
-    }
-
-    #[tokio::test]
-    async fn a_lost_push_answer_still_stores_the_ops() {
-        let (relay, _) = relay_with_vault().await;
-        relay.lose_next_push_answer();
-        let error = relay
-            .push(&auth(), &[op("a", 3), op("b", 3)])
-            .await
-            .expect_err("lost");
-        assert!(matches!(error, RelayError::Network(_)), "{error:?}");
-        assert_eq!(relay.ops().len(), 2);
-        // The retry is answered from the stored ops: nothing new is accepted.
-        let retry = relay
-            .push(&auth(), &[op("a", 3), op("b", 3)])
-            .await
-            .expect("retry");
-        assert_eq!(
-            retry,
-            PushReceipt {
-                head: 2,
-                accepted: 0
-            }
-        );
-        assert_eq!(relay.push_sizes(), vec![(2, 8), (2, 8)]);
-    }
-
-    #[tokio::test]
-    async fn snapshots_must_not_go_backwards() {
-        let (relay, _) = relay_with_vault().await;
-        let ops: Vec<_> = (0..4).map(|i| op(&format!("op{i}"), 2)).collect();
-        relay.push(&auth(), &ops).await.expect("push");
-        assert_eq!(
-            relay.get_snapshot(&auth()).await.expect_err("none"),
-            RelayError::NoSnapshot
-        );
-        assert_eq!(
-            relay
-                .put_snapshot(&auth(), 5, vec![1])
-                .await
-                .expect_err("ahead"),
-            RelayError::BadRequest("snapshot_ahead_of_head".into())
-        );
-        relay.put_snapshot(&auth(), 3, vec![3, 3]).await.expect("3");
-        assert_eq!(
-            relay
-                .put_snapshot(&auth(), 2, vec![2])
-                .await
-                .expect_err("back"),
-            RelayError::SnapshotOutdated
-        );
-        // The same seq replaces; a newer one wins.
-        relay
-            .put_snapshot(&auth(), 3, vec![9, 9, 9])
-            .await
-            .expect("3 again");
-        relay.put_snapshot(&auth(), 4, vec![4]).await.expect("4");
-        let blob = relay.get_snapshot(&auth()).await.expect("blob");
-        assert_eq!((blob.seq, blob.bytes), (4, vec![4]));
-        assert_eq!(relay.snapshot_seq(), Some(4));
-    }
-    #[tokio::test]
-    async fn fault_switches_and_dishonest_knobs_work() {
-        let (relay, _) = relay_with_vault().await;
-        relay.fail_next(Route::Pull, RelayError::RateLimited);
-        assert_eq!(
-            relay.pull(&auth(), 0, 10).await.expect_err("failed"),
-            RelayError::RateLimited
-        );
-        assert!(relay.pull(&auth(), 0, 10).await.is_ok());
-
-        relay
-            .push(&auth(), &[op("a", 3), op("b", 3), op("c", 3)])
-            .await
-            .expect("push");
-        relay.drop_op(3);
-        let page = relay.pull(&auth(), 0, 10).await.expect("pull");
-        let seqs: Vec<u64> = page.ops.iter().map(|o| o.seq).collect();
-        assert_eq!((seqs, page.head, page.more), (vec![1, 2], 3, false));
-        relay.replay_op(1);
-        let page = relay.pull(&auth(), 2, 10).await.expect("pull");
-        assert_eq!(
-            page.ops
-                .iter()
-                .map(|o| (o.seq, o.id.as_str()))
-                .collect::<Vec<_>>(),
-            vec![(4, "a")]
-        );
-        assert_eq!(page.head, 4);
-
-        relay.wipe_vault(VAULT_ID);
-        assert_eq!(
-            relay.vault_info(&auth()).await.expect_err("wiped"),
-            RelayError::VaultNotFound
-        );
-        let wrong = VaultAuth {
-            vault_id: "short".into(),
-            token: Zeroizing::new(TOKEN.into()),
-        };
-        assert_eq!(
-            relay.vault_info(&wrong).await.expect_err("bad id"),
-            RelayError::BadRequest("invalid_vault_id".into())
-        );
-        assert_eq!(relay.calls().first(), Some(&Route::CreateAccount));
-    }
-}
+mod tests;

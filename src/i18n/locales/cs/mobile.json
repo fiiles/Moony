@@ -945,5 +945,8 @@
     "form": {
       "newDescription": "Kolik chcete za rok utratit za jednu věc. Platby do plánu přidáte v detailu platby."
     }
+  },
+  "gettingStarted": {
+    "makeBackupHint": "Jeden šifrovaný soubor se vším, v Nastavení → Záloha a přenos."
   }
 }

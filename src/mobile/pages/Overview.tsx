@@ -28,6 +28,7 @@ import { ScaledConversionNote, ScaledEmptyState } from '@/mobile/components/Scal
 import { AgendaRow } from '@/mobile/components/AgendaRow';
 import { AllocationRing } from '@/mobile/components/AllocationRing';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
+import { GettingStartedCard } from '@/mobile/components/GettingStartedCard';
 import { Hero } from '@/mobile/components/Hero';
 import { Money } from '@/mobile/components/Money';
 import { SectionHead } from '@/mobile/components/SectionHead';
@@ -36,6 +37,7 @@ import { UpkeepCard } from '@/mobile/components/UpkeepCard';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { initials } from '@/mobile/lib/initials';
 import { LockButton } from '@/mobile/shell/LockButton';
+import { addAccountPath } from '@/mobile/lib/getting-started';
 import { routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 
@@ -208,6 +210,7 @@ export default function Overview() {
             formatValue={money}
           />
           <RecentMovesSection />
+          <GettingStartedCard />
         </>
       )}
     </Screen>
@@ -365,26 +368,32 @@ function MoveRows({ moves }: { moves: RecentMove[] }) {
   );
 }
 
-/** A brand-new profile: the desktop's empty state with its first action (spec §8.3). */
+/**
+ * A brand-new profile: the desktop's empty state with its first action, which opens the account
+ * form on Finance at once (`?add=account`), and the Začínáme checklist under it (spec §8.3).
+ */
 function EmptyOverview() {
   const { t } = useTranslation('dashboard');
   const [, setLocation] = useLocation();
   return (
-    <ScaledEmptyState
-      icon={<Wallet />}
-      title={t('empty.title')}
-      description={t('empty.description')}
-      className="px-5 py-10"
-      action={
-        <Button
-          className="h-auto min-h-12 w-full whitespace-normal rounded-[10px] py-3 text-m-row"
-          onClick={() => setLocation(routes.finance)}
-        >
-          <Landmark aria-hidden />
-          {t('empty.addAccount')}
-        </Button>
-      }
-    />
+    <>
+      <ScaledEmptyState
+        icon={<Wallet />}
+        title={t('empty.title')}
+        description={t('empty.description')}
+        className="px-5 py-10"
+        action={
+          <Button
+            className="h-auto min-h-12 w-full whitespace-normal rounded-[10px] py-3 text-m-row"
+            onClick={() => setLocation(addAccountPath)}
+          >
+            <Landmark aria-hidden />
+            {t('empty.addAccount')}
+          </Button>
+        }
+      />
+      <GettingStartedCard />
+    </>
   );
 }
 

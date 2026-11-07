@@ -890,5 +890,8 @@
     "form": {
       "newDescription": "How much you want to spend on one thing in a year. You add payments to the plan in a payment’s details."
     }
+  },
+  "gettingStarted": {
+    "makeBackupHint": "One encrypted file with everything, in Settings → Backup and transfer."
   }
 }

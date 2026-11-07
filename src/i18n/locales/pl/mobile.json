@@ -984,5 +984,8 @@
     "form": {
       "newDescription": "Ile chcesz wydać w ciągu roku na jedną rzecz. Płatności dodajesz do planu w szczegółach płatności."
     }
+  },
+  "gettingStarted": {
+    "makeBackupHint": "Jeden zaszyfrowany plik ze wszystkim, w Ustawienia → Kopia zapasowa i przenoszenie."
   }
 }

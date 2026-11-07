@@ -937,5 +937,8 @@
     "form": {
       "newDescription": "Cuánto quieres gastar en un año en una sola cosa. Añades pagos al plan desde el detalle del pago."
     }
+  },
+  "gettingStarted": {
+    "makeBackupHint": "Un archivo cifrado con todo, en Ajustes → Copia de seguridad y traslado."
   }
 }

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Bandage,
@@ -17,6 +17,7 @@ import {
   type LucideIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { useLocation, useSearch } from 'wouter';
 import type { BankAccountWithInstitution, InsertBankAccount } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
 import { useAuth } from '@/hooks/use-auth';
@@ -59,10 +60,11 @@ import {
 } from '@/mobile/lib/finance-rows';
 import { queuePath } from '@/mobile/lib/categorize-queue';
 import { shortDayOptions } from '@/mobile/lib/format-day';
+import { opensAddAccount } from '@/mobile/lib/getting-started';
 import { initials } from '@/mobile/lib/initials';
 import { effectiveType, policyTypes } from '@/mobile/lib/upcoming-premiums';
 import { NavIconButton } from '@/mobile/shell/NavBar';
-import { accountPath, loanPath, policyPath } from '@/mobile/shell/routes';
+import { accountPath, loanPath, policyPath, routes } from '@/mobile/shell/routes';
 import { LockButton } from '@/mobile/shell/LockButton';
 import { Screen } from '@/mobile/shell/Screen';
 
@@ -111,6 +113,8 @@ export default function Finance() {
   // the rows only render it)
   const moneyText = useMoneyText();
   const finance = useFinance();
+  const search = useSearch();
+  const [, setLocation] = useLocation();
   // Loans and policies the person does not track are hidden (the pages stay reachable by path)
   const { user } = useAuth();
   const showLoans = user?.menuPreferences?.loans ?? true;
@@ -124,7 +128,14 @@ export default function Finance() {
   const [showEnded, setShowEnded] = useRemembered('finance.showEnded', false);
   const [policyType, setPolicyType] = useRemembered('finance.policyType', 'all');
   const [period, setPeriod] = useRemembered<ChartPeriod>('finance.period', DEFAULT_PERIOD);
-  const [addKind, setAddKind] = useState<AddKind | null>(null);
+  // `?add=account` (the empty Přehled's first action) opens the account form at once; the query
+  // is dropped so that coming back to the tab does not open it again
+  const [addKind, setAddKind] = useState<AddKind | null>(() =>
+    opensAddAccount(search) ? 'account' : null
+  );
+  useEffect(() => {
+    if (new URLSearchParams(search).has('add')) setLocation(routes.finance, { replace: true });
+  }, [search, setLocation]);
   const { createAccount } = useBankAccountMutations();
   const { createMutation: createLoan } = useLoanMutations();
 

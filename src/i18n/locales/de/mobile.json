@@ -890,5 +890,8 @@
     "form": {
       "newDescription": "Wie viel Sie in einem Jahr für eine Sache ausgeben möchten. Zahlungen fügen Sie dem Plan in den Zahlungsdetails hinzu."
     }
+  },
+  "gettingStarted": {
+    "makeBackupHint": "Eine verschlüsselte Datei mit allem, unter Einstellungen → Sicherung und Übertragung."
   }
 }

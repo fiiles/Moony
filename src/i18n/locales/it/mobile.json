@@ -937,5 +937,8 @@
     "form": {
       "newDescription": "Quanto vuoi spendere in un anno per una singola cosa. Aggiungi i pagamenti al piano dal dettaglio del pagamento."
     }
+  },
+  "gettingStarted": {
+    "makeBackupHint": "Un file cifrato con tutto, in Impostazioni → Backup e trasferimento."
   }
 }

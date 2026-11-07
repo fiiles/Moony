@@ -890,5 +890,8 @@
     "form": {
       "newDescription": "Hur mycket du vill spendera på en sak under ett år. Du lägger till betalningar i planen i betalningens detaljer."
     }
+  },
+  "gettingStarted": {
+    "makeBackupHint": "En krypterad fil med allt, under Inställningar → Säkerhetskopia och överföring."
   }
 }

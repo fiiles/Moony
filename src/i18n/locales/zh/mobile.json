@@ -843,5 +843,8 @@
     "form": {
       "newDescription": "一年中打算在某一项上花多少钱。在付款详情中将付款加入计划。"
     }
+  },
+  "gettingStarted": {
+    "makeBackupHint": "一个包含全部内容的加密文件，在 设置 → 备份与迁移 中。"
   }
 }

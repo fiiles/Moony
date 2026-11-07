@@ -1,0 +1,268 @@
+//! The snapshot record stream (§8, D16): each record is a 4-byte big-endian length followed by
+//! one JSON object whose `"r"` names it — `devs`, `header`, `row`, `seed` or `end`. A row record
+//! is `{"r":"row", …encode_row(…)}` (the changeset's row codec, R8), and its clocks index the
+//! stream's one `devs` record, which comes first. Phase 2 deflates and encrypts the same bytes.
+//!
+//! Order: `devs`, `header`, every `row`, every `seed`, `end`. A reader takes the whole stream
+//! (phase 1 holds it in memory) and rejects one without `end`, with counts that differ, or with
+//! anything after `end`, before the caller writes anything.
+
+use std::collections::BTreeMap;
+use std::io::{Read, Write};
+
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine;
+use serde_json::{json, Map, Value as Json};
+
+use crate::error::{AppError, Result};
+use crate::services::sync::changeset::{
+    decode_row, encode_row, seed_value_from, value_json, DevTable, RowChange, SqlValue,
+};
+use crate::services::sync::hlc::DeviceId;
+use crate::services::sync::registry::{self, TableClass};
+
+/// The largest record a reader accepts (the relay's 100 MiB request limit).
+const MAX_RECORD: u64 = 100 * 1024 * 1024;
+
+/// A device's chain head: `(device, seq, hash)`.
+pub type Head = (DeviceId, u64, [u8; 32]);
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Record {
+    Header {
+        schema: u32,
+        barrier: u32,
+        seq: u64,
+        heads: Vec<Head>,
+    },
+    Devices(Vec<DeviceId>),
+    /// Live rows and tombstone-only changes alike.
+    Row(RowChange),
+    Seed {
+        table: String,
+        row: BTreeMap<String, SqlValue>,
+    },
+    End {
+        rows: u64,
+        seeds: u64,
+    },
+}
+
+/// A whole stream, read and checked.
+#[derive(Debug)]
+pub(super) struct Snapshot {
+    pub schema: u32,
+    pub barrier: u32,
+    pub seq: u64,
+    pub heads: Vec<Head>,
+    pub rows: Vec<RowChange>,
+    pub seeds: Vec<(String, BTreeMap<String, SqlValue>)>,
+}
+
+pub(super) fn invalid() -> AppError {
+    AppError::Validation("validation.syncSnapshotInvalid".to_string())
+}
+
+/// The record as JSON. A row's clocks are indexed into `devs`.
+pub(super) fn encode(record: &Record, devs: &mut DevTable) -> Json {
+    let mut out = Map::new();
+    match record {
+        Record::Devices(list) => {
+            out.insert("r".into(), json!("devs"));
+            let list: Vec<String> = list.iter().map(DeviceId::to_b64).collect();
+            out.insert("devs".into(), json!(list));
+        }
+        Record::Header {
+            schema,
+            barrier,
+            seq,
+            heads,
+        } => {
+            out.insert("r".into(), json!("header"));
+            out.insert("schema".into(), json!(schema));
+            out.insert("barrier".into(), json!(barrier));
+            out.insert("seq".into(), json!(seq));
+            let heads: Vec<Json> = heads
+                .iter()
+                .map(|(device, seq, hash)| {
+                    json!([device.to_b64(), seq, URL_SAFE_NO_PAD.encode(hash)])
+                })
+                .collect();
+            out.insert("heads".into(), Json::Array(heads));
+        }
+        Record::Row(row) => {
+            out.insert("r".into(), json!("row"));
+            // `encode_row` always returns an object.
+            if let Json::Object(fields) = encode_row(row, devs) {
+                out.extend(fields);
+            }
+        }
+        Record::Seed { table, row } => {
+            out.insert("r".into(), json!("seed"));
+            out.insert("t".into(), json!(table));
+            let values: Map<String, Json> = row
+                .iter()
+                .map(|(column, value)| (column.clone(), value_json(value)))
+                .collect();
+            out.insert("v".into(), Json::Object(values));
+        }
+        Record::End { rows, seeds } => {
+            out.insert("r".into(), json!("end"));
+            out.insert("rows".into(), json!(rows));
+            out.insert("seeds".into(), json!(seeds));
+        }
+    }
+    Json::Object(out)
+}
+
+/// Writes one length-prefixed record.
+pub(super) fn write_record(out: &mut impl Write, record: &Json) -> Result<()> {
+    let bytes = serde_json::to_vec(record)?;
+    let len = u32::try_from(bytes.len())
+        .map_err(|_| AppError::Internal("sync snapshot: a record exceeds 4 GiB".into()))?;
+    out.write_all(&len.to_be_bytes())?;
+    out.write_all(&bytes)?;
+    Ok(())
+}
+
+/// The next record, `None` at the end of the input. A record cut short is an error. `devs` is
+/// the stream's `devs` record (empty before it is read).
+pub fn read_record(input: &mut impl Read, devs: &[DeviceId]) -> Result<Option<Record>> {
+    let mut prefix = Vec::with_capacity(4);
+    input.by_ref().take(4).read_to_end(&mut prefix)?;
+    match prefix.len() {
+        0 => return Ok(None),
+        4 => {}
+        _ => return Err(invalid()),
+    }
+    let len = u64::from(u32::from_be_bytes([
+        prefix[0], prefix[1], prefix[2], prefix[3],
+    ]));
+    if len > MAX_RECORD {
+        return Err(invalid());
+    }
+    let mut bytes = Vec::new();
+    input.by_ref().take(len).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 != len {
+        return Err(invalid());
+    }
+    let value: Json = serde_json::from_slice(&bytes).map_err(|_| invalid())?;
+    decode(&value, devs).map(Some)
+}
+
+fn decode(value: &Json, devs: &[DeviceId]) -> Result<Record> {
+    let o = value.as_object().ok_or_else(invalid)?;
+    let number = |key: &str| o.get(key).and_then(Json::as_u64).ok_or_else(invalid);
+    let small = |key: &str| u32::try_from(number(key)?).map_err(|_| invalid());
+    Ok(
+        match o.get("r").and_then(Json::as_str).ok_or_else(invalid)? {
+            "devs" => {
+                let list = o
+                    .get("devs")
+                    .and_then(Json::as_array)
+                    .ok_or_else(invalid)?
+                    .iter()
+                    .map(|d| {
+                        DeviceId::from_b64(d.as_str().ok_or_else(invalid)?).map_err(|_| invalid())
+                    })
+                    .collect::<Result<Vec<_>>>()?;
+                let mut unique = list.clone();
+                unique.sort();
+                unique.dedup();
+                if unique.len() != list.len() {
+                    return Err(invalid());
+                }
+                Record::Devices(list)
+            }
+            "header" => Record::Header {
+                schema: small("schema")?,
+                barrier: small("barrier")?,
+                seq: number("seq")?,
+                heads: o
+                    .get("heads")
+                    .and_then(Json::as_array)
+                    .ok_or_else(invalid)?
+                    .iter()
+                    .map(decode_head)
+                    .collect::<Result<_>>()?,
+            },
+            "row" => Record::Row(decode_row(value, devs).map_err(|_| invalid())?),
+            "seed" => {
+                let table = o.get("t").and_then(Json::as_str).ok_or_else(invalid)?;
+                if !registry::spec(table).is_some_and(|s| s.class == TableClass::Seed) {
+                    return Err(invalid());
+                }
+                let row = o
+                    .get("v")
+                    .and_then(Json::as_object)
+                    .ok_or_else(invalid)?
+                    .iter()
+                    .map(|(column, value)| Ok((column.clone(), seed_value_from(value)?)))
+                    .collect::<Result<_>>()?;
+                Record::Seed {
+                    table: table.to_string(),
+                    row,
+                }
+            }
+            "end" => Record::End {
+                rows: number("rows")?,
+                seeds: number("seeds")?,
+            },
+            _ => return Err(invalid()),
+        },
+    )
+}
+
+fn decode_head(value: &Json) -> Result<Head> {
+    let [device, seq, hash] = value.as_array().map(Vec::as_slice).ok_or_else(invalid)? else {
+        return Err(invalid());
+    };
+    let device = DeviceId::from_b64(device.as_str().ok_or_else(invalid)?).map_err(|_| invalid())?;
+    let seq = seq.as_u64().ok_or_else(invalid)?;
+    let hash = URL_SAFE_NO_PAD
+        .decode(hash.as_str().ok_or_else(invalid)?)
+        .map_err(|_| invalid())?;
+    let hash = <[u8; 32]>::try_from(hash).map_err(|_| invalid())?;
+    Ok((device, seq, hash))
+}
+
+/// Reads and checks the whole stream: `devs`, `header`, rows, seeds, `end` with matching counts,
+/// and nothing after it.
+pub(super) fn read_all(input: &mut impl Read) -> Result<Snapshot> {
+    let Some(Record::Devices(devs)) = read_record(input, &[])? else {
+        return Err(invalid());
+    };
+    let Some(Record::Header {
+        schema,
+        barrier,
+        seq,
+        heads,
+    }) = read_record(input, &devs)?
+    else {
+        return Err(invalid());
+    };
+    let mut rows = Vec::new();
+    let mut seeds = Vec::new();
+    loop {
+        match read_record(input, &devs)? {
+            Some(Record::Row(row)) if seeds.is_empty() => rows.push(row),
+            Some(Record::Seed { table, row }) => seeds.push((table, row)),
+            Some(Record::End {
+                rows: row_count,
+                seeds: seed_count,
+            }) if row_count == rows.len() as u64 && seed_count == seeds.len() as u64 => break,
+            _ => return Err(invalid()),
+        }
+    }
+    if read_record(input, &devs)?.is_some() {
+        return Err(invalid());
+    }
+    Ok(Snapshot {
+        schema,
+        barrier,
+        seq,
+        heads,
+        rows,
+        seeds,
+    })
+}

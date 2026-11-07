@@ -185,7 +185,7 @@ fn ordered_queue(conn: &Connection, reader: &Reader<'_>) -> Result<OrderedQueue>
 }
 
 /// Number of ancestors of a live category (a cycle stops at 32).
-fn category_depth(conn: &Connection, id: &str) -> Result<u32> {
+pub(crate) fn category_depth(conn: &Connection, id: &str) -> Result<u32> {
     Ok(conn
         .prepare_cached(
             "WITH RECURSIVE up(id, parent_id, n) AS ( \

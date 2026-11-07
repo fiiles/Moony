@@ -136,8 +136,9 @@ pub fn merge_rows(conn: &Connection, rows: &[RowChange], now: i64) -> Result<Out
 /// a pass applies something. A collision can be transient — the rival moves away or is deleted
 /// later in the same changeset, as it did on the author before this row landed — so only what
 /// still collides after that is a real conflict: the last pass resolves it by its rule. The
-/// changeset's tombstones keep their place (a tombstones-first order would break moves).
-fn apply_all(
+/// changeset's tombstones keep their place (a tombstones-first order would break moves). The
+/// snapshot restore by replace calls it directly, without the repairs of `merge_rows`.
+pub(crate) fn apply_all(
     conn: &Connection,
     rows: &[RowChange],
     ctx: &mut MergeCtx,

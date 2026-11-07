@@ -146,7 +146,8 @@ fn clock_json(c: &Clock, devs: &mut DevTable) -> Json {
     json!([c.hlc, devs.index(c.device)])
 }
 
-fn value_json(v: &SqlValue) -> Json {
+/// A value as it travels: in a changeset row and in a snapshot's seed rows.
+pub(crate) fn value_json(v: &SqlValue) -> Json {
     match v {
         SqlValue::Null => Json::Null,
         SqlValue::Integer(i) => json!(i),
@@ -238,6 +239,16 @@ fn value_from(v: &Json) -> Result<SqlValue> {
             Ok(SqlValue::Blob(STANDARD.decode(b64).map_err(|_| invalid())?))
         }
         _ => Err(invalid()),
+    }
+}
+
+/// A value of a Seed row (snapshot, §8): as `value_from`, plus REAL (fetched prices and rates).
+pub(crate) fn seed_value_from(v: &Json) -> Result<SqlValue> {
+    match v {
+        Json::Number(n) if n.as_i64().is_none() => {
+            n.as_f64().map(SqlValue::Real).ok_or_else(invalid)
+        }
+        other => value_from(other),
     }
 }
 

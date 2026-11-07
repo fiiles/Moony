@@ -1,14 +1,16 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import type { StockDividend } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { Segment } from '@/mobile/components/Segment';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import type { PositionLedgerState } from '@/mobile/hooks/use-position-ledger';
-import { nativeTotal, type LedgerTx, type TxFilter } from '@/mobile/lib/position-series';
+import { nativeTotal, type LedgerFilter, type LedgerTx } from '@/mobile/lib/position-series';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
 import { MoreRow } from './MoreRow';
+import { DividendRow } from './DividendRow';
 import { TradeRow } from './TradeRow';
 
 interface PositionLedgerProps<T extends LedgerTx> {
@@ -31,6 +33,15 @@ interface PositionLedgerProps<T extends LedgerTx> {
   };
   /** Opens the edit of a trade (the page owns the dialog); without it the rows have no Upravit. */
   onEdit?: (tx: T) => void;
+  /** A stock's received dividends (the ledger's own, `usePositionLedger`): adds the fourth segment option. */
+  dividends?: readonly StockDividend[];
+  /** Opens the edit of a manual dividend; without it the dividend's menu has only Smazat. */
+  onEditDividend?: (dividend: StockDividend) => void;
+  /** The delete of a dividend (the page's `useStockDividendMutations`); the confirm sheet runs it. */
+  deleteDividend?: {
+    mutate: (id: string, opts: { onSuccess: () => void }) => void;
+    isPending: boolean;
+  };
 }
 
 /**
@@ -49,6 +60,9 @@ export function PositionLedger<T extends LedgerTx>({
   quantityDigits = 4,
   deleteTransaction,
   onEdit,
+  dividends,
+  onEditDividend,
+  deleteDividend,
 }: PositionLedgerProps<T>) {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
@@ -56,13 +70,26 @@ export function PositionLedger<T extends LedgerTx>({
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const [pendingDelete, setPendingDelete] = useState<T | null>(null);
+  const [pendingDividendDelete, setPendingDividendDelete] = useState<StockDividend | null>(null);
   const { filter, setFilter, rows, shown, hidden, unfold, hot } = ledger;
 
-  const options: { value: TxFilter; label: string }[] = [
+  const options: { value: LedgerFilter; label: string }[] = [
     { value: 'all', label: ts('detail.ledger.filter.all') },
     { value: 'buy', label: ts('detail.ledger.filter.buys') },
     { value: 'sell', label: ts('detail.ledger.filter.sells') },
+    ...(dividends
+      ? [{ value: 'dividend' as const, label: ts('detail.ledger.filter.dividends') }]
+      : []),
   ];
+  const dividendDescription = pendingDividendDelete
+    ? ts('detail.dividendRecords.confirmDelete.description', {
+        date: fmt.day(pendingDividendDelete.exDate),
+        amount: moneyText(
+          Number(pendingDividendDelete.grossAmount),
+          pendingDividendDelete.currency
+        ),
+      })
+    : '';
   const deleteDescription = pendingDelete
     ? ts('detail.confirmDeleteTransaction.description', {
         type: (pendingDelete.type === 'buy' ? tc('buttons.buy') : tc('buttons.sell')).toLowerCase(),
@@ -77,7 +104,10 @@ export function PositionLedger<T extends LedgerTx>({
 
   return (
     <>
-      <SectionHead title={ts('detail.tabs.transactions')} note={String(count)} />
+      <SectionHead
+        title={ts('detail.tabs.transactions')}
+        note={String(count + (dividends?.length ?? 0))}
+      />
       <Segment
         value={filter}
         options={options}
@@ -91,20 +121,33 @@ export function PositionLedger<T extends LedgerTx>({
         </p>
       ) : (
         <EntityRows>
-          {shown.map((tx) => (
-            <TradeRow
-              key={tx.id}
-              tx={tx}
-              unit={unit}
-              quantityDigits={quantityDigits}
-              currency={currency}
-              convertAt={convertAt}
-              ratesReady={ratesReady}
-              hot={hot.includes(tx.id)}
-              onEdit={onEdit}
-              onDelete={setPendingDelete}
-            />
-          ))}
+          {shown.map((entry) =>
+            entry.kind === 'dividend' ? (
+              <DividendRow
+                key={entry.id}
+                dividend={entry.dividend}
+                currency={currency}
+                convertAt={convertAt}
+                ratesReady={ratesReady}
+                hot={hot.includes(entry.id)}
+                onEdit={onEditDividend}
+                onDelete={setPendingDividendDelete}
+              />
+            ) : (
+              <TradeRow
+                key={entry.id}
+                tx={entry.tx}
+                unit={unit}
+                quantityDigits={quantityDigits}
+                currency={currency}
+                convertAt={convertAt}
+                ratesReady={ratesReady}
+                hot={hot.includes(entry.id)}
+                onEdit={onEdit}
+                onDelete={setPendingDelete}
+              />
+            )
+          )}
           {hidden > 0 && (
             <MoreRow
               label={t('wealth.position.tx.showAll', { count: rows.length })}
@@ -127,6 +170,24 @@ export function PositionLedger<T extends LedgerTx>({
           deleteTransaction.mutate(pendingDelete.id, { onSuccess: () => setPendingDelete(null) });
         }}
       />
+      {deleteDividend && (
+        <ConfirmSheet
+          open={pendingDividendDelete !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingDividendDelete(null);
+          }}
+          title={ts('detail.dividendRecords.confirmDelete.title')}
+          description={dividendDescription}
+          confirmLabel={ts('detail.dividendRecords.confirmDelete.confirm')}
+          isPending={deleteDividend.isPending}
+          onConfirm={() => {
+            if (!pendingDividendDelete) return;
+            deleteDividend.mutate(pendingDividendDelete.id, {
+              onSuccess: () => setPendingDividendDelete(null),
+            });
+          }}
+        />
+      )}
     </>
   );
 }

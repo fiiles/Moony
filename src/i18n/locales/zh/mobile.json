@@ -567,6 +567,9 @@
         "showAll_other": "显示全部 {{count}} 条",
         "menu": "交易菜单"
       },
+      "dividend": {
+        "menu": "股息菜单"
+      },
       "follow": "关注",
       "following": "已关注",
       "followed": "已添加到自选列表",

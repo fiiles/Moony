@@ -672,6 +672,9 @@
         "showAll_other": "Pokaż wszystkie {{count}}",
         "menu": "Menu transakcji"
       },
+      "dividend": {
+        "menu": "Menu dywidendy"
+      },
       "follow": "Obserwuj",
       "following": "Obserwowana",
       "followed": "Dodano do obserwowanych",

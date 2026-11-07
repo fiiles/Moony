@@ -602,6 +602,9 @@
         "showAll_other": "Visa alla {{count}}",
         "menu": "Transaktionsmeny"
       },
+      "dividend": {
+        "menu": "Utdelningsmeny"
+      },
       "follow": "Bevaka",
       "following": "Bevakas",
       "followed": "Tillagd i bevakningslistan",

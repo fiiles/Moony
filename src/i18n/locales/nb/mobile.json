@@ -602,6 +602,9 @@
         "showAll_other": "Vis alle {{count}}",
         "menu": "Transaksjonsmeny"
       },
+      "dividend": {
+        "menu": "Utbyttemeny"
+      },
       "follow": "Følg",
       "following": "Følger",
       "followed": "Lagt til i følgelisten",

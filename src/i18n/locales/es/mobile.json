@@ -637,6 +637,9 @@
         "showAll_other": "Mostrar todas ({{count}})",
         "menu": "Menú del movimiento"
       },
+      "dividend": {
+        "menu": "Menú del dividendo"
+      },
       "follow": "Seguir",
       "following": "Siguiendo",
       "followed": "Añadida a la lista de seguimiento",

@@ -567,6 +567,9 @@
         "showAll_other": "{{count}} 件をすべて表示",
         "menu": "取引メニュー"
       },
+      "dividend": {
+        "menu": "配当メニュー"
+      },
       "follow": "フォロー",
       "following": "フォロー中",
       "followed": "ウォッチリストに追加しました",

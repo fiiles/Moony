@@ -602,6 +602,9 @@
         "showAll_other": "Show all {{count}}",
         "menu": "Transaction menu"
       },
+      "dividend": {
+        "menu": "Dividend options"
+      },
       "follow": "Watch",
       "following": "Watching",
       "followed": "Added to the watchlist",

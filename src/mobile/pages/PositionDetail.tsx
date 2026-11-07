@@ -8,9 +8,10 @@ import type {
   StockPosition,
   TickerValueHistoryReport,
 } from '@shared/schema';
+import { useStockDividendMutations } from '@/hooks/use-stock-dividend-mutations';
 import { useInvestmentTransactionMutations } from '@/hooks/use-investment-mutations';
 import type { ChartPeriod } from '@/utils/period';
-import type { StockRow } from '@/utils/positions';
+import { amountOf, type StockRow } from '@/utils/positions';
 import { ScaledConversionNote } from '@/mobile/components/Scaled';
 import { BuyInvestmentModal } from '@/components/stocks/BuyInvestmentModal';
 import { EditTransactionModal } from '@/components/stocks/EditTransactionModal';
@@ -80,8 +81,9 @@ export default function PositionDetail() {
   // While the delete runs nothing the page reads is fetched again: the backend's recalculation
   // event would otherwise refetch the deleted id (`usePosition`'s `live`)
   const data = usePosition(params?.id, period, !exit.deleting);
-  const ledger = usePositionLedger(data.transactions);
+  const ledger = usePositionLedger(data.transactions, data.dividends);
   const { deleteTransaction } = useInvestmentTransactionMutations();
+  const { deleteDividend } = useStockDividendMutations();
   const { holding, position, history, companyInfo, companyPending, reportCurrency } = data;
 
   const current = useMemo<PositionView | null>(
@@ -137,6 +139,7 @@ export default function PositionDetail() {
             holding={view.holding}
             reportCurrency={reportCurrency}
             sells={data.transactions.filter((tx) => tx.type === 'sell').length}
+            dividendsReceived={amountOf(view.position?.investment.dividendsReceived)}
           />
           <PositionLedger
             ledger={ledger}
@@ -147,6 +150,8 @@ export default function PositionDetail() {
             unit={ts('table.unit')}
             deleteTransaction={deleteTransaction}
             onEdit={setEditing}
+            dividends={data.dividends}
+            deleteDividend={deleteDividend}
           />
           <EditTransactionModal
             transaction={editing}
@@ -200,14 +205,22 @@ function StockStats({
   holding,
   reportCurrency,
   sells,
+  dividendsReceived,
 }: {
   holding: StockRow;
   reportCurrency: string;
   sells: number;
+  dividendsReceived: number | null;
 }) {
   const sixth = useDividendStat(holding, reportCurrency);
   return (
-    <PositionStats holding={holding} reportCurrency={reportCurrency} sells={sells} sixth={sixth} />
+    <PositionStats
+      holding={holding}
+      reportCurrency={reportCurrency}
+      sells={sells}
+      sixth={sixth}
+      dividendsReceived={dividendsReceived}
+    />
   );
 }
 

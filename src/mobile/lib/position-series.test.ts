@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   filterTransactions,
+  ledgerEntries,
   nativeTotal,
   positionEvents,
   positionPoints,
@@ -120,6 +121,43 @@ describe('positionEvents and filterTransactions', () => {
   });
 });
 
+const dividend = (id: string, exDate: number, source: 'yahoo' | 'manual' = 'yahoo') => ({
+  id,
+  investmentId: 'i',
+  source,
+  exDate,
+  amountPerShare: '0.5',
+  shares: '10',
+  grossAmount: '5',
+  currency: 'EUR',
+  note: null,
+  superseded: false,
+});
+
+describe('ledgerEntries', () => {
+  const txs = [tx('a', 'buy', T - 30 * DAY), tx('b', 'sell', T - 10 * DAY)];
+  const divs = [dividend('d1', T - 10 * DAY), dividend('d2', T - 20 * DAY)];
+
+  it('merges trades and dividends newest first, the trade first on the same day', () => {
+    expect(ledgerEntries(txs, divs, 'all').map((e) => [e.kind, e.id])).toEqual([
+      ['trade', 'b'],
+      ['dividend', 'd1'],
+      ['dividend', 'd2'],
+      ['trade', 'a'],
+    ]);
+  });
+
+  it('keeps only the dividends for the dividend filter, and only the sells for sell', () => {
+    expect(ledgerEntries(txs, divs, 'dividend').map((e) => e.id)).toEqual(['d1', 'd2']);
+    expect(ledgerEntries(txs, divs, 'sell').map((e) => e.id)).toEqual(['b']);
+    expect(ledgerEntries(txs, divs, 'buy').map((e) => e.id)).toEqual(['a']);
+  });
+
+  it('gives nothing for the dividend filter without dividends', () => {
+    expect(ledgerEntries(txs, [], 'dividend')).toEqual([]);
+  });
+});
+
 describe('ytdRange', () => {
   it("runs from 1 January UTC to today's UTC day", () => {
     expect(ytdRange(T + 3_600)).toEqual({ fromTs: Date.UTC(2026, 0, 1) / 1000, toTs: T });
@@ -133,19 +171,29 @@ describe('revealRow', () => {
   );
 
   it('leaves a row alone that is already in the first eight', () => {
-    expect(revealRow(many, 'all', 'n10')).toEqual({ filter: 'all', expand: false });
+    expect(revealRow(many, [], 'all', 'n10')).toEqual({ filter: 'all', expand: false });
   });
 
   it('opens the fold for a row it hides', () => {
-    expect(revealRow(many, 'all', 'n1')).toEqual({ filter: 'all', expand: true });
+    expect(revealRow(many, [], 'all', 'n1')).toEqual({ filter: 'all', expand: true });
   });
 
   it('shows everything when the filter leaves the row out, and opens the fold if it then hides it', () => {
-    expect(revealRow(many, 'sell', 'n10')).toEqual({ filter: 'all', expand: false });
-    expect(revealRow(many, 'buy', 'n1')).toEqual({ filter: 'all', expand: true });
+    expect(revealRow(many, [], 'sell', 'n10')).toEqual({ filter: 'all', expand: false });
+    expect(revealRow(many, [], 'buy', 'n1')).toEqual({ filter: 'all', expand: true });
   });
 
   it('does nothing for a row that is not there', () => {
-    expect(revealRow(many, 'buy', 'gone')).toEqual({ filter: 'buy', expand: false });
+    expect(revealRow(many, [], 'buy', 'gone')).toEqual({ filter: 'buy', expand: false });
+  });
+
+  it('shows everything when the dividend filter leaves a trade out', () => {
+    const divs = [dividend('d', T - 5 * DAY)];
+    expect(revealRow(many, divs, 'dividend', 'n10')).toEqual({ filter: 'all', expand: false });
+  });
+
+  it('opens the fold for a buy at index 8 or later of the merged list', () => {
+    const divs = Array.from({ length: 8 }, (_, i) => dividend(`d${i}`, T + (i + 1) * DAY));
+    expect(revealRow(many, divs, 'all', 'n10')).toEqual({ filter: 'all', expand: true });
   });
 });

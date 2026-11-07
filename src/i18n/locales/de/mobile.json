@@ -602,6 +602,9 @@
         "showAll_other": "Alle {{count}} anzeigen",
         "menu": "Transaktionsmenü"
       },
+      "dividend": {
+        "menu": "Dividendenmenü"
+      },
       "follow": "Beobachten",
       "following": "Beobachtet",
       "followed": "Zur Beobachtungsliste hinzugefügt",

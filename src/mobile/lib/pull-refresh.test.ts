@@ -86,10 +86,16 @@ describe('pullReducer', () => {
 describe('holdsUndecidedMove', () => {
   it('holds a downward move back while the drag is undecided, and nothing else', () => {
     const tracking = run([start()]);
-    expect(holdsUndecidedMove(tracking, 203)).toBe(true);
-    expect(holdsUndecidedMove(tracking, 197)).toBe(false);
-    expect(holdsUndecidedMove(PULL_IDLE, 250)).toBe(false);
-    expect(holdsUndecidedMove(run([start(), move(20)]), 250)).toBe(false);
+    expect(holdsUndecidedMove(tracking, 100, 203)).toBe(true);
+    expect(holdsUndecidedMove(tracking, 100, 197)).toBe(false);
+    expect(holdsUndecidedMove(PULL_IDLE, 100, 250)).toBe(false);
+    expect(holdsUndecidedMove(run([start(), move(20)]), 100, 250)).toBe(false);
+  });
+
+  it('leaves a mostly sideways start to the WebView (a horizontal scroller)', () => {
+    const tracking = run([start()]);
+    expect(holdsUndecidedMove(tracking, 106, 203)).toBe(false);
+    expect(holdsUndecidedMove(tracking, 102, 205)).toBe(true);
   });
 });
 

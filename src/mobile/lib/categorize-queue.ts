@@ -129,15 +129,6 @@ export function withBatch(
 }
 
 /**
- * The category each done row ended with, as far as this page knows: the pick of a row, and the
- * same category for the rows its remembered pick took along. A batch still holds a row picked
- * here only when it came after that pick (`withPick` and `withBatch` let go of the rows a newer
- * write reached), so the batch's category wins. A row that left the open set some other way is
- * not in it, and neither are the rows of a batch that was `restored` (the switch of its
- * expansion turned off): they hold what they held before — their own pick, else nothing, and the
- * queue lists them again.
- */
-/**
  * The page's outcomes without the "Nechat" ones — of `ids`, or every one: the payments are back in
  * the queue ("Vrátit" on a Nechat's toast, "Vrátit do fronty"), so their rows open again.
  */
@@ -153,6 +144,15 @@ export function withoutLeft(
   return next.size === local.size ? local : next;
 }
 
+/**
+ * The category each done row ended with, as far as this page knows: the pick of a row, and the
+ * same category for the rows its remembered pick took along. A batch still holds a row picked
+ * here only when it came after that pick (`withPick` and `withBatch` let go of the rows a newer
+ * write reached), so the batch's category wins. A row that left the open set some other way is
+ * not in it, and neither are the rows of a batch that was `restored` (the switch of its
+ * expansion turned off): they hold what they held before — their own pick, else nothing, and the
+ * queue lists them again.
+ */
 export function doneCategories(
   local: ReadonlyMap<string, LocalOutcome>,
   restored: ReadonlySet<string> = new Set()

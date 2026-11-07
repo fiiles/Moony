@@ -97,7 +97,8 @@ export function usePullToRefresh({ scroll, indicator, onRefresh, enabled }: Pull
       if (!touch || (state.kind !== 'tracking' && state.kind !== 'pulling')) return;
       // A downward move at the top before the drag has decided: the WebView must not take it into
       // its own rubber band, or it owns the gesture from then on
-      if (holdsUndecidedMove(state, touch.clientY) && event.cancelable) event.preventDefault();
+      if (holdsUndecidedMove(state, touch.clientX, touch.clientY) && event.cancelable)
+        event.preventDefault();
       const before = state.kind;
       dispatch({ type: 'move', x: touch.clientX, y: touch.clientY });
       if (state.kind !== 'pulling') {

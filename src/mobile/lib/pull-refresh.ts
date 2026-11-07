@@ -97,16 +97,17 @@ function pulling(x: number, y: number, dy: number): PullState {
   return { kind: 'pulling', x, y, distance, armed: distance >= PULL_TRIGGER_PX };
 }
 
-/** How far the content sits down in `state` (the indicator's room). */
 /**
  * Whether a move while the drag is still undecided must be kept from the WebView: a downward move
  * at the top would otherwise start WKWebView's own rubber band, which then owns the gesture. The
  * slop still tells a sideways drag apart; only the scroll is held back meanwhile.
  */
-export function holdsUndecidedMove(state: PullState, y: number): boolean {
-  return state.kind === 'tracking' && y > state.y;
+export function holdsUndecidedMove(state: PullState, x: number, y: number): boolean {
+  // Only a mostly downward move: a sideways start stays with the WebView (a horizontal scroller)
+  return state.kind === 'tracking' && y - state.y > Math.abs(x - state.x);
 }
 
+/** How far the content sits down in `state` (the indicator's room). */
 export function pullOffset(state: PullState): number {
   if (state.kind === 'pulling') return state.distance;
   if (state.kind === 'refreshing') return PULL_HOLD_PX;

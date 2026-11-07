@@ -124,7 +124,7 @@ export function DividendRow({
               )}
               <RowMenuItem variant="danger" onSelect={() => onDelete(dividend)}>
                 <Trash2 strokeWidth={1.75} aria-hidden />
-                {tc('buttons.delete')}
+                {ts('detail.dividendRecords.confirmDelete.confirm')}
               </RowMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

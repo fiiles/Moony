@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Ellipsis, Eye, Pencil, Receipt, Tag, Trash2 } from 'lucide-react';
+import { Coins, Ellipsis, Eye, Pencil, Receipt, Tag, Trash2 } from 'lucide-react';
 import { useWatchedStocks } from '@/hooks/use-stock-monitor';
 import type { StockRow } from '@/utils/positions';
 import {
@@ -17,7 +17,7 @@ import { PositionRenameSheet } from '@/mobile/sheets/PositionRenameSheet';
 import { NavIconButton } from '@/mobile/shell/NavBar';
 
 /**
- * The `···` of a position (spec §8.8): Upravit cenu and Odhad dividendy open the desktop's dialogs,
+ * The `···` of a position (spec §8.8): Zapsat dividendu asks the page for its sheet, Upravit cenu and Odhad dividendy open the desktop's dialogs,
  * Upravit název a sheet, Sledovat adds the ticker to the watched ones (it says "Sledováno" and
  * waits when it already is), Smazat pozici asks the page to confirm and delete (`onDelete`). The
  * delete is the page's, not this menu's: the menu goes away as soon as the position drops out of
@@ -27,8 +27,11 @@ import { NavIconButton } from '@/mobile/shell/NavBar';
 export function PositionMenu({
   holding,
   onDelete,
+  onAddDividend,
 }: {
   holding: StockRow;
+  /** Zapsat dividendu: the page owns the sheet (it also opens it to edit a row's dividend). */
+  onAddDividend: () => void;
   /** Smazat pozici: the screen asks in its confirm sheet and deletes (`useDeleteAndLeave`). */
   onDelete: () => void;
 }) {
@@ -54,6 +57,11 @@ export function PositionMenu({
           </NavIconButton>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[240px]">
+          <RowMenuItem onSelect={onAddDividend}>
+            <Coins strokeWidth={1.75} aria-hidden />
+            {ts('detail.dividendRecords.add')}
+          </RowMenuItem>
+          <DropdownMenuSeparator />
           <RowMenuItem onSelect={() => setPriceOpen(true)}>
             <Pencil strokeWidth={1.75} aria-hidden />
             {ts('detail.menu.editPrice')}

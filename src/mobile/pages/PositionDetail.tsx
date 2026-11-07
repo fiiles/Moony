@@ -5,6 +5,7 @@ import { Minus, Plus } from 'lucide-react';
 import type {
   InvestmentTransaction,
   StockCompanyInfo,
+  StockDividend,
   StockPosition,
   TickerValueHistoryReport,
 } from '@shared/schema';
@@ -33,6 +34,7 @@ import { NavTextButton } from '@/mobile/shell/NavBar';
 import { positionPath, routes } from '@/mobile/shell/routes';
 import { Screen } from '@/mobile/shell/Screen';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
+import { DividendSheet } from '@/mobile/sheets/DividendSheet';
 
 /** What the screen shows of a loaded position: the record and what is read from it. */
 interface PositionView {
@@ -66,6 +68,10 @@ export default function PositionDetail() {
   const [period, setPeriod] = useState<ChartPeriod>('30D');
   const [trade, setTrade] = useState<'buy' | 'sell' | null>(null);
   const [editing, setEditing] = useState<InvestmentTransaction | null>(null);
+  const [dividendSheet, setDividendSheet] = useState<{
+    open: boolean;
+    dividend: StockDividend | null;
+  }>({ open: false, dividend: null });
   const [deleteOpen, setDeleteOpen] = useState(false);
   const { remove } = usePositionMutations(params?.id);
   const exit = useDeleteAndLeave({
@@ -99,7 +105,13 @@ export default function PositionDetail() {
       title={view?.holding.ticker ?? ''}
       leading={<NavTextButton label={backText} onClick={back} chevron />}
       trailing={
-        view && <PositionMenu holding={view.holding} onDelete={() => setDeleteOpen(true)} />
+        view && (
+          <PositionMenu
+            holding={view.holding}
+            onDelete={() => setDeleteOpen(true)}
+            onAddDividend={() => setDividendSheet({ open: true, dividend: null })}
+          />
+        )
       }
     >
       {view ? (
@@ -152,6 +164,17 @@ export default function PositionDetail() {
             onEdit={setEditing}
             dividends={data.dividends}
             deleteDividend={deleteDividend}
+            onEditDividend={(dividend) => setDividendSheet({ open: true, dividend })}
+          />
+          <DividendSheet
+            open={dividendSheet.open}
+            // The dividend stays while the sheet slides away (it would flash empty otherwise)
+            onOpenChange={(open) => setDividendSheet((s) => ({ ...s, open }))}
+            investmentId={view.holding.id}
+            ticker={view.holding.ticker}
+            currency={data.dividendCurrency}
+            dividend={dividendSheet.dividend}
+            fromYahoo={data.dividendsFromYahoo}
           />
           <EditTransactionModal
             transaction={editing}

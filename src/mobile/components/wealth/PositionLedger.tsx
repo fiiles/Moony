@@ -16,7 +16,7 @@ import { TradeRow } from './TradeRow';
 interface PositionLedgerProps<T extends LedgerTx> {
   /** The filter, the fold and the flash of the rows (`usePositionLedger`). */
   ledger: PositionLedgerState<T>;
-  /** Every trade of the position, whatever the filter: the section's number. */
+  /** Every trade and dividend of the position, whatever the filter: the section's number. */
   count: number;
   /** The report currency the rows are valued in. */
   currency: string;
@@ -46,7 +46,8 @@ interface PositionLedgerProps<T extends LedgerTx> {
 
 /**
  * "Transakce" of a position (spec §8.8, prototype frame 12): the section head with the number of
- * trades, the Vše · Nákupy · Prodeje segment and the trades newest first as rows — the first eight,
+ * trades and dividends, the Vše · Nákupy · Prodeje (· Dividendy for a stock) segment and the trades
+ * and dividends newest first as rows — the first eight,
  * "Zobrazit všech N" for the rest. A row's menu offers the page's edit (when it has one) or a
  * confirm sheet for the delete, which says what goes (the desktop's sentence).
  */

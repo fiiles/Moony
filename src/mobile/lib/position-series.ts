@@ -32,8 +32,6 @@ export interface PositionEvent<T extends LedgerTx = LedgerTx> extends ChartEvent
 }
 
 export type LedgerFilter = 'all' | 'buy' | 'sell' | 'dividend';
-/** The filter a coin's ledger takes (no dividends); kept for the crypto code. */
-export type TxFilter = LedgerFilter;
 
 /** A row of the ledger: a trade or, for a stock, a received dividend (dated by its ex-date). */
 export type LedgerEntry<T extends LedgerTx = LedgerTx> =
@@ -83,15 +81,6 @@ export function positionEvents<T extends LedgerTx>(transactions: readonly T[]): 
     type: tx.type === 'sell' ? 'sell' : 'buy',
     tx,
   }));
-}
-
-/** The ledger as the page lists it: newest first, all of it or only the buys or the sells. */
-export function filterTransactions<T extends Pick<LedgerTx, 'type' | 'transactionDate'>>(
-  transactions: readonly T[],
-  filter: Exclude<LedgerFilter, 'dividend'>
-): T[] {
-  const rows = [...transactions].sort((a, b) => b.transactionDate - a.transactionDate);
-  return filter === 'all' ? rows : rows.filter((tx) => tx.type === filter);
 }
 
 /**

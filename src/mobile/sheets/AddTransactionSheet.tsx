@@ -1,14 +1,15 @@
-import { useEffect, useId, useRef, useState } from 'react';
+import { useEffect, useId, useRef, useState, type KeyboardEvent } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ChevronRight } from 'lucide-react';
 import type { TransactionCategory } from '@shared/schema';
 import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
 import { useBankTransactionMutations } from '@/hooks/use-bank-account-mutations';
 import { useCategoryName } from '@/hooks/use-categories';
 import { AmountField } from '@/mobile/components/AmountField';
 import { DateField } from '@/mobile/components/DateField';
 import { TEXT_FIELD } from '@/mobile/components/field-styles';
 import { FOOTER_GHOST, FOOTER_PRIMARY } from '@/mobile/components/import/styles';
-import { KeyValueRow } from '@/mobile/components/KeyValueRow';
 import { Segment } from '@/mobile/components/Segment';
 import { Sheet } from '@/mobile/components/Sheet';
 import {
@@ -55,6 +56,11 @@ export function AddTransactionSheet({
   const categoryName = useCategoryName();
   const formId = useId();
   const amountField = useRef<HTMLInputElement>(null);
+  const counterpartyField = useRef<HTMLInputElement>(null);
+  const descriptionField = useRef<HTMLInputElement>(null);
+  const ibanField = useRef<HTMLInputElement>(null);
+  // Counts the openings: a save that started before a close must not close the next opening
+  const opening = useRef(0);
   const { createTransaction } = useBankTransactionMutations();
 
   const [form, setForm] = useState(() => emptyManualTxForm(todayIso()));
@@ -75,6 +81,7 @@ export function AddTransactionSheet({
   // is the field to type in, so it gets the focus once the sheet has settled
   useEffect(() => {
     if (!open) return;
+    opening.current += 1;
     const timer = window.setTimeout(() => amountField.current?.focus(), 60);
     return () => window.clearTimeout(timer);
   }, [open]);
@@ -98,8 +105,30 @@ export function AddTransactionSheet({
     if (pending) return;
     setAttempted(true);
     const input = manualTxInput(form, accountId, currency);
-    if (input) createTransaction.mutate(input, { onSuccess: () => onOpenChange(false) });
+    if (!input) return;
+    const mine = opening.current;
+    createTransaction.mutate(input, {
+      onSuccess: () => {
+        if (opening.current === mine) onOpenChange(false);
+      },
+    });
   };
+
+  // Return goes on to the next field; only the last one (the IBAN) submits the form. The Enter that
+  // ends an IME composition (ja, zh) is the IME's: WebKit reports it with `isComposing` already
+  // false and the legacy keyCode 229
+  const nextOnReturn =
+    (next: { current: HTMLInputElement | null }) => (event: KeyboardEvent<HTMLInputElement>) => {
+      if (
+        event.key !== 'Enter' ||
+        event.nativeEvent.isComposing ||
+        event.nativeEvent.keyCode === 229
+      ) {
+        return;
+      }
+      event.preventDefault();
+      next.current?.focus();
+    };
 
   const category = categories.find((c) => c.id === form.categoryId) ?? null;
   const noCategory = t('account.ledger.noCategory');
@@ -108,8 +137,12 @@ export function AddTransactionSheet({
     label: string,
     value: string,
     onChange: (value: string) => void,
-    placeholder?: string,
-    last = false
+    field: {
+      ref: { current: HTMLInputElement | null };
+      next?: { current: HTMLInputElement | null };
+      placeholder?: string;
+      iban?: boolean;
+    }
   ) => (
     <div className="mb-3">
       <label htmlFor={id} className="mx-0.5 mb-1.5 block text-m-sub font-semibold text-ink-2">
@@ -120,9 +153,14 @@ export function AddTransactionSheet({
         type="text"
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
+        ref={field.ref}
+        placeholder={field.placeholder}
         autoComplete="off"
-        enterKeyHint={last ? 'done' : 'next'}
+        autoCapitalize={field.iban ? 'characters' : undefined}
+        autoCorrect={field.iban ? 'off' : undefined}
+        spellCheck={field.iban ? false : undefined}
+        enterKeyHint={field.next ? 'next' : 'done'}
+        onKeyDown={field.next ? nextOnReturn(field.next) : undefined}
         className={TEXT_FIELD}
       />
     </div>
@@ -180,6 +218,8 @@ export function AddTransactionSheet({
             placeholder="0"
             error={amountError}
             onChange={(event) => change({ amountText: event.target.value })}
+            enterKeyHint="next"
+            onKeyDown={nextOnReturn(counterpartyField)}
           />
           <div className="mb-3">
             <DateField
@@ -194,29 +234,50 @@ export function AddTransactionSheet({
             tb('transaction.counterparty'),
             form.counterparty,
             (counterparty) => change({ counterparty }),
-            tb('transaction.counterpartyPlaceholder')
+            {
+              ref: counterpartyField,
+              next: descriptionField,
+              placeholder: tb('transaction.counterpartyPlaceholder'),
+            }
           )}
           {textField(
             `${formId}-description`,
             tb('transaction.description'),
             form.description,
             (description) => change({ description }),
-            tb('transaction.descriptionPlaceholder')
+            {
+              ref: descriptionField,
+              // The category is a button: Return goes straight on to the account number
+              next: ibanField,
+              placeholder: tb('transaction.descriptionPlaceholder'),
+            }
           )}
-          <div className="mb-3 divide-y divide-line-soft">
-            <KeyValueRow
-              label={tb('transaction.category')}
-              value={category ? categoryName(category) : noCategory}
+          <div className="mb-3">
+            <span className="mx-0.5 mb-1.5 block text-m-sub font-semibold text-ink-2">
+              {tb('transaction.category')}
+            </span>
+            <button
+              type="button"
+              aria-label={tb('transaction.category')}
               onClick={() => setChoosing(true)}
-            />
+              className={cn(TEXT_FIELD, 'flex items-center justify-between text-left')}
+            >
+              <span className={category ? 'truncate text-ink' : 'truncate text-ink-5'}>
+                {category ? categoryName(category) : noCategory}
+              </span>
+              <ChevronRight
+                aria-hidden
+                className="ml-2 size-4 flex-none text-ink-5"
+                strokeWidth={1.75}
+              />
+            </button>
           </div>
           {textField(
             `${formId}-iban`,
             tb('transaction.counterpartyIban'),
             form.counterpartyIban,
             (counterpartyIban) => change({ counterpartyIban }),
-            undefined,
-            true
+            { ref: ibanField, iban: true }
           )}
         </form>
       </Sheet>

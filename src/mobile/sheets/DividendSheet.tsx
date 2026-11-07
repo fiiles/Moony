@@ -54,6 +54,9 @@ export function DividendSheet({
   const { t: tc } = useTranslation('common');
   const formId = useId();
   const amountField = useRef<HTMLInputElement>(null);
+  const noteField = useRef<HTMLTextAreaElement>(null);
+  // Counts the openings: a save that started before a close must not close the next opening
+  const opening = useRef(0);
   const { createDividend, updateDividend } = useStockDividendMutations();
 
   const [form, setForm] = useState(() => dividendForm(dividend, todayIso()));
@@ -70,6 +73,9 @@ export function DividendSheet({
 
   // The sheet itself takes the focus on opening (the keyboard would cover it unread); the amount
   // is the field to type in, so it gets the focus once the sheet has settled
+  useEffect(() => {
+    if (open) opening.current += 1;
+  }, [open]);
   useEffect(() => {
     if (!open || fromYahoo) return;
     const timer = window.setTimeout(() => amountField.current?.focus(), 60);
@@ -99,7 +105,12 @@ export function DividendSheet({
     setAttempted(true);
     const data = dividendInput(form, unit);
     if (!data) return;
-    const close = { onSuccess: () => onOpenChange(false) };
+    const mine = opening.current;
+    const close = {
+      onSuccess: () => {
+        if (opening.current === mine) onOpenChange(false);
+      },
+    };
     if (dividend) updateDividend.mutate({ id: dividend.id, data }, close);
     else createDividend.mutate({ investmentId, data }, close);
   };
@@ -172,6 +183,20 @@ export function DividendSheet({
             hint={ts('detail.dividendRecords.grossHint')}
             error={amountError}
             onChange={(event) => change({ amountText: event.target.value })}
+            enterKeyHint="next"
+            onKeyDown={(event) => {
+              // The Enter that ends an IME composition (ja, zh) is the IME's (isComposing / 229)
+              if (
+                event.key !== 'Enter' ||
+                event.nativeEvent.isComposing ||
+                event.nativeEvent.keyCode === 229
+              ) {
+                return;
+              }
+              // Return goes on to the note; the save is the footer button's
+              event.preventDefault();
+              noteField.current?.focus();
+            }}
           />
           <div className="mb-3">
             <label
@@ -182,6 +207,7 @@ export function DividendSheet({
             </label>
             <textarea
               id={noteId}
+              ref={noteField}
               rows={3}
               value={form.note}
               onChange={(event) => change({ note: event.target.value })}

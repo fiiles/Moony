@@ -196,8 +196,10 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
   const [pendingDelete, setPendingDelete] = useState<BankTransaction | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const closeSheet = (open: boolean) => !open && setSheet(null);
-  // The import to take back stays while its sheet slides away, so the sentence does not blank out
+  // The import to take back is kept until the next opening sets another, so the title, label and
+  // sentence do not change while the sheet slides away; `undoOpen` alone opens and closes it
   const [pendingUndo, setPendingUndo] = useState<CsvImportBatch | null>(null);
+  const [undoOpen, setUndoOpen] = useState(false);
   const undo = useUndoImport();
   const undoLabel = tb(
     pendingUndo?.linkedCount ? 'readiness.deleteImported' : 'readiness.deleteRecord'
@@ -391,19 +393,22 @@ function AccountDetailPage({ id }: { id: string | undefined }) {
               // The confirm sheet opens once the history sheet has gone, as the desktop's dialog does
               leaveAfterSheet(
                 () => setSheet(null),
-                () => setPendingUndo(batch)
+                () => {
+                  setPendingUndo(batch);
+                  setUndoOpen(true);
+                }
               )
             }
           />
           <ConfirmSheet
-            open={pendingUndo !== null}
-            onOpenChange={(open) => !open && setPendingUndo(null)}
+            open={undoOpen}
+            onOpenChange={setUndoOpen}
             title={undoLabel}
             description={undoDescription}
             confirmLabel={undoLabel}
             isPending={undo.isPending}
             onConfirm={() =>
-              pendingUndo && undo.mutate(pendingUndo.id, { onSuccess: () => setPendingUndo(null) })
+              pendingUndo && undo.mutate(pendingUndo.id, { onSuccess: () => setUndoOpen(false) })
             }
           />
           {/* The desktop's account form; a balance is recorded in its own sheet, as on the desktop */}

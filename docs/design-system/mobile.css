@@ -209,7 +209,8 @@ button.m-sec__a { padding: 0; border: 0; background: none; font: inherit; font-s
 .m-stat__v--gain { color: var(--gain); }
 .m-stat__v--loss { color: var(--loss); }
 .m-stat__n {
-  margin-top: 3px; overflow: hidden; color: var(--ink-4); text-overflow: ellipsis; white-space: nowrap;
+  margin-top: 3px; overflow: hidden; color: var(--ink-4); overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2;
   font-size: var(--m-fs-note); font-weight: 500; line-height: 1.3;
 }
 

@@ -66,7 +66,18 @@ export function useRefreshStockPrices() {
   return useMutation({
     mutationFn: async () => {
       const pricesResult = await priceApi.refreshStockPrices(true);
-      priceApi.refreshDividends().catch(console.error);
+      // In the background, as the desktop does: a failure is logged, not toasted
+      priceApi
+        .refreshDividends()
+        .then(() =>
+          Promise.all([
+            queryClient.invalidateQueries({ queryKey: ['stock-dividends'] }),
+            queryClient.invalidateQueries({ queryKey: ['investment'] }),
+            queryClient.invalidateQueries({ queryKey: ['investments'] }),
+            queryClient.invalidateQueries({ queryKey: ['dividend-summary'] }),
+          ])
+        )
+        .catch(console.error);
       return pricesResult;
     },
     onSuccess: (result) => {

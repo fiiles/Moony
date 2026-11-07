@@ -195,7 +195,7 @@ export function ManualPriceModal({ open, onOpenChange, investment }: ManualPrice
 
             <div className="flex gap-2">
               <Button type="submit" className="flex-1" disabled={mutation.isPending}>
-                {mutation.isPending ? tc('status.updating') : tc('buttons.save')}
+                {mutation.isPending ? tc('status.saving') : tc('buttons.save')}
               </Button>
               {investment?.isManualPrice && (
                 <Button

@@ -13,6 +13,10 @@ export function useTapToOpen(open: boolean, onOpenChange: (open: boolean) => voi
       touched.current = event.pointerType !== 'mouse';
       if (touched.current) event.preventDefault();
     },
+    // A touch that became a scroll has no click: forget it, or the next Enter would toggle twice
+    onPointerCancel: () => {
+      touched.current = false;
+    },
     onClick: () => {
       if (!touched.current) return;
       touched.current = false;

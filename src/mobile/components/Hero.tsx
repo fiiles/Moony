@@ -4,6 +4,7 @@ import type { LinePoint, LineTip } from '@/components/charts/MoonyLineChart';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import type { ChartEvent, EventCluster } from '@/utils/chart-scale';
+import { changeDirection } from '@/utils/change';
 import type { ChartPeriod } from '@/utils/period';
 import { HERO_FLOOR, useFitText } from '@/mobile/hooks/use-fit-text';
 import type { CostPoint } from '@/mobile/lib/position-series';
@@ -99,8 +100,10 @@ export function Hero<E extends ChartEvent, P extends string = ChartPeriod>({
   const [scrub, setScrub] = useState<LinePoint | null>(null);
 
   const shownValue = scrub ? formatValue(scrub.value) : value === null ? '—' : formatValue(value);
-  const up = change !== undefined && change.ratio > 0;
-  const down = change !== undefined && change.ratio < 0;
+  // The direction of the share as it is written (one decimal): "0,0 %" is never green or red
+  const direction = change === undefined ? 'flat' : changeDirection(change.ratio, 1);
+  const up = direction === 'up';
+  const down = direction === 'down';
   // A long net worth shrinks to fit (floor `m-fs-title`) instead of ending in an ellipsis. The
   // fit follows the shown text, not the number: hiding the amounts changes the text alone.
   const heroRef = useRef<HTMLElement>(null);
@@ -144,7 +147,12 @@ export function Hero<E extends ChartEvent, P extends string = ChartPeriod>({
                     : 'bg-well-2 text-ink-2'
               )}
             >
-              {up ? '▲ ' : down ? '▼ ' : ''}
+              {(up || down) && (
+                <>
+                  <span aria-hidden>{up ? '▲ ' : '▼ '}</span>
+                  <span className="sr-only">{up ? '+' : '−'}</span>
+                </>
+              )}
               {fmt.percent(Math.abs(change.ratio), 1)}
             </span>
             <span className="min-w-0 truncate">{change.text}</span>

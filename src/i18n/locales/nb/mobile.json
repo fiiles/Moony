@@ -576,7 +576,8 @@
       "loadFailed": "Beholdningene kunne ikke lastes.",
       "target": "mål {{price}}",
       "targetReached": "målet nådd",
-      "dayChange": "i dag"
+      "dayChange": "i dag",
+      "sincePurchase": "siden kjøp"
     },
     "crypto": {
       "largestNote": "{{share}} av krypto",

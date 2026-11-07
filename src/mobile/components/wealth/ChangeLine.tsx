@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { MoneyOptions } from '@/lib/format';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
+import { changeDirection } from '@/utils/change';
 import { Money } from '@/mobile/components/Money';
 import type { PeriodChange } from '@/mobile/lib/change';
 
@@ -19,16 +20,19 @@ interface ChangeLineProps {
 
 /**
  * The change line of a row's trailing sub (README §13, `.m-change`): the badge — ▲ / ▼ and the
- * share, green or red, neutral at exactly zero, absent without a ratio — then the signed amount
+ * share, green or red, neutral when the share rounds to zero (`changeDirection`), absent without a ratio — then the signed amount
  * (through `<Money>`) or `trail`. The share is never colour alone: the
- * glyph carries the direction.
+ * glyph carries the direction for the eye and a spoken sign for VoiceOver (the glyph is hidden
+ * from it, the desktop's `ChangeBadge`).
  */
 export function ChangeLine({ change, currency, options, trail, className }: ChangeLineProps) {
   const fmt = useFormat();
   if (change === null) return null;
   const { ratio } = change;
-  const up = ratio !== null && ratio > 0;
-  const down = ratio !== null && ratio < 0;
+  // The direction of the share as it is written (one decimal): "0,0 %" is never green or red
+  const direction = changeDirection(ratio, 1);
+  const up = direction === 'up';
+  const down = direction === 'down';
   return (
     <span className={cn('inline-flex items-center gap-1 whitespace-nowrap num', className)}>
       {ratio !== null && (
@@ -38,7 +42,12 @@ export function ChangeLine({ change, currency, options, trail, className }: Chan
             up ? 'bg-gain-soft text-gain' : down ? 'bg-loss-soft text-loss' : 'bg-well-2 text-ink-2'
           )}
         >
-          {up ? '▲ ' : down ? '▼ ' : ''}
+          {(up || down) && (
+            <>
+              <span aria-hidden>{up ? '▲ ' : '▼ '}</span>
+              <span className="sr-only">{up ? '+' : '−'}</span>
+            </>
+          )}
           {fmt.percent(Math.abs(ratio), 1)}
         </span>
       )}

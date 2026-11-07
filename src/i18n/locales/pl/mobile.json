@@ -644,7 +644,8 @@
       "loadFailed": "Nie udało się wczytać pozycji.",
       "target": "cel {{price}}",
       "targetReached": "cel osiągnięty",
-      "dayChange": "dziś"
+      "dayChange": "dziś",
+      "sincePurchase": "od zakupu"
     },
     "crypto": {
       "largestNote": "{{share}} krypto",

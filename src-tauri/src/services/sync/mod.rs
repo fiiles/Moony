@@ -36,7 +36,20 @@ pub fn on_open(conn: &Connection) {
         if let Err(record) = state::record_error(conn, &e.to_string()) {
             log::warn!("[SYNC] Could not record the capture error: {record}");
         }
+        // Only an enabled profile has lost anything; the row is a no-op update otherwise.
+        let enabled = state::load(conn).ok().flatten().is_some_and(|s| s.enabled);
+        if enabled {
+            if let Err(record) = state::mark_capture_broken(conn, now()) {
+                log::warn!("[SYNC] Could not mark the capture as broken: {record}");
+            }
+        }
     }
+}
+
+fn now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64)
 }
 
 fn open_capture(conn: &Connection) -> Result<()> {

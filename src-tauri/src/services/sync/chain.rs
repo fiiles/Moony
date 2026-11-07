@@ -254,7 +254,7 @@ pub fn cross_barrier(conn: &Connection, sync: &SyncState) -> Result<usize> {
     in_savepoint(conn, "sync_cross_barrier", || {
         let queued = requeue_own_since(conn, sync.device, sync.snapshot_hlc)?;
         conn.execute(
-            "UPDATE sync_state SET barrier = MAX(barrier, ?1) WHERE id = 1",
+            "UPDATE sync_state SET barrier = MAX(barrier, ?1), barrier_seq = NULL WHERE id = 1",
             [barrier],
         )?;
         Ok(queued)
@@ -791,7 +791,7 @@ mod tests {
         );
         let sync = state::load(&conn).unwrap().expect("row");
         assert_eq!(sync.barrier, 25);
-        assert_eq!(sync.schema_seen, 29);
+        assert_eq!(sync.schema_seen, 30);
         assert_eq!(sync.barrier, barrier_number());
         assert_eq!(sync.schema_seen, schema_number());
         assert!(capture::is_installed(&conn).unwrap());
@@ -812,6 +812,6 @@ mod tests {
         crate::services::sync::on_open(&conn);
 
         assert!(outbox(&conn).is_empty());
-        assert_eq!(state::load(&conn).unwrap().expect("row").schema_seen, 29);
+        assert_eq!(state::load(&conn).unwrap().expect("row").schema_seen, 30);
     }
 }

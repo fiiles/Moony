@@ -279,6 +279,7 @@ pub const MIGRATION_CLASSES: &[(&str, MigrationClass)] = &[
     ("027_stock_dividends", A),
     ("028_transaction_fee", A),
     ("029_device_sync", A),
+    ("030_sync_engine", A),
 ];
 
 pub fn schema_number() -> u32 {
@@ -293,8 +294,8 @@ pub fn barrier_number() -> u32 {
         .map_or(0, |i| i as u32 + 1)
 }
 
-/// True when `sql` (outside SQL comments) calls `randomblob(` or `uuid(`.
-pub fn uses_random_ids(sql: &str) -> bool {
+/// `sql` with its `--` and `/* */` comments removed.
+fn strip_sql_comments(sql: &str) -> String {
     let mut code = String::with_capacity(sql.len());
     let mut chars = sql.chars().peekable();
     while let Some(c) = chars.next() {
@@ -321,8 +322,51 @@ pub fn uses_random_ids(sql: &str) -> bool {
             _ => code.push(c),
         }
     }
-    let lower = code.to_lowercase();
+    code
+}
+
+/// True when `sql` (outside SQL comments) calls `randomblob(` or `uuid(`.
+pub fn uses_random_ids(sql: &str) -> bool {
+    let lower = strip_sql_comments(sql).to_lowercase();
     lower.contains("randomblob(") || lower.contains("uuid(")
+}
+
+/// SQL functions and keywords whose value differs from one device to the next.
+const VOLATILE: [&str; 8] = [
+    "unixepoch(",
+    "datetime(",
+    "strftime(",
+    "julianday(",
+    "random(",
+    "randomblob(",
+    "current_timestamp",
+    "current_date",
+];
+
+/// True when a statement of `sql` (outside comments) that inserts into or updates one of the
+/// `synced` tables uses a value that differs per device (a clock, a random number). Every device
+/// runs a migration on its own and nothing is captured, so such a seed would diverge.
+pub fn seeds_with_volatile_values(sql: &str, synced: &[&str]) -> bool {
+    let code = strip_sql_comments(sql).to_lowercase();
+    code.split(';').any(|statement| {
+        let words: Vec<&str> = statement
+            .split(|c: char| c.is_whitespace() || c == '(')
+            .filter(|w| !w.is_empty())
+            .collect();
+        let target = match words.as_slice() {
+            ["insert", rest @ ..] => rest
+                .iter()
+                .position(|w| *w == "into")
+                .and_then(|i| rest.get(i + 1)),
+            ["update", rest @ ..] => rest.iter().find(|w| **w != "or" && !is_conflict_word(w)),
+            _ => None,
+        };
+        target.is_some_and(|t| synced.contains(t)) && VOLATILE.iter().any(|v| statement.contains(v))
+    })
+}
+
+fn is_conflict_word(word: &str) -> bool {
+    matches!(word, "rollback" | "abort" | "replace" | "fail" | "ignore")
 }
 
 #[cfg(test)]
@@ -543,8 +587,46 @@ mod tests {
     }
 
     #[test]
-    fn schema_number_is_29_and_the_newest_barrier_is_025() {
-        assert_eq!(schema_number(), 29);
+    fn migrations_after_029_seed_synced_rows_with_literal_values() {
+        let synced: Vec<&str> = synced_tables().map(|t| t.name).collect();
+        assert!(synced.contains(&"institutions"));
+        assert!(seeds_with_volatile_values(
+            "INSERT INTO institutions (id, created_at) VALUES ('x', unixepoch())",
+            &synced
+        ));
+        assert!(!seeds_with_volatile_values(
+            "INSERT INTO institutions (id, created_at) VALUES ('x', 1767225600)",
+            &synced
+        ));
+        assert!(seeds_with_volatile_values(
+            "UPDATE institutions SET updated_at = CURRENT_TIMESTAMP",
+            &synced
+        ));
+        assert!(!seeds_with_volatile_values(
+            "-- unixepoch( is volatile\nINSERT INTO institutions (id) VALUES ('x');",
+            &synced
+        ));
+        assert!(
+            !seeds_with_volatile_values(
+                "INSERT INTO sync_outbox (tbl, pk, queued_at) VALUES ('a', 'b', unixepoch())",
+                &synced
+            ),
+            "a Local table may use the clock"
+        );
+        for name in crate::db::known_migration_names()
+            .into_iter()
+            .filter(|n| *n > "029_device_sync")
+        {
+            assert!(
+                !seeds_with_volatile_values(crate::db::migration_sql(name).unwrap(), &synced),
+                "{name}"
+            );
+        }
+    }
+
+    #[test]
+    fn schema_number_is_30_and_the_newest_barrier_is_025() {
+        assert_eq!(schema_number(), 30);
         assert_eq!(barrier_number(), 25);
     }
 }

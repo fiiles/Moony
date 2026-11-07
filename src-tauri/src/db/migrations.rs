@@ -94,6 +94,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("027_stock_dividends", MIGRATION_027),
         ("028_transaction_fee", MIGRATION_028),
         ("029_device_sync", MIGRATION_029),
+        ("030_sync_engine", MIGRATION_030),
     ]
 }
 
@@ -3395,9 +3396,79 @@ mod migration_029 {
     }
 
     #[test]
-    fn the_chain_now_has_29_migrations() {
-        assert_eq!(known_migration_names().len(), 29);
-        assert_eq!(known_migration_names().last(), Some(&"029_device_sync"));
+    fn the_chain_now_has_30_migrations() {
+        assert_eq!(known_migration_names().len(), 30);
+        assert_eq!(known_migration_names().last(), Some(&"030_sync_engine"));
+    }
+}
+
+/// 030: the sync engine's bookkeeping on the `sync_state` row (all Local). `barrier_seq` is the
+/// relay sequence at which this device crossed a barrier (NULL when none is pending);
+/// `marker_barrier` the newest barrier this device has sealed a marker for;
+/// `capture_broken_at` / `vault_gone_at` the pauses (change capture could not be installed, the
+/// relay no longer knows the vault); `pulled_bytes` the envelope bytes pulled since the vault
+/// snapshot `pulled_bytes_base`; `snapshot_uploaded_at` when this device last uploaded a snapshot;
+/// `binding_written` whether the vault binding was written to the device's key file.
+pub(crate) const MIGRATION_030: &str = r#"
+ALTER TABLE sync_state ADD COLUMN barrier_seq INTEGER;
+ALTER TABLE sync_state ADD COLUMN marker_barrier INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sync_state ADD COLUMN capture_broken_at INTEGER;
+ALTER TABLE sync_state ADD COLUMN vault_gone_at INTEGER;
+ALTER TABLE sync_state ADD COLUMN pulled_bytes INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sync_state ADD COLUMN pulled_bytes_base INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sync_state ADD COLUMN snapshot_uploaded_at INTEGER;
+ALTER TABLE sync_state ADD COLUMN binding_written INTEGER NOT NULL DEFAULT 0 CHECK (binding_written IN (0, 1));
+"#;
+
+#[cfg(test)]
+mod migration_030 {
+    use super::*;
+
+    #[test]
+    fn sync_state_gains_the_engine_columns_with_defaults() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_chain(&conn, &all_migrations()).expect("full chain");
+        conn.execute(
+            "INSERT INTO sync_state (id, device_id) VALUES (1, x'00')",
+            [],
+        )
+        .expect("row");
+        #[allow(clippy::type_complexity)]
+        let row: (
+            Option<i64>,
+            i64,
+            Option<i64>,
+            Option<i64>,
+            i64,
+            i64,
+            Option<i64>,
+            i64,
+        ) = conn
+            .query_row(
+                "SELECT barrier_seq, marker_barrier, capture_broken_at, vault_gone_at, \
+                        pulled_bytes, pulled_bytes_base, snapshot_uploaded_at, binding_written \
+                 FROM sync_state",
+                [],
+                |r| {
+                    Ok((
+                        r.get(0)?,
+                        r.get(1)?,
+                        r.get(2)?,
+                        r.get(3)?,
+                        r.get(4)?,
+                        r.get(5)?,
+                        r.get(6)?,
+                        r.get(7)?,
+                    ))
+                },
+            )
+            .expect("columns");
+        assert_eq!(row, (None, 0, None, None, 0, 0, None, 0));
+        assert!(
+            conn.execute("UPDATE sync_state SET binding_written = 2", [])
+                .is_err(),
+            "binding_written CHECK"
+        );
     }
 }
 

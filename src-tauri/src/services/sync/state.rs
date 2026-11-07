@@ -20,15 +20,41 @@ pub struct SyncState {
     pub snapshot_hlc: u64,
     pub barrier: u32,
     pub schema_seen: u32,
+    pub barrier_seq: Option<u64>,
 }
 
-type RawState = (bool, Vec<u8>, i64, Option<Vec<u8>>, i64, i64, i64, i64);
+/// The engine's own bookkeeping on the `sync_state` row (migration 030), apart from the chain
+/// and cursor fields of [`SyncState`].
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EngineMarks {
+    pub marker_barrier: u32,
+    pub capture_broken_at: Option<i64>,
+    pub vault_gone_at: Option<i64>,
+    pub pulled_bytes: u64,
+    pub pulled_bytes_base: u64,
+    pub snapshot_uploaded_at: Option<i64>,
+    pub binding_written: bool,
+    pub last_success_at: Option<i64>,
+    pub last_error: Option<String>,
+}
+
+type RawState = (
+    bool,
+    Vec<u8>,
+    i64,
+    Option<Vec<u8>>,
+    i64,
+    i64,
+    i64,
+    i64,
+    Option<i64>,
+);
 
 /// The row, or `None` for a profile that never turned sync on. One `SELECT` (G5).
 pub fn load(conn: &Connection) -> Result<Option<SyncState>> {
     let raw: Option<RawState> = conn
         .query_row(
-            "SELECT enabled, device_id, next_seq, last_hash, cursor, snapshot_hlc, barrier, schema_seen \
+            "SELECT enabled, device_id, next_seq, last_hash, cursor, snapshot_hlc, barrier, schema_seen, barrier_seq \
              FROM sync_state WHERE id = 1",
             [],
             |r| {
@@ -41,12 +67,22 @@ pub fn load(conn: &Connection) -> Result<Option<SyncState>> {
                     r.get(5)?,
                     r.get(6)?,
                     r.get(7)?,
+                    r.get(8)?,
                 ))
             },
         )
         .optional()?;
-    let Some((enabled, device, next_seq, last_hash, cursor, snapshot_hlc, barrier, schema_seen)) =
-        raw
+    let Some((
+        enabled,
+        device,
+        next_seq,
+        last_hash,
+        cursor,
+        snapshot_hlc,
+        barrier,
+        schema_seen,
+        barrier_seq,
+    )) = raw
     else {
         return Ok(None);
     };
@@ -68,6 +104,9 @@ pub fn load(conn: &Connection) -> Result<Option<SyncState>> {
         snapshot_hlc: unsigned(snapshot_hlc, "snapshot_hlc")?,
         barrier: unsigned(barrier, "barrier")?,
         schema_seen: unsigned(schema_seen, "schema_seen")?,
+        barrier_seq: barrier_seq
+            .map(|v| unsigned(v, "barrier_seq"))
+            .transpose()?,
     }))
 }
 
@@ -124,6 +163,199 @@ pub fn record_error(conn: &Connection, message: &str) -> Result<()> {
     conn.execute(
         "UPDATE sync_state SET last_error = ?1, last_error_at = unixepoch() WHERE id = 1",
         [message],
+    )?;
+    Ok(())
+}
+
+/// The engine's marks, or `None` for a profile that never turned sync on.
+pub fn marks(conn: &Connection) -> Result<Option<EngineMarks>> {
+    #[allow(clippy::type_complexity)]
+    let raw: Option<(
+        i64,
+        Option<i64>,
+        Option<i64>,
+        i64,
+        i64,
+        Option<i64>,
+        bool,
+        Option<i64>,
+        Option<String>,
+    )> = conn
+        .query_row(
+            "SELECT marker_barrier, capture_broken_at, vault_gone_at, pulled_bytes, \
+                    pulled_bytes_base, snapshot_uploaded_at, binding_written, last_success_at, \
+                    last_error \
+             FROM sync_state WHERE id = 1",
+            [],
+            |r| {
+                Ok((
+                    r.get(0)?,
+                    r.get(1)?,
+                    r.get(2)?,
+                    r.get(3)?,
+                    r.get(4)?,
+                    r.get(5)?,
+                    r.get(6)?,
+                    r.get(7)?,
+                    r.get(8)?,
+                ))
+            },
+        )
+        .optional()?;
+    raw.map(
+        |(
+            marker_barrier,
+            capture_broken_at,
+            vault_gone_at,
+            pulled_bytes,
+            pulled_bytes_base,
+            snapshot_uploaded_at,
+            binding_written,
+            last_success_at,
+            last_error,
+        )| {
+            Ok(EngineMarks {
+                marker_barrier: unsigned(marker_barrier, "marker_barrier")?,
+                capture_broken_at,
+                vault_gone_at,
+                pulled_bytes: unsigned(pulled_bytes, "pulled_bytes")?,
+                pulled_bytes_base: unsigned(pulled_bytes_base, "pulled_bytes_base")?,
+                snapshot_uploaded_at,
+                binding_written,
+                last_success_at,
+                last_error,
+            })
+        },
+    )
+    .transpose()
+}
+
+fn signed(value: u64, column: &str) -> Result<i64> {
+    i64::try_from(value)
+        .map_err(|_| AppError::Internal(format!("sync_state.{column} is out of range: {value}")))
+}
+
+/// Records that change capture could not be installed at `at` (the profile opens without it).
+pub fn mark_capture_broken(conn: &Connection, at: i64) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET capture_broken_at = ?1 WHERE id = 1",
+        [at],
+    )?;
+    Ok(())
+}
+
+pub fn clear_capture_broken(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET capture_broken_at = NULL WHERE id = 1",
+        [],
+    )?;
+    Ok(())
+}
+
+/// Sets or clears the pause for a vault the relay no longer knows.
+pub fn set_vault_gone(conn: &Connection, at: Option<i64>) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET vault_gone_at = ?1 WHERE id = 1",
+        [at],
+    )?;
+    Ok(())
+}
+
+/// Advances the pull cursor. Never lowers it.
+pub fn set_cursor(conn: &Connection, cursor: u64) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET cursor = MAX(cursor, ?1) WHERE id = 1",
+        [signed(cursor, "cursor")?],
+    )?;
+    Ok(())
+}
+
+pub fn add_pulled_bytes(conn: &Connection, bytes: u64) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET pulled_bytes = pulled_bytes + ?1 WHERE id = 1",
+        [signed(bytes, "pulled_bytes")?],
+    )?;
+    Ok(())
+}
+
+/// The vault's newest snapshot is at `vault_snapshot_seq`: when that differs from the base the
+/// pulled bytes are counted from, count from it anew.
+pub fn rebase_pulled_bytes(conn: &Connection, vault_snapshot_seq: u64) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET pulled_bytes_base = ?1, pulled_bytes = 0 \
+         WHERE id = 1 AND pulled_bytes_base <> ?1",
+        [signed(vault_snapshot_seq, "pulled_bytes_base")?],
+    )?;
+    Ok(())
+}
+
+pub fn set_barrier_seq(conn: &Connection, seq: Option<u64>) -> Result<()> {
+    let seq = seq.map(|s| signed(s, "barrier_seq")).transpose()?;
+    conn.execute("UPDATE sync_state SET barrier_seq = ?1 WHERE id = 1", [seq])?;
+    Ok(())
+}
+
+/// A marker was sealed at `barrier`; the flag never goes back.
+pub fn note_sealed_at_barrier(conn: &Connection, barrier: u32) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET marker_barrier = MAX(marker_barrier, ?1) WHERE id = 1",
+        [barrier],
+    )?;
+    Ok(())
+}
+
+/// This device uploaded a snapshot covering relay sequence `seq` and clocks up to `max_hlc`.
+pub fn record_snapshot_uploaded(conn: &Connection, seq: u64, max_hlc: u64, at: i64) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET snapshot_seq = MAX(COALESCE(snapshot_seq, 0), ?1), \
+           snapshot_hlc = MAX(snapshot_hlc, ?2), snapshot_uploaded_at = ?3, \
+           pulled_bytes = 0, pulled_bytes_base = ?1 WHERE id = 1",
+        params![
+            signed(seq, "snapshot_seq")?,
+            signed(max_hlc, "snapshot_hlc")?,
+            at
+        ],
+    )?;
+    Ok(())
+}
+
+/// A sync round finished: stamp the time and forget the last error.
+pub fn record_success(conn: &Connection, at: i64) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET last_success_at = ?1, last_error = NULL WHERE id = 1",
+        [at],
+    )?;
+    Ok(())
+}
+
+pub fn set_binding_written(conn: &Connection, written: bool) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET binding_written = ?1 WHERE id = 1",
+        [written],
+    )?;
+    Ok(())
+}
+
+/// Starts this device's own hash chain over: the next message is sequence 1 and the log of what
+/// it wrote and what is waiting to be sent is emptied.
+pub fn reset_chain(conn: &Connection) -> Result<()> {
+    in_savepoint(conn, "sync_reset_chain", || {
+        conn.execute(
+            "UPDATE sync_state SET next_seq = 1, last_hash = NULL WHERE id = 1",
+            [],
+        )?;
+        conn.execute_batch("DELETE FROM sync_own_log; DELETE FROM sync_unsent;")?;
+        Ok(())
+    })
+}
+
+/// Clears the pauses and the counters that belong to one vault binding.
+pub fn reset_engine_marks(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET vault_gone_at = NULL, capture_broken_at = NULL, \
+           snapshot_uploaded_at = NULL, pulled_bytes = 0, pulled_bytes_base = 0, \
+           binding_written = 0 WHERE id = 1",
+        [],
     )?;
     Ok(())
 }
@@ -307,5 +539,165 @@ mod tests {
             .unwrap();
         assert_eq!(message, "relay unreachable");
         assert!(at > 1_700_000_000);
+    }
+
+    fn row_with_hash(conn: &Connection) {
+        ensure_row(conn, DEVICE).unwrap();
+    }
+
+    #[test]
+    fn set_cursor_never_moves_back() {
+        let conn = migrated();
+        row_with_hash(&conn);
+        set_cursor(&conn, 10).unwrap();
+        set_cursor(&conn, 4).unwrap();
+        assert_eq!(load(&conn).unwrap().unwrap().cursor, 10);
+        set_cursor(&conn, 12).unwrap();
+        assert_eq!(load(&conn).unwrap().unwrap().cursor, 12);
+    }
+
+    #[test]
+    fn pulled_bytes_reset_when_the_vault_snapshot_moves() {
+        let conn = migrated();
+        row_with_hash(&conn);
+        let pulled = |c: &Connection| marks(c).unwrap().unwrap().pulled_bytes;
+        rebase_pulled_bytes(&conn, 10).unwrap();
+        add_pulled_bytes(&conn, 100).unwrap();
+        add_pulled_bytes(&conn, 50).unwrap();
+        assert_eq!(pulled(&conn), 150);
+        rebase_pulled_bytes(&conn, 10).unwrap();
+        assert_eq!(pulled(&conn), 150);
+        rebase_pulled_bytes(&conn, 20).unwrap();
+        add_pulled_bytes(&conn, 7).unwrap();
+        assert_eq!(pulled(&conn), 7);
+        assert_eq!(marks(&conn).unwrap().unwrap().pulled_bytes_base, 20);
+    }
+
+    #[test]
+    fn record_snapshot_uploaded_takes_maxima_and_resets_the_counter() {
+        let conn = migrated();
+        row_with_hash(&conn);
+        add_pulled_bytes(&conn, 99).unwrap();
+        record_snapshot_uploaded(&conn, 30, 500, 1_800_000_000).unwrap();
+        let snap = |c: &Connection| -> (i64, i64) {
+            c.query_row(
+                "SELECT snapshot_seq, snapshot_hlc FROM sync_state",
+                [],
+                |r| Ok((r.get(0)?, r.get(1)?)),
+            )
+            .unwrap()
+        };
+        assert_eq!(snap(&conn), (30, 500));
+        let m = marks(&conn).unwrap().unwrap();
+        assert_eq!(m.snapshot_uploaded_at, Some(1_800_000_000));
+        assert_eq!((m.pulled_bytes, m.pulled_bytes_base), (0, 30));
+
+        record_snapshot_uploaded(&conn, 20, 700, 1_800_000_100).unwrap();
+        assert_eq!(
+            snap(&conn),
+            (30, 700),
+            "seq keeps the larger, hlc the larger"
+        );
+        let m = marks(&conn).unwrap().unwrap();
+        assert_eq!(m.snapshot_uploaded_at, Some(1_800_000_100));
+        assert_eq!(m.pulled_bytes_base, 20);
+    }
+
+    #[test]
+    fn the_marker_flag_never_goes_back() {
+        let conn = migrated();
+        row_with_hash(&conn);
+        note_sealed_at_barrier(&conn, 25).unwrap();
+        note_sealed_at_barrier(&conn, 24).unwrap();
+        assert_eq!(marks(&conn).unwrap().unwrap().marker_barrier, 25);
+    }
+
+    #[test]
+    fn reset_chain_empties_the_own_log_and_unsent() {
+        let conn = migrated();
+        row_with_hash(&conn);
+        conn.execute(
+            "UPDATE sync_state SET next_seq = 5, last_hash = ?1",
+            [vec![1_u8; 32]],
+        )
+        .unwrap();
+        conn.execute_batch(
+            "INSERT INTO sync_own_log (seq, hash, min_hlc, max_hlc) VALUES (1, x'00', 1, 1); \
+             INSERT INTO sync_unsent (seq, envelope) VALUES (1, x'00');",
+        )
+        .unwrap();
+        reset_chain(&conn).unwrap();
+        let state = load(&conn).unwrap().unwrap();
+        assert_eq!(state.next_seq, 1);
+        assert_eq!(state.last_hash, None);
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_own_log"), 0);
+        assert_eq!(count(&conn, "SELECT COUNT(*) FROM sync_unsent"), 0);
+    }
+
+    #[test]
+    fn reset_engine_marks_clears_pauses_and_counters() {
+        let conn = migrated();
+        row_with_hash(&conn);
+        mark_capture_broken(&conn, 11).unwrap();
+        set_vault_gone(&conn, Some(12)).unwrap();
+        add_pulled_bytes(&conn, 5).unwrap();
+        record_snapshot_uploaded(&conn, 9, 9, 13).unwrap();
+        set_binding_written(&conn, true).unwrap();
+        record_success(&conn, 14).unwrap();
+        let m = marks(&conn).unwrap().unwrap();
+        assert_eq!(m.capture_broken_at, Some(11));
+        assert_eq!(m.vault_gone_at, Some(12));
+        assert!(m.binding_written);
+        assert_eq!(m.last_success_at, Some(14));
+
+        reset_engine_marks(&conn).unwrap();
+        let m = marks(&conn).unwrap().unwrap();
+        assert_eq!(m.capture_broken_at, None);
+        assert_eq!(m.vault_gone_at, None);
+        assert_eq!(m.snapshot_uploaded_at, None);
+        assert_eq!((m.pulled_bytes, m.pulled_bytes_base), (0, 0));
+        assert!(!m.binding_written);
+        assert_eq!(
+            m.last_success_at,
+            Some(14),
+            "success stamp is not a binding mark"
+        );
+    }
+
+    #[test]
+    fn record_success_forgets_the_error_and_clear_capture_broken_clears_it() {
+        let conn = migrated();
+        row_with_hash(&conn);
+        record_error(&conn, "relay unreachable").unwrap();
+        mark_capture_broken(&conn, 3).unwrap();
+        record_success(&conn, 50).unwrap();
+        clear_capture_broken(&conn).unwrap();
+        set_barrier_seq(&conn, Some(8)).unwrap();
+        let m = marks(&conn).unwrap().unwrap();
+        assert_eq!(
+            (m.last_success_at, m.last_error, m.capture_broken_at),
+            (Some(50), None, None)
+        );
+        assert_eq!(load(&conn).unwrap().unwrap().barrier_seq, Some(8));
+        set_barrier_seq(&conn, None).unwrap();
+        assert_eq!(load(&conn).unwrap().unwrap().barrier_seq, None);
+    }
+
+    #[test]
+    fn a_failed_capture_install_marks_the_profile_capture_broken() {
+        let conn = migrated();
+        ensure_row(&conn, DEVICE).unwrap();
+        // Installing reads sync_clock (a missing sync_outbox would not fail: triggers resolve it lazily).
+        conn.execute_batch("DROP TABLE sync_clock").unwrap();
+        crate::services::sync::on_open(&conn);
+        let m = marks(&conn).unwrap().unwrap();
+        assert!(m.capture_broken_at.is_some_and(|at| at > 1_700_000_000));
+        assert!(load(&conn).unwrap().unwrap().enabled);
+    }
+
+    #[test]
+    fn a_profile_without_sync_has_no_marks() {
+        let conn = migrated();
+        assert!(marks(&conn).unwrap().is_none());
     }
 }

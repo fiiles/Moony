@@ -1023,6 +1023,9 @@ export const dataApi = {
   stageTextExport: (fileName: string, contents: string) =>
     tauriInvoke<string>('stage_text_export', { fileName, contents }),
   discardTextExport: (path: string) => tauriInvoke<void>('discard_text_export', { path }),
+  // Phones only too: the JSON of all data staged as `Documents/moony-export.json`; the summary's
+  // `path` goes back to `discardTextExport`.
+  stageDataExport: () => tauriInvoke<ExportSummary>('stage_data_export'),
   inspectBackup: (path: string) => tauriInvoke<BackupInspection>('inspect_backup', { path }),
   restoreBackup: (path: string) => tauriInvoke<void>('restore_backup', { path }),
   exportAllData: (destPath: string) => tauriInvoke<ExportSummary>('export_all_data', { destPath }),

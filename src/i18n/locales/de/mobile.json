@@ -770,7 +770,8 @@
     "restoreTitle": "Wiederherstellung und Übertragung",
     "restoreLead": "Stellen Sie eine Sicherung von diesem Telefon wieder her oder übertragen Sie ein Profil aus Moony auf dem Computer: Wählen Sie die Sicherungsdatei aus und entsperren Sie nach der Wiederherstellung mit dem Passwort, das bei ihrer Erstellung galt.",
     "restoreConfirmDescription": "Die Sicherung vom {{date}} (Moony {{version}}, {{attachments}} Anhänge, {{size}}) ersetzt die Daten auf diesem Telefon. Sichern Sie zuerst, wenn Sie die aktuellen Daten behalten möchten. Danach sperrt sich Moony; entsperren Sie es mit dem Passwort, das beim Erstellen der Sicherung galt.",
-    "osBackupNote": "Das Profil wird nicht in der Sicherung des Telefons (iCloud oder Computer) gespeichert. Die Moony-Sicherung, die Sie selbst speichern, ist die einzige Kopie außerhalb des Telefons."
+    "osBackupNote": "Das Profil wird nicht in der Sicherung des Telefons (iCloud oder Computer) gespeichert. Die Moony-Sicherung, die Sie selbst speichern, ist die einzige Kopie außerhalb des Telefons.",
+    "exportSummary": "{{tables}} Tabellen, {{rows}} Zeilen."
   },
   "firstRun": {
     "privacyLead": "Moony speichert alles in einer verschlüsselten Datenbank auf diesem Telefon. Keine Cloud, kein Konto bei uns.",

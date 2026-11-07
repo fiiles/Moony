@@ -726,7 +726,8 @@
     "restoreTitle": "恢复与迁移",
     "restoreLead": "恢复这部手机上的备份，或从电脑上的 Moony 迁移个人资料：选择备份文件，恢复后请使用创建备份时的密码解锁。",
     "restoreConfirmDescription": "创建于 {{date}} 的备份（Moony {{version}}，{{attachments}} 个附件，{{size}}）将替换这部手机上的数据。如需保留当前数据，请先备份。之后 Moony 会锁定；请使用创建该备份时的密码解锁。",
-    "osBackupNote": "个人资料不会保存到手机自身的备份中（iCloud 或电脑）。您自己保存的 Moony 备份是手机之外的唯一副本。"
+    "osBackupNote": "个人资料不会保存到手机自身的备份中（iCloud 或电脑）。您自己保存的 Moony 备份是手机之外的唯一副本。",
+    "exportSummary": "{{tables}} 个表，{{rows}} 行。"
   },
   "firstRun": {
     "privacyLead": "Moony 将所有内容存放在这部手机上的加密数据库中。没有云端，也无需在我们这里注册账户。",

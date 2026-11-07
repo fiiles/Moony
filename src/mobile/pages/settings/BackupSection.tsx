@@ -7,6 +7,7 @@ import { SectionHead } from '@/mobile/components/SectionHead';
 import { SectionPage } from '@/mobile/components/SectionPage';
 import { useBackup } from '@/mobile/hooks/use-backup';
 import { RestoreBackupSheet } from '@/mobile/sheets/RestoreBackupSheet';
+import { DataTools } from './DataTools';
 import type { BackupInspection } from '@shared/schema';
 
 /** The card the date sits in (`.m-card`). */
@@ -17,8 +18,9 @@ const BUTTON =
   'h-auto min-h-12 whitespace-normal py-2 text-center w-full rounded-[10px] text-m-row';
 
 /**
- * Nastavení → Záloha a přenos (spec §8.9): when the last backup was made, "Zálohovat nyní" and the
- * restore. A backup is one encrypted file the person keeps in Files (iCloud Drive or another
+ * Nastavení → Záloha a přenos (spec §8.9): when the last backup was made, "Zálohovat nyní", the
+ * restore, and the rest of the desktop's data card (`DataTools`: the JSON export, the database check
+ * and the attachments' status). A backup is one encrypted file the person keeps in Files (iCloud Drive or another
  * folder); the same file moves a profile from Moony on the computer to the phone and back, with
  * the password that was in use when it was made. There is no automatic backup: the "backup is due"
  * reminder says when to make one. Restoring asks first, in a sheet that names what the file holds.
@@ -78,6 +80,8 @@ export default function BackupSection() {
       >
         {ts('data.restore')}
       </Button>
+
+      <DataTools />
 
       <p className="mx-0.5 mb-0 mt-6 text-m-caption text-ink-4">{t('backup.osBackupNote')}</p>
 

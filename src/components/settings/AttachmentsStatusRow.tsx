@@ -11,8 +11,7 @@ import { Button } from '@/components/ui/button';
 import { SettingsRow } from '@/components/settings/SettingsCard';
 import { attachmentsApi } from '@/lib/tauri-api';
 import { translateApiError } from '@/lib/translate-api-error';
-
-const ATTACHMENT_STATUS_KEY = ['attachment-status'] as const;
+import { ATTACHMENT_STATUS_KEY, attachmentStatusLines } from '@/utils/attachment-status';
 
 export function AttachmentsStatusRow() {
   const { t } = useTranslation('settings');
@@ -36,27 +35,10 @@ export function AttachmentsStatusRow() {
 
   if (!status) return null;
 
-  const lines: { text: string; tone?: 'loss' }[] = [];
-  if (!status.storeAvailable) {
-    lines.push({ text: t('data.attachments.unavailable'), tone: 'loss' });
-  } else if (status.converting) {
-    lines.push({
-      text: t('data.attachments.converting', { done: status.done, total: status.total }),
-    });
-  } else if (status.stored > 0) {
-    lines.push({ text: t('data.attachments.stored', { n: status.stored }) });
-  } else if (status.legacyPending === 0) {
-    lines.push({ text: t('data.attachments.none') });
-  }
-  if (!status.converting && status.legacyPending > 0) {
-    lines.push({ text: t('data.attachments.pending', { n: status.legacyPending }) });
-  }
-  if (status.failed > 0) {
-    lines.push({ text: t('data.attachments.failed', { n: status.failed }), tone: 'loss' });
-  }
-  if (status.missing > 0) {
-    lines.push({ text: t('data.attachments.missing', { n: status.missing }) });
-  }
+  const lines = attachmentStatusLines(status).map((line) => ({
+    text: t(line.key, line.params),
+    tone: line.tone,
+  }));
 
   return (
     <>

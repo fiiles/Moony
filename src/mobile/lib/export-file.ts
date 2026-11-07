@@ -10,6 +10,9 @@
  * no fs commands. Only iOS exports this way (`exportsOnThisDevice`).
  */
 
+/** The JSON of all data (Záloha a přenos → Export), the name Rust stages it under (`DATA_EXPORT_FILE_NAME`). */
+export const DATA_EXPORT_FILE = 'moony-export.json';
+
 /** The recovery key's text file, one of the names Rust allow-lists for staging (`TEXT_EXPORT_FILE_NAMES`; the others are the class pages' CSVs, `use-class-export.ts`). */
 export const RECOVERY_KEY_FILE = 'moony-recovery-key.txt';
 

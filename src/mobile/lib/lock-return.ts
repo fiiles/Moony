@@ -6,6 +6,7 @@
  * and the sheets' entries. The unlock walks back that far, so the history and the screen stack are
  * as they were. Nothing here opens anything: only the unlock reads the record.
  */
+import { hasSheetMark } from '@/mobile/lib/sheet-history';
 import { isShellPath } from '@/mobile/shell/routes';
 
 export interface LockReturn {
@@ -46,6 +47,15 @@ export function createLockReturn(): LockReturnStore {
 
 /** The app's one record (`MobileShell` writes it, `Lock` reads it). */
 export const lockReturn = createLockReturn();
+
+/**
+ * Whether a `popstate` after the fallback is the walk landing late: it lands on the screen the
+ * walk was going to (`path`, with its search) and on that screen's own entry, not one a sheet
+ * pushed. The person's own back, or a sheet taking its entry off, is anything else.
+ */
+export function isLateLanding(here: string, state: unknown, path: string): boolean {
+  return here === path && !hasSheetMark(state);
+}
 
 /**
  * The walk back after an unlock, while it is under way (`leaveLock`): from its `history.go` until

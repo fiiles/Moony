@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createLockReturn, createReturnWalk } from './lock-return';
+import { createLockReturn, createReturnWalk, isLateLanding } from './lock-return';
 
 describe('createLockReturn', () => {
   it('remembers the screen and how far back it is: the lock entry and the open sheets', () => {
@@ -56,5 +56,20 @@ describe('createReturnWalk', () => {
     expect(order).toEqual(['began', 'a', 'b', 'ended']);
     walk.end();
     expect(order).toHaveLength(4);
+  });
+});
+
+describe('isLateLanding', () => {
+  it('is the walk landing on the screen it went to, on that screen’s own entry', () => {
+    expect(isLateLanding('/finance/accounts/a', null, '/finance/accounts/a')).toBe(true);
+    expect(isLateLanding('/cashflow?o=-1', { other: 1 }, '/cashflow?o=-1')).toBe(true);
+  });
+
+  it('is not a back to another screen, nor to an entry a sheet pushed', () => {
+    expect(isLateLanding('/finance', null, '/finance/accounts/a')).toBe(false);
+    expect(isLateLanding('/cashflow', null, '/cashflow?o=-1')).toBe(false);
+    expect(isLateLanding('/finance/accounts/a', { moonySheet: '3' }, '/finance/accounts/a')).toBe(
+      false
+    );
   });
 });

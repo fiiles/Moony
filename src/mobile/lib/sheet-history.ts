@@ -59,6 +59,11 @@ interface Entry {
   pushed: boolean;
 }
 
+/** Whether a history state is the entry a sheet pushed. */
+export function hasSheetMark(state: unknown): boolean {
+  return markOf(state) !== undefined;
+}
+
 function markOf(state: unknown): unknown {
   return state !== null && typeof state === 'object'
     ? (state as Record<string, unknown>)[MARK]

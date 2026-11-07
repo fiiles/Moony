@@ -1,4 +1,4 @@
-import { lockReturn, returnWalk } from '@/mobile/lib/lock-return';
+import { isLateLanding, lockReturn, returnWalk, type LockReturn } from '@/mobile/lib/lock-return';
 import { notificationTarget } from '@/mobile/lib/notification-target';
 import { routes } from '@/mobile/shell/routes';
 
@@ -40,9 +40,10 @@ export function leaveLock(navigate: Navigate): void {
     if (window.location.pathname === routes.auth) navigate(back.path, { replace: true });
     if (target) navigate(target);
     // The walk is over once its popstate has been handled everywhere (the sheet history's own
-    // listener may come after this one): the sheets that waited push their entries then
-    window.setTimeout(() => returnWalk.end(), 0);
-    if (!event) undoLateLanding(back.depth);
+    // listener may come after this one): the sheets that waited push their entries then. After
+    // the fallback it may still land: the walk stays on until that is ruled out
+    if (event) endWalkSoon();
+    else watchLateLanding(back);
   };
   window.addEventListener('popstate', arrive);
   const timer = window.setTimeout(arrive, FALLBACK_MS);
@@ -50,17 +51,41 @@ export function leaveLock(navigate: Navigate): void {
   window.history.go(-back.depth);
 }
 
+/** Ends the walk after the `popstate` being handled has reached every listener. */
+function endWalkSoon(): void {
+  window.setTimeout(() => returnWalk.end(), 0);
+}
+
 /**
  * The walk did not land in time and the lock page was replaced with the screen instead; should the
- * walk still land later, it would take the person `depth` screens back. The entries it went back
- * over are still ahead in the history, so the same steps forward undo it.
+ * walk still land later (`isLateLanding`: on the recorded screen's own entry), it would take the
+ * person `depth` screens back. The entries it went back over are still ahead in the history, so the
+ * same steps forward undo it. Any other `popstate` (the person's own back, a sheet's entry going)
+ * is left alone. The walk stays on until the landing has been undone or `LATE_MS` have passed, so
+ * no sheet pushes an entry the landing would take or close.
  */
-function undoLateLanding(depth: number): void {
-  const late = () => {
-    window.removeEventListener('popstate', late);
+function watchLateLanding(back: LockReturn): void {
+  const finish = () => {
+    window.removeEventListener('popstate', onPop);
     window.clearTimeout(stop);
-    window.history.go(depth);
   };
-  window.addEventListener('popstate', late);
-  const stop = window.setTimeout(() => window.removeEventListener('popstate', late), LATE_MS);
+  const onPop = () => {
+    const here = `${window.location.pathname}${window.location.search}`;
+    if (!isLateLanding(here, window.history.state, back.path)) return;
+    finish();
+    // The undo's own popstate ends the walk (or, should none come, the fallback does)
+    const undone = () => {
+      window.removeEventListener('popstate', undone);
+      window.clearTimeout(fallback);
+      endWalkSoon();
+    };
+    window.addEventListener('popstate', undone);
+    const fallback = window.setTimeout(undone, FALLBACK_MS);
+    window.history.go(back.depth);
+  };
+  window.addEventListener('popstate', onPop);
+  const stop = window.setTimeout(() => {
+    finish();
+    returnWalk.end();
+  }, LATE_MS);
 }

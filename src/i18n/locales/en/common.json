@@ -219,6 +219,7 @@
     "stockSplitNotPending": "This split has already been resolved.",
     "stockSplitNotApplied": "This split has not been applied.",
     "stockSplitNotDeletable": "This split cannot be deleted.",
+    "stockSplitRatioLocked": "This split's ratio cannot be changed: transactions were entered while it was applied.",
     "stockSplitOversold": "After the conversion, sales would exceed the shares held.",
     "csvEmptyFile": "The file is empty or has no header row.",
     "csvColumnsNotFound": "The selected columns were not found in the file. Check the header row and the column mapping.",

@@ -219,6 +219,7 @@
     "stockSplitNotPending": "Denne splitten er allerede behandlet.",
     "stockSplitNotApplied": "Denne splitten er ikke anvendt.",
     "stockSplitNotDeletable": "Denne splitten kan ikke slettes.",
+    "stockSplitRatioLocked": "Forholdet for denne splitten kan ikke endres: transaksjoner ble registrert mens den var anvendt.",
     "stockSplitOversold": "Etter omregningen ville salgene overstige beholdningen.",
     "csvEmptyFile": "Filen er tom eller har ingen overskriftsrad.",
     "csvColumnsNotFound": "De valgte kolonnene ble ikke funnet i filen. Sjekk overskriftsraden og kolonnetilordningen.",

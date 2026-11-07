@@ -1242,7 +1242,8 @@ pub(crate) mod test_db {
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 split_basis TEXT,
                 entry_price TEXT,
-                entry_basis TEXT
+                entry_basis TEXT,
+                entry_at INTEGER
             );
             CREATE TABLE watched_stocks (
                 id TEXT PRIMARY KEY,
@@ -1251,7 +1252,8 @@ pub(crate) mod test_db {
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 split_basis TEXT,
                 entry_target_price TEXT,
-                entry_basis TEXT
+                entry_basis TEXT,
+                entry_at INTEGER
             );
             CREATE TABLE exchange_rate_history (
                 date INTEGER NOT NULL,
@@ -1266,7 +1268,8 @@ pub(crate) mod test_db {
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 split_basis TEXT,
                 entry_yearly_dividend_sum TEXT,
-                entry_basis TEXT
+                entry_basis TEXT,
+                entry_at INTEGER
             );
             CREATE TABLE dividend_data (
                 id TEXT PRIMARY KEY,
@@ -1282,17 +1285,17 @@ pub(crate) mod test_db {
             CREATE TRIGGER entered_price AFTER INSERT ON stock_price_overrides
                 WHEN NEW.entry_price IS NULL BEGIN
                 UPDATE stock_price_overrides SET entry_price = NEW.price,
-                    entry_basis = NEW.split_basis WHERE id = NEW.id;
+                    entry_basis = NEW.split_basis, entry_at = NEW.updated_at WHERE id = NEW.id;
             END;
             CREATE TRIGGER entered_target AFTER INSERT ON watched_stocks
                 WHEN NEW.entry_target_price IS NULL BEGIN
                 UPDATE watched_stocks SET entry_target_price = NEW.target_price,
-                    entry_basis = NEW.split_basis WHERE id = NEW.id;
+                    entry_basis = NEW.split_basis, entry_at = NEW.updated_at WHERE id = NEW.id;
             END;
             CREATE TRIGGER entered_dividend AFTER INSERT ON dividend_overrides
                 WHEN NEW.entry_yearly_dividend_sum IS NULL BEGIN
                 UPDATE dividend_overrides SET entry_yearly_dividend_sum = NEW.yearly_dividend_sum,
-                    entry_basis = NEW.split_basis WHERE id = NEW.id;
+                    entry_basis = NEW.split_basis, entry_at = NEW.updated_at WHERE id = NEW.id;
             END;
             "#,
         )

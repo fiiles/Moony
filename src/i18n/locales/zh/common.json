@@ -219,6 +219,7 @@
     "stockSplitNotPending": "此拆股已处理。",
     "stockSplitNotApplied": "此拆股尚未应用。",
     "stockSplitNotDeletable": "无法删除此拆股。",
+    "stockSplitRatioLocked": "无法更改此拆股的比例：在其应用期间已录入交易。",
     "stockSplitOversold": "换算后卖出数量将超过持有数量。",
     "csvEmptyFile": "文件为空，或没有表头行。",
     "csvColumnsNotFound": "在文件中找不到所选的列。请检查表头行和列映射。",

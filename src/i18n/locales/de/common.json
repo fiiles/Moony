@@ -219,6 +219,7 @@
     "stockSplitNotPending": "Dieser Split wurde bereits bearbeitet.",
     "stockSplitNotApplied": "Dieser Split wurde nicht angewendet.",
     "stockSplitNotDeletable": "Dieser Split kann nicht gelöscht werden.",
+    "stockSplitRatioLocked": "Das Verhältnis dieses Splits kann nicht geändert werden: Transaktionen wurden erfasst, während er angewendet war.",
     "stockSplitOversold": "Nach der Umrechnung würden die Verkäufe den Bestand übersteigen.",
     "csvEmptyFile": "Die Datei ist leer oder hat keine Kopfzeile.",
     "csvColumnsNotFound": "Die ausgewählten Spalten wurden in der Datei nicht gefunden. Prüfen Sie die Kopfzeile und die Spaltenzuordnung.",

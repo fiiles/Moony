@@ -2996,6 +2996,9 @@ mod migration_028 {
 /// entered: `split_basis` is the meaning the rewrite gave them (a transaction includes every
 /// applied split of its ticker that took effect after its date, a price/dividend/watch row every
 /// applied split that took effect after it was last updated), and `entry_basis` is the same.
+/// The price, dividend and watch rows also keep `entry_at`, when the entry was made (fix 1 of
+/// T18c): a split affects them when it took effect after that, so an edit of another column
+/// (the watch notes) that moves `updated_at` changes nothing. Its backfill is `updated_at`.
 pub(crate) const MIGRATION_029: &str = r#"
 CREATE TABLE sync_state (
     id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -3032,12 +3035,15 @@ ALTER TABLE investment_transactions ADD COLUMN entry_basis TEXT;
 ALTER TABLE stock_price_overrides ADD COLUMN split_basis TEXT;
 ALTER TABLE stock_price_overrides ADD COLUMN entry_price TEXT;
 ALTER TABLE stock_price_overrides ADD COLUMN entry_basis TEXT;
+ALTER TABLE stock_price_overrides ADD COLUMN entry_at INTEGER;
 ALTER TABLE watched_stocks ADD COLUMN split_basis TEXT;
 ALTER TABLE watched_stocks ADD COLUMN entry_target_price TEXT;
 ALTER TABLE watched_stocks ADD COLUMN entry_basis TEXT;
+ALTER TABLE watched_stocks ADD COLUMN entry_at INTEGER;
 ALTER TABLE dividend_overrides ADD COLUMN split_basis TEXT;
 ALTER TABLE dividend_overrides ADD COLUMN entry_yearly_dividend_sum TEXT;
 ALTER TABLE dividend_overrides ADD COLUMN entry_basis TEXT;
+ALTER TABLE dividend_overrides ADD COLUMN entry_at INTEGER;
 
 UPDATE investment_transactions SET split_basis = (
     SELECT json_group_array(id) FROM (
@@ -3070,10 +3076,12 @@ UPDATE dividend_overrides SET split_basis = NULL WHERE split_basis = '[]';
 
 UPDATE investment_transactions SET entry_quantity = quantity,
     entry_price_per_unit = price_per_unit, entry_basis = split_basis;
-UPDATE stock_price_overrides SET entry_price = price, entry_basis = split_basis;
-UPDATE watched_stocks SET entry_target_price = target_price, entry_basis = split_basis;
+UPDATE stock_price_overrides SET entry_price = price, entry_basis = split_basis,
+    entry_at = updated_at;
+UPDATE watched_stocks SET entry_target_price = target_price, entry_basis = split_basis,
+    entry_at = updated_at;
 UPDATE dividend_overrides SET entry_yearly_dividend_sum = yearly_dividend_sum,
-    entry_basis = split_basis;
+    entry_basis = split_basis, entry_at = updated_at;
 "#;
 
 #[cfg(test)]
@@ -3185,6 +3193,17 @@ mod migration_029 {
             entry("SELECT entry_price, entry_basis FROM stock_price_overrides WHERE id = 'o1'"),
             (Some("1".into()), Some(r#"["a","b"]"#.into()))
         );
+        let entered_at = |table: &str, id: &str| -> Option<i64> {
+            conn.query_row(
+                &format!("SELECT entry_at FROM {table} WHERE id = ?1"),
+                [id],
+                |r| r.get(0),
+            )
+            .expect("entry_at")
+        };
+        assert_eq!(entered_at("stock_price_overrides", "o1"), Some(5));
+        assert_eq!(entered_at("watched_stocks", "w1"), Some(40));
+        assert_eq!(entered_at("dividend_overrides", "v1"), Some(5));
         assert_eq!(
             entry("SELECT entry_target_price, entry_basis FROM watched_stocks WHERE id = 'w1'"),
             (None, None)
@@ -3196,6 +3215,77 @@ mod migration_029 {
             ),
             (Some("1".into()), Some(r#"["e"]"#.into()))
         );
+    }
+
+    /// Ruling T18c fix 1: the backfill takes today's values as entered, so deriving them again
+    /// changes nothing.
+    #[test]
+    fn deriving_the_backfilled_rows_changes_nothing() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let earlier: Vec<(&str, &str)> = all_migrations()
+            .into_iter()
+            .filter(|(name, _)| *name < "029_device_sync")
+            .collect();
+        run_chain(&conn, &earlier).expect("earlier migrations");
+        let day = |n: i64| n * 86_400;
+        conn.execute_batch(&format!(
+            "INSERT INTO stock_investments (id, ticker, company_name, quantity, currency) VALUES
+               ('p1', 'AAPL', 'Apple', '9.66666667', 'USD');
+             INSERT INTO investment_transactions
+               (id, investment_id, type, ticker, company_name, quantity, price_per_unit, currency,
+                transaction_date)
+             VALUES ('t1', 'p1', 'buy', 'AAPL', 'Apple', '12', '33.33333333', 'USD', {d10}),
+                    ('t2', 'p1', 'sell', 'AAPL', 'Apple', '2.33333333', '3133.095', 'USD', {d30}),
+                    ('t3', 'p1', 'buy', 'AAPL', 'Apple', '1', '1', 'USD', {d50});
+             INSERT INTO stock_splits (id, ticker, effective_day, numerator, denominator, source,
+                 status) VALUES
+               ('a', 'AAPL', {d20}, '4', '1', 'manual', 'applied'),
+               ('b', 'AAPL', {d40}, '1', '3', 'manual', 'applied'),
+               ('c', 'AAPL', {d45}, '2', '1', 'manual', 'pending'),
+               ('d', 'AAPL', {d46}, '2', '1', 'manual', 'dismissed');
+             INSERT INTO stock_price_overrides (id, ticker, price, updated_at)
+               VALUES ('o1', 'AAPL', '33.33333333', {d10});
+             INSERT INTO watched_stocks (id, ticker, target_price, updated_at)
+               VALUES ('w1', 'AAPL', NULL, {d10});
+             INSERT INTO dividend_overrides (id, ticker, yearly_dividend_sum, updated_at)
+               VALUES ('v1', 'AAPL', '0.07', {d30});",
+            d10 = day(10),
+            d20 = day(20),
+            d30 = day(30),
+            d40 = day(40),
+            d45 = day(45),
+            d46 = day(46),
+            d50 = day(50),
+        ))
+        .expect("rows");
+        run_migrations(&conn).expect("migrate");
+        let snapshot = |conn: &Connection| -> Vec<String> {
+            let mut out = Vec::new();
+            for sql in [
+                "SELECT id || quantity || price_per_unit || ifnull(split_basis, '-')
+                 FROM investment_transactions ORDER BY id",
+                "SELECT id || price || ifnull(split_basis, '-') FROM stock_price_overrides",
+                "SELECT id || ifnull(target_price, '-') || ifnull(split_basis, '-')
+                 FROM watched_stocks",
+                "SELECT id || yearly_dividend_sum || ifnull(split_basis, '-')
+                 FROM dividend_overrides",
+            ] {
+                let mut stmt = conn.prepare(sql).expect(sql);
+                out.extend(
+                    stmt.query_map([], |r| r.get::<_, String>(0))
+                        .expect(sql)
+                        .map(|r| r.expect("row")),
+                );
+            }
+            out
+        };
+        let before = snapshot(&conn);
+
+        let report =
+            crate::services::stock_splits::reconcile_ticker(&conn, "AAPL").expect("reconcile");
+        assert_eq!(report.rows, 0, "{report:?}");
+        assert!(report.per_split.is_empty(), "{report:?}");
+        assert_eq!(snapshot(&conn), before);
     }
 
     #[test]

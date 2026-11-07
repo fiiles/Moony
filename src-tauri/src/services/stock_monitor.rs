@@ -107,7 +107,7 @@ pub fn set_target_price(
     let n = conn.execute(
         "UPDATE watched_stocks
          SET target_price = ?1, target_direction = ?2, updated_at = ?4, split_basis = ?5,
-             entry_target_price = ?1, entry_basis = ?5
+             entry_target_price = ?1, entry_basis = ?5, entry_at = ?4
          WHERE ticker = ?3",
         rusqlite::params![normalized, direction, ticker, now, basis],
     )?;
@@ -342,7 +342,8 @@ mod tests {
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 split_basis TEXT,
                 entry_target_price TEXT,
-                entry_basis TEXT
+                entry_basis TEXT,
+                entry_at INTEGER
             );
             CREATE TABLE stock_splits (
                 id TEXT PRIMARY KEY,

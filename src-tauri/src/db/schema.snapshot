@@ -377,7 +377,7 @@ CREATE TABLE dividend_overrides (
     yearly_dividend_sum TEXT NOT NULL,
     currency TEXT NOT NULL DEFAULT 'CZK',
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-, split_basis TEXT, entry_yearly_dividend_sum TEXT, entry_basis TEXT)
+, split_basis TEXT, entry_yearly_dividend_sum TEXT, entry_basis TEXT, entry_at INTEGER)
 
 == table exchange_rate_history ==
 CREATE TABLE exchange_rate_history (
@@ -782,7 +782,7 @@ CREATE TABLE stock_price_overrides (
     price TEXT NOT NULL,
     currency TEXT NOT NULL DEFAULT 'CZK',
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-, split_basis TEXT, entry_price TEXT, entry_basis TEXT)
+, split_basis TEXT, entry_price TEXT, entry_basis TEXT, entry_at INTEGER)
 
 == table stock_splits ==
 CREATE TABLE stock_splits (
@@ -906,7 +906,7 @@ CREATE TABLE watched_stocks (
     notes TEXT NOT NULL DEFAULT '',
     created_at INTEGER NOT NULL DEFAULT (unixepoch()),
     updated_at INTEGER NOT NULL DEFAULT (unixepoch())
-, target_direction TEXT CHECK (target_direction IN ('below', 'above')), split_basis TEXT, entry_target_price TEXT, entry_basis TEXT)
+, target_direction TEXT CHECK (target_direction IN ('below', 'above')), split_basis TEXT, entry_target_price TEXT, entry_basis TEXT, entry_at INTEGER)
 
 == data transaction_categories ==
 cat_dining | Dining & Restaurants | utensils | #FF9800 | NULL | 2 | 1 | expense

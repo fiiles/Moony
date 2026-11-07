@@ -1,8 +1,8 @@
 //! Manual price and dividend overrides. Each ticker (or crypto symbol) has one override row,
 //! whose ID is derived from the ticker so two devices that set the same override offline
 //! create the same row. A stock override is entered in today's units: its value is also the
-//! entry value, and `entry_basis` / `split_basis` are the applied splits after `now` (ruling
-//! T18c).
+//! entry value, `entry_at` is `now`, and `entry_basis` / `split_basis` are the applied splits
+//! after `now` (ruling T18c).
 
 use crate::error::Result;
 use crate::models::{DividendOverride, StockPriceOverride};
@@ -22,11 +22,12 @@ pub fn upsert_stock_price(
     let id = natural_id("stock_price_overrides", &[&ticker]);
     conn.execute(
         "INSERT INTO stock_price_overrides
-             (id, ticker, price, currency, updated_at, split_basis, entry_price, entry_basis)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?3, ?6)
+             (id, ticker, price, currency, updated_at, split_basis, entry_price, entry_basis,
+              entry_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?3, ?6, ?5)
          ON CONFLICT(ticker) DO UPDATE
              SET price = ?3, currency = ?4, updated_at = ?5, split_basis = ?6, entry_price = ?3,
-                 entry_basis = ?6",
+                 entry_basis = ?6, entry_at = ?5",
         rusqlite::params![
             id,
             ticker,
@@ -58,11 +59,11 @@ pub fn upsert_dividend(
     conn.execute(
         "INSERT INTO dividend_overrides
              (id, ticker, yearly_dividend_sum, currency, updated_at, split_basis,
-              entry_yearly_dividend_sum, entry_basis)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?3, ?6)
+              entry_yearly_dividend_sum, entry_basis, entry_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?3, ?6, ?5)
          ON CONFLICT(ticker) DO UPDATE
              SET yearly_dividend_sum = ?3, currency = ?4, updated_at = ?5, split_basis = ?6,
-                 entry_yearly_dividend_sum = ?3, entry_basis = ?6",
+                 entry_yearly_dividend_sum = ?3, entry_basis = ?6, entry_at = ?5",
         rusqlite::params![
             id,
             ticker,

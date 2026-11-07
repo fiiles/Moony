@@ -233,7 +233,8 @@ mod tests {
                 updated_at INTEGER NOT NULL DEFAULT (unixepoch()),
                 split_basis TEXT,
                 entry_target_price TEXT,
-                entry_basis TEXT
+                entry_basis TEXT,
+                entry_at INTEGER
             );
             CREATE TABLE stock_splits (
                 id TEXT PRIMARY KEY,

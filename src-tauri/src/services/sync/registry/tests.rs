@@ -468,15 +468,25 @@ fn the_exact_column_groups_are_pinned() {
         ),
         (
             "stock_price_overrides",
-            &[&["entry_price", "currency", "entry_basis"]],
+            &[&["entry_price", "currency", "entry_basis", "entry_at"]],
         ),
         (
             "dividend_overrides",
-            &[&["entry_yearly_dividend_sum", "currency", "entry_basis"]],
+            &[&[
+                "entry_yearly_dividend_sum",
+                "currency",
+                "entry_basis",
+                "entry_at",
+            ]],
         ),
         (
             "watched_stocks",
-            &[&["entry_target_price", "target_direction", "entry_basis"]],
+            &[&[
+                "entry_target_price",
+                "target_direction",
+                "entry_basis",
+                "entry_at",
+            ]],
         ),
         ("investment_dividends", &[&["gross_amount", "currency"]]),
         ("real_estate_valuations", &[&["value", "currency"]]),

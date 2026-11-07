@@ -180,18 +180,41 @@ pub fn update_transaction(
     }
     let date = crate::models::validation::utc_day(data.transaction_date, "validation.dateInvalid")?;
     // The edited values are in today's units (D20), like a new transaction's: they become the
-    // entry values, on the applied splits after the date (ruling T18c).
+    // entry values, on the applied splits after the date (ruling T18c). An edit that leaves the
+    // type, quantity and price as they are shown, on the same splits (a fee-only or date-only
+    // edit), keeps the entry values: the shown units may be rounded, and the entry derives
+    // exactly these units again.
     let basis = stock_splits::basis_for_day(conn, &ticker, date)?;
+    let tx_type = data.tx_type.to_ascii_lowercase();
     let quantity = dedup::canonical_amount(&data.quantity);
     let price = dedup::canonical_amount(&data.price_per_unit);
+    let shown: (String, String, String, Option<String>) = conn.query_row(
+        "SELECT lower(type), quantity, price_per_unit, split_basis
+         FROM investment_transactions WHERE id = ?1",
+        [tx_id],
+        |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+    )?;
+    let entry = if shown
+        == (
+            tx_type.clone(),
+            quantity.clone(),
+            price.clone(),
+            basis.clone(),
+        ) {
+        ""
+    } else {
+        ", entry_quantity = ?3, entry_price_per_unit = ?4, entry_basis = ?7"
+    };
     conn.execute(
-        "UPDATE investment_transactions
-         SET type = ?2, quantity = ?3, price_per_unit = ?4, currency = ?5, transaction_date = ?6,
-             entry_quantity = ?3, entry_price_per_unit = ?4, entry_basis = ?7, split_basis = ?7
-         WHERE id = ?1",
+        &format!(
+            "UPDATE investment_transactions
+             SET type = ?2, quantity = ?3, price_per_unit = ?4, currency = ?5,
+                 transaction_date = ?6, split_basis = ?7{entry}
+             WHERE id = ?1"
+        ),
         rusqlite::params![
             tx_id,
-            data.tx_type.to_ascii_lowercase(),
+            tx_type,
             quantity,
             price,
             data.currency.to_ascii_uppercase(),

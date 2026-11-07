@@ -140,21 +140,31 @@ pub(super) static TABLES: &[TableSpec] = &[
         name: "watched_stocks",
         class: TableClass::Synced,
         recomputed: &["target_price", "split_basis"],
-        groups: &[&["entry_target_price", "target_direction", "entry_basis"]],
+        groups: &[&[
+            "entry_target_price",
+            "target_direction",
+            "entry_basis",
+            "entry_at",
+        ]],
         ..BASE
     },
     TableSpec {
         name: "stock_price_overrides",
         class: TableClass::Synced,
         recomputed: &["price", "split_basis"],
-        groups: &[&["entry_price", "currency", "entry_basis"]],
+        groups: &[&["entry_price", "currency", "entry_basis", "entry_at"]],
         ..BASE
     },
     TableSpec {
         name: "dividend_overrides",
         class: TableClass::Synced,
         recomputed: &["yearly_dividend_sum", "split_basis"],
-        groups: &[&["entry_yearly_dividend_sum", "currency", "entry_basis"]],
+        groups: &[&[
+            "entry_yearly_dividend_sum",
+            "currency",
+            "entry_basis",
+            "entry_at",
+        ]],
         ..BASE
     },
     TableSpec {

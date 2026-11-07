@@ -134,7 +134,8 @@
     "end": "Police beenden",
     "reactivate": "Police reaktivieren",
     "delete": "Police löschen",
-    "addDocument": "Dokument hinzufügen"
+    "addDocument": "Dokument hinzufügen",
+    "editPolicy": "Police bearbeiten"
   },
   "endDialog": {
     "title": "Police beenden · {{name}}",
@@ -145,7 +146,7 @@
     "submit": "Police beenden"
   },
   "confirmDelete": {
-    "title": "Police löschen",
+    "title": "Police löschen?",
     "description": "„{{name}}“ löschen? Die zugehörigen Dokumente werden mitgelöscht. Das lässt sich nicht rückgängig machen."
   },
   "toast": {
@@ -307,7 +308,7 @@
       "other": "Sonstiges"
     },
     "deleteConfirm": {
-      "title": "Dokument löschen",
+      "title": "Dokument löschen?",
       "description": "„{{name}}“ löschen? Die Datei wird dauerhaft entfernt."
     }
   }

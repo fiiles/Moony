@@ -278,7 +278,8 @@
     },
     "confirmDeleteTransaction": {
       "title": "¿Eliminar el movimiento?",
-      "description": "Se eliminará de forma permanente el movimiento de tipo {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Esta acción no se puede deshacer."
+      "descriptionBuy": "Se eliminará de forma permanente la compra ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Esta acción no se puede deshacer.",
+      "descriptionSell": "Se eliminará de forma permanente la venta ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Esta acción no se puede deshacer."
     },
     "editName": {
       "title": "Editar nombre",
@@ -309,7 +310,6 @@
     "sells_many": "{{count}} ventas",
     "sells_other": "{{count}} ventas",
     "noSells": "aún sin ventas",
-    "dividends": "Dividendos",
     "dividendNote": "estimación anual · rentabilidad {{percent}}",
     "refreshPrices": "Actualizar precios",
     "buy": "Comprar",
@@ -318,7 +318,7 @@
     "source": "Yahoo Finance",
     "deleteTransaction": "Eliminar movimiento",
     "menu": {
-      "editPrice": "Editar precio",
+      "editPrice": "Fijar precio manual",
       "editDividend": "Editar estimación de dividendo",
       "editName": "Editar nombre",
       "recordSplit": "Registrar split"

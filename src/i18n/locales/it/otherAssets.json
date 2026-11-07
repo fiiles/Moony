@@ -80,7 +80,8 @@
   },
   "confirmDeleteTransaction": {
     "title": "Eliminare l'operazione?",
-    "description": "Verrà eliminata definitivamente l'operazione di tipo {{type}} ({{quantity}} × {{price}}, {{date}}). L'operazione non si può annullare."
+    "descriptionBuy": "Verrà eliminato definitivamente l'acquisto ({{quantity}} × {{price}}, {{date}}). L'operazione non si può annullare.",
+    "descriptionSell": "Verrà eliminata definitivamente la vendita ({{quantity}} × {{price}}, {{date}}). L'operazione non si può annullare."
   },
   "toast": {
     "added": "Bene aggiunto",
@@ -145,5 +146,11 @@
   "chart": {
     "title": "Valore stimato nel tempo",
     "subtitle": "Piatto tra una rivalutazione e l'altra – i salti sono le tue stime e i tuoi acquisti, non il mercato."
+  },
+  "detail": {
+    "menu": {
+      "edit": "Modifica bene",
+      "delete": "Elimina bene"
+    }
   }
 }

@@ -80,7 +80,8 @@
   },
   "confirmDeleteTransaction": {
     "title": "Smazat transakci?",
-    "description": "Tím trvale smažete transakci typu {{type}} ({{quantity}} × {{price}}, {{date}}). Tuto akci nelze vrátit zpět."
+    "descriptionBuy": "Tím trvale smažete nákup ({{quantity}} × {{price}}, {{date}}). Tuto akci nelze vrátit zpět.",
+    "descriptionSell": "Tím trvale smažete prodej ({{quantity}} × {{price}}, {{date}}). Tuto akci nelze vrátit zpět."
   },
   "toast": {
     "added": "Aktivum přidáno",
@@ -145,5 +146,11 @@
   "chart": {
     "title": "Vývoj odhadu hodnoty",
     "subtitle": "Mezi přeceněními je hodnota rovná – skoky jsou vaše odhady a nákupy, ne trh."
+  },
+  "detail": {
+    "menu": {
+      "edit": "Upravit aktivum",
+      "delete": "Smazat aktivum"
+    }
   }
 }

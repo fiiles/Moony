@@ -33,9 +33,9 @@
     },
     "hierarchyInfo": "IBAN を含む限定的なルールは、支払先のみの一般的なルールより優先されます。",
     "bulkDelete": "選択項目を削除",
-    "deleteConfirmTitle": "学習済みルールを削除",
+    "deleteConfirmTitle": "学習済みルールを削除しますか？",
     "deleteConfirmDescription": "この学習済みルールを削除しますか？この操作は元に戻せません。",
-    "bulkDeleteConfirmTitle": "選択したルールを削除",
+    "bulkDeleteConfirmTitle": "選択したルールを削除しますか？",
     "bulkDeleteConfirmDescription_other": "選択した{{count}}件のルールを削除しますか？この操作は元に戻せません。",
     "deleteSuccess": "ルールを削除しました",
     "bulkDeleteSuccess_other": "{{count}}件のルールを削除しました",
@@ -105,7 +105,7 @@
     },
     "systemRule": "システムルール",
     "systemRuleTooltip": "システムルールは編集・削除できません",
-    "deleteConfirmTitle": "カスタムルールを削除",
+    "deleteConfirmTitle": "カスタムルールを削除しますか？",
     "deleteConfirmDescription": "このカスタムルールを削除しますか？この操作は元に戻せません。",
     "createSuccess": "ルールを作成しました",
     "updateSuccess": "ルールを更新しました",
@@ -206,11 +206,11 @@
     "forgetSelected": "選択項目を削除（{{count}}）",
     "selectedBar": "{{count}}件を選択中",
     "confirmForget": {
-      "title": "学習済みルールを削除",
+      "title": "学習済みルールを削除しますか？",
       "description": "この取引相手は自動では分類されなくなります。新しい手動修正で再び学習されます。"
     },
     "confirmForgetBulk": {
-      "title": "選択したルールを削除",
+      "title": "選択したルールを削除しますか？",
       "description_other": "選択した{{count}}件のルールを削除しますか？それらの取引相手は自動では分類されなくなります。"
     },
     "categoryChanged": "ルールのカテゴリを変更しました",

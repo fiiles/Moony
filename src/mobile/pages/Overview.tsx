@@ -86,7 +86,7 @@ export default function Overview() {
   // "za 30 dní", or "od 3. 10." when the history is shorter than the period
   const changeLabel =
     shortHistoryBase === null
-      ? t(`overview.change.${period}`)
+      ? t(`dashboard:changePeriod.${period}`)
       : td('changeSince', {
           date: fmt.day(shortHistoryBase, {
             month: 'short',
@@ -101,7 +101,7 @@ export default function Overview() {
   const stats = useMemo<StatItem[]>(
     () => [
       {
-        label: t('overview.stats.assets'),
+        label: t('dashboard:stats.totalAssets'),
         value: statMoney(display.assets, unknown.assets),
         note: unknown.assets
           ? undefined
@@ -121,9 +121,9 @@ export default function Overview() {
               : signedMoney(overview.liabilitiesDelta),
       },
       {
-        label: t('overview.stats.freeCash'),
+        label: t('dashboard:stats.freeCash'),
         value: statMoney(display.savings, false),
-        note: t('overview.stats.freeCashNote'),
+        note: t('dashboard:stats.freeCashNote'),
       },
     ],
     // The formatters close over the same inputs; the metrics response drives every value

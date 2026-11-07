@@ -147,7 +147,7 @@
     "openCalculator": "Öppna i investeringskalkylatorn",
     "revalue": "Omvärdera",
     "menu": {
-      "edit": "Redigera uppgifter",
+      "edit": "Redigera fastighet",
       "valuationHistory": "Värderingshistorik",
       "delete": "Ta bort fastighet"
     },
@@ -254,7 +254,7 @@
     "revalue": "Omvärdera"
   },
   "confirmDelete": {
-    "title": "Ta bort fastighet",
+    "title": "Ta bort fastigheten?",
     "description": "Vill du verkligen ta bort ”{{name}}”? Det går inte att ångra."
   },
   "confirmDeleteCost": {
@@ -409,7 +409,7 @@
       "other": "Övrigt"
     },
     "deleteConfirm": {
-      "title": "Ta bort dokument",
+      "title": "Ta bort dokumentet?",
       "description": "Vill du verkligen ta bort ”{{name}}”? Filen tas bort permanent."
     }
   },

@@ -618,7 +618,6 @@
     "expenses": {
       "title": "Expenses by category",
       "manageCategories": "Manage categories",
-      "manageLimits": "Manage limits",
       "spent": "Spent",
       "limit": "Limit",
       "usage": "Usage",

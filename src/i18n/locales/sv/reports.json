@@ -618,7 +618,6 @@
     "expenses": {
       "title": "Utgifter per kategori",
       "manageCategories": "Hantera kategorier",
-      "manageLimits": "Hantera gränser",
       "spent": "Spenderat",
       "limit": "Gräns",
       "usage": "Förbrukning",

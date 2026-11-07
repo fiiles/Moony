@@ -270,7 +270,8 @@
     },
     "confirmDeleteTransaction": {
       "title": "删除交易？",
-      "description": "这将永久删除该笔{{type}}交易（{{quantity}} × {{ticker}}，{{date}}，{{amount}}）。此操作无法撤销。"
+      "descriptionBuy": "这将永久删除该笔买入（{{quantity}} × {{ticker}}，{{date}}，{{amount}}）。此操作无法撤销。",
+      "descriptionSell": "这将永久删除该笔卖出（{{quantity}} × {{ticker}}，{{date}}，{{amount}}）。此操作无法撤销。"
     },
     "editName": {
       "title": "编辑名称",
@@ -297,7 +298,6 @@
     "realized": "已实现收益",
     "sells_other": "{{count}} 次卖出",
     "noSells": "尚无卖出",
-    "dividends": "股息",
     "dividendNote": "每年预计 · 股息率 {{percent}}",
     "refreshPrices": "刷新价格",
     "buy": "买入",
@@ -306,7 +306,7 @@
     "source": "Yahoo Finance",
     "deleteTransaction": "删除交易",
     "menu": {
-      "editPrice": "编辑价格",
+      "editPrice": "手动设置价格",
       "editDividend": "编辑股息估值",
       "editName": "编辑名称",
       "recordSplit": "记录拆股"

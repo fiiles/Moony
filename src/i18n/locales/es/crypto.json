@@ -257,7 +257,8 @@
     "pricesRefreshed": "Cotización actualizada",
     "confirmDeleteTransaction": {
       "title": "¿Eliminar el movimiento?",
-      "description": "Se eliminará de forma permanente el movimiento de tipo {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Esta acción no se puede deshacer."
+      "descriptionBuy": "Se eliminará de forma permanente la compra ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Esta acción no se puede deshacer.",
+      "descriptionSell": "Se eliminará de forma permanente la venta ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Esta acción no se puede deshacer."
     }
   },
   "unpricedBanner": {

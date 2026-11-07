@@ -134,7 +134,8 @@
     "end": "Avslutt forsikring",
     "reactivate": "Aktiver forsikring på nytt",
     "delete": "Slett forsikring",
-    "addDocument": "Legg til dokument"
+    "addDocument": "Legg til dokument",
+    "editPolicy": "Rediger forsikring"
   },
   "endDialog": {
     "title": "Avslutt forsikring · {{name}}",
@@ -145,7 +146,7 @@
     "submit": "Avslutt forsikring"
   },
   "confirmDelete": {
-    "title": "Slett forsikring",
+    "title": "Slette forsikringen?",
     "description": "Slette «{{name}}»? Dokumentene følger med. Dette kan ikke angres."
   },
   "toast": {
@@ -307,7 +308,7 @@
       "other": "Annet"
     },
     "deleteConfirm": {
-      "title": "Slett dokument",
+      "title": "Slette dokumentet?",
       "description": "Slette «{{name}}»? Filen fjernes permanent."
     }
   }

@@ -141,7 +141,8 @@
     "end": "Termina polizza",
     "reactivate": "Riattiva polizza",
     "delete": "Elimina polizza",
-    "addDocument": "Aggiungi documento"
+    "addDocument": "Aggiungi documento",
+    "editPolicy": "Modifica polizza"
   },
   "endDialog": {
     "title": "Termina polizza · {{name}}",
@@ -152,7 +153,7 @@
     "submit": "Termina polizza"
   },
   "confirmDelete": {
-    "title": "Elimina polizza",
+    "title": "Eliminare la polizza?",
     "description": "Eliminare «{{name}}»? Verranno eliminati anche i suoi documenti. L'operazione non si può annullare."
   },
   "toast": {
@@ -314,7 +315,7 @@
       "other": "Altro"
     },
     "deleteConfirm": {
-      "title": "Elimina documento",
+      "title": "Eliminare il documento?",
       "description": "Eliminare «{{name}}»? Il file verrà rimosso definitivamente."
     }
   }

@@ -59,16 +59,20 @@ export function OtherAssetTransactionsModal({ asset, open, onOpenChange }: Props
   });
 
   const pendingDeleteDescription = pendingDelete
-    ? t('confirmDeleteTransaction.description', {
-        type: (pendingDelete.type === 'buy' ? tc('buttons.buy') : tc('buttons.sell')).toLowerCase(),
-        quantity: fmt.number(Number(pendingDelete.quantity), { maximumFractionDigits: 8 }),
-        price: formatAmountWithCode(
-          parseFloat(pendingDelete.pricePerUnit),
-          pendingDelete.currency,
-          fmt.locale
-        ),
-        date: fmt.day(pendingDelete.transactionDate),
-      })
+    ? t(
+        pendingDelete.type === 'buy'
+          ? 'confirmDeleteTransaction.descriptionBuy'
+          : 'confirmDeleteTransaction.descriptionSell',
+        {
+          quantity: fmt.number(Number(pendingDelete.quantity), { maximumFractionDigits: 8 }),
+          price: formatAmountWithCode(
+            parseFloat(pendingDelete.pricePerUnit),
+            pendingDelete.currency,
+            fmt.locale
+          ),
+          date: fmt.day(pendingDelete.transactionDate),
+        }
+      )
     : '';
 
   return (

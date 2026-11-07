@@ -795,8 +795,10 @@ function LedgerSection({
   return (
     <section>
       <SectionHead
-        title={t('account.ledger.title')}
-        note={ledger.isLoading ? undefined : t('account.ledger.count', { count: ledger.total })}
+        title={t('bank_accounts:transactions')}
+        note={
+          ledger.isLoading ? undefined : t('bank_accounts:ledger.footer', { count: ledger.total })
+        }
       />
       <SearchField
         value={state.search}
@@ -809,7 +811,7 @@ function LedgerSection({
           value={state.kind}
           options={kinds}
           onChange={(kind) => onStateChange((s) => ({ ...s, kind }))}
-          label={t('account.ledger.title')}
+          label={t('bank_accounts:transactions')}
           className="min-w-0 flex-1"
         />
         <NavIconButton

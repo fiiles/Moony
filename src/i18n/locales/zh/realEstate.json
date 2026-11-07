@@ -145,7 +145,7 @@
     "openCalculator": "在投资计算器中打开",
     "revalue": "重新估值",
     "menu": {
-      "edit": "编辑详情",
+      "edit": "编辑房产",
       "valuationHistory": "估值历史",
       "delete": "删除房产"
     },
@@ -250,7 +250,7 @@
     "revalue": "重新估值"
   },
   "confirmDelete": {
-    "title": "删除房产",
+    "title": "删除房产？",
     "description": "确定要删除“{{name}}”吗？此操作无法撤销。"
   },
   "confirmDeleteCost": {
@@ -403,7 +403,7 @@
       "other": "其他"
     },
     "deleteConfirm": {
-      "title": "删除文档",
+      "title": "删除文档？",
       "description": "确定要删除“{{name}}”吗？该文件将被永久删除。"
     }
   },

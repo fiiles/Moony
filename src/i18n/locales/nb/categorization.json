@@ -33,9 +33,9 @@
     },
     "hierarchyInfo": "Mer spesifikke regler (med IBAN) går foran generelle regler som bare bruker mottaker.",
     "bulkDelete": "Slett valgte",
-    "deleteConfirmTitle": "Slett lært regel",
+    "deleteConfirmTitle": "Slette den lærte regelen?",
     "deleteConfirmDescription": "Er du sikker på at du vil slette denne lærte regelen? Dette kan ikke angres.",
-    "bulkDeleteConfirmTitle": "Slett valgte regler",
+    "bulkDeleteConfirmTitle": "Slette de valgte reglene?",
     "bulkDeleteConfirmDescription_one": "Er du sikker på at du vil slette {{count}} valgt regel? Dette kan ikke angres.",
     "bulkDeleteConfirmDescription_other": "Er du sikker på at du vil slette {{count}} valgte regler? Dette kan ikke angres.",
     "deleteSuccess": "Regelen er slettet",
@@ -107,7 +107,7 @@
     },
     "systemRule": "Systemregel",
     "systemRuleTooltip": "Systemregler kan ikke redigeres eller slettes",
-    "deleteConfirmTitle": "Slett egen regel",
+    "deleteConfirmTitle": "Slette den egne regelen?",
     "deleteConfirmDescription": "Er du sikker på at du vil slette denne regelen? Dette kan ikke angres.",
     "createSuccess": "Regelen er opprettet",
     "updateSuccess": "Regelen er oppdatert",
@@ -209,11 +209,11 @@
     "forgetSelected": "Glem valgte ({{count}})",
     "selectedBar": "{{count}} valgt",
     "confirmForget": {
-      "title": "Glem lært regel",
+      "title": "Glemme den lærte regelen?",
       "description": "Motparten kategoriseres ikke lenger automatisk; en ny manuell rettelse lærer den opp igjen."
     },
     "confirmForgetBulk": {
-      "title": "Glem valgte regler",
+      "title": "Glemme de valgte reglene?",
       "description_one": "Glemme {{count}} valgt regel? Motparten kategoriseres ikke lenger automatisk.",
       "description_other": "Glemme {{count}} valgte regler? Motpartene kategoriseres ikke lenger automatisk."
     },

@@ -148,7 +148,8 @@
     "end": "Zakończ polisę",
     "reactivate": "Aktywuj polisę ponownie",
     "delete": "Usuń polisę",
-    "addDocument": "Dodaj dokument"
+    "addDocument": "Dodaj dokument",
+    "editPolicy": "Edytuj polisę"
   },
   "endDialog": {
     "title": "Zakończ polisę · {{name}}",
@@ -159,7 +160,7 @@
     "submit": "Zakończ polisę"
   },
   "confirmDelete": {
-    "title": "Usuń polisę",
+    "title": "Usunąć polisę?",
     "description": "Usunąć „{{name}}”? Razem z nią znikną jej dokumenty. Tej operacji nie można cofnąć."
   },
   "toast": {
@@ -321,7 +322,7 @@
       "other": "Inne"
     },
     "deleteConfirm": {
-      "title": "Usuń dokument",
+      "title": "Usunąć dokument?",
       "description": "Usunąć „{{name}}”? Plik zostanie usunięty na stałe."
     }
   }

@@ -33,9 +33,9 @@
     },
     "hierarchyInfo": "More specific rules (with IBAN) take priority over general payee-only rules.",
     "bulkDelete": "Delete Selected",
-    "deleteConfirmTitle": "Delete Learned Rule",
+    "deleteConfirmTitle": "Delete learned rule?",
     "deleteConfirmDescription": "Are you sure you want to delete this learned rule? This action cannot be undone.",
-    "bulkDeleteConfirmTitle": "Delete Selected Rules",
+    "bulkDeleteConfirmTitle": "Delete selected rules?",
     "bulkDeleteConfirmDescription_one": "Are you sure you want to delete {{count}} selected rule? This action cannot be undone.",
     "bulkDeleteConfirmDescription_other": "Are you sure you want to delete {{count}} selected rules? This action cannot be undone.",
     "deleteSuccess": "Rule deleted successfully",
@@ -107,7 +107,7 @@
     },
     "systemRule": "System Rule",
     "systemRuleTooltip": "System rules cannot be edited or deleted",
-    "deleteConfirmTitle": "Delete Custom Rule",
+    "deleteConfirmTitle": "Delete custom rule?",
     "deleteConfirmDescription": "Are you sure you want to delete this custom rule? This action cannot be undone.",
     "createSuccess": "Rule created successfully",
     "updateSuccess": "Rule updated successfully",
@@ -209,11 +209,11 @@
     "forgetSelected": "Forget selected ({{count}})",
     "selectedBar": "{{count}} selected",
     "confirmForget": {
-      "title": "Forget learned rule",
+      "title": "Forget learned rule?",
       "description": "The counterparty is no longer categorized automatically; a new manual correction teaches it again."
     },
     "confirmForgetBulk": {
-      "title": "Forget selected rules",
+      "title": "Forget selected rules?",
       "description_one": "Forget {{count}} selected rule? Its counterparty is no longer categorized automatically.",
       "description_other": "Forget {{count}} selected rules? Their counterparties are no longer categorized automatically."
     },

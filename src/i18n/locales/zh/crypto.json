@@ -235,7 +235,8 @@
     "pricesRefreshed": "汇率已更新",
     "confirmDeleteTransaction": {
       "title": "删除交易？",
-      "description": "这将永久删除该笔{{type}}交易（{{quantity}} × {{ticker}}，{{date}}，{{amount}}），此操作无法撤销。"
+      "descriptionBuy": "这将永久删除该笔买入（{{quantity}} × {{ticker}}，{{date}}，{{amount}}）。此操作无法撤销。",
+      "descriptionSell": "这将永久删除该笔卖出（{{quantity}} × {{ticker}}，{{date}}，{{amount}}）。此操作无法撤销。"
     }
   },
   "unpricedBanner": {

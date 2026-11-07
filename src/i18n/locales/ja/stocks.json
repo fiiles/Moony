@@ -270,7 +270,8 @@
     },
     "confirmDeleteTransaction": {
       "title": "取引を削除しますか？",
-      "description": "{{type}}の取引（{{quantity}} × {{ticker}}、{{date}}、{{amount}}）を完全に削除します。この操作は元に戻せません。"
+      "descriptionBuy": "買付（{{quantity}} × {{ticker}}、{{date}}、{{amount}}）を完全に削除します。この操作は元に戻せません。",
+      "descriptionSell": "売却（{{quantity}} × {{ticker}}、{{date}}、{{amount}}）を完全に削除します。この操作は元に戻せません。"
     },
     "editName": {
       "title": "名称を編集",
@@ -297,7 +298,6 @@
     "realized": "確定損益",
     "sells_other": "売却 {{count}}件",
     "noSells": "売却はまだありません",
-    "dividends": "配当",
     "dividendNote": "年間の予想 · 利回り {{percent}}",
     "refreshPrices": "価格を更新",
     "buy": "買付",
@@ -306,7 +306,7 @@
     "source": "Yahoo Finance",
     "deleteTransaction": "取引を削除",
     "menu": {
-      "editPrice": "価格を編集",
+      "editPrice": "価格を手動設定",
       "editDividend": "配当の予想を編集",
       "editName": "名称を編集",
       "recordSplit": "分割を記録"

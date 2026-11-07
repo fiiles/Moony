@@ -151,7 +151,7 @@
     "openCalculator": "Otwórz w kalkulatorze inwestycji",
     "revalue": "Przeszacuj",
     "menu": {
-      "edit": "Edytuj szczegóły",
+      "edit": "Edytuj nieruchomość",
       "valuationHistory": "Historia wycen",
       "delete": "Usuń nieruchomość"
     },
@@ -262,7 +262,7 @@
     "revalue": "Przeszacuj"
   },
   "confirmDelete": {
-    "title": "Usuń nieruchomość",
+    "title": "Usunąć nieruchomość?",
     "description": "Czy na pewno chcesz usunąć „{{name}}”? Tej operacji nie można cofnąć."
   },
   "confirmDeleteCost": {
@@ -421,7 +421,7 @@
       "other": "Inne"
     },
     "deleteConfirm": {
-      "title": "Usuń dokument",
+      "title": "Usunąć dokument?",
       "description": "Czy na pewno chcesz usunąć „{{name}}”? Plik zostanie usunięty na stałe."
     }
   },

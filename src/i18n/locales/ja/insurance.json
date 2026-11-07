@@ -127,7 +127,8 @@
     "end": "契約を終了",
     "reactivate": "契約を再開",
     "delete": "契約を削除",
-    "addDocument": "書類を追加"
+    "addDocument": "書類を追加",
+    "editPolicy": "契約を編集"
   },
   "endDialog": {
     "title": "契約を終了 · {{name}}",
@@ -138,7 +139,7 @@
     "submit": "契約を終了"
   },
   "confirmDelete": {
-    "title": "契約を削除",
+    "title": "契約を削除しますか？",
     "description": "「{{name}}」を削除しますか？書類も一緒に削除されます。この操作は元に戻せません。"
   },
   "toast": {
@@ -300,7 +301,7 @@
       "other": "その他"
     },
     "deleteConfirm": {
-      "title": "書類を削除",
+      "title": "書類を削除しますか？",
       "description": "「{{name}}」を削除しますか？ファイルは完全に削除されます。"
     }
   }

@@ -246,7 +246,8 @@
     "pricesRefreshed": "Kursen har uppdaterats",
     "confirmDeleteTransaction": {
       "title": "Ta bort transaktionen?",
-      "description": "Transaktionen av typen {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) tas bort permanent. Det går inte att ångra."
+      "descriptionBuy": "Köpet ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) tas bort permanent. Det går inte att ångra.",
+      "descriptionSell": "Försäljningen ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) tas bort permanent. Det går inte att ångra."
     }
   },
   "unpricedBanner": {

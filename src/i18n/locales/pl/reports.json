@@ -662,7 +662,6 @@
     "expenses": {
       "title": "Wydatki wg kategorii",
       "manageCategories": "Zarządzaj kategoriami",
-      "manageLimits": "Zarządzaj limitami",
       "spent": "Wydano",
       "limit": "Limit",
       "usage": "Wykorzystanie",

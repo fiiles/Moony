@@ -264,7 +264,7 @@ export function ExpensesByCategoryCard({
           </Button>
           <Button variant="outline" size="sm" onClick={onManageLimits}>
             <SlidersHorizontal />
-            {t('actuals.expenses.manageLimits')}
+            {t('budgeting:manage.title')}
           </Button>
         </div>
       </CardHeader>

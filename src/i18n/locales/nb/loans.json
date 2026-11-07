@@ -136,7 +136,7 @@
     "rateChange": "Registrer en renteendring"
   },
   "confirmDelete": {
-    "title": "Slett lån",
+    "title": "Slette lånet?",
     "description": "Slette «{{name}}»? Hendelsene og eiendomskoblingene følger med. Dette kan ikke angres."
   },
   "toast": {
@@ -287,9 +287,9 @@
       "balanceCheckNote": "gjelder til du endrer den",
       "drawdown": "Utbetaling {{amount}}",
       "drawdownNote": "start på lånet",
-      "delete": "Fjern hendelse",
+      "delete": "Slett hendelse",
       "confirmDelete": {
-        "title": "Fjern hendelse",
+        "title": "Slette hendelsen?",
         "description": "Oppføringen forsvinner fra diagrammet og listen, og saldoen beregnes på nytt uten den.",
         "descriptionManual": "Den manuelle saldoen forsvinner fra diagrammet og listen. Den forrige manuelle saldoen gjelder igjen, eller estimatet hvis det ikke finnes noen."
       }

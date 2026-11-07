@@ -211,7 +211,7 @@ function PolicyBody({ row, property, noticeDays, today, onEdit }: PolicyBodyProp
         onClick={onEdit}
       >
         <Pencil strokeWidth={1.75} aria-hidden />
-        {ti('actions.edit')}
+        {ti('actions.editPolicy')}
       </Button>
       <PolicyLimits row={row} />
       <DocumentsSection

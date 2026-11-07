@@ -640,7 +640,6 @@
     "expenses": {
       "title": "Uscite per categoria",
       "manageCategories": "Gestisci categorie",
-      "manageLimits": "Gestisci limiti",
       "spent": "Speso",
       "limit": "Limite",
       "usage": "Utilizzo",

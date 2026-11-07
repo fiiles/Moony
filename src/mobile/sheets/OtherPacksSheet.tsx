@@ -70,7 +70,7 @@ export function OtherPacksSheet({
           value={query}
           onChange={setQuery}
           placeholder={t('settings.categorization.searchCountry')}
-          clearLabel={t('settings.categorization.clearSearch')}
+          clearLabel={t('common:a11y.clearSearch')}
         />
         <div className="min-h-0 flex-1 overflow-y-auto">
           {filtered.length === 0 ? (

@@ -147,7 +147,7 @@
     "openCalculator": "Åpne i investeringskalkulatoren",
     "revalue": "Omvurder",
     "menu": {
-      "edit": "Rediger detaljer",
+      "edit": "Rediger eiendom",
       "valuationHistory": "Verdivurderingshistorikk",
       "delete": "Slett eiendom"
     },
@@ -254,7 +254,7 @@
     "revalue": "Omvurder"
   },
   "confirmDelete": {
-    "title": "Slett eiendom",
+    "title": "Slette eiendommen?",
     "description": "Er du sikker på at du vil slette «{{name}}»? Dette kan ikke angres."
   },
   "confirmDeleteCost": {
@@ -409,7 +409,7 @@
       "other": "Annet"
     },
     "deleteConfirm": {
-      "title": "Slett dokument",
+      "title": "Slette dokumentet?",
       "description": "Er du sikker på at du vil slette «{{name}}»? Filen fjernes permanent."
     }
   },

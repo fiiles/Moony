@@ -74,7 +74,8 @@
   },
   "confirmDeleteTransaction": {
     "title": "取引を削除しますか？",
-    "description": "{{type}}の取引（{{quantity}} × {{price}}、{{date}}）を完全に削除します。この操作は元に戻せません。"
+    "descriptionBuy": "買付（{{quantity}} × {{price}}、{{date}}）を完全に削除します。この操作は元に戻せません。",
+    "descriptionSell": "売却（{{quantity}} × {{price}}、{{date}}）を完全に削除します。この操作は元に戻せません。"
   },
   "toast": {
     "added": "資産を追加しました",
@@ -139,5 +140,11 @@
   "chart": {
     "title": "推定評価額の推移",
     "subtitle": "再評価の間は横ばいです。変動は市場ではなく、あなたの推定と購入によるものです。"
+  },
+  "detail": {
+    "menu": {
+      "edit": "資産を編集",
+      "delete": "資産を削除"
+    }
   }
 }

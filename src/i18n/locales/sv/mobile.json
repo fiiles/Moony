@@ -15,18 +15,7 @@
     "reason": "Lås upp Moony"
   },
   "overview": {
-    "change": {
-      "30D": "på 30 dagar",
-      "90D": "på 3 månader",
-      "YTD": "i år",
-      "1Y": "på ett år",
-      "5Y": "på 5 år",
-      "All": "sedan den första posten"
-    },
     "stats": {
-      "assets": "Tillgångar",
-      "freeCash": "Fria medel",
-      "freeCashNote": "på konton",
       "unchanged": "oförändrat",
       "noHistory": "ingen historik"
     }
@@ -35,8 +24,6 @@
     "subtitle_one": "Faktiska inkomster och utgifter från {{count}} konto",
     "subtitle_other": "Faktiska inkomster och utgifter från {{count}} konton",
     "subtitleAll": "Faktiska inkomster och utgifter från alla konton",
-    "moves_one": "{{count}} transaktion",
-    "moves_other": "{{count}} transaktioner",
     "shareOfExpenses": "{{share}} av utgifterna",
     "shareOfIncome": "{{share}} av inkomsterna",
     "partial": "Perioden har inte tagit slut än; siffrorna fylls i med nästa kontoutdrag.",
@@ -48,9 +35,6 @@
     "accounts": {
       "title": "Konton i rapporten",
       "done": "Klar"
-    },
-    "picker": {
-      "change": "Ändra kategori"
     },
     "limitSheet": {
       "pick": "Välj den kategori vars utgifter du vill hålla koll på."
@@ -121,7 +105,6 @@
     "total": "Totalt på konton",
     "change30": "{{amount}} på 30 dagar",
     "noMovements": "inga rörelser på 30 dagar",
-    "uncategorized": "Betalningar utan kategori",
     "sections": {
       "accounts": "Konton",
       "loans": "Lån",
@@ -220,7 +203,6 @@
       "title": "Flöden"
     },
     "ledger": {
-      "title": "Rörelser",
       "search": "Sök på motpart eller beskrivning",
       "all": "Alla",
       "in": "Inkommande",
@@ -229,12 +211,10 @@
       "noCategory": "Utan kategori",
       "categorize": "Kategori",
       "details": "Detaljer",
-      "count_one": "{{count}} rörelse",
-      "count_other": "{{count}} rörelser",
-      "empty": "Inga rörelser matchar",
+      "empty": "Inga transaktioner matchar",
       "emptyHint": "Ändra perioden eller filtret.",
       "showAll": "Visa alla",
-      "loadError": "Rörelserna kunde inte läsas in.",
+      "loadError": "Transaktionerna kunde inte läsas in.",
       "retry": "Försök igen"
     },
     "filter": {
@@ -244,8 +224,7 @@
       "period": "Period",
       "from": "Från",
       "to": "Till",
-      "apply": "Använd",
-      "reset": "Återställ"
+      "apply": "Använd"
     },
     "rowMenu": {
       "details": "Detaljer",
@@ -342,17 +321,11 @@
   },
   "transaction": {
     "flowSaved": "Betydelse sparad",
-    "done": "Klart",
     "counterparty": "Motpart",
     "date": "Datum",
     "category": "Kategori",
     "flow": "Betydelse",
-    "note": "Anteckning",
     "details": "Detaljer",
-    "bankId": "Bank-ID",
-    "valueDate": "Valutadatum",
-    "file": "Fil",
-    "line": "Rad",
     "sourceLabel": "Källa",
     "source": {
       "manual": "Inlagd för hand",
@@ -549,7 +522,6 @@
       "pricesAt": "kurser {{time}}",
       "pricesOn": "kurser {{date}}",
       "invested": "investerat {{amount}}",
-      "dividendsYear": "Utdelning / år",
       "yieldNote": "avkastning {{percent}}",
       "twrYtd": "Avkastning i år",
       "twrNote": "TWR · MWR {{mwr}}",
@@ -564,7 +536,6 @@
         "name": "Efter namn"
       },
       "searchToggle": "Sök",
-      "clearSearch": "Rensa sökningen",
       "showAll_one": "Visa {{count}} innehav",
       "showAll_other": "Visa alla {{count}} innehav",
       "menu": {
@@ -730,7 +701,6 @@
       "customEmpty": "Inga egna regler än. Du skapar dem på datorn.",
       "learnedEmpty": "Inget inlärt än. Appen lär sig av dina manuella kategoriseringar.",
       "noMatching": "Inget matchar sökningen",
-      "clearSearch": "Rensa sökning",
       "openPack": "Reglerna i {{name}}",
       "packSwitch": "Paket {{name}}",
       "ruleSwitch": "Regel {{name}}",

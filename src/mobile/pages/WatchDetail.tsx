@@ -235,7 +235,7 @@ export default function WatchDetail() {
     const changeBase = trendChangeBase(points, chartPeriodStart(period, nowSec));
     const changeLabel =
       changeBase === null
-        ? t(`overview.change.${period}`)
+        ? t(`dashboard:changePeriod.${period}`)
         : td('changeSince', { date: fmt.day(changeBase, changeSinceDayOptions(changeBase)) });
 
     const today = dayChange(detail.currentPrice, detail.previousClose);

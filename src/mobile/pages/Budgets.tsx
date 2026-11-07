@@ -327,7 +327,7 @@ function UnbudgetedItem({ row, category, currency, onSetLimit }: UnbudgetedItemP
   const name = category ? categoryName(category) : row.categoryId;
   const sub = [
     tr('actuals.stats.perMonth', { amount: moneyText(row.average, currency, WHOLE) }),
-    t('cashflow.moves', { count: row.count }),
+    t('bank_accounts:ledger.footer', { count: row.count }),
   ].join(' · ');
 
   return (

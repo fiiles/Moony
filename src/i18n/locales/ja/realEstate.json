@@ -145,7 +145,7 @@
     "openCalculator": "投資シミュレーターで開く",
     "revalue": "再評価",
     "menu": {
-      "edit": "詳細を編集",
+      "edit": "物件を編集",
       "valuationHistory": "評価額の履歴",
       "delete": "物件を削除"
     },
@@ -250,7 +250,7 @@
     "revalue": "再評価"
   },
   "confirmDelete": {
-    "title": "物件を削除",
+    "title": "物件を削除しますか？",
     "description": "「{{name}}」を削除しますか？この操作は元に戻せません。"
   },
   "confirmDeleteCost": {
@@ -403,7 +403,7 @@
       "other": "その他"
     },
     "deleteConfirm": {
-      "title": "書類を削除",
+      "title": "書類を削除しますか？",
       "description": "「{{name}}」を削除しますか？ファイルは完全に削除されます。"
     }
   },

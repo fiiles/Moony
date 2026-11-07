@@ -136,7 +136,7 @@
     "rateChange": "Zinsänderung erfassen"
   },
   "confirmDelete": {
-    "title": "Kredit löschen",
+    "title": "Kredit löschen?",
     "description": "„{{name}}“ löschen? Zugehörige Ereignisse und Immobilienverknüpfungen werden mitgelöscht. Das lässt sich nicht rückgängig machen."
   },
   "toast": {
@@ -287,9 +287,9 @@
       "balanceCheckNote": "gilt, bis Sie sie ändern",
       "drawdown": "Auszahlung {{amount}}",
       "drawdownNote": "Beginn des Kredits",
-      "delete": "Ereignis entfernen",
+      "delete": "Ereignis löschen",
       "confirmDelete": {
-        "title": "Ereignis entfernen",
+        "title": "Ereignis löschen?",
         "description": "Der Eintrag verschwindet aus Diagramm und Liste, und die Restschuld wird ohne ihn neu berechnet.",
         "descriptionManual": "Die manuelle Restschuld verschwindet aus Diagramm und Liste. Es gilt wieder die vorherige manuelle Restschuld oder, falls es keine gibt, die Schätzung."
       }

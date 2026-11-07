@@ -48,7 +48,7 @@ export function OtherAssetMenu({
         <DropdownMenuContent align="end" className="min-w-[240px]">
           <RowMenuItem onSelect={() => setEditOpen(true)}>
             <Pencil strokeWidth={1.75} aria-hidden />
-            {t('actions.edit')}
+            {t('detail.menu.edit')}
           </RowMenuItem>
           <RowMenuItem onSelect={() => setHistoryOpen(true)}>
             <History strokeWidth={1.75} aria-hidden />
@@ -57,7 +57,7 @@ export function OtherAssetMenu({
           <DropdownMenuSeparator />
           <RowMenuItem variant="danger" onSelect={onDelete}>
             <Trash2 strokeWidth={1.75} aria-hidden />
-            {t('actions.delete')}
+            {t('detail.menu.delete')}
           </RowMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>

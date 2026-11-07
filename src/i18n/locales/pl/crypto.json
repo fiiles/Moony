@@ -268,7 +268,8 @@
     "pricesRefreshed": "Kurs zaktualizowany",
     "confirmDeleteTransaction": {
       "title": "Usunąć transakcję?",
-      "description": "Transakcja ({{type}}: {{quantity}} × {{ticker}}, {{date}}, {{amount}}) zostanie usunięta na stałe. Tej operacji nie można cofnąć."
+      "descriptionBuy": "Zakup ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) zostanie usunięty na stałe. Tej operacji nie można cofnąć.",
+      "descriptionSell": "Sprzedaż ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) zostanie usunięta na stałe. Tej operacji nie można cofnąć."
     }
   },
   "unpricedBanner": {

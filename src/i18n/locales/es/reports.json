@@ -640,7 +640,6 @@
     "expenses": {
       "title": "Gastos por categoría",
       "manageCategories": "Gestionar categorías",
-      "manageLimits": "Gestionar límites",
       "spent": "Gastado",
       "limit": "Límite",
       "usage": "Uso",

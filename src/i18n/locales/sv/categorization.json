@@ -33,9 +33,9 @@
     },
     "hierarchyInfo": "Mer specifika regler (med IBAN) går före allmänna regler som bara gäller mottagare.",
     "bulkDelete": "Ta bort markerade",
-    "deleteConfirmTitle": "Ta bort inlärd regel",
+    "deleteConfirmTitle": "Ta bort den inlärda regeln?",
     "deleteConfirmDescription": "Vill du verkligen ta bort den här inlärda regeln? Det går inte att ångra.",
-    "bulkDeleteConfirmTitle": "Ta bort markerade regler",
+    "bulkDeleteConfirmTitle": "Ta bort de markerade reglerna?",
     "bulkDeleteConfirmDescription_one": "Vill du verkligen ta bort {{count}} markerad regel? Det går inte att ångra.",
     "bulkDeleteConfirmDescription_other": "Vill du verkligen ta bort {{count}} markerade regler? Det går inte att ångra.",
     "deleteSuccess": "Regeln har tagits bort",
@@ -107,7 +107,7 @@
     },
     "systemRule": "Systemregel",
     "systemRuleTooltip": "Systemregler kan inte redigeras eller tas bort",
-    "deleteConfirmTitle": "Ta bort egen regel",
+    "deleteConfirmTitle": "Ta bort den egna regeln?",
     "deleteConfirmDescription": "Vill du verkligen ta bort den här egna regeln? Det går inte att ångra.",
     "createSuccess": "Regeln har skapats",
     "updateSuccess": "Regeln har uppdaterats",
@@ -209,11 +209,11 @@
     "forgetSelected": "Glöm markerade ({{count}})",
     "selectedBar": "{{count}} markerade",
     "confirmForget": {
-      "title": "Glöm inlärd regel",
+      "title": "Glömma den inlärda regeln?",
       "description": "Motparten kategoriseras inte längre automatiskt; en ny manuell korrigering lär in den igen."
     },
     "confirmForgetBulk": {
-      "title": "Glöm markerade regler",
+      "title": "Glömma de markerade reglerna?",
       "description_one": "Glöm {{count}} markerad regel? Dess motpart kategoriseras inte längre automatiskt.",
       "description_other": "Glöm {{count}} markerade regler? Deras motparter kategoriseras inte längre automatiskt."
     },

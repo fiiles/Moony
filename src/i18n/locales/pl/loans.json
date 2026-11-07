@@ -150,7 +150,7 @@
     "rateChange": "Zapisz zmianę oprocentowania"
   },
   "confirmDelete": {
-    "title": "Usuń kredyt",
+    "title": "Usunąć kredyt?",
     "description": "Usunąć „{{name}}”? Razem z nim znikną jego zdarzenia i powiązania z nieruchomościami. Tej operacji nie można cofnąć."
   },
   "toast": {
@@ -305,7 +305,7 @@
       "drawdownNote": "początek kredytu",
       "delete": "Usuń zdarzenie",
       "confirmDelete": {
-        "title": "Usuń zdarzenie",
+        "title": "Usunąć zdarzenie?",
         "description": "Wpis zniknie z wykresu i listy, a saldo zostanie przeliczone bez niego.",
         "descriptionManual": "Saldo ręczne zniknie z wykresu i listy. Znów obowiązuje poprzednie saldo ręczne albo, jeśli go nie ma, szacunek."
       }

@@ -246,7 +246,8 @@
     "pricesRefreshed": "Kursen er oppdatert",
     "confirmDeleteTransaction": {
       "title": "Slette transaksjonen?",
-      "description": "Dette sletter transaksjonen ({{type}}, {{quantity}} × {{ticker}}, {{date}}, {{amount}}) permanent. Dette kan ikke angres."
+      "descriptionBuy": "Dette sletter kjøpet ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) permanent. Dette kan ikke angres.",
+      "descriptionSell": "Dette sletter salget ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) permanent. Dette kan ikke angres."
     }
   },
   "unpricedBanner": {

@@ -282,7 +282,8 @@
     },
     "confirmDeleteTransaction": {
       "title": "Usunąć transakcję?",
-      "description": "Transakcja ({{type}}: {{quantity}} × {{ticker}}, {{date}}, {{amount}}) zostanie usunięta na stałe. Tej operacji nie można cofnąć."
+      "descriptionBuy": "Zakup ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) zostanie usunięty na stałe. Tej operacji nie można cofnąć.",
+      "descriptionSell": "Sprzedaż ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) zostanie usunięta na stałe. Tej operacji nie można cofnąć."
     },
     "editName": {
       "title": "Edytuj nazwę",
@@ -315,7 +316,6 @@
     "sells_many": "{{count}} sprzedaży",
     "sells_other": "{{count}} sprzedaży",
     "noSells": "brak sprzedaży",
-    "dividends": "Dywidendy",
     "dividendNote": "szacunek rocznie · stopa {{percent}}",
     "refreshPrices": "Odśwież ceny",
     "buy": "Kup",
@@ -324,7 +324,7 @@
     "source": "Yahoo Finance",
     "deleteTransaction": "Usuń transakcję",
     "menu": {
-      "editPrice": "Edytuj cenę",
+      "editPrice": "Ustaw cenę ręcznie",
       "editDividend": "Edytuj szacunek dywidendy",
       "editName": "Edytuj nazwę",
       "recordSplit": "Zapisz split"

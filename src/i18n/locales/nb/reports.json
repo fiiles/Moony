@@ -618,7 +618,6 @@
     "expenses": {
       "title": "Utgifter per kategori",
       "manageCategories": "Administrer kategorier",
-      "manageLimits": "Administrer grenser",
       "spent": "Brukt",
       "limit": "Grense",
       "usage": "Bruk",

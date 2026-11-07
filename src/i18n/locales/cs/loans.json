@@ -144,7 +144,7 @@
     "rateChange": "Zapsat změnu sazby"
   },
   "confirmDelete": {
-    "title": "Smazat úvěr",
+    "title": "Smazat úvěr?",
     "description": "Opravdu chcete smazat „{{name}}“? Smažou se i jeho události a vazby na nemovitosti. Tuto akci nelze vrátit zpět."
   },
   "toast": {
@@ -296,9 +296,9 @@
       "balanceCheckNote": "platí, dokud ho nezměníte",
       "drawdown": "Čerpání {{amount}}",
       "drawdownNote": "začátek úvěru",
-      "delete": "Odstranit událost",
+      "delete": "Smazat událost",
       "confirmDelete": {
-        "title": "Odstranit událost",
+        "title": "Smazat událost?",
         "description": "Záznam zmizí z grafu i ze seznamu a zůstatek se spočítá znovu bez něj.",
         "descriptionManual": "Ruční zůstatek zmizí z grafu i ze seznamu. Znovu platí předchozí ruční zůstatek, případně odhad, pokud žádný není."
       }

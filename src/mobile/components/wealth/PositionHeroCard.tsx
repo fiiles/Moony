@@ -69,7 +69,7 @@ export function PositionHeroCard({
   const changeBase = trendChangeBase(points, periodStart);
   const changeLabel =
     changeBase === null
-      ? t(`overview.change.${period}`)
+      ? t(`dashboard:changePeriod.${period}`)
       : td('changeSince', { date: fmt.day(changeBase, changeSinceDayOptions(changeBase)) });
   const perUnit =
     originalCurrentPrice > 0

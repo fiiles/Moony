@@ -274,7 +274,8 @@
     },
     "confirmDeleteTransaction": {
       "title": "Ta bort transaktionen?",
-      "description": "Transaktionen av typen {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) tas bort permanent. Det går inte att ångra."
+      "descriptionBuy": "Köpet ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) tas bort permanent. Det går inte att ångra.",
+      "descriptionSell": "Försäljningen ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) tas bort permanent. Det går inte att ångra."
     },
     "editName": {
       "title": "Redigera namn",
@@ -303,7 +304,6 @@
     "sells_one": "{{count}} försäljning",
     "sells_other": "{{count}} försäljningar",
     "noSells": "ingen försäljning ännu",
-    "dividends": "Utdelningar",
     "dividendNote": "uppskattning per år · avkastning {{percent}}",
     "refreshPrices": "Uppdatera kurser",
     "buy": "Köp",
@@ -312,7 +312,7 @@
     "source": "Yahoo Finance",
     "deleteTransaction": "Ta bort transaktion",
     "menu": {
-      "editPrice": "Redigera kurs",
+      "editPrice": "Ange kurs manuellt",
       "editDividend": "Redigera utdelningsuppskattning",
       "editName": "Redigera namn",
       "recordSplit": "Registrera split"

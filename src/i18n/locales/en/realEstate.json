@@ -147,7 +147,7 @@
     "openCalculator": "Open in the investment calculator",
     "revalue": "Revalue",
     "menu": {
-      "edit": "Edit details",
+      "edit": "Edit property",
       "valuationHistory": "Valuation history",
       "delete": "Delete property"
     },
@@ -254,7 +254,7 @@
     "revalue": "Revalue"
   },
   "confirmDelete": {
-    "title": "Delete Property",
+    "title": "Delete property?",
     "description": "Are you sure you want to delete \"{{name}}\"? This action cannot be undone."
   },
   "confirmDeleteCost": {
@@ -409,7 +409,7 @@
       "other": "Other"
     },
     "deleteConfirm": {
-      "title": "Delete Document",
+      "title": "Delete document?",
       "description": "Are you sure you want to delete \"{{name}}\"? The file will be permanently removed."
     }
   },

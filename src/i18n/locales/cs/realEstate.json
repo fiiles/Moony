@@ -149,7 +149,7 @@
     "openCalculator": "Otevřít v investiční kalkulačce",
     "revalue": "Přecenit",
     "menu": {
-      "edit": "Upravit údaje",
+      "edit": "Upravit nemovitost",
       "valuationHistory": "Historie přecenění",
       "delete": "Smazat nemovitost"
     },
@@ -258,7 +258,7 @@
     "revalue": "Přecenit"
   },
   "confirmDelete": {
-    "title": "Smazat nemovitost",
+    "title": "Smazat nemovitost?",
     "description": "Opravdu chcete smazat \"{{name}}\"? Tuto akci nelze vrátit zpět."
   },
   "confirmDeleteCost": {
@@ -415,7 +415,7 @@
       "other": "Jiné"
     },
     "deleteConfirm": {
-      "title": "Smazat dokument",
+      "title": "Smazat dokument?",
       "description": "Opravdu chcete smazat \"{{name}}\"? Soubor bude trvale odstraněn."
     }
   },

@@ -15,18 +15,7 @@
     "reason": "Unlock Moony"
   },
   "overview": {
-    "change": {
-      "30D": "over 30 days",
-      "90D": "over 3 months",
-      "YTD": "this year",
-      "1Y": "over the year",
-      "5Y": "over 5 years",
-      "All": "since the first record"
-    },
     "stats": {
-      "assets": "Assets",
-      "freeCash": "Free cash",
-      "freeCashNote": "on accounts",
       "unchanged": "unchanged",
       "noHistory": "no history yet"
     }
@@ -35,8 +24,6 @@
     "subtitle_one": "Actual income and expenses from {{count}} account",
     "subtitle_other": "Actual income and expenses from {{count}} accounts",
     "subtitleAll": "Actual income and expenses from all accounts",
-    "moves_one": "{{count}} transaction",
-    "moves_other": "{{count}} transactions",
     "shareOfExpenses": "{{share}} of expenses",
     "shareOfIncome": "{{share}} of income",
     "partial": "This period has not ended yet; the numbers will fill in with the next statement.",
@@ -48,9 +35,6 @@
     "accounts": {
       "title": "Accounts in the report",
       "done": "Done"
-    },
-    "picker": {
-      "change": "Change category"
     },
     "limitSheet": {
       "pick": "Choose the category whose spending you want to keep in check."
@@ -121,7 +105,6 @@
     "total": "Total on accounts",
     "change30": "{{amount}} over 30 days",
     "noMovements": "no movements in 30 days",
-    "uncategorized": "Uncategorized payments",
     "sections": {
       "accounts": "Accounts",
       "loans": "Loans",
@@ -220,7 +203,6 @@
       "title": "Flows"
     },
     "ledger": {
-      "title": "Movements",
       "search": "Search by counterparty or description",
       "all": "All",
       "in": "Incoming",
@@ -229,12 +211,10 @@
       "noCategory": "No category",
       "categorize": "Category",
       "details": "Details",
-      "count_one": "{{count}} movement",
-      "count_other": "{{count}} movements",
-      "empty": "No movements match",
+      "empty": "No transactions match",
       "emptyHint": "Change the period or the filter.",
       "showAll": "Show all",
-      "loadError": "The movements could not be loaded.",
+      "loadError": "The transactions could not be loaded.",
       "retry": "Try again"
     },
     "filter": {
@@ -244,8 +224,7 @@
       "period": "Period",
       "from": "From",
       "to": "To",
-      "apply": "Apply",
-      "reset": "Reset"
+      "apply": "Apply"
     },
     "rowMenu": {
       "details": "Details",
@@ -342,17 +321,11 @@
   },
   "transaction": {
     "flowSaved": "Meaning saved",
-    "done": "Done",
     "counterparty": "Counterparty",
     "date": "Date",
     "category": "Category",
     "flow": "Meaning",
-    "note": "Note",
     "details": "Details",
-    "bankId": "Bank ID",
-    "valueDate": "Value date",
-    "file": "File",
-    "line": "Line",
     "sourceLabel": "Source",
     "source": {
       "manual": "Entered by hand",
@@ -549,7 +522,6 @@
       "pricesAt": "prices {{time}}",
       "pricesOn": "prices {{date}}",
       "invested": "invested {{amount}}",
-      "dividendsYear": "Dividends / year",
       "yieldNote": "yield {{percent}}",
       "twrYtd": "Return this year",
       "twrNote": "TWR · MWR {{mwr}}",
@@ -564,7 +536,6 @@
         "name": "By name"
       },
       "searchToggle": "Search",
-      "clearSearch": "Clear search",
       "showAll_one": "Show all {{count}} positions",
       "showAll_other": "Show all {{count}} positions",
       "menu": {
@@ -730,7 +701,6 @@
       "customEmpty": "No own rules yet. You create them on the computer.",
       "learnedEmpty": "Nothing learned yet. The app learns from your manual categorizations.",
       "noMatching": "Nothing matches the search",
-      "clearSearch": "Clear search",
       "openPack": "Rules of {{name}}",
       "packSwitch": "Pack {{name}}",
       "ruleSwitch": "Rule {{name}}",

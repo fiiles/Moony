@@ -283,7 +283,8 @@
     },
     "confirmDeleteTransaction": {
       "title": "Smazat transakci?",
-      "description": "Tím trvale smažete transakci typu {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Tuto akci nelze vrátit zpět."
+      "descriptionBuy": "Tím trvale smažete nákup ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Tuto akci nelze vrátit zpět.",
+      "descriptionSell": "Tím trvale smažete prodej ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Tuto akci nelze vrátit zpět."
     },
     "editName": {
       "title": "Upravit název",
@@ -310,7 +311,6 @@
     "sells_few": "{{count}} prodeje",
     "sells_other": "{{count}} prodejů",
     "noSells": "zatím žádný prodej",
-    "dividends": "Dividendy",
     "dividendNote": "odhad za rok · výnos {{percent}}",
     "refreshPrices": "Obnovit ceny",
     "buy": "Koupit",
@@ -319,7 +319,7 @@
     "source": "Yahoo Finance",
     "deleteTransaction": "Smazat transakci",
     "menu": {
-      "editPrice": "Upravit cenu",
+      "editPrice": "Zadat cenu ručně",
       "editDividend": "Upravit odhad dividendy",
       "editName": "Upravit název",
       "recordSplit": "Zaznamenat split"

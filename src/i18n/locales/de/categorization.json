@@ -33,9 +33,9 @@
     },
     "hierarchyInfo": "Spezifischere Regeln (mit IBAN) haben Vorrang vor allgemeinen Regeln nur für den Empfänger.",
     "bulkDelete": "Auswahl löschen",
-    "deleteConfirmTitle": "Gelernte Regel löschen",
+    "deleteConfirmTitle": "Gelernte Regel löschen?",
     "deleteConfirmDescription": "Möchten Sie diese gelernte Regel wirklich löschen? Das lässt sich nicht rückgängig machen.",
-    "bulkDeleteConfirmTitle": "Ausgewählte Regeln löschen",
+    "bulkDeleteConfirmTitle": "Ausgewählte Regeln löschen?",
     "bulkDeleteConfirmDescription_one": "Möchten Sie die {{count}} ausgewählte Regel wirklich löschen? Das lässt sich nicht rückgängig machen.",
     "bulkDeleteConfirmDescription_other": "Möchten Sie die {{count}} ausgewählten Regeln wirklich löschen? Das lässt sich nicht rückgängig machen.",
     "deleteSuccess": "Regel gelöscht",
@@ -107,7 +107,7 @@
     },
     "systemRule": "Systemregel",
     "systemRuleTooltip": "Systemregeln können nicht bearbeitet oder gelöscht werden",
-    "deleteConfirmTitle": "Eigene Regel löschen",
+    "deleteConfirmTitle": "Eigene Regel löschen?",
     "deleteConfirmDescription": "Möchten Sie diese eigene Regel wirklich löschen? Das lässt sich nicht rückgängig machen.",
     "createSuccess": "Regel erstellt",
     "updateSuccess": "Regel aktualisiert",
@@ -209,11 +209,11 @@
     "forgetSelected": "Auswahl vergessen ({{count}})",
     "selectedBar": "{{count}} ausgewählt",
     "confirmForget": {
-      "title": "Gelernte Regel vergessen",
+      "title": "Gelernte Regel vergessen?",
       "description": "Die Gegenpartei wird nicht mehr automatisch kategorisiert; eine neue manuelle Korrektur bringt ihr die Zuordnung erneut bei."
     },
     "confirmForgetBulk": {
-      "title": "Ausgewählte Regeln vergessen",
+      "title": "Ausgewählte Regeln vergessen?",
       "description_one": "Die {{count}} ausgewählte Regel vergessen? Ihre Gegenpartei wird nicht mehr automatisch kategorisiert.",
       "description_other": "Die {{count}} ausgewählten Regeln vergessen? Ihre Gegenparteien werden nicht mehr automatisch kategorisiert."
     },

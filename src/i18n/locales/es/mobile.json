@@ -15,18 +15,7 @@
     "reason": "Desbloquear Moony"
   },
   "overview": {
-    "change": {
-      "30D": "en 30 días",
-      "90D": "en 3 meses",
-      "YTD": "este año",
-      "1Y": "en un año",
-      "5Y": "en 5 años",
-      "All": "desde el primer registro"
-    },
     "stats": {
-      "assets": "Activos",
-      "freeCash": "Efectivo libre",
-      "freeCashNote": "en cuentas",
       "unchanged": "sin cambios",
       "noHistory": "sin historial"
     }
@@ -36,9 +25,6 @@
     "subtitle_many": "Ingresos y gastos reales de {{count}} cuentas",
     "subtitle_other": "Ingresos y gastos reales de {{count}} cuentas",
     "subtitleAll": "Ingresos y gastos reales de todas las cuentas",
-    "moves_one": "{{count}} movimiento",
-    "moves_many": "{{count}} movimientos",
-    "moves_other": "{{count}} movimientos",
     "shareOfExpenses": "{{share}} de los gastos",
     "shareOfIncome": "{{share}} de los ingresos",
     "partial": "El periodo aún no ha terminado; las cifras se completarán con el próximo extracto.",
@@ -50,9 +36,6 @@
     "accounts": {
       "title": "Cuentas en el informe",
       "done": "Listo"
-    },
-    "picker": {
-      "change": "Cambiar categoría"
     },
     "limitSheet": {
       "pick": "Elige la categoría cuyos gastos quieres controlar."
@@ -132,7 +115,6 @@
     "total": "Total en cuentas",
     "change30": "{{amount}} en 30 días",
     "noMovements": "sin movimientos en 30 días",
-    "uncategorized": "Pagos sin categoría",
     "sections": {
       "accounts": "Cuentas",
       "loans": "Préstamos",
@@ -238,7 +220,6 @@
       "title": "Flujos"
     },
     "ledger": {
-      "title": "Movimientos",
       "search": "Buscar por contraparte o descripción",
       "all": "Todos",
       "in": "Entrantes",
@@ -247,9 +228,6 @@
       "noCategory": "Sin categoría",
       "categorize": "Categoría",
       "details": "Detalles",
-      "count_one": "{{count}} movimiento",
-      "count_many": "{{count}} movimientos",
-      "count_other": "{{count}} movimientos",
       "empty": "Ningún movimiento coincide",
       "emptyHint": "Cambia el periodo o el filtro.",
       "showAll": "Mostrar todos",
@@ -263,8 +241,7 @@
       "period": "Periodo",
       "from": "Desde",
       "to": "Hasta",
-      "apply": "Aplicar",
-      "reset": "Restablecer"
+      "apply": "Aplicar"
     },
     "rowMenu": {
       "details": "Detalles",
@@ -368,17 +345,11 @@
   },
   "transaction": {
     "flowSaved": "Significado guardado",
-    "done": "Listo",
     "counterparty": "Contraparte",
     "date": "Fecha",
     "category": "Categoría",
     "flow": "Significado",
-    "note": "Nota",
     "details": "Detalles",
-    "bankId": "ID del banco",
-    "valueDate": "Fecha valor",
-    "file": "Archivo",
-    "line": "Línea",
     "sourceLabel": "Origen",
     "source": {
       "manual": "Introducido a mano",
@@ -582,7 +553,6 @@
       "pricesAt": "precios {{time}}",
       "pricesOn": "precios {{date}}",
       "invested": "invertido {{amount}}",
-      "dividendsYear": "Dividendos / año",
       "yieldNote": "rendimiento {{percent}}",
       "twrYtd": "Rentabilidad este año",
       "twrNote": "TWR · MWR {{mwr}}",
@@ -597,7 +567,6 @@
         "name": "Por nombre"
       },
       "searchToggle": "Buscar",
-      "clearSearch": "Borrar búsqueda",
       "showAll_one": "Mostrar {{count}} posición",
       "showAll_many": "Mostrar todas las {{count}} posiciones",
       "showAll_other": "Mostrar todas las {{count}} posiciones",
@@ -767,7 +736,6 @@
       "customEmpty": "Aún no hay reglas propias. Se crean en el ordenador.",
       "learnedEmpty": "Aún no ha aprendido nada. La app aprende de sus clasificaciones manuales.",
       "noMatching": "Nada coincide con la búsqueda",
-      "clearSearch": "Borrar búsqueda",
       "openPack": "Reglas de {{name}}",
       "packSwitch": "Paquete {{name}}",
       "ruleSwitch": "Regla {{name}}",

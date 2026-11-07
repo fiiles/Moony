@@ -311,7 +311,7 @@ function WatchedList({ rows }: { rows: WatchedStockRow[] }) {
         value={query}
         onChange={setQuery}
         placeholder={tm('search.placeholder')}
-        clearLabel={t('wealth.stocks.clearSearch')}
+        clearLabel={t('common:a11y.clearSearch')}
       />
       {searching ? (
         results.length > 0 ? (
@@ -369,7 +369,8 @@ function PortfolioStats({
 
   const stats: StatItem[] = [
     {
-      label: ts('detail.unrealized'),
+      // The desktop's summary (and the phone's crypto) names a loss a loss
+      label: (unrealized ?? 0) >= 0 ? ts('summary.unrealizedGain') : ts('summary.unrealizedLoss'),
       value: unrealized === null ? '—' : statMoney(unrealized, true),
       tone: statTone(unrealized),
       note: [
@@ -386,7 +387,7 @@ function PortfolioStats({
         .join(' · '),
     },
     {
-      label: t('wealth.stocks.dividendsYear'),
+      label: ts('summary.estimatedDividend'),
       value: dividends ? statMoney(dividends) : '—',
       note:
         dividends && value !== null && value > 0

@@ -147,7 +147,7 @@
     "openCalculator": "Im Investitionsrechner öffnen",
     "revalue": "Neu bewerten",
     "menu": {
-      "edit": "Details bearbeiten",
+      "edit": "Immobilie bearbeiten",
       "valuationHistory": "Bewertungsverlauf",
       "delete": "Immobilie löschen"
     },
@@ -254,7 +254,7 @@
     "revalue": "Neu bewerten"
   },
   "confirmDelete": {
-    "title": "Immobilie löschen",
+    "title": "Immobilie löschen?",
     "description": "Möchten Sie „{{name}}“ wirklich löschen? Das lässt sich nicht rückgängig machen."
   },
   "confirmDeleteCost": {
@@ -409,7 +409,7 @@
       "other": "Sonstiges"
     },
     "deleteConfirm": {
-      "title": "Dokument löschen",
+      "title": "Dokument löschen?",
       "description": "Möchten Sie „{{name}}“ wirklich löschen? Die Datei wird dauerhaft entfernt."
     }
   },

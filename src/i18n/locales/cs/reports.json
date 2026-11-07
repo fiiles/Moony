@@ -640,7 +640,6 @@
     "expenses": {
       "title": "Výdaje podle kategorií",
       "manageCategories": "Správa kategorií",
-      "manageLimits": "Spravovat limity",
       "spent": "Utraceno",
       "limit": "Limit",
       "usage": "Čerpání",
@@ -674,7 +673,7 @@
       "sub": "Nepočítá se do příjmů ani výdajů",
       "movement": "Celkový pohyb peněz na účtech {{amount}}"
     },
-    "uncategorized": "Nezařazeno",
+    "uncategorized": "Nezařazené",
     "uncategorizedTransfers": "Přesuny bez kategorie",
     "empty": {
       "action": "Otevřít bankovní účty",

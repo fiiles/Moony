@@ -246,7 +246,8 @@
     "pricesRefreshed": "Kurs aktualisiert",
     "confirmDeleteTransaction": {
       "title": "Transaktion löschen?",
-      "description": "Damit wird die Transaktion vom Typ {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) dauerhaft gelöscht. Das lässt sich nicht rückgängig machen."
+      "descriptionBuy": "Damit wird der Kauf ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.",
+      "descriptionSell": "Damit wird der Verkauf ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) dauerhaft gelöscht. Das lässt sich nicht rückgängig machen."
     }
   },
   "unpricedBanner": {

@@ -143,7 +143,7 @@
     "rateChange": "Registra una variazione di tasso"
   },
   "confirmDelete": {
-    "title": "Elimina prestito",
+    "title": "Eliminare il prestito?",
     "description": "Eliminare «{{name}}»? Verranno eliminati anche i suoi eventi e i collegamenti agli immobili. L'operazione non si può annullare."
   },
   "toast": {
@@ -295,9 +295,9 @@
       "balanceCheckNote": "vale finché non lo cambi",
       "drawdown": "Erogazione {{amount}}",
       "drawdownNote": "inizio del prestito",
-      "delete": "Rimuovi evento",
+      "delete": "Elimina evento",
       "confirmDelete": {
-        "title": "Rimuovi evento",
+        "title": "Eliminare l'evento?",
         "description": "La voce scompare dal grafico e dall'elenco, e il saldo viene ricalcolato senza di essa.",
         "descriptionManual": "Il saldo manuale scompare dal grafico e dall'elenco. Torna a valere il saldo manuale precedente o, se non ce n'è, la stima."
       }

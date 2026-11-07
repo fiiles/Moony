@@ -77,7 +77,8 @@
   },
   "confirmDeleteTransaction": {
     "title": "Slette transaksjonen?",
-    "description": "Dette sletter transaksjonen ({{type}}, {{quantity}} × {{price}}, {{date}}) permanent. Dette kan ikke angres."
+    "descriptionBuy": "Dette sletter kjøpet ({{quantity}} × {{price}}, {{date}}) permanent. Dette kan ikke angres.",
+    "descriptionSell": "Dette sletter salget ({{quantity}} × {{price}}, {{date}}) permanent. Dette kan ikke angres."
   },
   "toast": {
     "added": "Eiendelen er lagt til",
@@ -142,5 +143,11 @@
   "chart": {
     "title": "Estimert verdi over tid",
     "subtitle": "Flat mellom omvurderinger – hoppene er dine anslag og kjøp, ikke markedet."
+  },
+  "detail": {
+    "menu": {
+      "edit": "Rediger eiendel",
+      "delete": "Slett eiendel"
+    }
   }
 }

@@ -134,7 +134,8 @@
     "end": "End policy",
     "reactivate": "Reactivate policy",
     "delete": "Delete policy",
-    "addDocument": "Add document"
+    "addDocument": "Add document",
+    "editPolicy": "Edit policy"
   },
   "endDialog": {
     "title": "End policy · {{name}}",
@@ -145,7 +146,7 @@
     "submit": "End policy"
   },
   "confirmDelete": {
-    "title": "Delete policy",
+    "title": "Delete policy?",
     "description": "Delete \"{{name}}\"? Its documents go with it. This cannot be undone."
   },
   "toast": {
@@ -307,7 +308,7 @@
       "other": "Other"
     },
     "deleteConfirm": {
-      "title": "Delete document",
+      "title": "Delete document?",
       "description": "Delete \"{{name}}\"? The file will be removed permanently."
     }
   }

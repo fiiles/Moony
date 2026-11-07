@@ -246,7 +246,8 @@
     "pricesRefreshed": "Rate updated",
     "confirmDeleteTransaction": {
       "title": "Delete transaction?",
-      "description": "This permanently deletes the {{type}} transaction ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). This cannot be undone."
+      "descriptionBuy": "This will permanently delete the purchase ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). This action cannot be undone.",
+      "descriptionSell": "This will permanently delete the sale ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). This action cannot be undone."
     }
   },
   "unpricedBanner": {

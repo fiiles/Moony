@@ -77,7 +77,8 @@
   },
   "confirmDeleteTransaction": {
     "title": "Delete transaction?",
-    "description": "This will permanently delete the {{type}} transaction ({{quantity}} × {{price}}, {{date}}). This action cannot be undone."
+    "descriptionBuy": "This will permanently delete the purchase ({{quantity}} × {{price}}, {{date}}). This action cannot be undone.",
+    "descriptionSell": "This will permanently delete the sale ({{quantity}} × {{price}}, {{date}}). This action cannot be undone."
   },
   "toast": {
     "added": "Asset added",
@@ -142,5 +143,11 @@
   "chart": {
     "title": "Estimated value over time",
     "subtitle": "Flat between revaluations – the jumps are your estimates and purchases, not the market."
+  },
+  "detail": {
+    "menu": {
+      "edit": "Edit asset",
+      "delete": "Delete asset"
+    }
   }
 }

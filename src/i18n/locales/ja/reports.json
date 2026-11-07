@@ -596,7 +596,6 @@
     "expenses": {
       "title": "カテゴリ別の支出",
       "manageCategories": "カテゴリを管理",
-      "manageLimits": "上限を管理",
       "spent": "支出",
       "limit": "上限",
       "usage": "使用率",

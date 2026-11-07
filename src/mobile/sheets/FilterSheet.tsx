@@ -69,7 +69,7 @@ export function FilterSheet({ open, onOpenChange, state, categories, onApply }: 
             className="h-auto min-h-12 whitespace-normal py-2 text-center rounded-[10px] px-[18px] text-m-row"
             onClick={() => apply({ ...DEFAULT_LEDGER, kind: state.kind, search: state.search })}
           >
-            {t('account.filter.reset')}
+            {t('common:filterBadge.clear')}
           </Button>
           <Button
             className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"

@@ -257,7 +257,8 @@
     "pricesRefreshed": "Quotazione aggiornata",
     "confirmDeleteTransaction": {
       "title": "Eliminare l'operazione?",
-      "description": "Verrà eliminata definitivamente l'operazione di tipo {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). L'operazione non si può annullare."
+      "descriptionBuy": "Verrà eliminato definitivamente l'acquisto ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). L'operazione non si può annullare.",
+      "descriptionSell": "Verrà eliminata definitivamente la vendita ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). L'operazione non si può annullare."
     }
   },
   "unpricedBanner": {

@@ -33,9 +33,9 @@
     },
     "hierarchyInfo": "Las reglas más específicas (con IBAN) tienen prioridad sobre las generales solo de beneficiario.",
     "bulkDelete": "Eliminar seleccionadas",
-    "deleteConfirmTitle": "Eliminar regla aprendida",
+    "deleteConfirmTitle": "¿Eliminar la regla aprendida?",
     "deleteConfirmDescription": "¿Seguro que quieres eliminar esta regla aprendida? Esta acción no se puede deshacer.",
-    "bulkDeleteConfirmTitle": "Eliminar reglas seleccionadas",
+    "bulkDeleteConfirmTitle": "¿Eliminar las reglas seleccionadas?",
     "bulkDeleteConfirmDescription_one": "¿Seguro que quieres eliminar la regla seleccionada ({{count}})? Esta acción no se puede deshacer.",
     "bulkDeleteConfirmDescription_many": "¿Seguro que quieres eliminar las {{count}} reglas seleccionadas? Esta acción no se puede deshacer.",
     "bulkDeleteConfirmDescription_other": "¿Seguro que quieres eliminar las {{count}} reglas seleccionadas? Esta acción no se puede deshacer.",
@@ -109,7 +109,7 @@
     },
     "systemRule": "Regla del sistema",
     "systemRuleTooltip": "Las reglas del sistema no se pueden editar ni eliminar",
-    "deleteConfirmTitle": "Eliminar regla propia",
+    "deleteConfirmTitle": "¿Eliminar la regla propia?",
     "deleteConfirmDescription": "¿Seguro que quieres eliminar esta regla propia? Esta acción no se puede deshacer.",
     "createSuccess": "Regla creada",
     "updateSuccess": "Regla actualizada",
@@ -212,11 +212,11 @@
     "forgetSelected": "Olvidar seleccionadas ({{count}})",
     "selectedBar": "{{count}} seleccionadas",
     "confirmForget": {
-      "title": "Olvidar regla aprendida",
+      "title": "¿Olvidar la regla aprendida?",
       "description": "La contraparte dejará de categorizarse automáticamente; una nueva corrección manual volverá a enseñárselo."
     },
     "confirmForgetBulk": {
-      "title": "Olvidar reglas seleccionadas",
+      "title": "¿Olvidar las reglas seleccionadas?",
       "description_one": "¿Olvidar la regla seleccionada ({{count}})? Su contraparte dejará de categorizarse automáticamente.",
       "description_many": "¿Olvidar las {{count}} reglas seleccionadas? Sus contrapartes dejarán de categorizarse automáticamente.",
       "description_other": "¿Olvidar las {{count}} reglas seleccionadas? Sus contrapartes dejarán de categorizarse automáticamente."

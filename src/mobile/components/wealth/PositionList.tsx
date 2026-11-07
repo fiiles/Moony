@@ -91,7 +91,7 @@ export function PositionList<R extends PositionRowBase & { companyName?: string;
             value={search}
             onChange={setSearch}
             placeholder={ts('table.search')}
-            clearLabel={t('wealth.stocks.clearSearch')}
+            clearLabel={t('common:a11y.clearSearch')}
           />
         </div>
       )}

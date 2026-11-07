@@ -15,18 +15,7 @@
     "reason": "Odblokuj Moony"
   },
   "overview": {
-    "change": {
-      "30D": "w 30 dni",
-      "90D": "w 3 miesiące",
-      "YTD": "w tym roku",
-      "1Y": "w rok",
-      "5Y": "w 5 lat",
-      "All": "od pierwszego zapisu"
-    },
     "stats": {
-      "assets": "Aktywa",
-      "freeCash": "Wolna gotówka",
-      "freeCashNote": "na kontach",
       "unchanged": "bez zmian",
       "noHistory": "brak historii"
     }
@@ -37,10 +26,6 @@
     "subtitle_many": "Rzeczywiste przychody i wydatki z {{count}} kont",
     "subtitle_other": "Rzeczywiste przychody i wydatki z {{count}} konta",
     "subtitleAll": "Rzeczywiste przychody i wydatki ze wszystkich kont",
-    "moves_one": "{{count}} transakcja",
-    "moves_few": "{{count}} transakcje",
-    "moves_many": "{{count}} transakcji",
-    "moves_other": "{{count}} transakcji",
     "shareOfExpenses": "{{share}} wydatków",
     "shareOfIncome": "{{share}} przychodów",
     "partial": "Okres jeszcze się nie skończył; liczby uzupełnią się wraz z następnym wyciągiem.",
@@ -52,9 +37,6 @@
     "accounts": {
       "title": "Konta w raporcie",
       "done": "Gotowe"
-    },
-    "picker": {
-      "change": "Zmień kategorię"
     },
     "limitSheet": {
       "pick": "Wybierz kategorię, której wydatki chcesz pilnować."
@@ -143,7 +125,6 @@
     "total": "Łącznie na kontach",
     "change30": "{{amount}} w 30 dni",
     "noMovements": "brak ruchów w 30 dni",
-    "uncategorized": "Płatności bez kategorii",
     "sections": {
       "accounts": "Konta",
       "loans": "Kredyty",
@@ -256,7 +237,6 @@
       "title": "Przepływy"
     },
     "ledger": {
-      "title": "Ruchy",
       "search": "Szukaj po kontrahencie lub opisie",
       "all": "Wszystkie",
       "in": "Przychodzące",
@@ -265,14 +245,10 @@
       "noCategory": "Bez kategorii",
       "categorize": "Kategoria",
       "details": "Szczegóły",
-      "count_one": "{{count}} ruch",
-      "count_few": "{{count}} ruchy",
-      "count_many": "{{count}} ruchów",
-      "count_other": "{{count}} ruchu",
-      "empty": "Brak pasujących ruchów",
+      "empty": "Brak pasujących transakcji",
       "emptyHint": "Zmień okres lub filtr.",
       "showAll": "Pokaż wszystkie",
-      "loadError": "Nie udało się wczytać ruchów.",
+      "loadError": "Nie udało się wczytać transakcji.",
       "retry": "Spróbuj ponownie"
     },
     "filter": {
@@ -282,8 +258,7 @@
       "period": "Okres",
       "from": "Od",
       "to": "Do",
-      "apply": "Zastosuj",
-      "reset": "Resetuj"
+      "apply": "Zastosuj"
     },
     "rowMenu": {
       "details": "Szczegóły",
@@ -394,17 +369,11 @@
   },
   "transaction": {
     "flowSaved": "Znaczenie zapisane",
-    "done": "Gotowe",
     "counterparty": "Kontrahent",
     "date": "Data",
     "category": "Kategoria",
     "flow": "Znaczenie",
-    "note": "Notatka",
     "details": "Szczegóły",
-    "bankId": "ID banku",
-    "valueDate": "Data waluty",
-    "file": "Plik",
-    "line": "Wiersz",
     "sourceLabel": "Źródło",
     "source": {
       "manual": "Wpisano ręcznie",
@@ -615,7 +584,6 @@
       "pricesAt": "ceny {{time}}",
       "pricesOn": "ceny {{date}}",
       "invested": "zainwestowano {{amount}}",
-      "dividendsYear": "Dywidendy / rok",
       "yieldNote": "stopa dywidendy {{percent}}",
       "twrYtd": "Zwrot w tym roku",
       "twrNote": "TWR · MWR {{mwr}}",
@@ -630,7 +598,6 @@
         "name": "Według nazwy"
       },
       "searchToggle": "Szukaj",
-      "clearSearch": "Wyczyść wyszukiwanie",
       "showAll_one": "Pokaż {{count}} pozycję",
       "showAll_few": "Pokaż wszystkie {{count}} pozycje",
       "showAll_many": "Pokaż wszystkie {{count}} pozycji",
@@ -804,7 +771,6 @@
       "customEmpty": "Nie ma jeszcze własnych reguł. Tworzysz je na komputerze.",
       "learnedEmpty": "Nic jeszcze się nie nauczyła. Aplikacja uczy się z twoich ręcznych kategoryzacji.",
       "noMatching": "Nic nie pasuje do wyszukiwania",
-      "clearSearch": "Wyczyść wyszukiwanie",
       "openPack": "Reguły pakietu {{name}}",
       "packSwitch": "Pakiet {{name}}",
       "ruleSwitch": "Reguła {{name}}",

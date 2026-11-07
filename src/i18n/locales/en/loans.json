@@ -136,7 +136,7 @@
     "rateChange": "Record a rate change"
   },
   "confirmDelete": {
-    "title": "Delete loan",
+    "title": "Delete loan?",
     "description": "Delete \"{{name}}\"? Its events and property links go with it. This cannot be undone."
   },
   "toast": {
@@ -287,9 +287,9 @@
       "balanceCheckNote": "holds until you change it",
       "drawdown": "Drawdown {{amount}}",
       "drawdownNote": "start of the loan",
-      "delete": "Remove event",
+      "delete": "Delete event",
       "confirmDelete": {
-        "title": "Remove event",
+        "title": "Delete event?",
         "description": "The entry disappears from the chart and the list, and the balance is worked out again without it.",
         "descriptionManual": "The manual balance disappears from the chart and the list. The previous manual balance applies again, or the estimate when there is none."
       }

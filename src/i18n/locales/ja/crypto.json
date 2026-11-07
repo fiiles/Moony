@@ -235,7 +235,8 @@
     "pricesRefreshed": "レートを更新しました",
     "confirmDeleteTransaction": {
       "title": "取引を削除しますか？",
-      "description": "{{type}}の取引（{{quantity}} × {{ticker}}、{{date}}、{{amount}}）を完全に削除します。この操作は元に戻せません。"
+      "descriptionBuy": "買付（{{quantity}} × {{ticker}}、{{date}}、{{amount}}）を完全に削除します。この操作は元に戻せません。",
+      "descriptionSell": "売却（{{quantity}} × {{ticker}}、{{date}}、{{amount}}）を完全に削除します。この操作は元に戻せません。"
     }
   },
   "unpricedBanner": {

@@ -274,7 +274,8 @@
     },
     "confirmDeleteTransaction": {
       "title": "Transaktion löschen?",
-      "description": "Damit wird die Transaktion vom Typ {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) dauerhaft gelöscht. Das lässt sich nicht rückgängig machen."
+      "descriptionBuy": "Damit wird der Kauf ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.",
+      "descriptionSell": "Damit wird der Verkauf ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) dauerhaft gelöscht. Das lässt sich nicht rückgängig machen."
     },
     "editName": {
       "title": "Name bearbeiten",
@@ -303,7 +304,6 @@
     "sells_one": "{{count}} Verkauf",
     "sells_other": "{{count}} Verkäufe",
     "noSells": "noch kein Verkauf",
-    "dividends": "Dividenden",
     "dividendNote": "Schätzung pro Jahr · Rendite {{percent}}",
     "refreshPrices": "Kurse aktualisieren",
     "buy": "Kaufen",
@@ -312,7 +312,7 @@
     "source": "Yahoo Finance",
     "deleteTransaction": "Transaktion löschen",
     "menu": {
-      "editPrice": "Kurs bearbeiten",
+      "editPrice": "Kurs manuell festlegen",
       "editDividend": "Dividendenschätzung bearbeiten",
       "editName": "Name bearbeiten",
       "recordSplit": "Split erfassen"

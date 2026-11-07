@@ -364,7 +364,7 @@ export function InvestmentsTable({
                           </DropdownMenuItem>
                           <DropdownMenuItem onSelect={() => onUpdatePrice(h)}>
                             <Pencil />
-                            {t('actions.updatePrice')}
+                            {t('detail.menu.editPrice')}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem variant="danger" onSelect={() => onDelete(h)}>

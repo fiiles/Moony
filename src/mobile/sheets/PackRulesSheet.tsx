@@ -108,7 +108,7 @@ export function PackRulesSheet({ pack, onClose }: PackRulesSheetProps) {
           value={query}
           onChange={setQuery}
           placeholder={t('packTab.search')}
-          clearLabel={tm('settings.categorization.clearSearch')}
+          clearLabel={tm('common:a11y.clearSearch')}
         />
         <div className="min-h-0 flex-1 overflow-y-auto">{body}</div>
       </div>

@@ -274,7 +274,8 @@
     },
     "confirmDeleteTransaction": {
       "title": "Delete transaction?",
-      "description": "This will permanently delete the {{type}} transaction ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). This action cannot be undone."
+      "descriptionBuy": "This will permanently delete the purchase ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). This action cannot be undone.",
+      "descriptionSell": "This will permanently delete the sale ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). This action cannot be undone."
     },
     "editName": {
       "title": "Edit name",
@@ -303,7 +304,6 @@
     "sells_one": "{{count}} sale",
     "sells_other": "{{count}} sales",
     "noSells": "no sale yet",
-    "dividends": "Dividends",
     "dividendNote": "estimate per year · yield {{percent}}",
     "refreshPrices": "Refresh prices",
     "buy": "Buy",
@@ -312,7 +312,7 @@
     "source": "Yahoo Finance",
     "deleteTransaction": "Delete transaction",
     "menu": {
-      "editPrice": "Edit price",
+      "editPrice": "Set price manually",
       "editDividend": "Edit dividend estimate",
       "editName": "Edit name",
       "recordSplit": "Record split"

@@ -278,7 +278,8 @@
     },
     "confirmDeleteTransaction": {
       "title": "Eliminare l'operazione?",
-      "description": "Verrà eliminata definitivamente l'operazione di tipo {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). L'operazione non si può annullare."
+      "descriptionBuy": "Verrà eliminato definitivamente l'acquisto ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). L'operazione non si può annullare.",
+      "descriptionSell": "Verrà eliminata definitivamente la vendita ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). L'operazione non si può annullare."
     },
     "editName": {
       "title": "Modifica nome",
@@ -309,7 +310,6 @@
     "sells_many": "{{count}} vendite",
     "sells_other": "{{count}} vendite",
     "noSells": "ancora nessuna vendita",
-    "dividends": "Dividendi",
     "dividendNote": "stima annua · rendimento {{percent}}",
     "refreshPrices": "Aggiorna prezzi",
     "buy": "Acquista",
@@ -318,7 +318,7 @@
     "source": "Yahoo Finance",
     "deleteTransaction": "Elimina operazione",
     "menu": {
-      "editPrice": "Modifica prezzo",
+      "editPrice": "Imposta prezzo manuale",
       "editDividend": "Modifica stima del dividendo",
       "editName": "Modifica nome",
       "recordSplit": "Registra split"

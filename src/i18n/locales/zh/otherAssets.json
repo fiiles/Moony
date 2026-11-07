@@ -74,7 +74,8 @@
   },
   "confirmDeleteTransaction": {
     "title": "删除交易？",
-    "description": "这将永久删除该笔{{type}}交易（{{quantity}} × {{price}}，{{date}}）。此操作无法撤销。"
+    "descriptionBuy": "这将永久删除该笔买入（{{quantity}} × {{price}}，{{date}}）。此操作无法撤销。",
+    "descriptionSell": "这将永久删除该笔卖出（{{quantity}} × {{price}}，{{date}}）。此操作无法撤销。"
   },
   "toast": {
     "added": "资产已添加",
@@ -139,5 +140,11 @@
   "chart": {
     "title": "估值随时间的变化",
     "subtitle": "两次重新估值之间保持平稳——曲线的跳变来自您的估值和买入，而非市场。"
+  },
+  "detail": {
+    "menu": {
+      "edit": "编辑资产",
+      "delete": "删除资产"
+    }
   }
 }

@@ -141,7 +141,8 @@
     "end": "Ukončit pojistku",
     "reactivate": "Obnovit pojistku",
     "delete": "Smazat pojistku",
-    "addDocument": "Přidat dokument"
+    "addDocument": "Přidat dokument",
+    "editPolicy": "Upravit pojistku"
   },
   "endDialog": {
     "title": "Ukončit pojistku · {{name}}",
@@ -152,7 +153,7 @@
     "submit": "Ukončit pojistku"
   },
   "confirmDelete": {
-    "title": "Smazat pojistku",
+    "title": "Smazat pojistku?",
     "description": "Opravdu chcete smazat „{{name}}“? Smažou se i její dokumenty. Tuto akci nelze vrátit zpět."
   },
   "toast": {
@@ -314,7 +315,7 @@
       "other": "Jiný"
     },
     "deleteConfirm": {
-      "title": "Smazat dokument",
+      "title": "Smazat dokument?",
       "description": "Opravdu chcete smazat „{{name}}“? Soubor bude trvale odstraněn."
     }
   }

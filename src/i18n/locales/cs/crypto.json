@@ -257,7 +257,8 @@
     "pricesRefreshed": "Kurz aktualizován",
     "confirmDeleteTransaction": {
       "title": "Smazat transakci?",
-      "description": "Tím trvale smažete transakci typu {{type}} ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Tuto akci nelze vrátit zpět."
+      "descriptionBuy": "Tím trvale smažete nákup ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Tuto akci nelze vrátit zpět.",
+      "descriptionSell": "Tím trvale smažete prodej ({{quantity}} × {{ticker}}, {{date}}, {{amount}}). Tuto akci nelze vrátit zpět."
     }
   },
   "unpricedBanner": {

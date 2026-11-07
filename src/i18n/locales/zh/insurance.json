@@ -127,7 +127,8 @@
     "end": "终止保单",
     "reactivate": "重新启用保单",
     "delete": "删除保单",
-    "addDocument": "添加文档"
+    "addDocument": "添加文档",
+    "editPolicy": "编辑保单"
   },
   "endDialog": {
     "title": "终止保单 · {{name}}",
@@ -138,7 +139,7 @@
     "submit": "终止保单"
   },
   "confirmDelete": {
-    "title": "删除保单",
+    "title": "删除保单？",
     "description": "删除“{{name}}”吗？其文档也会一并删除，此操作无法撤销。"
   },
   "toast": {
@@ -300,7 +301,7 @@
       "other": "其他"
     },
     "deleteConfirm": {
-      "title": "删除文档",
+      "title": "删除文档？",
       "description": "删除“{{name}}”吗？该文件将被永久删除。"
     }
   }

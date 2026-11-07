@@ -136,7 +136,7 @@
     "rateChange": "Registrera en ränteändring"
   },
   "confirmDelete": {
-    "title": "Ta bort lån",
+    "title": "Ta bort lånet?",
     "description": "Ta bort ”{{name}}”? Dess händelser och fastighetskopplingar tas bort med det. Det går inte att ångra."
   },
   "toast": {
@@ -289,7 +289,7 @@
       "drawdownNote": "lånets start",
       "delete": "Ta bort händelse",
       "confirmDelete": {
-        "title": "Ta bort händelse",
+        "title": "Ta bort händelsen?",
         "description": "Posten försvinner från diagrammet och listan, och saldot räknas om utan den.",
         "descriptionManual": "Det manuella saldot försvinner från diagrammet och listan. Det föregående manuella saldot gäller igen, eller beräkningen om det inte finns något."
       }

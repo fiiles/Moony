@@ -33,9 +33,9 @@
     },
     "hierarchyInfo": "Le regole più specifiche (con IBAN) hanno la precedenza su quelle generiche basate solo sul beneficiario.",
     "bulkDelete": "Elimina selezionate",
-    "deleteConfirmTitle": "Elimina regola appresa",
+    "deleteConfirmTitle": "Eliminare la regola appresa?",
     "deleteConfirmDescription": "Vuoi davvero eliminare questa regola appresa? L'operazione non si può annullare.",
-    "bulkDeleteConfirmTitle": "Elimina regole selezionate",
+    "bulkDeleteConfirmTitle": "Eliminare le regole selezionate?",
     "bulkDeleteConfirmDescription_one": "Vuoi davvero eliminare {{count}} regola selezionata? L'operazione non si può annullare.",
     "bulkDeleteConfirmDescription_many": "Vuoi davvero eliminare {{count}} regole selezionate? L'operazione non si può annullare.",
     "bulkDeleteConfirmDescription_other": "Vuoi davvero eliminare {{count}} regole selezionate? L'operazione non si può annullare.",
@@ -109,7 +109,7 @@
     },
     "systemRule": "Regola di sistema",
     "systemRuleTooltip": "Le regole di sistema non si possono modificare né eliminare",
-    "deleteConfirmTitle": "Elimina regola personalizzata",
+    "deleteConfirmTitle": "Eliminare la regola personalizzata?",
     "deleteConfirmDescription": "Vuoi davvero eliminare questa regola personalizzata? L'operazione non si può annullare.",
     "createSuccess": "Regola creata",
     "updateSuccess": "Regola aggiornata",
@@ -212,11 +212,11 @@
     "forgetSelected": "Dimentica selezionate ({{count}})",
     "selectedBar": "{{count}} selezionate",
     "confirmForget": {
-      "title": "Dimentica regola appresa",
+      "title": "Dimenticare la regola appresa?",
       "description": "La controparte non viene più categorizzata automaticamente; una nuova correzione manuale la insegna di nuovo."
     },
     "confirmForgetBulk": {
-      "title": "Dimentica regole selezionate",
+      "title": "Dimenticare le regole selezionate?",
       "description_one": "Dimenticare {{count}} regola selezionata? La sua controparte non verrà più categorizzata automaticamente.",
       "description_many": "Dimenticare {{count}} regole selezionate? Le loro controparti non verranno più categorizzate automaticamente.",
       "description_other": "Dimenticare {{count}} regole selezionate? Le loro controparti non verranno più categorizzate automaticamente."

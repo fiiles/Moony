@@ -33,9 +33,9 @@
     },
     "hierarchyInfo": "更具体的规则（含 IBAN）优先于仅含收款方的通用规则。",
     "bulkDelete": "删除所选",
-    "deleteConfirmTitle": "删除已学习的规则",
+    "deleteConfirmTitle": "删除已学习的规则？",
     "deleteConfirmDescription": "确定要删除这条已学习的规则吗？此操作无法撤销。",
-    "bulkDeleteConfirmTitle": "删除所选规则",
+    "bulkDeleteConfirmTitle": "删除所选规则？",
     "bulkDeleteConfirmDescription_other": "确定要删除所选的 {{count}} 条规则吗？此操作无法撤销。",
     "deleteSuccess": "规则已删除",
     "bulkDeleteSuccess_other": "已删除 {{count}} 条规则",
@@ -105,7 +105,7 @@
     },
     "systemRule": "系统规则",
     "systemRuleTooltip": "系统规则无法编辑或删除",
-    "deleteConfirmTitle": "删除自定义规则",
+    "deleteConfirmTitle": "删除自定义规则？",
     "deleteConfirmDescription": "确定要删除这条自定义规则吗？此操作无法撤销。",
     "createSuccess": "规则已创建",
     "updateSuccess": "规则已更新",
@@ -206,11 +206,11 @@
     "forgetSelected": "忘记所选（{{count}}）",
     "selectedBar": "已选 {{count}} 项",
     "confirmForget": {
-      "title": "忘记已学习的规则",
+      "title": "忘记已学习的规则？",
       "description": "该交易对方将不再自动分类；之后再次手动修正时会重新学习。"
     },
     "confirmForgetBulk": {
-      "title": "忘记所选规则",
+      "title": "忘记所选规则？",
       "description_other": "忘记所选的 {{count}} 条规则吗？这些交易对方将不再自动分类。"
     },
     "categoryChanged": "规则的类别已更改",

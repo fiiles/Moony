@@ -82,7 +82,7 @@ export function ClassHero({
   const changeBase = trendChangeBase(points, chartPeriodStart(period, Date.now() / 1000));
   const changeLabel =
     changeBase === null
-      ? t(`overview.change.${period}`)
+      ? t(`dashboard:changePeriod.${period}`)
       : td('changeSince', { date: fmt.day(changeBase, changeSinceDayOptions(changeBase)) });
 
   // Every trade at its own day's rate, like the history line it sits on; events before the horizon

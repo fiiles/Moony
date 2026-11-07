@@ -51,7 +51,7 @@ export function LoanMenu({ loan, onOpenEvent, onDelete }: LoanMenuProps) {
         <DropdownMenuContent align="end" className="min-w-[240px]">
           <RowMenuItem onSelect={() => setEditOpen(true)}>
             <Pencil strokeWidth={1.75} aria-hidden />
-            {tl('actions.edit')}
+            {tl('form.editTitle')}
           </RowMenuItem>
           <RowMenuItem onSelect={() => onOpenEvent('balance_check')}>
             <Scale strokeWidth={1.75} aria-hidden />

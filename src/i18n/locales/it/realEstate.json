@@ -149,7 +149,7 @@
     "openCalculator": "Apri nel calcolatore degli investimenti",
     "revalue": "Rivaluta",
     "menu": {
-      "edit": "Modifica dettagli",
+      "edit": "Modifica immobile",
       "valuationHistory": "Storico delle valutazioni",
       "delete": "Elimina immobile"
     },
@@ -258,7 +258,7 @@
     "revalue": "Rivaluta"
   },
   "confirmDelete": {
-    "title": "Elimina immobile",
+    "title": "Eliminare l'immobile?",
     "description": "Vuoi davvero eliminare «{{name}}»? L'operazione non si può annullare."
   },
   "confirmDeleteCost": {
@@ -415,7 +415,7 @@
       "other": "Altro"
     },
     "deleteConfirm": {
-      "title": "Elimina documento",
+      "title": "Eliminare il documento?",
       "description": "Vuoi davvero eliminare «{{name}}»? Il file verrà rimosso definitivamente."
     }
   },

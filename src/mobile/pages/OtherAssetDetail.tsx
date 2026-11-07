@@ -262,7 +262,7 @@ function AssetHero({
   const changeBase = trendChangeBase(points, periodStart);
   const changeLabel =
     changeBase === null
-      ? t(`overview.change.${period}`)
+      ? t(`dashboard:changePeriod.${period}`)
       : td('changeSince', { date: fmt.day(changeBase, changeSinceDayOptions(changeBase)) });
 
   // Marks before the horizon would pile up on the left edge

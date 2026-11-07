@@ -15,18 +15,7 @@
     "reason": "Moonyのロックを解除"
   },
   "overview": {
-    "change": {
-      "30D": "30日間",
-      "90D": "3か月間",
-      "YTD": "今年",
-      "1Y": "1年間",
-      "5Y": "5年間",
-      "All": "最初の記録以降"
-    },
     "stats": {
-      "assets": "資産",
-      "freeCash": "自由に使える現金",
-      "freeCashNote": "口座内",
       "unchanged": "変化なし",
       "noHistory": "履歴なし"
     }
@@ -34,7 +23,6 @@
   "cashflow": {
     "subtitle_other": "{{count}}口座の実際の収入と支出",
     "subtitleAll": "すべての口座の実際の収入と支出",
-    "moves_other": "{{count}}件の取引",
     "shareOfExpenses": "支出の{{share}}",
     "shareOfIncome": "収入の{{share}}",
     "partial": "この期間はまだ終わっていません。次の明細で数値が補完されます。",
@@ -46,9 +34,6 @@
     "accounts": {
       "title": "レポートの口座",
       "done": "完了"
-    },
-    "picker": {
-      "change": "カテゴリを変更"
     },
     "limitSheet": {
       "pick": "支出を管理したいカテゴリを選んでください。"
@@ -110,7 +95,6 @@
     "total": "口座内の合計",
     "change30": "30日間で{{amount}}",
     "noMovements": "30日間の入出金なし",
-    "uncategorized": "未分類の支払い",
     "sections": {
       "accounts": "口座",
       "loans": "ローン",
@@ -202,7 +186,6 @@
       "title": "入出金の推移"
     },
     "ledger": {
-      "title": "入出金",
       "search": "取引相手または説明で検索",
       "all": "すべて",
       "in": "入金",
@@ -211,11 +194,10 @@
       "noCategory": "カテゴリなし",
       "categorize": "カテゴリ",
       "details": "詳細",
-      "count_other": "{{count}}件",
-      "empty": "該当する入出金はありません",
+      "empty": "該当する取引はありません",
       "emptyHint": "期間またはフィルターを変更してください。",
       "showAll": "すべて表示",
-      "loadError": "入出金を読み込めませんでした。",
+      "loadError": "取引を読み込めませんでした。",
       "retry": "再試行"
     },
     "filter": {
@@ -225,8 +207,7 @@
       "period": "期間",
       "from": "開始",
       "to": "終了",
-      "apply": "適用",
-      "reset": "リセット"
+      "apply": "適用"
     },
     "rowMenu": {
       "details": "詳細",
@@ -316,17 +297,11 @@
   },
   "transaction": {
     "flowSaved": "意味を保存しました",
-    "done": "完了",
     "counterparty": "取引相手",
     "date": "日付",
     "category": "カテゴリ",
     "flow": "意味",
-    "note": "メモ",
     "details": "詳細",
-    "bankId": "銀行ID",
-    "valueDate": "起算日",
-    "file": "ファイル",
-    "line": "行",
     "sourceLabel": "入力元",
     "source": {
       "manual": "手入力",
@@ -516,7 +491,6 @@
       "pricesAt": "価格 {{time}}",
       "pricesOn": "価格 {{date}}",
       "invested": "投資額 {{amount}}",
-      "dividendsYear": "配当 / 年",
       "yieldNote": "利回り {{percent}}",
       "twrYtd": "今年のリターン",
       "twrNote": "TWR · MWR {{mwr}}",
@@ -531,7 +505,6 @@
         "name": "名前順"
       },
       "searchToggle": "検索",
-      "clearSearch": "検索をクリア",
       "showAll_other": "{{count}} 件のポジションをすべて表示",
       "menu": {
         "closed": "決済済みのポジション"
@@ -693,7 +666,6 @@
       "customEmpty": "独自ルールはまだありません。パソコンで作成します。",
       "learnedEmpty": "まだ学習していません。手動での分類から学習します。",
       "noMatching": "検索に一致するものはありません",
-      "clearSearch": "検索をクリア",
       "openPack": "{{name}}のルール",
       "packSwitch": "パック {{name}}",
       "ruleSwitch": "ルール {{name}}",

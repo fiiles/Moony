@@ -326,17 +326,22 @@ export default function StockDetail() {
   };
 
   const pendingDeleteDescription = pendingDelete
-    ? t('detail.confirmDeleteTransaction.description', {
-        type: (pendingDelete.type === 'buy' ? tc('buttons.buy') : tc('buttons.sell')).toLowerCase(),
-        quantity: fmt.number(Number(pendingDelete.quantity), { maximumFractionDigits: 4 }),
-        ticker: pendingDelete.ticker,
-        date: fmt.day(pendingDelete.transactionDate),
-        amount: formatAmountWithCode(
-          (parseFloat(pendingDelete.quantity) || 0) * (parseFloat(pendingDelete.pricePerUnit) || 0),
-          pendingDelete.currency,
-          fmt.locale
-        ),
-      })
+    ? t(
+        pendingDelete.type === 'buy'
+          ? 'detail.confirmDeleteTransaction.descriptionBuy'
+          : 'detail.confirmDeleteTransaction.descriptionSell',
+        {
+          quantity: fmt.number(Number(pendingDelete.quantity), { maximumFractionDigits: 4 }),
+          ticker: pendingDelete.ticker,
+          date: fmt.day(pendingDelete.transactionDate),
+          amount: formatAmountWithCode(
+            (parseFloat(pendingDelete.quantity) || 0) *
+              (parseFloat(pendingDelete.pricePerUnit) || 0),
+            pendingDelete.currency,
+            fmt.locale
+          ),
+        }
+      )
     : '';
 
   const pendingDividendDescription = pendingDividendDelete
@@ -674,7 +679,7 @@ export default function StockDetail() {
             .join(' · ')}
         />
         <Stat
-          label={t('detail.dividends')}
+          label={t('summary.estimatedDividend')}
           aside={
             <Tooltip>
               <TooltipTrigger asChild>

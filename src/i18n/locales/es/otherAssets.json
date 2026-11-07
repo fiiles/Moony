@@ -80,7 +80,8 @@
   },
   "confirmDeleteTransaction": {
     "title": "¿Eliminar el movimiento?",
-    "description": "Se eliminará de forma permanente el movimiento de tipo {{type}} ({{quantity}} × {{price}}, {{date}}). Esta acción no se puede deshacer."
+    "descriptionBuy": "Se eliminará de forma permanente la compra ({{quantity}} × {{price}}, {{date}}). Esta acción no se puede deshacer.",
+    "descriptionSell": "Se eliminará de forma permanente la venta ({{quantity}} × {{price}}, {{date}}). Esta acción no se puede deshacer."
   },
   "toast": {
     "added": "Activo añadido",
@@ -145,5 +146,11 @@
   "chart": {
     "title": "Valor estimado a lo largo del tiempo",
     "subtitle": "Plano entre revalorizaciones: los saltos son tus estimaciones y compras, no el mercado."
+  },
+  "detail": {
+    "menu": {
+      "edit": "Editar activo",
+      "delete": "Eliminar activo"
+    }
   }
 }

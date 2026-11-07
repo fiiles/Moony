@@ -115,10 +115,10 @@ export function TransactionSheet({
   };
 
   const technical: [string, ReactNode][] = [
-    [t('transaction.bankId'), shown.transactionId],
-    [t('transaction.valueDate'), shown.valueDate === null ? null : fmt.day(shown.valueDate)],
-    [t('transaction.file'), shown.importFileName],
-    [t('transaction.line'), shown.importLine],
+    [tb('readiness.detail.bankId'), shown.transactionId],
+    [tb('readiness.detail.valueDate'), shown.valueDate === null ? null : fmt.day(shown.valueDate)],
+    [tb('readiness.detail.file'), shown.importFileName],
+    [tb('readiness.detail.line'), shown.importLine],
     [t('transaction.sourceLabel'), t(`transaction.source.${shown.dataSource}`)],
     [
       t('transaction.status'),
@@ -148,7 +148,7 @@ export function TransactionSheet({
               className="h-auto min-h-12 whitespace-normal py-2 text-center flex-1 rounded-[10px] text-m-row"
               onClick={close}
             >
-              {t('transaction.done')}
+              {t('common:buttons.close')}
             </Button>
           </>
         }
@@ -197,7 +197,7 @@ export function TransactionSheet({
             sub={meaning}
           />
           {note.length > 0 && (
-            <KeyValueRow stack label={t('transaction.note')} value={note.join('\n')} />
+            <KeyValueRow stack label={tb('transaction.description')} value={note.join('\n')} />
           )}
         </div>
         <button

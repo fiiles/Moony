@@ -129,7 +129,7 @@
     "rateChange": "记录利率变更"
   },
   "confirmDelete": {
-    "title": "删除贷款",
+    "title": "删除贷款？",
     "description": "删除“{{name}}”吗？其事件和房产关联也会一并删除，此操作无法撤销。"
   },
   "toast": {
@@ -279,9 +279,9 @@
       "balanceCheckNote": "在您更改前一直有效",
       "drawdown": "放款 {{amount}}",
       "drawdownNote": "贷款开始",
-      "delete": "移除事件",
+      "delete": "删除事件",
       "confirmDelete": {
-        "title": "移除事件",
+        "title": "删除事件？",
         "description": "该记录将从图表和列表中消失，余额将在没有它的情况下重新计算。",
         "descriptionManual": "手动余额将从图表和列表中消失。之前的手动余额重新生效；如果没有，则使用估算值。"
       }

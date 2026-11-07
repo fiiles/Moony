@@ -67,7 +67,6 @@ export function PositionLedger<T extends LedgerTx>({
 }: PositionLedgerProps<T>) {
   const { t } = useTranslation('mobile');
   const { t: ts } = useTranslation('stocks');
-  const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const [pendingDelete, setPendingDelete] = useState<T | null>(null);
@@ -92,15 +91,19 @@ export function PositionLedger<T extends LedgerTx>({
       })
     : '';
   const deleteDescription = pendingDelete
-    ? ts('detail.confirmDeleteTransaction.description', {
-        type: (pendingDelete.type === 'buy' ? tc('buttons.buy') : tc('buttons.sell')).toLowerCase(),
-        quantity: fmt.number(parseFloat(pendingDelete.quantity) || 0, {
-          maximumFractionDigits: quantityDigits,
-        }),
-        ticker: pendingDelete.ticker,
-        date: fmt.day(pendingDelete.transactionDate),
-        amount: moneyText(nativeTotal(pendingDelete), pendingDelete.currency || currency),
-      })
+    ? ts(
+        pendingDelete.type === 'buy'
+          ? 'detail.confirmDeleteTransaction.descriptionBuy'
+          : 'detail.confirmDeleteTransaction.descriptionSell',
+        {
+          quantity: fmt.number(parseFloat(pendingDelete.quantity) || 0, {
+            maximumFractionDigits: quantityDigits,
+          }),
+          ticker: pendingDelete.ticker,
+          date: fmt.day(pendingDelete.transactionDate),
+          amount: moneyText(nativeTotal(pendingDelete), pendingDelete.currency || currency),
+        }
+      )
     : '';
 
   return (

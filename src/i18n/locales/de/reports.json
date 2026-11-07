@@ -618,7 +618,6 @@
     "expenses": {
       "title": "Ausgaben nach Kategorie",
       "manageCategories": "Kategorien verwalten",
-      "manageLimits": "Limits verwalten",
       "spent": "Ausgegeben",
       "limit": "Limit",
       "usage": "Auslastung",

@@ -77,7 +77,8 @@
   },
   "confirmDeleteTransaction": {
     "title": "Ta bort transaktionen?",
-    "description": "Transaktionen av typen {{type}} ({{quantity}} × {{price}}, {{date}}) tas bort permanent. Det går inte att ångra."
+    "descriptionBuy": "Köpet ({{quantity}} × {{price}}, {{date}}) tas bort permanent. Det går inte att ångra.",
+    "descriptionSell": "Försäljningen ({{quantity}} × {{price}}, {{date}}) tas bort permanent. Det går inte att ångra."
   },
   "toast": {
     "added": "Tillgången har lagts till",
@@ -142,5 +143,11 @@
   "chart": {
     "title": "Uppskattat värde över tid",
     "subtitle": "Platt mellan omvärderingar – hoppen är dina uppskattningar och köp, inte marknaden."
+  },
+  "detail": {
+    "menu": {
+      "edit": "Redigera tillgång",
+      "delete": "Ta bort tillgång"
+    }
   }
 }

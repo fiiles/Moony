@@ -77,7 +77,8 @@
   },
   "confirmDeleteTransaction": {
     "title": "Transaktion löschen?",
-    "description": "Damit wird die Transaktion vom Typ {{type}} ({{quantity}} × {{price}}, {{date}}) dauerhaft gelöscht. Das lässt sich nicht rückgängig machen."
+    "descriptionBuy": "Damit wird der Kauf ({{quantity}} × {{price}}, {{date}}) dauerhaft gelöscht. Das lässt sich nicht rückgängig machen.",
+    "descriptionSell": "Damit wird der Verkauf ({{quantity}} × {{price}}, {{date}}) dauerhaft gelöscht. Das lässt sich nicht rückgängig machen."
   },
   "toast": {
     "added": "Vermögenswert hinzugefügt",
@@ -142,5 +143,11 @@
   "chart": {
     "title": "Geschätzter Wert im Zeitverlauf",
     "subtitle": "Flach zwischen Neubewertungen – die Sprünge sind Ihre Schätzungen und Käufe, nicht der Markt."
+  },
+  "detail": {
+    "menu": {
+      "edit": "Vermögenswert bearbeiten",
+      "delete": "Vermögenswert löschen"
+    }
   }
 }

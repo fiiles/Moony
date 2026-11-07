@@ -90,7 +90,7 @@ export function ExpensesSection({
     <section>
       <SectionHead
         title={tr('actuals.expenses.title')}
-        action={{ label: tr('actuals.expenses.manageLimits'), href: manageHref }}
+        action={{ label: tr('budgeting:manage.title'), href: manageHref }}
       />
       {rows.length > 0 && (
         // The pill wraps under the filter when both do not fit (360 pt, German, large text)

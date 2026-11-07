@@ -143,7 +143,7 @@
     "rateChange": "Registrar un cambio de tipo"
   },
   "confirmDelete": {
-    "title": "Eliminar préstamo",
+    "title": "¿Eliminar el préstamo?",
     "description": "¿Eliminar «{{name}}»? Sus eventos y vínculos con inmuebles se eliminarán con él. Esta acción no se puede deshacer."
   },
   "toast": {
@@ -295,9 +295,9 @@
       "balanceCheckNote": "vale hasta que lo cambies",
       "drawdown": "Disposición {{amount}}",
       "drawdownNote": "inicio del préstamo",
-      "delete": "Quitar evento",
+      "delete": "Eliminar evento",
       "confirmDelete": {
-        "title": "Quitar evento",
+        "title": "¿Eliminar el evento?",
         "description": "La entrada desaparece del gráfico y de la lista, y el saldo se calcula de nuevo sin ella.",
         "descriptionManual": "El saldo manual desaparece del gráfico y de la lista. Vuelve a valer el saldo manual anterior o, si no hay ninguno, la estimación."
       }

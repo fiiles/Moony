@@ -83,7 +83,8 @@
   },
   "confirmDeleteTransaction": {
     "title": "Usunąć transakcję?",
-    "description": "Transakcja ({{type}}: {{quantity}} × {{price}}, {{date}}) zostanie usunięta na stałe. Tej operacji nie można cofnąć."
+    "descriptionBuy": "Zakup ({{quantity}} × {{price}}, {{date}}) zostanie usunięty na stałe. Tej operacji nie można cofnąć.",
+    "descriptionSell": "Sprzedaż ({{quantity}} × {{price}}, {{date}}) zostanie usunięta na stałe. Tej operacji nie można cofnąć."
   },
   "toast": {
     "added": "Aktywo dodane",
@@ -148,5 +149,11 @@
   "chart": {
     "title": "Szacowana wartość w czasie",
     "subtitle": "Płasko między przeszacowaniami – skoki to twoje szacunki i zakupy, nie rynek."
+  },
+  "detail": {
+    "menu": {
+      "edit": "Edytuj aktywo",
+      "delete": "Usuń aktywo"
+    }
   }
 }

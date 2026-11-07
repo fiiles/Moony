@@ -33,9 +33,9 @@
     },
     "hierarchyInfo": "Specifičtější pravidla (s IBAN) mají přednost před obecnými pravidly.",
     "bulkDelete": "Smazat vybrané",
-    "deleteConfirmTitle": "Smazat naučené pravidlo",
+    "deleteConfirmTitle": "Smazat naučené pravidlo?",
     "deleteConfirmDescription": "Opravdu chcete smazat toto naučené pravidlo? Tuto akci nelze vrátit zpět.",
-    "bulkDeleteConfirmTitle": "Smazat vybraná pravidla",
+    "bulkDeleteConfirmTitle": "Smazat vybraná pravidla?",
     "bulkDeleteConfirmDescription_one": "Opravdu chcete smazat {{count}} vybrané pravidlo? Tuto akci nelze vrátit zpět.",
     "bulkDeleteConfirmDescription_few": "Opravdu chcete smazat {{count}} vybraná pravidla? Tuto akci nelze vrátit zpět.",
     "bulkDeleteConfirmDescription_other": "Opravdu chcete smazat {{count}} vybraných pravidel? Tuto akci nelze vrátit zpět.",
@@ -109,7 +109,7 @@
     },
     "systemRule": "Systémové pravidlo",
     "systemRuleTooltip": "Systémová pravidla nelze upravovat ani mazat",
-    "deleteConfirmTitle": "Smazat vlastní pravidlo",
+    "deleteConfirmTitle": "Smazat vlastní pravidlo?",
     "deleteConfirmDescription": "Opravdu chcete smazat toto vlastní pravidlo? Tuto akci nelze vrátit zpět.",
     "createSuccess": "Pravidlo úspěšně vytvořeno",
     "updateSuccess": "Pravidlo úspěšně aktualizováno",
@@ -212,11 +212,11 @@
     "forgetSelected": "Zapomenout vybraná ({{count}})",
     "selectedBar": "Vybráno {{count}}",
     "confirmForget": {
-      "title": "Zapomenout naučené pravidlo",
+      "title": "Zapomenout naučené pravidlo?",
       "description": "Protistrana se příště nezařadí automaticky; nová ruční oprava ji naučí znovu."
     },
     "confirmForgetBulk": {
-      "title": "Zapomenout vybraná pravidla",
+      "title": "Zapomenout vybraná pravidla?",
       "description_one": "Zapomenout {{count}} vybrané pravidlo? Protistrany se příště nezařadí automaticky.",
       "description_few": "Zapomenout {{count}} vybraná pravidla? Protistrany se příště nezařadí automaticky.",
       "description_other": "Zapomenout {{count}} vybraných pravidel? Protistrany se příště nezařadí automaticky."

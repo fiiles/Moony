@@ -15,18 +15,7 @@
     "reason": "Moony entsperren"
   },
   "overview": {
-    "change": {
-      "30D": "letzte 30 Tage",
-      "90D": "letzte 3 Monate",
-      "YTD": "dieses Jahr",
-      "1Y": "letztes Jahr",
-      "5Y": "letzte 5 Jahre",
-      "All": "seit dem ersten Eintrag"
-    },
     "stats": {
-      "assets": "Vermögen",
-      "freeCash": "Freies Geld",
-      "freeCashNote": "auf Konten",
       "unchanged": "unverändert",
       "noHistory": "kein Verlauf"
     }
@@ -35,8 +24,6 @@
     "subtitle_one": "Tatsächliche Einnahmen und Ausgaben von {{count}} Konto",
     "subtitle_other": "Tatsächliche Einnahmen und Ausgaben von {{count}} Konten",
     "subtitleAll": "Tatsächliche Einnahmen und Ausgaben aller Konten",
-    "moves_one": "{{count}} Transaktion",
-    "moves_other": "{{count}} Transaktionen",
     "shareOfExpenses": "{{share}} der Ausgaben",
     "shareOfIncome": "{{share}} der Einnahmen",
     "partial": "Der Zeitraum ist noch nicht zu Ende, die Zahlen vervollständigen sich mit dem nächsten Auszug.",
@@ -48,9 +35,6 @@
     "accounts": {
       "title": "Konten im Bericht",
       "done": "Fertig"
-    },
-    "picker": {
-      "change": "Kategorie ändern"
     },
     "limitSheet": {
       "pick": "Wählen Sie die Kategorie, deren Ausgaben Sie im Blick behalten möchten."
@@ -121,7 +105,6 @@
     "total": "Gesamt auf Konten",
     "change30": "{{amount}} in den letzten 30 Tagen",
     "noMovements": "keine Bewegungen in 30 Tagen",
-    "uncategorized": "Nicht kategorisierte Zahlungen",
     "sections": {
       "accounts": "Konten",
       "loans": "Kredite",
@@ -220,7 +203,6 @@
       "title": "Geldflüsse"
     },
     "ledger": {
-      "title": "Umsätze",
       "search": "Nach Gegenpartei oder Beschreibung suchen",
       "all": "Alle",
       "in": "Eingänge",
@@ -229,12 +211,10 @@
       "noCategory": "Ohne Kategorie",
       "categorize": "Kategorie",
       "details": "Details",
-      "count_one": "{{count}} Umsatz",
-      "count_other": "{{count}} Umsätze",
-      "empty": "Keine passenden Umsätze",
+      "empty": "Keine passenden Transaktionen",
       "emptyHint": "Ändern Sie den Zeitraum oder den Filter.",
       "showAll": "Alle anzeigen",
-      "loadError": "Die Umsätze konnten nicht geladen werden.",
+      "loadError": "Die Transaktionen konnten nicht geladen werden.",
       "retry": "Erneut versuchen"
     },
     "filter": {
@@ -244,8 +224,7 @@
       "period": "Zeitraum",
       "from": "Von",
       "to": "Bis",
-      "apply": "Anwenden",
-      "reset": "Zurücksetzen"
+      "apply": "Anwenden"
     },
     "rowMenu": {
       "details": "Details",
@@ -342,17 +321,11 @@
   },
   "transaction": {
     "flowSaved": "Bedeutung gespeichert",
-    "done": "Fertig",
     "counterparty": "Gegenpartei",
     "date": "Datum",
     "category": "Kategorie",
     "flow": "Bedeutung",
-    "note": "Notiz",
     "details": "Details",
-    "bankId": "Bank-ID",
-    "valueDate": "Wertstellung",
-    "file": "Datei",
-    "line": "Zeile",
     "sourceLabel": "Quelle",
     "source": {
       "manual": "Von Hand erfasst",
@@ -549,7 +522,6 @@
       "pricesAt": "Kurse {{time}}",
       "pricesOn": "Kurse {{date}}",
       "invested": "investiert {{amount}}",
-      "dividendsYear": "Dividenden / Jahr",
       "yieldNote": "Rendite {{percent}}",
       "twrYtd": "Rendite dieses Jahr",
       "twrNote": "TWR · MWR {{mwr}}",
@@ -564,7 +536,6 @@
         "name": "Nach Name"
       },
       "searchToggle": "Suchen",
-      "clearSearch": "Suche löschen",
       "showAll_one": "Alle {{count}} Position anzeigen",
       "showAll_other": "Alle {{count}} Positionen anzeigen",
       "menu": {
@@ -730,7 +701,6 @@
       "customEmpty": "Noch keine eigenen Regeln. Sie legen sie am Computer an.",
       "learnedEmpty": "Noch nichts gelernt. Die App lernt aus Ihren manuellen Zuordnungen.",
       "noMatching": "Nichts passt zur Suche",
-      "clearSearch": "Suche löschen",
       "openPack": "Regeln von {{name}}",
       "packSwitch": "Paket {{name}}",
       "ruleSwitch": "Regel {{name}}",

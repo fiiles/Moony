@@ -274,7 +274,8 @@
     },
     "confirmDeleteTransaction": {
       "title": "Slette transaksjonen?",
-      "description": "Dette sletter transaksjonen ({{type}}, {{quantity}} × {{ticker}}, {{date}}, {{amount}}) permanent. Dette kan ikke angres."
+      "descriptionBuy": "Dette sletter kjøpet ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) permanent. Dette kan ikke angres.",
+      "descriptionSell": "Dette sletter salget ({{quantity}} × {{ticker}}, {{date}}, {{amount}}) permanent. Dette kan ikke angres."
     },
     "editName": {
       "title": "Rediger navn",
@@ -303,7 +304,6 @@
     "sells_one": "{{count}} salg",
     "sells_other": "{{count}} salg",
     "noSells": "ingen salg ennå",
-    "dividends": "Utbytte",
     "dividendNote": "anslag per år · avkastning {{percent}}",
     "refreshPrices": "Oppdater kurser",
     "buy": "Kjøp",
@@ -312,7 +312,7 @@
     "source": "Yahoo Finance",
     "deleteTransaction": "Slett transaksjon",
     "menu": {
-      "editPrice": "Rediger kurs",
+      "editPrice": "Sett kurs manuelt",
       "editDividend": "Rediger utbytteanslag",
       "editName": "Rediger navn",
       "recordSplit": "Registrer splitt"

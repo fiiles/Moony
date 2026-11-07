@@ -15,18 +15,7 @@
     "reason": "Lås opp Moony"
   },
   "overview": {
-    "change": {
-      "30D": "på 30 dager",
-      "90D": "på 3 måneder",
-      "YTD": "i år",
-      "1Y": "på ett år",
-      "5Y": "på 5 år",
-      "All": "siden første registrering"
-    },
     "stats": {
-      "assets": "Eiendeler",
-      "freeCash": "Ledige kontanter",
-      "freeCashNote": "på kontoer",
       "unchanged": "uendret",
       "noHistory": "ingen historikk"
     }
@@ -35,8 +24,6 @@
     "subtitle_one": "Faktiske inntekter og utgifter fra {{count}} konto",
     "subtitle_other": "Faktiske inntekter og utgifter fra {{count}} kontoer",
     "subtitleAll": "Faktiske inntekter og utgifter fra alle kontoer",
-    "moves_one": "{{count}} transaksjon",
-    "moves_other": "{{count}} transaksjoner",
     "shareOfExpenses": "{{share}} av utgiftene",
     "shareOfIncome": "{{share}} av inntektene",
     "partial": "Perioden er ikke over ennå; tallene fylles ut med neste kontoutskrift.",
@@ -48,9 +35,6 @@
     "accounts": {
       "title": "Kontoer i rapporten",
       "done": "Ferdig"
-    },
-    "picker": {
-      "change": "Endre kategori"
     },
     "limitSheet": {
       "pick": "Velg kategorien du vil følge opp utgiftene i."
@@ -121,7 +105,6 @@
     "total": "Totalt på kontoer",
     "change30": "{{amount}} på 30 dager",
     "noMovements": "ingen bevegelser på 30 dager",
-    "uncategorized": "Betalinger uten kategori",
     "sections": {
       "accounts": "Kontoer",
       "loans": "Lån",
@@ -220,7 +203,6 @@
       "title": "Pengestrømmer"
     },
     "ledger": {
-      "title": "Bevegelser",
       "search": "Søk etter motpart eller beskrivelse",
       "all": "Alle",
       "in": "Innkommende",
@@ -229,12 +211,10 @@
       "noCategory": "Uten kategori",
       "categorize": "Kategori",
       "details": "Detaljer",
-      "count_one": "{{count}} bevegelse",
-      "count_other": "{{count}} bevegelser",
-      "empty": "Ingen bevegelser samsvarer",
+      "empty": "Ingen transaksjoner samsvarer",
       "emptyHint": "Endre perioden eller filteret.",
       "showAll": "Vis alle",
-      "loadError": "Kunne ikke laste bevegelsene.",
+      "loadError": "Kunne ikke laste transaksjonene.",
       "retry": "Prøv igjen"
     },
     "filter": {
@@ -244,8 +224,7 @@
       "period": "Periode",
       "from": "Fra",
       "to": "Til",
-      "apply": "Bruk",
-      "reset": "Tilbakestill"
+      "apply": "Bruk"
     },
     "rowMenu": {
       "details": "Detaljer",
@@ -342,17 +321,11 @@
   },
   "transaction": {
     "flowSaved": "Betydning lagret",
-    "done": "Ferdig",
     "counterparty": "Motpart",
     "date": "Dato",
     "category": "Kategori",
     "flow": "Betydning",
-    "note": "Notat",
     "details": "Detaljer",
-    "bankId": "Bank-ID",
-    "valueDate": "Valørdato",
-    "file": "Fil",
-    "line": "Linje",
     "sourceLabel": "Kilde",
     "source": {
       "manual": "Lagt inn for hånd",
@@ -549,7 +522,6 @@
       "pricesAt": "kurser {{time}}",
       "pricesOn": "kurser {{date}}",
       "invested": "investert {{amount}}",
-      "dividendsYear": "Utbytte / år",
       "yieldNote": "avkastning {{percent}}",
       "twrYtd": "Avkastning i år",
       "twrNote": "TWR · MWR {{mwr}}",
@@ -564,7 +536,6 @@
         "name": "Etter navn"
       },
       "searchToggle": "Søk",
-      "clearSearch": "Tøm søket",
       "showAll_one": "Vis {{count}} beholdning",
       "showAll_other": "Vis alle {{count}} beholdninger",
       "menu": {
@@ -730,7 +701,6 @@
       "customEmpty": "Ingen egne regler ennå. Du oppretter dem på datamaskinen.",
       "learnedEmpty": "Ingenting lært ennå. Appen lærer av de manuelle kategoriseringene dine.",
       "noMatching": "Ingenting samsvarer med søket",
-      "clearSearch": "Tøm søk",
       "openPack": "Reglene i {{name}}",
       "packSwitch": "Pakke {{name}}",
       "ruleSwitch": "Regel {{name}}",

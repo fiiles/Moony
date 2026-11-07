@@ -246,7 +246,7 @@ function QueuePage({ accountId }: { accountId: string | undefined }) {
 
   return (
     <Screen
-      title={t('finance.uncategorized')}
+      title={t('bank_accounts:metrics.uncategorized')}
       leading={<NavTextButton label={backText} onClick={back} chevron />}
     >
       {!ready ? (

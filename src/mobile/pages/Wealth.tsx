@@ -91,7 +91,7 @@ export default function Wealth() {
     hero.hasHistory && !unknown.assets ? periodChange(display.assets, hero.oldest?.assets) : null;
   const changeLabel =
     hero.shortHistoryBase === null
-      ? t(`overview.change.${period}`)
+      ? t(`dashboard:changePeriod.${period}`)
       : td('changeSince', {
           date: fmt.day(hero.shortHistoryBase, changeSinceDayOptions(hero.shortHistoryBase)),
         });
@@ -139,7 +139,7 @@ export default function Wealth() {
             className="mx-0.5 mb-3.5"
           />
           <Hero
-            label={t('overview.stats.assets')}
+            label={t('dashboard:stats.totalAssets')}
             value={unknown.assets ? null : display.assets}
             formatValue={money}
             change={
@@ -240,7 +240,11 @@ function InvestmentSection({
     const shown = state === 'unknown' ? '—' : money(value);
     // Said on the row: the position rows one screen down show the gain since purchase
     const changeLine = change ? (
-      <ChangeLine change={change} currency={reportCurrency} trail={t('overview.change.30D')} />
+      <ChangeLine
+        change={change}
+        currency={reportCurrency}
+        trail={t('dashboard:changePeriod.30D')}
+      />
     ) : undefined;
     let sub: string;
     let valueSub: ReactNode;
@@ -421,7 +425,7 @@ function CashSection({ wealth }: { wealth: WealthData }) {
               <ChangeLine
                 change={change}
                 currency={reportCurrency}
-                trail={t('overview.change.30D')}
+                trail={t('dashboard:changePeriod.30D')}
               />
             ) : undefined
           }

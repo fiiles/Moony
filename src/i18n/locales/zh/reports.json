@@ -596,7 +596,6 @@
     "expenses": {
       "title": "按类别的支出",
       "manageCategories": "管理类别",
-      "manageLimits": "管理限额",
       "spent": "已花费",
       "limit": "限额",
       "usage": "使用率",

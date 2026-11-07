@@ -32,7 +32,7 @@ export function useDividendStat(holding: StockRow, reportCurrency: string): Stat
           ),
         });
   return {
-    label: ts('detail.dividends'),
+    label: ts('summary.estimatedDividend'),
     value:
       dividend === null
         ? '—'

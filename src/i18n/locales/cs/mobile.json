@@ -15,18 +15,7 @@
     "reason": "Odemknout Moony"
   },
   "overview": {
-    "change": {
-      "30D": "za 30 dní",
-      "90D": "za 3 měsíce",
-      "YTD": "letos",
-      "1Y": "za rok",
-      "5Y": "za 5 let",
-      "All": "od prvního záznamu"
-    },
     "stats": {
-      "assets": "Aktiva",
-      "freeCash": "Volné peníze",
-      "freeCashNote": "na účtech",
       "unchanged": "beze změny",
       "noHistory": "bez historie"
     }
@@ -36,9 +25,6 @@
     "subtitle_few": "Skutečné příjmy a výdaje ze {{count}} účtů",
     "subtitle_other": "Skutečné příjmy a výdaje z {{count}} účtů",
     "subtitleAll": "Skutečné příjmy a výdaje ze všech účtů",
-    "moves_one": "{{count}} pohyb",
-    "moves_few": "{{count}} pohyby",
-    "moves_other": "{{count}} pohybů",
     "shareOfExpenses": "{{share}} výdajů",
     "shareOfIncome": "{{share}} příjmů",
     "partial": "Období ještě neskončilo, čísla se doplní s dalším výpisem.",
@@ -50,9 +36,6 @@
     "accounts": {
       "title": "Účty v přehledu",
       "done": "Hotovo"
-    },
-    "picker": {
-      "change": "Změnit kategorii"
     },
     "limitSheet": {
       "pick": "Vyberte kategorii, pro kterou chcete hlídat výdaje."
@@ -132,7 +115,6 @@
     "total": "Celkem na účtech",
     "change30": "{{amount}} za 30 dní",
     "noMovements": "bez pohybů za 30 dní",
-    "uncategorized": "Nezařazené platby",
     "sections": {
       "accounts": "Účty",
       "loans": "Úvěry",
@@ -238,7 +220,6 @@
       "title": "Toky"
     },
     "ledger": {
-      "title": "Pohyby",
       "search": "Hledat podle protistrany nebo popisu",
       "all": "Vše",
       "in": "Příchozí",
@@ -247,13 +228,10 @@
       "noCategory": "Bez kategorie",
       "categorize": "Kategorie",
       "details": "Podrobnosti",
-      "count_one": "{{count}} pohyb",
-      "count_few": "{{count}} pohyby",
-      "count_other": "{{count}} pohybů",
-      "empty": "Žádné pohyby neodpovídají",
+      "empty": "Žádné transakce neodpovídají",
       "emptyHint": "Změňte období nebo filtr.",
       "showAll": "Zobrazit vše",
-      "loadError": "Pohyby se nepodařilo načíst.",
+      "loadError": "Transakce se nepodařilo načíst.",
       "retry": "Zkusit znovu"
     },
     "filter": {
@@ -263,8 +241,7 @@
       "period": "Období",
       "from": "Od",
       "to": "Do",
-      "apply": "Použít",
-      "reset": "Zrušit filtry"
+      "apply": "Použít"
     },
     "rowMenu": {
       "details": "Podrobnosti",
@@ -368,17 +345,11 @@
   },
   "transaction": {
     "flowSaved": "Význam uložen",
-    "done": "Hotovo",
     "counterparty": "Protistrana",
     "date": "Datum",
     "category": "Kategorie",
     "flow": "Význam pohybu",
-    "note": "Poznámka",
     "details": "Podrobnosti",
-    "bankId": "ID banky",
-    "valueDate": "Valuta",
-    "file": "Soubor",
-    "line": "Řádek",
     "sourceLabel": "Zdroj",
     "source": {
       "manual": "Zadáno ručně",
@@ -582,7 +553,6 @@
       "pricesAt": "ceny {{time}}",
       "pricesOn": "ceny {{date}}",
       "invested": "vloženo {{amount}}",
-      "dividendsYear": "Dividendy / rok",
       "yieldNote": "výnos {{percent}}",
       "twrYtd": "Zhodnocení letos",
       "twrNote": "TWR · MWR {{mwr}}",
@@ -597,7 +567,6 @@
         "name": "Podle názvu"
       },
       "searchToggle": "Hledat",
-      "clearSearch": "Smazat hledání",
       "showAll_one": "Zobrazit {{count}} pozici",
       "showAll_few": "Zobrazit všechny {{count}} pozice",
       "showAll_other": "Zobrazit všech {{count}} pozic",
@@ -768,7 +737,6 @@
       "customEmpty": "Zatím žádná vlastní pravidla. Zakládáte je v počítači.",
       "learnedEmpty": "Zatím nic naučeného. Aplikace se učí z vašich ručních zařazení.",
       "noMatching": "Hledání nic nenašlo",
-      "clearSearch": "Smazat hledání",
       "openPack": "Pravidla balíčku {{name}}",
       "packSwitch": "Balíček {{name}}",
       "ruleSwitch": "Pravidlo {{name}}",

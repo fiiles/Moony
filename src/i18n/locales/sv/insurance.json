@@ -134,7 +134,8 @@
     "end": "Avsluta försäkring",
     "reactivate": "Återaktivera försäkring",
     "delete": "Ta bort försäkring",
-    "addDocument": "Lägg till dokument"
+    "addDocument": "Lägg till dokument",
+    "editPolicy": "Redigera försäkring"
   },
   "endDialog": {
     "title": "Avsluta försäkring · {{name}}",
@@ -145,7 +146,7 @@
     "submit": "Avsluta försäkring"
   },
   "confirmDelete": {
-    "title": "Ta bort försäkring",
+    "title": "Ta bort försäkringen?",
     "description": "Ta bort ”{{name}}”? Dess dokument tas bort med den. Det går inte att ångra."
   },
   "toast": {
@@ -307,7 +308,7 @@
       "other": "Övrigt"
     },
     "deleteConfirm": {
-      "title": "Ta bort dokument",
+      "title": "Ta bort dokumentet?",
       "description": "Ta bort ”{{name}}”? Filen tas bort permanent."
     }
   }

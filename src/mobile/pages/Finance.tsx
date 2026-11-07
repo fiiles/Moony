@@ -208,7 +208,7 @@ export default function Finance() {
       ? tc('dashboard:changeSince', {
           date: fmt.day(trendChange.sinceDay, changeSinceDayOptions(trendChange.sinceDay)),
         })
-      : t(`overview.change.${period}`);
+      : t(`dashboard:changePeriod.${period}`);
   const isEmpty =
     !isLoading &&
     !blocked &&
@@ -443,7 +443,7 @@ function UncategorizedRow({ finance }: { finance: FinanceData }) {
             <Tag strokeWidth={1.75} />
           </RowChip>
         }
-        title={t('finance.uncategorized')}
+        title={t('bank_accounts:metrics.uncategorized')}
         sub={sub}
         value={fmt.number(uncategorized.count)}
         href={queuePath(uncategorized.accountIds)}
@@ -717,7 +717,7 @@ function PoliciesSection({
                   <>
                     <RowMenuItem onSelect={() => openWith(policyPath(row.policy.id), 'edit')}>
                       <Pencil strokeWidth={1.75} aria-hidden />
-                      {t('insurance:form.editTitle')}
+                      {t('insurance:actions.editPolicy')}
                     </RowMenuItem>
                     {!row.ended && (
                       <RowMenuItem onSelect={() => openWith(policyPath(row.policy.id), 'end')}>

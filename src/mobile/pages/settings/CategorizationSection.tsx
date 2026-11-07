@@ -192,7 +192,7 @@ export default function CategorizationSection() {
             value={query}
             onChange={setQuery}
             placeholder={tc('learnedTab.search')}
-            clearLabel={t('settings.categorization.clearSearch')}
+            clearLabel={t('common:a11y.clearSearch')}
           />
         ) : undefined
       )}

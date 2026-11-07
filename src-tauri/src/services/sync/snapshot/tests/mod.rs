@@ -30,6 +30,7 @@ use crate::services::sync::test_support::migrated;
 const A: DeviceId = DeviceId([1; 16]);
 const B: DeviceId = DeviceId([2; 16]);
 const C: DeviceId = DeviceId([3; 16]);
+const D: DeviceId = DeviceId([4; 16]);
 const NOW: i64 = 1_772_323_200; // 2026-03-01
 const DAY: i64 = 1_767_225_600; // 2026-01-01
 
@@ -301,7 +302,7 @@ fn rich_dumper() -> Connection {
     a
 }
 
-type Restore<'s> = fn(&Connection, &mut &'s [u8], i64) -> Result<DumpStats>;
+type Restore<'s> = fn(&Connection, &mut &'s [u8], i64) -> Result<RestoreReport>;
 
 fn restorers<'s>() -> [Restore<'s>; 2] {
     [restore_replace, restore_merge]

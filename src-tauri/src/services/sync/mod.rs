@@ -56,21 +56,63 @@ fn open_capture(conn: &Connection) -> Result<()> {
 }
 
 /// Runs `work` inside `SAVEPOINT <name>`, rolled back when it fails. Savepoints nest, so this
-/// composes with an outer transaction.
+/// composes with an outer transaction. When the `RELEASE` itself fails (the outermost savepoint
+/// commits, and a deferred foreign key check refuses the commit), the savepoint is rolled back
+/// too, so the connection never stays inside a transaction it did not open; the error is the
+/// `RELEASE`'s.
 pub(crate) fn in_savepoint<T>(
     conn: &Connection,
     name: &str,
     work: impl FnOnce() -> Result<T>,
 ) -> Result<T> {
     conn.execute_batch(&format!("SAVEPOINT {name}"))?;
-    match work() {
-        Ok(value) => {
-            conn.execute_batch(&format!("RELEASE {name}"))?;
-            Ok(value)
-        }
-        Err(error) => {
-            conn.execute_batch(&format!("ROLLBACK TO {name}; RELEASE {name}"))?;
-            Err(error)
-        }
+    let error = match work() {
+        Ok(value) => match conn.execute_batch(&format!("RELEASE {name}")) {
+            Ok(()) => return Ok(value),
+            Err(release) => release.into(),
+        },
+        Err(error) => error,
+    };
+    if let Err(rollback) = conn.execute_batch(&format!("ROLLBACK TO {name}; RELEASE {name}")) {
+        log::warn!("[SYNC] Could not roll back savepoint {name}: {rollback}");
+    }
+    Err(error)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::error::AppError;
+
+    #[test]
+    fn a_failed_release_rolls_the_savepoint_back() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        conn.execute_batch(
+            "PRAGMA foreign_keys = ON; \
+             CREATE TABLE parent (id TEXT PRIMARY KEY); \
+             CREATE TABLE child (id TEXT PRIMARY KEY, \
+               parent_id TEXT REFERENCES parent(id) DEFERRABLE INITIALLY DEFERRED);",
+        )
+        .expect("schema");
+
+        let result = in_savepoint(&conn, "sync_test", || {
+            conn.execute_batch(
+                "INSERT INTO parent (id) VALUES ('kept-out'); \
+                 INSERT INTO child (id, parent_id) VALUES ('c', 'missing');",
+            )?;
+            Ok(())
+        });
+
+        let error = result.expect_err("the deferred foreign key refuses the commit");
+        assert!(matches!(error, AppError::Database(_)), "{error:?}");
+        assert!(conn.is_autocommit(), "no transaction is left open");
+        let rows: i64 = conn
+            .query_row(
+                "SELECT (SELECT COUNT(*) FROM parent) + (SELECT COUNT(*) FROM child)",
+                [],
+                |r| r.get(0),
+            )
+            .expect("count");
+        assert_eq!(rows, 0, "nothing was written");
     }
 }

@@ -211,7 +211,20 @@ fn heads_and_cursor_come_from_the_header() {
     assert_eq!(seq, 7);
     assert_eq!(
         header_heads,
-        vec![(C, 1, from_c[0].1), (A, from_a[0].0.seq, from_a[0].1)]
+        vec![
+            Head {
+                device: C,
+                seq: 1,
+                hash: from_c[0].1,
+                quarantined: false
+            },
+            Head {
+                device: A,
+                seq: from_a[0].0.seq,
+                hash: from_a[0].1,
+                quarantined: false
+            },
+        ]
     );
 
     let b = joined(&bytes);
@@ -311,4 +324,57 @@ fn a_snapshot_from_below_a_crossed_barrier_is_refused() {
         "{error:?}"
     );
     assert!(state::load(&fresh).expect("load").is_none());
+}
+
+#[test]
+fn malformed_streams_are_errors_not_panics() {
+    let invalid = |result: Result<Option<Record>>| {
+        assert!(
+            matches!(&result, Err(AppError::Validation(key)) if key == "validation.syncSnapshotInvalid"),
+            "{result:?}"
+        );
+    };
+    invalid(read_record(&mut &[0xFF_u8, 0xFF, 0xFF, 0xFF][..], &[]));
+    for cut in 1..=3 {
+        invalid(read_record(&mut &[0_u8, 0, 0, 2][..cut], &[]));
+    }
+    let mut unknown = Vec::new();
+    write_record(&mut unknown, &serde_json::json!({ "r": "nope" })).expect("write");
+    invalid(read_record(&mut &unknown[..], &[]));
+
+    let a = device(A);
+    exec(
+        &a,
+        "INSERT INTO institutions (id, name) VALUES ('i1', 'Bank'); \
+         INSERT INTO exchange_rates (currency, rate, fetched_at) VALUES ('AAA', 1.5, 10);",
+    );
+    let (bytes, _) = snapshot(&a, 1);
+    let all = records(&bytes);
+    let first_seed = all
+        .iter()
+        .position(|r| matches!(r, Record::Seed { .. }))
+        .expect("a seed");
+    let mut duplicate_header = all.clone();
+    duplicate_header.insert(2, all[1].clone());
+    let mut duplicate_devs = all.clone();
+    duplicate_devs.insert(1, all[0].clone());
+    let mut row_after_seed = all.clone();
+    let row = row_after_seed.remove(first_seed - 1);
+    row_after_seed.insert(first_seed, row);
+    assert!(matches!(
+        row_after_seed[first_seed - 1],
+        Record::Seed { .. }
+    ));
+    assert!(matches!(row_after_seed[first_seed], Record::Row(_)));
+    for broken in [duplicate_header, duplicate_devs, row_after_seed] {
+        let broken = stream_of(&broken);
+        let error = super::super::stream::read_all(&mut &broken[..]).expect_err("rejected");
+        assert!(
+            matches!(&error, AppError::Validation(key) if key == "validation.syncSnapshotInvalid"),
+            "{error:?}"
+        );
+        let b = migrated();
+        assert!(join(&b, B, &mut &broken[..], NOW).is_err());
+        assert!(state::load(&b).expect("load").is_none());
+    }
 }

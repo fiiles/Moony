@@ -24,8 +24,15 @@ use crate::services::sync::registry::{self, TableClass};
 /// The largest record a reader accepts (the relay's 100 MiB request limit).
 const MAX_RECORD: u64 = 100 * 1024 * 1024;
 
-/// A device's chain head: `(device, seq, hash)`.
-pub type Head = (DeviceId, u64, [u8; 32]);
+/// A device's chain head as `sync_heads` holds it; on the wire `[device, seq, hash, quarantined]`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Head {
+    pub device: DeviceId,
+    pub seq: u64,
+    pub hash: [u8; 32],
+    /// The author's chain forked on the dumping device (§9.3): restoring keeps it held.
+    pub quarantined: bool,
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Record {
@@ -84,8 +91,13 @@ pub(super) fn encode(record: &Record, devs: &mut DevTable) -> Json {
             out.insert("seq".into(), json!(seq));
             let heads: Vec<Json> = heads
                 .iter()
-                .map(|(device, seq, hash)| {
-                    json!([device.to_b64(), seq, URL_SAFE_NO_PAD.encode(hash)])
+                .map(|h| {
+                    json!([
+                        h.device.to_b64(),
+                        h.seq,
+                        URL_SAFE_NO_PAD.encode(h.hash),
+                        h.quarantined
+                    ])
                 })
                 .collect();
             out.insert("heads".into(), Json::Array(heads));
@@ -214,7 +226,9 @@ fn decode(value: &Json, devs: &[DeviceId]) -> Result<Record> {
 }
 
 fn decode_head(value: &Json) -> Result<Head> {
-    let [device, seq, hash] = value.as_array().map(Vec::as_slice).ok_or_else(invalid)? else {
+    let [device, seq, hash, quarantined] =
+        value.as_array().map(Vec::as_slice).ok_or_else(invalid)?
+    else {
         return Err(invalid());
     };
     let device = DeviceId::from_b64(device.as_str().ok_or_else(invalid)?).map_err(|_| invalid())?;
@@ -223,7 +237,12 @@ fn decode_head(value: &Json) -> Result<Head> {
         .decode(hash.as_str().ok_or_else(invalid)?)
         .map_err(|_| invalid())?;
     let hash = <[u8; 32]>::try_from(hash).map_err(|_| invalid())?;
-    Ok((device, seq, hash))
+    Ok(Head {
+        device,
+        seq,
+        hash,
+        quarantined: quarantined.as_bool().ok_or_else(invalid)?,
+    })
 }
 
 /// Reads and checks the whole stream: `devs`, `header`, rows, seeds, `end` with matching counts,

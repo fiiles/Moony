@@ -30,7 +30,7 @@ use rusqlite::{params, params_from_iter, Connection, OptionalExtension};
 
 use super::capture::{self, triggers::pk_expr, Mode, CLOCK_UPSERT};
 use super::changeset::{DevTable, RowChange, RowKey, SqlValue};
-use super::hlc::{Clock, DeviceId};
+use super::hlc::{Clock, DeviceId, Observation};
 use super::in_savepoint;
 use super::journal::{category_depth, Reader};
 use super::merge::{self, MergeCtx, Outcome};
@@ -103,6 +103,15 @@ pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpSta
     Ok(stats)
 }
 
+/// What a restore did: the stream's counts, and what it could not do exactly or found suspicious
+/// (a clock far ahead of this device's time, a merge or repair warning). The restore still
+/// committed; the engine shows the warnings in Sync diagnostics.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct RestoreReport {
+    pub stats: DumpStats,
+    pub warnings: Vec<String>,
+}
+
 /// A device joins the vault from a snapshot, in the order of ruling R4: its `sync_state` row,
 /// the restore by replace (nothing is clocked or queued), then capture, whose clock starts above
 /// every restored clock. The rule packs are not rewritten: they come from the vault. One
@@ -112,13 +121,13 @@ pub fn join(
     device: DeviceId,
     input: &mut impl Read,
     now: i64,
-) -> Result<DumpStats> {
+) -> Result<RestoreReport> {
     let snapshot = read_all(input)?;
     in_savepoint(conn, "sync_snapshot_join", || {
         state::ensure_row(conn, device)?;
-        let stats = replace(conn, snapshot, now)?;
+        let report = replace(conn, snapshot, now)?;
         capture::install(conn, device)?;
-        Ok(stats)
+        Ok(report)
     })
 }
 
@@ -127,7 +136,16 @@ pub fn join(
 /// `app_config` keys go) with `sync_clock`, `sync_outbox`, `sync_heads` and `sync_typed`, then the
 /// snapshot's rows go in through the merge engine, its seeds and heads are written, the cursor
 /// and snapshot bookkeeping set, and every repair runs.
-pub fn restore_replace(conn: &Connection, input: &mut impl Read, now: i64) -> Result<DumpStats> {
+///
+/// A joining device replaces everything: emptying the synced tables cascades away the Local rows
+/// that hang off them, so the joiner's own attachment rows (`real_estate_photo_batches` and their
+/// photos, `real_estate_documents`, `insurance_documents`) go with its own real estate and
+/// policies.
+pub fn restore_replace(
+    conn: &Connection,
+    input: &mut impl Read,
+    now: i64,
+) -> Result<RestoreReport> {
     let snapshot = read_all(input)?;
     in_savepoint(conn, "sync_snapshot_replace", || {
         replace(conn, snapshot, now)
@@ -136,40 +154,46 @@ pub fn restore_replace(conn: &Connection, input: &mut impl Read, now: i64) -> Re
 
 /// Restores by merging (after `410 snapshot_required`, or a re-join, §8): the rows go through
 /// `merge::merge_rows` (D12–D15, so newer local edits win), seeds go in only where their key is
-/// absent, every head takes the higher sequence, the outbox stays; then every repair runs.
-/// Needs capture installed, as on any sync-enabled connection.
-pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Result<DumpStats> {
+/// absent, every head takes the higher sequence, the cursor and snapshot bookkeeping never move
+/// back, the outbox stays; then every repair runs. Needs capture installed, as on any
+/// sync-enabled connection.
+pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Result<RestoreReport> {
     let snapshot = read_all(input)?;
     in_savepoint(conn, "sync_snapshot_merge", || {
         let sync = admissible(conn, &snapshot)?;
-        let stats = stats_of(&snapshot);
-        if let Outcome::Stopped(reason) = merge::merge_rows(conn, &snapshot.rows, now)? {
-            log::warn!("[SYNC] A snapshot did not merge: {reason:?}");
-            return Err(invalid());
+        let mut report = RestoreReport {
+            stats: stats_of(&snapshot),
+            warnings: Vec::new(),
+        };
+        observe(conn, report.stats.max_hlc, &mut report.warnings)?;
+        match merge::merge_rows(conn, &snapshot.rows, now)? {
+            Outcome::Applied(applied) => report.warnings.extend(applied.warnings),
+            Outcome::Stopped(reason) => {
+                log::warn!("[SYNC] A snapshot did not merge: {reason:?}");
+                return Err(invalid());
+            }
         }
-        finish(conn, &snapshot, &sync, stats, false)?;
-        conn.execute(
-            "UPDATE sync_state SET cursor = MAX(cursor, ?1) WHERE id = 1",
-            [sql_int(snapshot.seq)?],
-        )?;
-        repair::full(conn, now)?;
-        Ok(stats)
+        finish(conn, &snapshot, &sync, report.stats.max_hlc, false)?;
+        report.warnings.extend(repair::full(conn, now)?.warnings);
+        Ok(report)
     })
 }
 
 /// The body of `restore_replace`, inside the caller's savepoint.
-fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<DumpStats> {
+fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<RestoreReport> {
     let sync = admissible(conn, &snapshot)?;
-    let stats = stats_of(&snapshot);
+    let mut report = RestoreReport {
+        stats: stats_of(&snapshot),
+        warnings: Vec::new(),
+    };
     conn.execute_batch("PRAGMA defer_foreign_keys = ON")?;
     // The rows go in in merge mode, so nothing is clocked or queued. Without capture (a joining
     // device, R4) it is installed for the restore only.
     let installed = capture::is_installed(conn)?;
-    if installed {
-        capture::observe(conn, stats.max_hlc)?;
-    } else {
+    if !installed {
         capture::install(conn, sync.device)?;
     }
+    observe(conn, report.stats.max_hlc, &mut report.warnings)?;
     capture::with_mode(conn, Mode::Repair, || clear(conn))?;
     if let Some(i) = snapshot
         .rows
@@ -189,16 +213,28 @@ fn replace(conn: &Connection, mut snapshot: Snapshot, now: i64) -> Result<DumpSt
         log::warn!("[SYNC] A snapshot did not restore: {reason:?}");
         return Err(invalid());
     }
-    finish(conn, &snapshot, &sync, stats, true)?;
-    conn.execute(
-        "UPDATE sync_state SET cursor = ?1 WHERE id = 1",
-        [sql_int(snapshot.seq)?],
-    )?;
-    repair::full(conn, now)?;
+    report.warnings.append(&mut ctx.report.warnings);
+    finish(conn, &snapshot, &sync, report.stats.max_hlc, true)?;
+    report.warnings.extend(repair::full(conn, now)?.warnings);
     if !installed {
         capture::uninstall(conn)?;
     }
-    Ok(stats)
+    Ok(report)
+}
+
+/// Moves this connection's clock past the snapshot's newest clock (capture is installed on every
+/// restore path by now) and warns when that clock is more than 24 hours ahead of local time: it is
+/// restored anyway, as a changeset's would be (§6.3).
+fn observe(conn: &Connection, max_hlc: u64, warnings: &mut Vec<String>) -> Result<()> {
+    if let Observation::FarFuture { ahead_ms } = capture::observe(conn, max_hlc)? {
+        let warning = format!(
+            "the snapshot carries a clock {} minutes ahead of this device's time",
+            ahead_ms / 60_000
+        );
+        log::warn!("[SYNC] {warning}");
+        warnings.push(warning);
+    }
+    Ok(())
 }
 
 /// The sync row, once the snapshot is known to be one this device may restore.
@@ -217,28 +253,41 @@ fn admissible(conn: &Connection, snapshot: &Snapshot) -> Result<SyncState> {
     Ok(sync)
 }
 
-/// Seeds, heads and the snapshot bookkeeping, shared by both restores.
+/// Seeds, heads (with their quarantine) and the cursor and snapshot bookkeeping, shared by both
+/// restores. Replacing sets them; merging never moves them back.
 fn finish(
     conn: &Connection,
     snapshot: &Snapshot,
     sync: &SyncState,
-    stats: DumpStats,
+    max_hlc: u64,
     replacing: bool,
 ) -> Result<()> {
     insert_seeds(conn, &snapshot.seeds, replacing)?;
+    // A quarantine is never lifted by a snapshot: the fork stays a fork.
     let mut head = conn.prepare_cached(
-        "INSERT INTO sync_heads (device, seq, hash) VALUES (?1, ?2, ?3) \
-         ON CONFLICT(device) DO UPDATE SET seq = excluded.seq, hash = excluded.hash \
-         WHERE excluded.seq > sync_heads.seq",
+        "INSERT INTO sync_heads (device, seq, hash, quarantined) VALUES (?1, ?2, ?3, ?4) \
+         ON CONFLICT(device) DO UPDATE SET \
+           hash = CASE WHEN excluded.seq > seq THEN excluded.hash ELSE hash END, \
+           seq = MAX(seq, excluded.seq), \
+           quarantined = MAX(quarantined, excluded.quarantined)",
     )?;
     // This device's own envelopes are judged from its own log, never from a head.
-    for (device, seq, hash) in snapshot.heads.iter().filter(|h| h.0 != sync.device) {
-        head.execute(params![device.0.to_vec(), sql_int(*seq)?, hash.to_vec()])?;
+    for h in snapshot.heads.iter().filter(|h| h.device != sync.device) {
+        head.execute(params![
+            h.device.0.to_vec(),
+            sql_int(h.seq)?,
+            h.hash.to_vec(),
+            h.quarantined
+        ])?;
     }
-    conn.execute(
-        "UPDATE sync_state SET snapshot_seq = ?1, snapshot_hlc = ?2 WHERE id = 1",
-        params![sql_int(snapshot.seq)?, sql_int(stats.max_hlc)?],
-    )?;
+    let sql = if replacing {
+        "UPDATE sync_state SET cursor = ?1, snapshot_seq = ?1, snapshot_hlc = ?2 WHERE id = 1"
+    } else {
+        "UPDATE sync_state SET cursor = MAX(cursor, ?1), \
+           snapshot_seq = MAX(COALESCE(snapshot_seq, 0), ?1), \
+           snapshot_hlc = MAX(snapshot_hlc, ?2) WHERE id = 1"
+    };
+    conn.execute(sql, params![sql_int(snapshot.seq)?, sql_int(max_hlc)?])?;
     Ok(())
 }
 
@@ -520,16 +569,16 @@ fn seed_tables() -> impl Iterator<Item = &'static TableSpec> {
         .filter(|t| t.class == TableClass::Seed)
 }
 
-/// Every `sync_heads` row, then this device's own head (R3) once it has sealed an envelope, so a
+/// Every `sync_heads` row with its quarantine, then this device's own head (R3) once it has sealed an envelope, so a
 /// device restoring the snapshot applies the dumper's next envelope instead of seeing a gap.
 fn heads_of(conn: &Connection, sync: &SyncState) -> Result<Vec<Head>> {
-    let raw: Vec<(Vec<u8>, i64, Vec<u8>)> = conn
-        .prepare("SELECT device, seq, hash FROM sync_heads ORDER BY device")?
-        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))?
+    let raw: Vec<(Vec<u8>, i64, Vec<u8>, bool)> = conn
+        .prepare("SELECT device, seq, hash, quarantined FROM sync_heads ORDER BY device")?
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))?
         .collect::<std::result::Result<_, _>>()?;
     let mut heads = raw
         .into_iter()
-        .map(|(device, seq, hash)| {
+        .map(|(device, seq, hash, quarantined)| {
             let device: [u8; 16] = device
                 .try_into()
                 .map_err(|_| AppError::Internal("sync_heads.device is not 16 bytes".into()))?;
@@ -538,12 +587,22 @@ fn heads_of(conn: &Connection, sync: &SyncState) -> Result<Vec<Head>> {
                 .map_err(|_| AppError::Internal("sync_heads.hash is not 32 bytes".into()))?;
             let seq = u64::try_from(seq)
                 .map_err(|_| AppError::Internal(format!("sync_heads.seq {seq} is negative")))?;
-            Ok((DeviceId(device), seq, hash))
+            Ok(Head {
+                device: DeviceId(device),
+                seq,
+                hash,
+                quarantined,
+            })
         })
         .collect::<Result<Vec<Head>>>()?;
     if let (true, Some(hash)) = (sync.next_seq > 1, sync.last_hash) {
-        if !heads.iter().any(|h| h.0 == sync.device) {
-            heads.push((sync.device, sync.next_seq - 1, hash));
+        if !heads.iter().any(|h| h.device == sync.device) {
+            heads.push(Head {
+                device: sync.device,
+                seq: sync.next_seq - 1,
+                hash,
+                quarantined: false,
+            });
         }
     }
     Ok(heads)

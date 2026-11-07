@@ -119,7 +119,7 @@ cost: `portfolio_metrics_history` live rows of a day only one device saw stay on
 the "undated remainder" rule (ADR 0016) can differ slightly between devices for undated items.
 The snapshot narrows that gap for new devices.
 
-### 5.2 Columns that do not sync, and columns that are recomputed
+### 5.2 Columns that do not sync, and columns that are recomputed (superseded, see §20)
 
 Some synced tables carry columns that are device-local or derived. The registry gives each such
 column one of two classes:
@@ -166,7 +166,7 @@ everywhere from then on.
 
 ## 6. Capturing changes
 
-### 6.1 Triggers, created per connection
+### 6.1 Triggers, created per connection (superseded, see §20)
 
 D4: **changes are captured by SQLite triggers, not by the services.** Moony writes through ~900
 SQL statements across the services, MCP and imports; wrapping each would be a rewrite and would
@@ -211,7 +211,7 @@ UPDATE` fires the UPDATE trigger; triggers survive `ATTACH` of `files`. No servi
 OR REPLACE` today (checked 2026-11-06); a lint test keeps it that way for synced tables, because
 REPLACE deletes without firing DELETE triggers unless `recursive_triggers` is on.
 
-### 6.2 Local sync tables (migration 029)
+### 6.2 Local sync tables (migration 029) (superseded, see §20)
 
 One append-only migration adds the sync bookkeeping below (all of it **Local**), the synced
 `sync_devices` table (§11.4) and the `split_basis` columns (D27). It is additive (§14).
@@ -229,7 +229,7 @@ One append-only migration adds the sync bookkeeping below (all of it **Local**),
 The vault keys sit inside `moony.db`, so they are encrypted at rest by the device password like
 everything else and are never written to a separate file.
 
-### 6.3 Hybrid logical clock
+### 6.3 Hybrid logical clock (superseded, see §20)
 
 D9: clocks are **hybrid logical clocks** (HLC): 48 bits of wall-clock milliseconds and a 16-bit
 counter, packed into one INTEGER, compared as integers, ties broken by device ID (16 random
@@ -247,7 +247,7 @@ changes go out in the new format, with no conversion of queued data (§14).
 
 ## 7. Merging remote changes
 
-### 7.1 Rules
+### 7.1 Rules (superseded, see §20)
 
 Changes from other devices are applied in relay order, one changeset at a time, each in one SQL
 transaction with `PRAGMA defer_foreign_keys = ON` and the triggers in `merge` mode.
@@ -318,7 +318,7 @@ Then it emits `sync-data-changed`, and the frontend runs the same ritual as for
 `mcp-data-changed` (AGENTS.md rule 7: invalidate the domain keys, `portfolio-metrics`,
 `cashflow-report`, record a snapshot, invalidate `portfolio-history`).
 
-### 7.2 Changes whose meaning depends on the old value
+### 7.2 Changes whose meaning depends on the old value (superseded, see §20)
 
 LWW is safe for "set the field to X". It is not, on its own, safe for operations that rewrite rows
 relative to what is there. The ones in Moony today:
@@ -349,7 +349,7 @@ relative to what is there. The ones in Moony today:
 Any future feature that rewrites rows relative to their values has to name its sync behaviour in
 its spec. This goes into `docs/standards/rust-backend.md`.
 
-### 7.3 Unique keys: two devices create "the same" thing
+### 7.3 Unique keys: two devices create "the same" thing (superseded, see §20)
 
 UUIDs never collide, but several tables also have a natural unique key: `stock_investments.ticker`,
 `crypto_investments.ticker`, `watched_stocks.ticker`, the three override tables, `stock_tags.name`,
@@ -386,7 +386,7 @@ offline will have duplicates, because the import's duplicate detection (`service
 fuzzy match, not a constraint. That is the same as importing the file twice today; the existing
 "possible duplicates" review catches it. Not worth a merge rule in v1.
 
-### 7.4 Rules the database doesn't enforce
+### 7.4 Rules the database doesn't enforce (superseded, see §20)
 
 Some invariants live in services, not constraints, so a merge can break them:
 
@@ -403,7 +403,7 @@ Some invariants live in services, not constraints, so a merge can break them:
 The plan audits the services for others (grep for checks that query before insert) and adds each
 to the repair list with a test. The repairs are deterministic and are not captured.
 
-## 8. Snapshots
+## 8. Snapshots (superseded, see §20)
 
 A snapshot is how a new device starts and how a device that was offline too long catches up.
 
@@ -438,7 +438,7 @@ A snapshot is how a new device starts and how a device that was offline too long
 
 ## 9. The wire format
 
-### 9.1 Changeset (plaintext)
+### 9.1 Changeset (plaintext) (superseded, see §20)
 
 ```json
 {
@@ -666,7 +666,7 @@ clocks on both sides, two hand-made sets of accounts and categories, random IDs 
 ticker), and it adds little: the person picks the more complete profile and re-imports the rest.
 §16 Q5 asks whether merging is worth adding later.
 
-### 11.4 Device list, removing a device, identity clones
+### 11.4 Device list, removing a device, identity clones (superseded, see §20)
 
 - `sync_devices` is a **synced** table (it lives in the vault, encrypted, and is added by
   migration 029 like the local tables): device ID, X25519 public key, a name the person can edit
@@ -799,7 +799,7 @@ Threats outside scope: a compromised device while unlocked (it can read and writ
 synced or not); a person who loses every device and the Recovery Kit (data is gone; that is the
 point).
 
-## 14. Migrations and app versions
+## 14. Migrations and app versions (superseded, see §20)
 
 Devices update at different times, so envelopes carry the author's schema number (the count of
 applied main migrations).
@@ -830,7 +830,7 @@ applied main migrations).
     migrations (§7.4), so a seed doesn't bring back what the person deleted on another device.
 - The relay never needs to know any of this.
 
-## 15. Architecture in the code
+## 15. Architecture in the code (superseded, see §20)
 
 New Rust module `src-tauri/src/services/sync/`, all logic taking `&Connection` or plain data,
 network through `services/http.rs`, so it is testable without a relay:
@@ -891,7 +891,7 @@ only), D22 (joining replaces the device's data, after a backup), D25 (10 GiB blo
 `split_basis` column so splits survive offline edits), and that a lapsed subscriber can still lock
 out a lost device (§11.4, §12).
 
-## 16a. Owner answers (2026-11-06)
+## 16a. Owner answers (2026-11-06) (superseded, see §20)
 
 Filip approved the spec with "implement it, decision about limits and tiers leave for later, same
 for attachments". What that means for the build:
@@ -937,7 +937,7 @@ Each phase lands on main finished and tested, hidden behind the flag until the l
    server knows"), real-profile dry run on copies of the owner's desktop and phone profiles,
    turn the flag on.
 
-## 18. Verification
+## 18. Verification (superseded, see §20)
 
 - Convergence property tests (phase 1) cover D12–D15, column groups, generations, every
   `ON DELETE` rule and orphan rule, the four unique-key rules, invariants, splits with offline
@@ -975,3 +975,113 @@ Each phase lands on main finished and tested, hidden behind the flag until the l
 - **Password-derived vault key** (so the person needs only a password to join). It would make the
   relay's ciphertext brute-forceable offline. A random key with QR pairing and a Recovery Kit is
   stronger and not harder in practice.
+
+## 20. As built (phase 1, 2026-11-07)
+
+Phase 1 (the engine without network) was built on `feat/device-sync`. ADR 0024
+(`docs/architecture/decisions/0024-device-sync-capture-clocks-merge.md`) records the decisions as
+built. The text above is kept as it was approved. A section marked "(superseded, see §20)" has some
+text that no longer matches the build; the rest of that section still stands. Where they differ,
+the code and ADR 0024 win.
+
+- **§5.2 Column classes.** Three mirrors are recomputed-or-typed, not recomputed:
+  `bank_accounts.balance`/`balance_as_of`, `real_estate.market_price`/`market_price_currency` and
+  `other_assets.market_price` (each keeps a typed value when it has no source rows).
+  `loans.interest_rate`/`monthly_payment` are plain Synced. `loan_events.previous_rate`/
+  `previous_monthly_payment` are Synced, and `loan_events::rebuild_terms_chain` re-derives every
+  later carrier, after a merge and in every local write that adds or removes an event. Exactly
+  four `updated_at` columns are Local (`bank_accounts`, `loans`, `real_estate`, `other_assets`),
+  and `real_estate.photos` is Local. Capture still clocks a recomputed-or-typed column only when its
+  row has no source rows. While a computed value hides the typed one, the typed value waits in
+  `sync_typed`; it goes on the wire and comes back when the last source row goes. With capture
+  installed, the value a column had when sync started counts as typed. ADR 0024.
+- **§6.1 Triggers.** Each table gets insert, update and primary-key-change triggers and a
+  BEFORE/AFTER delete pair, plus shadow triggers for recomputed-or-typed columns. Three connection
+  functions (`sync_hlc_tick`, `sync_hlc_now`, `sync_hlc_observe`) replace `sync_hlc()`, and the
+  mode lives in `temp.sync_mode`. In `local` mode the outermost delete ticks once, and every row
+  its cascade reaches is tombstoned with that same clock, as `merge` mode does with the parent's
+  clock. A `merge`-mode delete without a cascade clock aborts. ADR 0024, D4.
+- **§6.2 Local sync tables.** `sync_pending_blobs` is not created (attachments stay Local).
+  `sync_own_log` holds `min_hlc` as well as `max_hlc` (the re-join watermark, §11.4 below). The
+  Local table `sync_typed (tbl, pk, col, typed, assigned)` holds typed values that a repair shows
+  differently: renamed names, cleared links and recomputed-or-typed columns. `sync_state` also has
+  `snapshot_hlc` and `schema_seen`, and `sync_heads` has `quarantined`. Migration 029 adds the
+  split entry columns next to `split_basis` (§7.2 below). `docs/architecture/database.md` lists
+  them.
+- **§6.3 Clock.** The ms part saturates at `2^47 − 1` (6429-10-17), so the packed value fits a
+  positive SQLite INTEGER, and the decoder refuses a clock above `i64::MAX`. A row that never had
+  a clock reads as clock 0 with the all-zero device. ADR 0024, D9.
+- **§7.1 Merge (D12–D14).** These rules replace parts of the text:
+  - every change is a full row, so "a partial update to a deleted row" never happens;
+  - delete epochs replace "a change addressed to an older generation is dropped". A key's epoch
+    is its newest tombstone. An insert older than that epoch is dropped. Within one epoch, two
+    creations of the same row merge per column, and the stored generation becomes the larger of
+    the two. A row deleted and re-created travels with both `"del"` and `"ins"`;
+  - the monotonic `stock_splits.status` rule became "a `pending` written by an insert is weak":
+    a weak `pending` loses to any other status, and otherwise the newer clock wins, so a revert
+    syncs;
+  - D14 has three more NO ACTION keys, all with the set-NULL orphan rule:
+    `bank_accounts.institution_id`, `bank_transactions.suggested_category_id` and
+    `transaction_categories.parent_id`;
+  - parent rules run only on the FK values that won the column merge (plus the key parts). A
+    CASCADE or drop-child insert into a deleted parent epoch is recorded as a tombstone at the
+    parent's tombstone clock, so its own children follow it instead of stopping the merge;
+  - every `'-'` tombstone is identical on all devices, with one exception: a cascade may raise a
+    key's `'-'` above its author's own earlier tombstone. No decision reads that window, and no
+    decision reads the `'*'` of a dead row;
+  - recalculations that write synced or recomputed columns break ties by `id`. A recalculation
+    that fails falls back deterministically and does not fail the merge.
+
+  ADR 0024, D12–D14.
+- **§7.2 / D27 Splits.** Rows are no longer rewritten to current units on apply and revert. The
+  values as entered sync: `entry_quantity`/`entry_price_per_unit`, `entry_price`,
+  `entry_target_price` and `entry_yearly_dividend_sum`, each with `entry_basis`; the three side
+  tables also have `entry_at`. The current units and `split_basis` are Recomputed:
+  `stock_splits::reconcile_ticker` derives them in one scaling with one rounding, so the result
+  does not depend on the path. A side row is affected by a split according to `entry_at`, never
+  `updated_at`. A split named in any `entry_basis` cannot be deleted or given a new ratio. A basis
+  ID with no `stock_splits` row stays and scales nothing. ADR 0024.
+- **§7.3 and §7.4 Unique keys and invariants (rulings U1–U4).**
+  - The "keep newest" tables became Same ID. `bank_balance_records` and `budget_goal_versions`
+    take natural IDs from their keys, and moving a version to another key deletes it and
+    re-creates it under the new key's ID. Keep-newest, compared by the key clock
+    `max('*', key column clocks)`, remains only as a warned fallback for a second ID on one key.
+    That case needs legacy random-ID rows, for example a legacy row's delete and its natural-ID
+    re-creation split across two envelopes by the size cap.
+  - Rename and Unlink are derived: the typed value stays in `sync_typed`, the stored column is
+    recomputed from the typed values of its scope, and the wire carries the typed values.
+    Category names are a fourth rename scope.
+  - A collision inside one changeset is deferred and retried after the rest of the changeset;
+    only a collision that remains goes to the rule.
+  - §7.4 adds two rules: category names follow the rename rule, and insurance
+    `(provider, policy_number)` has no repair (duplicates are kept, a known limit). The split row
+    of the table now reads "derive from entry values".
+
+  ADR 0024, D15.
+- **§8 Snapshots.** A dump requires an empty `sync_outbox` as well as an empty `sync_unsent`;
+  otherwise it fails with `validation.syncSnapshotPending`. Both restores go through the merge
+  engine and the full repair. ADR 0024.
+- **§9.1 Wire.** Each row carries `"p"` (the generation of each referenced parent). A changeset
+  carries `"barrier"`, omitted when it is 0. A row that was deleted and re-created carries both
+  `"del"` and `"ins"`. `"prev"` is omitted at `seq` 1. ADR 0024.
+- **§11.4 Re-join.** `chain::rejoin` takes the sequence number of the envelope that judged
+  `Clone`, or none for a re-join found at unlock. The confirmed own prefix ends below that
+  sequence, and its last entry becomes the old ID's head. Every own clock at or above
+  `W = min(max_hlc of the prefix, min_hlc of every own envelope outside it)` is re-queued. This
+  replaces "newer than the last own envelope it can confirm" (ADR 0024, chains).
+- **§14 Migration seeds.** A seed after 029 must also use fixed values for every synced column,
+  timestamps included (`docs/standards/rust-backend.md` §12). The registry test enforces only
+  the deterministic IDs. Phase 1 judges an envelope `BelowBarrier` from its `"barrier"` alone;
+  skipping it only when the relay placed it after the barrier marker waits for the phase 2
+  engine, which knows the relay order.
+- **§15 Code layout.** `registry/`, `capture/`, `journal/`, `merge/`, `repair/` and `snapshot/`
+  are directories; `chain.rs`, `changeset.rs`, `state.rs` and `natural_id.rs` are files.
+  `envelope`, `blobs`, `pairing`, `relay` and `engine` belong to later phases.
+- **§16a Oversized rows.** The journal refuses a row over 180 KiB; capture cannot, because it
+  cannot measure the deflated size. The row stays in the outbox.
+- **§18 Performance.** The capture overhead on a 5,000-row statement import was measured at about
+  350%: 31.9 ms rose to 143.7 ms in a release build in memory, and to about 315% with a WAL file
+  (`capture_overhead_on_a_5000_row_statement_import`, `#[ignore]`). The target was under 20%. The
+  absolute cost is about 0.1 s per 5,000 rows, which is accepted for phase 1; phase 2 profiles it
+  on a phone. The 50,000-row iPhone merge target waits for the phone phase. ADR 0024, known
+  limits.

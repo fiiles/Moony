@@ -4,6 +4,7 @@
 //! forged from hand-made changesets (`forge`), and reach the relay through `push`.
 
 mod pull;
+mod push;
 
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};

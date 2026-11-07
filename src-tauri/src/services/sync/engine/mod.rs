@@ -1,8 +1,9 @@
 //! The sync engine (spec §9.4): the steps of a sync round against the relay. Every step reads or
 //! writes the profile under the connection lock and releases it before any network call
-//! (`ConnAccess`). `pull` brings other devices' envelopes in.
+//! (`ConnAccess`). `pull` brings other devices' envelopes in; `push` seals and sends this device's.
 
 pub mod pull;
+pub mod push;
 
 use rusqlite::Connection;
 

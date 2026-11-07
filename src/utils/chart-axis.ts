@@ -61,3 +61,45 @@ export function distinctTickLabels(
   }
   return labels;
 }
+
+/** Widths of the characters of a value tick (Inter 500, 10 px), a little on the wide side. */
+const GLYPH_WIDTH: Record<string, number> = {
+  ',': 2.6,
+  '.': 2.6,
+  ' ': 2.2,
+  ' ': 2.2,
+  ' ': 1.8,
+  '-': 3.6,
+  '−': 5.8,
+  i: 2.4,
+  l: 2.4,
+  m: 8.7,
+  M: 8.7,
+  '%': 8.4,
+};
+const DIGIT_WIDTH = 5.8;
+const LETTER_WIDTH = 5.8;
+
+/** Estimated width in px of a value tick written in the axis font (10 px, weight 500). */
+export function estimateLabelWidth(label: string): number {
+  let width = 0;
+  for (const char of label) {
+    width += GLYPH_WIDTH[char] ?? (/\d/.test(char) ? DIGIT_WIDTH : LETTER_WIDTH);
+  }
+  return width;
+}
+
+/** Room between the plot and the label's start: the tick line (6) and its margin (10). */
+const TICK_OFFSET = 16;
+/** The estimate errs wide, so the gutter may undercut the exact need by this much. */
+const GUTTER_SLACK = 2;
+
+/**
+ * The width of the right gutter that holds every tick label: `minimum` (the standard axis) unless
+ * the widest label needs more, so an axis whose labels fit today keeps its width.
+ */
+export function tickGutter(labels: Iterable<string>, minimum: number): number {
+  let widest = 0;
+  for (const label of labels) widest = Math.max(widest, estimateLabelWidth(label));
+  return Math.max(minimum, Math.ceil(widest + TICK_OFFSET - GUTTER_SLACK));
+}

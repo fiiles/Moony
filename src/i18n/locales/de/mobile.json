@@ -16,11 +16,11 @@
   },
   "overview": {
     "change": {
-      "30D": "in 30 Tagen",
-      "90D": "in 3 Monaten",
+      "30D": "in den letzten 30 Tagen",
+      "90D": "in den letzten 3 Monaten",
       "YTD": "dieses Jahr",
-      "1Y": "in einem Jahr",
-      "5Y": "in 5 Jahren",
+      "1Y": "im letzten Jahr",
+      "5Y": "in den letzten 5 Jahren",
       "All": "seit dem ersten Eintrag"
     },
     "stats": {
@@ -122,7 +122,7 @@
     "policies_one": "{{count}} Police",
     "policies_other": "{{count}} Policen",
     "total": "Gesamt auf Konten",
-    "change30": "{{amount}} in 30 Tagen",
+    "change30": "{{amount}} in den letzten 30 Tagen",
     "noMovements": "keine Bewegungen in 30 Tagen",
     "uncategorized": "Nicht kategorisierte Zahlungen",
     "sections": {
@@ -148,7 +148,7 @@
       "sort": "Sortierung",
       "sortBalance": "Nach Saldo",
       "sortName": "Nach Name",
-      "sortChange": "Nach Änderung in 30 Tagen",
+      "sortChange": "Nach Änderung der letzten 30 Tage",
       "sortLast": "Nach letzter Bewegung",
       "showMatured": "Getilgte Kredite anzeigen",
       "showEnded": "Beendete Policen anzeigen",
@@ -545,6 +545,8 @@
       "asset": "Vermögenswert"
     },
     "noRate": "kein Wechselkurs für {{currency}}",
+    "sincePurchase": "seit Kauf",
+    "gainSincePurchase": "Gewinn seit Kauf",
     "stocks": {
       "back": "Aktien",
       "pricesAt": "Kurse {{time}}",
@@ -576,8 +578,7 @@
       "loadFailed": "Die Positionen konnten nicht geladen werden.",
       "target": "Ziel {{price}}",
       "targetReached": "Ziel erreicht",
-      "dayChange": "heute",
-      "sincePurchase": "seit Kauf"
+      "dayChange": "heute"
     },
     "crypto": {
       "largestNote": "{{share}} der Kryptos",

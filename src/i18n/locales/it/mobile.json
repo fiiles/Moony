@@ -578,6 +578,8 @@
       "asset": "Bene"
     },
     "noRate": "nessun tasso di cambio per {{currency}}",
+    "sincePurchase": "dal acquisto",
+    "gainSincePurchase": "guadagno dal acquisto",
     "stocks": {
       "back": "Azioni",
       "pricesAt": "prezzi {{time}}",
@@ -610,8 +612,7 @@
       "loadFailed": "Impossibile caricare le posizioni.",
       "target": "obiettivo {{price}}",
       "targetReached": "obiettivo raggiunto",
-      "dayChange": "oggi",
-      "sincePurchase": "dal acquisto"
+      "dayChange": "oggi"
     },
     "crypto": {
       "largestNote": "{{share}} delle cripto",

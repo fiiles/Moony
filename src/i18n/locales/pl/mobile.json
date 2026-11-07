@@ -611,6 +611,8 @@
       "asset": "Aktywo"
     },
     "noRate": "brak kursu wymiany dla {{currency}}",
+    "sincePurchase": "od zakupu",
+    "gainSincePurchase": "zysk od zakupu",
     "stocks": {
       "back": "Akcje",
       "pricesAt": "ceny {{time}}",
@@ -644,8 +646,7 @@
       "loadFailed": "Nie udało się wczytać pozycji.",
       "target": "cel {{price}}",
       "targetReached": "cel osiągnięty",
-      "dayChange": "dziś",
-      "sincePurchase": "od zakupu"
+      "dayChange": "dziś"
     },
     "crypto": {
       "largestNote": "{{share}} krypto",

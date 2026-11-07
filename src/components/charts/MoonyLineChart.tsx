@@ -1,4 +1,3 @@
-import { useTickFormatter } from './use-tick-formatter';
 import { useId, useMemo, useState, type ReactNode } from 'react';
 import {
   Area,
@@ -23,7 +22,8 @@ import {
   type EventCluster,
 } from '@/utils/chart-scale';
 import { ChartTip, FloatingTip } from '@/components/charts/ChartTip';
-import { AXIS_WIDTH, TimeAxis } from '@/components/charts/ChartAxis';
+import { TimeAxis } from '@/components/charts/ChartAxis';
+import { useTickFormatter } from '@/components/charts/use-tick-formatter';
 import { EventMark } from '@/components/charts/EventMarkers';
 import { cn } from '@/lib/utils';
 
@@ -183,7 +183,7 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
     [clusters, data, step]
   );
 
-  const tickFormatter = useTickFormatter(ticks, formatTick);
+  const { tickFormatter, axisWidth } = useTickFormatter(ticks, formatTick);
   // The end ring sits on the last actual reading ("Dnes" when the rest is a plan).
   const last = [...data].reverse().find((p) => p.actual !== undefined);
 
@@ -233,7 +233,7 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
             />
             <YAxis
               orientation="right"
-              width={AXIS_WIDTH}
+              width={axisWidth}
               domain={domain}
               ticks={ticks}
               axisLine={false}
@@ -380,7 +380,7 @@ export function MoonyLineChart<E extends ChartEvent = ChartEvent>({
           </FloatingTip>
         )}
       </div>
-      {!hideAxis && <TimeAxis t0={t0} t1={t1} />}
+      {!hideAxis && <TimeAxis t0={t0} t1={t1} gutter={axisWidth} />}
     </div>
   );
 }

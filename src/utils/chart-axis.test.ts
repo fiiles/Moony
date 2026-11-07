@@ -3,7 +3,9 @@ import {
   MAX_AXIS_TICKS,
   dayLabelOptions,
   distinctTickLabels,
+  estimateLabelWidth,
   evenTicks,
+  tickGutter,
   utcDayFloor,
 } from './chart-axis';
 
@@ -75,5 +77,27 @@ describe('distinctTickLabels', () => {
 
   it('ignores a tick listed twice', () => {
     expect(distinctTickLabels([5e6, 5e6], millions).size).toBe(1);
+  });
+});
+
+describe('tickGutter', () => {
+  it('keeps the standard width for labels that fit today', () => {
+    expect(tickGutter(['0', '5,6 mil.', '11,2 mil.'], 54)).toBe(54);
+    expect(tickGutter(['250 tis.', '1,5 mld.'], 54)).toBe(54);
+  });
+
+  it('widens for the extra decimal', () => {
+    expect(tickGutter(['11,24 mil.'], 54)).toBeGreaterThan(54);
+    expect(tickGutter(['11,24 Mio.'], 54)).toBeGreaterThan(tickGutter(['11,24 mil.'], 54));
+  });
+
+  it('grows with the widest label of a long locale', () => {
+    expect(tickGutter(['−11,24 mill.'], 54)).toBeGreaterThanOrEqual(
+      Math.ceil(estimateLabelWidth('−11,24 mill.')) + 14
+    );
+  });
+
+  it('is the minimum without labels', () => {
+    expect(tickGutter([], 54)).toBe(54);
   });
 });

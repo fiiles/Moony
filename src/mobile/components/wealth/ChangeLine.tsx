@@ -15,17 +15,26 @@ interface ChangeLineProps {
   options?: MoneyOptions;
   /** Stands where the amount would: a date ("5. 10."), "dnes". */
   trail?: ReactNode;
+  /** What the share measures, for VoiceOver only (a list that names it once for the eye). */
+  srLabel?: string;
   className?: string;
 }
 
 /**
  * The change line of a row's trailing sub (README §13, `.m-change`): the badge — ▲ / ▼ and the
- * share, green or red, neutral when the share rounds to zero (`changeDirection`), absent without a ratio — then the signed amount
- * (through `<Money>`) or `trail`. The share is never colour alone: the
- * glyph carries the direction for the eye and a spoken sign for VoiceOver (the glyph is hidden
- * from it, the desktop's `ChangeBadge`).
+ * share, green or red, neutral when the share rounds to zero (`changeDirection`), absent without
+ * a ratio — then the signed amount (through `<Money>`) or `trail`. The share is never colour
+ * alone: the glyph carries the direction for the eye and a spoken sign for VoiceOver (the glyph is
+ * hidden from it, the desktop's `ChangeBadge`).
  */
-export function ChangeLine({ change, currency, options, trail, className }: ChangeLineProps) {
+export function ChangeLine({
+  change,
+  currency,
+  options,
+  trail,
+  srLabel,
+  className,
+}: ChangeLineProps) {
   const fmt = useFormat();
   if (change === null) return null;
   const { ratio } = change;
@@ -58,6 +67,7 @@ export function ChangeLine({ change, currency, options, trail, className }: Chan
           options={{ signed: true, decimals: 0, ...options }}
         />
       )}
+      {srLabel && <span className="sr-only">{srLabel}</span>}
     </span>
   );
 }

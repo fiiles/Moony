@@ -47,8 +47,8 @@ export function PositionRow({ row, name, href, currency }: PositionRowProps) {
               ratio: gainLossPercent === null ? null : gainLossPercent / 100,
             }}
             currency={currency}
-            // The gain against what was paid, not the 30 days of the class row one screen up
-            trail={t('wealth.stocks.sincePurchase')}
+            // The caption of the list says it once; the row says it to VoiceOver
+            srLabel={t('wealth.sincePurchase')}
           />
         ) : undefined
       }

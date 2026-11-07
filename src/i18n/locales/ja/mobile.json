@@ -512,6 +512,8 @@
       "asset": "資産"
     },
     "noRate": "{{currency}}の為替レートなし",
+    "sincePurchase": "購入以来",
+    "gainSincePurchase": "購入以来の損益",
     "stocks": {
       "back": "株式",
       "pricesAt": "価格 {{time}}",
@@ -542,8 +544,7 @@
       "loadFailed": "ポジションを読み込めませんでした。",
       "target": "目標 {{price}}",
       "targetReached": "目標に到達",
-      "dayChange": "本日",
-      "sincePurchase": "購入以来"
+      "dayChange": "本日"
     },
     "crypto": {
       "largestNote": "暗号資産の{{share}}",

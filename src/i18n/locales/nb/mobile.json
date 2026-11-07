@@ -545,6 +545,8 @@
       "asset": "Eiendel"
     },
     "noRate": "ingen valutakurs for {{currency}}",
+    "sincePurchase": "siden kjøp",
+    "gainSincePurchase": "gevinst siden kjøp",
     "stocks": {
       "back": "Aksjer",
       "pricesAt": "kurser {{time}}",
@@ -576,8 +578,7 @@
       "loadFailed": "Beholdningene kunne ikke lastes.",
       "target": "mål {{price}}",
       "targetReached": "målet nådd",
-      "dayChange": "i dag",
-      "sincePurchase": "siden kjøp"
+      "dayChange": "i dag"
     },
     "crypto": {
       "largestNote": "{{share}} av krypto",

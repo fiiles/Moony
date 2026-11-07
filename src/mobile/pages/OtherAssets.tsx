@@ -114,6 +114,10 @@ export default function OtherAssets() {
             currency={reportCurrency}
             rememberKey="otherAssets"
           />
+          {/* Says once what the badge of every row measures (the class rows say 30 days) */}
+          <p className="mx-0.5 mb-2 text-right text-m-note text-ink-3">
+            {t('wealth.gainSincePurchase')}
+          </p>
           <EntityRows>
             {rows.map((row) => (
               <AssetRow key={row.asset.id} row={row} currency={reportCurrency} />
@@ -160,7 +164,7 @@ function AssetRow({ row, currency }: { row: OtherAssetRow; currency: string }) {
           <ChangeLine
             change={{ delta: gain, ratio: gainPct }}
             currency={currency}
-            trail={t('wealth.stocks.sincePurchase')}
+            srLabel={t('wealth.sincePurchase')}
           />
         ) : undefined
       }

@@ -512,6 +512,8 @@
       "asset": "资产"
     },
     "noRate": "无 {{currency}} 汇率",
+    "sincePurchase": "自购入以来",
+    "gainSincePurchase": "自购入以来的盈亏",
     "stocks": {
       "back": "股票",
       "pricesAt": "价格 {{time}}",
@@ -542,8 +544,7 @@
       "loadFailed": "无法加载持仓。",
       "target": "目标价 {{price}}",
       "targetReached": "已达目标价",
-      "dayChange": "今日",
-      "sincePurchase": "自购入以来"
+      "dayChange": "今日"
     },
     "crypto": {
       "largestNote": "占加密货币 {{share}}",

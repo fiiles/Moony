@@ -50,8 +50,8 @@ export default function PropertyDetail() {
  * Historie přecenění, Smazat nemovitost), the address and the "Investiční · pronajato" line, the
  * value with its trace and the change against the purchase, four stats, the primary **Přecenit**,
  * Finance (the linked loans and policies with Připojit, the yearly balance), Náklady, Galerie,
- * Dokumenty (each its own component) and the notes, which are edited in place (`PropertyNotes`). The numbers are the desktop detail's
- * (`useProperty`, the pure rules in `property-detail.ts`) in the main currency, a missing rate
+ * Dokumenty (each its own component) and the notes, which are edited in place (`PropertyNotes`).
+ * The numbers are the desktop detail's (`useProperty`, the pure rules in `property-detail.ts`) in the main currency, a missing rate
  * shown as "—" and named in the note under the line; the property form and the list of estimates
  * are the desktop's dialogs.
  *

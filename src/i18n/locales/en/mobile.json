@@ -545,6 +545,8 @@
       "asset": "Asset"
     },
     "noRate": "no rate for {{currency}}",
+    "sincePurchase": "since purchase",
+    "gainSincePurchase": "gain since purchase",
     "stocks": {
       "back": "Stocks",
       "pricesAt": "prices {{time}}",
@@ -576,8 +578,7 @@
       "loadFailed": "Positions could not be loaded.",
       "target": "target {{price}}",
       "targetReached": "target reached",
-      "dayChange": "today",
-      "sincePurchase": "since purchase"
+      "dayChange": "today"
     },
     "crypto": {
       "largestNote": "{{share}} of crypto",

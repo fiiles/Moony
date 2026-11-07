@@ -61,12 +61,13 @@ type text of the desktop's table ("5 % z hodnoty"); nothing when the yield is ze
 **B7.** `changeDirection(ratio, 1)` in `ChangeLine` and `Hero`; the ▲/▼ is `aria-hidden`, a
 `sr-only` "+" or "−" is read instead, exactly as the desktop's `ChangeBadge`.
 
-**B8.** **(call)** The row's trailing line names its base instead of repeating the amount: class
-rows on Majetek (stocks, crypto, cash) say "za 30 dní", position rows and other-asset rows say
-"od nákupu" (new key `wealth.stocks.sincePurchase`, all ten locales). This is the pattern the
-watched row already uses ("dnes"). Cost if wrong: the signed amount is gone from those rows; it
-is still on every detail screen (stats, hero). The earlier decision "za 30 dní is said once, in the
-hero" is reversed because the hero is not on the screen the badge is read on.
+**B8.** **(call, revised after review)** Majetek class rows (stocks, crypto, cash) keep the amount
+and say "za 30 dní" as the trailing text of the badge. Position rows (Akcie, Krypto, Ostatní
+aktiva) keep the badge with the signed amount as on the desktop's table; the base is named once
+per list by a caption beside the sort pill (Akcie, Krypto) or above the rows (Ostatní aktiva),
+"zisk od nákupu" (`mobile:wealth.gainSincePurchase`), and each row says "od nákupu" to VoiceOver
+(`mobile:wealth.sincePurchase`, `ChangeLine.srLabel`). Cost if wrong: the caption takes a little of
+the sort row's width; the class rows lose the amount that shared the line with the 30 days.
 
 **B10.** `latestValuationDay()` (pure, tested, ordering as `OTHER_ASSET_PRICES`) and
 `useValuedDays()` (the detail's valuation queries, fallback `updatedAt`). Used by the other-assets
@@ -77,7 +78,10 @@ wins. Cost if wrong: a row shows an older day than the desktop's column.
 **B12.** `distinctTickLabels()` (pure, tested) picks the fewest compact decimals (1 to 3) that make
 all ticks of the axis different; `useTickFormatter` applies it to `MoonyLineChart`, `MoonyBarChart`,
 `MoonyBandChart` and `ScrubChart` when no custom `formatTick` is given. Custom formatters
-(`MoonyLinesChart`, the watch chart) are untouched.
+(`MoonyLinesChart`, the watch chart) are untouched. The gutter follows the labels: `tickGutter()`
+(pure, tested; a per-glyph width estimate of the 10 px axis font) keeps `AXIS_WIDTH` unless the
+widest label needs more, and `useTickFormatter` returns it as `axisWidth` for the YAxis, the time
+axis gutter, ScrubChart's plot width and the bar chart's label step.
 
 ## Not done / limits
 

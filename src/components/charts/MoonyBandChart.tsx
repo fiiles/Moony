@@ -1,4 +1,3 @@
-import { useTickFormatter } from './use-tick-formatter';
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   Area,
@@ -15,7 +14,7 @@ import {
 import { useChartTokens } from '@/theme/ThemeProvider';
 import { niceTicks, valueDomain } from '@/utils/chart-scale';
 import { ChartTip, FloatingTip } from '@/components/charts/ChartTip';
-import { AXIS_WIDTH } from '@/components/charts/ChartAxis';
+import { useTickFormatter } from '@/components/charts/use-tick-formatter';
 import { cn } from '@/lib/utils';
 
 /** Above Recharts' active dot (1200) and cursor line (1100), below labels (2000). */
@@ -73,7 +72,6 @@ export function MoonyBandChart({
     y: number;
   } | null>(null);
   const [width, setWidth] = useState(0);
-  const gutter = AXIS_WIDTH + 4;
 
   const data = useMemo(
     () => points.map((p) => ({ ...p, band: [p.lo, p.hi] as [number, number] })),
@@ -88,7 +86,8 @@ export function MoonyBandChart({
     [points]
   );
   const ticks = useMemo(() => niceTicks(domain[0], domain[1], 4), [domain]);
-  const tickFormatter = useTickFormatter(ticks, formatTick);
+  const { tickFormatter, axisWidth } = useTickFormatter(ticks, formatTick);
+  const gutter = axisWidth + 4;
   const x0 = points[0]?.x ?? 0;
   const x1 = points[points.length - 1]?.x ?? x0;
   const last = points[points.length - 1];

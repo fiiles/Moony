@@ -72,6 +72,10 @@ export function PositionList<R extends PositionRowBase & { companyName?: string;
           onChange={setSort}
           label={t('wealth.stocks.sort.label')}
         />
+        {/* Says once what the badge of every row measures (the class rows say 30 days) */}
+        <span className="min-w-0 flex-1 truncate text-right text-m-note text-ink-3">
+          {t('wealth.gainSincePurchase')}
+        </span>
         <NavIconButton
           aria-label={t('wealth.stocks.searchToggle')}
           aria-pressed={searchOpen}

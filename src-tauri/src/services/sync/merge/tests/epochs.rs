@@ -157,22 +157,8 @@ fn delete_and_recreate_with_a_concurrent_child_converges_in_both_orders() {
     apply(&d, &from_a);
 
     let tombstone = clocks(&a, "stock_investments", &stock_id)["-"];
-    // OPEN FINDING (task-13 fix report, F1), awaiting a ruling: on the author, the local cascade
-    // ticks `old-1`'s tombstone just before AAPL's; receivers apply the re-created AAPL row (live
-    // section) first, cascade `old-1` at AAPL's tombstone, and the author's lower `old-1`
-    // tombstone cannot lower it. Every other live clock and tombstone must agree.
-    let author_cascade = |conn: &Connection| {
-        clock_dump_live(conn)
-            .into_iter()
-            .filter(|(tbl, pk, col, _, _)| {
-                (tbl.as_str(), pk.as_str(), col.as_str())
-                    != ("investment_transactions", "old-1", "-")
-            })
-            .collect::<Vec<_>>()
-    };
     for conn in [&a, &b, &c, &d] {
-        assert_eq!(dump(conn), dump(&a));
-        assert_eq!(author_cascade(conn), author_cascade(&a));
+        assert_converged(&[conn, &a]);
         assert_eq!(
             value(conn, "SELECT company_name FROM stock_investments").as_deref(),
             Some("Apple Inc")

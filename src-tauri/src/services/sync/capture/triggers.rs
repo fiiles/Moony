@@ -1,7 +1,7 @@
-//! SQL of the capture triggers (spec §6.1): `TEMP` triggers per Synced table (`_ins`, `_del`,
-//! `_upd` when the table has a captured column, `_pk` unless it is a singleton), generated from the
-//! registry and `PRAGMA table_info` of the migrated schema, so they always match the columns that
-//! exist.
+//! SQL of the capture triggers (spec §6.1): `TEMP` triggers per Synced table (`_ins`, `_bdel` and
+//! `_del`, `_upd` when the table has a captured column, `_pk` unless it is a singleton), generated
+//! from the registry and `PRAGMA table_info` of the migrated schema, so they always match the
+//! columns that exist.
 //!
 //! Every trigger reads the connection's mode from `temp.sync_mode` and clocks from the
 //! connection functions `sync_hlc_tick()` / `sync_hlc_now()` that `capture::install` registers.
@@ -174,7 +174,31 @@ fn table_triggers(conn: &Connection, spec: &TableSpec, device: &str) -> Result<V
         ));
     }
 
-    // DELETE: local → a fresh tombstone, queued; merge → the cascade clock, not queued.
+    // DELETE, local mode: the outermost delete ticks once, in its BEFORE trigger, and records
+    // itself as the owner of that clock; every row its FK cascades delete (recursively) finds the
+    // clock set and is tombstoned with it, as merge mode stamps a cascade (F1). The owner's AFTER
+    // trigger clears it. A statement that fails rolls `temp.sync_mode` back with it, so the clock
+    // never leaks into the next delete.
+    let owner = format!("{} || char(31) || ({old_key})", table.name);
+    out.push(format!(
+        "CREATE TEMP TRIGGER sync_{t}_bdel BEFORE DELETE ON main.{t} \
+         WHEN {LOCAL} AND {old_ok} BEGIN \
+         UPDATE sync_mode SET local_hlc = sync_hlc_tick(), local_owner = {owner} \
+           WHERE local_hlc IS NULL; END;"
+    ));
+    let local_tombstone = format!(
+        "INSERT INTO sync_clock (tbl, pk, col, hlc, device) \
+         SELECT {}, {old_key}, '-', COALESCE(m.local_hlc, sync_hlc_tick()), {device} FROM sync_mode m \
+         WHERE m.mode = 'local' {CLOCK_UPSERT};",
+        table.name
+    );
+    let release = format!(
+        "UPDATE sync_mode SET local_hlc = NULL, local_owner = NULL \
+         WHERE mode = 'local' AND local_owner = {owner};"
+    );
+
+    // DELETE: local → the outermost delete's tombstone, queued; merge → the cascade clock, not
+    // queued.
     let merge_tombstone = format!(
         "INSERT INTO sync_clock (tbl, pk, col, hlc, device) \
          SELECT {}, {old_key}, '-', m.cascade_hlc, m.cascade_device FROM sync_mode m \
@@ -186,8 +210,7 @@ fn table_triggers(conn: &Connection, spec: &TableSpec, device: &str) -> Result<V
          WHEN {MODE} IN ('local', 'merge') AND {old_ok} BEGIN \
          SELECT RAISE(ABORT, 'sync: a merge deleted a row without a cascade clock') \
            WHERE {MODE} = 'merge' AND (SELECT cascade_hlc FROM sync_mode) IS NULL; \
-         SELECT sync_hlc_tick() WHERE {LOCAL}; {} {merge_tombstone} {} {} END;",
-        table.local_clock(&old_key, "'-'", LOCAL),
+         {local_tombstone} {merge_tombstone} {} {} {release} END;",
         table.clear_columns(&old_key, "1"),
         table.queue(&old_key, LOCAL),
     ));

@@ -162,9 +162,9 @@ fn installed_triggers_cover_every_synced_table_and_nothing_else() {
     for t in SYNCED {
         // The singleton has no key to change; the two link tables have no column besides the key.
         let kinds: &[&str] = match t {
-            "user_profile" => &["del", "ins", "upd"],
-            "real_estate_insurances" | "real_estate_loans" => &["del", "ins", "pk"],
-            _ => &["del", "ins", "pk", "upd"],
+            "user_profile" => &["bdel", "del", "ins", "upd"],
+            "real_estate_insurances" | "real_estate_loans" => &["bdel", "del", "ins", "pk"],
+            _ => &["bdel", "del", "ins", "pk", "upd"],
         };
         for k in kinds {
             expected.push((format!("sync_{t}_{k}"), t.to_string()));
@@ -600,4 +600,110 @@ fn observing_a_remote_clock_moves_the_hlc_and_flags_a_far_future_one() {
         Observation::Ok => panic!("a clock three days ahead must be flagged"),
     }
     assert_eq!(tick(&conn).unwrap(), far + 1);
+}
+
+/// A local delete ticks once: the deleted row and every row its FK cascades delete, recursively,
+/// get that same tombstone, exactly as merge mode stamps a cascade (F1).
+#[test]
+fn a_local_cascade_stamps_every_cascaded_row_with_the_parent_tombstone() {
+    let conn = installed();
+    exec(
+        &conn,
+        "INSERT INTO bank_accounts (id, name) VALUES ('a1', 'Acc'), ('a2', 'Other'); \
+         INSERT INTO csv_import_batches (id, bank_account_id, file_name) VALUES \
+           ('c1', 'a1', 'one.csv'), ('c2', 'a2', 'two.csv'); \
+         INSERT INTO bank_transactions (id, bank_account_id, tx_type, amount, currency, booking_date, import_batch_id) VALUES \
+           ('t1', 'a1', 'debit', '1', 'CZK', 0, 'c1'), ('t2', 'a1', 'debit', '2', 'CZK', 0, 'c1'), \
+           ('t3', 'a2', 'debit', '3', 'CZK', 0, 'c2'); \
+         DELETE FROM sync_outbox;",
+    );
+
+    exec(&conn, "DELETE FROM csv_import_batches WHERE id = 'c1'");
+    exec(&conn, "DELETE FROM bank_accounts WHERE id = 'a2'");
+
+    let batch = clock_of(&conn, "csv_import_batches", "c1", "-").expect("batch tombstone");
+    assert_eq!(clock_of(&conn, "bank_transactions", "t1", "-"), Some(batch));
+    assert_eq!(clock_of(&conn, "bank_transactions", "t2", "-"), Some(batch));
+    let account = clock_of(&conn, "bank_accounts", "a2", "-").expect("account tombstone");
+    assert!(account > batch);
+    assert_eq!(
+        clock_of(&conn, "csv_import_batches", "c2", "-"),
+        Some(account)
+    );
+    assert_eq!(
+        clock_of(&conn, "bank_transactions", "t3", "-"),
+        Some(account)
+    );
+    assert_eq!(
+        outbox(&conn),
+        vec![
+            row("bank_accounts", "a2"),
+            row("bank_transactions", "t1"),
+            row("bank_transactions", "t2"),
+            row("bank_transactions", "t3"),
+            row("csv_import_batches", "c1"),
+            row("csv_import_batches", "c2"),
+        ]
+    );
+}
+
+#[test]
+fn unrelated_deletes_after_a_cascade_get_fresh_clocks() {
+    let conn = installed();
+    exec(
+        &conn,
+        "INSERT INTO bank_accounts (id, name) VALUES ('a1', 'Acc'); \
+         INSERT INTO csv_import_batches (id, bank_account_id, file_name) VALUES ('c1', 'a1', 'one.csv'); \
+         INSERT INTO bank_transactions (id, bank_account_id, tx_type, amount, currency, booking_date, import_batch_id) \
+           VALUES ('t1', 'a1', 'debit', '1', 'CZK', 0, 'c1'); \
+         INSERT INTO institutions (id, name) VALUES ('i1', 'One'), ('i2', 'Two');",
+    );
+
+    exec(&conn, "DELETE FROM csv_import_batches WHERE id = 'c1'");
+    exec(&conn, "DELETE FROM institutions WHERE id = 'i1'");
+    exec(&conn, "DELETE FROM institutions WHERE id = 'i2'");
+
+    let cascade = clock_of(&conn, "csv_import_batches", "c1", "-").unwrap();
+    let first = clock_of(&conn, "institutions", "i1", "-").unwrap();
+    let second = clock_of(&conn, "institutions", "i2", "-").unwrap();
+    assert!(
+        cascade < first && first < second,
+        "{cascade} {first} {second}"
+    );
+    assert_eq!(
+        count(
+            &conn,
+            "SELECT COUNT(*) FROM sync_mode WHERE local_hlc IS NOT NULL OR local_owner IS NOT NULL"
+        ),
+        0
+    );
+}
+
+/// A delete statement that fails after its BEFORE trigger ran rolls the cascade clock back with
+/// it, so the next delete still ticks a fresh clock.
+#[test]
+fn a_failed_delete_leaves_no_cascade_clock_behind() {
+    let conn = installed();
+    exec(
+        &conn,
+        "INSERT INTO transaction_categories (id, name) VALUES ('k', 'Kept'); \
+         INSERT INTO categorization_rules (id, name, rule_type, pattern, category_id) \
+           VALUES ('r1', 'Rule', 'contains', 'x', 'k'); \
+         INSERT INTO institutions (id, name) VALUES ('i1', 'One');",
+    );
+    let before = tick(&conn).unwrap() as i64;
+
+    let failed = conn.execute_batch("DELETE FROM transaction_categories WHERE id = 'k'");
+
+    assert!(failed.is_err(), "the NO ACTION key refuses the delete");
+    assert_eq!(
+        count(
+            &conn,
+            "SELECT COUNT(*) FROM sync_mode WHERE local_hlc IS NOT NULL"
+        ),
+        0
+    );
+    exec(&conn, "DELETE FROM institutions WHERE id = 'i1'");
+    assert!(clock_of(&conn, "institutions", "i1", "-").unwrap() > before);
+    assert_eq!(clock_of(&conn, "transaction_categories", "k", "-"), None);
 }

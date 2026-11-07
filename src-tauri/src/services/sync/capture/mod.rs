@@ -65,7 +65,7 @@ pub fn install(conn: &Connection, device: DeviceId) -> Result<()> {
         register_functions(conn, HlcState::new(u64::try_from(last).unwrap_or(0)))?;
         conn.execute_batch(
             "CREATE TEMP TABLE sync_mode (id INTEGER PRIMARY KEY CHECK (id = 1), mode TEXT NOT NULL, \
-               cascade_hlc INTEGER, cascade_device BLOB); \
+               cascade_hlc INTEGER, cascade_device BLOB, local_hlc INTEGER, local_owner TEXT); \
              INSERT INTO sync_mode (id, mode) VALUES (1, 'local');",
         )?;
         for sql in triggers::trigger_sql(conn, device)? {

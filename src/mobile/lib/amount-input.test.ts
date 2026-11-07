@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   amountInputText,
   decimalTextToDot,
+  shownText,
   parseAmountInput,
   signedAmountInput,
 } from './amount-input';
@@ -120,12 +121,52 @@ describe('decimalTextToDot', () => {
   });
 
   it('keeps a half-typed entry going', () => {
-    expect(decimalTextToDot('1,')).toBe('1.');
+    expect(decimalTextToDot('1,')).toBe('1');
+    expect(decimalTextToDot('100,')).toBe('100');
     expect(decimalTextToDot('-')).toBe('-');
     expect(decimalTextToDot(',')).toBe('.');
   });
 
   it('leaves other text for the schema to reject', () => {
     expect(decimalTextToDot('abc')).toBe('abc');
+  });
+});
+
+describe('shownText', () => {
+  it('keeps the text when the parent echoes it as dot text', () => {
+    expect(shownText('1,5', '1.5', 'cs')).toBeNull();
+    expect(shownText('1,', '1', 'cs')).toBeNull();
+    expect(shownText('-', '-', 'cs')).toBeNull();
+    expect(shownText('0,', '0', 'cs')).toBeNull();
+    expect(shownText('1,05', '1.05', 'cs')).toBeNull();
+  });
+
+  it('keeps the text through a parseFloat or Number parent', () => {
+    expect(shownText('1,', 1, 'cs')).toBeNull();
+    expect(shownText('0', 0, 'cs')).toBeNull();
+    expect(shownText('0,', 0, 'cs')).toBeNull();
+    expect(shownText('', 0, 'cs')).toBeNull();
+    expect(shownText('1,05', 1.05, 'cs')).toBeNull();
+    expect(shownText('0,3', 0.1 + 0.2, 'cs')).toBeNull();
+  });
+
+  it('keeps the text for NaN, the echo of an empty or half-typed entry', () => {
+    expect(shownText('', Number.NaN, 'cs')).toBeNull();
+    expect(shownText('-', Number.NaN, 'cs')).toBeNull();
+    expect(shownText(',', Number.NaN, 'cs')).toBeNull();
+  });
+
+  it('clears on a reset to undefined, null or empty', () => {
+    expect(shownText('5', undefined, 'cs')).toBe('');
+    expect(shownText('5', null, 'cs')).toBe('');
+    expect(shownText('5', '', 'cs')).toBe('');
+    expect(shownText('', undefined, 'cs')).toBeNull();
+  });
+
+  it('shows a value set from outside, with the locale separator', () => {
+    expect(shownText('5', 7.25, 'cs')).toBe('7,25');
+    expect(shownText('', '12.50', 'cs')).toBe('12,50');
+    expect(shownText('5', 0, 'cs')).toBe('');
+    expect(shownText('', 0.1 + 0.2, 'cs')).toBe('0,3');
   });
 });

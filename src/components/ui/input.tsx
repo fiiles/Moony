@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 
 import { cn } from '@/lib/utils';
 import { isMobileShell } from '@/lib/platform';
-import { amountInputText, decimalTextToDot } from '@/mobile/lib/amount-input';
+import { decimalSeparator, decimalTextToDot, shownText } from '@/mobile/lib/amount-input';
 
 const PHONE = isMobileShell(import.meta.env);
 
@@ -16,73 +16,107 @@ const PHONE = isMobileShell(import.meta.env);
 const inputClassName =
   'flex h-input w-full rounded-r2 border border-line-strong bg-paper px-[11px] text-body text-ink transition-[border-color,box-shadow] duration-fast file:border-0 file:bg-transparent file:text-table file:font-600 file:text-ink placeholder:text-ink-5 hover:border-line-hover focus:border-focus focus:shadow-focus focus-visible:outline-none disabled:cursor-not-allowed disabled:bg-well disabled:text-ink-4 aria-[invalid=true]:border-loss aria-[invalid=true]:focus:shadow-loss-ring';
 
+type InputProps = React.ComponentProps<'input'> & {
+  /** A field that may be negative: the phone shell gives it the full keyboard (the decimal pad has no minus). No effect on desktop. */
+  signed?: boolean;
+};
+
+/**
+ * An event whose `target` reads `value` as the dot text. Everything else (preventDefault,
+ * stopPropagation, currentTarget, the element's other properties) is the real event's and the real
+ * element's; the methods are bound to them.
+ */
+function withDotValue<E extends React.SyntheticEvent<HTMLInputElement>>(event: E, dot: string): E {
+  const element = event.target as HTMLInputElement;
+  const target = new Proxy(element, {
+    get(el, prop) {
+      if (prop === 'value') return dot;
+      const value = Reflect.get(el, prop, el);
+      return typeof value === 'function' ? value.bind(el) : value;
+    },
+  });
+  return new Proxy(event, {
+    get(ev, prop) {
+      if (prop === 'target') return target;
+      const value = Reflect.get(ev, prop, ev);
+      return typeof value === 'function' ? value.bind(ev) : value;
+    },
+  });
+}
+
 /**
  * In the phone shell a decimal `type="number"` field becomes a text field with the decimal keypad:
  * WKWebView refuses a comma in a number field when the keypad language differs from the page's, and
- * shows no decimal pad. The field keeps the text as typed ("1 234,5"), while `value` and `onChange`
- * keep speaking dot text ("1234.5"), so react-hook-form and the zod schemas see what a desktop
- * number input gives them. Integer fields (`inputMode="numeric"`) stay number inputs: digits only.
- * `inputMode="text"` opts a signed field (a balance) into the full keyboard, which has a minus.
+ * shows no decimal pad. The field keeps the text as typed ("1 234,5"), while `value` and the
+ * `target.value` that `onChange` and `onBlur` read keep speaking dot text ("1234.5"), so
+ * react-hook-form and the zod schemas see what a desktop number input gives them. What the field
+ * shows after its `value` changes is decided by `shownText`. Integer fields (`inputMode="numeric"`)
+ * stay number inputs: digits only.
  */
-const PhoneDecimalInput = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(
-  ({ className, type: _type, min: _min, max: _max, step: _step, inputMode, ...props }, ref) => {
+const PhoneDecimalInput = React.forwardRef<HTMLInputElement, InputProps>(
+  (
+    {
+      className,
+      type: _type,
+      min: _min,
+      max: _max,
+      step: _step,
+      signed,
+      inputMode,
+      placeholder,
+      onChange,
+      onBlur,
+      ...props
+    },
+    ref
+  ) => {
     const { i18n } = useTranslation();
-    const { value, defaultValue, onChange } = props;
-    const external = value === undefined ? undefined : value === 0 ? '' : String(value);
-    const [text, setText] = React.useState(() => {
-      const initial = value === undefined ? defaultValue : value;
-      return typeof initial === 'number' || typeof initial === 'string'
-        ? initial === 0
-          ? ''
-          : amountInputText(initial, i18n.language)
-        : '';
-    });
-    // A value changed from outside (a reset, a prefill) replaces the text; the parent echoing what
-    // was just typed does not (it reads the same number).
+    const locale = i18n.language;
+    const controlled = Object.hasOwn(props, 'value');
+    const { value, defaultValue } = props;
+    const [text, setText] = React.useState(
+      () => shownText('', controlled ? value : defaultValue, locale) ?? ''
+    );
     React.useEffect(() => {
-      if (external === undefined) return;
-      setText((current) =>
-        decimalTextToDot(current) === external ? current : amountInputText(external, i18n.language)
-      );
-    }, [external, i18n.language]);
+      if (!controlled) return;
+      setText((current) => shownText(current, value, locale) ?? current);
+    }, [controlled, value, locale]);
 
     return (
       <input
         {...props}
         ref={ref}
         type="text"
-        inputMode={inputMode ?? 'decimal'}
+        inputMode={signed ? 'text' : (inputMode ?? 'decimal')}
         autoComplete="off"
-        value={value === undefined ? undefined : text}
-        defaultValue={value === undefined ? defaultValue : undefined}
+        placeholder={
+          placeholder && /^[0-9.]+$/.test(placeholder)
+            ? placeholder.replace('.', decimalSeparator(locale))
+            : placeholder
+        }
+        value={controlled ? text : undefined}
+        defaultValue={controlled ? undefined : text}
         className={cn(inputClassName, className)}
         onChange={(event) => {
           const typed = event.target.value;
           setText(typed);
-          onChange?.({
-            ...event,
-            target: {
-              name: event.target.name,
-              id: event.target.id,
-              value: decimalTextToDot(typed),
-            },
-            currentTarget: event.currentTarget,
-          } as unknown as React.ChangeEvent<HTMLInputElement>);
+          onChange?.(withDotValue(event, decimalTextToDot(typed)));
         }}
+        onBlur={(event) => onBlur?.(withDotValue(event, decimalTextToDot(event.target.value)))}
       />
     );
   }
 );
 PhoneDecimalInput.displayName = 'PhoneDecimalInput';
 
-const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<'input'>>(
-  ({ className, type, ...props }, ref) => {
+const Input = React.forwardRef<HTMLInputElement, InputProps>(
+  ({ className, type, signed: _signed, ...props }, ref) => {
     if (
       PHONE &&
       type === 'number' &&
-      (props.inputMode === undefined || props.inputMode === 'decimal' || props.inputMode === 'text')
+      (props.inputMode === undefined || props.inputMode === 'decimal')
     ) {
-      return <PhoneDecimalInput className={className} ref={ref} {...props} />;
+      return <PhoneDecimalInput className={className} ref={ref} signed={_signed} {...props} />;
     }
     return <input type={type} className={cn(inputClassName, className)} ref={ref} {...props} />;
   }

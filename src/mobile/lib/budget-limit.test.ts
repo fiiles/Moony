@@ -266,11 +266,9 @@ describe('limitDefaults', () => {
       until: '',
     });
   });
-});
 
-describe('limitDefaults amount text', () => {
-  it('uses the locale decimal separator for a stored limit', async () => {
-    const { amountInputText } = await import('./amount-input');
-    expect(amountInputText(limitAmountText('1250.50'), 'cs')).toBe('1250,5');
+  it('writes the stored limit with the locale decimal separator', () => {
+    const limit = goal([{ effectiveMonth: MAR, amount: '1250.50', currency: 'CZK' }]);
+    expect(limitDefaults(limit, undefined, OCT, 'cs').amountText).toBe('1250,5');
   });
 });

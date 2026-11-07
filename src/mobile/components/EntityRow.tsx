@@ -142,8 +142,9 @@ interface EntityRowProps {
  * title with the trailing value, the sub with the trailing sub. Each line shares out its own
  * width: the value keeps its width (up to 60 %), the title takes the rest and ends with an
  * ellipsis. 60 pt, 52 single-line. Swipe actions uncover a 98 pt panel on either side; the long
- * press opens the row's `menu`, whose `···` follows the row as it slides. A `bar` (the Cashflow categories' progress) is a third line in the
- * main column; `muted` dims a row that has been dealt with.
+ * press opens the row's `menu`, whose `···` follows the row as it slides (README §13, Gestures). A
+ * `bar` (the Cashflow categories' progress) is a third line in the main column; `muted` dims a row
+ * that has been dealt with.
  */
 export function EntityRow({
   id,

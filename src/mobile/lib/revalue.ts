@@ -1,5 +1,5 @@
 import type { InsertAssetValuation } from '@shared/schema';
-import { parseAmountInput } from './amount-input';
+import { amountInputText, parseAmountInput } from './amount-input';
 import { isoToUtcDay } from './property-detail';
 
 /**
@@ -25,8 +25,8 @@ export interface RevalueErrors {
  * The form of a new estimate: today's estimate (`value`, in the asset's currency; per unit for an
  * asset held by the unit) to start from, today (`YYYY-MM-DD`), no note.
  */
-export function startRevalueForm(value: number, today: string): RevalueForm {
-  return { valueText: String(value), dateIso: today, note: '' };
+export function startRevalueForm(value: number, today: string, locale = 'en'): RevalueForm {
+  return { valueText: amountInputText(value, locale), dateIso: today, note: '' };
 }
 
 /**

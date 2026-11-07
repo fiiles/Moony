@@ -1,6 +1,6 @@
 import type { InsertStockDividend, StockDividend } from '@shared/schema';
 import { isoDateFromUtcTimestamp } from '@/utils/period';
-import { parseAmountInput } from '@/mobile/lib/amount-input';
+import { amountInputText, parseAmountInput } from '@/mobile/lib/amount-input';
 import { isoToUtcDay } from '@/mobile/lib/property-detail';
 
 /** What "Zapsat dividendu" is typing: the texts as typed, the ex-date as the ISO day the field speaks. */
@@ -13,11 +13,15 @@ export interface DividendForm {
 const NOTE_MAX = 500;
 
 /** A new dividend starts on `today` with empty fields; an edit takes the stored values. */
-export function dividendForm(dividend: StockDividend | null, today: string): DividendForm {
+export function dividendForm(
+  dividend: StockDividend | null,
+  today: string,
+  locale = 'en'
+): DividendForm {
   if (!dividend) return { dateIso: today, amountText: '', note: '' };
   return {
     dateIso: isoDateFromUtcTimestamp(dividend.exDate),
-    amountText: String(Number(dividend.grossAmount)),
+    amountText: amountInputText(Number(dividend.grossAmount), locale),
     note: dividend.note ?? '',
   };
 }

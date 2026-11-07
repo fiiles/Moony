@@ -244,7 +244,7 @@ export function BondsFormDialog({
                     <FormLabel>{t('form.quantity')}</FormLabel>
                     <InputWrap unit={t('table.units')}>
                       <FormControl>
-                        <Input type="number" step="1" min="1" {...field} />
+                        <Input type="number" inputMode="numeric" step="1" min="1" {...field} />
                       </FormControl>
                     </InputWrap>
                     <FormMessage />

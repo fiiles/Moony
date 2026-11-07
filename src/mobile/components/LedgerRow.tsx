@@ -1,6 +1,6 @@
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowRightLeft, Banknote, Ellipsis, Info, Tag, Trash2 } from 'lucide-react';
+import { ArrowRightLeft, Banknote, Info, Tag, Trash2 } from 'lucide-react';
 import type {
   BankTransaction,
   EffectiveTransactionFlow,
@@ -9,12 +9,7 @@ import type {
 import { useCategoryName } from '@/hooks/use-categories';
 import { rowFlowLabel } from '@/utils/money-flows';
 import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { initials } from '@/mobile/lib/initials';
@@ -39,14 +34,14 @@ interface LedgerRowProps {
  * A movement of the account detail's ledger (spec §8.4, prototype frame 04): the counterparty's
  * initials (a transfer's arrows, a credit tinted `gain`), its name, the sub "Kategorie · detail"
  * with the badges, and the signed amount in its own currency (a credit in `gain` with "+"). Tap
- * and swipe right open the details, swipe left the category picker; a long press is the row menu.
+ * and swipe right open the details, swipe left the category picker (README §13, Gestures); a long
+ * press is the row menu, whose `···` stays for screen readers: the tap's sheet has all of it.
  */
 export function LedgerRow({ tx, category, flow, onOpen, onCategorize, onDelete }: LedgerRowProps) {
   const { t } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
   const moneyText = useMoneyText();
   const categoryName = useCategoryName();
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const credit = tx.type === 'credit';
   const details = transactionDetails(tx);
@@ -98,20 +93,10 @@ export function LedgerRow({ tx, category, flow, onOpen, onCategorize, onDelete }
       onSwipeRight={onOpen}
       swipeRightLabel={t('account.ledger.details')}
       swipeRightIcon={Info}
-      onLongPress={() => setMenuOpen(true)}
-      accessory={
-        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-          {/* The menu's anchor, and its way in for a screen reader or a keyboard: hidden until focused. */}
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label={`${tc('labels.actions')}: ${title}`}
-              className="sr-only right-2 top-1/2 z-[3] focus-visible:not-sr-only focus-visible:absolute focus-visible:right-2 focus-visible:top-1/2 focus-visible:inline-flex focus-visible:size-11 focus-visible:-translate-y-1/2 focus-visible:items-center focus-visible:justify-center focus-visible:rounded-[12px] focus-visible:bg-paper focus-visible:text-ink focus-visible:shadow-focus"
-            >
-              <Ellipsis aria-hidden className="size-5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[200px]">
+      menu={{
+        label: `${tc('labels.actions')}: ${title}`,
+        children: (
+          <>
             <RowMenuItem onSelect={onOpen}>
               <Info />
               {t('account.rowMenu.details')}
@@ -125,9 +110,9 @@ export function LedgerRow({ tx, category, flow, onOpen, onCategorize, onDelete }
               <Trash2 />
               {t('account.rowMenu.delete')}
             </RowMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      }
+          </>
+        ),
+      }}
     />
   );
 }

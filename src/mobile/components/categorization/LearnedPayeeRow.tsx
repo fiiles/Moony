@@ -1,11 +1,10 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { X } from 'lucide-react';
 import type { LearnedPayeeEntry, TransactionCategory } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
 import { CategoryChip } from '@/mobile/components/cashflow/CategoryChip';
 import { EntityRow } from '@/mobile/components/EntityRow';
-import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { learnedPayeeScope, learnedPayeeTitle } from '@/mobile/lib/categorization-rows';
 
 interface LearnedPayeeRowProps {
@@ -20,7 +19,6 @@ export function LearnedPayeeRow({ entry, category, accountName, onForget }: Lear
   const { t } = useTranslation('categorization');
   const { t: tm } = useTranslation('mobile');
   const categoryName = useCategoryName();
-  const [menuOpen, setMenuOpen] = useState(false);
   const title = learnedPayeeTitle(entry);
   const scope = learnedPayeeScope(entry, accountName);
 
@@ -51,19 +49,20 @@ export function LearnedPayeeRow({ entry, category, accountName, onForget }: Lear
       onSwipeLeft={onForget}
       swipeLeftLabel={t('learnedTab.forget')}
       swipeLeftIcon={X}
-      onLongPress={() => setMenuOpen(true)}
-      accessory={
-        <RowMenu
-          open={menuOpen}
-          onOpenChange={setMenuOpen}
-          label={tm('cashflow.rowMenu', { title })}
-        >
-          <RowMenuItem variant="danger" onSelect={onForget}>
-            <X aria-hidden strokeWidth={1.75} />
-            {t('learnedTab.forget')}
-          </RowMenuItem>
-        </RowMenu>
-      }
+      swipeLeftDestructive
+      menu={{
+        label: tm('cashflow.rowMenu', { title }),
+        // Zapomenout is nowhere else on the row
+        shown: true,
+        children: (
+          <>
+            <RowMenuItem variant="danger" onSelect={onForget}>
+              <X aria-hidden strokeWidth={1.75} />
+              {t('learnedTab.forget')}
+            </RowMenuItem>
+          </>
+        ),
+      }}
     />
   );
 }

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FileText, Pencil, Trash2 } from 'lucide-react';
 import type { Bond } from '@shared/schema';
@@ -6,7 +5,7 @@ import { useFormat } from '@/lib/use-format';
 import { bondYearlyCoupon } from '@/utils/bonds';
 import { Button } from '@/components/ui/button';
 import { KeyValueRow } from '@/mobile/components/KeyValueRow';
-import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import type { BondRowModel } from '@/mobile/lib/bond-rows';
@@ -40,7 +39,6 @@ export function BondRow({ row, nextPayment, expanded, onToggle, onEdit, onDelete
   const { t: tb } = useTranslation('bonds');
   const fmt = useFormat();
   const moneyText = useMoneyText();
-  const [menuOpen, setMenuOpen] = useState(false);
   const { bond, face, currency, rate, quantity, unitFace, maturity, badge } = row;
 
   // A whole rate is written whole ("5 %"), a fractional one with its two decimals ("5,25 %")
@@ -66,26 +64,26 @@ export function BondRow({ row, nextPayment, expanded, onToggle, onEdit, onDelete
       value={moneyText(face, currency)}
       valueSub={maturity === null ? tb('table.noMaturity') : fmt.day(maturity)}
       onClick={onToggle}
-      onLongPress={() => setMenuOpen(true)}
       below={
         expanded && <BondDetails row={row} nextPayment={nextPayment} onEdit={() => onEdit(bond)} />
       }
-      accessory={
-        <RowMenu
-          open={menuOpen}
-          onOpenChange={setMenuOpen}
-          label={t('cashflow.rowMenu', { title: bond.name })}
-        >
-          <RowMenuItem onSelect={() => onEdit(bond)}>
-            <Pencil strokeWidth={1.75} aria-hidden />
-            {tb('actions.edit')}
-          </RowMenuItem>
-          <RowMenuItem variant="danger" onSelect={() => onDelete(bond)}>
-            <Trash2 strokeWidth={1.75} aria-hidden />
-            {tb('actions.delete')}
-          </RowMenuItem>
-        </RowMenu>
-      }
+      menu={{
+        label: t('cashflow.rowMenu', { title: bond.name }),
+        // Smazat is nowhere else: the tap unfolds the row with Upravit
+        shown: true,
+        children: (
+          <>
+            <RowMenuItem onSelect={() => onEdit(bond)}>
+              <Pencil strokeWidth={1.75} aria-hidden />
+              {tb('actions.edit')}
+            </RowMenuItem>
+            <RowMenuItem variant="danger" onSelect={() => onDelete(bond)}>
+              <Trash2 strokeWidth={1.75} aria-hidden />
+              {tb('actions.delete')}
+            </RowMenuItem>
+          </>
+        ),
+      }}
     />
   );
 }

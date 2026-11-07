@@ -25,27 +25,41 @@ interface RowMenuProps {
   onOpenChange: (open: boolean) => void;
   /** The full accessible name of the trigger, already worded and translated ("Další akce: Albert"). */
   label: string;
+  /**
+   * The `···` is visible: the menu holds an action that is neither on the row nor behind its tap
+   * (README §13, Gestures). Otherwise the trigger is there for a screen reader or a keyboard only.
+   */
+  shown?: boolean;
   /** `RowMenuItem`s. */
   children: ReactNode;
 }
 
+/** The trigger hidden until it has keyboard or screen-reader focus. */
+const HIDDEN_TRIGGER =
+  'sr-only right-2 top-1/2 focus-visible:not-sr-only focus-visible:absolute focus-visible:right-2 focus-visible:top-1/2 focus-visible:inline-flex focus-visible:size-11 focus-visible:-translate-y-1/2 focus-visible:items-center focus-visible:justify-center focus-visible:rounded-[12px] focus-visible:bg-paper focus-visible:text-ink focus-visible:shadow-focus';
+
+/** The visible `···`: 44 pt at the row's end, `ink-4`, the icon 20 pt. */
+const SHOWN_TRIGGER =
+  'absolute right-1 top-1/2 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-[12px] text-ink-4 [-webkit-touch-callout:none] active:bg-well focus-visible:outline-none focus-visible:shadow-focus';
+
 /**
- * The context menu of an entity row (README §13, the agenda row's pattern): a long press on the
- * row sets `open`; for a screen reader or a keyboard the 44 pt `···` trigger beside the row is
- * the way in, hidden until it has focus. It is the row's `accessory`, so it sits outside the part
- * that slides. The menu opens under the row's right edge, 220 pt wide at least.
+ * The context menu of an entity row (README §13, Gestures; the agenda row's pattern): a long press
+ * on the row sets `open`, and the 44 pt `···` trigger beside the row is the other way in — visible
+ * when `shown`, else for a screen reader or a keyboard only, hidden until it has focus. It is the
+ * row's own (`EntityRow`'s `menu`), outside the part that slides. The menu opens under the row's
+ * right edge, 220 pt wide at least.
  */
-export function RowMenu({ open, onOpenChange, label, children }: RowMenuProps) {
+export function RowMenu({ open, onOpenChange, label, shown = false, children }: RowMenuProps) {
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
-      {/* The menu's anchor, and its way in for a screen reader or a keyboard: hidden until focused. */}
+      {/* The menu's anchor, and its way in without a long press. */}
       <DropdownMenuTrigger asChild>
         <button
           type="button"
           aria-label={label}
-          className="sr-only right-2 top-1/2 z-[3] focus-visible:not-sr-only focus-visible:absolute focus-visible:right-2 focus-visible:top-1/2 focus-visible:inline-flex focus-visible:size-11 focus-visible:-translate-y-1/2 focus-visible:items-center focus-visible:justify-center focus-visible:rounded-[12px] focus-visible:bg-paper focus-visible:text-ink focus-visible:shadow-focus"
+          className={cn('z-[3]', shown ? SHOWN_TRIGGER : HIDDEN_TRIGGER)}
         >
-          <Ellipsis aria-hidden className="size-5" />
+          <Ellipsis aria-hidden className="size-5" strokeWidth={1.75} />
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="min-w-[220px]">

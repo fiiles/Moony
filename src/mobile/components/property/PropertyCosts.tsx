@@ -5,7 +5,7 @@ import type { RealEstate, RealEstateOneTimeCost } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import type { YearlyBalance } from '@/utils/real-estate';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
-import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { GroupHead } from '@/mobile/components/property/GroupHead';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
@@ -118,19 +118,24 @@ export function PropertyCosts({ property, costs, balance, currency }: PropertyCo
                   row.perYear > 1 ? t('property.costYear', { amount: row.yearly }) : undefined
                 }
                 onClick={() => setMenuFor(key)}
-                onLongPress={() => setMenuFor(key)}
-                accessory={
-                  <RowMenu
-                    open={menuFor === key}
-                    onOpenChange={(next) => setMenuFor(next ? key : null)}
-                    label={t('property.rowMenu', { name: row.name })}
-                  >
-                    <RowMenuItem variant="danger" onSelect={() => ask({ kind: 'recurring', row })}>
-                      <Trash2 strokeWidth={1.75} aria-hidden />
-                      {tc('buttons.delete')}
-                    </RowMenuItem>
-                  </RowMenu>
-                }
+                menu={{
+                  label: t('property.rowMenu', { name: row.name }),
+                  // Smazat is nowhere else: the row's tap opens this menu
+                  shown: true,
+                  open: menuFor === key,
+                  onOpenChange: (next) => setMenuFor(next ? key : null),
+                  children: (
+                    <>
+                      <RowMenuItem
+                        variant="danger"
+                        onSelect={() => ask({ kind: 'recurring', row })}
+                      >
+                        <Trash2 strokeWidth={1.75} aria-hidden />
+                        {tc('buttons.delete')}
+                      </RowMenuItem>
+                    </>
+                  ),
+                }}
               />
             );
           })}
@@ -156,23 +161,25 @@ export function PropertyCosts({ property, costs, balance, currency }: PropertyCo
                 sub={[row.day, row.description].filter(Boolean).join(' · ')}
                 value={row.amount}
                 onClick={() => edit(row.cost)}
-                onLongPress={() => setMenuFor(key)}
-                accessory={
-                  <RowMenu
-                    open={menuFor === key}
-                    onOpenChange={(next) => setMenuFor(next ? key : null)}
-                    label={t('property.rowMenu', { name: row.name })}
-                  >
-                    <RowMenuItem onSelect={() => edit(row.cost)}>
-                      <Pencil strokeWidth={1.75} aria-hidden />
-                      {tc('buttons.edit')}
-                    </RowMenuItem>
-                    <RowMenuItem variant="danger" onSelect={() => ask({ kind: 'oneTime', row })}>
-                      <Trash2 strokeWidth={1.75} aria-hidden />
-                      {tc('buttons.delete')}
-                    </RowMenuItem>
-                  </RowMenu>
-                }
+                menu={{
+                  label: t('property.rowMenu', { name: row.name }),
+                  // Smazat is nowhere else: the row's tap edits
+                  shown: true,
+                  open: menuFor === key,
+                  onOpenChange: (next) => setMenuFor(next ? key : null),
+                  children: (
+                    <>
+                      <RowMenuItem onSelect={() => edit(row.cost)}>
+                        <Pencil strokeWidth={1.75} aria-hidden />
+                        {tc('buttons.edit')}
+                      </RowMenuItem>
+                      <RowMenuItem variant="danger" onSelect={() => ask({ kind: 'oneTime', row })}>
+                        <Trash2 strokeWidth={1.75} aria-hidden />
+                        {tc('buttons.delete')}
+                      </RowMenuItem>
+                    </>
+                  ),
+                }}
               />
             );
           })}

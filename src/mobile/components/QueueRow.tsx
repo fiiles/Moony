@@ -1,18 +1,13 @@
-import { useId, useState, type ReactNode } from 'react';
+import { useId, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Banknote, Check, Clock, Ellipsis, Info, Tag } from 'lucide-react';
+import { Banknote, Check, Clock, Info, Tag } from 'lucide-react';
 import type { CategorizeQueueRow, TransactionCategory } from '@shared/schema';
 import { useCategoryName } from '@/hooks/use-categories';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { utcDayFloor } from '@/utils/chart-axis';
 import { counterpartyLabel, transactionDetails } from '@/utils/transaction-text';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenuSeparator } from '@/components/ui/dropdown-menu';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { SNOOZE_DAYS, suggestionLabelKey, type RowState } from '@/mobile/lib/categorize-queue';
@@ -40,9 +35,9 @@ interface QueueRowProps {
   expansion?: QueueExpansion;
   /** The dark pill: accept the suggestion. */
   onAccept: () => void;
-  /** "Jiná…", "Vybrat kategorii…" and a tap on the row: the category picker. */
+  /** "Jiná…", "Vybrat kategorii…", a tap on the row and the swipe to the left: the category picker. */
   onPick: () => void;
-  /** "Nechat", the swipe to the left and the menu: hold the payment back for 30 days. */
+  /** "Nechat" (the pill of a row without a suggestion) and the menu: hold the payment back for 30 days. */
   onSnooze: () => void;
   /** Swipe right and the menu: the transaction sheet. */
   onDetails: () => void;
@@ -91,8 +86,9 @@ function PillButton({
  * dark pill (a check, the category, the source of the idea in small type) and "Jiná…"; one
  * without has "Vybrat kategorii…" and "Nechat". A done row shows the category it got in the
  * green pill on `well`, and may carry the expansion; a row put off says so, also on `well`.
- * A tap on the row opens the picker, swipe right the details, swipe left (an open row) "Nechat";
- * a long press is the menu with all three, so the swipes are reachable without a gesture.
+ * A tap on the row and swipe left open the picker (a payment's swipe left is always Kategorie,
+ * README §13 Gestures), swipe right the details; a long press or the visible `···` is the menu with
+ * all three, Nechat included, so nothing is reachable by gesture alone.
  */
 export function QueueRow({
   row,
@@ -111,7 +107,6 @@ export function QueueRow({
   const fmt = useFormat();
   const moneyText = useMoneyText();
   const categoryName = useCategoryName();
-  const [menuOpen, setMenuOpen] = useState(false);
 
   const { transaction: tx, suggestion } = row;
   const credit = tx.type === 'credit';
@@ -203,26 +198,18 @@ export function QueueRow({
       value={signedAmountText(moneyText, tx)}
       valueTone={credit ? 'gain' : undefined}
       onClick={onPick}
-      onSwipeLeft={open ? onSnooze : undefined}
-      swipeLeftLabel={t('queue.keep')}
-      swipeLeftIcon={Clock}
+      onSwipeLeft={onPick}
+      swipeLeftLabel={t('account.ledger.categorize')}
+      swipeLeftIcon={Tag}
       onSwipeRight={onDetails}
       swipeRightLabel={t('account.ledger.details')}
       swipeRightIcon={Info}
-      onLongPress={() => setMenuOpen(true)}
-      accessory={
-        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-          {/* The menu's anchor, and its way in for a screen reader or a keyboard: hidden until focused. */}
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label={`${tc('labels.actions')}: ${title}`}
-              className="sr-only right-2 top-1/2 z-[3] focus-visible:not-sr-only focus-visible:absolute focus-visible:right-2 focus-visible:top-1/2 focus-visible:inline-flex focus-visible:size-11 focus-visible:-translate-y-1/2 focus-visible:items-center focus-visible:justify-center focus-visible:rounded-[12px] focus-visible:bg-paper focus-visible:text-ink focus-visible:shadow-focus"
-            >
-              <Ellipsis aria-hidden className="size-5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[220px]">
+      menu={{
+        label: `${tc('labels.actions')}: ${title}`,
+        // Podrobnosti (and Nechat on a row with a suggestion) are nowhere else on the row
+        shown: true,
+        children: (
+          <>
             <RowMenuItem onSelect={onDetails}>
               <Info />
               {t('account.rowMenu.details')}
@@ -240,9 +227,9 @@ export function QueueRow({
                 </RowMenuItem>
               </>
             )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      }
+          </>
+        ),
+      }}
       below={below}
     />
   );

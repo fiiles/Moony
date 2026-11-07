@@ -1,15 +1,10 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Coins, Ellipsis, Pencil, Trash2 } from 'lucide-react';
+import { Coins, Pencil, Trash2 } from 'lucide-react';
 import { priceDecimals } from '@shared/currencies';
 import type { StockDividend } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
 import { Money } from '@/mobile/components/Money';
@@ -101,34 +96,30 @@ export function DividendRow({
             : moneyText(gross, dividend.currency, { decimals: 2 })
       }
       onClick={menu ? () => setMenuOpen(true) : undefined}
-      onLongPress={menu ? () => setMenuOpen(true) : undefined}
-      accessory={
-        menu ? (
-          <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-            {/* The menu's anchor, and its way in for a screen reader or a keyboard: hidden until focused. */}
-            <DropdownMenuTrigger asChild>
-              <button
-                type="button"
-                aria-label={t('wealth.position.dividend.menu')}
-                className="sr-only right-2 top-1/2 z-[3] focus-visible:not-sr-only focus-visible:absolute focus-visible:right-2 focus-visible:top-1/2 focus-visible:inline-flex focus-visible:size-11 focus-visible:-translate-y-1/2 focus-visible:items-center focus-visible:justify-center focus-visible:rounded-[12px] focus-visible:bg-paper focus-visible:text-ink focus-visible:shadow-focus"
-              >
-                <Ellipsis aria-hidden className="size-5" />
-              </button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="min-w-[220px]">
-              {onEdit && !dividend.superseded && (
-                <RowMenuItem onSelect={() => onEdit(dividend)}>
-                  <Pencil strokeWidth={1.75} aria-hidden />
-                  {tc('buttons.edit')}
-                </RowMenuItem>
-              )}
-              <RowMenuItem variant="danger" onSelect={() => onDelete(dividend)}>
-                <Trash2 strokeWidth={1.75} aria-hidden />
-                {ts('detail.dividendRecords.confirmDelete.confirm')}
-              </RowMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        ) : undefined
+      menu={
+        menu
+          ? {
+              label: t('wealth.position.dividend.menu'),
+              // The row's tap opens the menu; the visible `···` says it has one
+              shown: true,
+              open: menuOpen,
+              onOpenChange: setMenuOpen,
+              children: (
+                <>
+                  {onEdit && !dividend.superseded && (
+                    <RowMenuItem onSelect={() => onEdit(dividend)}>
+                      <Pencil strokeWidth={1.75} aria-hidden />
+                      {tc('buttons.edit')}
+                    </RowMenuItem>
+                  )}
+                  <RowMenuItem variant="danger" onSelect={() => onDelete(dividend)}>
+                    <Trash2 strokeWidth={1.75} aria-hidden />
+                    {ts('detail.dividendRecords.confirmDelete.confirm')}
+                  </RowMenuItem>
+                </>
+              ),
+            }
+          : undefined
       }
     />
   );

@@ -5,7 +5,7 @@ import type { InsurancePolicy, Loan, RealEstate } from '@shared/schema';
 import { recordCurrency } from '@shared/currencies';
 import type { YearlyBalance } from '@/utils/real-estate';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
-import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { GroupHead } from '@/mobile/components/property/GroupHead';
 import { YearlyBalanceCard } from '@/mobile/components/property/YearlyBalanceCard';
@@ -76,18 +76,19 @@ export function PropertyFinance({
     setLinkKind(kind);
     setLinkOpen(true);
   };
-  const menu = (key: string, kind: 'loan' | 'insurance', itemId: string, name: string) => (
-    <RowMenu
-      open={menuFor === key}
-      onOpenChange={(next) => setMenuFor(next ? key : null)}
-      label={t('property.rowMenu', { name })}
-    >
+  // Odpojit is nowhere else: the row opens the loan or the policy
+  const menu = (key: string, kind: 'loan' | 'insurance', itemId: string, name: string) => ({
+    label: t('property.rowMenu', { name }),
+    shown: true,
+    open: menuFor === key,
+    onOpenChange: (next: boolean) => setMenuFor(next ? key : null),
+    children: (
       <RowMenuItem onSelect={() => unlink.mutate({ kind, itemId })}>
         <Unlink strokeWidth={1.75} aria-hidden />
         {tr(kind === 'loan' ? 'detail.loans.unlink' : 'detail.insurances.unlink')}
       </RowMenuItem>
-    </RowMenu>
-  );
+    ),
+  });
 
   return (
     <>
@@ -119,8 +120,7 @@ export function PropertyFinance({
                 value={moneyText(Number(loan.outstandingBalance) || 0, code, WHOLE)}
                 href={loanPath(loan.id)}
                 from={property.name}
-                onLongPress={() => setMenuFor(key)}
-                accessory={menu(key, 'loan', loan.id, loan.name)}
+                menu={menu(key, 'loan', loan.id, loan.name)}
               />
             );
           })}
@@ -156,8 +156,7 @@ export function PropertyFinance({
                 }
                 href={policyPath(policy.id)}
                 from={property.name}
-                onLongPress={() => setMenuFor(key)}
-                accessory={menu(key, 'insurance', policy.id, policy.policyName)}
+                menu={menu(key, 'insurance', policy.id, policy.policyName)}
               />
             );
           })}

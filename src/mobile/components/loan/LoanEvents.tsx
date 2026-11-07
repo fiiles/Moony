@@ -6,7 +6,7 @@ import { useLoanEventMutations } from '@/hooks/use-loan-events';
 import { useFormat } from '@/lib/use-format';
 import { DateChip, DATE_CHIP_WIDTH } from '@/mobile/components/DateChip';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
-import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { useMoneyText } from '@/mobile/hooks/use-money-text';
 import { ConfirmSheet } from '@/mobile/sheets/ConfirmSheet';
@@ -22,8 +22,9 @@ interface LoanEventsProps {
 /**
  * "Události" of a loan (spec §8.8, prototype frame 13): extra payments, rate changes and manual
  * balances newest first, the drawdown last, each a row with a date chip (the day and its year), the
- * desktop's title and note. A long press on an event opens its menu with Odstranit (the drawdown is
- * not an event and has none); the confirm sheet says what the removal does — the balance is worked
+ * desktop's title and note. A long press on an event, or its visible `···`, opens its menu with
+ * Smazat událost (the drawdown is not an event and has none); the confirm sheet says what the
+ * removal does — the balance is worked
  * out again without it, and a removed manual balance brings back the previous one or the estimate.
  */
 export function LoanEvents({ loan, events }: LoanEventsProps) {
@@ -77,7 +78,6 @@ export function LoanEvents({ loan, events }: LoanEventsProps) {
       <EntityRows>
         {sorted.map((event) => {
           const { title, note } = describe(event);
-          const open = () => setMenuFor(event.id);
           return (
             <EntityRow
               key={event.id}
@@ -85,13 +85,13 @@ export function LoanEvents({ loan, events }: LoanEventsProps) {
               chipWidth={DATE_CHIP_WIDTH}
               title={title}
               sub={note}
-              onLongPress={open}
-              accessory={
-                <RowMenu
-                  open={menuFor === event.id}
-                  onOpenChange={(next) => setMenuFor(next ? event.id : null)}
-                  label={t('loan.events.menu')}
-                >
+              menu={{
+                label: t('loan.events.menu'),
+                // Smazat is nowhere else: the row has no tap
+                shown: true,
+                open: menuFor === event.id,
+                onOpenChange: (next) => setMenuFor(next ? event.id : null),
+                children: (
                   <RowMenuItem
                     variant="danger"
                     onSelect={() => {
@@ -102,8 +102,8 @@ export function LoanEvents({ loan, events }: LoanEventsProps) {
                     <Trash2 strokeWidth={1.75} aria-hidden />
                     {tl('detail.events.delete')}
                   </RowMenuItem>
-                </RowMenu>
-              }
+                ),
+              }}
             />
           );
         })}

@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArchiveRestore, Lock, Pencil, Trash2 } from 'lucide-react';
 import type { SpendingPlan } from '@shared/schema';
@@ -6,7 +5,7 @@ import { useFormat } from '@/lib/use-format';
 import { ProgressBar } from '@/mobile/components/cashflow/ProgressBar';
 import { PlanRowChip } from '@/mobile/components/plans/PlanChip';
 import { EntityRow } from '@/mobile/components/EntityRow';
-import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { planPath } from '@/mobile/shell/routes';
 import type { PlanRow } from '@/utils/spending-plans';
 
@@ -28,7 +27,6 @@ export function PlanRowItem({ row, onEdit, onToggleClosed, onDelete }: PlanRowIt
   const { t } = useTranslation('mobile');
   const { t: tp } = useTranslation('spending_plans');
   const fmt = useFormat();
-  const [menuOpen, setMenuOpen] = useState(false);
   const { plan } = row.summary;
   const money = (value: number) => fmt.money(value, plan.currency, { decimals: 0 });
 
@@ -63,31 +61,29 @@ export function PlanRowItem({ row, onEdit, onToggleClosed, onDelete }: PlanRowIt
       bar={bar}
       muted={row.closed}
       href={planPath(plan.id)}
-      onLongPress={() => setMenuOpen(true)}
-      accessory={
-        <RowMenu
-          open={menuOpen}
-          onOpenChange={setMenuOpen}
-          label={t('cashflow.rowMenu', { title: plan.name })}
-        >
-          <RowMenuItem onSelect={() => onEdit(plan)}>
-            <Pencil aria-hidden strokeWidth={1.75} />
-            {tp('actions.edit')}
-          </RowMenuItem>
-          <RowMenuItem onSelect={() => onToggleClosed(plan)}>
-            {row.closed ? (
-              <ArchiveRestore aria-hidden strokeWidth={1.75} />
-            ) : (
-              <Lock aria-hidden strokeWidth={1.75} />
-            )}
-            {row.closed ? tp('actions.reopen') : tp('actions.close')}
-          </RowMenuItem>
-          <RowMenuItem variant="danger" onSelect={() => onDelete(row)}>
-            <Trash2 aria-hidden strokeWidth={1.75} />
-            {tp('actions.delete')}
-          </RowMenuItem>
-        </RowMenu>
-      }
+      menu={{
+        label: t('cashflow.rowMenu', { title: plan.name }),
+        children: (
+          <>
+            <RowMenuItem onSelect={() => onEdit(plan)}>
+              <Pencil aria-hidden strokeWidth={1.75} />
+              {tp('actions.edit')}
+            </RowMenuItem>
+            <RowMenuItem onSelect={() => onToggleClosed(plan)}>
+              {row.closed ? (
+                <ArchiveRestore aria-hidden strokeWidth={1.75} />
+              ) : (
+                <Lock aria-hidden strokeWidth={1.75} />
+              )}
+              {row.closed ? tp('actions.reopen') : tp('actions.close')}
+            </RowMenuItem>
+            <RowMenuItem variant="danger" onSelect={() => onDelete(row)}>
+              <Trash2 aria-hidden strokeWidth={1.75} />
+              {tp('actions.delete')}
+            </RowMenuItem>
+          </>
+        ),
+      }}
     />
   );
 }

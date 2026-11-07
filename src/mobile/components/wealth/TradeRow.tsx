@@ -1,14 +1,9 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Ellipsis, Pencil, TrendingDown, TrendingUp, Trash2 } from 'lucide-react';
+import { Pencil, TrendingDown, TrendingUp, Trash2 } from 'lucide-react';
 import { priceDecimals } from '@shared/currencies';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, RowChip } from '@/mobile/components/EntityRow';
 import { Money } from '@/mobile/components/Money';
@@ -102,20 +97,14 @@ export function TradeRow<T extends LedgerTx>({
           : moneyText(total, txCurrency, { decimals: 2 })
       }
       onClick={() => setMenuOpen(true)}
-      onLongPress={() => setMenuOpen(true)}
-      accessory={
-        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-          {/* The menu's anchor, and its way in for a screen reader or a keyboard: hidden until focused. */}
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label={t('wealth.position.tx.menu')}
-              className="sr-only right-2 top-1/2 z-[3] focus-visible:not-sr-only focus-visible:absolute focus-visible:right-2 focus-visible:top-1/2 focus-visible:inline-flex focus-visible:size-11 focus-visible:-translate-y-1/2 focus-visible:items-center focus-visible:justify-center focus-visible:rounded-[12px] focus-visible:bg-paper focus-visible:text-ink focus-visible:shadow-focus"
-            >
-              <Ellipsis aria-hidden className="size-5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[220px]">
+      menu={{
+        label: t('wealth.position.tx.menu'),
+        // The row's tap opens the menu; the visible `···` says it has one
+        shown: true,
+        open: menuOpen,
+        onOpenChange: setMenuOpen,
+        children: (
+          <>
             {onEdit && (
               <RowMenuItem onSelect={() => onEdit(tx)}>
                 <Pencil strokeWidth={1.75} aria-hidden />
@@ -126,9 +115,9 @@ export function TradeRow<T extends LedgerTx>({
               <Trash2 strokeWidth={1.75} aria-hidden />
               {ts('detail.deleteTransaction')}
             </RowMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      }
+          </>
+        ),
+      }}
     />
   );
 }

@@ -1,8 +1,7 @@
-import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Landmark, Tag } from 'lucide-react';
+import { Info, Landmark, Tag } from 'lucide-react';
 import type { MoneyOptions } from '@/lib/format';
-import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, EntityRows, RowChip } from '@/mobile/components/EntityRow';
 import { Money } from '@/mobile/components/Money';
 import { initials } from '@/mobile/lib/initials';
@@ -13,7 +12,7 @@ const SIGNED: MoneyOptions = { signed: true };
 
 interface DrilldownRowProps {
   row: DrilldownRowData;
-  /** Open the payment's sheet (a tap). */
+  /** Open the payment's sheet (a tap, a swipe to the right, the menu). */
   onOpen: (row: DrilldownRowData) => void;
   /** Open the category picker for this payment (a swipe to the left, the menu). */
   onCategorize: (row: DrilldownRowData) => void;
@@ -22,13 +21,12 @@ interface DrilldownRowProps {
 /**
  * One payment as an entity row: initials chip (green for a credit), who and what, the amount in
  * its own currency with its worth in the report currency under it. A moved row is dimmed and says
- * so. A tap opens the transaction sheet; a swipe to the left and the long press's menu open the
- * category picker.
+ * so. As every payment (README §13, Gestures): a tap and a swipe to the right open the transaction
+ * sheet, a swipe to the left the category picker; the long press's menu has both.
  */
 export function DrilldownTransactionRow({ row, onOpen, onCategorize }: DrilldownRowProps) {
   const { t } = useTranslation('mobile');
   const { t: tr } = useTranslation('reports');
-  const [menuOpen, setMenuOpen] = useState(false);
   const { tx, credit } = row;
   // The marker leads: the sub-line ends in an ellipsis when it is too long, and "přesunuto" is
   // the one sign of a moved row that is not its dimming
@@ -62,21 +60,26 @@ export function DrilldownTransactionRow({ row, onOpen, onCategorize }: Drilldown
       muted={row.moved}
       onClick={() => onOpen(row)}
       onSwipeLeft={() => onCategorize(row)}
-      swipeLeftLabel={t('upkeep.actions.categorize')}
+      swipeLeftLabel={t('account.ledger.categorize')}
       swipeLeftIcon={Tag}
-      onLongPress={() => setMenuOpen(true)}
-      accessory={
-        <RowMenu
-          open={menuOpen}
-          onOpenChange={setMenuOpen}
-          label={t('cashflow.rowMenu', { title: row.title })}
-        >
-          <RowMenuItem onSelect={() => onCategorize(row)}>
-            <Tag aria-hidden strokeWidth={1.75} />
-            {t('cashflow.picker.change')}
-          </RowMenuItem>
-        </RowMenu>
-      }
+      onSwipeRight={() => onOpen(row)}
+      swipeRightLabel={t('account.ledger.details')}
+      swipeRightIcon={Info}
+      menu={{
+        label: t('cashflow.rowMenu', { title: row.title }),
+        children: (
+          <>
+            <RowMenuItem onSelect={() => onOpen(row)}>
+              <Info aria-hidden strokeWidth={1.75} />
+              {t('account.rowMenu.details')}
+            </RowMenuItem>
+            <RowMenuItem onSelect={() => onCategorize(row)}>
+              <Tag aria-hidden strokeWidth={1.75} />
+              {t('account.rowMenu.category')}
+            </RowMenuItem>
+          </>
+        ),
+      }}
     />
   );
 }

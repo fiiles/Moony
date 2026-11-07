@@ -1,14 +1,9 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Ellipsis, Undo2 } from 'lucide-react';
+import { Undo2 } from 'lucide-react';
 import type { CsvImportBatch } from '@shared/schema';
 import { useFormat } from '@/lib/use-format';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { Sheet } from '@/mobile/components/Sheet';
@@ -91,27 +86,21 @@ function ImportRow({
           : undefined
       }
       onClick={() => setMenuOpen(true)}
-      onLongPress={() => setMenuOpen(true)}
-      accessory={
-        <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-          {/* The menu's anchor, and its way in for a screen reader or a keyboard: hidden until focused. */}
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              aria-label={tm('account.importHistory.menu')}
-              className="sr-only right-2 top-1/2 z-[3] focus-visible:not-sr-only focus-visible:absolute focus-visible:right-2 focus-visible:top-1/2 focus-visible:inline-flex focus-visible:size-11 focus-visible:-translate-y-1/2 focus-visible:items-center focus-visible:justify-center focus-visible:rounded-[12px] focus-visible:bg-paper focus-visible:text-ink focus-visible:shadow-focus"
-            >
-              <Ellipsis aria-hidden className="size-5" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[220px]">
+      menu={{
+        label: tm('account.importHistory.menu'),
+        // The row's tap opens the menu; the visible `···` says it has one
+        shown: true,
+        open: menuOpen,
+        onOpenChange: setMenuOpen,
+        children: (
+          <>
             <RowMenuItem variant="danger" onSelect={() => onUndo(batch)}>
               <Undo2 strokeWidth={1.75} aria-hidden />
               {t(batch.linkedCount > 0 ? 'readiness.deleteImported' : 'readiness.deleteRecord')}
             </RowMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      }
+          </>
+        ),
+      }}
     />
   );
 }

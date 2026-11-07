@@ -1,4 +1,4 @@
-import { Fragment, useState, type ReactNode } from 'react';
+import { Fragment, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation } from 'wouter';
 import { List, Pencil, Plus } from 'lucide-react';
@@ -7,7 +7,7 @@ import type { ExpenseRow, LimitState } from '@/utils/cashflow-budget-rows';
 import { useFormat } from '@/lib/use-format';
 import { cn } from '@/lib/utils';
 import { EntityRow } from '@/mobile/components/EntityRow';
-import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import type { LimitMode } from '@/mobile/lib/budget-limit';
 import type { RowLimitAction } from '@/mobile/lib/budget-rows';
 import { CategoryChip } from './CategoryChip';
@@ -81,7 +81,6 @@ export function ExpenseCategoryRow({
   const { t } = useTranslation('mobile');
   const fmt = useFormat();
   const [, setLocation] = useLocation();
-  const [menuOpen, setMenuOpen] = useState(false);
   const { limit } = row;
   const evaluated = limit && limit.state !== 'unavailable' && limit.percentage !== null;
   const over = limit?.state === 'over';
@@ -186,33 +185,33 @@ export function ExpenseCategoryRow({
         ) : undefined
       }
       href={canOpen ? href : undefined}
-      onLongPress={hasMenu ? () => setMenuOpen(true) : undefined}
-      accessory={
-        hasMenu ? (
-          <RowMenu
-            open={menuOpen}
-            onOpenChange={setMenuOpen}
-            label={t('cashflow.rowMenu', { title })}
-          >
-            <RowMenuItem disabled={!canOpen} onSelect={() => href && setLocation(href)}>
-              <List aria-hidden strokeWidth={1.75} />
-              {tb('actions.showTransactions')}
-            </RowMenuItem>
-            {action && (
-              <RowMenuItem
-                disabled={limitMode === null}
-                onSelect={() => limitMode && onLimit(limitMode)}
-              >
-                {action.hasLimit ? (
-                  <Pencil aria-hidden strokeWidth={1.75} />
-                ) : (
-                  <Plus aria-hidden strokeWidth={1.75} />
-                )}
-                {tb(action.hasLimit ? 'actions.editLimit' : 'actions.setLimit')}
-              </RowMenuItem>
-            )}
-          </RowMenu>
-        ) : undefined
+      menu={
+        hasMenu
+          ? {
+              label: t('cashflow.rowMenu', { title }),
+              children: (
+                <>
+                  <RowMenuItem disabled={!canOpen} onSelect={() => href && setLocation(href)}>
+                    <List aria-hidden strokeWidth={1.75} />
+                    {tb('actions.showTransactions')}
+                  </RowMenuItem>
+                  {action && (
+                    <RowMenuItem
+                      disabled={limitMode === null}
+                      onSelect={() => limitMode && onLimit(limitMode)}
+                    >
+                      {action.hasLimit ? (
+                        <Pencil aria-hidden strokeWidth={1.75} />
+                      ) : (
+                        <Plus aria-hidden strokeWidth={1.75} />
+                      )}
+                      {tb(action.hasLimit ? 'actions.editLimit' : 'actions.setLimit')}
+                    </RowMenuItem>
+                  )}
+                </>
+              ),
+            }
+          : undefined
       }
       below={limitLine || undefined}
     />

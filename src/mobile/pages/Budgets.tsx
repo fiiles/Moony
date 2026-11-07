@@ -10,7 +10,7 @@ import { currentMonthStart, type BudgetLimitPeriod } from '@/utils/budget-goal-v
 import { Button } from '@/components/ui/button';
 import { ScaledEmptyState, ScaledReportError } from '@/mobile/components/Scaled';
 import { CategoryChip } from '@/mobile/components/cashflow/CategoryChip';
-import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { useBack } from '@/mobile/hooks/use-back';
@@ -198,7 +198,8 @@ interface BudgetItemProps {
 /**
  * One budget as an entity row: category chip and name, the limit as its value, the validity and
  * the changes to come in the sub-line, "Naplánováno" or "ukončen" under the value. An ended
- * budget is dimmed. Tap and swipe right edit, swipe left and the long press's menu delete.
+ * budget is dimmed. Tap and swipe right edit; swipe left (a `loss` panel) and the menu (a long
+ * press or its visible `···`) delete, through the delete sheet.
  */
 function BudgetItem({ row, category, onEdit, onDelete }: BudgetItemProps) {
   const { t } = useTranslation('mobile');
@@ -206,7 +207,6 @@ function BudgetItem({ row, category, onEdit, onDelete }: BudgetItemProps) {
   const { t: tc } = useTranslation('common');
   const fmt = useFormat();
   const moneyText = useMoneyText();
-  const [menuOpen, setMenuOpen] = useState(false);
   const { main, status } = row;
 
   const monthLabel = (month: number) => fmt.monthInSentence(new Date(month * 1000));
@@ -273,29 +273,30 @@ function BudgetItem({ row, category, onEdit, onDelete }: BudgetItemProps) {
       onSwipeLeft={deleteBudget}
       swipeLeftLabel={tc('buttons.delete')}
       swipeLeftIcon={Trash2}
-      onLongPress={() => setMenuOpen(true)}
-      accessory={
-        <RowMenu
-          open={menuOpen}
-          onOpenChange={setMenuOpen}
-          label={t('cashflow.rowMenu', { title: row.name })}
-        >
-          <RowMenuItem onSelect={onEdit}>
-            <Pencil aria-hidden strokeWidth={1.75} />
-            {tb('actions.editLimit')}
-          </RowMenuItem>
-          {row.canDeleteInterval && (
-            <RowMenuItem variant="danger" onSelect={deleteInterval}>
-              <Trash2 aria-hidden strokeWidth={1.75} />
-              {tb('manage.deleteInterval')}
+      swipeLeftDestructive
+      menu={{
+        label: t('cashflow.rowMenu', { title: row.name }),
+        // Smazat is nowhere else: the row's tap edits the limit
+        shown: true,
+        children: (
+          <>
+            <RowMenuItem onSelect={onEdit}>
+              <Pencil aria-hidden strokeWidth={1.75} />
+              {tb('actions.editLimit')}
             </RowMenuItem>
-          )}
-          <RowMenuItem variant="danger" onSelect={deleteBudget}>
-            <Trash2 aria-hidden strokeWidth={1.75} />
-            {tb('manage.delete')}
-          </RowMenuItem>
-        </RowMenu>
-      }
+            {row.canDeleteInterval && (
+              <RowMenuItem variant="danger" onSelect={deleteInterval}>
+                <Trash2 aria-hidden strokeWidth={1.75} />
+                {tb('manage.deleteInterval')}
+              </RowMenuItem>
+            )}
+            <RowMenuItem variant="danger" onSelect={deleteBudget}>
+              <Trash2 aria-hidden strokeWidth={1.75} />
+              {tb('manage.delete')}
+            </RowMenuItem>
+          </>
+        ),
+      }}
     />
   );
 }

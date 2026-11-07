@@ -6,7 +6,7 @@ import { CategoryFormDialog } from '@/components/categories/CategoryFormDialog';
 import { useCategories, useCategoryName, useCategoryUsage } from '@/hooks/use-categories';
 import { CategoryChip } from '@/mobile/components/cashflow/CategoryChip';
 import { EntityRow, EntityRows } from '@/mobile/components/EntityRow';
-import { RowMenu, RowMenuItem } from '@/mobile/components/RowMenu';
+import { RowMenuItem } from '@/mobile/components/RowMenu';
 import { ScaledReportError } from '@/mobile/components/Scaled';
 import { SectionHead } from '@/mobile/components/SectionHead';
 import { SectionPage } from '@/mobile/components/SectionPage';
@@ -129,7 +129,6 @@ function CategoryItem({ row, onEdit, onDelete }: CategoryItemProps) {
   const { t: tm } = useTranslation('mobile');
   const { t: tc } = useTranslation('common');
   const categoryName = useCategoryName();
-  const [menuOpen, setMenuOpen] = useState(false);
   const actions = categoryRowActions(row);
   const name = categoryName(row.category);
 
@@ -150,30 +149,31 @@ function CategoryItem({ row, onEdit, onDelete }: CategoryItemProps) {
       onSwipeLeft={actions.delete ? onDelete : undefined}
       swipeLeftLabel={tc('buttons.delete')}
       swipeLeftIcon={Trash2}
-      onLongPress={() => setMenuOpen(true)}
-      accessory={
-        <RowMenu
-          open={menuOpen}
-          onOpenChange={setMenuOpen}
-          label={tm('cashflow.rowMenu', { title: name })}
-        >
-          <RowMenuItem onSelect={onEdit}>
-            <Pencil aria-hidden strokeWidth={1.75} />
-            {tc('buttons.edit')}
-          </RowMenuItem>
-          {actions.delete ? (
-            <RowMenuItem variant="danger" onSelect={onDelete}>
-              <Trash2 aria-hidden strokeWidth={1.75} />
-              {tc('buttons.delete')}
+      swipeLeftDestructive
+      menu={{
+        label: tm('cashflow.rowMenu', { title: name }),
+        // Smazat is nowhere else: the row's tap edits the category
+        shown: true,
+        children: (
+          <>
+            <RowMenuItem onSelect={onEdit}>
+              <Pencil aria-hidden strokeWidth={1.75} />
+              {tc('buttons.edit')}
             </RowMenuItem>
-          ) : (
-            <RowMenuItem disabled>
-              <Trash2 aria-hidden strokeWidth={1.75} />
-              {t('categoryManagement.systemCannotDelete')}
-            </RowMenuItem>
-          )}
-        </RowMenu>
-      }
+            {actions.delete ? (
+              <RowMenuItem variant="danger" onSelect={onDelete}>
+                <Trash2 aria-hidden strokeWidth={1.75} />
+                {tc('buttons.delete')}
+              </RowMenuItem>
+            ) : (
+              <RowMenuItem disabled>
+                <Trash2 aria-hidden strokeWidth={1.75} />
+                {t('categoryManagement.systemCannotDelete')}
+              </RowMenuItem>
+            )}
+          </>
+        ),
+      }}
     />
   );
 }

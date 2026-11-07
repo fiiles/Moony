@@ -283,3 +283,112 @@ fn a_stale_reference_that_loses_the_merge_never_drops_the_row() {
     }
     assert_converged(&[&a, &b, &c, &d]);
 }
+
+fn import_statement(conn: &mut Connection, account: &str) {
+    use crate::services::csv_import::{self, CsvImportConfig};
+    let config = CsvImportConfig {
+        delimiter: ",".into(),
+        date_column: "Date".into(),
+        date_format: "%Y-%m-%d".into(),
+        amount_column: Some("Amount".into()),
+        description_columns: Some(vec!["Description".into()]),
+        ..CsvImportConfig::default()
+    };
+    csv_import::import_transactions(
+        conn,
+        account,
+        "statement.csv",
+        "Date,Amount,Description\n2026-05-25,-10.00,Albert\n",
+        &config,
+        None,
+    )
+    .expect("import");
+}
+
+/// T18d: device A deletes account `acc`; device B, before pulling that, imports a statement into
+/// it (batch B under `acc`, payment T under `acc` and B). B's insert loses to the deleted `acc`
+/// and is recorded as a tombstone at `acc`'s clock (D14), so T finds a tombstoned batch and
+/// follows it instead of stopping on a missing parent. Both pull orders converge.
+#[test]
+fn a_child_of_a_dropped_child_follows_the_deleted_grandparent() {
+    let a = device(A);
+    let mut b = device(B);
+    let c = device(C);
+    account(&a, "acc");
+    let base = send(&a);
+    apply(&b, &base);
+    apply(&c, &base);
+    crate::services::bank_accounts::delete_account(&a, "acc").expect("delete account");
+    let tombstone = clocks(&a, "bank_accounts", "acc")["-"];
+    import_statement(&mut b, "acc");
+    let from_a = send(&a);
+    let from_b = send(&b);
+
+    apply(&a, &from_b);
+    apply(&b, &from_a);
+    apply(&c, &from_b);
+    apply(&c, &from_a);
+
+    for conn in [&a, &b, &c] {
+        assert_eq!(count(conn, "SELECT COUNT(*) FROM bank_accounts"), 0);
+        assert_eq!(count(conn, "SELECT COUNT(*) FROM csv_import_batches"), 0);
+        assert_eq!(count(conn, "SELECT COUNT(*) FROM bank_transactions"), 0);
+        assert_eq!(
+            count(
+                conn,
+                "SELECT COUNT(*) FROM sync_clock WHERE tbl IN ('csv_import_batches', 'bank_transactions') AND col = '-'"
+            ),
+            2
+        );
+    }
+    let batch = value(
+        &a,
+        "SELECT pk FROM sync_clock WHERE tbl = 'csv_import_batches' AND col = '-'",
+    )
+    .expect("batch tombstone");
+    assert_eq!(clocks(&a, "csv_import_batches", &batch)["-"], tombstone);
+    assert_converged(&[&a, &b, &c]);
+}
+
+/// A three-level chain: the grandparent `acc` is deleted on A; B adds a batch under it in one
+/// changeset and a payment under that batch in a later one. Every device drops both, in both
+/// orders, with tombstones at the grandparent's clock.
+#[test]
+fn a_three_level_chain_arriving_in_separate_changesets_follows_the_grandparent() {
+    let a = device(A);
+    let b = device(B);
+    let c = device(C);
+    account(&a, "acc");
+    let base = send(&a);
+    apply(&b, &base);
+    apply(&c, &base);
+    exec(&a, "DELETE FROM bank_accounts WHERE id = 'acc'");
+    let tombstone = clocks(&a, "bank_accounts", "acc")["-"];
+    exec(
+        &b,
+        "INSERT INTO csv_import_batches (id, bank_account_id, file_name) VALUES ('batch', 'acc', 'f.csv')",
+    );
+    let parent = send(&b);
+    exec(
+        &b,
+        "INSERT INTO bank_transactions (id, bank_account_id, tx_type, amount, currency, booking_date, import_batch_id) \
+         VALUES ('pay', 'acc', 'debit', '-1.00', 'CZK', 1767225600, 'batch')",
+    );
+    let child = send(&b);
+    let from_a = send(&a);
+
+    apply(&a, &parent);
+    apply(&a, &child);
+    apply(&b, &from_a);
+    apply(&c, &parent);
+    apply(&c, &from_a);
+    apply(&c, &child);
+
+    for conn in [&a, &b, &c] {
+        assert_eq!(count(conn, "SELECT COUNT(*) FROM csv_import_batches"), 0);
+        assert_eq!(count(conn, "SELECT COUNT(*) FROM bank_transactions"), 0);
+        assert_eq!(clocks(conn, "csv_import_batches", "batch")["-"], tombstone);
+        assert_eq!(clocks(conn, "bank_transactions", "pay")["-"], tombstone);
+    }
+    assert_converged(&[&a, &b, &c]);
+}

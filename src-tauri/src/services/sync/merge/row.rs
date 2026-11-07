@@ -5,7 +5,8 @@
 //! 1. an insert with `g` older than the newest delete of its key (`X`, or the change's own `del`)
 //!    belongs to a delete epoch that has ended: it is dropped, without asking its parents;
 //! 2. otherwise its foreign keys are checked (`parents::check`): a reference into a deleted parent
-//!    epoch follows the key's `ON DELETE` rule; a parent never seen stops the merge;
+//!    epoch follows the key's `ON DELETE` rule (a CASCADE child becomes a tombstone at the
+//!    parent's clock, D14, T18d); a parent never seen stops the merge;
 //! 3. a carried tombstone newer than `L` deletes the live row (cascading at that clock), and `X`
 //!    becomes the newest tombstone;
 //! 4. a row that is not live is inserted with `'*' = g` and explicit clocks for the columns whose

@@ -62,8 +62,14 @@ pub(super) enum Parents {
 /// carried ones for a fresh row, the winning ones for a merged row) and every key part
 /// against the parent's row clock `PL` and tombstone `PD`, given `pg`, the parent generation the
 /// author saw (`change.parents`, ZERO when absent):
-/// `PD` present and `pg < PD` → the key's rule (SET NULL rules clear the column in `columns`,
-/// keeping its clock); else a live parent with `pg ≤ PL` is fine; anything else stops the merge.
+/// `PD` present and either `pg < PD` or the parent not live here → the key's rule (SET NULL rules
+/// clear the column in `columns`, keeping its clock); else a live parent with `pg ≤ PL` is fine;
+/// anything else (a parent never seen, or a generation newer than the live one) stops the merge.
+///
+/// A tombstoned parent that is not live counts as ended whatever `pg` is (T18d): the relay order
+/// is causal, so the incarnation the child saw has been applied here and killed. When it was
+/// dropped or cascaded with its own deleted parent (D14), its tombstone is that parent's clock,
+/// older than its own generation, and a grandchild must follow it instead of stopping.
 pub(super) fn check(
     conn: &Connection,
     ctx: &mut MergeCtx,
@@ -91,7 +97,12 @@ pub(super) fn check(
             .copied()
             .unwrap_or(Clock::ZERO);
         let clocks = read_clocks(conn, &fk.parent, &value)?;
-        if let Some(gone) = clocks.get(TOMBSTONE).copied().filter(|d| seen < *d) {
+        let live = parent_exists(conn, fk, &value)?;
+        if let Some(gone) = clocks
+            .get(TOMBSTONE)
+            .copied()
+            .filter(|d| seen < *d || !live)
+        {
             match fk.on_delete {
                 OnDelete::SetNull | OnDelete::NoAction(OrphanRule::SetNull)
                     if key_part.is_none() =>
@@ -105,7 +116,7 @@ pub(super) fn check(
             continue;
         }
         let generation = clocks.get(ROW).copied().unwrap_or(Clock::ZERO);
-        if parent_exists(conn, fk, &value)? && seen <= generation {
+        if live && seen <= generation {
             continue;
         }
         return Ok(Parents::Stop(StopReason::MissingParent {

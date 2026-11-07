@@ -3011,7 +3011,8 @@ CREATE TABLE sync_outbox (tbl TEXT NOT NULL, pk TEXT NOT NULL, queued_at INTEGER
 CREATE INDEX idx_sync_outbox_queued ON sync_outbox(queued_at);
 CREATE TABLE sync_heads (device BLOB PRIMARY KEY, seq INTEGER NOT NULL, hash BLOB NOT NULL,
     quarantined INTEGER NOT NULL DEFAULT 0) WITHOUT ROWID;
-CREATE TABLE sync_own_log (seq INTEGER PRIMARY KEY, hash BLOB NOT NULL, max_hlc INTEGER NOT NULL);
+CREATE TABLE sync_own_log (seq INTEGER PRIMARY KEY, hash BLOB NOT NULL, min_hlc INTEGER NOT NULL,
+    max_hlc INTEGER NOT NULL);
 CREATE TABLE sync_unsent (seq INTEGER PRIMARY KEY, envelope BLOB NOT NULL);
 CREATE TABLE sync_typed (tbl TEXT NOT NULL, pk TEXT NOT NULL, col TEXT NOT NULL,
     typed TEXT NOT NULL, assigned TEXT, PRIMARY KEY (tbl, pk, col)) WITHOUT ROWID;

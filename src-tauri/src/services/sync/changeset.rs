@@ -396,16 +396,27 @@ pub fn padded_deflated_len(json: &[u8]) -> usize {
 
 /// The highest HLC carried by any clock in the changeset (0 when it has none).
 pub fn max_hlc(cs: &Changeset) -> u64 {
-    cs.rows
-        .iter()
-        .flat_map(|row| {
-            std::iter::once(row.generation.hlc)
-                .chain(row.deleted.map(|c| c.hlc))
-                .chain(row.columns.values().map(|(_, c)| c.hlc))
-                .chain(row.parents.values().map(|c| c.hlc))
-        })
-        .max()
-        .unwrap_or(0)
+    clocks(cs).map(|c| c.hlc).max().unwrap_or(0)
+}
+
+/// The lowest HLC among the clocks of the changeset's author (`max_hlc` when it carries none):
+/// the oldest of the author's own changes the envelope holds. A re-join re-queues own clocks from
+/// here for an envelope the relay may not hold (§11.4).
+pub fn min_author_hlc(cs: &Changeset) -> u64 {
+    clocks(cs)
+        .filter(|c| c.device == cs.device)
+        .map(|c| c.hlc)
+        .min()
+        .unwrap_or_else(|| max_hlc(cs))
+}
+
+fn clocks(cs: &Changeset) -> impl Iterator<Item = &Clock> {
+    cs.rows.iter().flat_map(|row| {
+        std::iter::once(&row.generation)
+            .chain(row.deleted.as_ref())
+            .chain(row.columns.values().map(|(_, c)| c))
+            .chain(row.parents.values())
+    })
 }
 
 #[cfg(test)]
@@ -722,6 +733,15 @@ mod tests {
             })
             .collect();
         assert_eq!(padded_deflated_len(&noise), 5120);
+    }
+
+    #[test]
+    fn min_author_hlc_is_the_oldest_clock_of_the_author() {
+        // dev(2)'s parent clock (…000) is older, but not the author's.
+        assert_eq!(min_author_hlc(&spec_example()), 1_776_000_000_000_001);
+        let mut cs = spec_example();
+        cs.device = dev(3);
+        assert_eq!(min_author_hlc(&cs), max_hlc(&cs), "no author clock");
     }
 
     #[test]

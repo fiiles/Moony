@@ -846,7 +846,8 @@ CREATE TABLE sync_outbox (tbl TEXT NOT NULL, pk TEXT NOT NULL, queued_at INTEGER
     PRIMARY KEY (tbl, pk)) WITHOUT ROWID
 
 == table sync_own_log ==
-CREATE TABLE sync_own_log (seq INTEGER PRIMARY KEY, hash BLOB NOT NULL, max_hlc INTEGER NOT NULL)
+CREATE TABLE sync_own_log (seq INTEGER PRIMARY KEY, hash BLOB NOT NULL, min_hlc INTEGER NOT NULL,
+    max_hlc INTEGER NOT NULL)
 
 == table sync_state ==
 CREATE TABLE sync_state (

@@ -20,7 +20,7 @@ use std::cmp::Reverse;
 use rusqlite::{params, Connection, Transaction};
 
 use crate::error::{AppError, Result};
-use crate::services::sync::changeset::{max_hlc, Changeset};
+use crate::services::sync::changeset::{max_hlc, min_author_hlc, Changeset};
 use crate::services::sync::registry::keys::{fk_depth, schema_number};
 use crate::services::sync::registry::{self, TableClass};
 use crate::services::sync::state;
@@ -34,6 +34,8 @@ pub const SINGLE_ROW_LIMIT: usize = 184_320;
 #[derive(Debug, Clone, PartialEq)]
 pub struct Built {
     pub changeset: Changeset,
+    /// The oldest of this device's own clocks in the envelope (`min_author_hlc`).
+    pub min_hlc: u64,
     pub max_hlc: u64,
 }
 
@@ -82,6 +84,7 @@ pub fn build_next(tx: &Transaction<'_>) -> Result<(Option<Built>, Vec<Refused>)>
         delete.execute([table, pk])?;
     }
     let built = (!cut.changeset.rows.is_empty()).then(|| Built {
+        min_hlc: min_author_hlc(&cut.changeset),
         max_hlc: max_hlc(&cut.changeset),
         changeset: cut.changeset,
     });
@@ -89,15 +92,22 @@ pub fn build_next(tx: &Transaction<'_>) -> Result<(Option<Built>, Vec<Refused>)>
 }
 
 /// Records the sealed envelope in the same transaction: `sync_own_log` gains `(seq, hash,
-/// max_hlc)`, and the chain moves on (`next_seq = seq + 1`, `last_hash = hash`).
+/// min_hlc, max_hlc)`, and the chain moves on (`next_seq = seq + 1`, `last_hash = hash`).
 pub fn record_sealed(tx: &Transaction<'_>, built: &Built, hash: [u8; 32]) -> Result<()> {
     let seq = i64::try_from(built.changeset.seq)
         .map_err(|_| AppError::Internal("sync journal: sequence out of range".into()))?;
-    let max_hlc = i64::try_from(built.max_hlc)
-        .map_err(|_| AppError::Internal("sync journal: clock out of range".into()))?;
+    let clock = |hlc: u64| {
+        i64::try_from(hlc)
+            .map_err(|_| AppError::Internal("sync journal: clock out of range".into()))
+    };
     tx.execute(
-        "INSERT INTO sync_own_log (seq, hash, max_hlc) VALUES (?1, ?2, ?3)",
-        params![seq, hash.to_vec(), max_hlc],
+        "INSERT INTO sync_own_log (seq, hash, min_hlc, max_hlc) VALUES (?1, ?2, ?3, ?4)",
+        params![
+            seq,
+            hash.to_vec(),
+            clock(built.min_hlc)?,
+            clock(built.max_hlc)?
+        ],
     )?;
     let advanced = tx.execute(
         "UPDATE sync_state SET next_seq = ?1 + 1, last_hash = ?2 WHERE id = 1 AND next_seq = ?1",

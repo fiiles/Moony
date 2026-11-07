@@ -252,7 +252,7 @@ mod tests {
         conn.execute_batch(
             "INSERT INTO institutions (id, name) VALUES ('i1', 'Bank'); \
              INSERT INTO sync_heads (device, seq, hash) VALUES (x'09', 1, x'00'); \
-             INSERT INTO sync_own_log (seq, hash, max_hlc) VALUES (1, x'00', 1); \
+             INSERT INTO sync_own_log (seq, hash, min_hlc, max_hlc) VALUES (1, x'00', 1, 1); \
              INSERT INTO sync_unsent (seq, envelope) VALUES (1, x'00'); \
              INSERT INTO sync_typed (tbl, pk, col, typed, assigned) VALUES ('stock_tags', 't', 'name', 'A', 'A (2)');",
         )

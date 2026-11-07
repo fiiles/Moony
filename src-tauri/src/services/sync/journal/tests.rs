@@ -11,7 +11,7 @@ use crate::models::categorization::InsertScopedLearning;
 use crate::services::categorization::engine::CategorizationEngine;
 use crate::services::categorization::learn::learn_scoped;
 use crate::services::sync::changeset::{
-    max_hlc, padded_deflated_len, to_json, Changeset, RowChange, RowKey, SqlValue,
+    max_hlc, min_author_hlc, padded_deflated_len, to_json, Changeset, RowChange, RowKey, SqlValue,
 };
 use crate::services::sync::hlc::{Clock, DeviceId};
 use crate::services::sync::registry::keys::schema_number;
@@ -673,6 +673,7 @@ fn record_sealed_advances_the_chain() {
     assert_eq!(built.changeset.device, DEVICE);
     assert_eq!(built.changeset.schema, schema_number());
     assert_eq!(built.max_hlc, max_hlc(&built.changeset));
+    assert_eq!(built.min_hlc, min_author_hlc(&built.changeset));
     assert_eq!(
         built.max_hlc,
         clock(&tx, "spending_plans", "p1", "*").unwrap().hlc
@@ -680,14 +681,17 @@ fn record_sealed_advances_the_chain() {
     record_sealed(&tx, &built, hash).unwrap();
     tx.commit().unwrap();
 
-    let log: Vec<(i64, Vec<u8>, i64)> = conn
-        .prepare("SELECT seq, hash, max_hlc FROM sync_own_log ORDER BY seq")
+    let log: Vec<(i64, Vec<u8>, i64, i64)> = conn
+        .prepare("SELECT seq, hash, min_hlc, max_hlc FROM sync_own_log ORDER BY seq")
         .unwrap()
-        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)))
+        .query_map([], |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)))
         .unwrap()
         .map(|r| r.unwrap())
         .collect();
-    assert_eq!(log, vec![(1, hash.to_vec(), built.max_hlc as i64)]);
+    assert_eq!(
+        log,
+        vec![(1, hash.to_vec(), built.min_hlc as i64, built.max_hlc as i64)]
+    );
     let sync = state::load(&conn).unwrap().unwrap();
     assert_eq!(sync.next_seq, 2);
     assert_eq!(sync.last_hash, Some(hash));

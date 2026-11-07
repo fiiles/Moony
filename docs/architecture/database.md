@@ -309,7 +309,7 @@ Grouped by owning domain (see the domain map in `overview.md`).
 | `sync_clock` | Local. One hybrid-logical-clock stamp per synced column | `PRIMARY KEY (tbl, pk, col)` WITHOUT ROWID; `hlc`, `device` BLOB; index `(device, hlc)` |
 | `sync_outbox` | Local. Rows changed locally and not yet sent | `PRIMARY KEY (tbl, pk)` WITHOUT ROWID; `queued_at` indexed |
 | `sync_heads` | Local. Newest verified message per author device | `device` BLOB PK; `seq`, `hash`; `quarantined` (per-author quarantine) |
-| `sync_own_log` | Local. This device's own hash chain | `seq` PK; `hash`; `max_hlc` |
+| `sync_own_log` | Local. This device's own hash chain | `seq` PK; `hash`; `min_hlc` (oldest own clock in the envelope); `max_hlc` |
 | `sync_unsent` | Local. Own envelopes built but not yet delivered | `seq` PK; `envelope` BLOB |
 | `sync_typed` | Local. Columns a repair shows differently from what was typed: renamed names (`col = 'name'`), cleared `cashflow_items.replacement_source_id` links | `PRIMARY KEY (tbl, pk, col)` WITHOUT ROWID; `typed` (the value the user typed, what syncs), `assigned` (the value the repair shows; NULL for a cleared link) |
 | `sync_devices` | Synced. Devices of the vault | `id` TEXT PK (device ID, 32 lowercase hex characters); `public_key`; `name`, `platform`, `app_version`, `joined_at`; `removed` CHECK (0/1) |

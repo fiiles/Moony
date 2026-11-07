@@ -12,6 +12,8 @@ default-run = "moony"
 [workspace]
 members = [".", "plugins/moony-keychain"]
 default-members = [".", "plugins/moony-keychain"]
+# Vendored third-party crates are patched in, not linted or tested with the app
+exclude = ["vendor/tauri-plugin-notification"]
 
 [lib]
 name = "moony_lib"
@@ -135,3 +137,8 @@ opt-level = 3
 opt-level = 3
 [profile.dev.package.sha2]
 opt-level = 3
+
+# tauri-plugin-notification 2.8.0 with the iOS tap crash fixed and `extra` reported on iOS
+# (see vendor/tauri-plugin-notification/MOONY-PATCH.md)
+[patch.crates-io]
+tauri-plugin-notification = { path = "vendor/tauri-plugin-notification" }

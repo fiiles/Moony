@@ -1,8 +1,9 @@
 /**
  * Where a tapped notification leads (spec §6, §9; audit C4). Every planned notification carries
- * its screen (`PlannedNotification.path`): in its `extra`, which the Android plugin hands back on a
- * tap, and in the scheduler's map from id to path, because the iOS plugin hands back the id but no
- * `extra`. The tapped target waits in a slot until the app is unlocked; whoever opens it takes it,
+ * its screen (`PlannedNotification.path`) in its `extra`, which the plugin hands back on a tap
+ * (on iOS through the vendored patch, `src-tauri/vendor/tauri-plugin-notification`), so a tap finds
+ * it across app runs. The scheduler's map from id to path is the fallback for a plugin that
+ * reports the id only. The tapped target waits in a slot until the app is unlocked; whoever opens it takes it,
  * once. Only a path of the shell is ever accepted (`isShellPath`).
  */
 import { isShellPath } from '@/mobile/shell/routes';

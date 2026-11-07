@@ -39,8 +39,8 @@ function schedulesOnThisDevice(): boolean {
  * schedule's date as local digits with a literal `Z` (`scheduleDateString`), which its `Schedule.at`
  * helper cannot express: it takes a `Date`, whose JSON is UTC. The plugin does not wait for the
  * system (`sendNotification` returns at once), so a refusal such as a time that has passed does not
- * come back here; the plan leaves those out. `path`, the screen a tap opens, rides in `extra`
- * (Android hands it back on a tap; iOS does not, see `notificationPaths`).
+ * come back here; the plan leaves those out. `path`, the screen a tap opens, rides in `extra`,
+ * which the plugin hands back on a tap (on iOS through the vendored patch).
  */
 export function scheduleNotification(item: {
   id: number;
@@ -107,8 +107,8 @@ export function useNotificationSchedule(): void {
       prefs,
       canBackup: exportsOnThisDevice(import.meta.env.TAURI_ENV_PLATFORM ?? ''),
     });
-    // The screens a tap opens, by id: the iOS plugin reports a tap without the `extra`. Kept
-    // through a lock, when a tap must still find its screen after the unlock.
+    // The screens a tap opens, by id: the fallback when a tap reports no `extra` (the unpatched
+    // iOS plugin did not). Kept through a lock, when a tap must still find its screen after it.
     notificationPaths.clear();
     for (const item of plan) notificationPaths.set(item.id, item.path);
     const signature = `${i18n.language}#${planSignature(plan)}`;

@@ -32,6 +32,8 @@ export default tseslint.config(
       'dist',
       'node_modules',
       'src-tauri/target',
+      // Third-party crates vendored with a patch (their own bundled scripts)
+      'src-tauri/vendor',
       'scripts',
       'public',
       'src/components/ui',

@@ -75,7 +75,6 @@
     "viewTransactions": "Transaktionen anzeigen",
     "buy": "Kaufen",
     "sell": "Verkaufen",
-    "updatePrice": "Kurs bearbeiten",
     "updateDividend": "Dividendenschätzung aktualisieren",
     "delete": "Löschen",
     "deletePosition": "Position löschen"
@@ -229,7 +228,6 @@
     "year": "Jahr",
     "noDividend": "keine Dividendendaten",
     "manual": "manuell",
-    "updatePrice": "Kurs aktualisieren",
     "updateDividend": "Dividende aktualisieren",
     "tabs": {
       "position": "Position",

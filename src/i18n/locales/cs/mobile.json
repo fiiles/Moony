@@ -116,7 +116,7 @@
     "policies_other": "{{count}} pojistek",
     "total": "Celkem na účtech",
     "change30": "{{amount}} za 30 dní",
-    "noMovements": "bez pohybů za 30 dní",
+    "noMovements": "bez transakcí za 30 dní",
     "sections": {
       "accounts": "Účty",
       "loans": "Úvěry",

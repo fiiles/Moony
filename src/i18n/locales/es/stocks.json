@@ -77,7 +77,6 @@
     "viewTransactions": "Ver movimientos",
     "buy": "Comprar",
     "sell": "Vender",
-    "updatePrice": "Editar precio",
     "updateDividend": "Actualizar estimación de dividendo",
     "delete": "Eliminar",
     "deletePosition": "Eliminar posición"
@@ -233,7 +232,6 @@
     "year": "año",
     "noDividend": "sin datos de dividendos",
     "manual": "manual",
-    "updatePrice": "Actualizar precio",
     "updateDividend": "Actualizar dividendo",
     "tabs": {
       "position": "Posición",

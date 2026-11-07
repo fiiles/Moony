@@ -42,6 +42,7 @@ import type { UpkeepKind, UpkeepRow } from '@/mobile/lib/upkeep';
 import { dismissKey, hideRow, restoreRow, snoozeRow } from '@/mobile/lib/upkeep-dismissals';
 import { propertyPath, routes, settingsPath } from '@/mobile/shell/routes';
 import { RecordBalancesSheet } from '@/mobile/sheets/RecordBalancesSheet';
+import { useTapToOpen } from '@/mobile/hooks/use-tap-to-open';
 import { ROW_MENU_ITEM } from './RowMenu';
 
 const ICONS: Record<UpkeepKind, LucideIcon> = {
@@ -322,6 +323,8 @@ const MENU_TRIGGER =
  * account's next import, a hidden "Nezařazené" once more payments wait than now.
  */
 function PhoneRowMenu({ row, title }: { row: UpkeepRow; title: string }) {
+  const [open, setOpen] = useState(false);
+  const tap = useTapToOpen(open, setOpen);
   const { t } = useTranslation('milestones');
   const { setDismissals } = useUpkeepDismissals();
   const undo = {
@@ -329,9 +332,14 @@ function PhoneRowMenu({ row, title }: { row: UpkeepRow; title: string }) {
     onClick: () => setDismissals((d) => restoreRow(d, row)),
   };
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <button type="button" aria-label={t('card.rowMenu', { title })} className={MENU_TRIGGER}>
+        <button
+          type="button"
+          aria-label={t('card.rowMenu', { title })}
+          className={MENU_TRIGGER}
+          {...tap}
+        >
           <Ellipsis aria-hidden className="size-5" strokeWidth={1.75} />
         </button>
       </DropdownMenuTrigger>
@@ -366,13 +374,20 @@ function PhoneRowMenu({ row, title }: { row: UpkeepRow; title: string }) {
  * měsíc, Nepřipomínat …), so a reminder put off here stays off there too. 32 pt drawn, 44 pt to tap.
  */
 function UpkeepMenu({ m, title }: { m: Milestone; title: string }) {
+  const [open, setOpen] = useState(false);
+  const tap = useTapToOpen(open, setOpen);
   const { t } = useTranslation('milestones');
   // Kept by the row, not by the items: it keeps the muted kinds observed (`MilestoneMenuItems`)
   const actions = useMilestoneActions();
   return (
-    <DropdownMenu>
+    <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger asChild>
-        <button type="button" aria-label={t('card.rowMenu', { title })} className={MENU_TRIGGER}>
+        <button
+          type="button"
+          aria-label={t('card.rowMenu', { title })}
+          className={MENU_TRIGGER}
+          {...tap}
+        >
           <Ellipsis aria-hidden className="size-5" strokeWidth={1.75} />
         </button>
       </DropdownMenuTrigger>

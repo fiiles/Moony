@@ -96,7 +96,7 @@
     "policies_other": "{{count}} 份保单",
     "total": "账户总额",
     "change30": "30 天内 {{amount}}",
-    "noMovements": "30 天内没有流水",
+    "noMovements": "30 天内没有交易",
     "sections": {
       "accounts": "账户",
       "loans": "贷款",

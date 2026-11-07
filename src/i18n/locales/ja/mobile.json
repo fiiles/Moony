@@ -96,7 +96,7 @@
     "policies_other": "{{count}}件の保険",
     "total": "口座内の合計",
     "change30": "30日間で{{amount}}",
-    "noMovements": "30日間の入出金なし",
+    "noMovements": "30日間の取引なし",
     "sections": {
       "accounts": "口座",
       "loans": "ローン",

@@ -75,7 +75,6 @@
     "viewTransactions": "Visa transaktioner",
     "buy": "Köp",
     "sell": "Sälj",
-    "updatePrice": "Redigera kurs",
     "updateDividend": "Uppdatera utdelningsuppskattning",
     "delete": "Ta bort",
     "deletePosition": "Ta bort innehav"
@@ -229,7 +228,6 @@
     "year": "år",
     "noDividend": "ingen utdelningsdata",
     "manual": "manuell",
-    "updatePrice": "Uppdatera kurs",
     "updateDividend": "Uppdatera utdelning",
     "tabs": {
       "position": "Innehav",

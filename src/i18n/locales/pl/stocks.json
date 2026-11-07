@@ -79,7 +79,6 @@
     "viewTransactions": "Pokaż transakcje",
     "buy": "Kup",
     "sell": "Sprzedaj",
-    "updatePrice": "Edytuj cenę",
     "updateDividend": "Zmień szacunek dywidendy",
     "delete": "Usuń",
     "deletePosition": "Usuń pozycję"
@@ -237,7 +236,6 @@
     "year": "rok",
     "noDividend": "brak danych o dywidendzie",
     "manual": "ręcznie",
-    "updatePrice": "Zmień cenę",
     "updateDividend": "Zmień dywidendę",
     "tabs": {
       "position": "Pozycja",

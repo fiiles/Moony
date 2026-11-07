@@ -187,7 +187,7 @@ function PlanDetailBody({
           <>
             <Button variant="outline" onClick={() => setModal('edit')}>
               <Pencil />
-              {t('actions.edit')}
+              {t('form.editTitle')}
             </Button>
             <Button
               variant="outline"

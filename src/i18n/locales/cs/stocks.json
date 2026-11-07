@@ -77,7 +77,6 @@
     "viewTransactions": "Zobrazit transakce",
     "buy": "Koupit",
     "sell": "Prodat",
-    "updatePrice": "Upravit cenu",
     "updateDividend": "Aktualizovat odhad dividendy",
     "delete": "Smazat",
     "deletePosition": "Smazat pozici"
@@ -238,7 +237,6 @@
     "priceNative": "Cena ({{currency}})",
     "priceNativeMixed": "Cena (původní měna)",
     "priceConverted": "Cena ({{currency}}, kurz dne)",
-    "updatePrice": "Upravit cenu",
     "updateDividend": "Upravit dividendu",
     "tabs": {
       "position": "Pozice",

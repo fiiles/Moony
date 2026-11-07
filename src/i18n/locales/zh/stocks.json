@@ -73,7 +73,6 @@
     "viewTransactions": "查看交易",
     "buy": "买入",
     "sell": "卖出",
-    "updatePrice": "编辑价格",
     "updateDividend": "更新股息估值",
     "delete": "删除",
     "deletePosition": "删除持仓"
@@ -225,7 +224,6 @@
     "year": "年",
     "noDividend": "没有股息数据",
     "manual": "手动",
-    "updatePrice": "更新价格",
     "updateDividend": "更新股息",
     "tabs": {
       "position": "持仓",

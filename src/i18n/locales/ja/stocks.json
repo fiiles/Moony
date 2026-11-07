@@ -73,7 +73,6 @@
     "viewTransactions": "取引を見る",
     "buy": "買付",
     "sell": "売却",
-    "updatePrice": "価格を編集",
     "updateDividend": "配当の予想を更新",
     "delete": "削除",
     "deletePosition": "ポジションを削除"
@@ -225,7 +224,6 @@
     "year": "年",
     "noDividend": "配当データなし",
     "manual": "手動",
-    "updatePrice": "価格を更新",
     "updateDividend": "配当を更新",
     "tabs": {
       "position": "ポジション",

@@ -135,7 +135,7 @@ export default function PlanDetail() {
       <DropdownMenuContent align="end" className="min-w-[220px]">
         <RowMenuItem onSelect={() => setSheet('edit')}>
           <Pencil strokeWidth={1.75} aria-hidden />
-          {tp('actions.edit')}
+          {tp('form.editTitle')}
         </RowMenuItem>
         <RowMenuItem onSelect={() => setClosed.mutate({ id: plan.id, closed: !closed })}>
           {closed ? (

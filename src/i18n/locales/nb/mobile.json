@@ -106,7 +106,7 @@
     "policies_other": "{{count}} forsikringer",
     "total": "Totalt på kontoer",
     "change30": "{{amount}} på 30 dager",
-    "noMovements": "ingen bevegelser på 30 dager",
+    "noMovements": "ingen transaksjoner på 30 dager",
     "sections": {
       "accounts": "Kontoer",
       "loans": "Lån",

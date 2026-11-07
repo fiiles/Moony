@@ -1,6 +1,7 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 import { Ellipsis } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useTapToOpen } from '@/mobile/hooks/use-tap-to-open';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -50,6 +51,7 @@ const SHOWN_TRIGGER =
  * right edge, 220 pt wide at least.
  */
 export function RowMenu({ open, onOpenChange, label, shown = false, children }: RowMenuProps) {
+  const tap = useTapToOpen(open, onOpenChange);
   return (
     <DropdownMenu open={open} onOpenChange={onOpenChange}>
       {/* The menu's anchor, and its way in without a long press. */}
@@ -58,6 +60,7 @@ export function RowMenu({ open, onOpenChange, label, shown = false, children }: 
           type="button"
           aria-label={label}
           className={cn('z-[3]', shown ? SHOWN_TRIGGER : HIDDEN_TRIGGER)}
+          {...(shown ? tap : {})}
         >
           <Ellipsis aria-hidden className="size-5" strokeWidth={1.75} />
         </button>

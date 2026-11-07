@@ -189,6 +189,8 @@ export function ExpenseCategoryRow({
         hasMenu
           ? {
               label: t('cashflow.rowMenu', { title }),
+              // Nastavit / Upravit limit is nowhere else when the limit line is not drawn
+              shown: !!action && !limitLine,
               children: (
                 <>
                   <RowMenuItem disabled={!canOpen} onSelect={() => href && setLocation(href)}>

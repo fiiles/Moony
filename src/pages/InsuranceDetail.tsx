@@ -210,7 +210,7 @@ export default function InsuranceDetail() {
           <>
             <Button variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil />
-              {t('actions.edit')}
+              {t('actions.editPolicy')}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

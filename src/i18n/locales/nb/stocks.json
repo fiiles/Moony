@@ -75,7 +75,6 @@
     "viewTransactions": "Vis transaksjoner",
     "buy": "Kjøp",
     "sell": "Selg",
-    "updatePrice": "Rediger kurs",
     "updateDividend": "Oppdater utbytteanslag",
     "delete": "Slett",
     "deletePosition": "Slett beholdning"
@@ -229,7 +228,6 @@
     "year": "år",
     "noDividend": "ingen utbyttedata",
     "manual": "manuell",
-    "updatePrice": "Oppdater kurs",
     "updateDividend": "Oppdater utbytte",
     "tabs": {
       "position": "Beholdning",

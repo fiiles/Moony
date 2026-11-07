@@ -106,7 +106,7 @@
     "policies_other": "{{count}} Policen",
     "total": "Gesamt auf Konten",
     "change30": "{{amount}} in den letzten 30 Tagen",
-    "noMovements": "keine Bewegungen in 30 Tagen",
+    "noMovements": "keine Transaktionen in 30 Tagen",
     "sections": {
       "accounts": "Konten",
       "loans": "Kredite",

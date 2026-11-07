@@ -543,8 +543,15 @@ One rule on every row, so a swipe means the same thing everywhere:
   48 pt for it and drops its chevron) when the menu holds an action that is neither on the row nor behind
   its tap: the queue (Podrobnosti, Nechat), Co vás čeká, budgets, rules, learned payees, categories,
   loan events, bonds, trades, dividends, documents, property costs and linked loans and policies, import
-  history. A row whose tap opens everything its menu holds (a payment's transaction sheet, a main row's
-  detail, a Cashflow category, a spending plan) keeps the trigger for a screen reader or a keyboard only.
+  history, balance records, earlier budget limits that can be deleted, and a Cashflow category whose
+  limit line is not drawn (Nastavit limit). A row whose tap opens its menu (trades, dividends, import
+  history, recurring property costs) shows the `···` too, as the sign that the row has one. A row whose
+  tap opens everything its menu holds (a payment's transaction sheet, a main row's detail, a Cashflow
+  category with its limit line, a spending plan) keeps the trigger for a screen reader or a keyboard
+  only. A visible `···` in a scrolling list opens on a tap, not on the touch (`useTapToOpen`): Radix
+  opens a trigger on `pointerdown`, so for a finger the trigger's `pointerdown` is prevented and its
+  `click` toggles the menu, which a scroll cancels; a mouse and the keyboard keep Radix's behaviour.
+  Údržba's `···` follow the same rule.
 - **Main rows** (accounts, loans, policies, positions, coins, watched tickers, properties, other assets)
   have no swipe; their long press offers the detail's key acts (Zaznamenat zůstatek, Importovat výpis,
   Přidat transakci; Zadat zůstatek k datu, Zapsat změnu sazby; Upravit pojistku, Ukončit pojistku;

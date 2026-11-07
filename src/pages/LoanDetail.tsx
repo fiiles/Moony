@@ -152,7 +152,7 @@ export default function LoanDetail() {
           <>
             <Button variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil />
-              {t('actions.edit')}
+              {t('form.editTitle')}
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>

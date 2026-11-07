@@ -48,6 +48,10 @@ calls marked **(call)** are mine.
 | Long press (or right click) | The row's menu: every action of the row, swipes included. | Every row with actions. |
 | `···` | The menu's trigger. Visible (44 pt, `ink-4`, at the row's end) when the menu holds an action that is neither on the row nor behind its tap; otherwise screen-reader and keyboard only. | See the table below. |
 
+A row whose tap opens its menu (trades, dividends, import history, recurring property costs) shows
+the `···` as the affordance that says it has one. A visible `···` opens on a tap, not on the touch,
+so a scroll that starts on it never opens the menu (`useTapToOpen`).
+
 A swipe fires when released past 60 px, as today; what makes it safe is that nothing destructive
 happens without the confirm sheet, and the one instant removal (Skrýt) has its undo.
 
@@ -60,8 +64,10 @@ Rows and their `···`:
 | Co vás čeká | Source page | Skrýt, Připomenout, Nepřipomínat… | yes |
 | Rozpočty, pravidla, naučení příjemci, kategorie | Edit / nothing | …, Smazat / Zapomenout | yes |
 | Loan events, bonds, trades, dividends, documents, costs, import history, linked loans and policies of a property | Menu / unfold / viewer / edit | Upravit, Smazat, Odpojit… | yes |
+| Balance records, deletable earlier budget limits | Nothing / edit | Smazat | yes |
+| Cashflow category without its limit line | Its page | Open, Nastavit / Upravit limit | yes |
 | Main rows (accounts, loans, policies, positions, coins, watched, properties, other assets) | Detail | The detail's key actions | no (all of them are visible in the detail) |
-| Cashflow category, spending plan | Its page | Open, limit / edit | no |
+| Cashflow category with its limit line, spending plan | Its page | Open, limit / edit | no |
 
 Main-row menus (the detail's key, non-destructive actions):
 

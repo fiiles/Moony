@@ -3,6 +3,7 @@
 //! engine locks one step at a time. Envelopes are sealed as the push seals them (`seal_from`) or
 //! forged from hand-made changesets (`forge`), and reach the relay through `push`.
 
+mod join;
 mod pull;
 mod push;
 mod runtime;

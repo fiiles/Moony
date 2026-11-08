@@ -10,6 +10,7 @@ use crate::models::{InsertUserProfile, MenuPreferences, UpdateUserProfile, UserP
 use crate::services::biometric_unlock;
 use crate::services::crypto;
 use crate::services::session_key::SessionKey;
+use crate::services::sync::join;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -669,9 +670,9 @@ pub fn delete_account(db: &Database, session: &SessionKey, db_path: &Path) -> Re
 }
 
 /// Remove the files of an account from its data folder: both databases with their side files and
-/// pre-migration copies, the key files, the sync binding and restore marker, the plain attachment
-/// folders of earlier versions and the conversion's quarantine. Anything else in the folder is
-/// left alone. Returns what could not be removed, named within the folder.
+/// pre-migration copies, the key files, the sync binding, restore marker and repair backups, the
+/// plain attachment folders of earlier versions and the conversion's quarantine. Anything else in
+/// the folder is left alone. Returns what could not be removed, named within the folder.
 pub fn remove_account_files(data_dir: &Path) -> Vec<String> {
     let mut failures: Vec<String> = Vec::new();
     let mut remove = |path: PathBuf| {
@@ -719,8 +720,11 @@ pub fn remove_account_files(data_dir: &Path) -> Vec<String> {
     if let Ok(entries) = fs::read_dir(data_dir) {
         for entry in entries.flatten() {
             let name = entry.file_name().to_string_lossy().into_owned();
-            // The database files, their -wal/-shm/-journal side files and `.bak-<ts>` copies.
-            if databases.iter().any(|db| name.starts_with(db)) {
+            // The database files, their -wal/-shm/-journal side files and `.bak-<ts>` copies, and
+            // the sync repair's backups (`sync-repair-*.zip`, ruling P24).
+            let repair_backup = name.starts_with(join::REPAIR_BACKUP_PREFIX)
+                && name.ends_with(join::REPAIR_BACKUP_SUFFIX);
+            if repair_backup || databases.iter().any(|db| name.starts_with(db)) {
                 remove(entry.path());
             }
         }
@@ -1798,6 +1802,37 @@ mod tests {
             .map(|e| e.expect("entry").file_name().to_string_lossy().into_owned())
             .collect();
         assert_eq!(left, vec!["unrelated.txt"]);
+    }
+
+    #[test]
+    fn removing_account_files_takes_the_repair_backups() {
+        let dir = tempdir().expect("tempdir");
+        let d = dir.path();
+        for name in [
+            "sync-repair-1790000000.zip",
+            "sync-repair-1790000000-2.zip",
+            "sync-repair-1790000000.txt",
+            "sync-repair.zip",
+            "unrelated.txt",
+        ] {
+            fs::write(d.join(name), b"x").expect("file");
+        }
+
+        assert!(remove_account_files(d).is_empty());
+
+        let mut left: Vec<String> = fs::read_dir(d)
+            .expect("dir")
+            .map(|e| e.expect("entry").file_name().to_string_lossy().into_owned())
+            .collect();
+        left.sort();
+        assert_eq!(
+            left,
+            vec![
+                "sync-repair-1790000000.txt",
+                "sync-repair.zip",
+                "unrelated.txt"
+            ]
+        );
     }
 
     #[cfg(unix)]

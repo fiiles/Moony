@@ -332,7 +332,9 @@
     "syncSnapshotTooLarge": "Vaše data jsou příliš velká na nahrání synchronizované kopie.",
     "syncQuotaExceeded": "Úložiště synchronizace pro tento profil je plné.",
     "syncKeyRotated": "Toto zařízení už nemá přístup k synchronizovaným datům. Možná ho odebralo jiné zařízení.",
-    "syncRelayUrlInvalid": "Adresa synchronizačního serveru není platná."
+    "syncRelayUrlInvalid": "Adresa synchronizačního serveru není platná.",
+    "syncVaultHasNoSnapshot": "Synchronizovaná data zatím nemají kopii, ze které by šlo začít. Nechte zařízení, které už synchronizuje, dokončit synchronizaci a zkuste to znovu.",
+    "syncRepairDrainIncomplete": "Ne všechny změny z tohoto zařízení se podařilo odeslat na synchronizační server, proto se oprava zastavila a nic nebylo nahrazeno. Záloha je uložená. Zkuste to znovu, až bude synchronizace fungovat."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

@@ -332,7 +332,9 @@
     "syncSnapshotTooLarge": "Tus datos son demasiado grandes para subirlos como copia sincronizada.",
     "syncQuotaExceeded": "El almacenamiento de sincronización de este perfil está lleno.",
     "syncKeyRotated": "Este dispositivo ya no tiene acceso a los datos sincronizados. Es posible que otro dispositivo lo haya eliminado.",
-    "syncRelayUrlInvalid": "La dirección del servidor de sincronización no es válida."
+    "syncRelayUrlInvalid": "La dirección del servidor de sincronización no es válida.",
+    "syncVaultHasNoSnapshot": "Los datos sincronizados aún no tienen una copia desde la que empezar. Deja que un dispositivo que ya sincroniza termine una sincronización y vuelve a intentarlo.",
+    "syncRepairDrainIncomplete": "No se pudieron enviar todos los cambios de este dispositivo al servidor de sincronización, así que la reparación se detuvo y no se reemplazó nada. Se guardó una copia de seguridad. Vuelve a intentarlo cuando la sincronización funcione."
   },
   "auth": {
     "wrongPassword": "La contraseña introducida es incorrecta. Inténtalo de nuevo.",

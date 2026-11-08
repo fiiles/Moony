@@ -332,7 +332,9 @@
     "syncSnapshotTooLarge": "Dataene dine er for store til å lastes opp som en synkronisert kopi.",
     "syncQuotaExceeded": "Synkroniseringslagringen for denne profilen er full.",
     "syncKeyRotated": "Denne enheten har ikke lenger tilgang til de synkroniserte dataene. En annen enhet kan ha fjernet den.",
-    "syncRelayUrlInvalid": "Adressen til synkroniseringsserveren er ugyldig."
+    "syncRelayUrlInvalid": "Adressen til synkroniseringsserveren er ugyldig.",
+    "syncVaultHasNoSnapshot": "De synkroniserte dataene har ennå ingen kopi å starte fra. La en enhet som allerede synkroniserer fullføre en synkronisering, og prøv igjen.",
+    "syncRepairDrainIncomplete": "Ikke alle endringene fra denne enheten kunne sendes til synkroniseringsserveren, så reparasjonen stoppet og ingenting ble erstattet. En sikkerhetskopi ble lagret. Prøv igjen når synkroniseringen fungerer."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

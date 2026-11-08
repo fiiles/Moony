@@ -26,7 +26,7 @@ pub const PULL_PAGE: u32 = 500;
 pub const MAX_PULL_PAGES: usize = 200;
 
 /// The name a re-joined device gets when the old ID had no `sync_devices` row.
-const DEFAULT_DEVICE_NAME: &str = "Moony";
+pub(crate) const DEFAULT_DEVICE_NAME: &str = "Moony";
 
 /// What one envelope did to the pull.
 #[derive(Debug, Clone, PartialEq, Eq)]

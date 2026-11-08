@@ -332,7 +332,9 @@
     "syncSnapshotTooLarge": "Twoje dane są zbyt duże, aby przesłać je jako kopię synchronizowaną.",
     "syncQuotaExceeded": "Miejsce na synchronizację tego profilu jest pełne.",
     "syncKeyRotated": "To urządzenie nie ma już dostępu do zsynchronizowanych danych. Mogło zostać usunięte przez inne urządzenie.",
-    "syncRelayUrlInvalid": "Adres serwera synchronizacji jest nieprawidłowy."
+    "syncRelayUrlInvalid": "Adres serwera synchronizacji jest nieprawidłowy.",
+    "syncVaultHasNoSnapshot": "Zsynchronizowane dane nie mają jeszcze kopii, od której można zacząć. Poczekaj, aż urządzenie, które już synchronizuje, zakończy synchronizację, i spróbuj ponownie.",
+    "syncRepairDrainIncomplete": "Nie wszystkie zmiany z tego urządzenia udało się wysłać na serwer synchronizacji, więc naprawa została zatrzymana i nic nie zostało zastąpione. Zapisano kopię zapasową. Spróbuj ponownie, gdy synchronizacja będzie działać."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

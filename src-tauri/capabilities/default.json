@@ -1,7 +1,7 @@
 {
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
-  "description": "Capability for the main window. The webview gets no file access to the app data dir: attachments reach it only through the moony-file scheme, and the database, the attachments store, the key files, restore copies, the sync binding and the restore marker are denied for every fs command. It may write text to paths the user picks in a native dialog (the dialog plugin adds those to the scope at runtime). Nothing is written to $TEMP: photos reach the backend as raw IPC bytes.",
+  "description": "Capability for the main window. The webview gets no file access to the app data dir: attachments reach it only through the moony-file scheme, and the database, the attachments store, the key files, restore copies, the sync binding, the restore marker and the sync repair's backups are denied for every fs command. It may write text to paths the user picks in a native dialog (the dialog plugin adds those to the scope at runtime). Nothing is written to $TEMP: photos reach the backend as raw IPC bytes.",
   "windows": ["main"],
   "platforms": ["macOS", "windows", "linux"],
   "permissions": [
@@ -32,7 +32,8 @@
         { "path": "$APPDATA/pre-restore-*/**" },
         { "path": "$APPDATA/sync-binding.bin" },
         { "path": "$APPDATA/sync-binding.bin.tmp" },
-        { "path": "$APPDATA/sync-rejoin.marker" }
+        { "path": "$APPDATA/sync-rejoin.marker" },
+        { "path": "$APPDATA/sync-repair-*.zip" }
       ]
     },
     "updater:default",

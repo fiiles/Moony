@@ -4,7 +4,8 @@
 //! judges every pulled envelope, and the snapshots a joining or lagging device restores. Phase 2
 //! adds the vault's credentials and this device's key pair and `sync_devices` row, and the
 //! engine that pulls from the relay, and the restore marker and device binding that make a copied
-//! or restored database re-join at unlock.
+//! or restored database re-join at unlock, and joining a vault by replace with the repair of a
+//! capture-broken profile (`join`).
 
 pub mod binding;
 pub mod capture;
@@ -18,6 +19,7 @@ pub mod envelope;
 pub mod error;
 pub mod feature;
 pub mod hlc;
+pub mod join;
 pub mod journal;
 pub mod keys;
 pub mod merge;

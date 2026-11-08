@@ -669,7 +669,7 @@ async fn open_off_thread(
 }
 
 /// Runs `f` on tokio's blocking pool (a dump, an open or a restore can take seconds).
-async fn off_thread<T, E>(
+pub(crate) async fn off_thread<T, E>(
     f: impl FnOnce() -> std::result::Result<T, E> + Send + 'static,
 ) -> SyncResult<T>
 where

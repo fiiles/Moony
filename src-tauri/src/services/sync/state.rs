@@ -41,6 +41,10 @@ pub struct EngineMarks {
     pub binding_written: bool,
     pub last_success_at: Option<i64>,
     pub last_error: Option<String>,
+    /// The barrier of the newest snapshot this device uploaded or restored, or the barrier it
+    /// started syncing at (migration 033). Below `SyncState::barrier`: the device crossed a
+    /// barrier and owes the vault a snapshot at it (ruling T8-2, `needs_forced_snapshot`).
+    pub snapshot_barrier: u32,
 }
 
 type RawState = (
@@ -158,10 +162,12 @@ pub fn enable(conn: &Connection, device: DeviceId) -> Result<()> {
 
 /// A device that starts syncing at its barrier (turned on, or joined from a snapshot) has nothing
 /// to mark for it: its barrier counts as marked (`marker_barrier`), so the push seals no empty
-/// marker. Only a device that crosses a barrier later needs one.
+/// marker, and as snapshotted (`snapshot_barrier`), so no forced upload follows. Only a device
+/// that crosses a barrier later needs either.
 pub fn note_starting_barrier(conn: &Connection) -> Result<()> {
     conn.execute(
-        "UPDATE sync_state SET marker_barrier = MAX(marker_barrier, barrier) WHERE id = 1",
+        "UPDATE sync_state SET marker_barrier = MAX(marker_barrier, barrier), \
+           snapshot_barrier = MAX(snapshot_barrier, barrier) WHERE id = 1",
         [],
     )?;
     Ok(())
@@ -212,11 +218,12 @@ pub fn marks(conn: &Connection) -> Result<Option<EngineMarks>> {
         bool,
         Option<i64>,
         Option<String>,
+        i64,
     )> = conn
         .query_row(
             "SELECT marker_barrier, capture_broken_at, vault_gone_at, pulled_bytes, \
                     pulled_bytes_base, snapshot_uploaded_at, snapshot_too_large_at, \
-                    binding_written, last_success_at, last_error \
+                    binding_written, last_success_at, last_error, snapshot_barrier \
              FROM sync_state WHERE id = 1",
             [],
             |r| {
@@ -231,6 +238,7 @@ pub fn marks(conn: &Connection) -> Result<Option<EngineMarks>> {
                     r.get(7)?,
                     r.get(8)?,
                     r.get(9)?,
+                    r.get(10)?,
                 ))
             },
         )
@@ -247,6 +255,7 @@ pub fn marks(conn: &Connection) -> Result<Option<EngineMarks>> {
             binding_written,
             last_success_at,
             last_error,
+            snapshot_barrier,
         )| {
             Ok(EngineMarks {
                 marker_barrier: unsigned(marker_barrier, "marker_barrier")?,
@@ -259,6 +268,7 @@ pub fn marks(conn: &Connection) -> Result<Option<EngineMarks>> {
                 binding_written,
                 last_success_at,
                 last_error,
+                snapshot_barrier: unsigned(snapshot_barrier, "snapshot_barrier")?,
             })
         },
     )
@@ -365,7 +375,8 @@ pub fn record_snapshot_uploaded(conn: &Connection, seq: u64, max_hlc: u64, at: i
     conn.execute(
         "UPDATE sync_state SET snapshot_seq = MAX(COALESCE(snapshot_seq, 0), ?1), \
            snapshot_hlc = MAX(snapshot_hlc, ?2), snapshot_uploaded_at = ?3, \
-           snapshot_too_large_at = NULL, pulled_bytes = 0, pulled_bytes_base = ?1 WHERE id = 1",
+           snapshot_too_large_at = NULL, pulled_bytes = 0, pulled_bytes_base = ?1, \
+           snapshot_barrier = MAX(snapshot_barrier, barrier) WHERE id = 1",
         params![
             signed(seq, "snapshot_seq")?,
             signed(max_hlc, "snapshot_hlc")?,
@@ -373,6 +384,23 @@ pub fn record_snapshot_uploaded(conn: &Connection, seq: u64, max_hlc: u64, at: i
         ],
     )?;
     Ok(())
+}
+
+/// The vault already holds a newer snapshot than the one this device offered at its barrier
+/// (`409 snapshot_outdated`): the forced upload after a crossing is done (`snapshot_barrier`).
+pub fn note_snapshot_barrier(conn: &Connection) -> Result<()> {
+    conn.execute(
+        "UPDATE sync_state SET snapshot_barrier = MAX(snapshot_barrier, barrier) WHERE id = 1",
+        [],
+    )?;
+    Ok(())
+}
+
+/// Whether this device crossed a barrier and has not yet uploaded (or restored, or found newer
+/// on the relay) a snapshot at it: its next clean round forces an upload (ruling T8-2), which
+/// still waits for `chain::may_upload_snapshot`.
+pub fn needs_forced_snapshot(sync: &SyncState, marks: &EngineMarks) -> bool {
+    sync.enabled && sync.barrier > marks.snapshot_barrier
 }
 
 /// This device found its snapshot too large to upload at `at` (its own limit or the relay's).

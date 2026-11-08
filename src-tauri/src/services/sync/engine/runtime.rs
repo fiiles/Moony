@@ -24,7 +24,7 @@ use super::{recheck_vault, run_round_into, ConnAccess, EngineEvents, RoundMode, 
 use crate::error::AppError;
 use crate::models::sync::{SyncProblem, SyncStatus};
 use crate::services::sync::binding::{self, StartupCheck};
-use crate::services::sync::error::SyncError;
+use crate::services::sync::error::{SyncError, Transient};
 use crate::services::sync::relay::Relay;
 use crate::services::sync::state;
 
@@ -39,6 +39,10 @@ pub const OUTBOX_POLL: Duration = Duration::from_secs(5);
 pub const LOCAL_WRITE_MAX_WAIT: i64 = 60;
 /// A round runs at least this often.
 pub const PERIODIC: Duration = Duration::from_secs(300);
+/// The longest a round may run before it is dropped as a transient failure.
+pub const ROUND_TIMEOUT: Duration = Duration::from_secs(15 * 60);
+/// The loop never sleeps less than this, whatever its deadlines say.
+const MIN_SLEEP: Duration = Duration::from_millis(5);
 
 /// The wait after failed rounds: 30 s, doubling up to 30 minutes, back to 30 s after a round that
 /// returned.
@@ -216,7 +220,6 @@ pub fn spawn<R: Relay + 'static, D: ConnAccess, E: EngineEvents>(
         policy: SnapshotPolicy::default(),
         backoff: Backoff::default(),
         watch: OutboxWatch::default(),
-        force_snapshot: false,
         started: false,
         last_sent: None,
         retry_at: None,
@@ -243,9 +246,6 @@ struct Engine<R, D, E> {
     policy: SnapshotPolicy,
     backoff: Backoff,
     watch: OutboxWatch,
-    /// The first clean round after a barrier crossing uploads a snapshot (ruling T8-2); cleared
-    /// once an upload went through or found a newer one.
-    force_snapshot: bool,
     /// The binding check passed (and any re-join is done).
     started: bool,
     last_sent: Option<SyncStatus>,
@@ -267,40 +267,51 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
             let now = Instant::now();
             let sync_now = self.shared.sync_now.swap(false, Ordering::SeqCst);
             let requested = self.shared.requested.swap(false, Ordering::SeqCst);
+            // A timer that passed moves on whether or not its action runs, so no deadline below
+            // is ever in the past.
+            let poll_due = now >= self.next_poll;
+            if poll_due {
+                self.next_poll = now + OUTBOX_POLL;
+            }
+            let periodic_due = now >= self.next_periodic;
+            if periodic_due {
+                self.next_periodic = now + PERIODIC;
+            }
             let mut due = false;
             if sync_now {
                 self.retry_at = None;
                 due = true;
             } else if let Some(at) = self.retry_at {
+                // During a back-off, Unlock, LocalWrite and Periodic requests (and the outbox
+                // poll) are dropped on purpose: the retry runs a round anyway.
                 if now >= at {
                     self.retry_at = None;
                     due = true;
                 }
-            } else if requested || now >= self.next_periodic {
-                due = true;
-            }
-            if self.retry_at.is_none() && now >= self.next_poll {
-                self.next_poll = now + OUTBOX_POLL;
-                let pending = self.outbox_count()?;
-                due |= self.watch.observe(pending, unix_now());
+            } else {
+                due = requested || periodic_due;
+                if poll_due {
+                    let pending = self.outbox_count()?;
+                    due |= self.watch.observe(pending, unix_now());
+                }
             }
             if due {
                 if !self.started {
-                    self.started = self.start()?;
+                    self.started = self.start().await?;
                 }
                 if self.started {
                     if sync_now {
                         self.recheck_vault().await?;
                     }
                     self.round().await?;
-                } else {
-                    self.next_periodic = Instant::now() + PERIODIC;
                 }
             }
-            let mut deadline = self.next_poll.min(self.next_periodic);
-            if let Some(at) = self.retry_at {
-                deadline = deadline.min(at);
-            }
+            // While backing off, only the retry (or a message: stop, Sync now) wakes the loop.
+            let deadline = match self.retry_at {
+                Some(at) => at,
+                None => self.next_poll.min(self.next_periodic),
+            };
+            let deadline = deadline.max(Instant::now() + MIN_SLEEP);
             tokio::select! {
                 _ = self.shared.wake.notified() => {}
                 _ = tokio::time::sleep_until(deadline) => {}
@@ -308,29 +319,29 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         }
     }
 
-    /// The check at unlock (obligation c): `binding::startup_check`; on `Rejoin`, the re-join
-    /// commits, then the restore marker goes, then the binding is written for the new ID. Only
-    /// then may a round run. `Ok(false)` when the check could not be made (an unreadable binding
-    /// is a sync error, never an unlock failure): tried again on the next trigger. A marker that
-    /// cannot be removed after the re-join stops sync for this session with a problem, so the
-    /// profile does not re-join again on every round.
-    fn start(&mut self) -> Result<bool, Ended> {
+    /// The check at unlock (obligation c), holding off every round (`engine::exclusive`):
+    /// `binding::startup_check`; on `Rejoin`, the re-join commits, then the restore marker goes,
+    /// then the binding is written for the new ID. Only then may a round run. `Ok(false)` when the
+    /// check could not be made (an unreadable binding is a sync error, never an unlock failure):
+    /// tried again on the next trigger.
+    ///
+    /// A marker that cannot be removed after the re-join stops sync for this session only, with
+    /// a problem, so the profile does not re-join again on every round. The next unlock finds the
+    /// marker and re-joins once more under another new ID: that churns this device's local IDs but
+    /// changes nothing on the relay (nothing was pushed under the abandoned ID). No state keeps it.
+    async fn start(&mut self) -> Result<bool, Ended> {
+        let db = self.db.clone();
+        let _no_round = super::exclusive(&db).await;
         let dir = self.events.data_dir();
-        let checked = self.db.with_conn(|conn| {
-            let check = binding::startup_check(conn, &dir, self.events.binding())?;
-            let crossed = match (state::load(conn)?, state::marks(conn)?) {
-                (Some(sync), Some(marks)) => sync.enabled && marks.marker_barrier < sync.barrier,
-                _ => false,
-            };
-            Ok((check, crossed))
-        });
-        let (check, crossed) = match checked {
-            Ok(checked) => checked,
+        let checked = self
+            .db
+            .with_conn(|conn| binding::startup_check(conn, &dir, self.events.binding()));
+        let check = match checked {
+            Ok(check) => check,
             Err(error) => {
                 return self.start_failed(error, "The device binding could not be checked");
             }
         };
-        self.force_snapshot = crossed;
         if let StartupCheck::Rejoin(reason) = check {
             log::info!("[SYNC] This profile is a copy ({reason:?}): it re-joins under a new ID");
             let rejoined = self
@@ -377,7 +388,8 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         {
             Err(error) if locked(&error) => Err(Ended),
             Err(error) => {
-                log::warn!("[SYNC] Could not note the sync problem: {error}");
+                log::warn!("[SYNC] Could not note the sync problem");
+                log::debug!("[SYNC] Could not note the sync problem: {error}");
                 Ok(())
             }
             Ok(()) => Ok(()),
@@ -394,7 +406,8 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         {
             Err(error) if locked(&error) => Err(Ended),
             Err(error) => {
-                log::warn!("[SYNC] The device binding could not be written: {error}");
+                log::warn!("[SYNC] The device binding could not be written");
+                log::debug!("[SYNC] The device binding could not be written: {error}");
                 Ok(())
             }
             Ok(()) => Ok(()),
@@ -407,7 +420,8 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
             Ok(_) => Ok(()),
             Err(SyncError::Local(error)) if locked(&error) => Err(Ended),
             Err(error) => {
-                log::info!("[SYNC] Sync now could not reach the vault: {error}");
+                log::info!("[SYNC] Sync now could not reach the vault");
+                log::debug!("[SYNC] Sync now could not reach the vault: {error}");
                 Ok(())
             }
         }
@@ -416,22 +430,30 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
     async fn round(&mut self) -> Result<(), Ended> {
         self.shared.update(|r| r.running_round = true);
         self.publish()?;
-        let mode = if self.force_snapshot {
-            RoundMode::FirstSnapshot
-        } else {
-            RoundMode::Normal
-        };
         let mut report = RoundReport::default();
-        let result = run_round_into(
-            &self.relay,
-            &self.db,
-            &mut self.policy,
-            mode,
-            unix_now(),
-            jitter(),
-            &mut report,
+        // A relay that stalls cannot pin the loop: the round is dropped at its deadline (every
+        // step it took is committed) and counts as a transient failure, so "Sync now" and the
+        // back-off take over.
+        let result = match tokio::time::timeout(
+            ROUND_TIMEOUT,
+            run_round_into(
+                &self.relay,
+                &self.db,
+                &mut self.policy,
+                RoundMode::Normal,
+                unix_now(),
+                jitter(),
+                &mut report,
+            ),
         )
-        .await;
+        .await
+        {
+            Ok(result) => result,
+            Err(_) => {
+                log::warn!("[SYNC] A sync round ran past its deadline and was stopped");
+                Err(SyncError::Transient(Transient::Relay))
+            }
+        };
         if let Err(SyncError::Local(error)) = &result {
             if locked(error) {
                 return Err(Ended);
@@ -445,15 +467,11 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         }
         self.shared.update(|r| r.after_round(&report));
         match result {
-            Ok(()) => {
-                self.backoff.reset();
-                if report.snapshot_uploaded || report.snapshot_outdated {
-                    self.force_snapshot = false;
-                }
-            }
+            Ok(()) => self.backoff.reset(),
             Err(error) => {
                 let problem = problem_of(&error);
-                log::warn!("[SYNC] A sync round failed: {error}");
+                log::warn!("[SYNC] A sync round failed: {}", status::reason(problem));
+                log::debug!("[SYNC] A sync round failed: {error}");
                 self.shared.update(|r| r.problem = Some(problem));
                 self.note_reason(problem)?;
                 if error.backs_off() {
@@ -483,7 +501,8 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
             }
             Err(error) if locked(&error) => Err(Ended),
             Err(error) => {
-                log::warn!("[SYNC] The sync status could not be read: {error}");
+                log::warn!("[SYNC] The sync status could not be read");
+                log::debug!("[SYNC] The sync status could not be read: {error}");
                 Ok(())
             }
         }

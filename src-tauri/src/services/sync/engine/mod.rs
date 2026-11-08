@@ -29,6 +29,14 @@ use snapshots::{SnapshotPolicy, Upload, MAX_SNAPSHOT_BYTES};
 /// `AppError::Auth`, which ends the round.
 pub trait ConnAccess: Clone + Send + Sync + 'static {
     fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T>;
+
+    /// The profile's round lock: one round at a time per profile, whoever runs it (the engine's
+    /// loop, setup, the repair), so two `push_all` never interleave. An async lock, never the
+    /// connection's: it is held across the network. The app opens one profile at a time, so the
+    /// default is one lock for the process.
+    fn round_lock(&self) -> &tokio::sync::Mutex<()> {
+        &ROUNDS
+    }
 }
 
 impl ConnAccess for crate::db::Database {
@@ -179,10 +187,15 @@ impl RoundReport {
     }
 }
 
-/// One round at a time in this process, whoever runs it (the engine's loop, setup, the repair):
-/// two rounds of the profile never run at once, so two `push_all` never interleave (one profile is
-/// open at a time). An async lock, never the connection's: it is held across the network.
+/// The process's round lock (`ConnAccess::round_lock`; one profile is open at a time).
 static ROUNDS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+/// Holds off every round of `db`'s profile while the guard lives: the engine's start check (the
+/// binding, a re-join, the marker, the binding write) takes it, so a setup or repair round cannot
+/// interleave with a re-join.
+pub async fn exclusive<D: ConnAccess>(db: &D) -> tokio::sync::MutexGuard<'_, ()> {
+    db.round_lock().lock().await
+}
 
 /// One sync round (spec §9.4): `run_round_into` on a fresh report.
 pub async fn run_round<R: Relay, D: ConnAccess>(
@@ -200,10 +213,13 @@ pub async fn run_round<R: Relay, D: ConnAccess>(
 
 /// One sync round, filling `report` as it goes, so a caller still sees what the round did when it
 /// ends in an error (a merge that applied changes before a later step failed). Waits for any other
-/// round to finish first (`ROUNDS`).
+/// round of the profile to finish first (`ConnAccess::round_lock`).
 ///
 /// 1. A profile without sync, or without credentials, does nothing. A capture-broken profile
-///    syncs only in `Drain`; a vault the relay no longer knows (`vault_gone_at`) is not asked.
+///    syncs only in `Drain`; a vault the relay no longer knows (`vault_gone_at`) is not asked. A
+///    `Normal` round of a device that crossed a barrier and owes the vault a snapshot at it
+///    (`state::needs_forced_snapshot`, ruling T8-2) runs as `FirstSnapshot`, until an upload goes
+///    through or finds a newer snapshot (`409`, noted with `state::note_snapshot_barrier`).
 /// 2. Pull. `410` restores the vault's snapshot by merge, then pulls once more (a second `410` is
 ///    a relay error).
 /// 3. Push only when the pull allows it (ruling P1, `PullReport::may_push`).
@@ -227,15 +243,25 @@ pub async fn run_round_into<R: Relay, D: ConnAccess>(
     jitter: i64,
     report: &mut RoundReport,
 ) -> SyncResult<()> {
-    let _one_round = ROUNDS.lock().await;
+    let _one_round = db.round_lock().lock().await;
     let ready = db.with_conn(|conn| {
-        if !state::load(conn)?.is_some_and(|sync| sync.enabled) {
+        let Some(sync) = state::load(conn)?.filter(|sync| sync.enabled) else {
             return Ok(None);
-        }
-        Ok(keys::credentials(conn)?.zip(state::marks(conn)?))
+        };
+        Ok(keys::credentials(conn)?
+            .zip(state::marks(conn)?)
+            .map(|(creds, marks)| {
+                let forced = state::needs_forced_snapshot(&sync, &marks);
+                (creds, marks, forced)
+            }))
     })?;
-    let Some((creds, marks)) = ready else {
+    let Some((creds, marks, forced)) = ready else {
         return Ok(());
+    };
+    let mode = if mode == RoundMode::Normal && forced {
+        RoundMode::FirstSnapshot
+    } else {
+        mode
     };
     if marks.capture_broken_at.is_some() && mode != RoundMode::Drain {
         report.problem = Some(SyncProblem::CaptureBroken);
@@ -354,7 +380,12 @@ async fn round_steps<R: Relay, D: ConnAccess>(
     .await?
     {
         Upload::Uploaded => report.snapshot_uploaded = true,
-        Upload::Outdated => report.snapshot_outdated = true,
+        Upload::Outdated => {
+            report.snapshot_outdated = true;
+            if force {
+                db.with_conn(state::note_snapshot_barrier)?;
+            }
+        }
         Upload::Skipped => {}
     }
     Ok(())

@@ -42,6 +42,8 @@ pub const NOW: i64 = 1_772_323_200; // 2026-03-01
 pub struct TestConn {
     pub conn: Arc<Mutex<Connection>>,
     pub locked: Arc<AtomicBool>,
+    /// This profile's own round lock, so tests on other profiles never wait for it.
+    pub rounds: Arc<tokio::sync::Mutex<()>>,
 }
 
 impl TestConn {
@@ -49,6 +51,7 @@ impl TestConn {
         Self {
             conn: Arc::new(Mutex::new(conn)),
             locked: Arc::new(AtomicBool::new(false)),
+            rounds: Arc::new(tokio::sync::Mutex::new(())),
         }
     }
 
@@ -64,6 +67,10 @@ impl ConnAccess for TestConn {
             return Err(AppError::Auth("Database is locked".into()));
         }
         f(&self.lock())
+    }
+
+    fn round_lock(&self) -> &tokio::sync::Mutex<()> {
+        &self.rounds
     }
 }
 

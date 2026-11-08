@@ -33,6 +33,8 @@ struct Probe {
     most_in_flight: AtomicUsize,
     calls: AtomicUsize,
     locked_calls: AtomicUsize,
+    /// Calls that never answer, from the next one on.
+    stalls: AtomicUsize,
 }
 
 impl Probe {
@@ -44,6 +46,7 @@ impl Probe {
             most_in_flight: AtomicUsize::new(0),
             calls: AtomicUsize::new(0),
             locked_calls: AtomicUsize::new(0),
+            stalls: AtomicUsize::new(0),
         }
     }
 
@@ -51,6 +54,13 @@ impl Probe {
         self.calls.fetch_add(1, Ordering::SeqCst);
         if self.conn.try_lock().is_err() {
             self.locked_calls.fetch_add(1, Ordering::SeqCst);
+        }
+        let stalled = self
+            .stalls
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| n.checked_sub(1))
+            .is_ok();
+        if stalled {
+            std::future::pending::<()>().await;
         }
         let now = self.in_flight.fetch_add(1, Ordering::SeqCst) + 1;
         self.most_in_flight.fetch_max(now, Ordering::SeqCst);
@@ -227,6 +237,52 @@ fn start(
         handle,
         seen,
         _dir: dir,
+    }
+}
+
+/// The engine on any relay and connection, without a binding.
+fn start_on<R: Relay + 'static, D: ConnAccess>(relay: R, db: D) -> Running {
+    let dir = tempfile::tempdir().expect("temp dir");
+    let seen = Seen::default();
+    let events = Events {
+        seen: seen.clone(),
+        dir: dir.path().to_path_buf(),
+        native: Box::new(NoBinding),
+    };
+    let handle = runtime::spawn(relay, db, events);
+    Running {
+        handle,
+        seen,
+        _dir: dir,
+    }
+}
+
+/// `TestConn`, counting every time the engine takes the connection.
+#[derive(Clone)]
+struct Counted {
+    inner: TestConn,
+    takes: Arc<AtomicUsize>,
+}
+
+impl Counted {
+    fn new(inner: TestConn) -> Self {
+        Self {
+            inner,
+            takes: Arc::new(AtomicUsize::new(0)),
+        }
+    }
+    fn takes(&self) -> usize {
+        self.takes.load(Ordering::SeqCst)
+    }
+}
+
+impl ConnAccess for Counted {
+    fn with_conn<T>(&self, f: impl FnOnce(&Connection) -> Result<T>) -> Result<T> {
+        self.takes.fetch_add(1, Ordering::SeqCst);
+        self.inner.with_conn(f)
+    }
+    fn round_lock(&self) -> &tokio::sync::Mutex<()> {
+        self.inner.round_lock()
     }
 }
 
@@ -507,4 +563,141 @@ async fn a_forced_snapshot_after_a_barrier_crossing_is_tried_once() {
         let expected = if outdated { Some(2) } else { Some(3) };
         assert_eq!(vault.relay.snapshot_seq(), expected, "outdated {outdated}");
     }
+}
+
+/// The loop sleeps through a back-off (review finding 1): a passed poll or periodic time never
+/// leaves its deadline in the past. Every pull fails offline; over 31 s and then 30 minutes of
+/// (paused) time the rounds follow the back-off and the profile is taken a few times per round.
+#[tokio::test(start_paused = true)]
+async fn a_back_off_sleeps_instead_of_spinning() {
+    let vault = super::vault().await;
+    for _ in 0..20 {
+        vault
+            .relay
+            .fail_next(Route::Pull, RelayError::Network("connect".into()));
+    }
+    let counted = Counted::new(vault.a.clone());
+    let running = start_on(vault.relay.clone(), counted.clone());
+
+    tokio::time::sleep(Duration::from_secs(31)).await;
+    let (rounds_31s, takes_31s) = (running.handle.runtime().rounds, counted.takes());
+    tokio::time::sleep(Duration::from_secs(30 * 60)).await;
+    let (rounds, takes) = (running.handle.runtime().rounds, counted.takes());
+    running.handle.stop();
+
+    assert_eq!(rounds_31s, 2, "the first round, then the retry after 30 s");
+    // Retries at 30, 90, 210, 450 and 930 s; the next is due at 1,890 s.
+    assert_eq!(rounds, 6);
+    assert_eq!(running.handle.runtime().problem, Some(SyncProblem::Offline));
+    assert!(takes_31s <= 2 * 12, "{takes_31s} takes in 31 s");
+    assert!(
+        takes <= 6 * 12,
+        "{takes} takes over 31 minutes: the loop spun"
+    );
+}
+
+/// Review finding 3: a relay that never answers cannot pin the loop. The round is dropped at its
+/// 15-minute deadline as a transient failure, and "Sync now" runs the next one at once.
+#[tokio::test(start_paused = true)]
+async fn a_stalled_round_is_dropped_at_its_deadline() {
+    let vault = super::vault().await;
+    // A snapshot already on the relay: the policy has nothing due, so no dump runs off the
+    // runtime (paused time would jump past it).
+    vault
+        .relay
+        .put_snapshot(&vault.creds.auth(), 0, vec![7; 100])
+        .await
+        .expect("snapshot");
+    let probe = Probe::new(vault.relay.clone(), &vault.a);
+    probe.stalls.store(1, Ordering::SeqCst);
+    let running = start_on(probe, vault.a.clone());
+
+    tokio::time::sleep(runtime::ROUND_TIMEOUT + Duration::from_secs(1)).await;
+    assert_eq!(running.handle.runtime().rounds, 1);
+    assert_eq!(
+        running.handle.runtime().problem,
+        Some(SyncProblem::RelayError)
+    );
+
+    running.handle.wake(Trigger::SyncNow);
+    rounds(&running, 2).await;
+    assert_eq!(running.handle.runtime().problem, None);
+    running.handle.stop();
+}
+
+/// Review finding 4: the start check (binding, re-join, marker, binding write) holds off every
+/// round, and waits for a round that runs elsewhere (setup, repair).
+#[tokio::test]
+async fn the_start_check_waits_for_any_running_round() {
+    let vault = super::vault().await;
+    let dir = tempfile::tempdir().expect("temp dir");
+    binding::write_rejoin_marker(dir.path()).expect("marker");
+    let marker = dir.path().join(binding::REJOIN_MARKER);
+    let round_elsewhere = crate::services::sync::engine::exclusive(&vault.a).await;
+
+    let running = start(&vault, &vault.a, dir, Box::new(NoBinding));
+    tokio::time::sleep(Duration::from_millis(200)).await;
+    assert_eq!(
+        device_of(&vault.a.lock()),
+        A,
+        "no re-join while a round runs"
+    );
+    assert!(marker.exists());
+
+    drop(round_elsewhere);
+    rounds(&running, 1).await;
+    assert!(device_of(&vault.a.lock()) > A);
+    assert!(!marker.exists());
+    running.handle.stop();
+}
+
+/// Ruling on concern 1: the forced upload after a crossing survives a restart. The first engine
+/// seals at the new barrier (so `marker_barrier` catches up) but its upload fails; it stops (the
+/// app quits). The next engine still forces the upload.
+#[tokio::test]
+async fn a_forced_snapshot_survives_a_restart() {
+    let vault = super::vault().await;
+    let crossed = "UPDATE sync_state SET barrier = barrier + 1, barrier_seq = NULL";
+    exec(&vault.a.lock(), crossed);
+    exec(&vault.b.lock(), crossed);
+    institution(&vault.a.lock(), "queued");
+    let sealed: Vec<Vec<u8>> = ["b1", "b2"]
+        .iter()
+        .map(|id| write_and_seal(&vault, &vault.b, id))
+        .collect();
+    push(&vault.relay, &vault.creds, &sealed).await;
+    vault
+        .relay
+        .put_snapshot(&vault.creds.auth(), 2, vec![7; 100])
+        .await
+        .expect("other snapshot");
+    vault
+        .relay
+        .fail_next(Route::PutSnapshot, RelayError::Network("timeout".into()));
+    let puts_before = routes(&vault.relay, Route::PutSnapshot);
+
+    let first = start_plain(&vault, &vault.a);
+    rounds(&first, 1).await;
+    first.handle.stop();
+    until("the first engine ended", || !first.handle.is_running()).await;
+    {
+        let a = vault.a.lock();
+        let sync = state::load(&a).expect("state").expect("row");
+        let marks = state::marks(&a).expect("marks").expect("row");
+        assert_eq!(marks.marker_barrier, sync.barrier, "the barrier is marked");
+        assert!(state::needs_forced_snapshot(&sync, &marks), "still owed");
+    }
+    assert_eq!(vault.relay.snapshot_seq(), Some(2));
+
+    let second = start_plain(&vault, &vault.a);
+    rounds(&second, 1).await;
+    second.handle.stop();
+
+    assert_eq!(routes(&vault.relay, Route::PutSnapshot) - puts_before, 2);
+    assert_eq!(vault.relay.snapshot_seq(), Some(3));
+    let a = vault.a.lock();
+    let sync = state::load(&a).expect("state").expect("row");
+    let marks = state::marks(&a).expect("marks").expect("row");
+    assert_eq!(marks.snapshot_barrier, sync.barrier);
+    assert!(!state::needs_forced_snapshot(&sync, &marks));
 }

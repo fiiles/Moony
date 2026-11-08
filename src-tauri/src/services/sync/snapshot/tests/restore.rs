@@ -536,6 +536,29 @@ fn restore_by_merge_never_moves_the_bookkeeping_back() {
     );
 }
 
+/// Migration 033: a restored snapshot at this device's barrier is one the vault already holds
+/// there, so a crossing it covers forces no upload.
+#[test]
+fn a_restore_records_the_snapshots_barrier() {
+    let a = device(A);
+    let (bytes, _) = snapshot(&a, 4);
+    let b = device(B);
+    exec(&b, "UPDATE sync_state SET snapshot_barrier = 0");
+    let forced = |conn: &Connection| {
+        let sync = state::load(conn).expect("load").expect("row");
+        let marks = state::marks(conn).expect("marks").expect("row");
+        state::needs_forced_snapshot(&sync, &marks)
+    };
+    assert!(forced(&b), "a crossing with no snapshot at the new barrier");
+
+    restore_merge(&b, &mut &bytes[..], NOW).expect("merge");
+
+    let barrier = state::load(&b).expect("load").expect("row").barrier;
+    let marks = state::marks(&b).expect("marks").expect("row");
+    assert_eq!(marks.snapshot_barrier, barrier);
+    assert!(!forced(&b));
+}
+
 fn missed(conn: &Connection) -> Option<u64> {
     state::load(conn)
         .expect("load")

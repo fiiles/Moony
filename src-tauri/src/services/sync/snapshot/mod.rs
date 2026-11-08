@@ -308,13 +308,19 @@ fn finish(
         ])?;
     }
     let sql = if replacing {
-        "UPDATE sync_state SET cursor = ?1, snapshot_seq = ?1, snapshot_hlc = ?2 WHERE id = 1"
+        "UPDATE sync_state SET cursor = ?1, snapshot_seq = ?1, snapshot_hlc = ?2, \
+           snapshot_barrier = MAX(snapshot_barrier, ?3) WHERE id = 1"
     } else {
         "UPDATE sync_state SET cursor = MAX(cursor, ?1), \
            snapshot_seq = MAX(COALESCE(snapshot_seq, 0), ?1), \
-           snapshot_hlc = MAX(snapshot_hlc, ?2) WHERE id = 1"
+           snapshot_hlc = MAX(snapshot_hlc, ?2), \
+           snapshot_barrier = MAX(snapshot_barrier, ?3) WHERE id = 1"
     };
-    conn.execute(sql, params![sql_int(snapshot.seq)?, sql_int(max_hlc)?])?;
+    // A restored snapshot at a barrier is one the vault already holds there (migration 033).
+    conn.execute(
+        sql,
+        params![sql_int(snapshot.seq)?, sql_int(max_hlc)?, snapshot.barrier],
+    )?;
     // The marker is a place in relay order, the same on every device, but only for the barrier
     // it marks. Replacing adopts it (or none); merging keeps a marker already found here.
     let marker = snapshot

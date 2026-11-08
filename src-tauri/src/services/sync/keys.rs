@@ -391,6 +391,7 @@ fn write_vault_secrets(conn: &Connection, vault_id: &VaultId, keys: &VaultKeys) 
            missed_below_barrier = CASE WHEN vault_id IS ?1 THEN missed_below_barrier END, \
            barrier_seq = CASE WHEN vault_id IS ?1 THEN barrier_seq END, \
            marker_barrier = CASE WHEN vault_id IS ?1 THEN marker_barrier ELSE barrier END, \
+           snapshot_barrier = CASE WHEN vault_id IS ?1 THEN snapshot_barrier ELSE barrier END, \
            vault_id = ?1, key_epoch = ?2, vault_keys = ?3 WHERE id = 1",
         params![vault_id.to_b64(), keys.current_epoch(), json.as_str()],
     )?;

@@ -97,6 +97,7 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("030_sync_engine", MIGRATION_030),
         ("031_sync_missed_below_barrier", MIGRATION_031),
         ("032_sync_snapshot_too_large", MIGRATION_032),
+        ("033_sync_snapshot_barrier", MIGRATION_033),
     ]
 }
 
@@ -3398,11 +3399,11 @@ mod migration_029 {
     }
 
     #[test]
-    fn the_chain_now_has_32_migrations() {
-        assert_eq!(known_migration_names().len(), 32);
+    fn the_chain_now_has_33_migrations() {
+        assert_eq!(known_migration_names().len(), 33);
         assert_eq!(
             known_migration_names().last(),
-            Some(&"032_sync_snapshot_too_large")
+            Some(&"033_sync_snapshot_barrier")
         );
     }
 }
@@ -3440,6 +3441,46 @@ ALTER TABLE sync_state ADD COLUMN missed_below_barrier INTEGER;
 pub(crate) const MIGRATION_032: &str = r#"
 ALTER TABLE sync_state ADD COLUMN snapshot_too_large_at INTEGER;
 "#;
+
+/// 033: `sync_state.snapshot_barrier` (Local): the barrier of the newest snapshot this device
+/// uploaded or restored (or the barrier it started syncing at). A device whose barrier is above it
+/// crossed a barrier and has not yet uploaded a snapshot at the new one, which it then does at its
+/// first clean round (ruling T8-2), across restarts. Existing rows count as snapshotted at the
+/// barrier they last marked (`MIN(marker_barrier, barrier)`), so a crossing whose marker is still
+/// unsealed keeps its forced upload.
+pub(crate) const MIGRATION_033: &str = r#"
+ALTER TABLE sync_state ADD COLUMN snapshot_barrier INTEGER NOT NULL DEFAULT 0;
+UPDATE sync_state SET snapshot_barrier = MIN(marker_barrier, barrier);
+"#;
+
+#[cfg(test)]
+mod migration_033 {
+    use super::*;
+
+    #[test]
+    fn sync_state_gains_snapshot_barrier_from_the_marked_barrier() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let all = all_migrations();
+        let before: Vec<_> = all
+            .iter()
+            .copied()
+            .filter(|(name, _)| *name < "033_sync_snapshot_barrier")
+            .collect();
+        run_chain(&conn, &before).expect("chain to 032");
+        conn.execute_batch(
+            "INSERT INTO sync_state (id, device_id, barrier, marker_barrier) VALUES (1, x'00', 26, 25)",
+        )
+        .expect("row");
+        run_chain(&conn, &all).expect("033");
+        let barrier: i64 = conn
+            .query_row("SELECT snapshot_barrier FROM sync_state", [], |r| r.get(0))
+            .expect("column");
+        assert_eq!(
+            barrier, 25,
+            "a crossing with its marker unsealed keeps its forced upload"
+        );
+    }
+}
 
 #[cfg(test)]
 mod migration_032 {

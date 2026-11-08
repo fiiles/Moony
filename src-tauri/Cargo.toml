@@ -132,6 +132,8 @@ tauri-plugin-notification = "2"
 tempfile = "3"
 # `tauri::test::mock_app` lets the logging tests build the real logger without a window
 tauri = { version = "2", features = ["test"] }
+# Paused time (`#[tokio::test(start_paused = true)]`) for the sync engine's back-off and deadline tests
+tokio = { version = "1", features = ["test-util"] }
 
 # scrypt at 2^17 is ~10x slower unoptimised; keep unlock and the many
 # key-file tests fast in debug builds. Only the KDF crates, not the whole tree.

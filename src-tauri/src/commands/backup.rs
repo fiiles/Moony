@@ -170,6 +170,7 @@ pub async fn restore_backup(
 ) -> Result<()> {
     let dir = data_dir(&app)?;
     local_api.stop().await;
+    crate::commands::sync::stop_engine(&app);
     crate::services::auth::logout(&db, &session);
     crate::commands::attachments::wipe_open_copies(&app);
     backup::restore_backup(&dir, &PathBuf::from(path), &known_migrations())?;

@@ -801,6 +801,11 @@ mod tests {
         crate::services::sync::on_open(&conn);
         let m = marks(&conn).unwrap().unwrap();
         assert!(m.capture_broken_at.is_some_and(|at| at > 1_700_000_000));
+        assert_eq!(
+            m.last_error.as_deref(),
+            Some(crate::services::sync::CAPTURE_BROKEN_REASON),
+            "a fixed reason, never the error's text (it may name a path)"
+        );
         assert!(load(&conn).unwrap().unwrap().enabled);
     }
 

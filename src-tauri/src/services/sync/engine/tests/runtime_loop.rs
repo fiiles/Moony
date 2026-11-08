@@ -1,0 +1,510 @@
+//! The engine's loop and the round lock: rounds never overlap or hold the profile over the
+//! network, the loop's triggers, back-off, re-join at start, pauses and events.
+
+use std::path::PathBuf;
+use std::sync::atomic::{AtomicUsize, Ordering};
+use std::time::Duration;
+
+use zeroize::Zeroizing;
+
+use super::runtime::{calls_since, device_of, op_devices, routes, write_and_seal};
+use super::*;
+use crate::models::sync::{SyncPhase, SyncProblem, SyncStatus};
+use crate::services::sync::binding::{self, BindingFailure, BindingNative, NoBinding};
+use crate::services::sync::engine::runtime::{self, EngineHandle, Trigger};
+use crate::services::sync::engine::snapshots::SnapshotPolicy;
+use crate::services::sync::engine::{run_round, EngineEvents, RoundMode};
+use crate::services::sync::keys::VaultAuth;
+use crate::services::sync::relay::fake::Route;
+use crate::services::sync::relay::{
+    AccountStatus, CheckoutPlan, PullPage, PushReceipt, RelayError, RelayResult, SnapshotBlob,
+    VaultInfo,
+};
+
+// ---------------------------------------------------------------------------------------------
+// Serialized rounds, and the lock never held across a relay call (obligations a, h)
+
+/// `FakeRelay` with a delay in every call, counting calls in flight and calls made while the
+/// profile's connection was locked.
+struct Probe {
+    inner: FakeRelay,
+    conn: Arc<Mutex<Connection>>,
+    in_flight: AtomicUsize,
+    most_in_flight: AtomicUsize,
+    calls: AtomicUsize,
+    locked_calls: AtomicUsize,
+}
+
+impl Probe {
+    fn new(inner: FakeRelay, device: &TestConn) -> Self {
+        Self {
+            inner,
+            conn: device.conn.clone(),
+            in_flight: AtomicUsize::new(0),
+            most_in_flight: AtomicUsize::new(0),
+            calls: AtomicUsize::new(0),
+            locked_calls: AtomicUsize::new(0),
+        }
+    }
+
+    async fn around<T>(&self, call: impl std::future::Future<Output = T>) -> T {
+        self.calls.fetch_add(1, Ordering::SeqCst);
+        if self.conn.try_lock().is_err() {
+            self.locked_calls.fetch_add(1, Ordering::SeqCst);
+        }
+        let now = self.in_flight.fetch_add(1, Ordering::SeqCst) + 1;
+        self.most_in_flight.fetch_max(now, Ordering::SeqCst);
+        tokio::time::sleep(Duration::from_millis(5)).await;
+        let result = call.await;
+        self.in_flight.fetch_sub(1, Ordering::SeqCst);
+        result
+    }
+}
+
+impl Relay for Probe {
+    async fn create_account(&self) -> RelayResult<String> {
+        self.around(self.inner.create_account()).await
+    }
+    async fn account_status(&self, account: &str) -> RelayResult<AccountStatus> {
+        self.around(self.inner.account_status(account)).await
+    }
+    async fn checkout(&self, account: &str, plan: CheckoutPlan) -> RelayResult<String> {
+        self.around(self.inner.checkout(account, plan)).await
+    }
+    async fn create_vault(&self, account: &str, vault: &VaultAuth) -> RelayResult<bool> {
+        self.around(self.inner.create_vault(account, vault)).await
+    }
+    async fn vault_info(&self, vault: &VaultAuth) -> RelayResult<VaultInfo> {
+        self.around(self.inner.vault_info(vault)).await
+    }
+    async fn push(&self, vault: &VaultAuth, ops: &[OutgoingOp]) -> RelayResult<PushReceipt> {
+        self.around(self.inner.push(vault, ops)).await
+    }
+    async fn pull(&self, vault: &VaultAuth, after: u64, limit: u32) -> RelayResult<PullPage> {
+        self.around(self.inner.pull(vault, after, limit)).await
+    }
+    async fn put_snapshot(&self, vault: &VaultAuth, seq: u64, bytes: Vec<u8>) -> RelayResult<()> {
+        self.around(self.inner.put_snapshot(vault, seq, bytes))
+            .await
+    }
+    async fn get_snapshot(&self, vault: &VaultAuth) -> RelayResult<SnapshotBlob> {
+        self.around(self.inner.get_snapshot(vault)).await
+    }
+    async fn delete_vault(&self, vault: &VaultAuth) -> RelayResult<()> {
+        self.around(self.inner.delete_vault(vault)).await
+    }
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn the_rounds_of_a_profile_never_overlap_and_never_hold_the_lock_over_the_network() {
+    let vault = super::vault().await;
+    let b1 = write_and_seal(&vault, &vault.b, "b1");
+    push(&vault.relay, &vault.creds, &[b1]).await;
+    institution(&vault.a.lock(), "queued");
+    let probe = Arc::new(Probe::new(vault.relay.clone(), &vault.a));
+
+    let rounds: Vec<_> = (0..3)
+        .map(|_| {
+            let (probe, device) = (probe.clone(), vault.a.clone());
+            tokio::spawn(async move {
+                let mut policy = SnapshotPolicy::default();
+                run_round(
+                    probe.as_ref(),
+                    &device,
+                    &mut policy,
+                    RoundMode::FirstSnapshot,
+                    NOW,
+                    0,
+                )
+                .await
+                .map(|report| report.problem)
+            })
+        })
+        .collect();
+    for handle in rounds {
+        assert_eq!(handle.await.expect("task").expect("round"), None);
+    }
+
+    assert!(
+        probe.calls.load(Ordering::SeqCst) >= 9,
+        "three full rounds ran"
+    );
+    assert_eq!(
+        probe.most_in_flight.load(Ordering::SeqCst),
+        1,
+        "one round at a time: never two relay calls (or two pushes) at once"
+    );
+    assert_eq!(
+        probe.locked_calls.load(Ordering::SeqCst),
+        0,
+        "no relay call while the profile's connection is held"
+    );
+    assert_eq!(vault.relay.ops().len(), 2, "the queued row was pushed once");
+}
+
+// ---------------------------------------------------------------------------------------------
+// The loop
+
+/// A binding that "seals" by copying (a machine-bound seal in tests).
+struct Sealing;
+
+impl BindingNative for Sealing {
+    fn seal(&self, secret: &[u8; 32]) -> std::result::Result<Vec<u8>, BindingFailure> {
+        Ok(secret.to_vec())
+    }
+    fn open(&self, blob: &[u8]) -> std::result::Result<Zeroizing<[u8; 32]>, BindingFailure> {
+        let value: [u8; 32] = blob
+            .try_into()
+            .map_err(|_| BindingFailure::Failed("size".into()))?;
+        Ok(Zeroizing::new(value))
+    }
+}
+
+/// What the loop told the app.
+#[derive(Clone, Default)]
+struct Seen {
+    data_changed: Arc<AtomicUsize>,
+    statuses: Arc<Mutex<Vec<SyncStatus>>>,
+}
+
+impl Seen {
+    fn statuses(&self) -> Vec<SyncStatus> {
+        self.statuses.lock().expect("statuses").clone()
+    }
+    fn last(&self) -> SyncStatus {
+        self.statuses().last().cloned().expect("a status")
+    }
+    fn data_changed(&self) -> usize {
+        self.data_changed.load(Ordering::SeqCst)
+    }
+}
+
+struct Events {
+    seen: Seen,
+    dir: PathBuf,
+    native: Box<dyn BindingNative>,
+}
+
+impl EngineEvents for Events {
+    fn data_changed(&self) {
+        self.seen.data_changed.fetch_add(1, Ordering::SeqCst);
+    }
+    fn status_changed(&self, status: &SyncStatus) {
+        self.seen
+            .statuses
+            .lock()
+            .expect("statuses")
+            .push(status.clone());
+    }
+    fn binding(&self) -> &dyn BindingNative {
+        self.native.as_ref()
+    }
+    fn data_dir(&self) -> PathBuf {
+        self.dir.clone()
+    }
+}
+
+struct Running {
+    handle: EngineHandle,
+    seen: Seen,
+    _dir: tempfile::TempDir,
+}
+
+fn start(
+    vault: &Vault,
+    device: &TestConn,
+    dir: tempfile::TempDir,
+    native: Box<dyn BindingNative>,
+) -> Running {
+    let seen = Seen::default();
+    let events = Events {
+        seen: seen.clone(),
+        dir: dir.path().to_path_buf(),
+        native,
+    };
+    let handle = runtime::spawn(vault.relay.clone(), device.clone(), events);
+    Running {
+        handle,
+        seen,
+        _dir: dir,
+    }
+}
+
+fn start_plain(vault: &Vault, device: &TestConn) -> Running {
+    start(
+        vault,
+        device,
+        tempfile::tempdir().expect("temp dir"),
+        Box::new(NoBinding),
+    )
+}
+
+async fn until(what: &str, done: impl Fn() -> bool) {
+    for _ in 0..6_000 {
+        if done() {
+            return;
+        }
+        tokio::time::sleep(Duration::from_millis(5)).await;
+    }
+    panic!("timed out waiting until {what}");
+}
+
+async fn rounds(running: &Running, n: u64) {
+    until(&format!("{n} rounds ran"), || {
+        running.handle.runtime().rounds >= n
+    })
+    .await;
+}
+
+#[tokio::test]
+async fn data_changed_fires_only_when_something_was_applied() {
+    let vault = super::vault().await;
+    let running = start_plain(&vault, &vault.a);
+    rounds(&running, 1).await;
+    assert_eq!(running.seen.data_changed(), 0, "nothing was applied");
+
+    let b1 = write_and_seal(&vault, &vault.b, "b1");
+    push(&vault.relay, &vault.creds, &[b1]).await;
+    running.handle.wake(Trigger::SyncNow);
+    rounds(&running, 2).await;
+    assert_eq!(running.seen.data_changed(), 1);
+    assert!(has_institution(&vault.a.lock(), "b1"));
+
+    running.handle.wake(Trigger::SyncNow);
+    rounds(&running, 3).await;
+    assert_eq!(running.seen.data_changed(), 1);
+    let last = running.seen.last();
+    assert_eq!((last.phase, last.problem), (SyncPhase::Idle, None));
+    assert!(running
+        .seen
+        .statuses()
+        .iter()
+        .any(|s| s.phase == SyncPhase::Syncing));
+    running.handle.stop();
+    until("the loop ended", || !running.handle.is_running()).await;
+}
+
+#[tokio::test]
+async fn a_vault_gone_answer_pauses_until_sync_now_finds_it_again() {
+    let vault = super::vault().await;
+    vault.relay.wipe_vault(&vault.creds.vault_id.to_b64());
+    let running = start_plain(&vault, &vault.a);
+    rounds(&running, 1).await;
+    let paused = running.seen.last();
+    assert_eq!(
+        (paused.phase, paused.problem),
+        (SyncPhase::Paused, Some(SyncProblem::VaultGone))
+    );
+    let calls = vault.relay.calls().len();
+
+    running.handle.wake(Trigger::Periodic);
+    rounds(&running, 2).await;
+    assert_eq!(
+        vault.relay.calls().len(),
+        calls,
+        "a paused vault is not asked"
+    );
+
+    running.handle.wake(Trigger::SyncNow);
+    rounds(&running, 3).await;
+    assert_eq!(
+        vault.relay.calls()[calls..].to_vec(),
+        [Route::VaultInfo],
+        "Sync now asks once"
+    );
+    assert_eq!(
+        running.handle.runtime().problem,
+        Some(SyncProblem::VaultGone)
+    );
+    assert!(
+        keys::credentials(&vault.a.lock()).expect("keys").is_some(),
+        "no key is deleted"
+    );
+
+    // The vault is back (the relay answered 404 falsely, or the outage ended).
+    assert!(vault
+        .relay
+        .create_vault(&vault.creds.account, &vault.creds.auth())
+        .await
+        .expect("vault again"));
+    institution(&vault.a.lock(), "a1");
+    running.handle.wake(Trigger::SyncNow);
+    rounds(&running, 4).await;
+
+    let marks = state::marks(&vault.a.lock()).expect("marks").expect("row");
+    assert_eq!(marks.vault_gone_at, None);
+    assert_eq!(vault.relay.ops().len(), 1, "syncing again");
+    let last = running.seen.last();
+    assert_eq!((last.phase, last.problem), (SyncPhase::Idle, None));
+    running.handle.stop();
+}
+
+#[tokio::test]
+async fn a_transient_error_backs_off_until_sync_now() {
+    let vault = super::vault().await;
+    vault
+        .relay
+        .fail_next(Route::Pull, RelayError::Network("timeout".into()));
+    let running = start_plain(&vault, &vault.a);
+    rounds(&running, 1).await;
+    assert_eq!(running.handle.runtime().problem, Some(SyncProblem::Offline));
+    assert_eq!(running.seen.last().phase, SyncPhase::Paused);
+
+    running.handle.wake(Trigger::Periodic);
+    tokio::time::sleep(Duration::from_millis(100)).await;
+    assert_eq!(
+        running.handle.runtime().rounds,
+        1,
+        "the back-off holds a periodic round"
+    );
+
+    running.handle.wake(Trigger::SyncNow);
+    rounds(&running, 2).await;
+    assert_eq!(running.handle.runtime().problem, None);
+    running.handle.stop();
+}
+
+#[tokio::test]
+async fn a_restore_marker_rejoins_before_the_first_round() {
+    let vault = super::vault().await;
+    let dir = tempfile::tempdir().expect("temp dir");
+    binding::write_rejoin_marker(dir.path()).expect("marker");
+    let marker = dir.path().join(binding::REJOIN_MARKER);
+    let bound = dir.path().join(binding::BINDING_FILE);
+    institution(&vault.a.lock(), "restored");
+    let from = vault.relay.calls().len();
+
+    let running = start(&vault, &vault.a, dir, Box::new(Sealing));
+    rounds(&running, 1).await;
+
+    let new_id = device_of(&vault.a.lock());
+    assert!(new_id > A, "re-joined under a new ID");
+    assert!(!marker.exists(), "the marker is cleared");
+    assert!(bound.exists(), "the binding is written for the new ID");
+    assert!(
+        state::marks(&vault.a.lock())
+            .expect("marks")
+            .expect("row")
+            .binding_written
+    );
+    assert_eq!(calls_since(&vault.relay, from).first(), Some(&Route::Pull));
+    assert_eq!(
+        op_devices(&vault, 0),
+        [new_id],
+        "nothing went out under the old ID"
+    );
+    running.handle.stop();
+}
+
+/// Obligation (c): if the marker cannot be removed after the re-join, sync stops with a problem
+/// rather than re-joining again on the next round.
+#[tokio::test]
+async fn a_marker_that_cannot_be_cleared_stops_sync_after_one_rejoin() {
+    let vault = super::vault().await;
+    let dir = tempfile::tempdir().expect("temp dir");
+    // A folder where the marker file would be: it exists, and removing it as a file fails.
+    std::fs::create_dir_all(dir.path().join(binding::REJOIN_MARKER).join("inside"))
+        .expect("marker folder");
+    let from = vault.relay.calls().len();
+
+    let running = start(&vault, &vault.a, dir, Box::new(NoBinding));
+    until("the loop ended", || !running.handle.is_running()).await;
+
+    assert!(device_of(&vault.a.lock()) > A, "one re-join");
+    assert!(calls_since(&vault.relay, from).is_empty(), "no round ran");
+    assert_eq!(
+        running.handle.runtime().problem,
+        Some(SyncProblem::Internal)
+    );
+    let last = running.seen.last();
+    assert_eq!(
+        (last.phase, last.problem),
+        (SyncPhase::Error, Some(SyncProblem::Internal))
+    );
+    let error = state::marks(&vault.a.lock())
+        .expect("marks")
+        .expect("row")
+        .last_error
+        .expect("noted");
+    assert!(!error.contains('/'), "a fixed text, no path: {error}");
+}
+
+#[tokio::test]
+async fn a_locked_session_ends_the_loop_without_an_error() {
+    let vault = super::vault().await;
+    let running = start_plain(&vault, &vault.a);
+    rounds(&running, 1).await;
+
+    vault
+        .a
+        .locked
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    running.handle.wake(Trigger::SyncNow);
+    until("the loop ended", || !running.handle.is_running()).await;
+
+    assert!(running
+        .seen
+        .statuses()
+        .iter()
+        .all(|s| s.phase != SyncPhase::Error && s.problem.is_none()));
+
+    // Locked before it ever started: it ends without telling anything.
+    let locked = super::vault().await;
+    locked
+        .a
+        .locked
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    let from = locked.relay.calls().len();
+    let running = start_plain(&locked, &locked.a);
+    until("the loop ended", || !running.handle.is_running()).await;
+    assert!(running.seen.statuses().is_empty());
+    assert!(calls_since(&locked.relay, from).is_empty());
+}
+
+/// Ruling T8-2, obligation (b): a device that crossed a barrier uploads a snapshot at its first
+/// clean round, once: the force ends with the upload, and with `409 snapshot_outdated` too.
+#[tokio::test]
+async fn a_forced_snapshot_after_a_barrier_crossing_is_tried_once() {
+    for outdated in [false, true] {
+        let vault = super::vault().await;
+        // Both devices crossed a barrier (`chain::cross_barrier` at their unlock); `B` already
+        // pushed at it, so its envelopes carry it and mark it for `A`.
+        let crossed = "UPDATE sync_state SET barrier = barrier + 1, barrier_seq = NULL";
+        exec(&vault.a.lock(), crossed);
+        exec(&vault.b.lock(), crossed);
+        institution(&vault.a.lock(), "queued");
+        let sealed: Vec<Vec<u8>> = ["b1", "b2"]
+            .iter()
+            .map(|id| write_and_seal(&vault, &vault.b, id))
+            .collect();
+        push(&vault.relay, &vault.creds, &sealed).await;
+        // Another device's snapshot at 2: the ordinary policy has nothing due after it.
+        vault
+            .relay
+            .put_snapshot(&vault.creds.auth(), 2, vec![7; 100])
+            .await
+            .expect("other snapshot");
+        if outdated {
+            vault
+                .relay
+                .fail_next(Route::PutSnapshot, RelayError::SnapshotOutdated);
+        }
+        let puts_before = routes(&vault.relay, Route::PutSnapshot);
+
+        let running = start_plain(&vault, &vault.a);
+        rounds(&running, 1).await;
+        running.handle.wake(Trigger::SyncNow);
+        rounds(&running, 2).await;
+        running.handle.wake(Trigger::SyncNow);
+        rounds(&running, 3).await;
+        running.handle.stop();
+
+        assert_eq!(
+            routes(&vault.relay, Route::PutSnapshot) - puts_before,
+            1,
+            "outdated {outdated}"
+        );
+        let expected = if outdated { Some(2) } else { Some(3) };
+        assert_eq!(vault.relay.snapshot_seq(), expected, "outdated {outdated}");
+    }
+}

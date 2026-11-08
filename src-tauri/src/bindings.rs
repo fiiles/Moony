@@ -23,6 +23,11 @@ pub fn collect_types() -> TypeCollection {
     types.register::<crate::models::BiometricStatus>();
     types.register::<crate::models::BiometryType>();
 
+    // Device sync status (sync-status-changed)
+    types.register::<crate::models::SyncPhase>();
+    types.register::<crate::models::SyncProblem>();
+    types.register::<crate::models::SyncStatus>();
+
     // Investment models
     types.register::<crate::models::StockInvestment>();
     types.register::<crate::models::EnrichedStockInvestment>();

@@ -427,9 +427,39 @@ pub async fn maybe_upload<R: Relay, D: ConnAccess>(
     .await
 }
 
+/// `upload_if_due`; `true` when a snapshot was uploaded.
+#[allow(clippy::too_many_arguments)]
+pub async fn maybe_upload_with<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    creds: &Credentials,
+    policy: &mut SnapshotPolicy,
+    info: &VaultInfo,
+    now: i64,
+    jitter: i64,
+    force: bool,
+    max_bytes: usize,
+) -> SyncResult<bool> {
+    let upload = upload_if_due(
+        relay, db, creds, policy, info, now, jitter, force, max_bytes,
+    )
+    .await?;
+    Ok(upload == Upload::Uploaded)
+}
+
+/// What `upload_if_due` came to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Upload {
+    /// Nothing was sent: not due, not ready (something waits to go out, a below-barrier miss), or
+    /// a snapshot was found too large less than a day ago.
+    Skipped,
+    Uploaded,
+    /// The relay already holds a newer snapshot (`409 snapshot_outdated`): nothing to do.
+    Outdated,
+}
+
 /// Uploads a snapshot when one is due. The caller (`run_round`) fetches `info` and calls this only
-/// after a pull for which `PullReport::may_snapshot` holds (rulings P4, P14). `true` when a
-/// snapshot was uploaded.
+/// after a pull for which `PullReport::may_snapshot` holds (rulings P4, P14).
 ///
 /// The pulled bytes are counted from the vault's newest snapshot (`rebase_pulled_bytes`). Nothing
 /// is uploaded while `sync_outbox` or `sync_unsent` holds anything, by a device with a pending
@@ -444,7 +474,7 @@ pub async fn maybe_upload<R: Relay, D: ConnAccess>(
 /// again for a day. A snapshot the relay already has a newer one of (`409 snapshot_outdated`)
 /// drops the schedule quietly. Success records the upload (`record_snapshot_uploaded`).
 #[allow(clippy::too_many_arguments)]
-pub async fn maybe_upload_with<R: Relay, D: ConnAccess>(
+pub async fn upload_if_due<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
     creds: &Credentials,
@@ -454,7 +484,7 @@ pub async fn maybe_upload_with<R: Relay, D: ConnAccess>(
     jitter: i64,
     force: bool,
     max_bytes: usize,
-) -> SyncResult<bool> {
+) -> SyncResult<Upload> {
     let marks = db.with_conn(|conn| {
         state::rebase_pulled_bytes(conn, info.snapshot_seq.unwrap_or(0))?;
         if !ready_to_dump(conn)? {
@@ -463,16 +493,16 @@ pub async fn maybe_upload_with<R: Relay, D: ConnAccess>(
         state::marks(conn)?.map(Some).ok_or_else(not_set_up)
     })?;
     let Some(marks) = marks else {
-        return Ok(false);
+        return Ok(Upload::Skipped);
     };
     if marks
         .snapshot_too_large_at
         .is_some_and(|at| now - at < SNAPSHOT_MIN_INTERVAL)
     {
-        return Ok(false);
+        return Ok(Upload::Skipped);
     }
     if !force && policy.decide(info, &marks, now, jitter) != Due::Now {
-        return Ok(false);
+        return Ok(Upload::Skipped);
     }
 
     let (dumper, dump_creds) = (db.clone(), creds.clone());
@@ -491,7 +521,7 @@ pub async fn maybe_upload_with<R: Relay, D: ConnAccess>(
     })
     .await?;
     let sealed = match dumped {
-        Dumped::NotReady => return Ok(false),
+        Dumped::NotReady => return Ok(Upload::Skipped),
         Dumped::TooLarge => {
             log::warn!("[SYNC] This profile's snapshot is over the upload limit");
             return Err(too_large(db, policy, now));
@@ -505,7 +535,7 @@ pub async fn maybe_upload_with<R: Relay, D: ConnAccess>(
         Err(RelayError::SnapshotOutdated) => {
             log::info!("[SYNC] The vault already has a newer snapshot");
             policy.scheduled_at = None;
-            return Ok(false);
+            return Ok(Upload::Outdated);
         }
         Err(RelayError::SnapshotTooLarge) => {
             log::warn!("[SYNC] The relay refused this profile's snapshot as too large");
@@ -519,7 +549,7 @@ pub async fn maybe_upload_with<R: Relay, D: ConnAccess>(
     db.with_conn(|conn| state::record_snapshot_uploaded(conn, seq, stats.max_hlc, now))?;
     policy.scheduled_at = None;
     log::info!("[SYNC] Uploaded a snapshot at relay sequence {seq}");
-    Ok(true)
+    Ok(Upload::Uploaded)
 }
 
 /// The snapshot is too large: noted in `sync_state` (no upload for a day, across restarts) and the

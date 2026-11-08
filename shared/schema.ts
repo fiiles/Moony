@@ -47,6 +47,50 @@ export interface BiometricStatus {
   supported: boolean;
 }
 
+// Device sync (Rust `models::sync`)
+/** Where sync stands on this device. */
+export type SyncPhase = 'off' | 'settingUp' | 'idle' | 'syncing' | 'paused' | 'error';
+
+/** Why sync is paused or stopped. */
+export type SyncProblem =
+  | 'captureBroken'
+  | 'vaultGone'
+  | 'lapsed'
+  | 'quotaExceeded'
+  | 'snapshotTooLarge'
+  | 'newerSchema'
+  | 'gap'
+  | 'undecryptable'
+  | 'invalidChain'
+  | 'missingParent'
+  | 'quarantined'
+  | 'offline'
+  | 'relayError'
+  | 'rateLimited'
+  | 'unauthorized'
+  | 'keyRotated'
+  | 'internal';
+
+/** The `sync-status-changed` payload. */
+export interface SyncStatus {
+  phase: SyncPhase;
+  problem: SyncProblem | null;
+  /** When a round last finished without a problem (unix seconds). */
+  lastSuccessAt: number | null;
+  /** Changed rows waiting in the outbox plus sealed envelopes waiting for the relay. */
+  pendingChanges: number;
+  /** Devices whose envelopes are held (quarantined). */
+  heldDevices: number;
+  /** Rows too large to send, from the last push. */
+  refusedRows: number;
+  /** The subscription's end, as the relay last reported it (unix seconds). */
+  paidUntil: number | null;
+  /** When the relay deletes the vault after a lapse: 90 days after `paidUntil`. */
+  deletesAt: number | null;
+  /** The developer tools are offered (debug build with sync on). */
+  devTools: boolean;
+}
+
 export interface MenuPreferences {
   loans: boolean;
   insurance: boolean;

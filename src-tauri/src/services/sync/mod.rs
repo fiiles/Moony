@@ -16,6 +16,7 @@ pub mod devices;
 pub mod engine;
 pub mod envelope;
 pub mod error;
+pub mod feature;
 pub mod hlc;
 pub mod journal;
 pub mod keys;
@@ -37,13 +38,17 @@ use rusqlite::Connection;
 
 use crate::error::Result;
 
+/// The `last_error` of a profile whose change capture could not be installed: a fixed text, never
+/// the error's own (it may name a path).
+pub const CAPTURE_BROKEN_REASON: &str = "change capture could not be installed";
+
 /// Called by `Database::open_with_key` after the migrations and before the self-heals. A profile
 /// without sync costs one `SELECT` and gets nothing installed (G5). Never fails: an error is
 /// logged and recorded in `sync_state`, and the profile opens without capture.
 pub fn on_open(conn: &Connection) {
     if let Err(e) = open_capture(conn) {
         log::warn!("[SYNC] Change capture is off for this session: {e}");
-        if let Err(record) = state::record_error(conn, &e.to_string()) {
+        if let Err(record) = state::record_error(conn, CAPTURE_BROKEN_REASON) {
             log::warn!("[SYNC] Could not record the capture error: {record}");
         }
         // Only an enabled profile has lost anything; the row is a no-op update otherwise.

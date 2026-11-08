@@ -176,6 +176,7 @@ async fn run_app() {
         .manage(CategorizationState(categorization_engine))
         .manage(LocalApiServer::new())
         .manage(commands::attachments::AttachmentConversion::default())
+        .manage(commands::sync::SyncEngineState::default())
         // Attachment bytes reach the webview only through this scheme (ADR 0017).
         .register_asynchronous_uri_scheme_protocol(
             services::attachment_protocol::SCHEME,

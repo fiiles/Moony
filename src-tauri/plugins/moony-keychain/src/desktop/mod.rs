@@ -5,8 +5,16 @@
 //! Windows Hello on Windows ([`windows`], wrapping with [`hello_wrap`]). On Linux, which has no
 //! biometric unlock, every call is [`KeychainError::Unsupported`] and the desktop keeps its
 //! password-only unlock.
+//!
+//! Device sync's two machine calls plug in through [`NativeMachine`]: the binding, a 32-byte value
+//! sealed so that only this machine opens it (a Secure Enclave key without user presence on macOS,
+//! DPAPI with machine scope on Windows, its answers classified in [`dpapi_errors`]), and a
+//! clipboard copy that clears itself only while nobody wrote the clipboard since. Linux has
+//! neither: [`KeychainError::Unsupported`].
 
 mod blob_file;
+#[cfg(any(target_os = "windows", test))]
+mod dpapi_errors;
 #[cfg(any(target_os = "windows", test))]
 mod hello_wrap;
 #[cfg(target_os = "macos")]
@@ -36,6 +44,24 @@ pub trait NativeBiometrics {
     fn forget(&self) -> Result<()>;
 }
 
+/// What a platform offers device sync: a value sealed to this machine, and a clipboard copy of a
+/// secret that can be taken back later. None of these calls prompts.
+pub trait NativeMachine {
+    /// Seals `secret` so that only this machine can open it. [`KeychainError::Unsupported`] where
+    /// the machine has nothing to seal with.
+    fn bind_seal(&self, secret: &[u8; 32]) -> Result<Vec<u8>>;
+    /// Opens a blob [`bind_seal`](NativeMachine::bind_seal) made. [`KeychainError::Invalidated`]
+    /// means the blob was not sealed on this machine (or is not a binding blob at all); a
+    /// failure of the moment is [`KeychainError::Failed`] (or `Cancelled`/`Unavailable`).
+    fn bind_open(&self, blob: &[u8]) -> Result<Zeroizing<[u8; 32]>>;
+    /// Puts `text` on the clipboard, marked for clipboard managers and the clipboard history to
+    /// leave alone, and returns the clipboard's change token after the write.
+    fn copy_secret_text(&self, text: &str) -> Result<u64>;
+    /// Empties the clipboard if its change token is still `token` (nothing was copied since);
+    /// `true` when it emptied it.
+    fn clear_clipboard_if_unchanged(&self, token: u64) -> Result<bool>;
+}
+
 /// The native for a platform without a backend: every call is [`KeychainError::Unsupported`].
 struct UnsupportedNative;
 
@@ -57,6 +83,24 @@ impl NativeBiometrics for UnsupportedNative {
     }
 }
 
+impl NativeMachine for UnsupportedNative {
+    fn bind_seal(&self, _secret: &[u8; 32]) -> Result<Vec<u8>> {
+        Err(KeychainError::Unsupported)
+    }
+
+    fn bind_open(&self, _blob: &[u8]) -> Result<Zeroizing<[u8; 32]>> {
+        Err(KeychainError::Unsupported)
+    }
+
+    fn copy_secret_text(&self, _text: &str) -> Result<u64> {
+        Err(KeychainError::Unsupported)
+    }
+
+    fn clear_clipboard_if_unchanged(&self, _token: u64) -> Result<bool> {
+        Err(KeychainError::Unsupported)
+    }
+}
+
 /// The seam where a platform plugs in its native per `target_os`. The app identifier is passed
 /// along because the Windows native names its Hello credential after it; the data directory is for
 /// natives that keep extra files next to the blob (neither the macOS nor the Windows one does).
@@ -73,6 +117,17 @@ fn platform_native(
     native
 }
 
+/// The seam for [`NativeMachine`] per `target_os`.
+fn platform_machine() -> Box<dyn NativeMachine + Send + Sync> {
+    #[cfg(target_os = "macos")]
+    let machine = Box::new(macos::MacNative);
+    #[cfg(target_os = "windows")]
+    let machine = Box::new(windows::WinMachine);
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let machine = Box::new(UnsupportedNative);
+    machine
+}
+
 pub fn init<R: Runtime, C: DeserializeOwned>(
     app: &AppHandle<R>,
     _api: PluginApi<R, C>,
@@ -80,13 +135,18 @@ pub fn init<R: Runtime, C: DeserializeOwned>(
     match app.path().app_data_dir() {
         Ok(data_dir) => {
             let native = platform_native(&app.config().identifier, &data_dir);
-            Keychain::new(data_dir, native)
+            Keychain::new(data_dir, native, platform_machine())
         }
         Err(error) => {
             // Plugin setup must never fail the whole app over biometrics: without a data
             // directory there is nowhere to keep the blob, so biometrics are simply unsupported.
             log::warn!("biometric unlock disabled, the app data directory is unavailable: {error}");
-            Keychain::new(PathBuf::new(), Box::new(UnsupportedNative))
+            // The machine calls keep no files, so they stay available.
+            Keychain::new(
+                PathBuf::new(),
+                Box::new(UnsupportedNative),
+                platform_machine(),
+            )
         }
     }
 }
@@ -97,14 +157,20 @@ pub struct Keychain<R: Runtime> {
     /// The app data directory, the same one the database lives in.
     data_dir: PathBuf,
     native: Box<dyn NativeBiometrics + Send + Sync>,
+    machine: Box<dyn NativeMachine + Send + Sync>,
     _runtime: PhantomData<fn() -> R>,
 }
 
 impl<R: Runtime> Keychain<R> {
-    fn new(data_dir: PathBuf, native: Box<dyn NativeBiometrics + Send + Sync>) -> Self {
+    fn new(
+        data_dir: PathBuf,
+        native: Box<dyn NativeBiometrics + Send + Sync>,
+        machine: Box<dyn NativeMachine + Send + Sync>,
+    ) -> Self {
         Self {
             data_dir,
             native,
+            machine,
             _runtime: PhantomData,
         }
     }
@@ -150,6 +216,32 @@ impl<R: Runtime> Keychain<R> {
     /// concern), and an `Ok(false)` would claim a path that was never touched is not excluded.
     pub fn exclude_from_backup(&self, _path: &Path) -> Result<bool> {
         Err(KeychainError::Unsupported)
+    }
+
+    /// Seals device sync's binding to this machine, without a prompt. The caller keeps the blob.
+    /// [`KeychainError::Unsupported`] on Linux and on a Mac without a Secure Enclave.
+    pub fn bind_seal(&self, secret: &[u8; 32]) -> Result<Vec<u8>> {
+        self.machine.bind_seal(secret)
+    }
+
+    /// Opens a binding blob, without a prompt. [`KeychainError::Invalidated`]: it was sealed on
+    /// another machine (or is not a binding blob).
+    pub fn bind_open(&self, blob: &[u8]) -> Result<Zeroizing<[u8; 32]>> {
+        self.machine.bind_open(blob)
+    }
+
+    /// Copies a secret (the Recovery Kit code) to the clipboard, hidden from clipboard managers
+    /// and the clipboard history; returns the token [`clear_clipboard_if_unchanged`] takes.
+    ///
+    /// [`clear_clipboard_if_unchanged`]: Keychain::clear_clipboard_if_unchanged
+    pub fn copy_secret_text(&self, text: &str) -> Result<u64> {
+        self.machine.copy_secret_text(text)
+    }
+
+    /// Empties the clipboard only if nothing was copied since the copy that returned `token`;
+    /// `true` when it did.
+    pub fn clear_clipboard_if_unchanged(&self, token: u64) -> Result<bool> {
+        self.machine.clear_clipboard_if_unchanged(token)
     }
 }
 
@@ -204,7 +296,11 @@ mod tests {
     }
 
     fn keychain(dir: &Path) -> Keychain<tauri::Wry> {
-        Keychain::new(dir.to_path_buf(), Box::new(FakeNative))
+        Keychain::new(
+            dir.to_path_buf(),
+            Box::new(FakeNative),
+            Box::new(UnsupportedNative),
+        )
     }
 
     #[test]
@@ -320,11 +416,148 @@ mod tests {
         assert_eq!(native.forget(), Err(KeychainError::Unsupported));
     }
 
+    /// Stands in for a machine native: XOR with a "machine" byte as the seal (the byte leads the
+    /// blob, so another machine's blob is `Invalidated`), and a clipboard that counts its writes.
+    struct FakeMachine {
+        machine: u8,
+        clipboard: std::sync::Mutex<(u64, Option<String>)>,
+    }
+
+    impl FakeMachine {
+        fn new(machine: u8) -> Self {
+            Self {
+                machine,
+                clipboard: std::sync::Mutex::new((0, None)),
+            }
+        }
+    }
+
+    impl NativeMachine for FakeMachine {
+        fn bind_seal(&self, secret: &[u8; 32]) -> Result<Vec<u8>> {
+            let mut blob = vec![self.machine];
+            blob.extend(secret.iter().map(|byte| byte ^ self.machine));
+            Ok(blob)
+        }
+
+        fn bind_open(&self, blob: &[u8]) -> Result<Zeroizing<[u8; 32]>> {
+            match blob.split_first() {
+                Some((&machine, sealed)) if machine == self.machine && sealed.len() == 32 => {
+                    let mut secret = Zeroizing::new([0u8; 32]);
+                    for (out, byte) in secret.iter_mut().zip(sealed) {
+                        *out = byte ^ self.machine;
+                    }
+                    Ok(secret)
+                }
+                _ => Err(KeychainError::Invalidated),
+            }
+        }
+
+        fn copy_secret_text(&self, text: &str) -> Result<u64> {
+            let mut clipboard = self.clipboard.lock().expect("clipboard");
+            *clipboard = (clipboard.0 + 1, Some(text.to_string()));
+            Ok(clipboard.0)
+        }
+
+        fn clear_clipboard_if_unchanged(&self, token: u64) -> Result<bool> {
+            let mut clipboard = self.clipboard.lock().expect("clipboard");
+            if clipboard.0 != token {
+                return Ok(false);
+            }
+            *clipboard = (clipboard.0 + 1, None);
+            Ok(true)
+        }
+    }
+
+    fn machine_keychain(dir: &Path, machine: u8) -> Keychain<tauri::Wry> {
+        Keychain::new(
+            dir.to_path_buf(),
+            Box::new(FakeNative),
+            Box::new(FakeMachine::new(machine)),
+        )
+    }
+
+    #[test]
+    fn the_binding_goes_through_the_machine_native() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let secret = [0x42u8; 32];
+        let here = machine_keychain(dir.path(), 7);
+        let blob = here.bind_seal(&secret).expect("seal");
+        assert_eq!(blob.len(), 33);
+        assert_eq!(*here.bind_open(&blob).expect("open"), secret);
+        assert_eq!(
+            machine_keychain(dir.path(), 9).bind_open(&blob).map(|_| ()),
+            Err(KeychainError::Invalidated),
+            "another machine's blob"
+        );
+    }
+
+    #[test]
+    fn the_clipboard_goes_through_the_machine_native() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let keychain = machine_keychain(dir.path(), 7);
+        let token = keychain.copy_secret_text("code").expect("copy");
+        assert_eq!(keychain.clear_clipboard_if_unchanged(token), Ok(true));
+        let stale = keychain.copy_secret_text("code").expect("copy");
+        keychain.copy_secret_text("something else").expect("copy");
+        assert_eq!(keychain.clear_clipboard_if_unchanged(stale), Ok(false));
+    }
+
+    #[test]
+    fn the_unsupported_native_has_no_binding_or_clipboard() {
+        assert_unsupported_binding_and_clipboard(&UnsupportedNative);
+    }
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn linux_has_no_binding_or_clipboard() {
+        let dir = tempfile::tempdir().expect("tempdir");
+        let keychain = Keychain::<tauri::Wry>::new(
+            dir.path().to_path_buf(),
+            platform_native("com.moonyfinance.desktop", dir.path()),
+            platform_machine(),
+        );
+        assert_eq!(
+            keychain.bind_seal(&[0; 32]),
+            Err(KeychainError::Unsupported)
+        );
+        assert_eq!(
+            keychain.bind_open(&[0; 33]).map(|_| ()),
+            Err(KeychainError::Unsupported)
+        );
+        assert_eq!(
+            keychain.copy_secret_text("code"),
+            Err(KeychainError::Unsupported)
+        );
+        assert_eq!(
+            keychain.clear_clipboard_if_unchanged(1),
+            Err(KeychainError::Unsupported)
+        );
+    }
+
+    fn assert_unsupported_binding_and_clipboard(native: &dyn NativeMachine) {
+        assert_eq!(native.bind_seal(&[0; 32]), Err(KeychainError::Unsupported));
+        assert_eq!(
+            native.bind_open(&[0; 33]).map(|_| ()),
+            Err(KeychainError::Unsupported)
+        );
+        assert_eq!(
+            native.copy_secret_text("code"),
+            Err(KeychainError::Unsupported)
+        );
+        assert_eq!(
+            native.clear_clipboard_if_unchanged(1),
+            Err(KeychainError::Unsupported)
+        );
+    }
+
     #[test]
     fn a_keychain_on_the_unsupported_native_never_stores() {
         let dir = tempfile::tempdir().expect("tempdir");
-        let keychain =
-            Keychain::<tauri::Wry>::new(dir.path().to_path_buf(), Box::new(UnsupportedNative));
+        let keychain = Keychain::<tauri::Wry>::new(
+            dir.path().to_path_buf(),
+            Box::new(UnsupportedNative),
+            Box::new(UnsupportedNative),
+        );
         assert_eq!(
             keychain.store(KEY, SECRET_HEX, "reason"),
             Err(KeychainError::Unsupported)

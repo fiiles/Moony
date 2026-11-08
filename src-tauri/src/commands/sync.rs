@@ -4,11 +4,13 @@
 use std::path::PathBuf;
 use std::sync::Mutex;
 
+use moony_keychain::{KeychainError, KeychainExt};
 use tauri::{AppHandle, Emitter, Manager};
+use zeroize::Zeroizing;
 
 use crate::db::Database;
 use crate::models::sync::SyncStatus;
-use crate::services::sync::binding::{BindingNative, NoBinding};
+use crate::services::sync::binding::{BindingFailure, BindingNative};
 use crate::services::sync::engine::runtime::{self, EngineHandle};
 use crate::services::sync::engine::EngineEvents;
 use crate::services::sync::merge::DATA_CHANGED_EVENT;
@@ -22,13 +24,43 @@ pub const STATUS_CHANGED_EVENT: &str = "sync-status-changed";
 #[derive(Default)]
 pub struct SyncEngineState(pub Mutex<Option<EngineHandle>>);
 
+/// The binding native: the keychain plugin seals to this machine (a Secure Enclave key on macOS,
+/// DPAPI in machine scope on Windows) and answers `Unsupported` on Linux and the phones.
+struct KeychainBinding {
+    app: AppHandle,
+}
+
+impl BindingNative for KeychainBinding {
+    fn seal(&self, secret: &[u8; 32]) -> std::result::Result<Vec<u8>, BindingFailure> {
+        self.app
+            .keychain()
+            .bind_seal(secret)
+            .map_err(binding_failure)
+    }
+
+    fn open(&self, blob: &[u8]) -> std::result::Result<Zeroizing<[u8; 32]>, BindingFailure> {
+        self.app.keychain().bind_open(blob).map_err(binding_failure)
+    }
+}
+
+/// `Invalidated` is the plugin's "sealed on another machine"; anything but that and
+/// `Unsupported` is a failure of the moment, which lets this start go on. The plugin's messages
+/// name OS error codes only, never a value, a path or a blob.
+fn binding_failure(error: KeychainError) -> BindingFailure {
+    match error {
+        KeychainError::Unsupported => BindingFailure::Unsupported,
+        KeychainError::Invalidated => BindingFailure::NotThisDevice,
+        other => BindingFailure::Failed(other.to_string()),
+    }
+}
+
 /// What the engine tells the app: the events, the history queue after a merge, the binding native
-/// (Task 14 provides the platform's; until then none) and the profile's folder.
+/// and the profile's folder.
 struct TauriEvents {
     app: AppHandle,
     db: Database,
     data_dir: PathBuf,
-    native: NoBinding,
+    native: KeychainBinding,
 }
 
 impl EngineEvents for TauriEvents {
@@ -102,7 +134,7 @@ pub(crate) fn start_engine(app: &AppHandle, db: &Database) {
         app: app.clone(),
         db: session.clone(),
         data_dir,
-        native: NoBinding,
+        native: KeychainBinding { app: app.clone() },
     };
     // The engine's task goes on Tauri's runtime, whoever calls this.
     let _runtime = tauri::async_runtime::handle().inner().enter();
@@ -125,5 +157,34 @@ pub(crate) fn stop_engine(app: &AppHandle) {
     if let Some(handle) = handle {
         handle.stop();
         log::info!("[SYNC] The sync engine stopped");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn keychain_errors_map_to_binding_failures() {
+        assert_eq!(
+            binding_failure(KeychainError::Unsupported),
+            BindingFailure::Unsupported
+        );
+        assert_eq!(
+            binding_failure(KeychainError::Invalidated),
+            BindingFailure::NotThisDevice
+        );
+        assert_eq!(
+            binding_failure(KeychainError::Failed("DPAPI 0x800706BA".into())),
+            BindingFailure::Failed("keychain operation failed: DPAPI 0x800706BA".into())
+        );
+        assert_eq!(
+            binding_failure(KeychainError::Cancelled),
+            BindingFailure::Failed("biometric authentication was cancelled".into())
+        );
+        assert_eq!(
+            binding_failure(KeychainError::Unavailable),
+            BindingFailure::Failed("biometric authentication is unavailable on this device".into())
+        );
     }
 }

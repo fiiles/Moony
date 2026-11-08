@@ -7,26 +7,38 @@
 //! format, the ECIES scheme and the error classification live in `MoonyBiometrics.swift`; this
 //! side only frames the calls and decodes the status byte every answer starts with.
 //!
+//! The same package seals device sync's binding to this Mac ([`NativeMachine`]): a Secure Enclave
+//! key without user presence, its handle inside the blob, so it needs no keychain entitlement and
+//! survives app updates and reinstalls; a blob from another Mac is `Invalidated`, and a Mac without
+//! a Secure Enclave (Intel without T2) is `Unsupported`. It also copies a secret to the pasteboard
+//! with the concealed marker type and clears it later only while the change count is unchanged.
+//!
 //! Accepted residual, as on the phones: the secret crosses the bridge in swift-rs `SRData`
-//! buffers (the argument to `moony_bio_wrap`, the answer of `moony_bio_unwrap`), which are freed
-//! but not wiped. The Rust copies are `Zeroizing` and the Swift side wipes its own.
+//! buffers (the argument to `moony_bio_wrap`, the answer of `moony_bio_unwrap`; the binding's the
+//! same way), which are freed but not wiped. The Rust copies are `Zeroizing` and the Swift side
+//! wipes its own. The clipboard text crosses as a swift-rs string and cannot be wiped at all.
 
 use swift_rs::{swift, Bool, Int, SRData, SRString};
 use zeroize::Zeroizing;
 
-use super::NativeBiometrics;
+use super::{NativeBiometrics, NativeMachine};
 use crate::{BiometryType, KeychainError, Result, Status};
 
 swift!(fn moony_bio_status() -> Int);
 swift!(fn moony_bio_wrap(reason: &SRString, secret: &SRData) -> SRData);
 swift!(fn moony_bio_unwrap(reason: &SRString, blob: &SRData) -> SRData);
 swift!(fn moony_bio_selftest() -> Bool);
+swift!(fn moony_bind_seal(secret: &SRData) -> SRData);
+swift!(fn moony_bind_open(blob: &SRData) -> SRData);
+swift!(fn moony_clip_copy(text: &SRString) -> Int);
+swift!(fn moony_clip_clear_if(count: Int) -> Bool);
 
 /// Status bytes the Swift side starts every answer with.
 const STATUS_OK: u8 = 0;
 const STATUS_CANCELLED: u8 = 1;
 const STATUS_UNAVAILABLE: u8 = 2;
 const STATUS_INVALIDATED: u8 = 3;
+const STATUS_UNSUPPORTED: u8 = 5;
 
 /// Touch ID through the Swift package. Every call but `status` blocks on the prompt.
 pub(super) struct MacNative;
@@ -50,16 +62,7 @@ impl NativeBiometrics for MacNative {
         let blob = SRData::from(blob);
         // SAFETY: as in `wrap`.
         let answer = unsafe { moony_bio_unwrap(&reason, &blob) };
-        let payload = Zeroizing::new(decode(&answer)?);
-        let mut secret = Zeroizing::new([0u8; 32]);
-        if payload.len() != secret.len() {
-            return Err(KeychainError::Failed(format!(
-                "Touch ID returned {} bytes instead of 32",
-                payload.len()
-            )));
-        }
-        secret.copy_from_slice(&payload);
-        Ok(secret)
+        secret_from(decode(&answer)?, "Touch ID")
     }
 
     /// Nothing to do: the Secure Enclave key lives only inside the blob, and removing the blob
@@ -67,6 +70,54 @@ impl NativeBiometrics for MacNative {
     fn forget(&self) -> Result<()> {
         Ok(())
     }
+}
+
+/// Device sync's binding and the clearing clipboard. None of these calls prompts.
+impl NativeMachine for MacNative {
+    fn bind_seal(&self, secret: &[u8; 32]) -> Result<Vec<u8>> {
+        let secret = SRData::from(secret.as_slice());
+        // SAFETY: a live swift-rs object; `swift!` balances the retain counts.
+        let answer = unsafe { moony_bind_seal(&secret) };
+        decode(&answer)
+    }
+
+    fn bind_open(&self, blob: &[u8]) -> Result<Zeroizing<[u8; 32]>> {
+        let blob = SRData::from(blob);
+        // SAFETY: as in `bind_seal`.
+        let answer = unsafe { moony_bind_open(&blob) };
+        secret_from(decode(&answer)?, "The binding")
+    }
+
+    fn copy_secret_text(&self, text: &str) -> Result<u64> {
+        let text = SRString::from(text);
+        // SAFETY: as in `bind_seal`; the answer is a scalar.
+        let count = unsafe { moony_clip_copy(&text) };
+        u64::try_from(count)
+            .map_err(|_| KeychainError::Failed("the pasteboard refused the text".to_string()))
+    }
+
+    fn clear_clipboard_if_unchanged(&self, token: u64) -> Result<bool> {
+        // A token no change count can equal: the pasteboard is not ours to clear.
+        let Ok(count) = Int::try_from(token) else {
+            return Ok(false);
+        };
+        // SAFETY: a scalar argument and answer.
+        Ok(unsafe { moony_clip_clear_if(count) })
+    }
+}
+
+/// The 32-byte secret an answer's payload holds; `what` names the source in the message.
+fn secret_from(payload: Vec<u8>, what: &str) -> Result<Zeroizing<[u8; 32]>> {
+    let payload = Zeroizing::new(payload);
+    let mut secret = Zeroizing::new([0u8; 32]);
+    if payload.len() != secret.len() {
+        return Err(KeychainError::Failed(format!(
+            "{what} returned {} bytes instead of 32",
+            payload.len()
+        )));
+    }
+    secret.copy_from_slice(&payload);
+    Ok(secret)
 }
 
 /// `moony_bio_status`'s answer: -1 no usable biometrics, 0 usable but of no type the app can name
@@ -99,6 +150,7 @@ fn decode(answer: &[u8]) -> Result<Vec<u8>> {
         STATUS_CANCELLED => Err(KeychainError::Cancelled),
         STATUS_UNAVAILABLE => Err(KeychainError::Unavailable),
         STATUS_INVALIDATED => Err(KeychainError::Invalidated),
+        STATUS_UNSUPPORTED => Err(KeychainError::Unsupported),
         _ if rest.is_empty() => Err(KeychainError::Failed("Touch ID failed".to_string())),
         _ => Err(KeychainError::Failed(
             String::from_utf8_lossy(rest).into_owned(),
@@ -116,6 +168,7 @@ mod tests {
 
     const RESTORE: Int = 0;
     const AGREEMENT: Int = 1;
+    const BINDING: Int = 2;
     const LA: &str = "com.apple.LocalAuthentication";
     const OS_STATUS: &str = "NSOSStatusErrorDomain";
     const TOKEN: &str = "CryptoTokenKit";
@@ -132,6 +185,7 @@ mod tests {
         assert_eq!(decode(&[1]), Err(KeychainError::Cancelled));
         assert_eq!(decode(&[2, b'x']), Err(KeychainError::Unavailable));
         assert_eq!(decode(&[3]), Err(KeychainError::Invalidated));
+        assert_eq!(decode(&[5]), Err(KeychainError::Unsupported));
         assert_eq!(
             decode(b"\x04boom"),
             Err(KeychainError::Failed("boom".to_string()))
@@ -248,5 +302,130 @@ mod tests {
         assert_eq!(classify(RESTORE, TOKEN, -3, false), 3);
         assert_eq!(classify(RESTORE, OS_STATUS, -25300, false), 3); // errSecItemNotFound
         assert_eq!(classify(RESTORE, "CryptoKit.CryptoKitError", 1, true), 3);
+    }
+
+    /// A binding key handle from another Mac's Secure Enclave (CryptoTokenKit `corruptedData`,
+    /// "corrupted objectID detected"), a key that is gone and a key that refuses the agreement
+    /// all say "not this machine": invalidated, which the app reads as `NotThisDevice`.
+    #[test]
+    fn a_binding_key_from_another_mac_is_invalidated() {
+        for wrapped in [false, true] {
+            assert_eq!(classify(BINDING, TOKEN, -3, wrapped), 3); // TKError corruptedData
+            assert_eq!(classify(BINDING, OS_STATUS, -25300, wrapped), 3); // errSecItemNotFound
+            assert_eq!(classify(BINDING, OS_STATUS, -25293, wrapped), 3); // errSecAuthFailed
+            assert_eq!(classify(BINDING, OS_STATUS, -50, wrapped), 3); // errSecParam
+        }
+        assert_eq!(classify(BINDING, "CryptoKit.CryptoKitError", 1, true), 3);
+        assert_eq!(classify(BINDING, "CryptoKit.CryptoKitError", 0, false), 3);
+    }
+
+    /// A refusal of the moment says nothing about the machine: failed (or cancelled), which the
+    /// app reads as `Failed`, so the check lets this start go on instead of re-joining.
+    #[test]
+    fn a_transient_binding_failure_is_never_invalidated() {
+        for wrapped in [false, true] {
+            // errSecInteractionNotAllowed, errSecNotAvailable, errSecMissingEntitlement.
+            for code in [-25308, -25291, -34018] {
+                assert_eq!(
+                    classify(BINDING, OS_STATUS, code, wrapped),
+                    4,
+                    "OSStatus {code}"
+                );
+            }
+            assert_eq!(classify(BINDING, TOKEN, -2, wrapped), 4); // communicationError
+            assert_eq!(classify(BINDING, TOKEN, -4, wrapped), 1); // canceledByUser
+            assert_eq!(classify(BINDING, OS_STATUS, -128, wrapped), 1); // errSecUserCanceled
+            assert_eq!(classify(BINDING, LA, -2, wrapped), 1); // userCancel
+            assert_eq!(classify(BINDING, LA, -6, wrapped), 2); // biometryNotAvailable
+        }
+    }
+
+    /// Seals with a new Secure Enclave key (no prompt) and opens it again; a flipped bit, a cut
+    /// blob and a garbled key handle are invalidated. On a Mac without a Secure Enclave (Intel
+    /// without T2) both calls are `Unsupported` instead. Run it with the screen unlocked: the key
+    /// is `WhenUnlocked`, so behind the lock screen the seal fails with OSStatus -25308
+    /// (`Failed`, never `Invalidated`).
+    #[test]
+    #[ignore = "needs a Mac with a Secure Enclave"]
+    fn secure_enclave_binding_round_trips() {
+        let secret: [u8; 32] = std::array::from_fn(|i| i as u8);
+        let blob = match MacNative.bind_seal(&secret) {
+            Err(KeychainError::Unsupported) => {
+                assert_eq!(
+                    MacNative.bind_open(&[1; 200]).map(|_| ()),
+                    Err(KeychainError::Unsupported)
+                );
+                println!("no Secure Enclave on this Mac: Unsupported");
+                return;
+            }
+            other => other.expect("seal"),
+        };
+        assert!(
+            !blob.windows(32).any(|window| window == secret),
+            "the secret is not in the blob"
+        );
+        assert_eq!(*MacNative.bind_open(&blob).expect("open"), secret);
+        assert_eq!(*MacNative.bind_open(&blob).expect("open twice"), secret);
+
+        let mut flipped = blob.clone();
+        let last = flipped.len() - 20;
+        flipped[last] ^= 1;
+        let mut garbled_key = blob.clone();
+        garbled_key[10] ^= 0xff;
+        for broken in [
+            flipped,
+            blob[..blob.len() - 1].to_vec(),
+            garbled_key,
+            vec![],
+        ] {
+            assert_eq!(
+                MacNative.bind_open(&broken).map(|_| ()),
+                Err(KeychainError::Invalidated)
+            );
+        }
+        // A Touch ID blob's format is not a binding's.
+        let mut touch_id_like = blob.clone();
+        touch_id_like[0] = 1;
+        assert_eq!(
+            MacNative.bind_open(&touch_id_like).map(|_| ()),
+            Err(KeychainError::Invalidated)
+        );
+    }
+
+    /// Copies, clears while unchanged, and leaves a later copy alone. Puts back the plain text
+    /// the pasteboard held before.
+    #[test]
+    #[ignore = "touches the real pasteboard"]
+    fn the_pasteboard_is_cleared_only_while_unchanged() {
+        let saved = std::process::Command::new("pbpaste")
+            .output()
+            .expect("pbpaste")
+            .stdout;
+
+        let token = MacNative.copy_secret_text("ABCD-EFGH").expect("copy");
+        assert_eq!(paste(), "ABCD-EFGH");
+        assert_eq!(MacNative.clear_clipboard_if_unchanged(token), Ok(true));
+        assert_eq!(paste(), "", "cleared");
+
+        let stale = MacNative.copy_secret_text("ABCD-EFGH").expect("copy");
+        let later = MacNative.copy_secret_text("something else").expect("copy");
+        assert!(later > stale);
+        assert_eq!(MacNative.clear_clipboard_if_unchanged(stale), Ok(false));
+        assert_eq!(paste(), "something else", "a later copy stays");
+        assert_eq!(MacNative.clear_clipboard_if_unchanged(later), Ok(true));
+
+        let mut restore = std::process::Command::new("pbcopy")
+            .stdin(std::process::Stdio::piped())
+            .spawn()
+            .expect("pbcopy");
+        std::io::Write::write_all(restore.stdin.as_mut().expect("stdin"), &saved).expect("write");
+        restore.wait().expect("pbcopy done");
+    }
+
+    fn paste() -> String {
+        let output = std::process::Command::new("pbpaste")
+            .output()
+            .expect("pbpaste");
+        String::from_utf8(output.stdout).expect("utf-8")
     }
 }

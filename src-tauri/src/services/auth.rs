@@ -10,6 +10,7 @@ use crate::models::{InsertUserProfile, MenuPreferences, UpdateUserProfile, UserP
 use crate::services::biometric_unlock;
 use crate::services::crypto;
 use crate::services::session_key::SessionKey;
+use crate::services::sync::join;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -381,6 +382,21 @@ pub fn confirm_setup(
         .ok_or_else(|| AppError::Internal("Failed to get profile after setup".into()))
 }
 
+/// Checks `password` against the profile's key file by decrypting the master key with it, which
+/// is wiped again at once. Typed errors (`auth.wrongPassword` / `auth.keyFilesCorrupted`)
+/// propagate unchanged. Changing the password and deleting synced data ask for it first.
+pub fn verify_password(db_path: &Path, password: &str) -> Result<()> {
+    let data_dir = db_path
+        .parent()
+        .ok_or_else(|| AppError::Internal("Invalid database path".into()))?;
+
+    let (salt_path, key_path, _) = get_key_paths(data_dir);
+    let salt = crypto::read_salt(&salt_path)?;
+    let mut master_key = crypto::decrypt_master_key_with_password(password, &salt, &key_path)?;
+    zeroize::Zeroize::zeroize(&mut master_key);
+    Ok(())
+}
+
 // ============================================================================
 // 2-Phase Change Password Flow
 // ============================================================================
@@ -388,16 +404,7 @@ pub fn confirm_setup(
 /// Phase 1: Prepare password change - verifies current password and generates new recovery key
 /// Returns the new recovery key so user can save it before we make changes
 pub fn prepare_change_password(db_path: &Path, current_password: &str) -> Result<String> {
-    let data_dir = db_path
-        .parent()
-        .ok_or_else(|| AppError::Internal("Invalid database path".into()))?;
-
-    let (salt_path, key_path, _) = get_key_paths(data_dir);
-    let salt = crypto::read_salt(&salt_path)?;
-
-    // Verify current password by attempting to decrypt master key. Typed errors
-    // (`auth.wrongPassword` / `auth.keyFilesCorrupted`) propagate unchanged.
-    let _master_key = crypto::decrypt_master_key_with_password(current_password, &salt, &key_path)?;
+    verify_password(db_path, current_password)?;
 
     // Generate new recovery key (don't persist yet, just return it)
     let new_recovery_key = crypto::generate_recovery_key();
@@ -669,9 +676,9 @@ pub fn delete_account(db: &Database, session: &SessionKey, db_path: &Path) -> Re
 }
 
 /// Remove the files of an account from its data folder: both databases with their side files and
-/// pre-migration copies, the key files, the plain attachment folders of earlier versions and the
-/// conversion's quarantine. Anything else in the folder is left alone. Returns what could not be
-/// removed.
+/// pre-migration copies, the key files, the sync binding, restore marker and repair backups, the
+/// plain attachment folders of earlier versions and the conversion's quarantine. Anything else in
+/// the folder is left alone. Returns what could not be removed, named within the folder.
 pub fn remove_account_files(data_dir: &Path) -> Vec<String> {
     let mut failures: Vec<String> = Vec::new();
     let mut remove = |path: PathBuf| {
@@ -683,7 +690,10 @@ pub fn remove_account_files(data_dir: &Path) -> Vec<String> {
             return;
         };
         if let Err(e) = result {
-            failures.push(format!("{}: {e}", path.display()));
+            // Named within the data folder: the folder's own path (the user's home) stays out
+            // of the error.
+            let name = path.strip_prefix(data_dir).unwrap_or(&path);
+            failures.push(format!("{}: {e}", name.display()));
         }
     };
 
@@ -694,10 +704,18 @@ pub fn remove_account_files(data_dir: &Path) -> Vec<String> {
         crypto::staging_path(&key_path),
         crypto::staging_path(&recovery_path),
     ];
+    // The sync binding with its staging copy, and the restore marker (ruling P8).
+    let binding = data_dir.join(crate::services::sync::binding::BINDING_FILE);
+    let sync_files = [
+        crypto::staging_path(&binding),
+        binding,
+        data_dir.join(crate::services::sync::binding::REJOIN_MARKER),
+    ];
     for path in [salt_path, key_path, recovery_path]
         .into_iter()
         .chain(staging)
         .chain([data_dir.join(biometric_unlock::MARKER_FILE)])
+        .chain(sync_files)
     {
         remove(path);
     }
@@ -708,8 +726,11 @@ pub fn remove_account_files(data_dir: &Path) -> Vec<String> {
     if let Ok(entries) = fs::read_dir(data_dir) {
         for entry in entries.flatten() {
             let name = entry.file_name().to_string_lossy().into_owned();
-            // The database files, their -wal/-shm/-journal side files and `.bak-<ts>` copies.
-            if databases.iter().any(|db| name.starts_with(db)) {
+            // The database files, their -wal/-shm/-journal side files and `.bak-<ts>` copies, and
+            // the sync repair's backups (`sync-repair-*.zip`, ruling P24).
+            let repair_backup = name.starts_with(join::REPAIR_BACKUP_PREFIX)
+                && name.ends_with(join::REPAIR_BACKUP_SUFFIX);
+            if repair_backup || databases.iter().any(|db| name.starts_with(db)) {
                 remove(entry.path());
             }
         }
@@ -1244,6 +1265,17 @@ mod tests {
     // ------------------------------------------------------------------
 
     #[test]
+    fn verify_password_accepts_the_password_and_refuses_another() {
+        let dir = tempdir().expect("tempdir");
+        let db_path = write_key_files(dir.path(), "old-password");
+        verify_password(&db_path, "old-password").expect("the profile's password");
+        let err = verify_password(&db_path, "old-passwore").unwrap_err();
+        assert_auth_key(err, "auth.wrongPassword");
+        let err = verify_password(&db_path, "").unwrap_err();
+        assert_auth_key(err, "auth.wrongPassword");
+    }
+
+    #[test]
     fn prepare_change_password_wrong_current_password_returns_stable_key() {
         let dir = tempdir().expect("tempdir");
         let db_path = write_key_files(dir.path(), "old-password");
@@ -1765,5 +1797,90 @@ mod tests {
             .collect();
         left.sort();
         assert_eq!(left, vec!["Backup", "unrelated.txt"]);
+    }
+
+    #[test]
+    fn removing_account_files_takes_the_sync_files_too() {
+        let dir = tempdir().expect("tempdir");
+        let d = dir.path();
+        for name in [
+            "sync-binding.bin",
+            "sync-binding.bin.tmp",
+            "sync-rejoin.marker",
+            "unrelated.txt",
+        ] {
+            fs::write(d.join(name), b"x").expect("file");
+        }
+
+        assert!(remove_account_files(d).is_empty());
+
+        let left: Vec<String> = fs::read_dir(d)
+            .expect("dir")
+            .map(|e| e.expect("entry").file_name().to_string_lossy().into_owned())
+            .collect();
+        assert_eq!(left, vec!["unrelated.txt"]);
+    }
+
+    #[test]
+    fn removing_account_files_takes_the_repair_backups() {
+        let dir = tempdir().expect("tempdir");
+        let d = dir.path();
+        for name in [
+            "sync-repair-1790000000.zip",
+            "sync-repair-1790000000-2.zip",
+            "sync-repair-1790000000.txt",
+            "sync-repair.zip",
+            "unrelated.txt",
+        ] {
+            fs::write(d.join(name), b"x").expect("file");
+        }
+
+        assert!(remove_account_files(d).is_empty());
+
+        let mut left: Vec<String> = fs::read_dir(d)
+            .expect("dir")
+            .map(|e| e.expect("entry").file_name().to_string_lossy().into_owned())
+            .collect();
+        left.sort();
+        assert_eq!(
+            left,
+            vec![
+                "sync-repair-1790000000.txt",
+                "sync-repair.zip",
+                "unrelated.txt"
+            ]
+        );
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_file_that_cannot_be_removed_is_named_without_the_folder() {
+        use std::os::unix::fs::PermissionsExt;
+        let dir = tempdir().expect("tempdir");
+        let d = dir.path();
+        // A non-empty folder under a file's name: `remove_file` fails on it.
+        fs::create_dir_all(d.join("sync-rejoin.marker/inner")).expect("dir");
+        fs::set_permissions(
+            d.join("sync-rejoin.marker"),
+            fs::Permissions::from_mode(0o500),
+        )
+        .expect("read-only dir");
+
+        let failures = remove_account_files(d);
+
+        fs::set_permissions(
+            d.join("sync-rejoin.marker"),
+            fs::Permissions::from_mode(0o700),
+        )
+        .expect("restore permissions");
+        assert_eq!(failures.len(), 1, "{failures:?}");
+        assert!(
+            failures[0].starts_with("sync-rejoin.marker: "),
+            "{failures:?}"
+        );
+        assert!(
+            !failures[0].contains(&*d.to_string_lossy()),
+            "no data folder path in {failures:?}"
+        );
     }
 }

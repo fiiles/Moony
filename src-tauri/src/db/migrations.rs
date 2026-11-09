@@ -94,6 +94,10 @@ fn all_migrations() -> Vec<(&'static str, &'static str)> {
         ("027_stock_dividends", MIGRATION_027),
         ("028_transaction_fee", MIGRATION_028),
         ("029_device_sync", MIGRATION_029),
+        ("030_sync_engine", MIGRATION_030),
+        ("031_sync_missed_below_barrier", MIGRATION_031),
+        ("032_sync_snapshot_too_large", MIGRATION_032),
+        ("033_sync_snapshot_barrier", MIGRATION_033),
     ]
 }
 
@@ -3395,9 +3399,183 @@ mod migration_029 {
     }
 
     #[test]
-    fn the_chain_now_has_29_migrations() {
-        assert_eq!(known_migration_names().len(), 29);
-        assert_eq!(known_migration_names().last(), Some(&"029_device_sync"));
+    fn the_chain_now_has_33_migrations() {
+        assert_eq!(known_migration_names().len(), 33);
+        assert_eq!(
+            known_migration_names().last(),
+            Some(&"033_sync_snapshot_barrier")
+        );
+    }
+}
+
+/// 030: the sync engine's bookkeeping on the `sync_state` row (all Local). `barrier_seq` is the
+/// relay sequence of the barrier marker, the earliest envelope at or above this device's barrier
+/// (NULL until one is seen);
+/// `marker_barrier` the newest barrier this device has sealed a marker for;
+/// `capture_broken_at` / `vault_gone_at` the pauses (change capture could not be installed, the
+/// relay no longer knows the vault); `pulled_bytes` the envelope bytes pulled since the vault
+/// snapshot `pulled_bytes_base`; `snapshot_uploaded_at` when this device last uploaded a snapshot;
+/// `binding_written` whether the device binding was written to the binding file
+/// `sync-binding.bin` next to the profile.
+pub(crate) const MIGRATION_030: &str = r#"
+ALTER TABLE sync_state ADD COLUMN barrier_seq INTEGER;
+ALTER TABLE sync_state ADD COLUMN marker_barrier INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sync_state ADD COLUMN capture_broken_at INTEGER;
+ALTER TABLE sync_state ADD COLUMN vault_gone_at INTEGER;
+ALTER TABLE sync_state ADD COLUMN pulled_bytes INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sync_state ADD COLUMN pulled_bytes_base INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE sync_state ADD COLUMN snapshot_uploaded_at INTEGER;
+ALTER TABLE sync_state ADD COLUMN binding_written INTEGER NOT NULL DEFAULT 0 CHECK (binding_written IN (0, 1));
+"#;
+
+/// 031: `sync_state.missed_below_barrier` (Local): the newest relay sequence at which this device
+/// skipped an envelope written below its barrier (NULL when nothing is missed). A snapshot at that
+/// barrier or later and at that sequence or later heals it (Task 8 review ruling T8-2).
+pub(crate) const MIGRATION_031: &str = r#"
+ALTER TABLE sync_state ADD COLUMN missed_below_barrier INTEGER;
+"#;
+
+/// 032: `sync_state.snapshot_too_large_at` (Local): when this device last found its snapshot too
+/// large to upload (its own size limit or the relay's `413 snapshot_too_large`); NULL otherwise.
+/// No upload is tried for a day after it, across restarts, so an over-limit profile is not dumped
+/// under the profile lock on every launch. An upload or another vault binding clears it.
+pub(crate) const MIGRATION_032: &str = r#"
+ALTER TABLE sync_state ADD COLUMN snapshot_too_large_at INTEGER;
+"#;
+
+/// 033: `sync_state.snapshot_barrier` (Local): the barrier of the newest snapshot this device
+/// uploaded or restored (or the barrier it started syncing at). A device whose barrier is above it
+/// crossed a barrier and has not yet uploaded a snapshot at the new one, which it then does at its
+/// first clean round (ruling T8-2), across restarts. Existing rows count as snapshotted at the
+/// barrier they last marked (`MIN(marker_barrier, barrier)`), so a crossing whose marker is still
+/// unsealed keeps its forced upload.
+pub(crate) const MIGRATION_033: &str = r#"
+ALTER TABLE sync_state ADD COLUMN snapshot_barrier INTEGER NOT NULL DEFAULT 0;
+UPDATE sync_state SET snapshot_barrier = MIN(marker_barrier, barrier);
+"#;
+
+#[cfg(test)]
+mod migration_033 {
+    use super::*;
+
+    #[test]
+    fn sync_state_gains_snapshot_barrier_from_the_marked_barrier() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        let all = all_migrations();
+        let before: Vec<_> = all
+            .iter()
+            .copied()
+            .filter(|(name, _)| *name < "033_sync_snapshot_barrier")
+            .collect();
+        run_chain(&conn, &before).expect("chain to 032");
+        conn.execute_batch(
+            "INSERT INTO sync_state (id, device_id, barrier, marker_barrier) VALUES (1, x'00', 26, 25)",
+        )
+        .expect("row");
+        run_chain(&conn, &all).expect("033");
+        let barrier: i64 = conn
+            .query_row("SELECT snapshot_barrier FROM sync_state", [], |r| r.get(0))
+            .expect("column");
+        assert_eq!(
+            barrier, 25,
+            "a crossing with its marker unsealed keeps its forced upload"
+        );
+    }
+}
+
+#[cfg(test)]
+mod migration_032 {
+    use super::*;
+
+    #[test]
+    fn sync_state_gains_snapshot_too_large_at_unset() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_chain(&conn, &all_migrations()).expect("full chain");
+        conn.execute(
+            "INSERT INTO sync_state (id, device_id) VALUES (1, x'00')",
+            [],
+        )
+        .expect("row");
+        let at: Option<i64> = conn
+            .query_row("SELECT snapshot_too_large_at FROM sync_state", [], |r| {
+                r.get(0)
+            })
+            .expect("column");
+        assert_eq!(at, None);
+    }
+}
+
+#[cfg(test)]
+mod migration_031 {
+    use super::*;
+
+    #[test]
+    fn sync_state_gains_missed_below_barrier_unset() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_chain(&conn, &all_migrations()).expect("full chain");
+        conn.execute(
+            "INSERT INTO sync_state (id, device_id) VALUES (1, x'00')",
+            [],
+        )
+        .expect("row");
+        let missed: Option<i64> = conn
+            .query_row("SELECT missed_below_barrier FROM sync_state", [], |r| {
+                r.get(0)
+            })
+            .expect("column");
+        assert_eq!(missed, None);
+    }
+}
+
+#[cfg(test)]
+mod migration_030 {
+    use super::*;
+
+    #[test]
+    fn sync_state_gains_the_engine_columns_with_defaults() {
+        let conn = Connection::open_in_memory().expect("in-memory db");
+        run_chain(&conn, &all_migrations()).expect("full chain");
+        conn.execute(
+            "INSERT INTO sync_state (id, device_id) VALUES (1, x'00')",
+            [],
+        )
+        .expect("row");
+        #[allow(clippy::type_complexity)]
+        let row: (
+            Option<i64>,
+            i64,
+            Option<i64>,
+            Option<i64>,
+            i64,
+            i64,
+            Option<i64>,
+            i64,
+        ) = conn
+            .query_row(
+                "SELECT barrier_seq, marker_barrier, capture_broken_at, vault_gone_at, \
+                        pulled_bytes, pulled_bytes_base, snapshot_uploaded_at, binding_written \
+                 FROM sync_state",
+                [],
+                |r| {
+                    Ok((
+                        r.get(0)?,
+                        r.get(1)?,
+                        r.get(2)?,
+                        r.get(3)?,
+                        r.get(4)?,
+                        r.get(5)?,
+                        r.get(6)?,
+                        r.get(7)?,
+                    ))
+                },
+            )
+            .expect("columns");
+        assert_eq!(row, (None, 0, None, None, 0, 0, None, 0));
+        assert!(
+            conn.execute("UPDATE sync_state SET binding_written = 2", [])
+                .is_err(),
+            "binding_written CHECK"
+        );
     }
 }
 

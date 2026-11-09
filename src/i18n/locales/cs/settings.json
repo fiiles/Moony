@@ -6,6 +6,7 @@
     "security": "Zabezpečení",
     "data": "Data a zálohy",
     "integrations": "AI asistent",
+    "sync": "Synchronizace",
     "categorization": "Kategorizace",
     "account": "Účet",
     "description": {
@@ -13,6 +14,7 @@
       "security": "Heslo, automatické zamykání a aktualizace aplikace.",
       "data": "Kde jsou vaše data uložená a jak si uchovat jejich kopii.",
       "integrations": "Lokální MCP server pro AI asistenty.",
+      "sync": "Zařízení drží krok, koncově šifrovaně.",
       "categorization": "Balíčky pravidel, kategorie a vlastní pravidla kategorizace.",
       "account": "Smazání vašich dat z tohoto počítače."
     }
@@ -117,7 +119,9 @@
     "confirmLabel": "Pro potvrzení napište {{word}}",
     "deleteAll": "Smazat všechna data",
     "deleteAllHint": "Odstraní databázi, soubory s klíči a přílohy na tomto počítači. Kopie vedle databáze (moony.db.bak-…, pre-restore-…) zůstanou v datové složce (Data a zálohy → Otevřít složku), stejně jako zálohy uložené mimo aplikaci.",
-    "deleteButton": "Smazat data…"
+    "deleteButton": "Smazat data…",
+    "syncDeleted": "Smažou se i synchronizovaná data na synchronizačním serveru, takže se vaše ostatní zařízení přestanou synchronizovat.",
+    "confirmDescriptionSynced": "Tuto akci nelze vrátit zpět. Trvale smaže databázi, soubory s klíči a přílohy z tohoto zařízení. Kopie, které Moony ukládá vedle databáze (moony.db.bak-…, pre-restore-…), zůstanou v datové složce; vede do ní Nastavení → Data a zálohy → Otevřít složku."
   },
   "toast": {
     "profileUpdated": "Profil aktualizován",

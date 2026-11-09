@@ -4,6 +4,8 @@
  * this one in `src/App.tsx`.
  */
 import { useLocation } from 'wouter';
+import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
+import { SyncSection } from '@/components/settings/sync/SyncSection';
 import { SettingsLayout } from '@/components/settings/SettingsLayout';
 import {
   resolveSettingsSection,
@@ -23,13 +25,15 @@ const SECTION_PAGES: Record<SettingsSectionId, () => React.JSX.Element> = {
   security: SecuritySection,
   data: DataSettingsSection,
   integrations: IntegrationsSection,
+  sync: SyncSection,
   categorization: CategorizationSection,
   account: AccountSection,
 };
 
 export default function SettingsPage() {
   const [location] = useLocation();
-  const active = resolveSettingsSection(location);
+  const syncFeature = useDeviceSyncFeature();
+  const active = resolveSettingsSection(location, syncFeature);
   const Section = SECTION_PAGES[active];
 
   return (

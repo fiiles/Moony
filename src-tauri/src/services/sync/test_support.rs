@@ -1,8 +1,11 @@
-//! Shared helpers for the sync engine tests: a migrated connection, and the one convergence
-//! comparison every multi-device test uses (`assert_converged`, `divergence`).
+//! Shared helpers for the sync engine tests: a migrated connection, incompressible text
+//! (`noise`), and the one convergence comparison every multi-device test uses
+//! (`assert_converged`, `divergence`).
 
 use std::collections::{BTreeMap, BTreeSet};
 
+use base64::engine::general_purpose::STANDARD;
+use base64::Engine as _;
 use rusqlite::types::Value;
 use rusqlite::Connection;
 
@@ -20,6 +23,24 @@ pub(crate) fn migrated() -> Connection {
         .expect("foreign keys");
     crate::db::run_migrations(&conn).expect("migrations");
     conn
+}
+
+/// Base64 text of `len` characters from a seeded generator (splitmix64): incompressible beyond
+/// base64's own 6 bits per character.
+pub(crate) fn noise(len: usize, seed: u64) -> String {
+    let mut state = seed;
+    let mut bytes = Vec::with_capacity(len);
+    while bytes.len() < len {
+        state = state.wrapping_add(0x9E37_79B9_7F4A_7C15);
+        let mut z = state;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^= z >> 31;
+        bytes.extend_from_slice(&z.to_le_bytes());
+    }
+    let mut out = STANDARD.encode(&bytes);
+    out.truncate(len);
+    out
 }
 
 /// One `sync_clock` row: `(tbl, pk, col, hlc, device)`.

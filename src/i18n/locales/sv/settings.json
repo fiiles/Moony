@@ -6,6 +6,7 @@
     "security": "Säkerhet",
     "data": "Data och säkerhetskopior",
     "integrations": "AI-assistent",
+    "sync": "Synkronisering",
     "categorization": "Kategorisering",
     "account": "Konto",
     "description": {
@@ -13,6 +14,7 @@
       "security": "Lösenord, autolås och appuppdateringar.",
       "data": "Var dina data finns och hur du behåller en kopia av dem.",
       "integrations": "Den lokala MCP-servern för AI-assistenter.",
+      "sync": "Håller dina enheter i takt, end-to-end-krypterat.",
       "categorization": "Regelpaket, kategorier och dina egna kategoriseringsregler.",
       "account": "Radera dina data från den här datorn."
     }
@@ -117,7 +119,9 @@
     "confirmLabel": "Skriv {{word}} för att bekräfta",
     "deleteAll": "Radera alla data",
     "deleteAllHint": "Tar bort databasen, nyckelfilerna och bilagorna på den här datorn. Kopior bredvid databasen (moony.db.bak-…, pre-restore-…) finns kvar i datamappen (Data och säkerhetskopior → Öppna mappen), liksom säkerhetskopior som sparats utanför appen.",
-    "deleteButton": "Radera data…"
+    "deleteButton": "Radera data…",
+    "syncDeleted": "Synkroniserade data på synkroniseringsservern raderas också, så att dina andra enheter slutar synkronisera.",
+    "confirmDescriptionSynced": "Det går inte att ångra. Databasen, nyckelfilerna och bilagorna raderas permanent från den här enheten. Kopior som Moony sparar bredvid databasen (moony.db.bak-…, pre-restore-…) blir kvar i datamappen; Inställningar → Data och säkerhetskopior → Öppna mappen leder dit."
   },
   "toast": {
     "profileUpdated": "Profilen har uppdaterats",

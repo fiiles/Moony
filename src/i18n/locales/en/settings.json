@@ -6,6 +6,7 @@
     "security": "Security",
     "data": "Data and backups",
     "integrations": "AI assistant",
+    "sync": "Sync",
     "categorization": "Categorization",
     "account": "Account",
     "description": {
@@ -13,6 +14,7 @@
       "security": "Password, auto-lock and app updates.",
       "data": "Where your data lives and how to keep a copy of it.",
       "integrations": "The local MCP server for AI assistants.",
+      "sync": "Keeping your devices in step, end-to-end encrypted.",
       "categorization": "Rule packs, categories and your own categorization rules.",
       "account": "Deleting your data from this computer."
     }
@@ -117,7 +119,9 @@
     "confirmLabel": "Type {{word}} to confirm",
     "deleteAll": "Delete all data",
     "deleteAllHint": "Removes the database, the key files and the attachments on this computer. Copies next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder (Data and backups → Open folder), and so do backups saved outside the app.",
-    "deleteButton": "Delete data…"
+    "deleteButton": "Delete data…",
+    "syncDeleted": "Synced data on the sync server is deleted too, so your other devices stop syncing.",
+    "confirmDescriptionSynced": "This action cannot be undone. It permanently deletes your database, the key files and the attachments from this device. Copies that Moony keeps next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder; Settings → Data and backups → Open folder leads there."
   },
   "toast": {
     "profileUpdated": "Profile updated",

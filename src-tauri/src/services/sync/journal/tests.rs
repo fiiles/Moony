@@ -1,7 +1,5 @@
 use std::collections::BTreeMap;
 
-use base64::engine::general_purpose::STANDARD;
-use base64::Engine;
 use rusqlite::Connection;
 use sha2::{Digest, Sha256};
 
@@ -11,12 +9,13 @@ use crate::models::categorization::InsertScopedLearning;
 use crate::services::categorization::engine::CategorizationEngine;
 use crate::services::categorization::learn::learn_scoped;
 use crate::services::sync::changeset::{
-    max_hlc, min_author_hlc, padded_deflated_len, to_json, Changeset, RowChange, RowKey, SqlValue,
+    from_json, max_hlc, min_author_hlc, padded_deflated_len, to_json, Changeset, RowChange, RowKey,
+    SqlValue,
 };
 use crate::services::sync::hlc::{Clock, DeviceId};
 use crate::services::sync::registry::keys::schema_number;
 use crate::services::sync::state;
-use crate::services::sync::test_support::migrated;
+use crate::services::sync::test_support::{migrated, noise};
 use crate::services::{bank_accounts, csv_import, investments, stock_monitor};
 
 const DEVICE: DeviceId = DeviceId([7; 16]);
@@ -148,24 +147,6 @@ fn account(conn: &Connection, id: &str) {
         [id],
     )
     .expect("insert account");
-}
-
-/// Base64 text of `len` characters from a seeded generator (splitmix64): incompressible beyond
-/// base64's own 6 bits per character.
-fn noise(len: usize, seed: u64) -> String {
-    let mut state = seed;
-    let mut bytes = Vec::with_capacity(len);
-    while bytes.len() < len {
-        state = state.wrapping_add(0x9E37_79B9_7F4A_7C15);
-        let mut z = state;
-        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-        z ^= z >> 31;
-        bytes.extend_from_slice(&z.to_le_bytes());
-    }
-    let mut out = STANDARD.encode(&bytes);
-    out.truncate(len);
-    out
 }
 
 const PLAN_COLUMNS: [&str; 10] = [
@@ -705,6 +686,61 @@ fn record_sealed_advances_the_chain() {
     let next = next.unwrap();
     assert_eq!(next.changeset.seq, 2);
     assert_eq!(next.changeset.prev, Some(hash));
+}
+
+#[test]
+fn a_marker_envelope_has_no_rows_and_a_current_clock() {
+    let mut conn = enabled();
+    account(&conn, "acc");
+    let first = drain(&mut conn);
+    assert_eq!(first.len(), 1);
+    // A queued row stays queued: the marker carries nothing.
+    exec(
+        &conn,
+        "UPDATE bank_accounts SET name = 'Renamed' WHERE id = 'acc'",
+    );
+    let newest: i64 = conn
+        .query_row("SELECT MAX(hlc) FROM sync_clock", [], |r| r.get(0))
+        .unwrap();
+
+    let tx = conn.transaction().unwrap();
+    let marker = build_marker(&tx).unwrap();
+    let hash = hash_of(&marker.changeset);
+    record_sealed(&tx, &marker, hash).unwrap();
+    tx.commit().unwrap();
+
+    let sync = state::load(&conn).unwrap().unwrap();
+    assert_eq!(
+        marker.changeset,
+        Changeset {
+            schema: schema_number(),
+            barrier: crate::services::sync::registry::keys::barrier_number(),
+            device: DEVICE,
+            seq: 2,
+            prev: Some(hash_of(&first[0].changeset)),
+            rows: Vec::new(),
+        }
+    );
+    assert_eq!(marker.min_hlc, marker.max_hlc);
+    assert!(
+        marker.max_hlc > newest as u64,
+        "{} > {newest}",
+        marker.max_hlc
+    );
+    assert_eq!(
+        from_json(&to_json(&marker.changeset).unwrap()).unwrap(),
+        marker.changeset
+    );
+    assert_eq!(outbox(&conn), vec![key("bank_accounts", "acc")]);
+    let logged: (i64, i64) = conn
+        .query_row(
+            "SELECT min_hlc, max_hlc FROM sync_own_log WHERE seq = 2",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(logged, (marker.min_hlc as i64, marker.max_hlc as i64));
+    assert_eq!((sync.next_seq, sync.last_hash), (3, Some(hash)));
 }
 
 #[test]

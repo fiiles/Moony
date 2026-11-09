@@ -6,6 +6,7 @@
     "security": "安全",
     "data": "数据与备份",
     "integrations": "AI 助手",
+    "sync": "同步",
     "categorization": "分类",
     "account": "账户",
     "description": {
@@ -13,6 +14,7 @@
       "security": "密码、自动锁定和应用更新。",
       "data": "您的数据存放在哪里，以及如何保留一份副本。",
       "integrations": "供 AI 助手使用的本地 MCP 服务器。",
+      "sync": "端到端加密，让您的设备保持一致。",
       "categorization": "规则包、类别和您自己的分类规则。",
       "account": "从这台电脑上删除您的数据。"
     }
@@ -117,7 +119,9 @@
     "confirmLabel": "请输入 {{word}} 以确认",
     "deleteAll": "删除所有数据",
     "deleteAllHint": "移除这台电脑上的数据库、密钥文件和附件。数据库旁边的副本（moony.db.bak-…、pre-restore-…）会留在数据文件夹中（数据与备份 → 打开文件夹），保存在应用之外的备份同样不受影响。",
-    "deleteButton": "删除数据…"
+    "deleteButton": "删除数据…",
+    "syncDeleted": "同步服务器上的同步数据也会被删除，因此您的其他设备将停止同步。",
+    "confirmDescriptionSynced": "此操作无法撤销。这将从此设备上永久删除数据库、密钥文件和附件。Moony 保存在数据库旁边的副本（moony.db.bak-…、pre-restore-…）会留在数据文件夹中；可通过 设置 → 数据与备份 → 打开文件夹 找到它。"
   },
   "toast": {
     "profileUpdated": "个人资料已更新",

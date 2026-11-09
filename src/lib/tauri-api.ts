@@ -165,6 +165,11 @@ import type {
   StockSplitCheck,
   StockInstrumentQuery,
   StockInstrumentResolution,
+  SyncStatus,
+  SyncAccount,
+  SyncPlan,
+  CheckoutTarget,
+  RecoveryKit,
 } from '../../shared/schema';
 
 // Backend error keys (`validation.*`, `auth.*`) and the generic `errors.*` messages live in common.json.
@@ -293,6 +298,67 @@ export const keychainApi = {
    */
   setStatusBarStyle: (theme: ResolvedTheme) =>
     tauriInvoke<void>('plugin:moony-keychain|set_status_bar_style', { theme }),
+};
+
+// ============================================================================
+// Device sync API
+// ============================================================================
+
+/**
+ * Device sync (`commands/sync.rs`). Every call but `featureEnabled` rejects with
+ * `validation.syncUnavailable` while the flag is off. The relay is the one at the stored account's
+ * address; `createAccount` picks it (`undefined`: the default relay).
+ */
+export const deviceSyncApi = {
+  featureEnabled: () => tauriInvoke<boolean>('sync_feature_enabled'),
+
+  getStatus: () => tauriInvoke<SyncStatus>('get_sync_status'),
+
+  createAccount: (relayUrl?: string) =>
+    tauriInvoke<SyncAccount>('sync_create_account', { relayUrl: relayUrl ?? null }),
+
+  getAccount: () => tauriInvoke<SyncAccount>('sync_get_account'),
+
+  /** `open`: a payment page to open with the opener plugin; `selfHosted`: no payment page. */
+  startCheckout: (plan: SyncPlan) => tauriInvoke<CheckoutTarget>('sync_start_checkout', { plan }),
+
+  /** The kit during setup only; afterwards `showRecoveryKit` (with the device password). */
+  prepareRecoveryKit: () => tauriInvoke<RecoveryKit>('sync_prepare_recovery_kit'),
+
+  /**
+   * Copies the recovery code natively and clears it after 60 s if unchanged. `false`: not
+   * supported here, so the UI copies itself. With sync on, only shortly after `showRecoveryKit`.
+   */
+  copyRecoveryCode: () => tauriInvoke<boolean>('sync_copy_recovery_code'),
+
+  finishSetup: (deviceName: string, kitSaved: boolean) =>
+    tauriInvoke<SyncStatus>('sync_finish_setup', { deviceName, kitSaved }),
+
+  syncNow: () => tauriInvoke<void>('sync_now'),
+
+  showRecoveryKit: (password: string) =>
+    tauriInvoke<RecoveryKit>('sync_show_recovery_kit', { password }),
+
+  turnOff: () => tauriInvoke<void>('sync_turn_off'),
+
+  deleteSyncedData: (password: string) =>
+    tauriInvoke<void>('sync_delete_synced_data', { password }),
+
+  /** Repairs a capture-broken device; resolves to the backup's path. */
+  repairDevice: () => tauriInvoke<string>('sync_repair_device'),
+
+  /**
+   * Re-syncs this device from the vault without sending its unsent changes (they stay only in
+   * the backup); resolves to the backup's path.
+   */
+  resyncDevice: (password: string) => tauriInvoke<string>('sync_resync_device', { password }),
+
+  /** Debug builds with the developer tools only. */
+  devGrant: (days: number) => tauriInvoke<SyncAccount>('sync_dev_grant', { days }),
+
+  /** Debug builds with the developer tools only: one line with both timings. */
+  debugCaptureOverhead: (rows: number) =>
+    tauriInvoke<string>('sync_debug_capture_overhead', { rows }),
 };
 
 // ============================================================================

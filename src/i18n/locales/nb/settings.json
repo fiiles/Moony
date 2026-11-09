@@ -6,6 +6,7 @@
     "security": "Sikkerhet",
     "data": "Data og sikkerhetskopier",
     "integrations": "AI-assistent",
+    "sync": "Synkronisering",
     "categorization": "Kategorisering",
     "account": "Konto",
     "description": {
@@ -13,6 +14,7 @@
       "security": "Passord, automatisk låsing og appoppdateringer.",
       "data": "Hvor dataene dine ligger og hvordan du tar en kopi av dem.",
       "integrations": "Den lokale MCP-serveren for AI-assistenter.",
+      "sync": "Holder enhetene dine i takt, ende-til-ende-kryptert.",
       "categorization": "Regelpakker, kategorier og dine egne kategoriseringsregler.",
       "account": "Sletting av dataene dine fra denne datamaskinen."
     }
@@ -117,7 +119,9 @@
     "confirmLabel": "Skriv {{word}} for å bekrefte",
     "deleteAll": "Slett alle data",
     "deleteAllHint": "Fjerner databasen, nøkkelfilene og vedleggene på denne datamaskinen. Kopier ved siden av databasen (moony.db.bak-…, pre-restore-…) blir værende i datamappen (Data og sikkerhetskopier → Åpne mappe), det samme gjør sikkerhetskopier lagret utenfor appen.",
-    "deleteButton": "Slett data…"
+    "deleteButton": "Slett data…",
+    "syncDeleted": "Synkroniserte data på synkroniseringsserveren slettes også, så de andre enhetene dine slutter å synkronisere.",
+    "confirmDescriptionSynced": "Denne handlingen kan ikke angres. Den sletter databasen, nøkkelfilene og vedleggene permanent fra denne enheten. Kopier som Moony lagrer ved siden av databasen (moony.db.bak-…, pre-restore-…) blir værende i datamappen; Innstillinger → Data og sikkerhetskopier → Åpne mappe fører dit."
   },
   "toast": {
     "profileUpdated": "Profilen er oppdatert",

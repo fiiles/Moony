@@ -1,0 +1,191 @@
+{
+  "title": "设备间同步",
+  "description": "您的数据经端到端加密，在您的各台设备之间保持一致。",
+  "indicator": {
+    "synced": "已同步",
+    "syncing": "正在同步…",
+    "paused": "同步已暂停",
+    "error": "同步出错",
+    "offline": "离线"
+  },
+  "status": {
+    "phase": {
+      "off": "同步已关闭",
+      "settingUp": "正在设置同步",
+      "idle": "已是最新",
+      "syncing": "正在同步…",
+      "paused": "同步已暂停",
+      "error": "同步已停止"
+    },
+    "problem": {
+      "captureBroken": "此设备的变更跟踪已损坏，因此同步已停止。可以修复。",
+      "vaultGone": "已同步的数据已从同步服务器中删除。",
+      "lapsed": "订阅已结束，因此同步已暂停。",
+      "quotaExceeded": "已同步的数据超出存储上限。",
+      "snapshotTooLarge": "数据过大，无法同步。",
+      "newerSchema": "另一台设备使用更新版本的 Moony。请更新此应用以继续。",
+      "gap": "此设备的同步历史不一致。请重新同步此设备。",
+      "undecryptable": "无法解密来自另一台设备的变更。",
+      "invalidChain": "来自另一台设备的变更未通过验证，已被暂存。",
+      "missingParent": "来自另一台设备的变更缺少之前的步骤，已被暂存。",
+      "quarantined": "出于安全考虑，部分设备的变更已被暂存。",
+      "offline": "无法连接到同步服务器。连接恢复后将继续同步。",
+      "relayError": "同步服务器返回了错误。Moony 会重试。",
+      "rateLimited": "同步服务器要求 Moony 放慢速度。Moony 稍后会重试。",
+      "unauthorized": "同步服务器未接受此设备。可能需要重新设置同步。",
+      "keyRotated": "恢复密钥已在另一台设备上更改。请在此设备上重新设置同步。",
+      "internal": "由于内部错误，同步已停止。"
+    },
+    "lastSynced": "上次同步 {{date}}",
+    "neverSynced": "尚未同步",
+    "pending": "等待发送：{{number}}",
+    "subscription": "订阅",
+    "selfHosted": "自托管服务器",
+    "paidUntil": "已付费至 {{date}}",
+    "syncNow": "立即同步",
+    "showKit": "显示恢复包"
+  },
+  "intro": {
+    "description": "让您的数据在所有设备上保持一致。数据经端到端加密：同步服务器只保存它无法读取的数据。",
+    "privacy": "您的数据绝不会未加密地离开您的设备。",
+    "start": "设置同步",
+    "resume": "继续设置"
+  },
+  "setup": {
+    "title": "设置同步",
+    "step": "第 {{current}} 步，共 {{total}} 步",
+    "cancel": "取消",
+    "account": {
+      "description": "同步需要一个同步账户。创建一个即可获得它的编号。",
+      "number": "账户编号",
+      "explain": "这个编号就是您的同步账户。任何知道它的人都可以为它付款并查看是否已付款，但无法打开您的数据。",
+      "create": "创建账户",
+      "continue": "继续",
+      "copy": "复制",
+      "copied": "已复制"
+    },
+    "advanced": {
+      "toggle": "高级",
+      "label": "同步服务器地址",
+      "placeholder": "https://sync.moonyfinance.com",
+      "hint": "留空则使用 Moony 的同步服务。仅在您运行自己的同步服务器时才填写。"
+    },
+    "pay": {
+      "description": "选择一个方案。付款页面会在浏览器中打开。",
+      "plan": "方案",
+      "monthly": "按月",
+      "yearly": "按年",
+      "continue": "前往付款",
+      "waiting": "正在等待付款。款项到账后此窗口会继续。",
+      "grantTest": "授予测试订阅",
+      "selfHosted": "这是您自己的同步服务器，无需付款。请把上面的账户编号添加到服务器的 ALLOWED_ACCOUNTS 中，然后重启服务器。",
+      "selfHostedWaiting": "正在等待服务器接受该账户。服务器接受后此窗口会继续。"
+    },
+    "kit": {
+      "description": "请保存您的同步恢复包。如果您丢失了所有设备，这是找回已同步数据的唯一办法。",
+      "preparing": "正在准备恢复包…",
+      "savePage": "另存为页面…",
+      "saveText": "另存为文本…",
+      "copyCode": "复制代码",
+      "copied": "已复制",
+      "clipboardHint": "粘贴代码后，请清空剪贴板。",
+      "saved": "恢复包已保存",
+      "confirm": "我已保存同步恢复包",
+      "differs": "同步恢复包不是此设备的恢复密钥。两者不同，您需要同时保管。",
+      "saveFirst": "请先保存或复制恢复包。",
+      "file": {
+        "title": "Moony 同步恢复包",
+        "intro": "请把此页面保存在远离设备的安全位置。拥有它的人可以读取您已同步的数据。",
+        "accountLabel": "同步账户",
+        "accountNote": "用于标识您的同步账户，无法打开您的数据。",
+        "codeLabel": "恢复代码",
+        "codeNote": "可打开您已同步的数据。请保密。",
+        "qrLabel": "扫描以在手机上恢复",
+        "created": "创建于 {{date}}",
+        "relayLabel": "同步服务器",
+        "relayNote": "使用此恢复包恢复时需要"
+      },
+      "failed": "无法准备恢复包。",
+      "retry": "重试"
+    },
+    "device": {
+      "description": "给这台设备起个名字，以便与其他设备区分。",
+      "name": "设备名称",
+      "turnOn": "开启同步",
+      "success": "同步已开启"
+    },
+    "defaultName": {
+      "macos": "Mac",
+      "windows": "Windows 电脑",
+      "linux": "Linux 电脑"
+    }
+  },
+  "alert": {
+    "lapsed": {
+      "title": "同步已暂停——请续订以继续",
+      "deletes": "同步数据将于 {{date}} 删除。",
+      "selfHosted": "请联系您的同步服务器运营者续订访问权限。",
+      "renew": "续订"
+    },
+    "vaultGone": {
+      "text": "您的同步数据已从服务器上消失。要在此设备上关闭同步吗？",
+      "turnOff": "关闭同步",
+      "retry": "重试"
+    },
+    "newerSchema": "请更新此设备上的 Moony 以继续同步"
+  },
+  "renew": {
+    "title": "续订同步",
+    "opened": "已在浏览器中打开付款页面。"
+  },
+  "repair": {
+    "button": "修复此设备",
+    "title": "修复此设备？",
+    "description": "Moony 会先备份此设备的数据，发送仍在等待的更改，然后用同步的数据替换此设备的数据。如果不能发送全部更改，则不会替换任何内容。",
+    "confirm": "修复",
+    "success": "设备已修复。备份已保存为 {{file}}。"
+  },
+  "resync": {
+    "button": "重新同步此设备",
+    "hint": "用同步的数据替换此设备的数据。如果此设备的同步历史不一致，请使用此功能。",
+    "title": "重新同步此设备？",
+    "description": "此设备的数据将被同步的数据替换。会先保存一份备份。此设备尚未发送的更改只保留在该备份中。",
+    "pendingChanges_other": "此设备有 {{count}} 项更改尚未发送，这些更改将只保留在备份中。",
+    "confirm": "重新同步",
+    "success": "设备已重新同步。备份已保存为 {{file}}。"
+  },
+  "turnOff": {
+    "button": "在此设备上关闭同步",
+    "hint": "本地数据会保留。其他设备继续同步。",
+    "title": "在此设备上关闭同步？",
+    "description": "本地数据会保留。其他设备继续同步。以后如需再次开启同步，需要重新设置。",
+    "pendingChanges_other": "此设备有 {{count}} 项更改尚未发送，这些更改将不会再发送。",
+    "confirm": "关闭同步",
+    "success": "同步已关闭"
+  },
+  "delete": {
+    "button": "删除同步数据",
+    "hint": "从同步服务器上删除所有设备的同步数据。",
+    "title": "删除同步数据？",
+    "description": "这会删除同步服务器上所有设备的同步数据。每台设备上的本地数据会保留。",
+    "confirm": "删除同步数据",
+    "success": "同步数据已删除"
+  },
+  "danger": {
+    "title": "关闭或删除",
+    "description": "停止此设备上的同步，或删除同步服务器存储的数据。"
+  },
+  "password": {
+    "label": "设备密码"
+  },
+  "showKit": {
+    "title": "同步恢复包",
+    "description": "输入设备密码以显示恢复包。",
+    "again": "请再次输入密码以复制代码。",
+    "confirm": "显示恢复包"
+  },
+  "busy": {
+    "title": "正在替换此设备的数据…",
+    "description": "请勿关闭 Moony。"
+  }
+}

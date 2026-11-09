@@ -187,7 +187,8 @@ fn a_device_joined_from_a_snapshot_applies_the_dumpers_next_envelope() {
     );
     let second = send(&a);
     assert_eq!(second[0].0.seq, 2);
-    let meta = EnvelopeMeta::of(&second[0].0, second[0].1);
+    // The snapshot was taken at relay sequence 1; this envelope is the relay's second op.
+    let meta = EnvelopeMeta::of(&second[0].0, second[0].1, 2);
     assert_eq!(judge(&b, &meta).expect("judge"), Verdict::Apply);
     apply(&b, &second);
     assert_eq!(table_dump(&b), table_dump(&a));
@@ -479,7 +480,8 @@ fn a_quarantined_author_stays_held_after_a_restore() {
         })
         .expect("header");
     assert!(header_heads.iter().any(|h| h.device == C && h.quarantined));
-    let meta = EnvelopeMeta::of(&second[0].0, second[0].1);
+    // The snapshot was taken at relay sequence 2; the fork's envelope comes after it.
+    let meta = EnvelopeMeta::of(&second[0].0, second[0].1, 3);
     let quarantined =
         "SELECT quarantined FROM sync_heads WHERE device = x'03030303030303030303030303030303'";
 
@@ -532,4 +534,170 @@ fn restore_by_merge_never_moves_the_bookkeeping_back() {
         vec![(C.0.to_vec(), 3, vec![0xcc; 32])],
         "the header's C head (seq 1) does not move the newer local head back"
     );
+}
+
+/// Migration 033: a restored snapshot at this device's barrier is one the vault already holds
+/// there, so a crossing it covers forces no upload.
+#[test]
+fn a_restore_records_the_snapshots_barrier() {
+    let a = device(A);
+    let (bytes, _) = snapshot(&a, 4);
+    let b = device(B);
+    exec(&b, "UPDATE sync_state SET snapshot_barrier = 0");
+    let forced = |conn: &Connection| {
+        let sync = state::load(conn).expect("load").expect("row");
+        let marks = state::marks(conn).expect("marks").expect("row");
+        state::needs_forced_snapshot(&sync, &marks)
+    };
+    assert!(forced(&b), "a crossing with no snapshot at the new barrier");
+
+    restore_merge(&b, &mut &bytes[..], NOW).expect("merge");
+
+    let barrier = state::load(&b).expect("load").expect("row").barrier;
+    let marks = state::marks(&b).expect("marks").expect("row");
+    assert_eq!(marks.snapshot_barrier, barrier);
+    assert!(!forced(&b));
+}
+
+fn missed(conn: &Connection) -> Option<u64> {
+    state::load(conn)
+        .expect("load")
+        .expect("row")
+        .missed_below_barrier
+}
+
+/// D has not updated (barrier 19) and writes `institutions` row `id`; relay sequence 3.
+fn lagging_envelope() -> (Sent, EnvelopeMeta) {
+    let d = device(D);
+    exec(&d, "UPDATE sync_state SET barrier = 19");
+    exec(
+        &d,
+        "INSERT INTO institutions (id, name) VALUES ('id', 'From D')",
+    );
+    let from_d = send(&d);
+    assert_eq!(from_d[0].0.barrier, 19);
+    let meta = EnvelopeMeta::of(&from_d[0].0, from_d[0].1, 3);
+    (from_d, meta)
+}
+
+/// Device `id` crossed at unlock with a stale cursor (no marker yet): D's envelope is below its
+/// barrier, so it is skipped, never applied raw, and the miss is recorded.
+fn crossed_and_skipped(id: DeviceId, meta: &EnvelopeMeta) -> Connection {
+    let conn = device(id);
+    assert_eq!(judge(&conn, meta).expect("judge"), Verdict::BelowBarrier);
+    crate::services::sync::chain::skip_below_barrier(&conn, meta).expect("skip");
+    assert_eq!(missed(&conn), Some(3));
+    conn
+}
+
+fn has_ds_row(conn: &Connection) -> bool {
+    count(conn, "SELECT COUNT(*) FROM institutions WHERE id = 'id'") == 1
+}
+
+#[test]
+fn a_crossed_device_skips_a_lagging_envelope_until_a_healing_snapshot() {
+    use crate::services::sync::chain::{may_upload_snapshot, snapshot_heals_missed};
+    let (from_d, meta) = lagging_envelope();
+    // A dumps once before it has D's envelope (relay 2), then applies it while still below the
+    // barrier, then crosses.
+    let a = device(A);
+    let (early, _) = snapshot(&a, 2);
+    exec(&a, "UPDATE sync_state SET barrier = 19");
+    apply(&a, &from_d);
+    exec(&a, "UPDATE sync_state SET barrier = 25");
+    assert!(may_upload_snapshot(
+        &state::load(&a).expect("load").expect("row")
+    ));
+    let b = crossed_and_skipped(B, &meta);
+    assert!(!has_ds_row(&b));
+
+    // A snapshot dumped before the skipped position does not heal it.
+    let sync = state::load(&b).expect("load").expect("row");
+    assert!(!snapshot_heals_missed(&sync, 25, 2, None));
+    restore_merge(&b, &mut &early[..], NOW).expect("merge");
+    assert_eq!(missed(&b), Some(3));
+    assert!(!has_ds_row(&b));
+
+    // A clean one at the barrier and past it does, and the restore clears the miss.
+    let (healing, _) = snapshot(&a, 5);
+    assert!(snapshot_heals_missed(&sync, 25, 5, None));
+    restore_merge(&b, &mut &healing[..], NOW).expect("merge");
+    assert_eq!(missed(&b), None);
+    assert_eq!(
+        value(&b, "SELECT name FROM institutions WHERE id = 'id'"),
+        Some("From D".to_string())
+    );
+}
+
+#[test]
+fn a_snapshot_from_a_dumper_with_a_pending_miss_does_not_heal() {
+    use crate::services::sync::chain::may_upload_snapshot;
+    let (_, meta) = lagging_envelope();
+    // C crossed early and skipped D's envelope too; its snapshot lacks D's row.
+    let c = crossed_and_skipped(C, &meta);
+    assert!(!may_upload_snapshot(
+        &state::load(&c).expect("load").expect("row")
+    ));
+    let (from_c, _) = snapshot(&c, 6);
+    let b = crossed_and_skipped(B, &meta);
+
+    restore_merge(&b, &mut &from_c[..], NOW).expect("merge");
+
+    assert_eq!(
+        missed(&b),
+        Some(3),
+        "the mark stays until a clean dumper heals it"
+    );
+    assert!(!has_ds_row(&b));
+}
+
+/// A dumps at relay sequence 9 with a pending miss at 7 (ruling T8-7: the restorer cannot get
+/// the skipped rows from this snapshot either).
+fn dumped_with_a_miss() -> Vec<u8> {
+    let a = device(A);
+    state::note_missed_below_barrier(&a, 7).expect("miss");
+    snapshot(&a, 9).0
+}
+
+#[test]
+fn a_replace_takes_the_dumpers_miss_as_its_own() {
+    let pending = dumped_with_a_miss();
+    assert_eq!(
+        missed(&joined(&pending)),
+        Some(7),
+        "a joiner adopts the miss"
+    );
+
+    // A replace also drops a miss of the device's own: the cursor restarts at the snapshot's.
+    let b = device(B);
+    state::note_missed_below_barrier(&b, 12).expect("own miss");
+    restore_replace(&b, &mut &pending[..], NOW).expect("replace");
+    assert_eq!(missed(&b), Some(7));
+    let (clean, _) = snapshot(&device(C), 9);
+    restore_replace(&b, &mut &clean[..], NOW).expect("replace");
+    assert_eq!(missed(&b), None);
+}
+
+#[test]
+fn a_merge_records_the_dumpers_miss_past_the_local_cursor() {
+    let pending = dumped_with_a_miss();
+    let at = |cursor: i64, own: Option<u64>| {
+        let conn = device(B);
+        conn.execute("UPDATE sync_state SET cursor = ?1", [cursor])
+            .expect("cursor");
+        if let Some(own) = own {
+            state::note_missed_below_barrier(&conn, own).expect("own miss");
+        }
+        restore_merge(&conn, &mut &pending[..], NOW).expect("merge");
+        missed(&conn)
+    };
+    // Below the miss: the cursor jumps to 9 past an envelope the snapshot lacks.
+    assert_eq!(at(3, None), Some(7));
+    assert_eq!(at(6, None), Some(7));
+    // At or past it: this device dealt with that envelope itself.
+    assert_eq!(at(7, None), None);
+    assert_eq!(at(8, None), None);
+    // The newest miss is kept.
+    assert_eq!(at(3, Some(10)), Some(10));
+    assert_eq!(at(3, Some(5)), Some(7));
 }

@@ -196,6 +196,8 @@ fn heads_and_cursor_come_from_the_header() {
         barrier,
         seq,
         heads: header_heads,
+        barrier_seq,
+        missed_below_barrier,
     } = header
     else {
         unreachable!();
@@ -209,6 +211,8 @@ fn heads_and_cursor_come_from_the_header() {
         state::load(&a).expect("load").expect("row").barrier
     );
     assert_eq!(seq, 7);
+    assert_eq!(barrier_seq, None, "A never saw a barrier marker");
+    assert_eq!(missed_below_barrier, None, "A skipped nothing");
     assert_eq!(
         header_heads,
         vec![
@@ -326,6 +330,47 @@ fn a_snapshot_from_below_a_crossed_barrier_is_refused() {
     assert!(state::load(&fresh).expect("load").is_none());
 }
 
+/// An account saved by an older build leaves a disabled row with that build's barrier; joining
+/// on a build with a higher barrier still refuses a snapshot from below it.
+#[test]
+fn joining_from_a_stale_disabled_row_refuses_a_snapshot_below_the_barrier() {
+    use crate::services::sync::keys;
+    use crate::services::sync::registry::keys::barrier_number;
+
+    let a = rich_dumper();
+    let (bytes, _) = snapshot(&a, 1);
+    let mut stale = records(&bytes);
+    let Some(Record::Header { barrier, .. }) = stale.get_mut(1) else {
+        panic!("header second");
+    };
+    *barrier = barrier_number() - 1;
+    let stale = stream_of(&stale);
+    let old_build_row = || {
+        let conn = migrated();
+        keys::save_account(&conn, "https://relay.example.org", "4417938205561273")
+            .expect("account");
+        exec(&conn, "UPDATE sync_state SET barrier = barrier - 1");
+        conn
+    };
+
+    let b = old_build_row();
+    let error = join(&b, B, &mut &stale[..], NOW).expect_err("refused");
+    assert!(
+        matches!(&error, AppError::Validation(key) if key == "validation.syncSnapshotBelowBarrier"),
+        "{error:?}"
+    );
+    let row = state::load(&b).expect("load").expect("row");
+    assert!(!row.enabled, "the refused join changed nothing");
+    assert_eq!(row.barrier, barrier_number() - 1);
+
+    let c = old_build_row();
+    join(&c, C, &mut &bytes[..], NOW).expect("a snapshot at this build's barrier joins");
+    assert_eq!(
+        state::load(&c).expect("load").expect("row").barrier,
+        barrier_number()
+    );
+}
+
 #[test]
 fn malformed_streams_are_errors_not_panics() {
     let invalid = |result: Result<Option<Record>>| {
@@ -409,4 +454,80 @@ fn a_dump_refuses_while_rows_wait_to_be_pushed() {
     let stats = dump(&a, 1, &mut out).expect("dump");
     assert!(stats.rows > 0);
     assert!(!out.is_empty());
+}
+
+#[test]
+fn snapshot_header_carries_the_marker_to_a_joiner() {
+    let barrier_seq =
+        |conn: &Connection| state::load(conn).expect("load").expect("row").barrier_seq;
+    let header_seq = |bytes: &[u8]| {
+        records(bytes)
+            .into_iter()
+            .find_map(|r| match r {
+                Record::Header { barrier_seq, .. } => Some(barrier_seq),
+                _ => None,
+            })
+            .expect("header")
+    };
+    let a = device(A);
+    let (without, _) = snapshot(&a, 4);
+    assert_eq!(header_seq(&without), None);
+    assert!(!String::from_utf8_lossy(&without).contains("barrierSeq"));
+
+    state::set_barrier_seq(&a, Some(5)).expect("marker");
+    let (bytes, _) = snapshot(&a, 9);
+    assert_eq!(header_seq(&bytes), Some(5));
+    assert!(String::from_utf8_lossy(&bytes).contains(r#""barrierSeq":5"#));
+
+    // Replace adopts it.
+    assert_eq!(barrier_seq(&joined(&bytes)), Some(5));
+    // Merge keeps a local one, and takes the header's when it has none.
+    let kept = device(C);
+    state::set_barrier_seq(&kept, Some(3)).expect("local marker");
+    restore_merge(&kept, &mut &bytes[..], NOW).expect("merge");
+    assert_eq!(barrier_seq(&kept), Some(3));
+    let taken = device(D);
+    restore_merge(&taken, &mut &bytes[..], NOW).expect("merge");
+    assert_eq!(barrier_seq(&taken), Some(5));
+
+    // A marker of another barrier than this device's is not adopted, and replace drops the old.
+    let higher = device(A);
+    exec(
+        &higher,
+        "UPDATE sync_state SET barrier = barrier + 1, barrier_seq = 5",
+    );
+    let (other_barrier, _) = snapshot(&higher, 9);
+    assert_eq!(header_seq(&other_barrier), Some(5));
+    let replaced = device(B);
+    state::set_barrier_seq(&replaced, Some(3)).expect("local marker");
+    restore_replace(&replaced, &mut &other_barrier[..], NOW).expect("replace");
+    assert_eq!(barrier_seq(&replaced), None);
+    let merged = device(C);
+    restore_merge(&merged, &mut &other_barrier[..], NOW).expect("merge");
+    assert_eq!(barrier_seq(&merged), None);
+}
+
+#[test]
+fn the_header_carries_the_dumpers_pending_miss() {
+    let header_missed = |bytes: &[u8]| {
+        records(bytes)
+            .into_iter()
+            .find_map(|r| match r {
+                Record::Header {
+                    missed_below_barrier,
+                    ..
+                } => Some(missed_below_barrier),
+                _ => None,
+            })
+            .expect("header")
+    };
+    let a = device(A);
+    let (clean, _) = snapshot(&a, 4);
+    assert_eq!(header_missed(&clean), None);
+    assert!(!String::from_utf8_lossy(&clean).contains("missedBelowBarrier"));
+
+    state::note_missed_below_barrier(&a, 7).expect("miss");
+    let (pending, _) = snapshot(&a, 9);
+    assert_eq!(header_missed(&pending), Some(7));
+    assert!(String::from_utf8_lossy(&pending).contains(r#""missedBelowBarrier":7"#));
 }

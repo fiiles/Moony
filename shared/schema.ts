@@ -47,6 +47,80 @@ export interface BiometricStatus {
   supported: boolean;
 }
 
+// Device sync (Rust `models::sync`)
+/** Where sync stands on this device. */
+export type SyncPhase = 'off' | 'settingUp' | 'idle' | 'syncing' | 'paused' | 'error';
+
+/** Why sync is paused or stopped. */
+export type SyncProblem =
+  | 'captureBroken'
+  | 'vaultGone'
+  | 'lapsed'
+  | 'quotaExceeded'
+  | 'snapshotTooLarge'
+  | 'newerSchema'
+  | 'gap'
+  | 'undecryptable'
+  | 'invalidChain'
+  | 'missingParent'
+  | 'quarantined'
+  | 'offline'
+  | 'relayError'
+  | 'rateLimited'
+  | 'unauthorized'
+  | 'keyRotated'
+  | 'internal';
+
+/** The `sync-status-changed` payload. */
+export interface SyncStatus {
+  phase: SyncPhase;
+  problem: SyncProblem | null;
+  /** When a round last finished without a problem (unix seconds). */
+  lastSuccessAt: number | null;
+  /** Changed rows waiting in the outbox plus sealed envelopes waiting for the relay. */
+  pendingChanges: number;
+  /** Devices whose envelopes are held (quarantined). */
+  heldDevices: number;
+  /** Rows too large to send, from the last push. */
+  refusedRows: number;
+  /** The subscription's end, as the relay last reported it (unix seconds). */
+  paidUntil: number | null;
+  /** When the relay deletes the vault after a lapse: 90 days after `paidUntil`. */
+  deletesAt: number | null;
+  /** The developer tools are offered (debug build with sync on). */
+  devTools: boolean;
+}
+
+/** The subscription a checkout is for. */
+export type SyncPlan = 'monthly' | 'yearly';
+
+/** The sync account as setup shows it. */
+export interface SyncAccount {
+  /** The 16-digit account number. */
+  accountNumber: string;
+  active: boolean;
+  /** The subscription's end (unix seconds); `null` while the account has never been paid. */
+  paidUntil: number | null;
+}
+
+/**
+ * Where paying for the account happens: a payment page to open (https, on polar.sh), or a
+ * self-hosted relay that takes no payments (its operator adds the account number to the relay's
+ * `ALLOWED_ACCOUNTS`; setup then waits until the account is active).
+ */
+export type CheckoutTarget = { kind: 'open'; url: string } | { kind: 'selfHosted' };
+
+/** The Sync Recovery Kit. Holds the vault key: never log it or keep it longer than shown. */
+export interface RecoveryKit {
+  accountNumber: string;
+  /** The recovery code as 16 groups of five joined by `-`. */
+  recoveryCode: string;
+  /** The QR of the kit as SVG. */
+  qrSvg: string;
+  /** The relay address, only when it is not the default relay (a self-hosted one). */
+  relayUrl: string | null;
+}
+
 export interface MenuPreferences {
   loans: boolean;
   insurance: boolean;

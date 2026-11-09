@@ -1,19 +1,38 @@
 //! Device sync engine (phase 1): the registry, the hybrid logical clock, `sync_state` and the
 //! trigger capture installed at unlock, the journal that turns the outbox into changesets, and
 //! the merge of other devices' changes with the repairs after it, and the chain bookkeeping that
-//! judges every pulled envelope, and the snapshots a joining or lagging device restores.
+//! judges every pulled envelope, and the snapshots a joining or lagging device restores. Phase 2
+//! adds the vault's credentials and this device's key pair and `sync_devices` row, and the
+//! engine that pulls from the relay, and the restore marker and device binding that make a copied
+//! or restored database re-join at unlock, and joining a vault by replace with the repair of a
+//! capture-broken profile (`join`), and first-device setup, turning sync off and deleting the
+//! synced data (`setup`).
 
+pub mod binding;
 pub mod capture;
 pub mod chain;
 pub mod changeset;
 #[cfg(test)]
 mod convergence;
+pub mod devices;
+pub mod engine;
+pub mod envelope;
+pub mod error;
+pub mod feature;
 pub mod hlc;
+pub mod join;
 pub mod journal;
+pub mod keys;
 pub mod merge;
 pub mod natural_id;
+pub mod recovery;
 pub mod registry;
+pub mod relay;
+// `dev_grant` exists only in debug builds (ruling P18), so the e2e tests do too.
+#[cfg(all(test, debug_assertions))]
+mod relay_e2e;
 pub mod repair;
+pub mod setup;
 pub mod snapshot;
 pub mod state;
 
@@ -26,16 +45,33 @@ use rusqlite::Connection;
 
 use crate::error::Result;
 
+/// The `last_error` of a profile whose change capture could not be installed: a fixed text, never
+/// the error's own (it may name a path).
+pub const CAPTURE_BROKEN_REASON: &str = "change capture could not be installed";
+
 /// Called by `Database::open_with_key` after the migrations and before the self-heals. A profile
 /// without sync costs one `SELECT` and gets nothing installed (G5). Never fails: an error is
 /// logged and recorded in `sync_state`, and the profile opens without capture.
 pub fn on_open(conn: &Connection) {
     if let Err(e) = open_capture(conn) {
         log::warn!("[SYNC] Change capture is off for this session: {e}");
-        if let Err(record) = state::record_error(conn, &e.to_string()) {
+        if let Err(record) = state::record_error(conn, CAPTURE_BROKEN_REASON) {
             log::warn!("[SYNC] Could not record the capture error: {record}");
         }
+        // Only an enabled profile has lost anything; the row is a no-op update otherwise.
+        let enabled = state::load(conn).ok().flatten().is_some_and(|s| s.enabled);
+        if enabled {
+            if let Err(record) = state::mark_capture_broken(conn, now()) {
+                log::warn!("[SYNC] Could not mark the capture as broken: {record}");
+            }
+        }
     }
+}
+
+fn now() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_secs() as i64)
 }
 
 fn open_capture(conn: &Connection) -> Result<()> {

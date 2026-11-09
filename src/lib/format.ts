@@ -169,14 +169,12 @@ export function createFormatters(locale: string, mainCurrency: string | undefine
 
   const dateTime: Formatters['dateTime'] = (unixSeconds, opts = {}) => {
     if (!Number.isFinite(new Date(unixSeconds * 1000).getTime())) return '';
-    return dateFormat(locale, {
-      year: 'numeric',
-      month: 'numeric',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-      ...opts,
-    }).format(new Date(unixSeconds * 1000));
+    // Intl refuses dateStyle/timeStyle next to component options, so a style replaces the defaults.
+    const styled = opts.dateStyle !== undefined || opts.timeStyle !== undefined;
+    const base: Intl.DateTimeFormatOptions = styled
+      ? {}
+      : { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+    return dateFormat(locale, { ...base, ...opts }).format(new Date(unixSeconds * 1000));
   };
 
   const time: Formatters['time'] = (unixSeconds, opts = {}) => {

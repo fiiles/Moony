@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { SETTINGS_SECTIONS, resolveSettingsSection } from './settings-sections';
+import {
+  SETTINGS_SECTIONS,
+  resolveSettingsSection,
+  visibleSettingsSections,
+} from './settings-sections';
 
 describe('SETTINGS_SECTIONS', () => {
   it('lists the sub-pages in display order with unique paths', () => {
@@ -8,6 +12,7 @@ describe('SETTINGS_SECTIONS', () => {
       'security',
       'data',
       'integrations',
+      'sync',
       'categorization',
       'account',
     ]);
@@ -16,6 +21,7 @@ describe('SETTINGS_SECTIONS', () => {
       '/settings/security',
       '/settings/data',
       '/settings/integrations',
+      '/settings/sync',
       '/settings/categorization',
       '/settings/account',
     ]);
@@ -29,7 +35,7 @@ describe('SETTINGS_SECTIONS', () => {
 describe('resolveSettingsSection', () => {
   it('maps every section path to its section', () => {
     for (const section of SETTINGS_SECTIONS) {
-      expect(resolveSettingsSection(section.path)).toBe(section.id);
+      expect(resolveSettingsSection(section.path, true)).toBe(section.id);
     }
   });
 
@@ -49,5 +55,27 @@ describe('resolveSettingsSection', () => {
     expect(resolveSettingsSection('/settings/integrations/')).toBe('integrations');
     expect(resolveSettingsSection('/settings/integrations#mcp')).toBe('integrations');
     expect(resolveSettingsSection('/settings/data?x=1')).toBe('data');
+  });
+});
+
+describe('sync section', () => {
+  it('lists the sync section only when the feature is on', () => {
+    expect(visibleSettingsSections(false).map((s) => s.id)).not.toContain('sync');
+    const on = visibleSettingsSections(true).map((s) => s.id);
+    expect(on).toEqual([
+      'general',
+      'security',
+      'data',
+      'integrations',
+      'sync',
+      'categorization',
+      'account',
+    ]);
+  });
+
+  it('resolves /settings/sync to general while the feature is off', () => {
+    expect(resolveSettingsSection('/settings/sync')).toBe('general');
+    expect(resolveSettingsSection('/settings/sync', false)).toBe('general');
+    expect(resolveSettingsSection('/settings/sync', true)).toBe('sync');
   });
 });

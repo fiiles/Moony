@@ -147,7 +147,7 @@ order, the device or the time; order every selection by primary key.
 `docs/specs/2026-11-06-device-sync-client-design.md` §7.2). A rewrite of "what is there" on one
 device and an offline edit on another end differently depending on the order they meet.
 
-## 12. Sync registry: recomputed columns and migration seeds
+## 12. Sync registry, migration seeds and network code
 
 - **A new recomputed column is registered** in `services/sync/registry/tables.rs` with its class:
   `recomputed` (every device derives it from synced rows) or `recomputed_or_typed` (derived while
@@ -163,5 +163,14 @@ device and an offline edit on another end differently depending on the order the
   differs per device diverges silently and permanently.
 - **Every migration gets a class** in `registry::keys::MIGRATION_CLASSES` (additive or barrier;
   `docs/playbooks/add-db-migration.md` step 8).
+- **Network code of sync goes through `services/sync/relay/http.rs`** (the `Relay` trait; tests
+  use `relay/fake.rs`). Nothing else in sync builds a request, so the address checks, the
+  disabled redirects, the body caps and the URL-free errors hold everywhere.
+- **The engine never holds the session mutex across a network call.** Each step takes the
+  connection for one read or write (`ConnAccess::with_conn`) and releases it before the relay is
+  asked; what must span the network (one round per profile) uses the async round lock.
+- **Sync errors travel as `SyncError` until the command boundary**, so the engine can act on the
+  class (back off, pause, show a problem); `commands/sync.rs` turns them into `AppError` keys.
 
-**Why:** ADR 0024; the registry is what capture, the journal, the merge and snapshots read.
+**Why:** ADR 0024 (the registry is what capture, the journal, the merge and snapshots read) and
+ADR 0025 (the relay client).

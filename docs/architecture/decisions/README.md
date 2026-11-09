@@ -32,6 +32,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
 | [0022](0022-stock-dividends-in-their-own-table.md) | Stock dividends: Yahoo events and manual payouts in their own tables | 2026-10-30 | Accepted |
 | [0023](0023-stock-performance-follows-gips.md) | Stock performance follows GIPS: daily time-weighted return and IRR | 2026-11-05 | Accepted |
 | [0024](0024-device-sync-capture-clocks-merge.md) | Device sync: trigger capture, hybrid clocks and a per-column merge | 2026-11-07 | Accepted |
+| [0025](0025-device-sync-relay-client.md) | Device sync: the relay client, the device binding and the Recovery Kit | 2026-11-09 | Accepted; builds on 0024 |
 
 ## Rules
 
@@ -39,7 +40,7 @@ and what it costs. ADRs are dated point-in-time records — facts in them
   different. To change a decision, write a **new ADR** with the next number
   that links back to the one it supersedes. The only edit ever made to an old
   ADR is flipping its `## Status` to `Superseded by [NNNN](NNNN-....md)`.
-- Numbering is sequential and zero-padded; the next free number is `0025`.
+- Numbering is sequential and zero-padded; the next free number is `0026`.
 - Filename: `NNNN-short-kebab-title.md`. Add every new ADR to the index table
   above.
 - Keep each ADR to one page or less.

@@ -180,6 +180,12 @@ impl Database {
         Ok(())
     }
 
+    /// Which session is open: advances at every open and close (lock), so a value read while one
+    /// profile session was open never matches a later session.
+    pub(crate) fn session_epoch(&self) -> u64 {
+        self.session_epoch.load(Ordering::SeqCst)
+    }
+
     /// Close the database connection (lock the app)
     pub fn close(&self) {
         let mut guard = self

@@ -185,7 +185,8 @@ pub async fn unlock(
 
 /// What follows every unlock that opens the database, the password and the biometric one alike:
 /// the MCP server starts if the profile has it on, old plain attachment files move into the
-/// encrypted store, and the MCP refresh resumes. `confirm_recover` does not share it: it never
+/// encrypted store, the MCP refresh resumes, and the sync engine starts (a profile with sync on,
+/// while the flag allows it). `confirm_recover` does not share it: it never
 /// started the MCP server, and this change leaves its behaviour alone.
 pub(crate) async fn after_unlock(
     app: &AppHandle,
@@ -205,6 +206,7 @@ pub(crate) async fn after_unlock(
     // Plain attachment files from earlier versions move into the encrypted store (D4).
     crate::commands::attachments::spawn_conversion(app);
     crate::commands::mcp_refresh::resume(app.clone(), db.clone());
+    crate::commands::sync::start_engine(app, db);
 }
 
 /// Phase 1: Prepare recovery - verifies recovery key, generates new one
@@ -239,7 +241,8 @@ pub async fn confirm_recover(
     )?;
     // Plain attachment files from earlier versions move into the encrypted store (D4).
     crate::commands::attachments::spawn_conversion(&app);
-    crate::commands::mcp_refresh::resume(app, (*db).clone());
+    crate::commands::mcp_refresh::resume(app.clone(), (*db).clone());
+    crate::commands::sync::start_engine(&app, &db);
     Ok(profile)
 }
 
@@ -252,6 +255,9 @@ pub async fn logout(
     local_api: State<'_, LocalApiServer>,
 ) -> Result<()> {
     local_api.stop().await;
+    crate::commands::sync::stop_engine(&app);
+    crate::commands::sync::forget_kit_window();
+    crate::commands::sync::clear_copied_code(&app);
     auth::logout(&db, &session);
     // Decrypted copies opened in other apps go with the session (D3).
     crate::commands::attachments::wipe_open_copies(&app);
@@ -326,6 +332,13 @@ pub async fn delete_account(
     session: State<'_, SessionKey>,
 ) -> Result<()> {
     let db_path = get_db_path(&app)?;
+    // The engine stops first, so no round holds the round lock through the vault deletion's
+    // budget; then the synced data goes too, while the profile is open and its sync row still on
+    // (ruling P8). A failure never stops the deletion.
+    crate::commands::sync::stop_engine(&app);
+    crate::commands::sync::forget_kit_window();
+    crate::commands::sync::clear_copied_code(&app);
+    crate::commands::sync::delete_vault_with_account(&db).await;
     crate::commands::attachments::wipe_open_copies(&app);
     let deleted = auth::delete_account(&db, &session, &db_path);
     // The marker went with the account files, so the key stored for biometric unlock goes too.

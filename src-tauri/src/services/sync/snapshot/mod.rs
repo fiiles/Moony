@@ -29,6 +29,7 @@ use rusqlite::types::Value;
 use rusqlite::{params, params_from_iter, Connection, OptionalExtension};
 
 use super::capture::{self, triggers::pk_expr, Mode, CLOCK_UPSERT};
+use super::chain;
 use super::changeset::{DevTable, RowChange, RowKey, SqlValue};
 use super::hlc::{Clock, DeviceId, Observation};
 use super::in_savepoint;
@@ -53,9 +54,11 @@ pub struct DumpStats {
     pub max_hlc: u64,
 }
 
-/// Writes the snapshot of this profile at relay sequence `seq` (the cursor applied, §8):
-/// `devs`, `header`, the synced rows (live rows parents first, then tombstone-only keys children
-/// first), the Seed rows, `end`.
+/// Writes the snapshot of this profile at relay sequence `seq` (the cursor applied, §8, rulings
+/// P4 and P14): `devs`, `header` (with the barrier marker's relay sequence when this device has
+/// seen it, and its pending below-barrier miss, if any), the synced rows (live rows parents
+/// first, then tombstone-only keys children first), the Seed rows, `end`. Call with exclusive use
+/// of the connection (the engine holds the session mutex for the whole dump).
 ///
 /// Only a profile with nothing waiting to go out may be dumped: an empty `sync_unsent` (§8) and,
 /// by ruling T18e, an empty `sync_outbox`. A snapshot carrying rows its source has not pushed
@@ -86,6 +89,8 @@ pub fn dump(conn: &Connection, seq: u64, out: &mut impl Write) -> Result<DumpSta
         barrier: sync.barrier,
         seq,
         heads: heads_of(conn, &sync)?,
+        barrier_seq: sync.barrier_seq,
+        missed_below_barrier: sync.missed_below_barrier,
     };
 
     // The `devs` record goes first but is known only once every row is encoded.
@@ -130,8 +135,10 @@ pub struct RestoreReport {
 
 /// A device joins the vault from a snapshot, in the order of ruling R4: its `sync_state` row,
 /// the restore by replace (nothing is clocked or queued), then capture, whose clock starts above
-/// every restored clock. The rule packs are not rewritten: they come from the vault. One
-/// savepoint: a refused or broken stream leaves the profile as it was.
+/// every restored clock. The rule packs are not rewritten: they come from the vault. The joiner
+/// starts at its barrier, so it needs no barrier marker (`state::note_starting_barrier`). One
+/// savepoint: a refused or broken stream leaves the profile as it was. Joining goes through
+/// `binding::join`, which clears a stale restore marker first.
 pub fn join(
     conn: &Connection,
     device: DeviceId,
@@ -143,6 +150,7 @@ pub fn join(
         state::ensure_row(conn, device)?;
         let report = replace(conn, snapshot, now)?;
         capture::install(conn, device)?;
+        state::note_starting_barrier(conn)?;
         Ok(report)
     })
 }
@@ -185,7 +193,9 @@ pub fn restore_merge(conn: &Connection, input: &mut impl Read, now: i64) -> Resu
         match merge::merge_rows(conn, &snapshot.rows, now)? {
             Outcome::Applied(applied) => report.warnings.extend(applied.warnings),
             Outcome::Stopped(reason) => {
-                log::warn!("[SYNC] A snapshot did not merge: {reason:?}");
+                // The reason names a row key: only at `debug`.
+                log::debug!("[SYNC] A snapshot did not merge: {reason:?}");
+                log::warn!("[SYNC] A snapshot did not merge");
                 return Err(invalid());
             }
         }
@@ -269,8 +279,9 @@ fn admissible(conn: &Connection, snapshot: &Snapshot) -> Result<SyncState> {
     Ok(sync)
 }
 
-/// Seeds, heads (with their quarantine) and the cursor and snapshot bookkeeping, shared by both
-/// restores. Replacing sets them; merging never moves them back.
+/// Seeds, heads (with their quarantine), the cursor and snapshot bookkeeping, the barrier
+/// marker and the below-barrier miss, shared by both restores. Replacing sets them; merging never
+/// moves them back.
 fn finish(
     conn: &Connection,
     snapshot: &Snapshot,
@@ -297,13 +308,53 @@ fn finish(
         ])?;
     }
     let sql = if replacing {
-        "UPDATE sync_state SET cursor = ?1, snapshot_seq = ?1, snapshot_hlc = ?2 WHERE id = 1"
+        "UPDATE sync_state SET cursor = ?1, snapshot_seq = ?1, snapshot_hlc = ?2, \
+           snapshot_barrier = MAX(snapshot_barrier, ?3) WHERE id = 1"
     } else {
         "UPDATE sync_state SET cursor = MAX(cursor, ?1), \
            snapshot_seq = MAX(COALESCE(snapshot_seq, 0), ?1), \
-           snapshot_hlc = MAX(snapshot_hlc, ?2) WHERE id = 1"
+           snapshot_hlc = MAX(snapshot_hlc, ?2), \
+           snapshot_barrier = MAX(snapshot_barrier, ?3) WHERE id = 1"
     };
-    conn.execute(sql, params![sql_int(snapshot.seq)?, sql_int(max_hlc)?])?;
+    // A restored snapshot at a barrier is one the vault already holds there (migration 033).
+    conn.execute(
+        sql,
+        params![sql_int(snapshot.seq)?, sql_int(max_hlc)?, snapshot.barrier],
+    )?;
+    // The marker is a place in relay order, the same on every device, but only for the barrier
+    // it marks. Replacing adopts it (or none); merging keeps a marker already found here.
+    let marker = snapshot
+        .barrier_seq
+        .filter(|_| snapshot.barrier == sync.barrier);
+    if replacing || sync.barrier_seq.is_none() {
+        state::set_barrier_seq(conn, marker)?;
+    }
+    // The miss (rulings T8-2, T8-6, T8-7). Replacing restarts this device at the snapshot's
+    // cursor, so its miss is the dumper's: the rows of what the dumper skipped are missing here
+    // too, and anything this device skipped itself it meets again above the new cursor.
+    if replacing {
+        state::clear_missed_below_barrier(conn)?;
+        if let Some(missed) = snapshot.missed_below_barrier {
+            state::note_missed_below_barrier(conn, missed)?;
+        }
+        return Ok(());
+    }
+    // Merging heals this device's miss only with a snapshot from a clean dumper (no pending miss
+    // of its own, so it applied what this device skipped), dumped at this device's barrier or
+    // later and at or past every skipped position (T8-6).
+    if chain::snapshot_heals_missed(
+        sync,
+        snapshot.barrier,
+        snapshot.seq,
+        snapshot.missed_below_barrier,
+    ) {
+        state::clear_missed_below_barrier(conn)?;
+    }
+    // A dumper's own miss above this device's cursor is now this device's too: the cursor moves
+    // past that envelope and the snapshot lacks its rows (T8-7). The newest miss is kept.
+    if let Some(missed) = snapshot.missed_below_barrier.filter(|m| sync.cursor < *m) {
+        state::note_missed_below_barrier(conn, missed)?;
+    }
     Ok(())
 }
 

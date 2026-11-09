@@ -6,6 +6,7 @@
     "security": "Sicherheit",
     "data": "Daten und Sicherungen",
     "integrations": "KI-Assistent",
+    "sync": "Synchronisierung",
     "categorization": "Kategorisierung",
     "account": "Konto",
     "description": {
@@ -13,6 +14,7 @@
       "security": "Passwort, automatische Sperre und App-Updates.",
       "data": "Wo Ihre Daten liegen und wie Sie eine Kopie davon aufbewahren.",
       "integrations": "Der lokale MCP-Server für KI-Assistenten.",
+      "sync": "Hält Ihre Geräte auf dem gleichen Stand, Ende-zu-Ende-verschlüsselt.",
       "categorization": "Regelpakete, Kategorien und Ihre eigenen Kategorisierungsregeln.",
       "account": "Ihre Daten von diesem Computer löschen."
     }
@@ -117,7 +119,9 @@
     "confirmLabel": "Geben Sie zur Bestätigung {{word}} ein",
     "deleteAll": "Alle Daten löschen",
     "deleteAllHint": "Entfernt die Datenbank, die Schlüsseldateien und die Anhänge auf diesem Computer. Kopien neben der Datenbank (moony.db.bak-…, pre-restore-…) bleiben im Datenordner (Daten und Sicherungen → Ordner öffnen), ebenso außerhalb der App gespeicherte Sicherungen.",
-    "deleteButton": "Daten löschen…"
+    "deleteButton": "Daten löschen…",
+    "syncDeleted": "Synchronisierte Daten auf dem Synchronisierungsserver werden ebenfalls gelöscht, sodass Ihre anderen Geräte nicht mehr synchronisieren.",
+    "confirmDescriptionSynced": "Diese Aktion lässt sich nicht rückgängig machen. Sie löscht die Datenbank, die Schlüsseldateien und die Anhänge dauerhaft von diesem Gerät. Kopien, die Moony neben der Datenbank ablegt (moony.db.bak-…, pre-restore-…), bleiben im Datenordner; Einstellungen → Daten und Sicherungen → Ordner öffnen führt dorthin."
   },
   "toast": {
     "profileUpdated": "Profil aktualisiert",

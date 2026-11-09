@@ -1,0 +1,197 @@
+{
+  "title": "Synchronizace mezi zařízeními",
+  "description": "Vaše data, koncově šifrovaná, drží krok mezi vašimi zařízeními.",
+  "indicator": {
+    "synced": "Synchronizováno",
+    "syncing": "Synchronizuji…",
+    "paused": "Synchronizace pozastavena",
+    "error": "Chyba synchronizace",
+    "offline": "Offline"
+  },
+  "status": {
+    "phase": {
+      "off": "Synchronizace je vypnutá",
+      "settingUp": "Nastavuje se synchronizace",
+      "idle": "Vše aktuální",
+      "syncing": "Synchronizuji…",
+      "paused": "Synchronizace je pozastavená",
+      "error": "Synchronizace se zastavila"
+    },
+    "problem": {
+      "captureBroken": "Sledování změn na tomto zařízení je poškozené, proto se synchronizace zastavila. Lze ho opravit.",
+      "vaultGone": "Synchronizovaná data byla ze synchronizačního serveru smazána.",
+      "lapsed": "Předplatné skončilo, synchronizace je pozastavená.",
+      "quotaExceeded": "Synchronizovaná data překračují limit úložiště.",
+      "snapshotTooLarge": "Data jsou na synchronizaci příliš velká.",
+      "newerSchema": "Jiné zařízení používá novější verzi Moony. Pro pokračování aplikaci aktualizujte.",
+      "gap": "Historie synchronizace tohoto zařízení je nekonzistentní. Synchronizujte toto zařízení znovu.",
+      "undecryptable": "Změny z jiného zařízení se nepodařilo dešifrovat.",
+      "invalidChain": "Změny z jiného zařízení neprošly ověřením a jsou zadržené.",
+      "missingParent": "Změnám z jiného zařízení chybí dřívější kroky a jsou zadržené.",
+      "quarantined": "Změny z některých zařízení jsou z bezpečnostních důvodů zadržené.",
+      "offline": "Synchronizační server není dostupný. Synchronizace se obnoví, jakmile bude zpět.",
+      "relayError": "Synchronizační server odpověděl chybou. Moony to zkusí znovu.",
+      "rateLimited": "Synchronizační server požádal Moony o zpomalení. Moony to brzy zkusí znovu.",
+      "unauthorized": "Synchronizační server toto zařízení nepřijal. Může být potřeba synchronizaci nastavit znovu.",
+      "keyRotated": "Obnovovací klíč byl změněn na jiném zařízení. Nastavte synchronizaci na tomto zařízení znovu.",
+      "internal": "Synchronizace se zastavila kvůli vnitřní chybě."
+    },
+    "lastSynced": "Naposledy synchronizováno {{date}}",
+    "neverSynced": "Zatím nesynchronizováno",
+    "pending": "Čeká na odeslání: {{number}}",
+    "subscription": "Předplatné",
+    "selfHosted": "Vlastní (self-hosted) server",
+    "paidUntil": "Zaplaceno do {{date}}",
+    "syncNow": "Synchronizovat",
+    "showKit": "Zobrazit Záchrannou sadu"
+  },
+  "intro": {
+    "description": "Udržujte data synchronizovaná na všech svých zařízeních. Jsou koncově šifrovaná: synchronizační server ukládá jen data, která nepřečte.",
+    "privacy": "Vaše data neopustí zařízení nešifrovaná.",
+    "start": "Nastavit synchronizaci",
+    "resume": "Pokračovat v nastavení"
+  },
+  "setup": {
+    "title": "Nastavit synchronizaci",
+    "step": "Krok {{current}} ze {{total}}",
+    "cancel": "Zrušit",
+    "account": {
+      "description": "Synchronizace potřebuje synchronizační účet. Vytvořte ho a získáte jeho číslo.",
+      "number": "Číslo účtu",
+      "explain": "Toto číslo je váš synchronizační účet. Kdo ho zná, může ho zaplatit a vidět, jestli je zaplacený. Vaše data neotevře.",
+      "create": "Vytvořit účet",
+      "continue": "Pokračovat",
+      "copy": "Kopírovat",
+      "copied": "Zkopírováno"
+    },
+    "advanced": {
+      "toggle": "Upřesnit",
+      "label": "Adresa synchronizačního serveru",
+      "placeholder": "https://sync.moonyfinance.com",
+      "hint": "Nechte prázdné pro synchronizační službu Moony. Vyplňte jen tehdy, když provozujete vlastní synchronizační server."
+    },
+    "pay": {
+      "description": "Vyberte tarif. Platba se otevře v prohlížeči.",
+      "plan": "Tarif",
+      "monthly": "Měsíčně",
+      "yearly": "Ročně",
+      "continue": "Pokračovat k platbě",
+      "waiting": "Čekám na platbu. Okno se posune dál, jakmile dorazí.",
+      "grantTest": "Udělit zkušební předplatné",
+      "selfHosted": "Toto je váš vlastní synchronizační server, takže se nic neplatí. Přidejte číslo účtu výše do ALLOWED_ACCOUNTS na serveru a server restartujte.",
+      "selfHostedWaiting": "Čekám, až server účet přijme. Okno se posune dál, jakmile se tak stane."
+    },
+    "kit": {
+      "description": "Uložte si Záchrannou sadu synchronizace. Je to jediný způsob, jak získat synchronizovaná data zpět, když přijdete o všechna zařízení.",
+      "preparing": "Připravuji sadu…",
+      "savePage": "Uložit jako stránku…",
+      "saveText": "Uložit jako text…",
+      "copyCode": "Zkopírovat kód",
+      "copied": "Zkopírováno",
+      "clipboardHint": "Po vložení kódu vymažte schránku.",
+      "saved": "Sada uložena",
+      "confirm": "Uložil(a) jsem si Záchrannou sadu synchronizace",
+      "differs": "Záchranná sada synchronizace není obnovovací klíč zařízení. Jsou to dvě různé věci a potřebujete obě.",
+      "saveFirst": "Nejdřív sadu uložte nebo zkopírujte.",
+      "file": {
+        "title": "Záchranná sada synchronizace Moony",
+        "intro": "Uschovejte tuto stránku na bezpečném místě mimo svá zařízení. Kdo ji má, přečte vaše synchronizovaná data.",
+        "accountLabel": "Synchronizační účet",
+        "accountNote": "Určuje váš synchronizační účet. Data neotevře.",
+        "codeLabel": "Obnovovací kód",
+        "codeNote": "Otevře vaše synchronizovaná data. Udržujte ho v tajnosti.",
+        "qrLabel": "Naskenujte pro obnovení v telefonu",
+        "created": "Vytvořeno {{date}}",
+        "relayLabel": "Synchronizační server",
+        "relayNote": "Potřebný k obnově z této sady"
+      },
+      "failed": "Přípravu sady se nepodařilo dokončit.",
+      "retry": "Zkusit znovu"
+    },
+    "device": {
+      "description": "Pojmenujte toto zařízení, abyste ho odlišili od ostatních.",
+      "name": "Název zařízení",
+      "turnOn": "Zapnout synchronizaci",
+      "success": "Synchronizace zapnuta"
+    },
+    "defaultName": {
+      "macos": "Mac",
+      "windows": "Windows PC",
+      "linux": "Linux PC"
+    }
+  },
+  "alert": {
+    "lapsed": {
+      "title": "Synchronizace pozastavena – obnovte předplatné",
+      "deletes": "Synchronizovaná data budou smazána {{date}}.",
+      "selfHosted": "Požádejte provozovatele svého synchronizačního serveru o obnovení přístupu.",
+      "renew": "Obnovit"
+    },
+    "vaultGone": {
+      "text": "Vaše synchronizovaná data na serveru zmizela. Vypnout synchronizaci na tomto zařízení?",
+      "turnOff": "Vypnout synchronizaci",
+      "retry": "Zkusit znovu"
+    },
+    "newerSchema": "Aktualizujte Moony na tomto zařízení, aby synchronizace mohla pokračovat"
+  },
+  "renew": {
+    "title": "Obnovit synchronizaci",
+    "opened": "Platba byla otevřena v prohlížeči."
+  },
+  "repair": {
+    "button": "Opravit toto zařízení",
+    "title": "Opravit toto zařízení?",
+    "description": "Moony uloží zálohu dat tohoto zařízení, odešle změny, které ještě čekají, a pak data tohoto zařízení nahradí synchronizovanými daty. Pokud nelze odeslat všechny změny, nic se nenahradí.",
+    "confirm": "Opravit",
+    "success": "Zařízení opraveno. Záloha uložena jako {{file}}."
+  },
+  "resync": {
+    "button": "Synchronizovat toto zařízení znovu",
+    "hint": "Nahradí data tohoto zařízení synchronizovanými daty. Použijte to, pokud je historie synchronizace tohoto zařízení nekonzistentní.",
+    "title": "Synchronizovat toto zařízení znovu?",
+    "description": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Nejdřív se uloží záloha. Změny, které toto zařízení ještě neodeslalo, zůstanou jen v této záloze.",
+    "pendingChanges_one": "{{count}} změna na tomto zařízení ještě nebyla odeslána. Zůstane jen v záloze.",
+    "pendingChanges_few": "{{count}} změny na tomto zařízení ještě nebyly odeslány. Zůstanou jen v záloze.",
+    "pendingChanges_many": "{{count}} změny na tomto zařízení ještě nebylo odesláno. Zůstanou jen v záloze.",
+    "pendingChanges_other": "{{count}} změn na tomto zařízení ještě nebylo odesláno. Zůstanou jen v záloze.",
+    "confirm": "Synchronizovat znovu",
+    "success": "Zařízení znovu synchronizováno. Záloha uložena jako {{file}}."
+  },
+  "turnOff": {
+    "button": "Vypnout synchronizaci na tomto zařízení",
+    "hint": "Místní data zůstanou. Ostatní zařízení se synchronizují dál.",
+    "title": "Vypnout synchronizaci na tomto zařízení?",
+    "description": "Místní data zůstanou. Ostatní zařízení se synchronizují dál. Když synchronizaci později zapnete znovu, nastavíte ji od začátku.",
+    "pendingChanges_one": "{{count}} změna na tomto zařízení ještě nebyla odeslána. Už se neodešle.",
+    "pendingChanges_few": "{{count}} změny na tomto zařízení ještě nebyly odeslány. Už se neodešlou.",
+    "pendingChanges_many": "{{count}} změny na tomto zařízení ještě nebylo odesláno. Už se neodešlou.",
+    "pendingChanges_other": "{{count}} změn na tomto zařízení ještě nebylo odesláno. Už se neodešlou.",
+    "confirm": "Vypnout synchronizaci",
+    "success": "Synchronizace vypnuta"
+  },
+  "delete": {
+    "button": "Smazat synchronizovaná data",
+    "hint": "Smaže synchronizovaná data ze synchronizačního serveru pro všechna zařízení.",
+    "title": "Smazat synchronizovaná data?",
+    "description": "Tím se na synchronizačním serveru smažou synchronizovaná data pro všechna zařízení. Místní data na každém zařízení zůstanou.",
+    "confirm": "Smazat synchronizovaná data",
+    "success": "Synchronizovaná data smazána"
+  },
+  "danger": {
+    "title": "Vypnutí a smazání",
+    "description": "Zastavte synchronizaci na tomto zařízení nebo smažte, co synchronizační server uchovává."
+  },
+  "password": {
+    "label": "Heslo zařízení"
+  },
+  "showKit": {
+    "title": "Záchranná sada synchronizace",
+    "description": "Zadejte heslo zařízení, aby se sada zobrazila.",
+    "again": "Zadejte heslo znovu, aby šlo kód zkopírovat.",
+    "confirm": "Zobrazit sadu"
+  },
+  "busy": {
+    "title": "Nahrazuji data tohoto zařízení…",
+    "description": "Nezavírejte Moony."
+  }
+}

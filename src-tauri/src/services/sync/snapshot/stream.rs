@@ -41,6 +41,12 @@ pub enum Record {
         barrier: u32,
         seq: u64,
         heads: Vec<Head>,
+        /// The relay sequence of the barrier marker the dumping device saw (`sync_state.barrier_seq`);
+        /// `"barrierSeq"`, omitted when `None`.
+        barrier_seq: Option<u64>,
+        /// The dumping device's pending below-barrier miss (`sync_state.missed_below_barrier`):
+        /// such a snapshot heals nobody (ruling T8-6). `"missedBelowBarrier"`, omitted when `None`.
+        missed_below_barrier: Option<u64>,
     },
     Devices(Vec<DeviceId>),
     /// Live rows and tombstone-only changes alike.
@@ -62,6 +68,8 @@ pub(super) struct Snapshot {
     pub barrier: u32,
     pub seq: u64,
     pub heads: Vec<Head>,
+    pub barrier_seq: Option<u64>,
+    pub missed_below_barrier: Option<u64>,
     pub rows: Vec<RowChange>,
     pub seeds: Vec<(String, BTreeMap<String, SqlValue>)>,
 }
@@ -84,6 +92,8 @@ pub(super) fn encode(record: &Record, devs: &mut DevTable) -> Json {
             barrier,
             seq,
             heads,
+            barrier_seq,
+            missed_below_barrier,
         } => {
             out.insert("r".into(), json!("header"));
             out.insert("schema".into(), json!(schema));
@@ -101,6 +111,12 @@ pub(super) fn encode(record: &Record, devs: &mut DevTable) -> Json {
                 })
                 .collect();
             out.insert("heads".into(), Json::Array(heads));
+            if let Some(barrier_seq) = barrier_seq {
+                out.insert("barrierSeq".into(), json!(barrier_seq));
+            }
+            if let Some(missed) = missed_below_barrier {
+                out.insert("missedBelowBarrier".into(), json!(missed));
+            }
         }
         Record::Row(row) => {
             out.insert("r".into(), json!("row"));
@@ -197,6 +213,14 @@ fn decode(value: &Json, devs: &[DeviceId]) -> Result<Record> {
                     .iter()
                     .map(decode_head)
                     .collect::<Result<_>>()?,
+                barrier_seq: o
+                    .get("barrierSeq")
+                    .map(|v| v.as_u64().ok_or_else(invalid))
+                    .transpose()?,
+                missed_below_barrier: o
+                    .get("missedBelowBarrier")
+                    .map(|v| v.as_u64().ok_or_else(invalid))
+                    .transpose()?,
             },
             "row" => Record::Row(decode_row(value, devs).map_err(|_| invalid())?),
             "seed" => {
@@ -256,6 +280,8 @@ pub(super) fn read_all(input: &mut impl Read) -> Result<Snapshot> {
         barrier,
         seq,
         heads,
+        barrier_seq,
+        missed_below_barrier,
     }) = read_record(input, &devs)?
     else {
         return Err(invalid());
@@ -281,6 +307,8 @@ pub(super) fn read_all(input: &mut impl Read) -> Result<Snapshot> {
         barrier,
         seq,
         heads,
+        barrier_seq,
+        missed_below_barrier,
         rows,
         seeds,
     })

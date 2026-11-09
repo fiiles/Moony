@@ -6,6 +6,8 @@ use tauri::{
     AppHandle, Runtime,
 };
 
+use zeroize::Zeroizing;
+
 use crate::{KeychainError, Result, Status};
 
 #[cfg(target_os = "android")]
@@ -130,5 +132,23 @@ impl<R: Runtime> Keychain<R> {
     /// Whether biometry-protected storage is usable now, and which biometry the device has.
     pub fn status(&self) -> Result<Status> {
         self.0.run_mobile_plugin("status", ()).map_err(Into::into)
+    }
+
+    /// Device sync's binding and clearing clipboard arrive on the phones in a later phase; until
+    /// then they are unsupported, like on Linux.
+    pub fn bind_seal(&self, _secret: &[u8; 32]) -> Result<Vec<u8>> {
+        Err(KeychainError::Unsupported)
+    }
+
+    pub fn bind_open(&self, _blob: &[u8]) -> Result<Zeroizing<[u8; 32]>> {
+        Err(KeychainError::Unsupported)
+    }
+
+    pub fn copy_secret_text(&self, _text: &str) -> Result<u64> {
+        Err(KeychainError::Unsupported)
+    }
+
+    pub fn clear_clipboard_if_unchanged(&self, _token: u64) -> Result<bool> {
+        Err(KeychainError::Unsupported)
     }
 }

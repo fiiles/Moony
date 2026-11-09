@@ -40,4 +40,5 @@ pub mod stock_import;
 pub mod stock_monitor;
 pub mod stock_splits;
 pub mod stock_tags;
+pub mod sync;
 pub mod system;

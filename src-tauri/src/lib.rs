@@ -176,6 +176,7 @@ async fn run_app() {
         .manage(CategorizationState(categorization_engine))
         .manage(LocalApiServer::new())
         .manage(commands::attachments::AttachmentConversion::default())
+        .manage(commands::sync::SyncEngineState::default())
         // Attachment bytes reach the webview only through this scheme (ADR 0017).
         .register_asynchronous_uri_scheme_protocol(
             services::attachment_protocol::SCHEME,
@@ -276,6 +277,23 @@ async fn run_app() {
             commands::biometric::enable_biometric_unlock,
             commands::biometric::disable_biometric_unlock,
             commands::biometric::unlock_with_biometrics,
+            // Device sync (services::sync)
+            commands::sync::sync_feature_enabled,
+            commands::sync::get_sync_status,
+            commands::sync::sync_create_account,
+            commands::sync::sync_get_account,
+            commands::sync::sync_start_checkout,
+            commands::sync::sync_prepare_recovery_kit,
+            commands::sync::sync_copy_recovery_code,
+            commands::sync::sync_finish_setup,
+            commands::sync::sync_now,
+            commands::sync::sync_show_recovery_kit,
+            commands::sync::sync_turn_off,
+            commands::sync::sync_delete_synced_data,
+            commands::sync::sync_repair_device,
+            commands::sync::sync_resync_device,
+            commands::sync::sync_dev_grant,
+            commands::sync::sync_debug_capture_overhead,
             // Investment commands
             commands::investments::get_all_investments,
             commands::investments::get_investment,
@@ -579,7 +597,11 @@ async fn run_app() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| match event {
-            tauri::RunEvent::Exit => commands::attachments::wipe_open_copies(app),
+            tauri::RunEvent::Exit => {
+                commands::attachments::wipe_open_copies(app);
+                // A recovery code still on the clipboard does not outlive the app.
+                crate::commands::sync::clear_copied_code(app);
+            }
             // A statement shared or opened into the phone app (iOS and Android)
             #[cfg(mobile)]
             tauri::RunEvent::Opened { urls } => commands::received_files::on_opened(app, &urls),

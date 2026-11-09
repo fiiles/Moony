@@ -1,0 +1,195 @@
+{
+  "title": "Sincronizzazione tra dispositivi",
+  "description": "I tuoi dati, cifrati end-to-end, allineati tra i tuoi dispositivi.",
+  "indicator": {
+    "synced": "Sincronizzato",
+    "syncing": "Sincronizzazione…",
+    "paused": "Sincronizzazione in pausa",
+    "error": "Errore di sincronizzazione",
+    "offline": "Offline"
+  },
+  "status": {
+    "phase": {
+      "off": "La sincronizzazione è disattivata",
+      "settingUp": "Configurazione della sincronizzazione",
+      "idle": "Aggiornato",
+      "syncing": "Sincronizzazione…",
+      "paused": "La sincronizzazione è in pausa",
+      "error": "La sincronizzazione si è fermata"
+    },
+    "problem": {
+      "captureBroken": "Il tracciamento delle modifiche di questo dispositivo è danneggiato, quindi la sincronizzazione si è fermata. Si può riparare.",
+      "vaultGone": "I dati sincronizzati sono stati eliminati dal server di sincronizzazione.",
+      "lapsed": "L'abbonamento è terminato, quindi la sincronizzazione è in pausa.",
+      "quotaExceeded": "I dati sincronizzati superano il limite di spazio.",
+      "snapshotTooLarge": "I dati sono troppo grandi per essere sincronizzati.",
+      "newerSchema": "Un altro dispositivo usa una versione più recente di Moony. Aggiorna questa app per continuare.",
+      "gap": "La cronologia di sincronizzazione di questo dispositivo è incoerente. Risincronizza questo dispositivo.",
+      "undecryptable": "Non è stato possibile decifrare le modifiche di un altro dispositivo.",
+      "invalidChain": "Le modifiche di un altro dispositivo non hanno superato la verifica e sono trattenute.",
+      "missingParent": "Alle modifiche di un altro dispositivo mancano passaggi precedenti e sono trattenute.",
+      "quarantined": "Le modifiche di alcuni dispositivi sono trattenute per sicurezza.",
+      "offline": "Nessuna connessione al server di sincronizzazione. La sincronizzazione riprenderà quando sarà di nuovo raggiungibile.",
+      "relayError": "Il server di sincronizzazione ha risposto con un errore. Moony riproverà.",
+      "rateLimited": "Il server di sincronizzazione ha chiesto a Moony di rallentare. Moony riproverà a breve.",
+      "unauthorized": "Il server di sincronizzazione non ha accettato questo dispositivo. Potrebbe servire configurare di nuovo la sincronizzazione.",
+      "keyRotated": "La chiave di recupero è stata cambiata su un altro dispositivo. Configura di nuovo la sincronizzazione su questo dispositivo.",
+      "internal": "La sincronizzazione si è fermata per un errore interno."
+    },
+    "lastSynced": "Ultima sincronizzazione: {{date}}",
+    "neverSynced": "Non ancora sincronizzato",
+    "pending": "In attesa di invio: {{number}}",
+    "subscription": "Abbonamento",
+    "selfHosted": "Server self-hosted",
+    "paidUntil": "Pagato fino al {{date}}",
+    "syncNow": "Sincronizza ora",
+    "showKit": "Mostra il Kit di ripristino"
+  },
+  "intro": {
+    "description": "Mantieni i dati allineati su tutti i tuoi dispositivi. Sono cifrati end-to-end: il server di sincronizzazione conserva solo dati che non può leggere.",
+    "privacy": "I tuoi dati non lasciano mai i tuoi dispositivi senza cifratura.",
+    "start": "Configura la sincronizzazione",
+    "resume": "Continua la configurazione"
+  },
+  "setup": {
+    "title": "Configura la sincronizzazione",
+    "step": "Passo {{current}} di {{total}}",
+    "cancel": "Annulla",
+    "account": {
+      "description": "La sincronizzazione richiede un account di sincronizzazione. Creane uno per ottenere il suo numero.",
+      "number": "Numero dell'account",
+      "explain": "Questo numero è il tuo account di sincronizzazione. Chiunque lo abbia può pagarlo e vedere se è pagato. Non apre i tuoi dati.",
+      "create": "Crea account",
+      "continue": "Continua",
+      "copy": "Copia",
+      "copied": "Copiato"
+    },
+    "advanced": {
+      "toggle": "Avanzate",
+      "label": "Indirizzo del server di sincronizzazione",
+      "placeholder": "https://sync.moonyfinance.com",
+      "hint": "Lascia vuoto per usare il servizio di sincronizzazione di Moony. Compilalo solo se gestisci un tuo server di sincronizzazione."
+    },
+    "pay": {
+      "description": "Scegli un piano. Il pagamento si apre nel browser.",
+      "plan": "Piano",
+      "monthly": "Mensile",
+      "yearly": "Annuale",
+      "continue": "Continua al pagamento",
+      "waiting": "In attesa del pagamento. Questa finestra prosegue quando arriva.",
+      "grantTest": "Concedi un abbonamento di prova",
+      "selfHosted": "Questo è il tuo server di sincronizzazione, quindi non c'è nulla da pagare. Aggiungi il numero dell'account qui sopra a ALLOWED_ACCOUNTS sul server e riavvialo.",
+      "selfHostedWaiting": "In attesa che il server accetti l'account. Questa finestra prosegue quando lo fa."
+    },
+    "kit": {
+      "description": "Salva il tuo Kit di ripristino della sincronizzazione. È l'unico modo per riavere i dati sincronizzati se perdi tutti i dispositivi.",
+      "preparing": "Preparazione del kit…",
+      "savePage": "Salva come pagina…",
+      "saveText": "Salva come testo…",
+      "copyCode": "Copia il codice",
+      "copied": "Copiato",
+      "clipboardHint": "Svuota gli appunti dopo aver incollato il codice.",
+      "saved": "Kit salvato",
+      "confirm": "Ho salvato il mio Kit di ripristino della sincronizzazione",
+      "differs": "Il Kit di ripristino della sincronizzazione non è la chiave di ripristino del dispositivo. Sono diversi e servono entrambi.",
+      "saveFirst": "Salva o copia prima il kit.",
+      "file": {
+        "title": "Kit di ripristino della sincronizzazione di Moony",
+        "intro": "Conserva questa pagina in un posto sicuro, lontano dai tuoi dispositivi. Chi ce l'ha può leggere i tuoi dati sincronizzati.",
+        "accountLabel": "Account di sincronizzazione",
+        "accountNote": "Identifica il tuo account di sincronizzazione. Non apre i tuoi dati.",
+        "codeLabel": "Codice di ripristino",
+        "codeNote": "Apre i tuoi dati sincronizzati. Tienilo segreto.",
+        "qrLabel": "Scansiona per ripristinare su un telefono",
+        "created": "Creato il {{date}}",
+        "relayLabel": "Server di sincronizzazione",
+        "relayNote": "Necessario per il ripristino da questo kit"
+      },
+      "failed": "Non è stato possibile preparare il kit.",
+      "retry": "Riprova"
+    },
+    "device": {
+      "description": "Dai un nome a questo dispositivo per distinguerlo dagli altri.",
+      "name": "Nome del dispositivo",
+      "turnOn": "Attiva la sincronizzazione",
+      "success": "Sincronizzazione attivata"
+    },
+    "defaultName": {
+      "macos": "Mac",
+      "windows": "PC Windows",
+      "linux": "PC Linux"
+    }
+  },
+  "alert": {
+    "lapsed": {
+      "title": "Sincronizzazione in pausa: rinnova per continuare",
+      "deletes": "I dati sincronizzati verranno eliminati il {{date}}.",
+      "selfHosted": "Chiedi all'operatore del tuo server di sincronizzazione di rinnovare l'accesso.",
+      "renew": "Rinnova"
+    },
+    "vaultGone": {
+      "text": "I tuoi dati sincronizzati non sono più sul server. Disattivare la sincronizzazione su questo dispositivo?",
+      "turnOff": "Disattiva la sincronizzazione",
+      "retry": "Riprova"
+    },
+    "newerSchema": "Aggiorna Moony su questo dispositivo per continuare a sincronizzare"
+  },
+  "renew": {
+    "title": "Rinnova la sincronizzazione",
+    "opened": "Il pagamento è stato aperto nel browser."
+  },
+  "repair": {
+    "button": "Ripara questo dispositivo",
+    "title": "Riparare questo dispositivo?",
+    "description": "Moony salva un backup dei dati di questo dispositivo, invia le modifiche ancora in attesa e poi sostituisce i dati di questo dispositivo con quelli sincronizzati. Se non è possibile inviare tutte le modifiche, non viene sostituito nulla.",
+    "confirm": "Ripara",
+    "success": "Dispositivo riparato. Backup salvato come {{file}}."
+  },
+  "resync": {
+    "button": "Risincronizza questo dispositivo",
+    "hint": "Sostituisce i dati di questo dispositivo con quelli sincronizzati. Usalo se la cronologia di sincronizzazione di questo dispositivo è incoerente.",
+    "title": "Risincronizzare questo dispositivo?",
+    "description": "I dati di questo dispositivo vengono sostituiti con quelli sincronizzati. Prima viene salvato un backup. Le modifiche che questo dispositivo non ha ancora inviato restano solo in quel backup.",
+    "pendingChanges_one": "{{count}} modifica di questo dispositivo non è ancora stata inviata. Resterà solo nel backup.",
+    "pendingChanges_many": "{{count}} modifiche di questo dispositivo non sono ancora state inviate. Resteranno solo nel backup.",
+    "pendingChanges_other": "{{count}} modifiche di questo dispositivo non sono ancora state inviate. Resteranno solo nel backup.",
+    "confirm": "Risincronizza",
+    "success": "Dispositivo risincronizzato. Backup salvato come {{file}}."
+  },
+  "turnOff": {
+    "button": "Disattiva la sincronizzazione su questo dispositivo",
+    "hint": "I dati locali restano. Gli altri dispositivi continuano a sincronizzare.",
+    "title": "Disattivare la sincronizzazione su questo dispositivo?",
+    "description": "I dati locali restano. Gli altri dispositivi continuano a sincronizzare. Se riattivi la sincronizzazione in seguito, dovrai configurarla da capo.",
+    "pendingChanges_one": "{{count}} modifica di questo dispositivo non è ancora stata inviata. Non verrà più inviata.",
+    "pendingChanges_many": "{{count}} modifiche di questo dispositivo non sono ancora state inviate. Non verranno più inviate.",
+    "pendingChanges_other": "{{count}} modifiche di questo dispositivo non sono ancora state inviate. Non verranno più inviate.",
+    "confirm": "Disattiva la sincronizzazione",
+    "success": "Sincronizzazione disattivata"
+  },
+  "delete": {
+    "button": "Elimina i dati sincronizzati",
+    "hint": "Rimuove i dati sincronizzati dal server di sincronizzazione per tutti i dispositivi.",
+    "title": "Eliminare i dati sincronizzati?",
+    "description": "Questo elimina i dati sincronizzati sul server di sincronizzazione per tutti i dispositivi. I dati locali di ogni dispositivo restano.",
+    "confirm": "Elimina i dati sincronizzati",
+    "success": "Dati sincronizzati eliminati"
+  },
+  "danger": {
+    "title": "Disattivare o eliminare",
+    "description": "Interrompi la sincronizzazione su questo dispositivo o elimina ciò che conserva il server di sincronizzazione."
+  },
+  "password": {
+    "label": "Password del dispositivo"
+  },
+  "showKit": {
+    "title": "Kit di ripristino della sincronizzazione",
+    "description": "Inserisci la password del dispositivo per mostrare il kit.",
+    "again": "Inserisci di nuovo la password per copiare il codice.",
+    "confirm": "Mostra il kit"
+  },
+  "busy": {
+    "title": "Sostituzione dei dati di questo dispositivo in corso…",
+    "description": "Non chiudere Moony."
+  }
+}

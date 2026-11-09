@@ -6,6 +6,7 @@
     "security": "Seguridad",
     "data": "Datos y copias de seguridad",
     "integrations": "Asistente de IA",
+    "sync": "Sincronización",
     "categorization": "Categorización",
     "account": "Cuenta",
     "description": {
@@ -13,6 +14,7 @@
       "security": "Contraseña, bloqueo automático y actualizaciones de la app.",
       "data": "Dónde están tus datos y cómo guardar una copia.",
       "integrations": "El servidor MCP local para asistentes de IA.",
+      "sync": "Mantiene tus dispositivos al día, con cifrado de extremo a extremo.",
       "categorization": "Paquetes de reglas, categorías y tus propias reglas de categorización.",
       "account": "Eliminar tus datos de este ordenador."
     }
@@ -117,7 +119,9 @@
     "confirmLabel": "Escribe {{word}} para confirmar",
     "deleteAll": "Eliminar todos los datos",
     "deleteAllHint": "Elimina la base de datos, los archivos de claves y los adjuntos de este ordenador. Las copias junto a la base de datos (moony.db.bak-…, pre-restore-…) permanecen en la carpeta de datos (Datos y copias de seguridad → Abrir carpeta), igual que las copias de seguridad guardadas fuera de la app.",
-    "deleteButton": "Eliminar datos…"
+    "deleteButton": "Eliminar datos…",
+    "syncDeleted": "Los datos sincronizados en el servidor de sincronización también se eliminan, así que tus demás dispositivos dejan de sincronizar.",
+    "confirmDescriptionSynced": "Esta acción no se puede deshacer. Elimina de forma permanente la base de datos, los archivos de claves y los adjuntos de este dispositivo. Las copias que Moony guarda junto a la base de datos (moony.db.bak-…, pre-restore-…) permanecen en la carpeta de datos; Ajustes → Datos y copias de seguridad → Abrir carpeta lleva hasta ella."
   },
   "toast": {
     "profileUpdated": "Perfil actualizado",

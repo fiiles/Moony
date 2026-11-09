@@ -237,8 +237,11 @@ impl Vault {
                 continue;
             }
             let (cs, hash) = self.relay[i].clone();
-            let meta = EnvelopeMeta::of(&cs, hash);
+            let meta = EnvelopeMeta::of(&cs, hash, i as u64 + 1);
             let what = format!("pull d{d} relay {i}");
+            // As the engine does: the marker is noted before the verdict, whatever it is.
+            let noted = chain::note_barrier_marker(&self.devices[d].conn, &meta);
+            self.check(&what, noted);
             loop {
                 let verdict = self.check(&what, judge(&self.devices[d].conn, &meta));
                 seen.push(format!("{i} {verdict:?}"));
@@ -256,8 +259,10 @@ impl Vault {
                         self.check(&what, chain::acknowledge_own(conn, cs.seq));
                     }
                     Verdict::Clone => {
+                        // Fixed for replay, and above every ID the vault uses, as
+                        // `chain::rejoin_device_id` would draw it.
                         let new = DeviceId([0xC1 + self.clones; 16]);
-                        self.check(&what, chain::rejoin(conn, new, Some(cs.seq)));
+                        self.check(&what, chain::rejoin(conn, new, Some(&meta)));
                         self.clones += 1;
                         self.devices[d].id = new;
                         continue;

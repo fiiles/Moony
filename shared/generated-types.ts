@@ -375,6 +375,20 @@ export type CategoryUsage = { categoryId: string; transactions: number; rules: n
 export type ChangedRow = { id: string; previousCategoryId: string | null; previousSource: string | null }
 
 /**
+ * Where paying for the account happens.
+ */
+export type CheckoutTarget = 
+/**
+ * The payment page to open in the browser (https, on polar.sh).
+ */
+{ kind: "open"; url: string } | 
+/**
+ * A self-hosted relay takes no payments: its operator adds the account number to the relay's
+ * `ALLOWED_ACCOUNTS`, and setup waits until the account is active.
+ */
+{ kind: "selfHosted" }
+
+/**
  * What a converted response could not (or only approximately) convert.
  */
 export type ConversionQuality = { missingCurrencies: string[]; missingCount: number; estimated: boolean }
@@ -1911,6 +1925,25 @@ learnable: boolean;
 matches: number; byCategory: CategoryCount[] }
 
 /**
+ * The Sync Recovery Kit (spec §11.5): what brings the synced data back when every device is
+ * lost. It holds the vault key, so `Debug` prints nothing of it and the secret fields are wiped
+ * when it drops (ruling P16).
+ */
+export type RecoveryKit = { accountNumber: string; 
+/**
+ * The recovery code as 16 groups of five joined by `-`.
+ */
+recoveryCode: string; 
+/**
+ * The QR of `moony-recover:1:<account>:<code>[:<base64url relay address>]` as SVG.
+ */
+qrSvg: string; 
+/**
+ * The relay address, only when it is not the default relay (a self-hosted one).
+ */
+relayUrl: string | null }
+
+/**
  * Recurring cost for real estate
  */
 export type RecurringCost = { name: string; amount: number; frequency: string; currency: string | null }
@@ -3034,6 +3067,113 @@ export type SuggestionSource =
  * A rule of an enabled locale pack.
  */
 "pack"
+
+/**
+ * The sync account as setup shows it: its 16-digit number and whether the relay counts it as
+ * paid.
+ */
+export type SyncAccount = { accountNumber: string; active: boolean; 
+/**
+ * The subscription's end (unix seconds); `None` while the account has never been paid.
+ */
+paidUntil: number | null }
+
+/**
+ * Where sync stands on this device.
+ */
+export type SyncPhase = 
+/**
+ * Sync is not on for this profile (or the build does not run it).
+ */
+"off" | 
+/**
+ * An account is saved but setup has not finished.
+ */
+"settingUp" | "idle" | 
+/**
+ * A round is running.
+ */
+"syncing" | 
+/**
+ * Waiting on something outside this device: the vault, the subscription, the quota, an app
+ * update, the network or the relay's rate limit.
+ */
+"paused" | 
+/**
+ * Stopped on something that needs a look.
+ */
+"error"
+
+/**
+ * The subscription a checkout is for.
+ */
+export type SyncPlan = "monthly" | "yearly"
+
+/**
+ * Why sync is paused or stopped.
+ */
+export type SyncProblem = 
+/**
+ * Change capture could not be installed at unlock; the profile does not sync until repaired.
+ */
+"captureBroken" | 
+/**
+ * The relay no longer knows the vault (`404`); paused until "Sync now" finds it again.
+ */
+"vaultGone" | 
+/**
+ * The subscription ended (`402`): pulls go on while the relay allows, pushes wait.
+ */
+"lapsed" | "quotaExceeded" | "snapshotTooLarge" | 
+/**
+ * Another device writes with a newer app version.
+ */
+"newerSchema" | 
+/**
+ * The relay withholds an envelope.
+ */
+"gap" | "undecryptable" | "invalidChain" | "missingParent" | 
+/**
+ * A device's envelopes are held after its chain forked.
+ */
+"quarantined" | "offline" | "relayError" | "rateLimited" | "unauthorized" | 
+/**
+ * The vault's token was rotated by another device (`403 token_read_only`).
+ */
+"keyRotated" | "internal"
+
+/**
+ * The `sync-status-changed` payload.
+ */
+export type SyncStatus = { phase: SyncPhase; problem: SyncProblem | null; 
+/**
+ * When a round last finished without a problem (unix seconds).
+ */
+lastSuccessAt: number | null; 
+/**
+ * Changed rows waiting in the outbox plus sealed envelopes waiting for the relay.
+ */
+pendingChanges: number; 
+/**
+ * Devices whose envelopes are held (quarantined).
+ */
+heldDevices: number; 
+/**
+ * Rows too large to send, from the last push.
+ */
+refusedRows: number; 
+/**
+ * The subscription's end, as the relay last reported it (unix seconds).
+ */
+paidUntil: number | null; 
+/**
+ * When the relay deletes the vault after a lapse: 90 days after `paidUntil`.
+ */
+deletesAt: number | null; 
+/**
+ * The developer tools are offered (debug build with sync on).
+ */
+devTools: boolean }
 
 /**
  * One recorded day of a ticker's position. Quantity, price and currency are the native facts;

@@ -136,7 +136,6 @@
   },
   "renew": {
     "title": "Synchronisierung verlängern",
-    "selfHosted": "Dies ist ein selbst betriebener Synchronisierungsserver. Bitten Sie dessen Betreiber, den Zugang zu verlängern.",
     "opened": "Die Zahlung wurde in Ihrem Browser geöffnet."
   },
   "repair": {
@@ -184,7 +183,7 @@
     "confirm": "Kit anzeigen"
   },
   "busy": {
-    "title": "Dieses Gerät wird repariert…",
+    "title": "Die Daten dieses Geräts werden ersetzt…",
     "description": "Schließen Sie Moony nicht."
   }
 }

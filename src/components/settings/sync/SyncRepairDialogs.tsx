@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
@@ -65,6 +66,9 @@ export function RepairDeviceDialog({
 export function ResyncDeviceDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation('deviceSync');
   const { resyncDevice } = useDeviceSyncMutations();
+  // The password is the mutation's variable: it leaves the cache with the dialog.
+  const resetResync = resyncDevice.reset;
+  useEffect(() => resetResync, [resetResync]);
   return (
     <SyncPasswordDialog
       title={t('resync.title')}

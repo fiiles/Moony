@@ -120,7 +120,8 @@
     "deleteAll": "Elimina tutti i dati",
     "deleteAllHint": "Rimuove il database, i file delle chiavi e gli allegati su questo computer. Le copie accanto al database (moony.db.bak-…, pre-restore-…) restano nella cartella dei dati (Dati e backup → Apri cartella), come i backup salvati fuori dall'app.",
     "deleteButton": "Elimina i dati…",
-    "syncDeleted": "Vengono eliminati anche i dati sincronizzati sul server di sincronizzazione."
+    "syncDeleted": "Vengono eliminati anche i dati sincronizzati sul server di sincronizzazione.",
+    "confirmDescriptionSynced": "Questa azione non si può annullare. Elimina definitivamente il database, i file delle chiavi e gli allegati da questo dispositivo. Le copie che Moony conserva accanto al database (moony.db.bak-…, pre-restore-…) restano nella cartella dei dati; Impostazioni → Dati e backup → Apri cartella porta fin lì."
   },
   "toast": {
     "profileUpdated": "Profilo aggiornato",

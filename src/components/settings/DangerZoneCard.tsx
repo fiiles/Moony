@@ -29,10 +29,16 @@ const DELETE_ACCOUNT_CONFIRM_WORD = 'DELETE';
 export function DangerZoneCard() {
   const { t } = useTranslation('settings');
   const { t: tc } = useTranslation('common');
+  const { i18n } = useTranslation();
 
   const syncFeature = useDeviceSyncFeature();
   const { data: syncStatus } = useDeviceSyncStatus();
-  const syncOn = syncFeature && syncStatus !== undefined && syncStatus.phase !== 'off';
+  const syncOn =
+    syncFeature &&
+    syncStatus !== undefined &&
+    ['idle', 'syncing', 'paused', 'error'].includes(syncStatus.phase);
+  // Japanese and Chinese run sentences together without a space
+  const sentenceGap = ['ja', 'zh'].includes(i18n.language) ? '' : ' ';
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -71,8 +77,19 @@ export function DangerZoneCard() {
             <AlertDialogHeader>
               <AlertDialogTitle>{t('dangerZone.confirmTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
-                {t('dangerZone.confirmDescription')} {t('dangerZone.backupFirst')}
-                {syncOn && ` ${t('dangerZone.syncDeleted')}`}
+                <span>
+                  {syncOn
+                    ? t('dangerZone.confirmDescriptionSynced')
+                    : t('dangerZone.confirmDescription')}
+                </span>
+                {syncOn && (
+                  <>
+                    {sentenceGap}
+                    <span>{t('dangerZone.syncDeleted')}</span>
+                  </>
+                )}
+                {sentenceGap}
+                <span>{t('dangerZone.backupFirst')}</span>
               </AlertDialogDescription>
             </AlertDialogHeader>
             <div className="space-y-2">

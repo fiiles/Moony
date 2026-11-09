@@ -25,6 +25,7 @@ export function SyncRenewDialog({ onClose }: { onClose: () => void }) {
   const { t: tc } = useTranslation('common');
   const { startCheckout } = useDeviceSyncMutations();
   const [plan, setPlan] = useState<SyncPlan>('monthly');
+  const [selfHosted, setSelfHosted] = useState(false);
 
   const run = async () => {
     try {
@@ -32,10 +33,10 @@ export function SyncRenewDialog({ onClose }: { onClose: () => void }) {
       if (target.kind === 'open') {
         await openUrl(target.url);
         toast(t('renew.opened'));
+        onClose();
       } else {
-        toast(t('renew.selfHosted'));
+        setSelfHosted(true);
       }
-      onClose();
     } catch (error) {
       toast.error(tc('status.error'), { description: translateApiError(error as Error, tc) });
     }
@@ -46,18 +47,22 @@ export function SyncRenewDialog({ onClose }: { onClose: () => void }) {
       <DialogContent className="max-w-[460px]">
         <DialogHeader>
           <DialogTitle>{t('renew.title')}</DialogTitle>
-          <DialogDescription>{t('setup.pay.description')}</DialogDescription>
+          <DialogDescription>
+            {selfHosted ? t('alert.lapsed.selfHosted') : t('setup.pay.description')}
+          </DialogDescription>
         </DialogHeader>
-        <Segmented<SyncPlan>
-          aria-label={t('setup.pay.plan')}
-          fullWidth
-          value={plan}
-          onValueChange={setPlan}
-          options={[
-            { value: 'monthly', label: t('setup.pay.monthly') },
-            { value: 'yearly', label: t('setup.pay.yearly') },
-          ]}
-        />
+        {!selfHosted && (
+          <Segmented<SyncPlan>
+            aria-label={t('setup.pay.plan')}
+            fullWidth
+            value={plan}
+            onValueChange={setPlan}
+            options={[
+              { value: 'monthly', label: t('setup.pay.monthly') },
+              { value: 'yearly', label: t('setup.pay.yearly') },
+            ]}
+          />
+        )}
         <DialogFooter>
           <Button
             type="button"
@@ -65,11 +70,13 @@ export function SyncRenewDialog({ onClose }: { onClose: () => void }) {
             onClick={onClose}
             disabled={startCheckout.isPending}
           >
-            {t('setup.cancel')}
+            {selfHosted ? tc('buttons.close') : t('setup.cancel')}
           </Button>
-          <Button type="button" onClick={run} loading={startCheckout.isPending}>
-            {t('setup.pay.continue')}
-          </Button>
+          {!selfHosted && (
+            <Button type="button" onClick={run} loading={startCheckout.isPending}>
+              {t('setup.pay.continue')}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>

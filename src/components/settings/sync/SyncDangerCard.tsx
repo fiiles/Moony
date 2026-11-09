@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
@@ -14,6 +14,8 @@ type Open = 'turnOff' | 'delete' | 'resync' | null;
 export function SyncDangerCard() {
   const { t } = useTranslation('deviceSync');
   const { deleteSyncedData } = useDeviceSyncMutations();
+  const resetDelete = deleteSyncedData.reset;
+  useEffect(() => resetDelete, [resetDelete]);
   const [open, setOpen] = useState<Open>(null);
   const close = () => setOpen(null);
 
@@ -31,7 +33,7 @@ export function SyncDangerCard() {
           </Button>
         </SettingsRow>
         <SettingsRow label={t('resync.button')} hint={t('resync.hint')}>
-          <Button type="button" variant="ghost" onClick={() => setOpen('resync')}>
+          <Button type="button" variant="outline" onClick={() => setOpen('resync')}>
             {t('resync.button')}
           </Button>
         </SettingsRow>

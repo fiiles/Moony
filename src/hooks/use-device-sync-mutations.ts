@@ -40,6 +40,7 @@ export function useDeviceSyncMutations() {
     mutationFn: deviceSyncApi.prepareRecoveryKit,
     gcTime: 0,
   });
+  // gcTime 0 below: a password typed for delete / re-sync is a mutation variable and must not linger.
   const copyRecoveryCode = useMutation({ mutationFn: deviceSyncApi.copyRecoveryCode });
   const finishSetup = useMutation({
     mutationFn: ({ deviceName, kitSaved }: { deviceName: string; kitSaved: boolean }) =>
@@ -60,16 +61,19 @@ export function useDeviceSyncMutations() {
   });
   const deleteSyncedData = useMutation({
     mutationFn: deviceSyncApi.deleteSyncedData,
+    gcTime: 0,
     onSuccess: refreshLocalData,
   });
   const repairDevice = useMutation({
     mutationKey: REPLACE_DEVICE_MUTATION_KEY,
     mutationFn: deviceSyncApi.repairDevice,
+    gcTime: 0,
     onSuccess: refreshLocalData,
   });
   const resyncDevice = useMutation({
     mutationKey: REPLACE_DEVICE_MUTATION_KEY,
     mutationFn: deviceSyncApi.resyncDevice,
+    gcTime: 0,
     onSuccess: refreshLocalData,
   });
   const devGrant = useMutation({

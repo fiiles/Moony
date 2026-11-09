@@ -6,6 +6,7 @@ import type { SyncStatus } from '@shared/schema';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
+import { problemAction } from '@/utils/device-sync-problem';
 import { isSelfHostedPaidUntil } from '@/utils/sync-status';
 import { Alert, AlertActions, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
@@ -39,20 +40,24 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
     }
   };
 
+  const selfHosted = isSelfHostedPaidUntil(status.paidUntil);
+  const action = problemAction(problem, selfHosted);
   let title: string | null = null;
   let body: string | null = t(`status.problem.${problem}`);
   let actions: React.ReactNode = null;
-  switch (problem) {
-    case 'lapsed':
+  switch (action) {
+    case 'renew':
+    case 'askOperator':
       title = t('alert.lapsed.title');
-      body = isSelfHostedPaidUntil(status.paidUntil)
-        ? t('alert.lapsed.selfHosted')
-        : status.deletesAt !== null
-          ? t('alert.lapsed.deletes', {
-              date: date(new Date(status.deletesAt * 1000), { dateStyle: 'long' }),
-            })
-          : null;
-      if (!isSelfHostedPaidUntil(status.paidUntil)) {
+      body =
+        action === 'askOperator'
+          ? t('alert.lapsed.selfHosted')
+          : status.deletesAt !== null
+            ? t('alert.lapsed.deletes', {
+                date: date(new Date(status.deletesAt * 1000), { dateStyle: 'long' }),
+              })
+            : null;
+      if (action === 'renew') {
         actions = (
           <Button type="button" size="sm" onClick={() => setOpen('renew')}>
             {t('alert.lapsed.renew')}
@@ -60,7 +65,7 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
         );
       }
       break;
-    case 'vaultGone':
+    case 'turnOffOrRetry':
       body = t('alert.vaultGone.text');
       actions = (
         <>
@@ -79,7 +84,7 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
         </>
       );
       break;
-    case 'captureBroken':
+    case 'repair':
       actions = (
         <>
           <Button type="button" size="sm" onClick={() => setOpen('repair')}>
@@ -93,11 +98,11 @@ export function SyncProblemAlert({ status }: { status: SyncStatus }) {
         </>
       );
       break;
-    case 'newerSchema':
+    case 'updateApp':
       title = t('alert.newerSchema');
       body = null;
       break;
-    case 'gap':
+    case 'resync':
       actions = (
         <Button type="button" size="sm" onClick={() => setOpen('resync')}>
           {t('resync.button')}

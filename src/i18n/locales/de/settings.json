@@ -120,7 +120,8 @@
     "deleteAll": "Alle Daten löschen",
     "deleteAllHint": "Entfernt die Datenbank, die Schlüsseldateien und die Anhänge auf diesem Computer. Kopien neben der Datenbank (moony.db.bak-…, pre-restore-…) bleiben im Datenordner (Daten und Sicherungen → Ordner öffnen), ebenso außerhalb der App gespeicherte Sicherungen.",
     "deleteButton": "Daten löschen…",
-    "syncDeleted": "Synchronisierte Daten auf dem Synchronisierungsserver werden ebenfalls gelöscht."
+    "syncDeleted": "Synchronisierte Daten auf dem Synchronisierungsserver werden ebenfalls gelöscht.",
+    "confirmDescriptionSynced": "Diese Aktion lässt sich nicht rückgängig machen. Sie löscht die Datenbank, die Schlüsseldateien und die Anhänge dauerhaft von diesem Gerät. Kopien, die Moony neben der Datenbank ablegt (moony.db.bak-…, pre-restore-…), bleiben im Datenordner; Einstellungen → Daten und Sicherungen → Ordner öffnen führt dorthin."
   },
   "toast": {
     "profileUpdated": "Profil aktualisiert",

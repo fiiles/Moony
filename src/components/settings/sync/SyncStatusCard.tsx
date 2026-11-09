@@ -67,7 +67,7 @@ export function SyncStatusCard({ status }: { status: SyncStatus }) {
                 }
               />
             )}
-            <SettingsRow label={t('status.showKit')}>
+            <SettingsRow label={t('showKit.title')}>
               <Button type="button" variant="outline" onClick={() => setKitOpen(true)}>
                 {t('status.showKit')}
               </Button>

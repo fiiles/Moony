@@ -6,7 +6,12 @@ import type { RecoveryKit } from '@shared/schema';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useFormat } from '@/lib/use-format';
 import { translateApiError } from '@/lib/translate-api-error';
-import { groupAccountNumber, recoveryKitHtml, recoveryKitText } from '@/utils/recovery-kit';
+import {
+  groupAccountNumber,
+  toBase64,
+  recoveryKitHtml,
+  recoveryKitText,
+} from '@/utils/recovery-kit';
 import type { RecoveryKitCopy } from '@/utils/recovery-kit';
 import { Button } from '@/components/ui/button';
 
@@ -94,7 +99,7 @@ export function RecoveryKitPanel({ kit, onKept }: RecoveryKitPanelProps) {
     <div className="grid gap-3">
       <div className="flex items-center gap-4">
         <img
-          src={`data:image/svg+xml;base64,${btoa(kit.qrSvg)}`}
+          src={`data:image/svg+xml;base64,${toBase64(kit.qrSvg)}`}
           alt={t('setup.kit.file.qrLabel')}
           className="size-[120px] shrink-0 rounded-r2 border border-line-strong bg-white p-1.5"
           data-testid="recovery-kit-qr"
@@ -119,7 +124,7 @@ export function RecoveryKitPanel({ kit, onKept }: RecoveryKitPanelProps) {
       >
         {kit.recoveryCode}
       </div>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" onClick={copyCode}>
           {copied ? <Check /> : <Copy />}
           {copied ? t('setup.kit.copied') : t('setup.kit.copyCode')}

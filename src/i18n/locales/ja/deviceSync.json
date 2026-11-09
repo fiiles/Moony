@@ -46,7 +46,6 @@
   "setup": {
     "title": "同期を設定",
     "step": "ステップ {{current}} / {{total}}",
-    "back": "戻る",
     "cancel": "キャンセル",
     "account": {
       "description": "同期には同期アカウントが必要です。作成して番号を受け取ってください。",
@@ -97,7 +96,9 @@
         "created": "作成日 {{date}}",
         "relayLabel": "同期サーバー",
         "relayNote": "このキットから復元するために必要です"
-      }
+      },
+      "failed": "キットを準備できませんでした。",
+      "retry": "再試行"
     },
     "device": {
       "description": "ほかのデバイスと区別できるよう、このデバイスに名前を付けてください。",

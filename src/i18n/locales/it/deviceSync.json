@@ -46,7 +46,6 @@
   "setup": {
     "title": "Configura la sincronizzazione",
     "step": "Passo {{current}} di {{total}}",
-    "back": "Indietro",
     "cancel": "Annulla",
     "account": {
       "description": "La sincronizzazione richiede un account di sincronizzazione. Creane uno per ottenere il suo numero.",
@@ -97,7 +96,9 @@
         "created": "Creato il {{date}}",
         "relayLabel": "Server di sincronizzazione",
         "relayNote": "Necessario per il ripristino da questo kit"
-      }
+      },
+      "failed": "Non è stato possibile preparare il kit.",
+      "retry": "Riprova"
     },
     "device": {
       "description": "Dai un nome a questo dispositivo per distinguerlo dagli altri.",

@@ -46,7 +46,6 @@
   "setup": {
     "title": "Nastavit synchronizaci",
     "step": "Krok {{current}} ze {{total}}",
-    "back": "Zpět",
     "cancel": "Zrušit",
     "account": {
       "description": "Synchronizace potřebuje synchronizační účet. Vytvořte ho a získáte jeho číslo.",
@@ -97,7 +96,9 @@
         "created": "Vytvořeno {{date}}",
         "relayLabel": "Synchronizační server",
         "relayNote": "Potřebný k obnově z této sady"
-      }
+      },
+      "failed": "Přípravu sady se nepodařilo dokončit.",
+      "retry": "Zkusit znovu"
     },
     "device": {
       "description": "Pojmenujte toto zařízení, abyste ho odlišili od ostatních.",

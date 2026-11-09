@@ -59,6 +59,7 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
   const [plan, setPlan] = useState<SyncPlan>('monthly');
   const [selfHosted, setSelfHosted] = useState(false);
   const [kit, setKit] = useState<RecoveryKit | null>(null);
+  const [kitFailed, setKitFailed] = useState(false);
   const [kitKept, setKitKept] = useState(false);
   const [kitConfirmed, setKitConfirmed] = useState(false);
   const [numberCopied, setNumberCopied] = useState(false);
@@ -76,17 +77,24 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
   // The kit is prepared once on entering step 3.
   const preparing = useRef(false);
   useEffect(() => {
-    if (step !== 'kit' || kit || preparing.current) return;
+    if (step !== 'kit' || kit || kitFailed || preparing.current) return;
     preparing.current = true;
     prepareRecoveryKit
       .mutateAsync()
       .then(setKit)
-      .catch(toastError)
+      .catch((error) => {
+        setKitFailed(true);
+        toastError(error);
+      })
       .finally(() => {
         preparing.current = false;
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [step, kit]);
+  }, [step, kit, kitFailed]);
+
+  // The kit holds the vault key: when the dialog closes it leaves the mutation's result too.
+  const resetPreparedKit = prepareRecoveryKit.reset;
+  useEffect(() => resetPreparedKit, [resetPreparedKit]);
 
   const handleAccount = async () => {
     if (accountCurrent) {
@@ -262,16 +270,18 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
 
           {step === 'pay' && (
             <>
-              <Segmented<SyncPlan>
-                aria-label={t('setup.pay.plan')}
-                fullWidth
-                value={plan}
-                onValueChange={setPlan}
-                options={[
-                  { value: 'monthly', label: t('setup.pay.monthly') },
-                  { value: 'yearly', label: t('setup.pay.yearly') },
-                ]}
-              />
+              {!selfHosted && (
+                <Segmented<SyncPlan>
+                  aria-label={t('setup.pay.plan')}
+                  fullWidth
+                  value={plan}
+                  onValueChange={setPlan}
+                  options={[
+                    { value: 'monthly', label: t('setup.pay.monthly') },
+                    { value: 'yearly', label: t('setup.pay.yearly') },
+                  ]}
+                />
+              )}
               {selfHosted ? (
                 <>
                   {numberBox}
@@ -320,6 +330,15 @@ export function SyncSetupDialog({ onClose }: SyncSetupDialogProps) {
                   <p className="m-0 text-micro font-500 text-ink-4">{t('setup.kit.saveFirst')}</p>
                 )}
               </>
+            ) : kitFailed ? (
+              <div className="grid justify-items-start gap-2">
+                <p className="m-0 text-body text-loss" role="alert">
+                  {t('setup.kit.failed')}
+                </p>
+                <Button type="button" variant="outline" onClick={() => setKitFailed(false)}>
+                  {t('setup.kit.retry')}
+                </Button>
+              </div>
             ) : (
               <p className="m-0 text-body text-ink-3">{t('setup.kit.preparing')}</p>
             ))}

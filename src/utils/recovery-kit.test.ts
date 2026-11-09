@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { RecoveryKit } from '@shared/schema';
-import { recoveryKitHtml, recoveryKitText, type RecoveryKitCopy } from './recovery-kit';
+import { recoveryKitHtml, recoveryKitText, toBase64, type RecoveryKitCopy } from './recovery-kit';
 
 const CODE = Array.from({ length: 16 }, (_, i) => `ABCD${i % 10}`).join('-');
 
@@ -79,5 +79,12 @@ describe('recoveryKitText', () => {
     const text = recoveryKitText({ ...kit, relayUrl: 'https://sync.example.com' }, copy);
     expect(text).toContain('Sync server: https://sync.example.com');
     expect(text).toContain('Needed to restore from this kit');
+  });
+});
+
+describe('toBase64', () => {
+  it('encodes non-Latin-1 text as UTF-8', () => {
+    expect(toBase64('Zdraví 日本')).toBe('WmRyYXbDrSDml6XmnKw=');
+    expect(toBase64('abc')).toBe('YWJj');
   });
 });

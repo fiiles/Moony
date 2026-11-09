@@ -46,7 +46,6 @@
   "setup": {
     "title": "Set up sync",
     "step": "Step {{current}} of {{total}}",
-    "back": "Back",
     "cancel": "Cancel",
     "account": {
       "description": "Sync needs a sync account. Create one to get its number.",
@@ -97,7 +96,9 @@
         "created": "Created {{date}}",
         "relayLabel": "Sync server",
         "relayNote": "Needed to restore from this kit"
-      }
+      },
+      "failed": "Preparing the kit failed.",
+      "retry": "Try again"
     },
     "device": {
       "description": "Name this device so you can tell it apart from your others.",

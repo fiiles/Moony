@@ -29,7 +29,11 @@ export function useDeviceSyncMutations() {
     mutationFn: deviceSyncApi.startCheckout,
     onSuccess: refreshSyncState,
   });
-  const prepareRecoveryKit = useMutation({ mutationFn: deviceSyncApi.prepareRecoveryKit });
+  // gcTime 0: the kit holds the vault key, so its result leaves the mutation cache with the screen.
+  const prepareRecoveryKit = useMutation({
+    mutationFn: deviceSyncApi.prepareRecoveryKit,
+    gcTime: 0,
+  });
   const copyRecoveryCode = useMutation({ mutationFn: deviceSyncApi.copyRecoveryCode });
   const finishSetup = useMutation({
     mutationFn: ({ deviceName, kitSaved }: { deviceName: string; kitSaved: boolean }) =>
@@ -40,7 +44,10 @@ export function useDeviceSyncMutations() {
     mutationFn: deviceSyncApi.syncNow,
     onSuccess: refreshSyncState,
   });
-  const showRecoveryKit = useMutation({ mutationFn: deviceSyncApi.showRecoveryKit });
+  const showRecoveryKit = useMutation({
+    mutationFn: deviceSyncApi.showRecoveryKit,
+    gcTime: 0,
+  });
   const turnOff = useMutation({
     mutationFn: deviceSyncApi.turnOff,
     onSuccess: refreshLocalData,

@@ -31,7 +31,8 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
-function toBase64(value: string): string {
+/** Base64 of the UTF-8 bytes of `value` (`btoa` alone throws beyond Latin-1). */
+export function toBase64(value: string): string {
   const bytes = new TextEncoder().encode(value);
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);

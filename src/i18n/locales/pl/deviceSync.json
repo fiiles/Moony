@@ -46,7 +46,6 @@
   "setup": {
     "title": "Skonfiguruj synchronizację",
     "step": "Krok {{current}} z {{total}}",
-    "back": "Wstecz",
     "cancel": "Anuluj",
     "account": {
       "description": "Synchronizacja wymaga konta synchronizacji. Utwórz je, aby dostać jego numer.",
@@ -97,7 +96,9 @@
         "created": "Utworzono {{date}}",
         "relayLabel": "Serwer synchronizacji",
         "relayNote": "Potrzebny do odzyskania z tego zestawu"
-      }
+      },
+      "failed": "Nie udało się przygotować zestawu.",
+      "retry": "Spróbuj ponownie"
     },
     "device": {
       "description": "Nadaj temu urządzeniu nazwę, aby odróżnić je od innych.",

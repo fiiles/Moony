@@ -38,7 +38,7 @@
     }
   },
   "intro": {
-    "description": "Halte Ihre Daten auf allen Geräten auf dem gleichen Stand. Sie sind Ende-zu-Ende-verschlüsselt: Der Synchronisierungsserver speichert nur Daten, die er nicht lesen kann.",
+    "description": "Halten Sie Ihre Daten auf allen Ihren Geräten auf dem gleichen Stand. Sie sind Ende-zu-Ende-verschlüsselt: Der Synchronisierungsserver speichert nur Daten, die er nicht lesen kann.",
     "privacy": "Ihre Daten verlassen Ihre Geräte nie unverschlüsselt.",
     "start": "Synchronisierung einrichten",
     "resume": "Einrichtung fortsetzen"
@@ -46,7 +46,6 @@
   "setup": {
     "title": "Synchronisierung einrichten",
     "step": "Schritt {{current}} von {{total}}",
-    "back": "Zurück",
     "cancel": "Abbrechen",
     "account": {
       "description": "Die Synchronisierung braucht ein Sync-Konto. Legen Sie eines an, um seine Nummer zu erhalten.",
@@ -69,10 +68,10 @@
       "monthly": "Monatlich",
       "yearly": "Jährlich",
       "continue": "Weiter zur Zahlung",
-      "waiting": "Warte auf die Zahlung. Dieses Fenster geht weiter, sobald sie eintrifft.",
+      "waiting": "Es wird auf die Zahlung gewartet. Dieses Fenster geht weiter, sobald sie eintrifft.",
       "grantTest": "Test-Abo gewähren",
       "selfHosted": "Das ist Ihr eigener Synchronisierungsserver, es gibt also nichts zu bezahlen. Tragen Sie die Kontonummer oben in ALLOWED_ACCOUNTS auf dem Server ein und starten Sie ihn neu.",
-      "selfHostedWaiting": "Warte, bis der Server das Konto akzeptiert. Dieses Fenster geht weiter, sobald er es tut."
+      "selfHostedWaiting": "Es wird gewartet, bis der Server das Konto akzeptiert. Dieses Fenster geht weiter, sobald er es tut."
     },
     "kit": {
       "description": "Speichern Sie Ihr Sync-Wiederherstellungs-Kit. Nur damit bekommen Sie Ihre synchronisierten Daten zurück, wenn Sie alle Geräte verlieren.",
@@ -97,7 +96,9 @@
         "created": "Erstellt am {{date}}",
         "relayLabel": "Synchronisierungsserver",
         "relayNote": "Wird zum Wiederherstellen mit diesem Kit benötigt"
-      }
+      },
+      "failed": "Das Kit konnte nicht vorbereitet werden.",
+      "retry": "Erneut versuchen"
     },
     "device": {
       "description": "Geben Sie diesem Gerät einen Namen, um es von Ihren anderen zu unterscheiden.",

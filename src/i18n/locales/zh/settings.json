@@ -6,6 +6,7 @@
     "security": "安全",
     "data": "数据与备份",
     "integrations": "AI 助手",
+    "sync": "同步",
     "categorization": "分类",
     "account": "账户",
     "description": {
@@ -13,6 +14,7 @@
       "security": "密码、自动锁定和应用更新。",
       "data": "您的数据存放在哪里，以及如何保留一份副本。",
       "integrations": "供 AI 助手使用的本地 MCP 服务器。",
+      "sync": "端到端加密，让您的设备保持一致。",
       "categorization": "规则包、类别和您自己的分类规则。",
       "account": "从这台电脑上删除您的数据。"
     }

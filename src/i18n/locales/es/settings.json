@@ -6,6 +6,7 @@
     "security": "Seguridad",
     "data": "Datos y copias de seguridad",
     "integrations": "Asistente de IA",
+    "sync": "Sincronización",
     "categorization": "Categorización",
     "account": "Cuenta",
     "description": {
@@ -13,6 +14,7 @@
       "security": "Contraseña, bloqueo automático y actualizaciones de la app.",
       "data": "Dónde están tus datos y cómo guardar una copia.",
       "integrations": "El servidor MCP local para asistentes de IA.",
+      "sync": "Mantiene tus dispositivos al día, con cifrado de extremo a extremo.",
       "categorization": "Paquetes de reglas, categorías y tus propias reglas de categorización.",
       "account": "Eliminar tus datos de este ordenador."
     }

@@ -6,6 +6,7 @@
     "security": "Bezpieczeństwo",
     "data": "Dane i kopie zapasowe",
     "integrations": "Asystent AI",
+    "sync": "Synchronizacja",
     "categorization": "Kategoryzacja",
     "account": "Konto",
     "description": {
@@ -13,6 +14,7 @@
       "security": "Hasło, automatyczna blokada i aktualizacje aplikacji.",
       "data": "Gdzie leżą twoje dane i jak zachować ich kopię.",
       "integrations": "Lokalny serwer MCP dla asystentów AI.",
+      "sync": "Utrzymuje zgodność Twoich urządzeń, z szyfrowaniem end-to-end.",
       "categorization": "Pakiety reguł, kategorie i twoje własne reguły kategoryzacji.",
       "account": "Usuwanie twoich danych z tego komputera."
     }

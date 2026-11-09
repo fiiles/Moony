@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import { AppSidebar } from '@/components/shell/AppSidebar';
 import { TopBar } from '@/components/shell/TopBar';
 import { ShellProvider } from '@/components/shell/ShellProvider';
+import { useDeviceSyncEvents } from '@/hooks/use-device-sync-events';
 import { PageTransition } from '@/components/shell/PageTransition';
 
 /**
@@ -10,6 +11,7 @@ import { PageTransition } from '@/components/shell/PageTransition';
  * top bar (breadcrumb left, data status right) above the page content.
  */
 export function AppShell({ children }: { children: ReactNode }) {
+  useDeviceSyncEvents();
   return (
     <ShellProvider>
       <div className="grid min-h-screen grid-cols-[var(--sidebar-w)_minmax(0,1fr)]">

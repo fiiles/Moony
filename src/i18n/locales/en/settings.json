@@ -6,6 +6,7 @@
     "security": "Security",
     "data": "Data and backups",
     "integrations": "AI assistant",
+    "sync": "Sync",
     "categorization": "Categorization",
     "account": "Account",
     "description": {
@@ -13,6 +14,7 @@
       "security": "Password, auto-lock and app updates.",
       "data": "Where your data lives and how to keep a copy of it.",
       "integrations": "The local MCP server for AI assistants.",
+      "sync": "Keeping your devices in step, end-to-end encrypted.",
       "categorization": "Rule packs, categories and your own categorization rules.",
       "account": "Deleting your data from this computer."
     }

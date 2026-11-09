@@ -1,0 +1,40 @@
+{
+  "title": "Synkronisering mellom enheter",
+  "description": "Dataene dine, ende-til-ende-kryptert, holdes i takt mellom enhetene dine.",
+  "indicator": {
+    "synced": "Synkronisert",
+    "syncing": "Synkroniserer…",
+    "paused": "Synkronisering satt på pause",
+    "error": "Synkroniseringsfeil",
+    "offline": "Frakoblet"
+  },
+  "status": {
+    "phase": {
+      "off": "Synkronisering er av",
+      "settingUp": "Setter opp synkronisering",
+      "idle": "À jour",
+      "syncing": "Synkroniserer…",
+      "paused": "Synkronisering er satt på pause",
+      "error": "Synkroniseringen stoppet"
+    },
+    "problem": {
+      "captureBroken": "Endringssporingen på denne enheten er skadet, så synkroniseringen stoppet. Den kan repareres.",
+      "vaultGone": "De synkroniserte dataene ble slettet fra releen.",
+      "lapsed": "Abonnementet er utløpt, så synkroniseringen er satt på pause.",
+      "quotaExceeded": "De synkroniserte dataene overskrider lagringsgrensen.",
+      "snapshotTooLarge": "Dataene er for store til å synkroniseres.",
+      "newerSchema": "En annen enhet bruker en nyere versjon av Moony. Oppdater denne appen for å fortsette.",
+      "gap": "Synkroniseringshistorikken til denne enheten er inkonsekvent. Synkroniser denne enheten på nytt.",
+      "undecryptable": "Endringer fra en annen enhet kunne ikke dekrypteres.",
+      "invalidChain": "Endringer fra en annen enhet besto ikke verifiseringen og holdes tilbake.",
+      "missingParent": "Endringer fra en annen enhet mangler tidligere trinn og holdes tilbake.",
+      "quarantined": "Endringer fra noen enheter holdes tilbake av sikkerhetshensyn.",
+      "offline": "Ingen forbindelse til releen. Synkroniseringen fortsetter når den er tilbake.",
+      "relayError": "Releen svarte med en feil. Moony prøver igjen.",
+      "rateLimited": "Releen ba Moony om å senke farten. Moony prøver igjen snart.",
+      "unauthorized": "Releen godtok ikke denne enheten. Du må kanskje sette opp synkronisering på nytt.",
+      "keyRotated": "Gjenopprettingsnøkkelen ble endret på en annen enhet. Sett opp synkronisering på nytt på denne enheten.",
+      "internal": "Synkroniseringen stoppet på grunn av en intern feil."
+    }
+  }
+}

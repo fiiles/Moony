@@ -1,0 +1,40 @@
+{
+  "title": "Sincronizzazione tra dispositivi",
+  "description": "I tuoi dati, cifrati end-to-end, allineati tra i tuoi dispositivi.",
+  "indicator": {
+    "synced": "Sincronizzato",
+    "syncing": "Sincronizzazione…",
+    "paused": "Sincronizzazione in pausa",
+    "error": "Errore di sincronizzazione",
+    "offline": "Offline"
+  },
+  "status": {
+    "phase": {
+      "off": "La sincronizzazione è disattivata",
+      "settingUp": "Configurazione della sincronizzazione",
+      "idle": "Aggiornato",
+      "syncing": "Sincronizzazione…",
+      "paused": "La sincronizzazione è in pausa",
+      "error": "La sincronizzazione si è fermata"
+    },
+    "problem": {
+      "captureBroken": "Il tracciamento delle modifiche di questo dispositivo è danneggiato, quindi la sincronizzazione si è fermata. Si può riparare.",
+      "vaultGone": "I dati sincronizzati sono stati eliminati dal relay.",
+      "lapsed": "L'abbonamento è terminato, quindi la sincronizzazione è in pausa.",
+      "quotaExceeded": "I dati sincronizzati superano il limite di spazio.",
+      "snapshotTooLarge": "I dati sono troppo grandi per essere sincronizzati.",
+      "newerSchema": "Un altro dispositivo usa una versione più recente di Moony. Aggiorna questa app per continuare.",
+      "gap": "La cronologia di sincronizzazione di questo dispositivo è incoerente. Risincronizza questo dispositivo.",
+      "undecryptable": "Non è stato possibile decifrare le modifiche di un altro dispositivo.",
+      "invalidChain": "Le modifiche di un altro dispositivo non hanno superato la verifica e sono trattenute.",
+      "missingParent": "Alle modifiche di un altro dispositivo mancano passaggi precedenti e sono trattenute.",
+      "quarantined": "Le modifiche di alcuni dispositivi sono trattenute per sicurezza.",
+      "offline": "Nessuna connessione al relay. La sincronizzazione riprenderà quando sarà di nuovo raggiungibile.",
+      "relayError": "Il relay ha risposto con un errore. Moony riproverà.",
+      "rateLimited": "Il relay ha chiesto a Moony di rallentare. Moony riproverà a breve.",
+      "unauthorized": "Il relay non ha accettato questo dispositivo. Potrebbe servire configurare di nuovo la sincronizzazione.",
+      "keyRotated": "La chiave di recupero è stata cambiata su un altro dispositivo. Configura di nuovo la sincronizzazione su questo dispositivo.",
+      "internal": "La sincronizzazione si è fermata per un errore interno."
+    }
+  }
+}

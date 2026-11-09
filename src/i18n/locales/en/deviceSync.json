@@ -1,0 +1,40 @@
+{
+  "title": "Sync between devices",
+  "description": "Your data, end-to-end encrypted, kept in step between your devices.",
+  "indicator": {
+    "synced": "Synced",
+    "syncing": "Syncing…",
+    "paused": "Sync paused",
+    "error": "Sync error",
+    "offline": "Offline"
+  },
+  "status": {
+    "phase": {
+      "off": "Sync is off",
+      "settingUp": "Setting up sync",
+      "idle": "Up to date",
+      "syncing": "Syncing…",
+      "paused": "Sync is paused",
+      "error": "Sync stopped"
+    },
+    "problem": {
+      "captureBroken": "This device's change tracking is damaged, so syncing stopped. It can be repaired.",
+      "vaultGone": "The synced data was deleted from the relay.",
+      "lapsed": "The subscription has ended, so syncing is paused.",
+      "quotaExceeded": "The synced data is over the storage limit.",
+      "snapshotTooLarge": "The data is too large to sync.",
+      "newerSchema": "Another device uses a newer version of Moony. Update this app to continue.",
+      "gap": "This device's sync history is inconsistent. Re-sync this device.",
+      "undecryptable": "Changes from another device could not be decrypted.",
+      "invalidChain": "Changes from another device failed verification and are held.",
+      "missingParent": "Changes from another device are missing earlier steps and are held.",
+      "quarantined": "Changes from some devices are held for safety.",
+      "offline": "No connection to the relay. Syncing resumes when it is back.",
+      "relayError": "The relay answered with an error. Moony will try again.",
+      "rateLimited": "The relay asked Moony to slow down. Moony will try again soon.",
+      "unauthorized": "The relay did not accept this device. Setting up sync again may be needed.",
+      "keyRotated": "The recovery key was changed on another device. Set up sync on this device again.",
+      "internal": "Syncing stopped because of an internal error."
+    }
+  }
+}

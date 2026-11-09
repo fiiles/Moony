@@ -8,7 +8,11 @@ import { formatBytes } from '@/utils/format-bytes';
 import { useShellPage } from '@/components/shell/shell-context';
 import { PageHead } from '@/components/shell/PageHead';
 import { cn } from '@/lib/utils';
-import { SETTINGS_SECTIONS, type SettingsSectionId } from '@/components/settings/settings-sections';
+import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
+import {
+  visibleSettingsSections,
+  type SettingsSectionId,
+} from '@/components/settings/settings-sections';
 
 /**
  * Settings frame (design system, prototype `settings.html`): page head with
@@ -24,6 +28,7 @@ export function SettingsLayout({
 }) {
   const { t } = useTranslation('settings');
   const fmt = useFormat();
+  const syncFeature = useDeviceSyncFeature();
   const contentRef = useRef<HTMLDivElement>(null);
 
   // The scroll container is <main>; start every sub-page at the top unless a
@@ -53,7 +58,7 @@ export function SettingsLayout({
       />
       <div className="grid grid-cols-[200px_minmax(0,1fr)] items-start gap-8">
         <nav aria-label={t('sections.navLabel')} className="sticky top-8 grid gap-0.5">
-          {SETTINGS_SECTIONS.map((section) => {
+          {visibleSettingsSections(syncFeature).map((section) => {
             const isActive = section.id === active;
             return (
               <Link

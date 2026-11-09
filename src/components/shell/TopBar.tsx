@@ -6,6 +6,8 @@ import { resolveSettingsSection } from '@/components/settings/settings-sections'
 import { useLanguage } from '@/i18n/I18nProvider';
 import { DataStatus } from '@/components/shell/DataStatus';
 import { UpdateStatus } from '@/components/shell/UpdateStatus';
+import { SyncStatusIndicator } from '@/components/shell/SyncStatusIndicator';
+import { useDeviceSyncFeature } from '@/hooks/use-device-sync';
 import { MilestonesStatus } from '@/components/shell/MilestonesStatus';
 import { HistoryRecalculationBadge } from '@/components/common/HistoryRecalculationBadge';
 import { useShell } from '@/components/shell/shell-context';
@@ -28,6 +30,7 @@ export function TopBar() {
   const { t: ts } = useTranslation('settings');
   const { getLocale } = useLanguage();
   const { page } = useShell();
+  const syncFeature = useDeviceSyncFeature();
   const lower = (s: string) => s.toLocaleLowerCase(getLocale());
 
   const nav = findNavLocation(location);
@@ -42,7 +45,7 @@ export function TopBar() {
     if (page.crumb) crumbs.push({ label: page.crumb, kind: 'strong' });
     else
       crumbs.push({
-        label: lower(ts(`sections.${resolveSettingsSection(location)}`)),
+        label: lower(ts(`sections.${resolveSettingsSection(location, syncFeature)}`)),
         kind: 'tag',
       });
   } else if (nav.isDetail && page.crumb) {
@@ -84,6 +87,7 @@ export function TopBar() {
       </nav>
       <div className="flex shrink-0 items-center gap-4">
         <HistoryRecalculationBadge />
+        <SyncStatusIndicator />
         <MilestonesStatus />
         <UpdateStatus />
         <DataStatus override={page.status} />

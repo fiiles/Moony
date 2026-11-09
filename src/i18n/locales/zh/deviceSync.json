@@ -1,0 +1,40 @@
+{
+  "title": "设备间同步",
+  "description": "您的数据经端到端加密，在您的各台设备之间保持一致。",
+  "indicator": {
+    "synced": "已同步",
+    "syncing": "正在同步…",
+    "paused": "同步已暂停",
+    "error": "同步出错",
+    "offline": "离线"
+  },
+  "status": {
+    "phase": {
+      "off": "同步已关闭",
+      "settingUp": "正在设置同步",
+      "idle": "已是最新",
+      "syncing": "正在同步…",
+      "paused": "同步已暂停",
+      "error": "同步已停止"
+    },
+    "problem": {
+      "captureBroken": "此设备的变更跟踪已损坏，因此同步已停止。可以修复。",
+      "vaultGone": "已同步的数据已从中继中删除。",
+      "lapsed": "订阅已结束，因此同步已暂停。",
+      "quotaExceeded": "已同步的数据超出存储上限。",
+      "snapshotTooLarge": "数据过大，无法同步。",
+      "newerSchema": "另一台设备使用更新版本的 Moony。请更新此应用以继续。",
+      "gap": "此设备的同步历史不一致。请重新同步此设备。",
+      "undecryptable": "无法解密来自另一台设备的变更。",
+      "invalidChain": "来自另一台设备的变更未通过验证，已被暂存。",
+      "missingParent": "来自另一台设备的变更缺少之前的步骤，已被暂存。",
+      "quarantined": "出于安全考虑，部分设备的变更已被暂存。",
+      "offline": "无法连接到中继。连接恢复后将继续同步。",
+      "relayError": "中继返回了错误。Moony 会重试。",
+      "rateLimited": "中继要求 Moony 放慢速度。Moony 稍后会重试。",
+      "unauthorized": "中继未接受此设备。可能需要重新设置同步。",
+      "keyRotated": "恢复密钥已在另一台设备上更改。请在此设备上重新设置同步。",
+      "internal": "由于内部错误，同步已停止。"
+    }
+  }
+}

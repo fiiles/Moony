@@ -6,6 +6,7 @@
     "security": "セキュリティ",
     "data": "データとバックアップ",
     "integrations": "AIアシスタント",
+    "sync": "同期",
     "categorization": "分類",
     "account": "アカウント",
     "description": {
@@ -13,6 +14,7 @@
       "security": "パスワード、自動ロック、アプリの更新。",
       "data": "データの保存場所と、そのコピーの作成方法。",
       "integrations": "AI アシスタント向けのローカル MCP サーバー。",
+      "sync": "エンドツーエンドで暗号化して、デバイス間を同じ状態に保ちます。",
       "categorization": "ルールパック、カテゴリ、独自の分類ルール。",
       "account": "このコンピュータからデータを削除します。"
     }

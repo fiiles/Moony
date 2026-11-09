@@ -1,0 +1,40 @@
+{
+  "title": "Synchronizacja między urządzeniami",
+  "description": "Twoje dane, szyfrowane end-to-end, są zgodne na wszystkich Twoich urządzeniach.",
+  "indicator": {
+    "synced": "Zsynchronizowano",
+    "syncing": "Synchronizuję…",
+    "paused": "Synchronizacja wstrzymana",
+    "error": "Błąd synchronizacji",
+    "offline": "Offline"
+  },
+  "status": {
+    "phase": {
+      "off": "Synchronizacja jest wyłączona",
+      "settingUp": "Konfigurowanie synchronizacji",
+      "idle": "Aktualne",
+      "syncing": "Synchronizuję…",
+      "paused": "Synchronizacja jest wstrzymana",
+      "error": "Synchronizacja zatrzymana"
+    },
+    "problem": {
+      "captureBroken": "Śledzenie zmian na tym urządzeniu jest uszkodzone, więc synchronizacja się zatrzymała. Można je naprawić.",
+      "vaultGone": "Zsynchronizowane dane zostały usunięte z przekaźnika.",
+      "lapsed": "Subskrypcja wygasła, więc synchronizacja jest wstrzymana.",
+      "quotaExceeded": "Zsynchronizowane dane przekraczają limit miejsca.",
+      "snapshotTooLarge": "Dane są za duże do synchronizacji.",
+      "newerSchema": "Inne urządzenie używa nowszej wersji Moony. Zaktualizuj tę aplikację, aby kontynuować.",
+      "gap": "Historia synchronizacji tego urządzenia jest niespójna. Zsynchronizuj to urządzenie ponownie.",
+      "undecryptable": "Nie udało się odszyfrować zmian z innego urządzenia.",
+      "invalidChain": "Zmiany z innego urządzenia nie przeszły weryfikacji i są wstrzymane.",
+      "missingParent": "Zmianom z innego urządzenia brakuje wcześniejszych kroków i są wstrzymane.",
+      "quarantined": "Zmiany z niektórych urządzeń są wstrzymane ze względów bezpieczeństwa.",
+      "offline": "Brak połączenia z przekaźnikiem. Synchronizacja wznowi się, gdy wróci.",
+      "relayError": "Przekaźnik odpowiedział błędem. Moony spróbuje ponownie.",
+      "rateLimited": "Przekaźnik poprosił Moony o zwolnienie tempa. Moony wkrótce spróbuje ponownie.",
+      "unauthorized": "Przekaźnik nie przyjął tego urządzenia. Może być potrzebna ponowna konfiguracja synchronizacji.",
+      "keyRotated": "Klucz odzyskiwania został zmieniony na innym urządzeniu. Skonfiguruj synchronizację na tym urządzeniu ponownie.",
+      "internal": "Synchronizacja zatrzymała się z powodu błędu wewnętrznego."
+    }
+  }
+}

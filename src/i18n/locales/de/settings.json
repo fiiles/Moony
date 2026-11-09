@@ -6,6 +6,7 @@
     "security": "Sicherheit",
     "data": "Daten und Sicherungen",
     "integrations": "KI-Assistent",
+    "sync": "Synchronisierung",
     "categorization": "Kategorisierung",
     "account": "Konto",
     "description": {
@@ -13,6 +14,7 @@
       "security": "Passwort, automatische Sperre und App-Updates.",
       "data": "Wo Ihre Daten liegen und wie Sie eine Kopie davon aufbewahren.",
       "integrations": "Der lokale MCP-Server für KI-Assistenten.",
+      "sync": "Hält Ihre Geräte auf dem gleichen Stand, Ende-zu-Ende-verschlüsselt.",
       "categorization": "Regelpakete, Kategorien und Ihre eigenen Kategorisierungsregeln.",
       "account": "Ihre Daten von diesem Computer löschen."
     }

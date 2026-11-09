@@ -1,0 +1,40 @@
+{
+  "title": "Synchronizace mezi zařízeními",
+  "description": "Vaše data, koncově šifrovaná, drží krok mezi vašimi zařízeními.",
+  "indicator": {
+    "synced": "Synchronizováno",
+    "syncing": "Synchronizuji…",
+    "paused": "Synchronizace pozastavena",
+    "error": "Chyba synchronizace",
+    "offline": "Offline"
+  },
+  "status": {
+    "phase": {
+      "off": "Synchronizace je vypnutá",
+      "settingUp": "Nastavuje se synchronizace",
+      "idle": "Vše aktuální",
+      "syncing": "Synchronizuji…",
+      "paused": "Synchronizace je pozastavená",
+      "error": "Synchronizace se zastavila"
+    },
+    "problem": {
+      "captureBroken": "Sledování změn na tomto zařízení je poškozené, proto se synchronizace zastavila. Lze ho opravit.",
+      "vaultGone": "Synchronizovaná data byla ze serveru smazána.",
+      "lapsed": "Předplatné skončilo, synchronizace je pozastavená.",
+      "quotaExceeded": "Synchronizovaná data překračují limit úložiště.",
+      "snapshotTooLarge": "Data jsou na synchronizaci příliš velká.",
+      "newerSchema": "Jiné zařízení používá novější verzi Moony. Pro pokračování aplikaci aktualizujte.",
+      "gap": "Historie synchronizace tohoto zařízení je nekonzistentní. Synchronizujte toto zařízení znovu.",
+      "undecryptable": "Změny z jiného zařízení se nepodařilo dešifrovat.",
+      "invalidChain": "Změny z jiného zařízení neprošly ověřením a jsou zadržené.",
+      "missingParent": "Změnám z jiného zařízení chybí dřívější kroky a jsou zadržené.",
+      "quarantined": "Změny z některých zařízení jsou z bezpečnostních důvodů zadržené.",
+      "offline": "Server není dostupný. Synchronizace se obnoví, jakmile bude zpět.",
+      "relayError": "Server odpověděl chybou. Moony to zkusí znovu.",
+      "rateLimited": "Server požádal Moony o zpomalení. Moony to brzy zkusí znovu.",
+      "unauthorized": "Server toto zařízení nepřijal. Může být potřeba synchronizaci nastavit znovu.",
+      "keyRotated": "Obnovovací klíč byl změněn na jiném zařízení. Nastavte synchronizaci na tomto zařízení znovu.",
+      "internal": "Synchronizace se zastavila kvůli vnitřní chybě."
+    }
+  }
+}

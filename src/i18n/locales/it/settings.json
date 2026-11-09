@@ -6,6 +6,7 @@
     "security": "Sicurezza",
     "data": "Dati e backup",
     "integrations": "Assistente IA",
+    "sync": "Sincronizzazione",
     "categorization": "Categorizzazione",
     "account": "Account",
     "description": {
@@ -13,6 +14,7 @@
       "security": "Password, blocco automatico e aggiornamenti dell'app.",
       "data": "Dove si trovano i tuoi dati e come conservarne una copia.",
       "integrations": "Il server MCP locale per gli assistenti AI.",
+      "sync": "Tiene allineati i tuoi dispositivi, con cifratura end-to-end.",
       "categorization": "Pacchetti di regole, categorie e le tue regole di categorizzazione.",
       "account": "Eliminazione dei tuoi dati da questo computer."
     }

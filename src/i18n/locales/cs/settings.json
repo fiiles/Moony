@@ -6,6 +6,7 @@
     "security": "Zabezpečení",
     "data": "Data a zálohy",
     "integrations": "AI asistent",
+    "sync": "Synchronizace",
     "categorization": "Kategorizace",
     "account": "Účet",
     "description": {
@@ -13,6 +14,7 @@
       "security": "Heslo, automatické zamykání a aktualizace aplikace.",
       "data": "Kde jsou vaše data uložená a jak si uchovat jejich kopii.",
       "integrations": "Lokální MCP server pro AI asistenty.",
+      "sync": "Zařízení drží krok, koncově šifrovaně.",
       "categorization": "Balíčky pravidel, kategorie a vlastní pravidla kategorizace.",
       "account": "Smazání vašich dat z tohoto počítače."
     }

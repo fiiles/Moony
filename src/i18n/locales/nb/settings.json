@@ -6,6 +6,7 @@
     "security": "Sikkerhet",
     "data": "Data og sikkerhetskopier",
     "integrations": "AI-assistent",
+    "sync": "Synkronisering",
     "categorization": "Kategorisering",
     "account": "Konto",
     "description": {
@@ -13,6 +14,7 @@
       "security": "Passord, automatisk låsing og appoppdateringer.",
       "data": "Hvor dataene dine ligger og hvordan du tar en kopi av dem.",
       "integrations": "Den lokale MCP-serveren for AI-assistenter.",
+      "sync": "Holder enhetene dine i takt, ende-til-ende-kryptert.",
       "categorization": "Regelpakker, kategorier og dine egne kategoriseringsregler.",
       "account": "Sletting av dataene dine fra denne datamaskinen."
     }

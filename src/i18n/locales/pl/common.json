@@ -334,7 +334,10 @@
     "syncKeyRotated": "To urządzenie nie ma już dostępu do zsynchronizowanych danych. Mogło zostać usunięte przez inne urządzenie.",
     "syncRelayUrlInvalid": "Adres serwera synchronizacji jest nieprawidłowy.",
     "syncVaultHasNoSnapshot": "Zsynchronizowane dane nie mają jeszcze kopii, od której można zacząć. Poczekaj, aż urządzenie, które już synchronizuje, zakończy synchronizację, i spróbuj ponownie.",
-    "syncRepairDrainIncomplete": "Nie wszystkie zmiany z tego urządzenia udało się wysłać na serwer synchronizacji, więc naprawa została zatrzymana i nic nie zostało zastąpione. Zapisano kopię zapasową. Spróbuj ponownie, gdy synchronizacja będzie działać."
+    "syncRepairDrainIncomplete": "Nie wszystkie zmiany z tego urządzenia udało się wysłać na serwer synchronizacji, więc naprawa została zatrzymana i nic nie zostało zastąpione. Zapisano kopię zapasową. Spróbuj ponownie, gdy synchronizacja będzie działać.",
+    "syncRecoveryKitNotConfirmed": "Zanim przejdziesz dalej, zapisz lub skopiuj zestaw odzyskiwania synchronizacji i potwierdź, że to zrobiłeś.",
+    "syncSetupIncomplete": "Konfiguracja synchronizacji nie została ukończona. Wróć do poprzedniego kroku i spróbuj ponownie.",
+    "syncAlreadyEnabled": "Synchronizacja jest już włączona dla tego profilu."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

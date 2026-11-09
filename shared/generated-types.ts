@@ -375,6 +375,20 @@ export type CategoryUsage = { categoryId: string; transactions: number; rules: n
 export type ChangedRow = { id: string; previousCategoryId: string | null; previousSource: string | null }
 
 /**
+ * Where paying for the account happens.
+ */
+export type CheckoutTarget = 
+/**
+ * The payment page to open in the browser (https, on polar.sh).
+ */
+{ kind: "open"; url: string } | 
+/**
+ * A self-hosted relay takes no payments: its operator adds the account number to the relay's
+ * `ALLOWED_ACCOUNTS`, and setup waits until the account is active.
+ */
+{ kind: "selfHosted" }
+
+/**
  * What a converted response could not (or only approximately) convert.
  */
 export type ConversionQuality = { missingCurrencies: string[]; missingCount: number; estimated: boolean }
@@ -1911,6 +1925,25 @@ learnable: boolean;
 matches: number; byCategory: CategoryCount[] }
 
 /**
+ * The Sync Recovery Kit (spec §11.5): what brings the synced data back when every device is
+ * lost. It holds the vault key, so `Debug` prints nothing of it and the secret fields are wiped
+ * when it drops (ruling P16).
+ */
+export type RecoveryKit = { accountNumber: string; 
+/**
+ * The recovery code as 16 groups of five joined by `-`.
+ */
+recoveryCode: string; 
+/**
+ * The QR of `moony-recover:1:<account>:<code>[:<base64url relay address>]` as SVG.
+ */
+qrSvg: string; 
+/**
+ * The relay address, only when it is not the default relay (a self-hosted one).
+ */
+relayUrl: string | null }
+
+/**
  * Recurring cost for real estate
  */
 export type RecurringCost = { name: string; amount: number; frequency: string; currency: string | null }
@@ -3036,6 +3069,16 @@ export type SuggestionSource =
 "pack"
 
 /**
+ * The sync account as setup shows it: its 16-digit number and whether the relay counts it as
+ * paid.
+ */
+export type SyncAccount = { accountNumber: string; active: boolean; 
+/**
+ * The subscription's end (unix seconds); `None` while the account has never been paid.
+ */
+paidUntil: number | null }
+
+/**
  * Where sync stands on this device.
  */
 export type SyncPhase = 
@@ -3060,6 +3103,11 @@ export type SyncPhase =
  * Stopped on something that needs a look.
  */
 "error"
+
+/**
+ * The subscription a checkout is for.
+ */
+export type SyncPlan = "monthly" | "yearly"
 
 /**
  * Why sync is paused or stopped.

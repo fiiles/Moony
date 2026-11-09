@@ -334,7 +334,10 @@
     "syncKeyRotated": "Denne enheten har ikke lenger tilgang til de synkroniserte dataene. En annen enhet kan ha fjernet den.",
     "syncRelayUrlInvalid": "Adressen til synkroniseringsserveren er ugyldig.",
     "syncVaultHasNoSnapshot": "De synkroniserte dataene har ennå ingen kopi å starte fra. La en enhet som allerede synkroniserer fullføre en synkronisering, og prøv igjen.",
-    "syncRepairDrainIncomplete": "Ikke alle endringene fra denne enheten kunne sendes til synkroniseringsserveren, så reparasjonen stoppet og ingenting ble erstattet. En sikkerhetskopi ble lagret. Prøv igjen når synkroniseringen fungerer."
+    "syncRepairDrainIncomplete": "Ikke alle endringene fra denne enheten kunne sendes til synkroniseringsserveren, så reparasjonen stoppet og ingenting ble erstattet. En sikkerhetskopi ble lagret. Prøv igjen når synkroniseringen fungerer.",
+    "syncRecoveryKitNotConfirmed": "Lagre eller kopier gjenopprettingssettet for synkronisering, og bekreft at du har gjort det, før du fortsetter.",
+    "syncSetupIncomplete": "Oppsettet av synkronisering er ikke fullført. Gå tilbake til forrige trinn og prøv igjen.",
+    "syncAlreadyEnabled": "Synkronisering er allerede slått på for denne profilen."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

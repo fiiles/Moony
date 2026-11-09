@@ -334,7 +334,10 @@
     "syncKeyRotated": "Toto zařízení už nemá přístup k synchronizovaným datům. Možná ho odebralo jiné zařízení.",
     "syncRelayUrlInvalid": "Adresa synchronizačního serveru není platná.",
     "syncVaultHasNoSnapshot": "Synchronizovaná data zatím nemají kopii, ze které by šlo začít. Nechte zařízení, které už synchronizuje, dokončit synchronizaci a zkuste to znovu.",
-    "syncRepairDrainIncomplete": "Ne všechny změny z tohoto zařízení se podařilo odeslat na synchronizační server, proto se oprava zastavila a nic nebylo nahrazeno. Záloha je uložená. Zkuste to znovu, až bude synchronizace fungovat."
+    "syncRepairDrainIncomplete": "Ne všechny změny z tohoto zařízení se podařilo odeslat na synchronizační server, proto se oprava zastavila a nic nebylo nahrazeno. Záloha je uložená. Zkuste to znovu, až bude synchronizace fungovat.",
+    "syncRecoveryKitNotConfirmed": "Než budete pokračovat, uložte nebo zkopírujte sadu pro obnovení synchronizace a potvrďte, že jste to udělali.",
+    "syncSetupIncomplete": "Nastavení synchronizace není dokončené. Vraťte se o krok zpět a zkuste to znovu.",
+    "syncAlreadyEnabled": "Synchronizace je pro tento profil už zapnutá."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

@@ -70,6 +70,7 @@ impl From<RelayError> for SyncError {
             | RelayError::AccountHasVaults
             | RelayError::SnapshotOutdated
             | RelayError::CheckoutUnavailable
+            | RelayError::SelfHosted
             | RelayError::BadRequest(_)) => SyncError::Refused(refused),
         }
     }
@@ -225,6 +226,13 @@ mod tests {
                 "Refused(CheckoutUnavailable)",
                 false,
                 "validation.syncCheckoutUnavailable",
+            ),
+            (
+                // Setup turns it into `CheckoutTarget::SelfHosted` before it is an error.
+                E::SelfHosted,
+                "Refused(SelfHosted)",
+                false,
+                "validation.syncRelayError",
             ),
             (
                 E::NoSnapshot,

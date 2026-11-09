@@ -334,7 +334,10 @@
     "syncKeyRotated": "Dieses Gerät hat keinen Zugriff mehr auf die synchronisierten Daten. Möglicherweise hat ein anderes Gerät es entfernt.",
     "syncRelayUrlInvalid": "Die Adresse des Sync-Servers ist ungültig.",
     "syncVaultHasNoSnapshot": "Für die synchronisierten Daten gibt es noch keine Kopie zum Starten. Lassen Sie ein Gerät, das bereits synchronisiert, eine Synchronisierung abschließen, und versuchen Sie es dann erneut.",
-    "syncRepairDrainIncomplete": "Nicht alle Änderungen dieses Geräts konnten an den Sync-Server gesendet werden. Die Reparatur wurde daher angehalten und nichts ersetzt. Eine Sicherung wurde gespeichert. Versuchen Sie es erneut, wenn die Synchronisierung funktioniert."
+    "syncRepairDrainIncomplete": "Nicht alle Änderungen dieses Geräts konnten an den Sync-Server gesendet werden. Die Reparatur wurde daher angehalten und nichts ersetzt. Eine Sicherung wurde gespeichert. Versuchen Sie es erneut, wenn die Synchronisierung funktioniert.",
+    "syncRecoveryKitNotConfirmed": "Speichern oder kopieren Sie Ihr Sync-Wiederherstellungskit und bestätigen Sie das, bevor Sie fortfahren.",
+    "syncSetupIncomplete": "Die Einrichtung der Synchronisierung ist nicht abgeschlossen. Gehen Sie einen Schritt zurück und versuchen Sie es erneut.",
+    "syncAlreadyEnabled": "Die Synchronisierung ist für dieses Profil bereits aktiviert."
   },
   "auth": {
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",

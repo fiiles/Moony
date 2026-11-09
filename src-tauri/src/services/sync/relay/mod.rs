@@ -133,6 +133,10 @@ pub enum RelayError {
     SnapshotTooLarge,
     #[error("checkout unavailable")]
     CheckoutUnavailable,
+    /// A self-hosted relay (Moony-relay `SELF_HOSTED=1`, ruling SH-1) takes no payments: its
+    /// checkout answers `409 self_hosted`.
+    #[error("self-hosted relay")]
+    SelfHosted,
     #[error("bad request: {0}")]
     BadRequest(String),
     #[error("server error {0}")]
@@ -200,6 +204,7 @@ impl RelayError {
             (409, "vault_exists") => RelayError::VaultExists,
             (409, "account_has_vaults") => RelayError::AccountHasVaults,
             (409, "snapshot_outdated") => RelayError::SnapshotOutdated,
+            (409, "self_hosted") => RelayError::SelfHosted,
             (410, "snapshot_required") => RelayError::SnapshotRequired,
             (411, "length_required") => RelayError::BadRequest("length_required".into()),
             (413, "quota_exceeded") => RelayError::QuotaExceeded,
@@ -220,7 +225,8 @@ pub trait Relay: Send + Sync {
         &self,
         account: &str,
     ) -> impl Future<Output = RelayResult<AccountStatus>> + Send;
-    /// `POST /v1/accounts/me/checkout` → the payment page URL.
+    /// `POST /v1/accounts/me/checkout` → the payment page URL (`SelfHosted` from a relay that
+    /// takes no payments).
     fn checkout(
         &self,
         account: &str,
@@ -290,6 +296,7 @@ mod tests {
             (400, "invalid_plan", bad("invalid_plan")),
             (404, "account_not_found", E::AccountNotFound),
             (409, "account_has_vaults", E::AccountHasVaults),
+            (409, "self_hosted", E::SelfHosted),
             (413, "body_too_large", bad("body_too_large")),
             (429, "rate_limited", E::RateLimited),
             (503, "try_again", E::Server(503)),

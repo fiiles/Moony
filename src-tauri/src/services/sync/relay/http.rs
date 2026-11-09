@@ -59,6 +59,20 @@ pub fn validate_base_url(url: &str) -> Result<()> {
     parse_base_url(url).map(|_| ())
 }
 
+/// A valid relay base URL (`validate_base_url`) in one spelling: `scheme://host[:port]` with the
+/// host in lowercase, no default port and no trailing `/`. Setup stores this form, so equal
+/// addresses compare equal.
+pub fn normalize_base_url(url: &str) -> Result<String> {
+    let parsed = parse_base_url(url)?;
+    Ok(parsed.as_str().trim_end_matches('/').to_string())
+}
+
+/// Whether `url` is the default relay (`DEFAULT_RELAY_URL`), however it is spelled. An invalid
+/// address is not.
+pub fn is_default_relay(url: &str) -> bool {
+    normalize_base_url(url).is_ok_and(|normal| normal == DEFAULT_RELAY_URL)
+}
+
 fn parse_base_url(url: &str) -> Result<Url> {
     let invalid = || AppError::Validation("validation.syncRelayUrlInvalid".into());
     let parsed = Url::parse(url).map_err(|_| invalid())?;

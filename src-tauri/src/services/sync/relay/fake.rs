@@ -75,6 +75,10 @@ struct FakeState {
     op_quota: Option<u64>,
     calls: Vec<Route>,
     push_sizes: Vec<(usize, usize)>,
+    /// What a checkout answers: this base followed by the plan (`set_checkout_base`).
+    checkout_base: Option<String>,
+    /// A self-hosted relay (`SELF_HOSTED=1`): checkout answers `SelfHosted`.
+    self_hosted: bool,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -138,6 +142,19 @@ impl FakeRelay {
             .entry(route as usize)
             .or_default()
             .push_back(error);
+    }
+
+    /// The payment page checkout answers: `base` followed by the plan's wire name (default
+    /// `https://checkout.example.test/`).
+    pub fn set_checkout_base(&self, base: &str) {
+        self.lock().checkout_base = Some(base.to_string());
+    }
+
+    /// A self-hosted relay (Moony-relay `SELF_HOSTED=1`, ruling SH-1): checkout answers
+    /// `409 self_hosted`, and an account is paid only once the test says so (the operator added it
+    /// to `ALLOWED_ACCOUNTS`).
+    pub fn set_self_hosted(&self, self_hosted: bool) {
+        self.lock().self_hosted = self_hosted;
     }
 
     /// The next push that succeeds stores its ops, then answers `Network("timeout")`.
@@ -357,10 +374,17 @@ impl Relay for FakeRelay {
             check_account(account)?;
             let mut state = self.lock();
             state.enter(Route::Checkout)?;
+            if state.self_hosted {
+                return Err(RelayError::SelfHosted);
+            }
             if !state.accounts.contains_key(account) {
                 return Err(RelayError::AccountNotFound);
             }
-            Ok(format!("https://checkout.example.test/{}", plan.as_wire()))
+            let base = state
+                .checkout_base
+                .as_deref()
+                .unwrap_or("https://checkout.example.test/");
+            Ok(format!("{base}{}", plan.as_wire()))
         })();
         async move { result }
     }

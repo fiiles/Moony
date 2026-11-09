@@ -1,4 +1,5 @@
-//! The Sync Recovery Kit's recovery code and QR (spec §11.5, D24, ruling P4).
+//! The Sync Recovery Kit's recovery code and QR (spec §11.5, D24, ruling P4), and the relay
+//! address a kit for a self-hosted relay carries (ruling SH-2).
 //!
 //! The code is the vault ID (16 bytes) followed by the current vault key (32 bytes), 384 bits
 //! written big-endian as Crockford base32 with one zero padding bit (77 characters), then a
@@ -11,12 +12,15 @@
 //! input. A `Zeroizing<String>` forwards `Debug` to its content, so callers must never format
 //! the returned code or payload; the decoded key comes back in the redacting `RecoveryKey`.
 
+use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+use base64::Engine;
 use qrcode::render::svg;
 use qrcode::{EcLevel, QrCode};
 use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
 
 use super::keys::VaultId;
+use super::relay::http::{is_default_relay, normalize_base_url};
 use crate::error::{AppError, Result};
 
 /// Crockford base32 characters of the code, checksum included.
@@ -149,14 +153,82 @@ pub fn decode_recovery_code(input: &str) -> Result<(VaultId, RecoveryKey)> {
     Ok((VaultId(id), RecoveryKey(key)))
 }
 
-/// What the Recovery Kit's QR encodes: `moony-recover:1:{account}:{code}`.
-pub fn recovery_qr_payload(account: &str, code: &str) -> Zeroizing<String> {
-    let mut out = Zeroizing::new(String::with_capacity(16 + account.len() + code.len() + 1));
-    out.push_str("moony-recover:1:");
+const QR_PREFIX: &str = "moony-recover:1:";
+
+/// What the Recovery Kit's QR encodes: `moony-recover:1:<account>:<code>`, and for a relay that is
+/// not the default one `:<base64url(relay address)>` after it (ruling SH-2).
+pub fn recovery_qr_payload(
+    account: &str,
+    code: &str,
+    relay_url: Option<&str>,
+) -> Zeroizing<String> {
+    let relay_len = relay_url.map_or(0, |url| 1 + url.len().div_ceil(3) * 4);
+    let mut out = Zeroizing::new(String::with_capacity(
+        QR_PREFIX.len() + account.len() + 1 + code.len() + relay_len,
+    ));
+    out.push_str(QR_PREFIX);
     out.push_str(account);
     out.push(':');
     out.push_str(code);
+    if let Some(url) = relay_url {
+        out.push(':');
+        URL_SAFE_NO_PAD.encode_string(url.as_bytes(), &mut out);
+    }
     out
+}
+
+/// A scanned Recovery Kit QR. `Debug` prints nothing of it.
+pub struct RecoveryQr {
+    pub account: String,
+    pub vault_id: VaultId,
+    pub key: RecoveryKey,
+    /// The relay address the kit names, normalized; `None` for the default relay.
+    pub relay_url: Option<String>,
+}
+
+impl std::fmt::Debug for RecoveryQr {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("RecoveryQr { .. }")
+    }
+}
+
+/// Reads a Recovery Kit QR payload of either form (`recovery_qr_payload`): a 16-digit account, a
+/// recovery code (`decode_recovery_code`) and, optionally, a base64url relay address. Anything
+/// else is `validation.syncRecoveryCodeInvalid`; a relay address the app does not use
+/// (`validate_base_url`) is `validation.syncRelayUrlInvalid`. A relay address equal to the default
+/// relay reads as `None`. No error carries the input.
+pub fn parse_recovery_qr_payload(input: &str) -> Result<RecoveryQr> {
+    let rest = input.strip_prefix(QR_PREFIX).ok_or_else(invalid)?;
+    let mut fields = rest.split(':');
+    let account = fields.next().ok_or_else(invalid)?;
+    let code = fields.next().ok_or_else(invalid)?;
+    let relay = fields.next();
+    if fields.next().is_some() {
+        return Err(invalid());
+    }
+    if account.len() != 16 || !account.bytes().all(|b| b.is_ascii_digit()) {
+        return Err(invalid());
+    }
+    let (vault_id, key) = decode_recovery_code(code)?;
+    let relay_url = match relay {
+        None => None,
+        Some(encoded) => {
+            let bytes = URL_SAFE_NO_PAD
+                .decode(encoded.as_bytes())
+                .map_err(|_| invalid())?;
+            let url = String::from_utf8(bytes).map_err(|_| invalid())?;
+            if url.is_empty() {
+                return Err(invalid());
+            }
+            Some(normalize_base_url(&url)?).filter(|url| !is_default_relay(url))
+        }
+    };
+    Ok(RecoveryQr {
+        account: account.to_string(),
+        vault_id,
+        key,
+        relay_url,
+    })
 }
 
 /// The payload as an SVG QR code (error correction M, quiet zone, at least 240 by 240). The
@@ -317,7 +389,7 @@ mod tests {
 
     #[test]
     fn the_qr_payload_and_svg_are_well_formed() {
-        let payload = recovery_qr_payload("1234-5678", V2);
+        let payload = recovery_qr_payload("1234-5678", V2, None);
         assert_eq!(*payload, format!("moony-recover:1:1234-5678:{V2}"));
         let svg = qr_svg(&payload).unwrap();
         assert!(svg.starts_with("<?xml") || svg.starts_with("<svg"));
@@ -343,5 +415,86 @@ mod tests {
         assert!(!format!("{err:?}{err}").contains(&V2[..20]));
         let (_, key) = decode_recovery_code(V2).unwrap();
         assert_eq!(format!("{key:?}"), "RecoveryKey(<redacted>)");
+    }
+
+    const ACCOUNT: &str = "4417938205561273";
+
+    fn qr_key(qr: &RecoveryQr) -> [u8; 32] {
+        *qr.key.expose()
+    }
+
+    #[test]
+    fn a_custom_relay_rides_in_the_qr_payload_as_base64url() {
+        let plain = V2;
+        let payload = recovery_qr_payload(ACCOUNT, plain, Some("https://relay.example.org"));
+        assert_eq!(
+            *payload,
+            format!("moony-recover:1:{ACCOUNT}:{plain}:aHR0cHM6Ly9yZWxheS5leGFtcGxlLm9yZw")
+        );
+        assert_eq!(
+            *recovery_qr_payload(ACCOUNT, plain, None),
+            format!("moony-recover:1:{ACCOUNT}:{plain}"),
+            "the default relay leaves the fourth field out"
+        );
+    }
+
+    #[test]
+    fn qr_payloads_of_both_forms_parse_back() {
+        let (id, key) = v2();
+        let default = recovery_qr_payload(ACCOUNT, V2, None);
+        let qr = parse_recovery_qr_payload(&default).expect("default relay form");
+        assert_eq!(qr.account, ACCOUNT);
+        assert_eq!((qr.vault_id, qr_key(&qr)), (id, key));
+        assert_eq!(qr.relay_url, None);
+
+        let custom = recovery_qr_payload(ACCOUNT, V2, Some("http://localhost:8787"));
+        assert!(custom.ends_with(":aHR0cDovL2xvY2FsaG9zdDo4Nzg3"));
+        let qr = parse_recovery_qr_payload(&custom).expect("custom relay form");
+        assert_eq!(qr.account, ACCOUNT);
+        assert_eq!((qr.vault_id, qr_key(&qr)), (id, key));
+        assert_eq!(qr.relay_url.as_deref(), Some("http://localhost:8787"));
+
+        // A grouped code and the default relay written out read as well.
+        let grouped = format!(
+            "moony-recover:1:{ACCOUNT}:{}:aHR0cHM6Ly9zeW5jLm1vb255ZmluYW5jZS5jb20",
+            format_recovery_code(V2).as_str()
+        );
+        let qr = parse_recovery_qr_payload(&grouped).expect("grouped code");
+        assert_eq!(qr.relay_url, None, "the default relay is the default");
+        assert_eq!(format!("{qr:?}"), "RecoveryQr { .. }");
+    }
+
+    #[test]
+    fn garbage_qr_payloads_are_refused() {
+        let invalid = |input: &str| {
+            let error = parse_recovery_qr_payload(input).expect_err(input);
+            let key = match &error {
+                AppError::Validation(key) => key.clone(),
+                other => panic!("{input}: {other:?}"),
+            };
+            assert!(!format!("{error:?}").contains(&V2[..20]), "{input}");
+            key
+        };
+        let code = "validation.syncRecoveryCodeInvalid";
+        for input in [
+            String::new(),
+            "moony-recover".to_string(),
+            format!("moony-recover:2:{ACCOUNT}:{V2}"),
+            format!("other:1:{ACCOUNT}:{V2}"),
+            format!("moony-recover:1:{ACCOUNT}"),
+            format!("moony-recover:1:123:{V2}"),
+            format!("moony-recover:1:44179382055612730:{V2}"),
+            format!("moony-recover:1:{ACCOUNT}:{}", &V2[..79]),
+            format!("moony-recover:1:{ACCOUNT}:{V2}:"),
+            format!("moony-recover:1:{ACCOUNT}:{V2}:not base64!"),
+            format!("moony-recover:1:{ACCOUNT}:{V2}:aHR0cHM6Ly9yZWxheS5leGFtcGxlLm9yZw:x"),
+            // Not UTF-8 once decoded.
+            format!("moony-recover:1:{ACCOUNT}:{V2}:__8"),
+        ] {
+            assert_eq!(invalid(&input), code, "{input}");
+        }
+        // A relay address the app would never use (plain http to another host).
+        let http = format!("moony-recover:1:{ACCOUNT}:{V2}:aHR0cDovL3JlbGF5LmV4YW1wbGUub3Jn");
+        assert_eq!(invalid(&http), "validation.syncRelayUrlInvalid");
     }
 }

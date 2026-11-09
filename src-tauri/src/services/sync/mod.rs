@@ -5,7 +5,8 @@
 //! adds the vault's credentials and this device's key pair and `sync_devices` row, and the
 //! engine that pulls from the relay, and the restore marker and device binding that make a copied
 //! or restored database re-join at unlock, and joining a vault by replace with the repair of a
-//! capture-broken profile (`join`).
+//! capture-broken profile (`join`), and first-device setup, turning sync off and deleting the
+//! synced data (`setup`).
 
 pub mod binding;
 pub mod capture;
@@ -28,6 +29,7 @@ pub mod recovery;
 pub mod registry;
 pub mod relay;
 pub mod repair;
+pub mod setup;
 pub mod snapshot;
 pub mod state;
 

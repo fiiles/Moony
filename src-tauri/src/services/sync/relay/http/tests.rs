@@ -693,3 +693,50 @@ async fn checkout_accepts_only_an_https_url() {
         server.join().expect("server");
     }
 }
+
+#[tokio::test]
+async fn a_self_hosted_relay_answers_checkout_without_a_url() {
+    let (base, server) = serve_once(json_answer("409 Conflict", r#"{"error":"self_hosted"}"#));
+    let error = relay(&base)
+        .checkout(ACCOUNT, CheckoutPlan::Monthly)
+        .await
+        .expect_err("a self-hosted relay takes no payments");
+    assert_eq!(error, RelayError::SelfHosted);
+    let request = server.join().expect("server");
+    assert_eq!(
+        request.request_line(),
+        "POST /v1/accounts/me/checkout HTTP/1.1"
+    );
+}
+
+#[test]
+fn base_urls_are_normalized_to_their_origin() {
+    for (given, normal) in [
+        (
+            "https://sync.moonyfinance.com",
+            "https://sync.moonyfinance.com",
+        ),
+        (
+            "https://sync.moonyfinance.com/",
+            "https://sync.moonyfinance.com",
+        ),
+        (
+            "https://Sync.MoonyFinance.com:443/",
+            "https://sync.moonyfinance.com",
+        ),
+        (
+            "https://relay.example.org:8443",
+            "https://relay.example.org:8443",
+        ),
+        ("http://localhost:8787/", "http://localhost:8787"),
+        ("http://127.0.0.1:8787", "http://127.0.0.1:8787"),
+    ] {
+        assert_eq!(normalize_base_url(given).expect(given), normal, "{given}");
+    }
+    let error = normalize_base_url("http://relay.example.org").expect_err("plain http");
+    assert!(matches!(&error, AppError::Validation(k) if k == "validation.syncRelayUrlInvalid"));
+    assert!(is_default_relay("https://sync.moonyfinance.com/"));
+    assert!(is_default_relay(DEFAULT_RELAY_URL));
+    assert!(!is_default_relay("https://relay.example.org"));
+    assert!(!is_default_relay("not a url"));
+}

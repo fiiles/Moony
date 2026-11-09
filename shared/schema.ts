@@ -91,6 +91,36 @@ export interface SyncStatus {
   devTools: boolean;
 }
 
+/** The subscription a checkout is for. */
+export type SyncPlan = 'monthly' | 'yearly';
+
+/** The sync account as setup shows it. */
+export interface SyncAccount {
+  /** The 16-digit account number. */
+  accountNumber: string;
+  active: boolean;
+  /** The subscription's end (unix seconds); `null` while the account has never been paid. */
+  paidUntil: number | null;
+}
+
+/**
+ * Where paying for the account happens: a payment page to open (https, on polar.sh), or a
+ * self-hosted relay that takes no payments (its operator adds the account number to the relay's
+ * `ALLOWED_ACCOUNTS`; setup then waits until the account is active).
+ */
+export type CheckoutTarget = { kind: 'open'; url: string } | { kind: 'selfHosted' };
+
+/** The Sync Recovery Kit. Holds the vault key: never log it or keep it longer than shown. */
+export interface RecoveryKit {
+  accountNumber: string;
+  /** The recovery code as 16 groups of five joined by `-`. */
+  recoveryCode: string;
+  /** The QR of the kit as SVG. */
+  qrSvg: string;
+  /** The relay address, only when it is not the default relay (a self-hosted one). */
+  relayUrl: string | null;
+}
+
 export interface MenuPreferences {
   loans: boolean;
   insurance: boolean;

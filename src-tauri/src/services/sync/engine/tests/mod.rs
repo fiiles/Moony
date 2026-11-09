@@ -9,6 +9,7 @@ mod push;
 mod repair;
 mod runtime;
 mod runtime_loop;
+mod setup;
 mod snapshots;
 
 use std::collections::BTreeMap;

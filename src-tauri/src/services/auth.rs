@@ -382,6 +382,21 @@ pub fn confirm_setup(
         .ok_or_else(|| AppError::Internal("Failed to get profile after setup".into()))
 }
 
+/// Checks `password` against the profile's key file by decrypting the master key with it, which
+/// is wiped again at once. Typed errors (`auth.wrongPassword` / `auth.keyFilesCorrupted`)
+/// propagate unchanged. Changing the password and deleting synced data ask for it first.
+pub fn verify_password(db_path: &Path, password: &str) -> Result<()> {
+    let data_dir = db_path
+        .parent()
+        .ok_or_else(|| AppError::Internal("Invalid database path".into()))?;
+
+    let (salt_path, key_path, _) = get_key_paths(data_dir);
+    let salt = crypto::read_salt(&salt_path)?;
+    let mut master_key = crypto::decrypt_master_key_with_password(password, &salt, &key_path)?;
+    zeroize::Zeroize::zeroize(&mut master_key);
+    Ok(())
+}
+
 // ============================================================================
 // 2-Phase Change Password Flow
 // ============================================================================
@@ -389,16 +404,7 @@ pub fn confirm_setup(
 /// Phase 1: Prepare password change - verifies current password and generates new recovery key
 /// Returns the new recovery key so user can save it before we make changes
 pub fn prepare_change_password(db_path: &Path, current_password: &str) -> Result<String> {
-    let data_dir = db_path
-        .parent()
-        .ok_or_else(|| AppError::Internal("Invalid database path".into()))?;
-
-    let (salt_path, key_path, _) = get_key_paths(data_dir);
-    let salt = crypto::read_salt(&salt_path)?;
-
-    // Verify current password by attempting to decrypt master key. Typed errors
-    // (`auth.wrongPassword` / `auth.keyFilesCorrupted`) propagate unchanged.
-    let _master_key = crypto::decrypt_master_key_with_password(current_password, &salt, &key_path)?;
+    verify_password(db_path, current_password)?;
 
     // Generate new recovery key (don't persist yet, just return it)
     let new_recovery_key = crypto::generate_recovery_key();
@@ -1257,6 +1263,17 @@ mod tests {
     // ------------------------------------------------------------------
     // Typed auth errors and recovery key normalization
     // ------------------------------------------------------------------
+
+    #[test]
+    fn verify_password_accepts_the_password_and_refuses_another() {
+        let dir = tempdir().expect("tempdir");
+        let db_path = write_key_files(dir.path(), "old-password");
+        verify_password(&db_path, "old-password").expect("the profile's password");
+        let err = verify_password(&db_path, "old-passwore").unwrap_err();
+        assert_auth_key(err, "auth.wrongPassword");
+        let err = verify_password(&db_path, "").unwrap_err();
+        assert_auth_key(err, "auth.wrongPassword");
+    }
 
     #[test]
     fn prepare_change_password_wrong_current_password_returns_stable_key() {

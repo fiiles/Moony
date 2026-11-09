@@ -35,7 +35,15 @@
       "unauthorized": "The sync server did not accept this device. Setting up sync again may be needed.",
       "keyRotated": "The recovery key was changed on another device. Set up sync on this device again.",
       "internal": "Syncing stopped because of an internal error."
-    }
+    },
+    "lastSynced": "Last synced {{date}}",
+    "neverSynced": "Not synced yet",
+    "pending": "Waiting to be sent: {{number}}",
+    "subscription": "Subscription",
+    "selfHosted": "Self-hosted server",
+    "paidUntil": "Paid until {{date}}",
+    "syncNow": "Sync now",
+    "showKit": "Show Recovery Kit"
   },
   "intro": {
     "description": "Keep your data in step on all your devices. It is end-to-end encrypted: the sync server only stores data it cannot read.",
@@ -111,5 +119,72 @@
       "windows": "Windows PC",
       "linux": "Linux PC"
     }
+  },
+  "alert": {
+    "lapsed": {
+      "title": "Sync paused — renew to continue",
+      "deletes": "Synced data will be deleted on {{date}}.",
+      "selfHosted": "Ask the operator of your sync server to renew access.",
+      "renew": "Renew"
+    },
+    "vaultGone": {
+      "text": "Your synced data is gone from the server. Turn sync off on this device?",
+      "turnOff": "Turn off sync",
+      "retry": "Try again"
+    },
+    "newerSchema": "Update Moony on this device to keep syncing"
+  },
+  "renew": {
+    "title": "Renew sync",
+    "selfHosted": "This is a self-hosted sync server. Ask its operator to renew access.",
+    "opened": "Payment opened in your browser."
+  },
+  "repair": {
+    "button": "Repair this device",
+    "title": "Repair this device?",
+    "description": "Moony saves a backup of this device's data, sends the changes still waiting, and then replaces this device's data with the synced data. If the changes cannot all be sent, nothing is replaced.",
+    "confirm": "Repair",
+    "success": "Device repaired. Backup saved as {{file}}."
+  },
+  "resync": {
+    "button": "Re-sync this device",
+    "hint": "Replaces this device's data with the synced data. Use it if this device's sync history is inconsistent.",
+    "title": "Re-sync this device?",
+    "description": "This device's data is replaced with the synced data. A backup is saved first. Changes this device has not sent yet are kept only in that backup.",
+    "confirm": "Re-sync",
+    "success": "Device re-synced. Backup saved as {{file}}."
+  },
+  "turnOff": {
+    "button": "Turn off sync on this device",
+    "hint": "Local data stays. Other devices keep syncing.",
+    "title": "Turn off sync on this device?",
+    "description": "Local data stays. Other devices keep syncing. Turning sync on again later replaces this device's data with the synced data or starts a new vault.",
+    "confirm": "Turn off sync",
+    "success": "Sync turned off"
+  },
+  "delete": {
+    "button": "Delete synced data",
+    "hint": "Removes the synced data from the sync server for every device.",
+    "title": "Delete synced data?",
+    "description": "This deletes the synced data on the sync server for every device. The local data on every device stays.",
+    "confirm": "Delete synced data",
+    "success": "Synced data deleted"
+  },
+  "danger": {
+    "title": "Turn off or delete",
+    "description": "Stop syncing on this device, or delete what the sync server stores."
+  },
+  "password": {
+    "label": "Device password"
+  },
+  "showKit": {
+    "title": "Sync Recovery Kit",
+    "description": "Enter your device password to show the kit.",
+    "again": "Enter your password again to copy the code.",
+    "confirm": "Show kit"
+  },
+  "busy": {
+    "title": "Repairing this device…",
+    "description": "Don't close Moony."
   }
 }

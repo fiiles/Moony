@@ -119,7 +119,8 @@
     "confirmLabel": "Escribe {{word}} para confirmar",
     "deleteAll": "Eliminar todos los datos",
     "deleteAllHint": "Elimina la base de datos, los archivos de claves y los adjuntos de este ordenador. Las copias junto a la base de datos (moony.db.bak-…, pre-restore-…) permanecen en la carpeta de datos (Datos y copias de seguridad → Abrir carpeta), igual que las copias de seguridad guardadas fuera de la app.",
-    "deleteButton": "Eliminar datos…"
+    "deleteButton": "Eliminar datos…",
+    "syncDeleted": "Los datos sincronizados en el servidor de sincronización también se eliminan."
   },
   "toast": {
     "profileUpdated": "Perfil actualizado",

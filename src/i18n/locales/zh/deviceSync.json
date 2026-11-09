@@ -35,7 +35,15 @@
       "unauthorized": "同步服务器未接受此设备。可能需要重新设置同步。",
       "keyRotated": "恢复密钥已在另一台设备上更改。请在此设备上重新设置同步。",
       "internal": "由于内部错误，同步已停止。"
-    }
+    },
+    "lastSynced": "上次同步 {{date}}",
+    "neverSynced": "尚未同步",
+    "pending": "等待发送：{{number}}",
+    "subscription": "订阅",
+    "selfHosted": "自托管服务器",
+    "paidUntil": "已付费至 {{date}}",
+    "syncNow": "立即同步",
+    "showKit": "显示恢复包"
   },
   "intro": {
     "description": "让您的数据在所有设备上保持一致。数据经端到端加密：同步服务器只保存它无法读取的数据。",
@@ -111,5 +119,72 @@
       "windows": "Windows 电脑",
       "linux": "Linux 电脑"
     }
+  },
+  "alert": {
+    "lapsed": {
+      "title": "同步已暂停——请续订以继续",
+      "deletes": "同步数据将于 {{date}} 删除。",
+      "selfHosted": "请联系您的同步服务器运营者续订访问权限。",
+      "renew": "续订"
+    },
+    "vaultGone": {
+      "text": "您的同步数据已从服务器上消失。要在此设备上关闭同步吗？",
+      "turnOff": "关闭同步",
+      "retry": "重试"
+    },
+    "newerSchema": "请更新此设备上的 Moony 以继续同步"
+  },
+  "renew": {
+    "title": "续订同步",
+    "selfHosted": "这是自托管的同步服务器。请联系其运营者续订访问权限。",
+    "opened": "已在浏览器中打开付款页面。"
+  },
+  "repair": {
+    "button": "修复此设备",
+    "title": "修复此设备？",
+    "description": "Moony 会先备份此设备的数据，发送仍在等待的更改，然后用同步的数据替换此设备的数据。如果不能发送全部更改，则不会替换任何内容。",
+    "confirm": "修复",
+    "success": "设备已修复。备份已保存为 {{file}}。"
+  },
+  "resync": {
+    "button": "重新同步此设备",
+    "hint": "用同步的数据替换此设备的数据。如果此设备的同步历史不一致，请使用此功能。",
+    "title": "重新同步此设备？",
+    "description": "此设备的数据将被同步的数据替换。会先保存一份备份。此设备尚未发送的更改只保留在该备份中。",
+    "confirm": "重新同步",
+    "success": "设备已重新同步。备份已保存为 {{file}}。"
+  },
+  "turnOff": {
+    "button": "在此设备上关闭同步",
+    "hint": "本地数据会保留。其他设备继续同步。",
+    "title": "在此设备上关闭同步？",
+    "description": "本地数据会保留。其他设备继续同步。以后再次开启同步时，此设备的数据会被同步的数据替换，或创建新的保管库。",
+    "confirm": "关闭同步",
+    "success": "同步已关闭"
+  },
+  "delete": {
+    "button": "删除同步数据",
+    "hint": "从同步服务器上删除所有设备的同步数据。",
+    "title": "删除同步数据？",
+    "description": "这会删除同步服务器上所有设备的同步数据。每台设备上的本地数据会保留。",
+    "confirm": "删除同步数据",
+    "success": "同步数据已删除"
+  },
+  "danger": {
+    "title": "关闭或删除",
+    "description": "停止此设备上的同步，或删除同步服务器存储的数据。"
+  },
+  "password": {
+    "label": "设备密码"
+  },
+  "showKit": {
+    "title": "同步恢复包",
+    "description": "输入设备密码以显示恢复包。",
+    "again": "请再次输入密码以复制代码。",
+    "confirm": "显示恢复包"
+  },
+  "busy": {
+    "title": "正在修复此设备…",
+    "description": "请勿关闭 Moony。"
   }
 }

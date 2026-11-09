@@ -119,7 +119,8 @@
     "confirmLabel": "確認のため {{word}} と入力してください",
     "deleteAll": "すべてのデータを削除",
     "deleteAllHint": "このコンピュータ上のデータベース、キーファイル、添付ファイルを削除します。データベースの隣にあるコピー（moony.db.bak-…、pre-restore-…）は、アプリ外に保存したバックアップと同様、データフォルダに残ります（データとバックアップ → フォルダを開く）。",
-    "deleteButton": "データを削除…"
+    "deleteButton": "データを削除…",
+    "syncDeleted": "同期サーバー上の同期データも削除されます。"
   },
   "toast": {
     "profileUpdated": "プロフィールを更新しました",

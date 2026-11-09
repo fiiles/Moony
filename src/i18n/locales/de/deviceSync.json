@@ -35,7 +35,15 @@
       "unauthorized": "Der Synchronisierungsserver hat dieses Gerät nicht akzeptiert. Die Synchronisierung muss eventuell neu eingerichtet werden.",
       "keyRotated": "Der Wiederherstellungsschlüssel wurde auf einem anderen Gerät geändert. Richten Sie die Synchronisierung auf diesem Gerät neu ein.",
       "internal": "Die Synchronisierung wurde wegen eines internen Fehlers gestoppt."
-    }
+    },
+    "lastSynced": "Zuletzt synchronisiert {{date}}",
+    "neverSynced": "Noch nicht synchronisiert",
+    "pending": "Zum Senden vorgemerkt: {{number}}",
+    "subscription": "Abonnement",
+    "selfHosted": "Selbst betriebener Server",
+    "paidUntil": "Bezahlt bis {{date}}",
+    "syncNow": "Jetzt synchronisieren",
+    "showKit": "Wiederherstellungs-Kit anzeigen"
   },
   "intro": {
     "description": "Halten Sie Ihre Daten auf allen Ihren Geräten auf dem gleichen Stand. Sie sind Ende-zu-Ende-verschlüsselt: Der Synchronisierungsserver speichert nur Daten, die er nicht lesen kann.",
@@ -111,5 +119,72 @@
       "windows": "Windows-PC",
       "linux": "Linux-PC"
     }
+  },
+  "alert": {
+    "lapsed": {
+      "title": "Synchronisierung pausiert – verlängern Sie, um fortzufahren",
+      "deletes": "Die synchronisierten Daten werden am {{date}} gelöscht.",
+      "selfHosted": "Bitten Sie den Betreiber Ihres Synchronisierungsservers, den Zugang zu verlängern.",
+      "renew": "Verlängern"
+    },
+    "vaultGone": {
+      "text": "Ihre synchronisierten Daten sind auf dem Server nicht mehr vorhanden. Synchronisierung auf diesem Gerät ausschalten?",
+      "turnOff": "Synchronisierung ausschalten",
+      "retry": "Erneut versuchen"
+    },
+    "newerSchema": "Aktualisieren Sie Moony auf diesem Gerät, um weiter zu synchronisieren"
+  },
+  "renew": {
+    "title": "Synchronisierung verlängern",
+    "selfHosted": "Dies ist ein selbst betriebener Synchronisierungsserver. Bitten Sie dessen Betreiber, den Zugang zu verlängern.",
+    "opened": "Die Zahlung wurde in Ihrem Browser geöffnet."
+  },
+  "repair": {
+    "button": "Dieses Gerät reparieren",
+    "title": "Dieses Gerät reparieren?",
+    "description": "Moony sichert die Daten dieses Geräts, sendet die noch wartenden Änderungen und ersetzt die Daten dieses Geräts dann durch die synchronisierten Daten. Können nicht alle Änderungen gesendet werden, wird nichts ersetzt.",
+    "confirm": "Reparieren",
+    "success": "Gerät repariert. Sicherung gespeichert als {{file}}."
+  },
+  "resync": {
+    "button": "Dieses Gerät neu synchronisieren",
+    "hint": "Ersetzt die Daten dieses Geräts durch die synchronisierten Daten. Nutzen Sie dies, wenn der Sync-Verlauf dieses Geräts inkonsistent ist.",
+    "title": "Dieses Gerät neu synchronisieren?",
+    "description": "Die Daten dieses Geräts werden durch die synchronisierten Daten ersetzt. Zuvor wird eine Sicherung gespeichert. Änderungen, die dieses Gerät noch nicht gesendet hat, bleiben nur in dieser Sicherung erhalten.",
+    "confirm": "Neu synchronisieren",
+    "success": "Gerät neu synchronisiert. Sicherung gespeichert als {{file}}."
+  },
+  "turnOff": {
+    "button": "Synchronisierung auf diesem Gerät ausschalten",
+    "hint": "Lokale Daten bleiben erhalten. Andere Geräte synchronisieren weiter.",
+    "title": "Synchronisierung auf diesem Gerät ausschalten?",
+    "description": "Lokale Daten bleiben erhalten. Andere Geräte synchronisieren weiter. Wenn Sie die Synchronisierung später wieder einschalten, werden die Daten dieses Geräts durch die synchronisierten Daten ersetzt oder es wird ein neuer Tresor angelegt.",
+    "confirm": "Synchronisierung ausschalten",
+    "success": "Synchronisierung ausgeschaltet"
+  },
+  "delete": {
+    "button": "Synchronisierte Daten löschen",
+    "hint": "Entfernt die synchronisierten Daten vom Synchronisierungsserver für alle Geräte.",
+    "title": "Synchronisierte Daten löschen?",
+    "description": "Dadurch werden die synchronisierten Daten auf dem Synchronisierungsserver für alle Geräte gelöscht. Die lokalen Daten auf jedem Gerät bleiben erhalten.",
+    "confirm": "Synchronisierte Daten löschen",
+    "success": "Synchronisierte Daten gelöscht"
+  },
+  "danger": {
+    "title": "Ausschalten oder löschen",
+    "description": "Die Synchronisierung auf diesem Gerät beenden oder löschen, was der Synchronisierungsserver speichert."
+  },
+  "password": {
+    "label": "Gerätepasswort"
+  },
+  "showKit": {
+    "title": "Sync-Wiederherstellungs-Kit",
+    "description": "Geben Sie Ihr Gerätepasswort ein, um das Kit anzuzeigen.",
+    "again": "Geben Sie Ihr Passwort erneut ein, um den Code zu kopieren.",
+    "confirm": "Kit anzeigen"
+  },
+  "busy": {
+    "title": "Dieses Gerät wird repariert…",
+    "description": "Schließen Sie Moony nicht."
   }
 }

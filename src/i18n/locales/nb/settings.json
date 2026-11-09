@@ -119,7 +119,8 @@
     "confirmLabel": "Skriv {{word}} for å bekrefte",
     "deleteAll": "Slett alle data",
     "deleteAllHint": "Fjerner databasen, nøkkelfilene og vedleggene på denne datamaskinen. Kopier ved siden av databasen (moony.db.bak-…, pre-restore-…) blir værende i datamappen (Data og sikkerhetskopier → Åpne mappe), det samme gjør sikkerhetskopier lagret utenfor appen.",
-    "deleteButton": "Slett data…"
+    "deleteButton": "Slett data…",
+    "syncDeleted": "Synkroniserte data på synkroniseringsserveren slettes også."
   },
   "toast": {
     "profileUpdated": "Profilen er oppdatert",

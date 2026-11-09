@@ -119,7 +119,8 @@
     "confirmLabel": "Type {{word}} to confirm",
     "deleteAll": "Delete all data",
     "deleteAllHint": "Removes the database, the key files and the attachments on this computer. Copies next to the database (moony.db.bak-…, pre-restore-…) stay in the data folder (Data and backups → Open folder), and so do backups saved outside the app.",
-    "deleteButton": "Delete data…"
+    "deleteButton": "Delete data…",
+    "syncDeleted": "Synced data on the sync server is deleted too."
   },
   "toast": {
     "profileUpdated": "Profile updated",

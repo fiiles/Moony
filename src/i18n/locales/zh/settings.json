@@ -119,7 +119,8 @@
     "confirmLabel": "请输入 {{word}} 以确认",
     "deleteAll": "删除所有数据",
     "deleteAllHint": "移除这台电脑上的数据库、密钥文件和附件。数据库旁边的副本（moony.db.bak-…、pre-restore-…）会留在数据文件夹中（数据与备份 → 打开文件夹），保存在应用之外的备份同样不受影响。",
-    "deleteButton": "删除数据…"
+    "deleteButton": "删除数据…",
+    "syncDeleted": "同步服务器上的同步数据也会被删除。"
   },
   "toast": {
     "profileUpdated": "个人资料已更新",

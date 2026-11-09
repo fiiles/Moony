@@ -119,7 +119,8 @@
     "confirmLabel": "Wpisz {{word}}, aby potwierdzić",
     "deleteAll": "Usuń wszystkie dane",
     "deleteAllHint": "Usuwa bazę danych, pliki kluczy i załączniki na tym komputerze. Kopie obok bazy (moony.db.bak-…, pre-restore-…) zostają w folderze danych (Dane i kopie zapasowe → Otwórz folder), tak samo jak kopie zapasowe zapisane poza aplikacją.",
-    "deleteButton": "Usuń dane…"
+    "deleteButton": "Usuń dane…",
+    "syncDeleted": "Zsynchronizowane dane na serwerze synchronizacji również zostaną usunięte."
   },
   "toast": {
     "profileUpdated": "Profil zaktualizowany",

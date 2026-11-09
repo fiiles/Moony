@@ -35,7 +35,15 @@
       "unauthorized": "Synchronizační server toto zařízení nepřijal. Může být potřeba synchronizaci nastavit znovu.",
       "keyRotated": "Obnovovací klíč byl změněn na jiném zařízení. Nastavte synchronizaci na tomto zařízení znovu.",
       "internal": "Synchronizace se zastavila kvůli vnitřní chybě."
-    }
+    },
+    "lastSynced": "Naposledy synchronizováno {{date}}",
+    "neverSynced": "Zatím nesynchronizováno",
+    "pending": "Čeká na odeslání: {{number}}",
+    "subscription": "Předplatné",
+    "selfHosted": "Vlastní (self-hosted) server",
+    "paidUntil": "Zaplaceno do {{date}}",
+    "syncNow": "Synchronizovat",
+    "showKit": "Zobrazit Záchrannou sadu"
   },
   "intro": {
     "description": "Udržujte data synchronizovaná na všech svých zařízeních. Jsou koncově šifrovaná: synchronizační server ukládá jen data, která nepřečte.",
@@ -111,5 +119,72 @@
       "windows": "Windows PC",
       "linux": "Linux PC"
     }
+  },
+  "alert": {
+    "lapsed": {
+      "title": "Synchronizace pozastavena – obnovte předplatné",
+      "deletes": "Synchronizovaná data budou smazána {{date}}.",
+      "selfHosted": "Požádejte provozovatele svého synchronizačního serveru o obnovení přístupu.",
+      "renew": "Obnovit"
+    },
+    "vaultGone": {
+      "text": "Vaše synchronizovaná data na serveru zmizela. Vypnout synchronizaci na tomto zařízení?",
+      "turnOff": "Vypnout synchronizaci",
+      "retry": "Zkusit znovu"
+    },
+    "newerSchema": "Aktualizujte Moony na tomto zařízení, aby synchronizace mohla pokračovat"
+  },
+  "renew": {
+    "title": "Obnovit synchronizaci",
+    "selfHosted": "Toto je vlastní synchronizační server. Požádejte jeho provozovatele o obnovení přístupu.",
+    "opened": "Platba byla otevřena v prohlížeči."
+  },
+  "repair": {
+    "button": "Opravit toto zařízení",
+    "title": "Opravit toto zařízení?",
+    "description": "Moony uloží zálohu dat tohoto zařízení, odešle změny, které ještě čekají, a pak data tohoto zařízení nahradí synchronizovanými daty. Pokud nelze odeslat všechny změny, nic se nenahradí.",
+    "confirm": "Opravit",
+    "success": "Zařízení opraveno. Záloha uložena jako {{file}}."
+  },
+  "resync": {
+    "button": "Synchronizovat toto zařízení znovu",
+    "hint": "Nahradí data tohoto zařízení synchronizovanými daty. Použijte to, pokud je historie synchronizace tohoto zařízení nekonzistentní.",
+    "title": "Synchronizovat toto zařízení znovu?",
+    "description": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Nejdřív se uloží záloha. Změny, které toto zařízení ještě neodeslalo, zůstanou jen v této záloze.",
+    "confirm": "Synchronizovat znovu",
+    "success": "Zařízení znovu synchronizováno. Záloha uložena jako {{file}}."
+  },
+  "turnOff": {
+    "button": "Vypnout synchronizaci na tomto zařízení",
+    "hint": "Místní data zůstanou. Ostatní zařízení se synchronizují dál.",
+    "title": "Vypnout synchronizaci na tomto zařízení?",
+    "description": "Místní data zůstanou. Ostatní zařízení se synchronizují dál. Když synchronizaci později zapnete znovu, data tohoto zařízení se nahradí synchronizovanými daty nebo se založí nový trezor.",
+    "confirm": "Vypnout synchronizaci",
+    "success": "Synchronizace vypnuta"
+  },
+  "delete": {
+    "button": "Smazat synchronizovaná data",
+    "hint": "Smaže synchronizovaná data ze synchronizačního serveru pro všechna zařízení.",
+    "title": "Smazat synchronizovaná data?",
+    "description": "Tím se na synchronizačním serveru smažou synchronizovaná data pro všechna zařízení. Místní data na každém zařízení zůstanou.",
+    "confirm": "Smazat synchronizovaná data",
+    "success": "Synchronizovaná data smazána"
+  },
+  "danger": {
+    "title": "Vypnutí a smazání",
+    "description": "Zastavte synchronizaci na tomto zařízení nebo smažte, co synchronizační server uchovává."
+  },
+  "password": {
+    "label": "Heslo zařízení"
+  },
+  "showKit": {
+    "title": "Záchranná sada synchronizace",
+    "description": "Zadejte heslo zařízení, aby se sada zobrazila.",
+    "again": "Zadejte heslo znovu, aby šlo kód zkopírovat.",
+    "confirm": "Zobrazit sadu"
+  },
+  "busy": {
+    "title": "Opravuji toto zařízení…",
+    "description": "Nezavírejte Moony."
   }
 }

@@ -35,7 +35,15 @@
       "unauthorized": "Synkroniseringsserveren godtok ikke denne enheten. Du må kanskje sette opp synkronisering på nytt.",
       "keyRotated": "Gjenopprettingsnøkkelen ble endret på en annen enhet. Sett opp synkronisering på nytt på denne enheten.",
       "internal": "Synkroniseringen stoppet på grunn av en intern feil."
-    }
+    },
+    "lastSynced": "Sist synkronisert {{date}}",
+    "neverSynced": "Ikke synkronisert ennå",
+    "pending": "Venter på å bli sendt: {{number}}",
+    "subscription": "Abonnement",
+    "selfHosted": "Selvdrevet server",
+    "paidUntil": "Betalt til {{date}}",
+    "syncNow": "Synkroniser nå",
+    "showKit": "Vis gjenopprettingssettet"
   },
   "intro": {
     "description": "Hold dataene dine oppdatert på alle enhetene dine. De er ende-til-ende-kryptert: synkroniseringsserveren lagrer bare data den ikke kan lese.",
@@ -111,5 +119,72 @@
       "windows": "Windows-PC",
       "linux": "Linux-PC"
     }
+  },
+  "alert": {
+    "lapsed": {
+      "title": "Synkroniseringen er satt på pause – forny for å fortsette",
+      "deletes": "De synkroniserte dataene slettes {{date}}.",
+      "selfHosted": "Be operatøren av synkroniseringsserveren din om å fornye tilgangen.",
+      "renew": "Forny"
+    },
+    "vaultGone": {
+      "text": "De synkroniserte dataene dine er borte fra serveren. Slå av synkronisering på denne enheten?",
+      "turnOff": "Slå av synkronisering",
+      "retry": "Prøv igjen"
+    },
+    "newerSchema": "Oppdater Moony på denne enheten for å fortsette å synkronisere"
+  },
+  "renew": {
+    "title": "Forny synkroniseringen",
+    "selfHosted": "Dette er en selvdrevet synkroniseringsserver. Be operatøren om å fornye tilgangen.",
+    "opened": "Betalingen ble åpnet i nettleseren."
+  },
+  "repair": {
+    "button": "Reparer denne enheten",
+    "title": "Reparere denne enheten?",
+    "description": "Moony lagrer en sikkerhetskopi av dataene på denne enheten, sender endringene som fortsatt venter, og erstatter deretter dataene på denne enheten med de synkroniserte dataene. Hvis ikke alle endringene kan sendes, erstattes ingenting.",
+    "confirm": "Reparer",
+    "success": "Enheten er reparert. Sikkerhetskopi lagret som {{file}}."
+  },
+  "resync": {
+    "button": "Synkroniser denne enheten på nytt",
+    "hint": "Erstatter dataene på denne enheten med de synkroniserte dataene. Bruk dette hvis synkroniseringshistorikken til enheten er inkonsekvent.",
+    "title": "Synkronisere denne enheten på nytt?",
+    "description": "Dataene på denne enheten erstattes med de synkroniserte dataene. En sikkerhetskopi lagres først. Endringer som denne enheten ikke har sendt ennå, finnes bare i den sikkerhetskopien.",
+    "confirm": "Synkroniser på nytt",
+    "success": "Enheten er synkronisert på nytt. Sikkerhetskopi lagret som {{file}}."
+  },
+  "turnOff": {
+    "button": "Slå av synkronisering på denne enheten",
+    "hint": "Lokale data blir værende. Andre enheter synkroniserer videre.",
+    "title": "Slå av synkronisering på denne enheten?",
+    "description": "Lokale data blir værende. Andre enheter synkroniserer videre. Slår du på synkronisering igjen senere, erstattes dataene på denne enheten med de synkroniserte dataene, eller det opprettes et nytt hvelv.",
+    "confirm": "Slå av synkronisering",
+    "success": "Synkronisering slått av"
+  },
+  "delete": {
+    "button": "Slett synkroniserte data",
+    "hint": "Fjerner de synkroniserte dataene fra synkroniseringsserveren for alle enheter.",
+    "title": "Slette synkroniserte data?",
+    "description": "Dette sletter de synkroniserte dataene på synkroniseringsserveren for alle enheter. De lokale dataene på hver enhet blir værende.",
+    "confirm": "Slett synkroniserte data",
+    "success": "Synkroniserte data slettet"
+  },
+  "danger": {
+    "title": "Slå av eller slett",
+    "description": "Stopp synkroniseringen på denne enheten, eller slett det synkroniseringsserveren lagrer."
+  },
+  "password": {
+    "label": "Enhetspassord"
+  },
+  "showKit": {
+    "title": "Gjenopprettingssett for synkronisering",
+    "description": "Skriv inn enhetspassordet for å vise settet.",
+    "again": "Skriv inn passordet på nytt for å kopiere koden.",
+    "confirm": "Vis settet"
+  },
+  "busy": {
+    "title": "Reparerer denne enheten…",
+    "description": "Ikke lukk Moony."
   }
 }

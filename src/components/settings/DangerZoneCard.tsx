@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { SettingsCard, SettingsRow } from '@/components/settings/SettingsCard';
+import { useDeviceSyncFeature, useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { authApi } from '@/lib/tauri-api';
 import { clearEnrolmentAsked } from '@/lib/biometrics';
 import { translateApiError } from '@/lib/translate-api-error';
@@ -28,6 +29,10 @@ const DELETE_ACCOUNT_CONFIRM_WORD = 'DELETE';
 export function DangerZoneCard() {
   const { t } = useTranslation('settings');
   const { t: tc } = useTranslation('common');
+
+  const syncFeature = useDeviceSyncFeature();
+  const { data: syncStatus } = useDeviceSyncStatus();
+  const syncOn = syncFeature && syncStatus !== undefined && syncStatus.phase !== 'off';
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
@@ -67,6 +72,7 @@ export function DangerZoneCard() {
               <AlertDialogTitle>{t('dangerZone.confirmTitle')}</AlertDialogTitle>
               <AlertDialogDescription>
                 {t('dangerZone.confirmDescription')} {t('dangerZone.backupFirst')}
+                {syncOn && ` ${t('dangerZone.syncDeleted')}`}
               </AlertDialogDescription>
             </AlertDialogHeader>
             <div className="space-y-2">

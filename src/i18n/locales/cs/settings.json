@@ -119,7 +119,8 @@
     "confirmLabel": "Pro potvrzení napište {{word}}",
     "deleteAll": "Smazat všechna data",
     "deleteAllHint": "Odstraní databázi, soubory s klíči a přílohy na tomto počítači. Kopie vedle databáze (moony.db.bak-…, pre-restore-…) zůstanou v datové složce (Data a zálohy → Otevřít složku), stejně jako zálohy uložené mimo aplikaci.",
-    "deleteButton": "Smazat data…"
+    "deleteButton": "Smazat data…",
+    "syncDeleted": "Smažou se i synchronizovaná data na synchronizačním serveru."
   },
   "toast": {
     "profileUpdated": "Profil aktualizován",

@@ -5,6 +5,7 @@ import { Check, Copy, FileText, Download } from 'lucide-react';
 import type { RecoveryKit } from '@shared/schema';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { useFormat } from '@/lib/use-format';
+import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import {
   groupAccountNumber,
@@ -43,10 +44,15 @@ interface RecoveryKitPanelProps {
   kit: RecoveryKit;
   /** Called once the kit was saved to a file or its code copied. */
   onKept: () => void;
+  /**
+   * With sync on, copying the code works only shortly after the kit was shown; afterwards the
+   * backend asks for the password again. When given, this is called instead of a failure toast.
+   */
+  onPasswordRequired?: () => void;
 }
 
 /** The Sync Recovery Kit as shown during setup: QR, code, account, and the ways to keep it. */
-export function RecoveryKitPanel({ kit, onKept }: RecoveryKitPanelProps) {
+export function RecoveryKitPanel({ kit, onKept, onPasswordRequired }: RecoveryKitPanelProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const { copyRecoveryCode } = useDeviceSyncMutations();
@@ -91,6 +97,14 @@ export function RecoveryKitPanel({ kit, onKept }: RecoveryKitPanelProps) {
       setTimeout(() => setCopied(false), 2000);
       onKept();
     } catch (error) {
+      if (
+        onPasswordRequired &&
+        error instanceof ApiError &&
+        error.key === 'validation.syncPasswordRequired'
+      ) {
+        onPasswordRequired();
+        return;
+      }
       fail(error);
     }
   };

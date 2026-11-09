@@ -7,6 +7,12 @@ import { refreshAfterRemoteChanges } from '@/lib/device-sync-refresh';
  * failure is shown. Every one re-reads the status; the ones that change local data (finish setup,
  * turn off, delete, repair, re-sync) also run the full rule-7 refresh.
  */
+/**
+ * Key shared by the mutations that replace this device's data (repair, re-sync): the app-wide
+ * busy modal counts them with `useIsMutating`, whichever component started them.
+ */
+export const REPLACE_DEVICE_MUTATION_KEY = ['device-sync-replace-data'] as const;
+
 export function useDeviceSyncMutations() {
   const queryClient = useQueryClient();
 
@@ -57,10 +63,12 @@ export function useDeviceSyncMutations() {
     onSuccess: refreshLocalData,
   });
   const repairDevice = useMutation({
+    mutationKey: REPLACE_DEVICE_MUTATION_KEY,
     mutationFn: deviceSyncApi.repairDevice,
     onSuccess: refreshLocalData,
   });
   const resyncDevice = useMutation({
+    mutationKey: REPLACE_DEVICE_MUTATION_KEY,
     mutationFn: deviceSyncApi.resyncDevice,
     onSuccess: refreshLocalData,
   });

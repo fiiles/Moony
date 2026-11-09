@@ -35,7 +35,15 @@
       "unauthorized": "Serwer synchronizacji nie przyjął tego urządzenia. Może być potrzebna ponowna konfiguracja synchronizacji.",
       "keyRotated": "Klucz odzyskiwania został zmieniony na innym urządzeniu. Skonfiguruj synchronizację na tym urządzeniu ponownie.",
       "internal": "Synchronizacja zatrzymała się z powodu błędu wewnętrznego."
-    }
+    },
+    "lastSynced": "Ostatnia synchronizacja: {{date}}",
+    "neverSynced": "Jeszcze nie zsynchronizowano",
+    "pending": "Oczekuje na wysłanie: {{number}}",
+    "subscription": "Subskrypcja",
+    "selfHosted": "Własny serwer",
+    "paidUntil": "Opłacone do {{date}}",
+    "syncNow": "Synchronizuj teraz",
+    "showKit": "Pokaż Zestaw odzyskiwania"
   },
   "intro": {
     "description": "Utrzymuj dane aktualne na wszystkich urządzeniach. Są szyfrowane end-to-end: serwer synchronizacji przechowuje tylko dane, których nie potrafi odczytać.",
@@ -111,5 +119,72 @@
       "windows": "Komputer z Windows",
       "linux": "Komputer z Linuksem"
     }
+  },
+  "alert": {
+    "lapsed": {
+      "title": "Synchronizacja wstrzymana – odnów subskrypcję, aby kontynuować",
+      "deletes": "Zsynchronizowane dane zostaną usunięte {{date}}.",
+      "selfHosted": "Poproś operatora swojego serwera synchronizacji o odnowienie dostępu.",
+      "renew": "Odnów"
+    },
+    "vaultGone": {
+      "text": "Twoich zsynchronizowanych danych nie ma już na serwerze. Wyłączyć synchronizację na tym urządzeniu?",
+      "turnOff": "Wyłącz synchronizację",
+      "retry": "Spróbuj ponownie"
+    },
+    "newerSchema": "Zaktualizuj Moony na tym urządzeniu, aby synchronizacja mogła trwać"
+  },
+  "renew": {
+    "title": "Odnów synchronizację",
+    "selfHosted": "To jest własny serwer synchronizacji. Poproś jego operatora o odnowienie dostępu.",
+    "opened": "Płatność otwarto w przeglądarce."
+  },
+  "repair": {
+    "button": "Napraw to urządzenie",
+    "title": "Naprawić to urządzenie?",
+    "description": "Moony zapisuje kopię zapasową danych tego urządzenia, wysyła zmiany, które nadal czekają, a następnie zastępuje dane tego urządzenia danymi zsynchronizowanymi. Jeśli nie da się wysłać wszystkich zmian, nic nie zostanie zastąpione.",
+    "confirm": "Napraw",
+    "success": "Urządzenie naprawione. Kopia zapasowa zapisana jako {{file}}."
+  },
+  "resync": {
+    "button": "Zsynchronizuj to urządzenie ponownie",
+    "hint": "Zastępuje dane tego urządzenia danymi zsynchronizowanymi. Użyj tego, jeśli historia synchronizacji tego urządzenia jest niespójna.",
+    "title": "Zsynchronizować to urządzenie ponownie?",
+    "description": "Dane tego urządzenia zostaną zastąpione danymi zsynchronizowanymi. Najpierw zapisywana jest kopia zapasowa. Zmiany, których to urządzenie jeszcze nie wysłało, zostaną tylko w tej kopii.",
+    "confirm": "Zsynchronizuj ponownie",
+    "success": "Urządzenie zsynchronizowane ponownie. Kopia zapasowa zapisana jako {{file}}."
+  },
+  "turnOff": {
+    "button": "Wyłącz synchronizację na tym urządzeniu",
+    "hint": "Dane lokalne zostają. Pozostałe urządzenia nadal się synchronizują.",
+    "title": "Wyłączyć synchronizację na tym urządzeniu?",
+    "description": "Dane lokalne zostają. Pozostałe urządzenia nadal się synchronizują. Gdy później ponownie włączysz synchronizację, dane tego urządzenia zostaną zastąpione danymi zsynchronizowanymi albo powstanie nowy sejf.",
+    "confirm": "Wyłącz synchronizację",
+    "success": "Synchronizacja wyłączona"
+  },
+  "delete": {
+    "button": "Usuń zsynchronizowane dane",
+    "hint": "Usuwa zsynchronizowane dane z serwera synchronizacji dla wszystkich urządzeń.",
+    "title": "Usunąć zsynchronizowane dane?",
+    "description": "To usuwa zsynchronizowane dane z serwera synchronizacji dla wszystkich urządzeń. Dane lokalne na każdym urządzeniu zostają.",
+    "confirm": "Usuń zsynchronizowane dane",
+    "success": "Zsynchronizowane dane usunięte"
+  },
+  "danger": {
+    "title": "Wyłączenie lub usunięcie",
+    "description": "Zatrzymaj synchronizację na tym urządzeniu albo usuń to, co przechowuje serwer synchronizacji."
+  },
+  "password": {
+    "label": "Hasło urządzenia"
+  },
+  "showKit": {
+    "title": "Zestaw odzyskiwania synchronizacji",
+    "description": "Wpisz hasło urządzenia, aby pokazać zestaw.",
+    "again": "Wpisz hasło ponownie, aby skopiować kod.",
+    "confirm": "Pokaż zestaw"
+  },
+  "busy": {
+    "title": "Naprawianie tego urządzenia…",
+    "description": "Nie zamykaj Moony."
   }
 }

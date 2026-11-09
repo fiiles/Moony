@@ -35,7 +35,15 @@
       "unauthorized": "Synkroniseringsservern godtog inte den här enheten. Du kan behöva ställa in synkroniseringen igen.",
       "keyRotated": "Återställningsnyckeln ändrades på en annan enhet. Ställ in synkroniseringen igen på den här enheten.",
       "internal": "Synkroniseringen stoppades på grund av ett internt fel."
-    }
+    },
+    "lastSynced": "Senast synkroniserad {{date}}",
+    "neverSynced": "Ännu inte synkroniserad",
+    "pending": "Väntar på att skickas: {{number}}",
+    "subscription": "Prenumeration",
+    "selfHosted": "Egen server",
+    "paidUntil": "Betald till {{date}}",
+    "syncNow": "Synkronisera nu",
+    "showKit": "Visa återställningskitet"
   },
   "intro": {
     "description": "Håll dina uppgifter uppdaterade på alla dina enheter. De är end-to-end-krypterade: synkroniseringsservern lagrar bara data den inte kan läsa.",
@@ -111,5 +119,72 @@
       "windows": "Windows-dator",
       "linux": "Linux-dator"
     }
+  },
+  "alert": {
+    "lapsed": {
+      "title": "Synkroniseringen är pausad – förnya för att fortsätta",
+      "deletes": "De synkroniserade uppgifterna raderas {{date}}.",
+      "selfHosted": "Be operatören av din synkroniseringsserver att förnya åtkomsten.",
+      "renew": "Förnya"
+    },
+    "vaultGone": {
+      "text": "Dina synkroniserade uppgifter finns inte längre på servern. Stänga av synkroniseringen på den här enheten?",
+      "turnOff": "Stäng av synkronisering",
+      "retry": "Försök igen"
+    },
+    "newerSchema": "Uppdatera Moony på den här enheten för att fortsätta synkronisera"
+  },
+  "renew": {
+    "title": "Förnya synkroniseringen",
+    "selfHosted": "Det här är en egen synkroniseringsserver. Be dess operatör förnya åtkomsten.",
+    "opened": "Betalningen öppnades i webbläsaren."
+  },
+  "repair": {
+    "button": "Reparera den här enheten",
+    "title": "Reparera den här enheten?",
+    "description": "Moony sparar en säkerhetskopia av enhetens data, skickar ändringarna som fortfarande väntar och ersätter sedan enhetens data med de synkroniserade uppgifterna. Om inte alla ändringar kan skickas ersätts ingenting.",
+    "confirm": "Reparera",
+    "success": "Enheten är reparerad. Säkerhetskopia sparad som {{file}}."
+  },
+  "resync": {
+    "button": "Synkronisera den här enheten igen",
+    "hint": "Ersätter enhetens data med de synkroniserade uppgifterna. Använd det om enhetens synkroniseringshistorik är inkonsekvent.",
+    "title": "Synkronisera den här enheten igen?",
+    "description": "Enhetens data ersätts med de synkroniserade uppgifterna. En säkerhetskopia sparas först. Ändringar som enheten ännu inte har skickat finns bara kvar i den säkerhetskopian.",
+    "confirm": "Synkronisera igen",
+    "success": "Enheten är synkroniserad igen. Säkerhetskopia sparad som {{file}}."
+  },
+  "turnOff": {
+    "button": "Stäng av synkronisering på den här enheten",
+    "hint": "Lokala data finns kvar. Andra enheter fortsätter synkronisera.",
+    "title": "Stänga av synkroniseringen på den här enheten?",
+    "description": "Lokala data finns kvar. Andra enheter fortsätter synkronisera. Slår du på synkroniseringen igen senare ersätts enhetens data med de synkroniserade uppgifterna, eller så skapas ett nytt valv.",
+    "confirm": "Stäng av synkronisering",
+    "success": "Synkroniseringen är avstängd"
+  },
+  "delete": {
+    "button": "Radera synkroniserade data",
+    "hint": "Tar bort de synkroniserade uppgifterna från synkroniseringsservern för alla enheter.",
+    "title": "Radera synkroniserade data?",
+    "description": "Det här raderar de synkroniserade uppgifterna på synkroniseringsservern för alla enheter. De lokala data på varje enhet finns kvar.",
+    "confirm": "Radera synkroniserade data",
+    "success": "Synkroniserade data raderade"
+  },
+  "danger": {
+    "title": "Stäng av eller radera",
+    "description": "Sluta synkronisera på den här enheten eller radera det synkroniseringsservern lagrar."
+  },
+  "password": {
+    "label": "Enhetslösenord"
+  },
+  "showKit": {
+    "title": "Återställningskit för synkronisering",
+    "description": "Ange enhetens lösenord för att visa kitet.",
+    "again": "Ange lösenordet igen för att kopiera koden.",
+    "confirm": "Visa kitet"
+  },
+  "busy": {
+    "title": "Reparerar den här enheten…",
+    "description": "Stäng inte Moony."
   }
 }

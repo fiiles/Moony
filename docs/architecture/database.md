@@ -368,7 +368,7 @@ versions that the conversion has encrypted, deleted at the next unlock once the
 store checks out; the legacy folders `real_estate_photos/`,
 `real_estate_documents/`, `insurance_documents/` while plain files of earlier
 versions are not converted yet; `pre-restore-<unix ts>/` — the previous account
-after a restore from backup (never deleted automatically). Decrypted copies of
+after a restore from backup (never deleted automatically); with device sync (ADR 0025): `sync-binding.bin` (this device's ID sealed to the machine; `.tmp` while it is written), `sync-rejoin.marker` (left by a restore: the next unlock re-joins) and `sync-repair-<unix ts>.zip` (the verified backup a sync repair or re-sync takes before replacing the profile; kept until Delete Account). None of the three is part of a backup; Delete Account removes them, and turning sync off removes the first two. Decrypted copies of
 documents opened in another app live in the app *cache* folder under `open/`
 and are wiped on lock, exit and start. Backups themselves are zip archives
 written wherever the user chooses (`services/backup.rs`, format 2: both database

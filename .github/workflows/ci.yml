@@ -15,9 +15,12 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # Timeouts: a hung test fails the job instead of holding a runner for six hours. Each is several
+  # times the job's usual length, with room for a cold build cache.
   frontend:
     name: Frontend
     runs-on: ubuntu-24.04
+    timeout-minutes: 15
 
     steps:
       - name: Checkout repository
@@ -50,6 +53,7 @@ jobs:
   rust-check:
     name: Rust Check
     runs-on: ubuntu-24.04
+    timeout-minutes: 45
 
     steps:
       - name: Checkout repository
@@ -131,6 +135,7 @@ jobs:
   rust-windows:
     name: Rust Windows Check
     runs-on: windows-latest
+    timeout-minutes: 60
 
     steps:
       - name: Checkout repository

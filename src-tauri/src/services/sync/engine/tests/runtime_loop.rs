@@ -622,11 +622,48 @@ async fn a_forced_snapshot_after_a_barrier_crossing_is_tried_once() {
     }
 }
 
+/// Runs `test` on a paused current-thread runtime on a thread of its own, and fails when it has
+/// not finished within `limit` of real time. Paused time moves only while the runtime is idle, so
+/// a loop that spins would hang a plain `start_paused` test forever instead of failing it.
+fn within_real_time<F, Fut>(limit: Duration, test: F)
+where
+    F: FnOnce() -> Fut + Send + 'static,
+    Fut: std::future::Future<Output = ()>,
+{
+    let (done, finished) = std::sync::mpsc::channel();
+    let thread = std::thread::spawn(move || {
+        tokio::runtime::Builder::new_current_thread()
+            .enable_all()
+            .start_paused(true)
+            .build()
+            .expect("paused runtime")
+            .block_on(test());
+        // The receiver is gone only after a timeout, which has already failed the test.
+        let _ = done.send(());
+    });
+    match finished.recv_timeout(limit) {
+        Ok(()) => thread.join().expect("test thread"),
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+            panic!("the test did not finish within {limit:?} of real time: the loop spins")
+        }
+        // The test panicked before it sent: pass its panic on.
+        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => match thread.join() {
+            Err(panic) => std::panic::resume_unwind(panic),
+            Ok(()) => unreachable!("the test thread ended without sending"),
+        },
+    }
+}
+
 /// The loop sleeps through a back-off (review finding 1): a passed poll or periodic time never
 /// leaves its deadline in the past. Every pull fails offline; over 31 s and then 30 minutes of
 /// (paused) time the rounds follow the back-off and the profile is taken a few times per round.
-#[tokio::test(start_paused = true)]
-async fn a_back_off_sleeps_instead_of_spinning() {
+/// A real-time watchdog fails the test if the loop spins instead (`within_real_time`).
+#[test]
+fn a_back_off_sleeps_instead_of_spinning() {
+    within_real_time(Duration::from_secs(60), back_off_sleeps_instead_of_spinning);
+}
+
+async fn back_off_sleeps_instead_of_spinning() {
     let vault = super::vault().await;
     for _ in 0..20 {
         vault

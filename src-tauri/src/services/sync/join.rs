@@ -1,8 +1,9 @@
-//! Joining a vault by replace (spec §8, §11.3 D22) and repairing a profile whose change capture
-//! broke (ruling P3). Both replace the person's local data with the vault's, so neither may lose
-//! it silently: a join is one savepoint that leaves the profile as it was when any step fails, and
-//! the repair writes a backup and reads it back before anything else, and replaces nothing unless
-//! every change this device captured reached the relay first.
+//! Joining a vault by replace (spec §8, §11.3 D22), repairing a profile whose change capture
+//! broke (ruling P3) and re-syncing a device from the vault (ruling T8-4). All three replace the
+//! person's local data with the vault's, so none may lose it silently: a join is one savepoint
+//! that leaves the profile as it was when any step fails; the repair and the re-sync write a
+//! backup and read it back before anything else; and the repair replaces nothing unless every
+//! change this device captured reached the relay first.
 //!
 //! The relay passed in is the one at the credentials' own address (`Credentials::relay_url`, the
 //! default or a self-hosted one, ruling SH-2): the caller builds it with
@@ -14,7 +15,8 @@ use std::path::{Path, PathBuf};
 
 use rusqlite::Connection;
 
-use super::binding::{self, BindingNative, REJOIN_MARKER};
+use super::binding::{self, BindingNative};
+use super::capture;
 use super::devices;
 use super::engine::pull::DEFAULT_DEVICE_NAME;
 use super::engine::snapshots::{off_thread, open_sealed, SnapshotPolicy};
@@ -50,14 +52,16 @@ const APP_VERSION: &str = env!("CARGO_PKG_VERSION");
 ///    the connection lock.
 /// 3. One savepoint, in this order: the credentials are bound (binding another vault forgets the
 ///    old one's relay positions); this device's chain starts over and the pauses and counters of
-///    the old binding go (`binding_written` among them); `binding::join` restores the snapshot by
-///    replace under a new device ID (the cursor, heads and snapshot bookkeeping become the
-///    snapshot's: the cursor is exactly `S`), installs capture and clears a leftover restore
-///    marker; a new key pair is made and this device recorded with it under `device_name`, queued
-///    for the next push. Any failure rolls all of it back, and a restore marker the join removed
-///    is put back, so the profile is as it was.
-/// 4. Only then is the binding written for the new device ID; a failure there is logged (the
-///    binding stays unwritten, so the next start does not check it).
+///    the old binding go (`binding_written` among them); `binding::join_leaving_marker` restores
+///    the snapshot by replace under a new device ID (the cursor, heads and snapshot bookkeeping
+///    become the snapshot's: the cursor is exactly `S`) and installs capture; a new key pair is
+///    made and this device recorded with it under `device_name`, queued for the next push. Any
+///    failure rolls all of it back and reinstalls the capture that ran before (its clock seeded
+///    from this profile's own clocks), so the profile is as it was; the restore marker is left
+///    alone.
+/// 4. Only after the commit is a leftover restore marker cleared (`binding::join_leaving_marker`;
+///    the new device ID has nothing to re-join) and the binding written for the new device ID; a
+///    failure of either is logged (an unwritten binding is not checked at the next start).
 pub async fn join_by_replace<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -104,36 +108,55 @@ fn replace_profile(
     plain: &[u8],
     now: i64,
 ) -> Result<RestoreReport> {
-    let had_marker = data_dir.join(REJOIN_MARKER).try_exists()?;
+    // The device whose capture runs on this connection now, if any: a failed join puts it back.
+    let installed = if capture::is_installed(conn)? {
+        state::load(conn)?.map(|sync| sync.device)
+    } else {
+        None
+    };
     let joined = in_savepoint(conn, "sync_join_by_replace", || {
         keys::save_credentials(conn, creds)?;
         state::reset_chain(conn)?;
         state::reset_engine_marks(conn)?;
-        let report = binding::join(conn, data_dir, DeviceId::random(), &mut &plain[..], now)?;
+        let report = binding::join_leaving_marker(conn, DeviceId::random(), &mut &plain[..], now)?;
         let public = keys::new_device_keypair(conn)?;
         devices::record_this_device(conn, device_name, &public, now)?;
         Ok(report)
     });
-    if joined.is_err() && had_marker {
-        // `binding::join` clears the marker before the savepoint ends; the old profile still
-        // needs it.
-        if let Err(e) = binding::write_rejoin_marker(data_dir) {
-            log::warn!("[SYNC] Could not put the restore marker back after a failed join: {e}");
+    let joined = match joined {
+        Ok(report) => report,
+        Err(error) => {
+            // The rollback restored the old triggers, but not the clock functions the join's
+            // capture install registered: they were seeded from the snapshot's clocks. Installing
+            // again seeds them from this profile's own `sync_clock`.
+            if let Some(device) = installed {
+                if let Err(e) = capture::install(conn, device) {
+                    log::warn!("[SYNC] Could not reinstall capture after a failed join: {e}");
+                }
+            }
+            return Err(error);
         }
+    };
+    // Only now that the join has committed: the new device ID has nothing to re-join.
+    if let Err(e) = binding::clear_rejoin_marker(data_dir) {
+        log::warn!("[SYNC] Could not clear the restore marker after the join: {e}");
     }
-    joined
+    Ok(joined)
 }
 
 /// Repairs a profile whose change capture broke (ruling P3); returns the path of the backup.
 ///
 /// 1. A backup of the whole profile goes to `data_dir/sync-repair-<now>.zip` (never over an
 ///    earlier one), flushed to disk and read back to its last byte. Nothing goes on without it.
-/// 2. A drain round (`RoundMode::Drain`) pulls, and pushes what capture recorded before it broke.
-/// 3. Only a clean drain goes on: the round ended without an error or a problem, its pull reached
+/// 2. Capture is installed again on the connection (whatever broke it at unlock may have passed):
+///    the drain's merge needs it. When it still fails, the repair stops with
+///    `validation.syncRepairDrainIncomplete`; nothing but the backup has changed.
+/// 3. A drain round (`RoundMode::Drain`) pulls, and pushes what capture recorded before it broke.
+/// 4. Only a clean drain goes on: the round ended without an error or a problem, its pull reached
 ///    the relay's end (`PullReport::done`), and `sync_outbox` and `sync_unsent` are empty. Anything
 ///    else is `validation.syncRepairDrainIncomplete`, with nothing replaced (the backup stays).
-/// 4. `join_by_replace` with the stored credentials (their relay address included) under this
-///    device's current name, then the capture mark is cleared.
+/// 5. `join_by_replace` with the stored credentials (their relay address included) under this
+///    device's current name; its fresh engine marks clear the capture mark.
 ///
 /// The backup is never deleted here; it stays until Delete Account.
 pub async fn repair_capture<R: Relay, D: ConnAccess>(
@@ -143,7 +166,59 @@ pub async fn repair_capture<R: Relay, D: ConnAccess>(
     native: &dyn BindingNative,
     now: i64,
 ) -> SyncResult<PathBuf> {
-    let (creds, name) = db.with_conn(|conn| {
+    let (creds, name) = stored_identity(db)?;
+    let zip = backed_up(db, data_dir, now).await?;
+
+    let reinstalled = db.with_conn(|conn| {
+        let device = state::load(conn)?
+            .ok_or_else(|| AppError::Internal("sync repair: sync is not set up".into()))?
+            .device;
+        Ok(capture::install(conn, device))
+    })?;
+    if let Err(error) = reinstalled {
+        log::warn!("[SYNC] The repair stopped: change capture still does not install");
+        log::debug!("[SYNC] The repair stopped: change capture still does not install: {error}");
+        return Err(AppError::Validation(DRAIN_INCOMPLETE.into()).into());
+    }
+    if !drained(relay, db, now).await? {
+        log::warn!("[SYNC] The repair stopped: this device's changes did not all reach the relay");
+        return Err(AppError::Validation(DRAIN_INCOMPLETE.into()).into());
+    }
+    join_by_replace(relay, db, creds, &name, data_dir, native, now).await?;
+    // `join_by_replace` cleared the mark with the other engine marks; this only makes sure, and a
+    // failure never hides the backup of a repair that is done.
+    if let Err(error) = db.with_conn(state::clear_capture_broken) {
+        log::warn!("[SYNC] Could not clear the capture mark after the repair");
+        log::debug!("[SYNC] Could not clear the capture mark after the repair: {error}");
+    }
+    log::info!("[SYNC] The repair re-joined the vault; change capture is back");
+    Ok(zip)
+}
+
+/// "Re-sync this device" (ruling T8-4): the way out for a device whose sync history is
+/// inconsistent, or whose drain cannot finish. Returns the path of the backup.
+///
+/// The same verified backup as `repair_capture`, then `join_by_replace` with the stored
+/// credentials under this device's current name, **without a drain**: changes this device has not
+/// sent (`sync_outbox`, `sync_unsent`) are not pushed and survive only in the backup. The UI must
+/// say so and have the person confirm before it calls this.
+pub async fn resync_by_replace<R: Relay, D: ConnAccess>(
+    relay: &R,
+    db: &D,
+    data_dir: &Path,
+    native: &dyn BindingNative,
+    now: i64,
+) -> SyncResult<PathBuf> {
+    let (creds, name) = stored_identity(db)?;
+    let zip = backed_up(db, data_dir, now).await?;
+    join_by_replace(relay, db, creds, &name, data_dir, native, now).await?;
+    log::info!("[SYNC] This device re-synced from the vault's snapshot");
+    Ok(zip)
+}
+
+/// The stored credentials of an enabled profile and this device's current name.
+fn stored_identity<D: ConnAccess>(db: &D) -> SyncResult<(Credentials, String)> {
+    Ok(db.with_conn(|conn| {
         let enabled = state::load(conn)?.is_some_and(|sync| sync.enabled);
         let creds = keys::credentials(conn)?
             .filter(|_| enabled)
@@ -151,23 +226,18 @@ pub async fn repair_capture<R: Relay, D: ConnAccess>(
         let name = devices::this_device(conn)?
             .map_or_else(|| DEFAULT_DEVICE_NAME.to_string(), |(name, _)| name);
         Ok((creds, name))
-    })?;
+    })?)
+}
 
+/// The verified backup (`back_up`), off the runtime.
+async fn backed_up<D: ConnAccess>(db: &D, data_dir: &Path, now: i64) -> SyncResult<PathBuf> {
     let (backer, dir) = (db.clone(), data_dir.to_path_buf());
     let zip = off_thread(move || back_up(&backer, &dir, now)).await?;
-    log::info!("[SYNC] The repair backed this profile up");
-
-    if !drained(relay, db, now).await? {
-        log::warn!("[SYNC] The repair stopped: this device's changes did not all reach the relay");
-        return Err(AppError::Validation(DRAIN_INCOMPLETE.into()).into());
-    }
-    join_by_replace(relay, db, creds, &name, data_dir, native, now).await?;
-    db.with_conn(state::clear_capture_broken)?;
-    log::info!("[SYNC] The repair re-joined the vault; change capture is back");
+    log::info!("[SYNC] Backed this profile up before replacing it");
     Ok(zip)
 }
 
-/// Steps 2 and 3 of `repair_capture`: whether the drain round ended clean.
+/// Steps 3 and 4 of `repair_capture`: whether the drain round ended clean.
 async fn drained<R: Relay, D: ConnAccess>(relay: &R, db: &D, now: i64) -> SyncResult<bool> {
     let mut policy = SnapshotPolicy::default();
     let clean = match engine::run_round(relay, db, &mut policy, RoundMode::Drain, now, 0).await {
@@ -196,7 +266,8 @@ async fn drained<R: Relay, D: ConnAccess>(relay: &R, db: &D, now: i64) -> SyncRe
     Ok(pending == 0)
 }
 
-/// Step 1 of `repair_capture`: writes the backup to a free name, flushes it and reads it back.
+/// Step 1 of `repair_capture` and `resync_by_replace`: writes the backup to a free name, flushes
+/// it and reads it back.
 fn back_up<D: ConnAccess>(db: &D, data_dir: &Path, now: i64) -> Result<PathBuf> {
     let dest = free_backup_path(data_dir, now)?;
     db.with_conn(|conn| backup::create_backup(conn, data_dir, &dest, APP_VERSION))?;

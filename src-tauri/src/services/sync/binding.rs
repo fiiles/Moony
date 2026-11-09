@@ -201,9 +201,21 @@ pub fn join(
     input: &mut impl Read,
     now: i64,
 ) -> Result<RestoreReport> {
-    let report = snapshot::join(conn, device, input, now)?;
+    let report = join_leaving_marker(conn, device, input, now)?;
     clear_marker_after_start(data_dir);
     Ok(report)
+}
+
+/// [`join`] without the marker: for a caller that runs the join inside its own transaction and
+/// clears the marker (`clear_rejoin_marker`) only once that transaction has committed, so a join
+/// rolled back with it leaves the marker where it was (`sync::join::join_by_replace`).
+pub fn join_leaving_marker(
+    conn: &Connection,
+    device: DeviceId,
+    input: &mut impl Read,
+    now: i64,
+) -> Result<RestoreReport> {
+    snapshot::join(conn, device, input, now)
 }
 
 fn clear_marker_after_start(data_dir: &Path) {

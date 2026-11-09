@@ -6,6 +6,7 @@
 mod join;
 mod pull;
 mod push;
+mod repair;
 mod runtime;
 mod runtime_loop;
 mod snapshots;

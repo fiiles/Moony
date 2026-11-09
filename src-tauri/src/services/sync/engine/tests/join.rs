@@ -1,6 +1,6 @@
-//! Joining a vault by replace (spec §8, §11.3 D22) and repairing a capture-broken profile (ruling
-//! P3): the joiner's cursor, identity, binding and marks; what a refused or failed join leaves
-//! behind; the repair's backup, drain and re-join, and every way the drain can stop it.
+//! Joining a vault by replace (spec §8, §11.3 D22): the joiner's cursor, identity, binding and
+//! marks, and what a refused or failed join leaves behind. The helpers are shared with the repair
+//! tests (`repair.rs`).
 
 use std::path::Path;
 
@@ -9,23 +9,28 @@ use base64::Engine;
 use zeroize::Zeroizing;
 
 use super::*;
-use crate::services::backup;
 use crate::services::sync::binding::{
     self, startup_check, BindingFailure, BindingNative, NoBinding, StartupCheck, REJOIN_MARKER,
 };
 use crate::services::sync::capture;
 use crate::services::sync::devices;
 use crate::services::sync::engine::snapshots::SnapshotPolicy;
+use crate::services::sync::engine::snapshots::MAX_SNAPSHOT_BYTES;
 use crate::services::sync::engine::{run_round, RoundMode, RoundReport};
-use crate::services::sync::error::{SyncError, SyncResult};
-use crate::services::sync::join::{join_by_replace, repair_capture};
+use crate::services::sync::error::{SyncError, SyncResult, TooLarge};
+use crate::services::sync::hlc;
+use crate::services::sync::join::join_by_replace;
+use crate::services::sync::keys::VaultAuth;
 use crate::services::sync::relay::fake::Route;
-use crate::services::sync::relay::RelayError;
+use crate::services::sync::relay::{
+    AccountStatus, CheckoutPlan, OutgoingOp, PullPage, PushReceipt, RelayResult, SnapshotBlob,
+    VaultInfo,
+};
 use crate::services::sync::snapshot::RestoreReport;
-use crate::services::sync::test_support::{assert_converged, noise};
+use crate::services::sync::test_support::assert_converged;
 
 /// Seals by XOR with one byte: a binding that opens on this "machine" only.
-struct XorNative;
+pub(super) struct XorNative;
 
 impl BindingNative for XorNative {
     fn seal(&self, secret: &[u8; 32]) -> std::result::Result<Vec<u8>, BindingFailure> {
@@ -44,7 +49,7 @@ impl BindingNative for XorNative {
     }
 }
 
-async fn round(vault: &Vault, device: &TestConn, mode: RoundMode) -> RoundReport {
+pub(super) async fn round(vault: &Vault, device: &TestConn, mode: RoundMode) -> RoundReport {
     run_round(
         &vault.relay,
         device,
@@ -58,7 +63,7 @@ async fn round(vault: &Vault, device: &TestConn, mode: RoundMode) -> RoundReport
 }
 
 /// `A` writes `id` and uploads its snapshot in a first-snapshot round; returns the snapshot's `S`.
-async fn snapshot_of_a(vault: &Vault, id: &str) -> u64 {
+pub(super) async fn snapshot_of_a(vault: &Vault, id: &str) -> u64 {
     institution(&vault.a.lock(), id);
     let report = round(vault, &vault.a, RoundMode::FirstSnapshot).await;
     assert!(report.snapshot_uploaded, "{report:?}");
@@ -67,7 +72,7 @@ async fn snapshot_of_a(vault: &Vault, id: &str) -> u64 {
     seq
 }
 
-async fn join(
+pub(super) async fn join(
     vault: &Vault,
     device: &TestConn,
     dir: &Path,
@@ -85,11 +90,11 @@ async fn join(
     .await
 }
 
-fn device_of(conn: &Connection) -> DeviceId {
+pub(super) fn device_of(conn: &Connection) -> DeviceId {
     state::load(conn).expect("state").expect("row").device
 }
 
-fn validation_key(error: &SyncError) -> Option<&str> {
+pub(super) fn validation_key(error: &SyncError) -> Option<&str> {
     match error {
         SyncError::Local(AppError::Validation(key)) => Some(key),
         _ => None,
@@ -98,7 +103,7 @@ fn validation_key(error: &SyncError) -> Option<&str> {
 
 /// Everything a refused or failed join must leave as it was: the `sync_state` row, the heads,
 /// the own log, the unsent envelopes, the outbox, the device rows and the institutions.
-fn profile(conn: &Connection) -> Vec<String> {
+pub(super) fn profile(conn: &Connection) -> Vec<String> {
     let mut out = sync_rows(conn);
     let mut stmt = conn
         .prepare("SELECT id, public_key, name FROM sync_devices ORDER BY id")
@@ -120,7 +125,7 @@ fn profile(conn: &Connection) -> Vec<String> {
 /// What a stopped repair must leave as it was (ruling P3): the device and its chain, the cursor
 /// and heads, the pending changes in the outbox and `sync_unsent`, the capture mark and every
 /// synced row. The round's own bookkeeping (`last_error`) may change.
-fn repair_state(conn: &Connection) -> Vec<String> {
+pub(super) fn repair_state(conn: &Connection) -> Vec<String> {
     let mut out: Vec<String> = sync_rows(conn)
         .into_iter()
         .filter(|line| !line.starts_with("SELECT * FROM sync_state"))
@@ -134,7 +139,7 @@ fn repair_state(conn: &Connection) -> Vec<String> {
     out
 }
 
-fn repair_backups(dir: &Path) -> Vec<String> {
+pub(super) fn repair_backups(dir: &Path) -> Vec<String> {
     let mut names: Vec<String> = std::fs::read_dir(dir)
         .expect("data dir")
         .map(|e| e.expect("entry").file_name().to_string_lossy().into_owned())
@@ -146,7 +151,7 @@ fn repair_backups(dir: &Path) -> Vec<String> {
 
 /// Makes `device` a capture-broken profile as an unlock leaves it: capture not installed on the
 /// connection, `capture_broken_at` set.
-fn break_capture(device: &TestConn) {
+pub(super) fn break_capture(device: &TestConn) {
     let conn = device.lock();
     capture::uninstall(&conn).expect("uninstall");
     state::mark_capture_broken(&conn, NOW - 60).expect("mark");
@@ -443,10 +448,23 @@ async fn a_join_that_fails_leaves_the_profile_as_it_was() {
     let vault = vault().await;
     snapshot_of_a(&vault, "a1").await;
     let dir = tempfile::tempdir().expect("dir");
-    binding::write_rejoin_marker(dir.path()).expect("marker");
+    std::fs::write(dir.path().join(REJOIN_MARKER), b"left by a restore").expect("marker");
+    // B's clocks run 30 days ahead of the wall clock and of the vault's snapshot; its capture was
+    // installed from them, as an unlock does.
+    let ahead = hlc::pack(
+        u64::try_from(chrono::Utc::now().timestamp_millis()).expect("ms") + 30 * 86_400_000,
+        0,
+    );
     {
         let b = vault.b.lock();
         institution(&b, "b-local");
+        b.execute(
+            "INSERT INTO sync_clock (tbl, pk, col, hlc, device) \
+             VALUES ('institutions', 'b-local', 'note', ?1, ?2)",
+            rusqlite::params![i64::try_from(ahead).expect("hlc"), B.0.to_vec()],
+        )
+        .expect("clock ahead");
+        capture::install(&b, B).expect("capture from the stored clocks");
         // The last step of the join, recording the new device, fails.
         exec(
             &b,
@@ -472,12 +490,13 @@ async fn a_join_that_fails_leaves_the_profile_as_it_was() {
     assert!(result.is_err(), "{result:?}");
     let b = vault.b.lock();
     assert_eq!(profile(&b), before);
-    assert!(
-        dir.path().join(REJOIN_MARKER).exists(),
-        "the marker is back"
+    assert_eq!(
+        std::fs::read(dir.path().join(REJOIN_MARKER)).expect("marker"),
+        b"left by a restore",
+        "the marker was never touched"
     );
     assert!(!dir.path().join(binding::BINDING_FILE).exists());
-    // Capture still runs under the old device.
+    // Capture still runs under the old device, its clock above every stored one.
     institution(&b, "after");
     assert_eq!(
         count(
@@ -485,6 +504,158 @@ async fn a_join_that_fails_leaves_the_profile_as_it_was() {
             "SELECT COUNT(*) FROM sync_outbox WHERE tbl = 'institutions' AND pk = 'after'"
         ),
         1
+    );
+    let (after, device): (i64, Vec<u8>) = b
+        .query_row(
+            "SELECT MAX(hlc), device FROM sync_clock WHERE tbl = 'institutions' AND pk = 'after'",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .expect("the edit's clock");
+    assert!(
+        u64::try_from(after).expect("hlc") > ahead,
+        "{after} is not above {ahead}"
+    );
+    assert_eq!(device, B.0.to_vec());
+}
+
+/// Serves `blob` as the vault's snapshot; everything else goes to the fake relay.
+struct ServingSnapshot {
+    relay: FakeRelay,
+    blob: SnapshotBlob,
+}
+
+impl Relay for ServingSnapshot {
+    fn create_account(&self) -> impl std::future::Future<Output = RelayResult<String>> + Send {
+        self.relay.create_account()
+    }
+    fn account_status(
+        &self,
+        account: &str,
+    ) -> impl std::future::Future<Output = RelayResult<AccountStatus>> + Send {
+        self.relay.account_status(account)
+    }
+    fn checkout(
+        &self,
+        account: &str,
+        plan: CheckoutPlan,
+    ) -> impl std::future::Future<Output = RelayResult<String>> + Send {
+        self.relay.checkout(account, plan)
+    }
+    fn create_vault(
+        &self,
+        account: &str,
+        vault: &VaultAuth,
+    ) -> impl std::future::Future<Output = RelayResult<bool>> + Send {
+        self.relay.create_vault(account, vault)
+    }
+    fn vault_info(
+        &self,
+        vault: &VaultAuth,
+    ) -> impl std::future::Future<Output = RelayResult<VaultInfo>> + Send {
+        self.relay.vault_info(vault)
+    }
+    fn push(
+        &self,
+        vault: &VaultAuth,
+        ops: &[OutgoingOp],
+    ) -> impl std::future::Future<Output = RelayResult<PushReceipt>> + Send {
+        self.relay.push(vault, ops)
+    }
+    fn pull(
+        &self,
+        vault: &VaultAuth,
+        after: u64,
+        limit: u32,
+    ) -> impl std::future::Future<Output = RelayResult<PullPage>> + Send {
+        self.relay.pull(vault, after, limit)
+    }
+    fn put_snapshot(
+        &self,
+        vault: &VaultAuth,
+        seq: u64,
+        bytes: Vec<u8>,
+    ) -> impl std::future::Future<Output = RelayResult<()>> + Send {
+        self.relay.put_snapshot(vault, seq, bytes)
+    }
+    fn get_snapshot(
+        &self,
+        _vault: &VaultAuth,
+    ) -> impl std::future::Future<Output = RelayResult<SnapshotBlob>> + Send {
+        let blob = self.blob.clone();
+        async move { Ok(blob) }
+    }
+    fn delete_vault(
+        &self,
+        vault: &VaultAuth,
+    ) -> impl std::future::Future<Output = RelayResult<()>> + Send {
+        self.relay.delete_vault(vault)
+    }
+}
+
+/// B, with a marker next to it, joins from `relay`: the join fails and B and the marker are as
+/// they were.
+async fn refused_snapshot(vault: &Vault, relay: &impl Relay) -> SyncError {
+    let dir = tempfile::tempdir().expect("dir");
+    std::fs::write(dir.path().join(REJOIN_MARKER), b"left by a restore").expect("marker");
+    institution(&vault.b.lock(), "b-local");
+    let before = profile(&vault.b.lock());
+
+    let error = join_by_replace(
+        relay,
+        &vault.b,
+        vault.creds.clone(),
+        "Laptop",
+        dir.path(),
+        &XorNative,
+        NOW,
+    )
+    .await
+    .expect_err("refused");
+
+    assert_eq!(profile(&vault.b.lock()), before);
+    assert_eq!(
+        std::fs::read(dir.path().join(REJOIN_MARKER)).expect("marker"),
+        b"left by a restore"
+    );
+    error
+}
+
+#[tokio::test]
+async fn a_snapshot_that_does_not_open_changes_nothing() {
+    let vault = vault().await;
+    let s = snapshot_of_a(&vault, "a1").await;
+    vault
+        .relay
+        .put_snapshot(&vault.creds.auth(), s, vec![7; 4096])
+        .await
+        .expect("garbage snapshot");
+
+    let error = refused_snapshot(&vault, &vault.relay).await;
+
+    assert_eq!(
+        validation_key(&error),
+        Some("validation.syncSnapshotInvalid"),
+        "{error:?}"
+    );
+}
+
+#[tokio::test]
+async fn an_oversized_snapshot_changes_nothing() {
+    let vault = vault().await;
+    let relay = ServingSnapshot {
+        relay: vault.relay.clone(),
+        blob: SnapshotBlob {
+            seq: 0,
+            bytes: vec![0; MAX_SNAPSHOT_BYTES + 1],
+        },
+    };
+
+    let error = refused_snapshot(&vault, &relay).await;
+
+    assert!(
+        matches!(error, SyncError::TooLarge(TooLarge::Body)),
+        "{error:?}"
     );
 }
 
@@ -551,206 +722,4 @@ async fn a_join_keeps_the_relay_address_of_its_credentials() {
         gets
     );
     assert!(state::load(&fresh.lock()).expect("state").is_none());
-}
-
-#[tokio::test]
-async fn repair_backs_up_drains_and_rejoins_under_a_new_device() {
-    let vault = vault().await;
-    let s = snapshot_of_a(&vault, "a1").await;
-    round(&vault, &vault.b, RoundMode::Normal).await;
-    {
-        let b = vault.b.lock();
-        devices::record_this_device(&b, "Phone", &[7; 32], NOW).expect("B's row");
-        institution(&b, "b1");
-    }
-    break_capture(&vault.b);
-    // Written while capture is off: not queued, kept only in the backup.
-    institution(&vault.b.lock(), "b-uncaptured");
-    let dir = tempfile::tempdir().expect("dir");
-
-    let zip = repair_capture(&vault.relay, &vault.b, dir.path(), &XorNative, NOW)
-        .await
-        .expect("repair");
-
-    assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}.zip")));
-    let inspection =
-        backup::inspect_backup(&zip, &crate::db::known_migration_names()).expect("readable");
-    assert!(!inspection.newer_than_app);
-    // B's captured rows reached the relay under its old ID before the replace.
-    let pushed_by_b = vault.relay.ops().iter().filter(|op| op.seq > s).count();
-    assert_eq!(pushed_by_b, 1, "the drained envelope");
-    {
-        let b = vault.b.lock();
-        let sync = state::load(&b).expect("state").expect("row");
-        assert_ne!(sync.device, B, "a new device ID");
-        assert_eq!(sync.cursor, s);
-        let marks = state::marks(&b).expect("marks").expect("row");
-        assert_eq!(marks.capture_broken_at, None);
-        assert!(marks.binding_written);
-        assert!(capture::is_installed(&b).expect("installed"));
-        assert!(
-            !has_institution(&b, "b-uncaptured"),
-            "replaced by the vault's data"
-        );
-        assert_eq!(
-            keys::credentials(&b)
-                .expect("credentials")
-                .expect("bound")
-                .relay_url,
-            vault.creds.relay_url,
-            "the stored relay address is kept"
-        );
-        assert_eq!(
-            devices::this_device(&b).expect("row").map(|(name, _)| name),
-            Some("Phone".to_string()),
-            "the new device keeps the name"
-        );
-    }
-    let again = round(&vault, &vault.b, RoundMode::Normal).await;
-    assert_eq!(again.problem, None, "{again:?}");
-    assert!(
-        has_institution(&vault.b.lock(), "b1"),
-        "pulled back from the relay"
-    );
-    round(&vault, &vault.a, RoundMode::Normal).await;
-    assert!(has_institution(&vault.a.lock(), "b1"));
-    assert_converged(&[&*vault.a.lock(), &*vault.b.lock()]);
-    assert_eq!(
-        repair_backups(dir.path()),
-        vec![format!("sync-repair-{NOW}.zip")]
-    );
-}
-
-#[tokio::test]
-async fn a_second_repair_in_the_same_second_keeps_the_first_backup() {
-    let vault = vault().await;
-    snapshot_of_a(&vault, "a1").await;
-    round(&vault, &vault.b, RoundMode::Normal).await;
-    let dir = tempfile::tempdir().expect("dir");
-    std::fs::write(
-        dir.path().join(format!("sync-repair-{NOW}.zip")),
-        b"earlier",
-    )
-    .expect("zip");
-    break_capture(&vault.b);
-
-    let zip = repair_capture(&vault.relay, &vault.b, dir.path(), &NoBinding, NOW)
-        .await
-        .expect("repair");
-
-    assert_eq!(zip, dir.path().join(format!("sync-repair-{NOW}-2.zip")));
-    assert_eq!(
-        std::fs::read(dir.path().join(format!("sync-repair-{NOW}.zip"))).expect("earlier"),
-        b"earlier"
-    );
-}
-
-#[derive(Debug, Clone, Copy)]
-enum Fault {
-    Network,
-    Lapsed,
-    Gap,
-}
-
-/// A capture-broken `B` with one change already sealed and waiting in `sync_unsent`, and `fault`
-/// in the drain's way; the repair must stop and leave `B` as it was, but for the backup.
-async fn repair_with(fault: Fault) {
-    let vault = vault().await;
-    snapshot_of_a(&vault, "a1").await;
-    round(&vault, &vault.b, RoundMode::Normal).await;
-    {
-        let b = vault.b.lock();
-        institution(&b, "b1");
-        seal_from(&b, &vault.creds);
-    }
-    break_capture(&vault.b);
-    match fault {
-        Fault::Network => vault
-            .relay
-            .fail_next(Route::Push, RelayError::Network("offline".into())),
-        Fault::Lapsed => vault
-            .relay
-            .fail_next(Route::Push, RelayError::PaymentRequired),
-        Fault::Gap => {
-            let cts = {
-                let a = vault.a.lock();
-                institution(&a, "a2");
-                let first = seal_from(&a, &vault.creds);
-                institution(&a, "a3");
-                vec![first, seal_from(&a, &vault.creds)]
-            };
-            push(&vault.relay, &vault.creds, &cts).await;
-            let dropped = vault.relay.ops().last().expect("ops").seq - 1;
-            vault.relay.drop_op(dropped);
-        }
-    }
-    let before = repair_state(&vault.b.lock());
-    let dir = tempfile::tempdir().expect("dir");
-
-    let error = repair_capture(&vault.relay, &vault.b, dir.path(), &NoBinding, NOW)
-        .await
-        .expect_err("the drain did not finish");
-
-    assert_eq!(
-        validation_key(&error),
-        Some("validation.syncRepairDrainIncomplete"),
-        "{fault:?}: {error:?}"
-    );
-    assert_eq!(repair_state(&vault.b.lock()), before, "{fault:?}");
-    assert_eq!(
-        repair_backups(dir.path()),
-        vec![format!("sync-repair-{NOW}.zip")],
-        "{fault:?}: the backup stays"
-    );
-}
-
-#[tokio::test]
-async fn repair_stops_when_the_drain_did_not_finish() {
-    for fault in [Fault::Network, Fault::Lapsed, Fault::Gap] {
-        repair_with(fault).await;
-    }
-}
-
-#[tokio::test]
-async fn repair_stops_while_a_row_is_left_in_the_outbox() {
-    let vault = vault().await;
-    snapshot_of_a(&vault, "a1").await;
-    round(&vault, &vault.b, RoundMode::Normal).await;
-    {
-        let b = vault.b.lock();
-        exec(
-            &b,
-            "INSERT INTO watched_stocks (id, ticker) VALUES ('w1', 'AAPL')",
-        );
-        b.execute(
-            "UPDATE watched_stocks SET notes = ?1 WHERE id = 'w1'",
-            [noise(300 * 1024, 29)],
-        )
-        .expect("notes");
-    }
-    break_capture(&vault.b);
-    let dir = tempfile::tempdir().expect("dir");
-
-    let error = repair_capture(&vault.relay, &vault.b, dir.path(), &NoBinding, NOW)
-        .await
-        .expect_err("the oversized row is still queued");
-
-    assert_eq!(
-        validation_key(&error),
-        Some("validation.syncRepairDrainIncomplete")
-    );
-    let b = vault.b.lock();
-    assert_eq!(device_of(&b), B);
-    assert_eq!(
-        count(
-            &b,
-            "SELECT COUNT(*) FROM sync_outbox WHERE tbl = 'watched_stocks' AND pk = 'w1'"
-        ),
-        1
-    );
-    assert!(state::marks(&b)
-        .expect("marks")
-        .expect("row")
-        .capture_broken_at
-        .is_some());
 }

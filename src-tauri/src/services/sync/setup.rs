@@ -10,7 +10,13 @@
 //! with `HttpRelay::new` from the address `create_account` was given, and after that from
 //! `sync_state.relay_url` (`keys::account`), never from `default_base_url()`.
 //!
-//! Every database step runs off the runtime (`off_thread`) without a network call inside it.
+//! Every database step runs off the runtime (`off_thread`) without a network call inside it, but
+//! one: `finish_setup` writes the device binding (`write_binding_if_due`) on the runtime, under
+//! the connection lock and the round lock, because the platform's sealing (`BindingNative`) comes
+//! in as a borrowed `&dyn` that cannot move to the blocking pool (as in `join::join_by_replace`).
+//! It is one keychain or DPAPI seal of 32 bytes and one small file write. (`block_in_place` would
+//! need a multi-thread runtime; the tests run on tokio's current-thread one.)
+//!
 //! `finish_setup`, `delete_synced_data` and `turn_off_between_rounds` hold off the profile's
 //! rounds (`engine::exclusive`) while they change what a round works on.
 
@@ -24,7 +30,7 @@ use super::binding::{self, BindingNative};
 use super::devices;
 use super::engine::snapshots::{off_thread, SnapshotPolicy};
 use super::engine::{self, ConnAccess, RoundMode, RoundReport};
-use super::error::{SyncError, SyncResult};
+use super::error::{SyncError, SyncResult, TooLarge, Transient};
 use super::in_savepoint;
 use super::keys::{self, Credentials};
 use super::recovery::{encode_recovery_code, format_recovery_code, qr_svg, recovery_qr_payload};
@@ -32,7 +38,7 @@ use super::relay::http::{is_default_relay, normalize_base_url, validate_base_url
 use super::relay::{CheckoutPlan, Relay, RelayError};
 use super::state;
 use crate::error::{AppError, Result};
-use crate::models::sync::{CheckoutTarget, RecoveryKit, SyncAccount, SyncPlan};
+use crate::models::sync::{CheckoutTarget, RecoveryKit, SyncAccount, SyncPlan, SyncProblem};
 
 const KIT_NOT_CONFIRMED: &str = "validation.syncRecoveryKitNotConfirmed";
 const SETUP_INCOMPLETE: &str = "validation.syncSetupIncomplete";
@@ -167,9 +173,12 @@ pub fn recovery_kit(conn: &Connection) -> Result<RecoveryKit> {
 ///    (`binding::binding_due`).
 /// 4. After the lock, a `FirstSnapshot` round (ruling P4): pulls (nothing yet), pushes the rule
 ///    packs and the device row, pulls them back as own envelopes and uploads the first snapshot at
-///    `S` = that cursor. A round that fails before its push went through fails setup (sync stays
-///    on; the next call resumes at this step). A failure after it (the vault's info, the second
-///    pull, the upload) does not: the upload policy uploads when the vault has no snapshot.
+///    `S` = that cursor. A round that pushed nothing fails setup, whether it failed (offline, a
+///    relay error) or ended on a problem (a stopped pull, a lapse, the quota, a refused token:
+///    `problem_error` gives the same key as the relay answer would). Sync stays on, and the next
+///    call resumes at step 2 (a pause for a vault the relay lost is lifted once it answers the
+///    vault's creation). A failure after the push (the vault's info, the second pull, the upload)
+///    does not: the upload policy uploads when the vault has no snapshot.
 pub async fn finish_setup<R: Relay, D: ConnAccess>(
     relay: &R,
     db: &D,
@@ -225,7 +234,10 @@ fn turn_on(conn: &Connection, data_dir: &Path, name: &str, enable: bool, now: i6
             binding::enable(conn, data_dir, device)?;
         }
         let public = keys::ensure_device_keypair(conn)?;
-        devices::record_this_device(conn, name, &public, now)
+        devices::record_this_device(conn, name, &public, now)?;
+        // The relay has just created or confirmed the vault: a pause from a first round that found
+        // it gone (`vault_gone_at`) no longer holds, or the retry's round would not run.
+        state::set_vault_gone(conn, None)
     })
 }
 
@@ -259,6 +271,12 @@ async fn first_round<R: Relay, D: ConnAccess>(relay: &R, db: &D, now: i64) -> Sy
     )
     .await;
     match round {
+        Ok(()) if report.push.is_none() && report.problem.is_some() => {
+            // Nothing was pushed: setup is not done. Sync stays on, so a retry resumes here.
+            let problem = report.problem.unwrap_or(SyncProblem::RelayError);
+            log::info!("[SYNC] Setup's first round pushed nothing: {problem:?}");
+            Err(problem_error(problem))
+        }
         Ok(()) => {
             if let Some(problem) = report.problem {
                 log::info!("[SYNC] Setup's first round ended with {problem:?}");
@@ -277,14 +295,48 @@ async fn first_round<R: Relay, D: ConnAccess>(relay: &R, db: &D, now: i64) -> Sy
     }
 }
 
+/// The error a first round that pushed nothing ends setup with: the `SyncError` class the problem
+/// came from, so a command reads the same key as for that relay answer (`Lapsed` →
+/// `validation.syncPaymentRequired`). A stopped pull, which no relay answer stands for, reads as
+/// a relay error.
+fn problem_error(problem: SyncProblem) -> SyncError {
+    match problem {
+        SyncProblem::Lapsed => SyncError::Lapsed,
+        SyncProblem::VaultGone => SyncError::VaultNotFound,
+        SyncProblem::QuotaExceeded => SyncError::TooLarge(TooLarge::Quota),
+        SyncProblem::SnapshotTooLarge => SyncError::TooLarge(TooLarge::Snapshot),
+        SyncProblem::KeyRotated => SyncError::ReadOnlyToken,
+        SyncProblem::Unauthorized => SyncError::Unauthorized,
+        SyncProblem::RateLimited => SyncError::RateLimited,
+        SyncProblem::Offline => SyncError::Transient(Transient::Offline),
+        SyncProblem::CaptureBroken
+        | SyncProblem::NewerSchema
+        | SyncProblem::Gap
+        | SyncProblem::Undecryptable
+        | SyncProblem::InvalidChain
+        | SyncProblem::MissingParent
+        | SyncProblem::Quarantined
+        | SyncProblem::RelayError
+        | SyncProblem::Internal => SyncError::Transient(Transient::Relay),
+    }
+}
+
 /// Turns sync off on this device (spec §11.6): the capture triggers go, and `sync_state` (the
 /// relay address, the account, the vault's keys, this device's key pair), the clocks, the outbox
-/// and the chain bookkeeping are deleted (`state::disable`); the binding file and the restore
-/// marker are removed (`binding::forget_binding`). Local data stays, and so does the vault on the
+/// and the chain bookkeeping are deleted (`state::disable`), and so is the device list
+/// (`sync_devices`: sync metadata of the old vault, not finance data; a later setup into a new
+/// vault would otherwise publish the old vault's devices and their public keys), in one
+/// transaction; then the binding file and the restore marker are removed
+/// (`binding::forget_binding`). Local data stays, and so does the vault on the
 /// relay for the other devices. Repair backups (`sync-repair-*.zip`) are copies of local data and
 /// stay until Delete Account.
 pub fn turn_off(conn: &Connection, data_dir: &Path) -> Result<()> {
-    state::disable(conn)?;
+    in_savepoint(conn, "sync_turn_off", || {
+        // `disable` drops the capture first, so deleting the device list queues nothing.
+        state::disable(conn)?;
+        conn.execute("DELETE FROM sync_devices", [])?;
+        Ok(())
+    })?;
     binding::forget_binding(data_dir)?;
     log::info!("[SYNC] Sync is off on this device; local data stays");
     Ok(())

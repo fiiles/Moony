@@ -65,6 +65,48 @@ fn enabled(conn: &Connection) -> bool {
     state::load(conn).expect("state").is_some_and(|s| s.enabled)
 }
 
+/// Every institution row, as text, in id order.
+fn institutions(conn: &Connection) -> Vec<String> {
+    let mut stmt = conn
+        .prepare("SELECT * FROM institutions ORDER BY id")
+        .expect("institutions");
+    let columns = stmt.column_count();
+    let rows = stmt
+        .query_map([], |r| {
+            (0..columns)
+                .map(|i| r.get::<_, Value>(i).map(|v| format!("{v:?}")))
+                .collect::<rusqlite::Result<Vec<_>>>()
+        })
+        .expect("rows");
+    rows.map(|row| row.expect("row").join("|")).collect()
+}
+
+/// The `sync_devices` keys among `rows`.
+fn device_keys(rows: &[RowChange]) -> Vec<String> {
+    rows.iter()
+        .filter(|row| row.table == "sync_devices")
+        .map(|row| format!("{:?}", row.key))
+        .collect()
+}
+
+/// A valid `https` relay address of exactly `len` characters (labels of at most 50).
+fn relay_of_len(len: usize) -> String {
+    let mut host = String::new();
+    let wanted = len - "https://".len();
+    while host.len() < wanted {
+        if !host.is_empty() {
+            host.push('.');
+        }
+        let label = (wanted - host.len()).min(50);
+        host.push_str(&"r".repeat(label));
+    }
+    // A label of one character left after a dot is fine; never end on a dot.
+    assert!(!host.ends_with('.'));
+    let url = format!("https://{host}");
+    assert_eq!(url.len(), len);
+    url
+}
+
 fn device_of(conn: &Connection) -> DeviceId {
     state::load(conn).expect("state").expect("row").device
 }
@@ -517,8 +559,14 @@ async fn turning_off_keeps_local_data_and_forgets_every_secret() {
     let dir = tempfile::tempdir().expect("dir");
     set_up(&relay, &device, dir.path()).await;
     institution(&device.lock(), "kept");
+    institution(&device.lock(), "also kept");
     crate::services::sync::binding::write_rejoin_marker(dir.path()).expect("marker");
     assert!(dir.path().join(BINDING_FILE).exists());
+    let finance_before = institutions(&device.lock());
+    assert_eq!(
+        count(&device.lock(), "SELECT COUNT(*) FROM sync_devices"),
+        1
+    );
 
     turn_off_between_rounds(&device, dir.path())
         .await
@@ -526,6 +574,16 @@ async fn turning_off_keeps_local_data_and_forgets_every_secret() {
 
     let conn = device.lock();
     assert!(has_institution(&conn, "kept"), "local data stays");
+    assert_eq!(
+        institutions(&conn),
+        finance_before,
+        "finance rows unchanged"
+    );
+    assert_eq!(
+        count(&conn, "SELECT COUNT(*) FROM sync_devices"),
+        0,
+        "the device list is sync metadata of the old vault"
+    );
     assert!(state::load(&conn).expect("state").is_none());
     assert_eq!(
         keys::account(&conn).expect("account"),
@@ -541,6 +599,7 @@ async fn turning_off_keeps_local_data_and_forgets_every_secret() {
         "sync_own_log",
         "sync_unsent",
         "sync_typed",
+        "sync_devices",
     ] {
         assert_eq!(
             count(&conn, &format!("SELECT COUNT(*) FROM {table}")),
@@ -647,4 +706,116 @@ fn recovery_kit_debug_output_hides_the_code() {
     assert_eq!(format!("{kit:?}"), "RecoveryKit { .. }");
     assert!(!printed.contains(&kit.recovery_code[..10]));
     assert!(!printed.contains("4417938205561273"));
+}
+
+#[tokio::test]
+async fn a_new_setup_after_turning_off_publishes_only_this_device() {
+    let old_relay = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    set_up(&old_relay, &device, dir.path()).await;
+    let old_device = device_of(&device.lock());
+    turn_off_between_rounds(&device, dir.path())
+        .await
+        .expect("turn off");
+
+    let relay = FakeRelay::new();
+    let creds = set_up(&relay, &device, dir.path()).await;
+
+    let this = device_of(&device.lock());
+    assert_ne!(this, old_device, "a new vault, a new device ID");
+    let only_this = vec![format!("Single({:?})", this.to_hex())];
+    let ops = relay.ops();
+    assert_eq!(ops.len(), 1);
+    let json = open_op(|epoch| creds.keys.get(epoch), &creds.vault_id.0, &ops[0].ct).expect("open");
+    let cs = from_json(&json).expect("changeset");
+    assert_eq!(device_keys(&cs.rows), only_this, "the first envelope");
+
+    let blob = relay.get_snapshot(&creds.auth()).await.expect("snapshot");
+    let plain = open_sealed(&creds, &blob).expect("opens");
+    let mut stream = &plain[..];
+    let mut devs = Vec::new();
+    let mut rows = Vec::new();
+    while let Some(record) = read_record(&mut stream, &devs).expect("record") {
+        match record {
+            Record::Devices(list) => devs = list,
+            Record::Row(row) => rows.push(row),
+            _ => {}
+        }
+    }
+    assert_eq!(device_keys(&rows), only_this, "the first snapshot");
+}
+
+#[tokio::test]
+async fn a_first_round_that_pushed_nothing_fails_setup_and_resumes() {
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    let account = create_account(&relay, &device, RELAY)
+        .await
+        .expect("account");
+    relay.set_paid(&account.account_number, true);
+    recovery_kit(&device.lock()).expect("kit");
+    relay.fail_next(Route::Push, RelayError::PaymentRequired);
+
+    let lapsed = finish(&relay, &device, dir.path()).await;
+    assert!(matches!(lapsed, Err(SyncError::Lapsed)), "{lapsed:?}");
+    assert_eq!(
+        command_key(Err::<(), _>(lapsed.expect_err("lapsed"))),
+        "validation.syncPaymentRequired"
+    );
+    assert!(enabled(&device.lock()), "sync stays on; a retry resumes");
+    assert!(relay.ops().is_empty());
+    assert_eq!(relay.snapshot_seq(), None);
+
+    finish(&relay, &device, dir.path()).await.expect("resumed");
+    assert_eq!(relay.ops().len(), 1);
+    assert_eq!(relay.snapshot_seq(), Some(1));
+    assert_eq!(cursor(&device.lock()), 1, "S is the applied cursor");
+}
+
+#[tokio::test]
+async fn a_vault_the_relay_lost_during_setup_is_found_again_on_retry() {
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    let account = create_account(&relay, &device, RELAY)
+        .await
+        .expect("account");
+    relay.set_paid(&account.account_number, true);
+    recovery_kit(&device.lock()).expect("kit");
+    relay.fail_next(Route::Pull, RelayError::VaultNotFound);
+
+    let gone = finish(&relay, &device, dir.path()).await;
+    assert!(matches!(gone, Err(SyncError::VaultNotFound)), "{gone:?}");
+
+    finish(&relay, &device, dir.path()).await.expect("resumed");
+    assert_eq!(relay.snapshot_seq(), Some(1));
+}
+
+#[tokio::test]
+async fn a_kit_for_the_longest_relay_address_renders_and_reads_back() {
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let longest = relay_of_len(256);
+    create_account(&relay, &device, &longest)
+        .await
+        .expect("a 256-character address");
+    let kit = recovery_kit(&device.lock()).expect("kit");
+    assert_eq!(kit.relay_url.as_deref(), Some(longest.as_str()));
+    assert!(kit.qr_svg.contains("</svg>"));
+
+    let payload = crate::services::sync::recovery::recovery_qr_payload(
+        &kit.account_number,
+        &kit.recovery_code,
+        Some(&longest),
+    );
+    assert!(payload.len() <= 512, "{}", payload.len());
+    let qr = crate::services::sync::recovery::parse_recovery_qr_payload(&payload).expect("reads");
+    assert_eq!(qr.relay_url.as_deref(), Some(longest.as_str()));
+
+    assert_eq!(
+        key_of(create_account(&relay, &fresh(), &relay_of_len(257)).await),
+        "validation.syncRelayUrlInvalid"
+    );
 }

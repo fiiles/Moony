@@ -154,6 +154,9 @@ pub fn decode_recovery_code(input: &str) -> Result<(VaultId, RecoveryKey)> {
 }
 
 const QR_PREFIX: &str = "moony-recover:1:";
+/// The longest payload read. The longest one written is 471 bytes: the prefix, a 16-digit
+/// account, a grouped 95-character code and the base64url of a 256-character relay address.
+pub const MAX_QR_PAYLOAD_BYTES: usize = 512;
 
 /// What the Recovery Kit's QR encodes: `moony-recover:1:<account>:<code>`, and for a relay that is
 /// not the default one `:<base64url(relay address)>` after it (ruling SH-2).
@@ -192,12 +195,16 @@ impl std::fmt::Debug for RecoveryQr {
     }
 }
 
-/// Reads a Recovery Kit QR payload of either form (`recovery_qr_payload`): a 16-digit account, a
+/// Reads a Recovery Kit QR payload of either form (`recovery_qr_payload`), at most
+/// `MAX_QR_PAYLOAD_BYTES` (checked before anything is decoded): a 16-digit account, a
 /// recovery code (`decode_recovery_code`) and, optionally, a base64url relay address. Anything
 /// else is `validation.syncRecoveryCodeInvalid`; a relay address the app does not use
 /// (`validate_base_url`) is `validation.syncRelayUrlInvalid`. A relay address equal to the default
 /// relay reads as `None`. No error carries the input.
 pub fn parse_recovery_qr_payload(input: &str) -> Result<RecoveryQr> {
+    if input.len() > MAX_QR_PAYLOAD_BYTES {
+        return Err(invalid());
+    }
     let rest = input.strip_prefix(QR_PREFIX).ok_or_else(invalid)?;
     let mut fields = rest.split(':');
     let account = fields.next().ok_or_else(invalid)?;
@@ -496,5 +503,33 @@ mod tests {
         // A relay address the app would never use (plain http to another host).
         let http = format!("moony-recover:1:{ACCOUNT}:{V2}:aHR0cDovL3JlbGF5LmV4YW1wbGUub3Jn");
         assert_eq!(invalid(&http), "validation.syncRelayUrlInvalid");
+    }
+
+    #[test]
+    fn a_payload_over_512_bytes_is_refused_before_it_is_read() {
+        let valid = recovery_qr_payload(ACCOUNT, V2, Some("https://relay.example.org"));
+        assert!(parse_recovery_qr_payload(&valid).is_ok());
+        // Valid in every field, only too long: padded with spaces the code reader would skip.
+        let padded_code = format!("{V2}{}", " ".repeat(512));
+        let long = format!("moony-recover:1:{ACCOUNT}:{padded_code}");
+        assert!(decode_recovery_code(&padded_code).is_ok());
+        assert!(long.len() > 512);
+        let error = parse_recovery_qr_payload(&long).expect_err("too long");
+        assert!(
+            matches!(&error, AppError::Validation(k) if k == "validation.syncRecoveryCodeInvalid")
+        );
+        let at_cap = format!("moony-recover:1:{ACCOUNT}:{V2}{}", " ".repeat(512 - 113));
+        assert_eq!(at_cap.len(), 512);
+        assert!(
+            parse_recovery_qr_payload(&at_cap).is_ok(),
+            "512 bytes is fine"
+        );
+    }
+
+    #[test]
+    fn a_relay_written_with_a_trailing_dot_is_the_same_relay() {
+        let dotted = recovery_qr_payload(ACCOUNT, V2, Some("https://sync.moonyfinance.com."));
+        let qr = parse_recovery_qr_payload(&dotted).expect("reads");
+        assert_eq!(qr.relay_url, None, "the default relay");
     }
 }

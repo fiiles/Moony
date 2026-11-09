@@ -23,6 +23,9 @@ use crate::services::sync::keys::VaultAuth;
 
 /// The relay of release builds (a placeholder until phase 6).
 pub const DEFAULT_RELAY_URL: &str = "https://sync.moonyfinance.com";
+/// The longest relay address accepted, as typed and once normalized (it rides in the Recovery
+/// Kit's QR, ruling SH-2).
+pub const MAX_RELAY_URL_CHARS: usize = 256;
 /// Account, vault and push answers, and every error answer.
 pub const MAX_JSON_BODY: usize = 64 * 1024;
 /// A pull page: the relay cuts a page at ~4 MiB of ciphertext, which base64 makes ~5.4 MiB.
@@ -54,7 +57,8 @@ pub fn default_base_url() -> String {
 }
 
 /// A relay base URL: `https`, or `http` only for the hosts `localhost` and `127.0.0.1`; no user,
-/// password, query or fragment; no path but `/`. Parsed, never prefix-matched.
+/// password, query or fragment; no path but `/`; at most `MAX_RELAY_URL_CHARS` characters. Parsed,
+/// never prefix-matched.
 pub fn validate_base_url(url: &str) -> Result<()> {
     parse_base_url(url).map(|_| ())
 }
@@ -75,7 +79,21 @@ pub fn is_default_relay(url: &str) -> bool {
 
 fn parse_base_url(url: &str) -> Result<Url> {
     let invalid = || AppError::Validation("validation.syncRelayUrlInvalid".into());
-    let parsed = Url::parse(url).map_err(|_| invalid())?;
+    if url.chars().count() > MAX_RELAY_URL_CHARS {
+        return Err(invalid());
+    }
+    let mut parsed = Url::parse(url).map_err(|_| invalid())?;
+    // `sync.moonyfinance.com.` is the same host as `sync.moonyfinance.com`: one trailing dot of a
+    // domain goes, so both spell (and compare as) one address.
+    if let Some(bare) = parsed.domain().and_then(|d| d.strip_suffix('.')) {
+        let bare = bare.to_string();
+        parsed.set_host(Some(&bare)).map_err(|_| invalid())?;
+    }
+    // Parsing can lengthen an address (an international domain becomes punycode): the stored and
+    // QR-borne form stays within the cap too.
+    if parsed.as_str().trim_end_matches('/').len() > MAX_RELAY_URL_CHARS {
+        return Err(invalid());
+    }
     let host_allowed = match parsed.scheme() {
         "https" => parsed.host_str().is_some_and(|host| !host.is_empty()),
         "http" => matches!(parsed.host_str(), Some("localhost" | "127.0.0.1")),

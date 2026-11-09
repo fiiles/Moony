@@ -740,3 +740,49 @@ fn base_urls_are_normalized_to_their_origin() {
     assert!(!is_default_relay("https://relay.example.org"));
     assert!(!is_default_relay("not a url"));
 }
+
+#[test]
+fn a_trailing_dot_on_the_host_is_dropped() {
+    assert_eq!(
+        normalize_base_url("https://sync.moonyfinance.com.").expect("dotted"),
+        DEFAULT_RELAY_URL
+    );
+    assert_eq!(
+        normalize_base_url("https://relay.example.org.:8443/").expect("dotted with port"),
+        "https://relay.example.org:8443"
+    );
+    assert!(is_default_relay("https://sync.moonyfinance.com."));
+    assert!(is_default_relay("https://SYNC.moonyfinance.com./"));
+}
+
+#[test]
+fn a_relay_address_over_256_characters_is_refused() {
+    let host = |len: usize| {
+        let mut host = String::new();
+        while host.len() < len {
+            if !host.is_empty() {
+                host.push('.');
+            }
+            let label = (len - host.len()).min(50);
+            host.push_str(&"r".repeat(label));
+        }
+        host
+    };
+    let longest = format!("https://{}", host(248));
+    assert_eq!(longest.len(), 256);
+    assert_eq!(normalize_base_url(&longest).expect("256"), longest);
+    assert!(validate_base_url(&longest).is_ok());
+
+    let over = format!("https://{}", host(249));
+    assert_eq!(over.len(), 257);
+    // The cap counts what was typed: a trailing `/` past 256 is refused too.
+    for refused in [over, format!("{longest}/")] {
+        let error = normalize_base_url(&refused).expect_err("over 256");
+        assert!(
+            matches!(&error, AppError::Validation(k) if k == "validation.syncRelayUrlInvalid"),
+            "{error:?}"
+        );
+        assert!(validate_base_url(&refused).is_err());
+        assert!(HttpRelay::new(&refused).is_err());
+    }
+}

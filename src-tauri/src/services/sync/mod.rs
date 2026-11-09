@@ -28,6 +28,8 @@ pub mod natural_id;
 pub mod recovery;
 pub mod registry;
 pub mod relay;
+#[cfg(test)]
+mod relay_e2e;
 pub mod repair;
 pub mod setup;
 pub mod snapshot;

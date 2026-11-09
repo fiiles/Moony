@@ -204,6 +204,33 @@ impl HttpRelay {
             .vault_request(Method::GET, url, vault)?
             .timeout(OPS_TIMEOUT))
     }
+
+    /// `POST /v1/dev/grant` (Moony-relay `DESIGN.md` "Development only"): a paid period of `days`
+    /// days for `account` on a local relay started with `DEV_GRANT=1` → the new `paidUntil`. Only
+    /// in debug builds (ruling P18): the release client has no such call.
+    #[cfg(debug_assertions)]
+    pub async fn dev_grant(&self, account: &str, days: u32) -> RelayResult<i64> {
+        let request = self
+            .account_request(Method::POST, "v1/dev/grant", account)?
+            .json(&DevGrantWire { days });
+        let response = expect_status(send(request).await?, &[200]).await?;
+        let answer: DevGrantAnswerWire = read_json(response, MAX_JSON_BODY).await?;
+        Ok(answer.paid_until)
+    }
+}
+
+#[cfg(debug_assertions)]
+#[derive(Serialize)]
+struct DevGrantWire {
+    #[serde(rename = "days")]
+    days: u32,
+}
+
+#[cfg(debug_assertions)]
+#[derive(Deserialize)]
+struct DevGrantAnswerWire {
+    #[serde(rename = "paidUntil")]
+    paid_until: i64,
 }
 
 /// `n` characters of the base64url alphabet: a vault ID (22) or a vault token (43).

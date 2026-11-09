@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { Fragment, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Check, Copy, FileText, Download } from 'lucide-react';
@@ -9,6 +9,7 @@ import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
 import {
   groupAccountNumber,
+  recoveryCodeGroups,
   toBase64,
   recoveryKitHtml,
   recoveryKitText,
@@ -132,11 +133,22 @@ export function RecoveryKitPanel({ kit, onKept, onPasswordRequired }: RecoveryKi
           )}
         </div>
       </div>
+      {/* Lines break only between groups: each group is unbreakable, a break may follow a hyphen.
+          The selected text is the code exactly as copied (`<wbr>` adds no character). */}
       <div
-        className="select-all break-all rounded-r3 bg-dark px-4 py-[14px] text-center text-[14px] font-650 leading-relaxed tracking-[0.04em] text-ink-inverse num"
+        className="select-all rounded-r3 bg-dark px-4 py-[14px] text-center text-[14px] font-650 leading-relaxed tracking-[0.04em] text-ink-inverse num"
         data-testid="recovery-kit-code"
       >
-        {kit.recoveryCode}
+        {recoveryCodeGroups(kit.recoveryCode).map((group, index) => (
+          <Fragment key={index}>
+            {index > 0 && (
+              <>
+                -<wbr />
+              </>
+            )}
+            <span className="whitespace-nowrap">{group}</span>
+          </Fragment>
+        ))}
       </div>
       <div className="flex flex-wrap gap-2">
         <Button type="button" variant="outline" onClick={copyCode}>

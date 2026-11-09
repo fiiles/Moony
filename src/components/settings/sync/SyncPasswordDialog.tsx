@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactNode } from 'react';
+import { useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   AlertDialog,
@@ -43,6 +43,16 @@ export function SyncPasswordDialog({
   const [password, setPassword] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const field = useRef<HTMLInputElement>(null);
+
+  // Enter in the field submits through the form's own handler (so the busy and empty-password
+  // guards hold) instead of relying on the webview's implicit submission, which did not fire in
+  // the desktop app.
+  const submitOnEnter = (event: KeyboardEvent<HTMLInputElement>) => {
+    if (event.key !== 'Enter' || event.nativeEvent.isComposing) return;
+    event.preventDefault();
+    event.currentTarget.form?.requestSubmit();
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
@@ -60,7 +70,13 @@ export function SyncPasswordDialog({
 
   return (
     <AlertDialog open onOpenChange={(open) => !open && !busy && onClose()}>
-      <AlertDialogContent>
+      <AlertDialogContent
+        onOpenAutoFocus={(event) => {
+          // The field, not Cancel (Radix's default), so typing and Enter reach it at once.
+          event.preventDefault();
+          field.current?.focus();
+        }}
+      >
         <form onSubmit={submit} className="grid gap-4">
           <AlertDialogHeader>
             <AlertDialogTitle>{title}</AlertDialogTitle>
@@ -69,6 +85,7 @@ export function SyncPasswordDialog({
           <div className="grid gap-1.5">
             <Label htmlFor="sync-device-password">{t('password.label')}</Label>
             <Input
+              ref={field}
               id="sync-device-password"
               type="password"
               value={password}
@@ -76,6 +93,7 @@ export function SyncPasswordDialog({
                 setPassword(event.target.value);
                 setError(null);
               }}
+              onKeyDown={submitOnEnter}
               autoComplete="current-password"
               aria-invalid={error ? true : undefined}
             />

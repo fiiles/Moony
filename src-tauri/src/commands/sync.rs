@@ -400,6 +400,55 @@ fn copy_allowed(sync_on: bool, window: Option<&KitWindow>, owner: &KitOwner, now
         })
 }
 
+/// The clipboard clear still owed for the newest recovery code copied natively: its change token
+/// (`copy_secret_text`). The 60 s timer, an exit and a lock each take it once, so whichever comes
+/// first clears, and only while nothing else was copied since.
+#[derive(Debug, Default)]
+struct PendingClear(Option<u64>);
+
+impl PendingClear {
+    /// A new copy: its token replaces an older one (that copy is no longer on the clipboard).
+    fn set(&mut self, token: u64) {
+        self.0 = Some(token);
+    }
+
+    /// The owed token, once (exit, lock).
+    fn take(&mut self) -> Option<u64> {
+        self.0.take()
+    }
+
+    /// Takes the owed token only if it is still `token` (the timer of that very copy).
+    fn take_if(&mut self, token: u64) -> bool {
+        let owed = self.0 == Some(token);
+        if owed {
+            self.0 = None;
+        }
+        owed
+    }
+}
+
+static PENDING_CLEAR: Mutex<PendingClear> = Mutex::new(PendingClear(None));
+
+fn pending_clear() -> std::sync::MutexGuard<'static, PendingClear> {
+    PENDING_CLEAR
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// Empties the clipboard now if it still holds a recovery code copied natively (nothing copied
+/// since), instead of waiting for the 60 s timer: at app exit, lock, restore and account deletion.
+/// A crash or a force-quit runs nothing, so the code can then stay on the clipboard.
+pub(crate) fn clear_copied_code(app: &AppHandle) {
+    let Some(token) = pending_clear().take() else {
+        return;
+    };
+    match app.keychain().clear_clipboard_if_unchanged(token) {
+        Ok(true) => log::info!("[SYNC] Cleared the copied recovery code from the clipboard"),
+        Ok(false) => {}
+        Err(e) => log::warn!("[SYNC] The clipboard could not be cleared: {e}"),
+    }
+}
+
 fn format_overhead(rows: u32, overhead: &Overhead) -> String {
     let without = overhead.without.as_secs_f64() * 1e3;
     let with = overhead.with.as_secs_f64() * 1e3;
@@ -500,8 +549,8 @@ pub async fn sync_prepare_recovery_kit(db: State<'_, Database>) -> Result<Recove
 }
 
 /// Copies the recovery code natively (hidden from clipboard managers) and clears the clipboard
-/// after `CLIPBOARD_CLEAR_AFTER` if nothing else was copied since. The code is read here from
-/// `sync_state` and never crosses IPC. `false`: no native copy on this platform (or it failed);
+/// after `CLIPBOARD_CLEAR_AFTER`, or earlier at exit or lock (`clear_copied_code`), if nothing
+/// else was copied since. The code is read here from `sync_state` and never crosses IPC. `false`: no native copy on this platform (or it failed);
 /// the UI copies itself and asks the person to clear the clipboard.
 #[tauri::command]
 pub async fn sync_copy_recovery_code(app: AppHandle, db: State<'_, Database>) -> Result<bool> {
@@ -521,9 +570,15 @@ pub async fn sync_copy_recovery_code(app: AppHandle, db: State<'_, Database>) ->
             return Ok(false);
         }
     };
+    // Owed until the timer, an exit or a lock clears it (`clear_copied_code`).
+    pending_clear().set(token);
     let clearer = app.clone();
     tauri::async_runtime::spawn(async move {
         tokio::time::sleep(CLIPBOARD_CLEAR_AFTER).await;
+        if !pending_clear().take_if(token) {
+            // Cleared at an exit or lock already, or a newer copy owns the clipboard.
+            return;
+        }
         if let Err(e) = clearer.keychain().clear_clipboard_if_unchanged(token) {
             log::warn!("[SYNC] The clipboard could not be cleared: {e}");
         }
@@ -872,6 +927,29 @@ mod tests {
             !copy_allowed(true, Some(&window), &owner("/profiles/a/moony.db", 5), now),
             "the same profile after a lock and an unlock"
         );
+    }
+
+    #[test]
+    fn a_pending_clear_is_taken_once_and_a_newer_copy_replaces_it() {
+        let mut pending = PendingClear::default();
+        assert_eq!(pending.take(), None, "nothing copied");
+
+        pending.set(7);
+        assert_eq!(pending.take(), Some(7), "exit or lock clears it");
+        assert_eq!(pending.take(), None, "once");
+
+        // A newer copy replaces the older token: the older copy's timer takes nothing, the newer
+        // one's takes its own, and exit then has nothing left.
+        pending.set(7);
+        pending.set(9);
+        assert!(!pending.take_if(7), "the older copy's timer");
+        assert!(pending.take_if(9), "the newer copy's timer");
+        assert_eq!(pending.take(), None);
+
+        // The timer of a copy already cleared at exit or lock finds nothing.
+        pending.set(11);
+        assert_eq!(pending.take(), Some(11));
+        assert!(!pending.take_if(11));
     }
 
     #[test]

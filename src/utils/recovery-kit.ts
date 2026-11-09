@@ -22,6 +22,11 @@ export function groupAccountNumber(accountNumber: string): string {
   return accountNumber.replace(/(\d{4})(?=\d)/g, '$1 ');
 }
 
+/** The recovery code's groups of five; it is shown and copied with a hyphen between groups. */
+export function recoveryCodeGroups(code: string): string[] {
+  return code.split('-');
+}
+
 function escapeHtml(value: string): string {
   return value
     .replace(/&/g, '&amp;')
@@ -51,6 +56,8 @@ const STYLE = `
   .note { color: #6b6860; font-size: 13px; }
   .value { font: 600 18px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     background: #1b1a17; color: #fff; padding: 12px 16px; border-radius: 10px; word-break: break-all; }
+  .code { word-break: normal; overflow-wrap: normal; }
+  .code .group { white-space: nowrap; }
   .qr { text-align: center; margin: 28px 0 8px; }
   .qr img { width: 220px; height: 220px; }
   @media print {
@@ -63,6 +70,10 @@ const STYLE = `
 /** The Sync Recovery Kit as one self-contained page: inline CSS, the QR as a data URI, no links. */
 export function recoveryKitHtml(kit: RecoveryKit, copy: RecoveryKitCopy): string {
   const e = escapeHtml;
+  // Lines break only between groups: each group is unbreakable, and a break may follow a hyphen.
+  const codeHtml = recoveryCodeGroups(kit.recoveryCode)
+    .map((group) => `<span class="group">${e(group)}</span>`)
+    .join('-<wbr>');
   const relay = kit.relayUrl
     ? `<section><h2>${e(copy.relayLabel)}</h2><div class="value">${e(kit.relayUrl)}</div><p class="note">${e(copy.relayNote)}</p></section>`
     : '';
@@ -79,7 +90,7 @@ export function recoveryKitHtml(kit: RecoveryKit, copy: RecoveryKitCopy): string
 <h1>${e(copy.title)}</h1>
 <p>${e(copy.intro)}</p>
 <section><h2>${e(copy.accountLabel)}</h2><div class="value">${e(groupAccountNumber(kit.accountNumber))}</div><p class="note">${e(copy.accountNote)}</p></section>
-<section><h2>${e(copy.codeLabel)}</h2><div class="value">${e(kit.recoveryCode)}</div><p class="note">${e(copy.codeNote)}</p></section>
+<section><h2>${e(copy.codeLabel)}</h2><div class="value code">${codeHtml}</div><p class="note">${e(copy.codeNote)}</p></section>
 ${relay}
 <section class="qr"><img src="data:image/svg+xml;base64,${toBase64(kit.qrSvg)}" alt="${e(copy.qrLabel)}"><p class="note">${e(copy.qrLabel)}</p></section>
 <p class="note">${e(copy.differsFromRecoveryKey)}</p>

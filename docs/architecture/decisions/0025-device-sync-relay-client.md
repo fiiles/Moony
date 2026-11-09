@@ -109,9 +109,10 @@ while sync is off; once sync is on it is shown only after the device password. T
 by the native side (it never crosses IPC): with sync on only within 5 minutes of that password
 check, a window tied to the profile's database and session and closed at lock, restore, turn-off
 and deletion. macOS copies for this Mac only (no Universal Clipboard) with the concealed and
-transient types; Windows keeps it out of clipboard history and the cloud clipboard; both clear it
-after 60 s unless something else was copied since. Linux has no native copy: the UI copies and asks
-the person to clear the clipboard. The Kit and every password-bearing mutation have `gcTime: 0`;
+transient types; Windows keeps it out of clipboard history and the cloud clipboard. Both clear it
+after 60 s, or earlier when the app exits, locks, restores a backup or deletes the account,
+unless something else was copied since (the pending clear is held in app state and taken once).
+Linux has no native copy: the UI copies and asks the person to clear the clipboard. The Kit and every password-bearing mutation have `gcTime: 0`;
 secret types print redacted and live in `Zeroizing` buffers.
 
 **Self-hosting.** The relay's `SELF_HOSTED=1` mode entitles exactly the accounts in
@@ -152,7 +153,8 @@ the same trust as the backup itself.
     take the one-change guard; a lock and unlock inside a sync change, or a panic in it, leave the
     engine off until the next unlock;
   - the copied code lives in a Swift string and on the system clipboard, neither of which can be
-    wiped;
+    wiped; a crash or a force-quit within 60 s of a copy runs no clear, so the code then stays on
+    the clipboard;
   - sealing re-reads the whole outbox per envelope (slow only for a first drain of tens of
     thousands of rows); a resumed setup shows the custom server field empty; "behind" is not
     reported when a pull ends at its head bound;

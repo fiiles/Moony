@@ -594,7 +594,11 @@ async fn run_app() {
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(|app, event| match event {
-            tauri::RunEvent::Exit => commands::attachments::wipe_open_copies(app),
+            tauri::RunEvent::Exit => {
+                commands::attachments::wipe_open_copies(app);
+                // A recovery code still on the clipboard does not outlive the app.
+                crate::commands::sync::clear_copied_code(app);
+            }
             // A statement shared or opened into the phone app (iOS and Android)
             #[cfg(mobile)]
             tauri::RunEvent::Opened { urls } => commands::received_files::on_opened(app, &urls),

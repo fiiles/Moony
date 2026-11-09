@@ -257,6 +257,7 @@ pub async fn logout(
     local_api.stop().await;
     crate::commands::sync::stop_engine(&app);
     crate::commands::sync::forget_kit_window();
+    crate::commands::sync::clear_copied_code(&app);
     auth::logout(&db, &session);
     // Decrypted copies opened in other apps go with the session (D3).
     crate::commands::attachments::wipe_open_copies(&app);
@@ -336,6 +337,7 @@ pub async fn delete_account(
     // (ruling P8). A failure never stops the deletion.
     crate::commands::sync::stop_engine(&app);
     crate::commands::sync::forget_kit_window();
+    crate::commands::sync::clear_copied_code(&app);
     crate::commands::sync::delete_vault_with_account(&db).await;
     crate::commands::attachments::wipe_open_copies(&app);
     let deleted = auth::delete_account(&db, &session, &db_path);

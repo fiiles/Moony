@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import type { RecoveryKit } from '@shared/schema';
-import { recoveryKitHtml, recoveryKitText, toBase64, type RecoveryKitCopy } from './recovery-kit';
+import {
+  recoveryCodeGroups,
+  recoveryKitHtml,
+  recoveryKitText,
+  toBase64,
+  type RecoveryKitCopy,
+} from './recovery-kit';
 
 const CODE = Array.from({ length: 16 }, (_, i) => `ABCD${i % 10}`).join('-');
 
@@ -29,7 +35,7 @@ describe('recoveryKitHtml', () => {
   it('builds a self-contained page with the code, account and QR', () => {
     const html = recoveryKitHtml(kit, copy);
     expect(html.startsWith('<!doctype html>')).toBe(true);
-    expect(html).toContain(CODE);
+    expect(html.replace(/<[^>]+>/g, '')).toContain(CODE);
     expect(html).toContain('1234 5678 9012 3456');
     expect(html).toContain('<img src="data:image/svg+xml;base64,');
     expect(html).toContain('@media print');
@@ -55,12 +61,32 @@ describe('recoveryKitHtml', () => {
     expect(html).toContain('https://a.example/?q=&lt;b&gt;');
   });
 
+  it('breaks the code only between groups', () => {
+    const html = recoveryKitHtml(kit, copy);
+    const block = /<div class="value code">(.*?)<\/div>/.exec(html)?.[1] ?? '';
+    const groups = recoveryCodeGroups(CODE);
+    expect(block).toBe(groups.map((g) => `<span class="group">${g}</span>`).join('-<wbr>'));
+    expect(block.replace(/<[^>]+>/g, '')).toBe(CODE);
+    // A group never wraps inside, and the code block does not break anywhere else.
+    expect(html).toMatch(/\.code \.group \{[^}]*white-space: nowrap/);
+    expect(html).toMatch(/\.code \{[^}]*word-break: normal/);
+  });
+
   it('prints the sync server only when the kit carries one', () => {
     const withRelay = recoveryKitHtml({ ...kit, relayUrl: 'https://sync.example.com' }, copy);
     expect(withRelay).toContain('Sync server');
     expect(withRelay).toContain('https://sync.example.com');
     expect(withRelay).toContain('Needed to restore from this kit');
     expect(recoveryKitHtml(kit, copy)).not.toContain('Needed to restore');
+  });
+});
+
+describe('recoveryCodeGroups', () => {
+  it('splits the hyphenated code into its groups of five', () => {
+    const groups = recoveryCodeGroups(CODE);
+    expect(groups).toHaveLength(16);
+    expect(groups[0]).toBe('ABCD0');
+    expect(groups.join('-')).toBe(CODE);
   });
 });
 

@@ -337,7 +337,11 @@
     "syncRepairDrainIncomplete": "Not all of this device's changes could be sent to the sync server, so the repair stopped and nothing was replaced. A backup was saved. Try again when sync works.",
     "syncRecoveryKitNotConfirmed": "Save or copy your Sync Recovery Kit and confirm that you did before you continue.",
     "syncSetupIncomplete": "Sync setup is not finished. Go back to the previous step and try again.",
-    "syncAlreadyEnabled": "Sync is already on for this profile."
+    "syncAlreadyEnabled": "Sync is already on for this profile.",
+    "syncUnavailable": "Sync is not available in this version of Moony.",
+    "syncDevOnly": "This is a developer tool, available only in development builds.",
+    "syncRepairInProgress": "A repair of this device is already running. Wait until it finishes.",
+    "syncPasswordRequired": "Enter your password again to copy the recovery code."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

@@ -6,6 +6,7 @@
 //! `local` for ordinary writes, `merge` while remote changes are applied, `repair` for the
 //! recalculations after a merge) and then the triggers of `triggers::trigger_sql`.
 
+pub mod bench;
 pub mod triggers;
 
 use std::sync::{Arc, Mutex};

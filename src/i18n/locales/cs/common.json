@@ -337,7 +337,11 @@
     "syncRepairDrainIncomplete": "Ne všechny změny z tohoto zařízení se podařilo odeslat na synchronizační server, proto se oprava zastavila a nic nebylo nahrazeno. Záloha je uložená. Zkuste to znovu, až bude synchronizace fungovat.",
     "syncRecoveryKitNotConfirmed": "Než budete pokračovat, uložte nebo zkopírujte sadu pro obnovení synchronizace a potvrďte, že jste to udělali.",
     "syncSetupIncomplete": "Nastavení synchronizace není dokončené. Vraťte se o krok zpět a zkuste to znovu.",
-    "syncAlreadyEnabled": "Synchronizace je pro tento profil už zapnutá."
+    "syncAlreadyEnabled": "Synchronizace je pro tento profil už zapnutá.",
+    "syncUnavailable": "Synchronizace není v této verzi Moony dostupná.",
+    "syncDevOnly": "Toto je nástroj pro vývojáře, dostupný jen ve vývojových sestaveních.",
+    "syncRepairInProgress": "Oprava tohoto zařízení už probíhá. Počkejte, až skončí.",
+    "syncPasswordRequired": "Pro zkopírování obnovovacího kódu znovu zadejte heslo."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

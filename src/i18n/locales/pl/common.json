@@ -337,7 +337,11 @@
     "syncRepairDrainIncomplete": "Nie wszystkie zmiany z tego urządzenia udało się wysłać na serwer synchronizacji, więc naprawa została zatrzymana i nic nie zostało zastąpione. Zapisano kopię zapasową. Spróbuj ponownie, gdy synchronizacja będzie działać.",
     "syncRecoveryKitNotConfirmed": "Zanim przejdziesz dalej, zapisz lub skopiuj zestaw odzyskiwania synchronizacji i potwierdź, że to zrobiłeś.",
     "syncSetupIncomplete": "Konfiguracja synchronizacji nie została ukończona. Wróć do poprzedniego kroku i spróbuj ponownie.",
-    "syncAlreadyEnabled": "Synchronizacja jest już włączona dla tego profilu."
+    "syncAlreadyEnabled": "Synchronizacja jest już włączona dla tego profilu.",
+    "syncUnavailable": "Synchronizacja nie jest dostępna w tej wersji Moony.",
+    "syncDevOnly": "To narzędzie dla programistów, dostępne tylko w wersjach deweloperskich.",
+    "syncRepairInProgress": "Naprawa tego urządzenia już trwa. Poczekaj, aż się zakończy.",
+    "syncPasswordRequired": "Wpisz ponownie hasło, aby skopiować kod odzyskiwania."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

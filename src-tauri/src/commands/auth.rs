@@ -330,6 +330,9 @@ pub async fn delete_account(
     session: State<'_, SessionKey>,
 ) -> Result<()> {
     let db_path = get_db_path(&app)?;
+    // The synced data goes too, while the profile is open and the engine still runs (ruling P8);
+    // a failure never stops the deletion.
+    crate::commands::sync::delete_vault_with_account(&db).await;
     crate::commands::sync::stop_engine(&app);
     crate::commands::attachments::wipe_open_copies(&app);
     let deleted = auth::delete_account(&db, &session, &db_path);

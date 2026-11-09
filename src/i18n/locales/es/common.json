@@ -337,7 +337,11 @@
     "syncRepairDrainIncomplete": "No se pudieron enviar todos los cambios de este dispositivo al servidor de sincronización, así que la reparación se detuvo y no se reemplazó nada. Se guardó una copia de seguridad. Vuelve a intentarlo cuando la sincronización funcione.",
     "syncRecoveryKitNotConfirmed": "Guarda o copia tu kit de recuperación de la sincronización y confirma que lo has hecho antes de continuar.",
     "syncSetupIncomplete": "La configuración de la sincronización no está terminada. Vuelve al paso anterior e inténtalo de nuevo.",
-    "syncAlreadyEnabled": "La sincronización ya está activada para este perfil."
+    "syncAlreadyEnabled": "La sincronización ya está activada para este perfil.",
+    "syncUnavailable": "La sincronización no está disponible en esta versión de Moony.",
+    "syncDevOnly": "Es una herramienta para desarrolladores, disponible solo en compilaciones de desarrollo.",
+    "syncRepairInProgress": "Ya se está reparando este dispositivo. Espera a que termine.",
+    "syncPasswordRequired": "Vuelve a introducir tu contraseña para copiar el código de recuperación."
   },
   "auth": {
     "wrongPassword": "La contraseña introducida es incorrecta. Inténtalo de nuevo.",

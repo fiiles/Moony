@@ -20,7 +20,7 @@ use crate::services::sync::relay::http::DEFAULT_RELAY_URL;
 use crate::services::sync::relay::RelayError;
 use crate::services::sync::setup::{
     account_status, checkout_url, create_account, delete_synced_data, delete_vault_best_effort,
-    finish_setup, recovery_kit, turn_off_between_rounds,
+    finish_setup, recovery_kit, setup_recovery_kit, turn_off_between_rounds,
 };
 use crate::services::sync::snapshot::{read_record, Record};
 
@@ -229,6 +229,31 @@ async fn first_device_setup_creates_the_vault_pushes_and_uploads_a_snapshot() {
         StartupCheck::Fine,
         "the binding matches the device ID sync runs under"
     );
+}
+
+#[tokio::test]
+async fn the_setup_kit_is_refused_once_sync_is_on() {
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    let account = create_account(&relay, &device, RELAY)
+        .await
+        .expect("account");
+    relay.set_paid(&account.account_number, true);
+
+    // While setup runs, the same kit as `recovery_kit`, as often as asked.
+    let during = setup_recovery_kit(&device.lock()).expect("kit during setup");
+    let kit = recovery_kit(&device.lock()).expect("kit");
+    assert_eq!(during.recovery_code, kit.recovery_code);
+    assert_eq!(during.account_number, account.account_number);
+
+    // Once sync is on, only the password-checked path shows it (`sync_show_recovery_kit`).
+    finish(&relay, &device, dir.path()).await.expect("setup");
+    assert_eq!(
+        key_of(setup_recovery_kit(&device.lock()).map_err(SyncError::from)),
+        "validation.syncAlreadyEnabled"
+    );
+    assert!(recovery_kit(&device.lock()).is_ok(), "the kit itself stays");
 }
 
 #[tokio::test]

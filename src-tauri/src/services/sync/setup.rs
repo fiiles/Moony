@@ -155,6 +155,16 @@ pub fn recovery_kit(conn: &Connection) -> Result<RecoveryKit> {
     })
 }
 
+/// The kit while setup runs (`sync_prepare_recovery_kit`, no password): `recovery_kit`, refused
+/// with `validation.syncAlreadyEnabled` once sync is on. After setup the kit is shown only once
+/// the device password was checked (`sync_show_recovery_kit`).
+pub fn setup_recovery_kit(conn: &Connection) -> Result<RecoveryKit> {
+    if enabled(conn)? {
+        return Err(AppError::Validation(ALREADY_ENABLED.into()));
+    }
+    recovery_kit(conn)
+}
+
 /// Finishes setup on the first device of a new vault. Resumable: a step that already happened is
 /// not repeated.
 ///

@@ -337,7 +337,11 @@
     "syncRepairDrainIncomplete": "Ikke alle endringene fra denne enheten kunne sendes til synkroniseringsserveren, så reparasjonen stoppet og ingenting ble erstattet. En sikkerhetskopi ble lagret. Prøv igjen når synkroniseringen fungerer.",
     "syncRecoveryKitNotConfirmed": "Lagre eller kopier gjenopprettingssettet for synkronisering, og bekreft at du har gjort det, før du fortsetter.",
     "syncSetupIncomplete": "Oppsettet av synkronisering er ikke fullført. Gå tilbake til forrige trinn og prøv igjen.",
-    "syncAlreadyEnabled": "Synkronisering er allerede slått på for denne profilen."
+    "syncAlreadyEnabled": "Synkronisering er allerede slått på for denne profilen.",
+    "syncUnavailable": "Synkronisering er ikke tilgjengelig i denne versjonen av Moony.",
+    "syncDevOnly": "Dette er et utviklerverktøy, kun tilgjengelig i utviklingsversjoner.",
+    "syncRepairInProgress": "En reparasjon av denne enheten pågår allerede. Vent til den er ferdig.",
+    "syncPasswordRequired": "Skriv inn passordet ditt på nytt for å kopiere gjenopprettingskoden."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

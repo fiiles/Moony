@@ -178,6 +178,17 @@ pub fn write_binding(conn: &Connection, data_dir: &Path, native: &dyn BindingNat
     state::set_binding_written(conn, true)
 }
 
+/// Whether the engine's start must (try to) write the binding: sync is on and no binding is
+/// written. A seal that failed for a passing reason when sync was turned on, or after a re-join,
+/// would otherwise leave the check off for good; every start tries again. A platform without a
+/// binding answers `Unsupported` each time, which leaves `binding_written = 0` and costs nothing.
+pub fn binding_due(conn: &Connection) -> Result<bool> {
+    if !state::load(conn)?.is_some_and(|s| s.enabled) {
+        return Ok(false);
+    }
+    Ok(!state::marks(conn)?.is_some_and(|m| m.binding_written))
+}
+
 /// Turns sync on for the first device of a vault (`state::enable`), then clears a restore marker
 /// a restored never-synced backup left behind. `startup_check` runs only for an enabled profile
 /// (G5), so without this the first unlock after setup would re-join a device that has nothing to
@@ -534,6 +545,20 @@ mod tests {
         join(&joiner, dir.path(), DEVICE, &mut &b"not a snapshot"[..], 1).expect_err("refused");
 
         assert!(dir.path().join("sync-rejoin.marker").exists());
+    }
+
+    #[test]
+    fn a_binding_is_due_while_sync_is_on_and_none_is_written() {
+        let conn = migrated();
+        assert!(!binding_due(&conn).expect("no sync row"), "sync is off");
+
+        let conn = synced();
+        let dir = tempfile::tempdir().expect("dir");
+        assert!(binding_due(&conn).expect("due"));
+        write_binding(&conn, dir.path(), &BrokenNative).expect_err("seal fails");
+        assert!(binding_due(&conn).expect("due"), "a failed seal stays due");
+        write_binding(&conn, dir.path(), &FakeNative { machine: 7 }).expect("binding");
+        assert!(!binding_due(&conn).expect("written"));
     }
 
     #[test]

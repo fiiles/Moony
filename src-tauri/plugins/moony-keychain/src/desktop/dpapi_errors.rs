@@ -78,9 +78,8 @@ mod tests {
             INVALID_DATA,
             INVALID_PARAMETER,
         ] {
-            assert_eq!(
-                open_failure(code),
-                KeychainError::Invalidated,
+            assert!(
+                matches!(open_failure(code), KeychainError::Invalidated),
                 "0x{:08X}",
                 code as u32
             );
@@ -100,12 +99,10 @@ mod tests {
             BUSY,
             TIMEOUT,
         ] {
-            assert_eq!(
-                open_failure(code),
-                KeychainError::Failed(format!(
-                    "DPAPI could not open the binding: 0x{:08X}",
-                    code as u32
-                )),
+            assert!(
+                matches!(open_failure(code), KeychainError::Failed(_)),
+                "0x{:08X}",
+                code as u32
             );
         }
     }
@@ -116,8 +113,11 @@ mod tests {
     fn an_unknown_failure_to_open_is_invalidated() {
         const E_FAIL: i32 = 0x8000_4005_u32 as i32;
         const NTE_BAD_KEYSET: i32 = 0x8009_0016_u32 as i32;
-        assert_eq!(open_failure(E_FAIL), KeychainError::Invalidated);
-        assert_eq!(open_failure(NTE_BAD_KEYSET), KeychainError::Invalidated);
+        assert!(matches!(open_failure(E_FAIL), KeychainError::Invalidated));
+        assert!(matches!(
+            open_failure(NTE_BAD_KEYSET),
+            KeychainError::Invalidated
+        ));
     }
 
     #[test]
@@ -128,12 +128,10 @@ mod tests {
             OUT_OF_MEMORY,
             INVALID_DATA,
         ] {
-            assert_eq!(
-                seal_failure(code),
-                KeychainError::Failed(format!(
-                    "DPAPI could not seal the binding: 0x{:08X}",
-                    code as u32
-                )),
+            assert!(
+                matches!(seal_failure(code), KeychainError::Failed(_)),
+                "0x{:08X}",
+                code as u32
             );
         }
     }

@@ -51,8 +51,23 @@ private struct BlobFormat {
 
 private let touchIdFormat = BlobFormat(version: 1, info: Data("moony-touchid-v1".utf8))
 private let bindingFormat = BlobFormat(version: 0x42, info: Data("moony-binding-v1".utf8))
-/// The marker type clipboard managers honour (nspasteboard.org): they keep no copy of the item.
+/// How a message names what failed: Touch ID unlock speaks of Touch ID; the binding, which has no
+/// prompt and is not biometric, speaks of this Mac's secure storage and never of Touch ID.
+private struct Wording {
+  /// What failed, as a sentence subject: "Touch ID failed: …".
+  let subject: String
+  /// The key, as a sentence subject: "The binding key is gone: …".
+  let keyName: String
+}
+
+private let touchIdWording = Wording(subject: "Touch ID", keyName: "The Touch ID key")
+private let bindingWording = Wording(
+  subject: "This Mac's secure storage", keyName: "The device binding key")
+
+/// The marker types clipboard managers honour (nspasteboard.org): concealed (keep no copy, show
+/// no preview) and transient (the item is temporary, do not record it).
 private let concealedType = NSPasteboard.PasteboardType("org.nspasteboard.ConcealedType")
+private let transientType = NSPasteboard.PasteboardType("org.nspasteboard.TransientType")
 private let secretLength = 32
 private let x963Length = 65
 private let sealedLength = 12 + 32 + 16
@@ -165,7 +180,7 @@ public func moonyBioUnwrap(reason: SRString, blob: SRData) -> SRData {
         return Recipient(
           keyData: keyData, publicKey: key.publicKey, agree: key.sharedSecretFromKeyAgreement)
       },
-      authorize: { try authenticate(context) }, keyName: "The Touch ID key")
+      authorize: { try authenticate(context) }, wording: touchIdWording)
   }
 }
 
@@ -173,7 +188,7 @@ public func moonyBioUnwrap(reason: SRString, blob: SRData) -> SRData {
 /// Payload: the blob. Unsupported without a Secure Enclave.
 @_cdecl("moony_bind_seal")
 public func moonyBindSeal(secret: SRData) -> SRData {
-  return reply {
+  return reply(bindingWording) {
     var bytes = secret.toArray()
     defer { wipe(&bytes) }
     guard bytes.count == secretLength else {
@@ -198,7 +213,7 @@ public func moonyBindSeal(secret: SRData) -> SRData {
       key = try SecureEnclave.P256.KeyAgreement.PrivateKey(accessControl: access)
     } catch {
       throw BiometricsError(
-        code: .failed, message: "Could not create the binding key: \(describe(error))")
+        code: .failed, message: "Could not create the device binding key: \(describe(error))")
     }
 
     let recipient = Recipient(
@@ -213,7 +228,7 @@ public func moonyBindSeal(secret: SRData) -> SRData {
 /// not a binding blob. Unsupported without a Secure Enclave.
 @_cdecl("moony_bind_open")
 public func moonyBindOpen(blob: SRData) -> SRData {
-  return reply {
+  return reply(bindingWording) {
     guard SecureEnclave.isAvailable else {
       throw BiometricsError.unsupported()
     }
@@ -224,22 +239,25 @@ public func moonyBindOpen(blob: SRData) -> SRData {
         return Recipient(
           keyData: keyData, publicKey: key.publicKey, agree: key.sharedSecretFromKeyAgreement)
       },
-      authorize: {}, keyName: "The binding key")
+      authorize: {}, wording: bindingWording)
   }
 }
 
-/// Puts `text` on the general pasteboard as the only item, with the concealed marker type, and
-/// answers the pasteboard's change count after taking it over (-1 when the write was refused).
+/// Puts `text` on the general pasteboard as the only item, for this Mac only (`.currentHostOnly`:
+/// never handed to Universal Clipboard on the person's other devices), with the concealed and
+/// transient marker types, and answers the pasteboard's change count after taking it over (-1
+/// when the write was refused).
 /// The text crosses the bridge as a swift-rs string and lives here as a Swift `String`, neither of
 /// which can be wiped: the accepted residual of copying a secret at all.
 @_cdecl("moony_clip_copy")
 public func moonyClipCopy(text: SRString) -> Int {
   let pasteboard = NSPasteboard.general
   // Taking the pasteboard over is what changes its count; writing the item does not.
-  let count = pasteboard.clearContents()
+  let count = pasteboard.prepareForNewContents(with: .currentHostOnly)
   let item = NSPasteboardItem()
   guard item.setString(text.toString(), forType: .string),
     item.setData(Data(), forType: concealedType),
+    item.setData(Data(), forType: transientType),
     pasteboard.writeObjects([item])
   else {
     pasteboard.clearContents()
@@ -276,7 +294,7 @@ public func moonyBioSelftest() -> Bool {
     agree: softwareKey.sharedSecretFromKeyAgreement)
   let refused: (Data, BlobFormat) -> Bool = { blob, format in
     do {
-      _ = try open(blob, format: format, restore: restore, authorize: {}, keyName: "The key")
+      _ = try open(blob, format: format, restore: restore, authorize: {}, wording: touchIdWording)
       return false
     } catch let error as BiometricsError where error.code == .invalidated {
       return true
@@ -288,7 +306,7 @@ public func moonyBioSelftest() -> Bool {
     for (format, other) in [(touchIdFormat, bindingFormat), (bindingFormat, touchIdFormat)] {
       let blob = try seal(secret, for: recipient, format: format)
       guard blob.first == format.version,
-        try open(blob, format: format, restore: restore, authorize: {}, keyName: "The key")
+        try open(blob, format: format, restore: restore, authorize: {}, wording: touchIdWording)
           == secret
       else { return false }
 
@@ -316,18 +334,30 @@ public func moonyBioSelftest() -> Bool {
 /// CryptoTokenKit wrap them.
 @_cdecl("moony_bio_classify")
 public func moonyBioClassify(stage: Int, domain: SRString, code: Int, wrapped: Bool) -> Int {
-  var error = NSError(domain: domain.toString(), code: code)
+  return Int(classified(stage: stage, domain: domain.toString(), code: code, wrapped: wrapped)
+    .code.rawValue)
+}
+
+/// For the Rust tests: the message `moony_bio_classify`'s classification carries.
+@_cdecl("moony_bio_classify_message")
+public func moonyBioClassifyMessage(stage: Int, domain: SRString, code: Int, wrapped: Bool)
+  -> SRString
+{
+  return SRString(
+    classified(stage: stage, domain: domain.toString(), code: code, wrapped: wrapped).message)
+}
+
+private func classified(stage: Int, domain: String, code: Int, wrapped: Bool) -> BiometricsError {
+  var error = NSError(domain: domain, code: code)
   if wrapped {
     error = NSError(
       domain: "CryptoTokenKit", code: -3, userInfo: [NSUnderlyingErrorKey: error])
   }
-  let failure: BiometricsError
   switch stage {
-  case 0: failure = restoreFailure(error, keyName: "The Touch ID key")
-  case 1: failure = agreementFailure(error, keyName: "The Touch ID key")
-  default: failure = restoreFailure(error, keyName: "The binding key")
+  case 0: return restoreFailure(error, wording: touchIdWording)
+  case 1: return agreementFailure(error, wording: touchIdWording)
+  default: return restoreFailure(error, wording: bindingWording)
   }
-  return Int(failure.code.rawValue)
 }
 
 // MARK: - ECIES
@@ -369,10 +399,10 @@ private func seal(
 
 /// Parses the blob, finds the key again, lets `authorize` prompt, then agrees and decrypts. A blob
 /// that does not parse, a key that is gone, an agreement the key refuses and a box that does not
-/// open are all "invalidated": the blob can never be read again. `keyName` words the messages.
+/// open are all "invalidated": the blob can never be read again. `wording` words the messages.
 private func open(
   _ blob: Data, format: BlobFormat, restore: (Data) throws -> Recipient,
-  authorize: () throws -> Void, keyName: String
+  authorize: () throws -> Void, wording: Wording
 ) throws -> [UInt8] {
   let parsed = try parse(blob, format: format)
   let recipient: Recipient
@@ -385,7 +415,7 @@ private func open(
   do {
     recipient = try restore(parsed.keyData)
   } catch {
-    throw restoreFailure(error, keyName: keyName)
+    throw restoreFailure(error, wording: wording)
   }
 
   try authorize()
@@ -394,7 +424,7 @@ private func open(
   do {
     shared = try recipient.agree(ephemeralPublic)
   } catch {
-    throw agreementFailure(error, keyName: keyName)
+    throw agreementFailure(error, wording: wording)
   }
 
   let key = wrappingKey(
@@ -469,7 +499,7 @@ private func authenticate(_ context: LAContext) throws {
   }
   answered.wait()
   if let failure = outcome.failure {
-    throw classify(failure)
+    throw classify(failure, wording: touchIdWording)
   }
 }
 
@@ -479,12 +509,13 @@ private final class PromptOutcome: @unchecked Sendable {
   var failure: Error?
 }
 
-private func classify(_ error: Error) -> BiometricsError {
+private func classify(_ error: Error, wording: Wording) -> BiometricsError {
   if let error = error as? BiometricsError {
     return error
   }
   guard let laError = error as? LAError else {
-    return BiometricsError(code: .failed, message: "Touch ID failed: \(describe(error))")
+    return BiometricsError(
+      code: .failed, message: "\(wording.subject) failed: \(describe(error))")
   }
   switch laError.code {
   case .userCancel, .appCancel, .systemCancel, .userFallback, .notInteractive:
@@ -492,13 +523,14 @@ private func classify(_ error: Error) -> BiometricsError {
     return .cancelled()
   case .biometryNotAvailable, .biometryNotEnrolled, .biometryLockout, .passcodeNotSet:
     return BiometricsError(
-      code: .unavailable, message: "Touch ID is unavailable: \(laError.localizedDescription)")
+      code: .unavailable,
+      message: "\(wording.subject) is unavailable: \(laError.localizedDescription)")
   case .authenticationFailed:
     return BiometricsError(
-      code: .failed, message: "Touch ID did not recognise the fingerprint")
+      code: .failed, message: "\(wording.subject) did not recognise the fingerprint")
   default:
     return BiometricsError(
-      code: .failed, message: "Touch ID failed: \(laError.localizedDescription)")
+      code: .failed, message: "\(wording.subject) failed: \(laError.localizedDescription)")
   }
 }
 
@@ -510,12 +542,12 @@ private func classify(_ error: Error) -> BiometricsError {
 /// For the binding, "unusable" is what a handle from another Mac's Secure Enclave gives
 /// (CryptoTokenKit `corruptedData`, "corrupted objectID detected"), and anything this does not
 /// recognise as momentary counts as such: a needless re-join beats a check that silently passes.
-private func restoreFailure(_ error: Error, keyName: String) -> BiometricsError {
-  if let answer = momentaryFailure(error, keyName: keyName) {
+private func restoreFailure(_ error: Error, wording: Wording) -> BiometricsError {
+  if let answer = momentaryFailure(error, wording: wording) {
     return answer
   }
   return BiometricsError(
-    code: .invalidated, message: "\(keyName) is gone: \(describe(error))")
+    code: .invalidated, message: "\(wording.keyName) is gone: \(describe(error))")
 }
 
 /// The key agreement failed after a successful prompt. If the Secure Enclave asked again, its
@@ -523,28 +555,28 @@ private func restoreFailure(_ error: Error, keyName: String) -> BiometricsError 
 /// prompt's, and a refusal of the moment is a failure as in `restoreFailure`, so none of them
 /// switches biometric unlock off. Anything else means the key refused an authenticated context:
 /// the enrolment it was bound to is gone.
-private func agreementFailure(_ error: Error, keyName: String) -> BiometricsError {
-  if let answer = momentaryFailure(error, keyName: keyName) {
+private func agreementFailure(_ error: Error, wording: Wording) -> BiometricsError {
+  if let answer = momentaryFailure(error, wording: wording) {
     return answer
   }
   return BiometricsError(
-    code: .invalidated, message: "\(keyName) refused the unlock: \(describe(error))")
+    code: .invalidated, message: "\(wording.keyName) refused the unlock: \(describe(error))")
 }
 
 /// The answers that say nothing about the key itself, so biometric unlock stays on: a
 /// LocalAuthentication answer (classified like the prompt's), a refusal of the moment (no
 /// interaction allowed in this session, the Secure Enclave not reachable, a missing entitlement,
 /// the token not answering) and a cancel. `nil` leaves the error to the caller.
-private func momentaryFailure(_ error: Error, keyName: String) -> BiometricsError? {
+private func momentaryFailure(_ error: Error, wording: Wording) -> BiometricsError? {
   if let laError = laError(in: error) {
-    return classify(laError)
+    return classify(laError, wording: wording)
   }
   let transient: Set<Int> = [
     Int(errSecInteractionNotAllowed), Int(errSecNotAvailable), Int(errSecMissingEntitlement),
   ]
   if let status = osStatus(in: error), transient.contains(status) {
     return BiometricsError(
-      code: .failed, message: "\(keyName) cannot be used right now: \(describe(error))")
+      code: .failed, message: "\(wording.keyName) cannot be used right now: \(describe(error))")
   }
   if osStatus(in: error) == Int(errSecUserCanceled)
     || hasTokenError(in: error, code: tokenCanceledByUser)
@@ -597,9 +629,9 @@ private func firstError(in error: Error, where matches: (NSError) -> Bool) -> NS
 
 // MARK: - Helpers
 
-/// Runs `body` and frames its answer for Rust: the status byte, then the payload or the message.
-/// The payload array is wiped once it is copied into the reply.
-private func reply(_ body: () throws -> [UInt8]) -> SRData {
+/// Runs `body` and frames its answer for Rust: the status byte, then the payload or the message,
+/// worded by `wording`. The payload array is wiped once it is copied into the reply.
+private func reply(_ wording: Wording = touchIdWording, _ body: () throws -> [UInt8]) -> SRData {
   do {
     var payload = try body()
     defer { wipe(&payload) }
@@ -609,7 +641,7 @@ private func reply(_ body: () throws -> [UInt8]) -> SRData {
     framed.append(contentsOf: payload)
     return SRData(framed)
   } catch {
-    let failure = classify(error)
+    let failure = classify(error, wording: wording)
     return SRData([failure.code.rawValue] + Array(failure.message.utf8))
   }
 }

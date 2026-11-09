@@ -452,6 +452,63 @@ async fn a_restore_marker_rejoins_before_the_first_round() {
     running.handle.stop();
 }
 
+/// `Sealing`, but the first `failures` seals fail as a passing native error would.
+struct FlakySealing {
+    failures: AtomicUsize,
+}
+
+impl BindingNative for FlakySealing {
+    fn seal(&self, secret: &[u8; 32]) -> std::result::Result<Vec<u8>, BindingFailure> {
+        let failed = self
+            .failures
+            .fetch_update(Ordering::SeqCst, Ordering::SeqCst, |n| n.checked_sub(1))
+            .is_ok();
+        if failed {
+            return Err(BindingFailure::Failed("the secure storage is busy".into()));
+        }
+        Sealing.seal(secret)
+    }
+    fn open(&self, blob: &[u8]) -> std::result::Result<Zeroizing<[u8; 32]>, BindingFailure> {
+        Sealing.open(blob)
+    }
+}
+
+/// Ruling (fix round 1, item 7): a seal that failed when sync was turned on leaves
+/// `binding_written = 0`; the next engine start writes it, so the check is not off for good.
+#[tokio::test]
+async fn a_binding_that_failed_to_seal_at_enable_is_written_at_the_next_start() {
+    let vault = super::vault().await;
+    let dir = tempfile::tempdir().expect("temp dir");
+    let bound = dir.path().join(binding::BINDING_FILE);
+    let native = FlakySealing {
+        failures: AtomicUsize::new(1),
+    };
+    let written = |conn: &Connection| {
+        state::marks(conn)
+            .expect("marks")
+            .expect("row")
+            .binding_written
+    };
+
+    // Turning sync on: the seal fails, nothing is written.
+    let error = binding::write_binding(&vault.a.lock(), dir.path(), &native);
+    assert!(matches!(error, Err(AppError::Internal(_))), "{error:?}");
+    assert!(!written(&vault.a.lock()));
+    assert!(!bound.exists());
+
+    let running = start(&vault, &vault.a, dir, Box::new(native));
+    rounds(&running, 1).await;
+
+    assert!(written(&vault.a.lock()), "the start wrote the binding");
+    assert!(bound.exists());
+    assert_eq!(
+        device_of(&vault.a.lock()),
+        A,
+        "no re-join for an unwritten binding"
+    );
+    running.handle.stop();
+}
+
 /// Obligation (c): if the marker cannot be removed after the re-join, sync stops with a problem
 /// rather than re-joining again on the next round.
 #[tokio::test]

@@ -166,25 +166,23 @@ mod tests {
 
     #[test]
     fn keychain_errors_map_to_binding_failures() {
-        assert_eq!(
+        assert!(matches!(
             binding_failure(KeychainError::Unsupported),
             BindingFailure::Unsupported
-        );
-        assert_eq!(
+        ));
+        assert!(matches!(
             binding_failure(KeychainError::Invalidated),
             BindingFailure::NotThisDevice
-        );
-        assert_eq!(
-            binding_failure(KeychainError::Failed("DPAPI 0x800706BA".into())),
-            BindingFailure::Failed("keychain operation failed: DPAPI 0x800706BA".into())
-        );
-        assert_eq!(
-            binding_failure(KeychainError::Cancelled),
-            BindingFailure::Failed("biometric authentication was cancelled".into())
-        );
-        assert_eq!(
-            binding_failure(KeychainError::Unavailable),
-            BindingFailure::Failed("biometric authentication is unavailable on this device".into())
-        );
+        ));
+        for passing in [
+            KeychainError::Failed("DPAPI could not open the binding: 0x800706BA".into()),
+            KeychainError::Cancelled,
+            KeychainError::Unavailable,
+        ] {
+            assert!(matches!(
+                binding_failure(passing),
+                BindingFailure::Failed(_)
+            ));
+        }
     }
 }

@@ -40,6 +40,11 @@ const STATUS_UNAVAILABLE: u8 = 2;
 const STATUS_INVALIDATED: u8 = 3;
 const STATUS_UNSUPPORTED: u8 = 5;
 
+/// What the messages of each kind of call name: Touch ID unlock, or the binding, which is not
+/// biometric and never says "Touch ID".
+const TOUCH_ID: &str = "Touch ID";
+const SECURE_STORAGE: &str = "This Mac's secure storage";
+
 /// Touch ID through the Swift package. Every call but `status` blocks on the prompt.
 pub(super) struct MacNative;
 
@@ -54,7 +59,7 @@ impl NativeBiometrics for MacNative {
         let secret = SRData::from(secret.as_slice());
         // SAFETY: both arguments are live swift-rs objects; `swift!` balances the retain counts.
         let answer = unsafe { moony_bio_wrap(&reason, &secret) };
-        decode(&answer)
+        decode(&answer, TOUCH_ID)
     }
 
     fn unwrap(&self, blob: &[u8], reason: &str) -> Result<Zeroizing<[u8; 32]>> {
@@ -62,7 +67,7 @@ impl NativeBiometrics for MacNative {
         let blob = SRData::from(blob);
         // SAFETY: as in `wrap`.
         let answer = unsafe { moony_bio_unwrap(&reason, &blob) };
-        secret_from(decode(&answer)?, "Touch ID")
+        secret_from(decode(&answer, TOUCH_ID)?, TOUCH_ID)
     }
 
     /// Nothing to do: the Secure Enclave key lives only inside the blob, and removing the blob
@@ -78,14 +83,14 @@ impl NativeMachine for MacNative {
         let secret = SRData::from(secret.as_slice());
         // SAFETY: a live swift-rs object; `swift!` balances the retain counts.
         let answer = unsafe { moony_bind_seal(&secret) };
-        decode(&answer)
+        decode(&answer, SECURE_STORAGE)
     }
 
     fn bind_open(&self, blob: &[u8]) -> Result<Zeroizing<[u8; 32]>> {
         let blob = SRData::from(blob);
         // SAFETY: as in `bind_seal`.
         let answer = unsafe { moony_bind_open(&blob) };
-        secret_from(decode(&answer)?, "The binding")
+        secret_from(decode(&answer, SECURE_STORAGE)?, SECURE_STORAGE)
     }
 
     fn copy_secret_text(&self, text: &str) -> Result<u64> {
@@ -137,13 +142,13 @@ fn status_from_code(code: Int) -> Status {
 }
 
 /// Splits an answer into its status byte and the rest: the payload when it is ok, otherwise the
-/// error, with the Swift side's message for a failure. The payload may be the secret, so the
-/// caller wipes it.
-fn decode(answer: &[u8]) -> Result<Vec<u8>> {
+/// error, with the Swift side's message for a failure (`subject` names the source when there is
+/// none). The payload may be the secret, so the caller wipes it.
+fn decode(answer: &[u8], subject: &str) -> Result<Vec<u8>> {
     let Some((&status, rest)) = answer.split_first() else {
-        return Err(KeychainError::Failed(
-            "Touch ID returned an empty answer".to_string(),
-        ));
+        return Err(KeychainError::Failed(format!(
+            "{subject} returned an empty answer"
+        )));
     };
     match status {
         STATUS_OK => Ok(rest.to_vec()),
@@ -151,7 +156,7 @@ fn decode(answer: &[u8]) -> Result<Vec<u8>> {
         STATUS_UNAVAILABLE => Err(KeychainError::Unavailable),
         STATUS_INVALIDATED => Err(KeychainError::Invalidated),
         STATUS_UNSUPPORTED => Err(KeychainError::Unsupported),
-        _ if rest.is_empty() => Err(KeychainError::Failed("Touch ID failed".to_string())),
+        _ if rest.is_empty() => Err(KeychainError::Failed(format!("{subject} failed"))),
         _ => Err(KeychainError::Failed(
             String::from_utf8_lossy(rest).into_owned(),
         )),
@@ -165,6 +170,13 @@ mod tests {
     // The Swift side's error classification for a failed key restore (stage 0) or key agreement
     // (stage 1), fed with synthetic errors; answers a status byte.
     swift!(fn moony_bio_classify(stage: Int, domain: &SRString, code: Int, wrapped: Bool) -> Int);
+    // The message that classification carries.
+    swift!(fn moony_bio_classify_message(
+        stage: Int,
+        domain: &SRString,
+        code: Int,
+        wrapped: Bool
+    ) -> SRString);
 
     const RESTORE: Int = 0;
     const AGREEMENT: Int = 1;
@@ -179,22 +191,73 @@ mod tests {
         unsafe { moony_bio_classify(stage, &domain, code, wrapped) }
     }
 
+    fn classify_message(stage: Int, domain: &str, code: Int, wrapped: bool) -> String {
+        let domain = SRString::from(domain);
+        // SAFETY: as in `classify`; the answer is a live swift-rs string.
+        unsafe { moony_bio_classify_message(stage, &domain, code, wrapped) }.to_string()
+    }
+
+    /// The binding has no prompt and is not biometric: none of its failures says "Touch ID",
+    /// whichever way they come (a key that is gone, a passing refusal, a stray LocalAuthentication
+    /// answer, an empty answer from the bridge).
+    #[test]
+    fn binding_messages_never_say_touch_id() {
+        for (domain, code) in [
+            (TOKEN, -3),
+            (TOKEN, -2),
+            (OS_STATUS, -25308),
+            (OS_STATUS, -25300),
+            (LA, -6),
+            (LA, -1),
+            (LA, -10),
+            ("CryptoKit.CryptoKitError", 1),
+        ] {
+            for wrapped in [false, true] {
+                let message = classify_message(BINDING, domain, code, wrapped);
+                assert!(!message.contains("Touch ID"), "{domain} {code}: {message}");
+            }
+        }
+        for answer in [&[][..], &[4][..]] {
+            let error = decode(answer, SECURE_STORAGE).expect_err("a failure");
+            assert!(
+                matches!(&error, KeychainError::Failed(message) if !message.contains("Touch ID")),
+                "{error:?}"
+            );
+        }
+        let short = secret_from(vec![0; 3], SECURE_STORAGE)
+            .map(|_| ())
+            .expect_err("short");
+        assert!(matches!(&short, KeychainError::Failed(message) if !message.contains("Touch ID")));
+    }
+
+    #[test]
+    fn touch_id_messages_still_say_touch_id() {
+        assert!(classify_message(RESTORE, OS_STATUS, -25308, false).contains("Touch ID"));
+        assert!(classify_message(AGREEMENT, LA, -6, false).contains("Touch ID"));
+    }
+
     #[test]
     fn decode_maps_every_status_byte() {
-        assert_eq!(decode(&[0, 7, 8, 9]), Ok(vec![7, 8, 9]));
-        assert_eq!(decode(&[1]), Err(KeychainError::Cancelled));
-        assert_eq!(decode(&[2, b'x']), Err(KeychainError::Unavailable));
-        assert_eq!(decode(&[3]), Err(KeychainError::Invalidated));
-        assert_eq!(decode(&[5]), Err(KeychainError::Unsupported));
+        assert_eq!(decode(&[0, 7, 8, 9], TOUCH_ID), Ok(vec![7, 8, 9]));
+        assert_eq!(decode(&[1], TOUCH_ID), Err(KeychainError::Cancelled));
         assert_eq!(
-            decode(b"\x04boom"),
+            decode(&[2, b'x'], TOUCH_ID),
+            Err(KeychainError::Unavailable)
+        );
+        assert_eq!(decode(&[3], TOUCH_ID), Err(KeychainError::Invalidated));
+        assert_eq!(decode(&[5], TOUCH_ID), Err(KeychainError::Unsupported));
+        assert_eq!(
+            decode(b"\x04boom", TOUCH_ID),
             Err(KeychainError::Failed("boom".to_string()))
         );
         assert_eq!(
-            decode(&[4]),
+            decode(&[4], TOUCH_ID),
             Err(KeychainError::Failed("Touch ID failed".to_string()))
         );
-        assert!(matches!(decode(&[]), Err(KeychainError::Failed(_))));
+        assert!(matches!(
+            decode(&[], TOUCH_ID),
+            Err(KeychainError::Failed(_))
+        ));
     }
 
     #[test]
@@ -404,6 +467,13 @@ mod tests {
 
         let token = MacNative.copy_secret_text("ABCD-EFGH").expect("copy");
         assert_eq!(paste(), "ABCD-EFGH");
+        let types = pasteboard_types();
+        for marker in [
+            "org.nspasteboard.ConcealedType",
+            "org.nspasteboard.TransientType",
+        ] {
+            assert!(types.contains(marker), "{marker} in {types}");
+        }
         assert_eq!(MacNative.clear_clipboard_if_unchanged(token), Ok(true));
         assert_eq!(paste(), "", "cleared");
 
@@ -420,6 +490,21 @@ mod tests {
             .expect("pbcopy");
         std::io::Write::write_all(restore.stdin.as_mut().expect("stdin"), &saved).expect("write");
         restore.wait().expect("pbcopy done");
+    }
+
+    /// The general pasteboard's types, as JSON, read through JavaScript for Automation.
+    fn pasteboard_types() -> String {
+        let output = std::process::Command::new("osascript")
+            .args([
+                "-l",
+                "JavaScript",
+                "-e",
+                "ObjC.import('AppKit'); \
+                 JSON.stringify(ObjC.deepUnwrap($.NSPasteboard.generalPasteboard.types))",
+            ])
+            .output()
+            .expect("osascript");
+        String::from_utf8(output.stdout).expect("utf-8")
     }
 
     fn paste() -> String {

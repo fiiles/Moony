@@ -321,7 +321,8 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
 
     /// The check at unlock (obligation c), holding off every round (`engine::exclusive`):
     /// `binding::startup_check`; on `Rejoin`, the re-join commits, then the restore marker goes,
-    /// then the binding is written for the new ID. Only then may a round run. `Ok(false)` when the
+    /// then the binding is written for the new ID; otherwise a binding not yet written (sync on,
+    /// `binding_written = 0`) is written now. Only then may a round run. `Ok(false)` when the
     /// check could not be made (an unreadable binding is a sync error, never an unlock failure):
     /// tried again on the next trigger.
     ///
@@ -360,8 +361,25 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
                 return Err(Ended);
             }
             self.write_binding()?;
+        } else {
+            self.write_binding_if_due()?;
         }
         Ok(true)
+    }
+
+    /// Writes the binding at start when sync is on and none is written yet (a seal that failed
+    /// for a passing reason earlier), so the check does not stay off for good.
+    fn write_binding_if_due(&self) -> Result<(), Ended> {
+        match self.db.with_conn(binding::binding_due) {
+            Ok(true) => self.write_binding(),
+            Ok(false) => Ok(()),
+            Err(error) if locked(&error) => Err(Ended),
+            Err(error) => {
+                log::warn!("[SYNC] Could not tell whether the device binding is written");
+                log::debug!("[SYNC] Could not tell whether the device binding is written: {error}");
+                Ok(())
+            }
+        }
     }
 
     fn start_failed(&mut self, error: AppError, what: &str) -> Result<bool, Ended> {

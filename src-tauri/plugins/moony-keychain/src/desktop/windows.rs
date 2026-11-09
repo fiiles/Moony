@@ -17,9 +17,10 @@
 //! (`CRYPTPROTECT_LOCAL_MACHINE`), which another machine cannot open (`dpapi_errors` classifies the
 //! answers). A copy on this same machine, by this or another user, opens it: that case is left to
 //! the relay's own-log check (plan correction 10). And the clearing clipboard: the secret goes on
-//! as `CF_UNICODETEXT` together with the `ExcludeClipboardContentFromMonitorProcessing` format,
-//! which keeps it out of the clipboard history and cloud clipboard, and is taken off later only
-//! while the clipboard sequence number is unchanged. Residual: DPAPI's output buffer is wiped
+//! as `CF_UNICODETEXT` together with `ExcludeClipboardContentFromMonitorProcessing`,
+//! `CanIncludeInClipboardHistory` = 0 and `CanUploadToCloudClipboard` = 0, which keep it out of
+//! the clipboard history and the cloud clipboard, and is taken off later only while the clipboard
+//! sequence number is unchanged. Residual: DPAPI's output buffer is wiped
 //! before it is freed, but the clipboard's copy of the text belongs to the system once set.
 
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -27,7 +28,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::{Duration, Instant};
 
-use windows::core::{w, Array, HRESULT, HSTRING};
+use windows::core::{w, Array, HRESULT, HSTRING, PCWSTR};
 use windows::Security::Credentials::{
     KeyCredential, KeyCredentialCreationOption, KeyCredentialManager, KeyCredentialStatus,
 };
@@ -193,8 +194,19 @@ impl NativeMachine for WinMachine {
         Ok(Zeroizing::new(*bytes))
     }
 
+    /// Empties the clipboard and puts the text on it with the three privacy formats, then answers
+    /// the clipboard sequence number as the token.
+    ///
+    /// The token is read just after `CloseClipboard`, not while the clipboard is still open:
+    /// Windows may count the changes of a write only when the writer closes the clipboard, and a
+    /// token read too early would never match, so the code would stay on the clipboard for good,
+    /// the worse failure for a secret. In the moment between the close and the read another
+    /// program can write the clipboard. The token is then that program's, and if nothing else is
+    /// copied in the next 60 s the clear empties that program's content rather than ours. Nothing
+    /// leaks that way (the code was already replaced): at worst the person loses what was copied in
+    /// a window of microseconds right after pressing "Copy code", which is accepted.
     fn copy_secret_text(&self, text: &str) -> Result<u64> {
-        let exclude = exclusion_format()?;
+        let privacy = privacy_formats()?;
         let utf16: Zeroizing<Vec<u8>> = Zeroizing::new(
             text.encode_utf16()
                 .chain(std::iter::once(0))
@@ -205,9 +217,11 @@ impl NativeMachine for WinMachine {
             let _clipboard = OpenedClipboard::open()?;
             // SAFETY: the clipboard is open (the guard closes it).
             unsafe { EmptyClipboard() }.map_err(clipboard_failure)?;
-            // The marker first, so the text never sits on the clipboard without it. "Place any
-            // data on the clipboard in this format": a DWORD zero, as others do.
-            set_clipboard_bytes(exclude, &0u32.to_le_bytes())?;
+            // The markers first, so the text never sits on the clipboard without them. Each is a
+            // DWORD zero: "no" for the two `Can…` formats, and "any data" for the exclusion one.
+            for format in privacy {
+                set_clipboard_bytes(format, &0u32.to_le_bytes())?;
+            }
             set_clipboard_bytes(CF_UNICODETEXT.0.into(), &utf16)?;
         }
         // Read once the clipboard is closed, so every change of this write is counted.
@@ -265,10 +279,21 @@ impl Drop for DpapiOutput {
     }
 }
 
-/// The registered format that keeps clipboard history and cloud clipboard away from an item.
-fn exclusion_format() -> Result<u32> {
+/// The registered formats that keep an item private: out of clipboard monitors, the clipboard
+/// history (Win+V) and the cloud clipboard (`ExcludeClipboardContentFromMonitorProcessing`), and
+/// explicitly out of the history (`CanIncludeInClipboardHistory` = 0) and the cloud clipboard
+/// (`CanUploadToCloudClipboard` = 0).
+fn privacy_formats() -> Result<[u32; 3]> {
+    Ok([
+        registered_format(w!("ExcludeClipboardContentFromMonitorProcessing"))?,
+        registered_format(w!("CanIncludeInClipboardHistory"))?,
+        registered_format(w!("CanUploadToCloudClipboard"))?,
+    ])
+}
+
+fn registered_format(name: PCWSTR) -> Result<u32> {
     // SAFETY: a static wide string; registering an existing name returns its id.
-    match unsafe { RegisterClipboardFormatW(w!("ExcludeClipboardContentFromMonitorProcessing")) } {
+    match unsafe { RegisterClipboardFormatW(name) } {
         0 => Err(clipboard_failure(windows::core::Error::from_thread())),
         format => Ok(format),
     }
@@ -446,7 +471,8 @@ fn bring_dialog_forward<T>(wait: impl FnOnce() -> T) -> T {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use windows::Win32::System::DataExchange::IsClipboardFormatAvailable;
+    use windows::Win32::System::DataExchange::{GetClipboardData, IsClipboardFormatAvailable};
+    use windows::Win32::System::Memory::GlobalSize;
 
     #[test]
     fn dpapi_binding_round_trips() {
@@ -462,37 +488,88 @@ mod tests {
         let last = flipped.len() - 1;
         flipped[last] ^= 1;
         for broken in [flipped, blob[..blob.len() / 2].to_vec(), vec![0u8; 64]] {
-            assert_eq!(
-                WinMachine.bind_open(&broken).map(|_| ()),
+            assert!(matches!(
+                WinMachine.bind_open(&broken),
                 Err(KeychainError::Invalidated)
-            );
+            ));
         }
     }
 
     #[test]
     fn the_clipboard_is_cleared_only_while_unchanged() {
+        let _restore = SavedClipboardText::take();
+
         let token = WinMachine.copy_secret_text("ABCD-EFGH").expect("copy");
-        assert!(holds_text(), "the code is on the clipboard");
-        assert!(excluded_from_history(), "with the exclusion format");
+        assert_eq!(clipboard_text().as_deref(), Some("ABCD-EFGH"));
+        for format in privacy_formats().expect("formats") {
+            assert!(has_format(format), "every privacy format is set");
+        }
         assert_eq!(WinMachine.clear_clipboard_if_unchanged(token), Ok(true));
-        assert!(!holds_text(), "cleared");
+        assert!(!has_format(CF_UNICODETEXT.0.into()), "cleared");
 
         let stale = WinMachine.copy_secret_text("ABCD-EFGH").expect("copy");
         let later = WinMachine.copy_secret_text("something else").expect("copy");
         assert_ne!(later, stale);
         assert_eq!(WinMachine.clear_clipboard_if_unchanged(stale), Ok(false));
-        assert!(holds_text(), "a later copy stays");
+        assert_eq!(
+            clipboard_text().as_deref(),
+            Some("something else"),
+            "a later copy stays"
+        );
         assert_eq!(WinMachine.clear_clipboard_if_unchanged(later), Ok(true));
     }
 
-    fn holds_text() -> bool {
+    fn has_format(format: u32) -> bool {
         // SAFETY: a plain user32 query; no clipboard ownership needed.
-        unsafe { IsClipboardFormatAvailable(CF_UNICODETEXT.0.into()) }.is_ok()
+        unsafe { IsClipboardFormatAvailable(format) }.is_ok()
     }
 
-    fn excluded_from_history() -> bool {
-        let format = exclusion_format().expect("format");
-        // SAFETY: as in `holds_text`.
-        unsafe { IsClipboardFormatAvailable(format) }.is_ok()
+    /// The clipboard's text, if it holds any.
+    fn clipboard_text() -> Option<String> {
+        let _clipboard = OpenedClipboard::open().expect("open");
+        // SAFETY: the clipboard is open; the handle is the clipboard's, read under a lock and
+        // never past `GlobalSize`.
+        unsafe {
+            let handle = GetClipboardData(CF_UNICODETEXT.0.into()).ok()?;
+            let block = HGLOBAL(handle.0);
+            let units = GlobalSize(block) / 2;
+            let text = GlobalLock(block).cast::<u16>();
+            if text.is_null() {
+                return None;
+            }
+            let all = std::slice::from_raw_parts(text, units);
+            let end = all.iter().position(|&unit| unit == 0).unwrap_or(units);
+            let read = String::from_utf16_lossy(&all[..end]);
+            let _ = GlobalUnlock(block);
+            Some(read)
+        }
+    }
+
+    /// Takes the person's clipboard text before a test and puts it back afterwards, also when the
+    /// test fails (other formats, such as an image, are not kept).
+    struct SavedClipboardText(Option<String>);
+
+    impl SavedClipboardText {
+        fn take() -> Self {
+            Self(clipboard_text())
+        }
+    }
+
+    impl Drop for SavedClipboardText {
+        fn drop(&mut self) {
+            let Ok(_clipboard) = OpenedClipboard::open() else {
+                return;
+            };
+            // SAFETY: the clipboard is open.
+            let _ = unsafe { EmptyClipboard() };
+            if let Some(text) = &self.0 {
+                let utf16: Vec<u8> = text
+                    .encode_utf16()
+                    .chain(std::iter::once(0))
+                    .flat_map(u16::to_le_bytes)
+                    .collect();
+                let _ = set_clipboard_bytes(CF_UNICODETEXT.0.into(), &utf16);
+            }
+        }
     }
 }

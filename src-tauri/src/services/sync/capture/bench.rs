@@ -27,6 +27,8 @@ pub fn insert_overhead(rows: usize) -> Result<Overhead> {
     let without = timed_inserts(&plain, rows)?;
 
     let captured = migrated()?;
+    // An in-memory scratch connection, never a profile: no restore marker or binding exists for
+    // it, so it is exempt from the rule that only `binding::enable` turns sync on.
     state::enable(&captured, DeviceId::random())?;
     let before = outbox_rows(&captured)?;
     let with = timed_inserts(&captured, rows)?;

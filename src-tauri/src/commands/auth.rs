@@ -256,6 +256,7 @@ pub async fn logout(
 ) -> Result<()> {
     local_api.stop().await;
     crate::commands::sync::stop_engine(&app);
+    crate::commands::sync::forget_kit_window();
     auth::logout(&db, &session);
     // Decrypted copies opened in other apps go with the session (D3).
     crate::commands::attachments::wipe_open_copies(&app);
@@ -330,10 +331,12 @@ pub async fn delete_account(
     session: State<'_, SessionKey>,
 ) -> Result<()> {
     let db_path = get_db_path(&app)?;
-    // The synced data goes too, while the profile is open and the engine still runs (ruling P8);
-    // a failure never stops the deletion.
-    crate::commands::sync::delete_vault_with_account(&db).await;
+    // The engine stops first, so no round holds the round lock through the vault deletion's
+    // budget; then the synced data goes too, while the profile is open and its sync row still on
+    // (ruling P8). A failure never stops the deletion.
     crate::commands::sync::stop_engine(&app);
+    crate::commands::sync::forget_kit_window();
+    crate::commands::sync::delete_vault_with_account(&db).await;
     crate::commands::attachments::wipe_open_copies(&app);
     let deleted = auth::delete_account(&db, &session, &db_path);
     // The marker went with the account files, so the key stored for biometric unlock goes too.

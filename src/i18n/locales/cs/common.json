@@ -340,7 +340,7 @@
     "syncAlreadyEnabled": "Synchronizace je pro tento profil už zapnutá.",
     "syncUnavailable": "Synchronizace není v této verzi Moony dostupná.",
     "syncDevOnly": "Toto je nástroj pro vývojáře, dostupný jen ve vývojových sestaveních.",
-    "syncRepairInProgress": "Oprava tohoto zařízení už probíhá. Počkejte, až skončí.",
+    "syncChangeInProgress": "Na tomto zařízení už probíhá jiná změna synchronizace. Počkejte, až skončí.",
     "syncPasswordRequired": "Pro zkopírování obnovovacího kódu znovu zadejte heslo."
   },
   "auth": {

@@ -340,7 +340,7 @@
     "syncAlreadyEnabled": "此配置文件已开启同步。",
     "syncUnavailable": "此版本的 Moony 不支持同步。",
     "syncDevOnly": "这是开发者工具，仅在开发版本中可用。",
-    "syncRepairInProgress": "此设备的修复已在进行中。请等待其完成。",
+    "syncChangeInProgress": "此设备上已有另一项同步更改正在进行。请等待其完成。",
     "syncPasswordRequired": "请再次输入密码以复制恢复代码。"
   },
   "auth": {

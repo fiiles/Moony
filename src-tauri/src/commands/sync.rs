@@ -6,7 +6,8 @@
 //! at the stored account's address (`keys::account`, ruling SH-2); `default_base_url()` only before
 //! an account exists. The commands that change what the engine works on (finishing setup, turning
 //! sync off, deleting the synced data, the repair and the re-sync) stop the engine first and start
-//! it again afterwards when sync is still on, so no loop keeps a relay or credentials from before.
+//! it again afterwards when sync is still on, so no loop keeps a relay or credentials from before;
+//! they run one at a time (`guarded_change`), and no unlock starts the engine meanwhile.
 //! No command logs its arguments; passwords stay in `Zeroizing` once received.
 
 use std::future::Future;
@@ -28,14 +29,14 @@ use crate::services::sync::binding::{BindingFailure, BindingNative};
 use crate::services::sync::capture::bench::{self, Overhead};
 use crate::services::sync::engine::runtime::{self, EngineHandle, Trigger};
 use crate::services::sync::engine::{status, EngineEvents};
-use crate::services::sync::error::SyncError;
+use crate::services::sync::error::{SyncError, SyncResult};
 use crate::services::sync::merge::DATA_CHANGED_EVENT;
 use crate::services::sync::relay::http::{default_base_url, HttpRelay};
 use crate::services::sync::{feature, join, keys, setup, state};
 
 const UNAVAILABLE: &str = "validation.syncUnavailable";
 const DEV_ONLY: &str = "validation.syncDevOnly";
-const REPAIR_IN_PROGRESS: &str = "validation.syncRepairInProgress";
+const CHANGE_IN_PROGRESS: &str = "validation.syncChangeInProgress";
 const PASSWORD_REQUIRED: &str = "validation.syncPasswordRequired";
 
 /// How long after `sync_show_recovery_kit` checked the password the code may be copied with sync
@@ -121,7 +122,20 @@ impl EngineEvents for TauriEvents {
 /// Starts the engine for the profile just unlocked. Nothing at all while the flag is off
 /// (`feature::enabled`); a profile without sync costs one `SELECT` (G5). A running engine is
 /// stopped first. Never fails: a problem is logged and the profile opens without sync.
+/// While a sync change runs (`guarded_change`: a repair, turning sync off, …) nothing starts here;
+/// the change starts the engine itself when it ends.
 pub(crate) fn start_engine(app: &AppHandle, db: &Database) {
+    if !engine_may_start(
+        feature::enabled(),
+        SYNC_CHANGE_RUNNING.load(Ordering::SeqCst),
+    ) {
+        return;
+    }
+    spawn_engine(app, db);
+}
+
+/// `start_engine` without the sync-change check: what a sync change calls when it ends.
+fn spawn_engine(app: &AppHandle, db: &Database) {
     if !feature::enabled() {
         return;
     }
@@ -255,53 +269,135 @@ fn current_status(app: &AppHandle, db: &Database) -> Result<SyncStatus> {
     db.with_conn(|conn| status::status(conn, &runtime))
 }
 
-/// Runs `work` with the engine stopped, then starts it again (`start_engine` starts nothing when
-/// sync is off by then).
-async fn with_engine_stopped<T>(
-    app: &AppHandle,
-    db: &Database,
-    work: impl Future<Output = T>,
-) -> T {
-    stop_engine(app);
+/// Stopping and starting the engine around a sync change (the app's engine, or a test's).
+trait EngineControl {
+    fn stop(&self);
+    /// Starts the engine again; nothing when sync is off by then.
+    fn start(&self);
+}
+
+/// The app's engine of the open profile.
+struct AppEngine<'a> {
+    app: &'a AppHandle,
+    db: &'a Database,
+}
+
+impl EngineControl for AppEngine<'_> {
+    fn stop(&self) {
+        stop_engine(self.app);
+    }
+
+    fn start(&self) {
+        spawn_engine(self.app, self.db);
+    }
+}
+
+/// A change of what the engine works on (finishing setup, turning sync off, deleting the synced
+/// data, the repair, the re-sync): one at a time (`validation.syncChangeInProgress` otherwise),
+/// with the engine stopped first and started again afterwards when sync is still on, so no loop
+/// keeps a relay or credentials from before. The guard is held until the engine has started again
+/// (`start_engine` skips while it is held).
+async fn guarded_change<T>(
+    engine: &impl EngineControl,
+    work: impl Future<Output = SyncResult<T>>,
+) -> Result<T> {
+    let _one = SyncChangeGuard::try_start()?;
+    engine.stop();
     let result = work.await;
-    start_engine(app, db);
-    result
+    engine.start();
+    result.map_err(app_error)
 }
 
-/// The device password, checked against the profile's key file.
-fn verify_password(app: &AppHandle, password: &Zeroizing<String>) -> Result<()> {
-    auth::verify_password(&get_db_path(app)?, password)
+/// The device password, checked against the profile's key file off the runtime (the key
+/// derivation takes about a second).
+async fn verify_password(app: &AppHandle, password: Zeroizing<String>) -> Result<()> {
+    let db_path = get_db_path(app)?;
+    tauri::async_runtime::spawn_blocking(move || auth::verify_password(&db_path, &password))
+        .await
+        .map_err(|e| AppError::Internal(format!("The password check did not finish: {e}")))?
 }
 
-/// One repair or re-sync at a time in the process (`validation.syncRepairInProgress`).
-static REPAIR_RUNNING: AtomicBool = AtomicBool::new(false);
+/// One sync change at a time in the process (`guarded_change`).
+static SYNC_CHANGE_RUNNING: AtomicBool = AtomicBool::new(false);
 
-/// Holds the one repair slot; dropping it frees the slot.
-struct RepairGuard;
+/// Holds the one sync-change slot; dropping it frees the slot.
+struct SyncChangeGuard;
 
-impl RepairGuard {
+impl SyncChangeGuard {
     fn try_start() -> Result<Self> {
-        REPAIR_RUNNING
+        SYNC_CHANGE_RUNNING
             .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
-            .map(|_| RepairGuard)
-            .map_err(|_| AppError::Validation(REPAIR_IN_PROGRESS.into()))
+            .map(|_| SyncChangeGuard)
+            .map_err(|_| AppError::Validation(CHANGE_IN_PROGRESS.into()))
     }
 }
 
-impl Drop for RepairGuard {
+impl Drop for SyncChangeGuard {
     fn drop(&mut self) {
-        REPAIR_RUNNING.store(false, Ordering::SeqCst);
+        SYNC_CHANGE_RUNNING.store(false, Ordering::SeqCst);
     }
 }
 
-/// When `sync_show_recovery_kit` last checked the password.
-static KIT_SHOWN_AT: Mutex<Option<Instant>> = Mutex::new(None);
+/// Whether `start_engine` starts the engine: the flag is on and no sync change runs (the change
+/// starts the engine itself when it ends).
+fn engine_may_start(flag_on: bool, change_running: bool) -> bool {
+    flag_on && !change_running
+}
+
+/// The profile session a copy window belongs to: the profile's database file and the session
+/// (`Database::session_epoch`, which changes at every unlock and lock).
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct KitOwner {
+    db_path: PathBuf,
+    session: u64,
+}
+
+/// `sync_show_recovery_kit` checked the password of `owner` at `opened`.
+#[derive(Debug, Clone)]
+struct KitWindow {
+    owner: KitOwner,
+    opened: Instant,
+}
+
+/// The open copy window, if any. Closed at lock, restore, account deletion, turning sync off and
+/// deleting the synced data (`forget_kit_window`).
+static KIT_WINDOW: Mutex<Option<KitWindow>> = Mutex::new(None);
+
+fn kit_window_slot() -> std::sync::MutexGuard<'static, Option<KitWindow>> {
+    KIT_WINDOW
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+fn kit_window() -> Option<KitWindow> {
+    kit_window_slot().clone()
+}
+
+fn open_kit_window(owner: KitOwner, opened: Instant) {
+    *kit_window_slot() = Some(KitWindow { owner, opened });
+}
+
+/// Closes the copy window (lock, restore, account deletion, sync off, synced data deleted).
+pub(crate) fn forget_kit_window() {
+    *kit_window_slot() = None;
+}
+
+fn kit_owner(app: &AppHandle, db: &Database) -> Result<KitOwner> {
+    Ok(KitOwner {
+        db_path: get_db_path(app)?,
+        session: db.session_epoch(),
+    })
+}
 
 /// The code is copied without a password only during setup (sync not on yet, the kit is being
-/// shown the first time); with sync on, within `KIT_COPY_WINDOW` after the password was checked.
-fn copy_allowed(sync_on: bool, shown_at: Option<Instant>, now: Instant) -> bool {
+/// shown the first time); with sync on, only within `KIT_COPY_WINDOW` after the password of this
+/// very profile session was checked.
+fn copy_allowed(sync_on: bool, window: Option<&KitWindow>, owner: &KitOwner, now: Instant) -> bool {
     !sync_on
-        || shown_at.is_some_and(|shown| now.saturating_duration_since(shown) <= KIT_COPY_WINDOW)
+        || window.is_some_and(|window| {
+            window.owner == *owner
+                && now.saturating_duration_since(window.opened) <= KIT_COPY_WINDOW
+        })
 }
 
 fn format_overhead(rows: u32, overhead: &Overhead) -> String {
@@ -312,8 +408,9 @@ fn format_overhead(rows: u32, overhead: &Overhead) -> String {
 }
 
 /// Delete Account's attempt to delete the synced data too (spec §11.6, ruling P8), while the
-/// profile is still open and sync is on; called before the engine stops. Never blocks the
-/// deletion: `delete_vault_best_effort` gives up after `setup::DELETE_BUDGET` and logs why.
+/// profile is still open and sync is on; called right after the engine stopped, so no round holds
+/// the round lock through the budget. Never blocks the deletion: `delete_vault_best_effort` gives
+/// up after `setup::DELETE_BUDGET` and logs why.
 pub(crate) async fn delete_vault_with_account(db: &Database) {
     if !feature::enabled() {
         return;
@@ -409,10 +506,9 @@ pub async fn sync_prepare_recovery_kit(db: State<'_, Database>) -> Result<Recove
 #[tauri::command]
 pub async fn sync_copy_recovery_code(app: AppHandle, db: State<'_, Database>) -> Result<bool> {
     require_feature()?;
-    let shown_at = *KIT_SHOWN_AT
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner);
-    if !copy_allowed(sync_on(&db)?, shown_at, Instant::now()) {
+    let owner = kit_owner(&app, &db)?;
+    let window = kit_window();
+    if !copy_allowed(sync_on(&db)?, window.as_ref(), &owner, Instant::now()) {
         return Err(AppError::Validation(PASSWORD_REQUIRED.into()));
     }
     // The kit wipes its code when dropped.
@@ -457,9 +553,7 @@ pub async fn sync_finish_setup(
         &native,
         now(),
     );
-    with_engine_stopped(&app, &db, finish)
-        .await
-        .map_err(app_error)?;
+    guarded_change(&AppEngine { app: &app, db: &db }, finish).await?;
     current_status(&app, &db)
 }
 
@@ -489,11 +583,9 @@ pub async fn sync_show_recovery_kit(
 ) -> Result<RecoveryKit> {
     let password = Zeroizing::new(password);
     require_feature()?;
-    verify_password(&app, &password)?;
+    verify_password(&app, password).await?;
     let kit = db.with_conn(setup::recovery_kit)?;
-    *KIT_SHOWN_AT
-        .lock()
-        .unwrap_or_else(std::sync::PoisonError::into_inner) = Some(Instant::now());
+    open_kit_window(kit_owner(&app, &db)?, Instant::now());
     Ok(kit)
 }
 
@@ -503,9 +595,12 @@ pub async fn sync_turn_off(app: AppHandle, db: State<'_, Database>) -> Result<()
     require_feature()?;
     let session = db.current_session()?;
     let dir = data_dir(&app)?;
-    with_engine_stopped(&app, &db, setup::turn_off_between_rounds(&session, &dir))
-        .await
-        .map_err(app_error)
+    forget_kit_window();
+    guarded_change(
+        &AppEngine { app: &app, db: &db },
+        setup::turn_off_between_rounds(&session, &dir),
+    )
+    .await
 }
 
 /// Deletes the vault on the relay and turns sync off, once the device password is checked.
@@ -517,28 +612,28 @@ pub async fn sync_delete_synced_data(
 ) -> Result<()> {
     let password = Zeroizing::new(password);
     require_feature()?;
-    verify_password(&app, &password)?;
+    verify_password(&app, password).await?;
     let session = db.current_session()?;
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
-    with_engine_stopped(&app, &db, setup::delete_synced_data(&relay, &session, &dir))
-        .await
-        .map_err(app_error)
+    forget_kit_window();
+    guarded_change(
+        &AppEngine { app: &app, db: &db },
+        setup::delete_synced_data(&relay, &session, &dir),
+    )
+    .await
 }
 
 /// Repairs a capture-broken profile (`join::repair_capture`); the backup's path.
 #[tauri::command]
 pub async fn sync_repair_device(app: AppHandle, db: State<'_, Database>) -> Result<String> {
     require_feature()?;
-    let _one = RepairGuard::try_start()?;
     let session = db.current_session()?;
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
     let repair = join::repair_capture(&relay, &session, &dir, &native, now());
-    let backup = with_engine_stopped(&app, &db, repair)
-        .await
-        .map_err(app_error)?;
+    let backup = guarded_change(&AppEngine { app: &app, db: &db }, repair).await?;
     Ok(backup.display().to_string())
 }
 
@@ -553,16 +648,13 @@ pub async fn sync_resync_device(
 ) -> Result<String> {
     let password = Zeroizing::new(password);
     require_feature()?;
-    let _one = RepairGuard::try_start()?;
-    verify_password(&app, &password)?;
+    verify_password(&app, password).await?;
     let session = db.current_session()?;
     let relay = profile_relay(&session)?;
     let dir = data_dir(&app)?;
     let native = KeychainBinding { app: app.clone() };
     let resync = join::resync_by_replace(&relay, &session, &dir, &native, now());
-    let backup = with_engine_stopped(&app, &db, resync)
-        .await
-        .map_err(app_error)?;
+    let backup = guarded_change(&AppEngine { app: &app, db: &db }, resync).await?;
     Ok(backup.display().to_string())
 }
 
@@ -614,7 +706,13 @@ pub async fn sync_debug_capture_overhead(rows: u32) -> Result<String> {
 
 #[cfg(test)]
 mod tests {
+    use std::collections::BTreeSet;
+    use std::sync::atomic::AtomicU32;
+
     use super::*;
+    use crate::services::sync::engine::tests::TestConn;
+    use crate::services::sync::hlc::DeviceId;
+    use crate::services::sync::test_support::migrated;
 
     fn validation_key(result: Result<impl std::fmt::Debug>) -> String {
         match result.expect_err("refused") {
@@ -632,16 +730,86 @@ mod tests {
         assert!(require_feature_with(|| true).is_ok());
     }
 
-    #[test]
-    fn only_one_repair_runs_at_a_time() {
-        let first = RepairGuard::try_start().expect("the first repair starts");
+    /// The tests that take the process-wide change guard run one at a time.
+    static GUARD_TESTS: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
+    #[tokio::test]
+    async fn only_one_sync_change_runs_at_a_time() {
+        let _serial = GUARD_TESTS.lock().await;
+        let first = SyncChangeGuard::try_start().expect("the first change starts");
         assert_eq!(
-            validation_key(RepairGuard::try_start().map(|_| ())),
-            "validation.syncRepairInProgress"
+            validation_key(SyncChangeGuard::try_start().map(|_| ())),
+            "validation.syncChangeInProgress"
         );
         drop(first);
-        let again = RepairGuard::try_start().expect("a repair starts once the first ended");
+        let again = SyncChangeGuard::try_start().expect("a change starts once the first ended");
         drop(again);
+    }
+
+    /// Counts the stops and starts a guarded change asks for.
+    #[derive(Default)]
+    struct FakeEngine {
+        stops: AtomicU32,
+        starts: AtomicU32,
+    }
+
+    impl EngineControl for FakeEngine {
+        fn stop(&self) {
+            self.stops.fetch_add(1, Ordering::SeqCst);
+        }
+
+        fn start(&self) {
+            self.starts.fetch_add(1, Ordering::SeqCst);
+        }
+    }
+
+    fn sync_is_on(db: &TestConn) -> bool {
+        state::load(&db.lock())
+            .expect("state")
+            .is_some_and(|sync| sync.enabled)
+    }
+
+    #[tokio::test]
+    async fn turning_sync_off_is_refused_while_another_change_runs() {
+        let _serial = GUARD_TESTS.lock().await;
+        let db = TestConn::new(migrated());
+        state::enable(&db.lock(), DeviceId::random()).expect("sync on");
+        let dir = tempfile::tempdir().expect("dir");
+        let engine = FakeEngine::default();
+
+        let running = SyncChangeGuard::try_start().expect("a repair runs");
+        let refused =
+            guarded_change(&engine, setup::turn_off_between_rounds(&db, dir.path())).await;
+        assert_eq!(validation_key(refused), "validation.syncChangeInProgress");
+        assert!(sync_is_on(&db), "nothing was turned off");
+        assert_eq!(
+            engine.stops.load(Ordering::SeqCst),
+            0,
+            "the engine was left alone"
+        );
+        assert_eq!(engine.starts.load(Ordering::SeqCst), 0);
+
+        drop(running);
+        guarded_change(&engine, setup::turn_off_between_rounds(&db, dir.path()))
+            .await
+            .expect("turned off once the repair ended");
+        assert!(!sync_is_on(&db));
+        assert_eq!(engine.stops.load(Ordering::SeqCst), 1);
+        assert_eq!(engine.starts.load(Ordering::SeqCst), 1);
+        assert!(
+            SyncChangeGuard::try_start().is_ok(),
+            "the guard is free after the change"
+        );
+    }
+
+    #[test]
+    fn the_engine_does_not_start_during_a_sync_change() {
+        assert!(engine_may_start(true, false));
+        assert!(
+            !engine_may_start(true, true),
+            "an unlock during a repair starts nothing: the repair restarts the engine itself"
+        );
+        assert!(!engine_may_start(false, false), "the flag is off");
     }
 
     #[test]
@@ -657,21 +825,123 @@ mod tests {
         );
     }
 
+    fn owner(path: &str, session: u64) -> KitOwner {
+        KitOwner {
+            db_path: PathBuf::from(path),
+            session,
+        }
+    }
+
     #[test]
     fn the_code_is_copied_during_setup_or_shortly_after_the_password() {
         let now = Instant::now();
+        let a = owner("/profiles/a/moony.db", 3);
+        let shown = |opened| KitWindow {
+            owner: a.clone(),
+            opened,
+        };
         // During setup (sync not on yet) the kit is being shown for the first time.
-        assert!(copy_allowed(false, None, now));
+        assert!(copy_allowed(false, None, &a, now));
         // With sync on, only within the window after `sync_show_recovery_kit` checked the password.
-        assert!(!copy_allowed(true, None, now));
-        assert!(copy_allowed(true, Some(now), now));
+        assert!(!copy_allowed(true, None, &a, now));
+        assert!(copy_allowed(true, Some(&shown(now)), &a, now));
         let edge = now + KIT_COPY_WINDOW;
-        assert!(copy_allowed(true, Some(now), edge));
+        assert!(copy_allowed(true, Some(&shown(now)), &a, edge));
         assert!(!copy_allowed(
             true,
-            Some(now),
+            Some(&shown(now)),
+            &a,
             edge + Duration::from_secs(1)
         ));
+    }
+
+    #[test]
+    fn the_copy_window_belongs_to_one_profile_session() {
+        let now = Instant::now();
+        let a = owner("/profiles/a/moony.db", 3);
+        let window = KitWindow {
+            owner: a.clone(),
+            opened: now,
+        };
+        assert!(copy_allowed(true, Some(&window), &a, now));
+        assert!(
+            !copy_allowed(true, Some(&window), &owner("/profiles/b/moony.db", 3), now),
+            "another profile"
+        );
+        assert!(
+            !copy_allowed(true, Some(&window), &owner("/profiles/a/moony.db", 5), now),
+            "the same profile after a lock and an unlock"
+        );
+    }
+
+    #[test]
+    fn a_lock_closes_the_copy_window() {
+        let a = owner("/profiles/a/moony.db", 3);
+        open_kit_window(a.clone(), Instant::now());
+        assert!(kit_window().is_some_and(|w| w.owner == a));
+        forget_kit_window();
+        assert!(kit_window().is_none());
+
+        // The session the window is keyed to changes at every lock, too.
+        let db = Database::new();
+        let before = db.session_epoch();
+        db.close();
+        assert_ne!(db.session_epoch(), before);
+    }
+
+    /// The commands of this file (name → body up to its third statement), read from the source.
+    fn commands_and_their_first_statements() -> Vec<(String, String)> {
+        let source = include_str!("sync.rs");
+        // Only the code above the tests: the tests' own text names the attribute too.
+        let code = source
+            .split("\n#[cfg(test)]\nmod tests {")
+            .next()
+            .expect("code");
+        let mut commands = Vec::new();
+        let mut lines = code.lines();
+        while let Some(line) = lines.next() {
+            if line.trim() != "#[tauri::command]" {
+                continue;
+            }
+            let rest: String = lines.clone().collect::<Vec<_>>().join("\n");
+            let signature = rest
+                .trim_start()
+                .strip_prefix("pub async fn ")
+                .unwrap_or_else(|| panic!("a command is a `pub async fn`: {rest:.60}"));
+            let name: String = signature
+                .chars()
+                .take_while(|c| c.is_alphanumeric() || *c == '_')
+                .collect();
+            let body_start = signature.find(") -> ").expect("a return type");
+            let body = &signature[body_start..];
+            let body = &body[body.find('{').expect("a body") + 1..];
+            let first_three: String = body.splitn(4, ';').take(3).collect::<Vec<_>>().join(";");
+            commands.push((name, first_three));
+        }
+        commands
+    }
+
+    #[test]
+    fn every_sync_command_checks_the_flag_first() {
+        let commands = commands_and_their_first_statements();
+        let found: BTreeSet<&str> = commands.iter().map(|(name, _)| name.as_str()).collect();
+        // Every command registered in `lib.rs` is one this scan found, and the other way round.
+        let registered: BTreeSet<&str> = include_str!("../lib.rs")
+            .lines()
+            .filter_map(|line| line.trim().strip_prefix("commands::sync::"))
+            .map(|name| name.trim_end_matches(','))
+            .collect();
+        assert_eq!(found, registered);
+        assert_eq!(found.len(), 16);
+        for (name, first_three) in &commands {
+            if name == "sync_feature_enabled" {
+                continue;
+            }
+            assert!(
+                first_three.contains("require_feature()?"),
+                "`{name}` must call `require_feature()?` within its first three statements"
+            );
+        }
     }
 
     #[test]

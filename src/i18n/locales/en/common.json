@@ -340,7 +340,7 @@
     "syncAlreadyEnabled": "Sync is already on for this profile.",
     "syncUnavailable": "Sync is not available in this version of Moony.",
     "syncDevOnly": "This is a developer tool, available only in development builds.",
-    "syncRepairInProgress": "A repair of this device is already running. Wait until it finishes.",
+    "syncChangeInProgress": "Another sync change is in progress on this device. Wait until it finishes.",
     "syncPasswordRequired": "Enter your password again to copy the recovery code."
   },
   "auth": {

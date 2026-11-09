@@ -19,7 +19,7 @@
     },
     "problem": {
       "captureBroken": "Die Änderungsverfolgung dieses Geräts ist beschädigt, daher wurde die Synchronisierung gestoppt. Sie lässt sich reparieren.",
-      "vaultGone": "Die synchronisierten Daten wurden vom Relay gelöscht.",
+      "vaultGone": "Die synchronisierten Daten wurden vom Synchronisierungsserver gelöscht.",
       "lapsed": "Das Abonnement ist abgelaufen, die Synchronisierung ist pausiert.",
       "quotaExceeded": "Die synchronisierten Daten überschreiten das Speicherlimit.",
       "snapshotTooLarge": "Die Daten sind zu groß für die Synchronisierung.",
@@ -29,12 +29,86 @@
       "invalidChain": "Änderungen eines anderen Geräts haben die Prüfung nicht bestanden und werden zurückgehalten.",
       "missingParent": "Änderungen eines anderen Geräts haben fehlende frühere Schritte und werden zurückgehalten.",
       "quarantined": "Änderungen einiger Geräte werden aus Sicherheitsgründen zurückgehalten.",
-      "offline": "Keine Verbindung zum Relay. Die Synchronisierung läuft weiter, sobald es wieder erreichbar ist.",
-      "relayError": "Das Relay hat mit einem Fehler geantwortet. Moony versucht es erneut.",
-      "rateLimited": "Das Relay hat Moony gebeten, langsamer zu sein. Moony versucht es bald erneut.",
-      "unauthorized": "Das Relay hat dieses Gerät nicht akzeptiert. Die Synchronisierung muss eventuell neu eingerichtet werden.",
+      "offline": "Keine Verbindung zum Synchronisierungsserver. Die Synchronisierung läuft weiter, sobald er wieder erreichbar ist.",
+      "relayError": "Der Synchronisierungsserver hat mit einem Fehler geantwortet. Moony versucht es erneut.",
+      "rateLimited": "Der Synchronisierungsserver hat Moony gebeten, langsamer zu sein. Moony versucht es bald erneut.",
+      "unauthorized": "Der Synchronisierungsserver hat dieses Gerät nicht akzeptiert. Die Synchronisierung muss eventuell neu eingerichtet werden.",
       "keyRotated": "Der Wiederherstellungsschlüssel wurde auf einem anderen Gerät geändert. Richten Sie die Synchronisierung auf diesem Gerät neu ein.",
       "internal": "Die Synchronisierung wurde wegen eines internen Fehlers gestoppt."
+    }
+  },
+  "intro": {
+    "description": "Halte Ihre Daten auf allen Geräten auf dem gleichen Stand. Sie sind Ende-zu-Ende-verschlüsselt: Der Synchronisierungsserver speichert nur Daten, die er nicht lesen kann.",
+    "privacy": "Ihre Daten verlassen Ihre Geräte nie unverschlüsselt.",
+    "start": "Synchronisierung einrichten",
+    "resume": "Einrichtung fortsetzen"
+  },
+  "setup": {
+    "title": "Synchronisierung einrichten",
+    "step": "Schritt {{current}} von {{total}}",
+    "back": "Zurück",
+    "cancel": "Abbrechen",
+    "account": {
+      "description": "Die Synchronisierung braucht ein Sync-Konto. Legen Sie eines an, um seine Nummer zu erhalten.",
+      "number": "Kontonummer",
+      "explain": "Diese Nummer ist Ihr Sync-Konto. Wer sie kennt, kann es bezahlen und sehen, ob es bezahlt ist. Ihre Daten öffnet sie nicht.",
+      "create": "Konto anlegen",
+      "continue": "Weiter",
+      "copy": "Kopieren",
+      "copied": "Kopiert"
+    },
+    "advanced": {
+      "toggle": "Erweitert",
+      "label": "Adresse des Synchronisierungsservers",
+      "placeholder": "https://sync.moonyfinance.com",
+      "hint": "Leer lassen, um den Synchronisierungsdienst von Moony zu nutzen. Nur ausfüllen, wenn Sie einen eigenen Synchronisierungsserver betreiben."
+    },
+    "pay": {
+      "description": "Wählen Sie einen Tarif. Die Zahlung öffnet sich im Browser.",
+      "plan": "Tarif",
+      "monthly": "Monatlich",
+      "yearly": "Jährlich",
+      "continue": "Weiter zur Zahlung",
+      "waiting": "Warte auf die Zahlung. Dieses Fenster geht weiter, sobald sie eintrifft.",
+      "grantTest": "Test-Abo gewähren",
+      "selfHosted": "Das ist Ihr eigener Synchronisierungsserver, es gibt also nichts zu bezahlen. Tragen Sie die Kontonummer oben in ALLOWED_ACCOUNTS auf dem Server ein und starten Sie ihn neu.",
+      "selfHostedWaiting": "Warte, bis der Server das Konto akzeptiert. Dieses Fenster geht weiter, sobald er es tut."
+    },
+    "kit": {
+      "description": "Speichern Sie Ihr Sync-Wiederherstellungs-Kit. Nur damit bekommen Sie Ihre synchronisierten Daten zurück, wenn Sie alle Geräte verlieren.",
+      "preparing": "Kit wird vorbereitet…",
+      "savePage": "Als Seite speichern…",
+      "saveText": "Als Text speichern…",
+      "copyCode": "Code kopieren",
+      "copied": "Kopiert",
+      "clipboardHint": "Leeren Sie die Zwischenablage, nachdem Sie den Code eingefügt haben.",
+      "saved": "Kit gespeichert",
+      "confirm": "Ich habe mein Sync-Wiederherstellungs-Kit gespeichert",
+      "differs": "Das Sync-Wiederherstellungs-Kit ist nicht der Wiederherstellungsschlüssel dieses Geräts. Beide sind verschieden, und Sie brauchen beide.",
+      "saveFirst": "Speichern oder kopieren Sie zuerst das Kit.",
+      "file": {
+        "title": "Moony Sync-Wiederherstellungs-Kit",
+        "intro": "Bewahren Sie diese Seite sicher und getrennt von Ihren Geräten auf. Wer sie hat, kann Ihre synchronisierten Daten lesen.",
+        "accountLabel": "Sync-Konto",
+        "accountNote": "Bezeichnet Ihr Sync-Konto. Es öffnet Ihre Daten nicht.",
+        "codeLabel": "Wiederherstellungscode",
+        "codeNote": "Öffnet Ihre synchronisierten Daten. Halten Sie ihn geheim.",
+        "qrLabel": "Zum Wiederherstellen auf dem Handy scannen",
+        "created": "Erstellt am {{date}}",
+        "relayLabel": "Synchronisierungsserver",
+        "relayNote": "Wird zum Wiederherstellen mit diesem Kit benötigt"
+      }
+    },
+    "device": {
+      "description": "Geben Sie diesem Gerät einen Namen, um es von Ihren anderen zu unterscheiden.",
+      "name": "Gerätename",
+      "turnOn": "Synchronisierung einschalten",
+      "success": "Synchronisierung eingeschaltet"
+    },
+    "defaultName": {
+      "macos": "Mac",
+      "windows": "Windows-PC",
+      "linux": "Linux-PC"
     }
   }
 }

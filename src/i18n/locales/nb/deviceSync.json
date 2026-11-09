@@ -12,14 +12,14 @@
     "phase": {
       "off": "Synkronisering er av",
       "settingUp": "Setter opp synkronisering",
-      "idle": "À jour",
+      "idle": "Oppdatert",
       "syncing": "Synkroniserer…",
       "paused": "Synkronisering er satt på pause",
       "error": "Synkroniseringen stoppet"
     },
     "problem": {
       "captureBroken": "Endringssporingen på denne enheten er skadet, så synkroniseringen stoppet. Den kan repareres.",
-      "vaultGone": "De synkroniserte dataene ble slettet fra releen.",
+      "vaultGone": "De synkroniserte dataene ble slettet fra synkroniseringsserveren.",
       "lapsed": "Abonnementet er utløpt, så synkroniseringen er satt på pause.",
       "quotaExceeded": "De synkroniserte dataene overskrider lagringsgrensen.",
       "snapshotTooLarge": "Dataene er for store til å synkroniseres.",
@@ -29,12 +29,86 @@
       "invalidChain": "Endringer fra en annen enhet besto ikke verifiseringen og holdes tilbake.",
       "missingParent": "Endringer fra en annen enhet mangler tidligere trinn og holdes tilbake.",
       "quarantined": "Endringer fra noen enheter holdes tilbake av sikkerhetshensyn.",
-      "offline": "Ingen forbindelse til releen. Synkroniseringen fortsetter når den er tilbake.",
-      "relayError": "Releen svarte med en feil. Moony prøver igjen.",
-      "rateLimited": "Releen ba Moony om å senke farten. Moony prøver igjen snart.",
-      "unauthorized": "Releen godtok ikke denne enheten. Du må kanskje sette opp synkronisering på nytt.",
+      "offline": "Ingen forbindelse til synkroniseringsserveren. Synkroniseringen fortsetter når den er tilbake.",
+      "relayError": "Synkroniseringsserveren svarte med en feil. Moony prøver igjen.",
+      "rateLimited": "Synkroniseringsserveren ba Moony om å senke farten. Moony prøver igjen snart.",
+      "unauthorized": "Synkroniseringsserveren godtok ikke denne enheten. Du må kanskje sette opp synkronisering på nytt.",
       "keyRotated": "Gjenopprettingsnøkkelen ble endret på en annen enhet. Sett opp synkronisering på nytt på denne enheten.",
       "internal": "Synkroniseringen stoppet på grunn av en intern feil."
+    }
+  },
+  "intro": {
+    "description": "Hold dataene dine oppdatert på alle enhetene dine. De er ende-til-ende-kryptert: synkroniseringsserveren lagrer bare data den ikke kan lese.",
+    "privacy": "Dataene dine forlater aldri enhetene dine ukryptert.",
+    "start": "Sett opp synkronisering",
+    "resume": "Fortsett oppsettet"
+  },
+  "setup": {
+    "title": "Sett opp synkronisering",
+    "step": "Trinn {{current}} av {{total}}",
+    "back": "Tilbake",
+    "cancel": "Avbryt",
+    "account": {
+      "description": "Synkronisering trenger en synkroniseringskonto. Opprett en for å få nummeret.",
+      "number": "Kontonummer",
+      "explain": "Dette nummeret er synkroniseringskontoen din. Alle som har det, kan betale for den og se om den er betalt. Det åpner ikke dataene dine.",
+      "create": "Opprett konto",
+      "continue": "Fortsett",
+      "copy": "Kopier",
+      "copied": "Kopiert"
+    },
+    "advanced": {
+      "toggle": "Avansert",
+      "label": "Adresse til synkroniseringsserveren",
+      "placeholder": "https://sync.moonyfinance.com",
+      "hint": "La feltet stå tomt for å bruke Moonys synkroniseringstjeneste. Fyll det ut bare hvis du driver din egen synkroniseringsserver."
+    },
+    "pay": {
+      "description": "Velg en plan. Betalingen åpnes i nettleseren.",
+      "plan": "Plan",
+      "monthly": "Månedlig",
+      "yearly": "Årlig",
+      "continue": "Fortsett til betaling",
+      "waiting": "Venter på betalingen. Dette vinduet går videre når den kommer.",
+      "grantTest": "Gi et prøveabonnement",
+      "selfHosted": "Dette er din egen synkroniseringsserver, så det er ingenting å betale. Legg kontonummeret over til i ALLOWED_ACCOUNTS på serveren og start den på nytt.",
+      "selfHostedWaiting": "Venter på at serveren godtar kontoen. Dette vinduet går videre når den gjør det."
+    },
+    "kit": {
+      "description": "Lagre gjenopprettingssettet for synkronisering. Det er den eneste måten å få tilbake de synkroniserte dataene på hvis du mister alle enhetene dine.",
+      "preparing": "Gjør klar settet…",
+      "savePage": "Lagre som side…",
+      "saveText": "Lagre som tekst…",
+      "copyCode": "Kopier koden",
+      "copied": "Kopiert",
+      "clipboardHint": "Tøm utklippstavlen etter at du har limt inn koden.",
+      "saved": "Settet er lagret",
+      "confirm": "Jeg har lagret gjenopprettingssettet for synkronisering",
+      "differs": "Gjenopprettingssettet for synkronisering er ikke enhetens gjenopprettingsnøkkel. De er forskjellige, og du trenger begge.",
+      "saveFirst": "Lagre eller kopier settet først.",
+      "file": {
+        "title": "Moony gjenopprettingssett for synkronisering",
+        "intro": "Oppbevar denne siden trygt, unna enhetene dine. Alle som har den, kan lese de synkroniserte dataene dine.",
+        "accountLabel": "Synkroniseringskonto",
+        "accountNote": "Identifiserer synkroniseringskontoen din. Den åpner ikke dataene dine.",
+        "codeLabel": "Gjenopprettingskode",
+        "codeNote": "Åpner de synkroniserte dataene dine. Hold den hemmelig.",
+        "qrLabel": "Skann for å gjenopprette på en telefon",
+        "created": "Opprettet {{date}}",
+        "relayLabel": "Synkroniseringsserver",
+        "relayNote": "Trengs for å gjenopprette fra dette settet"
+      }
+    },
+    "device": {
+      "description": "Gi enheten et navn, så du kan skille den fra de andre.",
+      "name": "Enhetsnavn",
+      "turnOn": "Slå på synkronisering",
+      "success": "Synkronisering er slått på"
+    },
+    "defaultName": {
+      "macos": "Mac",
+      "windows": "Windows-PC",
+      "linux": "Linux-PC"
     }
   }
 }

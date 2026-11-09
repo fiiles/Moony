@@ -19,7 +19,7 @@
     },
     "problem": {
       "captureBroken": "Sledování změn na tomto zařízení je poškozené, proto se synchronizace zastavila. Lze ho opravit.",
-      "vaultGone": "Synchronizovaná data byla ze serveru smazána.",
+      "vaultGone": "Synchronizovaná data byla ze synchronizačního serveru smazána.",
       "lapsed": "Předplatné skončilo, synchronizace je pozastavená.",
       "quotaExceeded": "Synchronizovaná data překračují limit úložiště.",
       "snapshotTooLarge": "Data jsou na synchronizaci příliš velká.",
@@ -29,12 +29,86 @@
       "invalidChain": "Změny z jiného zařízení neprošly ověřením a jsou zadržené.",
       "missingParent": "Změnám z jiného zařízení chybí dřívější kroky a jsou zadržené.",
       "quarantined": "Změny z některých zařízení jsou z bezpečnostních důvodů zadržené.",
-      "offline": "Server není dostupný. Synchronizace se obnoví, jakmile bude zpět.",
-      "relayError": "Server odpověděl chybou. Moony to zkusí znovu.",
-      "rateLimited": "Server požádal Moony o zpomalení. Moony to brzy zkusí znovu.",
-      "unauthorized": "Server toto zařízení nepřijal. Může být potřeba synchronizaci nastavit znovu.",
+      "offline": "Synchronizační server není dostupný. Synchronizace se obnoví, jakmile bude zpět.",
+      "relayError": "Synchronizační server odpověděl chybou. Moony to zkusí znovu.",
+      "rateLimited": "Synchronizační server požádal Moony o zpomalení. Moony to brzy zkusí znovu.",
+      "unauthorized": "Synchronizační server toto zařízení nepřijal. Může být potřeba synchronizaci nastavit znovu.",
       "keyRotated": "Obnovovací klíč byl změněn na jiném zařízení. Nastavte synchronizaci na tomto zařízení znovu.",
       "internal": "Synchronizace se zastavila kvůli vnitřní chybě."
+    }
+  },
+  "intro": {
+    "description": "Udržujte data synchronizovaná na všech svých zařízeních. Jsou koncově šifrovaná: synchronizační server ukládá jen data, která nepřečte.",
+    "privacy": "Vaše data neopustí zařízení nešifrovaná.",
+    "start": "Nastavit synchronizaci",
+    "resume": "Pokračovat v nastavení"
+  },
+  "setup": {
+    "title": "Nastavit synchronizaci",
+    "step": "Krok {{current}} ze {{total}}",
+    "back": "Zpět",
+    "cancel": "Zrušit",
+    "account": {
+      "description": "Synchronizace potřebuje synchronizační účet. Vytvořte ho a získáte jeho číslo.",
+      "number": "Číslo účtu",
+      "explain": "Toto číslo je váš synchronizační účet. Kdo ho zná, může ho zaplatit a vidět, jestli je zaplacený. Vaše data neotevře.",
+      "create": "Vytvořit účet",
+      "continue": "Pokračovat",
+      "copy": "Kopírovat",
+      "copied": "Zkopírováno"
+    },
+    "advanced": {
+      "toggle": "Upřesnit",
+      "label": "Adresa synchronizačního serveru",
+      "placeholder": "https://sync.moonyfinance.com",
+      "hint": "Nechte prázdné pro synchronizační službu Moony. Vyplňte jen tehdy, když provozujete vlastní synchronizační server."
+    },
+    "pay": {
+      "description": "Vyberte tarif. Platba se otevře v prohlížeči.",
+      "plan": "Tarif",
+      "monthly": "Měsíčně",
+      "yearly": "Ročně",
+      "continue": "Pokračovat k platbě",
+      "waiting": "Čekám na platbu. Okno se posune dál, jakmile dorazí.",
+      "grantTest": "Udělit zkušební předplatné",
+      "selfHosted": "Toto je váš vlastní synchronizační server, takže se nic neplatí. Přidejte číslo účtu výše do ALLOWED_ACCOUNTS na serveru a server restartujte.",
+      "selfHostedWaiting": "Čekám, až server účet přijme. Okno se posune dál, jakmile se tak stane."
+    },
+    "kit": {
+      "description": "Uložte si Záchrannou sadu synchronizace. Je to jediný způsob, jak získat synchronizovaná data zpět, když přijdete o všechna zařízení.",
+      "preparing": "Připravuji sadu…",
+      "savePage": "Uložit jako stránku…",
+      "saveText": "Uložit jako text…",
+      "copyCode": "Zkopírovat kód",
+      "copied": "Zkopírováno",
+      "clipboardHint": "Po vložení kódu vymažte schránku.",
+      "saved": "Sada uložena",
+      "confirm": "Uložil(a) jsem si Záchrannou sadu synchronizace",
+      "differs": "Záchranná sada synchronizace není obnovovací klíč zařízení. Jsou to dvě různé věci a potřebujete obě.",
+      "saveFirst": "Nejdřív sadu uložte nebo zkopírujte.",
+      "file": {
+        "title": "Záchranná sada synchronizace Moony",
+        "intro": "Uschovejte tuto stránku na bezpečném místě mimo svá zařízení. Kdo ji má, přečte vaše synchronizovaná data.",
+        "accountLabel": "Synchronizační účet",
+        "accountNote": "Určuje váš synchronizační účet. Data neotevře.",
+        "codeLabel": "Obnovovací kód",
+        "codeNote": "Otevře vaše synchronizovaná data. Udržujte ho v tajnosti.",
+        "qrLabel": "Naskenujte pro obnovení v telefonu",
+        "created": "Vytvořeno {{date}}",
+        "relayLabel": "Synchronizační server",
+        "relayNote": "Potřebný k obnově z této sady"
+      }
+    },
+    "device": {
+      "description": "Pojmenujte toto zařízení, abyste ho odlišili od ostatních.",
+      "name": "Název zařízení",
+      "turnOn": "Zapnout synchronizaci",
+      "success": "Synchronizace zapnuta"
+    },
+    "defaultName": {
+      "macos": "Mac",
+      "windows": "Windows PC",
+      "linux": "Linux PC"
     }
   }
 }

@@ -19,7 +19,7 @@
     },
     "problem": {
       "captureBroken": "This device's change tracking is damaged, so syncing stopped. It can be repaired.",
-      "vaultGone": "The synced data was deleted from the relay.",
+      "vaultGone": "The synced data was deleted from the sync server.",
       "lapsed": "The subscription has ended, so syncing is paused.",
       "quotaExceeded": "The synced data is over the storage limit.",
       "snapshotTooLarge": "The data is too large to sync.",
@@ -29,12 +29,86 @@
       "invalidChain": "Changes from another device failed verification and are held.",
       "missingParent": "Changes from another device are missing earlier steps and are held.",
       "quarantined": "Changes from some devices are held for safety.",
-      "offline": "No connection to the relay. Syncing resumes when it is back.",
-      "relayError": "The relay answered with an error. Moony will try again.",
-      "rateLimited": "The relay asked Moony to slow down. Moony will try again soon.",
-      "unauthorized": "The relay did not accept this device. Setting up sync again may be needed.",
+      "offline": "No connection to the sync server. Syncing resumes when it is back.",
+      "relayError": "The sync server answered with an error. Moony will try again.",
+      "rateLimited": "The sync server asked Moony to slow down. Moony will try again soon.",
+      "unauthorized": "The sync server did not accept this device. Setting up sync again may be needed.",
       "keyRotated": "The recovery key was changed on another device. Set up sync on this device again.",
       "internal": "Syncing stopped because of an internal error."
+    }
+  },
+  "intro": {
+    "description": "Keep your data in step on all your devices. It is end-to-end encrypted: the sync server only stores data it cannot read.",
+    "privacy": "Your data never leaves your devices unencrypted.",
+    "start": "Set up sync",
+    "resume": "Continue setup"
+  },
+  "setup": {
+    "title": "Set up sync",
+    "step": "Step {{current}} of {{total}}",
+    "back": "Back",
+    "cancel": "Cancel",
+    "account": {
+      "description": "Sync needs a sync account. Create one to get its number.",
+      "number": "Account number",
+      "explain": "This number is your sync account. Anyone who has it can pay for it and see whether it is paid. It does not open your data.",
+      "create": "Create account",
+      "continue": "Continue",
+      "copy": "Copy",
+      "copied": "Copied"
+    },
+    "advanced": {
+      "toggle": "Advanced",
+      "label": "Sync server address",
+      "placeholder": "https://sync.moonyfinance.com",
+      "hint": "Leave empty to use Moony's sync service. Fill it in only if you run your own sync server."
+    },
+    "pay": {
+      "description": "Choose a plan. Payment opens in your browser.",
+      "plan": "Plan",
+      "monthly": "Monthly",
+      "yearly": "Yearly",
+      "continue": "Continue to payment",
+      "waiting": "Waiting for the payment. This window moves on when it arrives.",
+      "grantTest": "Grant a test subscription",
+      "selfHosted": "This is your own sync server, so there is nothing to pay. Add the account number above to ALLOWED_ACCOUNTS on the server and restart it.",
+      "selfHostedWaiting": "Waiting for the server to accept the account. This window moves on when it does."
+    },
+    "kit": {
+      "description": "Save your Sync Recovery Kit. It is the only way to get your synced data back if you lose all your devices.",
+      "preparing": "Preparing the kit…",
+      "savePage": "Save as page…",
+      "saveText": "Save as text…",
+      "copyCode": "Copy code",
+      "copied": "Copied",
+      "clipboardHint": "Clear your clipboard after pasting the code.",
+      "saved": "Kit saved",
+      "confirm": "I saved my Sync Recovery Kit",
+      "differs": "The Sync Recovery Kit is not your device's recovery key. They are different, and you need both.",
+      "saveFirst": "Save or copy the kit first.",
+      "file": {
+        "title": "Moony Sync Recovery Kit",
+        "intro": "Keep this page somewhere safe, away from your devices. Anyone who has it can read your synced data.",
+        "accountLabel": "Sync account",
+        "accountNote": "Identifies your sync account. It does not open your data.",
+        "codeLabel": "Recovery code",
+        "codeNote": "Opens your synced data. Keep it secret.",
+        "qrLabel": "Scan to restore on a phone",
+        "created": "Created {{date}}",
+        "relayLabel": "Sync server",
+        "relayNote": "Needed to restore from this kit"
+      }
+    },
+    "device": {
+      "description": "Name this device so you can tell it apart from your others.",
+      "name": "Device name",
+      "turnOn": "Turn on sync",
+      "success": "Sync turned on"
+    },
+    "defaultName": {
+      "macos": "Mac",
+      "windows": "Windows PC",
+      "linux": "Linux PC"
     }
   }
 }

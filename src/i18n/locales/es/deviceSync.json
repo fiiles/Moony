@@ -19,7 +19,7 @@
     },
     "problem": {
       "captureBroken": "El seguimiento de cambios de este dispositivo está dañado, por eso la sincronización se detuvo. Se puede reparar.",
-      "vaultGone": "Los datos sincronizados se eliminaron del relay.",
+      "vaultGone": "Los datos sincronizados se eliminaron del servidor de sincronización.",
       "lapsed": "La suscripción ha terminado, así que la sincronización está en pausa.",
       "quotaExceeded": "Los datos sincronizados superan el límite de almacenamiento.",
       "snapshotTooLarge": "Los datos son demasiado grandes para sincronizarse.",
@@ -29,12 +29,86 @@
       "invalidChain": "Los cambios de otro dispositivo no pasaron la verificación y se retienen.",
       "missingParent": "A los cambios de otro dispositivo les faltan pasos anteriores y se retienen.",
       "quarantined": "Los cambios de algunos dispositivos se retienen por seguridad.",
-      "offline": "Sin conexión con el relay. La sincronización se reanudará cuando vuelva.",
-      "relayError": "El relay respondió con un error. Moony lo intentará de nuevo.",
-      "rateLimited": "El relay pidió a Moony que fuera más despacio. Moony lo intentará de nuevo pronto.",
-      "unauthorized": "El relay no aceptó este dispositivo. Puede que debas configurar la sincronización de nuevo.",
+      "offline": "Sin conexión con el servidor de sincronización. La sincronización se reanudará cuando vuelva.",
+      "relayError": "El servidor de sincronización respondió con un error. Moony lo intentará de nuevo.",
+      "rateLimited": "El servidor de sincronización pidió a Moony que fuera más despacio. Moony lo intentará de nuevo pronto.",
+      "unauthorized": "El servidor de sincronización no aceptó este dispositivo. Puede que debas configurar la sincronización de nuevo.",
       "keyRotated": "La clave de recuperación se cambió en otro dispositivo. Configura la sincronización de nuevo en este dispositivo.",
       "internal": "La sincronización se detuvo por un error interno."
+    }
+  },
+  "intro": {
+    "description": "Mantén tus datos al día en todos tus dispositivos. Están cifrados de extremo a extremo: el servidor de sincronización solo guarda datos que no puede leer.",
+    "privacy": "Tus datos nunca salen de tus dispositivos sin cifrar.",
+    "start": "Configurar la sincronización",
+    "resume": "Continuar la configuración"
+  },
+  "setup": {
+    "title": "Configurar la sincronización",
+    "step": "Paso {{current}} de {{total}}",
+    "back": "Atrás",
+    "cancel": "Cancelar",
+    "account": {
+      "description": "La sincronización necesita una cuenta de sincronización. Crea una para obtener su número.",
+      "number": "Número de cuenta",
+      "explain": "Este número es tu cuenta de sincronización. Quien lo tenga puede pagarla y ver si está pagada. No abre tus datos.",
+      "create": "Crear cuenta",
+      "continue": "Continuar",
+      "copy": "Copiar",
+      "copied": "Copiado"
+    },
+    "advanced": {
+      "toggle": "Avanzado",
+      "label": "Dirección del servidor de sincronización",
+      "placeholder": "https://sync.moonyfinance.com",
+      "hint": "Déjalo vacío para usar el servicio de sincronización de Moony. Rellénalo solo si gestionas tu propio servidor de sincronización."
+    },
+    "pay": {
+      "description": "Elige un plan. El pago se abre en tu navegador.",
+      "plan": "Plan",
+      "monthly": "Mensual",
+      "yearly": "Anual",
+      "continue": "Continuar al pago",
+      "waiting": "Esperando el pago. Esta ventana avanza cuando llegue.",
+      "grantTest": "Conceder una suscripción de prueba",
+      "selfHosted": "Este es tu propio servidor de sincronización, así que no hay nada que pagar. Añade el número de cuenta de arriba a ALLOWED_ACCOUNTS en el servidor y reinícialo.",
+      "selfHostedWaiting": "Esperando a que el servidor acepte la cuenta. Esta ventana avanza cuando lo haga."
+    },
+    "kit": {
+      "description": "Guarda tu Kit de recuperación de sincronización. Es la única forma de recuperar tus datos sincronizados si pierdes todos tus dispositivos.",
+      "preparing": "Preparando el kit…",
+      "savePage": "Guardar como página…",
+      "saveText": "Guardar como texto…",
+      "copyCode": "Copiar código",
+      "copied": "Copiado",
+      "clipboardHint": "Vacía el portapapeles después de pegar el código.",
+      "saved": "Kit guardado",
+      "confirm": "He guardado mi Kit de recuperación de sincronización",
+      "differs": "El Kit de recuperación de sincronización no es la clave de recuperación del dispositivo. Son distintos y necesitas ambos.",
+      "saveFirst": "Primero guarda o copia el kit.",
+      "file": {
+        "title": "Kit de recuperación de sincronización de Moony",
+        "intro": "Guarda esta página en un lugar seguro, lejos de tus dispositivos. Quien la tenga puede leer tus datos sincronizados.",
+        "accountLabel": "Cuenta de sincronización",
+        "accountNote": "Identifica tu cuenta de sincronización. No abre tus datos.",
+        "codeLabel": "Código de recuperación",
+        "codeNote": "Abre tus datos sincronizados. Mantenlo en secreto.",
+        "qrLabel": "Escanea para restaurar en un teléfono",
+        "created": "Creado el {{date}}",
+        "relayLabel": "Servidor de sincronización",
+        "relayNote": "Necesario para restaurar desde este kit"
+      }
+    },
+    "device": {
+      "description": "Dale un nombre a este dispositivo para distinguirlo de los demás.",
+      "name": "Nombre del dispositivo",
+      "turnOn": "Activar la sincronización",
+      "success": "Sincronización activada"
+    },
+    "defaultName": {
+      "macos": "Mac",
+      "windows": "PC con Windows",
+      "linux": "PC con Linux"
     }
   }
 }

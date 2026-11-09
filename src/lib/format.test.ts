@@ -200,3 +200,13 @@ describe('invalid stored dates', () => {
     }
   });
 });
+
+// Intl refuses dateStyle/timeStyle mixed with component options; a style must replace the defaults.
+describe('dateTime with a style', () => {
+  it('formats with dateStyle and timeStyle instead of throwing', () => {
+    const fmt = createFormatters('en-GB', 'EUR');
+    const at = Date.UTC(2026, 10, 9, 9, 30) / 1000;
+    expect(() => fmt.dateTime(at, { dateStyle: 'medium', timeStyle: 'short' })).not.toThrow();
+    expect(fmt.dateTime(at, { dateStyle: 'medium', timeStyle: 'short' })).toContain('2026');
+  });
+});

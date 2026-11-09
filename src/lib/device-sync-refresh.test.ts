@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { refreshAfterRemoteChanges } from './device-sync-refresh';
 
 describe('refreshAfterRemoteChanges', () => {
@@ -18,18 +18,22 @@ describe('refreshAfterRemoteChanges', () => {
     expect(calls).toEqual(['invalidate:all', 'snapshot', 'invalidate:["portfolio-history"]']);
   });
 
-  it('does not refresh portfolio history when the snapshot fails', async () => {
+  it('still refreshes portfolio history and resolves when the snapshot fails', async () => {
     const calls: string[] = [];
     const qc = {
-      invalidateQueries: async () => {
-        calls.push('invalidate');
+      invalidateQueries: async (filters?: { queryKey?: readonly unknown[] }) => {
+        calls.push(`invalidate:${filters?.queryKey ? JSON.stringify(filters.queryKey) : 'all'}`);
       },
     };
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
     await expect(
       refreshAfterRemoteChanges(qc, async () => {
+        calls.push('snapshot');
         throw new Error('boom');
       })
-    ).rejects.toThrow('boom');
-    expect(calls).toEqual(['invalidate']);
+    ).resolves.toBeUndefined();
+    expect(calls).toEqual(['invalidate:all', 'snapshot', 'invalidate:["portfolio-history"]']);
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
   });
 });

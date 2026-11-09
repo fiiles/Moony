@@ -150,6 +150,8 @@
     "hint": "Erstatter dataene på denne enheten med de synkroniserte dataene. Bruk dette hvis synkroniseringshistorikken til enheten er inkonsekvent.",
     "title": "Synkronisere denne enheten på nytt?",
     "description": "Dataene på denne enheten erstattes med de synkroniserte dataene. En sikkerhetskopi lagres først. Endringer som denne enheten ikke har sendt ennå, finnes bare i den sikkerhetskopien.",
+    "pendingChanges_one": "{{count}} endring på denne enheten er ikke sendt ennå. Den finnes bare i sikkerhetskopien.",
+    "pendingChanges_other": "{{count}} endringer på denne enheten er ikke sendt ennå. De finnes bare i sikkerhetskopien.",
     "confirm": "Synkroniser på nytt",
     "success": "Enheten er synkronisert på nytt. Sikkerhetskopi lagret som {{file}}."
   },
@@ -157,7 +159,9 @@
     "button": "Slå av synkronisering på denne enheten",
     "hint": "Lokale data blir værende. Andre enheter synkroniserer videre.",
     "title": "Slå av synkronisering på denne enheten?",
-    "description": "Lokale data blir værende. Andre enheter synkroniserer videre. Slår du på synkronisering igjen senere, erstattes dataene på denne enheten med de synkroniserte dataene, eller det opprettes et nytt hvelv.",
+    "description": "Lokale data blir værende. Andre enheter synkroniserer videre. Slår du på synkronisering igjen senere, må du sette den opp på nytt.",
+    "pendingChanges_one": "{{count}} endring på denne enheten er ikke sendt ennå. Den blir ikke sendt.",
+    "pendingChanges_other": "{{count}} endringer på denne enheten er ikke sendt ennå. De blir ikke sendt.",
     "confirm": "Slå av synkronisering",
     "success": "Synkronisering slått av"
   },

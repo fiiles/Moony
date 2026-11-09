@@ -19,6 +19,7 @@ use super::binding::{self, BindingNative};
 use super::capture;
 use super::devices;
 use super::engine::pull::DEFAULT_DEVICE_NAME;
+use super::engine::runtime::{rejoin_if_copy, CopyCheck};
 use super::engine::snapshots::{off_thread, open_sealed, SnapshotPolicy};
 use super::engine::{self, ConnAccess, PullReport, RoundMode};
 use super::error::SyncResult;
@@ -146,6 +147,11 @@ fn replace_profile(
 
 /// Repairs a profile whose change capture broke (ruling P3); returns the path of the backup.
 ///
+/// 0. Holding off every round, the engine start's copy check (`runtime::rejoin_if_copy`): a
+///    restored or copied profile whose engine start did not re-join (its check failed) re-joins
+///    under a new device ID now, so the drain never pushes under the original device's ID. A
+///    check that cannot be made (an unreadable binding) stops the repair with that error, before
+///    the backup.
 /// 1. A backup of the whole profile goes to `data_dir/sync-repair-<now>.zip` (never over an
 ///    earlier one), flushed to disk and read back to its last byte. Nothing goes on without it.
 /// 2. Capture is installed again on the connection (whatever broke it at unlock may have passed):
@@ -166,6 +172,7 @@ pub async fn repair_capture<R: Relay, D: ConnAccess>(
     native: &dyn BindingNative,
     now: i64,
 ) -> SyncResult<PathBuf> {
+    rejoin_if_copy_between_rounds(db, data_dir, native, now).await?;
     let (creds, name) = stored_identity(db)?;
     let zip = backed_up(db, data_dir, now).await?;
 
@@ -214,6 +221,41 @@ pub async fn resync_by_replace<R: Relay, D: ConnAccess>(
     join_by_replace(relay, db, creds, &name, data_dir, native, now).await?;
     log::info!("[SYNC] This device re-synced from the vault's snapshot");
     Ok(zip)
+}
+
+/// `runtime::rejoin_if_copy` once no round of the profile runs (`engine::exclusive`), for a
+/// person's action that pushes next (the repair's drain, a resumed setup's first round). After a
+/// re-join the binding stays unwritten until the next binding write (the join that ends the
+/// repair, setup's `write_binding_if_due`, or the engine's next start: `binding::binding_due`).
+pub(super) async fn rejoin_if_copy_between_rounds<D: ConnAccess>(
+    db: &D,
+    data_dir: &Path,
+    native: &dyn BindingNative,
+    now: i64,
+) -> SyncResult<()> {
+    let _no_round = engine::exclusive(db).await;
+    rejoin_if_copy_under_lock(db, data_dir, native, now)
+}
+
+/// `runtime::rejoin_if_copy` for a caller that already holds off every round.
+pub(super) fn rejoin_if_copy_under_lock<D: ConnAccess>(
+    db: &D,
+    data_dir: &Path,
+    native: &dyn BindingNative,
+    now: i64,
+) -> SyncResult<()> {
+    match rejoin_if_copy(db, data_dir, native, now) {
+        Ok(CopyCheck::Fine) => Ok(()),
+        Ok(CopyCheck::Rejoined) => {
+            log::info!("[SYNC] This profile re-joined under a new device ID before pushing");
+            Ok(())
+        }
+        Err(failure) => {
+            log::warn!("[SYNC] The copy check before pushing failed; nothing is pushed");
+            log::debug!("[SYNC] The copy check before pushing failed: {failure:?}");
+            Err(failure.into_app_error().into())
+        }
+    }
 }
 
 /// The stored credentials of an enabled profile and this device's current name.

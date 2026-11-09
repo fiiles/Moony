@@ -150,6 +150,10 @@
     "hint": "Zastępuje dane tego urządzenia danymi zsynchronizowanymi. Użyj tego, jeśli historia synchronizacji tego urządzenia jest niespójna.",
     "title": "Zsynchronizować to urządzenie ponownie?",
     "description": "Dane tego urządzenia zostaną zastąpione danymi zsynchronizowanymi. Najpierw zapisywana jest kopia zapasowa. Zmiany, których to urządzenie jeszcze nie wysłało, zostaną tylko w tej kopii.",
+    "pendingChanges_one": "{{count}} zmiana na tym urządzeniu nie została jeszcze wysłana. Zostanie tylko w kopii zapasowej.",
+    "pendingChanges_few": "{{count}} zmiany na tym urządzeniu nie zostały jeszcze wysłane. Zostaną tylko w kopii zapasowej.",
+    "pendingChanges_many": "{{count}} zmian na tym urządzeniu nie zostało jeszcze wysłanych. Zostaną tylko w kopii zapasowej.",
+    "pendingChanges_other": "{{count}} zmiany na tym urządzeniu nie zostało jeszcze wysłane. Zostaną tylko w kopii zapasowej.",
     "confirm": "Zsynchronizuj ponownie",
     "success": "Urządzenie zsynchronizowane ponownie. Kopia zapasowa zapisana jako {{file}}."
   },
@@ -157,7 +161,11 @@
     "button": "Wyłącz synchronizację na tym urządzeniu",
     "hint": "Dane lokalne zostają. Pozostałe urządzenia nadal się synchronizują.",
     "title": "Wyłączyć synchronizację na tym urządzeniu?",
-    "description": "Dane lokalne zostają. Pozostałe urządzenia nadal się synchronizują. Gdy później ponownie włączysz synchronizację, dane tego urządzenia zostaną zastąpione danymi zsynchronizowanymi albo powstanie nowy sejf.",
+    "description": "Dane lokalne zostają. Pozostałe urządzenia nadal się synchronizują. Gdy później ponownie włączysz synchronizację, skonfigurujesz ją od nowa.",
+    "pendingChanges_one": "{{count}} zmiana na tym urządzeniu nie została jeszcze wysłana. Nie zostanie już wysłana.",
+    "pendingChanges_few": "{{count}} zmiany na tym urządzeniu nie zostały jeszcze wysłane. Nie zostaną już wysłane.",
+    "pendingChanges_many": "{{count}} zmian na tym urządzeniu nie zostało jeszcze wysłanych. Nie zostaną już wysłane.",
+    "pendingChanges_other": "{{count}} zmiany na tym urządzeniu nie zostało jeszcze wysłane. Nie zostaną już wysłane.",
     "confirm": "Wyłącz synchronizację",
     "success": "Synchronizacja wyłączona"
   },

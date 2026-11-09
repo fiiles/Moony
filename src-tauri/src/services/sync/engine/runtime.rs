@@ -8,6 +8,7 @@
 //! profile locks: a step that finds the session closed (`AppError::Auth`) ends it without an error
 //! status; the next unlock starts a fresh engine.
 
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
@@ -23,7 +24,7 @@ use super::status::{self, problem_of, Runtime};
 use super::{recheck_vault, run_round_into, ConnAccess, EngineEvents, RoundMode, RoundReport};
 use crate::error::AppError;
 use crate::models::sync::{SyncProblem, SyncStatus};
-use crate::services::sync::binding::{self, StartupCheck};
+use crate::services::sync::binding::{self, BindingNative, StartupCheck};
 use crate::services::sync::error::{SyncError, Transient};
 use crate::services::sync::relay::Relay;
 use crate::services::sync::state;
@@ -334,24 +335,16 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
         let db = self.db.clone();
         let _no_round = super::exclusive(&db).await;
         let dir = self.events.data_dir();
-        let checked = self
-            .db
-            .with_conn(|conn| binding::startup_check(conn, &dir, self.events.binding()));
-        let check = match checked {
-            Ok(check) => check,
-            Err(error) => {
+        match rejoin_if_copy(&self.db, &dir, self.events.binding(), unix_now()) {
+            Ok(CopyCheck::Rejoined) => self.write_binding()?,
+            Ok(CopyCheck::Fine) => self.write_binding_if_due()?,
+            Err(CopyCheckFailure::Check(error)) => {
                 return self.start_failed(error, "The device binding could not be checked");
             }
-        };
-        if let StartupCheck::Rejoin(reason) = check {
-            log::info!("[SYNC] This profile is a copy ({reason:?}): it re-joins under a new ID");
-            let rejoined = self
-                .db
-                .with_conn(|conn| rejoin_as_new_device(conn, None, unix_now()));
-            if let Err(error) = rejoined {
+            Err(CopyCheckFailure::Rejoin(error)) => {
                 return self.start_failed(error, "The re-join at unlock failed");
             }
-            if let Err(error) = binding::clear_rejoin_marker(&dir) {
+            Err(CopyCheckFailure::Marker(error)) => {
                 log::warn!(
                     "[SYNC] The restore marker could not be removed after the re-join ({}): \
                      sync stops for this session",
@@ -360,9 +353,6 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
                 self.note_problem(SyncProblem::Internal)?;
                 return Err(Ended);
             }
-            self.write_binding()?;
-        } else {
-            self.write_binding_if_due()?;
         }
         Ok(true)
     }
@@ -540,6 +530,62 @@ impl<R: Relay, D: ConnAccess, E: EngineEvents> Engine<R, D, E> {
             }
         }
     }
+}
+
+/// What [`rejoin_if_copy`] did.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CopyCheck {
+    /// Not a copy: nothing changed.
+    Fine,
+    /// A copy: it re-joined under a new device ID, and the restore marker is gone. The binding of
+    /// the new ID is not written yet (`binding_written = 0`).
+    Rejoined,
+}
+
+/// Why [`rejoin_if_copy`] stopped.
+#[derive(Debug)]
+pub enum CopyCheckFailure {
+    /// The check could not be made (an unreadable binding): nothing changed.
+    Check(AppError),
+    /// The re-join failed and rolled back: nothing changed.
+    Rejoin(AppError),
+    /// The re-join committed, but the restore marker could not be removed.
+    Marker(std::io::Error),
+}
+
+impl CopyCheckFailure {
+    /// The error a person's action (the repair, a resumed setup) stops with: an unreadable binding
+    /// stays a sync error, as at the engine's start.
+    pub fn into_app_error(self) -> AppError {
+        match self {
+            Self::Check(error) | Self::Rejoin(error) => error,
+            Self::Marker(error) => error.into(),
+        }
+    }
+}
+
+/// The engine start's copy check (obligation c), for every path that may push: the engine's
+/// start, the repair's drain (`join::repair_capture`) and a resumed setup's first round
+/// (`setup::finish_setup`). `binding::startup_check`; on `Rejoin`, the re-join commits
+/// (`rejoin_as_new_device`), then the restore marker goes. The caller holds off every round
+/// (`engine::exclusive`) and writes the new ID's binding afterwards.
+pub fn rejoin_if_copy<D: ConnAccess>(
+    db: &D,
+    data_dir: &Path,
+    native: &dyn BindingNative,
+    now: i64,
+) -> Result<CopyCheck, CopyCheckFailure> {
+    let check = db
+        .with_conn(|conn| binding::startup_check(conn, data_dir, native))
+        .map_err(CopyCheckFailure::Check)?;
+    let StartupCheck::Rejoin(reason) = check else {
+        return Ok(CopyCheck::Fine);
+    };
+    log::info!("[SYNC] This profile is a copy ({reason:?}): it re-joins under a new ID");
+    db.with_conn(|conn| rejoin_as_new_device(conn, None, now))
+        .map_err(CopyCheckFailure::Rejoin)?;
+    binding::clear_rejoin_marker(data_dir).map_err(CopyCheckFailure::Marker)?;
+    Ok(CopyCheck::Rejoined)
 }
 
 /// The session is closed (locked, or another profile opened): the engine has nothing to do.

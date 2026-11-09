@@ -11,11 +11,13 @@
 //! `sync_state.relay_url` (`keys::account`), never from `default_base_url()`.
 //!
 //! Every database step runs off the runtime (`off_thread`) without a network call inside it, but
-//! one: `finish_setup` writes the device binding (`write_binding_if_due`) on the runtime, under
-//! the connection lock and the round lock, because the platform's sealing (`BindingNative`) comes
-//! in as a borrowed `&dyn` that cannot move to the blocking pool (as in `join::join_by_replace`).
-//! It is one keychain or DPAPI seal of 32 bytes and one small file write. (`block_in_place` would
-//! need a multi-thread runtime; the tests run on tokio's current-thread one.)
+//! two in `finish_setup`: the copy check of a resumed setup (`join::rejoin_if_copy_under_lock`)
+//! and the binding write (`write_binding_if_due`) run on the runtime, under the connection lock
+//! and the round lock, because the platform's sealing (`BindingNative`) comes in as a borrowed
+//! `&dyn` that cannot move to the blocking pool (as in `join::join_by_replace`). Each is at most
+//! one keychain or DPAPI open or seal of 32 bytes, a small file read or write and, for a copy,
+//! the re-join's one savepoint. (`block_in_place` would need a multi-thread runtime; the tests run
+//! on tokio's current-thread one.)
 //!
 //! `finish_setup`, `delete_synced_data` and `turn_off_between_rounds` hold off the profile's
 //! rounds (`engine::exclusive`) while they change what a round works on.
@@ -32,6 +34,7 @@ use super::engine::snapshots::{off_thread, SnapshotPolicy};
 use super::engine::{self, ConnAccess, RoundMode, RoundReport};
 use super::error::{SyncError, SyncResult, TooLarge, Transient};
 use super::in_savepoint;
+use super::join::rejoin_if_copy_under_lock;
 use super::keys::{self, Credentials};
 use super::recovery::{encode_recovery_code, format_recovery_code, qr_svg, recovery_qr_payload};
 use super::relay::http::{is_default_relay, normalize_base_url, validate_base_url};
@@ -172,10 +175,13 @@ pub fn setup_recovery_kit(conn: &Connection) -> Result<RecoveryKit> {
 ///    trusted: the person ticked it after a save or a copy); then the device name is checked.
 /// 2. Under the profile's round lock: without the account and the vault's secrets,
 ///    `validation.syncSetupIncomplete`; with sync on and a snapshot already taken,
-///    `validation.syncAlreadyEnabled`. The stored relay address is checked, and the relay creates
-///    the vault (an existing one of this account and token is fine; `Lapsed` and
-///    `VaultLimitReached` come back as they are and read `validation.syncPaymentRequired` and
-///    `validation.syncVaultLimitReached` at the command).
+///    `validation.syncAlreadyEnabled`. With sync already on (a resumed setup), the engine start's
+///    copy check runs first (`runtime::rejoin_if_copy`): a copy re-joins under a new device ID
+///    before the first round pushes, and a check that cannot be made stops setup with its
+///    error. The stored relay address is checked, and the relay creates the vault (an existing
+///    one of this account and token is fine; `Lapsed` and `VaultLimitReached` come back as they
+///    are and read `validation.syncPaymentRequired` and `validation.syncVaultLimitReached` at the
+///    command).
 /// 3. In one savepoint: sync is turned on for the device the row holds (`binding::enable`, which
 ///    also clears a stale restore marker), the key pair made once, and this device recorded under
 ///    `device_name`. The device ID does not change, so a written binding stays valid. Then the
@@ -219,6 +225,11 @@ pub async fn finish_setup<R: Relay, D: ConnAccess>(
             Ok((creds, on))
         })
         .await?;
+        if on {
+            // A resumed setup pushes in its first round: a copy re-joins first, as at the
+            // engine's start.
+            rejoin_if_copy_under_lock(db, data_dir, native, now)?;
+        }
         validate_base_url(&creds.relay_url)?;
         if relay.create_vault(&creds.account, &creds.auth()).await? {
             log::info!("[SYNC] Created the vault on the relay");

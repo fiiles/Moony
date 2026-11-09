@@ -150,6 +150,9 @@
     "hint": "Sustituye los datos de este dispositivo por los sincronizados. Úsalo si el historial de sincronización de este dispositivo es incoherente.",
     "title": "¿Volver a sincronizar este dispositivo?",
     "description": "Los datos de este dispositivo se sustituyen por los sincronizados. Antes se guarda una copia de seguridad. Los cambios que este dispositivo aún no ha enviado solo quedan en esa copia.",
+    "pendingChanges_one": "{{count}} cambio de este dispositivo aún no se ha enviado. Solo quedará en la copia de seguridad.",
+    "pendingChanges_many": "{{count}} cambios de este dispositivo aún no se han enviado. Solo quedarán en la copia de seguridad.",
+    "pendingChanges_other": "{{count}} cambios de este dispositivo aún no se han enviado. Solo quedarán en la copia de seguridad.",
     "confirm": "Volver a sincronizar",
     "success": "Dispositivo sincronizado de nuevo. Copia de seguridad guardada como {{file}}."
   },
@@ -157,7 +160,10 @@
     "button": "Desactivar la sincronización en este dispositivo",
     "hint": "Los datos locales se conservan. Los demás dispositivos siguen sincronizando.",
     "title": "¿Desactivar la sincronización en este dispositivo?",
-    "description": "Los datos locales se conservan. Los demás dispositivos siguen sincronizando. Si más adelante vuelves a activar la sincronización, los datos de este dispositivo se sustituirán por los sincronizados o se creará una bóveda nueva.",
+    "description": "Los datos locales se conservan. Los demás dispositivos siguen sincronizando. Si más adelante vuelves a activar la sincronización, tendrás que configurarla de nuevo.",
+    "pendingChanges_one": "{{count}} cambio de este dispositivo aún no se ha enviado. Ya no se enviará.",
+    "pendingChanges_many": "{{count}} cambios de este dispositivo aún no se han enviado. Ya no se enviarán.",
+    "pendingChanges_other": "{{count}} cambios de este dispositivo aún no se han enviado. Ya no se enviarán.",
     "confirm": "Desactivar la sincronización",
     "success": "Sincronización desactivada"
   },

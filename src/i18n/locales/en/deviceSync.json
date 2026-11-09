@@ -150,6 +150,8 @@
     "hint": "Replaces this device's data with the synced data. Use it if this device's sync history is inconsistent.",
     "title": "Re-sync this device?",
     "description": "This device's data is replaced with the synced data. A backup is saved first. Changes this device has not sent yet are kept only in that backup.",
+    "pendingChanges_one": "{{count}} change on this device has not been sent yet. It will be kept only in the backup.",
+    "pendingChanges_other": "{{count}} changes on this device have not been sent yet. They will be kept only in the backup.",
     "confirm": "Re-sync",
     "success": "Device re-synced. Backup saved as {{file}}."
   },
@@ -157,7 +159,9 @@
     "button": "Turn off sync on this device",
     "hint": "Local data stays. Other devices keep syncing.",
     "title": "Turn off sync on this device?",
-    "description": "Local data stays. Other devices keep syncing. Turning sync on again later replaces this device's data with the synced data or starts a new vault.",
+    "description": "Local data stays. Other devices keep syncing. If you turn sync on again later, you set it up anew.",
+    "pendingChanges_one": "{{count}} change on this device has not been sent yet. It will not be sent.",
+    "pendingChanges_other": "{{count}} changes on this device have not been sent yet. They will not be sent.",
     "confirm": "Turn off sync",
     "success": "Sync turned off"
   },

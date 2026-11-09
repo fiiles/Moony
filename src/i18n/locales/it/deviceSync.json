@@ -150,6 +150,9 @@
     "hint": "Sostituisce i dati di questo dispositivo con quelli sincronizzati. Usalo se la cronologia di sincronizzazione di questo dispositivo è incoerente.",
     "title": "Risincronizzare questo dispositivo?",
     "description": "I dati di questo dispositivo vengono sostituiti con quelli sincronizzati. Prima viene salvato un backup. Le modifiche che questo dispositivo non ha ancora inviato restano solo in quel backup.",
+    "pendingChanges_one": "{{count}} modifica di questo dispositivo non è ancora stata inviata. Resterà solo nel backup.",
+    "pendingChanges_many": "{{count}} modifiche di questo dispositivo non sono ancora state inviate. Resteranno solo nel backup.",
+    "pendingChanges_other": "{{count}} modifiche di questo dispositivo non sono ancora state inviate. Resteranno solo nel backup.",
     "confirm": "Risincronizza",
     "success": "Dispositivo risincronizzato. Backup salvato come {{file}}."
   },
@@ -157,7 +160,10 @@
     "button": "Disattiva la sincronizzazione su questo dispositivo",
     "hint": "I dati locali restano. Gli altri dispositivi continuano a sincronizzare.",
     "title": "Disattivare la sincronizzazione su questo dispositivo?",
-    "description": "I dati locali restano. Gli altri dispositivi continuano a sincronizzare. Se riattivi la sincronizzazione in seguito, i dati di questo dispositivo verranno sostituiti con quelli sincronizzati oppure verrà creato un nuovo vault.",
+    "description": "I dati locali restano. Gli altri dispositivi continuano a sincronizzare. Se riattivi la sincronizzazione in seguito, dovrai configurarla da capo.",
+    "pendingChanges_one": "{{count}} modifica di questo dispositivo non è ancora stata inviata. Non verrà più inviata.",
+    "pendingChanges_many": "{{count}} modifiche di questo dispositivo non sono ancora state inviate. Non verranno più inviate.",
+    "pendingChanges_other": "{{count}} modifiche di questo dispositivo non sono ancora state inviate. Non verranno più inviate.",
     "confirm": "Disattiva la sincronizzazione",
     "success": "Sincronizzazione disattivata"
   },

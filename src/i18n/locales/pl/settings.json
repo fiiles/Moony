@@ -120,7 +120,7 @@
     "deleteAll": "Usuń wszystkie dane",
     "deleteAllHint": "Usuwa bazę danych, pliki kluczy i załączniki na tym komputerze. Kopie obok bazy (moony.db.bak-…, pre-restore-…) zostają w folderze danych (Dane i kopie zapasowe → Otwórz folder), tak samo jak kopie zapasowe zapisane poza aplikacją.",
     "deleteButton": "Usuń dane…",
-    "syncDeleted": "Zsynchronizowane dane na serwerze synchronizacji również zostaną usunięte.",
+    "syncDeleted": "Zsynchronizowane dane na serwerze synchronizacji również zostaną usunięte, więc twoje pozostałe urządzenia przestaną się synchronizować.",
     "confirmDescriptionSynced": "Tej operacji nie można cofnąć. Trwale usuwa bazę danych, pliki kluczy i załączniki z tego urządzenia. Kopie, które Moony trzyma obok bazy (moony.db.bak-…, pre-restore-…), zostają w folderze danych; prowadzi do niego Ustawienia → Dane i kopie zapasowe → Otwórz folder."
   },
   "toast": {

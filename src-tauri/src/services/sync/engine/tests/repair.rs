@@ -6,9 +6,10 @@ use super::join::{
     break_capture, device_of, repair_backups, repair_state, round, snapshot_of_a, validation_key,
     XorNative,
 };
+use super::runtime::op_devices;
 use super::*;
 use crate::services::backup;
-use crate::services::sync::binding::NoBinding;
+use crate::services::sync::binding::{write_rejoin_marker, NoBinding, REJOIN_MARKER};
 use crate::services::sync::capture;
 use crate::services::sync::devices;
 use crate::services::sync::engine::RoundMode;
@@ -84,6 +85,37 @@ async fn repair_backs_up_drains_and_rejoins_under_a_new_device() {
         repair_backups(dir.path()),
         vec![format!("sync-repair-{NOW}.zip")]
     );
+}
+
+/// A restored copy whose engine start never re-joined (its check failed, say) must not drain
+/// under the original device's ID: the repair runs the start's check before the drain pushes.
+#[tokio::test]
+async fn a_repair_of_a_restored_copy_rejoins_before_the_drain_pushes() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    round(&vault, &vault.b, RoundMode::Normal).await;
+    let head = vault.relay.ops().last().map_or(0, |op| op.seq);
+    institution(&vault.b.lock(), "b1");
+    break_capture(&vault.b);
+    let dir = tempfile::tempdir().expect("dir");
+    write_rejoin_marker(dir.path()).expect("marker");
+
+    repair_capture(&vault.relay, &vault.b, dir.path(), &NoBinding, NOW)
+        .await
+        .expect("repair");
+
+    let drained = op_devices(&vault, head);
+    assert_eq!(drained.len(), 1, "the drained envelope: {drained:?}");
+    assert!(
+        drained[0] > B,
+        "pushed under the re-join's new ID, never under B's: {drained:?}"
+    );
+    assert!(
+        !dir.path().join(REJOIN_MARKER).exists(),
+        "the re-join cleared the marker"
+    );
+    round(&vault, &vault.a, RoundMode::Normal).await;
+    assert!(has_institution(&vault.a.lock(), "b1"));
 }
 
 #[tokio::test]

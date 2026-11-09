@@ -150,6 +150,10 @@
     "hint": "Nahradí data tohoto zařízení synchronizovanými daty. Použijte to, pokud je historie synchronizace tohoto zařízení nekonzistentní.",
     "title": "Synchronizovat toto zařízení znovu?",
     "description": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Nejdřív se uloží záloha. Změny, které toto zařízení ještě neodeslalo, zůstanou jen v této záloze.",
+    "pendingChanges_one": "{{count}} změna na tomto zařízení ještě nebyla odeslána. Zůstane jen v záloze.",
+    "pendingChanges_few": "{{count}} změny na tomto zařízení ještě nebyly odeslány. Zůstanou jen v záloze.",
+    "pendingChanges_many": "{{count}} změny na tomto zařízení ještě nebylo odesláno. Zůstanou jen v záloze.",
+    "pendingChanges_other": "{{count}} změn na tomto zařízení ještě nebylo odesláno. Zůstanou jen v záloze.",
     "confirm": "Synchronizovat znovu",
     "success": "Zařízení znovu synchronizováno. Záloha uložena jako {{file}}."
   },
@@ -157,7 +161,11 @@
     "button": "Vypnout synchronizaci na tomto zařízení",
     "hint": "Místní data zůstanou. Ostatní zařízení se synchronizují dál.",
     "title": "Vypnout synchronizaci na tomto zařízení?",
-    "description": "Místní data zůstanou. Ostatní zařízení se synchronizují dál. Když synchronizaci později zapnete znovu, data tohoto zařízení se nahradí synchronizovanými daty nebo se založí nový trezor.",
+    "description": "Místní data zůstanou. Ostatní zařízení se synchronizují dál. Když synchronizaci později zapnete znovu, nastavíte ji od začátku.",
+    "pendingChanges_one": "{{count}} změna na tomto zařízení ještě nebyla odeslána. Už se neodešle.",
+    "pendingChanges_few": "{{count}} změny na tomto zařízení ještě nebyly odeslány. Už se neodešlou.",
+    "pendingChanges_many": "{{count}} změny na tomto zařízení ještě nebylo odesláno. Už se neodešlou.",
+    "pendingChanges_other": "{{count}} změn na tomto zařízení ještě nebylo odesláno. Už se neodešlou.",
     "confirm": "Vypnout synchronizaci",
     "success": "Synchronizace vypnuta"
   },

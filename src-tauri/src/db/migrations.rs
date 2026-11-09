@@ -3415,7 +3415,8 @@ mod migration_029 {
 /// `capture_broken_at` / `vault_gone_at` the pauses (change capture could not be installed, the
 /// relay no longer knows the vault); `pulled_bytes` the envelope bytes pulled since the vault
 /// snapshot `pulled_bytes_base`; `snapshot_uploaded_at` when this device last uploaded a snapshot;
-/// `binding_written` whether the vault binding was written to the device's key file.
+/// `binding_written` whether the device binding was written to the binding file
+/// `sync-binding.bin` next to the profile.
 pub(crate) const MIGRATION_030: &str = r#"
 ALTER TABLE sync_state ADD COLUMN barrier_seq INTEGER;
 ALTER TABLE sync_state ADD COLUMN marker_barrier INTEGER NOT NULL DEFAULT 0;

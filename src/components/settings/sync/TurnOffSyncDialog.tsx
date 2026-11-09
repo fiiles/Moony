@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { translateApiError } from '@/lib/translate-api-error';
 import {
@@ -13,11 +14,15 @@ import {
 } from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 
-/** Turning sync off on this device: local data stays, the other devices keep syncing. */
+/**
+ * Turning sync off on this device: local data stays, the other devices keep syncing. Changes not
+ * sent yet are counted, since they will not be sent.
+ */
 export function TurnOffSyncDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const { turnOff } = useDeviceSyncMutations();
+  const pending = useDeviceSyncStatus().data?.pendingChanges ?? 0;
 
   const run = async () => {
     try {
@@ -34,7 +39,14 @@ export function TurnOffSyncDialog({ onClose }: { onClose: () => void }) {
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{t('turnOff.title')}</AlertDialogTitle>
-          <AlertDialogDescription>{t('turnOff.description')}</AlertDialogDescription>
+          <AlertDialogDescription asChild>
+            <div className="space-y-2">
+              <p>{t('turnOff.description')}</p>
+              {pending > 0 && (
+                <p className="font-600">{t('turnOff.pendingChanges', { count: pending })}</p>
+              )}
+            </div>
+          </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={turnOff.isPending}>{tc('buttons.cancel')}</AlertDialogCancel>

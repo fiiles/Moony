@@ -8,7 +8,9 @@ use std::path::Path;
 use super::join::{validation_key, XorNative};
 use super::*;
 use crate::models::sync::{CheckoutTarget, SyncPlan};
-use crate::services::sync::binding::{startup_check, StartupCheck, BINDING_FILE, REJOIN_MARKER};
+use crate::services::sync::binding::{
+    startup_check, write_rejoin_marker, StartupCheck, BINDING_FILE, REJOIN_MARKER,
+};
 use crate::services::sync::capture;
 use crate::services::sync::changeset::from_json;
 use crate::services::sync::engine::snapshots::{open_sealed, SnapshotPolicy};
@@ -797,6 +799,54 @@ async fn a_first_round_that_pushed_nothing_fails_setup_and_resumes() {
     assert_eq!(relay.ops().len(), 1);
     assert_eq!(relay.snapshot_seq(), Some(1));
     assert_eq!(cursor(&device.lock()), 1, "S is the applied cursor");
+}
+
+/// A setup that stopped after sync was turned on, on a profile that then turned out to be a copy
+/// (a restore left the marker): the resumed setup re-joins under a new ID before its first push.
+#[tokio::test]
+async fn a_resumed_setup_on_a_restored_copy_rejoins_before_its_first_push() {
+    let relay = FakeRelay::new();
+    let device = fresh();
+    let dir = tempfile::tempdir().expect("dir");
+    let account = create_account(&relay, &device, RELAY)
+        .await
+        .expect("account");
+    relay.set_paid(&account.account_number, true);
+    recovery_kit(&device.lock()).expect("kit");
+    relay.fail_next(Route::Pull, RelayError::Network("timeout".into()));
+    let stopped = finish(&relay, &device, dir.path()).await;
+    assert!(
+        matches!(stopped, Err(SyncError::Transient(_))),
+        "{stopped:?}"
+    );
+    let original = device_of(&device.lock());
+    write_rejoin_marker(dir.path()).expect("marker");
+
+    finish(&relay, &device, dir.path()).await.expect("resumed");
+
+    let rejoined = device_of(&device.lock());
+    assert!(rejoined > original, "a new device ID above the original");
+    let creds = keys::credentials(&device.lock())
+        .expect("credentials")
+        .expect("stored");
+    let ops = relay.ops();
+    assert_eq!(ops.len(), 1);
+    let json = open_op(|epoch| creds.keys.get(epoch), &creds.vault_id.0, &ops[0].ct).expect("open");
+    let cs = from_json(&json).expect("changeset");
+    assert_eq!(
+        (cs.device, cs.seq),
+        (rejoined, 1),
+        "the first push is under the new ID"
+    );
+    assert!(
+        !dir.path().join(REJOIN_MARKER).exists(),
+        "the re-join cleared the marker"
+    );
+    assert_eq!(
+        startup_check(&device.lock(), dir.path(), &XorNative).expect("check"),
+        StartupCheck::Fine,
+        "the binding is written for the new ID"
+    );
 }
 
 #[tokio::test]

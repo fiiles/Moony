@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
+import { useDeviceSyncStatus } from '@/hooks/use-device-sync';
 import { useDeviceSyncMutations } from '@/hooks/use-device-sync-mutations';
 import { ApiError } from '@/lib/api-error';
 import { translateApiError } from '@/lib/translate-api-error';
@@ -66,6 +67,7 @@ export function RepairDeviceDialog({
 export function ResyncDeviceDialog({ onClose }: { onClose: () => void }) {
   const { t } = useTranslation('deviceSync');
   const { resyncDevice } = useDeviceSyncMutations();
+  const pending = useDeviceSyncStatus().data?.pendingChanges ?? 0;
   // The password is the mutation's variable: it leaves the cache with the dialog.
   const resetResync = resyncDevice.reset;
   useEffect(() => resetResync, [resetResync]);
@@ -73,6 +75,7 @@ export function ResyncDeviceDialog({ onClose }: { onClose: () => void }) {
     <SyncPasswordDialog
       title={t('resync.title')}
       description={t('resync.description')}
+      note={pending > 0 ? t('resync.pendingChanges', { count: pending }) : undefined}
       confirmLabel={t('resync.confirm')}
       destructive
       onSubmit={async (password) => {

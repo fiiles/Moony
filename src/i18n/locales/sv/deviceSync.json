@@ -150,6 +150,8 @@
     "hint": "Ersätter enhetens data med de synkroniserade uppgifterna. Använd det om enhetens synkroniseringshistorik är inkonsekvent.",
     "title": "Synkronisera den här enheten igen?",
     "description": "Enhetens data ersätts med de synkroniserade uppgifterna. En säkerhetskopia sparas först. Ändringar som enheten ännu inte har skickat finns bara kvar i den säkerhetskopian.",
+    "pendingChanges_one": "{{count}} ändring på den här enheten har inte skickats än. Den finns bara kvar i säkerhetskopian.",
+    "pendingChanges_other": "{{count}} ändringar på den här enheten har inte skickats än. De finns bara kvar i säkerhetskopian.",
     "confirm": "Synkronisera igen",
     "success": "Enheten är synkroniserad igen. Säkerhetskopia sparad som {{file}}."
   },
@@ -157,7 +159,9 @@
     "button": "Stäng av synkronisering på den här enheten",
     "hint": "Lokala data finns kvar. Andra enheter fortsätter synkronisera.",
     "title": "Stänga av synkroniseringen på den här enheten?",
-    "description": "Lokala data finns kvar. Andra enheter fortsätter synkronisera. Slår du på synkroniseringen igen senare ersätts enhetens data med de synkroniserade uppgifterna, eller så skapas ett nytt valv.",
+    "description": "Lokala data finns kvar. Andra enheter fortsätter synkronisera. Slår du på synkroniseringen igen senare får du ställa in den på nytt.",
+    "pendingChanges_one": "{{count}} ändring på den här enheten har inte skickats än. Den skickas inte.",
+    "pendingChanges_other": "{{count}} ändringar på den här enheten har inte skickats än. De skickas inte.",
     "confirm": "Stäng av synkronisering",
     "success": "Synkroniseringen är avstängd"
   },

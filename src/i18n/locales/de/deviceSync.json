@@ -150,6 +150,8 @@
     "hint": "Ersetzt die Daten dieses Geräts durch die synchronisierten Daten. Nutzen Sie dies, wenn der Sync-Verlauf dieses Geräts inkonsistent ist.",
     "title": "Dieses Gerät neu synchronisieren?",
     "description": "Die Daten dieses Geräts werden durch die synchronisierten Daten ersetzt. Zuvor wird eine Sicherung gespeichert. Änderungen, die dieses Gerät noch nicht gesendet hat, bleiben nur in dieser Sicherung erhalten.",
+    "pendingChanges_one": "{{count}} Änderung auf diesem Gerät wurde noch nicht gesendet. Sie bleibt nur in der Sicherung erhalten.",
+    "pendingChanges_other": "{{count}} Änderungen auf diesem Gerät wurden noch nicht gesendet. Sie bleiben nur in der Sicherung erhalten.",
     "confirm": "Neu synchronisieren",
     "success": "Gerät neu synchronisiert. Sicherung gespeichert als {{file}}."
   },
@@ -157,7 +159,9 @@
     "button": "Synchronisierung auf diesem Gerät ausschalten",
     "hint": "Lokale Daten bleiben erhalten. Andere Geräte synchronisieren weiter.",
     "title": "Synchronisierung auf diesem Gerät ausschalten?",
-    "description": "Lokale Daten bleiben erhalten. Andere Geräte synchronisieren weiter. Wenn Sie die Synchronisierung später wieder einschalten, werden die Daten dieses Geräts durch die synchronisierten Daten ersetzt oder es wird ein neuer Tresor angelegt.",
+    "description": "Lokale Daten bleiben erhalten. Andere Geräte synchronisieren weiter. Wenn Sie die Synchronisierung später wieder einschalten, richten Sie sie neu ein.",
+    "pendingChanges_one": "{{count}} Änderung auf diesem Gerät wurde noch nicht gesendet. Sie wird nicht mehr gesendet.",
+    "pendingChanges_other": "{{count}} Änderungen auf diesem Gerät wurden noch nicht gesendet. Sie werden nicht mehr gesendet.",
     "confirm": "Synchronisierung ausschalten",
     "success": "Synchronisierung ausgeschaltet"
   },

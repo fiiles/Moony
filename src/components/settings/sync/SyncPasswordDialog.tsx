@@ -17,6 +17,8 @@ import { translateApiError } from '@/lib/translate-api-error';
 interface SyncPasswordDialogProps {
   title: string;
   description: ReactNode;
+  /** A second, emphasised sentence under the description (e.g. how many changes are unsent). */
+  note?: string;
   confirmLabel: string;
   /** The confirm button is red for actions that delete or replace data. */
   destructive?: boolean;
@@ -32,6 +34,7 @@ interface SyncPasswordDialogProps {
 export function SyncPasswordDialog({
   title,
   description,
+  note,
   confirmLabel,
   destructive = false,
   closeOnSuccess = true,
@@ -80,7 +83,12 @@ export function SyncPasswordDialog({
         <form onSubmit={submit} className="grid gap-4">
           <AlertDialogHeader>
             <AlertDialogTitle>{title}</AlertDialogTitle>
-            <AlertDialogDescription>{description}</AlertDialogDescription>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>{description}</p>
+                {note && <p className="font-600">{note}</p>}
+              </div>
+            </AlertDialogDescription>
           </AlertDialogHeader>
           <div className="grid gap-1.5">
             <Label htmlFor="sync-device-password">{t('password.label')}</Label>

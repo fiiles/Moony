@@ -787,6 +787,7 @@ fn a_relay_address_over_256_characters_is_refused() {
     }
 }
 
+#[cfg(debug_assertions)]
 #[tokio::test]
 async fn dev_grant_posts_the_days_with_the_account_header() {
     let (base, server) = serve_once(json_answer("200 OK", r#"{"paidUntil":1800000000}"#));

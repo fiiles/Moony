@@ -28,7 +28,8 @@ pub mod natural_id;
 pub mod recovery;
 pub mod registry;
 pub mod relay;
-#[cfg(test)]
+// `dev_grant` exists only in debug builds (ruling P18), so the e2e tests do too.
+#[cfg(all(test, debug_assertions))]
 mod relay_e2e;
 pub mod repair;
 pub mod setup;

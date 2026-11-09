@@ -18,6 +18,7 @@
 //! `TestConn`, with their own data folder; the clock is the real one, as the relay's is.
 
 use std::path::Path;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use rusqlite::Connection;
@@ -30,9 +31,13 @@ use super::engine::tests::TestConn;
 use super::engine::{run_round, RoundMode, RoundReport};
 use super::error::{SyncError, SyncResult};
 use super::join::{join_by_replace, repair_capture, resync_by_replace};
+use super::keys::VaultAuth;
 use super::keys::{self, Credentials};
 use super::relay::http::HttpRelay;
-use super::relay::Relay;
+use super::relay::{
+    AccountStatus, CheckoutPlan, OutgoingOp, PullPage, PushReceipt, Relay, RelayResult,
+    SnapshotBlob, VaultInfo,
+};
 use super::setup::{
     account_status, checkout_url, create_account, delete_synced_data, finish_setup, recovery_kit,
 };
@@ -115,13 +120,13 @@ impl Device {
     }
 
     /// One `Normal` round at the real time; an error or a problem fails the test.
-    async fn round(&self, relay: &HttpRelay) -> RoundReport {
+    async fn round(&self, relay: &impl Relay) -> RoundReport {
         let report = self.round_with_problem(relay).await;
         assert_eq!(report.problem, None, "{report:?}");
         report
     }
 
-    async fn round_with_problem(&self, relay: &HttpRelay) -> RoundReport {
+    async fn round_with_problem(&self, relay: &impl Relay) -> RoundReport {
         run_round(
             relay,
             &self.db,
@@ -139,6 +144,113 @@ impl Device {
         join_by_replace(relay, &self.db, creds, name, self.dir(), &NoBinding, now())
             .await
             .expect("join");
+    }
+}
+
+/// The real relay, counting the pushes and pulls a round makes through it, and the pull pages
+/// the relay cut short (`more`).
+struct Counting<'a> {
+    relay: &'a HttpRelay,
+    pushes: AtomicUsize,
+    pulls: AtomicUsize,
+    cut_pages: AtomicUsize,
+}
+
+impl<'a> Counting<'a> {
+    fn new(relay: &'a HttpRelay) -> Self {
+        Counting {
+            relay,
+            pushes: AtomicUsize::new(0),
+            pulls: AtomicUsize::new(0),
+            cut_pages: AtomicUsize::new(0),
+        }
+    }
+
+    fn pushes(&self) -> usize {
+        self.pushes.load(Ordering::SeqCst)
+    }
+
+    fn pulls(&self) -> usize {
+        self.pulls.load(Ordering::SeqCst)
+    }
+
+    fn cut_pages(&self) -> usize {
+        self.cut_pages.load(Ordering::SeqCst)
+    }
+}
+
+impl Relay for Counting<'_> {
+    async fn create_account(&self) -> RelayResult<String> {
+        self.relay.create_account().await
+    }
+
+    async fn account_status(&self, account: &str) -> RelayResult<AccountStatus> {
+        self.relay.account_status(account).await
+    }
+
+    async fn checkout(&self, account: &str, plan: CheckoutPlan) -> RelayResult<String> {
+        self.relay.checkout(account, plan).await
+    }
+
+    async fn create_vault(&self, account: &str, vault: &VaultAuth) -> RelayResult<bool> {
+        self.relay.create_vault(account, vault).await
+    }
+
+    async fn vault_info(&self, vault: &VaultAuth) -> RelayResult<VaultInfo> {
+        self.relay.vault_info(vault).await
+    }
+
+    async fn push(&self, vault: &VaultAuth, ops: &[OutgoingOp]) -> RelayResult<PushReceipt> {
+        self.pushes.fetch_add(1, Ordering::SeqCst);
+        self.relay.push(vault, ops).await
+    }
+
+    async fn pull(&self, vault: &VaultAuth, after: u64, limit: u32) -> RelayResult<PullPage> {
+        self.pulls.fetch_add(1, Ordering::SeqCst);
+        let page = self.relay.pull(vault, after, limit).await;
+        if page.as_ref().is_ok_and(|page| page.more) {
+            self.cut_pages.fetch_add(1, Ordering::SeqCst);
+        }
+        page
+    }
+
+    async fn put_snapshot(&self, vault: &VaultAuth, seq: u64, bytes: Vec<u8>) -> RelayResult<()> {
+        self.relay.put_snapshot(vault, seq, bytes).await
+    }
+
+    async fn get_snapshot(&self, vault: &VaultAuth) -> RelayResult<SnapshotBlob> {
+        self.relay.get_snapshot(vault).await
+    }
+
+    async fn delete_vault(&self, vault: &VaultAuth) -> RelayResult<()> {
+        self.relay.delete_vault(vault).await
+    }
+}
+
+/// Deletes a vault on the relay when dropped, so a test that panics after making it leaves no
+/// vault behind (a self-hosted account owns at most 5). `Drop` cannot await, so it blocks on the
+/// test's own runtime (`block_in_place`, which needs the multi-thread flavour): the relay
+/// client's pooled connections belong to that runtime, and a request on another runtime would
+/// wait on them until it times out. A vault already gone (`404`) is fine.
+struct DeleteVaultOnDrop {
+    url: String,
+    vault: VaultAuth,
+}
+
+impl Drop for DeleteVaultOnDrop {
+    fn drop(&mut self) {
+        let Ok(runtime) = tokio::runtime::Handle::try_current() else {
+            eprintln!("no runtime to delete the test's vault on");
+            return;
+        };
+        let relay = relay_at(&self.url);
+        let deleted = tokio::task::block_in_place(|| {
+            runtime.block_on(async { relay.delete_vault(&self.vault).await })
+        });
+        match deleted {
+            Ok(()) | Err(super::relay::RelayError::VaultNotFound) => {}
+            Err(error) => eprintln!("could not delete the test's vault: {error}"),
+        }
     }
 }
 
@@ -425,7 +537,8 @@ async fn snapshot_round_trip_through_r2() {
     converged(&a, &b);
 }
 
-#[tokio::test]
+// Multi-thread: `DeleteVaultOnDrop` blocks in place on this runtime.
+#[tokio::test(flavor = "multi_thread", worker_threads = 2)]
 #[ignore = "needs a self-hosted Moony-relay: MOONY_RELAY_E2E_SELF_HOSTED, MOONY_RELAY_E2E_ALLOWED_ACCOUNT"]
 async fn a_self_hosted_relay_serves_only_allowed_accounts() {
     let url = env_or("MOONY_RELAY_E2E_SELF_HOSTED", NEEDS_SELF_HOSTED);
@@ -479,6 +592,11 @@ async fn a_self_hosted_relay_serves_only_allowed_accounts() {
         Some(url.trim_end_matches('/')),
         "the kit carries a self-hosted relay's address"
     );
+    // From here on the vault may exist on the relay: it goes again however the test ends.
+    let _cleanup = DeleteVaultOnDrop {
+        url: url.clone(),
+        vault: a.credentials().auth(),
+    };
     finish_setup(&relay, &a.db, "A", true, a.dir(), &NoBinding, now())
         .await
         .expect("finish setup");
@@ -498,7 +616,8 @@ async fn a_self_hosted_relay_serves_only_allowed_accounts() {
         Some("from B")
     );
 
-    // The allowed account owns at most 5 vaults: this run's goes again.
+    // The allowed account owns at most 5 vaults: this run's goes again (and `_cleanup` finds it
+    // gone).
     delete_synced_data(&relay, &a.db, a.dir())
         .await
         .expect("delete synced data");
@@ -514,9 +633,15 @@ async fn a_large_history_is_split_and_paged() {
     // ~6 MiB of envelopes: more than one push (3 MiB of base64 each) and more than one pull page
     // (the relay cuts a page at 4 MiB).
     add_bulk(&a, 6_000);
-    let pushed = a.round(&relay).await;
+    let counting = Counting::new(&relay);
+    let pushed = a.round(&counting).await;
     let envelopes = pushed.push.as_ref().map_or(0, |push| push.pushed);
     assert!(envelopes > 60, "{pushed:?}");
+    assert!(
+        counting.pushes() >= 2,
+        "{envelopes} envelopes went in {} push(es)",
+        counting.pushes()
+    );
     let info = relay
         .vault_info(&a.credentials().auth())
         .await
@@ -530,7 +655,16 @@ async fn a_large_history_is_split_and_paged() {
     // B joins from setup's (empty) snapshot and pulls the whole history.
     let b = Device::new();
     b.join(&relay, a.credentials(), "B").await;
-    let pulled = b.round(&relay).await;
+    let counting = Counting::new(&relay);
+    let pulled = b.round(&counting).await;
+    // The round pulls again after pushing B's device row, so the call count alone would pass
+    // with one page of history: a page the relay cut short (`more`) proves the paging.
+    assert!(
+        counting.pulls() >= 2 && counting.cut_pages() >= 1,
+        "the history came in {} pull call(s), {} of them cut short",
+        counting.pulls(),
+        counting.cut_pages()
+    );
     assert!(
         pulled
             .pull

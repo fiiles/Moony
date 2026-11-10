@@ -7,7 +7,9 @@
 //! The security rules this file keeps:
 //! - The holder writes slot 2 only after its own confirm, and the joiner reads slot 2 only after
 //!   its own confirm. A scanner whose slot 1 was taken by someone else (contested) shows its own
-//!   code, which differs from the shower's, and can never confirm.
+//!   code, which differs from the shower's, can never confirm, and writes a cancel marker into
+//!   slot 2 (best effort, and only if the impostor has not filled it first), so a shower whose
+//!   person confirms the impostor's code fails its slot-2 write or reads "cancelled".
 //! - The ephemeral X25519 secret is taken out of its `Option` when it is used and dropped (and
 //!   zeroized) right after. The session key is dropped once slot 2 is sealed or opened.
 //! - Received credentials live until `expires_at + RECEIVED_GRACE_SECS`; any call after that
@@ -90,6 +92,9 @@ pub struct PairingSession {
     written: [bool; 2],
     received: Option<Credentials>,
     expires_at: i64,
+    /// Set by the first call at or past `wiped_at`; every later call is refused, whatever its
+    /// `now`.
+    expired: bool,
 }
 
 fn pairing_error(key: &str) -> SyncError {
@@ -116,9 +121,15 @@ fn internal(what: &str) -> SyncError {
     SyncError::Local(AppError::Internal(format!("sync pairing: {what}")))
 }
 
-/// A put whose answer was lost may have been stored.
+/// A put whose answer was lost may have been stored: a timeout, a failure while reading the
+/// answer, or a server error. A put that never reached the relay (`HttpRelay` reports a failed
+/// connection as `"connect"` and a request it could not send as `"request"`) stored nothing.
 fn put_was_ambiguous(error: &RelayError) -> bool {
-    matches!(error, RelayError::Network(_) | RelayError::Server(_))
+    match error {
+        RelayError::Network(reason) => !matches!(reason.as_str(), "connect" | "request"),
+        RelayError::Server(_) => true,
+        _ => false,
+    }
 }
 
 fn random_secret() -> Result<StaticSecret> {
@@ -198,6 +209,7 @@ impl PairingSession {
             written: [false; 2],
             received: None,
             expires_at: now + PAIRING_LIFETIME_SECS,
+            expired: false,
         }
     }
 
@@ -319,9 +331,24 @@ impl PairingSession {
             Ok(Some(bytes)) if is_cancel_marker(&bytes) => Err(cancelled()),
             Ok(_) | Err(RelayError::SlotConsumed) => {
                 self.contested = true;
+                self.close_holder_slot(mailbox, id).await;
                 self.enter_compare()
             }
             Err(error) => Err(self.relay_error(error)),
+        }
+    }
+
+    /// A contested scan: the shower is paired with someone else and shows their code. A cancel
+    /// marker in slot 2 (once, best effort) means that a holder-shower whose person confirms the
+    /// wrong code fails its own slot-2 write, and a joiner-shower reads "cancelled" instead of
+    /// anything sealed.
+    async fn close_holder_slot<M: Mailbox>(&mut self, mailbox: &M, id: &str) {
+        if mailbox
+            .put_slot(id, HOLDER_SLOT, &CANCEL_MARKER)
+            .await
+            .is_ok()
+        {
+            self.written[1] = true;
         }
     }
 
@@ -376,9 +403,10 @@ impl PairingSession {
         Ok(self.stage)
     }
 
-    /// The person confirmed the codes match. Only from Compare: the holder seals the
-    /// credentials into slot 2 → Sent; the joiner starts waiting for them → WaitingForOther,
-    /// sending nothing. A contested scanner cannot confirm.
+    /// The person confirmed the codes match. From Compare: the holder seals the credentials
+    /// into slot 2 → Sent; the joiner starts waiting for them → WaitingForOther, sending nothing.
+    /// A contested scanner cannot confirm. After Compare a repeated confirm returns the stage
+    /// and does nothing; before it, there is nothing to confirm (`syncPairingFailed`).
     pub async fn confirm<M: Mailbox>(
         &mut self,
         mailbox: &M,
@@ -386,8 +414,10 @@ impl PairingSession {
         now: i64,
     ) -> SyncResult<Stage> {
         self.check_alive(now)?;
-        if self.stage != Stage::Compare {
-            return Err(internal("there is nothing to confirm"));
+        match self.stage {
+            Stage::Compare => {}
+            Stage::WaitingForOther | Stage::Sent | Stage::Received => return Ok(self.stage),
+            Stage::Announcing | Stage::WaitingForScan => return Err(failed()),
         }
         if self.contested {
             return Err(code_used());
@@ -428,7 +458,14 @@ impl PairingSession {
     /// Gives the pairing up: within `ABANDON_BUDGET`, a cancel marker into each slot this side
     /// has not written (so a waiting peer reads "cancelled" even if the delete fails), then the
     /// delete. Both best effort; the secret, the session key and the credentials are wiped.
+    ///
+    /// A holder in Sent is simply dropped, sending nothing: the joiner may not have read slot 2
+    /// yet, and the mailbox expires on its own.
     pub async fn abandon<M: Mailbox>(mut self, mailbox: &M) {
+        if self.stage == Stage::Sent {
+            self.wipe();
+            return;
+        }
         let id = self.mailbox.to_b64();
         let written = self.written;
         let _ = tokio::time::timeout(ABANDON_BUDGET, async {
@@ -444,7 +481,8 @@ impl PairingSession {
     }
 
     fn check_alive(&mut self, now: i64) -> SyncResult<()> {
-        if now >= self.wiped_at() {
+        if self.expired || now >= self.wiped_at() {
+            self.expired = true;
             self.wipe();
             return Err(expired());
         }

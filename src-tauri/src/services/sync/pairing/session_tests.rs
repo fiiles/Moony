@@ -237,7 +237,11 @@ async fn a_man_in_the_middle_who_writes_slot_1_first_is_caught() {
     let error = c.confirm(&relay, None, T0).await.unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingCodeUsed");
     assert_eq!(c.stage(), Stage::Compare);
-    assert_eq!(relay.peek_slot(&id(&s), 2), None);
+    assert_eq!(
+        relay.peek_slot(&id(&s), 2),
+        Some(CANCEL_MARKER.to_vec()),
+        "the contested scanner closes slot 2"
+    );
     s.abandon(&relay).await;
     assert_eq!(
         relay.take_slot(&id(&c), 2).await,
@@ -261,7 +265,11 @@ async fn a_man_in_the_middle_who_writes_slot_1_first_is_caught() {
     assert_eq!(c.comparison_code().unwrap(), code_s_c);
     let error = c.confirm(&relay, Some(&creds()), T0).await.unwrap_err();
     assert_eq!(key_of(&error), "validation.syncPairingCodeUsed");
-    assert_eq!(relay.peek_slot(&id(&s), 2), None);
+    assert_eq!(
+        relay.peek_slot(&id(&s), 2),
+        Some(CANCEL_MARKER.to_vec()),
+        "the contested scanner closes slot 2"
+    );
 }
 
 #[tokio::test]
@@ -542,21 +550,32 @@ async fn the_scanner_uses_the_sync_server_the_code_names() {
 async fn confirm_outside_compare_sends_nothing() {
     let relay = FakeRelay::new();
     let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
-    assert!(s.confirm(&relay, Some(&creds()), T0).await.is_err());
+    let error = s.confirm(&relay, Some(&creds()), T0).await.unwrap_err();
+    assert_eq!(key_of(&error), "validation.syncPairingFailed");
     assert_eq!(s.stage(), Stage::WaitingForScan);
-    assert!(c.confirm(&relay, None, T0).await.is_err());
+    let error = c.confirm(&relay, None, T0).await.unwrap_err();
+    assert_eq!(key_of(&error), "validation.syncPairingFailed");
     assert_eq!(c.stage(), Stage::Announcing);
     assert!(relay.calls().is_empty());
 
+    // After Compare a repeated confirm returns the stage and does nothing.
     to_compare(&relay, &mut s, &mut c).await;
     s.confirm(&relay, Some(&creds()), T0).await.unwrap();
-    let before = puts(&relay);
-    assert!(s.confirm(&relay, Some(&creds()), T0).await.is_err());
+    c.confirm(&relay, None, T0).await.unwrap();
+    let calls = relay.calls().len();
+    let again = s.confirm(&relay, Some(&creds()), T0).await.unwrap();
+    assert_eq!(again, Stage::Sent);
+    let again = c.confirm(&relay, None, T0).await.unwrap();
+    assert_eq!(again, Stage::WaitingForOther);
     assert_eq!(
-        puts(&relay),
-        before,
-        "a second confirm after Sent writes nothing"
+        relay.calls().len(),
+        calls,
+        "a repeated confirm sends nothing"
     );
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Received);
+    let calls = relay.calls().len();
+    assert_eq!(c.confirm(&relay, None, T0).await.unwrap(), Stage::Received);
+    assert_eq!(relay.calls().len(), calls);
 }
 
 #[test]
@@ -591,4 +610,167 @@ fn a_session_prints_nothing_secret() {
         }
         assert!(printed.contains("Compare"), "{printed}");
     }
+}
+
+// Fix round 1.
+
+#[test]
+fn only_a_lost_answer_makes_a_put_ambiguous() {
+    let net = |r: &str| RelayError::Network(r.into());
+    for (error, ambiguous) in [
+        (net("timeout"), true),
+        (net("body"), true),
+        (net("other"), true),
+        (RelayError::Server(502), true),
+        (net("connect"), false),
+        (net("request"), false),
+        (RelayError::RateLimited, false),
+        (RelayError::Protocol("redirect".into()), false),
+    ] {
+        assert_eq!(put_was_ambiguous(&error), ambiguous, "{error:?}");
+    }
+}
+
+#[tokio::test]
+async fn a_put_that_never_left_is_not_taken_for_our_own_write() {
+    for reason in ["connect", "request"] {
+        let relay = FakeRelay::new();
+        let (_s, mut c) = pair(Role::Holder, Role::Joiner);
+        relay.fail_next(Route::MailboxPut, RelayError::Network(reason.into()));
+        let error = c.announce(&relay, T0).await.unwrap_err();
+        assert!(keeps_session(&error));
+        let m_pub = public(M_SECRET);
+        relay.write_slot_raw(&id(&c), 1, slot1(Role::Joiner, &m_pub).to_vec());
+        assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Compare);
+        assert!(c.contested(), "{reason}: the impostor's record is not ours");
+    }
+}
+
+#[tokio::test]
+async fn abandoning_a_sent_holder_leaves_the_mailbox_to_the_joiner() {
+    let relay = FakeRelay::new();
+    let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
+    to_compare(&relay, &mut s, &mut c).await;
+    c.confirm(&relay, None, T0).await.unwrap();
+    s.confirm(&relay, Some(&creds()), T0).await.unwrap();
+    let calls = relay.calls().len();
+    s.abandon(&relay).await;
+    assert_eq!(
+        relay.calls().len(),
+        calls,
+        "a Sent holder is simply dropped"
+    );
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Received);
+}
+
+#[tokio::test]
+async fn expiry_is_sticky() {
+    let relay = FakeRelay::new();
+    let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
+    s.poll(&relay, s.expires_at()).await.unwrap_err();
+    c.announce(&relay, c.expires_at() + 5).await.unwrap_err();
+    for error in [
+        s.poll(&relay, T0).await.unwrap_err(),
+        s.confirm(&relay, Some(&creds()), T0).await.unwrap_err(),
+        c.announce(&relay, T0).await.unwrap_err(),
+        c.poll(&relay, T0).await.unwrap_err(),
+    ] {
+        assert_eq!(key_of(&error), "validation.syncPairingExpired");
+    }
+    assert!(relay.calls().is_empty(), "an expired session sends nothing");
+}
+
+#[tokio::test]
+async fn a_contested_scan_closes_slot_2_for_the_shower() {
+    let m_pub = public(M_SECRET);
+
+    // The shower holds the vault and the person wrongly confirms on it: nothing sealed is written.
+    let relay = FakeRelay::new();
+    let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
+    relay.write_slot_raw(&id(&s), 1, slot1(Role::Joiner, &m_pub).to_vec());
+    assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::Compare);
+    assert!(c.contested());
+    let error = s.confirm(&relay, Some(&creds()), T0).await.unwrap_err();
+    assert_eq!(key_of(&error), "validation.syncPairingFailed");
+    assert_ne!(s.stage(), Stage::Sent);
+    assert_eq!(relay.peek_slot(&id(&s), 2), Some(CANCEL_MARKER.to_vec()));
+
+    // The shower wants to join: it reads "cancelled" instead of anything sealed.
+    let relay = FakeRelay::new();
+    let (mut s, mut c) = pair(Role::Joiner, Role::Holder);
+    relay.write_slot_raw(&id(&s), 1, slot1(Role::Holder, &m_pub).to_vec());
+    assert_eq!(s.poll(&relay, T0).await.unwrap(), Stage::Compare);
+    assert_eq!(c.announce(&relay, T0).await.unwrap(), Stage::Compare);
+    assert!(c.contested());
+    s.confirm(&relay, None, T0).await.unwrap();
+    let error = s.poll(&relay, T0).await.unwrap_err();
+    assert_eq!(key_of(&error), "validation.syncPairingCancelled");
+    assert!(s.received().is_none());
+}
+
+#[tokio::test]
+async fn a_slot_2_sealed_in_another_pairing_is_refused() {
+    // Same device keys, another mailbox: a genuine blob of the first pairing.
+    let first = FakeRelay::new();
+    let (mut s1, mut c1) = pair(Role::Holder, Role::Joiner);
+    to_compare(&first, &mut s1, &mut c1).await;
+    s1.confirm(&first, Some(&creds()), T0).await.unwrap();
+    let blob = first.peek_slot(&id(&s1), 2).unwrap();
+
+    let relay = FakeRelay::new();
+    let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
+    to_compare(&relay, &mut s, &mut c).await;
+    c.confirm(&relay, None, T0).await.unwrap();
+    relay.write_slot_raw(&id(&s), 2, blob);
+    let error = c.poll(&relay, T0).await.unwrap_err();
+    assert_eq!(key_of(&error), "validation.syncPairingFailed");
+    assert!(c.received().is_none());
+}
+
+#[tokio::test]
+async fn a_bad_scanner_key_keeps_the_shower_out_of_compare() {
+    let mut malformed = slot1(Role::Joiner, &public(C_SECRET)).to_vec();
+    malformed.pop();
+    for record in [slot1(Role::Joiner, &[0u8; 32]).to_vec(), malformed] {
+        let relay = FakeRelay::new();
+        let (mut s, _c) = pair(Role::Holder, Role::Joiner);
+        relay.write_slot_raw(&id(&s), 1, record);
+        let error = s.poll(&relay, T0).await.unwrap_err();
+        assert_eq!(key_of(&error), "validation.syncPairingFailed");
+        assert_eq!(s.stage(), Stage::WaitingForScan);
+        assert_eq!(s.comparison_code(), None);
+        assert!(s.confirm(&relay, Some(&creds()), T0).await.is_err());
+        assert_eq!(puts(&relay), 0);
+        assert_eq!(relay.peek_slot(&id(&s), 2), None);
+    }
+}
+
+#[tokio::test]
+async fn a_received_joiner_prints_nothing_secret() {
+    let relay = FakeRelay::new();
+    let (mut s, mut c) = pair(Role::Holder, Role::Joiner);
+    to_compare(&relay, &mut s, &mut c).await;
+    let code = c.comparison_code().unwrap();
+    c.confirm(&relay, None, T0).await.unwrap();
+    s.confirm(&relay, Some(&creds()), T0).await.unwrap();
+    assert_eq!(c.poll(&relay, T0).await.unwrap(), Stage::Received);
+    let printed = format!("{c:?}");
+    let sent = creds();
+    let mut secrets = vec![
+        id(&c),
+        code,
+        sent.account.clone(),
+        sent.vault_id.to_b64(),
+        HOME.to_string(),
+    ];
+    for (_, key) in sent.keys.epochs() {
+        secrets.push(key.iter().map(|b| format!("{b:02x}")).collect());
+        use base64::Engine;
+        secrets.push(base64::engine::general_purpose::URL_SAFE_NO_PAD.encode(*key));
+    }
+    for secret in secrets {
+        assert!(!printed.contains(&secret), "{printed}");
+    }
+    assert!(printed.contains("Received"), "{printed}");
 }

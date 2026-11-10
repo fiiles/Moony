@@ -23,16 +23,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Segmented } from '@/components/ui/segmented';
 import { groupAccountNumber } from '@/utils/recovery-kit';
+import { defaultDeviceKey } from '@/utils/sync-devices';
 
 type Step = 'account' | 'pay' | 'kit' | 'device';
 const STEPS: readonly Step[] = ['account', 'pay', 'kit', 'device'];
-
-function defaultDeviceKey(): 'macos' | 'windows' | 'linux' {
-  const ua = navigator.userAgent;
-  if (/Windows/i.test(ua)) return 'windows';
-  if (/Linux|X11/i.test(ua) && !/Mac/i.test(ua)) return 'linux';
-  return 'macos';
-}
 
 interface SyncSetupDialogProps {
   /** Mounted only while open: closing unmounts it, which also forgets the kit. */

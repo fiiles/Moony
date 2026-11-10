@@ -49,7 +49,8 @@
     "description": "Udržujte data synchronizovaná na všech svých zařízeních. Jsou koncově šifrovaná: synchronizační server ukládá jen data, která nepřečte.",
     "privacy": "Vaše data neopustí zařízení nešifrovaná.",
     "start": "Nastavit synchronizaci",
-    "resume": "Pokračovat v nastavení"
+    "resume": "Pokračovat v nastavení",
+    "cancelSetup": "Zrušit nastavení"
   },
   "setup": {
     "title": "Nastavit synchronizaci",
@@ -117,7 +118,9 @@
     "defaultName": {
       "macos": "Mac",
       "windows": "Windows PC",
-      "linux": "Linux PC"
+      "linux": "Linux PC",
+      "ios": "iPhone",
+      "android": "Telefon s Androidem"
     }
   },
   "alert": {
@@ -161,7 +164,7 @@
     "button": "Vypnout synchronizaci na tomto zařízení",
     "hint": "Místní data zůstanou. Ostatní zařízení se synchronizují dál.",
     "title": "Vypnout synchronizaci na tomto zařízení?",
-    "description": "Místní data zůstanou. Ostatní zařízení se synchronizují dál. Když synchronizaci později zapnete znovu, nastavíte ji od začátku.",
+    "description": "Místní data zůstanou. Ostatní zařízení se synchronizují dál. Později se můžete znovu připojit spárováním s jiným zařízením nebo pomocí záchranné sady; data tohoto zařízení se pak po zálohování nahradí synchronizovanými daty.",
     "pendingChanges_one": "{{count}} změna na tomto zařízení ještě nebyla odeslána. Už se neodešle.",
     "pendingChanges_few": "{{count}} změny na tomto zařízení ještě nebyly odeslány. Už se neodešlou.",
     "pendingChanges_many": "{{count}} změny na tomto zařízení ještě nebylo odesláno. Už se neodešlou.",
@@ -193,5 +196,63 @@
   "busy": {
     "title": "Nahrazuji data tohoto zařízení…",
     "description": "Nezavírejte Moony."
+  },
+  "devices": {
+    "title": "Zařízení",
+    "description": "Zařízení, která se synchronizují s tímto účtem.",
+    "thisDevice": "Toto zařízení",
+    "joined": "Připojeno {{date}}",
+    "lastChange": "Poslední změna synchronizována {{when}}",
+    "noChange": "Zatím se nesynchronizovaly žádné změny",
+    "version": "Moony {{version}}",
+    "held": "Změny pozastaveny",
+    "rename": "Přejmenovat",
+    "renameTitle": "Přejmenovat toto zařízení",
+    "add": "Přidat zařízení",
+    "platform": {
+      "macos": "Mac",
+      "windows": "Windows PC",
+      "linux": "Linux PC",
+      "ios": "iPhone",
+      "android": "Telefon s Androidem",
+      "other": "Jiné zařízení"
+    }
+  },
+  "pairing": {
+    "addTitle": "Přidat zařízení",
+    "addDescription": "Spárujte další zařízení se svým synchronizačním účtem. Nic neopouští vaše zařízení nešifrované.",
+    "passwordFirst": "Zadejte heslo zařízení, aby se zobrazil párovací kód.",
+    "showCode": "Zobrazit kód",
+    "qrAlt": "Párovací kód",
+    "preparing": "Připravuje se párování…",
+    "scanHint": "Naskenujte to v Moony na telefonu: Nastavení → Synchronizace → Naskenovat kód",
+    "copyCodeDev": "Kopírovat kód",
+    "validFor": "Kód platí 10 minut.",
+    "compareTitle": "Porovnejte číslice",
+    "compareOnlyIfSame": "Pokračujte, jen pokud druhé zařízení ukazuje stejných šest číslic.",
+    "match": "Shodují se",
+    "noMatch": "Neshodují se",
+    "contested": "Na tento kód odpovědělo jako první jiné zařízení, takže se tyto číslice neshodnou. Na druhém zařízení zvolte „Neshodují se“ a začněte znovu.",
+    "sent": "Odesláno. Dokončete to na druhém zařízení.",
+    "waiting": "Čeká se na druhé zařízení…",
+    "joining": "Připojuje se…",
+    "joined": "Toto zařízení se nyní synchronizuje. Jeho dřívější data jsou zálohována v {{path}}",
+    "tryAgain": "Zkusit znovu"
+  },
+  "join": {
+    "introPair": "Připojit z telefonu",
+    "introKit": "Použít záchrannou sadu",
+    "warning": "Data tohoto zařízení budou nahrazena synchronizovanými daty. Předtím se vedle profilu uloží záloha.",
+    "nameLabel": "Název zařízení",
+    "passwordLabel": "Heslo zařízení",
+    "advanced": "Upřesnit",
+    "serverLabel": "Adresa synchronizačního serveru",
+    "pairTitle": "Připojit z telefonu",
+    "pairHint": "Na telefonu se zapnutou synchronizací: Nastavení → Synchronizace → Přidat zařízení",
+    "kitTitle": "Použít záchrannou sadu",
+    "kitHint": "Zadejte obnovovací kód ze záchranné sady synchronizace nebo text jejího QR kódu.",
+    "codeLabel": "Obnovovací kód",
+    "accountLabel": "Číslo účtu",
+    "submit": "Připojit k synchronizaci"
   }
 }

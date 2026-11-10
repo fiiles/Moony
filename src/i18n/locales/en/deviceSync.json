@@ -49,7 +49,8 @@
     "description": "Keep your data in step on all your devices. It is end-to-end encrypted: the sync server only stores data it cannot read.",
     "privacy": "Your data never leaves your devices unencrypted.",
     "start": "Set up sync",
-    "resume": "Continue setup"
+    "resume": "Continue setup",
+    "cancelSetup": "Cancel setup"
   },
   "setup": {
     "title": "Set up sync",
@@ -117,7 +118,9 @@
     "defaultName": {
       "macos": "Mac",
       "windows": "Windows PC",
-      "linux": "Linux PC"
+      "linux": "Linux PC",
+      "ios": "iPhone",
+      "android": "Android phone"
     }
   },
   "alert": {
@@ -159,7 +162,7 @@
     "button": "Turn off sync on this device",
     "hint": "Local data stays. Other devices keep syncing.",
     "title": "Turn off sync on this device?",
-    "description": "Local data stays. Other devices keep syncing. If you turn sync on again later, you set it up anew.",
+    "description": "Local data stays. Other devices keep syncing. You can join again later by pairing with another device or with your Recovery Kit; this device's data is then replaced by the synced data after a backup.",
     "pendingChanges_one": "{{count}} change on this device has not been sent yet. It will not be sent.",
     "pendingChanges_other": "{{count}} changes on this device have not been sent yet. They will not be sent.",
     "confirm": "Turn off sync",
@@ -189,5 +192,63 @@
   "busy": {
     "title": "Replacing this device's data…",
     "description": "Don't close Moony."
+  },
+  "devices": {
+    "title": "Devices",
+    "description": "The devices that sync with this account.",
+    "thisDevice": "This device",
+    "joined": "Joined {{date}}",
+    "lastChange": "Last change synced {{when}}",
+    "noChange": "No changes synced yet",
+    "version": "Moony {{version}}",
+    "held": "Changes held",
+    "rename": "Rename",
+    "renameTitle": "Rename this device",
+    "add": "Add a device",
+    "platform": {
+      "macos": "Mac",
+      "windows": "Windows PC",
+      "linux": "Linux PC",
+      "ios": "iPhone",
+      "android": "Android phone",
+      "other": "Other device"
+    }
+  },
+  "pairing": {
+    "addTitle": "Add a device",
+    "addDescription": "Pair another device with your sync account. Nothing leaves your devices unencrypted.",
+    "passwordFirst": "Enter your device password to show the pairing code.",
+    "showCode": "Show code",
+    "qrAlt": "Pairing code",
+    "preparing": "Preparing the pairing…",
+    "scanHint": "Scan this with Moony on your phone: Settings → Sync → Scan a code",
+    "copyCodeDev": "Copy code",
+    "validFor": "The code works for 10 minutes.",
+    "compareTitle": "Compare the digits",
+    "compareOnlyIfSame": "Continue only if the other device shows these same six digits.",
+    "match": "They match",
+    "noMatch": "They don't match",
+    "contested": "Another device answered this code first, so these digits will not match. Choose \"They don't match\" on the other device and start again.",
+    "sent": "Sent. Finish on the other device.",
+    "waiting": "Waiting for the other device…",
+    "joining": "Joining…",
+    "joined": "This device now syncs. Its earlier data is backed up in {{path}}",
+    "tryAgain": "Try again"
+  },
+  "join": {
+    "introPair": "Join from your phone",
+    "introKit": "Use a Recovery Kit",
+    "warning": "This device's data is replaced by the synced data. A backup is saved next to your profile first.",
+    "nameLabel": "Device name",
+    "passwordLabel": "Device password",
+    "advanced": "Advanced",
+    "serverLabel": "Sync server address",
+    "pairTitle": "Join from your phone",
+    "pairHint": "On the phone with sync on: Settings → Sync → Add a device",
+    "kitTitle": "Use a Recovery Kit",
+    "kitHint": "Enter the recovery code from your Sync Recovery Kit, or the text of its QR code.",
+    "codeLabel": "Recovery code",
+    "accountLabel": "Account number",
+    "submit": "Join sync"
   }
 }

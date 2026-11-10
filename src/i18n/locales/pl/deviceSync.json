@@ -49,7 +49,8 @@
     "description": "Utrzymuj dane aktualne na wszystkich urządzeniach. Są szyfrowane end-to-end: serwer synchronizacji przechowuje tylko dane, których nie potrafi odczytać.",
     "privacy": "Twoje dane nigdy nie opuszczają urządzeń w postaci niezaszyfrowanej.",
     "start": "Skonfiguruj synchronizację",
-    "resume": "Dokończ konfigurację"
+    "resume": "Dokończ konfigurację",
+    "cancelSetup": "Anuluj konfigurację"
   },
   "setup": {
     "title": "Skonfiguruj synchronizację",
@@ -117,7 +118,9 @@
     "defaultName": {
       "macos": "Mac",
       "windows": "Komputer z Windows",
-      "linux": "Komputer z Linuksem"
+      "linux": "Komputer z Linuksem",
+      "ios": "iPhone",
+      "android": "Telefon z Androidem"
     }
   },
   "alert": {
@@ -161,7 +164,7 @@
     "button": "Wyłącz synchronizację na tym urządzeniu",
     "hint": "Dane lokalne zostają. Pozostałe urządzenia nadal się synchronizują.",
     "title": "Wyłączyć synchronizację na tym urządzeniu?",
-    "description": "Dane lokalne zostają. Pozostałe urządzenia nadal się synchronizują. Gdy później ponownie włączysz synchronizację, skonfigurujesz ją od nowa.",
+    "description": "Dane lokalne zostają. Pozostałe urządzenia nadal się synchronizują. Później możesz dołączyć ponownie, parując z innym urządzeniem lub za pomocą zestawu odzyskiwania; dane tego urządzenia zostaną wtedy po utworzeniu kopii zapasowej zastąpione danymi zsynchronizowanymi.",
     "pendingChanges_one": "{{count}} zmiana na tym urządzeniu nie została jeszcze wysłana. Nie zostanie już wysłana.",
     "pendingChanges_few": "{{count}} zmiany na tym urządzeniu nie zostały jeszcze wysłane. Nie zostaną już wysłane.",
     "pendingChanges_many": "{{count}} zmian na tym urządzeniu nie zostało jeszcze wysłanych. Nie zostaną już wysłane.",
@@ -193,5 +196,63 @@
   "busy": {
     "title": "Zastępowanie danych tego urządzenia…",
     "description": "Nie zamykaj Moony."
+  },
+  "devices": {
+    "title": "Urządzenia",
+    "description": "Urządzenia synchronizowane z tym kontem.",
+    "thisDevice": "To urządzenie",
+    "joined": "Dołączono {{date}}",
+    "lastChange": "Ostatnia zmiana zsynchronizowana {{when}}",
+    "noChange": "Nie zsynchronizowano jeszcze żadnych zmian",
+    "version": "Moony {{version}}",
+    "held": "Zmiany wstrzymane",
+    "rename": "Zmień nazwę",
+    "renameTitle": "Zmień nazwę tego urządzenia",
+    "add": "Dodaj urządzenie",
+    "platform": {
+      "macos": "Mac",
+      "windows": "Komputer z Windows",
+      "linux": "Komputer z Linuksem",
+      "ios": "iPhone",
+      "android": "Telefon z Androidem",
+      "other": "Inne urządzenie"
+    }
+  },
+  "pairing": {
+    "addTitle": "Dodaj urządzenie",
+    "addDescription": "Sparuj kolejne urządzenie ze swoim kontem synchronizacji. Nic nie opuszcza Twoich urządzeń bez szyfrowania.",
+    "passwordFirst": "Wpisz hasło urządzenia, aby wyświetlić kod parowania.",
+    "showCode": "Pokaż kod",
+    "qrAlt": "Kod parowania",
+    "preparing": "Przygotowywanie parowania…",
+    "scanHint": "Zeskanuj to w Moony na telefonie: Ustawienia → Synchronizacja → Skanuj kod",
+    "copyCodeDev": "Kopiuj kod",
+    "validFor": "Kod działa przez 10 minut.",
+    "compareTitle": "Porównaj cyfry",
+    "compareOnlyIfSame": "Kontynuuj tylko wtedy, gdy drugie urządzenie pokazuje te same sześć cyfr.",
+    "match": "Pasują",
+    "noMatch": "Nie pasują",
+    "contested": "Inne urządzenie odpowiedziało na ten kod jako pierwsze, więc te cyfry się nie zgodzą. Na drugim urządzeniu wybierz „Nie pasują”, a potem zacznij od nowa.",
+    "sent": "Wysłano. Dokończ na drugim urządzeniu.",
+    "waiting": "Czekam na drugie urządzenie…",
+    "joining": "Dołączanie…",
+    "joined": "To urządzenie jest teraz synchronizowane. Jego wcześniejsze dane zapisano w kopii w {{path}}",
+    "tryAgain": "Spróbuj ponownie"
+  },
+  "join": {
+    "introPair": "Dołącz z telefonu",
+    "introKit": "Użyj zestawu odzyskiwania",
+    "warning": "Dane tego urządzenia zostaną zastąpione danymi zsynchronizowanymi. Najpierw obok profilu zapisywana jest kopia zapasowa.",
+    "nameLabel": "Nazwa urządzenia",
+    "passwordLabel": "Hasło urządzenia",
+    "advanced": "Zaawansowane",
+    "serverLabel": "Adres serwera synchronizacji",
+    "pairTitle": "Dołącz z telefonu",
+    "pairHint": "Na telefonie z włączoną synchronizacją: Ustawienia → Synchronizacja → Dodaj urządzenie",
+    "kitTitle": "Użyj zestawu odzyskiwania",
+    "kitHint": "Wpisz kod odzyskiwania z zestawu odzyskiwania synchronizacji lub tekst jego kodu QR.",
+    "codeLabel": "Kod odzyskiwania",
+    "accountLabel": "Numer konta",
+    "submit": "Dołącz do synchronizacji"
   }
 }

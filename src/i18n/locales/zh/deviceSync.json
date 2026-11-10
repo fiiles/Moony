@@ -49,7 +49,8 @@
     "description": "让您的数据在所有设备上保持一致。数据经端到端加密：同步服务器只保存它无法读取的数据。",
     "privacy": "您的数据绝不会未加密地离开您的设备。",
     "start": "设置同步",
-    "resume": "继续设置"
+    "resume": "继续设置",
+    "cancelSetup": "取消设置"
   },
   "setup": {
     "title": "设置同步",
@@ -117,7 +118,9 @@
     "defaultName": {
       "macos": "Mac",
       "windows": "Windows 电脑",
-      "linux": "Linux 电脑"
+      "linux": "Linux 电脑",
+      "ios": "iPhone",
+      "android": "Android 手机"
     }
   },
   "alert": {
@@ -158,7 +161,7 @@
     "button": "在此设备上关闭同步",
     "hint": "本地数据会保留。其他设备继续同步。",
     "title": "在此设备上关闭同步？",
-    "description": "本地数据会保留。其他设备继续同步。以后如需再次开启同步，需要重新设置。",
+    "description": "本地数据会保留。其他设备继续同步。以后您可以通过与另一台设备配对或使用恢复包再次加入；此设备的数据随后会在备份后被同步的数据替换。",
     "pendingChanges_other": "此设备有 {{count}} 项更改尚未发送，这些更改将不会再发送。",
     "confirm": "关闭同步",
     "success": "同步已关闭"
@@ -187,5 +190,63 @@
   "busy": {
     "title": "正在替换此设备的数据…",
     "description": "请勿关闭 Moony。"
+  },
+  "devices": {
+    "title": "设备",
+    "description": "与此账户同步的设备。",
+    "thisDevice": "此设备",
+    "joined": "加入于 {{date}}",
+    "lastChange": "最近一次更改同步于 {{when}}",
+    "noChange": "尚未同步任何更改",
+    "version": "Moony {{version}}",
+    "held": "更改被暂扣",
+    "rename": "重命名",
+    "renameTitle": "重命名此设备",
+    "add": "添加设备",
+    "platform": {
+      "macos": "Mac",
+      "windows": "Windows 电脑",
+      "linux": "Linux 电脑",
+      "ios": "iPhone",
+      "android": "Android 手机",
+      "other": "其他设备"
+    }
+  },
+  "pairing": {
+    "addTitle": "添加设备",
+    "addDescription": "将另一台设备与您的同步账户配对。任何数据离开设备时都是加密的。",
+    "passwordFirst": "输入设备密码以显示配对码。",
+    "showCode": "显示代码",
+    "qrAlt": "配对码",
+    "preparing": "正在准备配对…",
+    "scanHint": "请用手机上的 Moony 扫描：设置 → 同步 → 扫描代码",
+    "copyCodeDev": "复制代码",
+    "validFor": "此代码在 10 分钟内有效。",
+    "compareTitle": "比对数字",
+    "compareOnlyIfSame": "只有当另一台设备显示相同的六位数字时才继续。",
+    "match": "匹配",
+    "noMatch": "不匹配",
+    "contested": "另一台设备已抢先响应此代码，所以这些数字不会匹配。请在另一台设备上选择“不匹配”，然后重新开始。",
+    "sent": "已发送。请在另一台设备上完成。",
+    "waiting": "正在等待另一台设备…",
+    "joining": "正在加入…",
+    "joined": "此设备现已同步。它此前的数据已备份在 {{path}}",
+    "tryAgain": "重试"
+  },
+  "join": {
+    "introPair": "从手机加入",
+    "introKit": "使用恢复包",
+    "warning": "此设备的数据将被同步的数据替换。会先在您的配置文件旁保存一份备份。",
+    "nameLabel": "设备名称",
+    "passwordLabel": "设备密码",
+    "advanced": "高级",
+    "serverLabel": "同步服务器地址",
+    "pairTitle": "从手机加入",
+    "pairHint": "在已开启同步的手机上：设置 → 同步 → 添加设备",
+    "kitTitle": "使用恢复包",
+    "kitHint": "输入同步恢复包中的恢复代码，或其二维码的文本。",
+    "codeLabel": "恢复代码",
+    "accountLabel": "账户编号",
+    "submit": "加入同步"
   }
 }

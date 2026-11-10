@@ -347,7 +347,8 @@
     "syncPairingCodeUsed": "En annen enhet svarte på denne koden først. Velg «De stemmer ikke overens» på den andre enheten, og start på nytt.",
     "syncPairingExpired": "Denne paringskoden er utløpt. Start på nytt på begge enhetene.",
     "syncPairingBothOn": "Synkronisering er allerede på for begge enhetene. Slå den av på enheten som skal bli med.",
-    "syncPairingBothOff": "Synkronisering er av på begge enhetene. Slå den på først på enheten som har dataene dine."
+    "syncPairingBothOff": "Synkronisering er av på begge enhetene. Slå den på først på enheten som har dataene dine.",
+    "syncPairingCancelled": "Den andre enheten avbrøt paringen. Start på nytt på begge enhetene."
   },
   "auth": {
     "wrongPassword": "Passordet du skrev inn er feil. Prøv igjen.",

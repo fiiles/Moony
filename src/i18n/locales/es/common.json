@@ -347,7 +347,8 @@
     "syncPairingCodeUsed": "Otro dispositivo respondió primero a este código. En el otro dispositivo, elige «No coinciden» y vuelve a empezar.",
     "syncPairingExpired": "Este código de emparejamiento ha caducado. Empieza de nuevo en ambos dispositivos.",
     "syncPairingBothOn": "La sincronización ya está activada en ambos dispositivos. Desactívala en el que debe unirse.",
-    "syncPairingBothOff": "La sincronización está desactivada en ambos dispositivos. Actívala primero en el dispositivo que tiene tus datos."
+    "syncPairingBothOff": "La sincronización está desactivada en ambos dispositivos. Actívala primero en el dispositivo que tiene tus datos.",
+    "syncPairingCancelled": "El otro dispositivo ha cancelado el emparejamiento. Empieza de nuevo en ambos dispositivos."
   },
   "auth": {
     "wrongPassword": "La contraseña introducida es incorrecta. Inténtalo de nuevo.",

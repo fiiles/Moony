@@ -347,7 +347,8 @@
     "syncPairingCodeUsed": "Ein anderes Gerät hat diesen Code zuerst beantwortet. Wählen Sie auf dem anderen Gerät „Sie stimmen nicht überein“ und beginnen Sie von vorn.",
     "syncPairingExpired": "Dieser Kopplungscode ist abgelaufen. Beginnen Sie auf beiden Geräten von vorn.",
     "syncPairingBothOn": "Die Synchronisierung ist auf beiden Geräten eingeschaltet. Schalten Sie sie auf dem Gerät aus, das beitreten soll.",
-    "syncPairingBothOff": "Die Synchronisierung ist auf beiden Geräten ausgeschaltet. Schalten Sie sie zuerst auf dem Gerät mit Ihren Daten ein."
+    "syncPairingBothOff": "Die Synchronisierung ist auf beiden Geräten ausgeschaltet. Schalten Sie sie zuerst auf dem Gerät mit Ihren Daten ein.",
+    "syncPairingCancelled": "Das andere Gerät hat die Kopplung abgebrochen. Beginnen Sie auf beiden Geräten von vorn."
   },
   "auth": {
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",

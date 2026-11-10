@@ -347,7 +347,8 @@
     "syncPairingCodeUsed": "En annan enhet svarade på den här koden först. Välj ”De stämmer inte” på den andra enheten och börja om.",
     "syncPairingExpired": "Den här parkopplingskoden har gått ut. Börja om på båda enheterna.",
     "syncPairingBothOn": "Synkronisering är redan på för båda enheterna. Stäng av den på den som ska ansluta.",
-    "syncPairingBothOff": "Synkronisering är avstängd på båda enheterna. Slå på den först på enheten som har dina data."
+    "syncPairingBothOff": "Synkronisering är avstängd på båda enheterna. Slå på den först på enheten som har dina data.",
+    "syncPairingCancelled": "Den andra enheten avbröt parkopplingen. Börja om på båda enheterna."
   },
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",

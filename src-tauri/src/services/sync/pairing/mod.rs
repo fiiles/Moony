@@ -28,6 +28,8 @@ use super::keys::{os_random, Credentials, SecretString, VaultId, VaultKeys};
 use super::relay::http::{is_default_relay, normalize_base_url};
 use crate::error::{AppError, Result};
 
+pub mod session;
+
 #[cfg(test)]
 mod tests;
 

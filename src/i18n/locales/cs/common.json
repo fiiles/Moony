@@ -347,7 +347,8 @@
     "syncPairingCodeUsed": "Na tento kód odpovědělo jako první jiné zařízení. Na druhém zařízení zvolte „Neshodují se“ a začněte znovu.",
     "syncPairingExpired": "Platnost párovacího kódu vypršela. Začněte znovu na obou zařízeních.",
     "syncPairingBothOn": "Synchronizace je zapnutá na obou zařízeních. Vypněte ji na tom, které se má připojit.",
-    "syncPairingBothOff": "Synchronizace je vypnutá na obou zařízeních. Nejprve ji zapněte na zařízení, které má vaše data."
+    "syncPairingBothOff": "Synchronizace je vypnutá na obou zařízeních. Nejprve ji zapněte na zařízení, které má vaše data.",
+    "syncPairingCancelled": "Druhé zařízení párování zrušilo. Začněte znovu na obou zařízeních."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

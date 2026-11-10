@@ -347,7 +347,8 @@
     "syncPairingCodeUsed": "Another device answered this code first. Choose \"They don't match\" on the other device, then start again.",
     "syncPairingExpired": "This pairing code has expired. Start again on both devices.",
     "syncPairingBothOn": "Sync is already on for both devices. Turn it off on the one that should join.",
-    "syncPairingBothOff": "Sync is off on both devices. Turn it on first on the device that has your data."
+    "syncPairingBothOff": "Sync is off on both devices. Turn it on first on the device that has your data.",
+    "syncPairingCancelled": "The other device cancelled the pairing. Start again on both devices."
   },
   "auth": {
     "wrongPassword": "The password you entered is incorrect. Please try again.",

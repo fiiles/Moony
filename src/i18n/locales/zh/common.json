@@ -347,7 +347,8 @@
     "syncPairingCodeUsed": "另一台设备已抢先响应此代码。请在另一台设备上选择“不匹配”，然后重新开始。",
     "syncPairingExpired": "此配对码已过期。请在两台设备上重新开始。",
     "syncPairingBothOn": "两台设备都已开启同步。请在要加入的那台设备上关闭同步。",
-    "syncPairingBothOff": "两台设备都未开启同步。请先在存有您数据的设备上开启同步。"
+    "syncPairingBothOff": "两台设备都未开启同步。请先在存有您数据的设备上开启同步。",
+    "syncPairingCancelled": "另一台设备已取消配对。请在两台设备上重新开始。"
   },
   "auth": {
     "wrongPassword": "您输入的密码不正确，请重试。",

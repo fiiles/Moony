@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PairingView } from '@shared/schema';
 import { deviceSyncApi, portfolioApi } from '@/lib/tauri-api';
@@ -12,18 +13,34 @@ const PAIRING_KEY = ['device-sync-pairing'] as const;
  * The pairing flow on this device. The view lives under `['device-sync-pairing']`: start, scan and
  * confirm write their result there and a query polls the backend while a device is awaited.
  * Joining replaces local data, so it runs the full refresh and shares the busy-cover key.
+ *
+ * Passwords: `start` and `scan` keep their variables (the device password) in the mutation state,
+ * so they are reset as soon as they succeed. A dialog that closes any other way (error, dismissed)
+ * must call `cancel()` (resets both and clears the view) or `start.reset()` / `scan.reset()` itself.
+ * `error` / `isError` report a failed poll (expired, cancelled by the other device, unreachable);
+ * polling stops on an error and once `expiresAt` has passed.
  */
 export function useDevicePairing() {
   const queryClient = useQueryClient();
   const enabled = useDeviceSyncFeature();
 
-  const { data: view } = useQuery<PairingView>({
+  const {
+    data: view,
+    error,
+    isError,
+  } = useQuery<PairingView>({
     queryKey: PAIRING_KEY,
     queryFn: () => deviceSyncApi.pairingPoll(),
     // Only once a start or scan put a pairing there; the poll never starts one.
     enabled: enabled && queryClient.getQueryData(PAIRING_KEY) !== undefined,
-    refetchInterval: (query) => pairingPollInterval(query.state.data),
+    refetchInterval: (query) =>
+      query.state.status === 'error' ||
+      (query.state.data !== undefined && query.state.data.expiresAt * 1000 <= Date.now())
+        ? false
+        : pairingPollInterval(query.state.data),
     retry: false,
+    // A finished or abandoned pairing must not keep its QR or code around.
+    gcTime: 0,
   });
 
   const setView = (next: PairingView) => queryClient.setQueryData(PAIRING_KEY, next);
@@ -41,6 +58,13 @@ export function useDevicePairing() {
     gcTime: 0,
     onSuccess: setView,
   });
+  // The password is no longer needed once the pairing is on its way.
+  useEffect(() => {
+    if (start.isSuccess) start.reset();
+  }, [start, start.isSuccess]);
+  useEffect(() => {
+    if (scan.isSuccess) scan.reset();
+  }, [scan, scan.isSuccess]);
   const confirm = useMutation({
     mutationFn: () => deviceSyncApi.pairingConfirm(),
     onSuccess: setView,
@@ -50,6 +74,7 @@ export function useDevicePairing() {
     mutationFn: () => deviceSyncApi.pairingJoin(),
     gcTime: 0,
     onSuccess: async () => {
+      queryClient.removeQueries({ queryKey: PAIRING_KEY });
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['device-sync-status'] }),
         queryClient.invalidateQueries({ queryKey: ['device-sync-account'] }),
@@ -59,6 +84,8 @@ export function useDevicePairing() {
   });
 
   const cancel = async () => {
+    start.reset();
+    scan.reset();
     try {
       await deviceSyncApi.pairingCancel();
     } finally {
@@ -66,5 +93,5 @@ export function useDevicePairing() {
     }
   };
 
-  return { view, start, scan, confirm, cancel, join };
+  return { view, error, isError, start, scan, confirm, cancel, join };
 }

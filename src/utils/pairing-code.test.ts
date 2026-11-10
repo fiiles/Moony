@@ -33,6 +33,34 @@ describe('scannedCodeKind', () => {
   });
 });
 
+describe('scannedCodeKind as the Rust decoder reads it', () => {
+  it('ignores case, I/L/O look-alikes and every dash the decoder ignores', () => {
+    expect(scannedCodeKind(CODE80.toLowerCase())).toBe('recoveryCode');
+    expect(scannedCodeKind(`I${CODE80.slice(1)}`)).toBe('recoveryCode');
+    expect(scannedCodeKind(`l${CODE80.slice(1)}`)).toBe('recoveryCode');
+    expect(scannedCodeKind(`o${CODE80.slice(1)}`)).toBe('recoveryCode');
+    expect(scannedCodeKind(GROUPED.replace(/-/g, '\u2013'))).toBe('recoveryCode');
+    expect(scannedCodeKind(GROUPED.replace(/-/g, '\u2010'))).toBe('recoveryCode');
+    expect(scannedCodeKind(GROUPED.replace(/-/g, '\u2015'))).toBe('recoveryCode');
+    expect(scannedCodeKind(GROUPED.replace(/-/g, '\u2016'))).toBe('unknown');
+  });
+
+  it('matches the scheme prefixes exactly, from the start, after trimming', () => {
+    expect(scannedCodeKind('MOONY-PAIR:1:x')).toBe('unknown');
+    expect(scannedCodeKind('xmoony-pair:1:x')).toBe('unknown');
+    expect(scannedCodeKind('xmoony-recover:1:x')).toBe('unknown');
+    expect(scannedCodeKind('moony-recover:garbage')).toBe('recover');
+  });
+
+  it('rejects NUL, unicode and very long input', () => {
+    expect(scannedCodeKind(`${CODE80}\u0000`)).toBe('unknown');
+    expect(scannedCodeKind(`\u00DF${CODE80.slice(2)}`)).toBe('unknown');
+    expect(scannedCodeKind(`${CODE80.slice(1)}\u0131`)).toBe('unknown');
+    expect(scannedCodeKind(`${CODE80.slice(0, 79)}\uFEFF0`)).toBe('unknown');
+    expect(scannedCodeKind('A'.repeat(100000))).toBe('unknown');
+  });
+});
+
 describe('formatComparisonCode', () => {
   it('groups the comparison code in threes', () => {
     expect(formatComparisonCode('482686')).toBe('482 686');

@@ -24,7 +24,7 @@ use crate::error::{AppError, Result};
 
 /// Fills `buf` from the operating system's random source (not a user-space generator): vault
 /// keys, vault IDs and the device's X25519 secret come from here.
-fn os_random(buf: &mut [u8]) -> Result<()> {
+pub fn os_random(buf: &mut [u8]) -> Result<()> {
     SysRng
         .try_fill_bytes(buf)
         .map_err(|e| AppError::Internal(format!("sync: the system random source failed: {e}")))
@@ -104,6 +104,13 @@ impl VaultKeys {
     pub fn current(&self) -> &[u8; 32] {
         // Every constructor goes through `checked` or inserts the current epoch itself.
         &self.keys[&self.current]
+    }
+
+    /// Every epoch with its key, ascending.
+    pub fn epochs(&self) -> impl Iterator<Item = (u32, Zeroizing<[u8; 32]>)> + '_ {
+        self.keys
+            .iter()
+            .map(|(epoch, key)| (*epoch, Zeroizing::new(**key)))
     }
 
     pub fn get(&self, epoch: u32) -> Option<Zeroizing<[u8; 32]>> {
@@ -197,7 +204,7 @@ impl<'de> Deserialize<'de> for Entries {
 }
 
 /// A JSON string read straight into a wiped buffer.
-struct SecretString(Zeroizing<String>);
+pub(super) struct SecretString(pub(super) Zeroizing<String>);
 
 impl<'de> Deserialize<'de> for SecretString {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> std::result::Result<Self, D::Error> {

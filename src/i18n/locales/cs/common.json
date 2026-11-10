@@ -341,7 +341,11 @@
     "syncUnavailable": "Synchronizace není v této verzi Moony dostupná.",
     "syncDevOnly": "Toto je nástroj pro vývojáře, dostupný jen ve vývojových sestaveních.",
     "syncChangeInProgress": "Na tomto zařízení už probíhá jiná změna synchronizace. Počkejte, až skončí.",
-    "syncPasswordRequired": "Pro zkopírování obnovovacího kódu znovu zadejte heslo."
+    "syncPasswordRequired": "Pro zkopírování obnovovacího kódu znovu zadejte heslo.",
+    "syncPairingCodeInvalid": "Párovací kód není platný. Naskenujte kód zobrazený na druhém zařízení.",
+    "syncPairingFailed": "Párování se nepovedlo. Začněte znovu na obou zařízeních.",
+    "syncPairingBothOn": "Synchronizace je zapnutá na obou zařízeních. Vypněte ji na tom, které se má připojit.",
+    "syncPairingBothOff": "Synchronizace je vypnutá na obou zařízeních. Nejprve ji zapněte na zařízení, které má vaše data."
   },
   "auth": {
     "wrongPassword": "Zadané heslo je nesprávné. Zkuste to prosím znovu.",

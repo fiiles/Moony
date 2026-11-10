@@ -341,7 +341,11 @@
     "syncUnavailable": "Synkronisering är inte tillgänglig i den här versionen av Moony.",
     "syncDevOnly": "Det här är ett utvecklarverktyg som bara finns i utvecklingsversioner.",
     "syncChangeInProgress": "En annan ändring av synkroniseringen pågår redan på den här enheten. Vänta tills den är klar.",
-    "syncPasswordRequired": "Ange ditt lösenord igen för att kopiera återställningskoden."
+    "syncPasswordRequired": "Ange ditt lösenord igen för att kopiera återställningskoden.",
+    "syncPairingCodeInvalid": "Parkopplingskoden är ogiltig. Skanna koden som visas på den andra enheten.",
+    "syncPairingFailed": "Parkopplingen fungerade inte. Börja om på båda enheterna.",
+    "syncPairingBothOn": "Synkronisering är redan på för båda enheterna. Stäng av den på den som ska ansluta.",
+    "syncPairingBothOff": "Synkronisering är avstängd på båda enheterna. Slå på den först på enheten som har dina data."
   },
   "auth": {
     "wrongPassword": "Lösenordet du angav är fel. Försök igen.",

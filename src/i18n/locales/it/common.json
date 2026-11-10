@@ -341,7 +341,11 @@
     "syncUnavailable": "La sincronizzazione non è disponibile in questa versione di Moony.",
     "syncDevOnly": "Questo è uno strumento per sviluppatori, disponibile solo nelle build di sviluppo.",
     "syncChangeInProgress": "Su questo dispositivo è già in corso un'altra modifica della sincronizzazione. Attendi che finisca.",
-    "syncPasswordRequired": "Inserisci di nuovo la password per copiare il codice di recupero."
+    "syncPasswordRequired": "Inserisci di nuovo la password per copiare il codice di recupero.",
+    "syncPairingCodeInvalid": "Il codice di abbinamento non è valido. Scansiona il codice mostrato sull'altro dispositivo.",
+    "syncPairingFailed": "L'abbinamento non è riuscito. Ricomincia su entrambi i dispositivi.",
+    "syncPairingBothOn": "La sincronizzazione è già attiva su entrambi i dispositivi. Disattivala su quello che deve unirsi.",
+    "syncPairingBothOff": "La sincronizzazione è disattivata su entrambi i dispositivi. Attivala prima sul dispositivo che ha i tuoi dati."
   },
   "auth": {
     "wrongPassword": "La password inserita non è corretta. Riprova.",

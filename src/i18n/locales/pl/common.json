@@ -341,7 +341,11 @@
     "syncUnavailable": "Synchronizacja nie jest dostępna w tej wersji Moony.",
     "syncDevOnly": "To narzędzie dla programistów, dostępne tylko w wersjach deweloperskich.",
     "syncChangeInProgress": "Na tym urządzeniu trwa już inna zmiana synchronizacji. Poczekaj, aż się zakończy.",
-    "syncPasswordRequired": "Wpisz ponownie hasło, aby skopiować kod odzyskiwania."
+    "syncPasswordRequired": "Wpisz ponownie hasło, aby skopiować kod odzyskiwania.",
+    "syncPairingCodeInvalid": "Kod parowania jest nieprawidłowy. Zeskanuj kod wyświetlony na drugim urządzeniu.",
+    "syncPairingFailed": "Parowanie się nie powiodło. Zacznij od nowa na obu urządzeniach.",
+    "syncPairingBothOn": "Synchronizacja jest już włączona na obu urządzeniach. Wyłącz ją na tym, które ma dołączyć.",
+    "syncPairingBothOff": "Synchronizacja jest wyłączona na obu urządzeniach. Najpierw włącz ją na urządzeniu z Twoimi danymi."
   },
   "auth": {
     "wrongPassword": "Wpisane hasło jest nieprawidłowe. Spróbuj ponownie.",

@@ -341,7 +341,11 @@
     "syncUnavailable": "此版本的 Moony 不支持同步。",
     "syncDevOnly": "这是开发者工具，仅在开发版本中可用。",
     "syncChangeInProgress": "此设备上已有另一项同步更改正在进行。请等待其完成。",
-    "syncPasswordRequired": "请再次输入密码以复制恢复代码。"
+    "syncPasswordRequired": "请再次输入密码以复制恢复代码。",
+    "syncPairingCodeInvalid": "配对码无效。请扫描另一台设备上显示的二维码。",
+    "syncPairingFailed": "配对未成功。请在两台设备上重新开始。",
+    "syncPairingBothOn": "两台设备都已开启同步。请在要加入的那台设备上关闭同步。",
+    "syncPairingBothOff": "两台设备都未开启同步。请先在存有您数据的设备上开启同步。"
   },
   "auth": {
     "wrongPassword": "您输入的密码不正确，请重试。",

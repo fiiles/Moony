@@ -178,7 +178,7 @@ fn a_code_names_a_sync_server_that_is_not_the_default() {
         shower_public: s_pub(),
         relay_url: Some(url.into()),
     };
-    let text = pairing_code_text(&with("https://Sync.Home.Example.com/"));
+    let text = pairing_code_text(&with("https://sync.home.example.com"));
     let tail = URL_SAFE_NO_PAD.encode("https://sync.home.example.com");
     assert_eq!(text, format!("{FROZEN_TEXT}:{tail}"));
     assert_eq!(
@@ -197,6 +197,34 @@ fn a_code_names_a_sync_server_that_is_not_the_default() {
         URL_SAFE_NO_PAD.encode(DEFAULT_RELAY_URL)
     );
     assert_eq!(parse_pairing_code(&named).unwrap().relay_url, None);
+}
+
+/// A code whose fourth field is `https://<host>.example.com` with `n` host characters.
+fn code_with_host(n: usize) -> String {
+    use base64::engine::general_purpose::URL_SAFE_NO_PAD;
+    use base64::Engine;
+    let url = format!("https://{}.example.com", "a".repeat(n));
+    format!("{FROZEN_TEXT}:{}", URL_SAFE_NO_PAD.encode(url))
+}
+
+#[test]
+fn the_size_cap_comes_before_decoding() {
+    // The longest address the app accepts (256 characters) gives a 422-byte code: under the cap.
+    let longest = code_with_host(256 - "https://.example.com".len());
+    assert!(longest.len() <= MAX_CODE_BYTES);
+    assert!(parse_pairing_code(&longest).is_ok());
+    // A code over the cap whose address is well formed but too long: without the cap it would
+    // read as `syncRelayUrlInvalid`; with it, it is refused before anything is decoded.
+    let over = code_with_host(400);
+    assert!(over.len() > MAX_CODE_BYTES);
+    assert_eq!(
+        validation_key(parse_pairing_code(&over).unwrap_err()),
+        "validation.syncPairingCodeInvalid"
+    );
+    assert_eq!(
+        validation_key(parse_pairing_code(&code_with_host(250)).unwrap_err()),
+        "validation.syncRelayUrlInvalid"
+    );
 }
 
 #[test]
@@ -244,10 +272,7 @@ fn malformed_codes_are_refused_without_echoing_them() {
             format!("moony-pair:1:{mailbox}:{key}:"),
             "validation.syncPairingCodeInvalid",
         ),
-        (
-            format!("moony-pair:1:{mailbox}:{key}:{}", "A".repeat(513)),
-            "validation.syncPairingCodeInvalid",
-        ),
+        (code_with_host(400), "validation.syncPairingCodeInvalid"),
     ];
     for (input, expected) in cases {
         let err = match parse_pairing_code(&input) {
@@ -309,14 +334,13 @@ fn slot_1_layout_and_roles() {
 
 #[test]
 fn a_low_order_public_key_is_refused() {
-    let err = derive(
-        &StaticSecret::from(S_SECRET),
-        Side::Shower,
-        &[0; 32],
-        &MAILBOX,
-    )
-    .unwrap_err();
-    assert_eq!(validation_key(err), "validation.syncPairingFailed");
+    let mut one = [0u8; 32];
+    one[0] = 1;
+    let order_8 = hex32("e0eb7a7c3b41b8ae1656e3faf19fc46ada098deb9c32b1fd866205165f49b800");
+    for peer in [[0u8; 32], one, order_8] {
+        let err = derive(&StaticSecret::from(S_SECRET), Side::Shower, &peer, &MAILBOX).unwrap_err();
+        assert_eq!(validation_key(err), "validation.syncPairingFailed");
+    }
 }
 
 #[test]
@@ -391,6 +415,10 @@ fn slot_2_is_bound_to_this_exchange() {
     forged.extend_from_slice(&[0x55; 24]);
     forged.extend_from_slice(&ct);
     assert_eq!(failed(&scanner(), &forged), "validation.syncPairingFailed");
+    // Larger than any legal slot 2: refused before the AEAD runs.
+    let mut huge = sealed.clone();
+    huge.resize(1 + 24 + MAX_PAYLOAD_JSON + 16 + 1, 0);
+    assert_eq!(failed(&scanner(), &huge), "validation.syncPairingFailed");
     // Too short for version + nonce + tag.
     assert_eq!(
         failed(&scanner(), &sealed[..40]),

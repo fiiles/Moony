@@ -143,7 +143,8 @@ impl fmt::Debug for PairingCode {
 }
 
 /// `moony-pair:1:<mailbox>:<S public>[:<relay>]`, every field base64url without padding. The
-/// fourth field is written only for a relay that is not the default.
+/// fourth field is written only for a relay that is not the default. Infallible: the caller
+/// passes the stored, already-normalized relay address (`normalize_base_url`).
 pub fn pairing_code_text(code: &PairingCode) -> String {
     let mut text = format!(
         "{QR_PREFIX}{}:{}",
@@ -151,7 +152,10 @@ pub fn pairing_code_text(code: &PairingCode) -> String {
         URL_SAFE_NO_PAD.encode(code.shower_public)
     );
     if let Some(url) = code.relay_url.as_deref().filter(|u| !is_default_relay(u)) {
-        let url = normalize_base_url(url).unwrap_or_else(|_| url.to_string());
+        debug_assert!(
+            normalize_base_url(url).is_ok_and(|n| n == url),
+            "pairing_code_text needs a normalized relay address"
+        );
         text.push(':');
         text.push_str(&URL_SAFE_NO_PAD.encode(url));
     }
@@ -405,10 +409,24 @@ struct KeyIn {
     key: SecretString,
 }
 
+/// Decoded keys on their way into `VaultKeys`; wiped on every exit (`from_parts` wipes what it
+/// is given, so it takes the map out first).
+struct WipedKeys(BTreeMap<u32, [u8; 32]>);
+
+impl Drop for WipedKeys {
+    fn drop(&mut self) {
+        self.0.values_mut().for_each(zeroize::Zeroize::zeroize);
+    }
+}
+
 /// Opens slot 2. Any failure to open or to trust the payload is `validation.syncPairingFailed`,
 /// except a relay address the app does not use (`validation.syncRelayUrlInvalid`).
 pub fn open_credentials(t: &Transcript, sealed: &[u8]) -> Result<Credentials> {
-    if sealed.len() < 1 + NONCE + TAG || sealed[0] != SLOT_VERSION {
+    // Too short, or longer than any legal slot: refused before the AEAD runs.
+    if sealed.len() < 1 + NONCE + TAG
+        || sealed.len() > 1 + NONCE + MAX_PAYLOAD_JSON + TAG
+        || sealed[0] != SLOT_VERSION
+    {
         return Err(failed());
     }
     let mut nonce = [0u8; NONCE];
@@ -440,29 +458,28 @@ pub fn open_credentials(t: &Transcript, sealed: &[u8]) -> Result<Credentials> {
     if payload.keys.is_empty() || payload.keys.len() > MAX_PAYLOAD_KEYS {
         return Err(failed());
     }
-    let mut keys: BTreeMap<u32, [u8; 32]> = BTreeMap::new();
+    let relay_url = normalize_base_url(&payload.relay_url)?;
+    let mut keys = WipedKeys(BTreeMap::new());
     for entry in &payload.keys {
         let decoded = Zeroizing::new(
             URL_SAFE_NO_PAD
                 .decode(entry.key.0.as_bytes())
                 .map_err(|_| failed())?,
         );
-        let mut key = Zeroizing::new([0u8; 32]);
         if decoded.len() != 32 {
             return Err(failed());
         }
+        let mut key = [0u8; 32];
         key.copy_from_slice(&decoded);
-        if keys.insert(entry.epoch, *key).is_some() {
-            keys.values_mut().for_each(zeroize::Zeroize::zeroize);
+        if keys.0.insert(entry.epoch, key).is_some() {
             return Err(failed());
         }
     }
-    let relay_url = normalize_base_url(&payload.relay_url)?;
-    let current = *keys.keys().next_back().ok_or_else(failed)?;
+    let current = *keys.0.keys().next_back().ok_or_else(failed)?;
     Ok(Credentials {
         relay_url,
         account: payload.account_number.0.to_string(),
         vault_id,
-        keys: VaultKeys::from_parts(current, keys)?,
+        keys: VaultKeys::from_parts(current, std::mem::take(&mut keys.0))?,
     })
 }

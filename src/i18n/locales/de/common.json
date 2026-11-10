@@ -342,12 +342,12 @@
     "syncDevOnly": "Dies ist ein Entwicklerwerkzeug und nur in Entwicklungs-Builds verfügbar.",
     "syncChangeInProgress": "Auf diesem Gerät läuft bereits eine andere Änderung der Synchronisierung. Warten Sie, bis sie abgeschlossen ist.",
     "syncPasswordRequired": "Geben Sie Ihr Passwort erneut ein, um den Wiederherstellungscode zu kopieren.",
-    "syncPairingCodeInvalid": "Der Kopplungscode ist ungültig. Scanne den Code, der auf dem anderen Gerät angezeigt wird.",
-    "syncPairingFailed": "Die Kopplung hat nicht funktioniert. Starte auf beiden Geräten neu.",
+    "syncPairingCodeInvalid": "Der Kopplungscode ist ungültig. Scannen Sie den Code, der auf dem anderen Gerät angezeigt wird.",
+    "syncPairingFailed": "Die Kopplung hat nicht funktioniert. Starten Sie auf beiden Geräten neu.",
     "syncPairingCodeUsed": "Ein anderes Gerät hat diesen Code zuerst beantwortet. Wählen Sie auf dem anderen Gerät „Sie stimmen nicht überein“ und beginnen Sie von vorn.",
     "syncPairingExpired": "Dieser Kopplungscode ist abgelaufen. Beginnen Sie auf beiden Geräten von vorn.",
-    "syncPairingBothOn": "Die Synchronisierung ist auf beiden Geräten eingeschaltet. Schalte sie auf dem Gerät aus, das beitreten soll.",
-    "syncPairingBothOff": "Die Synchronisierung ist auf beiden Geräten ausgeschaltet. Schalte sie zuerst auf dem Gerät mit deinen Daten ein."
+    "syncPairingBothOn": "Die Synchronisierung ist auf beiden Geräten eingeschaltet. Schalten Sie sie auf dem Gerät aus, das beitreten soll.",
+    "syncPairingBothOff": "Die Synchronisierung ist auf beiden Geräten ausgeschaltet. Schalten Sie sie zuerst auf dem Gerät mit Ihren Daten ein."
   },
   "auth": {
     "wrongPassword": "Das eingegebene Passwort ist falsch. Bitte versuchen Sie es erneut.",

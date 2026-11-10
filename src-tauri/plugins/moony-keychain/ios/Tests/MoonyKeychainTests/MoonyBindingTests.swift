@@ -1,6 +1,7 @@
-// The binding's ECIES, blob format and failure reports, run on the simulator (no Secure Enclave
-// there: `bindingSelftest` puts a software P-256 key in its place, as macOS's `moony_bio_selftest`
-// does). Run with:
+// The binding's ECIES, blob format and failure reports, run on the simulator: `bindingSelftest`
+// puts a software P-256 key in the Secure Enclave's place, as macOS's `moony_bio_selftest` does,
+// so it runs anywhere; the real Secure Enclave path runs where `SecureEnclave.isAvailable`, the
+// Xcode 27 simulator included. Run with:
 //   cd src-tauri/plugins/moony-keychain/ios
 //   xcodebuild test -scheme moony-keychain -destination 'platform=iOS Simulator,name=iPhone 18 Pro'
 

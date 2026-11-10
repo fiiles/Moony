@@ -615,7 +615,7 @@ D19: the vault key is **random**, not derived from a password, and the Recovery 
 full. There is no password-derived key on the sync side at all, so nothing about sync can be
 brute-forced from the relay's data, and a device password change (D2) needs no sync step.
 
-### 11.2 Setting up sync on the first device
+### 11.2 Setting up sync on the first device (superseded, see §20)
 
 Settings → Sync (desktop only in v1, D20):
 
@@ -630,7 +630,7 @@ Settings → Sync (desktop only in v1, D20):
 4. Moony creates the vault (`PUT /v1/vaults/:id`), uploads the first snapshot (with seed tables),
    records the device in `sync_devices`, installs the triggers and starts the loop.
 
-### 11.3 Adding a device: pairing
+### 11.3 Adding a device: pairing (superseded, see §20)
 
 D21: **pairing is a QR code shown on one device and scanned by another, a key exchange through a
 short-lived mailbox on the relay (§12), and a six-digit code the person compares on both
@@ -1105,3 +1105,32 @@ the code and ADR 0024 win.
   absolute cost is about 0.1 s per 5,000 rows, which is accepted for phase 1; phase 2 profiles it
   on a phone. The 50,000-row iPhone merge target waits for the phone phase. ADR 0024, known
   limits.
+
+### As built (phase 3, 2026-11-10)
+
+Phase 3 (the second device) was built on `feat/device-sync-phase-3`. ADR 0026
+(`docs/architecture/decisions/0026-device-sync-pairing.md`) records its decisions, bytes and limits;
+where it differs from §11, the code and ADR 0026 win.
+
+- **§11.3 The pairing code.** The QR text is `moony-pair:1:<mailbox>:<S public>[:<sync server>]`:
+  the 4th field (the base64url of the normalized address) is written only for a server that is not
+  the default, so pairing works with a self-hosted server. The mailbox lives on the holder's stored
+  server when the holder shows, on the joiner's typed (or stored, or default) server when the joiner
+  shows, and on the server the code names when scanning. The code's six digits protect the exchange
+  only when S's key arrives by an on-screen QR, so pasting a pairing code is a developer tool only.
+  Each slot (not the whole mailbox) is written once and read once.
+- **§11.3 Roles and directions.** The role follows the device's own sync state (holder with sync
+  on, joiner without) and is not part of the derived key. The desktop always shows the QR and the
+  phone always scans it, in both directions; desktop to desktop and phone to phone join with the
+  Recovery Kit. Both devices check their device password before anything is shown or written, and
+  each acts only after its own person confirmed the six digits. The joining device keeps its own
+  profile and password and joins by replace (D22) after a verified backup; a Kit join first checks
+  the account on the server and refuses a vault whose key was rotated.
+- **§11.4 The device list.** "Last synced" is derived, not stored: this device's last successful
+  sync, another device's newest clock in `sync_clock`. Rows of re-joined or turned-off devices stay
+  until removal in phase 5.
+- **§11.2 and §16a The phone.** Settings → Sync exists on the phone (status, devices, scanning,
+  the Kit, setup). Setup on the phone never opens a checkout (Q4): a self-hosted server works fully,
+  the default one waits for a subscription paid elsewhere. The iPhone binds with the Secure Enclave
+  as macOS does, copies the recovery code to a private pasteboard that expires after 60 s, and a
+  debug build can carry the sync flag from its build environment. Android is not built.

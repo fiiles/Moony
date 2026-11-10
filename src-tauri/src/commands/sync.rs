@@ -57,8 +57,8 @@ pub const STATUS_CHANGED_EVENT: &str = "sync-status-changed";
 pub struct SyncEngineState(pub Mutex<Option<EngineHandle>>);
 
 /// The binding native: the keychain plugin seals to this machine (a Secure Enclave key on macOS
-/// and on the iPhone, DPAPI in machine scope on Windows) and answers `Unsupported` on Linux,
-/// Android and the iOS simulator (no Secure Enclave).
+/// and on the iPhone, the Xcode 27 simulator included, which has one; DPAPI in machine scope on
+/// Windows) and answers `Unsupported` on Linux, Android and without a Secure Enclave.
 pub(super) struct KeychainBinding {
     pub(super) app: AppHandle,
 }

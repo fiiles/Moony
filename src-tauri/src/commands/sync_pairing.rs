@@ -4,10 +4,12 @@
 //!
 //! - One pairing at a time, in `PAIRING`, bound to the profile session that started it
 //!   (`KitOwner`, as the Recovery Kit's copy window). A command of another profile session, or one
-//!   past `PairingSession::wiped_at`, abandons it. Lock, restore, Delete Account, turning sync off
-//!   and deleting the synced data abandon it too (`forget_pairing`, which never waits behind a
-//!   running join), and a received session is wiped at `wiped_at` by its own task (review PF6),
-//!   so received credentials never outlive `expires_at + RECEIVED_GRACE_SECS`.
+//!   past `PairingSession::wiped_at`, abandons it. Lock, restore and Delete Account abandon it too,
+//!   and so do turning sync off and deleting the synced data while sync was on: with sync off only
+//!   a joiner's session exists, which cancelling a half-finished setup must keep for "Try again"
+//!   (`forget_pairing`, which never waits behind a running join). A received session is wiped at
+//!   `wiped_at` by its own task (review PF6), so received credentials never outlive
+//!   `expires_at + RECEIVED_GRACE_SECS`.
 //! - New pairings (start, scan) are made one at a time under the slot's lock; a repeated scan of
 //!   the code already answered keeps that session.
 //! - Both roles check the device password before a QR is shown or slot 1 is written (`begin`,
@@ -459,8 +461,9 @@ fn wipe_when_due(mailbox: MailboxId, wiped_at: i64) {
     });
 }
 
-/// Gives the pairing in progress up (lock, restore, Delete Account, turning sync off, deleting
-/// the synced data) without waiting: a running join gives it up as soon as it ends.
+/// Gives the pairing in progress up (lock, restore, Delete Account, and turning sync off or
+/// deleting the synced data while sync was on) without waiting: a running join gives it up as
+/// soon as it ends.
 pub(crate) fn forget_pairing() {
     PAIRING.forget();
 }

@@ -115,6 +115,8 @@ interface EntityRowProps {
   onClick?: () => void;
   /** With `onClick`, a row that toggles (a filter): its pressed state (`aria-pressed`). */
   pressed?: boolean;
+  /** A row whose action is not available (yet): announced so (`aria-disabled`); the caller drops `href` and `onClick`. */
+  disabled?: boolean;
   /** Disclosure chevron; shown only on a row without a trailing value or a visible `···` (README §13). */
   chevron?: boolean;
   /** Swipe left (README §13, Gestures): Kategorie on a payment, else taking the row out of the list. */
@@ -162,6 +164,7 @@ export function EntityRow({
   from,
   onClick,
   pressed,
+  disabled = false,
   chevron = false,
   onSwipeLeft,
   swipeLeftLabel,
@@ -285,7 +288,12 @@ export function EntityRow({
           {content}
         </button>
       ) : (
-        <div className={rowClass} style={rowStyle} {...gestureProps}>
+        <div
+          className={rowClass}
+          style={rowStyle}
+          aria-disabled={disabled || undefined}
+          {...gestureProps}
+        >
           {content}
         </div>
       )}

@@ -15,7 +15,7 @@ interface SettingsRowProps {
   onClick?: () => void;
   /** A destructive row: the chip and the title in `loss`. */
   danger?: boolean;
-  /** A row whose action is not available yet: half strength, and neither a link nor a button. */
+  /** A row whose action is not available yet: half strength, announced as unavailable, and neither a link nor a button. */
   disabled?: boolean;
 }
 
@@ -46,6 +46,7 @@ export function SettingsRow({
       href={disabled ? undefined : href}
       onClick={disabled ? undefined : onClick}
       chevron={!disabled}
+      disabled={disabled}
     />
   );
 }

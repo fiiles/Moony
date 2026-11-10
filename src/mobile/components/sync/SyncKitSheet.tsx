@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { Check, Copy, Download, FileText } from 'lucide-react';
@@ -103,6 +103,13 @@ function KitSheet({
   const { exportText } = useExportTextFile();
   const kitCopy = useRecoveryKitCopy();
   const [copied, setCopied] = useState(false);
+  const copiedTimer = useRef<number | null>(null);
+  useEffect(
+    () => () => {
+      if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
+    },
+    []
+  );
   const [clipboardHint, setClipboardHint] = useState(false);
   const [saving, setSaving] = useState<'text' | 'page' | null>(null);
 
@@ -119,7 +126,8 @@ function KitSheet({
         setClipboardHint(true);
       }
       setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      if (copiedTimer.current !== null) window.clearTimeout(copiedTimer.current);
+      copiedTimer.current = window.setTimeout(() => setCopied(false), 2000);
     } catch (error) {
       if (error instanceof ApiError && error.key === 'validation.syncPasswordRequired') {
         onPasswordRequired();

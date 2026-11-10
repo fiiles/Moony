@@ -78,6 +78,21 @@ export default function SyncSection() {
     }
   };
 
+  // As the repair: the sheet goes first, and with it the typed password; the busy cover is over
+  // the shell while the data is replaced, and a failure (a wrong password too) is a toast. The
+  // mutation's own copy of the password goes once it has settled.
+  const resync = async (password: string) => {
+    setOpen(null);
+    try {
+      const path = await resyncDevice.mutateAsync(password);
+      toast(t('resync.success', { file: backupFileName(path) }));
+    } catch (error) {
+      fail(error);
+    } finally {
+      resetResync();
+    }
+  };
+
   const turnOffNow = async () => {
     try {
       await turnOff.mutateAsync();
@@ -180,10 +195,11 @@ export default function SyncSection() {
         note={pending > 0 ? t('resync.pendingChanges', { count: pending }) : undefined}
         confirmLabel={t('resync.confirm')}
         destructive
-        onSubmit={async (password) => {
-          // The sheet closes first (`closeOnSuccess`): the busy cover is already over the shell
-          const path = await resyncDevice.mutateAsync(password);
-          toast(t('resync.success', { file: backupFileName(path) }));
+        closeOnSuccess={false}
+        onSubmit={(password) => {
+          // Closes the sheet itself before the replace starts (`resync`)
+          void resync(password);
+          return Promise.resolve();
         }}
       />
       <ConfirmSheet

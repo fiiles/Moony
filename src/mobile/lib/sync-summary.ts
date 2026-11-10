@@ -1,6 +1,10 @@
 import type { SyncStatus } from '@shared/schema';
 
-/** What Nastavení's Sync row says: a `deviceSync` key and how it reads (`stale` asks for a look). */
+/**
+ * What Nastavení's Sync row says: a `deviceSync` key and how it reads (`stale` asks for a look).
+ * The tone is reserved: the mobile design system has no tone style for a Settings row's sub-line
+ * (every row's sub is `ink-4`), so Nastavení shows the key only, and the words carry the state.
+ */
 export type SyncRowSummary = { key: string; tone: 'fresh' | 'stale' | 'neutral' };
 
 /**

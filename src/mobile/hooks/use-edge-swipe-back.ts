@@ -1,6 +1,7 @@
 import { useEffect, type RefObject } from 'react';
 import { releaseVelocity } from '@/lib/sheet-drag';
 import { edgeSwipeCommits, edgeSwipeDirection, edgeSwipeStarts } from '@/mobile/lib/edge-swipe';
+import { backIsHeld } from '@/mobile/hooks/use-hold-back';
 import { hasScreenUnder, setNavUnderlay } from '@/mobile/hooks/use-nav-stack';
 
 /** The slide out after a committed swipe, and the snap home after one let go too early. */
@@ -31,7 +32,8 @@ function backButton(screen: HTMLElement): HTMLButtonElement | null {
  * from the moment the finger lands on the edge (`setNavUnderlay`, `MobileShell`), scrolled where it
  * was left, so the swipe uncovers it rather than an empty page. Touch events, not pointer events: the move
  * listener is not passive, so a drag that has been taken for a back swipe stops the page scroll.
- * A sheet is portalled outside the screen, so it never starts one.
+ * A sheet is portalled outside the screen, so it never starts one; nor does a touch while back is
+ * held (`useHoldBack`).
  */
 export function useEdgeSwipeBack(ref: RefObject<HTMLElement | null>) {
   useEffect(() => {
@@ -54,7 +56,7 @@ export function useEdgeSwipeBack(ref: RefObject<HTMLElement | null>) {
     const onStart = (event: TouchEvent) => {
       if (event.touches.length !== 1 || timer !== null) return;
       const touch = event.touches[0];
-      if (!edgeSwipeStarts(touch.clientX) || !backButton(screen)) return;
+      if (!edgeSwipeStarts(touch.clientX) || !backButton(screen) || backIsHeld()) return;
       // Drawn already while the gesture decides, so it is there when the screen starts to move
       if (hasScreenUnder()) setNavUnderlay(true);
       drag = {

@@ -14,7 +14,9 @@ or Kit) ends in one service, `join::join_new_device`: verified backup, then phas
 `join_by_replace` under a new device ID. The command layer (`commands/sync_pairing.rs`) keeps one
 session per unlocked profile session in memory, never sends a secret over IPC, and runs joins
 under the existing one-change guard. The desktop shows the QR (rendered in Rust); the phone scans
-it with `@tauri-apps/plugin-barcode-scanner` and has typed/pasted fallbacks.
+it with `@tauri-apps/plugin-barcode-scanner`. Both sides ask for the device password first.
+Pasting a pairing code is a developer tool for the simulator only; the Recovery Kit can always be
+typed or pasted.
 
 **Tech Stack:** Rust 2021, rusqlite 0.40 (SQLCipher), tokio 1, reqwest 0.13 via `services/http.rs`,
 `x25519-dalek` 3 (`static_secrets`, default `zeroize`), `hkdf` 0.13, `sha2` 0.11,
@@ -45,15 +47,19 @@ Moony-relay under `wrangler dev` (branch `feat/dev-grant`, unchanged).
 3. **Mailbox roles of the two slots.** Slot 1 is written by the scanner (C) and read by the shower
    (S); slot 2 is written by the holder, whichever side it is on, and read by the joiner. Write-once
    and read-once are per slot, so this works in both directions with no relay change.
-4. **Nobody polls before the person confirmed.** S polls slot 1 every 2 s while it shows the code.
-   C polls nothing before confirming. After confirming, a joiner polls slot 2 every 2 s; a holder
-   writes slot 2 once. Two devices behind one address stay under 60 requests a minute (the relay
-   allows 120 per address).
-5. **Joining replaces local data and needs the device password** (as re-sync does, ruling T8-4):
-   the joiner gives its device name and password before the code is shown or scanned.
+4. **Nobody reads before the person confirmed.** S polls slot 1 every 2 s while it shows the code.
+   C only retries its own slot-1 write while it is `announcing` (every 2 s) and reads nothing before
+   confirming, except slot 1 once after an unexplained `SlotTaken` (to tell the other side's cancel
+   marker from an impostor's record, Task 3). After confirming, a joiner polls slot 2 every 2 s; a holder writes slot 2 once. Two
+   devices behind one address stay under 60 requests a minute (the relay allows 120 per address).
+5. **Pairing needs the device password on both sides** (review PF1). The holder's "They match" is
+   never the only gate in front of the vault keys, and joining replaces local data (as re-sync,
+   ruling T8-4). Both sides check the password before a QR is shown or slot 1 is written; the
+   joiner also gives its device name then.
 6. **The Kit holds no epoch.** A Kit join derives the token (it does not depend on the epoch
-   number), reads `GET /v1/vaults/:id`, and takes `rotation` as the key's epoch (correction 3 of
-   phase 2: epochs follow `rotation`; it is 0 until phase 5).
+   number), checks the account (`GET /v1/accounts/me`), reads `GET /v1/vaults/:id`, and takes the
+   key as epoch 0; a vault whose `rotation` is not 0 is refused (`validation.syncRecoveryKitRotated`)
+   until phase 5 builds rotation (review PF7).
 7. **"Last synced" in the device list** is derived, never stored: this device's
    `sync_state.last_success_at`; another device's newest surviving clock
    (`MAX(hlc) FROM sync_clock WHERE device = ?`, physical part) — "last change synced". A device
@@ -61,6 +67,16 @@ Moony-relay under `wrangler dev` (branch `feat/dev-grant`, unchanged).
 8. **No checkout on the phone** (§16a Q4: no purchase or subscribe link in the phone app). The
    phone's first-device setup shows the self-hosted instruction or "Paying for sync is not
    available in the phone app" and keeps waiting; debug builds keep "Grant a test subscription".
+9. **The QR on a screen is the only pairing channel in release builds** (review PF2). Copying,
+   pasting or typing a pairing code is a developer tool behind `feature::dev_tools()` (spec §20:
+   the simulator cannot scan). The comparison code is only safe while S's public key reaches C over
+   a channel the attacker cannot modify: over a modifiable channel (a pasted text, a chat message)
+   an attacker who swaps in their own key can grind six digits offline in seconds. The Recovery Kit
+   keeps its typed and pasted fallbacks (it is a secret the person holds, not an exchange).
+10. **Ambiguous writes count as ours** (review PF3). A slot-1 (or slot-2) PUT whose answer was lost
+    (network error or 5xx) may have been stored; a retry that then gets `SlotTaken` is taken as our
+    own write and the session goes on. A wrong guess costs nothing: the comparison codes differ, or
+    the joiner cannot open slot 2.
 
 ## Global Constraints
 
@@ -71,8 +87,8 @@ Moony-relay under `wrangler dev` (branch `feat/dev-grant`, unchanged).
 - Rule 8 per task: every key a task emits or renders lands in all ten locales (`en`, `cs`, `de`, `es`, `it`, `nb`, `pl`, `sv`, `ja`, `zh`) in that task, English and Czech written, the other eight translated with `docs/standards/i18n-glossary.md`; gate `npx vitest run src/i18n/` and `cargo test --lib every_sync_validation_key`. User copy says "sync server" (cs "synchronizační server"), never "relay".
 - Wire types: a task that registers a type in `bindings.rs` runs `cd src-tauri && cargo test generate_bindings -- --ignored`, mirrors it in `shared/schema.ts` and commits the regenerated `shared/generated-types.ts` with it.
 - Secrets: `PairingSession`, `Transcript`, `Credentials`, `PairingPayload` print `<redacted>` in `Debug`; keys and the payload JSON live in `Zeroizing`; ephemeral secrets are `x25519_dalek::StaticSecret` (ZeroizeOnDrop). Nothing secret crosses IPC: the QR and the six digits are not secret, credentials never leave Rust. Mailbox IDs, account numbers, codes and addresses are never logged above `debug`.
-- Pairing bytes (pinned; Task 1 has the vectors): mailbox ID = 16 OS-random bytes, base64url without padding (22 chars, canonical); X25519 ephemeral keys on both sides; shared = X25519, refused when not contributory; `OKM = HKDF-SHA256(salt = mailbox ID 16 raw bytes, ikm = shared, info = "moony pair v1" ‖ S pub ‖ C pub, L = 40)`; session key = `OKM[0..32]`; code = `u64::from_be_bytes(OKM[32..40]) % 1_000_000`, six digits zero-padded; slot 1 = `0x01 | role | C pub` (34 bytes; role `0x01` holder, `0x02` joiner); slot 2 = `0x01 | nonce (24) | XChaCha20-Poly1305(session key, AD = mailbox ID (16) ‖ S pub (32) ‖ C pub (32), payload JSON)`.
-- Pairing timing: a session lives 600 s from `show`/`scan`; poll interval 2,000 ms; a best-effort mailbox delete gets 3 s.
+- Pairing bytes (pinned; Task 1 has the vectors): mailbox ID = 16 OS-random bytes, base64url without padding (22 chars, canonical); X25519 ephemeral keys on both sides; shared = X25519, refused when not contributory; `OKM = HKDF-SHA256(salt = mailbox ID 16 raw bytes, ikm = shared, info = "moony pair v1" ‖ S pub ‖ C pub, L = 40)`; session key = `OKM[0..32]`; code = `u64::from_be_bytes(OKM[32..40]) % 1_000_000`, six digits zero-padded; slot 1 = `0x01 | role | C pub` (34 bytes; role `0x01` holder, `0x02` joiner); slot 2 = `0x01 | nonce (24) | XChaCha20-Poly1305(session key, AD, payload JSON)` with `AD = 0x01 (SLOT_VERSION) ‖ "holder->joiner" (14 ASCII bytes) ‖ mailbox ID (16) ‖ S pub (32) ‖ C pub (32)` (95 bytes); cancel marker = `0x01 0x00` (2 bytes, either slot). HKDF's PRK inside the `hkdf` crate is not zeroized (crate limit, as in phase 2's Task 1); the OKM is.
+- Pairing timing: a session lives 600 s from `show`/`scan`; a `received` session is kept 300 s more (`RECEIVED_GRACE_SECS`) for "Try again", then wiped; poll interval 2,000 ms; abandoning (markers + delete) gets 3 s.
 - Tests: Rust services use `test_support::migrated()`, `engine::tests::{TestConn, vault}`, `FakeRelay`; never `Database`. Frontend tests are pure functions in node. Components and hooks have no tests (testing policy).
 - Every task ends with its filter test and, from `src-tauri/`: `cargo test --lib`, `cargo clippy --all-targets -- -D warnings`, `cargo fmt --check`; tasks touching the frontend or a locale also `npm test`, `npm run typecheck`, `npm run lint`. Never `--no-verify`.
 - Files stay under ~800 lines; `commands/sync.rs` (over it) only changes visibility and the flag test; new commands go in `commands/sync_pairing.rs`.
@@ -80,11 +96,14 @@ Moony-relay under `wrangler dev` (branch `feat/dev-grant`, unchanged).
 
 ## Review Focus
 
-1. **Credentials move before both people confirmed** (someone writes slot 1 or slot 2 first): the holder writes nothing before its own confirm, the joiner opens nothing before its own, and a forged slot 2 never replaces data — Task 3 `the_holder_writes_slot_2_only_after_its_own_confirm`, `a_forged_slot_2_fails_and_nothing_is_joined`.
-2. **A self-hosted sync server** (the owner's `https://sync.home.example.com`): the phone, with nothing configured, reaches the mailbox the code names — Task 1 `a_code_names_a_sync_server_that_is_not_the_default`, Task 3 `the_scanner_uses_the_sync_server_the_code_names`, Task 14 (the code carries `http://127.0.0.1:8787`).
-3. **A join interrupted after the backup** (Wi-Fi drop during the snapshot download): profile unchanged, sync still off, backup kept, the received credentials still there for "Try again" — Task 4 `a_join_whose_snapshot_download_fails_changes_nothing_but_the_backup`, Task 7 `a_transient_join_failure_keeps_the_received_session`.
-4. **The app locks or another profile unlocks mid-pairing:** the session never carries over and is wiped — Task 7 `a_pairing_session_belongs_to_one_profile_session`.
-5. **Relay hiccups inside the 10 minutes** (429 behind one home address, a dropped answer to a read-once GET): transient errors keep the session; a consumed slot ends it with a clear message — Task 3 `transient_errors_keep_the_session`, `a_lost_read_ends_the_pairing_with_a_clear_error`.
+1. **Someone holding an unlocked device starts pairing** (a borrowed laptop, a phone left on the table): no QR, no slot-1 write and no vault key leaves without the device password, on the holder as on the joiner — Task 7 `pairing_needs_the_password_before_anything_is_shown_or_written`.
+2. **Credentials move before both people confirmed** (someone writes slot 1 or slot 2 first): the holder writes nothing before its own confirm, the joiner opens nothing before its own, and a forged slot 2 never replaces data — Task 3 `the_holder_writes_slot_2_only_after_its_own_confirm`, `a_forged_slot_2_fails_and_nothing_is_joined`.
+3. **An impostor answers the code first:** the person sees two different six-digit numbers and a warning, not a glitch, and the scanner offers only "Cancel" — Task 3 `a_man_in_the_middle_who_writes_slot_1_first_is_caught`.
+4. **The scanner's first write fails or its answer is lost** (a phone on flaky Wi-Fi): the scanner retries on its own and still reaches the comparison — Task 3 `a_scanner_whose_announce_failed_retries_on_poll`, `a_lost_slot_1_put_answer_still_reaches_compare`.
+5. **A self-hosted sync server** (the owner's `https://sync.home.example.com`): the phone, with nothing configured, reaches the mailbox the code names — Task 1 `a_code_names_a_sync_server_that_is_not_the_default`, Task 3 `the_scanner_uses_the_sync_server_the_code_names`, Task 14 (the code carries `http://127.0.0.1:8787`).
+6. **A join interrupted after the backup** (Wi-Fi drop during the snapshot download): profile unchanged, sync still off, backup kept, the received credentials still there for "Try again" — Task 4 `a_join_whose_snapshot_download_fails_changes_nothing_but_the_backup`, Task 7 `a_transient_join_failure_keeps_the_received_session`.
+7. **The app locks or another profile unlocks mid-pairing:** the session never carries over and is wiped — Task 7 `a_pairing_session_belongs_to_one_profile_session`.
+8. **Relay hiccups inside the 10 minutes** (429 behind one home address, a dropped answer to a read-once GET): transient errors keep the session; a consumed slot ends it with a clear message — Task 3 `transient_errors_keep_the_session`, `a_lost_read_ends_the_pairing_with_a_clear_error`.
 
 ---
 
@@ -128,11 +147,15 @@ pub const MAX_CODE_BYTES: usize = 512;
 pub const KDF_INFO: &[u8] = b"moony pair v1";
 pub const SLOT_VERSION: u8 = 0x01;
 pub const SLOT1_LEN: usize = 34;
+pub const SLOT2_DIRECTION: &[u8] = b"holder->joiner";
+pub const CANCEL_MARKER: [u8; 2] = [SLOT_VERSION, 0x00];
 pub const MAX_PAYLOAD_JSON: usize = 16 * 1024;
 pub const MAX_PAYLOAD_KEYS: usize = 64;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Role { Holder, Joiner }                       // bytes 0x01 / 0x02
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Side { Shower, Scanner }
 impl Role { pub fn of(sync_on: bool) -> Role; pub fn byte(self) -> u8; pub fn from_byte(b: u8) -> Option<Role> }
 
 #[derive(Clone, Copy, PartialEq, Eq)]                  // Debug: "MailboxId(<redacted>)"
@@ -145,10 +168,11 @@ pub fn parse_pairing_code(text: &str) -> Result<PairingCode>;
 pub fn slot1(role: Role, scanner_public: &[u8; 32]) -> [u8; SLOT1_LEN];
 pub fn parse_slot1(bytes: &[u8]) -> Result<(Role, [u8; 32])>;
 pub fn check_roles(shower: Role, scanner: Role) -> Result<()>;
-pub struct Transcript { /* key: Zeroizing<[u8; 32]>, code: u32, ad: [u8; 80] */ }   // Debug redacted
+pub fn is_cancel_marker(bytes: &[u8]) -> bool;
+pub struct Transcript { /* key: Zeroizing<[u8; 32]>, code: u32, ad: [u8; 95] */ }   // Debug redacted
 impl Transcript { pub fn code(&self) -> u32; pub fn code_text(&self) -> String }
-pub fn derive(own: &StaticSecret, peer_public: &[u8; 32], mailbox: &MailboxId,
-              shower_public: &[u8; 32], scanner_public: &[u8; 32]) -> Result<Transcript>;
+/// `own`'s public key is computed here and placed as S or C by `side`; the peer's takes the other place.
+pub fn derive(own: &StaticSecret, side: Side, peer_public: &[u8; 32], mailbox: &MailboxId) -> Result<Transcript>;
 pub fn seal_credentials(t: &Transcript, creds: &Credentials) -> Result<Vec<u8>>;
 pub fn open_credentials(t: &Transcript, sealed: &[u8]) -> Result<Credentials>;
 // keys.rs
@@ -165,8 +189,11 @@ base64url of 32 bytes; the address field decodes to UTF-8 and goes through `norm
 `validation.syncPairingCodeInvalid`; the error never holds the input. `parse_slot1`: exactly 34 bytes,
 version 1, a known role, else `validation.syncPairingFailed`. `check_roles`: equal roles →
 `validation.syncPairingBothOn` (both holders) / `syncPairingBothOff` (both joiners). `derive`: one
-`Hkdf::<Sha256>::new(Some(&mailbox.0), shared)` expand of 40 bytes into a `Zeroizing` buffer;
-`!shared.was_contributory()` → `validation.syncPairingFailed`. Payload JSON, built in one
+`Hkdf::<Sha256>::new(Some(&mailbox.0), shared)` expand of 40 bytes into a `Zeroizing` buffer (the
+crate's PRK is not zeroized — a doc comment says so); `!shared.was_contributory()` →
+`validation.syncPairingFailed`; the transcript keeps the slot-2 AD
+`SLOT_VERSION ‖ SLOT2_DIRECTION ‖ mailbox ‖ S pub ‖ C pub` (95 bytes). The session (Task 3) checks
+`is_cancel_marker` (exactly `0x01 0x00`) on every slot it reads before parsing it. Payload JSON, built in one
 `Zeroizing<String>` in this field order, keys in ascending epoch:
 `{"v":1,"relayUrl":"…","accountNumber":"…","vaultId":"…","keys":[{"epoch":0,"key":"…"}]}`.
 `open_credentials`: version byte, length ≥ 1 + 24 + 16, AEAD open (any failure
@@ -188,18 +215,23 @@ const MAILBOX: MailboxId = MailboxId([0x33; 16]);
     // S pub 7b4e909bbe7ffe44c465a220037d608ee35897d31ef972f07f74892cb0f73f13
     // C pub 0faa684ed28867b97f4a6a2dee5df8ce974e76b7018e3f22a1c4cf2678570f20
     // shared 9e004098efc091d4ec2663b4e9f5cfd4d7064571690b4bea97ab146ab9f35056
-    // derive on both sides → same key == 01b8d60583d5b13dc2ac3426e3bb2550bc24e241f7fea9f2787597d0c03d527b
-    //   (a #[cfg(test)] fn key_bytes(&self)), code() == 482686, code_text() == "482686"
+    // derive(S, Shower, C pub, MAILBOX) and derive(C, Scanner, S pub, MAILBOX) → same key ==
+    //   01b8d60583d5b13dc2ac3426e3bb2550bc24e241f7fea9f2787597d0c03d527b
+    //   (a #[cfg(test)] fn key_bytes(&self)), code() == 482686, code_text() == "482686";
+    //   the AD (a #[cfg(test)] fn ad(&self)) == [0x01] ‖ b"holder->joiner" ‖ [0x33; 16] ‖ S pub ‖ C pub
 }
 #[test] fn a_substituted_scanner_key_shows_another_code() {
-    // S derives with M's public key (ff2ee45601ec1b67310c7790404585ae697331eee1c1f8cf2419731c1fff3e6b):
+    // derive(S, Shower, M pub ff2ee45601ec1b67310c7790404585ae697331eee1c1f8cf2419731c1fff3e6b, MAILBOX):
     // code 763075, key 0efa12d5cc75e952aa8a22e2676ec387480c9f8124a440153a79019911756f36 ≠ C's 482686 / key
 }
+#[test] fn the_wrong_side_gives_another_transcript()   // derive(C, Shower, S pub, ..) → key ≠ the vector
+#[test] fn the_cancel_marker_is_two_bytes()            // is_cancel_marker([1, 0]) true; [1, 0, 0], [0, 0], slot1(..) false
 #[test] fn the_code_text_is_frozen() {
     // MAILBOX + S pub, default server → "moony-pair:1:MzMzMzMzMzMzMzMzMzMzMw:e06Qm75__kTEZaIgA31gjuNYl9Me-XLwf3SJLLD3PxM"
     // and parse_pairing_code of it round-trips with relay_url None
 }
 #[test] fn a_code_names_a_sync_server_that_is_not_the_default() {
+    // (codes are only shown as QR outside dev tools — correction 9)
     // relay "https://Sync.Home.Example.com/" → text ends ":" + b64url("https://sync.home.example.com");
     // parse → Some("https://sync.home.example.com"); "http://127.0.0.1:8787" round-trips;
     // a fourth field naming DEFAULT_RELAY_URL parses to None
@@ -220,7 +252,8 @@ const MAILBOX: MailboxId = MailboxId([0x33; 16]);
     // bytes[0] == 0x01, bytes[1..25] == [0x55; 24]; open → same relay, account, vault ID, current epoch 1, both keys
 }
 #[test] fn slot_2_is_bound_to_this_exchange() {
-    // opening under a transcript of another mailbox, or with S/C swapped, or after flipping any byte → syncPairingFailed
+    // opening under a transcript of another mailbox, or with S/C swapped, or after flipping any byte → syncPairingFailed;
+    // a box sealed directly with the session key but AD without the version and direction label → syncPairingFailed
 }
 #[test] fn a_hostile_payload_is_refused() {
     // sealed with the right transcript but: relayUrl "http://evil.example", "https://a.b/path",
@@ -244,7 +277,8 @@ const MAILBOX: MailboxId = MailboxId([0x33; 16]);
 ### Task 2: The relay's pairing mailbox — trait, errors, HTTP, fake
 
 **Files:**
-- Modify: `src-tauri/src/services/sync/relay/mod.rs` (trait, variants, mapping table test), `relay/http.rs`, `relay/http/tests.rs`, `relay/fake.rs`, `relay/fake/tests.rs`, `services/sync/error.rs`, `src/i18n/locales/<10>/common.json` (`validation.syncPairingCodeUsed`, `syncPairingExpired`)
+- Create: `src-tauri/src/services/sync/relay/http/mailbox_tests.rs` (`#[cfg(test)] mod mailbox_tests;` in `relay/http.rs`; `relay/http/tests.rs` is already 814 lines and is not grown — its `serve_once`/`answer` helpers become `pub(super)`)
+- Modify: `src-tauri/src/services/sync/relay/mod.rs` (trait, variants, mapping table test), `relay/http.rs`, `relay/http/tests.rs` (helper visibility only), `relay/fake.rs`, `relay/fake/tests.rs`, `services/sync/error.rs`, `src/i18n/locales/<10>/common.json` (`validation.syncPairingCodeUsed`, `syncPairingExpired`)
 
 **Interfaces:**
 - Produces:
@@ -268,6 +302,7 @@ impl FakeRelay {
     pub fn write_slot_raw(&self, mailbox: &str, slot: u8, bytes: Vec<u8>); // an attacker's write, same rules
     pub fn expire_mailbox(&self, mailbox: &str);                            // as if 10 minutes passed
     pub fn lose_next_take_answer(&self);                                    // the relay erased it, the answer is lost
+    pub fn lose_next_put_answer(&self);                                     // the relay stored it, the answer is lost (Network)
 }
 ```
 
@@ -281,6 +316,8 @@ second read → `SlotConsumed`; burn or expiry → every later put/take `Mailbox
 ID stores nothing. `error.rs`: the four variants map to `SyncError::Refused`; `to_app_error` gives
 `Refused(SlotTaken)` → `validation.syncPairingCodeUsed`, `Refused(MailboxGone)` →
 `validation.syncPairingExpired`, `Refused(SlotConsumed)` → `validation.syncPairingFailed`.
+Copy of `syncPairingCodeUsed` (review PF4): "Another device answered this code first. Choose
+\"They don't match\" on the other device, then start again."
 
 - [ ] **Step 1: Failing tests**
 
@@ -288,7 +325,7 @@ ID stores nothing. `error.rs`: the four variants map to `SyncError::Refused`; `t
 // relay/mod.rs: every_documented_status_and_code_maps_to_its_variant — the rows
 // (409 slot_taken, 404 empty, 410 consumed, 410 mailbox_gone) now expect SlotTaken, SlotEmpty,
 // SlotConsumed, MailboxGone (they were unknown_code())
-// relay/http/tests.rs (serve_once pattern)
+// relay/http/mailbox_tests.rs (the serve_once pattern of relay/http/tests.rs)
 #[test] fn a_slot_is_put_as_raw_bytes_without_credentials()   // request line "PUT /v1/pairing/<id>/1", content-type application/octet-stream, no moony-account / authorization header
 #[test] fn an_empty_slot_reads_as_none_and_a_written_one_as_its_bytes()
 #[test] fn mailbox_answers_map_to_their_errors()              // 409 slot_taken, 410 consumed, 410 mailbox_gone, 429
@@ -299,11 +336,12 @@ ID stores nothing. `error.rs`: the four variants map to `SyncError::Refused`; `t
 #[tokio::test] async fn a_burnt_or_expired_mailbox_is_gone_for_every_call()
 #[tokio::test] async fn unknown_mailboxes_store_nothing()       // take → None; burn → Ok; then a put still opens it
 #[tokio::test] async fn a_lost_take_answer_leaves_the_slot_consumed() // lose_next_take_answer → Err(Network); next take → SlotConsumed
+#[tokio::test] async fn a_lost_put_answer_leaves_the_slot_written()   // lose_next_put_answer → Err(Network); peek_slot Some; next put → SlotTaken
 // error.rs
 #[test] fn mailbox_errors_read_as_pairing_keys()
 ```
 
-- [ ] **Step 2: Run** `cargo test --lib services::sync::relay services::sync::error` → FAIL.
+- [ ] **Step 2: Run** `cargo test --lib services::sync::relay services::sync::error` → FAIL (`relay/http/tests.rs` stays at its size: `wc -l` unchanged but for the visibility edits).
 - [ ] **Step 3: Implement**; the two keys in all ten locales.
 - [ ] **Step 4: Run** → PASS; `npx vitest run src/i18n/`; gates.
 - [ ] **Step 5: Commit** `feat(sync): the relay's pairing mailbox in the client and the fake relay`.
@@ -322,43 +360,60 @@ ID stores nothing. `error.rs`: the four variants map to `SyncError::Refused`; `t
 
 ```rust
 pub const PAIRING_LIFETIME_SECS: i64 = 600;
-pub const BURN_BUDGET: Duration = Duration::from_secs(3);
-#[derive(Clone, Copy, Debug, PartialEq, Eq)] pub enum Side { Shower, Scanner }
-#[derive(Clone, Copy, Debug, PartialEq, Eq)] pub enum Stage { WaitingForScan, Compare, WaitingForOther, Sent, Received }
-pub struct PairingSession { /* side, role, mailbox, relay_url, secret: StaticSecret, own and peer publics,
-                               transcript: Option<Transcript>, stage, received: Option<Credentials>, expires_at */ }
+pub const RECEIVED_GRACE_SECS: i64 = 300;
+pub const ABANDON_BUDGET: Duration = Duration::from_secs(3);
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Stage { Announcing, WaitingForScan, Compare, WaitingForOther, Sent, Received }
+pub struct PairingSession { /* side, role, mailbox, relay_url, secret: Option<StaticSecret> (taken at derive),
+                               own_public, peer_public, transcript: Option<Transcript>, stage, contested: bool,
+                               ambiguous_put: [bool; 2] (slot 1, slot 2), written: [bool; 2],
+                               received: Option<Credentials>, expires_at */ }
 impl PairingSession {
     pub fn show(role: Role, relay_url: &str, now: i64) -> Result<Self>;                 // WaitingForScan; nothing sent
-    pub fn scan(role: Role, code_text: &str, now: i64) -> Result<Self>;                 // relay = code's or DEFAULT_RELAY_URL
+    pub fn scan(role: Role, code_text: &str, now: i64) -> Result<Self>;                 // Announcing; relay = code's or DEFAULT_RELAY_URL
     pub fn code(&self) -> PairingCode;                                                   // shower only
     pub fn side(&self) -> Side; pub fn role(&self) -> Role; pub fn stage(&self) -> Stage;
     pub fn relay_url(&self) -> &str; pub fn expires_at(&self) -> i64;
     pub fn comparison_code(&self) -> Option<String>;                                     // Some from Compare on
+    pub fn contested(&self) -> bool;                                                     // scanner: someone wrote slot 1 first
     pub fn received(&self) -> Option<&Credentials>;
-    pub async fn announce<M: Mailbox>(&mut self, mailbox: &M, now: i64) -> SyncResult<()>;            // scanner: slot 1 → Compare
+    pub fn wiped_at(&self) -> i64;   // expires_at, or expires_at + RECEIVED_GRACE_SECS once Received
+    pub async fn announce<M: Mailbox>(&mut self, mailbox: &M, now: i64) -> SyncResult<Stage>;        // scanner: slot 1 → Compare
     pub async fn poll<M: Mailbox>(&mut self, mailbox: &M, now: i64) -> SyncResult<Stage>;
     pub async fn confirm<M: Mailbox>(&mut self, mailbox: &M, holder_creds: Option<&Credentials>, now: i64) -> SyncResult<Stage>;
-    pub async fn abandon<M: Mailbox>(self, mailbox: &M);                                 // burn within BURN_BUDGET, then drop
+    pub async fn abandon<M: Mailbox>(self, mailbox: &M);                                 // markers + burn within ABANDON_BUDGET, then drop
 }
 pub fn keeps_session(error: &SyncError) -> bool;   // RateLimited | Transient(_)
 ```
 
-Transitions. `announce` (scanner, Compare not yet): put slot 1 (`slot1(role, own pub)`), derive →
-Compare. `poll`: shower in WaitingForScan takes slot 1 (`None` → stays), `parse_slot1`,
-`check_roles(own, theirs)`, derive → Compare; joiner in WaitingForOther takes slot 2 (`None` → stays),
-`open_credentials` → Received, then `burn_mailbox` best effort; every other stage returns its stage
-untouched and sends nothing. `confirm` only from Compare: holder → `seal_credentials(holder_creds)`
-and put slot 2 → Sent (`holder_creds` missing → `Internal`); joiner → WaitingForOther, sending
-nothing. Any call at `now ≥ expires_at` → `validation.syncPairingExpired`. Relay answers:
-`MailboxGone` → `syncPairingExpired` for a shower before Compare and `syncPairingCancelled` after;
-`SlotTaken` on slot 1 → `syncPairingCodeUsed`; `SlotTaken` on slot 2 or `SlotConsumed` →
-`syncPairingFailed`. The session never retries on its own; the caller decides with `keeps_session`.
+Transitions. `announce` (scanner, Announcing): put slot 1 (`slot1(role, own pub)`), then
+`derive(secret.take(), Scanner, shower pub, mailbox)` → Compare. A put that fails with `Network` or
+`Server` sets `ambiguous_put[0]` and leaves the stage Announcing (the error is returned; it keeps the
+session). `SlotTaken` with `ambiguous_put[0]` set = our own earlier write (correction 10) → derive →
+Compare. `SlotTaken` without it: take slot 1 once; the cancel marker → `syncPairingCancelled`;
+anything else (an impostor's record, `None`, `SlotConsumed`) → derive our own code anyway, stage
+Compare with `contested = true` (review PF4: the person sees our code(S, C), which differs from the
+code(S, M) on the other screen). `confirm` on a contested session → `syncPairingCodeUsed` and sends
+nothing; the UI offers only "Cancel" there. `poll`: Announcing → `announce` again; shower in
+WaitingForScan takes slot 1 (`None` → stays; the cancel marker → `syncPairingCancelled`),
+`parse_slot1`, `check_roles(own, theirs)`, derive (Shower) → Compare; joiner in WaitingForOther takes
+slot 2 (`None` → stays; marker → `syncPairingCancelled`), `open_credentials` → Received, then
+`burn_mailbox` best effort; every other stage returns its stage untouched and sends nothing.
+`confirm` only from Compare: holder → `seal_credentials(holder_creds)` and put slot 2 → Sent
+(`holder_creds` missing → `Internal`; `SlotTaken` after an ambiguous slot-2 put → Sent); joiner →
+WaitingForOther, sending nothing. Any call at `now ≥ wiped_at()` → `validation.syncPairingExpired`.
+Relay answers: `MailboxGone` → `syncPairingExpired` for a shower before Compare and
+`syncPairingCancelled` after (and for the scanner); `SlotTaken` on slot 2 without an ambiguous put or
+`SlotConsumed` → `syncPairingFailed`. `abandon` (review PF8): within `ABANDON_BUDGET`, puts
+`CANCEL_MARKER` into each slot this side has not written (errors ignored), then `burn_mailbox`, then
+drops (the secret, the transcript and the credentials are zeroized). The session never retries on
+its own; the caller decides with `keeps_session`.
 
 - [ ] **Step 1: Failing tests** (`FakeRelay`; a helper drives S and C to Compare)
 
 ```rust
 #[tokio::test] async fn a_joiner_scans_a_holders_code_and_receives_the_credentials() {
-    // S = show(Holder), C = scan(Joiner, code); C.announce; S.poll → Compare; codes equal (6 digits);
+    // S = show(Holder), C = scan(Joiner, code) → Announcing; C.announce → Compare; S.poll → Compare; codes equal (6 digits);
     // C.confirm → WaitingForOther; C.poll → WaitingForOther (slot 2 empty); S.confirm(Some(creds)) → Sent;
     // C.poll → Received; C.received() == creds (relay, account, vault ID, keys); mailbox burnt (put → MailboxGone)
 }
@@ -371,8 +426,28 @@ nothing. Any call at `now ≥ expires_at` → `validation.syncPairingExpired`. R
     // after joiner.confirm, poll → Err(syncPairingFailed), received() None; the holder's later put → SlotTaken → syncPairingFailed
 }
 #[tokio::test] async fn a_man_in_the_middle_who_writes_slot_1_first_is_caught() {
-    // M writes slot1(Joiner, m_pub) first: C.announce → Err(syncPairingCodeUsed);
-    // S.poll → Compare with a code ≠ C's would-be code; S.abandon → peek_slot(id, 2) == None, mailbox gone
+    // M (fixed secret) writes slot1(Joiner, m_pub) first; S.poll → Compare with
+    //   S.comparison_code() == derive(S's secret, Shower, m_pub).code_text()  (code(S, M));
+    // C.announce → Ok(Compare), C.contested() == true, C.comparison_code() == code(S, C) ≠ S's code;
+    // C.confirm → Err(syncPairingCodeUsed), peek_slot(id, 2) == None; S.abandon → mailbox gone
+}
+#[tokio::test] async fn a_scanner_whose_announce_failed_retries_on_poll() {
+    // fail_next(MailboxPut, Server(503)) before the relay stores anything → announce Err, keeps_session,
+    // stage Announcing; C.poll → Compare; S.poll → Compare; codes equal
+}
+#[tokio::test] async fn a_lost_slot_1_put_answer_still_reaches_compare() {
+    // lose_next_put_answer → announce Err(Transient), stage Announcing; C.poll → put gets SlotTaken →
+    // Compare, contested() false; S.poll → Compare; codes equal
+}
+#[tokio::test] async fn a_lost_slot_2_put_answer_counts_as_sent()   // holder: lose_next_put_answer → Err; confirm again → Sent; joiner receives
+#[tokio::test] async fn abandoning_tells_a_waiting_peer_it_was_cancelled() {
+    // joiner C waiting on slot 2; holder S abandons with fail_next(MailboxBurn, Network): C.poll → Err(syncPairingCancelled)
+    // (the marker); shower S abandons before any scan with the burn failing: C.announce → SlotTaken → reads the marker →
+    // Err(syncPairingCancelled)
+}
+#[tokio::test] async fn the_secret_is_gone_after_derive()   // a #[cfg(test)] fn has_secret(): true before, false after Compare on both sides
+#[tokio::test] async fn a_received_session_lives_through_the_grace_period() {
+    // Received at t: wiped_at() == expires_at + 300; received() still Some at expires_at + 299; any call at expires_at + 300 → syncPairingExpired
 }
 #[tokio::test] async fn equal_roles_are_refused_by_the_shower() {
     // (Holder, Holder) → S.poll Err(syncPairingBothOn); (Joiner, Joiner) → syncPairingBothOff;
@@ -405,33 +480,38 @@ nothing. Any call at `now ≥ expires_at` → `validation.syncPairingExpired`. R
 ### Task 4: Joining a new device — pairing credentials or the Recovery Kit
 
 **Files:**
-- Modify: `src-tauri/src/services/sync/join.rs`, `src-tauri/src/services/sync/recovery.rs` (+ its tests), `src-tauri/src/services/sync/engine/tests/mod.rs` (`mod join_new;`), `src/i18n/locales/<10>/common.json` (`validation.syncRecoveryAccountInvalid`, `syncRecoveryVaultNotFound`)
+- Modify: `src-tauri/src/services/sync/join.rs`, `src-tauri/src/services/sync/recovery.rs` (+ its tests), `src-tauri/src/services/sync/relay/fake.rs` (`set_rotation`), `src-tauri/src/services/sync/engine/tests/mod.rs` (`mod join_new;`), `src/i18n/locales/<10>/common.json` (`validation.syncRecoveryAccountInvalid`, `syncRecoveryVaultNotFound`, `syncRecoveryKitRotated`, `syncJoinSetupPending`)
 - Create: `src-tauri/src/services/sync/engine/tests/join_new.rs`
 
 **Interfaces:**
-- Consumes: `join::{join_by_replace, backed_up}` (phase 2), `relay::Relay::vault_info`, `recovery::{parse_recovery_qr_payload, decode_recovery_code, RecoveryKey}`, Task 3 (tests only).
+- Consumes: `join::{join_by_replace, backed_up}` (phase 2), `relay::Relay::{vault_info, account_status}`, `keys::account`, `recovery::{parse_recovery_qr_payload, decode_recovery_code, RecoveryKey}`, Task 3 (tests only).
 - Produces:
 
 ```rust
 // join.rs
 pub async fn join_new_device<R: Relay, D: ConnAccess>(relay: &R, db: &D, creds: Credentials,
     device_name: &str, data_dir: &Path, native: &dyn BindingNative, now: i64) -> SyncResult<PathBuf>;
-pub async fn recovery_credentials<R: Relay>(relay: &R, input: RecoveryInput) -> SyncResult<Credentials>;
+pub async fn recovery_credentials<R: Relay, D: ConnAccess>(relay: &R, db: &D, input: RecoveryInput) -> SyncResult<Credentials>;
 // recovery.rs
 pub struct RecoveryInput { pub relay_url: String, pub account: String, pub vault_id: VaultId, pub key: RecoveryKey } // Debug redacted
 pub fn read_recovery_input(code: &str, account: Option<&str>, relay_url: Option<&str>, default_relay: &str) -> Result<RecoveryInput>;
 ```
 
 `join_new_device`: `validate_device_name`, `validate_base_url(&creds.relay_url)`, refuse when
-`state::load` says enabled (`validation.syncAlreadyEnabled`) — all before any backup or network
-call; then the verified backup (`backed_up`, the zip named as repair's) and `join_by_replace`;
-returns the zip path. `read_recovery_input`: a trimmed code starting `moony-recover:` →
+`state::load` says enabled (`validation.syncAlreadyEnabled`), refuse when `keys::account` is `Some`
+with an account number other than `creds.account` (`validation.syncJoinSetupPending`: "Finish or
+cancel the sync setup on this device first.", review PF5) — all before any backup or network call;
+then the verified backup (`backed_up`, the zip named as repair's) and `join_by_replace`; returns the
+zip path. The caller passes a clone, so it keeps its copy for "Try again" (review PF6). `read_recovery_input`: a trimmed code starting `moony-recover:` →
 `parse_recovery_qr_payload` (account and address from the QR, `None` address → `DEFAULT_RELAY_URL`;
 the arguments are ignored); otherwise `decode_recovery_code`, `account` must be 16 digits
 (`validation.syncRecoveryAccountInvalid`), `relay_url` empty or `None` → `default_relay`, else
-`normalize_base_url`. `recovery_credentials`: keys `{0: key}`, `vault_info(&creds.auth())`;
-`Unauthorized` / `VaultNotFound` → `validation.syncRecoveryVaultNotFound`; else rebuild the keys at
-epoch `info.rotation` (correction 6).
+`normalize_base_url`. `recovery_credentials` (review PF7), in this order: sync on → 
+`validation.syncAlreadyEnabled` before any network call; `account_status(&input.account)`
+(`AccountNotFound` → `validation.syncRecoveryAccountInvalid`); keys `{0: key}`,
+`vault_info(&creds.auth())` (`Unauthorized` / `VaultNotFound` → `validation.syncRecoveryVaultNotFound`);
+`info.rotation != 0` → `validation.syncRecoveryKitRotated` ("This sync was re-keyed; joining with a
+Recovery Kit after that is not supported yet." — rotation is phase 5); else credentials at epoch 0.
 
 - [ ] **Step 1: Failing tests** (`engine/tests/join_new.rs`; `vault()` gives A on, B joined — use a third fresh `TestConn` C with its own rows as the newcomer; `NoBinding`; a temp data dir)
 
@@ -450,7 +530,14 @@ epoch `info.rotation` (correction 6).
     // join_new_device → converged
 }
 #[tokio::test] async fn a_code_of_another_vault_is_refused_before_any_backup()   // syncRecoveryVaultNotFound; no zip; C unchanged
+#[tokio::test] async fn a_kit_with_an_unknown_account_is_refused()               // account_status → AccountNotFound → syncRecoveryAccountInvalid; no vault_info call
+#[tokio::test] async fn a_kit_of_a_rotated_vault_is_refused()                    // FakeRelay vault rotation 1 (a test knob set_rotation) → syncRecoveryKitRotated; no zip
+#[tokio::test] async fn a_kit_join_with_sync_on_is_refused_before_any_network_call() // A → syncAlreadyEnabled; FakeRelay calls() empty
 #[tokio::test] async fn joining_while_sync_is_on_is_refused()                    // A → syncAlreadyEnabled; no zip; FakeRelay calls empty
+#[tokio::test] async fn joining_during_a_setup_with_another_account_is_refused_before_any_backup() {
+    // C: keys::save_account(conn, relay, "9999888877776666") (a half setup); join_new_device(A's creds) →
+    // syncJoinSetupPending; no zip; FakeRelay calls empty; the same account number → allowed
+}
 #[tokio::test] async fn a_hostile_sync_server_in_the_credentials_is_refused_before_anything() // "http://evil.example" → syncRelayUrlInvalid; no zip; no relay call
 #[tokio::test] async fn a_join_whose_snapshot_download_fails_changes_nothing_but_the_backup() {
     // fail_next(GetSnapshot, Network) → Err(Transient); C's rows unchanged, sync off, zip exists; a second join succeeds
@@ -464,7 +551,7 @@ epoch `info.rotation` (correction 6).
 ```
 
 - [ ] **Step 2: Run** `cargo test --lib services::sync::engine::tests::join_new services::sync::recovery` → FAIL.
-- [ ] **Step 3: Implement**; the two keys in all ten locales.
+- [ ] **Step 3: Implement** (`FakeRelay` gains `pub fn set_rotation(&self, vault_id: &str, rotation: u32)`; `relay/fake.rs` in Files); the four keys in all ten locales.
 - [ ] **Step 4: Run** → PASS; i18n; gates.
 - [ ] **Step 5: Commit** `feat(sync): join a new device from pairing credentials or the Recovery Kit`.
 
@@ -525,7 +612,7 @@ write, so it syncs.
 ### Task 6: The flag and the dev sync server at build time (phones)
 
 **Files:**
-- Modify: `src-tauri/src/services/sync/feature.rs`, `src-tauri/src/services/sync/relay/http.rs` (`default_base_url`, its test in `relay/http/tests.rs`)
+- Modify: `src-tauri/src/services/sync/feature.rs` (+ tests), `src-tauri/src/services/sync/relay/http.rs` (`default_base_url` calls `feature::dev_relay_base`; `relay/http/tests.rs` is not grown)
 
 **Interfaces:**
 - Produces:
@@ -536,16 +623,16 @@ write, so it syncs.
 #[cfg(not(debug_assertions))] const BUILT_WITH: Option<&str> = None;
 fn decide(released: bool, debug: bool, runtime: Option<&str>, built_with: Option<&str>) -> bool;
 // released || (debug && (runtime == Some("1") || built_with == Some("1")))
-// relay/http.rs
+pub fn dev_relay_base() -> Option<String>;   // debug: runtime MOONY_RELAY_URL, else option_env!; release: None
 fn pick_dev_base(runtime: Option<&str>, built_with: Option<&str>) -> Option<String>;  // first non-empty, runtime first
 ```
 
-`default_base_url()` in debug builds: runtime `MOONY_RELAY_URL`, else `option_env!("MOONY_RELAY_URL")`,
-else the default; release: the default. Doc comments say an iPhone app has no environment, so a
-debug build made with `MOONY_DEV_SYNC=1` carries the flag (cargo rebuilds when the variable changes).
+`default_base_url()`: `feature::dev_relay_base()` else `DEFAULT_RELAY_URL`. Doc comments say an
+iPhone app has no environment, so a debug build made with `MOONY_DEV_SYNC=1` carries the flag
+(cargo rebuilds when the variable changes).
 
-- [ ] **Step 1: Failing tests** — `the_flag_is_off_in_this_build_unless_the_dev_variable_is_set` gains rows `(false, true, None, Some("1")) → true`, `(false, true, Some("0"), Some("1")) → true`, `(false, false, None, Some("1")) → false`, `(false, true, None, Some("yes")) → false`; `fn the_dev_base_prefers_the_runtime_variable()` (`pick_dev_base(Some("http://localhost:1"), Some("http://127.0.0.1:8787"))` → runtime; `(None, Some(x))` → x; `(Some(""), None)` → None).
-- [ ] **Steps 2–4:** run (FAIL) → implement → `cargo test --lib services::sync::feature services::sync::relay::http` PASS; `cargo build --release` compiles; gates.
+- [ ] **Step 1: Failing tests** (all in `feature.rs`) — `the_flag_is_off_in_this_build_unless_the_dev_variable_is_set` gains rows `(false, true, None, Some("1")) → true`, `(false, true, Some("0"), Some("1")) → true`, `(false, false, None, Some("1")) → false`, `(false, true, None, Some("yes")) → false`; `fn the_dev_base_prefers_the_runtime_variable()` (`pick_dev_base(Some("http://localhost:1"), Some("http://127.0.0.1:8787"))` → runtime; `(None, Some(x))` → x; `(Some(""), None)` → None); and (review PF9) `#[cfg(not(debug_assertions))] #[test] fn a_release_build_ignores_the_dev_variables()` asserting `!enabled()`, `!dev_tools()`, `dev_relay_base().is_none()` and `relay::http::default_base_url() == DEFAULT_RELAY_URL`.
+- [ ] **Steps 2–4:** run (FAIL) → implement → `cargo test --lib services::sync::feature` PASS; then `MOONY_DEV_SYNC=1 MOONY_RELAY_URL=http://127.0.0.1:8787 cargo test --release --lib services::sync::feature` → PASS (the release test runs with both variables set, at build and run time); gates.
 - [ ] **Step 5: Commit** `feat(sync): a debug build can carry the sync flag and dev sync server`.
 
 ---
@@ -554,7 +641,7 @@ debug build made with `MOONY_DEV_SYNC=1` carries the flag (cargo rebuilds when t
 
 **Files:**
 - Create: `src-tauri/src/commands/sync_pairing.rs`
-- Modify: `src-tauri/src/commands/mod.rs`, `src-tauri/src/lib.rs` (`generate_handler!`, under `// Device sync`), `src-tauri/src/commands/sync.rs` (helpers `require_feature`, `app_error`, `now`, `data_dir`, `sync_on`, `profile_relay`, `guarded_change`, `AppEngine`, `verify_password`, `KitOwner`, `kit_owner`, `KeychainBinding` become `pub(super)`; the source-scan test covers both files), `src-tauri/src/commands/auth.rs` (lock, logout, delete account call `forget_pairing()` beside `forget_kit_window()`), `src-tauri/src/commands/backup.rs` (restore, same), `src-tauri/src/models/sync.rs`, `src-tauri/src/bindings.rs`, `shared/generated-types.ts`, `shared/schema.ts`, `src/lib/tauri-api.ts`, `src/i18n/locales/<10>/common.json` (`validation.syncPairingNotStarted`, `syncJoinPasswordRequired`)
+- Modify: `src-tauri/src/commands/mod.rs`, `src-tauri/src/lib.rs` (`generate_handler!`, under `// Device sync`), `src-tauri/src/commands/sync.rs` (helpers `require_feature`, `app_error`, `now`, `data_dir`, `sync_on`, `profile_relay`, `guarded_change`, `AppEngine`, `verify_password`, `KitOwner`, `kit_owner`, `KeychainBinding` become `pub(super)`; the source-scan test covers both files), `src-tauri/src/commands/auth.rs` (lock, logout, delete account call `forget_pairing()` beside `forget_kit_window()`), `src-tauri/src/commands/backup.rs` (restore, same), `src-tauri/src/models/sync.rs`, `src-tauri/src/bindings.rs`, `shared/generated-types.ts`, `shared/schema.ts`, `src/lib/tauri-api.ts`, `src/i18n/locales/<10>/common.json` (`validation.syncPairingNotStarted`, `syncPairingPasswordRequired`)
 
 **Interfaces:**
 - Consumes: Tasks 3, 4, 5.
@@ -562,24 +649,29 @@ debug build made with `MOONY_DEV_SYNC=1` carries the flag (cargo rebuilds when t
 
 ```rust
 // models/sync.rs
-pub enum PairingStage { WaitingForScan, Compare, WaitingForOther, Sent, Received }   // camelCase wire names
+pub enum PairingStage { Announcing, WaitingForScan, Compare, WaitingForOther, Sent, Received }   // camelCase wire names
 pub enum PairingRole { Holder, Joiner }                                               // "holder" | "joiner"
 pub struct PairingView {
     stage: PairingStage,                 // "stage"
     role: PairingRole,                   // "role"
     qr_svg: Option<String>,              // "qrSvg"  — shower, waitingForScan (recovery::qr_svg of the code text)
-    pairing_code: Option<String>,        // "pairingCode" — the same text, for Copy / paste
+    pairing_code: Option<String>,        // "pairingCode" — the same text, only when feature::dev_tools() (correction 9)
     comparison_code: Option<String>,     // "comparisonCode" — six digits, from compare on
-    expires_at: i64,                     // "expiresAt"
+    contested: bool,                     // "contested" — scanner: another device answered first (only "Cancel")
+    expires_at: i64,                     // "expiresAt" — PairingSession::wiped_at()
 }
 // sync_pairing.rs
-pub(crate) fn forget_pairing();          // spawns: take the slot, abandon (best-effort burn)
+pub(crate) fn forget_pairing();          // spawns: take the slot, abandon (markers + best-effort burn)
+async fn begin<T>(password: Zeroizing<String>, verify: impl Future<Output = Result<()>>,
+                  then: impl Future<Output = SyncResult<T>>) -> Result<T>;
+// empty password → validation.syncPairingPasswordRequired without awaiting `verify`; `verify` (verify_password,
+// spawn_blocking) must succeed before `then` is polled at all
 ```
 
 | Command | Args | Returns |
 |---|---|---|
-| `sync_pairing_start` | `relayUrl: Option<String>, deviceName: Option<String>, password: Option<String>` | `PairingView` |
-| `sync_pairing_scan` | `code: String, deviceName: Option<String>, password: Option<String>` | `PairingView` |
+| `sync_pairing_start` | `relayUrl: Option<String>, deviceName: Option<String>, password: String` | `PairingView` |
+| `sync_pairing_scan` | `code: String, deviceName: Option<String>, password: String` | `PairingView` |
 | `sync_pairing_poll` | — | `PairingView` |
 | `sync_pairing_confirm` | — | `PairingView` |
 | `sync_pairing_cancel` | — | `()` |
@@ -588,35 +680,55 @@ pub(crate) fn forget_pairing();          // spawns: take the slot, abandon (best
 | `sync_list_devices` | — | `Vec<SyncDevice>` |
 | `sync_rename_device` | `name: String` | `()` |
 
-Behaviour. The role is `Role::of(sync_on)` at start/scan. A joiner must pass `deviceName` (validated)
-and `password` (`verify_password`; missing → `validation.syncJoinPasswordRequired`) before anything
-is shown or written; a holder ignores them. The shower's server follows correction 2 (a holder needs
-its stored account; `relayUrl` normalized). One slot,
+Behaviour. The role is `Role::of(sync_on)` at start/scan. **Both roles** (review PF1) pass the
+device password: `password` goes into `Zeroizing` at once and `begin` runs `verify_password`
+(`spawn_blocking`, as phase 2) before `PairingSession::show`/`scan` — no QR is rendered and nothing
+is written to the mailbox before it succeeded; an empty password is
+`validation.syncPairingPasswordRequired`, a wrong one the existing wrong-password error of
+`auth::verify_password`. A joiner also passes `deviceName` (validated before the password check); a
+holder's is ignored. The shower's server follows correction 2 (a holder needs its stored account;
+`relayUrl` normalized). `sync_pairing_scan` calls `scan` then `announce`; a `keeps_session` error of
+the announce returns the view in `announcing` (no error) and `poll` retries it. One slot,
 `static PAIRING: tokio::sync::Mutex<Option<PairingSlot>>` with
 `PairingSlot { owner: KitOwner, session: PairingSession, device_name: Option<String> }`; start/scan
 abandon an older session first. Every other command takes the slot only when its owner equals
-`kit_owner(app, db)`; otherwise it abandons it and answers `validation.syncPairingNotStarted`. The
-mailbox calls go to `HttpRelay::new(session.relay_url())`. On an error, `keeps_session` keeps the
-slot (poll then answers the unchanged view without an error); any other error abandons it and is
-returned. `sync_pairing_confirm` for a holder reads `keys::credentials` with sync on.
-`sync_pairing_join` (stage Received only): `guarded_change(AppEngine, join::join_new_device(
-HttpRelay::new(&creds.relay_url), …, device_name))`; success drops the slot; a `keeps_session` error
-keeps it (stage Received) for "Try again"; any other error abandons it.
-`sync_join_with_recovery_kit`: password, `read_recovery_input(.., &default_base_url())`,
+`kit_owner(app, db)` and `now < session.wiped_at()`; otherwise it abandons it and answers
+`validation.syncPairingNotStarted` (owner) or `syncPairingExpired` (time). When a poll reaches
+Received, the command spawns a wiper that sleeps until `wiped_at()` and then abandons the slot if it
+still holds that same session (compared by mailbox ID) — the received credentials never outlive
+`expires_at + RECEIVED_GRACE_SECS` (review PF6). The mailbox calls go to
+`HttpRelay::new(session.relay_url())`. On an error, `keeps_session` keeps the slot (poll then
+answers the unchanged view without an error); any other error abandons it and is returned.
+`sync_pairing_confirm` for a holder reads `keys::credentials` with sync on; a contested session
+answers `syncPairingCodeUsed`. `sync_pairing_join` (stage Received only):
+`guarded_change(AppEngine, join::join_new_device(HttpRelay::new(&creds.relay_url), …,
+creds.clone(), device_name))` — the slot keeps its own copy; success drops the slot;
+`after_join_error` decides whether the slot stays (stage Received) for "Try again".
+`sync_join_with_recovery_kit`: `begin` (password), `read_recovery_input(.., &default_base_url())`,
 `HttpRelay::new(&input.relay_url)`, `guarded_change` around `recovery_credentials` then
 `join_new_device`. `sync_rename_device`: `devices::rename_this_device` (no guard). The slot logic sits
-in small pure functions so it is testable without Tauri: `fn slot_for(owner: &KitOwner, slot: Option<PairingSlot>) -> (Option<PairingSlot>, Option<PairingSlot> /* to abandon */)`
-and `fn after_join_error(error: &SyncError) -> bool /* keep */`. `src/lib/tauri-api.ts` gains on
+in small pure functions so it is testable without Tauri: `fn slot_for(owner: &KitOwner, now: i64, slot: Option<PairingSlot>) -> (Option<PairingSlot>, Option<PairingSlot> /* to abandon */)`
+and `fn after_join_error(error: &SyncError) -> bool /* keep */` (keeps on `keeps_session` errors and
+on `Local(Validation("validation.syncChangeInProgress"))`). `src/lib/tauri-api.ts` gains on
 `deviceSyncApi`: `pairingStart(opts)`, `pairingScan(code, opts)`, `pairingPoll()`, `pairingConfirm()`,
 `pairingCancel()`, `pairingJoin()`, `joinWithRecoveryKit(args)`, `listDevices()`, `renameDevice(name)`.
+The view is built by a pure `fn view_of(session: &PairingSession, dev_tools: bool) -> Result<PairingView>`.
 
-- [ ] **Step 1: Failing tests** (pure, in `sync_pairing.rs`)
+- [ ] **Step 1: Failing tests** (in `sync_pairing.rs`; `begin` and the slot helpers need no Tauri)
 
 ```rust
-#[test] fn a_pairing_session_belongs_to_one_profile_session() {
-    // slot_for(owner(path, 1), Some(slot of owner(path, 1))) keeps it; owner(path, 2) or another path → (None, Some(old))
+#[tokio::test] async fn pairing_needs_the_password_before_anything_is_shown_or_written() {
+    // FakeRelay: begin("", verify = ready(Ok(())), then = scan+announce of a valid code as holder) → syncPairingPasswordRequired;
+    // begin("wrong", verify = ready(Err(the wrong-password AppError)), then = …) → that error; for both,
+    // `then` was never polled (a flag) and FakeRelay.calls() is empty; the same for a holder's show (no PairingCode produced);
+    // begin("right", ready(Ok(())), …) → Ok and slot 1 written
 }
-#[test] fn a_transient_join_failure_keeps_the_received_session()  // Transient/RateLimited → true; Local(syncAlreadyEnabled), Refused(..) → false
+#[test] fn a_pairing_session_belongs_to_one_profile_session() {
+    // slot_for(owner(path, 1), now, Some(slot of owner(path, 1))) keeps it; owner(path, 2) or another path → (None, Some(old));
+    // the right owner at now ≥ wiped_at() → (None, Some(old))
+}
+#[test] fn a_transient_join_failure_keeps_the_received_session()  // Transient/RateLimited/Local(syncChangeInProgress) → true; Local(syncAlreadyEnabled), Refused(..) → false
+#[test] fn the_pairing_code_text_is_a_developer_tool()            // view_of(session, dev_tools = false).pairing_code == None, qr_svg Some; true → Some
 // sync.rs: every_sync_command_checks_the_flag_first now scans commands/sync.rs and commands/sync_pairing.rs
 ```
 
@@ -640,14 +752,14 @@ and `fn after_join_error(error: &SyncError) -> bool /* keep */`. `src/lib/tauri-
 export type ScannedCodeKind = 'pair' | 'recover' | 'recoveryCode' | 'unknown';
 export function scannedCodeKind(text: string): ScannedCodeKind;   // trims; 'moony-pair:' / 'moony-recover:' prefixes; 80 Crockford chars once spaces and dashes go
 export function formatComparisonCode(code: string): string;        // '482686' → '482 686'; anything else unchanged
-export function pairingPollInterval(view: PairingView | undefined): number | false; // 2000 in waitingForScan / waitingForOther
+export function pairingPollInterval(view: PairingView | undefined): number | false; // 2000 in announcing / waitingForScan / waitingForOther
 // sync-devices.ts
 export function devicePlatformKey(platform: string): string;       // 'devices.platform.<macos|windows|linux|ios|android>', else 'devices.platform.other'
 // use-device-pairing.ts — the view lives under ['device-sync-pairing']
 export function useDevicePairing(): {
   view: PairingView | undefined;
-  start: UseMutationResult<PairingView, unknown, { relayUrl?: string; deviceName?: string; password?: string }>;
-  scan: UseMutationResult<PairingView, unknown, { code: string; deviceName?: string; password?: string }>;
+  start: UseMutationResult<PairingView, unknown, { password: string; relayUrl?: string; deviceName?: string }>;
+  scan: UseMutationResult<PairingView, unknown, { code: string; password: string; deviceName?: string }>;
   confirm: UseMutationResult<PairingView, unknown, void>;
   cancel: () => Promise<void>;                                     // cancel + removeQueries
   join: UseMutationResult<string, unknown, void>;                   // REPLACE_DEVICE_MUTATION_KEY, gcTime 0, refreshLocalData
@@ -668,7 +780,7 @@ export function useSyncDevices(): UseQueryResult<SyncDevice[]>;    // ['device-s
 // pairing-code.test.ts
 it('tells pairing codes, kit QRs and typed recovery codes apart', …) // 'moony-pair:1:x', ' moony-recover:1:…', the 80-char V2 vector grouped with dashes, 'hello'
 it('groups the comparison code in threes', …)                       // '482686' → '482 686'; '0042' unchanged
-it('polls only while waiting for the other device', …)               // table over the five stages + undefined
+it('polls only while announcing or waiting for the other device', …) // table over the six stages + undefined: announcing, waitingForScan, waitingForOther → 2000; compare, sent, received, undefined → false
 // sync-devices.test.ts
 it('maps known platforms to their label keys and the rest to other', …)
 ```
@@ -694,15 +806,17 @@ UI (design system `docs/design-system/README.md`, existing sync cards as the mod
   (`devicePlatformKey`), name, "This device" badge, joined day, "Last change synced {{when}}" or
   "No changes synced yet", app version, a "Changes held" badge when `held`; "Rename" on this device
   (inline dialog, 1–60 characters); a primary "Add a device". No removal action and no text about it.
-- **Add a device** (holder): the QR (`<img src="data:image/svg+xml;base64,…">`), "Scan this with
-  Moony on your phone: Settings → Sync → Scan a code", "Copy code" (`navigator.clipboard`, the code
-  is not secret), "The code works for 10 minutes"; then the six digits large
-  (`formatComparisonCode`), "Do these match the other device?" with "They match" / "They don't
-  match" (cancel); then "Sent. Finish on the other device." Closing cancels.
+- **Add a device** (holder): first the device password (review PF1; `start({ password })`), then the
+  QR (`<img src="data:image/svg+xml;base64,…">`), "Scan this with Moony on your phone: Settings →
+  Sync → Scan a code", "The code works for 10 minutes"; a "Copy code" button only when
+  `view.pairingCode` is present (dev tools, correction 9 — no release wording about copying or
+  typing a pairing code); then the six digits large (`formatComparisonCode`), "Continue only if the
+  other device shows these same six digits." with "They match" / "They don't match" (cancel); then
+  "Sent. Finish on the other device." Closing cancels.
 - **Join from your phone** (joiner, from the intro card): warning that this device's data is
   replaced by the synced data after a backup next to the profile; device name (platform default),
   device password, Advanced sync server address; then the QR ("On the phone with sync on: Settings →
-  Sync → Add a device"), compare, waiting; on `received` it calls `join` at once (busy modal); success
+  Sync → Add a device"; "Copy code" only with dev tools), compare (same sentence), waiting; on `received` it calls `join` at once (busy modal); success
   toast "This device now syncs. Its earlier data is backed up in {{path}}"; a failure shows its
   message with "Try again" while the view is still `received`.
 - **Use a Recovery Kit** (from the intro card): code field (typed, pasted, or the QR text), account
@@ -712,15 +826,17 @@ UI (design system `docs/design-system/README.md`, existing sync cards as the mod
   after a backup."
 - Keys (`deviceSync.json`): `devices.*` (title, thisDevice, joined, lastChange, noChange, version,
   held, rename, renameTitle, add, `platform.{macos,windows,linux,ios,android,other}`), `pairing.*`
-  (addTitle, scanHint, copyCode, validFor, compareTitle, compareQuestion, match, noMatch, sent,
-  waiting, joining, joined, tryAgain), `join.*` (introPair, introKit, warning, nameLabel,
+  (addTitle, passwordFirst, scanHint, copyCodeDev, validFor, compareTitle, compareOnlyIfSame, match,
+  noMatch, contested, sent, waiting, joining, joined, tryAgain) — `contested`: "Another device
+  answered this code first, so these digits will not match. Choose \"They don't match\" on the other
+  device and start again.", `join.*` (introPair, introKit, warning, nameLabel,
   passwordLabel, advanced, serverLabel, pairTitle, pairHint, kitTitle, codeLabel, accountLabel,
   submit), `setup.defaultName.{ios,android}` ("iPhone", "Android phone"), `turnOff.body` (changed).
 
 - [ ] **Step 1:** No new node test (components are out of scope); `every_sync_validation_key_has_an_english_translation` and the parity gate are the checks.
 - [ ] **Step 2: Implement**; every string in all ten locales.
 - [ ] **Step 3: Run** `npm test`, `npm run typecheck`, `npm run lint`, `cargo test --lib every_sync_validation_key` → PASS.
-- [ ] **Step 4: Manual check** (no real profile): `MOONY_DEV_SYNC=1 MOONY_RELAY_URL=http://127.0.0.1:8787` on the demo copy (port 1422, `demo-home`; relay as in Task 14): the devices card lists this device; rename shows; "Add a device" shows a QR and a code that `scannedCodeKind` reads as `pair`.
+- [ ] **Step 4: Manual check** (no real profile): `MOONY_DEV_SYNC=1 MOONY_RELAY_URL=http://127.0.0.1:8787` on the demo copy (port 1422, `demo-home`; relay as in Task 14): the devices card lists this device; rename shows; "Add a device" asks for the password first (a wrong one shows the error and no QR), then shows a QR and, in this debug build, a copyable code that `scannedCodeKind` reads as `pair`.
 - [ ] **Step 5: Commit** `feat(sync): device list, adding a device and joining in desktop Settings`.
 
 ---
@@ -786,23 +902,30 @@ Scanning: the plugin's iOS non-windowed view covers the webview with no way back
 2.5.3 source), so the scan is `windowed: true`: the camera sits behind a transparent webview.
 `ScanOverlay` sets `data-scanning` on `<html>` while open (`src/index.css`: `html[data-scanning],
 html[data-scanning] body, html[data-scanning] #root { background: transparent }`, the shell hidden),
-draws a frame, "Cancel" and "Enter the code instead", and cancels the scan on `visibilitychange` to
-hidden and on unmount. `denied` shows "Allow camera access in Settings" with `openAppSettings`.
-Flows by `scannedCodeKind` of the scanned or entered text:
+draws a frame and "Cancel", and cancels the scan on `visibilitychange` to hidden and on unmount.
+`denied` shows "Allow camera access in Settings" with `openAppSettings`. The password comes first on
+every pairing path (review PF1): the sheet asks before the camera opens, and its value goes to
+`scan({ code, password, … })`. Flows by `scannedCodeKind` of the scanned text:
 - `pair` with sync off → `JoinDetailsSheet` first (the replace warning, name prefilled "iPhone" /
-  "Android phone", password) → `scan` → `PairingSheet` (six digits, "They match" / "They don't
-  match"; waiting; on `received` → `join`, busy cover; success toast with the backup path).
-- `pair` with sync on ("Add a device") → `scan` with no details → compare → "Sent. Finish on the
-  other device."
+  "Android phone", password) → scanner → `scan` → `PairingSheet` (`announcing` shows "Connecting…"
+  while the poll retries; then the six digits, "Continue only if the other device shows these same
+  six digits.", "They match" / "They don't match"; when `contested`, the `pairing.contested`
+  warning and only "Cancel"; waiting; on `received` → `join`, busy cover; success toast with the
+  backup path).
+- `pair` with sync on ("Add a device") → password sheet → scanner → `scan` → compare (same rules) →
+  "Sent. Finish on the other device."
 - `recover` (sync off) → `JoinDetailsSheet` → `joinWithRecoveryKit({ code })`; sync on → "Sync is
   already on" (existing `validation.syncAlreadyEnabled`).
-- "Type a Recovery Kit code" → `RecoveryJoinSheet` (code, account, Advanced sync server, name,
-  password).
-- `CodeEntrySheet` accepts a pasted pairing code (the simulator, and Universal Clipboard from the
-  Mac's "Copy code") or a recovery code; `unknown` → "This is not a Moony code".
-Keys: `phone.scanTitle`, `phone.scanHint`, `phone.enterInstead`, `phone.cameraDenied`,
-`phone.openSettings`, `phone.codeEntryTitle`, `phone.codeEntryLabel`, `phone.notAMoonyCode`,
-`phone.addDeviceHint` and the `pairing.*`/`join.*` keys of Task 9.
+- "Type a Recovery Kit code" → `RecoveryJoinSheet` (code — typed or pasted —, account, Advanced sync
+  server, name, password). It reads recovery codes and Kit QR text only; a pairing code there →
+  "This is not a Recovery Kit code".
+- Developer tool only (`status.devTools`, correction 9): `CodeEntrySheet` ("Paste a pairing code —
+  developer tool", reachable from the scanner overlay and the Sync screen) takes a pasted pairing
+  code for the simulator, which cannot scan. Release builds show no wording about pasting or typing
+  a pairing code.
+Keys: `phone.scanTitle`, `phone.scanHint`, `phone.connecting`, `phone.cameraDenied`,
+`phone.openSettings`, `phone.notAKitCode`, `phone.devPasteTitle`, `phone.devPasteLabel`,
+`phone.addDeviceHint`, `phone.passwordFirst` and the `pairing.*`/`join.*` keys of Task 9.
 
 - [ ] **Step 1:** Confirm `npm view @tauri-apps/plugin-barcode-scanner@2.5.3 time --registry https://registry.npmjs.org` (2026-10-14, ≥ 2 weeks old) and the crate 2.5.3 (2026-10-14; `tauri ^2.12`, rust-version 1.90; the app has tauri 2.12.5 and Rust 1.97); install with `npm install --save-exact @tauri-apps/plugin-barcode-scanner@2.5.3 --registry https://registry.npmjs.org`.
 - [ ] **Step 2: Implement**; strings in all ten locales.
@@ -846,18 +969,38 @@ Keys: `phone.setupTitle`, `phone.payUnavailable`, `phone.payWaiting`.
 - Produces (`Keychain` on mobile, same signatures as the desktop's): `bind_seal(&[u8; 32]) -> Result<Vec<u8>>`,
   `bind_open(&[u8]) -> Result<Zeroizing<[u8; 32]>>`, `copy_secret_text(&str) -> Result<u64>`,
   `clear_clipboard_if_unchanged(u64) -> Result<bool>`. iOS: `run_mobile_plugin` with
-  `"bindSeal" {secret: b64}` → `{blob: b64}`, `"bindOpen" {blob}` → `{secret}`,
+  `"bindSeal" {secret: b64}` → `BindReply`, `"bindOpen" {blob}` → `BindReply`,
   `"copySecretText" {text}` → `{token}`, `"clearClipboardIfUnchanged" {token}` → `{cleared}`.
   Android: `Err(Unsupported)` without a bridge call (documented; the UI copies itself and shows the
   clear-your-clipboard line; the binding stays off, as on Linux).
+- Produces (`models.rs`, host-compiled, review PF11):
+
+```rust
+#[derive(Deserialize)] pub struct BindReply { value: Option<String> /* blob or secret, b64 */,
+    unsupported: bool, failure: Option<NativeFailure> }
+#[derive(Deserialize)] pub struct NativeFailure { stage: BindStage, domain: String, code: i64 }
+pub enum BindStage { Seal, Parse, Restore, Agree, Open }   // "seal" | "parse" | "restore" | "agree" | "open"
+pub fn classify_ios_binding(failure: &NativeFailure) -> KeychainError;   // Failed | Invalidated
+pub fn bind_reply_secret(reply: BindReply) -> Result<Zeroizing<[u8; 32]>>;
+pub fn bind_reply_blob(reply: BindReply) -> Result<Vec<u8>>;
+```
+
+  Swift never decides "invalidated" itself: it resolves with the stage, the error's domain
+  (`NSOSStatusErrorDomain`, `CryptoKit.CryptoKitError`, `CryptoTokenKit`, …) and its code (the
+  OSStatus or the CryptoKit error case's index), and Rust classifies with the same table as the
+  macOS `classified(stage:domain:code:wrapped:)` in `MoonyBiometrics.swift`: a blob that does not
+  parse, a key handle another Secure Enclave rejects at Restore, an agreement the key refuses, a box
+  that does not open → `Invalidated`; every momentary failure (`errSecInteractionNotAllowed` −25308
+  while the phone is locked, `errSecNotAvailable`, memory/IO, an unknown domain or code) → `Failed`.
+  A transient failure never becomes `Invalidated` (which re-joins the device).
 
 Decision (pre-flight): the macOS design ports to iOS. CryptoKit's
 `SecureEnclave.P256.KeyAgreement.PrivateKey(accessControl:)` with
 `kSecAttrAccessibleWhenUnlockedThisDeviceOnly` and `.privateKeyUsage` needs no keychain item or
 entitlement; the blob carries the key's `dataRepresentation`, byte for byte the macOS binding format
 (`0x42 | u16 BE length | key handle | ephemeral x963 (65) | AES.GCM combined`, HKDF label
-`moony-binding-v1`). `SecureEnclave.isAvailable == false` (the simulator) rejects `unsupported`; a
-blob from another phone fails to restore → `invalidated` (read as "not this device"). The clipboard
+`moony-binding-v1`). `SecureEnclave.isAvailable == false` (the simulator) answers `unsupported: true`; a
+blob from another phone fails at Restore and Rust reads it as `Invalidated` ("not this device"). The clipboard
 uses `UIPasteboard.general.setItems([[UTType.utf8PlainText.identifier: text]], options: [.localOnly:
 true, .expirationDate: Date(timeIntervalSinceNow: 60)])` and answers `changeCount`; the clear
 empties `items` only when `changeCount` is unchanged. Every `@objc` command stays in
@@ -867,7 +1010,7 @@ your property, and scans the codes that pair devices for sync; photos are stored
 phone."; local network "Moony connects to a sync server on your home network when you use one."
 (needed for `sync.home.example.com`, which resolves on the LAN).
 
-- [ ] **Step 1: Failing tests** — plugin `error.rs`: `fn unsupported_rejections_read_as_unsupported()`; `models.rs`: `fn bridge_payloads_round_trip_and_refuse_wrong_lengths()` (a 31-byte secret → `Failed`); `permission-strings.test.ts` expects three keys in each of the ten files.
+- [ ] **Step 1: Failing tests** — plugin `error.rs`: `fn unsupported_rejections_read_as_unsupported()`; `models.rs`: `fn bridge_payloads_round_trip_and_refuse_wrong_lengths()` (a 31-byte secret → `Failed`; `unsupported: true` → `Unsupported`), `fn ios_binding_failures_classify_like_macos()` (a table: (Parse, any) → Invalidated; (Restore, CryptoTokenKit/CryptoKit key-handle rejection) → Invalidated; (Agree, refused) → Invalidated; (Open, authentication failure) → Invalidated; (Restore, `NSOSStatusErrorDomain`, −25308) → Failed; (Seal, any) → Failed; (any, unknown domain, 0) → Failed — the rows mirror the macOS table), `fn no_momentary_failure_reads_as_invalidated()` (every OSStatus in the momentary list at every stage → Failed); `permission-strings.test.ts` expects three keys in each of the ten files.
 - [ ] **Step 2: Run** `cd src-tauri && cargo test -p moony-keychain`, `npx vitest run src/mobile/permission-strings.test.ts` → FAIL.
 - [ ] **Step 3: Implement**; the ten `InfoPlist.strings` translated (English equals `Info.ios.plist`).
 - [ ] **Step 4: Run** the same → PASS; `cargo clippy --all-targets -- -D warnings`; `npm run tauri ios build -- --debug --target aarch64-sim` compiles the Swift (or `xcodebuild` as in Task 16).
@@ -891,11 +1034,12 @@ async fn a_phone_joins_a_desktop_that_shows_the_code() // A: create_account, dev
 async fn a_desktop_joins_from_a_phone_that_scans_its_code() // B shows as joiner, A scans as holder; same assertions
 async fn a_device_joins_with_the_recovery_kit()        // typed code + account + relay URL → converged
 async fn a_mismatch_burns_the_mailbox_and_sends_nothing()   // both at compare; joiner abandons → holder's confirm → Err(syncPairingCancelled or syncPairingExpired); peek via take → MailboxGone
+async fn a_lost_slot_1_answer_is_taken_as_ours()       // scanner announces twice on the real relay (second put → 409) with ambiguous_put set by a wrapper that drops the first answer → Compare, codes equal
 ```
 
 - [ ] **Step 1: Write the tests** (each `#[ignore]`, failing with `NEEDS_RELAY` without the variable).
 - [ ] **Step 2: Run** in `../Moony-relay` (branch `feat/dev-grant`; `git branch --show-current` there) `cp .dev.vars.example .dev.vars && npm run dev`, then `cd src-tauri && MOONY_RELAY_E2E=http://127.0.0.1:8787 cargo test --lib relay_e2e -- --ignored --test-threads=1` → all pairing tests and the phase 2 ones PASS (failures are bugs in Tasks 2–4: fix there with a regression test).
-- [ ] **Step 3: Run** `cargo test --lib` (ignored skipped) and `cargo test --release --lib` (module absent) → PASS; gates.
+- [ ] **Step 3: Run** `cargo test --lib` (ignored skipped), `cargo test --release --lib` (module absent) and once more `MOONY_DEV_SYNC=1 MOONY_RELAY_URL=http://127.0.0.1:8787 cargo test --release --lib services::sync::feature` (Task 6's release test with both variables set) → PASS; gates.
 - [ ] **Step 4: Commit** `test(sync): pairing and Recovery Kit joins end to end through wrangler dev`.
 
 ---
@@ -906,7 +1050,7 @@ async fn a_mismatch_burns_the_mailbox_and_sends_nothing()   // both at compare; 
 - Create: `docs/architecture/decisions/0026-device-sync-pairing.md`
 - Modify: `docs/architecture/decisions/README.md` (index), `docs/specs/2026-11-06-device-sync-client-design.md` (§20 gains "As built (phase 3)"), `docs/architecture/overview.md` (domain table row, "Device sync" section), `docs/standards/i18n-glossary.md` (if "pairing code" / "comparison code" are new terms)
 
-- [ ] **Step 1: Write ADR 0026**: the pinned bytes (Global Constraints) and the vectors' home; why the shower's key needs no commitment (it travels only in the QR, so a relay or a QR photographer cannot steer the six digits; one guess in 10^6); the fourth code field and which server holds the mailbox (corrections 1–3); confirm gating on both sides; read-once means a lost answer ends a pairing; roles follow sync state and are not in the transcript (a flipped role only stops the pairing); the password before a join; Kit epoch from `rotation`; last change derived from clocks; the iOS binding and clipboard, Android unsupported; the build-time flag; known limits (old rows of re-joined devices stay listed until removal in phase 5; a holder whose slot-2 answer is lost reports failure though the joiner may finish; scanning needs the camera, typing is always offered).
+- [ ] **Step 1: Write ADR 0026**: the pinned bytes (Global Constraints: slot-2 AD with version and direction label, the cancel marker, the PRK note) and the vectors' home; **the channel assumption (review PF2):** the comparison code protects the exchange only because S's public key reaches C over a channel the attacker cannot modify — a QR on a screen the person is looking at; the shower's key then needs no commitment (a relay or someone who photographs the QR cannot steer the six digits; one guess in 10^6 per pairing), but over a modifiable channel (a pasted or typed code, a chat message) an attacker who substitutes their own key sees both public keys before choosing theirs and can grind a matching six-digit code offline in seconds, so pasting a pairing code is a developer tool only; the fourth code field and which server holds the mailbox (corrections 1–3); confirm gating on both sides and the device password on both sides (PF1); ambiguous writes counted as ours, the `announcing` retry, contested scans with only "Cancel" (PF3, PF4); read-once means a lost read answer ends a pairing; the cancel marker; roles follow sync state and are not in the transcript (a flipped role only stops the pairing); a received session's grace period; the Kit join's account check and the refusal of rotated vaults; last change derived from clocks; the iOS binding (classification in Rust) and clipboard, Android unsupported; the build-time flag and its release test; known limits (old rows of re-joined devices stay listed until removal in phase 5; scanning needs the camera; HKDF's PRK is not zeroized).
 - [ ] **Step 2:** Spec §20 "As built (phase 3, 2026-11-xx)": four bullets pointing at ADR 0026 (code field, roles/directions, device list derivation, phone). Overview: replace "Mobile. Not wired yet" with the phone screen and events; add pairing, the device list, `commands/sync_pairing.rs`, and how to run the phone against a local relay (`MOONY_DEV_SYNC=1 MOONY_RELAY_URL=http://127.0.0.1:8787 npm run ios:dev`). No line numbers or file sizes.
 - [ ] **Step 3: Commit** `docs(sync): phase 3 pairing ADR 0026, spec as-built note and overview`.
 
@@ -918,7 +1062,7 @@ async fn a_mismatch_burns_the_mailbox_and_sends_nothing()   // both at compare; 
 
 - [ ] **Step 1: Relay.** `../Moony-relay` on `feat/dev-grant`, `npm run dev` (127.0.0.1:8787; the simulator shares the Mac's loopback).
 - [ ] **Step 2: Desktop.** A demo copy (never the real profile; port 1422 in this worktree, `demo-home`, greeting "Alex" before typing the demo password): `MOONY_DEV_SYNC=1 MOONY_RELAY_URL=http://127.0.0.1:8787`; set up sync (dev grant).
-- [ ] **Step 3: Simulator.** `MOONY_DEV_SYNC=1 MOONY_RELAY_URL=http://127.0.0.1:8787 npm run ios:dev` ("iPhone 17 Pro"). Check the flag reached the build: Nastavení shows "Sync". If it does not (Xcode's build phase dropped the variable), put both in `.env` (read by `dotenv` in `ios:dev`) and record it in the ledger.
-- [ ] **Step 4: Pair.** Desktop "Add a device" → "Copy code"; simulator "Scan a code" → "Enter the code instead" → paste (the simulator shares the Mac's pasteboard) → name, password → both show the same six digits → confirm both → the phone joins (busy cover, toast); the desktop lists the phone after its next round; an edit on each side arrives on the other after "Sync now". Then the phone's own "Show Recovery Kit" → Copy (iOS clipboard) works. Also a Kit join on a second simulator profile (typed code + account + `http://127.0.0.1:8787`).
+- [ ] **Step 3: Simulator.** `MOONY_DEV_SYNC=1 MOONY_RELAY_URL=http://127.0.0.1:8787 npm run ios:dev` ("iPhone 17 Pro"). Check the flag reached the build: Nastavení shows "Sync". If it does not (Xcode's build phase dropped the variable), the fallback is an **uncommitted** `src-tauri/.cargo/config.toml` with `[env] MOONY_DEV_SYNC = "1"` and `MOONY_RELAY_URL = "http://127.0.0.1:8787"` (cargo applies it to rustc whatever environment Xcode passes; a `.env` file is no fallback, since `dotenv` only sets the same process environment the shell already sets). Delete the file after the run; record in the ledger which way worked.
+- [ ] **Step 4: Pair.** Desktop "Add a device" → password → the QR and, in this debug build, "Copy code"; simulator Sync → password → the developer tool "Paste a pairing code" → paste (the simulator shares the Mac's pasteboard) → name → both show the same six digits → confirm both → the phone joins (busy cover, toast); the desktop lists the phone after its next round; an edit on each side arrives on the other after "Sync now". Then the phone's own "Show Recovery Kit" → Copy (iOS clipboard) works. Also a Kit join on a second simulator profile (typed code + account + `http://127.0.0.1:8787`).
 - [ ] **Step 5: Record** results, screenshots and anything not verifiable in the simulator (camera scan, Secure Enclave binding, local-network prompt) in `.superpowers/sdd/2026-11-10-device-sync-phase-3-second-device/progress.md`.
 - [ ] **Step 6: Owner's iPhone — controller step, after the owner's go-ahead only.** It installs over his phone app and applies migrations 030–033 to his phone data. Release builds have no sync, so it is a debug build made with `MOONY_DEV_SYNC=1` (no `MOONY_RELAY_URL`: the pairing code brings `https://sync.home.example.com`), on the home LAN. Recipe: memory note `iphone-device-deploy.md` (`/Users/filipkral/.claude/projects/-Users-filipkral-Programov-n--FinanceApp-Moony-tauri/memory/iphone-device-deploy.md`: Xcode 27.1, team `4BN52M4YYK`, build without `--release`, install with `xcrun devicectl device install app`). Checks there: camera scan of the desktop QR, the local-network prompt, the Secure Enclave binding written (`binding_written = 1` after join), the clipboard expiring after 60 s.

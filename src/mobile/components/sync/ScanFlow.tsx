@@ -47,7 +47,7 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
   const pairing = useDevicePairing();
-  const { joinWithRecoveryKit } = useDeviceSyncMutations();
+  const { joinWithRecoveryKit, turnOff } = useDeviceSyncMutations();
   const [step, setStep] = useState<Step>('details');
   const [detailsError, setDetailsError] = useState<string | null>(null);
   /** The details between "Continue" and the request that uses them; never rendered. */
@@ -192,6 +192,7 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
         // Only these two keep the received session; any other failure ended it.
         retryable:
           key === 'validation.syncChangeInProgress' || key === 'validation.syncJoinSetupPending',
+        setupPending: key === 'validation.syncJoinSetupPending',
       });
     }
   };
@@ -212,6 +213,17 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
     } catch (error) {
       fail(error);
     }
+  };
+
+  // A half-finished setup on this phone refuses the join: cancel it, then join again
+  const cancelSetupAndRetry = async () => {
+    try {
+      await turnOff.mutateAsync();
+    } catch (error) {
+      fail(error);
+      return;
+    }
+    void runJoin();
   };
 
   // The join ended the pairing: back to the details for a fresh one
@@ -331,6 +343,8 @@ export function ScanFlow({ mode, paste, devTools, onDone }: ScanFlowProps) {
           joinFailure={joinFailure}
           onRetryJoin={() => void runJoin()}
           onStartAgain={() => void startAgain()}
+          onCancelSetup={() => void cancelSetupAndRetry()}
+          cancellingSetup={turnOff.isPending}
         />
       )}
     </>

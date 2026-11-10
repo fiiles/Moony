@@ -283,6 +283,8 @@
     "notAKitCode": "これはリカバリーキットのコードではありません",
     "notAPairingCode": "これはペアリングコードではありません。",
     "devPasteTitle": "ペアリングコードを貼り付け — 開発者ツール",
-    "devPasteLabel": "ペアリングコード"
+    "devPasteLabel": "ペアリングコード",
+    "payUnavailable": "同期の支払いは、スマートフォンのアプリでは利用できません。",
+    "payWaiting": "アカウントが有効になるのを待っています。有効になると自動的に次へ進みます。"
   }
 }

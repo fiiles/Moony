@@ -287,6 +287,8 @@
     "notAKitCode": "Questo non è un codice del kit di ripristino",
     "notAPairingCode": "Questo non è un codice di associazione.",
     "devPasteTitle": "Incolla un codice di associazione — strumento per sviluppatori",
-    "devPasteLabel": "Codice di associazione"
+    "devPasteLabel": "Codice di associazione",
+    "payUnavailable": "Il pagamento della sincronizzazione non è disponibile nell'app per telefono.",
+    "payWaiting": "In attesa che l'account diventi attivo. Si procede da soli non appena succede."
   }
 }

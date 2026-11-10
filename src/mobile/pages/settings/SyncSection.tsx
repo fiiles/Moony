@@ -12,6 +12,7 @@ import {
   Smartphone,
   Type,
   Unplug,
+  X,
 } from 'lucide-react';
 import type { SyncDevice } from '@shared/schema';
 import {
@@ -30,6 +31,7 @@ import { SettingsRow } from '@/mobile/components/SettingsRow';
 import { RecoveryJoinSheet } from '@/mobile/components/sync/RecoveryJoinSheet';
 import { RenameDeviceSheet } from '@/mobile/components/sync/RenameDeviceSheet';
 import { ScanFlow } from '@/mobile/components/sync/ScanFlow';
+import { SetupSheet } from '@/mobile/components/sync/SetupSheet';
 import { SyncDeviceRows } from '@/mobile/components/sync/SyncDeviceRows';
 import { SyncKitSheet } from '@/mobile/components/sync/SyncKitSheet';
 import { SyncPasswordSheet } from '@/mobile/components/sync/SyncPasswordSheet';
@@ -49,7 +51,7 @@ type Flow = { mode: ScanMode; paste: boolean } | null;
 /**
  * Nastavení → Sync (spec §11.3 and the mobile design §13): behind the feature flag, which sends the
  * page back to Nastavení when it is off. With sync off (or half set up) the page offers the ways in:
- * set up sync on this phone, scan a code from another device and type a Recovery Kit code. With sync
+ * set up sync on this phone (or continue a setup that was started, or cancel it), scan a code from another device and type a Recovery Kit code. With sync
  * on it shows the status and "Sync now", the devices (this one can be renamed), "Add a device" (a
  * scan), the Recovery Kit behind the device password, re-sync, turn off and delete. With the
  * developer tools on, a pairing code can also be pasted (the simulator cannot scan); release builds
@@ -64,6 +66,8 @@ export default function SyncSection() {
   const { t: tc } = useTranslation('common');
   const [open, setOpen] = useState<Open>(null);
   const [flow, setFlow] = useState<Flow>(null);
+  /** The first-device setup sheet is up. */
+  const [settingUp, setSettingUp] = useState(false);
   const [renaming, setRenaming] = useState<SyncDevice | null>(null);
   /** A repair that could not send every change: re-syncing is offered next to it. */
   const [offerResync, setOfferResync] = useState(false);
@@ -122,6 +126,15 @@ export default function SyncSection() {
     }
   };
 
+  // A setup that was started and not finished: the row resumes it, another cancels it
+  const cancelSetup = async () => {
+    try {
+      await turnOff.mutateAsync();
+    } catch (error) {
+      fail(error);
+    }
+  };
+
   const syncOn = status !== undefined && status.phase !== 'off' && status.phase !== 'settingUp';
   const pending = status?.pendingChanges ?? 0;
   const devTools = status?.devTools === true;
@@ -140,9 +153,19 @@ export default function SyncSection() {
           <p className="mx-0.5 mb-3.5 mt-0 text-m-sub text-ink-3">
             {t('intro.description')} {t('intro.privacy')}
           </p>
-          {/* Setting up sync on the phone is Task 12: its row waits here */}
           <EntityRows>
-            <SettingsRow disabled icon={Smartphone} title={t('phone.setUp')} />
+            <SettingsRow
+              icon={Smartphone}
+              title={status.phase === 'settingUp' ? t('intro.resume') : t('phone.setUp')}
+              onClick={() => setSettingUp(true)}
+            />
+            {status.phase === 'settingUp' && (
+              <SettingsRow
+                icon={X}
+                title={t('intro.cancelSetup')}
+                onClick={() => void cancelSetup()}
+              />
+            )}
             <SettingsRow
               icon={QrCode}
               title={t('phone.scan')}
@@ -220,6 +243,8 @@ export default function SyncSection() {
       />
       <SyncKitSheet open={open === 'kit'} onOpenChange={close} />
       <RecoveryJoinSheet open={open === 'kitJoin'} onOpenChange={close} />
+      {/* Mounted only while a setup runs: unmounting forgets the Recovery Kit */}
+      {settingUp && <SetupSheet onClose={() => setSettingUp(false)} />}
       {/* Mounted only while a scan runs: unmounting cancels the camera and the pairing */}
       {flow && (
         <ScanFlow

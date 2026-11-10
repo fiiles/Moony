@@ -287,6 +287,8 @@
     "notAKitCode": "Esto no es un código del kit de recuperación",
     "notAPairingCode": "Esto no es un código de vinculación.",
     "devPasteTitle": "Pegar un código de vinculación — herramienta de desarrollo",
-    "devPasteLabel": "Código de vinculación"
+    "devPasteLabel": "Código de vinculación",
+    "payUnavailable": "Pagar la sincronización no está disponible en la app del móvil.",
+    "payWaiting": "Esperando a que la cuenta se active. Cuando lo haga, pasarás al siguiente paso automáticamente."
   }
 }

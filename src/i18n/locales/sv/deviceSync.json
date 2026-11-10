@@ -285,6 +285,8 @@
     "notAKitCode": "Det här är ingen kod från ett återställningskit",
     "notAPairingCode": "Det här är ingen parkopplingskod.",
     "devPasteTitle": "Klistra in en parkopplingskod — utvecklarverktyg",
-    "devPasteLabel": "Parkopplingskod"
+    "devPasteLabel": "Parkopplingskod",
+    "payUnavailable": "Betalning för synkronisering är inte tillgänglig i mobilappen.",
+    "payWaiting": "Väntar på att kontot ska bli aktivt. När det blir det går det vidare av sig självt."
   }
 }

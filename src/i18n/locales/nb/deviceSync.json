@@ -285,6 +285,8 @@
     "notAKitCode": "Dette er ikke en kode fra et gjenopprettingssett",
     "notAPairingCode": "Dette er ikke en koblingskode.",
     "devPasteTitle": "Lim inn en koblingskode — utviklerverktøy",
-    "devPasteLabel": "Koblingskode"
+    "devPasteLabel": "Koblingskode",
+    "payUnavailable": "Betaling for synkronisering er ikke tilgjengelig i mobilappen.",
+    "payWaiting": "Venter på at kontoen blir aktiv. Når den blir det, går det videre av seg selv."
   }
 }

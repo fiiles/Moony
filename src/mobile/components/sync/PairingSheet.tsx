@@ -13,6 +13,8 @@ import { pairingSheetStep } from '@/mobile/lib/sync-scan';
 export interface JoinFailure {
   message: string;
   retryable: boolean;
+  /** The refusal was a half-finished setup on this phone (`syncJoinSetupPending`): it can be cancelled. */
+  setupPending: boolean;
 }
 
 interface PairingSheetProps {
@@ -30,6 +32,9 @@ interface PairingSheetProps {
   /** After a failed join: the same join again (`retryable`), or a fresh pairing from the start. */
   onRetryJoin: () => void;
   onStartAgain: () => void;
+  /** Cancels the half-finished setup that blocks the join; the caller then runs the join again. */
+  onCancelSetup: () => void;
+  cancellingSetup: boolean;
 }
 
 /** The 48 pt buttons of a sheet's footer. */
@@ -57,6 +62,8 @@ export function PairingSheet({
   joinFailure,
   onRetryJoin,
   onStartAgain,
+  onCancelSetup,
+  cancellingSetup,
 }: PairingSheetProps) {
   const { t } = useTranslation('deviceSync');
   const { t: tc } = useTranslation('common');
@@ -116,7 +123,19 @@ export function PairingSheet({
         return <p className="m-0 text-m-lead text-ink-2">{t('pairing.sent')}</p>;
       case 'received':
         return joinFailure ? (
-          <InlineAlert icon={AlertTriangle}>{joinFailure.message}</InlineAlert>
+          <div className="space-y-3">
+            <InlineAlert icon={AlertTriangle}>{joinFailure.message}</InlineAlert>
+            {joinFailure.setupPending && (
+              <Button
+                variant="secondary"
+                className={`${BUTTON} w-full`}
+                loading={cancellingSetup}
+                onClick={onCancelSetup}
+              >
+                {t('intro.cancelSetup')}
+              </Button>
+            )}
+          </div>
         ) : (
           <p className="m-0 text-m-lead text-ink-3">{t('pairing.joining')}</p>
         );

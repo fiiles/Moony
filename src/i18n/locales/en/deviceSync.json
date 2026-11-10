@@ -285,6 +285,8 @@
     "notAKitCode": "This is not a Recovery Kit code",
     "notAPairingCode": "This is not a pairing code.",
     "devPasteTitle": "Paste a pairing code — developer tool",
-    "devPasteLabel": "Pairing code"
+    "devPasteLabel": "Pairing code",
+    "payUnavailable": "Paying for sync is not available in the phone app.",
+    "payWaiting": "Waiting for the account to become active. This moves on by itself when it does."
   }
 }

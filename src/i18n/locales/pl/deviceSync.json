@@ -289,6 +289,8 @@
     "notAKitCode": "To nie jest kod zestawu odzyskiwania",
     "notAPairingCode": "To nie jest kod parowania.",
     "devPasteTitle": "Wklej kod parowania — narzędzie deweloperskie",
-    "devPasteLabel": "Kod parowania"
+    "devPasteLabel": "Kod parowania",
+    "payUnavailable": "Płatność za synchronizację nie jest dostępna w aplikacji na telefonie.",
+    "payWaiting": "Czekamy, aż konto stanie się aktywne. Gdy to nastąpi, przejdziemy dalej automatycznie."
   }
 }

@@ -276,7 +276,6 @@ async fn a_kit_of_a_rotated_vault_is_refused() {
     vault.relay.set_rotation(&vault.creds.vault_id.to_b64(), 1);
     let device = newcomer();
     let before = profile(&device.lock());
-    let dir = tempfile::tempdir().expect("dir");
     let input = kit_input(
         &vault.creds.account,
         &vault.creds.vault_id,
@@ -292,8 +291,9 @@ async fn a_kit_of_a_rotated_vault_is_refused() {
         Some("validation.syncRecoveryKitRotated"),
         "{error:?}"
     );
-    assert!(repair_backups(dir.path()).is_empty(), "no backup");
-    assert_eq!(profile(&device.lock()), before);
+    let c = device.lock();
+    assert_eq!(keys::account(&c).expect("account"), None, "nothing stored");
+    assert_eq!(profile(&c), before);
 }
 
 #[tokio::test]
@@ -369,6 +369,41 @@ async fn joining_during_a_setup_with_another_account_is_refused_before_any_backu
     let zip = join_as(&vault, &same, vault.creds.clone(), "Laptop", dir.path())
         .await
         .expect("the same account joins");
+    assert_joined(&vault, &same, &zip, dir.path()).await;
+}
+
+#[tokio::test]
+async fn joining_during_a_setup_on_another_server_is_refused_before_any_backup() {
+    let vault = vault().await;
+    snapshot_of_a(&vault, "a1").await;
+    let device = newcomer();
+    // The same account digits, but a setup that was started on another sync server.
+    keys::save_account(&device.lock(), "https://other.test", &vault.creds.account)
+        .expect("a half setup");
+    let before_calls = vault.relay.calls();
+    let before = profile(&device.lock());
+    let dir = tempfile::tempdir().expect("dir");
+
+    let error = join_as(&vault, &device, vault.creds.clone(), "Laptop", dir.path())
+        .await
+        .expect_err("another server");
+
+    assert_eq!(
+        validation_key(&error),
+        Some("validation.syncJoinSetupPending"),
+        "{error:?}"
+    );
+    assert!(repair_backups(dir.path()).is_empty(), "no backup");
+    assert_eq!(vault.relay.calls(), before_calls, "no relay call");
+    assert_eq!(profile(&device.lock()), before);
+
+    // The same server however it is spelled, with the same account, may join.
+    let same = newcomer();
+    keys::save_account(&same.lock(), "https://RELAY.test/", &vault.creds.account)
+        .expect("same server");
+    let zip = join_as(&vault, &same, vault.creds.clone(), "Laptop", dir.path())
+        .await
+        .expect("the same server joins");
     assert_joined(&vault, &same, &zip, dir.path()).await;
 }
 

@@ -88,6 +88,15 @@ impl VaultKeys {
         Self::checked(current, owned)
     }
 
+    /// One key, already in a wiped-on-drop buffer, as the current epoch's (a Recovery Kit's key):
+    /// moved in, never copied out of its `Zeroizing`.
+    pub fn single(epoch: u32, key: Zeroizing<[u8; 32]>) -> Self {
+        VaultKeys {
+            current: epoch,
+            keys: BTreeMap::from([(epoch, key)]),
+        }
+    }
+
     fn checked(current: u32, keys: BTreeMap<u32, Zeroizing<[u8; 32]>>) -> Result<Self> {
         if !keys.contains_key(&current) {
             return Err(AppError::Internal(format!(
@@ -522,6 +531,14 @@ mod tests {
             keys: VaultKeys::from_parts(1, BTreeMap::from([(0, [0x01; 32]), (1, [0x11; 32])]))
                 .expect("keys"),
         }
+    }
+
+    #[test]
+    fn a_single_key_is_its_epoch_and_current() {
+        let keys = VaultKeys::single(0, Zeroizing::new([7; 32]));
+        assert_eq!(keys.current_epoch(), 0);
+        assert_eq!(*keys.current(), [7; 32]);
+        assert_eq!(keys.epochs().count(), 1);
     }
 
     #[test]

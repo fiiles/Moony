@@ -10,7 +10,6 @@
 //! default or a self-hosted one, ruling SH-2): the caller builds it with
 //! `HttpRelay::new(&creds.relay_url)`, never from `default_base_url()` (`MOONY_RELAY_URL`).
 
-use std::collections::BTreeMap;
 use std::fs::File;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -29,7 +28,7 @@ use super::hlc::DeviceId;
 use super::in_savepoint;
 use super::keys::{self, Credentials, VaultKeys};
 use super::recovery::RecoveryInput;
-use super::relay::http::validate_base_url;
+use super::relay::http::{normalize_base_url, validate_base_url};
 use super::relay::{Relay, RelayError};
 use super::snapshot::RestoreReport;
 use super::state;
@@ -129,8 +128,9 @@ async fn replace_under_lock<R: Relay, D: ConnAccess>(
 /// 1. Before any backup or relay call: the device name and the relay address are checked; then,
 ///    holding off every round of the profile (`engine::exclusive`) until the join ends, sync must
 ///    be off (`validation.syncAlreadyEnabled`), and a sync setup this device started with another
-///    account (`keys::account`) stops the join with `validation.syncJoinSetupPending` (review
-///    PF5); a setup that stopped at the same account may go on into the join.
+///    account or on another sync server (`keys::account`) stops the join with
+///    `validation.syncJoinSetupPending` (review PF5); a setup that stopped at the same account on
+///    the same server may go on into the join.
 /// 2. The verified backup of the repair (`sync-repair-<now>.zip`, flushed and read back).
 /// 3. `join_by_replace`'s replace: the snapshot is fetched and opened, and in one savepoint the
 ///    credentials are bound, the profile replaced under a new device ID with a new key pair and
@@ -148,20 +148,31 @@ pub async fn join_new_device<R: Relay, D: ConnAccess>(
     devices::validate_device_name(device_name)?;
     validate_base_url(&creds.relay_url)?;
     let _no_round = engine::exclusive(db).await;
-    db.with_conn(|conn| may_join(conn, &creds.account))?;
+    db.with_conn(|conn| may_join(conn, &creds))?;
     let zip = backed_up(db, data_dir, now).await?;
     replace_under_lock(relay, db, creds, device_name, data_dir, native, now).await?;
     log::info!("[SYNC] A new device joined the vault");
     Ok(zip)
 }
 
-/// Step 1 of `join_new_device`: sync is off, and no setup with another account is under way.
-fn may_join(conn: &Connection, account: &str) -> Result<()> {
+/// Step 1 of `join_new_device`: sync is off, and no setup with another account, or the same
+/// account on another sync server, is under way. Both addresses compare normalized; a stored one
+/// that does not read as an address counts as another server.
+fn may_join(conn: &Connection, creds: &Credentials) -> Result<()> {
     if state::load(conn)?.is_some_and(|sync| sync.enabled) {
         return Err(AppError::Validation(ALREADY_ENABLED.into()));
     }
-    if keys::account(conn)?.is_some_and(|(_, stored)| stored != account) {
-        return Err(AppError::Validation(SETUP_PENDING.into()));
+    if let Some((stored_url, stored_account)) = keys::account(conn)? {
+        let same_server = match (
+            normalize_base_url(&stored_url),
+            normalize_base_url(&creds.relay_url),
+        ) {
+            (Ok(stored), Ok(joined)) => stored == joined,
+            _ => false,
+        };
+        if !same_server || stored_account != creds.account {
+            return Err(AppError::Validation(SETUP_PENDING.into()));
+        }
     }
     Ok(())
 }
@@ -199,7 +210,7 @@ pub async fn recovery_credentials<R: Relay, D: ConnAccess>(
         relay_url: input.relay_url,
         account: input.account,
         vault_id: input.vault_id,
-        keys: VaultKeys::from_parts(0, BTreeMap::from([(0, *input.key.expose())]))?,
+        keys: VaultKeys::single(0, input.key.into_secret()),
     };
     let info = match relay.vault_info(&creds.auth()).await {
         Ok(info) => info,

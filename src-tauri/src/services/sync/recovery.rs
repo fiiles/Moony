@@ -40,6 +40,11 @@ impl RecoveryKey {
     pub fn expose(&self) -> &[u8; 32] {
         &self.0
     }
+
+    /// The key in its wiped-on-drop buffer, moved out without a copy.
+    pub fn into_secret(self) -> Zeroizing<[u8; 32]> {
+        self.0
+    }
 }
 
 impl std::fmt::Debug for RecoveryKey {
@@ -102,13 +107,19 @@ pub fn format_recovery_code(code: &str) -> Zeroizing<String> {
     out
 }
 
+/// What a typed code or account may hold between its characters: whitespace, `-` and the dashes
+/// U+2010 to U+2015 (an autocorrected en dash, say).
+fn is_separator(c: char) -> bool {
+    c == '-' || ('\u{2010}'..='\u{2015}').contains(&c) || c.is_whitespace()
+}
+
 /// Reads a typed or scanned code. Case, whitespace, `-` and the dashes U+2010 to U+2015 are ignored; `I` and `L` read as `1`,
 /// `O` as `0`. Needs exactly 80 characters, a zero padding bit and a matching checksum, else
 /// `validation.syncRecoveryCodeInvalid` (the input is never put into the error).
 pub fn decode_recovery_code(input: &str) -> Result<(VaultId, RecoveryKey)> {
     let mut values = Zeroizing::new(Vec::with_capacity(RECOVERY_CODE_LEN));
     for c in input.chars() {
-        if c == '-' || ('\u{2010}'..='\u{2015}').contains(&c) || c.is_whitespace() {
+        if is_separator(c) {
             continue;
         }
         let c = match c.to_ascii_uppercase() {
@@ -266,10 +277,10 @@ impl std::fmt::Debug for RecoveryInput {
 /// - A scanned QR (the trimmed `code` starts `moony-recover:`) brings its own account and sync
 ///   server (`parse_recovery_qr_payload`); `account` and `relay_url` are ignored, and a QR
 ///   without a server names the default relay (`DEFAULT_RELAY_URL`).
-/// - A typed code (`decode_recovery_code`) needs `account`: 16 digits, spaces and `-` between
-///   them ignored, else `validation.syncRecoveryAccountInvalid`. The server is `relay_url`,
-///   normalized (`validation.syncRelayUrlInvalid`), or `default_relay` when it is absent or
-///   blank.
+/// - A typed code (`decode_recovery_code`) needs `account`: 16 digits, the code's separators
+///   between them ignored (`is_separator`), else `validation.syncRecoveryAccountInvalid`. The
+///   server is `relay_url`, normalized (`validation.syncRelayUrlInvalid`), or `default_relay`
+///   when it is absent or blank.
 ///
 /// No error carries the input.
 pub fn read_recovery_input(
@@ -294,7 +305,7 @@ pub fn read_recovery_input(
     let account: String = account
         .unwrap_or_default()
         .chars()
-        .filter(|c| !c.is_whitespace() && *c != '-')
+        .filter(|c| !is_separator(*c))
         .collect();
     if account.len() != ACCOUNT_DIGITS || !account.bytes().all(|b| b.is_ascii_digit()) {
         return Err(account_invalid());
@@ -670,6 +681,15 @@ mod tests {
         .expect("grouped account, own server");
         assert_eq!(input.account, ACCOUNT);
         assert_eq!(input.relay_url, "https://relay.test");
+        // Typographic dashes (an autocorrected en dash, say) are skipped as in the code.
+        for dash in [
+            '\u{2010}', '\u{2011}', '\u{2012}', '\u{2013}', '\u{2014}', '\u{2015}',
+        ] {
+            let typed = format!("4417{dash}9382{dash}0556{dash}1273");
+            let input = read_recovery_input(&grouped, Some(&typed), None, DEFAULT)
+                .unwrap_or_else(|e| panic!("{dash:?}: {e:?}"));
+            assert_eq!(input.account, ACCOUNT, "{dash:?}");
+        }
 
         let account = "validation.syncRecoveryAccountInvalid";
         for typed in [
